@@ -258,6 +258,9 @@ const STAND = [
       spawn: { home: [3, 42], face: 90 }, giza: { plot: 'P00-01', along: 6 },
       seams: [
           { plot: 'P08-03', side: 'E', along: 6, id: 'ow_v_31_30', room: R_BABEL, open: 11, label: 'BABEL', sub: 'THE EAST MOUTH · THE LINE RUNS ON EAST', desc: 'The line runs on east, straight at the tower.' },
+          /* R11, THE DELTA CAUSEWAY (2026-11-17, the One World 4.3 thread's one change to this tool; a dated note on docs/notes/claims.md): the road from Giza comes
+             in on Göbekli Tepe's south-west plot (world 19,31), seven squares down its west side (the route kit's own end there) */
+          { plot: 'P00-02', side: 'W', along: 7, id: 'ow_v_19_31', room: 'site_ow_r11', open: 11, label: 'THE DELTA CAUSEWAY', sub: 'WEST OVER THE REED FLATS · TO GIZA', desc: 'A dirt road runs west off the tell over the reed flats to the pyramids.' },
           { plot: 'P02-02', side: 'S', along: 6, id: 'ow_h_21_32', room: R_BUGS, open: 5, label: 'THE TRAIL · BUG COLONY', sub: 'THE DRY SLOPE · THE FOOTPATH SOUTH', desc: 'A footpath goes off the slope south into the dry scrub.' },
       ] },
     { id: R_BABEL, part: 'ow_babel', label: 'LEYLINES · BABEL + TECHNOTICLAN', sub: 'THE TOWER · THE TRAIL · THE CITY ON THE LAKE · 29 PLOTS', letters: ['T', 'Z'], lines: OLD.babel.l.concat(OLD.temple.l),

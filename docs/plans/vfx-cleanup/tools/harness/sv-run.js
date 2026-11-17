@@ -1,4 +1,5 @@
 // Spell VFX audit batch runner (visuals ON). node sv-run.js --ids ids.txt --out DIR [--gpu webgl2|webgl|webgpu] [--only a,b] [--race r]
+// --dense = a frame every tick for the first 3 s (beams, fast projectiles).
 // One headful llvmpipe page (WebGL2 node renderer by default), art + 3D models on, Playwright fake clock.
 // Per spell: the real HUD path (ABILITIES -> spell row -> aim still -> CONFIRM) on the audit board, then the clock is
 // stepped in 150 ms ticks and frames are drawn + saved at the windup, the hit and the aftermath.
@@ -179,7 +180,8 @@ log('jobs', jobs.length, 'gpu', GPU);
     // fixed cadence: a frame every 400 ms up to 3.2 s, then every 1 s while the board is busy (max 9 s); the first frame
     // after the first HP change / log line is labelled 'hit' (HP can move at the cast for heals/teleports, so it is a hint)
     const MAXT = 9000; let next = 250; let changeAt = null;
-    while (t < MAXT && k < 15) {
+    const DENSE = A.includes('--dense');   // --dense: a frame every 150 ms tick for the first 3 s (a beam lives 0.3-0.5 s: the normal cadence misses it)
+    while (t < MAXT && k < (DENSE ? 26 : 15)) {
       await run(150); t += 150;
       const fi = await frameInfo();
       const hpChanged = Object.keys(hp0).some(id => fi.hp[id] !== hp0[id]);
@@ -190,7 +192,7 @@ log('jobs', jobs.length, 'gpu', GPU);
         if (label === 'chg') hitAt = t;
         const f = path.join(dir, String(k).padStart(2, '0') + '_' + label + '_' + t + 'ms.jpg');
         await shot(f); rec.frames.push(Object.assign({ label, ms: t }, fi)); k++; t += 150; lastShot = t;
-        next = t < 3200 ? t + 250 : t + 850;
+        next = DENSE && t < 3000 ? t : (t < 3200 ? t + 250 : t + 850);
       }
       if (idle >= 600 && t > 2000 && (changeAt == null || t - changeAt > 1200)) break;
     }

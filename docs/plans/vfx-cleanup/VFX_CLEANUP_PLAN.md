@@ -85,8 +85,9 @@ victim's body flashing white), a snow spell's snow, a holy spell's own light sha
 **Hard limits (all calls):**
 1. **No pure white** on any spell layer. A hot core takes the spell's colour with its brightest channel at or under 92 %
    (the Riot value rule already in three-vfx.js `_RV_VALUE_MAX`). White is reserved for the hit blink.
-2. **One flash per hit**, body-sized or smaller, on the impact frame only. An area spell does not flash every square: its
-   mark (scorch, crack, noise wash, scar) is the per-square read.
+2. **One flash per hit square**, body-sized or smaller, on the impact frame only. **An area spell flashes EVERY square it
+   hits** (mondo 11-17: "that is the whole point of the flash to show where the damage hits"); the flash takes the spell's
+   colour, it is not removed.
 3. **No full-screen flash** on STRIP spells. On REPLACE spells only on heavy + ultimate, in the element colour, and it keeps
    its hole round the target (it already does).
 4. **Rush lines and speed bursts** only where the spell's own look calls for them (a finisher, a ki attack), never as the
@@ -268,8 +269,8 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
 |---|---|---|---|---|
 | **B0** | The switch `EW_NO_VFX_CLEANUP`, the capture runner launching through `probe-fast.js` (`tools/harness/sv-run.js`). DONE 11-17. No white meter (section 10) | 0 | none | done |
 | **B1** | The shared changes (section 3) + the cast rune. DONE 11-17 except item 7 (the element stamps go with their element's sweep, B7) | reaches ~840 | after frames of a spread of spells, looked at | the most important step: high effort, read section 1 first, look at every frame |
-| **B2** | Blades: his examples first (Blade Waltz, Dragon Slash), Brave Charge, Cross Slash, Sneak Slash, Red Slash, Synthetic Blade, Blessed Blade. Sword Beam gets its interim cleanup here and its beam in B3 | 9 | before / after per spell, the hit frame cropped to the target | medium-high effort; his orange-red stays |
-| **B3** | The beam kit (section 4) + the 25 generic-laser spells + a check of the other line spells + the sight lasers (turret, Take Aim, sniper rig) and the turret blast | 47 + the turret / sight lasers | per style: the four beats in one strip; every converted spell's sheet | design work: high effort, the longest step |
+| **B2** | DONE 11-17 (section 10). Blades: his examples first (Blade Waltz, Dragon Slash), Brave Charge, Cross Slash, Sneak Slash, Red Slash, Synthetic Blade, Blessed Blade. Sword Beam gets its interim cleanup here and its beam in B3 | 9 | before / after per spell, the hit frame cropped to the target | medium-high effort; his orange-red stays |
+| **B3** | PART 1 DONE 11-17 (section 10): the kit + the ten energy beams; the old laser recoloured for the other 14. OPEN: the sight lasers + the turret blast (three-renderer.js), the clash. The beam kit (section 4) + the 25 generic-laser spells + a check of the other line spells + the sight lasers (turret, Take Aim, sniper rig) and the turret blast | 47 + the turret / sight lasers | per style: the four beats in one strip; every converted spell's sheet | design work: high effort, the longest step |
 | **B4** | Blasts, bolts, wand duels on the same kit + the clash beats | 16 | clash frame at a prism and at a shield | high effort |
 | **B5** | The portal kit + the door / teleport / summon / rift spells | 81 | the ambush cutscene frame unchanged + before / after sheets | high effort |
 | **B6a/b** | Light: divine, aura, heal, mana, lightning | 96 + 95 | overview sheets + meter, the worst 10 cropped | sweep: medium effort |
@@ -347,6 +348,11 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
    lot? ... it should just be in the code." The trace is section 1 + `SPELL_TABLE.md` + `tools/audit.js`. Pictures are only
    the after check (section 7).
 3. **The runes** under the caster are generic clutter too: section 3 item 8.
+4. **Every square an area spell hits keeps its flash** (hard limit 2). "i didnt want you to literally take out everything
+   white."
+5. **Every spell with no look of its own gets one** (the 315 REPLACE rows): "any spells that dont have a look of their own
+   need one, start a thread or multiple threads to give them." A recoloured generic burst is the stopgap, not the answer.
+   The threads: `docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md`.
 
 **Built in B0 + B1 (three-vfx-effects.js, block "THE VFX CLEANUP, B0 + B1"):**
 - `window.EW_NO_VFX_CLEANUP = true` = today's look back, live.
@@ -359,9 +365,32 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
 - `_vcCol` = `_sigScreenFlash`, `_sigShockRing3D`, `_sigSpeedBurst3D`, `_sigCrescentSlash3D` handed near-white draw in the
   casting spell's colour. The crescent's tip glint takes the arc's colour (`noGlint` turns it off).
 - `_sigSlashCombo3D`'s heavy finisher: flash, speed burst and third cut in the combo's own colour; rush lines on an ultimate only.
-- An area spell's outer squares draw their recipe without its flash layers (`_vcNoFlash`, `_emitAoeBursts`).
+- (Taken back the same day: B1 first drew an area's outer squares without their flash. mondo: every hit square flashes.)
 - The noise wash: every sheet at a mid tone; a blade spell gets no wash and no wind gust / mark (its scar is its mark).
 - The cast rune: section 3 item 8.
+
+**Built in B2 (the blades, 11-17):** Blade Waltz ends on its three cuts + the shake (its white third cut, white speed
+burst, ring and blue screen flash are off). `_sigSlashCombo3D` (Dragon Slash, Brave Charge, Cross Slash, Sneak Slash, Red
+Slash, Synthetic Blade, Blessed Blade): no summon circle, no opening screen flash, and the heavy finisher is the cut +
+its ring + its scar (no screen flash, speed burst or rush lines). Sword Beam: the wave is the Swordmaster's orange-red
+(`0xff5a2a`, core `0xffa060`), leaves a red scar + embers on every square down the line, and the generic laser + white
+charge flash no longer draw under it. Its wave still crosses the line in 0.24 s: the real beam is B3.
+
+**Built in B3, part 1 (the beam kit, 11-17):** `_beamKit3D` + `_beamKitCharge` + the table `_VC_BEAM` in
+three-vfx-effects.js. Ten spells wear it: Railgun, Heat Ray, Heat Vision, Plasma Cannon, Orichalcum Ray (`blaster`), Ki
+Wave (`ki`), Psychic Beam, Entropic Beam, Baleful Gaze, Judgment Beam (`wand`). The charge builds at the hand for the
+WHOLE windup (it is about 2 s in a real cast, not the 250-700 ms the plan guessed) in place of the glass orb; the beam
+is a normal-blended hot core in the spell's colour inside a dark edge, a glow, the flowing sheath, a front ball and a
+muzzle bloom; the impact is a floor ring + a splash thrown back. The other 14 line spells still on the old laser (Gale,
+Flamethrower, Timber! ...) keep it for now with its core in the spell's colour and a tinted charge blink: whether the
+laser should go from under each is judged with its element's sweep. Also: THE CAPSTONE BLOOM (the sigil disc + the
+white-cored column on every capstone, seen on Railgun) now draws its disc only for the rune schools and its column only
+for divine, never white-cored. The capture runner has `--dense` (a frame every tick) for beams.
+NOT yet: the sight lasers + the turret blast, the clash beats (B4), the metal noise sheet's pale squares (B7).
+
+**Corrected 11-17:** the own-look lists called 240 spells "no look". About 129 of them have their ELEMENT's pass (fire,
+ice, water, nature, wind, metal, earth, sonic, blood, psychic) and only lack a spell-specific piece; 62 have no element
+at all. The threads were told: bare ones first, the element pass is the base, add only what makes it that spell.
 
 **Suggestions from the build thread (not decided; mondo's call):**
 - Show mondo B2 (his three examples) before the element sweeps start, so the direction is checked on 9 spells, not 900.

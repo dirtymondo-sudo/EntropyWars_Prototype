@@ -310,7 +310,7 @@ const MOVE = MVF({ cols: GX, rows: GY, cell, fill: 'x', plots: PLAN.plots.map(p 
 const ROCKSH = SH;
 const TT = { KH: 270, A: 90 };
 const placeKH = p => ({ wx: -8 + p.y, wy: 7 + (GX - 1 - p.x), turn: 270 }), placeA = p => ({ wx: -19 + 3 - (p.y - 2), wy: -12 + (p.x - 3), turn: 90 });
-const T_NAME = { west: 'The West Tunnel', wells: 'The Wells Tunnel', long: 'The Long Tunnel', north: 'The Lemuria Tunnel', way: 'The Tunnel-Way Tunnel' };
+const T_NAME = { west: 'The West Tunnel', wells: 'The Wells Tunnel', long: 'The Long Tunnel', north: 'The Lemuria Tunnel', way: 'The Tunnel-Way Tunnel', cells: 'The Cells Tunnel', bone: 'The Bone Passage' };
 const seq = (a, b, fx) => { const o = []; if (a <= b) for (let i = a; i <= b; i++) o.push(fx(i)); else for (let i = a; i >= b; i--) o.push(fx(i)); return o; };
 /* each room: its district plots (home ids, placed), its tunnel plots (world x, y, name), what joins */
 const ROOMS = [
@@ -324,11 +324,18 @@ const ROOMS = [
       tunnels: seq(-9, -15, x => [x, 11, T_NAME.west]).concat([[-15, 12, T_NAME.west], [-14, 10, T_NAME.wells]], seq(10, 2, y => [-15, y, T_NAME.west])) },
     { key: 'L', room: 'site_prebuilt_hollow_earth_ow_long', part: 'ow_long', label: 'THE LONG TUNNEL', sub: 'THE CAVE ROAD NORTH · UNDER THE WOODS · TO AGARTHA', group: [], lines: [],
       parti: 'The long cave road north under the Woods, from the West Tunnel to Agartha.', sunsNote: 'none', tunnels: seq(1, -8, y => [-15, y, T_NAME.long]) },
-    { key: 'T', room: 'site_prebuilt_hollow_earth_ow_tunnelway', part: 'ow_tunnelway', label: 'THE TUNNEL-WAY TUNNEL', sub: 'FROM LEVEL −6 NORTH · UP INTO DEAD MAN’S CAVE', group: [], lines: [],
-      parti: 'A cave tunnel north from the Cavern\'s Level −6 to the shaft under Dead Man\'s Cave\'s Tunnel Way.', sunsNote: 'none', tunnels: seq(9, 2, y => [-9, y, T_NAME.way]).concat([[-8, 2, T_NAME.way], [-7, 2, T_NAME.way]]) },
+    /* + THE UNDERGROUND WALKS (2026-11-17, One World phase 4.4): U12, the Cells Tunnel, east from the shaft's foot to the Sewers' Holding Cells; U13,
+       the Bone Passage (the map's secret walk), from the Catacombs east and down south across the Cells Tunnel to Hollow Earth's Sunken Garden. They
+       touch the Tunnel-Way Tunnel, so they stand in its room (one room: mondo 11-17, "connected/bigger rooms is better") */
+    { key: 'T', room: 'site_prebuilt_hollow_earth_ow_tunnelway', part: 'ow_tunnelway', label: 'THE TUNNEL-WAY TUNNEL', sub: 'FROM LEVEL −6 NORTH · UP INTO DEAD MAN’S CAVE · EAST TO THE CELLS', group: [], lines: [],
+      parti: 'A cave tunnel north from the Cavern\'s Level −6 to the shaft under Dead Man\'s Cave\'s Tunnel Way; from the shaft\'s foot a tunnel runs east to the cells under the city, and an older passage lined with bones crosses it, north to the Catacombs and south to Hollow Earth.', sunsNote: 'none',
+      tunnels: seq(9, 2, y => [-9, y, T_NAME.way]).concat([[-8, 2, T_NAME.way], [-7, 2, T_NAME.way]], seq(-7, 0, x => [x, 1, T_NAME.cells]), seq(-7, -4, x => [x, -4, T_NAME.bone]), seq(-3, 0, y => [-4, y, T_NAME.bone]), seq(2, 9, y => [-4, y, T_NAME.bone])) },
 ];
 /* where one room meets another: [room key, world plot, side, room key, world plot, side]; the district plot's side is DUG to its open floor */
-const SEAMS = [['KH', [-8, 11], 'W', 'W', [-9, 11], 'E'], ['KH', [-8, 9], 'W', 'T', [-9, 9], 'E'], ['W', [-15, 2], 'N', 'L', [-15, 1], 'S'], ['L', [-15, -8], 'N', 'A', [-15, -9], 'S']];
+const SEAMS = [['KH', [-8, 11], 'W', 'W', [-9, 11], 'E'], ['KH', [-8, 9], 'W', 'T', [-9, 9], 'E'], ['KH', [-4, 10], 'N', 'T', [-4, 9], 'S'], ['W', [-15, 2], 'N', 'L', [-15, 1], 'S'], ['L', [-15, -8], 'N', 'A', [-15, -9], 'S']];
+/* where a tunnel leaves for another zone's room (phase 4.4): [room key, world plot, side, seam id, the room past it, its label, the door's sub, leaf] */
+const OUTER = [['T', [0, 1], 'E', 'ow_v_1_1', 'site_prebuilt_downtown_underworld', 'DISASTER CITY · THE SEWERS', 'THE CELLS TUNNEL · INTO THE GUARDROOM', 'leaf_cell'],
+    ['T', [-7, -4], 'W', 'ow_v_m7_m4', 'site_prebuilt_vatican_under', 'THE VATICAN · THE CATACOMBS', 'THE BONE PASSAGE · UP INTO THE CATACOMBS', 'leaf_frame_only']];
 /* a district plot joined to a tunnel plot inside one room: [room key, district plot (world), its side, the tunnel plot] */
 const INNER = [['A', [-16, -11], 'E', [-15, -11]]];
 const ROT = { 270: ['W', 'N', 'E', 'S'], 90: ['E', 'S', 'W', 'N'] };   // the home N, E, S, W sides after the turn
@@ -349,6 +356,7 @@ ROOMS.forEach(R => {
     const ports = e => { const o = []; for (const s of 'NESW') { const q = at(e.wx + DIRS[s][0], e.wy + DIRS[s][1]); if (q && q.district === 'T') o.push(s); }
         SEAMS.forEach(S => { if (S[0] === R.key && S[1][0] === e.wx && S[1][1] === e.wy) o.push(S[2]); if (S[3] === R.key && S[4][0] === e.wx && S[4][1] === e.wy) o.push(S[5]); });
         INNER.forEach(I => { if (I[0] === R.key && I[3][0] === e.wx && I[3][1] === e.wy) o.push({ N: 'S', S: 'N', E: 'W', W: 'E' }[I[2]]); });
+        OUTER.forEach(S => { if (S[0] === R.key && S[1][0] === e.wx && S[1][1] === e.wy) o.push(S[2]); });
         return o; };
     const dig = (x, y) => { if (x >= 0 && y >= 0 && x < W && y < Hh && cellR[y][x] === 'x') cellR[y][x] = 'o'; };
     tun.forEach(e => { const sx0 = e.col * N, sy0 = e.row * N, cx = 4 + Math.floor(rnd() * 2), cy = 4 + Math.floor(rnd() * 2), cw = 3 + Math.floor(rnd() * 3), ch = 3 + Math.floor(rnd() * 3);
@@ -387,6 +395,8 @@ SEAMS.forEach(S => { const A = RK[S[0]], B = RK[S[3]], ea = A.at(S[1][0], S[1][1
     if (id !== seamId(S[4][0], S[4][1], S[5])) throw new Error('seam ' + id + ' is not one line');
     const oa = ea.district === 'T' ? 6 : A.digIn(S[1][0], S[1][1], S[2]), ob = eb.district === 'T' ? 6 : B.digIn(S[4][0], S[4][1], S[5]);
     EXTRA[A.key].push(seamDoor(A, S[1], S[2], oa, id, B)); EXTRA[B.key].push(seamDoor(B, S[4], S[5], ob, id, A)); SEAMLIST.push(id + ' ' + A.room + ' <-> ' + B.room); });
+OUTER.forEach(S => { const A = RK[S[0]]; if (seamId(S[1][0], S[1][1], S[2]) !== S[3]) throw new Error('OUTER ' + S[3] + ': not the seam of ' + S[1] + ' ' + S[2]);
+    const d = seamDoor(A, S[1], S[2], 6, S[3], { key: 'X', room: S[4], label: S[5] }); d.sub = S[6]; d.leaf = S[7]; EXTRA[A.key].push(d); SEAMLIST.push(S[3] + ' ' + A.room + ' <-> ' + S[4]); });
 
 /* THE WAYS OUT, moved with their plots: a wall way stays a wall door where its side still lies on the new room's wall, else it is free on the
    plot's line; a free way moves with its plot. The Estate's well is the one re-pointed: it comes down in the West Tunnel at -14,10 (v13). */
@@ -438,7 +448,11 @@ ROOMS.forEach(R => {
         const wallSq = sq.filter(q => { let n = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!open(sx0 + q[0] + dx, sy0 + q[1] + dy)) n++; return n >= 2; });
         if (wallSq.length) { const q = wallSq[Math.floor(grnd() * wallSq.length)]; tProps.push({ key: 'cave_torch', x: M.gcx(sx0 + q[0]), z: M.gcz(sy0 + q[1]), y: base(e), noLight: i % 3 !== 0, _sq: q, _e: e }); }
         for (let k = 0; k < 2 && wallSq.length > 2; k++) { const q = wallSq[Math.floor(grnd() * wallSq.length)]; if (tProps.some(p => p._e === e && p._sq === q)) continue;
-            tProps.push({ key: ROCKS[Math.floor(grnd() * ROCKS.length)], x: r2(M.gcx(sx0 + q[0]) + (grnd() - 0.5) * 1.2), z: r2(M.gcz(sy0 + q[1]) + (grnd() - 0.5) * 1.2), face: Math.round(grnd() * 360), h: r2(0.8 + grnd() * 0.9), noBlock: true, _sq: q, _e: e }); } });
+            tProps.push({ key: ROCKS[Math.floor(grnd() * ROCKS.length)], x: r2(M.gcx(sx0 + q[0]) + (grnd() - 0.5) * 1.2), z: r2(M.gcz(sy0 + q[1]) + (grnd() - 0.5) * 1.2), face: Math.round(grnd() * 360), h: r2(0.8 + grnd() * 0.9), noBlock: true, _sq: q, _e: e }); }
+        /* THE BONE PASSAGE (phase 4.4): the catacombs' own bones stacked along its walls, a candle left burning here and there */
+        if (e.name === T_NAME.bone) for (let k = 0; k < 3 && wallSq.length > 3; k++) { const q = wallSq[Math.floor(grnd() * wallSq.length)]; if (tProps.some(p => p._e === e && p._sq === q)) continue;
+            const key = k === 2 ? (i % 2 ? 'candle_ring' : 'skull') : (k ? 'skull' : 'skull_pile');
+            tProps.push({ key, x: r2(M.gcx(sx0 + q[0]) + (grnd() - 0.5) * 1.2), z: r2(M.gcz(sy0 + q[1]) + (grnd() - 0.5) * 1.2), face: Math.round(grnd() * 360), noBlock: true, _sq: q, _e: e }); } });
     tProps.forEach(p => { delete p._sq; delete p._e; if (!p.y) delete p.y; });
     const spaces = M.spaces(open), feats = spaces.concat(feats0, TUNF);
     /* the paint, as the home room's (a tunnel square: the cave floor) */
@@ -473,7 +487,7 @@ if (TOTAL.props !== props.length || TOTAL.natives !== npc.length) throw new Erro
 const strays = [].concat(...ROOMS.map(R => R.M.strays.map(s => R.room + ': ' + s)));
 if (strays.length) console.log('STRAYS (a piece across two plots that no longer stand the same way; moved with its anchor):\n  ' + strays.join('\n  '));
 if (strayDrop.length) console.log('DROPPED (an opening between plots that parted):\n  ' + strayDrop.join('\n  '));
-console.log('SEAMS:\n  ' + SEAMLIST.join('\n  ') + '\n  for phase 4.4: the Tunnel-Way Tunnel\'s north side ' + seamId(-7, 2, 'N') + ' (U12 from the Holding Cells)');
+console.log('SEAMS:\n  ' + SEAMLIST.join('\n  '));
 const placeOf = w => "site: '" + SITE + "', part: '" + w.R.part + "', " + place(w) + (w.wall === 'free' && w.R.key !== 'KH' && w.R.key !== 'A' ? '' : '') + ",";
 WANT = Object.keys(WAYS).map(k => [placeOf(WAYS[k]), 'link ' + k, k])
     .concat(Object.keys(BAYS).map(k => [k + ": { room: '" + BAYS[k].R.room + "', door: { id: '" + BAYS[k].id + "', " + place(BAYS[k]) + " } },", 'DOOR_HQ.siteRooms ' + k, null]));

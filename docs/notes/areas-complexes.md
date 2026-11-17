@@ -10010,6 +10010,19 @@ planet, went to the Outer Space thread.)
     top of runComputerTurn): takes the turn when it brings at least one more enemy within its move + range (plus a small pull-closer
     term) and leaves an AP to act; doCubeTurn lays the frame round its face after the swing and hands back to the CPU.
 
+- **THE CUBE, THE TURN ARROWS (11-17, same thread; mondo: "are there previews for up left right and down? and are they actually
+  relative to the player? what if the player is facing diagonally? come on. there has to be absolutely no confusion").** Nothing in the
+  TURN CUBE menu depends on which way the fighter faces. Each of the four choices has a colour (three-renderer.js `CUBE_TURN_COLORS`:
+  up cyan, down pink, left yellow, right green, the same in the menu and on the board). With the menu open, `cubeTurnArrows(unit, hot)`
+  lays a long outlined arrow on each square beside the fighter, drawn over cars and fighters (no depth test); the lit choice (the row
+  under the mouse, or the cursor row with keys: hud.js' cursor-row preview now covers the `cubeTurn` panel) burns bright and bigger,
+  the others dim, and every square of the sliding ring in line with the fighter wears a small arrow in its colour (THE CONVEYOR; the far
+  side of the ring keeps only the ring tint). The rows are named by the way the squares slide ON SCREEN from the camera now
+  (hud.js `_hrlgCubeScreenDir`, eight words: a diagonal camera reads "Slide up-right"), sorted clockwise from up-left, the whole row
+  wears its colour (`catColor`) with a dark arrow icon turned to that exact angle; orbiting the camera renames them (the renderer pings
+  `ew-state-change` on a 10 degree yaw / tilt step while the arrows are up). Bug fixed on the way: `ThreeRenderer` is a script-level
+  const, not `window.ThreeRenderer`, so the first cut of the names fell back to the board's own words. Proof
+  /mnt/project-files/rubiks-cube/proof3/.
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
@@ -11899,3 +11912,71 @@ relative to each other (saturn should be bigger than the moon obviously). Just k
 - **DECISIONS MADE FOR MONDO:** the sizes (Mars = 2 Moons, Saturn = 4); Saturn's storm walls opened (they were the old thread's wall,
   but a square of rock on a ball); the burner on SHIFT; the fake sky planets out of this room.
 
+## ONE WORLD 4.4, THE UNDERGROUND WALKS + THE FREIGHT LINE (2026-11-17, BUILD_PLAN phase 4 row 4.4, the owner's thread)
+What the map's `under.walks` asked for, and where each one is now (plots.json is the list; the plot names on the walks are mine, marked):
+- **THE SEWERS ARE ONE ROOM AGAIN** (`site_prebuilt_downtown_underworld`, 17 x 16 plots, mask in the room): the walks U1-U5 + U14 are plots
+  of that room (bake-sewers.js `WALK` / `WJOIN`), so the three rooms wave A parted off (`…_ow_cells`, `…_ow_workings`, `…_ow_drain`) are
+  retired (`DOOR_HQ.retired`). U1 = the Running Tunnels to the Junction well's foot (the well was a dead end; the walk ends it), U2 north to
+  the Cells, U3 west, U4 the Outfall Pipe east and down three levels, U14 on east to the sea, U5 south-west to the D.U.M.B.
+- **THE SEAMS** (one door id at both ends, `way: 'trail'`): `ow_v_7_16` U5 ⇄ the D.U.M.B.'s East Gantry (bake-dumb.js digs the gantry);
+  `ow_v_18_5` U14 ⇄ the Sea Floor's west wall (bake-deep.js); `ow_v_1_1` the Guardroom's west side (port 8: the halls; port 9 ran into the
+  Property Room's cabinet, port 5 is the `cells_dungeon` link's own gap) ⇄ the Tunnel Way (bake-cavern.js, U12 + U13 in its T room); `ow_v_m7_m4` the Catacombs' east wall (dug at rows 20-21 in memory by
+  bake-afterlife.js) ⇄ the Bone Passage in the Tunnel Way (U13, the secret walk). U6 (Catacombs to Hell, 1 plot) stays the old
+  `vatican_hell` link: a one-plot room would only add a loading card.
+- **A WALL DOOR ON A RAISED PLOT CARRIES ITS FLOOR'S `y`** (bake-sewers.js `sideDoor`): with no `y` a wall door stands on the room's ground,
+  14 m under a level-8 floor, and is never seen (the Freight Line's first probe: a bare wall).
+- **THE FREIGHT LINE** (`under.rides`, a ride, no plots, late game): door `freight_line`, the Power Station Drain's north side ⇄ the
+  D.U.M.B.'s Sub-Level 7 (bake-dumb.js `fw('P03-01', 2, 3, 270)`, `leaf_vault`), both ends `minClearance: 6` (L6 is my pick: the game's
+  highest door gate). A probe walks it with `"eval": "window.doorClearance = () => ({ level: 9, title: 'PROBE' })"`.
+
+## THE COLOSSEUM (2026-11-17, One World 4.4; the map's district `col`, 9 plots, world -11..-9 x -9..-7)
+- **IN THE VATICAN'S ROOM** (mondo: smaller than Disaster City = one room): `site_prebuilt_vatican_plots` grows to 6 x 7 plots (world -12..-7
+  x -9..-3, `room.world` in the room; mask `.###..` on rows 0-2). bake-afterlife.js THE VATICAN'S ONE WORLD MOVE: the Vatican's districts
+  still build in THE HOME FRAME (6 x 4, their files unchanged), then every piece moves 36 squares south (z + 63 m, one uniform shift); the
+  Colosseum's grid is laid on columns 1-3, rows 0-2; district O builds last, on the moved room (`LATE_D`). Lawn behind the plaza's hedges
+  fills the rest of rows 0-2 (scenery, never walked; 56 pines).
+- **THE MAP** is draw-afterlife.js `O` (a 36 x 36 grid written as layout.json `colosseum`): an oval (half axes 15.5 x 12.5 squares), the
+  arcade ring `k` on the ground, six tiers `e` (0.875 m a step; the gates' flanks step up a tier a square, the way onto the tiers), the
+  podium `p` (3.5 m, solid), the sand `a`, the two gates' ways `m` on the long axis, the plaza `c` inside hedges `h`, the Pilgrim Stair's
+  foot (squares 41-42 x 31-35, up to the Courtyard terrace's gate at 1.75 m).
+- **THE DISTRICT FILE** `docs/areas/afterlife/districts/O.js` (moved-room squares): the outer wall (48 piers, three storeys of straight
+  arches, the attic; a ghost wall a pier), the podium's rail, the gates' arches, lions, braziers, cages, a chariot, the plaza's benches and
+  urns; fighters, a referee, a ringmaster. Plot names mine. NOT YET: curved arches, the awning, seats, the emperor's box, the trapdoors.
+- **THE WAYS**: `link_vatican_olympus` moved from the Terrace's gate to the plaza's north opening (wall n, x -21): the Pilgrim Way (route R3,
+  phase 4.1) meets the Colosseum's north side at world columns -10/-9, so 4.1 swaps this link for its seam doors there. The other Vatican
+  link ends (`observatory_stair`, `bureau_vatican`, the bay) moved 63 m south with their plots (the rows in data.js, bake-afterlife.js WANT).
+- **THE NORTH ROUTES' SEAMS** (written here for phase 4.1; each door only when its route's room stands, `stands(id)`): `ow_h_m10_m9` R3 on
+  the Colosseum's north opening (then `link_vatican_olympus` and its WANT row drop by themselves), `ow_v_m6_m4` R1 at the east gate (OPEN
+  now: S.js swings its leaves in, the ghost wall is gone), `ow_v_m12_m4` R4 at a new gap in the west wall (rows 24-25 home).
+- **A PROBE WALKS SLOWLY HERE** (llvmpipe, a big room with 1,800 edge trees): 3 m in 10 s on flat cobbles, so a walk that "stops" after
+  2 m on the stair is the frame rate, not a wall (`ThreeRenderer.hq.dev.walk()` reads velX 4.6). Give a walk here 45 s.
+## ONE WORLD, THE COAST + THE ISLANDS (2026-11-17, BUILD_PLAN phase 4.3, part 1; the owner's One World 4.3 thread)
+What the first PR of 4.3 built (part 2 = Pirates' Cove, the Frozen Sea and the rest of the Round Voyage):
+- **R11 THE DELTA CAUSEWAY** `site_ow_r11` (4 x 3 plots at 17,31; `docs/areas/routes/R11.json`): Giza's east side (seam `ow_v_17_32`, `bake-desert.js` STAND `more`) over
+  the reed flats to the Line's west side (`ow_v_19_31`, `bake-leylines.js` seams). The secret robbers' tunnel `gobekli_giza` (district G) STAYS: R11 is the road beside it.
+- **R10 THE COAST ROAD**, two rooms (`bake-route.js R10 --from 0 --to 25` / `--from 26 --to 37`; the spec's `stretches` key = one room each, `bake-route.js` learned
+  it): `site_ow_r10_0_25` (3 x 11 at 15,12) from the Beach's south side (`ow_h_15_12`) and `site_ow_r10_26_37` (2 x 6 at 15,23) on to Giza's north side (`ow_h_15_29`,
+  `bake-desert.js` STAND `more`). Places on the way: `ow-places.js` gained the coast's own (surf, lookout, nets, reedbed, tikis; ideas).
+- **THE BEACH'S ONE WORLD MOVE** (`bake-beach.js`, its new tail; no district file edited, the home bake runs as before and the rooms are cut from it):
+  THE BEACH (old id, 8 x 10 at 12,2: the home columns 0..7 without the Triangle's four plots), THE BERMUDA TRIANGLE `site_prebuilt_bermuda_ow_triangle` (the home box
+  5..13 x 3..9 at 32,0, 9 x 7 plots: the map's 6 x 6 would cut the 3-4-5 triangle and the Island Beach), THE VOLCANO ISLAND `site_prebuilt_bermuda_ow_volcano` (the home
+  box 8..13 x 0..2 at 22,-19, 6 x 6: the three south rows are new). Each room's heights / slopes / paint are worked out again by the home rules (`bakeRoom`); every
+  building's flat is laid again (`FLATS`); a prop on a plot no room takes or in water the spit fills is set down in the nearest open sea (printed). Plot ids in
+  `plots.names` are room-local (`pidOf`). THE SPIT: a sand bar from the South Dunes through the headland's foot past the islet to the south line, where R10 comes in.
+  THE GROWN ISLAND (`growVolcano`, new plots, names = ideas): sand shore, THE JUNGLE (palms, banana plants, tropical bushes, ferns; paint `grass_2`, letter `g`) and
+  THE DINOSAUR PARK (letter `k`, paint `dirt`: the ranch rail round it, a gate with a sign, a lookout, a thatched hut, a dig with the skeleton + two tents + a fire,
+  four `dinosaur` natives). Data rows moved with their plots: links `bermuda_abyss` a + `weir_bermuda` b (part `ow_triangle`), `beach_dutchman` a (x + 126),
+  siteRooms.entry.prebuilt_bermuda (Room 345's cabin, the Triangle), the Lighthouse tape + FLIGHT 19, the fight marker, sky rows + spawn lists for the new rooms,
+  hubs.beach rooms. The islands' horizons read the map (`edges.world`); the Beach keeps its hand edges.
+- **THE ROUND VOYAGE, the first two legs**: route `voyage`, way `boat` (DOOR_HQ.ways + three-renderer.js `_hqWayBuilders.boat`: a plank mooring on posts, two
+  bollards, a lantern, the catalogue's `rowboat` alongside, SET SAIL). Links `beach_volcano` (the skiff jetty's end <-> the Landing) and `beach_triangle` (the
+  Breakwater's head <-> the Island Beach's west shore).
+- **PART 2 (the same day): PIRATES' COVE + THE FROZEN SEA + THE ROUND VOYAGE'S LOOP.** Two new rooms written by `bake-beach.js` (no home plots: `has: () => false`,
+  drawn square by square in `growCove` / `growFrozen`, names = ideas): `site_prebuilt_bermuda_ow_cove` (3 x 3 at -30,31: a ring island round a lagoon, the mouth south
+  between two rock heads, the pirates' camp on the north beach, cannons on the ring, a wreck in the lagoon, `pirate` natives) and `site_prebuilt_bermuda_ow_frozen`
+  (4 x 2 at 0,-30: one big floe, letter `i` = paint `ice`, from the village's north edge to the Pole landing; small floes; ice blocks, snow heaps, penguins, seals,
+  fishing holes, two `yeti`). The loop (route `voyage`, way `boat`): `beach_volcano`, `volcano_frozen`, `frozen_camelot` (the Looking-Glass Garden's west edge = the bay),
+  `camelot_cove`, `cove_antarctica` (the shelf, the room's south sea), `antarctica_babel` (Babel's canal), `babel_beach` (the Coast Road's spit); the spur
+  `beach_triangle`. In a room with no sea (the garden, Babel) the boat is drawn up on the ground (`_hqWayBuilders.boat` `hasSea`). On foot: link `northpole_frozen`
+  (way `trail`, the North Pole room's north wall at x -61.25, its open NW corner; `bake-mountains.js` not edited). Spots for a mooring: a dry square with deep water
+  two squares off (the thread's helper picked them; any later move of a shore re-picks by hand).
