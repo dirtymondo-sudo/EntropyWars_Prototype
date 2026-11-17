@@ -81,13 +81,13 @@
  },
  "site_prebuilt_heaven_plots": {
   "id": "site_prebuilt_heaven_plots",
-  "nx": 48,
-  "nz": 60,
+  "nx": 84,
+  "nz": 96,
   "h0": 3.5,
   "hs": 0.25,
-  "v": "0250da57b5",
-  "bytes": 503,
-  "s": "2.4"
+  "v": "bb0d1a12dc",
+  "bytes": 597,
+  "s": "2.5"
  },
  "site_prebuilt_antarctica_plots": {
   "id": "site_prebuilt_antarctica_plots",
@@ -142,12 +142,12 @@
  "site_prebuilt_atlantis_deep": {
   "id": "site_prebuilt_atlantis_deep",
   "nx": 96,
-  "nz": 60,
-  "h0": -0.18,
+  "nz": 192,
+  "h0": -0.17,
   "hs": 0.25,
-  "v": "a3db37d2a7",
-  "bytes": 2643,
-  "s": "0.7"
+  "v": "4a43a29675",
+  "bytes": 4690,
+  "s": "1.4"
  },
  "site_prebuilt_moon_plots": {
   "id": "site_prebuilt_moon_plots",
@@ -167,7 +167,7 @@
   "hs": 0.25,
   "v": "541c317c87",
   "bytes": 732,
-  "s": "13.9"
+  "s": "9.8"
  },
  "site_prebuilt_mars_plots": {
   "id": "site_prebuilt_mars_plots",
@@ -207,7 +207,7 @@
   "hs": 0.25,
   "v": "80ca3fb295",
   "bytes": 1198,
-  "s": "13.9"
+  "s": "14.1"
  },
  "site_prebuilt_lookingglass_realm": {
   "id": "site_prebuilt_lookingglass_realm",
@@ -509,6 +509,26 @@
   "bytes": 142,
   "s": "1.5"
  },
+ "site_prebuilt_atlantis_ow_trench": {
+  "id": "site_prebuilt_atlantis_ow_trench",
+  "nx": 24,
+  "nz": 60,
+  "h0": -0.2,
+  "hs": 0.25,
+  "v": "a927d51932",
+  "bytes": 813,
+  "s": "0.2"
+ },
+ "site_prebuilt_atlantis_ow_floor": {
+  "id": "site_prebuilt_atlantis_ow_floor",
+  "nx": 36,
+  "nz": 36,
+  "h0": 12.05,
+  "hs": 0.25,
+  "v": "c94d332d7d",
+  "bytes": 720,
+  "s": "0.2"
+ },
  "site_prebuilt_hollow_earth_ow_long": {
   "id": "site_prebuilt_hollow_earth_ow_long",
   "nx": 12,
@@ -527,7 +547,7 @@
   "hs": 0.25,
   "v": "10217b72db",
   "bytes": 190,
-  "s": "0.9"
+  "s": "1.0"
  },
  "site_prebuilt_hollow_earth_ow_agartha": {
   "id": "site_prebuilt_hollow_earth_ow_agartha",
@@ -537,7 +557,7 @@
   "hs": 0.25,
   "v": "648c963db4",
   "bytes": 475,
-  "s": "3.6"
+  "s": "2.9"
  },
  "site_prebuilt_hollow_earth_ow_west": {
   "id": "site_prebuilt_hollow_earth_ow_west",
@@ -547,6 +567,6 @@
   "hs": 0.25,
   "v": "f22705b9a1",
   "bytes": 339,
-  "s": "4.0"
+  "s": "4.3"
  }
 }

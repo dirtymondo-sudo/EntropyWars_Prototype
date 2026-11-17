@@ -150,6 +150,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/wendigo/', 'Assets/characters/races/wendigo/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/karate_frog/', 'Assets/characters/races/karate_frog/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/samurai_slug/', 'Assets/characters/races/samurai_slug/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/cursed_tv/', 'Assets/characters/races/cursed_tv/'],   // 2026-11-17 📺 THE CURSED TV
   ['Assets/Sprites/Races/cicada_brood/', 'Assets/characters/races/cicada_brood/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/pope/', 'Assets/characters/races/pope/'],   // 2026-11-17 THE POPE
   ['Assets/Sprites/Races/ninja/', 'Assets/characters/races/ninja/'],   // 2026-11-17 THE NINJA
@@ -563,6 +564,7 @@ const RACE_SPRITE_GENDERS = {
   'pope': 'male',   // 2026-11-17 THE POPE
   'ninja': 'both',   // 2026-11-17 THE NINJA (male + female)
   'haunted doll': 'female',   // 2026-11-17 THE HAUNTED DOLL
+  'cursed tv': 'male',   // 2026-11-17 THE CURSED TV (one set; the model def sits under male)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
   'dinosaur': 'male',
@@ -743,6 +745,7 @@ const _CHARACTER_SPRITES = {
   'pope': `${_S}/Races/pope/male/pope_px2.png`,   // 2026-11-17 THE POPE — 128x128 pixel sprite (Sprite AI restyle of his model's front render, round 2: no shoulder cape)
   'ninja': `${_S}/Races/ninja/male/ninja_m_px.png`,   // 2026-11-17 THE NINJA — 128x128 pixel sprite (Sprite AI restyle of its Meshy model); the woman's is _NEW_FEMALE_SPRITES
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (Sprite AI restyle of its model render, PR #1910)
+  'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
@@ -834,6 +837,9 @@ const _NEW_FEMALE_SPRITES = {
   'nordic': `${_S}/Races/Nordic/Female/nordic_f_px.png`,
   'siren': `${_S}/Races/siren/female/siren_f_px2.png`,
   'ninja': `${_S}/Races/ninja/female/ninja_f_px.png`,   // 2026-11-17 THE NINJA — the female ninja (Sprite AI restyle of her Meshy model)
+  'robot': `${_S}/Races/robot/female/robot_f2_px.png`,   // 2026-11-17 THE ROBOT REDESIGN — Sprite AI restyles of the new Meshy concepts
+  'cyborg': `${_S}/Races/cyborg/female/cyborg_f2_px.png`,
+  'mech': `${_S}/Races/mech/female/mech_f2_px2.png`,   // straight-on: Sprite AI restyle of her model's front render (the concept was turned)
 };
 const _NEW_MALE_SPRITES = {
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)
@@ -844,6 +850,7 @@ const _NEW_MALE_SPRITES = {
   'shaman': `${_S}/Races/shaman/male/shaman_m_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'necromancer': `${_S}/Races/necromancer/male/necromancer_m_px.png`,
   'cyborg': `${_S}/Races/cyborg/male/cyborg_m_px.png`,
+  'robot': `${_S}/Races/robot/male/robot_m2_px.png`,   // 2026-11-17 THE ROBOT REDESIGN
   'ki fighter': `${_S}/Races/kifighter/male/ki_fighter_m_px.png`,
   'mummy': `${_S}/Races/mummy/male/mummy_m_px.png`,
   'gargoyle': `${_S}/Races/gargoyle/male/gargoyle_m_px.png`,
@@ -2373,6 +2380,12 @@ const RACE_MODELS_3D = {
       heightRatio: 1.5,
       basicAttackKind: 'ranged',
     }),
+    // 2026-11-17 THE ROBOT REDESIGN: her first 3D model, the female counterpart of the mecha (flat feet, no skirt plates).
+    female: _mkUAL('mech/female', 'mech_f2', {
+      model: `${_S}/Races/mech/female/Meshy_AI_mech_f2_Running.glb`,
+      heightRatio: 1.4,
+      basicAttackKind: 'ranged',
+    }),
   },
   // Minotaur (Raider, bruiser) — brawler sway + heavy fists.
   'minotaur': {
@@ -2614,6 +2627,13 @@ const RACE_MODELS_3D = {
   },
   'boltzmann brain': {
     male: { model: `${_S}/Races/boltzmann_brain/male/Meshy_AI_boltzmann_brain.glb`, clips: {}, heightRatio: 0.7, yawOffset: Math.PI, basicAttackKind: 'magic' },   // the eye looks down -Z in the file
+  },
+  /* 📺 THE CURSED TV (2026-11-17, mondo's concept): no bones; procRig 'cursedTv' (three-renderer.js THE CURSED TV) rolls the
+     casters, spins the wheels, rings the ears, floats the remote and changes THE CHANNELS. One file with the orientation
+     cutscene's set (data.js HQ prop cursed_tv_set): the cart, the TV, the remote and the cable. Front +Z, metres. */
+  'cursed tv': {
+    male: { model: `${_S}/Races/cursed_tv/male/cursed_tv.glb`, clips: {}, procRig: 'cursedTv', heightRatio: 1.0, yawOffset: 0, basicAttackKind: 'magic',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
   },
   'wendigo': {
     male: _mkUAL('wendigo', 'wendigo', {
@@ -2930,17 +2950,18 @@ const RACE_MODELS_3D = {
     }),
   },
   // Robot (Warrior, tank) — hydraulic haymakers.
+  // 2026-11-17 THE ROBOT REDESIGN (mondo picked them; Meshy, made + rigged by Claude): one red + graphite factory line, amber visor.
+  // The old white models (futuristic_robot_rea, robot_female) stay on R2.
   'robot': {
-    male: _mkUAL('robot/male', 'futuristic_robot_rea', {
-      heightRatio: 1.05,
+    male: _mkUAL('robot/male', 'robot_m2', {
+      model: `${_S}/Races/robot/male/Meshy_AI_robot_m2_Running.glb`,
+      heightRatio: 1.12,
       basicAttackKind: 'punch',
     }),
-    // Female (2026-09-22 batch) — "robot_female" Character_output (Races/robot/female/). The gendered
-    // idle / walk defaults (Walking_Woman) are overridden: a chassis walks like a chassis.
-    female: _mkUAL('robot/female', 'robot_female', {
+    female: _mkUAL('robot/female', 'robot_f2', {
+      model: `${_S}/Races/robot/female/Meshy_AI_robot_f2_Running.glb`,
       heightRatio: 1.0,
       basicAttackKind: 'punch',
-      lib: { idle: { clip: 'Idle_5', lib: 0 }, walk: { clip: 'Running', lib: 0 } },
     }),
   },
   // Cyborg (Raider, bruiser) — augmented strikes.
@@ -2949,7 +2970,8 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/cyborg/male/Meshy_AI_cyborg_m_Running.glb`,
       heightRatio: 1.0, basicAttackKind: 'punch',
     }),
-    female: _mkUAL('cyborg/female', 'hot_girl_futuristic_', {
+    female: _mkUAL('cyborg/female', 'cyborg_f2', {   // 2026-11-17 THE ROBOT REDESIGN: robot gauntlet arms, long hair (old hot_girl_futuristic_ stays on R2)
+      model: `${_S}/Races/cyborg/female/Meshy_AI_cyborg_f2_Running.glb`,
       heightRatio: 0.97,
       basicAttackKind: 'punch',
     }),
@@ -6940,6 +6962,7 @@ const RACE_SPRITES = {
   'pope': `${_S}/Races/pope/male/pope_px2.png`,   // 2026-11-17 THE POPE — 128x128 pixel sprite (Sprite AI restyle of his model's front render, round 2: no shoulder cape)
   'ninja': `${_S}/Races/ninja/male/ninja_m_px.png`,   // 2026-11-17 THE NINJA — 128x128 pixel sprite (Sprite AI restyle of its Meshy model); the woman's is _NEW_FEMALE_SPRITES
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (PR #1910)
+  'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
