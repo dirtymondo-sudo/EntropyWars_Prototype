@@ -84538,7 +84538,7 @@ const HQ_CITY_RESIDENTS = {
     drawn: 20, drawnLow: 20, radius: 70, keepM: 85, bodies: 26,   /* (mondo 11-17: "i dont like this whole only 8 bodies being drawn rule ... for a populated area i dont see why we can do like 20"; and the same on every machine, so drawnLow = drawn. Was 8 / 4 / 14. With 80 residents the most ever within 70 m is 12: the limit today is how many people live in the city) */      // the bodies: the nearest `drawn` within `radius` m; one drawn stays until `keepM`; at most `bodies` rigs kept
     walkSpeed: 1.35, carSpeed: 5, busM: 150, busSpeed: 9,          // m/s; a walk longer than busM metres rides the bus
     roadCost: 2.5, stepM: 0.35, doorGapM: 0.95,                    // the route map: a carriageway square costs more (the pavement first); a step the walk takes; the narrowest gap walked
-    potterH: [0.35, 0.9], wanderH: [0.12, 0.45], patrolH: [0.03, 0.15], wanderR: 26, errandR: 14,   // pauses (game hours) inside / out / on patrol; how far a wander leg reaches
+    potterH: [0.35, 0.9], wanderH: [0.12, 0.45], patrolH: [0.03, 0.15], wanderR: 26, errandR: 14, beatR: 90,   // pauses (game hours) inside / out / on patrol; how far a wander leg reaches
     beach: [256, -72, 304, 78],                                    // x0 z0 x1 z1 (room metres): the sand east of Bayside (written by bake-disaster-city.js: it moves with Bayside)
     walkOn: ['dc:skate:pad'],   // plateaus the residents walk on (THE WALKED PADS): the Bayside skate park's pad, where the Skaters spend their shift
     districts: { C: [0, 0], F: [1, 0], E: [2, 0], U: [0, 1], H: [1, 1], B: [2, 1], R: [0, 2], S: [1, 2], I: [2, 2] },   // a district's first plot (×4), where it stands now (written by bake-disaster-city.js from docs/disaster-city/move.js)
@@ -84583,7 +84583,7 @@ const HQ_CITY_RESIDENTS = {
         { race: 'superhero', gender: 'female', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[8, 15, 'S', 'home'], [16, 20, 'W', 'b:P06-05-B1'], [20, 7, 'P', 'd:H']] },
         { race: 'eagleman', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[21, 4, 'S', 'home'], [5, 20, 'W', 'p:P05-05']] },
         { race: 'nephilim', home: 'P07-04-B2', homeName: 'Apartments A', day: [[23, 7, 'S', 'home'], [9, 17, 'W', 'b:P06-05-B1'], [17, 22, 'O', 'b:P04-05-B1']] },
-        { race: 'police officer', home: 'P07-04-B2', homeName: 'Apartments A', day: [[8, 15, 'S', 'home'], [16, 24, 'W', 'b:P04-02-B1'], [0, 7, 'P', 'd:HE']] },
+        { race: 'police officer', beat: 'CFEUHBSI', home: 'P07-04-B2', homeName: 'Apartments A', day: [[8, 15, 'S', 'home'], [16, 24, 'W', 'b:P04-02-B1'], [0, 7, 'P', 'd:CFEUHBSI']] },
         /* ENTERTAINMENT */
         { race: 'clown', home: 'P10-07-B1', homeName: 'Crew house', day: [[2, 10, 'S', 'home'], [11, 14, 'W', 'b:P09-05-B1'], [14, 18, 'O', 'b:P11-06-B1'], [19, 1, 'W', 'b:P09-05-B1']] },
         { race: 'mime', home: 'P10-07-B1', homeName: 'Crew house', day: [[1, 9, 'S', 'home'], [10, 17, 'W', 'p:P08-05'], [18, 24, 'W', 'b:P09-05-B1']] },
@@ -84646,9 +84646,9 @@ const HQ_SPAWN_RULES = {
                          'P07-10-B2': 'Sports residence', 'P02-09-B2': 'Industrial house', 'P01-11-B2': 'Industrial house', 'P00-09-B2': 'Industrial house', 'P10-09-B2': 'Staff apartments' },
             people: [
                 /* the police: the desk (Civic Center), Bayside's staging + security, a beat in Hero Plaza */
-                { race: 'police officer', d: 'C', n: 3, work: 'b:P04-02-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
-                { race: 'police officer', d: 'B', n: 2, work: 'p:P08-11', homes: ['P10-09-B2'] },
-                { race: 'police officer', d: 'H', n: 1, work: 'd:H', patrol: true, homes: ['P07-04-B2'] },
+                { race: 'police officer', d: 'C', n: 3, beat: 'CFEUHBSI', work: 'b:P04-02-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
+                { race: 'police officer', d: 'B', n: 2, beat: 'CFEUHBSI', work: 'p:P08-11', homes: ['P10-09-B2'] },
+                { race: 'police officer', d: 'H', n: 1, beat: 'CFEUHBSI', work: 'd:H', patrol: true, homes: ['P07-04-B2'] },
                 /* a chef wherever the plan has a kitchen: Community kitchen, Worker cafe, Student cafe, Coffee arcade, Restaurant court, the Food hall */
                 { race: 'chef', d: 'R', n: 1, work: 'p:P00-01', homes: ['P00-02-B2'] },
                 { race: 'chef', d: 'F', n: 1, work: 'p:P09-03', homes: ['P09-03-B2'] },
@@ -84676,14 +84676,65 @@ const HQ_SPAWN_RULES = {
                 { race: 'luchador', d: 'S', n: 1, work: 'b:P06-08-B1', homes: ['P07-08-B2'] },
                 { race: 'marksman', d: 'I', n: 1, work: 'b:P00-08-B1', homes: ['P00-09-B2'] },
                 { race: 'pirate', d: 'B', n: 1, work: 'beach', homes: ['P10-09-B2'] },
+                /* THE 144 (mondo 11-17: "there should be at least 144 residents if there are 144 plots. like minimum"): every district holds 16 or more.
+                   Cops in every district but Southside, and a cop's `beat` is the whole city but Southside ("a cop works the whole city"). The city's
+                   races that stood nowhere live in the district their own row names. All counts and tiers are PROPOSALS */
+                { race: 'gangster', d: 'R', n: 2, work: 'd:R', homes: ['P00-01-B2', 'P00-02-B2', 'P02-01-B1'] },
+                { race: 'firefighter', d: 'R', n: 1, work: 'b:P04-00-B1', homes: ['P00-01-B2', 'P00-02-B2', 'P02-01-B1'] },
+                { race: 'cursed tv', d: 'R', n: 1, work: 'b:P02-03-B1', homes: ['P00-01-B2', 'P00-02-B2', 'P02-01-B1'] },
+                { race: 'banker', d: 'F', n: 1, work: 'b:P10-00-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
+                { race: 'banker', d: 'F', n: 1, work: 'b:P10-01-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
+                { race: 'tech ceo', d: 'F', n: 1, work: 'b:P11-00-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
+                { race: 'goblin', d: 'F', n: 1, work: 'b:P10-00-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
+                { race: 'politician', d: 'F', n: 1, work: 'b:P08-01-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
+                { race: 'spy', d: 'F', n: 1, work: 'b:P10-02-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
+                { race: 'police officer', d: 'F', n: 2, work: 'd:F', patrol: true, beat: 'CFEUHBSI', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
+                { race: 'librarian', d: 'U', n: 2, work: 'b:P01-06-B1', homes: ['P03-04-B1', 'P00-04-B1'] },
+                { race: 'professor', d: 'U', n: 1, work: 'b:P01-05-B1', homes: ['P03-04-B1', 'P00-04-B1'] },
+                { race: 'telepath', d: 'U', n: 1, work: 'b:P03-05-B1', homes: ['P03-04-B1', 'P00-04-B1'] },
+                { race: 'zombie', d: 'U', n: 1, work: 'd:U', patrol: true, homes: ['P03-04-B1', 'P00-04-B1'] },
+                { race: 'chef', d: 'U', n: 1, work: 'b:P00-06-B1', homes: ['P03-04-B1', 'P00-04-B1'] },
+                { race: 'police officer', d: 'U', n: 2, work: 'd:U', patrol: true, beat: 'CFEUHBSI', homes: ['P03-04-B1', 'P00-04-B1'] },
+                { race: 'delivery boy', d: 'H', n: 2, work: 'b:P07-07-B1', homes: ['P07-04-B2'] },
+                { race: 'super sentai', d: 'H', n: 1, work: 'b:P06-05-B1', homes: ['P07-04-B2'] },
+                { race: 'ninja', d: 'H', n: 1, work: 'd:H', patrol: true, h: [19], homes: ['P07-04-B2'] },
+                { race: 'chef', d: 'H', n: 1, work: 'b:P04-05-B1', homes: ['P07-04-B2'] },
+                { race: 'police officer', d: 'H', n: 2, work: 'd:H', patrol: true, beat: 'CFEUHBSI', homes: ['P07-04-B2'] },
+                { race: 'magician', d: 'E', n: 2, work: 'b:P09-06-B1', homes: ['P10-07-B1', 'P11-06-B2'] },
+                { race: 'influencer', d: 'E', n: 2, work: 'p:P08-06', homes: ['P10-07-B1', 'P11-06-B2'] },
+                { race: 'bunny girl', d: 'E', n: 1, work: 'b:P08-04-B1', homes: ['P10-07-B1', 'P11-06-B2'] },
+                { race: 'clown', d: 'E', n: 1, work: 'b:P09-05-B1', homes: ['P10-07-B1', 'P11-06-B2'] },
+                { race: 'mime', d: 'E', n: 1, work: 'p:P08-05', homes: ['P10-07-B1', 'P11-06-B2'] },
+                { race: 'chef', d: 'E', n: 1, work: 'p:P08-05', homes: ['P10-07-B1', 'P11-06-B2'] },
+                { race: 'police officer', d: 'E', n: 2, work: 'd:E', patrol: true, beat: 'CFEUHBSI', homes: ['P10-07-B1', 'P11-06-B2'] },
+                { race: 'police officer', d: 'C', n: 3, work: 'b:P04-02-B1', beat: 'CFEUHBSI', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
+                { race: 'firefighter', d: 'C', n: 3, work: 'b:P04-00-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
+                { race: 'politician', d: 'C', n: 2, work: 'b:P06-00-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
+                { race: 'time cop', d: 'C', n: 1, work: 'b:P07-02-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
+                { race: 'chef', d: 'C', n: 1, work: 'p:P06-01', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
+                { race: 'referee', d: 'S', n: 2, work: 'p:P04-10', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
+                { race: 'quarterback', d: 'S', n: 2, work: 'p:P05-09', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
+                { race: 'luchador', d: 'S', n: 2, work: 'b:P06-08-B1', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
+                { race: 'chef', d: 'S', n: 1, work: 'p:P05-11', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
+                { race: 'firefighter', d: 'S', n: 1, work: 'd:S', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
+                { race: 'delivery boy', d: 'S', n: 1, work: 'd:S', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
+                { race: 'police officer', d: 'S', n: 2, work: 'd:S', patrol: true, beat: 'CFEUHBSI', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
+                { race: 'marksman', d: 'I', n: 2, work: 'b:P00-08-B1', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
+                { race: 'firefighter', d: 'I', n: 2, work: 'd:I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
+                { race: 'gangster', d: 'I', n: 2, work: 'd:I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
+                { race: 'astronaut', d: 'I', n: 1, work: 'b:P03-09-B1', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
+                { race: 'knight', d: 'I', n: 1, work: 'b:P04-08-B1', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
+                { race: 'chef', d: 'I', n: 1, work: 'd:I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
+                { race: 'delivery boy', d: 'I', n: 1, work: 'b:P01-09-B1', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
+                { race: 'police officer', d: 'I', n: 2, work: 'd:I', patrol: true, beat: 'CFEUHBSI', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
             ],
             /* a race's tier in this room (a race not named = defaultTier); `race|gender` names one gender */
             races: {
-                'police officer': 'common', 'chef': 'common', 'lifeguard': 'common', 'skater': 'common', 'gangster': 'common', 'zombie': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
+                'police officer': 'common', 'chef': 'common', 'lifeguard': 'common', 'skater': 'common', 'delivery boy': 'common', 'gangster': 'common', 'zombie': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
                 'priest': 'uncommon', 'conspiracy theorist': 'uncommon', 'goblin': 'uncommon', 'spy': 'uncommon', 'professor': 'uncommon', 'telepath': 'uncommon', 'clown': 'uncommon', 'mime': 'uncommon',
-                'bunny girl': 'uncommon', 'quarterback': 'uncommon', 'luchador': 'uncommon', 'marksman': 'uncommon', 'pirate': 'uncommon', 'politician': 'uncommon', 'florida man': 'uncommon',
+                'bunny girl': 'uncommon', 'quarterback': 'uncommon', 'luchador': 'uncommon', 'marksman': 'uncommon', 'pirate': 'uncommon', 'politician': 'uncommon', 'florida man': 'uncommon', 'banker': 'uncommon', 'magician': 'uncommon', 'influencer': 'uncommon', 'librarian': 'uncommon', 'referee': 'uncommon',
                 'ki fighter': 'rare', 'swordfighter': 'rare', 'men in black': 'rare', 'halfdemon': 'rare', 'mad scientist': 'rare', 'reptilian': 'rare', 'ringmaster': 'rare', 'juggernaut': 'rare',
-                'knight': 'rare', 'astronaut': 'rare', 'popstar': 'rare', 'eagleman': 'rare', 'nephilim': 'rare', 'time cop': 'rare',
+                'knight': 'rare', 'astronaut': 'rare', 'popstar': 'rare', 'eagleman': 'rare', 'nephilim': 'rare', 'time cop': 'rare', 'tech ceo': 'rare', 'ninja': 'rare', 'super sentai': 'rare', 'cursed tv': 'rare',
                 'cult leader': 'veryRare', 'general': 'veryRare', 'ghost': 'veryRare',
                 'sidekick': { tier: 'unique', lvl: 45 }, 'antihero': { tier: 'unique', lvl: 48 }, 'superhero': { tier: 'unique', lvl: 50 }, 'king kong': { tier: 'unique', lvl: 50 },
             },
@@ -84731,7 +84782,8 @@ function hqSpawnExpand() {
             const idx = count[row.race] = (count[row.race] || 0) + 1;
             const h = Array.isArray(row.h) ? row.h[i % row.h.length] : R.shifts[k++ % R.shifts.length], home = row.homes[i % row.homes.length];   // (`h`: this row's own shift starts, one a variant; else the next of `shifts`)
             C.list.push({ race: row.race, v: String.fromCharCode(96 + Math.min(26, idx)), dist: row.d, home, homeName: (R.homeNames && R.homeNames[home]) || home,
-                          day: [[H(h + 16), to(h + 24), 'S', 'home'], [H(h), to(h + 9), row.patrol ? 'P' : 'W', row.work], [H(h + 10), to(h + 15), 'O', 'd:' + row.d]] });
+                          beat: row.beat || undefined,
+                          day: [[H(h + 16), to(h + 24), 'S', 'home'], [H(h), to(h + 9), row.patrol ? 'P' : 'W', row.work], [H(h + 10), to(h + 15), row.beat ? 'P' : 'O', 'd:' + (row.beat || row.d)]] });   // (`beat`: district letters this unit patrols after its shift, in place of time out in its own district: the cops)
             made++;
         }
     });
@@ -85114,7 +85166,7 @@ function hqResidentTimeline(G, r, dayKey) {
         }
         if (kind === 'S' || pl.kind === 'in') { segs.push({ u0, u1, k: 'in', x: pl.x, z: pl.z, place }); return { x: pl.x, z: pl.z, k: pl.at }; }
         if (pl.kind === 'spot') { segs.push({ u0, u1, k: 'stay', x: pl.x, z: pl.z, face: pl.face, spot: pl.spot, place }); return { x: pl.x, z: pl.z, k: pl.at }; }
-        const pause = pl.kind === 'inside' ? R.potterH : kind === 'P' ? R.patrolH : R.wanderH, reach = pl.kind === 'inside' ? 1e9 : (errand ? R.errandR : R.wanderR);
+        const pause = pl.kind === 'inside' ? R.potterH : kind === 'P' ? R.patrolH : R.wanderH, reach = pl.kind === 'inside' ? 1e9 : (errand ? R.errandR : (kind === 'P' && r.beat ? (R.beatR || R.wanderR) : R.wanderR));   // (a unit on its beat walks long legs: it crosses districts)
         let u = u0, at = cur, guard = 0;
         while (u < u1 - 0.02 && guard++ < 80) {
             const p = Math.min(u1 - u, between(pause)); segs.push({ u0: u, u1: u + p, k: 'stay', x: at.x, z: at.z, face: Math.floor(rng() * 360), place }); u += p;
