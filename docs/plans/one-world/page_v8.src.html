@@ -1,0 +1,249 @@
+<title>One World Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one long chart table. Each sheet = a framed map, then its reasons and its plot list. Dark by choice (matches the game's map: black panels, white outline). */
+:root {
+  --bg: #07090d; --panel: #0b0f16; --line: #e9edf2; --dim: #8e98a6; --fg: #e9edf2;
+  --gold: #ffd36a; --sea: #9fd0f0; --ley: #ff8adf;
+  --display: 'Cinzel', Georgia, serif; --body: 'IBM Plex Sans', system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--body); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 40px; }
+.note { border: 1px dashed var(--dim); padding: 10px 14px; font: 12px/1.6 var(--mono); color: var(--dim); }
+.note b { color: var(--gold); font-weight: 500; }
+header.title { border: 2px solid var(--line); padding: 22px 24px; background: var(--panel); }
+h1 { font: 700 clamp(30px, 6vw, 52px)/1.05 var(--display); letter-spacing: .08em; margin: 0 0 8px; text-wrap: balance; }
+.eyebrow { font: 500 11px/1.4 var(--mono); letter-spacing: .28em; text-transform: uppercase; color: var(--dim); }
+h2 { font: 700 clamp(22px, 4vw, 30px)/1.15 var(--display); letter-spacing: .08em; margin: 0; text-wrap: balance; }
+h3 { font: 600 13px/1.4 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin: 0; }
+p { margin: 0; max-width: 68ch; }
+.lead { font-size: 17px; max-width: 70ch; margin-top: 12px; }
+section { display: grid; gap: 18px; }
+.sheet { border: 2px solid var(--line); background: var(--panel); overflow-x: auto; }
+.sheet svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px 28px; }
+.cols > * { min-width: 0; }
+ul.why { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+ul.why li { padding-left: 14px; border-left: 2px solid #2a3240; }
+ul.why b { font-weight: 600; }
+.rules { counter-reset: r; display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.rules li { counter-increment: r; display: grid; grid-template-columns: 32px 1fr; gap: 10px; }
+.rules li::before { content: counter(r); font: 700 18px/1.3 var(--display); color: var(--gold); }
+.tbl { overflow-x: auto; border: 1px solid #2a3240; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 640px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #1d2430; vertical-align: top; }
+th { font: 500 11px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); background: #0d121b; }
+td.num, td.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tag { display: inline-block; font: 500 10.5px/1 var(--mono); letter-spacing: .1em; padding: 4px 6px; border: 1px solid; }
+.tag.new { color: var(--gold); border-color: var(--gold); }
+.tag.move { color: var(--sea); border-color: var(--sea); }
+.tag.same { color: var(--dim); border-color: #3a4352; }
+.key { display: flex; flex-wrap: wrap; gap: 8px 20px; font: 12px/1.4 var(--mono); color: var(--dim); }
+.key span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 18px; height: 10px; display: inline-block; border: 1px solid var(--line); }
+.q { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.q li { border: 1px solid #2a3240; padding: 12px 14px; display: grid; gap: 4px; }
+.q li b { font-weight: 600; }
+.q .rec { font: 12px/1.5 var(--mono); color: var(--gold); }
+.lbl { font-family: var(--display); font-weight: 700; letter-spacing: 1px; }
+.dl { font-family: var(--mono); paint-order: stroke; stroke: #0b0f16; stroke-width: 2.6px; }
+.buf { font-family: var(--mono); fill: var(--gold); font-weight: 600; paint-order: stroke; stroke: #0b0f16; stroke-width: 2.6px; }
+.sea, .wall { font-family: var(--display); letter-spacing: 4px; }
+.riv { font-family: Georgia, serif; font-style: italic; paint-order: stroke; stroke: #0b0f16; stroke-width: 2px; }
+</style>
+
+<div class="wrap">
+  <div class="note"><b>CONCEPT · NOT BUILT.</b> Version 8: on the grid, Stonehenge beside Camelot. Every zone, island and route is whole plots; the Desert's districts are spread apart. A design proposal for mondo's OK. Zone sizes are the real built rooms (data.js, main, 2026-11-16). On the maps one small square is one plot (12 × 12 battle squares, 42 m); a thick line is 12 plots (144 battle squares). Names marked "label mine" are placeholders for you to rename.</div>
+
+  <header class="title">
+    <div class="eyebrow">Entropy Wars · the world, redrawn</div>
+    <h1>One World</h1>
+    <p class="lead">One continent on a flat disc, inside the Ice Wall. The zones no longer touch like tiles: each sits in its own country, with open land, rivers and hills between them, and a road or trail through that country from one to the next. Disaster City is now one city on a big map, not a third of it. Underneath, every hidden way down ends in the same hollow. Out at sea, one voyage circles the land and stops at an island in every direction.</p>
+  </header>
+
+  <section>
+    <h2>What makes it hold together</h2>
+    <ol class="rules">
+      <li><p><b>Zones sit apart, routes join them.</b> Between any two neighbours there is a stretch of open country, and a route runs through it: a road, a trail, a pass, a causeway. You walk from one place to the next, like a real journey.</p></li>
+      <li><p><b>A route is narrow; the country is wide.</b> Each route is a walkable band 2 plots wide. The land on either side is seen, not walked: fields, forest, hills and desert that fill the view without needing content.</p></li>
+      <li><p><b>Every route has something on it.</b> A bridge, an inn, a gas station, a crop circle, a frozen lake, plus wild creatures to fight and capture. No stretch is empty, and each one hides the next zone's loading behind a bend, a tunnel or a ridge.</p></li>
+      <li><p><b>Everything sits on the grid.</b> The map is one plot grid, centred on Disaster City's south-west corner. Its radius is 44 plots: 528 battle squares, about 1.85 km. Every zone, island and route covers whole plots, and the coast follows plot edges. The numbers round the sheets are battle squares from the centre.</p></li>
+      <li><p><b>Water runs downhill, land changes gradually.</b> Snow in the north, then foothills, the western forest, farmland, scrub and desert in the south. Three rivers run from the snow to a lake or the sea.</p></li>
+      <li><p><b>Every horizon tells the truth, and below sits under what it serves.</b> What you see past an edge is the real neighbour; the Sewers are under the city, the D.U.M.B. under Area 51, Hell under the Vatican, Atlantis under the Triangle.</p></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="eyebrow">Sheet 1 of 3</div>
+    <h2>The Surface</h2>
+    <div class="sheet">{{surface}}</div>
+    <div class="key">
+      <span><i class="sw" style="background:repeating-linear-gradient(45deg,#3b3420 0 3px,#ffd36a 3px 5px)"></i>routes R1-R11 (walkable)</span>
+      <span><i class="sw" style="background:#8f9447"></i>open country (seen, not walked)</span>
+      <span><i class="sw" style="background:#5fb4ee"></i>river / lake</span>
+      <span><i class="sw" style="background:#ff6ad5"></i>the ley line</span>
+      <span><i class="sw" style="background:#cfeaf5"></i>the Ice Wall</span>
+      <span><i class="sw" style="background:#ffd36a"></i>city glyph</span>
+    </div>
+    <div class="cols">
+      <div>
+        <h3>The lay of the land</h3>
+        <ul class="why" style="margin-top:12px">
+          <li><b>The North Pole is the top of the world</b>, at the top centre of the disc, straight across from Antarctica at the bottom: the village on its cape with the Frozen Sea round it, the Polar Trail climbing to it from the Snowy Pass. Below it the Mountains run across the north. <b>Mount Olympus stands above the Vatican</b>, with Heaven's clouds on the summit.</li>
+          <li><b>The Vatican and the Colosseum</b> sit in the foothills on the Tiber, a river walk from the city: Rome and the Vatican side by side, the Pilgrim Way climbing to Olympus behind them.</li>
+          <li><b>The west</b> is the old forest country. Camelot is far out on the west coast, a day's road from the Vatican, with its bay looking out to Avalon. The Woods sit between, in the trees.</li>
+          <li><b>The middle</b> is farmland and a salt lake, where the Tiber ends. The Estate stands among the fields, with its Ranch on the road south.</li>
+          <li><b>Disaster City</b> holds the east coast, with the Hills and the sign behind it and the Beach in front.</li>
+          <li><b>The south</b> is badlands, then the Desert. The highway runs down through gas stations and motels to Exit 1. Giza sits on the Nile, and across the Delta Causeway lies <b>Leylines</b>, on its own peninsula, with the ley line running from the Great Pyramid to Stonehenge.</li>
+          <li><b>Antarctica</b> is the rim, reached by sea.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cities on the map</h3>
+        <p style="margin-top:12px">With the land spread out, the cities read as separate places a journey apart: <b>Disaster City</b>, <b>Vatican City and Rome</b>, <b>Camelot</b>, <b>Western Town</b>, <b>the North Pole village</b>, <b>Babel</b> and <b>Technoticlan</b>. Underground: <b>Agartha</b> and <b>Atlantis</b>. Above: Heaven's City.</p>
+        <h3 style="margin-top:22px">What you see from where</h3>
+        <ul class="why" style="margin-top:12px">
+          <li>City rooftops: the range and the sign to the north, the Vatican's dome and the Colosseum small in the north-west foothills, the badlands going south.</li>
+          <li>The Vatican Square: Olympus right overhead, the river, the city's towers far off down the valley.</li>
+          <li>Anywhere north: the Pole's cape at the top of the world, white against the Wall.</li>
+          <li>The Estate's fields: the lake, the farms, the forest line to the north.</li>
+          <li>The Desert: the pyramids and the ley line's glow to the south-east.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The routes</h2>
+    <p>Eleven routes, each a walkable band 2 plots wide. Plot counts are measured along each route on the map. A route can be laid down fast from a route kit (the biome's ground, the trail, edge scenery, one or two landmarks, the local wild units), so it costs far less than a city plot.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Id</th><th>Name (label mine)</th><th>Plots</th><th>Joins</th><th>What is on it</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">R1</td><td>River Road</td><td class="num">20</td><td>Vatican · Disaster City</td><td>Along the Tiber to the bridge into Civic Center. The Vatican's closed gate finally leads somewhere.</td></tr>
+        <tr><td class="mono">R2</td><td>Canyon Trail</td><td class="num">26</td><td>Hollywood Hills · Shasta</td><td>Up behind the sign, past a ranger station, to Shasta's foot. The Hills' doors to the range, given ground.</td></tr>
+        <tr><td class="mono">R3</td><td>Pilgrim Way</td><td class="num">16</td><td>Colosseum · Olympus</td><td>Shrines on the climb. The Pilgrim Stair, given ground.</td></tr>
+        <tr><td class="mono">R4</td><td>Old Road</td><td class="num">28</td><td>Camelot · Vatican · Woods</td><td>A crossroads inn and standing stones, with a fork down to the Woods. Camelot's trail to the Woods runs along it.</td></tr>
+        <tr><td class="mono">R5</td><td>Polar Trail</td><td class="num">38</td><td>Snowy Pass · North Pole</td><td>A frozen lake and a mountain hut on the climb to the top of the world. The way from the Pass Gate to the village, given ground. The village's old Sleigh Road to Camelot becomes a sleigh flight (no plots), drawn dotted.</td></tr>
+        <tr><td class="mono">R6</td><td>Valley Road</td><td class="num">20</td><td>Woods · Disaster City</td><td>A covered bridge over the Tiber. The first walkable way between the Woods and the city (today only the hidden storm drain).</td></tr>
+        <tr><td class="mono">R7</td><td>County Lane</td><td class="num">18</td><td>Woods · Estate</td><td>Farm fields and a scarecrow row down to the Lake. The Woods gate's way, given ground.</td></tr>
+        <tr><td class="mono">R8</td><td>Ranch Road</td><td class="num">26</td><td>Estate · Western Town</td><td>Cattle ranges and a crop circle. The Ranch's first way to the Desert, arriving in Western Town.</td></tr>
+        <tr><td class="mono">R9</td><td>Badlands Highway</td><td class="num">20</td><td>Disaster City · the Circus</td><td>The chain gas station, a motel, billboards, then Exit 1 at the Circus. The highway that exists today, given its miles.</td></tr>
+        <tr><td class="mono">R10</td><td>Coast Road</td><td class="num">38</td><td>Beach · Desert (Giza side)</td><td>Cliffs, a headland tunnel, surf coves and a lookout over the sea.</td></tr>
+        <tr><td class="mono">R11</td><td>Delta Causeway</td><td class="num">16</td><td>Giza · Leylines</td><td>Reed flats over the Nile mouth, with the ley line running alongside. The first surface way to Leylines.</td></tr>
+        <tr><td class="mono">R12</td><td>Stone Path</td><td class="num">6</td><td>Camelot · Stonehenge</td><td>A short climb from Camelot's north woods onto the plain where the stones stand, below the mountains.</td></tr>
+        <tr><td class="mono">U1</td><td>The Maglev</td><td class="num">21</td><td>Sewers · D.U.M.B.</td><td>Underground: the Sewers' Running Tunnels carry on as a sealed train line to Level P3. The ride is the load.</td></tr>
+      </tbody>
+    </table></div>
+    <p><b>293 route plots</b> (272 on the surface, 21 for the Maglev), counted plot by plot on the grid. They can go in one at a time. R1, R6 and R8 come first because each gives a way that is missing today.</p>
+    <h3 style="margin-top:18px">The Desert, spread out</h3>
+    <p>The Desert's four districts no longer sit in one square. The Circus (3 × 3) is first, where the Badlands Highway arrives from the city. Western Town (4 × 4) is out west, where the Ranch Road comes in. Area 51 (4 × 4) is alone in the deep south, with the D.U.M.B. under it. Giza (4 × 4) is south-east on the Nile, the Coast Road and the Delta Causeway at its door.</p>
+    <p style="margin-top:8px">The Desert Highway joins all four in a loop. It is built from the Desert room's own Highway plots (district R, 87 today): the loop takes 82, and the other 5 stay as roadside stops (the gas station, the trailers, the Door). So the spread costs no new plots.</p>
+  </section>
+
+  <section>
+    <h2>The Seas</h2>
+    <p>One sea route, <b>the Round Voyage</b>, circles the continent and stops at a port or island in every direction. You sail the open sea rather than walk it, and each leg is a short boat ride that covers the load. The Beach keeps its own calm near sea off the city.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Where</th><th>Stop</th><th></th><th>Plots</th><th>What is there</th></tr></thead>
+      <tbody>
+        <tr><td>Off the city</td><td>The Beach's near sea</td><td><span class="tag move">SHRINKS</span></td><td class="num">8 × 10</td><td>Calm first water, the islet close in as an easy first landing, a whale passing.</td></tr>
+        <tr><td>Far east, off the route</td><td>The Bermuda Triangle</td><td><span class="tag move">MOVE</span></td><td class="num">6 × 6</td><td>Its own room near the Wall. The voyage passes it by; you turn into the storm on purpose. The Maelstrom drops to Atlantis.</td></tr>
+        <tr><td>Inside the Triangle</td><td>Ships' Graveyard</td><td><span class="tag new">NEW IDEA</span></td><td class="num">in the 6 × 6</td><td>A reef piled with everything the Triangle swallowed.</td></tr>
+        <tr><td>Far north-east</td><td>Volcano Island</td><td><span class="tag move">MOVE + GROW</span></td><td class="num">6 × 6</td><td>The Landing, the Village and the Volcano, now with a jungle and a dinosaur park round them, as you chose.</td></tr>
+        <tr><td>North</td><td>The Frozen Sea</td><td><span class="tag new">NEW</span></td><td class="num">4 × 2</td><td>Pack ice and icebergs all round the Pole, the Wall white beyond.</td></tr>
+        <tr><td>West, off Camelot's bay</td><td>Avalon</td><td><span class="tag new">NEW IDEA</span></td><td class="num">4 × 4</td><td>The misty isle of the Arthur legend: orchards and standing stones in the fog.</td></tr>
+        <tr><td>South-west</td><td>Pirates' Cove</td><td><span class="tag new">NEW IDEA</span></td><td class="num">3 × 3</td><td>A sandbar cove with a wreck and buried treasure, where the Dutchman's pirates come ashore.</td></tr>
+        <tr><td>South</td><td>Antarctica</td><td><span class="tag move">MOVE</span></td><td class="num">as built</td><td>The voyage's southern port, at the ice shelf.</td></tr>
+        <tr><td>South-east</td><td>The lighthouse</td><td><span class="tag new">SCENERY</span></td><td class="num">0</td><td>On Leylines' point, marking the way home.</td></tr>
+      </tbody>
+    </table></div>
+    <p>Sights on the way, scenery only: a whale, a waterspout, icebergs, kraken tentacles, a kaiju's back in the south, the lighthouse beam. All use models the game already has.</p>
+  </section>
+
+  <section>
+    <h2>Which zones move</h2>
+    <p>Rooms are joined by doors, not shared ground, so moving a zone on the map costs only its map place and what its edges show. The plots inside stay as built. Places are the top-left corner in plots, with Disaster City at 0, 0.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Zone</th><th></th><th>Today</th><th>New</th><th>Its edges now face</th></tr></thead>
+      <tbody>
+        <tr><td>Disaster City</td><td><span class="tag same">STAYS</span></td><td class="mono">0, 0</td><td class="mono">0, 0</td><td>West: the Tiber valley and the River Road. South: the badlands and the highway.</td></tr>
+        <tr><td>The Mountains</td><td><span class="tag move">MOVE</span></td><td class="mono">−12, −11</td><td class="mono">−14, −18</td><td>South: foothills down to the Vatican; the Canyon Trail and Pilgrim Way arrive.</td></tr>
+        <tr><td>North Pole village</td><td><span class="tag move">MOVE</span></td><td class="mono">−16, −11</td><td class="mono">0, −28</td><td>The top centre of the world. The Frozen Sea all round; the Polar Trail up from the Snowy Pass; the sleigh flies to Camelot.</td></tr>
+        <tr><td>Vatican + the Colosseum</td><td><span class="tag move">MOVE</span></td><td class="mono">−6, −3</td><td class="mono">−12, −6 (Colosseum −11, −9)</td><td>East: the Tiber and the River Road. North: Olympus. West: the Old Road.</td></tr>
+        <tr><td>Camelot Kingdom</td><td><span class="tag move">MOVE</span></td><td class="mono">−14, 0</td><td class="mono">−28, −4</td><td>West: the sea and Avalon. East: the Old Road. North: the Sleigh Road.</td></tr>
+        <tr><td>Stonehenge</td><td><span class="tag move">MOVE</span></td><td class="mono">Leylines' NE corner</td><td class="mono">−31, −9 (3 × 3)</td><td>Its own room on the plain north-west of Camelot, below the mountains; the Stone Path (R12) down to Camelot's north woods.</td></tr>
+        <tr><td>The Woods</td><td><span class="tag move">MOVE</span></td><td class="mono">−6, 1</td><td class="mono">−14, 2</td><td>Forest all round; the Old Road fork, the Valley Road and the County Lane leave it.</td></tr>
+        <tr><td>The Estate</td><td><span class="tag move">MOVE</span></td><td class="mono">−6, 7</td><td class="mono">−15, 15</td><td>Fields all round; the Lake meets the Tiber's end; the Ranch Road leaves south-east.</td></tr>
+        <tr><td>The Desert</td><td><span class="tag move">MOVE</span></td><td class="mono">0, 12</td><td class="mono">Circus 6, 21 · Western Town −4, 26 · Area 51 2, 33 · Giza 13, 29</td><td>Spread apart, joined by the Desert Highway loop (its own 82 Highway plots). The Badlands Highway reaches the Circus, the Ranch Road Western Town, the Coast Road and the Delta Giza.</td></tr>
+        <tr><td>The Beach</td><td><span class="tag move">SHRINKS</span></td><td class="mono">12, 1</td><td class="mono">12, 2</td><td>14 × 10 becomes 8 × 10; the Volcano Island and the Triangle go out to sea. South: the Coast Road.</td></tr>
+        <tr><td>Leylines</td><td><span class="tag move">MOVE</span></td><td class="mono">12, 17</td><td class="mono">23, 30</td><td>Its own peninsula; west: the Delta Causeway. Stonehenge (its north-east 3 × 3) leaves for Camelot, so the room is 54 plots.</td></tr>
+        <tr><td>Antarctica</td><td><span class="tag move">MOVE + TURN</span></td><td class="mono">3, 26</td><td class="mono">0, 46</td><td>Turned half round so the Shelf Ice faces the world and the Wall faces outward.</td></tr>
+        <tr><td>Sewers</td><td><span class="tag same">STAYS</span></td><td class="mono">3, 6</td><td class="mono">3, 6</td><td>Running Tunnels continue as the Maglev.</td></tr>
+        <tr><td>The Cavern</td><td><span class="tag move">MOVE</span></td><td class="mono">−6, 2</td><td class="mono">−3, 9</td><td>Under the middle of the continent: Hollow Earth at the centre of the world.</td></tr>
+        <tr><td>The D.U.M.B.</td><td><span class="tag move">MOVE</span></td><td class="mono">0, 18</td><td class="mono">1, 32</td><td>Still under Area 51.</td></tr>
+        <tr><td>Hell · Catacombs</td><td><span class="tag move">MOVE</span></td><td class="mono">−7, −3 · −2, −2</td><td class="mono">−16, −6 · −10, −5</td><td>Follow the Vatican.</td></tr>
+        <tr><td>The Deep</td><td><span class="tag move">MOVE</span></td><td class="mono">15, 4</td><td class="mono">33, 1</td><td>Under the Triangle, the Trench toward the Wall.</td></tr>
+        <tr><td>The Internet</td><td><span class="tag new">NEW</span></td><td class="mono">none</td><td class="mono">off the map</td><td>6 × 6 beside the Astral Realm: The Feed, The Forums, The Server Farm, The Dark Web.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Sheet 2 of 3</div>
+    <h2>The Underground</h2>
+    <div class="sheet">{{underground}}</div>
+    <div class="sheet">{{section}}</div>
+    <div class="cols">
+      <div>
+        <h3>One hollow, many ways down</h3>
+        <p style="margin-top:12px">Stacked by depth: man-made places shallow, military works deeper, the natural caves deeper still, Hell at the bottom. <b>Hollow Earth sits under the middle of the continent</b>, lit by its inner sun, and the hidden ways down from all over the surface (the Lemuria Stair from Shasta, the Estate wells, the Sewers' Old Workings, the D.U.M.B.'s Level −6, the Hell fissure, the Polar Opening, the way to Technoticlan) all lead to it. With the land spread out these are long passages now, which suits a secret way across the world.</p>
+      </div>
+      <div>
+        <h3>Layers</h3>
+        <ul class="why" style="margin-top:12px">
+          <li><b>−1 man-made:</b> the Sewers, the Catacombs, the robbers' tunnel under the Delta.</li>
+          <li><b>−2 deep works:</b> the D.U.M.B. and CERN's ring under Area 51, joined to the Sewers by the Maglev.</li>
+          <li><b>−3 / −4 the hollow:</b> the Cavern, then Hollow Earth and Agartha.</li>
+          <li><b>−5 the pit:</b> Hell, under the Vatican, by the fissure.</li>
+          <li><b>Under the sea:</b> The Deep, Atlantis under the Triangle.</li>
+        </ul>
+        <p style="margin-top:12px">Every one of these ways is in the game already except the Maglev.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Sheet 3 of 3</div>
+    <h2>Beyond the Map</h2>
+    <div class="sheet">{{beyond}}</div>
+    <div class="cols">
+      <ul class="why">
+        <li><b>Heaven</b> is the sky layer on the clouds over Olympus; the Grand Stair and the Pilgrim Stair go up.</li>
+        <li><b>Outer Space</b> is past the dome. The Spaceship leaves through the Collar in the Ice Wall and flies one route with four stops: the Moon, Mars, Saturn, the Singularity.</li>
+      </ul>
+      <ul class="why">
+        <li><b>The Astral Realm</b> is the dream layer, and <b>the Internet</b> sits beside it: one is what people imagine, the other is what they post. The Internet opens from a monitor in DOOR HQ and the D.U.M.B.'s server rooms. It is not Cyberpunk City, which stays the future reskin of the whole city.</li>
+        <li><b>DOOR HQ</b> is the subconscious, outside the world, with a door into every layer.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Your calls</h2>
+    <ol class="q">
+      <li><b>The spread-out mainland, with eleven routes between the zones.</b><span>293 route plots, built from a route kit, one route at a time.</span><span class="rec">I recommend yes, starting with R1, R6 and R8.</span></li>
+      <li><b>Routes as their own rooms.</b><span>Each route is its own small room, so it can hide the next zone's load. The other way is gluing them onto the neighbouring zones, which would load both at once.</span><span class="rec">I recommend their own rooms.</span></li>
+      <li><b>The Seas, as last time, with Volcano Island grown to 6 × 6.</b><span>Avalon, Pirates' Cove and the Ships' Graveyard are my ideas; any of them can be scenery only.</span></li>
+      <li><b>The Ice Wall as the rim, with Antarctica turned to face outward.</b></li>
+      <li><b>Names.</b><span>Route, river and lake names are my placeholders.</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>After your OK</h2>
+    <p>Smallest first: (1) the new places in data.js HQ_ZONE_MAP and the three map sheets, (2) the zone edges and horizons, so each looks out on open country and its true neighbours, (3) the route kit, then R1, R6 and R8, (4) the other routes, (5) the Volcano Island's move and growth, the Triangle's move and the Round Voyage, (6) the new islands, (7) the Colosseum, the Maglev and the Internet. Each is its own PR.</p>
+    <p style="margin-top:10px"><b>Totals:</b> 293 route plots, 76 new island plots (on top of the 29 that move out of the Beach), 9 for the Colosseum and 36 for the Internet. That is 414 new plots. Stonehenge moves with its own 9 plots. The Desert's spread reuses its own Highway plots. Nothing is deleted.</p>
+  </section>
+</div>
