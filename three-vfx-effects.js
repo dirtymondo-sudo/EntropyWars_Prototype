@@ -70201,6 +70201,229 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     });
 
+    /* ── THE OWN LOOKS, L4, part 4: the self buffs ── */
+    Object.assign(_L4C, {
+        ape: 0xff7722, apeHot: 0xffb060, brass: 0xd8a84a, tracer: 0xff5a1e, serum: 0x7dff6a, serumDeep: 0x2fa83a,
+        nos: 0x7a5aff, nosHot: 0xd0b8ff, redline: 0xff2a2a, term: 0xffb84a, termHot: 0xffe0a0, volt: 0xffe24a, voltHot: 0xfff6b0,
+        phase: 0x9a6aff, phaseDark: 0x1a1024, strut: 0x8e96a8, hazard: 0xffc21a, lock: 0xff8a2a,
+        stone: 0xb4b6bc, stoneDark: 0x7c7e86, hide: 0x8a5a34, hideEdge: 0xd8a070
+    });
+    function _l4BangTex() {
+        return _pzTex('l4bang', 96, 96, function (g, w, h) {
+            g.translate(w / 2, h / 2); g.fillStyle = '#fff'; g.beginPath();
+            for (var i = 0; i < 18; i++) { var a = i / 18 * Math.PI * 2, q = (i % 2) ? w * 0.24 : w * (0.4 + 0.07 * ((i * 5) % 3)); g[i ? 'lineTo' : 'moveTo'](Math.cos(a) * q, Math.sin(a) * q); }
+            g.closePath(); g.fill();
+        });
+    }
+    function _l4RoundTex() {
+        return _pzTex('l4round', 32, 96, function (g, w, h) {
+            g.fillStyle = '#d8a84a'; g.fillRect(w * 0.22, h * 0.36, w * 0.56, h * 0.56); g.fillStyle = '#8a6420'; g.fillRect(w * 0.16, h * 0.88, w * 0.68, h * 0.08);
+            g.fillStyle = '#ff7a2a'; g.beginPath(); g.moveTo(w * 0.22, h * 0.37); g.quadraticCurveTo(w * 0.24, h * 0.1, w / 2, h * 0.03); g.quadraticCurveTo(w * 0.76, h * 0.1, w * 0.78, h * 0.37); g.closePath(); g.fill();
+        });
+    }
+    function _l4TachoTex() {
+        return _pzTex('l4tacho', 128, 128, function (g, w, h) {
+            g.translate(w / 2, h / 2); g.lineCap = 'butt';
+            g.strokeStyle = '#f4f2ea'; g.lineWidth = 9; g.beginPath(); g.arc(0, 0, w * 0.4, Math.PI * 0.75, Math.PI * 1.85); g.stroke();
+            g.strokeStyle = '#ff2a2a'; g.beginPath(); g.arc(0, 0, w * 0.4, Math.PI * 1.85, Math.PI * 2.25); g.stroke();
+            g.strokeStyle = '#f4f2ea'; g.lineWidth = 4; for (var i = 0; i <= 8; i++) { var a = Math.PI * (0.75 + 1.5 * i / 8); g.beginPath(); g.moveTo(Math.cos(a) * w * 0.3, Math.sin(a) * w * 0.3); g.lineTo(Math.cos(a) * w * 0.42, Math.sin(a) * w * 0.42); g.stroke(); }
+        });
+    }
+    function _l4NeedleTex() {
+        return _pzTex('l4needle', 128, 128, function (g, w, h) { g.fillStyle = '#ff5a1e'; g.beginPath(); g.moveTo(w / 2, h / 2 - 5); g.lineTo(w * 0.88, h / 2); g.lineTo(w / 2, h / 2 + 5); g.closePath(); g.fill(); g.beginPath(); g.arc(w / 2, h / 2, 8, 0, Math.PI * 2); g.fill(); });
+    }
+    function _l4DigitsTex() {
+        return _pzTex('l4digits', 48, 256, function (g, w, h) {
+            g.fillStyle = '#fff'; g.font = 'bold 30px "Courier New", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            var s = '3141592653'; for (var i = 0; i < 8; i++) { g.globalAlpha = 1 - i * 0.1; g.fillText(s.charAt(i), w / 2, 18 + i * 31); }
+        });
+    }
+    function _l4BracketTex() {
+        return _pzTex('l4bracket', 128, 128, function (g, w, h) {
+            g.strokeStyle = '#fff'; g.lineWidth = 8; g.shadowColor = '#fff'; g.shadowBlur = 5; var a = 10, b = 40;
+            [[a, a, 1, 1], [w - a, a, -1, 1], [a, h - a, 1, -1], [w - a, h - a, -1, -1]].forEach(function (c) { g.beginPath(); g.moveTo(c[0] + c[2] * b, c[1]); g.lineTo(c[0], c[1]); g.lineTo(c[0], c[1] + c[3] * b); g.stroke(); });
+            g.lineWidth = 4; g.beginPath(); g.moveTo(w / 2 - 12, h / 2); g.lineTo(w / 2 + 12, h / 2); g.moveTo(w / 2, h / 2 - 12); g.lineTo(w / 2, h / 2 + 12); g.stroke();
+        });
+    }
+    function _l4TickTex() {
+        return _pzTex('l4ticks', 16, 48, function (g, w, h) { g.fillStyle = '#fff'; g.shadowColor = '#fff'; g.shadowBlur = 4; g.fillRect(w * 0.3, 4, w * 0.4, h - 8); });
+    }
+
+    /* GO APE (king kong; +2 ATK for a tenth of his health) — he beats his chest: four heavy thumps, left fist, right fist,
+       each one a burst on the chest and a jolt, hotter every time */
+    _l4Wire('raceApeFury', 'aura', function (p, F, ts, h) {
+        var R = _l4Right(), bt = _l4BangTex(), B = [];
+        for (var i = 0; i < 4; i++) { var S = _pzSpr(i < 2 ? _L4C.ape : _L4C.apeHot, ts * 0.5, F.g, bt), s = (i % 2) ? 1 : -1; S.position.set(R.x * s * ts * 0.17, h * 0.66, R.z * s * ts * 0.17); B.push(S); }
+        var heat = _pzSpr(_L4C.ape, ts, F.g); heat.position.y = h * 0.6;
+        for (var k = 0; k < 4; k++) (function (k) { _fxDelay(function () { if (_suppressed()) return; try { _shake('light'); } catch (e) {} for (var j = 0; j < 4; j++) _pzP(F, B[k].position.x, h * 0.66, B[k].position.z, { sprite: 'dust-puff', tint: _L4C.apeHot, ml: rn(260, 420), size0: rn(8, 14), size1: rn(18, 28), vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(10, 60), drag: 1, opacity0: 0.5 }); }, 120 + k * 230); })(k);
+        return _sigRunOwned(F.g, 1500, function (el) {
+            for (var i = 0; i < 4; i++) { var t = el - 120 - i * 230, k = t > 0 ? Math.exp(-t / 110) : 0; B[i].scale.setScalar(ts * (0.3 + 0.5 * (1 - k)) * (1 + 0.12 * i)); B[i].material.rotation = i; B[i].material.opacity = t > 0 ? 0.95 * k : 0; }
+            heat.scale.setScalar(ts * (0.7 + 0.3 * _sigClamp01(el / 1000))); heat.material.opacity = 0.34 * _sigClamp01(el / 900) * (1 - _sigClamp01((el - 1100) / 400));
+        });
+    });
+
+    /* INCENDIARY ROUNDS (marksman; his shots set fire for 2 rounds) — a fresh magazine: five brass rounds stand up in a row at
+       his side, their tips light one after the other, and the row drops home with a clack and a spit of embers */
+    _l4Wire('raceIncendiaryRounds', 'aura', function (p, F, ts, h) {
+        var R = _l4Right(), rt = _l4RoundTex(), Rd = [];
+        for (var i = 0; i < 5; i++) { var b = _pzSprN(0xffffff, ts * 0.3, rt, F.g); b.material.depthTest = false; var tip = _pzSpr(_L4C.tracer, ts * 0.2, F.g); Rd.push({ b: b, tip: tip, x: ts * (0.42 + 0.13 * i) }); }
+        _fxDelay(function () { if (_suppressed()) return; for (var k = 0; k < 8; k++) _pzP(F, R.x * ts * 0.68, h * 0.35, R.z * ts * 0.68, { sprite: 'ember', tint: _L4C.tracer, ml: rn(380, 640), size0: rn(5, 9), size1: 1, vx: rn(-70, 70), vy: rn(-70, 70), vz: rn(60, 170), gravity: 240, drag: 0.8, opacity0: 1 }); }, 1000);
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var drop = _sigEaseInCubic(_sigClamp01((el - 860) / 150));
+            for (var i = 0; i < 5; i++) {
+                var K = Rd[i], up = _sigEaseOutBack(_sigClamp01((el - i * 70) / 180)), lit = _sigClamp01((el - 380 - i * 90) / 90), y = h * (0.3 + 0.42 * up - 0.3 * drop);
+                K.b.position.set(R.x * K.x, y, R.z * K.x); K.b.scale.set(ts * 0.11, ts * 0.33, 1); K.b.material.opacity = (el > i * 70 ? 1 : 0) * (1 - _sigClamp01((el - 1010) / 200));
+                K.tip.position.set(R.x * K.x, y + ts * 0.15, R.z * K.x); K.tip.scale.setScalar(ts * (0.14 + 0.12 * lit + 0.03 * Math.sin(el * 0.05 + i))); K.tip.material.opacity = lit * (1 - _sigClamp01((el - 1010) / 200));
+            }
+        });
+    });
+
+    /* MONSTER SERUM (mad scientist; an ally goes Monstrous) — the syringe goes in (the prop, as before), and then it takes:
+       the body's green outline swells in three lurches, each bigger than the last, and the serum boils off it in bubbles */
+    _l4Wire('raceMonsterSerum', 'aura', function (p, F, ts, h) {
+        var body = _pzSpr(_L4C.serumDeep, ts, F.g), core = _pzSpr(_L4C.serum, ts * 0.4, F.g), veins = [];
+        body.position.y = h * 0.55; core.position.y = h * 0.62;
+        for (var i = 0; i < 5; i++) veins.push(_pzSpr(_L4C.serum, ts * 0.1, F.g));
+        [300, 560, 820].forEach(function (t, n) { _fxDelay(function () { if (_suppressed()) return; for (var k = 0; k < 3 + n; k++) _pzP(F, rn(-22, 22), h * rn(0.3, 0.9), rn(-22, 22), { sprite: 'poison-bubble', tint: _L4C.serum, ml: rn(480, 760), size0: rn(5, 9), size1: rn(9, 14), vx: rn(-24, 24), vy: rn(-24, 24), vz: rn(50, 120), drag: 0.6, opacity0: 0.95 }); }, t); });
+        return _sigRunOwned(F.g, 1600, function (el) {
+            var step = el < 300 ? 0 : el < 560 ? 1 : el < 820 ? 2 : 3, base = [0.55, 0.8, 1.05, 1.35][step], t0 = [0, 300, 560, 820][step], jolt = 0.16 * Math.exp(-(el - t0) / 70), env = _pzEnv(el, 0, 120, 1150, 1600);
+            body.scale.set(ts * (base + jolt), h * 1.25 * (0.7 + 0.25 * step / 3 + jolt), 1); body.material.opacity = 0.5 * env;
+            core.scale.setScalar(ts * (0.3 + 0.1 * step)); core.material.opacity = 0.5 * env * (0.7 + 0.3 * Math.sin(el * 0.03));
+            for (var i = 0; i < veins.length; i++) { var u = ((el + i * 130) % 600) / 600, a = i * 1.26; veins[i].position.set(Math.cos(a) * ts * 0.2 * (1 + u), h * 0.62 + Math.sin(a) * h * 0.4 * u, Math.sin(a) * ts * 0.1); veins[i].scale.set(ts * 0.07, ts * 0.07, 1); veins[i].material.opacity = 0.9 * (1 - u) * env; }
+        });
+    });
+
+    /* NITRO BOOST (honda civic; Overclocked 2 rounds, +1 SPD) — floor it: the rev needle swings round its dial into the red
+       at his side, and two jets of violet nitrous flame stand out behind him and gutter */
+    _l4Wire('raceNitroBoost', 'aura', function (p, F, ts, h) {
+        var R = _l4Right(), dial = _pzSprN(0xffffff, ts * 0.6, _l4TachoTex(), F.g), needle = _pzSprN(0xffffff, ts * 0.6, _l4NeedleTex(), F.g), jets = [];
+        dial.material.depthTest = needle.material.depthTest = false; dial.position.set(R.x * ts * 0.62, h * 0.72, R.z * ts * 0.62); needle.position.copy(dial.position); needle.renderOrder = 163;
+        for (var i = 0; i < 2; i++) for (var k = 0; k < 4; k++) jets.push({ S: _pzSpr(k ? _L4C.nos : _L4C.nosHot, ts * 0.3, F.g), i: i, k: k });
+        var last = 0;
+        return _sigRunOwned(F.g, 1600, function (el) {
+            var rev = _sigEaseOutCubic(_sigClamp01(el / 520)), shake = el > 520 ? Math.sin(el * 0.09) * 0.08 : 0, env = _pzEnv(el, 0, 80, 1200, 1600);
+            dial.material.opacity = needle.material.opacity = env; needle.material.rotation = -(Math.PI * (0.75 + 1.4 * rev) + shake);
+            var on = _pzEnv(el, 380, 480, 1150, 1500);
+            for (var j = 0; j < jets.length; j++) {
+                var K = jets[j], out = ts * (0.4 + 0.2 * K.k) * (0.85 + 0.15 * Math.sin(el * 0.07 + K.k + K.i)), side = (K.i ? 1 : -1) * ts * 0.1;
+                K.S.position.set(-R.x * out + R.z * side, h * 0.22, -R.z * out - R.x * side); K.S.scale.set(ts * (0.34 - 0.06 * K.k), ts * (0.2 - 0.035 * K.k), 1); K.S.material.opacity = on * (0.95 - 0.2 * K.k);
+            }
+            if (on > 0.5 && el - last > 90 && _canSpawn()) { last = el; _pzP(F, -R.x * ts * 1.0, h * 0.22, -R.z * ts * 1.0, { sprite: 'smoke-soft', tint: _L4C.nosHot, ml: rn(300, 480), size0: 10, size1: 26, vx: -R.x * 120, vy: -R.z * 120, vz: rn(10, 40), drag: 1, opacity0: 0.35 }); }
+        });
+    });
+
+    /* OVERCALCULATE (ai; +1 M ATK, +1 M DEF) — run the numbers again, then again: three columns of amber digits pour up round
+       the body, twice over, and close on one line at the chest: the answer */
+    _l4Wire('raceOvercalculate', 'aura', function (p, F, ts, h) {
+        var cols = [], dt = _l4DigitsTex();
+        for (var i = 0; i < 3; i++) for (var k = 0; k < 2; k++) cols.push({ S: _pzSpr(k ? _L4C.term : _L4C.termHot, ts * 0.3, F.g, dt), a: i / 3 * Math.PI * 2 + 0.5, k: k, i: i });
+        var ans = _l4Text('= OK', { w: 256, h: 96, fontPx: 64, ink: '#ffe0a0', font: '"Courier New", monospace', spriteW: ts * 1.3 }); ans.position.y = h * 0.62; F.g.add(ans);
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var run = _pzEnv(el, 0, 100, 900, 1050);
+            for (var j = 0; j < cols.length; j++) {
+                var K = cols[j], u = ((el * (1.3 + 0.25 * K.i) + K.k * 320) % 640) / 640, r = ts * 0.52 * (1 - 0.8 * _sigClamp01((el - 900) / 150));
+                K.S.position.set(Math.cos(K.a) * r, h * (0.05 + 0.95 * u), Math.sin(K.a) * r); K.S.scale.set(ts * 0.24, ts * 1.0, 1); K.S.material.opacity = run * Math.min(1, Math.sin(u * Math.PI) * 1.6);
+            }
+            var pop = _sigEaseOutBack(_sigClamp01((el - 1000) / 160)); ans.scale.set(ts * 1.3 * pop, ts * 0.49 * pop, 1); ans.material.opacity = _pzEnv(el, 1000, 1060, 1450, 1700);
+        });
+    });
+
+    /* OVERCLOCK (Engineer; one ally +1 ATK, +1 MOV for 2 rounds; the robot's and the school's row are the same spell) — the
+       clock is wound past its mark: a ring of tick marks at the waist spins up faster and faster, yellow arcs jump off it,
+       and at full speed every tick flares at once */
+    function _l4Overclock(p, F, ts, h) {
+        var N = 12, ring = new THREE.Group(), ticks = [], tt = _l4TickTex(); ring.position.y = h * 0.5; F.g.add(ring);
+        for (var i = 0; i < N; i++) { var m = _pzMesh(new THREE.PlaneGeometry(ts * 0.05, ts * 0.17), _pzGlow(i % 3 ? _L4C.volt : _L4C.voltHot, tt), ring), a = i / N * Math.PI * 2; m.position.set(Math.cos(a) * ts * 0.46, 0, Math.sin(a) * ts * 0.46); m.rotation.y = -a + Math.PI / 2; ticks.push(m); }
+        var flare = _pzSpr(_L4C.volt, ts, F.g); flare.position.y = h * 0.5; var last = 0;
+        return _sigRunOwned(F.g, 1600, function (el) {
+            var t = _sigClamp01(el / 1000), env = _pzEnv(el, 0, 80, 1250, 1600), full = _pzEnv(el, 980, 1040, 1120, 1400);
+            ring.rotation.y = -(t * t * 16);   /* it winds up: the turn rate climbs with time */
+            for (var i = 0; i < N; i++) { ticks[i].material.opacity = (0.75 + 0.25 * full) * env; ticks[i].scale.set(1, 1 + 0.9 * full, 1); }
+            flare.scale.set(ts * (1.0 + 0.5 * full), ts * 0.3, 1); flare.material.opacity = 0.5 * full;
+            if (t > 0.3 && t < 1 && el - last > 150 - 90 * t && _canSpawn()) { last = el; var a = rn(0, 6.28); _pzP(F, Math.cos(a) * ts * 0.46, h * 0.5, Math.sin(a) * ts * 0.46, { sprite: 'spark-elec', tint: _L4C.volt, ml: rn(160, 280), size0: rn(9, 15), size1: 2, vx: Math.cos(a) * 60, vy: Math.sin(a) * 60, vz: rn(-20, 60), drag: 1.4, opacity0: 1 }); }
+        });
+    }
+    _l4Wire('overclock', 'aura', _l4Overclock);
+    _l4Wire('raceOverclock', 'aura', _l4Overclock);
+
+    /* PHASE SHIFT (shadow entity; Invisible) — it steps out of phase: the body's image splits into five upright slivers that
+       slide apart left and right, shiver, and go out one by one */
+    _l4Wire('racePhaseShift', 'aura', function (p, F, ts, h) {
+        var R = _l4Right(), Sl = [];
+        for (var i = 0; i < 5; i++) { var d = _pzSprN(_L4C.phaseDark, ts * 0.3, _sigGlowTex(), F.g); d.material.depthTest = false; Sl.push({ d: d, g: _pzSpr(_L4C.phase, ts * 0.3, F.g), o: (i - 2) });
+        }
+        return _sigRunOwned(F.g, 1400, function (el) {
+            var split = _sigEaseOutCubic(_sigClamp01(el / 320));
+            for (var i = 0; i < 5; i++) {
+                var K = Sl[i], off = K.o * ts * 0.2 * split + (el > 320 ? Math.sin(el * 0.11 + i * 2) * ts * 0.025 : 0), gone = _sigClamp01((el - 520 - Math.abs(K.o) * 150 - (K.o > 0 ? 70 : 0)) / 160), op = Math.min(1, el / 100) * (1 - gone);
+                K.d.position.set(R.x * off, h * 0.52, R.z * off); K.g.position.copy(K.d.position);
+                K.d.scale.set(ts * 0.16, h * 1.15 * (1 - 0.5 * gone), 1); K.g.scale.set(ts * 0.1, h * 1.2 * (1 - 0.5 * gone), 1);
+                K.d.material.opacity = 0.6 * op; K.g.material.opacity = 0.8 * op * (0.7 + 0.3 * Math.sin(el * 0.06 + i));
+            }
+        });
+    });
+
+    /* SIEGE MODE (mech; +1 ATK, +2 RNG, -2 MOV for 2 rounds) — it anchors down: four struts with hazard stripes swing out and
+       slam into the floor at its corners, dust jumps, and a targeting bracket opens wide round it and locks */
+    _l4Wire('raceSiegeMode', 'aura', function (p, F, ts, h) {
+        var St = [], br = _pzSpr(_L4C.lock, ts, F.g, _l4BracketTex()); br.position.y = h * 0.55;
+        for (var i = 0; i < 4; i++) {
+            var a = Math.PI / 4 + i * Math.PI / 2, piv = new THREE.Group(); piv.position.set(Math.cos(a) * ts * 0.2, h * 0.5, Math.sin(a) * ts * 0.2); piv.rotation.y = -a; F.g.add(piv);
+            var arm = new THREE.Group(); piv.add(arm);
+            var beam = _pzMesh(new THREE.BoxGeometry(ts * 0.52, ts * 0.08, ts * 0.08), _pzSolid(_L4C.hazard, null, { depthWrite: false }), arm, ts * 0.26, 0, 0);
+            var foot = _pzMesh(new THREE.BoxGeometry(ts * 0.12, ts * 0.06, ts * 0.2), _pzSolid(_L4C.strut, null, { depthWrite: false }), arm, ts * 0.52, 0, 0);
+            St.push({ arm: arm, beam: beam, foot: foot, a: a, down: Math.atan2(h * 0.5, ts * 0.5) });
+        }
+        _fxDelay(function () { if (_suppressed()) return; try { _shake('light'); } catch (e) {} for (var i = 0; i < 4; i++) { var a = Math.PI / 4 + i * Math.PI / 2; for (var k = 0; k < 3; k++) _pzP(F, Math.cos(a) * ts * 0.66, 6, Math.sin(a) * ts * 0.66, { sprite: 'dust-puff', ml: rn(380, 620), size0: rn(10, 16), size1: rn(24, 36), vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(10, 50), drag: 1, opacity0: 0.55 }); } }, 300);
+        return _sigRunOwned(F.g, 1800, function (el) {
+            var slam = _sigEaseInCubic(_sigClamp01(el / 300)), env = _pzEnv(el, 0, 60, 1350, 1800);
+            for (var i = 0; i < 4; i++) { var K = St[i]; K.arm.rotation.z = 0.9 - (0.9 + K.down) * slam; K.beam.material.opacity = K.foot.material.opacity = 0.95 * env; }
+            var open = _sigEaseOutCubic(_sigClamp01((el - 420) / 380)), lock = _pzEnv(el, 800, 840, 900, 1100);
+            br.scale.setScalar(ts * (0.5 + 1.5 * open) * (1 - 0.06 * lock)); br.material.opacity = (0.6 + 0.4 * lock) * _pzEnv(el, 420, 500, 1300, 1700);
+        });
+    });
+
+    /* STONEFORM (gargoyle; stone for 2 rounds) — the stone comes up it: five courses of grey rock close round the body from
+       the feet to the head, each landing with grit, and the whole shell sets hard before it thins to show him again */
+    _l4Wire('raceStoneform', 'aura', function (p, F, ts, h) {
+        var C = [];
+        for (var i = 0; i < 5; i++) {
+            var geo = new THREE.CylinderGeometry(ts * (0.3 - 0.025 * i), ts * (0.34 - 0.025 * i), h * 0.22, 6, 1, true), m = _pzMesh(geo, _pzSolid(i % 2 ? _L4C.stone : _L4C.stoneDark, null, { side: THREE.DoubleSide, depthWrite: false }), F.g, 0, h * (0.11 + 0.21 * i), 0);
+            m.rotation.y = i * 0.5; m.material.depthTest = false;
+            var rim = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xc8cad0, transparent: true, opacity: 0, depthWrite: false })); m.add(rim);
+            C.push({ m: m, rim: rim });
+            (function (i) { _fxDelay(function () { if (_suppressed()) return; for (var k = 0; k < 3; k++) _pzP(F, rn(-26, 26), h * (0.1 + 0.21 * i), rn(-26, 26), { sprite: 'rock-debris', tint: _L4C.stone, ml: rn(300, 480), size0: rn(5, 9), size1: 2, vx: rn(-70, 70), vy: rn(-70, 70), vz: rn(0, 60), gravity: 420, drag: 0.8, opacity0: 1 }); }, 120 + i * 130); })(i);
+        }
+        return _sigRunOwned(F.g, 1800, function (el) {
+            var set = _pzEnv(el, 820, 880, 960, 1200);
+            for (var i = 0; i < 5; i++) {
+                var t = el - 120 - i * 130, on = _sigEaseOutBack(_sigClamp01(t / 150)), thin = _sigClamp01((el - 1150) / 550), K = C[i];
+                K.m.scale.set(Math.max(0.01, 1.5 - 0.5 * on), 1, Math.max(0.01, 1.5 - 0.5 * on)); K.m.material.opacity = t > 0 ? (0.5 + 0.25 * set) * (1 - thin) : 0; K.rim.material.opacity = t > 0 ? (0.5 + 0.5 * set) * (1 - thin) : 0;
+            }
+        });
+    });
+
+    /* THICK HIDE (juggernaut; +1 DEF) — the hide thickens: brown scutes thud on over the body in two rows, one after the
+       other all the way round, and their edges catch the light as they set */
+    _l4Wire('raceThickHide', 'aura', function (p, F, ts, h) {
+        var Sc = [], sh = new THREE.Shape(), s = ts * 0.13;
+        sh.moveTo(0, s); sh.lineTo(s * 0.9, s * 0.45); sh.lineTo(s * 0.9, -s * 0.45); sh.lineTo(0, -s); sh.lineTo(-s * 0.9, -s * 0.45); sh.lineTo(-s * 0.9, s * 0.45); sh.closePath();
+        for (var r = 0; r < 2; r++) for (var i = 0; i < 7; i++) {
+            var geo = new THREE.ShapeGeometry(sh), piv = new THREE.Group(); piv.rotation.y = (i + r * 0.5) / 7 * Math.PI * 2; piv.position.y = h * (0.42 + 0.26 * r); F.g.add(piv);
+            var m = _pzMesh(geo, _pzSolid(_L4C.hide, null, { side: THREE.DoubleSide, depthWrite: false }), piv, 0, 0, ts * 0.32);
+            var rim = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: _L4C.hideEdge, transparent: true, opacity: 0, depthWrite: false })); m.add(rim);
+            Sc.push({ m: m, rim: rim, d: (r * 7 + i) * 55 });
+        }
+        _fxDelay(function () { if (!_suppressed()) try { _shake('light'); } catch (e) {} }, 780);
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var set = _pzEnv(el, 800, 850, 930, 1200), env = 1 - _sigClamp01((el - 1250) / 450);
+            for (var i = 0; i < Sc.length; i++) {
+                var K = Sc[i], t = el - K.d, on = _sigEaseOutBack(_sigClamp01(t / 140));
+                K.m.position.z = ts * (0.6 - 0.28 * on); K.m.scale.setScalar(Math.max(0.01, on)); K.m.material.opacity = t > 0 ? 0.9 * env : 0; K.rim.material.opacity = t > 0 ? (0.45 + 0.55 * set) * env : 0;
+            }
+        });
+    });
+
     /* ═════════ END THE OWN LOOKS, L4 ═════════ */
     /* ════════════════════════════════════════════════════════════════════
        THE OWN LOOKS, L3 (2026-11-17, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells that dont have a look of
