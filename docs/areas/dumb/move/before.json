@@ -1,0 +1,942 @@
+{
+ "rooms": [
+  "site_prebuilt_dumb_base"
+ ],
+ "plots": {
+  "The Vault Gantry": {
+   "props": {
+    "keypad": 1,
+    "potted_plant": 1,
+    "security_camera": 1
+   },
+   "features": {
+    "plateau": 1,
+    "wall": 4,
+    "arch#dumb:P05-03:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Round Table": {
+   "props": {
+    "conference_table": 2,
+    "computer_chair_grey": 7,
+    "rotary_phone": 2,
+    "papers_a": 1,
+    "manila_folder": 1,
+    "nameplate": 1,
+    "world_clocks": 1,
+    "water_cooler": 1,
+    "trash_bin": 1,
+    "security_camera": 1,
+    "evac_button": 1
+   },
+   "features": {
+    "plateau": 1,
+    "wall": 2,
+    "arch#dumb:P05-02:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "general": 1,
+    "politician": 1
+   }
+  },
+  "The Big Board": {
+   "props": {
+    "dream_screen": 3,
+    "monitor_stack": 2,
+    "steel_table": 1,
+    "crt_terminal": 1,
+    "computer_chair_grey": 1,
+    "desk_lamp": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P05-01:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "men in black": 1
+   }
+  },
+  "The Projection Booth": {
+   "props": {
+    "steel_table": 1,
+    "reel_to_reel": 1,
+    "computer_chair_grey": 1,
+    "filing_cabinet": 2
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P04-01:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Comms Room": {
+   "props": {
+    "steel_table": 2,
+    "monitor_stack": 2,
+    "computer_chair_grey": 2,
+    "server_rack": 2
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P04-02:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Great Room": {
+   "props": {
+    "false_window": 3,
+    "curved_couch": 1,
+    "rug_round": 1,
+    "coffee_table": 1,
+    "tube_tv": 1,
+    "royal_throne": 1,
+    "retro_speakers": 1,
+    "retro_radio": 1,
+    "mini_fridge": 1,
+    "solo_cup": 1,
+    "potted_plant": 2,
+    "couples_bed": 1,
+    "library_shelf_full": 1,
+    "keypad": 1,
+    "security_camera": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P05-04:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "politician": 1,
+    "juggernaut": 1
+   }
+  },
+  "The Pool": {
+   "props": {
+    "pool_lounger": 2,
+    "pool_umbrella": 1,
+    "wet_floor_sign": 1,
+    "library_shelf_full": 2,
+    "round_fridge": 1,
+    "evac_button": 1
+   },
+   "features": {
+    "plateau": 1,
+    "stream": 1,
+    "wall": 3,
+    "arch#dumb:P04-04:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "catgirl": 1
+   }
+  },
+  "The Control Room": {
+   "props": {
+    "server_rack": 6,
+    "steel_table": 2,
+    "crt_terminal": 2,
+    "computer_chair_grey": 2,
+    "monitor_stack": 1,
+    "water_cooler": 1,
+    "trash_bin": 1,
+    "desk_lamp": 1,
+    "radiation_sign": 1,
+    "warning_tape": 1,
+    "traffic_barrel": 2,
+    "fire_extinguisher": 1
+   },
+   "features": {
+    "plateau": 1,
+    "wall": 3,
+    "arch#dumb:P03-00:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "ai": 1
+   }
+  },
+  "The Detector Hall": {
+   "props": {
+    "floating_orb": 1,
+    "meshy_tesla_coil": 2,
+    "steel_table": 1,
+    "crt_terminal": 1,
+    "computer_chair_grey": 1,
+    "monitor_stack": 1,
+    "radiation_sign": 1,
+    "security_camera": 1,
+    "evac_button": 1
+   },
+   "features": {
+    "plateau": 1,
+    "bridge:urban:MetalSubwayGrill1a": 1,
+    "wall": 2,
+    "ramp:steel": 1,
+    "arch#dumb:P06-03:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "mad scientist": 1
+   }
+  },
+  "The Beam Dump": {
+   "props": {
+    "radiation_sign": 2,
+    "warning_tape": 2,
+    "traffic_barrel": 2
+   },
+   "features": {
+    "plateau": 2,
+    "arch#dumb:P00-03:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Booth": {
+   "props": {
+    "steel_table": 1,
+    "crt_terminal": 1,
+    "computer_chair_grey": 1,
+    "security_camera": 1,
+    "traffic_cone": 1
+   },
+   "features": {
+    "plateau": 1,
+    "wall": 5,
+    "arch#dumb:P04-05:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "men in black": 1
+   }
+  },
+  "The White Rooms, West": {
+   "props": {
+    "molded_chair": 9,
+    "clipboard_flat": 2,
+    "security_camera": 2,
+    "wall_padding": 26,
+    "cot": 8,
+    "floor_drain": 1,
+    "wet_floor_sign": 1,
+    "wheelchair": 1,
+    "egg_chair": 1,
+    "rug_round": 1,
+    "potted_plant": 2,
+    "lava_lamp_floor": 1,
+    "tanker_desk": 1,
+    "computer_chair_grey": 1,
+    "platform_scale": 1,
+    "office_locker": 2,
+    "clipboard": 1,
+    "now_serving_sign": 1,
+    "round_desk": 1,
+    "computer_chair_blue": 1,
+    "monitor_stack": 1,
+    "wall_clock": 3,
+    "crt_terminal": 1,
+    "curved_couch": 1,
+    "tulip_table": 2,
+    "air_hockey_table": 1,
+    "bare_bulb": 2,
+    "exit_sign": 1,
+    "fire_extinguisher": 1,
+    "keypad": 1,
+    "notice_board": 2,
+    "picture_round_b": 1,
+    "picture_round_c": 1,
+    "office_plant": 1,
+    "trash_bin": 1,
+    "steel_toilet": 8,
+    "number_dispenser": 1,
+    "psx_pills_bottle_2": 1,
+    "psx_pills_packet_1": 1,
+    "iv_stand": 1,
+    "psx_old_mattress_mp_1": 1
+   },
+   "features": {
+    "plateau": 1,
+    "wall": 37,
+    "bridge:urban:TileGeneric1a": 2,
+    "arch#dumb:P01-01:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "grey": 2,
+    "telepath": 1,
+    "men in black": 1
+   }
+  },
+  "The White Rooms, East": {
+   "props": {
+    "metro_bench": 1,
+    "trash_bin": 1,
+    "meshy_filing_cabinet": 2,
+    "filing_cabinet": 8,
+    "library_shelf_full": 2,
+    "paper_shredder": 1,
+    "newspaper_bundles": 1,
+    "papers_b": 1,
+    "barber_chair": 1,
+    "eeg_rack": 1,
+    "dream_screen": 1,
+    "privacy_screen": 1,
+    "steel_table": 1,
+    "item_potion_flask": 1,
+    "shower_stall": 2,
+    "floor_drain": 1,
+    "sink_row": 1,
+    "ind_vent": 1,
+    "drain_grate": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "pallet_jack": 1,
+    "exec_desk": 1,
+    "exec_chair": 1,
+    "therapy_chaise": 1,
+    "psx_tv_table_1": 1,
+    "tube_tv": 1,
+    "rug_round": 1,
+    "fire_extinguisher": 1,
+    "wall_shelf": 1,
+    "breaker_panel": 1,
+    "wall_plaques": 1,
+    "picture_round_a": 1,
+    "hand_dryer": 1,
+    "hook_rail": 1,
+    "water_cooler": 1,
+    "card_catalogue": 1,
+    "cardboard_boxes": 1,
+    "metal_detector": 1,
+    "iv_stand": 1,
+    "anatomy_skeleton": 1,
+    "meshy_syringe": 1,
+    "psx_pills_bottle_1": 1,
+    "reel_to_reel": 1,
+    "photocopier": 1,
+    "microfiche_reader": 1,
+    "laundry_cart": 1,
+    "hospital_bed": 1
+   },
+   "features": {
+    "plateau": 1,
+    "wall": 21,
+    "ramp:precast": 1,
+    "arch#dumb:P02-01:in": 1
+   },
+   "doors": {
+    "hangar": 1,
+    "yard": 1,
+    "stormdrain": 1,
+    "vent": 1
+   },
+   "natives": {}
+  },
+  "The Ward": {
+   "props": {
+    "cot": 4,
+    "eeg_rack": 4,
+    "iso_tank": 2,
+    "dream_screen": 1,
+    "security_camera": 1,
+    "wall_clock": 1,
+    "trash_bin": 1
+   },
+   "features": {
+    "plateau": 1,
+    "wall": 2,
+    "arch#dumb:P01-02:in": 1
+   },
+   "doors": {
+    "link_dumb_astral": 1
+   },
+   "natives": {
+    "telepath": 1,
+    "dreameater": 1
+   }
+  },
+  "The Range": {
+   "props": {
+    "steel_table": 3,
+    "floating_orb": 1,
+    "chalkboard": 1,
+    "coffee_mug": 1,
+    "stapler": 1,
+    "crt_terminal": 1,
+    "computer_chair_grey": 2,
+    "desk_lamp": 1
+   },
+   "features": {
+    "plateau": 1,
+    "wall": 3,
+    "arch#dumb:P02-02:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "telepath": 1
+   }
+  },
+  "The Service Corridor": {
+   "props": {
+    "wheelchair": 1,
+    "cardboard_boxes": 1,
+    "office_locker": 2,
+    "laundry_cart": 1,
+    "wet_floor_sign": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P01-03:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Vat Hall": {
+   "props": {
+    "iso_tank": 6,
+    "door_xray": 1,
+    "steel_table": 1,
+    "clipboard_flat": 1,
+    "manila_folders": 1,
+    "security_camera": 1
+   },
+   "features": {
+    "plateau": 1,
+    "bridge:urban:MetalSubwayGrill1a": 1,
+    "wall": 3,
+    "ramp:steel": 1,
+    "arch#dumb:P01-04:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "mad scientist": 1
+   }
+  },
+  "Disposal": {
+   "props": {
+    "door_furnace": 1,
+    "garbage_chute": 1,
+    "radiation_sign": 1,
+    "warning_tape": 1,
+    "evac_button": 1,
+    "cardboard_boxes": 1,
+    "floor_stain": 1,
+    "cot": 4
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P02-04:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "android": 1,
+    "?": 1
+   }
+  },
+  "The Hub": {
+   "props": {
+    "concrete_pillar": 4,
+    "office_locker": 3,
+    "riot_gear_rack": 1,
+    "scba_rack": 1,
+    "wrapped_pallet": 1,
+    "gas_cylinder_rack": 1,
+    "cable_drum": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "pallet_jack": 1,
+    "psx_supply_crate_1": 2,
+    "tanker_desk": 1,
+    "computer_chair_grey": 2,
+    "psx_pc_monitor_mp_1": 1,
+    "psx_pc_keyboard_mp_1": 1,
+    "clipboard_flat": 2,
+    "key_rack": 1,
+    "punch_clock": 1,
+    "wall_clock": 1,
+    "vending_machine": 1,
+    "metro_bin": 1,
+    "molded_chair": 5,
+    "notice_board": 1,
+    "meshy_water_cooler": 1,
+    "retro_control_panel": 1,
+    "monitor_stack": 1,
+    "gauge_board": 1,
+    "item_police_barricade": 1,
+    "traffic_barrel": 1,
+    "traffic_cone": 1,
+    "film_camera": 1,
+    "studio_camera": 1,
+    "evac_button": 2,
+    "fire_extinguisher": 1,
+    "exit_sign": 1,
+    "floor_stain": 2,
+    "bare_bulb": 2
+   },
+   "features": {
+    "plateau": 1,
+    "bridge:urban:MetalSubwayGrill1a": 2,
+    "wall": 4,
+    "ramp:steel": 2,
+    "arch#dumb:P03-03:in": 1,
+    "texbuilding#dumb:doors": 1
+   },
+   "doors": {},
+   "natives": {
+    "men in black": 1,
+    "professor": 1
+   }
+  },
+  "Chambers 02 + 04": {
+   "props": {
+    "observation_window": 3,
+    "psx_old_mattress_mp_1": 3,
+    "robot_arm": 1,
+    "maintenance_stairs": 1,
+    "tool_chest": 1,
+    "gauge_board": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "punching_bag": 1,
+    "floor_stain": 1,
+    "molded_chair": 4,
+    "studio_light": 1,
+    "reel_to_reel": 1,
+    "clipboard_flat": 1,
+    "psx_handheld_tablet_1": 1,
+    "exit_sign": 1
+   },
+   "features": {
+    "ramp:precast": 1,
+    "wall": 8,
+    "plateau": 2,
+    "bridge:urban:MetalCorrugatedPainted3a": 1,
+    "ramp:steel": 2,
+    "climb": 1,
+    "bridge:urban:MetalSubwayGrill1a": 1,
+    "arch#dumb:P04-03:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "android": 1,
+    "grey": 1,
+    "professor": 1
+   }
+  },
+  "The Blast Door": {
+   "props": {
+    "radiation_sign": 1,
+    "evac_button": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P03-06:in": 1
+   },
+   "doors": {
+    "bay_cern": 1
+   },
+   "natives": {}
+  },
+  "Service Room 1": {
+   "props": {
+    "traffic_barrel": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P00-00:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Service Room 2": {
+   "props": {
+    "cardboard_boxes": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P06-00:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Service Room 3": {
+   "props": {
+    "traffic_barrel": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P00-06:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "Service Room 4": {
+   "props": {
+    "cardboard_boxes": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P06-06:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Platform": {
+   "props": {
+    "subway_cart": 1,
+    "evac_button": 1,
+    "fire_extinguisher": 1,
+    "security_camera": 1
+   },
+   "features": {
+    "plateau": 1,
+    "wall:metal": 2,
+    "wall": 2,
+    "arch#dumb:P03-05:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Bays": {
+   "props": {
+    "car_suv": 2,
+    "car_cop": 1,
+    "traffic_cone": 2,
+    "traffic_barrel": 1,
+    "cardboard_boxes": 1,
+    "floor_stain": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P02-05:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "mad scientist": 1
+   }
+  },
+  "The Ramp": {
+   "props": {
+    "quarter_pipe": 1,
+    "traffic_barrel": 1,
+    "paper_sheet": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P01-05:in": 1
+   },
+   "doors": {
+    "link_garage_motorpool": 1
+   },
+   "natives": {}
+  },
+  "The West Gantry": {
+   "props": {
+    "radiation_sign": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P00-05:in": 1
+   },
+   "doors": {
+    "link_area51_dumb": 1
+   },
+   "natives": {
+    "cowboy": 1
+   }
+  },
+  "The Freight Lift": {
+   "props": {
+    "cardboard_boxes": 1,
+    "traffic_barrel": 1
+   },
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P05-05:in": 1
+   },
+   "doors": {
+    "bay": 1
+   },
+   "natives": {}
+  },
+  "Chambers 01 + 03": {
+   "props": {
+    "psx_old_mattress_mp_1": 3,
+    "wing_chun_dummy": 1,
+    "film_camera": 1,
+    "studio_light": 2,
+    "platform_scale": 1,
+    "tanker_desk": 1,
+    "computer_chair_grey": 1,
+    "clipboard_flat": 1,
+    "psx_dosimeter_1": 1,
+    "notice_board": 1,
+    "wall_clock": 1,
+    "hw_body": 1,
+    "floor_stain": 1,
+    "scba_rack": 1,
+    "hose_rack": 1,
+    "warning_tape": 1,
+    "psx_flashlight_1": 1,
+    "radiation_sign": 1,
+    "exit_sign": 1,
+    "bare_bulb": 1
+   },
+   "features": {
+    "ramp:precast": 1,
+    "wall": 12,
+    "plateau": 2,
+    "ramp:concrete": 2,
+    "wall:metal": 2,
+    "arch#dumb:P02-03:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "mad scientist": 1,
+    "telepath": 1,
+    "flesheater": 1
+   }
+  },
+  "Corridor Five": {
+   "props": {
+    "shower_stall": 2,
+    "scba_rack": 1,
+    "turnout_gear_rack": 1,
+    "mop_bucket": 2,
+    "floor_drain": 1,
+    "hose_rack": 1,
+    "rifle_rack": 1,
+    "riot_gear_rack": 1,
+    "footlocker": 1,
+    "psx_supply_crate_1": 2,
+    "psx_ammo_box_1": 2,
+    "psx_police_baton_mp_1": 1,
+    "metal_shelving": 1,
+    "breaker_panel": 1,
+    "utility_box": 1,
+    "locker": 2,
+    "trash_bin": 1,
+    "wet_floor_sign": 1,
+    "fire_extinguisher": 1,
+    "exit_sign": 1,
+    "notice_board": 1
+   },
+   "features": {
+    "ramp:precast": 2,
+    "wall": 16,
+    "arch#dumb:P03-02:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "android": 1,
+    "mad scientist": 1
+   }
+  },
+  "Level −6": {
+   "props": {
+    "meshy_sandbags": 2,
+    "item_police_barricade": 1,
+    "footlocker": 1,
+    "field_radio": 1,
+    "psx_walkie_talkie_1": 1,
+    "psx_metal_barrel_mp_1": 1,
+    "psx_metal_barrel_mp_2": 1,
+    "cable_drum": 1,
+    "gas_cylinder_rack": 1,
+    "cinder_block": 3,
+    "security_camera": 1,
+    "radiation_sign": 1,
+    "psx_flashlight_1": 1,
+    "floor_stain": 1,
+    "bare_bulb": 1,
+    "chimney_smoke": 2
+   },
+   "features": {
+    "climb": 1,
+    "arch#dumb:P03-01:in": 1
+   },
+   "doors": {
+    "link_cave_dumb": 1
+   },
+   "natives": {
+    "men in black": 1
+   }
+  },
+  "The Stair": {
+   "props": {
+    "tanker_desk": 1,
+    "computer_chair_grey": 1,
+    "psx_pc_monitor_mp_1": 1,
+    "key_rack": 1,
+    "office_locker": 2,
+    "punch_clock": 1,
+    "wrapped_pallet": 1,
+    "metal_shelving": 1,
+    "hand_truck": 1,
+    "psx_supply_crate_1": 2,
+    "exit_sign": 1,
+    "item_police_barricade": 2,
+    "traffic_barrel": 2,
+    "bare_bulb": 1
+   },
+   "features": {
+    "ramp:concrete": 1,
+    "wall": 4,
+    "arch#dumb:P03-04:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "android": 1
+   }
+  },
+  "The Ring 1": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P01-00:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 2": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P02-00:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 3": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P04-00:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 4": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P05-00:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 5": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P00-01:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 6": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P06-01:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 7": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P00-02:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 8": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P06-02:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 9": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P00-04:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 10": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P06-04:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The East Gantry": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P06-05:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 11": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P01-06:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 12": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P02-06:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 13": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P04-06:in": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ring 14": {
+   "props": {},
+   "features": {
+    "plateau": 1,
+    "arch#dumb:P05-06:in": 1
+   },
+   "doors": {},
+   "natives": {
+    "glitch": 1
+   }
+  }
+ },
+ "lines": 33,
+ "totals": {
+  "props": 503,
+  "features": 259,
+  "doors": 10,
+  "natives": 34,
+  "lines": 33,
+  "plots": 49
+ }
+}
