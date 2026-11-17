@@ -268,7 +268,9 @@ const STAND = [
       bay: { plot: 'P05-05', k: 5 },
       list: v13('R').concat(R8_HERE.map(q => ({ wx: q[0], wy: q[1], name: q[2], district: 'R', level: 1 }))),
       parti: 'A working ranch in the corn, nine plots and the Ranch Road\'s field at its north-east corner: the gate on the lake side, the yard between the barn and the farmhouse, the paddock, the windmill, the pastures and the cow field at the south end.',
-      seams: [ { plot: 'P03-05', side: 'N', id: 'ow_h_m11_18', room: R_LAKE, spawn: true, open: 6, label: 'THE LAKE', sub: 'THE RANCH GATE · THE SOUTH SHORE', desc: 'The track runs down to water.' } ] },
+      seams: [ { plot: 'P03-05', side: 'N', id: 'ow_h_m11_18', room: R_LAKE, spawn: true, open: 6, label: 'THE LAKE', sub: 'THE RANCH GATE · THE SOUTH SHORE', desc: 'The track runs down to water.' },
+          /* ONE WORLD PHASE 4.2 (2026-11-17, the south routes thread): the Ranch Road (route R8, `node bake-route.js R8`) leaves by the Windmill's east side */
+          { plot: 'P04-03', side: 'E', id: 'ow_v_m9_20', room: 'site_ow_r8', open: 11, label: 'THE RANCH ROAD', sub: 'THE ROAD EAST · CATTLE COUNTRY', desc: 'A dirt road runs off east between the fences, towards the desert.' } ] },
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 180, E: 270, S: 0, W: 90 };   // a free door on that side of a plot: the way its opening faces, INTO the plot (ow-move.js)
 const ROOMS_OUT = [], STRAYS = [], PLACES = {};
