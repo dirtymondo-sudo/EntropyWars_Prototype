@@ -19,6 +19,7 @@ const P = (x, y) => plot['P0' + x + '-0' + y];
 const at = (id, lx, ly) => [plot[id].x * N + lx, plot[id].y * N + ly];           // a plot-local square → the room's square
 const open = (cx, cy) => cx >= 0 && cy >= 0 && cx < W && cy < W && cell[cy][cx] !== 't';
 const features = [], props = [], doors = [], npc = [], count = {};
+let CELL0 = null; const LEGS = {}, HUBS = {};   // THE ONE WORLD MOVE (at the end of this file): the squares before the paths, each plot's legs and hub
 
 /* ── THE TRAILS AND THE PATHS (2026-11-15, mondo: "make dirt trails like the main roads and smaller dirt paths be like alleyways from disaster city"):
    the plan drew every path two squares wide. They are laid again here from the plan's own joins: a MAIN trail (the trunk from the Stair to each
@@ -38,16 +39,18 @@ const features = [], props = [], doors = [], npc = [], count = {};
       info[p.id] = { at, hub: [Math.max(2, Math.min(N - 3, hub[0])), Math.max(2, Math.min(N - 3, hub[1]))] }; });
   /* 2. the old paths go back to forest (a bridge square back to water) */
   for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) { if (cell[cy][cx] === 'p') cell[cy][cx] = 't'; else if (cell[cy][cx] === 'b') cell[cy][cx] = 'w'; }
+  CELL0 = cell.map(r => r.slice());   // THE ONE WORLD MOVE reads the squares as they stood before any path was laid
   /* 3. laid again: hub -> border, a dog-leg, `wd` squares wide (1 = [0], 3 = [-1, 0, 1]) */
   const lay = (cx, cy) => { if (cx < 0 || cy < 0 || cx >= W || cy >= W) return; const ch = cell[cy][cx]; if (ch === 't') cell[cy][cx] = 'p'; else if (ch === 'w') cell[cy][cx] = 'b'; };
-  const run = (x0, y0, x1, y1, wd) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)), off = wd === 3 ? [-1, 0, 1] : [0];
-      for (let i = 0; i <= n; i++) { const x = n ? Math.round(x0 + (x1 - x0) * i / n) : x0, y = n ? Math.round(y0 + (y1 - y0) * i / n) : y0; off.forEach(a => off.forEach(b => lay(x + a, y + b))); } };
+  const run = (x0, y0, x1, y1, wd, cover) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)), off = wd === 3 ? [-1, 0, 1] : [0];
+      for (let i = 0; i <= n; i++) { const x = n ? Math.round(x0 + (x1 - x0) * i / n) : x0, y = n ? Math.round(y0 + (y1 - y0) * i / n) : y0; off.forEach(a => off.forEach(b => { lay(x + a, y + b); if (cover) cover.push([x + a, y + b]); })); } };
   let nMain = 0, nSide = 0;
   PLAN.plots.forEach(p => { const I = info[p.id], x0 = p.x * N, y0 = p.y * N, hx = x0 + I.hub[0], hy = y0 + I.hub[1];
       Object.keys(I.at).forEach(sd => { const q = P(p.x + SIDE[sd][0], p.y + SIDE[sd][1]); if (!q) return; const main = isMain(p.id, q.id), wd = main ? 3 : 1;
           let k = I.at[sd] + (main ? 0 : 0); k = Math.max(main ? 1 : 0, Math.min(N - (main ? 2 : 1), k));
           const tx = sd === 'W' ? x0 : sd === 'E' ? x0 + N - 1 : x0 + k, ty = sd === 'N' ? y0 : sd === 'S' ? y0 + N - 1 : y0 + k;
-          if (sd === 'N' || sd === 'S') { run(hx, hy, tx, hy, wd); run(tx, hy, tx, ty, wd); } else { run(hx, hy, hx, ty, wd); run(hx, ty, tx, ty, wd); }
+          const cover = []; (LEGS[p.id] || (LEGS[p.id] = {}))[sd] = { k, wd, cover };   // THE ONE WORLD MOVE: which squares each leg ran over
+          if (sd === 'N' || sd === 'S') { run(hx, hy, tx, hy, wd, cover); run(tx, hy, tx, ty, wd, cover); } else { run(hx, hy, hx, ty, wd, cover); run(hx, ty, tx, ty, wd, cover); }
           if (main) nMain++; else nSide++; }); });
   /* 4. no clearing left cut off: any open pocket the new paths miss gets its own one-square path to the nearest path square */
   const walk = ch => ch !== 't'; let tied = 0;
@@ -58,7 +61,7 @@ const features = [], props = [], doors = [], npc = [], count = {};
       if (!lost) break;
       let best = null, bd = 1e9; q.forEach(c => { if (cell[c[1]][c[0]] === 'w') return; const dd = Math.abs(c[0] - lost[0]) + Math.abs(c[1] - lost[1]); if (dd < bd) { bd = dd; best = c; } });
       run(lost[0], lost[1], best[0], lost[1], 1); run(best[0], lost[1], best[0], best[1], 1); tied++; }
-  count.mainLegs = nMain; count.sideLegs = nSide; count.tiedPockets = tied; }
+  count.mainLegs = nMain; count.sideLegs = nSide; count.tiedPockets = tied; Object.keys(info).forEach(id => { HUBS[id] = info[id].hub; }); }
 /* a seeded roll (the room is the same every bake) */
 let seed = 36; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
 
@@ -257,7 +260,7 @@ stage('dress');
       if (!deep || rnd() > wd[2]) continue; const mountain = p.level >= 6;
       const tx = r2(gc(cx) + (rnd() - 0.5) * 1.4), tz = r2(gc(cy) + (rnd() - 0.5) * 1.4), th = r2((mountain ? 7 : wd[1]) * (0.8 + rnd() * 0.4));
       let still = true; for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) if (cell[cy + dy][cx + dx] !== 't') still = false;   // THE CUT: the square (or one beside it) was opened since
-      if (still) features.push({ k: 'tree', x: tx, z: tz, kind: full(mountain ? 'pine' : wd[0]), h: th, r: 0.7 }); else SOW_SHIFT++;   /* a tree left out counts as a row for the seeds (THE SEEDS HOLD) */ if (still) count.bigTrees = (count.bigTrees || 0) + 1; } }
+      if (still) features.push({ k: 'tree', x: tx, z: tz, kind: full(mountain ? 'pine' : wd[0]), h: th, r: 0.7, mass: 1 }); else SOW_SHIFT++;   /* `mass` = the forest's own tree (THE ONE WORLD MOVE takes it out where a path is laid over it; the writer strips the mark) */   /* a tree left out counts as a row for the seeds (THE SEEDS HOLD) */ if (still) count.bigTrees = (count.bigTrees || 0) + 1; } }
 /* BARE GROUND (2026-11-16, mondo: "take the plants off of the concrete"): a district file's `bare: [x0, z0, x1, z1]` (metres) is ground no scatter piece lands on
    (a scatter row's `off` box; one box in the room today: Dead Man's Cave's concrete apron) */
 const BARE = ORDER.map(id => DISTRICTS[id].bare).filter(Boolean)[0], offB = BARE ? { off: BARE } : {};
@@ -303,57 +306,215 @@ npc.forEach(n => { if (RACES.indexOf(n.race) < 0) throw new Error('not a unit: '
   if (process.env.WOODS_DUMP) console.log(cell.map((r, cy) => r.map((ch, cx) => open(cx, cy) && !seen[cy * W + cx] ? '!' : ch === 't' ? ' ' : ch).join('')).join('\n')); }
 count.props = props.length; count.features = features.length; count.doors = doors.length; count.natives = npc.length;
 
-/* ── the room ── */
+
+/* ══ THE ONE WORLD MOVE (2026-11-17, mondo's approved map v13; docs/plans/one-world/BUILD_PLAN.md phase 2, the test slice) ══════════════════════
+   Everything above builds the Woods in THE HOME FRAME, the 6 x 6 room the four district files were written for. Nothing above changed.
+   Here the result is stood where the One World map puts it (docs/plans/one-world/plots.json; the mover = ow-move.js):
+     THE CLEARING (district C)      -> its own room at world plots -17..-13 x 0..4, a cross: the Stair north, the Fence Line south
+     DEAD MAN'S CAVE (district M)   -> its own room at -12..-6 x 0..2: the dry creek, west to east, to the Storm Drain
+     THE REDWOOD TRAIL + THE RITUAL GROUND (T, G) stay as they stood (one room, 6 x 3 plots) until the Woods' own thread moves them
+   A plot keeps its name, its squares and every piece on it; its id is its place in its new room's grid. What is laid again is the tool's
+   own: the legs between plots (a leg to a side with nobody past it goes back to forest; a side with a new neighbour gets a leg from the
+   plot's hub), the levels, the open ground, the paint, the room-wide scatter, the doors on the seams. Rules: docs/notes/areas-complexes.md
+   "ONE WORLD, HOW A ZONE MOVES" + "ONE WORLD, THE TEST SLICE". ── */
+const PJ = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plots.json'), 'utf8'));
+const MOVER = require('./ow-move.js')({ cols: G, rows: G, cell, fill: 't', plots: PLAN.plots, features, props, npc, doors });
+const v13 = letter => { const d = PJ.districts.find(q => q.today && q.today.room === 'site_prebuilt_fairy_forest_plots' && q.today.districts.indexOf(letter) >= 0); if (!d) throw new Error('plots.json has no Woods district ' + letter);
+    return d.plots.map(q => { const p = plot[q.was]; if (!p || p.name !== q.n || p.district !== letter) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
+const R_CLEAR = 'site_prebuilt_fairy_forest_ow_clearing', R_CREEK = 'site_prebuilt_fairy_forest_ow_creek', R_REST = 'site_prebuilt_fairy_forest_plots', R_CORN = 'site_prebuilt_skinwalker_ow_corn';
+/* the seams: '<home plot id>:<side>' -> the room past that side. `at` = the door's id over there (the seam's own id when left out);
+   `k` = the square of the plot's side the path crosses on (left out: where the plot is open already, else its middle) */
+const STAND = [
+    { id: R_CLEAR, part: 'ow_clearing', label: 'THE CLEARING', sub: 'THE WOODS · 9 PLOTS', letters: ['C'], list: v13('C'), world: true, spawn: 'P02-04',
+      parti: 'The crossroads of the Woods, nine plots in a cross: the Stair at the north end, the trail west to Camelot, the dry creek east, the fence line and the corn south.',
+      seams: {
+          'P02-05:E': { room: R_CREEK, k: 8, label: 'DEAD MAN\u2019S CAVE', sub: 'THE DRY CREEK · EAST', desc: 'The trail drops towards a creek bed with no water in it.' },
+          'P01-05:S': { room: R_CORN, label: 'THE ESTATE · THE CORN FIELDS', sub: 'THE FENCE LINE · THE GATE', desc: 'A fence, and a gate in it. The corn starts on the other side.', takes: 'estate' },
+          /* not moved yet: the Redwood Trail and the Ritual Ground. Their trails leave the Clearing where the map's wild links L1 and L2 will (the links' own plots are the Woods thread's) */
+          'P00-03:N': { room: R_REST, at: 'ow_h_m16_1', label: 'THE REDWOOD TRAIL', sub: 'THE TRAIL NORTH · UP UNDER THE OLD TREES', desc: 'The trail climbs north under trees too big to be this close to a road.' },
+          'P00-04:S': { room: R_REST, at: 'ow_h_m17_2', label: 'THE RITUAL GROUND', sub: 'THE TRAIL SOUTH-WEST · THE FIRE', desc: 'A narrow path, walked often and by many feet, all going the same way.' },
+      },
+      /* the trail to Camelot comes in on Deep woods, west, from the north (the map's wild link L4); it stood on the Trail West's west side, which has a plot past it now */
+      ends: { woods_camelot: { plot: 'P00-04', side: 'N' } } },
+    { id: R_CREEK, part: 'ow_creek', label: 'DEAD MAN\u2019S CAVE', sub: 'THE WOODS · THE DRY CREEK · 9 PLOTS', letters: ['M'], list: v13('M'), world: true, spawn: 'P03-03', face: 90,
+      parti: 'A dry creek bed walked west to east, nine plots: the culvert, the rocks, the hollow, the gully and its yard, then the cut between two rock walls to the sewer mouth and the storm drain.',
+      seams: { 'P03-03:W': { room: R_CLEAR, label: 'THE CLEARING', sub: 'THE TRAIL WEST · THE CROSSROADS', desc: 'The trail climbs out of the creek bed towards lighter trees.' } },
+      /* the Gully's cabin stands on the bed's line, so the walk passes north of it and comes onto the Sewer Mouth's north rim; the Sewer Mouth's way south starts on its south rim */
+      cross: { 'P03-05|P05-04': [3, 4, 5], 'P05-04|P05-03': [3, 4, 5] }, from: { 'P05-04:S': [3, 8] } },   // (the way on to the Storm Drain passes north of the sewer mouth's head, off the cut)
+    { id: R_REST, part: 'plots', label: 'THE WOODS', sub: 'THE REDWOOD TRAIL · THE RITUAL GROUND · 18 PLOTS', letters: ['T', 'G'], list: PLAN.plots.filter(p => p.district === 'T' || p.district === 'G').map(p => ({ id: p.id, wx: p.x, wy: p.y })), world: false, spawn: 'P02-02', home: true,
+      parti: 'Two districts of nine plots, every plot a twelve by twelve board: clearings joined by dirt paths through forest you cannot enter, climbing from the creek to the snow.',
+      seams: {
+          'P02-02:S': { room: R_CLEAR, id: 'ow_h_m16_1', label: 'THE CLEARING', sub: 'THE TRAIL SOUTH · DOWN TO THE CROSSROADS', desc: 'The trail drops south out of the old trees.' },
+          'P03-02:S': { room: R_CLEAR, id: 'ow_h_m17_2', label: 'THE CLEARING', sub: 'THE PATH SOUTH · AWAY FROM THE FIRE', desc: 'A narrow path out between the trees, away from the fire.' },
+      } },
+];
+const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, OPP = { N: 'S', S: 'N', W: 'E', E: 'W' }, FACE = { N: 0, E: 90, S: 180, W: 270 };
+const strip = f => { if (f.mass == null && f.wide == null) return f; const o = Object.assign({}, f); delete o.mass; delete o.wide; return o; };
+const ROOMS_OUT = [], LINKS_OUT = {}, STRAYS = [];
+STAND.forEach(S => {
+    const R = MOVER.room(S.list), Wn = R.W, Dn = R.D, c2 = R.cell;
+    R.strays.forEach(t => STRAYS.push(S.label + ': ' + t));
+    const inR = (x, y) => x >= 0 && y >= 0 && x < Wn && y < Dn, openR = (x, y) => inR(x, y) && c2[y][x] !== 't';
+    const sqOf = (x, z) => [Math.floor((x + R.HX) / C + 1e-9), Math.floor((z + R.HZ) / C + 1e-9)];
+    const stood = new Set(); R.props.forEach(p => { const q = sqOf(p.x, p.z); stood.add(q.join(':'));
+        /* a piece that stands in the trees beside a path (a lamp post, a gate post) holds the path squares round it open */
+        if (inR(q[0], q[1]) && c2[q[1]][q[0]] === 't') for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) stood.add((q[0] + dx) + ':' + (q[1] + dy)); }); R.features.forEach(f => { if (f.x != null && f.k !== 'tree' && f.k !== 'scatter' && f.k !== 'dip') stood.add(sqOf(f.x, f.z).join(':')); });
+    const lay = (x, y) => { if (!inR(x, y) || !R.plotOfSq(x, y)) return; if (c2[y][x] === 't') c2[y][x] = 'p'; else if (c2[y][x] === 'w') c2[y][x] = 'b'; };
+    const run = (x0, y0, x1, y1, wd) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)), off = wd === 3 ? [-1, 0, 1] : [0];
+        for (let i = 0; i <= n; i++) { const x = n ? Math.round(x0 + (x1 - x0) * i / n) : x0, y = n ? Math.round(y0 + (y1 - y0) * i / n) : y0; off.forEach(a => off.forEach(b => lay(x + a, y + b))); } };
+    const border = (e, sd, k) => sd === 'N' ? [e.col * N + k, e.row * N] : sd === 'S' ? [e.col * N + k, e.row * N + N - 1] : sd === 'W' ? [e.col * N, e.row * N + k] : [e.col * N + N - 1, e.row * N + k];
+    const openK = (e, sd) => { const o = []; for (let k = 0; k < N; k++) { const q = border(e, sd, k); if (openR(q[0], q[1])) o.push(k); } return o; };
+    const nbr = (e, sd) => R.at[(e.col + SIDE4[sd][0]) + ',' + (e.row + SIDE4[sd][1])] || null;
+    const seamOf = (e, sd) => (S.seams || {})[e.id + ':' + sd] || null;
+    const endOn = (e, sd) => Object.keys(S.ends || {}).some(id => S.ends[id].plot === e.id && S.ends[id].side === sd);
+    const doorOn = (e, sd) => R.doors.some(d => d.plot === e && d.side === sd.toLowerCase());
+    let reverted = 0, kept = 0, laid = 0;
+    /* 1. a leg to a side with nobody past it now goes back to forest (a square a piece stands on stays open) */
+    R.order.forEach(e => { const L = LEGS[e.id] || {}, keep = new Set(), h = e.home, m = q => [q[0] - h.x * N + e.col * N, q[1] - h.y * N + e.row * N];
+        const mineSq = q => q[0] >= h.x * N && q[0] < (h.x + 1) * N && q[1] >= h.y * N && q[1] < (h.y + 1) * N;
+        Object.keys(L).forEach(sd => { if (nbr(e, sd) || seamOf(e, sd) || endOn(e, sd) || doorOn(e, sd)) L[sd].cover.forEach(q => keep.add(q[0] + ':' + q[1])); });
+        Object.keys(L).forEach(sd => { if (nbr(e, sd) || seamOf(e, sd) || endOn(e, sd) || doorOn(e, sd)) return;
+            L[sd].cover.forEach(q => { if (!mineSq(q) || keep.has(q[0] + ':' + q[1])) return; const [x, y] = m(q), was = CELL0[q[1]][q[0]];
+                if (stood.has(x + ':' + y)) { kept++; return; }
+                if (was === 't' && c2[y][x] === 'p') { c2[y][x] = 't'; reverted++; } else if (was === 'w' && c2[y][x] === 'b') { c2[y][x] = 'w'; reverted++; } }); }); });
+    /* 2. a new leg: from the plot's hub (or the square the spec names) to square k of a side, three squares wide, the home's own dog-leg */
+    const leg = (e, sd, k) => { const hub = (S.from || {})[e.id + ':' + sd] || HUBS[e.id], hx = e.col * N + hub[0], hy = e.row * N + hub[1]; k = Math.max(1, Math.min(N - 2, k)); const [tx, ty] = border(e, sd, k);
+        if (sd === 'N' || sd === 'S') { run(hx, hy, tx, hy, 3); run(tx, hy, tx, ty, 3); } else { run(hx, hy, hx, ty, 3); run(hx, ty, tx, ty, 3); } laid++; };
+    const mid = a => a[Math.floor((a.length - 1) / 2)];
+    /* 3. two plots that touch now: one crossing. Where either is open on that side already, the other opens on the same squares */
+    if (!S.home) R.order.forEach(A => ['E', 'S'].forEach(sd => { const B = nbr(A, sd); if (!B) return; const o = OPP[sd];   // (plots that did not move keep every joint as it is)
+        const fixed = (S.cross || {})[A.id + '|' + B.id] || (S.cross || {})[B.id + '|' + A.id], oa = openK(A, sd), ob = openK(B, o);
+        let rows = fixed || [...new Set(oa.concat(ob))].sort((a, b) => a - b); if (!rows.length) rows = [5, 6, 7];
+        if (!fixed && oa.length && ob.length) { const lo = rows[0], hi = rows[rows.length - 1]; rows = []; for (let k = lo; k <= hi; k++) rows.push(k); }   // two openings: joined along the line
+        rows.forEach(k => { lay(...border(A, sd, k)); lay(...border(B, o, k)); });
+        /* a moved district is a path: every joint between its plots is the main trail, three squares wide (the plots that did not move keep their legs as they are) */
+        leg(A, sd, mid(rows)); leg(B, o, mid(rows)); }));
+    /* 4. the seams and the link ends that moved: a leg to the side unless the plot is open there already; the door stands on the crossing's middle */
+    const crossing = (e, sd, k) => { let o = openK(e, sd); if (k != null || !o.length) { leg(e, sd, k != null ? k : 6); o = openK(e, sd); if (k != null) o = o.filter(q => Math.abs(q - k) <= 1); }
+        /* the widest run of open squares; the door on its middle */
+        let best = [o[0], o[0]], a = o[0]; for (let i = 1; i <= o.length; i++) { if (i === o.length || o[i] !== o[i - 1] + 1) { if (o[i - 1] - a > best[1] - best[0]) best = [a, o[i - 1]]; a = o[i]; } }
+        const along = (best[0] + best[1] + 1) / 2, ns = sd === 'N' || sd === 'S', onWall = (sd === 'N' && e.row === 0) || (sd === 'S' && e.row === R.rows - 1) || (sd === 'W' && e.col === 0) || (sd === 'E' && e.col === R.cols - 1);
+        const q = border(e, sd, Math.floor(along - 0.01)), d = { wall: onWall ? sd.toLowerCase() : 'free' };
+        if (onWall) { if (ns) d.x = R.gx(e.col * N + along); else d.z = R.gz(e.row * N + along); }
+        else { d.x = ns ? R.gx(e.col * N + along) : R.gcx(q[0]); d.z = ns ? R.gcz(q[1]) : R.gz(e.row * N + along); d.face = FACE[sd]; }
+        return d; };
+    const doorsOut = R.doors.filter(d => !Object.keys(S.seams || {}).some(k => S.seams[k].takes === d.id)).map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; return o; });
+    const ways = [];
+    Object.keys(S.seams || {}).forEach(key => { const [pid, sd] = key.split(':'), e = R.ofHome[pid], sm = S.seams[key]; if (!e) throw new Error('seam on a plot that is not in ' + S.id + ': ' + key);
+        const id = sm.id || R.seamId(e, sd), d = crossing(e, sd, sm.k);
+        doorsOut.push(Object.assign({ id }, d, { way: 'trail', label: sm.label, sub: sm.sub, action: { room: sm.room, at: sm.at || id }, desc: sm.desc || 'The path goes on.' }));
+        if (d.wall !== 'free') ways.push({ side: d.wall, at: d.x != null ? d.x : d.z }); });
+    /* 5. the links that end in this room (data.js DOOR_HQ.links): the tool's own (LINK_ENDS, on the home room's east wall) and the two written by hand */
+    const HOME_ENDS = Object.assign({ woods_stair: ['a', { wall: 'free', x: -17.5, z: 55.5, face: 180 }], woods_camelot: ['a', { wall: 'w', z: 3.5 }] }, ...Object.keys(LINK_ENDS).map(id => ({ [id]: [LINK_ENDS[id][0], { wall: 'e', z: LINK_ENDS[id][1] }] })));
+    Object.keys(HOME_ENDS).forEach(id => { const [side, h] = HOME_ENDS[id], ov = (S.ends || {})[id];
+        if (ov) { const e = R.ofHome[ov.plot], d = crossing(e, ov.side, ov.k); LINKS_OUT[id] = [side, Object.assign({ part: S.part }, d)]; if (d.wall !== 'free') ways.push({ side: d.wall, at: d.x != null ? d.x : d.z }); return; }
+        if (STAND.some(o => (o.ends || {})[id])) return;                    // placed by hand in another room
+        const hx = h.wall === 'w' ? -HALF + 0.5 : h.wall === 'e' ? HALF - 0.5 : h.x, hz = h.wall === 'n' ? -HALF + 0.5 : h.wall === 's' ? HALF - 0.5 : h.z, hp = MOVER.homePlot(hx, hz), e = R.ofHome[hp.id]; if (!e) return;
+        if (h.wall === 'free') { LINKS_OUT[id] = [side, { part: S.part, wall: 'free', x: r2(h.x + e.dx), z: r2(h.z + e.dz), face: h.face }]; return; }
+        const onWall = (h.wall === 'e' && e.col === R.cols - 1) || (h.wall === 'w' && e.col === 0);
+        LINKS_OUT[id] = [side, onWall ? { part: S.part, wall: h.wall, z: r2(h.z + e.dz) } : { part: S.part, wall: 'free', x: r2((h.wall === 'e' ? HALF - C / 2 : -HALF + C / 2) + e.dx), z: r2(h.z + e.dz), face: h.wall === 'e' ? 90 : 270 }];
+        if (onWall) ways.push({ side: h.wall, at: r2(h.z + e.dz) }); });
+    /* 6. nobody is cut off: every open pocket the legs miss gets its own one-square path to the nearest reached square (the home's rule), then every plot must be reached */
+    const sp0 = (() => { const c = centre(S.spawn), e = R.ofHome[S.spawn]; return [c[0] - e.home.x * N + e.col * N, c[1] - e.home.y * N + e.row * N]; })();
+    const spSq = S.spawn === 'P02-04' ? [sp0[0], sp0[1] + 2] : sp0;
+    let tied = 0, seen = null;
+    for (let pass = 0; pass < 80; pass++) { seen = new Uint8Array(Wn * Dn); const q = [spSq]; if (!openR(spSq[0], spSq[1])) throw new Error(S.id + ': the spawn square is not open'); seen[spSq[1] * Wn + spSq[0]] = 1;
+        for (let i = 0; i < q.length; i++) { const [x, y] = q[i]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (openR(X, Y) && !seen[Y * Wn + X]) { seen[Y * Wn + X] = 1; q.push([X, Y]); } } }
+        let lost = null; for (let cy = 0; cy < Dn && !lost; cy++) for (let cx = 0; cx < Wn; cx++) { const ch = c2[cy][cx]; if ((ch === 'g' || ch === 's' || ch === 'r' || ch === 'p') && !seen[cy * Wn + cx]) { lost = [cx, cy]; break; } }
+        if (!lost) break;
+        const lp = R.plotOfSq(lost[0], lost[1]); let best = null, bd = 1e9; q.forEach(c => { if (c2[c[1]][c[0]] === 'w' || R.plotOfSq(c[0], c[1]) !== lp) return; const dd = Math.abs(c[0] - lost[0]) + Math.abs(c[1] - lost[1]); if (dd < bd) { bd = dd; best = c; } });
+        if (!best) { /* a pocket on a plot the walk never enters: tie it to the nearest reached square of any plot, through plots only */ q.forEach(c => { if (c2[c[1]][c[0]] === 'w') return; const dd = Math.abs(c[0] - lost[0]) + Math.abs(c[1] - lost[1]); if (dd < bd) { bd = dd; best = c; } }); }
+        run(lost[0], lost[1], best[0], lost[1], 1); run(best[0], lost[1], best[0], best[1], 1); tied++; if (pass === 79) throw new Error(S.id + ': could not tie every pocket'); }
+    { const cold = R.order.filter(e => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(e.row * N + ly) * Wn + e.col * N + lx]) return false; return true; }).map(e => e.name); if (cold.length) throw new Error(S.id + ': plots not reached: ' + cold.join(', ')); }
+    if (process.env.WOODS_DUMP) console.log('\n' + S.id + '\n' + c2.map((r, cy) => r.map((ch, cx) => !R.plotOfSq(cx, cy) ? '.' : stood.has(cx + ':' + cy) && ch !== 't' ? 'o' : openR(cx, cy) && !seen[cy * Wn + cx] ? '!' : ch === 't' ? ' ' : ch).join('')).join('\n'));
+    /* 7. the forest's own trees leave a square a path was laid over (THE CUT's rule) */
+    const feats = R.features.filter(f => { if (!f.mass) return true; const [x, y] = sqOf(f.x, f.z); for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) if (openR(x + dx, y + dy)) return false; return true; });
+    const cutTrees = R.features.length - feats.length;
+    /* 8. the levels, the open ground, the paint */
+    const dz0 = S.home ? R.order[0].dz : 0, gnd = S.home ? (x, z) => ground(x, z - dz0) : R.levels(LEVEL);
+    const slope2 = Buffer.alloc(Wn * Dn * 8);
+    for (let cy = 0; cy < Dn; cy++) for (let cx = 0; cx < Wn; cx++) { const o = (cy * Wn + cx) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope2.writeInt16LE(Math.round(gnd(R.gx(cx + q[0]), R.gz(cy + q[1])) * 100), o + k * 2)); }
+    const spaces = R.spaces(openR);
+    const PAL2 = ['ice', 'rocks_5', 'dirt_2'], paint2 = new Uint8Array(Wn * Dn), G2 = {};
+    ORDER.forEach(id => { const k = DISTRICTS[id].ground; if (k && S.letters.indexOf(id) >= 0) { let i = PAL2.indexOf(k); if (i < 0) { PAL2.push(k); i = PAL2.length - 1; } G2[id] = i + 1; } });
+    for (let cy = 0; cy < Dn; cy++) for (let cx = 0; cx < Wn; cx++) { const ch = c2[cy][cx], e = R.plotOfSq(cx, cy), dist = e ? e.district : S.letters[0];
+        paint2[cy * Wn + cx] = ch === 's' ? 1 : ch === 'r' ? 2 : (ch === 'p' || ch === 'b') ? 3 : (ch === 'g' || ch === 't') ? (G2[dist] || 0) : 0; }
+    /* 9. the room-wide scatter (the tool's), by the plots the room has; the districts' forest and air, on the plots as they stand */
+    const share = S.list.length / 36, bareD = S.letters.map(id => DISTRICTS[id].bare).filter(Boolean)[0], bare = bareD ? (() => { const a = R.toRoom((bareD[0] + bareD[2]) / 2, (bareD[1] + bareD[3]) / 2), dx = a[0] - (bareD[0] + bareD[2]) / 2, dz = a[1] - (bareD[1] + bareD[3]) / 2; return { off: [r2(bareD[0] + dx), r2(bareD[1] + dz), r2(bareD[2] + dx), r2(bareD[3] + dz)] }; })() : {};
+    feats.push(Object.assign({ k: 'scatter', key: 'fern', n: Math.round(140 * share), seed: 5 }, bare), Object.assign({ k: 'scatter', key: 'stump', n: Math.round(18 * share), seed: 6 }, bare), Object.assign({ k: 'scatter', key: 'fallen_log', n: Math.round(10 * share), seed: 7, r0: 1.9 }, bare));
+    /* a box of the home room: it moves with its plots when they all moved the same way, else it is the district's own and covers the whole new room */
+    const boxOf = z => { const pts = [[z.x0 + 1, z.z0 + 1], [z.x1 - 1, z.z0 + 1], [z.x0 + 1, z.z1 - 1], [z.x1 - 1, z.z1 - 1], [(z.x0 + z.x1) / 2, (z.z0 + z.z1) / 2]].map(q => { const hp = MOVER.homePlot(q[0], q[1]); return hp && R.ofHome[hp.id]; });
+        if (pts.some(e => !e)) { if (pts.every(e => !e)) return null; }
+        const e0 = pts.find(Boolean), same = pts.every(e => e && e.dx === e0.dx && e.dz === e0.dz), o = Object.assign({}, z);
+        if (same) { o.x0 = r2(z.x0 + e0.dx); o.x1 = r2(z.x1 + e0.dx); o.z0 = r2(z.z0 + e0.dz); o.z1 = r2(z.z1 + e0.dz); } else { o.x0 = -R.HX; o.x1 = R.HX; o.z0 = -R.HZ; o.z1 = R.HZ; }
+        return o; };
+    const zonesT = [].concat(...ZONE_ORDER.filter(id => S.letters.indexOf(id) >= 0).map(id => DISTRICTS[id].treeZones ? DISTRICTS[id].treeZones(ctx) : [])).map(boxOf).filter(Boolean);
+    const zonesA = [].concat(...ZONE_ORDER.filter(id => S.letters.indexOf(id) >= 0).map(id => DISTRICTS[id].airZones ? DISTRICTS[id].airZones(ctx) : [])).map(boxOf).filter(Boolean);
+    const spM = { x: R.gx(spSq[0]), z: R.gcz(spSq[1]) };
+    ROOMS_OUT.push({ S, R, feats: spaces.concat(feats.map(strip)), doors: doorsOut, ways, slope: slope2, PAL: PAL2, paint: paint2, zonesT, zonesA, spM,
+        count: { plots: S.list.length, box: R.cols + 'x' + R.rows, legsBack: reverted, legsKept: kept, legsNew: laid, tied, treesCut: cutTrees, spaces: spaces.length, props: R.props.length, features: feats.length, doors: doorsOut.length, natives: R.npc.length } });
+});
+if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer stand the same way; each is answered in the notes, "ONE WORLD, THE TEST SLICE"):\n  ' + STRAYS.join('\n  '));
+ROOMS_OUT.forEach(o => console.log(o.S.id + ' ' + JSON.stringify(o.count)));
+
+/* ── the rooms ── */
 const J = v => JSON.stringify(v).replace(/"([a-zA-Z_][a-zA-Z0-9_]*)":/g, '$1:').replace(/'/g, "\\'").replace(/"/g, "'");
-const sp = centre('P02-04'), L = [];
-L.push("        /* WOODS36-BEGIN — THE WOODS ON PLOTS (2026-11-15): written by `node bake-woods.js` from docs/areas/woods/layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
-L.push("        site_prebuilt_fairy_forest_plots: {");
-L.push("            label: 'THE WOODS',");
-L.push("            sub: 'FOUR DISTRICTS · 36 PLOTS',");
-L.push("            kind: 'box', site: 'prebuilt_fairy_forest', part: 'plots',");
-L.push("            shell: hqWoodsShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + gx(sp[0]) + ", z: " + gc(sp[1] + 2) + ", y: 4.2 }, forest: { depth: 7, spacing: 3.5, rows: 2, start: 1.6, canopy: { to: 54 } }, noLandmarks: true, atmos: " + J(ATMOS) + " }),");
-L.push("            parti: 'Four districts of nine plots, every plot a twelve by twelve board: clearings joined by dirt paths through forest you cannot enter, climbing from the fence line to the snow.',");
-L.push("            typology: 'grid',");
-L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + G + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.district, p.level])) + " },");
-L.push("            terrain: {");
-L.push("                res: 0.875, floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt_2',");
-L.push("                noise: { amp: 0.12, scale: 8 },");
-L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: " + W + ", nz: " + W + ", d: '" + slope.toString('base64') + "' } },");
-L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + W + ", nz: " + W + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
-L.push("                gen: { kind: 'plan', look: 'trees', seed: 36, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: 2400, treeH: [5.5, 8.5], kinds: ['tree_53', 'tree_55', 'tree_52', 'tree_53', 'tree_5', 'tree_55'], zones: " + J(TREE_ZONES) + " },");
-L.push("                features: [");
-features.forEach(f => L.push("                    " + J(f) + ","));
-L.push("                ],");
-L.push("            },");
-L.push("            doors: [");
-doors.forEach(d => L.push("                " + J(d) + ","));
-L.push("            ],");
-L.push("            counters: [],");
-L.push("            props: [");
-for (let i = 0; i < props.length; i += 4) L.push("                " + props.slice(i, i + 4).map(J).join(", ") + ",");
-L.push("            ],");
-L.push("            agents: [],");
-L.push("            npcSpots: " + J(npc) + ",");
-L.push("            onlineSpots: [],");
-L.push("            lines: [],");
-L.push("            spawn: { x: " + gx(sp[0]) + ", z: " + gc(sp[1] + 2) + ", face: 180 },");
-L.push("        },");
+const L = [];
+L.push("        /* WOODS36-BEGIN — THE WOODS ON PLOTS (2026-11-15) + THE ONE WORLD MOVE (2026-11-17: the Clearing and Dead Man's Cave stand at their One World places as rooms of their own): written by `node bake-woods.js` from docs/areas/woods/layout.json + docs/plans/one-world/plots.json. Never hand-edit between the markers; edit the tool, a district file or the layout and rerun. */");
+ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ;
+    L.push("        " + S.id + ": {");
+    L.push("            label: " + J(S.label) + ",");
+    L.push("            sub: " + J(S.sub) + ",");
+    L.push("            kind: 'box', site: 'prebuilt_fairy_forest', part: " + J(S.part) + ",");
+    if (S.world) { L.push("            /* THE ONE WORLD: where this room stands on the world's plot grid (data.js hqOwIndex) */");
+        L.push("            world: { hub: 'woods', layer: 'surface', wx: " + R.wx + ", wy: " + R.wy + " },"); }
+    /* a One World room has no treeline ring: the land past its lines is the map's own (terrain.edges.world), and the far places stand at their true bearings */
+    L.push("            shell: " + (S.world ? "(s => { s.sky.landmarks = 'world'; return s; })(" : "") + "hqWoodsShell({ w: " + w + ", d: " + d + ", plate: { x: " + o.spM.x + ", z: " + o.spM.z + ", y: 4.2 }, forest: " + (S.world ? "null" : "{ depth: 7, spacing: 3.5, rows: 2, start: 1.6, canopy: { to: 54 } }") + ", noLandmarks: true, atmos: " + J({ kind: 'spores', zones: o.zonesA }) + " })" + (S.world ? ")" : "") + ",");
+    L.push("            parti: " + J(S.parti) + ",");
+    L.push("            typology: 'grid',");
+    L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + R.cols + ", nx: " + R.cols + ", nz: " + R.rows + ", mask: " + J(R.mask) + ", names: " + J(R.names) + " },");
+    L.push("            terrain: {");
+    L.push("                res: 0.875, floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt_2',");
+    L.push("                noise: { amp: 0.12, scale: 8 },");
+    if (S.world) L.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */\n                backdrop: false, edges: { world: true, reach: 440, ways: " + J(o.ways) + " },");
+    L.push("                slope: { cells: { res: " + C + ", x0: " + R.gx(0) + ", z0: " + R.gz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + o.slope.toString('base64') + "' } },");
+    L.push("                paint: { pal: " + J(o.PAL) + ", t: 'u8', res: " + C + ", x0: " + R.gcx(0) + ", z0: " + R.gcz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + Buffer.from(o.paint).toString('base64') + "' },");
+    L.push("                gen: { kind: 'plan', look: 'trees', seed: 36, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: " + Math.round(2400 * R.cols * R.rows / 36) + ", treeH: [5.5, 8.5], kinds: ['tree_53', 'tree_55', 'tree_52', 'tree_53', 'tree_5', 'tree_55'], zones: " + J(o.zonesT) + " },");
+    L.push("                features: [");
+    o.feats.forEach(f => L.push("                    " + J(f) + ","));
+    L.push("                ],");
+    L.push("            },");
+    L.push("            doors: [");
+    o.doors.forEach(dr => L.push("                " + J(dr) + ","));
+    L.push("            ],");
+    L.push("            counters: [],");
+    L.push("            props: [");
+    for (let i = 0; i < R.props.length; i += 4) L.push("                " + R.props.slice(i, i + 4).map(J).join(", ") + ",");
+    L.push("            ],");
+    L.push("            agents: [],");
+    L.push("            npcSpots: " + J(R.npc) + ",");
+    L.push("            onlineSpots: [],");
+    L.push("            lines: [],");
+    L.push("            spawn: { x: " + o.spM.x + ", z: " + o.spM.z + ", face: " + (S.face != null ? S.face : 180) + " },");
+    L.push("        },"); });
 L.push("        /* WOODS36-END */");
 const block = L.join('\n') + '\n';
 console.log(JSON.stringify(count));
-if (DRY) process.exit(0);
+if (DRY) { Object.keys(LINKS_OUT).forEach(id => console.log('link ' + id + ' ' + JSON.stringify(LINKS_OUT[id]))); ROOMS_OUT.forEach(o => console.log(o.S.id + ' doors ' + JSON.stringify(o.doors.map(d => [d.id, d.wall, d.x, d.z, d.face])))); process.exit(0); }
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const END = '        /* WOODS36-END */\n', b0 = src.indexOf('        /* WOODS36-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const anchor = '        /* ── THE CLEARING — the crossroads of the woods'; const a = src.indexOf(anchor); if (a < 0) throw new Error('anchor not found in data.js'); src = src.slice(0, a) + block + src.slice(a); }
-/* THE LINKS' WOODS ENDS: each link in LINK_ENDS gets its `a:` / `b:` line rewritten onto this room's east wall (a walked tunnel, no door: NO DOORS IN THE WOODS) */
-Object.keys(LINK_ENDS).forEach(id => { const [side, z, sub] = LINK_ENDS[id], i = src.indexOf("{ id: '" + id + "'"); if (i < 0) throw new Error('link not found: ' + id);
-    const re = new RegExp('\\n( +)' + side + ": \\{ site: 'prebuilt_fairy_forest'[^\\n]*"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('no Woods end on link ' + id);
-    /* NO TUNNEL BLOCKS (2026-11-16, mondo: "what is this big castle wall thing ... clipping into the bridges and I can walk through it"): a `tunnel` passage on this open
-       room's wall is a stone housing 6 m deep standing in the trees. The two drains are plain trail ends now (a waymark post names them); the secret one is a hollow tree. */
-    const line = '\n' + m[1] + side + ": { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: " + z + ", way: '" + 'trail' + "', sub: '" + sub + "' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)";
-    src = src.slice(0, i + m.index) + line + src.slice(i + m.index + m[0].length); });
+/* THE LINKS' WOODS ENDS: each link's `a:` / `b:` line gets its room (part) and its place rewritten; the rest of the line (its sub, its passage) is kept.
+   NO TUNNEL BLOCKS (2026-11-16, mondo): the drains are plain trail ends (set on the line by hand), never a `tunnel` passage. */
+Object.keys(LINKS_OUT).forEach(id => { const [side, e] = LINKS_OUT[id], i = src.indexOf("{ id: '" + id + "'"); if (i < 0) throw new Error('link not found: ' + id);
+    const re = new RegExp('(\\n +' + side + ": \\{ site: 'prebuilt_fairy_forest', part: )'[a-z0-9_]+', wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('no Woods end on link ' + id);
+    const head = m[1] + "'" + e.part + "', wall: '" + e.wall + "'" + (e.x != null ? ', x: ' + e.x : '') + (e.z != null ? ', z: ' + e.z : '') + (e.face != null ? ', face: ' + e.face : '');
+    src = src.slice(0, i + m.index) + head + src.slice(i + m.index + m[0].length); });
 { const re = /(prebuilt_bohemian_grove: +\{ room: 'site_prebuilt_fairy_forest_plots', door: \{ id: 'bay_grove', wall: 'n', x: )[-\d.]+/; if (!re.test(src)) throw new Error('the Bohemian Grove bay row (siteRooms.entry) not found');
   src = src.replace(re, '$1' + GROVE_BAY_X); }   // DOOR HQ's Bohemian Grove bay door (2026-11-16)
+/* DOOR HQ's hollow tree (siteRooms.entry.prebuilt_fairy_forest wears the Clearing's `forest` door) */
+{ const o = ROOMS_OUT.find(q => q.S.id === R_CLEAR), d = o.doors.find(q => q.id === 'forest'), re = /(prebuilt_fairy_forest: +\{ room: ')[a-z0-9_]+(', door: \{ id: 'forest', )wall: '[a-z]+'(?:, (?:x|z|face): -?[\d.]+)+/; if (!d || !re.test(src)) throw new Error('the hollow tree row (siteRooms.entry.prebuilt_fairy_forest) not found');
+  src = src.replace(re, '$1' + R_CLEAR + "$2wall: '" + d.wall + "'" + (d.x != null ? ', x: ' + d.x : '') + (d.z != null ? ', z: ' + d.z : '') + (d.face != null ? ', face: ' + d.face : '')); }
 fs.writeFileSync(file, src);
-console.log('data.js: site_prebuilt_fairy_forest_plots written (' + block.length + ' bytes)');
+console.log('data.js: ' + ROOMS_OUT.map(o => o.S.id).join(', ') + ' written (' + block.length + ' bytes)');

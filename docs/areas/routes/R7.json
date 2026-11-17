@@ -1,0 +1,13 @@
+{
+  "about": "COUNTY LANE (One World route R7), the stretch south of the corn: the test slice (BUILD_PLAN phase 2, 2026-11-17). R7's first three plots (-13,5 · -13,8 · -13,10) stand in the gaps of the Corn Fields' two columns and belong to that room (bake-estate.js); this room is plots 3 to 14: the lane leaves the corn on the line x = -13, bends east along row 11 and runs south on the line x = -11 to the Lake's north shore.",
+  "hub": "ranch",
+  "label": "COUNTY LANE",
+  "sub": "THE CORN FIELDS TO THE LAKE · 12 PLOTS",
+  "from": 3,
+  "to": 14,
+  "line": [[-13, 10.9], [-13, 11.5], [-11, 11.5], [-11, 15.1]],
+  "ends": {
+    "ow_h_m14_11": { "room": "site_prebuilt_skinwalker_ow_corn", "label": "THE CORN FIELDS", "sub": "THE LANE NORTH · INTO THE CORN", "desc": "The lane runs in between two walls of corn." },
+    "ow_h_m12_15": { "room": "site_prebuilt_skinwalker_ow_lake", "label": "THE LAKE", "sub": "THE LANE SOUTH · THE NORTH SHORE", "desc": "The lane runs down to open water." }
+  }
+}
