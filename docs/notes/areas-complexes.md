@@ -10010,6 +10010,19 @@ planet, went to the Outer Space thread.)
     top of runComputerTurn): takes the turn when it brings at least one more enemy within its move + range (plus a small pull-closer
     term) and leaves an AP to act; doCubeTurn lays the frame round its face after the swing and hands back to the CPU.
 
+- **THE CUBE, THE TURN ARROWS (11-17, same thread; mondo: "are there previews for up left right and down? and are they actually
+  relative to the player? what if the player is facing diagonally? come on. there has to be absolutely no confusion").** Nothing in the
+  TURN CUBE menu depends on which way the fighter faces. Each of the four choices has a colour (three-renderer.js `CUBE_TURN_COLORS`:
+  up cyan, down pink, left yellow, right green, the same in the menu and on the board). With the menu open, `cubeTurnArrows(unit, hot)`
+  lays a long outlined arrow on each square beside the fighter, drawn over cars and fighters (no depth test); the lit choice (the row
+  under the mouse, or the cursor row with keys: hud.js' cursor-row preview now covers the `cubeTurn` panel) burns bright and bigger,
+  the others dim, and every square of the sliding ring in line with the fighter wears a small arrow in its colour (THE CONVEYOR; the far
+  side of the ring keeps only the ring tint). The rows are named by the way the squares slide ON SCREEN from the camera now
+  (hud.js `_hrlgCubeScreenDir`, eight words: a diagonal camera reads "Slide up-right"), sorted clockwise from up-left, the whole row
+  wears its colour (`catColor`) with a dark arrow icon turned to that exact angle; orbiting the camera renames them (the renderer pings
+  `ew-state-change` on a 10 degree yaw / tilt step while the arrows are up). Bug fixed on the way: `ThreeRenderer` is a script-level
+  const, not `window.ThreeRenderer`, so the first cut of the names fell back to the board's own words. Proof
+  /mnt/project-files/rubiks-cube/proof3/.
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
@@ -11841,3 +11854,25 @@ Proposal + mock-ups: `/mnt/project-files/space-round-planets/`.
 - **NOT YET:** new planets (his card: after the round worlds); fights on a curved board (the board's squares, highlights and picking
   are flat today; a fight on a ball is not checked yet); the lighting on a far face uses the flat normals; NPCs that wander over a
   cut seam are not carried; the map picture (`Assets/ui/map/site_prebuilt_moon_plots.png`) shows the flat nets.
+
+## ONE WORLD, THE COAST + THE ISLANDS (2026-11-17, BUILD_PLAN phase 4.3, part 1; the owner's One World 4.3 thread)
+What the first PR of 4.3 built (part 2 = Pirates' Cove, the Frozen Sea and the rest of the Round Voyage):
+- **R11 THE DELTA CAUSEWAY** `site_ow_r11` (4 x 3 plots at 17,31; `docs/areas/routes/R11.json`): Giza's east side (seam `ow_v_17_32`, `bake-desert.js` STAND `more`) over
+  the reed flats to the Line's west side (`ow_v_19_31`, `bake-leylines.js` seams). The secret robbers' tunnel `gobekli_giza` (district G) STAYS: R11 is the road beside it.
+- **R10 THE COAST ROAD**, two rooms (`bake-route.js R10 --from 0 --to 25` / `--from 26 --to 37`; the spec's `stretches` key = one room each, `bake-route.js` learned
+  it): `site_ow_r10_0_25` (3 x 11 at 15,12) from the Beach's south side (`ow_h_15_12`) and `site_ow_r10_26_37` (2 x 6 at 15,23) on to Giza's north side (`ow_h_15_29`,
+  `bake-desert.js` STAND `more`). Places on the way: `ow-places.js` gained the coast's own (surf, lookout, nets, reedbed, tikis; ideas).
+- **THE BEACH'S ONE WORLD MOVE** (`bake-beach.js`, its new tail; no district file edited, the home bake runs as before and the rooms are cut from it):
+  THE BEACH (old id, 8 x 10 at 12,2: the home columns 0..7 without the Triangle's four plots), THE BERMUDA TRIANGLE `site_prebuilt_bermuda_ow_triangle` (the home box
+  5..13 x 3..9 at 32,0, 9 x 7 plots: the map's 6 x 6 would cut the 3-4-5 triangle and the Island Beach), THE VOLCANO ISLAND `site_prebuilt_bermuda_ow_volcano` (the home
+  box 8..13 x 0..2 at 22,-19, 6 x 6: the three south rows are new). Each room's heights / slopes / paint are worked out again by the home rules (`bakeRoom`); every
+  building's flat is laid again (`FLATS`); a prop on a plot no room takes or in water the spit fills is set down in the nearest open sea (printed). Plot ids in
+  `plots.names` are room-local (`pidOf`). THE SPIT: a sand bar from the South Dunes through the headland's foot past the islet to the south line, where R10 comes in.
+  THE GROWN ISLAND (`growVolcano`, new plots, names = ideas): sand shore, THE JUNGLE (palms, banana plants, tropical bushes, ferns; paint `grass_2`, letter `g`) and
+  THE DINOSAUR PARK (letter `k`, paint `dirt`: the ranch rail round it, a gate with a sign, a lookout, a thatched hut, a dig with the skeleton + two tents + a fire,
+  four `dinosaur` natives). Data rows moved with their plots: links `bermuda_abyss` a + `weir_bermuda` b (part `ow_triangle`), `beach_dutchman` a (x + 126),
+  siteRooms.entry.prebuilt_bermuda (Room 345's cabin, the Triangle), the Lighthouse tape + FLIGHT 19, the fight marker, sky rows + spawn lists for the new rooms,
+  hubs.beach rooms. The islands' horizons read the map (`edges.world`); the Beach keeps its hand edges.
+- **THE ROUND VOYAGE, the first two legs**: route `voyage`, way `boat` (DOOR_HQ.ways + three-renderer.js `_hqWayBuilders.boat`: a plank mooring on posts, two
+  bollards, a lantern, the catalogue's `rowboat` alongside, SET SAIL). Links `beach_volcano` (the skiff jetty's end <-> the Landing) and `beach_triangle` (the
+  Breakwater's head <-> the Island Beach's west shore).
