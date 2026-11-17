@@ -68,6 +68,24 @@ later an easy sheet for boss and scripted battles; the result is the blueprint f
   the cloud browser (software GPU, 2 FPS): raising `drawn` waits for a reading on his machine (F3 on the walk).
 - Beds: a variant sleeps in a free bed of its home if there is one, else it goes in through the door (as before).
 
+## THE BAYSIDE LIST + THE RACE PASS (2026-11-17, the NPC encounters thread, on mondo's direct word)
+
+mondo 11-17, reading the Bayside residents: "where are the lifeguards? the skateboarder? homosapien isnt even supposed to be a race at all in
+the game anymore ... we need to fix that first. Go through all races in the game"; "the ghost should haunt the hotel but never leave it".
+- **The Homosapien lives nowhere:** its resident row, its eight `people` rows, its tier and its row on the eight city walk-in tables
+  (`HQ_AREA_ENCOUNTERS`) are gone; `hqSpawnExpand` no longer lets a race through that is not on `AVAILABLE_RACES`. 80 residents (was 84).
+  Not touched: its stats / spells / finisher, and three hand-placed `npcSpots` (the city room by the harbour, two Beach rooms).
+- **Bayside (16 people):** + Lifeguard × 2 (the beach, shifts from 7 and 11), Skater × 2 (the skate park's pad, from 11 and 15), Florida Man × 1
+  (the beach, from 15). Tiers: Lifeguard and Skater common, Florida Man uncommon (PROPOSALS, like every number here).
+- **A `people` row may carry `h: [hours]`**, its own shift starts, one a variant; such a row takes no slot of `shifts`. Removing the
+  Homosapien rows moved the later rows two slots along `shifts`, so the variants after them (gangster b, c and on) work other hours than before.
+- **`f:<feature id>`** is a new place: the walked squares of one terrain feature. **`HQ_CITY_RESIDENTS.walkOn`** names plateaus the residents'
+  grid walks on (`hqCityGrid` blocked every plateau; the skate park's pad `dc:skate:pad` stands at the boardwalk's level).
+- **The Ghost never leaves the hotel:** its two blocks meet now (`[5, 22, S]`, `[22, 5, P]`); the hour between them was spent on the pavement.
+  Checked headless: 0 of 1,200 samples of its day outside the building.
+- **Every race and where it lives:** `docs/plans/npc-encounters/RACE-HOMES.md`, for mondo to mark. 22 races are placed nowhere (20 of them
+  the races of 11-16 / 11-17). Nobody else is placed before his marks.
+
 ## The short table
 
 | # | He asked for | Today | Gap |
