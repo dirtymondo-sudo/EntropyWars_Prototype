@@ -3879,3 +3879,21 @@ ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura
   words), blue MP motes rise off him, then his side's ring.
 - Every piece gates on `_pzSeen` (fog). Proof: /mnt/project-files/tech-ceo-polish/.
 
+## THE KARATE FROG (2026-11-17, thread "Polish Karate Frog spells and VFX")
+His three spells had no look of their own (generic family recipes). three-vfx-effects.js block "THE KARATE FROG" (after the Skater's
+looks), helpers `_frog*`, kill-switch `window.EW_NO_FROG_VFX`. One language: a KICK STAR (canvas six-point star, solid not additive,
+popped on the caster's side of the body and gone in ~300 ms so the victim and its number read), POND WATER (water-splash droplets,
+ripple rings), SPEED in the viewer's side colours (own cyan-blue, other side pink-orange).
+- Leapfrog: `impact` + `_spell3DGeometry.nrLeapfrog` (star + splash + ring); the vault = `_ESC_LOOKS.nrLeapfrog` (style 'frogleap'),
+  drawn by `_spell3DGeometry['nrLeapfrog:leap']` which battle.js _frogLeapOver fires with fireGeometry (relayed, fog-gated on the
+  landing). NOT a SPELL_MAP teleport row: resolveTravel would stage the strike as a teleport. Take-off splash + ring, a dotted arc of
+  side-colour dots that light as he passes, water dripping off his body, a landing splash + two ripple rings.
+- Tongue Lash: `pull` def with `pzOwnTether` → `_PZ_SIGS.frogTongue`: thick pink tongue with a sticky round tip out in 130 ms from
+  his mouth, a pink splat star where it sticks (fades so the number reads), rides the victim through the drag (_pzPullRig), snaps back.
+- Flying Kick: `impact` + `_spell3DGeometry.nrFlyingKick`: side-colour speed lines down the lane behind him, a big star, a pond
+  splash, three streaks off the far side of the victim pointing where the kick sends it.
+- Proof: /mnt/project-files/karate-frog-pass/ (frog_show.js = close camera with performance.now frozen at set delays; frog_probe.js =
+  real VS CPU casts; frog_ai_probe.js = two CPU frogs in training tempo). On the cloud's software renderer the cast clips run slow
+  (the mixer's per-frame step), so the Flying Kick's star can show before his foot there; on a real GPU they should agree
+  (the same clip path as Sky Tackle; not measured on a GPU here).
+

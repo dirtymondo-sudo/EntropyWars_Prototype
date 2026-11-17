@@ -64959,6 +64959,190 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _spell3DGeometry['nrBoardSlam'].hitMs = 220;
 
+    /* ══ 🐸 THE KARATE FROG (2026-11-17, the Karate Frog pass; mondo: "flesh out their unique spells and spell animations/vfx")
+       Frog Fu reads as one martial-arts language: a KICK STAR (a solid six-point star that pops on the contact and is gone in
+       a quarter second, on the caster's side of the body so the victim and its number stay clear), POND WATER (droplets and
+       ripple rings, the Sewers' frog), and SPEED in the viewer's side colours (the Riot pass: own side cyan-blue, the other
+       side pink-orange). No new art: canvas textures and the shared sprites.
+         · Leapfrog (impact + _ESC_LOOKS.nrLeapfrog on the relayed 'frogleap' path, battle.js _frogLeapOver): the roundhouse
+           lands in a kick star and a splash; then the vault: a squat splash at the take-off, a dotted side-colour arc over
+           the victim with water dripping off him all the way, and a frog's landing in two ripple rings.
+         · Tongue Lash (`pull`, pzOwnTether): a thick pink tongue with a sticky round tip shoots out (130 ms), sticks with a
+           pink splat, rides the victim the whole drag, and snaps back into his mouth.
+         · Flying Kick (impact; the run-in is the Rising_Flying_Kick clip, or the relayed 'flykick' path): side-colour speed
+           lines down the lane behind him, a big kick star, a pond splash, and three streaks on the far side of the victim
+           that point where the kick sends it.
+       Everything rides fire() (relayed to the guest, RULE #2) and draws only on tiles the viewer sees (_pzSeen).
+       Kill-switch: window.EW_NO_FROG_VFX. ══ */
+    var _FROG = { pond: 0x7fe0d0, pondD: 0x2a9a8a, tongue: 0xff7aa2, tongueD: 0xc83a64, splat: 0xff9ac0, white: 0xffffff };
+    function _frogOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_FROG_VFX); }
+    function _frogCols(u) { return _fx5Mine(u) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
+    function _frogStarTex() {
+        return _pzTex('frog-kick-star', 128, 128, function (ctx, W, H) {
+            var cx = W / 2, cy = H / 2;
+            ctx.beginPath();
+            for (var i = 0; i < 12; i++) {
+                var a = -Math.PI / 2 + i * Math.PI / 6, r = (i % 2) ? 22 : 60;
+                ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fillStyle = '#ffffff'; ctx.fill();
+            ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(20,24,30,0.85)'; ctx.stroke();
+        });
+    }
+    /* the kick star: pops at local point P of frame F, solid (not additive: additive washed pale over grass) */
+    function _frogStar(F, P, col, size, ms) {
+        var mat = new THREE.SpriteMaterial({ map: _frogStarTex(), color: new THREE.Color(col), transparent: true, opacity: 0, depthWrite: false, depthTest: false });
+        var sp = new THREE.Sprite(mat); sp.renderOrder = 162; sp.position.copy(P); F.g.add(sp);
+        var core = _pzSpr(_FROG.white, size * 0.5, F.g); core.position.copy(P);
+        var rot = rn(-0.4, 0.4);
+        return function (el) {
+            var k = _sigClamp01(el / 70), f = 1 - _sigClamp01((el - ms * 0.55) / (ms * 0.45));
+            var s = size * (0.35 + 0.75 * _sigEaseOutCubic(k)) * (el > ms * 0.55 ? 1 + 0.15 * (1 - f) : 1);
+            sp.scale.set(s, s, 1); mat.rotation = rot + el * 0.002; mat.opacity = el < ms ? f : 0;
+            core.material.opacity = el < ms ? 0.8 * f * (1 - _sigClamp01(el / (ms * 0.5))) : 0;
+        };
+    }
+    /* pond droplets thrown off a tile (tile-px space) */
+    function _frogSplash(tx, ty, n, o) {
+        o = o || {};
+        _capPuff(tx, ty, 'water-splash', n, { r: o.r != null ? o.r : 0.22, h: o.h != null ? o.h : 0.35, out: o.out != null ? o.out : 110,
+            vz0: o.vz0 != null ? o.vz0 : 60, vz1: o.vz1 != null ? o.vz1 : 170, gravity: 520, drag: 0.5, tint: _FROG.pond,
+            s0: 5, s1: 9, sEnd: 2, op: 0.95, ml0: 380, ml1: 620 });
+    }
+    function _frogRipples(tx, ty, col, n, delay) {
+        for (var i = 0; i < n; i++) (function (i) { _capAt((delay || 0) + i * 120, function () { _capRing(tx, ty, i ? _FROG.pond : col, 0.55 + i * 0.3, 420 + i * 80, 2); }); })(i);
+    }
+    /* LEAPFROG: the roundhouse lands (the star on his side of the body, a splash) */
+    EFFECTS['nrLeapfrog_impact'] = { shake: 'light', layers: [
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [300, 480], offsetXY: 10, z: [2, 8], vxRange: 70, vyRange: 70, vzRange: [10, 40], drag: 0.9, size0: [10, 16], size1: [22, 32], opacity0: 0.45 },
+    ] };
+    SPELL_MAP['nrLeapfrog'] = { impact: 'nrLeapfrog_impact' };   /* no teleport row: it would turn the strike's staging into a teleport */
+    /* the vault's look, fired by battle.js _frogLeapOver through fireGeometry (relayed, fog-gated on the landing) */
+    _spell3DGeometry['nrLeapfrog:leap'] = function (tx, ty, r, x) {
+        x = x || {};
+        if (x.fromX == null || x.fromY == null) return;
+        _fx5Escape('nrLeapfrog', x.fromX, x.fromY, tx, ty);
+    };
+    _spell3DGeometry['nrLeapfrog'] = function (tx, ty, r, x) {
+        if (_frogOff() || !_pzSeen(tx, ty)) return;
+        x = x || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, x), ln = _nrvLine(F, from, tx, ty);
+        var C = _frogCols(_fx5UnitAt(from.x, from.y));
+        var P = new THREE.Vector3(ln.ux * ts * 0.34, ts * 0.55, ln.uz * ts * 0.34);
+        var star = _frogStar(F, P, C.a, ts * 0.44, 260);
+        _frogSplash(tx, ty, 8, { h: 0.5, out: 90 });
+        _capRing(tx, ty, C.a, 0.6, 300, 4);
+        _sigRunOwned(F.g, 300, function (el) { star(el); });
+    };
+    /* the vault: the squat splash, the dotted arc over the body, the drips, the frog's landing */
+    _ESC_LOOKS.nrLeapfrog = { style: 'frogleap', ms: 620, draw: function (fx, fy, tx, ty, land) {
+        if (_frogOff()) return;
+        var u = _fx5UnitAt(tx, ty) || _fx5UnitAt(fx, fy), C = _frogCols(u), MS = 620;
+        _frogSplash(fx, fy, 6, { h: 0.05, out: 130, vz0: 30, vz1: 90 });
+        _capPuff(fx, fy, 'dust-puff', 4, { r: 0.3, h: 0.04, out: 110, vz0: 5, vz1: 25, s0: 12, s1: 18, sEnd: 30, op: 0.4 });
+        _capRing(fx, fy, C.a, 0.6, 300, 2);
+        if (!_getVFXScene()) return;
+        /* the dotted arc: the 'frogleap' path (three-renderer _escStyleAt) traced in side-colour dots that light as he passes */
+        var A = _worldPos(fx, fy), B = _worldPos(tx, ty), ts = A.ts, g = new THREE.Group(), dots = [], N = 19;
+        g.position.set(A.x, A.y, A.z);
+        for (var i = 0; i < N; i++) {
+            var h = (i + 1) / (N + 1), d = _pzSpr(i % 3 ? C.a : C.b, ts * 0.06, g);
+            d.position.set((B.x - A.x) * h, (B.y - A.y) * h + ts * 0.4 + ts * 1.25 * Math.sin(Math.PI * h), (B.z - A.z) * h);
+            dots.push({ s: d, at: (0.12 + 0.78 * h) * MS });
+        }
+        var lastDrip = 0, id = u ? u.id : null;
+        _sigRunOwned(g, MS + 420, function (el) {
+            for (var j = 0; j < dots.length; j++) {
+                var q = dots[j], on = el >= q.at ? 1 - _sigClamp01((el - q.at - 90) / 200) : 0;
+                q.s.material.opacity = 0.85 * on;
+            }
+            if (id != null && el < MS * 0.88 && el > MS * 0.15 && el - lastDrip > 55 && _canSpawn() && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.unitBodyWorld) {
+                var p = ThreeRenderer.unitBodyWorld(id);
+                if (p) {
+                    lastDrip = el;
+                    var pad = _cfg().boardPadding || 2;
+                    _spawn({ x: p.x + pad + rn(-6, 6), y: p.z + pad + rn(-6, 6), z: p.y + rn(-4, 6), mode: 'billboard', sprite: 'water-splash', tint: _FROG.pond,
+                        vx: rn(-20, 20), vy: rn(-20, 20), vz: rn(-10, 20), gravity: 420, drag: 0.3, ml: rn(380, 560), size0: rn(4, 7), size1: 2, opacity0: 0.95, opacity1: 0 });
+                }
+            }
+        });
+        if (land) _capAt(MS * 0.88, function () {
+            _frogSplash(tx, ty, 10, { h: 0.04, out: 150, vz0: 40, vz1: 120 });
+            _capPuff(tx, ty, 'dust-puff', 5, { r: 0.35, h: 0.04, out: 140, vz0: 5, vz1: 25, s0: 14, s1: 20, sEnd: 36, op: 0.45 });
+            _frogRipples(tx, ty, C.a, 2, 0);
+        });
+    } };
+    /* TONGUE LASH: the tongue shoots out, sticks with a splat, rides the drag, snaps back */
+    EFFECTS['nrTongueLash_pull'] = _pzDef('frogTongue', { pzOwnTether: true, layers: [
+        { count: 8, sprite: 'water-splash', ml: [360, 600], offsetXY: 10, z: [30, 56], tint: _FROG.pond, vxRange: 90, vyRange: 90, vzRange: [20, 110], gravity: 380, size0: [4, 8], size1: 2, opacity0: 0.95, delayMs: 130 },
+        { sprite: 'flash', ml: 110, size0: 34, size1: 10, tint: _FROG.splat, opacity0: 0.7, z: 44, delayMs: 130 },
+    ] });
+    SPELL_MAP['nrTongueLash'] = { pull: 'nrTongueLash_pull' };
+    _PZ_SIGS.frogTongue = function (p) {
+        if (p.tx == null || _frogOff()) return;
+        var pink = _pzSolid(_FROG.tongue, null, { side: THREE.DoubleSide }), dark = _pzSolid(_FROG.tongueD, null, { side: THREE.DoubleSide }), lastDrip = 0, splat = null;
+        _pzPullRig(p.tx, p.ty, 1700, function (F, ts, a, see) {
+            var R = { shaft: _pzMesh(new THREE.CylinderGeometry(ts * 0.045, ts * 0.07, 1, 10), pink, F.g),
+                      tip: _pzMesh(new THREE.SphereGeometry(ts * 0.1, 12, 8), dark, F.g) };
+            /* the splat where it sticks: a flat pink star on the victim's side that faces the lens (a sprite) */
+            var sm = new THREE.SpriteMaterial({ map: _frogStarTex(), color: new THREE.Color(_FROG.splat), transparent: true, opacity: 0, depthWrite: false, depthTest: false });
+            splat = new THREE.Sprite(sm); splat.renderOrder = 162; F.g.add(splat); R.splat = splat;
+            return R;
+        }, function (el, a, b, R, F, ts) {
+            var out = _sigEaseOutCubic(_sigClamp01(el / 130)), back = _sigEaseInCubic(_sigClamp01((el - 1450) / 230)), k = out * (1 - back);
+            var A = new THREE.Vector3(a.x, a.y + ts * 0.62, a.z), B = new THREE.Vector3(b.x, b.y + ts * 0.55, b.z), T = A.clone().lerp(B, k);
+            var dir = B.clone().sub(A).normalize();
+            _pzSpan(R.shaft, A, T.clone().sub(dir.clone().multiplyScalar(ts * 0.05)));
+            R.tip.position.copy(T);
+            var on = k > 0.01 ? 1 : 0; pink.opacity = on; dark.opacity = on;
+            /* the splat pops as it sticks, between the tip and the lens side of the body, then fades so the number reads */
+            var sk = el - 130, so = sk > 0 ? 1 - _sigClamp01((sk - 120) / 200) : 0;
+            R.splat.position.copy(T.clone().sub(dir.clone().multiplyScalar(ts * 0.12)));
+            var ss = ts * (0.18 + 0.32 * _sigEaseOutCubic(_sigClamp01(sk / 90)));
+            R.splat.scale.set(ss, ss, 1); R.splat.material.opacity = 0.95 * so;
+            if (el - lastDrip > 80 && k > 0.4 && _canSpawn()) {
+                lastDrip = el; var q = A.clone().lerp(T, rn(0.2, 0.95));
+                _pzP(F, q.x, q.y, q.z, { sprite: 'bubble', tint: _FROG.splat, ml: rn(300, 480), size0: rn(3, 6), size1: 1, vz: -rn(30, 70), gravity: 260, opacity0: 0.85 });
+            }
+        }, p.uid);
+    };
+    /* FLYING KICK: speed lines down his lane, the big star, the splash, the streaks where it sends the victim */
+    EFFECTS['nrFlyingKick_impact'] = { shake: 'normal', layers: [
+        { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [320, 560], offsetXY: 12, z: [2, 10], vxRange: 110, vyRange: 110, vzRange: [20, 60], gravity: 80, drag: 0.9, size0: [12, 20], size1: [30, 44], opacity0: 0.5 },
+    ] };
+    SPELL_MAP['nrFlyingKick'] = { impact: 'nrFlyingKick_impact' };
+    _spell3DGeometry['nrFlyingKick'] = function (tx, ty, r, x) {
+        if (_frogOff() || !_pzSeen(tx, ty)) return;
+        x = x || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, x), ln = _nrvLine(F, from, tx, ty);
+        var C = _frogCols(_fx5UnitAt(from.x, from.y));
+        var P = new THREE.Vector3(ln.ux * ts * 0.36, ts * 0.56, ln.uz * ts * 0.36);
+        var star = _frogStar(F, P, C.a, ts * 0.6, 300);
+        _frogSplash(tx, ty, 12, { h: 0.5, out: 150, vz0: 70, vz1: 200 });
+        _capRing(tx, ty, C.a, 0.85, 340, 4);
+        /* the lane behind him: side-colour speed lines lying along it, past his tile, fading */
+        var yaw = Math.atan2(ln.ux, ln.uz), lane = new THREE.Group(), push = new THREE.Group(), lines = [];
+        lane.rotation.y = yaw; F.g.add(lane); push.rotation.y = yaw; F.g.add(push);
+        for (var i = 0; i < 5; i++) {
+            var sl = _sk8Line(i % 2 ? C.b : C.a, ts * rn(0.7, 1.1), ts * 0.05);
+            sl.position.set((i - 2) * ts * 0.1, ts * (0.25 + 0.12 * (i % 3)), ln.L + ts * rn(0.45, 0.7)); lane.add(sl); lines.push(sl);
+        }
+        /* where the kick sends it: three short streaks off the far side of the body, pointing away from him */
+        var streaks = [];
+        for (var s = 0; s < 3; s++) {
+            var st = _sk8Line(s === 1 ? _FROG.white : C.a, ts * 0.5, ts * 0.03);
+            st.position.set((s - 1) * ts * 0.16, ts * (0.4 + 0.12 * s), -ts * 0.55); push.add(st); streaks.push(st);
+        }
+        _sigRunOwned(F.g, 520, function (el) {
+            star(el);
+            var lf = 0.75 * (1 - _sigClamp01(el / 300));
+            for (var j = 0; j < lines.length; j++) lines[j].userData.mat.opacity = lf;
+            var sk = _sigClamp01((el - 40) / 200), sf = 0.85 * Math.min(1, el / 40) * (1 - _sigClamp01((el - 200) / 260));
+            for (var q = 0; q < streaks.length; q++) { streaks[q].position.z = -ts * (0.55 + 0.6 * _sigEaseOutCubic(sk)); streaks[q].userData.mat.opacity = sf; }
+        });
+    };
+
     /* the floor under a vfx px spot (three-vfx.js keeps an atmosphere particle above it when it steps back) */
     var _rvFloorMemo = new Map(), _rvFloorAt0 = 0;
     function _rvFloorAt(px, py) {
