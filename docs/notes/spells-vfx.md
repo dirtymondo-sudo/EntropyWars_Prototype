@@ -4027,3 +4027,17 @@ ripple rings), SPEED in the viewer's side colours (own cyan-blue, other side pin
   (the mixer's per-frame step), so the Flying Kick's star can show before his foot there; on a real GPU they should agree
   (the same clip path as Sky Tackle; not measured on a GPU here).
 
+## THE HAUNTED DOLL (2026-11-17, three-vfx-effects.js block "THE HAUNTED DOLL", after THE SAMURAI SLUG)
+Old-lace pink 0xe8a0b4, porcelain white, thread red; the side reads from the viewer's seat (own cyan-blue, enemy pink-orange).
+Small and quick on the body. Kill-switch window.EW_NO_DOLL_VFX.
+- Pin Prick (impact + geom): a silver needle flies the line in 180 ms, a thin side-coloured thread hangs doll -> victim ~1 s
+  (the Voodoo tie), a pin flash + two drops.
+- Play With Me ('nrPlayWithMe:swap', the swap branch's own geometry key): TV static (a canvas noise plane, flickering, facing the
+  camera) on both squares + a side ring.
+- Pull My String (geom on the cast: the string pulls out of her back and snaps back; then 'nrPullString:<line>' from
+  _dollPullString): play = pink sparkles + a green ring; friend = pink petals + a pink spark on the friend; hug = a side thread
+  from the doll to the dragged enemy; kill = two red eye glints, a red ring, a red ring on the victim.
+- Look Behind You (impact + geom): a black half-dome round the victim goes dark, flickers, dark again (never past 0.7 so the body
+  and the number stay readable), two red eye glints on the doll's side, then one pink crescent + the side ring.
+- Nobody's Looking ('hdCreep', round end): faint dark footprint rings on the squares it crept over, one after another.
+
