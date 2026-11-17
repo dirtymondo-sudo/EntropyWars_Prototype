@@ -11344,3 +11344,47 @@ with `bake-estate.js` THE ONE WORLD MOVE (`ow-move.js`), no district file edited
   its ranch half: 1,118 / 3.0 M, ~1,300 MB (its notes: 1,348 to 1,638). The ranch's view down its five plots is the heaviest: under the 2,500 / 12 M
   caps, and at the top of the old room's memory range, not over it. Pictures: `docs/plans/one-world/proof/estate_house_drive.jpg`,
   `estate_ranch_gate.jpg`.
+## THE DESERT, THE ONE WORLD MOVE (2026-11-17, BUILD_PLAN phase 3 wave A; the owner's Desert thread)
+mondo 11-17: the Desert is RE-LAID, not "stays" (v13 stands its four districts apart). `node bake-desert.js` builds the Desert in its HOME FRAME as
+before (the 12 x 12 room of the Highway, squares 0..144; no district file changed), then THE ONE WORLD MOVE (the tail of the tool) stands it as FIVE rooms:
+
+| Room | What | World plots | Box |
+|---|---|---|---|
+| `site_prebuilt_area51_ow_circus` | THE CIRCUS (district C), 9 plots | 6..8 x 21..23 | 3 x 3 |
+| `site_prebuilt_area51_ow_town` | WESTERN TOWN (W), 16 plots | -4..-1 x 26..29 | 4 x 4 |
+| `site_prebuilt_area51_desert` | AREA 51 (A), 16 plots: THE OLD ROOM ID, kept on purpose | 2..5 x 33..36 | 4 x 4 |
+| `site_prebuilt_area51_ow_giza` | GIZA (G), 16 plots | 13..16 x 29..32 | 4 x 4 |
+| `site_prebuilt_area51_highway` | THE HIGHWAY (R), 87 plots, NOT MOVED (`wait` row in bake-map.js, drawn at 6,35 clear of the districts) | - | 12 x 12, the four blocks masked out |
+
+- **Why Area 51 keeps the old id**: every door that names `site_prebuilt_area51_desert` from another room (Hangar 18's big door, the White Rooms'
+  yard gate and storm drain in the D.U.M.B., `docs/areas/dumb/districts/R.js`) asks for an Area 51 door (`hangar`, `ward`, `stormdrain`), so they all
+  still land and no other zone's file was touched. The Highway, which 4.2 retires, took the new id.
+- **A block moves WHOLE** (its plots keep their places to each other), so nothing is a stray but one: Western Town's Boot Hill `hill` reaches a little
+  past the block onto the old Open Desert plot (it stands at the room's edge now; left as it is). The fences are moved uncut (the mover cuts a rail /
+  wall at every plot line for plots that part; here none part, so the tool moves them itself by the mover's anchor rule).
+- **The Highway's room** keeps the home frame exactly (nothing on it moved: the tool refuses if it does). Each block a district left is a mesa (a 5.25 m
+  shelf, its middle 8.75: the rock's own rule), so the room ends at rock where a district stood. Its sides stay hand-written (it is not on the grid).
+- **Re-laid by the tool, per room**: the room-wide scatter rows (stones, skulls, snags; a share of the 144 plots each; `off`, Area 51's paved ground,
+  only in Area 51's room), the paint and the lane paint cut a room at a time, the air (W.js `airZones`), `edges: { world: true, reach: 440 }` + the
+  saguaros past the line, `sky.landmarks: 'world'`.
+- **THE SEAMS (INTERIM until phase 4.2 builds the Desert Highway's legs)**: each district meets the Highway's room where its own road met the Highway in the
+  home frame, an open seam (`way: 'open'`): `ow_v_9_23` the Circus road (the Circus' east wall, z 49; Exit 2's Circus Road), `ow_v_m4_29` Exit 3 into
+  Western Town (its west wall, z 61.25), `ow_h_2_33` the Long Straight into Area 51 (its north wall, x -77), `ow_h_13_29` the Giza Road onto the
+  causeway (Giza's north wall, x -63). The Highway's ends are free doors half a square inside its plots. The ids are the world seam ids of the
+  DISTRICT's side, so 4.2 re-points only the Highway's end (v13's legs meet the Circus west + east, Western Town north + south, Area 51 west + east,
+  Giza east + north: 4.2 moves each seam to where its leg meets, or adds the others).
+- **Rows outside the block, re-pointed by hand (the tool refuses to write when one drifts)**: link `gobekli_giza` end b = `part: 'ow_giza', wall: 'e',
+  z: -10.5` (the Robbers' Tunnel); link `downtown_desert` end b = `part: 'highway'` (Exit 1); `siteRooms.entry.prebuilt_giza` (Room 444's Tomb Door)
+  = Giza's room at 3, 24.5; the Tunnel's `carnival` door and the Mandela Room's `mirrors` door = the Circus' room; `DOOR_HQ.retired`: the old Giza
+  plateau -> Giza's room, the old carnival -> the Circus' room (the old gate and flight line stay -> Area 51); `hubs.desert.room` = the Highway (the way
+  in from the city); the day table, `HQ_AREA_MARKERS` and `HQ_AREA_ENCOUNTERS` have a row for every room. `bake-desert-insides.js` points the Great
+  Pyramid's three ways out (`pyramid`, `tombside`, `cut`) at Giza's room by door id (G.js still names the old id; not edited). Every door into or
+  out of the five rooms resolves (a load-data walk of every live room's doors).
+- **The census** (`docs/areas/desert/move/before.json`, `node ow-census.js --diff docs/areas/desert/move/before.json <the five rooms>`): 1,749 props,
+  41 natives, 13 lines of talk, every plot's features and doors as before; MISSING = only the three room-wide scatter rows, now one a room (stones 130 / skulls 26 /
+  snags 22 before, 129 / 27 / 20 after, by rounding); extra = the eight seam doors and the eight mesa rows.
+- **Seen and walked (probe-fast, 11-17)**: every room loaded with no page error; every seam walked one way into the next room (the Circus, Western
+  Town, Area 51 and Giza out to the Highway; the Highway into the Circus). Measured at an overview from 18 to 30 m up (calls / triangles, models +
+  rigs MB): the Circus seen, Western Town 677 / 1.36 M, 1,431 MB · Area 51 1,066 / 1.11 M, 1,400 MB · Giza 338 / 1.14 M, 1,156 MB · the Highway
+  517 / 0.77 M, 679 MB; all far under rule 5 (2,500 / 12 M, 1.4 GB is the line the old 144-plot room already stood near). Pictures:
+  `docs/plans/one-world/proof/desert_*.jpg`.

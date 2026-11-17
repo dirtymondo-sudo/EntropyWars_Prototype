@@ -283,70 +283,189 @@ for (let y = 0; y < NW; y++) for (let x = 0; x < NW; x++) paint[y * NW + x] = pa
 paintOver.forEach(q => { paint[q[1] * NW + q[0]] = q[2]; });   // a district file's own ground (ctx.setPaint)
 count.props = props.length; count.features = F.length; count.doors = doors.length; count.natives = npc.length; count.marks = marks.length;
 
-/* ── the room ── */
+/* ── the rooms ── */
 /* THE AIR BY DISTRICT (2026-11-16, the Western Town thread; the Woods' way, three-renderer.js _hqBuildAtmos `shell.atmos.zones`): a district file
    may export `airZones(ctx)` = [{ sx0, sy0, sx1, sy1 (its HOME squares), kind, color, n, speed, wind }]. With no zone from any file the shell
    line is what it was (the site's own dust). With one, the room's old air is kept as a last zone over the whole room (the site row's values). */
 const AIR = [].concat(...DISTRICTS.filter(m => typeof m.airZones === 'function').map(m => m.airZones(ctxOf(m)).map(z => { const o = OFF[m._file], q = Object.assign({}, z, { x0: nx(z.sx0 + o[0]), z0: nx(z.sy0 + o[1]), x1: nx(z.sx1 + o[0]), z1: nx(z.sy1 + o[1]) });
     delete q.sx0; delete q.sy0; delete q.sx1; delete q.sy1; return q; })));
-const ATMOS = AIR.length ? " atmos: " + J({ kind: 'dust', color: 0xd8d0c0, n: 140, zones: AIR.concat([{ x0: -NHALF, z0: -NHALF, x1: NHALF, z1: NHALF, kind: 'dust', color: 0xd8d0c0, n: 140 }]) }) + "," : "";
-const SP = { x: nx(42), z: nx(1) }, LINES = O_GATE.l.concat(O_LINE.l, O_GIZA.l, O_CARN.l), M = [];
-M.push("        /* DESERT64-BEGIN — THE DESERT ON PLOTS (2026-11-15): written by `node bake-desert.js` from docs/areas/desert/layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
-M.push("        " + ROOM + ": {");
-M.push("            label: 'THE DESERT',");
-M.push("            sub: 'THE HIGHWAY · FOUR EXITS · 144 PLOTS',");
-M.push("            kind: 'box', site: 'prebuilt_area51', part: 'desert',");
-M.push("            shell: hqAncientShell({ w: " + (2 * NHALF) + ", d: " + (2 * NHALF) + ", h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: " + SP.x + ", z: " + SP.z + ", y: 5.0 },");
-M.push("                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 }," + ATMOS);
-M.push("                                    sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.012 }, scenery: 'none' },");
-M.push("                                    look: HQ_ROOM_LOOKS.plateau }),");
-M.push("            parti: 'A highway down the middle of a hundred and forty-four plots of open sand, and off its exits a circus, a western town, a fenced base and three pyramids, each a long way from the next.',");
-M.push("            typology: 'grid',");
-M.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", n: 12, names: " + J(PLAN.plots.map(p => [p.id, p.name, p.district, 0])) + " },");
-M.push("            terrain: {");
-M.push("                res: 1.75, floor: 'desert', cliff: 'rock_wall_1', path: 'dirt_2',");
-M.push("                noise: { amp: 0.08, scale: 9 },");
-/* THE EDGES THAT FIT THE MAP (2026-11-16, mondo: "in desert, its surrounded by mountains but that's not what's actually next to it on the map, so it doesn't
-   make any sense"). What the world map (docs/plans/world-zones/world_layout.png, layout 3) puts on each side, and nothing else:
-     north = Disaster City: open sand, the highway runs into it (as before);
-     west  = the scrub under the Estate (the map's own word: "scrub (edge)"): dry rolling ground with dead trees, no rock wall;
-     south = more desert: flat sand, red rock tables far off (each on its own, never a wall);
-     east  = the bay behind Western Town (the sand reaches the water about 120 m out, on a line that wanders), then, level with Giza, the sand
-             Leylines stands on (flat, tables far off).
-   Was: a snow range with pines 14 m past the west and south lines. The room's own saguaros run on past every line (`plants`), so the line does not show. */
+const SP = { x: nx(42), z: nx(1) };
+
+/* ══ THE ONE WORLD MOVE (2026-11-17, mondo's approved map v13; docs/plans/one-world/BUILD_PLAN.md phase 3, wave A, the Desert row) ══════════════
+   Everything above builds the Desert in THE HOME FRAME, the 12 x 12 room of the Highway (squares 0..144, nx / nc). Here the result is stood where
+   the One World map puts it (docs/plans/one-world/plots.json; the mover = ow-move.js). v13 stands the four districts apart, so each is a room:
+     THE CIRCUS (C)      -> its own room at world plots 6..8 x 21..23 (3 x 3)                  `site_prebuilt_area51_ow_circus`
+     WESTERN TOWN (W)    -> its own room at -4..-1 x 26..29 (4 x 4)                             `site_prebuilt_area51_ow_town`
+     AREA 51 (A)         -> its own room at 2..5 x 33..36 (4 x 4); it KEEPS the old room id    `site_prebuilt_area51_desert`
+                            (every door of Hangar 18, the White Rooms and the D.U.M.B. that names the old room lands on an Area 51 door: hangar, ward, stormdrain)
+     GIZA (G)            -> its own room at 13..16 x 29..32 (4 x 4)                             `site_prebuilt_area51_ow_giza`
+     THE HIGHWAY (R)     -> NOT MOVED: its 87 plots stay as they stood, one room, the four blocks of the districts cut out of it (mesas stand there).
+                            BUILD_PLAN phase 4.2 re-routes it as the Desert Highway's four legs between the districts (74 route plots) and
+                            retires this room.                                                  `site_prebuilt_area51_highway`
+   No two districts touch on the map, so none joins another (the room-splitting rule 2); the Highway's legs that do touch them are 4.2's to build.
+   A block moves WHOLE (all its plots the same way), so nothing on it is a stray and no fence is cut at a plot line. What is laid again is the
+   tool's own: the room-wide scatter (a share a room), the paint and the lane paint cut a room at a time, the air, the seams.
+   THE SEAMS (INTERIM, until 4.2's legs stand): each district's room meets the Highway's room where its own road met the Highway in the home frame,
+   an open seam (`way: 'open'`, room-splitting rule 6, mondo 11-17 "open ground has no portal"); its id is the world seam id of the district's side
+   there, so 4.2 re-points only the Highway's end. Rules: docs/notes/areas-complexes.md "ONE WORLD, HOW A ZONE MOVES" + "THE DESERT, THE ONE WORLD MOVE". */
+const PJ = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plots.json'), 'utf8'));
+const HOMEP = PLAN.plots.map(p => ({ id: p.id, x: +p.id.slice(1, 3), y: +p.id.slice(4, 6), name: p.name, district: p.district, level: 0 })), pById = {};
+HOMEP.forEach(p => { pById[p.id] = p; });
+/* a block moves whole, so the fences go with it uncut (the mover cuts a rail / wall at every plot line, for plots that part): they are moved here by the
+   mover's own anchor rule, the rest by the mover */
+const FENCE = f => (f.k === 'rail' || f.k === 'wall') && f.x0 != null;
+const MOVER = require('./ow-move.js')({ cols: 12, rows: 12, cell: ncell, fill: '.', plots: HOMEP, features: F.filter(f => !FENCE(f)), props, npc, doors });
+const v13 = letter => { const d = PJ.districts.find(q => q.today && q.today.room === ROOM && q.today.districts.indexOf(letter) >= 0); if (!d) throw new Error('plots.json has no Desert district ' + letter);
+    return d.plots.map(q => { const p = pById[q.was]; if (!p || p.name !== q.n || p.district !== letter) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
+const R_HWY = 'site_prebuilt_area51_highway', R_CIRC = 'site_prebuilt_area51_ow_circus', R_TOWN = 'site_prebuilt_area51_ow_town', R_A51 = ROOM, R_GIZA = 'site_prebuilt_area51_ow_giza';
+const BLOCK = { C: [12, 12, 48, 48], W: [96, 12, 144, 60], A: [0, 96, 48, 144], G: [96, 96, 144, 144] };   // each district's squares in the home frame (x0, y0, x1, y1)
+/* a seam: the district's plot + side, the Highway's plot across it, `along` = squares from the plots' shared corner to the road's middle line, `open` = how wide */
+const STAND = [
+    { id: R_CIRC, part: 'ow_circus', letter: 'C', label: 'THE CIRCUS', sub: 'THE DESERT · THE BIG TOP · 9 PLOTS', lines: O_CARN.l,
+      parti: 'A circus pitched on the open sand, nine plots: the ticket booth, the Big Top, the wheel, the midway, the fence round all of it, and the road in from the Highway.',
+      seam: { plot: 'P03-03', side: 'E', hwy: 'P04-03', along: 8, open: 7, label: 'THE HIGHWAY · THE CIRCUS ROAD', sub: 'EXIT 2 · OUT TO THE HIGHWAY', desc: 'The circus road runs out across the sand to the Highway.', back: { label: 'THE CIRCUS', sub: 'THE CIRCUS ROAD · IN TO THE BIG TOP', desc: 'The road runs on to the circus fence and the ticket booth.' } } },
+    { id: R_TOWN, part: 'ow_town', letter: 'W', label: 'WESTERN TOWN', sub: 'THE DESERT · MAIN STREET · 16 PLOTS', lines: [],
+      parti: 'A western town of sixteen plots: Main Street, the saloon, the bank, the jail, the church on its rise, Boot Hill, the mine in the rock, the corral and the wagon camp.',
+      seam: { plot: 'P08-04', side: 'W', hwy: 'P07-04', along: 5.5, open: 11, label: 'THE HIGHWAY', sub: 'EXIT 3 · OUT TO THE HIGHWAY', desc: 'The street turns to asphalt at the town line and runs out to the Highway.', back: { label: 'WESTERN TOWN', sub: 'EXIT 3 · IN TO MAIN STREET', desc: 'The road off the exit turns to dirt and runs into town.' } } },
+    { id: R_A51, part: 'desert', letter: 'A', label: 'AREA 51', sub: 'THE DESERT · THE BASE · 16 PLOTS', lines: O_GATE.l.concat(O_LINE.l),
+      parti: 'A fenced base of sixteen plots on the open sand: the gate, the apron, the tower, Runway 33, the crater, Hangar 18 and the yard of the White Rooms.',
+      seam: { plot: 'P00-08', side: 'N', hwy: 'P00-07', along: 2, open: 7, label: 'THE HIGHWAY · THE LONG STRAIGHT', sub: 'THE BASE ROAD · OUT TO THE HIGHWAY', desc: 'The base road runs north, straight, to the Highway.', back: { label: 'AREA 51', sub: 'THE BASE ROAD · SOUTH TO THE GATE', desc: 'The road runs south, straight, to a gate nobody is meant to reach.' } } },
+    { id: R_GIZA, part: 'ow_giza', letter: 'G', label: 'GIZA', sub: 'THE DESERT · THE PYRAMIDS · 16 PLOTS', lines: O_GIZA.l,
+      parti: 'Three pyramids and the Sphinx on sixteen plots of sand: the causeway, the dig, the obelisks, the oasis, the Tomb Door and the Great Pyramid over four plots.',
+      seam: { plot: 'P08-08', side: 'N', hwy: 'P08-07', along: 6, open: 7, label: 'THE HIGHWAY · THE GIZA ROAD', sub: 'THE CAUSEWAY · OUT TO THE HIGHWAY', desc: 'The causeway turns to road and runs north to where the Highway ends.', back: { label: 'GIZA', sub: 'THE GIZA ROAD · ON TO THE CAUSEWAY', desc: 'The road turns to stone: the causeway, and the pyramids at the end of it.' } } },
+];
+const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 180, E: 270, S: 0, W: 90 }, OPP = { N: 'S', S: 'N', E: 'W', W: 'E' };   // a free door's face = the way its opening faces, INTO its plot (ow-move.js)
+const crop = (R, homeSq) => { const out = new Uint8Array(R.W * R.D); for (let y = 0; y < R.D; y++) for (let x = 0; x < R.W; x++) { const e = R.plotOfSq(x, y); if (!e || !e.home) continue; out[y * R.W + x] = homeSq(e.home.x * N + x - e.col * N, e.home.y * N + y - e.row * N); } return out; };
+const deltaAt = (R, x, z) => { const q = R.toRoom(x, z); return q ? [q[0] - x, q[1] - z] : null; };
+const shiftLine = (o, d) => Object.assign({}, o, { x0: r2(o.x0 + d[0]), z0: r2(o.z0 + d[1]), x1: r2(o.x1 + d[0]), z1: r2(o.z1 + d[1]) });
+const SCATTER = F.filter(f => f.k === 'scatter' && f.x == null);   // the room-wide rows (the stones, skulls, snags; `off` = Area 51's paved ground): a share a room
+const ROOMS_OUT = [], STRAYS = [];
+const seamDoorsHwy = [];
+STAND.forEach(S => {
+    const R = MOVER.room(v13(S.letter)); R.strays.forEach(t => STRAYS.push(S.label + ': ' + t));
+    const fences = F.filter(FENCE).map(f => { const a = MOVER.anchor(f), d = deltaAt(R, a[0], a[1]); return d ? MOVER.shifted(f, d[0], d[1]) : null; }).filter(Boolean);
+    const mk = marks.map(m => { const d = deltaAt(R, (m.x0 + m.x1) / 2, (m.z0 + m.z1) / 2); return d ? shiftLine(m, d) : null; }).filter(Boolean);
+    const air = AIR.map(z => { const d = deltaAt(R, (z.x0 + z.x1) / 2, (z.z0 + z.z1) / 2); return d ? shiftLine(z, d) : null; }).filter(Boolean);
+    const share = R.order.length / 144, dA = S.letter === 'A' ? deltaAt(R, nc(10), nc(120)) : null;
+    const scatter = SCATTER.map(f => { const o = Object.assign({}, f, { n: Math.max(1, Math.round(f.n * share)) }); if (o.off) { if (dA) o.off = [r2(o.off[0] + dA[0]), r2(o.off[1] + dA[1]), r2(o.off[2] + dA[0]), r2(o.off[3] + dA[1])]; else delete o.off; } return o; });
+    /* THE SEAM: a wall door on the district's side (its plot is on the room's edge), its pair free on the Highway's plot, half a square inside it */
+    const sm = S.seam, e = R.ofHome[sm.plot], sd = sm.side, ns = sd === 'N' || sd === 'S';
+    if (!e || (sd === 'N' && e.row) || (sd === 'S' && e.row !== R.rows - 1) || (sd === 'W' && e.col) || (sd === 'E' && e.col !== R.cols - 1)) throw new Error(S.id + ': the seam plot ' + sm.plot + ' is not on the room\'s ' + sd + ' wall');
+    const seamId = (() => { const mm = v => (v < 0 ? 'm' + (-v) : '' + v); return sd === 'E' ? 'ow_v_' + mm(e.wx + 1) + '_' + mm(e.wy) : sd === 'W' ? 'ow_v_' + mm(e.wx) + '_' + mm(e.wy) : sd === 'N' ? 'ow_h_' + mm(e.wx) + '_' + mm(e.wy) : 'ow_h_' + mm(e.wx) + '_' + mm(e.wy + 1); })();
+    const dDoor = { id: seamId, wall: sd.toLowerCase() }; if (ns) dDoor.x = R.gx(e.col * N + sm.along); else dDoor.z = R.gz(e.row * N + sm.along);
+    Object.assign(dDoor, { way: 'open', passage: { w: sm.open }, label: sm.label, sub: sm.sub, action: { room: R_HWY, at: seamId }, desc: sm.desc });
+    const h = pById[sm.hwy], hs = OPP[sd], hDoor = { id: seamId, wall: 'free' };
+    if (ns) { hDoor.x = nx(h.x * N + sm.along); hDoor.z = hs === 'S' ? r2(nx(h.y * N + N) - C / 2) : r2(nx(h.y * N) + C / 2); }
+    else { hDoor.z = nx(h.y * N + sm.along); hDoor.x = hs === 'E' ? r2(nx(h.x * N + N) - C / 2) : r2(nx(h.x * N) + C / 2); }
+    Object.assign(hDoor, { face: FACE[hs], way: 'open', passage: Object.assign({}, MOVER.FREE_PASS, { w: sm.open }), label: sm.back.label, sub: sm.back.sub, action: { room: S.id, at: seamId }, desc: sm.back.desc });
+    seamDoorsHwy.push(hDoor);
+    /* the spawn: two squares in from the seam */
+    const k = Math.floor(sm.along - 0.01), bq = sd === 'N' ? [e.col * N + k, 0] : sd === 'S' ? [e.col * N + k, R.D - 1] : sd === 'W' ? [0, e.row * N + k] : [R.W - 1, e.row * N + k];
+    const spSq = [bq[0] - SIDE4[sd][0] * 2, bq[1] - SIDE4[sd][1] * 2];
+    const doorsOut = R.doors.map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; return o; }).concat([dDoor]);
+    ROOMS_OUT.push({ S, R, world: true, W: R.W, D: R.D, HX: R.HX, HZ: R.HZ, names: R.names, mask: null, cols: R.cols, rows: R.rows,
+        paint: crop(R, (x, y) => paint[y * NW + x]), marks: mk, traffic: [], features: R.features.concat(fences, scatter), doors: doorsOut, props: R.props, npc: R.npc, air, lines: S.lines,
+        sp: { x: R.gcx(spSq[0]), z: R.gcz(spSq[1]), face: FACE[sd] }, ways: [{ side: sd.toLowerCase(), at: ns ? dDoor.x : dDoor.z }],
+        gx0: R.gx(0), gz0: R.gz(0), gcx0: R.gcx(0), gcz0: R.gcz(0) });
+});
+/* THE HIGHWAY: its 87 plots where they stood (the same frame, nothing on them moves); the four blocks are cut out of it: a mesa stands on each
+   (a 5.25 m shelf, its middle 8.75: the rock's own rule above), so the Highway's room ends at rock where a district stood */
+{ const list = HOMEP.filter(p => p.district === 'R').map(p => ({ id: p.id, wx: p.x, wy: p.y })), R = MOVER.room(list);
+  if (R.cols !== 12 || R.rows !== 12 || R.order.some(e => e.dx || e.dz)) throw new Error('the Highway moved: it must stand as it stood');
+  R.strays.forEach(t => STRAYS.push('THE HIGHWAY: ' + t));
+  const inBlock = (x, y) => Object.keys(BLOCK).some(k => { const b = BLOCK[k]; return x >= b[0] && x < b[2] && y >= b[1] && y < b[3]; });
+  const fences = F.filter(FENCE).filter(f => { const a = MOVER.anchor(f), hp = MOVER.homePlot(a[0], a[1]); return hp && hp.district === 'R'; });
+  const mk = marks.filter(m => { const hp = MOVER.homePlot((m.x0 + m.x1) / 2, (m.z0 + m.z1) / 2); return hp && hp.district === 'R'; });
+  const air = AIR.filter(z => { const hp = MOVER.homePlot((z.x0 + z.x1) / 2, (z.z0 + z.z1) / 2); return hp && hp.district === 'R'; });
+  const scatter = SCATTER.map(f => { const o = Object.assign({}, f, { n: Math.max(1, Math.round(f.n * list.length / 144)) }); delete o.off; return o; });
+  const mesas = []; Object.keys(BLOCK).forEach(k => { const b = BLOCK[k], w = (b[2] - b[0]) * C, d = (b[3] - b[1]) * C, x = r2(nx(b[0]) + w / 2), z = r2(nx(b[1]) + d / 2);
+      mesas.push({ k: 'plateau', x, z, w, d, h: 5.25, edge: 0.5 }, { k: 'plateau', x, z, w: w - 2 * C, d: d - 2 * C, h: 8.75, edge: 0.5 }); });
+  const hp = crop(R, (x, y) => inBlock(x, y) ? 0 : paint[y * NW + x]);
+  const doorsOut = R.doors.map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; return o; }).concat(seamDoorsHwy);
+  ROOMS_OUT.unshift({ S: { id: R_HWY, part: 'highway', label: 'THE DESERT', sub: 'THE HIGHWAY · FOUR EXITS · 87 PLOTS', lines: [], hwy: true,
+        parti: 'A highway across open sand, eighty-seven plots: in from Disaster City, a rest stop, the trailers, a lone door by the frontage road, and off its exits the roads out to a circus, a western town, a fenced base and three pyramids, each a long way from the next.' },
+      R, world: false, W: R.W, D: R.D, HX: R.HX, HZ: R.HZ, names: R.names, mask: R.mask, cols: 12, rows: 12, paint: hp, marks: mk, traffic: TRAFFIC, features: R.features.concat(fences, scatter, mesas),
+      doors: doorsOut, props: R.props, npc: R.npc, air, lines: [], sp: { x: SP.x, z: SP.z, face: 180 }, ways: [], gx0: nx(0), gz0: nx(0), gcx0: nc(0), gcz0: nc(0) }); }
+if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer stand the same way):\n  ' + STRAYS.join('\n  '));
+/* every piece of the home room stands in exactly one of the five rooms */
+{ const n = k => ROOMS_OUT.reduce((s, o) => s + o[k].length, 0), fe = ROOMS_OUT.reduce((s, o) => s + o.features.length, 0) - ROOMS_OUT.length * SCATTER.length - 8;
+  if (n('props') !== props.length) throw new Error('props: ' + n('props') + ' of ' + props.length + ' stand in a room');
+  if (n('npc') !== npc.length) throw new Error('natives: ' + n('npc') + ' of ' + npc.length + ' stand in a room');
+  if (fe !== F.length - SCATTER.length) throw new Error('features: ' + fe + ' of ' + (F.length - SCATTER.length) + ' stand in a room');
+  if (n('doors') - STAND.length * 2 !== doors.length) throw new Error('doors: ' + (n('doors') - STAND.length * 2) + ' of ' + doors.length);
+  if (n('marks') !== marks.length) throw new Error('marks: ' + n('marks') + ' of ' + marks.length); }
+ROOMS_OUT.forEach(o => console.log(o.S.id + ' ' + JSON.stringify({ box: o.cols + 'x' + o.rows, plots: o.names.length, props: o.props.length, features: o.features.length, doors: o.doors.length, natives: o.npc.length, marks: o.marks.length, wx: o.world ? o.R.wx : '-', wy: o.world ? o.R.wy : '-' })));
+
+/* ── the rooms' text ── */
 const EDGE_DRY = "plants: { kinds: ['saguaro'], p: 0.02, h: [3.8, 6.4] }";
-M.push("                /* THE EDGES THAT FIT THE MAP: north the city's sand, west the scrub, south sand and far rock tables, east the bay then Leylines' sand (three-renderer.js _hqBuildEdgeLand) */");
-M.push("                backdrop: false, edges: { reach: 440, n: { kind: 'desert', " + EDGE_DRY + " }, w: { kind: 'scrub' }, s: { kind: 'mesa', " + EDGE_DRY + " }, e: { kind: 'desert', beyond: { kind: 'coast', d: 120, len: 40 }, cap: { kind: 'mesa', at: 's', off: 210, len: 90 }, " + EDGE_DRY + " } },");
-M.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + nc(0) + ", z0: " + nc(0) + ", nx: " + NW + ", nz: " + NW + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
-M.push("                marks: " + J(marks) + ",");
-M.push("                /* THE HIGHWAY'S CARS (the city's own traffic system): in from the west along the eastbound side, south to the end, east to Giza; and back */");
-M.push("                traffic: " + J(TRAFFIC) + ",");
-M.push("                features: [");
-F.forEach(f => M.push("                    " + J(f) + ","));
-M.push("                ],");
-M.push("            },");
-M.push("            doors: [");
-doors.forEach(d => M.push("                " + J(d) + ","));
-M.push("            ],");
-M.push("            counters: [],");
-M.push("            props: [");
-for (let i = 0; i < props.length; i += 4) M.push("                " + props.slice(i, i + 4).map(J).join(", ") + ",");
-M.push("            ],");
-M.push("            agents: [],");
-M.push("            npcSpots: " + J(npc) + ",");
-M.push("            onlineSpots: [],");
-M.push("            lines: " + J(LINES) + ",");
-M.push("            spawn: { x: " + SP.x + ", z: " + SP.z + ", face: 180 },");
-M.push("        },");
+const M = [];
+M.push("        /* DESERT64-BEGIN — THE DESERT ON PLOTS (2026-11-15) + THE ONE WORLD MOVE (2026-11-17: the Circus, Western Town, Area 51 and Giza stand at their One World places as rooms of their own; the Highway stays as it stood): written by `node bake-desert.js` from docs/areas/desert/layout.json + docs/plans/one-world/plots.json. Never hand-edit between the markers; edit the tool, a district file or the layout and rerun. */");
+ROOMS_OUT.forEach(o => { const S = o.S, w = r2(2 * o.HX), d = r2(2 * o.HZ);
+    const atmos = o.air.length ? " atmos: " + J({ kind: 'dust', color: 0xd8d0c0, n: Math.max(30, Math.round(140 * o.names.length / 144)), zones: o.air.concat([{ x0: -o.HX, z0: -o.HZ, x1: o.HX, z1: o.HZ, kind: 'dust', color: 0xd8d0c0, n: Math.max(30, Math.round(140 * o.names.length / 144)) }]) }) + "," : "";
+    M.push("        " + S.id + ": {");
+    M.push("            label: " + J(S.label) + ",");
+    M.push("            sub: " + J(S.sub) + ",");
+    M.push("            kind: 'box', site: 'prebuilt_area51', part: " + J(S.part) + ",");
+    if (o.world) { M.push("            /* THE ONE WORLD: where this room stands on the world's plot grid (data.js hqOwIndex) */");
+        M.push("            world: { hub: 'desert', layer: 'surface', wx: " + o.R.wx + ", wy: " + o.R.wy + " },"); }
+    M.push("            shell: hqAncientShell({ w: " + w + ", d: " + d + ", h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: " + o.sp.x + ", z: " + o.sp.z + ", y: 5.0 },");
+    M.push("                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 }," + atmos);
+    M.push("                                    sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.012 }, scenery: 'none'" + (o.world ? ", landmarks: 'world'" : "") + " },");
+    M.push("                                    look: HQ_ROOM_LOOKS.plateau }),");
+    M.push("            parti: " + J(S.parti) + ",");
+    M.push("            typology: 'grid',");
+    M.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", n: " + o.cols + ", nx: " + o.cols + ", nz: " + o.rows + (o.mask ? ", mask: " + J(o.mask) : "") + ", names: " + J(o.names) + " },");
+    M.push("            terrain: {");
+    M.push("                res: 1.75, floor: 'desert', cliff: 'rock_wall_1', path: 'dirt_2',");
+    M.push("                noise: { amp: 0.08, scale: 9 },");
+    if (o.world) {
+        M.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`); the room's saguaros run on past it */");
+        M.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(o.ways) + ", " + EDGE_DRY + " },");
+    } else {
+        /* THE EDGES THAT FIT THE MAP (2026-11-16, mondo: "in desert, its surrounded by mountains but that's not what's actually next to it on the map, so it doesn't
+           make any sense"): north the city's sand, west the scrub, south sand and far rock tables, east the bay then Leylines' sand. The Highway's room is not on
+           the world grid yet (BUILD_PLAN 4.2 re-routes it), so it keeps the sides it had. */
+        M.push("                /* THE EDGES THAT FIT THE MAP: north the city's sand, west the scrub, south sand and far rock tables, east the bay then Leylines' sand (three-renderer.js _hqBuildEdgeLand) */");
+        M.push("                backdrop: false, edges: { reach: 440, n: { kind: 'desert', " + EDGE_DRY + " }, w: { kind: 'scrub' }, s: { kind: 'mesa', " + EDGE_DRY + " }, e: { kind: 'desert', beyond: { kind: 'coast', d: 120, len: 40 }, cap: { kind: 'mesa', at: 's', off: 210, len: 90 }, " + EDGE_DRY + " } },");
+    }
+    M.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + o.gcx0 + ", z0: " + o.gcz0 + ", nx: " + o.W + ", nz: " + o.D + ", d: '" + Buffer.from(o.paint).toString('base64') + "' },");
+    M.push("                marks: " + J(o.marks) + ",");
+    if (o.traffic.length) { M.push("                /* THE HIGHWAY'S CARS (the city's own traffic system): in from the west along the eastbound side, south to the end, east to Giza; and back */");
+        M.push("                traffic: " + J(o.traffic) + ","); }
+    M.push("                features: [");
+    o.features.forEach(f => M.push("                    " + J(f) + ","));
+    M.push("                ],");
+    M.push("            },");
+    M.push("            doors: [");
+    o.doors.forEach(dr => M.push("                " + J(dr) + ","));
+    M.push("            ],");
+    M.push("            counters: [],");
+    M.push("            props: [");
+    for (let i = 0; i < o.props.length; i += 4) M.push("                " + o.props.slice(i, i + 4).map(J).join(", ") + ",");
+    M.push("            ],");
+    M.push("            agents: [],");
+    M.push("            npcSpots: " + J(o.npc) + ",");
+    M.push("            onlineSpots: [],");
+    M.push("            lines: " + J(o.lines) + ",");
+    M.push("            spawn: { x: " + o.sp.x + ", z: " + o.sp.z + ", face: " + o.sp.face + " },");
+    M.push("        },"); });
 M.push("        /* DESERT64-END */");
 const block = M.join('\n') + '\n';
-/* the ends the data.js rows outside the block must agree with (DOOR_HQ.links + siteRooms.entry): printed so a moved path is noticed */
-const ENDS = { downtown_desert: { wall: 'n', x: nx(42) }, gobekli_giza: { wall: 'e', z: r2(gx(69) + MOVE.G[1]) }, bay444: { wall: 'free', x: r2(gx(73) - 0.5 + MOVE.G[0]), z: r2(gx(79) + MOVE.G[1]), face: 270 } };
+/* the ends the data.js rows outside the block must agree with (DOOR_HQ.links + siteRooms.entry): the tool refuses to write when one has drifted */
+const GZ = ROOMS_OUT.find(o => o.S.id === R_GIZA), gz = GZ.R.toRoom(r2(gx(73) - 0.5 + MOVE.G[0]), r2(gx(79) + MOVE.G[1])), gzE = GZ.R.toRoom(nx(140), r2(gx(69) + MOVE.G[1]));
+const ENDS = { downtown_desert: { part: 'highway', wall: 'n', x: nx(42) }, gobekli_giza: { part: 'ow_giza', wall: 'e', z: gzE[1] }, bay444: { room: R_GIZA, wall: 'free', x: gz[0], z: gz[1], face: 270 } };
 console.log(JSON.stringify(count)); console.log('ends ' + JSON.stringify(ENDS));
-if (DRY) process.exit(0);
+const WANT = [
+    ["b: { site: 'prebuilt_area51', part: 'highway', wall: 'n', x: " + ENDS.downtown_desert.x + ",", 'link downtown_desert end b'],
+    ["b: { site: 'prebuilt_area51', part: 'ow_giza', wall: 'e', z: " + ENDS.gobekli_giza.z + ",", 'link gobekli_giza end b'],
+    ["prebuilt_giza: { room: '" + R_GIZA + "', door: { id: 'bay', wall: 'free', x: " + ENDS.bay444.x + ", z: " + ENDS.bay444.z + ", face: 270 } }", 'siteRooms.entry.prebuilt_giza'],
+];
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
+{ const flat = src.replace(/ +/g, ' '), missing = WANT.filter(w => flat.indexOf(w[0].replace(/ +/g, ' ')) < 0);
+  if (missing.length) { console.log('data.js rows to write by hand:'); missing.forEach(w => console.log('  ' + w[1] + ':  ' + w[0])); if (!DRY) throw new Error('data.js does not point at these rooms yet (see the rows above)'); } }
+if (DRY) { ROOMS_OUT.forEach(o => console.log(o.S.id + ' seams ' + JSON.stringify(o.doors.filter(d => /^ow_/.test(d.id)).map(d => [d.id, d.wall, d.x, d.z, d.face])) + ' spawn ' + JSON.stringify(o.sp))); process.exit(0); }
 const END = '        /* DESERT64-END */\n', b0 = src.indexOf('        /* DESERT64-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const anchor = '        site_prebuilt_area51_flightline: {', a = src.indexOf(anchor); if (a < 0) throw new Error('anchor not found in data.js'); src = src.slice(0, a) + block + src.slice(a); }
 fs.writeFileSync(file, src);
-console.log('data.js: ' + ROOM + ' written (' + block.length + ' bytes)');
+console.log('data.js: ' + ROOMS_OUT.map(o => o.S.id).join(', ') + ' written (' + block.length + ' bytes)');

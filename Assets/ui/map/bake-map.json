@@ -61,13 +61,13 @@
  },
  "site_prebuilt_area51_desert": {
   "id": "site_prebuilt_area51_desert",
-  "nx": 144,
-  "nz": 144,
-  "h0": -2.39,
+  "nx": 48,
+  "nz": 48,
+  "h0": -2.35,
   "hs": 0.25,
-  "v": "929f9a4ed0",
-  "bytes": 4808,
-  "s": "4.4"
+  "v": "a04934bca3",
+  "bytes": 767,
+  "s": "0.5"
  },
  "site_prebuilt_skinwalker_estate": {
   "id": "site_prebuilt_skinwalker_estate",
@@ -388,5 +388,45 @@
   "v": "190656fa99",
   "bytes": 2804,
   "s": "5.1"
+ },
+ "site_prebuilt_area51_ow_circus": {
+  "id": "site_prebuilt_area51_ow_circus",
+  "nx": 36,
+  "nz": 36,
+  "h0": -0.7,
+  "hs": 0.25,
+  "v": "da72dbad1b",
+  "bytes": 324,
+  "s": "0.6"
+ },
+ "site_prebuilt_area51_ow_town": {
+  "id": "site_prebuilt_area51_ow_town",
+  "nx": 48,
+  "nz": 48,
+  "h0": -0.7,
+  "hs": 0.25,
+  "v": "089c961a55",
+  "bytes": 410,
+  "s": "0.7"
+ },
+ "site_prebuilt_area51_highway": {
+  "id": "site_prebuilt_area51_highway",
+  "nx": 144,
+  "nz": 144,
+  "h0": -0.07,
+  "hs": 0.25,
+  "v": "fb2c339dce",
+  "bytes": 1019,
+  "s": "1.8"
+ },
+ "site_prebuilt_area51_ow_giza": {
+  "id": "site_prebuilt_area51_ow_giza",
+  "nx": 48,
+  "nz": 48,
+  "h0": -1,
+  "hs": 0.25,
+  "v": "8b379b0343",
+  "bytes": 333,
+  "s": "0.3"
  }
 }
