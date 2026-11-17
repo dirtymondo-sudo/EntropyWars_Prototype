@@ -694,7 +694,7 @@ const _CHARACTER_SPRITES = {
   // 2026-10-25 — mondo's sprites in each race's own R2 folder (Races/<race>/<race>.png; the chef's in male/)
   'chef': `${_S}/Races/chef/male/chef.png`,
   'eagleman': `${_S}/Races/eagleman/eagleman.png`,
-  'banker': `${_S}/Races/banker/male/banker_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'banker': `${_S}/Races/banker/male/banker_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'skater': `${_S}/Races/skater/female/skater_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -713,9 +713,9 @@ const _CHARACTER_SPRITES = {
 };
 const _CHARACTER_SPRITES_GENDERED = {
   /* THE WOMEN (2026-11-16, the new races; mondo: female politician / professor / clown, "hot/attractive"): cut from their Meshy models */
-  'politician': { male: `${_S}/Races/maincharacters/president.png`, female: `${_S}/Races/politician/female/politician_f.png` },
-  'professor': { male: `${_CS}/professor.png`, female: `${_S}/Races/professor/female/professor_f.png` },
-  'clown': { male: `${_CS}/clown.png`, female: `${_S}/Races/clown/female/clown_f.png` },
+  'politician': { male: `${_S}/Races/maincharacters/president.png`, female: `${_S}/Races/politician/female/politician_f_px.png` },
+  'professor': { male: `${_CS}/professor.png`, female: `${_S}/Races/professor/female/professor_f_px.png` },
+  'clown': { male: `${_CS}/clown.png`, female: `${_S}/Races/clown/female/clown_f_px.png` },
   'hippie': { male: `${_CS}/hippie_male.png`, female: `${_CS}/hippie_female.png` },
   // 2026-10-25 — the female sniper and the Spy wear his new sprites; the males keep their job sheets.
   'marksman': { male: `${_S}/Races/Homosapien/Male/sniper/homosapien_male_sniper.png`, female: `${_S}/Races/Homosapien/Female/sniper/sniper_female.png` },
@@ -784,21 +784,21 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 
 /* THE MEN (2026-11-16, the new races): the male sides of 15 races that only had a woman; cut from their own Meshy models. */
 const _NEW_MALE_SPRITES = {
-  'vampire': `${_S}/Races/vampire/male/vampire_m.png`,
-  'zombie': `${_S}/Races/zombie/male/zombie_m.png`,
-  'knight': `${_S}/Races/knight/male/knight_m.png`,
+  'vampire': `${_S}/Races/vampire/male/vampire_m_px.png`,
+  'zombie': `${_S}/Races/zombie/male/zombie_m_px.png`,
+  'knight': `${_S}/Races/knight/male/knight_m_px.png`,
   'shaman': `${_S}/Races/shaman/male/shaman_m_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'necromancer': `${_S}/Races/necromancer/male/necromancer_m.png`,
-  'cyborg': `${_S}/Races/cyborg/male/cyborg_m.png`,
-  'ki fighter': `${_S}/Races/kifighter/male/ki_fighter_m.png`,
-  'mummy': `${_S}/Races/mummy/male/mummy_m.png`,
-  'gargoyle': `${_S}/Races/gargoyle/male/gargoyle_m.png`,
-  'atlantean': `${_S}/Races/atlantean/male/atlantean_m.png`,
-  'fallen angel': `${_S}/Races/fallenangel/male/fallen_angel_m.png`,
-  'swordfighter': `${_S}/Races/swordfighter/male/swordfighter_m.png`,
-  'mime': `${_S}/Races/mime/male/mime_m.png`,
-  'mermaid': `${_S}/Races/mermaid/male/merman.png`,
-  'succubus': `${_S}/Races/succubus/male/incubus.png`,
+  'necromancer': `${_S}/Races/necromancer/male/necromancer_m_px.png`,
+  'cyborg': `${_S}/Races/cyborg/male/cyborg_m_px.png`,
+  'ki fighter': `${_S}/Races/kifighter/male/ki_fighter_m_px.png`,
+  'mummy': `${_S}/Races/mummy/male/mummy_m_px.png`,
+  'gargoyle': `${_S}/Races/gargoyle/male/gargoyle_m_px.png`,
+  'atlantean': `${_S}/Races/atlantean/male/atlantean_m_px.png`,
+  'fallen angel': `${_S}/Races/fallenangel/male/fallen_angel_m_px.png`,
+  'swordfighter': `${_S}/Races/swordfighter/male/swordfighter_m_px.png`,
+  'mime': `${_S}/Races/mime/male/mime_m_px.png`,
+  'mermaid': `${_S}/Races/mermaid/male/merman_px.png`,
+  'succubus': `${_S}/Races/succubus/male/incubus_px.png`,
 };
 
 function getR2RaceSpriteUrl(race, gender, cls) {
@@ -6717,7 +6717,7 @@ const RACE_SPRITES = {
   'hippie': `${_S}/character_sprites/hippie_male.png`,   // 2026-10-04 — his own sprite
   'chef': `${_S}/Races/chef/male/chef.png`,   // 2026-10-25 — his own sprite
   'eagleman': `${_S}/Races/eagleman/eagleman.png`,   // 2026-10-25 — his own sprite
-  'banker': `${_S}/Races/banker/male/banker_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'banker': `${_S}/Races/banker/male/banker_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'skater': `${_S}/Races/skater/female/skater_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)

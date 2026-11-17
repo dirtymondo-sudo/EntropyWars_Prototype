@@ -2060,3 +2060,12 @@ invented a figure that ran off the canvas. Fix: mark background with numpy again
 < 30, < 14 for the dark Time Cop render, < 24 for the skater's white socks), flood from the border over that mask, and LOOK at
 the cut-out on magenta before spending a token. With a whole cut-out, a restyle at size 128 keeps the framing (top row empty).
 Redone: sewer gator, skater, tech ceo, magician, male shaman, time cop -> `<race>_px2.png`.
+
+BATCH 3 (2026-11-17, mondo's list of 24): 18 done from their Meshy concepts (`new-races/concepts/`): banker (redo, `banker_px2`),
+the male atlantean, cyborg, fallen angel, gargoyle, incubus, ki fighter, knight, merman, mime, mummy, necromancer, swordfighter,
+vampire, zombie and the female clown, politician, professor (each `<old file>_px.png` beside the old cut). Cut-out tips: a concept
+with a lighter halo behind the figure (atlantean) needs distance < 75; a pale figure on a halo (vampire) needs the silhouette way:
+dark pixels dilated, holes filled, eroded back. Restyle at 128, then shift the sprite so the feet sit on the bottom row; redo any
+with figure pixels on row 0 (politician, swordfighter needed a second roll). NO SOURCE ART yet: male skater, male lifeguard
+(both races are women only), female nordic (no model), DOOR agent male + female (creator looks), male ghost (the Halloween pack's
+sheet ghost, no concept). Files: `/mnt/project-files/sprite-ai-test/batch3-20261117/`.
