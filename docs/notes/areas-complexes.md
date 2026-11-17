@@ -9900,6 +9900,27 @@ Plan 2 was drawn, sent to him and built without waiting (`docs/plans/world-zones
   bed 7 m long for P05-03 (the 2.4 m `royal_bed` now). (5) THOUGHT-FORMS: three or four more kinds (the game has one procedural kind). (6) THE SPIRE: an
   unfinished crystal spire about 26 m with a scaffold, P02-05 (drawn now). (7) A coat rack of hanging coats (the Closet's two sides). (8) A giant eye on a
   stalk taller than `dream_eye` for the Bad Nights. (9) Floating stepping stones with a flat top, 3.5 m, for jumps over the gaps.
+### THE ASTRAL REALM, THE ONE WORLD MOVE (2026-11-17, BUILD_PLAN phase 3 wave B, the owner's Astral One World thread)
+The v13 sheet: "the Sea of Possibility, the Library and the Nightmare each get an island far apart in the void, with two crossings between them".
+mondo was shown three layouts (picture `/mnt/project-files/astral-one-world/astral_layout_options.png`) and picked **C, the chain as the sheet draws it**:
+"Connected/bigger rooms is better. If the room is smaller than disaster city than dont even ask, just make it one room".
+- **One room, the same id** `site_prebuilt_lookingglass_realm` (so every door, link, the map's GO and saves still land; nothing to retire). 10 x 13
+  plots (`plots.mask`), 43 plots: the 36 islands + 7 crossing plots. No world place (the Realm is "beyond" in plots.json); bake-map.js's row stays.
+- **Where the islands stand** (bake-astral.js THE ONE WORLD MOVE, `SHIFT`, through `ow-move.js`): the Sea where it was; the Library 4 plots west; the
+  Nightmare under the Library (7 west, 7 south). The district files still write their home 6 x 6 frame and are NOT edited.
+- **The two crossings** (new plots, names mine, plain): THE CLOUD BRIDGE, four plots west from the Near Shore's west port to the Reading Room's east
+  port, rising 8 -> 9 -> 10 by floating steps; THE WAY DOWN, three plots south from the Returns' south port to the Back of the Closet's north port,
+  sinking 8 -> 7 -> 6 -> 5. A crossing plot is a two-square cloud walk over the void (the old bridge pieces, nothing new). No places on them yet.
+- **Gone** (mondo's pick: "the Closet bridge goes"): the four old cross-district joins (Reading Room <> Near Shore, the Returns <> the Hollow Tree, the
+  Closet <> the Back of the Closet, the Fortune Tent <> the Stairs Down). Their ports that do not start a crossing (the Closet S, the Fortune Tent E,
+  the Stairs Down W, the Hollow Tree N) end at the island's edge over the void: the walk through the Closet now ends on a ledge.
+- **The census** (`docs/areas/astral/move/before.json`, `node ow-census.js --diff …`): every prop (430), native (25), door, drawn piece and line of talk is
+  on its plot. It lists 4 MISSING ramps: exactly those four old joins' floating steps (the tool's own pieces, cut on purpose); everything else missing = 0.
+  Strays 0.
+- **Link ends** (only the b ends, ids kept): `dumb_astral` b x -189, z -68.25; `attic_nightmare` b x -89.25, z 210. The tool still refuses to bake
+  when a row drifts (it moves the WAY points with their plots).
+- Map picture remade (`node bake-map.js site_prebuilt_lookingglass_realm`, uploaded). Proof: `docs/plans/one-world/proof/astral_*.jpg`.
+
 ## ANTARCTICA ON PLOTS — the frozen end of the world, redesigned, first build (2026-11-16, second side, the Antarctica zone thread)
 
 mondo 11-16 (docs/plans/ZONE_THREAD_BRIEF.md): the eight zones still on old handmade rooms go on plots as a full REDESIGN, without waiting
