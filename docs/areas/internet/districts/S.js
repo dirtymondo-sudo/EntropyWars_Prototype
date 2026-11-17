@@ -15,7 +15,7 @@ const solid = (c, id, lx0, ly0, lx1, ly1, h) => { const p = c.plot[id], b = c.ba
     [[X0, Z0, X1, Z0], [X0, Z1, X1, Z1], [X0, Z0, X0, Z1], [X1, Z0, X1, Z1]].forEach(([x0, z0, x1, z1]) => c.feat({ k: 'wall', absY: true, x0, z0, x1, z1, t: 0.3, h: h || 4, y: b, ghost: true, rail: false })); };
 /* the blocks between the aisles: local ranges of a plot (the aisles are rows / columns 5-6) */
 const BLOCKS = [[0, 4], [7, 11]];
-exports.build = c => {
+exports.build = c => { exports.build2(c);
     /* THE LOGIN SCREEN (P00-00): a login box the size of a wall, facing the aisle you come in on */
     c.look('login', 'P00-00', 9, 1.2, 0, a => { a.box(-2.6, 0, 0, 0.4, 2.2, 0.4, STEEL, 0x30343a); a.box(2.6, 0, 0, 0.4, 2.2, 0.4, STEEL, 0x30343a);
         a.box(0, 2.2, -0.1, 9.4, 6.2, 0.3, STEEL, 0x22262c);
@@ -48,6 +48,18 @@ exports.build = c => {
         for (let i = 0; i < 9; i++) { const t = i / 9 * Math.PI * 2; a.box(Math.cos(t) * 2.8, 8.2, Math.sin(t) * 2.8, 1.6, 1.0 + (i % 3) * 0.5, 1.2, null, [0xf4f4f0, 0xe0e8f0, 0xf0e0c0][i % 3], { ry: i * 37, glow: 0.4 }); }
         a.sign('RECYCLE BIN', 0, 3.2, 4.85, 6, 1.0, '#ffffff', '#2a3440', 'way'); });
     solid(c, 'P02-02', 7, 7, 10, 10, 9);
+};
+/* INSIDE A SERVER (plan 3, the interior pass: an inside of a thing): one rack on the Hot Aisle is the size of a house and its door is open.
+   Inside: the blades to the ceiling either side, the lights, the heat. */
+exports.build2 = c => { const K = require('../kit.js');
+    const B = c.building('server', 'P00-01', 1, 7, 4, 10, 'E', 7, { key: 'urban:MetalPanel2a', tint: 0x2a3040, glow: 0.2, leaf: 'none', keyIn: 'urban:MetalGratingGrid1a', floorIn: 'urban:MetalGratingGrid1a', roofTint: 0x16181c,
+        look: (a, fw, fd, door, h) => { for (let r = 0; r < 9; r++) for (const sx of [-1, 1]) { if (r < 4 && sx < 0 && false) continue; const x = sx * (fw / 2 - 2.2); if (Math.abs(x - door.lx) < door.cw && r < 4) continue; a.box(x, 0.5 + r * 0.7, fd / 2 + 0.1, 3.4, 0.5, 0.08, null, 0x16181c, { glow: 0.1 }); a.box(x - 1.2, 0.65 + r * 0.7, fd / 2 + 0.16, 0.2, 0.14, 0.04, null, r % 3 ? 0x30ff70 : 0xffb020, { glow: 1 }); a.box(x - 0.8, 0.65 + r * 0.7, fd / 2 + 0.16, 0.2, 0.14, 0.04, null, 0x40e0ff, { glow: 1 }); }
+            a.box(door.lx, 0, fd / 2 + 0.12, door.cw + 0.5, 2.5, 0.12, null, 0x7fffd0, { glow: 1 }); K.words(a, 'STEP INSIDE THE SERVER', 0, h + 0.8, fd / 2, 11, 1.0, '#7fffd0', 'archivo'); } });
+    B.look('inside', a => { const w = B.fw / 2 - 0.5, d = B.fd / 2 - 0.5;
+        for (let r = 0; r < 8; r++) for (let k = 0; k < 5; k++) { const x = -w + 1.2 + k * (2 * w - 2.4) / 4; a.box(x, 0.4 + r * 0.75, -d, 2.2, 0.55, 0.3, null, 0x16181c, { glow: 0.1 }); a.box(x - 0.7, 0.58 + r * 0.75, -d + 0.17, 0.16, 0.12, 0.03, null, (r + k) % 4 ? 0x30ff70 : 0xff3050, { glow: 1 }); a.box(x - 0.4, 0.58 + r * 0.75, -d + 0.17, 0.16, 0.12, 0.03, null, 0x40e0ff, { glow: 1 }); }
+        K.cable(a, [[-w, 6.2, 0], [w, 6.2, 0]], 0xffe040, 0.1); K.cable(a, [[-w, 6.2, 1], [w, 6.2, 1]], 0xff5fb0, 0.1); K.cable(a, [[-w, 6.2, -1], [w, 6.2, -1]], 0x40e0ff, 0.1);
+        a.sign('UPTIME: 99.9%', 0, 5.0, -d + 0.2, 6, 0.8, '#30ff70', '', 'dot', { kind: 'over' }); a.sign('THE OTHER 0.1% IS NOW', 0, 4.2, -d + 0.2, 6, 0.6, '#ff3050', '', 'dot', { kind: 'over' }); });
+    B.put('server_rack', -5, 4, { face: 180 }); B.put('server_rack', 5, 4, { face: 180 }); B.put('monitor_stack', 0, -3.5, { face: 0 }); B.native('ai', 2, 0, 180);
 };
 exports.dress = c => {
     const C = c.C;

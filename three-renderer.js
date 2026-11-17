@@ -73612,6 +73612,7 @@ const ThreeRenderer = (function () {
         if (info.busStops && info.busStops.length) { try { _hqBuildBusStops(room, info, G); } catch (e) { console.warn('[HQ] the bus stops failed', e); } }
         try { _hqBuildCityMarks(room, info, G); } catch (e) { console.warn('[HQ] the city marks failed', e); }   // THE CITY MARKS ON THE STREET
         if (info.traffic && info.traffic.length) { try { _hqBuildTraffic(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the traffic failed', e); } }
+        if (info.bridges && info.bridges.length) { try { _hqBuildMovers(room, info, G); } catch (e) { console.warn('[HQ] the movers failed', e); } }   // THE MAIL (2026-11-17)
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         if (_hqSliceDue()) yield;
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
@@ -76010,6 +76011,61 @@ const ThreeRenderer = (function () {
         cars.forEach(function (car) { var p = _hqRoutePose(car, car.s); car.g.position.set(p.x * U, hqTerrainHeight(info, p.x, p.z) * U + 0.3, p.z * U); car.g.rotation.y = Math.atan2(p.dx, p.dz); car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; });
         H.traffic = cars;
         H.tickers.push(function (dt) { _hqTickTraffic(dt); });
+    }
+    /* THE MAIL (2026-11-17, the Internet plan 2; mondo: "Moving platforms that are like mail"): a `bridge` feature row with
+       `mover: { to: [dx, dy, dz] (metres from its written place to the far dock), travel (seconds one way), dwell (seconds at a dock),
+       phase (0..1 of the cycle), look: 'mail' }` is a slab that FLIES between two docks. The compiled slab itself moves (its x0 / z0 /
+       x1 / z1 / y are rewritten every frame), so every walker rule that reads the bridge layer (the feet, a landing, the camera boom)
+       reads it where it is; a walker standing on it is carried with it. The place in its cycle is read off the wall clock, so two
+       players in the room see it at the same spot. Write the row with `hide: true, plain: true, rails: false` (it is drawn here: an
+       envelope, the flap side up). window.EW_HQ_NO_MOVERS = the slabs stay at their first dock. */
+    var _hqMailTexC = null;
+    function _hqMailTex() {
+        if (_hqMailTexC) return _hqMailTexC;
+        var c = document.createElement('canvas'); c.width = 512; c.height = 352; var g = c.getContext('2d');
+        g.fillStyle = '#f6f2e6'; g.fillRect(0, 0, 512, 352);
+        var n = 0; for (var x = -40; x < 560; x += 30) { g.fillStyle = (n++ % 2) ? '#c8283a' : '#2a4aa0'; [[0, 0], [0, 334]].forEach(function (q) { g.beginPath(); g.moveTo(x, q[1]); g.lineTo(x + 18, q[1]); g.lineTo(x + 8, q[1] + 18); g.lineTo(x - 10, q[1] + 18); g.closePath(); g.fill(); }); }
+        g.fillStyle = '#f6f2e6'; g.fillRect(0, 18, 512, 316);
+        g.strokeStyle = '#b8b09a'; g.lineWidth = 5; g.beginPath(); g.moveTo(4, 22); g.lineTo(256, 214); g.lineTo(508, 22); g.stroke();
+        g.lineWidth = 3; g.beginPath(); g.moveTo(4, 330); g.lineTo(196, 168); g.moveTo(508, 330); g.lineTo(316, 168); g.stroke();
+        g.fillStyle = '#c8283a'; g.beginPath(); g.arc(256, 214, 26, 0, Math.PI * 2); g.fill(); g.fillStyle = '#f6f2e6'; g.font = '900 30px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('@', 256, 216);
+        var t = new THREE.CanvasTexture(c); t.anisotropy = 4; return (_hqMailTexC = t);
+    }
+    function _hqBuildMovers(room, info, G) {
+        var H = _hq, U = _hqUnits(), list = [];
+        if (!H || H.movers) return;
+        (info.bridges || []).forEach(function (b) {
+            var M = b.mover; if (!M || !M.to || b.arc) return;
+            var L = Math.hypot(b.x1 - b.x0, b.z1 - b.z0) || 1, th = b.thick || 0.3;
+            var top = new THREE.MeshLambertMaterial({ map: _hqMailTex() }), side = new THREE.MeshLambertMaterial({ color: 0xe8e2d0 }); top.emissive = new THREE.Color(0x3a3830); top.emissiveMap = top.map; side.emissive = new THREE.Color(0x2a2822);
+            var m = new THREE.Mesh(new THREE.BoxGeometry(b.w * U, th * U, L * U), [side, side, top, side, side, side]); m.name = 'hq_mover'; m.castShadow = false; m._ew_bunOut = true;
+            var g = new THREE.Group(); g.add(m); m.position.y = -th * U / 2; g.rotation.y = Math.atan2(b.x1 - b.x0, b.z1 - b.z0);
+            [-1, 1].forEach(function (sx) { if (typeof _hzGlowSprite === 'function') { var gl = _hzGlowSprite(0.9 * U, 0x7fffd0, 0.7, 0.0, 0.0, 0.0); gl.position.set(sx * (b.w / 2 - 0.3) * U, -(th + 0.25) * U, 0); g.add(gl); } });
+            G.add(g);
+            list.push({ b: b, g: g, a: { x0: b.x0, z0: b.z0, x1: b.x1, z1: b.z1, y: b.y }, to: M.to, travel: Math.max(2, M.travel || 14), dwell: Math.max(0, (M.dwell != null) ? M.dwell : 5), phase: M.phase || 0, k: 0 });
+        });
+        if (!list.length) return;
+        H.movers = list;
+        var still = (typeof window !== 'undefined' && window.EW_HQ_NO_MOVERS);
+        var place = function (mv) {
+            var cyc = 2 * (mv.travel + mv.dwell), t = still ? 0 : (((Date.now() / 1000) / cyc + mv.phase) % 1) * cyc, k;
+            if (t < mv.dwell) k = 0; else if (t < mv.dwell + mv.travel) k = (t - mv.dwell) / mv.travel; else if (t < 2 * mv.dwell + mv.travel) k = 1; else k = 1 - (t - 2 * mv.dwell - mv.travel) / mv.travel;
+            k = k * k * (3 - 2 * k);
+            var b = mv.b, a = mv.a, dx = mv.to[0] * k, dy = mv.to[1] * k, dz = mv.to[2] * k;
+            var ox = a.x0 + dx - b.x0, oy = a.y + dy - b.y, oz = a.z0 + dz - b.z0;
+            b.x0 = a.x0 + dx; b.z0 = a.z0 + dz; b.x1 = a.x1 + dx; b.z1 = a.z1 + dz; b.y = a.y + dy;
+            mv.g.position.set((b.x0 + b.x1) / 2 * U, b.y * U + 0.3, (b.z0 + b.z1) / 2 * U);
+            return [ox, oy, oz];
+        };
+        list.forEach(place);
+        H.tickers.push(function () {
+            var HH = _hq; if (!HH || HH.movers !== list) return;
+            var pl = HH.player, on = null;
+            if (pl && !pl.air && HH.terrain && typeof hqTerrainBridgeFor === 'function') { var sb = hqTerrainBridgeFor(HH.terrain, pl.x, pl.z, pl.y); if (sb && sb.mover && Math.abs(sb.y - pl.y) < 0.3) on = sb; }
+            for (var i = 0; i < list.length; i++) { var d = place(list[i]); if (on === list[i].b && !HH.paused) { pl.x += d[0]; pl.z += d[2]; pl.y = on.y; if (pl.visY != null) pl.visY += d[1]; } }
+            if (pl) pl._onMover = !!on;
+            HH.dirty = true;
+        });
     }
     function _hqTickTraffic(dt) {
         var H = _hq, cars = H && H.traffic; if (!cars || !cars.length || H.paused) return;
@@ -89684,7 +89740,7 @@ const ThreeRenderer = (function () {
             }
             pl.y = ny;
             if (_hq.terrain && _hq.terrain.void && pl.y < _hq.terrain.void.fall) { _hqVoidReturn(pl); return; }
-        } else if (!pl.air && _hq.terrain && !H.paused) { pl._landSafe = { x: pl.x, z: pl.z, y: pl.y, yaw: pl.yaw, rid: _hq.terrain.roomId }; if (_hq.terrain.void) pl._voidSafe = pl._landSafe; }   // THE VOID / THE DEEP WATER: the last ground stood on
+        } else if (!pl.air && _hq.terrain && !H.paused && !pl._onMover) { pl._landSafe = { x: pl.x, z: pl.z, y: pl.y, yaw: pl.yaw, rid: _hq.terrain.roomId }; if (_hq.terrain.void) pl._voidSafe = pl._landSafe; }   // THE VOID / THE DEEP WATER: the last ground stood on
         pl.visY += (pl.y - pl.visY) * Math.min(1, dt * (pl.air ? 60 : 14));
         if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
         if (pl._hopped) pl._hopped = false;   // a hop set the velocity itself — the jump across the room is not a speed
