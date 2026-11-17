@@ -345,7 +345,7 @@ const STAND = [
         /* THE COAST + THE CAUSEWAY (2026-11-17, One World 4.3, the 4.3 thread's seams, re-written as `seams` rows by the 4.2 thread): R10 the Coast Road
            comes in from the north on Giza's P10-08 (world 15,29), west of the pyramid on the line between 15 and 16; R11 the Delta Causeway from the
            east on P11-11 (world 16,32), on the line between rows 31 and 32. Their side is the route kit's. */
-        { side: 'N', at: [15.5, 29], room: 'site_ow_r10_26_37', open: 11, label: 'THE COAST ROAD', sub: 'NORTH ALONG THE SEA · TO THE BEACH', desc: 'A dirt road runs north off the sand, the sea on its right the whole way.' },
+        { side: 'N', at: [15.5, 29], room: 'site_ow_r10', open: 11, label: 'THE COAST ROAD', sub: 'NORTH ALONG THE SEA · TO THE BEACH', desc: 'A dirt road runs north off the sand, the sea on its right the whole way.' },
         { side: 'E', at: [17, 32], room: 'site_ow_r11', open: 11, label: 'THE DELTA CAUSEWAY', sub: 'EAST OVER THE REED FLATS · TO GÖBEKLI TEPE', desc: 'A dirt road runs east off the sand over the reed flats.' } ] },
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 180, E: 270, S: 0, W: 90 }, OPP = { N: 'S', S: 'N', E: 'W', W: 'E' };   // a free door's face = the way its opening faces, INTO its plot (ow-move.js)
@@ -354,7 +354,7 @@ const deltaAt = (R, x, z) => { const q = R.toRoom(x, z); return q ? [q[0] - x, q
 const shiftLine = (o, d) => Object.assign({}, o, { x0: r2(o.x0 + d[0]), z0: r2(o.z0 + d[1]), x1: r2(o.x1 + d[0]), z1: r2(o.z1 + d[1]) });
 const SCATTER = F.filter(f => f.k === 'scatter' && f.x == null);   // the room-wide rows (the stones, skulls, snags; `off` = Area 51's paved ground): a share a room
 const ROOMS_OUT = [], STRAYS = [];
-let HWY = null;
+let HWY = null, CUT_EXTRA = 0;
 STAND.forEach(S => {
     const R = MOVER.room(v13(S.letter)); R.strays.forEach(t => STRAYS.push(S.label + ': ' + t));
     const fences = F.filter(FENCE).map(f => { const a = MOVER.anchor(f), d = deltaAt(R, a[0], a[1]); return d ? MOVER.shifted(f, d[0], d[1]) : null; }).filter(Boolean);
@@ -373,12 +373,23 @@ STAND.forEach(S => {
         const d = { id, wall: sd.toLowerCase() }; if (ns) d.x = R.gx(ax * N); else d.z = R.gz(ay * N);
         seamDoors.push(Object.assign(d, { way: 'open', passage: { w: sm.open }, label: sm.label, sub: sm.sub, action: { room: sm.room, at: id }, desc: sm.desc }));
         ways.push({ side: sd.toLowerCase(), at: ns ? d.x : d.z }); });
+    /* THE ROAD THROUGH THE FENCE (One World phase 5, 2026-11-17): a fence rail a block brought with it (the Circus lot's ranch rail) is cut where a
+       road crosses the room's wall, the road's own width; a rail that lies in the road's mouth is dropped. Only `rail` rows: never a building's wall. */
+    const cutFences = []; fences.forEach(f => { if (f.k !== 'rail') { cutFences.push(f); return; } let segs = [[f.x0, f.z0, f.x1, f.z1]];
+        seamDoors.forEach(d => { const ns = d.wall === 'n' || d.wall === 's', at = ns ? d.x : d.z, hw = d.passage.w / 2, edge = d.wall === 'n' ? R.gz(0) : d.wall === 's' ? R.gz(R.D) : d.wall === 'w' ? R.gx(0) : R.gx(R.W);
+            segs = segs.reduce((o, q) => { const along = ns ? [q[0], q[2]] : [q[1], q[3]], across = ns ? [q[1], q[3]] : [q[0], q[2]];
+                if (Math.abs(across[0] - edge) > 3 || Math.abs(across[1] - edge) > 3) { o.push(q); return o; }   // not on this wall's line
+                const lo = Math.min(along[0], along[1]), hi = Math.max(along[0], along[1]), c = across[0], mk = (u, v) => ns ? [u, c, v, c] : [c, u, c, v];
+                if (hi <= at - hw || lo >= at + hw) { o.push(q); return o; }
+                if (lo < at - hw - 0.5) o.push(mk(lo, r2(at - hw))); if (hi > at + hw + 0.5) o.push(mk(r2(at + hw), hi)); return o; }, []); });
+        segs.forEach(q => cutFences.push(Object.assign({}, f, { x0: q[0], z0: q[1], x1: q[2], z1: q[3] }))); });
+    CUT_EXTRA += cutFences.length - fences.length;
     /* the spawn: two squares in from the first seam */
     const s0 = S.seams[0], sd = s0.side, ns = sd === 'N' || sd === 'S', qx = Math.min(R.W - 1, Math.floor((s0.at[0] - R.wx) * N)), qy = Math.min(R.D - 1, Math.floor((s0.at[1] - R.wy) * N));
     const spSq = [qx - SIDE4[sd][0] * 2, qy - SIDE4[sd][1] * 2];
     const doorsOut = R.doors.map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; return o; }).concat(seamDoors);
     ROOMS_OUT.push({ S, R, world: true, W: R.W, D: R.D, HX: R.HX, HZ: R.HZ, names: R.names, mask: null, cols: R.cols, rows: R.rows,
-        paint: crop(R, (x, y) => paint[y * NW + x]), marks: mk, traffic: [], features: R.features.concat(fences, scatter), doors: doorsOut, props: R.props, npc: R.npc, air, lines: S.lines,
+        paint: crop(R, (x, y) => paint[y * NW + x]), marks: mk, traffic: [], features: R.features.concat(cutFences, scatter), doors: doorsOut, props: R.props, npc: R.npc, air, lines: S.lines,
         sp: { x: R.gcx(spSq[0]), z: R.gcz(spSq[1]), face: FACE[sd] }, ways,
         gx0: R.gx(0), gz0: R.gz(0), gcx0: R.gcx(0), gcz0: R.gcz(0) });
 });
@@ -409,7 +420,7 @@ if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer 
 { const ALL = ROOMS_OUT.concat([HWY]), n = k => ALL.reduce((s, o) => s + o[k].length, 0), fe = ALL.reduce((s, o) => s + o.features.length, 0) - ALL.length * SCATTER.length - 8, nSeam = STAND.reduce((s, S) => s + S.seams.length, 0);
   if (n('props') !== props.length) throw new Error('props: ' + n('props') + ' of ' + props.length + ' stand in a room');
   if (n('npc') !== npc.length) throw new Error('natives: ' + n('npc') + ' of ' + npc.length + ' stand in a room');
-  if (fe !== F.length - SCATTER.length) throw new Error('features: ' + fe + ' of ' + (F.length - SCATTER.length) + ' stand in a room');
+  if (fe !== F.length - SCATTER.length + CUT_EXTRA) throw new Error('features: ' + fe + ' of ' + (F.length - SCATTER.length + CUT_EXTRA) + ' stand in a room');   // CUT_EXTRA = the rails the roads cut in two
   if (n('doors') - nSeam !== doors.length) throw new Error('doors: ' + (n('doors') - nSeam) + ' of ' + doors.length);
   if (n('marks') !== marks.length) throw new Error('marks: ' + n('marks') + ' of ' + marks.length);
   console.log('THE HIGHWAY (retired, not written): ' + HWY.props.length + ' props, ' + HWY.npc.length + ' natives, ' + HWY.features.length + ' features, ' + HWY.doors.length + ' doors left with it'); }

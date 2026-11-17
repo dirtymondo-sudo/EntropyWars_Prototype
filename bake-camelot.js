@@ -435,7 +435,7 @@ const STAND = [
       parti: 'The hedge garden west of the moat as one walk: in from the west gate across the lawn, the chessboard with a hedge to either side, the mirror, and at the far end the tea party.' },
     { id: R_FAIRY, part: 'ow_fairy', label: 'THE FAIRY FOREST', sub: 'CAMELOT · THE GLOWING WOODS EAST OF THE MOAT · 6 PLOTS', list: v13('camF'), letters: ['F'], spawn: 'P07-02', face: 90,
       parti: 'The forest that glows, east of the moat, as one walk: out of the east gate past the knoll to the pond, the fairy ring between its two knolls, the woods trail and the spring, where the trail goes on east to the Woods.' },
-    { id: R_FOREST, part: 'ow_forest', label: 'THE FOREST', sub: 'CAMELOT · THE CROWN’S ROAD SOUTH · 9 PLOTS', list: v13('camW').concat([{ wx: L7.wx, wy: L7.wy, name: 'The Forest Trail', district: 'W', level: 0, isNew: true, link: 'L7' }]), letters: ['W'], spawn: 'P03-07', face: 180,
+    { id: R_FOREST, part: 'ow_forest', label: 'THE FOREST', sub: 'CAMELOT · THE CROWN’S ROAD SOUTH · 9 PLOTS', list: v13('camW').concat([{ wx: L7.wx, wy: L7.wy, name: 'The Forest Trail', district: 'W', level: 0, isNew: true, link: 'L7' }]), letters: ['W'], spawn: 'P03-07', spawnStep: [0, -1], face: 180,   /* ONE WORLD PHASE 5 (2026-11-17): the plot's hub square holds the Wayside Cross (district W); arriving there (the map's GO, an old save) stood the walker ON the cross, 2.2 m up. One square north, on the Crown's Road */
       parti: 'The forest south of the moat as one walk: the Crown’s Road down from the drawbridge, the glades, the woodcutter’s hut and the dead tree, and east a trail on through the trees to the Woods’ Ritual Ground.' },
 ];
 /* which plots move the same way (one room, one shift): a drawn row is cut only between plots that do not */
@@ -465,8 +465,7 @@ const OUT = {
        comes down from Stonehenge onto the North Row, west. `ifRoom` = written only once the route's room stands. */
     [KROOM]: [ { plot: 'P06-02', side: 'E', k: [5, 6], id: 'ow_v_m23_m2', way: 'open', open: 16, room: 'site_ow_r4', ifRoom: 1, label: 'THE OLD ROAD', sub: 'THE EAST ROW · EAST OUT OF THE TOWN', desc: 'Past the last houses the road widens into the Old Road and runs east through the forest.' },
                { plot: 'P02-01', side: 'N', k: [5, 6], id: 'ow_h_m28_m3', way: 'trail', room: 'site_ow_r12', ifRoom: 1, label: 'THE STONE PATH', sub: 'THE NORTH ROW · UP TO THE STONES', desc: 'A path goes north into the woods, and up out of them onto a bare plain.' } ],
-    [R_PINES]: [ { plot: 'P07-00', side: 'N', k: [5, 6], id: 'ow_h_m25_m10', way: 'trail', room: R_L6, label: 'THE TRAIL · THE MOUNTAINS', sub: 'THE PASS · UP TO THE SKI LODGE', desc: 'The trail goes on north through the Pass, up out of the pines towards the mountains.' },
-                 { plot: 'P07-00', side: 'E', link: 'northpole_camelot', end: 'b' } ],
+    [R_PINES]: [ { plot: 'P07-00', side: 'N', k: [5, 6], id: 'ow_h_m25_m10', way: 'trail', room: R_L6, label: 'THE TRAIL · THE MOUNTAINS', sub: 'THE PASS · UP TO THE SKI LODGE', desc: 'The trail goes on north through the Pass, up out of the pines towards the mountains.' } ],   /* (2026-11-17, One World phase 5) the link `northpole_camelot` (the sleigh road, a jump from this plot's east side to the North Pole 30 plots away) is gone: the road north is the trail L6 up to the Ski Lodge, then the Polar Trail (R5) */
     [R_FAIRY]: [ { plot: 'P07-05', side: 'E', link: 'woods_camelot', end: 'b' } ],
     [R_FOREST]: [ { plot: 'L7', side: 'E', id: 'ow_v_m22_6', way: 'trail', room: R_RITUAL, label: 'THE WOODS · THE RITUAL GROUND', sub: 'THE TRAIL EAST · THE MOUND', desc: 'A trail east through the trees, worn by feet going one way.' } ],
 };
@@ -595,7 +594,7 @@ ROOMS_OUT.forEach(o => { if (o.S.block) return; const R = o.R; let back = 0;
     o.back = back; });
 /* 7. nobody is cut off: a pocket of open ground the joints miss gets a one-square path to the nearest reached square of its own plot; then every plot is reached from the spawn */
 ROOMS_OUT.forEach(o => { const R = o.R, Wn = R.W, Dn = R.D, wet = (x, y) => o.c2[y][x] === 'w';
-    const sp = Array.isArray(o.S.spawn) ? [o.S.spawn[0] - 12, o.S.spawn[1] - 12] : hubOf(o, R.ofHome[o.S.spawn]); o.spSq = sp;
+    const sp = Array.isArray(o.S.spawn) ? [o.S.spawn[0] - 12, o.S.spawn[1] - 12] : hubOf(o, R.ofHome[o.S.spawn]); if (o.S.spawnStep) { sp[0] += o.S.spawnStep[0]; sp[1] += o.S.spawnStep[1]; } o.spSq = sp;   // (One World phase 5: `spawnStep` moves a room's arrival point off a piece that stands on the plot's hub square)
     let seen = null, tied = 0;
     for (let pass = 0; pass < 120; pass++) { seen = new Uint8Array(Wn * Dn); const q = [sp]; if (!o.openR(sp[0], sp[1])) throw new Error(o.S.id + ': the spawn square is not open'); seen[sp[1] * Wn + sp[0]] = 1;
         for (let i = 0; i < q.length; i++) { const [x, y] = q[i]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (o.openR(X, Y) && !wet(X, Y) && !seen[Y * Wn + X]) { seen[Y * Wn + X] = 1; q.push([X, Y]); } } }

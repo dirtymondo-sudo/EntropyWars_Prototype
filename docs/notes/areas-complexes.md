@@ -12171,3 +12171,43 @@ What the pass found and changed, one group a PR. The finished world is listed in
   for the height), hold `w` + `shift` through `ThreeRenderer.hq.dev.press` with the renderer's `render` switched off (the walker then
   runs at full speed on the software GPU: 14 m in 4 s, was 36 s), read `ThreeRenderer.hq.room()` until it changes, then compare where the
   walker stands with the far door's landing and walk on 3 s to see the walker is free. About 25 s a door; Disaster City 80 s.
+- **PR 2, THE JOINS + THE LAST JUMPS + THE MAP** (the same day):
+  - **THREE ROADS ARE ONE ROOM EACH** (mondo 11-17: "smaller than disaster city ... dont even ask, just make it one room"; the 30-plot and
+    12-in-a-row numbers of THE ROOM-SPLITTING RULE had cut them):
+    THE POLAR TRAIL `site_ow_r5` (36 plots, 13 x 7; was `site_ow_r5_0_17` + `site_ow_r5_18_35`), THE COAST ROAD `site_ow_r10` (38 plots,
+    3 x 17; was `site_ow_r10_0_25` + `site_ow_r10_26_37`; R10.json has no `stretches` any more), and THE RIVER ROAD + THE CANYON TRAIL
+    `site_ow_r1` (38 plots, 8 x 12: R1.json `with` the whole of R2 + `add`; `site_ow_r2` is gone, R2.json is kept for its words and must
+    NOT be baked). The five old ids are in `DOOR_HQ.retired`. Bake: `node bake-route.js R5`, `R10`, `R1` (no `--from / --to`), then the
+    zone tools that name them (`bake-mountains.js`, `bake-beach.js`, `bake-desert.js`).
+    `docs/areas/routes/R1.js` (the Tiber): its west-bank walk read the plot line as `N` squares down, true only while the box began at
+    row -4; it is `(-3 - BY0) * N` now (with the trail in the room the box begins at row -14 and the kit said "plot -6,-3 not reached").
+    A route's block in data.js is marked by its id + stretch (`OWROUTE R2_2_23-BEGIN`): drop the old block by that name when a stretch joins.
+  - **TWO MORE JUMPS GONE** (trails that crossed the map in one step, left from before the routes): `northpole_camelot` (the sleigh
+    road, the North Pole's south wall to the Snowy Pines' pass, 30 plots; walked now by the trail L6 and the Polar Trail) and
+    `vatican_olympus` (the Pilgrim Stair; the Pilgrim Way R3 walks it. draw-afterlife.js listed it twice, on the Vatican with no
+    `unless` and on the Colosseum with `unless: 'site_ow_r3'`, so it never dropped). Both rows are out of `DOOR_HQ.links`, out of
+    `bake-camelot.js` / `bake-mountains.js` LINKS and out of draw-afterlife.js.
+    KEPT, on purpose: every way with a story that is not a road (the Members club's doors `ranch_lodge` / `grove_lodge`, the painting
+    `lodge_olympus`, the gutter `streets_drain`, the ley door `gobekli_giza`, the dead tree `deadtree` / `lookingglass`, every well,
+    stair and hatch down, every boat).
+  - **THE FOREST'S ARRIVAL POINT** (`site_prebuilt_camelot_ow_forest`): the room's spawn was its plot's hub square, where district W's
+    Wayside Cross stands; the map's GO and an old save stood the walker ON the cross, 2.2 m up. `bake-camelot.js` STAND rows take
+    `spawnStep: [dx, dy]` (squares); the Forest's is one square north.
+  - **RETIRED, ONE ID THAT WAS MISSED**: `site_prebuilt_atlantis_ow_trench` (a room for a few hours on 11-17) -> the Deep.
+  - **THE MAP** (`bake-map.js`): the `wait: 1` rows of retired rooms are out of ZONES (a room with `room.world` needs no row; the three
+    underground rows that stay carry the map's note, and the D.U.M.B.'s said UNDER AREA 51, which it no longer is: UNDER THE SOUTH OF
+    DISASTER CITY). `node bake-map.js` with no ids bakes ONLY the ZONES rows: to rebake the world, pass every placed room's id. All 66
+    placed rooms were rebaked: 16 pictures were stale, 3 are new, 16 pictures of retired rooms are deleted. THE ZONE SHEET draws every
+    room of a zone at `zx, zy` whatever its layer: the North Pole (zy -28), Heaven, the Catacombs and Hell still had the old sheet's
+    places and lay over the roads; they are set clear of the surface rooms now.
+- **PR 2 also**: THE NORTH POLE'S WALLS: its room had no `edges` row, so the world ended flat at the village fence; bake-mountains.js now
+  writes `edges: { world: true, reach: 440, ways: [w = the sleigh road, n] }` like every other One World room. THE GUTTER DOOR: the city end
+  of the storm drain (`link_streets_drain`) stood inside the boathouse's wall (arrival = stuck); `JOIN.streets_drain` moved two squares to
+  the Canal walk. THE ROAD THROUGH THE FENCE: the Circus lot's ranch rail closed all three highway exits (the walker stopped 1 m short of the
+  edge); bake-desert.js now cuts every `rail` row a block brought with it where a seam door's road crosses the room's wall (the road's own
+  width; ghost walls of buildings are never cut; `CUT_EXTRA` keeps the feature count check true).
+- **What the walk found that is NOT a fault** (do not chase again): the Snowy Pass trail (`site_ow_l6`) "not moving" was the probe walking with
+  the renderer switched off; with it on both ends cross. Giza's east road (`ow_v_17_32`) lands 3.7 m from the Great Pyramid's foot: a walk
+  job that starts 5 m inside the door starts INSIDE the pyramid's ring of unseen walls; the door itself works both ways. A door whose prompt
+  says `[WALK IN]` opens by walking into it, one that says `[E]` needs the key: the probe presses E only when the prompt asks.
+

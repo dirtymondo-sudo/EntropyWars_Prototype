@@ -1,10 +1,10 @@
 {
-  "about": "ROUTE R1, THE RIVER ROAD (One World phase 4.1, the owner's north routes thread, 2026-11-17): the highway from the Vatican's east gate (opened for it) east across the river meadow, over the Tiber on a bridge (R1.js), through open woodland to Disaster City's Hills, which it enters on their west side at row -3 (the Hills' old west way `ridge`, re-pointed). ONE room, 14 plots (8 x 2): the plots 0,-4 and 1,-4 at its east end are the junction where the Canyon Trail (R2) starts north; the trail's first stretch is in this room (`with`) and leaves north at x 1. Joined to the Vatican (24 plots) or to the city it would pass the rule's 30 plots. PLACES (ow-places.js, every name an idea of Claude's): the design page gives 'the bridge over the Tiber into Civic Center' (the bridge is R1.js); the ranger station that the page puts on the Canyon Trail stands at the junction where the trail starts. Two plots carry no place: the gate plot (-6,-4: the bridge is its place) and -1,-3, where the road drops into the Hills' row.",
+  "about": "ROUTE R1, THE RIVER ROAD (One World phase 4.1, the owner's north routes thread, 2026-11-17): the highway from the Vatican's east gate (opened for it) east across the river meadow, over the Tiber on a bridge (R1.js), through open woodland to Disaster City's Hills, which it enters on their west side at row -3 (the Hills' old west way `ridge`, re-pointed). ONE room, 14 plots (8 x 2): the plots 0,-4 and 1,-4 at its east end are the junction where the Canyon Trail (R2) starts north; the trail's first stretch is in this room (`with`) and leaves north at x 1. Joined to the Vatican (24 plots) or to the city it would pass the rule's 30 plots. PLACES (ow-places.js, every name an idea of Claude's): the design page gives 'the bridge over the Tiber into Civic Center' (the bridge is R1.js); the ranger station that the page puts on the Canyon Trail stands at the junction where the trail starts. Two plots carry no place: the gate plot (-6,-4: the bridge is its place) and -1,-3, where the road drops into the Hills' row. ONE WORLD PHASE 5 (2026-11-17, mondo: smaller than Disaster City = one room, never ask): THE CANYON TRAIL (R2) STANDS IN THIS ROOM TOO (`with` the whole of R2 + its two added plots; 38 plots, 8 x 12): two roads that meet are one room. `site_ow_r2` is retired into `site_ow_r1`; R2.json is kept for its words only and is no longer baked.",
   "hub": "divine",
   "room": "site_ow_r1",
   "part": "ow_r1",
   "label": "THE RIVER ROAD",
-  "sub": "THE HIGHWAY · THE VATICAN TO THE CITY · 14 PLOTS",
+  "sub": "THE HIGHWAY · THE VATICAN TO THE CITY · THE CANYON TRAIL NORTH TO MOUNT SHASTA · 38 PLOTS",
   "line": [
     [
       -6.1,
@@ -55,6 +55,38 @@
           -4.1
         ]
       ]
+    },
+    {
+      "id": "R2",
+      "from": 2,
+      "to": 23,
+      "look": "trail",
+      "line": [
+        [
+          1.0,
+          -3.9
+        ],
+        [
+          1.0,
+          -8.5
+        ],
+        [
+          0.0,
+          -9.0
+        ],
+        [
+          0.0,
+          -13.5
+        ],
+        [
+          -2.79,
+          -13.5
+        ],
+        [
+          -2.79,
+          -14.1
+        ]
+      ]
     }
   ],
   "ends": {
@@ -70,11 +102,11 @@
       "sub": "THE WEST RIDGE · DOWN TO THE CITY",
       "desc": "The road climbs into dry brown hills. The city is on the other side of them."
     },
-    "ow_h_1_m4": {
-      "room": "site_ow_r2",
-      "label": "THE CANYON TRAIL",
-      "sub": "THE TRAIL NORTH · UP BEHIND THE SIGN",
-      "desc": "A trail goes north up a dry canyon, behind the hills with the letters on them."
+    "ow_h_m3_m14": {
+      "room": "site_prebuilt_shasta_ow_shasta",
+      "label": "MOUNT SHASTA",
+      "sub": "THE TRAILHEAD · UP THE VOLCANO",
+      "desc": "The canyon ends under a big mountain with smoke at the top. A trailhead sign stands where the trail starts up it."
     }
   },
   "places": {
@@ -82,5 +114,15 @@
     "-6,-4": false,
     "-1,-3": false,
     "-6,-3": "cross"
-  }
+  },
+  "add": [
+    [
+      -2,
+      -14
+    ],
+    [
+      -3,
+      -14
+    ]
+  ]
 }

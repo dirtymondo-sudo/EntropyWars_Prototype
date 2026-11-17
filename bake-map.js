@@ -36,23 +36,23 @@ const OUT_DIR = path.join(REPO, 'Assets/ui/map');
    re-laid room write it). Such a room needs no row here: it is added to its hub's zone, and `room.world` wins over a row here. ── */
 const ZONES = [
     { hub: 'city', layout: null, rooms: [{ room: 'site_prebuilt_downtown_streets', layer: 'surface', wx: 0, wy: -3, zx: 0, zy: 0, city: true }] },
-    { hub: 'mountains', layout: 'mountains', rooms: [{ room: 'site_prebuilt_shasta_mountains', layer: 'surface', wx: -16, wy: -22, zx: 5, zy: 0, wait: 1 }, { room: 'site_prebuilt_northpole_plots', layer: 'surface', wx: 0, wy: -28, zx: 0, zy: 0 }] },
-    { hub: 'woods', layout: 'woods', rooms: [{ room: 'site_prebuilt_fairy_forest_plots', layer: 'surface', wx: -22, wy: -9, zx: -22, zy: -9, wait: 1 }] },   // THE TEST SLICE (2026-11-17): the room is the Redwood Trail + the Ritual Ground now (6 x 3 plots, not moved yet); the Clearing and Dead Man's Cave are rooms of their own (`room.world`), so the waiting room is drawn clear of them
+    { hub: 'mountains', layout: 'mountains', rooms: [{ room: 'site_prebuilt_northpole_plots', layer: 'surface', wx: 0, wy: -28, zx: 0, zy: -28 }] },   // ONE WORLD PHASE 5 (2026-11-17): the waiting rows of retired rooms are gone from this table (the Mountains', the Woods', the Estate's, Leylines'); every re-laid room says its own place (`room.world`)
+    { hub: 'woods', layout: 'woods', rooms: [] },   // THE TEST SLICE (2026-11-17): the room is the Redwood Trail + the Ritual Ground now (6 x 3 plots, not moved yet); the Clearing and Dead Man's Cave are rooms of their own (`room.world`), so the waiting room is drawn clear of them
     { hub: 'kingdom', layout: 'camelot', rooms: [{ room: 'site_prebuilt_camelot_kingdom', layer: 'surface', wx: -29, wy: -3, zx: 0, zy: 0 }] },
-    { hub: 'ranch', layout: 'estate', rooms: [{ room: 'site_prebuilt_skinwalker_estate', layer: 'surface', wx: -22, wy: 12, zx: -22, zy: 12, wait: 1 }] },   // THE TEST SLICE (2026-11-17): the room is the Haunted House + the Ranch now (6 x 3 plots, not moved yet); the Corn Fields and the Lake are rooms of their own (`room.world`)
+    { hub: 'ranch', layout: 'estate', rooms: [] },   // THE TEST SLICE (2026-11-17): the room is the Haunted House + the Ranch now (6 x 3 plots, not moved yet); the Corn Fields and the Lake are rooms of their own (`room.world`)
     { hub: 'desert', layout: 'desert', rooms: [] },   // ONE WORLD 4.2 (2026-11-17): every Desert room says its own place (`room.world`): the four districts and the roads between them (site_ow_dh1..dh4, site_ow_r9); the Highway's room is retired
     { hub: 'beach', layout: 'beach', rooms: [{ room: 'site_prebuilt_bermuda_beach', layer: 'surface', wx: 12, wy: 2, zx: 0, zy: 0 }] },   // THE ONE WORLD MOVE (2026-11-17, phase 4.3): the Beach stands at 12,2 (8 x 10); the Triangle and the Volcano Island are rooms of their own (`room.world`)
-    { hub: 'ley', layout: 'leylines', rooms: [{ room: 'site_prebuilt_gobekli_ancient', layer: 'surface', wx: 19, wy: 29, zx: 0, zy: 0, wait: 1 }] },
+    { hub: 'ley', layout: 'leylines', rooms: [] },
     { hub: 'antarctica', layout: 'antarctica', rooms: [{ room: 'site_prebuilt_antarctica_plots', layer: 'surface', wx: 0, wy: 46, zx: 0, zy: 0 }] },
     { hub: 'divine', layout: 'afterlife', rooms: [
-        { room: 'site_prebuilt_heaven_plots', layer: 'off', zx: 0, zy: 0, note: 'ABOVE THE VATICAN' },
+        { room: 'site_prebuilt_heaven_plots', layer: 'off', zx: 3, zy: -13, note: 'ABOVE THE VATICAN' },
         { room: 'site_prebuilt_vatican_plots', layer: 'surface', wx: -12, wy: -9, zx: 6, zy: 0 },   // (One World 4.4: the Colosseum stands north of the Vatican in its room; the room says its own place, `room.world`)
-        { room: 'site_prebuilt_vatican_under', layer: 'under', wx: -10, wy: -5, zx: 6, zy: 6, note: 'UNDER THE VATICAN' },
-        { room: 'site_prebuilt_hell_plots', layer: 'under', wx: -10, wy: -10, zx: 14, zy: 0, note: 'UNDER THE COLOSSEUM' }] },
-    { hub: 'underworld', layout: 'sewers', rooms: [{ room: 'site_prebuilt_downtown_underworld', layer: 'under', wx: 3, wy: 4, zx: 0, zy: 0, note: 'UNDER DISASTER CITY', wait: 1 }] },
-    { hub: 'cavern', layout: 'cavern', rooms: [{ room: 'site_prebuilt_hollow_earth_cavern', layer: 'under', wx: -12, wy: 9, zx: 0, zy: 0, wait: 1 }] },
-    { hub: 'dumb', layout: 'dumb', rooms: [{ room: 'site_prebuilt_dumb_base', layer: 'under', wx: 1, wy: 33, zx: 0, zy: 0, note: 'UNDER AREA 51', wait: 1 }] },
-    { hub: 'deep', layout: 'deep', rooms: [{ room: 'site_prebuilt_atlantis_deep', layer: 'under', wx: 18, wy: 4, zx: 0, zy: 0, note: 'UNDER THE SEA', wait: 1 }] },
+        { room: 'site_prebuilt_vatican_under', layer: 'under', wx: -10, wy: -5, zx: -17, zy: -5, note: 'UNDER THE VATICAN' },
+        { room: 'site_prebuilt_hell_plots', layer: 'under', wx: -10, wy: -10, zx: -18, zy: -10, note: 'UNDER THE COLOSSEUM' }   /* ONE WORLD PHASE 5 (2026-11-17): THE ZONE SHEET draws every room of a zone at zx, zy whatever its layer. The surface rooms stand at their world places (the Vatican, the River Road, the Canyon Trail), so the rooms that are not on the surface are set clear of them: Heaven north-east of the River Road, the Catacombs and Hell west of the Vatican on the rows they lie under. They were still at the old sheet's places and lay over the roads. The North Pole's zy is its world row for the same reason */] },
+    { hub: 'underworld', layout: 'sewers', rooms: [{ room: 'site_prebuilt_downtown_underworld', layer: 'under', wx: 1, wy: 1, zx: 1, zy: 1, note: 'UNDER DISASTER CITY' }] },   // (the room says its own place, `room.world`, which wins; this row carries the map's note)
+    { hub: 'cavern', layout: 'cavern', rooms: [] },
+    { hub: 'dumb', layout: 'dumb', rooms: [{ room: 'site_prebuilt_dumb_base', layer: 'under', wx: 0, wy: 11, zx: 0, zy: 11, note: 'UNDER THE SOUTH OF DISASTER CITY' }] },   // (the room says its own place, `room.world`, which wins; this row carries the map's note)
+    { hub: 'deep', layout: 'deep', rooms: [{ room: 'site_prebuilt_atlantis_deep', layer: 'under', wx: 35, wy: 1, zx: 35, zy: 1, note: 'UNDER THE SEA' }] },   // (the room says its own place, `room.world`, which wins; this row carries the map's note)
     { hub: 'space', layout: 'space', rooms: [
         { room: 'site_prebuilt_moon_plots', layer: 'off', zx: 0, zy: 0, note: 'THE SOLAR SYSTEM' }] },   // THE SPACESHIP YOU FLY (2026-11-17): the four worlds are one room (bake-space.js)
     { hub: 'astral', layout: 'astral', rooms: [{ room: 'site_prebuilt_lookingglass_realm', layer: 'off', zx: 0, zy: 0 }] },

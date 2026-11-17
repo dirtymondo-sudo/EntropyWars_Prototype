@@ -321,7 +321,7 @@ const NP = makeRoom({ id: POLE, tag: 'pole', files: ['N'], streams: { N: 16 }, p
   /* THE WAYS: the Pass Gate (east, up into the Mountains), the sleigh road south to Camelot's north gate (the link `northpole_camelot`), the bay door of DOOR HQ */
   /* THE POLAR TRAIL (route R5, One World phase 4.1, 2026-11-17): the village's west way. The trail comes in across the tundra from the Mountains' ridge and
      reaches the Pole on its west wall at row -27 (seam ow_v_0_m27); it replaces the Pass Gate (`pass`, east wall), which jumped to the Lodge without a walk */
-  if (vm.runInContext('!!DOOR_HQ.rooms.site_ow_r5_18_35', D)) door('ow_v_0_m27', 'P00-01', 'w', Object.assign({ way: 'open', passage: { len: 3, deep: 1.2, w: 5 }, action: { room: 'site_ow_r5_18_35', at: 'ow_v_0_m27' } }, DOORWORDS('THE POLAR TRAIL', 'THE WEST WAY · ACROSS THE TUNDRA TO THE MOUNTAINS', 'Past the last cottage the snow goes flat and white to the west. A line of cairns marks a trail across it, towards the mountains.')));
+  if (vm.runInContext('!!DOOR_HQ.rooms.site_ow_r5', D)) door('ow_v_0_m27', 'P00-01', 'w', Object.assign({ way: 'open', passage: { len: 3, deep: 1.2, w: 5 }, action: { room: 'site_ow_r5', at: 'ow_v_0_m27' } }, DOORWORDS('THE POLAR TRAIL', 'THE WEST WAY · ACROSS THE TUNDRA TO THE MOUNTAINS', 'Past the last cottage the snow goes flat and white to the west. A line of cairns marks a trail across it, towards the mountains.')));
   const SLEIGH = R.spur('P03-03', 's'), BAY = R.spur('P01-03', 's');
   runDistricts(R, 'apply'); runDistricts(R, 'build');   // THE DISTRICT FILES: everything that stands on the plots
   R.out = { SLEIGH, BAY };
@@ -377,7 +377,7 @@ const pBlock = finish(NP, { label: 'THE NORTH POLE', sub: 'THE VILLAGE · THE WO
     parti: 'A high white valley on sixteen plots behind the pass: a village round a tree, a workshop with its lights on, a pole with stripes, a lake you can walk on, and drifts too deep to cross anywhere but the road.',
     floor: 'ice', pal: ['ice_1', 'igloo', 'wood_planks'], paintOf: ch => ch === 'i' ? 1 : ch === 'o' ? 2 : 0,
     trees: { snow: { kinds: SNOWPINES, treeH: [5.5, 8] } }, treeDefault: 'snow', maxTrees: 1400, treeKey: () => 'snow',
-    edges: { reach: 440, n: { kind: 'mountain' }, w: { kind: 'mountain' }, e: { kind: 'mountain' }, s: { kind: 'mountain' } },
+    edges: { world: true, reach: 440, ways: [{ side: 'w', at: -38.5 }, { side: 'n', at: -61.25 }] },   /* ONE WORLD PHASE 5 (2026-11-17): the land past the Pole's line reads the map (tundra west, south and east, the Frozen Sea north). It was a mountain on all four sides, from when the village stood behind the Pass Gate: the Polar Trail came in across flat tundra and met a mountain wall, and the sea to the north was a ridge. The ways: the Polar Trail's west way, the track north to the Frozen Sea */
     lines: O_POLE.l, spawn: pSpawn, face: 0 });
 [[NP, ['hearth']], [M, ['painting', 'bayOlympus', 'lemuria', 'bayShasta']]].forEach(([R, need]) => need.forEach(k => { const a = R.anchors[k]; if (!a || !isFinite(a.x) || !isFinite(a.z)) throw new Error(R.o.id + ': no anchor `' + k + '` (a district file sets it: THE DISTRICT FILES)'); }));
 
@@ -419,7 +419,7 @@ const STAND = [
               { at: [-15, -14], side: 'E', id: 'ow_v_m14_m14', room: R_OLY, way: 'trail', label: 'MOUNT OLYMPUS · THE SADDLE PATH', sub: 'THE TREE LINE · EAST OVER THE SADDLE', desc: 'A path goes east along the saddle, towards a mountain with something white built on top of it.' },
               { at: [-22, -16], side: 'W', id: 'ow_v_m22_m16', room: 'site_ow_l6', way: 'open', open: 5, label: 'CAMELOT KINGDOM · THE SNOWY PINES', sub: 'THE LODGE YARD · WEST DOWN THE VALLEY', desc: 'Ski tracks give out at the yard’s end. Past them a trail goes west and down, into pines.', ifRoom: 1 },
               /* THE POLAR TRAIL (route R5, One World phase 4.1, 2026-11-17): east off the Ridge, east, across the tundra to the North Pole (it replaces the Pass Gate's `pass` doors) */
-              { at: [-14, -22], side: 'E', k: [5, 6], id: 'ow_v_m13_m22', room: 'site_ow_r5_0_17', way: 'open', open: 5, label: 'THE POLAR TRAIL', sub: 'THE RIDGE · EAST ACROSS THE TUNDRA', desc: 'Past the end of the ridge the snow flattens out into tundra, and a line of cairns goes east towards the Pole.', ifRoom: 1 }] },
+              { at: [-14, -22], side: 'E', k: [5, 6], id: 'ow_v_m13_m22', room: 'site_ow_r5', way: 'open', open: 5, label: 'THE POLAR TRAIL', sub: 'THE RIDGE · EAST ACROSS THE TUNDRA', desc: 'Past the end of the ridge the snow flattens out into tundra, and a line of cairns goes east towards the Pole.', ifRoom: 1 }] },
     { id: R_OLY, part: 'ow_olympus', files: ['O'], label: 'MOUNT OLYMPUS', sub: 'THE MOUNTAINS · THE SADDLE PATH · MOUNT OLYMPUS · THE LONG DESCENT · 19 PLOTS',
       list: L10.concat(v13('mtn'), L11), spawn: ['P10-02', null, null], lines: O_OLYMPUS.l,
       parti: 'The temple mountain on twelve plots above the cloud, with the saddle path coming in from the Snowy Pass and the long descent going on east across the snow to Mount Shasta.',
@@ -433,7 +433,7 @@ const STAND = [
       seams: [{ at: [-4, -15], side: 'W', id: 'ow_v_m4_m15', room: R_OLY, way: 'open', open: 5, label: 'MOUNT OLYMPUS · THE LONG DESCENT', sub: 'THE UPPER SHELF · WEST ACROSS THE SNOW', desc: 'A line of footprints goes west across the snow, towards a white temple on the next mountain.' },
               /* THE CANYON TRAIL (route R2, One World phase 4.1, 2026-11-17): the trail comes up from the south into the Trailhead's south side, on squares 2-3,
                  west of the Woods door `woods` (R2's spec adds the two plots -2,-14 and -3,-14 that reach here, mondo's yes) */
-              { at: [-3, -15], side: 'S', k: [2, 3], id: 'ow_h_m3_m14', room: 'site_ow_r2', way: 'trail', label: 'THE CANYON TRAIL', sub: 'THE TRAILHEAD · DOWN THE CANYON TO THE HILLS', desc: 'A dry trail goes south down a canyon, towards some hills with very large letters on them.', ifRoom: 1 }] },
+              { at: [-3, -15], side: 'S', k: [2, 3], id: 'ow_h_m3_m14', room: 'site_ow_r1', way: 'trail', label: 'THE CANYON TRAIL', sub: 'THE TRAILHEAD · DOWN THE CANYON TO THE HILLS', desc: 'A dry trail goes south down a canyon, towards some hills with very large letters on them.', ifRoom: 1 }] },
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, OPP = { N: 'S', S: 'N', W: 'E', E: 'W' }, FACE = { N: 180, E: 270, S: 0, W: 90 };
 const GROUND = PJ.ground, groundAt = (x, y) => { const r = GROUND.rows[y - GROUND.y0]; return r ? r[x - GROUND.x0] : '~'; };
@@ -535,12 +535,12 @@ const A = k => moved(M.anchors[k].x, M.anchors[k].z, k), aH = moved(M.out.heaven
 const aL = A('lemuria'), aP = A('painting'), aBS = A('bayShasta'), aBO = A('bayOlympus');
 if (aH.e.row !== 0 || aV.e.row !== aV.R.rows - 1) throw new Error('the Grand Stair / the Pilgrim Stair no longer stand on their room\'s north / south wall');
 const LINKS = {
-    northpole_camelot: ['a', "{ site: 'prebuilt_northpole', part: 'plots', wall: 's', x: " + NP.out.SLEIGH + ", sub: 'THE SLEIGH ROAD · TO CAMELOT' }"],
+    /* northpole_camelot: gone 2026-11-17 (One World phase 5): the sleigh road jumped from the Pole to Camelot's Snowy Pines; the Polar Trail (R5) and the trail L6 walk it */
     northpole_haunted: ['a', "{ site: 'prebuilt_northpole', part: 'plots', wall: 'free', x: " + NP.anchors.hearth.x + ", z: " + NP.anchors.hearth.z + ", face: " + NP.anchors.hearth.face + " }"],
     shasta_lemuria: ['a', "{ site: 'prebuilt_shasta', part: '" + aL.S.part + "', wall: 'free', x: " + aL.x + ", z: " + aL.z + ", face: " + M.anchors.lemuria.face + ", sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN' }"],
     heaven_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aH.S.part + "', wall: 'n', x: " + aH.x + ", sub: 'THE GRAND STAIR · UP INTO HEAVEN' }"],
     lodge_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aP.S.part + "', wall: 'free', x: " + aP.x + ", z: " + aP.z + ", face: " + M.anchors.painting.face + " }"],
-    vatican_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aV.S.part + "', wall: 's', x: " + aV.x + ", sub: 'THE PILGRIM STAIR · DOWN TO THE VATICAN' }"],
+    /* vatican_olympus: gone 2026-11-17 (One World phase 5): the Pilgrim Way (R3) is the walk down to the Vatican; the Pilgrim Stair's foot on the south wall has no door */
 };
 const ENTRY = {
     prebuilt_shasta: "{ room: '" + aBS.S.id + "', door: { id: 'bay', wall: 'free', x: " + aBS.x + ", z: " + aBS.z + ", face: " + M.anchors.bayShasta.face + " } }",

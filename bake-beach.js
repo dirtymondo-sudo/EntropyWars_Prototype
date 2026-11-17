@@ -304,7 +304,7 @@ TRI_R.triangle = LAYOUT.triangle.map(q => [r2(gx(q[0]) + TRI_R.ox), r2(gz(q[1]) 
   for (let y = R.H - 3; y < R.H; y++) for (let x = mid - 2; x < mid + 2; x++) if (R.cell[y][x] === 'w') { R.cell[y][x] = 'd'; R.spit.push([x, y]); }
   const wet = new Set(R.spit.map(q => q[0] + ':' + q[1]));
   R.props = R.props.filter(p => { const q = [Math.floor((p.x + R.HW) / C), Math.floor((p.z + R.HD) / C)]; if (wet.has(q[0] + ':' + q[1]) && (p.y != null && p.y < 0.2)) { LOST.push({ o: p, R, q, local: true }); return false; } return true; });
-  R.doors.push({ id: 'ow_h_15_12', way: 'open', label: 'THE COAST ROAD', sub: 'SOUTH ALONG THE SEA · TO GIZA', action: { room: 'site_ow_r10_0_25', at: 'ow_h_15_12' },
+  R.doors.push({ id: 'ow_h_15_12', way: 'open', label: 'THE COAST ROAD', sub: 'SOUTH ALONG THE SEA · TO GIZA', action: { room: 'site_ow_r10', at: 'ow_h_15_12' },
       desc: 'The sand runs out to a road, and the road runs south along the sea to the pyramids.', wall: 's', x: r2(R.gx(mid)), passage: { w: 11 } });
   R.ways = [{ side: 's', at: r2(R.gx(mid)) }]; R.reach = [[mid, R.H - 1, 'the Coast Road door at the spit\'s end']]; }
 /* ── THE GROWN ISLAND (mondo 11-16 on map v5: "grow Volcano Island (6x6 jungle + dinosaur park)"; new plots, the names are ideas): south and

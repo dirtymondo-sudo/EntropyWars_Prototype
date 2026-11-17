@@ -400,7 +400,7 @@ JOIN.stadium_sewers = spot('P03-00', 7, 6, 0, 'R');   // the stadium road's dead
 JOIN.bay_strip = spot('Casino', 2, 9, 90); JOIN.bay_lodge = spot('Members club', 3, 1, 90);
 JOIN.bay_stadium = spot('Park gate', 8, 9, 0);   // on the pavement south of the gate road (the squares north of the road are inside the gate's piers)
 JOIN.ranch_lodge = spot('Members club', 10, 8, 270); JOIN.lodge_olympus = spot('Members club', 10, 10, 270); JOIN.grove_lodge = spot('Members club', 1, 10, 90);   // 2026-11-13: on the road's dead end itself (was the 3.5 m alley beside the boxing gym, on its east door's step: Southside saw its sign indoors)
-JOIN.garage_taxi = spot('Taxi rank', 3, 3, 270, '.P'); JOIN.streets_drain = spot('Canal walk', 6, 8, 270); JOIN.docks_sewer = spot('Dock edge', 6, 6, 90);
+JOIN.garage_taxi = spot('Taxi rank', 3, 3, 270, '.P'); JOIN.streets_drain = spot('Canal walk', 6, 6, 270);   /* (One World phase 5, 2026-11-17: was square 6,8, where district R's boathouse was built later; coming up from the Woods' storm drain stood the walker inside its brick wall. Two squares north, on the open walk) */ JOIN.docks_sewer = spot('Dock edge', 6, 6, 90);
 dcCtx.JOIN = JOIN;   // THE JOINS a district may move in `build` (a link door that belongs inside one of its own walk-ins: I.js puts the sewers door on the Pump court's back wall)
 
 /* THE LEVELS, THE CROSSINGS' STAIRS (after the doors above have their squares, before anything is dressed) */
