@@ -27859,9 +27859,10 @@
             const el = document.createElement('div');
             el.className = 'acam-chrome';
             el.innerHTML = `
-        <div class="acam-bar acam-bar-top"><div class="acam-news-live">LIVE</div><div class="acam-bar-name"></div></div>
-        <div class="acam-bar acam-bar-bot"><div class="acam-news"><div class="acam-news-row"><span class="acam-news-tag">BREAKING NEWS</span><span class="acam-news-head"></span></div><div class="acam-news-ticker"><span class="acam-news-tick"></span></div></div></div>
+        <div class="acam-bar acam-bar-top"><div class="acam-news-live">LIVE</div><div class="acam-lk-top"></div><div class="acam-bar-name"></div></div>
+        <div class="acam-bar acam-bar-bot"><div class="acam-news"><div class="acam-news-row"><span class="acam-news-tag">BREAKING NEWS</span><span class="acam-news-head"></span></div><div class="acam-news-ticker"><span class="acam-news-tick"></span></div></div><div class="acam-lk-bot"></div></div>
         <div class="acam-vignette"></div>
+        <div class="acam-look"></div>
         <div class="acam-speedlines"></div>
         <div class="acam-flash"></div>
         <div class="acam-title">
@@ -27887,6 +27888,199 @@
             return { head: _AC_NEWS[name], ticker: ticker + '   ★   ' + ticker };
         }
 
+        /* 🎬 THE RACE LOOKS (mondo 2026-11-17, after the Florida Man's broadcast: "see if there are any other characters
+           where it would benefit to have a unique overlay or gimmick with their spells ... making the way the spell is
+           presented itself more unique"; his picks the same day: Influencer, Televangelist, Magician, Quarterback,
+           Chess Piece, Bigfoot + Mothman, Cowboy, Swordfighter (anime on every spell), Karate Frog (a badly dubbed 70s kung
+           fu film) and the Cursed TV; the Referee's VAR look was dropped after his first look, "isnt working"). A caster of one of these races dresses its spell shot in its own look: three slots
+           ride the chrome (.acam-lk-top inside the top bar, .acam-lk-bot inside the bottom bar, so the number-yield logic
+           still reads the bars' own rects; .acam-look over the frame), `lk-<key>` on the chrome styles them
+           (styles-cinematic.css "THE RACE LOOKS"), and a look's grade (sepia, the trail cam's black and white) runs in the
+           3D frame's shader only, so the numbers, the caster and the target keep their colour. Spells only: the shot's name
+           must be one of the race's own spells (or a line in its table). Keyed on the shot (relayed), so the guest's own
+           chrome dresses the same way (RULE #2). Kill switch: window.EW_NO_RACE_LOOKS = true. */
+        const _AC_LOOK_RACES = {
+            'influencer': 'influencer', 'televangelist': 'telethon', 'magician': 'magician',
+            'quarterback': 'qb', 'chess piece': 'chess', 'bigfoot': 'trailcam', 'mothman': 'trailcam', 'cowboy': 'western',
+            'swordfighter': 'anime', 'karate frog': 'kungfu', 'cursed tv': 'crt',
+        };
+        const _AC_LOOK_GRADE = { trailcam: 'desat', western: 'sepia', kungfu: 'sepia' };
+        const _AC_LOOK_TEXT = {
+            influencer: {
+                'Selfie Flash': [['paparazzi_daily', 'how is she ALWAYS lit'], ['fan_acct', 'SERVE 😭'], ['skeptic', 'ring light carrying']],
+                'Go Viral': [['bigfoot_irl', 'ratio 💀'], ['floridaman', 'literally me'], ['referee', "that's a foul tbh"]],
+                'Sponsored': [['brand_deals', '#ad #ad #ad'], ['code_entropy', 'use code ENTROPY for 10% off'], ['lawyer', 'disclose that']],
+                'Filter': [['skeptic', 'who is that'], ['fan_acct', 'no makeup look ✨'], ['bigfoot_irl', 'she looks different irl']],
+                'Ratio': [['banker', 'this you?'], ['troll99', 'L + ratio + didn’t ask'], ['floridaman', 'W']],
+                _: [['fan_acct', 'omg 😭'], ['skeptic', 'staged'], ['troll99', 'first']],
+            },
+            telethon: {
+                'Laying On of Hands': ['1-800-HEAL-NOW', 'HEALINGS GUARANTEED OR YOUR FAITH WAS WEAK'],
+                'Collection Plate': ['1-800-SOW-SEED', 'PLANT YOUR SEED FAITH OFFERING TODAY'],
+                'Miracle': ['1-800-MIRACLE', 'BLESSED SPRING WATER · ONLY $99.95 A BOTTLE'],
+                _: ['1-800-SOW-SEED', 'THE LORD LOVES A CHEERFUL GIVER'],
+            },
+            magician: { 'Sleight of Hand': ['THE AMAZING', 'Nothing up my sleeve!'], 'Pick a Card': ['PICK A CARD, ANY CARD', 'Is this your card?'],
+                'Saw in Half': ['THE AMAZING', 'Ta-da!'], _: ['THE AMAZING', 'Ta-da!'] },
+            qb: {
+                'Hail Mary': ['4th & 20', '0:07'], 'Bullet Pass': ['3rd & 7', '2:14'], 'Blitz': ['1st & 10', '8:40'],
+                'QB Sneak': ['4th & inches', '0:31'], 'Audible': ['2nd & 5', '5:02'], 'Spike the Ball': ['1st & Goal', '0:03'],
+                'Long Bomb': ['3rd & 15', '1:09'], _: ['1st & 10', '4:00'],
+            },
+            chess: {
+                'Pawn': ['e4', 'book', 'Book move'], 'Knight': ['Nf3', 'best', 'Best move'], 'Bishop': ['Bb5+', 'great', 'Great move'],
+                'Rook': ['Rxe8+', 'excellent', 'Excellent'], 'Queen': ['Qxe7+', 'brilliant', 'Brilliant move'], 'King': ['O-O', 'book', 'Book move'],
+                _: ['Nxf7', 'best', 'Best move'],
+            },
+            trailcam: { bigfoot: ['CAM 03', '42°F', '03:14:07 AM', 'TRAILPRO 12MP'], mothman: ['CAM 07', '38°F', '02:47:51 AM', 'POINT PLEASANT BRIDGE'] },
+            western: {
+                'Dynamite': 'A FISTFUL OF DYNAMITE', 'Whistle': 'THE WHISTLER RIDES AT DAWN', 'Fan the Hammer': 'FOR A FEW BULLETS MORE',
+                'Lasso': 'ONCE UPON A TIME IN THE WEST', 'Long Rifle': 'THE GOOD, THE BAD AND THE LONG RIFLE', 'High Noon': 'TWO MEN, ONE TOWN, NO SHADE',
+                'Showdown': 'THIS TOWN AIN’T BIG ENOUGH', 'Six-Shooter': 'SIX BULLETS, ONE DRIFTER', _: 'A STRANGER RIDES INTO TOWN',
+            },
+            /* the anime: [the spell's Japanese title, the line in Japanese, the English fansub under it] */
+            anime: {
+                'Quickdraw': ['居合斬り', '遅すぎる……', '…too slow.'],
+                'Thousand Cuts': ['千斬り', '千の斬撃、見えたか！？', 'A thousand cuts! Did you even see them?!'],
+                'Sad Backstory': ['悲しい過去', 'あの日も、雨が降っていた……', '(flashback) It was raining that day too…'],
+                'Plot Armor': ['主人公補正', '最終回まで、負けられない！', 'I can\u2019t lose. Not before the final episode!'],
+                'Blessed Blade': ['聖なる刃', 'みんなの想いを、この刃に！！', 'Everyone\u2019s hopes… into this blade!!'],
+                'Roll Credits': ['エンディング', '次回、最終決戦！', 'Next time: the final battle!'],
+                _: ['必殺技', 'これが俺の覚悟だ！！', 'This is my resolve!!'],
+            },
+            kungfu: {
+                'Leapfrog': ['FIST OF THE LEAPING FROG', 'Your pond… has no honour!', 'and also your father’s pond'],
+                'Tongue Lash': ['THE 36 CHAMBERS OF THE TONGUE', 'You dare insult… my tongue?!', 'mouth keeps moving'],
+                'Flying Kick': ['ENTER THE FROG', 'Hi-YAAAH!', 'mouth still moving, no sound'],
+                _: ['ENTER THE FROG', 'Your kung fu is weak!', 'mouth keeps moving'],
+            },
+            crt: { 'Static Burst': '3', 'Emergency Broadcast': '00', 'Fast Forward': '4', 'Rewind': '4', _: '3' },
+        };
+        function _acEsc(v) { return String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+        function _acHash(v) { let h = 7; for (const c of String(v)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
+        function _acLookFor(opts) {
+            if (window.EW_NO_RACE_LOOKS || !opts || !opts.name) return null;
+            const id = opts.casterId != null ? opts.casterId : opts.castBy;
+            if (id == null || typeof unitFromId !== 'function') return null;
+            const u = unitFromId(id);
+            if (!u) return null;
+            const race = String(u.race || '').toLowerCase();
+            const key = _AC_LOOK_RACES[race];
+            if (!key) return null;
+            const own = (typeof RACE_ABILITIES !== 'undefined' && RACE_ABILITIES[race]) || [];
+            const tbl = _AC_LOOK_TEXT[key] || {};
+            if (!own.some(sp => sp && sp.name === opts.name) && !Object.prototype.hasOwnProperty.call(tbl, opts.name)) return null;
+            return { key, race, name: opts.name, unit: u, line: tbl[opts.name] || tbl._ };
+        }
+        /* each look's three slots (top bar, bottom bar, the frame), from its table line */
+        function _acLookHtml(lk) {
+            const E = _acEsc, n = E(lk.name), L = lk.line, h = _acHash(lk.name + ':' + (state.round || 0));
+            switch (lk.key) {
+            case 'influencer': {
+                const cm = (L || []).map((c, i) => `<div style="animation-delay:${0.35 + i * 0.45}s"><b>@${E(c[0])}</b>${E(c[1])}</div>`).join('');
+                const views = (8 + h % 90) / 10 + 'K', likes = 100 + h % 800 + 'K';
+                const hearts = ['❤️', '💖', '❤️', '😍', '❤️', '🔥'].map((e, i) => `<span style="animation-delay:${(i * 0.32).toFixed(2)}s;margin-left:${(h >> i) % 26}px">${e}</span>`).join('');
+                return { cls: 'lk-bars', top: `<div class="lk-ig-prog"><span><i></i></span><span><i></i></span><span><i class="run"></i></span><span></span></div>
+                    <div class="lk-ig-who"><span class="lk-ig-av">🤳</span>@influencer <span class="lk-ig-tick">✔</span><span class="lk-ig-live">LIVE</span><span class="lk-ig-eye">👁 ${views}</span><span class="lk-ig-cap">${n}</span></div>`,
+                    free: `<div class="lk-pill l"></div><div class="lk-pill r"></div>
+                    <div class="lk-ig-hearts">${hearts}</div><div class="lk-ig-cnt">❤️ ${likes}</div>
+                    <div class="lk-ig-cmts">${cm}</div><div class="lk-ig-send">Send message…</div>` };
+            }
+            case 'telethon': {
+                const base = 100000 + (h % 900) * 1000;
+                return { cls: 'lk-bars', top: '<div class="lk-tl-sub"><b>LIVE</b> VIA SATELLITE · THE HOUR OF MIRACLES</div>',
+                    bot: `<div class="lk-tl-cards">WE ACCEPT VISA · MASTERCARD · CRYPTO · YOUR HOUSE</div>
+                        <div class="lk-tl-row"><div class="lk-tl-call"><div class="n">☎ ${E(L[0])}</div><div class="l">${E(L[1])}</div></div>
+                        <div class="lk-tl-pl"><b>PLEDGED TONIGHT</b><i data-roll-from="${base}" data-roll-to="${base + 1100000 + (h % 300) * 1000}" data-roll-fmt="$">$${base.toLocaleString('en-US')}</i></div></div>`,
+                    free: '<div class="lk-tl-glow"></div>' };
+            }
+            case 'magician':
+                return { free: `<div class="lk-mg-cur l"></div><div class="lk-mg-cur r"></div><div class="lk-mg-val"></div>
+                    <div class="lk-mg-sign"><small>${E(L[0])}</small><span>${n}</span></div><div class="lk-mg-tada">${E(L[1])}</div>` };
+            case 'qb': {
+                const mk = state.matchKills || {}, me = lk.unit.player;
+                const p1 = mk[1] || mk['1'] || 0, p2 = mk[2] || mk['2'] || 0;
+                return { cls: 'lk-bars', top: '<div class="lk-qb-net">EWN · SUNDAY NIGHT BLITZ</div>',
+                    bot: `<div class="lk-qb-call"><b>PLAY CALL</b><span>${n}</span></div>
+                        <div class="lk-qb-sb"><span class="net">EWN</span>
+                        <span class="tm p1"><i>P1</i><em>${p1}</em>${me === 1 ? '<u></u>' : ''}</span><span class="tm p2"><i>P2</i><em>${p2}</em>${me === 2 ? '<u></u>' : ''}</span>
+                        <span class="clk"><b>4TH</b>${E(L[1])}</span><span class="dn">${E(L[0])}</span></div>`,
+                    free: `<div class="lk-qb-diag"><svg viewBox="0 0 120 80"><g fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round">
+                        <circle cx="30" cy="62" r="6"/><circle cx="60" cy="62" r="6"/><circle cx="90" cy="62" r="6"/>
+                        <path d="M30 56 Q 26 20 52 14" stroke="#ffe600"/><path d="M90 56 L 96 26 L 70 18" stroke="#ffe600"/><path d="M60 56 L 60 34" stroke="#ffe600"/></g>
+                        <g stroke="#ff5a5a" stroke-width="3"><path d="M18 8 l8 8 m0 -8 l-8 8"/><path d="M98 6 l8 8 m0 -8 l-8 8"/></g></svg><span>PLAY CALL</span></div>` };
+            }
+            case 'chess': {
+                const side = u => (typeof isEnemyUnit === 'function') ? !isEnemyUnit(lk.unit, u) : u.player === lk.unit.player;
+                let mine = 0, theirs = 0;
+                (state.units || []).forEach(u => { if (!u || !(u.hp > 0)) return; if (side(u)) mine += u.hp; else theirs += u.hp; });
+                const tot = mine + theirs || 1, adv = mine / tot;
+                const ev = (adv - 0.5) * 20, evTxt = (ev >= 0 ? '+' : '') + ev.toFixed(1);
+                const wPct = Math.max(6, Math.min(94, Math.round(adv * 100)));
+                const badge = { brilliant: '!!', great: '!', best: '★', excellent: '👍', book: '📖' }[L[1]] || '!';
+                return { cls: 'lk-bars', free: `<div class="lk-ch-eval"><div class="b" style="height:${100 - wPct}%"></div><div class="w"><span>${E(evTxt)}</span></div></div>
+                    <div class="lk-ch-pl t"><span>OPPONENT · 1200</span><i>0:03</i></div><div class="lk-ch-pl b"><span>${E(String(lk.unit.name || 'You').replace(/[]/g, ''))} · 2850</span><i>0:58</i></div>`,
+                    bot: `<div class="lk-ch-mv"><span class="n">${(state.round || 1) + 11}. ${E(L[0])}</span><span class="bang ${E(L[1])}">${badge}</span><span class="l ${E(L[1])}">${E(L[2])}</span></div>` };
+            }
+            case 'trailcam': {
+                const c = (_AC_LOOK_TEXT.trailcam[lk.race] || _AC_LOOK_TEXT.trailcam.bigfoot), d = new Date();
+                const date = String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0') + '/' + d.getFullYear();
+                return { cls: 'lk-bars', top: '<div class="lk-tc-rec"><i>●</i> REC</div>',
+                    bot: `<div class="lk-tc-stamp"><span>${E(c[0])}</span><span>☾ ${E(c[1])}</span><b>${date} ${E(c[2])}</b><span>${E(c[3])}</span></div>`,
+                    free: '<div class="lk-noise"></div>' };
+            }
+            case 'western':
+                return { cls: 'lk-bars', bot: `<div class="lk-ws-tag">— ${E(L)} —</div>`, free: '<div class="lk-film"></div><div class="lk-ws-vig"></div>' };
+            case 'anime': {
+                /* his 11-17 notes: no speed lines; Japanese text; the ending's credits rolling up the side like an anime outro */
+                const roll = [['主題歌', '「エントロピー」'], ['原作', 'DOOR'], ['監督', 'ドア・エージェント'], ['脚本', '運命の子'], ['キャラクターデザイン', '剣士'],
+                    ['作画監督', '魔法使い'], ['音楽', 'ポップスター'], ['制作', 'エントロピー・ウォーズ製作委員会']]
+                    .map(r => `<p><small>${r[0]}</small>${r[1]}</p>`).join('');
+                return { cls: 'lk-bars' + (lk.name === 'Sad Backstory' ? ' lk-flashback' : ''),
+                    top: `<div class="lk-an-ep">第${(state.round || 1) + 23}話</div><div class="lk-an-jp">${E(L[0])}</div>`,
+                    bot: `<div class="lk-an-sub"><span class="jp">${E(L[1])}</span><span class="en">${E(L[2])}</span></div>`,
+                    free: `<div class="lk-an-roll"><div>${roll}</div></div>` };
+            }
+            case 'kungfu':
+                return { cls: 'lk-bars', top: `<div class="lk-kf-dub">ENGLISH DUBBED</div>`,
+                    bot: `<div class="lk-kf-sub"><span class="s1">${E(L[1])}</span><span class="s2">[${E(L[2])}]</span></div>`,
+                    free: `<div class="lk-film"></div><div class="lk-kf-title">${E(L[0])}</div>` };
+            case 'crt':
+                return { free: `<div class="lk-crt-glass"></div><div class="lk-crt-bezel"></div>
+                    <div class="lk-crt-osd ch">CH ${E(L)}</div><div class="lk-crt-osd nm">${n}</div>
+                    <div class="lk-crt-osd vol">VOL <span>${'▮'.repeat(5 + h % 4)}${'▯'.repeat(3 - h % 4 < 0 ? 0 : 3 - h % 4)}</span></div>` };
+            }
+            return null;
+        }
+        const _AC_LOOK_KEYS = ['influencer', 'telethon', 'magician', 'qb', 'chess', 'trailcam', 'western', 'anime', 'kungfu', 'crt'];
+        function _acApplyLook(el, opts, totalMs) {
+            _AC_LOOK_KEYS.forEach(k => el.classList.remove('lk-' + k));
+            el.classList.remove('lk-on', 'lk-bars', 'lk-flashback');
+            const slots = { top: el.querySelector('.acam-lk-top'), bot: el.querySelector('.acam-lk-bot'), free: el.querySelector('.acam-look') };
+            Object.values(slots).forEach(s => { if (s) s.innerHTML = ''; });
+            let lk = null, html = null;
+            try { lk = _acLookFor(opts); html = lk && _acLookHtml(lk); } catch (e) { lk = null; html = null; }
+            if (!lk || !html) return null;
+            el.classList.add('lk-on', 'lk-' + lk.key);
+            String(html.cls || '').split(/\s+/).filter(Boolean).forEach(c => el.classList.add(c));
+            el.style.setProperty('--lk-ms', Math.round(totalMs) + 'ms');
+            ['top', 'bot', 'free'].forEach(k => { if (slots[k] && html[k]) slots[k].innerHTML = html[k]; });
+            /* the rolling counters (the telethon's pledges): count up across the shot */
+            el.querySelectorAll('[data-roll-to]').forEach(n => {
+                const a = +n.dataset.rollFrom || 0, b = +n.dataset.rollTo || 0, pre = n.dataset.rollFmt || '', t0 = performance.now();
+                const step = () => {
+                    if (!n.isConnected) return;
+                    const k = Math.min(1, (performance.now() - t0) / Math.max(400, totalMs * 0.8));
+                    n.textContent = pre + Math.round(a + (b - a) * (1 - Math.pow(1 - k, 3))).toLocaleString('en-US');
+                    if (k < 1) requestAnimationFrame(step);
+                };
+                requestAnimationFrame(step);
+            });
+            const g = _AC_LOOK_GRADE[lk.key] || (lk.key === 'anime' && lk.name === 'Sad Backstory' ? 'desat' : null);
+            if (g && typeof cineGrade === 'function') { try { cineGrade(g, totalMs); } catch (e) {} }
+            return lk;
+        }
+
         function showActionCamChrome(opts = {}) {
             if (_skipVisuals() || state.phase !== 'battle') return;
             const el = _ensureActionCamChrome();
@@ -27907,6 +28101,8 @@
                chrome (the shot is relayed) dresses the same way. styles-cinematic.css "THE BROADCAST". */
             const _news = _acNewsFor(opts.name);
             el.classList.toggle('news', !!_news);
+            /* 🎬 THE RACE LOOKS: the caster's own look (above), never over the broadcast */
+            const _look = _news ? (_acApplyLook(el, {}, totalMs), null) : _acApplyLook(el, opts, totalMs);
             if (_news) {
                 const h = el.querySelector('.acam-news-head'), t = el.querySelector('.acam-news-tick');
                 if (h) h.textContent = _news.head;
@@ -27939,7 +28135,7 @@
                 barName.classList.remove('in');
                 void barName.offsetWidth;
                 barName.classList.add('in');
-                if (opts.name && opts.heavy) requestAnimationFrame(() => {
+                if (opts.name && (opts.heavy || _look)) requestAnimationFrame(() => {
                     const room = (barName.parentElement ? barName.parentElement.clientWidth : 0) * 0.9;
                     const w = barName.scrollWidth;
                     if (room > 0 && w > room) barName.style.fontSize = (parseFloat(getComputedStyle(barName).fontSize) * room / w).toFixed(1) + 'px';
@@ -81796,7 +81992,7 @@
             if (opts.spellName) {
                 showActionCamChrome({ name: opts.spellName, heavy: _selfHeal || _selfDmg,
                     tallyKind: _selfHeal ? 'heal' : undefined, casterId: _selfDmg && unit ? unit.id : null,
-                    totalMs: _selfHold + actionMs(600) });
+                    castBy: unit ? unit.id : null, totalMs: _selfHold + actionMs(600) });
             }
             /* THE SPELL DIRECTOR (2026-09-23): the self rig runs the cast's
                director too — before this every self buff / self heal / war
@@ -82089,7 +82285,7 @@
                 // Heals wear the full letterbox + TOTAL HEALED readout; other
                 // support keeps the understated name-only chrome.
                 showActionCamChrome({ name: opts.spellName, heavy: _supHeal,
-                    tallyKind: _supHeal ? 'heal' : undefined, totalMs });
+                    tallyKind: _supHeal ? 'heal' : undefined, castBy: unit ? unit.id : null, totalMs });
             }
             /* THE SPELL DIRECTOR (2026-09-23): the support rig runs the
                cast's director — heals, buffs, shields, deploys, zones,
