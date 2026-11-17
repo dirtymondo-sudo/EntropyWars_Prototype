@@ -385,6 +385,7 @@ const FINISHERS = {
     'karate frog':    { id: 'fin_karate_frog', name: 'Hopping Mad', glyph: '🐸', type: 'human', sig: 'spiritBomb', built: true, tagline: 'RIBBIT', desc: 'A leap off the sewer wall, a flying kick, and the victim is washed down the drain.' },   // 2026-11-17 THE NEW RACES 2 (borrows the spiritBomb staging)
     'samurai slug':   { id: 'fin_samurai_slug', name: 'Slow Death', glyph: '🐌', type: 'human', sig: 'thousandCuts', built: true, tagline: 'PATIENCE', desc: 'He took an hour to cross the room. The cut takes no time at all.' },   // 2026-11-17 THE NEW RACES 2 (borrows the thousandCuts staging)
     'cicada brood':   { id: 'fin_cicada_brood', name: 'Seventeen Years', glyph: '🦗', type: 'alien', sig: 'theColony', built: true, tagline: 'IT WAS ALWAYS HERE', desc: 'The ground opens and the brood comes up singing. The victim is buried for the next seventeen years.' },   // 2026-11-17 THE NEW RACES 2 (borrows the theColony staging)
+    'haunted doll':   { id: 'fin_haunted_doll', name: 'Lights Out', glyph: '🪆', type: 'anomaly', sig: 'possessedPhoto', built: true, tagline: 'PLAY WITH ME', desc: 'The lights go out. When they come back on, the doll is sitting on the victim\'s chest, and the victim is not moving.' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) (borrows the possessedPhoto staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
@@ -622,6 +623,7 @@ const RACE_ELEMENT_AFFINITY = {
     'karate frog': { water: 'resist', ice: 'weak' },   // 2026-11-17 THE NEW RACES 2
     'samurai slug': { poison: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
     'cicada brood': { earth: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'haunted doll': { psychic: 'resist', fire: 'weak' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): porcelain and old lace
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
@@ -2964,6 +2966,10 @@ const RACE_PROFILES = {
         label: 'Cicada Brood',
         types: ['alien', 'anomaly']
     },
+    'haunted doll': {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
+        label: 'Haunted Doll',
+        types: ['anomaly', 'unholy']
+    },
     'lifeguard': {   // 2026-11-16 THE NEW RACES (mondo asked for a female lifeguard)
         label: 'Lifeguard',
         types: ['human']
@@ -3848,7 +3854,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3997,6 +4003,7 @@ const RACE_CLASS = {
     'karate frog': 'bruiser',   // 2026-11-17 THE NEW RACES 2
     'samurai slug': 'bruiser',   // 2026-11-17 THE NEW RACES 2
     'cicada brood': 'assassin',   // 2026-11-17 THE NEW RACES 2
+    'haunted doll': 'assassin',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
@@ -4051,6 +4058,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'karate frog': 'water',   // 2026-11-17 THE NEW RACES 2
     'samurai slug': 'water',   // 2026-11-17 THE NEW RACES 2
     'cicada brood': 'grass',   // 2026-11-17 THE NEW RACES 2
+    'haunted doll': 'tree',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
     'siren': 'deep_water',
     'reptilian': 'water',
@@ -4441,6 +4449,7 @@ const RACE_BASE_STATS = {
     'karate frog':        { hp: 1150, mp: 110, atk: 135, def: 105, mdef:  70, int:  60, vision: 3, crt: 20, spd: 150 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
     'samurai slug':       { hp: 1450, mp: 100, atk: 130, def: 150, mdef:  80, int:  50, vision: 2, crt: 16, spd: 70 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
     'cicada brood':       { hp: 1000, mp: 150, atk: 150, def: 110, mdef:  90, int: 110, vision: 3, crt: 24, spd: 120 },   // 2026-11-17 THE NEW RACES 2 — first pass on the assassin median
+    'haunted doll':       { hp:  880, mp: 180, atk:  70, def:  80, mdef: 110, int: 150, vision: 4, crt: 22, spd: 160 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — fragile and quick, a magic assassin
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -4607,6 +4616,7 @@ const RACE_PHYSIQUE = {
     'karate frog':         { h: 1.50, w: 70 },   // 2026-11-17 THE NEW RACES 2
     'samurai slug':        { h: 1.70, w: 140 },   // 2026-11-17 THE NEW RACES 2
     'cicada brood':        { h: 1.90, w: 80 },   // 2026-11-17 THE NEW RACES 2
+    'haunted doll':        { h: 1.10, w: 18 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
@@ -10641,6 +10651,30 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'The whole brood sings at once. Deals WEAK magic damage to All Enemies within 2 of it, plus 45 more for every Brood stack (HEAVY at 3), and Silences them for 1 round. Spends the stacks and ends Dig In.' },
     ],
+    'haunted doll': [
+        /* NOBODY'S LOOKING (2026-11-17, the Haunted Doll; mondo approved the kit + asked for the pull-string spell): "sits on the
+           shelf, and moves when you look away". At every round end, when no enemy within 5 has it in its front cone (the facing
+           arcs, getAttackArc), it creeps up to 2 squares toward the nearest enemy, free, and turns to face it (battle.js
+           _dollCreep from _nrRoundEnd). Look Behind You only takes a target that is not facing it (`unwatched`). */
+        { id: 'nrPinPrick', name: 'Pin Prick', tier: 1, families: ['hauntedtoy'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'psychic', vfxElement: 'shadow', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 70, range: 4, voodooSelf: 0.3,
+          desc: 'A pin through a little cloth heart. Deals WEAK magic damage to a Single Enemy within 4 and binds it to the doll with Voodoo for 2 rounds: 30% of all damage the doll takes is dealt to it too.' },
+        { id: 'nrPlayWithMe', name: 'Play With Me', tier: 2, families: ['hauntedtoy'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'psychic', type: 'debuff', kind: 'swap', range: 3, faceAway: true,
+          desc: 'A game of musical chairs. Swaps places with a Single Enemy within 3; it lands facing away from the doll. Cooldown: 2 rounds.' },
+        /* PULL MY STRING (mondo 11-17: "some sort of wind up spell like those dolls where you pull the string and it says or does
+           something"): the voice box plays one of four lines, picked by the doll's id + the round (_dollStringLine, like the Florida
+           Man's headline: host and guest agree with no relay), and the line is what happens (battle.js _dollPullString). A line with
+           nobody in reach falls back to "Let's play!". */
+        { id: 'nrPullString', name: 'Pull My String', tier: 2, families: ['hauntedtoy'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'psychic', type: 'buff', kind: 'buff', range: 0, pullString: { healPct: 0.25, charmRange: 3, hugRange: 4, killRange: 4, killDmg: 150 },
+          desc: 'Pulls its own string and the voice box picks the line. "Let\'s play!": heals itself 25%. "Will you be my friend?": Charms the nearest enemy within 3 for 1 round. "Hug me!": pulls the nearest enemy within 4 to its side. "I\'m going to kill you.": HEAVY magic damage to the nearest enemy within 4. Cooldown: 2 rounds.' },
+        { id: 'nrLookBehindYou', name: 'Look Behind You', tier: 3, families: ['hauntedtoy'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'psychic', vfxElement: 'shadow', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 150, range: 5,
+          chargeToTarget: true, blinkBehind: true, unwatched: true,
+          statusEffects: [{ id: 'feared', duration: 1 }],
+          desc: 'Only on a Single Enemy within 5 that is not facing the doll. The lights blink; it is standing behind the target. Deals HEAVY magic damage and leaves it Feared for 1 round.' },
+    ],
     'lifeguard': [
         /* ON DUTY (2026-11-16, the new races; mondo asked for a female lifeguard): the one race that saves a life. While she is On
            Duty, the first ally within 4 of her that takes a killing blow holds on at 1 HP and is hauled to the square beside her.
@@ -13314,7 +13348,7 @@ const STATUS_DEFS = {
         link: 'ally',
         linkEcho: 0.5,
         iconSrc: createStatusIconDataUri('🪆', '#3a2210', '#ffe8d0', '#d49050'),
-        onRemove(unit) { delete unit._voodooAllyId; }
+        onRemove(unit) { delete unit._voodooAllyId; delete unit._voodooEcho; }   // _voodooEcho: Pin Prick's own share (2026-11-17)
     },
     /* 🚪 EXITED (DOOR_RACE_DESIGN §4 r3, 2026-09-14): off the board for a
        round — untargetable, cannot move or act, holds no zone. The realm
@@ -20636,6 +20670,7 @@ const EW_RACE_BIOMES = {
     'karate frog': ['underground_base', 'urban'],   // 2026-11-17 THE NEW RACES 2 — The Sewers
     'samurai slug': ['underground_base', 'urban'],   // 2026-11-17 THE NEW RACES 2 — The Sewers
     'cicada brood': ['ancient', 'forest'],   // 2026-11-17 THE NEW RACES 2 — Leylines, the Bug Colony
+    'haunted doll': ['gothic'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — The Estate, the Haunted House
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
@@ -21290,6 +21325,7 @@ const RACE_TREE = {
     'karate frog':   [['raceKiBlast', 'raceFlurryOfBlows'], ['raceKiCharge', 'raceKiWave'], 'raceInstantTransmission', 'raceDragonFist'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'samurai slug':  ['nrSlimeSlash', 'nrSaltProof', 'nrIaiDraw', 'nrRoninsWake'],   // 2026-11-17 THE SAMURAI SLUG POLISH: his own four rungs (the borrowed row was Sad Backstory / Plot Armor / To Be Continued / Roll Credits, none of them a sword or the slime)
     'cicada brood':  ['nrDigIn', 'nrBuzz', 'nrScreech', 'raceSwarmSignal'],   // 2026-11-17 THE CICADA POLISH: its own three + Swarm Signal (the borrowed row held none of Dig In / Buzz / Chorus, and Corrosive Splash + Rot are outside its families)
+    'haunted doll':  ['nrPinPrick', 'nrPlayWithMe', 'nrPullString', 'nrLookBehindYou'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): its own four
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -23326,6 +23362,16 @@ const SPELL_FAMILIES = {
         desc: 'Wait, then sing: dig in and grow louder every round, a buzz that rattles, and a chorus that spends it all.',
         unique: 'cicada brood',
         identity: { who: ['Cicada Brood', 'Periodical', 'Singer'], adj: ['Buried', 'Deafening', 'Red-eyed'], look: ['a green and black insect shell', 'huge red eyes', 'folded veined wings'], vibe: ['grows louder every round it waits', 'screeches the whole board silent'] }
+    },
+    hauntedtoy: {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — the Haunted Doll's own
+        id: 'hauntedtoy',
+        name: 'Haunted Toy',
+        glyph: '🪆',
+        color: '#c88a9a',
+        kind: 'signature',
+        desc: 'Moves when nobody is looking: a voodoo pin, a game of swap, a pull of the string and a voice behind you.',
+        unique: 'haunted doll',
+        identity: { who: ['Haunted Doll', 'Porcelain Doll', 'Shelf Doll'], adj: ['Cracked', 'Smiling', 'Patient'], look: ['a cracked porcelain face', 'black glass eyes', 'a stained pink lace dress'], vibe: ['creeps closer when nobody is looking', 'pulls its own string'] }
     },
     lifesaving: {   // 2026-11-16 THE NEW RACES — the Lifeguard's own
         id: 'lifesaving',
@@ -25577,6 +25623,7 @@ const RACE_FAMILIES = {
     'karate frog': ['frogfu', 'martialarts', 'water', 'athleticism'],   // 2026-11-17 THE NEW RACES 2
     'samurai slug': ['slugbushido', 'swordsmanship', 'swordsaint', 'poison'],   // 2026-11-17 THE NEW RACES 2
     'cicada brood': ['brood', 'insectoid', 'sonic', 'colony'],   // 2026-11-17 THE NEW RACES 2
+    'haunted doll': ['hauntedtoy', 'haunted', 'blackmagic', 'trickery'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
@@ -26200,6 +26247,7 @@ const CAMPAIGN_RACE_PRICES = {
   'karate frog': 400,   // 2026-11-17 THE NEW RACES 2
   'samurai slug': 400,   // 2026-11-17 THE NEW RACES 2
   'cicada brood': 400,   // 2026-11-17 THE NEW RACES 2
+  'haunted doll': 450,   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
   'lifeguard': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
@@ -28184,7 +28232,7 @@ const DOOR_TEXT = {
         'nephilim': 'Göbekli Tepe', 'vampire': 'The Haunted House', 'voidweaver': 'Moon', 'cosmic wraith': 'The Singularity',
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
         'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown', 'magician': 'The Strip', 'mole man': 'Hollow Earth', 'quetzalcoatl': 'Technoticlan', 'lifeguard': 'The Bermuda Triangle',   // banker + sewer gator + skater + tech ceo + magician + mole man + quetzalcoatl + lifeguard 2026-11-16
-        'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe',   // 2026-11-17 THE NEW RACES 2
+        'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House',   // 2026-11-17 THE NEW RACES 2
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',

@@ -151,6 +151,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/karate_frog/', 'Assets/characters/races/karate_frog/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/samurai_slug/', 'Assets/characters/races/samurai_slug/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/cicada_brood/', 'Assets/characters/races/cicada_brood/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/haunted_doll/', 'Assets/characters/races/haunted_doll/'],   // 2026-11-17 THE HAUNTED DOLL
   ['Assets/Sprites/Races/lifeguard/', 'Assets/characters/races/lifeguard/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/knight/', 'Assets/characters/races/knight/'],   // 2026-11-16 THE NEW RACES (the male knight)
   ['Assets/Sprites/Races/shaman/', 'Assets/characters/races/shaman/'],   // 2026-11-16 THE NEW RACES (the male shaman)
@@ -557,6 +558,7 @@ const RACE_SPRITE_GENDERS = {
   'karate frog': 'male',   // 2026-11-17 THE NEW RACES 2
   'samurai slug': 'male',   // 2026-11-17 THE NEW RACES 2
   'cicada brood': 'male',   // 2026-11-17 THE NEW RACES 2
+  'haunted doll': 'female',   // 2026-11-17 THE HAUNTED DOLL
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
   'dinosaur': 'male',
@@ -734,6 +736,7 @@ const _CHARACTER_SPRITES = {
   'karate frog': `${_S}/Races/karate_frog/male/karate_frog_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (Sprite AI restyle of its model render, PR #1910)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
@@ -2629,6 +2632,14 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/cicada_brood/male/Meshy_AI_cicada_brood_Running.glb`,
       heightRatio: 1.1,
       basicAttackKind: 'physical',
+    }),
+  },
+  'haunted doll': {   // 2026-11-17 THE HAUNTED DOLL (model PR #1910): a child-sized porcelain doll that moves like stop-motion
+    female: _mkUAL('haunted_doll', 'haunted_doll', {
+      model: `${_S}/Races/haunted_doll/female/Meshy_AI_haunted_doll_Running.glb`,
+      heightRatio: 0.72,
+      basicAttackKind: 'magic',
+      stepFps: 9,   // three-renderer.js THE STOP-MOTION: the mixer only advances 9 times a second, so every clip jerks like a puppet
     }),
   },
   'lifeguard': {   // red swimsuit, rescue cross (THE NEW RACES 2026-11-16)
@@ -6883,6 +6894,7 @@ const RACE_SPRITES = {
   'karate frog': `${_S}/Races/karate_frog/male/karate_frog_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (PR #1910)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite

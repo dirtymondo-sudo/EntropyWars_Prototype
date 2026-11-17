@@ -6458,6 +6458,14 @@
                 const _close = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 6);
                 s += (_close ? 70 : 35) + 25 * (3 - _bn);
             }
+            /* 🪆 THE HAUNTED DOLL (2026-11-17): Pull My String is a gamble on four lines (a heal, a Charm, a pull, a big hit). The CPU
+               plays it blind, as a player does (it never peeks at _dollStringLine): worth more with an enemy in reach and when hurt. */
+            if (spell.pullString) {
+                const _psR = (spell.pullString.killRange || 4);
+                const _psNear = v.visibleEnemies.some(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= _psR);
+                const _psHurt = unit.maxHp > 0 ? 1 - unit.hp / unit.maxHp : 0;
+                return (_psNear ? 85 : 20) + Math.round(80 * _psHurt);
+            }
             if (spell.massRescue) {
                 const _mr = spell.massRescue, _mrR = _mr.radius || 4, _mrP = _mr.hpPct || 0.5;
                 const _mrIn = g.aliveUnitsFor(unit.player).filter(a => a && a.id !== unit.id && !a.dead && a.maxHp > 0

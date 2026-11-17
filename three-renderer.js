@@ -20162,7 +20162,14 @@ const ThreeRenderer = (function () {
             else if (_wa && entry._ew_paceWalk && !_wtS) { _wa.timeScale = _wa._ew_ts0 || 1; entry._ew_paceWalk = false; }
             if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
             if (entry._ew_digSave) _digUndo(entry);       // THE SHOVEL DIG: the same for the left arm's reach
-            entry.mixer.update(dt);
+            /* THE STOP-MOTION (2026-11-17, the Haunted Doll): a def's `stepFps` advances the mixer in steps (the time banks up and is
+               spent at once), so every clip jerks like a puppet filmed a frame at a time. Only the clock is stepped: the tweens
+               that carry the body over the board stay smooth. */
+            var _sFps = entry.modelDef && entry.modelDef.stepFps;
+            if (_sFps > 0 && !window.EW_NO_STOP_MOTION) {
+                entry._ew_stepAcc = (entry._ew_stepAcc || 0) + dt;
+                if (entry._ew_stepAcc >= 1 / _sFps || entry._ew_curAnim !== entry._ew_stepAnim) { entry.mixer.update(entry._ew_stepAcc); entry._ew_stepAcc = 0; entry._ew_stepAnim = entry._ew_curAnim; }
+            } else entry.mixer.update(dt);
             if (_inSaddle && entry._ew_curAnim === 'hqSit' && !entry._ew_mountVehicle) _mountStraddle(entry);   // THE HORSES: astride, not on a chair (a vehicle's deck: the chair sit)
             if (_digRecs.size && _digRecs.has(uid)) _digPose(entry, uid, now);   // THE SHOVEL DIG: the left hand on the grip, the shovel in the hands
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
