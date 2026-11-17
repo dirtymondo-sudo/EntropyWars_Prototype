@@ -11971,7 +11971,7 @@ Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/area
 | R12 Stone Path (trail) | `site_ow_r12` | 8 | Stonehenge `ow_h_m30_m6` → Camelot castle block `ow_h_m28_m3` | standing stones (`menhirs`) at -29,-6 |
 | R4 Old Road (highway) | `site_ow_r4` | 26 | Camelot east `ow_v_m23_m2` → Vatican west gate `ow_v_m12_m4`; two trail forks: Redwood Trail `ow_h_m16_m1`, the Clearing `ow_h_m16_0` + the Stair `ow_h_m14_0` | wayside inn, standing stones |
 | R1 River Road (highway) | `site_ow_r1` | 14 (+ the R2 junction) | Vatican east gate `ow_v_m6_m4` → the Hills `ow_v_0_m3`; R2 leaves north `ow_h_1_m4` | `R1.js` the Tiber + its bridge; ranger station at the junction |
-| R2 Canyon Trail (trail) | `site_ow_r2` | 22 (list 2-23) | the junction `ow_h_1_m4` → Shasta's Trailhead (INTERIM jump, below) | — |
+| R2 Canyon Trail (trail) | `site_ow_r2` | 24 (list 2-23 + 2 added) | the junction `ow_h_1_m4` → Shasta's Trailhead `ow_h_m3_m14` | — |
 | R3 Pilgrim Way (trail) | `site_ow_r3` | 10 | the Colosseum's north hedge (in the Vatican's room, phase 4.4) `ow_h_m10_m9` → Olympus' Pilgrim Stair `ow_v_m10_m13` | two shrines |
 | R5 Polar Trail (trail) | `site_ow_r5_0_17` + `site_ow_r5_18_35` | 18 + 18 | the Lodge's Ridge `ow_v_m13_m22` → (the two stretches meet on `ow_h_m7_m23`) → the North Pole's west wall `ow_v_0_m27` | frozen lake, mountain hut |
 - **The zone side of each seam** (all `ifRoom`, so a tool rerun before a route exists writes nothing): `bake-camelot.js` OUT (R4, R12; `open` →
@@ -11981,10 +11981,12 @@ Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/area
   the Lodge R5) + the North Pole's new west door. New seam keys in bake-mountains: `k: [..]` = the squares the path crosses on (the route's line),
   `to` = the door id over there when it is not the seam's own (an interim jump).
 - **Stand-ins replaced**: the Pass Gate `pass` pair (the Lodge ↔ the Pole, a jump) → R5; the Mountains' `saddle` ↔ the Hills' `ridge` → R1 + R2;
-  the Woods ↔ Redwood jump → R4's forks. **Kept**: the city's `shasta` road ↔ Shasta's `hills` (the Hills ↔ Shasta, until R2 reaches the Trailhead),
+  the Woods ↔ Redwood jump → R4's forks. **Kept**: the city's `shasta` road ↔ Shasta's `hills` (the Hills ↔ Shasta, a road; mondo can say if it should go),
   Shasta's `woods` door (the Trailhead → the Redwood Trail).
-- **R2's top is a gap on the map**: its last plots (-1..0, -14) do not touch Shasta; two scenery plots lie between them and the Trailhead (-3,-15).
-  Until mondo decides, the top door (`ow_h_0_m14`) leads to Shasta's `ow_h_m3_m14` on the Trailhead's south side (squares 2-3, west of `woods`).
+- **R2 reaches the Trailhead** (mondo's yes, 2026-11-17): its band stopped two plots short (gen.js routes to Shasta's box edge, not its plot); the spec's
+  new `add: [[-2,-14],[-3,-14]]` (bake-route.js) walks it west and up into the Trailhead's south side, seam `ow_h_m3_m14` (squares 2-3, west of
+  the Woods door). 24 plots, box 5 x 10. `gen.js --plots` cannot be rerun any more (it reads today's rooms; the old ones are retired), so plots.json
+  still lists 24 R2 plots ending at -1..0,-14: the 2 added ones live in the spec. Walked both ways.
 - **bake-route.js** gained: `F` in the hooks' CTX; `ROUTE_WHO="x,y;x,y"` prints what stands on those squares; an end's `back: { room, label, sub,
   desc }` = the words for a split route's own seam seen from the other stretch (R5). **playtest_city.js**: a walk with `"then": true` goes on with the
   next views in the room it reached, so one run walks a chain of seams.

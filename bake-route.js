@@ -73,6 +73,10 @@ const LOOK = arg('--look', SPEC.look || SRC.look);
 if (!{ trail: 1, road: 1, highway: 1 }[LOOK]) { console.error('bake-route: look must be trail, road or highway'); process.exit(1); }
 const I0 = +(arg('--from', SPEC.from != null ? SPEC.from : 0)), I1 = +(arg('--to', SPEC.to != null ? SPEC.to : SRC.plots.length - 1));
 const PLOTS = SRC.plots.slice(I0, I1 + 1);
+/* `add: [[x, y], …]` (2026-11-17, mondo "yes" in the north routes thread): plots past the band plots.json gives, walked on after its last plot. R2's band
+   stopped two plots short of Shasta's Trailhead (gen.js routes to the zone's box edge, not to its plot); plots.json can no longer be re-extracted
+   (gen.js --plots reads today's rooms, and the old ones are retired), so the spec carries them */
+(SPEC.add || []).forEach(q => { if (!PLOTS.some(o => o[0] === q[0] && o[1] === q[1])) PLOTS.push(q); });
 if (!PLOTS.length) { console.error('bake-route: ' + ID + ' has no plots of its own (its two districts touch: join them door to door)'); process.exit(1); }
 const STRETCH = (I0 > 0 || I1 < SRC.plots.length - 1) ? '_' + I0 + '_' + I1 : '';
 /* THE PARTS (2026-11-17, THE JOINING RULE: mondo after the test slice): one room may hold more than one route. The spec's
