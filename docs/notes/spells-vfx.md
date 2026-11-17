@@ -4683,6 +4683,48 @@ into more vfx"; and 11-17: only where something really comes through from somewh
 - Open: `teleport` (moves another unit), the air door on the kit, doors / summons / rifts.
 
 
+## THE VFX SWEEP, B7a, part 1: the metal leads + the ice / metal / sonic list (2026-11-17, three-vfx-effects.js; list `batches/B7a.txt`, 74 spells)
+Brief: docs/plans/vfx-cleanup/SWEEP_BRIEF.md. Everything behind `_vcOn()` (`EW_NO_VFX_CLEANUP = true` = the old look). Looks only; rides `fire()` / the stage beats.
+All 74 spells were shot once (one real cast each) and looked at; the changed ones were shot again. Before / after: `docs/plans/vfx-cleanup/img/sweep/b7a_part1_before_after.jpg`.
+- **WHY A "MID TONE" SHEET STILL READ WHITE (for every sweep):** the bright noise sheet, a `_pzGlow` ring, a torus that grows: all are ADDED light, and the
+  floor under them is mid grey, so a pale or even a mid colour sums to white. Only a DEEP colour (low red, the value in one channel) keeps its hue. That is
+  what was done to metal's sheet, Frost Howl and Absolute Zero below; a recolour to a "mid tone" does nothing.
+- **THE METAL LEADS (reach every metal spell):**
+  - the noise sheet on hit squares (`_NZ.metal`): `_NZ_VC.metal` = deep steel blue circuit lines `0x0c2a58` over a gunmetal stain `0x1a2230` (it was a pale
+    grey-blue stain under a bright sheet = a white tile; seen on Railgun, Precision Shot). `_NZ_VC[el] = [sheet, stain]` is open to any element.
+  - the cog (`_mtlCog`): its steel plate was untinted white, the big white disc under every "cog" metal hit (Hydraulic Crush); now `_MTL_VC.cog` `0x8296ae`.
+  - the glint, the cog's rim flare: steel blue (`_MTL_VC.glint / rim`); ONE glint a hit (the heavy + blade extras are off).
+  - the hot sparks (one in three) and the body flash on the hit: the grinder's amber (`_MTL_VC.hot`), not warm white. The flash itself stays.
+- **THE GENERIC AREA DETONATION, the "glass orb + wide ring, source not found" of the brief:** it is `aoe()` (three-vfx-effects.js line ~565), battle.js'
+  `playAoeRing` fallback for an area spell with no `aoe` recipe: 8 flashes, a theme ring, a cream `shockwave`, `_sigMagicOrb3D` (the glass orb) and a 2.2-tile
+  `_sigShockRing3D` in the spellType's colour (tan for `human`, purple for `unholy`). playAoeRing names no spell, so the last windup's spell is remembered for
+  6 s (`_vcCastLast`, set in a `_fireStage` wrapper; the beats are relayed, both screens drop the same call) and a spell in `_VC_NO_AOE` gets none.
+  In it now: Crossfire (two tan rings round the X), Glacial Slam (a purple ring round an ice slam), Buzz. **Other sweeps: add your spell's id to `_VC_NO_AOE`**
+  (Jackpot, Shattered Mirror; the L1 thread already stopped it for the L1 spells its own way).
+- **A recipe's white-tinted hit flash:** `_emitLayer` reads `layer.vcTint` (null = untinted = the casting spell's own light). Set by the table in the block
+  "THE VFX SWEEP, B7a": Cuffed, Lockdown (centre), Nightstick, Piledriver Arm, Thousand Cuts, Halligan Breach, Grapple -> the spell's light; Through the
+  Wall -> brick dust `0xd8a078`; Destiny Fulfilled -> its gold `0xffd76a`; Garrote Watch's white steel sparks -> the steel spark's own colour. Every flash stays.
+- **Frost Howl:** its four scream rings grow into thick bands and its frost sheet covered the whole reach: together a solid white disc two tiles wide. Rings
+  deep ice blue (`0x2f7fd0 / 0x1f5aa8`, opacity 0.5), sheet `0x2f6cb4`. The snow, the seat-colour edge ring and the frost on the squares stay.
+- **Absolute Zero:** the opening `_sigWhiteout3D` (white screen, rush lines, speed burst, two rings: the generic mega-flash) is off, its frost sparks and
+  shake kept; at the break no screen flash, one ice-blue ring (`0x3f9be0`) in place of a pale one + a white one. The storm, the grade, the cage, its flying
+  bars and the frost are the spell.
+- **Kill Mode:** no screen flashes (two), no gold speed burst; the laser cores `0xff8a92` / `0x8af0dc` (were white / near-white).
+- **Hydraulic Crush, Compactor, Blizzard Present:** the screen flash on the hit is off (hard limit 3). Nothing else.
+- **Buzz:** its pale ring in cicada green. Its thick white rings are THE SONIC PASS's (`_snShout`): B7b's lead, not touched here.
+- **Left as it is, and why:** every ICE spell's white floor (Ice Spear, Shatter, Grave Chill, Diamond Dust, Permafrost, Blizzard Present, Snow Queen's
+  Kiss, Sapphire Frost, Avalanche Strike, Frozen Punch ...) is the ice pass's frost / the frozen squares, checked with `EW_NO_NOISE_WASH` (still there):
+  frost and snow are the thing itself and the ice pass is not a sweep's to change. Ninefold Scratch's white claws are the claws; its finisher burst + rush
+  lines are `_sigClawCombo3D`'s own body (the cleanup thread's). Silent Treatment's white is the mime. Steel edges, teeth, bricks, bullets, the patrol cars.
+- **Checked, needed nothing of their own (the metal leads reach the metal ones):** Dark Justice, Diamond Dust, Flash Freeze, Frozen Punch, Glacier Break,
+  Grave Chill, Hailstorm, Ice Spear, Permafrost, Sapphire Frost, Shatter, Snow Fort, Snow Globe, Snow Queen's Kiss, Snowball Volley, Whiteout Roar,
+  Avalanche Strike, Ankle Biter, Atlatl, Dead Eye, Dogpile, Double Pump, Elbow Grease, Fan the Hammer, Garden Shears, Hatchet Throw, High Noon, Honour Blow,
+  Justice Is Served, Kill Mode (`raceChassisSlan`), Kneecap Shot, Knife Throw, Lipstick Pistol, Long Rifle, Lovers' Lane, Ninefold Scratch, One Shot One
+  Kill, Plunder, Precision Shot, Run Them Down, Scatter Shot, Shield Bash, Shuriken, Silent Treatment, Six-Shooter, Slap Leather, Space Debris, Stick-Up,
+  Swipe, Take Aim, Termination Protocol, War of the Worlds, Cataclysm Stomp, Chorus, Crack the Whip.
+- **Not seen / open:** the recoloured hit flashes are too short for a 450 ms frame grid (seen only as "no white blob"); the guest's seat; Flash Freeze,
+  Snow Fort, Take Aim, Shuriken and Grapple gave only early frames (fast or two-step casts). Kill Mode's and Space Debris' 13 squares of blue sheet +
+  cog are a lot of blue: metal's own colour, but mondo may want the sheet thinner on big areas. No line spell of the brief's 14 is on this list.
 
 ## THE VFX SWEEP, B8b, part 1 (2026-11-17, three-vfx-effects.js; list `docs/plans/vfx-cleanup/batches/B8b.txt`: fire, nature, poison, 82 spells)
 The generic white left inside each spell's OWN effect, traced in the code (SWEEP_BRIEF.md). All behind `EW_NO_VFX_CLEANUP`.
