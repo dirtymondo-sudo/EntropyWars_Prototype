@@ -486,7 +486,7 @@ STAND.forEach(S => {
 });
 /* ── the joints and legs (every room): a border square of a plot side, a plot's own open ground (its hub), a leg = a dog-leg trail from the hub to the side, 3 wide ── */
 const border = (e, sd, k) => sd === 'N' ? [e.col * N + k, e.row * N] : sd === 'S' ? [e.col * N + k, e.row * N + N - 1] : sd === 'W' ? [e.col * N, e.row * N + k] : [e.col * N + N - 1, e.row * N + k];
-function hubOf(o, e) { let best = null; for (let ly = 1; ly < N - 1; ly++) for (let lx = 1; lx < N - 1; lx++) { const x = e.col * N + lx, y = e.row * N + ly; if (!o.openR(x, y) || o.c2[y][x] === 'w') continue;
+function hubOf(o, e) { let best = null; for (let ly = 1; ly < N - 1; ly++) for (let lx = 1; lx < N - 1; lx++) { const x = e.col * N + lx, y = e.row * N + ly; if (!o.openR(x, y) || o.c2[y][x] === 'w' || (o.apronSq && o.apronSq.has(x + ':' + y))) continue;
         const d = Math.hypot(lx - 5.5, ly - 5.5) - (ROADS.indexOf(o.c2[y][x]) < 0 ? 0.6 : 0); if (!best || d < best[0]) best = [d, x, y]; }
     if (!best) throw new Error(o.S.id + ': no open ground on ' + e.name); return [best[1], best[2]]; }
 function lay(o, e, x, y, ch) { if (!o.inR(x, y) || o.R.plotOfSq(x, y) !== e) return; if (SOLIDC(o.c2[y][x])) { o.c2[y][x] = ch; o.laid++; o.pnt[y * o.R.W + x] = ch === 'i' ? 6 : ch === 'm' ? 5 : ch === 'c' ? 4 : 3; } }
@@ -503,7 +503,11 @@ function pickK(oa, ob) { const both = oa.filter(k => ob.indexOf(k) >= 0), src = 
     if (!src.length) return [5, 6, 7];
     let best = [src[0], src[0]], a = src[0]; for (let i = 1; i <= src.length; i++) { if (i === src.length || src[i] !== src[i - 1] + 1) { if (src[i - 1] - a > best[1] - best[0]) best = [a, src[i - 1]]; a = src[i]; } }
     const m = Math.round((best[0] + best[1]) / 2); return [Math.max(1, m - 1), m, Math.min(N - 2, m + 1)].filter((v, i, s) => s.indexOf(v) === i); }
-function crossK(oA, A, sd, oB, B, ks, chA, chB) { const o2 = OPP[sd]; ks.forEach(k => { const qa = border(A, sd, k), qb = border(B, o2, k); lay(oA, A, qa[0], qa[1], chA || letterOf(A)); lay(oB, B, qb[0], qb[1], chB || letterOf(B)); });
+/* THE APRON: a door is walked into head-on, so its squares are open three deep straight in from the side (a leg alone may reach the border square
+   sideways along the wall: the first walk of the north gate hit the pines one square in) */
+const INW = { N: [0, 1], S: [0, -1], W: [1, 0], E: [-1, 0] };
+function apron(o, e, sd, ks, ch) { const A = o.apronSq || (o.apronSq = new Set()); ks.forEach(k => { const q = border(e, sd, k); for (let d = 0; d < 3; d++) { const x = q[0] + INW[sd][0] * d, y = q[1] + INW[sd][1] * d; if (o.inR(x, y) && SOLIDC(o.c2[y][x])) A.add(x + ':' + y); lay(o, e, x, y, ch || letterOf(e)); } }); }   // (a hub is never an apron square: the leg still runs from the plot's own ground)
+function crossK(oA, A, sd, oB, B, ks, chA, chB) { const o2 = OPP[sd]; apron(oA, A, sd, ks, chA); apron(oB, B, o2, ks, chB);
     const m = ks[Math.floor((ks.length - 1) / 2)]; leg(oA, A, sd, m, chA); leg(oB, B, o2, m, chB); }
 /* 1. inside each room: two plots that touch now and did not touch that way at home get one crossing */
 ROOMS_OUT.forEach(o => { if (o.S.block) return; const R = o.R;
@@ -526,7 +530,7 @@ SEAMS.forEach(s => { const oA = roomOf(s.a[0]), oB = roomOf(s.b[0]), A = oA.R.of
     oB.doorsOut.push(Object.assign({ id }, doorAt(oB, B, s.b[2], ks), { way: s.way, label: s.lb[0], sub: s.lb[1], action: { room: s.a[0], at: id }, desc: s.lb[2] })); });
 /* 3. the ways out of the zone + the link ends */
 Object.keys(OUT).forEach(rid => { const o = roomOf(rid); OUT[rid].forEach(w => { const e = o.R.ofHome[w.plot]; if (!e) throw new Error('no plot ' + w.plot + ' in ' + rid);
-    const ks = w.k || pickK(openK(o, e, w.side), []); ks.forEach(k => { const q = border(e, w.side, k); lay(o, e, q[0], q[1], letterOf(e)); }); leg(o, e, w.side, ks[Math.floor((ks.length - 1) / 2)]);
+    const ks = w.k || pickK(openK(o, e, w.side), []); apron(o, e, w.side, ks); leg(o, e, w.side, ks[Math.floor((ks.length - 1) / 2)]);
     const d = doorAt(o, e, w.side, ks);
     if (w.link) { LINKS_OUT[w.link] = [w.end, Object.assign({ part: o.S.part }, d)]; return; }
     if (w.id !== o.R.seamId(e, w.side)) throw new Error('the seam id of ' + w.plot + ' ' + w.side + ' is ' + o.R.seamId(e, w.side) + ', not ' + w.id);
@@ -595,9 +599,9 @@ ROOMS_OUT.forEach(o => { const R = o.R, Wn = R.W, Dn = R.D, wet = (x, y) => o.c2
         if (!best) q.forEach(c => { const dd = Math.abs(c[0] - lost[0]) + Math.abs(c[1] - lost[1]); if (dd < bd) { bd = dd; best = c; } });
         const ch = letterOf(lp), step = (x, y) => { const e = R.plotOfSq(x, y); if (e && SOLIDC(o.c2[y][x])) { o.c2[y][x] = ch; o.pnt[y * Wn + x] = ch === 'i' ? 6 : ch === 'm' ? 5 : 3; } };
         for (let x = Math.min(lost[0], best[0]); x <= Math.max(lost[0], best[0]); x++) step(x, lost[1]); for (let y = Math.min(lost[1], best[1]); y <= Math.max(lost[1], best[1]); y++) step(best[0], y);
-        tied++; if (pass === 119) throw new Error(o.S.id + ': could not tie every pocket'); }
+        tied++; if (pass === 119 && !process.env.CAM_NOTHROW) throw new Error(o.S.id + ': could not tie every pocket (' + lost.join(',') + ' to ' + best.join(',') + ', ' + o.c2[lost[1]][lost[0]] + ')'); }
     const cold = R.order.filter(e => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(e.row * N + ly) * Wn + e.col * N + lx]) return false; return true; }).map(e => e.name);
-    if (cold.length) throw new Error(o.S.id + ': plots not reached: ' + cold.join(', '));
+    if (cold.length && !process.env.CAM_NOTHROW) throw new Error(o.S.id + ': plots not reached: ' + cold.join(', '));
     o.tied = tied;
     if (process.env.CAM_DUMP) console.log('\n' + o.S.id + '\n' + o.c2.map((r, cy) => r.map((ch, cx) => !R.plotOfSq(cx, cy) ? '.' : o.stood.has(cx + ':' + cy) && !SOLIDC(ch) ? 'o' : o.openR(cx, cy) && !wet(cx, cy) && !seen[cy * Wn + cx] ? '!' : SOLIDC(ch) ? ' ' : ch).join('')).join('\n')); });
 if (STRAYS.length) console.log('STRAYS (each is answered in the notes, "CAMELOT KINGDOM, THE ONE WORLD MOVE"):\n  ' + STRAYS.join('\n  '));
