@@ -68541,39 +68541,39 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── the canvases ── */
     function _o2EyeTex() {   /* an eye's two lids */
         return _o2Tex('eye', 256, function (g, S, c) {
-            g.lineWidth = 7; g.beginPath(); g.moveTo(S * 0.06, c); g.quadraticCurveTo(c, c - S * 0.46, S * 0.94, c); g.quadraticCurveTo(c, c + S * 0.46, S * 0.06, c); g.stroke();
-            g.lineWidth = 3; for (var i = 0; i < 5; i++) { var x = S * (0.26 + i * 0.12), up = S * (0.2 + 0.07 * Math.sin(i / 4 * Math.PI)); g.beginPath(); g.moveTo(x, c - up); g.lineTo(x + (i - 2) * 4, c - up - S * 0.07); g.stroke(); }
+            g.lineWidth = 15.4; g.beginPath(); g.moveTo(S * 0.06, c); g.quadraticCurveTo(c, c - S * 0.46, S * 0.94, c); g.quadraticCurveTo(c, c + S * 0.46, S * 0.06, c); g.stroke();
+            g.lineWidth = 6.6; for (var i = 0; i < 5; i++) { var x = S * (0.26 + i * 0.12), up = S * (0.2 + 0.07 * Math.sin(i / 4 * Math.PI)); g.beginPath(); g.moveTo(x, c - up); g.lineTo(x + (i - 2) * 4, c - up - S * 0.07); g.stroke(); }
         });
     }
     function _o2IrisTex() {   /* its iris: a ring, a cross-hair pupil */
         return _o2Tex('iris', 128, function (g, S, c) {
-            g.lineWidth = 7; g.beginPath(); g.arc(c, c, S * 0.36, 0, 6.2832); g.stroke();
-            g.lineWidth = 4; var a = S * 0.1, b = S * 0.46;
+            g.lineWidth = 15.4; g.beginPath(); g.arc(c, c, S * 0.36, 0, 6.2832); g.stroke();
+            g.lineWidth = 8.8; var a = S * 0.1, b = S * 0.46;
             g.beginPath(); g.moveTo(c - b, c); g.lineTo(c - a, c); g.moveTo(c + a, c); g.lineTo(c + b, c); g.moveTo(c, c - b); g.lineTo(c, c - a); g.moveTo(c, c + a); g.lineTo(c, c + b); g.stroke();
             g.beginPath(); g.arc(c, c, S * 0.045, 0, 6.2832); g.fill();
         });
     }
     function _o2MilTex() {   /* a rifle scope's fine cross with its mil dots and range ticks */
         return _o2Tex('mil', 256, function (g, S, c) {
-            g.lineWidth = 2.5; var gap = S * 0.05, far = S * 0.48;
+            g.lineWidth = 9; var gap = S * 0.05, far = S * 0.48;
             g.beginPath(); g.moveTo(c - far, c); g.lineTo(c - gap, c); g.moveTo(c + gap, c); g.lineTo(c + far, c); g.moveTo(c, c - far); g.lineTo(c, c - gap); g.moveTo(c, c + gap); g.lineTo(c, c + far); g.stroke();
-            for (var i = 1; i <= 4; i++) { var d = S * 0.09 * i + gap; [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (v) { g.beginPath(); g.arc(c + v[0] * d, c + v[1] * d, 3.4, 0, 6.2832); g.fill(); }); }
-            g.lineWidth = 6; g.beginPath(); g.moveTo(c - far, c); g.lineTo(c - S * 0.4, c); g.moveTo(c + S * 0.4, c); g.lineTo(c + far, c); g.moveTo(c, c + S * 0.4); g.lineTo(c, c + far); g.stroke();
-            g.lineWidth = 1.5; for (var k = 1; k <= 3; k++) { var yy = c + S * 0.11 * k, w = S * (0.07 - 0.015 * k); g.beginPath(); g.moveTo(c - w, yy); g.lineTo(c + w, yy); g.stroke(); }
+            for (var i = 1; i <= 4; i++) { var d = S * 0.09 * i + gap; [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (v) { g.beginPath(); g.arc(c + v[0] * d, c + v[1] * d, 7, 0, 6.2832); g.fill(); }); }
+            g.lineWidth = 16; g.beginPath(); g.moveTo(c - far, c); g.lineTo(c - S * 0.4, c); g.moveTo(c + S * 0.4, c); g.lineTo(c + far, c); g.moveTo(c, c + S * 0.4); g.lineTo(c, c + far); g.stroke();
+            g.lineWidth = 6; for (var k = 1; k <= 3; k++) { var yy = c + S * 0.11 * k, w = S * (0.07 - 0.015 * k); g.beginPath(); g.moveTo(c - w, yy); g.lineTo(c + w, yy); g.stroke(); }
         });
     }
     function _o2ScopeTex() {   /* a scope's tube seen from behind: the ring, four posts that stop short of the middle */
         return _o2Tex('scope', 256, function (g, S, c) {
-            g.lineWidth = 9; g.beginPath(); g.arc(c, c, S * 0.44, 0, 6.2832); g.stroke();
-            g.lineWidth = 3; g.beginPath(); g.arc(c, c, S * 0.3, 0, 6.2832); g.stroke();
-            g.lineWidth = 11; var a = S * 0.44, b = S * 0.2;
+            g.lineWidth = 19.8; g.beginPath(); g.arc(c, c, S * 0.44, 0, 6.2832); g.stroke();
+            g.lineWidth = 6.6; g.beginPath(); g.arc(c, c, S * 0.3, 0, 6.2832); g.stroke();
+            g.lineWidth = 24.2; var a = S * 0.44, b = S * 0.2;
             g.beginPath(); g.moveTo(c - a, c); g.lineTo(c - b, c); g.moveTo(c + a, c); g.lineTo(c + b, c); g.moveTo(c, c + a); g.lineTo(c, c + b); g.stroke();
-            g.lineWidth = 4; g.beginPath(); g.moveTo(c, c - a); g.lineTo(c, c - b); g.stroke();
+            g.lineWidth = 8.8; g.beginPath(); g.moveTo(c, c - a); g.lineTo(c, c - b); g.stroke();
         });
     }
     function _o2CrackTex() {   /* a break: jagged cracks out of one point */
         return _o2Tex('crack', 128, function (g, S, c) {
-            var rnd = _sigRand(0x6b6e); g.lineWidth = 4;
+            var rnd = _sigRand(0x6b6e); g.lineWidth = 8.8;
             for (var i = 0; i < 7; i++) {
                 var a = i / 7 * 6.2832 + rnd() * 0.5, r = 0, x = c, y = c; g.beginPath(); g.moveTo(c, c);
                 for (var s = 0; s < 3; s++) { r += S * (0.1 + rnd() * 0.07); a += (rnd() - 0.5) * 0.9; x = c + Math.cos(a) * r; y = c + Math.sin(a) * r; g.lineTo(x, y); }
@@ -68582,7 +68582,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
     function _o2ChevTex() {   /* one chevron, point up */
-        return _o2Tex('chev', 64, function (g, S, c) { g.lineWidth = 9; g.beginPath(); g.moveTo(S * 0.14, S * 0.7); g.lineTo(c, S * 0.28); g.lineTo(S * 0.86, S * 0.7); g.stroke(); });
+        return _o2Tex('chev', 64, function (g, S, c) { g.lineWidth = 19.8; g.beginPath(); g.moveTo(S * 0.14, S * 0.7); g.lineTo(c, S * 0.28); g.lineTo(S * 0.86, S * 0.7); g.stroke(); });
     }
     function _o2StarTex() {   /* a tin star: five points, a ball on each, a hole shot through the middle */
         return _o2Tex('star5', 256, function (g, S, c) {
@@ -68592,26 +68592,26 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var k = 0; k < 5; k++) { var b = -Math.PI / 2 + k * 2 * Math.PI / 5; g.beginPath(); g.arc(c + Math.cos(b) * S * 0.45, c + Math.sin(b) * S * 0.45, S * 0.04, 0, 6.2832); g.fill(); }
             g.globalCompositeOperation = 'destination-out';
             g.beginPath(); g.arc(c, c, S * 0.075, 0, 6.2832); g.fill();
-            g.lineWidth = 3; for (var q = 0; q < 6; q++) { var d = q * 1.05 + 0.3; g.beginPath(); g.moveTo(c + Math.cos(d) * S * 0.075, c + Math.sin(d) * S * 0.075); g.lineTo(c + Math.cos(d) * S * 0.14, c + Math.sin(d) * S * 0.14); g.stroke(); }
+            g.lineWidth = 6.6; for (var q = 0; q < 6; q++) { var d = q * 1.05 + 0.3; g.beginPath(); g.moveTo(c + Math.cos(d) * S * 0.075, c + Math.sin(d) * S * 0.075); g.lineTo(c + Math.cos(d) * S * 0.14, c + Math.sin(d) * S * 0.14); g.stroke(); }
         });
     }
     function _o2CylTex() {   /* a revolver's cylinder seen from the front: six chambers round the pin */
         return _o2Tex('cyl', 256, function (g, S, c) {
-            g.lineWidth = 8; g.beginPath(); g.arc(c, c, S * 0.45, 0, 6.2832); g.stroke();
-            g.lineWidth = 5; for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3; g.beginPath(); g.arc(c + Math.cos(a) * S * 0.27, c + Math.sin(a) * S * 0.27, S * 0.095, 0, 6.2832); g.stroke(); }
+            g.lineWidth = 17.6; g.beginPath(); g.arc(c, c, S * 0.45, 0, 6.2832); g.stroke();
+            g.lineWidth = 11; for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3; g.beginPath(); g.arc(c + Math.cos(a) * S * 0.27, c + Math.sin(a) * S * 0.27, S * 0.095, 0, 6.2832); g.stroke(); }
             g.beginPath(); g.arc(c, c, S * 0.06, 0, 6.2832); g.fill();
-            g.lineWidth = 6; for (var k = 0; k < 6; k++) { var b = k * Math.PI / 3 + Math.PI / 6; g.beginPath(); g.arc(c + Math.cos(b) * S * 0.47, c + Math.sin(b) * S * 0.47, S * 0.05, b + 1.6, b + 4.7); g.stroke(); }
+            g.lineWidth = 13.2; for (var k = 0; k < 6; k++) { var b = k * Math.PI / 3 + Math.PI / 6; g.beginPath(); g.arc(c + Math.cos(b) * S * 0.47, c + Math.sin(b) * S * 0.47, S * 0.05, b + 1.6, b + 4.7); g.stroke(); }
         });
     }
     function _o2NoonTex() {   /* a clock face: the ring, twelve marks, a sun's short rays outside it */
         return _o2Tex('noon', 256, function (g, S, c) {
-            g.lineWidth = 6; g.beginPath(); g.arc(c, c, S * 0.33, 0, 6.2832); g.stroke();
-            for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6; g.lineWidth = i % 3 ? 3 : 6; g.beginPath(); g.moveTo(c + Math.cos(a) * S * 0.27, c + Math.sin(a) * S * 0.27); g.lineTo(c + Math.cos(a) * S * 0.31, c + Math.sin(a) * S * 0.31); g.stroke(); }
-            g.lineWidth = 5; for (var k = 0; k < 16; k++) { var b = k * Math.PI / 8, r1 = S * (k % 2 ? 0.43 : 0.48); g.beginPath(); g.moveTo(c + Math.cos(b) * S * 0.38, c + Math.sin(b) * S * 0.38); g.lineTo(c + Math.cos(b) * r1, c + Math.sin(b) * r1); g.stroke(); }
+            g.lineWidth = 13.2; g.beginPath(); g.arc(c, c, S * 0.33, 0, 6.2832); g.stroke();
+            for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6; g.lineWidth = i % 3 ? 7 : 13; g.beginPath(); g.moveTo(c + Math.cos(a) * S * 0.27, c + Math.sin(a) * S * 0.27); g.lineTo(c + Math.cos(a) * S * 0.31, c + Math.sin(a) * S * 0.31); g.stroke(); }
+            g.lineWidth = 11; for (var k = 0; k < 16; k++) { var b = k * Math.PI / 8, r1 = S * (k % 2 ? 0.43 : 0.48); g.beginPath(); g.moveTo(c + Math.cos(b) * S * 0.38, c + Math.sin(b) * S * 0.38); g.lineTo(c + Math.cos(b) * r1, c + Math.sin(b) * r1); g.stroke(); }
         });
     }
     function _o2HandTex() {   /* a clock hand, pointing up from the middle */
-        return _o2Tex('hand', 128, function (g, S, c) { g.lineWidth = 7; g.beginPath(); g.moveTo(c, c); g.lineTo(c, S * 0.1); g.stroke(); g.beginPath(); g.arc(c, c, 6, 0, 6.2832); g.fill(); });
+        return _o2Tex('hand', 128, function (g, S, c) { g.lineWidth = 15.4; g.beginPath(); g.moveTo(c, c); g.lineTo(c, S * 0.1); g.stroke(); g.beginPath(); g.arc(c, c, 6, 0, 6.2832); g.fill(); });
     }
 
     /* ════ THE GUNS (part 1) ════ */
@@ -68621,13 +68621,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _o2Reg('deadEye', function (p) {
         if (!_pzSeen(p.tx, p.ty)) return;
         var B = _o2Base(p), ts = B.ts, y = ts * 0.66;
-        var lid = _o2Spr(B.g, _o2EyeTex(), _O2C.amber, ts * 1.15, 0, y, 0), iris = _o2Spr(B.g, _o2IrisTex(), _O2C.brass, ts * 0.5, 0, y, 0);
+        var lid = _o2Spr(B.g, _o2EyeTex(), _O2C.amber, ts * 1.5, 0, y, 0), iris = _o2Spr(B.g, _o2IrisTex(), _O2C.brass, ts * 0.66, 0, y, 0);
         var pin = _pzSpr(_O2C.hot, ts * 0.34, B.g); pin.position.set(0, y, 0);
         _fxDelay(function () { if (!_suppressed()) _o2Sparks(B.F, 9, _O2C.brass, y, { v: 190 }); }, 250);
         _sigRunOwned(B.g, 1150, function (el) {
             var k = _goEnv(el, 70, 1150, 380), sq = _sigEaseOutCubic(_sigClamp01((el - 110) / 170));
-            lid.scale.set(ts * 1.15, ts * 1.15 * (1 - 0.56 * sq), 1); lid.material.opacity = 0.95 * k;
-            iris.scale.setScalar(ts * (0.5 - 0.24 * sq)); iris.material.opacity = k; iris.material.rotation = (1 - sq) * 0.8;
+            lid.scale.set(ts * 1.5, ts * 1.5 * (1 - 0.56 * sq), 1); lid.material.opacity = 0.95 * k;
+            iris.scale.setScalar(ts * (0.66 - 0.28 * sq)); iris.material.opacity = k; iris.material.rotation = (1 - sq) * 0.8;
             pin.material.opacity = 0.95 * _pzEnv(el, 240, 280, 360, 640);
         });
     });
@@ -68637,12 +68637,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _o2Reg('precisionShot', function (p) {
         if (!_pzSeen(p.tx, p.ty)) return;
         var B = _o2Base(p), ts = B.ts, y = ts * 0.62;
-        var ret = _o2Spr(B.g, _o2MilTex(), _O2C.lime, ts * 1.6, 0, y, 0), nd = _o2Rod(B.g, 0xc8e86a, ts * 0.016);
+        var ret = _o2Spr(B.g, _o2MilTex(), _O2C.lime, ts * 2.0, 0, y, 0), nd = _o2Rod(B.g, 0xc8e86a, ts * 0.03);
         var a = new THREE.Vector3(B.ux * ts * 1.0, y, B.uz * ts * 1.0), b = new THREE.Vector3(-B.ux * ts * 1.7, y, -B.uz * ts * 1.7);
         var hit = false;
         _sigRunOwned(B.g, 1000, function (el) {
             var k = _goEnv(el, 60, 1000, 300), dial = _sigEaseOutCubic(_sigClamp01(el / 260));
-            ret.scale.setScalar(ts * (1.6 - 0.85 * dial)); ret.material.rotation = (1 - dial) * 0.9; ret.material.opacity = 0.95 * k;
+            ret.scale.setScalar(ts * (2.0 - 0.9 * dial)); ret.material.rotation = (1 - dial) * 0.9; ret.material.opacity = 0.95 * k;
             var t = (el - 260) / 150;
             if (t < 0) { nd.visible = false; return; }
             if (!hit) { hit = true; _o2Sparks(B.F, 6, _O2C.lime, y, { v: 120, lx: -B.ux * 10, lz: -B.uz * 10 }); }
@@ -68654,8 +68654,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        head, the red dot sits there and beats. It holds: the shot is still to come. */
     _o2Reg('headshot', function (p) {
         if (!_pzSeen(p.tx, p.ty)) return;
-        var B = _o2Base(p), ts = B.ts, y = ts * 1.0, SC = [1.45, 1.05, 0.74, 0.52];
-        var sc = _o2Spr(B.g, _o2ScopeTex(), _O2C.dot, ts * SC[0], 0, y, 0), dot = _pzSpr(_O2C.dot, ts * 0.16, B.g); dot.position.set(0, y, 0);
+        var B = _o2Base(p), ts = B.ts, y = ts * 1.0, SC = [1.9, 1.4, 1.0, 0.74];
+        var sc = _o2Spr(B.g, _o2ScopeTex(), _O2C.dot, ts * SC[0], 0, y, 0), dot = _pzSpr(_O2C.dot, ts * 0.26, B.g); dot.position.set(0, y, 0);
         _sigRunOwned(B.g, 1500, function (el) {
             var k = _goEnv(el, 60, 1500, 360), st = Math.min(3, Math.floor(el / 120)), into = _sigEaseOutCubic(_sigClamp01((el - st * 120) / 70));
             sc.scale.setScalar(ts * (st ? SC[st - 1] + (SC[st] - SC[st - 1]) * into : SC[0]));
@@ -68669,19 +68669,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _o2Reg('kneecapShot', function (p) {
         if (!_pzSeen(p.tx, p.ty)) return;
         var B = _o2Base(p), ts = B.ts, y = ts * 0.24, kx = B.sx * ts * 0.08, kz = B.sz * ts * 0.08;
-        var crack = _o2Spr(B.g, _o2CrackTex(), _O2C.ivory, ts * 0.2, kx, y, kz), rod = _o2Rod(B.g, _O2C.brass, ts * 0.02);
+        var crack = _o2Spr(B.g, _o2CrackTex(), _O2C.ivory, ts * 0.2, kx, y, kz), rod = _o2Rod(B.g, _O2C.brass, ts * 0.038);
         var a = new THREE.Vector3(B.ux * ts * 0.9 + kx, y + ts * 0.1, B.uz * ts * 0.9 + kz), b = new THREE.Vector3(-B.ux * ts * 0.7 + kx, y - ts * 0.12, -B.uz * ts * 0.7 + kz);
         var ch = [];
-        for (var i = 0; i < 2; i++) { var c = _o2Spr(B.g, _o2ChevTex(), _O2C.brass, ts * 0.3, kx, 0, kz); c.material.rotation = Math.PI; ch.push(c); }
+        for (var i = 0; i < 2; i++) { var c = _o2Spr(B.g, _o2ChevTex(), _O2C.brass, ts * 0.55, kx, 0, kz); c.material.rotation = Math.PI; ch.push(c); }
         _o2Sparks(B.F, 7, _O2C.ivory, y, { v: 110, vz1: 90 });
         _goSpray(B.F, 3, { sprite: 'dust-puff', tint: 0xb8a88c, ly: 4, r: 10, v: 40, vz0: 5, vz1: 30, g: 0, s0: ts * 0.12, s0b: ts * 0.2, s1: ts * 0.34, ml0: 420, ml1: 700, op: 0.5 });
         _sigRunOwned(B.g, 950, function (el) {
             var k = _goEnv(el, 40, 950, 320), t = el / 110;
             _o2Slide(rod, a, b, t - 0.45, t); rod.material.opacity = t > 1.45 ? 0 : 0.9;
-            crack.scale.setScalar(ts * (0.2 + 0.36 * _sigEaseOutCubic(_sigClamp01((el - 60) / 160)))); crack.material.opacity = el < 60 ? 0 : 0.95 * k;
+            crack.scale.setScalar(ts * (0.3 + 0.7 * _sigEaseOutCubic(_sigClamp01((el - 60) / 160)))); crack.material.opacity = el < 60 ? 0 : 0.95 * k;
             for (var i = 0; i < 2; i++) {
                 var d = _sigEaseOutCubic(_sigClamp01((el - 150 - i * 110) / 380));
-                ch[i].position.y = ts * (0.62 - 0.5 * d); ch[i].material.opacity = (el < 150 + i * 110) ? 0 : 0.85 * k * (1 - d * 0.5);
+                ch[i].position.y = ts * (0.78 - 0.6 * d); ch[i].material.opacity = (el < 150 + i * 110) ? 0 : 0.85 * k * (1 - d * 0.5);
             }
         });
     });
@@ -68690,12 +68690,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        in two rings of pocks, a wad of powder smoke rolling off each. */
     _o2Reg('doubleShot', function (p) {
         if (!_pzSeen(p.tx, p.ty)) return;
-        var B = _o2Base(p), ts = B.ts, y = ts * 0.6, rods = [], GAP = 170, FLY = 95;
+        var B = _o2Base(p), ts = B.ts, y = ts * 0.6, rods = [], GAP = 190, FLY = 120;
         var muz = new THREE.Vector3(B.ux * ts * 1.05, y, B.uz * ts * 1.05);
         for (var v = 0; v < 2; v++) for (var i = 0; i < 9; i++) {
-            var a = i / 8 * 6.2832 + v * 0.39, r = i === 8 ? 0 : ts * (v ? 0.2 : 0.3);
-            var ox = Math.cos(a) * r, oy = Math.sin(a) * r * 0.9, rod = _o2Rod(B.g, v ? _O2C.hot : _O2C.amber, ts * 0.013);
-            rod.userData = { t0: v * GAP, to: new THREE.Vector3(B.sx * ox - B.ux * ts * 0.55, y + oy, B.sz * ox - B.uz * ts * 0.55), px: B.sx * ox, py: y + oy, pz: B.sz * ox };
+            var a = i / 8 * 6.2832 + v * 0.39, r = i === 8 ? 0 : ts * (v ? 0.24 : 0.4);
+            var ox = Math.cos(a) * r, oy = Math.sin(a) * r * 0.9, rod = _o2Rod(B.g, v ? _O2C.hot : _O2C.amber, ts * 0.034), pk = _pzSpr(v ? _O2C.hot : _O2C.amber, ts * (i === 8 ? 0.3 : 0.2), B.g);
+            pk.position.set(B.sx * ox, y + oy, B.sz * ox); rod.userData = { pk: pk, t0: v * GAP, to: new THREE.Vector3(B.sx * ox - B.ux * ts * 0.55, y + oy, B.sz * ox - B.uz * ts * 0.55), px: B.sx * ox, py: y + oy, pz: B.sz * ox };
             rods.push(rod);
         }
         function volley(v) {
@@ -68704,8 +68704,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _goSpray(B.F, 2, { sprite: 'smoke-soft', tint: _O2C.powder, ly: y, r: 12, v: 30, vz0: 10, vz1: 40, g: -10, s0: ts * 0.22, s0b: ts * 0.3, s1: ts * 0.5, ml0: 520, ml1: 820, op: 0.42 });
         }
         _fxDelay(function () { volley(0); }, FLY * 0.6); _fxDelay(function () { volley(1); }, GAP + FLY * 0.6);
-        _sigRunOwned(B.g, GAP + FLY + 220, function (el) {
-            for (var i = 0; i < rods.length; i++) { var R = rods[i], t = (el - R.userData.t0) / FLY; if (t < 0 || t > 1.5) { R.visible = false; continue; } _o2Slide(R, muz, R.userData.to, t - 0.5, t); R.material.opacity = 0.95; }
+        _sigRunOwned(B.g, GAP + FLY + 620, function (el) {
+            for (var i = 0; i < rods.length; i++) {
+                var R = rods[i], t = (el - R.userData.t0) / FLY;
+                R.userData.pk.material.opacity = t < 0.6 ? 0 : 0.95 * (1 - _sigClamp01((el - R.userData.t0 - FLY * 0.6) / 520));
+                if (t < 0 || t > 1.5) { R.visible = false; continue; } _o2Slide(R, muz, R.userData.to, t - 0.5, t); R.material.opacity = 0.95;
+            }
         });
     });
 
@@ -68720,11 +68724,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var d = 0; d < 2; d++) {
             var w = _worldPos(p.tx + 1, p.ty + (d ? -1 : 1)), vx = (w.x - F.wp.x) * (R + 0.75), vz = (w.z - F.wp.z) * (R + 0.75);
             for (var e = 0; e < 2; e++) {
-                var rod = _o2Rod(F.g, e ? _O2C.hot : _O2C.brass, ts * 0.017), sg = e ? -1 : 1;
+                var rod = _o2Rod(F.g, e ? _O2C.hot : _O2C.brass, ts * 0.032), sg = e ? -1 : 1;
                 rod.userData = { t0: d * 110 + e * 35, a: new THREE.Vector3(vx * sg, y + e * ts * 0.06, vz * sg), b: new THREE.Vector3(-vx * sg, y + e * ts * 0.06, -vz * sg) };
                 rods.push(rod);
             }
-            var sc = _o2Rod(F.g, _O2C.brass, ts * 0.012); sc.userData = { t0: d * 110 + 60, a: new THREE.Vector3(vx * 0.62, 3, vz * 0.62), b: new THREE.Vector3(-vx * 0.62, 3, -vz * 0.62) }; scars.push(sc);
+            var sc = _o2Rod(F.g, _O2C.brass, ts * 0.023); sc.userData = { t0: d * 110 + 60, a: new THREE.Vector3(vx * 0.62, 3, vz * 0.62), b: new THREE.Vector3(-vx * 0.62, 3, -vz * 0.62) }; scars.push(sc);
         }
         _fxDelay(function () { if (!_suppressed()) _o2Sparks(F, 8, _O2C.brass, y, { v: 200 }); }, 70);
         _fxDelay(function () { if (!_suppressed()) _o2Sparks(F, 8, _O2C.hot, y, { v: 200 }); }, 180);
@@ -68739,17 +68743,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _o2Reg('raceQuickDraw', function (p) {
         if (!_pzSeen(p.tx, p.ty)) return;
         var B = _o2Base(p), ts = B.ts, y = ts * 0.62, ln = B.ln;
-        var ring = _o2Spr(B.g, _sigRingTex(), _O2C.lead, ts * 0.2, 0, y, 0), line = _o2Rod(B.g, _O2C.powder, ts * 0.022);
+        var ring = _o2Spr(B.g, _sigRingTex(), _O2C.lead, ts * 0.2, 0, y, 0), line = _o2Rod(B.g, 0xbdb4a2, ts * 0.042);
         var b = new THREE.Vector3(0, y, 0), a = B.fr.seen ? new THREE.Vector3(ln.dx - B.ux * ts * 0.45, ln.dy + ts * 0.7, ln.dz - B.uz * ts * 0.45) : new THREE.Vector3(B.ux * ts * 1.3, y + ts * 0.03, B.uz * ts * 1.3);
         var n = Math.max(3, Math.min(12, Math.round(a.distanceTo(b) / (ts * 0.42))));
         for (var i = 0; i <= n; i++) {
             var k = i / n, big = (i === 0 && B.fr.seen) ? 2.1 : 1;
-            _pzP(B.F, a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k, { sprite: 'smoke-soft', tint: _O2C.powder, ml: rn(900, 1300) + (1 - k) * 200, size0: ts * 0.09 * big, size1: ts * 0.3 * big,
-                vx: rn(-8, 8), vy: rn(-8, 8), vz: rn(6, 22), drag: 0.6, opacity0: 0.5, opacity1: 0 });
+            _pzP(B.F, a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k, { sprite: 'smoke-soft', tint: 0xbdb4a2, ml: rn(1000, 1400) + (1 - k) * 200, size0: ts * 0.16 * big, size1: ts * 0.42 * big,
+                vx: rn(-8, 8), vy: rn(-8, 8), vz: rn(6, 22), drag: 0.6, opacity0: 0.85, opacity1: 0 });
         }
         _o2Sparks(B.F, 6, _O2C.lead, y, { v: 130, sprite: 'steel-spark' });
         _sigRunOwned(B.g, 620, function (el) {
-            _o2Slide(line, a, b, 0, 1); line.material.opacity = 0.75 * (1 - _sigClamp01(el / 200));
+            _o2Slide(line, a, b, 0, 1); line.material.opacity = 0.8 * (1 - _sigClamp01((el - 120) / 380));
             ring.scale.setScalar(ts * (0.2 + 0.62 * _sigEaseOutCubic(_sigClamp01(el / 300)))); ring.material.opacity = 0.9 * (1 - _sigClamp01((el - 120) / 420));
         });
     });
@@ -68760,14 +68764,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!_pzSeen(p.tx, p.ty)) return;
         var B = _o2Base(p), ts = B.ts, y = ts * 0.64, ln = B.ln;
         var star = _o2Spr(B.g, _o2StarTex(), _O2C.brass, ts * 0.2, 0, y, 0, true), hole = _pzSpr(_O2C.hot, ts * 0.22, B.g); hole.position.set(0, y, 0);
-        var rod = _o2Rod(B.g, _O2C.hot, ts * 0.02), b = new THREE.Vector3(0, y, 0);
+        var rod = _o2Rod(B.g, _O2C.hot, ts * 0.038), b = new THREE.Vector3(0, y, 0);
         var a = B.fr.seen ? new THREE.Vector3(ln.dx - B.ux * ts * 0.35, ln.dy + ts * 0.4, ln.dz - B.uz * ts * 0.35) : new THREE.Vector3(B.ux * ts * 1.2, ts * 0.45, B.uz * ts * 1.2);
         if (B.fr.seen) _pzP(B.F, ln.dx + B.ux * ts * 0.15, ln.dy + 4, ln.dz + B.uz * ts * 0.15, { sprite: 'dust-puff', tint: 0xb89c78, ml: 520, size0: ts * 0.14, size1: ts * 0.42, vz: 14, opacity0: 0.55 });
         _o2Sparks(B.F, 8, _O2C.brass, y, { v: 180 });
         _sigRunOwned(B.g, 900, function (el) {
             var k = _goEnv(el, 30, 900, 320), pop = _sigEaseOutBack(_sigClamp01(el / 190));
             _o2Slide(rod, a, b, el / 80 - 0.5, el / 80); rod.material.opacity = el > 120 ? 0 : 0.95;
-            star.scale.setScalar(ts * (0.2 + 0.5 * pop)); star.material.rotation = (1 - _sigEaseOutCubic(_sigClamp01(el / 420))) * 2.2; star.material.opacity = 0.95 * k;
+            star.scale.setScalar(ts * (0.25 + 0.75 * pop)); star.material.rotation = (1 - _sigEaseOutCubic(_sigClamp01(el / 420))) * 2.2; star.material.opacity = 0.95 * k;
             hole.material.opacity = 0.9 * (1 - _sigClamp01(el / 260));
         });
     });
@@ -68783,13 +68787,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var w = _worldPos(cx + x, cy + y), an = Math.atan2(w.z - F.wp.z, w.x - F.wp.x); if (an < 0) an += 6.2832;
             sq.push({ x: cx + x, y: cy + y, d: Math.round(an / 6.2832 * 6 * STEP) });
         }
-        _o2Squares(sq, _O2C.hot, { op: 0.5, ms: 300 });
+        _o2Squares(sq, _O2C.hot, { op: 0.4, ms: 300 });
         if (!_pzSeen(cx, cy)) return;
-        var cyl = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.98, ts * 0.98), _goA(_O2C.brass, 0)); cyl.material.map = _o2CylTex(); cyl.material.needsUpdate = true;
-        cyl.rotation.x = -Math.PI / 2; cyl.position.y = 3; cyl.renderOrder = 158; F.g.add(cyl);
+        var cyl = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.6, ts * 1.6), _goA(_O2C.hot, 0)); cyl.material.map = _o2CylTex(); cyl.material.needsUpdate = true;
+        cyl.rotation.x = -Math.PI / 2; cyl.position.y = 4; cyl.renderOrder = 165; cyl.material.depthTest = false; F.g.add(cyl);
         var rods = [], hy = ts * 0.52;
         for (var i = 0; i < 6; i++) {
-            var a = (i + 0.5) * Math.PI / 3, rod = _o2Rod(F.g, i % 2 ? _O2C.hot : _O2C.amber, ts * 0.02);
+            var a = (i + 0.5) * Math.PI / 3, rod = _o2Rod(F.g, i % 2 ? _O2C.hot : _O2C.amber, ts * 0.038);
             rod.userData = { t0: i * STEP, a: new THREE.Vector3(Math.cos(a) * ts * 0.34, hy, Math.sin(a) * ts * 0.34), b: new THREE.Vector3(Math.cos(a) * ts * (R + 0.45), hy + ts * 0.06, Math.sin(a) * ts * (R + 0.45)) };
             rods.push(rod);
             (function (a, i) { _fxDelay(function () { if (!_suppressed()) { _pzP(F, Math.cos(a) * ts * 0.36, hy, Math.sin(a) * ts * 0.36, { sprite: 'spark', tint: _O2C.hot, ml: 150, size0: ts * 0.16, size1: 3, opacity0: 0.95 });
@@ -68797,51 +68801,51 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         _sigRunOwned(F.g, 6 * STEP + 520, function (el) {
             var k = _goEnv(el, 50, 6 * STEP + 520, 300), st = Math.min(6, el / STEP), whole = Math.floor(st), part = _sigEaseOutCubic(_sigClamp01((st - whole) * 2.2));
-            cyl.rotation.z = -(whole + part) * Math.PI / 3; cyl.material.opacity = 0.8 * k;
+            cyl.rotation.z = -(whole + part) * Math.PI / 3; cyl.material.opacity = 0.95 * k;
             for (var i = 0; i < 6; i++) { var Rr = rods[i], t = (el - Rr.userData.t0) / 90; if (t < 0 || t > 1.5) { Rr.visible = false; continue; } _o2Slide(Rr, Rr.userData.a, Rr.userData.b, t - 0.55, t); Rr.material.opacity = 0.95; }
         });
     });
 
-    /* HIGH NOON — the clock over their head: a brass face ringed with the sun's rays, the long hand ticks up to join
-       the short one at twelve, and on the stroke a shaft of noon light drops straight down the body (no shadow at
-       noon). The trick shot itself is the bullet's flight, already there. */
+    /* HIGH NOON — the clock under their feet: a brass face ringed with the sun's rays lies on the floor round the
+       body, the long hand ticks round to join the short one at twelve, and on the stroke a shaft of noon light drops
+       straight down the body (no shadow at noon). The trick shot itself is the bullet's flight, already there. It lies
+       on the floor so the damage number over the head stays clear. */
     _o2Reg('raceHighNoon', function (p) {
         if (!_pzSeen(p.tx, p.ty)) return;
-        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, y = ts * 1.72;
-        var face = _o2Spr(F.g, _o2NoonTex(), _O2C.noon, ts * 0.86, 0, y, 0), hr = _o2Spr(F.g, _o2HandTex(), _O2C.noon, ts * 0.34, 0, y, 0), mn = _o2Spr(F.g, _o2HandTex(), _O2C.amber, ts * 0.5, 0, y, 0);
-        var shaft = _o2Rod(F.g, _O2C.noon, ts * 0.05), core = _o2Rod(F.g, 0xebcf6a, ts * 0.016), top = new THREE.Vector3(0, y - ts * 0.3, 0), bot = new THREE.Vector3(0, 2, 0), struck = false;
-        var pool = _goRing(F.g, _O2C.noon, ts * 0.05, ts * 0.3, 2.5, 0.7, 28);
-        _sigRunOwned(F.g, 1250, function (el) {
-            var k = _goEnv(el, 90, 1250, 340), tick = Math.min(4, Math.floor(el / 75)), noon = el >= 300;
-            face.material.opacity = 0.95 * k; face.material.rotation = el * 0.0004; hr.material.opacity = k; mn.material.opacity = k; mn.material.rotation = (4 - tick) * 0.13;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, cd = _nbCamDir(F), up = Math.atan2(cd.x, cd.z) + Math.PI;   /* twelve points away from the lens */
+        function flat(tex, col, size, ord) {
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), _goA(col, 0)); m.material.map = tex; m.material.depthTest = false; m.material.needsUpdate = true;
+            var piv = new THREE.Group(); piv.rotation.y = up; m.rotation.x = -Math.PI / 2; m.position.y = 4; m.renderOrder = ord; piv.add(m); F.g.add(piv); return m;
+        }
+        var face = flat(_o2NoonTex(), _O2C.noon, ts * 2.1, 164), hr = flat(_o2HandTex(), _O2C.noon, ts * 0.9, 165), mn = flat(_o2HandTex(), _O2C.amber, ts * 1.3, 165);
+        var shaft = _o2Rod(F.g, _O2C.noon, ts * 0.1), core = _o2Rod(F.g, 0xebcf6a, ts * 0.035), top = new THREE.Vector3(0, ts * 2.6, 0), bot = new THREE.Vector3(0, 2, 0), struck = false;
+        _sigRunOwned(F.g, 1350, function (el) {
+            var k = _goEnv(el, 90, 1350, 380), tick = Math.min(4, Math.floor(el / 75)), noon = el >= 300;
+            face.material.opacity = 0.9 * k; hr.material.opacity = k; mn.material.opacity = k; mn.rotation.z = (4 - tick) * 0.2;
             if (noon && !struck) { struck = true; _o2Sparks(F, 10, _O2C.noon, ts * 0.6, { v: 170, sprite: 'sparkle' }); }
-            var s = _pzEnv(el, 300, 340, 520, 800);
-            _o2Slide(shaft, top, bot, 0, noon ? 1 : 0); shaft.material.opacity = 0.4 * s; _o2Slide(core, top, bot, 0, noon ? 1 : 0); core.material.opacity = 0.9 * s;
-            pool.scale.setScalar(1 + 1.6 * _sigEaseOutCubic(_sigClamp01((el - 300) / 380))); pool.material.opacity = 0.7 * s;
+            var s = _pzEnv(el, 300, 340, 560, 860);
+            _o2Slide(shaft, top, bot, 0, noon ? 1 : 0); shaft.material.opacity = 0.35 * s; _o2Slide(core, top, bot, 0, noon ? 1 : 0); core.material.opacity = 0.85 * s;
         });
     });
 
-    /* SCATTER SHOT — no aim: lead goes everywhere. Stray pellets streak past the body at every angle, three find it,
-       the rest kick grit out of the floor round its feet. Where the strays go is read off the square (both screens). */
+    /* SCATTER SHOT — no aim: lead goes everywhere. Rust-hot pellets fly off the shooter at every angle and every
+       length, wild, and where each one dies it kicks grit out of the floor. Where they go is read off the square (both
+       screens draw the same spray); the three that find a body land with the metal hit. */
     _o2Reg('riderScatterShot', function (p) {
-        if (!_pzSeen(p.tx, p.ty)) return;
-        var B = _o2Base(p), ts = B.ts, seed = p.tx * 7 + p.ty * 13, rods = [];
-        var muz = new THREE.Vector3(B.ux * ts * 1.1, ts * 0.62, B.uz * ts * 1.1);
-        for (var i = 0; i < 10; i++) {
-            var a = seed * 0.7 + i * 2.39996, hit = i < 3, r = hit ? ts * 0.1 : ts * (0.34 + 0.32 * ((i * 37 + seed) % 5) / 4), low = !hit && i % 2;
-            var ox = Math.cos(a) * r, oy = low ? 0 : ts * 0.6 + Math.sin(a) * r * 0.8, rod = _o2Rod(B.g, hit ? _O2C.rust : _O2C.lead, ts * (hit ? 0.016 : 0.012));
-            var end = new THREE.Vector3(B.sx * ox - B.ux * ts * (low ? 0.1 + 0.25 * (i % 3) : 0.9), low ? 2 : oy, B.sz * ox - B.uz * ts * (low ? 0.1 + 0.25 * (i % 3) : 0.9));
-            rod.userData = { t0: (i * 53) % 130, to: end, low: low, hit: hit, done: false }; rods.push(rod);
+        var cx = p.sx != null ? p.sx : p.tx, cy = p.sy != null ? p.sy : p.ty;
+        if (!_pzSeen(cx, cy)) return;
+        var F = _nrvFrame(cx, cy), ts = F.ts, seed = cx * 7 + cy * 13, rods = [], y = ts * 0.58;
+        for (var i = 0; i < 14; i++) {
+            var a = seed * 0.7 + i * 2.39996, len = ts * (1.1 + 1.7 * ((i * 37 + seed) % 7) / 6), rod = _o2Rod(F.g, i % 3 ? _O2C.rust : _O2C.hot, ts * 0.03);
+            rod.userData = { t0: (i * 53) % 160, a: new THREE.Vector3(Math.cos(a) * ts * 0.35, y, Math.sin(a) * ts * 0.35), b: new THREE.Vector3(Math.cos(a) * len, i % 2 ? 3 : y * 0.8, Math.sin(a) * len), done: false };
+            rods.push(rod);
         }
-        _sigRunOwned(B.g, 520, function (el) {
+        _goSpray(F, 3, { sprite: 'smoke-soft', tint: 0xbdb4a2, ly: y, r: 14, v: 40, vz0: 10, vz1: 40, g: -10, s0: ts * 0.2, s0b: ts * 0.3, s1: ts * 0.55, ml0: 520, ml1: 820, op: 0.5 });
+        _sigRunOwned(F.g, 620, function (el) {
             for (var i = 0; i < rods.length; i++) {
-                var R = rods[i], U = R.userData, t = (el - U.t0) / 100;
-                if (t < 0 || t > 1.5) { R.visible = false; } else { _o2Slide(R, muz, U.to, t - 0.45, t); R.material.opacity = 0.9; }
-                if (t >= (U.hit ? 0.55 : 1) && !U.done) {
-                    U.done = true;
-                    if (U.low) _pzP(B.F, U.to.x, 4, U.to.z, { sprite: 'dust-puff', tint: 0xb0a48e, ml: 480, size0: ts * 0.08, size1: ts * 0.26, vz: 30, opacity0: 0.6 });
-                    else if (U.hit) _pzP(B.F, U.to.x * 0.12, ts * 0.6, U.to.z * 0.12, { sprite: 'spark', tint: _O2C.rust, ml: 240, size0: 11, size1: 2, opacity0: 1 });
-                }
+                var R = rods[i], U = R.userData, t = (el - U.t0) / 170;
+                if (t < 0 || t > 1.45) R.visible = false; else { _o2Slide(R, U.a, U.b, t - 0.45, t); R.material.opacity = 0.95; }
+                if (t >= 1 && !U.done) { U.done = true; _pzP(F, U.b.x, 5, U.b.z, { sprite: 'dust-puff', tint: 0xb0a48e, ml: 520, size0: ts * 0.12, size1: ts * 0.34, vz: 30, opacity0: 0.7 }); }
             }
         });
     });
@@ -68851,7 +68855,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _o2Reg('raceHitALick', function (p) {
         if (!_pzSeen(p.tx, p.ty)) return;
         var B = _o2Base(p), ts = B.ts, ch = [];
-        for (var i = -1; i <= 1; i += 2) for (var j = 0; j < 2; j++) { var c = _o2Spr(B.g, _o2ChevTex(), _O2C.brass, ts * 0.26, B.sx * ts * 0.36 * i, 0, B.sz * ts * 0.36 * i); c.userData = { d: j * 90 }; ch.push(c); }
+        for (var i = -1; i <= 1; i += 2) for (var j = 0; j < 2; j++) { var c = _o2Spr(B.g, _o2ChevTex(), _O2C.brass, ts * 0.5, B.sx * ts * 0.42 * i, 0, B.sz * ts * 0.36 * i); c.userData = { d: j * 90 }; ch.push(c); }
         if (B.fr.seen) for (var n = 0; n < 3; n++) (function (n) {
             _fxDelay(function () {
                 if (_suppressed()) return;
