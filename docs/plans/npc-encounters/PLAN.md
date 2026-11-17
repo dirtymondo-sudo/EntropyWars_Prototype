@@ -62,7 +62,14 @@ The review is `REVIEW.md` beside this file. His answers, in his order:
 | 6 | People passing through | "that is the price for getting in a fight in view of police. Im not too worried about the levels right now, all that stuff is fluid". | Races with an example in 3.1 get that temper now, wherever they walk. Levels are not tuned in this plan. |
 | 7 | The cost of a lost fight | The first way. | 8 gold x the strongest enemy's level, never more than he holds; a retreat costs nothing. Step 4. |
 
-Not answered yet: the 12 lines and the marks' pictures (step 2 waits for his OK on the pictures).
+**Round 4 (2026-11-17, in chat):**
+- **The lines:** "these lines are fine for now". The 12 lines of `STEP-1A.md` section 4 are approved for step 1b.
+- **THE EYE IS ON THE PLAYER** ("yes, eyes on player and red ! on npcs", as in Skyrim and the battle): one eye by the player, closed = nobody who
+  would act sees you, open = someone does (Guards, muggers, the Ghost count; harmless people do not). The red `!` stays over the NPC that is coming
+  for you or will step in. This REPLACES "an eye over every NPC" in answer 1 of round 1, in 4.1 and in step 1a's pictures. The mock-up is redone
+  and shown to him before step 2 builds it.
+- **The city:** at least 144 residents (150 built), cops in every district but Southside and on a city-wide beat: `docs/notes/npc-system.md` "THE 144 + THE BEAT".
+- **He cannot see the repo's plan files:** anything that needs his answer or OK is put to him in chat, in full.
 
 How to read the marks:
 
