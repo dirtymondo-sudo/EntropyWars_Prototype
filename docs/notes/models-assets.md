@@ -2047,4 +2047,10 @@ tool, so the recipe that won (Mole Man, mondo picked it):
 3. Cut a 128x128 square around the figure, feet on the bottom row (no scaling). Upload to the race folder under a NEW name
    (`<race>_px.png`; asset URLs are not ?v= tagged) and point both sprites.js entries at it.
 `sprite_generate` with `reference_asset_id` (1 token) is more faithful but painterly; mondo prefers the restyle look.
-Done: Mole Man (`mole_man_px.png`). The other 2026-11-16 races still have model cuts (80x128).
+Done: Mole Man (`mole_man_px.png`, PR #1901). 2026-11-17 batch (mondo "do those ones too, also the time cop, and male shaman"):
+banker, sewer gator (concept B), skater, tech ceo, magician, lifeguard, male shaman, time cop, each `<race>_px.png` in its race
+folder. BETTER SIZE STEP (found on this batch): restyle at `size: 128` straight away. The figure fill at 160 varied (80-100 %), so
+the 160 + crop trick cut heads off; at 128 every one came back 127-128 px tall and fitting. Time Cop has no Meshy concept: its
+source was the future-cop model's front render (`/mnt/project-files/time-cop/timecop_models_front.png`), and TIME_COP_LOOKS.future
+now points at `Races/police/timecop_px.png` (the cop look keeps policeofficer.png). Files + sheet:
+`/mnt/project-files/sprite-ai-test/batch-20261117/`.

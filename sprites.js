@@ -681,7 +681,7 @@ const _CHARACTER_SPRITES = {
   'krampus': `${_CS}/krampus.png`,
   'mushroom girl': `${_CS}/mushroomgirl.png`,
   'police officer': `${_CS}/policeofficer.png`,
-  'time cop': `${_CS}/policeofficer.png`,   // 2026-10-24 — the cop look
+  'time cop': `${_S}/Races/police/timecop_px.png`,   // 2026-11-17 — its own 128x128 future-cop pixel sprite (Sprite AI, from the model)
   'professor': `${_CS}/professor.png`,
   'rabbit': `${_CS}/rabbit.png`,
   'ringmaster': `${_CS}/ringmaster.png`,
@@ -694,14 +694,14 @@ const _CHARACTER_SPRITES = {
   // 2026-10-25 — mondo's sprites in each race's own R2 folder (Races/<race>/<race>.png; the chef's in male/)
   'chef': `${_S}/Races/chef/male/chef.png`,
   'eagleman': `${_S}/Races/eagleman/eagleman.png`,
-  'banker': `${_S}/Races/banker/male/banker.png`,   // 2026-11-16 — cut from its own model
-  'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator.png`,   // 2026-11-16 — cut from its own model
-  'skater': `${_S}/Races/skater/female/skater.png`,   // 2026-11-16 — cut from its own model
-  'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo.png`,   // 2026-11-16 — cut from its own model
-  'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
+  'banker': `${_S}/Races/banker/male/banker_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'skater': `${_S}/Races/skater/female/skater_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'magician': `${_S}/Races/magician/male/magician_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
-  'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f.png`,   // 2026-11-16 — cut from her own model
+  'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
   // 2026-10-25 — the undead batch: his sprites sit in the race folders beside the GLBs
@@ -760,12 +760,11 @@ const HONDA_CIVIC_SPRITES = {
 
 /* THE TIME COP's three looks (mondo 2026-10-24). Each value is the _spriteOverride a cast sets (battle.js
    UNIT_ANIM_OVERRIDES['time cop']) and the key RACE_MODELS_3D['time cop'].male.overrideForms maps to that
-   look's model; it is also the 2D sprite if a model fails. The future cop has no 2D sprite of its own, so it
-   borrows the cop's under its own #fragment (same image, a distinct key). */
+   look's model; it is also the 2D sprite if a model fails. The future cop has its own pixel sprite since 2026-11-17. */
 const TIME_COP_LOOKS = {
   cop:     `${_S}/character_sprites/policeofficer.png`,
   sheriff: `${_S}/character_sprites/sheriff.png`,
-  future:  `${_S}/character_sprites/policeofficer.png#future`,
+  future:  `${_S}/Races/police/timecop_px.png`,   // 2026-11-17 its own pixel sprite (was the cop's under #future)
 };
 
 const SENTAI_SPRITES = {
@@ -788,7 +787,7 @@ const _NEW_MALE_SPRITES = {
   'vampire': `${_S}/Races/vampire/male/vampire_m.png`,
   'zombie': `${_S}/Races/zombie/male/zombie_m.png`,
   'knight': `${_S}/Races/knight/male/knight_m.png`,
-  'shaman': `${_S}/Races/shaman/male/shaman_m.png`,
+  'shaman': `${_S}/Races/shaman/male/shaman_m_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'necromancer': `${_S}/Races/necromancer/male/necromancer_m.png`,
   'cyborg': `${_S}/Races/cyborg/male/cyborg_m.png`,
   'ki fighter': `${_S}/Races/kifighter/male/ki_fighter_m.png`,
@@ -6691,7 +6690,7 @@ const RACE_SPRITES = {
   'gangster': `${_S}/Races/gangster/gangster_male.png`,
   'door agent': `${_S}/homosapien.png`,
   'police officer': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-04 — his own sprite
-  'time cop': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-24 — the cop look
+  'time cop': `${_S}/Races/police/timecop_px.png`,   // 2026-11-17 — its own 128x128 future-cop pixel sprite (Sprite AI, from the model)
   'jellyfish': `${_S}/character_sprites/jellyfish.png`,   // 2026-10-04 — his own sprite
   'cult leader': `${_S}/character_sprites/cultleader.png`,   // 2026-10-04 — his own sprite
   'popstar': `${_S}/Races/popstar/popstar_female.png`,   // 2026-09-22 — her own sheet (the VFX pass)
@@ -6718,14 +6717,14 @@ const RACE_SPRITES = {
   'hippie': `${_S}/character_sprites/hippie_male.png`,   // 2026-10-04 — his own sprite
   'chef': `${_S}/Races/chef/male/chef.png`,   // 2026-10-25 — his own sprite
   'eagleman': `${_S}/Races/eagleman/eagleman.png`,   // 2026-10-25 — his own sprite
-  'banker': `${_S}/Races/banker/male/banker.png`,   // 2026-11-16 — cut from its own model
-  'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator.png`,   // 2026-11-16 — cut from its own model
-  'skater': `${_S}/Races/skater/female/skater.png`,   // 2026-11-16 — cut from its own model
-  'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo.png`,   // 2026-11-16 — cut from its own model
-  'magician': `${_S}/Races/magician/male/magician.png`,   // 2026-11-16 — cut from its own model
+  'banker': `${_S}/Races/banker/male/banker_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'skater': `${_S}/Races/skater/female/skater_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'magician': `${_S}/Races/magician/male/magician_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
-  'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f.png`,   // 2026-11-16 — cut from her own model
+  'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
   'mummy': `${_S}/Races/mummy/mummy_female.png`,   // 2026-10-25 — his own sprite
