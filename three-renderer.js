@@ -17550,6 +17550,271 @@ const ThreeRenderer = (function () {
         clips.hitHeavy = clips.hit;
         return clips;
     }
+    /* 📺 THE CURSED TV (2026-11-17, mondo: "It would roll around on a roller, and have tv static on it for its idle, and change
+       channels for its spells ... a haunted remote ... Youll have to get creative with the animations ... make a wheel model to
+       animate the individual wheel at the bottom of the cart ... Antennae. Remote. TV. Cart. Wheels. Maybe a power cable too").
+       The set is ONE file (Assets/characters/races/cursed_tv/cursed_tv.glb, made by docs/tools note: models-assets.md "THE CURSED
+       TV"): the orientation cutscene's AV cart (Meshy) with its four casters cut out, each a swivel (ewTvCaster<LF|RF|LB|RB>) over
+       a wheel on its axle (ewTvWheel*); the Meshy TV (ewTvSet, its two dials ewTvDial / ewTvDial2 turn on their own); the rabbit
+       ears (ewTvAnt › ewTvAntL / ewTvAntR); the remote lying on the cart top (ewTvRemote); the power cable trailing behind. In
+       metres, front +Z, floor y 0. The screen holder (ewTvScreen, extras w / h) gets THE CHANNELS here: one unlit sheet a
+       channel, shown by a discrete scale track, so a clip IS its channel changes (the online guest plays the same clips).
+       The static is one shared moving sheet (_tvStaticTick, from the unit loop and the team room). Display only. */
+    var _TV_CH = ['static', 'snow', 'bars', 'rewind', 'ff', 'standby', 'nosignal', 'black', 'line'];
+    var _tvStatic = null;
+    function _tvCanvasTex(c) {
+        var t = new THREE.CanvasTexture(c);
+        t.minFilter = THREE.NearestFilter; t.magFilter = THREE.NearestFilter; t.generateMipmaps = false;
+        _ewTexSetSRGB(t, true);
+        return t;
+    }
+    function _tvStaticTex() {
+        if (_tvStatic) return _tvStatic.tex;
+        var c = document.createElement('canvas'); c.width = 80; c.height = 60;
+        _tvStatic = { c: c, x: c.getContext('2d'), img: null, tex: null, last: 0 };
+        _tvStatic.img = _tvStatic.x.createImageData(80, 60);
+        _tvStatic.tex = _tvCanvasTex(c);
+        _tvStaticTick(0, true);
+        return _tvStatic.tex;
+    }
+    /* the snow moves at ~20 fps, once a frame whoever asks (the scene B screen's look: grey grain, a rolling bright band) */
+    function _tvStaticTick(now, force) {
+        var S = _tvStatic; if (!S) return;
+        var t = now || performance.now();
+        if (!force && t - S.last < 50) return;
+        S.last = t;
+        var dd = S.img.data, roll = ((t / 22) | 0) % 60;
+        for (var i = 0; i < dd.length; i += 4) {
+            var row = (i >> 2) / 80 | 0, v = (Math.random() * 215 + 20) | 0;
+            if (Math.abs(row - roll) < 3) v = Math.min(255, v + 45);
+            dd[i] = v; dd[i + 1] = v; dd[i + 2] = Math.min(255, v + 14); dd[i + 3] = 255;
+        }
+        S.x.putImageData(S.img, 0, 0); S.tex.needsUpdate = true;
+    }
+    /* the still channels, drawn once (160 x 120, the old set's 4:3) */
+    var _tvChTex = {};
+    function _tvChannelTex(key) {
+        if (key === 'static' || key === 'snow') return _tvStaticTex();
+        if (_tvChTex[key]) return _tvChTex[key];
+        var c = document.createElement('canvas'); c.width = 160; c.height = 120;
+        var x = c.getContext('2d'), W = 160, H = 120, i;
+        var font = function (px) { return 'bold ' + px + 'px "Courier New", monospace'; };
+        if (key === 'bars') {
+            /* THE EMERGENCY BROADCAST: the colour bars, the alert strip */
+            var bars = ['#c0c0c0', '#c0c000', '#00c0c0', '#00c000', '#c000c0', '#c00000', '#0000c0'];
+            for (i = 0; i < 7; i++) { x.fillStyle = bars[i]; x.fillRect(i * W / 7, 0, W / 7 + 1, H * 0.62); }
+            var mid = ['#0000c0', '#131313', '#c000c0', '#131313', '#00c0c0', '#131313', '#c0c0c0'];
+            for (i = 0; i < 7; i++) { x.fillStyle = mid[i]; x.fillRect(i * W / 7, H * 0.62, W / 7 + 1, H * 0.08); }
+            x.fillStyle = '#000'; x.fillRect(0, H * 0.7, W, H * 0.3);
+            x.fillStyle = '#d00'; x.fillRect(0, H * 0.72, W, H * 0.26);
+            x.fillStyle = '#fff'; x.font = font(13); x.textAlign = 'center'; x.textBaseline = 'middle';
+            x.fillText('EMERGENCY', W / 2, H * 0.79); x.fillText('BROADCAST', W / 2, H * 0.91);
+        } else if (key === 'rewind' || key === 'ff') {
+            /* the VCR's blue screen with its tracking lines */
+            x.fillStyle = '#1830b8'; x.fillRect(0, 0, W, H);
+            x.fillStyle = 'rgba(255,255,255,0.18)'; for (i = 0; i < 4; i++) x.fillRect(0, 20 + i * 27, W, 2);
+            x.fillStyle = '#fff'; x.font = font(26); x.textAlign = 'center'; x.textBaseline = 'middle';
+            var tri = function (cx, dir) { x.beginPath(); x.moveTo(cx + dir * 14, 44); x.lineTo(cx - dir * 14, 30); x.lineTo(cx - dir * 14, 58); x.closePath(); x.fill(); };
+            if (key === 'rewind') { tri(62, -1); tri(88, -1); } else { tri(72, 1); tri(98, 1); }
+            x.font = font(17); x.fillText(key === 'rewind' ? 'REWIND' : 'FAST FWD', W / 2, 84);
+            x.font = font(10); x.textAlign = 'left'; x.fillText('PLAY', 8, 12); x.textAlign = 'right'; x.fillText('0:00:13', W - 8, 12);
+        } else if (key === 'standby') {
+            /* the test card */
+            x.fillStyle = '#202020'; x.fillRect(0, 0, W, H);
+            x.strokeStyle = '#e8e8e8'; x.lineWidth = 2;
+            for (i = 1; i < 8; i++) { x.beginPath(); x.moveTo(i * W / 8, 0); x.lineTo(i * W / 8, H); x.stroke(); }
+            for (i = 1; i < 6; i++) { x.beginPath(); x.moveTo(0, i * H / 6); x.lineTo(W, i * H / 6); x.stroke(); }
+            x.fillStyle = '#e8e8e8'; x.beginPath(); x.arc(W / 2, H / 2, 40, 0, Math.PI * 2); x.fill();
+            x.fillStyle = '#202020'; x.beginPath(); x.arc(W / 2, H / 2, 34, 0, Math.PI * 2); x.fill();
+            x.fillStyle = '#000'; x.fillRect(16, 47, W - 32, 26);
+            x.fillStyle = '#fff'; x.font = font(12); x.textAlign = 'center'; x.textBaseline = 'middle';
+            x.fillText('PLEASE STAND BY', W / 2, H / 2);
+        } else if (key === 'nosignal') {
+            x.fillStyle = '#0a14a0'; x.fillRect(0, 0, W, H);
+            x.fillStyle = '#fff'; x.font = font(18); x.textAlign = 'center'; x.textBaseline = 'middle';
+            x.fillText('NO SIGNAL', W / 2, H / 2);
+        } else if (key === 'line') {
+            /* the set dying: the picture squashed to one white line, then a dot (the line sheet's scale does the squash) */
+            x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+        } else {
+            x.fillStyle = '#050505'; x.fillRect(0, 0, W, H);   // black: off
+        }
+        return (_tvChTex[key] = _tvCanvasTex(c));
+    }
+    /* A pose is a function of u (0 … 1 over the clip), sampled at 30 fps. Fields (all default 0): x y z (the set's offset, m;
+       z > 0 = forward) rx (tips forward) rz (leans to its right) ry (turns), tx tz (the TV alone tips: forward / sideways), ty (the
+       TV hops up), sw (the casters: 0 = each at its rest swivel, 1 = all trailing behind a forward roll), spin (the wheels' roll,
+       radians: forward > 0), aL aR (the ears spread out, radians), af (the ears tip back), dial (the channel dial's turn), rm (the
+       remote: 0 lying on the cart … 1 up at the TV's side, pointed forward), rmx (the remote tips: > 0 nose down), rmk (a jab of the
+       remote, m), ch (the channel: one of _TV_CH), line (0 … 1: the dying picture squashed to a line, 2 = to a dot). */
+    var _TV_CASTER_REST = { LF: 0.35, RF: -0.8, LB: 2.3, RB: -1.9 };
+    function _tvClip(name, dur, pose, R) {
+        var N = Math.max(8, Math.round(dur * 30));
+        var tt = [], tr = { root: [], rootQ: [], set: [], setQ: [], antL: [], antR: [], dial: [], rem: [], remQ: [] }, cq = {}, wq = {}, chS = {};
+        _TV_CH.forEach(function (k) { chS[k] = []; });
+        R.casters.forEach(function (c) { cq[c.k] = []; wq[c.k] = []; });
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion(), q2 = new THREE.Quaternion();
+        var push = function (arr) { arr.push(q.x, q.y, q.z, q.w); };
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = pose(u) || {};
+            var f = function (k) { return p[k] || 0; };
+            tt.push(u * dur);
+            tr.root.push(f('x'), f('y'), f('z'));
+            e.set(f('rx'), f('ry'), -f('rz'), 'YXZ'); q.setFromEuler(e); push(tr.rootQ);
+            tr.set.push(R.set0.x, R.set0.y + f('ty'), R.set0.z);
+            e.set(f('tx'), 0, -f('tz'), 'YXZ'); q.setFromEuler(e); push(tr.setQ);
+            e.set(-f('af'), 0, 0.0 + f('aL'), 'YXZ'); q.setFromEuler(e); push(tr.antL);
+            e.set(-f('af'), 0, -f('aR'), 'YXZ'); q.setFromEuler(e); push(tr.antR);
+            e.set(0, 0, -f('dial'), 'YXZ'); q.setFromEuler(e); push(tr.dial);
+            var rm = Math.max(0, Math.min(1, f('rm')));
+            tr.rem.push(R.rem0.x + (R.remUp.x - R.rem0.x) * rm, R.rem0.y + (R.remUp.y - R.rem0.y) * rm, R.rem0.z + (R.remUp.z - R.rem0.z) * rm + f('rmk'));
+            e.set(f('rmx') - 0.35 * rm, 0, 0, 'YXZ'); q.setFromEuler(e); push(tr.remQ);
+            var sw = Math.max(0, Math.min(1, f('sw')));
+            R.casters.forEach(function (c) {
+                var a = c.rest + (c.trail - c.rest) * sw;
+                e.set(0, a, 0, 'YXZ'); q.setFromEuler(e); push(cq[c.k]);
+                /* the roll only reads on a trailing wheel; the sign follows which way its axle was turned */
+                e.set(0, 0, f('spin') * c.sign * sw + (p.idleSpin ? f('idleSpin') : 0), 'YXZ'); q.setFromEuler(e); push(wq[c.k]);
+            });
+            var ch = p.ch || 'static', ln = f('line');
+            _TV_CH.forEach(function (k) {
+                var on = (k === ch) || (k === 'line' && ln > 0), sx = 1, sy = 1;
+                if (k === 'line' && ln > 0) { sy = ln < 1 ? Math.max(0.02, 1 - ln) : 0.02; sx = ln <= 1 ? 1 : Math.max(0.02, 2 - ln); }
+                if (!on) { sx = 0.0001; sy = 0.0001; }
+                chS[k].push(sx, sy, 1);
+            });
+        }
+        var V = THREE.VectorKeyframeTrack, Q = THREE.QuaternionKeyframeTrack, out = [
+            new V('ewTvRoot.position', tt, tr.root), new Q('ewTvRoot.quaternion', tt, tr.rootQ),
+            new V('ewTvSet.position', tt, tr.set), new Q('ewTvSet.quaternion', tt, tr.setQ),
+            new Q('ewTvAntL.quaternion', tt, tr.antL), new Q('ewTvAntR.quaternion', tt, tr.antR),
+            new V('ewTvRemote.position', tt, tr.rem), new Q('ewTvRemote.quaternion', tt, tr.remQ)
+        ];
+        if (R.dial) out.push(new Q('ewTvDial.quaternion', tt, tr.dial));
+        R.casters.forEach(function (c) { out.push(new Q('ewTvCaster' + c.k + '.quaternion', tt, cq[c.k]), new Q('ewTvWheel' + c.k + '.quaternion', tt, wq[c.k])); });
+        _TV_CH.forEach(function (k) {
+            var tk = new V('ewTvCh_' + k + '.scale', tt, chS[k]);
+            if (k !== 'line') tk.setInterpolation(THREE.InterpolateDiscrete);
+            out.push(tk);
+        });
+        return new THREE.AnimationClip(name, dur, out);
+    }
+    function _tvS(u, a, b) { var t = b > a ? Math.max(0, Math.min(1, (u - a) / (b - a))) : (u >= a ? 1 : 0); return t * t * (3 - 2 * t); }
+    function _tvBump(u, a, b, c) { return _tvS(u, a, b) * (1 - _tvS(u, b, c)); }
+    function _tvBuzz(u, hz, amp) { return Math.sin(u * Math.PI * 2 * hz) * amp; }
+    /* the ears: a little spring that rings after a jolt at moment j (0 … 1), k = how hard */
+    function _tvRing(u, j, k, dur) { if (u < j) return 0; var s = (u - j) * dur; return k * Math.exp(-s * 3.2) * Math.sin(s * 22); }
+    var _TV_POSES = {
+        /* idle (4 s): the static, a hum in the box, the ears breathing, a flicker to black now and then, the dial twitching */
+        idle: [4.0, function (u) {
+            return { y: Math.abs(_tvBuzz(u, 24, 0.0012)), rz: _tvBuzz(u, 1, 0.006), tz: _tvBuzz(u, 2, 0.006),
+                aL: _tvBuzz(u, 1, 0.05), aR: _tvBuzz(u + 0.3, 1, 0.05), af: 0.03 * Math.sin(u * Math.PI * 4),
+                dial: 0.25 * _tvBump(u, 0.55, 0.58, 0.62), ch: (u > 0.71 && u < 0.725) || (u > 0.74 && u < 0.75) ? 'black' : 'static' };
+        }],
+        /* the roll (1 s): every caster swings round to trail, the wheels turn, the cart rattles, the ears lean back and bob */
+        walk: [1.0, function (u) {
+            return { sw: 1, spin: u * Math.PI * 6, y: Math.abs(_tvBuzz(u, 8, 0.004)), rz: _tvBuzz(u, 2, 0.012), rx: -0.02,
+                tz: _tvBuzz(u, 4, 0.01), aL: 0.06 + _tvBuzz(u, 2, 0.08), aR: 0.06 + _tvBuzz(u + 0.25, 2, 0.08), af: 0.18 + _tvBuzz(u, 4, 0.05) };
+        }],
+        /* a cast / the basic jolt (1.3 s): the dial clicks, the channel flips to snow, the set leans back and jolts forward */
+        cast: [1.3, function (u) {
+            var j = _tvS(u, 0.28, 0.36) - _tvS(u, 0.5, 0.9);
+            return { dial: 0.5 * _tvS(u, 0.1, 0.18) - 0.5 * _tvS(u, 0.85, 1), rx: -0.06 * _tvBump(u, 0.05, 0.25, 0.32) + 0.07 * j, z: 0.05 * j,
+                tz: _tvBuzz(u, 9, 0.012) * _tvBump(u, 0.3, 0.4, 0.8), aL: 0.15 * j + _tvRing(u, 0.32, 0.25, 1.3), aR: 0.15 * j + _tvRing(u, 0.32, 0.25, 1.3),
+                ch: (u > 0.16 && u < 0.86) ? 'snow' : 'static' };
+        }],
+        /* the area channel (1.6 s): THE EMERGENCY BROADCAST: bars, the box shudders, the ears splay wide */
+        castAOE: [1.6, function (u) {
+            var on = _tvS(u, 0.15, 0.3) - _tvS(u, 0.8, 0.95);
+            return { dial: 1.0 * _tvS(u, 0.08, 0.14) - 1.0 * _tvS(u, 0.9, 1), y: 0.03 * _tvBump(u, 0.25, 0.32, 0.45),
+                rz: _tvBuzz(u, 14, 0.02) * on, tz: _tvBuzz(u, 11, 0.025) * on, ty: 0.02 * on * Math.abs(_tvBuzz(u, 7, 1)),
+                aL: 0.55 * on + _tvRing(u, 0.85, 0.2, 1.6), aR: 0.55 * on + _tvRing(u, 0.85, 0.2, 1.6),
+                ch: (u > 0.12 && u < 0.9) ? 'bars' : 'static' };
+        }],
+        /* the remote (1.5 s): it lifts off the cart to the TV's side, points, the button jabs; FAST FORWARD on the screen */
+        castSupport: [1.5, function (u) {
+            var up = _tvS(u, 0.05, 0.3) - _tvS(u, 0.78, 1);
+            return { rm: up, rmk: 0.05 * _tvBump(u, 0.4, 0.46, 0.55), rmx: 0.15 * _tvBump(u, 0.4, 0.46, 0.55), ty: 0.01 * _tvBump(u, 0.44, 0.5, 0.6),
+                aL: _tvRing(u, 0.46, 0.15, 1.5), aR: _tvRing(u, 0.46, 0.15, 1.5),
+                ch: (u > 0.45 && u < 0.92) ? 'ff' : 'static' };
+        }],
+        /* REWIND (1.8 s): the remote's button, the set rolls BACK a step on spinning wheels, the screen runs the VCR's rewind */
+        tvRewind: [1.8, function (u) {
+            var up = _tvS(u, 0.04, 0.22) - _tvS(u, 0.82, 1), back = _tvS(u, 0.3, 0.62) - _tvS(u, 0.68, 0.95);
+            return { rm: up, rmk: 0.05 * _tvBump(u, 0.24, 0.29, 0.36), rmx: 0.15 * _tvBump(u, 0.24, 0.29, 0.36), sw: _tvS(u, 0.25, 0.35) - _tvS(u, 0.9, 1),
+                z: -0.12 * back, spin: -Math.PI * 1.6 * _tvS(u, 0.3, 0.62) + Math.PI * 1.6 * _tvS(u, 0.68, 0.95), tz: _tvBuzz(u, 16, 0.008) * back,
+                aL: 0.05 + _tvBuzz(u, 6, 0.06) * back, aR: 0.05 + _tvBuzz(u + 0.1, 6, 0.06) * back,
+                ch: (u > 0.28 && u < 0.95) ? 'rewind' : 'static' };
+        }],
+        /* the ram (1.2 s): it rolls at what it hits and back, the TV slams forward on the stop */
+        castMelee: [1.2, function (u) {
+            var go = _tvS(u, 0.05, 0.35) - _tvS(u, 0.55, 0.95);
+            return { sw: 1, z: 0.3 * go, spin: Math.PI * 3 * _tvS(u, 0.05, 0.35) - Math.PI * 3 * _tvS(u, 0.55, 0.95),
+                tx: 0.18 * _tvBump(u, 0.33, 0.37, 0.55), rx: 0.04 * _tvBump(u, 0.3, 0.36, 0.5), aL: _tvRing(u, 0.36, 0.35, 1.2), aR: _tvRing(u, 0.36, 0.35, 1.2), af: -0.25 * _tvBump(u, 0.33, 0.37, 0.6),
+                ch: (u > 0.3 && u < 0.7) ? 'snow' : 'static' };
+        }],
+        /* the big one (1.9 s): the test card, a slow rise of the whole set, the ears straight up and splayed */
+        castUltimate: [1.9, function (u) {
+            var on = _tvS(u, 0.1, 0.3) - _tvS(u, 0.85, 1);
+            return { dial: 1.5 * _tvS(u, 0.05, 0.12) - 1.5 * _tvS(u, 0.92, 1), ty: 0.05 * on, tx: -0.08 * on, rz: _tvBuzz(u, 9, 0.015) * on,
+                aL: 0.7 * on, aR: 0.7 * on, af: -0.2 * on, ch: (u > 0.08 && u < 0.4) ? 'standby' : (u >= 0.4 && u < 0.92) ? 'bars' : 'static' };
+        }],
+        /* hit (0.7 s): NO SIGNAL, the box knocked back, the ears ring */
+        hit: [0.7, function (u) {
+            var k = _tvBump(u, 0, 0.1, 0.5);
+            return { rx: -0.09 * k, z: -0.04 * k, tx: -0.12 * k, aL: _tvRing(u, 0.05, 0.4, 0.7), aR: _tvRing(u, 0.07, 0.4, 0.7), af: 0.3 * k,
+                ch: u < 0.55 ? 'nosignal' : 'static' };
+        }],
+        /* death (2.2 s): the picture dies to a line, a dot, black; the ears droop; the cart tips over on its side */
+        death: [2.2, function (u) {
+            var a = 1.32 * _tvS(u, 0.45, 0.78) + 0.05 * _tvBump(u, 0.78, 0.82, 0.9), E = 0.46;
+            return { line: u < 0.08 ? 0 : 2 * _tvS(u, 0.08, 0.36), ch: u < 0.08 ? 'static' : 'black', rz: a,
+                x: E - E * Math.cos(a), y: E * Math.sin(a), aL: -0.4 * _tvS(u, 0.3, 0.5), aR: -0.4 * _tvS(u, 0.3, 0.5), af: 0.5 * _tvS(u, 0.3, 0.6),
+                rm: 0, rmk: 0 };
+        }]
+    };
+    function _tvBuild(root) {
+        var R = { casters: [] }, scr = null, set = null, rem = null, rt = null, dial = null;
+        root.traverse(function (n) {
+            if (n.name === 'ewTvScreen') scr = n; else if (n.name === 'ewTvSet') set = n; else if (n.name === 'ewTvRemote') rem = n;
+            else if (n.name === 'ewTvRoot') rt = n; else if (n.name === 'ewTvDial') dial = n;
+        });
+        if (!scr || !set || !rem || !rt) return null;
+        ['LF', 'RF', 'LB', 'RB'].forEach(function (k) {
+            var c = root.getObjectByName('ewTvCaster' + k), w = root.getObjectByName('ewTvWheel' + k);
+            if (!c || !w) return;
+            /* trail: the swivel that puts this wheel's axle behind its pivot (a forward roll drags a caster round) */
+            var phi = Math.atan2(w.position.x, w.position.z), trail = Math.PI - phi;
+            while (trail > Math.PI) trail -= Math.PI * 2;
+            while (trail < -Math.PI) trail += Math.PI * 2;
+            R.casters.push({ k: k, rest: _TV_CASTER_REST[k] || 0, trail: trail, sign: Math.sin(trail) >= 0 ? 1 : -1 });
+        });
+        R.set0 = set.position.clone(); R.rem0 = rem.position.clone(); R.dial = !!dial;
+        /* the remote's float: beside the TV's right side, at screen height, a hand's width out front */
+        var ex = scr.userData || {};
+        R.remUp = new THREE.Vector3(R.set0.x + 0.47, R.set0.y + (scr.position.y || 0.25) + 0.05, R.set0.z + 0.2);
+        /* THE CHANNELS: one unlit sheet a channel on the screen holder */
+        var w = +ex.w || 0.42, h = +ex.h || 0.33;
+        _TV_CH.forEach(function (k, i) {
+            var mat = new THREE.MeshBasicMaterial({ map: _tvChannelTex(k), fog: false });
+            mat.toneMapped = false;
+            var pl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+            pl.name = 'ewTvCh_' + k;
+            pl.position.z = (k === 'line') ? 0.0012 : 0.0006;
+            pl.scale.set(k === 'static' ? 1 : 0.0001, k === 'static' ? 1 : 0.0001, 1);
+            pl.raycast = function () {};
+            pl.castShadow = false; pl.receiveShadow = false;
+            scr.add(pl);
+        });
+        var clips = {};
+        Object.keys(_TV_POSES).forEach(function (slot) { var p = _TV_POSES[slot]; clips[slot] = _tvClip(slot, p[0], p[1], R); });
+        /* the kinds that share a motion (every cast chain ends on `cast`) */
+        clips.castMagic = clips.cast; clips.castRanged = clips.cast;
+        clips.castHeal = clips.castSupport;
+        clips.tvStatic = clips.cast; clips.tvBars = clips.castAOE; clips.tvFF = clips.castSupport;
+        clips.run = clips.walk;
+        return clips;
+    }
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -17719,7 +17984,9 @@ const ThreeRenderer = (function () {
            nose to turn; its hull spins flat like the triangle's */
         saucerCraft: function (root) { return _ufoBuild(root, 0); },
         /* THE UNICORN (above, _uniBuild): the horse + the horn + the angel wing twice; `deps` load first */
-        unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); }
+        unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); },
+        /* 📺 THE CURSED TV (above, _tvBuild): the cart's casters, the wheels, the ears, the remote, THE CHANNELS */
+        cursedTv: function (root) { return _tvBuild(root); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
     /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
@@ -20182,6 +20449,7 @@ const ThreeRenderer = (function () {
             if (_inSaddle && entry._ew_curAnim === 'hqSit' && !entry._ew_mountVehicle && !entry._ew_rideSit) _mountStraddle(entry);   // a ride-along rider keeps the chair sit: thighs forward round his waist   // THE HORSES: astride, not on a chair (a vehicle's deck: the chair sit)
             if (_digRecs.size && _digRecs.has(uid)) _digPose(entry, uid, now);   // THE SHOVEL DIG: the left hand on the grip, the shovel in the hands
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
+            if (_tvStatic) _tvStaticTick();   // 📺 THE CURSED TV: the shared snow moves (throttled, once a frame whoever asks)
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = _unitModelRigs.get(uid); if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
             if (entry._ew_sway) _swayTick(entry._ew_sway, dt, entry.modelDef && entry.modelDef.sway);   // THE SWAY: the cape swings after the clip
@@ -98585,6 +98853,7 @@ const ThreeRenderer = (function () {
             if (m.rig && m.model) { m.model.updateMatrixWorld(true); try { m.rig.tick(); } catch (e) {} }
             if (m.model) _swayAuto(m.model, dt);   // THE SWAY
             if (m.procEye) { try { _procRigEyeTrack(m.procEye, T.camera); } catch (e) {} }   // the core eye looks at the room's camera
+            if (_tvStatic) _tvStaticTick();   // 📺 the Cursed TV's snow in the team room
             if (m.model && m.rig && !(now < (m.lookAt || 0))) { m.lookAt = now + 500; _trLookMats(m, m.model); }   // THE LATE PIECES
         }
         _trTickPoses(T, now);

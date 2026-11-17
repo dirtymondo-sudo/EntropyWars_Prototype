@@ -5954,3 +5954,22 @@ no range falloff; nothing free behind = beside it, no Backstab; nothing free at 
 range 3, cd 3; ~ Ninefold Scratch's 414). `ownHitFx` (+ `hitLeadMs`) on a multiHit row: _applyMultiHitDamage fires
 '<id>:hit' through fireGeometry per hit and never re-fires the bolt. CPU: ai.js values Kawarimi like Protect (threat x 0.6).
 Probe /mnt/project-files/ninja-race/probe_ninja.js (NINJA_CPU=1 = a CPU ninja plays 4 rounds).
+
+## THE CURSED TV (2026-11-17, thread "Build the Cursed TV character"; mondo: "a Cursed TV. It would roll around on a roller, and have tv static on it for its idle, and change channels for its spells, and also have a haunted remote that could rewind and have an enemy retake the damage they took the last round ... the emergency broadcast with the colored lines"; he OK'd the kit 11-17)
+- Race `'cursed tv'` (label Cursed TV, types anomaly + tech), caster, family `cursedtv` (+ haunted, lightning, glitch), lightning
+  resist, water weak, RACE_JUMP 1 (a cart climbs one step), RACE_KITS reach 2 (the basic attack is a jolt down the power cable;
+  `basicAttackKind: 'magic'`), stats first pass: HP 900, MP 210, INT 175, MDEF 120, SPD 140 (frail and quick). Finisher "Off the
+  Air" borrows the corruptedSave staging. Price 450, homes The Haunted House (attic) + urban.
+- **THE TAPE:** battle.js `applyDamageToUnit` adds every point a unit takes to `u._tapeNow`; `_nrRoundEnd` rolls it into
+  `u._tapeLast` (the round end runs before the status ticks, so a Burn at the round end is on the NEXT round's tape). Plain numbers
+  on the unit: they state-sync to the guest, nothing to relay.
+- **Rewind** (`rewindTape: 0.4`): a TINY base hit (40), then last round's tape again as a second EXACT hit (THE REPLAY's apply: no
+  DEF, no multipliers, the caster credited), capped at 40% of the victim's max HP (`_tvTapeAmount`). The tape is read BEFORE the
+  base hit lands. Only an enemy with tape is a target (spellTargetUsableOn), the button greys `📼 Nothing on tape` when no enemy has
+  any (spellBlockReason), doSpell refuses a tapeless target before any cost. The forecast shows the replay (tag 'rewind').
+- Static Burst (T1, range 4, 80 lightning magic + Blind 1), Emergency Broadcast (T2, self nova radius 2, 90 sonic magic + Silence 1,
+  CD 3), Fast Forward (T2, ally or self within 4, +1 SPD stage + Quickened +1 MOV 2 rounds, CD 2). Each row's `animSlot` picks the
+  channel clip (tvStatic / tvBars / tvFF / tvRewind; models-assets.md "THE CURSED TV").
+- VFX = three-vfx-effects.js "THE CURSED TV" (after THE HAUNTED DOLL; kill-switch `window.EW_NO_TV_VFX`): channel cards stand BESIDE
+  the unit, screen right at chest height (over the head they sat under the DOM nameplate and could not be seen) (bars + EMERGENCY BROADCAST, the blue VCR screen with FF / REWIND), static on the victim, side rings (own cyan-blue /
+  enemy pink-orange), Broadcast's three rings in the bar colours. All through `_spell3DGeometry` + SPELL_MAP (relayed like every cast).
