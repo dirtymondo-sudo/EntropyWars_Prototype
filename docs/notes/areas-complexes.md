@@ -11011,6 +11011,27 @@ and the census read as before.
   the lines answered in the slice (the room scatter, two ranch rails cut at plot lines, the `woods` door = seam `ow_h_m14_5`). Pictures: `proof/fix5_*.jpg`.
 - **FIX 7, THE TWO GATES ON ONE LINE**: the Fence Line's gate (the Woods) and the Woods Gate (the corn) both stand at world x -13.5 (`bake-estate.js`
   `WOODS_X`; the corn's `hw_tree_3` moved one square for the way in). Pictures: `proof/fix7_*.jpg`.
+- **FIX 6, DEAD MAN'S CAVE: THE BED YOU FOLLOW** (`docs/areas/woods/districts/M.js`, its note of that name; `bake-woods.js` THE LATE CUT). The
+  creek's plots stand in one row now and the bed is squares 6 and 7 of each: out of the dry pipe and east along the trail on the Dry Creek upper,
+  straight east on the lower, DOWN 1.75 m on the lower's last four squares (the one way in and out), sunk between rock walls with a dirt rim each
+  side through the Hollow and the Gully, down again to 3.5 m on the Sewer Mouth's first five squares, the deep ravine to the mouth as it was.
+  - **A RAMP ONLY RAISES THE GROUND** (data.js `hqTerrainCompile`: `if (fh > h) h = fh`). A ramp down into a cut needs the cut under it: a
+    `plateau` with `sink: true` at the ramp's deepest height over the ramp's own squares, THEN the ramp row. The ravine's ramp lay on uncut ground
+    since the One World move and did nothing: the bed ended at a 3.5 m drop the walker fell off and could not climb. Measured after: 0 to -1.75 over
+    14 m, flat, -1.75 to -3.5 over 18 m, no sill at a plot line.
+  - A sunk piece is written a plot at a time (the mover moves a piece by the plot its middle stands on) and reaches 0.5 m past its plot's west and
+    east sides so two pieces meet without a sill. The tool prints those as STRAYS ("plateau on The Hollow also lies on …", by the HOME frame's
+    neighbours): expected, six lines.
+  - **`late(ctx)`**, a new district hook (THE LATE CUT): square changes AFTER every piece is set down, so no piece is seated again (`put` / `dec`
+    stand things on a plot's grass squares by its clearing's middle: one grass square changed in `cut` re-seats the whole plot and can drop a piece
+    of a full plot). Only for a district whose plots stand in a One World room.
+  - THE CABIN stood on the bed's line (the Gully's squares 5 to 7); it stands on the Gully's north-east corner now (squares 0 to 2), its porch on
+    the north bank's path, everything in it moved with it. The old line's pieces on the upper and lower plots (the car, tyres, the mattress,
+    bricks, bottles) are moved onto the new line, each on its own plot; the two stubs of the old line are forest again.
+  - **THE BACK OF THE ROCKS** (the name and the place are an idea of Claude's, plain, no role in the game): the trail through the crag's gate ended
+    at the trees. Behind the crag is a ledge of bare rock, six squares, where somebody has been sleeping (ten catalogue pieces, all new).
+  - Census against the room before this fix: every prop and native where it was; 4 of the forest's own `tree_6` gone (the tool's rule: a forest
+    tree leaves a square that was opened). Pictures: `proof/fix6_*.jpg`.
 - **THE ROUTE KIT'S OWN DRESSING is thrown again when its room changes** (the scatter, the trees in walked ground, the stoppers on a verge that
   no longer faces scenery): the census lists those under the route's plot names. They are the kit's, not a district's.
 
