@@ -11510,6 +11510,8 @@ before (the 12 x 12 room of the Highway, squares 0..144; no district file change
 | `site_prebuilt_area51_ow_giza` | GIZA (G), 16 plots | 13..16 x 29..32 | 4 x 4 |
 | `site_prebuilt_area51_highway` | THE HIGHWAY (R), 87 plots, NOT MOVED (`wait` row in bake-map.js, drawn at 6,35 clear of the districts) | - | 12 x 12, the four blocks masked out |
 
+**SINCE 4.2 (2026-11-17, same day): THE HIGHWAY'S ROOM IS RETIRED and every seam below moved onto the Desert Highway's legs: read "ONE WORLD, THE SOUTH ROUTES".**
+
 - **Why Area 51 keeps the old id**: every door that names `site_prebuilt_area51_desert` from another room (Hangar 18's big door, the White Rooms'
   yard gate and storm drain in the D.U.M.B., `docs/areas/dumb/districts/R.js`) asks for an Area 51 door (`hangar`, `ward`, `stormdrain`), so they all
   still land and no other zone's file was touched. The Highway, which 4.2 retires, took the new id.
@@ -11980,3 +11982,41 @@ What the first PR of 4.3 built (part 2 = Pirates' Cove, the Frozen Sea and the r
   `beach_triangle`. In a room with no sea (the garden, Babel) the boat is drawn up on the ground (`_hqWayBuilders.boat` `hasSea`). On foot: link `northpole_frozen`
   (way `trail`, the North Pole room's north wall at x -61.25, its open NW corner; `bake-mountains.js` not edited). Spots for a mooring: a dry square with deep water
   two squares off (the thread's helper picked them; any later move of a shore re-picks by hand).
+## ONE WORLD, THE SOUTH ROUTES — R6, R8, R9 and the Desert Highway's four legs; the Highway's room retired (2026-11-17, BUILD_PLAN phase 4 row 4.2; the owner's south routes thread)
+Seven route rooms built with the route kit (`node bake-route.js R6 R8 R9 DH1 DH2 DH3 DH4`; specs + hooks `docs/areas/routes/<ID>.json` / `<ID>.js`,
+shared hand pieces `docs/areas/routes/south-kit.js`). Every route is its OWN room (joined to a zone, each would break the 30-plot rule or join two zones):
+
+| Room | Road | Plots | Ends (seam id -> room) | Made by hand on it (the hook) |
+|---|---|---|---|---|
+| `site_ow_r6` | R6 THE VALLEY ROAD (road), the Clearing south-east to the city's west side | 26 | `ow_h_m7_3` -> the Clearing (bake-woods.js STAND `P05-05:S`); east end = link `valley_city` end b (new link; end a = the city's west street at -249.4, -45.5) | the Tiber stream + a covered bridge, the water mill (`r6:mill`, a walk-in building with its wheel), a spur to a turning place |
+| `site_ow_r8` | R8 THE RANCH ROAD (road), the Ranch east then south to Western Town | 23 | `ow_v_m9_20` -> the Ranch (bake-estate.js Ranch seam, free door); `ow_h_m4_26` -> Western Town | a crop circle with a scarecrow, a cattle range (cows, trough, hay) |
+| `site_ow_r9` | R9 THE BADLANDS HIGHWAY (highway, cars), the city's south edge to the Circus | 18 | north end = link `downtown_desert` end b (Exit 1 under South Street, as before); `ow_h_6_21` -> the Circus' north side | the old Highway's GAS STATION, LAST GAS billboard and city-limit sign (moved here), a walk-in MOTEL (eight room doors, VACANCY), four gantries |
+| `site_ow_dh1` | THE DESERT HIGHWAY, leg 1: the Circus west to Western Town | 20 | `ow_v_6_23` -> the Circus' west side; `ow_h_m2_26` -> Western Town's north side | the old Highway's lone DOOR and the BUS STOP (moved here), gantries |
+| `site_ow_dh2` | leg 2: Western Town south to Area 51 | 14 | `ow_h_m1_30` -> Western Town's south side (the canyon road); `ow_v_2_34` -> Area 51's west side | the old Highway's TRAILERS, the conspiracy theorist (his lines word for word) and the wreck (moved here) |
+| `site_ow_dh3` | leg 3: Area 51 east to Giza | 18 | `ow_v_6_33` -> Area 51's east side; `ow_v_13_32` -> Giza's west side | a caravan stop (covered wagons, camels, a tent, a well) |
+| `site_ow_dh4` | leg 4: Giza north to the Circus | 22 | `ow_h_13_29` -> Giza's north side (the causeway); `ow_v_9_23` -> the Circus' east side | the old Highway's last signpost, gantries |
+
+- **THE HIGHWAY'S ROOM IS RETIRED** (`site_prebuilt_area51_highway`; `DOOR_HQ.retired` -> `site_ow_r9`, `hubs.desert.room` = `site_ow_r9`, the way in from
+  the city). `bake-desert.js` still lays its 87 plots out (so the count of every piece holds and prints what stayed with it: 158 props, 1 native,
+  23 features) but does not write it. CARRIED ONTO THE ROADS by hand (the hooks): the gas station, LAST GAS, the city-limit sign -> R9; the Door, the bus
+  stop -> DH1; the trailers, the conspiracy theorist, the wreck -> DH2; the last signpost -> DH4; the cars -> every highway's own traffic. DROPPED with
+  the room: its mesas, cacti and rocks (the kit grows its own by the ground), the EXIT 3 OVERPASS (no road crosses another now) and its nine gantries
+  (each leg has new ones). The day table, `HQ_AREA_ENCOUNTERS` (the Desert's units) and the marker (R9, beside the gas station) moved to the new rooms.
+- **THE DESERT'S SEAMS** (`bake-desert.js` STAND): each district now has `seams: [{ side, at: [wx, wy], room, open, label, sub, desc }]`, one per road that
+  meets it; `at` = the world plot point where the road's line crosses the room's wall (the route spec's `line`), the seam id is worked out from it, and
+  the route room writes its pair. The interim seams `ow_v_m4_29` (Western Town west) and `ow_h_2_33` (Area 51 north) are gone; `ow_v_9_23` and
+  `ow_h_13_29` keep their ids and moved to where DH4 meets. A zone thread adding a seam to a Desert room (4.3: R10 / R11 on Giza) adds a row to that
+  district's `seams`.
+- **THE KIT GREW** (`bake-route.js`, additive; R7 bakes byte for byte the same): the hook's `ctx` also has `F`, `TRAFFIC`, `clear(sx0, sy0, sx1, sy1)` (takes
+  props / point features off a block so a building can stand), `LINE`, `SPEC`; a highway spec's `cars: { n, speed, kinds }` lays two one-way traffic lines
+  2 squares each side of the line (right-hand traffic) and the bake refuses a prop within 3.2 m of a car line; `names: { "x,y": "..." }` renames a
+  plot. AND A FIX: a link end the kit moves onto a route room is written `room: '<room id>'` (was `site` + `part`, which resolves to
+  `site_<site>_<part>`, a room no route is: the link stood nowhere; same fix the Camelot thread made by hand for `woods_camelot`).
+- **Map**: `node bake-map.js` for the seven rooms (pictures `--put`); the Desert's row in bake-map.js has no rooms of its own any more (every Desert
+  room says its place in `room.world`).
+- **Seen and walked (probe-fast, 11-17)**: every route room loaded with no page error; all 14 road ends walked into the next room (R6 into the Clearing
+  and into the city's west street; R8 into the Ranch and Western Town; R9 into the city under South Street and into the Circus; DH1 Circus + Town; DH2
+  Town + Area 51; DH3 Area 51 + Giza; DH4 Giza + Circus). Seen and fixed: the shoulder's guard rail ran unbroken past the gas station and the motel
+  (cut there in R9.js). Seen, not fixed: on R8 a group of wandering units stood on the road by the Ranch end and blocked the first walk (walked one
+  lane over); the crop circle's pieces read as grey lumps from the ground. Pictures: `docs/plans/one-world/proof/south_*.jpg` (`south_join_*` = the
+  room reached). PROBE LESSON: `dev.teleport`'s `face` is a compass heading, 0 = north (-z), 90 = east, 180 = south, 270 = west (NOT a door's face).

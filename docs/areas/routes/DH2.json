@@ -1,0 +1,68 @@
+{
+ "about": "THE DESERT HIGHWAY, LEG 2 (One World BUILD_PLAN phase 4.2, 2026-11-17): Western Town's south side (the canyon road) to Area 51's west side, where the base road runs. The old Highway room's Exit 4 pieces stand on it: the trailers and the conspiracy theorist who watches the turn-off, and the wreck on the shoulder.",
+ "hub": "desert",
+ "label": "THE DESERT HIGHWAY",
+ "sub": "THE DESERT · WESTERN TOWN TO AREA 51 · 14 PLOTS",
+ "line": [
+  [
+   -0.4167,
+   29.9
+  ],
+  [
+   -0.4167,
+   30.05
+  ],
+  [
+   -1.0,
+   30.6
+  ],
+  [
+   -1.0,
+   33.6
+  ],
+  [
+   -0.6,
+   34.04
+  ],
+  [
+   2.1,
+   34.04
+  ]
+ ],
+ "cars": {
+  "n": 3,
+  "speed": 10
+ },
+ "ends": {
+  "ow_h_m1_30": {
+   "room": "site_prebuilt_area51_ow_town",
+   "label": "WESTERN TOWN",
+   "sub": "THE DESERT HIGHWAY · NORTH UP THE CANYON",
+   "desc": "The road narrows into a canyon. The town is at the top."
+  },
+  "ow_v_2_34": {
+   "room": "site_prebuilt_area51_desert",
+   "label": "AREA 51",
+   "sub": "THE DESERT HIGHWAY · THE BASE ROAD",
+   "desc": "The highway meets a straight road south to a gate nobody is meant to reach."
+  }
+ },
+ "places": {
+  "0,33": false,
+  "1,33": false,
+  "0,34": false,
+  "1,34": false
+ },
+ "names": {
+  "0,33": "the trailers",
+  "1,33": "the trailers, the dish",
+  "0,34": "the trailers, south",
+  "1,34": "the trailers, the turn-off"
+ },
+ "say": {
+  "conspiracy theorist": [
+   "“I got in.” “How?” “The fence has a gate. It says KEEP OUT. It does not say how.”",
+   "“That is the saucer.” “That is a tarp.” “That is what a saucer would say.”"
+  ]
+ }
+}
