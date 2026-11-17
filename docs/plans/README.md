@@ -25,6 +25,11 @@ read them. PROPOSALS are not approved until the owner says so; check the matchin
 | `../notes/areas-complexes.md` | The build log: "DISASTER CITY, THE 144 PLOTS", "THE DISTRICT MOVE". |
 | `../PLOT_DUNGEONS_PLAN.md` | The plot dungeons. |
 
+## NPCs
+| File | What it is |
+|---|---|
+| `npc-encounters/PLAN.md` | NPC ENCOUNTERS (2026-11-17): mondo's concept fitted to the game: tempers per race, the strike ladder, awareness, offers, NPC escape, onlookers, joining fights; built / partly / new per part, a Fable or Opus pick per step, 18 open questions. His original: `npc-encounters/concept-v0.3.md`. Sits on top of `../notes/npc-system.md`. |
+
 ## Quests, story, cutscenes
 | File | What it is |
 |---|---|
