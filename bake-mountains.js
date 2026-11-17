@@ -535,7 +535,7 @@ const A = k => moved(M.anchors[k].x, M.anchors[k].z, k), aH = moved(M.out.heaven
 const aL = A('lemuria'), aP = A('painting'), aBS = A('bayShasta'), aBO = A('bayOlympus');
 if (aH.e.row !== 0 || aV.e.row !== aV.R.rows - 1) throw new Error('the Grand Stair / the Pilgrim Stair no longer stand on their room\'s north / south wall');
 const LINKS = {
-    northpole_camelot: ['a', "{ site: 'prebuilt_northpole', part: 'plots', wall: 's', x: " + NP.out.SLEIGH + ", sub: 'THE SLEIGH ROAD · TO CAMELOT' }"],
+    /* northpole_camelot: gone 2026-11-17 (One World phase 5): the sleigh road jumped from the Pole to Camelot's Snowy Pines; the Polar Trail (R5) and the trail L6 walk it */
     northpole_haunted: ['a', "{ site: 'prebuilt_northpole', part: 'plots', wall: 'free', x: " + NP.anchors.hearth.x + ", z: " + NP.anchors.hearth.z + ", face: " + NP.anchors.hearth.face + " }"],
     shasta_lemuria: ['a', "{ site: 'prebuilt_shasta', part: '" + aL.S.part + "', wall: 'free', x: " + aL.x + ", z: " + aL.z + ", face: " + M.anchors.lemuria.face + ", sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN' }"],
     heaven_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aH.S.part + "', wall: 'n', x: " + aH.x + ", sub: 'THE GRAND STAIR · UP INTO HEAVEN' }"],

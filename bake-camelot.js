@@ -465,8 +465,7 @@ const OUT = {
        comes down from Stonehenge onto the North Row, west. `ifRoom` = written only once the route's room stands. */
     [KROOM]: [ { plot: 'P06-02', side: 'E', k: [5, 6], id: 'ow_v_m23_m2', way: 'open', open: 16, room: 'site_ow_r4', ifRoom: 1, label: 'THE OLD ROAD', sub: 'THE EAST ROW · EAST OUT OF THE TOWN', desc: 'Past the last houses the road widens into the Old Road and runs east through the forest.' },
                { plot: 'P02-01', side: 'N', k: [5, 6], id: 'ow_h_m28_m3', way: 'trail', room: 'site_ow_r12', ifRoom: 1, label: 'THE STONE PATH', sub: 'THE NORTH ROW · UP TO THE STONES', desc: 'A path goes north into the woods, and up out of them onto a bare plain.' } ],
-    [R_PINES]: [ { plot: 'P07-00', side: 'N', k: [5, 6], id: 'ow_h_m25_m10', way: 'trail', room: R_L6, label: 'THE TRAIL · THE MOUNTAINS', sub: 'THE PASS · UP TO THE SKI LODGE', desc: 'The trail goes on north through the Pass, up out of the pines towards the mountains.' },
-                 { plot: 'P07-00', side: 'E', link: 'northpole_camelot', end: 'b' } ],
+    [R_PINES]: [ { plot: 'P07-00', side: 'N', k: [5, 6], id: 'ow_h_m25_m10', way: 'trail', room: R_L6, label: 'THE TRAIL · THE MOUNTAINS', sub: 'THE PASS · UP TO THE SKI LODGE', desc: 'The trail goes on north through the Pass, up out of the pines towards the mountains.' } ],   /* (2026-11-17, One World phase 5) the link `northpole_camelot` (the sleigh road, a jump from this plot's east side to the North Pole 30 plots away) is gone: the road north is the trail L6 up to the Ski Lodge, then the Polar Trail (R5) */
     [R_FAIRY]: [ { plot: 'P07-05', side: 'E', link: 'woods_camelot', end: 'b' } ],
     [R_FOREST]: [ { plot: 'L7', side: 'E', id: 'ow_v_m22_6', way: 'trail', room: R_RITUAL, label: 'THE WOODS · THE RITUAL GROUND', sub: 'THE TRAIL EAST · THE MOUND', desc: 'A trail east through the trees, worn by feet going one way.' } ],
 };
