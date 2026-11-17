@@ -4126,6 +4126,7 @@ docs/plans/vfx-cleanup/ (section 10 = what was built and what he changed). Looks
 - Online: every layer rides `fire()` / the stage beats, which are relayed; nothing new on `state`.
 
 
+<<<<<<< HEAD
 ## THE OWN LOOKS, L1 (2026-11-17, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; list `own-look/L1.txt`, 49 spells)
 mondo 11-17: "any spells that dont have a look of their own need one". Thread L1 = ground and growth (earth, nature, poison,
 water, ice). The block is "THE OWN LOOKS, L1" at the end of three-vfx-effects.js (`_l1*`, `_L1*`).
@@ -4155,3 +4156,18 @@ water, ice). The block is "THE OWN LOOKS, L1" at the end of three-vfx-effects.js
 - **Tentacle Lash** (kraken): a dark pool opens beside the victim, the tentacle model comes up, hooks over the body and rides the pull.
 - **Watering Can**: a fine shower falls in a cone on the one square, the soil goes dark and wet, two small rings. (A big tan ring that is
   NOT this look still draws on the cast, before and after this PR; it is not in three-vfx-effects.js' stage burst: for the cleanup thread.)
+=======
+## THE VFX CLEANUP, B2: the blades (2026-11-17, three-vfx-effects.js)
+mondo's three examples + the other sword combos. All behind `EW_NO_VFX_CLEANUP` like B1.
+- **Blade Waltz** (`_sigBladeWaltz3D`): the third cut in the blades' colour with no tip glint (it was white); the end
+  beat is the shake only (the ring, the white speed burst and the blue screen flash covered the cuts).
+- **`_sigSlashCombo3D`** (Dragon Slash, Brave Charge, Cross Slash, Sneak Slash, Red Slash, Synthetic Blade, Blessed
+  Blade): no summon circle behind the sword, no opening screen flash; the heavy finisher = the cut + its ring + its scar
+  (no screen flash, no speed burst, no rush lines). Dragon Slash's orange is unchanged.
+- **Sword Beam** (`_sigSwordWave3D`, mondo: "match the sword cuts"): wave `0xff5a2a`, core `0xffa060`, embers + a red
+  `_crSlashScar` on each square as the wave passes, no end speed burst; `_fireBeamMapped` skips the generic laser and the
+  white charge flash for it (`_vcSB`). The wave still takes 0.24 s to cross: the capture frames (0.45 s apart) do not
+  catch it; its real beam is B3.
+- Frames: docs/plans/vfx-cleanup/img/b2_*.jpg.
+
+>>>>>>> origin/main

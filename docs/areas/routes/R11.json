@@ -1,0 +1,13 @@
+{
+  "about": "THE DELTA CAUSEWAY (route R11, One World phase 4.3, 2026-11-17): a dirt road from Giza's east side (row 32) to Göbekli Tepe's west side (row 31), two plots across the reed flats. The old secret robbers' tunnel `gobekli_giza` between the two (row 30) stays as it is: it is the tunnel, this is the road over the top. The road crosses on the line between rows 31 and 32, bends up a little and goes in at Göbekli's south-west corner plot; the plots south of it (19..20 x 32..33) are open flats off the road. Places (ow-places.js, ideas): the reed bed on the flats the page names. Bake: node bake-desert.js, node bake-leylines.js, then node bake-route.js R11.",
+  "hub": "desert",
+  "label": "THE DELTA CAUSEWAY",
+  "sub": "GIZA TO GÖBEKLI TEPE · A ROAD OVER THE REED FLATS · 8 PLOTS",
+  "line": [[16.9, 32.0], [17.9, 32.0], [18.6, 31.6], [19.1, 31.6]],
+  "ends": {
+    "ow_v_17_31": { "room": "site_prebuilt_area51_ow_giza", "label": "GIZA", "sub": "THE CAUSEWAY · WEST TO THE PYRAMIDS", "desc": "The road runs west off the flats onto the sand, and the pyramids stand up over it." },
+    "ow_v_17_32": { "room": "site_prebuilt_area51_ow_giza", "label": "GIZA", "sub": "THE CAUSEWAY · WEST TO THE PYRAMIDS", "desc": "The road runs west off the flats onto the sand, and the pyramids stand up over it." },
+    "ow_v_19_31": { "room": "site_prebuilt_gobekli_ow_line", "label": "GÖBEKLI TEPE", "sub": "THE CAUSEWAY · EAST TO THE TELL", "desc": "The road climbs off the flats onto the tell's dry slope." }
+  },
+  "places": { "18,32": "reedbed" }
+}

@@ -4894,7 +4894,8 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   const _selRowId = selBlade ? selBlade.id : null;
   useEffect(() => {
     const b = selBlade, src = camSrc.current;
-    if (!/^(enemy|ally)\|/.test(viewKey) || !b || !b.hoverIn || !(b.available || b.forceLive)) return;
+    /* + THE CUBE TURN MENU: the row the cursor sits on lights its arrow + ring too (keys / pad, no mouse needed) */
+    if (!(/^(enemy|ally)\|/.test(viewKey) || viewKey === 'cubeTurn') || !b || !b.hoverIn || !(b.available || b.forceLive)) return;
     if (src === 'hover' || src === 'touch' || src === 'click') return;
     b.hoverIn(null);
     const mine = { out: b.hoverOut, fc: window._hoverActionForecast };
@@ -6474,47 +6475,62 @@ function _hrlgSwitchBlades(unit, st) {
 /* 🧊 THE CUBE TURN MENU (battle.js doCubeTurn, mondo 11-17: "whatever tile they are on they can rotate it left or right or up
    or down"): four rows, named by the way the squares slide ON SCREEN from where the camera looks (the board's own left / right
    / up / down turned by the camera's angle). Hovering a row lights the ring that turns (cyan) and the square you land on. */
-function _hrlgCubeScreenArrow(unit, d) {
+/* the screen direction a board step (d) takes from the fighter's square, from where the camera looks right now: { deg (0 =
+   right, clockwise, as CSS rotates), word } — eight words, so a diagonal camera reads "up-right", never a guess at "up" */
+function _hrlgCubeScreenDir(unit, d) {
   try {
-    const W = window.ThreeRenderer && window.ThreeRenderer.worldToScreen;
-    const a = W && W(unit.x, unit.y, 0), bx = W && W(unit.x + 1, unit.y, 0), by = W && W(unit.x, unit.y + 1, 0);
-    if (a && bx && by) {
-      const vx = d[0] * (bx.x - a.x) + d[1] * (by.x - a.x), vy = d[0] * (bx.y - a.y) + d[1] * (by.y - a.y);
-      return Math.abs(vx) >= Math.abs(vy) ? (vx > 0 ? 'right' : 'left') : (vy > 0 ? 'down' : 'up');
+    const TR = typeof ThreeRenderer !== 'undefined' ? ThreeRenderer : window.ThreeRenderer, W = TR && TR.worldToScreen;   // ThreeRenderer is a script-level const, not on window
+    const a = W && W(unit.x, unit.y, 0), b = W && W(unit.x + d[0], unit.y + d[1], 0);
+    if (a && b && (b.x !== a.x || b.y !== a.y)) {
+      const deg = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+      const words = ['right', 'down-right', 'down', 'down-left', 'left', 'up-left', 'up', 'up-right'];
+      return { deg, word: words[((Math.round(deg / 45) % 8) + 8) % 8] };
     }
   } catch (e) {}
-  return d[0] ? (d[0] > 0 ? 'right' : 'left') : (d[1] > 0 ? 'down' : 'up');
+  const deg = d[0] ? (d[0] > 0 ? 0 : 180) : (d[1] > 0 ? 90 : -90);
+  return { deg, word: d[0] ? (d[0] > 0 ? 'right' : 'left') : (d[1] > 0 ? 'down' : 'up') };
 }
-const _HRLG_CUBE_ARROW = { left: '◀', right: '▶', up: '▲', down: '▼' };
 const _HRLG_CUBE_D = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
 function _hrlgCubePreview(unit, op, on) {
-  const R = window.ThreeRenderer;
+  const R = (typeof ThreeRenderer !== 'undefined' ? ThreeRenderer : window.ThreeRenderer);
   if (!R || !R.setOverlay) return;
+  if (R.cubeTurnArrows) R.cubeTurnArrows(unit, on ? op.dir : null);
   if (!on) { R.clearOverlay('cubeTurn'); R.clearOverlay('cubeTurnLand'); return; }
-  R.setOverlay('cubeTurn', op.cells, 0x33e0ff, 0.85);
+  R.setOverlay('cubeTurn', op.cells, (R.CUBE_TURN_COLORS && R.CUBE_TURN_COLORS[op.dir]) || 0x33e0ff, 0.85);
   try {
     const mv = window.cubeSliceMove(window.GAME.state._cube.N, op.slice), f = window.cubeFrameNow(), id = window.cubeSlotAt(unit.x, unit.y);
     const c = id && mv[id] && f.cell[mv[id]];
-    if (c) R.setOverlay('cubeTurnLand', [{ x: c.x, y: c.y }], 0xffd83d, 0.95); else R.clearOverlay('cubeTurnLand');
+    if (c) R.setOverlay('cubeTurnLand', [{ x: c.x, y: c.y }], 0xffffff, 0.95); else R.clearOverlay('cubeTurnLand');
   } catch (e) {}
 }
+/* THE CUBE TURN MENU (battle.js doCubeTurn, mondo 11-17: "whatever tile they are on they can rotate it left or right or up or
+   down"; then: "are they actually relative to the player? what if the player is facing diagonally? ... there has to be
+   absolutely no confusion"). Four rows, one a way the squares can slide. Nothing here depends on which way the fighter faces:
+   each row is named and drawn by the way its squares slide ON YOUR SCREEN, from where the camera looks now (eight words, so a
+   diagonal camera says "up-right"), its arrow icon is turned to that exact angle, and it has its own colour, the colour of
+   the big arrow lying on the board beside the fighter (three-renderer.js cubeTurnArrows). Hovering a row lights its arrow, the
+   ring that turns (in its colour) and the square you land on (white). Turning the camera renames and turns the rows. */
 function _hrlgCubeTurnBlades(unit, st) {
   const why = typeof window.cubeTurnProblem === 'function' ? window.cubeTurnProblem(unit) : 'Unavailable';
   const ops = typeof window.cubeHandOptions === 'function' ? window.cubeHandOptions(unit) : [];
-  const order = { up: 0, left: 1, right: 2, down: 3 };
+  const R = (typeof ThreeRenderer !== 'undefined' ? ThreeRenderer : window.ThreeRenderer), COL = (R && R.CUBE_TURN_COLORS) || {};
+  try { if (R && R.cubeTurnArrows && !why) R.cubeTurnArrows(unit, (R._cubeHot && R._cubeHot.uid === unit.id) ? R._cubeHot.dir : null); } catch (e) {}
+  const hex = (n) => '#' + ('000000' + (n >>> 0).toString(16)).slice(-6);
   const blades = ops.map(op => {
-    const scr = _hrlgCubeScreenArrow(unit, _HRLG_CUBE_D[op.dir]);
-    const ring = (op.dir === 'left' || op.dir === 'right') ? 'row' : 'column';
+    const sd = _hrlgCubeScreenDir(unit, _HRLG_CUBE_D[op.dir]);
     const riders = (st.units || []).filter(u => u && !u.dead && op.cells.some(c => c.x === u.x && c.y === u.y)).length;
+    const col = COL[op.dir] != null ? hex(COL[op.dir]) : '#ffffff';
     return {
-      _ord: order[scr], id: 'ct:' + op.dir, icon: _HRLG_CUBE_ARROW[scr],
-      label: 'Turn ' + scr, available: !why, cost: (window.CUBE_HAND && window.CUBE_HAND.ap) || 1,
-      sub: why || ('the ' + ring + ' under you · ' + riders + ' ride' + (riders === 1 ? 's' : '')),
-      hoverIn: () => _hrlgCubePreview(unit, op, true),
-      hoverOut: () => _hrlgCubePreview(unit, op, false),
-      fire: () => { _hrlgCubePreview(unit, op, false); if (!why && typeof window.doCubeTurn === 'function') window.doCubeTurn(unit, op.dir); },
+      _ord: sd.deg, id: 'ct:' + op.dir,
+      icon: h('span', { style: { display: 'inline-block', transform: 'rotate(' + Math.round(sd.deg) + 'deg)', color: '#0b0b10', fontWeight: 'bold', fontSize: '15px', lineHeight: 1 } }, '➜'),   // dark arrow on the row's coloured chip
+      iconColor: col, catColor: col,   // the whole row wears its arrow's colour
+      label: 'Slide ' + sd.word, available: !why, cost: (window.CUBE_HAND && window.CUBE_HAND.ap) || 1,
+      sub: why || (riders + ' ride' + (riders === 1 ? 's' : '') + ' along'),
+      hoverIn: () => { if (R) R._cubeHot = { uid: unit.id, dir: op.dir }; _hrlgCubePreview(unit, op, true); },
+      hoverOut: () => { if (R) R._cubeHot = null; _hrlgCubePreview(unit, op, false); },
+      fire: () => { if (R) R._cubeHot = null; _hrlgCubePreview(unit, op, false); if (R && R.cubeTurnArrows) R.cubeTurnArrows(null); if (!why && typeof window.doCubeTurn === 'function') window.doCubeTurn(unit, op.dir); },
     };
-  }).sort((a, b) => a._ord - b._ord);
+  }).sort((a, b) => ((a._ord + 135 + 360) % 360) - ((b._ord + 135 + 360) % 360));   // listed clockwise from up-left: up, right, down, left as the screen shows them
   if (!blades.length) blades.push({ id: 'none', icon: '🧊', label: 'Nothing to turn here', available: false });
   return { title: { icon: '🧊', text: 'Turn cube', count: why ? '' : '1 AP' }, blades };
 }
@@ -7706,6 +7722,8 @@ function ActionMenu({ st, hidden }) {
   // half of the board. Aim view = lone CANCEL blade + "MOVING — CLICK A TILE".
   // (WASD walking keeps the ladder — the keyboard IS the picker there.)
   const tileTargetModes = ['move', 'jump', 'climb', 'combo', 'inspect', 'ward', 'flair', 'trade', 'warpStone', 'build'];
+  /* THE TURN ARROWS (three-renderer.js cubeTurnArrows) leave with the TURN CUBE menu */
+  if (menuView !== 'cubeTurn') { try { const TR = typeof ThreeRenderer !== 'undefined' ? ThreeRenderer : window.ThreeRenderer; if (TR && TR.cubeTurnArrows) TR.cubeTurnArrows(null); } catch (e) {} }
   const isWasdWalking = am === 'move' && typeof _wasdOrigin !== 'undefined' && _wasdOrigin && !_wasdCommitted;
   const inTileTarget = am && tileTargetModes.includes(am) && menuView === 'root' && !isWasdWalking;
 
