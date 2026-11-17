@@ -80047,7 +80047,7 @@ const ThreeRenderer = (function () {
            shore loads. The opening is the land end (the walker comes up the planks). */
         boat: function (U, ctx) {
             var g = new THREE.Group();
-            var W = 1.8, L = 5.4, DY = 0.35, seaY = -(+ctx.y0 || 0);
+            var W = 1.8, L = 7.6, DY = 0.35, seaY = -(+ctx.y0 || 0);
             var plank = _hqMat('dark_woods', 1, 3, { color: 0x8a6a48, shininess: 8 });
             var post = _hqMat('dark_woods', 1, 2, { color: 0x5a4430, shininess: 6 });
             var rope = _hqMat('dark_woods', 4, 1, { color: 0xc8b088, shininess: 4 });
