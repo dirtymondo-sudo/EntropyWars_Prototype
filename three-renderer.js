@@ -26887,6 +26887,7 @@ const ThreeRenderer = (function () {
        by a cord in the viewer's team colours (own cyan-blue, enemy pink-orange). Look only: nothing here is a rule.
        Host and guest both read the synced status and ids, so both seats draw it with nothing relayed (RULE #2). */
     var REALM_SEEN_OPACITY = 0.42;
+    var OFF_FIELD_OPACITY = 0.3;   // 🟥🚪 a sent-off / EXITED unit (the `exited` status)
     var ASTRAL_OPACITY = 0.78, ASTRAL_LIFT = 0.16, ASTRAL_OWN_COLOR = 0x4fd8ff, ASTRAL_ENEMY_COLOR = 0xff7a5c;
     var _astralCords = new Map();   // spirit uid → { mesh, key }
     var _astralWhite = null;
@@ -27043,6 +27044,20 @@ const ThreeRenderer = (function () {
                 return;
             }
             if (entry._ew_realmSeen) { entry._ew_realmSeen = false; _setEntrySpriteOpacity(entry, 1); }
+            /* 🟥🚪 OFF THE FIELD (2026-11-17, the Referee polish): a red-carded or door-EXITED unit (the `exited` status) still
+               holds its square but is not in the fight until its next turn: drawn as a faint shade for both sides (fog still
+               rules an enemy's), so nobody reads it as a body that can be hit. Its square stays taken (unitAt). */
+            if (unit.status && unit.status.exited > 0) {
+                entry._ew_offField = true;
+                _setEntrySpriteOpacity(entry, OFF_FIELD_OPACITY);
+                if (unit.player !== vp) {
+                    var _ob = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
+                    if (_ob && fog) _ob = _unitLosSeen(unit, vp);
+                    entry.group.visible = _ob && !_isConcealedFromViewer(unit, vp);
+                } else entry.group.visible = true;
+                return;
+            }
+            if (entry._ew_offField) { entry._ew_offField = false; _setEntrySpriteOpacity(entry, 1); }
             if (_rk && unit.player !== vp) {
                 /* in the realm it is just the two of them: the other one is always seen, fog or not */
                 entry.group.visible = !_isConcealedFromViewer(unit, vp);

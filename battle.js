@@ -2539,6 +2539,7 @@
                     animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200, { leap: true });
                     if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
+                    if (spell.slimeLane) { _sigVfxGeom('nrIaiDraw:lane', landTile.x, landTile.y, 0, { fromX, fromY, owner: unit.player }); _slugLane(unit, fromX, fromY, spell); }   // 🐌 Iai Draw slimes its lane
                     /* THE LOG ORDER (forced movement playtest 2026-11-07 E4 / M3: Gore Charge, Land Ho, Rook): the charge
                        and what its landing did read BEFORE the hit it carried in */
                     _logLift(hitMark, _chM);
@@ -2782,6 +2783,7 @@
                 }
                 resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                 addLog(`${_ctName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
+                if (spell.slimeLane) { _sigVfxGeom('nrIaiDraw:lane', landTile.x, landTile.y, 0, { fromX, fromY, owner: unit.player }); _slugLane(unit, fromX, fromY, spell); }   // 🐌 Iai Draw slimes its lane
                 scheduleBoardRender();
             };
             if (_chargeDelay > 0) window.setTimeout(_runCharge, _chargeDelay);
@@ -5397,7 +5399,8 @@
             {
                 const _er = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[terr] : null;
                 if (_er && _er.enterStatus && !unit.dead
-                    && !(typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === _er.enterStatus.id)) {
+                    && !(typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === _er.enterStatus.id)
+                    && !(terr === 'swamp' && _slugOozeProof(unit))) {   // 🐌 the Samurai Slug walks his slime clean
                     applyStatusPayload(unit, { id: _er.enterStatus.id, duration: _er.enterStatus.duration || 2 }, `${_er.label}: `);
                     fired++;
                 }
@@ -10842,7 +10845,7 @@
             /* 🌑 Shadow Realm (plan §5.5): a status from anyone but the
                partner (or the unit itself) never reaches a unit in the realm. */
             if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) {
-                if (!shadowRealmKey(target) && !shadowRealmKey(sourceUnit)) addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`);
+                if (!shadowRealmKey(target) && !shadowRealmKey(sourceUnit)) addLog(_realmShieldLine(target));
                 return false;
             }
             const status = ensureUnitStatus(target);
@@ -10939,7 +10942,8 @@
                 try { meta.onApply(target, sourceUnit, { refreshed: _hadBefore, payload, sourceLabel }); } catch (e) { console.warn('[status] onApply', payload.id, e); }
             }
             /* payload.quiet (mondo 11-11, Guard): the caller writes its own one line for this status */
-            if (!payload.quiet) addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
+            /* ... and none when its own onApply took it straight off again (the Referee's second card: RED CARD, not "booked") */
+            if (!payload.quiet && Number(status[payload.id] || 0) > 0) addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
             /* 🧗 stunned / frozen / put to sleep on the wall: the grip goes */
             if (target._climb && meta.blockAction && payload.id !== 'climbing') knockOffClimber(target, `— ${meta.colorText || meta.label.toLowerCase()}`);
             /* 🛹 THE BAIL: a hold that stops the Skater rolling throws away her Momentum (_skaterBail) */
@@ -13845,6 +13849,20 @@
             if (vk && !uk) return unitCrossesRealm(unit);                                // the pair's turn: the spirit is there too
             return false;
         }
+        /* why a unit cannot be reached, for the log (2026-11-17 Referee polish: a red-carded or door-EXITED unit said
+           "beyond reach in the Shadow Realm") */
+        function _realmShieldWords(u) {
+            if (u && u._sentOff && unitHasStatus(u, 'exited')) return 'is sent off: off the field until its next turn.';
+            if (u && unitHasStatus(u, 'exited')) return 'is out through a door until its next turn.';
+            if (u && (unitHasStatus(u, 'captured') || unitHasStatus(u, 'sealed'))) return 'is held behind a door.';
+            return 'is beyond reach in the Shadow Realm.';
+        }
+        function _realmShieldIcon(u) {
+            if (u && u._sentOff && unitHasStatus(u, 'exited')) return '🟥';
+            if (u && (unitHasStatus(u, 'exited') || unitHasStatus(u, 'captured') || unitHasStatus(u, 'sealed'))) return '🚪';
+            return '🌑';
+        }
+        function _realmShieldLine(u) { return `${_realmShieldIcon(u)} ${_ctName(u)} ${_realmShieldWords(u)}`; }
         function isUnitRealmShieldedFrom(unit, actor) {
             /* 🚪 EXITED (DOOR_RACE_DESIGN r3): off the board — nobody reaches it. */
             if (unit && unitHasStatus(unit, 'exited')) return true;
@@ -14289,7 +14307,12 @@
             if (!ok) { delete unit._sentOff; return; }
             if ((unit.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(unit);
             addLog(`🟥 RED CARD! ${_ctName(unit)} is sent off until its next turn.`, undefined, undefined, src ? { actor: src } : undefined);
-            if (!_skipVisuals()) showFloatingTextForUnit(unit, '🟥 RED CARD', 'debuff', { durationMs: 1400 });
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(unit, '🟥 RED CARD', 'debuff', { durationMs: 1400 });
+                /* THE REFEREE POLISH (2026-11-17): the red card goes up over the yellow one and the unit fades off the field
+                   (three-vfx-effects.js "THE REFEREE"; VFX3D.fire is relayed, so the guest sees it where its fog allows) */
+                try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('redCard', 'nrCard', { tx: unit.x, ty: unit.y, fromX: src ? src.x : undefined, fromY: src ? src.y : undefined, owner: src ? src.player : undefined }); } catch (e) {}
+            }
         }
         /* 📰 TODAY'S HEADLINE (the Florida Man): each round one of his three is the headline and the other two are greyed
            ("Not today"), picked by his id and the round (TargetQuery.spellBlockReason) */
@@ -14328,7 +14351,10 @@
             if (!(loss > 0)) return;
             u.hp -= loss;
             addLog(`🦌 ${_ctName(u)} fed on nothing this round: the hunger takes ${loss} HP.`);
-            if (!_skipVisuals()) showFloatingTextForUnit(u, `-${loss} 🦌 HUNGER`, 'damage', { durationMs: 1100 });
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(u, `-${loss} 🦌 HUNGER`, 'damage', { durationMs: 1100 });
+                _sigVfxGeom('wdHunger', u.x, u.y, 0);   // the cold comes back into it (three-vfx-effects.js THE WENDIGO'S LOOKS; relayed)
+            }
         }
         /* the round end (processEndOfRoundStatuses, before the status ticks) */
         function _nrRoundEnd() {
@@ -14371,6 +14397,62 @@
             }
             if (n) addLog(`🐌 ${_ctName(unit)} leaves a trail of slime: ${n} square${n !== 1 ? 's' : ''} of Black Ooze for 2 rounds.`);
         }
+        /* 🐌 THE SLIME ROAD (2026-11-17, the Samurai Slug polish): the ooze is his. He crosses Black Ooze at a plain step's cost
+           (state.js getTerrainMoveCost) and is never Gooed by it (walking in: _chainTerrain's enterStatus; ending a turn on it:
+           data.js TERRAIN_RULES.swamp.endTurn; the CPU's hazard cost: ai.js). Everyone else, his allies too, pays 2 and is Gooed. */
+        function _slugOozeProof(unit) { return !!unit && unit.race === 'samurai slug'; }
+        window._slugOozeProof = _slugOozeProof;
+        /* the squares a straight-ish run from (fx, fy) to where he stands crossed (Iai Draw's charge, `slimeLane`): a Manhattan
+           walk, the long axis first, his own square left out (he stands in it; the next walk paints it) */
+        function _slugLaneSquares(fx, fy, tx, ty) {
+            const out = [];
+            let x = fx, y = fy, guard = 0;
+            while ((x !== tx || y !== ty) && guard++ < 24) {
+                out.push({ x, y });
+                const dx = tx - x, dy = ty - y;
+                if (Math.abs(dx) >= Math.abs(dy) && dx) x += Math.sign(dx); else y += Math.sign(dy);
+            }
+            return out;
+        }
+        function _slugLane(unit, fx, fy, spell) {
+            if (!_nrAlive(unit) || !spell || !spell.slimeLane) return 0;
+            if (unit.x === fx && unit.y === fy) return 0;
+            const rounds = spell.slimeLane.rounds || 2;
+            let n = 0;
+            for (const t of _slugLaneSquares(fx, fy, unit.x, unit.y)) {
+                if (!isInside(t.x, t.y)) continue;
+                n += _paintTimedTerrain(t.x, t.y, { terrain: 'swamp', radius: 0, rounds }, unit, null, unit.z) || 0;
+            }
+            if (n) addLog(`🐌 ${_ctSp(spell.name)}: the lane behind ${_ctName(unit)} is slick — ${n} square${n !== 1 ? 's' : ''} of Black Ooze for ${rounds} rounds.`);
+            return n;
+        }
+        /* Salt-Proof Stance (`slimeRing`): the 4 squares round him turn to Black Ooze, so whoever steps in to cut him is Gooed */
+        function _slugRing(unit, spell) {
+            if (!_nrAlive(unit) || !spell || !spell.slimeRing) return 0;
+            const rounds = spell.slimeRing.rounds || 2;
+            let n = 0;
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                const x = unit.x + dx, y = unit.y + dy;
+                if (!isInside(x, y)) continue;
+                if (state.edgeWalls && typeof wallBlocksStep === 'function' && wallBlocksStep(unit.x, unit.y, x, y)) continue;
+                n += _paintTimedTerrain(x, y, { terrain: 'swamp', radius: 0, rounds }, unit, null, unit.z) || 0;
+            }
+            if (n) addLog(`🐌 ${_ctSp(spell.name)}: ${_ctName(unit)} rings himself in slime — ${n} square${n !== 1 ? 's' : ''} of Black Ooze for ${rounds} rounds.`);
+            return n;
+        }
+        /* Ronin's Wake (`aoeOnTerrain`): an area that only holds the squares of those grounds (the ooze), read on the floor a
+           unit stands on when one does. getSpellAoeArea filters with it, so the preview, the hit and the refusal agree;
+           ai.js getSpellAoeAreaAI calls it too. */
+        function _aoeTerrainFilter(spell, area) {
+            if (!spell || !Array.isArray(spell.aoeOnTerrain) || !Array.isArray(area)) return area;
+            const want = spell.aoeOnTerrain;
+            return area.filter(t => {
+                const u = (typeof unitAt === 'function') ? unitAt(t.x, t.y) : null;
+                const terr = (u && u.z != null && typeof getTerrainAt3D === 'function' && state.boardColumns?.length) ? getTerrainAt3D(t.x, t.y, u.z) : getTerrainAt(t.x, t.y);
+                return want.indexOf(terr) >= 0 || want.indexOf(getTerrainAt(t.x, t.y)) >= 0;
+            });
+        }
+        window._aoeTerrainFilter = _aoeTerrainFilter;
         /* 🦗 THE BROOD (the Cicada Brood): Screech (`broodSpend`) adds its N for every Brood stack, spends them and ends Dig In */
         function _broodSpend(unit, spell) {
             if (!unit || !spell || !(spell.broodSpend > 0)) return 0;
@@ -41780,7 +41862,7 @@
                 }
                 /* a splash across the realm's line says nothing: the line would tell the board where a hidden body stands */
                 if (!shadowRealmKey(target) && !(opts.sourceUnit && shadowRealmKey(opts.sourceUnit))) {
-                    addLog('🌑 ' + _dmgLogLine(sourceText, target, 'is beyond reach in the Shadow Realm.', null, opts.sourceUnit || null));
+                    addLog(_realmShieldIcon(target) + ' ' + _dmgLogLine(sourceText, target, _realmShieldWords(target), null, opts.sourceUnit || null));
                 }
                 return false;
             }
@@ -45884,6 +45966,10 @@
         function _spellAoeReach(spell, fallback) { const m = _spellMaskOf(spell); if (m) return Math.max(1, aoeMaskBound(m)); const r = spell ? (spell.aoeRadius || spell.crossRadius || spell.blastRadius || 0) : 0; return r || (fallback == null ? 1 : fallback); }
         window._spellMaskOf = _spellMaskOf; window._spellMaskTiles = _spellMaskTiles; window._spellAoeReach = _spellAoeReach;
         function getSpellAoeArea(spell, cx, cy) {
+            if (spell && spell.aoeOnTerrain) return _aoeTerrainFilter(spell, _getSpellAoeAreaRaw(spell, cx, cy));   // 🐌 Ronin's Wake
+            return _getSpellAoeAreaRaw(spell, cx, cy);
+        }
+        function _getSpellAoeAreaRaw(spell, cx, cy) {
             const _mt = _spellMaskTiles(spell, cx, cy); if (_mt) return _mt;
             const r = spell.aoeRadius || 1;
             if (spell.aoeShape === 'round') return getRoundArea(cx, cy, r);
@@ -49208,6 +49294,9 @@
                 // the status itself is already on them (Iron Grip, Anchor…).
                 if (spell.groundsFlyers && typeof isUnitAirborne === 'function'
                     && typeof canFly === 'function' && canFly(u) && isUnitAirborne(u)) return true;
+                /* 🟥 the Referee's Card on a booked unit is the RED CARD (2026-11-17 polish: a booked AND Marked foe greyed the
+                   second card out, "already has Yellow Card — Card would do nothing"); bosses / cubes are never sent off */
+                if (spell.refereeCard && unitHasStatus(u, 'yellowCard') && !(u._isBoss || u.isBoss || u._isCube)) return true;
                 if (!spell.statusEffects.some(fx => fx && fx.id && !unitHasStatus(u, fx.id))) return false;
             }
             return true;
@@ -50249,6 +50338,7 @@
            ground effects (deform, terrain reactions, turrets) and stay a player choice. */
         function _selfNovaEnemyOnly(spell) {
             if (!spell) return false;
+            if (spell.aoeOnTerrain && spell.aoeOriginSelf && spell.kind === 'aoe') return true;   // 🐌 Ronin's Wake: nobody in the ooze = refused
             if (spell.paintTerrain || spell.aoeAllyHeal || spell.leaveTerrain || spell.zoneTickDamage > 0) return false;
             if (spell.kind === 'barrage') return true;
             return !!spell.aoeOriginSelf && (spell.kind === 'aoe' || spell.kind === 'aoePull')
@@ -75321,6 +75411,7 @@
                 if (unit._sentOff) {
                     delete unit._sentOff; delete unit._exited;
                     addLog(`🟥 ${_ctName(unit)} is back on the field at ${coordLabel(unit.x, unit.y)}.`);
+                    if (!_skipVisuals()) try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('backOn', 'nrCard', { tx: unit.x, ty: unit.y, owner: unit.player }); } catch (e) {}
                     return;
                 }
                 const door = unit._exitDoorId ? doorById(unit._exitDoorId) : null;
@@ -77211,7 +77302,7 @@
             }
             // 🌑 Shadow Realm (plan §5.5): untargetable to everyone but the partner.
             if (isUnitRealmShieldedFrom(target, unit)) {
-                addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`, unit.player);
+                addLog(_realmShieldLine(target), unit.player);
                 playErrorSfx();
                 return 0;
             }
@@ -81794,7 +81885,7 @@
                 // aimed at only by its partner.
                 if (_cryTgt && isUnitRealmShieldedFrom(_cryTgt, unit)) {
                     if (!_silentReject) {
-                        addLog(`🌑 ${_ctName(_cryTgt)} is beyond reach in the Shadow Realm.`, _clickSeat());
+                        addLog(_realmShieldLine(_cryTgt), _clickSeat());
                         playErrorSfx();
                     }
                     state._teleportingUnitId = null;
@@ -82639,6 +82730,7 @@
                     if (spell.spawnDecoy && !unit.dead) _spawnCasterDecoy(unit, spell);
                     if (spell.timedStatBonus) _applyTimedStatBonus(_bt, spell.timedStatBonus, `${spell.name}: `, unit);   // Batch D: Updraft (the Quickened status)
                     if (spell.massRescue && !unit.dead) _lifeguardMassRescue(unit, spell);   // 🛟 Three Whistles
+                    if (spell.slimeRing && !unit.dead) { _sigVfxGeom('nrSaltProof:ring', unit.x, unit.y, 1, { owner: unit.player }); _slugRing(unit, spell); }   // 🐌 Salt-Proof Stance
                     markDirty('hud');
                     renderIfDirty();
                 }, _buffResult.applyAt || 0);

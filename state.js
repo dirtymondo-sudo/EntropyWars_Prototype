@@ -3784,6 +3784,9 @@
                 cost = 1;
             }
 
+            /* 🐌 THE SLIME ROAD (2026-11-17, the Samurai Slug polish): Black Ooze costs him a plain step (everyone else pays 2) */
+            if (unit?.race === 'samurai slug' && terrain === 'swamp') cost = 1;
+
             if (unit?.race === 'reptilian' && (terrain === 'water' || terrain === 'deep_water')) {
                 cost = 1;
             }
