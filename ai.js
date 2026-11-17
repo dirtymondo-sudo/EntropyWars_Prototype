@@ -5910,7 +5910,17 @@
         return 0;
     }
     function scoreSpell(unit, spell, target, v) {
-        const base = _scoreSpellCore(unit, spell, target, v);
+        let base = _scoreSpellCore(unit, spell, target, v);
+        /* 📰 TODAY'S HEADLINE (the Florida Man, 11-17 polish): a headline spell is castable only today, so the CPU takes it over a
+           plain hit when it is worth anything at all (it sat on Bath Salts in a test match and the round was lost) */
+        if (spell.floridaHeadline && base > 0) {
+            base = base * 1.3 + 30;
+            /* Bath Salts does not end the turn and an attack does: buffed first, the same turn's hit still lands (the CPU moved
+               and hit instead, every Bath Salts day). Worth the hit it powers up, when AP is left for one. */
+            const g = G();
+            const ends = g && g.TargetQuery && g.TargetQuery.spellEndsTurn ? g.TargetQuery.spellEndsTurn(spell) : true;
+            if (!ends && spell.statStageBoost && target && target.id === unit.id && (unit.ap || 0) >= (g.TargetQuery.apCost(spell) || 1) + 1) base += 260;
+        }
         if (!(base > 0) || !target || !_isForcedSpell(spell) || spell.kind === 'skyThrow' || spell.allyOnly) return base;
         const g = G();
         const fv = _forcedMoveValue(g, unit, spell, target, v);
@@ -6436,6 +6446,19 @@
             if (_agT.totalDmg >= target.hp) return 0;
             const _agNear = v.visibleEnemies.some(e => _dist(g, target.x, target.y, target.z, e) <= 4);
             return _agNear ? Math.min(160, 30 + _agT.totalDmg * 0.3) : 0;
+        }
+        /* 🛵 THE RIDE-ALONG (2026-11-17, the Delivery Boy polish): Hop On / Thirty Minutes or Less are worth the best drop his
+           walk this turn can give the riders (_rideBestAI: a hurt rider carried out of the hits, a healthy one carried into
+           reach), never more than nothing when he cannot walk after the cast. */
+        if (kind === 'buff' && (spell.rideAlong || (target && (spell.statusEffects || []).some(e => e && e.id === 'riding')))) {
+            if (!g.canUnitMove(unit) || (unit.ap || 0) < g.AP_COST_ACTION * 2) return 0;
+            const _riders = spell.rideAlong
+                ? ((typeof window._deliveryLoadList === 'function') ? window._deliveryLoadList(unit, spell) : [])
+                : [target];
+            if (!_riders.length || _riders.some(a => !a || a.id === unit.id)) return 0;
+            const _rb = _rideBestAI(g, unit, _riders, v);
+            if (!_rb || _rb.score < 30) return 0;
+            return Math.min(260, _rb.score * 0.85 + (spell.rideAlong ? 25 : 10));
         }
         /* 👁 OBSERVER EFFECT (the Boltzmann Brain pass, 2026-11-17): holding the square is free value when the square is a good
            perch (an enemy within its spells' reach, none within 2, the hits coming here well under its HP) and the turn still has
@@ -7313,6 +7336,43 @@
     // End-tile danger is charged centrally in aiTakeTurn.
     // ═════════════════════════════════════════════════════════════════════
 
+    /* 🛵 THE RIDE-ALONG (the Delivery Boy, 2026-11-17): what a drop square is worth to a rider. A hurt rider (under 45% HP)
+       is worth the hits it leaves behind; a healthy one the squares it gains on the nearest enemy (it keeps its own turn),
+       less what the drop square costs it. */
+    function _rideDropValueAI(g, rider, sq, v) {
+        if (!sq || !v.visibleEnemies.length) return 0;
+        const hpP = (rider.hp || 0) / Math.max(1, rider.maxHp || 1);
+        const tNow = v.threatFn(rider.x, rider.y, rider.z).totalDmg || 0;
+        const tNew = v.threatFn(sq.x, sq.y, rider.z).totalDmg || 0;
+        if (hpP < 0.45) return (tNow - tNew) * 0.6 + (tNow >= rider.hp && tNew < rider.hp ? 120 : 0);
+        let dN = Infinity, dA = Infinity;
+        for (const e of v.visibleEnemies) {
+            dN = Math.min(dN, Math.abs(rider.x - e.x) + Math.abs(rider.y - e.y));
+            dA = Math.min(dA, Math.abs(sq.x - e.x) + Math.abs(sq.y - e.y));
+        }
+        if (dA < 1) return 0;
+        return (dN - dA) * 24 - Math.max(0, tNew - tNow) * 0.15;
+    }
+    /* the best walk for him with these riders on his back: { score, x, y, z } over his move tiles (his own danger counted) */
+    function _rideBestAI(g, unit, riders, v) {
+        const prev = (typeof window !== 'undefined') ? window._deliveryDropPreview : null;
+        if (typeof prev !== 'function' || !riders || !riders.length) return null;
+        const tiles = _aiMoveTiles(g, unit);
+        let best = null;
+        for (const t of tiles) {
+            if (t.x === unit.x && t.y === unit.y) continue;
+            let sc = 0;
+            for (const r of riders) {
+                if (Math.max(Math.abs(r.x - unit.x), Math.abs(r.y - unit.y)) > 1) continue;
+                sc += _rideDropValueAI(g, r, prev(unit, t.x, t.y, r), v);
+            }
+            sc -= tileDangerCost(g, unit, v, t.x, t.y, t.z) * 0.4;
+            sc -= aiHazardPenaltyAt(unit, t.x, t.y) * 2;
+            if (!best || sc > best.score) best = { score: sc, x: t.x, y: t.y, z: t.z };
+        }
+        return best;
+    }
+
     function scoreMoves(unit, v, out) {
         const g = G();
         if (_skipMove || !g.canUnitMove(unit)) return;
@@ -7331,6 +7391,15 @@
         if ((unit.ap || 0) >= g.AP_COST_ACTION * 2 && _aiDiff().jointSearch) {
             const sup = _jointSupportSearch(unit, moveTiles, v);
             if (sup && sup.score > 0) out.push({ type: 'move', x: sup.x, y: sup.y, z: sup.z, score: sup.score, _joint: true, _jointFor: sup._for });
+        }
+
+        // 1c) 🛵 THE RIDE-ALONG: an ally is on his back (Hop On) — the walk that drops it where it does the most
+        if (unit.race === 'delivery boy') {
+            const _riders = v.allies.filter(a => a && !a.dead && a._rideWithId === unit.id && g.unitHasStatus(a, 'riding'));
+            if (_riders.length) {
+                const _rb = _rideBestAI(g, unit, _riders, v);
+                if (_rb && _rb.score > 0) out.push({ type: 'move', x: _rb.x, y: _rb.y, z: _rb.z, score: 90 + _rb.score, _ride: true });
+            }
         }
 
         // 2) hazard flee: standing on a telegraphed blast / burning ground?

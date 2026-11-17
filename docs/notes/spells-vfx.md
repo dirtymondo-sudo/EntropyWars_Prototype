@@ -3879,6 +3879,22 @@ block), the `pzSig` hook, helpers `_bk*`. Visuals only.
 - Proof: shots in /mnt/project-files/banker-pass/ (a close camera with performance.now frozen at set delays, + a real VS CPU
   cast of each spell). Probe scripts in the same folder.
 
+## THE DELIVERY BOY (2026-11-17, three-vfx-effects.js "THE DELIVERY BOY", after the Skater's Board Slam)
+The Delivery family had only the generic looks. Now, on the P-Z hook (`pzSig`), side rings from the viewer's seat (yours
+`#1deeff`, theirs `#fd1674`, `_dbSide`), the props in their own colours (kraft box, his red print, white steam). Kill switch
+`window.EW_NO_DELIVERY_VFX`.
+- Hot and Fresh (`bolt`, pzOwn, timed on flyMs = the heal's projectile): a pizza box (canvas: kraft lid, red slice logo,
+  HOT & FRESH) tumbles to the ally, lands at its feet toward him, the lid flips up, steam curls out, side ring; the `aura`
+  on arrival = green heal motes.
+- Hop On (`aura` on the ally; `fireGeometry('nrHopOn')` per ally from Thirty Minutes or Less): two horn-beep rings at his
+  head, a side ring under each, a chevron over the ally pointing at him.
+- The drop (`fireGeometry('nrHopOn:drop', x, y, 0, { fromX, fromY, owner, delay })`): dust, side ring, one bell ring.
+- Doorstep Dash (`impact`): ding-dong (two bell rings at shoulder height), wood splinters, side-coloured speed streaks down
+  his lane, shock ring.
+- Thirty Minutes or Less (`aura` on him): a 30 MIN timer face over his head, its red hand sweeps one turn in 400 ms, then
+  the side ring.
+- The ride itself is three-renderer.js THE RIDE-ALONG (champions-combat.md "THE DELIVERY BOY POLISH").
+
 ## THE TECH CEO (2026-11-16, the new races' polish thread cmsg_01XWpxyTn3nnw98znVzKdFjsFPgcTzJantoqmq4McVhjZG)
 Acquisition, Disrupt and Layoffs had no look, only a floating word. three-vfx-effects.js "THE TECH CEO" (`_PZ_SIGS.ceoAcquire / ceoDisrupt /
 ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura' a cast with `sx/sy` (the CEO) and `tiles`.
@@ -3891,6 +3907,22 @@ ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura
 - Layoffs: each scrapped asset pops a ring and becomes a cardboard box (canvas texture) that flies to his chest (under the floating
   words), blue MP motes rise off him, then his side's ring.
 - Every piece gates on `_pzSeen` (fog). Proof: /mnt/project-files/tech-ceo-polish/.
+
+## THE FLORIDA MAN (2026-11-17, the new races' polish thread "Polish Florida Man spells and VFX")
+Gator Toss, Bath Salts and Hurricane Party had only the stock looks. three-vfx-effects.js block "THE FLORIDA MAN" (after the Banker
+block; `_PZ_SIGS.fmGatorToss / fmBathSalts / fmHurricane`, SPELL_MAP bolt / aura / aoe rows, all `pzOwn`), helpers `_fm*`. Visuals only.
+- TODAY'S HEADLINE (`_fmHeadline`): every cast spins a newspaper in beside his head (the old film spin): red BREAKING NEWS bar + the
+  spell's headline from its desc. To the lens's right of him, over the nameplate, gone at 1.65 s; never over a target or a number.
+- Gator Toss `bolt` (timed on flyMs: the jaws close as the number lands): a code alligator (leather sheet, the Sewer Gator's
+  `_gtSnout`, tail, scutes, legs, about one square long) hurled end over end, lands nose down and snaps; blood + dust, his side's
+  ring; a Wet victim (the x1.5) also throws a splash crown + a water ring.
+- Bath Salts `aura`: white salt puff off his face + crystals, then red-orange rage streaks climb his body (SOLID, not additive: an
+  additive red washed pale over grass), red eye glints, speed lines blow back away from the lens, green Regen motes, his side's ring.
+- Hurricane Party `aoe` (fires with the damage, so the splash is at 120 ms): a squat storm-grey twister (`_wdFunnel` now takes
+  `o.color / o.color2`, default unchanged) with rain, the Meshy `flamingo` + `traffic_cone` (warmed in _SPELL_MISC_KEYS), beer cans
+  and confetti going round; a splash on every square of the 3x3 (Wet), his side's rim round the area.
+- Probe note: the CSS floating numbers run on real time, so a slowed `performance.now` probe shows them before the 3D hit.
+  Proof + probes: /mnt/project-files/florida-man-polish/.
 
 
 ## THE TELEVANGELIST (2026-11-17, thread "Polish Televangelist spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
