@@ -4023,3 +4023,9 @@ ripple rings), SPEED in the viewer's side colours (own cyan-blue, other side pin
   (the mixer's per-frame step), so the Flying Kick's star can show before his foot there; on a real GPU they should agree
   (the same clip path as Sky Tackle; not measured on a GPU here).
 
+- TAX EXEMPT (2026-11-17, mondo in the thread: "a spell called tax exempt ... that halves his mana ... cast an ally"): data.js
+  `nrTaxExempt` (prosperity, tier 2, 30 MP, range 3, self or an ally, cooldown 3) gives the status `taxExempt` (2 rounds,
+  STATUS_DEFS `mpCostMult: 0.5`); battle.js getSpellMpCostFor multiplies the whole bill (Picked a Card's +40 included) by every
+  active status's mpCostMult, min 1. Tested: a Catgirl's 25 / 50 / 25 MP spells cost 13 / 25 / 13. CPU (ai.js): worth half its two
+  dearest spells (×1.5 when it cannot afford its best), 0 when already exempt or it has no MP spells. Look (`_PZ_SIGS.tvExempt`):
+  a green TAX EXEMPT stamp slams onto the floor, a receipt rises on the side away from the caster and tears in two, blue mana motes.

@@ -6533,6 +6533,15 @@
                 if (!_tvHealers && !_tvHurt) return 0;
                 s += 25 + 45 * _tvHealers + 15 * _tvHurt;
             }
+            /* 🧾 Tax Exempt (`taxExempt`, half MP on every spell, 2 rounds): worth the MP it saves the target on its next casts */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'taxExempt')) {
+                if (g.unitHasStatus(target, 'taxExempt')) return 0;
+                const _txCosts = (target.spells || []).map(sp => (sp && sp.cost) || 0).filter(c => c > 0).sort((a, b) => b - a);
+                if (!_txCosts.length) return 0;
+                const _txSave = (_txCosts[0] + (_txCosts[1] || 0)) * 0.5;
+                const _txShort = (target.mp || 0) < _txCosts[0] ? 1.5 : 1;   // it cannot afford its best spell at full price
+                s += Math.min(140, _txSave * 0.8 * _txShort);
+            }
             if (spell.massRescue) {
                 const _mr = spell.massRescue, _mrR = _mr.radius || 4, _mrP = _mr.hpPct || 0.5;
                 const _mrIn = g.aliveUnitsFor(unit.player).filter(a => a && a.id !== unit.id && !a.dead && a.maxHp > 0

@@ -65533,6 +65533,69 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['nrLayingOnHands']   = { aura: 'nrLayingOnHands_aura' };
     SPELL_MAP['nrCollectionPlate'] = { aura: 'nrCollectionPlate_aura', skim: 'nrCollectionPlate_skim' };
     SPELL_MAP['nrMiracle']         = { aura: 'nrMiracle_aura', payout: 'nrMiracle_payout' };
+
+    /* ════ TAX EXEMPT (2026-11-17, mondo's ask): a green TAX EXEMPT stamp slams onto the floor under the unit, a white receipt
+       floats up beside it and is torn in two, and blue mana motes (the MP it will not pay) rise into the body ════ */
+    function _tvExemptTex() {
+        return _pzTex('tv-exempt', 512, 192, function (g, w, h) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 14; g.strokeRect(14, 14, w - 28, h - 28); g.lineWidth = 5; g.strokeRect(34, 34, w - 68, h - 68);
+            g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 78px Impact, "Arial Black", sans-serif';
+            g.fillText('TAX EXEMPT', w / 2, h / 2 + 4);
+            g.globalCompositeOperation = 'destination-out';
+            for (var i = 0; i < 220; i++) { g.beginPath(); g.arc(Math.random() * w, Math.random() * h, Math.random() * 3 + 0.5, 0, Math.PI * 2); g.fill(); }
+            g.globalCompositeOperation = 'source-over';
+        });
+    }
+    function _tvReceiptTex() {
+        return _pzTex('tv-receipt', 96, 160, function (g, w, h) {
+            g.fillStyle = '#f7f5ee'; g.fillRect(0, 0, w, h);
+            g.fillStyle = '#2a2a2a'; g.font = 'bold 13px monospace'; g.textAlign = 'center'; g.fillText('RECEIPT', w / 2, 18);
+            g.fillStyle = 'rgba(40,40,40,0.6)'; for (var i = 0; i < 8; i++) g.fillRect(10, 30 + i * 12, w - 20 - (i % 3) * 14, 3);
+            g.fillStyle = '#2a2a2a'; g.font = 'bold 12px monospace'; g.fillText('TAX  $0.00', w / 2, h - 18);
+            g.fillStyle = '#f7f5ee'; for (var x = 0; x < w; x += 8) { g.beginPath(); g.moveTo(x, h); g.lineTo(x + 4, h - 5); g.lineTo(x + 8, h); g.fill(); }
+        });
+    }
+    EFFECTS['nrTaxExempt_aura'] = _pzDef('tvExempt', { pzOwn: true });
+    _PZ_SIGS.tvExempt = function (p) {
+        if (_tvOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('tvExempt', 300)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F), side = { x: -cd.z, z: cd.x };
+        /* the receipt stands on the side AWAY from the caster in the picture (on his side it covered his body) */
+        var from = _pzFrom(tx, ty, p), ln = (from.x !== tx || from.y !== ty) ? _nrvLine(F, from, tx, ty) : null;
+        if (ln && side.x * ln.ux + side.z * ln.uz > 0) { side.x = -side.x; side.z = -side.z; }
+        var stamp = _bkFloor(F, _tvExemptTex(), ts * 1.5, ts * 0.56, 0x6aff96, false);
+        stamp.rotation.z = Math.atan2(cd.x, cd.z) + rn(-0.15, 0.15);   /* reads upright from the lens */
+        var glow = _bkFloor(F, _sigGlowTex(), ts * 1.4, ts * 1.4, 0x3ad06a, true);
+        stamp.renderOrder = 159;
+        /* the receipt: two halves of one slip beside the body (never over the head, where the number sits), torn apart */
+        var halves = [];
+        for (var i = 0; i < 2; i++) {
+            var m = _pzSolid(0xffffff, _tvReceiptTex(), { side: THREE.DoubleSide, depthWrite: false });
+            var geo = new THREE.PlaneGeometry(ts * 0.3, ts * 0.25), uv = geo.attributes.uv;
+            for (var k = 0; k < uv.count; k++) uv.setY(k, uv.getY(k) * 0.5 + (i ? 0 : 0.5));
+            uv.needsUpdate = true;
+            var hm = _pzMesh(geo, m, F.g); hm.renderOrder = 162; halves.push({ m: m, o: hm, dir: i ? -1 : 1 });
+        }
+        var slam = 160, hit = false, lastS = 0;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var sk = _sigClamp01(el / slam);
+            stamp.scale.setScalar(Math.max(0.05, 1.6 - 0.6 * sk));
+            stamp.material.opacity = el < 20 ? 0 : 0.95 * _pzEnv(el, 20, slam, 1100, 1600);
+            glow.material.opacity = 0.4 * _pzEnv(el, slam - 40, slam + 60, 700, 1300);
+            if (!hit && el >= slam) { hit = true; _sigShake('light'); _sigShockRing3D(tx, ty, { color: 0x3ad06a, r0: ts * 0.2, r1: ts * 0.85, ms: 340 }); }
+            var rise = _sigEaseOutCubic(_sigClamp01((el - 120) / 380)), tear = _sigClamp01((el - 600) / 400);
+            for (var j = 0; j < halves.length; j++) {
+                var H = halves[j];
+                H.o.position.set(side.x * ts * 0.5, ts * (0.6 + 0.55 * rise) + H.dir * ts * (0.065 + 0.18 * tear), side.z * ts * 0.62);
+                _pzFace(H.o); H.o.rotateZ(H.dir * 0.5 * tear);
+                H.m.opacity = 0.95 * _pzEnv(el, 120, 220, 900, 1300);
+            }
+            if (el > 250 && el < 1300 && el - lastS > 55) {
+                lastS = el; var a = rn(0, 6.28), r = ts * rn(0.1, 0.4);
+                _pzP(F, Math.cos(a) * r, ts * rn(0.05, 0.3), Math.sin(a) * r, { sprite: 'spark-blue', ml: rn(600, 900), size0: rn(5, 8), size1: 1, vz: rn(90, 160), opacity0: 0.95 });
+            }
+        });
+    };
+    SPELL_MAP['nrTaxExempt'] = { aura: 'nrTaxExempt_aura' };
     /* ════ THE BOLTZMANN BRAIN (2026-11-17, the Boltzmann Brain pass; mondo: "flesh out their unique spells and spell
        animations/vfx"): a mind that blinked into being out of nothing. Its four casts and its round-end jump had only the
        generic psychic look; now each has its own, in one language: violet thought, the black of an empty universe, and Riot's

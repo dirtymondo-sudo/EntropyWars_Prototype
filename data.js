@@ -10511,6 +10511,13 @@ const RACE_ABILITIES = {
         { id: 'nrMiracle', name: 'Miracle', tier: 3, families: ['prosperity'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'divine',
           element: 'light', type: 'heal', kind: 'heal', range: 4, healPct: 0.15, spendPlate: true,
           desc: 'Rise and walk. Heals a Single Ally within 4 for 15% of their max HP plus everything in the collection plate, then empties it. Cooldown: 2 rounds.' },
+        /* TAX EXEMPT (2026-11-17, mondo: "He should have a spell called tax exempt ... that halves his mana ... cast an ally"): the
+           status `taxExempt` halves the MP every spell costs (battle.js getSpellMpCostFor, STATUS_DEFS mpCostMult), the opposite
+           of the Magician's Picked a Card. Self or an ally. */
+        { id: 'nrTaxExempt', name: 'Tax Exempt', tier: 2, families: ['prosperity'], cost: 30, apCost: 1, cooldownRounds: 3, spellType: 'divine',
+          type: 'buff', kind: 'buff', range: 3,
+          statusEffects: [{ id: 'taxExempt', duration: 2 }],
+          desc: 'The Lord\'s work is not taxable. Himself or a Single Ally within 3 pays half the MP for every spell for 2 rounds. Cooldown: 3 rounds.' },
     ],
     'influencer': [
         /* GOING VIRAL: the one race whose mark spreads a hit. A Viral unit shares 30% of every hit it takes with each of its own teammates within 2 (battle.js _viralShare in applyDamageToUnit). The doc's Filter (a disguise) needs the renderer to draw a fake unit for one side only; this ships first. (2026-11-17 THE NEW RACES 2, mondo's picks.) */
@@ -14279,6 +14286,13 @@ const STATUS_DEFS = {
         },
         onRemove(unit) { delete unit._trick; }
     },
+    taxExempt: {   // 2026-11-17 THE TELEVANGELIST PASS: Tax Exempt, the opposite of Picked a Card
+        icon: '🧾', glyph: '🧾', short: 'TAX', label: 'Tax Exempt',
+        colorText: 'tax exempt — every spell costs half the MP',
+        kind: 'buff', category: 'buff', stack: 'max',
+        mpCostMult: 0.5,
+        iconSrc: createStatusIconDataUri('🧾', '#14281c', '#e0ffe8', '#3aa860')
+    },
     pickedCard: {
         icon: '🃏', glyph: '🃏', short: 'CRD', label: 'Picked a Card',
         colorText: 'holding the Magician\'s card — every spell costs 40 more MP',
@@ -14601,6 +14615,7 @@ const STATUS_LIBRARY_DESCS = {
     submerged: 'Under the surface of a liquid: hidden with Invisible until it attacks. Leaving the liquid surfaces it.',
     momentum:  'Rolling: every square walked in a straight line banks a stack (up to 6). Board Slam spends them for damage. Fades a turn after the Skater stops. Stunned, Rooted, Frozen or put to sleep, she bails and loses them all.',
     trickSet:  'A trick waits face down (Doves, Vanishing Act or Switcheroo, in turn). It springs once, on its cue.',
+    taxExempt: 'Tax Exempt (the Televangelist): every spell it casts costs half the MP.',
     pickedCard: 'Holding the Magician\'s card: every spell it casts costs 40 more MP.',
     burrowed:  'Under the ground: hidden with Invisible until it attacks or its turn ends.',
     serpentForm: 'The head of a 3-square feathered serpent: the body follows its path and blocks every other unit; it cannot be pushed or pulled; a hit on the body hits the head.',
