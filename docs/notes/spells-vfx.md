@@ -4204,6 +4204,23 @@ named in `_FX2_BURST` now (the burst stops) and every square they hit flashes in
 - **Quicksand**, **Sandstone Tomb**: named + the sand-gold flash; `_eaQuicksand` / `_eaTomb` unchanged.
 - The harness picks a spell by its NAME in the HUD: two spells with one name (Rampart) = it may cast the other one.
 
+### part 4 (12 spells: nature + poison). After frames: `docs/plans/vfx-cleanup/img/own-look/L1_part4.jpg`. THE LIST IS DONE (49 of 49).
+- **Pollinate**: a slow double spiral of gold pollen winds down onto the square and a gold flower opens flat on it. (No picture: the
+  harness' bee queen has no pollen to spend.)
+- **Sacrifice** (shaman): two strands wind round the body the opposite way, a red one climbing off it and a green one coming down.
+  (No picture: the harness cannot make the two-ally pick.)
+- **Tail Whip** (dinosaur): the tail's sweep, a thick green wedge low over the ground, swings round his side through the victim.
+- **Trunk Throw**: the trunk breaks on the body, long splinters of the same wood fly end over end and lie, leaves come down after.
+- **Web Snare** (voidweaver): a wide web of void silk drops flat over the 3×3 at knee height, sags, four threads pin its corners.
+- **Cannibalize** (zombie): the feast on the remains (`_bpFeast`) stays; sick green motes rise off them to his mouth. (No picture: no corpse on the harness board.)
+- **Goo Shot** (black goo): ropes of black goo stretch from the body to the floor round it, sag and let go one by one.
+- **Kiss of Decay** (demon princess): a print of lips on the victim, rose, turning the green of rot and running; rose motes drift back to her.
+- **Poison Dart**: green veins branch out over the body from the prick and pulse. No dart: the game has no dart model (no stand-in).
+- **Poison Seed**: the seed drops in, the soil closes in a mound, one purple shoot curls up with a bead of venom on its tip.
+- **Splash** (black goo): one low ring of tar jumps off the caster, runs out over the 3×3 and falls flat; every square flashes violet.
+- **Vivisection**: a dotted teal line is ruled across the body, then the cut runs along it, one thin red line, and beads.
+- `_l1Plate(F, tex, w, h, x, y, z, glow)` = an upright picture turned to the lens (the marks on a body: lips, veins, the cut, the chess score).
+
 ## THE OWN LOOKS, L4, part 1: the blessings and the heals (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
 
 Thread L4 of the own-looks job (`docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md`, list `own-look/L4.txt`). mondo: "any spells that
