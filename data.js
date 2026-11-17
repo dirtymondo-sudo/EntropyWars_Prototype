@@ -8314,15 +8314,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
           desc: 'The hero cannot die yet. The next killing blow leaves the caster at 1 HP instead.' },
-        { id: 'raceToBeContinued', upgradesBlock: ['upBlast'], tier: 3, families: ['maincharacter'], spellType: 'human', element: 'metal', name: 'To Be Continued',
-          type: 'damage', cost: 35, dmg: 135, range: 3, apCost: 1,
-          kind: 'damage', damageType: 'physical',
-          delayedMark: true, markDelayRounds: 1, requireVision: true,
-          projectileOverride: 'proj-knife',
-          impactSfx: 'physicalAbility',
-          markFloatText: '➡ TO BE CONTINUED',
-          markLogText: 'freezes the frame on {target} — the episode resumes at the end of the round, and the finishing strike lands with it.',
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Marks the target: the hit lands at the end of the round, but only while your team can still see them.' },
+        /* To Be Continued was scrapped 2026-11-17 (mondo: "i lowkey kinda hate that spell so we can scrap it and just redo the anime on all of its spells"); the anime look is now every Swordfighter spell's (battle.js THE RACE LOOKS) */
         { id: 'raceBlessedBlade', spellType: 'divine', vfxElement: 'light', name: 'Blessed Blade',
           type: 'damage', tier: 3, families: ['maincharacter'], cost: 75, dmg: 135, range: 1,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
@@ -21368,7 +21360,7 @@ const RACE_TREE = {
     'chosen one':    ['raceDarkFeather', 'racePlotArmor', 'raceProphecyFulfilled', 'raceRollCredits'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'gnome':         ['raceTeslaTrap', 'raceScrapMine', 'fiveGTower', 'raceOvertinker'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'pirate':        ['racePlunder', 'raceBoardingRush', 'raceYoHo', 'raceCannonball'],
-    'swordfighter':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceRollCredits'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'swordfighter':  ['raceSadBackstory', 'racePlotArmor', 'raceBlessedBlade', 'raceRollCredits'],   // 2026-11-17: To Be Continued scrapped (mondo), its rung 3 = Blessed Blade (tier 3, same family); THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', ['raceAyahuascaRetreat', 'raceBadTrip'], 'sharedEgoDeath'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'mad scientist': ['raceTeslaTrap', ['raceCloneDecoy', 'raceSummonCreation'], ['raceOvercharge', 'raceMonsterSerum'], 'racePlandemic'],   // §6.26 (wave C)
     'men in black':  ['raceDeneuralizer', 'raceAgentVanish', 'sharedSmokeScreen', 'raceClassifiedWeapon'],

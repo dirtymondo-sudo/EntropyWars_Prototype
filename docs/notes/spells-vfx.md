@@ -4065,3 +4065,25 @@ Small and quick on the body. Kill-switch window.EW_NO_DOLL_VFX.
   and the number stay readable), two red eye glints on the doll's side, then one pink crescent + the side ring.
 - Nobody's Looking ('hdCreep', round end): faint dark footprint rings on the squares it crept over, one after another.
 
+
+## THE RACE LOOKS (2026-11-17, mondo; thread "Find races that need a unique spell overlay")
+After the Florida Man's BREAKING NEWS chrome he asked which other races should present their spells in their own way (how the
+cast is shown, not its projectile). Picked after mock-ups + his notes: Influencer (phone story: progress bars, @handle LIVE +
+the spell as caption, hearts, comments; no sticker), Televangelist (satellite telethon, blue/white/red, 1-800 number, pledges
+rolling up; no purple/gold), Magician (curtains, valance, Limelight marquee, "Ta-da!"), Quarterback (slim scorebug + PLAY CALL
+tab + play diagram), Chess Piece (eval bar from the real team HP, clocks, the move with its grade), Bigfoot + Mothman (trail
+cam, black and white), Cowboy (wide bars, sepia, Rye title, a film-title tagline), Swordfighter (anime on every spell: episode
+in Japanese, the spell's Japanese title, the line in Japanese with an English fansub, the ending's staff roll up the right side;
+Sad Backstory = flashback), Karate Frog (badly dubbed 70s kung fu: poster title, ENGLISH DUBBED, a late subtitle + "[mouth keeps
+moving]"), Cursed TV (the screen becomes the set: bezel, scanlines, green OSD channel + volume; race key 'cursed tv', its kit
+was not merged yet, so it switches on when that race lands). Dropped by him: Referee VAR, Tech CEO keynote, AI chat, Delivery Boy.
+To Be Continued was SCRAPPED from the Swordfighter (his words: "i lowkey kinda hate that spell"); its RACE_TREE rung 3 = Blessed
+Blade. Its VFX handlers are left in place, unused.
+- Code: battle.js `_AC_LOOK_RACES` / `_AC_LOOK_TEXT` / `_acLookFor` / `_acLookHtml` / `_acApplyLook`, called from
+  showActionCamChrome (the self + support shots pass `castBy`). Slots: `.acam-lk-top` / `.acam-lk-bot` inside the bars (the
+  number-yield logic keeps reading the bars' rects), `.acam-look` over the frame. CSS: styles-cinematic.css "THE RACE LOOKS".
+  Grades (`_AC_LOOK_GRADE`) go through cineGrade → the 3D frame's shader, so the DOM numbers keep their colour.
+- Spells only: the shot's name must be one of the race's RACE_ABILITIES names or a key in its text table.
+- Online: rides the relayed shot (the guest's own showActionCamChrome dresses the same). Kill switch `window.EW_NO_RACE_LOOKS`.
+- Proof: /mnt/project-files/spell-overlays/race_looks_proof.jpg; probe /mnt/project-files/spell-overlays/probe/looks.js
+  (`TIMES=900,1700 node looks.js [race_key,...]`, `WAIT0=12000` waits out the match intro).
