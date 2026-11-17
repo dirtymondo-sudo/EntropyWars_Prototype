@@ -34,13 +34,12 @@ Nothing of the encounter system itself (tempers, marks, ladder, muggings, giving
 - Every lost story fight costs gold, quest fights too: 8 gold x the strongest enemy's level, never more than held; a retreat costs nothing.
 - People passing through from other districts use the plan's example tempers now; levels are fluid, not tuned here.
 - The 12 lines of `STEP-1A.md` section 4: "fine for now".
-- **The eye is on the PLAYER** (as in Skyrim and the battle); the red `!` is over the NPC that is coming for you or will step in.
+- **The eye is on the PLAYER, by the portrait in the HUD** (as in Skyrim and the battle; OK'd to build 11-17); the red `!` is over the NPC that is coming for you or will step in.
 - At least 144 residents; cops work the whole city; Homosapien is no race.
 
 ## 4. Waiting for mondo
 
-1. **Mock-up 2 of the marks** (sent to him in chat 11-17, files `step-1a-marks2-*` beside this file): the eye over the player's head, or
-   by the portrait in the HUD? And his OK to build. Not answered yet.
+1. ~~Mock-up 2 of the marks~~ **ANSWERED 11-17: "eye can be by the portrait, okay to build".** The eye sits by the player's portrait in the HUD (picture `step-1a-marks2-eye-by-portrait.jpg`), the red `!` over the NPC. Step 2 is free to build once step 1b is in.
 2. **The race table** (`RACE-HOMES.md`): the city's placeless races are housed now. Still placed nowhere: Pope, Televangelist, Haunted Doll,
    Wendigo, Mole Man, Quetzalcoatl, Cicada Brood, Boltzmann Brain, Symbiote, Sewer Gator, Karate Frog, Samurai Slug. They belong to zones
    other threads hold: a board note for each zone is owed (not written yet).
@@ -54,7 +53,7 @@ Nothing of the encounter system itself (tempers, marks, ladder, muggings, giving
 2. **Step 1b** (all its inputs are approved): the tempers, groups, lines and numbers into data.js as `HQ_NPC_TEMPERS` + `hqNpcTemper`,
    `hqNpcGroup`, `hqNpcSameGroup`, `hqNpcDefends`; nothing reads them yet. A full draft is `STEP-1B-DRAFT.js.txt` beside this file (written,
    never loaded or checked): put it after `hqSpawnExpand()` in data.js, `node --check`, bump the `?v=` token, merge, `node sync-zip.js --upload`.
-3. **Step 2** (awareness + the marks) only after his OK on mock-up 2.
+3. **Step 2** (awareness + the marks): his OK is given (the eye by the portrait, the red `!` over the NPC). Build it after step 1b; a proof picture goes to him in chat.
 4. Then PLAN.md section 6 as written: 3, 4, 5a, 6a, 6b, the GATE (he plays Bayside), S beside them.
 
 ## 6. Probe notes learned here
