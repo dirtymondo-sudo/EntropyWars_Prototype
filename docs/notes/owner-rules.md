@@ -49,7 +49,8 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
   Creek"); never spend a question to him on a name while an area is being built.
 - **NPC counts depend on the space** (mondo 11-16: "the fewer npcs rule was meant for small indoor rooms, not for big outdoor
   spaces"): FEWER NPCs in small indoor rooms; MORE are wanted in big outdoor spaces ("Disaster city feels dead right now. There need
-  to be more NPCs"). None ever blocking a path. No followers. Units are named after their race. No factions. The NPC spawn system: `npc-system.md`.
+  to be more NPCs"). None ever blocking a path. No followers. **NPC behaviour is the same on every machine** (11-17: "if you have a bad pc
+then tough shit. The player experience should be the same"): no weak-PC cut may change who sees you or who fights. Units are named after their race. No factions. The NPC spawn system: `npc-system.md`.
 
 ## 3. Visuals
 
