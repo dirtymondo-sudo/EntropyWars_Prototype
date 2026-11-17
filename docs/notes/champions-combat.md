@@ -5699,6 +5699,12 @@ dormant / bodiless):
 - 🟥 Referee, THE RED CARD: Card = `yellowCard` 3 rounds + Marked; a card on a booked unit (STATUS_DEFS.yellowCard.onApply,
   `refreshed`) calls `_refereeRedCard`: the `exited` status 1 round with unit._sentOff (no door); `_doorExitReturn`'s sent-off
   branch puts it back on the field where it stood, no Stagger. Bosses / cubes are never sent off.
+  POLISH (2026-11-17, thread "Polish Referee spells and VFX"): `exited` ends at the round's end, so a red card on a unit still to act
+  this round costs it that turn; on one that already acted it is only off the field (untargetable) until the round ends: time it.
+  The CPU knows this (ai.js ccDenialValue `yellowCard`: booking = 40, the red card = a hard hold on a unit still to act, 0.3 of it
+  on one that acted; findSpellTarget sends a `refereeCard` cast to a booked enemy first). The second card no longer also logs
+  "is booked" (applyStatusPayload skips its line when onApply took the status off). A shielded target now says WHY
+  (battle.js `_realmShieldLine`: sent off / out through a door / held behind a door / Shadow Realm; it said Shadow Realm for all).
 - 📰 Florida Man, TODAY'S HEADLINE: his three rows carry `floridaHeadline`; spellBlockReason greys the two that are not
   `_floridaHeadline(unit)` ("Not today"), a hash of the unit id + round, so the guest's menu agrees with no relay.
 - 🧠 Boltzmann Brain, THE FLUCTUATION: never walks or jumps (`_unitIsBodiless` in unitMoveBlockedByStatus / moveBlockWord

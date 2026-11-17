@@ -64605,6 +64605,239 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['nrDisrupt']     = { aura: 'ceoDisrupt_aura' };
     SPELL_MAP['nrLayoffs']     = { aura: 'ceoLayoffs_aura' };
 
+    /* ════ THE REFEREE (2026-11-17, the new races 2 polish thread; mondo: "flesh out their unique spells and spell animations/vfx")
+       Officiating had no look of its own, only the generic debuff / hit / ring. Every piece follows THE RIOT PASS: the cards keep
+       their own colours (a yellow card is yellow, a red card red, solid so they read on grass), the rings and floor marks say
+       WHOSE call it is from the viewer's own seat (the Referee's side cyan-blue when he is yours, pink-orange when he is not).
+       Nothing stands in front of the body or its number: the cards are held up BESIDE the head, across the lens, toward the
+       Referee's side; the floor marks lie flat. Each piece draws only where the viewer's fog lets it (_pzSeen).
+       · Card (`impact`): two whistle rings at the Referee, then the yellow card snaps up beside the foe's head and is held there.
+       · THE RED CARD (`redCard`, battle.js _refereeRedCard, relayed): the red card comes up in front of the yellow one, a red
+         floor flash, and the unit is drawn as a faint shade until it is back (three-renderer.js OFF THE FIELD).
+       · Back on the field (`backOn`, battle.js _doorExitReturn's sent-off branch): a short ring and column on its square.
+       · Penalty (on the hit's `burst` beat, _BUG_ON_BURST: a close strike rides no bolt or impact): the whistle, then a yellow penalty flag is thrown onto the foe's feet; on the hit three
+         chevrons slide out on the floor the way it is marched back (up to 3 squares).
+       · Timeout (`aoe`): the T hand signal over the middle, a stopwatch face on the 3×3 whose hand sweeps and STOPS, a rim on
+         every square. ════ */
+    var _RF = { yellow: 0xffd21a, yellowDeep: 0xc89a00, red: 0xe3121b, redDeep: 0x7a0008, white: 0xffffff };
+    function _rfSides(p) {
+        var vp = 1, own = (p && p.owner != null) ? p.owner : null;
+        try { vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : ((window._NET && window._NET.online && window._NET.myPlayer) || 1); } catch (e) {}
+        if (own == null) {
+            var sx = p && (p.fromX != null ? p.fromX : (p.cx != null ? p.cx : p.sx)), sy = p && (p.fromY != null ? p.fromY : (p.cy != null ? p.cy : p.sy));
+            try {
+                var st = (typeof state !== 'undefined' && state) ? state : (window.GAME && window.GAME.state), us = (st && st.units) || [];
+                for (var i = 0; i < us.length; i++) { var u = us[i]; if (u && !u.dead && u.x === sx && u.y === sy) { own = u.player; break; } }
+            } catch (e) {}
+        }
+        var mine = own == null ? true : own === vp;
+        return { mine: mine, col: mine ? _CEO_ALLY : _CEO_ENEMY };
+    }
+    function _rfOff() { return _catOff('spells'); }
+    function _rfCardTex(kind) {
+        return _pzTex('rf-card-' + kind, 72, 100, function (g, w, h) {
+            var base = kind === 'red' ? '#e3121b' : '#ffd21a', edge = kind === 'red' ? '#8a0008' : '#b88a00', hi = kind === 'red' ? 'rgba(255,170,170,0.55)' : 'rgba(255,255,220,0.7)';
+            g.fillStyle = edge; g.strokeStyle = edge; g.lineWidth = 2; _nbRR(g, 1, 1, w - 2, h - 2, 9);
+            g.fillStyle = base; g.strokeStyle = base; _nbRR(g, 5, 5, w - 10, h - 10, 7);
+            var gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, hi); gr.addColorStop(0.45, 'rgba(255,255,255,0)');
+            g.fillStyle = gr; g.fillRect(5, 5, w - 10, h - 10);
+        });
+    }
+    function _rfFlagTex() {
+        return _pzTex('rf-flag', 96, 96, function (g, w, h) {
+            g.fillStyle = '#ffd21a'; g.beginPath(); g.moveTo(8, 10); g.quadraticCurveTo(48, 0, 88, 12); g.lineTo(84, 80); g.quadraticCurveTo(44, 92, 10, 84); g.closePath(); g.fill();
+            g.strokeStyle = 'rgba(150,110,0,0.6)'; g.lineWidth = 2; for (var i = 0; i < 4; i++) { g.beginPath(); g.moveTo(20 + i * 18, 14); g.quadraticCurveTo(26 + i * 18, 48, 18 + i * 18, 82); g.stroke(); }
+            g.fillStyle = '#e8e8e8'; g.beginPath(); g.arc(48, 46, 11, 0, Math.PI * 2); g.fill();   /* the knot with its weight in it */
+            g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.arc(51, 49, 6, 0, Math.PI * 2); g.fill();
+        });
+    }
+    function _rfDialTex() {
+        return _pzTex('rf-dial', 256, 256, function (g, w, h) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 10; g.beginPath(); g.arc(128, 128, 116, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 3; g.beginPath(); g.arc(128, 128, 98, 0, Math.PI * 2); g.stroke();
+            for (var i = 0; i < 60; i++) {
+                var a = i / 60 * Math.PI * 2, L = i % 5 === 0 ? 18 : 8; g.lineWidth = i % 5 === 0 ? 6 : 2;
+                g.beginPath(); g.moveTo(128 + Math.sin(a) * 110, 128 - Math.cos(a) * 110); g.lineTo(128 + Math.sin(a) * (110 - L), 128 - Math.cos(a) * (110 - L)); g.stroke();
+            }
+            g.fillStyle = '#ffffff'; g.beginPath(); g.arc(128, 128, 9, 0, Math.PI * 2); g.fill();
+        });
+    }
+    /* the whistle: two rings at the Referee's head, facing the lens, and a short white puff */
+    function _rfWhistle(x, y, n, side) {
+        if (x == null || !_pzSeen(x, y)) return;
+        var F = _nrvFrame(x, y), ts = F.ts, rings = [];
+        for (var i = 0; i < (n || 2); i++) {
+            var m = _pzMesh(new THREE.RingGeometry(ts * 0.1, ts * 0.13, 28), _pzGlow(i % 2 ? side : _RF.white), F.g, 0, ts * 0.62, 0);
+            rings.push({ m: m, at: i * 110 });
+        }
+        _sigRunOwned(F.g, 560 + (n || 2) * 110, function (el) {
+            for (var j = 0; j < rings.length; j++) {
+                var R = rings[j], k = _sigClamp01((el - R.at) / 420);
+                _pzFace(R.m); R.m.scale.setScalar(el < R.at ? 0.01 : 1 + 3.2 * _sigEaseOutCubic(k));
+                R.m.material.opacity = el < R.at ? 0 : 0.95 * (1 - k);
+            }
+        });
+    }
+    /* a held card beside the head: anchor offset across the lens toward the Referee's side, a little toward the lens */
+    function _rfCardAnchor(F, from, out) {
+        var cd = _nbCamDir(F), side = { x: -cd.z, z: cd.x }, ln = from ? _nrvLine(F, from, F.tx, F.ty) : { ux: 1, uz: 0 };
+        if (side.x * ln.ux + side.z * ln.uz < 0) { side.x = -side.x; side.z = -side.z; }
+        var o = out || 0.5;
+        return { x: side.x * F.ts * o + cd.x * F.ts * 0.12, z: side.z * F.ts * o + cd.z * F.ts * 0.12, side: side, cd: cd };
+    }
+    function _rfHeldCard(F, kind, A, delay, hold, lift) {
+        var card = new THREE.Group(), ts = F.ts; F.g.add(card);
+        var mat = _pzSolid(0xffffff, _rfCardTex(kind), { side: THREE.DoubleSide, depthWrite: false });
+        var mesh = _pzMesh(new THREE.PlaneGeometry(ts * 0.38, ts * 0.53), mat, card); mesh.renderOrder = 162;
+        var glow = _pzSpr(kind === 'red' ? _RF.red : _RF.yellow, ts * 0.9, card); glow.material.opacity = 0;
+        var y0 = ts * 0.55, y1 = ts * (lift || 1.25);
+        return function (el) {
+            var e = el - delay;
+            if (e < 0) { mat.opacity = 0; glow.material.opacity = 0; return; }
+            var up = _sigEaseOutBack(_sigClamp01(e / 220)), vis = _pzEnv(e, 0, 60, hold, hold + 260);
+            card.position.set(A.x, y0 + (y1 - y0) * up, A.z);
+            _pzFace(card); card.rotateZ(0.16 * (1 - up) + Math.sin(e * 0.006) * 0.03);
+            var s = Math.max(0.05, up * (1 + 0.12 * Math.max(0, 1 - e / 180)));
+            card.scale.setScalar(s);
+            mat.opacity = vis; glow.material.opacity = 0.45 * vis * (e < 260 ? 1 : 0.5);
+        };
+    }
+    _PZ_SIGS.rfCard = function (p) {
+        if (_rfOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce('rfCard', 300)) return;
+        var S = _rfSides(p), from = p.fromX != null ? { x: p.fromX, y: p.fromY } : null;
+        if (from) _rfWhistle(from.x, from.y, 2, S.col[0]);
+        if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty); F.tx = tx; F.ty = ty; var ts = F.ts;
+        var A = _rfCardAnchor(F, from, 0.5), tick = _rfHeldCard(F, 'yellow', A, 160, 1250, 1.25);
+        var ring = _ceoTileRing(F, tx, ty, S.col[0]), rung = false;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            tick(el);
+            ring.material.opacity = 0.9 * _pzEnv(el, 160, 260, 1100, 1500);
+            ring.scale.setScalar(1 + 0.06 * Math.sin(el * 0.012));
+            if (!rung && el >= 200) { rung = true; _sigShockRing3D(tx, ty, { color: S.col[0], r0: ts * 0.2, r1: ts * 0.7, ms: 340, torus: false });
+                _sigSparks(tx, ty, 'spark', 8, { z: ts * 0.9, vxy: 90, tint: _RF.yellow, vz0: 40, vz1: 160 }); }
+        });
+    };
+    _PZ_SIGS.rfRedCard = function (p) {
+        if (_rfOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('rfRed', 300)) return;
+        var S = _rfSides(p), from = p.fromX != null ? { x: p.fromX, y: p.fromY } : null;
+        var F = _nrvFrame(tx, ty); F.tx = tx; F.ty = ty; var ts = F.ts;
+        /* the red card comes up a hand in front of the yellow one (the yellow card of the same cast is still held) */
+        var A = _rfCardAnchor(F, from, 0.62); A.x += A.cd.x * ts * 0.1; A.z += A.cd.z * ts * 0.1;
+        var tick = _rfHeldCard(F, 'red', A, 320, 1500, 1.32);
+        var flash = _pzMesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), _pzGlow(_RF.red), F.g, 0, ts * 0.03, 0); flash.rotation.x = -Math.PI / 2;
+        var col = _pzMesh(new THREE.CylinderGeometry(ts * 0.34, ts * 0.42, ts * 1.6, 4, 1, true), _pzGlow(_RF.red), F.g, 0, ts * 0.8, 0); col.rotation.y = Math.PI / 4;
+        var rim = _ceoTileRing(F, tx, ty, S.col[0]), hit = false;
+        return _sigRunOwned(F.g, 2100, function (el) {
+            tick(el);
+            var e = el - 320;
+            flash.material.opacity = e < 0 ? 0 : 0.55 * _pzEnv(e, 0, 60, 300, 900);
+            col.material.opacity = e < 0 ? 0 : 0.35 * _pzEnv(e, 0, 80, 200, 700);
+            col.scale.set(1, Math.max(0.01, _sigEaseOutCubic(_sigClamp01(e / 200))), 1); col.position.y = ts * 0.8 * col.scale.y;
+            rim.material.opacity = e < 0 ? 0 : 0.95 * _pzEnv(e, 0, 80, 1300, 1700);
+            if (!hit && e >= 0) {
+                hit = true; _shake('light');
+                _sigShockRing3D(tx, ty, { color: _RF.red, r0: ts * 0.2, r1: ts * 1.0, ms: 420 });
+                _sigShockRing3D(tx, ty, { color: S.col[0], r0: ts * 0.3, r1: ts * 1.3, ms: 560, torus: false });
+                _sigSparks(tx, ty, 'spark', 12, { z: ts * 1.1, vxy: 140, tint: _RF.red, vz0: 40, vz1: 200 });
+            }
+        });
+    };
+    _PZ_SIGS.rfBackOn = function (p) {
+        if (_rfOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var S = _rfSides(p), F = _nrvFrame(tx, ty), ts = F.ts;
+        var col = _pzMesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.36, ts * 1.2, 4, 1, true), _pzGlow(S.col[0]), F.g, 0, ts * 0.6, 0); col.rotation.y = Math.PI / 4;
+        var rim = _ceoTileRing(F, tx, ty, S.col[0]);
+        _sigShockRing3D(tx, ty, { color: S.col[0], r0: ts * 0.15, r1: ts * 0.7, ms: 360 });
+        return _sigRunOwned(F.g, 900, function (el) {
+            col.material.opacity = 0.5 * _pzEnv(el, 0, 80, 250, 700);
+            col.scale.set(1, Math.max(0.01, 1 - _sigClamp01((el - 250) / 450)), 1); col.position.y = ts * 0.6 * col.scale.y;
+            rim.material.opacity = 0.9 * _pzEnv(el, 0, 80, 500, 900);
+        });
+    };
+    _PZ_SIGS.rfPenalty = function (p) {
+        if (_rfOff()) return;
+        var fx = p.fromX, fy = p.fromY, tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty; if (tx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 420, S = _rfSides(p), from = fx != null ? { x: fx, y: fy } : _pzFrom(tx, ty, p);
+        _rfWhistle(from.x, from.y, 3, S.col[0]);
+        /* the flag leaves his hand on an arc and lands at the foe's feet on the hit */
+        if (_pzSeen(from.x, from.y) || _pzSeen(tx, ty)) {
+            var ts0 = _worldPos(tx, ty).ts, fm = _pzSolid(0xffffff, _rfFlagTex(), { side: THREE.DoubleSide, depthWrite: false }); fm.opacity = 1;
+            var flag = new THREE.Mesh(new THREE.PlaneGeometry(ts0 * 0.26, ts0 * 0.26), fm); flag.renderOrder = 162;
+            _pzFly(from.x, from.y, tx, ty, flag, { ms: ms, arc: 0.4, h0: ts0 * 0.75, h1: ts0 * 0.06, tail: 700, face: false,
+                spin: function (el, o, t) { o.rotation.set(t < 1 ? el * 0.02 : -Math.PI / 2, t < 1 ? el * 0.013 : 0, t < 1 ? 0 : 0.4); if (t >= 1) o.material.opacity = 1 - _sigClamp01((el - ms - 400) / 300); },
+                trail: { sprite: 'spark', tint: _RF.yellow, every: 34, size: 7 } });
+        }
+        if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty), back = { x: -ln.ux, z: -ln.uz };
+        /* the march: three chevrons pointing away from the Referee, sliding out one square apart */
+        var chev = [], shape = new THREE.Shape();
+        shape.moveTo(-0.5, -0.12); shape.lineTo(0, 0.28); shape.lineTo(0.5, -0.12); shape.lineTo(0.5, -0.36); shape.lineTo(0, 0.04); shape.lineTo(-0.5, -0.36); shape.closePath();
+        for (var i = 0; i < 3; i++) {
+            var cm = _pzMesh(new THREE.ShapeGeometry(shape), _pzGlow(i === 0 ? _RF.yellow : S.col[0]), F.g, 0, ts * 0.05, 0);
+            cm.scale.setScalar(ts * 0.6); cm.rotation.order = 'YXZ'; cm.rotation.y = Math.atan2(back.x, back.z) + Math.PI; cm.rotation.x = -Math.PI / 2;   /* the tip (shape +y) points away from him */
+            chev.push({ m: cm, d: (i + 1) * ts, at: ms + 60 + i * 110 });
+        }
+        var hit = false;
+        return _sigRunOwned(F.g, ms + 1500, function (el) {
+            if (!hit && el >= ms) {
+                hit = true; _shake('normal');
+                _sigShockRing3D(tx, ty, { color: _RF.yellow, r0: ts * 0.2, r1: ts * 0.9, ms: 340, torus: false });
+                _sigShockRing3D(tx, ty, { color: S.col[0], r0: ts * 0.3, r1: ts * 1.1, ms: 460 });
+            }
+            for (var j = 0; j < chev.length; j++) {
+                var C = chev[j], k = _sigEaseOutCubic(_sigClamp01((el - C.at) / 260));
+                C.m.position.set(back.x * (C.d * 0.55 + C.d * 0.45 * k), ts * 0.05, back.z * (C.d * 0.55 + C.d * 0.45 * k));
+                C.m.material.opacity = el < C.at ? 0 : 0.9 * _pzEnv(el, C.at, C.at + 80, ms + 900, ms + 1400);
+            }
+        });
+    };
+    _PZ_SIGS.rfTimeout = function (p) {
+        if (_rfOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce('rfTime', 300)) return;
+        var S = _rfSides(p), R = p.aoeRadius != null ? p.aoeRadius : 1, from = p.cx != null ? { x: p.cx, y: p.cy } : (p.fromX != null ? { x: p.fromX, y: p.fromY } : null);
+        if (from) _rfWhistle(from.x, from.y, 3, S.col[0]);
+        var tiles = [];
+        for (var dy = -R; dy <= R; dy++) for (var dx = -R; dx <= R; dx++) if (_pzSeen(tx + dx, ty + dy)) tiles.push({ x: tx + dx, y: ty + dy });
+        if (!tiles.length) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rims = [];
+        for (var i = 0; i < tiles.length; i++) rims.push(_ceoTileRing(F, tiles[i].x, tiles[i].y, S.col[0]));
+        /* the stopwatch on the floor: its hand sweeps a full turn and stops dead on twelve */
+        var dial = _bkFloor(F, _rfDialTex(), ts * (2 * R + 0.7), ts * (2 * R + 0.7), S.col[0], true), cd = _nbCamDir(F), yaw = Math.atan2(cd.x, cd.z);
+        var handG = new THREE.Group(); handG.position.y = ts * 0.06; F.g.add(handG);
+        var hand = _pzMesh(new THREE.PlaneGeometry(ts * 0.08, ts * (R + 0.15)), _pzGlow(_RF.white), handG, 0, 0, -ts * (R + 0.15) / 2); hand.rotation.x = -Math.PI / 2;
+        /* the T: the hand signal over the middle, facing the lens, high above the bodies */
+        var T = new THREE.Group(); T.position.y = ts * 2.5; F.g.add(T);   /* over the nameplates of the 3×3 */
+        var tM = _pzSolid(0xffffff, null, { depthWrite: false });
+        _pzMesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.16), tM, T, 0, ts * 0.22, 0);
+        _pzMesh(new THREE.PlaneGeometry(ts * 0.16, ts * 0.62), tM, T, 0, -ts * 0.16, 0);
+        var tGlow = _pzSpr(S.col[0], ts * 1.6, T); tGlow.material.opacity = 0;
+        var SWEEP = 620, stopped = false;
+        return _sigRunOwned(F.g, 2000, function (el) {
+            var on = _pzEnv(el, 0, 120, 1400, 1950);
+            dial.material.opacity = 0.75 * on; dial.rotation.z = yaw;
+            var k = _sigClamp01(el / SWEEP);
+            handG.rotation.y = yaw + Math.PI - (1 - Math.pow(1 - k, 2)) * Math.PI * 2;
+            hand.material.opacity = 0.95 * on;
+            for (var j = 0; j < rims.length; j++) rims[j].material.opacity = el < SWEEP ? 0.35 * on : 0.95 * on;
+            var tu = _sigEaseOutBack(_sigClamp01((el - 80) / 260)); T.scale.setScalar(Math.max(0.05, tu) * 1.3); _pzFace(T);
+            tM.opacity = 0.95 * _pzEnv(el, 80, 160, 1300, 1700); tGlow.material.opacity = 0.35 * _pzEnv(el, 80, 200, 900, 1500);
+            if (!stopped && el >= SWEEP) {
+                stopped = true; _shake('light');
+                _sigShockRing3D(tx, ty, { color: _RF.white, r0: ts * 0.3, r1: ts * (R + 0.5), ms: 380, torus: false });
+                for (var q = 0; q < tiles.length; q++) _sigSparks(tiles[q].x, tiles[q].y, 'spark', 3, { z: ts * 0.2, vxy: 60, tint: S.col[0], vz0: 40, vz1: 120 });
+            }
+        });
+    };
+    EFFECTS['rfCard_impact']    = _pzDef('rfCard', { pzOwn: true });
+    EFFECTS['rfCard_red']       = _pzDef('rfRedCard', { pzOwn: true });
+    EFFECTS['rfCard_backOn']    = _pzDef('rfBackOn', { pzOwn: true });
+    EFFECTS['rfTimeout_aoe']    = _pzDef('rfTimeout', { pzOwn: true, aoeRadius: 1 });
+    SPELL_MAP['nrCard']    = { impact: 'rfCard_impact', redCard: 'rfCard_red', backOn: 'rfCard_backOn' };
+    /* Penalty is a close strike: it rides no bolt and no impact, only the staged beats, so its look fires on the hit's
+       `burst` beat (relayed like every staging beat); the flag is a quick 160 ms toss onto the feet */
+    _BUG_ON_BURST['nrPenalty'] = function (tx, ty, p) { _PZ_SIGS.rfPenalty({ tx: tx, ty: ty, fromX: p && p.sx, fromY: p && p.sy, flyMs: 160 }); };
+    SPELL_MAP['nrTimeout'] = { aoe: 'rfTimeout_aoe' };
+
     /* ════ FLAT EARTH — the disc itself (the ice wall round its rim) comes down flat out of the sky onto the target and
        the ground round it is pressed flat (a dust ring); it borrowed the bomb's explosion ════ */
     EFFECTS['f4FlatEarth_impact'] = _pzDef('f4FlatEarth', { shake: 'hard', layers: [

@@ -3892,3 +3892,20 @@ ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura
   words), blue MP motes rise off him, then his side's ring.
 - Every piece gates on `_pzSeen` (fog). Proof: /mnt/project-files/tech-ceo-polish/.
 
+
+## THE REFEREE (2026-11-17, thread "Polish Referee spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx")
+Officiating had only the generic looks. three-vfx-effects.js "THE REFEREE" (right after THE TECH CEO; `_PZ_SIGS.rf*`, helpers `_rf*`).
+Cards keep their own colours (solid yellow / red, read on grass); rings and floor marks are the Referee's SIDE from the viewer's seat
+(`_rfSides`: `owner`, else the body at fromX/cx; yours `_CEO_ALLY` cyan-blue, theirs `_CEO_ENEMY` pink-orange). Cards are held BESIDE
+the head across the lens toward his side (`_rfCardAnchor`), never over the body or its number. Every piece gates on `_pzSeen`.
+- Card `impact`: two whistle rings at him (`_rfWhistle`), the yellow card snaps up beside the foe's head (~1.25 squares) and is held 1.25 s.
+- THE RED CARD `redCard` (battle.js `_refereeRedCard` → ThreeVFXEffects.fire, relayed): the red card comes up a hand in front of the
+  yellow one 320 ms later, a red floor flash + short column, red + side rings. `backOn` (`_doorExitReturn`'s sent-off branch): a ring
+  and a short column on its square.
+- Penalty (on the hit's `burst` beat via `_BUG_ON_BURST`: a close strike fires no bolt or impact): three whistle rings, a yellow penalty flag (canvas, with its weighted knot) thrown onto the foe's
+  feet; on the hit three chevrons slide out on the floor the way it is marched back.
+- Timeout `aoe`: the T hand signal high over the middle, a stopwatch face on the 3×3 whose hand sweeps once and stops dead (white
+  ring), a rim on every square.
+- OFF THE FIELD (three-renderer.js, before the realm branch): any `exited` unit (red card or the DOOR Gun's EXIT) is drawn as a
+  shade (`OFF_FIELD_OPACITY` 0.3, outline off) for both sides, fog still rules an enemy's. It still holds its square (unitAt).
+Proof: /mnt/project-files/referee-polish/.

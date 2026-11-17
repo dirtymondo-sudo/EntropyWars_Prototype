@@ -10845,7 +10845,7 @@
             /* 🌑 Shadow Realm (plan §5.5): a status from anyone but the
                partner (or the unit itself) never reaches a unit in the realm. */
             if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) {
-                if (!shadowRealmKey(target) && !shadowRealmKey(sourceUnit)) addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`);
+                if (!shadowRealmKey(target) && !shadowRealmKey(sourceUnit)) addLog(_realmShieldLine(target));
                 return false;
             }
             const status = ensureUnitStatus(target);
@@ -10942,7 +10942,8 @@
                 try { meta.onApply(target, sourceUnit, { refreshed: _hadBefore, payload, sourceLabel }); } catch (e) { console.warn('[status] onApply', payload.id, e); }
             }
             /* payload.quiet (mondo 11-11, Guard): the caller writes its own one line for this status */
-            if (!payload.quiet) addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
+            /* ... and none when its own onApply took it straight off again (the Referee's second card: RED CARD, not "booked") */
+            if (!payload.quiet && Number(status[payload.id] || 0) > 0) addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
             /* 🧗 stunned / frozen / put to sleep on the wall: the grip goes */
             if (target._climb && meta.blockAction && payload.id !== 'climbing') knockOffClimber(target, `— ${meta.colorText || meta.label.toLowerCase()}`);
             /* 🛹 THE BAIL: a hold that stops the Skater rolling throws away her Momentum (_skaterBail) */
@@ -13848,6 +13849,20 @@
             if (vk && !uk) return unitCrossesRealm(unit);                                // the pair's turn: the spirit is there too
             return false;
         }
+        /* why a unit cannot be reached, for the log (2026-11-17 Referee polish: a red-carded or door-EXITED unit said
+           "beyond reach in the Shadow Realm") */
+        function _realmShieldWords(u) {
+            if (u && u._sentOff && unitHasStatus(u, 'exited')) return 'is sent off: off the field until its next turn.';
+            if (u && unitHasStatus(u, 'exited')) return 'is out through a door until its next turn.';
+            if (u && (unitHasStatus(u, 'captured') || unitHasStatus(u, 'sealed'))) return 'is held behind a door.';
+            return 'is beyond reach in the Shadow Realm.';
+        }
+        function _realmShieldIcon(u) {
+            if (u && u._sentOff && unitHasStatus(u, 'exited')) return '🟥';
+            if (u && (unitHasStatus(u, 'exited') || unitHasStatus(u, 'captured') || unitHasStatus(u, 'sealed'))) return '🚪';
+            return '🌑';
+        }
+        function _realmShieldLine(u) { return `${_realmShieldIcon(u)} ${_ctName(u)} ${_realmShieldWords(u)}`; }
         function isUnitRealmShieldedFrom(unit, actor) {
             /* 🚪 EXITED (DOOR_RACE_DESIGN r3): off the board — nobody reaches it. */
             if (unit && unitHasStatus(unit, 'exited')) return true;
@@ -14292,7 +14307,12 @@
             if (!ok) { delete unit._sentOff; return; }
             if ((unit.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(unit);
             addLog(`🟥 RED CARD! ${_ctName(unit)} is sent off until its next turn.`, undefined, undefined, src ? { actor: src } : undefined);
-            if (!_skipVisuals()) showFloatingTextForUnit(unit, '🟥 RED CARD', 'debuff', { durationMs: 1400 });
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(unit, '🟥 RED CARD', 'debuff', { durationMs: 1400 });
+                /* THE REFEREE POLISH (2026-11-17): the red card goes up over the yellow one and the unit fades off the field
+                   (three-vfx-effects.js "THE REFEREE"; VFX3D.fire is relayed, so the guest sees it where its fog allows) */
+                try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('redCard', 'nrCard', { tx: unit.x, ty: unit.y, fromX: src ? src.x : undefined, fromY: src ? src.y : undefined, owner: src ? src.player : undefined }); } catch (e) {}
+            }
         }
         /* 📰 TODAY'S HEADLINE (the Florida Man): each round one of his three is the headline and the other two are greyed
            ("Not today"), picked by his id and the round (TargetQuery.spellBlockReason) */
@@ -41842,7 +41862,7 @@
                 }
                 /* a splash across the realm's line says nothing: the line would tell the board where a hidden body stands */
                 if (!shadowRealmKey(target) && !(opts.sourceUnit && shadowRealmKey(opts.sourceUnit))) {
-                    addLog('🌑 ' + _dmgLogLine(sourceText, target, 'is beyond reach in the Shadow Realm.', null, opts.sourceUnit || null));
+                    addLog(_realmShieldIcon(target) + ' ' + _dmgLogLine(sourceText, target, _realmShieldWords(target), null, opts.sourceUnit || null));
                 }
                 return false;
             }
@@ -49274,6 +49294,9 @@
                 // the status itself is already on them (Iron Grip, Anchor…).
                 if (spell.groundsFlyers && typeof isUnitAirborne === 'function'
                     && typeof canFly === 'function' && canFly(u) && isUnitAirborne(u)) return true;
+                /* 🟥 the Referee's Card on a booked unit is the RED CARD (2026-11-17 polish: a booked AND Marked foe greyed the
+                   second card out, "already has Yellow Card — Card would do nothing"); bosses / cubes are never sent off */
+                if (spell.refereeCard && unitHasStatus(u, 'yellowCard') && !(u._isBoss || u.isBoss || u._isCube)) return true;
                 if (!spell.statusEffects.some(fx => fx && fx.id && !unitHasStatus(u, fx.id))) return false;
             }
             return true;
@@ -75388,6 +75411,7 @@
                 if (unit._sentOff) {
                     delete unit._sentOff; delete unit._exited;
                     addLog(`🟥 ${_ctName(unit)} is back on the field at ${coordLabel(unit.x, unit.y)}.`);
+                    if (!_skipVisuals()) try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('backOn', 'nrCard', { tx: unit.x, ty: unit.y, owner: unit.player }); } catch (e) {}
                     return;
                 }
                 const door = unit._exitDoorId ? doorById(unit._exitDoorId) : null;
@@ -77278,7 +77302,7 @@
             }
             // 🌑 Shadow Realm (plan §5.5): untargetable to everyone but the partner.
             if (isUnitRealmShieldedFrom(target, unit)) {
-                addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`, unit.player);
+                addLog(_realmShieldLine(target), unit.player);
                 playErrorSfx();
                 return 0;
             }
@@ -81861,7 +81885,7 @@
                 // aimed at only by its partner.
                 if (_cryTgt && isUnitRealmShieldedFrom(_cryTgt, unit)) {
                     if (!_silentReject) {
-                        addLog(`🌑 ${_ctName(_cryTgt)} is beyond reach in the Shadow Realm.`, _clickSeat());
+                        addLog(_realmShieldLine(_cryTgt), _clickSeat());
                         playErrorSfx();
                     }
                     state._teleportingUnitId = null;
