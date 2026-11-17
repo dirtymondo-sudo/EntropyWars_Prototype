@@ -20074,7 +20074,7 @@ const ThreeRenderer = (function () {
                 return;
             }
             var _inSaddle = _updateUnitMount(entry, uid, now);   // THE HORSES
-            if (!_inSaddle && entry._ew_rideSit) _inSaddle = true;   // THE RIDE-ALONG: astride the Delivery Boy's back (the horse's sit + straddle, no lean)
+            if (!_inSaddle && entry._ew_rideSit) _inSaddle = true;   // THE RIDE-ALONG: piggyback on the Delivery Boy's back (the sit clip, no straddle, no lean)
             // ── Motion lean + landing bounce (rigged AND static models) ──
             // Runners bank forward like a sprinter: a touch while walking,
             // harder during a dash/charge, and a lunge-lean during strike
@@ -20164,7 +20164,7 @@ const ThreeRenderer = (function () {
             if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
             if (entry._ew_digSave) _digUndo(entry);       // THE SHOVEL DIG: the same for the left arm's reach
             entry.mixer.update(dt);
-            if (_inSaddle && entry._ew_curAnim === 'hqSit' && !entry._ew_mountVehicle) _mountStraddle(entry);   // THE HORSES: astride, not on a chair (a vehicle's deck: the chair sit)
+            if (_inSaddle && entry._ew_curAnim === 'hqSit' && !entry._ew_mountVehicle && !entry._ew_rideSit) _mountStraddle(entry);   // a ride-along rider keeps the chair sit: thighs forward round his waist   // THE HORSES: astride, not on a chair (a vehicle's deck: the chair sit)
             if (_digRecs.size && _digRecs.has(uid)) _digPose(entry, uid, now);   // THE SHOVEL DIG: the left hand on the grip, the shovel in the hands
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
@@ -29468,7 +29468,7 @@ const ThreeRenderer = (function () {
                 var dYaw = yaw - curYaw;
                 if (dYaw > Math.PI) dYaw -= Math.PI * 2;
                 else if (dYaw < -Math.PI) dYaw += Math.PI * 2;
-                var maxStep = UNIT_TURN_RATE * dtSec * ((_knY != null) ? 4 : 1);   // the blow spins the body round fast
+                var maxStep = UNIT_TURN_RATE * dtSec * ((_knY != null) ? 4 : (_rdY != null ? 12 : 1));   // the blow spins the body round fast; a rider swings round onto his back at once
                 if (Math.abs(dYaw) <= maxStep) {
                     curYaw = yaw;
                 } else {
@@ -31408,6 +31408,9 @@ const ThreeRenderer = (function () {
             /* he has stopped but the engine's walk end (finishMoveAt → the drop) lands a beat later: hold the seat till then */
             var settling = rec.on && riding && rec.lastTrav && now - rec.lastTrav < 700;
             var want = !!(ru && !ru.dead && cu && !cu.dead && re && re.group && ce && ce.group && ((riding && (ctrav || settling)) || (waiting && (rec.on || ctrav))));
+            /* where it stood before he set off: the engine moves its square the instant the walk starts, so the hop up starts
+               from the last frame it was still at rest beside him */
+            if (!rec.on && riding && re && re.group && !ctrav) rec.home = re.group.position.clone();
             if (!want) {
                 if (rec.on) _rideRelease(uid, rec, !!dtw);
                 else if (!riding) _rideRecs.delete(uid);
@@ -31415,7 +31418,7 @@ const ThreeRenderer = (function () {
             }
             if (!rec.on) {
                 rec.on = true; rec.t0 = now;
-                rec.from = re.group.position.clone();
+                rec.from = rec.home || re.group.position.clone();
                 for (var j = 0; j < re.group.children.length; j++) if (re.group.children[j]._ew_facingIndicator) re.group.children[j].visible = false;   // no floor ring at his waist
             }
             re._ew_rideSit = true;
@@ -31438,6 +31441,17 @@ const ThreeRenderer = (function () {
         });
     }
 
+    /* probe: where each rider and its carrier stand in 3D right now */
+    if (typeof window !== 'undefined') window._rideAlongProbe = function () {
+        var out = [];
+        _rideRecs.forEach(function (rec, uid) {
+            var re = _getUnitEntry(uid), ce = _getUnitEntry(rec.cid);
+            var bx = null; try { if (ce && ce.model) { var B = new THREE.Box3().setFromObject(ce.model); bx = [Math.round(B.min.y), Math.round(B.max.y)]; } } catch (e) {}
+            out.push({ id: uid, cid: rec.cid, on: rec.on, r: re && re.group && re.group.position.toArray().map(Math.round), c: ce && ce.group && ce.group.position.toArray().map(Math.round), trav: _rideTravels(rec.cid),
+                ts: CONFIG.tileSize || BASE_TILE, R: UNIT_SPRITE_SIZE_RATIO, chr: ce && ce.modelDef && ce.modelDef.heightRatio, rhr: re && re.modelDef && re.modelDef.heightRatio, box: bx });
+        });
+        return out;
+    };
     function _updateCarryHolds() {
         if (_carryHolds.size === 0) return;
         var now = _animNow();

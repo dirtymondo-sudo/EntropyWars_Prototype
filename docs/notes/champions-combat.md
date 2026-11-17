@@ -5723,8 +5723,10 @@ What was wrong: the ride did not show (the ally stood on its own square through 
 his RACE_TREE row was borrowed rungs, so a default or CPU Delivery Boy carried none of his own spells (no Hop On); the CPU
 had no idea what a ride was for; a rider knocked away still teleported back to him; Doorstep Dash dropped nobody.
 - THE RIDE ON SCREEN: three-renderer.js THE RIDE-ALONG (looks only): while he travels (walk, dash) the Riding ally hops up
-  onto his back, sits astride (the horse's chair sit + straddle), faces his way, rides the path; battle.js `_deliveryDrop`
-  hops it off from HIS square (`nrHopOn:drop` look). Fog: an enemy carrier's rider shows only where the viewer sees him.
+  onto his back (from the square it stood on, `rec.home`), sits piggyback (the chair sit, no straddle), turns to face his
+  way at once, rides the path; battle.js `_deliveryDrop` hops it off from HIS square (`nrHopOn:drop` look). finishMoveAt
+  runs as the walk STARTS, so the hop off waits for the walk tween (`_walkAnimEndAt`, like the ledge-drop damage).
+  Probe: `window._rideAlongProbe()` (rider + carrier 3D positions). Fog: an enemy carrier's rider shows only where the viewer sees him.
   Kill switch `window.EW_NO_RIDE_ALONG`.
 - RULES (battle.js "THE RIDE-ALONG"): Doorstep Dash drops the rider too, beside him at the victim, after the slide (both
   charge paths: `_runPostEffects` and the chase-cam `_runCharge`). A rider more than 1 square (any way) from where he set
@@ -5737,5 +5739,6 @@ had no idea what a ride was for; a rider knocked away still teleported back to h
 - THE CPU (ai.js "THE RIDE-ALONG"): Hop On / the capstone score the best drop his walk can give (`_rideBestAI` over his move
   tiles, `window._deliveryDropPreview` = the engine's drop square): a hurt rider (< 45%) = the hits it leaves behind, a
   healthy one = squares gained on the nearest enemy; 0 when he cannot walk after the cast. With a rider aboard, scoreMoves
-  adds the best ride walk (90 + its value).
+  adds the best ride walk (90 + its value). In a 3-round CPU-vs-CPU probe both CPU Delivery Boys cast Hot and Fresh and
+  never Hop On (no ride beat their other picks); the ride itself is proven by hand.
 - Stats unchanged (support median). Proof: /mnt/project-files/delivery-boy-polish/.

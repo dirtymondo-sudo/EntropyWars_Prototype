@@ -14252,7 +14252,10 @@
             }
             if (!_nrAlive(unit) || (unit.x === fx && unit.y === fy)) return;
             const riders = state.units.filter(a => _nrAlive(a) && a.id !== unit.id && a._rideWithId === unit.id && a.status && a.status.riding > 0);
-            const _dropMs = (opts && opts.delayMs) || 0;
+            /* finishMoveAt runs as the walk STARTS: the hop off waits for the walk tween to land (like the ledge-drop damage) */
+            const _walkLeft = (!_skipVisuals() && !_bufferingRoundEvents && _walkAnimActive && _walkAnimUnitId === unit.id)
+                ? Math.max(0, _walkAnimEndAt - Date.now()) : 0;
+            const _dropMs = (opts && opts.delayMs) || _walkLeft;
             for (const a of riders) {
                 const ox = a.x, oy = a.y;
                 clearStatus(a, 'riding');
