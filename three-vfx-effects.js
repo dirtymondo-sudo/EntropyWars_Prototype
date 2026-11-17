@@ -73081,6 +73081,125 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     });
 
+    /* ════ PART 4: THE MACHINES ════ */
+    _O2C.loop = 0xe8a82a; _O2C.recur = 0xb08af0; _O2C.panic = 0x3ae06a; _O2C.chrome = 0xa8b4c0; _O2C.jet = 0xf0782a; _O2C.shell = 0xd88a2a;
+    function _o2LoopTex() {   /* a reload arrow: most of a ring, an arrow head on its end */
+        return _o2Tex('loop', 128, function (g, S, c) {
+            g.lineWidth = 13; g.beginPath(); g.arc(c, c, S * 0.36, 0.5, 5.5); g.stroke();
+            var a = 5.5, x = c + Math.cos(a) * S * 0.36, y = c + Math.sin(a) * S * 0.36; g.save(); g.translate(x, y); g.rotate(a + Math.PI / 2); g.beginPath(); g.moveTo(-S * 0.15, 0); g.lineTo(S * 0.04, -S * 0.15); g.lineTo(S * 0.04, S * 0.15); g.closePath(); g.fill(); g.restore();
+        });
+    }
+    function _o2SquareTex() {   /* a square frame */
+        return _o2Tex('sq', 128, function (g, S) { g.lineWidth = 12; g.strokeRect(S * 0.08, S * 0.08, S * 0.84, S * 0.84); });
+    }
+
+    /* CRASH LOOP — it starts, it dies, it starts again: an amber reload arrow turns round the body, gets three quarters
+       of the way, jerks back to the start with a red cross, and does it again, three times. */
+    _o2Reg('raceCrashLoop', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, y = ts * 0.62, LAP = 330;
+        var loop = _o2Spr(F.g, _o2LoopTex(), _O2C.loop, ts * 1.3, 0, y, 0), x = _o2Spr(F.g, _o2XTex(), _O2C.kill, ts * 0.5, 0, y, 0);
+        _sigRunOwned(F.g, LAP * 3 + 260, function (el) {
+            var k = _goEnv(el, 40, LAP * 3 + 260, 220), u = (el % LAP) / LAP, run = u < 0.72;
+            loop.material.rotation = -(run ? u / 0.72 * 4.7 : 4.7 * (1 - (u - 0.72) / 0.28)); loop.material.opacity = 0.95 * k * (run ? 1 : 0.5);
+            x.material.opacity = (!run && el < LAP * 3) ? 0.95 * k : 0;
+        });
+    });
+
+    /* RECURSIVE LOOP — a call inside a call inside a call: lilac square frames open round the body one inside the
+       other, each turned a little further than the last, and the whole stack keeps falling inward. */
+    _o2Reg('raceRecursiveLoop', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, y = ts * 0.62, N = 6, fr = [], PER = 620;
+        for (var i = 0; i < N; i++) fr.push(_o2Spr(F.g, _o2SquareTex(), i % 2 ? _O2C.recur : 0x8a6ad8, ts, 0, y, 0));
+        _sigRunOwned(F.g, 1250, function (el) {
+            var k = _goEnv(el, 60, 1250, 320);
+            for (var i = 0; i < N; i++) { var u = ((i / N) + el / PER) % 1, s = 1.7 * Math.pow(0.12 / 1.7, u); fr[i].scale.setScalar(ts * s); fr[i].material.rotation = u * 2.4; fr[i].material.opacity = 0.9 * k * Math.min(1, u * 5) * Math.min(1, (1 - u) * 4); }
+        });
+    });
+
+    /* SYSTEM CRASH — fatal exception: every square of the 3×3 flashes terminal green, columns of green blocks come
+       down over them and STOP dead half way, frozen, and a green cross stamps the middle. Everything running stops. */
+    _o2Reg('raceSystemCrash', function (p) {
+        var def = _spellDefFor('raceSystemCrash') || {}, R = def.aoeRadius || 1, sq = _o2Area(p.tx, p.ty, R, function (x, y) { return (x + R) * 50; });
+        _o2Squares(sq, _O2C.panic, { op: 0.5, ms: 380 });
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, cols = [], seed = p.tx * 7 + p.ty * 13;
+        for (var i = 0; i < sq.length; i++) {
+            if (!_pzSeen(sq[i].x, sq[i].y)) continue;
+            var w = _worldPos(sq[i].x, sq[i].y);
+            for (var b = 0; b < 4; b++) { var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.13, ts * 0.13), _goA(b ? _O2C.panic : 0x9af0a8, 0)); m.renderOrder = 160;
+                m.userData = { x: w.x - F.wp.x + ts * 0.26 * (((i * 3 + seed) % 3) - 1), y0: w.y - F.wp.y, z: w.z - F.wp.z, b: b, stop: 0.35 + 0.4 * ((i * 5 + seed) % 4) / 3, t0: sq[i].d }; F.g.add(m); cols.push(m); }
+        }
+        var x = _o2Spr(F.g, _o2XTex(), _O2C.panic, ts * 1.1, 0, ts * 0.62, 0);
+        _sigRunOwned(F.g, 1300, function (el) {
+            var k = 1 - _sigClamp01((el - 900) / 400), cam = _goCamQuat(null);
+            for (var i = 0; i < cols.length; i++) { var U = cols[i].userData, f = Math.min(U.stop, Math.max(0, (el - U.t0) / 520)); if (cam) cols[i].quaternion.copy(cam);
+                cols[i].position.set(U.x, U.y0 + ts * (1.7 - 1.7 * f + U.b * 0.16), U.z); cols[i].material.opacity = (el < U.t0) ? 0 : 0.85 * k * (f >= U.stop ? 1 : (Math.floor(el / 50 + U.b) % 2 ? 1 : 0.5)); }
+            x.material.opacity = el < 420 ? 0 : 0.95 * k; x.scale.setScalar(ts * (1.1 + 0.5 * (1 - _sigEaseOutCubic(_sigClamp01((el - 420) / 160)))));
+        });
+    });
+
+    /* HYDRAULIC PUNCH — the ram: a thick chrome barrel shoots out along the punch and a second, thinner rod drives out
+       of its end a beat later (the double hit), steam venting off both sides of the joint. */
+    _o2Reg('raceHydraulicPunch', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, y = ts * 0.62, cyl = _o2Rod(B.g, _O2C.chrome, ts * 0.15), rod = _o2Rod(B.g, 0xc8d0d8, ts * 0.075);
+        var a = new THREE.Vector3(B.ux * ts * 1.05, y, B.uz * ts * 1.05), m = new THREE.Vector3(B.ux * ts * 0.45, y, B.uz * ts * 0.45), b = new THREE.Vector3(-B.ux * ts * 0.25, y, -B.uz * ts * 0.25), vent = false;
+        _sigRunOwned(B.g, 1000, function (el) {
+            var k = 1 - _sigClamp01((el - 640) / 360), o1 = _sigEaseOutCubic(_sigClamp01(el / 110)), o2 = _sigEaseOutBack(_sigClamp01((el - 150) / 110));
+            _o2Slide(cyl, a, m, 0, o1); cyl.material.opacity = 0.9 * k; _o2Slide(rod, m, b, 0, Math.min(1, o2)); rod.material.opacity = el < 150 ? 0 : 0.95 * k;
+            if (el >= 150 && !vent) { vent = true; for (var s = -1; s <= 1; s += 2) for (var q = 0; q < 3; q++) _pzP(B.F, m.x, y, m.z, { sprite: 'smoke-soft', tint: 0xc4ccd4, ml: rn(420, 640), size0: ts * 0.1, size1: ts * 0.36, vx: B.sx * s * rn(90, 170), vy: B.sz * s * rn(90, 170), vz: rn(20, 70), drag: 2, opacity0: 0.75 }); }
+        });
+    });
+
+    /* ROCKET FIST — it flew here: the jet line it rode in on still burns from the robot to the body (orange, guttering
+       out from the far end), smoke rings hang along it, and a hot ring kicks off where the fist landed. */
+    _o2Reg('raceRocketFist', function (p) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var B = _o2Base(p), ts = B.ts, y = ts * 0.62, ln = B.ln, jet = _o2Rod(B.g, _O2C.jet, ts * 0.085), core = _o2Rod(B.g, 0xf0c86a, ts * 0.035);
+        var b = new THREE.Vector3(B.ux * ts * 0.2, y, B.uz * ts * 0.2), a = B.fr.seen ? new THREE.Vector3(ln.dx - B.ux * ts * 0.4, ln.dy + ts * 0.66, ln.dz - B.uz * ts * 0.4) : new THREE.Vector3(B.ux * ts * 1.5, y, B.uz * ts * 1.5);
+        var n = Math.max(2, Math.min(6, Math.round(a.distanceTo(b) / (ts * 0.6)))), list = [];
+        for (var i = 1; i <= n; i++) { var k = i / (n + 1); list.push({ px: a.x + (b.x - a.x) * k, py: a.y + (b.y - a.y) * k, pz: a.z + (b.z - a.z) * k }); }
+        list.forEach(function (q) { _pzP(B.F, q.px, q.py, q.pz, { sprite: 'smoke-soft', tint: 0x9a9488, ml: rn(700, 1000), size0: ts * 0.14, size1: ts * 0.4, vz: rn(8, 24), drag: 0.8, opacity0: 0.6 }); });
+        var ring = _o2Spr(B.g, _sigRingTex(), _O2C.jet, ts * 0.3, 0, y, 0);
+        _o2Sparks(B.F, 8, _O2C.jet, y, { v: 190 });
+        _sigRunOwned(B.g, 1000, function (el) {
+            var gut = _sigClamp01((el - 200) / 700), fl = Math.floor(el / 45) % 2 ? 1 : 0.7;
+            _o2Slide(jet, a, b, gut, 1); jet.material.opacity = 0.75 * fl * (1 - gut * 0.5); _o2Slide(core, a, b, gut, 1); core.material.opacity = 0.95 * fl;
+            ring.scale.setScalar(ts * (0.3 + 0.9 * _sigEaseOutCubic(_sigClamp01(el / 320)))); ring.material.opacity = 0.9 * (1 - _sigClamp01((el - 200) / 600));
+        });
+    });
+
+    /* MORTAR SALVO — where the shells come down: every square of the 3×3 flashes shell orange in the order the salvo
+       walks across it, and each keeps a dark scorched ring for a moment. (The lobbed shells are the spell's own.) */
+    _o2Reg('raceMortarSalvo', function (p) {
+        var def = _spellDefFor('raceMortarSalvo') || {}, R = def.aoeRadius || 1, sq = _o2Area(p.tx, p.ty, R, function (x, y) { return ((x + R) * 3 + (y + R) * 5) % 7 * 55; });
+        _o2Squares(sq, _O2C.shell, { op: 0.55, ms: 360 });
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, rings = [];
+        for (var i = 0; i < sq.length; i++) { if (!_pzSeen(sq[i].x, sq[i].y)) continue; var w = _worldPos(sq[i].x, sq[i].y), r = _goRing(F.g, 0x1a1410, ts * 0.2, ts * 0.34, 4, 0.8, 20);
+            r.material.blending = THREE.NormalBlending; r.material.depthTest = false; r.material.needsUpdate = true; r.renderOrder = 164; r.position.set(w.x - F.wp.x, w.y - F.wp.y + 4, w.z - F.wp.z); r.userData.t0 = sq[i].d + 80; rings.push(r); }
+        if (!rings.length) return;
+        _sigRunOwned(F.g, 1300, function (el) {
+            for (var i = 0; i < rings.length; i++) { var t = el - rings[i].userData.t0; rings[i].scale.setScalar(1 + 0.4 * _sigEaseOutCubic(_sigClamp01(t / 200))); rings[i].material.opacity = t < 0 ? 0 : 0.8 * (1 - _sigClamp01((t - 420) / 420)); }
+        });
+    });
+
+    /* TRANSFORM — the car comes apart and goes back together: six body panels swing out from the chassis, turn over
+       and lock back in at new places, and the hazard lights blink amber twice, left and right. */
+    _o2Reg('raceTransform', function (p) {
+        var cx = p.sx != null ? p.sx : p.tx, cy = p.sy != null ? p.sy : p.ty;
+        if (!_pzSeen(cx, cy)) return;
+        var F = _nrvFrame(cx, cy), ts = F.ts, pan = [], cam = _pzCam(), rx = 1, rz = 0;
+        if (cam) { var r = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion); rx = r.x; rz = r.z; }
+        for (var i = 0; i < 6; i++) { var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.34, ts * 0.22), _goA(i % 2 ? _O2C.chrome : 0x7f8c9a, 0)); m.material.side = THREE.DoubleSide; m.renderOrder = 160; m.userData = { a: i / 6 * 6.2832, y: ts * (0.3 + 0.28 * (i % 3)) }; F.g.add(m); pan.push(m); }
+        var haz = []; for (var e = -1; e <= 1; e += 2) { var h = _pzSpr(_O2C.loop, ts * 0.34, F.g); h.position.set(rx * e * ts * 0.42, ts * 0.4, rz * e * ts * 0.42); haz.push(h); }
+        _sigRunOwned(F.g, 1200, function (el) {
+            var k = _goEnv(el, 60, 1200, 300), out = Math.sin(_sigClamp01(el / 900) * Math.PI), turn = _sigClamp01(el / 900);
+            for (var i = 0; i < 6; i++) { var U = pan[i].userData, a = U.a + turn * 2.0944, d = ts * (0.3 + 0.5 * out); pan[i].position.set(Math.cos(a) * d, U.y + ts * 0.2 * out * (i % 2 ? 1 : -1), Math.sin(a) * d); pan[i].rotation.set(turn * Math.PI * 2, -a, 0); pan[i].material.opacity = 0.85 * k; }
+            for (var e = 0; e < 2; e++) haz[e].material.opacity = (Math.floor(el / 170) % 2 === 0 && el < 700) ? 0.95 : 0;
+        });
+    });
     /* ═════════ END THE OWN LOOKS, L2 ═════════ */
 
     /* ════ THE OWN LOOKS, L5 (2026-11-17, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells that dont have a look of
