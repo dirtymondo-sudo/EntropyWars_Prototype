@@ -4474,8 +4474,9 @@ its generic stage burst stops. Looks only.
 - **The kit (`_l6*`, this block only):** `_l6Area` (the squares an area spell hits), `_l6Flash` (EVERY hit square flashes
   in the spell's colour, staggered by a `delay(tile)`), `_l6Stroke` (a gust stroke flat on the ground), `_l6Go` (one
   `_sigRun` a spell), `_l6From` (the caster's tile, null when fogged). Colours: `_L6`.
-- **The wind spells bring their own air:** the eight wind ids get `_WD_BURST[id] = false`, so the generic gust + swirl
-  round the target do not draw over them (the wind cast gather and the noise wash stay).
+- **The element pass is the base (the brief's correction, 11-17):** part 1 first switched the wind mark off on the eight
+  wind ids (`_WD_BURST[id] = false`) and laid an earth sheet over Simoom's wind wash. Both taken back the same day: the
+  wind gust + swirl + wash draw on all eight, and each look is only the piece on top. Frames: `L6_part1_wind_*.jpg`.
 - Cataclysm Stomp: a star of cracks races out from the foot over the 5x5, lit violet from below; each ring of squares
   flashes, throws rock and dust as the shock passes it.
 - Meow: pink paw prints pad out over every square in reach, toes pointing away, each pressing in with a bounce. No flash (no damage).
@@ -4484,7 +4485,7 @@ its generic stage burst stops. Looks only.
 - Heroic Leap: the jump hangs behind him as one high arc of air with the cape's red in it; a flat star of air where he lands, inside the square.
 - Sky Tackle: twin vapour trails along his run in; three thin vapour rings break open at the contact, facing down the carry line.
 - Roundhouse Kick: one flat blade of air whips once round him at kick height, the heel a hot point at its head; each of the 8 squares flashes as the heel passes.
-- Simoom: sheets of ochre sand drive across the 3x3 from the caster's side; the squares flash sand-orange as the front crosses; grit hangs after.
+- Simoom: flat sheets of ochre sand drive across the 3x3 from the caster's side, over the wind wash; the squares flash sand as the front crosses; grit hangs after.
 - Splitting Arrow: two arrows (the game's arrow model) fork away past the body on threads of fletching-green air; splinters fly.
 - Wing Attack (`raceWingGust`): a pale wing sweeps round each side of her from behind to before (`_pzWingTex`), feathers shaken loose; each square is struck outward by its gust as the wing passes.
 - Online: every layer rides the relayed `burst` beat; nothing on `state`; drawn only where the viewer sees the square.

@@ -73531,8 +73531,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        THE OWN LOOKS, L6: fire, wind and sound (2026-11-17, mondo: "any spells that dont have a look of their own need
        one"; docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md, list own-look/L6.txt). Each spell here had only the shared stage
        burst; now each draws what it is, on the staging hit (_FX2_BURST, so _vcOwn is true and the generic burst stops).
-       The element passes' cast + mark stay (the wind spells here that bring their own air skip the generic gust,
-       _WD_BURST false). Every area spell flashes each square it hits in its own colour (_l6Flash). Looks only; all of it
+       The element passes' cast, mark and wash are each spell's base: all kept, none covered. Every area spell flashes each square it hits in its own colour (_l6Flash). Looks only; all of it
        rides the relayed burst beat, drawn only where the viewer sees the square (_pzSeen). One _sigRun a spell.
        ═════════════════════════════════════════════════════════════════════ */
     var _L6 = { stomp: 0xb07cff, stompHot: 0xff9ad8, paw: 0xff8fc2, leather: 0xc98a4a, turf: 0x6f9a4a, chalk: 0xf2e6b8, cape: 0xd8343a,
@@ -73649,8 +73648,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }]);
     };
 
-    /* the wind spells below bring their own air: the generic gust + swirl stay off them */
-    ['raceHailMary', 'raceLongBomb', 'raceHeroicLeap', 'raceSkyTackle', 'raceRoundhouseKick', 'raceSimoom', 'raceSplittingArrow', 'raceWingGust'].forEach(function (id) { _WD_BURST[id] = false; });
+    /* THE WIND PASS IS THE BASE (the brief's correction, 11-17): the wind spells below keep the pass's gust + swirl + wash;
+       each adds only its own piece on top */
 
     /* HAIL MARY (quarterback): the pass comes down out of the sky. A leather-gold streak drops on the target, the
        ball's spin unwinds up off the hit in a tight double spiral, and the turf jumps. */
@@ -73796,10 +73795,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         /* a square's place along the wind: 0 at the windward edge, 1 at the far one */
         function along(t) { var o = _nvOff(F, t.x, t.y); return _sigClamp01((o.x * ux + o.z * uz) / (ts * 3) + 0.5); }
-        var flash = _l6Flash(F, tiles, _L6.sand, { delay: function (t) { return along(t) * CROSS * 0.7; }, ms: 520, solid: true, op: 0.9 }), blown = 0, stained = false;
+        var flash = _l6Flash(F, tiles, _L6.sand, { delay: function (t) { return along(t) * CROSS * 0.7; }, ms: 520, op: 1 }), blown = 0;
         return _l6Go(F, 1300, [flash, function (el) {
             for (var i = 0; i < N; i++) { _wdRun(rib[i].R, el, rib[i].d, CROSS, 0.7); rib[i].R.op(1); }
-            if (!stained && el > 240) { stained = true; try { _nzWash(tiles, 'earth', 3); } catch (e) {} }   /* the sand it leaves: the earth sheet over the wind's */
             while (blown < 4 && el >= blown * 150) {
                 blown++;
                 for (var k = 0; k < tiles.length; k++) {
