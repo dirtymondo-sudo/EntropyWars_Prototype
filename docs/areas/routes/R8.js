@@ -7,10 +7,16 @@
 const K = require('./south-kit.js');
 module.exports = { dress(ctx) {
     const { at } = K;
-    /* THE CROP CIRCLE: plot -10,21 = squares 0..11, rows 12..23 (the road on rows 10..13) */
+    /* THE CROP CIRCLE: plot -10,21 = squares 0..11, rows 12..23 (the road on rows 10..13). Seen from the ground 11-17 the Halloween pack's farmland
+       pieces read as grey lumps, so it is the Estate's corn now (`corn_row`, seven stalks, 3.5 m: the Corn Fields' own model): a field of standing
+       corn, one row a square, with a circle 31 m across pressed flat in it, a ring of corn left standing inside the circle, and its heart marked
+       (the Corn Fields' `ritual_circle` + a dip, as THE CIRCLES there). The walker can wade through the corn (`noBlock`). */
     ctx.clear(0, 14, 11, 23);
-    const cx = 5.5, cy = 19;
-    for (let y = 14.5; y <= 23; y += 1) for (let x = 0.5; x <= 11.5; x += 1) { const d = Math.hypot(x - cx, y - cy); if ((d > 2.1 && d < 3.3) || d < 0.9) continue; at(ctx, d > 4.6 ? 'hw_crop_2' : 'hw_crop', x, y, { face: 0 }); }
+    const cx = 5.75, cy = 19, R0 = 4.45, RING = 2.6;
+    for (let y = 14; y <= 23; y++) for (let x = 0; x <= 11; x++) { const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy); if (d <= R0) continue; at(ctx, 'corn_row', x + 0.5, y + 0.5, { face: ((x * 7 + y * 3) % 2) * 180, noBlock: true }); }
+    for (let i = 0; i < 9; i++) { const a = i * 40 + 20, t = a * Math.PI / 180; at(ctx, 'corn_row', cx + Math.cos(t) * RING, cy + Math.sin(t) * RING, { face: Math.round((a + 90) % 360), noBlock: true }); }
+    ctx.feat({ k: 'dip', x: K.mx(ctx, cx), z: K.mz(ctx, cy), r: ctx.r2(R0 * ctx.C), h: 0.1 });
+    at(ctx, 'ritual_circle', cx, cy, { y: 0.01 });
     at(ctx, 'hw_scarecrow', 10.6, 14.8, { face: 0 });
     /* THE CATTLE RANGE: plots -8,21 and -7,21 = squares 24..47, rows 12..23 */
     ctx.clear(25, 16, 46, 22);
