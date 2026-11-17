@@ -79503,7 +79503,7 @@ const ThreeRenderer = (function () {
        (_cubeTerrainBuild) and the Astral Realm's floating one (_ewCubeProp): the face's ground picture tinted to its colour on
        the cube's dark core. Cached a face. */
     var _cubeFaceMats = {}, _cubeCoreMat = null;
-    var _CUBE_LOOK0 = { U: ['marble_light', 0xffffff], D: ['gold', 0xffe070], E: ['wood_planks', 0xffa050], W: ['lava', 0xff6a50], S: ['water', 0x6aa0ff], N: ['grass', 0x80f090] };
+    var _CUBE_LOOK0 = { U: ['marble_light', 0xffffff], D: ['marble_light', 0xffd21f], E: ['marble_light', 0xff7a1a], W: ['marble_light', 0xe02a36], S: ['marble_light', 0x2f68ff], N: ['marble_light', 0x22b85a] };
     function _cubeFaceMat(f) {
         if (_cubeFaceMats[f]) return _cubeFaceMats[f];
         var R = (typeof CUBE_RULES !== 'undefined') ? CUBE_RULES.faces[f] : null, d = _CUBE_LOOK0[f] || ['marble_light', 0xffffff];
