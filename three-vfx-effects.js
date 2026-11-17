@@ -26685,7 +26685,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ts = wp.ts;
         var gold = 0xffe9a8, white = 0xfff8e8;
         if (_vcOn()) { gold = 0xffc84a; white = 0xffe08a; }   /* THE VFX SWEEP B6b: the cross of light and its column burned to flat white over the caster and the bodies on the arms: a deeper gold, a gold-hot */
-        try { _sigLightPillar3D(tx, ty, { color: gold, coreColor: _b6bCore(0xffd875), radius: ts * 0.5, height: ts * 7, ms: 1000 }); } catch (e) {}   /* THE VFX SWEEP B6b */
+        try { _sigLightPillar3D(tx, ty, { color: gold, coreColor: _b6bCore(0xffd875), radius: ts * (_vcOn() ? 0.3 : 0.5), height: ts * (_vcOn() ? 3.2 : 7), ms: 1000 }); } catch (e) {}   /* THE VFX SWEEP B6b: a shorter, thinner column: seven squares of it lay across the caster under the battle camera */
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y + 4, wp.z);
         var arms = [];
@@ -48000,7 +48000,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             charge: function (P) { _capCharge(P, 0x7fe8ff, { sprite: 'spark-elec' }); },
             hit: function (P) {
                 var r = Math.max(1, P.r || 2);
-                _capShell(P.tx, P.ty, { color: 0x5fd8ff, hot: 0xe8fbff, r0: 0.2, r1: r + 0.6, dome: true, grow: 380, hold: 260, fade: 460, flicker: true, flow: -0.9 });
+                /* THE VFX SWEEP B6b: the dome was a white-hot ball at .85 that hid every body and number under it: static blue, thin */
+                _capShell(P.tx, P.ty, { color: 0x5fd8ff, hot: _vcOn() ? 0x6fc8ff : 0xe8fbff, op: _vcOn() ? 0.32 : null, gain: _vcOn() ? 0.9 : null, r0: 0.2, r1: r + 0.6, dome: true, grow: 380, hold: 260, fade: 460, flicker: true, flow: -0.9 });
                 _capRing(P.tx, P.ty, 0x9fe8ff, r + 1.1, 520);
                 var L = _LT();
                 if (L) for (var i = 0; i < 4; i++) {
