@@ -11194,3 +11194,8 @@ before (the 12 x 12 room of the Highway, squares 0..144; no district file change
 - **The census** (`docs/areas/desert/move/before.json`, `node ow-census.js --diff docs/areas/desert/move/before.json <the five rooms>`): 1,749 props,
   41 natives, 13 lines of talk, every plot's features and doors as before; MISSING = only the three room-wide scatter rows, now one a room (stones 130 / skulls 26 /
   snags 22 before, 129 / 27 / 20 after, by rounding); extra = the eight seam doors and the eight mesa rows.
+- **Seen and walked (probe-fast, 11-17)**: every room loaded with no page error; every seam walked one way into the next room (the Circus, Western
+  Town, Area 51 and Giza out to the Highway; the Highway into the Circus). Measured at an overview from 18 to 30 m up (calls / triangles, models +
+  rigs MB): the Circus seen, Western Town 677 / 1.36 M, 1,431 MB · Area 51 1,066 / 1.11 M, 1,400 MB · Giza 338 / 1.14 M, 1,156 MB · the Highway
+  517 / 0.77 M, 679 MB; all far under rule 5 (2,500 / 12 M, 1.4 GB is the line the old 144-plot room already stood near). Pictures:
+  `docs/plans/one-world/proof/desert_*.jpg`.
