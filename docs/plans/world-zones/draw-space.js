@@ -72,7 +72,7 @@ function roundSeams(A) {
             ins.forEach(([ix, iy]) => { for (let t = 1; t <= 3; t++) entries(k, X + ix * t, Y + iy * t).forEach(([x, y, ci]) => { A.H4[y][x][ci] += dl * (1 - t / 4); }); }); }); });
     return cut;
 }
-const plots = (cols, rows, rowsOf) => { const out = []; for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const q = rowsOf[y][x]; out.push({ id: 'P0' + x + '-0' + y, name: q[1], d: q[0], level: q[2] || 0, what: q[3] || '', from: q[4] || 'new plot (label mine)' }); } return out; };
+const plots = (cols, rows, rowsOf) => { const out = []; for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const q = rowsOf[y][x]; out.push({ id: 'P' + String(x).padStart(2, '0') + '-' + String(y).padStart(2, '0'), name: q[1], d: q[0], level: q[2] || 0, what: q[3] || '', from: q[4] || 'new plot (label mine)' }); } return out; };
 
 /* ═══ THE MOON — "one small step": the sea of dust, the one big crater, and the side nobody is shown ═══ */
 function moon() {
@@ -118,7 +118,7 @@ function moon() {
 /* ═══ MARS — Cydonia: the Face, the Pyramid, the canyon between the mesas, the canals, the rover's tracks ═══ */
 function mars() {
     const A = world({ cols: 5, rows: 4 }), TOP = 5.25, CAN = -5.25;
-    border(A, 2, 1, 23);
+    /* (round since 2026-11-17: no border; the dunes run on all the way round the ball) */
     /* THE FACE: a mesa in the shape of a face, seen whole only from above. Brow, two eye sockets, the nose's ridge, the mouth: a trench with the bore in it */
     const FX = 12, FY = 12.5, inFace = (x, y) => { const u = (x + 0.5 - FX) / 8.6, v = (y + 0.5 - FY) / 10.2; return u * u + v * v < 1; };
     A.each((x, y) => { if (inFace(x, y)) A.flat(x, y, x, y, TOP, 'm'); });
@@ -235,9 +235,61 @@ WORLDS.forEach(w => Object.assign(w.ways, LANDINGS[w.id] || {}));
 /* no way out stands in the border rock: the door's square, the two beside it and three squares in front of it are open */
 WORLDS.forEach(w => Object.keys(w.ways).forEach(k => { const q = w.ways[k], f = q.face * Math.PI / 180, dx = Math.round(Math.sin(f)), dy = -Math.round(Math.cos(f));
     for (let i = 0; i <= 3; i++) for (let m = -1; m <= 1; m++) { const x = q.sx + dx * i + (dy ? m : 0), y = q.sy + dy * i + (dx ? m : 0); if (x > 0 && y > 0 && x < w.A.W - 1 && y < w.A.H - 1 && w.A.cell[y][x] === 'x') w.A.cell[y][x] = '.'; } }));
+/* ══ THE ROUND WORLDS, LAID ONTO THEIR BALLS (2026-11-17, mondo: "okay go ahead and do the other ones and make the room bigger").
+   Mars, Saturn and the Singularity keep the map they were drawn on (above), and that map is laid onto a ball: its middle on the middle of
+   one face (`center`: Mars on the face you meet first, Saturn's hexagon on the NORTH POLE, the Singularity's bowl on the SOUTH POLE),
+   spread round the ball at its true size (the azimuthal equidistant layout: every distance from the middle kept). Each square of the
+   ball's net (3 x 2 faces of `fq` squares) takes the ground of the map under it, the ground beyond the map is `fill` (Mars: dunes all the
+   way round; Saturn: the cloud deck outside the storm walls; the Singularity: the bright rim). Because each square is read from the ball,
+   the ground meets itself over every seam with no stitching. The district files keep their own squares (the map's): bake-space.js carries
+   every piece, unit, building and door onto the ball with `remap` (where it lands, turned with the ground). The Moon keeps its flat net. */
+const { ROUNDS, rmKit, sampleNet, wayOnNet } = require('./space-ball.js');   // THE ROUND WORLDS' MAP KIT (shared with bake-space.js)
+function roundRemap(w) {
+    const o = ROUNDS[w.id]; if (!o) return; const A0 = w.A, K = rmKit(o.fq, o.center, A0.W, A0.H), fq = o.fq;
+    const A = world({ cols: 3 * fq / N, rows: 2 * fq / N });
+    const inMap = (x, y) => x >= 0 && y >= 0 && x < A0.W && y < A0.H;
+    { const g = sampleNet(o, K, { W: A0.W, H: A0.H, cell: (x, y) => A0.cell[y][x], h4: (x, y) => A0.H4[y][x] }); A.each((X, Y) => { A.cell[Y][X] = g.cell[Y][X]; A.H4[Y][X] = g.H4[Y][X]; }); }
+    /* the flat map stays in the layout (`flat`): bake-space.js builds the districts on it, then carries the whole of it onto the ball */
+    w.flat = { cols: w.cols, rows: w.rows, spawn: w.spawn.slice(), marker: w.marker.slice(), ways: JSON.parse(JSON.stringify(w.ways)), stairs: JSON.parse(JSON.stringify(w.stairs || [])), bridges: JSON.parse(JSON.stringify(w.bridges || [])), plots: JSON.parse(JSON.stringify(w.plots)), A: A0 };
+    /* the ways, the spawn, the marker: onto the ball, turned with it */
+    const mv = (x, y) => { const q = K.sq(x, y); return [Math.max(0, Math.min(A.W - 1, q.x)), Math.max(0, Math.min(A.H - 1, q.y)), q.turn]; };
+    Object.keys(w.ways).forEach(k => { const q = w.ways[k], m = wayOnNet(K, q.sx, q.sy, q.face); q.sx = m.sx; q.sy = m.sy; q.face = m.face;
+        const f = q.face * Math.PI / 180, dx = Math.round(Math.sin(f)), dy = -Math.round(Math.cos(f));
+        for (let i = 0; i <= 2; i++) for (let s2 = -1; s2 <= 1; s2++) { const x = q.sx + dx * i + (dy ? s2 : 0), y = q.sy + dy * i + (dx ? s2 : 0); if (x >= 0 && y >= 0 && x < A.W && y < A.H && A.cell[y][x] === 'x') A.cell[y][x] = '.'; } });
+    { const m = mv(w.spawn[0], w.spawn[1]); w.spawn = [m[0], m[1]]; const k = mv(w.marker[0], w.marker[1]); w.marker = [k[0], k[1]]; }
+    /* the stairs (the Pyramid's) and the bridges (the Arch): their middle carried, turned by whole quarter turns, their size kept */
+    const sides = ['n', 'e', 's', 'w'];
+    w.stairs = (w.stairs || []).map(s0 => { const cx = (s0.sx0 + s0.sx1 + 1) / 2, cy = (s0.sy0 + s0.sy1 + 1) / 2, q = K.sq(cx - 0.5, cy - 0.5), qt = ((Math.round(q.turn / 90) % 4) + 4) % 4;
+        let w2 = s0.sx1 - s0.sx0 + 1, h2 = s0.sy1 - s0.sy0 + 1; if (qt % 2) { const t = w2; w2 = h2; h2 = t; }
+        const x0 = Math.round(q.X - w2 / 2), y0 = Math.round(q.Y - h2 / 2), up = sides[(sides.indexOf(s0.up) + qt) % 4];
+        /* the run between the stair's foot and head keeps its heights: the squares under it are its ramp */
+        return { sx0: x0, sy0: y0, sx1: x0 + w2 - 1, sy1: y0 + h2 - 1, up, h0: s0.h0, h1: s0.h1 }; });
+    w.bridges = (w.bridges || []).map(b => { const a = K.sq(b.sx0, b.sy0), c = K.sq(b.sx1, b.sy1), vert = Math.abs(c.Y - a.Y) >= Math.abs(c.X - a.X), mx = Math.round((a.x + c.x) / 2), my = Math.round((a.y + c.y) / 2);
+        return vert ? { sx0: mx, sy0: Math.min(a.y, c.y), sx1: mx, sy1: Math.max(a.y, c.y), y: b.y } : { sx0: Math.min(a.x, c.x), sy0: my, sx1: Math.max(a.x, c.x), sy1: my, y: b.y }; });
+    /* the plots: every plot of the net with ground you can reach takes the district + name of the map's plot most of its squares come
+       from; a plot wholly beyond the map is open ground (district of the nearest map plot; label mine) */
+    const oldPlot = {}; w.plots.forEach(p => { oldPlot[p.id] = p; });
+    const oldAt = (x, y) => oldPlot['P' + String(Math.floor(x / N)).padStart(2, '0') + '-' + String(Math.floor(y / N)).padStart(2, '0')];
+    const out = [], GX = A.W / N, GY = A.H / N; let open = 0;
+    for (let py = 0; py < GY; py++) for (let px = 0; px < GX; px++) {
+        const tally = {}; let any = false, best = null, bd = 1e9, mid = null;
+        for (let y = py * N; y < py * N + N; y++) for (let x = px * N; x < px * N + N; x++) { if (A.cell[y][x] !== 'x') any = true;
+            const k = Math.floor(y / fq) * 3 + Math.floor(x / fq), [ox, oy] = K.back(K.dirAt(k, x + 0.5, y + 0.5));
+            if (inMap(Math.floor(ox), Math.floor(oy)) && A0.cell[Math.floor(oy)][Math.floor(ox)] !== 'x') { const op = oldAt(ox, oy); if (op) tally[op.id] = (tally[op.id] || 0) + 1; }
+            if (x === px * N + 6 && y === py * N + 6) mid = [ox, oy]; }
+        if (!any) continue;
+        const ids = Object.keys(tally).sort((a, b) => tally[b] - tally[a]);
+        if (ids.length) { const op = oldPlot[ids[0]]; out.push({ id: 'P' + String(px).padStart(2, '0') + '-' + String(py).padStart(2, '0'), name: op.name, d: op.d, level: op.level, what: op.what, from: op.from + ' (on the ball)' }); continue; }
+        w.plots.forEach(p => { const x = +p.id.slice(1, 3) * N + 6, y = +p.id.slice(4, 6) * N + 6, dd = Math.hypot(x - mid[0], y - mid[1]); if (dd < bd) { bd = dd; best = p; } });
+        open++; out.push({ id: 'P' + String(px).padStart(2, '0') + '-' + String(py).padStart(2, '0'), name: w.name + ', open ground ' + open, d: best.d, level: 0, what: 'open ground round the ball', from: 'new plot (label mine): the round ' + w.name });
+    }
+    w.plots = out; w.A = A; w.cols = GX; w.cols0 = A0.W; w.rows0 = A0.H; w.rows = GY; w.round = true; w.remap = { fq, center: o.center, W0: A0.W, H0: A0.H };
+}
+WORLDS.forEach(roundRemap);
 const i16 = A => { const b = Buffer.alloc(A.W * A.H * 8); for (let y = 0; y < A.H; y++) for (let x = 0; x < A.W; x++) A.H4[y][x].forEach((h, k) => b.writeInt16LE(Math.round(h * 100), (y * A.W + x) * 8 + k * 2)); return b.toString('base64'); };
-const strip = (w, full) => Object.assign({ id: w.id, name: w.name, round: !!w.round, room: w.room, site: w.site, old: w.old, cols: w.cols, rows: w.rows, districts: w.districts, who: w.who, spawn: w.spawn, marker: w.marker, ways: w.ways, stairs: w.stairs || [], bridges: w.bridges || [], plots: w.plots,
-    cells: w.A.cell.map(r => r.join('')) }, full ? { slope: i16(w.A) } : {});
+const strip = (w, full) => Object.assign({ id: w.id, name: w.name, round: !!w.round, remap: w.remap || null, room: w.room, site: w.site, old: w.old, cols: w.cols, rows: w.rows, districts: w.districts, who: w.who, spawn: w.spawn, marker: w.marker, ways: w.ways, stairs: w.stairs || [], bridges: w.bridges || [], plots: w.plots,
+    cells: w.A.cell.map(r => r.join('')) }, full ? { slope: i16(w.A) } : {},
+    full && w.flat ? { flat: Object.assign({}, w.flat, { A: undefined, cells: w.flat.A.cell.map(r => r.join('')), slope: i16(w.flat.A) }) } : {});
 const head = { area: 'Outer Space', version: 'plan-3', squareMeters: C, plotCells: N,
     note: 'Four rooms, one a world. Written by docs/plans/world-zones/draw-space.js; bake-space.js reads docs/areas/space/layout.json. Never hand-edit: edit the script and rerun.',
     legend: { x: 'rock / storm wall / nothing (never walked)', '.': 'ground', p: 'track', c: 'crater, canyon or bowl floor', m: 'mesa, terrace or platform top', r: 'ramp', t: 'pyramid tier', l: 'pad', i: 'ring ice', h: 'the hole\'s floor', e: 'rim, lip or dunes' },
@@ -247,11 +299,11 @@ fs.writeFileSync(path.join(REPO, 'docs/areas/space/layout.json'), JSON.stringify
 fs.writeFileSync(path.join(__dirname, 'outer-space-layout-3.json'), JSON.stringify(Object.assign({}, head, { rooms: WORLDS.map(w => strip(w, false)) }), null, 1) + '\n');
 
 /* the picture */
-const S = 9, PAD = 34, GAPX = 40, DCOL = { M: '#cfd3dc', C: '#8d93a3', F: '#5d6272', Y: '#d0744a', V: '#7a3a2a', R: '#d9a56c', H: '#e0c080', G: '#8fdde6', D: '#7a50c8', A: '#e6b45a' };
+const S = 6, PAD = 34, GAPX = 40, DCOL = { M: '#cfd3dc', C: '#8d93a3', F: '#5d6272', Y: '#d0744a', V: '#7a3a2a', R: '#d9a56c', H: '#e0c080', G: '#8fdde6', D: '#7a50c8', A: '#e6b45a' };
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const o = []; let ox = PAD, rowH = 0, oy = 96; const place = [];
 WORLDS.forEach((w, i) => { if (i === 2) { ox = PAD; oy += rowH + 150; rowH = 0; } place.push([ox, oy]); ox += w.A.W * S + GAPX + 330; rowH = Math.max(rowH, w.A.H * S); });
-const Wd = PAD * 2 + 2 * (66 * S + 330) + GAPX, Ht = oy + rowH + 150;
+const Wd = Math.max(...WORLDS.map((w, i) => place[i][0] + w.A.W * S + 330)) + PAD; const Ht = oy + rowH + 150;
 o.push(`<rect width="${Wd}" height="${Ht}" fill="#14161a"/>`);
 o.push(`<text x="${PAD}" y="34" fill="#fff" font-size="22" font-weight="bold">OUTER SPACE · plot plan 3 · the redesign · four worlds, a room each · 72 plots, ten districts</text>`);
 o.push(`<text x="${PAD}" y="58" fill="#b8bcc6" font-size="13">Each world is the ultimate version of what people picture there. You reach each exactly as today: the Spaceship's collar, the bays, the links. Flying the ship and floating in space are new mechanics: listed, not built. One square = 3.5 m; a plot = 12 x 12 squares.</text>`);
