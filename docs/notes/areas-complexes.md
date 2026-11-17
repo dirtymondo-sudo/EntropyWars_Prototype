@@ -11914,3 +11914,12 @@ What the first PR of 4.3 built (part 2 = Pirates' Cove, the Frozen Sea and the r
 - **THE ROUND VOYAGE, the first two legs**: route `voyage`, way `boat` (DOOR_HQ.ways + three-renderer.js `_hqWayBuilders.boat`: a plank mooring on posts, two
   bollards, a lantern, the catalogue's `rowboat` alongside, SET SAIL). Links `beach_volcano` (the skiff jetty's end <-> the Landing) and `beach_triangle` (the
   Breakwater's head <-> the Island Beach's west shore).
+- **PART 2 (the same day): PIRATES' COVE + THE FROZEN SEA + THE ROUND VOYAGE'S LOOP.** Two new rooms written by `bake-beach.js` (no home plots: `has: () => false`,
+  drawn square by square in `growCove` / `growFrozen`, names = ideas): `site_prebuilt_bermuda_ow_cove` (3 x 3 at -30,31: a ring island round a lagoon, the mouth south
+  between two rock heads, the pirates' camp on the north beach, cannons on the ring, a wreck in the lagoon, `pirate` natives) and `site_prebuilt_bermuda_ow_frozen`
+  (4 x 2 at 0,-30: one big floe, letter `i` = paint `ice`, from the village's north edge to the Pole landing; small floes; ice blocks, snow heaps, penguins, seals,
+  fishing holes, two `yeti`). The loop (route `voyage`, way `boat`): `beach_volcano`, `volcano_frozen`, `frozen_camelot` (the Looking-Glass Garden's west edge = the bay),
+  `camelot_cove`, `cove_antarctica` (the shelf, the room's south sea), `antarctica_babel` (Babel's canal), `babel_beach` (the Coast Road's spit); the spur
+  `beach_triangle`. In a room with no sea (the garden, Babel) the boat is drawn up on the ground (`_hqWayBuilders.boat` `hasSea`). On foot: link `northpole_frozen`
+  (way `trail`, the North Pole room's north wall at x -61.25, its open NW corner; `bake-mountains.js` not edited). Spots for a mooring: a dry square with deep water
+  two squares off (the thread's helper picked them; any later move of a shore re-picks by hand).
