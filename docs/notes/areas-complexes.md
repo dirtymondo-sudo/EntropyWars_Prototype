@@ -11963,3 +11963,9 @@ shared hand pieces `docs/areas/routes/south-kit.js`). Every route is its OWN roo
   (cut there in R9.js). Seen, not fixed: on R8 a group of wandering units stood on the road by the Ranch end and blocked the first walk (walked one
   lane over); the crop circle's pieces read as grey lumps from the ground. Pictures: `docs/plans/one-world/proof/south_*.jpg` (`south_join_*` = the
   room reached). PROBE LESSON: `dev.teleport`'s `face` is a compass heading, 0 = north (-z), 90 = east, 180 = south, 270 = west (NOT a door's face).
+- **FOLLOW-UP (same day, mondo's rule "NPCs never block paths")**: (1) THE SPAWN STANDS BESIDE THE ROAD: `bake-route.js` puts a route room's spawn on the
+  nearest open square 2+ squares clear of the path (was the path's first end square). With open-seam ends a room has no door stops, so every walker
+  arriving or pausing used the spawn: R8's crowd stood in the road at the Ranch end. Rebaked R8 only (walked again: the Ranch end is clear); every other
+  route takes it at its next bake (`spawnOnPath: true` in a spec keeps the old place). (2) R8's CROP CIRCLE is the Estate's `corn_row` now: standing corn
+  a row a square, a circle 31 m across pressed flat, nine rows left standing in a ring inside, `ritual_circle` + a dip at its heart (the Halloween pack's
+  farmland read as grey lumps). Pictures `proof/south_r8_crop.jpg`, `south_r8_corn.jpg`.

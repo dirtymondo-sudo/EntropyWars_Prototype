@@ -4330,6 +4330,39 @@ windup beat), so `_vcOwn(id)` is true and the shared stage burst stops for it. N
 
 After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part3.jpg`.
 
+
+## THE OWN LOOKS, L2, part 1: the guns (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L2")
+mondo: "any spells that dont have a look of their own need one". Thread L2's list is `own-look/L2.txt` (48 spells: metal,
+tech, rig, lightning). Looks only: no rule, no data, nothing on `state`. Each look is a function registered with `_o2Reg(id, fn)`
+= a `_FX2_BURST` row, so it rides the relayed staging 'burst' beat (the guest draws it) and `_vcOwn(id)` is true by
+itself: the generic stage burst (ring, flash, sparks, speed burst) no longer draws for these. The metal stamp
+(`_mtlStage`, the cleanup thread's) still draws on top; an area still gets its gear.
+- **The kit** (`_o2*`): `_o2Tex` = a shape drawn once in white on a canvas and tinted by its material; `_o2Spr` = a shape
+  that faces the lens; `_o2Rod` + `_o2Slide` = a straight streak drawn as a window sliding down its line (a tracer, a
+  needle, a shaft); `_o2Squares(list, colour)` = EVERY hit square's flash in the spell's colour, one signature run for
+  the whole list (the 20-run cap counts runs); `_o2From` / `_o2Base` = the hit's frame and the shot's line, aimed from
+  the target's own square when the viewer cannot see the caster (no direction leaks).
+- **Learned on the way (read before writing a look):** at battle camera distance a tile is about 55 px. A line under
+  0.03 tile thick or a shape under 1 tile across does not read in a still; canvas line widths are 9 px and up at 256.
+  The damage number and the name cards are DOM, over the head: a piece above the head sits BEHIND them (High Noon's
+  clock moved to the floor for that). Capture frames are 0.45 s apart: a look shorter than 0.6 s can be missed.
+  Real beat times (probe: wrap `VFX3D.fire`): a random-target spell's burst lands on its FIRST victim's square;
+  a delayed mark (Take Aim) bursts at the cast, when the laser paints; Fan the Hammer bursts at 0.72 s, its hits land at 1.8 s.
+- **The looks:**
+  - Dead Eye: an amber eye opens on the body, squints to a slit as its iris tightens on one point; that point flares.
+  - Precision Shot: a lime rifle cross with mil dots dials in (turns, tightens), then one needle goes through and out the far side.
+  - Take Aim: a red scope ring with its posts clicks in three steps down onto the head, the red dot beats there (the shot is still to come).
+  - Kneecap Shot: the round goes through at knee height, a break cracks open there, two chevrons drop from hip to floor.
+  - Double Pump: two cones of shot out of one point, one after the other; two rings of pocks stay on the body; powder smoke.
+  - Crossfire: tracers run both ways down each diagonal, one diagonal a beat after the other; every square of the X flashes brass; the crossing stays scored on the floor.
+  - Long Rifle: the long straight line of black powder smoke from the muzzle to the mark, a bloom at the muzzle, a lead ring at the strike.
+  - Slap Leather: a flat shot from the hip and a tin star punched onto the chest, the hole already through it, spinning to a stop.
+  - Fan the Hammer: the revolver's cylinder on the floor under the cowboy turns a chamber a shot; six tracers fan round him; each square next to him flashes as the fan passes.
+  - High Noon: a brass clock face ringed with sun rays on the floor round the body, the long hand ticks to twelve, a shaft of noon light drops down the body. (The ricochet flight was already there.)
+  - Scatter Shot: rust-hot pellets fly off the shooter at every angle and length; grit kicks up where each dies. Angles are read off the square (both screens match).
+  - Stick-Up: brass chevrons jump up beside the victim's shoulders (hands up); bundles of bills (the banker's `bank_cash` model, only when it is in memory) arc off them to the gangster.
+- Colours: brass / amber / lime / scope red / rust / powder grey, all mid tones; no team cyan-blue or pink-orange.
+- Proof: docs/plans/vfx-cleanup/img/own-look/L2_part1_after.jpg (real casts through the HUD on the audit board).
 ## THE OWN LOOKS, L4, part 4: the self buffs (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4"). L4 is done: 46 of 46.
 
 - A self buff fires `aura` on the caster's own tile, about 900 ms into the cast. The caster's plate is over its head, so
