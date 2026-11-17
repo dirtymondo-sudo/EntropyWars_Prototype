@@ -2097,3 +2097,30 @@ Meshy pipeline of `/mnt/project-files/new-races/run.py` (nano-banana-pro concept
   the mermaid took 3 concept rolls, two came back doll-faced / too old); the pope without the shoulder cape (`Meshy_AI_pope2_Running.glb`,
   `pope_px2.png`) and his robe's thigh/shin weights moved to the Hips above 10 cm (the robe rides the hips, the shoes keep the feet).
   RULE for Meshy concepts: long hair always down the back, never beside the arms; no capes or loose shoulder pieces.
+
+## THE CURSED TV — a boneless rig of parts (2026-11-17, thread "Build the Cursed TV character")
+- ONE file `Assets/characters/races/cursed_tv/male/cursed_tv.glb` (1.7 MB) = the race model AND the HQ prop `cursed_tv_set` (the
+  training room's AV cart + the cutscene `orientation_tv`; mondo: "the cart + tv in that cutscene need to be the same as the
+  character model"). Built by `/mnt/project-files/cursed-tv/models/assemble.mjs` (+ `cfg.json`): the cutscene's Meshy AV cart with
+  its four casters cut off (`ewTvCaster<LF|RF|LB|RB>` swivels, `ewTvWheel*` spin), a new Meshy wood-cased TV (dials split to
+  `ewTvDial*`), a Meshy remote (`ewTvRemote`), rabbit ears (`ewTvAntL/R`) + a power cable and plug built in code; `ewTvScreen` is an
+  empty node carrying the screen's w/h (prune keepLeaves). The prop's `h: 2.083` keeps the cart 1.1 m tall.
+- Rig = three-renderer.js "THE CURSED TV" (`_PROC_RIGS.cursedTv` -> `_tvBuild`): keyframe clips on the nodes (roll, bump, wobble,
+  antenna sway, remote lift, wheel spin + caster trail) + THE CHANNELS: one canvas plane per channel under the screen, switched by
+  discrete scale tracks (static, snow, bars, rewind, ff, standby, nosignal, black, the switch-off line). The static is one shared
+  80x60 canvas redrawn ~20 fps (`_tvStaticTick`, from the unit loop and the team room). Slots: idle (static), walk/run (rolls,
+  wheels spin), cast, castAOE (bars), castSupport (FF), castMelee (ram), castUltimate (stand by -> bars), hit (no signal), death
+  (the line, the dot, it tips over) + the spell slots tvStatic / tvBars / tvFF / tvRewind.
+- Sprite `cursed_tv_px.png` (same folder) = Sprite AI restyle of a straight-on render (mondo: face head on like the other sprites).
+## THE ROBOT REDESIGN (2026-11-17, mondo: "all look more unique, distinct silhouettes")
+The machine races were four near-identical white chrome humanoids. mondo picked from three concept rounds
+(`/mnt/project-files/robot-races/`: current/, concepts/, concepts_options_sheet.jpg, round3_sheet.jpg, models_sheet.jpg):
+- Robot F = round 1 option 1 (red + graphite factory-line robot, amber visor); Robot M = her male counterpart (round 3).
+- Cyborg F = round 2 option 2 made hotter (long hair, crop top, cargo pants, robot gauntlet fists; no dreads/buzzcut/"cyberpunk hair").
+- Mech F = her first 3D model, the female counterpart of the in-game mecha (round 3 redo: flat feet, no heels, no skirt plates).
+- Cyborg M (11-16), AI F and Glitch M keep their models. Android + Droid SCRAPPED for new models (stay sprite-only races; nothing deleted).
+Files on R2 (old models kept): `Races/robot/{male,female}/Meshy_AI_robot_{m2,f2}_Running.glb`, `Races/cyborg/female/Meshy_AI_cyborg_f2_Running.glb`,
+`Races/mech/female/Meshy_AI_mech_f2_Running.glb`; sprites `<same folder>/<key>_px.png` (Sprite AI restyle of the cut concept, palette_extras 2-4;
+the first Robot M restyle came back WHITE: name the colour + "NOT white" + palette_extras 2). Robot F had a stray thin rod by the hip (3 sliver
+triangles); degenerated in all three files (originals in models/orig/). Pipeline = new-chars run.py (concept nano-banana-pro -> meshy-t2.5 a-pose -> rig).
+Robot F lost the old "chassis walk" lib override (Idle_5 / Running walk): she uses the female defaults now.
