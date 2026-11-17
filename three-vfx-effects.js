@@ -46422,6 +46422,149 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'nrPullString:hug': _hdLine3D('hug'), 'nrPullString:kill': _hdLine3D('kill'),
     });
 
+    /* ══ THE CURSED TV (2026-11-17, mondo approved the kit) ══ A haunted set on a rolling cart; every spell is a channel. The set's
+       own screen changes channel on the body (three-renderer.js THE CURSED TV); these are what the cast throws out on the board.
+       The side reads from the viewer's seat on the rings and threads (THE RIOT PASS: own side cyan-blue, the other side
+       pink-orange); the channel cards stand BESIDE the unit (screen right, chest height), never over the body or under the
+       nameplate, so the caster, the target, the hit and the number stay clear. Kill-switch window.EW_NO_TV_VFX.
+         STATIC BURST (impact): a white streak of snow down the line, the static flickers on the victim, a white pop + a side ring.
+         EMERGENCY BROADCAST (geometry + aoe): the colour-bar card with EMERGENCY BROADCAST pops up beside the set and flickers;
+           three rings in the bar colours (yellow, cyan, magenta) go out to the edge, the side ring on the floor.
+         FAST FORWARD (geometry, fired from the buff in battle.js): the blue VCR screen with FF beside the ally, three side rings
+           rising fast up its body.
+         REWIND (geometry): the blue VCR screen with REWIND beside the victim, the static on it, side rings closing IN (time
+           running backwards) before the replayed hit lands. */
+    var _TVX_SNOW = 0xeef4ff, _TVX_Y = 0xd8d800, _TVX_C = 0x00d8d8, _TVX_M = 0xd800d8;
+    function _tvxOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_TV_VFX); }
+    function _tvxBarsTex() {
+        return _sigTex('tvx-bars', 128, function (g, S) {
+            var top = ['#c0c0c0', '#c0c000', '#00c0c0', '#00c000', '#c000c0', '#c00000', '#0000c0'];
+            var mid = ['#0000c0', '#131313', '#c000c0', '#131313', '#00c0c0', '#131313', '#c0c0c0'];
+            var w = S / 7, i;
+            for (i = 0; i < 7; i++) { g.fillStyle = top[i]; g.fillRect(Math.floor(i * w), 0, Math.ceil(w) + 1, S * 0.58); }
+            for (i = 0; i < 7; i++) { g.fillStyle = mid[i]; g.fillRect(Math.floor(i * w), S * 0.58, Math.ceil(w) + 1, S * 0.1); }
+            g.fillStyle = '#b00000'; g.fillRect(0, S * 0.68, S, S * 0.32);
+            g.fillStyle = '#ffffff'; g.font = 'bold 15px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText('EMERGENCY', S / 2, S * 0.77); g.fillText('BROADCAST', S / 2, S * 0.91);
+        });
+    }
+    /* the VCR's blue screen: two triangles (pointing back for rewind, forward for fast forward) and the word */
+    function _tvxVcrTex(back) {
+        return _sigTex(back ? 'tvx-vcr-rw' : 'tvx-vcr-ff', 128, function (g, S) {
+            g.fillStyle = '#1c34c8'; g.fillRect(0, 0, S, S);
+            g.fillStyle = '#ffffff';
+            var cy = S * 0.4, hh = S * 0.16, ww = S * 0.18;
+            for (var k = 0; k < 2; k++) {
+                var x0 = S * 0.5 + (k === 0 ? -ww : 0);
+                g.beginPath();
+                if (back) { g.moveTo(x0 + ww, cy - hh); g.lineTo(x0, cy); g.lineTo(x0 + ww, cy + hh); }
+                else { g.moveTo(x0, cy - hh); g.lineTo(x0 + ww, cy); g.lineTo(x0, cy + hh); }
+                g.closePath(); g.fill();
+            }
+            g.font = 'bold 18px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText(back ? 'REWIND' : 'FAST FWD', S / 2, S * 0.74);
+            g.fillStyle = 'rgba(0,0,0,0.22)';
+            for (var y = 0; y < S; y += 4) g.fillRect(0, y, S, 1);
+        });
+    }
+    /* a channel card beside the unit, facing the camera: to the unit's right on screen at chest height (over the head it sat
+       under the DOM nameplate + portrait and could not be seen), so the body, the nameplate and the number stay clear; it pops
+       open like a set switching on (a line, then the picture), flickers, and shrinks to a dot when it goes off */
+    var _tvxR = null;
+    function _tvxPlace(hold, ts, h) {
+        var right = _tvxR || (_tvxR = new THREE.Vector3());
+        right.set(1, 0, 0);
+        try { var cam = (!_VS.on && typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (cam && cam.quaternion) right.applyQuaternion(cam.quaternion); } catch (e) {}
+        right.y = 0; if (right.lengthSq() < 1e-6) right.set(1, 0, 0); right.normalize();
+        hold.position.set(right.x * ts * 0.85, h * 0.8, right.z * ts * 0.85);
+    }
+    function _tvxPanel(tx, ty, tex, o) {
+        if (_afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, h = _lgBodyH(_lgUidAt(tx, ty), ts);
+        var m = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, depthTest: false, fog: false, side: THREE.DoubleSide });
+        var w = ts * (o.w || 0.8), pl = new THREE.Mesh(new THREE.PlaneGeometry(w, w * 0.75), m);
+        pl.renderOrder = 169;
+        var hold = new THREE.Group(); hold.add(pl); F.g.add(hold);
+        _tvxPlace(hold, ts, h); _hdFaceCam(hold);
+        var ms = o.ms || 1000, a0 = o.alpha || 0.92;
+        return _sigRunOwned(F.g, ms, function (el) {
+            _tvxPlace(hold, ts, h); _hdFaceCam(hold);
+            var on = _sigClamp01(el / 140), off = _sigClamp01((el - ms + 160) / 160);
+            pl.scale.set(Math.max(0.05, 1 - off * 0.95), Math.max(0.03, on * (1 - off)), 1);
+            var fl = (o.flicker && (Math.floor(el / 70) % 6) === 3) ? 0.35 : 1;
+            m.opacity = a0 * fl * (el < ms - 160 ? 1 : 1 - off * 0.5);
+        });
+    }
+    /* STATIC BURST */
+    EFFECTS['nrStaticBurst_impact'] = { layers: [
+        { sprite: 'flash', ml: 160, z: 55, size0: 12, size1: 52, tint: _TVX_SNOW, opacity0: 0.7, delayMs: 170 },
+        { count: 8, sprite: 'spark', ml: [260, 420], offsetXY: 8, z: [40, 75], tint: _TVX_SNOW, vxRange: 120, vyRange: 120, vzRange: [10, 60], drag: 1, size0: [3, 5], size1: 1, opacity0: 0.9, delayMs: 170 },
+    ] };
+    function _tvxStatic3D(tx, ty, r, o) {
+        if (_tvxOff() || _afFogHides(tx, ty)) return;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        var h = _lgBodyH(_lgUidAt(tx, ty), ts) * 0.55;
+        var th = from.fogged ? null : _hdThread(F, from.x, from.y, h, _TVX_SNOW, 520, ts * 0.06, 170);
+        if (th) _sigRunOwned(F.g, 540, function (el) { th.run(el); th.strip.material.opacity *= ((Math.floor(el / 40) % 2) ? 0.55 : 1); });
+        _hdStaticAt(tx, ty, C, 170);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.15, r1: ts * 0.6, ms: 400, color: C.a, height: ts * 0.05 }); } catch (e) {} }, 190);
+    }
+    /* EMERGENCY BROADCAST */
+    EFFECTS['nrEmergencyBroadcast_tile'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 480, z: 3, tint: _TVX_Y, size0: 20, size1: 70, opacity0: 0.25, delayMs: 160 },
+    ] };
+    EFFECTS['nrEmergencyBroadcast_center'] = { layers: [
+        { count: 3, sprite: 'wave-anim', ml: [360, 540], offsetXY: 30, z: [100, 130], tint: _TVX_C, vxRange: 240, vyRange: 240, drag: 1.1, size0: [6, 10], size1: [16, 22], opacity0: 0.25 },
+    ] };
+    _afAoeDef('nrEmergencyBroadcast_aoe', 2, 'square', 'nrEmergencyBroadcast_tile', 'nrEmergencyBroadcast_center');
+    function _tvxBroadcast3D(tx, ty, r) {
+        if (_tvxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, reach = (r > 0 ? r : 2) + 0.5, cu = _fx5UnitAt(tx, ty), C = _hdSide(cu || { player: _cbOwnerNear(tx, ty) });
+        var h = _lgBodyH(_lgUidAt(tx, ty), ts);
+        _tvxPanel(tx, ty, _tvxBarsTex(), { w: 0.9, ms: 1500, flicker: true });
+        [_TVX_Y, _TVX_C, _TVX_M].forEach(function (col, j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.45, r1: ts * reach, ms: 620, color: col, height: ts * (0.08 + 0.1 * j), opacity: 0.22, torus: j > 0 }); } catch (e) {} }, 180 + j * 140);   /* low + faint: three additive plates at body height washed the set out white */
+        });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.5, r1: ts * reach, ms: 720, color: C.a, height: ts * 0.05 }); } catch (e) {} }, 220);
+        return true;
+    }
+    /* FAST FORWARD */
+    function _tvxFF3D(tx, ty, r, o) {
+        if (_tvxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, u = _fx5UnitAt(tx, ty), C = _hdSide(u || { player: (o && o.owner) });
+        var h = _lgBodyH(_lgUidAt(tx, ty), ts);
+        _tvxPanel(tx, ty, _tvxVcrTex(false), { ms: 1400 });
+        for (var i = 0; i < 3; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 0.5, ms: 260, color: j % 2 ? C.b : C.a, height: h * (0.15 + 0.3 * j), torus: true }); } catch (e) {} }, 120 + j * 90);
+        })(i);
+        return true;
+    }
+    /* REWIND */
+    EFFECTS['nrRewind_impact'] = { layers: [
+        { sprite: 'flash', ml: 180, z: 55, size0: 14, size1: 48, tint: 0x6a86ff, opacity0: 0.55, delayMs: 80 },
+    ] };
+    function _tvxRewind3D(tx, ty, r, o) {
+        if (_tvxOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var ts = _worldPos(tx, ty).ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        _tvxPanel(tx, ty, _tvxVcrTex(true), { ms: 1600, flicker: true });
+        _hdStaticAt(tx, ty, C, 120);
+        for (var i = 0; i < 3; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.95, r1: ts * 0.2, ms: 360, color: j % 2 ? C.b : C.a, height: ts * 0.05 }); } catch (e) {} }, j * 150);
+        })(i);
+        return true;
+    }
+    Object.assign(SPELL_MAP, {
+        nrStaticBurst:        { impact: 'nrStaticBurst_impact' },
+        nrEmergencyBroadcast: { aoe: 'nrEmergencyBroadcast_aoe' },
+        nrRewind:             { impact: 'nrRewind_impact' },
+    });
+    Object.assign(_spell3DGeometry, {
+        nrStaticBurst: _tvxStatic3D, nrEmergencyBroadcast: _tvxBroadcast3D, nrFastForward: _tvxFF3D, nrRewind: _tvxRewind3D,
+    });
+
     /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build
        his spells around the space props in the game". His three new Assets/misc files (the satellite, the space shuttle, the
        space station) and two already in the game (the torn hull plate with its wiring hanging out = the spaceship debris; the
