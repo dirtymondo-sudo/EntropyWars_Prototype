@@ -14,7 +14,7 @@ Asked by mondo on 2026-11-17 (thread "Clean up generic white spell VFX"):
 > and: "the orange red slashes looked good and i want to keep"
 
 Files in this folder:
-- `PLAN.md` (this) · `SPELL_TABLE.md` (all 986 castable spells: the white layers found on each, its rule, its batch)
+- `VFX_CLEANUP_PLAN.md` (this) · `SPELL_TABLE.md` (all 986 castable spells: the white layers found on each, its rule, its batch)
 - `batches/<batch>.txt` (spell ids, one per line, ready for the capture harness) · `img/` (the frames below)
 - `tools/` (the audit script, the table writer, the throwaway mock-up patch, the capture runner patched to launch through
   `probe-fast.js`). Repo-only reference, never uploaded to R2.
@@ -154,15 +154,16 @@ body), so the camera grammar and the damage numbers line up with no battle.js ch
 | **3 IMPACT** | a splash cone thrown BACK off the body, a ring flat on the floor, the element's mark (scorch, frost, scar) on each struck square; no white flash | the body and its number stay clear (the splash goes behind and to the sides) |
 | **4 CLASH** (see below) | where a beam meets another beam or a block: both colours push at a dark seam with a turning ring, sparks of both colours | visual only |
 
-**Three styles** (a beam def picks one; colours come from the spell's element / palette):
+**Three example styles** (starting points; a spell that fits none gets its own; colours come from the spell's element / palette):
 - **`ki`** (anime ki blast: Ki Wave, Spirit Bomb, Ki Volley): a long two-handed charge, a thick beam with a
   heavy front ball, a screen shake on fire, the ground scoured along the line.
 - **`blaster`** (sci-fi: Railgun, Plasma Cannon, Heat Ray, Heat Vision, Orichalcum Ray): short charge with a whine-up of
   rings, a narrow very bright core, a quick hold, bolt-style pulses for the rapid ones (the gatling kit stays for bullets).
 - **`wand`** (spell duel: Psychic Beam, Entropic Beam, Baleful Gaze, Black Tendrils, the high wizardry family): a wavy,
   slightly unstable stream with sparks peeling off it, a small charge at the wand / hand, a crackling front.
-- Sword Beam joins the Swordmaster's language: an orange-red crescent wave (his slash colour) that leaves the red scars
-  down the line, on the `blaster` timing. A suggestion: say if he wants it to stay blue.
+- Sword Beam joins the Swordmaster's language (mondo 11-17: "match the sword cuts"): an orange-red crescent wave that
+  leaves the red scars down the line.
+- These styles are EXAMPLES (mondo 11-17), not categories: each spell gets the look that fits it.
 
 ### The clash (visual only, no new rule)
 Two beams never fire at the same moment in this game, so the clash is drawn where a beam's path already meets something
@@ -197,8 +198,8 @@ These are not spells in the table, but they are lasers on the same board and go 
   core + glow with the kit's dark edge, a dot on the body with a small ring, and a **lock beat**: the line sweeps and
   wobbles while it searches, then snaps steady, the dot tightens and ticks once (Take Aim holds locked until the shot
   lands next round). Fog rule unchanged: only drawn where the viewer's own sight sees it (it already checks).
-- **Its colour:** red stays the "something is aiming" colour, but from the viewer's seat: an enemy's sight on you is
-  red-pink (danger), your own turret / Take Aim is cyan-blue, matching the Riot team colours. (Question 5.)
+- **Its colour (mondo 11-17, decided):** cyan-blue for your own / friendly sights (turret, Take Aim, sniper rig), red-pink
+  for an enemy's, from the viewer's seat (the Riot team colours). The guest sees its own side cyan too.
 - **The turret blast** goes on the kit's `blaster` style: a short charge of rings at the barrel while the sight locks, then
   the six-round pulse train (kept, it is the look) with a hot red-orange core at 92 % (no white head), each round landing
   as sparks + a small scorch on the body, the number clear. The kick of the barrel stays.
@@ -297,17 +298,17 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
 
 ---
 
-## 8. Open questions for mondo
+## 8. Decisions from mondo (11-17)
 
-1. Sword Beam in the Swordmaster's orange-red (the mock-up idea), or keep it blue?
-2. The three beam styles (ki / blaster / wand): OK as the set, and OK which spells sit in which (B3 decides per spell from
-   the spell's name and race; he can move any)?
-3. Clash = visual only where a beam meets a prism, wall or shield. A real beam-vs-beam struggle would be a new rule: does he
-   want one later?
-4. Portal on summons: everything that summons comes through a small portal, or only the creepy ones (raise dead, brood,
-   rifts)?
-5. Sight lasers: red only for an enemy aiming at you and cyan-blue for your own turret / Take Aim, or keep every sight
-   red?
+1. **Sword Beam matches the sword cuts**: orange-red, the same colour as the Blade Waltz / Dragon Slash slashes and scars.
+2. **The beam styles are examples, not boxes** ("they are not the bible"). ki / blaster / wand are three starting looks the
+   kit can do; each beam spell gets the look that fits THAT spell (its name, race, element, prop), and a spell that fits
+   none of them gets its own. Never force a spell into a category.
+3. **The portal only where it makes sense** (his example: the Ringmaster calling an eagle does not need one). B5's list
+   is candidates: a spell gets the portal only if something really comes through from somewhere else (rifts, raised dead,
+   doors, teleports, void things); a creature that walks, flies or is thrown in keeps its own entrance.
+4. **Sight lasers**: cyan-blue for own / friendly, red-pink for enemy, from the viewer's seat.
+5. Open: a real beam-vs-beam struggle as a rule (not in this plan; only if he asks).
 
 ---
 

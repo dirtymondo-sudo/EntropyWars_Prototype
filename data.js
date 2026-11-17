@@ -94832,14 +94832,16 @@ if (typeof window !== 'undefined') window.EW_CREDITS = EW_CREDITS;
    Canonical cube space: X east, Y south, Z up; a cubie (i, j, k) fills [i, i+1] x [j, j+1] x [k, k+1], 0 <= i, j, k < N. */
 const CUBE_RULES = {
     N: 8,                     // squares a face side (mondo: "7x7 or 8x8"; 8 = the arenas' board)
-    /* the six faces = six places of the Realm (ground the game has, no new rule) */
+    /* the six faces (mondo 11-17: "its the same fucking cube": the battle cube and the Astral Realm's floating one share ONE look,
+       three-renderer.js _cubeFaceMat). `look` = the sticker's picture (ONE clean texture for all six, mondo 11-17: never lava, never water, not even as a picture), `tint` = its Rubik's colour. The ground's
+       RULES are one plain floor for every face (tilefloor: no rule of its own; mondo 11-17: no lava, no water on the map). */
     faces: {
-        U: { n: [0, 0, 1],  terrain: 'marble_light', name: 'Marble' },
-        D: { n: [0, 0, -1], terrain: 'gold',         name: 'Gold' },
-        E: { n: [1, 0, 0],  terrain: 'wood_planks',  name: 'Library' },
-        W: { n: [-1, 0, 0], terrain: 'lava',         name: 'Nightmare' },
-        S: { n: [0, 1, 0],  terrain: 'water',        name: 'Sea' },
-        N: { n: [0, -1, 0], terrain: 'grass',        name: 'Hollow Tree' },
+        U: { n: [0, 0, 1],  terrain: 'tilefloor', look: 'marble_light', tint: 0xffffff, name: 'White' },
+        D: { n: [0, 0, -1], terrain: 'tilefloor', look: 'marble_light', tint: 0xffd21f, name: 'Yellow' },
+        E: { n: [1, 0, 0],  terrain: 'tilefloor', look: 'marble_light', tint: 0xff7a1a, name: 'Orange' },
+        W: { n: [-1, 0, 0], terrain: 'tilefloor', look: 'marble_light', tint: 0xe02a36, name: 'Red' },
+        S: { n: [0, 1, 0],  terrain: 'tilefloor', look: 'marble_light', tint: 0x2f68ff, name: 'Blue' },
+        N: { n: [0, -1, 0], terrain: 'tilefloor', look: 'marble_light', tint: 0x22b85a, name: 'Green' },
     },
     core: 'obsidian',         // the cube's inside, the floor of a hole where a piece broke off
     /* THE MISSING PIECES (mondo 11-17: "the cube could have missing pieces to match, which would give it more interesting
@@ -94978,7 +94980,7 @@ function cubeBoardSpec(teamSize) {
         heights[c.y][c.x] = pits[id] ? 0 : 1;
     }
     const seats = (face) => {
-        const cells = Object.keys(fr.cell).filter(id => fr.cell[id].face === face && !pits[id] && R.faces[face].terrain !== 'lava').map(id => fr.cell[id]);
+        const cells = Object.keys(fr.cell).filter(id => fr.cell[id].face === face && !pits[id] ).map(id => fr.cell[id]);
         const mx = cells.reduce((s, c) => s + c.x, 0) / cells.length, my = cells.reduce((s, c) => s + c.y, 0) / cells.length;
         cells.sort((a, b) => (Math.abs(a.x - mx) + Math.abs(a.y - my)) - (Math.abs(b.x - mx) + Math.abs(b.y - my)) || a.x - b.x || a.y - b.y);
         return cells.slice(0, Math.max(1, teamSize | 0) * 2).filter((c, i) => i % 2 === 0).slice(0, teamSize).map(c => ({ x: c.x, y: c.y }));

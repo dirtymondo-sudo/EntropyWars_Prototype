@@ -25861,7 +25861,21 @@ const ThreeRenderer = (function () {
         if (!_cubeQuadGeo || _cubeQuadGeo.ts !== ts) {
             var top = new THREE.PlaneGeometry(ts, ts); top.rotateX(-Math.PI / 2); top._ew_shared = true;
             var wall = new THREE.PlaneGeometry(ts, ts); wall._ew_shared = true;   // faces +z, centred
-            _cubeQuadGeo = { ts: ts, top: top, wall: wall };
+            /* THE NO-FLICKER SQUARE (mondo 11-17: "a lot of flickering ... all those dark marks on the tiles"): the core used to be a
+               whole square with the sticker a hair above it, two surfaces fighting for the same depth. Now the core is a FRAME round
+               the sticker and the sticker fills the hole, side by side in one plane: nothing overlaps. */
+            var a = ts / 2, b = ts * 0.43, P = [], I = [], U = [];
+            [[-a, -a, a, -b], [-a, b, a, a], [-a, -b, -b, b], [b, -b, a, b]].forEach(function (r) {
+                var o = P.length / 3;
+                P.push(r[0], 0, r[1], r[2], 0, r[1], r[2], 0, r[3], r[0], 0, r[3]);
+                U.push(0, 0, 1, 0, 1, 1, 0, 1);
+                I.push(o, o + 2, o + 1, o, o + 3, o + 2);
+            });
+            var frame = new THREE.BufferGeometry();
+            frame.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); frame.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+            frame.setIndex(I); frame.computeVertexNormals(); frame._ew_shared = true;
+            var sticker = new THREE.PlaneGeometry(2 * b, 2 * b); sticker.rotateX(-Math.PI / 2); sticker._ew_shared = true;
+            _cubeQuadGeo = { ts: ts, top: top, wall: wall, frame: frame, sticker: sticker };
         }
         var warned = {};
         try { (cubeWarnedCells() || []).forEach(function (c) { warned[c.x + ',' + c.y] = 1; }); } catch (e) {}
@@ -25873,12 +25887,18 @@ const ThreeRenderer = (function () {
         for (var y = 0; y < F.H; y++) for (var x = 0; x < F.W; x++) {
             var fc = face(x, y); if (!fc) continue;
             var h = hAt(x, y), tKey = (typeof getTerrainAt === 'function' ? getTerrainAt(x, y) : null) || 'obsidian';
-            var mats = _buildBeveledMaterials(tKey, tKey);
+            var isPit = tKey === CUBE_RULES.core;
             var grp = new THREE.Group(); grp.position.set(x * ts + ts / 2, 0, y * ts + ts / 2);
             grp._ew_cubeCell = { x: x, y: y };
-            var q = new THREE.Mesh(_cubeQuadGeo.top, mats[2]); q.position.y = h * ts * ELEV_STEP_RATIO;
+            /* the same look as the Astral Realm's cube: the dark core square, the face's sticker on it (a hole = core only) */
+            var q = new THREE.Mesh(isPit ? _cubeQuadGeo.top : _cubeQuadGeo.frame, _cubeCore()); q.position.y = h * ts * ELEV_STEP_RATIO;
             q.receiveShadow = true; q.userData.tileX = x; q.userData.tileY = y; q._ew_cubeCell = { x: x, y: y };
             grp.add(q);
+            if (!isPit) {
+                var st = new THREE.Mesh(_cubeQuadGeo.sticker, _cubeFaceMat(fc)); st.position.y = h * ts * ELEV_STEP_RATIO;
+                st.receiveShadow = true; st.userData.tileX = x; st.userData.tileY = y; st._ew_cubeCell = { x: x, y: y };
+                grp.add(st);
+            }
             if (warned[x + ',' + y]) {
                 var wq = new THREE.Mesh(_cubeQuadGeo.top, warnMat); wq.position.y = h * ts * ELEV_STEP_RATIO + ts * 0.02; wq.renderOrder = 5; wq._ew_cubeCell = { x: x, y: y };
                 wq.raycast = function () {};
@@ -25888,9 +25908,8 @@ const ThreeRenderer = (function () {
                 var nx = x + NB[k][0], ny = y + NB[k][1];
                 if (face(nx, ny) !== fc) continue;
                 var nh = hAt(nx, ny); if (nh >= h) continue;
-                var sideKey = (typeof TERRAIN_SIDE_SPRITES !== 'undefined' && TERRAIN_SIDE_SPRITES[tKey]) || tKey;
                 for (var lv = nh; lv < h; lv++) {
-                    var w = new THREE.Mesh(_cubeQuadGeo.wall, _buildBeveledMaterials(sideKey, sideKey)[0]);
+                    var w = new THREE.Mesh(_cubeQuadGeo.wall, _cubeCore());   // a hole's side = the cube's dark core (as on the Astral cube)
                     w.rotation.y = NB[k][2];
                     w.position.set(NB[k][0] * ts / 2, (lv + 0.5) * ts * ELEV_STEP_RATIO, NB[k][1] * ts / 2);
                     w._ew_cubeCell = { x: x, y: y }; w.castShadow = true; w.receiveShadow = true;
@@ -79494,10 +79513,22 @@ const ThreeRenderer = (function () {
        missing pieces to match"): the Rubik's cube the fight is on (data.js CUBE_RULES: its size, its six grounds, its missing pieces),
        and one broken-off piece. A cubie = one battle square (3.5 m), dark plastic with a sticker of its face's ground on each outer side.
        The origin is the TOP of the cube, in its middle (the room's plateau under the walker is that top). Instanced: 1 core + 6 sticker draws. */
+    /* THE CUBE'S ONE LOOK (mondo 11-17: "its the same fucking cube"): a face's sticker material, shared by the battle cube
+       (_cubeTerrainBuild) and the Astral Realm's floating one (_ewCubeProp): the face's ground picture tinted to its colour on
+       the cube's dark core. Cached a face. */
+    var _cubeFaceMats = {}, _cubeCoreMat = null;
+    var _CUBE_LOOK0 = { U: ['marble_light', 0xffffff], D: ['marble_light', 0xffd21f], E: ['marble_light', 0xff7a1a], W: ['marble_light', 0xe02a36], S: ['marble_light', 0x2f68ff], N: ['marble_light', 0x22b85a] };
+    function _cubeFaceMat(f) {
+        if (_cubeFaceMats[f]) return _cubeFaceMats[f];
+        var R = (typeof CUBE_RULES !== 'undefined') ? CUBE_RULES.faces[f] : null, d = _CUBE_LOOK0[f] || ['marble_light', 0xffffff];
+        var look = (R && R.look) || d[0], tint = (R && R.tint != null) ? R.tint : d[1];
+        var tex = _hzTex(look), mat = new THREE.MeshPhongMaterial({ map: tex || null, color: tint, shininess: 30 });
+        mat.emissive = new THREE.Color(tint).multiplyScalar(0.18); mat.name = 'ew_cube_' + f;
+        return (_cubeFaceMats[f] = mat);
+    }
+    function _cubeCore() { return _cubeCoreMat || (_cubeCoreMat = new THREE.MeshPhongMaterial({ color: 0x15141c, shininess: 60, specular: 0x333344 })); }
     function _ewCubeProp(U, whole, p) {
         var g = new THREE.Group(), s = 3.5, R = (typeof CUBE_RULES !== 'undefined') ? CUBE_RULES : null;
-        var KEYS = { U: 'marble_light', D: 'gold', E: 'wood_planks', W: 'lava', S: 'water', N: 'grass' };
-        if (R) for (var fk in R.faces) KEYS[fk] = R.faces[fk].terrain;
         var DIRS = { U: [0, 1, 0], D: [0, -1, 0], E: [1, 0, 0], W: [-1, 0, 0], S: [0, 0, 1], N: [0, 0, -1] };
         var n = whole ? ((R && R.N) || 8) : 1, gone = {};
         if (whole && R) (R.missing || []).forEach(function (c) { gone[c.join(',')] = 1; });
@@ -79531,7 +79562,7 @@ const ThreeRenderer = (function () {
             geo.setAttribute('uv', new THREE.Float32BufferAttribute(S.uv, 2)); geo.setIndex(S.idx);
             var m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; m._ew_noBatch = true; g.add(m); return m;   // (never the static batch: its look key mixed the faces' sheets, all six came out one)
         };
-        var coreMat = new THREE.MeshPhongMaterial({ color: 0x15141c, shininess: 60, specular: 0x333344 });
+        var coreMat = _cubeCore();
         var CS = sheet(), ST = {}, a0 = s * 0.97;
         cells.forEach(function (c) {
             var p0 = [cx(c), cy(c), cz(c)];
@@ -79545,11 +79576,7 @@ const ThreeRenderer = (function () {
         mesh(CS, coreMat);
         if (n > 2) { var inner = new THREE.Mesh(new THREE.BoxGeometry((n - 2) * s * U, (n - 2) * s * U, (n - 2) * s * U), coreMat); inner.position.y = -n * s / 2 * U; inner._ew_noBatch = true; g.add(inner); }
         Object.keys(ST).forEach(function (f) {
-            /* the sticker colours (a Rubik's cube reads by its six colours: the face's ground tinted white, yellow, orange, red,
-               blue, green; the Sea's water alone read grey from the bridge) */
-            var TINT = { U: 0xffffff, D: 0xffe070, E: 0xffa050, W: 0xff6a50, S: 0x6aa0ff, N: 0x80f090 };
-            var tex = _hzTex(KEYS[f]), mat = new THREE.MeshPhongMaterial({ map: tex || null, color: TINT[f] || 0xffffff, shininess: 30 });
-            mat.emissive = new THREE.Color(TINT[f] || 0x202028).multiplyScalar(0.18); mat.name = 'ew_cube_' + f;
+            var mat = _cubeFaceMat(f);
             mesh(ST[f], mat);
         });
         return g;
