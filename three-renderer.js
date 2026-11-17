@@ -76250,6 +76250,7 @@ const ThreeRenderer = (function () {
         var domeMat = new THREE.ShaderMaterial({ uniforms: _envUni, vertexShader: _ENV_DOME_VS, fragmentShader: _envDomeFS(), side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false });
         var dome = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), domeMat);
         dome.renderOrder = -1000; dome.frustumCulled = false; dome.scale.setScalar(_ENV_DOME_R);
+        if (room.space && room.space.round) _ewPlKeepFlat(dome);   // THE ROUND WORLDS: the sky dome follows the eye, never bent onto a ball
         H.scene.add(dome);
         if (H === _hq) _paintSkyTick((H.opts && H.opts.room) || null, true, _hqPaintFog(H));   // THE PAINTED SKIES: the sheets are asked for inside the room's build (the load card waits)
         H.sky = { dome: dome, tint: new THREE.Color((sky.tint != null) ? sky.tint : 0x000000), fogC: new THREE.Color((sky.fog && sky.fog.color != null) ? sky.fog.color : 0x000000), floaters: [], group: null, night: (typeof sky.night === 'number') ? sky.night : (sky.night ? 1 : 0),
@@ -87536,6 +87537,22 @@ const ThreeRenderer = (function () {
             var halo = new THREE.Mesh(new THREE.SphereGeometry(sp.sun.r * 1.35 * U, 40, 26), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.22, depthWrite: false })); halo.position.copy(sun.position); G.add(halo);
             var sl = new THREE.PointLight(0xffd8a0, 0.6, 0); sl.position.copy(sun.position); G.add(sl);
         }
+        /* a round world's ring (Saturn's ice) or accretion rim (the Singularity's): round its ball's middle `c`, clear of the ground (THE ROUND WORLDS, 11-17) */
+        (sp.round || []).forEach(function (p) {
+            if (!p.c) return;
+            if (p.ring) {
+                var rg = new THREE.Mesh(new THREE.RingGeometry(p.R * 1.4 * U, p.R * 2.05 * U, 128, 1), new THREE.MeshBasicMaterial({ color: p.ring.color != null ? p.ring.color : 0xe8d3a0, side: THREE.DoubleSide, transparent: true, opacity: 0.82, depthWrite: false }));
+                rg.rotation.x = -Math.PI / 2 + 0.32; rg.position.set(p.c[0] * U, p.c[1] * U, p.c[2] * U); G.add(rg);
+                var rg2 = new THREE.Mesh(new THREE.RingGeometry(p.R * 1.62 * U, p.R * 1.7 * U, 128, 1), new THREE.MeshBasicMaterial({ color: 0x6a5a40, side: THREE.DoubleSide, transparent: true, opacity: 0.7, depthWrite: false }));
+                rg2.rotation.copy(rg.rotation); rg2.position.copy(rg.position); rg2.renderOrder = 1; G.add(rg2);   // the gap in the ring
+            }
+            if (p.rim != null) {
+                var disc = new THREE.Mesh(new THREE.RingGeometry(p.R * 1.25 * U, p.R * 2.1 * U, 128, 1), new THREE.MeshBasicMaterial({ color: p.rim, side: THREE.DoubleSide, transparent: true, opacity: 0.55, depthWrite: false }));
+                disc.rotation.x = -Math.PI / 2 + 0.18; disc.position.set(p.c[0] * U, p.c[1] * U, p.c[2] * U); G.add(disc);
+                var tor = new THREE.Mesh(new THREE.TorusGeometry(p.R * 1.25 * U, p.R * 0.03 * U, 10, 128), new THREE.MeshBasicMaterial({ color: 0xffe0a0 }));
+                tor.rotation.copy(disc.rotation); tor.position.copy(disc.position); G.add(tor);
+            }
+        });
         /* THE ROUND WORLDS: the balls, rings, flanks and the Sun are drawn where they hang (a ring's far edge can reach over a net's flat place) */
         if (sp.round && sp.round.length) G.children.slice(n0).forEach(_ewPlKeepFlat);
         /* the beacons */
@@ -87635,7 +87652,7 @@ const ThreeRenderer = (function () {
             u.A.value.set(0, 0, 0, 0); u.P.value.set(0, 0, 0, 0); u.M0.value.set(1, 0, 0, 0); u.M1.value.set(0, 1, 0, 0); u.M2.value.set(0, 0, 1, 0);
         }
         /* the flat bounds of a bent piece say nothing about where it is drawn: nothing in the room is left out by the frustum */
-        if (L && H && H.scene && (!H._plCullT || performance.now() - H._plCullT > 500)) { H._plCullT = performance.now(); H.scene.traverse(function (o) { if (o.frustumCulled) o.frustumCulled = false; if (o.isMesh && !o._ewPlSeen) { o._ewPlSeen = true; try { _ewPlSplitSeams(o, L, U); } catch (e) { console.warn('[HQ] the round worlds: a seam split failed', e); } } }); }
+        if (L && H && H.scene && (!H._plCullT || performance.now() - H._plCullT > 500)) { H._plCullT = performance.now(); if (H.sky) { if (H.sky.dome) _ewPlKeepFlat(H.sky.dome); if (H.sky.group) _ewPlKeepFlat(H.sky.group); if (H.sky.landmarks) _ewPlKeepFlat(H.sky.landmarks); }   /* the sky dome (it follows the eye) and the sky's pieces made after its build (16 of 160 on 11-17) stay flat: bent and turned with the ball they drew giant dark panels on the WebGL2 path */ H.scene.traverse(function (o) { if (o.frustumCulled) o.frustumCulled = false; if (o.isMesh && !o._ewPlSeen) { o._ewPlSeen = true; try { _ewPlSplitSeams(o, L, U); } catch (e) { console.warn('[HQ] the round worlds: a seam split failed', e); } } }); }
     }
     /* a piece drawn as it stands whatever net it hangs over (the sky's bodies): its materials skip the bend (set before their first draw) */
     function _ewPlKeepFlat(obj) {
