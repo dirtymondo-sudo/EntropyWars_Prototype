@@ -919,6 +919,8 @@ function getR2RaceSpriteUrl(race, gender, cls) {
 
 function getBattleMapSpriteUrl(unit) {
     if (!unit) return '';
+    /* 🤳 THE FILTER: the other side draws a filtered unit with the swapped ally's sprite */
+    if (unit.status && unit.status.filtered > 0 && typeof window !== 'undefined' && typeof window.ewDrawnUnit === 'function') unit = window.ewDrawnUnit(unit);
 
     if (unit._spriteOverride) return unit._spriteOverride;
 
@@ -6802,6 +6804,11 @@ const RACE_PORTRAITS = {
 
 function getUnitPortraitArtUrl(unit) {
   if (!unit || !unit.race) return null;
+  /* 🤳 THE FILTER (2026-11-17, the Influencer): a filtered unit shows the swapped ally's face on the other side's screen */
+  if (unit.status && unit.status.filtered > 0 && typeof window !== 'undefined' && typeof window.ewDrawnUnit === 'function') {
+    const _lk = window.ewDrawnUnit(unit);
+    if (_lk !== unit) unit = _lk._lookId != null ? Object.assign({}, _lk, { id: _lk._lookId }) : _lk;
+  }
   /* THE MODEL PORTRAITS (2026-11-12): a unit that wears a model of its own (a creator look, or a story character's rig,
      `appearance.cast`: Agent Locke) shows that model's face, photographed off its Head bone (three-renderer.js THE PORTRAIT
      STUDIO). null until the photo is in: the race's art / the sprite's face stands in, then the HUD repaints. */
@@ -6818,6 +6825,10 @@ function getUnitPortraitArtUrl(unit) {
    without art gets one by default), or show the whole sprite: undefined = keep the art. */
 function getUnitPortraitUrl(unit) {
   const art = getUnitPortraitArtUrl(unit);
+  if (unit && unit.status && unit.status.filtered > 0 && typeof window !== 'undefined' && typeof window.ewDrawnUnit === 'function') {
+    const _lk = window.ewDrawnUnit(unit);   // 🤳 THE FILTER: the face cut from the swapped ally's sprite
+    if (_lk !== unit) unit = _lk._lookId != null ? Object.assign({}, _lk, { id: _lk._lookId }) : _lk;
+  }
   if (unit && unit.race && typeof window !== 'undefined' && window.EWFaces) {
     try { const f = window.EWFaces.url(unit, art); if (f !== undefined) return f; } catch (e) {}
   }
