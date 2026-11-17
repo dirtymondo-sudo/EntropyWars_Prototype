@@ -3914,6 +3914,13 @@ and the CEO's `_ceoSides`/`_ceoTileRing`). Visuals only; the rule (battle.js THE
   15% + the whole plate (201 + 28 = 229; self 226 + 120 = 346) and empties it; the Miracle forecast includes the plate.
   Showcase pictures: show.js / rt.js in the same folder (a slow clock, `__setK(0.1)`, is the way to catch the flying coins; a
   frozen clock + real setTimeouts loses them).
+- THE PLATE CHIP (hud.js `_hrlgStatusChips`, `key: 'plate'`): `PLATE <n>` while the plate holds anything (both sides read it; unit._plate
+  rides the state sync), title = what Miracle adds.
+- CPU (ai.js): Miracle's heal value counts the plate (`spendPlate`); Collection Plate (`tithe`) scores 25 + 45 a healer (own team or a
+  foe it sees) + 15 a hurt ally within 4, and 0 when nobody near can heal or the plate is already out. Ranked in a staged board
+  (`window._aiRankCandidates`): healers near, plate empty = Laying On of Hands 193 > Collection Plate 93 > Miracle 31; plate 220 +
+  an ally at 30% = Laying On of Hands 271 ≈ Miracle 262; plate out = no Collection Plate. In a 4-round CPU match the AI healed with
+  Laying On of Hands and used a potion; with no healer standing near it never passed the plate (as scored).
 ## THE REFEREE (2026-11-17, thread "Polish Referee spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx")
 Officiating had only the generic looks. three-vfx-effects.js "THE REFEREE" (right after THE TECH CEO; `_PZ_SIGS.rf*`, helpers `_rf*`).
 Cards keep their own colours (solid yellow / red, read on grass); rings and floor marks are the Referee's SIDE from the viewer's seat
