@@ -14418,7 +14418,11 @@
             if (cut <= 0) return 0;
             pastor._plate = (pastor._plate || 0) + cut;
             addLog(`🙌 ${_ctName(pastor)} passes the plate: ${cut} HP of the heal on ${_ctName(target)} goes in the collection (${pastor._plate} in the plate).`);
-            if (!_skipVisuals()) showFloatingTextForUnit(pastor, `🙌 +${cut}`, 'buff', { durationMs: 900 });
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(pastor, `🙌 PLATE ${pastor._plate}`, 'buff', { durationMs: 900 });   // the running total (the plate has no other read-out)
+                /* THE TELEVANGELIST PASS VFX (2026-11-17): the cut's coins hop from the healed body into the plate (fire() is relayed) */
+                try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('skim', 'nrCollectionPlate', { fromX: target.x, fromY: target.y, tx: pastor.x, ty: pastor.y, cut }); } catch (e) {}
+            }
             return cut;
         }
         /* 📱 GOING VIRAL (the Influencer): a Viral unit shares 30% of every hit it takes with each of its own teammates within 2
@@ -82915,6 +82919,10 @@
                 panelFocusTarget = _healResult.target;
                 const _ht = _healResult.target;
                 const { amount: healAmount, preScaled: _healPreScaled } = spellHealAmountFor(unit, spell, _ht);   // THE SUPPORT FORECAST reads the same
+                /* THE TELEVANGELIST PASS VFX (2026-11-17): Miracle's plate pours out of his hand and lands on the ally as the heal does */
+                if (spell.spendPlate && unit._plate > 0 && !_skipVisuals()) {
+                    try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('payout', spell.id, { fromX: unit.x, fromY: unit.y, tx: _ht.x, ty: _ht.y, plate: unit._plate, ms: Math.max(300, _healResult.applyAt || 0) }); } catch (e) {}
+                }
                 // The HP lands when the gift ARRIVES (support cinematic beat 2)
                 // so the +N and the glow pop while the recipient is on camera.
                 window.setTimeout(() => {
