@@ -7999,8 +7999,9 @@ function ActionMenu({ st, hidden }) {
   // already IS the race label — the default nametag mode). THE JOBS REMOVAL
   // (the user 2026-09-27): the job label is gone.
   const _lvl = typeof getUnitLevel === 'function' ? getUnitLevel(unit) : 1;
-  const _raceLbl = (unit.race && typeof getRaceLabel === 'function')
-    ? getRaceLabel(unit.race, unit.gender)
+  const _lkU = (typeof window.ewDrawnUnit === 'function') ? window.ewDrawnUnit(unit) : unit;   // 🤳 THE FILTER: the swapped look
+  const _raceLbl = (_lkU.race && typeof getRaceLabel === 'function')
+    ? getRaceLabel(_lkU.race, _lkU.gender)
     : (unit.race ? unit.race.charAt(0).toUpperCase() + unit.race.slice(1) : '');
   const subLine = 'Lv' + _lvl
     + (_raceLbl && _raceLbl !== unitName ? ' · ' + String(_raceLbl).toUpperCase() : '');
@@ -8018,7 +8019,7 @@ function ActionMenu({ st, hidden }) {
     view: view, panels: panels, fc: fc,
     roman: roman, unitName: unitName, unitKey: unit.id, apUnit: unit,
     subLine: subLine,
-    unitTypes: (unit.types || []).slice(0, 2),
+    unitTypes: (_lkU.types || unit.types || []).slice(0, 2),
     portraitUrl: _portUrl,
     portraitIsFace: _portIsFace,
     // clicking the clock portrait re-centers the camera on the unit — the
