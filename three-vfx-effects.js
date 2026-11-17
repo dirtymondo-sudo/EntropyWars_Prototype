@@ -53106,9 +53106,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ════ THE FLORIDA MAN (2026-11-17, the new races' polish thread "Polish Florida Man spells and VFX") ════
        Gator Toss, Bath Salts and Hurricane Party shipped on the stock look (a generic bolt, a buff glow, the plain wind ring).
        Each now has its own piece, on the same hooks as the Banker / Sewer Gator blocks above (EFFECTS `pzSig` -> _PZ_SIGS, every
-       intent through fire(), which online.js relays, so the guest draws the same piece; RULE #2), and each cast opens with
-       TODAY'S HEADLINE: a newspaper spins in beside his head (the old film spin) with the day's headline on it, small, to the
-       lens side of him and above the nameplate, gone in 1.6 s. Side colours from the viewer's seat (his side cyan-blue, the other
+       intent through fire(), which online.js relays, so the guest draws the same piece; RULE #2). The day's headline rides the
+       action-cam letterbox, turned into a broadcast lower third (battle.js _acNewsFor, mondo 11-17; it was a spinning
+       newspaper sprite here first). Side colours from the viewer's seat (his side cyan-blue, the other
        side pink-orange, THE RIOT PASS phase C); the spell keeps its own swamp green / salt white / storm grey. Nothing full-screen;
        everything round the body fades so the caster, the target, the hit and the number read. Visuals only.
        · Gator Toss `bolt` (pzOwn, timed on flyMs): a real-proportioned alligator (leather hide, the Sewer Gator's snout and
@@ -53121,44 +53121,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
          the area. Models: the Meshy `flamingo` + `traffic_cone` (_MISC_GLB, warmed in _SPELL_MISC_KEYS). */
     var _FM = { hide: 0x8fbf5a, belly: 0xe0dca0, salt: 0xf6f8ff, rage: 0xff3a1a, rageHi: 0xffa040, regen: 0x6af07a,
         storm: 0x8a96a6, rain: 0xbfe6ff, paper: '#f1ead8' };
-    var _FM_HEADLINES = { nrGatorToss: 'FLORIDA MAN\nTHROWS ALLIGATOR', nrBathSalts: 'FLORIDA MAN FOUND\nNAKED ON OVERPASS',
-        nrHurricaneParty: 'FLORIDA MAN REFUSES\nTO EVACUATE' };
     /* the side ramp of whoever stands on a square: [bright, deep] (own cyan-blue, theirs pink-orange) */
     function _fmSide(sx, sy) {
         var owner = null;
         try { if (!_VS.on && typeof state !== 'undefined' && state.units) for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.x === sx && u.y === sy) { owner = u.player; break; } } } catch (e) {}
         return _mgSide(owner);
-    }
-    function _fmPaperTex(text) {
-        return _pzTex('fm-paper-' + text, 512, 288, function (g, w, h) {
-            g.fillStyle = _FM.paper; g.fillRect(0, 0, w, h);
-            g.strokeStyle = '#2a2622'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);
-            g.fillStyle = '#c81a1a'; g.fillRect(14, 14, w - 28, 54);
-            g.fillStyle = '#ffffff'; g.font = 'bold 40px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-            g.fillText('BREAKING NEWS', w / 2, 42);
-            g.fillStyle = '#16130f'; g.font = 'bold 50px Georgia, "Times New Roman", serif';
-            var L = String(text).split('\n');
-            for (var i = 0; i < L.length; i++) g.fillText(L[i], w / 2, 118 + i * 58, w - 36);
-            /* the columns under the headline: grey type lines */
-            g.fillStyle = 'rgba(40,36,30,0.35)';
-            for (var c = 0; c < 3; c++) for (var r = 0; r < 4; r++) g.fillRect(22 + c * 160, 222 + r * 12, 140 - (r === 3 ? 50 : 0), 5);
-        });
-    }
-    /* TODAY'S HEADLINE: the paper spins in beside his head, holds, folds away */
-    function _fmHeadline(sx, sy, spellId) {
-        var text = _FM_HEADLINES[spellId]; if (!text || sx == null || !_pzSeen(sx, sy)) return;
-        var F = _nrvFrame(sx, sy), ts = F.ts, cd = _nbCamDir(F);
-        var sm = new THREE.SpriteMaterial({ map: _fmPaperTex(text), transparent: true, opacity: 0, depthWrite: false, depthTest: false });
-        var sp = new THREE.Sprite(sm); sp.renderOrder = 175; F.g.add(sp);
-        var W = ts * 1.25, H = W * 288 / 512;
-        sp.position.set(cd.z * ts * 0.95, ts * 2.15, -cd.x * ts * 0.95);   /* to the lens's right of him, over the nameplate */
-        _sigRunOwned(F.g, 1650, function (el) {
-            var k = _sigEaseOutCubic(_sigClamp01(el / 420));
-            var s = Math.max(0.04, k) * (1 - 0.15 * _sigClamp01((el - 1350) / 300));
-            sp.scale.set(W * s, H * s, 1);
-            sm.rotation = (1 - k) * Math.PI * 4;
-            sm.opacity = _pzEnv(el, 0, 120, 1300, 1650);
-        });
     }
     /* a Meshy prop (misc key) at length `len`, its materials faded together (userData.mats) */
     function _fmModel(key, len, lift) {
@@ -53197,7 +53164,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var fx = p.fromX, fy = p.fromY, tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty; if (tx == null) return;
         if (fx == null) { var fr = _pzFrom(tx, ty, p); fx = fr.x; fy = fr.y; }
         var ms = p.flyMs > 0 ? p.flyMs : 480;   /* the engine's flight: the jaws close on the number */
-        _fmHeadline(fx, fy, 'nrGatorToss');
         if (!_pzSeen(fx, fy) && !_pzSeen(tx, ty)) return;
         var ts0 = _cfg().tileSize || 128, G = _fmGator(ts0), side = _fmSide(fx, fy);
         var wet = false;
@@ -53237,7 +53203,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['fmBathSalts_aura'] = _pzDef('fmBathSalts', { pzOwn: true });
     _PZ_SIGS.fmBathSalts = function (p) {
         var tx = p.tx, ty = p.ty; if (tx == null) return;
-        _fmHeadline(tx, ty, 'nrBathSalts');
         if (!_pzSeen(tx, ty)) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, side = _fmSide(tx, ty), cd = _nbCamDir(F);
         /* the crystals: little white shards thrown out of the puff */
@@ -53305,7 +53270,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['fmHurricaneParty_aoe'] = _pzDef('fmHurricane', { pzOwn: true, aoeRadius: 1 });
     _PZ_SIGS.fmHurricane = function (p, id) {
         var tx = p.tx, ty = p.ty; if (tx == null) return;
-        if (p.cx != null) _fmHeadline(p.cx, p.cy, 'nrHurricaneParty');
         var at = _nvAoeTiles(id, p, null, 1), r = at.r || 1;
         var seenAny = _pzSeen(tx, ty);
         for (var t0 = 0; t0 < at.offs.length && !seenAny; t0++) if (_pzSeen(tx + at.offs[t0].dx, ty + at.offs[t0].dy)) seenAny = true;
