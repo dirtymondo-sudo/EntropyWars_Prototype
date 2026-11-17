@@ -5020,3 +5020,26 @@ was left is small. Everything is behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP = t
   (three-renderer.js's carry / leap?); Transform's gold halo is the shared buff burst (`_buff_div_burst_center`).
 - No line spell of the brief's list is on B10 (Piercing Arrow, Bullet Pass, Shockwave Clap and Ki Charge are on B3's list).
 - Frames: docs/plans/vfx-cleanup/img/sweep/b10_p1_*.jpg. Online: every piece rides `fire()` / the stage beats; nothing on `state`.
+
+
+## THE VFX SWEEP, B10, part 2: the last check: basic attacks, items, combos (2026-11-17, battle.js)
+Not in any table; one of each was fired by hand on the audit board (`doAttack`, `doItem` healPotion, `doComboAttack`
+Combined Arms) and shot every 0.12 s.
+- **Basic attack (melee):** the action shot, THE HIT BLINK, the number, blood. No ring, no flash, no speed burst. Its hit
+  spark is the `hit04` sprite sheet (three-anim). Nothing to change. A RANGED basic attack was not shot (its round is the
+  tracer kit, `fireBoltDirect`).
+- **Item (Heal Potion):** a thin green ring + the number (`_itemHealPotion_burst`, the heal palette). Nothing to change.
+  The Mana Potion's recipe is the same shape in blue (code only). Thrown items (grenade, bane) were not shot.
+- **Combo (Combined Arms):** the slash combo + two cream sonic rings + a `#fff2cc` flash of the whole screen. The combo
+  finishers (`_COMBO_IMPACT_FX`, 16 screen flashes) are mostly in the combo's own colour; the three near-white ones
+  (Combined Arms `#fff2cc`, Celestial Chorus `#e8dcff`, Purifying Pulse `#ffffff`) are off while the cleanup is on
+  (`_vcComboFlash`; `EW_NO_VFX_CLEANUP = true` = as before). The guest runs the same table through the `combo-cine`
+  relay, so both seats match. NOT seen: the flash is 0.22 s and fell between frames before and after.
+- **Reported, not changed:** the other 13 combo flashes are coloured but still screen-wide at 0.30-0.35 (mondo's call:
+  a combo is a finisher); four combo pillars have a white core (`coreColor: 0xffffff`), Purifying Pulse's ring is pure
+  white (a purify light: the thing itself?); the KILL finisher of an action shot (`_actionCamKillFlare`) flashes the
+  whole screen white at 0.5 with a ring, by design ("the full JRPG treatment"); the Entropy Strike presentations
+  (battle.js 19000-24800) draw white-cored pillars on every charge.
+- Frames: docs/plans/vfx-cleanup/img/sweep/b10_p2_attack_item_combo.jpg (in it the caster is a black card: the harness
+  board's raider sprite did not load; not a game fault I traced).
+- **B10 is done:** 112 spells traced, 17 changed, 95 no change; list of what belongs to other threads in part 1.
