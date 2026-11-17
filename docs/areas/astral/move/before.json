@@ -1,0 +1,725 @@
+{
+ "rooms": [
+  "site_prebuilt_lookingglass_realm"
+ ],
+ "plots": {
+  "The Card Catalogue": {
+   "props": {
+    "library_shelf": 2,
+    "library_shelf_full": 5,
+    "card_catalog": 4,
+    "floating_orb": 1,
+    "microfiche_reader": 1
+   },
+   "features": {
+    "plateau": 7
+   },
+   "doors": {},
+   "natives": {
+    "watcher": 1
+   }
+  },
+  "The Library Frame": {
+   "props": {
+    "library_shelf_full": 6,
+    "library_shelf": 1,
+    "signpost": 1,
+    "door_stack": 1,
+    "globe_lamp": 2
+   },
+   "features": {
+    "plateau": 7,
+    "ramp": 1
+   },
+   "doors": {
+    "library": 1
+   },
+   "natives": {}
+  },
+  "The Stacks": {
+   "props": {
+    "library_shelf_full": 5,
+    "library_shelf": 2,
+    "library_ladder": 2,
+    "lectern": 1,
+    "candle_ring": 1
+   },
+   "features": {
+    "plateau": 1,
+    "ramp": 1,
+    "arch#ast:stack0:look": 1,
+    "arch#ast:stack1:look": 1,
+    "arch#ast:stack2:look": 1,
+    "arch#ast:stack3:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Reading Room": {
+   "props": {
+    "library_shelf": 2,
+    "library_shelf_full": 5,
+    "conference_table": 1,
+    "office_chair": 2,
+    "wingback_chair": 2,
+    "globe_lamp": 2,
+    "candle_ring": 1,
+    "thoughtform": 1,
+    "museum_vitrine": 1
+   },
+   "features": {
+    "plateau": 9
+   },
+   "doors": {},
+   "natives": {
+    "telepath": 1
+   }
+  },
+  "The Stacks, west": {
+   "props": {
+    "library_shelf_full": 4,
+    "library_shelf": 1,
+    "wingback_chair": 1,
+    "globe_lamp": 1,
+    "park_bench": 1,
+    "dream_eye": 1
+   },
+   "features": {
+    "plateau": 8,
+    "ramp": 1
+   },
+   "doors": {},
+   "natives": {
+    "fortune teller": 1
+   }
+  },
+  "The Ladders": {
+   "props": {
+    "library_shelf_full": 5,
+    "library_shelf": 1,
+    "library_ladder": 3,
+    "thoughtform": 1
+   },
+   "features": {
+    "plateau": 7,
+    "ramp": 2
+   },
+   "doors": {},
+   "natives": {
+    "mad scientist": 1
+   }
+  },
+  "Not Yet Written": {
+   "props": {
+    "library_shelf": 7,
+    "lectern": 1,
+    "paper_sheet": 8,
+    "candle_ring": 1
+   },
+   "features": {
+    "plateau": 9,
+    "ramp": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Three Lecterns": {
+   "props": {
+    "library_shelf_full": 5,
+    "library_shelf": 1,
+    "lectern": 3,
+    "candle_ring": 2,
+    "thoughtform": 1
+   },
+   "features": {
+    "plateau": 9,
+    "ramp": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Ward Screen": {
+   "props": {
+    "library_shelf_full": 5,
+    "library_shelf": 2,
+    "eeg_rack": 1,
+    "cot": 1,
+    "globe_lamp": 1
+   },
+   "features": {
+    "plateau": 7,
+    "ramp": 1
+   },
+   "doors": {
+    "link_dumb_astral": 1
+   },
+   "natives": {}
+  },
+  "The Returns": {
+   "props": {
+    "library_shelf": 1,
+    "library_shelf_full": 4,
+    "form_counter": 1,
+    "card_catalog": 1,
+    "park_bench": 1,
+    "newspaper_rack": 1
+   },
+   "features": {
+    "plateau": 9,
+    "ramp": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Back of the Closet": {
+   "props": {
+    "costume_rack": 2,
+    "psx_wardrobe_mp_1": 1,
+    "door_stack": 1,
+    "dream_eye": 2
+   },
+   "features": {
+    "plateau": 6,
+    "ramp": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Bad Nights": {
+   "props": {
+    "nightmare_bloom": 2,
+    "skull_pile": 1,
+    "candle_ring": 1,
+    "dream_eye": 1,
+    "rocking_chair": 1,
+    "psx_bed_1": 1
+   },
+   "features": {
+    "plateau": 9,
+    "ramp": 1
+   },
+   "doors": {
+    "nightmare": 1
+   },
+   "natives": {}
+  },
+  "The Stage": {
+   "props": {
+    "sarcophagus": 1,
+    "followspot": 1,
+    "cinema_seat_row": 2,
+    "music_stand": 1,
+    "dream_eye": 1
+   },
+   "features": {
+    "plateau": 5,
+    "ramp": 1,
+    "arch#ast:stage:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "dreameater": 1
+   }
+  },
+  "The Tanks": {
+   "props": {
+    "iso_tank": 3,
+    "eeg_rack": 1,
+    "iv_stand": 1
+   },
+   "features": {
+    "plateau": 7,
+    "ramp": 2
+   },
+   "doors": {},
+   "natives": {
+    "ghoul": 1
+   }
+  },
+  "The Stairs Down": {
+   "props": {
+    "skull_pile": 1,
+    "nightmare_bloom": 1,
+    "door_stack": 1,
+    "candle_ring": 1,
+    "hw_tree_3": 1
+   },
+   "features": {
+    "plateau": 9,
+    "ramp": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Bed": {
+   "props": {
+    "royal_bed": 1,
+    "rug_round": 1,
+    "paper_sheet": 1,
+    "candle_ring": 2,
+    "dream_eye": 3,
+    "psx_bedside_table_1": 1,
+    "nightmare_bloom": 1
+   },
+   "features": {
+    "plateau": 9,
+    "ramp": 1
+   },
+   "doors": {},
+   "natives": {
+    "shadow entity": 1
+   }
+  },
+  "The Thing Under It": {
+   "props": {
+    "goo_tendril": 6,
+    "demon_statue": 1,
+    "skull_pile": 1,
+    "psx_bed_1_frame": 1
+   },
+   "features": {
+    "plateau": 6,
+    "ramp": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Attic Screen": {
+   "props": {
+    "film_projector": 1,
+    "cinema_seat_row": 1,
+    "rocking_chair": 1,
+    "nightmare_bloom": 1
+   },
+   "features": {
+    "plateau": 10,
+    "ramp": 1
+   },
+   "doors": {
+    "link_attic_nightmare": 1
+   },
+   "natives": {
+    "succubus": 1
+   }
+  },
+  "The Blood": {
+   "props": {
+    "skull_pile": 1,
+    "nightmare_bloom": 1,
+    "hw_tree_2": 1,
+    "candle_ring": 1
+   },
+   "features": {
+    "plateau": 9,
+    "ramp": 1,
+    "pool:lava": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Maw": {
+   "props": {
+    "menhir": 9,
+    "skull_pile": 2,
+    "demon_statue": 1,
+    "nightmare_bloom": 1
+   },
+   "features": {
+    "plateau": 9,
+    "ramp": 1,
+    "pool:lava": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Frame": {
+   "props": {
+    "thoughtform": 2,
+    "hollow_dead_tree": 1,
+    "signpost": 1,
+    "crystal_cluster": 2,
+    "fae_bloom": 1,
+    "fae_bloom_violet": 1,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "white_cloud": 1,
+    "fae_flower_small_pink": 1,
+    "fae_flower_small_blue": 1,
+    "fae_flower_small_violet": 1
+   },
+   "features": {
+    "plateau": 6,
+    "arch#ast:framecourt:look": 1
+   },
+   "doors": {
+    "waiting": 1
+   },
+   "natives": {
+    "watcher": 1
+   }
+  },
+  "The Mirror": {
+   "props": {
+    "marble_bust": 2,
+    "crystal_cluster": 3,
+    "fae_bloom_violet": 1,
+    "thoughtform": 1,
+    "psx_door_2_loose": 1,
+    "giant_hourglass": 1,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "fae_flower_small_pink": 1,
+    "white_cloud": 1
+   },
+   "features": {
+    "plateau": 9,
+    "arch#ast:mirrorframe:look": 1
+   },
+   "doors": {
+    "mirror": 1
+   },
+   "natives": {
+    "rabbit": 1,
+    "chess piece": 1
+   }
+  },
+  "The Closet": {
+   "props": {
+    "door_stack": 1,
+    "hollow_dead_tree": 1,
+    "dream_eye": 1,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "meshy_crystal_shards": 1,
+    "crystal_cluster": 1,
+    "fae_flower_small_pink": 1,
+    "fae_flower_small_blue": 1,
+    "white_cloud": 1
+   },
+   "features": {
+    "plateau": 6,
+    "ramp": 1,
+    "arch#ast:closet:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "watcher": 1
+   }
+  },
+  "The Carousel": {
+   "props": {
+    "carousel": 1,
+    "pearly_gate": 1,
+    "decor_carousel_horse": 1,
+    "thoughtform": 1,
+    "ticket_booth": 1,
+    "popcorn_cart": 1,
+    "high_striker": 1,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "white_cloud": 1,
+    "crystal_cluster": 1
+   },
+   "features": {
+    "plateau": 8
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Near Shore": {
+   "props": {
+    "thoughtform": 2,
+    "crystal_cluster": 3,
+    "park_bench": 1,
+    "fae_bloom": 1,
+    "rowboat": 1,
+    "sea_chest": 1,
+    "mooring_bollard": 1,
+    "sea_buoy": 1,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "meshy_crystal_shard": 1,
+    "meshy_crystal_shards": 1,
+    "white_cloud": 1
+   },
+   "features": {
+    "plateau": 8,
+    "ramp": 2
+   },
+   "doors": {},
+   "natives": {
+    "machine elves": 1
+   }
+  },
+  "The Thought-Forms": {
+   "props": {
+    "greek_column": 10,
+    "floating_orb": 1,
+    "lectern": 1,
+    "thoughtform": 6,
+    "crystal_cluster": 2,
+    "fish_school": 1,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "white_cloud": 1,
+    "fae_flower_small_violet": 1,
+    "meshy_crystal_shard": 1,
+    "marble_bust": 1,
+    "angel_statue": 1
+   },
+   "features": {
+    "plateau": 9,
+    "pool:water": 1,
+    "arch#ast:temple:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "orb of light": 1
+   }
+  },
+  "The Open Sea": {
+   "props": {
+    "crystal_cluster": 3,
+    "dream_eye": 1,
+    "thoughtform": 1,
+    "hollow_dead_tree": 1,
+    "white_cloud": 2,
+    "fish_school": 1,
+    "decor_piano": 1,
+    "rocking_chair": 1,
+    "school_desk": 1,
+    "star_projector": 1,
+    "fae_flower_small_violet": 1,
+    "meshy_crystal_shard": 1,
+    "meshy_crystal_shards": 1
+   },
+   "features": {
+    "plateau": 12
+   },
+   "doors": {},
+   "natives": {
+    "siren": 1
+   }
+  },
+  "The High Thought": {
+   "props": {
+    "park_bench": 1,
+    "telescope": 1,
+    "hollow_dead_tree": 1,
+    "crystal_cluster": 2,
+    "star_projector": 1,
+    "globe_lamp": 1,
+    "fae_flower_small_blue": 1,
+    "fae_flower_small_violet": 1,
+    "meshy_crystal_shard": 1
+   },
+   "features": {
+    "plateau": 6,
+    "ramp": 1,
+    "rail:balusters_b": 32
+   },
+   "doors": {},
+   "natives": {
+    "telepath": 1
+   }
+  },
+  "The Islands": {
+   "props": {
+    "thoughtform": 1,
+    "crystal_cluster": 2,
+    "fae_bloom_pink": 1,
+    "fish_school": 3,
+    "coral_brain": 3,
+    "coral_tube": 3,
+    "giant_clam": 2,
+    "coral_fan": 6,
+    "fae_flower_small_blue": 5,
+    "anemone": 6,
+    "fae_flower_small_violet": 1,
+    "fae_flower_small_pink": 2,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "white_cloud": 1
+   },
+   "features": {
+    "plateau": 9,
+    "ramp": 1
+   },
+   "doors": {},
+   "natives": {
+    "glitch": 1
+   }
+  },
+  "The Fortune Tent": {
+   "props": {
+    "fortune_tent": 1,
+    "candle_ring": 1,
+    "giant_hourglass": 1,
+    "thoughtform": 1,
+    "brass_orrery": 1,
+    "bird_cage": 1,
+    "fae_bloom_pink": 1,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "white_cloud": 2,
+    "crystal_cluster": 1,
+    "fae_flower_small_pink": 1
+   },
+   "features": {
+    "plateau": 8,
+    "ramp": 1
+   },
+   "doors": {},
+   "natives": {
+    "fortune teller": 1
+   }
+  },
+  "The Impossible Stair": {
+   "props": {
+    "impossible_stair": 1,
+    "thoughtform": 1,
+    "crystal_cluster": 2,
+    "door_stack": 1,
+    "psx_door_1_loose": 1,
+    "psx_door_2_loose": 1,
+    "psx_door_4_loose": 1,
+    "giant_hourglass": 1,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "meshy_crystal_shards": 1,
+    "white_cloud": 1
+   },
+   "features": {
+    "plateau": 10
+   },
+   "doors": {},
+   "natives": {
+    "telepath": 1
+   }
+  },
+  "The Still Water": {
+   "props": {
+    "park_bench": 2,
+    "fae_bloom_violet": 1,
+    "crystal_cluster": 2,
+    "thoughtform": 1,
+    "fish_school": 1,
+    "marble_bust": 1,
+    "fae_bloom": 1,
+    "fae_bloom_pink": 1,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "meshy_crystal_shards": 1
+   },
+   "features": {
+    "plateau": 9,
+    "ramp": 1,
+    "pool:water": 1,
+    "arch#ast:stillkerb:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "voidweaver": 1,
+    "fairy": 1
+   }
+  },
+  "The Spire": {
+   "props": {
+    "film_camera": 1,
+    "crystal_cluster": 2,
+    "globe_lamp": 1,
+    "white_cloud": 1,
+    "fae_flower_small_violet": 1,
+    "meshy_crystal_shard": 1
+   },
+   "features": {
+    "plateau": 6,
+    "ramp": 2,
+    "arch#ast:spire:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Edge": {
+   "props": {
+    "dream_eye": 2,
+    "brass_telescope": 1,
+    "park_bench": 1,
+    "astronomical_clock": 1,
+    "globe_lamp": 1,
+    "white_cloud": 1,
+    "fae_flower_small_blue": 1,
+    "fae_flower_small_violet": 1,
+    "meshy_crystal_shard": 1,
+    "crystal_cluster": 1
+   },
+   "features": {
+    "plateau": 6,
+    "ramp": 1,
+    "rail:balusters_b": 30
+   },
+   "doors": {},
+   "natives": {
+    "occulus": 1,
+    "cosmic wraith": 1
+   }
+  },
+  "The Far Shore": {
+   "props": {
+    "hollow_dead_tree": 3,
+    "door_stack": 1,
+    "dream_eye": 1,
+    "thoughtform": 1,
+    "lighthouse": 1,
+    "rowboat": 1,
+    "mooring_bollard": 1,
+    "ship_anchor": 1,
+    "sea_buoy": 1,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "white_cloud": 1,
+    "crystal_cluster": 2,
+    "meshy_crystal_shards": 1
+   },
+   "features": {
+    "plateau": 7
+   },
+   "doors": {},
+   "natives": {
+    "dreameater": 1
+   }
+  },
+  "The Hollow Tree": {
+   "props": {
+    "hollow_tree": 1,
+    "fae_bloom": 1,
+    "fae_bloom_pink": 1,
+    "crystal_cluster": 2,
+    "owl_perched": 1,
+    "bird_cage": 1,
+    "fae_bloom_violet": 1,
+    "globe_lamp": 1,
+    "mushroom_lamp": 1,
+    "meshy_crystal_shard": 1,
+    "white_cloud": 1
+   },
+   "features": {
+    "plateau": 9,
+    "ramp": 2
+   },
+   "doors": {},
+   "natives": {
+    "mushroom girl": 1
+   }
+  }
+ },
+ "lines": 15,
+ "totals": {
+  "props": 430,
+  "features": 391,
+  "doors": 6,
+  "natives": 25,
+  "lines": 15,
+  "plots": 36
+ }
+}
