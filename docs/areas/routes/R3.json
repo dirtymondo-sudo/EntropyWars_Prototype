@@ -1,0 +1,40 @@
+{
+  "about": "ROUTE R3, THE PILGRIM WAY (One World phase 4.1, the owner's north routes thread, 2026-11-17): a trail from the Colosseum's ground (south, rows -9; the Colosseum, built by phase 4.4 in the Vatican's room; that end's door is `ow_h_m10_m9` on the Colosseum's north wall) north up to Mount Olympus, which it reaches on the Pilgrim Stair's east side (seam ow_v_m10_m13). ONE room, 10 plots (3 x 4). PLACES (ow-places.js, every name an idea of Claude's): the page gives shrines on the way; the rest are the kit's picks by the ground.",
+  "hub": "mountains",
+  "room": "site_ow_r3",
+  "part": "ow_r3",
+  "label": "THE PILGRIM WAY",
+  "sub": "THE TRAIL · THE COLOSSEUM TO MOUNT OLYMPUS · 10 PLOTS",
+  "line": [
+    [
+      -9.0,
+      -8.9
+    ],
+    [
+      -9.0,
+      -12.5
+    ],
+    [
+      -10.1,
+      -12.5
+    ]
+  ],
+  "ends": {
+    "ow_v_m10_m13": {
+      "room": "site_prebuilt_shasta_ow_olympus",
+      "label": "MOUNT OLYMPUS",
+      "sub": "THE PILGRIM STAIR · UP TO THE TEMPLE",
+      "desc": "The path meets a white stone stair going up into the cloud."
+    },
+    "ow_h_m10_m9": {
+      "room": "site_prebuilt_vatican_plots",
+      "label": "THE COLOSSEUM",
+      "sub": "THE PLAZA · SOUTH INTO THE ARENA'S GROUNDS",
+      "desc": "The trees open onto a paved plaza. Past it stand the arches of a huge ruined arena."
+    }
+  },
+  "places": {
+    "-9,-11": "shrine",
+    "-10,-12": "shrine"
+  }
+}

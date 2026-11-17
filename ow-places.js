@@ -55,6 +55,14 @@ const PLACES = {
     /* ── bare rock, alpine slopes, cliffs ── */
     minecart:   { name: 'the mine cart', kinds: ['rock'], r: 2, pieces: [['mine_cart', 0, 0, Object.assign({ face: 80 }, B)], ['cave_stone', 1, 1, B], ['cave_stone', -1, 0, B], ['wooden_barrel', 1, -1, B]] },
     totem:      { name: 'the carved pole', kinds: ['rock', 'forest'], r: 1, pieces: [['carved_totem_pole', 0, 0, B], ['cave_stone', 1, 1, B], ['wild_flowers', -0.7, 0.6]] },
+    /* ── THE NORTH ROUTES' OWN (2026-11-17, BUILD_PLAN phase 4.1): the design page's "on the way" list for R1 to R5 and R12. `kinds: []` = laid only where a
+       route's spec names it (so no other route's picks move on a rebake). Ideas of Claude's, plain names, no role in the game. ── */
+    ranger:     { name: 'the ranger station', kinds: [], r: 2, pieces: [['woods_cabin', 0, 0, Object.assign({ face: 180 }, B)], ['flag_pole', 2, -2, B], ['picnic_table', -2, 2, B], ['firewood_stack', 2, 2, Object.assign({ face: 90 }, B)], ['trail_sign', -2, -2, B]] },
+    inn:        { name: 'the crossroads inn', kinds: [], r: 2, pieces: [['woods_cabin', 0, 0, Object.assign({ face: 180 }, B)], ['lantern_post', 2, -1, Object.assign({ face: 270 }, B)], ['wooden_barrel', 2, 1, B], ['picnic_table', -2, 2, B], ['signpost', -2, -2, B], ['hay_bale', 1.6, 2.1]] },
+    menhirs:    { name: 'the standing stones', kinds: [], r: 2, pieces: [['menhir', -2, -1, B], ['menhir', -2, 1, Object.assign({ face: 40 }, B)], ['menhir', 0, -2, Object.assign({ face: 90 }, B)], ['menhir', 0, 2, Object.assign({ face: 200 }, B)], ['menhir', 2, -1, Object.assign({ face: 130 }, B)], ['menhir', 2, 1, Object.assign({ face: 300 }, B)], ['wild_flowers', 0.3, 0.2]] },
+    shrine:     { name: 'the wayside shrine', kinds: [], r: 1, pieces: [['hooded_statue', 0, 0, Object.assign({ face: 180 }, B)], ['stone_lantern', 1, 0, B], ['candle', -0.6, 0.7], ['candle', -0.3, 0.8], ['wild_flowers', 0.6, 0.8]] },
+    hut:        { name: 'the mountain hut', kinds: [], r: 2, pieces: [['woods_cabin', 0, 0, Object.assign({ face: 180 }, B)], ['firewood_stack', -2, 2, Object.assign({ face: 90 }, B)], ['snow_sled', 1.6, 2.0, { face: 30 }], ['snow_heap', 2, -2, B], ['wooden_barrel', 2, 2, B]] },
+    icepond:    { name: 'the frozen pond', kinds: [], r: 2, pieces: [['ice_fishing_hole', 0, 0], ['ice_fishing_hole', 1.3, -0.9], ['snow_sled', 1.1, 1.4, { face: 60 }], ['wooden_bucket', -0.6, 0.6], ['ice_block', -2, -2, B], ['snow_heap', 2, 2, B]] },
 };
 Object.keys(PLACES).forEach(id => { PLACES[id].id = id; PLACES[id].idea = true; });
 /* the list a ground kind draws from, in order (a map kind that has places of its own first: a salt flat is not just desert) */
