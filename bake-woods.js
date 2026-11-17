@@ -321,26 +321,25 @@ const PJ = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plot
 const MOVER = require('./ow-move.js')({ cols: G, rows: G, cell, fill: 't', plots: PLAN.plots, features, props, npc, doors });
 const v13 = letter => { const d = PJ.districts.find(q => q.today && q.today.room === 'site_prebuilt_fairy_forest_plots' && q.today.districts.indexOf(letter) >= 0); if (!d) throw new Error('plots.json has no Woods district ' + letter);
     return d.plots.map(q => { const p = plot[q.was]; if (!p || p.name !== q.n || p.district !== letter) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
-const R_CLEAR = 'site_prebuilt_fairy_forest_ow_clearing', R_CREEK = 'site_prebuilt_fairy_forest_ow_creek', R_REST = 'site_prebuilt_fairy_forest_plots', R_CORN = 'site_prebuilt_skinwalker_ow_corn';
+const R_CLEAR = 'site_prebuilt_fairy_forest_ow_clearing', R_REST = 'site_prebuilt_fairy_forest_plots', R_CORN = 'site_prebuilt_skinwalker_ow_corn';
 /* the seams: '<home plot id>:<side>' -> the room past that side. `at` = the door's id over there (the seam's own id when left out);
    `k` = the square of the plot's side the path crosses on (left out: where the plot is open already, else its middle) */
 const STAND = [
-    { id: R_CLEAR, part: 'ow_clearing', label: 'THE CLEARING', sub: 'THE WOODS · 9 PLOTS', letters: ['C'], list: v13('C'), world: true, spawn: 'P02-04',
-      parti: 'The crossroads of the Woods, nine plots in a cross: the Stair at the north end, the trail west to Camelot, the dry creek east, the fence line and the corn south.',
+    /* THE JOINING RULE (2026-11-17, mondo after the test slice: "change the room-splitting rule to join more"): the Clearing and Dead Man's Cave touch
+       (Deep woods, east | The Culvert), so they are ONE room, 12 x 5, 18 plots: no loading card between the Stair and the Storm Drain */
+    { id: R_CLEAR, part: 'ow_clearing', label: 'THE CLEARING', sub: 'THE WOODS · THE CLEARING · DEAD MAN\u2019S CAVE · 18 PLOTS', letters: ['C', 'M'], list: v13('C').concat(v13('M')), world: true, spawn: 'P02-04',
+      parti: 'The south of the Woods in one walk, eighteen plots: the Clearing a cross with the Stair at its north end and the fence line south, and east of it the dry creek, followed down between its banks to the sewer mouth and the storm drain.',
       seams: {
-          'P02-05:E': { room: R_CREEK, k: 8, label: 'DEAD MAN\u2019S CAVE', sub: 'THE DRY CREEK · EAST', desc: 'The trail drops towards a creek bed with no water in it.' },
           'P01-05:S': { room: R_CORN, label: 'THE ESTATE · THE CORN FIELDS', sub: 'THE FENCE LINE · THE GATE', desc: 'A fence, and a gate in it. The corn starts on the other side.', takes: 'estate' },
           /* not moved yet: the Redwood Trail and the Ritual Ground. Their trails leave the Clearing where the map's wild links L1 and L2 will (the links' own plots are the Woods thread's) */
           'P00-03:N': { room: R_REST, at: 'ow_h_m16_1', label: 'THE REDWOOD TRAIL', sub: 'THE TRAIL NORTH · UP UNDER THE OLD TREES', desc: 'The trail climbs north under trees too big to be this close to a road.' },
           'P00-04:S': { room: R_REST, at: 'ow_h_m17_2', label: 'THE RITUAL GROUND', sub: 'THE TRAIL SOUTH-WEST · THE FIRE', desc: 'A narrow path, walked often and by many feet, all going the same way.' },
       },
       /* the trail to Camelot comes in on Deep woods, west, from the north (the map's wild link L4); it stood on the Trail West's west side, which has a plot past it now */
-      ends: { woods_camelot: { plot: 'P00-04', side: 'N' } } },
-    { id: R_CREEK, part: 'ow_creek', label: 'DEAD MAN\u2019S CAVE', sub: 'THE WOODS · THE DRY CREEK · 9 PLOTS', letters: ['M'], list: v13('M'), world: true, spawn: 'P03-03', face: 90,
-      parti: 'A dry creek bed walked west to east, nine plots: the culvert, the rocks, the hollow, the gully and its yard, then the cut between two rock walls to the sewer mouth and the storm drain.',
-      seams: { 'P03-03:W': { room: R_CLEAR, label: 'THE CLEARING', sub: 'THE TRAIL WEST · THE CROSSROADS', desc: 'The trail climbs out of the creek bed towards lighter trees.' } },
-      /* the Gully's cabin stands on the bed's line, so the walk passes north of it and comes onto the Sewer Mouth's north rim; the Sewer Mouth's way south starts on its south rim */
-      cross: { 'P03-05|P05-04': [3, 4, 5], 'P05-04|P05-03': [3, 4, 5] }, from: { 'P05-04:S': [3, 8] } },   // (the way on to the Storm Drain passes north of the sewer mouth's head, off the cut)
+      ends: { woods_camelot: { plot: 'P00-04', side: 'N' } },
+      /* the joint between the two districts is the main trail, on the Culvert's own crossing (squares 7 to 9); the Gully's cabin stands on the bed's line, so the
+         walk passes north of it; the way on to the Storm Drain passes north of the sewer mouth's head; the Sewer Mouth's way south starts on its south rim */
+      cross: { 'P02-05|P03-03': [7, 8, 9], 'P03-05|P05-04': [3, 4, 5], 'P05-04|P05-03': [3, 4, 5] }, from: { 'P05-04:S': [3, 8] } },
     { id: R_REST, part: 'plots', label: 'THE WOODS', sub: 'THE REDWOOD TRAIL · THE RITUAL GROUND · 18 PLOTS', letters: ['T', 'G'], list: PLAN.plots.filter(p => p.district === 'T' || p.district === 'G').map(p => ({ id: p.id, wx: p.x, wy: p.y })), world: false, spawn: 'P02-02', home: true,
       parti: 'Two districts of nine plots, every plot a twelve by twelve board: clearings joined by dirt paths through forest you cannot enter, climbing from the creek to the snow.',
       seams: {
@@ -348,7 +347,7 @@ const STAND = [
           'P03-02:S': { room: R_CLEAR, id: 'ow_h_m17_2', label: 'THE CLEARING', sub: 'THE PATH SOUTH · AWAY FROM THE FIRE', desc: 'A narrow path out between the trees, away from the fire.' },
       } },
 ];
-const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, OPP = { N: 'S', S: 'N', W: 'E', E: 'W' }, FACE = { N: 0, E: 90, S: 180, W: 270 };
+const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, OPP = { N: 'S', S: 'N', W: 'E', E: 'W' }, FACE = { N: 180, E: 270, S: 0, W: 90 };   // a free door on that side of a plot: the way its opening faces, INTO the plot (ow-move.js)
 const strip = f => { if (f.mass == null && f.wide == null) return f; const o = Object.assign({}, f); delete o.mass; delete o.wide; return o; };
 const ROOMS_OUT = [], LINKS_OUT = {}, STRAYS = [];
 STAND.forEach(S => {
@@ -396,7 +395,7 @@ STAND.forEach(S => {
         const along = (best[0] + best[1] + 1) / 2, ns = sd === 'N' || sd === 'S', onWall = (sd === 'N' && e.row === 0) || (sd === 'S' && e.row === R.rows - 1) || (sd === 'W' && e.col === 0) || (sd === 'E' && e.col === R.cols - 1);
         const q = border(e, sd, Math.floor(along - 0.01)), d = { wall: onWall ? sd.toLowerCase() : 'free' };
         if (onWall) { if (ns) d.x = R.gx(e.col * N + along); else d.z = R.gz(e.row * N + along); }
-        else { d.x = ns ? R.gx(e.col * N + along) : R.gcx(q[0]); d.z = ns ? R.gcz(q[1]) : R.gz(e.row * N + along); d.face = FACE[sd]; }
+        else { d.x = ns ? R.gx(e.col * N + along) : R.gcx(q[0]); d.z = ns ? R.gcz(q[1]) : R.gz(e.row * N + along); d.face = FACE[sd]; d.passage = Object.assign({}, MOVER.FREE_PASS); }   // (ow-move.js A FREE SEAM IS CROSSED ON THE PLOT'S OWN SQUARES)
         return d; };
     const doorsOut = R.doors.filter(d => !Object.keys(S.seams || {}).some(k => S.seams[k].takes === d.id)).map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; return o; });
     const ways = [];
@@ -412,7 +411,7 @@ STAND.forEach(S => {
         const hx = h.wall === 'w' ? -HALF + 0.5 : h.wall === 'e' ? HALF - 0.5 : h.x, hz = h.wall === 'n' ? -HALF + 0.5 : h.wall === 's' ? HALF - 0.5 : h.z, hp = MOVER.homePlot(hx, hz), e = R.ofHome[hp.id]; if (!e) return;
         if (h.wall === 'free') { LINKS_OUT[id] = [side, { part: S.part, wall: 'free', x: r2(h.x + e.dx), z: r2(h.z + e.dz), face: h.face }]; return; }
         const onWall = (h.wall === 'e' && e.col === R.cols - 1) || (h.wall === 'w' && e.col === 0);
-        LINKS_OUT[id] = [side, onWall ? { part: S.part, wall: h.wall, z: r2(h.z + e.dz) } : { part: S.part, wall: 'free', x: r2((h.wall === 'e' ? HALF - C / 2 : -HALF + C / 2) + e.dx), z: r2(h.z + e.dz), face: h.wall === 'e' ? 90 : 270 }];
+        LINKS_OUT[id] = [side, onWall ? { part: S.part, wall: h.wall, z: r2(h.z + e.dz) } : { part: S.part, wall: 'free', x: r2((h.wall === 'e' ? HALF - C / 2 : -HALF + C / 2) + e.dx), z: r2(h.z + e.dz), face: h.wall === 'e' ? 270 : 90, passage: MOVER.FREE_PASS }];
         if (onWall) ways.push({ side: h.wall, at: r2(h.z + e.dz) }); });
     /* 6. nobody is cut off: every open pocket the legs miss gets its own one-square path to the nearest reached square (the home's rule), then every plot must be reached */
     const sp0 = (() => { const c = centre(S.spawn), e = R.ofHome[S.spawn]; return [c[0] - e.home.x * N + e.col * N, c[1] - e.home.y * N + e.row * N]; })();
@@ -443,13 +442,16 @@ STAND.forEach(S => {
     const share = S.list.length / 36, bareD = S.letters.map(id => DISTRICTS[id].bare).filter(Boolean)[0], bare = bareD ? (() => { const a = R.toRoom((bareD[0] + bareD[2]) / 2, (bareD[1] + bareD[3]) / 2), dx = a[0] - (bareD[0] + bareD[2]) / 2, dz = a[1] - (bareD[1] + bareD[3]) / 2; return { off: [r2(bareD[0] + dx), r2(bareD[1] + dz), r2(bareD[2] + dx), r2(bareD[3] + dz)] }; })() : {};
     feats.push(Object.assign({ k: 'scatter', key: 'fern', n: Math.round(140 * share), seed: 5 }, bare), Object.assign({ k: 'scatter', key: 'stump', n: Math.round(18 * share), seed: 6 }, bare), Object.assign({ k: 'scatter', key: 'fallen_log', n: Math.round(10 * share), seed: 7, r0: 1.9 }, bare));
     /* a box of the home room: it moves with its plots when they all moved the same way, else it is the district's own and covers the whole new room */
-    const boxOf = z => { const pts = [[z.x0 + 1, z.z0 + 1], [z.x1 - 1, z.z0 + 1], [z.x0 + 1, z.z1 - 1], [z.x1 - 1, z.z1 - 1], [(z.x0 + z.x1) / 2, (z.z0 + z.z1) / 2]].map(q => { const hp = MOVER.homePlot(q[0], q[1]); return hp && R.ofHome[hp.id]; });
-        if (pts.some(e => !e)) { if (pts.every(e => !e)) return null; }
-        const e0 = pts.find(Boolean), same = pts.every(e => e && e.dx === e0.dx && e.dz === e0.dz), o = Object.assign({}, z);
-        if (same) { o.x0 = r2(z.x0 + e0.dx); o.x1 = r2(z.x1 + e0.dx); o.z0 = r2(z.z0 + e0.dz); o.z1 = r2(z.z1 + e0.dz); } else { o.x0 = -R.HX; o.x1 = R.HX; o.z0 = -R.HZ; o.z1 = R.HZ; }
-        return o; };
-    const zonesT = [].concat(...ZONE_ORDER.filter(id => S.letters.indexOf(id) >= 0).map(id => DISTRICTS[id].treeZones ? DISTRICTS[id].treeZones(ctx) : [])).map(boxOf).filter(Boolean);
-    const zonesA = [].concat(...ZONE_ORDER.filter(id => S.letters.indexOf(id) >= 0).map(id => DISTRICTS[id].airZones ? DISTRICTS[id].airZones(ctx) : [])).map(boxOf).filter(Boolean);
+    /* a box of the home room: it moves with its plots when they all moved the same way; else it is the district's own, and stands as one box on each of that
+       district's plots (a count `n` shared out), so two districts in one room keep their own trees and their own air */
+    const boxOf = (z, letter) => { const pts = [[z.x0 + 1, z.z0 + 1], [z.x1 - 1, z.z0 + 1], [z.x0 + 1, z.z1 - 1], [z.x1 - 1, z.z1 - 1], [(z.x0 + z.x1) / 2, (z.z0 + z.z1) / 2]].map(q => { const hp = MOVER.homePlot(q[0], q[1]); return hp && R.ofHome[hp.id]; });
+        if (pts.every(e => !e)) return [];
+        const e0 = pts.find(Boolean), same = pts.every(e => e && e.dx === e0.dx && e.dz === e0.dz);
+        if (same) return [Object.assign({}, z, { x0: r2(z.x0 + e0.dx), x1: r2(z.x1 + e0.dx), z0: r2(z.z0 + e0.dz), z1: r2(z.z1 + e0.dz) })];
+        const own = R.order.filter(e => e.district === letter);
+        return own.map(e => Object.assign({}, z, { x0: R.gx(e.col * N), z0: R.gz(e.row * N), x1: R.gx((e.col + 1) * N), z1: R.gz((e.row + 1) * N) }, z.n != null ? { n: Math.max(1, Math.round(z.n / own.length)) } : {})); };
+    const zonesOf = hook => [].concat(...ZONE_ORDER.filter(id => S.letters.indexOf(id) >= 0).map(id => [].concat(...(DISTRICTS[id][hook] ? DISTRICTS[id][hook](ctx) : []).map(z => boxOf(z, id)))));
+    const zonesT = zonesOf('treeZones'), zonesA = zonesOf('airZones');
     const spM = { x: R.gx(spSq[0]), z: R.gcz(spSq[1]) };
     ROOMS_OUT.push({ S, R, feats: spaces.concat(feats.map(strip)), doors: doorsOut, ways, slope: slope2, PAL: PAL2, paint: paint2, zonesT, zonesA, spM,
         count: { plots: S.list.length, box: R.cols + 'x' + R.rows, legsBack: reverted, legsKept: kept, legsNew: laid, tied, treesCut: cutTrees, spaces: spaces.length, props: R.props.length, features: feats.length, doors: doorsOut.length, natives: R.npc.length } });
@@ -508,13 +510,13 @@ else { const anchor = '        /* ── THE CLEARING — the crossroads of the 
 /* THE LINKS' WOODS ENDS: each link's `a:` / `b:` line gets its room (part) and its place rewritten; the rest of the line (its sub, its passage) is kept.
    NO TUNNEL BLOCKS (2026-11-16, mondo): the drains are plain trail ends (set on the line by hand), never a `tunnel` passage. */
 Object.keys(LINKS_OUT).forEach(id => { const [side, e] = LINKS_OUT[id], i = src.indexOf("{ id: '" + id + "'"); if (i < 0) throw new Error('link not found: ' + id);
-    const re = new RegExp('(\\n +' + side + ": \\{ site: 'prebuilt_fairy_forest', part: )'[a-z0-9_]+', wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('no Woods end on link ' + id);
-    const head = m[1] + "'" + e.part + "', wall: '" + e.wall + "'" + (e.x != null ? ', x: ' + e.x : '') + (e.z != null ? ', z: ' + e.z : '') + (e.face != null ? ', face: ' + e.face : '');
+    const re = new RegExp('(\\n +' + side + ": \\{ site: 'prebuilt_fairy_forest', part: )'[a-z0-9_]+', wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+(?:, passage: \\{ len: 3, deep: 1\\.2 \\})?"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('no Woods end on link ' + id);
+    const head = m[1] + "'" + e.part + "', wall: '" + e.wall + "'" + (e.x != null ? ', x: ' + e.x : '') + (e.z != null ? ', z: ' + e.z : '') + (e.face != null ? ', face: ' + e.face : '') + (e.passage ? ', passage: { len: 3, deep: 1.2 }' : '');
     src = src.slice(0, i + m.index) + head + src.slice(i + m.index + m[0].length); });
 { const re = /(prebuilt_bohemian_grove: +\{ room: 'site_prebuilt_fairy_forest_plots', door: \{ id: 'bay_grove', wall: 'n', x: )[-\d.]+/; if (!re.test(src)) throw new Error('the Bohemian Grove bay row (siteRooms.entry) not found');
   src = src.replace(re, '$1' + GROVE_BAY_X); }   // DOOR HQ's Bohemian Grove bay door (2026-11-16)
 /* DOOR HQ's hollow tree (siteRooms.entry.prebuilt_fairy_forest wears the Clearing's `forest` door) */
-{ const o = ROOMS_OUT.find(q => q.S.id === R_CLEAR), d = o.doors.find(q => q.id === 'forest'), re = /(prebuilt_fairy_forest: +\{ room: ')[a-z0-9_]+(', door: \{ id: 'forest', )wall: '[a-z]+'(?:, (?:x|z|face): -?[\d.]+)+/; if (!d || !re.test(src)) throw new Error('the hollow tree row (siteRooms.entry.prebuilt_fairy_forest) not found');
-  src = src.replace(re, '$1' + R_CLEAR + "$2wall: '" + d.wall + "'" + (d.x != null ? ', x: ' + d.x : '') + (d.z != null ? ', z: ' + d.z : '') + (d.face != null ? ', face: ' + d.face : '')); }
+{ const o = ROOMS_OUT.find(q => q.S.id === R_CLEAR), d = o.doors.find(q => q.id === 'forest'), re = /(prebuilt_fairy_forest: +\{ room: ')[a-z0-9_]+(', door: \{ id: 'forest', )wall: '[a-z]+'(?:, (?:x|z|face): -?[\d.]+)+(?:, passage: \{ len: 3, deep: 1\.2 \})?/; if (!d || !re.test(src)) throw new Error('the hollow tree row (siteRooms.entry.prebuilt_fairy_forest) not found');
+  src = src.replace(re, '$1' + R_CLEAR + "$2wall: '" + d.wall + "'" + (d.x != null ? ', x: ' + d.x : '') + (d.z != null ? ', z: ' + d.z : '') + (d.face != null ? ', face: ' + d.face : '') + (d.passage ? ', passage: { len: 3, deep: 1.2 }' : '')); }
 fs.writeFileSync(file, src);
 console.log('data.js: ' + ROOMS_OUT.map(o => o.S.id).join(', ') + ' written (' + block.length + ' bytes)');

@@ -72,6 +72,21 @@ const I0 = +(arg('--from', SPEC.from != null ? SPEC.from : 0)), I1 = +(arg('--to
 const PLOTS = SRC.plots.slice(I0, I1 + 1);
 if (!PLOTS.length) { console.error('bake-route: ' + ID + ' has no plots of its own (its two districts touch: join them door to door)'); process.exit(1); }
 const STRETCH = (I0 > 0 || I1 < SRC.plots.length - 1) ? '_' + I0 + '_' + I1 : '';
+/* THE PARTS (2026-11-17, THE JOINING RULE: mondo after the test slice): one room may hold more than one route. The spec's
+   `with: [{ id, from, to, look, line }]` adds another route's or wild link's plots and its own path to this room (County Lane's room holds
+   the footpath L8). PARTS[0] is the route the room is named for. */
+const PARTS = [{ id: ID, src: SRC, look: LOOK, wide: SRC.wide, plots: PLOTS.slice(), line: SPEC.line || null }];
+(SPEC.with || []).forEach(w => { const s2 = SOURCES[String(w.id || w).toUpperCase()]; if (!s2) { console.error('bake-route: `with` names no route: ' + JSON.stringify(w)); process.exit(1); }
+    const a = w.from != null ? w.from : 0, b = w.to != null ? w.to : s2.plots.length - 1, pl = s2.plots.slice(a, b + 1);
+    PARTS.push({ id: s2.id, src: s2, look: w.look || s2.look, wide: s2.wide, plots: pl, line: w.line || null });
+    pl.forEach(q => { if (!PLOTS.some(o => o[0] === q[0] && o[1] === q[1])) PLOTS.push(q); }); });
+const partOfPlot = p => PARTS.find(pt => pt.plots.some(o => o[0] === p[0] && o[1] === p[1])) || PARTS[0];
+/* A DISTRICT BROUGHT IN (the same rule): the spec's `join: { tool: 'bake-estate.js', part: 'ow_lake' }` = a district's plots stand in this room
+   too. The district's own tool stands them (`node <tool> --export <part> <file>`: squares, heights, paint, every piece, its doors) and this
+   kit lays them into the room's box beside the route's plots. The district keeps every plot and everything on it. */
+const JOIN = SPEC.join ? (() => { const tmp = path.join(require('os').tmpdir(), 'ow-join-' + process.pid + '.json');
+    require('child_process').execFileSync('node', [path.join(REPO, SPEC.join.tool), '--export', SPEC.join.part, tmp], { stdio: ['ignore', 'ignore', 'inherit'] });
+    const j = JSON.parse(fs.readFileSync(tmp, 'utf8')); fs.unlinkSync(tmp); return j; })() : null;
 const ROOM = SPEC.room || ('site_ow_' + ID.toLowerCase() + STRETCH);
 
 const D = require('./load-data.js').loadGameData();
@@ -83,11 +98,17 @@ const FROMN = (DNAME[SRC.from] || {}).name, TON = (DNAME[SRC.to] || {}).name;
 const LABEL = SPEC.label || (SRC.name ? SRC.name.toUpperCase() : ('THE TRAIL · ' + String(FROMN).toUpperCase() + ' TO ' + String(TON).toUpperCase()));
 
 /* ── the box ── */
-const BX0 = Math.min(...PLOTS.map(p => p[0])), BY0 = Math.min(...PLOTS.map(p => p[1])), COLS = Math.max(...PLOTS.map(p => p[0])) - BX0 + 1, ROWS = Math.max(...PLOTS.map(p => p[1])) - BY0 + 1;
+const ALLC = PLOTS.map(p => [p[0], p[1]]).concat(JOIN ? JOIN.plots.map(q => [JOIN.wx + q.col, JOIN.wy + q.row]) : []);
+const BX0 = Math.min(...ALLC.map(p => p[0])), BY0 = Math.min(...ALLC.map(p => p[1])), COLS = Math.max(...ALLC.map(p => p[0])) - BX0 + 1, ROWS = Math.max(...ALLC.map(p => p[1])) - BY0 + 1;
 const W = COLS * N, Dq = ROWS * N, HX = W * C / 2, HZ = Dq * C / 2;
 const gx = c => r2(-HX + c * C), gz = c => r2(-HZ + c * C), gcx = c => r2(-HX + (c + 0.5) * C), gcz = c => r2(-HZ + (c + 0.5) * C);
 const inPlot = {}; PLOTS.forEach((p, i) => { inPlot[(p[0] - BX0) + ',' + (p[1] - BY0)] = i; });
 const plotOf = (sx, sy) => (sx < 0 || sy < 0 || sx >= W || sy >= Dq) ? -1 : (inPlot[Math.floor(sx / N) + ',' + Math.floor(sy / N)] != null ? inPlot[Math.floor(sx / N) + ',' + Math.floor(sy / N)] : -1);
+/* the joined district's plots in this room's box: FCELL['col,row']; its first square here = (FOX, FOY); its room's middle here = (FMX, FMZ) metres */
+const FCELL = {}; if (JOIN) JOIN.plots.forEach(q => { const k = (JOIN.wx + q.col - BX0) + ',' + (JOIN.wy + q.row - BY0); if (inPlot[k] != null) { console.error('bake-route: the joined district stands on a route plot at ' + k); process.exit(1); } FCELL[k] = q; });
+const FOX = JOIN ? (JOIN.wx - BX0) * N : 0, FOY = JOIN ? (JOIN.wy - BY0) * N : 0, FMX = JOIN ? r2(-HX + FOX * C + JOIN.W * C / 2) : 0, FMZ = JOIN ? r2(-HZ + FOY * C + JOIN.D * C / 2) : 0;
+const foreign = (sx, sy) => sx >= 0 && sy >= 0 && sx < W && sy < Dq && FCELL[Math.floor(sx / N) + ',' + Math.floor(sy / N)] != null;
+const inRoom = (sx, sy) => plotOf(sx, sy) >= 0 || foreign(sx, sy);
 const kindOfCell = (cx, cy) => groundAt(BX0 + cx, BY0 + cy);
 const kindAt = (sx, sy) => kindOfCell(Math.floor(sx / N), Math.floor(sy / N));
 
@@ -124,7 +145,7 @@ const TONE = {
     tundra: { trees: 1 }, peak: { trees: 0 }, ice: { trees: 0 },
 };
 const kitOf = g => { const base = KIT[g.kit] || KIT.grass; return Object.assign({}, base, TONE[g.kind] || {}); };
-const SHOULDER = 'dirt_4', ASPH = 'urban:RoadGeneric1a';
+const SHOULDER = 'dirt_4', ASPH = 'urban:RoadGeneric1a', FREE_PASS = { len: 3, deep: 1.2 };
 const LOOKS = { trail: { hw: 1.0, wander: 2.4 }, road: { hw: 1.55, wander: 1.1 }, highway: { hw: 3.5, wander: 0 } };
 
 /* ── dice: one stream a route, so a rebake never moves a piece ── */
@@ -135,50 +156,48 @@ const h2 = (x, y, k) => { let n = (x * 374761393 + y * 668265263 + (k || 0) * 21
 const vnoise = (x, y, k) => { const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0, s = t => t * t * (3 - 2 * t), a = h2(x0, y0, k), b = h2(x0 + 1, y0, k), c = h2(x0, y0 + 1, k), d = h2(x0 + 1, y0 + 1, k); return a + (b - a) * s(fx) + (c - a) * s(fy) + (a - b - c + d) * s(fx) * s(fy); };
 
 /* ── THE PATH: the band's middle line, in squares of this room ── */
-const WIDE = SRC.wide;
-/* THE LINE BY HAND (2026-11-17, the test slice): the spec's `line` = the path's own middle line in world plot coordinates ([x, y] corners, fractions allowed), for a
-   stretch whose band's middle is not where the path can run (County Lane's bend: the corn's room holds the plots north of it). It must start and end OUTSIDE the
-   plot list, so each end is found. Left out: the band's middle, from the map's legs. */
-const LINE = SPEC.line ? SPEC.line.map(p => [(p[0] - BX0) * N, (p[1] - BY0) * N]) : SRC.legs.map(p => [(p[0] - BX0 + WIDE / 2) * N, (p[1] - BY0 + WIDE / 2) * N]);
-const cell = []; for (let y = 0; y < Dq; y++) { cell.push(new Array(W).fill(' ')); }   // ' ' scenery, 'v' verge, 'g' walked ground, 'p' the path, 's' shoulder, 'm' median
-for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) if (plotOf(x, y) >= 0) cell[y][x] = 'g';
-const pathPts = [];   // the path's own line, every quarter square: [x, y, dirx, diry, inside]
-{ const LK = LOOKS[LOOK]; let s = 0;
-  for (let i = 1; i < LINE.length; i++) {
-      const [ax, ay] = LINE[i - 1], [bx, by] = LINE[i], len = Math.hypot(bx - ax, by - ay); if (!len) continue;
+const lineOf = pt => pt.line ? pt.line.map(p => [(p[0] - BX0) * N, (p[1] - BY0) * N]) : pt.src.legs.map(p => [(p[0] - BX0 + pt.wide / 2) * N, (p[1] - BY0 + pt.wide / 2) * N]);
+PARTS.forEach(pt => { pt.LINE = lineOf(pt); });
+const LINE = PARTS[0].LINE;
+const cell = []; for (let y = 0; y < Dq; y++) { cell.push(new Array(W).fill(' ')); }   // ' ' scenery, 'v' verge, 'g' walked ground, 'p' the path, 's' shoulder, 'm' median; a joined district's squares: 'f' walked, 'x' not
+const lookSq = []; for (let y = 0; y < Dq; y++) lookSq.push(new Array(W).fill(null));   // the look of the path that lies on a square
+for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) { if (plotOf(x, y) >= 0) cell[y][x] = 'g'; else if (foreign(x, y)) cell[y][x] = JOIN.cell[y - FOY][x - FOX] === JOIN.fill ? 'x' : 'f'; }
+const pathPts = [];   // every path's own line, every quarter square: [x, y, dirx, diry, in the room, the part]
+PARTS.forEach(pt => { const LK = LOOKS[pt.look]; let s = 0;
+  for (let i = 1; i < pt.LINE.length; i++) {
+      const [ax, ay] = pt.LINE[i - 1], [bx, by] = pt.LINE[i], len = Math.hypot(bx - ax, by - ay); if (!len) continue;
       const dx = (bx - ax) / len, dy = (by - ay) / len;
       for (let t = 0; t <= len; t += 0.25) {
-          const x = ax + dx * t, y = ay + dy * t, inside = plotOf(Math.floor(x), Math.floor(y)) >= 0;
+          const x = ax + dx * t, y = ay + dy * t, inside = inRoom(Math.floor(x), Math.floor(y));
           /* the wander fades to nothing at a bend, at a plot side the path leaves the list by, and at each plot line it crosses in the middle of its run */
           const toEnd = Math.min(t, len - t), across = dx !== 0 ? Math.min((x % N + N) % N, N - ((x % N + N) % N)) : Math.min((y % N + N) % N, N - ((y % N + N) % N));
           const fade = Math.min(1, toEnd / 6) * Math.min(1, across / 4);
-          const off = LK.wander * fade * (vnoise((s + t) / 7, 3.3, 11) - 0.5) * 2;
-          pathPts.push([x - dy * off, y + dx * off, dx, dy, inside]);
+          const off = LK.wander * fade * (vnoise((s + t) / 7, 3.3, 11 + PARTS.indexOf(pt)) - 0.5) * 2;
+          pathPts.push([x - dy * off, y + dx * off, dx, dy, inside, pt]);
       }
       s += len;
-  } }
-{ const LK = LOOKS[LOOK];
-  pathPts.forEach(([px, py]) => { for (let y = Math.floor(py - LK.hw - 1); y <= Math.ceil(py + LK.hw + 1); y++) for (let x = Math.floor(px - LK.hw - 1); x <= Math.ceil(px + LK.hw + 1); x++) {
+  } });
+pathPts.forEach(([px, py, , , , pt]) => { const LK = LOOKS[pt.look]; for (let y = Math.floor(py - LK.hw - 1); y <= Math.ceil(py + LK.hw + 1); y++) for (let x = Math.floor(px - LK.hw - 1); x <= Math.ceil(px + LK.hw + 1); x++) {
       if (plotOf(x, y) < 0) continue; const d = Math.hypot(x + 0.5 - px, y + 0.5 - py);
-      if (LOOK === 'highway') { if (d <= 0.5) cell[y][x] = 'm'; else if (d <= LK.hw && cell[y][x] !== 'm') cell[y][x] = 'p'; else if (d <= LK.hw + 1 && cell[y][x] === 'g') cell[y][x] = 's'; }
-      else if (d <= LK.hw) cell[y][x] = 'p'; } }); }
+      if (pt.look === 'highway') { if (d <= 0.5) { cell[y][x] = 'm'; lookSq[y][x] = pt.look; } else if (d <= LK.hw && cell[y][x] !== 'm') { cell[y][x] = 'p'; lookSq[y][x] = pt.look; } else if (d <= LK.hw + 1 && cell[y][x] === 'g') cell[y][x] = 's'; }
+      else if (d <= LK.hw && (cell[y][x] === 'g' || !lookSq[y][x] || lookSq[y][x] === 'trail')) { cell[y][x] = 'p'; lookSq[y][x] = pt.look; } } });
 /* THE PLAN BY HAND (2026-11-17): the hook file's plan(ctx) may lay more path squares before the verge, the heights and the paint are read (a footpath off the road
    to a side door): ctx.path(sx, sy) makes a square of a route plot path */
-if (HOOK && typeof HOOK.plan === 'function') HOOK.plan({ ID, ROOM, LOOK, N, W, D: Dq, BX0, BY0, COLS, ROWS, PLOTS, cell, plotOf, path: (x, y) => { if (plotOf(x, y) >= 0) cell[y][x] = 'p'; } });
+if (HOOK && typeof HOOK.plan === 'function') HOOK.plan({ ID, ROOM, LOOK, N, W, D: Dq, BX0, BY0, COLS, ROWS, PLOTS, cell, plotOf, path: (x, y) => { if (plotOf(x, y) >= 0) { cell[y][x] = 'p'; if (!lookSq[y][x]) lookSq[y][x] = 'trail'; } } });
 /* the verge: the outer squares of a route plot on every side that faces scenery (a square of the path stays the path: an end) */
 for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) {
     if (cell[y][x] !== 'g') continue;
     const v = kitOf(kindAt(x, y)).verge; let edge = false;
-    for (let k = 1; k <= v && !edge; k++) if (plotOf(x - k, y) < 0 || plotOf(x + k, y) < 0 || plotOf(x, y - k) < 0 || plotOf(x, y + k) < 0) edge = true;
+    for (let k = 1; k <= v && !edge; k++) if (!inRoom(x - k, y) || !inRoom(x + k, y) || !inRoom(x, y - k) || !inRoom(x, y + k)) edge = true;
     if (edge) cell[y][x] = 'v';
 }
-const walked = (x, y) => x >= 0 && y >= 0 && x < W && y < Dq && 'gpsm'.includes(cell[y][x]);
+const walked = (x, y) => x >= 0 && y >= 0 && x < W && y < Dq && 'gpsmf'.includes(cell[y][x]);
 const nearPath = (x, y, r) => { for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { const c = (cell[y + j] || [])[x + i]; if (c === 'p' || c === 'm' || c === 's') return true; } return false; };
 
 /* ── THE ENDS: where the path's line leaves the plot list ── */
 const ENDS = [];
 { const mm = v => (v < 0 ? 'm' + (-v) : '' + v);
-  for (let i = 1; i < pathPts.length; i++) { const a = pathPts[i - 1], b = pathPts[i]; if (a[4] === b[4]) continue;
+  for (let i = 1; i < pathPts.length; i++) { const a = pathPts[i - 1], b = pathPts[i]; if (a[4] === b[4] || a[5] !== b[5]) continue;   // (never across two parts' lines)
       const inP = a[4] ? a : b, outP = a[4] ? b : a, dx = Math.round(outP[2]) * (a[4] ? 1 : -1), dy = Math.round(outP[3]) * (a[4] ? 1 : -1);
       /* the line crossed, on the plot grid, and the plot past it */
       const sx = Math.floor(inP[0]), sy = Math.floor(inP[1]), cx = Math.floor(sx / N), cy = Math.floor(sy / N), wxp = BX0 + cx + dx, wyp = BY0 + cy + dy;
@@ -186,7 +205,7 @@ const ENDS = [];
       const id = dx ? 'ow_v_' + mm(BX0 + cx + (dx > 0 ? 1 : 0)) + '_' + mm(BY0 + cy) : 'ow_h_' + mm(BX0 + cx) + '_' + mm(BY0 + cy + (dy > 0 ? 1 : 0));
       if (ENDS.some(e => e.id === id)) continue;
       const onWall = (side === 'e' && cx === COLS - 1) || (side === 'w' && cx === 0) || (side === 's' && cy === ROWS - 1) || (side === 'n' && cy === 0);
-      ENDS.push({ id, side, onWall, past: [wxp, wyp], sq: [sx, sy], along: dx ? gz(Math.round(inP[1])) : gx(Math.round(inP[0])) }); } }
+      ENDS.push({ id, side, onWall, past: [wxp, wyp], sq: [sx, sy], along: dx ? gz(Math.round(inP[1])) : gx(Math.round(inP[0])), look: inP[5].look, part: inP[5] }); } }
 
 /* ── THE HEIGHTS: low rolling ground, the path eased flat ── */
 const AMP = { forest: 0.5, grass: 0.6, scrub: 0.8, desert: 0.55, snow: 0.7, rock: 1.1 };
@@ -194,15 +213,18 @@ const Hc = new Float32Array((W + 1) * (Dq + 1));
 for (let y = 0; y <= Dq; y++) for (let x = 0; x <= W; x++) {
     const g = kindAt(Math.min(W - 1, x), Math.min(Dq - 1, y)), wx = (BX0 * N + x), wy = (BY0 * N + y);   // world squares: two rooms' grounds roll on the same noise
     let near = 9; for (let j = -2; j <= 1; j++) for (let i = -2; i <= 1; i++) { const c = (cell[y + j] || [])[x + i]; if (c === 'p' || c === 'm' || c === 's') near = Math.min(near, Math.max(Math.abs(i + 0.5), Math.abs(j + 0.5))); }
-    const ease = LOOK === 'trail' ? Math.min(1, 0.45 + near / 4) : Math.min(1, near / 3);
-    Hc[y * (W + 1) + x] = (AMP[g.kit] || 0.6) * ease * ((vnoise(wx / 9, wy / 9, 1) - 0.5) * 2 + (vnoise(wx / 3.1, wy / 3.1, 2) - 0.5) * 0.35);
+    let nl = null; for (let j = -2; j <= 1 && !nl; j++) for (let i = -2; i <= 1 && !nl; i++) nl = (lookSq[y + j] || [])[x + i] || null;
+    const ease = nl === 'trail' ? Math.min(1, 0.45 + near / 4) : Math.min(1, near / 3);
+    let fd = 9, fh = 0; if (JOIN) for (let j = -5; j <= 4; j++) for (let i = -5; i <= 4; i++) { if (!foreign(x + i, y + j)) continue; const d = Math.max(Math.abs(i + 0.5), Math.abs(j + 0.5)) - 0.5; if (d < fd) { fd = d; fh = JOIN.h[Math.max(0, Math.min(JOIN.D, y - FOY)) * (JOIN.W + 1) + Math.max(0, Math.min(JOIN.W, x - FOX))]; } }
+    const own = (AMP[g.kit] || 0.6) * ease * ((vnoise(wx / 9, wy / 9, 1) - 0.5) * 2 + (vnoise(wx / 3.1, wy / 3.1, 2) - 0.5) * 0.35), k = Math.min(1, fd / 4);
+    Hc[y * (W + 1) + x] = fd <= 0 ? fh : fh * (1 - k) + own * k;
 }
 const slope = Buffer.alloc(W * Dq * 8);
 for (let cy = 0; cy < Dq; cy++) for (let cx = 0; cx < W; cx++) { const o = (cy * W + cx) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope.writeInt16LE(Math.round(Hc[(cy + q[1]) * (W + 1) + cx + q[0]] * 100), o + k * 2)); }
 const hAt = (sx, sy) => { const x = Math.max(0, Math.min(W - 1, Math.floor(sx))), y = Math.max(0, Math.min(Dq - 1, Math.floor(sy))); return (Hc[y * (W + 1) + x] + Hc[y * (W + 1) + x + 1] + Hc[(y + 1) * (W + 1) + x] + Hc[(y + 1) * (W + 1) + x + 1]) / 4; };
 
 /* ── THE PAINT: the plot's ground sheet, ragged where two kinds meet; the path's sheet over it ── */
-const counts = {}; for (let cy = 0; cy < ROWS; cy++) for (let cx = 0; cx < COLS; cx++) { const f = kitOf(kindOfCell(cx, cy)).floor; counts[f] = (counts[f] || 0) + (inPlot[cx + ',' + cy] != null ? 3 : 1); }
+const counts = {}; for (let cy = 0; cy < ROWS; cy++) for (let cx = 0; cx < COLS; cx++) { if (FCELL[cx + ',' + cy]) continue; const f = kitOf(kindOfCell(cx, cy)).floor; counts[f] = (counts[f] || 0) + (inPlot[cx + ',' + cy] != null ? 3 : 1); }
 const FLOOR = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
 const PAL = [], pal = key => { if (key === FLOOR) return 0; let i = PAL.indexOf(key); if (i < 0) { PAL.push(key); i = PAL.length - 1; } return i + 1; };
 const paint = new Uint8Array(W * Dq);
@@ -213,7 +235,8 @@ for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) {
     if (lx < n - 1.5 && cx > 0) cx--; else if (N - 1 - lx < n - 2.5 && cx < COLS - 1) cx++;
     if (ly < n - 1.5 && cy > 0) cy--; else if (N - 1 - ly < n - 2.5 && cy < ROWS - 1) cy++;
     const k = kitOf(kindOfCell(cx, cy)), ch = cell[y][x];
-    paint[y * W + x] = pal(ch === 'p' ? (LOOK === 'highway' ? ASPH : kitOf(kindAt(x, y)).path) : (ch === 's' || ch === 'm') ? SHOULDER : k.floor);
+    if (foreign(x, y)) { const pi = JOIN.paint[(y - FOY) * JOIN.W + (x - FOX)]; paint[y * W + x] = pal(pi ? JOIN.pal[pi - 1] : JOIN.floor); continue; }
+    paint[y * W + x] = pal(ch === 'p' ? (lookSq[y][x] === 'highway' ? ASPH : kitOf(kindAt(x, y)).path) : (ch === 's' || ch === 'm') ? SHOULDER : k.floor);
 }
 
 /* ── placing things ── */
@@ -239,12 +262,13 @@ PLOTS.forEach((p, pi) => {
         props.push({ key, x: r2(gcx(x) + (h2(x, y, 9) - 0.5) * 1.8), z: r2(gcz(y) + (h2(x, y, 10) - 0.5) * 1.8), face: Math.round(h2(x, y, 12) * 360) }); }
 });
 
-/* ── THE LOOK'S OWN PIECES ── */
+/* ── THE LOOK'S OWN PIECES (once a part: a room that holds a road and a footpath gets both) ── */
+const M = (x, y) => [r2(-HX + x * C), r2(-HZ + y * C)];
+PARTS.forEach(PT => { const LINE = PT.LINE, LOOK = PT.look, PLOTS_PT = PT.plots;
 const straight = [];   // the straight runs of the middle line inside the plot list: [x0, y0, x1, y1] in squares
 for (let i = 1; i < LINE.length; i++) { const [ax, ay] = LINE[i - 1], [bx, by] = LINE[i], len = Math.hypot(bx - ax, by - ay); if (!len) continue; const dx = (bx - ax) / len, dy = (by - ay) / len; let t0 = null;
     for (let t = 0; t <= len + 0.01; t += 0.5) { const x = ax + dx * t, y = ay + dy * t, ins = plotOf(Math.floor(x - dx * 0.01), Math.floor(y - dy * 0.01)) >= 0 || plotOf(Math.floor(x), Math.floor(y)) >= 0;
         if (ins && t0 == null) t0 = t; if ((!ins || t + 0.5 > len + 0.01) && t0 != null) { const t1 = ins ? t : t - 0.5; if (t1 - t0 >= 2) straight.push([ax + dx * t0, ay + dy * t0, ax + dx * t1, ay + dy * t1]); t0 = null; } } }
-const M = (x, y) => [r2(-HX + x * C), r2(-HZ + y * C)];
 if (LOOK === 'highway') {
     const WHITE = 0xf0f0f0, YEL = 0xe8b830, line = (a, b, w, color) => marks.push({ k: 'line', x0: a[0], z0: a[1], x1: b[0], z1: b[1], w, color });
     straight.forEach(([x0, y0, x1, y1]) => { const len = Math.hypot(x1 - x0, y1 - y0), dx = (x1 - x0) / len, dy = (y1 - y0) / len, nx = -dy, ny = dx, at = (t, o) => M(x0 + dx * t + nx * o, y0 + dy * t + ny * o);
@@ -263,11 +287,12 @@ if (LOOK === 'highway') {
 } else {
     /* a cairn where the trail turns, and one every third plot beside it */
     for (let i = 1; i + 1 < LINE.length; i++) { const sx = Math.round(LINE[i][0]) + 2, sy = Math.round(LINE[i][1]) + 2; if (walked(sx, sy) && cell[sy][sx] !== 'p') P('cairn', sx, sy); }
-    PLOTS.forEach((p, pi) => { if (pi % 3 !== 1) return; const x0 = (p[0] - BX0) * N, y0 = (p[1] - BY0) * N; for (let k = 0; k < 40; k++) { const sx = x0 + 2 + Math.floor(rnd() * 8), sy = y0 + 2 + Math.floor(rnd() * 8); if (walked(sx, sy) && cell[sy][sx] === 'g' && nearPath(sx, sy, 2) && !taken.has(sx + ':' + sy)) { P('cairn', sx, sy); break; } } });
+    PLOTS_PT.forEach((p, pi) => { if (pi % 3 !== 1) return; const x0 = (p[0] - BX0) * N, y0 = (p[1] - BY0) * N; for (let k = 0; k < 40; k++) { const sx = x0 + 2 + Math.floor(rnd() * 8), sy = y0 + 2 + Math.floor(rnd() * 8); if (walked(sx, sy) && cell[sy][sx] === 'g' && nearPath(sx, sy, 2) && !taken.has(sx + ':' + sy)) { P('cairn', sx, sy); break; } } });
 }
+});
 /* a sign at each end, beside the path, facing the walker who comes in */
 ENDS.forEach(e => { const [sx, sy] = e.sq, dx = e.side === 'e' ? -1 : e.side === 'w' ? 1 : 0, dy = e.side === 's' ? -1 : e.side === 'n' ? 1 : 0;
-    const key = LOOK === 'highway' ? 'roads_g_sign_003' : LOOK === 'road' ? 'signpost' : 'trail_sign', off = LOOKS[LOOK].hw + 1.6;
+    const key = e.look === 'highway' ? 'roads_g_sign_003' : e.look === 'road' ? 'signpost' : 'trail_sign', off = LOOKS[e.look].hw + 1.6;
     for (const sd of [1, -1]) { const x = Math.round(sx + dx * 3 + (dy ? sd * off : 0)), y = Math.round(sy + dy * 3 + (dx ? sd * off : 0)); if (walked(x, y) && cell[y][x] !== 'p' && !taken.has(x + ':' + y)) { P(key, x, y, { face: e.side === 'n' ? 0 : e.side === 'e' ? 90 : e.side === 's' ? 180 : 270 }); break; } } });
 
 /* ── the places made by hand (docs/areas/routes/<ID>.js) ── */
@@ -283,7 +308,7 @@ ENDS.forEach(e => {
     if (!to) { open.push(e.id + '  ' + e.side + ' side, world plot ' + e.past.join(',') + ' (' + g.kind + '): no room stands there yet'); return; }
     const far = HQ.rooms[to] || {}, d = { id: e.id, way: 'trail', label: (s && s.label) || String(far.label || to).toUpperCase(), sub: (s && s.sub) || LABEL, action: { room: to, at: (s && s.at) || e.id }, desc: (s && s.desc) || 'The path goes on.' };
     if (e.onWall) { d.wall = e.side; if (e.side === 'n' || e.side === 's') d.x = e.along; else d.z = e.along; }
-    else { d.wall = 'free'; d.x = gcx(e.sq[0]); d.z = gcz(e.sq[1]); d.face = e.side === 'n' ? 0 : e.side === 'e' ? 90 : e.side === 's' ? 180 : 270; }
+    else { d.wall = 'free'; d.x = gcx(e.sq[0]); d.z = gcz(e.sq[1]); d.face = e.side === 'n' ? 180 : e.side === 'e' ? 270 : e.side === 's' ? 0 : 90; d.passage = Object.assign({}, FREE_PASS); }   // (ow-move.js A FREE SEAM IS CROSSED ON THE PLOT'S OWN SQUARES)
     doors.push(d);
 });
 
@@ -299,7 +324,7 @@ const spaces = [];
 /* ── THE MASS: what the squares nobody walks grow (terrain.gen plan / look trees): a forest plot's trees; open ground grows nothing ── */
 const zones = [];
 for (let cy = 0; cy < ROWS; cy++) for (let cx = 0; cx < COLS; cx++) { const K = kitOf(kindOfCell(cx, cy)), z = { x0: gx(cx * N), z0: gz(cy * N), x1: gx((cx + 1) * N), z1: gz((cy + 1) * N) };
-    if (K.mass) { z.kinds = K.treeKinds; z.treeH = K.treeH; } else z.none = true; zones.push(z); }
+    if (K.mass && !FCELL[cx + ',' + cy]) { z.kinds = K.treeKinds; z.treeH = K.treeH; } else z.none = true; zones.push(z); }
 const anyMass = zones.some(z => !z.none);
 
 /* ── checks: the path is one piece from end to end; every plot is walked to; nothing stands on the path ── */
@@ -319,6 +344,26 @@ const SPQ = (ENDS[0] && ENDS[0].sq) || pathSq[0] || [0, 0];
 npc.forEach(n => { if (vm.runInContext('AVAILABLE_RACES', D).indexOf(n.race) < 0) errs.push('not a unit: ' + n.race); });
 const uniqErr = [...new Set(errs)]; if (uniqErr.length) { console.error(uniqErr.slice(0, 30).join('\n')); process.exit(1); }
 
+/* ── THE JOINED DISTRICT's pieces: every feature, prop, native and door of its own, moved from its room's middle to where its plots stand here ── */
+const LINES_OUT = [], AIR = [];
+if (JOIN) { const sh = (o) => { const q = Object.assign({}, o); if (q.x != null && q.z != null) { q.x = r2(q.x + FMX); q.z = r2(q.z + FMZ); } if (q.x0 != null) { q.x0 = r2(q.x0 + FMX); q.x1 = r2(q.x1 + FMX); q.z0 = r2(q.z0 + FMZ); q.z1 = r2(q.z1 + FMZ); }
+        if (Array.isArray(q.pts)) q.pts = q.pts.map(v => Array.isArray(v) ? [r2(v[0] + FMX), r2(v[1] + FMZ)].concat(v.slice(2)) : Object.assign({}, v, { x: r2(v.x + FMX), z: r2(v.z + FMZ) }));
+        if (Array.isArray(q.off)) q.off = [r2(q.off[0] + FMX), r2(q.off[1] + FMZ), r2(q.off[2] + FMX), r2(q.off[3] + FMZ)]; return q; };
+    JOIN.features.forEach(f => { if (f.k === 'space') return;
+        /* a row over the district's whole old room (stumps, logs): a disc over its own plots here, never over the route's */
+        if (f.k === 'scatter' && f.x == null) { F.push(Object.assign({}, f, { x: FMX, z: FMZ, r: r2(Math.min(JOIN.W, JOIN.D) * C / 2) })); return; }
+        F.push(sh(f)); });
+    JOIN.props.forEach(q => props.push(sh(q))); JOIN.npc.forEach(q => npc.push(sh(q))); (JOIN.lines || []).forEach(l => LINES_OUT.push(l));
+    (JOIN.air || []).forEach(z => AIR.push(Object.assign({}, z, { x0: r2(z.x0 + FMX), x1: r2(z.x1 + FMX), z0: r2(z.z0 + FMZ), z1: r2(z.z1 + FMZ) })));
+    /* its doors: on this room's wall where its plot's side lies on the box's edge, else free (crossed on the plot's own squares) */
+    JOIN.doors.forEach(d => { const o = Object.assign({}, d), col = JOIN.wx + d.plotCol - BX0, row = JOIN.wy + d.plotRow - BY0, sd = d.side, ns = sd === 'N' || sd === 'S';
+        ['plotCol', 'plotRow', 'side', 'along', 'x', 'z', 'face', 'passage'].forEach(k => delete o[k]);
+        const onWall = (sd === 'N' && row === 0) || (sd === 'S' && row === ROWS - 1) || (sd === 'W' && col === 0) || (sd === 'E' && col === COLS - 1);
+        const bx = sd === 'W' ? col * N : sd === 'E' ? col * N + N - 1 : col * N + Math.max(0, Math.min(N - 1, Math.floor(d.along - 0.01))), by = sd === 'N' ? row * N : sd === 'S' ? row * N + N - 1 : row * N + Math.max(0, Math.min(N - 1, Math.floor(d.along - 0.01)));
+        if (onWall) { o.wall = sd.toLowerCase(); if (ns) o.x = gx(col * N + d.along); else o.z = gz(row * N + d.along); ENDS.push({ id: o.id, side: o.wall, onWall: true, along: ns ? o.x : o.z, sq: [bx, by], look: 'trail', foreign: true }); }
+        else { o.wall = 'free'; o.x = ns ? gx(col * N + d.along) : gcx(bx); o.z = ns ? gcz(by) : gz(row * N + d.along); o.face = sd === 'N' ? 180 : sd === 'E' ? 270 : sd === 'S' ? 0 : 90; o.passage = Object.assign({}, FREE_PASS, d.passage || {}); }
+        doors.push(o); }); }
+
 /* ── the sky + the room ── */
 const major = (() => { const c = {}; PLOTS.forEach(p => { const k = groundAt(p[0], p[1]).kit; c[k] = (c[k] || 0) + 1; }); return Object.keys(c).sort((a, b) => c[b] - c[a])[0]; })();
 const SKY = { forest: { tint: 0xa9c4dc, fog: 0xb4c6b6, density: 0.009, clouds: 0.3, light: 0xfff2dc, ambient: 0.52 }, grass: { tint: 0xa9c8e8, fog: 0xc2d2c4, density: 0.007, clouds: 0.3, light: 0xfff4e0, ambient: 0.56 },
@@ -326,18 +371,20 @@ const SKY = { forest: { tint: 0xa9c4dc, fog: 0xb4c6b6, density: 0.009, clouds: 0
     snow: { tint: 0x9fc4e8, fog: 0xbfd8ea, density: 0.006, clouds: 0.35, light: 0xf0f6ff, ambient: 0.6 }, rock: { tint: 0xa8bcd4, fog: 0xc0c8d0, density: 0.007, clouds: 0.35, light: 0xfff4e6, ambient: 0.56 } }[major];
 const hex = n => '0x' + n.toString(16).padStart(6, '0');
 const SP = { x: gcx(SPQ[0]), z: gcz(SPQ[1]) }, face = ENDS[0] ? ({ n: 180, s: 0, w: 90, e: 270 })[ENDS[0].side] : 180;
-const names = PLOTS.map((p, i) => ['P' + String(p[0] - BX0).padStart(2, '0') + '-' + String(p[1] - BY0).padStart(2, '0'), (SRC.name || 'The trail') + ', ' + PJ.ground.key[groundAt(p[0], p[1]).c].label.toLowerCase(), 'R', 0]);
-const mask = []; for (let cy = 0; cy < ROWS; cy++) { let s = ''; for (let cx = 0; cx < COLS; cx++) s += inPlot[cx + ',' + cy] != null ? '#' : '.'; mask.push(s); }
+const pidOf = (c, r) => 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0');
+const names = PLOTS.map((p, i) => [pidOf(p[0] - BX0, p[1] - BY0), (partOfPlot(p).src.name || 'The trail') + ', ' + PJ.ground.key[groundAt(p[0], p[1]).c].label.toLowerCase(), 'R', 0])
+    .concat(JOIN ? JOIN.plots.map(q => [pidOf(JOIN.wx + q.col - BX0, JOIN.wy + q.row - BY0), q.name, q.district, q.level]) : []);
+const mask = []; for (let cy = 0; cy < ROWS; cy++) { let s = ''; for (let cx = 0; cx < COLS; cx++) s += (inPlot[cx + ',' + cy] != null || FCELL[cx + ',' + cy]) ? '#' : '.'; mask.push(s); }
 const grounds = [...new Set(PLOTS.map(p => groundAt(p[0], p[1]).kind))];
 const L = [];
 L.push("        /* OWROUTE " + ID + STRETCH + "-BEGIN — written by `node bake-route.js " + ID + (STRETCH ? ' --from ' + I0 + ' --to ' + I1 : '') + "` from docs/plans/one-world/plots.json (THE ROUTE KIT). Never hand-edit between the markers. */");
 L.push("        " + ROOM + ": {");
 L.push("            label: " + J(LABEL) + ",");
 L.push("            sub: " + J(SPEC.sub || (LOOK.toUpperCase() + ' · ' + PLOTS.length + ' PLOT' + (PLOTS.length === 1 ? '' : 'S'))) + ",");
-L.push("            kind: 'box', site: " + J(SITE) + ", part: " + J('ow_' + ID.toLowerCase() + STRETCH) + ",");
+L.push("            kind: 'box', site: " + J(SITE) + ", part: " + J(SPEC.part || ('ow_' + ID.toLowerCase() + STRETCH)) + ",");
 L.push("            /* THE ONE WORLD: where this room stands on the world's plot grid (data.js hqOwIndex) */");
 L.push("            world: { hub: " + J(HUB) + ", layer: 'surface', wx: " + BX0 + ", wy: " + BY0 + ", route: " + J(ID) + ", look: " + J(LOOK) + (SPEC.proof ? ", proof: true" : "") + " }," + (SPEC.proof ? "   // proof: a room baked to prove the kit: it stands on the world grid, but no door leads to it and bake-map.js keeps it off the map" : ""));
-L.push("            shell: hqAncientShell({ w: " + (2 * HX) + ", d: " + (2 * HZ) + ", h: 20, wallH: 20, floor: " + J(FLOOR) + ", apron: " + J(FLOOR) + ", skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: " + SP.x + ", z: " + SP.z + ", y: 5.0 },");
+L.push("            shell: hqAncientShell({ w: " + (2 * HX) + ", d: " + (2 * HZ) + ", h: 20, wallH: 20, floor: " + J(FLOOR) + ", apron: " + J(FLOOR) + ", skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: " + SP.x + ", z: " + SP.z + ", y: 5.0 }," + (AIR.length ? " atmos: " + J({ kind: 'fireflies', n: 60, zones: AIR }) + "," : "") + "");
 L.push("                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: " + hex(SKY.light) + ", ambient: " + SKY.ambient + " },");
 L.push("                                    sky: { night: 0, tint: " + hex(SKY.tint) + ", tintAmt: 0.32, stars: 0.5, nebula: 0.4, day: 1, clouds: " + SKY.clouds + ", fog: { color: " + hex(SKY.fog) + ", amount: 0.5, top: 0.05, band: 0.45, density: " + SKY.density + " }, scenery: 'none', landmarks: 'world' },");
 L.push("                                    look: HQ_ROOM_LOOKS.plateau }),");
@@ -347,7 +394,7 @@ L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + COLS + ",
 L.push("            terrain: {");
 L.push("                res: 1.75, floor: " + J(FLOOR) + ", cliff: 'rocks_5', path: 'dirt_2',");
 L.push("                noise: { amp: 0.08, scale: 9 },");
-if (grounds.some(k => KIT[PJ.ground.key[Object.keys(PJ.ground.key).find(c => PJ.ground.key[c].kind === k)].kit].grass)) L.push("                grassField: true,");
+if ((JOIN && JOIN.grassField) || grounds.some(k => KIT[PJ.ground.key[Object.keys(PJ.ground.key).find(c => PJ.ground.key[c].kind === k)].kit].grass)) L.push("                grassField: true,");
 L.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */");
 L.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(ENDS.filter(e => e.onWall).map(e => ({ side: e.side, at: e.along }))) + " },");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + Dq + ", d: '" + slope.toString('base64') + "' } },");
@@ -369,7 +416,7 @@ L.push("            ],");
 L.push("            agents: [],");
 L.push("            npcSpots: " + J(npc) + ",");
 L.push("            onlineSpots: [],");
-L.push("            lines: [],");
+L.push("            lines: " + J(LINES_OUT) + ",");
 L.push("            spawn: { x: " + SP.x + ", z: " + SP.z + ", face: " + face + " },");
 L.push("        },");
 L.push("        /* OWROUTE " + ID + STRETCH + "-END */");

@@ -22,6 +22,12 @@
 'use strict';
 const C = 3.5, N = 12, PL = N * C;
 const r2 = v => Math.round(v * 100) / 100;
+/* A FREE SEAM IS CROSSED ON THE PLOT'S OWN SQUARES (2026-11-17, walked in the probe): a passage's room change is `deep` metres past its door, and past a
+   free-standing door there is no passage floor, only the room's own ground. A trail door that left a wall for the inside of a box kept the wall's 10 m and
+   could not be reached (the plot ends 1.75 m past it). Every free seam carries this: the room changes 1.2 m past the door, on the plot's last square. */
+/* A FREE DOOR'S `face` IS THE WAY ITS OPENING FACES: INTO THE PLOT (three-renderer.js _hqBoxWall: "its inward normal the heading"). A seam on a plot's north
+   side faces 180 and is walked through northward. The foundation's kit and this mover first wrote it outward: every free seam pointed backwards. */
+const FREE_PASS = { len: 3, deep: 1.2 };
 module.exports = function mover(H) {
     const HX = H.cols * PL / 2, HZ = H.rows * PL / 2, byXY = {}, byId = {};
     H.plots.forEach(p => { byXY[p.x + ',' + p.y] = p; byId[p.id] = p; });
@@ -64,6 +70,7 @@ module.exports = function mover(H) {
             if (h) { e.dx = r2((-RX + col * PL) - (-HX + h.x * PL)); e.dz = r2((-RZ + row * PL) - (-HZ + h.y * PL)); ofHome[h.id] = e;
                 for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) cell[row * N + ly][col * N + lx] = H.cell[h.y * N + ly][h.x * N + lx]; } });
         const mine = (x, z) => { const h = homePlot(x, z); return h ? ofHome[h.id] || null : null; };
+        const order0 = list.map(p => at[(p.wx - wx) + ',' + (p.wy - wy)]);
         const strays = [], features = [], props = [], npc = [], doors = [];
         const tell = f => (f.k || 'prop') + (f.key ? ':' + f.key : f.id ? '#' + f.id : f.kind ? ':' + f.kind : '');
         (H.features || []).forEach(f => {
@@ -85,8 +92,13 @@ module.exports = function mover(H) {
             const a = anchor(f); if (!a) { strays.push(tell(f) + ' has no place: left where it was'); return; }
             const e = mine(a[0], a[1]); if (!e) return;
             const together = f.k === 'scatter' && f.r > PL / 2 && [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].every(q => { const o = mine(Math.max(-HX + 1, Math.min(HX - 1, a[0] + q[0] * f.r * 0.7)), Math.max(-HZ + 1, Math.min(HZ - 1, a[1] + q[1] * f.r * 0.7))); return o && o.dx === e.dx && o.dz === e.dz; });
-            if (f.k === 'scatter' && f.r > PL / 2 && !together) {            // a district's own scatter whose plots stand apart now: over the whole new room, the same count
-                const o = Object.assign({}, f); delete o.x; delete o.z; delete o.r; if (Array.isArray(o.off)) { const q = mine((o.off[0] + o.off[2]) / 2, (o.off[1] + o.off[3]) / 2) || e; o.off = shifted({ off: o.off }, q.dx, q.dz).off; } o.wide = 1; features.push(o); return; }
+            if (f.k === 'scatter' && f.r > PL / 2 && !together) {            // a district's own scatter whose plots stand apart now: a disc a plot of that district, the count shared out (the same total)
+                const mine2 = order0.filter(o => o.district === e.district && o.home), n = f.n || 1; let left = n;
+                mine2.forEach((o, i) => { const k = i === mine2.length - 1 ? left : Math.round(n / mine2.length); left -= k; if (k <= 0) return;
+                    const row = Object.assign({}, f, { n: k, seed: (f.seed || 0) + i * 7, x: r2(-RX + o.col * PL + PL / 2), z: r2(-RZ + o.row * PL + PL / 2), r: 23 });
+                    if (Array.isArray(row.off)) { const q = mine((f.off[0] + f.off[2]) / 2, (f.off[1] + f.off[3]) / 2) || e; row.off = shifted({ off: f.off }, q.dx, q.dz).off; }
+                    row.wide = 1; features.push(row); });
+                return; }
             const bad = reach(f).map(q => { const h = homePlot(q[0], q[1]), o = h && ofHome[h.id]; return (o && o.dx === e.dx && o.dz === e.dz) ? null : (h ? h.name : '?'); }).filter(Boolean);
             if (bad.length) strays.push(tell(f) + ' on ' + e.name + ' also lies on ' + [...new Set(bad)].join(', '));
             features.push(shifted(f, e.dx, e.dz));
@@ -98,8 +110,8 @@ module.exports = function mover(H) {
             const hx = d.wall === 'w' ? -HX + 0.5 : d.wall === 'e' ? HX - 0.5 : d.x, hz = d.wall === 'n' ? -HZ + 0.5 : d.wall === 's' ? HZ - 0.5 : d.z, e = mine(hx, hz); if (!e) return;
             if (d.wall === 'free') { doors.push(shifted(d, e.dx, e.dz)); return; }
             const onWall = (d.wall === 'n' && e.row === 0) || (d.wall === 's' && e.row === rows - 1) || (d.wall === 'w' && e.col === 0) || (d.wall === 'e' && e.col === cols - 1), o = Object.assign({}, d);
-            if (d.wall === 'n' || d.wall === 's') { o.x = r2(d.x + e.dx); if (!onWall) { o.z = r2((d.wall === 'n' ? -HZ + C / 2 : HZ - C / 2) + e.dz); o.face = d.wall === 'n' ? 0 : 180; o.wall = 'free'; } }
-            else { o.z = r2(d.z + e.dz); if (!onWall) { o.x = r2((d.wall === 'w' ? -HX + C / 2 : HX - C / 2) + e.dx); o.face = d.wall === 'w' ? 270 : 90; o.wall = 'free'; } }
+            if (d.wall === 'n' || d.wall === 's') { o.x = r2(d.x + e.dx); if (!onWall) { o.z = r2((d.wall === 'n' ? -HZ + C / 2 : HZ - C / 2) + e.dz); o.face = d.wall === 'n' ? 180 : 0; o.wall = 'free'; o.passage = Object.assign({}, FREE_PASS, d.passage || {}); } }
+            else { o.z = r2(d.z + e.dz); if (!onWall) { o.x = r2((d.wall === 'w' ? -HX + C / 2 : HX - C / 2) + e.dx); o.face = d.wall === 'w' ? 90 : 270; o.wall = 'free'; o.passage = Object.assign({}, FREE_PASS, d.passage || {}); } }
             o.side = d.wall; o.plot = e; doors.push(o);
         });
         const mask = []; for (let r = 0; r < rows; r++) { let s = ''; for (let c = 0; c < cols; c++) s += at[c + ',' + r] ? '#' : '.'; mask.push(s); }
@@ -132,5 +144,5 @@ module.exports = function mover(H) {
             seamId(e, side) { const mm = v => (v < 0 ? 'm' + (-v) : '' + v); return side === 'E' ? 'ow_v_' + mm(e.wx + 1) + '_' + mm(e.wy) : side === 'W' ? 'ow_v_' + mm(e.wx) + '_' + mm(e.wy) : side === 'S' ? 'ow_h_' + mm(e.wx) + '_' + mm(e.wy + 1) : 'ow_h_' + mm(e.wx) + '_' + mm(e.wy); },
         };
     }
-    return { room, homePlot, anchor, shifted, C, N, PL };
+    return { room, homePlot, anchor, shifted, C, N, PL, FREE_PASS };
 };
