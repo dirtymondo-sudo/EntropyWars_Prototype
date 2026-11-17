@@ -10537,7 +10537,9 @@ const RACE_ABILITIES = {
         { id: 'nrGatorToss', name: 'Gator Toss', tier: 1, families: ['floridaman'], cost: 25, apCost: 1, spellType: 'human', floridaHeadline: true,
           type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 3,
           statusEffects: [{ id: 'bleed', duration: 2 }],
-          desc: 'FLORIDA MAN THROWS ALLIGATOR. Deals MEDIUM physical damage to a Single Enemy within 3 and leaves it Bleeding for 2 rounds. Only on the rounds it is the headline.' },
+          /* 🐊 THE GATOR IN ITS ELEMENT (11-17 polish): x1.5 on a Wet target, so yesterday's Hurricane Party sets up today's toss */
+          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          desc: 'FLORIDA MAN THROWS ALLIGATOR. Deals MEDIUM physical damage to a Single Enemy within 3 and leaves it Bleeding for 2 rounds. Deals bonus damage to Wet targets. Only on the rounds it is the headline.' },
         { id: 'nrBathSalts', name: 'Bath Salts', tier: 2, families: ['floridaman'], cost: 50, apCost: 1, spellType: 'human', floridaHeadline: true,
           type: 'buff', kind: 'buff', range: 0, statStageBoost: { atk: 2, spd: 2 },
           statusEffects: [{ id: 'regen', duration: 2 }],

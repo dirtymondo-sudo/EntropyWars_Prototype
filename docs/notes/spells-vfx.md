@@ -3879,3 +3879,19 @@ ceoLayoffs`, SPELL_MAP aura rows, `pzOwn`); battle.js `_ceoCast` fires one 'aura
   words), blue MP motes rise off him, then his side's ring.
 - Every piece gates on `_pzSeen` (fog). Proof: /mnt/project-files/tech-ceo-polish/.
 
+## THE FLORIDA MAN (2026-11-17, the new races' polish thread "Polish Florida Man spells and VFX")
+Gator Toss, Bath Salts and Hurricane Party had only the stock looks. three-vfx-effects.js block "THE FLORIDA MAN" (after the Banker
+block; `_PZ_SIGS.fmGatorToss / fmBathSalts / fmHurricane`, SPELL_MAP bolt / aura / aoe rows, all `pzOwn`), helpers `_fm*`. Visuals only.
+- TODAY'S HEADLINE (`_fmHeadline`): every cast spins a newspaper in beside his head (the old film spin): red BREAKING NEWS bar + the
+  spell's headline from its desc. To the lens's right of him, over the nameplate, gone at 1.65 s; never over a target or a number.
+- Gator Toss `bolt` (timed on flyMs: the jaws close as the number lands): a code alligator (leather sheet, the Sewer Gator's
+  `_gtSnout`, tail, scutes, legs, about one square long) hurled end over end, lands nose down and snaps; blood + dust, his side's
+  ring; a Wet victim (the x1.5) also throws a splash crown + a water ring.
+- Bath Salts `aura`: white salt puff off his face + crystals, then red-orange rage streaks climb his body (SOLID, not additive: an
+  additive red washed pale over grass), red eye glints, speed lines blow back away from the lens, green Regen motes, his side's ring.
+- Hurricane Party `aoe` (fires with the damage, so the splash is at 120 ms): a squat storm-grey twister (`_wdFunnel` now takes
+  `o.color / o.color2`, default unchanged) with rain, the Meshy `flamingo` + `traffic_cone` (warmed in _SPELL_MISC_KEYS), beer cans
+  and confetti going round; a splash on every square of the 3x3 (Wet), his side's rim round the area.
+- Probe note: the CSS floating numbers run on real time, so a slowed `performance.now` probe shows them before the 3D hit.
+  Proof + probes: /mnt/project-files/florida-man-polish/.
+

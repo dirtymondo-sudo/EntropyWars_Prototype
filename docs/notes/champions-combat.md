@@ -5701,6 +5701,12 @@ dormant / bodiless):
   branch puts it back on the field where it stood, no Stagger. Bosses / cubes are never sent off.
 - 📰 Florida Man, TODAY'S HEADLINE: his three rows carry `floridaHeadline`; spellBlockReason greys the two that are not
   `_floridaHeadline(unit)` ("Not today"), a hash of the unit id + round, so the guest's menu agrees with no relay.
+  POLISH (11-17, thread "Polish Florida Man spells and VFX"): `_floridaTurnStart` (battle.js, at the start of his activation, after
+  the tower damage) says the day's headline over his head ("📰 GATOR TOSS", relayed floating text) and in the log, once a round;
+  a unit whose kit lacks the headline spell is told so (no fallback pick: equipping one headline must not make it castable every
+  round). Gator Toss got `bonusVsStatus: wet x1.5`, so Hurricane Party (Wet 2 rounds) sets up a later Gator Toss: the headline
+  order makes it a plan across rounds, not a same-turn combo. Tested in a VS-CPU match with both leads Florida Men: every cast
+  matched its headline, the CPU took the Wet toss on its own. Stats unchanged.
 - 🧠 Boltzmann Brain, THE FLUCTUATION: never walks or jumps (`_unitIsBodiless` in unitMoveBlockedByStatus / moveBlockWord
   'Bodiless' / unitMoveBlockKey 'bodiless'; casts that move the caster are greyed too, so its tree has no Phase Walk). Every
   round end (`_nrRoundEnd` in processEndOfRoundStatuses) it appears on a free square 2-4 away, picked by hash. Model = the

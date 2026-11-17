@@ -14298,6 +14298,18 @@
             return _FLORIDA_HEADLINES[_nrHash(String(unit && unit.id) + '|' + (state.round || 0)) % _FLORIDA_HEADLINES.length];
         }
         window._floridaHeadline = _floridaHeadline;
+        /* 📰 the day's paper (11-17 polish): when his turn starts the headline he got is said over his head and in the log, so
+           both seats read which one is live before opening the menu (floating text rides the relay; once a round a unit) */
+        function _floridaTurnStart(unit) {
+            if (!_nrAlive(unit) || unit._fmPaperRound === state.round) return;
+            const own = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(s => s && s.floridaHeadline);
+            if (!own.length) return;
+            unit._fmPaperRound = state.round;
+            const id = _floridaHeadline(unit), sp = own.find(s => s.id === id);
+            const nm = sp ? sp.name : ((typeof RACE_ABILITIES !== 'undefined' && (RACE_ABILITIES['florida man'] || []).find(s => s.id === id)) || {}).name || id;
+            addLog(`📰 TODAY'S HEADLINE for ${_ctName(unit)}: ${nm}${sp ? '' : ' (not in his kit: no headline spell today)'}.`, undefined, undefined, { actor: unit });
+            if (!_skipVisuals() && typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, '📰 ' + String(nm).toUpperCase(), sp ? 'buff' : 'debuff', { durationMs: 1500 });
+        }
         /* 🧠 THE FLUCTUATION (the Boltzmann Brain): it never walks or jumps (unitMoveBlockedByStatus: 'Bodiless'); at every
            round end it is somewhere else, a free square within 4 picked by its id and the round. */
         function _unitIsBodiless(unit) { return !!unit && unit.race === 'boltzmann brain'; }
@@ -64061,6 +64073,7 @@
                     window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo) ? 0 : 900);
                     return;
                 }
+                if (nextUnit.race === 'florida man' || (nextUnit.spells || []).some(sp => sp && sp.floridaHeadline)) { try { _floridaTurnStart(nextUnit); } catch (e) {} }   // 📰 today's headline
 
                 /* 😱 Feared (CHAMP REWORK Phase 4, STATUS_DEFS fear): the
                    activation is the flight — one engine-driven move away from
