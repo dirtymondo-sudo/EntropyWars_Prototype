@@ -3910,6 +3910,17 @@ the head across the lens toward his side (`_rfCardAnchor`), never over the body 
   shade (`OFF_FIELD_OPACITY` 0.3, outline off) for both sides, fog still rules an enemy's. It still holds its square (unitAt).
 Proof: /mnt/project-files/referee-polish/.
 
+## THE INFLUENCER (2026-11-17, thread "Polish Influencer spells and VFX")
+three-vfx-effects.js "THE INFLUENCER" (after THE LIFEGUARD; geometry `_inf*`). Rings / corners in the caster's SIDE colour (`_lgSide`).
+- Selfie Flash: a white flash star at her phone height + viewfinder corners on the target (the phone prop `item_smartphone`, in
+  `_SPELL_MISC_KEYS`, shows when loaded; never a stand-in).
+- Go Viral: hearts + share arcs burst off the target, a ring. THE SHARE (`nrGoViral:share`, battle.js `_viralShare`, first share hit
+  per mate only): a link line from the hit unit to each mate, small hearts, a ring; Ratio's spread fires it with `spread:1`.
+- Sponsored: a gold #AD badge over the ally + aura. Filter / the swap (`nrFilter:swap`): a camera-facing ring light on the ally and
+  two glints that trade places between the pair.
+- Ratio'd: speech bubbles piling down onto the target + a ring.
+Proof sheets: /mnt/project-files/influencer-polish/vfx_sheet_*.jpg.
+
 ## THE CICADA BROOD (2026-11-17, three-vfx-effects.js block "THE CICADA BROOD", before "THE SPACE PROPS")
 Shell green over black + red eyes; the area rings in the side colour from the viewer's seat (THE RIOT PASS). No screen flash.
 - Dig In (`aura`): clods + dust burst up, an earth ring, a dark burrow mouth opens under it and closes (1.9 s), a thin side ring.
