@@ -8845,7 +8845,7 @@
             'influencer': 'Human. An influencer from the Entertainment district of Disaster City. Ring light on the belt, sunglasses on the head. Whatever she tags goes viral, and everyone near it feels it.',   // 2026-11-17 THE NEW RACES 2
             'referee': 'Human. A referee from the Sports and Culture district of Disaster City. Striped shirt, whistle, two cards in the pocket. A second card on the same player and it is off the field.',   // 2026-11-17 THE NEW RACES 2
             'florida man': 'Human. Florida Man, of Bayside in Disaster City. Mullet, jorts, a fanny pack and a gator tooth on a string. Every day he makes the news, and he never knows how until it happens.',   // 2026-11-17 THE NEW RACES 2
-            'boltzmann brain': 'Alien. A Boltzmann brain from the Singularity: a mind that blinked into being out of nothing, with one eye and no body. It cannot walk. It is simply somewhere else every round.',   // 2026-11-17 THE NEW RACES 2
+            'boltzmann brain': 'Alien. A floating brain from the Singularity (a Boltzmann brain): a mind that blinked into being out of nothing, with one eye and no body. It cannot walk. It is simply somewhere else every round.',   // 2026-11-17 THE NEW RACES 2
             'wendigo': 'Anomalous. A wendigo of the Snowy Pass: a starved giant of bone and frost under a deer skull. It is always hungry. Every round it goes without a bite, the hunger eats it instead.',   // 2026-11-17 THE NEW RACES 2
             'karate frog': 'Anomalous. A karate frog of the sewers under Disaster City, one of the mutant brothers who learned to fight in the drains. White gi, black belt, red bandana. He fights by leaping over whoever is in front of him.',   // 2026-11-17 THE NEW RACES 2
             'samurai slug': 'Anomalous. A samurai slug of the sewers under Disaster City, one of the mutant brothers who learned to fight in the drains. Lacquered armour over a slimy body. He is slow, and every square he leaves is slick with slime.',   // 2026-11-17 THE NEW RACES 2
@@ -14698,6 +14698,10 @@
                 const mcx = (spell.aoeOriginSelf && casterUnit && spell.kind !== 'bomb') ? casterUnit.x : tx;
                 const mcy = (spell.aoeOriginSelf && casterUnit && spell.kind !== 'bomb') ? casterUnit.y : ty;
                 return aoeMaskTiles(spell.aoeMask, mcx, mcy, bw(), bh());
+            }
+            if (spell.kind === 'aoe' && spell.aoeOnTerrain && typeof window._aoeTerrainFilter === 'function') {   // 🐌 Ronin's Wake: the ooze squares only
+                const _sp = Object.assign({}, spell); delete _sp.aoeOnTerrain;
+                return window._aoeTerrainFilter(spell, getSpellAoeFootprint(_sp, tx, ty, casterUnit));
             }
             if (spell.kind === 'aoe') {
                 const cx = spell.aoeOriginSelf ? casterUnit.x : tx;

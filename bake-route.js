@@ -140,7 +140,7 @@ const TONE = {
     alpine: { treeKinds: ['pine', 'pine', 'pine_2'], trees: 4 },
     bad: { floor: 'wasteland', treeKinds: ['tree_5'], trees: 1 },
     dunes: { trees: 1, scatter: [['psxg_rock_4', 2], ['skull', 1], ['tumbleweed', 2]] },
-    saltflat: { floor: 'wasteland', trees: 0, scatter: [['psxg_rock_4', 3], ['cattle_skull', 1]] },
+    saltflat: { floor: 'wasteland', path: 'dirt_2', trees: 0, scatter: [['psxg_rock_4', 3], ['cattle_skull', 1]] },   // (the darker dirt: on the pale flat the road's own sheet did not show)
     sand: { treeKinds: ['palm'], treeH: [4.2, 5.4], trees: 2 },
     tundra: { trees: 1 }, peak: { trees: 0 }, ice: { trees: 0 },
 };
@@ -226,6 +226,13 @@ const hAt = (sx, sy) => { const x = Math.max(0, Math.min(W - 1, Math.floor(sx)))
 /* ── THE PAINT: the plot's ground sheet, ragged where two kinds meet; the path's sheet over it ── */
 const counts = {}; for (let cy = 0; cy < ROWS; cy++) for (let cx = 0; cx < COLS; cx++) { if (FCELL[cx + ',' + cy]) continue; const f = kitOf(kindOfCell(cx, cy)).floor; counts[f] = (counts[f] || 0) + (inPlot[cx + ',' + cy] != null ? 3 : 1); }
 const FLOOR = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+/* THE ROAD RUNS ON (THE OPEN SEAM, 2026-11-17): where a road or a highway leaves the plot list INSIDE the room's box (a free end: the cell past it is
+   another room's), its sheet is painted on for ten squares over that cell's ground and the cell grows no trees, so the way out reads as a road going
+   on and not as a road that stops at a tree line. Nobody walks those squares: the room changes on the plot's own last square. */
+const RUNON = {}, BARE = {};
+ENDS.forEach(e => { if (e.onWall || e.look === 'trail' || !e.past) return; const dx = e.side === 'e' ? 1 : e.side === 'w' ? -1 : 0, dy = e.side === 's' ? 1 : e.side === 'n' ? -1 : 0, hw = Math.ceil(LOOKS[e.look].hw), sheet = e.look === 'highway' ? ASPH : kitOf(kindAt(e.sq[0], e.sq[1])).path;
+    for (let i = 1; i <= 10; i++) for (let o = -hw; o < hw; o++) { const x = e.sq[0] + dx * i + (dy ? o + (e.sq[0] % N >= N / 2 ? 1 : 0) : 0), y = e.sq[1] + dy * i + (dx ? o + (e.sq[1] % N >= N / 2 ? 1 : 0) : 0); if (x >= 0 && y >= 0 && x < W && y < Dq && !inRoom(x, y)) RUNON[x + ',' + y] = sheet; }
+    BARE[(e.past[0] - BX0) + ',' + (e.past[1] - BY0)] = 1; BARE[(e.past[0] - BX0 + (dy ? (e.sq[0] % N >= N / 2 ? 1 : -1) : 0)) + ',' + (e.past[1] - BY0 + (dx ? (e.sq[1] % N >= N / 2 ? 1 : -1) : 0))] = 1; });
 const PAL = [], pal = key => { if (key === FLOOR) return 0; let i = PAL.indexOf(key); if (i < 0) { PAL.push(key); i = PAL.length - 1; } return i + 1; };
 const paint = new Uint8Array(W * Dq);
 for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) {
@@ -235,6 +242,7 @@ for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) {
     if (lx < n - 1.5 && cx > 0) cx--; else if (N - 1 - lx < n - 2.5 && cx < COLS - 1) cx++;
     if (ly < n - 1.5 && cy > 0) cy--; else if (N - 1 - ly < n - 2.5 && cy < ROWS - 1) cy++;
     const k = kitOf(kindOfCell(cx, cy)), ch = cell[y][x];
+    if (RUNON[x + ',' + y]) { paint[y * W + x] = pal(RUNON[x + ',' + y]); continue; }
     if (foreign(x, y)) { const pi = JOIN.paint[(y - FOY) * JOIN.W + (x - FOX)]; paint[y * W + x] = pal(pi ? JOIN.pal[pi - 1] : JOIN.floor); continue; }
     paint[y * W + x] = pal(ch === 'p' ? (lookSq[y][x] === 'highway' ? ASPH : kitOf(kindAt(x, y)).path) : (ch === 's' || ch === 'm') ? SHOULDER : k.floor);
 }
@@ -247,6 +255,37 @@ const P = (key, sx, sy, o) => { if (!CAT[key]) { errs.push('not in the catalogue
 const dec = (key, sx, sy, o) => { if (!CAT[key]) { errs.push('not in the catalogue: ' + key); return; } props.push(Object.assign({ key, x: r2(gcx(sx) + (rnd() - 0.5) * 1.6), z: r2(gcz(sy) + (rnd() - 0.5) * 1.6), face: Math.round(rnd() * 360) }, o || {})); };
 const tree = (sx, sy, kind, h) => { if (!TREES[kind]) { errs.push('not a tree kind: ' + kind); return; } taken.add(sx + ':' + sy); feat({ k: 'tree', x: gcx(sx), z: gcz(sy), kind, h: r2(h), r: 0.8 }); };
 const pick = a => a[Math.floor(rnd() * a.length)];
+
+/* ── THE PLACES ON THE WAY (2026-11-17, mondo after the test slice: "every route plot gets one place of its own to walk towards ... put the rule in the
+   route kit so phase 4 gets it for free"; the table, the rule and the names = ow-places.js). One a plot, on clear ground beside the path, set down
+   before the trees and the scatter so they keep off it. The spec's `places: { "<x>,<y>": "<id>" | false }` names one by hand (the design page's own
+   list for the route comes first); otherwise the next of the plot's ground kind, never the same twice running. ── */
+const OWP = require('./ow-places.js'), PLACE_AT = {}, noPlace = [];
+{ const at = (key, fx, fy, o) => { if (!CAT[key]) { errs.push('not in the catalogue: ' + key); return; } props.push(Object.assign({ key, x: r2(-HX + fx * C), z: r2(-HZ + fy * C) }, o || {})); };
+  let last = null; const usedPl = {};
+  PLOTS.forEach((p, pi) => { const key = p[0] + ',' + p[1], want = (SPEC.places || {})[key]; if (want === false) return;
+      const list = OWP.forKind(groundAt(p[0], p[1])); let id = want || null;
+      if (!id) { if (!list.length) { noPlace.push(key + ': no place suits ' + groundAt(p[0], p[1]).kind); return; } const k0 = (hashStr(ID + key) + pi) % list.length, byHand = Object.keys(SPEC.places || {}).map(q => SPEC.places[q]);
+          /* one the room has not got yet (nor is named by hand for another plot), from the hashed start; when the list is used up, any but the last one laid */
+          for (let i = 0; i < list.length && !id; i++) { const c = list[(k0 + i) % list.length]; if (!usedPl[c] && byHand.indexOf(c) < 0) id = c; }
+          for (let i = 0; i < list.length && !id; i++) { const c = list[(k0 + i) % list.length]; if (c !== last) id = c; } if (!id) id = list[k0]; }
+      const x0 = (p[0] - BX0) * N, y0 = (p[1] - BY0) * N;
+      const find = r => { let best = null;
+          for (let ly = 1 + r; ly < N - 1 - r; ly++) for (let lx = 1 + r; lx < N - 1 - r; lx++) { const cx = x0 + lx, cy = y0 + ly; let ok = true, dPath = 99;
+              for (let j = -r; j <= r && ok; j++) for (let i = -r; i <= r && ok; i++) if (cell[cy + j][cx + i] !== 'g' || taken.has((cx + i) + ':' + (cy + j))) ok = false;
+              if (!ok) continue;
+              for (let j = -9; j <= 9; j++) for (let i = -9; i <= 9; i++) { const c = (cell[cy + j] || [])[cx + i]; if (c === 'p' || c === 'm' || c === 's') dPath = Math.min(dPath, Math.hypot(i, j)); }
+              /* beside the path, never on it (every square of the patch is plain walked ground): the nearest such patch, a square clear of the path where there is room */
+              const score = (dPath < r + 1.6 ? 20 : 0) + dPath + Math.hypot(lx - 5.5, ly - 5.5) * 0.05; if (!best || score < best[0]) best = [score, cx, cy]; }
+          return best; };
+      let pl = OWP.PLACES[id]; if (!pl) { errs.push('no such place: ' + id + ' (ow-places.js)'); return; }
+      let best = find(pl.r);
+      /* a narrow plot, or one with two paths on it: one of the small places of its ground kind instead (a hand-named place is never swapped: it is refused) */
+      if (!best && !want) { const small = list.filter(c => OWP.PLACES[c].r === 1).sort((a, b) => (usedPl[a] || 0) - (usedPl[b] || 0) || (a === last ? 1 : 0) - (b === last ? 1 : 0)); for (const c of small) { best = find(1); if (best) { id = c; pl = OWP.PLACES[c]; } break; } }
+      if (!best) { noPlace.push(key + ' (' + id + '): no clear ground beside the path'); return; }
+      const r = pl.r;
+      for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) taken.add((best[1] + i) + ':' + (best[2] + j));
+      OWP.lay(pl, best[1], best[2], { P, at }); PLACE_AT[key] = pl; last = id; usedPl[id] = 1; }); }
 
 /* plot by plot: the trees in the walked ground, the scatter, the stoppers on the verge */
 PLOTS.forEach((p, pi) => {
@@ -306,9 +345,14 @@ ENDS.forEach(e => {
     const s = (SPEC.ends || {})[e.id], found = OW.at(e.past[0], e.past[1]), to = (s && s.room) || (found && found.room !== ROOM && found.room) || null;
     const g = groundAt(e.past[0], e.past[1]);
     if (!to) { open.push(e.id + '  ' + e.side + ' side, world plot ' + e.past.join(',') + ' (' + g.kind + '): no room stands there yet'); return; }
-    const far = HQ.rooms[to] || {}, d = { id: e.id, way: 'trail', label: (s && s.label) || String(far.label || to).toUpperCase(), sub: (s && s.sub) || LABEL, action: { room: to, at: (s && s.at) || e.id }, desc: (s && s.desc) || 'The path goes on.' };
+    /* THE OPEN SEAM (data.js DOOR_HQ.ways.open; mondo: no portal in open country, arches only on forest walls, cliffs and buildings): a road's or a
+       highway's end is open (the road runs on); a trail's end is open where the ground on both sides of the line is open (grass, scrub, desert, snow),
+       and a `trail` (the dusk between the trees, the rock gap) where either side is forest or rock */
+    const wallK = k => k === 'forest' || k === 'rock', isOpen = e.look !== 'trail' || !(wallK(kindAt(e.sq[0], e.sq[1]).kit) || wallK(g.kit)), pw = e.look === 'highway' ? 16 : e.look === 'road' ? 11 : 5;
+    const far = HQ.rooms[to] || {}, d = { id: e.id, way: isOpen ? 'open' : 'trail', label: (s && s.label) || String(far.label || to).toUpperCase(), sub: (s && s.sub) || LABEL, action: { room: to, at: (s && s.at) || e.id }, desc: (s && s.desc) || 'The path goes on.' };
     if (e.onWall) { d.wall = e.side; if (e.side === 'n' || e.side === 's') d.x = e.along; else d.z = e.along; }
     else { d.wall = 'free'; d.x = gcx(e.sq[0]); d.z = gcz(e.sq[1]); d.face = e.side === 'n' ? 180 : e.side === 'e' ? 270 : e.side === 's' ? 0 : 90; d.passage = Object.assign({}, FREE_PASS); }   // (ow-move.js A FREE SEAM IS CROSSED ON THE PLOT'S OWN SQUARES)
+    if (isOpen) d.passage = Object.assign(d.passage || {}, { w: pw });
     doors.push(d);
 });
 
@@ -324,7 +368,7 @@ const spaces = [];
 /* ── THE MASS: what the squares nobody walks grow (terrain.gen plan / look trees): a forest plot's trees; open ground grows nothing ── */
 const zones = [];
 for (let cy = 0; cy < ROWS; cy++) for (let cx = 0; cx < COLS; cx++) { const K = kitOf(kindOfCell(cx, cy)), z = { x0: gx(cx * N), z0: gz(cy * N), x1: gx((cx + 1) * N), z1: gz((cy + 1) * N) };
-    if (K.mass && !FCELL[cx + ',' + cy]) { z.kinds = K.treeKinds; z.treeH = K.treeH; } else z.none = true; zones.push(z); }
+    if (K.mass && !FCELL[cx + ',' + cy] && !BARE[cx + ',' + cy]) { z.kinds = K.treeKinds; z.treeH = K.treeH; } else z.none = true; zones.push(z); }
 const anyMass = zones.some(z => !z.none);
 
 /* ── checks: the path is one piece from end to end; every plot is walked to; nothing stands on the path ── */
@@ -357,11 +401,12 @@ if (JOIN) { const sh = (o) => { const q = Object.assign({}, o); if (q.x != null 
     (JOIN.air || []).forEach(z => AIR.push(Object.assign({}, z, { x0: r2(z.x0 + FMX), x1: r2(z.x1 + FMX), z0: r2(z.z0 + FMZ), z1: r2(z.z1 + FMZ) })));
     /* its doors: on this room's wall where its plot's side lies on the box's edge, else free (crossed on the plot's own squares) */
     JOIN.doors.forEach(d => { const o = Object.assign({}, d), col = JOIN.wx + d.plotCol - BX0, row = JOIN.wy + d.plotRow - BY0, sd = d.side, ns = sd === 'N' || sd === 'S';
-        ['plotCol', 'plotRow', 'side', 'along', 'x', 'z', 'face', 'passage'].forEach(k => delete o[k]);
+        ['plotCol', 'plotRow', 'side', 'along', 'x', 'z', 'face', 'passage'].forEach(k => delete o[k]); const keepW = d.way === 'open' && d.passage && d.passage.w ? { w: d.passage.w } : null;
         const onWall = (sd === 'N' && row === 0) || (sd === 'S' && row === ROWS - 1) || (sd === 'W' && col === 0) || (sd === 'E' && col === COLS - 1);
         const bx = sd === 'W' ? col * N : sd === 'E' ? col * N + N - 1 : col * N + Math.max(0, Math.min(N - 1, Math.floor(d.along - 0.01))), by = sd === 'N' ? row * N : sd === 'S' ? row * N + N - 1 : row * N + Math.max(0, Math.min(N - 1, Math.floor(d.along - 0.01)));
         if (onWall) { o.wall = sd.toLowerCase(); if (ns) o.x = gx(col * N + d.along); else o.z = gz(row * N + d.along); ENDS.push({ id: o.id, side: o.wall, onWall: true, along: ns ? o.x : o.z, sq: [bx, by], look: 'trail', foreign: true }); }
-        else { o.wall = 'free'; o.x = ns ? gx(col * N + d.along) : gcx(bx); o.z = ns ? gcz(by) : gz(row * N + d.along); o.face = sd === 'N' ? 180 : sd === 'E' ? 270 : sd === 'S' ? 0 : 90; o.passage = Object.assign({}, FREE_PASS, d.passage || {}); }
+        else { o.wall = 'free'; o.x = ns ? gx(col * N + d.along) : gcx(bx); o.z = ns ? gcz(by) : gz(row * N + d.along); o.face = sd === 'N' ? 180 : sd === 'E' ? 270 : sd === 'S' ? 0 : 90; o.passage = Object.assign({}, FREE_PASS, keepW || {}); }
+        if (onWall && keepW) o.passage = keepW;
         doors.push(o); }); }
 
 /* ── the sky + the room ── */
@@ -372,7 +417,7 @@ const SKY = { forest: { tint: 0xa9c4dc, fog: 0xb4c6b6, density: 0.009, clouds: 0
 const hex = n => '0x' + n.toString(16).padStart(6, '0');
 const SP = { x: gcx(SPQ[0]), z: gcz(SPQ[1]) }, face = ENDS[0] ? ({ n: 180, s: 0, w: 90, e: 270 })[ENDS[0].side] : 180;
 const pidOf = (c, r) => 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0');
-const names = PLOTS.map((p, i) => [pidOf(p[0] - BX0, p[1] - BY0), (partOfPlot(p).src.name || 'The trail') + ', ' + PJ.ground.key[groundAt(p[0], p[1]).c].label.toLowerCase(), 'R', 0])
+const names = PLOTS.map((p, i) => [pidOf(p[0] - BX0, p[1] - BY0), (partOfPlot(p).src.name || 'The trail') + ', ' + (PLACE_AT[p[0] + ',' + p[1]] ? PLACE_AT[p[0] + ',' + p[1]].name : PJ.ground.key[groundAt(p[0], p[1]).c].label.toLowerCase()), 'R', 0])
     .concat(JOIN ? JOIN.plots.map(q => [pidOf(JOIN.wx + q.col - BX0, JOIN.wy + q.row - BY0), q.name, q.district, q.level]) : []);
 const mask = []; for (let cy = 0; cy < ROWS; cy++) { let s = ''; for (let cx = 0; cx < COLS; cx++) s += (inPlot[cx + ',' + cy] != null || FCELL[cx + ',' + cy]) ? '#' : '.'; mask.push(s); }
 const grounds = [...new Set(PLOTS.map(p => groundAt(p[0], p[1]).kind))];
@@ -423,6 +468,7 @@ L.push("        /* OWROUTE " + ID + STRETCH + "-END */");
 const block = L.join('\n') + '\n';
 const count = { room: ROOM, look: LOOK, plots: PLOTS.length, box: COLS + ' x ' + ROWS, world: [BX0, BY0], ground: PLOTS.map(p => groundAt(p[0], p[1]).c).join(''), squares: W * Dq, walked: spaces.reduce((n, s) => n + (s.w / C) * (s.d / C), 0), spaces: spaces.length, trees: F.filter(f => f.k === 'tree').length, props: props.length, rails: F.filter(f => f.k === 'rail').length, marks: marks.length, doors: doors.length, ends: ENDS.map(e => e.id) };
 console.log(JSON.stringify(count));
+console.log('places: ' + PLOTS.map(p => p[0] + ',' + p[1] + ' ' + (PLACE_AT[p[0] + ',' + p[1]] ? PLACE_AT[p[0] + ',' + p[1]].id : '-')).join(' · ')); if (noPlace.length) console.log('PLOTS WITH NO PLACE: ' + noPlace.join(' · '));
 if (open.length) { console.log('ENDS WITH NO ROOM YET (the zone thread adds the door pair when its room stands; the seam id is the door id on both sides):'); open.forEach(o => console.log('  ' + o)); }
 if (DRY) process.exit(0);
 

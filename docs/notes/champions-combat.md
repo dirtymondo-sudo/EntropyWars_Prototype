@@ -5695,13 +5695,24 @@ dormant / bodiless):
   landing within 3 of him (either team; not his own heals, not heals on him) into unit._plate; Miracle (`spendPlate`) adds the
   plate in spellHealAmountFor (the forecast reads it) and empties it after the heal.
 - 📱 Influencer, GOING VIRAL: a `viral` unit shares 30% of every hit with its teammates within 2 (`_viralShare`, after the
-  Lifeguard save; shared hits carry `_viralShare` so they never spread). The doc's Filter (disguise) is NOT built: it needs the
-  renderer to draw a fake unit for one side only.
+  Lifeguard save; shared hits carry `_viralShare` so they never spread). Filter (disguise) is built since THE INFLUENCER POLISH below.
 - 🟥 Referee, THE RED CARD: Card = `yellowCard` 3 rounds + Marked; a card on a booked unit (STATUS_DEFS.yellowCard.onApply,
   `refreshed`) calls `_refereeRedCard`: the `exited` status 1 round with unit._sentOff (no door); `_doorExitReturn`'s sent-off
   branch puts it back on the field where it stood, no Stagger. Bosses / cubes are never sent off.
+  POLISH (2026-11-17, thread "Polish Referee spells and VFX"): `exited` ends at the round's end, so a red card on a unit still to act
+  this round costs it that turn; on one that already acted it is only off the field (untargetable) until the round ends: time it.
+  The CPU knows this (ai.js ccDenialValue `yellowCard`: booking = 40, the red card = a hard hold on a unit still to act, 0.3 of it
+  on one that acted; findSpellTarget sends a `refereeCard` cast to a booked enemy first). The second card no longer also logs
+  "is booked" (applyStatusPayload skips its line when onApply took the status off). A shielded target now says WHY
+  (battle.js `_realmShieldLine`: sent off / out through a door / held behind a door / Shadow Realm; it said Shadow Realm for all).
 - 📰 Florida Man, TODAY'S HEADLINE: his three rows carry `floridaHeadline`; spellBlockReason greys the two that are not
   `_floridaHeadline(unit)` ("Not today"), a hash of the unit id + round, so the guest's menu agrees with no relay.
+  POLISH (11-17, thread "Polish Florida Man spells and VFX"): `_floridaTurnStart` (battle.js, at the start of his activation, after
+  the tower damage) says the day's headline over his head ("📰 GATOR TOSS", relayed floating text) and in the log, once a round;
+  a unit whose kit lacks the headline spell is told so (no fallback pick: equipping one headline must not make it castable every
+  round). Gator Toss got `bonusVsStatus: wet x1.5`, so Hurricane Party (Wet 2 rounds) sets up a later Gator Toss: the headline
+  order makes it a plan across rounds, not a same-turn combo. Tested in a VS-CPU match with both leads Florida Men: every cast
+  matched its headline, the CPU took the Wet toss on its own. Stats unchanged.
 - 🧠 Boltzmann Brain, THE FLUCTUATION: never walks or jumps (`_unitIsBodiless` in unitMoveBlockedByStatus / moveBlockWord
   'Bodiless' / unitMoveBlockKey 'bodiless'; casts that move the caster are greyed too, so its tree has no Phase Walk). Every
   round end (`_nrRoundEnd` in processEndOfRoundStatuses) it appears on a free square 2-4 away, picked by hash. Model = the
@@ -5709,9 +5720,56 @@ dormant / bodiless):
 - 🦌 Wendigo, THE HUNGER: a round in which it dealt no damage to an enemy (unit._fedRound, set in applyDamageToUnit) costs it 8%
   max HP at the round end, never below 1 (`_wendigoHunger`).
 - 🐸 Karate Frog, LEAPFROG: `leapOver` (in _runPostEffects + spellMovesCaster) lands him on the square straight behind the target.
+  **THE KARATE FROG PASS (2026-11-17, thread "Polish Karate Frog spells and VFX", mondo: "flesh out their unique spells and spell
+  animations/vfx and make sure that any new mechanics are tested out and work as intended"):** no rule invented, no number changed
+  (his stats sit on the bruiser median, the three rows in line with the T1-T3 strikes). (1) The landing is one picker,
+  battle.js `frogLeapLanding(unit, target)` (window): the square straight behind on his line; `blocked` 'off' / 'taken' / 'high'
+  (a ledge higher than getUnitJumpClimb over where he stands: the jump rule; drops are free). _frogLeapOver and THE FORECAST
+  (forecastSpellPlan, `addMove(unit, …, 'self')`) read it, so the preview shows where he lands. (2) The vault rides the relayed
+  escape path `frogleap` (three-renderer.js _ESC_STYLES / _escStyleAt: a squat, 1.25 squares up over the body, a bent-leg landing),
+  160 ms after the hit: the old `leap: true` never reached the online guest (the displace relay carries escStyle, not leap), who
+  saw a flat glide through the victim. (3) A frog swims: map.js unitIsDeepWaterAdapted lists 'karate frog' (a CPU match had Flying
+  Kick carry both frogs into deep water and drown them). (4) Animations: Leapfrog = `roundhouse` (Roundhouse_Kick), Tongue Lash =
+  `jab` (the tongue snaps out on it), Flying Kick = `flyKick` (Rising_Flying_Kick, the clip carries him, like Sky Tackle); a rig
+  without the clip runs the new `chargeStyle: 'flykick'` path (data field, both charge paths in battle.js; relayed).
+  Also fixed: `kickflip` was missing from _ESC_STYLES, so the Skater's ollie fell back to the plain vault.
+  Probes (VS CPU, real doSpell, /mnt/project-files/karate-frog-pass/): Tongue Lash 4 → pulled 3 to beside him (269); Leapfrog 325
+  + lands behind (Man-at-Arms shrugs off Stagger); Flying Kick 331 + carry + collision 88 + the chain rebound; Rooted greys Leapfrog
+  and Flying Kick. Two CPU frogs, 6 rounds of training tempo: 9 casts of all three, Leapfrog sets up BACKSTAB basic attacks (he
+  lands behind), 0 page errors. Looks: spells-vfx.md "THE KARATE FROG".
 - 🐌 Samurai Slug, THE SLIME TRAIL: every square he walks off becomes Black Ooze (`swamp`) for 2 rounds (`_slugTrail`, finishMoveAt).
+  THE SAMURAI SLUG POLISH (2026-11-17, mondo: "flesh out their unique spells ... make sure that any new mechanics are tested out and
+  work as intended"). The playstyle: THE SLIME ROAD. The ooze is his: he crosses Black Ooze at a plain step's cost (state.js
+  getTerrainMoveCost) and is never Gooed by it (battle.js `_slugOozeProof` in the arrival chain's enterStatus, data.js
+  TERRAIN_RULES.swamp.endTurn, ai.js hazard cost); everyone else, his allies too, pays 2 and is Gooed. He lays lanes; the enemy
+  crosses or goes round. Answers: fire (the ooze goes up, he is fire-weak), flyers, range (SPD 70), going round.
+  Changes: **Slime Slash** + `paintTerrain` (the struck square turns to ooze 2 rounds); it is poison, so THE ELEMENT TERRAINS
+  already give ×1.25 when he or it stands in the ooze (a ×1.3 vs Gooed was tried and dropped: stacked to ×1.6, 334 → 595).
+  **Salt-Proof Stance** + `slimeRing` (`_slugRing`: the 4 squares round him, walls respected). **Iai Draw** + `slimeLane`
+  (`_slugLane`: the squares he charged across, both charge paths). **Ronin's Wake** (new T4, `nrRoninsWake`, 90 MP, cd 4, self,
+  diamond 4, 120 physical + Root 1): every enemy standing in Black Ooze within 4. `aoeOnTerrain: ['swamp']` = getSpellAoeArea
+  keeps only those squares (`_aoeTerrainFilter`; ui.js getSpellAoeFootprint and ai.js getSpellAoeAreaAI read it too, so preview,
+  hit, CPU agree); `_selfNovaEnemyOnly` refuses it with nobody in the ooze. RACE_TREE samurai slug = his own four (the borrowed row
+  was Sad Backstory / Plot Armor / To Be Continued / Roll Credits). Stats unchanged.
+  Probe 11-17 (real VS-CPU TDM, 0 page errors): walk paints 2 squares, cost 1 for him / 2 for a foe, swamp endTurn null for him;
+  Iai Draw slimed its lane; Slime Slash 271, then 360 on the ooze (×1.25); stance ring 4/4 + DEF +2; Wake refused with nobody in
+  the ooze, then 282 + Rooted on the foe in the ooze, the foe on grass untouched; a CPU slug cast Wake (2 foes), Iai Draw, Slime Slash.
 - 🦗 Cicada Brood, THE WAIT: Dig In = `dormant` (blockMove, onRoundEnd +1 Brood to 3) + Invisible; Screech (`broodSpend` 45)
   adds 45 a stack in the plain AoE resolver (`_broodSpend`), spends them and ends Dig In.
+- 🦗 THE CICADA POLISH (2026-11-17, thread "Polish Cicada Brood spells and VFX", mondo: "flesh out their unique spells and spell
+  animations/vfx and make sure that any new mechanics are tested out and work as intended"). Found in a real VS-CPU battle:
+  (1) THE STACKS NEVER GREW: processEndOfRoundStatuses only runs the onRoundEnd of keys in state.js `_STATUS_EFFECT_IDS`, and
+  `dormant` is not one. Now battle.js `_cicadaBrood` runs STATUS_DEFS.dormant.onRoundEnd from `_nrRoundEnd` (do NOT also add
+  dormant to that set: it would tick twice, and the round-end camera would dive onto a unit the enemy cannot see).
+  (2) STUCK IN THE GROUND: an attack / offensive spell / reveal took Invisible off but left `dormant` (no move, still stacking).
+  invisible.onRemove clears dormant now (the Gator's Submerged + the Mole Man's burrow pattern); the banked stacks stay.
+  (3) THE KIT: RACE_TREE held four borrowed rungs (Corrosive Splash + Rot outside its families) and raceDefaultKit gave neither
+  Buzz nor the T3; now Dig In, Buzz, Chorus, Swarm Signal. (4) THE NAME: the sonic family has a T2 `raceScreech` "Screech" in
+  the same pool and the menu finds a spell by its name, so the T3 (`nrScreech`, id kept) is CHORUS (a brood's song).
+  ai.js: Dig In is worth 35-70 + 25 a missing stack while no enemy is in Chorus' reach (0 at 3 stacks / dug in); Chorus scores
+  its banked bonus. hud.js: the BROOD n/3 chip. Numbers unchanged (Chorus 90 +45 a stack = 225 at 3, Deafening Wail 125 no
+  cooldown is the line; it pays three idle rounds and an enemy that saw the dig knows the square). VFX: spells-vfx.md
+  "THE CICADA BROOD".
 Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo had 10 stretched triangles from a claw to the foot
 (degenerated, edge > 0.15 m) and the Samurai Slug's tail was skinned to the legs (blended to Hips for z < 0.32, y < 0.85);
 originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`
@@ -5742,3 +5800,82 @@ had no idea what a ride was for; a rider knocked away still teleported back to h
   adds the best ride walk (90 + its value). In a 3-round CPU-vs-CPU probe both CPU Delivery Boys cast Hot and Fresh and
   never Hop On (no ride beat their other picks); the ride itself is proven by hand.
 - Stats unchanged (support median). Proof: /mnt/project-files/delivery-boy-polish/.
+- **THE BOLTZMANN BRAIN PASS (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new
+  mechanics are tested out and work as intended")**, thread cmsg_01XWpxyTn3nnw98znVzKdFjsH9oWgzPy7wwhJEhrsf2fQY:
+  - OBSERVER EFFECT (new, `nrObserverEffect`, tier 1, 25 MP, 1 AP, cd 2, self `buff`, `observe: true`, status `observed`): the one say
+    the player has over the fluctuation. At this round end it stays on its square (`_boltzmannFluctuate` spends the status there; a
+    1-round status otherwise lives until the caster's next turn ends and held it through TWO round ends, which with cd 2 = never
+    moving). It skips the one-spell cap (`spellSkipsCastCap`), so hold-and-shoot is one turn (cast it first: a damaging spell ends the turn).
+    CPU (ai.js, the buff scorer): casts it first (score 400+) when the square is a perch: an enemy within 5, none within 2, the hits
+    coming under 40 % of its HP, AP for a shot after. Seen in a real CPU match: Observer, then Vacuum Collapse, held one round end.
+  - THE JUMP: lands on a SAFE square when there is one (no lava / deep-water tick, no enemy zone status: predictMoveHazardDamage +
+    predictZoneStatusesAt; hidden traps not looked at, that would leak them). The log line is `actor`-tagged and fog-checked like
+    any line with squares in it; the look is two fires (`nrFluctuation:out` / `:in`), each fog-gated on its own end (the legacy
+    teleport drew both ends for anyone who saw either).
+  - Dead picks out: Phase Walk + Dimensional Fold (both move the caster: always greyed 'Bodiless') in RACE_SPELL_EXCLUDES.
+  - Existential Dread cooldown 2 -> 3 (the T2 mass-fear median: Death Rattle, Treeline Scream, KNEEL; Feared = cannot act).
+  - Stats kept: POWER 548, #92 of 154 (median 563).
+  - Proof + probes: /mnt/project-files/boltzmann-brain-polish/ (probe/p3_show.js = frozen-clock looks + the rules in a CPU match).
+
+
+## THE INFLUENCER POLISH (2026-11-17, thread "Polish Influencer spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
+- THE SHARE FIX: `_viralShare` passed the hitter's type / STAB / ATK into each mate's share (a 154 hit shared 347 "super effective").
+  The share is now a flat 30 % of the damage dealt: no sourceUnit, `typeEffect:'neutral'`, ignoreArmor; the kill credit goes
+  through `a._lastDamageSourceId = src.id`. Multi-hit casts: one log line per mate ("… (9 hits)"), via a per-mate sub-sink
+  `sink._viral[id]` that `_multiHitLogFlush` flushes. `state._lastViralHitId` = the last viral unit hit (Ratio reads it, because a
+  killing hit or a status wearing off in the same cast must not lose the spread).
+- FILTER (tier 2, beside Sponsored; `filterSwap`): a single ally within 4 and the NEAREST living ally of ANOTHER race+gender (no
+  boss, cube or summon; `_influencerFilterPartner`) trade looks for 2 rounds (`filtered` status on both, `_filterLookId/Race/Gender`).
+  Both halves end together (shared `_stFresh` + the higher count), so two identical faces never stand on the board. No partner =
+  refused before any cost ("Filter: no ally of another race to swap faces with."). THE DRAWN UNIT: battle.js `ewDrawnUnit(unit,
+  viewer)` returns, for the OTHER seat only, a copy wearing the partner's race / gender / appearance / sprite / portrait / types;
+  sprites.js portraits + map sprite, three-renderer.js (model, creator rig, plate race, the rebuild hashes carry `flt:`), hud.js
+  race line + types and `unitDisplayName` all read it. Own side sees the truth. Known, on purpose: the 🤳 status badge stays
+  visible to the enemy (the honest read + counterplay); inspector stats are not disguised; log lines name the disguise for
+  everyone. Kill-switch `window.EW_NO_FILTER_LOOK = true`.
+- RATIO'D (tier 4, new; `viralSpread {radius 2, duration 1}`): MEDIUM light magic hit at range 5; on a Viral target every
+  teammate within 2 also goes Viral for 1 round (`_influencerRatioSpread`, in `_runPostEffects`). The kit is now Selfie Flash →
+  Go Viral → Sponsored / Filter → Ratio'd (RACE_TREE; the borrowed popstar rungs left).
+- THE CPU (ai.js): Go Viral = 55 per foe mate within 2 (0 alone / already viral); Filter 35 (+55 when either half is a healer, 0
+  with no partner); a hit on a viral foe adds the share per mate, Ratio +45 per mate it would spread to; `getTargetPriority`
+  judges a filtered foe by the unit it LOOKS like (what a player sees).
+- Proof (VS-CPU TDM, 0 page errors; /mnt/project-files/influencer-polish/): Selfie blinds; Ratio 163 on the viral target, 49 flat
+  to each mate, 2 mates go Viral; Sponsored +2/+2; Filter refusal costs 0 MP; enemy view draws the Influencer as the Catgirl and
+  back, own view real; all wear off; the CPU cast Filter and Ratio itself.
+
+## THE WENDIGO PASS (2026-11-17, thread "Polish Wendigo spells and VFX", mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
+- THE PLAYSTYLE: a hunter that has to keep eating. Rend (Bleed 2 rounds) sets up Feast, which now carries
+  `bonusVsStatus: { status: 'bleed', mult: 1.3 }` (the engine's own status-combo rule: "⚗ Combo! … ×1.3", +2 AP the first time
+  in a turn), and the bigger bite heals more (60% of the real HP taken). Frost Howl Slows + Fears the ring round it: the
+  frightened flee slowly, so the Wendigo runs them down next round to feed. Proved in a VS-CPU board: Rend 350 + Bleed; Feast on
+  the Bleeding target 548 (heal 329) vs 380 (heal 228) on a clean one; Frost Howl 194 + 224, both Slowed + Feared.
+- THE HUNGER CHIP (hud.js `_hrlgStatusChips`): the Wendigo always wears FED (green) or HUNGRY (red) in its status chips, title
+  = the HP the round end will take. Reads `unit._fedRound` against `state.round` (rides the state sync, so the guest reads it too).
+- THE HUNGER'S LOOK: `_wendigoHunger` fires `_sigVfxGeom('wdHunger', …)` (fireGeometry, relayed by online.js, fog-gated).
+- Stats: HP 1350 → 1250 (POWER 887 → 862 = the median 811 + 6 %; a fed Wendigo pays no tax, so it sat too high at +9 %).
+- THE LOOKS (three-vfx-effects.js "THE WENDIGO'S LOOKS", after the Skater's; kill-switch `window.EW_NO_WENDIGO_VFX`): bone,
+  frost, old blood, one mark per piece in the viewer's seat colours. Rend = three icicle claws raking across the body facing the
+  lens (`hitMs` 190), ice chips + blood; Feast = an antlered skull's two rows of bone teeth closing on the body (`hitMs` 260),
+  a bigger blood burst when the target was Bleeding, the stock drain hop home; Frost Howl = four scream rings out of its head
+  tilting down over the reach, the snow blown out flat, the reach edge once in the seat colour, frost mist per square (aoe
+  `geom3D`); the Hunger = frost ribs showing on its chest, dark wisps spiralling in, a seat-colour ring closing under it.
+- Probe recipe: /mnt/project-files/wendigo-pass/probe/ (wd.js = the VS-CPU board, every cast + the real round end; show.js = the
+  looks on a frozen clock).
+- **THE LIBRARIAN PASS (2026-11-17, thread "Polish Librarian spells and VFX"):** (1) THE LOADED BOOK: Overdue ran the old Mimic
+  resolver (a flat dmg + power hit on one unit; an area spell, a stat raise or anything with its own branch fizzled, no look). Now
+  every Overdue row on a team takes the borrowed spell's whole shape when a teammate casts (battle.js `_overdueLoad`, called at the
+  cast record; keeps its own id / name / tier / AP / cooldown, the borrowed row comes from the teammate's own kit so its upgrades
+  ride), so menus, range wash, forecast and the CPU read the real spell; doSpell casts a copy under the borrowed id
+  (`_overdueCastRow`, `_overdueOf`) so the spell's branch and VFX run. Cooldown + once-a-turn slot keyed on Overdue
+  (`_spellBookKey` in getSpellCooldownRemaining / _markSpellUsedThisTurn / the doves). Price = the borrowed MP, at least 50.
+  Not renewable (`_overdueEligible`): passives, basics, Overdue / Mimic, Submerge / Coil; the Florida Man headline lock is dropped.
+  Greyed "📚 Nothing to renew" until a teammate casts; state._lastAllySpell resets at match start. (2) Shush cooldown 0 -> 2 (every
+  pure silence is cd 2; at 0 one foe stayed silenced for 25 MP a turn). (3) LOOKS (three-vfx-effects.js "THE LIBRARIAN", kill-switch
+  EW_NO_LIBRARIAN_VFX; PSX Mega Pack books `lib_book` / `lib_open_book` in three-renderer _MISC_GLB): Overdue `aura` (book over her,
+  pages turn, RENEWED card), Shush `impact` (rings pulled in, book slams shut, SHHH), Late Fee `bolt` (hardback thrown, date-due
+  slips, LATE FEE stamp; OVERDUE stamp + red ring on a Silenced foe). Probe 11-17 (real TDM, 0 page errors): Shush silenced, cd 2;
+  Late Fee 557 on the silenced Knight vs 343 plain; Overdue renewed Hurricane Party (3 foes hit + Wet, 75 MP, cd 3) and Sponsored
+  (+2 ATK/INT on the ally). Proof /mnt/project-files/librarian-polish/.
+- **THE FLOATING BRAIN (mondo 11-17, "can we name it something else ... Floating Brain, Sentient Brain ..."):** the Boltzmann Brain shows
+  as **Floating Brain** (RACE_PROFILES label, the race blurbs in ui.js + party-builder.js, the fluctuation family's names). The race id
+  stays `'boltzmann brain'` (saves, server lists, R2 folders, every table key); code comments keep the old name.

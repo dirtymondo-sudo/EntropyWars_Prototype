@@ -3,6 +3,67 @@
 BUILD_PLAN phase 2. mondo: "this decides whether the size and spacing stay". This is the report every phase 3 and 4 thread reads first.
 How it was built: `docs/notes/areas-complexes.md` "ONE WORLD, THE TEST SLICE". Pictures: `proof/slice_*.jpg`.
 
+## AFTER THE FIXES (17 Nov, later the same day): read this first
+
+mondo read the report below: "keep the size, and do your fixes FIRST, before any zone thread starts". All seven are in. Everything under
+"What stands" and after is the slice AS FIRST BUILT (six rooms); this section is how it stands now. How each was built:
+`docs/notes/areas-complexes.md` "THE FIXES AFTER MONDO READ THE REPORT". Pictures: `proof/fix1_*.jpg` to `proof/fix7_*.jpg`.
+
+**The rooms now: four.**
+
+| Room | What | Box | Plots |
+|---|---|---|---|
+| `site_prebuilt_fairy_forest_ow_clearing` | The Clearing + Dead Man's Cave: the Stair to the Storm Drain in one walk | 12 x 5 | 18 |
+| `site_prebuilt_skinwalker_ow_corn` | The Corn Fields, County Lane down the middle | 2 x 6 | 12 |
+| `site_prebuilt_skinwalker_ow_lake` | County Lane + the footpath L8 + the Lake | 5 x 8 | 25 |
+| (not moved) `site_prebuilt_fairy_forest_plots`, `site_prebuilt_skinwalker_estate` | the Redwood Trail + the Ritual Ground; the Haunted House + the Ranch | 6 x 3 each | 18 each |
+
+**The walk now. The Stair to the Lake: 2 loading cards (was 3; by the footpath it was 4).**
+
+| Walk | Metres | Walking | Running | Loading cards |
+|---|---|---|---|---|
+| The Stair to the Lake by County Lane | 672 | 4:40 | 2:26 | 2 (the corn, the lane's room) |
+| The Stair to the Lake by the corn's tracks and the footpath L8 | 678 | 4:43 | 2:27 | 2 |
+| The Stair to the Storm Drain | 395 | 2:45 | 1:26 | 0 (was 1) |
+| The Culvert to the Storm Drain, along the north bank | 297 | 2:04 | 1:05 | 0 |
+| The Culvert down the bed to the sewer mouth | 247 | 1:43 | 0:54 | 0 |
+| The Culvert to the Tunnel Way, along the south rim | 286 | 1:59 | 1:02 | 0 |
+| The lane's room, the corn's end to the Lake's south shore | 337 | 2:20 | 1:13 | 0 (was 2) |
+
+By room: the Clearing's room, Stair to Fence Line 193 m; the corn, gate to the lane's south end 257 m by the lane, 275 m by the tracks to
+L8's gap; the lane's room to the Lake's north shore 222 m by the lane, 210 m by the footpath. The lengths are counted over the open squares
+and stop at any step in the ground over a metre, so the bed's walls count.
+
+**What each fix changed** (the numbers are the points of "What felt wrong" below):
+
+1. **Join more** (point 1). The room-splitting rule is rewritten: things that touch stand in one room until a number stops them (two zones
+   never join; a 12 x 12 box; 30 plots; 12 plots in one straight open row; 2,500 calls and 12 M triangles at the heaviest view; 1.4 GB).
+   Measured: the Clearing's room 1,932 calls / 10.4 M triangles looking down its twelve plots, 1,210 MB, 54 s to load in the probe; the
+   lane's room 671 / 2.7 M, 1,006 to 1,290 MB, 55 s. The Woods' south room is full by the triangle number: the Redwood Trail does not join it.
+2. **Open-ground seams** (point 7). A seam in open country has no arch and no dark hole: the ground runs on and you walk off the edge
+   (`way: 'open'`). Three of the slice's seams: the corn's south end and back, the Lake's south shore. Arches stay on the forest walls (the
+   Fence Line's gate, L8's gap in the corn, every Woods trail). All walked in the probe.
+3. **A place on every route plot** (point 8). The route kit lays one small place beside the path on every plot (`ow-places.js`; every name
+   is an idea of mine, plain, with no role in the game: rename or drop any in that one table). County Lane's sixteen plots: the fire watch
+   sign, the bench, the boundary stone, the lone scarecrow, the rest, the bee yard, the scarecrow row, the camp, the hay stack, the carved
+   pole, the old jetty and the stranded boat on the salt flat; L8's four: the wayside cross, a scarecrow, the plough, the marker stones.
+   The corn's three lane fields: a hay stack, a bee yard, a rest.
+4. **L8** (point 2): BOTH. It is in the lane's room, so the two ways are seen, and it leaves the corn by its own gap in the south field,
+   21 m east of the lane's end.
+5. **County Lane through the corn** (points 3 and 4). Nothing stands within 7 m of the lane's middle line: the field shed, the silo yard,
+   the crashed car, the bench, trees, fences and lamps were moved by hand, each on its own plot; the five dead-end tracks are closed (their
+   pieces moved, the bare track back to corn). Nothing deleted: the census lists only corn-row models on the closed tracks (real corn now).
+6. **Dead Man's Cave** (points 5 and 6). A creek bed you follow: out of the dry pipe, east beside the trail, down a ramp on the Dry Creek's
+   lower plot, 1.75 m deep between rock walls through the Hollow and the Gully with a dirt rim each side, down again to the 3.5 m ravine and
+   the sewer mouth. Walked in the probe from the ramp's top into the Sewers. The cabin stands on the Gully's north bank, off the line. Found
+   on the way: the ravine's ramp had done nothing since the move (the bed ended at a 3.5 m drop you could not climb back up); it is a real
+   ramp now. The Rocks' gate leads to a ledge of bare rock behind the crag where somebody has been sleeping (THE BACK OF THE ROCKS: my idea,
+   plain, no role); the gate itself had been cut off by forest and is reached again.
+7. **The two gates** (point 10) stand on one line, world x -13.5.
+
+**Not done, still true:** point 9 (seen from above the forest is hollow; not seen on foot). A fight on the lane itself or in the sunk bed
+has not been tried. The in-game map pictures of the three rooms are remade.
+
 ## What stands
 
 | Room | What | World plots | Plots |

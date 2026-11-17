@@ -14892,6 +14892,7 @@ const ThreeRenderer = (function () {
             if (u.race === 'vampire') h = _hashInt(h, _isVampireBatForm(u) ? 2 : 1);
             if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
             if (u._spriteFlipX) h = _hashInt(h, 5);
+            if (u.status && u.status.filtered > 0 && u._filterRace) h = _hashStr(h, 'flt:' + u._filterRace + ':' + (u._filterGender || '') + ':' + _viewerPlayerNum());   // 🤳 THE FILTER
             if (u.race === 'werewolf') h = _hashStr(h, (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'night');
         }
         h = _hashVal(h, state.selectedUnitId || '');
@@ -14917,6 +14918,7 @@ const ThreeRenderer = (function () {
             if (u.race === 'vampire') h = _hashInt(h, _isVampireBatForm(u) ? 2 : 1);
             if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
             if (u._spriteFlipX) h = _hashInt(h, 5);
+            if (u.status && u.status.filtered > 0 && u._filterRace) h = _hashStr(h, 'flt:' + u._filterRace + ':' + (u._filterGender || '') + ':' + _viewerPlayerNum());   // 🤳 THE FILTER
             if (u.race === 'werewolf') h = _hashStr(h, (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'night');
             if (u.status && u.status.submerged > 0) h = _hashInt(h, 31);   // 🐊 going under / surfacing re-seats the body (_submergedSink)
         }
@@ -19174,7 +19176,8 @@ const ThreeRenderer = (function () {
         // such a rig on the battle board rendered every unit at ~45% size
         // (second game onward, once the GLBs resolve synchronously from
         // cache). A rig baked for a different tile size is stale: re-bake.
-        var appearanceKey = (def.creatorBase || def.mpfbBody) ? JSON.stringify(def.raceLook || normalizeCharacterAppearance(unit.appearance)) : '';   // (THE RACE LOOKS: the look the def dresses)   // (THE MPFB BODIES 2026-11-01: a new height re-bakes)
+        var _lkApp = ((typeof window.ewDrawnUnit === 'function') ? window.ewDrawnUnit(unit) : unit).appearance;   // 🤳 THE FILTER: the swapped ally's look
+        var appearanceKey = (def.creatorBase || def.mpfbBody) ? JSON.stringify(def.raceLook || normalizeCharacterAppearance(_lkApp)) : '';   // (THE RACE LOOKS: the look the def dresses)   // (THE MPFB BODIES 2026-11-01: a new height re-bakes)
         if (_rig && (_rig.ts !== ts || (_rig.bodyK > 0 ? _rig.bodyK : 1) !== UNIT_SPRITE_SIZE_RATIO) && _rig.appearanceKey === appearanceKey && !_rigCarryOff()) _rigRescale(_rig, ts);   // THE BODIES CARRY OVER: rescaled, not re-baked
         if (_rig && (_rig.ts !== ts || _rig.appearanceKey !== appearanceKey)) {
             _disposeModelRig(_rig);
@@ -19257,7 +19260,7 @@ const ThreeRenderer = (function () {
                 -bb.min.y * s,                        // feet on the tile top
                 -((bb.min.z + bb.max.z) * 0.5) * s
             );
-            var appearanceRig = def.creatorBase ? _createAppearanceRig(m, def.raceLook || unit.appearance, true) : null;   // THE RACE LOOKS: a race's baked look when the unit has none
+            var appearanceRig = def.creatorBase ? _createAppearanceRig(m, def.raceLook || _lkApp, true) : null;   // THE RACE LOOKS: a race's baked look when the unit has none
             if (appearanceRig && !appearanceRig.dressed()) m.visible = false;   // THE DRESSED REVEAL: shown (and the stand-in dropped) once the look is on (_unitRevealDressed)
             inner.add(m);
             wrap.add(inner);
@@ -20194,9 +20197,12 @@ const ThreeRenderer = (function () {
 
         // Rigged 3D model race (RACE_MODELS_3D)? The sprite pipeline below is
         // skipped entirely unless the GLB failed for good (no loading slab).
+        /* 🤳 THE FILTER (2026-11-17, the Influencer): a filtered unit is drawn on the other side's screen as the ally it swapped
+           faces with (battle.js ewDrawnUnit: race, gender, creator look; the structural serial rebuilds it when that flips) */
+        var _lookU = (typeof window.ewDrawnUnit === 'function') ? window.ewDrawnUnit(unit) : unit;
         var _m3dDef = (typeof getRace3DModel === 'function'
                        && typeof THREE.GLTFLoader === 'function')
-            ? getRace3DModel(unit.race, unit.gender || 'male', unit.appearance) : null;
+            ? getRace3DModel(_lookU.race, _lookU.gender || 'male', _lookU.appearance) : null;
         /* Sprite-override state (transform sprites, sentai color swaps…):
            a def may map override URLs to alternate 3D FORMS — the honda
            civic's def.overrideForms swaps the sedan for the rigged robot on
@@ -20234,7 +20240,7 @@ const ThreeRenderer = (function () {
             // Warm up animated sprite-sheet textures (if this race has any) so
             // they're decoded and GPU-ready by the time the unit attacks/casts.
             if (typeof getRaceSpriteAnimations === 'function') {
-                var _anims = getRaceSpriteAnimations(unit.race, unit.gender);
+                var _anims = getRaceSpriteAnimations(_lookU.race, _lookU.gender);
                 if (_anims) {
                     if (_anims.attack) getTexture(_anims.attack);
                     if (_anims.spell) getTexture(_anims.spell);
@@ -21153,6 +21159,7 @@ const ThreeRenderer = (function () {
        never a bare lowercase race key. */
     function _plateRaceLabel(u) {
         if (!u || !u.race) return '';
+        if (typeof window.ewDrawnUnit === 'function') u = window.ewDrawnUnit(u);   // 🤳 THE FILTER
         if (typeof getRaceLabel === 'function') return getRaceLabel(u.race, u.gender);
         return u.race.charAt(0).toUpperCase() + u.race.slice(1);
     }
@@ -26888,6 +26895,7 @@ const ThreeRenderer = (function () {
        by a cord in the viewer's team colours (own cyan-blue, enemy pink-orange). Look only: nothing here is a rule.
        Host and guest both read the synced status and ids, so both seats draw it with nothing relayed (RULE #2). */
     var REALM_SEEN_OPACITY = 0.42;
+    var OFF_FIELD_OPACITY = 0.3;   // 🟥🚪 a sent-off / EXITED unit (the `exited` status)
     var ASTRAL_OPACITY = 0.78, ASTRAL_LIFT = 0.16, ASTRAL_OWN_COLOR = 0x4fd8ff, ASTRAL_ENEMY_COLOR = 0xff7a5c;
     var _astralCords = new Map();   // spirit uid → { mesh, key }
     var _astralWhite = null;
@@ -27044,6 +27052,20 @@ const ThreeRenderer = (function () {
                 return;
             }
             if (entry._ew_realmSeen) { entry._ew_realmSeen = false; _setEntrySpriteOpacity(entry, 1); }
+            /* 🟥🚪 OFF THE FIELD (2026-11-17, the Referee polish): a red-carded or door-EXITED unit (the `exited` status) still
+               holds its square but is not in the fight until its next turn: drawn as a faint shade for both sides (fog still
+               rules an enemy's), so nobody reads it as a body that can be hit. Its square stays taken (unitAt). */
+            if (unit.status && unit.status.exited > 0) {
+                entry._ew_offField = true;
+                _setEntrySpriteOpacity(entry, OFF_FIELD_OPACITY);
+                if (unit.player !== vp) {
+                    var _ob = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
+                    if (_ob && fog) _ob = _unitLosSeen(unit, vp);
+                    entry.group.visible = _ob && !_isConcealedFromViewer(unit, vp);
+                } else entry.group.visible = true;
+                return;
+            }
+            if (entry._ew_offField) { entry._ew_offField = false; _setEntrySpriteOpacity(entry, 1); }
             if (_rk && unit.player !== vp) {
                 /* in the realm it is just the two of them: the other one is always seen, fog or not */
                 entry.group.visible = !_isConcealedFromViewer(unit, vp);
@@ -30189,7 +30211,9 @@ const ThreeRenderer = (function () {
        hide = off the board this instant, gone = past the point the body left (an invisible escape stays gone for the
        viewer it hides from), air = plays the jump pose. Drawn on host and guest alike (the displace relay carries the
        style). The look round the body (feathers, splash, bones, web) is three-vfx-effects.js _ESC_LOOKS. */
-    var _ESC_STYLES = { fly: 1, swing: 1, eject: 1, dive: 1, blink: 1 };
+    /* kickflip was drawn by _escStyleAt but missing here, so the Skater's ollie fell back to the plain vault (the Karate Frog
+       pass, 2026-11-17); frogleap / flykick = the Karate Frog's vault over his target and his flying kick's run-in */
+    var _ESC_STYLES = { fly: 1, swing: 1, eject: 1, dive: 1, blink: 1, kickflip: 1, frogleap: 1, flykick: 1 };
     function _escSmooth(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
     function _escStyleAt(style, u, ts) {
         var o = { h: _escSmooth(u), dy: 0, hide: false, gone: false, air: false };
@@ -30200,6 +30224,21 @@ const ThreeRenderer = (function () {
             o.h = _escSmooth((u - 0.08) / 0.86);
             o.dy = u < 0.08 ? -ts * 0.06 * Math.sin(Math.PI * u / 0.08) : ts * 1.05 * Math.sin(Math.PI * Math.min(1, (u - 0.08) / 0.86));
             o.air = u > 0.1 && u < 0.94;
+        }
+        else if (style === 'frogleap') {
+            /* 🐸 Leapfrog: a deep squat, a tall vault (1.25 squares up) that tops out over the body he kicked, a frog's
+               landing on bent legs (a small dip under the floor line, gone by the end) */
+            o.h = _escSmooth((u - 0.12) / 0.78);
+            if (u < 0.12) o.dy = -ts * 0.1 * Math.sin(Math.PI * u / 0.12);
+            else if (u < 0.9) o.dy = ts * 1.25 * Math.sin(Math.PI * (u - 0.12) / 0.78);
+            else o.dy = -ts * 0.06 * Math.sin(Math.PI * (u - 0.9) / 0.1);
+            o.air = u > 0.13 && u < 0.9;
+        }
+        else if (style === 'flykick') {
+            /* 🐸 Flying Kick: off the floor at once, a long low flight, still in the air as it reaches the victim (the kick) */
+            o.h = _escSmooth(u);
+            o.dy = ts * 0.55 * Math.sin(Math.PI * Math.min(1, u * 0.92));
+            o.air = u > 0.04 && u < 0.98;
         }
         else if (style === 'eject') {
             /* punched straight up, drifts over, comes down slower than it went */
@@ -38696,6 +38735,8 @@ const ThreeRenderer = (function () {
         spaceship: 'Meshy_AI_spaceship_0727195825_texture.glb',
         clock:     'Meshy_AI_analog_clock_realist_0727195259_texture.glb',
         gclock:    'Meshy_AI_grandfather_clock_re_0727195306_texture.glb',
+        lib_book: 'psxmp/small_props/book_mp_3.glb',            // THE LIBRARIAN (2026-11-17): the PSX Mega Pack's hardback (Shush slams it shut, Late Fee throws it)
+        lib_open_book: 'psxmp/small_props/open_book_mp_1.glb',  // THE LIBRARIAN (2026-11-17): the open book (Overdue reads from it, Shush holds it over the head)
         bank_cash: 'psxmp/items_and_weapons/cash_1.glb',   // THE BANKER SIGNATURES (2026-11-16): the PSX Mega Pack's banded stack of dollar bills (Line of Credit, Foreclose, the bad loan)
         skateboard: 'Meshy_AI_a_skateboard_0915212313_texture.glb',   // SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck under the rider — 1.0 long along X, 0.29 wide, 0.17 tall (the wheels down); MODEL_INDEX §3d
         /* THE 2026-09-22 BATCH (seventeen Meshy models on R2 Assets/misc/ — MODEL_INDEX §3q). Every one is placed through a
@@ -79501,6 +79542,7 @@ const ThreeRenderer = (function () {
         trail: function (U, ctx) { return _hqPassageWay(U, ctx); },
         stairway: function (U, ctx) { return _hqPassageWay(U, ctx); },
         cloud: function (U, ctx) { return _hqPassageWay(U, ctx); },
+        open: function (U, ctx) { return _hqPassageWay(U, ctx); },   // THE OPEN SEAM (2026-11-17, One World): a passage with nothing standing in it (data.js DOOR_HQ.ways.open)
         closet: function (U, ctx) {
             var g = new THREE.Group();
             var W = 1.0, H = 2.1, D = 0.7, T = 0.05;
@@ -79962,7 +80004,8 @@ const ThreeRenderer = (function () {
             }
         }
         /* THE DARK: cards across the way, deepening to solid at the end (soft-edged in the open, square in a tube) */
-        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
+        /* THE OPEN SEAM (2026-11-17, One World: data.js DOOR_HQ.ways.open): nothing stands in open country. No dark. */
+        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open') ? 0 : 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
         for (var i = 0; i < n; i++) {
             var t = (i + 1) / n, dd = d0 + (L - 0.15 - d0) * t, op = (i === n - 1) ? 1 : Math.min(1, 0.7 * Math.pow(t, 2.2));   // (2026-10-05) a dusk that deepens, the way still seen: only the far end is solid
             var cw = P.roof ? W + 0.04 : W + ((P.spread != null) ? +P.spread : 3.2), ch = P.roof ? H + 0.1 : H + 2.5;
@@ -80075,7 +80118,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(pl.y - _hqPassFloor(p, a.depth)) > 2.5) continue;
             var d0 = P.deep * 0.25, k = (a.depth - d0) / Math.max(0.5, P.deep - d0);
             k = k < 0 ? 0 : k > 1 ? 1 : k; k = k * k * (3 - 2 * k);
-            k *= 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black
+            k *= (P.look === 'open') ? 0 : 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black. THE OPEN SEAM (2026-11-17): open country does not dim at all
             if (k > dark) { dark = k; col = P.fade; }
             if (a.depth >= P.deep) {
                 if (H.passLatch !== p.door.id && !H.paused && H.opts.onEnterDoor && !HQ_DOOR_LOCKED[p.state]) {

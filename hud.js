@@ -4021,6 +4021,16 @@ function _hrlgStatusChips(unit) {
       title: (sDef.label || sk) + (_stk ? ' ×' + _stk : '') + (turns > 0 ? ' — ' + turns + ' turn' + (turns > 1 ? 's' : '') + ' left' : ''),
     });
   }
+  /* 🦌 THE HUNGER CHIP (THE WENDIGO PASS 2026-11-17): both sides read whether it has fed this round (battle.js
+     unit._fedRound, set by applyDamageToUnit; it rides the state sync). HUNGRY = no enemy hit yet this round, so the round
+     end takes 8% of its max HP; FED = safe this round. */
+  if (unit.race === 'wendigo' && !unit.dead && typeof state !== 'undefined' && state && state.round != null) {
+    const _fed = unit._fedRound === (state.round || 0);
+    const _cost = Math.min(Math.max(0, (unit.hp || 0) - 1), Math.round((unit.maxHp || 0) * 0.08));
+    chips.push({ key: 'st-hunger', label: _fed ? 'FED' : 'HUNGRY', bg: _fed ? '#3a7a3a' : '#9a1c24',
+      title: _fed ? 'The Hunger — it fed this round: no HP lost at the round end'
+                  : 'The Hunger — it has hit no enemy this round: the round end takes ' + _cost + ' HP (8% of its max)' });
+  }
   /* 🛡 THE CHIVALRY BADGE (battle.js getChivalryGuardian): the pledged ward wears CHV until the oath is spent */
   const chvG = (typeof window.getChivalryGuardian === 'function') ? window.getChivalryGuardian(unit) : null;
   if (chvG) {
@@ -4048,6 +4058,9 @@ function _hrlgStatusChips(unit) {
   /* 🐝 THE POLLEN (battle.js): what the Bee Queen carries, and the Honey it gives her */
   const pol = unit.pollen | 0;
   if (pol > 0) chips.push({ key: 'pollen', label: 'POLLEN ' + pol + '/' + (window.POLLEN_MAX || 3), kind: 'up', title: 'Pollen: +' + pol * 8 + ' ATK, spell power and SPD. Pollinate spends one.' });
+  /* 🦗 THE BROOD (the Cicada Brood, 2026-11-17): the stacks it banked dug in, and what they add to Chorus */
+  const brd = unit._brood | 0;
+  if (brd > 0) chips.push({ key: 'brood', label: 'BROOD ' + brd + '/3', kind: 'up', title: 'Brood: Chorus deals +' + brd * 45 + ' damage and spends them.' });
   if (totalMov) chips.push({
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
@@ -7986,8 +7999,9 @@ function ActionMenu({ st, hidden }) {
   // already IS the race label — the default nametag mode). THE JOBS REMOVAL
   // (the user 2026-09-27): the job label is gone.
   const _lvl = typeof getUnitLevel === 'function' ? getUnitLevel(unit) : 1;
-  const _raceLbl = (unit.race && typeof getRaceLabel === 'function')
-    ? getRaceLabel(unit.race, unit.gender)
+  const _lkU = (typeof window.ewDrawnUnit === 'function') ? window.ewDrawnUnit(unit) : unit;   // 🤳 THE FILTER: the swapped look
+  const _raceLbl = (_lkU.race && typeof getRaceLabel === 'function')
+    ? getRaceLabel(_lkU.race, _lkU.gender)
     : (unit.race ? unit.race.charAt(0).toUpperCase() + unit.race.slice(1) : '');
   const subLine = 'Lv' + _lvl
     + (_raceLbl && _raceLbl !== unitName ? ' · ' + String(_raceLbl).toUpperCase() : '');
@@ -8005,7 +8019,7 @@ function ActionMenu({ st, hidden }) {
     view: view, panels: panels, fc: fc,
     roman: roman, unitName: unitName, unitKey: unit.id, apUnit: unit,
     subLine: subLine,
-    unitTypes: (unit.types || []).slice(0, 2),
+    unitTypes: (_lkU.types || unit.types || []).slice(0, 2),
     portraitUrl: _portUrl,
     portraitIsFace: _portIsFace,
     // clicking the clock portrait re-centers the camera on the unit — the

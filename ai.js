@@ -1118,6 +1118,17 @@
     // Value of denying tg's actions with status `id` for `dur` rounds.
     function ccDenialValue(g, unit, tg, id, dur, v) {
         if (!tg || tg.dead) return 0;
+        /* 🟥 THE RED CARD (the Referee, 2026-11-17 polish): a Yellow Card on a unit that already has one sends it off until its
+           next turn starts (battle.js _refereeRedCard). Booking is a setup; the second card is a missed turn (worth a hard
+           hold on a unit still to act this round, far less on one that already acted: it is back at the round's end). */
+        if (id === 'yellowCard') {
+            if (tg._isBoss || tg.isBoss || tg._isCube) return 10;
+            let booked = false;
+            try { booked = g.unitHasStatus(tg, 'yellowCard'); } catch (e) {}
+            if (!booked) return 40;
+            const notYet = (tg.ap || 0) > 0 && !tg.hasActed ? 1 : 0.3;
+            return tuneW(g, 'ccOutputFactor') * unitThreatOutput(g, tg, unit) * notYet + 60 + (unitIsHealerKit(tg) ? 80 : 0);
+        }
         try { if (g.unitHasStatus(tg, id)) return 0; } catch (e) {}
         if (_aiStatusBlocked(g, tg, id)) return 0;   // WEAK RACES II: Ghoul shrugs off Stun, Rabbit Slow — no denial
         const output = unitThreatOutput(g, tg, unit);
@@ -1748,9 +1759,17 @@
         const g = G();
         let priority = 0;
 
-        priority += 0.4 * unitThreatOutput(g, target, unit);      // dangerous first
-        if (unitIsHealerKit(target)) priority += 110;             // support core first
-        priority += Math.min(90, (target.intStat || target.int || 0) * 0.8);
+        /* 🤳 THE FILTER (2026-11-17, the Influencer): an enemy wearing a filter is judged by the ally it looks like (its kit,
+           its threat, its INT): the CPU is fooled the way a player is. Only the look; its HP and the hit itself stay true. */
+        let seen = target;
+        if (target.player !== unit.player && target.status && target.status.filtered > 0 && target._filterLookId != null
+            && !(typeof window !== 'undefined' && window.EW_NO_FILTER_LOOK)) {
+            const lk = (g.state.units || []).find(u => u && u.id === target._filterLookId);
+            if (lk && lk.race === target._filterRace) seen = lk;
+        }
+        priority += 0.4 * unitThreatOutput(g, seen, unit);      // dangerous first
+        if (unitIsHealerKit(seen)) priority += 110;             // support core first
+        priority += Math.min(90, (seen.intStat || seen.int || 0) * 0.8);
 
         // Team focus + invested damage: convert pokes into kills.
         if (v && v.focus && target.id === v.focus.id) priority += tuneW(g, 'focusCommitBonus');
@@ -2822,7 +2841,7 @@
             if (unit.race !== 'necromancer' && ps < 2) cost += (2 - ps) * _ghHit(unit, 32, 'poison');
         } else if (terr === 'swamp') {
             let gooProof = false;
-            try { gooProof = typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === 'goo'; } catch (e) {}
+            try { gooProof = (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === 'goo') || unit.race === 'samurai slug'; } catch (e) {}   // 🐌 the slug's slime is his road
             if (!gooProof && !((unit.status && unit.status.goo) > 1)) cost += 30;
         }
         if (burning && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) {
@@ -4856,6 +4875,14 @@
         }
         if (!opts.splash) val += getTargetPriority(tg, unit, v) * 0.35;
         if (!sp && arc === 'back') val += 40;   // undodgeable + uncounterable
+        /* 📱 GOING VIRAL (2026-11-17): a hit on a Viral unit also hits each of its teammates within 2 for 30% (battle.js
+           _viralShare); RATIO (viralSpread) then tags those teammates too */
+        if (tg.status && tg.status.viral > 0) {
+            const _vm = (g.state.units || []).filter(a => a && !a.dead && a.id !== tg.id && a.player === tg.player
+                && Math.abs(a.x - tg.x) + Math.abs(a.y - tg.y) <= 2);
+            for (const a of _vm) val += Math.min(est * 0.3, effHp(a)) * landP * 0.9;
+            if (sp && sp.viralSpread) val += 45 * _vm.length;
+        }
         return { est, val };
     }
 
@@ -5883,7 +5910,17 @@
         return 0;
     }
     function scoreSpell(unit, spell, target, v) {
-        const base = _scoreSpellCore(unit, spell, target, v);
+        let base = _scoreSpellCore(unit, spell, target, v);
+        /* 📰 TODAY'S HEADLINE (the Florida Man, 11-17 polish): a headline spell is castable only today, so the CPU takes it over a
+           plain hit when it is worth anything at all (it sat on Bath Salts in a test match and the round was lost) */
+        if (spell.floridaHeadline && base > 0) {
+            base = base * 1.3 + 30;
+            /* Bath Salts does not end the turn and an attack does: buffed first, the same turn's hit still lands (the CPU moved
+               and hit instead, every Bath Salts day). Worth the hit it powers up, when AP is left for one. */
+            const g = G();
+            const ends = g && g.TargetQuery && g.TargetQuery.spellEndsTurn ? g.TargetQuery.spellEndsTurn(spell) : true;
+            if (!ends && spell.statStageBoost && target && target.id === unit.id && (unit.ap || 0) >= (g.TargetQuery.apCost(spell) || 1) + 1) base += 260;
+        }
         if (!(base > 0) || !target || !_isForcedSpell(spell) || spell.kind === 'skyThrow' || spell.allyOnly) return base;
         const g = G();
         const fv = _forcedMoveValue(g, unit, spell, target, v);
@@ -6005,9 +6042,11 @@
             if (!victims.length) return _allyHealVal;
             /* THE SPELL AUDIT D: a damage zone (zoneTickDamage) is scored as one hit worth ~60% of its ticks (they
                walk out); an area drain (aoeLifeDrain) adds the heal it buys the caster. */
-            const _zoneShim = spell.zoneTickDamage > 0
+            let _zoneShim = spell.zoneTickDamage > 0
                 ? Object.assign({}, spell, { dmg: (spell.dmg || 0) + Math.round(spell.zoneTickDamage * Math.min(spell.zoneDuration || 1, 3) * 0.6) })
                 : spell;
+            /* 🦗 Chorus (`broodSpend`): every Brood stack the caster banked adds its N to the hit */
+            if (spell.broodSpend > 0 && (unit._brood || 0) > 0) _zoneShim = Object.assign({}, _zoneShim, { dmg: (_zoneShim.dmg || 0) + unit._brood * spell.broodSpend });
             let s = 0, first = true, _estSum = 0;
             for (const e of victims) {
                 const hit = scoreOffensiveHit(g, unit, e, _zoneShim, v, { splash: !first });
@@ -6419,6 +6458,19 @@
             if (!_rb || _rb.score < 30) return 0;
             return Math.min(260, _rb.score * 0.85 + (spell.rideAlong ? 25 : 10));
         }
+        /* 👁 OBSERVER EFFECT (the Boltzmann Brain pass, 2026-11-17): holding the square is free value when the square is a good
+           perch (an enemy within its spells' reach, none within 2, the hits coming here well under its HP) and the turn still has
+           the AP to shoot after it (it does not count as the turn's spell, so it goes FIRST: scored over any attack). */
+        if (kind === 'buff' && spell.observe) {
+            if (!target || target.id !== unit.id || g.unitHasStatus(unit, 'observed')) return 0;
+            if ((unit.ap || 0) < 2 * (spell.apCost || 1)) return 0;
+            const _obD = e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
+            const _obIn = v.visibleEnemies.filter(e => !e.dead && _obD(e) <= 5).length;
+            if (!_obIn || v.visibleEnemies.some(e => !e.dead && _obD(e) <= 2)) return 0;
+            const _obT = v.threatFn(unit.x, unit.y, unit.z);
+            if (_obT.totalDmg >= unit.hp * 0.4) return 0;
+            return 400 + 20 * Math.min(3, _obIn);
+        }
         if (kind === 'buff' && target) {
             if (g.unitHasStatus(target, 'protect')) return 0;
             let s = buffStageValue(g, unit, target, spell, v);
@@ -6438,6 +6490,16 @@
                 s += 30 * v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= _teR).length;
             }
             if (spell.spawnDecoy) s += 40;
+            /* 🤳 FILTER (2026-11-17): a face swap needs an ally of another look (the engine refuses it otherwise); it pays most
+               when one of the two is the support core the other side would hunt */
+            if (spell.filterSwap) {
+                if (target.status && target.status.filtered > 0) return 0;
+                const _fp = g.aliveUnitsFor(unit.player).filter(a => a && !a.dead && a.id !== target.id && a.race
+                    && !(a.race === target.race && (a.gender || 'male') === (target.gender || 'male')));
+                if (!_fp.length) return 0;
+                _fp.sort((a, b) => (Math.abs(a.x - target.x) + Math.abs(a.y - target.y)) - (Math.abs(b.x - target.x) + Math.abs(b.y - target.y)));
+                s += 35 + ((unitIsHealerKit(target) || unitIsHealerKit(_fp[0])) ? 55 : 0);
+            }
             /* 🛟 THE LIFEGUARD (2026-11-16): On Duty is worth the allies in her 4 that the next hits could kill; Three Whistles
                (massRescue) the allies it would haul in (under hpPct, within radius), the lower the better — and 0 with
                none, so the CPU never wastes it (the engine refuses that cast too). */
@@ -6447,6 +6509,16 @@
                 let _odS = 0;
                 for (const a of _odNear) { const t = v.threatFn(a.x, a.y, a.z); if (t.totalDmg >= a.hp) _odS += 120; else if (t.totalDmg >= a.hp * 0.5) _odS += 40; else _odS += 10; }
                 s += _odS;
+            }
+            /* 🦗 THE CICADA POLISH (2026-11-17): Dig In (`dormant`) banks Brood stacks for Chorus. Worth it while the stacks are
+               short and no enemy already stands in Chorus' reach (then it sings instead); nothing at 3 stacks or already dug in. */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'dormant')) {
+                const _bn = target._brood || 0;
+                if (_bn >= 3 || g.unitHasStatus(target, 'dormant')) return 0;
+                const _near = v.visibleEnemies.filter(e => Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) <= 2).length;
+                if (_near) return 0;
+                const _close = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 6);
+                s += (_close ? 70 : 35) + 25 * (3 - _bn);
             }
             if (spell.massRescue) {
                 const _mr = spell.massRescue, _mrR = _mr.radius || 4, _mrP = _mr.hpPct || 0.5;
@@ -6508,6 +6580,14 @@
         // ── control family ──
         if (kind === 'debuff' && target) {
             let s = statusRiderValue(g, unit, target, spell, v);
+            /* 📱 GO VIRAL (2026-11-17): worth the teammates within 2 its hits would also reach (0 alone: the tag does nothing) */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'viral')) {
+                if (target.status && target.status.viral > 0) return 0;
+                const _vm = (g.state.units || []).filter(a => a && !a.dead && a.id !== target.id && a.player === target.player
+                    && Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= 2).length;
+                if (!_vm) return 0;
+                s += 55 * _vm;
+            }
             if (spell.statStageBoost) {
                 // Bound-aware (floored stats contribute nothing), and stacking
                 // is a real line of play now (no stage cap): a follow-up
@@ -9316,8 +9396,14 @@
             // Debuffs: prefer targets still missing at least one rider status.
             if (kind === 'debuff' && (spell.statusEffects || []).length) {
                 const fresh = inRange.filter(e =>
-                    (spell.statusEffects || []).some(f => f && f.id && !g.unitHasStatus(e.enemy, f.id)));
+                    (spell.statusEffects || []).some(f => f && f.id && !g.unitHasStatus(e.enemy, f.id))
+                    || (spell.refereeCard && g.unitHasStatus(e.enemy, 'yellowCard')));   // 🟥 the second card is the red card
+                /* 🟥 the Referee's Card goes to the booked enemy first (the red card), else anyone not yet booked */
                 if (fresh.length) inRange = fresh;
+                if (spell.refereeCard) {
+                    const booked = inRange.filter(e => g.unitHasStatus(e.enemy, 'yellowCard') && !(e.enemy._isBoss || e.enemy.isBoss || e.enemy._isCube));
+                    if (booked.length) inRange = booked;
+                }
             }
             // Elemental tile fallback: no enemy in direct range, but a
             // reactive tile might still reach one.
@@ -10961,6 +11047,10 @@
         return tiles;
     }
     function getSpellAoeAreaAI(spell, cx, cy) {
+        if (spell && spell.aoeOnTerrain && typeof window._aoeTerrainFilter === 'function') {   // 🐌 Ronin's Wake: the ooze squares only
+            const _sp = Object.assign({}, spell); delete _sp.aoeOnTerrain;
+            return window._aoeTerrainFilter(spell, getSpellAoeAreaAI(_sp, cx, cy));
+        }
         if (typeof aoeMaskValid === 'function' && aoeMaskValid(spell.aoeMask)) return aoeMaskTiles(spell.aoeMask, cx, cy);   // THE AOE MASK (§4.7) replaces the radius / shape
         const r = spell.aoeRadius || 1;
         if (spell.aoeShape === 'round') return getRoundArea(cx, cy, r);
