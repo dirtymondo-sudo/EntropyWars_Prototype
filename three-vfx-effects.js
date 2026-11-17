@@ -5179,7 +5179,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var shake           = beamDef.shake;
 
         var _vcSB = spellId === 'swordBeam' && _vcOn();   /* THE VFX CLEANUP B2: Sword Beam is its wave, not the generic laser + white charge */
-        var _vcKit = _beamKitFor(spellId);                /* B3: THE BEAM KIT in place of the generic laser (its charge rode the windup) */
+        var _vcKit = _beamKitFor(spellId); if (_vcKit && _vcKit.blast) _vcKit = null;   /* B3: THE BEAM KIT in place of the generic laser (its charge rode the windup) */
         if (chargeMs > 0 && !_vcSB && !_vcKit) {
             var cPx = tilePx(fromX, fromY);
             var cZT = unitSurfaceZ(fromX, fromY) + unitZBoost();
@@ -6411,8 +6411,31 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         racePsychicBeam:  { style: 'wand',    thick: 0.8 },
         raceEntropicBeam: { style: 'wand',    thick: 0.9,  col: 0x8a5cff },
         raceBalefulGaze:  { style: 'wand',    thick: 0.85, col: 0xc23aff },
-        raceJudgmentBeam: { style: 'wand',    thick: 1.0,  col: 0xffc23a }
+        raceJudgmentBeam: { style: 'wand',    thick: 1.0,  col: 0xffc23a },
+        /* B4, the BLASTS: thrown, not a line. `blast` = the kit's charge at the hand + its impact on the body (_beamKitBlast);
+           the shot between them stays the spell's own projectile. `chargeOnly` = a power-up: the charge, nothing thrown. */
+        raceKiBlast:      { style: 'ki', thick: 0.9, col: 0xffc83a, blast: true },               /* Ki Volley */
+        raceSpiritBomb:   { style: 'ki', thick: 1.5, col: 0x5ab8ff, blast: true },
+        raceKiCharge:     { style: 'ki', thick: 1.3, col: 0xffc83a, blast: true, chargeOnly: true }
     };
+    /* a blast's hit: the kit's floor ring + the splash thrown back toward the thrower + a ball of its light dying on the body */
+    function _beamKitBlast(spellId, p) {
+        var K = _beamKitFor(spellId); if (!K || !K.blast || K.chargeOnly || !p || p.tx == null) return;
+        if (_suppressed() || !_canSpawn() || !_pzSeen(p.tx, p.ty)) return;
+        var scene = _getVFXScene(); if (!scene) return;
+        var C = _beamKitCols(null, K), b = _worldTorso(p.tx, p.ty), ts = b.ts || (_cfg().tileSize || 128), th = K.thick || 1;
+        try { _sigShockRing3D(p.tx, p.ty, { color: C.glow, r0: ts * 0.12, r1: ts * 0.95 * th, ms: 340, height: 3 }); } catch (e) {}
+        var ball = new THREE.Sprite(_sigMagicOrbMat(C.glow, _sigGlowTex())); ball.geometry._ew_shared = true; ball.position.set(b.x, b.y, b.z); ball.renderOrder = 214; _vfxAdd(scene, ball);
+        _animate3D({ meshes: [ball], done: false }, 300, function (el) { var t = el / 300, sc = ts * th * (0.9 - 0.5 * t); ball.scale.set(sc, sc, 1); ball.material.opacity = 0.85 * (1 - t) * (1 - t); });
+        var eS = _worldToSpawn(b), dx = 0, dy = 0;
+        if (p.sx != null && !(p.sx === p.tx && p.sy === p.ty)) { var sS = _worldToSpawn(_worldTorso(p.sx, p.sy)); dx = sS.x - eS.x; dy = sS.y - eS.y; var dl = Math.sqrt(dx * dx + dy * dy) || 1; dx /= dl; dy /= dl; }
+        for (var n = 0; n < Math.round(14 * th); n++) {
+            var side = rn(-1, 1), v = rn(150, 360), a = rn(0, 6.2832);
+            _spawn({ x: eS.x, y: eS.y, z: eS.z + rn(-ts * 0.1, ts * 0.2),
+                vx: (dx || dy) ? (dx * 0.75 - dy * side) * v : Math.cos(a) * v, vy: (dx || dy) ? (dy * 0.75 + dx * side) * v : Math.sin(a) * v, vz: rn(40, 260),
+                mode: 'billboard', sprite: 'spark-blue', tint: n % 3 ? C.glow : C.hot, ml: rn(220, 460), size0: rn(4, 9), size1: 1, opacity0: 1, opacity1: 0, gravity: 380, drag: 1.4 });
+        }
+    }
     var _beamKitChargeAt = {};
     function _beamKitFor(spellId) { return (_vcOn() && spellId && _VC_BEAM[spellId]) || null; }
     function _beamKitCols(glow, K) {
@@ -14948,7 +14971,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ray = null, rayMat = null, raySleeve = null, raySleeveMat = null;
         if (opts.ray != null) {
             var rW = ts * 0.016 * (opts.rayW || 1);
-            rayMat = _sigMat(0xffffff);
+            rayMat = _sigMat(_vcOn() ? _beamKitCols(opts.ray, {}).hot : 0xffffff);   /* THE VFX CLEANUP B4: the ray's core in its own colour, hot (it was white) */
             ray = new THREE.Mesh(new THREE.CylinderGeometry(rW, rW, 1, 8, 1, true), rayMat);
             ray.rotation.x = Math.PI / 2; ray.renderOrder = 165; ray.visible = false;
             aim.add(ray);
@@ -22206,10 +22229,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* the cast rune: the schools whose magic is drawn on the ground (a heal, a buff, a fire or a mind cast is not) */
     var _VC_RUNE = { arcane: 1, unholy: 1, hex: 1, psychicHex: 1, blood: 1, divine: 1 };
     /* the blessings: no rune from any helper, the spell's own signature included (_sigMagicCircle3D) */
-    var _VC_NO_RUNE = { heal: 1, mana: 1, aura: 1, psychicAid: 1, bloodAura: 1 };
+    var _VC_NO_RUNE = { heal: 1, mana: 1, aura: 1, psychicAid: 1, bloodAura: 1, ki: 1 };   /* ki (B4): a power-up is an aura, not a rune */
     function _vcRuneOK(info, spellId, params, sx, sy) {
         if (!_vcOn()) return true;
         if (!_VC_RUNE[info.archetype]) return false;
+        /* B4: a spell fired from a gun (a ray gun's hex is still a gun shot) draws no rune under the shooter */
+        try { if (_SIG_GUN_FOR[spellId] || _SIG_LINE_GUN_FOR[spellId] || _isGunSpell(spellId)) return false; } catch (e) {}
         var d = _spellDefFor(spellId) || {};
         if (d.aoeOriginSelf) return false;
         var tl = params && params.tiles;
@@ -23706,6 +23731,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             });
         },
     };
+    /* THE VFX CLEANUP B4: the kit blasts' hit (their own look, so the generic stage burst stops for them) */
+    Object.keys(_VC_BEAM).forEach(function (id) { if (_VC_BEAM[id].blast && !_VC_BEAM[id].chargeOnly && !_FX2_BURST[id]) _FX2_BURST[id] = function (p) { _beamKitBlast(id, p); }; });
     /* THE MODELS CHECK (2026-10-27): Shambling Horde's runners — the zombie race's own rigged model (ThreeRenderer.raceActor),
        six of them in two loose rows sprinting along d (tile steps) across the area, the front row crossing the centre at
        ~380 ms (the trample beat). The row spacing and the side come from the tile, so the guest draws the same horde. */

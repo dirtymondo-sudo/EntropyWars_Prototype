@@ -4579,3 +4579,15 @@ shield model's ram, the grapple's rope): those stay, the look adds what was miss
 - Every area spell here flashes EVERY square it hits in its own colour (`_o2Squares`), one run for the whole area.
 - Proof: docs/plans/vfx-cleanup/img/own-look/L2_part2_after.jpg (the burst beat fired on the audit board, two frames a
   spell: the real-cast frames are 0.45 s apart and miss most of these; real casts were run too, no errors).
+
+
+## THE VFX CLEANUP, B4 part 1: the ray guns + the kit blasts (2026-11-17, three-vfx-effects.js)
+- `_sigGunRig3D` `opts.ray`: the ray's core = `_beamKitCols(opts.ray).hot` (it was `0xffffff` in a coloured sleeve).
+- `_vcRuneOK`: no cast rune for a spell in `_SIG_GUN_FOR` / `_SIG_LINE_GUN_FOR` / `_isGunSpell` (Shrink Ray's hex rune
+  under the shooter). `_VC_NO_RUNE` gains `ki`.
+- `_VC_BEAM` rows with `blast: true` are thrown spells, not lines (`_fireBeamMapped` ignores them): `_stageWindup` still
+  draws the kit charge at the hand; `_beamKitBlast(spellId, p)` is their `_FX2_BURST` piece (so `_vcOwn` is true).
+  `chargeOnly` = a power-up (Ki Charge). Rows: raceKiBlast (Ki Volley), raceSpiritBomb, raceKiCharge.
+- Open: the clash; the projectile itself; see the plan's section 10 for the two leftovers (Ki Charge's disc, Love Ray's
+  circle) and L5's untraced orb + ring on Jackpot / Shattered Mirror.
+
