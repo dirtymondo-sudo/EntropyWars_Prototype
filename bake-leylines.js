@@ -273,7 +273,7 @@ const STAND = [
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 180, E: 270, S: 0, W: 90 };   // a free door's opening faces INTO the plot (ow-move.js)
 const FW_N = 2 * N;   // paint cells a plot (half squares)
-const SCEN = { scrub: 1, rock: 1, desert: 2, snow: 0, grass: 0, forest: 0 };   // a scenery cell's paint: wasteland, desert or the floor
+const SCEN = { scrub: 2, rock: 1, desert: 2, snow: 0, grass: 0, forest: 0 };   // a scenery cell's paint: the desert sheet (dry scrub reads as the sand the edge land wears past the line), wasteland (bare rock) or the floor
 const STOP = { grass: ['leafy_bush', 'psxg_rock_1', 'wild_flowers', 'leafy_bush'], forest: ['leafy_bush', 'psxg_rock_1', 'leafy_bush'], scrub: ['psxg_dead_bush_1', 'psxg_rock_1', 'cave_stone', 'psxg_dead_bush_1'],
     rock: ['psxg_rock_1', 'cave_stone', 'psxg_rock_2'], desert: ['cave_stone', 'psxg_rock_2', 'psxg_dead_bush_1'], snow: ['psxg_rock_1', 'psxg_rock_2'] };
 const groundAt = (x, y) => { const row = PJ.ground.rows[y - PJ.ground.y0], c = (row && row[x - PJ.ground.x0]) || 'g'; return Object.assign({ c }, PJ.ground.key[c] || { kind: 'grass', kit: 'grass' }); };
