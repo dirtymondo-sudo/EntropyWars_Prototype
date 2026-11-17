@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /* bake-space.js — OUTER SPACE ON PLOTS (2026-11-16, mondo: the eight zones still on old rooms are "completely redesigned/reimagined with plots
    and districts ... let's just get the world built, we can figure that part [where the ship leaves from] out later"; no OK needed first).
-   FOUR ROOMS, ONE A WORLD (plot plan 3, docs/plans/world-zones/outer-space_plot_plan_3.png), each on plots of 12 x 12 squares of 3.5 m:
+   SINCE 2026-11-17 ONE ROOM: THE SOLAR SYSTEM (see THE ONE ROOM below): the four worlds are built as before, then stood as blocks in
+   `site_prebuilt_moon_plots`; the Mars / Saturn / Singularity room ids below are retired. Before that, FOUR ROOMS, ONE A WORLD (plot plan 3,
+   docs/plans/world-zones/outer-space_plot_plan_3.png), each on plots of 12 x 12 squares of 3.5 m:
      THE MOON         site_prebuilt_moon_plots          5 x 4   districts M The Mare · C The Crater · F The Far Side
      MARS             site_prebuilt_mars_plots          5 x 4   Y Cydonia · V The Canyon · R The Rover Bay
      SATURN           site_prebuilt_saturn_plots        4 x 4   H The Hexagon · G The Ring Shard
@@ -11,7 +13,7 @@
    Reads docs/areas/space/layout.json (written by docs/plans/world-zones/draw-space.js: every plot, the square maps, the heights, the ways)
    and writes the four rooms into data.js between SPACE72-BEGIN / SPACE72-END. `node bake-space.js` writes; `--dry-run` prints the counts;
    `SPACE_DUMP=moon|mars|saturn|singularity` prints that world's walked map. Never hand-edit between the markers.
-   Notes: docs/notes/areas-complexes.md "OUTER SPACE ON PLOTS" + "OUTER SPACE, THE ZONE KIT".
+   Notes: docs/notes/areas-complexes.md "OUTER SPACE ON PLOTS" + "OUTER SPACE, THE ZONE KIT" + "OUTER SPACE, THE SOLAR SYSTEM" (11-17).
 
    THE DISTRICT FILES: what stands in a district is written in docs/areas/space/districts/<LETTER>.js, one thread a file (the ten letters are
    unique across the four worlds). A file may export `plan`, `build`, `dress`, `people` (each called with that district's ctx) and
@@ -191,32 +193,131 @@ function bakeWorld(R) {
     /* THE AIR BY DISTRICT (the Estate's way): a district file's `airZones(ctx)` = [{ sx0, sy0, sx1, sy1 (world squares, the end exclusive), kind, color, n, speed, wind }] */
     const AIR = [].concat(...Object.keys(R.districts).filter(k => typeof DISTRICTS[k].airZones === 'function').map(k => (DISTRICTS[k].airZones(CTX[k]) || []).map(z => { const q = Object.assign({}, z, { x0: gx(z.sx0), z0: gz(z.sy0), x1: gx(z.sx1), z1: gz(z.sy1) }); delete q.sx0; delete q.sy0; delete q.sx1; delete q.sy1; return q; })));
 
-    /* ── the room: the old room's own shell (its sky, its mood, its look), at the new size ── */
-    const SPM = { x: gcx(SP[0]), z: gcz(SP[1]) }, shell = Object.assign({}, OLD.shell, { w: 2 * HX, d: 2 * HZ, plate: { x: SPM.x, z: SPM.z, y: 4.4 } });
+    /* THE ONE ROOM (2026-11-17): the world is handed to compose() in its own frame; compose() stands it in the solar system */
+    return { R, WR, W, Hh, HX, HZ, gcx, gcz, cell, H4, hC, props, npc, features: STAIR.concat(BRIDGE, F, ARCH), MARKS, DECALS, AIR, WAY, OLD, SP };
+}
+
+/* ══ THE ONE ROOM: THE SOLAR SYSTEM YOU FLY THROUGH (2026-11-17, mondo: "the plan was to be able to fly to these planets in outer space";
+   "connected/bigger rooms is better. If the room is smaller than disaster city ... just make it one room"; his OK on the flying plan
+   /mnt/project-files/space-one-world/outer_space_flying_plan.png, 10:19 UTC). ONE room of 12 x 12 plots (504 m, Disaster City's size):
+   the four worlds stand in it as they were built (every plot, every piece, moved as one block, nothing turned or cut) over THE VOID
+   (open space: no ground between them, data.js terrain.void), each on a planet ball (`space.planets`); Low Orbit, one new plot in the
+   middle, is where the Spaceship waits. THE SHIP (catalogue `spaceship_fly`, `vehicle: 'ship'`) is flown by hand (three-renderer.js
+   THE SPACESHIP: W / S thrust, A / D turn, SPACE / C up / down); a gold BEACON over each district's landing (`space.beacons`) sets it
+   down there. The room keeps the Moon's id (`site_prebuilt_moon_plots`, the old saves and links); the Mars, Saturn and Singularity
+   rooms are retired into it (DOOR_HQ.retired). ══ */
+const SYS = { cols: 12, rows: 12, place: { moon: [0, 0], mars: [7, 0], saturn: [0, 8], singularity: [8, 8] }, orbit: [5, 6],
+    room: 'site_prebuilt_moon_plots', site: 'prebuilt_moon', VOID: -60, ceil: 140 };
+const BAY = { moon: 'bay', mars: 'bay_mars', saturn: 'bay_saturn', singularity: 'bay_singularity' };
+const PIECES = PLAN.rooms.map(bakeWorld);
+{
+    const BW = SYS.cols * N, BH = SYS.rows * N, BHX = BW * C / 2, BHZ = BH * C / 2;
+    const bgx = c => r2(-BHX + c * C), bgz = c => r2(-BHZ + c * C), bgcx = c => r2(-BHX + (c + 0.5) * C), bgcz = c => r2(-BHZ + (c + 0.5) * C);
+    const cell = []; for (let y = 0; y < BH; y++) cell.push(new Array(BW).fill('v'));
+    const H4 = new Array(BW * BH).fill(null).map(() => [SYS.VOID, SYS.VOID, SYS.VOID, SYS.VOID]);
+    const key = new Array(BW * BH).fill(null);
+    const names = [], props = [], npc = [], features = [], MARKS = [], DECALS = [], AIR = [], lines = [], ways = {}, planets = [], beacons = [], mesas = [];
+    const sh = (o, dx, dz) => { const q = Object.assign({}, o);
+        if (q.pts || q.off) throw new Error('compose: a piece with pts / off: ' + JSON.stringify(o).slice(0, 80));
+        ['x', 'x0', 'x1'].forEach(k => { if (typeof q[k] === 'number') q[k] = r2(q[k] + dx); });
+        ['z', 'z0', 'z1'].forEach(k => { if (typeof q[k] === 'number') q[k] = r2(q[k] + dz); });
+        return q; };
+    const PLANET = { moon: { tex: 'moon', color: 0xc8c8c8 }, mars: { tex: 'mars', color: 0xc8643a }, saturn: { tex: 'cloud_thick', color: 0xd9b77a, ring: { tex: 'ice', color: 0xe8d3a0 } }, singularity: { tex: 'obsidian', color: 0x18101e, rim: 0xff9a40 } };
+    PIECES.forEach(P => { const [pc, pr] = SYS.place[P.R.id], sx0 = pc * N, sy0 = pr * N, dx = r2(-BHX + sx0 * C + P.HX), dz = r2(-BHZ + sy0 * C + P.HZ);
+        for (let y = 0; y < P.Hh; y++) for (let x = 0; x < P.W; x++) { const ch = P.cell[y][x], i = (sy0 + y) * BW + sx0 + x; cell[sy0 + y][sx0 + x] = ch; H4[i] = P.H4[y * P.W + x].slice(); key[i] = P.WR.pal[ch] || P.WR.floor; }
+        P.R.plots.forEach(p => names.push(['P' + String(pc + p.x).padStart(2, '0') + '-' + String(pr + p.y).padStart(2, '0'), p.name, p.d, p.level]));
+        P.props.forEach(o => props.push(sh(o, dx, dz))); P.npc.forEach(o => npc.push(sh(o, dx, dz))); P.features.forEach(o => features.push(sh(o, dx, dz)));
+        P.MARKS.forEach(o => MARKS.push(sh(o, dx, dz))); P.DECALS.forEach(o => DECALS.push(sh(o, dx, dz))); P.AIR.forEach(o => AIR.push(sh(o, dx, dz)));
+        (P.OLD.l || []).forEach(l => lines.push(l));
+        /* the world's ball: wholly under its block (its top 3 m under the lowest ground that is not void), as wide as the block, so the
+           districts stand on the top of a planet like a plateau and the ball curves away under them */
+        let lowG = 0; P.H4.forEach(q => q.forEach(h => { if (h > -20 && h < lowG) lowG = h; }));
+        const half = Math.hypot(P.HX, P.HZ), r = r2(half * 1.05), pl = PLANET[P.R.id];
+        planets.push(Object.assign({ id: P.R.id, name: P.WR.label, x: dx, z: dz, y: r2(lowG - 3 - r), r }, pl));
+        /* the block's rock flank (`space.mesas`): from the lowest ground on its edge down into the ball, so a world stands on its planet
+           like a mesa (the field itself stops sharp at the void, terrain.void.sharp) */
+        let edgeLo = 99; for (let y = 0; y < P.Hh; y++) for (let x = 0; x < P.W; x++) { if (x && y && x < P.W - 1 && y < P.Hh - 1) continue; P.H4[y * P.W + x].forEach(h => { if (h > -20 && h < edgeLo) edgeLo = h; }); }
+        const bot = r2(lowG - 3 - r + Math.sqrt(Math.max(0, r * r - half * half * 0.72)));
+        mesas.push({ x: dx, z: dz, hx: P.HX, hz: P.HZ, top: r2(Math.min(0, edgeLo) - 0.1), bottom: bot, taper: 0.85, rock: 'moon_3' });
+        Object.keys(P.WAY).forEach(k => { const w = P.WAY[k]; ways[k + '@' + P.R.id] = { id: k, world: P.R.id, x: r2(w.x + dx), z: r2(w.z + dz), face: w.face, y: r2(P.hC(w.sx, w.sy)), fx: r2(P.gcx(w.fx) + dx), fz: r2(P.gcz(w.fy) + dz), fy: r2(P.hC(w.fx, w.fy)) }; });
+    });
+    /* LOW ORBIT: one plot of rock in the middle, the Spaceship's berth (new; no district file) */
+    { const [oc, or] = SYS.orbit, sx0 = oc * N, sy0 = or * N;
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const rim = x === 0 || y === 0 || x === N - 1 || y === N - 1, i = (sy0 + y) * BW + sx0 + x; cell[sy0 + y][sx0 + x] = rim ? 'x' : (x >= 3 && x <= 8 && y >= 3 && y <= 8 ? 'l' : '.'); H4[i] = [0, 0, 0, 0]; key[i] = cell[sy0 + y][sx0 + x] === 'l' ? 'urban:MetalDiamondPlate1a' : 'moon_3'; }
+      names.push(['P' + String(oc).padStart(2, '0') + '-' + String(or).padStart(2, '0'), 'Low Orbit', 'O', 0]);
+      const cx = bgcx(sx0 + 6) - C / 2, cz = bgcz(sy0 + 6) - C / 2;
+      SYS.berth = { x: r2(cx), z: r2(cz) };
+      mesas.push({ x: r2(-BHX + (sx0 + N / 2) * C), z: r2(-BHZ + (sy0 + N / 2) * C), hx: N * C / 2, hz: N * C / 2, top: -0.1, bottom: -26, taper: 0.12, rock: 'moon_3' });   // Low Orbit: a rock hanging in space
+      props.push({ key: 'spaceship_fly', x: r2(cx), z: r2(cz), face: 0 });
+      ways['ship_stick@orbit'] = { id: 'ship_stick', world: 'orbit', x: r2(cx), z: r2(cz + 6 * C / 2 + 1.75), face: 180, y: 0 };   // the stick on the bridge lands you at the ship's side (and aboard)
+      ways['orbit_derelict@orbit'] = { id: 'orbit_derelict', world: 'orbit', x: r2(bgcx(sx0 + 2)), z: r2(bgcz(sy0 + 9)), face: 0, y: 0 };   // the hatch back into the ship's airlock (a course on the collar)
+      planets.push({ id: 'earth', name: 'EARTH', x: r2(cx + 70), z: r2(cz + 30), y: -95, r: 55, tex: 'ocean', color: 0x3c78d2, land: 0x4d8a45 });
+      beacons.push({ id: 'orbit', label: 'LOW ORBIT · THE BERTH', x: r2(cx), z: r2(cz), ground: 0, pad: { x: r2(cx), z: r2(cz), yaw: 0 } });
+    }
+    /* the Sun: far below the plane in the middle, a ball of light (never reached) */
+    const SUN = { x: 0, z: 0, y: -260, r: 70, color: 0xffc46a };
+    /* THE BEACONS: one over each district's landing (the collar spots of draw-space.js; the bay doors are not landings) */
+    const LANDING = { mare_derelict: 'THE MOON · THE MARE', moon_derelict: 'THE MOON · THE CRATER', farside_derelict: 'THE MOON · THE FAR SIDE', cydonia_derelict: 'MARS · CYDONIA',
+        canyon_derelict: 'MARS · THE CANYON', mars_derelict: 'MARS · THE ROVER BAY', hexagon_derelict: 'SATURN · THE HEXAGON', derelict_saturn: 'SATURN · THE RING SHARD',
+        rim_derelict: 'THE SINGULARITY · THE ACCRETION RIM', drop_derelict: 'THE SINGULARITY · THE DROP' };
+    Object.keys(LANDING).forEach(k => { const w = Object.values(ways).find(q => q.id === k); if (!w) throw new Error('no landing way ' + k);
+        const yaw = (w.face * Math.PI / 180);
+        beacons.push({ id: k, label: LANDING[k], x: w.fx, z: w.fz, ground: w.fy, pad: { x: w.fx, z: w.fz, yaw: r2(yaw) } }); });
+    /* the open ground (greedy rectangles, the void squares too: they are the sky, never rock) */
+    const open = (x, y) => cell[y][x] !== 'x';
+    const spaces = []; { const used = new Uint8Array(BW * BH);
+      for (let cy = 0; cy < BH; cy++) for (let cx = 0; cx < BW; cx++) { if (!open(cx, cy) || used[cy * BW + cx]) continue;
+          let w = 1; while (cx + w < BW && !used[cy * BW + cx + w] && open(cx + w, cy)) w++;
+          let h = 1; rows: while (cy + h < BH) { for (let i = 0; i < w; i++) if (used[(cy + h) * BW + cx + i] || !open(cx + i, cy + h)) break rows; h++; }
+          for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used[(cy + j) * BW + cx + i] = 1;
+          spaces.push({ k: 'space', x: r2(bgx(cx) + w * C / 2), z: r2(bgz(cy) + h * C / 2), w: w * C, d: h * C }); } }
+    const PAL = [], palOf = k => { let i = PAL.indexOf(k); if (i < 0) { PAL.push(k); i = PAL.length - 1; } return i + 1; }, paint = new Uint8Array(BW * BH);
+    for (let i = 0; i < BW * BH; i++) paint[i] = key[i] ? palOf(key[i]) : 0;
+    const slope = Buffer.alloc(BW * BH * 8); H4.forEach((q, i) => q.forEach((h, k) => slope.writeInt16LE(Math.round(h * 100), i * 8 + k * 2)));
+    if (!CAT.spaceship_fly) throw new Error('catalogue: spaceship_fly (the flown ship) is missing');
+    const sing = PIECES.find(P => P.R.id === 'singularity'), moon = PIECES.find(P => P.R.id === 'moon');
+    const SPM = { x: ways['ship_stick@orbit'].x, z: r2(ways['ship_stick@orbit'].z + 2) };
+    const sky = Object.assign({}, sing.OLD.shell.sky, { tint: 0x101830, tintAmt: 0.25, stars: 2.4, nebula: 1.2, fog: { color: 0x05060c, amount: 0.06, top: 0.02, band: 0.3, density: 0.0015 } });
+    const shell = Object.assign({}, moon.OLD.shell, { w: 2 * BHX, d: 2 * BHZ, h: SYS.ceil, wallH: 9, sky, look: sing.OLD.shell.look, plate: { x: SPM.x, z: SPM.z, y: 4.4 } });
     if (AIR.length) shell.atmos = { kind: AIR[0].kind, tier: 'open', zones: AIR };
+    /* THE TWO SECRET WAYS that joined two worlds (links cydonia_mare, saturn_singularity until 2026-11-17) have both ends in this room now: a door pair of
+       the room's own (a link cannot have both ends in one room). Walking in still takes you to the other end, as before. */
+    const PAIRS = { 'cydonia_mare@mars': ['bore_face', 'bore_farside', 'leaf_bulkhead', 'THE FACE’S MOUTH · THE BORE TO THE FAR SIDE', true], 'cydonia_mare@moon': ['bore_farside', 'bore_face', 'leaf_bulkhead', 'THE FAR SIDE · THE BORE TO THE FACE', true],
+        'saturn_singularity@saturn': ['frame_rim', 'frame_singularity', 'leaf_frame_only', 'THE RIM WALK · THE DROP’S FRAME', false], 'saturn_singularity@singularity': ['frame_singularity', 'frame_rim', 'leaf_frame_only', 'THE ACCRETION RIM · THE FRAME', false] };
+    const roomDoors = [];
+    Object.keys(PAIRS).forEach(k => { const w = ways[k], q = PAIRS[k]; if (!w) throw new Error('no way ' + k);
+        const d = { id: q[0], wall: 'free', x: w.x, z: w.z, face: w.face }; if (Math.abs(w.y) > 0.3) d.y = w.y;
+        Object.assign(d, { leaf: q[2], label: q[4] ? 'THE BORE' : 'THE FRAME', sub: q[3], action: { room: SYS.room, at: q[1] } }); if (q[4]) d.secret = true;
+        roomDoors.push(d); delete ways[k]; });
     const L = BLOCK;
-    L.push("        " + R.room + ": {");
-    L.push("            label: '" + WR.label + "',");
-    L.push("            sub: '" + WR.sub + "',");
-    L.push("            kind: 'box', site: '" + R.site + "', part: '" + PART + "',");
+    L.push("        /* SPACE72-BEGIN — OUTER SPACE, THE SOLAR SYSTEM (2026-11-17; was four rooms on plots, 2026-11-16): written by `node bake-space.js` from docs/areas/space/layout.json + districts/<LETTER>.js. Never hand-edit between the markers; edit the tool, the plan script (docs/plans/world-zones/draw-space.js) or a district file and rerun. */");
+    L.push("        " + SYS.room + ": {");
+    L.push("            label: 'OUTER SPACE',");
+    L.push("            sub: 'THE MOON · MARS · SATURN · THE SINGULARITY · FLY THE SHIP BETWEEN THEM',");
+    L.push("            kind: 'box', site: '" + SYS.site + "', part: '" + PART + "',");
+    L.push("            world: { hub: 'space', layer: 'off', zx: 0, zy: 0, note: 'THE SOLAR SYSTEM' },");
     L.push("            shell: " + J(shell) + ",");
-    L.push("            parti: '" + WR.parti.replace(/'/g, "\\'") + "',");
+    L.push("            parti: 'Four worlds hanging in the dark, each on its own ball: the Moon and Mars across the top, Saturn and the Singularity across the bottom, the Spaceship\\'s berth in Low Orbit between them over the Earth, the Sun far below. You fly the ship from one to the next and set it down on a beacon.',");
     L.push("            typology: 'grid',");
-    L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + GX + ", nz: " + GY + ", names: " + J(R.plots.map(p => [p.id, p.name, p.d, p.level])) + " },");
+    L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + SYS.cols + ", nz: " + SYS.rows + ", names: " + J(names) + ", mask: " + J((() => { const m = []; for (let r = 0; r < SYS.rows; r++) { let s = ''; for (let c = 0; c < SYS.cols; c++) s += names.some(n => n[0] === 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0')) ? '#' : '.'; m.push(s); } return m; })()) + " },");
+    L.push("            /* THE SOLAR SYSTEM: what three-renderer.js THE SPACESHIP draws and flies by (the balls, the Sun, the beacons, the ceiling) */");
+    L.push("            space: " + J({ ceil: SYS.ceil - 10, sun: SUN, planets, mesas, beacons, berth: SYS.berth, launch: { x: ways['ship_stick@orbit'].x, z: ways['ship_stick@orbit'].z } }) + ",");
     L.push("            terrain: {");
-    L.push("                res: 0.875, floor: '" + WR.floor + "', cliff: '" + WR.cliff + "', path: '" + WR.path + "',");
-    L.push("                noise: { amp: " + WR.noise + ", scale: 10 }, crag: false,");
-    L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + Hh + ", d: '" + slope.toString('base64') + "' } },");
+    L.push("                res: 0.875, floor: 'moon', cliff: 'moon_3', path: 'moon_2',");
+    L.push("                noise: { amp: 0.1, scale: 10 }, crag: false, outer: false,");
+    L.push("                /* THE VOID: every square between the worlds is open space (its ground lies at " + SYS.VOID + " m, under the lip); a fall puts the walker back on the last ground */");
+    L.push("                void: { lip: -20, fall: -24, rock: 'moon_3', glow: 0x0a0c18, glowY: -90, sharp: true },");
+    L.push("                slope: { cells: { res: " + C + ", x0: " + bgx(0) + ", z0: " + bgz(0) + ", nx: " + BW + ", nz: " + BH + ", d: '" + slope.toString('base64') + "' } },");
     if (MARKS.length) L.push("                marks: " + J(MARKS) + ",");
-    L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gcx(0) + ", z0: " + gcz(0) + ", nx: " + W + ", nz: " + Hh + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
-    L.push("                /* every square that is not a `space` is rock */");
-    L.push("                gen: { kind: 'plan', look: 'rock', wallH: " + WR.wallH + ", edge: 2.0, jitter: 0.4, topNoise: 1.1, rim: 0, forceGrow: 0 },");
+    L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + bgcx(0) + ", z0: " + bgcz(0) + ", nx: " + BW + ", nz: " + BH + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
+    L.push("                /* every square that is not a `space` is rock (the worlds' rims, ridges and storm walls) */");
+    L.push("                gen: { kind: 'plan', look: 'rock', wallH: 5, edge: 2.0, jitter: 0.4, topNoise: 1.1, rim: 0, forceGrow: 0 },");
     L.push("                features: [");
-    features.forEach(f => L.push("                    " + J(f) + ","));
+    spaces.concat(features).forEach(f => L.push("                    " + J(f) + ","));
     L.push("                ],");
     L.push("            },");
     L.push("            doors: [");
-    doors.forEach(d => L.push("                " + J(d) + ","));
+    roomDoors.forEach(d => L.push("                " + J(d) + ","));
     L.push("            ],");
     L.push("            counters: [],");
     L.push("            props: [");
@@ -225,20 +326,19 @@ function bakeWorld(R) {
     L.push("            agents: [],");
     L.push("            npcSpots: " + J(npc) + ",");
     L.push("            onlineSpots: [],");
-    L.push("            lines: " + J(OLD.l) + ",");
+    L.push("            lines: " + J(lines) + ",");
     L.push("            spawn: { x: " + SPM.x + ", z: " + SPM.z + ", face: 0 },");
     L.push("        },");
+    L.push("        /* SPACE72-END */");
     /* the rows in data.js that name a place in this room (written by hand there) */
-    Object.keys(WAY).forEach(k => { const w = WAY[k], yv = r2(hC(w.sx, w.sy)), at = "wall: 'free', x: " + w.x + ", z: " + w.z + ", face: " + w.face + (Math.abs(yv) > 0.3 ? ', y: ' + yv : '');   // a door on a tier carries its height
-        if (k === 'bay') WANT.push([R.site + ": { room: '" + R.room + "', door: { id: 'bay', " + at + " } }", 'siteRooms.entry.' + R.site]);
-        else WANT.push(["{ site: '" + R.site + "', part: '" + PART + "', " + at + ",", 'link ' + k + ' (the ' + R.name + ' end)']); });
-    DECALROWS.push("    " + R.room + ": " + J(DECALS.slice(0, 60)) + ",   // SPACE72-DECALS: written by bake-space.js\n");
-    WANT.push([R.room + ": { x: " + gcx(R.marker[0]) + ", z: " + gcz(R.marker[1]) + " }", 'HQ_AREA_MARKERS.' + R.room]);
+    Object.keys(ways).forEach(kk => { let k = kk; const w = ways[kk], at = "wall: 'free', x: " + w.x + ", z: " + w.z + ", face: " + w.face + (Math.abs(w.y) > 0.3 ? ', y: ' + w.y : '');
+        k = w.id;
+        if (k === 'bay') { const site = 'prebuilt_' + w.world; WANT.push([site + ": { room: '" + SYS.room + "', door: { id: '" + BAY[w.world] + "', " + at + " } }", 'siteRooms.entry.' + site]); }
+        else WANT.push(["{ site: '" + SYS.site + "', part: '" + PART + "', " + at + ",", 'link ' + k + ' (the ' + w.world + ' end)']); });
+    DECALROWS.push("    " + SYS.room + ": " + J(DECALS.slice(0, 60)) + ",   // SPACE72-DECALS: written by bake-space.js\n");
+    WANT.push([SYS.room + ": { x: " + SPM.x + ", z: " + SPM.z + " }", 'HQ_AREA_MARKERS.' + SYS.room]);
+    TOTAL.system = { plots: names.length, props: props.length, natives: npc.length, features: spaces.length + features.length, spaces: spaces.length, planets: planets.length, beacons: beacons.length };
 }
-
-BLOCK.push("        /* SPACE72-BEGIN — OUTER SPACE ON PLOTS (2026-11-16): written by `node bake-space.js` from docs/areas/space/layout.json + districts/<LETTER>.js. Never hand-edit between the markers; edit the tool, the plan script (docs/plans/world-zones/draw-space.js) or a district file and rerun. */");
-PLAN.rooms.forEach(bakeWorld);
-BLOCK.push("        /* SPACE72-END */");
 Object.keys(DISTRICTS).forEach(k => { if (!PLAN.rooms.some(R => R.districts[k])) throw new Error('districts/' + k + '.js is no district of the layout'); });
 const block = BLOCK.join('\n') + '\n';
 console.log(JSON.stringify(TOTAL));
@@ -254,4 +354,4 @@ else { const a = src.indexOf('        /* ESTATE36-BEGIN'); if (a < 0) throw new 
   const a = src.indexOf('    site_prebuilt_downtown_underworld: ['); if (a < 0 || src.slice(a, src.indexOf('\n', a)).indexOf('SEWERS24-DECALS') < 0) throw new Error('DOOR_HQ.decals anchor (the Sewers\' row) not found');
   src = src.slice(0, a) + DECALROWS.join('') + src.slice(a); }
 fs.writeFileSync(file, src);
-console.log('data.js: four rooms written (' + block.length + ' bytes)');
+console.log('data.js: the solar system written (' + block.length + ' bytes)');

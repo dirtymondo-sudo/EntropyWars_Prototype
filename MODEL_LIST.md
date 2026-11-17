@@ -1310,7 +1310,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | psx_wooden_crate_6 | `Assets/world/packs/pizzadoggy_psx_mega_pack/large_props/wooden_crate_6.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | vent_grille | `Assets/world/packs/pizzadoggy_psx_mega_pack/electronics_and_misc/vent_1.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 
-### Meshy AI (mondo) — Meshy AI (299)
+### Meshy AI (mondo) — Meshy AI (300)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
@@ -1573,6 +1573,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | space_shuttle | `Assets/world/props/meshy/Meshy_AI_space_shuttle_realis_1027103636_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | space_station | `Assets/world/props/meshy/Meshy_AI_international_space_s_1027103646_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | spaceship | `Assets/world/props/meshy/Meshy_AI_spaceship_0727195825_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| spaceship_fly | `Assets/world/props/meshy/Meshy_AI_spaceship_0727195825_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | spell_dynamite | `Assets/fx/spell_props/Meshy_AI_dynamite_1027232115_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | spell_grenade | `Assets/fx/spell_props/Meshy_AI_grenade_1027232043_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | spell_landmine | `Assets/fx/spell_props/Meshy_AI_landmine_1027232145_texture.glb` | Meshy AI | Meshy AI (mondo) |

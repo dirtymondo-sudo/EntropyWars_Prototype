@@ -1,0 +1,41 @@
+Low Orbit
+  (a plot the old room did not have)
+  extra   1 x props spaceship_fly
+  extra   1 x doors link_orbit_derelict
+  extra   1 x doors link_ship_stick
+The Accretion Rim, west
+  extra   1 x doors link_rim_derelict
+The Airlock
+  MISSING 2 x doors bay
+  extra   1 x doors bay_mars
+  extra   1 x doors bay_saturn
+The Bore
+  extra   1 x doors bore_farside
+  MISSING 1 x doors link_cydonia_mare
+The Canyon Mouth
+  extra   1 x doors link_canyon_derelict
+The Drop
+  extra   1 x doors link_drop_derelict
+The Eye, south-west
+  extra   1 x doors link_hexagon_derelict
+The Face, mouth
+  extra   1 x doors bore_face
+  MISSING 1 x doors link_cydonia_mare
+The Frame
+  extra   1 x doors frame_singularity
+  MISSING 1 x doors link_saturn_singularity
+The Mare, east
+  extra   1 x doors link_mare_derelict
+The Pyramid, west
+  extra   1 x doors link_cydonia_derelict
+The Rim Walk
+  extra   1 x doors frame_rim
+  MISSING 1 x doors link_saturn_singularity
+The Saucer
+  extra   1 x doors link_farside_derelict
+The Standing Frame
+  MISSING 1 x doors bay
+  extra   1 x doors bay_singularity
+before {"props":233,"features":10,"doors":12,"natives":28,"lines":4,"plots":59}
+after  {"props":234,"features":10,"doors":21,"natives":28,"lines":4,"plots":60}
+7 piece(s) MISSING, 17 extra
