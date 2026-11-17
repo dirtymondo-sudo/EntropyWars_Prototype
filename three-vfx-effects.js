@@ -71751,6 +71751,251 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceLifetap: _l5(_l5Lifetap3D), raceSymbioticDrain: _l5(_l5SymbioticDrain3D), raceAbsorb: _l5(_l5Absorb3D), raceCarrionFeast: _l5(_l5CarrionFlies3D),
         raceFrenzy: _l5(_l5Frenzy3D), raceGrab: _l5(_l5GraveGrip3D), raceMandibleStrike: _l5(_l5Mandibles3D),
     });
+    /* PART 2, glass and arcana: ANNIHILATION the wards round the body crack off as plates, then a black point unmakes what is
+       left · HOCUS POCUS the two old words swing in and meet on the victim in a green puff of stars · JACKPOT three sevens lock
+       and the coins pay out on all nine squares · MIRROR SHARD one sliver of the glass stuck in the body, its glint, a chip
+       flying on · SEVEN YEARS a mirror cracks over them and seven shards stand in the floor round their feet · SHATTERED
+       MIRROR a shard drops into every square and glints at eye height · PRISM MIRROR three faces of light fold up off the
+       floor into the prism · PULSE LATTICE square waves run out along the rows and columns · TUNE FREQUENCY three wave bands
+       (long red, violet, tight green) turn round the elf like a dial · RANGEFINDER a ranging reticle closes on the glassed square. */
+    Object.assign(_L5C, { ward: 0xa860ff, wardD: 0x4a1a8a, nil: 0x05030a, witch: 0x7de04a, witchD: 0x3a8a2a, coin: 0xffc83a, coinD: 0xb8801a, reel: 0x1a0a12, seven: 0xe0242a,
+        glass: 0xc4c8ea, glint: 0xdcd8ff, silver: 0x8a90b8, hexed: 0x8a3ad0, specR: 0xff4a4a, specG: 0x6aff8a, specV: 0x9a5cff, lattice: 0xb05cff, optic: 0xa8e83c });
+    /* a shard of mirror: a flat kite, silver with a pale edge of light; it stands along +y */
+    function _l5Shard(parent, ts, L, w, op) {
+        var g = new THREE.Group(), sh = new THREE.Shape(); sh.moveTo(0, L * 0.55); sh.lineTo(w * 0.5, L * 0.08); sh.lineTo(w * 0.12, -L * 0.45); sh.lineTo(-w * 0.5, L * 0.18); sh.closePath();
+        var geo = new THREE.ShapeGeometry(sh);
+        var edge = _goAdd(g, new THREE.Mesh(geo, _goA(_L5C.glint, 0)), 0.7 * (op || 1)); edge.scale.set(1.25, 1.1, 1); edge.position.z = -0.5;
+        _goAdd(g, new THREE.Mesh(geo, _finBasic(_L5C.glass, { opacity: 0, side: THREE.DoubleSide })), op || 1);
+        var half = new THREE.Shape(); half.moveTo(0, L * 0.55); half.lineTo(w * 0.12, -L * 0.45); half.lineTo(-w * 0.5, L * 0.18); half.closePath();
+        var dk = _goAdd(g, new THREE.Mesh(new THREE.ShapeGeometry(half), _finBasic(_L5C.silver, { opacity: 0, side: THREE.DoubleSide })), op || 1); dk.position.z = 0.5;   /* the facet in shade */
+        g.userData.parts = _goAll(g); parent.add(g); return g;
+    }
+    /* a four-point glint (the light off glass), camera-facing, at a point */
+    function _l5Glint(parent, ts, size, c) {
+        var g = new THREE.Group(); g.quaternion.copy(_goCamQuat(g.quaternion)); parent.add(g);
+        var a = _l5Cut(g, size, size * 0.09, c, 1, true), b = _l5Cut(g, size * 0.6, size * 0.07, c, 1, true); b.rotation.z = Math.PI / 2;
+        var a2 = _l5Cut(g, size, size * 0.09, c, 1, true); a2.rotation.z = Math.PI; var b2 = _l5Cut(g, size * 0.6, size * 0.07, c, 1, true); b2.rotation.z = -Math.PI / 2;
+        g.userData.parts = [a, b, a2, b2]; for (var i = 0; i < 4; i++) { g.userData.parts[i].material.depthTest = false; g.userData.parts[i].renderOrder = 162; }
+        return g;
+    }
+    /* ANNIHILATION: every ward cracks off the body as a plate of light, then a black point opens at the heart and unmakes the rest */
+    function _l5Annihilation3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, plates = [];
+        for (var i = 0; i < 6; i++) {
+            var a = i / 6 * Math.PI * 2, piv = new THREE.Group(); piv.rotation.y = -a + Math.PI / 2; piv.userData.a = a; piv.userData.y = ts * (0.4 + 0.42 * (i % 2)); F.g.add(piv);
+            var p = _goAdd(piv, new THREE.Mesh(new THREE.RingGeometry(ts * 0.15, ts * 0.2, 6), _goA(_L5C.ward, 0)), 0.95), q = _goAdd(piv, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.15, 6), _goA(_L5C.wardD, 0)), 0.5);
+            piv.userData.parts = [p, q]; plates.push(piv);
+        }
+        var face = _l5Face(F.g, ts * 0.68);
+        var hole = _goAdd(face, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.17, 28), _finBasic(_L5C.nil, { opacity: 0, depthWrite: false })), 1); hole.material.depthTest = false; hole.renderOrder = 161;
+        var rim = _goAdd(face, new THREE.Mesh(new THREE.RingGeometry(ts * 0.17, ts * 0.23, 32), _goA(_L5C.ward, 0)), 1); rim.material.depthTest = false; rim.renderOrder = 162;
+        var fall = _goAdd(face, new THREE.Mesh(new THREE.RingGeometry(ts * 0.94, ts * 1.0, 40), _goA(_L5C.ward, 0)), 0.8); fall.material.depthTest = false; fall.renderOrder = 162;
+        var streaks = [];
+        for (var s = 0; s < 10; s++) { var sp = new THREE.Group(); sp.rotation.z = s / 10 * Math.PI * 2 + 0.2; face.add(sp); var c = _l5Cut(sp, ts * 0.3, ts * 0.03, _L5C.ward, 0.9, true); c.material.depthTest = false; c.renderOrder = 162; streaks.push(c); }
+        var total = 1400, broke = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var off = _sigEaseOutCubic(_sigClamp01((el - 200) / 360));
+            for (var i = 0; i < plates.length; i++) {
+                var pv = plates[i], rr = ts * (0.46 + 1.0 * off);
+                pv.position.set(Math.cos(pv.userData.a) * rr, pv.userData.y + ts * 0.3 * off, Math.sin(pv.userData.a) * rr); pv.rotation.x = off * (2 + i * 0.4); pv.rotation.z = off * 1.5;
+                _goShow(pv.userData.parts, Math.min(1, el / 60) * (el < 200 ? 0.7 + 0.3 * Math.sin(el * 0.09 + i) : 1 - off));
+            }
+            if (!broke && el >= 200) { broke = true; _goSpray(F, 12, { sprite: 'ice-shard', tint: _L5C.ward, ly: ts * 0.65, r: 26, v: 200, vz0: 20, vz1: 160, g: 300, s0: 4, s0b: 8, ml0: 300, ml1: 550 }); }
+            var e = el - 480, grow = _sigEaseOutCubic(_sigClamp01(e / 200)), shut = _sigEaseInCubic(_sigClamp01((e - 300) / 220)), sc = Math.max(0.01, grow * (1 - shut));
+            hole.scale.setScalar(sc); rim.scale.setScalar(sc); hole.material.opacity = e > 0 ? 0.92 : 0; rim.material.opacity = e > 0 ? 1 : 0;
+            var inK = _sigClamp01(e / 420); fall.scale.setScalar(Math.max(0.3, 1 - 0.7 * _sigEaseInCubic(inK))); fall.material.opacity = (e > 0 && inK < 1) ? 0.8 * inK : 0;
+            for (var s = 0; s < streaks.length; s++) { var t = _sigClamp01((e - s * 22) / 380); streaks[s].position.x = ts * (1.0 - 0.72 * t * t); streaks[s].material.opacity = (t > 0 && t < 1) ? 0.9 * t : 0; }
+        });
+    }
+    /* HOCUS POCUS (wizard): the old words themselves, one from each side, meet on the victim and go off in a green puff of stars */
+    function _l5HocusPocus3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, ln = F.ln, px = -ln.uz, pz = ln.ux;
+        var w1 = _goWord(F.g, 'HOCUS', '#8cf05a', ts * 1.5, ts * 1.5, 'Georgia, serif'), w2 = _goWord(F.g, 'POCUS', '#c08cff', ts * 1.5, ts * 1.5, 'Georgia, serif');
+        var swirl = _goRing(F.g, _L5C.witch, ts * 0.42, ts * 0.5, 2, 0.8, 40), swirl2 = _goRing(F.g, _L5C.ward, ts * 0.3, ts * 0.36, 2, 0.7, 40);
+        var total = 1500, puff = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var inK = _sigEaseInCubic(_sigClamp01(el / 420)), d = ts * 1.25 * (1 - inK), y = ts * (1.55 - 0.75 * inK), sc = 1 - 0.45 * inK, op = el < 420 ? Math.min(1, el / 90) : 1 - _sigClamp01((el - 420) / 160);
+            w1.position.set(px * d, y + ts * 0.14, pz * d); w2.position.set(-px * d, y - ts * 0.14, -pz * d);
+            w1.scale.set(ts * 1.5 * sc, ts * 0.75 * sc, 1); w2.scale.set(ts * 1.5 * sc, ts * 0.75 * sc, 1); w1.material.opacity = w2.material.opacity = op;
+            var e = el - 420, up = _sigEaseOutCubic(_sigClamp01(e / 600));
+            swirl.position.y = 2 + ts * 1.1 * up; swirl2.position.y = 2 + ts * 0.8 * up; swirl.scale.setScalar(1 - 0.5 * up); swirl2.scale.setScalar(1 + 0.4 * up);
+            _goShow([swirl, swirl2], e > 0 ? 1 - up : 0);
+            if (!puff && e >= 0) {
+                puff = true;
+                _goSpray(F, 12, { sprite: 'star', tint: _L5C.witch, ly: ts * 0.8, r: 10, v: 170, vz0: 30, vz1: 200, g: 160, s0: 6, s0b: 11, ml0: 450, ml1: 800 });
+                _goSpray(F, 8, { sprite: 'star', tint: _L5C.ward, ly: ts * 0.8, r: 10, v: 130, vz0: 30, vz1: 170, g: 120, s0: 5, s0b: 9, ml0: 450, ml1: 800 });
+                _goSpray(F, 5, { sprite: 'smoke-soft', tint: _L5C.witchD, ly: ts * 0.7, r: 14, v: 40, vz0: 20, vz1: 80, g: -20, s0: 18, s0b: 26, s1: 44, op: 0.55, ml0: 500, ml1: 900 });
+            }
+        });
+    }
+    /* JACKPOT: three sevens lock over the area and the machine pays out on every square: coins on their heads */
+    function _l5Jackpot3D(tx, ty, r) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, sq = _l5Squares(F, tx, ty, R, _L5C.coin, 520, 0.5);
+        var face = _l5Face(F.g, ts * 3.0), reels = [], trim = [];   /* an open gold frame round the sevens: nothing solid over the squad behind */
+        for (var e = 0; e < 4; e++) { var tb = _goAdd(face, new THREE.Mesh(new THREE.PlaneGeometry(e < 2 ? ts * 1.56 : ts * 0.05, e < 2 ? ts * 0.05 : ts * 0.62), _goA(_L5C.coin, 0)), 0.95); tb.position.set(e < 2 ? 0 : (e === 2 ? -1 : 1) * ts * 0.78, e < 2 ? (e ? -1 : 1) * ts * 0.31 : 0, 0); tb.material.depthTest = false; tb.renderOrder = 161; trim.push(tb); }
+        for (var i = 0; i < 3; i++) { var w = _goWord(face, '7', '#ff3a3a', 0, ts * 0.9, 'Georgia, serif'); w.position.set((i - 1) * ts * 0.46, 0, 1); w.userData.lock = 60 + i * 110; reels.push(w); }
+        var coins = [], geo = new THREE.CylinderGeometry(ts * 0.075, ts * 0.075, ts * 0.02, 12);
+        for (var q = 0; q < sq.length; q++) for (var c = 0; c < 3; c++) {
+            var m = _goAdd(F.g, new THREE.Mesh(geo, _goM(c === 1 ? _L5C.coinD : _L5C.coin)), 1), p = sq[q].position;
+            m.userData.p = [p.x + rn(-0.28, 0.28) * ts, p.y, p.z + rn(-0.28, 0.28) * ts]; m.userData.d = 40 + ((q * 7) % 9) * 22 + c * 110; m.userData.sp = rn(0.02, 0.04); coins.push(m);
+        }
+        var total = 1800, paid = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 50, total, 450);
+            _goShow(trim, k * (1 - _sigClamp01((el - 1100) / 300)));
+            for (var i = 0; i < 3; i++) { var w = reels[i], locked = el >= w.userData.lock; w.scale.set(ts * 0.9, ts * 0.45 * (locked ? 1 + 0.25 * (1 - _sigClamp01((el - w.userData.lock) / 120)) : Math.abs(Math.sin(el * 0.06 + i))), 1); w.material.opacity = k * (1 - _sigClamp01((el - 1100) / 300)); }
+            for (var c = 0; c < coins.length; c++) {
+                var m = coins[c], t = _sigClamp01((el - m.userData.d) / 300), y = ts * 1.5 * (1 - t * t), land = t >= 1;
+                m.position.set(m.userData.p[0], m.userData.p[1] + (land ? ts * 0.02 + Math.abs(Math.sin((el - m.userData.d - 300) * 0.02)) * ts * 0.12 * Math.max(0, 1 - (el - m.userData.d - 300) / 300) : y + ts * 0.02), m.userData.p[2]);
+                if (!land) { m.rotation.x = el * m.userData.sp; m.rotation.z = el * m.userData.sp * 0.7; } else { m.rotation.x = 0; m.rotation.z = 0; }
+                m.material.opacity = t > 0 ? k : 0;
+            }
+            _l5SquaresTick(sq, el, 240);
+            if (!paid && el >= 280) { paid = true; for (var q = 0; q < sq.length; q++) _goSpray(F, 2, { sprite: 'sparkle', tint: _L5C.coin, lx: sq[q].position.x, lz: sq[q].position.z, ly: ts * 0.3, r: 20, v: 90, vz0: 60, vz1: 180, g: 300, s0: 4, s0b: 7, ml0: 300, ml1: 600 }); }
+        });
+    }
+    /* MIRROR SHARD: one sliver of the glass stands in the body, the light runs off it, and a chip of it flies on to find the next face */
+    function _l5MirrorShard3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, ln = F.ln;
+        var piv = new THREE.Group(); piv.position.set(0, ts * 0.72, 0); piv.quaternion.copy(_goCamQuat(piv.quaternion)); F.g.add(piv);
+        var tilt = new THREE.Group(); tilt.rotation.z = 0.7; piv.add(tilt);
+        var sh = _l5Shard(tilt, ts, ts * 0.95, ts * 0.3), gl = _l5Glint(F.g, ts, ts * 0.9, _L5C.glint); gl.position.set(0, ts * 1.0, 0);
+        var chip = _l5Shard(F.g, ts, ts * 0.4, ts * 0.14); chip.quaternion.copy(_goCamQuat(chip.quaternion));
+        var total = 1300, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var inK = _sigEaseOutCubic(_sigClamp01(el / 110)), k = _goEnv(el, 30, total, 400);
+            sh.position.y = ts * (0.9 * (1 - inK) + 0.12) + (el > 110 ? Math.sin(el * 0.09) * ts * 0.012 * Math.max(0, 1 - (el - 110) / 400) : 0);
+            _goShow(sh.userData.parts, k);
+            var g = _sigClamp01((el - 90) / 420); gl.scale.setScalar(0.3 + 1.0 * Math.sin(g * Math.PI)); gl.rotation.z = g * 1.2; _goShow(gl.userData.parts, (g > 0 && g < 1) ? Math.sin(g * Math.PI) : 0);
+            var c = _sigClamp01((el - 380) / 520); chip.position.set(-ln.uz * ts * 1.3 * c, ts * (0.8 + 0.9 * Math.sin(c * Math.PI * 0.8)), ln.ux * ts * 1.3 * c); chip.rotateZ(0.3);
+            _goShow(chip.userData.parts, (c > 0 && c < 1) ? 1 - c * c : 0);
+            if (!hit && el >= 100) { hit = true; _goSpray(F, 8, { sprite: 'ice-shard', tint: _L5C.glass, ly: ts * 0.75, r: 8, v: 150, vz0: 30, vz1: 170, g: 420, s0: 4, s0b: 7, ml0: 300, ml1: 550 }); }
+        });
+    }
+    /* SEVEN YEARS: a mirror cracks across over them, falls apart, and seven shards stand in the floor round their feet: one a year */
+    function _l5SevenYears3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts;
+        var face = _l5Face(F.g, ts * 0.8), pane = _goAdd(face, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.7, ts * 1.0), _goA(_L5C.glass, 0)), 0.22), fr = [], cracks = [];
+        pane.material.depthTest = false; pane.renderOrder = 160;
+        for (var e = 0; e < 4; e++) { var b = _goAdd(face, new THREE.Mesh(new THREE.PlaneGeometry(e < 2 ? ts * 0.76 : ts * 0.035, e < 2 ? ts * 0.035 : ts * 1.06), _goA(_L5C.glint, 0)), 0.9); b.position.set(e < 2 ? 0 : (e === 2 ? -1 : 1) * ts * 0.365, e < 2 ? (e ? -1 : 1) * ts * 0.515 : 0, 0); b.material.depthTest = false; b.renderOrder = 161; fr.push(b); }
+        for (var c = 0; c < 7; c++) { var sp = new THREE.Group(); sp.rotation.z = c / 7 * Math.PI * 2 + 0.3; sp.position.set(ts * 0.04, ts * 0.08, 1); face.add(sp); var cr = _goAdd(sp, new THREE.Mesh(_l5Jag(ts * (0.34 + 0.1 * (c % 3)), ts * 0.035, c + 3, 5).rotateX(Math.PI / 2), _goA(_L5C.glint, 0)), 1); cr.material.depthTest = false; cr.renderOrder = 162; cracks.push(sp); sp.userData.m = cr; }
+        var shards = [];
+        for (var s = 0; s < 7; s++) {
+            var a = s / 7 * Math.PI * 2 + 0.2, sh = _l5Shard(F.g, ts, ts * (0.5 + 0.08 * (s % 3)), ts * 0.2);
+            sh.userData.to = [Math.cos(a) * ts * 0.52, ts * 0.2, Math.sin(a) * ts * 0.52]; sh.userData.from = [Math.cos(a) * ts * 0.2, ts * (0.6 + 0.12 * (s % 3)), Math.sin(a) * ts * 0.2]; sh.userData.d = 430 + s * 45;
+            sh.rotation.set(Math.PI + 0.25 * Math.cos(a * 3), -a + Math.PI / 2, 0.3 * Math.sin(a * 2)); shards.push(sh);
+        }
+        var total = 2000, broke = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var pk = el < 430 ? Math.min(1, el / 90) : 1 - _sigClamp01((el - 430) / 120);
+            _goShow([pane], pk); _goShow(fr, pk);
+            for (var c = 0; c < cracks.length; c++) { var g = _sigEaseOutCubic(_sigClamp01((el - 150 - c * 22) / 150)); cracks[c].scale.setScalar(Math.max(0.02, g)); cracks[c].userData.m.material.opacity = pk * (g > 0 ? 1 : 0); }
+            var k = _goEnv(el, 30, total, 450);
+            for (var s = 0; s < shards.length; s++) {
+                var sh = shards[s], t = _sigEaseInCubic(_sigClamp01((el - sh.userData.d) / 230)), f = sh.userData.from, to = sh.userData.to;
+                sh.position.set(f[0] + (to[0] - f[0]) * t, f[1] + (to[1] - f[1]) * t, f[2] + (to[2] - f[2]) * t);
+                _goShow(sh.userData.parts, el >= sh.userData.d ? k : 0);
+                if (t >= 1 && !sh.userData.in) { sh.userData.in = true; _goSpray(F, 2, { sprite: 'shadow-wisp', tint: _L5C.hexed, lx: to[0], lz: to[2], ly: ts * 0.3, r: 6, v: 20, vz0: 40, vz1: 110, g: -30, s0: 9, s0b: 14, s1: 22, op: 0.7, ml0: 600, ml1: 1000 }); }
+            }
+            if (!broke && el >= 430) { broke = true; _goSpray(F, 8, { sprite: 'ice-shard', tint: _L5C.glass, ly: ts * 0.8, r: 22, v: 130, vz0: 10, vz1: 120, g: 500, s0: 4, s0b: 7, ml0: 300, ml1: 550 }); }
+        });
+    }
+    /* SHATTERED MIRROR: a shard of it comes down into every square and throws its glint at eye height (the blind) */
+    function _l5ShatteredMirror3D(tx, ty, r) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, sq = _l5Squares(F, tx, ty, R, _L5C.glass, 520, 0.42), sh = [], gl = [];
+        for (var q = 0; q < sq.length; q++) {
+            var p = sq[q].position, s = _l5Shard(F.g, ts, ts * (0.62 + 0.1 * (q % 3)), ts * 0.24), d = 20 + ((q * 5) % 9) * 38;
+            s.rotation.set(Math.PI + 0.3 * Math.sin(q * 2.1), q * 1.3, 0.3 * Math.cos(q * 1.7)); s.userData.p = [p.x + ts * 0.2 * Math.sin(q * 1.9), p.y, p.z + ts * 0.2 * Math.cos(q * 2.3)]; s.userData.d = d; sh.push(s);
+            var g = _l5Glint(F.g, ts, ts * 0.7, _L5C.glint); g.position.set(p.x, p.y + ts * 1.0, p.z); g.userData.d = d + 170; gl.push(g);
+        }
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 30, total, 450);
+            for (var i = 0; i < sh.length; i++) {
+                var s = sh[i], t = _sigEaseInCubic(_sigClamp01((el - s.userData.d) / 170));
+                s.position.set(s.userData.p[0], s.userData.p[1] + ts * (0.24 + 1.7 * (1 - t)), s.userData.p[2]); _goShow(s.userData.parts, el >= s.userData.d ? k : 0);
+                var g = gl[i], gt = _sigClamp01((el - g.userData.d) / 420); g.scale.setScalar(0.3 + Math.sin(gt * Math.PI)); g.rotation.z = gt; _goShow(g.userData.parts, (gt > 0 && gt < 1) ? Math.sin(gt * Math.PI) : 0);
+                if (t >= 1 && !s.userData.in) { s.userData.in = true; _goSpray(F, 3, { sprite: 'ice-shard', tint: _L5C.glass, lx: s.userData.p[0], lz: s.userData.p[2], ly: ts * 0.15, r: 6, v: 110, vz0: 60, vz1: 170, g: 480, s0: 3, s0b: 6, ml0: 280, ml1: 480 }); }
+            }
+            _l5SquaresTick(sq, el, 150);
+        });
+    }
+    /* PRISM MIRROR (machine elves): three faces of light lie on the floor, fold up on their hinges and close into the prism */
+    function _l5PrismFold3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, side = ts * 0.56, h = ts * 0.95, ri = side / (2 * Math.sqrt(3)), cols = [_L5C.specR, _L5C.specG, _L5C.specV], flaps = [], parts = [];
+        for (var i = 0; i < 3; i++) {
+            var a = i / 3 * Math.PI * 2 + Math.PI / 6, hinge = new THREE.Group(); hinge.position.set(Math.cos(a) * ri, 3, Math.sin(a) * ri); hinge.rotation.y = Math.PI / 2 - a; F.g.add(hinge);
+            var flap = new THREE.Group(); hinge.add(flap);
+            var face = _goAdd(flap, new THREE.Mesh(new THREE.PlaneGeometry(side, h).translate(0, h / 2, 0), _goA(cols[i], 0)), 0.4);
+            var e1 = _goAdd(flap, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.03, h).translate(-side / 2, h / 2, 0), _goA(_L5C.glint, 0)), 0.95), e2 = _goAdd(flap, new THREE.Mesh(new THREE.PlaneGeometry(side, ts * 0.03).translate(0, h, 0), _goA(cols[i], 0)), 0.95);
+            flaps.push(flap); parts.push(face, e1, e2);
+        }
+        var base = _goRing(F.g, _L5C.specV, ts * 0.3, ts * 0.34, 2.5, 0.7, 3), gl = _l5Glint(F.g, ts, ts * 0.8, _L5C.glint); gl.position.y = h;
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 80, total, 450);
+            for (var i = 0; i < 3; i++) { var up = _sigEaseOutBack(_sigClamp01((el - 120 - i * 110) / 380)); flaps[i].rotation.x = Math.PI / 2 * (1 - up); }
+            _goShow(parts, k); base.rotation.z = el * 0.003; _goShow([base], k * (1 - _sigClamp01((el - 500) / 400)));
+            var g = _sigClamp01((el - 700) / 420); gl.scale.setScalar(0.3 + Math.sin(g * Math.PI)); _goShow(gl.userData.parts, (g > 0 && g < 1) ? Math.sin(g * Math.PI) : 0);
+        });
+    }
+    /* PULSE LATTICE (machine elves): the discharge runs the grid: square waves out from the elf along the rows and the columns */
+    function _l5PulseLattice3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, waves = [], axes = [];
+        for (var w = 0; w < 3; w++) {
+            var g = new THREE.Group(); g.position.y = 3; F.g.add(g); var ps = [];
+            for (var e = 0; e < 4; e++) { var b = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(2.06, 0.06), _goA(w === 1 ? _L5C.glint : _L5C.lattice, 0)), 0.9); b.rotation.x = -Math.PI / 2; b.rotation.z = e * Math.PI / 2; b.position.set(e === 1 ? 1 : e === 3 ? -1 : 0, 0, e === 0 ? 1 : e === 2 ? -1 : 0); ps.push(b); }
+            for (var n = 0; n < 4; n++) { var nd = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.16), _goA(_L5C.glint, 0)), 1); nd.rotation.x = -Math.PI / 2; nd.rotation.z = Math.PI / 4; nd.position.set(n % 2 ? 1 : -1, 0.2, n < 2 ? 1 : -1); ps.push(nd); }
+            g.userData.parts = ps; g.userData.d = w * 150; waves.push(g);
+        }
+        for (var a = 0; a < 4; a++) { var ax = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.07, ts * 4).translate(0, ts * 2, 0), _goA(_L5C.lattice, 0)), 0.85); ax.rotation.x = -Math.PI / 2; ax.rotation.z = a * Math.PI / 2; ax.position.y = 3.5; axes.push(ax); }
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var w = 0; w < waves.length; w++) { var g = waves[w], t = _sigClamp01((el - g.userData.d) / 760), o = _sigEaseOutCubic(t); g.scale.set(ts * (0.5 + 3.2 * o), 1, ts * (0.5 + 3.2 * o)); _goShow(g.userData.parts, (t > 0 && t < 1) ? 1 - t * t : 0); }
+            var ak = _sigClamp01(el / 160); for (var a = 0; a < 4; a++) axes[a].scale.y = Math.max(0.02, _sigEaseOutCubic(ak)); _goShow(axes, 1 - _sigClamp01((el - 200) / 600));
+        });
+    }
+    /* TUNE FREQUENCY (machine elves): the three bands he can pick, long red, violet, tight green, turn round him like a dial */
+    function _l5TuneFrequency3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, bands = [], def = [[5, 0.1, _L5C.specR, 0.32], [10, 0.065, _L5C.specV, 0.66], [20, 0.04, _L5C.specG, 1.0]];
+        for (var b = 0; b < 3; b++) {
+            var pts = [], n = def[b][0], N = 120;
+            for (var i = 0; i < N; i++) { var a = i / N * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * ts * 0.56, Math.sin(a * n) * ts * def[b][1], Math.sin(a) * ts * 0.56)); }
+            var m = _goAdd(F.g, new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 240, ts * 0.016, 5, true), _goA(def[b][2], 0)), 0.95); m.position.y = ts * def[b][3]; m.userData.d = b * 170; bands.push(m);
+        }
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 40, total, 450);
+            for (var b = 0; b < 3; b++) { var m = bands[b], on = _sigEaseOutBack(_sigClamp01((el - m.userData.d) / 220)); m.scale.set(Math.max(0.02, on), 1, Math.max(0.02, on)); m.rotation.y = el * 0.0016 * (b % 2 ? -1 : 1) * (1 + b * 0.5); m.material.opacity = 0.95 * k * (el >= m.userData.d ? 1 : 0); }
+        });
+    }
+    /* RANGEFINDER (marksman): the glass ranges the square: brackets close on it, the reticle settles, the count of squares reads out */
+    function _l5Rangefinder3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, parts = [];
+        var ring = _goRing(F.g, _L5C.optic, ts * 0.38, ts * 0.46, 3, 1, 48), dot = _goRing(F.g, _L5C.optic, 0, ts * 0.08, 3, 1, 16); parts.push(ring, dot);
+        for (var t = 0; t < 4; t++) { var tk = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.07, ts * 0.3), _goA(_L5C.optic, 0)), 1); tk.rotation.x = -Math.PI / 2; tk.rotation.z = t * Math.PI / 2; tk.position.set(Math.sin(t * Math.PI / 2) * -ts * 0.5, 3, Math.cos(t * Math.PI / 2) * -ts * 0.5); parts.push(tk); }
+        var br = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var g = new THREE.Group(); g.position.y = 3; F.g.add(g); g.userData.s = s;
+            var bar = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.08, ts * 0.94), _goA(_L5C.optic, 0)), 1); bar.rotation.x = -Math.PI / 2;
+            for (var c = -1; c <= 1; c += 2) { var cap = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.2, ts * 0.08), _goA(_L5C.optic, 0)), 1); cap.rotation.x = -Math.PI / 2; cap.position.set(-s * ts * 0.06, 0, c * ts * 0.45); parts.push(cap); }
+            parts.push(bar); br.push(g);
+        }
+        var word = null;
+        if (F.far) { var n = Math.max(Math.abs(x.fromX - tx), Math.abs(x.fromY - ty)); word = _goWord(F.g, n + ' SQ', '#b8f04a', ts * 0.75, ts * 1.0, 'monospace'); }
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 60, total, 450) * (el > 520 && el < 760 ? (Math.floor(el / 60) % 2 ? 1 : 0.35) : 1), cl = _sigEaseOutCubic(_sigClamp01(el / 420));
+            for (var i = 0; i < 2; i++) br[i].position.x = br[i].userData.s * ts * (1.1 - 0.62 * cl);
+            ring.scale.setScalar(1.6 - 0.6 * cl); ring.rotation.z = (1 - cl) * 1.5; _goShow(parts, k);
+            if (word) word.material.opacity = el > 480 ? _goEnv(el - 480, 80, total - 480, 400) : 0;
+        });
+    }
+    Object.assign(_GO_SIG, {
+        raceAnnihilation: _l5(_l5Annihilation3D), raceHocusPocus: _l5(_l5HocusPocus3D), raceJackpot: _l5(_l5Jackpot3D), raceMirrorShard: _l5(_l5MirrorShard3D),
+        raceSevenYears: _l5(_l5SevenYears3D), raceShatteredMirror: _l5(_l5ShatteredMirror3D), racePrismMirror: _l5(_l5PrismFold3D), racePulseLattice: _l5(_l5PulseLattice3D),
+        raceTuneFrequency: _l5(_l5TuneFrequency3D), raceRangefinder: _l5(_l5Rangefinder3D),
+    });
     /* ═════════ END THE OWN LOOKS, L5 ═════════ */
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell

@@ -4404,3 +4404,18 @@ strip: cracks, skid marks), `_l5Arc` / `_l5Tube` (a cord between two bodies), `_
 - **Grab** (`_l5GraveGrip3D`): the hand already comes up (`_BP_ON_BURST`); the grave floor cracks open under the feet, rot-green in the cracks.
 - **Mandible Strike** (`_l5Mandibles3D`): the mantid's jaws, a pair of toothed green sickles, shear shut on the body three times.
 - Frames: docs/plans/vfx-cleanup/img/own-look/L5_part1.jpg.
+
+## THE OWN LOOKS, L5, part 2: glass and arcana (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L5")
+New pieces: `_l5Shard` (a shard of mirror), `_l5Glint` (the light off glass).
+- **Annihilation** (`_l5Annihilation3D`): six ward plates crack off the body and fly out, then a small black point opens at the heart, a violet ring falls into it, and it shuts (kept small and short: it never covers the body).
+- **Hocus Pocus** (`_l5HocusPocus3D`): the two words themselves, green and violet, swing in from the sides and meet on the victim in a puff of stars.
+- **Jackpot** (`_l5Jackpot3D`): three sevens lock in an open gold frame over the area and coins rain on all nine squares; each square flashes gold.
+- **Mirror Shard** (`_l5MirrorShard3D`): one sliver of glass stands in the body, its glint, and a chip flies on (the bounce).
+- **Seven Years** (`_l5SevenYears3D`): a mirror cracks across over them and seven shards stand in the floor round their feet, a hex wisp off each.
+- **Shattered Mirror** (`_l5ShatteredMirror3D`): a shard drops into every square and glints at eye height (the blind); each square flashes glass-lilac.
+- **Prism Mirror** (`_l5PrismFold3D`): three faces of light (red, green, violet) lie on the floor, fold up on their hinges and close into the prism.
+- **Pulse Lattice** (`_l5PulseLattice3D`): square waves run out from the elf along the rows and columns (the lattice is a grid, so nothing round).
+- **Tune Frequency** (`_l5TuneFrequency3D`): the three bands he can pick, long red, violet, tight green waves, turn round him like a dial.
+- **Rangefinder** (`_l5Rangefinder3D`): brackets close on the glassed square, a reticle settles, the count of squares reads out.
+- The capture harness starts its frames about 3 s late on a tile-click cast (Prism Mirror, Rangefinder, Far Sight): shoot those with `--opts` and a `pre` that repeats `VFX3D.fire('burst', id, {tx, ty, sx, sy})`.
+- Frames: docs/plans/vfx-cleanup/img/own-look/L5_part2.jpg.
