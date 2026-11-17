@@ -5714,5 +5714,5 @@ dormant / bodiless):
 Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo had 10 stretched triangles from a claw to the foot
 (degenerated, edge > 0.15 m) and the Samurai Slug's tail was skinned to the legs (blended to Hips for z < 0.32, y < 0.85);
 originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`
-(cut from the Meshy thumbnail). Not done: VFX polish per spell (they use the generic family looks), sprites restyle, NPC
+(cut from the Meshy thumbnail), then the same night `<slug>_px.png` = 128x128 Sprite AI restyles of the concepts (models-assets.md "THE PIXEL SPRITES FROM SPRITE AI"; the Wendigo from its model thumbnail, its grey concept background would not cut; brain, cicada, slug and wendigo re-rolled with `palette_extras: 0` because the first roll drifted their colours). Not done: VFX polish per spell (they use the generic family looks), sprites restyle, NPC
 residents in their zones.
