@@ -4737,3 +4737,60 @@ are getters, so the old look comes back live with the switch.
 - `_fireBeamMapped` is entered twice for one cast in the capture runner (two log lines per cast); not traced: if that is
   also true in a real match every beam is drawn twice.
 
+## THE VFX SWEEP, B6b: divine, heal, mana, lightning (2026-11-17, three-vfx-effects.js; list `docs/plans/vfx-cleanup/batches/B6b.txt`, 95 spells)
+Brief: docs/plans/vfx-cleanup/SWEEP_BRIEF.md. All 95 spells were read in the code (signature, helpers, recipes); 31 changed.
+Everything is behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP = true` = the old look). Looks only; nothing on `state`.
+- **The tools** (block "THE VFX SWEEP, B6b", just before THE LIGHTNING PASS):
+  `_b6bFlash(color, ms, peak)` = a signature's full-screen flash, not drawn under the cleanup (plan rule 3);
+  `_b6bCore(colour, old)` = the core colour a spell hands `_sigLightPillar3D` / `_capColumn` (the helper's default core is
+  `0xffffff`): the column's own colour, pale, at 92 %; `_b6bLayers(rows)` = recipe layers recoloured (`vcTint`) or
+  dropped (`vcOff`). `_spawnEffect` skips a `vcOff` layer and `_emitLayer` reads `vcTint` first: any sweep thread may
+  set those two fields on a recipe layer.
+- **What was already right:** `_vcCol` draws a near-white screen flash / ring / speed burst / crescent in the spell's
+  colour, and the untinted `shockwave` / `halo-ring` / holy sprites are cream-gold in the atlas, not white. So the holy
+  rings and lights of the divine and heal spells were left: they are the thing itself.
+- **Part 1, divine (34 on the list, 18 changed):**
+  Chooser of the Slain: the whiteout finisher (screen flash + rush lines + speed burst + two rings) is off; her column
+  is steel blue `0xbcd8ff`, not `0xf2f6ff`. Divine Smite, Wrath of the Watchers, Fallen Grace (the cross's landing),
+  Excalibur Strike (two), Crusade, Merkaba, Revive: the full-screen flash is off. Prism Burst, Judgment, Divine Judgment:
+  the white screen flash is off through the helper's own `flashPeak`. Excalibur Strike: the white speed burst and the
+  white second cut are off (the gold cut + scar, the two circles and the column stay). Star Decree: the whiteout on the
+  star's landing is off (column, ring, crystal shards, light and a shake stay). Column cores in the column's colour:
+  Divine Smite, Wrath (centre + arms), Exorcism, Knights of Round, Excalibur, Judgment, Divine Judgment, Crusade, Revive,
+  Star Decree; Purify's white core cylinder is gold. Crusade: its column was 7 squares tall and half a square wide and
+  lay across the caster as flat white slabs under the battle camera: 3.2 tall, 0.3 wide, a deeper gold. Recipe flashes
+  in the spell's colour: Glitter Bomb (pop + ring pink), Excommunication (gold), Crusade (every square of the cross,
+  gold), Ratio (pink).
+  Needed nothing: Coil, Glint (a white glint is the spell), Glitterburst, Horn Light, Inner Peace, Last Rites,
+  Morning Star, Neuralyzer and Paparazzi Flash (the flash IS the spell), Nothing Unseen, Obsidian Blade, Penance,
+  Photon Scatter, Smite, Supernova, Unicorn Charge.
+- **Part 2, heal + mana (39 on the list, 5 changed):** the pale flash in the middle of Heal, Absolution and Sanctuary is
+  heal green `0x6fe8a0`; Immortal Cycle's white flash is the jelly's cyan; Absolution, Sanctuary and Hallelujah's column
+  cores are gold. Needed nothing: the other 34 (16 have no look of their own and no recipe: the stage's gentle heal
+  beat is all they draw; the rest draw props, leaves, coins, water in their own colours).
+- **Part 3, lightning (22 on the list, 8 changed), THE LEAD:** a white bolt out of the sky on every square was given BY
+  NAME to any spell called emp / thunder (`_LT().strikeFromSky`, two call sites). `_B6B_NO_SKY` stands it down for EMP
+  Burst (`raceEmpPulse`), EMP Grenade, Yellow Thunder and the robot's EMP Burst (`empBurst`): each has its own look.
+  Under them the cream ring / blue blink takes the look's colour (violet for the EMPs, yellow for Yellow Thunder, whose
+  squares still flash, yellow). The robot's EMP Burst: its dome was a white-hot ball at .85 opacity that hid every body
+  and number under it: static blue at .32; its screen flash is off. Classified Weapon: screen flash off. Orbital
+  Strike: column core in the beam's blue. Conduction, Crystal Resonator: the near-white hit flash in the spell's blue /
+  teal. Needed nothing: Bolt from the Blue, Chain Lightning, Static Shock, Tempest, Thunderbolt (the lightning kit: a
+  white-hot channel is lightning itself), Disintegrator, Lag Spike, Noisy Cricket, Shock Prod, Stack Overflow, Static
+  Burst (white TV static is the spell), Taser, Taser Bolt, Topaz Jolt.
+- **For the cleanup thread (shared helpers, not touched here):** `_sigLightPillar3D`'s energy shells still burn to
+  near-white whatever colour they are handed (Divine Smite, Knights of Round, Hallelujah read as white columns; a holy
+  column may be right, but it is the helper's call). `_sigStandSword3D` (Judgment, Divine Judgment) still fires its
+  summon flash, speed burst and second crescent with no option to turn them off (they draw gold through `_vcCol`).
+  `_sigCauldron3D` (Herbal Remedy) keeps a faint green screen flash for the same reason.
+- Proof: `docs/plans/vfx-cleanup/img/sweep/b6b_*.jpg`.
+- Rows of the proof sheets (three frames a spell, top to bottom): `b6b_divine_1` Chooser of the Slain, Divine Smite, Wrath
+  of the Watchers, Exorcism, Knights of Round, Excalibur Strike; `b6b_divine_2` Crusade (before the last fix), Merkaba,
+  Prism Burst, Fallen Grace, Judgment, Divine Judgment; `b6b_divine_3` Star Decree, Revive, Purify, Glitter Bomb,
+  Excommunication, Ratio; `b6b_heal_emp` Crusade (mid fix), Absolution, Sanctuary, Hallelujah, Heal, Immortal Cycle, the
+  robot's EMP Burst with the old white dome; `b6b_lightning` EMP Burst (engineer, old dome), EMP Grenade, Yellow Thunder,
+  Classified Weapon, Orbital Strike, Conduction, Crystal Resonator; `b6b_crusade_emp_after` Crusade and both EMP Bursts
+  after the dome fix. The engineer's EMP Burst draws the same dome as the robot's (both changed with the one edit).
+- NOT seen on a frame: Chooser of the Slain's hit, Star Decree's landing and Revive's hit (the runner cast them by the
+  direct path and its frames missed the beat); Crusade's arms after their last dimming (gain .55, opacity .32: the one
+  frame caught was after the cross had faded); the guest's seat; anything with `EW_NO_VFX_CLEANUP` on.
