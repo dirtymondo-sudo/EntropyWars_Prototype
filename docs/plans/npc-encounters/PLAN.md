@@ -1,9 +1,13 @@
-# NPC ENCOUNTERS: the plan and the guide (rev 1, 2026-11-17)
+# NPC ENCOUNTERS: the plan and the guide (rev 2, 2026-11-17)
 
 mondo uploaded an NPC encounter concept (v0.3, made with another AI that did not know the game; kept word for word in
 `concept-v0.3.md` beside this file). This file fits that concept to Entropy Wars as it stands on main today: the roster,
-the zones, and what is already built. **Nothing here is built by this file. Every new rule, number and behaviour below is a
-PROPOSAL until mondo says yes** (owner-rules.md: never invent game rules or characters).
+the zones, and what is already built. Nothing here is built by this file.
+
+**This is a NEW encounter system, and it is meant to replace the old encounter rules** (mondo, 11-17: "we are making a brand
+new encounter system. The rules are going to change"). Where the concept differs from how the game works today, the concept
+is the target and the old rule is what gets changed; such parts are marked **REPLACES**. Details the concept left open
+(numbers, which race does what, the words NPCs say) are still **PROPOSALS** for mondo to set; the questions are in section 8.
 
 How to read the marks:
 
@@ -12,8 +16,8 @@ How to read the marks:
 | **BUILT** | In the game on main today. The code is named so a thread can check it. |
 | **PARTLY** | Some of it exists; the gap is spelled out. |
 | **NEW** | Nothing exists yet. |
-| **PROPOSAL** | A rule or number nobody has approved. Needs mondo's yes before it is built. |
-| **CONFLICT** | The concept says one thing, one of mondo's standing rules says another. His rule wins until he changes it. |
+| **REPLACES** | The new system changes a rule the game has today. The step that builds it also removes or rewrites the old rule and its notes. |
+| **PROPOSAL** | A detail the concept left open (a number, a race's behaviour, a line). Needs mondo's yes before it is built. |
 
 Model picks: **Fable** = `claude-fable-5-2`, **Opus** = `claude-opus-5-5`. The rule used in section 6: Fable for the wide
 passes (design, reading the whole roster, writing proposals and mock-ups, audits, the final review); Opus for the steps that
@@ -29,31 +33,32 @@ NPC; the fight happening where you stand; NPCs escaping a fight by breaking line
 NPCs acting at the round boundary, never in real time during turns; NPCs calming down but remembering. The concept's own
 closing line is the right rule: few presets, few universal reactions, clear limits, lasting results.
 
-**What it did not know (corrected in this plan):**
+**What it did not know (fitted in this plan; the old rules named here are the ones the new system REPLACES):**
 
-1. **One strike already starts a fight.** In a wild room, a left click with the door gun holstered swings the walker's basic
-   attack; on the swing's strike frame the fight starts at once (three-renderer.js `_hqStrikeClick` → `_hqEncounterAim` →
-   data.js `hqEncounterLaunch`). There is no "attack that only provokes" today. The three-strike ladder is a change to a
-   built rule, so it is a PROPOSAL (question Q1).
-2. **Encounters are never random, by mondo's rule** (seamless-field-encounter.md, 09-15: "Never random"). NPCs do not start
-   fights. His one exception, approved 11-16: rare spontaneous events (a mugging, a drive-by) that start a fight, "like once
-   per hour of playing" (npc-system.md, round 2). So the concept's "Aggressor attacks on sight" is a CONFLICT unless he
-   widens the exception (Q2).
-3. **No factions** (owner-rules.md §2). The concept's "faction" relationship is dropped. A Guard or Protector protects a
-   PLACE (its work building, its district) or a named RACE, never a faction.
+1. **Today one strike starts a fight (REPLACES).** In a wild room, a left click with the door gun holstered swings the
+   walker's basic attack; on the swing's strike frame the fight starts at once (three-renderer.js `_hqStrikeClick` →
+   `_hqEncounterAim` → data.js `hqEncounterLaunch`). The new system puts the temper's ladder (Flee → Talk → Fight, three
+   strikes at most) in front of that launch.
+2. **Today only the player starts fights (REPLACES).** The 09-15 rule "never random" (seamless-field-encounter.md) and the
+   one exception of 11-16 (rare muggings and drive-bys, npc-system.md round 2) give way to the concept's rule: Brutes attack
+   when they see you, Territorials after a warning, Opportunists when you look weak. The muggings become one case of this.
+   Pacing still matters (his 11-16 words: "enough to feel alive, never annoying"), so how often is a number to set (Q2).
+3. **No factions** (owner-rules.md §2) is a standing rule outside encounters, so the concept's "faction" relationship is
+   left out: a Guard or Protector protects a PLACE (its work building, its district) or a named RACE. If mondo wants
+   factions back, that is Q19.
 4. **No followers, units named after their race** (owner-rules.md §2). "Bandit joins the party" cannot mean a follower in
    the walk; the party is the party sheet. And there is no Merchant, Bandit or Bartender race: the plan uses the real roster
    (section 3).
 5. **Allies cannot be struck at all.** `hqEncounterCharOk` refuses story cast, agents, the clone and the online shift, and
    DOOR HQ is a safe hub (story characters only, never a wild room). So the concept's "ally attack rules" are already
    decided: you cannot attack them. Kept as is.
-6. **Recruiting already has a mechanic: the One-Way Door capture** (CAPTURE_PLAN.md, battle.js "THE ONE-WAY DOOR",
-   `hqCaptureEnlist`, ONE OF EACH + the planned holding tank). A "join my party" offer would be a second way in; that is
-   his call (Q6).
-7. **There is no shop in the zones.** Buying is the DOOR HQ Dispensary + the bag, and the bag does not restock
-   (story-party-progression.md "NO RESTOCK"). A "merchant discount" needs a shop first (Q7).
-8. **Units do not learn spells from people.** A unit's spells come from its race kit and the circuit (equip from the pool,
-   RACE_FAMILIES). "A wizard teaches a spell" is a new rule (Q8).
+6. **Recruiting today is the One-Way Door capture** (CAPTURE_PLAN.md, battle.js "THE ONE-WAY DOOR", `hqCaptureEnlist`,
+   ONE OF EACH + the planned holding tank). The concept's "join the party" offer is a second way in, through the same
+   enlist (party, else roster, else the holding tank). How the two sit together is Q6.
+7. **There are no shops in the zones** (buying is the DOOR HQ Dispensary + the bag, which does not restock). The concept's
+   merchant needs one: step 6c adds zone shops (a Merchant temper on races that sell, e.g. a Chef at a restaurant). Q7.
+8. **Units do not learn spells from people today** (a unit's spells are its race kit + the circuit, RACE_FAMILIES). The
+   concept's "teach a spell" adds that: the teacher's kit becomes a source for the circuit. Q8.
 9. **The NPC spawn system already exists and is being built** (npc-system.md, claims row "Disaster City NPCs: the spawn
    system", held by the second account): set levels per district and tier, variants, caps that refill, zodiac, the boss
    sheet, spontaneous events. This plan sits ON TOP of it and must not rebuild any of it (section 7).
@@ -85,7 +90,7 @@ closing line is the right rule: few presets, few universal reactions, clear limi
 | The round boundary | **BUILT** | battle.js `state.round`, `processEndOfRoundStatuses`, `processEndOfRoundZonesAndSeeds`, `processEndOfRoundRegen`, `showEndOfRoundOverview` | The concept's "reuse the end-of-round phase" has a real place to hook in. |
 | Other walkers during a fight | **CHECK** | step 0 confirms it | My reading: the fight builds the room's field and the walkers are not part of it, so nobody watches. Step 0 must check this in code before step 7 is planned. |
 | Awareness (an NPC notices you) | **NEW** | | Walkers do not look at you, turn, step aside or react. |
-| NPC-started fights | **NEW** (and a CONFLICT, see 1.2) | | Only the approved spontaneous events (npc-system.md delivery 7, not built). |
+| NPC-started fights | **NEW** (REPLACES "never random", see 1.2) | | The approved muggings / drive-bys (npc-system.md delivery 7, not built) fold into this. |
 | Offers in a fight (talk mid-fight) | **NEW** | | |
 | Witnesses, spectators, joining a fight | **NEW** | | |
 | NPC-to-NPC trouble | **NEW** | | |
@@ -94,11 +99,11 @@ closing line is the right rule: few presets, few universal reactions, clear limi
 
 ## 3. The presets, fitted to the roster
 
-The concept's eight presets become one small field per race, the **temper**. Same names where they fit; Merchant and
-Typical enemy are folded in (there are no shops in zones, and "enemy" is not a kind of person in a world with no
-factions). Every race-to-temper pick below is a PROPOSAL and an example, not the full list: step 1 tags all 157 races.
+The concept's eight presets become one small field per race, the **temper**. Same names where they fit; "Typical enemy"
+is folded into Opportunist and Brute (in a world with no factions, "enemy" is a temper, not a side). Merchant comes in with
+the zone shops (step 6c). Every race-to-temper pick below is a PROPOSAL and an example, not the full list: step 1 tags all 157 races.
 
-| Temper | Normal life | When struck (if Q1 = the ladder) | Examples from the roster (PROPOSAL) |
+| Temper | Normal life | When struck | Examples from the roster (PROPOSAL) |
 |---|---|---|---|
 | **Civilian** | Its day or its loop; steps out of your way | Flee → Talk → Fight | Hippie, Professor, Librarian, Chef, Delivery Boy, Mime, Bunny Girl, Influencer, Banker, Skater, the city's ordinary people |
 | **Guard** | Patrols or stands at its post; watches you | Fight (a warning line first when you are only trespassing) | Police Officer, Sheriff, Time Cop, Lifeguard, Crystal Guardian, Knight |
@@ -106,6 +111,7 @@ factions). Every race-to-temper pick below is a PROPOSAL and an example, not the
 | **Protector** | Lives normally; steps in when its place or its people are hit | Fight on stepping in | Superhero (male + female), Sidekick, Firefighter, Eagleman, Angel |
 | **Opportunist** | Sizes you up; may approach when you look weak (low HP party) | Talk → Fight; may run when losing | Gangster, Goblin, Pirate, Florida Man, Politician, Televangelist, Tech CEO |
 | **Brute** (the concept's Aggressor) | Moves at you when it sees you | Fight at once | Zombie, Shadow Entity, Werewolf, Wendigo, Ghoul, Flesheater, Skinwalker |
+| **Merchant** (with step 6c) | Sells at its counter or stall | Talk → Fight | Chef at a restaurant, Banker, Pirate at a stall (PROPOSAL) |
 | **Coward** (the concept's Pacifist) | Avoids you | Flee → Talk → Fight (always the full three, never more) | Rabbit, Gnome, Fairy, Unicorn |
 
 Rules that stay with every temper:
@@ -130,19 +136,24 @@ sight reuses `_hqLosClear`. It runs only on the drawn bodies (8 near you, 4 on a
 timelines that have no body. **Hostility is the temper, not a stored number.** Confidence stays computed (party HP vs
 its own level from `hqSpawnLevel`), never stored: the concept's open question 7 is answered "computed".
 
-### 4.2 The strike ladder (PROPOSAL, Q1)
-If mondo wants it: strike 1 makes a Civilian run (slower than you, along the nav, back to its home or work door);
+### 4.2 The strike ladder (REPLACES the one-strike fight)
+Strike 1 makes a Civilian run (slower than you, along the nav, back to its home or work door);
 strike 2 makes it stop and Talk (the panel opens, walkers freeze as today; choices "Back off" / "Fight"); strike 3 starts
 the fight exactly as today. A Guard or Brute fights on strike 1 (today's behaviour, unchanged). The count lives on the
 walking body only and is kept until the fight starts or the NPC is gone from the room; it does not reset on an apology.
-If he says no: today's one-strike rule stays for everyone, and only the Talk-first choice (E before you swing) is added.
+E before you swing also works: Talk first, with "Fight" among the choices. The first quest's fight is a quest fight
+(`QUEST_FIGHTS`) and keeps its own start.
 
-### 4.3 Who starts a fight on its own (CONFLICT, Q2)
-Today: nobody but you. Approved: the spontaneous events (a mugging, a drive-by, about once an hour of play, npc-system.md
-delivery 7). The concept wants Brutes and Territorials to start fights too. Options for mondo: (a) keep "never random",
-only the events; (b) a Territorial may start a fight only after its warning, when you step onto its marked squares;
-(c) Brutes too, in wild zones only, never in the city. My recommendation: (b), because the warning makes it a choice
-you made.
+### 4.3 Who starts a fight on its own (REPLACES "never random")
+- **Brute:** sees you (line of sight, a range per temper), walks at you, and the fight starts when it reaches you. You can
+  outrun it or break its sight, so a fight is still avoidable.
+- **Territorial:** warns once when you step onto its ground (its marked squares), fights if you stay or come closer.
+- **Opportunist:** approaches when your party looks weak (low HP, a lone walker) and Talks first (a mugging is this).
+- **Guard / Protector:** only when it sees you strike someone, or its place or person is hit (section 4.6).
+- **Never:** in DOOR HQ, during a cutscene or a quest scene, or right after a fight (a short grace time, PROPOSAL).
+- **How often** (Q2): his 11-16 pacing word for muggings was about once an hour of play; Brutes in wild zones will be
+  more often by nature. A per-room `calm` knob (how many NPC-started fights per walk at most) keeps it from getting
+  annoying.
 
 ### 4.4 Talk in a fight and the offers (PARTLY / PROPOSAL)
 A losing NPC may offer something on its own turn (it spends that turn, so the turn order never pauses: the concept's
@@ -151,10 +162,10 @@ click). What an offer may be, fitted to systems that exist:
 
 | Concept's offer | In this game | State |
 |---|---|---|
-| Bandit joins the party | Today that is the One-Way Door capture. An offer would skip the capture | his call (Q6) |
-| Merchant discount | No shop in the zones; the Dispensary is in DOOR HQ | needs a shop first (Q7) |
-| Wizard teaches a spell | Spells come from the race kit + the circuit | a new rule (Q8) |
-| Bartender reveals information | A quest clue or a marked place on the map; the quest system can hold it | fits, but no quest uses it yet (Q9) |
+| Bandit joins the party | Gangster (or any Opportunist) joins through `hqCaptureEnlist`, the same way a capture lands | NEW; how it sits next to capture: Q6 |
+| Merchant discount | Its shop's prices drop for you, kept on the save | NEW, after the zone shops (step 6c); Q7 |
+| Wizard teaches a spell | Wizard, Magician, Shaman, Necromancer ... teach one spell of their kit; it joins the circuit pool | NEW; Q8 |
+| Bartender reveals information | No Bartender race; any Civilian / Opportunist tells a clue or marks a place on the map through the quest system | NEW; Q9 |
 | (new) Spare me | The fight ends, the NPC flees and is "beaten" for the cleared ledger, no XP or half XP | PROPOSAL (Q10) |
 | (new) Pay you off | Spoils into the bag (the bag and spoils exist) | PROPOSAL (Q10) |
 
@@ -218,11 +229,12 @@ then merge + `node sync-zip.js --upload` (RULE #1). No tests. Story mode only.
 | 1a | **The temper sheet, design**: tag all 157 races with a temper + roles, and per zone say which tempers live where (indoor few, outdoor many) | NEW | **Fable** | A creative, wide pass over the whole roster and the zone lists; output is a table for mondo to mark | step 0 |
 | 1b | **The temper sheet, data**: data.js `HQ_NPC_TEMPERS` (rows by race, overrides by room / resident id) + `hqNpcTemper(ch)`; nothing reads it yet | NEW | **Opus** | Exact edits in data.js (a stray brace takes the game down); small but must be right | mondo's marks on 1a |
 | 2 | **Awareness on the walk**: drawn bodies look at you, step aside, Guards / Territorials say their line | NEW | **Opus** | three-renderer.js tick code, the frame-rate budget, a browser proof | 1b |
-| 3 | **The strike ladder** (only if Q1 = yes): flee walk, the Talk panel with two choices, the third strike starts today's fight; the day's memory per id | NEW | **Opus** | Changes the built strike path (`_hqStrikeClick`, `_hqEncounterAim`, map.js `_hqEncounterFire`); must not break the first quest or the capture | Q1, 1b |
-| 4 | **Territorial warnings and NPC-started fights** (per Q2's answer) | NEW | **Opus** | Hooks into the encounter launch and the walk; a proof picture | Q2, step 2 |
+| 3 | **The strike ladder**: flee walk, the Talk panel (E first works too), the third strike starts the fight; the day's memory per id; the old one-strike notes in seamless-field-encounter.md get a REPLACED line | REPLACES | **Opus** | Changes the built strike path (`_hqStrikeClick`, `_hqEncounterAim`, map.js `_hqEncounterFire`); must not break the first quest or the capture | 1b |
+| 4 | **NPC-started fights**: Brutes chase on sight, Territorial warnings + ground, Opportunist approach (the mugging), the grace time and the per-room `calm` cap; the 09-15 "never random" rule is retired in its notes | REPLACES | **Opus** | Hooks into the encounter launch, the walk tick and line of sight; a proof picture | Q2's numbers, step 2 |
 | 5 | **NPC escape from a fight**: the AI choice + the escaped state + no flee loop | NEW | **Opus** | ai.js + battle.js escape code, the commit record; the AI must still play well (never reset the trained weights) | 1b |
 | 6a | **Offers, design**: which tempers offer what, the panel's look (mock-up), the lines as drafts for mondo | NEW | **Fable** | A UI mock-up and words; mondo's rule is plan + mock-up first, then wait | Q6-Q11 |
-| 6b | **Offers, build**: the offer on the NPC's turn, the panel, the results that exist (spare, pay off, a quest clue; join / shop / teach only if he said yes) | NEW | **Opus** | battle.js turn code, hud.js panel, the commit; the back keys | 6a OK'd |
+| 6b | **Offers, build**: the offer on the NPC's turn, the panel, the results: spare, pay off, join (through `hqCaptureEnlist`), teach a spell, a clue | NEW | **Opus** | battle.js turn code, hud.js panel, the commit, the circuit pool; the back keys | 6a OK'd |
+| 6c | **Zone shops + the discount**: a Merchant temper sells from the shop list at its counter; a won discount is kept on the save | NEW | **Fable** for which races sell what, **Opus** for the code | The stock list is a design pass; the shop panel and save are code | 6a OK'd, Q7 |
 | 7a | **Onlookers, design**: where they stand, what they do at round end, the camera with a crowd, mock-up pictures | NEW | **Fable** | Camera and screen design needs a plan + mock-up and his explicit OK | step 0 finding on walkers in a fight |
 | 7b | **Onlookers, build**: onlooker bodies on free squares, round-end update, step-aside, dispersal after the fight | NEW | **Opus** | The heaviest code step: the field, the round end, rigs, frame rate | 7a OK'd |
 | 8 | **Joining a fight**: a Guard / Protector joins at the next round, the joiner cap, area hits on onlookers | NEW | **Opus** | Turn order and unit creation mid-fight in battle.js | 7b, Q12, Q13, spawn delivery 3 |
@@ -230,7 +242,7 @@ then merge + `node sync-zip.js --upload` (RULE #1). No tests. Story mode only.
 | 10 | **Every zone**: give each plot-built zone's `encounters` rows their tempers and counts; DOOR HQ stays out | NEW | **Fable** for the zone-by-zone table, **Opus** for the data edits | Reading 15 zones is wide work; the edits are exact data.js / zone tool rows | 1b, that zone's One World move merged |
 | 11 | **The final review**: read the built game against this plan and mondo's rules, list what is missing or wrong | NEW | **Fable** | An audit and a written report, no code | all steps he wanted |
 
-Order if mondo says yes to everything: 0 → 1a → 1b → 2 → 3 → 5 → 4 → 6a → 6b → 7a → 7b → 8 → 9 → 10 → 11. Steps 2, 3
+Order: 0 → 1a → 1b → 2 → 3 → 5 → 4 → 6a → 6b → 6c → 7a → 7b → 8 → 9 → 10 → 11. Steps 2, 3
 and 5 are the core; 6 to 9 can wait for the PvP demo to ship (his current goal).
 
 ---
@@ -239,7 +251,7 @@ and 5 are the core; 6 to 9 can wait for the PvP demo to ship (his current goal).
 
 - Rebuild levels, variants, tiers, caps, refill, zodiac, the holding tank, the boss sheet or the spontaneous-events
   timer: those are npc-system.md's deliveries and stay there.
-- Give story characters a temper, or let anyone strike them. DOOR HQ stays a safe hub.
+- Give story characters a temper, or let anyone strike them. DOOR HQ stays a safe hub. (Ally rules are not needed: allies cannot be struck.)
 - Add followers, factions, puzzles, new characters or new names. Generate art or sound effects. Every body is an
   existing race model on R2.
 - Touch online play.
@@ -250,22 +262,24 @@ and 5 are the core; 6 to 9 can wait for the PvP demo to ship (his current goal).
 
 Numbered so a reply can say "Q3 yes". Each has my recommendation in brackets; none of them is decided.
 
-1. **The strike ladder.** Today one swing starts a fight with anyone. Should reluctant people (Civilians) run on the first
-   swing and talk on the second, so only the third starts a fight? [Yes, for Civilians and Cowards only.]
-2. **NPCs starting fights.** Today only you start fights (plus the approved muggings / drive-bys). Should a Territorial
-   start one after its warning when you step onto its ground? Brutes too? [Territorials after a warning, yes; Brutes no.]
+1. **The ladder's numbers.** Three strikes for Civilians and Cowards, two for Talk-first tempers, one for Guards and
+   Brutes, as the concept says. Any race you want handled differently? [As the concept says.]
+2. **How often NPCs may start fights.** A Brute that sees you chases; a Territorial warns first; an Opportunist mugs you
+   when you look weak. At most how many NPC-started fights per room visit, and how long a calm time after a fight?
+   [At most 1 per room visit in the city, 2 in wild zones; 60 s calm after any fight.]
 3. **Tempers per race.** Step 1a will hand you a table of all 157 races. OK to tag them all, with overrides per room?
    [Yes.]
 4. **Awareness lines.** May Guards and Territorials say a short line when you come close ("Keep moving.")? Who writes the
    lines? [Yes; Claude drafts, you approve.]
-5. **Talk before a fight.** Should E on a native offer "Fight" next to its line, so a fight can start without a swing?
-   [Yes, small and clear.]
-6. **Recruiting by talking.** A losing NPC offers to join you. That would be a second way in next to the One-Way Door
-   capture. Allow it, or capture only? [Capture only: it keeps the door items worth having.]
-7. **Shops in the zones.** The concept's merchant discount needs a shop outside DOOR HQ. Do you want zone shops at all?
-   [Not now.]
-8. **Learning a spell from a person.** A new rule: a defeated or spared NPC teaches one spell of its kit. Wanted?
-   [Not now.]
+5. **Talk before a fight.** E on a native opens Talk with "Fight" among the choices (section 4.2). Should every temper
+   allow that, or should Brutes skip Talk? [Brutes skip it.]
+6. **Joining next to capturing.** A losing NPC offers to join you; the One-Way Door also recruits. Should joining be
+   rarer (only Opportunists, only when they are nearly down), or as common as the concept says? [Only Opportunists and
+   only when nearly down, so the door items stay worth having.]
+7. **Zone shops.** Which races sell, and do they sell the same items as the Dispensary or their own? [Chefs sell
+   food that heals, other Merchants sell the Dispensary's list; Claude drafts the table.]
+8. **Learning a spell from a person.** One spell of the teacher's kit, once per teacher, joins your circuit pool. Any
+   unit may then equip it, or only units of the same race family? [Same race family only, so races stay distinct.]
 9. **Information as an offer.** A spared NPC tells you a clue or marks a place on the map. Wanted, and for which quests?
    [Yes, once a second quest exists.]
 10. **Spare me / pay you off.** A losing NPC begs; you accept and the fight ends. What do you get: nothing, half XP,
@@ -281,6 +295,8 @@ Numbered so a reply can say "Q3 yes". Each has my recommendation in brackets; no
 17. **Which zone first after Disaster City?** [The Woods: its routes are built and it is outdoors.]
 18. **Priority against the PvP demo.** Build the core (steps 0 to 5) now, or after the demo? [After the demo's
     threads are done; steps 0 and 1a can run now since they are docs only.]
+19. **Factions.** Your standing rule is "no factions", so Guards protect a place or a race, not a side. Keep it that way
+    in the new system? [Keep it.]
 
 ---
 
