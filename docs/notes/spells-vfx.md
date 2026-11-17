@@ -4717,8 +4717,6 @@ are getters, so the old look comes back live with the switch.
   the fire circle under Combust / Inferno, the hazard ring under Venom Burst / Miasma): coloured, drawn for those spells.
   Solar Flare's screen flash (the flare is the spell), Nuclear Option's white-out, Morning Star's white star, Web Snare's
   white silk, Shuttle Launch's white exhaust, Hot Pan's steam, the bites' teeth, the flask's glass.
-- **Seen, not mine:** Cluster Rockets lands under five or six overlapping tan rings: they come from the explosion kit
-  (`_crExplosion` through `_crBoom`), one a rocket, not from the recipe ring this part recoloured. For the cleanup thread.
 - Frames (looked at): `docs/plans/vfx-cleanup/img/sweep/B8b_part1_1.jpg`, `_2.jpg` (the hit frame of each of the 28).
   Cannibalize's frame shows no cast (no corpse on the harness board): not seen.
 
@@ -4831,3 +4829,22 @@ All 83 were traced in the code and shot once; 26 changed, 57 needed nothing. Eve
   bites + Claw Sweep, the tan rings (Quake, Fee Fi Fo Fum), Brutal Slam, Stone Drop, Indomitable Will, Cave-In.
 - No line spell and no single-spell lead of the brief is on this list (they are B8b's and B6-B10's).
 - Frames: docs/plans/vfx-cleanup/img/sweep/B8a_part1.jpg. Online: every piece rides `fire()` / the stage beats; nothing on `state`.
+
+
+## THE VFX SWEEP, B8b, part 2 (2026-11-17, three-vfx-effects.js): the last two + the list is done (82 of 82)
+The 54 spells the code trace left alone were shot too, to catch what a trace misses. It caught one thing:
+- **Chain Reaction**, **Cluster Rockets** (+ Mortar Salvo, the same recipe): every square's blast drew its own pale shock
+  ring (the explosion kit's, `_crExplosion`), nine or more rings in a lattice over the area. The kit took an opt-in knob,
+  `noRing: true`; the centre blast keeps its ring, a square's own blast goes up without one. Place Bomb, Missile Barrage
+  and the other per-square blasts still draw theirs: for their own sweeps (pass `noRing`, or the recipe's `_crBoom.noRing`).
+- **Checked, nothing to change (53):** Bomb Arrow, Cannonball, Combust, Decapitation Strike, Devil's Coal, Dynamite, Fire
+  Arrow, Fire for Effect, Flambe, Holy Holy Holy, Hot Pan, Inferno, Live Coal, Lump of Coal, Ruby Spark, Solar Flare,
+  Throne of Ashes, Trick or Treat, Usurp, Birch Switch, Bumper Crop, Crop Circle, Entangling Roots, Make Love Not War,
+  Overgrowth, Pollinate, Raptorial Strike, Red Weed, Sacrifice, Thornlash, Trunk Throw, Up the Apple Tree, A Thousand
+  Stings, Black Smoke, Cadaver Claws, Corrosive Splash, Engulf, Goo Shot, Kiss of Decay, Miasma, Pepper Spray, Poison
+  Dart, Poison Seed, Rot, Slime Slash, Spore Cloud, Swamp Gas, Tendril Strike, Tendril Whip, The Swarm, Venom Burst,
+  Venom Spit, Vivisection. (The batch is 82 = 29 changed + 53; Cluster Rockets was already one of part 1's 28.)
+- **Not seen on a frame:** Sacrifice (two-ally pick), Pollinate (no pollen), Cannibalize (no corpse): the harness cannot
+  cast them. Fire for Effect, Extinction Event and Nuclear Option land a round or two later: only the cast was shot.
+- None of the 14 old-laser line spells and none of the single-spell leads of the brief are on this list.
+- Frames: `docs/plans/vfx-cleanup/img/sweep/B8b_part2_changed.jpg` (the two, after), `B8b_part2_nochange_1..4.jpg`.
