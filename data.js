@@ -2947,7 +2947,7 @@ const RACE_PROFILES = {
         types: ['human']
     },
     'boltzmann brain': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
-        label: 'Boltzmann Brain',
+        label: 'Floating Brain',   // mondo 11-17: renamed from Boltzmann Brain (the id stays 'boltzmann brain')
         types: ['alien', 'anomaly']
     },
     'wendigo': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
@@ -10528,6 +10528,22 @@ const RACE_ABILITIES = {
         { id: 'nrSponsored', name: 'Sponsored', tier: 3, families: ['socialmedia'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'human',
           type: 'buff', kind: 'buff', range: 3, statStageBoost: { atk: 2, int: 2 },
           desc: 'A brand deal for a friend. Raises a Single Ally\'s ATK and INT by 2 stages. Cooldown: 2 rounds.' },
+        /* THE INFLUENCER POLISH (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx and make sure that any
+           new mechanics are tested out and work as intended"). FILTER is the doc's own idea ("an ally looks like another unit to
+           the enemy"), built as a face swap: the ally and the nearest ally of another race trade looks for 2 rounds, drawn so on
+           the other side's screen only (model, sprite, portrait, name: sprites.js ewDrawnUnit + battle.js unitDisplayName). The
+           CPU is fooled the same way: ai.js getTargetPriority prices a filtered enemy as the unit it looks like. Refused with no
+           ally of another race to swap with. battle.js _influencerFilter. */
+        { id: 'nrFilter', name: 'Filter', tier: 2, families: ['socialmedia'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 4, noDamage: true, filterSwap: true,
+          statusEffects: [{ id: 'filtered', duration: 2 }],
+          desc: 'Face swap. A Single Ally within 4 and the nearest ally of another race trade looks for 2 rounds: to the enemy each one looks, and is named, like the other. Cooldown: 3 rounds.' },
+        /* RATIO (her capstone): the pile-on. A magic hit; on a Viral target the tag spreads to every teammate within 2 of it for
+           1 round after the hit lands (the hit itself is shared first). The trade: it only pays when the enemy stands close. */
+        { id: 'nrRatio', name: 'Ratio', tier: 4, families: ['socialmedia'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 150, range: 5,
+          viralSpread: { radius: 2, duration: 1 },
+          desc: 'Ratio\'d. Deals MEDIUM magic damage to a Single Enemy within 5. If it is Viral, every teammate within 2 of it goes Viral too, for 1 round. Cooldown: 3 rounds.' },
     ],
     'referee': [
         /* THE CARDS: the one race that sends a unit off the field. Card gives Yellow Card for 3 rounds; a card on a unit that already has one is a RED CARD: it is sent off (cannot move, act or be targeted) until its next turn starts (the `exited` status, no door; battle.js _refereeCard + _doorExitReturn's sent-off branch). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
@@ -10559,14 +10575,24 @@ const RACE_ABILITIES = {
           desc: 'FLORIDA MAN REFUSES TO EVACUATE. Deals MEDIUM physical damage to All Enemies in a 3x3 area within 3 and leaves them Wet. Only on the rounds it is the headline.' },
     ],
     'boltzmann brain': [
-        /* THE FLUCTUATION: the one race that never walks. It has no move; at every round end it appears on a random free square within 4 (seeded by the round and its id, so host and guest agree; battle.js _boltzmannFluctuate from processEndOfRoundStatuses). It has no skeleton: the model floats. (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        /* THE FLUCTUATION: the one race that never walks. It has no move; at every round end it appears on a random free square 2-4 away (a safe one when it can: no lava, deep water or enemy zone; Observer Effect keeps it where it is) (seeded by the round and its id, so host and guest agree; battle.js _boltzmannFluctuate from processEndOfRoundStatuses). It has no skeleton: the model floats. (2026-11-17 THE NEW RACES 2, mondo's picks.) */
         { id: 'nrThoughtSpike', name: 'Thought Spike', tier: 1, families: ['fluctuation'], cost: 25, apCost: 1, spellType: 'alien',
           element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 120, range: 5,
           desc: 'A single stray thought, very sharp. Deals MEDIUM magic damage to a Single Enemy within 5.' },
-        { id: 'nrExistentialDread', name: 'Existential Dread', tier: 2, families: ['fluctuation'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+        /* THE BOLTZMANN BRAIN PASS (2026-11-17): cooldown 2 -> 3, the T2 mass-fear median (Death Rattle, Treeline Scream, KNEEL):
+           a 3x3 that cannot act every other round was the strongest lock of its tier. */
+        { id: 'nrExistentialDread', name: 'Existential Dread', tier: 2, families: ['fluctuation'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'alien',
           element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, range: 4, aoeRadius: 1,
           statusEffects: [{ id: 'feared', duration: 1 }],
-          desc: 'What if none of this is real? Fears All Enemies in a 3x3 area within 4 for 1 round. Cooldown: 2 rounds.' },
+          desc: 'What if none of this is real? Fears All Enemies in a 3x3 area within 4 for 1 round. Cooldown: 3 rounds.' },
+        /* THE OBSERVER EFFECT (the Boltzmann Brain pass, 2026-11-17, mondo: "unique fun strategic playstyle"): the one say the
+           player has over the fluctuation. A brain that is watched stays where it is: no jump at this round end (battle.js
+           _boltzmannFluctuate reads `observed`). It does not count as the turn's spell (`observe`, spellSkipsCastCap), so a
+           good perch can be held AND shot from the same turn; cooldown 2 = every other round end at most. */
+        { id: 'nrObserverEffect', name: 'Observer Effect', tier: 1, families: ['fluctuation'], cost: 25, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          element: 'psychic', type: 'buff', kind: 'buff', range: 0, observe: true,
+          statusEffects: [{ id: 'observed', duration: 1 }],
+          desc: 'It looks at itself, and the wave collapses. It stays on this square at the end of this round instead of fluctuating. Does not count as the spell for the turn. Cooldown: 2 rounds.' },
         { id: 'nrVacuumCollapse', name: 'Vacuum Collapse', tier: 3, families: ['fluctuation'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'alien',
           element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 175, range: 6,
           desc: 'The universe was never stable. Deals HEAVY magic damage to a Single Enemy within 6. Cooldown: 2 rounds.' },
@@ -14346,6 +14372,15 @@ const STATUS_DEFS = {
         kind: 'debuff', category: 'status', stack: 'replace',
         iconSrc: createStatusIconDataUri('📱', '#2a1424', '#ffe0f4', '#d04a9a')
     },
+    /* filtered (2026-11-17, the Influencer's Filter): wears another ally's look on the enemy's screen. The look is
+       unit._filterLookId (an id, RULE #2) + _filterRace / _filterGender (a copy, so it holds if that ally falls). */
+    filtered: {
+        icon: '🤳', glyph: '🤳', short: 'FLT', label: 'Filtered',
+        colorText: 'wearing a filter',
+        kind: 'buff', category: 'buff', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🤳', '#2a1424', '#ffe0f4', '#d04a9a'),
+        onRemove(unit) { delete unit._filterLookId; delete unit._filterRace; delete unit._filterGender; }
+    },
     yellowCard: {
         icon: '🟨', glyph: '🟨', short: 'YEL', label: 'Yellow Card',
         colorText: 'booked',
@@ -14367,6 +14402,14 @@ const STATUS_DEFS = {
             if (typeof addLog === 'function') addLog(`🦗 ${typeof unitDisplayName === 'function' ? unitDisplayName(unit) : 'The brood'} grows louder under the ground (Brood ${unit._brood}).`);
             if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, `🦗 BROOD ${unit._brood}`, 'buff', { durationMs: 1000 });
         }
+    },
+    /* 👁 OBSERVED (the Boltzmann Brain pass, 2026-11-17): Observer Effect; the brain does not fluctuate at this round end
+       (battle.js _boltzmannFluctuate). Both sides see it, so both know where it will be. */
+    observed: {
+        icon: '👁', glyph: '👁', short: 'OBS', label: 'Observed',
+        colorText: 'observed — it stays where it is',
+        kind: 'buff', category: 'buff', stack: 'max',
+        iconSrc: createStatusIconDataUri('👁', '#18142a', '#e8e0ff', '#8a7aff')
     },
     bodiless: {
         icon: '🧠', glyph: '🧠', short: 'BOD', label: 'Bodiless',
@@ -14600,6 +14643,7 @@ const STATUS_LIBRARY_DESCS = {
     riding:     'On the Delivery Boy\'s back: when he finishes his next walk, it gets off on the free square beside him.',
     tithe:      'Collection Plate: 15% of every heal that lands within 3 of the Televangelist (not his own) goes in his plate. Miracle spends it.',
     viral:      'Going viral: every hit it takes also hits each of its teammates within 2 for 30% of the damage.',
+    filtered:   'Filtered: to the other side it looks like, and is named as, the ally it traded faces with.',
     yellowCard: 'Booked: a second card on this unit is a RED CARD. It is sent off until its next turn starts: it cannot move, act or be targeted.',
     dormant:    'Dug in: cannot move. Every round end under the ground adds a Brood stack (up to 3) that Chorus spends.',
     bodiless:   'A mind with no body: it never walks. At every round end it is somewhere else, on a random free square within 4.',
@@ -21326,7 +21370,7 @@ const RACE_TREE = {
     'delivery boy':  ['raceSprint', ['healingSeed', 'raceNimbleDodge'], ['raceVault', 'raceHitALick'], 'raceBumperCrop'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'librarian':     ['raceSacredGeometry', 'raceZigguratProtocol', 'raceOvercharge', 'raceWeighTheHeart'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'televangelist': ['raceCultTithe', ['heal1', 'racePopSpotlight'], ['raceCultKoolAid', 'protect1'], 'raceHallelujah'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
-    'influencer':    ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'influencer':    ['nrSelfieFlash', 'nrGoViral', ['nrSponsored', 'nrFilter'], 'nrRatio'],   // 2026-11-17 THE INFLUENCER POLISH: her own rungs (the borrowed popstar row left her default kit without Go Viral, her one rule)
     'referee':       ['raceBulletPass', ['racePoliceTaser', 'raceAudible'], 'racePoliceCuffs', 'raceHailMary'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'florida man':   ['raceStompOut', ['raceHitALick', 'raceSprint'], ['raceVault', 'skullCrack'], 'rampage'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'boltzmann brain':['raceEntropicBeam', ['racePsychicBarrier', 'raceGravityWell'], 'raceMindCrush', 'raceHeatDeath'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
@@ -23298,7 +23342,7 @@ const SPELL_FAMILIES = {
         glyph: '📱',
         color: '#d04a9a',
         kind: 'signature',
-        desc: 'Content is king: a flash that blinds, a tag that makes a foe go viral, and a sponsorship for a friend.',
+        desc: 'Content is king: a flash that blinds, a tag that makes a foe go viral, a sponsorship for a friend, a face-swap filter and a ratio that spreads the tag.',
         unique: 'influencer',
         identity: { who: ['Influencer', 'Content Creator', 'Brand Ambassador'], adj: ['Glossy', 'Trending', 'Filtered'], look: ['a ring light on her belt', 'sunglasses pushed up on her head', 'a designer handbag'], vibe: ['makes you go viral', 'sponsors her friends'] }
     },
@@ -23328,9 +23372,9 @@ const SPELL_FAMILIES = {
         glyph: '🧠',
         color: '#5a4ad8',
         kind: 'signature',
-        desc: 'A random thought in an empty universe: a spike of thought, a dread that spreads, and a vacuum that collapses.',
+        desc: 'A random thought in an empty universe: a spike of thought, a dread that spreads, a vacuum that collapses, and the one look that holds it still.',
         unique: 'boltzmann brain',
-        identity: { who: ['Boltzmann Brain', 'Fluctuation', 'Floating Mind'], adj: ['Spontaneous', 'Improbable', 'Staring'], look: ['a glowing floating brain', 'one huge staring eye', 'dangling nerve tendrils'], vibe: ['is somewhere else every round', 'thinks you out of existence'] }
+        identity: { who: ['Floating Brain', 'Fluctuation', 'Boltzmann Brain'], adj: ['Spontaneous', 'Improbable', 'Staring'], look: ['a glowing floating brain', 'one huge staring eye', 'dangling nerve tendrils'], vibe: ['is somewhere else every round', 'thinks you out of existence'] }
     },
     wendigo: {   // 2026-11-17 THE NEW RACES 2 — the Wendigo's own
         id: 'wendigo',
@@ -25727,6 +25771,7 @@ const RACE_SPELL_EXCLUDES = {
     barbarella: ['raceDisintegrator', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceAgentVanish'],
     'bee queen': ['raceTunnelNetwork', 'raceInfectiousBite', 'raceSplash'],
     bigfoot: ['raceNimbleDodge', 'raceVault'],
+    'boltzmann brain': ['racePhaseWalk', 'raceDimensionalFold'],   // THE BOLTZMANN BRAIN PASS 2026-11-17: both move the caster, and it never moves itself (they were dead picks, always greyed 'Bodiless')
     'black goo': ['raceFormicAcid', 'raceInfectiousBite', 'raceSymbioteArmor', 'raceWebSwing'],
     'bunny girl': ['rampage', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceBorrowedClaw', 'raceShedSkin'],
     catgirl: ['rampage', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace'],
