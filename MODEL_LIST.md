@@ -26,7 +26,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
 | Meshy AI | no | 1216 |
-| Meshy AI, reworked by Claude | no | 9 |
+| Meshy AI, reworked by Claude | no | 10 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 82 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 5 |
@@ -74,6 +74,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | cowboy (female) — creator look also baked | `Assets/characters/races/homosapien/female/gunslinger/Meshy_AI_hot_attractive_cowgir_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | crystal guardian | `Assets/characters/races/crystalguardian/Meshy_AI_crystal_guardian_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | cult leader — creator look also baked | `Assets/characters/races/cultleader/Meshy_AI_cult_leader_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| cursed tv | `Assets/characters/races/cursed_tv/male/cursed_tv.glb` | Meshy AI, reworked by Claude | Meshy AI parts (the cutscene's AV cart, a new wood-cased TV, the haunted remote) put together by Claude in code (project files cursed-tv/models/assemble.mjs): the casters split off the cart so each wheel spins, rabbit ears + power cable built in code; no bones, the rig is three-renderer.js THE CURSED TV (2026-11-17) |
 | cyborg | `Assets/characters/races/cyborg/male/Meshy_AI_cyborg_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | cyborg (female) | `Assets/characters/races/cyborg/female/Meshy_AI_hot_girl_futuristic__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | deep sea fish | `Assets/characters/races/deepseafish/Meshy_AI_alien_fish_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -2976,6 +2977,12 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | abandoned_house | `Assets/world/packs/elbolilloduro/ebd_abandonedhouse_house.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds) |
+
+### Meshy AI parts (the cutscene's AV cart, a new wood-cased TV, the haunted remote) put together by Claude in code (project files cursed-tv/models/assemble.mjs): the casters split off the cart so each wheel spins, rabbit ears + power cable built in code; no bones, the rig is three-renderer.js THE CURSED TV (2026-11-17) — Meshy AI, reworked by Claude (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| cursed_tv_set | `Assets/characters/races/cursed_tv/male/cursed_tv.glb` | Meshy AI, reworked by Claude | Meshy AI parts (the cutscene's AV cart, a new wood-cased TV, the haunted remote) put together by Claude in code (project files cursed-tv/models/assemble.mjs): the casters split off the cart so each wheel spins, rabbit ears + power cable built in code; no bones, the rig is three-renderer.js THE CURSED TV (2026-11-17) |
 
 ### Meshy-style eagle export (mondo's upload), rig + 5 clips by Claude (bake-eagle.mjs) — Meshy AI, reworked by Claude (1)
 
