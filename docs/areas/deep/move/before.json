@@ -1,0 +1,645 @@
+{
+ "rooms": [
+  "site_prebuilt_atlantis_deep"
+ ],
+ "plots": {
+  "The Agora": {
+   "props": {
+    "crystal_cluster": 4,
+    "angel_statue": 2,
+    "ocean_dolphin": 2,
+    "lion_statue": 2,
+    "giant_clam": 4,
+    "ocean_coral": 2,
+    "ocean_coral_5": 2,
+    "ocean_manta": 1,
+    "ocean_bioluminescent_jelly": 4,
+    "ocean_moon_jelly_pulsing": 2,
+    "ocean_clownfish": 1,
+    "ocean_dory": 1,
+    "ocean_fish_2": 1,
+    "marble_bust": 4,
+    "ocean_starfish": 2,
+    "ocean_conch": 1,
+    "ocean_sand_dollar_2": 1,
+    "ocean_fish": 1,
+    "ocean_fish_3": 1,
+    "ocean_lobster": 1
+   },
+   "features": {
+    "scatter:ocean_coral_3": 1,
+    "scatter:ocean_seaweed_2": 3,
+    "scatter:ocean_coral_6": 2,
+    "scatter:ocean_seaweed": 2,
+    "scatter:anemone": 1,
+    "scatter:kelp": 1,
+    "scatter:giant_clam": 1,
+    "arch#deep:stoaW:look": 1,
+    "arch#deep:stoaE:look": 1,
+    "arch#deep:columns:look": 1,
+    "arch#deep:nexus:look": 1,
+    "arch#deep:drums:look": 1
+   },
+   "doors": {
+    "temple": 1
+   },
+   "natives": {
+    "atlantean": 2,
+    "mermaid": 2,
+    "starfish": 1
+   }
+  },
+  "The Palace": {
+   "props": {
+    "temple_dome": 1,
+    "royal_throne": 1,
+    "crystal_cluster": 2,
+    "sea_chest": 1,
+    "fish_school": 1,
+    "ocean_brown_fish": 1,
+    "ocean_turtle": 1
+   },
+   "features": {
+    "wall:marble_light": 3,
+    "arch#deep:palace:look": 1,
+    "arch#deep:palacestep:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "atlantean": 1
+   }
+  },
+  "The Statues": {
+   "props": {
+    "angel_statue": 5,
+    "fish_school": 1,
+    "hero_statue_crossed": 1,
+    "greek_amphora": 1,
+    "ocean_eel": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "starfish": 1,
+    "mermaid": 1
+   }
+  },
+  "The Obelisks": {
+   "props": {
+    "obelisk": 2,
+    "meshy_tesla_coil": 2,
+    "sea_chest": 1,
+    "fish_school": 2,
+    "ocean_dolphin": 1,
+    "hero_statue_landing": 1,
+    "stone_urn": 1,
+    "ocean_stingray": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Temple of the Deep": {
+   "props": {
+    "crystal_cluster": 1,
+    "fish_school": 1,
+    "ocean_dolphin": 1,
+    "lady_justice": 1,
+    "greek_amphora": 1,
+    "stone_urn": 1,
+    "ocean_shark": 1,
+    "ocean_bioluminescent_jelly": 2,
+    "ocean_moon_jelly_pulsing": 2,
+    "ocean_box_jelly": 1
+   },
+   "features": {
+    "wall:marble_light": 1,
+    "arch#deep:temple:look": 1,
+    "arch#deep:pier0:look": 1,
+    "arch#deep:treasury:look": 1,
+    "arch#deep:exedra:look": 1,
+    "arch#deep:acroteria:look": 1
+   },
+   "doors": {
+    "drownedstair": 1
+   },
+   "natives": {
+    "atlantean": 1
+   }
+  },
+  "The Drowned Road": {
+   "props": {
+    "crystal_cluster": 1,
+    "ancient_well": 1,
+    "stone_urn": 2,
+    "fish_school": 1,
+    "ocean_crab": 1
+   },
+   "features": {
+    "wall:marble_light": 2,
+    "arch#deep:pier1:look": 1,
+    "arch#deep:shrineS:look": 1,
+    "arch#deep:shrineSW:look": 1,
+    "arch#deep:propylon:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The West Bridge": {
+   "props": {
+    "fish_school": 2,
+    "ocean_turtle": 1,
+    "greek_amphora": 3,
+    "stone_urn": 2,
+    "ocean_stingray": 1
+   },
+   "features": {
+    "wall:marble_light": 2,
+    "arch#deep:pier2:look": 1,
+    "arch#deep:house290:look": 1,
+    "arch#deep:tholosW:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The East Bridge": {
+   "props": {
+    "fish_school": 2,
+    "ocean_turtle": 1,
+    "ocean_stingray": 1,
+    "stone_urn": 2,
+    "greek_amphora": 2
+   },
+   "features": {
+    "wall:marble_light": 1,
+    "arch#deep:pier3:look": 1,
+    "arch#deep:tholosE:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "atlantean": 1
+   }
+  },
+  "The Columns": {
+   "props": {
+    "sea_chest": 1,
+    "psx_gold_bar_pcs_1": 1,
+    "ocean_tuna": 2,
+    "ocean_octopus": 1
+   },
+   "features": {
+    "wall:marble_light": 1
+   },
+   "doors": {},
+   "natives": {
+    "siren": 1
+   }
+  },
+  "The North Gate": {
+   "props": {
+    "crystal_cluster": 1,
+    "fish_school": 1,
+    "ocean_moon_jelly": 1
+   },
+   "features": {
+    "wall:marble_light": 8,
+    "arch#deep:gateN:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The South Gate": {
+   "props": {
+    "crystal_cluster": 1,
+    "greek_amphora": 1,
+    "fish_school": 1,
+    "ocean_moon_jelly": 1
+   },
+   "features": {
+    "arch#deep:gateS:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "atlantean": 1
+   }
+  },
+  "The West Gate": {
+   "props": {
+    "crystal_cluster": 1,
+    "ocean_fish": 1,
+    "ocean_box_jelly": 1
+   },
+   "features": {
+    "arch#deep:gateW:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The East Gate": {
+   "props": {
+    "crystal_cluster": 1,
+    "ocean_brown_fish": 1,
+    "ocean_box_jelly": 1
+   },
+   "features": {
+    "arch#deep:gateE:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Market": {
+   "props": {
+    "greek_amphora": 5,
+    "stone_urn": 3
+   },
+   "features": {
+    "arch#deep:market:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "atlantean": 1
+   }
+  },
+  "The Drowned Houses": {
+   "props": {
+    "greek_amphora": 2,
+    "stone_urn": 2,
+    "sea_chest": 1
+   },
+   "features": {
+    "wall:marble_light": 27
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Gardens": {
+   "props": {
+    "giant_clam": 2,
+    "decor_stone_arch": 1,
+    "fish_school": 1
+   },
+   "features": {
+    "wall:marble_light": 10,
+    "scatter:ocean_coral": 1,
+    "scatter:ocean_coral_5": 1,
+    "scatter:ocean_coral_3": 1,
+    "scatter:anemone": 1
+   },
+   "doors": {},
+   "natives": {
+    "mermaid": 1
+   }
+  },
+  "The Harbour": {
+   "props": {
+    "ship_anchor": 1,
+    "sea_chest": 2,
+    "mooring_bollard": 2,
+    "greek_amphora": 1,
+    "rowboat": 1,
+    "fish_school": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "starfish": 1
+   }
+  },
+  "The Graves": {
+   "props": {
+    "sarcophagus": 2,
+    "skull_pile": 2,
+    "angel_statue": 1,
+    "ocean_octopus": 1
+   },
+   "features": {
+    "arch#deep:stelae:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Baths": {
+   "props": {
+    "stone_urn": 1,
+    "lion_statue": 1,
+    "ocean_eel": 1
+   },
+   "features": {
+    "arch#deep:baths:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Workshops": {
+   "props": {
+    "crystal_cluster": 1,
+    "stone_urn": 1,
+    "greek_amphora": 1,
+    "fish_school": 1
+   },
+   "features": {
+    "arch#deep:shop0:look": 1,
+    "arch#deep:shop1:look": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Theatre": {
+   "props": {
+    "marble_bust": 1,
+    "fish_school": 1
+   },
+   "features": {
+    "arch#deep:theatre:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "siren": 1
+   }
+  },
+  "The Station": {
+   "props": {
+    "submarine": 1,
+    "paper_sheet": 1,
+    "gate_valve": 1,
+    "scba_rack": 1
+   },
+   "features": {
+    "rail": 2,
+    "arch#deep:station:look": 1
+   },
+   "doors": {},
+   "natives": {
+    "atlantean": 1
+   }
+  },
+  "The Wreck": {
+   "props": {
+    "ship_wreck": 1,
+    "ship_anchor": 1,
+    "ship_cannon": 2,
+    "sea_chest": 2,
+    "skull_pile": 1,
+    "ship_wheel": 1,
+    "ships_bell": 1,
+    "ocean_shark": 1,
+    "ocean_hammerhead": 1
+   },
+   "features": {},
+   "doors": {
+    "link_revenge_atlantis": 1
+   },
+   "natives": {
+    "sharkman": 1,
+    "pirate": 1
+   }
+  },
+  "The Kelp Forest": {
+   "props": {
+    "ocean_humpback": 1,
+    "ocean_fish": 1,
+    "ocean_fish_3": 1,
+    "ocean_clownfish": 1,
+    "ocean_turtle": 1
+   },
+   "features": {
+    "scatter:kelp": 1,
+    "scatter:ocean_seaweed": 1,
+    "scatter:ocean_seaweed_2": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Sea Floor": {
+   "props": {
+    "crystal_cluster": 2,
+    "fish_school": 2,
+    "ocean_stingray": 1,
+    "ocean_manta": 1,
+    "ocean_dolphin": 1,
+    "ocean_starfish": 1,
+    "ocean_conch": 1,
+    "ocean_crab": 1,
+    "ocean_lobster": 1
+   },
+   "features": {
+    "scatter:ocean_rock_3": 1,
+    "scatter:ocean_seaweed_2": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Upwelling": {
+   "props": {
+    "ocean_bioluminescent_jelly": 2,
+    "ocean_moon_jelly_pulsing": 2,
+    "ocean_box_jelly": 2,
+    "ocean_moon_jelly": 2,
+    "sea_buoy": 1,
+    "giant_clam": 1
+   },
+   "features": {},
+   "doors": {
+    "link_bermuda_abyss": 1
+   },
+   "natives": {
+    "jellyfish": 1,
+    "deep sea fish": 1
+   }
+  },
+  "The Reef Wall": {
+   "props": {
+    "ocean_clownfish": 1,
+    "ocean_octopus": 1,
+    "ocean_fish_2": 1,
+    "fish_school": 1
+   },
+   "features": {
+    "scatter:ocean_coral": 2,
+    "scatter:ocean_coral_3": 2,
+    "scatter:ocean_coral_5": 2,
+    "scatter:ocean_coral_6": 2,
+    "scatter:anemone": 2
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Dunes": {
+   "props": {
+    "ocean_dory": 1,
+    "ocean_eel": 1,
+    "ocean_crab": 2,
+    "ocean_lobster": 1,
+    "ocean_conch": 1,
+    "ocean_sand_dollar_2": 1,
+    "ocean_stingray": 1
+   },
+   "features": {
+    "scatter:ocean_coral": 2,
+    "scatter:ocean_coral_3": 2,
+    "scatter:ocean_coral_5": 2,
+    "scatter:ocean_coral_6": 2,
+    "scatter:anemone": 2,
+    "scatter:ocean_rock_4": 1
+   },
+   "doors": {},
+   "natives": {
+    "mermaid": 1
+   }
+  },
+  "The Spire": {
+   "props": {
+    "ocean_tuna": 1,
+    "ocean_shark": 1,
+    "ocean_starfish": 1
+   },
+   "features": {
+    "scatter:ocean_rock": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Drowned Circle": {
+   "props": {
+    "sarsen": 2,
+    "menhir": 6,
+    "ocean_octopus": 1,
+    "ocean_squid": 1
+   },
+   "features": {
+    "scatter:ocean_rock_2": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Vents": {
+   "props": {
+    "sea_vent": 5,
+    "ocean_anglerfish_jaws": 1,
+    "ocean_squid": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "deep sea fish": 1
+   }
+  },
+  "The Bones": {
+   "props": {
+    "dinosaur_skeleton": 1,
+    "skull_pile": 2,
+    "psx_fish_skeleton_mp_1": 1,
+    "anemone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Bottom": {
+   "props": {
+    "goo_tendril": 4,
+    "ocean_bioluminescent_jelly": 1,
+    "ocean_squid": 1,
+    "ocean_whale": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {
+    "kraken": 1
+   }
+  },
+  "The Dark": {
+   "props": {
+    "crystal_cluster": 1,
+    "ocean_anglerfish": 1,
+    "ocean_anglerfish_dim": 1,
+    "ocean_bioluminescent_jelly": 1
+   },
+   "features": {
+    "scatter:ocean_rock_7": 1
+   },
+   "doors": {},
+   "natives": {
+    "kaiju": 1
+   }
+  },
+  "The Lights": {
+   "props": {
+    "crystal_cluster": 1,
+    "ocean_anglerfish_jaws": 1,
+    "ocean_anglerfish": 1,
+    "ocean_anglerfish_dim": 1,
+    "ocean_moon_jelly_pulsing": 1
+   },
+   "features": {
+    "scatter:ocean_rock_4": 1
+   },
+   "doors": {},
+   "natives": {}
+  },
+  "The Trench": {
+   "props": {
+    "crystal_cluster": 1,
+    "ocean_bioluminescent_jelly": 1,
+    "ocean_moon_jelly_pulsing": 1,
+    "ocean_shark": 1
+   },
+   "features": {
+    "scatter:ocean_rock_3": 1
+   },
+   "doors": {},
+   "natives": {
+    "mermaid": 1
+   }
+  },
+  "The Far Wall": {
+   "props": {
+    "ocean_bioluminescent_jelly": 1,
+    "ocean_moon_jelly_pulsing": 1,
+    "ocean_eel": 1
+   },
+   "features": {
+    "scatter:ocean_rock_5": 1
+   },
+   "doors": {},
+   "natives": {
+    "deep sea fish": 1
+   }
+  },
+  "The Slope": {
+   "props": {
+    "ocean_moon_jelly_pulsing": 1,
+    "ocean_eel": 1,
+    "anemone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Shelf": {
+   "props": {
+    "sea_chest": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  },
+  "The Edge": {
+   "props": {
+    "anemone": 1
+   },
+   "features": {},
+   "doors": {},
+   "natives": {}
+  }
+ },
+ "lines": 4,
+ "totals": {
+  "props": 266,
+  "features": 136,
+  "doors": 4,
+  "natives": 27,
+  "lines": 4,
+  "plots": 40
+ }
+}

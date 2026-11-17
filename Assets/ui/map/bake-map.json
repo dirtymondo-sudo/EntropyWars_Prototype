@@ -141,13 +141,13 @@
  },
  "site_prebuilt_atlantis_deep": {
   "id": "site_prebuilt_atlantis_deep",
-  "nx": 96,
+  "nx": 60,
   "nz": 60,
-  "h0": -0.18,
+  "h0": 12.05,
   "hs": 0.25,
-  "v": "a3db37d2a7",
-  "bytes": 2643,
-  "s": "0.7"
+  "v": "9645c47a20",
+  "bytes": 1306,
+  "s": "0.4"
  },
  "site_prebuilt_moon_plots": {
   "id": "site_prebuilt_moon_plots",
@@ -508,5 +508,25 @@
   "v": "63f3360a33",
   "bytes": 142,
   "s": "1.5"
+ },
+ "site_prebuilt_atlantis_ow_trench": {
+  "id": "site_prebuilt_atlantis_ow_trench",
+  "nx": 24,
+  "nz": 60,
+  "h0": -0.2,
+  "hs": 0.25,
+  "v": "a927d51932",
+  "bytes": 813,
+  "s": "0.2"
+ },
+ "site_prebuilt_atlantis_ow_floor": {
+  "id": "site_prebuilt_atlantis_ow_floor",
+  "nx": 36,
+  "nz": 36,
+  "h0": 12.05,
+  "hs": 0.25,
+  "v": "c94d332d7d",
+  "bytes": 720,
+  "s": "0.3"
  }
 }

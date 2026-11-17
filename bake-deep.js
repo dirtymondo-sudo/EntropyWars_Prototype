@@ -156,42 +156,142 @@ const IN = { n: 18, half: 31.5, F: [], ARCH: [], props: [], npc: [], doors: [], 
   IN.doors.push({ id: 'drownedstair', wall: 'w', z: 0, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE DROWNED STAIR · DOWN INTO THE SEA', action: { room: ROOM, at: 'drownedstair' }, desc: s.desc || '', draft: true });
   Object.assign(count, { insideFeatures: IN.F.length + IN.ARCH.length, insideProps: IN.props.length }); }
 
+/* ══ THE ONE WORLD MOVE (2026-11-17, mondo's approved map v13; docs/plans/one-world/BUILD_PLAN.md phase 3 wave B, the Deep row: "Atlantis under the
+   Triangle, the Sea Floor off the Harbour, the Trench towards the rim, joined by the sub"). The home 8 x 5 room above is no room of its own any more:
+   its plots stand at their v13 places (docs/plans/one-world/plots.json `under.districts` deepA deepS deepT) with everything on them (ow-move.js), no
+   district file edited. THREE rooms (the room-splitting rule: what does not touch is apart; nothing of the Deep touches across districts on v13):
+     ATLANTIS   the old id `site_prebuilt_atlantis_deep` (part `deep`, so the vault door, the drowned stair, the bay and the heal zone keep their room):
+                C + R, the ring city whole, 5 x 5 plots at 35..39 x 1..5 (plots.json's sheet rect is 5 x 4 = 20 cells for 21 plots: the ring needs its
+                fifth row). Its four corner cells are no plots (the Sea Floor's corners left): the plan's ring and sea floor stay on them, nothing else.
+     THE SEA FLOOR  `site_prebuilt_atlantis_ow_floor` (part `ow_floor`): S, 3 x 3 at 18..20 x 5..7 (plots.json lays them loose: this tool's order,
+                the old west column kept touching end to end, the Wreck on the Dutchman's Hold's plot 19,5, the Station under the Kelp Forest as it
+                was). The city's ring that crossed the four corner plots is sea floor here.
+     THE TRENCH `site_prebuilt_atlantis_ow_trench` (part `ow_trench`): T, 2 x 5 at 41..42 x 12..16, as it lay.
+   THE SUB (plots.json `under.rides`, no plots): a door pair at the Station's bathyscaphe <> the Harbour, and the Harbour <> the Shelf.
+   Notes: docs/notes/areas-complexes.md "ONE WORLD, THE DEEP RE-LAID". ══ */
+const ROOM_FLOOR = 'site_prebuilt_atlantis_ow_floor', ROOM_TRENCH = 'site_prebuilt_atlantis_ow_trench';
+const OWPLOTS = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plots.json'), 'utf8'));
+const owD = id => (OWPLOTS.under.districts || []).find(d => d.id === id) || (() => { throw new Error('plots.json: no ' + id); })();
+const RING = 'wtcmB';
+const SEA_PLACE = { 'P00-00': [0, 0], 'P00-01': [1, 0], 'P00-02': [2, 0], 'P00-03': [2, 1], 'P00-04': [2, 2], 'P01-00': [0, 1], 'P05-00': [1, 1], 'P05-04': [0, 2], 'P01-04': [1, 2] };
+const ROOMS = [
+    { room: ROOM, part: 'deep', ow: owD('deepA'), label: 'THE DEEP · ATLANTIS', sub: 'THE CITADEL · THE RINGS · THE TEMPLE OF THE DEEP · 21 PLOTS',
+      parti: 'A ring city under the sea: an island with the Agora and the Temple of the Deep, two canals, two rings and a wall with four gates, sea floor round it.',
+      place: p => (p.d === 'C' || p.d === 'R') ? { wx: owD('deepA').x + p.x - 1, wy: owD('deepA').y + p.y } : null },
+    { room: ROOM_FLOOR, part: 'ow_floor', ow: owD('deepS'), label: 'THE DEEP · THE SEA FLOOR', sub: 'THE KELP FOREST · THE WRECK · THE UPWELLING · THE STATION',
+      parti: 'The open floor off the Harbour under the Triangle: the kelp forest, the Dutchman\'s wreck, the Upwelling\'s jelly bloom, the reef, the Station and its bathyscaphe.',
+      place: p => p.d === 'S' ? { wx: owD('deepS').x + SEA_PLACE[p.id][0], wy: owD('deepS').y + SEA_PLACE[p.id][1] } : null },
+    { room: ROOM_TRENCH, part: 'ow_trench', ow: owD('deepT'), label: 'THE DEEP · THE TRENCH', sub: 'THE SHELF · THE VENTS · THE BOTTOM · TOWARDS THE RIM',
+      parti: 'The floor falls away towards the rim in two drops: the Shelf, the smokers, the Bottom in the dark, the bones.',
+      place: p => { if (p.d !== 'T') return null; const q = owD('deepT').plots.find(o => o.was === p.id); if (!q) throw new Error('plots.json deepT: no ' + p.id); return { wx: q.x, wy: q.y }; } },
+];
+/* the plan's own squares, before any district's plan hook (the ring for Atlantis' empty corners) */
+const cell0 = PLAN.cells.map(r => r.split('')), lv0 = PLAN.levels.map(r => r.split('').map(ch => B36.indexOf(ch)));
+const MPLOTS = PLAN.plots.map(p => ({ id: p.id, x: p.x, y: p.y, name: p.name, district: p.d, level: p.level }));
+const MOVE = require('./ow-move.js')({ cols: GX, rows: GZ, cell, fill: 's', plots: MPLOTS, features: F.concat(ARCH), props, npc, doors });
+const MOVEL = require('./ow-move.js')({ cols: GX, rows: GZ, cell: lv, fill: PLAN.seaFloorLevel || 8, plots: MPLOTS, features: [], props: [], npc: [], doors: [] });
+/* a free square near a plot's local square (home squares), for the sub's doors */
+function freeNear(id, lx, ly) { const p = plot[id];
+    for (let r = 0; r < 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const X = lx + dx, Y = ly + dy; if (X < 1 || Y < 1 || X > N - 2 || Y > N - 2) continue; const sx = p.x * N + X, sy = p.y * N + Y;
+        if (!taken.has(sx + ':' + sy) && 'sdkmt'.includes(cell[sy][sx])) { taken.add(sx + ':' + sy); return [sx, sy]; } }
+    throw new Error('no free square near ' + id); }
+const SUB = [
+    { id: 'deep_sub_floor', a: { id: 'P01-00', at: freeNear('P01-00', 9, 5) }, b: { id: 'P05-03', at: freeNear('P05-03', 3, 6) },
+      subA: 'THE SUB · OVER THE FLOOR TO ATLANTIS', subB: 'THE SUB · OUT TO THE SEA FLOOR AND THE STATION' },
+    { id: 'deep_sub_trench', a: { id: 'P05-03', at: freeNear('P05-03', 3, 3) }, b: { id: 'P06-00', at: freeNear('P06-00', 6, 4) },
+      subA: 'THE SUB · DOWN TO THE TRENCH', subB: 'THE SUB · BACK UP TO ATLANTIS' },
+];
+const roomOfPlot = id => ROOMS.find(R => R.M.ofHome[id]);
+ROOMS.forEach(R => {
+    const list = []; PLAN.plots.forEach(p => { const q = R.place(p); if (q) list.push(Object.assign({ id: p.id }, q)); });
+    if (list.length !== R.ow.count) throw new Error(R.room + ': ' + list.length + ' plots, plots.json says ' + R.ow.count);
+    R.M = MOVE.room(list); R.ML = MOVEL.room(list);
+});
+/* Atlantis' four corners: the plan's ring where it crossed them, sea floor round it (no district's pieces: they went with their plots) */
+{ const R = ROOMS[0], M = R.M; for (let r = 0; r < M.rows; r++) for (let c = 0; c < M.cols; c++) { if (M.at[c + ',' + r]) continue;
+    const hx = c + 1, hy = r;   // the home plot that stood there (the city's frame is moved whole, one column east)
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const ch = cell0[hy * N + y][hx * N + x], ring = RING.includes(ch);
+        M.cell[r * N + y][c * N + x] = ring ? ch : 's'; R.ML.cell[r * N + y][c * N + x] = ring ? lv0[hy * N + y][hx * N + x] : (PLAN.seaFloorLevel || 8); } } }
+/* the Sea Floor's four corner plots: the city's ring that crossed them is sea floor at the plot's own level */
+{ const R = ROOMS[1], M = R.M; ['P01-00', 'P05-00', 'P01-04', 'P05-04'].forEach(id => { const e = M.ofHome[id];
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const sy = e.row * N + y, sx = e.col * N + x; if (RING.includes(M.cell[sy][sx])) { M.cell[sy][sx] = 's'; R.ML.cell[sy][sx] = plot[id].level; } } }); }
+/* the heights + the paint of a room's squares (the home room's rule above) */
+function shape(cl, lvl, w, h) {
+    const ib = (x, y) => x >= 0 && y >= 0 && x < w && y < h, hcR = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!PLAN.legend[cl[y][x]]) throw new Error('a square nobody knows: ' + cl[y][x]); hcR[y * w + x] = lvl[y][x] * LEVEL; }
+    const cor = (qx, qy, g) => { let s = 0, n = 0; for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const X = qx + dx, Y = qy + dy; if (ib(X, Y) && group(cl[Y][X]) === g) { s += hcR[Y * w + X]; n++; } } return s / n; };
+    const cH = (x, y, qx, qy) => { const g = group(cl[y][x]); return g ? cor(x + qx, y + qy, g) : hcR[y * w + x]; };
+    const sl = Buffer.alloc(w * h * 8), pa = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const o = (y * w + x) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => sl.writeInt16LE(Math.round(cH(x, y, q[0], q[1]) * 100), o + k * 2)); pa[y * w + x] = PAINT[cl[y][x]]; }
+    return { slope: sl, paint: pa, hc: hcR };
+}
+const homeSq = (sx, sy) => ({ x: cx(sx), z: cz(sy) });
+const toR = (R, p) => { const q = R.M.toRoom(p.x, p.z); if (!q) throw new Error(R.room + ': a point off its plots ' + p.x + ',' + p.z); return { x: q[0], z: q[1] }; };
+/* the ways out, by their plots */
+const WAYR = {};
+[['upwelling', UPW], ['wreck', HATCH], ['spawn', SPAWN]].forEach(([k, w]) => { const hp = MOVE.homePlot(w.x, w.z), R = roomOfPlot(hp.id); WAYR[k] = Object.assign({ R }, toR(R, w), { face: w.face }); });
+/* the sub's doors */
+const EXTRA = {}; ROOMS.forEach(R => { EXTRA[R.room] = []; });
+SUB.forEach(S => { const RA = roomOfPlot(S.a.id), RB = roomOfPlot(S.b.id); if (RA === RB) throw new Error(S.id + ': both ends in one room');
+    const pa = toR(RA, homeSq(S.a.at[0], S.a.at[1])), pb = toR(RB, homeSq(S.b.at[0], S.b.at[1]));
+    EXTRA[RA.room].push({ id: S.id, wall: 'free', x: pa.x, z: pa.z, face: 0, leaf: 'leaf_bulkhead', wide: true, label: RB.label, sub: S.subA, action: { room: RB.room, at: S.id }, desc: 'The sub runs between the stations of the Deep. Nobody drives it. It goes anyway.' });
+    EXTRA[RB.room].push({ id: S.id, wall: 'free', x: pb.x, z: pb.z, face: 0, leaf: 'leaf_bulkhead', wide: true, label: RA.label, sub: S.subB, action: { room: RA.room, at: S.id }, desc: 'The sub runs between the stations of the Deep. Nobody drives it. It goes anyway.' }); });
+/* the air by district: a zone moves with the plot under its middle (C's zones stand inside the city, which moved whole) */
+const airOf = R => AIR.map(z => { const mx = (z.x0 + z.x1) / 2, mz = (z.z0 + z.z1) / 2, e = R.M.mapOf(mx, mz); if (!e) return null;
+    return Object.assign({}, z, { x0: r2(z.x0 + e.dx), z0: r2(z.z0 + e.dz), x1: r2(z.x1 + e.dx), z1: r2(z.z1 + e.dz) }); }).filter(Boolean);
+
 /* ── the rooms ── */
-const L = [];
-L.push("        /* DEEP40-BEGIN — THE DEEP ON PLOTS (2026-11-16): written by `node bake-deep.js` from docs/areas/deep/layout.json + docs/areas/deep/districts/*.js. Never hand-edit between the markers; edit the tool, the layout or a district file and rerun. */");
-L.push("        " + ROOM + ": {");
-L.push("            label: 'THE DEEP',");
-L.push("            sub: 'ATLANTIS · THE SEA FLOOR · THE TRENCH · 40 PLOTS',");
-L.push("            kind: 'box', site: 'prebuilt_atlantis', part: 'deep',");
-L.push("            shell: hqAbyssShell({ w: " + (2 * HX) + ", d: " + (2 * HZ) + ", h: " + (SEA_Y + 2) + ", wallH: " + (SEA_Y + 2) + ", plate: { x: " + SPAWN.x + ", z: " + SPAWN.z + ", y: " + r2(hSq(42, 27) + 6) + " }," + ATMOS + " }),");
-L.push("            parti: 'A ring city under the sea: an island with the Agora and the Temple of the Deep, two canals, two rings and a wall with four gates; the sea floor round it; east of it the floor falls into the Trench.',");
-L.push("            typology: 'grid',");
-L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + GX + ", nx: " + GX + ", nz: " + GZ + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.d, p.level])) + " },");
-L.push("            terrain: {");
-L.push("                res: 1.75, floor: 'desert', cliff: '" + RK + "', path: '" + MB + "',");
-L.push("                base: 0, noise: { amp: 0.25, scale: 9 }, crag: false,");
-L.push("                sea: { y: " + SEA_Y + ", key: 'deep_water', under: true },   // DROWNED: the surface over the roof, the walker swims everywhere");
-L.push("                outer: { m: 60 },");
-L.push("                /* THE HEIGHTS ARE THE MAP: the rings, the canals, the wall, the trench's drops are all this grid */");
-L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + slope.toString('base64') + "' } },");
-L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + cx(0) + ", z0: " + cz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
-L.push("                features: [");
-F.concat(ARCH).forEach(f => L.push("                    " + J(f) + ","));
-L.push("                ],");
-L.push("            },");
-L.push("            doors: [");
-doors.forEach(d => L.push("                " + J(d) + ","));
-L.push("            ],");
-L.push("            counters: [],");
-L.push("            props: [");
-for (let i = 0; i < props.length; i += 4) L.push("                " + props.slice(i, i + 4).map(J).join(", ") + ",");
-L.push("            ],");
-L.push("            agents: [],");
-L.push("            npcSpots: " + J(npc) + ",");
-L.push("            onlineSpots: [],");
-L.push("            lines: " + J(O_ABYSS.l) + ",");
-L.push("            spawn: " + J(SPAWN) + ",");
-L.push("        },");
+const L = [], TOTAL = { props: 0, natives: 0 }, WORLDROWS = {};
+L.push("        /* DEEP40-BEGIN — THE DEEP ON PLOTS (2026-11-16) + THE ONE WORLD MOVE (2026-11-17: three rooms at their One World places, under the sea, joined by the sub): written by `node bake-deep.js` from docs/areas/deep/layout.json + docs/areas/deep/districts/*.js + docs/plans/one-world/plots.json. Never hand-edit between the markers; edit the tool, the layout or a district file and rerun. */");
+ROOMS.forEach((R, ri) => {
+    const M = R.M, S = shape(M.cell, R.ML.cell, M.W, M.D), hX = M.HX, hZ = M.HZ, gxR = c => r2(-hX + c * C), gzR = c => r2(-hZ + c * C), cxR = c => r2(-hX + (c + 0.5) * C), czR = c => r2(-hZ + (c + 0.5) * C);
+    const roomDoors = M.doors.map(d => { const o = Object.assign({}, d); delete o.plot; delete o.side; return o; }).concat(EXTRA[R.room]);
+    const sp = ri === 0 ? WAYR.spawn : EXTRA[R.room][0], SP = { x: sp.x, z: sp.z, face: ri === 0 ? SPAWN.face : 0 };
+    const spSq = [Math.floor((SP.x + hX) / C), Math.floor((SP.z + hZ) / C)], plateY = r2(S.hc[spSq[1] * M.W + spSq[0]] + 6);
+    M.props.forEach(p => { if (Math.abs(p.x) > hX || Math.abs(p.z) > hZ) throw new Error(R.room + ': ' + p.key + ' stands outside the room'); });
+    const air = airOf(R), atm = air.length ? " atmos: " + J({ kind: 'none', zones: air }) + "," : "";
+    TOTAL.props += M.props.length; TOTAL.natives += M.npc.length;
+    WORLDROWS[R.room] = [M.wx, M.wy];
+    console.log(R.room + ' ' + JSON.stringify({ world: [M.wx, M.wy], box: [M.cols, M.rows], mask: M.mask.join('/'), features: M.features.length, props: M.props.length, natives: M.npc.length, doors: roomDoors.length }));
+    if (M.strays.length) console.log('  STRAYS (a piece across two plots that no longer stand the same way):\n    ' + M.strays.join('\n    '));
+    L.push("        " + R.room + ": {");
+    L.push("            label: '" + R.label + "',");
+    L.push("            sub: '" + R.sub + "',");
+    L.push("            kind: 'box', site: 'prebuilt_atlantis', part: '" + R.part + "',");
+    L.push("            /* THE ONE WORLD: where this room stands on the world's plot grid (data.js hqOwIndex): under the sea */");
+    L.push("            world: { hub: 'deep', layer: 'under', wx: " + M.wx + ", wy: " + M.wy + " },");
+    L.push("            shell: hqAbyssShell({ w: " + (2 * hX) + ", d: " + (2 * hZ) + ", h: " + (SEA_Y + 2) + ", wallH: " + (SEA_Y + 2) + ", plate: { x: " + SP.x + ", z: " + SP.z + ", y: " + plateY + " }," + atm + " }),");
+    L.push("            parti: '" + R.parti.replace(/'/g, "\\'") + "',");
+    L.push("            typology: 'grid',");
+    L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + M.cols + ", nx: " + M.cols + ", nz: " + M.rows + (M.mask.some(s => s.includes('.')) ? ", mask: " + J(M.mask) : "") + ", names: " + J(M.order.map(e => [M.pid(e), plot[e.id].name, plot[e.id].d, plot[e.id].level])) + " },");
+    L.push("            terrain: {");
+    L.push("                res: 1.75, floor: 'desert', cliff: '" + RK + "', path: '" + MB + "',");
+    L.push("                base: 0, noise: { amp: 0.25, scale: 9 }, crag: false,");
+    L.push("                sea: { y: " + SEA_Y + ", key: 'deep_water', under: true },   // DROWNED: the surface over the roof, the walker swims everywhere");
+    L.push("                outer: { m: 60 },");
+    L.push("                /* THE HEIGHTS ARE THE MAP: the rings, the canals, the wall, the trench's drops are all this grid */");
+    L.push("                slope: { cells: { res: " + C + ", x0: " + gxR(0) + ", z0: " + gzR(0) + ", nx: " + M.W + ", nz: " + M.D + ", d: '" + S.slope.toString('base64') + "' } },");
+    L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + cxR(0) + ", z0: " + czR(0) + ", nx: " + M.W + ", nz: " + M.D + ", d: '" + Buffer.from(S.paint).toString('base64') + "' },");
+    L.push("                features: [");
+    M.features.forEach(f => L.push("                    " + J(f) + ","));
+    L.push("                ],");
+    L.push("            },");
+    L.push("            doors: [");
+    roomDoors.forEach(d => L.push("                " + J(d) + ","));
+    L.push("            ],");
+    L.push("            counters: [],");
+    L.push("            props: [");
+    for (let i = 0; i < M.props.length; i += 4) L.push("                " + M.props.slice(i, i + 4).map(J).join(", ") + ",");
+    L.push("            ],");
+    L.push("            agents: [],");
+    L.push("            npcSpots: " + J(M.npc) + ",");
+    L.push("            onlineSpots: [],");
+    L.push("            lines: " + J(O_ABYSS.l) + ",");
+    L.push("            spawn: " + J(SP) + ",");
+    L.push("        },");
+});
+if (TOTAL.props !== props.length || TOTAL.natives !== npc.length) throw new Error('the move lost pieces: props ' + props.length + ' -> ' + TOTAL.props + ', natives ' + npc.length + ' -> ' + TOTAL.natives);
 L.push("        " + INSIDE + ": {");
 L.push("            label: 'ATLANTIS · THE TEMPLE OF THE DEEP',");
 L.push("            sub: 'THE AIR POCKET · THE DAIS · THE ORACLE',");
@@ -227,13 +327,15 @@ L.push("        /* DEEP40-END */");
 const block = L.join('\n') + '\n';
 console.log(JSON.stringify(count));
 /* the rows in data.js that name a place in these rooms (written by hand there): the tool refuses to bake when one has drifted */
+const SPIRE = toR(ROOMS[1], { x: 70, z: -91 });   // the tape's find spot on top of the Spire (home x 70, z -91)
 const WANT = [
-    ["b: { site: 'prebuilt_atlantis', part: 'deep', wall: 'free', x: " + HATCH.x + ", z: " + HATCH.z + ", face: " + HATCH.face + ",", 'link revenge_atlantis (its b end)'],
-    ["b: { site: 'prebuilt_atlantis', part: 'deep', wall: 'free', x: " + UPW.x + ", z: " + UPW.z + ", face: " + UPW.face + ", way: 'upwelling',", 'link bermuda_abyss (its b end)'],
+    ["b: { site: 'prebuilt_atlantis', part: '" + WAYR.wreck.R.part + "', wall: 'free', x: " + WAYR.wreck.x + ", z: " + WAYR.wreck.z + ", face: " + HATCH.face + ",", 'link revenge_atlantis (its b end)'],
+    ["b: { site: 'prebuilt_atlantis', part: '" + WAYR.upwelling.R.part + "', wall: 'free', x: " + WAYR.upwelling.x + ", z: " + WAYR.upwelling.z + ", face: " + UPW.face + ", way: 'upwelling',", 'link bermuda_abyss (its b end)'],
     ["prebuilt_atlantis: { room: '" + INSIDE + "', door: { id: 'bay', wall: 'e', z: 0 } }", 'siteRooms.entry.prebuilt_atlantis'],
-    ["deep: { label: 'THE DEEP', room: '" + ROOM + "',", 'hubs.deep'],
-    ["deep: { room: '" + ROOM + "', x: " + r2(SPAWN.x + 7) + ", z: " + SPAWN.z + ", face: 270 }", 'HQ_HEAL_ZONE.rooms.deep'],
+    ["deep: { label: 'THE DEEP', room: '" + ROOM + "', rooms: ['" + ROOM + "', '" + ROOM_FLOOR + "', '" + ROOM_TRENCH + "', '" + INSIDE + "'],", 'hubs.deep'],
+    ["deep: { room: '" + ROOM + "', x: " + r2(WAYR.spawn.x + 7) + ", z: " + WAYR.spawn.z + ", face: 270 }", 'HQ_HEAL_ZONE.rooms.deep'],
     ["site_prebuilt_atlantis_abyss: '" + ROOM + "', site_prebuilt_atlantis_temple: '" + INSIDE + "'", 'DOOR_HQ.retired'],
+    [ROOM_FLOOR + ": { tape: { x: " + SPIRE.x + ", z: " + SPIRE.z + " } }", 'the find spot on the Spire'],
 ];
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const flat = src.replace(/ +/g, ' '), missing = WANT.filter(w => flat.indexOf(w[0]) < 0);
