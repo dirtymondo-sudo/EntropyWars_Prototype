@@ -86,6 +86,8 @@ then tough shit. The player experience should be the same"): no weak-PC cut may 
   downhill and fills holes. Reactions R1-R16 (`champions-combat.md`).
 - **Forced movement** is one shared system (push, pull, knockback, fling, slide, ice, bombs, tornado). Airborne units skip
   traps and bombs. The preview draws the whole chain. A push with no picked direction goes straight away from the caster.
+- **Every lost fight costs money** (11-17: "every loss should lose you money"). Story fights; the amount is a number still to set
+  (`docs/plans/npc-encounters/PLAN.md` section 0, round 2). Not built yet.
 - No self-combo. Own summons are never hit by own spells. Jump is 1-3. Never write "armour".
 - Celestial arrives round 4, then every 5. The Nexus bar is 8. Preview tiles are green / red. Auto tactics turns off
   with one click. Day / night runs on a clock.

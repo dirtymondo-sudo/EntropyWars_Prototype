@@ -1,4 +1,4 @@
-# NPC ENCOUNTERS: the plan and the guide (rev 5, 2026-11-17, mondo's answers to the review are in: section 0)
+# NPC ENCOUNTERS: the plan and the guide (rev 6, 2026-11-17, mondo's answers to the review, rounds 1 and 2, are in: section 0)
 
 mondo uploaded an NPC encounter concept (v0.3, made with another AI that did not know the game; kept word for word in
 `concept-v0.3.md` beside this file). This file fits that concept to Entropy Wars as it stands on main today: the roster,
@@ -31,6 +31,22 @@ The review is `REVIEW.md` beside this file. His answers, in his order:
 | 10 | The door strike | It should be in the plan. | In 4.2. PROPOSAL: a standing door that hits an NPC counts as one strike of the ladder (section 8). |
 | 11 | Escape and the ladder | "Need to track health outside of battle then, already do for the player and party so it should be easy to implement for NPCs." | **NPC health carries on the walk** (new step 5a). An NPC that escaped a fight keeps its wounds. 4.5. |
 | 12 | Cops and civilians | Cops should protect civilians. A cop not protecting one certain unit is fine if it is a special case between those two. | A Guard defends the Civilians of its district (4.6, 3.2). Exceptions are rows (this race does not defend that race); none is written until he names one. |
+
+### Round 2 of his answers (2026-11-17, rev 6). Nothing from the review is open any more
+
+| # | Topic | His answer | What it changes |
+|---|---|---|---|
+| 1 | THE ARREST | Free: "what happens if they offer to join but you have no door in your bag? i dont want to worry about that so just make it free". | The arrest uses up no item. The bought One-Way Doors stay the way to take a unit that has NOT given up. Step 6. |
+| 2 | An NPC's wounds | They heal at the next game day "or after they sleep". | A resident with a day is whole again after its Sleep block; a walker with no day at the next game day. Step 5a. |
+| 3 | The level gap | 8 is fine. | An NPC 8 or more levels under the party never starts a fight. A number in data. Step 4. |
+| 4 | Losing | "yes. every loss should lose you money". | **A rule for every lost fight, not only a mugging: a loss costs gold.** Replaces "a loss costs nothing" (`HQ_PARTY_RULES.lossRestore` still heals the party). The amount is a PROPOSAL for step 1a to put to him (a first idea: 8 gold × the strongest enemy's level, the pay-off table turned round, never more than he holds). Built in step 4; `owner-rules.md` §4 has the rule. |
+| 5 | The door strike | Yes. | A standing door that hits an NPC is one strike of the ladder. Step 3. |
+| 6 | Joiners | "no cap". | No cap on the total and no limit per round end: everyone aware and willing joins at the next round end (rev 4's rule stands). The review's "2 per round" is dropped. |
+| 7 | Opportunists | Okay. | An Opportunist never joins a fight; it comes for the winner afterwards if the winner is weak. Replaces its row in the onlooker table of 4.6. |
+| 8 | Spell preview | Yes. | The area preview marks an onlooker it would hit, before the cast. Step 7a / 7b. |
+| 9 | The pay-off items | Yes. | One certain roll on the spoils table; a second certain roll only from level 20 up. Replaces "2 rolls" in 4.4. |
+| 10 | The Superhero as city-wide backup | Leave it for the wanted system. | Nothing now. |
+| 11 | Step 1a | Starts in a fresh thread once these answers are in this file. | Step 1a is free to start. |
 
 How to read the marks:
 
@@ -352,9 +368,8 @@ Q19 the old factions are gone; natural groups instead (3.2), to flesh out. Q20 o
 idea is right; step 1a drafts the full list. Q22 the onlooker table as written, with a roll. Q23 no calm timer (3.3). Q24
 Claude's pay-off table (4.4).
 
-**Still open after the review (rev 5):** (a) THE ARREST: does it use up a door from the bag, or is it free once the unit gave up?
-(b) the door strike counts as one strike of the ladder? (c) an NPC's wounds heal at the next game day? (d) the level gap number (8?).
-(e) does a lost mugging take the gold too?
+**Still open (rev 6):** nothing from the review. Step 1a brings the next ones: the temper and group table for Bayside, the marks' mock-up,
+and how much gold a lost fight costs.
 
 **Rev 4's line:** nothing from this round. The next decisions come with steps 1a (the temper and group table for Disaster
 City, the fewest lines), 6a (the offer panel mock-up) and 7a (the onlooker and camera mock-ups).

@@ -1,7 +1,6 @@
 # NPC ENCOUNTERS: the review of rev 4 + step 0, the check-up (2026-11-17, Fable)
 
-**ANSWERED 2026-11-17: mondo's answers are in `PLAN.md` section 0 (rev 5), and they win over this file's proposals.** Not taken up by him
-yet and still only proposals: the join pace (2.9), Opportunists never joining (2.10), the area preview mark (2.11), the pay-off rolls (2.14).
+**ANSWERED 2026-11-17: mondo's answers are in `PLAN.md` section 0 (rev 5), and they win over this file's proposals.** Every question of this file is answered there (two rounds).
 
 mondo asked for a critique of `PLAN.md` (rev 4) from the player's side before anything is built, and for step 0.
 This file is both. **Nothing here is built. Nothing here changes a decision he made:** where I think one of his
