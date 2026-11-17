@@ -4168,3 +4168,35 @@ water, ice). The block is "THE OWN LOOKS, L1" at the end of three-vfx-effects.js
 - **Tentacle Lash** (kraken): a dark pool opens beside the victim, the tentacle model comes up, hooks over the body and rides the pull.
 - **Watering Can**: a fine shower falls in a cone on the one square, the soil goes dark and wet, two small rings. (A big tan ring that is
   NOT this look still draws on the cast, before and after this PR; it is not in three-vfx-effects.js' stage burst: for the cleanup thread.)
+## THE OWN LOOKS, L4, part 1: the blessings and the heals (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
+
+Thread L4 of the own-looks job (`docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md`, list `own-look/L4.txt`). mondo: "any spells that
+dont have a look of their own need one".
+
+- **The wiring (`_l4Wire(id, intent, fn)`):** the signature is a `_PZ_SIGS` entry on a new def `l4<Id>_<intent>` with
+  `pzOwn`, put in `SPELL_MAP[id]` on the intent the battle already fires. The shared recipe the spell borrowed (the white
+  pillar, the pale flash layers, the ring) no longer draws, and `_vcOwn(id)` is true by itself, so its generic stage burst stops.
+- **Nothing on the floor** for a heal or a buff (no rune, no circle).
+- **THE NAMEPLATE RULE (found on the first frames):** a unit's plate sits right over its head and covers anything drawn
+  there. A look lives ON and ROUND the body (feet to head) and to its sides, never above the head.
+- **The caster** on an `aura` beat (it only carries the target's tile) = `_l4Caster()`, the unit whose turn it is.
+- Checking a look: the batch harness is far out (a body is about 40 px). For a close read: `bash /tmp/sv/start.sh`, then a
+  real cast with `SV.prep(id, { target })` + `SV.cast()` on the paused clock and a crop round the target, 150 ms apart.
+
+| Spell | What it draws now |
+|---|---|
+| Blessing `raceBlessing` | a gold cross signed over the chest sinks into it; three drops of gold run down the body |
+| Prayer `racePrayer` | a vault of light: six gold ribs rise round the ally and meet over the head, the shell shows once, the keystone glints |
+| Protect `protect1` | three pale gold kite shields swing in round the ally, close ranks and lock, facing out |
+| Inner Peace `cleanse` | a lotus opens at the heart and rises away; the dark that clung to the body lifts off and thins out |
+| Heal All `healAll` | the healer throws the light: a string of green beads arcs to every ally and bursts into rising crosses |
+| Pink Healing `sentaiPinkHeal` | a pink ribbon winds up the body, a heart pops on the chest and beats twice, small hearts float off |
+| Repair `repair` | a field weld: two weld points crawl over the plating spitting orange sparks; a hex nut turns home in three clicks, green light |
+| Séance `raceSpiritChannel` | three pale spirits circle down and pass into the ally, each leaving its light in the body |
+| Tidal Blessing `raceTidalBlessing` | two bands of sea water wind up from the feet with bubbles; a pearl breaks into drops on the head |
+| Adrenaline Rush `raceAdrenalineRush` | a red heart line across the chest, the heart thumps lub-dub twice, the blood races up the body |
+| Wish Granted `raceWishGranted` | lamp smoke coils up round the ally and closes at the head, where the wish star turns once and sheds gold |
+| Awakening `raceAwakening` | the dark shell bursts off the body in shards, a turning sunburst of gold opens behind it, a halo rights itself over the head |
+
+After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part1.jpg`.
+

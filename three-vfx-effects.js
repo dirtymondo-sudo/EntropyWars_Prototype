@@ -68870,6 +68870,398 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     });
     /* ═════════ END THE OWN LOOKS, L1 ═════════ */
+    /* ══ THE OWN LOOKS, L4 (2026-11-17, thread L4 of the own-looks job, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells
+       that dont have a look of their own need one"): blessings and curses — the aura buffs, the heals, the divine hits, the hexes
+       (the list: docs/plans/vfx-cleanup/own-look/L4.txt). Each spell's signature runs on the intent the battle already fires for
+       it (`pzSig` + `pzOwn`, so the shared recipe it borrowed no longer draws), and `_vcOwn` sees it by itself: its generic stage
+       burst stops. A heal or a buff draws NOTHING on the floor (no rune, no circle); the light is the spell's own shape.
+       THE NAMEPLATE: a unit's plate sits right over its head, so a look lives ON and ROUND the body (feet to head), never above it.
+       Everything rides fire() (relayed), each piece only where the viewer sees the tile; nothing on `state`. ══ */
+    var _L4C = {
+        gold: 0xffd27a, goldDeep: 0xe8a63a, halo: 0xffe9a8, vault: 0xf2c060, plate: 0xd8c08a, plateEdge: 0xfff0c0,
+        lotus: 0xffb8d8, gunk: 0x5a3a78, heal: 0x58e89a, healDeep: 0x2fbf78, pink: 0xff5fa8, pinkDeep: 0xe0308a,
+        weld: 0xffa040, weldHot: 0xffd890, steel: 0x9aa4b8, ok: 0x6ae87a, spirit: 0x8ff0d0, spiritDeep: 0x4ac8b0,
+        sea: 0x2ab8a0, seaDeep: 0x1a8a8a, foam: 0xbff0e0, pearl: 0xffd8e8, blood: 0xff2a3c, bloodDeep: 0xb80c22,
+        lamp: 0x8a6ae8, lampDeep: 0x5a3ab8, wish: 0xffd24a, dawn: 0xffc24a, dawnHot: 0xffe9a8, shell: 0x3a3048
+    };
+    /* the caster: the unit whose turn it is (both screens hold it); null off a battle */
+    function _l4Caster() {
+        try {
+            if (_VS.on) return { x: _VS.cx || 0, y: _VS.cy || 0 };
+            if (typeof state === 'undefined' || !state || !state.units || state._blitzActiveUnitId == null) return null;
+            for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.id === state._blitzActiveUnitId) return { x: u.x, y: u.y, id: u.id }; }
+        } catch (e) {}
+        return null;
+    }
+    /* the body's height on this tile (world units) */
+    function _l4HeadH(x, y, ts) {
+        try {
+            var id = _sigUnitIdAt(x, y);
+            if (id != null && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitVisualHeight) { var h = ThreeRenderer.getUnitVisualHeight(id); if (h > 0) return h; }
+        } catch (e) {}
+        return ts * 0.62;
+    }
+    /* wire one spell: fn(p, F, ts, h) builds on the frame F at the fired tile and returns its run */
+    function _l4Wire(id, intent, fn, extra) {
+        var key = 'l4' + id.charAt(0).toUpperCase() + id.slice(1);
+        _PZ_SIGS[key] = function (p) {
+            if (!p || p.tx == null || _suppressed() || !_pzSeen(p.tx, p.ty)) return;
+            var F = _nrvFrame(p.tx, p.ty);
+            return fn(p, F, F.ts, _l4HeadH(p.tx, p.ty, F.ts));
+        };
+        EFFECTS[key + '_' + intent] = _pzDef(key, Object.assign({ pzOwn: true }, extra || {}));
+        var m = Object.assign({}, SPELL_MAP[id]); m[intent] = key + '_' + intent; SPELL_MAP[id] = m;
+    }
+    /* small sparks of the spell's own colour drifting up off the body */
+    function _l4Rise(F, n, tint, o) {
+        o = o || {};
+        for (var i = 0; i < n; i++) _pzP(F, rn(-1, 1) * (o.r || 22), o.y0 != null ? o.y0 : rn(10, 60), rn(-1, 1) * (o.r || 22),
+            { sprite: o.sprite || 'sparkle', tint: tint, ml: rn(520, 900), size0: rn(4, 8) * (o.size || 1), size1: 1, vx: rn(-10, 10), vy: rn(-10, 10), vz: rn(50, 130) * (o.up || 1), drag: 0.8, opacity0: 0.95 });
+    }
+    function _l4CrossTex() {
+        return _pzTex('l4cross', 64, 96, function (g, w, h) {
+            g.shadowColor = '#fff'; g.shadowBlur = 8; g.fillStyle = '#fff';
+            g.fillRect(w * 0.41, h * 0.08, w * 0.18, h * 0.84); g.fillRect(w * 0.16, h * 0.27, w * 0.68, h * 0.13);
+        });
+    }
+    function _l4PlusTex() {
+        return _pzTex('l4plus', 64, 64, function (g, w, h) {
+            g.shadowColor = '#fff'; g.shadowBlur = 6; g.fillStyle = '#fff';
+            g.fillRect(w * 0.38, h * 0.14, w * 0.24, h * 0.72); g.fillRect(w * 0.14, h * 0.38, w * 0.72, h * 0.24);
+        });
+    }
+    function _l4LotusTex() {
+        return _pzTex('l4lotus', 160, 128, function (g, w, h) {
+            var A = [-1.25, 1.25, -0.78, 0.78, -0.36, 0.36, 0], L = [0.62, 0.62, 0.78, 0.78, 0.92, 0.92, 1];
+            g.translate(w / 2, h * 0.9);
+            for (var i = 0; i < A.length; i++) {
+                g.save(); g.rotate(A[i]);
+                var len = h * 0.8 * L[i], gr = g.createLinearGradient(0, 0, 0, -len);
+                gr.addColorStop(0, '#ffe9b0'); gr.addColorStop(0.35, '#ffd0e6'); gr.addColorStop(1, '#ff8cc0');
+                g.fillStyle = gr; g.strokeStyle = 'rgba(200,60,130,0.85)'; g.lineWidth = 2;
+                g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(-w * 0.17, -len * 0.55, 0, -len); g.quadraticCurveTo(w * 0.17, -len * 0.55, 0, 0);
+                g.fill(); g.stroke(); g.restore();
+            }
+        });
+    }
+    function _l4HeartTex() {
+        return _pzTex('l4heart', 96, 96, function (g, w, h) {
+            g.translate(w / 2, h / 2); g.scale(1, -1);
+            var s = w * 0.42; g.shadowColor = '#fff'; g.shadowBlur = 6; g.fillStyle = '#fff';
+            g.beginPath(); g.moveTo(0, -s * 0.9);
+            g.bezierCurveTo(-s * 0.2, -s * 0.62, -s, -s * 0.25, -s, s * 0.22); g.bezierCurveTo(-s, s * 0.72, -s * 0.38, s * 0.92, 0, s * 0.5);
+            g.bezierCurveTo(s * 0.38, s * 0.92, s, s * 0.72, s, s * 0.22); g.bezierCurveTo(s, -s * 0.25, s * 0.2, -s * 0.62, 0, -s * 0.9); g.fill();
+        });
+    }
+    function _l4NutTex() {
+        return _pzTex('l4nut', 96, 96, function (g, w, h) {
+            g.translate(w / 2, h / 2);
+            g.fillStyle = '#c8ccd8'; g.strokeStyle = '#4a5060'; g.lineWidth = 4;
+            g.beginPath(); for (var i = 0; i < 6; i++) { var a = i / 6 * Math.PI * 2; g[i ? 'lineTo' : 'moveTo'](Math.cos(a) * w * 0.44, Math.sin(a) * w * 0.44); } g.closePath(); g.fill(); g.stroke();
+            g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(0, 0, w * 0.2, 0, Math.PI * 2); g.fill();
+            g.globalCompositeOperation = 'source-over'; g.beginPath(); g.arc(0, 0, w * 0.2, 0, Math.PI * 2); g.stroke();
+            g.strokeStyle = '#eef0f6'; g.lineWidth = 3; g.beginPath(); g.moveTo(-w * 0.2, -w * 0.36); g.lineTo(w * 0.2, -w * 0.36); g.stroke();
+        });
+    }
+    function _l4GhostTex() {
+        return _pzTex('l4ghost', 64, 96, function (g, w, h) {
+            var gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = gr; g.beginPath(); g.arc(w / 2, h * 0.26, w * 0.34, Math.PI, 0);
+            g.quadraticCurveTo(w * 0.9, h * 0.62, w * 0.62, h * 0.98); g.quadraticCurveTo(w * 0.5, h * 0.7, w * 0.4, h * 0.94); g.quadraticCurveTo(w * 0.1, h * 0.62, w * 0.16, h * 0.26); g.fill();
+            g.fillStyle = 'rgba(10,40,40,0.9)'; g.beginPath(); g.ellipse(w * 0.38, h * 0.25, w * 0.06, h * 0.06, 0, 0, Math.PI * 2); g.ellipse(w * 0.62, h * 0.25, w * 0.06, h * 0.06, 0, 0, Math.PI * 2); g.fill();
+            g.beginPath(); g.ellipse(w * 0.5, h * 0.4, w * 0.05, h * 0.05, 0, 0, Math.PI * 2); g.fill();
+        });
+    }
+    function _l4EcgTex() {
+        return _pzTex('l4ecg', 256, 96, function (g, w, h) {
+            g.strokeStyle = '#fff'; g.lineWidth = 6; g.lineJoin = 'round'; g.lineCap = 'round'; g.shadowColor = '#fff'; g.shadowBlur = 8;
+            var m = h * 0.56, P = [[0.02, 0], [0.26, 0], [0.31, -0.12], [0.36, 0], [0.42, 0], [0.46, 0.16], [0.52, -0.78], [0.58, 0.42], [0.63, 0], [0.72, 0], [0.78, -0.2], [0.85, 0], [0.98, 0]];
+            g.beginPath(); for (var i = 0; i < P.length; i++) g[i ? 'lineTo' : 'moveTo'](P[i][0] * w, m + P[i][1] * h * 0.52); g.stroke();
+        });
+    }
+    function _l4StarTex() {
+        return _pzTex('l4star', 128, 128, function (g, w, h) {
+            g.translate(w / 2, h / 2); g.fillStyle = '#fff'; g.shadowColor = '#fff'; g.shadowBlur = 10;
+            for (var k = 0; k < 2; k++) {
+                var R = w * (k ? 0.26 : 0.47), r = w * (k ? 0.06 : 0.055); g.save(); g.rotate(k * Math.PI / 4);
+                g.beginPath(); for (var i = 0; i < 8; i++) { var a = i / 8 * Math.PI * 2, q = (i % 2) ? r : R; g[i ? 'lineTo' : 'moveTo'](Math.cos(a) * q, Math.sin(a) * q); } g.closePath(); g.fill(); g.restore();
+            }
+        });
+    }
+    function _l4RaysTex() {
+        return _pzTex('l4rays', 256, 256, function (g, w, h) {
+            g.translate(w / 2, h / 2);
+            for (var i = 0; i < 16; i++) {
+                var a = i / 16 * Math.PI * 2, long = (i % 2) ? 0.7 : 1, wd = 0.045;
+                var gr = g.createLinearGradient(Math.cos(a) * w * 0.14, Math.sin(a) * w * 0.14, Math.cos(a) * w * 0.49 * long, Math.sin(a) * w * 0.49 * long);
+                gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+                g.fillStyle = gr; g.beginPath();
+                g.moveTo(Math.cos(a - wd) * w * 0.14, Math.sin(a - wd) * w * 0.14); g.lineTo(Math.cos(a) * w * 0.49 * long, Math.sin(a) * w * 0.49 * long);
+                g.lineTo(Math.cos(a + wd) * w * 0.14, Math.sin(a + wd) * w * 0.14); g.closePath(); g.fill();
+            }
+        });
+    }
+
+    /* BLESSING (priest) — a gold cross is signed over the ally's chest and sinks into it, and three drops of gold run down
+       the body: the anointing. A light spell, a quiet look. */
+    _l4Wire('raceBlessing', 'aura', function (p, F, ts, h) {
+        var cross = _pzSpr(_L4C.gold, ts * 0.3, F.g, _l4CrossTex()), glow = _pzSpr(_L4C.goldDeep, ts * 0.8, F.g), drops = [];
+        glow.position.y = h * 0.55;
+        for (var i = 0; i < 3; i++) drops.push(_pzSpr(_L4C.halo, ts * 0.11, F.g));
+        _fxDelay(function () { if (!_suppressed()) _l4Rise(F, 5, _L4C.gold, { y0: h * 0.4 }); }, 900);
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var t = _sigEaseOutCubic(_sigClamp01(el / 520));
+            var sink = _sigClamp01((el - 620) / 500);
+            cross.scale.set(ts * 0.4 * (1.5 - 0.5 * t) * (1 - 0.45 * sink), ts * 0.6 * (1.5 - 0.5 * t) * (1 - 0.45 * sink), 1); cross.position.y = h * (0.78 - 0.14 * sink);
+            cross.material.opacity = 0.9 * _pzEnv(el, 0, 200, 700, 1150);
+            glow.material.opacity = 0.42 * _pzEnv(el, 480, 760, 1000, 1500);
+            for (var i = 0; i < 3; i++) {
+                var u = (el - 540 - i * 150) / 520, D = drops[i];
+                if (u <= 0 || u >= 1) { D.material.opacity = 0; continue; }
+                D.position.set((i - 1) * ts * 0.14, h * (0.95 - 0.9 * u * u), 0); D.scale.set(ts * 0.09, ts * 0.2, 1); D.material.opacity = 0.95 * (1 - u * u);
+            }
+        });
+    });
+
+    /* PRAYER (priest; a 200 HP shield + Blessed) — a vault of light: six gold ribs rise round the ally and meet over the head
+       like a chapel roof, the shell between them shows once, the keystone glints */
+    _l4Wire('racePrayer', 'aura', function (p, F, ts, h) {
+        var R = ts * 0.5, H = h * 1.08, ribs = [], N = 6;
+        for (var i = 0; i < N; i++) {
+            var piv = new THREE.Group(); piv.rotation.y = i / N * Math.PI * 2; F.g.add(piv);
+            ribs.push(_pzMesh(new THREE.TorusGeometry(1, 0.055, 5, 14, Math.PI / 2), _pzGlow(_L4C.vault), piv));
+        }
+        var shell = _pzMesh(new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), _pzGlow(_L4C.gold), F.g);
+        var key = _pzSpr(_L4C.halo, ts * 0.3, F.g, _l4StarTex()); key.position.y = H * 0.98;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01(el / 480)), env = _pzEnv(el, 0, 120, 1250, 1700);
+            for (var i = 0; i < N; i++) { ribs[i].scale.set(R, H * Math.max(0.02, up), R); ribs[i].material.opacity = 0.9 * env; }
+            var pulse = _pzEnv(el, 460, 600, 700, 1150);
+            shell.scale.set(R * (1 + 0.05 * pulse), H * up * (1 + 0.05 * pulse), R * (1 + 0.05 * pulse)); shell.material.opacity = 0.03 * env + 0.1 * pulse;
+            var kp = _pzEnv(el, 440, 560, 760, 1300); key.scale.setScalar(ts * (0.2 + 0.4 * kp)); key.material.opacity = kp; key.material.rotation = el * 0.002;
+        });
+    });
+
+    /* PROTECT (White Mage) — three kite shields of pale gold swing in round the ally, close ranks and lock, facing out */
+    function _l4KiteGeo(s) {
+        var sh = new THREE.Shape();
+        sh.moveTo(-s * 0.6, s * 0.62); sh.lineTo(0, s * 0.78); sh.lineTo(s * 0.6, s * 0.62);
+        sh.quadraticCurveTo(s * 0.62, -s * 0.3, 0, -s); sh.quadraticCurveTo(-s * 0.62, -s * 0.3, -s * 0.6, s * 0.62);
+        return new THREE.ShapeGeometry(sh, 6);
+    }
+    _l4Wire('protect1', 'aura', function (p, F, ts, h) {
+        var S = [], spin = new THREE.Group(); F.g.add(spin);
+        for (var i = 0; i < 3; i++) {
+            var piv = new THREE.Group(); piv.rotation.y = i / 3 * Math.PI * 2; spin.add(piv);
+            var geo = _l4KiteGeo(ts * 0.36), face = _pzMesh(geo, _pzGlow(_L4C.plate), piv);
+            var rim = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: _L4C.plateEdge, transparent: true, opacity: 0, depthWrite: false }));
+            rim.renderOrder = 159; face.add(rim);
+            var boss = _pzMesh(new THREE.CircleGeometry(ts * 0.07, 10), _pzGlow(_L4C.plateEdge), face, 0, ts * 0.08, 1);
+            S.push({ face: face, rim: rim, boss: boss });
+        }
+        _fxDelay(function () { if (_suppressed()) return; for (var i = 0; i < 3; i++) { var a = i / 3 * Math.PI * 2 + 2.4; _pzP(F, Math.sin(a) * ts * 0.4, h * 0.6, Math.cos(a) * ts * 0.4, { sprite: 'steel-spark', tint: _L4C.plateEdge, ml: 260, size0: 12, size1: 2, opacity0: 1 }); } }, 430);
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var t = _sigClamp01(el / 430), inn = _sigEaseOutBack(t), env = _pzEnv(el, 0, 120, 1100, 1500), lock = _pzEnv(el, 420, 470, 520, 760);
+            spin.rotation.y = 2.4 * _sigEaseOutCubic(t);
+            for (var i = 0; i < 3; i++) {
+                var s = S[i]; s.face.position.set(0, h * 0.55, ts * (1.25 - 0.75 * inn));
+                s.face.material.opacity = (0.34 + 0.4 * lock) * env; s.rim.material.opacity = 0.95 * env; s.boss.material.opacity = 0.8 * env;
+            }
+        });
+    });
+
+    /* INNER PEACE (White Mage; every debuff off, +1 M DEF) — a lotus opens at the ally's heart and rises away while the dark
+       that clung to the body lifts off it and thins out; one slow breath of light goes up through the body */
+    _l4Wire('cleanse', 'aura', function (p, F, ts, h) {
+        var lotus = _pzSprN(0xffffff, ts * 0.5, _l4LotusTex(), F.g), breath = _pzSpr(_L4C.halo, ts * 0.7, F.g), gunk = [];
+        lotus.material.depthTest = false;
+        for (var i = 0; i < 8; i++) { var G = _pzSprN(_L4C.gunk, ts * 0.22, _sigGlowTex(), F.g); G.material.depthTest = false; gunk.push({ s: G, a: i / 8 * Math.PI * 2 + (i % 2) * 0.4, y: 0.15 + 0.1 * i, d: i * 45 }); }
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01((el - 150) / 520)), env = _pzEnv(el, 150, 300, 1000, 1600), lift = _sigClamp01((el - 900) / 700);
+            lotus.position.y = h * (0.5 + 0.45 * lift * lift);
+            lotus.scale.set(ts * 0.85 * (0.25 + 0.75 * open), ts * 0.68 * (0.6 + 0.4 * open), 1); lotus.material.opacity = 0.82 * env;
+            var b = _sigClamp01((el - 200) / 900); breath.position.y = h * (0.05 + 1.0 * b); breath.scale.set(ts * 0.8, ts * 0.24, 1); breath.material.opacity = 0.42 * Math.sin(b * Math.PI);
+            for (var i = 0; i < gunk.length; i++) {
+                var K = gunk[i], u = _sigClamp01((el - K.d) / 900), r = ts * (0.2 + 0.7 * u);
+                K.s.position.set(Math.cos(K.a + u * 1.2) * r, h * (K.y + 0.2 * u), Math.sin(K.a + u * 1.2) * r);
+                K.s.scale.setScalar(ts * (0.24 - 0.12 * u)); K.s.material.opacity = 0.9 * (1 - u) * Math.min(1, el / 100);
+            }
+        });
+    });
+
+    /* HEAL ALL (White Mage) — the healer throws the light: a string of green beads arcs from the raised hand to every ally and
+       bursts on the chest into rising crosses (the healer's own share winds up round the body) */
+    _l4Wire('healAll', 'aura', function (p, F, ts, h) {
+        var c = _l4Caster(), self = !c || (c.x === p.tx && c.y === p.ty) || !_pzSeen(c.x, c.y);
+        var ln = self ? null : _nrvLine(F, c, p.tx, p.ty), N = 7, beads = [], plus = [], FLY = self ? 380 : Math.min(620, 300 + (ln.L / ts) * 90);
+        var A = self ? null : new THREE.Vector3(ln.dx, ln.dy + _l4HeadH(c.x, c.y, ts) * 0.95, ln.dz), B = new THREE.Vector3(0, h * 0.6, 0);
+        for (var i = 0; i < N; i++) beads.push(_pzSpr(i ? _L4C.heal : 0xc8ffdc, ts * (0.3 - 0.024 * i), F.g));
+        for (var k = 0; k < 4; k++) plus.push(_pzSpr(_L4C.heal, ts * 0.26, F.g, _l4PlusTex()));
+        var glow = _pzSpr(_L4C.healDeep, ts * 0.85, F.g); glow.position.y = h * 0.55;
+        return _sigRunOwned(F.g, FLY + 1150, function (el) {
+            for (var i = 0; i < N; i++) {
+                var u = (el - i * 30) / FLY, S = beads[i];
+                if (u <= 0 || u >= 1) { S.material.opacity = 0; continue; }
+                if (self) { var a = u * Math.PI * 3; S.position.set(Math.cos(a) * ts * 0.42, h * (0.05 + 0.95 * u), Math.sin(a) * ts * 0.42); }
+                else { S.position.lerpVectors(A, B, u); S.position.y += Math.sin(u * Math.PI) * Math.max(ts * 0.5, ln.L * 0.28); }
+                S.material.opacity = 0.95 * Math.min(1, u * 8);
+            }
+            glow.material.opacity = 0.4 * _pzEnv(el, FLY - 60, FLY + 80, FLY + 350, FLY + 900);
+            for (var k = 0; k < 4; k++) {
+                var v = (el - FLY - k * 120) / 700, Pk = plus[k];
+                if (v <= 0 || v >= 1) { Pk.material.opacity = 0; continue; }
+                Pk.position.set((k - 1.5) * ts * 0.26, h * (0.25 + 0.75 * v), ((k % 2) - 0.5) * ts * 0.2); Pk.material.opacity = Math.sin(v * Math.PI);
+            }
+        });
+    });
+
+    /* PINK HEALING (super sentai) — the pink ranger's heart: a pink ribbon winds up round the ally, a heart pops on the
+       chest and beats twice, small hearts float off to both sides */
+    _l4Wire('sentaiPinkHeal', 'aura', function (p, F, ts, h) {
+        var N = 12, rib = [], heart = _pzSpr(_L4C.pink, ts * 0.4, F.g, _l4HeartTex()), minis = [];
+        for (var i = 0; i < N; i++) rib.push(_pzSpr(i < 2 ? 0xffc0dc : _L4C.pink, ts * (0.22 - 0.01 * i), F.g));
+        for (var k = 0; k < 4; k++) minis.push(_pzSpr(_L4C.pinkDeep, ts * 0.2, F.g, _l4HeartTex()));
+        heart.position.y = h * 0.62;
+        return _sigRunOwned(F.g, 1600, function (el) {
+            for (var i = 0; i < N; i++) {
+                var u = (el - i * 26) / 620, S = rib[i];
+                if (u <= 0 || u >= 1) { S.material.opacity = 0; continue; }
+                var a = u * Math.PI * 4; S.position.set(Math.cos(a) * ts * 0.42, h * (0.02 + 1.0 * u), Math.sin(a) * ts * 0.42); S.material.opacity = 0.9;
+            }
+            var pop = _sigEaseOutBack(_sigClamp01((el - 520) / 220)), beat = 1 + 0.22 * Math.max(0, Math.sin((el - 740) / 150 * Math.PI)) * (el > 740 && el < 1040 ? 1 : 0);
+            heart.scale.setScalar(ts * 0.6 * pop * beat); heart.material.opacity = 0.85 * _pzEnv(el, 520, 600, 1150, 1500);
+            for (var k = 0; k < 4; k++) {
+                var v = (el - 760 - k * 110) / 640, M = minis[k];
+                if (v <= 0 || v >= 1) { M.material.opacity = 0; continue; }
+                M.position.set((k - 1.5) * ts * 0.42 * (0.4 + v), h * (0.6 + 0.4 * v), 0); M.material.opacity = 0.9 * (1 - v);
+            }
+        });
+    });
+
+    /* REPAIR (Engineer) — a field weld: two weld points crawl across the plating spitting orange sparks, a hex nut over the
+       shoulder turns home in three clicks and the light on it goes green */
+    _l4Wire('repair', 'aura', function (p, F, ts, h) {
+        var w1 = _pzSpr(_L4C.weldHot, ts * 0.2, F.g), w2 = _pzSpr(_L4C.weldHot, ts * 0.2, F.g), nut = _pzSprN(0xffffff, ts * 0.5, _l4NutTex(), F.g), ok = _pzSpr(_L4C.ok, ts * 0.7, F.g);
+        nut.material.depthTest = false; nut.position.set(ts * 0.5, h * 0.72, 0); ok.position.copy(nut.position);
+        var last = 0;
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var t = _sigClamp01(el / 800), fl = 0.65 + 0.35 * Math.sin(el * 0.09), on = t < 1 ? 1 : 0;
+            w1.position.set(ts * (-0.22 + 0.44 * t), h * (0.72 - 0.1 * Math.sin(t * 6)), ts * 0.05); w2.position.set(ts * (0.2 - 0.4 * t), h * (0.36 + 0.08 * Math.sin(t * 5)), ts * 0.05);
+            w1.material.opacity = w2.material.opacity = on * fl; w1.scale.setScalar(ts * 0.3 * fl); w2.scale.setScalar(ts * 0.26 * fl);
+            if (on && el - last > 70 && _canSpawn()) {
+                last = el;
+                for (var k = 0; k < 2; k++) { var W = k ? w2 : w1; _pzP(F, W.position.x, W.position.y, W.position.z, { sprite: 'steel-spark', tint: _L4C.weld, ml: rn(280, 480), size0: rn(7, 12), size1: 1, vx: rn(-90, 90), vy: rn(-90, 90), vz: rn(30, 130), gravity: 420, drag: 0.6, opacity0: 1 }); }
+            }
+            var step = Math.min(3, Math.floor(el / 240)), frac = _sigEaseOutCubic(_sigClamp01((el - step * 240) / 110));
+            nut.material.rotation = -(Math.min(3, step + (step < 3 ? frac : 0))) * Math.PI / 3; nut.material.opacity = _pzEnv(el, 0, 100, 1200, 1500);
+            ok.material.opacity = 0.75 * _pzEnv(el, 760, 840, 1050, 1400);
+        });
+    });
+
+    /* SÉANCE (fortune teller; a big heal + 2 debuffs off) — the departed answer: three pale spirits circle down out of the
+       air and pass into the ally, each one leaving its light in the body */
+    _l4Wire('raceSpiritChannel', 'aura', function (p, F, ts, h) {
+        var G = [], glow = _pzSpr(_L4C.spiritDeep, ts * 0.8, F.g); glow.position.y = h * 0.6;
+        for (var i = 0; i < 3; i++) G.push(_pzSpr(_L4C.spirit, ts * 0.3, F.g, _l4GhostTex()));
+        return _sigRunOwned(F.g, 1800, function (el) {
+            var lit = 0;
+            for (var i = 0; i < 3; i++) {
+                var u = _sigClamp01((el - i * 230) / 900), S = G[i], a = i / 3 * Math.PI * 2 + u * Math.PI * 2.2, r = ts * 0.9 * (1 - u * u);
+                S.position.set(Math.cos(a) * r, h * (1.05 - 0.45 * u), Math.sin(a) * r);
+                S.scale.set(ts * 0.36 * (1 - 0.45 * u), ts * 0.54 * (1 - 0.45 * u), 1);
+                S.material.opacity = (el > i * 230 && u < 1) ? 0.9 * Math.min(1, (el - i * 230) / 160) * (1 - Math.max(0, (u - 0.85) / 0.15)) : 0;
+                if (u >= 1) lit += _pzEnv(el - i * 230 - 900, 0, 60, 120, 480);
+            }
+            glow.material.opacity = Math.min(0.6, 0.45 * lit); glow.scale.setScalar(ts * (0.8 + 0.2 * Math.min(1, lit)));
+        });
+    });
+
+    /* TIDAL BLESSING (mermaid; a big heal + 1 debuff off) — the tide comes up the body: two bands of sea water wind up from
+       the feet, bubbles rise in them, and a pearl sets down on the head and breaks into drops */
+    _l4Wire('raceTidalBlessing', 'aura', function (p, F, ts, h) {
+        var N = 10, bands = [], pearl = _pzSpr(_L4C.pearl, ts * 0.26, F.g);
+        for (var s = 0; s < 2; s++) for (var i = 0; i < N; i++) bands.push({ S: _pzSpr(i < 2 ? _L4C.foam : (s ? _L4C.seaDeep : _L4C.sea), ts * (0.28 - 0.014 * i), F.g), s: s, i: i });
+        _fxDelay(function () { if (!_suppressed()) for (var k = 0; k < 7; k++) _pzP(F, rn(-24, 24), rn(6, h * 0.5), rn(-24, 24), { sprite: 'bubble', tint: _L4C.foam, ml: rn(600, 950), size0: rn(4, 8), size1: rn(6, 10), vx: rn(-8, 8), vy: rn(-8, 8), vz: rn(50, 110), drag: 0.5, opacity0: 0.9 }); }, 200);
+        _fxDelay(function () { if (!_suppressed()) for (var k = 0; k < 8; k++) { var a = k / 8 * Math.PI * 2; _pzP(F, 0, h * 0.98, 0, { sprite: 'water-splash', tint: _L4C.foam, ml: rn(420, 620), size0: rn(8, 13), size1: 2, vx: Math.cos(a) * 85, vy: Math.sin(a) * 85, vz: rn(40, 100), gravity: 380, drag: 0.4, opacity0: 0.95 }); } }, 900);
+        return _sigRunOwned(F.g, 1600, function (el) {
+            for (var k = 0; k < bands.length; k++) {
+                var Bk = bands[k], u = (el - Bk.i * 30) / 760;
+                if (u <= 0 || u >= 1) { Bk.S.material.opacity = 0; continue; }
+                var a = u * Math.PI * 3.2 + Bk.s * Math.PI, r = ts * (0.48 - 0.14 * u);
+                Bk.S.position.set(Math.cos(a) * r, h * (0.02 + 0.98 * u), Math.sin(a) * r); Bk.S.material.opacity = 0.9 * Math.min(1, (1 - u) * 5);
+            }
+            var d = _sigClamp01((el - 520) / 380); pearl.position.y = h * (1.5 - 0.5 * _sigEaseInCubic(d)); pearl.material.opacity = (el > 520 && el < 900) ? 1 : 0;
+        });
+    });
+
+    /* ADRENALINE RUSH (homosapien, blood; 40 % HP back, 2 debuffs off, +1 SPD) — the pulse: a red heart line runs across the
+       chest twice, the heart under it thumps lub-dub, and the blood races up the body */
+    _l4Wire('raceAdrenalineRush', 'aura', function (p, F, ts, h) {
+        var ecg = _pzSpr(_L4C.blood, ts, F.g, _l4EcgTex()), heart = _pzSpr(_L4C.blood, ts * 0.3, F.g), rush = [];
+        ecg.position.y = h * 0.64; heart.position.y = h * 0.64;
+        for (var i = 0; i < 6; i++) rush.push(_pzSpr(_L4C.bloodDeep, ts * 0.1, F.g));
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var cyc = (el % 560) / 560, n = Math.floor(el / 560), beat = (n < 2) ? Math.max(Math.exp(-Math.pow((cyc - 0.5) * 9, 2)), 0.6 * Math.exp(-Math.pow((cyc - 0.78) * 9, 2))) : 0;
+            ecg.scale.set(ts * 1.25, ts * 0.47 * (0.8 + 0.35 * beat), 1); ecg.material.opacity = 0.95 * _pzEnv(el, 0, 90, 1120, 1400);
+            heart.scale.setScalar(ts * (0.4 + 0.45 * beat)); heart.material.opacity = 0.25 + 0.6 * beat * _pzEnv(el, 0, 60, 1120, 1300); if (el > 1300) heart.material.opacity = 0;
+            for (var i = 0; i < 6; i++) {
+                var u = ((el + i * 90) % 540) / 540, S = rush[i], x = ((i % 3) - 1) * ts * 0.16;
+                S.position.set(x * 1.6, h * (0.02 + 0.95 * u), ((i % 2) - 0.5) * ts * 0.2); S.scale.set(ts * 0.07, ts * 0.26, 1);
+                S.material.opacity = 0.85 * Math.sin(u * Math.PI) * _pzEnv(el, 100, 250, 1100, 1400);
+            }
+        });
+    });
+
+    /* WISH GRANTED (djinn; +1 ATK, +1 M ATK, 2 debuffs off) — lamp smoke curls up round the ally in a tightening coil, and
+       where it closes at the head the wish star turns once and sheds gold */
+    _l4Wire('raceWishGranted', 'aura', function (p, F, ts, h) {
+        var N = 14, coil = [], star = _pzSpr(_L4C.wish, ts * 0.5, F.g, _l4StarTex());
+        for (var i = 0; i < N; i++) { var S = _pzSprN(i % 3 ? _L4C.lamp : _L4C.lampDeep, ts * 0.26, _sigGlowTex(), F.g); S.material.depthTest = false; coil.push(S); }
+        star.position.y = h * 0.98;
+        _fxDelay(function () { if (!_suppressed()) for (var k = 0; k < 10; k++) _pzP(F, rn(-18, 18), h * 0.95, rn(-18, 18), { sprite: 'sparkle', tint: _L4C.wish, ml: rn(520, 820), size0: rn(6, 11), size1: 1, vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(-10, 50), gravity: 160, drag: 0.6, opacity0: 1 }); }, 760);
+        return _sigRunOwned(F.g, 1700, function (el) {
+            for (var i = 0; i < N; i++) {
+                var u = _sigClamp01((el - i * 34) / 780), S = coil[i], a = u * Math.PI * 4.4 + 0.5, r = ts * (0.62 - 0.52 * u);
+                S.position.set(Math.cos(a) * r, h * (0.03 + 0.95 * u), Math.sin(a) * r); S.scale.setScalar(ts * (0.36 - 0.14 * u));
+                S.material.opacity = (el > i * 34) ? 0.62 * (1 - Math.max(0, (el - 900 - i * 20) / 420)) * (u < 1 ? 1 : Math.max(0, 1 - (el - i * 34 - 780) / 300)) : 0;
+                if (S.material.opacity < 0) S.material.opacity = 0;
+            }
+            var pop = _sigEaseOutBack(_sigClamp01((el - 700) / 240));
+            star.scale.setScalar(ts * 0.75 * pop); star.material.rotation = (el - 700) * 0.0028; star.material.opacity = _pzEnv(el, 700, 780, 1300, 1700);
+        });
+    });
+
+    /* AWAKENING (chosen one, the ultimate; everything cleansed, 30 % HP, +2 ATK, +2 SPD) — the old self cracks off: the dark
+       shell bursts away from the body in shards, a sunburst of gold opens behind it and turns, a halo rights itself over the
+       head and the brow lights */
+    _l4Wire('raceAwakening', 'aura', function (p, F, ts, h) {
+        var rays = _pzSpr(_L4C.dawn, ts * 2.2, F.g, _l4RaysTex()), rays2 = _pzSpr(_L4C.dawnHot, ts * 1.5, F.g, _l4RaysTex());
+        rays.position.y = rays2.position.y = h * 0.62; rays.renderOrder = rays2.renderOrder = 150;
+        var halo = _pzMesh(new THREE.TorusGeometry(ts * 0.24, ts * 0.03, 6, 24), _pzGlow(_L4C.dawnHot), F.g, 0, h * 1.04, 0);
+        var brow = _pzSpr(_L4C.dawnHot, ts * 0.2, F.g, _l4StarTex()); brow.position.y = h * 0.9;
+        var sh = [];
+        for (var i = 0; i < 10; i++) {
+            var m = _pzMesh(new THREE.PlaneGeometry(ts * rn(0.1, 0.18), ts * rn(0.12, 0.22)), _pzSolid(_L4C.shell, null, { side: THREE.DoubleSide, depthWrite: false }), F.g);
+            var a = i / 10 * Math.PI * 2 + rn(-0.2, 0.2); sh.push({ m: m, a: a, y: rn(0.25, 1.0), sp: rn(0.8, 1.25), rx: rn(-6, 6), rz: rn(-6, 6) });
+        }
+        _fxDelay(function () { if (!_suppressed()) _l4Rise(F, 14, _L4C.dawnHot, { r: 34, up: 1.5, size: 1.2 }); }, 420);
+        return _sigRunOwned(F.g, 2300, function (el) {
+            var open = _sigEaseOutCubic(_sigClamp01((el - 200) / 460)), env = _pzEnv(el, 200, 420, 1700, 2300);
+            rays.scale.setScalar(ts * 2.8 * (0.3 + 0.7 * open)); rays.material.rotation = el * 0.0005; rays.material.opacity = 0.62 * env;
+            rays2.scale.setScalar(ts * 1.8 * (0.3 + 0.7 * open)); rays2.material.rotation = -el * 0.0008; rays2.material.opacity = 0.5 * env;
+            var u = _sigClamp01((el - 180) / 700);
+            for (var i = 0; i < sh.length; i++) {
+                var K = sh[i], r = ts * (0.22 + 1.25 * K.sp * _sigEaseOutCubic(u));
+                K.m.position.set(Math.cos(K.a) * r, h * K.y + ts * 0.5 * u - ts * 0.75 * u * u, Math.sin(K.a) * r);
+                K.m.rotation.set(K.rx * u, K.a, K.rz * u); K.m.material.opacity = el < 180 ? 0.85 * (el / 180) : 0.9 * (1 - u);
+            }
+            var set = _sigEaseOutBack(_sigClamp01((el - 520) / 420));
+            halo.rotation.x = Math.PI / 2 + (1 - set) * 1.1; halo.rotation.z = (1 - set) * 0.8; halo.material.opacity = 0.95 * _pzEnv(el, 520, 640, 1750, 2200);
+            var bp = _pzEnv(el, 620, 720, 900, 1500); brow.scale.setScalar(ts * (0.14 + 0.3 * bp)); brow.material.opacity = bp;
+        });
+    });
+
+    /* ═════════ END THE OWN LOOKS, L4 ═════════ */
 
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
