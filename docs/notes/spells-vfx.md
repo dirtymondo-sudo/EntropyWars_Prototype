@@ -4200,3 +4200,34 @@ dont have a look of their own need one".
 
 After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part1.jpg`.
 
+## THE OWN LOOKS, L4, part 2: the divine hits and the hexes (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
+
+- **An area spell (`_l4WireArea`)** gets an `aoe` def of its own: `impactTileEffect` = the spell's own tile recipe (one flash in
+  the spell's colour on EVERY hit square) and a `pzSig` with no `pzOwn`, so the per-square flash still runs under the look.
+- **Photon Scatter** is a `barrage`: the battle fires only `bolt` beats for it, never `impact`. Its look rides the bolt beat
+  (`l4RacePhotonScatter_bolt` = the holy bolt with `radiant` off, so the white column it burst into on every enemy is gone)
+  and goes off `flyMs` later at the landing tile.
+- **Horn Light / Unicorn Charge** had no `SPELL_MAP` row at all (the stage burst was their whole look): theirs are `_FX2_BURST`
+  entries on the stage's burst beat.
+- **Anchor** already dropped the anchor model (the metal pass, `_mtlAnchorDrop`), but `_vcOwn` did not know: the chain is new and
+  the generic toss recipe is off. **Implant** keeps its UFO (the G-O pass); the chip, the red light and the pings are new.
+- Other threads' layers that still show on these: the metal pass's floor cog on metal-element casts (Repair, Implant, Anchor),
+  the riot target rings, the stat rings of a stage change. Not L4's to change.
+
+| Spell | What it draws now |
+|---|---|
+| Glitterburst `raceGlitterburst` | the wand pops: a wheel of pink, gold and mint flakes shoots out flat to the edge of the 3×3, hangs twinkling, flutters down; every square flashes pink |
+| Supernova `raceSupernova` | the orb falls in to a point, then a shell of gold fire blows out to the edge with eight turning spikes of light and an ember ring; every square flashes gold; no screen flash |
+| Photon Scatter `racePhotonScatter` | where each ray lands the light splits into six colours that fan out through the body, away from the orb |
+| Horn Light `uniHornLight` | a twist of pearl and violet light winds from the horn to the enemy's eyes and goes off in one hard star |
+| Unicorn Charge `uniUnicornCharge` | a gold horn of light drives through the enemy along the gallop; the gallop's rainbow hangs in the lane behind |
+| Anchor `raceAnchor` | (the anchor model drops, as before) a chain runs taut from the anchor to the body and pulls tight twice |
+| Implant `raceImplant` | a green chip snaps to the back of the head, its red light blinks three times, the tracking signal pings out both sides |
+| Iron Grip `ironGrip` | four iron fingers and a thumb swing shut round the body and squeeze once; rust sparks where they close |
+| Red Eyes `raceRedEyes` | a patch of dark behind the shoulders, two red eyes open in it, stare, blink, narrow shut |
+| Smoke Screen `sharedSmokeScreen` | a grey bank boils out of the middle square and rolls over all nine, thick at the floor |
+| Spellsteal `raceSpellsteal` | a lit page lifts out of the enemy's head, tumbles to the wizard on a violet trail and is gone into his hand |
+| Steal from the Rich `raceStealFromRich` | the purse is cut: gold coins fly in a string from the enemy to Robin Hood |
+
+After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part2.jpg`.
+

@@ -69261,6 +69261,319 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     });
 
+    /* ── THE OWN LOOKS, L4, part 2: the divine hits and the hexes ── */
+    Object.assign(_L4C, {
+        glitA: 0xff7ac8, glitB: 0xffd24a, glitC: 0x8affd0, nova: 0xffb030, novaHot: 0xffe08a, novaEdge: 0xff6a1e,
+        horn: 0xffe0f4, hornDeep: 0xd890ff, iron: 0x8e96a8, ironEdge: 0xd4d8e2, rust: 0xc8622a,
+        chip: 0x7dff6a, led: 0xff2a2a, eye: 0xff1a1a, moth: 0x120a14, smokeA: 0x8a8e96, smokeB: 0x5c6068,
+        steal: 0xb060ff, stealHot: 0xe0b8ff, coin: 0xffc83a, coinDeep: 0xc8861a, lincoln: 0x3a8a3a
+    });
+    var _L4_SPECTRUM = [0xff3030, 0xff9a1e, 0xffe83a, 0x3ae86a, 0x4a7aff, 0xb04aff];
+    /* the unit vector on the floor from the caster to the fired tile (dx, dz in world) */
+    function _l4Dir(p, F) {
+        var c = (p.fromX != null) ? { x: p.fromX, y: p.fromY } : (p.sx != null && !(p.sx === p.tx && p.sy === p.ty)) ? { x: p.sx, y: p.sy } : (_l4Caster() || _sigCasterPos(p.tx, p.ty));
+        if (!c || (c.x === p.tx && c.y === p.ty)) return { x: 1, z: 0, L: F.ts, from: null };
+        var w = _worldPos(c.x, c.y), dx = F.wp.x - w.x, dz = F.wp.z - w.z, L = Math.max(1, Math.hypot(dx, dz));
+        return { x: dx / L, z: dz / L, L: L, from: c, dy: w.y - F.wp.y };
+    }
+    /* the lens's right-hand direction on the floor (two things side by side read side by side) */
+    function _l4Right() {
+        var cam = _pzCam(), v = new THREE.Vector3(1, 0, 0);
+        if (cam) { v.applyQuaternion(cam.quaternion); v.y = 0; if (v.lengthSq() < 1e-4) v.set(1, 0, 0); v.normalize(); }
+        return v;
+    }
+    /* an area def of the spell's own: every square it hits flashes in the spell's colour (`tile`), the look runs once on top */
+    function _l4WireArea(id, fn, tile, extra) {
+        var key = 'l4' + id.charAt(0).toUpperCase() + id.slice(1), old = EFFECTS[(SPELL_MAP[id] || {}).aoe] || {};
+        _PZ_SIGS[key] = function (p) {
+            if (!p || p.tx == null || _suppressed()) return;
+            var F = _nrvFrame(p.tx, p.ty);
+            return fn(p, F, F.ts, p.aoeRadius != null ? p.aoeRadius : (p.radius != null ? p.radius : (old.aoeRadius || 1)));
+        };
+        EFFECTS[key + '_tile'] = { layers: tile };
+        EFFECTS[key + '_aoe'] = Object.assign({ aoeRadius: old.aoeRadius != null ? old.aoeRadius : 1 }, old.shape ? { shape: old.shape } : {}, { impactTileEffect: key + '_tile', pzSig: key, layers: [] }, extra || {});
+        var m = Object.assign({}, SPELL_MAP[id]); m.aoe = key + '_aoe'; if (m.impact) m.impact = key + '_tile'; SPELL_MAP[id] = m;
+    }
+    function _l4FlakeTex() {
+        return _pzTex('l4flake', 48, 48, function (g, w, h) {
+            g.translate(w / 2, h / 2); g.fillStyle = '#fff'; g.shadowColor = '#fff'; g.shadowBlur = 4;
+            g.beginPath(); for (var i = 0; i < 8; i++) { var a = i / 8 * Math.PI * 2, q = (i % 2) ? w * 0.09 : w * 0.44; g[i ? 'lineTo' : 'moveTo'](Math.cos(a) * q, Math.sin(a) * q); } g.closePath(); g.fill();
+        });
+    }
+    function _l4ChipTex() {
+        return _pzTex('l4chip', 64, 64, function (g, w, h) {
+            g.fillStyle = '#c8ccd8'; for (var i = 0; i < 4; i++) { g.fillRect(w * (0.24 + i * 0.15), h * 0.06, w * 0.07, h * 0.88); g.fillRect(w * 0.06, h * (0.24 + i * 0.15), w * 0.88, h * 0.07); }
+            g.fillStyle = '#16301a'; g.fillRect(w * 0.17, h * 0.17, w * 0.66, h * 0.66); g.strokeStyle = '#7dff6a'; g.lineWidth = 3; g.strokeRect(w * 0.2, h * 0.2, w * 0.6, h * 0.6);
+            g.fillStyle = '#7dff6a'; g.fillRect(w * 0.42, h * 0.42, w * 0.16, h * 0.16);
+        });
+    }
+    function _l4PingTex() {
+        return _pzTex('l4ping', 96, 96, function (g, w, h) {
+            g.strokeStyle = '#fff'; g.lineCap = 'round'; g.shadowColor = '#fff'; g.shadowBlur = 5;
+            for (var i = 0; i < 3; i++) { g.lineWidth = 6 - i; g.globalAlpha = 1 - i * 0.22; g.beginPath(); g.arc(w * 0.08, h / 2, w * (0.26 + 0.28 * i), -0.75, 0.75); g.stroke(); }
+        });
+    }
+    function _l4EyeTex() {
+        return _pzTex('l4eye', 96, 96, function (g, w, h) {
+            var gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w * 0.48);
+            gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.22, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = gr; g.beginPath(); g.ellipse(w / 2, h / 2, w * 0.48, h * 0.4, 0, 0, Math.PI * 2); g.fill();
+        });
+    }
+    function _l4PageTex() {
+        return _pzTex('l4page', 64, 80, function (g, w, h) {
+            g.fillStyle = '#f0e2ff'; g.strokeStyle = '#7a3ad8'; g.lineWidth = 3; g.fillRect(6, 4, w - 12, h - 8); g.strokeRect(6, 4, w - 12, h - 8);
+            g.strokeStyle = '#7a3ad8'; g.lineWidth = 2; for (var i = 0; i < 3; i++) { g.beginPath(); g.moveTo(14, h * (0.62 + i * 0.1)); g.lineTo(w - 14, h * (0.62 + i * 0.1)); g.stroke(); }
+            g.translate(w / 2, h * 0.34); g.fillStyle = '#7a3ad8'; g.beginPath(); for (var k = 0; k < 10; k++) { var a = k / 10 * Math.PI * 2 - Math.PI / 2, q = (k % 2) ? w * 0.09 : w * 0.22; g[k ? 'lineTo' : 'moveTo'](Math.cos(a) * q, Math.sin(a) * q); } g.closePath(); g.fill();
+        });
+    }
+    function _l4CoinTex() {
+        return _pzTex('l4coin', 64, 64, function (g, w, h) {
+            g.fillStyle = '#ffc83a'; g.strokeStyle = '#a86a10'; g.lineWidth = 4; g.beginPath(); g.arc(w / 2, h / 2, w * 0.42, 0, Math.PI * 2); g.fill(); g.stroke();
+            g.strokeStyle = '#ffe9a0'; g.lineWidth = 3; g.beginPath(); g.arc(w / 2, h / 2, w * 0.28, 0, Math.PI * 2); g.stroke();
+            g.fillStyle = '#a86a10'; g.font = 'bold 26px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('$', w / 2, h / 2 + 2);
+        });
+    }
+
+    /* GLITTERBURST (fairy; the 3×3, DEF down) — the wand pops: a wheel of pink, gold and mint flakes shoots out flat from the
+       middle to the edge of the area, hangs there twinkling and flutters down. Every hit square flashes pink. */
+    _l4WireArea('raceGlitterburst', function (p, F, ts, r) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var N = 22, fl = [], tex = _l4FlakeTex(), R = ts * (r + 0.45), cols = [_L4C.glitA, _L4C.glitB, _L4C.glitC];
+        for (var i = 0; i < N; i++) fl.push({ S: _pzSpr(cols[i % 3], ts * 0.34, F.g, tex), a: i / N * Math.PI * 2, k: 0.45 + 0.55 * ((i * 7) % 10) / 10, ph: i * 1.7 });
+        var pop = _pzSpr(_L4C.glitA, ts, F.g, _l4StarTex()); pop.position.y = ts * 0.5;
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var out = _sigEaseOutCubic(_sigClamp01(el / 300)), fall = _sigClamp01((el - 380) / 1000);
+            pop.scale.setScalar(ts * (0.5 + 1.9 * out)); pop.material.opacity = 0.9 * (1 - _sigClamp01(el / 420)); pop.material.rotation = el * 0.004;
+            for (var i = 0; i < N; i++) {
+                var K = fl[i], rr = R * K.k * out;
+                K.S.position.set(Math.cos(K.a) * rr + Math.sin(el * 0.004 + K.ph) * ts * 0.05 * fall, ts * (0.55 + 0.25 * Math.sin(K.ph)) * (1 - 0.85 * fall * fall) + ts * 0.06, Math.sin(K.a) * rr);
+                K.S.scale.setScalar(ts * 0.36 * (0.6 + 0.4 * Math.abs(Math.sin(el * 0.012 + K.ph)))); K.S.material.rotation = el * 0.003 + K.ph;
+                K.S.material.opacity = (0.7 + 0.3 * Math.sin(el * 0.02 + K.ph)) * (1 - Math.max(0, (el - 1150) / 350));
+            }
+        });
+    }, [
+        { sprite: 'flash', ml: 200, z: 8, tint: _L4C.glitA, size0: 78, size1: 26, opacity0: 0.85 },
+        { count: 5, sprite: 'divine-sparkle', anchor: 'torso', mode: 'billboard', tint: _L4C.glitB, ml: [380, 640], z: 6, offsetXY: 10, vxRange: 110, vyRange: 110, vzRange: [40, 130], gravity: 200, drag: 1.4, size0: [5, 9], size1: 1, opacity0: 1 }
+    ]);
+
+    /* SUPERNOVA (orb of light, its ultimate; radius 2 round the orb, DEF down) — the orb falls in on itself to a point, then
+       the star goes: a shell of gold fire blows out to the edge of the area with eight long spikes of light turning in it,
+       and an ember ring is left drifting. Every hit square flashes gold. No screen flash. */
+    _l4WireArea('raceSupernova', function (p, F, ts, r) {
+        if (!_pzSeen(p.tx, p.ty)) return;
+        var R = ts * (r + 0.5), y = ts * 0.55;
+        var core = _pzSpr(_L4C.novaHot, ts, F.g), spikes = _pzSpr(_L4C.novaHot, ts, F.g, _l4RaysTex()), spikes2 = _pzSpr(_L4C.nova, ts, F.g, _l4RaysTex());
+        var shell = _pzMesh(new THREE.SphereGeometry(1, 20, 12), _pzGlow(_L4C.nova), F.g, 0, y, 0);
+        var ring = _pzMesh(new THREE.TorusGeometry(1, 0.03, 5, 40), _pzGlow(_L4C.novaEdge), F.g, 0, ts * 0.12, 0); ring.rotation.x = Math.PI / 2;
+        core.position.y = spikes.position.y = spikes2.position.y = y;
+        _fxDelay(function () { if (_suppressed()) return; for (var i = 0; i < 16; i++) { var a = i / 16 * Math.PI * 2; _pzP(F, Math.cos(a) * ts * 0.3, y, Math.sin(a) * ts * 0.3, { sprite: 'ember', tint: _L4C.nova, ml: rn(700, 1100), size0: rn(6, 11), size1: 1, vx: Math.cos(a) * rn(140, 240), vy: Math.sin(a) * rn(140, 240), vz: rn(10, 70), drag: 1.1, opacity0: 1 }); } }, 300);
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var inn = _sigClamp01(el / 280), bang = _sigEaseOutCubic(_sigClamp01((el - 280) / 520)), on = el >= 280 ? 1 : 0;
+            core.scale.setScalar(on ? ts * (0.5 + 0.9 * (1 - bang)) : ts * (1.2 - 1.0 * inn)); core.material.opacity = on ? 0.9 * (1 - bang) : 0.5 + 0.5 * inn;
+            shell.scale.setScalar(Math.max(0.01, R * bang)); shell.material.opacity = on ? 0.3 * (1 - bang) * (1 - bang) : 0;
+            spikes.scale.setScalar(ts * 0.4 + R * 2.3 * bang); spikes.material.rotation = el * 0.0012; spikes.material.opacity = on ? 0.8 * (1 - _sigClamp01((el - 500) / 800)) : 0;
+            spikes2.scale.setScalar(ts * 0.3 + R * 1.5 * bang); spikes2.material.rotation = -el * 0.0017; spikes2.material.opacity = on ? 0.65 * (1 - _sigClamp01((el - 420) / 700)) : 0;
+            ring.scale.set(Math.max(0.01, R * bang), Math.max(0.01, R * bang), 1); ring.material.opacity = on ? 0.85 * (1 - _sigClamp01((el - 700) / 900)) : 0;
+        });
+    }, [
+        { sprite: 'flash', ml: 220, z: 8, tint: _L4C.novaHot, size0: 90, size1: 30, opacity0: 0.9, delayMs: 280 },
+        { count: 4, sprite: 'ember', anchor: 'torso', mode: 'billboard', tint: _L4C.nova, delayMs: 300, ml: [420, 760], z: 6, offsetXY: 12, vxRange: 90, vyRange: 90, vzRange: [50, 150], gravity: 120, drag: 1.2, size0: [5, 9], size1: 1, opacity0: 1 }
+    ]);
+
+    /* PHOTON SCATTER (orb of light; every enemy within 2) — white light split: where each ray lands it breaks into the six
+       colours and they fan out through the body away from the orb. The battle fires only the bolts for it, so the look
+       rides the bolt beat (its own bolt def: the holy bolt without the white column it burst into) and goes off as it lands. */
+    EFFECTS['l4RacePhotonScatter_bolt'] = Object.assign({}, EFFECTS['_bolt_divine'], { radiant: false, pzSig: 'l4RacePhotonScatter' });
+    SPELL_MAP.racePhotonScatter = Object.assign({}, SPELL_MAP.racePhotonScatter, { bolt: 'l4RacePhotonScatter_bolt' });
+    _PZ_SIGS.l4RacePhotonScatter = function (p) {
+        if (!p || p.toX == null || _suppressed()) return;
+        _fxDelay(function () {
+            if (_suppressed() || !_pzSeen(p.toX, p.toY)) return;
+            var F = _nrvFrame(p.toX, p.toY);
+            _l4PhotonFan({ tx: p.toX, ty: p.toY, fromX: p.fromX, fromY: p.fromY }, F, F.ts, _l4HeadH(p.toX, p.toY, F.ts));
+        }, Math.max(60, p.flyMs || 380));
+    };
+    function _l4PhotonFan(p, F, ts, h) {
+        var d = _l4Dir(p, F), fan = new THREE.Group(), beams = []; fan.position.y = h * 0.6; fan.rotation.y = Math.atan2(d.x, d.z); F.g.add(fan);
+        for (var i = 0; i < 6; i++) {
+            var piv = new THREE.Group(); piv.rotation.y = (i - 2.5) * 0.24; fan.add(piv);
+            var b = _pzMesh(new THREE.BoxGeometry(ts * 0.07, ts * 0.07, 1), _pzGlow(_L4_SPECTRUM[i]), piv); beams.push(b);
+        }
+        _pzP(F, 0, h * 0.6, 0, { sprite: 'flash', tint: 0xffe9a8, ml: 170, size0: ts * 0.6, size1: ts * 0.2, opacity0: 0.9 });
+        return _sigRunOwned(F.g, 900, function (el) {
+            var t = _sigEaseOutCubic(_sigClamp01(el / 220)), len = ts * 1.5 * t, op = 0.95 * (1 - _sigClamp01((el - 450) / 450));
+            for (var i = 0; i < 6; i++) { beams[i].scale.z = Math.max(1, len); beams[i].position.z = len / 2 + ts * 0.05; beams[i].material.opacity = op; }
+        });
+    }
+
+    /* HORN LIGHT (unicorn; a weak hit + Blind) — light off the horn: a twist of pearl and violet light winds from the horn to
+       the enemy's eyes and goes off there in one hard star. It had no look at all. */
+    _FX2_BURST.uniHornLight = function (p) {
+        if (!p || p.tx == null || _suppressed() || !_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, h = _l4HeadH(p.tx, p.ty, ts), d = _l4Dir(p, F), N = 16, tw = [];
+        var B = new THREE.Vector3(0, h * 0.88, 0), A = d.from ? new THREE.Vector3(-d.x * d.L, (d.dy || 0) + _l4HeadH(d.from.x, d.from.y, ts) * 1.0, -d.z * d.L) : new THREE.Vector3(-d.x * ts, h, -d.z * ts);
+        var side = new THREE.Vector3(-d.z, 0, d.x), pos = new THREE.Vector3();
+        for (var i = 0; i < N; i++) tw.push(_pzSpr(i % 2 ? _L4C.horn : _L4C.hornDeep, ts * 0.26, F.g));
+        var star = _pzSpr(_L4C.horn, ts * 0.8, F.g, _l4StarTex()); star.position.copy(B);
+        return _sigRunOwned(F.g, 900, function (el) {
+            var reach = _sigEaseOutCubic(_sigClamp01(el / 240)), fade = 1 - _sigClamp01((el - 480) / 380);
+            for (var i = 0; i < N; i++) {
+                var u = (i + 0.5) / N, S = tw[i]; if (u > reach) { S.material.opacity = 0; continue; }
+                var a = u * Math.PI * 5 - el * 0.02 + (i % 2) * Math.PI, rr = ts * 0.14 * (1 - 0.6 * u);
+                pos.lerpVectors(A, B, u); pos.addScaledVector(side, Math.cos(a) * rr); pos.y += Math.sin(a) * rr;
+                S.position.copy(pos); S.scale.setScalar(ts * (0.3 - 0.1 * u)); S.material.opacity = 0.95 * fade;
+            }
+            var k = _pzEnv(el, 200, 280, 420, 880); star.scale.setScalar(ts * (0.3 + 0.9 * k)); star.material.rotation = el * 0.003; star.material.opacity = k;
+        });
+    };
+
+    /* UNICORN CHARGE (unicorn; a heavy charge, more on the Blinded) — horn first: a long gold horn of light drives through the
+       enemy along the line of the gallop, and the gallop's rainbow hangs in the lane behind it. It had no look at all. */
+    _FX2_BURST.uniUnicornCharge = function (p) {
+        if (!p || p.tx == null || _suppressed() || !_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, h = _l4HeadH(p.tx, p.ty, ts), d = _l4Dir(p, F);
+        var rig = new THREE.Group(); rig.rotation.y = Math.atan2(d.x, d.z); rig.position.y = h * 0.6; F.g.add(rig);
+        var horn = _pzMesh(new THREE.ConeGeometry(ts * 0.11, ts * 1.2, 10, 1, true), _pzGlow(_L4C.glitB), rig); horn.rotation.x = Math.PI / 2;
+        var twist = []; for (var i = 0; i < 9; i++) twist.push(_pzSpr(_L4C.horn, ts * 0.1, rig));
+        var bands = [];
+        for (var k = 0; k < 6; k++) { var b = _pzMesh(new THREE.PlaneGeometry(ts * 0.07, 1), _pzGlow(_L4_SPECTRUM[k]), rig); b.rotation.x = -Math.PI / 2; b.position.x = (k - 2.5) * ts * 0.075; bands.push(b); }
+        _pzP(F, 0, h * 0.6, 0, { sprite: 'flash', tint: _L4C.glitB, ml: 180, size0: ts * 0.7, size1: ts * 0.25, opacity0: 0.9 });
+        for (var s = 0; s < 8; s++) _pzP(F, 0, h * 0.6, 0, { sprite: 'divine-sparkle', tint: s % 2 ? _L4C.horn : _L4C.glitB, ml: rn(360, 620), size0: rn(6, 11), size1: 1, vx: d.x * rn(60, 220) + rn(-70, 70), vy: d.z * rn(60, 220) + rn(-70, 70), vz: rn(30, 150), gravity: 260, drag: 1.1, opacity0: 1 });
+        return _sigRunOwned(F.g, 1000, function (el) {
+            var t = _sigEaseOutCubic(_sigClamp01(el / 200)), fade = 1 - _sigClamp01((el - 420) / 500);
+            horn.position.z = ts * (-0.9 + 1.3 * t); horn.material.opacity = 0.8 * fade;
+            for (var i = 0; i < twist.length; i++) { var u = i / twist.length, a = u * Math.PI * 4; twist[i].position.set(Math.cos(a) * ts * 0.1 * (1 - u), Math.sin(a) * ts * 0.1 * (1 - u), horn.position.z - ts * 0.6 + ts * 1.2 * u); twist[i].material.opacity = 0.9 * fade; }
+            var L = ts * 1.9 * t;
+            for (var k = 0; k < 6; k++) { bands[k].scale.y = Math.max(1, L); bands[k].position.z = -ts * 0.5 - L / 2; bands[k].position.y = -h * 0.5; bands[k].material.opacity = 0.6 * (1 - _sigClamp01((el - 300) / 650)); }
+        });
+    };
+
+    /* ANCHOR (pirate; Rooted) — the ship's anchor drops (the metal pass's own, the model); what it had no look for is the
+       hold: a chain runs taut from the anchor's ring up to the body and its links pull tight twice */
+    _l4Wire('raceAnchor', 'impact', function (p, F, ts, h) {
+        var N = 7, links = [], mat = _pzSolid(_L4C.ironEdge, null, { depthWrite: false });
+        for (var i = 0; i < N; i++) { var m = _pzMesh(new THREE.TorusGeometry(ts * 0.045, ts * 0.014, 5, 10), i ? mat.clone() : mat, F.g); m.rotation.y = (i % 2) * Math.PI / 2; links.push(m); }
+        return _sigRunOwned(F.g, 1900, function (el) {
+            var out = _sigEaseOutCubic(_sigClamp01((el - 260) / 260)), env = _pzEnv(el, 260, 340, 1450, 1900);
+            var tug = 0.06 * (Math.exp(-Math.pow((el - 700) / 70, 2)) + Math.exp(-Math.pow((el - 1050) / 70, 2)));
+            for (var i = 0; i < N; i++) {
+                var u = i / (N - 1) * out, sag = Math.sin(u * Math.PI) * ts * (0.1 - tug);
+                links[i].position.set(ts * 0.34 * (1 - u), ts * 0.3 + (h * 0.42 - ts * 0.3) * u - sag, ts * 0.2 * (1 - u)); links[i].material.opacity = env;
+            }
+        });
+    }, { shake: 'normal' });
+
+    /* IMPLANT (grey; Marked, M DEF down) — the chip goes in: a small green chip snaps from the grey to the back of the head,
+       seats, and its red light starts to blink while the tracking signal pings out of it, three times */
+    _l4Wire('raceImplant', 'impact', function (p, F, ts, h) {
+        var d = _l4Dir(p, F), chip = _pzSprN(0xffffff, ts * 0.26, _l4ChipTex(), F.g), led = _pzSpr(_L4C.led, ts * 0.3, F.g), pings = [], R = _l4Right();
+        chip.material.depthTest = false;
+        var A = new THREE.Vector3(-d.x * Math.min(d.L, ts * 2.2), h * 0.75, -d.z * Math.min(d.L, ts * 2.2)), B = new THREE.Vector3(0, h * 0.86, 0);
+        for (var i = 0; i < 2; i++) { var P = _pzSpr(_L4C.chip, ts * 0.5, F.g, _l4PingTex()); pings.push(P); }
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var t = _sigEaseInCubic(_sigClamp01(el / 220)), seat = _sigClamp01((el - 220) / 160);
+            chip.position.lerpVectors(A, B, t); chip.scale.setScalar(ts * 0.26 * (1 - 0.45 * seat)); chip.material.rotation = (1 - t) * 3; chip.material.opacity = _pzEnv(el, 0, 60, 1300, 1700);
+            var bl = el > 380 ? Math.max(0, Math.sin((el - 380) / 380 * Math.PI * 2)) : 0, n = (el - 380) / 380;
+            led.position.copy(B); led.scale.setScalar(ts * (0.16 + 0.22 * bl)); led.material.opacity = (n > 0 && n < 3) ? bl : 0;
+            for (var i = 0; i < 2; i++) {
+                var cyc = ((el - 380) % 380) / 380, P = pings[i], sgn = i ? -1 : 1;
+                P.position.set(B.x + R.x * sgn * ts * (0.18 + 0.3 * cyc), B.y, B.z + R.z * sgn * ts * (0.18 + 0.3 * cyc));
+                P.scale.set(sgn * ts * (0.3 + 0.35 * cyc), ts * (0.3 + 0.35 * cyc), 1); P.material.opacity = (n > 0 && n < 3) ? 0.85 * (1 - cyc) : 0;
+            }
+        });
+    });
+
+    /* IRON GRIP (Raider; a weak hit + Rooted) — the grab: four iron fingers and a thumb swing shut round the body, bite, and
+       squeeze once; rust sparks jump where they close */
+    _l4Wire('ironGrip', 'impact', function (p, F, ts, h) {
+        var d = _l4Dir(p, F), hand = new THREE.Group(), fingers = []; hand.rotation.y = Math.atan2(d.x, d.z); F.g.add(hand);
+        for (var i = 0; i < 5; i++) {
+            var thumb = i === 4, piv = new THREE.Group(); piv.position.set(0, h * (thumb ? 0.5 : 0.36 + 0.13 * i), -ts * 0.34); hand.add(piv);
+            var f = _pzMesh(new THREE.TorusGeometry(ts * 0.34, ts * 0.05, 6, 12, Math.PI * 0.95), _pzSolid(thumb ? _L4C.ironEdge : _L4C.iron, null, { side: THREE.DoubleSide, depthWrite: false }), piv);
+            f.rotation.x = thumb ? -Math.PI / 2 : Math.PI / 2; f.position.z = ts * 0.34;
+            fingers.push({ piv: piv, f: f, sgn: thumb ? -1 : 1 });
+        }
+        _fxDelay(function () { if (_suppressed()) return; for (var k = 0; k < 9; k++) _pzP(F, d.x * ts * 0.3 + rn(-10, 10), h * rn(0.35, 0.8), d.z * ts * 0.3 + rn(-10, 10), { sprite: 'steel-spark', tint: _L4C.rust, ml: rn(260, 460), size0: rn(6, 10), size1: 1, vx: rn(-120, 120), vy: rn(-120, 120), vz: rn(20, 140), gravity: 420, drag: 0.8, opacity0: 1 }); try { _shake('light'); } catch (e) {} }, 200);
+        return _sigRunOwned(F.g, 1300, function (el) {
+            var shut = _sigEaseOutBack(_sigClamp01(el / 200)), sq = 1 - 0.14 * Math.exp(-Math.pow((el - 520) / 110, 2)), env = _pzEnv(el, 0, 60, 950, 1300);
+            for (var i = 0; i < fingers.length; i++) {
+                var K = fingers[i];
+                /* open = swung back behind the caster's side; shut = wrapped round the far side of the body */
+                K.piv.rotation.y = K.sgn * 1.5 * (1 - shut);
+                K.piv.scale.setScalar(sq); K.f.material.opacity = 0.95 * env;
+            }
+        });
+    }, { shake: 'normal' });
+
+    /* RED EYES (mothman; Marked) — it has seen you: a patch of dark opens behind the enemy's shoulders and two red eyes
+       open in it, stare, and narrow shut */
+    _l4Wire('raceRedEyes', 'impact', function (p, F, ts, h) {
+        var R = _l4Right(), dark = _pzSprN(_L4C.moth, ts * 1.3, _sigGlowTex(), F.g), eyes = [];
+        dark.material.depthTest = false; dark.renderOrder = 150; dark.position.y = h * 0.8;
+        for (var i = 0; i < 2; i++) { var E = _pzSpr(_L4C.eye, ts * 0.3, F.g, _l4EyeTex()), s = i ? 1 : -1; E.position.set(R.x * s * ts * 0.3, h * 0.84, R.z * s * ts * 0.3); eyes.push(E); }
+        return _sigRunOwned(F.g, 1600, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01((el - 120) / 220)), shut = _sigClamp01((el - 1200) / 300), lid = open * (1 - shut);
+            var blink = 1 - 0.9 * Math.exp(-Math.pow((el - 760) / 45, 2)), pulse = 0.85 + 0.15 * Math.sin(el * 0.02);
+            dark.scale.set(ts * 1.5, ts * 0.9, 1); dark.material.opacity = 0.85 * _pzEnv(el, 0, 150, 1250, 1600);
+            for (var i = 0; i < 2; i++) { eyes[i].scale.set(ts * 0.5 * pulse, ts * 0.36 * Math.max(0.03, lid * blink), 1); eyes[i].material.opacity = _pzEnv(el, 100, 200, 1350, 1600); }
+        });
+    }, { shake: 'soft' });
+
+    /* SMOKE SCREEN (shadow entity / vampire; a 3×3 of smoke for 2 turns) — the smoke itself: a grey bank boils up out of the
+       middle square and rolls out over all nine, thick at the floor, thin at the top. No flash: nothing is hit. */
+    _l4Wire('sharedSmokeScreen', 'aura', function (p, F, ts, h) {
+        var r = p.aoeRadius != null ? p.aoeRadius : 1, puffs = [], tex = _sigGlowTex();
+        for (var gx = -r; gx <= r; gx++) for (var gy = -r; gy <= r; gy++) for (var k = 0; k < 2; k++) {
+            var S = _pzSprN(k ? _L4C.smokeA : _L4C.smokeB, ts, tex, F.g), wA = _worldPos(p.tx + gx, p.ty + gy);
+            puffs.push({ S: S, x: wA.x - F.wp.x + (k ? ts * 0.18 : -ts * 0.15), z: wA.z - F.wp.z + (k ? -ts * 0.12 : ts * 0.16), y: wA.y - F.wp.y, d: 90 * (Math.abs(gx) + Math.abs(gy)) + k * 120, k: k, ph: gx * 3 + gy * 5 + k });
+        }
+        return _sigRunOwned(F.g, 2300, function (el) {
+            for (var i = 0; i < puffs.length; i++) {
+                var K = puffs[i], u = _sigClamp01((el - K.d) / 700), g = _sigEaseOutCubic(u);
+                K.S.position.set(K.x * (0.3 + 0.7 * g) + Math.sin(el * 0.0015 + K.ph) * ts * 0.06, K.y + ts * (0.22 + (K.k ? 0.42 : 0.12) * g), K.z * (0.3 + 0.7 * g));
+                K.S.scale.setScalar(ts * (0.5 + (K.k ? 0.75 : 1.0) * g)); K.S.material.opacity = (K.k ? 0.42 : 0.6) * g * (1 - _sigClamp01((el - 1500) / 800));
+            }
+        });
+    });
+
+    /* SPELLSTEAL (wizard; one of the enemy's spells is taken) — the page is torn out: a lit page of the enemy's spellbook
+       lifts out of its head, tumbles across to the wizard on a trail of violet, and is gone into his hand */
+    _l4Wire('raceSpellsteal', 'impact', function (p, F, ts, h) {
+        var d = _l4Dir(p, F), page = _pzSprN(0xffffff, ts * 0.36, _l4PageTex(), F.g), glow = _pzSpr(_L4C.steal, ts * 0.7, F.g), trail = [];
+        page.material.depthTest = false;
+        var A = new THREE.Vector3(0, h * 0.9, 0), B = d.from ? new THREE.Vector3(-d.x * d.L, (d.dy || 0) + _l4HeadH(d.from.x, d.from.y, ts) * 0.7, -d.z * d.L) : new THREE.Vector3(-d.x * ts * 1.5, h * 0.7, -d.z * ts * 1.5);
+        for (var i = 0; i < 7; i++) trail.push(_pzSpr(i % 2 ? _L4C.steal : _L4C.stealHot, ts * (0.2 - 0.02 * i), F.g));
+        function at(u, v) { v.lerpVectors(A, B, u); v.y += Math.sin(u * Math.PI) * Math.max(ts * 0.45, d.L * 0.22); return v; }
+        var v = new THREE.Vector3(), FLY = 620;
+        _fxDelay(function () { if (_suppressed() || !d.from || !_pzSeen(d.from.x, d.from.y)) return; _pzP(F, B.x, B.y, B.z, { sprite: 'flash', tint: _L4C.steal, ml: 200, size0: ts * 0.5, size1: ts * 0.15, opacity0: 0.85 }); }, 300 + FLY);
+        return _sigRunOwned(F.g, 300 + FLY + 250, function (el) {
+            var rip = _sigEaseOutBack(_sigClamp01(el / 240)), u = _sigEaseInCubic(_sigClamp01((el - 300) / FLY));
+            if (el < 300) page.position.set(0, h * (0.7 + 0.2 * rip), 0); else page.position.copy(at(u, v));
+            page.scale.set(ts * 0.3 * (0.4 + 0.6 * rip) * (1 - 0.4 * u), ts * 0.38 * (0.4 + 0.6 * rip) * (1 - 0.4 * u), 1); page.material.rotation = el < 300 ? 0.25 * Math.sin(el * 0.05) : u * 5; page.material.opacity = u < 1 ? 1 : 0;
+            glow.position.copy(page.position); glow.material.opacity = u < 1 ? 0.55 : 0;
+            for (var i = 0; i < trail.length; i++) { var w = u - 0.05 * (i + 1); if (w <= 0 || u >= 1) { trail[i].material.opacity = 0; continue; } trail[i].position.copy(at(w, v)); trail[i].material.opacity = 0.8 * (1 - i / trail.length); }
+        });
+    }, { shake: 'soft' });
+
+    /* STEAL FROM THE RICH (robinhood; the enemy's ATK down a stage, his own up) — the purse is cut: gold coins spill out of
+       the enemy and fly in a string to Robin Hood, the last one spinning */
+    _l4Wire('raceStealFromRich', 'impact', function (p, F, ts, h) {
+        var d = _l4Dir(p, F), N = 7, coins = [], tex = _l4CoinTex(), v = new THREE.Vector3();
+        var A = new THREE.Vector3(0, h * 0.45, 0), B = d.from ? new THREE.Vector3(-d.x * d.L, (d.dy || 0) + _l4HeadH(d.from.x, d.from.y, ts) * 0.5, -d.z * d.L) : new THREE.Vector3(-d.x * ts * 1.5, h * 0.5, -d.z * ts * 1.5);
+        for (var i = 0; i < N; i++) { var C = _pzSprN(0xffffff, ts * 0.2, tex, F.g); C.material.depthTest = false; coins.push(C); }
+        _pzP(F, 0, h * 0.45, 0, { sprite: 'flash', tint: _L4C.coin, ml: 160, size0: ts * 0.45, size1: ts * 0.15, opacity0: 0.85 });
+        var FLY = 560, GAP = 70;
+        return _sigRunOwned(F.g, FLY + GAP * N + 150, function (el) {
+            for (var i = 0; i < N; i++) {
+                var u = (el - i * GAP) / FLY, C = coins[i];
+                if (u <= 0 || u >= 1) { C.material.opacity = 0; continue; }
+                v.lerpVectors(A, B, u); v.y += Math.sin(u * Math.PI) * Math.max(ts * 0.6, d.L * 0.3) * (0.8 + 0.2 * (i % 3));
+                C.position.copy(v); C.scale.set(ts * 0.2 * Math.max(0.15, Math.abs(Math.cos(el * 0.018 + i))), ts * 0.2, 1); C.material.opacity = Math.min(1, u * 8) * Math.min(1, (1 - u) * 6);
+            }
+        });
+    }, { shake: 'soft' });
+
     /* ═════════ END THE OWN LOOKS, L4 ═════════ */
 
     return {
