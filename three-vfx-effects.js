@@ -5214,6 +5214,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var _laserThick = Math.max(0.6, (beamThickness / 14));
             var _laserOk = _vcSB ? true : _vcKit ? _beamKit3D(fromX, fromY, _lastTile.x, _lastTile.y, {
                 kit: _vcKit, glow: _bc.glow, beamMs: beamMs, thickness: _laserThick,
+                clash: _beamKitClashAt(fromX, fromY, dx, dy, range, hitTiles),
                 startW: _startW || undefined, endW: _endW || undefined,
             }) : _spawnLaserBeam3D(fromX, fromY, _lastTile.x, _lastTile.y, {
                 core: _bc.core, glow: _bc.glow, beamMs: beamMs, thickness: _laserThick,
@@ -6540,7 +6541,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _beamKitFor(spellId) { return (_vcOn() && spellId && _VC_BEAM[spellId]) || null; }
     function _beamKitCols(glow, K) {
         var g = _vcTone(K.col != null ? K.col : (glow != null ? glow : 0x66aaff), null, 0.62, 0.92), r = _vcRgb(g);
-        var hot = (Math.round(r[0] + (235 - r[0]) * 0.28) << 16) | (Math.round(r[1] + (235 - r[1]) * 0.28) << 8) | Math.round(r[2] + (235 - r[2]) * 0.28);
+        var hot = (Math.round(r[0] + (235 - r[0]) * 0.14) << 16) | (Math.round(r[1] + (235 - r[1]) * 0.14) << 8) | Math.round(r[2] + (235 - r[2]) * 0.14);
         var dark = (Math.round(r[0] * 0.16) << 16) | (Math.round(r[1] * 0.16) << 8) | Math.round(r[2] * 0.16);
         return { glow: g, hot: hot, dark: dark };
     }
@@ -6586,6 +6587,60 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         }
     }
+    /* THE CLASH (B4, mondo 11-17: "that is worth building then, bc that stuff actually happens"): where a kit beam meets
+       something that stands against it, both colours push at a dark seam with a turning ring for as long as the beam
+       holds. Three cases, each read from what BOTH screens already have (the beam's own params + the synced state), no
+       roll: a PRISM / mirror on the line (state.mirrors: the light banks there), a WALL the line stops at (it ends short
+       of its range and the next square is an object or a step up of 2+), a SHIELDED or GUARDING body on the line
+       (the first one). Visual only: no rule reads it, the damage is whatever battle.js already decided. */
+    function _beamKitClashAt(fromX, fromY, dx, dy, range, hitTiles) {
+        try {
+            if (!hitTiles || !hitTiles.length || typeof state === 'undefined') return null;
+            var i, t, last = hitTiles[hitTiles.length - 1];
+            var mir = state.mirrors || [];
+            for (i = 0; i < hitTiles.length; i++) { t = hitTiles[i];
+                for (var m = 0; m < mir.length; m++) if (mir[m] && mir[m].hp > 0 && mir[m].x === t.x && mir[m].y === t.y) return { kind: 'prism', x: t.x, y: t.y, col2: 0xbfe8ff }; }
+            if ((dx || dy) && range && hitTiles.length < range) {
+                var nx = last.x + dx, ny = last.y + dy;
+                if (typeof isInside === 'function' && isInside(nx, ny)) {
+                    var blocked = false;
+                    try { blocked = !!(typeof getObjectAt === 'function' && getObjectAt(nx, ny)); } catch (e) {}
+                    try { if (!blocked && typeof getHeightAt === 'function') blocked = (getHeightAt(nx, ny) - getHeightAt(last.x, last.y)) >= 2; } catch (e) {}
+                    if (blocked) return { kind: 'wall', x: last.x, y: last.y, edge: true, col2: 0xd8c0a0 };
+                }
+            }
+            if (state.units && typeof unitHasStatus === 'function') {
+                for (i = 0; i < hitTiles.length; i++) { t = hitTiles[i];
+                    for (var u = 0; u < state.units.length; u++) { var un = state.units[u];
+                        if (!un || un.dead || un.x !== t.x || un.y !== t.y) continue;
+                        if (unitHasStatus(un, 'shield')) return { kind: 'shield', x: t.x, y: t.y, col2: 0x6fd8ff };
+                        if (unitHasStatus(un, 'guarding')) return { kind: 'shield', x: t.x, y: t.y, col2: 0xffd27a };
+                    } }
+            }
+        } catch (e) {}
+        return null;
+    }
+    function _beamKitClash3D(pt, C, col2, ms, ts, thick) {
+        var scene = _getVFXScene(); if (!scene || _suppressed()) return;
+        var mk = function (tex, col, add, order) { var m = _sigMagicOrbMat(col, tex); if (!add) m.blending = THREE.NormalBlending; var sp = new THREE.Sprite(m); sp.geometry._ew_shared = true; sp.position.copy(pt); sp.renderOrder = order; _vfxAdd(scene, sp); return sp; };
+        var push = mk(_sigGlowTex(), col2, true, 216), seam = mk(_sigGlowTex(), 0x07040d, false, 217);
+        var r1 = mk(_sigRingTex(), C.glow, true, 218), r2 = mk(_sigRingTex(), col2, true, 219);
+        var k = ts * Math.max(0.8, Math.min(1.5, thick)), sS = _worldToSpawn({ x: pt.x, y: pt.y, z: pt.z }), lastE = 0;
+        _animate3D({ meshes: [push, seam, r1, r2], done: false }, ms, function (el) {
+            var inK = Math.min(1, el / 90), out = el > ms - 140 ? Math.max(0, (ms - el) / 140) : 1, a = inK * out;
+            var throb = 1 + 0.16 * Math.sin(el * 0.045);                      /* the two sides shoving */
+            push.scale.set(k * 0.95 * throb, k * 0.95 * throb, 1); push.material.opacity = 0.55 * a;
+            seam.scale.set(k * 0.42, k * 0.42, 1); seam.material.opacity = 0.9 * a;
+            r1.scale.set(k * 0.8 * throb, k * 0.8 * throb, 1); r1.material.rotation = el * 0.011; r1.material.opacity = 0.9 * a;
+            r2.scale.set(k * 0.55 / throb, k * 0.55 / throb, 1); r2.material.rotation = -el * 0.016; r2.material.opacity = 0.8 * a;
+            if (el - lastE > 55 && _canSpawn()) {
+                lastE = el;
+                for (var n = 0; n < 2; n++) { var ang = rn(0, 6.2832), v = rn(140, 320);
+                    _spawn({ x: sS.x, y: sS.y, z: sS.z, vx: Math.cos(ang) * v, vy: Math.sin(ang) * v, vz: rn(-20, 200), mode: 'billboard', sprite: 'spark-blue',
+                        tint: n ? col2 : C.glow, ml: rn(180, 360), size0: rn(4, 8), size1: 1, opacity0: 1, opacity1: 0, gravity: 300, drag: 1.5 }); }
+            }
+        });
+    }
     /* beats 2 + 3: the beam and its impact (same line + clock as _spawnLaserBeam3D) */
     function _beamKit3D(fromTx, fromTy, toTx, toTy, o) {
         var scene = _getVFXScene(); if (!scene) return false;
@@ -6597,18 +6652,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
         var C = _beamKitCols(o.glow, K), st = K.style || 'blaster';
         var thick = (o.thickness != null ? o.thickness : 1) * (K.thick || 1), beamMs = o.beamMs != null ? o.beamMs : 440;
+        thick = Math.min(st === 'ki' ? 1.9 : 1.4, thick);   /* a wide beam def made a band a square wide that washed out to cream */
         function cyl(radius, color, opacity, order, add) {
             var m = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 16, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(color),
                 transparent: true, opacity: 0, side: THREE.DoubleSide, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false }));
             m.position.copy(start); m.quaternion.copy(quat); m.scale.set(0.01, 0.01, 0.01); m.renderOrder = order; _vfxAdd(scene, m);
             return { mesh: m, mat: m.material, baseR: radius, baseOp: opacity };
         }
-        var glow = cyl(ts * 0.15 * thick, C.glow, 0.15, 210, true);
+        var glow = cyl(ts * 0.14 * thick, C.glow, 0.11, 210, true);
         var edge = cyl(ts * 0.062 * thick, C.dark, 0.72, 212, false);
         var core = cyl(ts * 0.036 * thick, C.hot, 1.0, 213, false);
-        var shMat = _sigEnergyMat(C.glow, { opacity: 0.5, gain: 1.1, s1x: st === 'wand' ? 0.22 : 0.05, s1y: -1.9, s2x: st === 'wand' ? -0.3 : -0.06, s2y: -0.9,
+        var shMat = _sigEnergyMat(C.glow, { opacity: 0.34, gain: 0.9, s1x: st === 'wand' ? 0.22 : 0.05, s1y: -1.9, s2x: st === 'wand' ? -0.3 : -0.06, s2y: -0.9,
             scale1: st === 'ki' ? 1.4 : 2.2, scale2: 1.0, vFadeLo: 0.03, vFadeHi: 0.96 });
-        var sh = { mesh: new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 16, 1, true), shMat), mat: shMat, baseR: ts * 0.10 * thick, baseOp: 0.5, energy: true };
+        var sh = { mesh: new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 16, 1, true), shMat), mat: shMat, baseR: ts * 0.09 * thick, baseOp: 0.34, energy: true };
         sh.mesh.position.copy(start); sh.mesh.quaternion.copy(quat); sh.mesh.scale.set(0.01, 0.01, 0.01); sh.mesh.renderOrder = 211; _vfxAdd(scene, sh.mesh);
         var layers = [glow, sh, edge, core];
         var ringN = K.rings != null ? K.rings : 0, rings = [];
@@ -6651,6 +6707,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var mz = ts * 0.42 * thick * (1 + 0.5 * Math.max(0, 1 - el / 160)) * thin;
             muzzle.scale.set(mz, mz, 1); muzzle.material.opacity = 0.7 * op;
         });
+        /* THE CLASH: where the line meets what stands against it, for the hold */
+        if (o.clash) {
+            var cw = _worldTorso(o.clash.x, o.clash.y), cpt = new THREE.Vector3(cw.x, cw.y, cw.z);
+            /* on the beam's own line (its height there), and at a wall on the far edge of the last square */
+            var along = Math.max(0, Math.min(length, cpt.clone().sub(start).dot(dir))) + (o.clash.edge ? ts * 0.45 : 0);
+            cpt.copy(start).addScaledVector(dir, Math.min(length + ts * 0.45, along));
+            var cDelay = lanceMs * Math.min(1, along / length);
+            _fxDelay(function () { if (!_suppressed()) _beamKitClash3D(cpt, C, o.clash.col2, Math.max(520, beamMs - cDelay + 120), ts, thick); }, cDelay);   /* it outlasts the beam a beat: the shove, then the give */
+        }
         /* beat 3: the impact, as the front arrives. The splash goes BACK and to the sides, so the body and its number stay clear */
         _fxDelay(function () {
             if (_suppressed() || !_canSpawn()) return;
@@ -22320,8 +22385,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return (_vcPalC[arch] = o);
     }
     /* a shared helper handed near-white draws in the casting spell's colour (the riot context's light); no spell casting = as given */
+    /* white because it IS the thing (mondo 11-17: not "just anything that is white"): a camera's flash, a flashbulb, a pen-light */
+    var _VC_WHITE_OK = { raceOutOfTheDark: 1, raceSasquatchSmash: 1, sigBlurryPhoto: 1, goNeuralyzer: 1, raceDeneuralizer: 1, pzPaparazziFlash: 1, nrSelfieFlash: 1, raceCryptidVanish: 1 };
     function _vcCol(c) {
         if (!_vcOn() || !_vcNearWhite(c)) return c;
+        if (_rvCtx && _rvCtx.keepWhite) return c;
         var L = _rvCtx && _rvCtx.light; if (!L || _vcNearWhite(L)) return c;
         var t = _vcTone(L, null, 0.45, 0.92);
         return (typeof c === 'string') ? t : parseInt(String(t).replace('#', ''), 16);
@@ -67812,6 +67880,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { si = stageInfo(spellId); } catch (e) { si = null; }
         if (!si) return null;
         var c = { w: si.weight || 'standard', light: (si.palette && si.palette.flash) || null, staged: !!staged, arch: si.archetype || null };
+        if (_VC_WHITE_OK[spellId]) c.keepWhite = true;
         var A = _rvAreaFor(spellId, params, aoeRadius);
         if (A) c.area = A;
         /* THE HIT SIDE part 4: a fire spell's signature meshes are tamed (_hsFireNow) */

@@ -4682,3 +4682,19 @@ into more vfx"; and 11-17: only where something really comes through from somewh
   `ThreeVFXEffects.fire('windup', id, {...})`): a real teleport cast is over before the runner's first frame.
 - Open: `teleport` (moves another unit), the air door on the kit, doors / summons / rifts.
 
+
+## THE VFX CLEANUP, B4 part 2: THE CLASH + white that is the thing (2026-11-17, three-vfx-effects.js)
+- **THE CLASH** (mondo: "that is worth building then, bc that stuff actually happens"): `_beamKitClashAt(fromX, fromY, dx,
+  dy, range, hitTiles)` returns `{ kind, x, y, col2, edge }` or null: `prism` = a live `state.mirrors` entry on a hit
+  square; `wall` = `hitTiles.length < range` and the next square is inside the board and holds an object
+  (`getObjectAt`) or stands 2+ levels higher (`getHeightAt`); `shield` = the first body on the line with the status
+  `shield` (cyan) or `guarding` (gold). `_fireBeamMapped` passes it to `_beamKit3D` as `o.clash`;
+  `_beamKitClash3D(pt, C, col2, ms, ts, thick)` draws a dark seam, a glow in the other side's colour, two rings turning
+  against each other and sparks of both colours, at that point ON the beam's line, from the front's arrival to 120 ms
+  after the beam. Looks only; deterministic from relayed params + synced state.
+- **`_VC_WHITE_OK`**: spells whose flash IS a camera / flashbulb / pen-light keep it white: the riot context carries
+  `keepWhite` and `_vcCol` leaves near-white alone for them (a sweep thread found Sasquatch Smash's flashbulb recoloured).
+- The kit beam: `thick` capped (1.9 ki, 1.4 others), the hot core nearer its colour, the glow and sheath lower.
+- `_fireBeamMapped` is entered twice for one cast in the capture runner (two log lines per cast); not traced: if that is
+  also true in a real match every beam is drawn twice.
+
