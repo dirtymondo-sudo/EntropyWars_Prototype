@@ -1,4 +1,4 @@
-# NPC ENCOUNTERS: the plan and the guide (rev 3, 2026-11-17, with mondo's answers)
+# NPC ENCOUNTERS: the plan and the guide (rev 4, 2026-11-17, every question of round 1 and 2 answered)
 
 mondo uploaded an NPC encounter concept (v0.3, made with another AI that did not know the game; kept word for word in
 `concept-v0.3.md` beside this file). This file fits that concept to Entropy Wars as it stands on main today: the roster,
@@ -145,8 +145,9 @@ the same race may only flee or shout. A unit can be in one named group at most (
 ### 3.3 The room mix (mondo 11-17, Q2: "depend on the room and the unit")
 How hostile a place is comes from the room, not one global number. Each room's `encounters` row (it exists already) gets
 a temper mix: Hell can be almost all Brutes, a quiet street almost no one hostile. The unit's own temper still decides what
-it does; the room decides who is there. No global cap on NPC-started fights. A short calm time after any fight (so you are
-not jumped as you land) is the only shared number (PROPOSAL: 30 s).
+it does; the room decides who is there. No global cap on NPC-started fights, and no calm timer (mondo 11-17, Q23): every Brute that
+was aware of a fight joins it (4.6), so when a fight ends the ones left around you never saw you. If back-to-back fights
+still show up when he plays it, a calm time is added then.
 
 ---
 
@@ -172,7 +173,7 @@ it again (3.1). The first quest's fight is a quest fight (`QUEST_FIGHTS`) and ke
 - **Opportunist:** comes at you when your party looks weak and Talks first: this IS the mugging. It may give a reason in
   its line ("Nice shoes."), as mondo liked (Q16).
 - **Guard / Protector / group members:** when they see you strike someone of their own (3.2) or their place.
-- **Never:** in DOOR HQ, during a cutscene or quest scene, or in the calm time after a fight.
+- **Never:** in DOOR HQ or during a cutscene or quest scene.
 - **Note for mondo:** the muggings and drive-bys are not in the game yet (npc-system.md delivery 7, not built on
   main: no code for them in data.js or three-renderer.js on 11-17). This step builds them.
 
@@ -182,9 +183,19 @@ a panel that obeys the back keys (Escape, E, right click). What it can offer now
 
 | Offer | Result | Notes |
 |---|---|---|
-| **Pay you off** | Money, health potions, revives and the like into the bag | The bag and the spoils exist; amounts are PROPOSALS by level and tier |
+| **Pay you off** | Gold + items into the bag (the table below) | The bag and the spoils exist |
 | **Join you** | It joins the party through `hqCaptureEnlist` (party, else roster, else the holding tank) | mondo said yes (Q6); same ONE OF EACH rule as a capture |
 | **Spare me** | The fight ends, it flees | Counts as beaten for the cleared ledger and the refill |
+
+**The pay-off (PROPOSAL by Claude, mondo 11-17 Q24 "you propose").** It follows his spoils rule ("don't give different
+units different drop rates"): the items come from the same `HQ_DROP_RULES` table every fallen enemy rolls on, the same
+for every unit; only the gold grows with the NPC's level, as XP and bounties already do.
+
+| Part | Amount | Why |
+|---|---|---|
+| Gold | 8 × the NPC's level (a level 5 Chef pays 40, a level 20 cop 160, the level 50 Superhero 400) | A health potion costs 40, so an early pay-off buys about one potion; the 40 / 80 / 160 capture bounty sits in the same range |
+| Items | 2 rolls on the spoils table, each certain to drop (a kill is one roll at 60 %) | You give up the kill's XP, so the deal must beat a kill's drop; the table's own weights keep revives rare (4 %) |
+| Nothing else | No XP | The XP is what you trade for the goods |
 
 Not now (mondo 11-17): shops and discounts (their own plan), learning spells (his own concept comes later), information
 and clues (wait for more quests). The lines: as few as the system needs to work, Claude drafts, mondo approves.
@@ -213,7 +224,7 @@ onlooker reacts depends on the unit, not one fixed rule. What stays fixed:
 | Brute | Joins, against whoever is nearest | Joins against whoever hit it |
 | Territorial | Joins only if the fight is on its ground | Joins against whoever hit it |
 
-**The sides: the hard question (Q20).** mondo asked: if an ENEMY's spell hits an onlooker, does it join your side? Can it
+**The sides (mondo 11-17: option C).** mondo asked: if an ENEMY's spell hits an onlooker, does it join your side? Can it
 be free for all? Can it fight the enemy and stay neutral to you? Options, using what the engine has:
 
 - **A. Two sides only.** A joiner picks yours or the enemy's. Simple, but "it hates the enemy and is not your friend"
@@ -267,11 +278,11 @@ every edited JS file, visual steps get a browser proof through `probe-fast.js` w
 | 1b | **Tempers + groups, data**: data.js `HQ_NPC_TEMPERS` (temper, group, roles by race; overrides by room / resident id; the room mix) + `hqNpcTemper(ch)`, `hqNpcGroup(ch)`; nothing reads them yet | NEW | **Opus** | Exact edits in data.js (a stray brace takes the game down) | mondo's marks on 1a |
 | 2 | **Awareness on the walk**: drawn bodies look at you, step aside, Guards / Territorials say their line; who saw what (for 4.6) | NEW | **Opus** | three-renderer.js tick code, the frame-rate budget, a browser proof | 1b |
 | 3 | **The strike ladder**: flee walk, the Talk panel (E first too), the third strike starts the fight; the ladder starts over after a flee; the day's memory per id; the old one-strike notes get a REPLACED line | REPLACES | **Opus** | Changes the built strike path (`_hqStrikeClick`, `_hqEncounterAim`, map.js `_hqEncounterFire`); must not break the first quest or the capture | 1b |
-| 4 | **NPC-started fights**: Brutes come at you, Territorial warnings, the Opportunist mugging with its reason line, the drive-by, the calm time; "never random" retired in its notes | REPLACES | **Opus** | The encounter launch, the walk tick and line of sight; a proof picture | 2 |
+| 4 | **NPC-started fights**: Brutes come at you, Territorial warnings, the Opportunist mugging with its reason line, the drive-by; "never random" retired in its notes | REPLACES | **Opus** | The encounter launch, the walk tick and line of sight; a proof picture | 2 |
 | 5 | **NPC escape from a fight**: the AI choice + the escaped state | NEW | **Opus** | ai.js + battle.js escape code, the commit; never reset the trained weights | 1b |
 | 6a | **Offers, design**: when a losing NPC offers (pay off, join, spare), the amounts, the panel mock-up, the lines | NEW | **Fable** | A mock-up and words; mondo's rule is plan + mock-up first, then wait | 1a |
 | 6b | **Offers, build**: the offer on the NPC's turn, the panel, the results (bag items, `hqCaptureEnlist`, the cleared ledger) | NEW | **Opus** | battle.js turn code, hud.js panel, the commit; the back keys | 6a OK'd |
-| 7a | **Onlookers + sides, design**: the onlooker table, the sides model (Q20), where onlookers stand, the camera with a crowd, mock-up pictures | NEW | **Fable** | The hardest design call in the plan; needs pictures and his explicit OK before code | step 0 finding, Q20 |
+| 7a | **Onlookers + sides, design**: the onlooker table, the third side (option C, mondo 11-17), where onlookers stand, the camera with a crowd, mock-up pictures | NEW | **Fable** | The hardest design call in the plan; needs pictures and his explicit OK before code | step 0 finding |
 | 7b | **Onlookers, build**: onlooker bodies on free squares, the round-end update, step-aside, dispersal | NEW | **Opus** | The heaviest code step: the field, the round end, rigs, frame rate | 7a OK'd |
 | 8 | **Joining + the third side**: joiners enter next round; grudge lists through `isEnemyUnit` / `isAllyUnit`; group members step in; stray hits on onlookers; a crowded-street measurement | NEW | **Opus** | Turn order, unit creation mid-fight, the AI's targeting; the riskiest engine change | 7b |
 | 9 | **NPC-to-NPC situations** in Disaster City | NEW | **Fable** drafts the rows, **Opus** builds | Rows are creative and need his yes; the code is the battle start + walk | 8 |
@@ -297,20 +308,14 @@ Order: 0 → 1a → 1b → 2 → 3 → 5 → 4 → 6a → 6b → 7a → 7b → 8
 **Settled:** Q1 the ladder as proposed ("go with your gut"). Q2 how hostile a place is depends on the room and the unit
 (3.3). Q3 tag the races. Q4 + Q11 Claude drafts the fewest lines, mondo approves. Q5 some tempers skip Talk. Q6 joining is
 in. Q7 shops, Q8 spell learning, Q9 clues: not now. Q10 offers are money, health potions, revives. Q12 everyone aware and
-willing may join. Q13 it depends on the unit (4.6; the open parts are Q20 to Q22). Q14 memory until the next game day. Q15 the ladder starts over after a flee (three strikes again).
+willing may join. Q13 it depends on the unit (4.6, settled by Q20 to Q22). Q14 memory until the next game day. Q15 the ladder starts over after a flee (three strikes again).
 Q16 muggings yes, with a reason in the line (not built yet, see 4.3). Q17 Disaster City first. Q18 top priority now.
-Q19 the old factions are gone; natural groups instead (3.2), to flesh out.
+Q19 the old factions are gone; natural groups instead (3.2), to flesh out. Q20 option C, the third side with grudge lists. Q21 groups: the general
+idea is right; step 1a drafts the full list. Q22 the onlooker table as written, with a roll. Q23 no calm timer (3.3). Q24
+Claude's pay-off table (4.4).
 
-**Still open (numbered on from the old list):**
-
-20. **The sides.** When an onlooker joins because someone else hit it: A (two sides only), B (free for all) or C (its own
-    side with a grudge list: fights whoever hit it or its group, neutral to you until you hit it)? [C.]
-21. **Groups.** Is "same race defends same race" plus a short list of named groups (Emergency, Heroes, Street, Show
-    people, The dead) the right shape? Step 1a drafts the full list for you to mark. [Yes.]
-22. **Onlooker reactions.** Is the onlooker table in 4.6 the right spread (some brush it off, some flee, some join)?
-    [Yes, with a roll so the same unit is not always the same.]
-23. **The calm time** after any fight before an NPC may start another one. [30 seconds.]
-24. **Pay-off amounts.** Money and items by the NPC's level and tier; Claude proposes a table in 6a. [Yes.]
+**Still open:** nothing from this round. The next decisions come with steps 1a (the temper and group table for Disaster
+City, the fewest lines), 6a (the offer panel mock-up) and 7a (the onlooker and camera mock-ups).
 
 ---
 
