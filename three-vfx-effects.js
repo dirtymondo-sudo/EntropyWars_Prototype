@@ -4928,12 +4928,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var stagger = isCenter ? 0 : 40 + (Math.abs(off.dx) + Math.abs(off.dy)) * 35;
                 _fxDelay(function() {
                     if (_suppressed()) return;
-                    /* THE VFX CLEANUP: only the middle square flashes */
-                    var _te = (tileEffect && !isCenter) ? _vcNoFlash(tileEffect) : tileEffect;
+                    /* every square that is hit flashes: the flash shows where the damage lands (mondo 11-17) */
                     if (tileEffect && aoeRadius > 0) {
-                        _spawnEffect(_te, { tx: ttx, ty: tty });
+                        _spawnEffect(tileEffect, { tx: ttx, ty: tty });
                     } else if (tileEffect && aoeRadius === 0 && !centerEffect) {
-                        _spawnEffect(_te, { tx: ttx, ty: tty });
+                        _spawnEffect(tileEffect, { tx: ttx, ty: tty });
                     }
                     if (isCenter && centerEffect) {
                         _spawnEffect(centerEffect, { tx: ttx, ty: tty });
@@ -5179,7 +5178,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var leaveScorch     = !!beamDef.leaveScorch;
         var shake           = beamDef.shake;
 
-        if (chargeMs > 0) {
+        var _vcSB = spellId === 'swordBeam' && _vcOn();   /* THE VFX CLEANUP B2: Sword Beam is its wave, not the generic laser + white charge */
+        if (chargeMs > 0 && !_vcSB) {
             var cPx = tilePx(fromX, fromY);
             var cZT = unitSurfaceZ(fromX, fromY) + unitZBoost();
             _spawn({
@@ -5211,7 +5211,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                beam def's configured pixel thickness so wide "wave" beams stay
                chunky. Falls back to flat sprite quads only without a 3D scene. */
             var _laserThick = Math.max(0.6, (beamThickness / 14));
-            var _laserOk = _spawnLaserBeam3D(fromX, fromY, _lastTile.x, _lastTile.y, {
+            var _laserOk = _vcSB ? true : _spawnLaserBeam3D(fromX, fromY, _lastTile.x, _lastTile.y, {
                 core: _bc.core, glow: _bc.glow, beamMs: beamMs, thickness: _laserThick,
                 shake: shake || false,
                 startW: _startW || undefined, endW: _endW || undefined,
@@ -13645,14 +13645,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         phases[0].pivot.rotation.z = phases[0].a0;
 
         /* upright summon glyph + a breath of light where the blade appears */
-        _sigMagicCircle3D(tx, ty, {
+        /* THE VFX CLEANUP B2: a sword combo is not a spell circle (no rune under the cuts), and it opens without a screen flash */
+        if (!_vcOn()) _sigMagicCircle3D(tx, ty, {
             color: opts.circleColor != null ? opts.circleColor : color,
             radiusPx: ts * 0.85, height: hubH * 0.75,
             tiltRad: Math.PI / 2, growMs: Math.min(130, summonMs),
             holdMs: Math.max(120, t - summonMs - 200), fadeMs: 220,
             spin: 0.006, opacity: 0.8,
         });
-        _sigScreenFlash(_sigCss(color), 140, 0.10);
+        if (!_vcOn()) _sigScreenFlash(_sigCss(color), 140, 0.10);
 
         _sigRunOwned(group, total, function (el) {
             /* advance to the phase owning this time slice */
@@ -13724,11 +13725,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     if (p.heavy) {
                         _sigShake(opts.shake || 'hard');
                         /* THE VFX CLEANUP: the finisher's flash, burst and third cut in the combo's own colour (they were white); rush lines on an ultimate only */
+                        /* B2: no screen flash, no speed burst, no rush lines: the heavy cut, its ring and its scar are the finisher */
                         var _vcF = _vcOn(), _vcFc = _vcF ? color : 0xffffff;
-                        _sigScreenFlash(_vcF ? _sigCss(color) : '#ffffff', 120, opts.flashPeak != null ? opts.flashPeak : 0.26);
+                        if (!_vcF) _sigScreenFlash('#ffffff', 120, opts.flashPeak != null ? opts.flashPeak : 0.26);
                         _sigShockRing3D(tx, ty, { color: color, r1: ts * (opts.ringTiles != null ? opts.ringTiles : 1.7) });
-                        _sigSpeedBurst3D(tx, ty, { color: _vcFc });
-                        if (!_vcF || (_rvCtx && _rvCtx.w === 'ultimate')) _sigSpeedLinesFx({ color: _sigCss(color), ms: 340, peak: 0.3 });
+                        if (!_vcF) { _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
+                        _sigSpeedLinesFx({ color: _sigCss(color), ms: 340, peak: 0.3 }); }
                         _sigCrescentSlash3D(tx, ty, {
                             color: _vcFc, noGlint: _vcF, yaw: hYaw + 1.1, dir: -p.dir, ms: 300, size: ts * 1.3,
                         });
@@ -15515,7 +15517,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (!slashFired[s3] && t > 0.3 + s3 * 0.28) {
                     slashFired[s3] = true;
                     _sigCrescentSlash3D(tx, ty, {
-                        color: s3 === 2 ? 0xffffff : color,
+                        color: (s3 === 2 && !_vcOn()) ? 0xffffff : color, noGlint: _vcOn(),   /* THE VFX CLEANUP B2: the third cut in the blades' own colour */
                         yaw: g.rotation.y + s3 * 2.1, dir: s3 % 2 ? -1 : 1,
                         ms: 240, size: ts * 1.25, height: ts * 0.55,
                         scar: true, scarMs: 1200,
@@ -15525,9 +15527,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
             if (!endFired && el >= spinMs) {
                 endFired = true;
-                _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.6 });
-                _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
-                _sigScreenFlash('#bbddff', 120, 0.18);
+                if (!_vcOn()) {   /* THE VFX CLEANUP B2: the waltz ends on its cuts + the shake (the white ring, burst and flash covered them) */
+                    _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.6 });
+                    _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
+                    _sigScreenFlash('#bbddff', 120, 0.18);
+                }
                 _sigShake('normal');
             }
         });
@@ -15542,7 +15546,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lt = hitTiles[hitTiles.length - 1];
         var twp = _worldPos(lt.x, lt.y);
         var ts = fw.ts;
-        var color = 0x99ccff;
+        /* THE VFX CLEANUP B2 (mondo 11-17: "match the sword cuts"): the wave is the Swordmaster's orange-red and leaves the red scars down the line */
+        var _vcW = _vcOn(), color = _vcW ? 0xff5a2a : 0x99ccff;
         var g = new THREE.Group();
         g.position.set(fw.x, fw.y + ts * 0.7, fw.z);
         g.rotation.y = Math.atan2(twp.x - fw.x, twp.z - fw.z);
@@ -15553,7 +15558,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         wave.rotation.z = Math.PI / 2;     /* crescent horns forward */
         wave.renderOrder = 162;
         g.add(wave);
-        var coreMat = _sigMat(0xffffff, { map: _sigCrescentTex() });
+        var coreMat = _sigMat(_vcW ? 0xffa060 : 0xffffff, { map: _sigCrescentTex() });
         var core = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.0, ts * 1.0), coreMat);
         core.rotation.z = Math.PI / 2;
         core.renderOrder = 163;
@@ -15576,13 +15581,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             (function (t2, d) {
                 _fxDelay(function () {
                     if (_suppressed()) return;
-                    _sigSparks(t2.x, t2.y, 'steel-spark', 5, { vxy: 140, vz0: 30, vz1: 130, gravity: 300 });
+                    _sigSparks(t2.x, t2.y, _vcW ? 'ember' : 'steel-spark', 5, { vxy: 140, vz0: 30, vz1: 130, gravity: 300 });
+                    if (_vcW) { try { _crSlashScar(t2.x, t2.y, { yaw: g.rotation.y + Math.PI / 2, R: ts * 0.6 }); } catch (e) {} }
                 }, d);
             })(hitTiles[i], (i + 1) * (travelMs / (hitTiles.length + 1)));
         }
         _fxDelay(function () {
             if (_suppressed()) return;
-            _sigSpeedBurst3D(lt.x, lt.y, { color: color, ms: 240 });
+            if (!_vcW) _sigSpeedBurst3D(lt.x, lt.y, { color: color, ms: 240 });
         }, travelMs);
     }
 
@@ -21971,8 +21977,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
          on ki / kinetic;
        · the cast rune under the caster only for the magic that calls for one (_VC_RUNE), and never where the cast's
          own squares lie round the caster (it sat under the noise wash);
-       · a shared helper handed near-white takes the casting spell's colour (_vcCol); an area spell flashes its middle
-         square only (_vcNoFlash); a blade spell's mark is its scar, not the noise wash.
+       · a shared helper handed near-white takes the casting spell's colour (_vcCol); a blade spell's mark is its scar, not the noise wash.
+       · EVERY square an area spell hits still flashes: the flash shows where the damage lands (mondo 11-17).
        NOT touched: THE HIT BLINK (the victim's body flashing white is the hit, three-renderer.js), damage numbers,
        team rims, the tile glow, any spell's own signature shapes. Looks only; every layer rides the relayed fire().
        Off (today's look back, live): window.EW_NO_VFX_CLEANUP = true. */
@@ -22038,16 +22044,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (Array.isArray(tl)) for (var i = 0; i < tl.length; i++) if (tl[i] && Math.abs(tl[i].x - sx) <= 1 && Math.abs(tl[i].y - sy) <= 1) return false;
         return true;
     }
-    /* an area's outer squares draw their recipe without its flash layers (one flash per hit, on the middle) */
-    function _vcNoFlash(def) {
-        if (!def || !def.layers || !_vcOn()) return def;
-        if (def._vcNF) return def._vcNF;
-        var L = def.layers.filter(function (l) { return !(l && (l.sprite === 'flash' || l.sprite === 'muzzle-flash')); });
-        var o = L.length === def.layers.length ? def : Object.assign({}, def, { layers: L });
-        try { Object.defineProperty(def, '_vcNF', { value: o, enumerable: false }); } catch (e) {}
-        return o;
-    }
-
     /* Per-archetype palette + flavour. `orb`/`ring`/`flash` are hexes; the
        string knobs pick which primitive shapes the beat. Keep entries
        small — the weight tier scales counts, sizes and timings. */

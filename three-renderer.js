@@ -25836,6 +25836,11 @@ const ThreeRenderer = (function () {
     function _cubeFoldFrame(now) {
         if (!_cubeOnR()) { if (_cubeR.touched.length) _cubeUnfoldAll(); _cubeR.basisKey = null; _cubeR.basis = null; _cubeR.sliceVer = 0; _cubeR.seen = false; return; }
         var W = _cubeWatch(now), ts = W.ts, gs = _cubeBoardGroups(), lc = new THREE.Matrix4(), m = new THREE.Matrix4();
+        /* the TURN CUBE rows are named by the screen direction: a turned camera renames them (hud.js re-renders on the ping) */
+        if (_cubeArrowKey) {
+            var _cy = 0, _ct = 0; try { var _cam = (typeof camera !== "undefined") ? camera : window.camera; _cy = Math.round((_cam._smoothYaw || 0) / 10); _ct = Math.round((_cam._smoothTilt || 0) / 10); } catch (e) {}
+            if (_cy + '|' + _ct !== _cubeR.camKey) { _cubeR.camKey = _cy + '|' + _ct; try { window.dispatchEvent(new Event('ew-state-change')); } catch (e) {} }
+        }
         if (fogGroup) fogGroup.visible = false;   // THE FOG SHEET lies flat over the frame: the cube's sight hides the bodies instead
         var lists = gs.map(function (g) { return g ? g.children : []; });
         lists.push(_cubeLooseKids(gs));
@@ -25942,6 +25947,79 @@ const ThreeRenderer = (function () {
         _objectsDirty = true;
         /* start the swing / tumble now (not on the next drawn frame), so a wait that asks cubeBusy() right after sees it */
         try { if (_cubeOnR()) _cubeWatch(performance.now()); } catch (e) {}
+    }
+    /* THE TURN ARROWS (mondo 11-17: "are there previews for up left right and down? and are they actually relative to the
+       player? ... there has to be absolutely no confusion"): while the TURN CUBE menu is open, a big flat arrow lies on each of
+       the four squares beside the fighter, pointing the way that choice slides the squares. Each choice has its own colour,
+       the same colour as its row in the menu (hud.js), and the hovered one burns bright while the others dim. The arrows lie
+       on the cube (they fold with their squares), so they read right from any camera angle. hot = the hovered choice. */
+    var CUBE_TURN_COLORS = { up: 0x33e0ff, down: 0xff4fd8, left: 0xffd83d, right: 0x7dff5a };
+    var _cubeArrowGeo = null, _cubeArrowKey = '';
+    function cubeTurnArrows(unit, hot) {
+        if (!highlightGroup) return;
+        var key = (unit && _cubeOnR()) ? (unit.id + '|' + unit.x + ',' + unit.y + '|' + (hot || '') + '|' + ((state._cube && state._cube.ver) || 0)) : '';
+        if (key === _cubeArrowKey) return;
+        _cubeArrowKey = key;
+        for (var i = highlightGroup.children.length - 1; i >= 0; i--) {
+            var ch = highlightGroup.children[i];
+            if (ch._ew_overlay === 'cubeTurnArrows') { highlightGroup.remove(ch); ch.children.forEach(function (k) { if (k.material) k.material.dispose(); }); }
+        }
+        if (!key) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        if (!_cubeArrowGeo) {
+            /* a chevron arrow pointing +x, flat on the ground, about 0.8 of a square long */
+            var a = ts / 2, sh = new THREE.Shape();
+            sh.moveTo(-0.40 * ts, -0.16 * ts); sh.lineTo(0.05 * ts, -0.16 * ts); sh.lineTo(0.05 * ts, -0.34 * ts);
+            sh.lineTo(0.42 * ts, 0); sh.lineTo(0.05 * ts, 0.34 * ts); sh.lineTo(0.05 * ts, 0.16 * ts); sh.lineTo(-0.40 * ts, 0.16 * ts); sh.closePath();
+            _cubeArrowGeo = new THREE.ShapeGeometry(sh); _cubeArrowGeo.rotateX(-Math.PI / 2); _cubeArrowGeo._ew_shared = true;
+        }
+        var D = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+        for (var dir in D) {
+            var nx = unit.x + D[dir][0], ny = unit.y + D[dir][1];
+            var F = (typeof cubeFrameNow === 'function') ? cubeFrameNow() : null;
+            if (!F || !F.at[ny] || !F.at[ny][nx]) continue;   // off the cube's net (a blank corner of the frame)
+            var on = !hot || hot === dir;
+            /* drawn over everything (no depth test): a car or a fighter on the square beside you never hides the choice */
+            var mat = new THREE.MeshBasicMaterial({ color: CUBE_TURN_COLORS[dir], transparent: true, opacity: hot ? (on ? 1.0 : 0.22) : 0.95, depthWrite: false, depthTest: false, side: THREE.DoubleSide, toneMapped: false });
+            var m = new THREE.Mesh(_cubeArrowGeo, mat);
+            m.rotation.y = Math.atan2(-D[dir][1], D[dir][0]);
+            /* a long arrow: it starts at the fighter's square edge and reaches past the next square, so it reads from afar */
+            var sc = hot === dir ? 2.0 : 1.6;
+            m.scale.set(sc, 1, sc);
+            m.position.set(D[dir][0] * ts * 0.25, 0, D[dir][1] * ts * 0.25);
+            m.renderOrder = 9991; m.raycast = function () {};
+            /* a dark rim under it, so a cyan arrow still reads on the pale squares */
+            var rim = new THREE.Mesh(_cubeArrowGeo, new THREE.MeshBasicMaterial({ color: 0x05060a, transparent: true, opacity: hot ? (on ? 0.9 : 0.2) : 0.8, depthWrite: false, depthTest: false, side: THREE.DoubleSide, toneMapped: false }));
+            rim.rotation.y = m.rotation.y; rim.position.copy(m.position); rim.position.y -= ts * 0.005;
+            rim.scale.set(sc * 1.14, 1, sc * 1.14); rim.renderOrder = 9990; rim.raycast = function () {};
+            var g = new THREE.Group();
+            g.position.set(nx * ts + ts / 2, tileTopY(nx, ny) + ts * 0.03, ny * ts + ts / 2);
+            g._ew_overlay = 'cubeTurnArrows'; g._ew_cubeCell = { x: nx, y: ny };
+            g.add(rim); g.add(m);
+            highlightGroup.add(g);
+        }
+        /* THE CONVEYOR: with a choice lit, every square of the ring in line with the fighter wears a small arrow in that colour,
+           pointing the way it slides, so the whole strip that moves reads at once (the far side of the ring, out of line on
+           the board's net, only wears the ring's tint) */
+        if (hot && D[hot] && typeof window.cubeHandOptions === 'function') {
+            var op = null;
+            try { op = (window.cubeHandOptions(unit) || []).filter(function (o) { return o.dir === hot; })[0]; } catch (e) {}
+            var hd = D[hot];
+            (op && op.cells || []).forEach(function (c) {
+                var along = hd[0] ? (c.y === unit.y) : (c.x === unit.x);
+                var k = hd[0] ? (c.x - unit.x) * hd[0] : (c.y - unit.y) * hd[1];
+                if (!along || k === 0 || k === 1) return;   // the fighter's own square and the big arrow's square
+                var mm = new THREE.Mesh(_cubeArrowGeo, new THREE.MeshBasicMaterial({ color: CUBE_TURN_COLORS[hot], transparent: true, opacity: 1.0, depthWrite: false, depthTest: true, side: THREE.DoubleSide, toneMapped: false }));
+                mm.rotation.y = Math.atan2(-hd[1], hd[0]); mm.scale.set(0.85, 1, 0.85);
+                mm.renderOrder = 9989; mm.raycast = function () {};
+                var gg = new THREE.Group();
+                gg.position.set(c.x * ts + ts / 2, tileTopY(c.x, c.y) + ts * 0.03, c.y * ts + ts / 2);
+                gg._ew_overlay = 'cubeTurnArrows'; gg._ew_cubeCell = { x: c.x, y: c.y };
+                gg.add(mm);
+                highlightGroup.add(gg);
+            });
+        }
+        _objectsDirty = true;
     }
     /* is the cube's picture still moving (the slice swing, its lead-in, the tumble)? */
     function cubeBusy() {
@@ -99927,7 +100005,7 @@ const ThreeRenderer = (function () {
         elevY: function (z) { return z * (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO; },
 
         showIntentBadges, clearIntentBadges, showPressMarks, clearPressMarks, dropPressMarksOn, worldToScreen, headRoomPx,
-        cubeRelaid, cubeCellOf, cubeFoldPoint, cubeBusy,   // THE CUBE
+        cubeRelaid, cubeCellOf, cubeFoldPoint, cubeBusy, cubeTurnArrows, CUBE_TURN_COLORS,   // THE CUBE
 
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startClipTravelTween, castTravels, startThrowArcTween, startDeathTween,
         startCarryHoldTween, endCarryHold, hasCarryHold,

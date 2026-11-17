@@ -85288,7 +85288,7 @@ function hqRoomPopulation(roomId, profile, opts) {
    arrive). Viewer-local: nothing on `state`, nothing relayed (RULE #2). Kill switch window.EW_HQ_NO_RESIDENTS; dev hq.residents(). */
 const HQ_CITY_RESIDENTS = {
     room: 'site_prebuilt_downtown_streets',
-    drawn: 8, drawnLow: 4, radius: 70, keepM: 85, bodies: 14,      // the bodies: the nearest `drawn` within `radius` m; one drawn stays until `keepM`; at most `bodies` rigs kept
+    drawn: 20, drawnLow: 20, radius: 70, keepM: 85, bodies: 26,   /* (mondo 11-17: "i dont like this whole only 8 bodies being drawn rule ... for a populated area i dont see why we can do like 20"; and the same on every machine, so drawnLow = drawn. Was 8 / 4 / 14. With 80 residents the most ever within 70 m is 12: the limit today is how many people live in the city) */      // the bodies: the nearest `drawn` within `radius` m; one drawn stays until `keepM`; at most `bodies` rigs kept
     walkSpeed: 1.35, carSpeed: 5, busM: 150, busSpeed: 9,          // m/s; a walk longer than busM metres rides the bus
     roadCost: 2.5, stepM: 0.35, doorGapM: 0.95,                    // the route map: a carriageway square costs more (the pavement first); a step the walk takes; the narrowest gap walked
     potterH: [0.35, 0.9], wanderH: [0.12, 0.45], patrolH: [0.03, 0.15], wanderR: 26, errandR: 14,   // pauses (game hours) inside / out / on patrol; how far a wander leg reaches
