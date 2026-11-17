@@ -71404,6 +71404,354 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     });
     /* ═════════ END THE OWN LOOKS, L2 ═════════ */
 
+    /* ════ THE OWN LOOKS, L5 (2026-11-17, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells that dont have a look of
+       their own need one"). Mind and dark: psychic, unholy, arcane, anomaly, blood, mind. Each spell here used to land with only
+       the shared stage burst; now each draws what IT is, on the relayed staging 'burst' beat (_GO_SIG, so the online guest sees
+       it, RULE #2; a caster the viewer can't see is never aimed from, _goCasterFor; a hit square the viewer can't see draws
+       nothing). All on the G-O kit (MeshBasic, both renderers), no new art, no sound, no full-screen layer, no near-white wash,
+       nothing in the team colours, and every area flashes each square it hits in the spell's own colour. Looks only.
+       Off: window.EW_DISABLE_OWN_LOOKS_L5 = true. Notes: docs/notes/spells-vfx.md "THE OWN LOOKS, L5".
+       PART 1, blood and flesh: BAT SWARM the bitten squares flash arterial red and the blood flies back to the vampire in beads ·
+       BRUTAL SLAM the floor splits in eight bleeding cracks round the juggernaut · CURB STOMP a boot print stamped in blood, teeth
+       skittering off · GORE CHARGE two horn gouges toss up through the body · LIFETAP two fang holes and a pulsing vein to the
+       vampire's mouth · SYMBIOTIC DRAIN three black tendrils latch on and swallow lumps back to the host · ABSORB an oil-black
+       pool climbs the legs in pseudopods and a blob slides home · CARRION FEAST flies and stink over the remains · FRENZY three
+       fast claw rakes · GRAB the grave floor cracks open under the feet · MANDIBLE STRIKE the mantid's jaws shear shut three times. ════ */
+    var _L5C = { gore: 0xc8202a, vein: 0x8a0a14, clot: 0x4a0508, bone: 0xe6dcc4, tar: 0x0c0a10, oil: 0x7a4cff, oilG: 0x1fb89a,
+        rot: 0x9ab02a, grave: 0x2a2018, chitin: 0x8fb82a, chitinD: 0x2e3a12, ichor: 0xc8e040 };
+    function _l5(fn) { return function (tx, ty, r, x) { if (_catOff('spells') || (typeof window !== 'undefined' && window.EW_DISABLE_OWN_LOOKS_L5) || !_pzSeen(tx, ty)) return null; return fn(tx, ty, r, x || {}); }; }
+    /* the frame on the hit square + the line back to the caster: F.ln (dx / dy / dz = the caster's square from here, ux / uz the
+       unit), F.far = the caster stands on another square, F.yaw = the turn that faces a thing's +z at the caster */
+    function _l5Frame(tx, ty, x) {
+        var F = _nrvFrame(tx, ty), far = !!(x && x.fromX != null && (x.fromX !== tx || x.fromY !== ty));
+        F.ln = _nrvLine(F, far ? { x: x.fromX, y: x.fromY } : { x: tx - 1, y: ty }, tx, ty); F.far = far;
+        F.yaw = Math.atan2(F.ln.ux, F.ln.uz);
+        return F;
+    }
+    function _l5OnBoard(x, y) {
+        try { var bh = (typeof state !== 'undefined' && state) ? state.boardHeights : null; return !bh || !!(bh[y] && bh[y][x] != null); } catch (e) { return true; }
+    }
+    /* every square of an area flashes in the spell's own colour (it shows where the damage lands); `ring` = skip the centre */
+    function _l5Squares(F, tx, ty, r, col, ms, op, ring) {
+        var out = [], R = Math.max(0, r | 0);
+        for (var i = -R; i <= R; i++) for (var j = -R; j <= R; j++) {
+            if ((ring && !i && !j) || !_l5OnBoard(tx + i, ty + j)) continue;
+            var wp = _worldPos(tx + i, ty + j);
+            var m = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(F.ts * 0.94, F.ts * 0.94), _goA(col, 0)), op != null ? op : 0.5);
+            m.rotation.x = -Math.PI / 2; m.position.set(wp.x - F.wp.x, wp.y - F.wp.y + 2.5, wp.z - F.wp.z); m.userData.ij = [i, j]; out.push(m);
+        }
+        out.ms = ms || 450; return out;
+    }
+    function _l5SquaresTick(sq, el, at) { el -= at || 0; _goShow(sq, el < 0 ? 0 : el < 70 ? el / 70 : 1 - _sigClamp01((el - 70) / sq.ms)); }
+    /* a flat jagged strip on the floor running +z from the origin, tapering to its tip (a crack, a split, a shard line) */
+    function _l5Jag(len, w, seed, n) {
+        n = n || 6; var pos = [], idx = [], s = seed * 12.9898 + 1.7;
+        for (var i = 0; i <= n; i++) {
+            var t = i / n, off = (i === 0 || i === n) ? 0 : Math.sin(s + i * 4.7) * w * 1.5, hw = w * (1 - t) * 0.5 + w * 0.04;
+            pos.push(off - hw, 0, len * t, off + hw, 0, len * t);
+            if (i < n) { var k = i * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+        }
+        var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+    }
+    /* the curve from a point on this square's body (height y0) to the caster's body (height y1), lifted in the middle, bowed sideways */
+    function _l5Arc(F, y0, y1, lift, bow) {
+        var pts = [], ln = F.ln, n = 12; bow = bow || 0;
+        for (var i = 0; i <= n; i++) { var t = i / n, s = Math.sin(t * Math.PI) * bow; pts.push(new THREE.Vector3(ln.dx * t - ln.uz * s, y0 + (ln.dy + y1 - y0) * t + lift * 4 * t * (1 - t), ln.dz * t + ln.ux * s)); }
+        return new THREE.CatmullRomCurve3(pts);
+    }
+    function _l5Tube(parent, curve, rad, mat, op, seg) { return _goAdd(parent, new THREE.Mesh(new THREE.TubeGeometry(curve, seg || 36, rad, 6, false), mat), op); }
+    /* a group that always faces the camera (flat marks drawn across a body) */
+    function _l5Face(parent, y) { var g = new THREE.Group(); g.position.y = y || 0; g.quaternion.copy(_goCamQuat(g.quaternion)); parent.add(g); return g; }
+    /* a thin diamond (a claw cut, a glint line) lying along +x in its parent's plane */
+    function _l5Cut(parent, len, w, c, op, add) {
+        var sh = new THREE.Shape(); sh.moveTo(-len / 2, 0); sh.lineTo(-len * 0.1, w / 2); sh.lineTo(len / 2, 0); sh.lineTo(-len * 0.1, -w / 2); sh.closePath();
+        return _goAdd(parent, new THREE.Mesh(new THREE.ShapeGeometry(sh), add ? _goA(c, 0) : _finBasic(c, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), op);
+    }
+
+    /* BAT SWARM (vampire): the swarm's own bats fly it (_batStage); the bite is the feed */
+    function _l5BatFeed3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, sq = _l5Squares(F, tx, ty, r != null ? r : 1, _L5C.gore, 560, 0.5), beads = [];
+        if (F.far) for (var i = 0; i < sq.length; i++) for (var b = 0; b < 2; b++) {
+            var s = _goGlow(F.g, _L5C.gore, ts * (b ? 0.13 : 0.2), 0, 0, 0, 0.95);
+            s.userData.p0 = sq[i].position; s.userData.d = 240 + ((i * 5) % 9) * 55 + b * 150; beads.push(s);
+        }
+        for (var q = 0; q < sq.length; q++) _goSpray(F, 2, { sprite: 'blood-mist', lx: sq[q].position.x, lz: sq[q].position.z, ly: ts * 0.5, r: 16, v: 30, vz0: 20, vz1: 70, g: 40, s0: 14, s0b: 22, s1: 30, op: 0.5, ml0: 450, ml1: 750 });
+        var total = 1500, ln = F.ln;
+        return _sigRunOwned(F.g, total, function (el) {
+            _l5SquaresTick(sq, el);
+            for (var i = 0; i < beads.length; i++) {
+                var s = beads[i], t = _sigClamp01((el - s.userData.d) / 620), e = t * t, p = s.userData.p0;
+                s.position.set(p.x + (ln.dx - p.x) * e, ts * 0.55 + (ln.dy + ts * 0.35) * e + ts * 0.7 * Math.sin(t * Math.PI), p.z + (ln.dz - p.z) * e);
+                s.material.opacity = (t > 0 && t < 1) ? 0.95 * Math.min(1, t * 8) : 0;
+            }
+        });
+    }
+    /* BRUTAL SLAM (juggernaut): eight bleeding cracks split the floor round him and every square he hits spits blood */
+    function _l5BrutalSlam3D(tx, ty, r) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = (r != null ? r : 1), sq = _l5Squares(F, tx, ty, R, _L5C.gore, 480, 0.5, true), arms = [], dark = [], hot = [];
+        for (var i = 0; i < 8; i++) {
+            var arm = new THREE.Group(); arm.rotation.y = i / 8 * Math.PI * 2 + 0.25; arm.position.y = 2; F.g.add(arm);
+            var len = ts * (R + 0.42) * (i % 2 ? 1.25 : 0.95);
+            var d = _goAdd(arm, new THREE.Mesh(_l5Jag(len, ts * 0.17, i + 1, 7), _finBasic(_L5C.clot, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.95); d.position.z = ts * 0.28;
+            var h = _goAdd(arm, new THREE.Mesh(_l5Jag(len * 0.92, ts * 0.07, i + 1, 7), _goA(_L5C.gore, 0)), 0.9); h.position.set(0, 1, ts * 0.28);
+            arms.push(arm); dark.push(d); hot.push(h);
+        }
+        var total = 1700, spat = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var grow = _sigEaseOutCubic(_sigClamp01(el / 170)), k = _goEnv(el, 30, total, 600);
+            for (var i = 0; i < arms.length; i++) arms[i].scale.set(1, 1, Math.max(0.02, grow));
+            _goShow(dark, k); _goShow(hot, k * (1 - _sigClamp01((el - 250) / 700)));
+            _l5SquaresTick(sq, el, 60);
+            if (!spat && el >= 110) {
+                spat = true;
+                for (var q = 0; q < sq.length; q++) {
+                    var p = sq[q].position; _bdGlobs(F, p.x, ts * 0.12, p.z, 4, { ang: Math.atan2(p.z, p.x), spread: 0.5, sp0: 40, sp1: 130, vz0: 120, vz1: 260, stretch: true, s0: 3.5, marks: 2 });
+                }
+            }
+        });
+    }
+    /* CURB STOMP (gangster): a boot print stamped in blood on the pavement, the teeth skittering away from it */
+    function _l5BootTex() {
+        return _sigTex('l5-boot2', 128, function (ctx, S) {
+            ctx.clearRect(0, 0, S, S);
+            function sole(grow) {
+                ctx.beginPath(); ctx.ellipse(S / 2, S * 0.36, S * 0.21 + grow, S * 0.3 + grow, 0, 0, Math.PI * 2); ctx.fill();    /* the sole */
+                ctx.beginPath(); ctx.ellipse(S / 2, S * 0.84, S * 0.16 + grow, S * 0.12 + grow, 0, 0, Math.PI * 2); ctx.fill();   /* the heel */
+            }
+            ctx.fillStyle = '#3a0408'; sole(S * 0.035); ctx.fillStyle = '#e6222c'; sole(0);
+            ctx.fillStyle = '#3a0408';
+            for (var i = 0; i < 4; i++) ctx.fillRect(S * 0.2, S * (0.15 + i * 0.125), S * 0.6, S * 0.05);                         /* the tread */
+            ctx.fillRect(S * 0.2, S * 0.82, S * 0.6, S * 0.04);
+        });
+    }
+    function _l5CurbStomp3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, ln = F.ln;
+        var piv = new THREE.Group(); piv.rotation.y = F.yaw + Math.PI; piv.position.set(-ln.ux * ts * 0.22, 3, -ln.uz * ts * 0.22); F.g.add(piv);
+        var print = _goAdd(piv, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 1.6), _finBasic(0xffffff, { opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _l5BootTex() })), 0.95);
+        print.rotation.x = -Math.PI / 2;
+        var rim = _goAdd(piv, new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.05, ts * 1.75), _finBasic(_L5C.gore, { additive: true, opacity: 0, side: THREE.DoubleSide, map: _l5BootTex() })), 0.8);
+        rim.rotation.x = -Math.PI / 2; rim.position.y = 1;
+        var teeth = [];
+        for (var i = 0; i < 6; i++) {
+            var t = _goAdd(F.g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.035, ts * 0.05, ts * 0.03), _goM(_L5C.bone)), 1), a = F.yaw + Math.PI + (i - 2.5) * 0.42;
+            t.userData.v = [Math.sin(a) * ts * (0.9 + 0.25 * (i % 3)), ts * (1.5 + 0.3 * (i % 2)), Math.cos(a) * ts * (0.9 + 0.25 * (i % 3))]; teeth.push(t);
+        }
+        _bdGlobs(F, 0, ts * 0.2, 0, 10, { ang: Math.atan2(-ln.uz, -ln.ux), spread: 1.1, sp0: 60, sp1: 180, vz0: 40, vz1: 150, stretch: true, s0: 3.5, marks: 6 });
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 40, total, 600), st = 1 + 0.6 * (1 - _sigEaseOutCubic(_sigClamp01(el / 110)));
+            piv.scale.set(st, 1, st); _goShow([print], k); _goShow([rim], 1 - _sigClamp01((el - 60) / 380));
+            for (var i = 0; i < teeth.length; i++) {
+                var t = teeth[i], s = Math.min(el, 620) / 1000, v = t.userData.v, y = ts * 0.25 + v[1] * s - ts * 4.4 * s * s;
+                t.position.set(v[0] * s, Math.max(ts * 0.03, y), v[2] * s); t.rotation.set(el * 0.02 * (y > ts * 0.03 ? 1 : 0), i, el * 0.013 * (y > ts * 0.03 ? 1 : 0));
+            }
+            _goShow(teeth, _goEnv(el, 40, total, 500));
+        });
+    }
+    /* GORE CHARGE (goatman): two horn gouges toss up through the body, bone at the tips, and the blood goes up with them */
+    function _l5GoreCharge3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, ln = F.ln;
+        var piv = new THREE.Group(); piv.rotation.y = F.yaw; piv.position.set(ln.ux * ts * 0.3, ts * 0.3, ln.uz * ts * 0.3); F.g.add(piv);
+        var toss = new THREE.Group(); piv.add(toss);
+        var parts = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var pts = [];
+            for (var i = 0; i <= 10; i++) { var t = i / 10, a = t * 1.5; pts.push(new THREE.Vector3(s * ts * (0.13 + 0.1 * t), Math.sin(a) * ts * 0.75, -(1 - Math.cos(a)) * ts * 0.75 - ts * 0.05)); }
+            var cv = new THREE.CatmullRomCurve3(pts);
+            parts.push(_l5Tube(toss, cv, ts * 0.06, _goA(_L5C.gore, 0), 0.85, 24));
+            parts.push(_l5Tube(toss, cv, ts * 0.028, _goM(_L5C.vein), 0.95, 24));
+            var tip = _goAdd(toss, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.05, ts * 0.22, 8), _goM(_L5C.bone)), 1), e = pts[10], e0 = pts[9];
+            tip.position.copy(e); tip.lookAt(e.clone().add(e.clone().sub(e0))); tip.rotateX(Math.PI / 2); parts.push(tip);
+        }
+        var total = 1100, spat = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01(el / 220));
+            toss.rotation.x = 1.25 - 1.45 * up; toss.scale.setScalar(0.55 + 0.45 * up);
+            _goShow(parts, _goEnv(el, 40, total, 520));
+            if (!spat && el >= 120) { spat = true; _bdGlobs(F, 0, ts * 0.65, 0, 9, { sp0: 20, sp1: 90, vz0: 200, vz1: 380, stretch: true, s0: 3.5, marks: 5 }); }
+        });
+    }
+    /* LIFETAP (vampire): two fang holes open on the neck and a vein runs to the vampire's mouth, the blood pulsing along it */
+    function _l5Lifetap3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, ln = F.ln, ny = ts * 0.98;
+        var neck = new THREE.Group(); neck.position.set(ln.ux * ts * 0.16, ny, ln.uz * ts * 0.16); neck.quaternion.copy(_goCamQuat(neck.quaternion)); F.g.add(neck);
+        var holes = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var h = _goAdd(neck, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.035, 12), _finBasic(_L5C.clot, { opacity: 0, depthWrite: false, side: THREE.DoubleSide })), 1); h.position.x = s * ts * 0.06; h.renderOrder = 162; h.material.depthTest = false;
+            var hr = _goAdd(neck, new THREE.Mesh(new THREE.RingGeometry(ts * 0.035, ts * 0.06, 14), _goA(_L5C.gore, 0)), 0.95); hr.position.x = s * ts * 0.06; hr.renderOrder = 162; hr.material.depthTest = false;
+            holes.push(h, hr);
+        }
+        var beads = [], vein = null, cv = null;
+        if (F.far) {
+            cv = _l5Arc(F, ny, ts * 1.0, ts * 0.14, 0);
+            vein = _l5Tube(F.g, cv, ts * 0.032, _goM(_L5C.gore), 0.95, 30);
+            for (var i = 0; i < 6; i++) { var b = _goGlow(F.g, _L5C.gore, ts * 0.26, 0, 0, 0, 1); b.userData.d = 200 + i * 150; beads.push(b); }
+        }
+        _bdGlobs(F, ln.ux * ts * 0.18, ny, ln.uz * ts * 0.18, 4, { sp0: 10, sp1: 40, vz0: 10, vz1: 60, s0: 2.5, marks: 2 });
+        var total = 1600;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 60, total, 400);
+            _goShow(holes, k);
+            if (vein) {
+                vein.material.opacity = 0.95 * k * (0.75 + 0.25 * Math.sin(el * 0.025));
+                for (var i = 0; i < beads.length; i++) { var t = _sigClamp01((el - beads[i].userData.d) / 520); beads[i].position.copy(cv.getPoint(t)); beads[i].material.opacity = (t > 0 && t < 1) ? Math.min(1, t * 8) * k : 0; }
+            }
+        });
+    }
+    /* SYMBIOTIC DRAIN (symbiote): three black tendrils whip out of the host into the wound and swallow lumps of it back */
+    function _l5SymbioticDrain3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, ln = F.ln, tend = [], lumps = [];
+        var root = new THREE.Group(); root.position.set(ln.dx, ln.dy, ln.dz); F.g.add(root);   /* at the host: the tendrils grow from there */
+        for (var i = 0; i < 3; i++) {
+            var pts = [], y0 = ts * (0.5 + 0.22 * i), ph = i * 2.1, n = 14;
+            for (var j = 0; j <= n; j++) {
+                var t = j / n, w = Math.sin(t * Math.PI) * ts * 0.16, wig = Math.sin(t * 9 + ph);
+                pts.push(new THREE.Vector3(-ln.dx * t - ln.uz * w * wig, ts * 0.62 + (y0 - ts * 0.62 - ln.dy) * t + Math.cos(t * 7 + ph) * w * 0.6, -ln.dz * t + ln.ux * w * wig));
+            }
+            var cv = new THREE.CatmullRomCurve3(pts);
+            tend.push(_l5Tube(root, cv, ts * (0.04 - 0.006 * i), _goM(_L5C.tar), 1, 44));
+            tend.push(_l5Tube(root, cv, ts * (0.052 - 0.006 * i), _goA(_L5C.vein, 0), 0.55, 44));
+            for (var b = 0; b < 2; b++) { var l = _goAdd(root, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.075, 10, 8), _goM(_L5C.vein)), 1); l.userData.cv = cv; l.userData.d = 330 + i * 110 + b * 330; lumps.push(l); }
+        }
+        var total = 1700, bit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var grow = _sigEaseOutCubic(_sigClamp01(el / 230)), k = _goEnv(el, 40, total, 420);
+            root.scale.setScalar(Math.max(0.02, grow)); _goShow(tend, k);
+            for (var i = 0; i < lumps.length; i++) { var l = lumps[i], t = _sigClamp01((el - l.userData.d) / 560); l.position.copy(l.userData.cv.getPoint(1 - t)); l.material.opacity = (t > 0 && t < 1) ? k : 0; }
+            if (!bit && el >= 220) { bit = true; _bdGlobs(F, 0, ts * 0.65, 0, 7, { sp0: 30, sp1: 110, vz0: 40, vz1: 150, s0: 3, color: 0x2a0408, marks: 4 }); }
+        });
+    }
+    /* ABSORB (black goo): an oil-black pool opens under the feet, pseudopods climb the legs, and a blob of what it took slides home */
+    function _l5Absorb3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, ln = F.ln;
+        var pool = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.5, 28), _finBasic(_L5C.tar, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.95); pool.rotation.x = -Math.PI / 2; pool.position.y = 2.5;
+        var sheen = _goRing(F.g, _L5C.oil, ts * 0.44, ts * 0.5, 3.2, 0.8, 40), sheen2 = _goRing(F.g, _L5C.oilG, ts * 0.36, ts * 0.4, 3.4, 0.6, 40), pods = [];
+        for (var i = 0; i < 7; i++) {
+            var a = i / 7 * Math.PI * 2 + 0.3, hinge = new THREE.Group(); hinge.position.set(Math.cos(a) * ts * 0.34, 2, Math.sin(a) * ts * 0.34); hinge.rotation.y = -a + Math.PI / 2; F.g.add(hinge);
+            var pod = _goAdd(hinge, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.09, ts * 0.7, 8), _goM(_L5C.tar)), 1); pod.position.y = ts * 0.35;
+            hinge.userData.d = i * 35; pods.push(hinge);
+        }
+        var blob = F.far ? _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.15, 12, 8), _goM(_L5C.tar)), 1) : null;
+        var bs = blob ? _goRing(F.g, _L5C.oil, ts * 0.15, ts * 0.2, 3, 0.8, 24) : null;
+        var all = _goAll(F.g), total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 60, total, 450), open = _sigEaseOutCubic(_sigClamp01(el / 260)), sink = _sigClamp01((el - 900) / 400);
+            _goShow(all, k);
+            pool.scale.setScalar(Math.max(0.05, open * (1 - 0.6 * sink))); sheen.scale.setScalar(Math.max(0.05, open * (1 - 0.6 * sink))); sheen2.scale.setScalar(Math.max(0.05, open * (1 - 0.6 * sink)));
+            sheen.rotation.z = el * 0.002;
+            for (var i = 0; i < pods.length; i++) {
+                var h = pods[i], up = _sigEaseOutCubic(_sigClamp01((el - 120 - h.userData.d) / 260)) * (1 - sink);
+                h.scale.set(1, Math.max(0.02, up), 1); h.rotation.x = -0.55 * up - 0.15 * Math.sin(el * 0.012 + i);   /* they lean in on the legs */
+            }
+            if (blob) {
+                var t = _sigClamp01((el - 950) / 620), e = t * t * (3 - 2 * t), sq = 1 + 0.35 * Math.sin(el * 0.03);
+                blob.position.set(ln.dx * e, ln.dy * e + ts * 0.09, ln.dz * e); blob.scale.set(sq, 0.6 / sq + 0.3, sq); bs.position.set(ln.dx * e, ln.dy * e + 3, ln.dz * e);
+                var bo = (t > 0 && t < 1) ? 1 : 0; blob.material.opacity = bo; bs.material.opacity = 0.8 * bo;
+            }
+        });
+    }
+    /* CARRION FEAST (ghoul): the pieces fly to him already (_BP_ON_BURST); over the remains the flies lift and the stink rises */
+    function _l5CarrionFlies3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, flies = [], stink = [];
+        for (var i = 0; i < 16; i++) {
+            var f = _goAdd(F.g, new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.03, 0), _finBasic(_L5C.tar, { opacity: 0 })), 1);
+            f.userData.a = i * 2.4; f.userData.r = ts * (0.16 + 0.05 * (i % 5)); f.userData.h = ts * (0.25 + 0.07 * (i % 7)); f.userData.w = 0.006 + 0.0011 * (i % 4); flies.push(f);
+        }
+        for (var s = 0; s < 3; s++) {
+            var pts = [];
+            for (var j = 0; j <= 12; j++) { var t = j / 12; pts.push(new THREE.Vector3((s - 1) * ts * 0.2 + Math.sin(t * 9 + s) * ts * 0.06, t * ts * 0.75, Math.cos(t * 7 + s * 2) * ts * 0.04)); }
+            var w = _l5Tube(F.g, new THREE.CatmullRomCurve3(pts), ts * 0.018, _goA(_L5C.rot, 0), 0.8, 30); w.userData.s = s; stink.push(w);
+        }
+        var total = 1800;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 500);
+            for (var i = 0; i < flies.length; i++) {
+                var f = flies[i], a = f.userData.a + el * f.userData.w, lift = _sigClamp01(el / 500);
+                f.position.set(Math.cos(a) * f.userData.r * (1 + 0.4 * Math.sin(a * 2.3)), f.userData.h * lift + Math.sin(a * 3.1) * ts * 0.08 + ts * 0.08, Math.sin(a * 1.3) * f.userData.r);
+            }
+            _goShow(flies, k);
+            for (var s = 0; s < stink.length; s++) { var w = stink[s], t = ((el + s * 260) % 900) / 900; w.position.y = ts * (0.15 + 0.5 * t); w.material.opacity = 0.8 * k * Math.sin(t * Math.PI); }
+        });
+    }
+    /* FRENZY (ghoul): three claw rakes, fast, each from a new side */
+    function _l5Frenzy3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, face = _l5Face(F.g, ts * 0.62), rakes = [], ang = [-0.9, 0.75, -0.15];
+        for (var i = 0; i < 3; i++) {
+            var g = new THREE.Group(); g.rotation.z = ang[i]; g.position.set((i - 1) * ts * 0.07, (1 - i) * ts * 0.1, 0); face.add(g);
+            for (var c = -1; c <= 1; c++) {
+                var d = _l5Cut(g, ts * 1.0, ts * 0.075, _L5C.clot, 0.95); d.position.y = c * ts * 0.13; d.renderOrder = 161; d.material.depthTest = false;
+                var h = _l5Cut(g, ts * 0.92, ts * 0.03, _L5C.gore, 1, true); h.position.y = c * ts * 0.13; h.renderOrder = 162; h.material.depthTest = false;
+            }
+            g.userData.at = i * 150; g.userData.parts = _goAll(g); rakes.push(g);
+        }
+        var total = 1150, done = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < rakes.length; i++) {
+                var g = rakes[i], e = el - g.userData.at, sw = _sigEaseOutCubic(_sigClamp01(e / 90));
+                g.scale.set(Math.max(0.02, sw), 1, 1);
+                _goShow(g.userData.parts, e < 0 ? 0 : 1 - _sigClamp01((e - 260) / 420));
+                if (e >= 60 && done <= i) { done = i + 1; _bdGlobs(F, 0, ts * 0.62, 0, 4, { sp0: 50, sp1: 150, vz0: 40, vz1: 160, stretch: true, s0: 3, marks: 2 }); }
+            }
+        });
+    }
+    /* GRAB (zombie): the hand comes up already (_BP_ON_BURST); the grave floor cracks open under the feet where it came through */
+    function _l5GraveGrip3D(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, dark = [], hot = [], arms = [];
+        for (var i = 0; i < 6; i++) {
+            var arm = new THREE.Group(); arm.rotation.y = i / 6 * Math.PI * 2 + 0.5; arm.position.y = 2; F.g.add(arm);
+            var len = ts * (i % 2 ? 0.98 : 0.72);
+            dark.push(_goAdd(arm, new THREE.Mesh(_l5Jag(len, ts * 0.13, i + 11, 5), _finBasic(_L5C.grave, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.95));
+            var h = _goAdd(arm, new THREE.Mesh(_l5Jag(len * 0.95, ts * 0.1, i + 11, 5), _goA(_L5C.rot, 0)), 1); h.position.y = 1; hot.push(h);
+            arms.push(arm);
+        }
+        _goSpray(F, 8, { sprite: 'mud-chunk', ly: 4, r: 30, v: 80, vz0: 90, vz1: 200, g: 700, s0: 4, s0b: 8, s1: 3, ml0: 400, ml1: 700 });
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var grow = _sigEaseOutCubic(_sigClamp01(el / 200)), k = _goEnv(el, 30, total, 500);
+            for (var i = 0; i < arms.length; i++) arms[i].scale.set(1, 1, Math.max(0.02, grow));
+            _goShow(dark, k); _goShow(hot, k * (0.75 + 0.25 * Math.sin(el * 0.012)));
+        });
+    }
+    /* MANDIBLE STRIKE (mantid): its jaws, a pair of toothed sickles, shear shut on the body three times */
+    function _l5MandibleGeo(ts) {
+        var sh = new THREE.Shape(), R = ts * 0.74, n = 9;
+        sh.moveTo(0, 0);
+        for (var i = 0; i <= 12; i++) { var a = i / 12 * 1.25; sh.lineTo(Math.sin(a) * R, (1 - Math.cos(a)) * R * 1.05 + ts * 0.0); }   /* the outer curve, hinge to tip */
+        for (var j = n; j >= 0; j--) { var b = j / n * 1.15, rr = R * (0.8 - 0.1 * (j / n)) * ((j % 2) ? 0.86 : 1); sh.lineTo(Math.sin(b) * rr + ts * 0.02, (1 - Math.cos(b)) * rr * 1.05 + ts * 0.1 * (1 - j / n)); }   /* the teeth back */
+        sh.closePath();
+        return new THREE.ShapeGeometry(sh);
+    }
+    function _l5Mandibles3D(tx, ty, r, x) {
+        var F = _l5Frame(tx, ty, x), ts = F.ts, ln = F.ln;
+        var piv = new THREE.Group(); piv.rotation.y = F.yaw + Math.PI; piv.position.set(ln.ux * ts * 0.62, ts * 0.6, ln.uz * ts * 0.62); F.g.add(piv);   /* at the mantid's side of the body, its +z through the target */
+        var flat = new THREE.Group(); flat.rotation.x = Math.PI / 2; piv.add(flat);   /* the shape's plane laid level: shape +y runs along piv +z */
+        var jaws = [], geo = _l5MandibleGeo(ts), parts = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var hinge = new THREE.Group(); hinge.position.x = s * ts * 0.1; flat.add(hinge);
+            var body = _goAdd(hinge, new THREE.Mesh(geo, _finBasic(_L5C.chitin, { opacity: 0, side: THREE.DoubleSide })), 1); body.scale.x = -s;
+            var edge = _goAdd(hinge, new THREE.Mesh(geo, _goA(_L5C.ichor, 0)), 0.6); edge.scale.set(-s * 1.1, 1.07, 1); edge.position.z = -1;
+            jaws.push({ h: hinge, s: s }); parts.push(body, edge);
+        }
+        var total = 1250, snaps = [120, 430, 740], done = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var open = 1;
+            for (var i = 0; i < 3; i++) { var e = el - snaps[i]; if (e > -110 && e < 200) open = e < 0 ? Math.min(open, -e / 110) : Math.min(open, _sigClamp01((e - 70) / 130)); }
+            for (var j = 0; j < 2; j++) jaws[j].h.rotation.z = -jaws[j].s * (0.15 + 0.75 * open) + jaws[j].s * 0.5;
+            piv.position.y = ts * (0.6 + 0.12 * Math.sin(el * 0.008));
+            _goShow(parts, _goEnv(el, 60, total, 300));
+            if (done < 3 && el >= snaps[done]) {
+                done++;
+                _goSpray(F, 5, { sprite: 'blood-fleck', ly: ts * 0.6, r: 10, v: 150, vz0: 40, vz1: 180, g: 520, s0: 4, s0b: 7, ml0: 300, ml1: 550 });
+                _goSpray(F, 3, { sprite: 'acid-green', tint: _L5C.ichor, ly: ts * 0.6, r: 10, v: 110, vz0: 40, vz1: 150, g: 420, s0: 3, s0b: 6, ml0: 300, ml1: 500 });
+            }
+        });
+    }
+    Object.assign(_GO_SIG, {
+        raceBatSwarm: _l5(_l5BatFeed3D), raceBrutalSlam: _l5(_l5BrutalSlam3D), raceStompOut: _l5(_l5CurbStomp3D), raceGoreCharge: _l5(_l5GoreCharge3D),
+        raceLifetap: _l5(_l5Lifetap3D), raceSymbioticDrain: _l5(_l5SymbioticDrain3D), raceAbsorb: _l5(_l5Absorb3D), raceCarrionFeast: _l5(_l5CarrionFlies3D),
+        raceFrenzy: _l5(_l5Frenzy3D), raceGrab: _l5(_l5GraveGrip3D), raceMandibleStrike: _l5(_l5Mandibles3D),
+    });
+    /* ═════════ END THE OWN LOOKS, L5 ═════════ */
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
         _rvFloorAt: _rvFloorAt,
