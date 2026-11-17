@@ -68,6 +68,7 @@ The review is `REVIEW.md` beside this file. His answers, in his order:
   would act sees you, open = someone does (Guards, muggers, the Ghost count; harmless people do not). The red `!` stays over the NPC that is coming
   for you or will step in. This REPLACES "an eye over every NPC" in answer 1 of round 1, in 4.1 and in step 1a's pictures. The mock-up is redone
   and shown to him before step 2 builds it.
+- **Mock-up 2 OK'd (11-17): "eye can be by the portrait, okay to build".** The eye sits by the player's portrait in the HUD; step 2 may build it.
 - **The city:** at least 144 residents (150 built), cops in every district but Southside and on a city-wide beat: `docs/notes/npc-system.md` "THE 144 + THE BEAT".
 - **He cannot see the repo's plan files:** anything that needs his answer or OK is put to him in chat, in full.
 
