@@ -70801,6 +70801,7 @@ const ThreeRenderer = (function () {
         floats.forEach(function (f) {
             /* THE ISLANDS (LEVEL_DESIGN_PLAN §5): a float plateau in a VOID room (or one wearing `under: 'rock'`) hangs a stepped rock
                underside that tapers to a point, not a cloud (`under: 'cloud'` keeps the puffs) */
+            if (f.bare) return;   // THE CUBE (2026-11-17): a plateau whose body is a placed piece (the Rubik's cube, a broken-off piece): only its walkable top
             if (f.k === 'plateau' && (f.under === 'rock' || (voidRock && f.under !== 'cloud'))) { _hqBuildIslandRock(room, info, f, G, TM, rng); return; }
             if (f.k === 'plateau') {
                 var top = f.h - 0.12, round = !!f.r, rx = round ? f.r : f.w / 2, rz = round ? (f.rz || f.r) : f.d / 2, thick = Math.max(0.6, Math.min(1.6, 0.18 * Math.max(rx, rz) + 0.4));
@@ -79488,6 +79489,74 @@ const ThreeRenderer = (function () {
             _hqDecorWear('turnstile', U, g, { fit: 'height' });
             return g;
         },
+    });
+    /* THE CUBE IN THE ASTRAL REALM (2026-11-17, mondo: "floating broken off pieces of a rubick's cube ... and the cube could have
+       missing pieces to match"): the Rubik's cube the fight is on (data.js CUBE_RULES: its size, its six grounds, its missing pieces),
+       and one broken-off piece. A cubie = one battle square (3.5 m), dark plastic with a sticker of its face's ground on each outer side.
+       The origin is the TOP of the cube, in its middle (the room's plateau under the walker is that top). Instanced: 1 core + 6 sticker draws. */
+    function _ewCubeProp(U, whole, p) {
+        var g = new THREE.Group(), s = 3.5, R = (typeof CUBE_RULES !== 'undefined') ? CUBE_RULES : null;
+        var KEYS = { U: 'marble_light', D: 'gold', E: 'wood_planks', W: 'lava', S: 'water', N: 'grass' };
+        if (R) for (var fk in R.faces) KEYS[fk] = R.faces[fk].terrain;
+        var DIRS = { U: [0, 1, 0], D: [0, -1, 0], E: [1, 0, 0], W: [-1, 0, 0], S: [0, 0, 1], N: [0, 0, -1] };
+        var n = whole ? ((R && R.N) || 8) : 1, gone = {};
+        if (whole && R) (R.missing || []).forEach(function (c) { gone[c.join(',')] = 1; });
+        var seed = p ? Math.abs(Math.round((p.x || 0) * 13.7 + (p.z || 0) * 7.3 + (p.y || 0) * 3.1)) + 5 : 5, rng = function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+        /* a broken-off piece: one to three stickers, each its own face's ground (it came off an edge or a corner) */
+        var pieceFaces = null;
+        if (!whole) { var all = ['U', 'D', 'E', 'W', 'S', 'N'], k = 1 + Math.floor(rng() * 3); pieceFaces = {}; while (Object.keys(pieceFaces).length < k) pieceFaces[all[Math.floor(rng() * 6)]] = 1; }
+        var cells = [];
+        for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) for (var kk = 0; kk < n; kk++) {
+            var surf = i === 0 || j === 0 || kk === 0 || i === n - 1 || j === n - 1 || kk === n - 1;
+            if (!surf || gone[i + ',' + j + ',' + kk]) continue;
+            cells.push([i, j, kk]);
+        }
+        var cx = function (c) { return (c[0] + 0.5 - n / 2) * s; }, cz = function (c) { return (c[1] + 0.5 - n / 2) * s; }, cy = function (c) { return (c[2] + 0.5) * s - n * s; };
+        /* plain merged sheets (the room's prop pipeline batches meshes by material, so no InstancedMesh): a quad facing d at c, size a */
+        var AX = { 0: [[0, 0, -1], [0, 1, 0]], 1: [[1, 0, 0], [0, 0, -1]], 2: [[1, 0, 0], [0, 1, 0]] };
+        var sheet = function () { return { pos: [], nor: [], uv: [], idx: [] }; };
+        var quad = function (S, c, d, a) {
+            var ax = d[0] ? 0 : d[1] ? 1 : 2, sg = d[ax], u = AX[ax][0].slice(), w = AX[ax][1];
+            if (sg < 0) u = u.map(function (t) { return -t; });
+            var b = S.pos.length / 3, h = a / 2;
+            [[-1, -1, 0, 0], [1, -1, 1, 0], [1, 1, 1, 1], [-1, 1, 0, 1]].forEach(function (k) {
+                S.pos.push((c[0] + (u[0] * k[0] + w[0] * k[1]) * h) * U, (c[1] + (u[1] * k[0] + w[1] * k[1]) * h) * U, (c[2] + (u[2] * k[0] + w[2] * k[1]) * h) * U);
+                S.nor.push(d[0], d[1], d[2]); S.uv.push(k[2], k[3]);
+            });
+            S.idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+        };
+        var mesh = function (S, mat) {
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(S.pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(S.nor, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(S.uv, 2)); geo.setIndex(S.idx);
+            var m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; m._ew_noBatch = true; g.add(m); return m;   // (never the static batch: its look key mixed the faces' sheets, all six came out one)
+        };
+        var coreMat = new THREE.MeshPhongMaterial({ color: 0x15141c, shininess: 60, specular: 0x333344 });
+        var CS = sheet(), ST = {}, a0 = s * 0.97;
+        cells.forEach(function (c) {
+            var p0 = [cx(c), cy(c), cz(c)];
+            Object.keys(DIRS).forEach(function (f) {
+                var d = DIRS[f];
+                quad(CS, [p0[0] + d[0] * a0 / 2, p0[1] + d[1] * a0 / 2, p0[2] + d[2] * a0 / 2], d, a0);
+                var on = whole ? ((f === 'U' && c[2] === n - 1) || (f === 'D' && c[2] === 0) || (f === 'E' && c[0] === n - 1) || (f === 'W' && c[0] === 0) || (f === 'S' && c[1] === n - 1) || (f === 'N' && c[1] === 0)) : !!pieceFaces[f];
+                if (on) quad(ST[f] || (ST[f] = sheet()), [p0[0] + d[0] * s * 0.502, p0[1] + d[1] * s * 0.502, p0[2] + d[2] * s * 0.502], d, s * 0.86);
+            });
+        });
+        mesh(CS, coreMat);
+        if (n > 2) { var inner = new THREE.Mesh(new THREE.BoxGeometry((n - 2) * s * U, (n - 2) * s * U, (n - 2) * s * U), coreMat); inner.position.y = -n * s / 2 * U; inner._ew_noBatch = true; g.add(inner); }
+        Object.keys(ST).forEach(function (f) {
+            /* the sticker colours (a Rubik's cube reads by its six colours: the face's ground tinted white, yellow, orange, red,
+               blue, green; the Sea's water alone read grey from the bridge) */
+            var TINT = { U: 0xffffff, D: 0xffe070, E: 0xffa050, W: 0xff6a50, S: 0x6aa0ff, N: 0x80f090 };
+            var tex = _hzTex(KEYS[f]), mat = new THREE.MeshPhongMaterial({ map: tex || null, color: TINT[f] || 0xffffff, shininess: 30 });
+            mat.emissive = new THREE.Color(TINT[f] || 0x202028).multiplyScalar(0.18); mat.name = 'ew_cube_' + f;
+            mesh(ST[f], mat);
+        });
+        return g;
+    }
+    Object.assign(_hqProcBuilders, {
+        ew_rubiks_cube: function (U, p) { return _ewCubeProp(U, true, p); },
+        ew_cube_piece: function (U, p) { return _ewCubeProp(U, false, p); },
     });
     function _hqProcProp(name, p) {
         var b = _hqProcBuilders[name];
