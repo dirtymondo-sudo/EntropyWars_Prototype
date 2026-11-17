@@ -377,6 +377,7 @@
             if (p.execMult != null) dmg = Math.floor(dmg * p.execMult);
             if (p.waterMult != null) dmg = Math.floor(dmg * p.waterMult);
             if (p.sneakMult != null) dmg = Math.floor(dmg * p.sneakMult);
+            if (p.backMult != null) dmg = Math.floor(dmg * p.backMult);   // 🥷 Shadow Step: always from behind (the Backstab ×)
             return { dmg, echoed, echoDmg };
         }
 
@@ -2603,6 +2604,7 @@
             if (spell.voodooSelf > 0 && target && !unit.dead) _dollPin(unit, target, spell);   // 🪆 Pin Prick ties the victim to the doll
             if (spell.viralSpread && target) _influencerRatioSpread(unit, target, spell);   // 📱 Ratio
             if (spell.pushDistance && target && !target.dead && !unit.dead && !_chessTook
+                && target._kawarimiKey !== unit.id + '|' + _protectActionSeq   // 🥷 the blow hit a log: nothing to shove
                 && (spell.kind === 'damage' || spell.kind === 'tackle')
                 && !(typeof _isClashMode === 'function' && _isClashMode())) {
                 const _swDir = _swH ? swingDoorPushDir(_swH.x, _swH.y, target.x, target.y) : null;
@@ -7213,7 +7215,13 @@
                     waterMult: (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water')
                         ? 1.5 : null,
                     sneakMult: (spell.sneakBonus && unit._sneakStrikeBonus) ? 1.5 : null,
+                    backMult: (spell.blinkBehind && unit._ssBehind) ? FACING_BACK_DMG_MULT : null,   // 🥷 Shadow Step: he strikes from behind
                 });
+                if (spell.blinkBehind && unit._ssBehind) {
+                    unit._matchBackstabs = (unit._matchBackstabs || 0) + 1;
+                    addLog(`🥷 BACKSTAB! ${_ctName(unit)} strikes ${_ctName(target)} from behind (+25% damage)!`);
+                    showFloatingTextForUnit(target, `BACKSTAB ×${+FACING_BACK_DMG_MULT.toFixed(2)}`, 'crit', { durationMs: 1100, jitterY: -14 });
+                }
                 const _hitCrit = _spellCritRoll(unit, spell, _riders.dmg, target);   // THE SPELL AUDIT Batch D: Loaded Dice
                 const damage = _hitCrit.dmg;
                 const _wasJammed = !!spell.jammedArc && unitHasStatus(target, 'jammed');   // Daisy Chain judges before the hit
@@ -7254,7 +7262,7 @@
                         sourceUnit: unit,
                         allowMarkBonus: false,
                         ignoreArmor: !!spell.ignoreArmor,
-                        noRangeMult: !!spell.chessPiece,   // ♟ THE CHESS PIECE: the piece strikes in person, from wherever its line began
+                        noRangeMult: !!spell.chessPiece || !!spell.blinkBehind,   // 🥷 Shadow Step strikes in person too   // ♟ THE CHESS PIECE: the piece strikes in person, from wherever its line began
                         statusEffects: spell.statusFirst ? null : spell.statusEffects,
                         statStageBoost: spell.statStageBoost || null, statStageLabel: `${spell.name}: `,
                         damageType: spell.damageType || 'magic',
@@ -7651,11 +7659,23 @@
                 && window.ThreeVFXEffects.hasMapping(spell.id, 'impact');
 
             const _logSink = _multiHitLogSink();   // ONE CAST, ONE LINE
+            /* 🥷 THE NINJA (2026-11-17): an `ownHitFx` row draws each hit itself (the star / the clone, three-vfx-effects.js
+               '<id>:hit' through fireGeometry, which online.js relays) `hitLeadMs` before the damage, and never re-fires
+               the bolt / leap */
+            const _ownFx = !!spell.ownHitFx;
+            const _lead = _ownFx ? actionMs(spell.hitLeadMs || 0) : 0;
+            const _fx0 = unit.x, _fy0 = unit.y;
             hits.forEach((base, idx) => {
-                const hitTime = idx * hitGap; // relative to impactDelay
+                const hitTime = idx * hitGap + _lead; // relative to impactDelay
 
+                if (_ownFx) {
+                    window.setTimeout(() => {
+                        if (target.dead || state.phase !== 'battle' || _skipVisuals()) return;
+                        try { if (window.ThreeVFXEffects && window.ThreeVFXEffects.fireGeometry) window.ThreeVFXEffects.fireGeometry(spell.id + ':hit', target.x, target.y, 0, { fromX: _fx0, fromY: _fy0, idx: idx, n: hits.length, flyMs: _lead }); } catch (e) {}
+                    }, Math.max(0, hitTime - _lead));
+                }
                 // Subsequent hits: re-fire projectile/leap before each hit
-                if (idx > 0) {
+                if (idx > 0 && !_ownFx) {
                     window.setTimeout(() => {
                         if (target.dead) return;
                         if (_useStrikeLeap) {
@@ -14050,6 +14070,95 @@
             showFloatingTextForUnit(target, '📦 SWITCHEROO', 'protect-block', { durationMs: 1100 });
             if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
             return true;
+        }
+        /* 🥷 THE NINJA (2026-11-17, mondo OK'd the kit: "add a ninja clone ju jitsu spell ... like catgirl's ninefold scratch").
+           KAWARIMI: a Substituted ninja's first enemy blow (the enemy acting now, never a tick) lands on a log; he reappears on
+           the free square straight behind the attacker, at its back (his next basic attack on it is a Backstab under the
+           facing rule). The rest of that same attack (_protectActionSeq) keeps hitting the log: a multi-hit's later hits, its
+           riders. SHADOW STEP (`blinkBehind`): he blinks to the free square most behind his target (its facing) and strikes;
+           from the back arc the hit is ×FACING_BACK_DMG_MULT. Host-side; positions + statuses state-sync, the looks go through
+           fireGeometry (relayed, fog-gated by the square), the floating text relays (RULE #2). */
+        function _ninjaFree(x, y, notId) {
+            return isInside(x, y) && canOccupy(x, y)
+                && !state.units.some(u => u && !u.dead && u.id !== notId && u.x === x && u.y === y);
+        }
+        function _ninjaFx(id, x, y, extra) {
+            if (_skipVisuals() || state.phase !== 'battle') return;
+            try { if (window.ThreeVFXEffects && window.ThreeVFXEffects.fireGeometry) window.ThreeVFXEffects.fireGeometry(id, x, y, 0, extra || {}); } catch (e) {}
+        }
+        /* the square behind the attacker, seen from the ninja (the attacker faces him): straight behind first, then the
+           squares round the attacker by how far behind they sit; never one in front of it */
+        function _ninjaBehindAttacker(src, ninja) {
+            let ax = src.x - ninja.x, ay = src.y - ninja.y;
+            const len = Math.hypot(ax, ay) || 1; ax /= len; ay /= len;
+            let best = null;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                if (!dx && !dy) continue;
+                const x = src.x + dx, y = src.y + dy;
+                if ((x === ninja.x && y === ninja.y) || !_ninjaFree(x, y, ninja.id)) continue;
+                const dot = (dx * ax + dy * ay) / Math.hypot(dx, dy);
+                if (dot < -0.01) continue;
+                if (!best || dot > best.dot) best = { x, y, dot };
+            }
+            return best;
+        }
+        function _ninjaKawarimi(target, src) {
+            if (!target || !src || target.dead || target._dying) return false;
+            const key = src.id + '|' + _protectActionSeq;
+            if (target._kawarimiKey === key) return true;   // the same attack: still the log
+            if (!unitHasStatus(target, 'substitute') || !isEnemyUnit(src, target)) return false;
+            if (state._blitzActiveUnitId != null && state._blitzActiveUnitId !== src.id) return false;   // a blow, not a tick
+            clearStatus(target, 'substitute');
+            target._kawarimiKey = key;
+            const fx = target.x, fy = target.y;
+            const land = _ninjaBehindAttacker(src, target);
+            showFloatingTextAtTile(fx, fy, '🪵 KAWARIMI', 'protect-block', { durationMs: 1200 });
+            if (land) {
+                target.x = land.x; target.y = land.y;
+                if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(land.x, land.y, target.z);
+                animateDisplacement(target, fx, fy, land.x, land.y, actionMs(380), { escStyle: 'blink', delayMs: actionMs(120) });
+                faceStrikeTarget(target, src);
+                resolveTileArrival(target, { via: 'displaced' });
+                addLog(`🪵 Kawarimi! ${_ctName(src)}'s blow lands on a log — ${_ctName(target)} is standing behind ${_ctName(src)}.`);
+            } else {
+                addLog(`🪵 Kawarimi! ${_ctName(src)}'s blow lands on a log — ${_ctName(target)} had nowhere behind ${_ctName(src)} to go and stays put.`);
+            }
+            _ninjaFx('nrKawarimi:swap', land ? land.x : fx, land ? land.y : fy, { fromX: fx, fromY: fy, uid: target.id });
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            markDirty('hud', 'selectedUnit');
+            return true;
+        }
+        /* SHADOW STEP's landing: the free square beside the target most behind it (its facing). { x, y, behind } or null
+           (nothing free beside it). The caster's own square counts as free. The forecast and the cast read the same. */
+        function ninjaShadowLanding(unit, target) {
+            if (!unit || !target) return null;
+            const f = getUnitFacing(target);
+            let best = null;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                if (!dx && !dy) continue;
+                const x = target.x + dx, y = target.y + dy;
+                if (!_ninjaFree(x, y, unit.id)) continue;
+                /* the strike travels from (x,y) to the target: its dot with the target's facing (1 = dead behind) */
+                const dot = (-dx * f.dx - dy * f.dy) / Math.hypot(dx, dy);
+                const d = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+                if (!best || dot > best.dot + 1e-6 || (Math.abs(dot - best.dot) <= 1e-6 && d < best.d)) best = { x, y, dot, d };
+            }
+            return best ? { x: best.x, y: best.y, behind: best.dot >= 0.70 } : null;
+        }
+        window.ninjaShadowLanding = ninjaShadowLanding;
+        function _ninjaShadowStep(unit, target, land) {
+            const fx = unit.x, fy = unit.y;
+            unit._ssBehind = !!land.behind;
+            if (fx !== land.x || fy !== land.y) {
+                unit.x = land.x; unit.y = land.y;
+                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(land.x, land.y, unit.z);
+                unit._trackTilesMoved = (unit._trackTilesMoved || 0) + Math.abs(land.x - fx) + Math.abs(land.y - fy);
+                animateDisplacement(unit, fx, fy, land.x, land.y, actionMs(260), { escStyle: 'blink' });
+                _ninjaFx('nrShadowStep:blink', land.x, land.y, { fromX: fx, fromY: fy, uid: unit.id });
+                resolveTileArrival(unit, { via: 'self' });
+            }
+            faceStrikeTarget(unit, target);
+            addLog(`🥷 ${_ctName(unit)} steps through the shadows to ${coordLabel(land.x, land.y)}${land.behind ? `, behind ${_ctName(target)}` : `, beside ${_ctName(target)} (nothing free behind it)`}.`);
         }
         /* 💼 THE TECH CEO (2026-11-16, the new races; mondo added it): ownership of the board's objects. Three `cleanseArea` tile
            casts carry a flag each: `acquire` (every enemy-owned summon, deployed object, trap, bomb, mirror, ward or rune on the
@@ -42195,6 +42304,11 @@
                 if (_pressDamageCollector && !opts.noPress && opts.sourceUnit.id === _pressDamageCollector.casterId) _pressDamageCollector.hits.push({ evaded: true });
                 return false;
             }
+            // ── 🥷 Kawarimi: a Substituted ninja leaves a log; the rest of that same attack keeps hitting the log ──
+            if (damage > 0 && opts.sourceUnit && !opts._chivalryRedirected && _ninjaKawarimi(target, opts.sourceUnit)) {
+                if (_pressDamageCollector && !opts.noPress && opts.sourceUnit.id === _pressDamageCollector.casterId) _pressDamageCollector.hits.push({ evaded: true });
+                return false;
+            }
             // ── Chivalry: a pledged knight dashes in and intercepts the next attack on their ward ──
             if (target._guardedBy && !opts._chivalryRedirected && damage > 0) {
                 const guardian = state.units.find(u => u.id === target._guardedBy && !u.dead && !u._dying);
@@ -44137,7 +44251,7 @@
                 } else target = enemyAt(x, y, z);
                 if (!target) return;
                 const dt = spell.damageType || 'magic';
-                const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor, noRangeMult: !!spell.chessPiece });   // ♟ a piece strikes in person: no falloff
+                const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor, noRangeMult: !!spell.chessPiece || !!spell.blinkBehind });   // ♟ a piece strikes in person: no falloff
                 /* the charge lands first when the cast plays as a charge (doSpell's own test) — the hit is then from beside */
                 const chargeFirst = chargeStrikesFirst(unit, spell, target);
                 const _clash = _isClashMode();
@@ -44163,7 +44277,8 @@
                         execMult: (spell.executeBonusPct && target.maxHp > 0 && (target.hp / target.maxHp) < 0.5) ? 1 + spell.executeBonusPct : null,
                         waterMult: (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : null,
                         /* the ambush ×1.5: doSpell stamps _sneakStrikeBonus only at the cast, from the cloak the caster wears now */
-                        sneakMult: (spell.sneakBonus && (unit._sneakStrikeBonus || unitHasStatus(unit, 'invisible'))) ? 1.5 : null
+                        sneakMult: (spell.sneakBonus && (unit._sneakStrikeBonus || unitHasStatus(unit, 'invisible'))) ? 1.5 : null,
+                        backMult: (spell.blinkBehind && (ninjaShadowLanding(unit, target) || {}).behind) ? FACING_BACK_DMG_MULT : null   // 🥷 Shadow Step lands behind its target
                     }).dmg;
                     const [m, l, hgh] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 32);
                     const _hp0 = target.hp;
@@ -83051,6 +83166,19 @@
                     window.setTimeout(() => {
                         _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                     }, impactDelay);
+                } else if (spell.blinkBehind) {
+                    /* 🥷 SHADOW STEP: the blink first, then the strike from the square beside the target */
+                    const _ssLand = ninjaShadowLanding(unit, target);
+                    if (!_ssLand) {
+                        addLog(`🥷 There is no free square beside ${_ctName(target)} to step into.`, _clickSeat());
+                        playErrorSfx();
+                        return 0;
+                    }
+                    _ninjaShadowStep(unit, target, _ssLand);
+                    const _ssSpell = Object.assign({}, spell, { _animOverride: { travel: 'strikeLeap' } });
+                    completionDelay = executeSpellAnimation(
+                        unit, _ssSpell, target, { x, y },
+                        effectiveSpellCost, spellPower, finishAction, spellApCost);
                 } else if (chargeStrikesFirst(unit, spell, target)) {
                     // Charge-to-target melee (Brave Charge, …): rush the gap in
                     // third-person and strike on arrival, following the caster.
