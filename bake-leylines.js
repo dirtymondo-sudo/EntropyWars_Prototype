@@ -275,7 +275,10 @@ const STAND = [
     { id: R_BUGS, part: 'ow_bugs', label: 'BUG COLONY', letters: ['B'], list: v13('B'), kit: true, lines: [], seams: [], spawn: { home: [48, 18], face: 90 } },
     { id: R_HENGE, part: 'ow_henge', label: 'STONEHENGE', sub: 'LEYLINES · THE STONES ON THE PLAIN · 9 PLOTS', letters: ['S'], list: v13('S'), lines: OLD.henge.l,
       parti: 'The stones in their ring on the open plain, the barrows round them and the avenue to the river, alone a long way from the line.',
-      spawn: { door: 'bay56', back: 2, face: 0 }, seams: [] },
+      spawn: { door: 'bay56', back: 2, face: 0 },
+      /* THE STONE PATH (route R12, One World phase 4.1, 2026-11-17): down off the plain from the South Gate's middle; written once the route's room stands */
+      seams: [{ plot: 'P07-02', side: 'S', along: 6, id: 'ow_h_m30_m6', room: 'site_ow_r12', label: 'THE STONE PATH', sub: 'THE SOUTH GATE · DOWN TO CAMELOT', desc: 'A path goes south off the plain into the woods. Camelot is that way.' }]
+          .filter(sm => vm.runInContext('!!DOOR_HQ.rooms.' + sm.room, D)) },
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 180, E: 270, S: 0, W: 90 };   // a free door's opening faces INTO the plot (ow-move.js)
 const FW_N = 2 * N;   // paint cells a plot (half squares)

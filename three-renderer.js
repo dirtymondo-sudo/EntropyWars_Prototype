@@ -29576,7 +29576,8 @@ const ThreeRenderer = (function () {
                     sx: mesh.position.x + Math.sin(ry) * fwd * cosP,
                     sy: mesh.position.y + (mesh._ew_pivotUp || 0) + Math.sin(rp) * fwd,
                     sz: mesh.position.z + Math.cos(ry) * fwd * cosP,
-                    tx: tp2.x, ty: tp2.y + spriteH * 0.45, tz: tp2.z
+                    tx: tp2.x, ty: tp2.y + spriteH * 0.45, tz: tp2.z,
+                    own: turret.owner === _viewerPlayerNum(), tgt: best.id   /* THE SIGHT LASERS: whose it is + who it holds */
                 });
             }
         });
@@ -29604,6 +29605,8 @@ const ThreeRenderer = (function () {
         if (entry.beamMat) entry.beamMat.dispose();
         if (entry.glowMat) entry.glowMat.dispose();
         if (entry.dotMat) entry.dotMat.dispose();
+        if (entry.edge && entry.edge.geometry) entry.edge.geometry.dispose();
+        if (entry.edgeMat) entry.edgeMat.dispose();
     }
 
     function _clearLaserBeams() {
@@ -29628,8 +29631,13 @@ const ThreeRenderer = (function () {
         glow.renderOrder = 9039; beam.renderOrder = 9040; dot.renderOrder = 9041;
         var root = new THREE.Group();
         root.add(glow); root.add(beam); root.add(dot);
+        /* THE SIGHT LASERS (VFX cleanup B3, 2026-11-17): a dark sleeve round the core so the line reads on a bright floor */
+        var edgeMat = new THREE.MeshBasicMaterial({ color: 0x06080c, transparent: true, opacity: 0.55, depthWrite: false });
+        var edge = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.07, ts * 0.07, 1, 6, 1, true), edgeMat);
+        edge.renderOrder = 9039; root.add(edge);
         _laserBeamGroup.add(root);
-        var entry = { root: root, beam: beam, glow: glow, dot: dot, beamMat: beamMat, glowMat: glowMat, dotMat: dotMat, phase: (key.length * 1.7) % 6.283 };
+        var entry = { root: root, beam: beam, glow: glow, dot: dot, beamMat: beamMat, glowMat: glowMat, dotMat: dotMat, phase: (key.length * 1.7) % 6.283,
+            edge: edge, edgeMat: edgeMat, born: performance.now() / 1000, tgt: null };
         _laserBeams.set(key, entry);
         return entry;
     }
@@ -29666,7 +29674,8 @@ const ThreeRenderer = (function () {
                 /* Muzzle-height origin on the sniper, chest-height end on the target. */
                 wanted[ds.sourceUnitId + '>' + ds.markedUnitId] = {
                     sx: sp.x, sy: sp.y + spriteH0 * 0.62, sz: sp.z,
-                    tx: tp.x, ty: tp.y + spriteH0 * 0.45, tz: tp.z
+                    tx: tp.x, ty: tp.y + spriteH0 * 0.45, tz: tp.z,
+                    own: ds.sourcePlayer === _viewerPlayerNum(), tgt: ds.markedUnitId
                 };
             }
         }
@@ -29710,6 +29719,21 @@ const ThreeRenderer = (function () {
             var entry = _laserBeams.get(key) || _buildLaserEntry(key);
             var sx = w.sx, sy = w.sy, sz = w.sz;
             var tx = w.tx, ty = w.ty, tz = w.tz;
+            /* THE SIGHT LASERS (VFX cleanup B3; mondo 11-17: cyan-blue for your own / friendly sights, red-pink for an enemy's,
+               from the viewer's seat). THE LOCK: a sight that takes a new target searches (the line sweeps round it, the dot
+               wide), then snaps steady and ticks once. Looks only, drawn per client from what it already sees. Old look:
+               window.EW_NO_VFX_CLEANUP. */
+            var vcS = !(typeof window !== 'undefined' && window.EW_NO_VFX_CLEANUP), lockK = 1, tick = 0;
+            if (vcS) {
+                if (entry.tgt !== w.tgt) { entry.tgt = w.tgt; entry.born = now; }
+                var age = now - entry.born;
+                lockK = Math.min(1, age / 0.55);
+                if (age >= 0.55 && age < 0.72) tick = 1 - (age - 0.55) / 0.17;
+                var amp = (CONFIG.tileSize || BASE_TILE) * 0.55 * (1 - lockK) * (1 - lockK);
+                tx += Math.sin(now * 17 + entry.phase) * amp; ty += Math.sin(now * 23 + entry.phase * 2) * amp * 0.5; tz += Math.cos(now * 19 + entry.phase) * amp;
+                var colS = w.own ? 0x35c8ff : 0xff3358;
+                if (entry._col !== colS) { entry._col = colS; entry.beamMat.color.setHex(colS); entry.glowMat.color.setHex(colS); entry.dotMat.color.setHex(colS); }
+            } else if (entry._col !== 0xff2222) { entry._col = 0xff2222; entry.beamMat.color.setHex(0xff2222); entry.glowMat.color.setHex(0xff2222); entry.dotMat.color.setHex(0xff3333); }
             _laserDirVec.set(tx - sx, ty - sy, tz - sz);
             var len = _laserDirVec.length();
             if (len < 0.001) { entry.root.visible = false; continue; }
@@ -29717,16 +29741,19 @@ const ThreeRenderer = (function () {
             _laserDirVec.multiplyScalar(1 / len);
             entry.beam.position.set((sx + tx) / 2, (sy + ty) / 2, (sz + tz) / 2);
             entry.beam.quaternion.setFromUnitVectors(_laserUpVec, _laserDirVec);
-            entry.beam.scale.set(1, len, 1);
+            var thinS = vcS ? 0.45 : 1;   /* a sight is a thin line, not a ribbon */
+            entry.beam.scale.set(thinS, len, thinS);
             entry.glow.position.copy(entry.beam.position);
             entry.glow.quaternion.copy(entry.beam.quaternion);
-            entry.glow.scale.set(1, len, 1);
+            entry.glow.scale.set(thinS, len, thinS);
             entry.dot.position.set(tx, ty, tz);
             /* Subtle pulse so it reads as an active sight, not level geometry. */
             entry.beamMat.opacity = 0.72 + 0.22 * Math.sin(now * 9 + entry.phase);
             entry.glowMat.opacity = 0.10 + 0.08 * Math.sin(now * 9 + entry.phase);
             var dScale = 1 + 0.25 * Math.sin(now * 6 + entry.phase);
+            if (vcS) dScale = (lockK < 1 ? 1 + 1.5 * (1 - lockK) : 0.85 + 0.12 * Math.sin(now * 6 + entry.phase)) + 0.9 * tick;
             entry.dot.scale.set(dScale, dScale, dScale);
+            if (entry.edge) { entry.edge.visible = vcS; entry.edge.position.copy(entry.beam.position); entry.edge.quaternion.copy(entry.beam.quaternion); entry.edge.scale.set(thinS, len, thinS); }
         }
     }
 
@@ -44853,6 +44880,12 @@ const ThreeRenderer = (function () {
                 [0.66, _hzModelSolarSystem, false, -0.40, 0.70],
                 [0.82, _hzModelEyeball, true, -0.50, 0.70], [0.88, _hzSaucer, false, -0.45, 0.68],
                 [0.94, _hzModelCraft, false, -0.35, 0.70], [1.00, _hzSacredRings, true, -0.60, 0.72]],
+            /* the sky of THE SOLAR SYSTEM (2026-11-17): `space` without its model planets, its star and its small solar system: the room has
+               real worlds now, and a cartoon ringed planet drifting among them read as one more of them */
+            deepspace: [
+                [0.30, _hzAsteroidFar, true, -0.60, 0.75], [0.45, _hzAstralOrbs, true, -0.60, 0.76],
+                [0.60, _hzCrystalShards, true, -0.60, 0.70], [0.72, _hzModelEyeball, true, -0.50, 0.70],
+                [0.82, _hzSaucer, false, -0.45, 0.68], [0.92, _hzModelCraft, false, -0.35, 0.70], [1.00, _hzSacredRings, true, -0.60, 0.72]],
             dark: [
                 [0.24, _hzMonolith, false, -0.52, 0.60], [0.43, _hzFallenColumn, false, -0.45, 0.45],
                 [0.70, _hzGateway, false, -0.45, 0.55],
@@ -72626,6 +72659,9 @@ const ThreeRenderer = (function () {
     function _hqTerrainTiles(geo, idx, nx, nz, res, zones, info) {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_TILES) return null;
         var tileM = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES.tileM > 0) ? HQ_ENGINE_RULES.tileM : 32;
+        /* a room's own tile (`terrain.tileM`, 2026-11-17, the solar system): its ground is bent onto balls and never left out by the eye's
+           frustum, so 32 m tiles were 1,200 draws of ground a frame; it asks for big ones */
+        { var trm = info && info.roomId && typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms ? DOOR_HQ.rooms[info.roomId] : null; if (trm && trm.terrain && trm.terrain.tileM > 0) tileM = +trm.terrain.tileM; }
         var nT = Math.max(4, Math.round(tileM / res)), tx = Math.ceil((nx - 1) / nT), tz = Math.ceil((nz - 1) / nT);
         if (tx * tz <= 1) return null;
         var A = geo.attributes, P = A.position.array, N = A.normal.array, UV = A.uv.array, B = A.aBlend.array, O = A.aAO.array;
@@ -73153,6 +73189,12 @@ const ThreeRenderer = (function () {
             var ghN = (GHa && Math.abs(GHa[k] - h) < 0.05) ? GHa : null;
             if (ghN) { var gi0 = Math.max(0, i - 1), gi1 = Math.min(nx - 1, i + 1), gj0 = Math.max(0, j - 1), gj1 = Math.min(nz - 1, j + 1);
                 sl = Math.hypot((ghN[j * nx + gi1] - ghN[j * nx + gi0]) / ((gi1 - gi0) * res || 1), (ghN[gj1 * nx + i] - ghN[gj0 * nx + i]) / ((gj1 - gj0) * res || 1)); }
+            /* THE SHARP VOID'S EDGE (2026-11-17, the solar system): the last line of a world's net falls 60 m to the void beside it, read as a
+               cliff: every cut seam of a ball wore a pale line of the room's cliff sheet. On a ball that line is no edge at all. */
+            var plEdge = sl > R.cliffFrom && info.void && info.void.sharp && typeof hqTerrainVoidAt === 'function' && !hqTerrainVoidAt(info, px, pz)
+                && (hqTerrainVoidAt(info, px - res, pz) || hqTerrainVoidAt(info, px + res, pz) || hqTerrainVoidAt(info, px, pz - res) || hqTerrainVoidAt(info, px, pz + res)
+                    || hqTerrainVoidAt(info, px - res, pz - res) || hqTerrainVoidAt(info, px + res, pz - res) || hqTerrainVoidAt(info, px - res, pz + res) || hqTerrainVoidAt(info, px + res, pz + res));
+            if (plEdge) sl = 0;
             var rock = (sl - R.cliffFrom) / (R.cliffTo - R.cliffFrom); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
             var rockSl = rock;
             /* THE GENERATED FLOOR PLAN (2026-09-17): a cave's solid wears the cliff sheet to its top (info.gen.solidSheet); the woods' thicket bank keeps the forest floor */
@@ -73171,6 +73213,7 @@ const ThreeRenderer = (function () {
             }
             blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(calmF ? _calmEdge(pathW(px, pz), px, pz) : pathW(px, pz), sw) * (1 - blend[k * 2]);
             ao[k] = _hqTerrainAoAt(info, px, pz, h, res);   // THE LIGHT PASS 2.3 (2026-09-21): the field's own occlusion
+            if (plEdge) ao[k] = 1;
             if (ghN && Math.abs(info.H[k] - h) < 0.05 && ao[k] < 1) {   // THE GROUND UNDER: the hollow is read on the ground, not against a flank it no longer meets
                 var aoR = _hqLightRules().ao || {}, aoT2 = (aoR.terrain != null) ? aoR.terrain : 0.32;
                 var lapG = (ghN[j * nx + Math.max(0, i - 1)] + ghN[j * nx + Math.min(nx - 1, i + 1)] + ghN[Math.max(0, j - 1) * nx + i] + ghN[Math.min(nz - 1, j + 1) * nx + i] - 4 * ghN[k]) / res;
@@ -73188,7 +73231,7 @@ const ThreeRenderer = (function () {
            · 3 a float flight's run over THE GROUND UNDER (GHa, from data.js info.GD: drawn on the ground under it, no hole under the stair) */
         var underFloat = function (mx, mz) {
             if (info.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(info, mx, mz)) return 2;   // THE VOID: no ground drawn between the islands
-            if (info.void && info.void.sharp) { var hr = res * 0.5; if (hqTerrainVoidAt(info, mx - hr, mz - hr) || hqTerrainVoidAt(info, mx + hr, mz - hr) || hqTerrainVoidAt(info, mx - hr, mz + hr) || hqTerrainVoidAt(info, mx + hr, mz + hr)) return 2; }   // THE SOLAR SYSTEM (2026-11-17): a quad with a corner over the void goes (no sheet hung from a world's edge)
+            if (info.void && info.void.sharp) { var hr = res * 0.5 - res * 0.02;   /* (2026-11-17: just inside the quad's corners: a corner standing ON a net's last line read as void and the whole quad went, a crack one quad wide along every cut seam of a ball) */ if (hqTerrainVoidAt(info, mx - hr, mz - hr) || hqTerrainVoidAt(info, mx + hr, mz - hr) || hqTerrainVoidAt(info, mx - hr, mz + hr) || hqTerrainVoidAt(info, mx + hr, mz + hr)) return 2; }   // THE SOLAR SYSTEM (2026-11-17): a quad with a corner over the void goes (no sheet hung from a world's edge)
             var ring = 0;
             for (var fi = 0; fi < floats.length; fi++) {
                 var f = floats[fi];
@@ -76342,6 +76385,7 @@ const ThreeRenderer = (function () {
     /* the open room's reach from its middle (metres): a box's half diagonal, a ring's outer radius */
     function _hqRoomExtentM(room) {
         var S = (room && room.shell) || {};
+        if (room && room.space && room.space.box) { var bx = room.space.box; return Math.max(Math.hypot((S.w || 10) / 2, (S.d || 10) / 2), Math.hypot(Math.max(Math.abs(bx.x0), Math.abs(bx.x1)), Math.max(Math.abs(bx.z0), Math.abs(bx.z1)))); }   // THE SOLAR SYSTEM: the sky and the far plane stand past the box the ship flies in
         if (room && room.kind === 'box') return Math.hypot((S.w || 10) / 2, (S.d || 10) / 2);
         return (S.ring3 && S.ring3.outer) || S.rOut || 26;
     }
@@ -87205,7 +87249,7 @@ const ThreeRenderer = (function () {
         boat: { v: 8.5, rev: 2.0, accel: 1.4, drag: 0.6, turn: 1.15, turnMin: 0.35, draft: 0.55, bob: 0.08, boardReach: 3.6, seat: { x: 0, y: 0.5, z: -0.5 }, camDist: 7.0, len: 4.6, beam: 1.7 },
         sub:  { v: 6.0, rev: 2.5, accel: 1.2, drag: 0.8, turn: 0.95, turnMin: 0.5, vertV: 2.4, r: 1.6, boardReach: 4.0, seat: { x: 0, y: 0.55, z: 0.2 }, camDist: 8.5, len: 6.2 },
         /* THE SPACESHIP YOU FLY (2026-11-17, Outer Space's solar system): no water; the room's box, its ground and the planet balls are the hull's limits */
-        ship: { v: 34, rev: 8, accel: 0.7, drag: 0.5, turn: 1.25, turnMin: 0.55, vertV: 14, r: 2.2, boardReach: 7.0, seat: { x: 0, y: 0.9, z: 0.6 }, camDist: 18, len: 8.0, beam: 4.0, land: 9, landH: 26 },
+        ship: { v: 46, rev: 8, accel: 0.7, drag: 0.5, turn: 1.25, turnMin: 0.55, vertV: 22, boost: 3.4, r: 2.2,   /* (2026-11-17, the worlds far apart: faster, and SHIFT = the burner, `boost` x) */ boardReach: 7.0, seat: { x: 0, y: 0.9, z: 0.6 }, camDist: 18, len: 8.0, beam: 4.0, land: 9, landH: 26 },
         keys: { dive: 'c', rise: 'space', board: 'e' },
         labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP' },
     };
@@ -87368,7 +87412,7 @@ const ThreeRenderer = (function () {
         _hq.boats = _hq.boats || [];
         var U = _hqUnits(), R = _hqSeaRules(), kind = cat.vehicle;
         _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: kind, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
-                         label: (R.labels || {})[kind] || p.key.toUpperCase(), sub: kind === 'ship' ? 'TAKE THE STICK · W / S THRUST · A / D TURN · SPACE UP · C DOWN · FLY INTO A GOLD BEACON TO LAND' : kind === 'sub' ? 'RECORDS’ BATHYSCAPHE · W / S DRIVE · A / D STEER · SPACE UP · C DOWN' : 'THE SEA LENDS IT · W / S SAIL · A / D THE TILLER' });
+                         label: (R.labels || {})[kind] || p.key.toUpperCase(), sub: kind === 'ship' ? '' : kind === 'sub' ? 'RECORDS’ BATHYSCAPHE · W / S DRIVE · A / D STEER · SPACE UP · C DOWN' : 'THE SEA LENDS IT · W / S SAIL · A / D THE TILLER' });
     }
     function _hqVehicleFind(id) { var B = (_hq && _hq.boats) || []; for (var i = 0; i < B.length; i++) if (B[i].id === id) return B[i]; return null; }
     /* E on a moored vehicle: aboard. E aboard: off. */
@@ -87463,7 +87507,7 @@ const ThreeRenderer = (function () {
         if (Math.abs(V.v) < 0.03 && !thr) V.v = 0;
         var rate = R.turn * ((R.turnMin != null ? R.turnMin : 0.35) + (1 - (R.turnMin != null ? R.turnMin : 0.35)) * Math.min(1, Math.abs(V.v) / R.v));
         if (V.kind === 'sub') rate = R.turn;
-        if (V.kind === 'ship') { _hqTickShip(dt, V, R, thr, turn, vert); return; }
+        if (V.kind === 'ship') { _hqTickShip(dt, V, R, thr, turn, vert, !H.paused && !!k.shift); return; }
         var dl = -turn * rate * dt * (V.v < -0.2 ? -1 : 1);
         if (dl) { V.yaw += dl; H.cam.yaw -= dl; }
         var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw);
@@ -87538,6 +87582,10 @@ const ThreeRenderer = (function () {
         var H = _hq, S = H.room.shell, sp = _hqSpace() || {}, ti = H.terrain; if (!ti) return false;
         var L = (R.len || 8) / 2, B = (R.beam || 4) / 2, fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), rx = Math.cos(V.yaw), rz = -Math.sin(V.yaw);
         if (y > (sp.ceil || 120)) return false;
+        /* THE BOX OF OPEN SPACE (2026-11-17, `space.box`): the worlds hang far apart, well past the room's own plots, so the box is the
+           ship's limit and the room's sides are not; past the room's plots there is nothing under the hull */
+        var BX = sp.box || null;
+        if (BX && (x < BX.x0 || x > BX.x1 || z < BX.z0 || z > BX.z1 || y < BX.y0)) return false;
         var P = sp.planets || [];
         for (var q = 0; q < P.length; q++) { var pq = P[q]; if (Math.hypot(x - pq.x, y - pq.y, z - pq.z) < pq.r + (R.r || 2.2) + 1) return false; }
         /* THE ROUND WORLDS: the ball (its ground is up to `top` m over its radius); a net's flat place is empty sky, kept under a lid
@@ -87550,7 +87598,7 @@ const ThreeRenderer = (function () {
         var probes = [[0, 0], [L, 0], [-L, 0], [0, B], [0, -B]];
         for (var i = 0; i < probes.length; i++) {
             var px = x + fx * probes[i][0] + rx * probes[i][1], pz = z + fz * probes[i][0] + rz * probes[i][1];
-            if (Math.abs(px) > S.w / 2 - 1 || Math.abs(pz) > S.d / 2 - 1) return false;
+            if (Math.abs(px) > S.w / 2 - 1 || Math.abs(pz) > S.d / 2 - 1) { if (BX) continue; return false; }
             var g = hqTerrainHeight(ti, px, pz), yb = y - (R.r || 2.2);
             if (!(ti.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(ti, px, pz))) {
                 if (yb < g + 0.3) return false;
@@ -87561,16 +87609,17 @@ const ThreeRenderer = (function () {
         }
         return true;
     }
-    function _hqTickShip(dt, V, R, thr, turn, vert) {
+    function _hqTickShip(dt, V, R, thr, turn, vert, burn) {
         var H = _hq, pl = H.player, U = _hqUnits(), sp = _hqSpace() || {};
-        var target = thr > 0 ? R.v : (thr < 0 ? -R.rev : 0);
+        var bo = burn ? (R.boost || 1) : 1;   // THE BURNER (2026-11-17): SHIFT, the walk's run key, for the long legs between the worlds
+        var target = thr > 0 ? R.v * bo : (thr < 0 ? -R.rev : 0);
         V.v += (target - V.v) * (1 - Math.exp(-dt * (thr ? R.accel : R.drag)));
         if (Math.abs(V.v) < 0.05 && !thr) V.v = 0;
         var rate = R.turn * (R.turnMin + (1 - R.turnMin) * Math.min(1, Math.abs(V.v) / R.v));
         var dl = -turn * rate * dt * (V.v < -0.2 ? -1 : 1);
         if (dl) { V.yaw += dl; H.cam.yaw -= dl; }
         var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), nx = V.x + fx * V.v * dt, nz = V.z + fz * V.v * dt;
-        var vt = vert * (R.vertV || 14);
+        var vt = vert * (R.vertV || 14) * bo;
         V.vy += (vt - V.vy) * (1 - Math.exp(-dt * 2.4));
         var ny = V.y + V.vy * dt;
         if (_hqShipHullFree(V, R, V.x, V.z, ny)) V.y = ny; else V.vy = 0;
@@ -87578,7 +87627,7 @@ const ThreeRenderer = (function () {
         else if (_hqShipHullFree(V, R, nx, V.z, V.y)) { V.x = nx; V.v *= 0.6; }
         else if (_hqShipHullFree(V, R, V.x, nz, V.y)) { V.z = nz; V.v *= 0.6; }
         else V.v *= 0.2;
-        V.pitch += ((-V.vy / (R.vertV || 14)) * 0.25 - V.pitch) * Math.min(1, dt * 3);
+        V.pitch += ((-Math.max(-1, Math.min(1, V.vy / (R.vertV || 14)))) * 0.25 - V.pitch) * Math.min(1, dt * 3);
         V.roll += ((-turn * 0.35 * Math.min(1, Math.abs(V.v) / R.v)) - V.roll) * Math.min(1, dt * 3);
         var grp = V.rec.grp;
         grp.position.set(V.x * U, V.y * U, V.z * U);
@@ -87615,6 +87664,12 @@ const ThreeRenderer = (function () {
         if (H.player && H.player.entry && H.player.entry.group) H.player.entry.group.visible = true;
         if (b.ball && H.cam) H.cam.init = false;   // THE ROUND WORLDS: down on the ball's flat net, the eye starts again at the feet
         _hqDisembark();
+        /* (2026-11-17) the step off at a beacon: the helm's own pick (fore of the hull) was the collar door's own square, the walker stood INSIDE
+           the door's block and the screen was black until he walked. He stands two squares out from the pad on the door's open side (kept
+           clear by the plan) and the eye looks back at the ship and the collar. */
+        if (b.ball && H.cam && H.player && pad.yaw != null) { var pl2 = H.player, ox = Math.sin(pad.yaw), oz = -Math.cos(pad.yaw), qx = pad.x + ox * 7, qz = pad.z + oz * 7, qy = _hqSurface(qx, qz, null, true);
+            if (qy !== null && isFinite(qy)) { pl2.x = qx; pl2.z = qz; pl2.y = qy; pl2.visY = qy; pl2.yaw = pl2.targetYaw = _hqHeadingYaw(Math.atan2(-ox, oz) * 180 / Math.PI); if (pl2.entry && pl2.entry.group) pl2.entry.group.position.set(qx * U, qy * U, qz * U); }
+            H.cam.yaw = Math.atan2(-ox, oz); H.cam.init = false; }
         _hqSeaEmit({ kind: 'land', vehicle: 'ship', label: b.label });
     }
     /* the stick: arriving at the berth from the Bridge, you are aboard (once a visit) */
@@ -87631,6 +87686,10 @@ const ThreeRenderer = (function () {
     function _hqBuildSpace(room, G) {
         var sp = room.space; if (!sp) return;
         var U = _hqUnits(), H = _hq, n0 = G.children.length;
+        /* THE BODIES' GROUP (2026-11-17): every ball, ring, halo and the Sun hang in one group, so that on a round world they turn about
+           the walker's feet with the bent ground (THE ANCHOR, _ewPlTick): before, Saturn's ring stayed where it hung while its ball,
+           bent, turned away from it. */
+        var SG = new THREE.Group(); SG.name = 'ew_space_bodies'; SG.matrixAutoUpdate = false; G.add(SG);
         /* a shared sheet repeats by the geometry's own UVs (a clone of a sheet still loading draws blank on r128) */
         /* the room's own copy of a sheet: the shared one is re-tiled by the field (THE ONE PIXEL DENSITY), and a plain clone of a
            sheet still loading stays blank on r128, so the copy takes the picture once it has landed */
@@ -87643,9 +87702,32 @@ const ThreeRenderer = (function () {
             return t;
         };
         var uvTile = function (geo, ru, rv) { var a = geo.attributes.uv; for (var q = 0; q < a.count; q++) a.setXY(q, a.getX(q) * ru, a.getY(q) * rv); a.needsUpdate = true; geo._ew_wuvOwner = true; return geo; };   // a planet keeps its own metres (THE ONE PIXEL DENSITY would tile it to a blur)
+        /* a drawn sheet (a ring's bands, a glow): a small canvas, never a file */
+        var cv = function (w, h, draw) {
+            if (typeof document === 'undefined') return null;
+            var c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+            var t = new THREE.CanvasTexture(c); try { _ewTexSetSRGB(t, true); } catch (e) {} t.needsUpdate = true; return t;
+        };
+        var rnd = (function () { var v = 20261117; return function () { v = (v * 1664525 + 1013904223) >>> 0; return v / 4294967296; }; })();
+        /* a flat ring whose sheet runs from its inner edge (u 0) to its outer edge (u 1) */
+        var ringGeo = function (r0, r1, seg, spin) {
+            var g = new THREE.RingGeometry(r0 * U, r1 * U, seg, 1), pa = g.attributes.position, uv = g.attributes.uv;
+            for (var q = 0; q < pa.count; q++) uv.setXY(q, (Math.hypot(pa.getX(q), pa.getY(q)) / U - r0) / (r1 - r0), spin ? (Math.atan2(pa.getY(q), pa.getX(q)) / 6.283185 + 0.5) : 0.5);
+            uv.needsUpdate = true; g._ew_wuvOwner = true; return g;
+        };
+        /* a round glow: clear inside `a` (the ball hides it there anyway), brightest at the ball's edge, gone at the sheet's edge */
+        var glowTex = function (a, soft) { return cv(256, 256, function (g, w) {
+            var gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+            gr.addColorStop(0, 'rgba(255,255,255,' + (soft ? 1 : 0) + ')'); gr.addColorStop(Math.max(0.01, a - 0.05), 'rgba(255,255,255,' + (soft ? 0.85 : 0) + ')'); gr.addColorStop(a, 'rgba(255,255,255,0.85)');
+            gr.addColorStop(a + (1 - a) * 0.3, 'rgba(255,255,255,0.3)'); gr.addColorStop(a + (1 - a) * 0.65, 'rgba(255,255,255,0.08)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, w, w); }); };
+        var glow = function (tex, color, size, op) {
+            var m = new THREE.SpriteMaterial({ map: tex, color: color, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending });
+            var spr = new THREE.Sprite(m); spr.scale.set(size * U, size * U, 1); spr.renderOrder = 0; return spr;
+        };
         /* the sunlight on a ball, baked in its vertices (the room's own lights are the walk's; a ball lit by them reads as a flat disc):
-           one fixed light from high over the system, a dark side that never goes black */
-        var LD = new THREE.Vector3(0.8, 0.35, 0.5).normalize();
+           one fixed light, from where the Sun hangs, a dark side that never goes black */
+        var LD = sp.sun ? new THREE.Vector3(sp.sun.x, sp.sun.y, sp.sun.z).normalize() : new THREE.Vector3(0.8, 0.35, 0.5).normalize();
         var shade = function (geo, amb) {
             geo.computeVertexNormals(); var nA = geo.attributes.normal, cols = new Float32Array(nA.count * 3);
             for (var q = 0; q < nA.count; q++) { var d = nA.getX(q) * LD.x + nA.getY(q) * LD.y + nA.getZ(q) * LD.z, k = amb + (1 - amb) * Math.max(0, d); cols[q * 3] = cols[q * 3 + 1] = cols[q * 3 + 2] = k; }
@@ -87656,24 +87738,32 @@ const ThreeRenderer = (function () {
             var m = new THREE.MeshLambertMaterial({ map: tex || null, color: b.color != null ? b.color : 0xffffff, vertexColors: true });
             m.emissive = new THREE.Color(b.color != null ? b.color : 0x888888).multiplyScalar(0.3); m.onBeforeCompile = _ewVColorEmissiveHook;   // the baked sunlight shades the glow too
             var mesh = new THREE.Mesh(shade(uvTile(new THREE.SphereGeometry(b.r * U, seg || 48, Math.round((seg || 48) * 0.66)), Math.max(2, Math.round(b.r / 40)), Math.max(1, Math.round(b.r / 80))), 0.12), m);
-            mesh.position.set(b.x * U, b.y * U, b.z * U); mesh.renderOrder = 0; G.add(mesh); return mesh;
+            mesh.position.set(b.x * U, b.y * U, b.z * U); mesh.renderOrder = 0; SG.add(mesh); return mesh;
         };
         (sp.planets || []).forEach(function (b) {
-            var m = ball(b);
-            if (b.land != null) {   // the Earth: green land patches on the blue
-                for (var k = 0; k < 7; k++) { var a = k * 2.1, e = 0.6 + (k % 3) * 0.25, rr = b.r * (0.24 + (k % 2) * 0.12);
-                    var lm = new THREE.Mesh(new THREE.SphereGeometry(rr * U, 16, 10), new THREE.MeshBasicMaterial({ color: b.land })); lm.scale.y = 0.18;
+            var m = ball(b, b.r > 150 ? 96 : 48);
+            if (b.land != null) {   // the Earth: green land patches on the blue, white cloud over both
+                var nL = b.r > 150 ? 19 : 7;
+                for (var k = 0; k < nL; k++) { var a = k * 2.1, e = b.r > 150 ? (rnd() * 2.4 - 1.2) : 0.6 + (k % 3) * 0.25, rr = b.r * (b.r > 150 ? 0.1 + rnd() * 0.2 : 0.24 + (k % 2) * 0.12);
+                    var lm = new THREE.Mesh(new THREE.SphereGeometry(rr * U, 20, 12), new THREE.MeshBasicMaterial({ color: b.land })); lm.scale.y = b.r > 150 ? 0.1 : 0.18; lm.scale.x = 0.7 + rnd() * 0.6;
                     var dir = new THREE.Vector3(Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e)).normalize();
-                    lm.position.copy(dir.clone().multiplyScalar(b.r * 0.97 * U)); lm.lookAt(dir.clone().multiplyScalar(b.r * 2 * U)); lm.rotateX(Math.PI / 2); m.add(lm); }
-                var atm = new THREE.Mesh(new THREE.SphereGeometry(b.r * 1.06 * U, 40, 26), new THREE.MeshBasicMaterial({ color: 0x8cc8ff, transparent: true, opacity: 0.18, depthWrite: false })); m.add(atm);
+                    var lit = 0.25 + 0.75 * Math.max(0, dir.dot(LD)); lm.material.color.multiplyScalar(lit);
+                    lm.position.copy(dir.clone().multiplyScalar(b.r * (b.r > 150 ? 0.992 : 0.97) * U)); lm.lookAt(dir.clone().multiplyScalar(b.r * 2 * U)); lm.rotateX(Math.PI / 2); m.add(lm); }
+                if (b.r > 150) for (var kc = 0; kc < 26; kc++) { var ac = rnd() * 6.283, ec = rnd() * 2.6 - 1.3, rc = b.r * (0.06 + rnd() * 0.12);
+                    var cm = new THREE.Mesh(new THREE.SphereGeometry(rc * U, 14, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false })); cm.scale.y = 0.05; cm.scale.x = 1.6 + rnd() * 2.2;
+                    var dc = new THREE.Vector3(Math.cos(ac) * Math.cos(ec), Math.sin(ec), Math.sin(ac) * Math.cos(ec)).normalize();
+                    cm.material.color.multiplyScalar(0.3 + 0.7 * Math.max(0, dc.dot(LD)));
+                    cm.position.copy(dc.clone().multiplyScalar(b.r * 1.004 * U)); cm.lookAt(dc.clone().multiplyScalar(b.r * 2 * U)); cm.rotateX(Math.PI / 2); m.add(cm); }
+                var atm = new THREE.Mesh(new THREE.SphereGeometry(b.r * (b.r > 150 ? 1.025 : 1.06) * U, 64, 40), new THREE.MeshBasicMaterial({ color: 0x8cc8ff, transparent: true, opacity: 0.16, depthWrite: false })); m.add(atm);
+                var gt = glowTex(1 / 1.22); if (gt) { var eg = glow(gt, 0x6ab4ff, b.r * 2 * 1.22, 0.8); eg.position.copy(m.position); SG.add(eg); }
             }
             if (b.ring) {
                 var rg = new THREE.Mesh(new THREE.RingGeometry(b.r * 1.35 * U, b.r * 2.1 * U, 96, 1), new THREE.MeshBasicMaterial({ map: null, color: b.ring.color, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }));
-                rg.rotation.x = -Math.PI / 2 + 0.32; rg.position.set(b.x * U, (b.y + b.r * 0.35) * U, b.z * U); G.add(rg);
+                rg.rotation.x = -Math.PI / 2 + 0.32; rg.position.set(b.x * U, (b.y + b.r * 0.35) * U, b.z * U); SG.add(rg);
             }
             if (b.rim != null) {
                 var rm = new THREE.Mesh(new THREE.TorusGeometry(b.r * 1.08 * U, b.r * 0.05 * U, 10, 96), new THREE.MeshBasicMaterial({ color: b.rim }));
-                rm.rotation.x = Math.PI / 2; rm.position.set(b.x * U, (b.y + b.r * 0.62) * U, b.z * U); G.add(rm);
+                rm.rotation.x = Math.PI / 2; rm.position.set(b.x * U, (b.y + b.r * 0.62) * U, b.z * U); SG.add(rm);
             }
         });
         /* the worlds' rock flanks: a square frustum from the block's edge down into its ball (Low Orbit's tapers to a point) */
@@ -87688,31 +87778,94 @@ const ThreeRenderer = (function () {
             var mesh = new THREE.Mesh(geo, mat); mesh.position.set(m.x * U, (m.bottom + h / 2) * U, m.z * U); G.add(mesh);
         });
         if (sp.sun) {
-            var sun = new THREE.Mesh(new THREE.SphereGeometry(sp.sun.r * U, 48, 32), new THREE.MeshBasicMaterial({ color: sp.sun.color || 0xffc46a }));
-            sun.position.set(sp.sun.x * U, sp.sun.y * U, sp.sun.z * U); G.add(sun);
-            var halo = new THREE.Mesh(new THREE.SphereGeometry(sp.sun.r * 1.35 * U, 40, 26), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.22, depthWrite: false })); halo.position.copy(sun.position); G.add(halo);
-            var sl = new THREE.PointLight(0xffd8a0, 0.6, 0); sl.position.copy(sun.position); G.add(sl);
+            var sun = new THREE.Mesh(new THREE.SphereGeometry(sp.sun.r * U, 48, 32), new THREE.MeshBasicMaterial({ color: 0xfff2c8 }));
+            sun.position.set(sp.sun.x * U, sp.sun.y * U, sp.sun.z * U); SG.add(sun);
+            var halo = new THREE.Mesh(new THREE.SphereGeometry(sp.sun.r * 1.35 * U, 40, 26), new THREE.MeshBasicMaterial({ color: sp.sun.color || 0xffc46a, transparent: true, opacity: 0.3, depthWrite: false })); halo.position.copy(sun.position); SG.add(halo);
+            var sgt = glowTex(0.16, true); if (sgt) { var sg1 = glow(sgt, sp.sun.color || 0xffc46a, sp.sun.r * 9, 0.9); sg1.position.copy(sun.position); SG.add(sg1); }
+            var sl = new THREE.PointLight(0xffd8a0, 0.6, 0); sl.position.copy(sun.position); SG.add(sl);
         }
-        /* a round world's ring (Saturn's ice) or accretion rim (the Singularity's): round its ball's middle `c`, clear of the ground (THE ROUND WORLDS, 11-17) */
+        /* THE ROUND WORLDS' LOOK (2026-11-17, mondo: "The planets also dont really look that good right now"). The ball itself is the
+           walk's bent ground; round it hang: Saturn's rings (the C, B and A rings and the dark division between them, drawn from the
+           inner edge out) and the Singularity's burning disc (white at the hole, red at its rim) in place of two flat-coloured discs;
+           THE NIGHT SIDE (`shade`: the bent ground is lit by the room's lights with its flat normals, so a far ball read as a flat
+           disc; a dark veil over the half turned from the Sun gives it its shape, fading out as you come down to land); a thin edge
+           of air on the worlds that have some; and the world's NAME over it, kept the same size on screen however far it hangs. */
+        var LOOK = { moon: { night: 0.82, limb: 0.8 }, mars: { night: 0.8, limb: 0.78, air: 0xff9a6a, airK: 1.13, airOp: 0.5 }, saturn: { night: 0.74, limb: 0.72, air: 0xffe2a8, airK: 1.08, airOp: 0.4 }, singularity: { night: 0, hole: true, air: 0xff7a2a, airK: 1.9, airOp: 0.4 } };
+        /* PASS 2 (2026-11-17, mondo: "they do not look good from afar"): THE LIMB, a round sheet held between the eye and each ball, clear in
+           its middle and dark toward its edge, so a far ball is shaded as a ball from every side (the veil only knows the Sun's side). The
+           Singularity's is the hole itself: black edge to edge, so no lit ground and no sheet of obsidian shows from afar. */
+        var limbTex = cv(256, 256, function (g, w) { var gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+            gr.addColorStop(0, 'rgba(0,0,8,0)'); gr.addColorStop(0.5, 'rgba(0,0,8,0)'); gr.addColorStop(0.78, 'rgba(0,0,8,0.3)'); gr.addColorStop(0.93, 'rgba(0,0,8,0.74)'); gr.addColorStop(0.985, 'rgba(0,0,8,0.95)'); gr.addColorStop(1, 'rgba(0,0,8,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
+        var holeTex = cv(256, 256, function (g, w) { var gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+            gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.975, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
+        /* a thin bright ring of light bent round the hole (the far side of its disc, seen over the top of it) */
+        var lensTex = cv(512, 512, function (g, w) { var gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+            gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.60, 'rgba(255,255,255,0)'); gr.addColorStop(0.665, 'rgba(255,244,220,1)'); gr.addColorStop(0.70, 'rgba(255,190,110,0.55)'); gr.addColorStop(0.80, 'rgba(255,120,40,0.18)'); gr.addColorStop(1, 'rgba(255,90,20,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
+        var veil = cv(4, 256, function (g, w, h) { var gr = g.createLinearGradient(0, 0, 0, h);   // the sheet's top = the sphere's pole, turned to the Sun
+            gr.addColorStop(0, 'rgba(0,0,6,0)'); gr.addColorStop(0.41, 'rgba(0,0,6,0)'); gr.addColorStop(0.5, 'rgba(0,0,6,0.5)'); gr.addColorStop(0.6, 'rgba(0,0,6,0.86)'); gr.addColorStop(1, 'rgba(0,0,6,0.94)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+        var saturnRing = function () { return cv(1024, 4, function (g, w, h) {
+            /* u 0 = 1.2 R, u 1 = 2.32 R: [from, to, r, g, b, alpha] in R */
+            var B = [[1.24, 1.52, 150, 132, 108, 0.34], [1.52, 1.95, 236, 218, 176, 0.93], [1.95, 2.03, 60, 52, 44, 0.1], [2.03, 2.27, 208, 192, 158, 0.78]];
+            for (var x = 0; x < w; x++) { var r = 1.2 + (x + 0.5) / w * 1.12, hit = null; for (var q = 0; q < B.length; q++) if (r >= B[q][0] && r < B[q][1]) hit = B[q];
+                if (!hit || (r > 2.205 && r < 2.218)) continue;   // (the thin gap near the A ring's edge)
+                var n = 0.84 + 0.16 * rnd() + 0.07 * Math.sin(r * 90) + 0.05 * Math.sin(r * 260), edge = Math.min(1, (r - hit[0]) / 0.012, (hit[1] - r) / 0.012);
+                g.fillStyle = 'rgba(' + Math.round(hit[2] * n) + ',' + Math.round(hit[3] * n) + ',' + Math.round(hit[4] * n) + ',' + (hit[5] * Math.max(0, edge) * (0.82 + 0.18 * rnd())).toFixed(3) + ')'; g.fillRect(x, 0, 1, h); } }); };
+        /* the burning disc: no rings in it (the first one was banded like Saturn's: "looks too much like Jupiter"). One smooth fall from white
+           at the hole to deep red, torn by streaks that wind round it (the sheet's rows run round the disc and close on themselves). */
+        var discTex = function () { return cv(512, 256, function (g, w, h) {
+            var im = g.createImageData(w, h), D = im.data, ph = []; for (var q = 0; q < 9; q++) ph.push([1 + Math.floor(rnd() * 9), rnd() * 6.283, 4 + rnd() * 26, rnd() * 6.283]);
+            for (var y = 0; y < h; y++) { var an = y / h * 6.283185;
+                for (var x = 0; x < w; x++) { var u = (x + 0.5) / w, st = 0;
+                    for (var q2 = 0; q2 < ph.length; q2++) st += Math.sin(an * ph[q2][0] + ph[q2][1] + u * ph[q2][2]) * Math.sin(u * ph[q2][2] * 0.7 + ph[q2][3]);
+                    st = 0.72 + 0.28 * Math.max(-1, Math.min(1, st / 2.2));
+                    var hot = Math.pow(Math.max(0, 1 - u * 2.4), 1.5), al = Math.min(1, u / 0.02) * Math.pow(1 - u, 1.7) * st, o = (y * w + x) * 4;
+                    D[o] = 255; D[o + 1] = Math.min(255, (70 + 185 * hot + 60 * (1 - u) * (1 - u)) * st); D[o + 2] = Math.min(255, (8 + 240 * hot * hot) * st); D[o + 3] = Math.round(255 * Math.max(0, Math.min(1, al))); } }
+            g.putImageData(im, 0, 0); }); };
+        var worlds = [];
         (sp.round || []).forEach(function (p) {
             if (!p.c) return;
+            var lk = LOOK[p.id] || { night: 0.75 }, at = new THREE.Vector3(p.c[0] * U, p.c[1] * U, p.c[2] * U), rec = { p: p, at: at, lk: lk };
             if (p.ring) {
-                var rg = new THREE.Mesh(new THREE.RingGeometry(p.R * 1.4 * U, p.R * 2.05 * U, 128, 1), new THREE.MeshBasicMaterial({ color: p.ring.color != null ? p.ring.color : 0xe8d3a0, side: THREE.DoubleSide, transparent: true, opacity: 0.82, depthWrite: false }));
-                rg.rotation.x = -Math.PI / 2 + 0.32; rg.position.set(p.c[0] * U, p.c[1] * U, p.c[2] * U); G.add(rg);
-                var rg2 = new THREE.Mesh(new THREE.RingGeometry(p.R * 1.62 * U, p.R * 1.7 * U, 128, 1), new THREE.MeshBasicMaterial({ color: 0x6a5a40, side: THREE.DoubleSide, transparent: true, opacity: 0.7, depthWrite: false }));
-                rg2.rotation.copy(rg.rotation); rg2.position.copy(rg.position); rg2.renderOrder = 1; G.add(rg2);   // the gap in the ring
+                var rt = saturnRing();
+                var rg = new THREE.Mesh(rt ? ringGeo(p.R * 1.2, p.R * 2.32, 192) : new THREE.RingGeometry(p.R * 1.4 * U, p.R * 2.05 * U, 128, 1), new THREE.MeshBasicMaterial({ map: rt, color: rt ? 0xffffff : (p.ring.color != null ? p.ring.color : 0xe8d3a0), side: THREE.DoubleSide, transparent: true, opacity: rt ? 1 : 0.82, depthWrite: false }));
+                rg.rotation.x = -Math.PI / 2 + 0.32; rg.position.copy(at); rg.renderOrder = 3; SG.add(rg);
             }
             if (p.rim != null) {
-                var disc = new THREE.Mesh(new THREE.RingGeometry(p.R * 1.25 * U, p.R * 2.1 * U, 128, 1), new THREE.MeshBasicMaterial({ color: p.rim, side: THREE.DoubleSide, transparent: true, opacity: 0.55, depthWrite: false }));
-                disc.rotation.x = -Math.PI / 2 + 0.18; disc.position.set(p.c[0] * U, p.c[1] * U, p.c[2] * U); G.add(disc);
-                var tor = new THREE.Mesh(new THREE.TorusGeometry(p.R * 1.25 * U, p.R * 0.03 * U, 10, 128), new THREE.MeshBasicMaterial({ color: 0xffe0a0 }));
-                tor.rotation.copy(disc.rotation); tor.position.copy(disc.position); G.add(tor);
+                var dt2 = discTex(); if (dt2) { dt2.wrapT = THREE.RepeatWrapping; dt2.needsUpdate = true; }
+                var disc = new THREE.Mesh(dt2 ? ringGeo(p.R * 1.2, p.R * 3.6, 256, true) : new THREE.RingGeometry(p.R * 1.25 * U, p.R * 2.1 * U, 128, 1), new THREE.MeshBasicMaterial({ map: dt2, color: dt2 ? 0xffffff : p.rim, side: THREE.DoubleSide, transparent: true, opacity: dt2 ? 1 : 0.55, depthWrite: false, blending: dt2 ? THREE.AdditiveBlending : THREE.NormalBlending }));
+                disc.rotation.x = -Math.PI / 2 + 0.3; disc.rotation.y = 0.12; disc.position.copy(at); disc.renderOrder = 4; SG.add(disc); rec.disc = disc;
+                if (lensTex) { var ln = glow(lensTex, 0xffffff, p.R * 2 * 1.62, 0.95); ln.position.copy(at); ln.renderOrder = 4; SG.add(ln); }
             }
+            /* THE LIMB (or the hole): placed and sized every frame (_hqSpaceBodiesTick) */
+            if ((lk.hole ? holeTex : (lk.limb && limbTex))) { var lm2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: lk.hole ? holeTex : limbTex, transparent: true, opacity: lk.hole ? 1 : lk.limb, depthWrite: false })); lm2.renderOrder = 3; lm2.visible = false; SG.add(lm2); rec.limb = lm2; }
+            /* THE BLACK CUBE OVER SATURN'S HEXAGON (mondo 11-17: "the Saturnian Cubes are a huge piece of lore and combat in this game, so saturn
+               need to ... have an ominous floating black cube above it's hexagonal storm at the pole"): the Main Hall's cube (its black, its lit
+               glyphs), 72 m a side, turning slowly 170 m over the pole, a thin shaft of its light down into the storm's eye. Seen from every
+               world; standing in the Hexagon it hangs over your head. */
+            if (p.id === 'saturn') {
+                var cubeMat = new THREE.MeshPhongMaterial({ color: 0x08090b, shininess: 70, specular: 0x4a5560, emissive: 0x8fd3d8, emissiveIntensity: 0.5 });
+                try { cubeMat.emissiveMap = _hqGlyphTexture(); } catch (e) { cubeMat.emissiveIntensity = 0.04; }
+                var CS = 72, CH = p.R + 170, cg = new THREE.Group(); cg.position.set(at.x, at.y + CH * U, at.z);
+                var cube = new THREE.Mesh(new THREE.BoxGeometry(CS * U, CS * U, CS * U), cubeMat); cube.geometry._ew_wuvOwner = true; cube.rotation.set(0.6155, 0, Math.PI / 4); cg.add(cube);   // (standing on a corner)
+                var edges = new THREE.LineSegments(new THREE.EdgesGeometry(cube.geometry), new THREE.LineBasicMaterial({ color: 0x8fd3d8, transparent: true, opacity: 0.55 })); cube.add(edges);
+                var shaftH = CH - p.R - CS * 0.87, shaft = new THREE.Mesh(new THREE.CylinderGeometry(1.2 * U, 5 * U, shaftH * U, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0x8fd3d8, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+                shaft.position.y = -(CS * 0.87 + shaftH / 2) * U; cg.add(shaft);
+                var cgt = glowTex(0.2, true); if (cgt) { var cgl = glow(cgt, 0x4fa8b0, CS * 4.2, 0.16); cg.add(cgl); }
+                SG.add(cg); rec.cube = cg; rec.cubeBox = cube;
+            }
+            if (lk.night > 0 && veil) {
+                var vm = new THREE.Mesh(new THREE.SphereGeometry(U, 64, 40), new THREE.MeshBasicMaterial({ map: veil, transparent: true, opacity: lk.night, depthWrite: false }));
+                vm.geometry._ew_wuvOwner = true; vm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), LD); vm.position.copy(at); vm.renderOrder = 2; SG.add(vm); rec.veil = vm;
+            }
+            if (lk.air != null) { var gt2 = glowTex(1 / lk.airK); if (gt2) { var ag = glow(gt2, lk.air, p.R * 2 * lk.airK, lk.airOp); ag.position.copy(at); SG.add(ag); rec.air = ag; } }
+            var nt = null; try { nt = _hzTextTex('world|' + p.name, [p.name], { w: 1024, h: 128, color: '#ffffff', bg: 'rgba(0,0,0,0.78)', border: '#ffffff' }); } catch (e) { nt = null; }
+            if (nt) { var ns = new THREE.Sprite(new THREE.SpriteMaterial({ map: nt, transparent: true, depthWrite: false })); ns.position.set(at.x, at.y + (p.R * 1.2 + (p.top || 0) + 20) * U, at.z); ns.renderOrder = 6; SG.add(ns); rec.name = ns; }
+            worlds.push(rec);
         });
         /* THE ROUND WORLDS: the balls, rings, flanks and the Sun are drawn where they hang (a ring's far edge can reach over a net's flat place) */
         if (sp.round && sp.round.length) G.children.slice(n0).forEach(_ewPlKeepFlat);
         /* the beacons */
-        var rings = [];
+        var rings = [], marks = [];
         (sp.beacons || []).forEach(function (b) {
             var y = (b.ground || 0) + 14;
             var gr = new THREE.Group(); gr.position.set(b.x * U, y * U, b.z * U);
@@ -87721,10 +87874,45 @@ const ThreeRenderer = (function () {
             var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35 * U, 0.35 * U, 14 * U, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd36a, transparent: true, opacity: 0.35, depthWrite: false }));
             beam.position.y = -7 * U; gr.add(beam);
             var tt = null; try { tt = _hzTextTex('beacon|' + b.label, [b.label], { w: 1024, h: 128, color: '#ffd36a', bg: 'rgba(8,6,2,0.72)', border: '#ffd36a' }); } catch (e) { tt = null; }
-            if (tt) { var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tt, transparent: true, depthWrite: false })); spr.scale.set(40 * U, 5 * U, 1); spr.position.y = 12 * U; gr.add(spr); }
+            if (tt) { var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tt, transparent: true, depthWrite: false })); spr.scale.set(40 * U, 5 * U, 1); spr.position.y = 12 * U; gr.add(spr); marks.push({ b: b, spr: spr }); }
             G.add(gr); rings.push(ring);
         });
-        if (H) H._spaceRings = rings;
+        if (H) { H._spaceRings = rings; H._spaceBodies = SG; H._spaceWorlds = worlds; H._spaceMarks = marks; }
+    }
+    /* THE BODIES FOLLOW THE ANCHOR (2026-11-17): on a round world the bent ground is drawn turned about the walker's feet
+       (out = P + M (bend(p) - A)); the bodies' group takes the same turn, so every ball keeps its ring, its night side and its place
+       among the others. Off a ball (aboard, in the void) it is the identity. Then, per world: the night veil clears the ground by
+       what the depth buffer can tell apart at that distance and fades out near the ball; the name keeps its size on screen. */
+    var _hqSpaceV = null, _hqSpaceI = null, _hqSpaceQ = null;
+    function _hqSpaceBodiesTick(H, an, U) {
+        var SG = H && H.room && H.room.space && H._spaceBodies; if (!SG || !SG.parent) return;   // (another room, or the room's groups are gone)
+        var m = SG.matrix;
+        if (an) { var A = an.A, P = an.P, M = an.M;
+            m.set(M[0][0], M[0][1], M[0][2], (P[0] - (M[0][0] * A[0] + M[0][1] * A[1] + M[0][2] * A[2])) * U,
+                  M[1][0], M[1][1], M[1][2], (P[1] - (M[1][0] * A[0] + M[1][1] * A[1] + M[1][2] * A[2])) * U,
+                  M[2][0], M[2][1], M[2][2], (P[2] - (M[2][0] * A[0] + M[2][1] * A[1] + M[2][2] * A[2])) * U, 0, 0, 0, 1); }
+        else m.identity();
+        SG.updateMatrixWorld(true);
+        /* a beacon's name shows near it only (40 m of black plate each: from far off they barred a small world like the Moon) */
+        var BM = H._spaceMarks || [], Vs = H.vehicle, pl = H.player, eye = (Vs && Vs.on && Vs.kind === 'ship') ? [Vs.x, Vs.y, Vs.z] : an ? an.A : pl ? [pl.x, pl.y, pl.z] : null;
+        if (eye) for (var bi = 0; bi < BM.length; bi++) { var bb = BM[bi].b, bp = bb.ball || [bb.x, bb.ground || 0, bb.z], bd = Math.hypot(eye[0] - bp[0], eye[1] - bp[1], eye[2] - bp[2]), bo = Math.max(0, Math.min(1, (430 - bd) / 110));
+            BM[bi].spr.material.opacity = bo; BM[bi].spr.visible = bo > 0.02; }
+        var W = H._spaceWorlds || [], cam = H.camera; if (!cam || !W.length) return;
+        var tNow = performance.now() / 1000;
+        var v = _hqSpaceV || (_hqSpaceV = new THREE.Vector3());
+        for (var i = 0; i < W.length; i++) { var w = W[i], p = w.p;
+            v.copy(w.at).applyMatrix4(SG.matrixWorld); var d = v.distanceTo(cam.position) / U, hgt = d - p.R - (p.top || 0), k = Math.max(0, Math.min(1, (hgt - 25) / Math.max(60, p.R * 0.9)));
+            k = k * k * (3 - 2 * k);
+            if (w.veil) { var rr = p.R + Math.min(p.top || 0, p.R * 0.04) + 1.5 + Math.min(p.R * 0.1, d * d / 140000); w.veil.scale.set(rr, rr, rr); w.veil.material.opacity = w.lk.night * k; w.veil.visible = k > 0.01; }
+            if (w.air) w.air.material.opacity = w.lk.airOp * (0.3 + 0.7 * k);
+            if (w.limb) { var Rb = p.R + Math.min(p.top || 0, p.R * 0.03) + (w.lk.hole ? 0.5 : 1), off = Rb + 4 + Math.min(p.R * 0.12, d * d / 140000);
+                if (k > 0.01 && d > off + 2) { var inv = _hqSpaceI || (_hqSpaceI = new THREE.Matrix4()), q2 = _hqSpaceQ || (_hqSpaceQ = new THREE.Vector3());
+                    q2.copy(cam.position).sub(v).normalize().multiplyScalar(off * U).add(v); inv.copy(SG.matrixWorld).invert(); q2.applyMatrix4(inv); w.limb.position.copy(q2);
+                    var dia = 2 * (d - off) * Rb / Math.sqrt(Math.max(1, d * d - Rb * Rb)) * 1.012; w.limb.scale.set(dia * U, dia * U, 1); w.limb.material.opacity = (w.lk.hole ? 1 : w.lk.limb) * k; w.limb.visible = true; }
+                else w.limb.visible = false; }
+            if (w.cubeBox) w.cubeBox.rotation.y = tNow * 0.05;
+            if (w.disc) w.disc.rotation.z = tNow * 0.03;
+            if (w.name) { var wd = Math.max(46, Math.min(520, d * 0.15)); w.name.scale.set(wd * U, wd / 8 * U, 1); w.name.material.opacity = Math.max(0, Math.min(1, (hgt - p.R * 0.5) / (p.R * 0.6))); w.name.visible = w.name.material.opacity > 0.02; } }
     }
     /* ══ THE ROUND WORLDS (2026-11-17, mondo's two-maps design doc, "Map A — Spherical planet": six N x N cube-face grids projected
        onto a ball, walked all the way round; his pick "round worlds first"). A round world is laid FLAT in the room like any other
@@ -87798,6 +87986,7 @@ const ThreeRenderer = (function () {
             if (p0) { var k0 = (H._plFace != null && H._plPlanet === p0) ? H._plFace : _ewPlFaceAt(p0, pl.x, pl.z); an = _ewPlAnchorAt(p0, k0, pl.x, 0, pl.z); }
         }
         _ewPl.anchor = an;
+        try { _hqSpaceBodiesTick(H, an, U); } catch (e) { if (H && !H._spaceBodyWarned) { H._spaceBodyWarned = true; console.warn('[HQ] the space bodies tick', e); } }
         if (an) { sv(C.A, an.A[0] * U, an.A[1] * U, an.A[2] * U, 1); sv(C.P, an.P[0] * U, an.P[1] * U, an.P[2] * U, 1); for (var mi = 0; mi < 3; mi++) sv(C.M[mi], an.M[mi][0] - (mi === 0 ? 1 : 0), an.M[mi][1] - (mi === 1 ? 1 : 0), an.M[mi][2] - (mi === 2 ? 1 : 0), 0); }
         else { sv(C.A, 0, 0, 0, 0); sv(C.P, 0, 0, 0, 0); for (var mj = 0; mj < 3; mj++) sv(C.M[mj], 0, 0, 0, 0); }
         if (!u) { /* the classic renderer */ }
@@ -89381,7 +89570,7 @@ const ThreeRenderer = (function () {
                 ch.held.quaternion.copy(hq).invert();
                 ch.held.scale.setScalar(1 / (hs.x || 1));
             }
-            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3) && !H._scenePlayerOut;   // (a scene took the officer out of the picture: hq.scenePlace show)
+            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3) && !H._scenePlayerOut && !(H.vehicle && H.vehicle.on && H.vehicle.kind === 'ship');   // (aboard the flown ship the pilot is inside the hull: never drawn)   // (a scene took the officer out of the picture: hq.scenePlace show)
             var want = 'idle';
             /* a placed cast member holds its building pose (sits, mops,
                kneels…) once the library bake has landed the clip */
@@ -91262,6 +91451,7 @@ const ThreeRenderer = (function () {
         }
         if (_keyFxList.length) { try { _updateKeyFx(); } catch (e) {} }   // scene E's key (keyPickupFx opts.at) lives in the room
         if (H._sceneCastIds) _hqSceneCastApply();
+        if (H.vehicle && H.vehicle.on && H.vehicle.kind === 'ship' && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // (mondo 11-17: "if i am flying the spaceship then we dont need the ... character model standing up and clipping through it": the walker's own tick drew him again every frame after the helm hid him)
         if (H._scenePlayerOut && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // a scene took the officer out of the picture   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         _lt = _lensMark('tick: doors + residents + scene', _lt);
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
@@ -98857,6 +99047,7 @@ const ThreeRenderer = (function () {
                 if (o.dist != null) _hq.cam.dist = o.dist; if (o.pitch != null) _hq.cam.pitch = o.pitch;
                 _hq.dirty = true; return { kind: V.kind, x: V.x, y: V.y, z: V.z, yaw: V.yaw, v: V.v };
             },
+            hqCam: function () { return _hq ? _hq.camera : null; },   // the walk's camera (a probe reads its far plane and where it stands, 2026-11-17)
             /* THE ROUND WORLDS, as a probe reads them (2026-11-17) */
             round: function () { return { live: _ewPl.live, nodes: !!_ewPl.u, ctx: !!_ewPl.ctx, gpu: _ewGpu, anchor: _ewPl.anchor, face: _hq && _hq._plFace, round: _ewPlRound() }; },
             teleport: function (o) {
