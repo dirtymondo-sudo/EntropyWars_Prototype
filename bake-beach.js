@@ -107,8 +107,9 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x],
     else if (ch === 'l') h = 2.5 + 4.2 * 3.2;                                                                   // the crater's lava, under the rim
     else throw new Error('a square nobody knows: ' + ch + ' at ' + x + ',' + y);
     hc[k] = h; }
-/* a building's sand is level (its own squares and one round them) */
-const flat = (x0, y0, x1, y1) => { const p = Pxy((x0 + x1) / 2, (y0 + y1) / 2), ref = CAP[p.level] || 0.6;
+/* a building's sand is level (its own squares and one round them); FLATS keeps each one for THE ONE WORLD MOVE's rooms */
+const FLATS = [];
+const flat = (x0, y0, x1, y1) => { FLATS.push([x0, y0, x1, y1]); const p = Pxy((x0 + x1) / 2, (y0 + y1) / 2), ref = CAP[p.level] || 0.6;
     for (let y = y0 - 1; y <= y1; y++) for (let x = x0 - 1; x <= x1; x++) if (inb(x, y) && BEACH.includes(cell[y][x])) { const own = x >= x0 && x < x1 && y >= y0 && y < y1; if (own && dWet[y * W + x] < 2) errs.push('a building stands in the wash at ' + x + ',' + y); if (own || dWet[y * W + x] >= 3) hc[y * W + x] = ref; } return ref; };
 /* corners: a soft square (sand, sea floor) shares its corners with the soft squares round it (one surface); a hard square keeps its own
    height at all four (flat), and the cone and the rock share theirs with their own kind (a crag, not a staircase) */
@@ -238,61 +239,302 @@ if (!TREES.palm) throw new Error('no palm tree kind');
   if (process.env.BEACH_DUMP) console.log(cell.map((r, y) => r.map((ch, x) => seen[y * W + x] ? '.' : hc[y * W + x] < -1.15 ? ' ' : ch).join('')).join('\n')); }
 Object.assign(count, { features: F.length + ARCH.length, props: props.length, doors: doors.length, natives: npc.length });
 
-/* ── the room ── */
-const SPM = { x: mx(SP[0]), z: mz(SP[1]) }, LINES = O_HARB.l.concat(O_SEA.l), L = [];
-L.push("        /* BEACH140-BEGIN — THE BEACH ON PLOTS (2026-11-15): written by `node bake-beach.js` from docs/areas/beach/layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
-L.push("        " + ROOM + ": {");
-L.push("            label: 'THE BEACH',");
-L.push("            sub: 'THE SHORE · THE HARBOUR · THE OCEAN · THE BERMUDA TRIANGLE',");
-L.push("            kind: 'box', site: 'prebuilt_bermuda', part: 'beach',");
-/* THE BEACH'S OWN SKY + SAND (2026-11-16, the tool row's holder; seen on screen: the sea shell's `scenery: 'sea'` bodies drew as black outlines by
-   day and its `waterspout` landmark as a teal spindle over the Harbour): the sea shell's sky without its scenery
-   and landmark (the Estate's fix, THE CLEAN SKY). The sand stays his pale beach sheet (sprites.js SAND_BEACH, THE TWO SANDS). The old sea room keeps the shell as it was. */
-L.push("            shell: hqSeaShell({ w: " + (2 * HW) + ", d: " + (2 * HD) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 }, sky: Object.assign({}, hqSeaShell().sky, { scenery: 'none', landmarks: [] })" + (AIR.length ? ", atmos: " + J({ kind: 'dust', tier: 'open', zones: AIR }) : "") + " }),");
-L.push("            parti: 'Four districts on 140 plots, most of them water: a shore of sand off the city, a harbour with the Dutchman at the pier head, an ocean you sail, and a right triangle of sea with a lighthouse, an island and a hole at its corners.',");
-L.push("            typology: 'grid',");
-L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + GX + ", nz: " + GZ + ", triangle: " + J(LAYOUT.triangle.map(q => [gx(q[0]), gz(q[1])])) + ", names: " + J(PLAN.plots.filter(p => p.name).map(p => [p.id, p.name, p.d, p.level])) + " },");
-L.push("            terrain: {");
-L.push("                res: 1.75, floor: 'desert', cliff: 'rocks_5', path: 'wood_planks',   // half a square a node (the Desert's and the Mountains' grain)");
-L.push("                base: 0, noise: { amp: 0.06, scale: 9 }, crag: false,");
-L.push("                sea: { y: 0, key: 'water' },");
-L.push("                outer: { m: 60 },");
-/* THE EDGES (2026-11-16; seen: past the west line the room showed open sea where Disaster City stands): open sea north, east and south, land on
-   the west (three-renderer.js THE NATURAL EDGES) */
-L.push("                backdrop: false, edges: { reach: 300, n: { kind: 'coast' }, e: { kind: 'coast' }, s: { kind: 'coast' }, w: { kind: 'desert', cap: { kind: 'coast', at: 'n', off: 0, len: 42 } } },");
-L.push("                /* THE FLYING DUTCHMAN: the Dutchman map's own ship, drawn at her berth (three-renderer.js _hqBuildMoored) */");
-L.push("                moored: [" + J({ kind: 'galleon', room: SHIP_ROOM, x: SHIP_AT.x, z: SHIP_AT.z }) + "],");
-L.push("                /* THE HEIGHTS ARE THE MAP: sand, sea floor, the quay, the piers, rock, the ship's deck and the volcano are all this grid */");
-L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + slope.toString('base64') + "' } },");
-L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + mx(0) + ", z0: " + mz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
-L.push("                features: [");
-F.concat(ARCH).forEach(f => L.push("                    " + J(f) + ","));
-L.push("                ],");
-L.push("            },");
-L.push("            doors: [");
-doors.forEach(d => L.push("                " + J(d) + ","));
-L.push("            ],");
-L.push("            counters: [],");
-L.push("            props: [");
-for (let i = 0; i < props.length; i += 4) L.push("                " + props.slice(i, i + 4).map(J).join(", ") + ",");
-L.push("            ],");
-L.push("            agents: [],");
-L.push("            npcSpots: " + J(npc) + ",");
-L.push("            onlineSpots: [],");
-L.push("            lines: " + J(LINES) + ",");
-L.push("            spawn: { x: " + SPM.x + ", z: " + SPM.z + ", face: 90 },");
-L.push("        },");
+/* ── THE ONE WORLD MOVE (2026-11-17, One World phase 4.3, docs/plans/one-world/BUILD_PLAN.md row 4.3; mondo's map v3 + v5: "the Bermuda Triangle
+   must be remote, not the first sail from the city beach", the Beach shrinks to 8 x 10, the Volcano Island far out north-east, grown to 6 x 6
+   with a jungle and a dinosaur park). Everything above is the home bake as it was (the districts' files run on the 14 x 10 home squares, so not
+   one of their throws moves). Here the home plots are handed out to THREE ROOMS at their world places, each a rigid move of whole plots:
+     · THE BEACH (the old id): the home columns 0..7 (the Shore, the Harbour, the near Ocean) at world 12,2, without the Triangle's four plots
+       there (the Lighthouse Rock and its three neighbours);
+     · THE BERMUDA TRIANGLE `site_prebuilt_bermuda_ow_triangle`: the home box 5..13 x 3..9 (the Triangle's 25 plots and the open sea round
+       them) at world 32,0, far east by the Ice Wall: 9 x 7 plots, so the 3-4-5 triangle keeps its shape and the Island Beach its sea (the
+       map's 6 x 6 would cut both);
+     · THE VOLCANO ISLAND `site_prebuilt_bermuda_ow_volcano`: the home box 8..13 x 0..2 (the Volcano, the Island, the Landing, the Village, the
+       waterspout, the islet, the seal rock) at world 22,-19, a 6 x 6 box: the three rows south of it are new plots (THE GROWN ISLAND below).
+   A square of a room's box that no moved plot fills is open sea. Every row is moved with its plot (by the square its point stands on); a
+   prop on a plot no room takes, or in the water the Coast Road's spit fills, is set down again in its room's nearest open sea (printed). The heights, slopes and paint
+   are worked out again per room by the same rules (the sea floor falls from each room's own sand), and every building's flat is laid again.
+   The Round Voyage's boats join them (data.js DOOR_HQ.links, way `boat`). Notes: areas-complexes.md "ONE WORLD, THE COAST + THE ISLANDS". ── */
+const NEWP = { level: 2, d: 'O', name: null };
+const OW_ROOMS = [
+    { id: ROOM, part: 'beach', label: 'THE BEACH', sub: 'THE SHORE · THE HARBOUR · THE OCEAN', wx: 12, wy: 2, cols: 8, rows: 10, dx: 0, dy: 0, has: p => p.x < 8 && p.d !== 'T',
+      parti: 'The near coast on 80 plots, most of them water: a shore of sand off the city, a harbour with the Dutchman at the pier head, the ocean you sail, and a spit of sand south to the Coast Road.' },
+    { id: 'site_prebuilt_bermuda_ow_triangle', part: 'ow_triangle', label: 'THE BERMUDA TRIANGLE', sub: 'THE LIGHTHOUSE ROCK · THE CAY · THE MAELSTROM', wx: 32, wy: 0, cols: 9, rows: 7, dx: 5, dy: 3, has: p => p.x >= 5 && p.y >= 3 && (p.x >= 8 || p.d === 'T'),
+      parti: 'A right triangle of sea far out by the Ice Wall: a lighthouse, an island and a hole at its corners. You only come here on purpose.' },
+    { id: 'site_prebuilt_bermuda_ow_volcano', part: 'ow_volcano', label: 'THE VOLCANO ISLAND', sub: 'THE VOLCANO · THE VILLAGE · THE JUNGLE · THE DINOSAUR PARK', wx: 22, wy: -19, cols: 6, rows: 6, dx: 8, dy: 0, has: p => p.x >= 8 && p.y <= 2,
+      parti: 'A remote island far out north-east: a volcano with a village under it, and south of them a jungle with a fenced dinosaur park.' },
+    { id: 'site_prebuilt_bermuda_ow_cove', part: 'ow_cove', label: "PIRATES' COVE", sub: 'THE CAMP · THE LAGOON · THE WRECK', wx: -30, wy: 31, cols: 3, rows: 3, dx: 0, dy: 0, has: () => false, newp: { level: 2, d: 'O' }, seed: 31,
+      parti: 'A ring of an island off the south-west coast round a lagoon, its mouth to the south: the pirates\' camp on the north beach, cannons on the ring, a wreck in the water.' },
+    { id: 'site_prebuilt_bermuda_ow_frozen', part: 'ow_frozen', label: 'THE FROZEN SEA', sub: 'THE FLOE · THE POLE LANDING', wx: 0, wy: -30, cols: 4, rows: 2, dx: 0, dy: 0, has: () => false, newp: { level: 0, d: 'O' }, seed: 47,
+      parti: 'Pack ice off the North Pole: one big floe from the village out to the Pole landing, smaller floes round it.' },
+];
+const roomOf = {}; PLAN.plots.forEach(p => { const rs = OW_ROOMS.filter(R => R.has(p)); if (rs.length > 1) throw new Error('two rooms take plot ' + p.id); roomOf[p.x + ':' + p.y] = rs[0] || null; });
+const homeSq = (x, z) => [Math.max(0, Math.min(W - 1, Math.floor((x + HW) / C))), Math.max(0, Math.min(H - 1, Math.floor((z + HD) / C)))];
+const roomAt = (x, z) => { const q = homeSq(x, z); return roomOf[Math.floor(q[0] / N) + ':' + Math.floor(q[1] / N)]; };
+const ptOf = o => (typeof o.x === 'number' && typeof o.z === 'number') ? [o.x, o.z] : typeof o.x0 === 'number' ? [(o.x0 + o.x1) / 2, (o.z0 + o.z1) / 2] : Array.isArray(o.pts) ? o.pts[0] : null;
+OW_ROOMS.forEach(R => { R.W = R.cols * N; R.H = R.rows * N; R.HW = R.W * C / 2; R.HD = R.H * C / 2; R.ox = r2(HW - R.HW - R.dx * PL); R.oz = r2(HD - R.HD - R.dy * PL);
+    R.gx = c => r2(-R.HW + c * C); R.gz = c => r2(-R.HD + c * C); R.mx = c => R.gx(c + 0.5); R.mz = c => R.gz(c + 0.5);
+    R.F = []; R.ARCH = []; R.props = []; R.npc = []; R.doors = []; R.AIR = []; R.moored = []; R.FL = []; R.names = []; R.count = {};
+    R.mine = (hx, hy) => { const p = plot[Math.floor(hx / N) + ':' + Math.floor(hy / N)]; return hx >= 0 && hy >= 0 && hx < W && hy < H && p && roomOf[p.x + ':' + p.y] === R ? p : null; };
+    R.plotAt = (x, y) => R.mine(x + R.dx * N, y + R.dy * N) || R.newp || NEWP;
+    R.cell = []; for (let y = 0; y < R.H; y++) { const row = []; for (let x = 0; x < R.W; x++) row.push(R.mine(x + R.dx * N, y + R.dy * N) ? cell[y + R.dy * N][x + R.dx * N] : 'w'); R.cell.push(row); } });
+const shiftTo = (o, R) => { const q = JSON.parse(JSON.stringify(o)); ['x', 'x0', 'x1'].forEach(k => { if (typeof q[k] === 'number') q[k] = r2(q[k] + R.ox); }); ['z', 'z0', 'z1'].forEach(k => { if (typeof q[k] === 'number') q[k] = r2(q[k] + R.oz); });
+    if (Array.isArray(q.pts)) q.pts = q.pts.map(p => [r2(p[0] + R.ox), r2(p[1] + R.oz)]); return q; };
+const DROPPED = [], TRI_ROOM = () => OW_ROOMS[1];
+const LOST = [];   // props on a plot no room takes: each is set down again in the nearest room's open sea (below), never lost
+const handOut = (list, field, what) => list.forEach(o => { const pt = ptOf(o), R = pt ? roomAt(pt[0], pt[1]) : null; if (!R && field === 'props') { LOST.push({ o, R: TRI_ROOM(), q: homeSq(pt[0], pt[1]) }); return; } if (!R) { DROPPED.push(what + ' ' + (o.key || o.k || o.race || o.id || '') + ' at ' + (pt ? homeSq(pt[0], pt[1]).join(',') : '?')); return; } R[field].push(shiftTo(o, R)); });
+handOut(F, 'F', 'feature'); handOut(ARCH, 'ARCH', 'look'); handOut(props, 'props', 'prop'); handOut(npc, 'npc', 'native');
+AIR.forEach(z => { const R = roomAt((z.x0 + z.x1) / 2, (z.z0 + z.z1) / 2); if (!R) { DROPPED.push('air ' + z.kind); return; } R.AIR.push(shiftTo(z, R)); });
+const BEACH_R = OW_ROOMS[0], TRI_R = OW_ROOMS[1], VOL_R = OW_ROOMS[2];
+doors.forEach(d => BEACH_R.doors.push(shiftTo(d, BEACH_R)));
+BEACH_R.moored.push(shiftTo({ kind: 'galleon', room: SHIP_ROOM, x: SHIP_AT.x, z: SHIP_AT.z }, BEACH_R));
+FLATS.forEach(f => { const R = roomOf[Math.floor((f[0] + f[2]) / 2 / N) + ':' + Math.floor((f[1] + f[3]) / 2 / N)]; if (R) R.FL.push([f[0] - R.dx * N, f[1] - R.dy * N, f[2] - R.dx * N, f[3] - R.dy * N]); });
+const pidOf = (c, r) => 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0');   // a plot's id in its room (map.js _zmPlots reads it)
+PLAN.plots.filter(p => p.name).forEach(p => { const R = roomOf[p.x + ':' + p.y]; if (R) R.names.push([pidOf(p.x - R.dx, p.y - R.dy), p.name, p.d, p.level]); else DROPPED.push('plot name ' + p.id + ' ' + p.name); });
+const placeOf = (R, o) => { const q = shiftTo(o, R); return Object.assign({}, o, { x: q.x, z: q.z }); };
+const MAEL_W = placeOf(TRI_R, MAEL), POOL_W = placeOf(TRI_R, POOL), BAY_W = placeOf(TRI_R, BAY), GANG_W = placeOf(BEACH_R, GANG);
+const TAPE_W = { x: r2(gx(LIGHT[0] + 1) + TRI_R.ox), z: r2(gz(LIGHT[1] + 1) + 1.2 + TRI_R.oz) };
+if (roomAt(MAEL.x, MAEL.z) !== TRI_R || roomAt(POOL.x, POOL.z) !== TRI_R || roomAt(BAY.x, BAY.z) !== TRI_R || roomAt(GANG.x, GANG.z) !== BEACH_R) throw new Error('a link\'s place is not in the room it should move with');
+TRI_R.triangle = LAYOUT.triangle.map(q => [r2(gx(q[0]) + TRI_R.ox), r2(gz(q[1]) + TRI_R.oz)]);
+
+/* THE SPIT + THE COAST ROAD'S DOOR (R10, docs/areas/routes/R10.json): a bar of sand from the South Dunes through the headland's foot out past the islet to the
+   room's south line, where the Coast Road comes in (world plot line x 16 = the room's middle, `ow_h_15_12`) */
+{ const R = BEACH_R, mid = Math.round(R.W / 2), PTS = [[1, 100], [6, 104], [14, 109], [28, 115], [mid - 2, 116], [mid, R.H - 1]];
+  const near = (x, y) => { for (let i = 1; i < PTS.length; i++) { const [ax, ay] = PTS[i - 1], [bx, by] = PTS[i], vx = bx - ax, vy = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy))), dx = x - ax - t * vx, dy = y - ay - t * vy; if (dx * dx + dy * dy <= 5.3) return true; } return false; };
+  R.spit = []; for (let y = 96; y < R.H; y++) for (let x = 0; x < R.W; x++) if ((R.cell[y][x] === 'w' || (R.cell[y][x] === 'r' && x < 8)) && near(x, y)) { R.cell[y][x] = 'd'; R.spit.push([x, y]); }
+  for (let y = R.H - 3; y < R.H; y++) for (let x = mid - 2; x < mid + 2; x++) if (R.cell[y][x] === 'w') { R.cell[y][x] = 'd'; R.spit.push([x, y]); }
+  const wet = new Set(R.spit.map(q => q[0] + ':' + q[1]));
+  R.props = R.props.filter(p => { const q = [Math.floor((p.x + R.HW) / C), Math.floor((p.z + R.HD) / C)]; if (wet.has(q[0] + ':' + q[1]) && (p.y != null && p.y < 0.2)) { LOST.push({ o: p, R, q, local: true }); return false; } return true; });
+  R.doors.push({ id: 'ow_h_15_12', way: 'open', label: 'THE COAST ROAD', sub: 'SOUTH ALONG THE SEA · TO GIZA', action: { room: 'site_ow_r10_0_25', at: 'ow_h_15_12' },
+      desc: 'The sand runs out to a road, and the road runs south along the sea to the pyramids.', wall: 's', x: r2(R.gx(mid)), passage: { w: 11 } });
+  R.ways = [{ side: 's', at: r2(R.gx(mid)) }]; R.reach = [[mid, R.H - 1, 'the Coast Road door at the spit\'s end']]; }
+/* ── THE GROWN ISLAND (mondo 11-16 on map v5: "grow Volcano Island (6x6 jungle + dinosaur park)"; new plots, the names are ideas): south and
+   east of the old island's black ground the sea gives way to new land: a sand shore, a JUNGLE (palms, banana plants, tropical bushes, ferns)
+   and, in its middle, a fenced DINOSAUR PARK (a paddock of bare earth, a gate with a sign, a timber lookout, the keeper's thatched hut, a dig
+   with a dinosaur skeleton and two tents, and dinosaurs). The Landing's water on the west, the boats and every thing afloat keep their sea. ── */
+function growVolcano(R) {
+    const Wr = R.W, Hr = R.H, cl = R.cell, inr = (x, y) => x >= 0 && y >= 0 && x < Wr && y < Hr, sq = (x, z) => [Math.floor((x + R.HW) / C), Math.floor((z + R.HD) / C)];
+    const wetKeep = new Set();   // squares near anything in the water stay sea
+    R.props.forEach(p => { if (!(p.y != null && p.y < 0.4)) return; const [x, y] = sq(p.x, p.z); for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) wetKeep.add((x + dx) + ':' + (y + dy)); });
+    R.F.concat(R.ARCH).forEach(f => { if (f.k === 'arch' && f.y === 0) { const [x, y] = sq(f.x, f.z); for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) wetKeep.add((x + dx) + ':' + (y + dy)); } });
+    let s2 = 7; const rr = () => { s2 = (s2 * 1664525 + 1013904223) >>> 0; return s2 / 4294967296; };
+    const CX = 32, CY = 44, RX = 22, RY = 19, land = new Uint8Array(Wr * Hr);
+    for (let y = 0; y < Hr; y++) for (let x = 0; x < Wr; x++) { const a = Math.atan2(y - CY, x - CX), k = 1 + 0.09 * Math.sin(a * 3 + 1.1) + 0.06 * Math.sin(a * 7 + 0.4), e = ((x - CX) / (RX * k)) ** 2 + ((y - CY) / (RY * k)) ** 2;
+        const neck = x >= 12 && x <= 24 && y >= 16 && y <= 30;   // joins the old island's south shore
+        if ((e <= 1 || neck) && cl[y][x] === 'w' && !wetKeep.has(x + ':' + y)) land[y * Wr + x] = 1; }
+    /* sand where the new land meets the water (two squares), the jungle inside */
+    const nearWater = (x, y, r) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const X = x + dx, Y = y + dy; if (inr(X, Y) && cl[Y][X] === 'w' && !land[Y * Wr + X]) return true; } return false; };
+    for (let y = 0; y < Hr; y++) for (let x = 0; x < Wr; x++) if (land[y * Wr + x]) cl[y][x] = nearWater(x, y, 2) ? 'd' : 'g';
+    /* THE PARK: a paddock of bare earth, its gate on the north side, a track from the old island's shore down to it */
+    const PK = [26, 37, 41, 52];
+    for (let y = PK[1]; y < PK[3]; y++) for (let x = PK[0]; x < PK[2]; x++) { if (cl[y][x] !== 'g' && cl[y][x] !== 'd') throw new Error('the park is not on the new land at ' + x + ',' + y); cl[y][x] = 'k'; }
+    const GATE = [33, PK[1]];
+    for (let t = 0; t <= 1; t += 0.02) { const x = Math.round(18 + (GATE[0] - 18) * t), y = Math.round(20 + (GATE[1] - 20) * t); for (const dx of [0, 1]) if (cl[y][x + dx] === 'g' || cl[y][x + dx] === 'd') cl[y][x + dx] = 'k'; }
+    R.FL.push([PK[0], PK[1], PK[2], PK[3]]);
+    const taken2 = new Set(); for (let y = PK[1] - 1; y <= PK[3]; y++) for (let x = PK[0] - 1; x <= PK[2]; x++) if (y === PK[1] - 1 || y === PK[3] || x === PK[0] - 1 || x === PK[2]) taken2.add(x + ':' + y);
+    const at = (x, y) => ({ x: R.mx(x), z: R.mz(y) }), free = (x, y) => inr(x, y) && !taken2.has(x + ':' + y);
+    const P2 = (key, x, y, o) => { if (!free(x, y)) throw new Error(key + ': square taken at ' + x + ',' + y); taken2.add(x + ':' + y); R.props.push(Object.assign({ key }, at(x, y), o || {})); };
+    /* the fence: the ranch rail round the paddock's edge, open at the gate */
+    const e0 = R.gx(PK[0]), e1 = R.gx(PK[2]), n0 = R.gz(PK[1]), n1 = R.gz(PK[3]), g0 = R.gx(GATE[0]), g1 = R.gx(GATE[0] + 1);
+    R.F.push({ k: 'rail', pts: [[g0, n0], [e0, n0], [e0, n1], [e1, n1], [e1, n0], [g1, n0]], model: 'ranch' });
+    R.props.push({ key: 'fence_with_gate', x: r2((g0 + g1) / 2), z: n0, face: 0 });
+    P2('signpost', GATE[0] - 2, GATE[1] - 2, { face: 180 });
+    P2('lantern_post', GATE[0] + 2, GATE[1] - 2);
+    P2('thatched_hut', GATE[0] - 5, GATE[1] - 4, { face: 90 });
+    P2('timber_lookout', PK[2] - 2, PK[1] + 2, { face: 225 });
+    /* the dig: a skeleton in the paddock's south-west corner, two tents and a fire beside it */
+    R.props.push({ key: 'dinosaur_skeleton', x: R.gx(PK[0] + 4), z: R.gz(PK[3] - 4), face: 30 }); for (let y = PK[3] - 6; y < PK[3] - 2; y++) for (let x = PK[0] + 2; x < PK[0] + 6; x++) taken2.add(x + ':' + y);
+    P2('canvas_tent', PK[0] + 8, PK[3] - 3, { face: 0 }); P2('canvas_tent', PK[0] + 11, PK[3] - 3, { face: 0 }); P2('campfire', PK[0] + 9, PK[3] - 6);
+    /* the dinosaurs */
+    [[PK[0] + 6, PK[1] + 5, 40], [PK[0] + 10, PK[1] + 8, 200], [PK[2] - 5, PK[1] + 9, 270], [PK[2] - 4, PK[3] - 4, 300]].forEach(q => { if (!free(q[0], q[1])) throw new Error('a dinosaur on a taken square'); taken2.add(q[0] + ':' + q[1]); R.npc.push({ x: R.mx(q[0]), z: R.mz(q[1]), face: q[2], race: 'dinosaur' }); });
+    /* THE JUNGLE: palms on the sand and in the jungle, banana plants and bushes (blockers on whole squares), ferns off-centre */
+    let palms = 0, banana = 0, bush = 0, fern = 0;
+    for (let y = 1; y < Hr - 1; y++) for (let x = 1; x < Wr - 1; x++) { if (!land[y * Wr + x] || !free(x, y)) continue; const ch = cl[y][x]; if (ch === 'k') continue; const v = rr();
+        if (ch === 'd' && v < 0.07) { taken2.add(x + ':' + y); R.F.push({ k: 'tree', x: r2(R.mx(x) + (rr() - 0.5)), z: r2(R.mz(y) + (rr() - 0.5)), kind: 'palm', h: r2(3.8 + rr() * 1.6), r: 0.6 }); palms++; }
+        else if (ch === 'g' && v < 0.09) { taken2.add(x + ':' + y); R.F.push({ k: 'tree', x: r2(R.mx(x) + (rr() - 0.5)), z: r2(R.mz(y) + (rr() - 0.5)), kind: 'palm', h: r2(4.6 + rr() * 2.4), r: 0.6 }); palms++; }
+        else if (ch === 'g' && v < 0.13) { P2(rr() < 0.5 ? 'banana_plant' : 'tropical_bush', x, y, { face: Math.round(rr() * 360) }); if (R.props[R.props.length - 1].key === 'banana_plant') banana++; else bush++; }
+        else if (ch === 'g' && v < 0.22) { R.props.push({ key: 'fern', x: r2(R.mx(x) + (rr() - 0.5) * 1.6), z: r2(R.mz(y) + (rr() - 0.5) * 1.6), face: Math.round(rr() * 360) }); fern++; } }
+    R.newNames = [[2, 3, 'The Dinosaur Park'], [1, 2, 'The Jungle'], [3, 2, 'The Jungle, east'], [1, 4, 'The South Shore']];
+    { let bd = 1e9; for (let y = 0; y < Hr; y++) for (let x = 0; x < Wr; x++) if (cl[y][x] === 'b') { const d = (x - 8) ** 2 + (y - 19) ** 2; if (d < bd) { bd = d; R.from = [x, y]; } } }   // the walk starts on the Landing's black sand
+    R.reach = [[GATE[0], GATE[1] - 1, 'the park gate'], [PK[0] + 6, PK[1] + 4, 'the paddock']];
+    console.log(R.id + ': THE GROWN ISLAND ' + JSON.stringify({ land: land.reduce((a, b) => a + b, 0), palms, banana, bush, fern }));
+}
+growVolcano(VOL_R);
+/* ── THE NEW ISLANDS (2026-11-17, One World phase 4.3 part 2; mondo's map v2: "Frozen Sea 4x2 off North Pole, Pirates' Cove 3x3 SW (new idea)";
+   the names and what stands there are ideas): two rooms of open sea with no home plots, drawn here square by square.
+     · PIRATES' COVE (3 x 3 at -30,31): a ring of an island round a lagoon, its mouth to the south between two rock heads; the pirates' camp on
+       the lagoon's north beach (tents, a fire, chests, a skull pile, their flag, torches), cannons on the ring looking out, a wreck in the lagoon;
+     · THE FROZEN SEA (4 x 2 at 0,-30): pack ice off the North Pole: one big floe from the village's north edge (the trail `northpole_frozen`)
+       out to the Pole landing, smaller floes round it; ice blocks, snow heaps, penguins, seals, fishing holes. ── */
+function islandHelpers(R) {
+    const inr = (x, y) => x >= 0 && y >= 0 && x < R.W && y < R.H, taken = new Set();
+    let s3 = R.seed || 11; const rr = () => { s3 = (s3 * 1664525 + 1013904223) >>> 0; return s3 / 4294967296; };
+    const at = (x, y) => ({ x: R.mx(x), z: R.mz(y) });
+    const P2 = (key, x, y, o) => { if (!inr(x, y) || taken.has(x + ':' + y)) throw new Error(R.id + ': ' + key + ' square taken or off the map at ' + x + ',' + y); taken.add(x + ':' + y); R.props.push(Object.assign({ key }, at(x, y), o || {})); };
+    const dec = (key, x, y, o) => { R.props.push(Object.assign({ key, x: r2(R.mx(x) + (rr() - 0.5) * 1.6), z: r2(R.mz(y) + (rr() - 0.5) * 1.6), face: Math.round(rr() * 360) }, o || {})); };
+    const npc2 = (race, x, y, face) => { if (taken.has(x + ':' + y)) throw new Error(R.id + ': a ' + race + ' on a taken square'); taken.add(x + ':' + y); R.npc.push({ x: R.mx(x), z: R.mz(y), face: face || 0, race }); };
+    const palm2 = (x, y) => { taken.add(x + ':' + y); R.F.push({ k: 'tree', x: r2(R.mx(x) + (rr() - 0.5)), z: r2(R.mz(y) + (rr() - 0.5)), kind: 'palm', h: r2(3.8 + rr() * 2), r: 0.6 }); };
+    return { inr, taken, rr, P2, dec, npc2, palm2 };
+}
+function growCove(R) {
+    const { inr, taken, rr, P2, dec, npc2, palm2 } = islandHelpers(R), cl = R.cell, CX = 18, CY = 16;
+    const nearW = (x, y, r) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const X = x + dx, Y = y + dy; if (!inr(X, Y) || cl[Y][X] === 'w') return true; } return false; };
+    for (let y = 0; y < R.H; y++) for (let x = 0; x < R.W; x++) { const a = Math.atan2(x - CX, y - CY), r = Math.hypot(x - CX, y - CY), wob = 1 + 0.08 * Math.sin(a * 5 + 0.7);
+        const mouth = Math.abs(a) < 0.42;   // the south: the lagoon's way out
+        if (r > 8.5 * wob && r < 15 * wob && !mouth) cl[y][x] = 'L'; }
+    for (let y = 0; y < R.H; y++) for (let x = 0; x < R.W; x++) if (cl[y][x] === 'L') { const a = Math.atan2(x - CX, y - CY), r = Math.hypot(x - CX, y - CY);
+        cl[y][x] = (Math.abs(a) < 0.75 && r > 10.5) ? 'r' : nearW(x, y, 2) ? 'd' : 'g'; }   // the two rock heads at the mouth, sand at the water, the jungle on the ring's crown
+    /* the camp: bare ground on the lagoon's north beach */
+    for (let y = 4; y <= 7; y++) for (let x = 14; x <= 22; x++) if (cl[y][x] === 'd' || cl[y][x] === 'g') cl[y][x] = 'k';
+    R.FL.push([14, 4, 23, 8]);
+    R.props.push({ key: 'ship_wreck', x: R.mx(CX), z: R.mz(CY + 2), y: -1.2, span: 12, face: 120 });
+    for (let y = CY - 1; y <= CY + 5; y++) for (let x = CX - 4; x <= CX + 4; x++) taken.add(x + ':' + y);
+    P2('canvas_tent', 15, 5, { face: 180 }); P2('canvas_tent', 21, 5, { face: 180 }); P2('campfire', 18, 6);
+    P2('sea_chest', 17, 4, { face: 170 }); P2('sea_chest', 19, 4, { face: 190 }); P2('skull_pile', 16, 7); P2('pirate_flag', 18, 4);
+    [[14, 7], [22, 7], [14, 4], [22, 4]].forEach(q => P2('tiki_torch', q[0], q[1]));
+    /* the cannons on the ring, looking out to sea */
+    [[8, 9, 300], [28, 9, 60], [5, 17, 270], [31, 17, 90]].forEach(q => { if (cl[q[1]][q[0]] !== 'w') P2('ship_cannon', q[0], q[1], { face: q[2] }); });
+    npc2('pirate', 16, 6, 180); npc2('pirate', 20, 6, 200); npc2('pirate', 18, 8, 180); npc2('pirate', 9, 20, 240);
+    for (let y = 1; y < R.H - 1; y++) for (let x = 1; x < R.W - 1; x++) { if (taken.has(x + ':' + y)) continue; const ch = cl[y][x], v = rr();
+        if (ch === 'g' && v < 0.16) palm2(x, y); else if (ch === 'd' && v < 0.05) palm2(x, y); else if (ch === 'g' && v < 0.3) dec('fern', x, y); }
+    R.from = [18, 6]; R.reach = [[9, 20, 'the west ring'], [27, 20, 'the east ring']];
+    R.newNames = [[1, 0, "The Pirates' Camp"], [1, 1, 'The Lagoon'], [0, 1, 'The West Ring'], [2, 1, 'The East Ring'], [1, 2, 'The Mouth']];
+}
+function growFrozen(R) {
+    const { inr, taken, rr, P2, dec, npc2 } = islandHelpers(R), cl = R.cell;
+    /* the big floe: from the south edge (the village's north edge, squares 2..11) north-east to the Pole landing (squares 24..33, rows 3..9) */
+    const PTS = [[6, 22], [10, 16], [17, 11], [24, 8], [30, 6]];
+    const near = (x, y, r2_) => { for (let i = 1; i < PTS.length; i++) { const [ax, ay] = PTS[i - 1], [bx, by] = PTS[i], vx = bx - ax, vy = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy))), dx = x - ax - t * vx, dy = y - ay - t * vy; if (dx * dx + dy * dy <= r2_) return true; } return false; };
+    for (let y = 0; y < R.H; y++) for (let x = 0; x < R.W; x++) { const w = 3.2 + 1.3 * Math.sin(x * 0.7) * Math.cos(y * 0.5);
+        if (near(x, y, w * w) || (y >= 19 && x >= 2 && x <= 11) || Math.hypot(x - 29, y - 6) < 5.2) cl[y][x] = 'i'; }
+    /* the small floes, out of the walk (you see them, the seals use them) */
+    [[40, 4, 2.6], [43, 15, 3.2], [33, 18, 2.4], [17, 3, 2.2], [2, 6, 2.6]].forEach(([cx, cy, r]) => { for (let y = 0; y < R.H; y++) for (let x = 0; x < R.W; x++) if (Math.hypot(x - cx, y - cy) < r) cl[y][x] = 'i'; });
+    P2('ice_block', 8, 18, { face: 20 }); P2('ice_block', 14, 13, { face: 70 }); P2('ice_block', 21, 11, { face: 140 }); P2('ice_block', 31, 9, { face: 200 }); P2('ice_block', 26, 4, { face: 300 });
+    P2('snow_heap', 4, 20); P2('snow_heap', 12, 15); P2('snow_heap', 27, 7); P2('snow_heap', 32, 4);
+    P2('ice_fishing_hole', 18, 9); P2('ice_fishing_hole', 29, 7);
+    [[28, 5], [30, 5], [31, 7], [29, 3], [9, 20], [11, 17]].forEach(q => dec('ocean_penguin', q[0], q[1]));
+    [[40, 4], [43, 15], [33, 18]].forEach(q => dec('ocean_seal_resting', q[0], q[1]));
+    npc2('yeti', 16, 12, 60); npc2('yeti', 25, 9, 240);
+    R.from = [6, 22]; R.reach = [[29, 6, 'the Pole landing']];
+    R.newNames = [[0, 1, 'The Floe'], [2, 0, 'The Pole Landing'], [3, 1, 'The Open Ice']];
+}
+const COVE_R = OW_ROOMS[3], FROZ_R = OW_ROOMS[4];
+growCove(COVE_R); growFrozen(FROZ_R);
+[COVE_R, FROZ_R].forEach(R => (R.newNames || []).forEach(q => R.names.push([pidOf(q[0], q[1]), q[2], 'O', R.newp.level])));
+(VOL_R.newNames || []).forEach(q => VOL_R.names.push([pidOf(q[0], q[1]), q[2], 'O', 2]));
+
+/* ── each room's heights, slopes and paint: the home rules, on the room's own squares ── */
+const BEACH2 = BEACH + 'gki', SOFT2 = SOFT + 'gki';
+function bakeRoom(R) {
+    const Wr = R.W, Hr = R.H, cl = R.cell, inr = (x, y) => x >= 0 && y >= 0 && x < Wr && y < Hr;
+    const dist = match => { const d = new Int16Array(Wr * Hr).fill(999), q = [];
+        for (let y = 0; y < Hr; y++) for (let x = 0; x < Wr; x++) if (match(cl[y][x])) { d[y * Wr + x] = 0; q.push(x, y); }
+        for (let i = 0; i < q.length; i += 2) { const x = q[i], y = q[i + 1], v = d[y * Wr + x] + 1; for (const [dx, dy] of N8) { const X = x + dx, Y = y + dy; if (inr(X, Y) && d[Y * Wr + X] > v) { d[Y * Wr + X] = v; q.push(X, Y); } } }
+        return d; };
+    const dW = dist(ch => WET.includes(ch)), dB = dist(ch => BEACH2.includes(ch)), dND = dist(ch => ch !== 'D'), dNC = dist(ch => ch !== 'h' && ch !== 'l');
+    const h = new Float32Array(Wr * Hr);
+    for (let y = 0; y < Hr; y++) for (let x = 0; x < Wr; x++) { const ch = cl[y][x], k = y * Wr + x, p = R.plotAt(x, y); let v;
+        if (ch === 'w') v = dB[k] > 900 ? SEA_BED : Math.max(SEA_BED, -(0.45 + 0.7 * (dB[k] - 1)));
+        else if (ch === 'u') v = -0.8; else if (ch === 'a') v = -9;
+        else if (ch === 'D') v = Math.min(0.3 + 0.6 * (dW[k] - 1), 1.2 + 0.45 * (dND[k] - 1) + 0.35 * Math.sin((x + R.dx * N) * 0.9) * Math.cos((y + R.dy * N) * 0.7), 3.6);
+        else if (BEACH2.includes(ch)) v = Math.min(CAP[p.level] || 0.6, 0.3 + 0.3 * (dW[k] - 1));
+        else if (ch === 'J') v = PIER; else if (ch === 'o') v = QUAY; else if (ch === 'X') v = SHIP_BLOCK;
+        else if (ch === 'r') v = p.d === 'T' ? 3.4 : p.d === 'H' ? 1.6 : 2.4 + 0.5 * Math.sin((x + R.dx * N) * 1.3 + (y + R.dy * N) * 0.8);
+        else if (ch === 'h') v = 2.5 + 4.2 * (dNC[k] - 1) + 0.6 * Math.sin((x + R.dx * N) * 1.7) * Math.cos((y + R.dy * N) * 1.1);
+        else if (ch === 'l') v = 2.5 + 4.2 * 3.2;
+        else throw new Error(R.id + ': a square nobody knows: ' + ch + ' at ' + x + ',' + y);
+        h[k] = v; }
+    R.FL.forEach(([x0, y0, x1, y1]) => { const p = R.plotAt(Math.floor((x0 + x1) / 2), Math.floor((y0 + y1) / 2)), ref = CAP[p.level] || 0.6;
+        for (let y = y0 - 1; y <= y1; y++) for (let x = x0 - 1; x <= x1; x++) if (inr(x, y) && BEACH2.includes(cl[y][x])) { const own = x >= x0 && x < x1 && y >= y0 && y < y1; if (own || dW[y * Wr + x] >= 3) h[y * Wr + x] = ref; } });
+    const grp = ch => SOFT2.includes(ch) ? 's' : (ch === 'h' || ch === 'l') ? 'h' : ch === 'r' ? 'r' : null;
+    const corner = (cx, cy, g) => { let s = 0, n = 0; for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const X = cx + dx, Y = cy + dy; if (inr(X, Y) && grp(cl[Y][X]) === g) { s += h[Y * Wr + X]; n++; } } return s / n; };
+    R.slope = Buffer.alloc(Wr * Hr * 8);
+    for (let y = 0; y < Hr; y++) for (let x = 0; x < Wr; x++) { const o = (y * Wr + x) * 8, g = grp(cl[y][x]); [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => R.slope.writeInt16LE(Math.round((g ? corner(x + q[0], y + q[1], g) : h[y * Wr + x]) * 100), o + k * 2)); }
+    const KEY = { j: 'wood_planks', J: 'wood_planks', X: 'wood_planks', o: 'cobblestone', r: 'rocks_5', h: 'obsidian', l: 'lava', b: 'dirt_2', c: 'scorched', g: 'grass_2', k: 'dirt', i: 'ice' };
+    R.PAL = []; R.paint = new Uint8Array(Wr * Hr);
+    for (let y = 0; y < Hr; y++) for (let x = 0; x < Wr; x++) { const key = KEY[cl[y][x]]; if (!key) continue; let i = R.PAL.indexOf(key); if (i < 0) { R.PAL.push(key); i = R.PAL.length - 1; } R.paint[y * Wr + x] = i + 1; }
+    if (R.PAL.length > 8) throw new Error(R.id + ': more than 8 paint sheets: ' + R.PAL.join(' '));
+    R.hc = h;
+    /* the walk: from the room's first door (or its spawn square) every `reach` square is reached on foot */
+    if (R.reach) { const st = [R.from], seen = new Uint8Array(Wr * Hr); seen[R.from[1] * Wr + R.from[0]] = 1;
+        while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of N8.slice(0, 4)) { const X = x + dx, Y = y + dy; if (!inr(X, Y) || seen[Y * Wr + X] || h[Y * Wr + X] <= -1.15) continue;
+            const hard = !(SOFT2.includes(cl[y][x]) && SOFT2.includes(cl[Y][X])); if (hard ? Math.abs(h[Y * Wr + X] - h[y * Wr + x]) > 0.62 : Math.abs(h[Y * Wr + X] - h[y * Wr + x]) / C > 1.0) continue; seen[Y * Wr + X] = 1; st.push([X, Y]); } }
+        if (process.env.BEACH_DUMP) console.log(R.id + '\n' + cl.map((r, y) => r.map((ch, x) => seen[y * Wr + x] ? '.' : h[y * Wr + x] < -1.15 ? ' ' : ch).join('')).join('\n'));
+        R.reach.forEach(q => { if (!seen[q[1] * Wr + q[0]]) throw new Error(R.id + ': not reached on foot: ' + q[2]); }); }
+    else if (process.env.BEACH_DUMP) console.log(R.id + '\n' + cl.map((r, y) => r.map((ch, x) => h[y * Wr + x] < -1.15 ? ' ' : ch).join('')).join('\n'));
+}
+BEACH_R.from = SP;
+OW_ROOMS.forEach(bakeRoom);
+/* the props the move put out of the water (or onto no plot): each goes to the nearest square of open sea, at least 2.5 m deep, in its room */
+LOST.forEach(({ o, R, q, local }) => { const lx = local ? q[0] : Math.max(0, Math.min(R.W - 1, q[0] - R.dx * N)), ly = local ? q[1] : Math.max(0, Math.min(R.H - 1, q[1] - R.dy * N));
+    let best = null, bd = 1e9; for (let y = 0; y < R.H; y++) for (let x = 0; x < R.W; x++) { if (R.cell[y][x] !== 'w' || R.hc[y * R.W + x] > -2.5) continue; const d = (x - lx) ** 2 + (y - ly) ** 2; if (d < bd) { bd = d; best = [x, y]; } }
+    if (!best) throw new Error('no sea for ' + o.key);
+    const n = Object.assign({}, o, { x: R.mx(best[0]), z: R.mz(best[1]) }); R.props.push(n); R.count.reset = (R.count.reset || 0) + 1;
+    console.log('set down again: ' + o.key + ' (home ' + q.join(',') + ') in ' + R.id + ' at ' + best.join(',')); });
+/* each room's spawn: the beach's at the city door as before; the islands' on the dry square nearest their landing place */
+const dryNear = (R, sx, sy) => { let best = null, bd = 1e9; for (let y = 0; y < R.H; y++) for (let x = 0; x < R.W; x++) { const k = y * R.W + x; if (R.hc[k] < 0.25 || !'dtbcgki'.includes(R.cell[y][x])) continue; const d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = [x, y]; } } if (!best) throw new Error(R.id + ': no dry square'); return best; };
+BEACH_R.sp = SP;
+TRI_R.sp = dryNear(TRI_R, Math.floor((BAY.x + HW) / C) - TRI_R.dx * N, Math.floor((BAY.z + HD) / C) - TRI_R.dy * N + 2);
+VOL_R.sp = dryNear(VOL_R, 6, 18);
+COVE_R.sp = dryNear(COVE_R, 18, 8); FROZ_R.sp = dryNear(FROZ_R, 6, 21);
+if (DROPPED.length) console.log('DROPPED (on a plot no room takes): ' + DROPPED.length + '\n  ' + DROPPED.join('\n  '));
+
+/* ── the rooms ── */
+const LINES = O_HARB.l.concat(O_SEA.l), L = [];
+L.push("        /* BEACH140-BEGIN — THE BEACH ON PLOTS (2026-11-15) + THE ONE WORLD MOVE (2026-11-17): written by `node bake-beach.js` from docs/areas/beach/layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
+OW_ROOMS.forEach(R => {
+    const SPM = { x: R.mx(R.sp[0]), z: R.mz(R.sp[1]) }, home = R === BEACH_R;
+    L.push("        " + R.id + ": {");
+    L.push("            label: " + J(R.label) + ",");
+    L.push("            sub: " + J(R.sub) + ",");
+    L.push("            kind: 'box', site: 'prebuilt_bermuda', part: '" + R.part + "',");
+    L.push("            /* THE ONE WORLD: where this room stands on the world's plot grid (data.js hqOwIndex) */");
+    L.push("            world: { hub: 'beach', layer: 'surface', wx: " + R.wx + ", wy: " + R.wy + " },");
+    /* THE BEACH'S OWN SKY + SAND (2026-11-16): the sea shell's sky without its scenery and landmark (THE CLEAN SKY); the sand his pale beach sheet */
+    L.push("            shell: hqSeaShell({ w: " + (2 * R.HW) + ", d: " + (2 * R.HD) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 }, sky: Object.assign({}, hqSeaShell().sky, { scenery: 'none', landmarks: [] })" + (R.AIR.length ? ", atmos: " + J({ kind: 'dust', tier: 'open', zones: R.AIR }) : "") + " }),");
+    L.push("            parti: " + J(R.parti) + ",");
+    L.push("            typology: 'grid',");
+    L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + R.cols + ", nz: " + R.rows + (R.triangle ? ", triangle: " + J(R.triangle) : "") + ", names: " + J(R.names) + " },");
+    L.push("            terrain: {");
+    L.push("                res: 1.75, floor: 'desert', cliff: 'rocks_5', path: 'wood_planks',");
+    L.push("                base: 0, noise: { amp: 0.06, scale: 9 }, crag: false,");
+    L.push("                sea: { y: 0, key: 'water' },");
+    L.push("                outer: { m: 60 },");
+    if (home) L.push("                backdrop: false, edges: { reach: 300, n: { kind: 'coast' }, e: { kind: 'coast' }, s: { kind: 'coast' }, w: { kind: 'desert', cap: { kind: 'coast', at: 'n', off: 0, len: 42 } } },");
+    else L.push("                /* THE HORIZON READS THE MAP: open sea all round, the Ice Wall where it is near (three-renderer.js _hqEdgeLandFn `world`) */\n                backdrop: false, edges: { world: true, reach: 440 },");
+    if (R.moored.length) { L.push("                /* THE FLYING DUTCHMAN: the Dutchman map's own ship, drawn at her berth (three-renderer.js _hqBuildMoored) */"); L.push("                moored: [" + R.moored.map(J).join(', ') + "],"); }
+    L.push("                /* THE HEIGHTS ARE THE MAP: sand, sea floor, the quay, the piers, rock, the ship's deck and the volcano are all this grid */");
+    L.push("                slope: { cells: { res: " + C + ", x0: " + R.gx(0) + ", z0: " + R.gz(0) + ", nx: " + R.W + ", nz: " + R.H + ", d: '" + R.slope.toString('base64') + "' } },");
+    L.push("                paint: { pal: " + J(R.PAL) + ", t: 'u8', res: " + C + ", x0: " + R.mx(0) + ", z0: " + R.mz(0) + ", nx: " + R.W + ", nz: " + R.H + ", d: '" + Buffer.from(R.paint).toString('base64') + "' },");
+    L.push("                features: [");
+    R.F.concat(R.ARCH).forEach(f => L.push("                    " + J(f) + ","));
+    L.push("                ],");
+    L.push("            },");
+    L.push("            doors: [");
+    R.doors.forEach(d => L.push("                " + J(d) + ","));
+    L.push("            ],");
+    L.push("            counters: [],");
+    L.push("            props: [");
+    for (let i = 0; i < R.props.length; i += 4) L.push("                " + R.props.slice(i, i + 4).map(J).join(", ") + ",");
+    L.push("            ],");
+    L.push("            agents: [],");
+    L.push("            npcSpots: " + J(R.npc) + ",");
+    L.push("            onlineSpots: [],");
+    L.push("            lines: " + J(home ? LINES : []) + ",");
+    L.push("            spawn: { x: " + SPM.x + ", z: " + SPM.z + ", face: " + (home ? 90 : 0) + " },");
+    L.push("        },");
+    console.log(R.id + ': ' + JSON.stringify({ features: R.F.length + R.ARCH.length, props: R.props.length, natives: R.npc.length, doors: R.doors.length, pal: R.PAL.length }));
+});
 L.push("        /* BEACH140-END */");
 const block = L.join('\n') + '\n';
 console.log(JSON.stringify(count));
 /* the rows in data.js that name a place in this room (written by hand there): the tool refuses to bake when one has drifted */
-const at = o => "site: 'prebuilt_bermuda', part: 'beach', wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face + ",";
+const at = (o, part) => "site: 'prebuilt_bermuda', part: '" + part + "', wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face + ",";
 const WANT = [
-    ["prebuilt_bermuda: { room: '" + ROOM + "', door: { id: 'bay', wall: 'free', x: " + BAY.x + ", z: " + BAY.z + ", face: " + BAY.face + " } }", 'siteRooms.entry.prebuilt_bermuda'],
-    ["a: { " + at(MAEL) + " way: 'whirlpool',", 'link bermuda_abyss'],
-    ["b: { " + at(POOL), 'link weir_bermuda'],
-    ["a: { " + at(GANG), 'link beach_dutchman'],
-    [ROOM + ": { tape: { x: " + gx(LIGHT[0] + 1) + ", z: " + r2(gz(LIGHT[1] + 1) + 1.2) + " } }", 'the tape on the Lighthouse Rock'],
+    ["prebuilt_bermuda: { room: '" + TRI_R.id + "', door: { id: 'bay', wall: 'free', x: " + BAY_W.x + ", z: " + BAY_W.z + ", face: " + BAY.face + " } }", 'siteRooms.entry.prebuilt_bermuda'],
+    ["a: { " + at(MAEL_W, 'ow_triangle') + " way: 'whirlpool',", 'link bermuda_abyss'],
+    ["b: { " + at(POOL_W, 'ow_triangle'), 'link weir_bermuda'],
+    ["a: { " + at(GANG_W, 'beach'), 'link beach_dutchman'],
+    [TRI_R.id + ": { tape: { x: " + TAPE_W.x + ", z: " + TAPE_W.z + " } }", 'the tape on the Lighthouse Rock'],
 ];
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const flatSrc = src.replace(/ +/g, ' '), missing = WANT.filter(w => flatSrc.indexOf(w[0]) < 0);

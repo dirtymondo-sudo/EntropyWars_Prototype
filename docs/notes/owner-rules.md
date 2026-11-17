@@ -126,6 +126,7 @@ then tough shit. The player experience should be the same"): no weak-PC cut may 
 ## 8. Working with mondo
 
 - He reads short, plain answers. Lead with the result. Own mistakes in one line.
+- **He cannot see the repo's files** (11-17: "if you need my answer or approval of something then you need to send it in chat, i cant see the plan"): put every question, table, line or picture that needs his OK in the chat itself, in full; a path to a doc is not asking him.
 - **Check before you claim.** Never say a fix is in the game until the live R2 files match main (CLAUDE.md RULE #1).
 - Design work on UI, HUD, VFX, camera or maps: a plan and a mock-up first, then WAIT for his explicit OK.
 - UI work without an on-screen proof picture gets sent back.
