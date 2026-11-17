@@ -29766,19 +29766,19 @@ STORY_CUTSCENES.orientation_arrive = {
    props (keys, near, at [dx, dz] from their own spots, ms; light) · place ... sit. */
 STORY_CUTSCENES.orientation_tv = {
     id: 'orientation_tv', title: 'THE TV CART', cast: ['locke'],
-    end: [{ do: 'screen', off: true }, { do: 'props', keys: ['decor_av_cart', 'tube_tv', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [0, 0], ms: 0 },
+    end: [{ do: 'screen', off: true }, { do: 'props', keys: ['cursed_tv_set', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [0, 0], ms: 0 },
           { do: 'place', who: 'locke', x: -6.35, z: 29.3, face: 0 }, { do: 'place', who: 'player', x: -5.25, z: 27.2, face: 180, sit: false }],
     beats: [
         /* B1 · the room: wide from the pad, a slow pull back; the recruit just inside the door, Locke and the cart at the wall */
         { dur: 3.2, shot: { cam: [0, 1.7, 9, 180, -2, 45], to: { cam: [0, 1.7, 7.6, 180, -2, 45] } },
           act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 27, face: 0 }, { at: 0, do: 'place', who: 'locke', x: -10.85, z: 29.3, face: 90 },
-                { at: 0, do: 'props', keys: ['decor_av_cart', 'tube_tv', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [-4.5, 0], ms: 0 }] },
+                { at: 0, do: 'props', keys: ['cursed_tv_set', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [-4.5, 0], ms: 0 }] },
         /* B2 · take a seat: medium, side on */
         { shot: { cam: [-2.3, 1.2, 26.7, 90, 0, 35] }, say: { who: 'AGENT LOCKE', text: "You're late. Take a seat." },
           act: [{ at: 0, do: 'place', who: 'player', x: -5.25, z: 26.4, face: 180 }, { at: 1.1, do: 'place', who: 'player', sit: true }] },
         /* B3 · the TV cart rolls in: low, at wheel height; the cart comes in from the right of frame, Locke's legs behind it */
         { dur: 4.6, hold: true, shot: { cam: [-7.5, 0.3, 27.6, 228, 8, 42] },   // (mondo 11-15: a cut turns the camera 30 degrees or more; this one was on the next shot's line)
-          act: [{ at: 0.3, do: 'props', keys: ['decor_av_cart', 'tube_tv', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [0, 0], ms: 3600 },
+          act: [{ at: 0.3, do: 'props', keys: ['cursed_tv_set', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [0, 0], ms: 3600 },
                 { at: 0.3, do: 'walk', who: 'locke', x: -6.35, z: 29.3, ms: 3600, face: 0 }] },
         /* B4 · Locke and the TV: over the recruit's shoulder, Locke on the far side of the cart */
         { shot: { cam: [-5.9, 1.5, 25.2, 181, -3, 34], to: { cam: [-5.9, 1.5, 25.35, 181, -3, 34] } }, say: { who: 'AGENT LOCKE', text: 'Welcome to the Department of Orthogonal Realities, or D.O.O.R.' } },   // (mondo 11-14: the TV and Locke in the middle, not off to the side)
@@ -29799,9 +29799,9 @@ STORY_CUTSCENES.orientation_tv = {
         { shot: { cam: [-4.3, 1.5, 26.7, 148, -2, 30], to: { cam: [-4.6, 1.5, 27.2, 148, -2, 28] } },
           say: { who: 'AGENT LOCKE', text: "You can trust me, I'm an open door." } },
         /* B5 · the TV snaps on: a slow push in until the screen fills the frame, then black */
-        { dur: 4.2, hold: true, fade: 3.5, shot: { cam: [-5.16, 1.31, 27.6, 180, 0, 26], to: { cam: [-5.16, 1.31, 28.55, 180, 0, 26] } },   // (mondo 11-15: dead centre on the screen)
+        { dur: 4.2, hold: true, fade: 3.5, shot: { cam: [-5.159, 1.406, 27.53, 180, 0, 26], to: { cam: [-5.159, 1.406, 28.48, 180, 0, 26] } },   // (mondo 11-15: dead centre on the screen; 11-17 moved onto the Cursed TV set's screen)
           say: { who: 'AGENT LOCKE', text: 'Now pay attention. Watch closely.' },
-          act: [{ at: 1.2, do: 'screen', x: -5.16, y: 1.31, z: 29.12, w: 0.4, h: 0.3, face: 0 }] },   // (mondo 11-14: the set switches on to STATIC; the old lamp on the set is gone)
+          act: [{ at: 1.2, do: 'screen', x: -5.159, y: 1.406, z: 29.05, w: 0.51, h: 0.4, face: 0 }] },   // (11-17: the Cursed TV set's screen, its bezel trims the sheet)   // (mondo 11-14: the set switches on to STATIC; the old lamp on the set is gone)
     ],
 };
 /* F · THE OFFICE (the approved storyboard's frames + mondo's lines, word for word; his change: the recruit is ALONE until
@@ -35828,8 +35828,7 @@ const DOOR_HQ = {
                    school desks by the main hall door, their sitters' backs to the pad, the tape TV on its AV cart at the south wall (the cart
                    is one Meshy model, mondo's pick on the card; the TV and the player are the pack pieces Room 64 had). Low things only: this
                    is the battle camera's side. The cutscenes' shots are planned on these spots: keep the lane from the door to the cart clear. */
-                { key: 'decor_av_cart',  x: -5.25, z: 29.4, face: 0 },
-                { key: 'tube_tv',        x: -5.25, z: 29.4, y: 1.1, face: 0 },
+                { key: 'cursed_tv_set',  x: -5.25, z: 29.4, face: 0 },   // 📺 (2026-11-17) the cart, the TV, the remote and the cable are ONE file now: the Cursed TV unit's own set (mondo: the cutscene's TV and the unit the same)
                 { key: 'vhs_player',     x: -5.25, z: 29.4, y: 0.67, face: 0, span: 0.34 },   // (mondo 11-14: "VHS too big": a real deck, a real tape)
                 { key: 'vhs_tape',       x: -5.25, z: 29.38, y: 0.76, face: 20, span: 0.19 },   // (mondo 11-15: "the vhs isnt sitting on the cart": it lay under the bottom rail; now on top of the deck, seated by THE TABLETOP SEAT)
                 { key: 'school_desk',    x: -7.35, z: 26.0, face: 0 }, { key: 'school_desk', x: -5.25, z: 26.0, face: 0 }, { key: 'school_desk', x: -3.15, z: 26.0, face: 0 },
@@ -75953,6 +75952,7 @@ const HQ_CATALOGUE_ALL = {
     halloween_character_ghost: { file: 'world/packs/elbolilloduro_halloween/characters/Character_Ghost.glb', base: 'asset', h: 1.87, foot: 0.36, group: 'Halloween pack' },
     /* Meshy decor (23) */
     decor_av_cart: { file: 'world/props/meshy_decor/av_cart.glb', base: 'asset', h: 1.1, foot: 0.45, group: 'Meshy decor' },   // the orientation TV's cart (Meshy, 2026-11-12, mondo's pick)
+    cursed_tv_set: { file: 'characters/races/cursed_tv/male/cursed_tv.glb', base: 'asset', h: 2.083, foot: 0.45, group: 'Meshy decor' },   // 📺 THE CURSED TV (2026-11-17, mondo: "the cart + tv in that cutscene need to be the same as the character model"): the Cursed TV unit's own file, the AV cart above at its 1.1 m (the set is 1.80 m to the ear tips in metres: h = 1.80 x 1.1 / 0.952)
     decor_armour_plinth: { file: 'world/props/meshy_decor/armour_plinth.glb', base: 'asset', span: 0.6, foot: 0.3, group: 'Meshy decor' },
     decor_armour_stand_post: { file: 'world/props/meshy_decor/armour_stand_post.glb', base: 'asset', h: 1.7, foot: 0.55, group: 'Meshy decor' },
     decor_carousel_horse: { file: 'world/props/meshy_decor/carousel_horse.glb', base: 'asset', h: 1.6, foot: 0.92, group: 'Meshy decor' },

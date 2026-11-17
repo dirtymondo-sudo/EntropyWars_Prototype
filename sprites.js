@@ -150,6 +150,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/wendigo/', 'Assets/characters/races/wendigo/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/karate_frog/', 'Assets/characters/races/karate_frog/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/samurai_slug/', 'Assets/characters/races/samurai_slug/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/cursed_tv/', 'Assets/characters/races/cursed_tv/'],   // 2026-11-17 📺 THE CURSED TV
   ['Assets/Sprites/Races/cicada_brood/', 'Assets/characters/races/cicada_brood/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/ninja/', 'Assets/characters/races/ninja/'],   // 2026-11-17 THE NINJA
   ['Assets/Sprites/Races/haunted_doll/', 'Assets/characters/races/haunted_doll/'],   // 2026-11-17 THE HAUNTED DOLL
@@ -2611,6 +2612,13 @@ const RACE_MODELS_3D = {
   },
   'boltzmann brain': {
     male: { model: `${_S}/Races/boltzmann_brain/male/Meshy_AI_boltzmann_brain.glb`, clips: {}, heightRatio: 0.7, yawOffset: Math.PI, basicAttackKind: 'magic' },   // the eye looks down -Z in the file
+  },
+  /* 📺 THE CURSED TV (2026-11-17, mondo's concept): no bones; procRig 'cursedTv' (three-renderer.js THE CURSED TV) rolls the
+     casters, spins the wheels, rings the ears, floats the remote and changes THE CHANNELS. One file with the orientation
+     cutscene's set (data.js HQ prop cursed_tv_set): the cart, the TV, the remote and the cable. Front +Z, metres. */
+  'cursed tv': {
+    male: { model: `${_S}/Races/cursed_tv/male/cursed_tv.glb`, clips: {}, procRig: 'cursedTv', heightRatio: 1.0, yawOffset: 0, basicAttackKind: 'magic',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
   },
   'wendigo': {
     male: _mkUAL('wendigo', 'wendigo', {
