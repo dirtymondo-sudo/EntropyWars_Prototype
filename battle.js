@@ -3254,6 +3254,10 @@
             const _pcMult = (unit && typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'spellCostMult') : undefined;
             if (base > 0 && _pcMult && _pcMult !== 1) base = Math.max(1, Math.round(base * _pcMult));
             const delta = (unit && typeof getStatusMpCostDelta === 'function') ? getStatusMpCostDelta(unit) : 0;
+            /* 🧾 TAX EXEMPT (the Televangelist, 2026-11-17): a status's mpCostMult (0.5) on the whole bill, Picked a Card's +40 too */
+            let _scm = 1;
+            if (unit && typeof getActiveStatusKeys === 'function') for (const k of getActiveStatusKeys(unit)) { const m = STATUS_DEFS[k]?.mpCostMult; if (m > 0) _scm *= m; }
+            if (_scm !== 1 && base + delta > 0) return Math.max(1, Math.round((base + delta) * _scm));
             return Math.max(0, base + delta);
         }
         window.getSpellMpCostFor = getSpellMpCostFor;
