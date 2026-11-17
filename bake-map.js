@@ -14,8 +14,8 @@
         B = flags: 1 solid (a building, a wall), 2 a tree, 4 water, 8 lava, 16 sludge, 32 the sea, 64 nothing (no ground),
             128 ground you cannot stand on (the forest mass, a roof you cannot reach)
       upload: node sync-zip.js --put Assets/ui/map/<room>.png Assets/ui/map/<room>.png  (the tool prints the lines)
-   2. data.js HQ_ZONE_MAP between ZONEMAP-BEGIN / ZONEMAP-END: every zone, where it sits on the world sheet (in plots, north up,
-      layout 3), its rooms (where each sits on the zone sheet, its plot grid in metres, its picture's sha), the district names
+   2. data.js HQ_ZONE_MAP between ZONEMAP-BEGIN / ZONEMAP-END: every zone, where it stands on THE ONE WORLD (in plots, north up:
+      docs/plans/one-world, v13; `world` = the ground kind of every plot + the far sights), its rooms (where each sits on the zone sheet, its plot grid in metres, its picture's sha), the district names
       (from each zone's layout.json) and Disaster City's 183 plots (the game has no plot list for the city: read here from
       docs/disaster-city/city-layout.json + move.js + hills-layout.json).
    Plot names of every other room are read LIVE by the map from `room.plots.names` (each zone's own bake writes them).
@@ -25,33 +25,56 @@ const REPO = __dirname;
 const SQ = 3.5, PLOT = 42;
 const OUT_DIR = path.join(REPO, 'Assets/ui/map');
 
-/* ── THE ZONES: where each sits. wx/wy = the room's plot grid's north-west corner on the WORLD sheet, in plots (Disaster City's
-   first city plot = 0,0; its Hills are rows -3..-1). layer: 'surface' | 'under' | 'off' (not a place on the sheet: a row in the list).
-   zx/zy = the room on its ZONE sheet (a zone of several rooms), in plots. Layout 3 (docs/notes/world-layout.md B). ── */
+/* ── THE ZONES: where each room stands ON THE ONE WORLD (2026-11-17, mondo's approved map v13: docs/plans/one-world/plots.json).
+   wx/wy = the room's plot grid's north-west corner on the world's plot grid (x east, y south; Disaster City's first city plot =
+   0,0, its Hills are rows -3..-1). layer: 'surface' | 'under' | 'off' (not a place on the sheet: a row in the list).
+   zx/zy = the room on its ZONE sheet (a zone of several rooms), in plots.
+   `wait: 1` = THE ROOM HAS NOT MOVED YET: v13 re-lays its districts (BUILD_PLAN phase 3 / 4), so wx/wy is only where the chart
+   draws it meanwhile (its zone's v13 home); it is nobody's neighbour and its edges stay its own. The zone thread that re-lays
+   it drops the flag (or the row, for a room it retires).
+   A ROOM MAY SAY ITS OWN PLACE: `room.world = { hub, layer, wx, wy [, zx, zy, note] }` in data.js (the route kit and every
+   re-laid room write it). Such a room needs no row here: it is added to its hub's zone, and `room.world` wins over a row here. ── */
 const ZONES = [
     { hub: 'city', layout: null, rooms: [{ room: 'site_prebuilt_downtown_streets', layer: 'surface', wx: 0, wy: -3, zx: 0, zy: 0, city: true }] },
-    { hub: 'mountains', layout: 'mountains', rooms: [{ room: 'site_prebuilt_shasta_mountains', layer: 'surface', wx: -12, wy: -11, zx: 5, zy: 0 }, { room: 'site_prebuilt_northpole_plots', layer: 'surface', wx: -16, wy: -11, zx: 0, zy: 0 }] },
-    { hub: 'woods', layout: 'woods', rooms: [{ room: 'site_prebuilt_fairy_forest_plots', layer: 'surface', wx: -6, wy: 1, zx: 0, zy: 0 }] },
-    { hub: 'kingdom', layout: 'camelot', rooms: [{ room: 'site_prebuilt_camelot_kingdom', layer: 'surface', wx: -14, wy: 0, zx: 0, zy: 0 }] },
-    { hub: 'ranch', layout: 'estate', rooms: [{ room: 'site_prebuilt_skinwalker_estate', layer: 'surface', wx: -6, wy: 7, zx: 0, zy: 0 }] },
-    { hub: 'desert', layout: 'desert', rooms: [{ room: 'site_prebuilt_area51_desert', layer: 'surface', wx: 0, wy: 12, zx: 0, zy: 0 }] },
-    { hub: 'beach', layout: 'beach', rooms: [{ room: 'site_prebuilt_bermuda_beach', layer: 'surface', wx: 12, wy: 1, zx: 0, zy: 0 }] },
-    { hub: 'ley', layout: 'leylines', rooms: [{ room: 'site_prebuilt_gobekli_ancient', layer: 'surface', wx: 12, wy: 17, zx: 0, zy: 0 }] },
-    { hub: 'antarctica', layout: 'antarctica', rooms: [{ room: 'site_prebuilt_antarctica_plots', layer: 'surface', wx: 3, wy: 26, zx: 0, zy: 0 }] },
+    { hub: 'mountains', layout: 'mountains', rooms: [{ room: 'site_prebuilt_shasta_mountains', layer: 'surface', wx: -16, wy: -22, zx: 5, zy: 0, wait: 1 }, { room: 'site_prebuilt_northpole_plots', layer: 'surface', wx: 0, wy: -28, zx: 0, zy: 0 }] },
+    { hub: 'woods', layout: 'woods', rooms: [{ room: 'site_prebuilt_fairy_forest_plots', layer: 'surface', wx: -17, wy: -1, zx: 0, zy: 0, wait: 1 }] },
+    { hub: 'kingdom', layout: 'camelot', rooms: [{ room: 'site_prebuilt_camelot_kingdom', layer: 'surface', wx: -30, wy: -4, zx: 0, zy: 0, wait: 1 }] },
+    { hub: 'ranch', layout: 'estate', rooms: [{ room: 'site_prebuilt_skinwalker_estate', layer: 'surface', wx: -15, wy: 13, zx: 0, zy: 0, wait: 1 }] },
+    { hub: 'desert', layout: 'desert', rooms: [{ room: 'site_prebuilt_area51_desert', layer: 'surface', wx: 5, wy: 21, zx: 0, zy: 0, wait: 1 }] },
+    { hub: 'beach', layout: 'beach', rooms: [{ room: 'site_prebuilt_bermuda_beach', layer: 'surface', wx: 12, wy: 2, zx: 0, zy: 0, wait: 1 }] },
+    { hub: 'ley', layout: 'leylines', rooms: [{ room: 'site_prebuilt_gobekli_ancient', layer: 'surface', wx: 19, wy: 29, zx: 0, zy: 0, wait: 1 }] },
+    { hub: 'antarctica', layout: 'antarctica', rooms: [{ room: 'site_prebuilt_antarctica_plots', layer: 'surface', wx: 0, wy: 46, zx: 0, zy: 0 }] },
     { hub: 'divine', layout: 'afterlife', rooms: [
         { room: 'site_prebuilt_heaven_plots', layer: 'off', zx: 0, zy: 0, note: 'ABOVE THE VATICAN' },
-        { room: 'site_prebuilt_vatican_plots', layer: 'surface', wx: -6, wy: -3, zx: 6, zy: 0 },
-        { room: 'site_prebuilt_vatican_under', layer: 'under', wx: -2, wy: -2, zx: 6, zy: 6, note: 'UNDER THE VATICAN' },
-        { room: 'site_prebuilt_hell_plots', layer: 'under', wx: -7, wy: -3, zx: 14, zy: 0, note: 'UNDER THE VATICAN' }] },
-    { hub: 'underworld', layout: 'sewers', rooms: [{ room: 'site_prebuilt_downtown_underworld', layer: 'under', wx: 3, wy: 6, zx: 0, zy: 0, note: 'UNDER DISASTER CITY' }] },
-    { hub: 'cavern', layout: 'cavern', rooms: [{ room: 'site_prebuilt_hollow_earth_cavern', layer: 'under', wx: -6, wy: 2, zx: 0, zy: 0 }] },
-    { hub: 'dumb', layout: 'dumb', rooms: [{ room: 'site_prebuilt_dumb_base', layer: 'under', wx: 0, wy: 18, zx: 0, zy: 0, note: 'UNDER AREA 51' }] },
-    { hub: 'deep', layout: 'deep', rooms: [{ room: 'site_prebuilt_atlantis_deep', layer: 'under', wx: 15, wy: 4, zx: 0, zy: 0, note: 'UNDER THE SEA' }] },
+        { room: 'site_prebuilt_vatican_plots', layer: 'surface', wx: -12, wy: -6, zx: 6, zy: 0 },
+        { room: 'site_prebuilt_vatican_under', layer: 'under', wx: -10, wy: -5, zx: 6, zy: 6, note: 'UNDER THE VATICAN' },
+        { room: 'site_prebuilt_hell_plots', layer: 'under', wx: -10, wy: -10, zx: 14, zy: 0, note: 'UNDER THE COLOSSEUM' }] },
+    { hub: 'underworld', layout: 'sewers', rooms: [{ room: 'site_prebuilt_downtown_underworld', layer: 'under', wx: 3, wy: 4, zx: 0, zy: 0, note: 'UNDER DISASTER CITY', wait: 1 }] },
+    { hub: 'cavern', layout: 'cavern', rooms: [{ room: 'site_prebuilt_hollow_earth_cavern', layer: 'under', wx: -12, wy: 9, zx: 0, zy: 0, wait: 1 }] },
+    { hub: 'dumb', layout: 'dumb', rooms: [{ room: 'site_prebuilt_dumb_base', layer: 'under', wx: 1, wy: 33, zx: 0, zy: 0, note: 'UNDER AREA 51', wait: 1 }] },
+    { hub: 'deep', layout: 'deep', rooms: [{ room: 'site_prebuilt_atlantis_deep', layer: 'under', wx: 18, wy: 4, zx: 0, zy: 0, note: 'UNDER THE SEA', wait: 1 }] },
     { hub: 'space', layout: 'space', rooms: [
         { room: 'site_prebuilt_moon_plots', layer: 'off', zx: 0, zy: 0 }, { room: 'site_prebuilt_mars_plots', layer: 'off', zx: 7, zy: 0 },
         { room: 'site_prebuilt_saturn_plots', layer: 'off', zx: 14, zy: 0 }, { room: 'site_prebuilt_singularity_plots', layer: 'off', zx: 20, zy: 0 }] },
     { hub: 'astral', layout: 'astral', rooms: [{ room: 'site_prebuilt_lookingglass_realm', layer: 'off', zx: 0, zy: 0 }] },
 ];
+/* ── THE WORLD'S GROUND + SIGHTS (2026-11-17): what every plot of the disc is made of, and the far places a room may see.
+   `world.g[y - y0][x - x0]` = the plot's ground letter (plots.json `ground`, 18 kinds + sea, ice, the Ice Wall);
+   `world.key[letter] = [kind, kit, edge]`: kit = the route kit's ground kind (bake-route.js), edge = the kind the land past a
+   room's line wears there (three-renderer.js _hqEdgeLandFn, `terrain.edges.world`).
+   `world.sights` = [name, x, y, landmark kind, size, hub]: a place tall enough to see from another room; a room whose sky says
+   `landmarks: 'world'` gets each one within sight at its TRUE BEARING (data.js hqOwLandmarks; kinds = _hqLandmarkBuilders). ── */
+const EDGE_OF = { peak: 'mountain', rock: 'mountain', alpine: 'mountain', cliff: 'mountain', foot: 'grass', tundra: 'snow', ice: 'snow', wall: 'snow', forest: 'forest', wood: 'forest',
+    meadow: 'grass', grass: 'grass', farm: 'grass', marsh: 'grass', scrub: 'scrub', bad: 'mesa', desert: 'desert', dunes: 'desert', saltflat: 'desert', sand: 'desert', sea: 'coast' };
+const SIGHTS = [   // [name, district in plots.json, landmark kind, size, hub]
+    ['Disaster City', 'city', 'tower', 1, 'city'], ['The Vatican', 'vat', 'dome', 0.8, 'divine'], ['Camelot', 'cam', 'castle', 0.8, 'kingdom'],
+];
+function buildWorld() {
+    const PJ = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plots.json'), 'utf8'));
+    const key = {}; Object.keys(PJ.ground.key).forEach(c => { const k = PJ.ground.key[c]; if (!EDGE_OF[k.kind]) throw new Error('no edge kind for ground ' + k.kind); key[c] = [k.kind, k.kit || null, EDGE_OF[k.kind]]; });
+    const sights = SIGHTS.map(([name, id, kind, s, hub]) => { const d = PJ.districts.find(q => q.id === id); if (!d) throw new Error('no district ' + id); return [name, d.x + d.w / 2, d.y + d.h / 2, kind, s, hub]; });
+    return { v: PJ.v, x0: PJ.ground.x0, y0: PJ.ground.y0, w: PJ.ground.w, h: PJ.ground.h, cx: PJ.disc.cx, cy: PJ.disc.cy, r: PJ.disc.r, key, g: PJ.ground.rows, sights };
+}
 /* the district inks: one hue a letter, kept apart within a zone */
 const INKS = ['#e0b040', '#5fb0e0', '#e06a8a', '#7fd07a', '#c08ae0', '#e08a40', '#50d0c0', '#d0d060', '#a0a0ff', '#ff9a9a', '#9ae0ff', '#e0c0a0', '#b0e050', '#ff80d0'];
 const CITY_DN = { C: 'Civic Center', F: 'Financial', E: 'Entertainment', U: 'University', H: 'Hero Plaza', B: 'Bayside', R: 'Southside', S: 'Sports + Culture', I: 'Industrial', N: 'The Hollywood Hills' };
@@ -120,8 +143,14 @@ function bakeRoom(S, id) {
 
 /* ── THE TABLE ── */
 function buildTable(S, rasters) {
-    const H = S.DOOR_HQ, Z = { v: 1, sq: SQ, plot: PLOT, kinds: KINDS, zones: {} };
-    for (const z of ZONES) {
+    const H = S.DOOR_HQ, Z = { v: 2, sq: SQ, plot: PLOT, kinds: KINDS, world: buildWorld(), zones: {} };
+    /* a room that says its own place (`room.world`): into its hub's zone; it replaces a row of the table above */
+    const zones = ZONES.map(z => Object.assign({}, z, { rooms: z.rooms.map(r => Object.assign({}, r)) }));
+    Object.keys(H.rooms).forEach(id => { const w = H.rooms[id] && H.rooms[id].world; if (!w || !w.hub) return;
+        let z = zones.find(q => q.hub === w.hub); if (!z) { z = { hub: w.hub, layout: null, rooms: [] }; zones.push(z); }
+        const row = { room: id, layer: w.layer || 'surface', wx: w.wx, wy: w.wy, zx: w.zx != null ? w.zx : w.wx, zy: w.zy != null ? w.zy : w.wy }; if (w.note) row.note = w.note;
+        const i = z.rooms.findIndex(r => r.room === id); if (i >= 0) z.rooms[i] = Object.assign({}, z.rooms[i], row, { wait: undefined }); else z.rooms.push(row); });
+    for (const z of zones) {
         const hub = H.hubs[z.hub]; if (!hub) { console.warn('no hub', z.hub); continue; }
         let dn = {};
         if (z.layout) {
@@ -131,10 +160,12 @@ function buildTable(S, rasters) {
         } else dn = Object.assign({}, CITY_DN);
         const rooms = [], used = {};
         for (const r of z.rooms) {
+            if (H.retired && H.retired[r.room]) continue;   // a room a zone thread retired (DOOR_HQ.retired) leaves the map by itself: no edit here
             const room = H.rooms[r.room]; if (!room) { console.warn('no room', r.room); continue; }
             const rs = rasters[r.room] || null;
             const row = { room: r.room, layer: r.layer, zx: r.zx, zy: r.zy };
             if (r.layer !== 'off') { row.wx = r.wx; row.wy = r.wy; }
+            if (r.wait) row.wait = 1;
             if (r.note) row.note = r.note;
             if (r.city) {
                 const CL = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/disaster-city/city-layout.json'), 'utf8'));
@@ -146,7 +177,7 @@ function buildTable(S, rasters) {
                 CL.plots.forEach(p => { const hm = home[p.d], to = MV.to[p.d]; row.plots.push([p.id, p.name, p.d, p.x - hm[0] * 4 + to[0] * 4, p.y - hm[1] * 4 + to[1] * 4 + 3]); used[p.d] = 1; });
                 HL.plots.forEach(p => { const m = /^H(\d+)-(\d+)$/.exec(p.id); if (m) { row.plots.push([p.id, p.name, 'N', +m[1], +m[2]]); used.N = 1; } });
             } else {
-                const P = room.plots || {}; row.cols = P.nx || P.n; row.rows = P.nz || P.n;
+                const P = room.plots || {}; row.cols = P.nx || P.n || Math.round(room.shell.w / PLOT); row.rows = P.nz || Math.round(room.shell.d / PLOT);   // (rows from the shell: a room that wrote `n` alone is not always square, Leylines is 9 x 7)
                 row.ox = -room.shell.w / 2; row.oz = -room.shell.d / 2;
                 (P.names || []).forEach(n => { used[n[2]] = 1; });
             }
@@ -159,6 +190,12 @@ function buildTable(S, rasters) {
         Object.keys(used).forEach(k => { if (!districts[k]) districts[k] = [k, INKS[i++ % INKS.length]]; });
         Z.zones[z.hub] = { rooms, districts };
     }
+    /* TWO ROOMS ON ONE PLOT: every placed room's plots on the world grid (a `wait` room is not placed); a clash stops the bake */
+    const at = { surface: {}, under: {} }, clash = [];
+    Object.keys(Z.zones).forEach(hub => Z.zones[hub].rooms.forEach(row => { if (row.wx == null || row.wait || !at[row.layer]) return;
+        const P = (H.rooms[row.room] || {}).plots || {}, has = (c, r) => Array.isArray(P.mask) ? (P.mask[r] || '').charAt(c) === '#' : row.plots ? row.plots.some(q => q[3] === c && q[4] === r) : true;
+        for (let r = 0; r < row.rows; r++) for (let c = 0; c < row.cols; c++) if (has(c, r)) { const k = (row.wx + c) + ',' + (row.wy + r); if (at[row.layer][k] && at[row.layer][k] !== row.room) clash.push(k + ' ' + at[row.layer][k] + ' / ' + row.room); else at[row.layer][k] = row.room; } }));
+    if (clash.length) throw new Error('two rooms stand on one world plot:\n  ' + clash.slice(0, 12).join('\n  '));
     return Z;
 }
 function writeTable(Z) {

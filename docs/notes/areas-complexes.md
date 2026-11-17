@@ -10710,3 +10710,99 @@ KEPT in the data, door-less and never entered: every board room a PvP fight is c
 the glade, old Downtown...) and every old room a zone bake still reads for lines / anchors (bake-cavern, -afterlife, -sewers, -dumb, -astral, -deep, -beach, -desert,
 -leylines). NOT old sites (no plot room holds them), left alone: Cyberpunk City (a future reskin of the whole city), Camelot's sky castle, the city's insides (tower
 lobby, mall, showroom, platform, supply closet), the Bermuda Island board, the Spaceship, the Dutchman, the Haunted House floors, DOOR HQ, the puzzle dungeons.
+
+## ONE WORLD, THE ZONE MOVES — the foundation's rules for every zone thread (2026-11-17, mondo's approved map v13)
+The design is `docs/plans/one-world/` (README.md, BUILD_PLAN.md, the page, the sheets). This section is what phase 1 (the
+foundation thread) built and the rules phases 2 to 5 follow. Only walkable plots get built (districts, roads, wild links);
+the unnamed land between them is scenery seen past the plot edges; Avalon is scrapped.
+
+### ONE WORLD, THE PLOT LIST (`docs/plans/one-world/plots.json`)
+- Written by `node docs/plans/one-world/gen.js --plots`, never by hand; a zone thread READS it. Coordinates are plots: x east,
+  y south, one plot = 12 x 12 squares = 42 m, Disaster City's first city plot = 0,0 (its Hills are rows -3..-1).
+- `districts[]` (surface) and `under.districts[]`: `{ id, hub, zone, name, state, x, y, w, h, shape, count, today: { room,
+  districts }, plots: [{ n, x, y, was }] }`. `n` = the plot's name in the game today, `x, y` = its v13 world plot, `was` = its
+  plot id in `today.room` (`P02-04`). The extract matches every plot by name against data.js and stops on a miss, so the list
+  cannot drift from the game. `state`: `stays` (only gets its world place), `moves` (a zone thread re-lays it), `new`,
+  `reroute` (the Desert, see the open point below), `shrinks` (the Beach: its first 8 columns stay at the city).
+  A block whose shape today is not the sheet's rect has `loose: [{ n, was }]` and no places: its thread lays those plots
+  inside the rect (most underground districts).
+- `routes[]` (R1 … R12), `highway.legs[]` (the Desert Highway), `links[]` (L1 … L16, the wild links): `{ id, look, wide, from,
+  to, legs, plots: [[x, y] …] in walking order, meets: [{ plot, side, district, at }] }`. `meets` = every district plot a route
+  plot touches: the stitching list. A link with no plots of its own (L12, L13) = its two districts touch: join them door to door.
+- `under.walks[]` (U1 … U14: walk, secret, loop), `under.rides[]` (no plots), `under.ways[]` (every way down / up: `{ name, up:
+  <surface district>, down: <district below>, plot }`), `islands[]`, `beyond` (Heaven, Outer Space, the Astral Realm, the
+  Internet: counts only, no coordinates yet), `ground` (one letter a plot of the disc; `key[letter] = { kind, label, kit }`).
+- Counts the extract checks against the sheets: 247 route plots, 51 link plots, 98 walked tunnel plots, 177 underground
+  district plots.
+- OPEN POINT FOR MONDO: BUILD_PLAN counts the Desert as "stays as it is" (144 plots), but v13 stands its four districts
+  apart (the Circus 6,21 · Western Town -4,26 · Area 51 2,33 · Giza 13,29) with the Highway re-routed between them. Until he
+  says which, the Desert's room is `wait` (below) and its districts are `reroute` in plots.json.
+
+### ONE WORLD, WHERE A ROOM STANDS (data.js `HQ_ZONE_MAP` + `hqOw*`)
+- **A room's world place** = `wx, wy`: the world plot under its north-west plot. Its plot (col, row) is world plot (wx + col,
+  wy + row); a point (x, z) of the room is world (wx + (x + shell.w / 2) / 42, wy + (z + shell.d / 2) / 42).
+  It is written in ONE of two places: the room's own `world: { hub, layer, wx, wy }` in data.js (every NEW or re-laid room
+  writes this; the route kit does), or its row in `bake-map.js` ZONES (the rooms that existed before). `room.world` wins.
+- **`wait: 1`** on a ZONES row = the room has not moved to v13 yet. Its `wx, wy` only say where the in-game chart draws it
+  meanwhile (its zone's v13 home); it is nobody's neighbour. Placed today: Disaster City (0,-3), the North Pole (0,-28), the
+  Vatican (-12,-6), Antarctica (0,46), the Catacombs (-10,-5) and Hell (-10,-10) below. Waiting: the Mountains, the Woods,
+  Camelot, the Estate, the Desert, the Beach, Leylines, the Sewers, the Cavern, the D.U.M.B., the Deep.
+- **A box with holes**: `room.plots.mask` = one string a row of the box, `#` = a plot (a path room's box holds scenery cells).
+  No mask = every cell is a plot (Disaster City: its own plot list).
+- **`HQ_ZONE_MAP.world`** (written by `node bake-map.js --table` from plots.json): `g[y - y0][x - x0]` = the ground letter
+  of every plot of the disc; `key[letter] = [kind, kit, edge]` (kit = the route kit's ground kind, edge = the kind the land
+  past a room's line wears); `sights` = the far places a room may see (`[name, x, y, landmark kind, size, hub]`).
+- **The lookups** (data.js THE ONE WORLD; pure, viewer-local, the same on both sides online):
+  `hqOwRoom(id)` (its place or null) · `hqOwAt(x, y, layer)` (the room whose plot stands there) · `hqOwGround(x, y)` ·
+  `hqOwPlotOf(id, x, z)` · `hqOwPast(id)` (for every plot side with none of its own plots across it: the world plot there, its
+  ground, the room standing on it) · `hqOwNear(id, reach)` (the true neighbours, nearest first, with the bearing) ·
+  `hqOwLandmarks(id)` (the far sights at their true bearings, rows for `sky.landmarks`) · `hqOwIndex().clash` (two rooms on
+  one plot: must be empty; `node bake-map.js --table` refuses to write the table when it is not).
+- `bake-map.js` leaves out a room that is in `DOOR_HQ.retired` by itself, and picks up every room that has `world`: a zone
+  thread never edits bake-map.js. After a new room is written: `node bake-map.js <room>` (its map picture + the table), then
+  `--put` the picture.
+- The in-game world chart (map.js THE GROUND WORLD) draws every zone at these places now (picture
+  `docs/plans/one-world/proof/world_sheet.jpg`).
+
+### ONE WORLD, THE ROOM-SPLITTING RULE
+When v13 stands a zone's districts apart, this decides which become their own rooms. The numbers come from what runs today
+(the biggest rooms: Disaster City 13 x 15 plots with its own frame-rate work, the Desert 12 x 12, the Beach 14 x 10, the
+Mountains 12 x 8, Camelot 8 x 8) and from data.js `HQ_ENGINE_RULES` (heapMB 700, callsMax 2500, trisMax 1 500 000); the
+test slice measures them and corrects this list.
+1. **A district is never cut.** All its plots are one room's.
+2. **Joined** = two districts (or a district and a wild link) in one room, only when (a) their plots touch side to side on
+   the map and (b) the joined room stays inside rule 5. The castle + village stay one room; so do the city + its Hills.
+3. **Apart** = everything else: each district its own room. They are joined by a route room (THE ROUTE KIT) or, where their
+   plots touch but rule 5 forbids one room, door to door on the shared plot side.
+4. **No room shorter than 3 plots along its walk** (126 m, about half a minute on foot): a load every 42 m is not a walk.
+   A wild link of 1 or 2 plots is not a room of its own: its plots join the room of its `from` district (the zone's bake
+   adds them to its plan; the kit's ground table in bake-route.js says what to dress them with). A link that shares a plot
+   with a road (plots.json `shares`) ends at the road's room.
+5. **How big a room may get:**
+   - its box: at most 12 x 12 plots (504 m), the Desert's size, the largest room that runs without special work. Disaster
+     City is the one exception (THE CHUNKS, THE CLOSED ROOMS);
+   - a built-up room (buildings, insides, many kinds of prop): at most 64 plots (Camelot's size). Open ground (sand, sea,
+     snow) may fill the 12 x 12 box;
+   - a route room: at most 24 plots and 12 plots on its long side; a longer route is cut into stretches (`bake-route.js
+     --from i --to j`) at a bend or at a district it passes, each stretch 3 plots or more. A bent route whose box is more than
+     three times its plots is cut at the bend (the squares of the whole box are built, scenery cells too);
+   - memory (three-renderer.js THE MEMORY BUDGET, `_mm*`): a room must fit the budget BY ITSELF. Stand in it two minutes; the
+     F3 `MEM` line (`ThreeRenderer.hq.mem()`) must read under `HQ_ENGINE_RULES.heapMB` (700 MB; the phone budget is 320 MB:
+     run once with `window.EW_MEM_MB = 320` and note what it reads). Two neighbouring rooms never have to fit together: the
+     budget drops what nothing drawn wears after `cacheIdleMs` (120 s), so the room you left empties as you walk on. What
+     fills it is the count of DIFFERENT model files and their sheets, not the count of plots: dress from the models the
+     zone already loads before adding new ones;
+   - draw: under `callsMax` 2500 and `trisMax` 1.5 M on F3.
+6. **How doors and edges between rooms work:**
+   - two rooms whose plots share a side on the world grid are joined THERE by a pair of `way: 'trail'` doors (no leaf: you walk
+     through the line), one in each room, both with THE SEAM ID as their door id: `ow_v_<x>_<y>` = the north-south line x at
+     row y, `ow_h_<x>_<y>` = the east-west line y at column x (`m` for minus: `ow_h_m17_m9`). `action: { room: <the other
+     room>, at: <the same id> }`. The door is on the room's wall where the seam lies on its box's edge (`wall: 'n'`, `x`),
+     else `wall: 'free'` on the seam with `face` outward;
+   - a route crosses a plot side at its middle (a link, 1 plot wide) or on the line between its two columns (a road, 2 wide):
+     the district's door goes there, so path meets path;
+   - where two rooms touch along several plots, one door pair at the path is enough; the rest of the line keeps each room's
+     own edge stop;
+   - a side with no room past it is scenery: `terrain.edges.world` draws the map's own ground there (below);
+   - a way down or up stays a `wall: 'free'` door as today (a stair, a well, a lift) on the plot plots.json `under.ways`
+     names; its row in `DOOR_HQ.links` keeps its id, only the end that moved is re-pointed.

@@ -1,5 +1,8 @@
 # Notes: world-layout — the whole world, its doors, and which zone comes next
 
+**SUPERSEDED 2026-11-17 by THE ONE WORLD (mondo's approved map v13): the world's layout is `docs/plans/one-world/` now (README.md, BUILD_PLAN.md, `plots.json`), and every room's place is its `wx, wy` in data.js `HQ_ZONE_MAP` (areas-complexes.md "ONE WORLD, THE ZONE MOVES"). Layout 3 below is history; the door survey (section A2) is still true until each zone moves.**
+
+
 Survey of 2026-11-16 (a thread on the SECOND side; first signed "owner" by mistake, corrected the same day), at main `afbbd24` (PR #1548). Nothing was built or rebaked for it.
 **Where the docs and the data disagree, the data is the truth**; each such place is marked DATA below.
 
