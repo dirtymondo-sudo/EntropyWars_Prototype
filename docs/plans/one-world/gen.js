@@ -183,12 +183,15 @@ for (const z of SURF) if (z.id !== 'beach' && z.id !== 'ant') { if (z.cells) { f
 const RCELLS = {}; for (const [id, , pts] of ROUTES) { RCELLS[id] = new Set([...bandCells(pts)].filter(k => !ZCELLS.has(k))); }
 RCELLS.R4.forEach(k => RCELLS.R4b.delete(k));
 const TCELLS = {}; const TRAILPTS = []; // the wild links (v13): nearest plot to nearest plot
+const LINKPLOTS = []; // --plots: one row a wild link
 const cellsOf = id => { const z = ZB(id); if (z.cells) return [...z.cells].map(k => k.split(',').map(Number)); const o = []; for (let x = z.x; x < z.x + z.w; x++) for (let y = z.y; y < z.y + z.h; y++) o.push([x, y]); return o; };
 { const all = new Set(); for (const id in RCELLS) for (const k of RCELLS[id]) all.add(k);
   for (const [zk, a, b] of LINKS) { const c = TCELLS[zk] = TCELLS[zk] || new Set(); let best = null;
     for (const p of cellsOf(a)) for (const q of cellsOf(b)) { const d = Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]); if (!best || d < best[0]) best = [d, p, q]; }
     const [, [ax, ay], [bx, by]] = best; const pts = Math.abs(bx - ax) > Math.abs(by - ay) ? [[ax, ay], [bx, ay], [bx, by]] : [[ax, ay], [ax, by], [bx, by]];
-    TRAILPTS.push(pts); for (const k of bandCells(pts, 1)) if (!ZCELLS.has(k) && !all.has(k)) c.add(k); } }
+    const own = []; // --plots: this link's own plots (the ones no district, route or earlier link of its zone already holds)
+    TRAILPTS.push(pts); for (const k of bandCells(pts, 1)) if (!ZCELLS.has(k) && !all.has(k)) { if (!c.has(k)) own.push(k); c.add(k); }
+    LINKPLOTS.push({ zone: zk, a, b, pts, own, band: [...bandCells(pts, 1)] }); } }
 const HCELLS = new Set(); for (const [, pts] of DESERT_HW) for (const k of bandCells(pts)) if (!ZCELLS.has(k)) HCELLS.add(k);
 const LANDC = new Set();
 for (let x = CEN[0] - RAD; x <= CEN[0] + RAD; x++) for (let y = CEN[1] - RAD; y <= CEN[1] + RAD; y++) if (inPoly(...TI(x + .5, y + .5), LAND)) LANDC.add(x + ',' + y);
@@ -577,14 +580,22 @@ const UGWAYS = [[-48.5, -24.6, 'Lemuria adit ↑ the Redwood Trail'], [-39.5, 27
   [-10, -45.5, 'lift ↑ Shasta'], [-6, 63, 'hangar lift ↑ Area 51'], [-43, 41, 'barn hatch ↑ the Ranch'], [-56, -28, 'quarry shaft ↑ Stonehenge'], [-8, 87.5, 'Polar Opening ↑ Antarctica'], [24, 3, 'Dutchman’s hold ↑ the Harbour'], [59, -4, 'the vortex ↑ the Triangle']];
 const WAY1 = { quarry: [-27, -10.6], wells: [-13.5, 10.5], tunnel: [-6.5, 2.5], barn: [-9.5, 19.5] };
 for (const w of UGWAYS) { const k = w[2].split(' ')[0]; const [x, y] = (K === 1 && WAY1[k]) ? WAY1[k] : F(w[0], w[1]); w[0] = x; w[1] = y; }
-function underground() {
+// the walked tunnels' plots, one row a walk (the sheet draws them; --plots lists them). A tunnel holds the plots no
+// district and no earlier tunnel holds.
+function ugCells() {
   const UB = id => { const r = UGD.find(u => u[1] === id); if (r) return { x: r[3], y: r[4], w: r[5], h: r[6] }; return ZB(id); };
   const cen = id => { if (Array.isArray(id)) return id; const z = UB(id); return [Math.floor(z.x + z.w / 2), Math.floor(z.y + z.h / 2)]; };
   const occ = new Set(); for (const u of UGD) for (let x = u[3]; x < u[3] + u[5]; x++) for (let y = u[4]; y < u[4] + u[6]; y++) occ.add(x + ',' + y);
-  const WALK = new Set(), wpts = [];
-  for (const [a, b] of UGWALK) { const [ax, ay] = cen(a), [bx, by] = cen(b); const pts = Math.abs(bx - ax) > Math.abs(by - ay) ? [[ax, ay], [bx, ay], [bx, by]] : [[ax, ay], [ax, by], [bx, by]]; wpts.push(pts); for (const k of bandCells(pts, 1)) if (!occ.has(k)) WALK.add(k); }
+  const WALK = new Set(), wpts = [], rows = [];
+  for (const [a, b] of UGWALK) { const [ax, ay] = cen(a), [bx, by] = cen(b); const pts = Math.abs(bx - ax) > Math.abs(by - ay) ? [[ax, ay], [bx, ay], [bx, by]] : [[ax, ay], [ax, by], [bx, by]]; wpts.push(pts); const own = [];
+    for (const k of bandCells(pts, 1)) if (!occ.has(k)) { if (!WALK.has(k)) own.push(k); WALK.add(k); } rows.push({ a, b, kind: 'walk', pts, own }); }
   const LOOPW = new Set(), SECW = new Set();
-  for (const [a, b, nm, k] of UGLOOP) { if (k === 'late') continue; const [ax, ay] = cen(a), [bx, by] = cen(b); const pts = (k === 'secret' || Math.abs(bx - ax) > Math.abs(by - ay)) ? [[ax, ay], [bx, ay], [bx, by]] : [[ax, ay], [ax, by], [bx, by]]; for (const c of bandCells(pts, 1)) if (!occ.has(c) && !WALK.has(c)) (k === 'secret' ? SECW : LOOPW).add(c); }
+  for (const [a, b, nm, k] of UGLOOP) { if (k === 'late') { rows.push({ a, b, kind: 'late', name: nm }); continue; } const [ax, ay] = cen(a), [bx, by] = cen(b); const pts = (k === 'secret' || Math.abs(bx - ax) > Math.abs(by - ay)) ? [[ax, ay], [bx, ay], [bx, by]] : [[ax, ay], [ax, by], [bx, by]]; const own = [], set = k === 'secret' ? SECW : LOOPW;
+    for (const c of bandCells(pts, 1)) if (!occ.has(c) && !WALK.has(c)) { if (!set.has(c)) own.push(c); set.add(c); } rows.push({ a, b, kind: k, name: nm, pts, own }); }
+  return { UB, cen, occ, WALK, wpts, LOOPW, SECW, rows };
+}
+function underground() {
+  const { cen, WALK, LOOPW, SECW } = ugCells();
   for (const c of LOOPW) WALK.add(c);
   UGSTATS.loops = LOOPW.size + SECW.size; UGSTATS.secret = SECW.size;
   UGSTATS.walk = WALK.size + SECW.size; UGSTATS.rooms = UGD.reduce((a, u) => a + u[7], 0);
@@ -661,6 +672,13 @@ function section() {
 }
 
 // ── 3. BEYOND THE MAP ──
+// [world, x, y, colour, [[district, plots, angle on the globe]]]: the sheet draws these, --plots lists them
+const BEYOND_WORLDS = [
+  ['THE MOON', 140, 150, '#cfcfcf', [['The Mare', 7, 180], ['The Crater', 9, -55], ['The Far Side', 4, 80]]],
+  ['MARS', 375, 150, '#c8643a', [['Cydonia', 10, 180], ['The Canyon', 5, -55], ['The Rover Bay', 5, 80]]],
+  ['SATURN', 620, 150, '#d9b77a', [['The Hexagon', 12, -90], ['The Ring Shard', 4, 20]]],
+  ['THE SINGULARITY', 862, 150, '#000', [['The Accretion Rim', 12, -60], ['The Drop', 4, 90]]],
+];
 function beyond() {
   const w = 1000, h = 820; let s = `<rect width="${w}" height="${h}" fill="#05050a"/>`;
   let seed = 4; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
@@ -668,12 +686,7 @@ function beyond() {
   const T = (x, y, t, o = {}) => `<text x="${x}" y="${y}" text-anchor="${o.a || 'middle'}" font-size="${o.fs || 8}" class="${o.c || 'dl'}" fill="${o.f || '#eee'}">${t}</text>`;
   // OUTER SPACE: four worlds, each district a landing site of its own on the globe; the ship flies between sites
   s += T(500, 26, 'OUTER SPACE · ONE FLIGHT, EACH DISTRICT ITS OWN LANDING', { fs: 12, c: 'lbl', f: '#ffd36a' });
-  const worlds = [
-    ['THE MOON', 140, 150, '#cfcfcf', [['The Mare', 7, 180], ['The Crater', 9, -55], ['The Far Side', 4, 80]]],
-    ['MARS', 375, 150, '#c8643a', [['Cydonia', 10, 180], ['The Canyon', 5, -55], ['The Rover Bay', 5, 80]]],
-    ['SATURN', 620, 150, '#d9b77a', [['The Hexagon', 12, -90], ['The Ring Shard', 4, 20]]],
-    ['THE SINGULARITY', 862, 150, '#000', [['The Accretion Rim', 12, -60], ['The Drop', 4, 90]]],
-  ];
+  const worlds = BEYOND_WORLDS;
   const sites = [];
   for (const [n, x, y, c, ds] of worlds) {
     const R = 58;
@@ -756,6 +769,199 @@ function closeup() {
   t += `<text x="${PAD}" y="26" font-size="16" font-weight="bold" fill="#fff" font-family="Georgia,serif">CLOSE-UP: THE WEST HALF, EVERY PLOT NAMED</text>`;
   t += `<text x="${PAD}" y="46" font-size="10" fill="#ddd" font-family="monospace">One cell = one plot = 12 x 12 battle squares (42 m). Gold = the district. Pale path = a wild link between districts. Brown = a road. Numbers = plots from Disaster City's corner.</text>`;
   return `<svg viewBox="0 0 ${W2} ${H2}" width="${W2}" height="${H2}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Close-up of the west half with every plot named">${s + t}</svg>`;
+}
+// ── --plots: THE EXTRACT (One World foundation, 2026-11-17). `node gen.js --plots` writes plots.json beside this file and nothing
+// else: every district's plots (name + world plot x, y, and where the plot stands in the game today), every route, wild link
+// and underground walk as plot lists, every way down / up, every island, the ground kind of every plot of the disc. The zone
+// threads read plots.json, never this file. The plot names + `was` come from the game's own rooms (data.js through the repo's
+// load-data.js), so a renamed or missing plot stops the extract instead of slipping through. ──
+if (process.argv.includes('--plots')) { plotsExtract(); process.exit(0); }
+function plotsExtract() {
+  const path = require('path'), vm = require('vm');
+  const REPO = path.join(__dirname, '../../..');
+  const G = require(path.join(REPO, 'load-data.js')).loadGameData();
+  const ROOMS = G.DOOR_HQ.rooms, ZM = vm.runInContext('HQ_ZONE_MAP', G);
+  const key = (x, y) => x + ',' + y, xy = k => k.split(',').map(Number);
+  const fail = m => { console.error('plots: ' + m); process.exit(1); };
+  const norm = n => String(n).replace(/[’']/g, "'").replace(/^the\s+/i, '').replace(/\s*\(label mine\)/i, '').trim().toLowerCase();
+  // today's plots of a room, by district letter: [{ id, n, gx, gy }]
+  const todayOf = (room, letters) => {
+    const R = ROOMS[room]; if (!R) fail('no room ' + room);
+    if (room === 'site_prebuilt_downtown_streets') { const row = ZM.zones.city.rooms[0]; return row.plots.filter(q => letters.includes(q[2])).map(q => ({ id: q[0], n: q[1], gx: q[3], gy: q[4] })); }
+    return (R.plots.names || []).filter(q => letters.includes(q[2])).map(q => { const m = /^P(\d+)-(\d+)$/.exec(q[0]); return { id: q[0], n: q[1], gx: +m[1], gy: +m[2] }; });
+  };
+  // ── every district: [hub (data.js DOOR_HQ.hubs), zone name, district name, state, today's room, today's district letters] ──
+  // state: 'stays' = the room keeps its shape, only gets its world position (phase 1); 'moves' = a zone thread re-lays it
+  // (phase 3); 'new' = no plots in the game yet (phase 4); 'reroute' = the Desert: BUILD_PLAN counts it as staying, but this
+  // sheet stands its four districts apart with the Highway re-routed between them (phase 4.2 decides); 'shrinks' = the Beach:
+  // its first 8 columns stay at the city, the Triangle and the Volcano Island leave for their islands (phase 4.3).
+  // hub / room / letters are the game's own keys.
+  const MT = 'site_prebuilt_shasta_mountains', WD = 'site_prebuilt_fairy_forest_plots', CM = 'site_prebuilt_camelot_kingdom', ES = 'site_prebuilt_skinwalker_estate',
+    LY = 'site_prebuilt_gobekli_ancient', DS = 'site_prebuilt_area51_desert', BC = 'site_prebuilt_bermuda_beach', CT = 'site_prebuilt_downtown_streets';
+  const DMETA = {
+    np: ['mountains', 'The Mountains', 'The North Pole', 'stays', 'site_prebuilt_northpole_plots', ['The North Pole village']],
+    hills: ['city', 'Disaster City', 'The Hollywood Hills', 'stays', CT, ['N']],
+    city: ['city', 'Disaster City', 'Disaster City', 'stays', CT, ['C', 'F', 'E', 'U', 'H', 'B', 'R', 'S', 'I']],
+    vat: ['divine', 'The Vatican', 'The Vatican', 'stays', 'site_prebuilt_vatican_plots', ['G', 'P', 'S', 'B', 'C']],
+    col: ['divine', 'The Vatican', 'The Colosseum', 'new', null, []],
+    circus: ['desert', 'The Desert', 'The Circus', 'reroute', DS, ['C']], wt: ['desert', 'The Desert', 'Western Town', 'reroute', DS, ['W']],
+    a51: ['desert', 'The Desert', 'Area 51', 'reroute', DS, ['A']], giza: ['desert', 'The Desert', 'Giza', 'reroute', DS, ['G']],
+    beach: ['beach', 'The Beach', 'The Beach (the Shore, the Harbour, the near sea)', 'shrinks', BC, ['S', 'H', 'O']],
+    stone: ['ley', 'Leylines', 'Stonehenge', 'moves', LY, ['S']],
+    ant: ['antarctica', 'Antarctica', 'Antarctica', 'stays', 'site_prebuilt_antarctica_plots', ['H', 'W', 'C', 'O', 'S', 'F']],
+    woods: ['woods', 'The Woods', 'The Clearing', 'moves', WD, ['C']], woodsT: ['woods', 'The Woods', 'The Redwood Trail', 'moves', WD, ['T']],
+    woodsG: ['woods', 'The Woods', 'The Ritual Ground', 'moves', WD, ['G']], woodsM: ['woods', 'The Woods', 'Dead Man’s Cave', 'moves', WD, ['M']],
+    cam: ['kingdom', 'Camelot Kingdom', 'Castle + Village', 'moves', CM, ['K', 'T']], camN: ['kingdom', 'Camelot Kingdom', 'The Snowy Pines', 'moves', CM, ['N']],
+    camL: ['kingdom', 'Camelot Kingdom', 'The Looking-Glass Garden', 'moves', CM, ['L']], camF: ['kingdom', 'Camelot Kingdom', 'The Fairy Forest', 'moves', CM, ['F']],
+    camW: ['kingdom', 'Camelot Kingdom', 'The Forest', 'moves', CM, ['W']],
+    estate: ['ranch', 'The Estate', 'The Lake', 'moves', ES, ['L']], estC: ['ranch', 'The Estate', 'The Corn Fields', 'moves', ES, ['C']],
+    estH: ['ranch', 'The Estate', 'The Haunted House', 'moves', ES, ['H']], estR: ['ranch', 'The Estate', 'The Ranch', 'moves', ES, ['R']],
+    mtn: ['mountains', 'The Mountains', 'Mount Olympus', 'moves', MT, ['Mount Olympus']], mtnP: ['mountains', 'The Mountains', 'The Snowy Pass', 'moves', MT, ['The Snowy Pass']],
+    mtnK: ['mountains', 'The Mountains', 'The Ski Lodge', 'moves', MT, ['The Ski Lodge + slopes']], shasta: ['mountains', 'The Mountains', 'Mount Shasta', 'moves', MT, ['Mount Shasta']],
+    ley: ['ley', 'Leylines', 'Göbekli Tepe', 'moves', LY, ['G']], leyY: ['ley', 'Leylines', 'The Ley Line', 'moves', LY, ['Y']], ley2: ['ley', 'Leylines', 'Babel', 'moves', LY, ['T']],
+    leyB: ['ley', 'Leylines', 'Bug Colony', 'moves', LY, ['B']], leyZ: ['ley', 'Leylines', 'Technoticlan', 'moves', LY, ['Z']],
+  };
+  const SW = 'site_prebuilt_downtown_underworld', CV = 'site_prebuilt_hollow_earth_cavern', DB = 'site_prebuilt_dumb_base', DP = 'site_prebuilt_atlantis_deep', HL = 'site_prebuilt_hell_plots';
+  const UMETA = {
+    sewW: ['underworld', 'The Sewers', 'moves', SW, ['W']], sewT: ['underworld', 'The Sewers', 'moves', SW, ['T']], sewH: ['underworld', 'The Sewers', 'moves', SW, ['H']],
+    sewO: ['underworld', 'The Sewers', 'moves', SW, ['O']], sewR: ['underworld', 'The Sewers', 'moves', SW, ['R']],
+    cat: ['divine', 'The Catacombs', 'stays', 'site_prebuilt_vatican_under', ['K']], hell: ['divine', 'Hell', 'stays', HL, ['R', 'D', 'L', 'W']],
+    cavK: ['cavern', 'The Cavern', 'moves', CV, ['K']], cavH: ['cavern', 'The Cavern', 'moves', CV, ['H']], cavA: ['cavern', 'The Cavern', 'moves', CV, ['A']],
+    dP: ['dumb', 'The D.U.M.B.', 'moves', DB, ['P']], dC: ['dumb', 'The D.U.M.B.', 'moves', DB, ['C']], dR: ['dumb', 'The D.U.M.B.', 'moves', DB, ['R']],
+    dS: ['dumb', 'The D.U.M.B.', 'moves', DB, ['S']], dK: ['dumb', 'The D.U.M.B.', 'moves', DB, ['K']],
+    deepA: ['deep', 'The Deep', 'moves', DP, ['C', 'R']], deepS: ['deep', 'The Deep', 'moves', DP, ['S']], deepT: ['deep', 'The Deep', 'moves', DP, ['T']],
+  };
+  // a district's plot rows. Shaped (SHAPES): each of gen.js' plots matched to the game's plot of the same name. A block that is
+  // the game's own shape: the game's plots, carried over corner to corner. Any other block: the rect, and today's plots listed
+  // without a place (`loose`): the zone thread lays them inside the rect.
+  const rowsFor = (id, rect, shaped, room, letters) => {
+    const today = room ? todayOf(room, letters) : [];
+    if (shaped) {
+      if (today.length !== shaped.length) fail(id + ': ' + shaped.length + ' plots here, ' + today.length + ' in the game');
+      const left = today.slice();
+      return { plots: shaped.map(([n, x, y]) => { const i = left.findIndex(t => norm(t.n) === norm(n)); if (i < 0) fail(id + ': no plot named "' + n + '" in ' + room + ' ' + letters); const t = left.splice(i, 1)[0]; return { n: t.n, x, y, was: t.id }; }) };
+    }
+    if (id === 'beach') { const plots = []; for (let gy = 0; gy < rect.h; gy++) for (let gx = 0; gx < rect.w; gx++) { const t = today.find(q => q.gx === gx && q.gy === gy), was = 'P' + String(gx).padStart(2, '0') + '-' + String(gy).padStart(2, '0');
+        plots.push(t ? { n: t.n, x: rect.x + gx, y: rect.y + gy, was } : { x: rect.x + gx, y: rect.y + gy, was }); } return { plots, at: [0, 0] }; }
+    if (!today.length) { const plots = []; for (let y = rect.y; y < rect.y + rect.h; y++) for (let x = rect.x; x < rect.x + rect.w; x++) plots.push({ x, y }); return { plots, unnamed: true }; }
+    const gx0 = Math.min(...today.map(t => t.gx)), gy0 = Math.min(...today.map(t => t.gy)), gw = Math.max(...today.map(t => t.gx)) - gx0 + 1, gh = Math.max(...today.map(t => t.gy)) - gy0 + 1;
+    if (gw === rect.w && gh === rect.h) return { plots: today.map(t => ({ n: t.n, x: rect.x + t.gx - gx0, y: rect.y + t.gy - gy0, was: t.id })).sort((a, b) => a.y - b.y || a.x - b.x), at: [gx0, gy0] };
+    return { loose: today.map(t => ({ n: t.n, was: t.id })), todayBox: [gx0, gy0, gw, gh] };
+  };
+  const districts = [], owner = {}; // owner: surface plot -> what stands on it
+  for (const z of SURF) {
+    const m = DMETA[z.id]; if (!m) fail('no DMETA row for ' + z.id);
+    const r = rowsFor(z.id, z, z.plots, m[4], m[5]);
+    const d = { id: z.id, hub: m[0], zone: m[1], name: m[2], state: m[3], layer: 'surface', x: z.x, y: z.y, w: z.w, h: z.h, shape: z.plots ? 'path' : 'block', count: r.plots ? r.plots.length : r.loose.length };
+    if (m[4]) d.today = { room: m[4], districts: m[5] }; if (r.at) d.today.at = r.at; if (r.todayBox) d.today.box = r.todayBox;
+    if (r.plots) d.plots = r.plots; if (r.loose) { d.loose = r.loose; d.note = 'today’s shape is not this rect: the zone thread lays these plots inside it'; } if (r.unnamed) d.note = 'no plots in the game yet';
+    districts.push(d);
+    for (const q of (r.plots || [])) owner[key(q.x, q.y)] = { t: 'district', id: z.id };
+    if (!r.plots) for (let x = z.x; x < z.x + z.w; x++) for (let y = z.y; y < z.y + z.h; y++) owner[key(x, y)] = { t: 'district', id: z.id };
+  }
+  // ── plot lists in walking order: along each leg in turn, across the band ──
+  const along = (pts, w, keep) => { const out = [], seen = new Set();
+    for (let i = 1; i < pts.length; i++) { const [ax, ay] = pts[i - 1], [bx, by] = pts[i], horiz = ay === by, leg = [];
+      for (let x = Math.min(ax, bx); x < Math.max(ax, bx) + w; x++) for (let y = Math.min(ay, by); y < Math.max(ay, by) + w; y++) leg.push([x, y]);
+      leg.sort((p, q) => horiz ? (bx >= ax ? p[0] - q[0] : q[0] - p[0]) || p[1] - q[1] : (by >= ay ? p[1] - q[1] : q[1] - p[1]) || p[0] - q[0]);
+      for (const p of leg) { const k = key(...p); if (keep.has(k) && !seen.has(k)) { seen.add(k); out.push(p); } } }
+    if (out.length !== keep.size) fail('a plot list lost plots: ' + out.length + ' of ' + keep.size); return out; };
+  const LOOKOF = { major: 'highway', regional: 'road', trail: 'trail' };
+  const routes = [];
+  for (const [id, nm, pts, txt] of ROUTES) {
+    const spec = ROUTE_SPEC.find(r => r[0] === id);
+    if (!RCELLS[id].size) continue; // R4b, the fork to the Woods: every plot of it is already R4's
+    const row = { id, name: nm, look: LOOKOF[ROADCLASS[id]], wide: 2, from: spec[2], to: spec[3], onTheWay: txt, legs: pts, plots: along(pts, 2, RCELLS[id]) };
+    if (id === 'R4') row.note = 'the fork to the Woods (R4b on the sheet) lies inside this band: the Old Road passes the Clearing’s Stair';
+    routes.push(row);
+    for (const p of row.plots) { const k = key(...p); if (!owner[k]) owner[k] = { t: 'route', id }; else (owner[k].also = owner[k].also || []).push(id); }
+  }
+  const highway = { id: 'DH', name: 'The Desert Highway', look: 'highway', wide: 2, state: 'stays', today: { room: DS, districts: ['R'] }, todayCount: todayOf(DS, ['R']).length,
+    note: 'the Desert’s own Highway plots (district R) as the loop between its four districts: re-route only, no new plots',
+    legs: DESERT_HW.map(([nm, pts]) => { const keep = new Set([...bandCells(pts)].filter(k => !ZCELLS.has(k))); return { name: nm, legs: pts, plots: along(pts, 2, keep) }; }), count: HCELLS.size };
+  for (const k of HCELLS) { if (!owner[k]) owner[k] = { t: 'highway', id: 'DH' }; else (owner[k].also = owner[k].also || []).push('DH'); }
+  const links = LINKPLOTS.map((L, i) => { const row = { id: 'L' + (i + 1), zone: DMETA[L.a][1], hub: DMETA[L.a][0], look: 'trail', wide: 1, from: L.a, to: L.b, fromPlot: L.pts[0], toPlot: L.pts[L.pts.length - 1], legs: L.pts, plots: along(L.pts, 1, new Set(L.own)) };
+    const shared = L.band.filter(k => !L.own.includes(k) && !ZCELLS.has(k)); if (shared.length) row.shares = shared.map(k => ({ at: xy(k), with: (owner[k] || {}).id || 'an earlier link' }));
+    for (const p of row.plots) owner[key(...p)] = { t: 'link', id: row.id }; return row; });
+  // what each route / link plot touches (a district plot, another route): the stitching list
+  const touch = plots => { const out = []; for (const [x, y] of plots) for (const [dx, dy, side] of [[0, -1, 'n'], [1, 0, 'e'], [0, 1, 's'], [-1, 0, 'w']]) { const o = owner[key(x + dx, y + dy)]; if (o && o.t === 'district') out.push({ plot: [x, y], side, district: o.id, at: [x + dx, y + dy] }); } return out; };
+  for (const r of routes) r.meets = touch(r.plots); for (const l of links) l.meets = touch(l.plots); for (const l of highway.legs) l.meets = touch(l.plots);
+  // ── the ground: one letter a plot ──
+  const GKEY = { peak: ['P', 'snow'], rock: ['R', 'rock'], alpine: ['A', 'rock'], foot: ['F', 'grass'], tundra: ['T', 'snow'], forest: ['f', 'forest'], wood: ['w', 'forest'], meadow: ['m', 'grass'], grass: ['g', 'grass'], farm: ['a', 'grass'],
+    scrub: ['s', 'scrub'], bad: ['b', 'rock'], desert: ['d', 'desert'], dunes: ['D', 'desert'], marsh: ['M', 'grass'], saltflat: ['S', 'desert'], sand: ['n', 'desert'], cliff: ['c', 'rock'] };
+  const gkey = { '~': { kind: 'sea', label: 'The sea' }, 'i': { kind: 'ice', label: 'Ice (Antarctica, the Frozen Sea)', kit: 'snow' }, '#': { kind: 'wall', label: 'The Ice Wall and past it' } };
+  for (const k in GKEY) gkey[GKEY[k][0]] = { kind: k, label: BIOMES[k][1], kit: GKEY[k][1] };
+  const X0 = CEN[0] - RAD - 2, Y0 = CEN[1] - RAD - 2, GW = 2 * RAD + 5, GH = 2 * RAD + 5, grows = [];
+  const isl = {}; for (const z of ISL) for (let x = z.x; x < z.x + z.w; x++) for (let y = z.y; y < z.y + z.h; y++) isl[key(x, y)] = z.id;
+  const ISLG = { volcano: 'f', cove: 'n', frozen: 'i', tri: '~' }; const islet = new Set(ISLETS.map(p => key(...p)));
+  const ant = SURF.find(z => z.id === 'ant');
+  for (let y = Y0; y < Y0 + GH; y++) { let row = '';
+    for (let x = X0; x < X0 + GW; x++) { const k = key(x, y); let c;
+      if (BIO[k]) c = GKEY[BIO[k]][0]; else if (x >= ant.x && x < ant.x + ant.w && y >= ant.y && y < ant.y + ant.h) c = 'i'; else if (isl[k]) c = ISLG[isl[k]]; else if (islet.has(k)) c = 'n';
+      else c = Math.hypot(x + .5 - CEN[0], y + .5 - CEN[1]) > RAD ? '#' : '~';
+      row += c; }
+    grows.push(row); }
+  // ── below ──
+  const U = ugCells();
+  const under = { districts: [], walks: [], rides: [], ways: [] };
+  for (const u of UGD) { const [zk, id, nm, x, y, w, h, n] = u, m = UMETA[id]; if (!m) fail('no UMETA row for ' + id);
+    const r = rowsFor(id, { x, y, w, h }, null, m[3], m[4]); const cnt = r.plots ? r.plots.length : r.loose.length;
+    if (cnt !== n) fail(id + ': the sheet says ' + n + ' plots, the game has ' + cnt);
+    const d = { id, hub: m[0], zone: m[1], name: nm, state: m[2], layer: 'under', x, y, w, h, shape: u[8] === 'ring' ? 'ring' : 'block', count: n, today: { room: m[3], districts: m[4] } };
+    if (r.at) d.today.at = r.at; if (r.todayBox) d.today.box = r.todayBox; if (r.plots) d.plots = r.plots; if (r.loose) { d.loose = r.loose; d.note = 'today’s shape is not this rect: the zone thread lays these plots inside it'; }
+    under.districts.push(d); }
+  const endOf = a => Array.isArray(a) ? { plot: a } : { district: a };
+  U.rows.forEach((r, i) => { if (r.kind === 'late') { under.rides.push({ name: r.name, from: r.a, to: r.b, kind: 'late', note: 'a ride, no plots; opens after the D.U.M.B.' }); return; }
+    under.walks.push({ id: 'U' + (i + 1), kind: r.kind === 'walk' && r.name ? 'loop' : r.kind, name: r.name || null, look: 'tunnel', wide: 1, from: endOf(r.a), to: endOf(r.b), legs: r.pts, plots: along(r.pts, 1, new Set(r.own)) }); });
+  for (const [a, b, nm] of UGRIDE) under.rides.push({ name: nm, from: a, to: b, kind: 'ride', note: 'a ride between stations, no plots' });
+  // every way down / up: [first word of the sheet's label, the surface end, the end below]. The ends are the page's ("New ways
+  // down", sheet 4) and the game's own doors; a plot = [x, y] where the sheet pins one.
+  const WAYEND = { Lemuria: ['woodsT', 'cavA'], wells: ['estC', 'cavK', [-14, 10]], tunnel: ['woodsM', 'cavK', [-7, 2]], stairs: ['vat', 'cat'], lift: ['shasta', 'dS'], hangar: ['a51', 'dC'], barn: ['estR', 'dR', [-10, 19]],
+    quarry: ['stone', 'dK'], Polar: ['ant', 'cavH'], 'Dutchman’s': ['beach', 'deepS'], the: ['tri', 'deepA'] };
+  for (const [x, y, t] of UGWAYS) { const e = WAYEND[t.split(' ')[0]]; if (!e) fail('no way ends for "' + t + '"'); const row = { name: t.split(' ↑ ')[0], sheet: [r1(x), r1(y)], up: e[0], down: e[1] }; if (e[2]) row.plot = e[2]; under.ways.push(row); }
+  under.ways.find(w => w.name.startsWith('tunnel')).alsoDown = 'sewH';
+  // ── beyond the map (the sheet's layouts; no plot coordinates yet) ──
+  const beyond = {
+    space: BEYOND_WORLDS.map(([n, , , , ds]) => ({ world: n, hub: 'space', landings: ds.map(([dn, plots]) => ({ name: dn, plots })) })),
+    heaven: { hub: 'divine', room: 'site_prebuilt_heaven_plots', up: { from: 'mtn', plot: 'Grand Stair', name: 'The Stairway, up from Olympus' }, districts: [['The Stairway', 8], ['The Gate', 4], ['The Cloud Fields', 4], ['The City', 4]].map(([name, plots]) => ({ name, plots })), note: 'cloud districts apart above the Vatican, cloud paths between' },
+    astral: { hub: 'astral', room: 'site_prebuilt_lookingglass_realm', islands: [['The Sea of Possibility', 16], ['The Library', 10], ['The Nightmare', 10]].map(([name, plots]) => ({ name, plots })), crossings: 2 },
+    internet: { plots: 36, state: 'new', way: 'the D.U.M.B.’s server rooms' }, colosseum: { plots: 9, state: 'new', district: 'col' },
+    spaceship: { way: 'the Collar, Antarctica (district H)', note: 'the Spaceship stays handmade; it flies between the landings' },
+  };
+  const islands = ISL.map(z => { const m = { volcano: ['moves', BC, 'The Volcano, The Volcano Island, The Landing, The Village (district O today) grow to 6 x 6'], tri: ['moves', BC, 'district T today (25 plots); the Maelstrom drops to Atlantis'], cove: ['new', null, 'idea'], frozen: ['new', null, 'pack ice round the Pole'] }[z.id];
+    const plots = []; for (let y = z.y; y < z.y + z.h; y++) for (let x = z.x; x < z.x + z.w; x++) plots.push([x, y]);
+    const row = { id: z.id, name: z.name.replace(/’/g, '’'), state: m[0], x: z.x, y: z.y, w: z.w, h: z.h, count: plots.length, note: m[2], plots }; if (m[1]) row.today = { room: m[1] }; return row; });
+  // ── the counts the page states: stop if the extract disagrees with the sheets ──
+  const sum = a => a.reduce((n, r) => n + r.plots.length, 0);
+  const tot = { routes: sum(routes), links: sum(links), highway: HCELLS.size, underDistricts: under.districts.reduce((n, d) => n + d.count, 0), underWalks: sum(under.walks), islands: islands.reduce((n, z) => n + z.count, 0),
+    surfaceDistricts: districts.reduce((n, d) => n + d.count, 0) };
+  underground();
+  const want = { routes: routeTotal, links: Object.values(TCELLS).reduce((n, v) => n + v.size, 0), underWalks: UGSTATS.walk, underDistricts: UGSTATS.rooms };
+  for (const k in want) if (tot[k] !== want[k]) fail(k + ': the extract has ' + tot[k] + ', the sheets ' + want[k]);
+  const outp = {
+    about: 'One World v13: every walkable plot. Written by `node docs/plans/one-world/gen.js --plots`; never edit by hand. Read docs/plans/one-world/README.md + docs/notes/areas-complexes.md "ONE WORLD, THE ZONE MOVES".',
+    v: 13, plot: { squares: 12, metres: 42, square: 3.5 }, coords: 'x east, y south, in plots; Disaster City’s first city plot (north-west corner) = 0,0; a plot [x, y] covers x..x+1, y..y+1',
+    disc: { cx: CEN[0], cy: CEN[1], r: RAD }, totals: tot,
+    ground: { x0: X0, y0: Y0, w: GW, h: GH, key: gkey, rows: grows, note: 'rows[y - y0][x - x0] = the plot’s ground letter; key[letter].kit = the route kit’s ground kind (forest, scrub, snow, grass, desert, rock)' },
+    districts, routes, highway, links, islands, under, beyond,
+    scenery: { note: 'not plots: seen past the edges', rivers: RIVERS, places: PLACES.map(([name, x, y, kind]) => ({ name, x, y, kind, idea: true })), ports: PORTS.map(([name, x, y]) => ({ name, x, y })), islets: ISLETS, roundVoyage: LOOP },
+  };
+  // one row a line, so a diff shows the plot that moved
+  const line = v => JSON.stringify(v);
+  const arr = (a, ind) => '[\n' + a.map(v => ind + '  ' + line(v)).join(',\n') + '\n' + ind + ']';
+  const big = d => { const o = Object.assign({}, d), keep = {}; for (const k of ['plots', 'loose', 'meets']) if (o[k]) { keep[k] = o[k]; delete o[k]; } let t = line(o).slice(0, -1); for (const k in keep) t += ',\n      "' + k + '": ' + arr(keep[k], '      '); return t + '}'; };
+  const list = a => '[\n' + a.map(d => '    ' + big(d)).join(',\n') + '\n  ]';
+  let t = '{\n';
+  for (const k of ['about', 'v', 'plot', 'coords', 'disc', 'totals']) t += '  "' + k + '": ' + line(outp[k]) + ',\n';
+  t += '  "ground": {"x0":' + X0 + ',"y0":' + Y0 + ',"w":' + GW + ',"h":' + GH + ',"note":' + line(outp.ground.note) + ',\n    "key": ' + line(gkey) + ',\n    "rows": ' + arr(grows, '    ') + '},\n';
+  t += '  "districts": ' + list(districts) + ',\n  "routes": ' + list(routes) + ',\n';
+  t += '  "highway": ' + line(Object.assign({}, highway, { legs: undefined })).slice(0, -1) + ',\n    "legs": ' + list(highway.legs).replace(/\n/g, '\n  ') + '},\n';
+  t += '  "links": ' + list(links) + ',\n  "islands": ' + list(islands) + ',\n';
+  t += '  "under": {\n  "districts": ' + list(under.districts) + ',\n  "walks": ' + list(under.walks) + ',\n  "rides": ' + arr(under.rides, '  ') + ',\n  "ways": ' + arr(under.ways, '  ') + '},\n';
+  t += '  "beyond": ' + line(beyond) + ',\n  "scenery": ' + line(outp.scenery) + '\n}\n';
+  JSON.parse(t);
+  fs.writeFileSync(__dirname + '/plots.json', t);
+  console.log('plots.json', JSON.stringify(tot));
 }
 const out = { closeup: closeup(), terrain: terrainSheet(), travel: travelSheet(), surface: surface(), underground: underground(), section: section(), beyond: beyond() };
 fs.writeFileSync(__dirname + '/svgs.json', JSON.stringify(out));
