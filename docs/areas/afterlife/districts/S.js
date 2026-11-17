@@ -7,14 +7,14 @@
    The gate: Disaster City's Civic Center gate is on the other side (owner side). It is CLOSED: no link, a note on the board. */
 'use strict';
 exports.build = ctx => { const { gx, gz, wall, look } = ctx;
-    wall(gx(71), gz(23), gx(71), gz(25), 0, 6);   // the gate is shut
+    /* THE GATE IS OPEN (2026-11-17, One World: the River Road, route R1, goes out of it over the Tiber; was shut, a ghost wall) */
     /* THE OBELISK: a needle of red granite on a marble pedestal, a gilt cross on its tip (the catalogue's `obelisk` is a black monolith with eyes: not this one) */
     look('obelisk', gx(60), gz(24), 0, 0.9, a => { a.box(0, 0, 0, 4.4, 1.2, 4.4, 'marble_2', 0xe8e0d0); a.box(0, 1.2, 0, 3.2, 3, 3.2, 'marble_2', 0xf0e8d8); a.box(0, 4.2, 0, 3.8, 0.5, 3.8, 'marble_2', 0xe8e0d0);
         a.cyl(0, 4.7, 0, 1.75, 19, 'marble_2', 0xd8a08a, { r2: 1.15, seg: 4, a0: 45, glow: 0.35 }); a.cyl(0, 23.7, 0, 1.15, 1.6, 'marble_2', 0xd8a08a, { r2: 0, seg: 4, a0: 45, glow: 0.35 });
         a.box(0, 25.3, 0, 0.14, 1.5, 0.14, 'gold'); a.box(0, 26.2, 0, 0.9, 0.14, 0.14, 'gold'); });
     look('gate', gx(71.5), gz(24), 0, 0, a => {
-        a.box(-0.2, 0, 0, 0.3, 6.4, 6.6, 'urban:MetalCorrugated1a', 0x3a2f22);                       // the two bronze leaves
-        for (let i = -1; i <= 1; i += 2) a.box(-0.42, 0.4, i * 1.65, 0.12, 5.4, 2.6, 'gold', 0x8a6a2a);
+        for (let i = -1; i <= 1; i += 2) { a.box(-1.85, 0, i * 3.25, 3.3, 6.4, 0.3, 'urban:MetalCorrugated1a', 0x3a2f22);   // the two bronze leaves, swung in against the jambs
+            a.box(-1.85, 0.4, i * 3.03, 2.6, 5.4, 0.12, 'gold', 0x8a6a2a); }
         a.box(0, 6.4, 0, 3.6, 2.4, 7.6, 'marble_light', 0xe2d6bc); a.roof('gable', 0, 8.8, 0, 7.6, 2, 3.6, 'marble_light', 0xd9cdb2, { ry: 90 });
     });
 };

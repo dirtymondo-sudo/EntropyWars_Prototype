@@ -332,6 +332,12 @@ const STAND = [
       seam: { plot: 'P00-08', side: 'N', hwy: 'P00-07', along: 2, open: 7, label: 'THE HIGHWAY · THE LONG STRAIGHT', sub: 'THE BASE ROAD · OUT TO THE HIGHWAY', desc: 'The base road runs north, straight, to the Highway.', back: { label: 'AREA 51', sub: 'THE BASE ROAD · SOUTH TO THE GATE', desc: 'The road runs south, straight, to a gate nobody is meant to reach.' } } },
     { id: R_GIZA, part: 'ow_giza', letter: 'G', label: 'GIZA', sub: 'THE DESERT · THE PYRAMIDS · 16 PLOTS', lines: O_GIZA.l,
       parti: 'Three pyramids and the Sphinx on sixteen plots of sand: the causeway, the dig, the obelisks, the oasis, the Tomb Door and the Great Pyramid over four plots.',
+      /* THE COAST + THE CAUSEWAY (2026-11-17, One World 4.3; the 4.3 thread's one change to this tool, a dated note on docs/notes/claims.md): two more open
+         seams on Giza's own walls, to route rooms the route kit writes (their side is the kit's): R10 the Coast Road comes in from the north on Giza's
+         P10-08 (world 15,29), west of the pyramid that stands on the line between 15 and 16; R11 the Delta Causeway comes in from the east on P11-11
+         (world 16,32), on the line between rows 31 and 32. `at` = metres along the plot from its west / north line. */
+      more: [{ plot: 'P10-08', side: 'N', at: 21, open: 11, id: 'ow_h_15_29', room: 'site_ow_r10_26_37', label: 'THE COAST ROAD', sub: 'NORTH ALONG THE SEA · TO THE BEACH', desc: 'A dirt road runs north off the sand, the sea on its right the whole way.' },
+             { plot: 'P11-11', side: 'E', at: 0, open: 11, id: 'ow_v_17_32', room: 'site_ow_r11', label: 'THE DELTA CAUSEWAY', sub: 'EAST OVER THE REED FLATS · TO GÖBEKLI TEPE', desc: 'A dirt road runs east off the sand over the reed flats.' }],
       seam: { plot: 'P08-08', side: 'N', hwy: 'P08-07', along: 6, open: 7, label: 'THE HIGHWAY · THE GIZA ROAD', sub: 'THE CAUSEWAY · OUT TO THE HIGHWAY', desc: 'The causeway turns to road and runs north to where the Highway ends.', back: { label: 'GIZA', sub: 'THE GIZA ROAD · ON TO THE CAUSEWAY', desc: 'The road turns to stone: the causeway, and the pyramids at the end of it.' } } },
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 180, E: 270, S: 0, W: 90 }, OPP = { N: 'S', S: 'N', E: 'W', W: 'E' };   // a free door's face = the way its opening faces, INTO its plot (ow-move.js)
@@ -362,10 +368,13 @@ STAND.forEach(S => {
     /* the spawn: two squares in from the seam */
     const k = Math.floor(sm.along - 0.01), bq = sd === 'N' ? [e.col * N + k, 0] : sd === 'S' ? [e.col * N + k, R.D - 1] : sd === 'W' ? [0, e.row * N + k] : [R.W - 1, e.row * N + k];
     const spSq = [bq[0] - SIDE4[sd][0] * 2, bq[1] - SIDE4[sd][1] * 2];
-    const doorsOut = R.doors.map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; return o; }).concat([dDoor]);
+    const more = (S.more || []).map(m => { const q = R.ofHome[m.plot]; if (!q) throw new Error(S.id + ': no plot ' + m.plot); const d = { id: m.id, wall: m.side.toLowerCase() };
+        if (m.side === 'N' || m.side === 'S') d.x = r2(R.gx(q.col * N) + m.at); else d.z = r2(R.gz(q.row * N) + m.at);
+        return Object.assign(d, { way: 'open', passage: { w: m.open }, label: m.label, sub: m.sub, action: { room: m.room, at: m.id }, desc: m.desc }); });
+    const doorsOut = R.doors.map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; return o; }).concat([dDoor], more);
     ROOMS_OUT.push({ S, R, world: true, W: R.W, D: R.D, HX: R.HX, HZ: R.HZ, names: R.names, mask: null, cols: R.cols, rows: R.rows,
         paint: crop(R, (x, y) => paint[y * NW + x]), marks: mk, traffic: [], features: R.features.concat(fences, scatter), doors: doorsOut, props: R.props, npc: R.npc, air, lines: S.lines,
-        sp: { x: R.gcx(spSq[0]), z: R.gcz(spSq[1]), face: FACE[sd] }, ways: [{ side: sd.toLowerCase(), at: ns ? dDoor.x : dDoor.z }],
+        sp: { x: R.gcx(spSq[0]), z: R.gcz(spSq[1]), face: FACE[sd] }, ways: [{ side: sd.toLowerCase(), at: ns ? dDoor.x : dDoor.z }].concat(more.map(d => ({ side: d.wall, at: d.x != null ? d.x : d.z }))),
         gx0: R.gx(0), gz0: R.gz(0), gcx0: R.gcx(0), gcz0: R.gcz(0) });
 });
 /* THE HIGHWAY: its 87 plots where they stood (the same frame, nothing on them moves); the four blocks are cut out of it: a mesa stands on each
@@ -392,7 +401,7 @@ if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer 
   if (n('props') !== props.length) throw new Error('props: ' + n('props') + ' of ' + props.length + ' stand in a room');
   if (n('npc') !== npc.length) throw new Error('natives: ' + n('npc') + ' of ' + npc.length + ' stand in a room');
   if (fe !== F.length - SCATTER.length) throw new Error('features: ' + fe + ' of ' + (F.length - SCATTER.length) + ' stand in a room');
-  if (n('doors') - STAND.length * 2 !== doors.length) throw new Error('doors: ' + (n('doors') - STAND.length * 2) + ' of ' + doors.length);
+  if (n('doors') - STAND.length * 2 - STAND.reduce((t, S) => t + (S.more || []).length, 0) !== doors.length) throw new Error('doors: ' + (n('doors') - STAND.length * 2) + ' of ' + doors.length);
   if (n('marks') !== marks.length) throw new Error('marks: ' + n('marks') + ' of ' + marks.length); }
 ROOMS_OUT.forEach(o => console.log(o.S.id + ' ' + JSON.stringify({ box: o.cols + 'x' + o.rows, plots: o.names.length, props: o.props.length, features: o.features.length, doors: o.doors.length, natives: o.npc.length, marks: o.marks.length, wx: o.world ? o.R.wx : '-', wy: o.world ? o.R.wy : '-' })));
 

@@ -1,0 +1,29 @@
+{
+  "about": "THE COAST ROAD (route R10, One World phase 4.3, 2026-11-17): a dirt road down the east coast from the Beach's south shore to Giza's north side, 38 plots, the sea on its east side the whole way (sand, grass, dry scrub, badlands, desert). TWO ROOMS by the room-splitting rule (30 plots and 12 plots in one straight row at most): the north room, plots 0 to 25 (the Beach to the badlands, 3 x 11), and the south room, plots 26 to 37 (the badlands to Giza, 2 x 6); they meet on the line y = 23. The north end comes up onto the Beach's south spit (bake-beach.js THE ONE WORLD MOVE lays the spit); the south end goes in at Giza's north-east plot, west of the pyramid that stands on the line x = 16. Places (ow-places.js, ideas): the design page gives \"cliff tunnel, surf coves, a lookout over the sea\": the surf racks, the drying nets and the lookout stand on the sand plots, the rest are the kit's pick by ground kind. Bake: node bake-beach.js, node bake-desert.js, then node bake-route.js R10 --from 0 --to 25 and node bake-route.js R10 --from 26 --to 37.",
+  "hub": "beach",
+  "site": "prebuilt_bermuda",
+  "stretches": {
+    "0_25": {
+      "label": "THE COAST ROAD",
+      "sub": "THE BEACH TO THE BADLANDS · THE SEA ON YOUR LEFT GOING NORTH · 26 PLOTS",
+      "line": [[16, 11.9], [16, 14.5], [17, 15.5], [17, 21.4], [16, 22.4], [16, 23.1]],
+      "ends": {
+        "ow_h_16_12": { "room": "site_prebuilt_bermuda_beach", "label": "THE BEACH", "sub": "THE COAST ROAD · NORTH ONTO THE SPIT", "desc": "The road runs out onto a spit of sand, and the beach and the harbour are across the water." },
+        "ow_h_15_12": { "room": "site_prebuilt_bermuda_beach", "label": "THE BEACH", "sub": "THE COAST ROAD · NORTH ONTO THE SPIT", "desc": "The road runs out onto a spit of sand, and the beach and the harbour are across the water." },
+        "ow_h_16_23": { "room": "site_ow_r10_26_37", "label": "THE COAST ROAD", "sub": "SOUTH · TO GIZA", "desc": "The road runs on south over the badlands." },
+        "ow_h_15_23": { "room": "site_ow_r10_26_37", "label": "THE COAST ROAD", "sub": "SOUTH · TO GIZA", "desc": "The road runs on south over the badlands." }
+      },
+      "places": { "17,14": "surf", "17,17": "lookout", "17,19": "nets" }
+    },
+    "26_37": {
+      "label": "THE COAST ROAD",
+      "sub": "THE BADLANDS TO GIZA · 12 PLOTS",
+      "line": [[16, 22.9], [16, 27.6], [15.5, 28.4], [15.5, 29.1]],
+      "ends": {
+        "ow_h_16_23": { "room": "site_ow_r10_0_25", "label": "THE COAST ROAD", "sub": "NORTH · TO THE BEACH", "desc": "The road runs on north, the sea on its right." },
+        "ow_h_15_23": { "room": "site_ow_r10_0_25", "label": "THE COAST ROAD", "sub": "NORTH · TO THE BEACH", "desc": "The road runs on north, the sea on its right." },
+        "ow_h_15_29": { "room": "site_prebuilt_area51_ow_giza", "label": "GIZA", "sub": "THE COAST ROAD · SOUTH TO THE PYRAMIDS", "desc": "The road runs off the badlands onto the sand, and the pyramids stand up ahead." }
+      }
+    }
+  }
+}
