@@ -12210,4 +12210,79 @@ What the pass found and changed, one group a PR. The finished world is listed in
   the renderer switched off; with it on both ends cross. Giza's east road (`ow_v_17_32`) lands 3.7 m from the Great Pyramid's foot: a walk
   job that starts 5 m inside the door starts INSIDE the pyramid's ring of unseen walls; the door itself works both ways. A door whose prompt
   says `[WALK IN]` opens by walking into it, one that says `[E]` needs the key: the probe presses E only when the prompt asks.
+- **THE MEASUREMENTS (phase 5, 2026-11-17, HEAD d7c2785)**: every placed room, a fresh browser a room, models on, four looks along its longest
+  row and column, the worst look kept. Measured on the probe's software renderer (llvmpipe): its frame rate (1.5 to 2.5 a second everywhere) says
+  nothing about a real machine, so DRAW CALLS and TRIANGLES are the frame-rate figures (lines: 2,500 calls, 12 M triangles) and memory is
+  `perf().mem` misc + rigs (line: 1.4 GB). Load = `_hqEnter` to room ready with a warm disk cache. OVER THE CALL LINE: Disaster City (7,609),
+  the Internet (5,501), the Clearing (2,756), Camelot castle + village (2,617), the Sewers (2,615). NOTHING is over the triangle line. OVER THE
+  MEMORY LINE: Disaster City (3.4 GB), the Beach (3.1 GB), then 1.4 to 1.8 GB: the Desert Highway legs, the Polar Trail, the Circus, the Internet,
+  the Ski Lodge, the Ranch, Shasta, the Clearing, the Badlands Highway, the Sewers, Pirates' Cove, the Corn Fields, the Haunted House, the Coast
+  Road, Babel, Western Town, Area 51. The road rooms hold that much because of their far ground (`edges.reach` 440), not their own content.
+  Nothing was cut in phase 5: every one of these is district content or the edges thread's.
+
+| Room | Load (s) | Draw calls | Triangles (M) | Memory held (MB) |
+|---|---|---|---|---|
+| `site_prebuilt_downtown_streets` | 240.7 | 7609 | 4.36 | 3394 |
+| `site_prebuilt_internet_web` | 58.4 | 5501 | 3.34 | 1723 |
+| `site_prebuilt_fairy_forest_ow_clearing` | 31.2 | 2756 | 9.35 | 1645 |
+| `site_prebuilt_camelot_kingdom` | 40.2 | 2617 | 5.17 | 1251 |
+| `site_prebuilt_downtown_underworld` | 71 | 2615 | 3.44 | 1532 |
+| `site_prebuilt_northpole_plots` | 65.5 | 2345 | 2.45 | 740 |
+| `site_prebuilt_dumb_base` | 52.1 | 2194 | 2.01 | 1029 |
+| `site_prebuilt_shasta_ow_shasta` | 28.7 | 1818 | 5.52 | 1653 |
+| `site_prebuilt_lookingglass_realm` | 59 | 1792 | 2.82 | 1238 |
+| `site_prebuilt_fairy_forest_ow_redwood` | 38.2 | 1750 | 8.28 | 1081 |
+| `site_prebuilt_skinwalker_ow_ranch` | 44 | 1738 | 3.83 | 1664 |
+| `site_prebuilt_skinwalker_ow_corn` | 50 | 1575 | 6.52 | 1501 |
+| `site_prebuilt_heaven_plots` | 36.3 | 1493 | 1.3 | 1104 |
+| `site_prebuilt_skinwalker_ow_house` | 42.1 | 1438 | 3.85 | 1498 |
+| `site_prebuilt_shasta_ow_lodge` | 54.6 | 1434 | 1.18 | 1675 |
+| `site_prebuilt_fairy_forest_ow_ritual` | 42.8 | 1350 | 7.96 | 1091 |
+| `site_prebuilt_camelot_ow_pines` | 13.9 | 1328 | 3.11 | 825 |
+| `site_prebuilt_camelot_ow_garden` | 24.7 | 1234 | 2.67 | 992 |
+| `site_prebuilt_hollow_earth_cavern` | 40.7 | 1126 | 3.45 | 894 |
+| `site_prebuilt_area51_desert` | 60.9 | 1119 | 1.66 | 1409 |
+| `site_prebuilt_gobekli_ow_bugs` | 36.1 | 1102 | 2.13 | 874 |
+| `site_prebuilt_camelot_ow_fairy` | 8.6 | 1059 | 4.39 | 757 |
+| `site_prebuilt_bermuda_beach` | 60.6 | 1007 | 1.45 | 3092 |
+| `site_prebuilt_gobekli_ow_henge` | 33.1 | 982 | 5.21 | 1314 |
+| `site_prebuilt_bermuda_ow_volcano` | 45.9 | 913 | 7.42 | 1325 |
+| `site_prebuilt_area51_ow_town` | 63.9 | 910 | 1.71 | 1422 |
+| `site_prebuilt_vatican_plots` | 47.7 | 870 | 3.85 | 1052 |
+| `site_prebuilt_camelot_ow_forest` | 49.1 | 829 | 2.87 | 1115 |
+| `site_prebuilt_atlantis_deep` | 42.4 | 803 | 1.98 | 850 |
+| `site_prebuilt_shasta_ow_olympus` | 26.4 | 800 | 2.7 | 1287 |
+| `site_prebuilt_hollow_earth_ow_tunnelway` | 25.7 | 767 | 1.36 | 629 |
+| `site_prebuilt_skinwalker_ow_lake` | 36.8 | 738 | 3.11 | 1372 |
+| `site_prebuilt_bermuda_ow_triangle` | 47.1 | 717 | 2.29 | 1211 |
+| `site_prebuilt_area51_ow_circus` | 46.7 | 669 | 1.79 | 1729 |
+| `site_ow_r6` | 16.6 | 664 | 3.56 | 1360 |
+| `site_ow_r1` | 31.8 | 608 | 3.12 | 905 |
+| `site_ow_r4` | 37.4 | 605 | 4.03 | 1337 |
+| `site_prebuilt_gobekli_ow_babel` | 39.6 | 590 | 2.3 | 1446 |
+| `site_ow_r5` | 7.6 | 563 | 1.14 | 1786 |
+| `site_prebuilt_hollow_earth_ow_agartha` | 33.4 | 526 | 2.26 | 726 |
+| `site_ow_r10` | 56.9 | 487 | 1.46 | 1466 |
+| `site_ow_r9` | 83.6 | 465 | 1.5 | 1581 |
+| `site_ow_r8` | 37.1 | 454 | 1.69 | 1381 |
+| `site_prebuilt_hollow_earth_ow_west` | 27.2 | 450 | 0.71 | 616 |
+| `site_prebuilt_antarctica_plots` | 50 | 449 | 0.57 | 1088 |
+| `site_ow_l3` | 19.2 | 414 | 1.9 | 1013 |
+| `site_prebuilt_gobekli_ow_line` | 32.7 | 401 | 1.91 | 936 |
+| `site_ow_r3` | 20.2 | 384 | 3.04 | 1104 |
+| `site_prebuilt_hell_plots` | 37.5 | 378 | 0.74 | 913 |
+| `site_prebuilt_atlantis_ow_floor` | 36 | 359 | 1.04 | 898 |
+| `site_prebuilt_area51_ow_giza` | 45.1 | 356 | 1.29 | 1097 |
+| `site_ow_l4` | 8.9 | 332 | 1.62 | 752 |
+| `site_ow_dh4` | 39.8 | 329 | 2.04 | 1232 |
+| `site_ow_dh3` | 43.7 | 328 | 1.66 | 1819 |
+| `site_ow_dh2` | 44.7 | 311 | 1.67 | 1475 |
+| `site_ow_l6` | 2.6 | 310 | 1.53 | 710 |
+| `site_ow_r11` | 37.8 | 303 | 1.09 | 1312 |
+| `site_ow_dh1` | 32 | 292 | 1.79 | 1683 |
+| `site_prebuilt_hollow_earth_ow_long` | 27.3 | 284 | 0.26 | 606 |
+| `site_ow_r12` | 11.3 | 266 | 2.21 | 1023 |
+| `site_prebuilt_vatican_under` | 34.9 | 245 | 0.88 | 1032 |
+| `site_prebuilt_bermuda_ow_cove` | 30.9 | 233 | 0.9 | 1517 |
+| `site_prebuilt_bermuda_ow_frozen` | 29.4 | 187 | 0.15 | 726 |
 
