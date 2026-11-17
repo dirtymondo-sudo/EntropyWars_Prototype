@@ -212,13 +212,23 @@ module.exports = {
         at('psxg_rock_1', 26.5, 28.6); at('psxg_dead_bush_2', 21.6, 27.4); at('rabbit', 28.4, 33.5);
 
         /* ── PASS 3, THE DRESSING ── */
-        /* THE VERGES: every track square that touches the corn may carry one small thing at the corn's foot (never on the square's middle: the track stays clear) */
-        { const SMALL = ['psxg_rock_2', 'psxg_rock_3', 'psxg_rock_4', 'psxg_dead_bush_1', 'psxg_dead_bush_2', 'psxg_dead_bush_1', 'hw_pumpkin', 'hw_pumpkin_3', 'hw_straw_2', 'hw_pumpkin_4', 'psx_wooden_crate_6', 'psxg_dead_bush_2', 'psxg_rock_3', 'hw_straw'],   // pack pieces only: a Meshy piece by the dozen costs frames
-              RARE = ['hw_part', 'anthill', 'crow', 'rabbit', 'trap_bear_open', 'hw_shovel', 'psx_jerrycan_1', 'hw_part_6', 'psxg_jack_o_lantern_1'];
-          const corn = (x, y) => x < 0 || y < 0 || x > 35 || y > 35 || ctx.cell[y][x] === 'c';
-          for (let y = 3; y < 36; y++) for (let x = 1; x < 36; x++) { if (ctx.cell[y][x] !== 'p' || (x >= 13 && x <= 16 && y >= 27 && y <= 31) || (y < 5 && x >= 17 && x <= 22) || LANE(x, y) || CLOSED(x, y)) continue;
-              const sides = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(q => corn(x + q[0], y + q[1])); if (!sides.length) continue; const r = rnd(); if (r > 0.3) continue;
-              const q = pick(sides), along = (rnd() - 0.5) * 0.7; at(r < 0.05 ? pick(RARE) : pick(SMALL), x + 0.5 + q[0] * 0.36 + (q[0] ? 0 : along), y + 0.5 + q[1] * 0.36 + (q[1] ? 0 : along)); } }
+        /* THE VERGES: small things at the corn's foot beside the tracks (never on a square's middle: the track stays clear). They were thrown by the dice on every
+           track square that touches the corn; since 2026-11-17 (COUNTY LANE, above) they are SET DOWN BY HAND, each where it fell: [key, x, y, facing]. The sixteen that
+           lay in the lane's band or on a closed track are moved to the nearest verge of their own plot (their last two numbers = the square they lay on); none
+           is dropped. The dice are then thrown as often as the old loop threw them, so nothing after this line moves. */
+        { const VERGE = [
+              ['psxg_dead_bush_1', 30.51, 4.14, 251], ['hw_straw', 16.5, 7.86, 213, 14, 6], ['hw_straw', 6.14, 7.56, 296], ['crow', 7.14, 6.5, 194, 10, 7], ['psxg_dead_bush_1', 7.86, 11.5, 344, 11, 7], ['psxg_dead_bush_1', 20.14, 10.5, 103, 15, 7],
+              ['hw_pumpkin', 32.5, 7.14, 116, 35, 7], ['psxg_rock_2', 7.86, 9.67, 210], ['psxg_rock_4', 20.14, 9.59, 205], ['psxg_rock_4', 7.86, 10.65, 71], ['psxg_dead_bush_1', 20.14, 11.76, 4], ['hw_straw', 21.86, 11.58, 147],
+              ['psxg_dead_bush_2', 32.76, 11.86, 68], ['hw_straw_2', 7.86, 12.57, 8], ['psxg_rock_2', 21.86, 12.67, 94], ['hw_straw_2', 29.86, 12.51, 52], ['psxg_dead_bush_1', 7.86, 13.58, 240], ['psx_wooden_crate_6', 28.14, 14.61, 30],
+              ['hw_pumpkin_3', 32.86, 14.5, 359, 34, 14], ['hw_pumpkin_4', 28.14, 15.21, 288], ['psxg_rock_3', 32.14, 15.57, 146], ['psxg_dead_bush_1', 25.72, 16.14, 103], ['hw_straw', 26.19, 16.14, 3], ['hw_pumpkin_4', 29.4, 17.86, 226],
+              ['psxg_rock_4', 33.5, 17.86, 228, 35, 17], ['hw_pumpkin_3', 27.86, 19.52, 252], ['hw_pumpkin_3', 8.86, 20.8, 107], ['psxg_dead_bush_1', 24.72, 20.86, 212], ['psxg_rock_2', 30.14, 22.56, 240], ['psxg_rock_3', 2.41, 23.14, 113],
+              ['psxg_rock_4', 4.73, 23.14, 151], ['psx_wooden_crate_6', 8.86, 23.55, 84], ['hw_straw_2', 30.14, 23.49, 305], ['psx_wooden_crate_6', 31.86, 23.64, 222], ['psxg_rock_2', 21.86, 24.29, 11], ['psxg_dead_bush_1', 21.86, 25.48, 131],
+              ['hw_shovel', 30.14, 25.61, 336], ['hw_pumpkin_3', 21.86, 26.73, 88], ['hw_straw_2', 30.14, 26.22, 213], ['hw_pumpkin_3', 20.14, 25.5, 190, 22, 27], ['psxg_rock_3', 29.3, 27.14, 217], ['hw_pumpkin', 4.35, 29.86, 293],
+              ['hw_pumpkin', 30.86, 29.62, 31], ['psx_wooden_crate_6', 21.86, 31.5, 66, 22, 30], ['hw_pumpkin', 31.55, 30.14, 27], ['hw_pumpkin', 32.53, 30.14, 293], ['psxg_dead_bush_1', 34.65, 30.14, 146], ['hw_pumpkin', 6.56, 31.14, 322],
+              ['psxg_rock_4', 34.86, 32.5, 253, 35, 31], ['hw_pumpkin', 9.5, 32.14, 278, 10, 32], ['hw_straw_2', 9.5, 33.86, 156, 11, 32], ['hw_pumpkin', 28.14, 32.5, 77, 24, 32], ['psxg_dead_bush_2', 29.86, 32.2, 84], ['hw_pumpkin_4', 5.72, 33.86, 35],
+              ['hw_straw', 8.5, 33.86, 110, 11, 33], ['psxg_dead_bush_1', 29.86, 33.47, 338], ['hw_pumpkin', 34.86, 33.22, 294], ['hw_part', 28.14, 34.5, 150, 26, 34], ['trap_bear_open', 32.14, 34.83, 320], ['psxg_rock_3', 34.21, 34.86, 83],
+              ['psx_jerrycan_1', 6.67, 35.86, 175], ['psx_jerrycan_1', 19.86, 33.5, 24, 19, 35], ['hw_pumpkin_3', 28.14, 35.24, 36]];
+          VERGE.forEach(v => at(v[0], v[1], v[2], { face: v[3] })); for (let i = 0; i < 485 - VERGE.length; i++) rnd(); }
         /* THE HIDDEN POCKET (The Tall Corn): what flattened the circles, set down in the corn */
         look('saucerGlow', gc(3), gc(3), 0, a => { a.cyl(0, 0.02, 0, 2.2, 0.03, null, 0x9fffc8, { glow: 0.5 }); a.cyl(0, 0.03, 0, 1.2, 0.03, null, 0xd8fff0, { glow: 0.7 }); });   // PASS 4: the ground under it is lit
         look('circleGlow', gx(18.5), gx(18.5), 0, a => { for (const [dx, dz] of [[-3.5, -3.5], [3.5, -3.5], [-3.5, 3.5], [3.5, 3.5], [0, -5.2], [0, 5.2], [-5.2, 0], [5.2, 0]]) { a.cyl(dx * 3.5, 0, dz * 3.5, 0.16, 0.5, 'castle_wall'); a.box(dx * 3.5, 0.5, dz * 3.5, 0.2, 0.26, 0.2, null, 0x58f0a0, { glow: 0.7 }); } });   // eight low marker lights round the formation (the zone's grave-light green)
