@@ -2541,6 +2541,7 @@
                     animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, spell.chargeStyle ? 320 : 200, spell.chargeStyle ? { escStyle: spell.chargeStyle } : { leap: true });
                     if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
+                    if (unit.race === 'delivery boy') _deliveryDrop(unit, fromX, fromY, { delayMs: _skipVisuals() ? 0 : 200 });   // 🛵 his rider hops off once the hop lands
                     if (spell.slimeLane) { _sigVfxGeom('nrIaiDraw:lane', landTile.x, landTile.y, 0, { fromX, fromY, owner: unit.player }); _slugLane(unit, fromX, fromY, spell); }   // 🐌 Iai Draw slimes its lane
                     /* THE LOG ORDER (forced movement playtest 2026-11-07 E4 / M3: Gore Charge, Land Ho, Rook): the charge
                        and what its landing did read BEFORE the hit it carried in */
@@ -2600,6 +2601,7 @@
             const _swH = (spell.hinge && unit._swingHinge && unit._swingHinge.spellId === spell.id) ? unit._swingHinge : null;
             if (spell.hinge) delete unit._swingHinge;
             if (spell.leapOver && target && !unit.dead && !_clashPinned) _frogLeapOver(unit, target);   // 🐸 Leapfrog
+            if (spell.voodooSelf > 0 && target && !unit.dead) _dollPin(unit, target, spell);   // 🪆 Pin Prick ties the victim to the doll
             if (spell.viralSpread && target) _influencerRatioSpread(unit, target, spell);   // 📱 Ratio
             if (spell.pushDistance && target && !target.dead && !unit.dead && !_chessTook
                 && target._kawarimiKey !== unit.id + '|' + _protectActionSeq   // 🥷 the blow hit a log: nothing to shove
@@ -2787,6 +2789,8 @@
                 }
                 resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                 addLog(`${_ctName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
+                /* 🛵 THE RIDE-ALONG: a Doorstep Dash carries his rider into the fight; it hops off beside him once the slide lands */
+                if (unit.race === 'delivery boy') _deliveryDrop(unit, fromX, fromY, { delayMs: _skipVisuals() ? 0 : chargeMs });
                 if (spell.slimeLane) { _sigVfxGeom('nrIaiDraw:lane', landTile.x, landTile.y, 0, { fromX, fromY, owner: unit.player }); _slugLane(unit, fromX, fromY, spell); }   // 🐌 Iai Draw slimes its lane
                 scheduleBoardRender();
             };
@@ -10956,7 +10960,7 @@
             if (payload.id === 'tethered') target._tetherDragDmg = (payload.dragDamagePerTile > 0) ? payload.dragDamagePerTile : null;
             if (payload.id === 'haunted' && payload.restless) target._hauntRestless = true;
             if (payload.id === 'soulBound' && payload.partnerId) target._boundToId = payload.partnerId;
-            if (payload.id === 'voodoo' && payload.allyId) target._voodooAllyId = payload.allyId;
+            if (payload.id === 'voodoo' && payload.allyId) { target._voodooAllyId = payload.allyId; target._voodooEcho = payload.echo > 0 ? payload.echo : null; }   // 🪆 Pin Prick ties it to the doll at its own share
             if (payload.id === 'shadowRealm' && payload.partnerId) target._realmPartnerId = payload.partnerId;
             if (meta.control && sourceUnit) {
                 target._controllerPlayer = sourceUnit.player;
@@ -14420,8 +14424,26 @@
             } catch (e) {}
         }
         /* 🛵 THE RIDE-ALONG (the Delivery Boy): an ally Riding with him gets off on the free square beside him nearest where it
-           got on when he finishes a walk (finishMoveAt). A rider that walks off on its own first just gets off. */
-        function _deliveryDrop(unit, fx, fy) {
+           got on when he finishes a walk (finishMoveAt) or a Doorstep Dash (_runPostEffects, `opts.delayMs` = the dash's slide).
+           A rider that walks off on its own first just gets off. THE POLISH (2026-11-17, mondo: "flesh out their unique spells
+           ... make sure that any new mechanics are tested out and work as intended"): the rider must still be on his back, so
+           one knocked or pulled away from the square he set off from (more than 1 away, any way) falls off where it is; a body
+           pinned to the ground (Rooted / Charmed / Roped / Frozen / Stoneform / Climbing, the move-spell rule) or a colossal one
+           never rides; the hop off starts from HIS square (the renderer drew it on his back for the ride, three-renderer.js
+           THE RIDE-ALONG) and fires 'nrHopOn:drop' (relayed by online.js like every fireGeometry). */
+        const _RIDE_PINNED = ['root', 'charm', 'tethered', 'frozen', 'stoneform', 'climbing', 'exited', 'captured'];
+        function _deliveryRideBlock(a) {
+            if (!a) return 'gone';
+            const k = _RIDE_PINNED.find(s => a.status && a.status[s] > 0);
+            if (k) return moveBlockWord(a) || (STATUS_DEFS[k] && STATUS_DEFS[k].label) || k;
+            if (getUnitDisplaceWeightClass(a) === 'colossal') return 'far too big';
+            return null;
+        }
+        function _deliveryFx(id, x, y, extra) {
+            if (_skipVisuals() || state.phase !== 'battle') return;
+            try { const V = window.ThreeVFXEffects; if (V && typeof V.fireGeometry === 'function') V.fireGeometry(id, x, y, 0, extra || {}); } catch (e) {}
+        }
+        function _deliveryDrop(unit, fx, fy, opts) {
             if (!unit || !Array.isArray(state.units)) return;
             if (unit.race !== 'delivery boy') {
                 if (unit.status && unit.status.riding > 0) clearStatus(unit, 'riding');
@@ -14429,9 +14451,22 @@
             }
             if (!_nrAlive(unit) || (unit.x === fx && unit.y === fy)) return;
             const riders = state.units.filter(a => _nrAlive(a) && a.id !== unit.id && a._rideWithId === unit.id && a.status && a.status.riding > 0);
+            /* finishMoveAt runs as the walk STARTS: the hop off waits for the walk tween to land (like the ledge-drop damage) */
+            const _walkLeft = (!_skipVisuals() && !_bufferingRoundEvents && _walkAnimActive && _walkAnimUnitId === unit.id)
+                ? Math.max(0, _walkAnimEndAt - Date.now()) : 0;
+            const _dropMs = (opts && opts.delayMs) || _walkLeft;
             for (const a of riders) {
                 const ox = a.x, oy = a.y;
                 clearStatus(a, 'riding');
+                if (Math.max(Math.abs(ox - fx), Math.abs(oy - fy)) > 1) {
+                    addLog(`🛵 ${_ctName(a)} was no longer on ${_ctName(unit)}'s back: it stays where it is.`, undefined, undefined, { actor: unit });
+                    continue;
+                }
+                const _blk = _deliveryRideBlock(a);
+                if (_blk) {
+                    addLog(`🛵 ${_ctName(a)} cannot ride along (${String(_blk).toLowerCase()}): it stays where it was.`, undefined, undefined, { actor: unit });
+                    continue;
+                }
                 const sq = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
                     .map(([dx, dy]) => ({ x: unit.x + dx, y: unit.y + dy }))
                     .filter(q => _nrFreeSquare(q.x, q.y))
@@ -14439,12 +14474,48 @@
                 if (!sq[0]) { addLog(`🛵 No room to get off beside ${_ctName(unit)}: ${_ctName(a)} stays where it was.`); continue; }
                 a.x = sq[0].x; a.y = sq[0].y;
                 if (typeof nearestWalkableZ === 'function') a.z = nearestWalkableZ(a.x, a.y, a.z);
-                animateDisplacement(a, ox, oy, a.x, a.y, 320, { leap: true });
+                a._trackTilesMoved = (a._trackTilesMoved || 0) + Math.abs(a.x - ox) + Math.abs(a.y - oy);
+                /* the hop off his back: from his square to the drop square (after the dash's slide, if a dash carried it) */
+                animateDisplacement(a, unit.x, unit.y, a.x, a.y, 320, { leap: true, delayMs: _dropMs });
                 resolveTileArrival(a, { via: 'self' });
-                addLog(`🛵 ${_ctName(a)} hops off ${_ctName(unit)}'s scooter at ${coordLabel(a.x, a.y)}.`, undefined, undefined, { actor: unit });
-                if (!_skipVisuals()) showFloatingTextForUnit(a, '🛵 DROPPED OFF', 'buff', { durationMs: 1000 });
+                addLog(`🛵 ${_ctName(a)} hops off ${_ctName(unit)}'s back at ${coordLabel(a.x, a.y)}.`, undefined, undefined, { actor: unit });
+                _deliveryFx('nrHopOn:drop', a.x, a.y, { fromX: unit.x, fromY: unit.y, owner: a.player, delay: _dropMs + 300 });
+                if (!_skipVisuals()) {
+                    const _ft = () => { if (!a.dead) showFloatingTextForUnit(a, '🛵 DROPPED OFF', 'buff', { durationMs: 1000 }); };
+                    if (_dropMs + 300 > 0) window.setTimeout(_ft, _dropMs + 300); else _ft();
+                }
             }
         }
+        /* 🛵 THIRTY MINUTES OR LESS (the Delivery Boy's capstone, data.js nrThirtyMinutes `rideAlong`): up to `max` allies beside
+           him (any of the 8 squares; the most hurt first) climb on, the Riding status from him, the same ride as Hop On. */
+        function _deliveryLoadList(unit, spell) {
+            const ra = spell && spell.rideAlong;
+            if (!ra || !unit || !Array.isArray(state.units)) return [];
+            return state.units.filter(a => _nrAlive(a) && a.id !== unit.id && a.player === unit.player && !a._isCube && !a._summonStatic
+                    && Math.max(Math.abs(a.x - unit.x), Math.abs(a.y - unit.y)) === 1 && !_deliveryRideBlock(a))
+                .sort((p, q) => (p.hp / Math.max(1, p.maxHp)) - (q.hp / Math.max(1, q.maxHp)))
+                .slice(0, ra.max || 2);
+        }
+        function _deliveryLoadUp(unit, spell) {
+            const list = _deliveryLoadList(unit, spell);
+            for (const a of list) {
+                applyStatusPayload(a, { id: 'riding', duration: 1 }, `${spell.name}: `, unit);
+                _deliveryFx('nrHopOn', a.x, a.y, { fromX: unit.x, fromY: unit.y });
+            }
+            if (list.length) addLog(`🛵 ${list.map(a => _ctName(a)).join(' and ')} ${list.length === 1 ? 'climbs' : 'climb'} on ${_ctName(unit)}'s back.`, undefined, undefined, { actor: unit });
+            return list.length;
+        }
+        window._deliveryLoadList = _deliveryLoadList;
+        /* the square _deliveryDrop would give `rider` if he ended a walk on (x, y) (his own square frees as he leaves it); the
+           CPU's ride planner reads it (ai.js THE RIDE-ALONG) */
+        window._deliveryDropPreview = function (unit, x, y, rider) {
+            if (!unit || !rider || !isInside(x, y)) return null;
+            const sq = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
+                .map(([dx, dy]) => ({ x: x + dx, y: y + dy }))
+                .filter(q => isInside(q.x, q.y) && canOccupy(q.x, q.y) && (!unitAt(q.x, q.y) || unitAt(q.x, q.y) === unit))
+                .sort((p, q) => (Math.abs(p.x - rider.x) + Math.abs(p.y - rider.y)) - (Math.abs(q.x - rider.x) + Math.abs(q.y - rider.y)));
+            return sq[0] || null;
+        };
         /* 🙌 THE TITHE (the Televangelist): while his Collection Plate is out, 15% of every heal that lands within 3 of him (on
            either team; never his own heals, never a heal on him) is taken off the heal and goes in his plate (unit._plate).
            Miracle (`spendPlate`) heals the plate on top of its own heal and empties it (spellHealAmountFor + the heal cast). */
@@ -14457,7 +14528,11 @@
             if (cut <= 0) return 0;
             pastor._plate = (pastor._plate || 0) + cut;
             addLog(`🙌 ${_ctName(pastor)} passes the plate: ${cut} HP of the heal on ${_ctName(target)} goes in the collection (${pastor._plate} in the plate).`);
-            if (!_skipVisuals()) showFloatingTextForUnit(pastor, `🙌 +${cut}`, 'buff', { durationMs: 900 });
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(pastor, `🙌 PLATE ${pastor._plate}`, 'buff', { durationMs: 900 });   // the running total (the plate has no other read-out)
+                /* THE TELEVANGELIST PASS VFX (2026-11-17): the cut's coins hop from the healed body into the plate (fire() is relayed) */
+                try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('skim', 'nrCollectionPlate', { fromX: target.x, fromY: target.y, tx: pastor.x, ty: pastor.y, cut }); } catch (e) {}
+            }
             return cut;
         }
         /* 📱 GOING VIRAL (the Influencer): a Viral unit shares 30% of every hit it takes with each of its own teammates within 2
@@ -14592,6 +14667,18 @@
             return _FLORIDA_HEADLINES[_nrHash(String(unit && unit.id) + '|' + (state.round || 0)) % _FLORIDA_HEADLINES.length];
         }
         window._floridaHeadline = _floridaHeadline;
+        /* 📰 the day's paper (11-17 polish): when his turn starts the headline he got is said over his head and in the log, so
+           both seats read which one is live before opening the menu (floating text rides the relay; once a round a unit) */
+        function _floridaTurnStart(unit) {
+            if (!_nrAlive(unit) || unit._fmPaperRound === state.round) return;
+            const own = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(s => s && s.floridaHeadline);
+            if (!own.length) return;
+            unit._fmPaperRound = state.round;
+            const id = _floridaHeadline(unit), sp = own.find(s => s.id === id);
+            const nm = sp ? sp.name : ((typeof RACE_ABILITIES !== 'undefined' && (RACE_ABILITIES['florida man'] || []).find(s => s.id === id)) || {}).name || id;
+            addLog(`📰 TODAY'S HEADLINE for ${_ctName(unit)}: ${nm}${sp ? '' : ' (not in his kit: no headline spell today)'}.`, undefined, undefined, { actor: unit });
+            if (!_skipVisuals() && typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, '📰 ' + String(nm).toUpperCase(), sp ? 'buff' : 'debuff', { durationMs: 1500 });
+        }
         /* 🧠 THE FLUCTUATION (the Boltzmann Brain): it never walks or jumps (unitMoveBlockedByStatus: 'Bodiless'); at every
            round end it is somewhere else, a free square 2-4 away picked by its id and the round.
            THE BOLTZMANN BRAIN PASS (2026-11-17):
@@ -14662,9 +14749,123 @@
                 if (!u || !u.race) continue;
                 if (u.race === 'wendigo') _wendigoHunger(u);
                 else if (u.race === 'boltzmann brain') _boltzmannFluctuate(u);
+                else if (u.race === 'haunted doll') _dollCreep(u);
                 if (u.status && u.status.dormant > 0) _cicadaBrood(u);
             }
             if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
+        }
+        /* ═══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit and asked for the pull-string spell) ═══ "Sits on the shelf, and
+           moves when you look away." Host-side like the rest of THE NEW RACES 2: the squares, the facings, the statuses and the HP
+           state-sync to the guest; the voice-box line comes from _nrHash (the unit id + the round), so the guest's log agrees.
+           Notes: docs/notes/champions-combat.md "THE HAUNTED DOLL". */
+        /* is `e` looking at the doll? = the doll is in e's front cone (the facing arcs: getAttackArc from the doll is 'front') */
+        function _dollWatchedBy(e, doll) {
+            if (!e || !doll || e.dead || e._dying) return false;
+            if (unitHasStatus(e, 'blind') || unitHasStatus(e, 'sleep') || unitHasStatus(e, 'stun') || unitHasStatus(e, 'exited') || unitHasStatus(e, 'captured')) return false;
+            return getAttackArc(doll, e) === 'front';
+        }
+        window._dollWatchedBy = _dollWatchedBy;
+        /* the square at the target's back (its facing reversed), else any free square beside it farthest from where it looks */
+        function _dollBehindSquare(target, doll) {
+            if (!target) return null;
+            const f = getUnitFacing(target);
+            const bx = target.x - Math.round(f.dx || 0), by = target.y - Math.round(f.dy || 0);
+            if ((bx !== target.x || by !== target.y) && isInside(bx, by) && canOccupy(bx, by) && !unitAt(bx, by)) return { x: bx, y: by };
+            if (doll && bx === doll.x && by === doll.y) return { x: bx, y: by };
+            return null;
+        }
+        window._dollBehindSquare = _dollBehindSquare;
+        /* 🪆 NOBODY'S LOOKING (_nrRoundEnd): no enemy within 5 looking at it → up to 2 cardinal steps toward the nearest enemy, free */
+        function _dollCreep(u) {
+            if (!_nrAlive(u) || u.race !== 'haunted doll') return;
+            if (unitHasStatus(u, 'exited') || unitHasStatus(u, 'captured') || unitMoveBlockedByStatus(u)) return;
+            if (typeof _isClashMode === 'function' && _isClashMode()) return;
+            const foes = getHostileUnits(u.player, u).filter(e => _nrAlive(e) && !unitHasStatus(e, 'exited') && !unitHasStatus(e, 'captured'));
+            if (!foes.length) return;
+            const near = foes.filter(e => Math.abs(e.x - u.x) + Math.abs(e.y - u.y) <= 5);
+            const watcher = near.find(e => _dollWatchedBy(e, u));
+            if (watcher) {
+                if (!_skipVisuals()) showFloatingTextForUnit(u, '👁 WATCHED', 'debuff', { durationMs: 900 });
+                return;
+            }
+            const d2 = (x, y, e) => Math.abs(e.x - x) + Math.abs(e.y - y);
+            const prey = foes.slice().sort((a, b) => d2(u.x, u.y, a) - d2(u.x, u.y, b) || String(a.id).localeCompare(String(b.id)))[0];
+            if (d2(u.x, u.y, prey) <= 1) return;
+            const path = [];
+            let cx = u.x, cy = u.y, cz = u.z ?? 0;
+            for (let step = 0; step < 2; step++) {
+                let best = null;
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = cx + dx, ny = cy + dy;
+                    if (!_nrFreeSquare(nx, ny)) continue;
+                    const nz = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, cz) : cz;
+                    if (Math.abs((nz ?? 0) - cz) > 1) continue;
+                    if (state.edgeWalls && typeof wallBlocksStep === 'function' && wallBlocksStep(cx, cy, nx, ny, cz, nz)) continue;
+                    const d = d2(nx, ny, prey);
+                    if (d >= d2(cx, cy, prey)) continue;
+                    if (!best || d < best.d) best = { x: nx, y: ny, z: nz, d };
+                }
+                if (!best) break;
+                path.push({ x: best.x, y: best.y });
+                cx = best.x; cy = best.y; cz = best.z ?? cz;
+                if (best.d <= 1) break;
+            }
+            if (!path.length) return;
+            const fx = u.x, fy = u.y;
+            u.x = cx; u.y = cy; u.z = cz;
+            setUnitFacing(u, prey.x - u.x, prey.y - u.y);
+            if (!_skipVisuals()) {
+                animateDisplacementPath(u, fx, fy, path, 260);
+                _sigVfxGeom('hdCreep', u.x, u.y, path.length, { fromX: fx, fromY: fy, owner: u.player });
+            }
+            resolveTileArrival(u, { via: 'self' });
+            addLog(`🪆 Nobody was looking: ${_ctName(u)} creeps ${path.length} square${path.length !== 1 ? 's' : ''} closer to ${_ctName(prey)}.`);
+        }
+        /* 🪆 Pin Prick (`voodooSelf`): the victim wears Voodoo tied to the doll at the row's share (_procLinks echoes it) */
+        function _dollPin(unit, target, spell) {
+            if (!target || target.dead || target._dying || target.hp <= 0) return;   // a kill hit leaves no status
+            applyStatusPayload(target, { id: 'voodoo', duration: 2, allyId: unit.id, echo: spell.voodooSelf }, `${spell.name}: `, unit);
+            if (unitHasStatus(target, 'voodoo')) addLog(`🪆 ${_ctName(target)} is pinned to ${_ctName(unit)}: ${Math.round(spell.voodooSelf * 100)}% of every hit on the doll comes back on it.`);
+        }
+        /* 🪆 PULL MY STRING: the voice box's line (the id + the round, like the Florida Man's headline) */
+        const _DOLL_LINES = ['play', 'friend', 'hug', 'kill'];
+        function _dollStringLine(unit) {
+            return _DOLL_LINES[_nrHash(String(unit && unit.id) + '|' + (state.round || 0) + '|string') % _DOLL_LINES.length];
+        }
+        window._dollStringLine = _dollStringLine;
+        const _DOLL_SAY = { play: "Let's play!", friend: 'Will you be my friend?', hug: 'Hug me!', kill: "I'm going to kill you." };
+        function _dollPullString(unit, spell) {
+            const cfg = spell.pullString || {};
+            const near = (r) => getHostileUnits(unit.player, unit)
+                .filter(e => _nrAlive(e) && !unitHasStatus(e, 'exited') && !unitHasStatus(e, 'captured') && Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= r)
+                .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)) || String(a.id).localeCompare(String(b.id)))[0] || null;
+            let line = _dollStringLine(unit);
+            let foe = line === 'friend' ? near(cfg.charmRange || 3) : line === 'hug' ? near(cfg.hugRange || 4) : line === 'kill' ? near(cfg.killRange || 4) : null;
+            if (line === 'hug' && foe && (foe._isBoss || foe.isBoss || foe._isCube || Math.abs(foe.x - unit.x) + Math.abs(foe.y - unit.y) <= 1)) foe = null;
+            if (line !== 'play' && !foe) line = 'play';
+            const say = _DOLL_SAY[line];
+            addLog(`🪆 ${_ctName(unit)} pulls its string: "${say}"`, undefined, undefined, { actor: unit });
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(unit, `“${say}”`, line === 'kill' ? 'damage' : 'buff', { durationMs: 1300 });
+                _sigVfxGeom('nrPullString:' + line, unit.x, unit.y, 0, { owner: unit.player, toX: foe ? foe.x : undefined, toY: foe ? foe.y : undefined });
+            }
+            if (line === 'play') {
+                const amt = Math.round((unit.maxHp || 0) * (cfg.healPct || 0.25));
+                const got = applyHealingToUnit(unit, amt, unit);
+                if (got > 0) addLog(`🪆 ${_ctName(unit)} plays by itself and mends ${got} HP.`);
+            } else if (line === 'friend') {
+                applyStatusPayload(foe, { id: 'charm', duration: 1 }, `${spell.name}: `, unit);
+            } else if (line === 'hug') {
+                const dx = Math.sign(unit.x - foe.x), dy = Math.sign(unit.y - foe.y);
+                const dist = Math.max(Math.abs(unit.x - foe.x), Math.abs(unit.y - foe.y)) - 1;
+                if (dist > 0) resolveForcedSlide(foe, dx, dy, dist, { byUnit: unit, label: `${spell.name}: `, perStepMs: 120, delayMs: actionMs(250) });
+                addLog(`🪆 ${_ctName(unit)} wants a hug: ${_ctName(foe)} is dragged in.`);
+            } else if (line === 'kill') {
+                const sp = spellPowerOf(unit, spell);
+                const killSpell = Object.assign({}, spell, { kind: 'damage', type: 'damage', damageType: 'magic', dmg: cfg.killDmg || 150, statusEffects: [] });
+                _applyAoeDamage(unit, killSpell, [{ x: foe.x, y: foe.y }], (cfg.killDmg || 150) + sp, sp, { rngRange: 30, minDmg: 32 });
+            }
+            markDirty('board', 'hud', 'selectedUnit');
         }
         /* 🐸 LEAPFROG (the Karate Frog, `leapOver`): after the hit he lands on the square straight behind the target, if free.
            THE KARATE FROG PASS (2026-11-17): the square comes from frogLeapLanding (the forecast shows the same landing), a
@@ -15196,7 +15397,7 @@
             body.status = {};
             body.statStageMods = [];
             body.ap = 0; body.movesThisTurn = 0;
-            for (const k of ['_stFresh', '_stHold', '_statusSrc', '_realmPartnerId', '_boundToId', '_voodooAllyId', '_fearSourceId', '_tetherCasterId',
+            for (const k of ['_stFresh', '_stHold', '_statusSrc', '_realmPartnerId', '_boundToId', '_voodooAllyId', '_voodooEcho', '_fearSourceId', '_tetherCasterId',
                 '_spellsUsedThisTurn', '_possessAfter', '_possessAfterSrcId', '_mounted', '_astralBodyId']) delete body[k];
             unit._astralBodyId = body.id;
             unit._astralCord = Math.max(1, cfg.cord || 6) + (Number(unitPassiveValue(unit, 'astralCordBonus')) || 0);   // + Silver Cord
@@ -15235,7 +15436,7 @@
             for (const m of ['_statusSrc', '_stHold', '_stFresh']) {
                 if (body[m] && typeof body[m] === 'object') { unit[m] = Object.assign({}, body[m], unit[m] || {}); delete unit[m].sleep; }
             }
-            for (const k of ['_boundToId', '_voodooAllyId', '_fearSourceId', '_tetherCasterId']) if (body[k] != null && unit[k] == null) unit[k] = body[k];
+            for (const k of ['_boundToId', '_voodooAllyId', '_voodooEcho', '_fearSourceId', '_tetherCasterId']) if (body[k] != null && unit[k] == null) unit[k] = body[k];
             if (Array.isArray(body.statStageMods) && body.statStageMods.length) unit.statStageMods = (unit.statStageMods || []).concat(body.statStageMods);
             if (body._lastDamageSourceId && !unit._lastDamageSourceId) unit._lastDamageSourceId = body._lastDamageSourceId;
             _astralMoveCarried(body.id, unit.id);
@@ -15411,7 +15612,7 @@
                 for (const e of state.units) {
                     if (!e || e.dead || e._dying || e.id === target.id) continue;
                     if (e._voodooAllyId !== target.id || !unitHasStatus(e, 'voodoo')) continue;
-                    _echo(e, vdDef.linkEcho || 0.5, e._statusSrc && e._statusSrc.voodoo, 'Voodoo', vdDef.icon || '🪆');
+                    _echo(e, (e._voodooEcho > 0 ? e._voodooEcho : 0) || vdDef.linkEcho || 0.5, e._statusSrc && e._statusSrc.voodoo, 'Voodoo', vdDef.icon || '🪆');   // 🪆 Pin Prick's own share (_voodooEcho)
                 }
             }
         }
@@ -27571,8 +27772,8 @@
             const el = document.createElement('div');
             el.className = 'acam-chrome';
             el.innerHTML = `
-        <div class="acam-bar acam-bar-top"><div class="acam-bar-name"></div></div>
-        <div class="acam-bar acam-bar-bot"></div>
+        <div class="acam-bar acam-bar-top"><div class="acam-news-live">LIVE</div><div class="acam-bar-name"></div></div>
+        <div class="acam-bar acam-bar-bot"><div class="acam-news"><div class="acam-news-row"><span class="acam-news-tag">BREAKING NEWS</span><span class="acam-news-head"></span></div><div class="acam-news-ticker"><span class="acam-news-tick"></span></div></div></div>
         <div class="acam-vignette"></div>
         <div class="acam-speedlines"></div>
         <div class="acam-flash"></div>
@@ -27584,6 +27785,19 @@
             (document.getElementById('game-viewport') || document.body).appendChild(el);
             _acChromeEl = el;
             return el;
+        }
+
+        const _AC_NEWS = {
+            'Gator Toss': 'FLORIDA MAN THROWS ALLIGATOR',
+            'Bath Salts': 'FLORIDA MAN FOUND NAKED ON OVERPASS',
+            'Hurricane Party': 'FLORIDA MAN REFUSES TO EVACUATE',
+            'Breaking News': 'FLORIDA MAN STRIKES AGAIN',
+        };
+        function _acNewsFor(name) {
+            if (!name || !_AC_NEWS[name]) return null;
+            const others = Object.keys(_AC_NEWS).filter(k => k !== name).map(k => _AC_NEWS[k]);
+            const ticker = [...others, 'NOBODY CAN EXPLAIN WHAT HAPPENED NEXT', 'LOCAL MAN MAKES THE NEWS EVERY SINGLE DAY'].join('   ★   ');
+            return { head: _AC_NEWS[name], ticker: ticker + '   ★   ' + ticker };
         }
 
         function showActionCamChrome(opts = {}) {
@@ -27599,6 +27813,18 @@
             if (_acLingerTimer) { clearTimeout(_acLingerTimer); _acLingerTimer = null; }
             el.classList.remove('light', 'hiding', 'finisher', 'dmg-linger');
             if (!opts.heavy) el.classList.add('light');
+            /* 📰 THE BROADCAST (mondo 2026-11-17: "the black top and bottom bars ... convert those to the breaking news lower
+               third, like an actual broadcast"): the Florida Man's casts and his finisher turn the letterbox into a news
+               broadcast: the top bar a LIVE bug + the spell name, the bottom bar a lower third (BREAKING NEWS tab, the
+               headline, a running ticker) that slides in from the left. Keyed on the shot's name, so the guest's own
+               chrome (the shot is relayed) dresses the same way. styles-cinematic.css "THE BROADCAST". */
+            const _news = _acNewsFor(opts.name);
+            el.classList.toggle('news', !!_news);
+            if (_news) {
+                const h = el.querySelector('.acam-news-head'), t = el.querySelector('.acam-news-tick');
+                if (h) h.textContent = _news.head;
+                if (t) { t.textContent = _news.ticker; t.classList.remove('run'); void t.offsetWidth; t.classList.add('run'); }
+            }
             // Heal-flavored shots (heals / potions / revives) restyle the
             // corner readout green and re-label it — the healing twin of the
             // TOTAL DMG counter, fed by applyHealingToUnit via
@@ -43164,6 +43390,7 @@
         /* A charge (chargeToTarget rows, Brave Charge…): the open tile beside the target nearest the caster. */
         function chargeLandingTile(unit, target, spell) {
             if (spell && spell.chessPiece) return chessStrikeSquare(unit, spell, target);   // ♟ the square before it down the piece's line
+            if (spell && spell.blinkBehind) { const _bb = _dollBehindSquare(target, unit); if (_bb) return _bb; }   // 🪆 Look Behind You: the square at its back
             const adj = [
                 { x: target.x - 1, y: target.y }, { x: target.x + 1, y: target.y },
                 { x: target.x, y: target.y - 1 }, { x: target.x, y: target.y + 1 }
@@ -49607,6 +49834,8 @@
             if ((spell.kind === 'pull' || spell.kind === 'swap') && spell.allyOnly && u.id === unit.id) return false;
             /* 💰 `noSelf` (THE BANKER PASS 2026-11-16: Line of Credit): the cast only takes another unit, never the caster */
             if (spell.noSelf && u.id === unit.id) return false;
+            /* 🪆 `unwatched` (Look Behind You): only a unit that is not looking at the doll (_dollWatchedBy) */
+            if (spell.unwatched && !u.dead && u.id !== unit.id && _dollWatchedBy(u, unit)) return false;
             // THE MOVE BLOCK ON SPELLS: a pinned caster may warp any body but its own
             if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
@@ -64512,6 +64741,7 @@
                     window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo) ? 0 : 900);
                     return;
                 }
+                if (nextUnit.race === 'florida man' || (nextUnit.spells || []).some(sp => sp && sp.floridaHeadline)) { try { _floridaTurnStart(nextUnit); } catch (e) {} }   // 📰 today's headline
 
                 /* 😱 Feared (CHAMP REWORK Phase 4, STATUS_DEFS fear): the
                    activation is the flight — one engine-driven move away from
@@ -82370,6 +82600,16 @@
                     return 0;
                 }
             }
+            /* 🪆 `unwatched` (Look Behind You): a target looking at the doll is refused before any MP, AP or cooldown is spent */
+            if (spell.unwatched) {
+                const _uwT = unitAt(x, y, z) || unitAt(x, y);
+                if (_uwT && _uwT.id !== unit.id && !_uwT.dead && _dollWatchedBy(_uwT, unit)) {
+                    addLog(`${_ctName(_uwT)} is watching — ${_ctSp(spell.name)} needs it to look away.`, _clickSeat());
+                    state._teleportingUnitId = null;
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             /* 💰 `noSelf` (THE BANKER PASS 2026-11-16): a direct call aimed at the caster's own square is refused before any
                MP, AP or cooldown is spent (the lists already leave the caster out, spellTargetUsableOn) */
             if (spell.noSelf) {
@@ -82960,6 +83200,10 @@
                 panelFocusTarget = _healResult.target;
                 const _ht = _healResult.target;
                 const { amount: healAmount, preScaled: _healPreScaled } = spellHealAmountFor(unit, spell, _ht);   // THE SUPPORT FORECAST reads the same
+                /* THE TELEVANGELIST PASS VFX (2026-11-17): Miracle's plate pours out of his hand and lands on the ally as the heal does */
+                if (spell.spendPlate && unit._plate > 0 && !_skipVisuals()) {
+                    try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('payout', spell.id, { fromX: unit.x, fromY: unit.y, tx: _ht.x, ty: _ht.y, plate: unit._plate, ms: Math.max(300, _healResult.applyAt || 0) }); } catch (e) {}
+                }
                 // The HP lands when the gift ARRIVES (support cinematic beat 2)
                 // so the +N and the glow pop while the recipient is on camera.
                 window.setTimeout(() => {
@@ -83032,6 +83276,23 @@
                         playErrorSfx();
                     }
                     return 0;
+                }
+                /* 🛵 Thirty Minutes or Less with nobody beside him to carry is refused before anything is spent */
+                if (spell.rideAlong && !_deliveryLoadList(unit, spell).length) {
+                    if (!_silentReject) {
+                        addLog(`${_ctSp(spell.name)}: no ally beside ${_ctName(unit)} can climb on.`, _clickSeat());
+                        playErrorSfx();
+                    }
+                    return 0;
+                }
+                /* 🛵 Hop On: a body pinned to the ground (Rooted, Frozen, Roped...) or a colossal one cannot ride */
+                if (spell.statusEffects && spell.statusEffects.some(se => se && se.id === 'riding')) {
+                    const _hoT = unitAt(x, y, z) || unitAt(x, y);
+                    const _hoBlk = _hoT && _hoT.player === unit.player ? _deliveryRideBlock(_hoT) : null;
+                    if (_hoBlk) {
+                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: ${_ctName(_hoT)} cannot ride along (${String(_hoBlk).toLowerCase()}).`, _clickSeat()); playErrorSfx(); }
+                        return 0;
+                    }
                 }
                 // Phase 4 migration: buff uses ally support pipeline
                 const _buffResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
@@ -83121,6 +83382,8 @@
                     if (spell.spawnDecoy && !unit.dead) _spawnCasterDecoy(unit, spell);
                     if (spell.timedStatBonus) _applyTimedStatBonus(_bt, spell.timedStatBonus, `${spell.name}: `, unit);   // Batch D: Updraft (the Quickened status)
                     if (spell.massRescue && !unit.dead) _lifeguardMassRescue(unit, spell);   // 🛟 Three Whistles
+                    if (spell.pullString && !unit.dead) _dollPullString(unit, spell);   // 🪆 Pull My String
+                    if (spell.rideAlong && !unit.dead) _deliveryLoadUp(unit, spell);   // 🛵 Thirty Minutes or Less
                     if (spell.filterSwap && !_bt.dead) _influencerFilter(unit, _bt, spell);   // 🤳 Filter
                     if (spell.slimeRing && !unit.dead) { _sigVfxGeom('nrSaltProof:ring', unit.x, unit.y, 1, { owner: unit.player }); _slugRing(unit, spell); }   // 🐌 Salt-Proof Stance
                     markDirty('hud');
@@ -85082,6 +85345,13 @@
                        never read the row's statusEffects. They land on an ENEMY partner only. */
                     if (spell.statusEffects && spell.statusEffects.length && isEnemyUnit(target, unit) && !target.dead) {
                         applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                    }
+                    /* 🪆 Play With Me (`faceAway`, the Haunted Doll): the partner lands with its back to the doll (the facing is real and
+                       state-synced: Nobody's Looking and Look Behind You read it) */
+                    if (spell.faceAway && !target.dead) {
+                        setUnitFacing(target, target.x - unit.x, target.y - unit.y);
+                        setUnitFacing(unit, target.x - unit.x, target.y - unit.y);
+                        addLog(`🪆 ${_ctName(target)} turns round, and the doll is behind it.`);
                     }
 
                     if (!state.cameraDisabled && camera._cineShotId == null) {
