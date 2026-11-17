@@ -5714,6 +5714,23 @@ dormant / bodiless):
 - 🦌 Wendigo, THE HUNGER: a round in which it dealt no damage to an enemy (unit._fedRound, set in applyDamageToUnit) costs it 8%
   max HP at the round end, never below 1 (`_wendigoHunger`).
 - 🐸 Karate Frog, LEAPFROG: `leapOver` (in _runPostEffects + spellMovesCaster) lands him on the square straight behind the target.
+  **THE KARATE FROG PASS (2026-11-17, thread "Polish Karate Frog spells and VFX", mondo: "flesh out their unique spells and spell
+  animations/vfx and make sure that any new mechanics are tested out and work as intended"):** no rule invented, no number changed
+  (his stats sit on the bruiser median, the three rows in line with the T1-T3 strikes). (1) The landing is one picker,
+  battle.js `frogLeapLanding(unit, target)` (window): the square straight behind on his line; `blocked` 'off' / 'taken' / 'high'
+  (a ledge higher than getUnitJumpClimb over where he stands: the jump rule; drops are free). _frogLeapOver and THE FORECAST
+  (forecastSpellPlan, `addMove(unit, …, 'self')`) read it, so the preview shows where he lands. (2) The vault rides the relayed
+  escape path `frogleap` (three-renderer.js _ESC_STYLES / _escStyleAt: a squat, 1.25 squares up over the body, a bent-leg landing),
+  160 ms after the hit: the old `leap: true` never reached the online guest (the displace relay carries escStyle, not leap), who
+  saw a flat glide through the victim. (3) A frog swims: map.js unitIsDeepWaterAdapted lists 'karate frog' (a CPU match had Flying
+  Kick carry both frogs into deep water and drown them). (4) Animations: Leapfrog = `roundhouse` (Roundhouse_Kick), Tongue Lash =
+  `jab` (the tongue snaps out on it), Flying Kick = `flyKick` (Rising_Flying_Kick, the clip carries him, like Sky Tackle); a rig
+  without the clip runs the new `chargeStyle: 'flykick'` path (data field, both charge paths in battle.js; relayed).
+  Also fixed: `kickflip` was missing from _ESC_STYLES, so the Skater's ollie fell back to the plain vault.
+  Probes (VS CPU, real doSpell, /mnt/project-files/karate-frog-pass/): Tongue Lash 4 → pulled 3 to beside him (269); Leapfrog 325
+  + lands behind (Man-at-Arms shrugs off Stagger); Flying Kick 331 + carry + collision 88 + the chain rebound; Rooted greys Leapfrog
+  and Flying Kick. Two CPU frogs, 6 rounds of training tempo: 9 casts of all three, Leapfrog sets up BACKSTAB basic attacks (he
+  lands behind), 0 page errors. Looks: spells-vfx.md "THE KARATE FROG".
 - 🐌 Samurai Slug, THE SLIME TRAIL: every square he walks off becomes Black Ooze (`swamp`) for 2 rounds (`_slugTrail`, finishMoveAt).
   THE SAMURAI SLUG POLISH (2026-11-17, mondo: "flesh out their unique spells ... make sure that any new mechanics are tested out and
   work as intended"). The playstyle: THE SLIME ROAD. The ooze is his: he crosses Black Ooze at a plain step's cost (state.js

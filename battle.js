@@ -2536,7 +2536,8 @@
                     unit._trackTilesMoved = (unit._trackTilesMoved || 0) + 1;
                     const _chM = _logMark();
                     addLog(`${_ctName(unit)} charges to ${coordLabel(landTile.x, landTile.y)}.`);
-                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200, { leap: true });
+                    /* `chargeStyle` (🐸 Flying Kick: 'flykick'): the run-in rides that relayed escape path, not the vault */
+                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, spell.chargeStyle ? 320 : 200, spell.chargeStyle ? { escStyle: spell.chargeStyle } : { leap: true });
                     if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                     if (spell.slimeLane) { _sigVfxGeom('nrIaiDraw:lane', landTile.x, landTile.y, 0, { fromX, fromY, owner: unit.player }); _slugLane(unit, fromX, fromY, spell); }   // 🐌 Iai Draw slimes its lane
@@ -2779,7 +2780,7 @@
                         waitMs: 300, fallbackMs: chargeMs
                     });
                 } else {
-                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs, { leap: true, charge: true });
+                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs, spell.chargeStyle ? { escStyle: spell.chargeStyle } : { leap: true, charge: true });
                 }
                 resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                 addLog(`${_ctName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
@@ -14436,18 +14437,29 @@
             }
             if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
         }
-        /* 🐸 LEAPFROG (the Karate Frog, `leapOver`): after the hit he lands on the square straight behind the target, if free */
+        /* 🐸 LEAPFROG (the Karate Frog, `leapOver`): after the hit he lands on the square straight behind the target, if free.
+           THE KARATE FROG PASS (2026-11-17): the square comes from frogLeapLanding (the forecast shows the same landing), a
+           ledge higher than his jump climb is no landing (the jump rule), and the vault rides the relayed 'frogleap' path
+           (the guest got a flat glide: the displace relay never carried `leap`) with its own look (_ESC_LOOKS.nrLeapfrog). */
         function _frogLeapOver(unit, target) {
             if (!unit || !target) return;
-            const dx = Math.sign(target.x - unit.x), dy = Math.sign(target.y - unit.y);
-            if (!dx && !dy) return;
-            const bx = target.x + dx, by = target.y + dy;
-            if (!_nrFreeSquare(bx, by)) { addLog(`🐸 ${_ctName(unit)} has no room to land behind ${_ctName(target)}.`); return; }
+            const land = frogLeapLanding(unit, target);
+            if (!land) return;
+            const bx = land.x, by = land.y;
+            if (land.blocked) {
+                addLog(`🐸 ${_ctName(unit)} has no room to land behind ${_ctName(target)}${land.blocked === 'high' ? ' (that ledge is too high)' : ''}.`);
+                return;
+            }
             const fx = unit.x, fy = unit.y;
             unit.x = bx; unit.y = by;
             if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(bx, by, unit.z);
             unit._trackTilesMoved = (unit._trackTilesMoved || 0) + 2;
-            animateDisplacement(unit, fx, fy, bx, by, 280, { leap: true });
+            const _lfDelay = actionMs(160);   // the kick lands, then the vault
+            animateDisplacement(unit, fx, fy, bx, by, 620, { escStyle: 'frogleap', delayMs: _lfDelay });
+            if (!_skipVisuals() && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.fireGeometry === 'function') {
+                const _lf = () => { try { if (state.phase === 'battle') window.ThreeVFXEffects.fireGeometry('nrLeapfrog:leap', bx, by, 0, { fromX: fx, fromY: fy }); } catch (e) {} };
+                if (_lfDelay > 0) window.setTimeout(_lf, _lfDelay); else _lf();
+            }
             if (!target.dead) faceStrikeTarget(unit, target);
             resolveTileArrival(unit, { via: 'self' });
             addLog(`🐸 ${_ctName(unit)} leapfrogs over ${_ctName(target)} to ${coordLabel(bx, by)}.`);
@@ -42923,6 +42935,23 @@
             return adj.find(t => canOccupy(t.x, t.y)) || null;
         }
         window.chargeLandingTile = chargeLandingTile;
+        /* 🐸 Leapfrog (`leapOver`, the Karate Frog): the square straight behind the target on his line. null = no line;
+           { blocked: 'off' | 'taken' | 'high' } = no landing there (off the board or not standable, a body on it, a ledge
+           higher than his jump climb: drops are free like every jump). _frogLeapOver and the forecast read the same. */
+        function frogLeapLanding(unit, target) {
+            if (!unit || !target) return null;
+            const dx = Math.sign(target.x - unit.x), dy = Math.sign(target.y - unit.y);
+            if (!dx && !dy) return null;
+            const x = target.x + dx, y = target.y + dy;
+            if (!isInside(x, y) || !canOccupy(x, y)) return { x, y, blocked: 'off' };
+            if (state.units.some(u => u && !u.dead && u.id !== unit.id && u.x === x && u.y === y)) return { x, y, blocked: 'taken' };
+            if (typeof getHeightAt === 'function' && typeof getUnitJumpClimb === 'function') {
+                const from = Number.isFinite(unit.z) ? unit.z : getHeightAt(unit.x, unit.y);
+                if (getHeightAt(x, y) - from > getUnitJumpClimb(unit)) return { x, y, blocked: 'high' };
+            }
+            return { x, y };
+        }
+        window.frogLeapLanding = frogLeapLanding;
         /* Does this charge rush in BEFORE its strike (doSpell's third-person charge, _runChargeToTargetSpell) or strike
            from where the caster stands and hop in after (_runPostEffects)? doSpell and the forecast both ask HERE, so the
            preview hits from the same tile the cast does. The fog term reads the screen that RUNS the cast: online that is
@@ -43847,6 +43876,8 @@
                 }
                 /* ♟ THE CHESS PIECE: a capture takes the square (_runPostEffects) */
                 if (spell.chessPiece && target.hp <= 0 && !_clash) addMove(unit, target.x, target.y, 'self');
+                /* 🐸 Leapfrog: he lands behind the target (_runPostEffects → _frogLeapOver, the same picker) */
+                if (spell.leapOver && !_clash) { const lt = frogLeapLanding(unit, target); if (lt && !lt.blocked) addMove(unit, lt.x, lt.y, 'self'); }
                 if (spell.pushDistance && target.hp > 0 && (kind === 'damage' || kind === 'tackle') && !_clash) {
                     immovable(target);
                     const pdx = _swDir ? _swDir.dx : Math.sign(target.x - unit.x), pdy = _swDir ? _swDir.dy : Math.sign(target.y - unit.y);

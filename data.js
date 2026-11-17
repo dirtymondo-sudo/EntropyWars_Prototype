@@ -10586,7 +10586,7 @@ const RACE_ABILITIES = {
           element: 'water', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 90, range: 4, pullDistance: 3,
           desc: 'Thwip. Deals WEAK physical damage to a Single Enemy within 4 and drags it up to 3 squares toward him. Cooldown: 2 rounds.' },
         { id: 'nrFlyingKick', name: 'Flying Kick', tier: 3, families: ['frogfu'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
-          type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 150, range: 3, chargeToTarget: true, pushDistance: 2, collisionBonus: 40,
+          type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 150, range: 3, chargeToTarget: true, chargeStyle: 'flykick', pushDistance: 2, collisionBonus: 40,
           desc: 'Off the wall and through the air. Charges a Single Enemy up to 3 squares away, deals HEAVY physical damage and kicks it up to 2 squares back; hitting a wall or a unit deals 40 more. Cooldown: 2 rounds.' },
     ],
     'samurai slug': [
