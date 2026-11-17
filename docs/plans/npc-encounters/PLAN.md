@@ -1,13 +1,36 @@
-# NPC ENCOUNTERS: the plan and the guide (rev 4, 2026-11-17, every question of round 1 and 2 answered)
+# NPC ENCOUNTERS: the plan and the guide (rev 5, 2026-11-17, mondo's answers to the review are in: section 0)
 
 mondo uploaded an NPC encounter concept (v0.3, made with another AI that did not know the game; kept word for word in
 `concept-v0.3.md` beside this file). This file fits that concept to Entropy Wars as it stands on main today: the roster,
 the zones, and what is already built. Nothing here is built by this file.
 
+**REVIEWED 2026-11-17 (Fable): `REVIEW.md` beside this file** holds step 0 (the check-up, done) and a critique from the
+player's side with 12 questions for mondo. Read it before any build step. Rows below marked **(step 0)** were corrected from it;
+no design decision in this file was changed.
+
 **This is a NEW encounter system, and it is meant to replace the old encounter rules** (mondo, 11-17: "we are making a brand
 new encounter system. The rules are going to change"). Where the concept differs from how the game works today, the concept
 is the target and the old rule is what gets changed; such parts are marked **REPLACES**. Details the concept left open
 (numbers, which race does what, the words NPCs say) are still **PROPOSALS** for mondo to set; the questions are in section 8.
+
+## 0. REV 5: mondo's answers to the review (2026-11-17). These win over anything below that says otherwise
+
+The review is `REVIEW.md` beside this file. His answers, in his order:
+
+| # | Topic | His answer | What it changes |
+|---|---|---|---|
+| 1 | Show it | Yes, **symbols only, keep it simple.** The battle already has the closed and open eye for "an enemy sees you": use those on the walk. Add one red mark (an exclamation mark or the like) for aggression. | No temper word, no text list. Step 1a mocks up three marks: eye closed (has not seen you), eye open (sees you), red mark (coming for you / will step in). 4.1, steps 1a + 2. |
+| 2 | Level gap | Yes, a level gap rule is needed. | An NPC far under the party's level never starts a fight (PROPOSAL: 8 levels). 4.3, step 4. |
+| 3 | Who opens | Yes. | Whoever starts the fight acts first in round 1. 4.2 / 4.3, step 3. |
+| 4 | Surrender | Yes. | Giving up is a state on the unit, answered on the player's own turn. Replaces "offers on the NPC's turn" in 4.4. Step 6. |
+| 5 | Joining | "Maybe when they join you use a door on them automatically and they are detained back to DOOR HQ, like you are just reality cop making a routine arrest." | **THE ARREST:** a unit that gave up and is taken goes through a door on the spot, to DOOR HQ (the holding tank of npc-system.md delivery 4 is where it lands). Replaces "Join you" in 4.4. Open: does it use up a door from the bag (section 8). |
+| 6 | The third side | Free for all used to be in the game; it should not be hard to add; "if its hard to add to our game then that means the battle code and architecture is written like shit and needs to be fixed". | The third side stays in, and the code is fixed first: **step S, the one side question** (section 6). Found 11-17: no mode sets `isFFA` any more, but about 40 FFA paths are still in battle.js, ai.js and map.js to build on. |
+| 7 | One street first | Fine, "just dont forget to add crowds as a clear step after the street test otherwise it will be forgotten". | Bayside first, then the gate (he plays it), then **CROWDS as its own named step, never skipped** (section 6). |
+| 8 | Awareness per machine | "We should just get rid of that, the game is the game and if you have a bad pc then tough shit. The player experience should be the same." | NPC behaviour is the same on every machine. The weak-PC cut (`HQ_CITY_RESIDENTS.drawnLow`, three-renderer.js `EW_PERF_LOW`) goes in step 2; the row is the spawn system thread's, so a board note first. |
+| 9 | XP when the third side downs an enemy | "I dont see a problem with that right now." | Nothing. The victory pool stays as it is. |
+| 10 | The door strike | It should be in the plan. | In 4.2. PROPOSAL: a standing door that hits an NPC counts as one strike of the ladder (section 8). |
+| 11 | Escape and the ladder | "Need to track health outside of battle then, already do for the player and party so it should be easy to implement for NPCs." | **NPC health carries on the walk** (new step 5a). An NPC that escaped a fight keeps its wounds. 4.5. |
+| 12 | Cops and civilians | Cops should protect civilians. A cop not protecting one certain unit is fine if it is a special case between those two. | A Guard defends the Civilians of its district (4.6, 3.2). Exceptions are rows (this race does not defend that race); none is written until he names one. |
 
 How to read the marks:
 
@@ -87,7 +110,7 @@ closing line is the right rule: few presets, few universal reactions, clear limi
 | Quests | **BUILT** (one quest) | data.js `STORY_QUESTS`, `QUEST_FIGHTS` (`orientation_portal`) | The boss / scripted battle sheet is npc-system.md delivery 6 (not built). |
 | Running away inside a fight | **PARTLY** | battle.js Feared ("flees in terror", one flee ends the fear); ai.js hazard flee | The AI can run from danger; it never leaves the fight. NPC escape is NEW. |
 | The round boundary | **BUILT** | battle.js `state.round`, `processEndOfRoundStatuses`, `processEndOfRoundZonesAndSeeds`, `processEndOfRoundRegen`, `showEndOfRoundOverview` | The concept's "reuse the end-of-round phase" has a real place to hook in. |
-| Other walkers during a fight | **CHECK** | step 0 confirms it | My reading: the fight builds the room's field and the walkers are not part of it, so nobody watches. Step 0 must check this in code before step 7 is planned. |
+| Other walkers during a fight | **BUILT** (step 0) | map.js `_hqEncounterStart` → `_hqLeave`; three-renderer.js `_hqBuildRoomInBattle`, `_rigCarry*` | Confirmed: the walk is left and the room is rebuilt round the field, so nobody watches. An onlooker is a new thing in the fight's scene; the rig hand-over can carry its body across. |
 | Awareness (an NPC notices you) | **NEW** | | Walkers do not look at you, turn, step aside or react. |
 | NPC-started fights | **NEW** (REPLACES "never random", see 1.2) | | The approved muggings / drive-bys (npc-system.md delivery 7) are NOT built on main yet; step 4 builds them. |
 | Offers in a fight (talk mid-fight) | **NEW** | | |
@@ -166,6 +189,9 @@ Strike 1 makes a Civilian run (slower than you, along the nav, to its home or wo
 or Brute fights on strike 1. E before you swing opens Talk with "Fight" among the choices, except for tempers that skip
 Talk. The count lives on the walking body, is not reset by an apology, and starts over after the NPC has fled and you meet
 it again (3.1). The first quest's fight is a quest fight (`QUEST_FIGHTS`) and keeps its own start.
+**Rev 5:** whoever starts the fight acts first in round 1 (the hook is `window._ewEncounterFirstId`). A standing door of the door
+gun that hits an NPC (three-renderer.js `_hqGunDoorStrike`) is on the ladder too; PROPOSAL: it counts as one strike. A Civilian's run
+is short (PROPOSAL: about 15 m or out of sight), and one with no way out skips the run and Talks.
 
 ### 4.3 Who starts a fight on its own (REPLACES "never random")
 - **Brute:** sees you, comes at you, the fight starts when it reaches you. You can outrun it or break its sight.
@@ -178,6 +204,11 @@ it again (3.1). The first quest's fight is a quest fight (`QUEST_FIGHTS`) and ke
   main: no code for them in data.js or three-renderer.js on 11-17). This step builds them.
 
 ### 4.4 Talk in a fight and the offers (NEW)
+**Rev 5 (his answers 4 + 5):** giving up is a STATE on the unit, not a panel on its turn. The hit that leaves it alive under its
+line makes it give up at once: it stops acting and shows it. The player answers on their own turn: hit it (refuse) or Talk to it
+(the panel: pay-off, the arrest, or let it go). "Join you" below is now THE ARREST: a door opens on it and it is sent to DOOR HQ.
+The text below is rev 4 and stands only where it does not disagree with this.
+
 A losing NPC may offer something on its own turn (it spends that turn, so turn order never pauses). The player answers in
 a panel that obeys the back keys (Escape, E, right click). What it can offer now (mondo 11-17):
 
@@ -204,6 +235,8 @@ and clues (wait for more quests). The lines: as few as the system needs to work,
 Reuse the player's escape turned around (no player unit sees it, it has the AP). The AI (ai.js) gets one more choice for
 tempers that may run (Civilian, Coward, Opportunist when losing). An escaped NPC is out of the fight, counted "escaped"
 (not beaten, not captured), runs on the walk afterwards, and its ladder starts over when you catch it (3.1).
+**Rev 5 (his answer 11):** an NPC's health carries on the walk as the party's does (step 5a), so an escaped NPC keeps its wounds.
+PROPOSAL: it is whole again at the next game day.
 
 ### 4.6 Witnesses, onlookers and joining (NEW, the big design job)
 mondo 11-17 (Q12, Q13): anyone in the room who is aware and wants to fight may join, as many as there are; and how an
@@ -234,8 +267,9 @@ be free for all? Can it fight the enemy and stay neutral to you? Options, using 
 - **C. A third side with grudges (recommended).** Each joiner is its own side with a short **grudge list**: the units that
   hit it or its group. It attacks those first, ignores the rest, and anyone who hits it goes onto its list. So a cop hit by
   the Gangster fights the Gangster, stays neutral to you, you can still target it, and if you hit it, it turns on you too.
-  This is exactly mondo's third option. It needs one change at the choke point: `isEnemyUnit(a, b)` asks "is b on a's
-  grudge list?" for third-side units (the AI and targeting already read those two functions). Online is not touched.
+  This is exactly mondo's third option. **(step 0) It is NOT one change:** battle.js compares `.player` directly about 135
+  times beside its `isEnemyUnit` calls, ai.js about 50 times (4 `isEnemyUnit` calls), and the win check, vision and the XP
+  pool know two players only (REVIEW.md section 1, finding 3). It is the plan's biggest engine job. Online is not touched.
 
 Keep to the frame: joiners above a sane count make fights long. No hard cap (mondo: "as many as ... want to fight"), but the
 room mix and awareness keep it small in practice; step 8 measures a crowded street and reports.
@@ -273,23 +307,26 @@ every edited JS file, visual steps get a browser proof through `probe-fast.js` w
 
 | # | Step | State | Model | Why that model | Needs first |
 |---|---|---|---|---|---|
-| 0 | **The check-up**: confirm every BUILT / CHECK row of section 2 in code (what the room's walkers do during a fight; where the round-end hook goes; how the AI picks targets through `isEnemyUnit`) and write the findings here | PARTLY | **Fable** | A read-only audit across five big files; the result is prose | nothing |
+| 0 | **The check-up**: confirm every BUILT / CHECK row of section 2 in code (what the room's walkers do during a fight; where the round-end hook goes; how the AI picks targets through `isEnemyUnit`) and write the findings here | **DONE 11-17** (`REVIEW.md` section 1; three smaller checks left, named there) | **Fable** | A read-only audit across five big files; the result is prose | nothing |
 | 1a | **Tempers + groups, design**: tag Disaster City's races (residents + its AREA UNITS table) with a temper, a group and roles; draft the room mix per district; draft the fewest lines the system needs | NEW | **Fable** | A creative, wide pass over the roster and the city; output is a table + lines for mondo to mark | step 0 |
 | 1b | **Tempers + groups, data**: data.js `HQ_NPC_TEMPERS` (temper, group, roles by race; overrides by room / resident id; the room mix) + `hqNpcTemper(ch)`, `hqNpcGroup(ch)`; nothing reads them yet | NEW | **Opus** | Exact edits in data.js (a stray brace takes the game down) | mondo's marks on 1a |
-| 2 | **Awareness on the walk**: drawn bodies look at you, step aside, Guards / Territorials say their line; who saw what (for 4.6) | NEW | **Opus** | three-renderer.js tick code, the frame-rate budget, a browser proof | 1b |
-| 3 | **The strike ladder**: flee walk, the Talk panel (E first too), the third strike starts the fight; the ladder starts over after a flee; the day's memory per id; the old one-strike notes get a REPLACED line | REPLACES | **Opus** | Changes the built strike path (`_hqStrikeClick`, `_hqEncounterAim`, map.js `_hqEncounterFire`); must not break the first quest or the capture | 1b |
-| 4 | **NPC-started fights**: Brutes come at you, Territorial warnings, the Opportunist mugging with its reason line, the drive-by; "never random" retired in its notes | REPLACES | **Opus** | The encounter launch, the walk tick and line of sight; a proof picture | 2 |
-| 5 | **NPC escape from a fight**: the AI choice + the escaped state | NEW | **Opus** | ai.js + battle.js escape code, the commit; never reset the trained weights | 1b |
-| 6a | **Offers, design**: when a losing NPC offers (pay off, join, spare), the amounts, the panel mock-up, the lines | NEW | **Fable** | A mock-up and words; mondo's rule is plan + mock-up first, then wait | 1a |
-| 6b | **Offers, build**: the offer on the NPC's turn, the panel, the results (bag items, `hqCaptureEnlist`, the cleared ledger) | NEW | **Opus** | battle.js turn code, hud.js panel, the commit; the back keys | 6a OK'd |
-| 7a | **Onlookers + sides, design**: the onlooker table, the third side (option C, mondo 11-17), where onlookers stand, the camera with a crowd, mock-up pictures | NEW | **Fable** | The hardest design call in the plan; needs pictures and his explicit OK before code | step 0 finding |
-| 7b | **Onlookers, build**: onlooker bodies on free squares, the round-end update, step-aside, dispersal | NEW | **Opus** | The heaviest code step: the field, the round end, rigs, frame rate | 7a OK'd |
-| 8 | **Joining + the third side**: joiners enter next round; grudge lists through `isEnemyUnit` / `isAllyUnit`; group members step in; stray hits on onlookers; a crowded-street measurement | NEW | **Opus** | Turn order, unit creation mid-fight, the AI's targeting; the riskiest engine change | 7b |
+| 2 | **Awareness + the marks**: who has seen you (the same on every machine: the weak-PC cut goes, board note to the spawn system thread first); the eye closed / eye open / red mark over heads; step aside; Guards / Territorials say their line | NEW | **Opus** | three-renderer.js tick code, a browser proof | 1b, the marks' mock-up OK'd |
+| 3 | **The strike ladder**: the short run, cornered skips it, the Talk panel (E first too), the third strike starts the fight; the door strike; whoever starts the fight opens round 1; the day's memory per id; the old one-strike notes get a REPLACED line | REPLACES | **Opus** | Changes the built strike path (`_hqStrikeClick`, `_hqEncounterAim`, map.js `_hqEncounterFire`); must not break the first quest or the capture | 1b |
+| 4 | **NPC-started fights**: Brutes come at you, Territorial warnings, the Opportunist mugging (Pay / Fight), the drive-by; **the level gap rule**; "never random" retired in its notes | REPLACES | **Opus** | The encounter launch, the walk tick and line of sight; a proof picture | 2, 3 |
+| 5a | **NPC health on the walk**: a resident's HP is kept between fights (as the party's is) and carried into the next one | NEW | **Opus** | data.js ledger beside `cleared`, the launch, the commit; the spawn system's row: board note | 1b |
+| 6a | **The losing NPC, design**: gives up / runs / fights on, one table per temper; the give-up state's look; the pay-off; THE ARREST; the panel mock-up, the lines | NEW | **Fable** | A mock-up and words; mondo's rule is plan + mock-up first, then wait | 1a |
+| 6b | **The losing NPC, build**: the give-up state, the Talk answer, the results (bag, the arrest through `hqCaptureEnlist`, the cleared ledger); NPC escape (the AI choice + the escaped state; "natives never escape" REPLACED) | NEW / REPLACES | **Opus** | battle.js turn code, ai.js, hud.js panel, the commit; the back keys; never reset the trained weights | 6a OK'd, 5a |
+| **GATE** | **mondo plays Bayside**: one street, end to end, no crowds yet | | | Everything after it is tuned by what he felt | 2 to 6b |
+| S | **The one side question**: every place in battle.js, ai.js, map.js and hud.js that compares `.player` directly asks the side functions instead (`isAllyUnit` / `isEnemyUnit` / `getHostileUnits`); the win check, vision and the turn order take a side that is not 1 or 2. No rule changes: PvP must play exactly as before (RULE #2) | NEW | **Opus** | His answer 6: if a third side is hard, the code is what gets fixed. About 185 direct compares in battle.js + ai.js today. Can run beside steps 2 to 6b | nothing |
+| **7a** | **CROWDS, design** (his answer 7: a clear step, never forgotten): the onlooker table, where onlookers stand, the area preview marking an onlooker it would hit, the camera with a crowd, mock-up pictures | NEW | **Fable** | Needs pictures and his explicit OK before code | the gate |
+| **7b** | **CROWDS, build**: onlooker bodies on free squares, the round-end update, step-aside, dispersal | NEW | **Opus** | The field, the round end, rigs, frame rate | 7a OK'd |
+| 8 | **Joining + the third side**: joiners enter next round; a side per group with one shared grudge list; Guards defend their district's Civilians; stray hits on onlookers; a crowded-street measurement | NEW | **Opus** | Turn order (`buildBlitzTurnOrder` is watched by the `turn` lesson), unit creation mid-fight, the AI's targeting | 7b, S |
 | 9 | **NPC-to-NPC situations** in Disaster City | NEW | **Fable** drafts the rows, **Opus** builds | Rows are creative and need his yes; the code is the battle start + walk | 8 |
 | 10 | **The review**: walk the city against this plan and mondo's rules, list what is missing or wrong | NEW | **Fable** | An audit and a written report | the steps above |
-| later | Other zones (Hell as the hostile one, quiet rooms with none), shops, spell learning, clues | later | | Each its own plan | Disaster City done |
+| later | The other eight districts' tempers, other zones (Hell as the hostile one, quiet rooms with none), route rooms, shops, spell learning, clues | later | | Each its own plan | Bayside played |
 
-Order: 0 → 1a → 1b → 2 → 3 → 5 → 4 → 6a → 6b → 7a → 7b → 8 → 9 → 10. Steps 0 and 1a are docs only and can start at once.
+Order (rev 5): 0 (done) → 1a → 1b → 2 → 3 → 4 → 5a → 6a → 6b → **GATE** → 7a → 7b → 8 → 9 → 10. Step S runs beside 2 to 6b and must be in before 8.
+Step 1a is **Bayside only** (Chef, Hippie, Pirate, Homosapien, Police Officer, Popstar, Ghost; level 5 to 10) and carries the marks' mock-up.
 
 ---
 
@@ -314,7 +351,11 @@ Q19 the old factions are gone; natural groups instead (3.2), to flesh out. Q20 o
 idea is right; step 1a drafts the full list. Q22 the onlooker table as written, with a roll. Q23 no calm timer (3.3). Q24
 Claude's pay-off table (4.4).
 
-**Still open:** nothing from this round. The next decisions come with steps 1a (the temper and group table for Disaster
+**Still open after the review (rev 5):** (a) THE ARREST: does it use up a door from the bag, or is it free once the unit gave up?
+(b) the door strike counts as one strike of the ladder? (c) an NPC's wounds heal at the next game day? (d) the level gap number (8?).
+(e) does a lost mugging take the gold too?
+
+**Rev 4's line:** nothing from this round. The next decisions come with steps 1a (the temper and group table for Disaster
 City, the fewest lines), 6a (the offer panel mock-up) and 7a (the onlooker and camera mock-ups).
 
 ---
