@@ -11,7 +11,10 @@
    written in docs/areas/estate/districts/<LETTER>.js (C the Corn Fields, L the Lake, H the Haunted House + Graveyard, R the Ranch), one thread a file.
    This tool keeps what is shared: the plan, the corn wall and its pines, the levels, the paint, the open ground, the ways out, the sky, the checks.
    THE CORN IS THE WALL: the plan's `c` squares are the standing corn (terrain.gen plan / look rock: a 2.2 m bank, the old Corn Fields' own corn);
-   everything else is walked. Squares are (sx 0..72 west to east, sy 0..72 north to south); gx() = a square's west / north line in metres, gc() = its middle. */
+   everything else is walked. Squares are (sx 0..72 west to east, sy 0..72 north to south); gx() = a square's west / north line in metres, gc() = its middle.
+   ONE WORLD (2026-11-17): the home frame above is no room of its own any more. THE ONE WORLD MOVE (below) stands every district at its v13 place: the
+   Corn Fields, the Lake (handed to the route kit: County Lane's room), the Haunted House and the Ranch (phase 3). `site_prebuilt_skinwalker_estate` is
+   retired (DOOR_HQ.retired -> the Ranch). Notes: areas-complexes.md "ONE WORLD, THE ESTATE RE-LAID". */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const REPO = __dirname, DRY = process.argv.includes('--dry-run');
