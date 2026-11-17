@@ -27,6 +27,7 @@
    "id": "moon",
    "name": "The Moon",
    "round": true,
+   "remap": null,
    "room": "site_prebuilt_moon_plots",
    "site": "prebuilt_moon",
    "old": "site_prebuilt_moon_mare",
@@ -328,12 +329,18 @@
   {
    "id": "mars",
    "name": "Mars",
-   "round": false,
+   "round": true,
+   "remap": {
+    "fq": 36,
+    "center": 1,
+    "W0": 60,
+    "H0": 48
+   },
    "room": "site_prebuilt_mars_plots",
    "site": "prebuilt_mars",
    "old": "site_prebuilt_mars_cydonia",
-   "cols": 5,
-   "rows": 4,
+   "cols": 9,
+   "rows": 6,
    "districts": {
     "Y": "Cydonia",
     "V": "The Canyon",
@@ -341,51 +348,51 @@
    },
    "who": "the Martian and the Droid (their home); the old room's greys",
    "spawn": [
-    30,
-    43
+    54,
+    37
    ],
    "marker": [
-    33,
-    40
+    58,
+    34
    ],
    "ways": {
     "bay": {
-     "sx": 30,
-     "sy": 45,
+     "sx": 54,
+     "sy": 39,
      "face": 0,
      "kind": "bay door (Room 4)"
     },
     "mars_derelict": {
-     "sx": 42,
-     "sy": 38,
+     "sx": 68,
+     "sy": 33,
      "face": 180,
      "kind": "the ship's collar: the rover bay's hatch"
     },
     "cydonia_mare": {
-     "sx": 8,
-     "sy": 17,
+     "sx": 32,
+     "sy": 11,
      "face": 90,
      "kind": "hidden: the Face's mouth, the bore to the Moon's far side"
     },
     "cydonia_derelict": {
-     "sx": 37,
-     "sy": 8,
+     "sx": 62,
+     "sy": 1,
      "face": 180,
      "kind": "the ship's collar: Cydonia, under the Pyramid"
     },
     "canyon_derelict": {
-     "sx": 53,
-     "sy": 25,
+     "sx": 77,
+     "sy": 19,
      "face": 180,
      "kind": "the ship's collar: the Canyon Mouth"
     }
    },
    "stairs": [
     {
-     "sx0": 47,
-     "sy0": 13,
-     "sx1": 48,
-     "sy1": 18,
+     "sx0": 72,
+     "sy0": 5,
+     "sx1": 73,
+     "sy1": 10,
      "up": "n",
      "h0": 0,
      "h1": 12.25
@@ -393,270 +400,572 @@
    ],
    "bridges": [
     {
-     "sx0": 31,
-     "sy0": 23,
-     "sx1": 31,
-     "sy1": 31,
+     "sx0": 55,
+     "sy0": 17,
+     "sx1": 55,
+     "sy1": 25,
      "y": 7
     }
    ],
    "plots": [
     {
      "id": "P00-00",
+     "name": "Mars, open ground 1",
+     "d": "Y",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P01-00",
      "name": "The Face, brow",
      "d": "Y",
      "level": 3,
      "what": "LANDMARK: the Face, a mesa 60 m long; a face from above, a hill from the ground",
-     "from": "Cydonia: THE FACE"
-    },
-    {
-     "id": "P01-00",
-     "name": "The Face, east cheek",
-     "d": "Y",
-     "level": 3,
-     "what": "the way up the cheek",
-     "from": "Cydonia: THE FACE"
+     "from": "Cydonia: THE FACE (on the ball)"
     },
     {
      "id": "P02-00",
-     "name": "The Mesas",
+     "name": "The Face, brow",
      "d": "Y",
-     "level": 4,
-     "what": "the north mesa",
-     "from": "Cydonia: THE MESAS"
+     "level": 3,
+     "what": "LANDMARK: the Face, a mesa 60 m long; a face from above, a hill from the ground",
+     "from": "Cydonia: THE FACE (on the ball)"
     },
     {
      "id": "P03-00",
-     "name": "The Pyramid, west",
-     "d": "Y",
-     "level": 7,
-     "what": "LANDMARK: the Pyramid, seven tiers",
-     "from": "Cydonia: THE PYRAMID"
-    },
-    {
-     "id": "P04-00",
-     "name": "The Pyramid",
-     "d": "Y",
-     "level": 7,
-     "what": "the Pyramid's east half",
-     "from": "Cydonia: THE PYRAMID"
-    },
-    {
-     "id": "P00-01",
-     "name": "The Face, mouth",
-     "d": "Y",
-     "level": 3,
-     "what": "the mouth: a trench with the bore to the Moon in it",
-     "from": "Cydonia: THE FACE (the mouth)"
-    },
-    {
-     "id": "P01-01",
      "name": "The Face, chin",
      "d": "Y",
      "level": 0,
      "what": "the foot of the Face",
-     "from": "Cydonia: THE FACE"
+     "from": "Cydonia: THE FACE (on the ball)"
     },
     {
-     "id": "P02-01",
-     "name": "The Arch",
+     "id": "P04-00",
+     "name": "The Mesas",
      "d": "Y",
      "level": 4,
-     "what": "the south mesa; the arch joins the two over your head",
-     "from": "Cydonia: THE ARCH · THE MESAS"
+     "what": "the north mesa",
+     "from": "Cydonia: THE MESAS (on the ball)"
     },
     {
-     "id": "P03-01",
+     "id": "P05-00",
      "name": "The Pyramid, stair",
      "d": "Y",
      "level": 0,
      "what": "the stair up the south face; the low mesa",
-     "from": "Cydonia: THE PYRAMID"
+     "from": "Cydonia: THE PYRAMID (on the ball)"
+    },
+    {
+     "id": "P06-00",
+     "name": "The Pyramid",
+     "d": "Y",
+     "level": 7,
+     "what": "the Pyramid's east half",
+     "from": "Cydonia: THE PYRAMID (on the ball)"
+    },
+    {
+     "id": "P07-00",
+     "name": "The Pyramid",
+     "d": "Y",
+     "level": 7,
+     "what": "the Pyramid's east half",
+     "from": "Cydonia: THE PYRAMID (on the ball)"
+    },
+    {
+     "id": "P08-00",
+     "name": "Mars, open ground 2",
+     "d": "Y",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P00-01",
+     "name": "Mars, open ground 3",
+     "d": "V",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P01-01",
+     "name": "The Face, mouth",
+     "d": "Y",
+     "level": 3,
+     "what": "the mouth: a trench with the bore to the Moon in it",
+     "from": "Cydonia: THE FACE (the mouth) (on the ball)"
+    },
+    {
+     "id": "P02-01",
+     "name": "The Face, mouth",
+     "d": "Y",
+     "level": 3,
+     "what": "the mouth: a trench with the bore to the Moon in it",
+     "from": "Cydonia: THE FACE (the mouth) (on the ball)"
+    },
+    {
+     "id": "P03-01",
+     "name": "The Face, chin",
+     "d": "Y",
+     "level": 0,
+     "what": "the foot of the Face",
+     "from": "Cydonia: THE FACE (on the ball)"
     },
     {
      "id": "P04-01",
+     "name": "The Arch",
+     "d": "Y",
+     "level": 4,
+     "what": "the south mesa; the arch joins the two over your head",
+     "from": "Cydonia: THE ARCH · THE MESAS (on the ball)"
+    },
+    {
+     "id": "P05-01",
+     "name": "The Pyramid, stair",
+     "d": "Y",
+     "level": 0,
+     "what": "the stair up the south face; the low mesa",
+     "from": "Cydonia: THE PYRAMID (on the ball)"
+    },
+    {
+     "id": "P06-01",
      "name": "The Pyramid, east foot",
      "d": "Y",
      "level": 0,
      "what": "the Pyramid's south-east foot",
-     "from": "Cydonia: THE PYRAMID"
+     "from": "Cydonia: THE PYRAMID (on the ball)"
+    },
+    {
+     "id": "P07-01",
+     "name": "The Pyramid, east foot",
+     "d": "Y",
+     "level": 0,
+     "what": "the Pyramid's south-east foot",
+     "from": "Cydonia: THE PYRAMID (on the ball)"
+    },
+    {
+     "id": "P08-01",
+     "name": "Mars, open ground 4",
+     "d": "V",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
     },
     {
      "id": "P00-02",
-     "name": "The Canyon, west",
-     "d": "V",
-     "level": -3,
-     "what": "the canyon's west end and the way down",
-     "from": "Cydonia: THE CANYON"
+     "name": "Mars, open ground 5",
+     "d": "R",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
     },
     {
      "id": "P01-02",
-     "name": "The Canyon",
-     "d": "V",
-     "level": -3,
-     "what": "the canyon floor; the middle way down",
-     "from": "Cydonia: THE CANYON"
-    },
-    {
-     "id": "P02-02",
-     "name": "The Canyon under the Arch",
-     "d": "V",
-     "level": -3,
-     "what": "the canyon floor under the arch",
-     "from": "Cydonia: THE CANYON"
-    },
-    {
-     "id": "P03-02",
-     "name": "The Canals",
-     "d": "V",
-     "level": -3,
-     "what": "two dead-straight cuts off the canyon",
-     "from": "new plot (label mine): the canals"
-    },
-    {
-     "id": "P04-02",
-     "name": "The Canyon Mouth",
-     "d": "V",
-     "level": -3,
-     "what": "the canyon's east end and the way down",
-     "from": "plan 1: The Canyon Mouth"
-    },
-    {
-     "id": "P00-03",
      "name": "The Dunes",
      "d": "R",
      "level": 0,
      "what": "dunes: room to fight",
-     "from": "plan 1: The Dunes"
+     "from": "plan 1: The Dunes (on the ball)"
     },
     {
-     "id": "P01-03",
-     "name": "The Dunes, east",
+     "id": "P02-02",
+     "name": "The Dunes",
      "d": "R",
      "level": 0,
-     "what": "dunes, the tripod standing in them",
-     "from": "new plot (label mine): the Martian's tripod (spell prop)"
+     "what": "dunes: room to fight",
+     "from": "plan 1: The Dunes (on the ball)"
     },
     {
-     "id": "P02-03",
-     "name": "The Airlock",
-     "d": "R",
-     "level": 0,
-     "what": "the bay's airlock; red dust in the seal",
-     "from": "the bay door (Room 4)"
+     "id": "P03-02",
+     "name": "The Canyon",
+     "d": "V",
+     "level": -3,
+     "what": "the canyon floor; the middle way down",
+     "from": "Cydonia: THE CANYON (on the ball)"
     },
     {
-     "id": "P03-03",
-     "name": "The Rover Bay",
-     "d": "R",
-     "level": 0,
-     "what": "LANDMARK of the south: the rover bay, walk-in; the ship's collar is its hatch",
-     "from": "Cydonia: THE ROVER BAY'S HATCH"
+     "id": "P04-02",
+     "name": "The Canyon under the Arch",
+     "d": "V",
+     "level": -3,
+     "what": "the canyon floor under the arch",
+     "from": "Cydonia: THE CANYON (on the ball)"
     },
     {
-     "id": "P04-03",
+     "id": "P05-02",
+     "name": "The Canals",
+     "d": "V",
+     "level": -3,
+     "what": "two dead-straight cuts off the canyon",
+     "from": "new plot (label mine): the canals (on the ball)"
+    },
+    {
+     "id": "P06-02",
      "name": "The Tracks",
      "d": "R",
      "level": 0,
      "what": "the rover at the end of its tracks",
-     "from": "Cydonia: the rover's tracks"
+     "from": "Cydonia: the rover's tracks (on the ball)"
+    },
+    {
+     "id": "P07-02",
+     "name": "The Tracks",
+     "d": "R",
+     "level": 0,
+     "what": "the rover at the end of its tracks",
+     "from": "Cydonia: the rover's tracks (on the ball)"
+    },
+    {
+     "id": "P08-02",
+     "name": "Mars, open ground 6",
+     "d": "R",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P00-03",
+     "name": "Mars, open ground 7",
+     "d": "Y",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P01-03",
+     "name": "Mars, open ground 8",
+     "d": "Y",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P02-03",
+     "name": "Mars, open ground 9",
+     "d": "Y",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P03-03",
+     "name": "The Dunes, east",
+     "d": "R",
+     "level": 0,
+     "what": "dunes, the tripod standing in them",
+     "from": "new plot (label mine): the Martian's tripod (spell prop) (on the ball)"
+    },
+    {
+     "id": "P04-03",
+     "name": "The Airlock",
+     "d": "R",
+     "level": 0,
+     "what": "the bay's airlock; red dust in the seal",
+     "from": "the bay door (Room 4) (on the ball)"
+    },
+    {
+     "id": "P05-03",
+     "name": "The Rover Bay",
+     "d": "R",
+     "level": 0,
+     "what": "LANDMARK of the south: the rover bay, walk-in; the ship's collar is its hatch",
+     "from": "Cydonia: THE ROVER BAY'S HATCH (on the ball)"
+    },
+    {
+     "id": "P06-03",
+     "name": "Mars, open ground 10",
+     "d": "Y",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P07-03",
+     "name": "Mars, open ground 11",
+     "d": "Y",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P08-03",
+     "name": "Mars, open ground 12",
+     "d": "Y",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P00-04",
+     "name": "Mars, open ground 13",
+     "d": "V",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P01-04",
+     "name": "Mars, open ground 14",
+     "d": "R",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P02-04",
+     "name": "Mars, open ground 15",
+     "d": "V",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P03-04",
+     "name": "The Dunes",
+     "d": "R",
+     "level": 0,
+     "what": "dunes: room to fight",
+     "from": "plan 1: The Dunes (on the ball)"
+    },
+    {
+     "id": "P04-04",
+     "name": "Mars, open ground 16",
+     "d": "R",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P05-04",
+     "name": "The Tracks",
+     "d": "R",
+     "level": 0,
+     "what": "the rover at the end of its tracks",
+     "from": "Cydonia: the rover's tracks (on the ball)"
+    },
+    {
+     "id": "P06-04",
+     "name": "The Face, brow",
+     "d": "Y",
+     "level": 3,
+     "what": "LANDMARK: the Face, a mesa 60 m long; a face from above, a hill from the ground",
+     "from": "Cydonia: THE FACE (on the ball)"
+    },
+    {
+     "id": "P07-04",
+     "name": "Mars, open ground 17",
+     "d": "Y",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P08-04",
+     "name": "The Pyramid",
+     "d": "Y",
+     "level": 7,
+     "what": "the Pyramid's east half",
+     "from": "Cydonia: THE PYRAMID (on the ball)"
+    },
+    {
+     "id": "P00-05",
+     "name": "Mars, open ground 18",
+     "d": "R",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P01-05",
+     "name": "Mars, open ground 19",
+     "d": "R",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P02-05",
+     "name": "Mars, open ground 20",
+     "d": "R",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P03-05",
+     "name": "Mars, open ground 21",
+     "d": "R",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P04-05",
+     "name": "Mars, open ground 22",
+     "d": "R",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P05-05",
+     "name": "Mars, open ground 23",
+     "d": "R",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Mars"
+    },
+    {
+     "id": "P06-05",
+     "name": "The Face, east cheek",
+     "d": "Y",
+     "level": 3,
+     "what": "the way up the cheek",
+     "from": "Cydonia: THE FACE (on the ball)"
+    },
+    {
+     "id": "P07-05",
+     "name": "The Mesas",
+     "d": "Y",
+     "level": 4,
+     "what": "the north mesa",
+     "from": "Cydonia: THE MESAS (on the ball)"
+    },
+    {
+     "id": "P08-05",
+     "name": "The Pyramid, west",
+     "d": "Y",
+     "level": 7,
+     "what": "LANDMARK: the Pyramid, seven tiers",
+     "from": "Cydonia: THE PYRAMID (on the ball)"
     }
    ],
    "cells": [
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xx...xxxx.mmmm............xxx..........xxxxxx...xxxxxxxxxxxx",
-    "xx......mmmmmmmm.........................................xxx",
-    "xx.....mmmmmmmmmm..........mmmmmmmm......................xxx",
-    "xx....mmmmmmmmmmmm.........mmmmmmmm......tttttttttttttt...xx",
-    "xxx..mmmmmmmmmmmmmm........mmmmmmmm......tttttttttttttt...xx",
-    "xxx..mmmmmmmmmmmmmm........mmmmmmmm......tttttttttttttt...xx",
-    "xxx.mmmmmmmmmmmmmmmm.......mmmmmmmm......tttttttttttttt..xxx",
-    "xx..mmmcccmmmmcccmmm........rr...........tttttttttttttt..xxx",
-    "xxx.mmmcccmmmmcccmmm........rr...........tttttttttttttt..xxx",
-    "xxxmmmmmmmmmmmmmmmmmmrrrrr..rr...........tttttttttttttt..xxx",
-    "xxxmmmmmmmmmmmmmmmmmmrrrrr..rr...........tttttttttttttt...xx",
-    "xxxmmmmmmmmmmmmmmmmmm....................ttttttrrtttttt...xx",
-    "xxx.mmmmmmmmmmmmmmmm.....................ttttttrrtttttt...xx",
-    "xx..mmmmmmmmmmmmmmmm.....................ttttttrrtttttt...xx",
-    "xx..mmmmmmmmmmmmmmmm.....................ttttttrrtttttt...xx",
-    "xx...mmmccccccccrrm........mmmmmmmmm.....ttttttrrtttttt...xx",
-    "xx...mmmccccccccrrm........mmmmmmmmm.....ttttttrrtttttt...xx",
-    "xx....mmmmmmmmmmmm..rrrrrrrmmmmmmmmm...........pp.........xx",
-    "xxx....mmmmmmmmmm...rrrrrrrmmmmmmmmm...........pp.........xx",
-    "xxx.....mmmmmmmm...........mmmmmmmmm..........c...c.......xx",
-    "xxx.......mmmm.............mmmmmmmmm..........c...c.......xx",
-    "xxx.rr........................................c...c.......xx",
-    "xxx.rr........................................c...c......xxx",
-    "xxx.rr........................................c...c......xxx",
-    "xxx.rr...................ccccccccccccccccc....c...c......xxx",
-    "xxx.rr..............ccccccccccccccccccccccccccc...c......xxx",
-    "xxx.cccccccccccccccccccccccccccccccccccccccccccccccccccc.xxx",
-    "xxx.cccccccccccccccccccccccccccccccccccccccccccccccccccc.xxx",
-    "xxx.ccccccccccccccccccccc.................cccccccccccccc.xxx",
-    "xxx.cccccccccccccccc..rr.......................ccccccccc.xxx",
-    "xx....................rr...mmmmmmmmm............c.....rr.xxx",
-    "xx....................rr...mmmmmmmmmrrrrrrr.....c.....rr.xxx",
-    "xx....................rr...mmmmmmmmmrrrrrrr.....c.....rr.xxx",
-    "xxeeeeeeeeeeeeeeeeeeeerr...mmmmmmmmm............c.....rr.xxx",
-    "xxxeeeeeeeeeeeeeeeeeeeee...mmmmmmmmm............c.....rrpxxx",
-    "xxxeeeeeeeeeppppppppppppppppppp.........................pxxx",
-    "xxxeeeeeeeeeeeeeeeeeeeee......p.........................pxxx",
-    "xxeeeeeeeeeeeeeeeeeeeeee......p.......lllllllll.........pxxx",
-    "xxeeeeeeeeeeeeeeeeeeeeee......p.......lllllllll.........p.xx",
-    "xxeeeeeeeeeeeeeeeeeeeeee......p.......lllllllllpppppppppp.xx",
-    "xxeeeeeeeeeeeeeeeeeeeeee......p.......lllllllll..........xxx",
-    "xxeeeeeeeeeeeeeeeeeeeeee......p.......lllllllll..........xxx",
-    "xxeeeeeeeeeeeeeeeeeeeeee......pppppppp...................xxx",
-    "xxeeeexxxxxxxxxxxxeeeeeexxxxx...x....xxxxxxxx.......xxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    "..........................mmmmmmmmmmmmmmm.........mmmmmmmmmm.......tttttttttttt.............................",
+    ".........................mmmmmmmmmmmcccmmm........mmmmmmmmmm.......tttttttttttttt...........................",
+    ".........................mmmmmmmmmmmcccmmm........mmmmmmmmmm.......tttttttttttttttt.........................",
+    ".........................mmmmmmmmmmmmmmcmmm.........rr............tttttttttttttttttt........................",
+    ".........................mmmmcccmmmmmmmmmmmmr.......rr............ttttttttttttttttt.........................",
+    "........................mmmmccmmmmmmmmmmmmmmrrrrrr..rr............ttttttrttttttttt..........................",
+    ".........................mmmmmmmmmmmmmmmmmmm.rrrrr..rr............ttttttrrtttttttt..........................",
+    ".........................mmmmmmmmmmmmmmmmmm.......................ttttttrrttttttt...........................",
+    ".........................mmmmmmmmmmmmmmmmmm.......................ttttttrrttttttt...........................",
+    "..........................mmmmmmmmmccmmmmmmm.....................ttttttrrrtttttt............................",
+    "...........................mmmmmmcccccccrrmm.....................ttttttrrttttttt............................",
+    "...........................mmmmmccccccccrrm........mmmmmmmmm.....ttttttrrttttttt............................",
+    ".............................mmmcmmmmmmmmmm........mmmmmmmmm.....t.....pp..tttt.............................",
+    "..............................mmmmmmmmmmmm..rrrrrrrmmmmmmmmm...........pp...................................",
+    "...............................mmmmmmmmmm...rrrrrrrmmmmmmmmm..........c.....................................",
+    "................................mmmmmmmm...........mmmmmmmmm..........c...c.................................",
+    "..................................mmmm.............mmmmmmmmm..........c...c.................................",
+    "............................rr........................................c...c.................................",
+    "............................rr........................................c...c.................................",
+    "............................rr........................................c...c.................................",
+    "............................rr...................ccccccccccccccccc....c...c.................................",
+    "............................rr..............ccccccccccccccccccccccccc.c...c.................................",
+    "............................cccccc.......cccccccccccccccccccccccccccccc...cccccc............................",
+    "...........................cccccccccccccccccccccccccccccccccccccccccccccccccccccc...........................",
+    "...........................cccccccccccccccccccccc................cccccccccccccccc...........................",
+    "..............................cccccccccccccc..rr..................cccccccccccc.rr...........................",
+    "......................ee.........ccccccccccc..rr...mmmmmmmmm...........cccc....rr...........................",
+    "......................eeeee........ccc........rr...mmmmmmmmmrrrr........cc.....rrr..........................",
+    ".....................eeeeeeeee...............rrr...mmmmmmmmmrrrrrrrr.....c......rrp.........................",
+    "....................eeeeeeeeeeeee............rr....mmmmmmmmmm..rrrrr.....c.........p........................",
+    "...................eeeeeeeeeeeeeeee....eeeeeeee....mmmmmmmmmm............cc.........p.......................",
+    "..................eeeeeeeeeeeeeeeeeeeeeeeeeeepppppppppp...................c.........pp......................",
+    ".................eeeeeeeeeeeeeeeeeeeeeeppppppee.......p..........................pp.........................",
+    "...............eeeeeeeeeeeeeeeeeeeppppppeeeeeee.......p........................pp...........................",
+    ".................eeeeeeeeeeeeeeeeeeeeeeeeeeeeee.......p.........llll.........pp.............................",
+    "....................eeeeeeeeeeeeeeeeeeeeeeeeeee.......p.........llllllllll.pp...............................",
+    "....................................eeeeeeeeeee.......p.........llllllll....................................",
+    "....................................eeeeeeeeeee.......p........lllllllll....................................",
+    "....................................eeeeeeeeeee.......ppppppp..lllllllll....................................",
+    "....................................eeeeeeeeeeee.............p....lllllp....................................",
+    "....................................eeeeeeeeeeee....................lll.....................................",
+    "....................................eeeeeeeeeeee............................................................",
+    "....................................eeeeeeeeeeee............................................................",
+    "....................................eeeeeeee................................................................",
+    "....................................eeeeee..................................................................",
+    "....................................eeeee...................................................................",
+    "....................................eee.....................................................................",
+    "....................................ee......................................................................",
+    "....................................ee......................................................................",
+    "....................................e.......................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "............................................................................................................",
+    "........................................................................mm..................................",
+    "........................................................................mmm.................................",
+    "........................................................................mmm.................................",
+    "........................................................................mmmm................................",
+    "........................................................................mmmm...............................t",
+    "........................................................................mmmmm............................ttt",
+    "........................................................................mmmmm.........................tttttt",
+    "........................................................................mmmmm.........mmmmmmmmmm......tttttt",
+    "........................................................................mmmmm.........mmmmmmmmmm.......ttttt"
    ]
   },
   {
    "id": "saturn",
    "name": "Saturn",
-   "round": false,
+   "round": true,
+   "remap": {
+    "fq": 48,
+    "center": 5,
+    "W0": 48,
+    "H0": 48
+   },
    "room": "site_prebuilt_saturn_plots",
    "site": "prebuilt_saturn",
    "old": "site_prebuilt_saturn_hexagon",
-   "cols": 4,
-   "rows": 4,
+   "cols": 12,
+   "rows": 8,
    "districts": {
     "H": "The Hexagon",
     "G": "The Ring Shard"
    },
    "who": "the Grey and the Black Goo (their home); the old room's watcher and android",
    "spawn": [
-    22,
-    41
+    118,
+    89
    ],
    "marker": [
-    24,
-    33
+    120,
+    81
    ],
    "ways": {
     "bay": {
-     "sx": 22,
-     "sy": 43,
+     "sx": 118,
+     "sy": 91,
      "face": 0,
      "kind": "bay door (Room 6)"
     },
     "derelict_saturn": {
-     "sx": 25,
-     "sy": 5,
+     "sx": 121,
+     "sy": 53,
      "face": 180,
      "kind": "the ship's collar, on the Docking Shelf"
     },
     "saturn_singularity": {
-     "sx": 5,
-     "sy": 23,
+     "sx": 101,
+     "sy": 71,
      "face": 90,
      "kind": "the Drop's frame: to the Singularity"
     },
     "hexagon_derelict": {
-     "sx": 15,
-     "sy": 28,
+     "sx": 111,
+     "sy": 76,
      "face": 180,
      "kind": "the ship's collar: the Hexagon, by the Eye"
     }
@@ -666,234 +975,928 @@
    "plots": [
     {
      "id": "P00-00",
+     "name": "Saturn, open ground 1",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P01-00",
+     "name": "Saturn, open ground 2",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P02-00",
+     "name": "Saturn, open ground 3",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P03-00",
+     "name": "Saturn, open ground 4",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P04-00",
+     "name": "Saturn, open ground 5",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P05-00",
+     "name": "Saturn, open ground 6",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P06-00",
+     "name": "Saturn, open ground 7",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P07-00",
+     "name": "Saturn, open ground 8",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P08-00",
+     "name": "Saturn, open ground 9",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P09-00",
+     "name": "Saturn, open ground 10",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P10-00",
+     "name": "Saturn, open ground 11",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P11-00",
+     "name": "Saturn, open ground 12",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P00-01",
+     "name": "Saturn, open ground 13",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P01-01",
+     "name": "Saturn, open ground 14",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P02-01",
+     "name": "Saturn, open ground 15",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P03-01",
+     "name": "Saturn, open ground 16",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P04-01",
+     "name": "Saturn, open ground 17",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P05-01",
+     "name": "Saturn, open ground 18",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P06-01",
+     "name": "Saturn, open ground 19",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P07-01",
+     "name": "Saturn, open ground 20",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P08-01",
+     "name": "Saturn, open ground 21",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P09-01",
+     "name": "Saturn, open ground 22",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P10-01",
+     "name": "Saturn, open ground 23",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P11-01",
+     "name": "Saturn, open ground 24",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P00-02",
+     "name": "Saturn, open ground 25",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P01-02",
+     "name": "Saturn, open ground 26",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P02-02",
+     "name": "Saturn, open ground 27",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P03-02",
+     "name": "Saturn, open ground 28",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P04-02",
+     "name": "Saturn, open ground 29",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P05-02",
+     "name": "Saturn, open ground 30",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P06-02",
+     "name": "Saturn, open ground 31",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P07-02",
+     "name": "Saturn, open ground 32",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P08-02",
+     "name": "Saturn, open ground 33",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P09-02",
+     "name": "Saturn, open ground 34",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P10-02",
+     "name": "Saturn, open ground 35",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P11-02",
+     "name": "Saturn, open ground 36",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P00-03",
+     "name": "Saturn, open ground 37",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P01-03",
+     "name": "Saturn, open ground 38",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P02-03",
+     "name": "Saturn, open ground 39",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P03-03",
+     "name": "Saturn, open ground 40",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P04-03",
+     "name": "Saturn, open ground 41",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P05-03",
+     "name": "Saturn, open ground 42",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P06-03",
+     "name": "Saturn, open ground 43",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P07-03",
+     "name": "Saturn, open ground 44",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P08-03",
+     "name": "Saturn, open ground 45",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P09-03",
+     "name": "Saturn, open ground 46",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P10-03",
+     "name": "Saturn, open ground 47",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P11-03",
+     "name": "Saturn, open ground 48",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P00-04",
+     "name": "Saturn, open ground 49",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P01-04",
+     "name": "Saturn, open ground 50",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P02-04",
+     "name": "Saturn, open ground 51",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P03-04",
+     "name": "Saturn, open ground 52",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P04-04",
+     "name": "Saturn, open ground 53",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P05-04",
+     "name": "Saturn, open ground 54",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P06-04",
+     "name": "Saturn, open ground 55",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P07-04",
+     "name": "Saturn, open ground 56",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P08-04",
      "name": "The Storm Walls, north-west",
      "d": "H",
      "level": 2,
      "what": "a wall of storm; the rim walk under it",
-     "from": "The Hexagon: THE STORM WALLS"
+     "from": "The Hexagon: THE STORM WALLS (on the ball)"
     },
     {
-     "id": "P01-00",
+     "id": "P09-04",
      "name": "The Storm Walls, north",
      "d": "H",
      "level": 2,
      "what": "the rim walk, the north ramp",
-     "from": "The Hexagon: THE STORM WALLS"
+     "from": "The Hexagon: THE STORM WALLS (on the ball)"
     },
     {
-     "id": "P02-00",
+     "id": "P10-04",
      "name": "The Docking Shelf",
      "d": "G",
      "level": 2,
      "what": "the shelf on the rim: the ship's collar",
-     "from": "The Hexagon: THE DOCKING SHELF"
+     "from": "The Hexagon: THE DOCKING SHELF (on the ball)"
     },
     {
-     "id": "P03-00",
+     "id": "P11-04",
      "name": "The Ring Shard, north",
      "d": "G",
      "level": 2,
      "what": "the rim walk under the rings",
-     "from": "The Hexagon: THE RING SHARD"
+     "from": "The Hexagon: THE RING SHARD (on the ball)"
     },
     {
-     "id": "P00-01",
+     "id": "P00-05",
+     "name": "Saturn, open ground 57",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P01-05",
+     "name": "Saturn, open ground 58",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P02-05",
+     "name": "Saturn, open ground 59",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P03-05",
+     "name": "Saturn, open ground 60",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P04-05",
+     "name": "Saturn, open ground 61",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P05-05",
+     "name": "Saturn, open ground 62",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P06-05",
+     "name": "Saturn, open ground 63",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P07-05",
+     "name": "Saturn, open ground 64",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P08-05",
      "name": "The Rim Walk",
      "d": "H",
      "level": 2,
      "what": "the west rim: the Drop's frame, a frame with nothing in it",
-     "from": "The Hexagon: THE RIM WALK · THE DROP'S FRAME"
+     "from": "The Hexagon: THE RIM WALK · THE DROP'S FRAME (on the ball)"
     },
     {
-     "id": "P01-01",
+     "id": "P09-05",
      "name": "The Eye, north-west",
      "d": "H",
      "level": 0,
      "what": "LANDMARK: the Eye, the storm's own eye in the middle of the plateau",
-     "from": "The Hexagon: THE EYE"
+     "from": "The Hexagon: THE EYE (on the ball)"
     },
     {
-     "id": "P02-01",
+     "id": "P10-05",
      "name": "The Eye, north-east",
      "d": "H",
      "level": 0,
      "what": "the Eye",
-     "from": "The Hexagon: THE EYE"
+     "from": "The Hexagon: THE EYE (on the ball)"
     },
     {
-     "id": "P03-01",
+     "id": "P11-05",
      "name": "The Ring Shard",
      "d": "G",
      "level": 2,
      "what": "LANDMARK of the east: a splinter of ring ice across the rim",
-     "from": "The Hexagon: THE RING SHARD"
+     "from": "The Hexagon: THE RING SHARD (on the ball)"
     },
     {
-     "id": "P00-02",
+     "id": "P00-06",
+     "name": "Saturn, open ground 65",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P01-06",
+     "name": "Saturn, open ground 66",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P02-06",
+     "name": "Saturn, open ground 67",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P03-06",
+     "name": "Saturn, open ground 68",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P04-06",
+     "name": "Saturn, open ground 69",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P05-06",
+     "name": "Saturn, open ground 70",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P06-06",
+     "name": "Saturn, open ground 71",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P07-06",
+     "name": "Saturn, open ground 72",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P08-06",
      "name": "The Camp",
      "d": "H",
      "level": 2,
      "what": "the camp, upwind of the Eye",
-     "from": "The Hexagon: the camp"
+     "from": "The Hexagon: the camp (on the ball)"
     },
     {
-     "id": "P01-02",
+     "id": "P09-06",
      "name": "The Eye, south-west",
      "d": "H",
      "level": 0,
      "what": "the Eye; the plateau: room to fight",
-     "from": "The Hexagon: THE PLATEAU"
+     "from": "The Hexagon: THE PLATEAU (on the ball)"
     },
     {
-     "id": "P02-02",
+     "id": "P10-06",
      "name": "The Eye, south-east",
      "d": "H",
      "level": 0,
      "what": "the Eye; the plateau",
-     "from": "The Hexagon: THE PLATEAU"
+     "from": "The Hexagon: THE PLATEAU (on the ball)"
     },
     {
-     "id": "P03-02",
+     "id": "P11-06",
      "name": "The Ring Plane",
      "d": "G",
      "level": 2,
      "what": "the south-east rim: fallen ring ice",
-     "from": "new plot (label mine): \"mind the ring plane\""
+     "from": "new plot (label mine): \"mind the ring plane\" (on the ball)"
     },
     {
-     "id": "P00-03",
+     "id": "P00-07",
+     "name": "Saturn, open ground 73",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P01-07",
+     "name": "Saturn, open ground 74",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P02-07",
+     "name": "Saturn, open ground 75",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P03-07",
+     "name": "Saturn, open ground 76",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P04-07",
+     "name": "Saturn, open ground 77",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P05-07",
+     "name": "Saturn, open ground 78",
+     "d": "H",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P06-07",
+     "name": "Saturn, open ground 79",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P07-07",
+     "name": "Saturn, open ground 80",
+     "d": "G",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round Saturn"
+    },
+    {
+     "id": "P08-07",
      "name": "The Storm Walls, south-west",
      "d": "H",
      "level": 2,
      "what": "a wall of storm",
-     "from": "The Hexagon: THE STORM WALLS"
+     "from": "The Hexagon: THE STORM WALLS (on the ball)"
     },
     {
-     "id": "P01-03",
+     "id": "P09-07",
      "name": "The Airlock",
      "d": "H",
      "level": 2,
      "what": "the bay's airlock, the Mars airlock's twin; frost on it",
-     "from": "the bay door (Room 6)"
+     "from": "the bay door (Room 6) (on the ball)"
     },
     {
-     "id": "P02-03",
+     "id": "P10-07",
      "name": "The Plateau",
      "d": "H",
      "level": 2,
      "what": "the south rim and its ramp",
-     "from": "The Hexagon: THE PLATEAU"
+     "from": "The Hexagon: THE PLATEAU (on the ball)"
     },
     {
-     "id": "P03-03",
+     "id": "P11-07",
      "name": "The Storm Walls, south-east",
      "d": "H",
      "level": 2,
      "what": "a wall of storm",
-     "from": "The Hexagon: THE STORM WALLS"
+     "from": "The Hexagon: THE STORM WALLS (on the ball)"
     }
    ],
    "cells": [
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxxx",
-    "xxxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxxx",
-    "xxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxx",
-    "xxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxx",
-    "xxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxx",
-    "xxxxxxxxxmmmmmm.......rrrr.......mmmmmmxxxxxxxxx",
-    "xxxxxxxxxmmmmm........rrrr........mmmmmxxxxxxxxx",
-    "xxxxxxxxmmmmmm........rrrr........mmmmmmxxxxxxxx",
-    "xxxxxxxxmmmmm.........rrrr.........mmmmmxxxxxxxx",
-    "xxxxxxxmmmmmm..........p...........miimmmxxxxxxx",
-    "xxxxxxmmmmmm...........p............iimmmmxxxxxx",
-    "xxxxxxmmmmmm...........p............iimmmmxxxxxx",
-    "xxxxxmmmmmm............p.............iimmmmxxxxx",
-    "xxxxxmmmmm...........cccccc..........iimmmmxxxxx",
-    "xxxxmmmmmm..........cccccccc.........iimmmmmxxxx",
-    "xxxxmmmmm..........cccccccccc.........iimmmmxxxx",
-    "xxxmmmmmm.........cccccccccccc........iimmmmmxxx",
-    "xxmmmmmm.........cccccccccccccc.......iimmmmmmxx",
-    "xxmmmmmm.........ccccchhhhccccc.........mmmmmmxx",
-    "xmmmmmm..........ccccchhhhccccc..........mmmmmmx",
-    "xmmmmmm.........pccccchhhhcccccp.........mmmmmmx",
-    "xxmmmmmm........pccccchhhhcccccp........mmmmmmxx",
-    "xxmmmmmm........pccccccccccccccp........mmmmmmxx",
-    "xxxmmmmmm.......p.cccccccccccc.p.......mmmmmmxxx",
-    "xxxxmmmmm.......p..cccccccccc..p.......mmmmmxxxx",
-    "xxxxmmmmmm......p...cccccccc...p......mmmmmmxxxx",
-    "xxxxxmmmmrrrrpppp....cccccc....pppprrrrmmmmxxxxx",
-    "xxxxxmmmmrrrr......................rrrrmmmmxxxxx",
-    "xxxxxxmmmmmm...........p............mmmmmmxxxxxx",
-    "xxxxxxmmmmmm...........p............mmmmmmxxxxxx",
-    "xxxxxxxmmmmmm..........p...........mmmmmmxxxxxxx",
-    "xxxxxxxxmmmmm..........p...........mmmmmxxxxxxxx",
-    "xxxxxxxxmmmmmm........rrrr........mmmmmmxxxxxxxx",
-    "xxxxxxxxxmmmmm........rrrr........mmmmmxxxxxxxxx",
-    "xxxxxxxxxmmmmmm.......rrrr.......mmmmmmxxxxxxxxx",
-    "xxxxxxxxxxmmmmmmmmmmmmrrrrmmmmmmmmmmmmxxxxxxxxxx",
-    "xxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxx",
-    "xxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxx",
-    "xxxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxxx",
-    "xxxxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    "xxxxxxxxxxxxxx....................xxxxxxxxxxxxxxxxxxxxxxxxxxxx....................xxxxxxxxxxxxxxxxxxxxxxxxxxxx....................xxxxxxxxxxxxxx",
+    "xxxxxxxx................................xxxxxxxxxxxxxxxx................................xxxxxxxxxxxxxxxx................................xxxxxxxx",
+    "xxxxx......................................xxxxxxxxxx......................................xxxxxxxxxx......................................xxxxx",
+    "xxx..........................................xxxxxx..........................................xxxxxx..........................................xxx",
+    "x..............................................xx..............................................xx..............................................x",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "................................................................................................................................................",
+    "xxxxxxxxxxxxxx....................xxxxxxxxxxxxxx................................................xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxx................................xxxxxxxx................................................xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxx......................................xxxxx................................................xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxx..........................................xxx................................................xxxxxxxxxxmmmmxxxxxxxxxxxxxxxxxxxxmmmmxxxxxxxxxx",
+    "x..............................................x................................................xxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxx",
+    "................................................................................................xxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxx",
+    "................................................................................................xxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxx",
+    "................................................................................................xxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxx",
+    "................................................................................................xxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxx",
+    "................................................................................................xxxxxxxxmmmmmm........rrrr........mmmmmmxxxxxxxx",
+    "................................................................................................xxxxxxxmmmmmm.........rrrr.........mmmmmmxxxxxxx",
+    "................................................................................................xxxxxxxmmmmm..........rrrr..........mmmmmxxxxxxx",
+    "................................................................................................xxxxxxmmmmmmm.........rrrr.........mmiimmmxxxxxx",
+    "................................................................................................xxxxxmmmmmmmm..........p...........miimmmmmxxxxx",
+    "................................................................................................xxxxxxmmmmmm...........p............iimmmmxxxxxx",
+    "................................................................................................xxxxxmmmmmmm...........p............iiimmmmxxxxx",
+    "................................................................................................xxxxxmmmmmm............p.............iimmmmxxxxx",
+    "................................................................................................xxxxmmmmmm...........cccccc..........iimmmmmxxxx",
+    "................................................................................................xxxxmmmmmm..........cccccccc.........iimmmmmxxxx",
+    "................................................................................................xxxmmmmmm..........cccccccccc.........iimmmmmxxx",
+    "................................................................................................xxmmmmmmm.........cccccccccccc........iimmmmmmxx",
+    "................................................................................................xxmmmmmm.........cccccccccccccc.......iimmmmmmxx",
+    "................................................................................................xxmmmmmm.........ccccchhhhccccc.........mmmmmmxx",
+    "................................................................................................xmmmmmm..........ccccchhhhccccc..........mmmmmmx",
+    "................................................................................................xmmmmmm.........pccccchhhhcccccp.........mmmmmmx",
+    "................................................................................................xxmmmmmm........pccccchhhhcccccp........mmmmmmxx",
+    "................................................................................................xxmmmmmm........pccccccccccccccp........mmmmmmxx",
+    "................................................................................................xxmmmmmmm.......p.cccccccccccc.p.......mmmmmmmxx",
+    "................................................................................................xxxmmmmmm.......p..cccccccccc..p.......mmmmmmxxx",
+    "................................................................................................xxxxmmmmmm......p...cccccccc...p......mmmmmmxxxx",
+    "................................................................................................xxxxmmmmmrrrrpppp....cccccc....pppprrrrmmmmmxxxx",
+    "................................................................................................xxxxxmmmmrrrr......................rrrrmmmmxxxxx",
+    "................................................................................................xxxxxmmmmrrm...........p............mrrmmmmxxxxx",
+    "................................................................................................xxxxxxmmmmmm...........p............mmmmmmxxxxxx",
+    "................................................................................................xxxxxmmmmmmmm..........p...........mmmmmmmmxxxxx",
+    "................................................................................................xxxxxxmmmmmmm..........p...........mmmmmmmxxxxxx",
+    "................................................................................................xxxxxxxmmmmm..........rrrr..........mmmmmxxxxxxx",
+    "................................................................................................xxxxxxxmmmmmm.........rrrr.........mmmmmmxxxxxxx",
+    "................................................................................................xxxxxxxxmmmmmm........rrrr........mmmmmmxxxxxxxx",
+    "................................................................................................xxxxxxxxmmmmmmmmmmmmmmrrrrmmmmmmmmmmmmmmxxxxxxxx",
+    "................................................................................................xxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxx",
+    "................................................................................................xxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxx",
+    "................................................................................................xxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxx",
+    "................................................................................................xxxxxxxxxxmmmmmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxx",
+    "................................................................................................xxxxxxxxxxmmmmxxxxxxxxxxxxxxxxxxxxmmmmxxxxxxxxxx",
+    "................................................................................................xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "................................................................................................xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "................................................................................................xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
    ]
   },
   {
    "id": "singularity",
    "name": "The Singularity",
-   "round": false,
+   "round": true,
+   "remap": {
+    "fq": 36,
+    "center": 4,
+    "W0": 48,
+    "H0": 48
+   },
    "room": "site_prebuilt_singularity_plots",
    "site": "prebuilt_singularity",
    "old": "site_prebuilt_singularity_horizon",
-   "cols": 4,
-   "rows": 4,
+   "cols": 9,
+   "rows": 6,
    "districts": {
     "D": "The Drop",
     "A": "The Accretion Rim"
    },
    "who": "the Cosmic Wraith (its home); the old room's watcher, shadow entity, occulus",
    "spawn": [
-    22,
-    42
+    19,
+    71
    ],
    "marker": [
-    30,
-    41
+    62,
+    71
    ],
    "ways": {
     "bay": {
-     "sx": 22,
-     "sy": 44,
-     "face": 0,
+     "sx": 19,
+     "sy": 69,
+     "face": 180,
      "kind": "bay door (Room 0)"
     },
     "saturn_singularity": {
-     "sx": 18,
-     "sy": 4,
+     "sx": 47,
+     "sy": 34,
      "face": 180,
      "kind": "the frame from Saturn"
     },
     "observatorium_singularity": {
-     "sx": 36,
-     "sy": 5,
+     "sx": 67,
+     "sy": 33,
      "face": 180,
      "kind": "hidden: the screen, DOOR HQ's observatory"
     },
     "rim_derelict": {
-     "sx": 4,
-     "sy": 22,
-     "face": 90,
+     "sx": 19,
+     "sy": 34,
+     "face": 180,
      "kind": "the ship's collar: the Accretion Rim, west"
     },
     "drop_derelict": {
-     "sx": 29,
-     "sy": 17,
+     "sx": 59,
+     "sy": 47,
      "face": 180,
      "kind": "the ship's collar: the Drop, on the last shelf"
     }
@@ -903,67 +1906,147 @@
    "plots": [
     {
      "id": "P00-00",
-     "name": "The Accretion Rim, north-west",
+     "name": "The Singularity, open ground 1",
      "d": "A",
      "level": 0,
-     "what": "the bright rim",
-     "from": "The Horizon: THE ACCRETION RIM"
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
     },
     {
      "id": "P01-00",
-     "name": "The Frame",
+     "name": "The Singularity, open ground 2",
      "d": "A",
      "level": 0,
-     "what": "the frame from Saturn: a frame with nothing in it",
-     "from": "The Horizon: the frame"
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
     },
     {
      "id": "P02-00",
-     "name": "The Accretion Rim, north",
+     "name": "The Singularity, open ground 3",
      "d": "A",
      "level": 0,
-     "what": "the bright rim, the first shelf under it",
-     "from": "The Horizon: THE ACCRETION RIM"
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
     },
     {
      "id": "P03-00",
-     "name": "The Screen",
+     "name": "The Singularity, open ground 4",
      "d": "A",
-     "level": 1,
-     "what": "the screen on its ledge, watching the drop: SIGNAL LOST",
-     "from": "The Horizon: THE SCREEN"
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P04-00",
+     "name": "The Singularity, open ground 5",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P05-00",
+     "name": "The Singularity, open ground 6",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P06-00",
+     "name": "The Singularity, open ground 7",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P07-00",
+     "name": "The Singularity, open ground 8",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P08-00",
+     "name": "The Singularity, open ground 9",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
     },
     {
      "id": "P00-01",
-     "name": "The Accretion Rim, west",
+     "name": "The Singularity, open ground 10",
      "d": "A",
      "level": 0,
-     "what": "the bright rim and the shelves",
-     "from": "The Horizon: THE ACCRETION RIM"
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
     },
     {
      "id": "P01-01",
-     "name": "Zero Volume, north-west",
-     "d": "D",
-     "level": -4,
-     "what": "the lowest shelf and the floor",
-     "from": "The Horizon: ZERO VOLUME"
+     "name": "The Singularity, open ground 11",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
     },
     {
      "id": "P02-01",
-     "name": "The Drop",
-     "d": "D",
-     "level": -4,
-     "what": "the one straight way in; nothing comes back up",
-     "from": "The Horizon: THE DROP"
+     "name": "The Singularity, open ground 12",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
     },
     {
      "id": "P03-01",
-     "name": "The Camp",
+     "name": "The Singularity, open ground 13",
      "d": "A",
      "level": 0,
-     "what": "the camp, upstream of the drop",
-     "from": "The Horizon: the camp"
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P04-01",
+     "name": "The Singularity, open ground 14",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P05-01",
+     "name": "The Singularity, open ground 15",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P06-01",
+     "name": "The Singularity, open ground 16",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P07-01",
+     "name": "The Singularity, open ground 17",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P08-01",
+     "name": "The Singularity, open ground 18",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
     },
     {
      "id": "P00-02",
@@ -971,114 +2054,362 @@
      "d": "A",
      "level": 0,
      "what": "the bright rim and the shelves",
-     "from": "The Horizon: THE ACCRETION RIM"
+     "from": "The Horizon: THE ACCRETION RIM (on the ball)"
     },
     {
      "id": "P01-02",
-     "name": "Zero Volume",
-     "d": "D",
-     "level": -4,
-     "what": "LANDMARK: the hole, a point of no volume",
-     "from": "The Horizon: ZERO VOLUME"
+     "name": "The Accretion Rim, south-west",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim and the shelves",
+     "from": "The Horizon: THE ACCRETION RIM (on the ball)"
     },
     {
      "id": "P02-02",
-     "name": "Zero Volume, south-east",
-     "d": "D",
-     "level": -4,
-     "what": "the lowest shelf and the floor",
-     "from": "The Horizon: ZERO VOLUME"
+     "name": "The Accretion Rim, west",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim and the shelves",
+     "from": "The Horizon: THE ACCRETION RIM (on the ball)"
     },
     {
      "id": "P03-02",
+     "name": "The Frame",
+     "d": "A",
+     "level": 0,
+     "what": "the frame from Saturn: a frame with nothing in it",
+     "from": "The Horizon: the frame (on the ball)"
+    },
+    {
+     "id": "P04-02",
+     "name": "The Frame",
+     "d": "A",
+     "level": 0,
+     "what": "the frame from Saturn: a frame with nothing in it",
+     "from": "The Horizon: the frame (on the ball)"
+    },
+    {
+     "id": "P05-02",
+     "name": "The Accretion Rim, north",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim, the first shelf under it",
+     "from": "The Horizon: THE ACCRETION RIM (on the ball)"
+    },
+    {
+     "id": "P06-02",
+     "name": "The Camp",
+     "d": "A",
+     "level": 0,
+     "what": "the camp, upstream of the drop",
+     "from": "The Horizon: the camp (on the ball)"
+    },
+    {
+     "id": "P07-02",
+     "name": "The Camp",
+     "d": "A",
+     "level": 0,
+     "what": "the camp, upstream of the drop",
+     "from": "The Horizon: the camp (on the ball)"
+    },
+    {
+     "id": "P08-02",
      "name": "The Accretion Rim, east",
      "d": "A",
      "level": 0,
      "what": "the bright rim: the head of the Drop",
-     "from": "The Horizon: THE ACCRETION RIM"
+     "from": "The Horizon: THE ACCRETION RIM (on the ball)"
     },
     {
      "id": "P00-03",
-     "name": "The Accretion Rim, south-west end",
+     "name": "The Singularity, open ground 19",
      "d": "A",
      "level": 0,
-     "what": "the bright rim",
-     "from": "The Horizon: THE ACCRETION RIM"
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
     },
     {
      "id": "P01-03",
-     "name": "The Standing Frame",
+     "name": "The Singularity, open ground 20",
      "d": "A",
      "level": 0,
-     "what": "the bay's frame; there is no other side",
-     "from": "the bay door (Room 0)"
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
     },
     {
      "id": "P02-03",
+     "name": "The Singularity, open ground 21",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P03-03",
+     "name": "Zero Volume, north-west",
+     "d": "D",
+     "level": -4,
+     "what": "the lowest shelf and the floor",
+     "from": "The Horizon: ZERO VOLUME (on the ball)"
+    },
+    {
+     "id": "P04-03",
+     "name": "The Frame",
+     "d": "A",
+     "level": 0,
+     "what": "the frame from Saturn: a frame with nothing in it",
+     "from": "The Horizon: the frame (on the ball)"
+    },
+    {
+     "id": "P05-03",
+     "name": "The Drop",
+     "d": "D",
+     "level": -4,
+     "what": "the one straight way in; nothing comes back up",
+     "from": "The Horizon: THE DROP (on the ball)"
+    },
+    {
+     "id": "P06-03",
+     "name": "The Singularity, open ground 22",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P07-03",
+     "name": "The Singularity, open ground 23",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P08-03",
+     "name": "The Singularity, open ground 24",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P00-04",
+     "name": "The Singularity, open ground 25",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P01-04",
+     "name": "The Singularity, open ground 26",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P02-04",
+     "name": "The Singularity, open ground 27",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P03-04",
+     "name": "The Accretion Rim, west",
+     "d": "A",
+     "level": 0,
+     "what": "the bright rim and the shelves",
+     "from": "The Horizon: THE ACCRETION RIM (on the ball)"
+    },
+    {
+     "id": "P04-04",
+     "name": "Zero Volume, north-west",
+     "d": "D",
+     "level": -4,
+     "what": "the lowest shelf and the floor",
+     "from": "The Horizon: ZERO VOLUME (on the ball)"
+    },
+    {
+     "id": "P05-04",
+     "name": "The Drop",
+     "d": "D",
+     "level": -4,
+     "what": "the one straight way in; nothing comes back up",
+     "from": "The Horizon: THE DROP (on the ball)"
+    },
+    {
+     "id": "P06-04",
+     "name": "The Singularity, open ground 28",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P07-04",
+     "name": "The Singularity, open ground 29",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P08-04",
+     "name": "The Singularity, open ground 30",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P00-05",
      "name": "The Accretion Rim, south",
      "d": "A",
      "level": 0,
      "what": "the bright rim",
-     "from": "The Horizon: THE ACCRETION RIM"
+     "from": "The Horizon: THE ACCRETION RIM (on the ball)"
     },
     {
-     "id": "P03-03",
-     "name": "The Accretion Rim, south-east",
+     "id": "P01-05",
+     "name": "The Accretion Rim, south",
      "d": "A",
      "level": 0,
      "what": "the bright rim",
-     "from": "The Horizon: THE ACCRETION RIM"
+     "from": "The Horizon: THE ACCRETION RIM (on the ball)"
+    },
+    {
+     "id": "P02-05",
+     "name": "The Standing Frame",
+     "d": "A",
+     "level": 0,
+     "what": "the bay's frame; there is no other side",
+     "from": "the bay door (Room 0) (on the ball)"
+    },
+    {
+     "id": "P03-05",
+     "name": "Zero Volume",
+     "d": "D",
+     "level": -4,
+     "what": "LANDMARK: the hole, a point of no volume",
+     "from": "The Horizon: ZERO VOLUME (on the ball)"
+    },
+    {
+     "id": "P04-05",
+     "name": "Zero Volume",
+     "d": "D",
+     "level": -4,
+     "what": "LANDMARK: the hole, a point of no volume",
+     "from": "The Horizon: ZERO VOLUME (on the ball)"
+    },
+    {
+     "id": "P05-05",
+     "name": "Zero Volume, south-east",
+     "d": "D",
+     "level": -4,
+     "what": "the lowest shelf and the floor",
+     "from": "The Horizon: ZERO VOLUME (on the ball)"
+    },
+    {
+     "id": "P06-05",
+     "name": "The Singularity, open ground 31",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P07-05",
+     "name": "The Singularity, open ground 32",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
+    },
+    {
+     "id": "P08-05",
+     "name": "The Singularity, open ground 33",
+     "d": "A",
+     "level": 0,
+     "what": "open ground round the ball",
+     "from": "new plot (label mine): the round The Singularity"
     }
    ],
    "cells": [
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxeeeeeeeeeexxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxeeeeeeeeeeeeeeeexxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxeeeeeeeeeeeeeeeeeeeexxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxeeeeeeeeeeeeeeeeeeeeeemmmmmxxxxxxxxx",
-    "xxxxxxxxxxxeeeeeeeeeeeeeeeeeeeeeeemmmmmxxxxxxxxx",
-    "xxxxxxxxxeeeeeeeeeeerrrrrrrreeeeeemmmmmxxxxxxxxx",
-    "xxxxxxxxeeeeeeeeerrrrrrrrrrrrrreeemmmmmexxxxxxxx",
-    "xxxxxxxeeeeeeeerrrrr........rrrrreerreeeexxxxxxx",
-    "xxxxxxxeeeeeeerrr..............rrrerreeeexxxxxxx",
-    "xxxxxxeeeeeerrrr................rrrreeeeeexxxxxx",
-    "xxxxxeeeeeerrr.......rrrrrr.......rrreeeeeexxxxx",
-    "xxxxxeeeeeerr.....rrrrrrrrrrrr.....rreeeeeexxxxx",
-    "xxxxeeeeeerr.....rrrr......rrrr.....rreeeeeexxxx",
-    "xxxxeeeeerrr....rrr..........rrr....rrreeeeexxxx",
-    "xxxeeeeeerr....rr..............rr....rreeeeeexxx",
-    "xxxeeeeerr....rr.....rrrrrr.....rr....rreeeeexxx",
-    "xxxeeeeerr...rrr....rrrrrrrr....rrr...rreeeeexxx",
-    "xxeeeeeerr...rr....rrrccccrrr....rr...rreeeeeexx",
-    "xxeeeeerr....rr...rrccccccccrr...rr....rreeeeexx",
-    "xxeeeeerr...rr...rrrccchhcccrrr...rr...rreeeeexx",
-    "xxeeeeerr...rr...rrccchhhhcccrr...rr...rreeeeexx",
-    "xxeeeeerr...rr...rrcchhhhhhpppppppppppppppppeexx",
-    "xxeeeeerr...rr...rrcchhhhhhpppppppppppppppppeexx",
-    "xxeeeeerr...rr...rrccchhhhcccrr...rr...rreeeeexx",
-    "xxeeeeerr...rr...rrrccchhcccrrr...rr...rreeeeexx",
-    "xxeeeeerr....rr...rrccccccccrr...rr....rreeeeexx",
-    "xxeeeeeerr...rr....rrrccccrrr....rr...rreeeeeexx",
-    "xxxeeeeerr...rrr....rrrrrrrr....rrr...rreeeeexxx",
-    "xxxeeeeerr....rr.....rrrrrr.....rr....rreeeeexxx",
-    "xxxeeeeeerr....rr..............rr....rreeeeeexxx",
-    "xxxxeeeeerrr....rrr..........rrr....rrreeeeexxxx",
-    "xxxxeeeeeerr.....rrrr......rrrr.....rreeeeeexxxx",
-    "xxxxxeeeeeerr.....rrrrrrrrrrrr.....rreeeeeexxxxx",
-    "xxxxxeeeeeerrr.......rrrrrr.......rrreeeeeexxxxx",
-    "xxxxxxeeeeeerrrr................rrrreeeeeexxxxxx",
-    "xxxxxxxeeeeeeerrr..............rrreeeeeeexxxxxxx",
-    "xxxxxxxeeeeeeeerrrrr........rrrrreeeeeeeexxxxxxx",
-    "xxxxxxxxeeeeeeeeerrrrrrrrrrrrrreeeeeeeeexxxxxxxx",
-    "xxxxxxxxxeeeeeeeeeeerrrrrrrreeeeeeeeeeexxxxxxxxx",
-    "xxxxxxxxxxxeeeeeeeeeeeeeeeeeeeeeeeeeexxxxxxxxxxx",
-    "xxxxxxxxxxxxeeeeeeeeeeeeeeeeeeeeeeeexxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxeeeeeeeeeeeeeeeeeeeexxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxeeeeeeeeeeeeeeeexxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxeeeeeeeeeexxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "ccccccccccecceeeeeeeeeecceccccccccccccccccccccecceeeeeeeeeecceccccccccccccccccccccecceeeeeeeeeeccecccccccccc",
+    "ccccceceeeeeeeeeeeeeeeeeeeeeececccccccccceceeeeeeeeeeeeeeeeeeeeeecmmmmccccccceceeeeeeeeeeeeeeeeeeeeeececcccc",
+    "ccceeeeeeeeeeeeeeeeeeeeeeeeeeeeeecccccceeeeeeeeeeeeeeeeeeeeeeeeeemmmmmmcccceeeeeeeeeeeeeeppeeeeeeeeeeeeeeccc",
+    "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeemmmmmeeeeeeeeeeeeeeeeeeppeeeeeeeeeeeeeeeee",
+    "cccccccccccccccccccccccccccccccccccceeeeeeeeeeeeeeeeeeeeeeeeeeeeeemmmmmecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeeeeeeeeeeeerrrrrrrrrreeeeeeemmreeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeeeeeeererrrrrrrrrrrrrrrrereeerreeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeeeeeerrrrrr..........rrrrrrerreeeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeeeerrrrr................rrrrreeeeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeeerrr......................rrreeeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeeerr.........rrrrrr.........rreeeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeerr.......rrrrrrrrrrrr.......rreeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceerrr......rrrr......rrrr......rrreecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeerr.....rrr..........rrr.....rreeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceerr.....rr..............rr.....rreecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceerr....rr.....rrrrrr.....rr....rreecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceerr...rrr....rrrrrrrr....rrr...rreecccccccccccccccccccccccccccccccccccc",
+    "ccccccccccccccccccccccccccccccccccccerr....rr....rrrccccrrr....rr....rrecccccccccccccccccccccccccccccccccccc",
+    "ccccccccccccccccccccccccccccccccccccerr....rr...rrccccccccrr...rr....rrecccccccccccccccccccccccccccccccccccc",
+    "ccccccccccccccccccccccccccccccccccccerr...rr...rrrccchhcccrrr...rr...rrecccccccccccccccccccccccccccccccccccc",
+    "ccccccccccccccccccccccccccccccccccccerr...rr...rrccchhhhcccrr...rr...rrecccccccccccccccccccccccccccccccccccc",
+    "ccccccccccccccccccccccccccccccccccccerr...rr...rrcchhhhhhpppppppppppppppcccccccccccccccccccccccccccccccccccc",
+    "ccccccccccccccccccccccccccccccccccccerr...rr...rrcchhhhhhpppppppppppppppcccccccccccccccccccccccccccccccccccc",
+    "ccccccccccccccccccccccccccccccccccccerr...rr...rrccchhhhcccrr...rr...rrecccccccccccccccccccccccccccccccccccc",
+    "ccccccccccccccccccccccccccccccccccccerr...rr...rrrccchhcccrrr...rr...rrecccccccccccccccccccccccccccccccccccc",
+    "ccccccccccccccccccccccccccccccccccccerr....rr...rrccccccccrr...rr....rrecccccccccccccccccccccccccccccccccccc",
+    "ccccccccccccccccccccccccccccccccccccerr....rr....rrrccccrrr....rr....rrecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceerr...rrr....rrrrrrrr....rrr...rreecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceerr....rr.....rrrrrr.....rr....rreecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceerr.....rr..............rr.....rreecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeerr.....rrr..........rrr.....rreeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceerrr......rrrr......rrrr......rrreecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeerr.......rrrrrrrrrrrr.......rreeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeeerr.........rrrrrr.........rreeeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeeerrr......................rrreeeecccccccccccccccccccccccccccccccccccc",
+    "cccccccccccccccccccccccccccccccccccceeeeerrrrr................rrrrreeeeecccccccccccccccccccccccccccccccccccc",
+    "ccccccccccecceeeeeeeeeeccecccccccccceeeeeeerrrrrr..........rrrrrreeeeeeecccccccccccccccccccccccccccccccccccc",
+    "ccccceceeeeeeeeeeeeeeeeeeeeeececcccceeeeeeeererrrrrrrrrrrrrrrrereeeeeeeecccccccccccccccccccccccccccccccccccc",
+    "ccceeeeeeeeeeeeeeeeeeeeeeeeeeeeeeccceeeeeeeeeeeeerrrrrrrrrreeeeeeeeeeeeecccccccccccccccccccccccccccccccccccc",
+    "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeecccccccccccccccccccccccccccccccccccc"
    ]
   }
  ]
