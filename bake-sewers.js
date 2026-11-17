@@ -346,7 +346,7 @@ const WSEAM = [
     [[17, 5], 'E', 6, 'ow_v_18_5', { leaf: 'leaf_bulkhead', label: 'THE DEEP · THE SEA FLOOR', sub: 'THE OUTFALL · THE PIPE RUNS OUT UNDER THE SEA', room: 'site_prebuilt_atlantis_ow_floor' }],
     /* THE FREIGHT LINE (plots.json `under.rides`, a ride, no plots, late game): the Power Station Drain's north side, to the D.U.M.B.'s Level −6, clearance L6 */
     ['P04-04', 'N', 6, 'freight_line', { leaf: 'leaf_vault', label: 'THE FREIGHT LINE', sub: 'THE FREIGHT LINE · TO THE D.U.M.B.\'S SUB-LEVEL 7 · CLEARANCE L6', room: 'site_prebuilt_dumb_base', gate: 6 }],
-    ['P00-00', 'W', 9, 'ow_v_1_1', { leaf: 'leaf_cell', label: 'THE CELLS TUNNEL', sub: 'THE GUARDROOM · A TUNNEL WEST UNDER THE CITY', room: 'site_prebuilt_hollow_earth_ow_tunnelway' }],
+    ['P00-00', 'W', 8, 'ow_v_1_1', { leaf: 'leaf_cell', label: 'THE CELLS TUNNEL', sub: 'THE GUARDROOM · A TUNNEL WEST UNDER THE CITY', room: 'site_prebuilt_hollow_earth_ow_tunnelway' }],
 ];
 const ROOMS = [
     { room: ROOM, part: PART, name: 'THE SEWERS', label: 'DISASTER CITY · THE SEWERS', sub: 'THE CULVERTS · THE RUNNING TUNNELS · THE CELLS · THE OLD WORKINGS · THE RADIOACTIVE DRAIN', spawnAt: ['P02-02', 3, 6], lines: O.sewers.l.concat(O.tunnels.l, O.cells.l, O.workings.l), seed: 4242,
@@ -439,6 +439,7 @@ const turnSide = (s, t) => { const o = ['N', 'E', 'S', 'W']; return o[(o.indexOf
 /* a door on a frame plot's side at a port square: on the room's wall when the side lies on it, else free on the plot's last square, facing in */
 function sideDoor(R, e, s, portSq, o) {
     const wallOn = { N: e.row === 0, S: e.row === R.M.rows - 1, W: e.col === 0, E: e.col === R.M.cols - 1 }[s], d = Object.assign({}, o);
+    if (e.level) d.y = r2(e.level * LEVEL);   // (a door on a raised plot stands on its floor: a wall door with no y stands on the room's ground, under it)
     const along = (s === 'N' || s === 'S') ? R.M.gcx(e.sx + portSq) : R.M.gcz(e.sy + portSq);
     if (wallOn) { d.wall = s.toLowerCase(); if (s === 'N' || s === 'S') d.x = along; else d.z = along; return d; }
     d.wall = 'free'; d.passage = Object.assign({}, MOVE.FREE_PASS);

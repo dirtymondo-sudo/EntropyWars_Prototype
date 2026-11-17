@@ -54,9 +54,9 @@ function sheet() {
 
 /* ── THE ROOMS' OWN SETTINGS: which letters are walked, the paint, the shell ── */
 const SET = {
-    vatican: { site: 'prebuilt_vatican', part: 'plots', mark: 'VATICAN', air: { kind: 'dust', color: 0xffe8c0 }, sub: 'THE BASILICA · THE SQUARE · THE PALACE · THE CLOISTER · THE GARDENS', solid: 'XhT', wet: 'w', hole: 'q',
+    vatican: { site: 'prebuilt_vatican', part: 'plots', mark: 'VATICAN', air: { kind: 'dust', color: 0xffe8c0 }, sub: 'THE BASILICA · THE SQUARE · THE PALACE · THE CLOISTER · THE GARDENS', solid: 'XhTp', wet: 'w', hole: 'q',
         pal: ['cobblestone', 'marble_light', 'marble', 'grass_2', 'dirt_2', 'leaves_3', 'bricks_3', 'gold', 'marble_2', 'dungeon'],
-        paint: { c: 1, m: 2, k: 3, o: 9, w: 3, B: 3, s: 2, g: 4, d: 5, h: 6, T: 7, t: 2, X: 7, q: 10 },
+        paint: { c: 1, m: 2, k: 3, o: 9, w: 3, B: 3, s: 2, g: 4, d: 5, h: 6, T: 7, t: 2, X: 7, q: 10, e: 9, p: 7, a: 5 },   // (e p a: the Colosseum's stands, podium, sand: dirt_2, as the palette's `desert` sheet drew cobbles)
         /* THE HORIZON READS THE MAP (2026-11-17, One World foundation): the Vatican stands at world plot -12,-6 (it does not move in v13), so the land past its wall is
            the map's own: the western forest north, south and west, the Tiber's meadow east, the range far to the north (three-renderer.js _hqEdgeLandFn `world`).
            It had no `terrain.edges` before (the field's own sheet ran on past the wall). */
@@ -149,7 +149,7 @@ function makeRoom(PLAN) {
        HQ_ATMOS_SITES: the Vatican's gold dust, Hell's ash, Heaven's motes) is kept as a last zone over the whole room. With no zone the shell line is unchanged. */
     R.atmos = () => { if (!air.length) return ""; const base = Object.assign({}, S.air, { x0: -HW, z0: -HD, x1: HW, z1: HD });
         return ", atmos: " + J(Object.assign({}, S.air, { zones: air.map(z => { const q = {}; Object.keys(z).forEach(k => { if (z[k] !== undefined) q[k] = z[k]; }); return q; }).concat([base]) })); };
-    R._ = { spot, errs, strays, LATE, setD: d => { curD = d; } };
+    R._ = { spot, errs, strays, LATE, air, setD: d => { curD = d; } };
     return R;
 }
 
@@ -273,9 +273,11 @@ V.plate = { x: V.mx(50), z: V.mz(24), y: 4.6 }; K.plate = { x: K.mx(19), z: K.mz
 { const hz = OLD.heaven_stair.c.find(c => c.id === 'healzone'); if (hz) HV.counters.push(Object.assign({}, hz, { x: HV.mx(8), z: HV.mz(55) })); HV.take(8, 55); }
 
 const STAGES = ['build', 'dress', 'people', 'air'];
-STAGES.forEach(stage => Object.keys(LAYOUT.districts).forEach(k => { const m = DISTRICTS[k], R = ROOMS[LAYOUT.districts[k].room]; if (typeof m[stage] !== 'function') return;
+const LATE_D = ['O'];   // (the Colosseum builds after the Vatican's One World move, on the moved room)
+const runStage = (stage, k) => { const m = DISTRICTS[k], R = ROOMS[LAYOUT.districts[k].room]; if (typeof m[stage] !== 'function') return;
     const rnd = (R['rnd' + k] = R['rnd' + k] || mkRnd(7919 * k.charCodeAt(0))), ctx = Object.assign(Object.create(R), { d: k, rnd, dec: R.decWith(rnd), plots: R.PLAN.plots.filter(p => p.d === k) });
-    R._.setD(k); try { m[stage](ctx); } finally { R._.setD(null); } }));
+    R._.setD(k); try { m[stage](ctx); } finally { R._.setD(null); } };
+STAGES.forEach(stage => Object.keys(LAYOUT.districts).forEach(k => { if (LATE_D.indexOf(k) < 0) runStage(stage, k); }));
 
 /* ══ THE ONE WORLD MOVE (2026-11-17, docs/plans/one-world/BUILD_PLAN.md phase 3 wave B; mondo picked "Rising north-east"): HEAVEN'S DISTRICTS
    STAND APART over open sky, rising north-east like the design sheet (sheets/beyond.png), with cloud paths between them. Hell, the Catacombs and
@@ -352,6 +354,56 @@ const OW_HEAVEN = { cols: 7, rows: 8, at: { Y: [3, 0], F: [2, 1], A: [0, 2], T: 
     Object.assign(R.count, R0.count); R._.strays.push(...R0._.strays); R._.errs.push(...R0._.errs);
     if (M.strays.length) console.log('heaven, the move: pieces across plots that part:\n  ' + M.strays.join('\n  '));
 }
+/* ══ THE VATICAN'S ONE WORLD MOVE (2026-11-17, One World phase 4.4): THE COLOSSEUM (the map's district `col`, 3 x 3 plots at world -11..-9 x -9..-7)
+   stands straight north of the Vatican, so the Vatican's room grows to 6 x 7 plots (world -12..-7 x -9..-3) and the Vatican stands three plots
+   south in it (it does not move on the map: its own plots keep world -12..-7 x -6..-3). ONE ROOM by mondo's rule (smaller than Disaster City).
+   The Vatican's districts build in THE HOME FRAME (6 x 4; their files are unchanged), then every piece moves 36 squares south (z + 63 m: a uniform
+   shift, so no piece parts); the Colosseum's own grid (the map's `colosseum`, draw-afterlife.js) is laid on columns 1-3, rows 0-2, and its district
+   file (O.js) builds on the moved room. The land of rows 0-2 that is not a plot (columns 0, 4, 5) is lawn behind the plaza's hedges: seen, never
+   walked (mondo 11-17: land between districts is scenery). Notes: areas-complexes.md "THE COLOSSEUM". ══ */
+{
+    const VP = LAYOUT.rooms.find(p => p.key === 'vatican'), V0 = ROOMS.vatican, CO = LAYOUT.colosseum, DY = 3 * N, DZ = DY * C / 2, Wn = VP.cols * N, Hn = (VP.rows + 3) * N;
+    if (!CO) throw new Error('the layout has no colosseum: run node docs/plans/world-zones/draw-afterlife.js');
+    const cells = [], hts = []; for (let y = 0; y < Hn; y++) { cells.push(new Array(Wn).fill('g')); hts.push(new Array(Wn).fill(0)); }
+    for (let y = 0; y < VP.rows * N; y++) for (let x = 0; x < Wn; x++) { cells[y + DY][x] = V0.cell[y][x]; hts[y + DY][x] = V0.hh[y][x]; }
+    const OX = CO.at[0] * N, OY = CO.at[1] * N, ocell = CO.cells.map(r => r.split('')), oh = CO.heights.map(r => r.split(',').map(v => +v / 100));
+    for (let y = 0; y < CO.rows * N; y++) for (let x = 0; x < CO.cols * N; x++) { cells[y + OY][x + OX] = ocell[y][x]; hts[y + OY][x + OX] = oh[y][x]; }
+    /* the lawn behind the hedges: a hedge round each lawn's open side so nobody walks out of the plaza onto it (the plaza's own hedges stand inside its plots) */
+    const pid = (c, r) => 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0');
+    const plots = CO.plots.map(p => Object.assign({}, p, { id: pid(+p.id.slice(1, 3) + CO.at[0], +p.id.slice(4, 6) + CO.at[1]) }))
+        .concat(VP.plots.map(p => Object.assign({}, p, { id: pid(+p.id.slice(1, 3), +p.id.slice(4, 6) + 3) })));
+    const stairs = CO.stairs.map(s => Object.assign({}, s, { x0: s.x0 + OX, x1: s.x1 + OX, y0: s.y0 + OY, y1: s.y1 + OY }))
+        .concat(VP.stairs.map(s => Object.assign({}, s, { y0: s.y0 + DY, y1: s.y1 + DY })));
+    const oway = {}; CO.ways.forEach(w => { oway[w.id] = Object.assign({}, w, w.sx != null ? { sx: w.sx + OX } : {}, w.sy != null ? { sy: w.sy + OY } : {}); });
+    const stands = id => vm.runInContext('!!DOOR_HQ.rooms[' + JSON.stringify(id) + ']', D);   // (a route's room: its seam door is written only when it stands)
+    const ways = VP.ways.map(w => oway[w.id] || (w.wall === 'n' ? null : Object.assign({}, w, w.sy != null ? { sy: w.sy + DY } : {})))
+        .concat(CO.ways.filter(w => !VP.ways.some(v => v.id === w.id)).map(w => oway[w.id])).filter(w => !w || !(w.unless && stands(w.unless)) && !(w.kind === 'seam' && !stands(w.room)));
+    if (ways.indexOf(null) >= 0) throw new Error('the Vatican: a way on its north wall has no place on the Colosseum: give it a `colosseum.ways` row');
+    const mask = []; for (let r = 0; r < VP.rows + 3; r++) { let m = ''; for (let c = 0; c < VP.cols; c++) m += plots.some(p => p.id === pid(c, r)) ? '#' : '.'; mask.push(m); }
+    const PLAN2 = Object.assign({}, VP, { rows: VP.rows + 3, plots, cells: cells.map(r => r.join('')), heights: hts.map(r => r.map(v => Math.round(v * 100)).join(',')), stairs, ways, mask, slopes: (VP.slopes || []).map(s => Object.assign({}, s, { y0: s.y0 + DY, y1: s.y1 + DY })).concat((CO.slopes || []).map(s => Object.assign({}, s, { x0: s.x0 + OX, x1: s.x1 + OX, y0: s.y0 + OY, y1: s.y1 + OY }))),
+        bridges: (VP.bridges || []).map(b => Object.assign({}, b, { y0: b.y0 + DY, y1: b.y1 + DY })), climbs: (VP.climbs || []).map(c => Object.assign({}, c, { sy: c.sy + DY })) });
+    const R = makeRoom(PLAN2); ROOMS.vatican = R; R.world = { hub: 'divine', layer: 'surface', wx: -12, wy: -9 };
+    if (R.HD - V0.HD !== DZ) throw new Error('the Vatican move: the shift is not ' + DZ + ' m');
+    ways.forEach(w => { WAYS['vatican:' + w.id] = w.wall === 'free' ? freeAt(R, w) : wallAt(R, w); if (w.wall === 'free') R.take(w.sx, w.sy); });
+    /* THE ONE WORLD SEAMS (the north routes R1, R3, R4): a door pair with one id at both ends; the route's own end is bake-route.js's */
+    ways.filter(w => w.kind === 'seam').forEach(w => R.doors.push(Object.assign({ id: w.id }, WAYS['vatican:' + w.id], { way: 'trail', leaf: null, label: w.label, sub: w.sub, action: { room: w.room, at: w.id }, desc: w.desc || '' })));
+    R.olympusLink = ways.some(w => w.id === 'link_vatican_olympus');
+    /* every piece of the home build, 63 m south */
+    const sh = o => { const g = Object.assign({}, o); ['z', 'z0', 'z1'].forEach(k => { if (typeof g[k] === 'number') g[k] = r2(g[k] + DZ); });
+        ['pts', 'points'].forEach(k => { if (Array.isArray(g[k])) g[k] = g[k].map(q => [q[0], r2(q[1] + DZ)]); }); return g; };
+    R.F.push(...V0.F.map(sh)); R._.LATE.push(...V0._.LATE.map(sh)); R.ARCH.push(...V0.ARCH.map(sh)); R.props.push(...V0.props.map(sh)); R.npc.push(...V0.npc.map(sh));
+    R.doors.push(...V0.doors.map(sh)); R.counters.push(...V0.counters.map(sh)); R.marks.push(...V0.marks.map(sh)); R.inner.push(...V0.inner.map(sh));
+    R._.air.push(...V0._.air.map(sh)); V0.taken.forEach(k => { const q = k.split(':'); R.taken.add(q[0] + ':' + (+q[1] + DY)); });
+    Object.assign(R.BUILT, V0.BUILT); Object.assign(R.count, V0.count); R._.strays.push(...V0._.strays); R._.errs.push(...V0._.errs);
+    R.spawnSq = [V0.spawnSq[0], V0.spawnSq[1] + DY]; R.plate = Object.assign({}, V0.plate, { z: r2(V0.plate.z + DZ) });
+    /* the lawn's trees (the land that is not a plot: columns 0, 4, 5 of rows 0-2): a pine here and there, off the hedges */
+    const rnd = mkRnd(4242); let t = 0;
+    for (let y = 2; y < DY - 2; y += 3) for (let x = 2; x < Wn - 2; x += 3) { if (plots.some(p => p.id === pid(Math.floor(x / N), Math.floor(y / N)))) continue;
+        if (rnd() < 0.45) { R.feat({ k: 'tree', x: r2(R.mx(x) + (rnd() - 0.5) * 2), z: r2(R.mz(y) + (rnd() - 0.5) * 2), kind: rnd() < 0.7 ? 'pine' : 'tree_5', h: r2(9 + rnd() * 6), r: 0.8 }); t++; } }
+    R.count.lawnTrees = t;
+    /* THE COLOSSEUM'S DISTRICT (O) builds now, on the moved room */
+    STAGES.forEach(stage => LATE_D.forEach(k => runStage(stage, k)));
+}
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const LINES = { vatican: OLD.vatican_basilica.l.concat(OLD.vatican_library.l, OLD.vatican_courtyard.l, OLD.vatican_observatory.l), catacombs: OLD.vatican_catacombs.l, hell: OLD.hell_pit.l.concat(OLD.hell_walkways.l), heaven: OLD.heaven_stair.l.concat(OLD.heaven_gate.l) };
 LAYOUT.rooms.forEach(P0 => { const R = ROOMS[P0.key], PLAN = R.PLAN, S = R.S, fin = finish(R), Ln = [];   // (R.PLAN: Heaven's is the moved plan)
@@ -369,6 +421,7 @@ LAYOUT.rooms.forEach(P0 => { const R = ROOMS[P0.key], PLAN = R.PLAN, S = R.S, fi
     Ln.push("            shell: " + S.shell(R) + ",");
     Ln.push("            parti: '" + S.parti.replace(/'/g, "\\'") + "',");
     Ln.push("            typology: 'grid',");
+    if (R.world) Ln.push("            world: " + J(R.world) + ",");   // (THE ONE WORLD MOVE: the room says its own place on the world's plot grid; bake-map.js reads it)
     Ln.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + PLAN.cols + ", nz: " + PLAN.rows + (PLAN.mask ? ", nx: " + PLAN.cols + ", mask: " + J(PLAN.mask) : "") + ", names: " + J(PLAN.plots.map(p => [p.id, p.name.replace(' (label mine)', ''), p.d, p.level])) + " },");
     Ln.push("            terrain: {");
     Ln.push("                " + S.terrain);
@@ -402,7 +455,7 @@ const end = (site, part, a, sub) => "{ site: '" + site + "', part: '" + part + "
 const bay = (k, R) => { const a = WAYS[k + ':bay']; return "{ room: '" + R.id + "', door: { id: 'bay', wall: 'free', x: " + a.x + ", z: " + a.z + (a.y != null ? ", y: " + a.y : "") + ", face: " + a.face + " } }"; };
 const WANT = [
     ["a: " + end('prebuilt_heaven', 'plots', WAYS['heaven:link_heaven_olympus'], 1), 'link heaven_olympus (a)'],
-    ["a: " + end('prebuilt_vatican', 'plots', WAYS['vatican:link_vatican_olympus'], 1), 'link vatican_olympus (a)'],
+    ...(ROOMS.vatican.olympusLink ? [["a: " + end('prebuilt_vatican', 'plots', WAYS['vatican:link_vatican_olympus'], 1), 'link vatican_olympus (a)']] : []),   // (gone when route R3 stands: its seam door takes the place)
     ["a: " + end('prebuilt_vatican', 'under', WAYS['catacombs:link_vatican_hell'], 1), 'link vatican_hell (a)'],
     ["b: " + end('prebuilt_hell', 'plots', WAYS['hell:link_vatican_hell'], 1), 'link vatican_hell (b)'],
     ["a: " + end('prebuilt_vatican', 'plots', WAYS['vatican:link_observatory_stair'], 1), 'link observatory_stair (a)'],

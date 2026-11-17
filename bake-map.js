@@ -46,7 +46,7 @@ const ZONES = [
     { hub: 'antarctica', layout: 'antarctica', rooms: [{ room: 'site_prebuilt_antarctica_plots', layer: 'surface', wx: 0, wy: 46, zx: 0, zy: 0 }] },
     { hub: 'divine', layout: 'afterlife', rooms: [
         { room: 'site_prebuilt_heaven_plots', layer: 'off', zx: 0, zy: 0, note: 'ABOVE THE VATICAN' },
-        { room: 'site_prebuilt_vatican_plots', layer: 'surface', wx: -12, wy: -6, zx: 6, zy: 0 },
+        { room: 'site_prebuilt_vatican_plots', layer: 'surface', wx: -12, wy: -9, zx: 6, zy: 0 },   // (One World 4.4: the Colosseum stands north of the Vatican in its room; the room says its own place, `room.world`)
         { room: 'site_prebuilt_vatican_under', layer: 'under', wx: -10, wy: -5, zx: 6, zy: 6, note: 'UNDER THE VATICAN' },
         { room: 'site_prebuilt_hell_plots', layer: 'under', wx: -10, wy: -10, zx: 14, zy: 0, note: 'UNDER THE COLOSSEUM' }] },
     { hub: 'underworld', layout: 'sewers', rooms: [{ room: 'site_prebuilt_downtown_underworld', layer: 'under', wx: 3, wy: 4, zx: 0, zy: 0, note: 'UNDER DISASTER CITY', wait: 1 }] },
