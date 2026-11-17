@@ -9,9 +9,9 @@ wait for his OK on the test slice.
 stays scenery seen past the plot edges (mondo, 17 Nov).
 
 - About 1,173 plots are in the game today (the room grids in data.js `HQ_ZONE_MAP`).
-- 577 stay as they are: Disaster City with the Hills, the Desert, the Beach, the Vatican, the Catacombs, Hell,
-  Antarctica, the North Pole.
-- 596 get re-laid out: zones whose districts the map spreads apart or reshapes. Their contents move with them.
+- 433 stay as they are: Disaster City with the Hills, the Beach, the Vatican, the Catacombs, Hell, Antarctica, the North Pole.
+- 740 get re-laid out: zones whose districts the map spreads apart or reshapes, the Desert included (mondo 17 Nov: its
+  districts stand apart in v13, so it is re-laid, not "stays"). Their contents move with them.
 - 501 are new: routes 247, wild links 51, underground walks 98, islands 60, the Colosseum 9, the Internet 36.
 
 **Threads.** About 20, no more than 6 at once: every zone bake writes data.js, so more at once mostly means more merge
@@ -21,7 +21,7 @@ clashes.
 |---|---|---|---|
 | 1. Foundation: world positions, the route and link kit, room splitting, stitching | 1 | Fable | now |
 | 2. Test slice: the south Woods, County Lane, the Corn Fields to the Lake | 1 | Fable | phase 1 merged |
-| 3A. Re-lay the surface zones | 6 | Opus | mondo OKs the test slice |
+| 3A. Re-lay the surface zones | 7 | Opus | mondo OKs the test slice |
 | 3B. Re-lay the zones below and off the map | 6 | Opus | wave 3A merged |
 | 4. New plots: routes, islands, underground walks, the Colosseum, the Internet | 4 | Opus | phase 2 OK'd; beside 3B |
 | 5. Whole-world pass: joins, frame rate, memory, map sheets, a walk end to end | 1 | Fable | everything else merged |
@@ -87,7 +87,7 @@ pictures and numbers, and say plainly what felt wrong. Don't move any other zone
 spacing stay.
 ```
 
-## Phase 3: re-laying out the zones (12 threads, Opus, two waves of 6)
+## Phase 3: re-laying out the zones (13 threads, Opus, wave A 7, wave B 6)
 
 ```
 Re-lay out ZONE for the One World map. Read docs/plans/one-world/README.md + BUILD_PLAN.md, docs/notes/areas-complexes.md
@@ -106,6 +106,7 @@ and everything on it. Rerun node bake-map.js for the new rooms and --put their p
 | A | The Estate (36) | the Haunted House as a drive, the Ranch south with the barn hatch; Corn Fields + Lake from the slice | `bake-estate.js`, `docs/areas/estate/districts/C L H R.js` |
 | A | The Mountains (96) | Olympus, the Snowy Pass, the Ski Lodge, Shasta as climbs along the range; the North Pole stays | `bake-mountains.js`, `docs/areas/mountains/districts/O P K S.js` |
 | A | Leylines (81) | districts round the plateau, the ley line from Giza through all of them (moved, not reshaped) | `bake-leylines.js`, `docs/areas/leylines/districts/G B S Y T Z.js` |
+| A | The Desert (144) | the Circus, Western Town, Area 51 and Giza stand apart (v13: 6,21 · -4,26 · 2,33 · 13,29); the Highway re-routes between them as route plots (thread 4.2) | `bake-desert.js` + `bake-desert-insides.js`, `docs/areas/desert/districts/C W A G.js` |
 | A | The Sewers (30) | districts spread under the city districts they belong to; the Holding Cells reach the tunnel way in the creek | `bake-sewers.js`, `docs/areas/sewers/districts/W T H O R.js` |
 | B | The Cavern (36) | the Cavern under the Woods + the wells, Hollow Earth under its sun, Agartha under the Lemuria adit; cave walks join them | `bake-cavern.js`, `docs/areas/cavern/districts/K H A.js` |
 | B | The D.U.M.B. (49) | bases on the tube: P3 by the city, Command under Area 51, Research under the Barn, Sub-Level 7 under Shasta, CERN's Ring under Stonehenge | `bake-dumb.js`, `docs/areas/dumb/districts/K P S R C.js` |
@@ -129,7 +130,7 @@ they join, rerun node bake-map.js. One picture a route.
 | Thread | Part | Plots |
 |---|---|---|
 | 4.1 | North routes: R1 River Road, R2 Canyon Trail, R3 Pilgrim Way, R4 Old Road, R5 Polar Trail, R12 Stone Path | 118 |
-| 4.2 | South routes: R6 Valley Road, R8 Ranch Road, R9 Badlands Highway, the Desert Highway (74 plots inside the Desert's 87: re-route only) | 68 |
+| 4.2 | South routes: R6 Valley Road, R8 Ranch Road, R9 Badlands Highway, the Desert Highway (74 plots, re-routed between the Desert's districts after its wave A thread) | 68 |
 | 4.3 | Coast + islands: R10 Coast Road, R11 Delta Causeway, the new islands (Pirates' Cove, the Frozen Sea, the Volcano Island's move, the Triangle's move), the Round Voyage stops | 46 + 60 |
 | 4.4 | Below + between: the underground walks (98: the Bone Passage secret walk, the Outfall, the Holding Cells to the tunnel way), the Freight Line late-game ride, the Colosseum (9), the Internet (36) | 143 |
 

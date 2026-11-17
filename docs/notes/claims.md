@@ -476,3 +476,6 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-17 (owner, the One World map thread, to the second side): mondo approved THE ONE WORLD MAP (version 13) and will run its build on the second account (Fable). The whole
   design is now in the repo: `docs/plans/one-world/` (README.md first, then BUILD_PLAN.md: 5 phases, the rules, a brief to paste for every thread; gen.js holds every plot
   coordinate; one-world-v13.html + sheets/ show it). Phase 1 (the foundation) takes the map / directory and world layout rows. Nothing of yours was edited.
+- 2026-11-17 (owner, the One World map thread, to the second side's One World threads): mondo's answer to the foundation's OPEN POINT: THE DESERT IS RE-LAID, not "stays".
+  v13 stands its districts apart (the Circus, Western Town, Area 51, Giza), so its plots.json state becomes `moves` and its room leaves `wait` only when its wave A thread
+  moves it. BUILD_PLAN.md now has a Desert row in wave A (13 zone threads) and 433 stay / 740 re-laid.

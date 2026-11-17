@@ -20,7 +20,7 @@ mondo's decisions on it:
 - Only walkable plots get built: districts, roads, wild links (about 900 of about 2,800 land plots). The unnamed land between them stays SCENERY seen past the plot edges (17 Nov).
 - Districts keep every plot and everything on them; only where the plots stand changes.
 - Avalon is scrapped (17 Nov). Names marked "mine" in the page are placeholders by Claude.
-- Numbers: about 1,173 plots in the game today; 577 stay as they are, 596 get re-laid out, 501 are new.
+- Numbers: about 1,173 plots in the game today; 433 stay as they are, 740 get re-laid out (the Desert is re-laid, mondo 17 Nov), 501 are new.
 
 ## The foundation (phase 1, built 17 Nov 2026)
 What the zone threads use, all explained in `docs/notes/areas-complexes.md` "ONE WORLD, THE ZONE MOVES":
