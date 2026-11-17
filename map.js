@@ -4136,9 +4136,12 @@
             if (counterId) { _hqLastDoor = counterId; _hqLastRoom = _hqCurRoom; _hqRecordVisit(counterId); }
             return _hqOpenTerminal({ variant: 'full', counterId: counterId || null, pre });
         }
+        /* (mondo 11-17: "Why ... are there 2 panels that say 'the spaceship' ... Remove the clutter, dont need the controls": aboard the flown ship there is
+           no prompt and no toast; E still steps off) */
         function _hqSetPrompt(t) {
             const el = _hqEl('hqPrompt');
             if (!el) return;
+            if (t && t.aboard && t.vehicle === 'ship') { el.style.display = 'none'; return; }
             try { if (t && _pd && ThreeRenderer.hq.pd.wide()) t = null; } catch (e) {}   // THE PLOT DUNGEONS: no prompt over the wide view
             /* THE ENCOUNTER (9.4 rev 17): the gun HOLSTERED and a native in reach + sight — the prompt names the click; drawn, the click is the door gun's */
             let hushed = false; try { hushed = !!(ThreeRenderer.hq.hushed && ThreeRenderer.hq.hushed()); } catch (e) {}   // THE HUSH (2026-10-01): no ATTACK prompt on arrival either
@@ -5816,12 +5819,12 @@
                     if (h) h.classList.add('helm');
                     _hqSkateSfx('seaBoard', 0.5);
                     const k = ev.vehicle === 'sub' ? 'sub' : ev.vehicle === 'ship' ? 'ship' : 'boat';
-                    if (!_hqSeaToasted[k]) { _hqSeaToasted[k] = true; _hqToast(k === 'ship' ? '<b>THE SPACESHIP</b><span>W / S THRUST · SHIFT BURNER · A / D TURN · SPACE UP · C DOWN · FLY INTO A GOLD BEACON TO LAND</span>' : k === 'sub' ? '<b>THE BATHYSCAPHE</b><span>SPACE UP · C DOWN · E LEAVES IT</span>' : '<b>THE SKIFF</b><span>E STEPS OFF</span>', 4200); }
+                    if (!_hqSeaToasted[k] && k !== 'ship') { _hqSeaToasted[k] = true; _hqToast(k === 'sub' ? '<b>THE BATHYSCAPHE</b><span>SPACE UP · C DOWN · E LEAVES IT</span>' : '<b>THE SKIFF</b><span>E STEPS OFF</span>', 4200); }
                     _hqFillStrip(_hqProfile());
                     break;
                 }
                 case 'disembark': if (h) h.classList.remove('helm'); _hqSkateSfx('seaBoard', 0.35); _hqFillStrip(_hqProfile()); break;
-                case 'land': _hqToast('<b>LANDED</b><span>' + String(ev.label || '').replace(/[<>&]/g, '') + ' · E AT THE SHIP TAKES OFF AGAIN</span>', 3600); break;   // THE SPACESHIP (2026-11-17)
+                case 'land': _hqToast('<b>LANDED</b><span>' + String(ev.label || '').replace(/[<>&]/g, '') + '</span>', 2600); break;   // THE SPACESHIP (2026-11-17)
                 case 'under': break;
                 case 'throttle': break;
             }

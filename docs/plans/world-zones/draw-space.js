@@ -88,6 +88,9 @@ function moon() {
     /* THE DISH's platform, THE LANDER's pad, the bay door's pad */
     A.flat(50, 5, 53, 8, 1.75, 'm'); A.ramp(51, 9, 52, 10, 'n', 0, 1.75);
     A.flat(37, 38, 41, 42, 0.35, 'l');
+    /* THE BERTH (2026-11-17, pass 2): the Spaceship's pad, on the top of the Moon (it stood on a square of rock of its own, "Low Orbit"; mondo: "I still
+       see a square map, wtf is that. Its supposed to be a planet") */
+    A.flat(62, 27, 67, 32, 0.35, 'l');
     /* the crater: its floor, its lip, its central peak; the Dig on the far side; the Overlook; small craters */
     const SMALL = [[46, 28, 3, 0.8], [20, 38, 2.5, 0.6], [52, 34, 2.5, 0.7], [47, 15, 2, 0.5], [17, 24, 2, 0.5], [27, 41, 2, 0.5], [6, 38, 2.5, 0.7], [5, 6, 2, 0.5], [55, 21, 2, 0.5]];
     A.soft((x, y) => { let h = bowl(x, y, CR.x, CR.y, CR.R, CR.d) + lip(x, y, CR.x, CR.y, CR.R, 3, 0.9) + bowl(x, y, 6, 19, 3.5, 1.8);
@@ -99,6 +102,9 @@ function moon() {
     /* the tracks: the standing door > the Lander > the Habitat > the Dish; the Lander > the crater's south lip; the south pass to the far side */
     const tr = (pts) => { for (let i = 0; i + 1 < pts.length; i++) { let [x, y] = pts[i]; const [X, Y] = pts[i + 1]; for (;;) { if ('.ce'.includes(A.cell[y][x])) A.cell[y][x] = 'p'; if (x === X && y === Y) break; if (x !== X) x += Math.sign(X - x); else y += Math.sign(Y - y); } } };
     tr([[30, 43], [36, 43]]); tr([[42, 40], [51, 40], [51, 19]]); tr([[51, 15], [51, 11]]); tr([[39, 37], [39, 35]]); tr([[30, 43], [14, 43], [14, 29], [8, 29]]); tr([[8, 29], [8, 40]]); tr([[8, 29], [6, 29], [6, 23]]); tr([[14, 10], [8, 10], [8, 8]]);
+    /* THE MARIA (pass 2): dark seas of dust by a slow noise read on the ball (so they run on over every seam): the Moon's face from afar */
+    { const K = require('./space-ball.js').rmKit(24, 1, A.W, A.H), vn = require('./space-ball.js').vnoise;
+      A.each((x, y) => { if (A.cell[y][x] !== '.') return; const d = K.dirAt(Math.floor(y / 24) * 3 + Math.floor(x / 24), x + 0.5, y + 0.5), n = vn(d[0] * 2.1 + 5, d[1] * 2.1 + d[2] * 1.7 + 9, 41) * 0.7 + vn(d[0] * 5.3, d[2] * 5.3 + d[1] * 4.1, 43) * 0.3; if (n > 0.57) A.cell[y][x] = 'd'; }); }
     const F = 'F', Cc = 'C', M = 'M';
     roundSeams(A);
     return { id: 'moon', room: 'site_prebuilt_moon_plots', site: 'prebuilt_moon', old: 'site_prebuilt_moon_mare', name: 'The Moon', cols: 6, rows: 4, A, round: true,
@@ -106,13 +112,13 @@ function moon() {
         plots: plots(6, 4, [
             [[F, 'The Saucer', 0, 'a saucer on its landing gear in a hollow nobody photographs', 'new plot (label mine): the far-side secrets'], [Cc, 'The Rim, west', 0, 'the west foot of the terrace', 'The Mare: THE RIM'], [Cc, 'The Terrace', 2, 'LANDMARK of the north: the terrace you climb to, the ship\'s collar on it', 'The Mare: THE TERRACE'], [Cc, 'The Antenna Platform', 3, 'the platform under the rim, the antenna', 'The Mare: THE ANTENNA PLATFORM · THE CATWALK'], [M, 'The Dish', 1, 'the dish on its platform', 'The Mare: THE DISH'], [M, 'The Limb, east', 0, 'open dust where the Moon turns away', 'new plot (label mine): the round Moon']],
             [[F, 'The Dig', 0, 'a pit somebody dug, floodlit; the thing they found stands in it', 'new plot (label mine): the far-side secrets'], [Cc, 'The Crater, west', 0, 'the lip and the west wall of the bowl', 'The Mare: THE CRATER'], [Cc, 'The Crater', -3, 'LANDMARK: the one big crater, 70 m across, its central peak', 'The Mare: THE BIG CRATER'], [Cc, 'The Crater, east', 0, 'the lip and the east wall of the bowl', 'The Mare: THE CRATER'], [M, 'The Habitat', 0, 'the habitat, rated for six: a walk-in module', 'The Mare: THE HABITAT'], [M, 'The Limb, south-east', 0, 'open dust where the Moon turns away', 'new plot (label mine): the round Moon']],
-            [[F, 'The Bore', 0, 'the draught: the bore that comes out under the Face on Mars', 'The Mare: THE FAR SIDE'], [Cc, 'The Crater, south-west', 0, 'the south lip', 'The Mare: THE CRATER'], [Cc, 'The Crater, south', 0, 'the south lip, the track up from the Lander', 'The Mare: THE CRATER'], [Cc, 'The Overlook', 1, 'the mound over the crater', 'The Mare: THE OVERLOOK'], [M, 'The Tracks', 0, 'the rover\'s tracks, the rover at the end of them', 'The Mare: the rover'], [M, 'The Top', 0, 'open dust on the top of the ball', 'new plot (label mine): the round Moon']],
+            [[F, 'The Bore', 0, 'the draught: the bore that comes out under the Face on Mars', 'The Mare: THE FAR SIDE'], [Cc, 'The Crater, south-west', 0, 'the south lip', 'The Mare: THE CRATER'], [Cc, 'The Crater, south', 0, 'the south lip, the track up from the Lander', 'The Mare: THE CRATER'], [Cc, 'The Overlook', 1, 'the mound over the crater', 'The Mare: THE OVERLOOK'], [M, 'The Tracks', 0, 'the rover\'s tracks, the rover at the end of them', 'The Mare: the rover'], [M, 'The Berth', 0, 'open dust on the top of the ball', 'new plot (label mine): the round Moon']],
             [[F, 'The Sound Stage', 0, 'a second lander, lights and a camera on a patch of raked dust', 'new plot (label mine): Room 1969 "the footage"'], [M, 'The Mare, west', 0, 'open dust, small craters: room to fight', 'The Mare'], [M, 'The Standing Door', 0, 'the bay\'s door standing without a wall; footprints lead to it', 'the bay door (Room 1969)'], [M, 'The Lander', 0, 'LANDMARK: the lander on its pad, the flag, the footprints', 'The Mare: THE LANDER'], [M, 'The Mare, east', 0, 'open dust under the east rim', 'The Mare'], [M, 'The Top, south', 0, 'open dust on the top of the ball', 'new plot (label mine): the round Moon']],
         ]),
         ways: { bay: { sx: 30, sy: 44, face: 0, kind: 'bay door (Room 1969)' }, moon_derelict: { sx: 28, sy: 3, face: 180, kind: 'the ship\'s collar, on the Terrace' }, cydonia_mare: { sx: 3, sy: 29, face: 90, kind: 'hidden: the bore to Mars (the Face\'s mouth)' } },
         spawn: [30, 42], marker: [33, 36],
         who: 'Barbarella (her home); the old room\'s greys and men in black',
-        pal: { '.': '#b9bcc4', p: '#d8d9dd', c: '#7d8088', e: '#a2a5ad', m: '#8f96a6', r: '#c7b98f', l: '#6f7a86', x: '#4a4c55' } };
+        pal: { '.': '#b9bcc4', d: '#8a8d96', p: '#d8d9dd', c: '#7d8088', e: '#a2a5ad', m: '#8f96a6', r: '#c7b98f', l: '#6f7a86', x: '#4a4c55' } };
 }
 
 /* ═══ MARS — Cydonia: the Face, the Pyramid, the canyon between the mesas, the canals, the rover's tracks ═══ */
@@ -159,7 +165,7 @@ function mars() {
         spawn: [30, 43], marker: [33, 40],
         stairs: [{ sx0: 47, sy0: 13, sx1: 48, sy1: 18, up: 'n', h0: 0, h1: 12.25 }], bridges: [{ sx0: 31, sy0: 23, sx1: 31, sy1: 31, y: 7 }],
         who: 'the Martian and the Droid (their home); the old room\'s greys',
-        pal: { '.': '#b4603c', p: '#d08a5c', c: '#6e3626', e: '#c9a070', m: '#8c4a30', r: '#c9976a', t: '#a8744c', l: '#6f7a86', x: '#4f2a20' } };
+        pal: { '.': '#b4603c', d: '#7c3f2a', w: '#f0f0f4', p: '#d08a5c', c: '#6e3626', e: '#c9a070', m: '#8c4a30', r: '#c9976a', t: '#a8744c', l: '#6f7a86', x: '#4f2a20' } };
 }
 
 /* ═══ SATURN — the Hexagon: a six-sided plateau the storm built round its own eye, under the rings ═══ */
@@ -193,7 +199,7 @@ function saturn() {
         ways: { bay: { sx: 22, sy: 43, face: 0, kind: 'bay door (Room 6)' }, derelict_saturn: { sx: 25, sy: 5, face: 180, kind: 'the ship\'s collar, on the Docking Shelf' }, saturn_singularity: { sx: 5, sy: 23, face: 90, kind: 'the Drop\'s frame: to the Singularity' } },
         spawn: [22, 41], marker: [24, 33],
         who: 'the Grey and the Black Goo (their home); the old room\'s watcher and android',
-        pal: { '.': '#d9c08a', b: '#b89a62', p: '#efe0b8', c: '#a88c5a', h: '#2a2420', m: '#c2a468', r: '#e8d49c', i: '#9fe0e8', x: '#5a4a3a' } };
+        pal: { '.': '#d9c08a', b: '#efe6cf', d: '#a5814e', k: '#1c1712', p: '#efe0b8', c: '#a88c5a', h: '#2a2420', m: '#c2a468', r: '#e8d49c', i: '#9fe0e8', x: '#5a4a3a' } };
 }
 
 /* ═══ THE SINGULARITY — the edge of everything: a bowl that falls to a point; nothing comes back up ═══ */
@@ -228,7 +234,7 @@ const WORLDS = [moon(), mars(), saturn(), singularity()];
    every district gets the ship's collar of its own. The Crater (the Terrace), the Rover Bay and the Ring Shard (the Docking Shelf) had one;
    these seven are new, each a DOOR_HQ.links row docked on the collar (`<district>_derelict`), on a level clear square of its own district. */
 const LANDINGS = {
-    moon: { mare_derelict: { sx: 50, sy: 41, face: 180, kind: 'the ship\'s collar: the Mare, by the Lander' }, farside_derelict: { sx: 8, sy: 6, face: 180, kind: 'the ship\'s collar: the Far Side, by the Saucer' } },
+    moon: { ship_stick: { sx: 64, sy: 33, face: 180, kind: 'the berth: the Bridge\'s stick lands you here, aboard' }, orbit_derelict: { sx: 60, sy: 33, face: 0, kind: 'the berth\'s hatch: back into the ship\'s airlock' }, mare_derelict: { sx: 50, sy: 41, face: 180, kind: 'the ship\'s collar: the Mare, by the Lander' }, farside_derelict: { sx: 8, sy: 6, face: 180, kind: 'the ship\'s collar: the Far Side, by the Saucer' } },
     mars: { cydonia_derelict: { sx: 37, sy: 8, face: 180, kind: 'the ship\'s collar: Cydonia, under the Pyramid' }, canyon_derelict: { sx: 53, sy: 25, face: 180, kind: 'the ship\'s collar: the Canyon Mouth' } },
     saturn: { hexagon_derelict: { sx: 15, sy: 28, face: 180, kind: 'the ship\'s collar: the Hexagon, by the Eye' } },
     singularity: { rim_derelict: { sx: 4, sy: 22, face: 90, kind: 'the ship\'s collar: the Accretion Rim, west' }, drop_derelict: { sx: 29, sy: 17, face: 180, kind: 'the ship\'s collar: the Drop, on the last shelf' } },
@@ -294,7 +300,7 @@ const strip = (w, full) => Object.assign({ id: w.id, name: w.name, round: !!w.ro
     full && w.flat ? { flat: Object.assign({}, w.flat, { A: undefined, cells: w.flat.A.cell.map(r => r.join('')), slope: i16(w.flat.A) }) } : {});
 const head = { area: 'Outer Space', version: 'plan-3', squareMeters: C, plotCells: N,
     note: 'Four rooms, one a world. Written by docs/plans/world-zones/draw-space.js; bake-space.js reads docs/areas/space/layout.json. Never hand-edit: edit the script and rerun.',
-    legend: { x: 'rock / storm wall / nothing (never walked)', '.': 'ground', p: 'track', c: 'crater, canyon or bowl floor', m: 'mesa, terrace or platform top', r: 'ramp', t: 'pyramid tier', l: 'pad', i: 'ring ice', b: 'cloud belt', h: 'the hole\'s floor', e: 'rim, lip or dunes' },
+    legend: { x: 'rock / storm wall / nothing (never walked)', '.': 'ground', p: 'track', c: 'crater, canyon or bowl floor', m: 'mesa, terrace or platform top', r: 'ramp', t: 'pyramid tier', l: 'pad', i: 'ring ice', b: 'cloud belt', d: 'dark country (a mare, a dark belt)', k: 'black storm', w: 'polar ice', h: 'the hole\'s floor', e: 'rim, lip or dunes' },
     notBuilt: ['flying the Spaceship between worlds', 'floating outside the ship', 'the Sun, Earth, the asteroid belt and Low Orbit as places (plan 2)'] };
 fs.mkdirSync(path.join(REPO, 'docs/areas/space'), { recursive: true });
 fs.writeFileSync(path.join(REPO, 'docs/areas/space/layout.json'), JSON.stringify(Object.assign({}, head, { rooms: WORLDS.map(w => strip(w, true)) }), null, 0).replace(/\{"id":"(moon|mars|saturn|singularity)"/g, '\n{"id":"$1"').replace(/"cells":\[/g, '\n"cells":[\n').replace(/","(?=[x.pcmrtlihe]{40,})/g, '",\n"') + '\n');

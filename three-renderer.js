@@ -87385,7 +87385,7 @@ const ThreeRenderer = (function () {
         _hq.boats = _hq.boats || [];
         var U = _hqUnits(), R = _hqSeaRules(), kind = cat.vehicle;
         _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: kind, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
-                         label: (R.labels || {})[kind] || p.key.toUpperCase(), sub: kind === 'ship' ? 'TAKE THE STICK · W / S THRUST · SHIFT BURNER · A / D TURN · SPACE UP · C DOWN · FLY INTO A GOLD BEACON TO LAND' : kind === 'sub' ? 'RECORDS’ BATHYSCAPHE · W / S DRIVE · A / D STEER · SPACE UP · C DOWN' : 'THE SEA LENDS IT · W / S SAIL · A / D THE TILLER' });
+                         label: (R.labels || {})[kind] || p.key.toUpperCase(), sub: kind === 'ship' ? '' : kind === 'sub' ? 'RECORDS’ BATHYSCAPHE · W / S DRIVE · A / D STEER · SPACE UP · C DOWN' : 'THE SEA LENDS IT · W / S SAIL · A / D THE TILLER' });
     }
     function _hqVehicleFind(id) { var B = (_hq && _hq.boats) || []; for (var i = 0; i < B.length; i++) if (B[i].id === id) return B[i]; return null; }
     /* E on a moored vehicle: aboard. E aboard: off. */
@@ -87683,9 +87683,9 @@ const ThreeRenderer = (function () {
         };
         var rnd = (function () { var v = 20261117; return function () { v = (v * 1664525 + 1013904223) >>> 0; return v / 4294967296; }; })();
         /* a flat ring whose sheet runs from its inner edge (u 0) to its outer edge (u 1) */
-        var ringGeo = function (r0, r1, seg) {
+        var ringGeo = function (r0, r1, seg, spin) {
             var g = new THREE.RingGeometry(r0 * U, r1 * U, seg, 1), pa = g.attributes.position, uv = g.attributes.uv;
-            for (var q = 0; q < pa.count; q++) uv.setXY(q, (Math.hypot(pa.getX(q), pa.getY(q)) / U - r0) / (r1 - r0), 0.5);
+            for (var q = 0; q < pa.count; q++) uv.setXY(q, (Math.hypot(pa.getX(q), pa.getY(q)) / U - r0) / (r1 - r0), spin ? (Math.atan2(pa.getY(q), pa.getX(q)) / 6.283185 + 0.5) : 0.5);
             uv.needsUpdate = true; g._ew_wuvOwner = true; return g;
         };
         /* a round glow: clear inside `a` (the ball hides it there anyway), brightest at the ball's edge, gone at the sheet's edge */
@@ -87763,7 +87763,17 @@ const ThreeRenderer = (function () {
            THE NIGHT SIDE (`shade`: the bent ground is lit by the room's lights with its flat normals, so a far ball read as a flat
            disc; a dark veil over the half turned from the Sun gives it its shape, fading out as you come down to land); a thin edge
            of air on the worlds that have some; and the world's NAME over it, kept the same size on screen however far it hangs. */
-        var LOOK = { moon: { night: 0.8 }, mars: { night: 0.78, air: 0xff9a6a, airK: 1.16, airOp: 0.5 }, saturn: { night: 0.7, air: 0xffe2a8, airK: 1.1, airOp: 0.45 }, singularity: { night: 0, air: 0xff8a3a, airK: 1.5, airOp: 0.55 } };
+        var LOOK = { moon: { night: 0.82, limb: 0.8 }, mars: { night: 0.8, limb: 0.78, air: 0xff9a6a, airK: 1.13, airOp: 0.5 }, saturn: { night: 0.74, limb: 0.72, air: 0xffe2a8, airK: 1.08, airOp: 0.4 }, singularity: { night: 0, hole: true, air: 0xff7a2a, airK: 1.9, airOp: 0.4 } };
+        /* PASS 2 (2026-11-17, mondo: "they do not look good from afar"): THE LIMB, a round sheet held between the eye and each ball, clear in
+           its middle and dark toward its edge, so a far ball is shaded as a ball from every side (the veil only knows the Sun's side). The
+           Singularity's is the hole itself: black edge to edge, so no lit ground and no sheet of obsidian shows from afar. */
+        var limbTex = cv(256, 256, function (g, w) { var gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+            gr.addColorStop(0, 'rgba(0,0,8,0)'); gr.addColorStop(0.5, 'rgba(0,0,8,0)'); gr.addColorStop(0.78, 'rgba(0,0,8,0.3)'); gr.addColorStop(0.93, 'rgba(0,0,8,0.74)'); gr.addColorStop(0.985, 'rgba(0,0,8,0.95)'); gr.addColorStop(1, 'rgba(0,0,8,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
+        var holeTex = cv(256, 256, function (g, w) { var gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+            gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.975, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
+        /* a thin bright ring of light bent round the hole (the far side of its disc, seen over the top of it) */
+        var lensTex = cv(512, 512, function (g, w) { var gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+            gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.60, 'rgba(255,255,255,0)'); gr.addColorStop(0.665, 'rgba(255,244,220,1)'); gr.addColorStop(0.70, 'rgba(255,190,110,0.55)'); gr.addColorStop(0.80, 'rgba(255,120,40,0.18)'); gr.addColorStop(1, 'rgba(255,90,20,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
         var veil = cv(4, 256, function (g, w, h) { var gr = g.createLinearGradient(0, 0, 0, h);   // the sheet's top = the sphere's pole, turned to the Sun
             gr.addColorStop(0, 'rgba(0,0,6,0)'); gr.addColorStop(0.41, 'rgba(0,0,6,0)'); gr.addColorStop(0.5, 'rgba(0,0,6,0.5)'); gr.addColorStop(0.6, 'rgba(0,0,6,0.86)'); gr.addColorStop(1, 'rgba(0,0,6,0.94)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
         var saturnRing = function () { return cv(1024, 4, function (g, w, h) {
@@ -87773,10 +87783,17 @@ const ThreeRenderer = (function () {
                 if (!hit || (r > 2.205 && r < 2.218)) continue;   // (the thin gap near the A ring's edge)
                 var n = 0.84 + 0.16 * rnd() + 0.07 * Math.sin(r * 90) + 0.05 * Math.sin(r * 260), edge = Math.min(1, (r - hit[0]) / 0.012, (hit[1] - r) / 0.012);
                 g.fillStyle = 'rgba(' + Math.round(hit[2] * n) + ',' + Math.round(hit[3] * n) + ',' + Math.round(hit[4] * n) + ',' + (hit[5] * Math.max(0, edge) * (0.82 + 0.18 * rnd())).toFixed(3) + ')'; g.fillRect(x, 0, 1, h); } }); };
-        var discTex = function () { return cv(1024, 4, function (g, w, h) {
-            for (var x = 0; x < w; x++) { var u = (x + 0.5) / w, n = 0.8 + 0.2 * rnd() + 0.1 * Math.sin(u * 140);
-                var hot = Math.max(0, 1 - u * 3.2), R = 255, Gc = Math.round(Math.min(255, 96 + 150 * hot + 70 * (1 - u)) * n), Bc = Math.round(Math.min(255, 20 + 215 * hot * hot) * n);
-                var al = Math.min(1, u / 0.015) * Math.pow(1 - u, 1.35) * n; g.fillStyle = 'rgba(' + R + ',' + Gc + ',' + Bc + ',' + al.toFixed(3) + ')'; g.fillRect(x, 0, 1, h); } }); };
+        /* the burning disc: no rings in it (the first one was banded like Saturn's: "looks too much like Jupiter"). One smooth fall from white
+           at the hole to deep red, torn by streaks that wind round it (the sheet's rows run round the disc and close on themselves). */
+        var discTex = function () { return cv(512, 256, function (g, w, h) {
+            var im = g.createImageData(w, h), D = im.data, ph = []; for (var q = 0; q < 9; q++) ph.push([1 + Math.floor(rnd() * 9), rnd() * 6.283, 4 + rnd() * 26, rnd() * 6.283]);
+            for (var y = 0; y < h; y++) { var an = y / h * 6.283185;
+                for (var x = 0; x < w; x++) { var u = (x + 0.5) / w, st = 0;
+                    for (var q2 = 0; q2 < ph.length; q2++) st += Math.sin(an * ph[q2][0] + ph[q2][1] + u * ph[q2][2]) * Math.sin(u * ph[q2][2] * 0.7 + ph[q2][3]);
+                    st = 0.72 + 0.28 * Math.max(-1, Math.min(1, st / 2.2));
+                    var hot = Math.pow(Math.max(0, 1 - u * 2.4), 1.5), al = Math.min(1, u / 0.02) * Math.pow(1 - u, 1.7) * st, o = (y * w + x) * 4;
+                    D[o] = 255; D[o + 1] = Math.min(255, (70 + 185 * hot + 60 * (1 - u) * (1 - u)) * st); D[o + 2] = Math.min(255, (8 + 240 * hot * hot) * st); D[o + 3] = Math.round(255 * Math.max(0, Math.min(1, al))); } }
+            g.putImageData(im, 0, 0); }); };
         var worlds = [];
         (sp.round || []).forEach(function (p) {
             if (!p.c) return;
@@ -87787,11 +87804,27 @@ const ThreeRenderer = (function () {
                 rg.rotation.x = -Math.PI / 2 + 0.32; rg.position.copy(at); rg.renderOrder = 3; SG.add(rg);
             }
             if (p.rim != null) {
-                var dt2 = discTex();
-                var disc = new THREE.Mesh(dt2 ? ringGeo(p.R * 1.16, p.R * 2.9, 192) : new THREE.RingGeometry(p.R * 1.25 * U, p.R * 2.1 * U, 128, 1), new THREE.MeshBasicMaterial({ map: dt2, color: dt2 ? 0xffffff : p.rim, side: THREE.DoubleSide, transparent: true, opacity: dt2 ? 1 : 0.55, depthWrite: false, blending: dt2 ? THREE.AdditiveBlending : THREE.NormalBlending }));
-                disc.rotation.x = -Math.PI / 2 + 0.18; disc.position.copy(at); disc.renderOrder = 3; SG.add(disc);
-                var tor = new THREE.Mesh(new THREE.TorusGeometry(p.R * 1.16 * U, p.R * 0.014 * U, 10, 160), new THREE.MeshBasicMaterial({ color: 0xfff4d8 }));
-                tor.rotation.copy(disc.rotation); tor.position.copy(disc.position); SG.add(tor);
+                var dt2 = discTex(); if (dt2) { dt2.wrapT = THREE.RepeatWrapping; dt2.needsUpdate = true; }
+                var disc = new THREE.Mesh(dt2 ? ringGeo(p.R * 1.2, p.R * 3.6, 256, true) : new THREE.RingGeometry(p.R * 1.25 * U, p.R * 2.1 * U, 128, 1), new THREE.MeshBasicMaterial({ map: dt2, color: dt2 ? 0xffffff : p.rim, side: THREE.DoubleSide, transparent: true, opacity: dt2 ? 1 : 0.55, depthWrite: false, blending: dt2 ? THREE.AdditiveBlending : THREE.NormalBlending }));
+                disc.rotation.x = -Math.PI / 2 + 0.3; disc.rotation.y = 0.12; disc.position.copy(at); disc.renderOrder = 4; SG.add(disc); rec.disc = disc;
+                if (lensTex) { var ln = glow(lensTex, 0xffffff, p.R * 2 * 1.62, 0.95); ln.position.copy(at); ln.renderOrder = 4; SG.add(ln); }
+            }
+            /* THE LIMB (or the hole): placed and sized every frame (_hqSpaceBodiesTick) */
+            if ((lk.hole ? holeTex : (lk.limb && limbTex))) { var lm2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: lk.hole ? holeTex : limbTex, transparent: true, opacity: lk.hole ? 1 : lk.limb, depthWrite: false })); lm2.renderOrder = 3; lm2.visible = false; SG.add(lm2); rec.limb = lm2; }
+            /* THE BLACK CUBE OVER SATURN'S HEXAGON (mondo 11-17: "the Saturnian Cubes are a huge piece of lore and combat in this game, so saturn
+               need to ... have an ominous floating black cube above it's hexagonal storm at the pole"): the Main Hall's cube (its black, its lit
+               glyphs), 72 m a side, turning slowly 170 m over the pole, a thin shaft of its light down into the storm's eye. Seen from every
+               world; standing in the Hexagon it hangs over your head. */
+            if (p.id === 'saturn') {
+                var cubeMat = new THREE.MeshPhongMaterial({ color: 0x08090b, shininess: 70, specular: 0x4a5560, emissive: 0x8fd3d8, emissiveIntensity: 0.5 });
+                try { cubeMat.emissiveMap = _hqGlyphTexture(); } catch (e) { cubeMat.emissiveIntensity = 0.04; }
+                var CS = 72, CH = p.R + 170, cg = new THREE.Group(); cg.position.set(at.x, at.y + CH * U, at.z);
+                var cube = new THREE.Mesh(new THREE.BoxGeometry(CS * U, CS * U, CS * U), cubeMat); cube.geometry._ew_wuvOwner = true; cube.rotation.set(0.6155, 0, Math.PI / 4); cg.add(cube);   // (standing on a corner)
+                var edges = new THREE.LineSegments(new THREE.EdgesGeometry(cube.geometry), new THREE.LineBasicMaterial({ color: 0x8fd3d8, transparent: true, opacity: 0.55 })); cube.add(edges);
+                var shaftH = CH - p.R - CS * 0.87, shaft = new THREE.Mesh(new THREE.CylinderGeometry(1.2 * U, 5 * U, shaftH * U, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0x8fd3d8, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+                shaft.position.y = -(CS * 0.87 + shaftH / 2) * U; cg.add(shaft);
+                var cgt = glowTex(0.2, true); if (cgt) { var cgl = glow(cgt, 0x4fa8b0, CS * 4.2, 0.16); cg.add(cgl); }
+                SG.add(cg); rec.cube = cg; rec.cubeBox = cube;
             }
             if (lk.night > 0 && veil) {
                 var vm = new THREE.Mesh(new THREE.SphereGeometry(U, 64, 40), new THREE.MeshBasicMaterial({ map: veil, transparent: true, opacity: lk.night, depthWrite: false }));
@@ -87823,7 +87856,7 @@ const ThreeRenderer = (function () {
        (out = P + M (bend(p) - A)); the bodies' group takes the same turn, so every ball keeps its ring, its night side and its place
        among the others. Off a ball (aboard, in the void) it is the identity. Then, per world: the night veil clears the ground by
        what the depth buffer can tell apart at that distance and fades out near the ball; the name keeps its size on screen. */
-    var _hqSpaceV = null;
+    var _hqSpaceV = null, _hqSpaceI = null, _hqSpaceQ = null;
     function _hqSpaceBodiesTick(H, an, U) {
         var SG = H && H.room && H.room.space && H._spaceBodies; if (!SG || !SG.parent) return;   // (another room, or the room's groups are gone)
         var m = SG.matrix;
@@ -87838,12 +87871,20 @@ const ThreeRenderer = (function () {
         if (eye) for (var bi = 0; bi < BM.length; bi++) { var bb = BM[bi].b, bp = bb.ball || [bb.x, bb.ground || 0, bb.z], bd = Math.hypot(eye[0] - bp[0], eye[1] - bp[1], eye[2] - bp[2]), bo = Math.max(0, Math.min(1, (430 - bd) / 110));
             BM[bi].spr.material.opacity = bo; BM[bi].spr.visible = bo > 0.02; }
         var W = H._spaceWorlds || [], cam = H.camera; if (!cam || !W.length) return;
+        var tNow = performance.now() / 1000;
         var v = _hqSpaceV || (_hqSpaceV = new THREE.Vector3());
         for (var i = 0; i < W.length; i++) { var w = W[i], p = w.p;
             v.copy(w.at).applyMatrix4(SG.matrixWorld); var d = v.distanceTo(cam.position) / U, hgt = d - p.R - (p.top || 0), k = Math.max(0, Math.min(1, (hgt - 25) / Math.max(60, p.R * 0.9)));
             k = k * k * (3 - 2 * k);
             if (w.veil) { var rr = p.R + Math.min(p.top || 0, p.R * 0.04) + 1.5 + Math.min(p.R * 0.1, d * d / 140000); w.veil.scale.set(rr, rr, rr); w.veil.material.opacity = w.lk.night * k; w.veil.visible = k > 0.01; }
             if (w.air) w.air.material.opacity = w.lk.airOp * (0.3 + 0.7 * k);
+            if (w.limb) { var Rb = p.R + Math.min(p.top || 0, p.R * 0.03) + (w.lk.hole ? 0.5 : 1), off = Rb + 4 + Math.min(p.R * 0.12, d * d / 140000);
+                if (k > 0.01 && d > off + 2) { var inv = _hqSpaceI || (_hqSpaceI = new THREE.Matrix4()), q2 = _hqSpaceQ || (_hqSpaceQ = new THREE.Vector3());
+                    q2.copy(cam.position).sub(v).normalize().multiplyScalar(off * U).add(v); inv.copy(SG.matrixWorld).invert(); q2.applyMatrix4(inv); w.limb.position.copy(q2);
+                    var dia = 2 * (d - off) * Rb / Math.sqrt(Math.max(1, d * d - Rb * Rb)) * 1.012; w.limb.scale.set(dia * U, dia * U, 1); w.limb.material.opacity = (w.lk.hole ? 1 : w.lk.limb) * k; w.limb.visible = true; }
+                else w.limb.visible = false; }
+            if (w.cubeBox) w.cubeBox.rotation.y = tNow * 0.05;
+            if (w.disc) w.disc.rotation.z = tNow * 0.03;
             if (w.name) { var wd = Math.max(46, Math.min(520, d * 0.15)); w.name.scale.set(wd * U, wd / 8 * U, 1); w.name.material.opacity = Math.max(0, Math.min(1, (hgt - p.R * 0.5) / (p.R * 0.6))); w.name.visible = w.name.material.opacity > 0.02; } }
     }
     /* ══ THE ROUND WORLDS (2026-11-17, mondo's two-maps design doc, "Map A — Spherical planet": six N x N cube-face grids projected
@@ -89502,7 +89543,7 @@ const ThreeRenderer = (function () {
                 ch.held.quaternion.copy(hq).invert();
                 ch.held.scale.setScalar(1 / (hs.x || 1));
             }
-            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3) && !H._scenePlayerOut;   // (a scene took the officer out of the picture: hq.scenePlace show)
+            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3) && !H._scenePlayerOut && !(H.vehicle && H.vehicle.on && H.vehicle.kind === 'ship');   // (aboard the flown ship the pilot is inside the hull: never drawn)   // (a scene took the officer out of the picture: hq.scenePlace show)
             var want = 'idle';
             /* a placed cast member holds its building pose (sits, mops,
                kneels…) once the library bake has landed the clip */
@@ -91383,6 +91424,7 @@ const ThreeRenderer = (function () {
         }
         if (_keyFxList.length) { try { _updateKeyFx(); } catch (e) {} }   // scene E's key (keyPickupFx opts.at) lives in the room
         if (H._sceneCastIds) _hqSceneCastApply();
+        if (H.vehicle && H.vehicle.on && H.vehicle.kind === 'ship' && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // (mondo 11-17: "if i am flying the spaceship then we dont need the ... character model standing up and clipping through it": the walker's own tick drew him again every frame after the helm hid him)
         if (H._scenePlayerOut && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // a scene took the officer out of the picture   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         _lt = _lensMark('tick: doors + residents + scene', _lt);
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share

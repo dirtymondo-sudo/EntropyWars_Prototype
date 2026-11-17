@@ -12020,3 +12020,33 @@ shared hand pieces `docs/areas/routes/south-kit.js`). Every route is its OWN roo
   (cut there in R9.js). Seen, not fixed: on R8 a group of wandering units stood on the road by the Ranch end and blocked the first walk (walked one
   lane over); the crop circle's pieces read as grey lumps from the ground. Pictures: `docs/plans/one-world/proof/south_*.jpg` (`south_join_*` = the
   room reached). PROBE LESSON: `dev.teleport`'s `face` is a compass heading, 0 = north (-z), 90 = east, 180 = south, 270 = west (NOT a door's face).
+
+## OUTER SPACE, PASS 2 — no panels, no pilot, no square, the Cube over Saturn, a real black hole (2026-11-17, mondo's Outer Space session)
+mondo 11-17, on the first pass: "Why ... are there 2 panels that say 'the spaceship' and they are both crowded with ai slop text and
+controls. Remove the clutter, dont need the controls. 2nd of all if i am flying the spaceship then we dont need the ... character model
+standing up and clipping through it. In the last screenshot you sent, I still see a square map, wtf is that. Its supposed to be a planet.
+Also the Saturnian Cubes are a huge piece of lore and combat in this game, so saturn need to be a lot more epic and detailed and have an
+ominous floating black cube above it's hexagonal storm at the pole. The singularity looks too much like Jupiter. Really they all need
+another pass because they do not look good from afar."
+- **NO PANELS ABOARD (his rule now: no control text on the flown ship).** map.js: no toast on boarding the ship, and `_hqSetPrompt` shows
+  nothing for the aboard prompt of a ship (E still steps off). The moored ship's prompt has no sub line; LANDED names the place only.
+- **NO PILOT.** The walker's own tick (three-renderer.js, `ch.kind === 'player'`) drew the body again every frame after the helm hid it:
+  it now stays out while a ship is flown.
+- **NO SQUARE: THE BERTH IS ON THE MOON.** "Low Orbit", a flat square plot of rock with the ship on it, is gone. The pad is on the top of
+  the Moon (draw-space.js moon(): squares 62..67 x 27..32, plot "The Berth", was "The Top"); `ship_stick` and `orbit_derelict` are the
+  Moon's own ways; the beacon `orbit` reads THE MOON · THE BERTH and carries `ball` / `up`. Nothing in the room is flat any more
+  (`space.mesas` is empty).
+- **SATURN.** THE BLACK CUBE: the Main Hall's cube (its black, its lit glyphs, `_hqGlyphTexture`), 72 m a side, standing on a corner
+  170 m over the north pole, turning slowly, a thin shaft of its light down into the storm's eye (three-renderer.js _hqBuildSpace,
+  `rec.cube`). Seen from every world; in the Hexagon it hangs over your head. THE HEXAGON STORM: six-sided rings of cloud round the
+  pole out to 47 degrees north with two black walls of storm (`k`), then belts in three tones (gold `.`, pale `b`, dark `d` = mars_2)
+  with white ovals in the dark belts and a dark south cap (space-ball.js ROUNDS.saturn.band, SAT_BELTS, SAT_OVALS). All walked.
+- **THE SINGULARITY IS A BLACK HOLE.** From afar a black disc edge to edge (`LOOK.singularity.hole`: a sheet held before the ball, so no
+  lit obsidian shows), a thin white ring of bent light round it, and a disc that is one smooth fall from white to deep red torn by
+  winding streaks, turning slowly (it was banded like a planet's rings). The sheet fades as you come down; the ground is as before.
+- **FROM AFAR.** THE LIMB: every other ball has a sheet held between the eye and it, clear in the middle, dark to the edge, sized
+  each frame to the ball's outline (_hqSpaceBodiesTick), so it reads as a ball from every side. Mars has white caps (`w`) and dark
+  country (`d`); the Moon has maria (`d`), read on the ball so they cross the seams.
+- **Seen on screen:** the berth on the Moon, the Cube from space and from the Hexagon, the hole, all four from 2.4 km with no panel and
+  no pilot. **Not checked:** the frame rate on a real machine; the Cube has no part in a fight yet (it is a sight).
+
