@@ -348,8 +348,27 @@ ENDS.forEach(e => { const [sx, sy] = e.sq, dx = e.side === 'e' ? -1 : e.side ===
     for (const sd of [1, -1]) { const x = Math.round(sx + dx * 3 + (dy ? sd * off : 0)), y = Math.round(sy + dy * 3 + (dx ? sd * off : 0)); if (walked(x, y) && cell[y][x] !== 'p' && !taken.has(x + ':' + y)) { P(key, x, y, { face: e.side === 'n' ? 0 : e.side === 'e' ? 90 : e.side === 's' ? 180 : 270 }); break; } } });
 
 /* ── the places made by hand (docs/areas/routes/<ID>.js) ── */
-const CTX = { ID, ROOM, LOOK, C, N, W, D: Dq, BX0, BY0, COLS, ROWS, PLOTS, cell, gx, gz, gcx, gcz, r2, walked, free, nearPath, plotOf, kindAt, groundAt, hAt, feat, props, npc, doors, marks, P, dec, tree, rnd, pick, taken, ENDS, CAT };
+/* THE CARS + A CLEARED PLOT (2026-11-17, the One World south routes thread, phase 4.2: the Desert Highway's cars and its gas station moved onto the
+   kit's highways). `traffic` = the room's terrain.traffic rows (the city's own system); the spec's `cars: { n, speed, kinds }` on a highway lays two one-way
+   lines down the middle of each carriageway (right-hand traffic, as the Desert's Highway drove). `clear(sx0, sy0, sx1, sy1)` takes every prop, tree and
+   marked square off a block of squares so a hook can set a big piece (a gas station, a motel) down on it. A route that uses neither bakes as before. */
+const TRAFFIC = [];
+const clear = (sx0, sy0, sx1, sy1) => { const inR = (x, z) => { const qx = Math.floor((x + HX) / C), qz = Math.floor((z + HZ) / C); return qx >= sx0 && qx <= sx1 && qz >= sy0 && qz <= sy1; };
+    for (let i = props.length - 1; i >= 0; i--) if (inR(props[i].x, props[i].z)) props.splice(i, 1);
+    for (let i = F.length - 1; i >= 0; i--) { const f = F[i]; if (f.x != null && f.z != null && f.x0 == null && inR(f.x, f.z)) F.splice(i, 1); }
+    for (let y = sy0; y <= sy1; y++) for (let x = sx0; x <= sx1; x++) taken.delete(x + ':' + y); };
+const CTX = { ID, ROOM, LOOK, C, N, W, D: Dq, BX0, BY0, COLS, ROWS, PLOTS, cell, gx, gz, gcx, gcz, r2, walked, free, nearPath, plotOf, kindAt, groundAt, hAt, feat, props, npc, doors, marks, P, dec, tree, rnd, pick, taken, ENDS, CAT, F, TRAFFIC, clear, LINE: PARTS[0].LINE, SPEC };
 if (HOOK && typeof HOOK.dress === 'function') HOOK.dress(CTX);
+if (SPEC.cars && LOOK === 'highway') { const c = SPEC.cars, pts = PARTS[0].LINE.map(q => [Math.max(1, Math.min(W - 1, q[0])), Math.max(1, Math.min(Dq - 1, q[1]))]).filter((q, i, a) => !i || Math.hypot(q[0] - a[i - 1][0], q[1] - a[i - 1][1]) > 0.01);
+    /* the polyline offset by `o` squares to the right of its way (a mitred corner), in metres */
+    const off = (L, o) => L.map((q, i) => { const a = L[Math.max(0, i - 1)], b = L[Math.min(L.length - 1, i + 1)], la = i ? Math.hypot(q[0] - a[0], q[1] - a[1]) : 0, lb = i < L.length - 1 ? Math.hypot(b[0] - q[0], b[1] - q[1]) : 0;
+        const d1 = la ? [(q[0] - a[0]) / la, (q[1] - a[1]) / la] : null, d2 = lb ? [(b[0] - q[0]) / lb, (b[1] - q[1]) / lb] : null, n1 = d1 ? [-d1[1], d1[0]] : [-d2[1], d2[0]], n2 = d2 ? [-d2[1], d2[0]] : n1;
+        let nx = n1[0] + n2[0], ny = n1[1] + n2[1]; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl; const k = o / Math.max(0.5, nx * n1[0] + ny * n1[1]); return [r2(-HX + (q[0] + nx * k) * C), r2(-HZ + (q[1] + ny * k) * C)]; });
+    TRAFFIC.push({ pts: off(pts, 2), loop: false, n: c.n || 4, speed: c.speed || 10, lane: 0.01, kinds: c.kinds || ['suv', 'cadillac', 'taxi', 'suv'] });
+    TRAFFIC.push({ pts: off(pts.slice().reverse(), 2), loop: false, n: c.n || 4, speed: c.speed || 10, lane: 0.01, kinds: (c.kinds || ['cadillac', 'suv', 'copcar', 'taxi']).slice().reverse() }); }
+/* nothing stands in a driving lane: a piece within 3.2 m of a car line is a bug (the Desert's own rule) */
+props.forEach(p => { if (CAT[p.key] && CAT[p.key].walk) return; TRAFFIC.forEach(t => { for (let i = 0; i + 1 < t.pts.length; i++) { const a = t.pts[i], b = t.pts[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, u = Math.max(0, Math.min(1, ((p.x - a[0]) * dx + (p.z - a[1]) * dz) / L2));
+    if (Math.hypot(p.x - a[0] - u * dx, p.z - a[1] - u * dz) < 3.2) errs.push(p.key + ' stands in a driving lane at ' + p.x + ', ' + p.z); } }); });
 
 /* ── THE DOORS at the ends: the spec's word, or the placed room the map finds past the line ── */
 const OW = { at: (x, y) => { try { return D.hqOwAt(x, y, 'surface'); } catch (e) { return null; } } };
@@ -433,9 +452,17 @@ const SKY = { forest: { tint: 0xa9c4dc, fog: 0xb4c6b6, density: 0.009, clouds: 0
     scrub: { tint: 0xd8c08a, fog: 0xd6c298, density: 0.009, clouds: 0.1, light: 0xfff0d0, ambient: 0.6 }, desert: { tint: 0xd9b46a, fog: 0xd8b370, density: 0.012, clouds: 0.05, light: 0xfff0d0, ambient: 0.62 },
     snow: { tint: 0x9fc4e8, fog: 0xbfd8ea, density: 0.006, clouds: 0.35, light: 0xf0f6ff, ambient: 0.6 }, rock: { tint: 0xa8bcd4, fog: 0xc0c8d0, density: 0.007, clouds: 0.35, light: 0xfff4e6, ambient: 0.56 } }[major];
 const hex = n => '0x' + n.toString(16).padStart(6, '0');
-const SP = { x: gcx(SPQ[0]), z: gcz(SPQ[1]) }, face = ENDS[0] ? ({ n: 180, s: 0, w: 90, e: 270 })[ENDS[0].side] : 180;
+/* THE SPAWN STANDS BESIDE THE ROAD (2026-11-17, phase 4.2 follow-up; mondo's rule: NPCs never block a path): a room's spawn is also the stop its
+   walkers arrive at and pause on when its ends are open seams (three-renderer.js _hqRoundsStops: an open seam is no door stop, so every arrival lands on
+   the spawn). On the path it parked a crowd in the road at the Ranch end of R8 and the walker could not get by. It is the nearest square to the
+   first end that is open ground, two squares clear of the path; the path's own end square only when there is none (a spec's `spawnOnPath: true` keeps it). */
+const SPQ2 = (() => { if (SPEC.spawnOnPath) return SPQ; for (let r = 3; r <= 14; r++) { let best = null, bd = 1e9;
+    for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue; const x = SPQ[0] + i, y = SPQ[1] + j;
+        if (x < 1 || y < 1 || x >= W - 1 || y >= Dq - 1 || !free(x, y) || nearPath(x, y, 2) || Math.abs(hAt(x, y) - hAt(SPQ[0], SPQ[1])) > 1.5) continue; const d = Math.hypot(i, j); if (d < bd) { bd = d; best = [x, y]; } }
+    if (best) return best; } return SPQ; })();
+const SP = { x: gcx(SPQ2[0]), z: gcz(SPQ2[1]) }, face = SPQ2 !== SPQ ? Math.round(((Math.atan2(SPQ[0] - SPQ2[0], -(SPQ[1] - SPQ2[1])) * 180 / Math.PI) + 360) % 360) : ENDS[0] ? ({ n: 180, s: 0, w: 90, e: 270 })[ENDS[0].side] : 180;
 const pidOf = (c, r) => 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0');
-const names = PLOTS.map((p, i) => [pidOf(p[0] - BX0, p[1] - BY0), (partOfPlot(p).src.name || 'The trail') + ', ' + (PLACE_AT[p[0] + ',' + p[1]] ? PLACE_AT[p[0] + ',' + p[1]].name : PJ.ground.key[groundAt(p[0], p[1]).c].label.toLowerCase()), 'R', 0])
+const names = PLOTS.map((p, i) => [pidOf(p[0] - BX0, p[1] - BY0), (partOfPlot(p).src.name || 'The trail') + ', ' + ((SPEC.names || {})[p[0] + ',' + p[1]] ? SPEC.names[p[0] + ',' + p[1]] : PLACE_AT[p[0] + ',' + p[1]] ? PLACE_AT[p[0] + ',' + p[1]].name : PJ.ground.key[groundAt(p[0], p[1]).c].label.toLowerCase()), 'R', 0])
     .concat(JOIN ? JOIN.plots.map(q => [pidOf(JOIN.wx + q.col - BX0, JOIN.wy + q.row - BY0), q.name, q.district, q.level]) : []);
 const mask = []; for (let cy = 0; cy < ROWS; cy++) { let s = ''; for (let cx = 0; cx < COLS; cx++) s += (inPlot[cx + ',' + cy] != null || FCELL[cx + ',' + cy]) ? '#' : '.'; mask.push(s); }
 const grounds = [...new Set(PLOTS.map(p => groundAt(p[0], p[1]).kind))];
@@ -465,6 +492,7 @@ L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + (C / PR)
 L.push("                /* every square that is not a `space` is ground nobody walks: a forest plot grows its trees there, open ground grows nothing */");
 L.push("                gen: { kind: 'plan', look: 'trees', seed: " + (hashStr(ID) % 97) + ", rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: " + (anyMass ? Math.min(2400, 220 * PLOTS.length) : 0) + ", treeH: [5.5, 8.5], kinds: " + J(KIT.forest.treeKinds) + ", zones: " + J(zones) + " },");
 if (marks.length) L.push("                marks: " + J(marks) + ",");
+if (TRAFFIC.length) L.push("                traffic: " + J(TRAFFIC) + ",");
 L.push("                features: [");
 spaces.concat(F).forEach(f => L.push("                    " + J(f) + ","));
 L.push("                ],");
@@ -500,10 +528,11 @@ if (src.indexOf(BOX0) < 0) {
 const END = '        /* OWROUTE ' + ID + STRETCH + '-END */\n', b0 = src.indexOf('        /* OWROUTE ' + ID + STRETCH + '-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const at = src.indexOf(BOX1); src = src.slice(0, at) + block + src.slice(at); }
-/* the links that stand on this room's ends: the end's site, part and place are rewritten; the rest of its line (its sub, its way) is kept */
+/* the links that stand on this room's ends: the end's room and place are rewritten; the rest of its line (its sub, its way) is kept. The end names the
+   room (`room:`), never `site` + `part`: a part end resolves to site_<site>_<part>, which no route room is (2026-11-17, phase 4.2: R9's link stood nowhere) */
 LINK_AT.forEach(([id, side, q]) => { const i = src.indexOf("{ id: '" + id + "'"); if (i < 0) throw new Error('bake-route: no link ' + id);
-    const re = new RegExp('(\\n +' + side + ": \\{ site: )'[a-z0-9_]+', part: '[a-z0-9_]+', wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+(?:, passage: \\{ len: 3, deep: 1\\.2 \\})?"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('bake-route: link ' + id + ' has no end ' + side);
-    const head = m[1] + "'" + SITE + "', part: '" + (SPEC.part || ('ow_' + ID.toLowerCase() + STRETCH)) + "', wall: '" + q.wall + "'" + (q.x != null ? ', x: ' + q.x : '') + (q.z != null ? ', z: ' + q.z : '') + (q.face != null ? ', face: ' + q.face : '') + (q.passage ? ', passage: { len: 3, deep: 1.2 }' : '');
+    const re = new RegExp('(\\n +' + side + ": \\{ )(?:site: '[a-z0-9_]+', part: '[a-z0-9_]+'|room: '[a-z0-9_]+'), wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+(?:, passage: \\{ len: 3, deep: 1\\.2 \\})?"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('bake-route: link ' + id + ' has no end ' + side);
+    const head = m[1] + "room: '" + ROOM + "', wall: '" + q.wall + "'" + (q.x != null ? ', x: ' + q.x : '') + (q.z != null ? ', z: ' + q.z : '') + (q.face != null ? ', face: ' + q.face : '') + (q.passage ? ', passage: { len: 3, deep: 1.2 }' : '');
     src = src.slice(0, i + m.index) + head + src.slice(i + m.index + m[0].length); console.log('link ' + id + ' end ' + side + ' -> ' + ROOM + ' ' + JSON.stringify(q)); });
 fs.writeFileSync(file, src);
 console.log('data.js: ' + ROOM + ' written (' + block.length + ' bytes). Then: node --check data.js' + (SPEC.proof ? ' (a proof room: not on the map).' : '; node bake-map.js ' + ROOM + ' (its map picture + its row in HQ_ZONE_MAP).'));

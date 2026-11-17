@@ -1,0 +1,62 @@
+{
+ "about": "THE DESERT HIGHWAY, LEG 4 (One World BUILD_PLAN phase 4.2, 2026-11-17): Giza's north side (the causeway) north and west to the Circus' east side. The old Highway's last signpost and its barrels stand at the Giza end.",
+ "hub": "desert",
+ "label": "THE DESERT HIGHWAY",
+ "sub": "THE DESERT · GIZA TO THE CIRCUS · 22 PLOTS",
+ "line": [
+  [
+   13.5,
+   29.1
+  ],
+  [
+   13.5,
+   28.7
+  ],
+  [
+   14.0,
+   28.1
+  ],
+  [
+   14.0,
+   25.6
+  ],
+  [
+   13.4,
+   25.0
+  ],
+  [
+   13.0,
+   24.6
+  ],
+  [
+   13.0,
+   23.6
+  ],
+  [
+   12.4,
+   23.04
+  ],
+  [
+   8.9,
+   23.04
+  ]
+ ],
+ "cars": {
+  "n": 3,
+  "speed": 10
+ },
+ "ends": {
+  "ow_h_13_29": {
+   "room": "site_prebuilt_area51_ow_giza",
+   "label": "GIZA",
+   "sub": "THE DESERT HIGHWAY · ON TO THE CAUSEWAY",
+   "desc": "The road turns to stone: the causeway, and the pyramids at the end of it."
+  },
+  "ow_v_9_23": {
+   "room": "site_prebuilt_area51_ow_circus",
+   "label": "THE CIRCUS",
+   "sub": "THE DESERT HIGHWAY · WEST TO THE BIG TOP",
+   "desc": "The highway runs west to a circus on the sand."
+  }
+ }
+}

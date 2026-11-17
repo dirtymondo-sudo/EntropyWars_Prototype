@@ -4305,6 +4305,120 @@ windup beat), so `_vcOwn(id)` is true and the shared stage burst stops for it. N
   cleanup thread's B7); Cosmic Slam's old pink ring (`fire()`'s own special case) still draws over the caster.
 - Frames: docs/plans/vfx-cleanup/img/own-look/l3_*.jpg. Capture tip: the batch runner's frames are 450 ms apart and it
   misses tile-aimed dashes; `/tmp/sv/start.sh` + `SV.prep(id)` / `SV.cast()` through `e.sh`, a shot every 150 ms, shows them.
+## THE OWN LOOKS, L4, part 3: the team buffs and the wards (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
+
+- **A team buff fires ONE `aura` beat, at the caster, with `aoeRadius`** (Anthem, Apex Roar, Audible, Fairy Dust, Tin Foil Hat;
+  Firewall Protocol at its target tile). The allies it reaches are read off the board both screens hold (`_l4Allies` /
+  `_l4Spots`: same side as the unit on the fired tile, within the radius, on tiles the viewer sees).
+- These beats land early (0 to 400 ms after the cast), single-target buffs about 900 ms in.
+- Sonic casts (Anthem, Apex Roar, Audible) still wear the sonic pass's rings: that pass is not L4's.
+- Sparkle fires `impact` at the ally (its `aoe` row is never fired and is left as it was).
+
+| Spell | What it draws now |
+|---|---|
+| Anthem `warCry` | a line of gold notes runs out from the singer to every ally on a wave; each chest takes the beat twice |
+| Apex Roar `raceApexRoar` | a toothed maw opens across the dinosaur and snaps; every ally in reach takes three amber claw strokes down the chest |
+| Audible `raceAudible` | "HUT! HUT!" at the quarterback's side, then a spiral pass to every ally in reach, caught on the chest |
+| Fairy Dust `raceFairyDust` | gold and pink dust sifts down over each ally, then streams up from under the feet as they lift |
+| Tin Foil Hat `raceTinFoilHat` | a crumpled foil cone drops onto every head and is pressed tight; it glints; a violet mind ray comes in and skips off |
+| Firewall Protocol `raceFirewallProtocol` | a round wall of burning orange brickwork builds course by course round each ally, holds, thins |
+| Light Shield `racePleiadianShield` | an eight-sided crystal of aurora green closes round the ally and turns, violet along its edges |
+| Black Guard `sentaiBlackGuard` | two black plates with a gold edge slam shut in front of the ranger, spark gold at the seam, then part and thin |
+| Sparkle `raceSparkle` | a coil of gold dust settles down the body head to foot; six points on it keep blinking |
+| Pep Talk `jackOfAll` | a "YOU GOT THIS!" speech bubble at the shoulder; six yellow arrows go up round the body |
+| Black Budget `raceBlackBudget` | redacted green bills flutter down round the ally; a red CLASSIFIED stamp lands across the chest |
+
+After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part3.jpg`.
+
+
+## THE OWN LOOKS, L2, part 1: the guns (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L2")
+mondo: "any spells that dont have a look of their own need one". Thread L2's list is `own-look/L2.txt` (48 spells: metal,
+tech, rig, lightning). Looks only: no rule, no data, nothing on `state`. Each look is a function registered with `_o2Reg(id, fn)`
+= a `_FX2_BURST` row, so it rides the relayed staging 'burst' beat (the guest draws it) and `_vcOwn(id)` is true by
+itself: the generic stage burst (ring, flash, sparks, speed burst) no longer draws for these. The metal stamp
+(`_mtlStage`, the cleanup thread's) still draws on top; an area still gets its gear.
+- **The kit** (`_o2*`): `_o2Tex` = a shape drawn once in white on a canvas and tinted by its material; `_o2Spr` = a shape
+  that faces the lens; `_o2Rod` + `_o2Slide` = a straight streak drawn as a window sliding down its line (a tracer, a
+  needle, a shaft); `_o2Squares(list, colour)` = EVERY hit square's flash in the spell's colour, one signature run for
+  the whole list (the 20-run cap counts runs); `_o2From` / `_o2Base` = the hit's frame and the shot's line, aimed from
+  the target's own square when the viewer cannot see the caster (no direction leaks).
+- **Learned on the way (read before writing a look):** at battle camera distance a tile is about 55 px. A line under
+  0.03 tile thick or a shape under 1 tile across does not read in a still; canvas line widths are 9 px and up at 256.
+  The damage number and the name cards are DOM, over the head: a piece above the head sits BEHIND them (High Noon's
+  clock moved to the floor for that). Capture frames are 0.45 s apart: a look shorter than 0.6 s can be missed.
+  Real beat times (probe: wrap `VFX3D.fire`): a random-target spell's burst lands on its FIRST victim's square;
+  a delayed mark (Take Aim) bursts at the cast, when the laser paints; Fan the Hammer bursts at 0.72 s, its hits land at 1.8 s.
+- **The looks:**
+  - Dead Eye: an amber eye opens on the body, squints to a slit as its iris tightens on one point; that point flares.
+  - Precision Shot: a lime rifle cross with mil dots dials in (turns, tightens), then one needle goes through and out the far side.
+  - Take Aim: a red scope ring with its posts clicks in three steps down onto the head, the red dot beats there (the shot is still to come).
+  - Kneecap Shot: the round goes through at knee height, a break cracks open there, two chevrons drop from hip to floor.
+  - Double Pump: two cones of shot out of one point, one after the other; two rings of pocks stay on the body; powder smoke.
+  - Crossfire: tracers run both ways down each diagonal, one diagonal a beat after the other; every square of the X flashes brass; the crossing stays scored on the floor.
+  - Long Rifle: the long straight line of black powder smoke from the muzzle to the mark, a bloom at the muzzle, a lead ring at the strike.
+  - Slap Leather: a flat shot from the hip and a tin star punched onto the chest, the hole already through it, spinning to a stop.
+  - Fan the Hammer: the revolver's cylinder on the floor under the cowboy turns a chamber a shot; six tracers fan round him; each square next to him flashes as the fan passes.
+  - High Noon: a brass clock face ringed with sun rays on the floor round the body, the long hand ticks to twelve, a shaft of noon light drops down the body. (The ricochet flight was already there.)
+  - Scatter Shot: rust-hot pellets fly off the shooter at every angle and length; grit kicks up where each dies. Angles are read off the square (both screens match).
+  - Stick-Up: brass chevrons jump up beside the victim's shoulders (hands up); bundles of bills (the banker's `bank_cash` model, only when it is in memory) arc off them to the gangster.
+- Colours: brass / amber / lime / scope red / rust / powder grey, all mid tones; no team cyan-blue or pink-orange.
+- Proof: docs/plans/vfx-cleanup/img/own-look/L2_part1_after.jpg (real casts through the HUD on the audit board).
+## THE OWN LOOKS, L4, part 4: the self buffs (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4"). L4 is done: 46 of 46.
+
+- A self buff fires `aura` on the caster's own tile, about 900 ms into the cast. The caster's plate is over its head, so
+  these sit on the body and at its side (the lens's right: `_l4Right()`).
+- `overclock` (the robot's row) and `raceOverclock` (the Engineer school's row) are the same spell under two ids: one look.
+- Monster Serum keeps its syringe prop (`_npStage`); the swelling is new.
+
+| Spell | What it draws now |
+|---|---|
+| Go Ape `raceApeFury` | he beats his chest: four thumps, left fist, right fist, each a burst on the chest and a jolt, hotter every time |
+| Incendiary Rounds `raceIncendiaryRounds` | five brass rounds stand up in a row at his side, their tips light one by one, the row drops home with embers |
+| Monster Serum `raceMonsterSerum` | (the syringe, as before) the body's green outline swells in three lurches and the serum boils off in bubbles |
+| Nitro Boost `raceNitroBoost` | the rev needle swings round its dial into the red at his side; two jets of violet nitrous flame stand out behind |
+| Overcalculate `raceOvercalculate` | three columns of amber digits pour up round the body, twice over, and close on "= OK" at the chest |
+| Overclock `overclock` / `raceOverclock` | a ring of tick marks at the waist spins up faster and faster, yellow arcs jump off, every tick flares at full speed |
+| Phase Shift `racePhaseShift` | the body's image splits into five upright violet slivers that slide apart, shiver and go out one by one |
+| Siege Mode `raceSiegeMode` | four hazard-yellow struts swing out and slam into the floor, dust jumps, a targeting bracket opens wide and locks |
+| Stoneform `raceStoneform` | five courses of grey rock close round the body feet to head with grit, set hard, then thin to show him again |
+| Thick Hide `raceThickHide` | brown scutes thud on over the body in two rows all the way round; their edges catch the light as they set |
+
+After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part4.jpg`.
+
+## THE OWN LOOKS, L5, part 1: blood and flesh (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L5")
+Thread L5 of the own-looks job (docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; list `own-look/L5.txt`, 41 spells: psychic, unholy,
+arcane, anomaly, blood, mind). Every look is a `_GO_SIG[id]` drawn on the relayed staging burst (so `_vcOwn(id)` is true and
+the generic stage burst stops; the guest draws it too), built on the G-O kit, wrapped by `_l5()` (nothing on a square the
+viewer cannot see; off: `window.EW_DISABLE_OWN_LOOKS_L5 = true`). The block's own pieces: `_l5Frame` (the hit square + the
+line back to the caster), `_l5Squares` (every square of an area flashes in the spell's colour), `_l5Jag` (a jagged floor
+strip: cracks, skid marks), `_l5Arc` / `_l5Tube` (a cord between two bodies), `_l5Face` / `_l5Cut` (flat marks across a body).
+- **Bat Swarm** (`_l5BatFeed3D`): the 3D bats were its only own piece; now the nine bitten squares flash arterial red and beads of blood fly back to the vampire.
+- **Brutal Slam** (`_l5BrutalSlam3D`): eight bleeding cracks split the floor round the juggernaut; each of the eight squares flashes and spits blood.
+- **Curb Stomp** (`_l5CurbStomp3D`): a boot print stamped in blood past the body (tread and heel), teeth skittering off.
+- **Gore Charge** (`_l5GoreCharge3D`): two horn gouges toss up through the body, bone at the tips, the blood going up with them.
+- **Lifetap** (`_l5Lifetap3D`): two fang holes at the neck and a red vein to the vampire's mouth with blood pulsing along it.
+- **Symbiotic Drain** (`_l5SymbioticDrain3D`): three black tendrils whip out of the host into the wound and swallow lumps back.
+- **Absorb** (`_l5Absorb3D`): an oil-black pool with a violet-green sheen opens under the feet, pseudopods climb the legs, a blob slides home.
+- **Carrion Feast** (`_l5CarrionFlies3D`): the pieces already fly to the ghoul (`_BP_ON_BURST`); flies lift off the remains and the stink rises. No rune (a heal).
+- **Frenzy** (`_l5Frenzy3D`): three fast claw rakes, each from a new side.
+- **Grab** (`_l5GraveGrip3D`): the hand already comes up (`_BP_ON_BURST`); the grave floor cracks open under the feet, rot-green in the cracks.
+- **Mandible Strike** (`_l5Mandibles3D`): the mantid's jaws, a pair of toothed green sickles, shear shut on the body three times.
+- Frames: docs/plans/vfx-cleanup/img/own-look/L5_part1.jpg.
+
+## THE OWN LOOKS, L5, part 2: glass and arcana (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L5")
+New pieces: `_l5Shard` (a shard of mirror), `_l5Glint` (the light off glass).
+- **Annihilation** (`_l5Annihilation3D`): six ward plates crack off the body and fly out, then a small black point opens at the heart, a violet ring falls into it, and it shuts (kept small and short: it never covers the body).
+- **Hocus Pocus** (`_l5HocusPocus3D`): the two words themselves, green and violet, swing in from the sides and meet on the victim in a puff of stars.
+- **Jackpot** (`_l5Jackpot3D`): three sevens lock in an open gold frame over the area and coins rain on all nine squares; each square flashes gold.
+- **Mirror Shard** (`_l5MirrorShard3D`): one sliver of glass stands in the body, its glint, and a chip flies on (the bounce).
+- **Seven Years** (`_l5SevenYears3D`): a mirror cracks across over them and seven shards stand in the floor round their feet, a hex wisp off each.
+- **Shattered Mirror** (`_l5ShatteredMirror3D`): a shard drops into every square and glints at eye height (the blind); each square flashes glass-lilac.
+- **Prism Mirror** (`_l5PrismFold3D`): three faces of light (red, green, violet) lie on the floor, fold up on their hinges and close into the prism.
+- **Pulse Lattice** (`_l5PulseLattice3D`): square waves run out from the elf along the rows and columns (the lattice is a grid, so nothing round).
+- **Tune Frequency** (`_l5TuneFrequency3D`): the three bands he can pick, long red, violet, tight green waves, turn round him like a dial.
+- **Rangefinder** (`_l5Rangefinder3D`): brackets close on the glassed square, a reticle settles, the count of squares reads out.
+- The capture harness starts its frames about 3 s late on a tile-click cast (Prism Mirror, Rangefinder, Far Sight): shoot those with `--opts` and a `pre` that repeats `VFX3D.fire('burst', id, {tx, ty, sx, sy})`.
+- Frames: docs/plans/vfx-cleanup/img/own-look/L5_part2.jpg.
 
 
 ## THE OWN LOOKS, L3, part 2: the kinetic runs (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L3")

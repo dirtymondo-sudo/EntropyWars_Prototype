@@ -1,0 +1,56 @@
+{
+ "about": "THE BADLANDS HIGHWAY (route R9, One World BUILD_PLAN phase 4.2, 2026-11-17): the city's highway south over the scrub and the badlands to the Circus, the Desert's way in from Disaster City (EXIT 1: the link downtown_desert's Desert end, which stood on the retired Highway's room). The design page: 'the chain gas station, a motel, billboards (Exit 1)'. The old Highway's rest stop (the city chain's gas station), its LAST GAS billboard and its city-limit sign moved here. Its own room: the Circus is a district of another tool and joining it would make 27 plots in one straight row.",
+ "hub": "desert",
+ "label": "THE BADLANDS HIGHWAY",
+ "sub": "THE DESERT · EXIT 1 · DISASTER CITY TO THE CIRCUS · 18 PLOTS",
+ "line": [
+  [
+   6.1667,
+   11.9
+  ],
+  [
+   6.1667,
+   12.5
+  ],
+  [
+   7.0,
+   13.4
+  ],
+  [
+   7.0,
+   20.5
+  ],
+  [
+   6.96,
+   21.1
+  ]
+ ],
+ "cars": {
+  "n": 4,
+  "speed": 10
+ },
+ "ends": {
+  "ow_h_6_12": {
+   "link": "downtown_desert",
+   "side": "b"
+  },
+  "ow_h_6_21": {
+   "room": "site_prebuilt_area51_ow_circus",
+   "label": "THE CIRCUS",
+   "sub": "THE BADLANDS HIGHWAY · ON TO THE BIG TOP",
+   "desc": "The highway runs out at a circus fence on the sand."
+  }
+ },
+ "places": {
+  "6,15": false,
+  "6,16": false,
+  "7,17": false,
+  "7,18": false
+ },
+ "names": {
+  "6,15": "the rest stop",
+  "6,16": "the rest stop, the store",
+  "7,17": "the motel",
+  "7,18": "the motel, the far end"
+ }
+}
