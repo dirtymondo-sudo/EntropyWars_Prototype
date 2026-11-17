@@ -385,6 +385,7 @@ const FINISHERS = {
     'karate frog':    { id: 'fin_karate_frog', name: 'Hopping Mad', glyph: '🐸', type: 'human', sig: 'spiritBomb', built: true, tagline: 'RIBBIT', desc: 'A leap off the sewer wall, a flying kick, and the victim is washed down the drain.' },   // 2026-11-17 THE NEW RACES 2 (borrows the spiritBomb staging)
     'samurai slug':   { id: 'fin_samurai_slug', name: 'Slow Death', glyph: '🐌', type: 'human', sig: 'thousandCuts', built: true, tagline: 'PATIENCE', desc: 'He took an hour to cross the room. The cut takes no time at all.' },   // 2026-11-17 THE NEW RACES 2 (borrows the thousandCuts staging)
     'cicada brood':   { id: 'fin_cicada_brood', name: 'Seventeen Years', glyph: '🦗', type: 'alien', sig: 'theColony', built: true, tagline: 'IT WAS ALWAYS HERE', desc: 'The ground opens and the brood comes up singing. The victim is buried for the next seventeen years.' },   // 2026-11-17 THE NEW RACES 2 (borrows the theColony staging)
+    'ninja':          { id: 'fin_ninja', name: 'Thousand Shadows', glyph: '🥷', type: 'human', sig: 'thousandCuts', built: true, tagline: 'YOU NEVER SAW HIM', desc: 'Smoke, a log where he stood, and a dozen of him from every side. The victim falls before the smoke clears.' },   // 2026-11-17 THE NINJA (borrows the thousandCuts staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
@@ -622,6 +623,7 @@ const RACE_ELEMENT_AFFINITY = {
     'karate frog': { water: 'resist', ice: 'weak' },   // 2026-11-17 THE NEW RACES 2
     'samurai slug': { poison: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
     'cicada brood': { earth: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'ninja': { poison: 'resist', light: 'weak' },   // 2026-11-17 THE NINJA
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
@@ -2960,6 +2962,10 @@ const RACE_PROFILES = {
         label: 'Samurai Slug',
         types: ['anomaly']
     },
+    'ninja': {   // 2026-11-17 THE NINJA (mondo: male + female, no weapons)
+        label: 'Ninja',
+        types: ['human']
+    },
     'cicada brood': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
         label: 'Cicada Brood',
         types: ['alien', 'anomaly']
@@ -3848,7 +3854,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'ninja'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3997,6 +4003,7 @@ const RACE_CLASS = {
     'karate frog': 'bruiser',   // 2026-11-17 THE NEW RACES 2
     'samurai slug': 'bruiser',   // 2026-11-17 THE NEW RACES 2
     'cicada brood': 'assassin',   // 2026-11-17 THE NEW RACES 2
+    'ninja': 'assassin',   // 2026-11-17 THE NINJA
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
@@ -4051,6 +4058,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'karate frog': 'water',   // 2026-11-17 THE NEW RACES 2
     'samurai slug': 'water',   // 2026-11-17 THE NEW RACES 2
     'cicada brood': 'grass',   // 2026-11-17 THE NEW RACES 2
+    'ninja': 'tree',   // 2026-11-17 THE NINJA — at home in the trees
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
     'siren': 'deep_water',
     'reptilian': 'water',
@@ -4441,6 +4449,7 @@ const RACE_BASE_STATS = {
     'karate frog':        { hp: 1150, mp: 110, atk: 135, def: 105, mdef:  70, int:  60, vision: 3, crt: 20, spd: 150 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
     'samurai slug':       { hp: 1450, mp: 100, atk: 130, def: 150, mdef:  80, int:  50, vision: 2, crt: 16, spd: 70 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
     'cicada brood':       { hp: 1000, mp: 150, atk: 150, def: 110, mdef:  90, int: 110, vision: 3, crt: 24, spd: 120 },   // 2026-11-17 THE NEW RACES 2 — first pass on the assassin median
+    'ninja':              { hp:  940, mp: 140, atk: 150, def:  86, mdef:  90, int:  80, vision: 3, crt: 26, spd: 165 },   // 2026-11-17 THE NINJA — first pass on the assassin median (a little faster, a little lighter)
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -4607,6 +4616,7 @@ const RACE_PHYSIQUE = {
     'karate frog':         { h: 1.50, w: 70 },   // 2026-11-17 THE NEW RACES 2
     'samurai slug':        { h: 1.70, w: 140 },   // 2026-11-17 THE NEW RACES 2
     'cicada brood':        { h: 1.90, w: 80 },   // 2026-11-17 THE NEW RACES 2
+    'ninja':               { h: 1.72, w: 62 },   // 2026-11-17 THE NINJA
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
@@ -10622,6 +10632,29 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'root', duration: 1 }],
           desc: 'One step, one draw, and the slime remembers. Deals MEDIUM physical damage to All Enemies standing in Black Ooze within 4 of him and Roots them for 1 round. Cooldown: 4 rounds.' },
     ],
+    'ninja': [
+        /* KAWARIMI, THE SUBSTITUTION (2026-11-17 THE NINJA, mondo OK'd the kit + asked for the clone spell): the one race whose
+           hit lands on a log. While Substituted, the first enemy blow aimed at him hits a log on his square (no damage, no
+           status) and he reappears on the free square straight behind the attacker, at its back (battle.js _ninjaKawarimi in
+           applyDamageToUnit; the rest of that same attack keeps hitting the log). Burns, poison and zone ticks never set it off.
+           Shadow Step blinks behind its target and always strikes from behind (`blinkBehind`, ×FACING_BACK_DMG_MULT). Shuriken
+           and Clone Jutsu draw their own hits (`ownHitFx`: three-vfx-effects.js "THE NINJA"). No weapons: stars and bare hands. */
+        { id: 'nrShuriken', name: 'Shuriken', tier: 1, families: ['ninjutsu'], cost: 25, apCost: 1, spellType: 'human', element: 'metal',
+          type: 'damage', kind: 'multiHit', damageType: 'physical', range: 4, hitDamages: [32, 32, 32],
+          ownHitFx: true, hitLeadMs: 220, animVerb: 'throw', _animOverride: { travel: 'none' },
+          desc: 'Three stars, one flick of the wrist. Deals WEAK physical damage to a Single Enemy within 4 across 3 hits; every star can crit.' },
+        { id: 'nrKawarimi', name: 'Kawarimi', tier: 2, families: ['ninjutsu'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          vfxElement: 'wind', type: 'buff', kind: 'buff', range: 0, animVerb: 'stealth',
+          statusEffects: [{ id: 'substitute', duration: 1 }],
+          desc: 'The log trick. Until his next turn ends, the first enemy blow aimed at him hits a log instead (no damage, no status) and he reappears on the square straight behind the attacker, at its back. Burns, poison and zone ticks do not set it off. Cooldown: 3 rounds.' },
+        { id: 'nrShadowStep', name: 'Shadow Step', tier: 3, families: ['ninjutsu'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          vfxElement: 'shadow', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 4, blinkBehind: true, animVerb: 'kick',
+          desc: 'Gone, then behind you. Blinks to the square behind a Single Enemy within 4, past units and walls, and deals HEAVY physical damage from behind (a Backstab). Needs a free square behind it. Cooldown: 2 rounds.' },
+        { id: 'nrCloneJutsu', name: 'Clone Jutsu', tier: 4, families: ['ninjutsu'], cost: 100, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          vfxElement: 'shadow', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 3, hitDamages: [44, 44, 44, 44, 44, 44, 44, 44],
+          ownHitFx: true, hitLeadMs: 260, animVerb: 'channel', _animOverride: { travel: 'none' },
+          desc: 'One hand sign and there are eight of him. Shadow clones burst out of smoke round a Single Enemy within 3 and strike in turn: SEVERE physical damage across 8 hits. Cooldown: 3 rounds.' },
+    ],
     'cicada brood': [
         /* THE WAIT: the one race that banks power by hiding. Dig In buries it (`dormant` + Invisible, no move); every round end under the ground adds a Brood stack (up to 3, battle.js _cicadaBrood from _nrRoundEnd); Chorus spends the stacks for damage and wakes it. (2026-11-17 THE NEW RACES 2, mondo's picks.)
            THE CICADA POLISH (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics
@@ -14343,6 +14376,16 @@ const STATUS_DEFS = {
     },
     /* 🛟 ON DUTY (2026-11-16, the Lifeguard): she is watching; battle.js _lifeguardSave spends it on the first ally within 4 that
        takes a killing blow (held at 1 HP, hauled beside her). */
+    /* 🪵 SUBSTITUTE (2026-11-17 THE NINJA, Kawarimi): the first enemy blow aimed at him hits a log; he reappears behind the
+       attacker (battle.js _ninjaKawarimi). The status goes when it springs. */
+    substitute: {
+        icon: '🪵', glyph: '🪵', short: 'SUB', label: 'Substitute',
+        colorText: 'ready to leave a log behind',
+        kind: 'buff', category: 'buff', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🪵', '#1c1830', '#e8e0ff', '#7a6ad4'),
+        /* the log's model starts loading now, so it is there when the blow lands */
+        onApply() { try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) ThreeRenderer.getMiscModelClone('fallen_log', 1, 'center'); } catch (e) {} }
+    },
     onDuty: {
         icon: '🛟', glyph: '🛟', short: 'DTY', label: 'On Duty',
         colorText: 'on duty — watching the water',
@@ -20636,6 +20679,7 @@ const EW_RACE_BIOMES = {
     'karate frog': ['underground_base', 'urban'],   // 2026-11-17 THE NEW RACES 2 — The Sewers
     'samurai slug': ['underground_base', 'urban'],   // 2026-11-17 THE NEW RACES 2 — The Sewers
     'cicada brood': ['ancient', 'forest'],   // 2026-11-17 THE NEW RACES 2 — Leylines, the Bug Colony
+    'ninja': ['urban', 'clandestine'],   // 2026-11-17 THE NINJA — the rooftops of Disaster City
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
@@ -21290,6 +21334,7 @@ const RACE_TREE = {
     'karate frog':   [['raceKiBlast', 'raceFlurryOfBlows'], ['raceKiCharge', 'raceKiWave'], 'raceInstantTransmission', 'raceDragonFist'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'samurai slug':  ['nrSlimeSlash', 'nrSaltProof', 'nrIaiDraw', 'nrRoninsWake'],   // 2026-11-17 THE SAMURAI SLUG POLISH: his own four rungs (the borrowed row was Sad Backstory / Plot Armor / To Be Continued / Roll Credits, none of them a sword or the slime)
     'cicada brood':  ['nrDigIn', 'nrBuzz', 'nrScreech', 'raceSwarmSignal'],   // 2026-11-17 THE CICADA POLISH: its own three + Swarm Signal (the borrowed row held none of Dig In / Buzz / Chorus, and Corrosive Splash + Rot are outside its families)
+    'ninja':         ['nrShuriken', 'nrKawarimi', 'nrShadowStep', 'nrCloneJutsu'],   // 2026-11-17 THE NINJA: his own four
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -23316,6 +23361,16 @@ const SPELL_FAMILIES = {
         desc: 'The way of the slug: a slime-slicked cut, a stance salt cannot break, a draw so fast it closes the distance, and a wake that cuts everyone caught in his slime.',
         unique: 'samurai slug',
         identity: { who: ['Samurai Slug', 'Slug Ronin', 'Sewer Brother'], adj: ['Slimy', 'Patient', 'Armoured'], look: ['red and black lacquered armour', 'two eye stalks', 'a trail of slime'], vibe: ['leaves slime wherever he goes', 'is slow until he draws'] }
+    },
+    ninjutsu: {   // 2026-11-17 THE NINJA — the Ninja's own
+        id: 'ninjutsu',
+        name: 'Ninjutsu',
+        glyph: '🥷',
+        color: '#5a4a8a',
+        kind: 'signature',
+        desc: 'Never where you hit: throwing stars, the log trick, a step through the shadows to your back, and a crowd of himself.',
+        unique: 'ninja',
+        identity: { who: ['Ninja', 'Shinobi', 'Shadow'], adj: ['Silent', 'Masked', 'Swift'], look: ['a black hooded gi', 'a cloth mask over the face', 'wrapped forearms'], vibe: ['the hit lands on a log', 'he is always behind you'] }
     },
     brood: {   // 2026-11-17 THE NEW RACES 2 — the Cicada Brood's own
         id: 'brood',
@@ -25577,6 +25632,7 @@ const RACE_FAMILIES = {
     'karate frog': ['frogfu', 'martialarts', 'water', 'athleticism'],   // 2026-11-17 THE NEW RACES 2
     'samurai slug': ['slugbushido', 'swordsmanship', 'swordsaint', 'poison'],   // 2026-11-17 THE NEW RACES 2
     'cicada brood': ['brood', 'insectoid', 'sonic', 'colony'],   // 2026-11-17 THE NEW RACES 2
+    'ninja': ['ninjutsu', 'martialarts', 'spygear', 'athleticism'],   // 2026-11-17 THE NINJA
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
@@ -26200,6 +26256,7 @@ const CAMPAIGN_RACE_PRICES = {
   'karate frog': 400,   // 2026-11-17 THE NEW RACES 2
   'samurai slug': 400,   // 2026-11-17 THE NEW RACES 2
   'cicada brood': 400,   // 2026-11-17 THE NEW RACES 2
+  'ninja': 450,   // 2026-11-17 THE NINJA
   'lifeguard': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
@@ -28184,7 +28241,7 @@ const DOOR_TEXT = {
         'nephilim': 'Göbekli Tepe', 'vampire': 'The Haunted House', 'voidweaver': 'Moon', 'cosmic wraith': 'The Singularity',
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
         'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown', 'magician': 'The Strip', 'mole man': 'Hollow Earth', 'quetzalcoatl': 'Technoticlan', 'lifeguard': 'The Bermuda Triangle',   // banker + sewer gator + skater + tech ceo + magician + mole man + quetzalcoatl + lifeguard 2026-11-16
-        'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe',   // 2026-11-17 THE NEW RACES 2
+        'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe',   // 2026-11-17 THE NEW RACES 2
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',

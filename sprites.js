@@ -151,6 +151,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/karate_frog/', 'Assets/characters/races/karate_frog/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/samurai_slug/', 'Assets/characters/races/samurai_slug/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/cicada_brood/', 'Assets/characters/races/cicada_brood/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/ninja/', 'Assets/characters/races/ninja/'],   // 2026-11-17 THE NINJA
   ['Assets/Sprites/Races/lifeguard/', 'Assets/characters/races/lifeguard/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/knight/', 'Assets/characters/races/knight/'],   // 2026-11-16 THE NEW RACES (the male knight)
   ['Assets/Sprites/Races/shaman/', 'Assets/characters/races/shaman/'],   // 2026-11-16 THE NEW RACES (the male shaman)
@@ -557,6 +558,7 @@ const RACE_SPRITE_GENDERS = {
   'karate frog': 'male',   // 2026-11-17 THE NEW RACES 2
   'samurai slug': 'male',   // 2026-11-17 THE NEW RACES 2
   'cicada brood': 'male',   // 2026-11-17 THE NEW RACES 2
+  'ninja': 'both',   // 2026-11-17 THE NINJA (male + female)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
   'dinosaur': 'male',
@@ -734,6 +736,7 @@ const _CHARACTER_SPRITES = {
   'karate frog': `${_S}/Races/karate_frog/male/karate_frog_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'ninja': `${_S}/Races/ninja/male/ninja_m_px.png`,   // 2026-11-17 THE NINJA — 128x128 pixel sprite (Sprite AI restyle of its Meshy model); the woman's is _NEW_FEMALE_SPRITES
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
@@ -824,6 +827,7 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 const _NEW_FEMALE_SPRITES = {
   'nordic': `${_S}/Races/Nordic/Female/nordic_f_px.png`,
   'siren': `${_S}/Races/siren/female/siren_f_px2.png`,
+  'ninja': `${_S}/Races/ninja/female/ninja_f_px.png`,   // 2026-11-17 THE NINJA — the female ninja (Sprite AI restyle of her Meshy model)
 };
 const _NEW_MALE_SPRITES = {
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)
@@ -2629,6 +2633,20 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/cicada_brood/male/Meshy_AI_cicada_brood_Running.glb`,
       heightRatio: 1.1,
       basicAttackKind: 'physical',
+    }),
+  },
+  'ninja': {   // 2026-11-17 THE NINJA (mondo: male + female, the woman in a sexy ninja costume, no weapons)
+    male: _mkUAL('ninja/male', 'ninja_m', {
+      model: `${_S}/Races/ninja/male/Meshy_AI_ninja_m_Running.glb`,
+      heightRatio: 1.0,
+      basicAttackKind: 'punch',
+      lib: { jump: { clip: 'NinjaJump_Start', lib: 1, ts: 1.6 } },   // nimble leap
+    }),
+    female: _mkUAL('ninja/female', 'ninja_f', {
+      model: `${_S}/Races/ninja/female/Meshy_AI_ninja_f_Running.glb`,
+      heightRatio: 0.96,
+      basicAttackKind: 'kick',
+      lib: { jump: { clip: 'NinjaJump_Start', lib: 1, ts: 1.6 } },   // nimble leap
     }),
   },
   'lifeguard': {   // red swimsuit, rescue cross (THE NEW RACES 2026-11-16)
@@ -6883,6 +6901,7 @@ const RACE_SPRITES = {
   'karate frog': `${_S}/Races/karate_frog/male/karate_frog_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'ninja': `${_S}/Races/ninja/male/ninja_m_px.png`,   // 2026-11-17 THE NINJA — 128x128 pixel sprite (Sprite AI restyle of its Meshy model); the woman's is _NEW_FEMALE_SPRITES
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
