@@ -69212,6 +69212,158 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _l1Def('nrErupt', _l1FlashOnly(_L1.amber, 0));              /* _eaErupt: the mole man bursts up under it */
     _l1Def('sharedFissure', _l1FlashOnly(_L1.lava, 0));         /* _eaFissure: the ground splits to the lava */
     _l1Def('raceRockslide', _l1FlashOnly(_L1.amber, 0));        /* _eaCliff: the cliff rears up and comes down */
+    /* ── EARTH (part 3): the chess pieces, the walls, the sand, the ball ── */
+    _L1.ivory = 0xe8d8a8; _L1.walnut = 0x3a2616; _L1.sandFl = 0xe0b868; _L1.gold = 0xf0b83a; _L1.pigskin = 0xb86a2a;
+    /* THE CHESS MOVES (Pawn, Knight, Bishop, Rook, Queen, King): the piece's MOVE is drawn on the board, the squares it
+       crossed light one after another as chess squares (ivory, walnut, ivory…: a diagonal for the bishop, a straight
+       file for the rook, the L for the knight, one step for king and pawn), and the capture is written over the taken square the way a score sheet
+       writes it (R×, B×, N×, Q×, K×, a bare × for the pawn). The caster already wears the piece's own model. */
+    function _l1ChessPath(sx, sy, tx, ty, piece) {
+        var out = [], dx = tx - sx, dy = ty - sy, x = sx, y = sy, n = 0;
+        if (piece === 'knight' && Math.abs(dx) !== Math.abs(dy) && dx && dy) {   /* the long leg first, then the turn */
+            var lx = Math.abs(dx) > Math.abs(dy);
+            while ((lx ? x !== tx : y !== ty) && n++ < 12) { if (lx) x += dx > 0 ? 1 : -1; else y += dy > 0 ? 1 : -1; out.push({ x: x, y: y }); }
+            while ((x !== tx || y !== ty) && n++ < 24) { if (x !== tx) x += tx > x ? 1 : -1; else y += ty > y ? 1 : -1; out.push({ x: x, y: y }); }
+            return out;
+        }
+        while ((x !== tx || y !== ty) && n++ < 40) { if (x !== tx) x += tx > x ? 1 : -1; if (y !== ty) y += ty > y ? 1 : -1; out.push({ x: x, y: y }); }
+        return out;
+    }
+    function _l1ChessNoteTex(piece) {
+        var L = { knight: 'N', bishop: 'B', rook: 'R', queen: 'Q', king: 'K' }[piece] || '';
+        return _pzTex('l1-chess-' + piece, 128, 128, function (g, w, h) {
+            g.font = 'bold ' + (L ? 76 : 96) + 'px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.lineWidth = 12; g.strokeStyle = '#2a1a0e'; g.lineJoin = 'round'; g.strokeText(L + '\u00d7', 64, 66);
+            g.fillStyle = '#f2e6c0'; g.fillText(L + '\u00d7', 64, 66);
+        });
+    }
+    function _l1Chess(piece) {
+        return function (p, P0) {
+            var tx = p.tx, ty = p.ty, F = _nrvFrame(tx, ty), ts = F.ts;
+            var sx = P0 && P0.sx != null ? P0.sx : p.sx, sy = P0 && P0.sy != null ? P0.sy : p.sy;
+            var path = (sx != null) ? _l1ChessPath(sx, sy, tx, ty, piece) : [{ x: tx, y: ty }];
+            if (!path.length) path = [{ x: tx, y: ty }];
+            path = path.slice(-14);
+            var lite = _pzSolid(_L1.ivory, null, { depthWrite: false }), dark = _pzSolid(_L1.walnut, null, { depthWrite: false }), sq = [], shown = 0;
+            for (var i = 0; i < path.length; i++) {
+                var q = path[i]; if (!_pzSeen(q.x, q.y)) continue; shown++;
+                var c = _nvOff(F, q.x, q.y), m = _pzMesh(_f4Floor(ts * 0.9), ((q.x + q.y) & 1) ? lite : dark, F.g, c.x, c.y + ts * 0.03, c.z); m.renderOrder = 159; m.visible = false;
+                sq.push({ m: m, d: i * 45 });
+            }
+            if (!shown) { _sigDisposeGroup(F.g); return; }
+            /* the capture, as the score sheet writes it: the piece's letter and the cross (R×, B×, N×, Q×, K×, a bare × for the pawn) */
+            var cd = _nbCamDir(F), nx = -cd.z, nz = cd.x, note = _pzMesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), _pzSolid(0xffffff, _l1ChessNoteTex(piece), { side: THREE.DoubleSide, depthWrite: false }), F.g, nx * ts * 0.8, ts * 0.75, nz * ts * 0.8);   /* beside the body (the lens' right), clear of the number over its head */
+            note.rotation.y = Math.atan2(cd.x, cd.z); note.renderOrder = 162; note.material.depthTest = false; note.visible = _pzSeen(tx, ty);
+            var flash = _l1Flash(F, [{ x: tx, y: ty }], _L1.gold, { op: 0.5 }), TOTAL = 1500 + path.length * 45;
+            return _sigRunOwned(F.g, TOTAL, function (el) {
+                var o = _pzEnv(el, 0, 60, TOTAL - 520, TOTAL - 40);
+                lite.opacity = 0.62 * o; dark.opacity = 0.7 * o;
+                for (var i = 0; i < sq.length; i++) sq[i].m.visible = el >= sq[i].d;
+                var k = _sigEaseOutBack(_sigClamp01(el / 160));
+                note.scale.setScalar(Math.max(0.01, k)); note.position.y = ts * (0.75 + 0.15 * _sigClamp01(el / TOTAL));
+                note.material.opacity = _pzEnv(el, 0, 60, 950, 1350);
+                flash(el);
+            });
+        };
+    }
+    ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'].forEach(function (pc) { _l1Def('chess' + pc.charAt(0).toUpperCase() + pc.slice(1), _l1Chess(pc)); });
+
+    /* blocks that drop into place on top of a wall as it comes up (they ride the wall's live height) */
+    function _l1Courses(F, tiles, mat, o) {
+        var ts = F.ts, geo = new THREE.BoxGeometry(1, 1, 1); geo = geo.toNonIndexed(); geo.computeVertexNormals(); o.bake(geo);
+        var a0 = _nvOff(F, tiles[0].x, tiles[0].y), a1 = _nvOff(F, tiles[tiles.length - 1].x, tiles[tiles.length - 1].y), yaw = tiles.length > 1 ? Math.atan2(a1.x - a0.x, a1.z - a0.z) : 0;
+        var ux = Math.sin(yaw), uz = Math.cos(yaw), B = [], gy = {};
+        for (var i = 0; i < tiles.length; i++) {
+            var q = tiles[i]; if (!_pzSeen(q.x, q.y)) continue;
+            var c = _nvOff(F, q.x, q.y);
+            for (var row = 0; row < o.rows; row++) for (var b = 0; b < 2; b++) {
+                var along = (b - 0.5 + (o.rows > 1 ? (row % 2 ? 0.25 : -0.25) : 0)) * ts * 0.48;
+                var m = _pzMesh(geo, mat, F.g, c.x + ux * along, 0, c.z + uz * along); m.rotation.y = yaw; m.scale.set(ts * o.w, ts * o.h, ts * o.l); m.visible = false;
+                B.push({ m: m, up: ts * (o.h * 0.5 + o.h * 1.05 * row), d: row * 110 + i * 45 + b * 30, c: c, q: q });
+            }
+        }
+        return { n: B.length, list: B, tick: function (el) {
+            for (var i = 0; i < B.length; i++) {
+                var X = B[i], t = _sigClamp01((el - X.d) / 150), k = X.q.x + ',' + X.q.y; X.m.visible = el >= X.d;
+                if (i % (o.rows * 2) === 0) gy[k] = _worldPos(X.q.x, X.q.y).y - F.wp.y;
+                X.m.position.y = gy[k] + X.up + ts * 0.5 * (1 - _sigEaseOutBack(t));
+            }
+        } };
+    }
+    /* RAMPART — "hold the line, build the line": squared blocks of stone knock down onto the top of the wall as it
+       rises, two merlons a square, and mason's dust comes off them */
+    _l1Def('sharedRampart', function (p, P0) {
+        var tiles = (P0 && P0.tiles && P0.tiles.length) ? P0.tiles : [{ x: p.tx, y: p.ty }];
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, mat = _eaStoneMat(false), C = _l1Courses(F, tiles, mat, { rows: 1, w: 0.34, h: 0.26, l: 0.3, bake: function (g) { _nvBake(g, 0.5); } });
+        if (!C.n) { _sigDisposeGroup(F.g); return; }
+        var flash = _l1Flash(F, tiles, _L1.amber, { op: 0.5 }), dusted = false;
+        return _sigRunOwned(F.g, 2300, function (el) {
+            mat.opacity = 1 - _sigClamp01((el - 1750) / 500); C.tick(el);
+            if (!dusted && el > 260) { dusted = true; for (var j = 0; j < C.list.length; j += 2) _pzP(F, C.list[j].c.x, C.list[j].m.position.y, C.list[j].c.z, { sprite: 'dust-puff', tint: _EA.dust, ml: 700, size0: 14, size1: 46, vz: 18, opacity0: 0.5 }); }
+            flash(el);
+        });
+    });
+
+    /* PYRAMID PROTOCOL — the blocks are raised to a plan: a square of gold light climbs each of the three squares from
+       the sand to the top of its block as it rises, one after another, and holds on the cap for a beat */
+    _l1Def('raceZigguratProtocol', function (p, P0) {
+        var tiles = (P0 && P0.tiles && P0.tiles.length) ? P0.tiles : [{ x: p.tx, y: p.ty }];
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, mat = _pzGlow(_L1.gold), frames = [], bar = new THREE.BoxGeometry(1, 1, 1);
+        for (var i = 0; i < tiles.length; i++) {
+            var q = tiles[i]; if (!_pzSeen(q.x, q.y)) continue;
+            var c = _nvOff(F, q.x, q.y), g = new THREE.Group(); g.position.set(c.x, c.y, c.z); F.g.add(g);
+            for (var s = 0; s < 4; s++) { var m = _pzMesh(bar, mat, g, (s === 0 ? -1 : s === 1 ? 1 : 0) * ts * 0.47, 0, (s === 2 ? -1 : s === 3 ? 1 : 0) * ts * 0.47); m.scale.set(s < 2 ? ts * 0.035 : ts * 0.975, ts * 0.035, s < 2 ? ts * 0.975 : ts * 0.035); }
+            frames.push({ g: g, q: q, y0: c.y, d: i * 140 });
+        }
+        if (!frames.length) { _sigDisposeGroup(F.g); return; }
+        var flash = _l1Flash(F, tiles, _L1.sandFl, { op: 0.5 });
+        for (var j = 0; j < frames.length; j++) _pzP(F, frames[j].g.position.x, 4, frames[j].g.position.z, { sprite: 'dust-puff', tint: _EA.sand, ml: 800, size0: 16, size1: 50, vz: 16, opacity0: 0.5 });
+        return _sigRunOwned(F.g, 1900, function (el) {
+            mat.opacity = 0.9 * _pzEnv(el, 0, 80, 1400, 1880);
+            for (var i = 0; i < frames.length; i++) {
+                var f = frames[i], top = _worldPos(f.q.x, f.q.y).y - F.wp.y + ts * 0.06, k = _sigEaseOutCubic(_sigClamp01((el - f.d) / 620));
+                f.g.visible = el >= f.d; f.g.position.y = f.y0 + ts * 0.05 + (Math.max(top, f.y0 + ts * 0.05) - f.y0 - ts * 0.05) * k;
+            }
+            flash(el);
+        });
+    });
+
+    /* SPIKE THE BALL — the touchdown spike: the football itself is driven nose-first into the middle square, kicks back
+       up end over end and drops, and the turf jumps off every square round it */
+    _l1Def('raceSpikeTheBall', function (p, P0) {
+        var tx = p.tx, ty = p.ty, F = _nrvFrame(tx, ty), ts = F.ts, tiles = _l1Area(p, P0, 1);
+        var inst = (_wpnReady('football') && _pzSeen(tx, ty)) ? _wpnInstance('football', ts * 0.42) : null, hold = new THREE.Group(); F.g.add(hold);
+        if (inst) { var tip = new THREE.Group(); tip.rotation.x = Math.PI / 2; tip.add(inst.group); hold.add(tip); inst.setFade(1); }
+        var smat = _eaStoneMat(false, [1.2, 1.0, 0.7]), stones = _l1Stones(F, smat, false), flash = _l1Flash(F, tiles, _L1.pigskin, { op: 0.55, at: 110 }), hit = false;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var HIT = 110, y, rot = 0;
+            if (el < HIT) y = ts * (2.4 - 2.2 * (el / HIT));
+            else { var t = (el - HIT) / 1000; y = Math.max(ts * 0.14, ts * 0.2 + ts * 2.6 * t - ts * 3.4 * t * t); rot = t * 11; }
+            hold.position.set(0, y, 0); hold.rotation.z = rot;
+            if (inst) inst.setFade(1 - _sigClamp01((el - 1350) / 320));
+            if (!hit && el >= HIT) { hit = true;
+                for (var i = 0; i < tiles.length; i++) { var q = tiles[i]; if (!_pzSeen(q.x, q.y)) continue; var c = _nvOff(F, q.x, q.y), l = Math.hypot(c.x, c.z) || 1;
+                    for (var n = 0; n < 2; n++) stones.add(new THREE.Vector3(c.x * 0.8 + rn(-1, 1) * ts * 0.15, c.y + ts * 0.05, c.z * 0.8 + rn(-1, 1) * ts * 0.15), new THREE.Vector3(c.x / l * ts * rn(0.2, 0.7), ts * rn(1.2, 2.2), c.z / l * ts * rn(0.2, 0.7)), ts * rn(0.03, 0.06), el); }
+                _pzP(F, 0, 4, 0, { sprite: 'dust-puff', tint: _EA.dust, ml: 600, size0: 18, size1: 56, vz: 18, opacity0: 0.55 }); }
+            smat.opacity = el < 1680 ? 1 : 0; stones.tick(el, 1250, 400); flash(el);
+        });
+    });
+
+    /* SPIKE TRAP — it is hidden, so nothing marks where it lies: the look is the laying of it, at the CASTER's own feet
+       (stone spike tips are pushed down into the dirt and the dirt is patted flat). The spring keeps the traps' snap. */
+    _l1Def('raceSpikeTrap', function (p, P0) {
+        var sx = P0 && P0.sx != null ? P0.sx : p.sx, sy = P0 && P0.sy != null ? P0.sy : p.sy; if (sx == null || !_pzSeen(sx, sy)) return;
+        var F = _eaFrame(sx, sy), ts = F.ts, stone = _eaStoneMat(false), cd = _nbCamDir(F), pts = [];
+        for (var i = 0; i < 5; i++) { var a = Math.atan2(cd.z, cd.x) + (i - 2) * 0.5; pts.push({ x: Math.cos(a) * ts * 0.42, y: 0, z: Math.sin(a) * ts * 0.42, h: ts * 0.22, w: ts * 0.05, d: i * 40, rx: 0, rz: 0 }); }
+        var spikes = _eaSpikes(F.g, stone, pts), puffed = false;
+        return _sigRunOwned(F.g, 1100, function (el) {
+            stone.opacity = el < 1080 ? 1 : 0; spikes(el, 120, 360, 420);
+            if (!puffed && el > 520) { puffed = true; for (var j = 0; j < pts.length; j++) _pzP(F, pts[j].x, 3, pts[j].z, { sprite: 'dust-puff', tint: _EA.dust, ml: 520, size0: 8, size1: 24, vz: 10, opacity0: 0.5 }); }
+        });
+    });
+
+    _l1Def('raceQuicksand', _l1FlashOnly(_L1.sandFl, 1));       /* _eaQuicksand: the 3×3 turns and swallows */
+    _l1Def('raceSandstoneTomb', _l1FlashOnly(_L1.sandFl, 0));   /* _eaTomb: the slabs close over the body */
     /* ═════════ END THE OWN LOOKS, L1 ═════════ */
     /* ══ THE OWN LOOKS, L4 (2026-11-17, thread L4 of the own-looks job, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells
        that dont have a look of their own need one"): blessings and curses — the aura buffs, the heals, the divine hits, the hexes
