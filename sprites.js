@@ -745,6 +745,9 @@ const _CHARACTER_SPRITES = {
   'unicorn': `${_S}/Races/unicorn/unicorn.png`,   // 2026-10-27
 };
 const _CHARACTER_SPRITES_GENDERED = {
+  // 2026-11-17 — the DOOR agents' own 128x128 pixel sprites (Sprite AI restyle of a front render of each cast model:
+  // the recruit = DOOR_CAST_MODELS.player, Agent Belle = .belle); were the Homosapien agent job sheet
+  'door agent': { male: `${_S}/Races/maincharacters/door_agent_m_px.png`, female: `${_S}/Races/maincharacters/agent_belle_px.png` },
   /* THE WOMEN (2026-11-16, the new races; mondo: female politician / professor / clown, "hot/attractive"): cut from their Meshy models */
   'politician': { male: `${_S}/Races/maincharacters/president.png`, female: `${_S}/Races/politician/female/politician_f_px.png` },
   'professor': { male: `${_CS}/professor.png`, female: `${_S}/Races/professor/female/professor_f_px.png` },
