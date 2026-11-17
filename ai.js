@@ -6481,8 +6481,15 @@
                 const t = v.threatFn(target.x, target.y, target.z);
                 s += Math.min(300, t.totalDmg * 0.7);
             }
+            /* 🥷 THE NINJA (2026-11-17): Kawarimi (`substitute`) eats the next blow like Protect and puts him at the hitter's
+               back; worth it under threat, nothing if he already holds one */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'substitute')) {
+                if (g.unitHasStatus(target, 'substitute')) return 0;
+                const t = v.threatFn(target.x, target.y, target.z);
+                s += Math.min(260, t.totalDmg * 0.6) + 20;
+            }
             for (const eff of (spell.statusEffects || [])) {
-                if (!eff || !eff.id || eff.id === 'protect') continue;
+                if (!eff || !eff.id || eff.id === 'protect' || eff.id === 'substitute') continue;
                 s += _friendlyStatusValue(g, unit, target, eff, v);   // regen/haste-style friendly riders
             }
             // THE SPELL AUDIT D: a buff row's barrier (Ki Charge), its taunt (Shield Maiden), its decoy (Mimicry)
