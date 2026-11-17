@@ -4305,3 +4305,28 @@ windup beat), so `_vcOwn(id)` is true and the shared stage burst stops for it. N
   cleanup thread's B7); Cosmic Slam's old pink ring (`fire()`'s own special case) still draws over the caster.
 - Frames: docs/plans/vfx-cleanup/img/own-look/l3_*.jpg. Capture tip: the batch runner's frames are 450 ms apart and it
   misses tile-aimed dashes; `/tmp/sv/start.sh` + `SV.prep(id)` / `SV.cast()` through `e.sh`, a shot every 150 ms, shows them.
+
+
+## THE OWN LOOKS, L3, part 2: the kinetic runs (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L3")
+Twelve of the kinetic spells. A dash draws its LANE on battle.js's `<id>:dash` beat (`fireGeometry`, relayed; `_l3Lane`:
+the frame on the launch square, +Z down the run, drawn only when the viewer sees both ends) and is named in `_GO_SIG` so
+`_vcOwn` is true.
+- **Learned on the frames:** a dash's staging `burst` beat fires about a second AFTER the run has landed, and a charge
+  lands ON its target's square (the body is shoved aside). So a dash's hit piece is fired by its own `:dash` beat when
+  the run arrives, on the landing square (`_l3DashHit`), and the late burst beat is told it is done (`_l3Late`, a
+  2.6 s `_pzOnce`); a dash that makes no run still gets the piece from the burst beat. A flat mark on the ground needs
+  y 4 + a polygon offset (`_l3Ink`, `_l3Mark`) or the lane's tile glow covers it.
+- Blitz: the play in chalk (an O where he lined up, the dashed route, the arrowhead), an X chalked on the man he hit, turf
+  flies. Body Check: a six-sided plate of riveted gunmetal slams in from his side, the rivets shear off, two heel skids to
+  where the body stops. Dark Feather: a black cut hangs from where he stood to the body, small black feathers burst, one
+  long feather falls slowly. Drive-By: brass casings down the lane and the ground stitched two strikes a square as the car
+  passes. Giant Stride: one footprint as long as a square at mid-stride and one where he lands, every square on or beside
+  the path flashes dust-gold. Horn Toss: the horns come up under the body in one swing, a column of dust. Ice Slide: a
+  strip of ice runs out under him, snow off both edges, standing shards where he stops. Ram Charge: two black tyre lines
+  in smoke, headlights flare at the bumper, amber and red lens bits. Rampage: a rust-red wake opens square after square,
+  the hit comes apart in scrap under two crossed blows. Ride-By: horseshoe prints in pairs, clods, one big shoe stamped
+  hot under the last body. Shadow Infiltration: dark shapes of him left standing down the lane, a violet needle, the
+  shadow at his feet closes. Sprint: a rabbit's tracks, dust and grass, nothing more.
+- Not mine, seen on the frames: every dash also draws the shared pale crescent of battle.js `_vfxDash`; Sprint wears the
+  wind element's swirl.
+- Frames: docs/plans/vfx-cleanup/img/own-look/l3_part2_*.jpg, l3_raceIceSlide.jpg, l3_raceRideBy.jpg.
