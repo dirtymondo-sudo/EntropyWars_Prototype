@@ -13319,7 +13319,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 pivot.rotation.z = Math.PI * _sigEaseOutCubic(t2);   /* the reversal */
                 if (!flared && t2 > 0.85) {
                     flared = true;
-                    _sigScreenFlash('#a570e6', 130, 0.14);
+                    if (!_vcOn()) _sigScreenFlash('#a570e6', 130, 0.14);   /* THE VFX SWEEP B9a: the card turning over is the beat, no screen flash */
                     _sigSparks(tx, ty, 'psi-pulse', 12, { vxy: 90, vz0: -40, vz1: 40, gravity: 90 });
                 }
             } else if (el < inMs + flipMs + holdMs) {
@@ -22444,7 +22444,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* THE VFX SWEEP (B9a, 11-17): a spell of a rune school that is NOT rune magic draws no cast rune under its caster (mondo: the
        rune "should be preserved for magic spells where it makes sense"). One id a spell; a sweep thread adds its own ids here.
        Kept on purpose (rune magic): Annihilation, Arcane Sigil, Crystal Ball, Hocus Pocus, Contract, Forsaken, Hex of Agony,
-       Mark of the Beast. */
+       Mark of the Beast, Mummify, Polymorph, Spellsteal, Star Crossed. */
     var _VC_SPELL_NO_RUNE = {
         /* B9a, arcane: silk, cards, mirrors, a slot machine, a web, a paradox, the winged disk */
         raceCocoon: 1, raceDeadMansHand: 1, raceHallOfMirrors: 1, raceJackpot: 1, sigKneel: 1, raceMirrorShard: 1, racePrismMirror: 1,
@@ -22454,6 +22454,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         goDesignateTarget: 1, discordance: 1, nrEagleEye: 1, raceExhaustCloud: 1, raceFilibuster: 1, goFlowerInTheBarrel: 1,
         pzFreezePolice: 1, nrGoViral: 1, sharedGravityCrush: 1, raceHaunt: 1, raceHogtie: 1, raceImplant: 1, raceInkCloud: 1, ironGrip: 1,
         sigLampSmoke: 1, sharedLowGravity: 1, raceMeanMug: 1, raceMemoryLeak: 1,
+        /* B9a, hex (part 3) */
+        goMirrorSplinter: 1, raceMisdirection: 1,
+        raceNaughtyList: 1, raceOutbreak: 1, nrPickACard: 1, sigPixiePrank: 1, racePredictiveModel: 1, raceRedEyes: 1, nrSelfieFlash: 1,
+        nrShortSell: 1, sigShowdown: 1, sharedSmokeScreen: 1, spySpikedMartini: 1, racePopSpotlight: 1, raceStackedDeck: 1,
+        raceStasisBeam: 1, raceStealFromRich: 1, raceStutter: 1, raceSurveillance: 1, raceSystemAnalysis: 1, pzHatMan: 1,
+        raceCultKoolAid: 1, goThrowDownTheGauntlet: 1, goVowOfSilence: 1, pzWantedPoster: 1, raceWhiteChristmas: 1, sigWitherStarlight: 1,
         /* the brief's lead: Love Ray is a ray gun, the purple circle under the shooter was this rune */
         sigLoveRay: 1
     };
