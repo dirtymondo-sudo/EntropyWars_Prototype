@@ -29,6 +29,7 @@ read them. PROPOSALS are not approved until the owner says so; check the matchin
 | File | What it is |
 |---|---|
 | `npc-encounters/PLAN.md` | NPC ENCOUNTERS (2026-11-17): mondo's concept fitted to the game: tempers per race, the strike ladder, awareness, offers, NPC escape, onlookers, joining fights; built / partly / new per part, a Fable or Opus pick per step, 18 open questions. His original: `npc-encounters/concept-v0.3.md`. Sits on top of `../notes/npc-system.md`. |
+| `npc-encounters/REVIEW.md` | The review of that plan (2026-11-17): step 0's findings in code, the critique from the player's side, a changed build order (Bayside first), 12 questions for mondo. |
 
 ## Quests, story, cutscenes
 | File | What it is |

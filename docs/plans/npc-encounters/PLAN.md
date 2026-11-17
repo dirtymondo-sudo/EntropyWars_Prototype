@@ -4,6 +4,10 @@ mondo uploaded an NPC encounter concept (v0.3, made with another AI that did not
 `concept-v0.3.md` beside this file). This file fits that concept to Entropy Wars as it stands on main today: the roster,
 the zones, and what is already built. Nothing here is built by this file.
 
+**REVIEWED 2026-11-17 (Fable): `REVIEW.md` beside this file** holds step 0 (the check-up, done) and a critique from the
+player's side with 12 questions for mondo. Read it before any build step. Rows below marked **(step 0)** were corrected from it;
+no design decision in this file was changed.
+
 **This is a NEW encounter system, and it is meant to replace the old encounter rules** (mondo, 11-17: "we are making a brand
 new encounter system. The rules are going to change"). Where the concept differs from how the game works today, the concept
 is the target and the old rule is what gets changed; such parts are marked **REPLACES**. Details the concept left open
@@ -87,7 +91,7 @@ closing line is the right rule: few presets, few universal reactions, clear limi
 | Quests | **BUILT** (one quest) | data.js `STORY_QUESTS`, `QUEST_FIGHTS` (`orientation_portal`) | The boss / scripted battle sheet is npc-system.md delivery 6 (not built). |
 | Running away inside a fight | **PARTLY** | battle.js Feared ("flees in terror", one flee ends the fear); ai.js hazard flee | The AI can run from danger; it never leaves the fight. NPC escape is NEW. |
 | The round boundary | **BUILT** | battle.js `state.round`, `processEndOfRoundStatuses`, `processEndOfRoundZonesAndSeeds`, `processEndOfRoundRegen`, `showEndOfRoundOverview` | The concept's "reuse the end-of-round phase" has a real place to hook in. |
-| Other walkers during a fight | **CHECK** | step 0 confirms it | My reading: the fight builds the room's field and the walkers are not part of it, so nobody watches. Step 0 must check this in code before step 7 is planned. |
+| Other walkers during a fight | **BUILT** (step 0) | map.js `_hqEncounterStart` → `_hqLeave`; three-renderer.js `_hqBuildRoomInBattle`, `_rigCarry*` | Confirmed: the walk is left and the room is rebuilt round the field, so nobody watches. An onlooker is a new thing in the fight's scene; the rig hand-over can carry its body across. |
 | Awareness (an NPC notices you) | **NEW** | | Walkers do not look at you, turn, step aside or react. |
 | NPC-started fights | **NEW** (REPLACES "never random", see 1.2) | | The approved muggings / drive-bys (npc-system.md delivery 7) are NOT built on main yet; step 4 builds them. |
 | Offers in a fight (talk mid-fight) | **NEW** | | |
@@ -234,8 +238,9 @@ be free for all? Can it fight the enemy and stay neutral to you? Options, using 
 - **C. A third side with grudges (recommended).** Each joiner is its own side with a short **grudge list**: the units that
   hit it or its group. It attacks those first, ignores the rest, and anyone who hits it goes onto its list. So a cop hit by
   the Gangster fights the Gangster, stays neutral to you, you can still target it, and if you hit it, it turns on you too.
-  This is exactly mondo's third option. It needs one change at the choke point: `isEnemyUnit(a, b)` asks "is b on a's
-  grudge list?" for third-side units (the AI and targeting already read those two functions). Online is not touched.
+  This is exactly mondo's third option. **(step 0) It is NOT one change:** battle.js compares `.player` directly about 135
+  times beside its `isEnemyUnit` calls, ai.js about 50 times (4 `isEnemyUnit` calls), and the win check, vision and the XP
+  pool know two players only (REVIEW.md section 1, finding 3). It is the plan's biggest engine job. Online is not touched.
 
 Keep to the frame: joiners above a sane count make fights long. No hard cap (mondo: "as many as ... want to fight"), but the
 room mix and awareness keep it small in practice; step 8 measures a crowded street and reports.
@@ -273,7 +278,7 @@ every edited JS file, visual steps get a browser proof through `probe-fast.js` w
 
 | # | Step | State | Model | Why that model | Needs first |
 |---|---|---|---|---|---|
-| 0 | **The check-up**: confirm every BUILT / CHECK row of section 2 in code (what the room's walkers do during a fight; where the round-end hook goes; how the AI picks targets through `isEnemyUnit`) and write the findings here | PARTLY | **Fable** | A read-only audit across five big files; the result is prose | nothing |
+| 0 | **The check-up**: confirm every BUILT / CHECK row of section 2 in code (what the room's walkers do during a fight; where the round-end hook goes; how the AI picks targets through `isEnemyUnit`) and write the findings here | **DONE 11-17** (`REVIEW.md` section 1; three smaller checks left, named there) | **Fable** | A read-only audit across five big files; the result is prose | nothing |
 | 1a | **Tempers + groups, design**: tag Disaster City's races (residents + its AREA UNITS table) with a temper, a group and roles; draft the room mix per district; draft the fewest lines the system needs | NEW | **Fable** | A creative, wide pass over the roster and the city; output is a table + lines for mondo to mark | step 0 |
 | 1b | **Tempers + groups, data**: data.js `HQ_NPC_TEMPERS` (temper, group, roles by race; overrides by room / resident id; the room mix) + `hqNpcTemper(ch)`, `hqNpcGroup(ch)`; nothing reads them yet | NEW | **Opus** | Exact edits in data.js (a stray brace takes the game down) | mondo's marks on 1a |
 | 2 | **Awareness on the walk**: drawn bodies look at you, step aside, Guards / Territorials say their line; who saw what (for 4.6) | NEW | **Opus** | three-renderer.js tick code, the frame-rate budget, a browser proof | 1b |
