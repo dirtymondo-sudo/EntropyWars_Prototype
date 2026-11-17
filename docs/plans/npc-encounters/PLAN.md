@@ -8,6 +8,8 @@ the zones, and what is already built. Nothing here is built by this file.
 player's side with 12 questions for mondo. Read it before any build step. Rows below marked **(step 0)** were corrected from it;
 no design decision in this file was changed.
 
+**STEP 1A IS DELIVERED (2026-11-17): `STEP-1A.md` beside this file** (Bayside: tempers, groups, the mix, the lines, the marks' mock-up, the cost of a lost fight, 7 questions). It waits for mondo's marks; step 1b starts after them.
+
 **This is a NEW encounter system, and it is meant to replace the old encounter rules** (mondo, 11-17: "we are making a brand
 new encounter system. The rules are going to change"). Where the concept differs from how the game works today, the concept
 is the target and the old rule is what gets changed; such parts are marked **REPLACES**. Details the concept left open
@@ -324,7 +326,7 @@ every edited JS file, visual steps get a browser proof through `probe-fast.js` w
 | # | Step | State | Model | Why that model | Needs first |
 |---|---|---|---|---|---|
 | 0 | **The check-up**: confirm every BUILT / CHECK row of section 2 in code (what the room's walkers do during a fight; where the round-end hook goes; how the AI picks targets through `isEnemyUnit`) and write the findings here | **DONE 11-17** (`REVIEW.md` section 1; three smaller checks left, named there) | **Fable** | A read-only audit across five big files; the result is prose | nothing |
-| 1a | **Tempers + groups, design**: tag Disaster City's races (residents + its AREA UNITS table) with a temper, a group and roles; draft the room mix per district; draft the fewest lines the system needs | NEW | **Fable** | A creative, wide pass over the roster and the city; output is a table + lines for mondo to mark | step 0 |
+| 1a | **Tempers + groups, design**: tag Disaster City's races (residents + its AREA UNITS table) with a temper, a group and roles; draft the room mix per district; draft the fewest lines the system needs | **DELIVERED 11-17 for Bayside (`STEP-1A.md`), waits for his marks** | **Fable** | A creative, wide pass over the roster and the city; output is a table + lines for mondo to mark | step 0 |
 | 1b | **Tempers + groups, data**: data.js `HQ_NPC_TEMPERS` (temper, group, roles by race; overrides by room / resident id; the room mix) + `hqNpcTemper(ch)`, `hqNpcGroup(ch)`; nothing reads them yet | NEW | **Opus** | Exact edits in data.js (a stray brace takes the game down) | mondo's marks on 1a |
 | 2 | **Awareness + the marks**: who has seen you (the same on every machine: the weak-PC cut goes, board note to the spawn system thread first); the eye closed / eye open / red mark over heads; step aside; Guards / Territorials say their line | NEW | **Opus** | three-renderer.js tick code, a browser proof | 1b, the marks' mock-up OK'd |
 | 3 | **The strike ladder**: the short run, cornered skips it, the Talk panel (E first too), the third strike starts the fight; the door strike; whoever starts the fight opens round 1; the day's memory per id; the old one-strike notes get a REPLACED line | REPLACES | **Opus** | Changes the built strike path (`_hqStrikeClick`, `_hqEncounterAim`, map.js `_hqEncounterFire`); must not break the first quest or the capture | 1b |

@@ -16,7 +16,7 @@ Asked by mondo on 2026-11-17 (thread "Clean up generic white spell VFX"):
 Files in this folder:
 - `VFX_CLEANUP_PLAN.md` (this) · `SPELL_TABLE.md` (all 986 castable spells: the white layers found on each, its rule, its batch)
 - `batches/<batch>.txt` (spell ids, one per line, ready for the capture harness) · `img/` (the frames below)
-- `tools/` (the audit script, the table writer, the throwaway mock-up patch, the capture runner patched to launch through
+- `tools/` (the audit script, the table writer, the throwaway mock-up patch) and `tools/harness/` (THE CAPTURE HARNESS, whole, launching through
   `probe-fast.js`). Repo-only reference, never uploaded to R2.
 
 ---
@@ -253,7 +253,7 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
 
 | Batch | What | Spells | Proof | Model note |
 |---|---|---|---|---|
-| **B0** | The switch `EW_NO_VFX_CLEANUP`, the white meter (section 7), the capture runner launching through `probe-fast.js` (`tools/sv-run.patched.js`) | 0 | the meter's numbers for his three spells, today | small; one short thread, low-medium effort |
+| **B0** | The switch `EW_NO_VFX_CLEANUP`, the white meter (section 7), the capture runner launching through `probe-fast.js` (`tools/harness/sv-run.js`, done) | 0 | the meter's numbers for his three spells, today | small; one short thread, low-medium effort |
 | **B1** | The shared changes (section 3) | reaches ~840 | 16-spell before / after sheet across archetypes + meter totals | the most important step: high effort, read section 1 first, look at every frame |
 | **B2** | Blades: his examples first (Blade Waltz, Dragon Slash), Brave Charge, Cross Slash, Sneak Slash, Red Slash, Synthetic Blade, Blessed Blade. Sword Beam gets its interim cleanup here and its beam in B3 | 9 | before / after per spell, the hit frame cropped to the target | medium-high effort; his orange-red stays |
 | **B3** | The beam kit (section 4) + the 25 generic-laser spells + a check of the other line spells + the sight lasers (turret, Take Aim, sniper rig) and the turret blast | 47 + the turret / sight lasers | per style: the four beats in one strip; every converted spell's sheet | design work: high effort, the longest step |
@@ -283,11 +283,12 @@ after B1. The batch lists are `batches/<batch>.txt`; the per-spell detail is `SP
 
 ## 7. How each batch proves it (screenshots)
 
-- **The harness**: `/mnt/project-files/spell-vfx-audit/harness/` (the 10-26 spell look audit): setup.sh, then
+- **The harness is in the repo**: `docs/plans/vfx-cleanup/tools/harness/` (the 10-26 spell look audit, every file it
+  needs, nothing from project files). `bash docs/plans/vfx-cleanup/tools/harness/setup.sh` once, then
   `node /tmp/sv/sv-run.js --ids docs/plans/vfx-cleanup/batches/<batch>.txt --out /tmp/sv/<batch>`, then
   `python3 /tmp/sv/sv-report.py /tmp/sv/<batch> --title <batch>` for the sheets. One real cast per spell on the spell
-  audit board through the real HUD, frames every ~0.4 s. Use `tools/sv-run.patched.js` (it launches through
-  `probe-fast.js`, the project rule since 11-16). One browser at a time.
+  audit board through the real HUD, frames every ~0.4 s. Both launchers (`sv-run.js` for batches, `sv-ctl.js`
+  + `start.sh` + `e.sh` for one spell by hand) go through `probe-fast.js`, the project rule since 11-16. One browser at a time.
 - **Before and after in one run**: `--opts` with `{"<id>": {"pre": "window.EW_NO_VFX_CLEANUP = true"}}` for the before pass.
 - **The white meter** (B0): for each shot, the share of pixels inside the target's screen box (`ThreeRenderer.unitScreenBox`,
   already in the harness's frame info) and inside 2 squares round it that are near-white (all channels > 220). Reported per
