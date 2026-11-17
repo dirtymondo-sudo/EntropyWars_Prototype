@@ -11418,3 +11418,97 @@ before (the 12 x 12 room of the Highway, squares 0..144; no district file change
   rigs MB): the Circus seen, Western Town 677 / 1.36 M, 1,431 MB · Area 51 1,066 / 1.11 M, 1,400 MB · Giza 338 / 1.14 M, 1,156 MB · the Highway
   517 / 0.77 M, 679 MB; all far under rule 5 (2,500 / 12 M, 1.4 GB is the line the old 144-plot room already stood near). Pictures:
   `docs/plans/one-world/proof/desert_*.jpg`.
+
+## ONE WORLD, THE SEWERS SPREAD UNDER THE CITY (2026-11-17, BUILD_PLAN phase 3 wave A; the owner's One World Sewers thread)
+mondo 11-17, asked whether the maze should stay one room or spread as the map draws it: "so they're connected by tunnels, but aren't sewers literally
+tunnels? I dont see what the issue is. It basically is still all connected". So the five districts stand at their v13 places (plots.json
+`under.districts` sewW sewT sewH sewO sewR), every plot moved with everything on it by `bake-sewers.js` THE ONE WORLD MOVE (`ow-move.js`), no district
+file edited. The home 6 x 5 frame is still built first and checked (`SEWERS_HOME=1 node bake-sewers.js --dry-run` prints its counts: byte for byte
+the 11-16 room's). FOUR rooms, all `layer: 'under'`, hub `underworld` (its `rooms` list names the four: they share Downtown's site):
+
+| Room | What | World plots | Box | Plots |
+|---|---|---|---|---|
+| `site_prebuilt_downtown_underworld` (the old id, part `underworld`) | THE SEWERS (W) in its 6 x 3 rect as it lay in the plan + THE RUNNING TUNNELS (T) down the column east of it | 3..9 x 4..11 | 7 x 8 | 24 |
+| `site_prebuilt_downtown_ow_cells` | THE HOLDING CELLS: the Guardroom, the Drunk Tank | 1..2 x 1 | 2 x 1 | 2 |
+| `site_prebuilt_downtown_ow_workings` | THE OLD WORKINGS: the Chimney, the Old Workings | 1..2 x 10 | 2 x 1 | 2 |
+| `site_prebuilt_downtown_ow_drain` | THE RADIOACTIVE DRAIN: the Power Station Drain, the Sludge Pit | 10..11 x 1 | 2 x 1 | 2 |
+
+- **W** stands as it lay (home col c, row r -> world 3 + c, 4 + r). The squares H and O held are its three SOLID plots (3,4 · 4,4 · 3,5) and one empty
+  cell (4,5). The Outfall stays under the Docks' Outfall (its fall kept) at 8,7: the one W plot outside the sheet's 6 x 3, inside the room's box.
+- **T, TURNED.** The sheet stands T as a 1 x 6 column (9, 6..11); its line ran west-east. The five plots of the line turn a quarter (270, counter-
+  clockwise, as one rigid piece: the Depot at the top, 9,6; then the Loop Line, the Crossing, the Loop Line, the Ghost Station at 9,10). The Loop
+  Line's south spur (P03-04) stands at its foot, 9,11, NOT turned: the Ghost Station's old west end meets its track square to square. `ow-move.js`
+  learned `turn` for this (a list entry's `turn: 90 | 180 | 270`, clockwise: squares and every piece turn about the plot's middle, a heading `face`,
+  an arch's / building's `rot`, a box's w / d; plots turned and moved alike count as standing the same way, so nothing between them is a stray).
+  Every other caller is unchanged (the Woods and Estate bakes write byte for byte the same data.js).
+- **THE ONE CUT OPENING.** The Depot's Maintenance Hatch stair (its old north side, its west now) climbs into the Docks' Outfall beside it: three
+  squares dug in the Docks' Outfall's east edge, the ramp written as every stair of the plan (`JOINED` in the tool). That is the way from the
+  sewers to the tunnels now. The Culverts' (P04-02) old hatch port is a short dead end.
+- **WHERE PLOTS PARTED, A DOOR** (`PARTED`; the walks of phase 4.4 replace them: U1 W-T, U2 W-H, U3 W-O, U4 W-R, U12 H to the creek's tunnel
+  way): the cell door (Precinct Drain W <-> Drunk Tank E), the trap (Drunk Tank S <-> Old Workings N), the Adit (Storm Drain N <-> Chimney S), the
+  drain stair (the spur P03-04 E <-> Power Station Drain W), the Outfall's doorway (Outfall S <-> Sludge Pit N). Each a door pair with ONE id at both
+  ends (`sew_cell_door`, `sew_trap`, `sew_adit`, `sew_power_stair`, `sew_outfall_door`), on the plot's own port (squares 5..7 of the side): on the
+  room's wall when the side is on it, else free half a square in. The stair / ladder / rope those openings had are gone (the census lists them).
+  **The well at the Junction** lost the Crossing under it (the tunnels stand east now): its port is a dead end; the Crossing's rope is gone.
+- **THE WAYS OUT** moved with their plots (the tool checks every link row): `pump` (the city's sewer door) N wall · `sewers_drain` (Dead Man's
+  Cave's culvert, the Woods' end untouched) W wall z -61.25 · `docks_sewer` / `stadium_sewers` free on their plots' east lines · `tunnels_platform` S
+  wall under the spur · `tunnels_works` E wall at the Loop Line (its old place, the Ghost Station's west end, is the seam to the spur now) ·
+  `well_garden` free in the Loop Line, turned · `cells_dungeon` the Cells' W wall · `workings_oubliette` the Workings' W wall · `sewers_power` the
+  Drain's S wall. Only the Sewers' ends changed; nothing retired (the old id IS the main room).
+- **The census** (`node ow-census.js --diff docs/areas/sewers/move/before.json` + the four rooms): props 1,518 -> 1,518, natives 23 -> 23, lines kept.
+  MISSING = only the tool's own pieces of the parted openings (the cell door's stair, the trap's rope, the Adit's ladder, the well's rope, the drain
+  stair) and `link_tunnels_works` (moved from the Ghost Station to the Loop Line). Extra = the door pairs, the joined stair's rails.
+- **The map:** `node bake-map.js` for the four rooms (pictures `Assets/ui/map/site_prebuilt_downtown_{underworld,ow_cells,ow_workings,ow_drain}.png`).
+- NOT DONE: the walks U1-U4, U5 (T to the D.U.M.B.'s P3), U12 and the Outfall loop U14 (phase 4.4); the creek's tunnel way still leads to DOOR HQ's
+  tunnel (`woods_sewer`), not to the Cells (that is U12's job). The tunnels' own design pass after the turn (signals and boards read for an
+  east-west line are turned with it).
+
+## ONE WORLD, CAMELOT KINGDOM RE-LAID (2026-11-17, BUILD_PLAN phase 3 wave A; mondo said yes to taking the second side's Camelot rows, plots moved only)
+v13: "castle + village stay; the Snowy Pines north, the Looking-Glass Garden west to the coast, the Fairy Forest east to the Spring, the Forest
+south". `bake-camelot.js` THE ONE WORLD MOVE (`ow-move.js`) writes FIVE rooms in place of the one 8 x 8 room; `node bake-camelot.js --home` still
+writes the old single room (the home writer is byte for byte what it was). No district file edited, every plot kept.
+
+| Room | What | World plots | Box | Plots |
+|---|---|---|---|---|
+| `site_prebuilt_camelot_kingdom` | THE BLOCK: the castle (K) + the village (T), the town wall, the moat and the ring road (the old id, the old frame: every x, z in it is unchanged) | -29..-24 x -3..2 | 6 x 6 | 36 |
+| `site_prebuilt_camelot_ow_pines` | THE SNOWY PINES (N): the sleigh road north, the huts, the frozen pond, the cave, the Pass | -26..-25 x -10..-4 | 2 x 7 | 8 |
+| `site_prebuilt_camelot_ow_garden` | THE LOOKING-GLASS GARDEN (L): the lawn, the chessboard, the mirror, the tea party | -33..-30 x -1..1 | 4 x 3 | 6 |
+| `site_prebuilt_camelot_ow_fairy` | THE FAIRY FOREST (F): the knolls, the pond, the ring, the spring | -23..-20 x -1..1 | 4 x 3 | 6 |
+| `site_prebuilt_camelot_ow_forest` | THE FOREST (W) + wild link L7's one plot (`The Forest Trail, the camp`, rule 4) | -26..-23 x 3..7 | 4 x 5 | 9 |
+| `site_ow_l6` | wild link L6, the Pines' Pass to the Ski Lodge (`bake-route.js L6`, spec `docs/areas/routes/L6.json`) | -25..-23 x -16..-11 | 3 x 6 | 8 |
+
+- **Why five rooms.** The block is 36 plots, over rule 5's 30: rule 1 wins (the castle stands INSIDE the village; neither district can be cut
+  and no box holds one without the other; the old room was 64). It is full, so each wood is its own room, joined door to door on its gate's seam.
+  The four woods do not touch each other. L6 does not join the Pines: their box would be 13 plots tall.
+- **Seams** (all `way: 'trail'`: plots.json says forest on both sides of every one; 3 squares wide; each room's spawn stands by its seam to the block,
+  facing into the wood): `ow_h_m26_m3` the north gate <> the sleigh road; `ow_v_m29_0` the west gate <> the Lawn; `ow_v_m23_0` the east gate <> the Pond;
+  `ow_h_m26_3` the drawbridge's road <> the Crown's Road. Ways out: `ow_h_m25_m10` the Pass <> L6; `ow_v_m22_6` L7's east end <> the Woods' Ritual Ground
+  (`site_prebuilt_fairy_forest_ow_ritual`, the Woods thread's room); L6's `ow_v_m22_m16` <> the Ski Lodge (`site_prebuilt_shasta_ow_lodge`, the
+  Mountains thread's room; open ground, the kit made it `open`). A wood plot side that has nobody past it now closes: the road squares that ran to it go
+  back to trees (step 6b, `deadEndsBack` in the bake's line).
+- **Link ends** (Camelot's side only, ids kept): `northpole_camelot` b = the Pines' east wall at the north end; `woods_camelot` b = the Fairy Forest's
+  east wall at the Spring (the Woods' L4 meets it there); `mirror_lookingglass` b = the garden (moved with its plot); `haunted_camelot` b and
+  `well_camelot` a stay in the block. The Astral Realm's two doors back to the mirror (`bake-astral.js` + the Waiting Room's hand row) name the garden room.
+  THE DEAD TREE (`deadtree`, in the Forest room) opens on the Woods' Ritual Ground once that room stands (the tool checks data.js for it; until then the
+  Woods room it had). The portcullis `bay` (`siteRooms.entry`) stays at x -17.5 on the block's south wall: the Drawbridge's foot now (it stood on the
+  Crown's Road, which is the Forest room's now).
+- **Drawn rows that spanned plots** (`arch` rows: the cave, the garden's hedges, the pines' dressing, the forest's mass) are cut at the plot lines into
+  `<id>@<plot id>` rows, one per plot, each moved with its plot. A row whose parts all lie on plots that move the same way stays whole.
+- **THE RIDGE** (N's `cam:n:ridge`, 455 rock ranks along the old room's north, west and east edges): the ranks that backed a side with a plot of the path past
+  it now are left out (292; they would stand on the way); the rest are kept per plot. THE PASS (78 parts) stands again at the Pines' north end, on L6's line.
+- **Retired / pointed:** `site_prebuilt_lookingglass_garden` -> the garden room, `site_prebuilt_fairy_forest_glade` -> the Fairy Forest room. The day
+  table, `HQ_AREA_MARKERS` (each room's spawn) and `HQ_AREA_ENCOUNTERS` (the kingdom's own table, shared: the woods met it before) name the new rooms.
+  `bake-map.js` ZONES: the kingdom row lost `wait`; the woods and L6 say their place in `room.world`.
+- **The census** (`node ow-census.js --diff docs/areas/camelot/move/before.json <the five rooms>`): **nothing missing**; props 1,758 -> 1,763 (L7's camp),
+  natives 28 -> 28, lines 6 -> 6. ow-census.js learned two answers (2026-11-17): a row cut by the mover counts as `split` (into N rows), a door whose
+  id stands on another plot now as `moved`; here the five arch rows, the `bay` and the two link ends.
+- **Every seam door has an APRON**: its squares are open three deep straight in from the side (`apron()` in the tool). The first walk of the north gate
+  stopped one square in: the leg had reached the door square sideways along the wall and the pines stood straight ahead. An apron square is never a
+  plot's hub (the leg still runs from the plot's own ground).
+- **Walked** (`playtest_city.js` `"walk"`, HEAD 8e9b363): the block's north gate -> the Pines (22 m); the Pines' Pass -> L6; the garden -> the block's
+  west gate; the Fairy Forest -> the east gate; the Forest -> the south road; L6 -> the Pines; after the Woods + Mountains merges (HEAD b67d07c) the
+  Fairy Forest -> L4 (link `woods_camelot`) and L6 -> the Ski Lodge. Pictures: `/mnt/project-files/camelot-one-world/`.
+- **Two fixes beside the move** (both rows free): link `woods_camelot`'s Woods end named `part: 'ow_l4'`, which resolves to `site_prebuilt_fairy_forest_ow_l4`
+  (no such room: the route kit's room is `site_ow_l4`), so the link stood nowhere; it names `room: 'site_ow_l4'` now. `bake-mountains.js` was rerun so its
+  `ifRoom` door `ow_v_m22_m16` (the Lodge yard -> L6) is written now that `site_ow_l6` stands (the same run also re-pointed Shasta's `woods` door off the
+  retired `site_prebuilt_fairy_forest_plots`, the tool's own row).

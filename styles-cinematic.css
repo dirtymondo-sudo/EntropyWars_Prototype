@@ -3548,6 +3548,228 @@
 @keyframes acamTicker { from { transform: translate(0, -50%); } to { transform: translate(-50%, -50%); } }
 @media (prefers-reduced-motion: reduce) { .acam-news-tick.run { animation: none; } }
 
+/* 🎬 THE RACE LOOKS (mondo 2026-11-17): a caster's own spell-shot look (battle.js _AC_LOOK_RACES / _acLookHtml). Three slots:
+   .acam-lk-top (inside the top bar), .acam-lk-bot (inside the bottom bar: the number-yield logic reads the bar's own rect),
+   .acam-look (over the frame, under the TOTAL DMG title). `lk-<key>` on the chrome picks the look; `lk-bars` keeps the bars on a
+   light (buff) shot too. Nothing sits over the middle of the frame, where the caster, the target and the numbers are. The grades
+   (sepia, black and white) run in the 3D frame's shader (battle.js cineGrade), never over the DOM numbers.
+   THE FONT PASS (his notes the same day): every look wears a face from index.html's Google Fonts that fits its medium
+   (Bebas Neue / Oswald / Teko broadcast, Limelight marquee, Rye western, Bangers kung fu poster, VT323 + Share Tech Mono camera
+   and TV OSD, DotGothic16 for the Japanese). */
+.acam-lk-top, .acam-lk-bot { display: none; }
+.acam-chrome.lk-on .acam-lk-top, .acam-chrome.lk-on .acam-lk-bot { display: block; }
+.acam-look { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .35s ease; }
+.acam-chrome.active .acam-look { opacity: 1; }
+.acam-chrome.lk-on .acam-spell-name { display: none; }
+.acam-chrome.lk-bars .acam-bar { display: block; }
+.acam-chrome.lk-on .acam-bar-name { opacity: 0; }
+.acam-chrome.lk-on .acam-bar-name.in { animation: acamBarNameIn .5s cubic-bezier(.22, 1, .36, 1) .12s forwards; }
+@keyframes lkPop { 0% { opacity: 0; transform: scale(.6); } 70% { opacity: 1; transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes lkFadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes lkIn { from { opacity: 0; } to { opacity: 1; } }
+/* shared: old film (the western, the kung fu film) */
+.lk-film { position: absolute; inset: 0; opacity: .5;
+    background: linear-gradient(90deg, transparent 21.9%, rgba(255,255,255,.35) 22%, transparent 22.15%, transparent 63%, rgba(0,0,0,.4) 63.1%, transparent 63.2%);
+    animation: lkScratch .9s steps(3) infinite; }
+@keyframes lkScratch { 0% { transform: translateX(0); } 33% { transform: translateX(-9%); opacity: .3; } 66% { transform: translateX(14%); opacity: .55; } 100% { transform: translateX(3%); } }
+.lk-noise { position: absolute; inset: 0; opacity: .16;
+    background: repeating-radial-gradient(circle at 17% 32%, #fff 0 1px, transparent 1px 3px), repeating-radial-gradient(circle at 71% 62%, #000 0 1px, transparent 1px 4px);
+    animation: lkNoise .25s steps(2) infinite; }
+@keyframes lkNoise { 50% { background-position: 7px 3px, -5px 9px; } }
+
+/* INFLUENCER — a phone story: progress bars, @handle LIVE + the spell as the story's caption, floating hearts, comments */
+.acam-chrome.lk-influencer .acam-bar-name { display: none; }
+.acam-chrome.lk-influencer .acam-bar-bot { background: none; }
+.acam-chrome.lk-influencer .acam-title { left: calc(8% + 14px); }
+.lk-pill { position: absolute; top: 0; bottom: 0; width: 8%; background: #000; }
+.lk-pill.l { left: 0; } .lk-pill.r { right: 0; }
+.lk-ig-prog { position: absolute; top: 14%; left: 10%; right: 10%; display: flex; gap: 6px; }
+.lk-ig-prog span { flex: 1; height: 3px; background: rgba(255,255,255,.35); border-radius: 2px; overflow: hidden; }
+.lk-ig-prog span:nth-child(-n+2) i { width: 100%; }
+.lk-ig-prog i { display: block; height: 100%; width: 0; background: #fff; }
+.lk-ig-prog i.run { animation: lkStory var(--lk-ms, 2600ms) linear forwards; }
+@keyframes lkStory { to { width: 100%; } }
+.lk-ig-who { position: absolute; top: 60%; left: 10%; right: 10%; transform: translateY(-50%); display: flex; align-items: center; gap: .55em; color: #fff;
+    font: 600 clamp(11px, 2.2vh, 18px)/1 -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; white-space: nowrap; }
+.lk-ig-av { flex: none; width: 1.9em; height: 1.9em; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    background: #222; box-shadow: 0 0 0 2px #000, 0 0 0 4px #e1306c; }
+.lk-ig-tick { color: #3d9bff; margin-left: -.3em; }
+.lk-ig-live { background: linear-gradient(90deg, #f9a03f, #e1306c); padding: .25em .55em; border-radius: 4px; font-size: .72em; font-weight: 800; letter-spacing: .08em; }
+.lk-ig-eye { font-weight: 500; font-size: .78em; background: rgba(255,255,255,.16); padding: .25em .5em; border-radius: 4px; }
+.lk-ig-cap { font-weight: 400; opacity: .9; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lk-ig-cap::before { content: '· '; opacity: .6; }
+.lk-ig-hearts { position: absolute; right: 10%; bottom: 16%; width: 46px; height: 48%; }
+.lk-ig-hearts span { position: absolute; bottom: 0; left: 0; font-size: clamp(16px, 3.4vh, 30px); opacity: 0; animation: lkHeart 1.9s ease-out infinite; }
+@keyframes lkHeart { 0% { opacity: 0; transform: translateY(0) scale(.6); } 15% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: translateY(-38vh) translateX(-14px) scale(1); } }
+.lk-ig-cnt { position: absolute; right: 9.5%; bottom: 12%; color: #fff; font: 600 clamp(10px, 1.9vh, 16px) -apple-system, 'Segoe UI', Arial, sans-serif; text-shadow: 0 1px 3px #000; }
+.lk-ig-cmts { position: absolute; left: 10%; bottom: 12%; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: 40%; }
+.lk-ig-cmts div { color: #fff; font: 400 clamp(10px, 2vh, 16px)/1.25 -apple-system, 'Segoe UI', Arial, sans-serif; background: rgba(0,0,0,.42); padding: .32em .75em; border-radius: 1em;
+    opacity: 0; animation: lkFadeUp .35s ease-out both; }
+.lk-ig-cmts b { margin-right: .45em; font-weight: 700; }
+.lk-ig-send { position: absolute; left: 10%; right: 10%; bottom: 3%; height: 5.5%; border: 1.5px solid rgba(255,255,255,.7); border-radius: 999px; color: rgba(255,255,255,.8);
+    font: 400 clamp(10px, 2vh, 16px) -apple-system, 'Segoe UI', Arial, sans-serif; display: flex; align-items: center; padding: 0 1.2em; }
+
+/* TELEVANGELIST — the late-night satellite telethon: royal blue + white + a red phone strip (his note: no purple and gold) */
+.acam-chrome.lk-telethon .acam-bar-top { background: linear-gradient(#0d2a63, #081a3e); box-shadow: inset 0 -3px 0 #e8eef9; }
+.acam-chrome.lk-telethon .acam-bar-name { font-family: 'Playfair Display', Georgia, serif; font-weight: 900; color: #fff; border-left-color: #d7263d; letter-spacing: .06em;
+    text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+.lk-tl-sub { position: absolute; right: 3.5%; top: 50%; transform: translateY(-50%); color: #cfe0ff; white-space: nowrap;
+    font: 400 clamp(10px, 2vh, 17px) 'Oswald', 'Arial Narrow', sans-serif; letter-spacing: .16em; }
+.lk-tl-sub b { color: #fff; background: #d7263d; padding: .1em .45em; margin-right: .4em; font-weight: 700; }
+.acam-chrome.lk-telethon .acam-bar-bot { left: 4%; right: 4%; bottom: 3%; height: auto; background: none; transform: translateY(160%); }
+.acam-chrome.lk-telethon.active .acam-bar-bot { transform: translateY(0); }
+.lk-tl-cards { display: inline-block; color: #0d2a63; background: #e8eef9; font: 400 clamp(9px, 1.7vh, 14px) 'Oswald', sans-serif; letter-spacing: .14em; padding: .2em .8em; }
+.lk-tl-row { display: flex; background: #fff; box-shadow: 0 6px 20px rgba(0,0,0,.5); border-top: 4px solid #d7263d; }
+.lk-tl-call { flex: 1 1 auto; min-width: 0; padding: .3em 1em .35em; }
+.lk-tl-call .n { font: 400 clamp(20px, 5.2vh, 46px)/1 'Bebas Neue', 'Oswald', sans-serif; color: #d7263d; white-space: nowrap; letter-spacing: .04em; }
+.lk-tl-call .l { font: 700 clamp(9px, 1.9vh, 16px)/1.2 'Oswald', sans-serif; color: #0d2a63; letter-spacing: .1em; }
+.lk-tl-pl { flex: none; background: #0d2a63; color: #fff; padding: .35em 1.1em; display: flex; flex-direction: column; justify-content: center; }
+.lk-tl-pl b { font: 400 clamp(9px, 1.6vh, 13px) 'Oswald', sans-serif; letter-spacing: .2em; color: #cfe0ff; }
+.lk-tl-pl i { font: 400 clamp(20px, 4.6vh, 40px)/1 'Bebas Neue', 'Oswald', sans-serif; font-style: normal; letter-spacing: .04em; }
+.lk-tl-glow { position: absolute; inset: 0; background: radial-gradient(circle at 50% 30%, rgba(200,225,255,.16), transparent 55%); }
+
+/* MAGICIAN — the stage show: red curtains close in from the sides, a valance drops, a marquee sign with blinking bulbs, "Ta-da!" */
+.acam-chrome.lk-magician .acam-bar { display: none; }
+.acam-chrome.lk-magician .acam-title { left: calc(9% + 18px); top: 13%; }
+.lk-mg-cur { position: absolute; top: 0; bottom: 0; width: 9%; transition: transform .55s cubic-bezier(.22,1,.36,1);
+    background: repeating-linear-gradient(90deg, #5a0610 0 14px, #8f0d1d 14px 26px, #6d0815 26px 38px); box-shadow: 0 0 30px #000; }
+.lk-mg-cur.l { left: 0; border-right: 5px solid #d4a63c; transform: translateX(-105%); }
+.lk-mg-cur.r { right: 0; border-left: 5px solid #d4a63c; transform: translateX(105%); }
+.acam-chrome.active .lk-mg-cur { transform: none; }
+.lk-mg-val { position: absolute; top: 0; left: 0; right: 0; height: 9%; border-bottom: 4px solid #d4a63c; transform: translateY(-140%); transition: transform .5s cubic-bezier(.22,1,.36,1);
+    background: repeating-linear-gradient(90deg, #7a0a18 0 30px, #9d1123 30px 60px); }
+.lk-mg-val::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 22px; background: radial-gradient(circle at 30px 0, #8f0d1d 20px, transparent 21px) 0 0/60px 22px repeat-x; }
+.acam-chrome.active .lk-mg-val { transform: none; }
+.lk-mg-sign { position: absolute; left: 50%; top: 1.5%; transform: translateX(-50%); background: #1a0a04; border: 3px solid #d4a63c; padding: .25em 1.4em .3em; white-space: nowrap;
+    outline: 6px dotted #ffd34d; outline-offset: 3px; text-align: center; animation: lkBulbs .5s steps(2) infinite; }
+@keyframes lkBulbs { 50% { outline-color: #fff3b0; } }
+.lk-mg-sign small { display: block; font: 400 clamp(9px, 1.6vh, 14px) 'Cinzel', Georgia, serif; letter-spacing: .5em; color: #fff; }
+.lk-mg-sign span { font: 400 clamp(16px, 4.4vh, 40px)/1.1 'Limelight', Georgia, serif; color: #ffe08a; letter-spacing: .06em; text-transform: uppercase; text-shadow: 0 0 12px #ffb300; }
+.lk-mg-tada { position: absolute; right: 13%; bottom: 9%; font: 400 clamp(22px, 6vh, 56px) 'Pacifico', 'Caveat', cursive; color: #ffe08a;
+    text-shadow: 0 0 10px #000, 0 3px 0 #6e1010; rotate: -8deg; opacity: 0; }
+.acam-chrome.active .lk-mg-tada { animation: lkPop .4s cubic-bezier(.3,1.6,.5,1) calc(var(--lk-ms, 2600ms) * .55) both; }
+
+/* QUARTERBACK — the Sunday night broadcast: network bug, a slim modern scorebug (his note: the first one looked bad), the play call on a tab */
+.lk-qb-net { position: absolute; right: 3.5%; top: 50%; transform: translateY(-50%); color: #fff; white-space: nowrap;
+    font: 400 clamp(11px, 2.3vh, 20px) 'Bebas Neue', 'Oswald', sans-serif; letter-spacing: .14em; border-left: 3px solid #ffd400; padding-left: .6em; }
+.acam-chrome.lk-qb .acam-bar-name { font-family: 'Bebas Neue', 'Oswald', sans-serif; font-weight: 400; letter-spacing: .08em; text-shadow: 0 2px 8px rgba(0,0,0,.7); border-left-color: #ffd400; }
+.acam-chrome.lk-qb .acam-bar-bot { background: none; }
+.lk-qb-sb { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); display: flex; align-items: stretch; height: 74%; white-space: nowrap;
+    border-radius: 6px; overflow: hidden; background: linear-gradient(#1b2230, #0b0f17); box-shadow: 0 6px 18px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.14);
+    font: 400 clamp(13px, 2.9vh, 25px)/1 'Bebas Neue', 'Oswald', sans-serif; color: #fff; letter-spacing: .05em; }
+.lk-qb-sb > span { display: flex; align-items: center; padding: 0 .75em; }
+.lk-qb-sb .net { background: #ffd400; color: #0b0f17; font-size: 1.05em; letter-spacing: .1em; }
+.lk-qb-sb .tm { position: relative; gap: .7em; padding: 0 .9em 0 1em; }
+.lk-qb-sb .tm i { font-style: normal; font-size: .85em; opacity: .95; }
+.lk-qb-sb .tm em { font-style: normal; font-size: 1.45em; }
+.lk-qb-sb .p1 { background: linear-gradient(90deg, #0e3f8f, #1866d8); }
+.lk-qb-sb .p2 { background: linear-gradient(90deg, #8c111b, #c3202c); }
+.lk-qb-sb .tm u { position: absolute; left: 50%; bottom: 3px; width: 26px; height: 3px; margin-left: -13px; background: #ffd400; border-radius: 2px; }
+.lk-qb-sb .clk { gap: .55em; font-size: .95em; }
+.lk-qb-sb .clk b { font-weight: 400; color: #9fb0c8; }
+.lk-qb-sb .dn { background: rgba(255,212,0,.14); color: #ffd400; border-left: 1px solid rgba(255,255,255,.12); }
+.lk-qb-call { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; bottom: calc(14% + 74%); display: flex; align-items: stretch; white-space: nowrap;
+    font: 400 clamp(10px, 2.1vh, 18px)/1 'Bebas Neue', 'Oswald', sans-serif; letter-spacing: .08em; border-radius: 4px 4px 0 0; overflow: hidden; opacity: 0; }
+.acam-chrome.active .lk-qb-call { animation: lkFadeUp .35s ease-out .25s both; }
+.lk-qb-call b { font-weight: 400; background: #d7263d; color: #fff; padding: .3em .7em; }
+.lk-qb-call span { background: #fff; color: #0b0f17; padding: .3em .8em; }
+.lk-qb-diag { position: absolute; right: 2.5%; bottom: 12%; width: clamp(80px, 12vw, 160px); background: rgba(8,34,18,.85); border: 2px solid rgba(255,255,255,.85); border-radius: 4px; padding: 4px 6px 3px;
+    color: #fff; font: 400 clamp(9px, 1.6vh, 14px) 'Bebas Neue', 'Oswald', sans-serif; letter-spacing: .14em; text-align: center; opacity: 0; }
+.acam-chrome.active .lk-qb-diag { animation: lkFadeUp .4s ease-out .3s both; }
+.lk-qb-diag svg { display: block; width: 100%; }
+
+/* CHESS PIECE — the chess stream: an eval bar down the left, the players' clocks, the move with its grade */
+.acam-chrome.lk-chess .acam-title { left: calc(3.5% + 34px); }
+.acam-chrome.lk-chess .acam-bar-bot { background: none; }
+.acam-chrome.lk-chess .acam-bar-name { font-family: 'Oswald', 'Arial Narrow', sans-serif; font-weight: 700; letter-spacing: .1em; border-left-color: #81b64c; text-shadow: none; }
+.lk-ch-eval { position: absolute; left: 1.2%; top: 12%; bottom: 12%; width: clamp(14px, 1.8vw, 26px); display: flex; flex-direction: column; border: 2px solid #111; border-radius: 3px; background: #f2f2f2; overflow: hidden; }
+.lk-ch-eval .b { background: #403d39; transition: height 1.2s ease; }
+.lk-ch-eval .w { flex: 1; position: relative; }
+.lk-ch-eval .w span { position: absolute; bottom: 4px; left: -6px; right: -6px; text-align: center; font: 700 clamp(7px, 1.2vh, 11px) 'Oswald', Arial, sans-serif; color: #111; }
+.lk-ch-pl { position: absolute; right: 2%; width: clamp(150px, 22vw, 300px); display: flex; align-items: center; justify-content: space-between; background: #262421; color: #fff; border-radius: 4px;
+    padding: .35em .7em; font: 600 clamp(10px, 1.9vh, 16px) -apple-system, 'Segoe UI', Arial, sans-serif; border-left: 4px solid #888; white-space: nowrap; }
+.lk-ch-pl span { overflow: hidden; text-overflow: ellipsis; }
+.lk-ch-pl.t { top: 11%; } .lk-ch-pl.b { top: calc(11% + 2.4em + 6px); border-left-color: #81b64c; }
+.lk-ch-pl i { font: 400 1.25em 'Share Tech Mono', 'Courier New', monospace; font-style: normal; background: #111; padding: .1em .45em; margin-left: .6em; border-radius: 3px; }
+.lk-ch-pl.t i { background: #7a1f1f; }
+.lk-ch-mv { position: absolute; inset: 0; margin: auto; width: fit-content; height: fit-content; display: flex; align-items: center; gap: .6em; white-space: nowrap;
+    background: #262421; color: #fff; padding: .3em 1em; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.6); font: 700 clamp(11px, 2.4vh, 20px) -apple-system, 'Segoe UI', Arial, sans-serif; opacity: 0; }
+.acam-chrome.active .lk-ch-mv { animation: lkPop .35s cubic-bezier(.3,1.5,.5,1) calc(var(--lk-ms, 2600ms) * .38) both; }
+.lk-ch-mv .n { font: 400 1.35em 'Share Tech Mono', 'Courier New', monospace; }
+.lk-ch-mv .bang { width: 1.8em; height: 1.8em; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: #81b64c; }
+.lk-ch-mv .bang.brilliant { background: #1baca6; } .lk-ch-mv .bang.great { background: #5c8bb0; } .lk-ch-mv .bang.excellent { background: #96bc4b; } .lk-ch-mv .bang.book { background: #a88865; }
+.lk-ch-mv .l.brilliant { color: #1baca6; } .lk-ch-mv .l.great { color: #8ab4d8; } .lk-ch-mv .l.best, .lk-ch-mv .l.excellent { color: #96bc4b; } .lk-ch-mv .l.book { color: #d2b48c; }
+
+/* BIGFOOT + MOTHMAN — the trail cam: black and white night footage (the grade), REC, the camera's stamp */
+.acam-chrome.lk-trailcam .acam-bar-name { font-family: 'VT323', 'Share Tech Mono', monospace; font-weight: 400; letter-spacing: .06em; text-shadow: none; border-left: 0;
+    background: #fff; color: #000; padding: 0 .4em; font-size: clamp(18px, 4.4vh, 38px); }
+.lk-tc-rec { position: absolute; right: 3.5%; top: 50%; transform: translateY(-50%); color: #fff; font: 400 clamp(16px, 3.8vh, 32px) 'VT323', monospace; }
+.lk-tc-rec i { color: #ff2a2a; font-style: normal; animation: acamLiveBlink 1s steps(2, start) infinite; }
+.lk-tc-stamp { position: absolute; inset: 0 3.5%; display: flex; align-items: center; justify-content: space-between; gap: 1em; white-space: nowrap;
+    color: #fff; font: 400 clamp(14px, 3.4vh, 28px) 'VT323', 'Share Tech Mono', monospace; letter-spacing: .04em; }
+.lk-tc-stamp b { color: #9aff9a; font-weight: 400; }
+
+/* COWBOY — the spaghetti western: wide bars, the sepia film (the grade), scratches, the title in a saloon face */
+.acam-chrome.lk-western .acam-bar { height: 13%; }
+.acam-chrome.lk-western .acam-title { top: 15%; }
+.acam-chrome.lk-western .acam-bar-name { left: 50%; transform: translate(-50%, -50%); border-left: 0; padding-left: 0; font-family: 'Rye', Georgia, serif; font-weight: 400;
+    color: #e9c27a; letter-spacing: .12em; text-shadow: 3px 3px 0 #6b2a0a; font-size: clamp(20px, 6vh, 56px); }
+.acam-chrome.lk-western .acam-bar-name.in { animation: lkWestIn .7s ease-out .1s forwards; }
+@keyframes lkWestIn { from { opacity: 0; letter-spacing: .4em; } to { opacity: 1; letter-spacing: .12em; } }
+.lk-ws-tag { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; white-space: nowrap; color: #f3e2b8;
+    font: italic 400 clamp(12px, 2.8vh, 24px) 'Cormorant Garamond', Georgia, serif; letter-spacing: .22em; }
+.lk-ws-vig { position: absolute; inset: 13% 0; background: radial-gradient(ellipse, transparent 55%, rgba(40,20,0,.5)); }
+
+/* SWORDFIGHTER — the anime (his notes: no speed lines; Japanese text; roll the credits like an anime outro): the episode in
+   Japanese, the spell's Japanese title beside its name, the line in Japanese with the English fansub under it, and the ending's
+   staff roll climbing up the right side. Sad Backstory = the flashback (washed out, soft white edges). */
+.lk-an-ep { position: absolute; right: 3.5%; top: 50%; transform: translateY(-50%); background: #c3202c; color: #fff; padding: .2em .7em;
+    font: 400 clamp(12px, 2.6vh, 22px) 'DotGothic16', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; white-space: nowrap; }
+.lk-an-jp { position: absolute; right: calc(3.5% + clamp(70px, 10vh, 110px)); top: 50%; transform: translateY(-50%); color: #fff; opacity: .9; white-space: nowrap;
+    font: 400 clamp(14px, 3.4vh, 30px) 'DotGothic16', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; letter-spacing: .1em; text-shadow: 2px 2px 0 #c3202c; }
+.acam-chrome.lk-anime .acam-bar-name { font-family: 'Bangers', 'Arial Black', sans-serif; font-weight: 400; transform: translateY(-50%) skewX(-8deg); border-left-color: #c3202c;
+    text-shadow: 3px 3px 0 #c3202c; letter-spacing: .06em; }
+.lk-an-sub { position: absolute; inset: 0 6%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; opacity: 0; }
+.acam-chrome.active .lk-an-sub { animation: lkIn .3s ease-out .35s both; }
+.lk-an-sub .jp { color: #fff; font: 400 clamp(13px, 3vh, 26px)/1.15 'DotGothic16', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; text-shadow: 0 0 3px #000, 2px 2px 0 #000; }
+.lk-an-sub .en { color: #ffe94a; font: 600 clamp(10px, 2vh, 17px)/1.2 -apple-system, 'Segoe UI', Arial, sans-serif; text-shadow: 0 0 3px #000, 1px 1px 0 #000; }
+.lk-an-roll { position: absolute; right: 3%; top: 12%; bottom: 12%; width: clamp(130px, 17vw, 240px); overflow: hidden;
+    -webkit-mask: linear-gradient(transparent, #000 14%, #000 86%, transparent); mask: linear-gradient(transparent, #000 14%, #000 86%, transparent); }
+.lk-an-roll > div { position: absolute; left: 0; right: 0; top: 100%; text-align: right; animation: lkRoll calc(var(--lk-ms, 2600ms) * 1.6) linear .2s forwards; }
+@keyframes lkRoll { to { transform: translateY(-190%); } }
+.lk-an-roll p { margin: 0 0 1.1em; color: #fff; font: 400 clamp(12px, 2.4vh, 20px)/1.2 'DotGothic16', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; text-shadow: 0 0 4px #000, 1px 1px 0 #000; }
+.lk-an-roll small { display: block; font-size: .62em; opacity: .8; letter-spacing: .1em; }
+.acam-chrome.lk-flashback .acam-look { box-shadow: inset 0 0 12vh 6vh rgba(255,255,255,.35); }
+
+/* KARATE FROG — the badly dubbed 70s kung fu film: faded film (the grade), the poster title crashing in, ENGLISH DUBBED,
+   a subtitle that comes in late and a second line that says the mouth is still going */
+.acam-chrome.lk-kungfu .acam-bar-name { font-family: 'Bangers', 'Arial Black', sans-serif; font-weight: 400; color: #ffd84a; border-left-color: #e8261c; text-shadow: 3px 3px 0 #000; letter-spacing: .08em; }
+.lk-kf-dub { position: absolute; right: 3.5%; top: 50%; transform: translateY(-50%); border: 2px solid #ffd84a; color: #ffd84a; padding: .15em .6em;
+    font: 400 clamp(11px, 2.2vh, 19px) 'Bebas Neue', 'Oswald', sans-serif; letter-spacing: .18em; white-space: nowrap; }
+.lk-kf-title { position: absolute; left: 50%; top: 13%; transform: translateX(-50%); white-space: nowrap; color: #e8261c;
+    font: 400 clamp(22px, 6.4vh, 60px)/1 'Bangers', Impact, sans-serif; letter-spacing: .06em; -webkit-text-stroke: 1.5px #ffd84a;
+    text-shadow: 4px 4px 0 #000; opacity: 0; }
+.acam-chrome.active .lk-kf-title { animation: lkKfZoom .5s cubic-bezier(.2,1.4,.5,1) .1s both; }
+@keyframes lkKfZoom { from { opacity: 0; transform: translateX(-50%) scale(2.6); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+.lk-kf-sub { position: absolute; inset: 0 6%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.lk-kf-sub .s1 { color: #fff7c8; font: 400 clamp(14px, 3.2vh, 28px)/1.1 'Special Elite', 'Courier New', monospace; text-shadow: 0 0 3px #000, 2px 2px 0 #000; opacity: 0; }
+.lk-kf-sub .s2 { color: #bbb; font: italic 400 clamp(10px, 2vh, 17px)/1.2 'Special Elite', 'Courier New', monospace; opacity: 0; }
+.acam-chrome.active .lk-kf-sub .s1 { animation: lkIn .05s linear calc(var(--lk-ms, 2600ms) * .3) both; }
+.acam-chrome.active .lk-kf-sub .s2 { animation: lkIn .05s linear calc(var(--lk-ms, 2600ms) * .62) both; }
+
+/* CURSED TV — the whole screen becomes the set: a plastic bezel, curved glass + scanlines, the green on-screen channel + volume */
+.acam-chrome.lk-crt .acam-bar { display: none; }
+.acam-chrome.lk-crt .acam-title { left: calc(5vw + 3%); top: calc(9vh + 3% + 3.4em); }
+.lk-crt-bezel { display: none; }
+.lk-crt-glass { position: absolute; inset: 9vh 5vw; border-radius: 4vh;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px), radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.1), transparent 40%);
+    box-shadow: 0 0 0 3px #0c0b0a, 0 0 0 100vmax #2a2622, inset 0 0 8vh rgba(0,0,0,.65); }
+.lk-crt-osd { position: absolute; color: #4dff6a; text-shadow: 0 0 6px rgba(77,255,106,.8), 2px 2px 0 #032; font: 400 clamp(18px, 4.4vh, 38px) 'VT323', 'Share Tech Mono', monospace; white-space: nowrap; }
+.lk-crt-osd.ch { right: calc(5vw + 3%); top: calc(9vh + 3%); font-size: clamp(26px, 7vh, 64px); }
+.lk-crt-osd.nm { left: calc(5vw + 3%); top: calc(9vh + 3%); text-transform: uppercase; }
+.lk-crt-osd.vol { left: 50%; bottom: calc(9vh + 3%); transform: translateX(-50%); font-size: clamp(14px, 3.4vh, 30px); }
+.lk-crt-osd.vol span { letter-spacing: .1em; }
+
 /* ── Edge darkening: the frame dims around the actors ── */
 .acam-vignette {
     position: absolute;
