@@ -4,16 +4,18 @@ Read this first, then `PLAN.md` section 0 (four rounds of mondo's answers; they 
 **mondo cannot see repo files.** Anything that needs his answer or OK goes to him IN CHAT, in full (tables, lines, pictures sent as files).
 Never end a turn on "next I will": do it in the same turn.
 
-## 1. CHECK THIS FIRST (not verified)
+## 1. THE CHECK: DONE 11-17, the bodies come
 
-After the city went from 80 to 150 residents and the body limit from 8 to 20 (PRs #1989, #1993, both live), two probe runs showed
-**no resident bodies at all**. `ThreeRenderer.hq.dev.residents()` said: 150 residents, 150 with a day, 7 wanted near the player, 0 with a body.
-In both runs the room had not finished loading (574 and 668 of 860 files after 240 s on the software browser), and the run before the
-150 (80 residents, limit 8) did show bodies. So it is probably the slow probe, but it is NOT proven. First job of the next thread:
-one probe run that waits until the room is fully loaded, then reads `dev.residents()` and photographs the Street market at 16:00
-(x 100, z -6, y 1.2, face 0). If bodies still do not come: look at `three-renderer.js` `_hqTickResidents` with `drawn` 20 / `bodies` 26
-and fix it; if nothing else works set `HQ_CITY_RESIDENTS.drawn` back to 8 and tell mondo. He can also see it himself in ten seconds:
-walk Bayside and look for people.
+One probe run through `probe-fast.js` on a fully loaded city (861 of 861 files, no errors), 16:00, the Street market in Bayside
+(x 100, z -6, y 1.2): `ThreeRenderer.hq.dev.residents()` said 150 residents, 150 with a day, 8 wanted near the player, 0 still loading,
+8 with a body shown (Police Officer, Pirate, Chef x 2, Hippie x 3, Firefighter). mondo saw the same in the game ("i can see npcs in bayside
+there just not a lot bc there is barely over 1 resident per plot"). So the two empty runs were the half-loaded probe; `drawn` stays 20,
+nothing in `_hqTickResidents` was wrong. What is true: the city is THIN (150 people on 144 plots; 8 within 70 m of the market at 16:00),
+so the limit of 20 is never reached. More people is the spawn system's counts, not a bug.
+
+Probe lesson: the city's first load in a new container took 7 minutes and the browser was then killed for memory twice, because a
+crashed attempt leaves its browser running. Before a rerun: `pkill -f playtest_city.js; pkill -f chrom; pkill Xvfb`, and run nothing
+heavy (a headless `load-data.js` script) beside the probe. With the file cache warm the city loads in about 330 s.
 
 ## 2. What is built and live
 
@@ -49,7 +51,7 @@ Nothing of the encounter system itself (tempers, marks, ladder, muggings, giving
 
 ## 5. Next steps, in order
 
-1. Section 1's check.
+1. ~~Section 1's check.~~ Done (section 1).
 2. **Step 1b: DONE 11-17.** The draft is in data.js right after `hqSpawnExpand()` (loaded headless: every race name exists; a Police Officer defends a Chef, not a Pirate; the Ghost is Territorial). The draft file is deleted. 28 races that live in the city have no temper yet (they behave as today): Priest, Ki Fighter, Swordfighter, Conspiracy Theorist, Cult Leader, Halfdemon, Men in Black, Spy, General, Honda Civic, Mad Scientist, Reptilian, Telepath, Antihero, Nephilim, Clown, Ringmaster, Quarterback, Luchador, Juggernaut, Knight, Astronaut, Marksman, Cursed TV, Super Sentai, Ninja, Magician, Referee. They wait for their district's pass. What it was (all its inputs are approved): the tempers, groups, lines and numbers into data.js as `HQ_NPC_TEMPERS` + `hqNpcTemper`,
    `hqNpcGroup`, `hqNpcSameGroup`, `hqNpcDefends`; nothing reads them yet. A full draft is `STEP-1B-DRAFT.js.txt` beside this file (written,
    never loaded or checked): put it after `hqSpawnExpand()` in data.js, `node --check`, bump the `?v=` token, merge, `node sync-zip.js --upload`.
