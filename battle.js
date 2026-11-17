@@ -14331,7 +14331,10 @@
             if (!(loss > 0)) return;
             u.hp -= loss;
             addLog(`🦌 ${_ctName(u)} fed on nothing this round: the hunger takes ${loss} HP.`);
-            if (!_skipVisuals()) showFloatingTextForUnit(u, `-${loss} 🦌 HUNGER`, 'damage', { durationMs: 1100 });
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(u, `-${loss} 🦌 HUNGER`, 'damage', { durationMs: 1100 });
+                _sigVfxGeom('wdHunger', u.x, u.y, 0);   // the cold comes back into it (three-vfx-effects.js THE WENDIGO'S LOOKS; relayed)
+            }
         }
         /* the round end (processEndOfRoundStatuses, before the status ticks) */
         function _nrRoundEnd() {

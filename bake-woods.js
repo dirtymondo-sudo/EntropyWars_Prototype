@@ -401,7 +401,8 @@ STAND.forEach(S => {
     const ways = [];
     Object.keys(S.seams || {}).forEach(key => { const [pid, sd] = key.split(':'), e = R.ofHome[pid], sm = S.seams[key]; if (!e) throw new Error('seam on a plot that is not in ' + S.id + ': ' + key);
         const id = sm.id || R.seamId(e, sd), d = crossing(e, sd, sm.k);
-        doorsOut.push(Object.assign({ id }, d, { way: 'trail', label: sm.label, sub: sm.sub, action: { room: sm.room, at: sm.at || id }, desc: sm.desc || 'The path goes on.' }));
+        if (sm.open) d.passage = Object.assign(d.passage || {}, { w: sm.open });   // THE OPEN SEAM (data.js DOOR_HQ.ways.open): `open: <metres wide>` on a seam in open country; the Woods' seams are all forest
+        doorsOut.push(Object.assign({ id }, d, { way: sm.open ? 'open' : 'trail', label: sm.label, sub: sm.sub, action: { room: sm.room, at: sm.at || id }, desc: sm.desc || 'The path goes on.' }));
         if (d.wall !== 'free') ways.push({ side: d.wall, at: d.x != null ? d.x : d.z }); });
     /* 5. the links that end in this room (data.js DOOR_HQ.links): the tool's own (LINK_ENDS, on the home room's east wall) and the two written by hand */
     const HOME_ENDS = Object.assign({ woods_stair: ['a', { wall: 'free', x: -17.5, z: 55.5, face: 180 }], woods_camelot: ['a', { wall: 'w', z: 3.5 }] }, ...Object.keys(LINK_ENDS).map(id => ({ [id]: [LINK_ENDS[id][0], { wall: 'e', z: LINK_ENDS[id][1] }] })));
