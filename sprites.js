@@ -681,7 +681,7 @@ const _CHARACTER_SPRITES = {
   'krampus': `${_CS}/krampus.png`,
   'mushroom girl': `${_CS}/mushroomgirl.png`,
   'police officer': `${_CS}/policeofficer.png`,
-  'time cop': `${_S}/Races/police/timecop_px.png`,   // 2026-11-17 — its own 128x128 future-cop pixel sprite (Sprite AI, from the model)
+  'time cop': `${_S}/Races/police/timecop_px2.png`,   // 2026-11-17 — its own 128x128 future-cop pixel sprite (Sprite AI, from the model)
   'professor': `${_CS}/professor.png`,
   'rabbit': `${_CS}/rabbit.png`,
   'ringmaster': `${_CS}/ringmaster.png`,
@@ -695,10 +695,10 @@ const _CHARACTER_SPRITES = {
   'chef': `${_S}/Races/chef/male/chef.png`,
   'eagleman': `${_S}/Races/eagleman/eagleman.png`,
   'banker': `${_S}/Races/banker/male/banker_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'skater': `${_S}/Races/skater/female/skater_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'magician': `${_S}/Races/magician/male/magician_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'skater': `${_S}/Races/skater/female/skater_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'magician': `${_S}/Races/magician/male/magician_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -764,7 +764,7 @@ const HONDA_CIVIC_SPRITES = {
 const TIME_COP_LOOKS = {
   cop:     `${_S}/character_sprites/policeofficer.png`,
   sheriff: `${_S}/character_sprites/sheriff.png`,
-  future:  `${_S}/Races/police/timecop_px.png`,   // 2026-11-17 its own pixel sprite (was the cop's under #future)
+  future:  `${_S}/Races/police/timecop_px2.png`,   // 2026-11-17 its own pixel sprite (was the cop's under #future)
 };
 
 const SENTAI_SPRITES = {
@@ -787,7 +787,7 @@ const _NEW_MALE_SPRITES = {
   'vampire': `${_S}/Races/vampire/male/vampire_m.png`,
   'zombie': `${_S}/Races/zombie/male/zombie_m.png`,
   'knight': `${_S}/Races/knight/male/knight_m.png`,
-  'shaman': `${_S}/Races/shaman/male/shaman_m_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'shaman': `${_S}/Races/shaman/male/shaman_m_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'necromancer': `${_S}/Races/necromancer/male/necromancer_m.png`,
   'cyborg': `${_S}/Races/cyborg/male/cyborg_m.png`,
   'ki fighter': `${_S}/Races/kifighter/male/ki_fighter_m.png`,
@@ -6690,7 +6690,7 @@ const RACE_SPRITES = {
   'gangster': `${_S}/Races/gangster/gangster_male.png`,
   'door agent': `${_S}/homosapien.png`,
   'police officer': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-04 — his own sprite
-  'time cop': `${_S}/Races/police/timecop_px.png`,   // 2026-11-17 — its own 128x128 future-cop pixel sprite (Sprite AI, from the model)
+  'time cop': `${_S}/Races/police/timecop_px2.png`,   // 2026-11-17 — its own 128x128 future-cop pixel sprite (Sprite AI, from the model)
   'jellyfish': `${_S}/character_sprites/jellyfish.png`,   // 2026-10-04 — his own sprite
   'cult leader': `${_S}/character_sprites/cultleader.png`,   // 2026-10-04 — his own sprite
   'popstar': `${_S}/Races/popstar/popstar_female.png`,   // 2026-09-22 — her own sheet (the VFX pass)
@@ -6718,10 +6718,10 @@ const RACE_SPRITES = {
   'chef': `${_S}/Races/chef/male/chef.png`,   // 2026-10-25 — his own sprite
   'eagleman': `${_S}/Races/eagleman/eagleman.png`,   // 2026-10-25 — his own sprite
   'banker': `${_S}/Races/banker/male/banker_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'skater': `${_S}/Races/skater/female/skater_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'magician': `${_S}/Races/magician/male/magician_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'sewer gator': `${_S}/Races/sewer_gator/male/sewer_gator_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'skater': `${_S}/Races/skater/female/skater_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'tech ceo': `${_S}/Races/tech_ceo/male/tech_ceo_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'magician': `${_S}/Races/magician/male/magician_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)

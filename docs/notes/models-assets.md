@@ -2054,3 +2054,9 @@ the 160 + crop trick cut heads off; at 128 every one came back 127-128 px tall a
 source was the future-cop model's front render (`/mnt/project-files/time-cop/timecop_models_front.png`), and TIME_COP_LOOKS.future
 now points at `Races/police/timecop_px.png` (the cop look keeps policeofficer.png). Files + sheet:
 `/mnt/project-files/sprite-ai-test/batch-20261117/`.
+REDO (same night, mondo: six were cropped at the top): the real cause was the background cut, not the size. A flood fill that
+compares each pixel to its NEIGHBOUR drifts into dark or grey clothes and ate most of the figure, so Sprite AI got fragments and
+invented a figure that ran off the canvas. Fix: mark background with numpy against the BORDER colours only (no drift, distance
+< 30, < 14 for the dark Time Cop render, < 24 for the skater's white socks), flood from the border over that mask, and LOOK at
+the cut-out on magenta before spending a token. With a whole cut-out, a restyle at size 128 keeps the framing (top row empty).
+Redone: sewer gator, skater, tech ceo, magician, male shaman, time cop -> `<race>_px2.png`.
