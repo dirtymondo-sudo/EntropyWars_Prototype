@@ -11843,7 +11843,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             'firetruck', 'ambulance',   /* THE EMERGENCY VEHICLES (2026-10-27): Fire Hose, Fireman's Carry, Hose Down */
                             'satellite', 'space_shuttle', 'space_station', 'hullplate', 'lunar_lander',   /* THE SPACE PROPS (2026-10-27): the astronaut's spells */
                             'church_building', 'catholic_pew', 'church_pew', 'church_podium', 'field_goal_post', 'skull_pile',
-                            'beach_life_ring'];   /* THE LIFEGUARD (2026-11-16): her rescue ring */   /* THE FINISHER LOOK (2026-10-28): the P-Z finishers' props */
+                            'beach_life_ring',   /* THE LIFEGUARD (2026-11-16): her rescue ring */
+                            'lib_book', 'lib_open_book'];   /* THE LIBRARIAN (2026-11-17): the PSX Mega Pack's books (Overdue, Shush, Late Fee) */   /* THE FINISHER LOOK (2026-10-28): the P-Z finishers' props */
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gilt.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
@@ -65231,6 +65232,241 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        `burst` beat (relayed like every staging beat); the flag is a quick 160 ms toss onto the feet */
     _BUG_ON_BURST['nrPenalty'] = function (tx, ty, p) { _PZ_SIGS.rfPenalty({ tx: tx, ty: ty, fromX: p && p.sx, fromY: p && p.sy, flyMs: 160 }); };
     SPELL_MAP['nrTimeout'] = { aoe: 'rfTimeout_aoe' };
+    /* ════ THE LIBRARIAN (2026-11-17, the Librarian pass; mondo: "flesh out their unique spells and spell animations/vfx"):
+       her three casts had the shared psychic eye + rings (Shush, Late Fee) or nothing at all (Overdue). Each gets a library
+       look now, built on the PSX Mega Pack's own books (Pizza Doggy: `lib_book` = book_mp_3, `lib_open_book` = open_book_mp_1,
+       R2 Assets/world/packs/pizzadoggy_psx_mega_pack/small_props/, warmed with the spells; a book still streaming is left
+       out, never stood in for) + canvas cards and ink stamps. Her side's colour is the Riot one from the viewer's seat (own
+       side cyan-blue, the other side pink-orange); the ink stays red. Everything sits over the head or on the floor: the
+       caster, the target, the hit and the number stay clear.
+       · OVERDUE (`aura` on her as the renewed cast starts, battle.js _overdueFlourish): an open book hangs over her head, three
+         pages turn, the date-due card rises out of it and a RENEWED stamp lands on it; her colour falls into her hands. The
+         borrowed spell then plays its OWN look (the cast runs under its id).
+       · SHUSH (`impact`): the target's noise (three rings round the head) is pulled in to nothing, a book slams shut over
+         the head and SHHH pops off it.
+       · LATE FEE (`bolt`, timed on flyMs): a hardback flies end over end into the victim; date-due slips burst off the body
+         and a red LATE FEE stamp lands on the floor. A Silenced victim (the bonus) gets the OVERDUE stamp, a second red ring
+         and twice the slips: the combo reads.
+       Looks only, on the casts' own intents (fire() is relayed: the guest sees the same, coloured from its own seat), only on
+       tiles the viewer sees. Kill-switch: window.EW_NO_LIBRARIAN_VFX. ════ */
+    var _LIB = { red: 0xd8262a, paper: 0xf6efdc, ink: '#2a1a12' };
+    function _libOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_LIBRARIAN_VFX); }
+    function _libCols(x, y) { var u = (x != null) ? _fx5UnitAt(x, y) : null; return (!u || _fx5Mine(u)) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
+    /* a pack book sized by its longest side, every material its own + fadable; null until the file has landed */
+    function _libModel(key, len) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, g = null;
+        try { g = (TR && TR.getMiscModelClone) ? TR.getMiscModelClone(key, 1, 'center') : null; } catch (e) { g = null; }
+        if (!g) return null;
+        g.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(g), sz = new THREE.Vector3(); bb.getSize(sz);
+        var mx = Math.max(sz.x, sz.y, sz.z) || 1, mats = [];
+        var inner = new THREE.Group(); inner.add(g); g.scale.multiplyScalar(len / mx);
+        /* unlit, the pack's own sheet (a lit pack book read near black under the battle grade; WebGPU draws a basic material the same) */
+        g.traverse(function (n) { if (n.isMesh) { var o0 = n.material; n.material = new THREE.MeshBasicMaterial({ map: o0 && o0.map || null, color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide }); n.material.color.setScalar(2.1);   /* the pack's old leather covers read black under the battle grade: lifted (the banker's bills: 1.6) */ n.renderOrder = 160; n.frustumCulled = false; mats.push(n.material); } });
+        inner.userData.mats = mats;
+        return inner;
+    }
+    function _libFade(o, a) { var m = o && o.userData.mats; if (!m) return; for (var i = 0; i < m.length; i++) m[i].opacity = a; }
+    /* the date-due card: cream, a red header, ruled lines, three stamped dates in violet ink */
+    function _libCardTex() {
+        return _pzTex('lib-card', 128, 176, function (g, w, h) {
+            g.fillStyle = '#f6efdc'; g.fillRect(0, 0, w, h);
+            g.fillStyle = '#c8282c'; g.fillRect(0, 0, w, 26);
+            g.fillStyle = '#ffffff'; g.font = 'bold 15px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('DATE DUE', w / 2, 14);
+            g.strokeStyle = 'rgba(60,90,160,0.55)'; g.lineWidth = 1.5;
+            for (var i = 0; i < 8; i++) { g.beginPath(); g.moveTo(8, 44 + i * 16); g.lineTo(w - 8, 44 + i * 16); g.stroke(); }
+            g.strokeStyle = 'rgba(200,40,44,0.6)'; g.beginPath(); g.moveTo(42, 28); g.lineTo(42, h - 6); g.stroke();
+            g.fillStyle = 'rgba(90,40,140,0.85)'; g.font = 'bold 12px "Courier New", monospace'; g.textAlign = 'left';
+            var d = ['MAR 03', 'APR 17', 'MAY 29'];
+            for (var k = 0; k < d.length; k++) g.fillText(d[k], 50, 38 + k * 16);
+            g.strokeStyle = '#2a1a12'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, w - 3, h - 3);
+        });
+    }
+    /* a page: paper with ruled lines (both faces) */
+    function _libPageTex() {
+        return _pzTex('lib-page', 96, 128, function (g, w, h) {
+            g.fillStyle = '#f3ead2'; g.fillRect(0, 0, w, h);
+            g.fillStyle = 'rgba(40,26,18,0.45)';
+            for (var i = 0; i < 11; i++) g.fillRect(10, 14 + i * 10, w - 20 - (i % 4) * 9, 3);
+            g.strokeStyle = 'rgba(120,90,60,0.6)'; g.lineWidth = 2; g.strokeRect(1, 1, w - 2, h - 2);
+        });
+    }
+    /* an ink stamp (white, tinted by the material): a double box, the word, worn specks knocked out */
+    function _libStampTex(word) {
+        return _pzTex('lib-stamp-' + word, 512, 192, function (g, w, h) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 14; g.strokeRect(14, 14, w - 28, h - 28); g.lineWidth = 5; g.strokeRect(34, 34, w - 68, h - 68);
+            g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 84px Impact, "Arial Black", sans-serif';
+            g.fillText(word, w / 2, h / 2 + 4);
+            g.globalCompositeOperation = 'destination-out';
+            for (var i = 0; i < 240; i++) { g.beginPath(); g.arc(Math.random() * w, Math.random() * h, Math.random() * 3 + 0.5, 0, Math.PI * 2); g.fill(); }
+            g.globalCompositeOperation = 'source-over';
+        });
+    }
+    /* a flat piece lying on the floor of frame F, upright from the lens */
+    function _libFloor(F, tex, w, h, color) {
+        var m = new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(color), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+        var p = _pzMesh(new THREE.PlaneGeometry(w, h), m, F.g, 0, F.ts * 0.045, 0); p.rotation.x = -Math.PI / 2; p.renderOrder = 157;
+        var cd = _nbCamDir(F); p.rotation.z = Math.atan2(cd.x, cd.z) + rn(-0.15, 0.15);
+        return p;
+    }
+    /* a thin ring (a torus lying flat) at height y */
+    function _libRing(F, r, y, color) {
+        var m = _pzMesh(new THREE.TorusGeometry(1, 0.045, 6, 40), _pzGlow(color), F.g, 0, y, 0);
+        m.rotation.x = Math.PI / 2; m.scale.setScalar(r); return m;
+    }
+    /* date-due slips burst off a body and flutter down */
+    function _libSlips(F, n, y0) {
+        var ts = F.ts, out = [], tex = _libCardTex();
+        for (var i = 0; i < n; i++) {
+            var m = _pzMesh(new THREE.PlaneGeometry(ts * 0.13, ts * 0.18), _pzSolid(0xffffff, tex, { side: THREE.DoubleSide, depthWrite: false }), F.g, 0, y0, 0);
+            var a = rn(0, 6.28), sp = ts * rn(0.5, 1.0);
+            out.push({ m: m, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: ts * rn(0.9, 1.6), ph: rn(0, 6.28), sw: rn(0.004, 0.009), d: rn(0, 80) });
+        }
+        return out;
+    }
+    function _libSlipsTick(L, el, y0, life, ts) {
+        for (var j = 0; j < L.length; j++) {
+            var S = L[j], e = el - S.d, t = Math.max(0, e / 1000);
+            if (e < 0) { S.m.material.opacity = 0; continue; }
+            /* up and out fast, then a slow paper fall (drag), swaying */
+            var k = 1 - Math.exp(-t * 3.2), y = y0 + S.vy * k * 0.55 - S.vy * 0.5 * Math.max(0, t - 0.25) * 0.9;
+            if (y < ts * 0.04) y = ts * 0.04;
+            S.m.position.set(S.vx * k * 0.6 + Math.sin(e * S.sw + S.ph) * ts * 0.05, y, S.vz * k * 0.6 + Math.cos(e * S.sw + S.ph) * ts * 0.05);
+            S.m.rotation.set(Math.sin(e * S.sw + S.ph) * 1.1, e * 0.004 + S.ph, Math.cos(e * S.sw * 1.3) * 0.8);
+            S.m.material.opacity = _pzEnv(e, 0, 40, life - 450, life);
+        }
+    }
+
+    /* ════ OVERDUE — the book opens over her head, its pages turn, the card is stamped RENEWED ════ */
+    EFFECTS['nrOverdue_aura'] = _pzDef('libOverdue', { pzOwn: true, aoeRadius: 0 });
+    _PZ_SIGS.libOverdue = function (p) {
+        if (_libOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('libOd', 400)) return;
+        var C = _libCols(tx, ty), F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F);
+        /* the reader: a group over her head facing the lens, tipped toward it so the pages show */
+        var rd = new THREE.Group(); rd.position.set(0, ts * 1.42, 0); rd.rotation.y = Math.atan2(cd.x, cd.z); F.g.add(rd);
+        var tilt = new THREE.Group(); tilt.rotation.x = 0.95; rd.add(tilt);
+        var book = _libModel('lib_open_book', ts * 0.46); if (book) { book.rotation.y = Math.PI / 2; tilt.add(book); }
+        /* three pages hinge at the spine and turn right to left */
+        var pages = [], pTex = _libPageTex();
+        for (var i = 0; i < 3; i++) {
+            var hinge = new THREE.Group(); hinge.position.y = ts * 0.035; tilt.add(hinge);
+            var pg = _pzMesh(new THREE.PlaneGeometry(ts * 0.19, ts * 0.26), _pzSolid(0xffffff, pTex, { side: THREE.DoubleSide, depthWrite: false }), hinge, ts * 0.095, 0, 0);
+            pg.rotation.x = -Math.PI / 2;
+            pages.push({ h: hinge, m: pg, at: 160 + i * 130 });
+        }
+        var glow = _pzSpr(C.a, ts * 0.6, rd); glow.material.opacity = 0;
+        /* the card rises out of the book; the stamp lands on it */
+        var card = _pzMesh(new THREE.PlaneGeometry(ts * 0.24, ts * 0.33), _pzSolid(0xffffff, _libCardTex(), { side: THREE.DoubleSide, depthWrite: false }), rd, 0, 0, 0);
+        var stamp = _pzMesh(new THREE.PlaneGeometry(ts * 0.29, ts * 0.11), new THREE.MeshBasicMaterial({ map: _libStampTex('RENEWED'), color: new THREE.Color(_LIB.red), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }), card, 0, -ts * 0.04, ts * 0.01);
+        stamp.renderOrder = 162; stamp.rotation.z = rn(-0.25, -0.12);
+        var ring = _libRing(F, ts * 0.2, ts * 0.06, C.a), stamped = false, lastM = 0, mN = 0;
+        _sigShockRing3D(tx, ty, { color: C.a, r0: ts * 0.15, r1: ts * 0.7, ms: 380 });
+        return _sigRunOwned(F.g, 1650, function (el) {
+            var vis = _pzEnv(el, 0, 140, 1200, 1600), pop = Math.max(0.05, _sigEaseOutBack(_sigClamp01(el / 240)));
+            rd.scale.setScalar(pop); rd.position.y = ts * (1.42 + 0.03 * Math.sin(el * 0.006));
+            _libFade(book, vis); glow.material.opacity = 0.45 * vis;
+            for (var j = 0; j < pages.length; j++) {
+                var P = pages[j], k0 = _sigClamp01((el - P.at) / 300), k = k0 < 0.5 ? 4 * k0 * k0 * k0 : 1 - Math.pow(-2 * k0 + 2, 3) / 2;
+                P.h.rotation.z = Math.PI * k * 0.98; P.h.position.y = ts * (0.035 + 0.12 * Math.sin(Math.PI * k));
+                P.m.material.opacity = el < P.at ? 0 : vis * (k < 1 ? 1 : 0);
+            }
+            /* the card: up out of the pages (560-860 ms), the stamp at 900 */
+            var ck = _sigEaseOutCubic(_sigClamp01((el - 560) / 300));
+            card.position.set(0, ts * (0.05 + 0.34 * ck), ts * 0.02);
+            card.material.opacity = el < 560 ? 0 : vis;
+            var sk = _sigClamp01((el - 900) / 110);
+            stamp.scale.setScalar(el < 900 ? 0.01 : 1 + 0.6 * (1 - sk));
+            stamp.material.opacity = el < 900 ? 0 : 0.95 * vis;
+            if (!stamped && el >= 1010) { stamped = true; _sigShake('light'); _sigSparks(tx, ty, 'spark', 8, { z: ts * 2.0, vxy: 120, tint: C.a, vz0: 20, vz1: 120 }); }
+            /* her colour falls from the book into her hands */
+            if (el > 300 && el < 1150 && el - lastM > 60) {
+                lastM = el; var a = rn(0, 6.28), r = ts * rn(0.05, 0.25);
+                _pzP(F, Math.cos(a) * r, ts * 1.3, Math.sin(a) * r, { sprite: 'spark', tint: (++mN % 2) ? C.a : C.b, ml: rn(420, 620), size0: rn(5, 8), size1: 1, vz: -rn(90, 150), opacity0: 0.95 });
+            }
+            ring.scale.setScalar(ts * (0.25 + 0.4 * _sigClamp01(el / 700))); ring.material.opacity = 0.75 * _pzEnv(el, 0, 120, 700, 1300);
+        });
+    };
+
+    /* ════ SHUSH — the noise round the head is pulled in to nothing, a book slams shut over it: SHHH ════ */
+    EFFECTS['nrShush_impact'] = _pzDef('libShush', { pzOwn: true });
+    _PZ_SIGS.libShush = function (p) {
+        if (_libOff()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('libSh@' + tx + ',' + ty, 400)) return;
+        var from = _pzFrom(tx, ty, p), C = _libCols(from.x, from.y), F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F), HEAD = ts * 1.18;
+        var rings = [];
+        for (var i = 0; i < 3; i++) rings.push({ m: _libRing(F, ts * 0.6, HEAD - ts * 0.12 + i * ts * 0.12, i === 1 ? C.a : C.b), at: i * 90 });
+        var top = new THREE.Group(); top.position.set(0, ts * 1.4, 0); top.rotation.y = Math.atan2(cd.x, cd.z); F.g.add(top);
+        var open = _libModel('lib_open_book', ts * 0.58), shut = _libModel('lib_book', ts * 0.4);
+        if (open) { open.rotation.set(0.9, Math.PI / 2, 0); top.add(open); }
+        if (shut) { shut.rotation.set(0.9, 0, 0); top.add(shut); }
+        var word = _finTextSprite('SHHH...', { ink: '#ffffff', bg: C.a === 0x5fe0ff ? '#1d3fb8' : '#c2185b', font: 'Impact, "Arial Black", sans-serif', fontPx: 120, spriteW: ts * 0.62, opacity: 0 });
+        word.position.set(0, ts * 0.3, 0); top.add(word);
+        var SLAM = 420, slammed = false;
+        return _sigRunOwned(F.g, 1650, function (el) {
+            /* the rings close in on the head (0-420 ms) and wink out */
+            for (var r = 0; r < rings.length; r++) {
+                var R = rings[r], k = _sigClamp01((el - R.at) / (SLAM - R.at));
+                R.m.scale.setScalar(Math.max(0.01, ts * (0.6 - 0.54 * _sigEaseInCubic(k))));
+                R.m.material.opacity = el < R.at ? 0 : 0.85 * (k < 1 ? 1 : Math.max(0, 1 - (el - SLAM) / 120));
+            }
+            /* the open book hangs over the head until the slam; then the shut book, a squash, and SHHH */
+            _libFade(open, el < SLAM ? _pzEnv(el, 0, 120, SLAM - 30, SLAM) : 0);
+            var sk = _sigClamp01((el - SLAM) / 160);
+            _libFade(shut, el < SLAM ? 0 : _pzEnv(el, SLAM, SLAM + 20, 1150, 1550));
+            if (shut) shut.scale.set(1 + 0.25 * (1 - sk), Math.max(0.2, 0.55 + 0.45 * sk), 1 + 0.25 * (1 - sk));
+            if (!slammed && el >= SLAM) {
+                slammed = true; _sigShake('light');
+                _sigShockRing3D(tx, ty, { color: C.a, r0: ts * 0.2, r1: ts * 0.8, ms: 320 });
+                _sigSparks(tx, ty, 'spark', 10, { z: ts * 1.5, vxy: 160, tint: 0xffffff, vz0: 10, vz1: 90 });
+            }
+            var wk = _sigClamp01((el - SLAM - 40) / 260);
+            word.material.opacity = _pzEnv(el, SLAM + 40, SLAM + 120, 1200, 1550);
+            word.position.y = ts * (0.26 + 0.14 * _sigEaseOutCubic(wk));
+            var ws = ts * 0.62 * Math.max(0.05, _sigEaseOutBack(wk)); word.scale.set(ws, ws * 0.5, 1);
+        });
+    };
+
+    /* ════ LATE FEE — a hardback end over end into the victim, the slips burst off, the red stamp on the floor ════ */
+    EFFECTS['nrLateFee_bolt'] = _pzDef('libLateFee', { pzOwn: true });
+    _PZ_SIGS.libLateFee = function (p) {
+        if (_libOff()) return;
+        var fx = p.fromX, fy = p.fromY, tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty; if (tx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 460, from = fx != null ? { x: fx, y: fy } : _pzFrom(tx, ty, p), C = _libCols(from.x, from.y);
+        /* a Silenced victim (read now, before the hit): the fine doubles, the stamp says so */
+        var hushed = false;
+        try { var vid = _sigUnitIdAt(tx, ty); if (vid != null) for (var u = 0; u < state.units.length; u++) { var su = state.units[u]; if (su && su.id === vid && su.status && su.status.silence > 0) { hushed = true; break; } } } catch (e) {}
+        if (_pzSeen(from.x, from.y) || _pzSeen(tx, ty)) {
+            var ts0 = _worldPos(tx, ty).ts, bk = _libModel('lib_book', ts0 * 0.42);
+            if (bk) {
+                _libFade(bk, 1);
+                _pzFly(from.x, from.y, tx, ty, bk, { ms: ms, arc: 0.3, h0: ts0 * 0.95, h1: ts0 * 0.8, hideOnLand: true, face: true,
+                    spin: function (el, o, t) { o.rotation.x = t * Math.PI * 4; },
+                    trail: { sprite: 'spark', tint: C.a, every: 30, size: 8 } });
+            }
+        }
+        if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var stamp = _libFloor(F, _libStampTex(hushed ? 'OVERDUE' : 'LATE FEE'), ts * (hushed ? 1.45 : 1.25), ts * (hushed ? 0.54 : 0.47), _LIB.red);
+        var slips = null, hit = false, Y0 = ts * 0.9;
+        return _sigRunOwned(F.g, ms + 2000, function (el) {
+            if (!hit && el >= ms) {
+                hit = true;
+                _shake(hushed ? 'hard' : 'normal');
+                _sigShockRing3D(tx, ty, { color: C.a, r0: ts * 0.2, r1: ts * 1.0, ms: 380 });
+                if (hushed) _sigShockRing3D(tx, ty, { color: _LIB.red, r0: ts * 0.3, r1: ts * 1.4, ms: 520 });
+                slips = _libSlips(F, hushed ? 12 : 6, Y0);
+                _sigSparks(tx, ty, 'spark', 10, { z: ts * 0.9, vxy: 200, tint: 0xffffff, vz0: 30, vz1: 140 });
+            }
+            var se = el - ms;
+            if (slips) _libSlipsTick(slips, se, Y0, 1700, ts);
+            stamp.material.opacity = se < 0 ? 0 : 0.92 * _pzEnv(se, 0, 40, 1300, 1800);
+            stamp.scale.setScalar(se < 0 ? 0.05 : 1 + 0.35 * (1 - _sigEaseOutCubic(_sigClamp01(se / 140))));
+        });
+    };
+    SPELL_MAP['nrOverdue'] = { aura: 'nrOverdue_aura' };
+    SPELL_MAP['nrShush']   = { impact: 'nrShush_impact' };
+    SPELL_MAP['nrLateFee'] = { bolt: 'nrLateFee_bolt' };
+    _PS_OWN.nrShush = 1; _PS_OWN.nrLateFee = 1;   /* the psychic pass keeps her third eye on the windup; these draw their own hit */
+    /* ═════════ END THE LIBRARIAN ═════════ */
 
     /* ════ FLAT EARTH — the disc itself (the ice wall round its rim) comes down flat out of the sky onto the target and
        the ground round it is pressed flat (a dust ring); it borrowed the bomb's explosion ════ */
@@ -65752,6 +65988,190 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     };
     _spell3DGeometry['nrBoardSlam'].hitMs = 220;
+
+    /* ══ 🐸 THE KARATE FROG (2026-11-17, the Karate Frog pass; mondo: "flesh out their unique spells and spell animations/vfx")
+       Frog Fu reads as one martial-arts language: a KICK STAR (a solid six-point star that pops on the contact and is gone in
+       a quarter second, on the caster's side of the body so the victim and its number stay clear), POND WATER (droplets and
+       ripple rings, the Sewers' frog), and SPEED in the viewer's side colours (the Riot pass: own side cyan-blue, the other
+       side pink-orange). No new art: canvas textures and the shared sprites.
+         · Leapfrog (impact + _ESC_LOOKS.nrLeapfrog on the relayed 'frogleap' path, battle.js _frogLeapOver): the roundhouse
+           lands in a kick star and a splash; then the vault: a squat splash at the take-off, a dotted side-colour arc over
+           the victim with water dripping off him all the way, and a frog's landing in two ripple rings.
+         · Tongue Lash (`pull`, pzOwnTether): a thick pink tongue with a sticky round tip shoots out (130 ms), sticks with a
+           pink splat, rides the victim the whole drag, and snaps back into his mouth.
+         · Flying Kick (impact; the run-in is the Rising_Flying_Kick clip, or the relayed 'flykick' path): side-colour speed
+           lines down the lane behind him, a big kick star, a pond splash, and three streaks on the far side of the victim
+           that point where the kick sends it.
+       Everything rides fire() (relayed to the guest, RULE #2) and draws only on tiles the viewer sees (_pzSeen).
+       Kill-switch: window.EW_NO_FROG_VFX. ══ */
+    var _FROG = { pond: 0x7fe0d0, pondD: 0x2a9a8a, tongue: 0xff7aa2, tongueD: 0xc83a64, splat: 0xff9ac0, white: 0xffffff };
+    function _frogOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_FROG_VFX); }
+    function _frogCols(u) { return _fx5Mine(u) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
+    function _frogStarTex() {
+        return _pzTex('frog-kick-star', 128, 128, function (ctx, W, H) {
+            var cx = W / 2, cy = H / 2;
+            ctx.beginPath();
+            for (var i = 0; i < 12; i++) {
+                var a = -Math.PI / 2 + i * Math.PI / 6, r = (i % 2) ? 22 : 60;
+                ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fillStyle = '#ffffff'; ctx.fill();
+            ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(20,24,30,0.85)'; ctx.stroke();
+        });
+    }
+    /* the kick star: pops at local point P of frame F, solid (not additive: additive washed pale over grass) */
+    function _frogStar(F, P, col, size, ms) {
+        var mat = new THREE.SpriteMaterial({ map: _frogStarTex(), color: new THREE.Color(col), transparent: true, opacity: 0, depthWrite: false, depthTest: false });
+        var sp = new THREE.Sprite(mat); sp.renderOrder = 162; sp.position.copy(P); F.g.add(sp);
+        var core = _pzSpr(_FROG.white, size * 0.5, F.g); core.position.copy(P);
+        var rot = rn(-0.4, 0.4);
+        return function (el) {
+            var k = _sigClamp01(el / 70), f = 1 - _sigClamp01((el - ms * 0.55) / (ms * 0.45));
+            var s = size * (0.35 + 0.75 * _sigEaseOutCubic(k)) * (el > ms * 0.55 ? 1 + 0.15 * (1 - f) : 1);
+            sp.scale.set(s, s, 1); mat.rotation = rot + el * 0.002; mat.opacity = el < ms ? f : 0;
+            core.material.opacity = el < ms ? 0.8 * f * (1 - _sigClamp01(el / (ms * 0.5))) : 0;
+        };
+    }
+    /* pond droplets thrown off a tile (tile-px space) */
+    function _frogSplash(tx, ty, n, o) {
+        o = o || {};
+        _capPuff(tx, ty, 'water-splash', n, { r: o.r != null ? o.r : 0.22, h: o.h != null ? o.h : 0.35, out: o.out != null ? o.out : 110,
+            vz0: o.vz0 != null ? o.vz0 : 60, vz1: o.vz1 != null ? o.vz1 : 170, gravity: 520, drag: 0.5, tint: _FROG.pond,
+            s0: 5, s1: 9, sEnd: 2, op: 0.95, ml0: 380, ml1: 620 });
+    }
+    function _frogRipples(tx, ty, col, n, delay) {
+        for (var i = 0; i < n; i++) (function (i) { _capAt((delay || 0) + i * 120, function () { _capRing(tx, ty, i ? _FROG.pond : col, 0.55 + i * 0.3, 420 + i * 80, 2); }); })(i);
+    }
+    /* LEAPFROG: the roundhouse lands (the star on his side of the body, a splash) */
+    EFFECTS['nrLeapfrog_impact'] = { shake: 'light', layers: [
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [300, 480], offsetXY: 10, z: [2, 8], vxRange: 70, vyRange: 70, vzRange: [10, 40], drag: 0.9, size0: [10, 16], size1: [22, 32], opacity0: 0.45 },
+    ] };
+    SPELL_MAP['nrLeapfrog'] = { impact: 'nrLeapfrog_impact' };   /* no teleport row: it would turn the strike's staging into a teleport */
+    /* the vault's look, fired by battle.js _frogLeapOver through fireGeometry (relayed, fog-gated on the landing) */
+    _spell3DGeometry['nrLeapfrog:leap'] = function (tx, ty, r, x) {
+        x = x || {};
+        if (x.fromX == null || x.fromY == null) return;
+        _fx5Escape('nrLeapfrog', x.fromX, x.fromY, tx, ty);
+    };
+    _spell3DGeometry['nrLeapfrog'] = function (tx, ty, r, x) {
+        if (_frogOff() || !_pzSeen(tx, ty)) return;
+        x = x || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, x), ln = _nrvLine(F, from, tx, ty);
+        var C = _frogCols(_fx5UnitAt(from.x, from.y));
+        var P = new THREE.Vector3(ln.ux * ts * 0.34, ts * 0.55, ln.uz * ts * 0.34);
+        var star = _frogStar(F, P, C.a, ts * 0.44, 260);
+        _frogSplash(tx, ty, 8, { h: 0.5, out: 90 });
+        _capRing(tx, ty, C.a, 0.6, 300, 4);
+        _sigRunOwned(F.g, 300, function (el) { star(el); });
+    };
+    /* the vault: the squat splash, the dotted arc over the body, the drips, the frog's landing */
+    _ESC_LOOKS.nrLeapfrog = { style: 'frogleap', ms: 620, draw: function (fx, fy, tx, ty, land) {
+        if (_frogOff()) return;
+        var u = _fx5UnitAt(tx, ty) || _fx5UnitAt(fx, fy), C = _frogCols(u), MS = 620;
+        _frogSplash(fx, fy, 6, { h: 0.05, out: 130, vz0: 30, vz1: 90 });
+        _capPuff(fx, fy, 'dust-puff', 4, { r: 0.3, h: 0.04, out: 110, vz0: 5, vz1: 25, s0: 12, s1: 18, sEnd: 30, op: 0.4 });
+        _capRing(fx, fy, C.a, 0.6, 300, 2);
+        if (!_getVFXScene()) return;
+        /* the dotted arc: the 'frogleap' path (three-renderer _escStyleAt) traced in side-colour dots that light as he passes */
+        var A = _worldPos(fx, fy), B = _worldPos(tx, ty), ts = A.ts, g = new THREE.Group(), dots = [], N = 19;
+        g.position.set(A.x, A.y, A.z);
+        for (var i = 0; i < N; i++) {
+            var h = (i + 1) / (N + 1), d = _pzSpr(i % 3 ? C.a : C.b, ts * 0.06, g);
+            d.position.set((B.x - A.x) * h, (B.y - A.y) * h + ts * 0.4 + ts * 1.25 * Math.sin(Math.PI * h), (B.z - A.z) * h);
+            dots.push({ s: d, at: (0.12 + 0.78 * h) * MS });
+        }
+        var lastDrip = 0, id = u ? u.id : null;
+        _sigRunOwned(g, MS + 420, function (el) {
+            for (var j = 0; j < dots.length; j++) {
+                var q = dots[j], on = el >= q.at ? 1 - _sigClamp01((el - q.at - 90) / 200) : 0;
+                q.s.material.opacity = 0.85 * on;
+            }
+            if (id != null && el < MS * 0.88 && el > MS * 0.15 && el - lastDrip > 55 && _canSpawn() && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.unitBodyWorld) {
+                var p = ThreeRenderer.unitBodyWorld(id);
+                if (p) {
+                    lastDrip = el;
+                    var pad = _cfg().boardPadding || 2;
+                    _spawn({ x: p.x + pad + rn(-6, 6), y: p.z + pad + rn(-6, 6), z: p.y + rn(-4, 6), mode: 'billboard', sprite: 'water-splash', tint: _FROG.pond,
+                        vx: rn(-20, 20), vy: rn(-20, 20), vz: rn(-10, 20), gravity: 420, drag: 0.3, ml: rn(380, 560), size0: rn(4, 7), size1: 2, opacity0: 0.95, opacity1: 0 });
+                }
+            }
+        });
+        if (land) _capAt(MS * 0.88, function () {
+            _frogSplash(tx, ty, 10, { h: 0.04, out: 150, vz0: 40, vz1: 120 });
+            _capPuff(tx, ty, 'dust-puff', 5, { r: 0.35, h: 0.04, out: 140, vz0: 5, vz1: 25, s0: 14, s1: 20, sEnd: 36, op: 0.45 });
+            _frogRipples(tx, ty, C.a, 2, 0);
+        });
+    } };
+    /* TONGUE LASH: the tongue shoots out, sticks with a splat, rides the drag, snaps back */
+    EFFECTS['nrTongueLash_pull'] = _pzDef('frogTongue', { pzOwnTether: true, layers: [
+        { count: 8, sprite: 'water-splash', ml: [360, 600], offsetXY: 10, z: [30, 56], tint: _FROG.pond, vxRange: 90, vyRange: 90, vzRange: [20, 110], gravity: 380, size0: [4, 8], size1: 2, opacity0: 0.95, delayMs: 130 },
+        { sprite: 'flash', ml: 110, size0: 34, size1: 10, tint: _FROG.splat, opacity0: 0.7, z: 44, delayMs: 130 },
+    ] });
+    SPELL_MAP['nrTongueLash'] = { pull: 'nrTongueLash_pull' };
+    _PZ_SIGS.frogTongue = function (p) {
+        if (p.tx == null || _frogOff()) return;
+        var pink = _pzSolid(_FROG.tongue, null, { side: THREE.DoubleSide }), dark = _pzSolid(_FROG.tongueD, null, { side: THREE.DoubleSide }), lastDrip = 0, splat = null;
+        _pzPullRig(p.tx, p.ty, 1700, function (F, ts, a, see) {
+            var R = { shaft: _pzMesh(new THREE.CylinderGeometry(ts * 0.045, ts * 0.07, 1, 10), pink, F.g),
+                      tip: _pzMesh(new THREE.SphereGeometry(ts * 0.1, 12, 8), dark, F.g) };
+            /* the splat where it sticks: a flat pink star on the victim's side that faces the lens (a sprite) */
+            var sm = new THREE.SpriteMaterial({ map: _frogStarTex(), color: new THREE.Color(_FROG.splat), transparent: true, opacity: 0, depthWrite: false, depthTest: false });
+            splat = new THREE.Sprite(sm); splat.renderOrder = 162; F.g.add(splat); R.splat = splat;
+            return R;
+        }, function (el, a, b, R, F, ts) {
+            var out = _sigEaseOutCubic(_sigClamp01(el / 130)), back = _sigEaseInCubic(_sigClamp01((el - 1450) / 230)), k = out * (1 - back);
+            var A = new THREE.Vector3(a.x, a.y + ts * 0.62, a.z), B = new THREE.Vector3(b.x, b.y + ts * 0.55, b.z), T = A.clone().lerp(B, k);
+            var dir = B.clone().sub(A).normalize();
+            _pzSpan(R.shaft, A, T.clone().sub(dir.clone().multiplyScalar(ts * 0.05)));
+            R.tip.position.copy(T);
+            var on = k > 0.01 ? 1 : 0; pink.opacity = on; dark.opacity = on;
+            /* the splat pops as it sticks, between the tip and the lens side of the body, then fades so the number reads */
+            var sk = el - 130, so = sk > 0 ? 1 - _sigClamp01((sk - 120) / 200) : 0;
+            R.splat.position.copy(T.clone().sub(dir.clone().multiplyScalar(ts * 0.12)));
+            var ss = ts * (0.18 + 0.32 * _sigEaseOutCubic(_sigClamp01(sk / 90)));
+            R.splat.scale.set(ss, ss, 1); R.splat.material.opacity = 0.95 * so;
+            if (el - lastDrip > 80 && k > 0.4 && _canSpawn()) {
+                lastDrip = el; var q = A.clone().lerp(T, rn(0.2, 0.95));
+                _pzP(F, q.x, q.y, q.z, { sprite: 'bubble', tint: _FROG.splat, ml: rn(300, 480), size0: rn(3, 6), size1: 1, vz: -rn(30, 70), gravity: 260, opacity0: 0.85 });
+            }
+        }, p.uid);
+    };
+    /* FLYING KICK: speed lines down his lane, the big star, the splash, the streaks where it sends the victim */
+    EFFECTS['nrFlyingKick_impact'] = { shake: 'normal', layers: [
+        { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [320, 560], offsetXY: 12, z: [2, 10], vxRange: 110, vyRange: 110, vzRange: [20, 60], gravity: 80, drag: 0.9, size0: [12, 20], size1: [30, 44], opacity0: 0.5 },
+    ] };
+    SPELL_MAP['nrFlyingKick'] = { impact: 'nrFlyingKick_impact' };
+    _spell3DGeometry['nrFlyingKick'] = function (tx, ty, r, x) {
+        if (_frogOff() || !_pzSeen(tx, ty)) return;
+        x = x || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, x), ln = _nrvLine(F, from, tx, ty);
+        var C = _frogCols(_fx5UnitAt(from.x, from.y));
+        var P = new THREE.Vector3(ln.ux * ts * 0.36, ts * 0.56, ln.uz * ts * 0.36);
+        var star = _frogStar(F, P, C.a, ts * 0.6, 300);
+        _frogSplash(tx, ty, 12, { h: 0.5, out: 150, vz0: 70, vz1: 200 });
+        _capRing(tx, ty, C.a, 0.85, 340, 4);
+        /* the lane behind him: side-colour speed lines lying along it, past his tile, fading */
+        var yaw = Math.atan2(ln.ux, ln.uz), lane = new THREE.Group(), push = new THREE.Group(), lines = [];
+        lane.rotation.y = yaw; F.g.add(lane); push.rotation.y = yaw; F.g.add(push);
+        for (var i = 0; i < 5; i++) {
+            var sl = _sk8Line(i % 2 ? C.b : C.a, ts * rn(0.7, 1.1), ts * 0.05);
+            sl.position.set((i - 2) * ts * 0.1, ts * (0.25 + 0.12 * (i % 3)), ln.L + ts * rn(0.45, 0.7)); lane.add(sl); lines.push(sl);
+        }
+        /* where the kick sends it: three short streaks off the far side of the body, pointing away from him */
+        var streaks = [];
+        for (var s = 0; s < 3; s++) {
+            var st = _sk8Line(s === 1 ? _FROG.white : C.a, ts * 0.5, ts * 0.03);
+            st.position.set((s - 1) * ts * 0.16, ts * (0.4 + 0.12 * s), -ts * 0.55); push.add(st); streaks.push(st);
+        }
+        _sigRunOwned(F.g, 520, function (el) {
+            star(el);
+            var lf = 0.75 * (1 - _sigClamp01(el / 300));
+            for (var j = 0; j < lines.length; j++) lines[j].userData.mat.opacity = lf;
+            var sk = _sigClamp01((el - 40) / 200), sf = 0.85 * Math.min(1, el / 40) * (1 - _sigClamp01((el - 200) / 260));
+            for (var q = 0; q < streaks.length; q++) { streaks[q].position.z = -ts * (0.55 + 0.6 * _sigEaseOutCubic(sk)); streaks[q].userData.mat.opacity = sf; }
+        });
+    };
 
     /* ══ THE WENDIGO'S LOOKS (2026-11-17, the new races 2: Rend, Feast, Frost Howl + THE HUNGER) ══════════════════════════
        The three casts shipped on the stock family looks (a plain slash, the plain drain, no howl at all). Each gets its own

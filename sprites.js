@@ -1234,11 +1234,11 @@ const SPELL_ANIM_VERBS = {
   smash: ['raceSasquatchSmash', 'raceColossalCrush', 'racePrimalSmash', 'skullCrack', 'raceAvalancheStrike',
     'raceNoMercy', 'racePoliceNightstick', 'raceHydraulicCrush', 'raceGiantSmash'],
   sweep: ['raceDinoTailWhip'],
-  jab: ['raceRoboPunch', 'raceFrozenPunch', 'raceHydraulicPunch', 'reallyGoodPunch', 'raceRocketFist', 'haymaker'],
+  jab: ['raceRoboPunch', 'raceFrozenPunch', 'raceHydraulicPunch', 'reallyGoodPunch', 'raceRocketFist', 'haymaker', 'nrTongueLash'],   // 🐸 the tongue snaps out on the jab
   rally: ['raceOathOfValor', 'raceRoyalDecree'],
   slash: ['sentaiRedSlash', 'raceSyntheticBlade', 'sneakSlash'],
   doubleSlash: ['crossSlash', 'bladeWaltz'],
-  roundhouse: ['raceBigKick'],
+  roundhouse: ['raceBigKick', 'nrLeapfrog'],   // 🐸 the Karate Frog pass (2026-11-17): the kick before the vault
   // the clips that CARRY THE BODY (UAL_SLOTS `travel`): the clip's own
   // run / jump / lunge moves the unit, so the board's strike leap, dive arc
   // or sprint is skipped for these (battle.js _clipOwnsTravel)
@@ -1247,7 +1247,7 @@ const SPELL_ANIM_VERBS = {
   leapSlash: ['judgment', 'raceExcaliburStrike'],
   leapPunch: ['raceSeismicLeap', 'raceTitanDrop', 'raceCliffCharge', 'raceHeroicLeap', 'raceDragonFist',
     'raceDarkJustice'],
-  flyKick: ['racePredatorLeap', 'raceFeralDive', 'raceDivineSwoop', 'raceSkyTackle', 'racePopStageDive'],
+  flyKick: ['racePredatorLeap', 'raceFeralDive', 'raceDivineSwoop', 'raceSkyTackle', 'racePopStageDive', 'nrFlyingKick'],
 };
 const _SPELL_VERB_BY_ID = {};
 for (const _v in SPELL_ANIM_VERBS) for (const _id of SPELL_ANIM_VERBS[_v]) _SPELL_VERB_BY_ID[_id] = _v;

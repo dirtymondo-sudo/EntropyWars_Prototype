@@ -2536,7 +2536,8 @@
                     unit._trackTilesMoved = (unit._trackTilesMoved || 0) + 1;
                     const _chM = _logMark();
                     addLog(`${_ctName(unit)} charges to ${coordLabel(landTile.x, landTile.y)}.`);
-                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200, { leap: true });
+                    /* `chargeStyle` (🐸 Flying Kick: 'flykick'): the run-in rides that relayed escape path, not the vault */
+                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, spell.chargeStyle ? 320 : 200, spell.chargeStyle ? { escStyle: spell.chargeStyle } : { leap: true });
                     if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                     if (spell.slimeLane) { _sigVfxGeom('nrIaiDraw:lane', landTile.x, landTile.y, 0, { fromX, fromY, owner: unit.player }); _slugLane(unit, fromX, fromY, spell); }   // 🐌 Iai Draw slimes its lane
@@ -2779,7 +2780,7 @@
                         waitMs: 300, fallbackMs: chargeMs
                     });
                 } else {
-                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs, { leap: true, charge: true });
+                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs, spell.chargeStyle ? { escStyle: spell.chargeStyle } : { leap: true, charge: true });
                 }
                 resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                 addLog(`${_ctName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
@@ -13993,7 +13994,7 @@
             if (!m) return false;
             _magicianSpring(m, 'DOVES');
             caster.mp = Math.max(0, (caster.mp || 0) - getSpellMpCostFor(caster, spell));
-            if (spell.cooldownRounds) { caster._spellCooldowns = caster._spellCooldowns || {}; caster._spellCooldowns[spell.id] = (state.round || 0) + spell.cooldownRounds; }
+            if (spell.cooldownRounds) { caster._spellCooldowns = caster._spellCooldowns || {}; caster._spellCooldowns[_spellBookKey(spell)] = (state.round || 0) + spell.cooldownRounds; }
             addLog(`🕊 ${_ctName(caster)} casts ${_ctSp(spell.name)} at ${_ctName(t)} — and it bursts into a flock of doves! ${_ctName(m)}'s trick.`);
             if (typeof showFloatingTextAtTile === 'function') showFloatingTextAtTile(x, y, '🕊 DOVES', 'buff', { durationMs: 1200 });
             _magicianFx('magicDoves', m, x, y);
@@ -14241,6 +14242,73 @@
         }
         function _nrAlive(u) { return !!u && !u.dead && !u._dying && u.hp > 0; }
         function _nrFreeSquare(x, y) { return isInside(x, y) && canOccupy(x, y) && !unitAt(x, y); }
+        /* 📚 THE LOADED BOOK (the Librarian pass, 2026-11-17, thread "Polish Librarian spells and VFX"): Overdue used to run
+           the old Mimic resolver, a flat dmg + power hit on one unit; an area spell, a stat raise or anything with its own
+           branch fizzled, and the hit had no look at all. Now her Overdue row IS the book she has out: every time a teammate
+           casts, each Overdue row on that team takes the borrowed spell's whole shape (kind, range, area, statuses, element,
+           its caster's upgrades: the row on the teammate's own kit) and keeps its own id, name, tier, AP and cooldown. So the
+           menus, the range wash, the aim preview, the forecast and the CPU all read the real spell, and doSpell casts a copy
+           under the borrowed id (`_overdueOf`), so the spell's own branch and its own VFX run. The cooldown and the
+           once-a-turn slot stay keyed on Overdue (_spellBookKey). The price: the borrowed spell's MP, at least Overdue's 50
+           (a 75-MP tier 3 for 50 was a discount on the strongest casts). The rows are unit data, so the guest's menu reads
+           the same book from the state-sync (RULE #2). Never renewable: a passive, a basic attack, Overdue / Mimic, and a cast
+           that needs its owner's body (Submerge's liquid, Coil's serpent); the Florida Man's headline lock is left off. */
+        const _OD_KEEP = { id: 1, name: 1, tier: 1, families: 1, cost: 1, apCost: 1, cooldownRounds: 1, desc: 1, _odBase: 1 };
+        const _OD_DROP = { floridaHeadline: 1, requiresLiquid: 1, requiresSerpent: 1, upgrades: 1, overdueOf: 1, overdueName: 1, overdueCaster: 1, _overdueOf: 1 };
+        function _overdueEligible(sp) {
+            if (!sp || !sp.id || sp.id === 'nrOverdue' || sp.id === 'mimic' || sp._overdueOf) return false;
+            if (sp.kind === 'passive' || sp.kind === 'basicAttack' || sp.inherent) return false;
+            if (sp.requiresLiquid || sp.requiresSerpent) return false;
+            return true;
+        }
+        function _spellBookKey(spell) { return (spell && (spell._overdueOf || spell.id)) || (spell && spell.name); }
+        function _overdueRows(u) { return [...(u.spells || []), ...(u._raceAbilities || [])].filter(s => s && s.id === 'nrOverdue'); }
+        function _overdueClone(v) { if (v == null || typeof v !== 'object') return v; try { return JSON.parse(JSON.stringify(v)); } catch (e) { return v; } }
+        function _overdueSource(rec) {
+            if (!rec || !rec.spellId) return null;
+            const caster = (state.units || []).find(u => u && u.id === rec.caster);
+            const own = caster && [...(caster.spells || []), ...(caster._raceAbilities || [])].find(s => s && s.id === rec.spellId);
+            const src = own || (typeof getSpellById === 'function' ? getSpellById(rec.spellId) : null);
+            return _overdueEligible(src) ? src : null;
+        }
+        function _overdueLoad(u) {
+            if (!u) return;
+            const rows = _overdueRows(u);
+            if (!rows.length) return;
+            const rec = (state._lastAllySpell || {})[u.player] || null;
+            const src = _overdueSource(rec);
+            for (const row of rows) {
+                if (!row._odBase) { const b = {}; for (const k of Object.keys(row)) if (k !== '_odBase') b[k] = _overdueClone(row[k]); row._odBase = b; }
+                if (src ? (row.overdueOf === src.id && row.overdueCaster === rec.caster) : !row.overdueOf) continue;
+                const base = row._odBase;
+                for (const k of Object.keys(row)) if (k !== '_odBase') delete row[k];
+                if (!src) { for (const k of Object.keys(base)) row[k] = _overdueClone(base[k]); continue; }
+                for (const k of Object.keys(src)) if (!_OD_KEEP[k] && !_OD_DROP[k]) row[k] = _overdueClone(src[k]);
+                row.id = base.id; row.name = base.name; row.tier = base.tier; row.families = _overdueClone(base.families);
+                row.apCost = base.apCost; row.cooldownRounds = base.cooldownRounds;
+                row.cost = Math.max(base.cost || 0, src.cost || 0);
+                row.overdueOf = src.id; row.overdueName = src.name; row.overdueCaster = rec.caster;
+                const _odDesc = String(src.desc || '').split(/(?<=\.)\s+/).filter(t => !/headline|^Cooldown:/i.test(t)).join(' ');   // her cooldown is the book's; no headline lock
+                row.desc = `📚 Renews ${src.name} (the last spell her team cast): ${_odDesc} Costs what the book costs (${row.cost} MP). Cooldown: ${base.cooldownRounds} rounds.`;
+            }
+        }
+        /* the cast copy doSpell runs: the borrowed id + name, the book's price, AP and cooldown */
+        function _overdueCastRow(unit, row) {
+            _overdueLoad(unit);
+            if (!row || !row.overdueOf) return row;
+            const c = Object.assign({}, row, { id: row.overdueOf, name: row.overdueName, _overdueOf: 'nrOverdue', _overdueRowName: row.name });
+            delete c._odBase;
+            return c;
+        }
+        /* the moment she opens the book: the log, the floating word over her and the book's own look (fire() is relayed) */
+        function _overdueFlourish(unit, spell) {
+            addLog(`📚 ${_ctName(unit)} renews ${_ctSp(spell.name)}. It is overdue.`, undefined, undefined, { actor: unit });
+            showFloatingTextForUnit(unit, `📚 OVERDUE: ${spell.name}`, 'streak', { durationMs: 1200 });
+            try {
+                const V = window.ThreeVFXEffects;
+                if (V && state.phase === 'battle' && !_skipVisuals() && V.hasMapping('nrOverdue', 'aura')) V.fire('aura', 'nrOverdue', { tx: unit.x, ty: unit.y, sx: unit.x, sy: unit.y, borrowed: spell.id });
+            } catch (e) {}
+        }
         /* 🛵 THE RIDE-ALONG (the Delivery Boy): an ally Riding with him gets off on the free square beside him nearest where it
            got on when he finishes a walk (finishMoveAt). A rider that walks off on its own first just gets off. */
         function _deliveryDrop(unit, fx, fy) {
@@ -14397,18 +14465,29 @@
             }
             if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
         }
-        /* 🐸 LEAPFROG (the Karate Frog, `leapOver`): after the hit he lands on the square straight behind the target, if free */
+        /* 🐸 LEAPFROG (the Karate Frog, `leapOver`): after the hit he lands on the square straight behind the target, if free.
+           THE KARATE FROG PASS (2026-11-17): the square comes from frogLeapLanding (the forecast shows the same landing), a
+           ledge higher than his jump climb is no landing (the jump rule), and the vault rides the relayed 'frogleap' path
+           (the guest got a flat glide: the displace relay never carried `leap`) with its own look (_ESC_LOOKS.nrLeapfrog). */
         function _frogLeapOver(unit, target) {
             if (!unit || !target) return;
-            const dx = Math.sign(target.x - unit.x), dy = Math.sign(target.y - unit.y);
-            if (!dx && !dy) return;
-            const bx = target.x + dx, by = target.y + dy;
-            if (!_nrFreeSquare(bx, by)) { addLog(`🐸 ${_ctName(unit)} has no room to land behind ${_ctName(target)}.`); return; }
+            const land = frogLeapLanding(unit, target);
+            if (!land) return;
+            const bx = land.x, by = land.y;
+            if (land.blocked) {
+                addLog(`🐸 ${_ctName(unit)} has no room to land behind ${_ctName(target)}${land.blocked === 'high' ? ' (that ledge is too high)' : ''}.`);
+                return;
+            }
             const fx = unit.x, fy = unit.y;
             unit.x = bx; unit.y = by;
             if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(bx, by, unit.z);
             unit._trackTilesMoved = (unit._trackTilesMoved || 0) + 2;
-            animateDisplacement(unit, fx, fy, bx, by, 280, { leap: true });
+            const _lfDelay = actionMs(160);   // the kick lands, then the vault
+            animateDisplacement(unit, fx, fy, bx, by, 620, { escStyle: 'frogleap', delayMs: _lfDelay });
+            if (!_skipVisuals() && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.fireGeometry === 'function') {
+                const _lf = () => { try { if (state.phase === 'battle') window.ThreeVFXEffects.fireGeometry('nrLeapfrog:leap', bx, by, 0, { fromX: fx, fromY: fy }); } catch (e) {} };
+                if (_lfDelay > 0) window.setTimeout(_lf, _lfDelay); else _lf();
+            }
             if (!target.dead) faceStrikeTarget(unit, target);
             resolveTileArrival(unit, { via: 'self' });
             addLog(`🐸 ${_ctName(unit)} leapfrogs over ${_ctName(target)} to ${coordLabel(bx, by)}.`);
@@ -42884,6 +42963,23 @@
             return adj.find(t => canOccupy(t.x, t.y)) || null;
         }
         window.chargeLandingTile = chargeLandingTile;
+        /* 🐸 Leapfrog (`leapOver`, the Karate Frog): the square straight behind the target on his line. null = no line;
+           { blocked: 'off' | 'taken' | 'high' } = no landing there (off the board or not standable, a body on it, a ledge
+           higher than his jump climb: drops are free like every jump). _frogLeapOver and the forecast read the same. */
+        function frogLeapLanding(unit, target) {
+            if (!unit || !target) return null;
+            const dx = Math.sign(target.x - unit.x), dy = Math.sign(target.y - unit.y);
+            if (!dx && !dy) return null;
+            const x = target.x + dx, y = target.y + dy;
+            if (!isInside(x, y) || !canOccupy(x, y)) return { x, y, blocked: 'off' };
+            if (state.units.some(u => u && !u.dead && u.id !== unit.id && u.x === x && u.y === y)) return { x, y, blocked: 'taken' };
+            if (typeof getHeightAt === 'function' && typeof getUnitJumpClimb === 'function') {
+                const from = Number.isFinite(unit.z) ? unit.z : getHeightAt(unit.x, unit.y);
+                if (getHeightAt(x, y) - from > getUnitJumpClimb(unit)) return { x, y, blocked: 'high' };
+            }
+            return { x, y };
+        }
+        window.frogLeapLanding = frogLeapLanding;
         /* Does this charge rush in BEFORE its strike (doSpell's third-person charge, _runChargeToTargetSpell) or strike
            from where the caster stands and hop in after (_runPostEffects)? doSpell and the forecast both ask HERE, so the
            preview hits from the same tile the cast does. The fog term reads the screen that RUNS the cast: online that is
@@ -43808,6 +43904,8 @@
                 }
                 /* ♟ THE CHESS PIECE: a capture takes the square (_runPostEffects) */
                 if (spell.chessPiece && target.hp <= 0 && !_clash) addMove(unit, target.x, target.y, 'self');
+                /* 🐸 Leapfrog: he lands behind the target (_runPostEffects → _frogLeapOver, the same picker) */
+                if (spell.leapOver && !_clash) { const lt = frogLeapLanding(unit, target); if (lt && !lt.blocked) addMove(unit, lt.x, lt.y, 'self'); }
                 if (spell.pushDistance && target.hp > 0 && (kind === 'damage' || kind === 'tackle') && !_clash) {
                     immovable(target);
                     const pdx = _swDir ? _swDir.dx : Math.sign(target.x - unit.x), pdy = _swDir ? _swDir.dy : Math.sign(target.y - unit.y);
@@ -47242,6 +47340,7 @@
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._activeZones = [];   // THE SPELL AUDIT FIX (2026-10-26): a live spell zone / fire never rides into the next match
+            state._lastAllySpell = {};   // 📚 THE LOADED BOOK: a Librarian never opens last match's book
             state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
@@ -48832,14 +48931,14 @@
             // (deployable activated instantly on an enemy) passes force=true —
             // that cast resolved as an offensive act and is recorded normally.
             if (spellSkipsCastCap(spell) && !force) return;
-            const key = spell.id || spell.name;
+            const key = _spellBookKey(spell);   // 📚 an Overdue cast marks Overdue's slot, not the borrowed spell's
             if (!key) return;
             if (!unit._spellsUsedThisTurn) unit._spellsUsedThisTurn = {};
             unit._spellsUsedThisTurn[key] = 1;
         }
         function spellUsedThisTurn(unit, spell) {
             if (!unit || !spell || !unit._spellsUsedThisTurn) return false;
-            return !!unit._spellsUsedThisTurn[spell.id || spell.name];
+            return !!unit._spellsUsedThisTurn[_spellBookKey(spell)];
         }
         window.spellUsedThisTurn = spellUsedThisTurn;
 
@@ -48964,6 +49063,7 @@
                 if (!unit || !spell) return null;
                 if (unitSpellsBlocked(unit)) return 'Silenced';
                 if (spell.floridaHeadline && _floridaHeadline(unit) !== spell.id) return 'Not today';   // 📰 not today's headline
+                if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
                 /* 👁 a spirit casts magic only (no body, no physical spells) and cannot project again while it is out */
                 if (unitIsSpirit(unit) && (spell.astral || spell.damageType === 'physical')) return 'Projecting';
                 // THE MOVE BLOCK ON SPELLS: a dash / teleport / escape / grapple reel / charge is movement
@@ -49182,7 +49282,7 @@
         // Round-stamp (not a tick counter) so nothing needs decrementing.
         function getSpellCooldownRemaining(unit, spell) {
             if (!unit || !spell || !(spell.cooldownRounds > 0)) return 0;
-            const ready = unit._spellCooldowns ? unit._spellCooldowns[spell.id] : null;
+            const ready = unit._spellCooldowns ? unit._spellCooldowns[_spellBookKey(spell)] : null;
             if (ready == null) return 0;
             return Math.max(0, ready - (state.round || 0));
         }
@@ -58432,6 +58532,7 @@
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._activeZones = [];   // THE SPELL AUDIT FIX (2026-10-26): a live spell zone / fire never rides into the next match
+            state._lastAllySpell = {};   // 📚 THE LOADED BOOK: a Librarian never opens last match's book
             state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
@@ -59058,6 +59159,7 @@
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._activeZones = [];   // THE SPELL AUDIT FIX (2026-10-26): a live spell zone / fire never rides into the next match
+            state._lastAllySpell = {};   // 📚 THE LOADED BOOK: a Librarian never opens last match's book
             state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
@@ -59273,6 +59375,7 @@
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._activeZones = [];   // THE SPELL AUDIT FIX (2026-10-26): a live spell zone / fire never rides into the next match
+            state._lastAllySpell = {};   // 📚 THE LOADED BOOK: a Librarian never opens last match's book
             state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
@@ -81648,6 +81751,9 @@
             if (spell && spell.weatherPatch && typeof spellWeatherResolved === 'function') {
                 spell = spellWeatherResolved(spell, (state.activeWeather || []).map(w => w && w.type).filter(Boolean));
             }
+            /* 📚 THE LOADED BOOK: Overdue casts a copy of the borrowed spell under its own id (its branch, its VFX), on the
+               book's MP, AP and cooldown (_overdueCastRow; nothing loaded = the row as it is, refused below) */
+            if (spell && spell.id === 'nrOverdue') spell = _overdueCastRow(unit, spell);
             /* Clash final authority: movement/positioning spells can never
                fire, whatever path armed them (kits are already stripped —
                this catches stale online/AI edge cases). */
@@ -82315,6 +82421,7 @@
             }
 
             const spellPower = spellPowerOf(unit, spell);   // the forecast reads the same sum
+            if (spell._overdueOf) _overdueFlourish(unit, spell);   // 📚 she opens the book (THE LOADED BOOK)
             let panelFocusTarget = null;
             let completionDelay = 0;
             _spellFocusLastShot = null;   // THE SHOT CLOCK: only a shot THIS cast plays holds its finish
@@ -82403,14 +82510,16 @@
 
                 if (spell.cooldownRounds > 0) {
                     if (!unit._spellCooldowns) unit._spellCooldowns = {};
-                    unit._spellCooldowns[spell.id] = (state.round || 0) + spell.cooldownRounds;
+                    unit._spellCooldowns[_spellBookKey(spell)] = (state.round || 0) + spell.cooldownRounds;   // 📚 Overdue's own cooldown
                 }
 
                 state._lastSpellCast = { spellId: spell.id, caster: unit.id, player: unit.player };
-                /* 📚 Overdue renews the last spell a teammate (not a Librarian) cast */
-                if (spell.id !== 'nrOverdue' && spell.id !== 'mimic' && unit.race !== 'librarian') {
+                /* 📚 Overdue renews the last spell a teammate (not a Librarian) cast; every Overdue row on that team loads it
+                   (THE LOADED BOOK: a passive / basic / a body-bound cast is never renewable, so the book keeps the one before) */
+                if (spell.id !== 'nrOverdue' && !spell._overdueOf && spell.id !== 'mimic' && unit.race !== 'librarian' && _overdueEligible(spell)) {
                     if (!state._lastAllySpell) state._lastAllySpell = {};
                     state._lastAllySpell[unit.player] = { spellId: spell.id, caster: unit.id };
+                    for (const _odU of (state.units || [])) if (_odU && _odU.player === unit.player) _overdueLoad(_odU);
                 }
                 _markSpellUsedThisTurn(unit, spell, _placementStruck);
                 // Damaging casts — and Protect-granting casts — end the turn

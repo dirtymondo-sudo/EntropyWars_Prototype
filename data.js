@@ -10479,14 +10479,14 @@ const RACE_ABILITIES = {
           desc: 'Rings the bell with his shoulder. Charges a Single Enemy up to 3 squares away and deals MEDIUM physical damage.' },
     ],
     'librarian': [
-        /* THE RENEWAL: the one race that casts its allies' spells. Overdue renews the last spell a teammate cast this match (battle.js state._lastAllySpell, written where every cast is recorded; resolved like the old Mimic). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
-        { id: 'nrShush', name: 'Shush', tier: 1, families: ['library'], cost: 25, apCost: 1, spellType: 'human',
+        /* THE RENEWAL: the one race that casts its allies' spells. Overdue renews the last spell a teammate cast this match (battle.js state._lastAllySpell, written where every cast is recorded). THE LOADED BOOK (the Librarian pass, 2026-11-17): her Overdue row takes the borrowed spell's whole shape and doSpell casts it under its own id (battle.js _overdueLoad / _overdueCastRow). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
+        { id: 'nrShush', name: 'Shush', tier: 1, families: ['library'], cost: 25, apCost: 1, cooldownRounds: 2, spellType: 'human',   /* cooldown 2 (the Librarian pass 2026-11-17): every pure silence is cd 2 (Shhh!, Vow of Silence, Counterspell); at 0 a 25 MP Shush kept one foe silenced for good */
           element: 'psychic', type: 'debuff', kind: 'debuff', range: 4,
           statusEffects: [{ id: 'silence', duration: 1 }],
-          desc: 'One finger to the lips. Silences a Single Enemy within 4 for 1 round.' },
+          desc: 'One finger to the lips. Silences a Single Enemy within 4 for 1 round. Cooldown: 2 rounds.' },
         { id: 'nrOverdue', name: 'Overdue', tier: 2, families: ['library'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
           type: 'utility', kind: 'utility', range: 4,
-          desc: 'Renews the last spell a teammate cast this match and casts it herself on a target within 4: a damage spell on an enemy, a heal or buff on an ally, a debuff on an enemy. Cooldown: 3 rounds.' },
+          desc: 'Renews the last spell a teammate cast this match and casts it herself, the whole spell: its range, its area, its statuses and its look. Costs that spell\'s MP (at least 50). Nothing to renew until a teammate casts. Cooldown: 3 rounds.' },
         { id: 'nrLateFee', name: 'Late Fee', tier: 3, families: ['library'], cost: 75, apCost: 1, spellType: 'human',
           element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 140, range: 4,
           bonusVsStatus: { status: 'silence', mult: 1.5 },
@@ -10596,7 +10596,7 @@ const RACE_ABILITIES = {
           element: 'water', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 90, range: 4, pullDistance: 3,
           desc: 'Thwip. Deals WEAK physical damage to a Single Enemy within 4 and drags it up to 3 squares toward him. Cooldown: 2 rounds.' },
         { id: 'nrFlyingKick', name: 'Flying Kick', tier: 3, families: ['frogfu'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
-          type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 150, range: 3, chargeToTarget: true, pushDistance: 2, collisionBonus: 40,
+          type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 150, range: 3, chargeToTarget: true, chargeStyle: 'flykick', pushDistance: 2, collisionBonus: 40,
           desc: 'Off the wall and through the air. Charges a Single Enemy up to 3 squares away, deals HEAVY physical damage and kicks it up to 2 squares back; hitting a wall or a unit deals 40 more. Cooldown: 2 rounds.' },
     ],
     'samurai slug': [
