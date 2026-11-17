@@ -2054,3 +2054,22 @@ the 160 + crop trick cut heads off; at 128 every one came back 127-128 px tall a
 source was the future-cop model's front render (`/mnt/project-files/time-cop/timecop_models_front.png`), and TIME_COP_LOOKS.future
 now points at `Races/police/timecop_px.png` (the cop look keeps policeofficer.png). Files + sheet:
 `/mnt/project-files/sprite-ai-test/batch-20261117/`.
+REDO (same night, mondo: six were cropped at the top): the real cause was the background cut, not the size. A flood fill that
+compares each pixel to its NEIGHBOUR drifts into dark or grey clothes and ate most of the figure, so Sprite AI got fragments and
+invented a figure that ran off the canvas. Fix: mark background with numpy against the BORDER colours only (no drift, distance
+< 30, < 14 for the dark Time Cop render, < 24 for the skater's white socks), flood from the border over that mask, and LOOK at
+the cut-out on magenta before spending a token. With a whole cut-out, a restyle at size 128 keeps the framing (top row empty).
+Redone: sewer gator, skater, tech ceo, magician, male shaman, time cop -> `<race>_px2.png`.
+
+BATCH 3 (2026-11-17, mondo's list of 24): 18 done from their Meshy concepts (`new-races/concepts/`): banker (redo, `banker_px2`),
+the male atlantean, cyborg, fallen angel, gargoyle, incubus, ki fighter, knight, merman, mime, mummy, necromancer, swordfighter,
+vampire, zombie and the female clown, politician, professor (each `<old file>_px.png` beside the old cut). Cut-out tips: a concept
+with a lighter halo behind the figure (atlantean) needs distance < 75; a pale figure on a halo (vampire) needs the silhouette way:
+dark pixels dilated, holes filled, eroded back. Restyle at 128, then shift the sprite so the feet sit on the bottom row; redo any
+with figure pixels on row 0 (politician, swordfighter needed a second roll). NO SOURCE ART yet: male skater, male lifeguard
+(both races are women only), female nordic (no model), DOOR agent male + female (creator looks), male ghost (the Halloween pack's
+sheet ghost, no concept). Files: `/mnt/project-files/sprite-ai-test/batch3-20261117/`.
+DOOR AGENTS (2026-11-17, mondo: "agent belle and the male door agent model, the default character"): no concept art, so the source
+is a front render of each cast GLB (`Races/maincharacters/Meshy_AI_<Player|Agent_Belle>_biped_Character_output.glb`) in a bare three.js
+page (orthographic, transparent, hemisphere + two key lights), already clean alpha. At 124 px the restyle touched row 0 on both; the
+input at 114 px (more headroom) fixed it. Wired in `_CHARACTER_SPRITES_GENDERED['door agent']` (`door_agent_m_px`, `agent_belle_px`).
