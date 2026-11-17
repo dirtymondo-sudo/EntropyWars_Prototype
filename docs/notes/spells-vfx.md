@@ -3828,6 +3828,19 @@ side follow THE RIOT PASS from the viewer's seat (cyan-blue yours, pink-red thei
 - Inservice (warCry `aura`, radius 2): two whistle rings, a ring on every square of the drill zone, the side ring to its edge.
 - Three Whistles: `fireGeometry('nrThreeWhistles:blow', …, radius)`: three big whistle rings + three floor rings to her reach.
 
+## THE SAMURAI SLUG (2026-11-17, three-vfx-effects.js, right after THE LIFEGUARD)
+Thread "Polish Samurai Slug spells and VFX". Two tones for the slime (the black ooze 0x23261c, its green sheen 0xa8e04a) and the
+blade's white; rings that tell the side follow THE RIOT PASS from the viewer's seat. Helpers `_sl*`; kill-switch `EW_NO_SLUG_VFX`.
+- Slime Slash (`impact`): a green-sheen crescent then a thin white edge through the body; the ooze splats on its square.
+- Salt-Proof Stance (`aura`): six shell plates in the side's colours rise round him, salt grains fall and bounce, a side ring;
+  `fireGeometry('nrSaltProof:ring', x, y, 1, { owner })` (battle.js, relayed): the 4 squares round him splat with ooze in turn.
+- Iai Draw (`impact`, on the charge's arrival): no wind-up, one hairline white cut across the body, the flash a beat after, a flat
+  white crescent; `fireGeometry('nrIaiDraw:lane', landX, landY, 0, { fromX, fromY, owner })` (both charge paths in battle.js): a
+  strip of the side's colour along the lane, then each square splats over.
+- Ronin's Wake (`aoe` with `geom3D`): a side ring to his reach + a sheen ring, then every enemy in the ooze within reach (fog-gated)
+  is cut in turn, nearest first, 110 ms apart: the slime spits up, a white crescent, a green root ring.
+Probe: /mnt/project-files/samurai-slug-polish/probe_slug.js (real VS-CPU TDM; `SLUG_CPU=1` also lets a CPU slug play 3 rounds).
+
 ## THE MAGICIAN (2026-11-16, the new races; mondo: "work on their spell pools and spell vfx")
 Code: three-vfx-effects.js block "MAGICIAN" right after the Mime rows (same `pzSig` / `_pzDef` hook, helpers `_mg*`). Canvas
 textures (the stage deck's back, the ace of spades, a dove in two wing frames, the saw blade) + R2 terrain sheets (leather hat,
@@ -3894,4 +3907,51 @@ block; `_PZ_SIGS.fmGatorToss / fmBathSalts / fmHurricane`, SPELL_MAP bolt / aura
   and confetti going round; a splash on every square of the 3x3 (Wet), his side's rim round the area.
 - Probe note: the CSS floating numbers run on real time, so a slowed `performance.now` probe shows them before the 3D hit.
   Proof + probes: /mnt/project-files/florida-man-polish/.
+
+
+## THE REFEREE (2026-11-17, thread "Polish Referee spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx")
+Officiating had only the generic looks. three-vfx-effects.js "THE REFEREE" (right after THE TECH CEO; `_PZ_SIGS.rf*`, helpers `_rf*`).
+Cards keep their own colours (solid yellow / red, read on grass); rings and floor marks are the Referee's SIDE from the viewer's seat
+(`_rfSides`: `owner`, else the body at fromX/cx; yours `_CEO_ALLY` cyan-blue, theirs `_CEO_ENEMY` pink-orange). Cards are held BESIDE
+the head across the lens toward his side (`_rfCardAnchor`), never over the body or its number. Every piece gates on `_pzSeen`.
+- Card `impact`: two whistle rings at him (`_rfWhistle`), the yellow card snaps up beside the foe's head (~1.25 squares) and is held 1.25 s.
+- THE RED CARD `redCard` (battle.js `_refereeRedCard` → ThreeVFXEffects.fire, relayed): the red card comes up a hand in front of the
+  yellow one 320 ms later, a red floor flash + short column, red + side rings. `backOn` (`_doorExitReturn`'s sent-off branch): a ring
+  and a short column on its square.
+- Penalty (on the hit's `burst` beat via `_BUG_ON_BURST`: a close strike fires no bolt or impact): three whistle rings, a yellow penalty flag (canvas, with its weighted knot) thrown onto the foe's
+  feet; on the hit three chevrons slide out on the floor the way it is marched back.
+- Timeout `aoe`: the T hand signal high over the middle, a stopwatch face on the 3×3 whose hand sweeps once and stops dead (white
+  ring), a rim on every square.
+- OFF THE FIELD (three-renderer.js, before the realm branch): any `exited` unit (red card or the DOOR Gun's EXIT) is drawn as a
+  shade (`OFF_FIELD_OPACITY` 0.3, outline off) for both sides, fog still rules an enemy's. It still holds its square (unitAt).
+Proof: /mnt/project-files/referee-polish/.
+
+## THE CICADA BROOD (2026-11-17, three-vfx-effects.js block "THE CICADA BROOD", before "THE SPACE PROPS")
+Shell green over black + red eyes; the area rings in the side colour from the viewer's seat (THE RIOT PASS). No screen flash.
+- Dig In (`aura`): clods + dust burst up, an earth ring, a dark burrow mouth opens under it and closes (1.9 s), a thin side ring.
+- The Brood pulse (`fireGeometry('nrDigIn:pulse', x, y, stacks, { onlyPlayer: owner })` from battle.js `_cicadaBrood`): one green
+  ring per stack out of the ground + a small red one; only its own side sees it (the enemy must not learn where it waits).
+- Buzz (`aoe` 3x3): six fast thin rings tremble over the area at mixed heights, dust shivers off each square, the side ring.
+- Chorus (`aoe` r 2 round it): 2 green rings of sound at head height (thin rings; one faint plate: stacked additive plates washed the caster out white at Brood 3) + 1 red one per Brood stack spent, the side ring on the floor;
+  with stacks, 4 grasshoppers a stack leap out of the ground (mondo's insects, THE INSECTS `_bugRun`). The stack count is read
+  at the cast (battle.js `_fireAoeVfx` puts `brood` in the relayed fire() params; `_fireAoeMapped` hands the params to a
+  geometry that sets `wantsParams`).
+
+## THE KARATE FROG (2026-11-17, thread "Polish Karate Frog spells and VFX")
+His three spells had no look of their own (generic family recipes). three-vfx-effects.js block "THE KARATE FROG" (after the Skater's
+looks), helpers `_frog*`, kill-switch `window.EW_NO_FROG_VFX`. One language: a KICK STAR (canvas six-point star, solid not additive,
+popped on the caster's side of the body and gone in ~300 ms so the victim and its number read), POND WATER (water-splash droplets,
+ripple rings), SPEED in the viewer's side colours (own cyan-blue, other side pink-orange).
+- Leapfrog: `impact` + `_spell3DGeometry.nrLeapfrog` (star + splash + ring); the vault = `_ESC_LOOKS.nrLeapfrog` (style 'frogleap'),
+  drawn by `_spell3DGeometry['nrLeapfrog:leap']` which battle.js _frogLeapOver fires with fireGeometry (relayed, fog-gated on the
+  landing). NOT a SPELL_MAP teleport row: resolveTravel would stage the strike as a teleport. Take-off splash + ring, a dotted arc of
+  side-colour dots that light as he passes, water dripping off his body, a landing splash + two ripple rings.
+- Tongue Lash: `pull` def with `pzOwnTether` → `_PZ_SIGS.frogTongue`: thick pink tongue with a sticky round tip out in 130 ms from
+  his mouth, a pink splat star where it sticks (fades so the number reads), rides the victim through the drag (_pzPullRig), snaps back.
+- Flying Kick: `impact` + `_spell3DGeometry.nrFlyingKick`: side-colour speed lines down the lane behind him, a big star, a pond
+  splash, three streaks off the far side of the victim pointing where the kick sends it.
+- Proof: /mnt/project-files/karate-frog-pass/ (frog_show.js = close camera with performance.now frozen at set delays; frog_probe.js =
+  real VS CPU casts; frog_ai_probe.js = two CPU frogs in training tempo). On the cloud's software renderer the cast clips run slow
+  (the mixer's per-frame step), so the Flying Kick's star can show before his foot there; on a real GPU they should agree
+  (the same clip path as Sky Tackle; not measured on a GPU here).
 

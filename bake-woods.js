@@ -317,6 +317,10 @@ count.props = props.length; count.features = features.length; count.doors = door
    own: the legs between plots (a leg to a side with nobody past it goes back to forest; a side with a new neighbour gets a leg from the
    plot's hub), the levels, the open ground, the paint, the room-wide scatter, the doors on the seams. Rules: docs/notes/areas-complexes.md
    "ONE WORLD, HOW A ZONE MOVES" + "ONE WORLD, THE TEST SLICE". ── */
+/* THE LATE CUT (2026-11-17, the slice fixes): districts/<LETTER>.js late(ctx), a district's square changes AFTER every piece is set down and every check of the
+   home frame is done, so no piece is seated again. Only the One World rooms below read them (their open ground, paint and levels are laid again there); a
+   district whose plots still stand in the home room must not use it. */
+stage('late');
 const PJ = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plots.json'), 'utf8'));
 const MOVER = require('./ow-move.js')({ cols: G, rows: G, cell, fill: 't', plots: PLAN.plots, features, props, npc, doors });
 const v13 = letter => { const d = PJ.districts.find(q => q.today && q.today.room === 'site_prebuilt_fairy_forest_plots' && q.today.districts.indexOf(letter) >= 0); if (!d) throw new Error('plots.json has no Woods district ' + letter);
@@ -339,7 +343,7 @@ const STAND = [
       ends: { woods_camelot: { plot: 'P00-04', side: 'N' } },
       /* the joint between the two districts is the main trail, on the Culvert's own crossing (squares 7 to 9); the Gully's cabin stands on the bed's line, so the
          walk passes north of it; the way on to the Storm Drain passes north of the sewer mouth's head; the Sewer Mouth's way south starts on its south rim */
-      cross: { 'P02-05|P03-03': [7, 8, 9], 'P03-05|P05-04': [3, 4, 5], 'P05-04|P05-03': [3, 4, 5] }, from: { 'P05-04:S': [3, 8] } },
+      cross: { 'P02-05|P03-03': [7, 8, 9], 'P04-03|P04-04': [3, 4, 5], 'P03-05|P05-04': [3, 4, 5], 'P05-04|P05-03': [3, 4, 5] }, from: { 'P05-04:S': [3, 8] } },
     { id: R_REST, part: 'plots', label: 'THE WOODS', sub: 'THE REDWOOD TRAIL · THE RITUAL GROUND · 18 PLOTS', letters: ['T', 'G'], list: PLAN.plots.filter(p => p.district === 'T' || p.district === 'G').map(p => ({ id: p.id, wx: p.x, wy: p.y })), world: false, spawn: 'P02-02', home: true,
       parti: 'Two districts of nine plots, every plot a twelve by twelve board: clearings joined by dirt paths through forest you cannot enter, climbing from the creek to the snow.',
       seams: {
@@ -401,7 +405,8 @@ STAND.forEach(S => {
     const ways = [];
     Object.keys(S.seams || {}).forEach(key => { const [pid, sd] = key.split(':'), e = R.ofHome[pid], sm = S.seams[key]; if (!e) throw new Error('seam on a plot that is not in ' + S.id + ': ' + key);
         const id = sm.id || R.seamId(e, sd), d = crossing(e, sd, sm.k);
-        doorsOut.push(Object.assign({ id }, d, { way: 'trail', label: sm.label, sub: sm.sub, action: { room: sm.room, at: sm.at || id }, desc: sm.desc || 'The path goes on.' }));
+        if (sm.open) d.passage = Object.assign(d.passage || {}, { w: sm.open });   // THE OPEN SEAM (data.js DOOR_HQ.ways.open): `open: <metres wide>` on a seam in open country; the Woods' seams are all forest
+        doorsOut.push(Object.assign({ id }, d, { way: sm.open ? 'open' : 'trail', label: sm.label, sub: sm.sub, action: { room: sm.room, at: sm.at || id }, desc: sm.desc || 'The path goes on.' }));
         if (d.wall !== 'free') ways.push({ side: d.wall, at: d.x != null ? d.x : d.z }); });
     /* 5. the links that end in this room (data.js DOOR_HQ.links): the tool's own (LINK_ENDS, on the home room's east wall) and the two written by hand */
     const HOME_ENDS = Object.assign({ woods_stair: ['a', { wall: 'free', x: -17.5, z: 55.5, face: 180 }], woods_camelot: ['a', { wall: 'w', z: 3.5 }] }, ...Object.keys(LINK_ENDS).map(id => ({ [id]: [LINK_ENDS[id][0], { wall: 'e', z: LINK_ENDS[id][1] }] })));
