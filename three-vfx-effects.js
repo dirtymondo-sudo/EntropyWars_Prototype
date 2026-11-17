@@ -47204,6 +47204,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        plasma IS a beam). */
     if (EFFECTS['raceChoppa_beam']) { EFFECTS['raceChoppa_beam'].beamGatling = true; EFFECTS['raceChoppa_beam'].gatlingRounds = 10; }
     if (EFFECTS['_turretBlast_beam']) { EFFECTS['_turretBlast_beam'].beamGatling = true; EFFECTS['_turretBlast_beam'].gatlingRounds = 6; }
+    /* THE VFX CLEANUP (B3): the turret blast's untinted white flashes (the round's head, the hit on the body) burn red-orange */
+    Object.keys(EFFECTS).forEach(function (k) {
+        if (k.indexOf('_turretBlast') !== 0 || !EFFECTS[k] || !EFFECTS[k].layers) return;
+        EFFECTS[k].layers.forEach(function (l) { if (l && (l.sprite === 'flash' || l.sprite === 'muzzle-flash') && l.tint == null) l.tint = 0xff6a2a; });
+    });
     if (EFFECTS['plasmaGun_beam']) {
         EFFECTS['raceSuppressiveFire_beam'] = Object.assign({}, EFFECTS['plasmaGun_beam'], {
             beamGatling: true, gatlingRounds: 12, beamMs: 340, chargeMs: 110,

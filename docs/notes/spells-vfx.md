@@ -4419,3 +4419,18 @@ New pieces: `_l5Shard` (a shard of mirror), `_l5Glint` (the light off glass).
 - **Rangefinder** (`_l5Rangefinder3D`): brackets close on the glassed square, a reticle settles, the count of squares reads out.
 - The capture harness starts its frames about 3 s late on a tile-click cast (Prism Mirror, Rangefinder, Far Sight): shoot those with `--opts` and a `pre` that repeats `VFX3D.fire('burst', id, {tx, ty, sx, sy})`.
 - Frames: docs/plans/vfx-cleanup/img/own-look/L5_part2.jpg.
+
+
+## THE VFX CLEANUP, B3 part 2: THE SIGHT LASERS (2026-11-17, three-renderer.js + three-vfx-effects.js)
+mondo 11-17: "those are lasers too"; own / friendly cyan-blue, enemy red-pink, from the viewer's seat.
+- `_updateLaserSightBeams` (the turret's sight from `_updateTurretAim`, Take Aim's from `state._delayedSpells`): each
+  wanted line now carries `own` (owner / source player === `_viewerPlayerNum()`) and `tgt`. Colour `0x35c8ff` own,
+  `0xff3358` enemy. A dark sleeve cylinder (`entry.edge`, normal blending) round the core; the line is 0.45x as thick.
+- THE LOCK: when `tgt` changes the entry's clock restarts: for 0.55 s the far end sweeps round the target (the amplitude
+  dies as a square) and the dot is wide, then steady, and the dot ticks once (0.17 s). Per client, from what it already
+  draws: nothing relayed, the fog checks above it are unchanged.
+- `EW_NO_VFX_CLEANUP` = the old red rod.
+- The turret blast: every untinted `flash` / `muzzle-flash` layer of the `_turretBlast*` recipes is tinted `0xff6a2a`.
+- Seen: Take Aim, own side (docs/plans/vfx-cleanup/img/b3_sight_after.jpg). Not seen: enemy colour, a turret, the sweep,
+  online from the guest's seat. Open: the gun rig's sniper line (`_sigGunRig3D`), a charge at the barrel.
+
