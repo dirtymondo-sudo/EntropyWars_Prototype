@@ -1,4 +1,4 @@
-# NPC ENCOUNTERS: the plan and the guide (rev 2, 2026-11-17)
+# NPC ENCOUNTERS: the plan and the guide (rev 3, 2026-11-17, with mondo's answers)
 
 mondo uploaded an NPC encounter concept (v0.3, made with another AI that did not know the game; kept word for word in
 `concept-v0.3.md` beside this file). This file fits that concept to Entropy Wars as it stands on main today: the roster,
@@ -43,22 +43,21 @@ closing line is the right rule: few presets, few universal reactions, clear limi
    one exception of 11-16 (rare muggings and drive-bys, npc-system.md round 2) give way to the concept's rule: Brutes attack
    when they see you, Territorials after a warning, Opportunists when you look weak. The muggings become one case of this.
    Pacing still matters (his 11-16 words: "enough to feel alive, never annoying"), so how often is a number to set (Q2).
-3. **No factions** (owner-rules.md §2) is a standing rule outside encounters, so the concept's "faction" relationship is
-   left out: a Guard or Protector protects a PLACE (its work building, its district) or a named RACE. If mondo wants
-   factions back, that is Q19.
+3. **The old factions are gone** and play no part here (mondo 11-17). In their place: natural GROUPS of races who stand
+   up for each other (cops and firefighters; several of the same race), section 3.2.
 4. **No followers, units named after their race** (owner-rules.md §2). "Bandit joins the party" cannot mean a follower in
    the walk; the party is the party sheet. And there is no Merchant, Bandit or Bartender race: the plan uses the real roster
    (section 3).
 5. **Allies cannot be struck at all.** `hqEncounterCharOk` refuses story cast, agents, the clone and the online shift, and
    DOOR HQ is a safe hub (story characters only, never a wild room). So the concept's "ally attack rules" are already
    decided: you cannot attack them. Kept as is.
-6. **Recruiting today is the One-Way Door capture** (CAPTURE_PLAN.md, battle.js "THE ONE-WAY DOOR", `hqCaptureEnlist`,
-   ONE OF EACH + the planned holding tank). The concept's "join the party" offer is a second way in, through the same
-   enlist (party, else roster, else the holding tank). How the two sit together is Q6.
-7. **There are no shops in the zones** (buying is the DOOR HQ Dispensary + the bag, which does not restock). The concept's
-   merchant needs one: step 6c adds zone shops (a Merchant temper on races that sell, e.g. a Chef at a restaurant). Q7.
-8. **Units do not learn spells from people today** (a unit's spells are its race kit + the circuit, RACE_FAMILIES). The
-   concept's "teach a spell" adds that: the teacher's kit becomes a source for the circuit. Q8.
+6. **Recruiting today is the One-Way Door capture** (`hqCaptureEnlist`, ONE OF EACH + the planned holding tank). The
+   concept's "join the party" offer is IN (mondo 11-17) and lands through the same enlist.
+7. **No shops in the zones, no spell learning from people, no quest clues yet.** mondo 11-17: shops and items need their
+   own plan; he has his own spell-learning concept; clues wait for more quests. So the merchant discount, the wizard's
+   spell and the bartender's information are left out of this plan.
+8. **The offers that stay** are what a losing NPC can give now: money, health potions, revives (mondo 11-17), joining
+   you, or being spared.
 9. **The NPC spawn system already exists and is being built** (npc-system.md, claims row "Disaster City NPCs: the spawn
    system", held by the second account): set levels per district and tier, variants, caps that refill, zodiac, the boss
    sheet, spontaneous events. This plan sits ON TOP of it and must not rebuild any of it (section 7).
@@ -90,213 +89,228 @@ closing line is the right rule: few presets, few universal reactions, clear limi
 | The round boundary | **BUILT** | battle.js `state.round`, `processEndOfRoundStatuses`, `processEndOfRoundZonesAndSeeds`, `processEndOfRoundRegen`, `showEndOfRoundOverview` | The concept's "reuse the end-of-round phase" has a real place to hook in. |
 | Other walkers during a fight | **CHECK** | step 0 confirms it | My reading: the fight builds the room's field and the walkers are not part of it, so nobody watches. Step 0 must check this in code before step 7 is planned. |
 | Awareness (an NPC notices you) | **NEW** | | Walkers do not look at you, turn, step aside or react. |
-| NPC-started fights | **NEW** (REPLACES "never random", see 1.2) | | The approved muggings / drive-bys (npc-system.md delivery 7, not built) fold into this. |
+| NPC-started fights | **NEW** (REPLACES "never random", see 1.2) | | The approved muggings / drive-bys (npc-system.md delivery 7) are NOT built on main yet; step 4 builds them. |
 | Offers in a fight (talk mid-fight) | **NEW** | | |
 | Witnesses, spectators, joining a fight | **NEW** | | |
 | NPC-to-NPC trouble | **NEW** | | |
 
 ---
 
-## 3. The presets, fitted to the roster
+## 3. The tempers, the groups and the room mix
 
-The concept's eight presets become one small field per race, the **temper**. Same names where they fit; "Typical enemy"
-is folded into Opportunist and Brute (in a world with no factions, "enemy" is a temper, not a side). Merchant comes in with
-the zone shops (step 6c). Every race-to-temper pick below is a PROPOSAL and an example, not the full list: step 1 tags all 157 races.
+### 3.1 The tempers
+The concept's presets become one small field per race, the **temper**. "Typical enemy" is folded into Opportunist and
+Brute. Merchant waits for the shops plan (mondo 11-17: items and shops get their own plan and threads). Step 1a tags the
+races of **Disaster City first** (the vertical slice); other zones come later. Every pick below is an example.
 
-| Temper | Normal life | When struck | Examples from the roster (PROPOSAL) |
+| Temper | Normal life | When struck | Examples (PROPOSAL) |
 |---|---|---|---|
-| **Civilian** | Its day or its loop; steps out of your way | Flee → Talk → Fight | Hippie, Professor, Librarian, Chef, Delivery Boy, Mime, Bunny Girl, Influencer, Banker, Skater, the city's ordinary people |
-| **Guard** | Patrols or stands at its post; watches you | Fight (a warning line first when you are only trespassing) | Police Officer, Sheriff, Time Cop, Lifeguard, Crystal Guardian, Knight |
-| **Territorial** | Holds a spot (a lair, a field, a gate); warns you when you come close | Talk (the warning) → Fight | Yeti, Bigfoot, King Kong on his field, Minotaur, Dragon, Kraken, Sewer Gator |
-| **Protector** | Lives normally; steps in when its place or its people are hit | Fight on stepping in | Superhero (male + female), Sidekick, Firefighter, Eagleman, Angel |
-| **Opportunist** | Sizes you up; may approach when you look weak (low HP party) | Talk → Fight; may run when losing | Gangster, Goblin, Pirate, Florida Man, Politician, Televangelist, Tech CEO |
-| **Brute** (the concept's Aggressor) | Moves at you when it sees you | Fight at once | Zombie, Shadow Entity, Werewolf, Wendigo, Ghoul, Flesheater, Skinwalker |
-| **Merchant** (with step 6c) | Sells at its counter or stall | Talk → Fight | Chef at a restaurant, Banker, Pirate at a stall (PROPOSAL) |
-| **Coward** (the concept's Pacifist) | Avoids you | Flee → Talk → Fight (always the full three, never more) | Rabbit, Gnome, Fairy, Unicorn |
+| **Civilian** | Its day; steps out of your way | Flee → Talk → Fight | Hippie, Professor, Librarian, Chef, Delivery Boy, Mime, Bunny Girl, Influencer, Banker, Skater, the city's ordinary people |
+| **Coward** | Avoids you | Flee → Talk → Fight (the full three) | Rabbit, Gnome, Fairy, Unicorn |
+| **Guard** | Patrols or stands at its post; watches you | Fight (a one-line warning first if you only trespass) | Police Officer, Sheriff, Time Cop, Lifeguard |
+| **Territorial** | Holds a spot (a lair, a field, a gate); warns you when you come close | Talk (the warning) → Fight | King Kong on his field, Yeti, Bigfoot, Minotaur, Sewer Gator |
+| **Protector** | Lives normally; steps in when its place, its people or its group is hit | Fight when it steps in | Superhero (male + female), Sidekick, Firefighter, Eagleman |
+| **Opportunist** | Sizes you up; comes at you when you look weak | Talk → Fight; may run when losing | Gangster, Goblin, Pirate, Florida Man, Politician, Televangelist, Tech CEO |
+| **Brute** | Comes at you when it sees you | Fight, no Talk (mondo 11-17: some skip Talk) | Zombie, Shadow Entity, Werewolf, Wendigo, Ghoul, Flesheater |
 
-Rules that stay with every temper:
+Rules for every temper:
+- **Three strikes at most** to a fight for the most reluctant. A temper may skip steps, never add.
+- **The ladder starts over** when an NPC that fled is struck again later (mondo 11-17, Q15): three strikes again, never more.
+- Roles are tags on top: `boss` (the boss sheet, npc-system.md delivery 6), `unique` (the one-of-a-kind tier), `wildlife`
+  (growls instead of Talk).
+- **Nobody blocks a path** while it flees, watches or warns. No followers. DOOR HQ keeps story characters only and stays safe.
+- The temper is per race, with overrides per room and per resident (a Police Officer off duty could be a Civilian).
 
-- **Three strikes at most** to a fight, for the most reluctant (the concept's own rule). A temper may skip steps, never add.
-- **Roles are tags on top of a temper**, not more presets: `boss` (comes from the boss sheet, npc-system.md delivery 6),
-  `unique` (the one-of-a-kind tier, already in `HQ_SPAWN_RULES`), `wildlife` (no Talk lines: it growls instead).
-- **No temper may block a path** while it flees, watches or warns (owner-rules.md §2). Every new walk uses the existing
-  nav, which already treats people as non-blockers for each other.
-- **Fewer NPCs indoors, more outdoors** is the spawn system's knob, not a temper's. DOOR HQ keeps story characters only
-  and stays a safe room: no temper runs there.
-- The temper is per race, with a per-room or per-resident override (a Police Officer off duty could be a Civilian).
+### 3.2 The groups (NEW, mondo 11-17, needs more design: step 1a)
+The old factions are gone and have nothing to do with this. A **group** is a natural group of races who stand up for each
+other: hit one and the others of its group who are AWARE may step in. mondo's words: "based on natural groups, like cops
+and firefighters", and "attacking one race while there are multiple of that race around, they would probably wanna defend
+and hop in the fight too".
+
+Two rules, both PROPOSALS:
+1. **Same race:** every unit of the race you hit is in its group automatically (hit a Police Officer near two others).
+2. **Named groups:** a short list of races that back each other. A first draft for Disaster City (step 1a finishes it):
+
+| Group (plain name) | Races (PROPOSAL) |
+|---|---|
+| Emergency | Police Officer, Firefighter, Sheriff, Time Cop, Lifeguard |
+| Heroes | Superhero (m + f), Sidekick, Eagleman, Antihero? |
+| Street | Gangster, Goblin, Florida Man |
+| Show people | Clown, Mime, Ringmaster, Popstar, Bunny Girl |
+| The dead | Zombie, Ghoul, Flesheater, Ghost |
+
+Whether a group member steps in still goes through its temper: a Protector or Guard of the group steps in, a Civilian of
+the same race may only flee or shout. A unit can be in one named group at most (keeps it readable).
+
+### 3.3 The room mix (mondo 11-17, Q2: "depend on the room and the unit")
+How hostile a place is comes from the room, not one global number. Each room's `encounters` row (it exists already) gets
+a temper mix: Hell can be almost all Brutes, a quiet street almost no one hostile. The unit's own temper still decides what
+it does; the room decides who is there. No global cap on NPC-started fights. A short calm time after any fight (so you are
+not jumped as you land) is the only shared number (PROPOSAL: 30 s).
 
 ---
 
 ## 4. The design, part by part
 
 ### 4.1 Awareness (NEW)
-Kept from the concept: an NPC can see you without anything happening. In the game that means only small, cheap things on
-the walk: a head turn, a look, a step aside, a line over its head for a Guard or Territorial ("Keep moving."). Line of
-sight reuses `_hqLosClear`. It runs only on the drawn bodies (8 near you, 4 on a weak PC), so it costs nothing for the
-timelines that have no body. **Hostility is the temper, not a stored number.** Confidence stays computed (party HP vs
-its own level from `hqSpawnLevel`), never stored: the concept's open question 7 is answered "computed".
+An NPC can see you without anything happening. On the walk that means a head turn, a look, a step aside, and a line over
+the head for a Guard or Territorial. Line of sight reuses `_hqLosClear`. Only drawn bodies (8 near you, 4 on a weak PC)
+are aware, so it costs nothing for the timelines with no body. **Awareness is also what decides who joins a fight** (4.6):
+an NPC that did not see or hear it never joins. Confidence is computed (party HP against its own level from
+`hqSpawnLevel`), never stored.
 
 ### 4.2 The strike ladder (REPLACES the one-strike fight)
-Strike 1 makes a Civilian run (slower than you, along the nav, back to its home or work door);
-strike 2 makes it stop and Talk (the panel opens, walkers freeze as today; choices "Back off" / "Fight"); strike 3 starts
-the fight exactly as today. A Guard or Brute fights on strike 1 (today's behaviour, unchanged). The count lives on the
-walking body only and is kept until the fight starts or the NPC is gone from the room; it does not reset on an apology.
-E before you swing also works: Talk first, with "Fight" among the choices. The first quest's fight is a quest fight
-(`QUEST_FIGHTS`) and keeps its own start.
+Strike 1 makes a Civilian run (slower than you, along the nav, to its home or work door); strike 2 makes it stop and Talk
+(the panel opens and walkers freeze as today; choices "Back off" / "Fight"); strike 3 starts the fight as today. A Guard
+or Brute fights on strike 1. E before you swing opens Talk with "Fight" among the choices, except for tempers that skip
+Talk. The count lives on the walking body, is not reset by an apology, and starts over after the NPC has fled and you meet
+it again (3.1). The first quest's fight is a quest fight (`QUEST_FIGHTS`) and keeps its own start.
 
 ### 4.3 Who starts a fight on its own (REPLACES "never random")
-- **Brute:** sees you (line of sight, a range per temper), walks at you, and the fight starts when it reaches you. You can
-  outrun it or break its sight, so a fight is still avoidable.
-- **Territorial:** warns once when you step onto its ground (its marked squares), fights if you stay or come closer.
-- **Opportunist:** approaches when your party looks weak (low HP, a lone walker) and Talks first (a mugging is this).
-- **Guard / Protector:** only when it sees you strike someone, or its place or person is hit (section 4.6).
-- **Never:** in DOOR HQ, during a cutscene or a quest scene, or right after a fight (a short grace time, PROPOSAL).
-- **How often** (Q2): his 11-16 pacing word for muggings was about once an hour of play; Brutes in wild zones will be
-  more often by nature. A per-room `calm` knob (how many NPC-started fights per walk at most) keeps it from getting
-  annoying.
+- **Brute:** sees you, comes at you, the fight starts when it reaches you. You can outrun it or break its sight.
+- **Territorial:** warns once when you step onto its ground, fights if you stay or come closer.
+- **Opportunist:** comes at you when your party looks weak and Talks first: this IS the mugging. It may give a reason in
+  its line ("Nice shoes."), as mondo liked (Q16).
+- **Guard / Protector / group members:** when they see you strike someone of their own (3.2) or their place.
+- **Never:** in DOOR HQ, during a cutscene or quest scene, or in the calm time after a fight.
+- **Note for mondo:** the muggings and drive-bys are not in the game yet (npc-system.md delivery 7, not built on
+  main: no code for them in data.js or three-renderer.js on 11-17). This step builds them.
 
-### 4.4 Talk in a fight and the offers (PARTLY / PROPOSAL)
-A losing NPC may offer something on its own turn (it spends that turn, so the turn order never pauses: the concept's
-open question 2 answered "it costs the turn"). The player answers in a panel that obeys the back keys (Escape, E, right
-click). What an offer may be, fitted to systems that exist:
+### 4.4 Talk in a fight and the offers (NEW)
+A losing NPC may offer something on its own turn (it spends that turn, so turn order never pauses). The player answers in
+a panel that obeys the back keys (Escape, E, right click). What it can offer now (mondo 11-17):
 
-| Concept's offer | In this game | State |
+| Offer | Result | Notes |
 |---|---|---|
-| Bandit joins the party | Gangster (or any Opportunist) joins through `hqCaptureEnlist`, the same way a capture lands | NEW; how it sits next to capture: Q6 |
-| Merchant discount | Its shop's prices drop for you, kept on the save | NEW, after the zone shops (step 6c); Q7 |
-| Wizard teaches a spell | Wizard, Magician, Shaman, Necromancer ... teach one spell of their kit; it joins the circuit pool | NEW; Q8 |
-| Bartender reveals information | No Bartender race; any Civilian / Opportunist tells a clue or marks a place on the map through the quest system | NEW; Q9 |
-| (new) Spare me | The fight ends, the NPC flees and is "beaten" for the cleared ledger, no XP or half XP | PROPOSAL (Q10) |
-| (new) Pay you off | Spoils into the bag (the bag and spoils exist) | PROPOSAL (Q10) |
+| **Pay you off** | Money, health potions, revives and the like into the bag | The bag and the spoils exist; amounts are PROPOSALS by level and tier |
+| **Join you** | It joins the party through `hqCaptureEnlist` (party, else roster, else the holding tank) | mondo said yes (Q6); same ONE OF EACH rule as a capture |
+| **Spare me** | The fight ends, it flees | Counts as beaten for the cleared ledger and the refill |
 
-Offer lines are words a player reads. Who writes them is Q11 (Fable can draft, mondo approves; nothing ships unread).
+Not now (mondo 11-17): shops and discounts (their own plan), learning spells (his own concept comes later), information
+and clues (wait for more quests). The lines: as few as the system needs to work, Claude drafts, mondo approves.
 
 ### 4.5 NPC escape from a fight (NEW)
-Reuse the player's escape (same `escapeProblem` test turned around: no player unit sees it, it has the AP). The AI
-(ai.js) gets one more choice for tempers that may run (Civilian, Coward, Opportunist when losing). An escaped NPC is out
-of the fight, counted as "escaped" (not beaten, not captured), and runs on the walk afterwards. **Re-engagement (the
-concept's open question 1), PROPOSAL:** an NPC that escaped you fights at once if you strike it again the same day (no
-ladder twice), so there is never a flee loop. A unique that escapes keeps its one-of-a-kind status.
+Reuse the player's escape turned around (no player unit sees it, it has the AP). The AI (ai.js) gets one more choice for
+tempers that may run (Civilian, Coward, Opportunist when losing). An escaped NPC is out of the fight, counted "escaped"
+(not beaten, not captured), runs on the walk afterwards, and its ladder starts over when you catch it (3.1).
 
-### 4.6 Witnesses, spectators and joining (NEW)
-Kept from the concept, fitted:
-- Who can witness: only bodies that are drawn and have line of sight. Timelines with no body never react (cheap, and a
-  player cannot see them anyway).
-- Inside a fight, onlookers are NOT units: they stand on free squares outside the seats, are skipped by turn order and by
-  `state.units`, and step aside when a move or a landing needs their square (never blocking, owner-rules.md).
-- Everything they do happens at the existing round end (after `processEndOfRoundRegen`, before
-  `showEndOfRoundOverview`): watch, flee, call for help, or step in. Shouts and flinches may play at once and cost nothing.
-- **Joining:** a Guard or Protector that steps in becomes a P2 unit at the start of the next round, never with two actions
-  in one round (the concept's own rule). A cap of one or two joiners per fight (PROPOSAL, Q12) keeps fights short.
-- Area spells that reach an onlooker: Q13 (hit it and it joins or flees; or onlookers are never hit).
-- Cost: the onlookers are the same rigs already drawn on the walk; the 8-body limit is not raised by this step.
-- This is camera and screen work, so it starts with a plan + mock-up and WAITS for his OK (owner-rules.md §8).
+### 4.6 Witnesses, onlookers and joining (NEW, the big design job)
+mondo 11-17 (Q12, Q13): anyone in the room who is aware and wants to fight may join, as many as there are; and how an
+onlooker reacts depends on the unit, not one fixed rule. What stays fixed:
+- **Who reacts:** drawn bodies that saw or heard it (4.1). Everyone else carries on with its day.
+- **When:** everything moves at the existing round end (after `processEndOfRoundRegen`, before `showEndOfRoundOverview`).
+  Shouts and flinches play at once and cost nothing. A joiner gets its first turn next round, never two actions in one round.
+- **Onlookers are not units** until they join: free squares outside the seats, skipped by turn order, they step aside for
+  any move. They are the same rigs already drawn on the walk.
+
+**What an onlooker does** (PROPOSAL, by temper, with a roll so it is not always the same):
+
+| Temper | Sees a fight | Hit by a stray spell |
+|---|---|---|
+| Civilian / Coward | Watches from a distance or flees | Flees, or brushes it off |
+| Guard / Protector | Comes closer; joins if its group or place is involved | Joins against whoever hit it |
+| Opportunist | Watches; joins the side that is winning | Joins against whoever hit it, or flees |
+| Brute | Joins, against whoever is nearest | Joins against whoever hit it |
+| Territorial | Joins only if the fight is on its ground | Joins against whoever hit it |
+
+**The sides: the hard question (Q20).** mondo asked: if an ENEMY's spell hits an onlooker, does it join your side? Can it
+be free for all? Can it fight the enemy and stay neutral to you? Options, using what the engine has:
+
+- **A. Two sides only.** A joiner picks yours or the enemy's. Simple, but "it hates the enemy and is not your friend"
+  cannot happen.
+- **B. Free for all.** Everyone is everyone's enemy. The engine already has it: battle.js `isAllyUnit` / `isEnemyUnit` turn
+  on `_isFFA()` (the FFA mode). Chaotic; your own party would also fight each other, so it needs a team-aware version.
+- **C. A third side with grudges (recommended).** Each joiner is its own side with a short **grudge list**: the units that
+  hit it or its group. It attacks those first, ignores the rest, and anyone who hits it goes onto its list. So a cop hit by
+  the Gangster fights the Gangster, stays neutral to you, you can still target it, and if you hit it, it turns on you too.
+  This is exactly mondo's third option. It needs one change at the choke point: `isEnemyUnit(a, b)` asks "is b on a's
+  grudge list?" for third-side units (the AI and targeting already read those two functions). Online is not touched.
+
+Keep to the frame: joiners above a sane count make fights long. No hard cap (mondo: "as many as ... want to fight"), but the
+room mix and awareness keep it small in practice; step 8 measures a crowded street and reports.
 
 ### 4.7 Calming down and memory (PARTLY)
-Routine → Threatened → Safe → Routine maps onto what exists: the resident's day carries on after the fight; "beaten /
-captured" is the cleared ledger and soon the cap + refill (npc-system.md delivery 3). New and small: a short memory per
-NPC id for the same game day (struck you, fled from you, escaped you, saw a fight), read by the ladder and by Talk lines.
-How long it lasts is Q14 (proposal: until the next game day).
+Routine → Threatened → Safe → Routine maps onto what exists: the resident's day goes on after the fight; beaten /
+captured is the cleared ledger and soon the cap + refill (npc-system.md delivery 3). New and small: a memory per NPC id
+until the next game day (mondo said yes, Q14): struck you, fled from you, saw you fight, joined against you. A group member
+remembers for its group (a cop that saw you beat a cop is wary of you that day).
 
 ### 4.8 NPC-to-NPC trouble (NEW, last)
-Not a world simulation. Hand-placed situations on the existing spontaneous-events timer: a Gangster mugs a Civilian, a
-Police Officer steps in, you may watch or take a side (taking a side = the fight starts with the other side as P2). Each
-situation is a data row (who, where, which district), no story characters, no invented names. Comes after 4.6 works.
+Hand-placed situations on the same timer as the muggings: a Gangster mugs a Civilian, a Police Officer steps in, you may
+watch or take a side. With option C this falls out for free: the two are already on each other's grudge lists when you
+arrive. Each situation is a data row (who, where, which district). Disaster City only for now.
 
 ---
 
 ## 5. Ownership and order on the board
 
 - The claims row "Disaster City NPCs: the spawn system" (second account, `docs/notes/claims.md`) covers the residents
-  code and `HQ_SPAWN_RULES`. **Steps 1, 2, 3, 6 and 7 touch the same code.** Before any build step, read the board, then
+  code and `HQ_SPAWN_RULES`. **Steps 1, 2, 3, 6, 7 and 8 touch the same code.** Before any build step, read the board, then
   either take this plan's own row ("NPC encounters: tempers, ladder, awareness, offers, onlookers") in your PR or leave a
   note at the board's bottom for the spawn system thread. Never edit the other side's rows without mondo's word.
-- Spawn system deliveries 3 (cap + refill) and 7 (spontaneous events) should land before this plan's steps 8 and 9.
-- The One World zone moves (wave B running 11-17) move rooms and plots; a room's `encounters` row moves with it. Step 10
-  waits until a zone's move is merged.
+- Spawn system delivery 3 (cap + refill) should land before this plan's step 9. Delivery 7 (spontaneous events) is built by this plan's step 4: tell the spawn system thread on the board.
+- Other zones come after Disaster City; the One World moves (wave B, 11-17) move a room's `encounters` row with it.
 
 ---
 
 ## 6. The build steps
 
-One PR a step unless a step says otherwise. Every step: `git fetch origin main && git merge origin/main` first (RULE #1d),
-`node --check` every edited JS file, visual steps get a browser proof through `probe-fast.js` with the `[EW BUILD]` HEAD,
-then merge + `node sync-zip.js --upload` (RULE #1). No tests. Story mode only.
+Disaster City first (the vertical slice, mondo 11-17); other zones later. **Priority: now** (mondo 11-17: "its priority
+number 1"). One PR a step. Every step: `git fetch origin main && git merge origin/main` first (RULE #1d), `node --check`
+every edited JS file, visual steps get a browser proof through `probe-fast.js` with the `[EW BUILD]` HEAD, then merge +
+`node sync-zip.js --upload` (RULE #1). No tests. Story mode only.
 
 | # | Step | State | Model | Why that model | Needs first |
 |---|---|---|---|---|---|
-| 0 | **The check-up**: confirm every BUILT / CHECK row of section 2 in code (above all: what the room's walkers do during a fight; where a round-end hook can go; how the AI picks a move) and write the findings into this file | PARTLY (section 2 is a first pass) | **Fable** | A read-only audit across five big files; the result is prose, not code | nothing |
-| 1a | **The temper sheet, design**: tag all 157 races with a temper + roles, and per zone say which tempers live where (indoor few, outdoor many) | NEW | **Fable** | A creative, wide pass over the whole roster and the zone lists; output is a table for mondo to mark | step 0 |
-| 1b | **The temper sheet, data**: data.js `HQ_NPC_TEMPERS` (rows by race, overrides by room / resident id) + `hqNpcTemper(ch)`; nothing reads it yet | NEW | **Opus** | Exact edits in data.js (a stray brace takes the game down); small but must be right | mondo's marks on 1a |
-| 2 | **Awareness on the walk**: drawn bodies look at you, step aside, Guards / Territorials say their line | NEW | **Opus** | three-renderer.js tick code, the frame-rate budget, a browser proof | 1b |
-| 3 | **The strike ladder**: flee walk, the Talk panel (E first works too), the third strike starts the fight; the day's memory per id; the old one-strike notes in seamless-field-encounter.md get a REPLACED line | REPLACES | **Opus** | Changes the built strike path (`_hqStrikeClick`, `_hqEncounterAim`, map.js `_hqEncounterFire`); must not break the first quest or the capture | 1b |
-| 4 | **NPC-started fights**: Brutes chase on sight, Territorial warnings + ground, Opportunist approach (the mugging), the grace time and the per-room `calm` cap; the 09-15 "never random" rule is retired in its notes | REPLACES | **Opus** | Hooks into the encounter launch, the walk tick and line of sight; a proof picture | Q2's numbers, step 2 |
-| 5 | **NPC escape from a fight**: the AI choice + the escaped state + no flee loop | NEW | **Opus** | ai.js + battle.js escape code, the commit record; the AI must still play well (never reset the trained weights) | 1b |
-| 6a | **Offers, design**: which tempers offer what, the panel's look (mock-up), the lines as drafts for mondo | NEW | **Fable** | A UI mock-up and words; mondo's rule is plan + mock-up first, then wait | Q6-Q11 |
-| 6b | **Offers, build**: the offer on the NPC's turn, the panel, the results: spare, pay off, join (through `hqCaptureEnlist`), teach a spell, a clue | NEW | **Opus** | battle.js turn code, hud.js panel, the commit, the circuit pool; the back keys | 6a OK'd |
-| 6c | **Zone shops + the discount**: a Merchant temper sells from the shop list at its counter; a won discount is kept on the save | NEW | **Fable** for which races sell what, **Opus** for the code | The stock list is a design pass; the shop panel and save are code | 6a OK'd, Q7 |
-| 7a | **Onlookers, design**: where they stand, what they do at round end, the camera with a crowd, mock-up pictures | NEW | **Fable** | Camera and screen design needs a plan + mock-up and his explicit OK | step 0 finding on walkers in a fight |
-| 7b | **Onlookers, build**: onlooker bodies on free squares, round-end update, step-aside, dispersal after the fight | NEW | **Opus** | The heaviest code step: the field, the round end, rigs, frame rate | 7a OK'd |
-| 8 | **Joining a fight**: a Guard / Protector joins at the next round, the joiner cap, area hits on onlookers | NEW | **Opus** | Turn order and unit creation mid-fight in battle.js | 7b, Q12, Q13, spawn delivery 3 |
-| 9 | **NPC-to-NPC situations**: rows on the spontaneous-events timer, watch or take a side | NEW | **Opus** for the code, **Fable** to draft the situation rows | Code is battle start + walk; the rows are creative and need his yes | 8, spawn delivery 7 |
-| 10 | **Every zone**: give each plot-built zone's `encounters` rows their tempers and counts; DOOR HQ stays out | NEW | **Fable** for the zone-by-zone table, **Opus** for the data edits | Reading 15 zones is wide work; the edits are exact data.js / zone tool rows | 1b, that zone's One World move merged |
-| 11 | **The final review**: read the built game against this plan and mondo's rules, list what is missing or wrong | NEW | **Fable** | An audit and a written report, no code | all steps he wanted |
+| 0 | **The check-up**: confirm every BUILT / CHECK row of section 2 in code (what the room's walkers do during a fight; where the round-end hook goes; how the AI picks targets through `isEnemyUnit`) and write the findings here | PARTLY | **Fable** | A read-only audit across five big files; the result is prose | nothing |
+| 1a | **Tempers + groups, design**: tag Disaster City's races (residents + its AREA UNITS table) with a temper, a group and roles; draft the room mix per district; draft the fewest lines the system needs | NEW | **Fable** | A creative, wide pass over the roster and the city; output is a table + lines for mondo to mark | step 0 |
+| 1b | **Tempers + groups, data**: data.js `HQ_NPC_TEMPERS` (temper, group, roles by race; overrides by room / resident id; the room mix) + `hqNpcTemper(ch)`, `hqNpcGroup(ch)`; nothing reads them yet | NEW | **Opus** | Exact edits in data.js (a stray brace takes the game down) | mondo's marks on 1a |
+| 2 | **Awareness on the walk**: drawn bodies look at you, step aside, Guards / Territorials say their line; who saw what (for 4.6) | NEW | **Opus** | three-renderer.js tick code, the frame-rate budget, a browser proof | 1b |
+| 3 | **The strike ladder**: flee walk, the Talk panel (E first too), the third strike starts the fight; the ladder starts over after a flee; the day's memory per id; the old one-strike notes get a REPLACED line | REPLACES | **Opus** | Changes the built strike path (`_hqStrikeClick`, `_hqEncounterAim`, map.js `_hqEncounterFire`); must not break the first quest or the capture | 1b |
+| 4 | **NPC-started fights**: Brutes come at you, Territorial warnings, the Opportunist mugging with its reason line, the drive-by, the calm time; "never random" retired in its notes | REPLACES | **Opus** | The encounter launch, the walk tick and line of sight; a proof picture | 2 |
+| 5 | **NPC escape from a fight**: the AI choice + the escaped state | NEW | **Opus** | ai.js + battle.js escape code, the commit; never reset the trained weights | 1b |
+| 6a | **Offers, design**: when a losing NPC offers (pay off, join, spare), the amounts, the panel mock-up, the lines | NEW | **Fable** | A mock-up and words; mondo's rule is plan + mock-up first, then wait | 1a |
+| 6b | **Offers, build**: the offer on the NPC's turn, the panel, the results (bag items, `hqCaptureEnlist`, the cleared ledger) | NEW | **Opus** | battle.js turn code, hud.js panel, the commit; the back keys | 6a OK'd |
+| 7a | **Onlookers + sides, design**: the onlooker table, the sides model (Q20), where onlookers stand, the camera with a crowd, mock-up pictures | NEW | **Fable** | The hardest design call in the plan; needs pictures and his explicit OK before code | step 0 finding, Q20 |
+| 7b | **Onlookers, build**: onlooker bodies on free squares, the round-end update, step-aside, dispersal | NEW | **Opus** | The heaviest code step: the field, the round end, rigs, frame rate | 7a OK'd |
+| 8 | **Joining + the third side**: joiners enter next round; grudge lists through `isEnemyUnit` / `isAllyUnit`; group members step in; stray hits on onlookers; a crowded-street measurement | NEW | **Opus** | Turn order, unit creation mid-fight, the AI's targeting; the riskiest engine change | 7b |
+| 9 | **NPC-to-NPC situations** in Disaster City | NEW | **Fable** drafts the rows, **Opus** builds | Rows are creative and need his yes; the code is the battle start + walk | 8 |
+| 10 | **The review**: walk the city against this plan and mondo's rules, list what is missing or wrong | NEW | **Fable** | An audit and a written report | the steps above |
+| later | Other zones (Hell as the hostile one, quiet rooms with none), shops, spell learning, clues | later | | Each its own plan | Disaster City done |
 
-Order: 0 → 1a → 1b → 2 → 3 → 5 → 4 → 6a → 6b → 6c → 7a → 7b → 8 → 9 → 10 → 11. Steps 2, 3
-and 5 are the core; 6 to 9 can wait for the PvP demo to ship (his current goal).
+Order: 0 → 1a → 1b → 2 → 3 → 5 → 4 → 6a → 6b → 7a → 7b → 8 → 9 → 10. Steps 0 and 1a are docs only and can start at once.
 
 ---
 
 ## 7. What this plan does NOT do
 
-- Rebuild levels, variants, tiers, caps, refill, zodiac, the holding tank, the boss sheet or the spontaneous-events
-  timer: those are npc-system.md's deliveries and stay there.
-- Give story characters a temper, or let anyone strike them. DOOR HQ stays a safe hub. (Ally rules are not needed: allies cannot be struck.)
-- Add followers, factions, puzzles, new characters or new names. Generate art or sound effects. Every body is an
-  existing race model on R2.
+- Rebuild levels, variants, tiers, caps, refill, zodiac, the holding tank or the boss sheet: npc-system.md's deliveries.
+- Give story characters a temper, or let anyone strike them. DOOR HQ stays a safe hub.
+- Shops, items, discounts, spell learning or quest clues (mondo 11-17: their own plans later).
+- Add followers, puzzles, new characters or new names. Generate art or sound effects.
 - Touch online play.
 
 ---
 
-## 8. Open questions for mondo
+## 8. His answers (2026-11-17) and what is still open
 
-Numbered so a reply can say "Q3 yes". Each has my recommendation in brackets; none of them is decided.
+**Settled:** Q1 the ladder as proposed ("go with your gut"). Q2 how hostile a place is depends on the room and the unit
+(3.3). Q3 tag the races. Q4 + Q11 Claude drafts the fewest lines, mondo approves. Q5 some tempers skip Talk. Q6 joining is
+in. Q7 shops, Q8 spell learning, Q9 clues: not now. Q10 offers are money, health potions, revives. Q12 everyone aware and
+willing may join. Q13 it depends on the unit (4.6; the open parts are Q20 to Q22). Q14 memory until the next game day. Q15 the ladder starts over after a flee (three strikes again).
+Q16 muggings yes, with a reason in the line (not built yet, see 4.3). Q17 Disaster City first. Q18 top priority now.
+Q19 the old factions are gone; natural groups instead (3.2), to flesh out.
 
-1. **The ladder's numbers.** Three strikes for Civilians and Cowards, two for Talk-first tempers, one for Guards and
-   Brutes, as the concept says. Any race you want handled differently? [As the concept says.]
-2. **How often NPCs may start fights.** A Brute that sees you chases; a Territorial warns first; an Opportunist mugs you
-   when you look weak. At most how many NPC-started fights per room visit, and how long a calm time after a fight?
-   [At most 1 per room visit in the city, 2 in wild zones; 60 s calm after any fight.]
-3. **Tempers per race.** Step 1a will hand you a table of all 157 races. OK to tag them all, with overrides per room?
-   [Yes.]
-4. **Awareness lines.** May Guards and Territorials say a short line when you come close ("Keep moving.")? Who writes the
-   lines? [Yes; Claude drafts, you approve.]
-5. **Talk before a fight.** E on a native opens Talk with "Fight" among the choices (section 4.2). Should every temper
-   allow that, or should Brutes skip Talk? [Brutes skip it.]
-6. **Joining next to capturing.** A losing NPC offers to join you; the One-Way Door also recruits. Should joining be
-   rarer (only Opportunists, only when they are nearly down), or as common as the concept says? [Only Opportunists and
-   only when nearly down, so the door items stay worth having.]
-7. **Zone shops.** Which races sell, and do they sell the same items as the Dispensary or their own? [Chefs sell
-   food that heals, other Merchants sell the Dispensary's list; Claude drafts the table.]
-8. **Learning a spell from a person.** One spell of the teacher's kit, once per teacher, joins your circuit pool. Any
-   unit may then equip it, or only units of the same race family? [Same race family only, so races stay distinct.]
-9. **Information as an offer.** A spared NPC tells you a clue or marks a place on the map. Wanted, and for which quests?
-   [Yes, once a second quest exists.]
-10. **Spare me / pay you off.** A losing NPC begs; you accept and the fight ends. What do you get: nothing, half XP,
-    spoils? [Half XP + a small spoil.]
-11. **Who writes the offer and warning lines?** [Claude drafts, you approve every line.]
-12. **How many people may join a fight in progress?** [At most 2 per fight.]
-13. **Onlookers and area spells.** If an AoE reaches an onlooker: it joins the fight, it flees, or onlookers are never
-    hit? [It flees; a Guard joins.]
-14. **How long an NPC remembers you hit it.** [Until the next game day.]
-15. **An NPC that escaped you.** Strike it again the same day: a fight at once (no flee loop)? [Yes.]
-16. **Should a fleeing or escaped NPC ever come back with friends** (a Gangster returns with another Gangster)? [Later,
-    only after step 8.]
-17. **Which zone first after Disaster City?** [The Woods: its routes are built and it is outdoors.]
-18. **Priority against the PvP demo.** Build the core (steps 0 to 5) now, or after the demo? [After the demo's
-    threads are done; steps 0 and 1a can run now since they are docs only.]
-19. **Factions.** Your standing rule is "no factions", so Guards protect a place or a race, not a side. Keep it that way
-    in the new system? [Keep it.]
+**Still open (numbered on from the old list):**
+
+20. **The sides.** When an onlooker joins because someone else hit it: A (two sides only), B (free for all) or C (its own
+    side with a grudge list: fights whoever hit it or its group, neutral to you until you hit it)? [C.]
+21. **Groups.** Is "same race defends same race" plus a short list of named groups (Emergency, Heroes, Street, Show
+    people, The dead) the right shape? Step 1a drafts the full list for you to mark. [Yes.]
+22. **Onlooker reactions.** Is the onlooker table in 4.6 the right spread (some brush it off, some flee, some join)?
+    [Yes, with a roll so the same unit is not always the same.]
+23. **The calm time** after any fight before an NPC may start another one. [30 seconds.]
+24. **Pay-off amounts.** Money and items by the NPC's level and tier; Claude proposes a table in 6a. [Yes.]
 
 ---
 
@@ -307,11 +321,12 @@ Numbered so a reply can say "Q3 yes". Each has my recommendation in brackets; no
 | Exploration attack | The strike (left click, door gun holstered) |
 | Tactical combat begins at current positions | The encounter on the field (`hqFieldFrame`), the arrival swoop |
 | Preset | The temper (section 3) |
-| Faction | Dropped (no factions). A place or a race instead |
+| Faction | Gone. Natural groups instead (3.2) |
 | Ally | Story cast and agents: cannot be struck |
-| Merchant / Bandit / Wizard / Bartender | Not races. Closest real ones: Chef or Banker / Gangster / Wizard / (none) |
+| Merchant / Bandit / Wizard / Bartender | Not races. Bandit = Gangster (an Opportunist). Merchant, Wizard teaching and Bartender clues wait for their own plans |
 | Initiative | The blitz turn order; joiners enter at the next `state.round` |
 | End-of-round phase | battle.js `processEndOfRound*` + `showEndOfRoundOverview` |
 | Routine | The resident's day (`hqResidentTimeline`) or a walker's rounds |
 | Recruit | The One-Way Door capture |
 | Escape | `escapeProblem` / THE RETREAT (player); NPC escape is step 5 |
+| Free for all / a third side | battle.js `isAllyUnit` / `isEnemyUnit` (`_isFFA()`); the grudge list of 4.6 hooks in there |
