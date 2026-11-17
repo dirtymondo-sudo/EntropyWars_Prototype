@@ -5172,3 +5172,22 @@ ones again after. The capture frames are 0.45 s apart, so a hit that is over in 
   Love Ray shows a very wide pale arc across the screen about 1.2 s in (not traced).
 - **Not seen:** Prism Mirror's fold, Mirror Shard's and Borrowed Claw's hit frames (too fast for the frames), an enemy's cast, online.
 - Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part1_hits.jpg, B9a_part1_runes.jpg, B9a_part1_loveRay.jpg (after only).
+
+## THE VFX SWEEP, B9a, part 2: hex, the first 30 (2026-11-17, three-vfx-effects.js; Anchor ... Memory Leak in `batches/B9a.txt`)
+Same method and switch as part 1. A hex draws no noise wash and its stage beat is the support burst, so nearly all the generic layer on
+these was ONE thing: the purple cast rune under the caster, on a referee's card and a tailpipe alike.
+- **The cast rune off (`_VC_SPELL_NO_RUNE`, 26):** Anchor, Blue Screen, Call Out, Campaign Promise, Card, Charm, Cold Spot, Constrict,
+  Designate Target, Discordance, Eagle Eye, Exhaust Cloud, Filibuster, Flower in the Barrel, Freeze! Police!, Go Viral, Gravity Crush,
+  Haunt, Hogtie, Implant, Ink Cloud, Iron Grip, Lamp Smoke, Low Gravity, Mean Mug, Memory Leak. **Kept (rune magic): Contract** (a demon's
+  contract), **Forsaken, Hex of Agony** (its candles, circle and skull are the rite), **Mark of the Beast**.
+- **Call Out** (`provoke`): no screen flash (`flashPeak: 0` passed to `_sigSonicBoom3D`); the shout is its orange jagged rings.
+- **Discordance**: its two rune circles on the victim are off (a sour chord is not rune magic); the jagged pink rings and the broken notes
+  are the spell. No screen flash.
+- **Cold Spot**: the rune circle on the zone's own squares is off, and the pool under the fog (`noPool`, B8b's option); the fog is cold
+  blue (`0x6fb4d8` / core `0x8fc4e6`), its core was near-white `0xdff4ff`.
+- **Ink Cloud**: `noPool` (no circle of light under ink).
+- **Checked beyond the rune, nothing to change:** every one of the 30. What is pale in them is the thing: the referee's card, Freeze!
+  Police!'s searchlights and red / blue lamps, Flower in the Barrel's petals, Implant's chip, the exhaust.
+- **Seen, not mine:** the pale squares over an area during the windup are the aim tiles (the tile glow), not a spell layer.
+- **Not seen:** Campaign Promise, Mean Mug and Constrict have no look of their own (the support burst only); an enemy's cast; online.
+- Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part2_a.jpg, B9a_part2_b.jpg.
