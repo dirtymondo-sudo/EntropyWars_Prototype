@@ -94807,7 +94807,7 @@ const CUBE_RULES = {
     warnRounds: 1,            // and is shown a whole round before (the doc's "telegraphed" mode)
 };
 const _CUBE_FACE_OF = (m) => { for (const k in CUBE_RULES.faces) { const n = CUBE_RULES.faces[k].n; if (n[0] === m[0] && n[1] === m[1] && n[2] === m[2]) return k; } return null; };
-const _cv = {
+const _cubeV = {
     dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
     neg: (a) => [-a[0], -a[1], -a[2]],
     eq: (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2],
@@ -94822,7 +94822,7 @@ function cubeSlots(N) {
         for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
             const p = [0, 0, 0];
             p[ax] = n[ax] > 0 ? N : 0; p[a1] = i + 0.5; p[a2] = j + 0.5;
-            const c = _cv.add(p, n, -0.5);
+            const c = _cubeV.add(p, n, -0.5);
             out.push({ id: f + ':' + p.join(','), face: f, p, n, cubie: [Math.floor(c[0]), Math.floor(c[1]), Math.floor(c[2])] });
         }
     }
@@ -94837,26 +94837,26 @@ function cubeFrame(N, basis) {
     const at = Array.from({ length: H }, () => Array(W).fill(null)), cell = {};
     for (const s of cubeSlots(N)) {
         const r = [s.p[0] - h, s.p[1] - h, s.p[2] - h], m = s.n;
-        const u = _cv.dot(r, ex) + h, v = _cv.dot(r, ey) + h, d = h - _cv.dot(r, n);
+        const u = _cubeV.dot(r, ex) + h, v = _cubeV.dot(r, ey) + h, d = h - _cubeV.dot(r, n);
         let x, y, tx, ty;
-        if (_cv.eq(m, n)) { x = N + Math.floor(u); y = N + Math.floor(v); tx = ex; ty = ey; }
-        else if (_cv.eq(m, ex)) { x = 2 * N + Math.floor(d); y = N + Math.floor(v); tx = _cv.neg(n); ty = ey; }
-        else if (_cv.eq(m, _cv.neg(ex))) { x = N - 1 - Math.floor(d); y = N + Math.floor(v); tx = n; ty = ey; }
-        else if (_cv.eq(m, ey)) { x = N + Math.floor(u); y = 2 * N + Math.floor(d); tx = ex; ty = _cv.neg(n); }
-        else if (_cv.eq(m, _cv.neg(ey))) { x = N + Math.floor(u); y = N - 1 - Math.floor(d); tx = ex; ty = n; }
-        else { x = N + Math.floor(u); y = 3 * N + Math.floor(h - _cv.dot(r, ey)); tx = ex; ty = _cv.neg(ey); }
+        if (_cubeV.eq(m, n)) { x = N + Math.floor(u); y = N + Math.floor(v); tx = ex; ty = ey; }
+        else if (_cubeV.eq(m, ex)) { x = 2 * N + Math.floor(d); y = N + Math.floor(v); tx = _cubeV.neg(n); ty = ey; }
+        else if (_cubeV.eq(m, _cubeV.neg(ex))) { x = N - 1 - Math.floor(d); y = N + Math.floor(v); tx = n; ty = ey; }
+        else if (_cubeV.eq(m, ey)) { x = N + Math.floor(u); y = 2 * N + Math.floor(d); tx = ex; ty = _cubeV.neg(n); }
+        else if (_cubeV.eq(m, _cubeV.neg(ey))) { x = N + Math.floor(u); y = N - 1 - Math.floor(d); tx = ex; ty = n; }
+        else { x = N + Math.floor(u); y = 3 * N + Math.floor(h - _cubeV.dot(r, ey)); tx = ex; ty = _cubeV.neg(ey); }
         at[y][x] = s.id; cell[s.id] = { x, y, tx, ty, face: s.face };
     }
     return { W, H, N, basis, at, cell };
 }
 /* the basis that puts face `m` in the middle, tumbling the cube one quarter (or a half) from `b` */
 function cubeBasisFor(b, m) {
-    const { n, ex, ey } = b, ng = _cv.neg;
-    if (_cv.eq(m, n)) return b;
-    if (_cv.eq(m, ex)) return { n: ex, ex: ng(n), ey };
-    if (_cv.eq(m, ng(ex))) return { n: ng(ex), ex: n, ey };
-    if (_cv.eq(m, ey)) return { n: ey, ex, ey: ng(n) };
-    if (_cv.eq(m, ng(ey))) return { n: ng(ey), ex, ey: n };
+    const { n, ex, ey } = b, ng = _cubeV.neg;
+    if (_cubeV.eq(m, n)) return b;
+    if (_cubeV.eq(m, ex)) return { n: ex, ex: ng(n), ey };
+    if (_cubeV.eq(m, ng(ex))) return { n: ng(ex), ex: n, ey };
+    if (_cubeV.eq(m, ey)) return { n: ey, ex, ey: ng(n) };
+    if (_cubeV.eq(m, ng(ey))) return { n: ng(ey), ex, ey: n };
     return { n: ng(n), ex, ey: ng(ey) };
 }
 const CUBE_BASIS_TOP = { n: [0, 0, 1], ex: [1, 0, 0], ey: [0, 1, 0] };
@@ -94887,7 +94887,7 @@ function cubeCellMap(fOld, fNew, slice) {
         if (!b) continue;
         const R = (v) => (mv && mv[id]) ? _cubeRot(v, slice.a, slice.dir) : v;
         const txA = R(a.tx), tyA = R(a.ty);
-        to[a.y][a.x] = { x: b.x, y: b.y, m: [_cv.dot(txA, b.tx), _cv.dot(tyA, b.tx), _cv.dot(txA, b.ty), _cv.dot(tyA, b.ty)] };
+        to[a.y][a.x] = { x: b.x, y: b.y, m: [_cubeV.dot(txA, b.tx), _cubeV.dot(tyA, b.tx), _cubeV.dot(txA, b.ty), _cubeV.dot(tyA, b.ty)] };
     }
     return { W: fOld.W, H: fOld.H, to };
 }
