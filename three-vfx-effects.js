@@ -69917,6 +69917,290 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }, { shake: 'soft' });
 
+    /* ── THE OWN LOOKS, L4, part 3: the team buffs and the wards ── */
+    Object.assign(_L4C, {
+        anthem: 0xffc24a, anthemHot: 0xff7a3a, roar: 0xffa030, roarDeep: 0xd85a10, chalk: 0xf4f2ea, pigskin: 0x8a4a22,
+        dustA: 0xffd24a, dustB: 0xff9ad8, foil: 0xc8ccd8, foilHot: 0xf2f4fa, ray: 0xd040ff,
+        fwall: 0xff6a1e, fwallHot: 0xffb040, aurora: 0x8affc0, auroraEdge: 0xc8a0ff, guard: 0x101014, guardEdge: 0xffc83a,
+        pep: 0xffe24a, bill: 0x4aa85a, stamp: 0xe02828
+    });
+    /* the allies of the unit on (tx, ty) within R of it, itself first: [{ x, y, self }] — read off the board both screens hold */
+    function _l4Allies(tx, ty, R) {
+        var out = [{ x: tx, y: ty, self: true }];
+        try {
+            var c = _fx5UnitAt(tx, ty);
+            if (!c || typeof state === 'undefined' || !state.units) return out;
+            for (var i = 0; i < state.units.length && out.length < 9; i++) {
+                var u = state.units[i]; if (!u || u.dead || u.id === c.id || u.player !== c.player) continue;
+                var ax = Math.abs(u.x - tx), ay = Math.abs(u.y - ty), d = (ax <= 1 && ay <= 1) ? Math.max(ax, ay) : ax + ay;
+                if (d <= R && _pzSeen(u.x, u.y)) out.push({ x: u.x, y: u.y, self: false });
+            }
+        } catch (e) {}
+        return out;
+    }
+    /* each ally's place in the frame F (the caster's tile): { v: Vector3 at its feet, h, self } */
+    function _l4Spots(p, F, R) {
+        return _l4Allies(p.tx, p.ty, R).map(function (a) {
+            var w = _worldPos(a.x, a.y);
+            return { v: new THREE.Vector3(w.x - F.wp.x, w.y - F.wp.y, w.z - F.wp.z), h: _l4HeadH(a.x, a.y, F.ts), self: a.self, x: a.x, y: a.y };
+        });
+    }
+    function _l4Text(text, o) {
+        var s = _finTextSprite(text, Object.assign({ depthTest: false, opacity: 0 }, o)); s.material.depthTest = false; s.renderOrder = 162; return s;
+    }
+    function _l4JawTex() {
+        return _pzTex('l4jaw', 128, 64, function (g, w, h) {
+            g.fillStyle = '#fff'; g.beginPath(); g.moveTo(2, 4); g.quadraticCurveTo(w / 2, -6, w - 2, 4); g.lineTo(w - 2, h * 0.3);
+            for (var i = 7; i >= 0; i--) { g.lineTo(2 + (w - 4) * (i + 0.5) / 8, h * (0.92 - 0.25 * Math.abs(i - 3.5) / 3.5)); g.lineTo(2 + (w - 4) * i / 8, h * 0.3); }
+            g.closePath(); g.fill();
+        });
+    }
+    function _l4ClawTex() {
+        return _pzTex('l4claw', 64, 64, function (g, w, h) {
+            g.strokeStyle = '#fff'; g.lineCap = 'round'; g.shadowColor = '#fff'; g.shadowBlur = 4;
+            for (var i = 0; i < 3; i++) { g.lineWidth = 7 - i; g.beginPath(); g.moveTo(w * (0.2 + i * 0.22), h * 0.1); g.quadraticCurveTo(w * (0.32 + i * 0.22), h * 0.5, w * (0.24 + i * 0.22), h * 0.92); g.stroke(); }
+        });
+    }
+    function _l4BallTex() {
+        return _pzTex('l4ball', 96, 64, function (g, w, h) {
+            g.fillStyle = '#8a4a22'; g.strokeStyle = '#3a1c0a'; g.lineWidth = 3; g.beginPath(); g.moveTo(4, h / 2); g.quadraticCurveTo(w / 2, -h * 0.3, w - 4, h / 2); g.quadraticCurveTo(w / 2, h * 1.3, 4, h / 2); g.fill(); g.stroke();
+            g.strokeStyle = '#f4f2ea'; g.lineWidth = 3; g.beginPath(); g.moveTo(w * 0.34, h / 2); g.lineTo(w * 0.66, h / 2); for (var i = 0; i < 4; i++) { g.moveTo(w * (0.38 + i * 0.08), h * 0.38); g.lineTo(w * (0.38 + i * 0.08), h * 0.62); } g.stroke();
+        });
+    }
+    function _l4BrickTex() {
+        var t = _pzTex('l4brick', 128, 128, function (g, w, h) {
+            g.strokeStyle = '#fff'; g.lineWidth = 5; g.shadowColor = '#fff'; g.shadowBlur = 6;
+            for (var r = 0; r < 4; r++) { g.strokeRect(-4, r * 32 + 3, w + 8, 0.01); for (var c = 0; c < 3; c++) { var x = (c + (r % 2) * 0.5) * (w / 2); g.beginPath(); g.moveTo(x, r * 32 + 3); g.lineTo(x, r * 32 + 35); g.stroke(); } g.beginPath(); g.moveTo(0, r * 32 + 3); g.lineTo(w, r * 32 + 3); g.stroke(); }
+            g.fillStyle = 'rgba(255,255,255,0.16)'; g.fillRect(0, 0, w, h);
+        });
+        t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+    }
+    function _l4BubbleTex() {
+        return _pzTex('l4bubble', 256, 128, function (g, w, h) {
+            g.fillStyle = '#fffbe8'; g.strokeStyle = '#201810'; g.lineWidth = 5;
+            g.beginPath(); g.ellipse(w / 2, h * 0.42, w * 0.47, h * 0.36, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+            g.beginPath(); g.moveTo(w * 0.3, h * 0.7); g.lineTo(w * 0.2, h * 0.98); g.lineTo(w * 0.44, h * 0.74); g.fill(); g.stroke();
+            g.fillStyle = '#201810'; g.font = 'bold 34px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('YOU GOT THIS!', w / 2, h * 0.43);
+        });
+    }
+    function _l4BillTex() {
+        return _pzTex('l4bill', 96, 48, function (g, w, h) {
+            g.fillStyle = '#4aa85a'; g.strokeStyle = '#1c5a2a'; g.lineWidth = 3; g.fillRect(2, 2, w - 4, h - 4); g.strokeRect(2, 2, w - 4, h - 4);
+            g.strokeStyle = '#bfe8c0'; g.lineWidth = 2; g.beginPath(); g.arc(w / 2, h / 2, h * 0.26, 0, Math.PI * 2); g.stroke();
+            g.fillStyle = '#0a0a0c'; g.fillRect(w * 0.12, h * 0.4, w * 0.76, h * 0.22);   /* the redaction bar */
+        });
+    }
+    function _l4UpTex() {
+        return _pzTex('l4up', 64, 64, function (g, w, h) {
+            g.fillStyle = '#fff'; g.shadowColor = '#fff'; g.shadowBlur = 5; g.beginPath(); g.moveTo(w / 2, 6); g.lineTo(w - 8, h * 0.5); g.lineTo(w * 0.66, h * 0.5); g.lineTo(w * 0.66, h - 8); g.lineTo(w * 0.34, h - 8); g.lineTo(w * 0.34, h * 0.5); g.lineTo(8, h * 0.5); g.closePath(); g.fill();
+        });
+    }
+
+    /* ANTHEM (Warrior; every ally within 3 sings along) — the song carries: a line of gold notes runs out from the singer to
+       every ally on a wave, and where it arrives the ally's chest takes the beat, twice (the sonic pass's rings stay) */
+    _l4Wire('warCry', 'aura', function (p, F, ts, h) {
+        var S = _l4Spots(p, F, p.aoeRadius || 3), nt = _sigNoteTex(false), lines = [], A = new THREE.Vector3(0, h * 0.85, 0), v = new THREE.Vector3();
+        for (var i = 1; i < S.length; i++) { var notes = []; for (var k = 0; k < 5; k++) notes.push(_pzSpr(k % 2 ? _L4C.anthem : _L4C.anthemHot, ts * 0.44, F.g, nt)); lines.push({ s: S[i], notes: notes, beat: _pzSpr(_L4C.anthemHot, ts * 0.6, F.g) }); }
+        var own = _pzSpr(_L4C.anthem, ts * 0.6, F.g); own.position.y = h * 0.62;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var b2 = Math.exp(-Math.pow((el - 760) / 80, 2)) + Math.exp(-Math.pow((el - 1100) / 80, 2));
+            own.scale.setScalar(ts * (0.45 + 0.3 * b2)); own.material.opacity = 0.2 * _pzEnv(el, 0, 100, 1200, 1600) + 0.5 * b2;
+            for (var i = 0; i < lines.length; i++) {
+                var Ln = lines[i], B = v.copy(Ln.s.v); B.y += Ln.s.h * 0.62;
+                for (var k = 0; k < 5; k++) {
+                    var u = (el - k * 110) / 620, N = Ln.notes[k];
+                    if (u <= 0 || u >= 1) { N.material.opacity = 0; continue; }
+                    N.position.lerpVectors(A, B, u); N.position.y += Math.sin(u * Math.PI * 3 + k) * ts * 0.14 + Math.sin(u * Math.PI) * ts * 0.25; N.material.opacity = 0.95 * Math.min(1, (1 - u) * 5);
+                }
+                Ln.beat.position.copy(B); Ln.beat.scale.setScalar(ts * (0.4 + 0.35 * b2)); Ln.beat.material.opacity = 0.6 * b2;
+            }
+        });
+    });
+
+    /* APEX ROAR (dinosaur; allies within 2, +1 ATK) — the jaws: a great toothed maw opens across the dinosaur and snaps, and
+       every ally it reaches takes three amber claw strokes down the chest: the pack's blood is up */
+    _l4Wire('raceApexRoar', 'aura', function (p, F, ts, h) {
+        var S = _l4Spots(p, F, p.aoeRadius || 2), jt = _l4JawTex(), up = _pzSpr(_L4C.roar, ts, F.g, jt), dn = _pzSpr(_L4C.roar, ts, F.g, jt), marks = [], ct = _l4ClawTex();
+        for (var i = 1; i < S.length; i++) { var m = _pzSpr(_L4C.roar, ts * 0.5, F.g, ct); m.position.copy(S[i].v); m.position.y += S[i].h * 0.62; marks.push(m); }
+        var mine = _pzSpr(_L4C.roarDeep, ts * 0.9, F.g); mine.position.y = h * 0.6;
+        _fxDelay(function () { if (!_suppressed()) try { _shake('light'); } catch (e) {} }, 520);
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var open = el < 420 ? _sigEaseOutCubic(el / 420) : Math.max(0, 1 - (el - 420) / 100), env = _pzEnv(el, 0, 80, 520, 700);
+            up.scale.set(ts * 1.25, ts * 0.62, 1); dn.scale.set(ts * 1.25, -ts * 0.62, 1);
+            up.position.y = h * (0.62 + 0.55 * open) + ts * 0.14; dn.position.y = h * (0.62 - 0.45 * open) - ts * 0.14; up.material.opacity = dn.material.opacity = 0.85 * env;
+            mine.material.opacity = 0.4 * _pzEnv(el, 480, 560, 700, 1200);
+            for (var i = 0; i < marks.length; i++) { var k = _pzEnv(el - i * 60, 520, 600, 900, 1400); marks[i].scale.set(ts * 0.5, ts * (0.2 + 0.4 * _sigClamp01((el - 520 - i * 60) / 120)), 1); marks[i].material.opacity = 0.95 * k; }
+        });
+    });
+
+    /* AUDIBLE (quarterback; allies within 2 Overclocked for a round) — "HUT! HUT!" at the line, and the ball goes out: a tight
+       spiral to every ally in reach, one after the other, each caught on the chest */
+    _l4Wire('raceAudible', 'aura', function (p, F, ts, h) {
+        var S = _l4Spots(p, F, p.aoeRadius || 2), R = _l4Right(), bt = _l4BallTex(), balls = [], A = new THREE.Vector3(0, h * 0.8, 0), v = new THREE.Vector3();
+        var hut = _l4Text('HUT! HUT!', { w: 256, h: 96, fontPx: 54, ink: '#f4f2ea', font: 'Arial Black, Arial, sans-serif', spriteW: ts * 0.95 });
+        hut.position.set(R.x * ts * 0.62, h * 0.8, R.z * ts * 0.62); F.g.add(hut);
+        for (var i = 1; i < S.length; i++) { var b = _pzSprN(0xffffff, ts * 0.3, bt, F.g); b.material.depthTest = false; balls.push({ b: b, s: S[i], c: _pzSpr(_L4C.pep, ts * 0.5, F.g) }); }
+        return _sigRunOwned(F.g, 700 + 160 * balls.length + 500, function (el) {
+            var pop = _sigEaseOutBack(_sigClamp01(el / 160)); hut.scale.set(ts * 0.95 * pop, ts * 0.36 * pop, 1); hut.material.opacity = _pzEnv(el, 0, 60, 800, 1100);
+            for (var i = 0; i < balls.length; i++) {
+                var K = balls[i], u = (el - 300 - i * 160) / 460, B = v.copy(K.s.v); B.y += K.s.h * 0.62;
+                K.c.position.copy(B); K.c.material.opacity = 0.75 * _pzEnv(el - 300 - i * 160, 360, 400, 460, 760);
+                if (u <= 0 || u >= 1) { K.b.material.opacity = 0; continue; }
+                K.b.position.lerpVectors(A, B, u); K.b.position.y += Math.sin(u * Math.PI) * ts * 0.45;
+                K.b.scale.set(ts * 0.46, ts * 0.3 * (0.75 + 0.25 * Math.cos(el * 0.06)), 1); K.b.material.rotation = -0.5 + u; K.b.material.opacity = 1;
+            }
+        });
+    });
+
+    /* FAIRY DUST (fairy; allies within 3 Levitating) — a happy thought for everyone: gold and pink dust sifts down over each
+       ally, and then it lifts: the dust under the feet streams upward and the body's light goes weightless (the fairy's
+       own insects still fly) */
+    _l4Wire('raceFairyDust', 'aura', function (p, F, ts, h) {
+        var S = _l4Spots(p, F, p.aoeRadius || 3), tex = _l4FlakeTex(), D = [];
+        for (var i = 0; i < S.length && i < 6; i++) for (var k = 0; k < 9; k++) D.push({ S: _pzSpr(k % 2 ? _L4C.dustA : _L4C.dustB, ts * 0.2, F.g, tex), s: S[i], a: k * 2.4, r: 0.12 + 0.3 * ((k * 5) % 7) / 7, d: i * 90 + k * 45, k: k });
+        return _sigRunOwned(F.g, 2000, function (el) {
+            for (var i = 0; i < D.length; i++) {
+                var K = D[i], t = el - K.d, u = t / 620, lift = (t - 700) / 800, x = Math.cos(K.a) * K.r * ts, z = Math.sin(K.a) * K.r * ts;
+                if (t <= 0 || lift >= 1) { K.S.material.opacity = 0; continue; }
+                if (u < 1) { K.S.position.set(K.s.v.x + x, K.s.v.y + K.s.h * (1.15 - 1.05 * u), K.s.v.z + z); K.S.material.opacity = 0.9; }
+                else if (lift < 0) { K.S.position.set(K.s.v.x + x, K.s.v.y + K.s.h * 0.1, K.s.v.z + z); K.S.material.opacity = 0.6; }
+                else { K.S.position.set(K.s.v.x + x * (1 - 0.6 * lift), K.s.v.y + K.s.h * (0.1 + 1.0 * lift * lift), K.s.v.z + z * (1 - 0.6 * lift)); K.S.material.opacity = 0.95 * (1 - lift); }
+                K.S.scale.setScalar(ts * 0.2 * (0.6 + 0.4 * Math.abs(Math.sin(el * 0.014 + K.a)))); K.S.material.rotation = el * 0.004 + K.a;
+            }
+        });
+    });
+
+    /* TIN FOIL HAT (conspiracy theorist; allies within 2, +1 M DEF) — hats on, everybody: a crumpled foil cone drops onto
+       every head, is pressed down tight, glints, and a violet mind ray comes in at it and skips off */
+    _l4Wire('raceTinFoilHat', 'aura', function (p, F, ts, h) {
+        var S = _l4Spots(p, F, p.aoeRadius || 2), R = _l4Right(), H = [];
+        for (var i = 0; i < S.length; i++) {
+            var g = new THREE.Group(); g.position.copy(S[i].v); F.g.add(g);
+            var hat = _pzMesh(new THREE.ConeGeometry(ts * 0.16, ts * 0.26, 7, 1, true), _pzSolid(_L4C.foil, null, { side: THREE.DoubleSide, depthWrite: false }), g);
+            var rim = new THREE.LineSegments(new THREE.EdgesGeometry(hat.geometry), new THREE.LineBasicMaterial({ color: _L4C.foilHot, transparent: true, opacity: 0, depthWrite: false, depthTest: false })); rim.renderOrder = 160; hat.add(rim);
+            hat.material.depthTest = false;
+            var ray = _pzMesh(new THREE.BoxGeometry(ts * 0.03, ts * 0.03, ts * 0.5), _pzGlow(_L4C.ray), g), off = _pzMesh(new THREE.BoxGeometry(ts * 0.03, ts * 0.03, ts * 0.4), _pzGlow(_L4C.ray), g);
+            ray.material.depthTest = off.material.depthTest = false;
+            H.push({ hat: hat, rim: rim, ray: ray, off: off, glint: _pzSpr(_L4C.foilHot, ts * 0.3, g, _l4StarTex()), h: S[i].h, d: i * 80 });
+        }
+        return _sigRunOwned(F.g, 1700, function (el) {
+            for (var i = 0; i < H.length; i++) {
+                var K = H[i], t = el - K.d, drop = _sigEaseOutBack(_sigClamp01(t / 260)), press = 1 - 0.18 * Math.exp(-Math.pow((t - 380) / 60, 2)), env = _pzEnv(t, 0, 80, 1250, 1550), top = K.h * 0.98 + ts * 0.1;
+                K.hat.position.y = top + ts * 0.6 * (1 - drop); K.hat.scale.set(1, press, 1); K.hat.rotation.y = t * 0.001; K.hat.material.opacity = 0.95 * env; K.rim.material.opacity = env;
+                var g = _pzEnv(t, 380, 440, 520, 760); K.glint.position.set(R.x * ts * 0.06, top + ts * 0.08, R.z * ts * 0.06); K.glint.scale.setScalar(ts * (0.12 + 0.3 * g)); K.glint.material.opacity = g;
+                var u = _sigClamp01((t - 700) / 160), v = _sigClamp01((t - 860) / 200), on = t > 700 && t < 1120;
+                K.ray.position.set(R.x * ts * 0.55 * (1 - u), top + ts * 0.45 * (1 - u), R.z * ts * 0.55 * (1 - u)); K.ray.lookAt(K.ray.parent.localToWorld(new THREE.Vector3(0, top, 0)));
+                K.ray.material.opacity = (on && u < 1) ? 0.95 : 0;
+                K.off.position.set(-R.x * ts * 0.5 * v, top + ts * 0.5 * v, -R.z * ts * 0.5 * v); K.off.lookAt(K.off.parent.localToWorld(new THREE.Vector3(0, top, 0)));
+                K.off.material.opacity = (on && u >= 1) ? 0.9 * (1 - v) : 0;
+            }
+        });
+    });
+
+    /* FIREWALL PROTOCOL (droid; a 150 HP shield on every ally in the 3×3) — the wall goes up: a round wall of burning orange
+       brickwork builds course by course round each ally, holds, and thins to a trace */
+    _l4Wire('raceFirewallProtocol', 'aura', function (p, F, ts, h) {
+        var S = _l4Spots(p, F, p.aoeRadius != null ? p.aoeRadius : 1), W = [], tex = _l4BrickTex();
+        for (var i = 0; i < S.length; i++) {
+            var geo = new THREE.CylinderGeometry(ts * 0.46, ts * 0.46, 1, 14, 1, true), uv = geo.attributes.uv;
+            for (var k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * 3, uv.getY(k) * 1.25);
+            var m = _pzMesh(geo, _pzGlow(_L4C.fwall, tex), F.g); m.position.copy(S[i].v);
+            W.push({ m: m, s: S[i], top: _pzMesh(new THREE.TorusGeometry(ts * 0.46, ts * 0.018, 5, 20), _pzGlow(_L4C.fwallHot), F.g), d: i * 70 });
+            W[i].top.rotation.x = Math.PI / 2;
+        }
+        return _sigRunOwned(F.g, 1800, function (el) {
+            for (var i = 0; i < W.length; i++) {
+                var K = W[i], t = el - K.d, courses = Math.min(5, Math.floor(_sigClamp01(t / 450) * 5 + 0.001)), hh = Math.max(0.01, K.s.h * 1.02 * courses / 5), env = _pzEnv(t, 0, 60, 1100, 1650);
+                K.m.scale.set(1, hh, 1); K.m.position.y = K.s.v.y + hh / 2; K.m.material.opacity = (0.75 - 0.3 * _sigClamp01((t - 520) / 400)) * env * (0.88 + 0.12 * Math.sin(el * 0.05 + i));
+                K.top.position.set(K.s.v.x, K.s.v.y + hh, K.s.v.z); K.top.material.opacity = env;
+            }
+        });
+    });
+
+    /* LIGHT SHIELD (nordic; a 220 HP shield, +1 DEF) — a crystal of northern light: an eight-sided shell of aurora green
+       closes round the ally, turns slowly with violet running along its edges, and settles */
+    _l4Wire('racePleiadianShield', 'aura', function (p, F, ts, h) {
+        var geo = new THREE.OctahedronGeometry(1, 0), shell = _pzMesh(geo, _pzGlow(_L4C.aurora), F.g, 0, h * 0.55, 0);
+        var edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: _L4C.auroraEdge, transparent: true, opacity: 0, depthWrite: false })); edges.renderOrder = 160; shell.add(edges);
+        var tips = [_pzSpr(_L4C.auroraEdge, ts * 0.24, F.g, _l4StarTex()), _pzSpr(_L4C.auroraEdge, ts * 0.24, F.g, _l4StarTex())];
+        return _sigRunOwned(F.g, 1800, function (el) {
+            var close = _sigEaseOutCubic(_sigClamp01(el / 420)), env = _pzEnv(el, 0, 100, 1300, 1800), hit = _pzEnv(el, 400, 460, 540, 900);
+            shell.scale.set(ts * (1.3 - 0.75 * close), h * (1.1 - 0.42 * close), ts * (1.3 - 0.75 * close)); shell.rotation.y = el * 0.0018;
+            shell.material.opacity = (0.08 + 0.16 * hit) * env; edges.material.opacity = (0.75 + 0.25 * Math.sin(el * 0.012)) * env;
+            for (var i = 0; i < 2; i++) { tips[i].position.y = h * 0.55 + (i ? -1 : 1) * h * 0.68; tips[i].scale.setScalar(ts * (0.1 + 0.26 * hit)); tips[i].material.opacity = hit; }
+        });
+    });
+
+    /* BLACK GUARD (super sentai, the black ranger; Protect on himself) — two black armour plates with a gold edge slam shut
+       in front of him from left and right, spark gold where they meet, and hold the line */
+    _l4Wire('sentaiBlackGuard', 'aura', function (p, F, ts, h) {
+        var R = _l4Right(), P = [], cam = _pzCam();
+        for (var i = 0; i < 2; i++) {
+            var geo = new THREE.PlaneGeometry(ts * 0.36, h * 0.8), m = _pzMesh(geo, _pzSolid(_L4C.guard, null, { side: THREE.DoubleSide, depthWrite: false }), F.g);
+            m.material.depthTest = false; m.renderOrder = 159;
+            var rim = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: _L4C.guardEdge, transparent: true, opacity: 0, depthWrite: false, depthTest: false })); rim.renderOrder = 161; m.add(rim);
+            if (cam) m.quaternion.copy(cam.quaternion);
+            P.push({ m: m, rim: rim, s: i ? 1 : -1 });
+        }
+        var seam = _pzSpr(_L4C.guardEdge, ts * 0.3, F.g); seam.position.y = h * 0.55;
+        _fxDelay(function () { if (_suppressed()) return; for (var k = 0; k < 8; k++) _pzP(F, 0, h * rn(0.2, 0.9), 0, { sprite: 'steel-spark', tint: _L4C.guardEdge, ml: rn(240, 420), size0: rn(6, 10), size1: 1, vx: rn(-110, 110), vy: rn(-110, 110), vz: rn(10, 120), gravity: 380, drag: 0.8, opacity0: 1 }); try { _shake('light'); } catch (e) {} }, 240);
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var shut = _sigEaseInCubic(_sigClamp01(el / 240)), env = _pzEnv(el, 0, 60, 1000, 1500), part = _sigClamp01((el - 480) / 700);
+            for (var i = 0; i < 2; i++) { var K = P[i], off = ts * (0.18 + 0.9 * (1 - shut) + 0.42 * part); K.m.position.set(R.x * K.s * off, h * 0.5, R.z * K.s * off); K.m.material.opacity = (0.8 - 0.45 * _sigClamp01((el - 380) / 260)) * env; K.rim.material.opacity = env; }
+            seam.scale.set(ts * 0.12, h * 0.9, 1); seam.material.opacity = 0.9 * _pzEnv(el, 230, 260, 330, 620);
+        });
+    });
+
+    /* SPARKLE (fairy; one ally Sparkling: +1 SPD and a trail of blinding glitter) — dusted in gold: a coil of gold dust
+       settles down the body from head to foot, and six points on it catch the light and keep blinking */
+    _l4Wire('raceSparkle', 'impact', function (p, F, ts, h) {
+        var N = 12, coil = [], pts = [], tex = _l4FlakeTex(), st = _l4StarTex();
+        for (var i = 0; i < N; i++) coil.push(_pzSpr(i % 3 ? _L4C.dustA : 0xfff0b0, ts * (0.2 - 0.008 * i), F.g, tex));
+        for (var k = 0; k < 6; k++) { var S = _pzSpr(_L4C.dustA, ts * 0.22, F.g, st); S.position.set(Math.cos(k * 2.1) * ts * 0.2, h * (0.2 + 0.14 * k), Math.sin(k * 2.1) * ts * 0.2); pts.push(S); }
+        return _sigRunOwned(F.g, 1700, function (el) {
+            for (var i = 0; i < N; i++) {
+                var u = (el - i * 30) / 640, S = coil[i]; if (u <= 0 || u >= 1) { S.material.opacity = 0; continue; }
+                var a = u * Math.PI * 4; S.position.set(Math.cos(a) * ts * 0.4, h * (1.05 - 1.0 * u), Math.sin(a) * ts * 0.4); S.material.rotation = el * 0.005; S.material.opacity = 0.95;
+            }
+            for (var k = 0; k < 6; k++) { var b = Math.max(0, Math.sin(el * 0.012 + k * 1.9)), on = _pzEnv(el, 500 + (5 - k) * 60, 600 + (5 - k) * 60, 1350, 1700); pts[k].scale.setScalar(ts * (0.08 + 0.26 * b)); pts[k].material.rotation = el * 0.002; pts[k].material.opacity = on * (0.25 + 0.75 * b); }
+        });
+    });
+
+    /* PEP TALK (homosapien; one ally +1 to everything for 3 turns) — a few good words: a speech bubble pops up at the ally's
+       shoulder, and six plain yellow arrows go up round the body, one for each thing that got better */
+    _l4Wire('jackOfAll', 'aura', function (p, F, ts, h) {
+        var R = _l4Right(), bub = _pzSprN(0xffffff, ts, _l4BubbleTex(), F.g), ups = [], ut = _l4UpTex();
+        bub.material.depthTest = false; bub.position.set(R.x * ts * 0.75, h * 0.92, R.z * ts * 0.75);
+        for (var i = 0; i < 6; i++) ups.push(_pzSpr(_L4C.pep, ts * 0.22, F.g, ut));
+        return _sigRunOwned(F.g, 1900, function (el) {
+            var pop = _sigEaseOutBack(_sigClamp01(el / 200)), bob = Math.sin(el * 0.012) * ts * 0.02;
+            bub.scale.set(ts * 1.15 * pop, ts * 0.58 * pop, 1); bub.position.y = h * 0.92 + bob; bub.material.opacity = _pzEnv(el, 0, 80, 1300, 1700);
+            for (var i = 0; i < 6; i++) {
+                var u = (el - 420 - i * 110) / 700, a = i / 6 * Math.PI * 2 + 0.4, S = ups[i];
+                if (u <= 0 || u >= 1) { S.material.opacity = 0; continue; }
+                S.position.set(Math.cos(a) * ts * 0.36, h * (0.15 + 0.85 * _sigEaseOutCubic(u)), Math.sin(a) * ts * 0.36); S.material.opacity = Math.sin(u * Math.PI);
+            }
+        });
+    });
+
+    /* BLACK BUDGET (politician; one ally Overclocked for 2 rounds) — money that was never appropriated: redacted green bills
+       flutter down round the ally and a red CLASSIFIED stamp comes down across the chest */
+    _l4Wire('raceBlackBudget', 'aura', function (p, F, ts, h) {
+        var bills = [], bt = _l4BillTex(), N = 8;
+        for (var i = 0; i < N; i++) { var b = _pzSprN(0xffffff, ts * 0.3, bt, F.g); b.material.depthTest = false; bills.push({ b: b, a: i / N * Math.PI * 2, r: 0.3 + 0.2 * (i % 3) / 2, d: i * 70, ph: i * 1.3 }); }
+        var st = _l4Text('CLASSIFIED', { w: 512, h: 128, fontPx: 76, ink: '#e02828', font: 'Impact, Arial Black, sans-serif', spriteW: ts * 1.0 });
+        st.position.y = h * 0.6; st.material.rotation = -0.18; F.g.add(st);
+        return _sigRunOwned(F.g, 1900, function (el) {
+            for (var i = 0; i < N; i++) {
+                var K = bills[i], u = (el - K.d) / 1100; if (u <= 0 || u >= 1) { K.b.material.opacity = 0; continue; }
+                K.b.position.set(Math.cos(K.a) * K.r * ts + Math.sin(el * 0.006 + K.ph) * ts * 0.1, h * (1.1 - 1.05 * u), Math.sin(K.a) * K.r * ts);
+                K.b.scale.set(ts * 0.32 * Math.cos(el * 0.012 + K.ph), ts * 0.16, 1); K.b.material.rotation = Math.sin(el * 0.005 + K.ph) * 0.5; K.b.material.opacity = Math.min(1, (1 - u) * 4);
+            }
+            var slam = _sigClamp01((el - 620) / 110), k = _pzEnv(el, 620, 700, 1300, 1700);
+            st.scale.set(ts * 1.0 * (1.8 - 0.8 * slam), ts * 0.25 * (1.8 - 0.8 * slam), 1); st.material.opacity = 0.95 * k;
+        });
+    });
+
     /* ═════════ END THE OWN LOOKS, L4 ═════════ */
     /* ════════════════════════════════════════════════════════════════════
        THE OWN LOOKS, L3 (2026-11-17, docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md; mondo: "any spells that dont have a look of

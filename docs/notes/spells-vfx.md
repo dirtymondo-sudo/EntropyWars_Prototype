@@ -4305,3 +4305,28 @@ windup beat), so `_vcOwn(id)` is true and the shared stage burst stops for it. N
   cleanup thread's B7); Cosmic Slam's old pink ring (`fire()`'s own special case) still draws over the caster.
 - Frames: docs/plans/vfx-cleanup/img/own-look/l3_*.jpg. Capture tip: the batch runner's frames are 450 ms apart and it
   misses tile-aimed dashes; `/tmp/sv/start.sh` + `SV.prep(id)` / `SV.cast()` through `e.sh`, a shot every 150 ms, shows them.
+## THE OWN LOOKS, L4, part 3: the team buffs and the wards (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
+
+- **A team buff fires ONE `aura` beat, at the caster, with `aoeRadius`** (Anthem, Apex Roar, Audible, Fairy Dust, Tin Foil Hat;
+  Firewall Protocol at its target tile). The allies it reaches are read off the board both screens hold (`_l4Allies` /
+  `_l4Spots`: same side as the unit on the fired tile, within the radius, on tiles the viewer sees).
+- These beats land early (0 to 400 ms after the cast), single-target buffs about 900 ms in.
+- Sonic casts (Anthem, Apex Roar, Audible) still wear the sonic pass's rings: that pass is not L4's.
+- Sparkle fires `impact` at the ally (its `aoe` row is never fired and is left as it was).
+
+| Spell | What it draws now |
+|---|---|
+| Anthem `warCry` | a line of gold notes runs out from the singer to every ally on a wave; each chest takes the beat twice |
+| Apex Roar `raceApexRoar` | a toothed maw opens across the dinosaur and snaps; every ally in reach takes three amber claw strokes down the chest |
+| Audible `raceAudible` | "HUT! HUT!" at the quarterback's side, then a spiral pass to every ally in reach, caught on the chest |
+| Fairy Dust `raceFairyDust` | gold and pink dust sifts down over each ally, then streams up from under the feet as they lift |
+| Tin Foil Hat `raceTinFoilHat` | a crumpled foil cone drops onto every head and is pressed tight; it glints; a violet mind ray comes in and skips off |
+| Firewall Protocol `raceFirewallProtocol` | a round wall of burning orange brickwork builds course by course round each ally, holds, thins |
+| Light Shield `racePleiadianShield` | an eight-sided crystal of aurora green closes round the ally and turns, violet along its edges |
+| Black Guard `sentaiBlackGuard` | two black plates with a gold edge slam shut in front of the ranger, spark gold at the seam, then part and thin |
+| Sparkle `raceSparkle` | a coil of gold dust settles down the body head to foot; six points on it keep blinking |
+| Pep Talk `jackOfAll` | a "YOU GOT THIS!" speech bubble at the shoulder; six yellow arrows go up round the body |
+| Black Budget `raceBlackBudget` | redacted green bills flutter down round the ally; a red CLASSIFIED stamp lands across the chest |
+
+After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part3.jpg`.
+
