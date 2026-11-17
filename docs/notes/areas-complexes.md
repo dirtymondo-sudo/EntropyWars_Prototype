@@ -10806,6 +10806,14 @@ between two places that touch is wrong. The rule below is the one every zone thr
      door, on the plot's own last square (a wall passage's 10 m lie past the wall; past a free door there is no passage floor); (3) its floor is the
      ground it stands on (data.js `hqTerrainDoorY`: a free passage has no pad and read 0, so one on a plot above 2.5 m or in a cut never fired).
      WALK EVERY SEAM YOU WRITE: `node playtest_city.js <room> '[{ …, "walk": { "max": 200000 } }]'` prints `WALK … -> <the room it reached>`;
+   - **OPEN GROUND HAS NO PORTAL** (2026-11-17, mondo after the slice: "where a room's edge is open country (salt flat, grass, sand, snow), no portal;
+     you walk off the edge into the next room. Doors with arches only on forest walls, cliffs and buildings"). A seam in open country is
+     `way: 'open'` (data.js `DOOR_HQ.ways.open`: no arch, no dark cards, no dimming, the prompt reads WALK ON; three-renderer.js `_hqWayBuilders.open`,
+     `_hqPassageWay` look `'open'`). Its `passage.w` is how wide the walked-off edge is (a trail 5 m, a road 11, a highway 16; a zone tool's seam:
+     `open: <metres>`). THE ROUTE KIT decides by the ground under the seam: forest and rock = `trail` (the arch in the wall), everything else, and
+     every road or highway end = `open`; it paints the road ten squares past a free open end and keeps the trees off it, so the lane is seen to run
+     on. A zone tool names it by hand (`bake-estate.js`: the corn's south end and the Lake's south shore are open; the corn's north gate, L8's gap in
+     the corn and every Woods seam are trails). Walked: `ow_h_m14_11` both ways, `ow_h_m11_18`;
    - a route crosses a plot side at its middle (a link, 1 plot wide) or on the line between its two columns (a road, 2 wide):
      the district's door goes there, so path meets path;
    - where two rooms touch along several plots, one door pair at the path is enough; the rest of the line keeps each room's
@@ -10987,6 +10995,22 @@ and the census read as before.
   fix the hollow tree to Room 420, the trail to Camelot, the sewer mouth, the Tunnel Way and both interim trails could be arrived by but not
   entered from the slice's rooms. Walked after: the Clearing's north trail into the old Woods room, the sewer mouth into the Sewers, the corn's
   south end into the lane's room and back, the Lake's south shore into the old Estate room.
+- **FIX 2, OPEN SEAMS**: rule 6 above, "OPEN GROUND HAS NO PORTAL". Three seams of the slice are open now: the corn's south end into the lane's room
+  and back (`ow_h_m14_11`), the Lake's south shore into the old Estate room (`ow_h_m11_18`). Pictures: `proof/fix2_*.jpg`.
+- **FIX 3, A PLACE ON EVERY ROUTE PLOT**: "THE ROUTE KIT, what the slice added" below, THE PLACES. County Lane's sixteen route plots and the corn's
+  three lane fields each carry one; the lane's empty south end (the salt flat) has the old jetty, the stranded boat and the scarecrow row, named by
+  hand in `docs/areas/routes/R7.json`. The route plots are NAMED by their place now ("County Lane, the stranded boat"), so the census lists the
+  old names ("County Lane, salt flats") as gone: a new name, the same plot. Pictures: `proof/fix3_*.jpg`.
+- **FIX 5, COUNTY LANE THROUGH THE CORN**: `docs/areas/estate/districts/C.js`, its header note COUNTY LANE RUNS DOWN THIS DISTRICT lists every piece
+  moved, a plot at a time (the silo yard and the field shed, the crashed car, the lay-by, the verges, lamps, fences). Nothing stands in the lane's
+  band (the two squares each side of the line between the two columns; 0 pieces within 7 m of it). The five dressed dead-end tracks are closed: their
+  pieces are moved onto the plot's other ground and the bare track goes back to corn. THE VERGE LITTER was thrown by dice on every track square; it is
+  a hand-set table now (63 pieces, each where it fell, the 16 that lay in the band or on a closed track moved to the nearest verge of their own
+  plot), and the dice are thrown as often as before so nothing after it moves. Census against `move/before.json`: no piece of the district missing
+  but `corn_row` (35: the model stands where an open square meets the corn, so a closed track loses its rows to real corn; 29 before this fix) and
+  the lines answered in the slice (the room scatter, two ranch rails cut at plot lines, the `woods` door = seam `ow_h_m14_5`). Pictures: `proof/fix5_*.jpg`.
+- **FIX 7, THE TWO GATES ON ONE LINE**: the Fence Line's gate (the Woods) and the Woods Gate (the corn) both stand at world x -13.5 (`bake-estate.js`
+  `WOODS_X`; the corn's `hw_tree_3` moved one square for the way in). Pictures: `proof/fix7_*.jpg`.
 - **THE ROUTE KIT'S OWN DRESSING is thrown again when its room changes** (the scatter, the trees in walked ground, the stoppers on a verge that
   no longer faces scenery): the census lists those under the route's plot names. They are the kit's, not a district's.
 
@@ -11069,6 +11093,15 @@ the Clearing, the old Dead Man's Cave -> the creek, the old Corn Fields -> the C
 - **`plan(ctx)`** in a route's hook file: lays more path squares before the verge, the heights and the paint are read (`ctx.path(sx, sy)`).
   County Lane's hook cuts the footpath to L8 and adds its door in `dress`.
 - A road's plots that fill a district's gaps (fewer than 3 together) are that district's room's, by rule 4: the district's tool builds them.
+- **THE PLACES** (2026-11-17, mondo after the slice: "every route plot gets one place of its own to walk towards (from the page's list or plain new
+  ones marked as ideas) ... put the rule in the route kit so phase 4 gets it for free"). Every plot of a route room carries ONE small place: a few
+  catalogue pieces set down together on clear ground beside the path, never on it, before the trees and the scatter (they keep off it). The table is
+  `ow-places.js` (repo tooling): `{ name, kinds, r, pieces }`, a 5 x 5 or a 3 x 3 patch. Which one: the route's spec names it by hand,
+  `places: { "<x>,<y>": "<id>" | false }` (the design page's own list for that route first); otherwise the kit takes the next of the plot's ground
+  kind, never one the room has already, and a small one where a plot is narrow or has two paths. The plot takes the place's name. The bake prints
+  `places: …` and FAILS with NO PLACE when a plot gets none. A zone tool that builds route plots itself lays them with `OWP.lay` (`bake-estate.js`:
+  the corn's three lane fields). EVERY NAME IN THE TABLE IS AN IDEA OF CLAUDE'S, plain on purpose, with no role in the game (no shop, no rest, no
+  story): mondo renames or drops any by editing that one table. No new model: every piece is in MODEL_LIST.md.
 
 ### WHAT IT SETTLED (the open points of phase 1)
 - **Walk speed against the distances**: 2.4 m/s walking, 4.6 m/s running; a plot is 17.5 s / 9 s. The Stair to the Lake by County Lane is 665 m
