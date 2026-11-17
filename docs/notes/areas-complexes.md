@@ -11204,6 +11204,48 @@ open ground shows as a dark hole in a clump of trees (it needs a seam look with 
 view the ground's own height (`hqTerrainCompile(room, id).hFn(x, z)`); the fight: `node playtest_handover.js <room> --at=x,z[,y] --race=<unit>`
 (both options added for the slice). Walk lengths: the shortest line over the room's `space` rows, door to door, at 2.4 and 4.6 m/s.
 
+## THE MOUNTAINS, THE ONE WORLD MOVE — the range at its v13 places, three rooms (2026-11-17, BUILD_PLAN phase 3 wave A; the owner's One World Mountains thread)
+`bake-mountains.js` still builds the 12 x 8 HOME room the district files were written for (its checks run as before), then THE ONE WORLD MOVE
+(the end of the tool) stands the plots at their `docs/plans/one-world/plots.json` places with `ow-move.js` and writes THREE rooms in place of
+`site_prebuilt_shasta_mountains` (no longer written). The North Pole room did not move (its `pass` door now names the Lodge room).
+
+| Room | What | World box (x, y) | Plots |
+|---|---|---|---|
+| `site_prebuilt_shasta_ow_lodge` | THE SKI LODGE (K) + wild link L9 "The Traverse" + THE SNOWY PASS (P) | -23..-14 x -22..-14 (10 x 9) | 29 |
+| `site_prebuilt_shasta_ow_olympus` | wild link L10 "The Saddle Path" + MOUNT OLYMPUS (O) + wild link L11 "The Long Descent" | -14..-5 x -18..-13 (10 x 6) | 19 |
+| `site_prebuilt_shasta_ow_shasta` | MOUNT SHASTA (S) | -4..2 x -21..-15 (7 x 7) | 20 |
+
+- **Why this split** (the room-splitting rule): K + L9 + P touch and make 29 plots; adding L10 + O would be 48. L10 is two plots, so by rule 4 it
+  joins a district's room: Olympus's. O + L11 + S would be 39, so Shasta stands alone. Each room is inside the 12 x 12 box and 30 plots.
+- **What the move lays again** (the tool's own, never a district's): the box's other cells wear the map's ground (forest = trees `t`, peak / rock /
+  alpine = rock `r` that climbs from the trail's edge, anything else = deep drift `k`: nobody walks them); every two plots that touch now and did not
+  stand that way at home get ONE crossing, a trail from each plot's hub (the home's THE PORTS rule; 12, 13 and 5 joints); the heights (`heightsOf`,
+  the home's rule on the plots as they stand, the ski columns still graded without shelves); paint; tree zones; the air zones a plot at a time; the
+  Stadium's lane marks; the levelled building squares. A trail stub to a home neighbour that is gone ends at the rock (not closed).
+- **The wild links' plots are this tool's** (L9 and L11 sit inside their rooms' boxes, L10 by rule 4): each a snowfield in a rock rim, the trail across
+  it, ONE place beside it (`ow-places.js`, ideas, plain): L9 the trapper's camp, the mine cart, the snowman, the camp, the marker stones; L10 the carved
+  pole, the marker stones; L11 the camp, the trapper's camp, the mine cart, the snowman, the boundary stone. The plot names ("The Traverse, the
+  snowman") and the three link names are ideas of Claude's, marked; rename in `LINKPLOTS`. Levels graded end to end.
+- **The seams**: `ow_v_m14_m14` (the Tree Line | L10, trail) and `ow_v_m4_m15` (L11 | the Upper Shelf, open, 5 m) join my rooms. `ow_v_m16_m14` on the
+  Tree Line, west's west side -> `site_ow_l3` (the Woods thread gives L3 its end there). `ow_v_m22_m16` on the Lodge Yard's west side -> `site_ow_l6`
+  (Camelot's L6): written only when that room is in data.js; if Camelot merges after this PR, rerun `node bake-mountains.js` and the door appears.
+- **Doors kept**: `pass` (the Pass Gate, free now; INTERIM until R5 the Polar Trail is built from the Ridge, east), `lift_top` / `lift_bottom` (both in
+  the Lodge room, re-pointed there), `woods` (the Trailhead, south wall, INTERIM: names the Woods' room `site_prebuilt_fairy_forest_ow_redwood` once it
+  exists, else the old Woods room), `hills` + `saddle` (Shasta's east wall, INTERIM until R2). Links re-pointed by part: `shasta_lemuria` (ow_shasta),
+  `heaven_olympus`, `vatican_olympus`, `lodge_olympus` (ow_olympus); bay doors `prebuilt_shasta` -> Shasta's room, `prebuilt_olympus` -> Olympus's.
+  The Pilgrim Stair's link end stood on the old room's far south wall, past four plots of rock; it is on the Pilgrim Stair's own south side now.
+- **Retired**: `site_prebuilt_shasta_mountains` -> the SHASTA room, because every door of another zone that names it has its `at` there (the Woods'
+  `shasta` -> `woods`, the city's Hills `shasta` -> `hills`, `ridge` -> `saddle`: NOT edited, they land through `retired`; the Woods thread re-points
+  its own, the Hills row's holder may change N.js's `MTN`). `site_prebuilt_shasta_slopes` -> Shasta, `site_prebuilt_olympus_summit` -> Olympus.
+  `DOOR_HQ.hubs.mountains.room` = Shasta's room. The day table and `HQ_AREA_MARKERS` have a row each.
+- **Census** (`node ow-census.js --diff docs/areas/mountains/move/before.json` + the three rooms): every prop (1,496), feature (303), native (27) and
+  line there; the one MISSING line is the census reading the Pilgrim Stair's link on the old wall's empty cell (it is on the Pilgrim Stair now).
+  Extra: the 12 places and the seam doors.
+- **The one stray**: Shasta's footbridge `deck` on The Spring (S.js line 158) ran 1.75 m into The Lookout; the Lookout stands elsewhere now, so it
+  ends at the rock on the Spring's south side. For S.js's holder (not edited here).
+- **Not done**: the Lodge's chairlift line: the Rental Hut stands between the Chairlift plot and the Ski Lodge on v13 (the lift's pieces each stayed
+  on their own plots, no stray, but its line now passes over the Rental Hut: look at it). R2, R3, R5 (phase 4.1) will replace the interim doors.
+
 ## ONE WORLD, THE ESTATE RE-LAID (2026-11-17, BUILD_PLAN phase 3 wave A; mondo said yes to taking the second side's Estate rows, plots moved only)
 Every Estate district now stands at its v13 place. The slice had moved the Corn Fields and the Lake; this thread moved the Haunted House (H) and the Ranch (R)
 with `bake-estate.js` THE ONE WORLD MOVE (`ow-move.js`), no district file edited. Four rooms:
