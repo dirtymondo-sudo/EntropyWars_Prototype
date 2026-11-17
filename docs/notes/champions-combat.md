@@ -5716,3 +5716,22 @@ Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo ha
 originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`
 (cut from the Meshy thumbnail), then the same night `<slug>_px.png` = 128x128 Sprite AI restyles of the concepts (models-assets.md "THE PIXEL SPRITES FROM SPRITE AI"; the Wendigo from its model thumbnail, its grey concept background would not cut; brain, cicada, slug and wendigo re-rolled with `palette_extras: 0` because the first roll drifted their colours). Not done: VFX polish per spell (they use the generic family looks), sprites restyle, NPC
 residents in their zones.
+
+## THE WENDIGO PASS (2026-11-17, thread "Polish Wendigo spells and VFX", mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
+- THE PLAYSTYLE: a hunter that has to keep eating. Rend (Bleed 2 rounds) sets up Feast, which now carries
+  `bonusVsStatus: { status: 'bleed', mult: 1.3 }` (the engine's own status-combo rule: "⚗ Combo! … ×1.3", +2 AP the first time
+  in a turn), and the bigger bite heals more (60% of the real HP taken). Frost Howl Slows + Fears the ring round it: the
+  frightened flee slowly, so the Wendigo runs them down next round to feed. Proved in a VS-CPU board: Rend 350 + Bleed; Feast on
+  the Bleeding target 548 (heal 329) vs 380 (heal 228) on a clean one; Frost Howl 194 + 224, both Slowed + Feared.
+- THE HUNGER CHIP (hud.js `_hrlgStatusChips`): the Wendigo always wears FED (green) or HUNGRY (red) in its status chips, title
+  = the HP the round end will take. Reads `unit._fedRound` against `state.round` (rides the state sync, so the guest reads it too).
+- THE HUNGER'S LOOK: `_wendigoHunger` fires `_sigVfxGeom('wdHunger', …)` (fireGeometry, relayed by online.js, fog-gated).
+- Stats: HP 1350 → 1250 (POWER 887 → 862 = the median 811 + 6 %; a fed Wendigo pays no tax, so it sat too high at +9 %).
+- THE LOOKS (three-vfx-effects.js "THE WENDIGO'S LOOKS", after the Skater's; kill-switch `window.EW_NO_WENDIGO_VFX`): bone,
+  frost, old blood, one mark per piece in the viewer's seat colours. Rend = three icicle claws raking across the body facing the
+  lens (`hitMs` 190), ice chips + blood; Feast = an antlered skull's two rows of bone teeth closing on the body (`hitMs` 260),
+  a bigger blood burst when the target was Bleeding, the stock drain hop home; Frost Howl = four scream rings out of its head
+  tilting down over the reach, the snow blown out flat, the reach edge once in the seat colour, frost mist per square (aoe
+  `geom3D`); the Hunger = frost ribs showing on its chest, dark wisps spiralling in, a seat-colour ring closing under it.
+- Probe recipe: /mnt/project-files/wendigo-pass/probe/ (wd.js = the VS-CPU board, every cast + the real round end; show.js = the
+  looks on a frozen clock).

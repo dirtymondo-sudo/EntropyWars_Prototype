@@ -4436,7 +4436,7 @@ const RACE_BASE_STATS = {
     'referee':            { hp: 1150, mp: 150, atk:  95, def: 110, mdef: 100, int: 110, vision: 4, crt: 20, spd: 110 },   // 2026-11-17 THE NEW RACES 2 — first pass on the specialist median
     'florida man':        { hp: 1300, mp: 110, atk: 140, def: 110, mdef:  70, int:  40, vision: 3, crt: 24, spd: 120 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
     'boltzmann brain':    { hp: 950, mp: 240, atk:  10, def:  70, mdef: 170, int: 210, vision: 5, crt: 22, spd: 60 },   // 2026-11-17 THE NEW RACES 2 — first pass on the caster median
-    'wendigo':            { hp: 1350, mp: 90, atk: 150, def: 100, mdef:  60, int:  30, vision: 3, crt: 18, spd: 130 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
+    'wendigo':            { hp: 1250, mp: 90, atk: 150, def: 100, mdef:  60, int:  30, vision: 3, crt: 18, spd: 130 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median; THE WENDIGO PASS 11-17: HP 1350→1250 (POWER 887 → 862, the median 811 +6 %: a fed Wendigo pays no tax and Feast now bites Bleeding targets 30 % harder)
     'karate frog':        { hp: 1150, mp: 110, atk: 135, def: 105, mdef:  70, int:  60, vision: 3, crt: 20, spd: 150 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
     'samurai slug':       { hp: 1450, mp: 100, atk: 130, def: 150, mdef:  80, int:  50, vision: 2, crt: 16, spd: 70 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
     'cicada brood':       { hp: 1000, mp: 150, atk: 150, def: 110, mdef:  90, int: 110, vision: 3, crt: 24, spd: 120 },   // 2026-11-17 THE NEW RACES 2 — first pass on the assassin median
@@ -10568,7 +10568,8 @@ const RACE_ABILITIES = {
           desc: 'Claws like icicles. Deals MEDIUM physical damage to a Single Enemy beside it and leaves it Bleeding for 2 rounds.' },
         { id: 'nrFeast', name: 'Feast', tier: 2, families: ['wendigo'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'unholy',
           element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'physical', dmg: 140, range: 1, drainPct: 0.6,
-          desc: 'It eats. Deals MEDIUM physical damage to a Single Enemy beside it and heals for 60% of the damage dealt. Cooldown: 2 rounds.' },
+          bonusVsStatus: { status: 'bleed', mult: 1.3 },   // 2026-11-17 THE WENDIGO PASS: Rend, then Feast (the bigger bite heals more too)
+          desc: 'It eats. Deals MEDIUM physical damage to a Single Enemy beside it (30% more if it is Bleeding) and heals for 60% of the damage dealt. Cooldown: 2 rounds.' },
         { id: 'nrFrostHowl', name: 'Frost Howl', tier: 3, families: ['wendigo'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'unholy',
           element: 'ice', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 100, range: 0, aoeRadius: 2,
           statusEffects: [{ id: 'slow', duration: 1 }, { id: 'feared', duration: 1 }],
