@@ -19186,7 +19186,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _sigSparks(tx, ty, 'psi-pulse', 14, { vxy: 170, vz0: 40, vz1: 200, gravity: 40, z: 12 });
         _sigSparks(tx, ty, 'spark-pink', 10, { vxy: 210, vz0: 60, vz1: 240, gravity: 30, z: 14 });
         _sigSparks(tx, ty, 'acid-green', 8, { vxy: 140, vz0: 30, vz1: 170, gravity: 20, z: 10 });
-        _sigScreenFlash('#ff4de0', 230, 0.24);
+        if (!_vcOn()) _sigScreenFlash('#ff4de0', 230, 0.24);   /* THE VFX SWEEP B9a: the trip is its skulls + kaleidoscope, no screen flash */
         _sigShake('soft');
         try {
             if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) ThreePost.bloomPulse(0.4, 380);
@@ -27452,7 +27452,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             else if (el >= 1150) {
                 if (!landed) {
                     landed = true;
-                    try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.light, r0: ts * 0.15, r1: ts * 1.4, ms: 380, height: 4 }); } catch (e) {}
+                    if (!_vcOn()) try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.light, r0: ts * 0.15, r1: ts * 1.4, ms: 380, height: 4 }); } catch (e) {}   /* THE VFX SWEEP B9a: the landing is its dust ring; the wide pale ring over it is off */
                     _doorSwallowDust(tx, ty, ts);
                     if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake('heavy');
                 }
@@ -44282,7 +44282,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afAscension3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, rad = r != null ? r : 1, robes = [];
-        try { _sigLightPillar3D(tx, ty, { height: 900, radius: ts * (0.6 + rad * 0.35), ms: 1500, color: _AF.pale, coreColor: 0xffffff }); } catch (e) {}
+        try { _sigLightPillar3D(tx, ty, { height: 900, radius: ts * (0.6 + rad * 0.35), ms: 1500, color: _AF.pale, coreColor: _vcOn() ? 0xffe2a0 : 0xffffff }); } catch (e) {}   /* THE VFX SWEEP B9a: the light IS the spell; only its core is warm, not pure white */
         var spots = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0]];
         for (var i = 0; i < spots.length; i++) {
             var rb = _nrvRobe(ts); rb.position.set(spots[i][0] * ts * rad * 0.7, 0, spots[i][1] * ts * rad * 0.7); rb.scale.setScalar(0.7);
@@ -50432,7 +50432,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 E.s.position.set(E.x * (1 - sw), ts * (-0.3 + 1.0 * rise) - ts * 0.2 * sw, E.z * (1 - sw));
                 E.s.material.opacity = 0.75 * rise * (1 - _sigClamp01((el - 900) / 200)); E.s.scale.set(ts * 0.6 * (1 - 0.5 * sw), ts * 1.2 * (1 - 0.3 * sw), 1);
             }
-            if (!hit && el >= 960) { hit = true; _sigShockRing3D(tx, ty, { color: 0xbfeaff, r1: ts * 1.9, ms: 520 }); _sigScreenFlash('#cfefff', 160, 0.3); _sigShake('normal'); }
+            if (!hit && el >= 960) { hit = true; _sigShockRing3D(tx, ty, { color: _vcOn() ? 0x5fc4e8 : 0xbfeaff, r1: ts * 1.9, ms: 520 }); if (!_vcOn()) _sigScreenFlash('#cfefff', 160, 0.3); _sigShake('normal'); }   /* THE VFX SWEEP B9a: no pale screen flash; the ring in spirit blue (the elders stay pale: they are ghosts) */
         });
     };
     SPELL_MAP['pzSpiritAnimal']     = { aura: 'pzSpiritAnimal_aura' };
@@ -66264,7 +66264,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _PZ_SIGS.f4Shatter = function (p) {
         if (_f4Off()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
         _capShards(tx, ty, 'crystal', { n: 11, scale: 1.2, height: 0.6 });
-        try { _sigShockRing3D(tx, ty, { color: 0xe0c8ff, r1: (_cfg().tileSize || 128) * 1.6, ms: 380, height: 4, opacity: 0.6 }); } catch (e) {}
+        try { _sigShockRing3D(tx, ty, { color: _vcOn() ? 0x8a5cf0 : 0xe0c8ff, r1: (_cfg().tileSize || 128) * 1.6, ms: 380, height: 4, opacity: 0.6 }); } catch (e) {}   /* THE VFX SWEEP B9a: the lattice's violet (was pale lilac) */
     };
     SPELL_MAP['raceShatterLattice'] = { impact: 'f4Shatter_impact' };
 
