@@ -6016,9 +6016,11 @@
             if (!victims.length) return _allyHealVal;
             /* THE SPELL AUDIT D: a damage zone (zoneTickDamage) is scored as one hit worth ~60% of its ticks (they
                walk out); an area drain (aoeLifeDrain) adds the heal it buys the caster. */
-            const _zoneShim = spell.zoneTickDamage > 0
+            let _zoneShim = spell.zoneTickDamage > 0
                 ? Object.assign({}, spell, { dmg: (spell.dmg || 0) + Math.round(spell.zoneTickDamage * Math.min(spell.zoneDuration || 1, 3) * 0.6) })
                 : spell;
+            /* 🦗 Chorus (`broodSpend`): every Brood stack the caster banked adds its N to the hit */
+            if (spell.broodSpend > 0 && (unit._brood || 0) > 0) _zoneShim = Object.assign({}, _zoneShim, { dmg: (_zoneShim.dmg || 0) + unit._brood * spell.broodSpend });
             let s = 0, first = true, _estSum = 0;
             for (const e of victims) {
                 const hit = scoreOffensiveHit(g, unit, e, _zoneShim, v, { splash: !first });
@@ -6445,6 +6447,16 @@
                 let _odS = 0;
                 for (const a of _odNear) { const t = v.threatFn(a.x, a.y, a.z); if (t.totalDmg >= a.hp) _odS += 120; else if (t.totalDmg >= a.hp * 0.5) _odS += 40; else _odS += 10; }
                 s += _odS;
+            }
+            /* 🦗 THE CICADA POLISH (2026-11-17): Dig In (`dormant`) banks Brood stacks for Chorus. Worth it while the stacks are
+               short and no enemy already stands in Chorus' reach (then it sings instead); nothing at 3 stacks or already dug in. */
+            if ((spell.statusEffects || []).some(e => e && e.id === 'dormant')) {
+                const _bn = target._brood || 0;
+                if (_bn >= 3 || g.unitHasStatus(target, 'dormant')) return 0;
+                const _near = v.visibleEnemies.filter(e => Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) <= 2).length;
+                if (_near) return 0;
+                const _close = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 6);
+                s += (_close ? 70 : 35) + 25 * (3 - _bn);
             }
             if (spell.massRescue) {
                 const _mr = spell.massRescue, _mrR = _mr.radius || 4, _mrP = _mr.hpPct || 0.5;

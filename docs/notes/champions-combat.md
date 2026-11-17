@@ -5733,6 +5733,20 @@ dormant / bodiless):
   the ooze, then 282 + Rooted on the foe in the ooze, the foe on grass untouched; a CPU slug cast Wake (2 foes), Iai Draw, Slime Slash.
 - 🦗 Cicada Brood, THE WAIT: Dig In = `dormant` (blockMove, onRoundEnd +1 Brood to 3) + Invisible; Screech (`broodSpend` 45)
   adds 45 a stack in the plain AoE resolver (`_broodSpend`), spends them and ends Dig In.
+- 🦗 THE CICADA POLISH (2026-11-17, thread "Polish Cicada Brood spells and VFX", mondo: "flesh out their unique spells and spell
+  animations/vfx and make sure that any new mechanics are tested out and work as intended"). Found in a real VS-CPU battle:
+  (1) THE STACKS NEVER GREW: processEndOfRoundStatuses only runs the onRoundEnd of keys in state.js `_STATUS_EFFECT_IDS`, and
+  `dormant` is not one. Now battle.js `_cicadaBrood` runs STATUS_DEFS.dormant.onRoundEnd from `_nrRoundEnd` (do NOT also add
+  dormant to that set: it would tick twice, and the round-end camera would dive onto a unit the enemy cannot see).
+  (2) STUCK IN THE GROUND: an attack / offensive spell / reveal took Invisible off but left `dormant` (no move, still stacking).
+  invisible.onRemove clears dormant now (the Gator's Submerged + the Mole Man's burrow pattern); the banked stacks stay.
+  (3) THE KIT: RACE_TREE held four borrowed rungs (Corrosive Splash + Rot outside its families) and raceDefaultKit gave neither
+  Buzz nor the T3; now Dig In, Buzz, Chorus, Swarm Signal. (4) THE NAME: the sonic family has a T2 `raceScreech` "Screech" in
+  the same pool and the menu finds a spell by its name, so the T3 (`nrScreech`, id kept) is CHORUS (a brood's song).
+  ai.js: Dig In is worth 35-70 + 25 a missing stack while no enemy is in Chorus' reach (0 at 3 stacks / dug in); Chorus scores
+  its banked bonus. hud.js: the BROOD n/3 chip. Numbers unchanged (Chorus 90 +45 a stack = 225 at 3, Deafening Wail 125 no
+  cooldown is the line; it pays three idle rounds and an enemy that saw the dig knows the square). VFX: spells-vfx.md
+  "THE CICADA BROOD".
 Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo had 10 stretched triangles from a claw to the foot
 (degenerated, edge > 0.15 m) and the Samurai Slug's tail was skinned to the legs (blended to Hips for z < 0.32, y < 0.85);
 originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`

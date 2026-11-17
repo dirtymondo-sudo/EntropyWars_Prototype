@@ -3909,3 +3909,14 @@ the head across the lens toward his side (`_rfCardAnchor`), never over the body 
 - OFF THE FIELD (three-renderer.js, before the realm branch): any `exited` unit (red card or the DOOR Gun's EXIT) is drawn as a
   shade (`OFF_FIELD_OPACITY` 0.3, outline off) for both sides, fog still rules an enemy's. It still holds its square (unitAt).
 Proof: /mnt/project-files/referee-polish/.
+
+## THE CICADA BROOD (2026-11-17, three-vfx-effects.js block "THE CICADA BROOD", before "THE SPACE PROPS")
+Shell green over black + red eyes; the area rings in the side colour from the viewer's seat (THE RIOT PASS). No screen flash.
+- Dig In (`aura`): clods + dust burst up, an earth ring, a dark burrow mouth opens under it and closes (1.9 s), a thin side ring.
+- The Brood pulse (`fireGeometry('nrDigIn:pulse', x, y, stacks, { onlyPlayer: owner })` from battle.js `_cicadaBrood`): one green
+  ring per stack out of the ground + a small red one; only its own side sees it (the enemy must not learn where it waits).
+- Buzz (`aoe` 3x3): six fast thin rings tremble over the area at mixed heights, dust shivers off each square, the side ring.
+- Chorus (`aoe` r 2 round it): 2 green rings of sound at head height (thin rings; one faint plate: stacked additive plates washed the caster out white at Brood 3) + 1 red one per Brood stack spent, the side ring on the floor;
+  with stacks, 4 grasshoppers a stack leap out of the ground (mondo's insects, THE INSECTS `_bugRun`). The stack count is read
+  at the cast (battle.js `_fireAoeVfx` puts `brood` in the relayed fire() params; `_fireAoeMapped` hands the params to a
+  geometry that sets `wantsParams`).

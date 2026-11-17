@@ -8166,7 +8166,9 @@
                mapped effect gets the mask itself (only then overriding the effect-def radius). */
             const _r = _spellAoeReach(spell, 1);
             const _m = _spellMaskOf(spell);
-            const _aoeParams = () => { const p = { tx, ty, cx: unit.x, cy: unit.y }; if (_m) { p.aoeMask = _m; p.aoeRadius = _r; } return p; };
+            /* 🦗 Chorus (THE CICADA POLISH): the look sings louder with every Brood stack it spends, read NOW (the hit spends them) */
+            const _broodNow = spell.broodSpend > 0 ? (unit._brood || 0) : null;
+            const _aoeParams = () => { const p = { tx, ty, cx: unit.x, cy: unit.y }; if (_m) { p.aoeMask = _m; p.aoeRadius = _r; } if (_broodNow != null) p.brood = _broodNow; return p; };
 
             if (_useStrikeLeap) {
                 window.setTimeout(() => {
@@ -14363,6 +14365,7 @@
                 if (!u || !u.race) continue;
                 if (u.race === 'wendigo') _wendigoHunger(u);
                 else if (u.race === 'boltzmann brain') _boltzmannFluctuate(u);
+                if (u.status && u.status.dormant > 0) _cicadaBrood(u);
             }
             if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
         }
@@ -14453,7 +14456,18 @@
             });
         }
         window._aoeTerrainFilter = _aoeTerrainFilter;
-        /* 🦗 THE BROOD (the Cicada Brood): Screech (`broodSpend`) adds its N for every Brood stack, spends them and ends Dig In */
+        /* 🦗 THE BROOD (the Cicada Brood, THE CICADA POLISH 2026-11-17): every round end it spends dug in (`dormant`) adds a Brood
+           stack, up to 3 (STATUS_DEFS.dormant.onRoundEnd, run from _nrRoundEnd: the round-end status pass only runs the ticks in
+           state.js _STATUS_EFFECT_IDS, so the stacks never grew before). The pulse under the ground is drawn for its own side only
+           (`onlyPlayer`: the enemy must not see where it waits); the count rides the unit (`_brood`) in the state-sync. */
+        function _cicadaBrood(u) {
+            if (!_nrAlive(u) || !(u.status && u.status.dormant > 0)) return;
+            const def = STATUS_DEFS.dormant;
+            if (!def || typeof def.onRoundEnd !== 'function') return;
+            def.onRoundEnd(u);
+            _sigVfxGeom('nrDigIn:pulse', u.x, u.y, u._brood || 0, { owner: u.player, onlyPlayer: u.player });
+        }
+        /* 🦗 Chorus (`broodSpend`) adds its N for every Brood stack, spends them and ends Dig In */
         function _broodSpend(unit, spell) {
             if (!unit || !spell || !(spell.broodSpend > 0)) return 0;
             const n = unit._brood || 0;

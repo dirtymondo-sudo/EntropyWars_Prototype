@@ -4058,6 +4058,9 @@ function _hrlgStatusChips(unit) {
   /* 🐝 THE POLLEN (battle.js): what the Bee Queen carries, and the Honey it gives her */
   const pol = unit.pollen | 0;
   if (pol > 0) chips.push({ key: 'pollen', label: 'POLLEN ' + pol + '/' + (window.POLLEN_MAX || 3), kind: 'up', title: 'Pollen: +' + pol * 8 + ' ATK, spell power and SPD. Pollinate spends one.' });
+  /* 🦗 THE BROOD (the Cicada Brood, 2026-11-17): the stacks it banked dug in, and what they add to Chorus */
+  const brd = unit._brood | 0;
+  if (brd > 0) chips.push({ key: 'brood', label: 'BROOD ' + brd + '/3', kind: 'up', title: 'Brood: Chorus deals +' + brd * 45 + ' damage and spends them.' });
   if (totalMov) chips.push({
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
