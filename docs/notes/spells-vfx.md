@@ -4601,3 +4601,14 @@ The list (`own-look/L3.txt`, 39 spells) is done with this part.
   only the grab, with the camera up in the sky; their pieces ran with no error in the page log, but nobody has looked at
   them on the ground yet. Horn Toss (part 2) is the same: its second pick (the throw's direction) is not cast by the probe.
 - Frames: docs/plans/vfx-cleanup/img/own-look/l3_part3_*.jpg, l3_raceApexCharge.jpg.
+
+## THE VFX CLEANUP, B4 part 1: the ray guns + the kit blasts (2026-11-17, three-vfx-effects.js)
+- `_sigGunRig3D` `opts.ray`: the ray's core = `_beamKitCols(opts.ray).hot` (it was `0xffffff` in a coloured sleeve).
+- `_vcRuneOK`: no cast rune for a spell in `_SIG_GUN_FOR` / `_SIG_LINE_GUN_FOR` / `_isGunSpell` (Shrink Ray's hex rune
+  under the shooter). `_VC_NO_RUNE` gains `ki`.
+- `_VC_BEAM` rows with `blast: true` are thrown spells, not lines (`_fireBeamMapped` ignores them): `_stageWindup` still
+  draws the kit charge at the hand; `_beamKitBlast(spellId, p)` is their `_FX2_BURST` piece (so `_vcOwn` is true).
+  `chargeOnly` = a power-up (Ki Charge). Rows: raceKiBlast (Ki Volley), raceSpiritBomb, raceKiCharge.
+- Open: the clash; the projectile itself; see the plan's section 10 for the two leftovers (Ki Charge's disc, Love Ray's
+  circle) and L5's untraced orb + ring on Jackpot / Shattered Mirror.
+
