@@ -4168,6 +4168,25 @@ water, ice). The block is "THE OWN LOOKS, L1" at the end of three-vfx-effects.js
 - **Tentacle Lash** (kraken): a dark pool opens beside the victim, the tentacle model comes up, hooks over the body and rides the pull.
 - **Watering Can**: a fine shower falls in a cone on the one square, the soil goes dark and wet, two small rings. (A big tan ring that is
   NOT this look still draws on the cast, before and after this PR; it is not in three-vfx-effects.js' stage burst: for the cleanup thread.)
+
+### part 2 (13 spells: earth, the blows and the ground-breakers). After frames: `docs/plans/vfx-cleanup/img/own-look/L1_part2.jpg`
+Ten of these already had an earth-pass look (`_EA_SIG`) that `_vcOwn` cannot see, so the generic burst still drew over it. They are
+named in `_FX2_BURST` now (the burst stops) and every square they hit flashes in their colour (`_l1FlashOnly`).
+- **Big Kick** (bigfoot): the sole of a huge foot stamped on the victim in amber, clods of turf fly down the two squares of the kick.
+  (The clods show in the frames; the stamp is shorter than the harness' frame gap and is NOT confirmed by a picture.)
+- **Boulder Hurl** (golem): the boulder breaks on the body, two big halves and chunks fall to both sides and lie round it.
+- **Stone Throw** (cyclops): one stone glances off and skips on twice down the line of the throw, dust at every bounce.
+- **Stonefall** (gargoyle): a run of grey stones comes straight down on the victim one after another and bounces off.
+- **Calcify** (gargoyle): a cap of grey stone closes over the head from the crown to the brow, cracks and flakes away.
+- **Petrify**: the climbing spikes (`_eaPetrify`) + a square plinth of grey stone under the feet for as long as the stone holds.
+- **Ground Slam**: a slab of paving tilts up out of each of the eight squares, hinged on its inner edge, and drops back (over `_eaStomp`).
+- **Tremor Stomp** (bigfoot): his huge dark footprint, five toes, pressed into the ground under him (over `_eaStomp`).
+- **Timber Stomp**, **Cave-In**, **Erupt**, **Fissure**, **Rockslide**: named + the flash (wood brown / amber / lava orange); their
+  earth-pass looks are unchanged.
+- `_l1Stones(F, mat)` = loose stones with gravity that bounce once and lie where they stop (the kit of this part).
+- A decal on a square the earth noise wash covers is hidden by the wash: put a hit square's own piece above the ground.
+- The capture harness' frames are about 0.9 s apart round the hit: a piece shorter than that may not be in any frame.
+
 ## THE OWN LOOKS, L4, part 1: the blessings and the heals (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
 
 Thread L4 of the own-looks job (`docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md`, list `own-look/L4.txt`). mondo: "any spells that
@@ -4254,6 +4273,38 @@ mondo: "We need better beams and lasers, think epic anime ki blast or scifi lase
 
 After frames: `docs/plans/vfx-cleanup/img/own-look/L4_part2.jpg`.
 
+
+
+## THE OWN LOOKS, L3, part 1: the grapples + the human spells (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L3")
+mondo: "any spells that dont have a look of their own need one" (docs/plans/vfx-cleanup/OWN_LOOK_BRIEF.md, list `own-look/L3.txt`).
+Each look is a `_GO_SIG[id]` function (the staging `burst` beat, relayed by `fire()`; the caster's square comes from the
+windup beat), so `_vcOwn(id)` is true and the shared stage burst stops for it. Nothing on `state`, no rule touched.
+- **The kit** (L3's own, in the block): `_l3Track` (the live body a pull / shove moves), `_l3Side` (the caster's hand + the
+  line to him; `far` false when he is fogged), `_l3Rope` / `_l3Loop` (a rope / a lariat of straight pieces, one thickness
+  at any length), `_l3Area` (the squares the row hits: battle.js `getSpellAoeArea`, else the square), `_l3Flash` (EVERY
+  hit square flashes once in the spell's colour), `_l3Ink` (a flat colour with no depth write: ropes, chalk, prints).
+- **Learned on the frames:** a tile is about 75 px across at the battle zoom, so a prop under 0.05 tile thick is one dark
+  pixel (the outline pass eats it). Props are drawn about twice "real" size and ropes get `_l3Ink`, not a solid.
+  By the burst beat a PULL has already moved the body (it is beside the caster): the look rides the body from there.
+- Harvest Hook: a big rust-edged sickle swings in round the body on a straw rope, straw flies. Horn Hook: two bone horns
+  come in low either side and lift, two furrows + dust along the drag. Infernal Conscription: an iron collar snaps shut on
+  the neck, a chain of links to his hand with a red pulse running down it. Lasso: the lariat turns over the head, drops and
+  cinches, rope to the hand. Round Up: one great loop opens over the cowboy, lands at the edge of the area and is drawn in;
+  every square flashes rope-amber. Rustle: a thin rope snags the belt and a KEY (the catalogue's `key` model) flies to the
+  rustler's hand, only when he really took one (he carries a Key at the hit; the take happens at the cast).
+- Artillery Strike: three olive shells down the gun line, earth fountains, every square flashes shell-orange (its fireballs
+  were already its own recipe). Cosmic Slam: a disc of indigo night sky with stars opens under him, violet cracks, stars
+  knocked up, every square flashes violet. Executive Order: the signed page drops in over the area, the gold seal is
+  stamped on it, every square flashes gold under a shower of gold stars. Lance: a steel point drives through along the
+  charge, the shaft bursts into long splinters, the pennant is torn off. Pressure Point: the body's line of jade points
+  lights, two needle jabs, the points go dark from the head down. Roll Credits: a strip of film whips across the body, a
+  burn ring opens at the chest, the credits roll up over the head to THE END. Team Strike: five strikes in the five
+  rangers' colours from five sides, a five-colour pinwheel on the last (a later hit of the same cast adds one ranger).
+- Penalty already had the referee's look (`_BUG_ON_BURST`); it is named in `_GO_SIG` only so `_vcOwn` knows.
+- Not mine, seen on the frames: Round Up's metal-element stamp is a giant pale cog under the loop (THE METAL PASS, the
+  cleanup thread's B7); Cosmic Slam's old pink ring (`fire()`'s own special case) still draws over the caster.
+- Frames: docs/plans/vfx-cleanup/img/own-look/l3_*.jpg. Capture tip: the batch runner's frames are 450 ms apart and it
+  misses tile-aimed dashes; `/tmp/sv/start.sh` + `SV.prep(id)` / `SV.cast()` through `e.sh`, a shot every 150 ms, shows them.
 ## THE OWN LOOKS, L4, part 3: the team buffs and the wards (2026-11-17, three-vfx-effects.js block "THE OWN LOOKS, L4")
 
 - **A team buff fires ONE `aura` beat, at the caster, with `aoeRadius`** (Anthem, Apex Roar, Audible, Fairy Dust, Tin Foil Hat;
