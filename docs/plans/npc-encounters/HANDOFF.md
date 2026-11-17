@@ -1,4 +1,4 @@
-# NPC ENCOUNTERS: where it stands, for the next thread (2026-11-17, end of the step 1a thread)
+# NPC ENCOUNTERS: where it stands, for the next thread (2026-11-17, after steps 1b, 2 and 3)
 
 Read this first, then `PLAN.md` section 0 (four rounds of mondo's answers; they win over everything below them), then `STEP-1A.md`.
 **mondo cannot see repo files.** Anything that needs his answer or OK goes to him IN CHAT, in full (tables, lines, pictures sent as files).
@@ -26,7 +26,22 @@ heavy (a headless `load-data.js` script) beside the probe. With the file cache w
 | Up to 20 bodies near you, the same on every machine | `drawn` 20, `drawnLow` 20, `bodies` 26 |
 | New row fields: `h` (own shift starts), `beat`; place `f:<feature id>`; `walkOn` (the skate pad) | data.js `hqSpawnExpand`, `hqResidentPlace`, `hqCityGrid` |
 
-Nothing of the encounter system itself (tempers, marks, ladder, muggings, giving up) is built.
+| **Step 1b:** the tempers, groups, lines and numbers | data.js `HQ_NPC_TEMPERS`, `hqNpcTemper`, `hqNpcGroup`, `hqNpcSameGroup`, `hqNpcDefends` (after `hqSpawnExpand()`) |
+| **Step 2:** awareness + the marks: the eye by the lead's portrait (green slashed / amber open), the red `!` over an alert NPC, the Ghost's warning | data.js `HQ_NPC_TEMPERS.aware`, `hqNpcActs`, `hqNpcGround`, `hqNpcOnGround`; three-renderer.js `_hqTickAware`; map.js `_hqAwareEvent`, `_hqFillDock`; styles-base.css `.hq-dock-eye`; notes `docs/notes/npc-system.md` "THE AWARENESS + THE MARKS" |
+
+| **Step 3:** the strike ladder (REPLACES the one-strike fight): the run, cornered, the Talk box (E first too), the day's memory, the door strike, whoever starts opens round 1, the Guard who sees a strike (warning line, then it comes for you and starts its own fight) | data.js `HQ_NPC_TEMPERS.ladder` / `.guard`, `hqNpcStrike`, `hqNpcMem`, `hqNpcTalks`, `hqNpcGuardSees`; three-renderer.js `_hqLadderStruck`, `_hqTickLadder`, `hq.npcCornered` / `npcStruck` / `encounterEvent`; map.js `_hqEncounterFire` (the ladder in front of the launch), `_hqLadderTalk`, `_hqLadderFight`; battle.js `_afterVSSplash` (`opener`); notes `docs/notes/npc-system.md` "THE STRIKE LADDER" |
+
+Not built yet: the muggings, Brutes coming at you, giving up, everything from step 4 on. A race with no temper still fights on the first strike.
+
+**Step 3's PROPOSALS, put to mondo in chat 11-17 (no answer yet; all are data rows, change them freely):** the run 15 m at 2.0 m/s, cornered = no clear 5 m away
+from you, rest 5 s, the ladder starts over after 30 s left alone; E first shows the NPC's ordinary line with NOTED / FIGHT (the approved Talk lines are answers
+to a strike); keys 1 / E = back off, 2 = fight; the Guard warns at the first strike it sees and comes at the second (2.7 m/s, fight within 1.9 m, gives up past
+32 m or 6 s unseen); the day's memory lives in the page (a reload forgets it) and "day" is the calendar day, as the beaten-today ledger.
+
+**What step 2 could not show in a picture** (say it to mondo if he asks): the red `!` in the proof picture was held on a Police Officer with
+`dev.awareMark` (the real trigger, a Guard who sees you while your aim is on someone it defends, was checked headless through `hqNpcActs`,
+not staged in the street); the Ghost in its hotel at night was not photographed (the browser died for memory at 23:00 twice): its warning's
+code path was run by day with a Chef standing in for it in the page only.
 
 ## 3. What mondo decided in this thread (all in PLAN.md section 0, rounds 3 and 4)
 
@@ -51,12 +66,14 @@ Nothing of the encounter system itself (tempers, marks, ladder, muggings, giving
 
 ## 5. Next steps, in order
 
-1. ~~Section 1's check.~~ Done (section 1).
-2. **Step 1b: DONE 11-17.** The draft is in data.js right after `hqSpawnExpand()` (loaded headless: every race name exists; a Police Officer defends a Chef, not a Pirate; the Ghost is Territorial). The draft file is deleted. 28 races that live in the city have no temper yet (they behave as today): Priest, Ki Fighter, Swordfighter, Conspiracy Theorist, Cult Leader, Halfdemon, Men in Black, Spy, General, Honda Civic, Mad Scientist, Reptilian, Telepath, Antihero, Nephilim, Clown, Ringmaster, Quarterback, Luchador, Juggernaut, Knight, Astronaut, Marksman, Cursed TV, Super Sentai, Ninja, Magician, Referee. They wait for their district's pass. What it was (all its inputs are approved): the tempers, groups, lines and numbers into data.js as `HQ_NPC_TEMPERS` + `hqNpcTemper`,
-   `hqNpcGroup`, `hqNpcSameGroup`, `hqNpcDefends`; nothing reads them yet. A full draft is `STEP-1B-DRAFT.js.txt` beside this file (written,
-   never loaded or checked): put it after `hqSpawnExpand()` in data.js, `node --check`, bump the `?v=` token, merge, `node sync-zip.js --upload`.
-3. **Step 2** (awareness + the marks): his OK is given (the eye by the portrait, the red `!` over the NPC). Build it after step 1b; a proof picture goes to him in chat.
-4. Then PLAN.md section 6 as written: 3, 4, 5a, 6a, 6b, the GATE (he plays Bayside), S beside them.
+1. ~~The check~~, ~~step 1b~~, ~~step 2~~: done 11-17 (sections 1 and 2).
+2. ~~Step 3, the strike ladder~~: done 11-17 (section 2).
+3. **Step 4**: NPC-started fights. It sets the muggers' and Brutes' own `alert` (today `hqNpcActs` gives them `watch` only) and the
+   Ghost's fight after its warning. Step 3 left it the tools: a body with `ch._run = { mode: 'chase', home }` comes for the walker and starts its
+   own fight (`onEncounter` with `npcStart`, the enemy opens round 1); the level gap (8) and the gold lost with a fight are still to build.
+4. Then 5a, 6a, 6b, the GATE (he plays Bayside), S beside them.
+5. 28 races that live in the city have no temper yet (Priest, Ki Fighter, Swordfighter, Conspiracy Theorist, Cult Leader, Halfdemon, Men in Black, Spy, General, Honda Civic, Mad Scientist, Reptilian, Telepath, Antihero, Nephilim, Clown, Ringmaster, Quarterback, Luchador, Juggernaut, Knight, Astronaut, Marksman, Cursed TV, Super Sentai, Ninja, Magician, Referee; they behave as today and never open the eye):
+   they wait for their district's pass, which needs mondo's marks like Bayside's did.
 
 ## 6. Probe notes learned here
 
@@ -64,3 +81,6 @@ Nothing of the encounter system itself (tempers, marks, ladder, muggings, giving
 - The road by the Street market is 1.2 m over level 0: a teleport there needs `"y": 1.2` or the walker stands in the road.
 - Changing the clock twice in one run closed the browser once. One hour per run.
 - A mock-up drawn onto a finished screenshot (PIL + a small HTML page) takes a minute; a new probe run takes ten.
+- A crashed probe attempt leaves its browser running and the next attempt dies for memory: `pkill -f playtest_city.js; pkill -f chrom; pkill Xvfb` before a rerun, and nothing heavy beside the probe.
+- The city at night (clock 23) killed the browser for memory right after the room was ready, twice. By day it holds.
+- To stand next to somebody: `dev.chars()` rows carry `race` and `away`; a view with `"keep": true` stays where the last view's `eval` put the walker.

@@ -2864,3 +2864,8 @@ from the top-left).
 - OPEN (the plan's M4 / M5 + §6): a plot charted when you stand on it + GO to a plot; plot search; mondo's four answers (the defaults used:
   GO to a zone as today; zones as layout 3 places them; a zone shows whole once charted; the underground on its own sheet).
 
+## THE EYE BY THE PORTRAIT (2026-11-17, NPC encounters step 2)
+The walk's party dock (map.js `_hqFillDock`) draws one eye right of the lead's portrait, inside the portrait's svg (`.hq-dock-eye`, styles-base.css): green and
+slashed = nobody who would act sees you, amber = someone does. `.hq-dock-pp.lead.has-eye .hq-dock-tag` moves the name tag 30 px right when the tag sits beside
+the portrait (hud.js zeroes that margin when the UI Maker puts the tag under it). The rules are in `docs/notes/npc-system.md` "THE AWARENESS + THE MARKS".
+

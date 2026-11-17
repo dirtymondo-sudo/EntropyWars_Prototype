@@ -4,6 +4,7 @@ Moved verbatim from CLAUDE.md on 2026-09-24 (sections in original order). Encoun
 Append new notes for this system at the end of this file.
 
 ## THE ENCOUNTER — PLAYER-INITIATED (HQ plan 9.4 stage 1) — 2026-09-15 rev 16 / rev 17 THE CLICK, local delivery
+**REPLACED 2026-11-17 (NPC encounters step 3, THE STRIKE LADDER): a strike no longer starts the fight at once for an NPC with a temper. It walks the NPC's ladder (run, Talk, fight; three strikes at most); only the last rung launches. A race with no temper still fights on the first strike. Notes: `docs/notes/npc-system.md` "THE STRIKE LADDER".**
 **Never random (the user's rule).** In a WILD room (data.js
 `hqEncounterRoomOk(roomId)` = `hqRoomSite` non-null — a site's board room
 or a complex part; the facility is safe by construction) the officer
@@ -679,6 +680,7 @@ between two frames lands the record (it used to linger). No opts = the straight 
 nothing relayed (VS-CPU; RULE #2). `npm test` runs `encounter-arrival.test.js`; hq-encounter's two swoop pins moved.
 UNSEEN LIVE (RULE #1c): the bow under a low ceiling (`crane.bow`), the tilt against the preset (`arrival.tilt`), the
 bars on a wide screen, the fade's pace. A 9 × 9 / 10 × 10 window is `HQ_FIELD_RULES.size` + the reach / seat pins.
+**REPLACED IN PART 2026-11-17 (NPC encounters step 3): whoever STARTS the fight opens round 1. The officer still opens a fight he started; an NPC that came for him (a Guard that saw a strike: the run's `opener: 'npc'`) opens its own. Notes: `docs/notes/npc-system.md` "THE STRIKE LADDER".**
 **THE FIRST STRIKE (same day)**: the user — "it makes me select my unit first before I can make an action". Measured with a
 scratch offline probe (the field probe + a selection read): the engine DID auto-select the first active unit, but the first
 activation went to the FASTEST unit (the catgirl, SPD 70) while the arrival framed the officer. Now the officer who swung

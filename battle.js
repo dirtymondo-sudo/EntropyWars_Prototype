@@ -62864,7 +62864,7 @@
             window._ewEncounterFirstId = null;
             try {
                 const _erF = _encRun();
-                if (_erF && !state.devAutoSim) { const _sf = _erF.field && _erF.field.seats && _erF.field.seats.lead; const _lf = _encLeadUnit(getViewerPlayer(), _sf && _sf[getViewerPlayer()]); if (_lf) window._ewEncounterFirstId = _lf.id; }
+                if (_erF && !state.devAutoSim) { const _sf = _erF.field && _erF.field.seats && _erF.field.seats.lead; const _fp = (_erF.opener === 'npc') ? (getViewerPlayer() === 1 ? 2 : 1) : getViewerPlayer(); const _lf = _encLeadUnit(_fp, _sf && _sf[_fp]); if (_lf) window._ewEncounterFirstId = _lf.id; }   // WHOEVER STARTS THE FIGHT OPENS ROUND 1 (NPC encounters step 3, mondo 11-17): `opener: 'npc'` = an NPC that came for the officer (a Guard that saw a strike), its lead acts first
             } catch (e) { window._ewEncounterFirstId = null; }
             if (getActiveGameMode().blitzMode) {
                 _applyRoundStartPassives();
@@ -80708,6 +80708,10 @@
            Each recipe gets (V=ThreeVFXEffects, ts, t={x,y}, a=initiator,
            b=partner) and is fired inside _ewsSafe — visuals stay
            best-effort, never load-bearing. */
+        /* THE VFX SWEEP B10 (2026-11-17, the last check: basic attacks, items, combos): a combo's finisher keeps its own shapes,
+           but the near-white wash of the whole screen under three of them (Combined Arms, Celestial Chorus, Purifying Pulse)
+           was the same generic flash the spells lost. Off with the cleanup (window.EW_NO_VFX_CLEANUP = true = as before). */
+        const _vcComboFlash = () => { try { return !!window.EW_NO_VFX_CLEANUP; } catch (e) { return true; } };
         const _COMBO_IMPACT_FX = {
             'Celestial Chorus': (V, ts, t) => {
                 if (V.sigLightPillar3D) V.sigLightPillar3D(t.x, t.y, { height: 640, radius: ts * 0.38, ms: 820, color: 0xffd76a, coreColor: 0xffffff });
@@ -80739,7 +80743,7 @@
             'Combined Arms': (V, ts, t) => {
                 if (V.sigSlashCombo3D) V.sigSlashCombo3D(t.x, t.y, { glowColor: 0xffe2a8 });
                 if (V.sigSonicBoom3D) V.sigSonicBoom3D(t.x, t.y, { rings: 2, radiusTiles: 1.5 });
-                if (V.sigScreenFlash) V.sigScreenFlash('#fff2cc', 220, 0.30);
+                if (V.sigScreenFlash && _vcComboFlash()) V.sigScreenFlash('#fff2cc', 220, 0.30);
             },
             'Cosmic Convergence': (V, ts, t, a, b) => {
                 if (V.sigSpiralBeam3D) {
@@ -80755,12 +80759,12 @@
                     V.sigLightPillar3D(t.x, t.y, { height: 560, radius: ts * 0.26, ms: 900, color: 0x9632b4, coreColor: 0xe8ccff });
                 }
                 if (typeof ThreeLightning !== 'undefined' && ThreeLightning.strikeFromSky) ThreeLightning.strikeFromSky(t.x, t.y, { durationMs: 300 });
-                if (V.sigScreenFlash) V.sigScreenFlash('#e8dcff', 340, 0.42);
+                if (V.sigScreenFlash && _vcComboFlash()) V.sigScreenFlash('#e8dcff', 340, 0.42);
             },
             'Purifying Pulse': (V, ts, t) => {
                 if (V.sigShockRing3D) V.sigShockRing3D(t.x, t.y, { r0: ts * 0.2, r1: ts * 2.6, ms: 620, color: 0xffffff });
                 if (V.sigRegenPulse3D) V.sigRegenPulse3D(t.x, t.y, { radiusPx: ts * 1.6 });
-                if (V.sigScreenFlash) V.sigScreenFlash('#ffffff', 260, 0.30);
+                if (V.sigScreenFlash && _vcComboFlash()) V.sigScreenFlash('#ffffff', 260, 0.30);
             },
             'Holy Ordnance': (V, ts, t, a) => {
                 if (V.sigCannonShot3D) V.sigCannonShot3D(a.x, a.y, t.x, t.y, {});

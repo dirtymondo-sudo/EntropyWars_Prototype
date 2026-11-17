@@ -73612,6 +73612,7 @@ const ThreeRenderer = (function () {
         if (info.busStops && info.busStops.length) { try { _hqBuildBusStops(room, info, G); } catch (e) { console.warn('[HQ] the bus stops failed', e); } }
         try { _hqBuildCityMarks(room, info, G); } catch (e) { console.warn('[HQ] the city marks failed', e); }   // THE CITY MARKS ON THE STREET
         if (info.traffic && info.traffic.length) { try { _hqBuildTraffic(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the traffic failed', e); } }
+        if (info.bridges && info.bridges.length) { try { _hqBuildMovers(room, info, G); } catch (e) { console.warn('[HQ] the movers failed', e); } }   // THE MAIL (2026-11-17)
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         if (_hqSliceDue()) yield;
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
@@ -76010,6 +76011,61 @@ const ThreeRenderer = (function () {
         cars.forEach(function (car) { var p = _hqRoutePose(car, car.s); car.g.position.set(p.x * U, hqTerrainHeight(info, p.x, p.z) * U + 0.3, p.z * U); car.g.rotation.y = Math.atan2(p.dx, p.dz); car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; });
         H.traffic = cars;
         H.tickers.push(function (dt) { _hqTickTraffic(dt); });
+    }
+    /* THE MAIL (2026-11-17, the Internet plan 2; mondo: "Moving platforms that are like mail"): a `bridge` feature row with
+       `mover: { to: [dx, dy, dz] (metres from its written place to the far dock), travel (seconds one way), dwell (seconds at a dock),
+       phase (0..1 of the cycle), look: 'mail' }` is a slab that FLIES between two docks. The compiled slab itself moves (its x0 / z0 /
+       x1 / z1 / y are rewritten every frame), so every walker rule that reads the bridge layer (the feet, a landing, the camera boom)
+       reads it where it is; a walker standing on it is carried with it. The place in its cycle is read off the wall clock, so two
+       players in the room see it at the same spot. Write the row with `hide: true, plain: true, rails: false` (it is drawn here: an
+       envelope, the flap side up). window.EW_HQ_NO_MOVERS = the slabs stay at their first dock. */
+    var _hqMailTexC = null;
+    function _hqMailTex() {
+        if (_hqMailTexC) return _hqMailTexC;
+        var c = document.createElement('canvas'); c.width = 512; c.height = 352; var g = c.getContext('2d');
+        g.fillStyle = '#f6f2e6'; g.fillRect(0, 0, 512, 352);
+        var n = 0; for (var x = -40; x < 560; x += 30) { g.fillStyle = (n++ % 2) ? '#c8283a' : '#2a4aa0'; [[0, 0], [0, 334]].forEach(function (q) { g.beginPath(); g.moveTo(x, q[1]); g.lineTo(x + 18, q[1]); g.lineTo(x + 8, q[1] + 18); g.lineTo(x - 10, q[1] + 18); g.closePath(); g.fill(); }); }
+        g.fillStyle = '#f6f2e6'; g.fillRect(0, 18, 512, 316);
+        g.strokeStyle = '#b8b09a'; g.lineWidth = 5; g.beginPath(); g.moveTo(4, 22); g.lineTo(256, 214); g.lineTo(508, 22); g.stroke();
+        g.lineWidth = 3; g.beginPath(); g.moveTo(4, 330); g.lineTo(196, 168); g.moveTo(508, 330); g.lineTo(316, 168); g.stroke();
+        g.fillStyle = '#c8283a'; g.beginPath(); g.arc(256, 214, 26, 0, Math.PI * 2); g.fill(); g.fillStyle = '#f6f2e6'; g.font = '900 30px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('@', 256, 216);
+        var t = new THREE.CanvasTexture(c); t.anisotropy = 4; return (_hqMailTexC = t);
+    }
+    function _hqBuildMovers(room, info, G) {
+        var H = _hq, U = _hqUnits(), list = [];
+        if (!H || H.movers) return;
+        (info.bridges || []).forEach(function (b) {
+            var M = b.mover; if (!M || !M.to || b.arc) return;
+            var L = Math.hypot(b.x1 - b.x0, b.z1 - b.z0) || 1, th = b.thick || 0.3;
+            var top = new THREE.MeshLambertMaterial({ map: _hqMailTex() }), side = new THREE.MeshLambertMaterial({ color: 0xe8e2d0 }); top.emissive = new THREE.Color(0x3a3830); top.emissiveMap = top.map; side.emissive = new THREE.Color(0x2a2822);
+            var m = new THREE.Mesh(new THREE.BoxGeometry(b.w * U, th * U, L * U), [side, side, top, side, side, side]); m.name = 'hq_mover'; m.castShadow = false; m._ew_bunOut = true;
+            var g = new THREE.Group(); g.add(m); m.position.y = -th * U / 2; g.rotation.y = Math.atan2(b.x1 - b.x0, b.z1 - b.z0);
+            [-1, 1].forEach(function (sx) { if (typeof _hzGlowSprite === 'function') { var gl = _hzGlowSprite(0.9 * U, 0x7fffd0, 0.7, 0.0, 0.0, 0.0); gl.position.set(sx * (b.w / 2 - 0.3) * U, -(th + 0.25) * U, 0); g.add(gl); } });
+            G.add(g);
+            list.push({ b: b, g: g, a: { x0: b.x0, z0: b.z0, x1: b.x1, z1: b.z1, y: b.y }, to: M.to, travel: Math.max(2, M.travel || 14), dwell: Math.max(0, (M.dwell != null) ? M.dwell : 5), phase: M.phase || 0, k: 0 });
+        });
+        if (!list.length) return;
+        H.movers = list;
+        var still = (typeof window !== 'undefined' && window.EW_HQ_NO_MOVERS);
+        var place = function (mv) {
+            var cyc = 2 * (mv.travel + mv.dwell), t = still ? 0 : (((Date.now() / 1000) / cyc + mv.phase) % 1) * cyc, k;
+            if (t < mv.dwell) k = 0; else if (t < mv.dwell + mv.travel) k = (t - mv.dwell) / mv.travel; else if (t < 2 * mv.dwell + mv.travel) k = 1; else k = 1 - (t - 2 * mv.dwell - mv.travel) / mv.travel;
+            k = k * k * (3 - 2 * k);
+            var b = mv.b, a = mv.a, dx = mv.to[0] * k, dy = mv.to[1] * k, dz = mv.to[2] * k;
+            var ox = a.x0 + dx - b.x0, oy = a.y + dy - b.y, oz = a.z0 + dz - b.z0;
+            b.x0 = a.x0 + dx; b.z0 = a.z0 + dz; b.x1 = a.x1 + dx; b.z1 = a.z1 + dz; b.y = a.y + dy;
+            mv.g.position.set((b.x0 + b.x1) / 2 * U, b.y * U + 0.3, (b.z0 + b.z1) / 2 * U);
+            return [ox, oy, oz];
+        };
+        list.forEach(place);
+        H.tickers.push(function () {
+            var HH = _hq; if (!HH || HH.movers !== list) return;
+            var pl = HH.player, on = null;
+            if (pl && !pl.air && HH.terrain && typeof hqTerrainBridgeFor === 'function') { var sb = hqTerrainBridgeFor(HH.terrain, pl.x, pl.z, pl.y); if (sb && sb.mover && Math.abs(sb.y - pl.y) < 0.3) on = sb; }
+            for (var i = 0; i < list.length; i++) { var d = place(list[i]); if (on === list[i].b && !HH.paused) { pl.x += d[0]; pl.z += d[2]; pl.y = on.y; if (pl.visY != null) pl.visY += d[1]; } }
+            if (pl) pl._onMover = !!on;
+            HH.dirty = true;
+        });
     }
     function _hqTickTraffic(dt) {
         var H = _hq, cars = H && H.traffic; if (!cars || !cars.length || H.paused) return;
@@ -85114,7 +85170,7 @@ const ThreeRenderer = (function () {
         /* THE ROAMING GROUP (2026-09-21): the target's companions in the room (the same `group`, not away) — data.js hqEncounterGroup seats them */
         var group = [];
         if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, lvl: c.lvl || 0, x: c.x, z: c.z, y: c.y }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
-        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, lvl: best.lvl || 0, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
+        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, line: best.line || null, lvl: best.lvl || 0, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
     }
     /* THE EYE (9.4 seam 2): the camera as it stands when the swing lands — position
        + gaze in METRES in the room frame, and the ground under the eye's column
@@ -85922,7 +85978,7 @@ const ThreeRenderer = (function () {
         /* who has a body: the nearest in the street (every 0.4 s) */
         if (now - S.lastPick > 400) {
             S.lastPick = now;
-            var lowPC = !!(typeof window !== 'undefined' && window.EW_PERF_LOW), cap = off ? 0 : (lowPC ? R.drawnLow : R.drawn), cand = [];
+            var cap = off ? 0 : R.drawn, cand = [];   // (NPC encounters step 2, mondo 11-17: "the game is the game": the same bodies on every machine, no weak-PC cut)
             S.list.forEach(function (s) {
                 s.want = false; if (!s.tl || !pl || off) return;
                 var at = hqResidentAt(s.tl, hour - s.lag); s.at = at; if (!at || !at.vis || now < s.hideUntil) return;
@@ -85951,6 +86007,7 @@ const ThreeRenderer = (function () {
         var pts = []; if (pl) pts.push(pl);
         if (!H.paused) S.list.forEach(function (s) {
             var ch = s.ch; if (!ch || ch.away || !s.tl) return;
+            if (ch._run) { pts.push(ch); return; }   // THE STRIKE LADDER: it runs / comes for the walker (_hqTickLadder moves it)
             var at = hqResidentAt(s.tl, hour - s.lag); if (!at) return;
             if (!at.vis) { _hqRoundsSetVisible(ch, false); H.dirty = true; return; }   // in through its door / on the bus: gone that frame, not at the next pick
             /* the officer in the way: the walker holds (its day runs late); a stand catches the late time back up */
@@ -85985,12 +86042,231 @@ const ThreeRenderer = (function () {
         });
         S.pts = pts;
     }
+    /* ── THE AWARENESS + THE MARKS (NPC encounters step 2, 2026-11-17; docs/plans/npc-encounters/PLAN.md 4.1, mondo: "eyes on player and red ! on
+       npcs", "eye can be by the portrait") ──
+       Every `aware.tickMs` (data.js HQ_NPC_TEMPERS) the walk asks which NPCs with a body SEE the walker: a temper that watches, inside the sight
+       range, a clear line between the two heads (_hqLosClear), not asleep. data.js hqNpcActs says what each is to him: 'watch' opens the ONE eye by
+       the walker's portrait (map.js, through opts.onAware), 'alert' also stands the red `!` over that NPC's head (a sprite, the same size on screen at
+       any distance, hidden by walls). A Territorial on its ground says its warning once a visit. Story walk only (opts.awareOk: never from an online
+       seat), nothing per machine: the bodies are the same everywhere since the weak-PC cut went. dev: hq.dev.aware(), hq.dev.awareMark(id, on). */
+    var _hqAwareTexC = null;
+    function _hqAwareMarkTex() {
+        if (_hqAwareTexC) return _hqAwareTexC;
+        var c = document.createElement('canvas'); c.width = 64; c.height = 128; var g = c.getContext('2d');
+        g.lineJoin = 'round'; g.lineWidth = 12; g.strokeStyle = '#000'; g.fillStyle = '#ff2a2a';
+        g.beginPath(); g.moveTo(22, 10); g.lineTo(42, 10); g.lineTo(38, 82); g.lineTo(26, 82); g.closePath(); g.stroke(); g.fill();
+        g.beginPath(); g.arc(32, 106, 10, 0, Math.PI * 2); g.stroke(); g.fill();
+        _hqAwareTexC = new THREE.CanvasTexture(c); return _hqAwareTexC;
+    }
+    function _hqAwareSayTex(text) {
+        var c = document.createElement('canvas'), g = c.getContext('2d'), f = '600 34px "IBM Plex Mono", monospace';
+        g.font = f; var w = Math.ceil(g.measureText(text).width) + 36; c.width = w; c.height = 60; g = c.getContext('2d');
+        g.fillStyle = 'rgba(8,7,14,0.88)'; g.fillRect(0, 0, w, 60); g.strokeStyle = '#ff2a2a'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, w - 3, 57);
+        g.font = f; g.textBaseline = 'middle'; g.fillStyle = '#f4f4f8'; g.fillText(text, 18, 31);
+        var t = new THREE.CanvasTexture(c); t._ewAspect = w / 60; return t;
+    }
+    function _hqAwareDrop(H, rec) { try { if (rec.sp.parent) rec.sp.parent.remove(rec.sp); rec.sp.material.dispose(); if (rec.own) rec.sp.material.map.dispose(); } catch (e) {} }
+    function _hqAwareSprite(H, tex, w, h) {
+        var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, sizeAttenuation: false }));
+        sp.scale.set(w, h, 1); sp.renderOrder = 8; H.charGroup.add(sp); return sp;
+    }
+    function _hqAwareSay(H, ch, text) {
+        var A = HQ_NPC_TEMPERS.aware, st = H.aware; if (!text || !st) return;
+        var tex = _hqAwareSayTex(String(text).replace(/[“”]/g, '')), h = (A.markH || 0.05) * 0.62;
+        st.says.push({ ch: ch, sp: _hqAwareSprite(H, tex, h * tex._ewAspect, h), until: performance.now() + (A.sayMs || 3500), own: true, up: 0.95 });
+    }
+    function _hqTickAware(now) {
+        var H = _hq; if (!H || !H.charGroup) return;
+        var T = (typeof HQ_NPC_TEMPERS !== 'undefined') ? HQ_NPC_TEMPERS : null, A = T && T.aware;
+        var st = H.aware || (H.aware = { next: 0, on: null, seen: null, n: 0, marks: [], says: [], forced: {} });
+        var U = _hqUnits(), pl = H.player, i;
+        /* every frame: the marks and the lines ride their heads */
+        for (i = st.says.length - 1; i >= 0; i--) { var sy = st.says[i]; if (now > sy.until || H.chars.indexOf(sy.ch) < 0 || sy.ch.away) { _hqAwareDrop(H, sy); st.says.splice(i, 1); } }
+        st.marks.concat(st.says).forEach(function (m) { var c = m.ch; m.sp.position.set(c.x * U, (c.visY + (c.heightM || 1.75) + (m.up || 0.45)) * U, c.z * U); });
+        if (now < st.next) return; st.next = now + ((A && A.tickMs) || 300);
+        var on = !!(A && pl && !pl.away && typeof hqNpcActs === 'function' && H.opts && typeof H.opts.awareOk === 'function' && H.opts.awareOk() && !H._sceneCastIds && !H.snap);
+        var n = 0, alert = [];
+        if (on) {
+            var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (c) { return c && c.kind === 'npc' && !!c.race && !c.cast; };
+            var aim = null; try { aim = _hqEncounterAim(); } catch (e) { aim = null; }
+            var plv = 0; try { plv = (typeof hqPartyLevel === 'function') ? hqPartyLevel(H.opts.profile) : 0; } catch (e) { plv = 0; }
+            var room = H.opts.room;
+            for (i = 0; i < H.chars.length; i++) {
+                var ch = H.chars[i];
+                if (ch === pl || ch.away || ch.cleared || ch._resSleep || !okFn(ch)) continue;
+                if (Math.hypot(ch.x - pl.x, ch.z - pl.z) > A.sightM || Math.abs(ch.y - pl.y) > A.dyM) continue;
+                var act = null; try { act = hqNpcActs({ race: ch.race, id: ch.id, room: room, lvl: ch.lvl || 0, dist: ch.resident ? ch.resident.r.dist : null }, { aim: aim, x: pl.x, z: pl.z, partyLevel: plv }); } catch (e) { act = null; }
+                if (!act) continue;
+                if (!_hqLosClear(ch.x, ch.z, ch.y + (ch.heightM || 1.75) * 0.9, pl.x, pl.z, pl.y + 1.5)) continue;
+                n++;
+                if (act === 'alert') {
+                    alert.push(ch);
+                    /* a Territorial on its ground: the warning, once a visit (said again after the walker has been out of its sight) */
+                    if (!ch._awWarned) { ch._awWarned = true; var tp = hqNpcTemper({ race: ch.race, id: ch.id, room: room }); if (tp && tp.starts === 'ground') _hqAwareSay(H, ch, T.lines.warn[ch.race]); }
+                }
+            }
+            H.chars.forEach(function (c) { if (c._awWarned && alert.indexOf(c) < 0) c._awWarned = false; });
+        }
+        H.chars.forEach(function (c) { if ((st.forced[c.id] || (on && (c._awHold > now || (c._run && c._run.mode === 'chase')))) && !c.away && alert.indexOf(c) < 0) { alert.push(c); if (!st.forced[c.id]) n++; } });   // dev.awareMark: a mark held on for a picture · THE STRIKE LADDER: a Guard that warned, or comes   // dev.awareMark: a mark held on for a picture
+        for (i = st.marks.length - 1; i >= 0; i--) { var mk = st.marks[i]; if (alert.indexOf(mk.ch) < 0 || H.chars.indexOf(mk.ch) < 0) { _hqAwareDrop(H, mk); st.marks.splice(i, 1); H.dirty = true; } }
+        alert.forEach(function (c) { if (st.marks.some(function (m) { return m.ch === c; })) return; var mh = (A && A.markH) || 0.05; st.marks.push({ ch: c, sp: _hqAwareSprite(H, _hqAwareMarkTex(), mh * 0.5, mh) }); H.dirty = true; });
+        st.n = n;
+        if (on !== st.on || (n > 0) !== st.seen) { st.on = on; st.seen = n > 0; if (H.opts && H.opts.onAware) { try { H.opts.onAware({ on: on, seen: n > 0, n: n }); } catch (e) {} } }
+    }
+    /* ── THE STRIKE LADDER, the bodies (NPC encounters step 3, 2026-11-17; docs/plans/npc-encounters/PLAN.md 4.2; REPLACES "one strike starts the fight") ──
+       map.js _hqEncounterFire asks data.js hqNpcStrike what a strike does ('flee' | 'talk' | 'fight') and tells the room through hq.npcStruck. Here: is the
+       NPC CORNERED (hq.npcCornered: no straight way of `cornerM` metres that does not lead toward the walker), THE RUN (a body with `ch._run` is moved by
+       _hqTickLadder, not by its rounds or its day: it runs `runM` metres, stands, then walks back to where its day has it), and THE GUARD WHO SAW IT
+       (hqNpcGuardSees: its warning line once + the red mark, then it comes for the walker and starts its own fight when it reaches him: onEncounter with
+       `npcStart`, it acts first). Numbers: data.js HQ_NPC_TEMPERS.ladder / .guard. Story walk only (the strike path is refused from an online seat).
+       dev: hq.dev.ladder(). */
+    function _hqLadderQuery(x, z, curY) {
+        var H = _hq, B = H.blockers;
+        if (H._ldrKey !== B.length) { H._ldrStatics = B.filter(function (b) { return !b.npc; }); H._ldrKey = B.length; }
+        H.blockers = H._ldrStatics;
+        try { return _hqSurface(x, z, curY, false); } catch (e) { return null; } finally { H.blockers = B; }
+    }
+    /* the city's walk map says no (the sea, a tree, a block): only asked when the body stands on a walked square itself */
+    function _hqLadderGridNo(x, z, fx, fz) {
+        var G = _hq.res && _hq.res.G; if (!G || !G.walk) return false;
+        var sq = function (qx, qz) { var i = Math.floor((qx - G.x0) / G.res), j = Math.floor((qz - G.z0) / G.res); return (i < 0 || j < 0 || i >= G.nx || j >= G.nz) ? -1 : j * G.nx + i; };
+        var a = sq(fx, fz), b = sq(x, z); if (b < 0) return true;
+        return a >= 0 && G.walk[a] !== 0 && G.walk[b] === 0;
+    }
+    function _hqLadderOk(x, z, y, fx, fz) {
+        if (_hqLadderGridNo(x, z, fx, fz)) return null;
+        var q = _hqLadderQuery(x, z, y); return (q !== null && q !== undefined && isFinite(q) && Math.abs(q - y) <= 0.6) ? q : null;
+    }
+    /* how far a straight walk from the body goes in a direction (metres, up to `max`) */
+    function _hqLadderClear(ch, mx, mz, max) {
+        var y = ch.y, x = ch.x, z = ch.z, d = 0;
+        while (d < max) { var nx = x + mx * 0.5, nz = z + mz * 0.5, q = _hqLadderOk(nx, nz, y, x, z); if (q === null) break; x = nx; z = nz; y = q; d += 0.5; }
+        return d;
+    }
+    /* the best way to run from the walker: { mx, mz, len } | null = cornered */
+    function _hqLadderWay(ch, max) {
+        var H = _hq, pl = H.player, L = HQ_NPC_TEMPERS.ladder; if (!pl) return null;
+        var ax = ch.x - pl.x, az = ch.z - pl.z, ad = Math.hypot(ax, az); if (ad < 0.01) { ax = Math.sin(pl.yaw || 0); az = Math.cos(pl.yaw || 0); ad = 1; } ax /= ad; az /= ad;
+        var best = null;
+        for (var k = 0; k < 16; k++) {
+            var a = k * Math.PI / 8, mx = Math.sin(a), mz = Math.cos(a), dot = mx * ax + mz * az; if (dot < 0) continue;   // never toward the walker
+            var len = _hqLadderClear(ch, mx, mz, max); if (len < L.cornerM) continue;
+            var sc = len * (0.4 + 0.6 * dot); if (!best || sc > best.sc) best = { mx: mx, mz: mz, len: len, sc: sc };
+        }
+        return best;
+    }
+    function _hqLadderChar(id) { var H = _hq; if (!H) return null; for (var i = 0; i < H.chars.length; i++) if (H.chars[i].id === id && !H.chars[i].away) return H.chars[i]; return null; }
+    function _hqLadderCornered(id) { var ch = _hqLadderChar(id); if (!ch || typeof HQ_NPC_TEMPERS === 'undefined') return false; try { return !_hqLadderWay(ch, HQ_NPC_TEMPERS.ladder.cornerM); } catch (e) { return false; } }
+    function _hqLadderHome(ch) { return { x: ch.x, z: ch.z, yaw: ch.yaw || 0 }; }
+    /* a strike landed on `id` and did not start a fight: the run (rung 'flee') and whoever saw it */
+    function _hqLadderStruck(id, rung) {
+        var H = _hq, ch = _hqLadderChar(id), pl = H && H.player; if (!ch || !pl || typeof HQ_NPC_TEMPERS === 'undefined') return false;
+        var T = HQ_NPC_TEMPERS, L = T.ladder, A = T.aware, now = performance.now(), room = H.opts.room;
+        if (rung === 'flee') {
+            var w = _hqLadderWay(ch, L.runM);
+            if (w) ch._run = { mode: 'flee', mx: w.mx, mz: w.mz, left: L.runM, ran: 0, stuck: 0, home: (ch._run && ch._run.home) || _hqLadderHome(ch), look: now + 500 };
+        }
+        /* the Guards who see it: in sight of the walker, awake, a clear line */
+        for (var i = 0; i < H.chars.length; i++) {
+            var g = H.chars[i]; if (g === ch || g === pl || g.away || g.cleared || g._resSleep || g.kind !== 'npc' || !g.race || g.cast) continue;
+            if (Math.hypot(g.x - pl.x, g.z - pl.z) > A.sightM || Math.abs(g.y - pl.y) > A.dyM) continue;
+            var gr = { race: g.race, id: g.id, room: room }, vr = { race: ch.race, id: ch.id, room: room }, act = null;
+            try { if (!hqNpcDefends(gr, vr)) continue; } catch (e) { continue; }
+            if (!_hqLosClear(g.x, g.z, g.y + (g.heightM || 1.75) * 0.9, pl.x, pl.z, pl.y + 1.5)) continue;
+            try { act = hqNpcGuardSees(gr, vr); } catch (e) { act = null; }
+            if (!act) continue;
+            g._awHold = now + T.guard.warnMs;
+            if (act === 'warn') { if (H.aware) _hqAwareSay(H, g, T.lines.warn[g.race]); }
+            else if (act === 'come' && !(g._run && g._run.mode === 'chase')) g._run = { mode: 'chase', stuck: 0, lost: 0, home: (g._run && g._run.home) || _hqLadderHome(g) };
+        }
+        if (H.aware) H.aware.next = 0;
+        H.dirty = true;
+        return true;
+    }
+    function _hqLadderMove(ch, mx, mz, step, dt) {
+        var U = _hqUnits(), nx = ch.x + mx * step, nz = ch.z + mz * step, moved = false;
+        var y1 = _hqLadderOk(nx, nz, ch.y, ch.x, ch.z);
+        if (y1 !== null) { ch.x = nx; ch.z = nz; ch.y = y1; moved = true; }
+        else {
+            var yx = mx ? _hqLadderOk(nx, ch.z, ch.y, ch.x, ch.z) : null; if (yx !== null) { ch.x = nx; ch.y = yx; moved = true; }
+            else { var yz = mz ? _hqLadderOk(ch.x, nz, ch.y, ch.x, ch.z) : null; if (yz !== null) { ch.z = nz; ch.y = yz; moved = true; } }
+        }
+        ch.moving = moved; ch.targetYaw = Math.atan2(mx, mz);
+        ch.yaw += _hqYawDelta(ch.yaw || 0, ch.targetYaw) * Math.min(1, dt * 10);
+        ch.visY += (ch.y - ch.visY) * Math.min(1, dt * 14); if (Math.abs(ch.y - ch.visY) < 0.004) ch.visY = ch.y;
+        ch.entry.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
+        if (ch._resBlk) { ch._resBlk.y = ch.y; ch._resBlk.top = ch.y + 2.6; }
+        _hq.dirty = true;
+        return moved;
+    }
+    function _hqLadderFree(ch) {
+        var H = _hq; ch._run = null; ch._runFast = false; ch.moving = false;
+        if (ch.rounds && ch.rounds.stops) { try { var p = _hqRoundsPath(ch, ch.rounds.stops[ch.rounds.i]); if (p && p.length) { ch.rounds.path = p; ch.rounds.pi = 0; } } catch (e) {} }
+    }
+    function _hqTickLadder(dt, now) {
+        var H = _hq; if (!H || H.paused || H.snap || !H.chars || typeof HQ_NPC_TEMPERS === 'undefined') return;
+        var L = HQ_NPC_TEMPERS.ladder, Gd = HQ_NPC_TEMPERS.guard, A = HQ_NPC_TEMPERS.aware, pl = H.player, hour = null;
+        for (var i = 0; i < H.chars.length; i++) {
+            var ch = H.chars[i], r = ch._run; if (!r) continue;
+            if (ch.away || ch.cleared || !ch.entry || !pl || pl.away || H._sceneCastIds) { ch._run = null; ch._runFast = false; continue; }
+            ch._runFast = false;
+            if (r.mode === 'rest') {
+                ch.moving = false; ch.targetYaw = Math.atan2(pl.x - ch.x, pl.z - ch.z); ch.yaw += _hqYawDelta(ch.yaw || 0, ch.targetYaw) * Math.min(1, dt * 6); H.dirty = true;
+                if (now > r.until) { r.mode = 'back'; r.stuck = 0; r.t0 = now; }
+                continue;
+            }
+            if (r.mode === 'flee') {
+                ch._runFast = true;
+                var step = Math.min(r.left, L.runSpeed * dt), ok = _hqLadderMove(ch, r.mx, r.mz, step, dt);
+                if (ok) { r.left -= step; r.ran += step; r.stuck = 0; } else r.stuck += dt;
+                if (r.stuck > 0.25) { var w = _hqLadderWay(ch, Math.max(L.cornerM, r.left)); if (w) { r.mx = w.mx; r.mz = w.mz; r.stuck = 0; } else r.left = 0; }
+                if (now > r.look && r.ran > 4) { r.look = now + 500; if (!_hqLosClear(ch.x, ch.z, ch.y + 1.5, pl.x, pl.z, pl.y + 1.5)) r.left = 0; }   // out of sight: far enough
+                if (r.left <= 0.01) { r.mode = 'rest'; r.until = now + L.restMs; ch._runFast = false; }
+                continue;
+            }
+            if (r.mode === 'chase') {
+                var dx = pl.x - ch.x, dz = pl.z - ch.z, d = Math.hypot(dx, dz);
+                var sees = d <= A.sightM * 1.5 && _hqLosClear(ch.x, ch.z, ch.y + 1.5, pl.x, pl.z, pl.y + 1.5);
+                r.lost = sees ? 0 : r.lost + dt * 1000;
+                if (d > Gd.giveUpM || r.lost > Gd.loseMs || r.stuck > 3) { r.mode = 'back'; r.stuck = 0; r.t0 = now; ch._awHold = 0; if (H.aware) H.aware.next = 0; continue; }
+                if (d <= Gd.reachM && Math.abs(pl.y - ch.y) < 1.8) {
+                    ch.moving = false; var done = false;
+                    if (now > (r.ask || 0)) {
+                        r.ask = now + 1500;
+                        try { done = !!(H.opts.onEncounter && H.opts.onEncounter({ gesture: 'attack', npcStart: true, target: _hqEncounterTargetOf(ch, d), room: H.opts.room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye() })); } catch (e) { console.warn('[HQ] the guard\'s fight failed', e); }
+                        if (_hq !== H) return;
+                        if (done) { ch._run = null; ch._awHold = 0; }
+                        else { r.mode = 'back'; r.stuck = 0; r.t0 = now; ch._awHold = 0; if (H.aware) H.aware.next = 0; }   // refused (the party is down…): it lets it go
+                    }
+                    continue;
+                }
+                ch._runFast = true;
+                if (_hqLadderMove(ch, dx / d, dz / d, Math.min(d, Gd.chaseSpeed * dt), dt)) r.stuck = 0; else r.stuck += dt;
+                continue;
+            }
+            /* back to its day (a resident: where its timeline has it now; anyone else: where it stood) */
+            var hx = r.home.x, hz = r.home.z, s = ch.resident;
+            if (s && s.tl) {
+                if (hour === null) hour = _hqClockHourNow();
+                var at = null; try { at = hqResidentAt(s.tl, hour - s.lag); } catch (e) { at = null; }
+                if (!at || !at.vis) { _hqLadderFree(ch); continue; }
+                hx = at.x; hz = at.z;
+            }
+            var bx = hx - ch.x, bz = hz - ch.z, bd = Math.hypot(bx, bz);
+            if (bd < 0.5) { if (!s) { ch.targetYaw = r.home.yaw; } _hqLadderFree(ch); continue; }
+            if (_hqLadderMove(ch, bx / bd, bz / bd, Math.min(bd, L.backSpeed * dt), dt)) r.stuck = 0; else r.stuck += dt;
+            if (r.stuck > 2 || now - r.t0 > 40000) {   // no straight way home: out of the street for a moment (a resident comes back where its day has it)
+                if (s) { s.hideUntil = now + 4000; _hqRoundsSetVisible(ch, false); }
+                _hqLadderFree(ch);
+            }
+        }
+    }
     function _hqTickRounds(dt) {
         var H = _hq; if (!H || !H.rounds || !H.rounds.length || _hqRoundsOff()) return;
         if (!H.nav || !H.nav.done) { _hqNavBuild(HQ_NAV_BUDGET_MS); if (!H.nav.done) return; }
         if (H.paused) return;   // a panel is up: nobody walks off while you talk to them
         var R = _hqRoundsRules(), now = performance.now();
-        for (var i = 0; i < H.rounds.length; i++) { var ch = H.rounds[i]; if (!ch || !ch.rounds || !ch.entry || _hq !== H) continue; try { _hqTickRoamer(ch, dt, now, R); } catch (e) { ch.rounds = null; } }
+        for (var i = 0; i < H.rounds.length; i++) { var ch = H.rounds[i]; if (!ch || !ch.rounds || !ch.entry || _hq !== H) continue; if (ch._run) continue; try { _hqTickRoamer(ch, dt, now, R); } catch (e) { ch.rounds = null; } }
     }
     /* ── THE SPAWN: the extras, the roaming spot natives, the patrols, the travellers (from _hqSpawnPopulation) ── */
     function _hqSpawnRounds(room, opts) {
@@ -89464,7 +89740,7 @@ const ThreeRenderer = (function () {
             }
             pl.y = ny;
             if (_hq.terrain && _hq.terrain.void && pl.y < _hq.terrain.void.fall) { _hqVoidReturn(pl); return; }
-        } else if (!pl.air && _hq.terrain && !H.paused) { pl._landSafe = { x: pl.x, z: pl.z, y: pl.y, yaw: pl.yaw, rid: _hq.terrain.roomId }; if (_hq.terrain.void) pl._voidSafe = pl._landSafe; }   // THE VOID / THE DEEP WATER: the last ground stood on
+        } else if (!pl.air && _hq.terrain && !H.paused && !pl._onMover) { pl._landSafe = { x: pl.x, z: pl.z, y: pl.y, yaw: pl.yaw, rid: _hq.terrain.roomId }; if (_hq.terrain.void) pl._voidSafe = pl._landSafe; }   // THE VOID / THE DEEP WATER: the last ground stood on
         pl.visY += (pl.y - pl.visY) * Math.min(1, dt * (pl.air ? 60 : 14));
         if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
         if (pl._hopped) pl._hopped = false;   // a hop set the velocity itself — the jump across the room is not a speed
@@ -89577,6 +89853,7 @@ const ThreeRenderer = (function () {
             if (ch.pose && ch.kind !== 'player' && e.actions && e.actions[ch.pose]) want = ch.pose;
             /* THE ROUNDS (2026-09-19): a walker on its loop plays the walk clip at a stroll's pace */
             if ((ch.rounds || ch.resident) && ch.kind !== 'player') { want = ch.moving ? 'walk' : 'idle'; if (e.actions && e.actions.walk) { var wts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = wts * 0.62; } }
+            if (ch._run && ch.kind !== 'player') { want = ch.moving ? ((ch._runFast && e.actions && e.actions.run) ? 'run' : 'walk') : 'idle'; if (want === 'walk' && e.actions && e.actions.walk) { var lts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = lts * (ch._runFast ? 1.25 : 0.62); } }   // THE STRIKE LADDER: the run, the Guard coming, the walk back
             if (ch._resSleep && e.actions && e.actions.hqSleep) want = 'hqSleep';   // THE RESIDENTS' BEDS (2026-11-14)
             if (ch._sceneWalk && ch.kind !== 'player' && e.actions && e.actions.walk) { want = 'walk'; var swt = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = swt * 0.62; }   // THE CUTSCENES: a cast member a scene walks (hq.sceneWalk)
             if (ch.kind === 'player') {
@@ -91441,6 +91718,9 @@ const ThreeRenderer = (function () {
         try { _hqTickClipBeside(); } catch (e) { if (!_hq._cbWarned) { _hq._cbWarned = true; console.warn('[HQ] clip beside', e); } }   // THE CUT BESIDE
         _hqTickRounds(wdt);
         try { _hqTickResidents(wdt); } catch (e) { if (!H._resWarned) { H._resWarned = true; console.warn('[HQ] the residents tick', e); } }   // THE RESIDENTS (2026-11-14)
+        try { _hqTickLadder(wdt, now); } catch (e) { if (!H._ldrWarned) { H._ldrWarned = true; console.warn('[HQ] the ladder tick', e); } }   // THE STRIKE LADDER (NPC encounters step 3)
+        if (_hq !== H) return;
+        try { _hqTickAware(now); } catch (e) { if (!H._awWarnedTick) { H._awWarnedTick = true; console.warn('[HQ] the awareness tick', e); } }   // THE AWARENESS + THE MARKS (NPC encounters step 2)
         try { _hqGrassTick(); } catch (e) { if (!H._ggWarned) { H._ggWarned = true; console.warn('[HQ] the grass field tick', e); } }   // THE GRASS FIELD IN A WALKED ROOM (2026-11-15)
         if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
             var _sd = H._sceneDoor, _sn = performance.now();
@@ -98767,6 +99047,14 @@ const ThreeRenderer = (function () {
             }
         },
         encounterAim: function () { return _hq ? _hqEncounterAim() : null; },
+        /* THE STRIKE LADDER (NPC encounters step 3): is that NPC cornered · a strike on it that started no fight (the run, the Guards who saw it) · the
+           onEncounter record for a fight the Talk box starts (FIGHT), as the swing would have made it */
+        npcCornered: function (id) { return _hq ? _hqLadderCornered(id) : false; },
+        npcStruck: function (id, rung) { try { return _hq ? _hqLadderStruck(id, rung) : false; } catch (e) { console.warn('[HQ] npcStruck', e); return false; } },
+        encounterEvent: function (id, gesture) {
+            var H = _hq, pl = H && H.player, ch = H ? _hqLadderChar(id) : null; if (!ch || !pl) return null;
+            return { gesture: gesture || 'attack', target: _hqEncounterTargetOf(ch, Math.hypot(ch.x - pl.x, ch.z - pl.z)), room: H.opts.room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye() };
+        },
         /* THE FIELD stage A (Delivery 6): the slide onto the cells before the cut, the eye as it stands now */
         encounterSnap: _hqEncounterSnap,
         encounterEye: function () { return _hq ? _hqEncounterEye() : null; },
@@ -99076,6 +99364,10 @@ const ThreeRenderer = (function () {
                         at: at ? { x: at.x, z: at.z, vis: !!at.vis, sleep: !!at.sleep, top: at.top, k: at.k } : null, y: ch ? [ch.y, ch.visY] : null, hasSleepClip: !!(e && e.actions && e.actions.hqSleep), running: run, is3d: !!(e && e.is3d !== false && e.mixer) };
                 });
             },
+            /* THE AWARENESS (NPC encounters step 2): what the eye and the marks say right now; awareMark holds a red mark on one NPC for a picture */
+            aware: function () { var st = _hq && _hq.aware; return st ? { on: st.on, seen: st.seen, n: st.n, marks: st.marks.map(function (m) { return m.ch.id; }), says: st.says.length } : null; },
+            ladder: function () { var H = _hq; if (!H) return null; return H.chars.filter(function (c) { return c._run || c._awHold; }).map(function (c) { return { id: c.id, race: c.race, mode: c._run ? c._run.mode : null, left: c._run && c._run.left, x: +c.x.toFixed(1), z: +c.z.toFixed(1), hold: c._awHold ? Math.round(c._awHold - performance.now()) : 0 }; }); },
+            awareMark: function (id, on) { if (!_hq) return false; if (!_hq.aware) _hqTickAware(performance.now()); _hq.aware.forced[id] = on !== false; _hq.aware.next = 0; return true; },
             /* aim the camera at a world point (metres) from where the walker stands */
             lookAt: function (x, z, pitch) {
                 if (!_hq || !_hq.player) return false;
@@ -99095,7 +99387,7 @@ const ThreeRenderer = (function () {
                     return { id: ch.id, kind: ch.kind, label: ch.label, x: +ch.x.toFixed(2), z: +ch.z.toFixed(2), y: +ch.y.toFixed(2),
                         deg: +_hqNormDeg(Math.atan2(ch.x, -ch.z) * 180 / Math.PI).toFixed(1), r: +Math.hypot(ch.x, ch.z).toFixed(2),
                         face: +_hqNormDeg((Math.PI - ch.yaw) * 180 / Math.PI).toFixed(0), pose: ch.pose, anim: e._ew_curAnim || null,
-                        actions: e.actions ? Object.keys(e.actions).length : 0, attached: !!e._ew_modelAttached, heightM: ch.heightM };
+                        actions: e.actions ? Object.keys(e.actions).length : 0, attached: !!e._ew_modelAttached, heightM: ch.heightM, race: ch.race, away: !!ch.away };
                 });
             },
             /* world position (m) of a named bone on a character, and relative to the character's root */

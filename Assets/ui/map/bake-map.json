@@ -451,13 +451,13 @@
  },
  "site_prebuilt_internet_web": {
   "id": "site_prebuilt_internet_web",
-  "nx": 72,
-  "nz": 72,
+  "nx": 108,
+  "nz": 108,
   "h0": 1.75,
   "hs": 0.25,
-  "v": "cef018eb3b",
-  "bytes": 785,
-  "s": "2.7"
+  "v": "097adcfc56",
+  "bytes": 1474,
+  "s": "9.2"
  },
  "site_prebuilt_bermuda_ow_frozen": {
   "id": "site_prebuilt_bermuda_ow_frozen",

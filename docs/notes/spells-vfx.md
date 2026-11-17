@@ -4683,6 +4683,48 @@ into more vfx"; and 11-17: only where something really comes through from somewh
 - Open: `teleport` (moves another unit), the air door on the kit, doors / summons / rifts.
 
 
+## THE VFX SWEEP, B7a, part 1: the metal leads + the ice / metal / sonic list (2026-11-17, three-vfx-effects.js; list `batches/B7a.txt`, 74 spells)
+Brief: docs/plans/vfx-cleanup/SWEEP_BRIEF.md. Everything behind `_vcOn()` (`EW_NO_VFX_CLEANUP = true` = the old look). Looks only; rides `fire()` / the stage beats.
+All 74 spells were shot once (one real cast each) and looked at; the changed ones were shot again. Before / after: `docs/plans/vfx-cleanup/img/sweep/b7a_part1_before_after.jpg`.
+- **WHY A "MID TONE" SHEET STILL READ WHITE (for every sweep):** the bright noise sheet, a `_pzGlow` ring, a torus that grows: all are ADDED light, and the
+  floor under them is mid grey, so a pale or even a mid colour sums to white. Only a DEEP colour (low red, the value in one channel) keeps its hue. That is
+  what was done to metal's sheet, Frost Howl and Absolute Zero below; a recolour to a "mid tone" does nothing.
+- **THE METAL LEADS (reach every metal spell):**
+  - the noise sheet on hit squares (`_NZ.metal`): `_NZ_VC.metal` = deep steel blue circuit lines `0x0c2a58` over a gunmetal stain `0x1a2230` (it was a pale
+    grey-blue stain under a bright sheet = a white tile; seen on Railgun, Precision Shot). `_NZ_VC[el] = [sheet, stain]` is open to any element.
+  - the cog (`_mtlCog`): its steel plate was untinted white, the big white disc under every "cog" metal hit (Hydraulic Crush); now `_MTL_VC.cog` `0x8296ae`.
+  - the glint, the cog's rim flare: steel blue (`_MTL_VC.glint / rim`); ONE glint a hit (the heavy + blade extras are off).
+  - the hot sparks (one in three) and the body flash on the hit: the grinder's amber (`_MTL_VC.hot`), not warm white. The flash itself stays.
+- **THE GENERIC AREA DETONATION, the "glass orb + wide ring, source not found" of the brief:** it is `aoe()` (three-vfx-effects.js line ~565), battle.js'
+  `playAoeRing` fallback for an area spell with no `aoe` recipe: 8 flashes, a theme ring, a cream `shockwave`, `_sigMagicOrb3D` (the glass orb) and a 2.2-tile
+  `_sigShockRing3D` in the spellType's colour (tan for `human`, purple for `unholy`). playAoeRing names no spell, so the last windup's spell is remembered for
+  6 s (`_vcCastLast`, set in a `_fireStage` wrapper; the beats are relayed, both screens drop the same call) and a spell in `_VC_NO_AOE` gets none.
+  In it now: Crossfire (two tan rings round the X), Glacial Slam (a purple ring round an ice slam), Buzz. **Other sweeps: add your spell's id to `_VC_NO_AOE`**
+  (Jackpot, Shattered Mirror; the L1 thread already stopped it for the L1 spells its own way).
+- **A recipe's white-tinted hit flash:** `_emitLayer` reads `layer.vcTint` (null = untinted = the casting spell's own light). Set by the table in the block
+  "THE VFX SWEEP, B7a": Cuffed, Lockdown (centre), Nightstick, Piledriver Arm, Thousand Cuts, Halligan Breach, Grapple -> the spell's light; Through the
+  Wall -> brick dust `0xd8a078`; Destiny Fulfilled -> its gold `0xffd76a`; Garrote Watch's white steel sparks -> the steel spark's own colour. Every flash stays.
+- **Frost Howl:** its four scream rings grow into thick bands and its frost sheet covered the whole reach: together a solid white disc two tiles wide. Rings
+  deep ice blue (`0x2f7fd0 / 0x1f5aa8`, opacity 0.5), sheet `0x2f6cb4`. The snow, the seat-colour edge ring and the frost on the squares stay.
+- **Absolute Zero:** the opening `_sigWhiteout3D` (white screen, rush lines, speed burst, two rings: the generic mega-flash) is off, its frost sparks and
+  shake kept; at the break no screen flash, one ice-blue ring (`0x3f9be0`) in place of a pale one + a white one. The storm, the grade, the cage, its flying
+  bars and the frost are the spell.
+- **Kill Mode:** no screen flashes (two), no gold speed burst; the laser cores `0xff8a92` / `0x8af0dc` (were white / near-white).
+- **Hydraulic Crush, Compactor, Blizzard Present:** the screen flash on the hit is off (hard limit 3). Nothing else.
+- **Buzz:** its pale ring in cicada green. Its thick white rings are THE SONIC PASS's (`_snShout`): B7b's lead, not touched here.
+- **Left as it is, and why:** every ICE spell's white floor (Ice Spear, Shatter, Grave Chill, Diamond Dust, Permafrost, Blizzard Present, Snow Queen's
+  Kiss, Sapphire Frost, Avalanche Strike, Frozen Punch ...) is the ice pass's frost / the frozen squares, checked with `EW_NO_NOISE_WASH` (still there):
+  frost and snow are the thing itself and the ice pass is not a sweep's to change. Ninefold Scratch's white claws are the claws; its finisher burst + rush
+  lines are `_sigClawCombo3D`'s own body (the cleanup thread's). Silent Treatment's white is the mime. Steel edges, teeth, bricks, bullets, the patrol cars.
+- **Checked, needed nothing of their own (the metal leads reach the metal ones):** Dark Justice, Diamond Dust, Flash Freeze, Frozen Punch, Glacier Break,
+  Grave Chill, Hailstorm, Ice Spear, Permafrost, Sapphire Frost, Shatter, Snow Fort, Snow Globe, Snow Queen's Kiss, Snowball Volley, Whiteout Roar,
+  Avalanche Strike, Ankle Biter, Atlatl, Dead Eye, Dogpile, Double Pump, Elbow Grease, Fan the Hammer, Garden Shears, Hatchet Throw, High Noon, Honour Blow,
+  Justice Is Served, Kill Mode (`raceChassisSlan`), Kneecap Shot, Knife Throw, Lipstick Pistol, Long Rifle, Lovers' Lane, Ninefold Scratch, One Shot One
+  Kill, Plunder, Precision Shot, Run Them Down, Scatter Shot, Shield Bash, Shuriken, Silent Treatment, Six-Shooter, Slap Leather, Space Debris, Stick-Up,
+  Swipe, Take Aim, Termination Protocol, War of the Worlds, Cataclysm Stomp, Chorus, Crack the Whip.
+- **Not seen / open:** the recoloured hit flashes are too short for a 450 ms frame grid (seen only as "no white blob"); the guest's seat; Flash Freeze,
+  Snow Fort, Take Aim, Shuriken and Grapple gave only early frames (fast or two-step casts). Kill Mode's and Space Debris' 13 squares of blue sheet +
+  cog are a lot of blue: metal's own colour, but mondo may want the sheet thinner on big areas. No line spell of the brief's 14 is on this list.
 
 ## THE VFX SWEEP, B8b, part 1 (2026-11-17, three-vfx-effects.js; list `docs/plans/vfx-cleanup/batches/B8b.txt`: fire, nature, poison, 82 spells)
 The generic white left inside each spell's OWN effect, traced in the code (SWEEP_BRIEF.md). All behind `EW_NO_VFX_CLEANUP`.
@@ -4717,8 +4759,6 @@ are getters, so the old look comes back live with the switch.
   the fire circle under Combust / Inferno, the hazard ring under Venom Burst / Miasma): coloured, drawn for those spells.
   Solar Flare's screen flash (the flare is the spell), Nuclear Option's white-out, Morning Star's white star, Web Snare's
   white silk, Shuttle Launch's white exhaust, Hot Pan's steam, the bites' teeth, the flask's glass.
-- **Seen, not mine:** Cluster Rockets lands under five or six overlapping tan rings: they come from the explosion kit
-  (`_crExplosion` through `_crBoom`), one a rocket, not from the recipe ring this part recoloured. For the cleanup thread.
 - Frames (looked at): `docs/plans/vfx-cleanup/img/sweep/B8b_part1_1.jpg`, `_2.jpg` (the hit frame of each of the 28).
   Cannibalize's frame shows no cast (no corpse on the harness board): not seen.
 
@@ -4794,3 +4834,420 @@ Everything is behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP = true` = the old look
 - NOT seen on a frame: Chooser of the Slain's hit, Star Decree's landing and Revive's hit (the runner cast them by the
   direct path and its frames missed the beat); Crusade's arms after their last dimming (gain .55, opacity .32: the one
   frame caught was after the cross had faded); the guest's seat; anything with `EW_NO_VFX_CLEANUP` on.
+
+
+## THE VFX SWEEP, B6a, part 1 (2026-11-17, three-vfx-effects.js; list `docs/plans/vfx-cleanup/batches/B6a.txt`: 93 aura buffs, wards and blessings + 3 divine)
+The generic white left inside each spell's OWN effect, traced in the code (SWEEP_BRIEF.md). All behind `EW_NO_VFX_CLEANUP`.
+- **What the white was here.** These are support spells: the stage burst draws nothing for them and their palette is the
+  kept `aura` one. What was left is the OLD shared buff recipe still drawing under a spell that has its own look since:
+  an untinted `flash` (three-vfx.js paints it the aura palette's cream), a pale gold `halo-ring` under a ward of another
+  colour, a holy pillar under a spell that is not holy; plus a few near-white colours in a spell's own signature.
+- **The block "THE VFX SWEEP, B6a"** (end of the file): `_s6a(spell, 'aura', { drop, tint, max, noPillar })` makes a COPY of
+  the spell's recipe (`s6a_<spell>_<recipe>`, centre + per-square recipes too) and `_fireAura` draws the copy while the
+  cleanup is on (`_s6aFx`). The old recipes are not edited (other spells share them), so the switch gives the old look
+  back live. A per-square `flash` is never dropped by the helper, only tinted. `_S6A_AURA` = a power shroud
+  (`_POWER_AURA_SPELLS`) in the spell's colour. The rest is one line at each spell (grep "THE VFX SWEEP, B6a").
+- **`gentle: true` on `_sigSonicBoom3D`** (an opt that was already there) = the rings without the screen flash, the WHITE
+  speed burst, the shake and the sparks. Howl and Swarm Signal pass it and add their own shake (Howl its sparks too).
+
+| Spell | What changed |
+|---|---|
+| Iron Bulwark `raceIronBulwark` | the wide shout ring is steel blue `0x6f8fb8` (it was a wide WHITE ring, `0xc9d3de`); no cream flash at the general (the shield rings are the look) |
+| Iron Dome `shieldBash` | the dome reads as iron: wire `0x8aa2c0` at 0.36, inner `0x7f93ab`, outer `0x5f7088` (it was a white wire cage, `0xdce6f0` at 0.5, over the whole squad) |
+| Howl `raceHowl` | rings moon blue `0x86b4ff` (were `0xbbddff`), no screen flash, no white speed burst; recipe flash + both rings moon blue; the power shroud is handed `0x6f9cf0` (was `0xbfd4e8`), but it still reads as a pale pool under the wolf on the frames: the shroud is three-renderer.js EWPowerAura's, not changed here |
+| Swarm Signal `raceSwarmSignal` | the amber rings without the screen flash and the white speed burst; its flash amber `0xffc05a` |
+| Sheltering Wings `sigShelteringWings` | the light pillar's core warm gold `0xffe2a0`, not pure white (the wings, the halo and the pillar stay: it is an angel) |
+| Hop On `nrHopOn` | the two horn "beep" rings are his red (`_DB.red`), they were two white rings |
+| Tarot Draw `raceTarotDraw` | no screen flash when the card bursts (`noFlash` on `_sigTarotDraw3D`, which only this spell and one capstone call); one violet flash `0xb890ff` in place of three pastel ones |
+| Plot Armor `racePlotArmor` | the three sacred rings are off (they drew white whatever colour they were handed and hid the body); the shields + the pink burst are the look; its flash pink `0xff9ae0` |
+| Mimicry `raceMimicry` | the shell is violet and thinner (`0xa860f0`, hot `0xc890ff`, opacity 0.3; it was white-hot at 0.55 and covered the caster for half a second). The rainbow burst round it (`_sigSpectrumBurst3D`, a shared helper with a white-hot core) is unchanged and is still bright |
+| Fortify `fortify` | no holy pillar and no cream flash under the shield wall; its ring and light motes are the shields' blue `0x88bbff` |
+| Holy Bulwark `raceHolyBulwark`, Luminous Shield `raceLuminousShield` | no cream flash at the centre (the gold dome, the holy light and the gold rings stay) |
+| Shield Maiden `raceShieldMaiden` | no cream flash; the floor ring is her shields' blue `0x8fb4f0` |
+| Hellfire Crown `raceHellfireCrown`, Royal Decree `raceRoyalDecree` | no cream flash under the crown |
+| Ayahuasca Retreat `raceAyahuascaRetreat` | no cream flash; the floor ring is the brew's violet `0xbb66ff` |
+| Stone Skin `raceStoneSkin` | the pale gold ring is off (the signature has its own stone ring) |
+| Astral Barrier `raceAstralBarrier`, Pupil Shield `racePupilShield` | the floor ring in the dome's own colour (`0xb894ff`, `0x8a9cff`), it was the pale gold one |
+| Rally Command `raceRallyCommand` | every square keeps its flash, in the order's orange `0xff9a4a`; the light motes orange |
+| Oath of Valor `raceOathOfValor` | its flash gold `0xffd870` (was near white `0xfff0c0`) |
+| Inservice `nrInservice` | the ring on every square of the diamond is her red `0xff8a8a` (was near white `0xffe6e0`) |
+| Tailwind `raceTailwind` | the centre ring mint `0x8fe0cc` (was near white `0xd8f0ff`) |
+
+- **White that stays because it is the thing:** Blurry Photo's camera flash; Salt-Proof Stance's salt; Death Pact's skull;
+  Rapture's sacred rings and holy pillar (a seraph's own light); Called by Name's gold light; the lifeguard's whistle rings
+  (On Duty, Inservice: her white and red); Grind's grinding sparks; Lawn Ornament's glint and flowers; Sleight of Hand's
+  glove and cards; Crystal Coffin's star glint; Overtinker's steel gear.
+- **Checked, nothing to change (code traced; all but the L4 ones also on a baseline sheet):** the 27 with an L4 own look written
+  today (Anthem, Apex Roar, Audible, Awakening, Black Budget, Black Guard, Blessing, Fairy Dust, Firewall Protocol, Go
+  Ape, Incendiary Rounds, Light Shield, Monster Serum, Nitro Boost, Overcalculate, both Overclocks, Pep Talk, Phase
+  Shift, Prayer, Protect, Siege Mode, Sparkle, Stoneform, Thick Hide, Tin Foil Hat, Wish Granted: their looks were read
+  in the L4 block: no shared white helper, no pale colour except the white base of a painted picture; not reshot here,
+  the L4 thread shot them); Azazel's Forge, Bath Salts, Bipod, Blurry Photo, Called by Name, Camouflage,
+  Can't Stop Me, Collection Plate, Crystal Coffin, Death Pact, Dig In, Double Down, Emet, Encore, Everybody Up, Extended
+  Clips, Feathered Serpent, Filter, Forward March, Grind, Invulnerable, Kawarimi, Lawn Ornament, Mantra, On Duty, Orchid
+  Disguise, Overtinker, Premonition, Prophecy Fulfilled, Rapture, Rescue Line, Saddle Up, Salt-Proof Stance, Scabbard of
+  Excalibur, Sermon, Sleight of Hand, Sponsored, Submerge, Take Root, Tax Exempt, Thirty Minutes or Less, Three Whistles,
+  Updraft, Ancient Magic, Blue Beam, Celibacy.
+- **Seen on these spells but shared, so not touched (for the cleanup thread):** (1) on every buffed ally, a stack of pale
+  gold rings round the body and a cream square under it (the buff rings + the tile glow); (2) the gold swirl disc under
+  every caster in the windup; (3) `_sigSonicBoom3D`'s speed burst is hard `0xffffff` and `_vcCol` passes near-white
+  through when the casting spell's palette is a support one (its `light` is cream), so `_sigScreenFlash` /
+  `_sigShockRing3D` / `_sigSpeedBurst3D` handed white still draw white on any aura / heal / mana spell;
+  (4) `_sigSacredRings3D` draws its three rings white whatever `color` it is handed (Rapture, Plot Armor before this);
+  (5) `_sigSpectrumBurst3D` has a white-hot core (Mimicry's remaining bright centre); (6) Howl's teal screen wash + violet
+  rings are the sonic pass's roar, Updraft's white twist is the wind pass (`_wdUpdraft`): B7's; (7) the recipes name a
+  `buff-aura` pillar sprite that three-vfx.js does not define.
+- Frames: `docs/plans/vfx-cleanup/img/sweep/b6a_part1_before_after.jpg` + `b6a_part1_after.jpg` (llvmpipe, 1920 x 1080
+  crops, frames 300 ms apart). NOT seen: anything shorter than 300 ms between two frames (the dropped flashes are 220 ms:
+  their absence is read from the recipe copies, not from a frame), the guest's seat, `EW_NO_VFX_CLEANUP` on.
+## THE VFX SWEEP, B8a, part 1: blood + earth (2026-11-17, three-vfx-effects.js block "THE VFX SWEEP, B8a"; list `batches/B8a.txt`, 83 spells)
+Thread B8a of the sweeps (docs/plans/vfx-cleanup/SWEEP_BRIEF.md). All 83 already had a look of their own (`_vcOwn`), so the
+stage burst was already the grade + shake for every one; what was left was white inside each spell's OWN recipe / signature.
+All 83 were traced in the code and shot once; 26 changed, 57 needed nothing. Everything is behind `_vcOn()`
+(`window.EW_NO_VFX_CLEANUP = true` = the old look) except Cave-In's quiet `aoe` row (like L1's Watering Can). Looks only.
+- **The bites and the claws** (Bite, Blood Frenzy, Blood in the Water, Death Roll, Feeding Frenzy, Jurassic Jaw, Love Bite,
+  Maul, Claw Sweep): their callers pass `vcQuiet: true` to `_sigJawsBite3D` / `_sigClawCombo3D`: no rune circle under a bite
+  (a bite is not rune magic), no screen flash, no speed burst. The jaws, the ring in the spell's colour, the blood flecks,
+  the rakes and the shake stay. Rush lines only with `vcLines` (the two ultimates: Jurassic Jaw, Blood Frenzy's last bite).
+  B8b added `plain` to the same two helpers the same hour (the same thing, not switchable): both are kept, `_vcQ` reads either.
+- **White floor rings in the spell's colour** (`_b8Tint` sets the layer's `vcTint`): Quake + Spike the Ball
+  (`raceQuake_impact_center`, tan), Fee Fi Fo Fum, Tremor Stomp + Timber Stomp, Boulder Hurl, Big Kick (it was pale cream),
+  Walls of Camelot (its floor ring, the shields' steel blue). **Brutal Slam** wore the Quake's white ring: it has its own
+  copy now (`b8BrutalSlam_center`, arterial red; `_b8Centre`).
+- **Near-white hit flashes in the spell's colour** (the flash is kept, recoloured): Curb Stomp, Open Vein, Interrogation
+  (blows one and three), Diamond Lance (pure white -> the crystal's blue), Indomitable Will (its ring + three flashes were
+  cream-gold: THE BLOOD BUFFS had missed them; its column's core was near-white pink, now `0xff7a88`).
+- **Colossal Crush**: the dome's white-hot core takes a warm sand colour. **Stone Drop**: its pale ring is stone dust.
+- **Cave-In**: it got battle.js' generic area detonation (a violet ring + orb round the cave-in; `playAoeRing`, see L1 "the
+  three fixes"). It carries an empty `aoe` recipe (`b8Quiet_aoe`) so the cave-in is its look. Seen gone in the frames.
+- **Needed nothing** (57): Arterial Spray, Bat Swarm, Devil's Due, Devour Mankind, Draining Embrace, Eaten Alive,
+  Exsanguinate, Feast, Ghoul's Supper, Giant's Hand, Gnash, Gore Charge, Grave Grip, Hemorrhage, Last Dance, Life Drain,
+  Life Sap, Lifetap, Rotting Claw, Soul Harvest (its pale wisps are the souls), Symbiotic Drain, Tendril Snare, Wear Your
+  Skin, Adrenaline Rush, Blood Ritual, Let It Out, Underdog Spirit, Bishop, Calcify, Clay Crush, Clay Grip, Earthen Grasp,
+  Erupt, Fissure, Ground Slam, King, Knight, Pawn, Petrify, Piledriver (the white is the ring's canvas and ropes), Pocket
+  Sand, Pyramid Protocol, Queen, Quicksand, Rampart (both), Rockslide, Rook, Sandstone Tomb, Sasquatch Smash, Shardstorm,
+  Spike Trap, Stone Throw, Stonefall, Tail Sweep, Underfoot, Baphomet's Rite. The blood sigil under the Blood Magic casts
+  stays (it is rune magic).
+- **For the cleanup thread:** Sasquatch Smash's flashbulb (`_sigScreenFlash('#ffffff')`, "the photo") is a camera flash that
+  IS the spell, but `_vcCol` turns any near-white screen flash into the spell's colour, so it pops tan. Not changed here
+  (the helper is held): it wants a way to say "this white is the thing itself".
+- **Not seen in a frame** (shorter than the harness' frame gap): Diamond Lance's flash, Walls of Camelot's ring, Curb
+  Stomp's and Open Vein's flash colour, Colossal Crush's dome, Jurassic Jaw's snap, the Sasquatch flashbulb. Seen: the
+  bites + Claw Sweep, the tan rings (Quake, Fee Fi Fo Fum), Brutal Slam, Stone Drop, Indomitable Will, Cave-In.
+- No line spell and no single-spell lead of the brief is on this list (they are B8b's and B6-B10's).
+- Frames: docs/plans/vfx-cleanup/img/sweep/B8a_part1.jpg. Online: every piece rides `fire()` / the stage beats; nothing on `state`.
+
+
+## THE VFX SWEEP, B8b, part 2 (2026-11-17, three-vfx-effects.js): the last two + the list is done (82 of 82)
+The 54 spells the code trace left alone were shot too, to catch what a trace misses. It caught one thing:
+- **Chain Reaction**, **Cluster Rockets** (+ Mortar Salvo, the same recipe): every square's blast drew its own pale shock
+  ring (the explosion kit's, `_crExplosion`), nine or more rings in a lattice over the area. The kit took an opt-in knob,
+  `noRing: true`; the centre blast keeps its ring, a square's own blast goes up without one. Place Bomb, Missile Barrage
+  and the other per-square blasts still draw theirs: for their own sweeps (pass `noRing`, or the recipe's `_crBoom.noRing`).
+- **Checked, nothing to change (53):** Bomb Arrow, Cannonball, Combust, Decapitation Strike, Devil's Coal, Dynamite, Fire
+  Arrow, Fire for Effect, Flambe, Holy Holy Holy, Hot Pan, Inferno, Live Coal, Lump of Coal, Ruby Spark, Solar Flare,
+  Throne of Ashes, Trick or Treat, Usurp, Birch Switch, Bumper Crop, Crop Circle, Entangling Roots, Make Love Not War,
+  Overgrowth, Pollinate, Raptorial Strike, Red Weed, Sacrifice, Thornlash, Trunk Throw, Up the Apple Tree, A Thousand
+  Stings, Black Smoke, Cadaver Claws, Corrosive Splash, Engulf, Goo Shot, Kiss of Decay, Miasma, Pepper Spray, Poison
+  Dart, Poison Seed, Rot, Slime Slash, Spore Cloud, Swamp Gas, Tendril Strike, Tendril Whip, The Swarm, Venom Burst,
+  Venom Spit, Vivisection. (The batch is 82 = 29 changed + 53; Cluster Rockets was already one of part 1's 28.)
+- **Not seen on a frame:** Sacrifice (two-ally pick), Pollinate (no pollen), Cannibalize (no corpse): the harness cannot
+  cast them. Fire for Effect, Extinction Event and Nuclear Option land a round or two later: only the cast was shot.
+- None of the 14 old-laser line spells and none of the single-spell leads of the brief are on this list.
+- Frames: `docs/plans/vfx-cleanup/img/sweep/B8b_part2_changed.jpg` (the two, after), `B8b_part2_nochange_1..4.jpg`.
+
+## THE VFX SWEEP, B7b, part 1: the wind + sonic leads, the 19 sonic spells, the 19 wind spells (2026-11-17, three-vfx-effects.js)
+Thread B7b (list `docs/plans/vfx-cleanup/batches/B7b.txt`: sonic 19, water 36, wind 19; no ice or metal on it, and none of
+the 14 old-laser line spells). Everything behind `_vcOn()`. Before / after: `docs/plans/vfx-cleanup/img/sweep/B7b_part1.jpg`.
+- **THE WIND LEAD (every wind spell):** `_wdGather` (the swirl + coils round the caster) and `_wdMark` (the gust + swirl on
+  the hit) drew in white air over a pale mint glow. They draw in a mid mint now (`_WDC`: air `0x7fe3bd`, glow `0x35b88a`,
+  motes `0x9fe8cc`). The family's own looks (the lane gust, the twister, the eye wall, Squall's blade) keep their white
+  air: that is the wind itself.
+- **THE SONIC LEAD (every sonic spell):** `_snRing` (every ring of the stamp, the cast, the hit, the shout, the lane) was
+  an additive pale lavender `0xc4a6ff` that added up to white: a full violet `0x8a55ff` (`_SNC`, `_snWaveC()`); the level
+  meter's top cells `0xb08cff` (were `0xf2ecff`). Notes, the ink rim and the clash pink are as they were.
+- **The wind + sonic noise sheets** (`_nzWash`, table `_NZ_VC` beside it): at the cleanup's mid tone the bright sheet still
+  read white (nine white static squares under Roundhouse Kick, the same on Arrow Volley, Simoom, Host-Fetter). Wind
+  `0x22a070`, sonic `0x8e4ae6`. Every hit square still wears its sheet. It is an added sheet on a lit floor, so it is
+  still light, but it is mint / violet now, not white.
+- **Changed spells (7):**
+  - Crowd Surge (`raceSpaceDisco`): the spectrum burst's white-hot core + three lights at 2.6 covered the dance floor in
+    white: lights at 1.5, the burst is two rings in the disco's pink + blue, sparkles pink.
+  - Requiem: rings a full violet, no screen flash, the column thinner and violet through (its core was near white).
+  - Polyphemus Bellow (`sigBellow`): four cream-white rings over the area -> three, in the eye's amber.
+  - Resonance Pulse: was a white bloom (pale rings + screen flash + a second ring + a rune under the noise sheet): its
+    rings a full blue, no screen flash, no second ring, no rune.
+  - Deafening Wail: no screen flash (it hazed the whole screen pale blue); the rings are the scream.
+  - Lullaby: no rune circle under a song; the hush rings stay.
+  - Valkyrie Spear: the seal circle read as a white disc a square and a half wide under the body for 0.7 s: gone; the
+    planted spear, its thin light (a full blue) and one ring off the plant are the seal.
+- **Checked, nothing of their own to change (30; the leads above reach all of them):** Emergency Broadcast, Excessive
+  Machine, Gibberish, Lure of the Deep, Meow, Mic Drop, Screech, Shiver Down the Spine, Siren Song, Sonic Boom, Stadium
+  Show (its flash is the stage lights coming on, already in the spell's pink through `_vcCol`), Stage Dive, The Last
+  Trumpet · Arrow Volley, Eye of the Storm, Hail Mary, Heroic Leap, Host-Fetter, Long Bomb, Ride to Valhalla, Roundhouse
+  Kick, Simoom, Sky Tackle, Splitting Arrow, Squall, Stoop Dive, Talon Rake, Tornado (white funnel = the wind), Twisted
+  Wish, Wing Attack.
+- **Could not judge:** Hurricane Party (the harness cannot cast it: its spell row is not found).
+- Not seen: any of this from the guest's seat (all of it rides `fire()` / the stage beats, nothing on `state`); frames
+  are 450 ms apart, so a piece shorter than that between two frames was not seen.
+## THE VFX SWEEP, B9b, part 1: the psychic half (2026-11-17, three-vfx-effects.js; list `docs/plans/vfx-cleanup/batches/B9b.txt` lines 1-51)
+Brief: docs/plans/vfx-cleanup/SWEEP_BRIEF.md. The white was traced in the code (each spell's signature + its particle
+recipes), then the changed spells were shot before and after. All behind `EW_NO_VFX_CLEANUP`; looks only. The two tables
+live in the block "THE VFX SWEEP, B9b" (after THE OWN LOOKS, L5): `_VC_RUNE_NOT_B9B` (read by `_vcRuneOK`: a spell of a
+rune school that is not rune magic gets no circle under the caster) and `_B9B_TINT` (a white ring or flash layer of a
+spell's own recipe, in the spell's colour, read live). In-place edits carry a "B9b" comment.
+**Changed (15):**
+- **Ego Death** (`_sigEgoDeath3D`): the imploding and the bursting shell were a white ball over the target and its number
+  (opacity 0.85 / 0.9); now the trip's pink `0xff7ae4` at 0.45 / 0.4, so the body and the number show through. No white
+  screen flash (its own, and the spectrum burst's: `flashPeak: 0` passed). The spectrum burst's white core is in the
+  shared helper `_sigSpectrumBurst3D` and stays.
+- **Mind Shatter** (`_sigMindShatter3D`): no pale lilac screen flash, no speed burst; the cage, the shards and the ring stay.
+- **Paradox** (`_sigTimeRewind3D`): no pale screen flash; the bursting shell in the clock's blue (was `0xbfefff`). The
+  circle stays: it is the clock face.
+- **The Oath Broken**: no screen flash on the lance's landing.
+- **Missing Time**: no mint screen flash when the beam blinks; no cast rune.
+- **Late Fee, Thought Spike, Shush**: their white sparks in the spell's own colour (the stamp's / the side's).
+- **Vacuum Collapse**: the point the room falls into is the void's violet (it was a white flare that grew to 1.4 squares).
+- **Uncanny Smile**: the ring round the android in its eye red (it was bone white). **Pin Prick**: the pin's glint in lace pink.
+- **No cast rune** (psychicHex is a rune school, these are not rune magic): Debunked, Missing Time, Ratio'd, Scrape, Shhh!.
+**Checked, nothing to change (36):** Dream Siphon, Eternal Slumber, Every Eye at Once, Existential Dread, Familiar Voice,
+Far Sight, Final Exam, Jewelled Toys, Kinetic Hurl, Look Behind You, Mental Static, Migraine, Mind Blank (the blank is the
+spell), Nightmare Pulse, Overfit, Probe, Psychosis (its flash is its own purple), Rewind, Telekinetic Slam, The Sermon,
+The Whole House Shakes, Things That Go Bump, Tissue Sample, Visible Language, Contact High, Fast Forward, Nordic Accord,
+Observer Effect, Psychic Barrier, Pull My String, Sad Backstory, Spirit Guide, Telepathic Link, Deneuralizer (the white
+flash IS the spell), Doomscroll, Invisible Box (glass).
+- Frames (before on top, after under): `docs/plans/vfx-cleanup/img/sweep/b9b_p1_*.jpg`. Seen: Ego Death, Mind Shatter,
+  Paradox (the screen wash gone), Ratio'd / Missing Time / Scrape (no rune). NOT seen on a frame, the change is too
+  short or too small for frames 0.45 s apart: the Oath's and Missing Time's screen flash, the three spells' sparks, the
+  Vacuum point, the Smile's ring, the pin's glint; Debunked and Shhh! showed no rune in the before frames either.
+- Not on this list although the thread's order named them: Jackpot, Shattered Mirror (B9a), Love Ray (B4). Left alone.
+- For the cleanup thread (shared helpers, not touched): `_sigSpectrumBurst3D`'s white core; `_sigGasCloud3D` lays a
+  `_sigMagicCircle3D` under every gas cloud (Heat Death, Shambling Horde) on squares the noise wash also covers.
+
+## THE VFX SWEEP, B7b, part 2: the 36 water spells; the list is done (2026-11-17, three-vfx-effects.js)
+Before / after: `docs/plans/vfx-cleanup/img/sweep/B7b_part2.jpg`. Part 1 = the section above (wind + sonic).
+- **The water noise sheet** (`_NZ_VC.water = 0x2a86e0`, beside `_nzWash`): at the cleanup's mid tone it read ice-white over
+  the bodies on every water area (Bloom, Whirlpool, Depth Charge, Tail Sweep, Tsunami's lane). A full water blue now;
+  every hit square still wears its sheet.
+- **Changed spell (1):** Tidal Slam: the geyser was a white-cored column 0.7 squares wide over the caster and its ring
+  near white: the column narrower with a water-blue core, the ring a full blue. Its top still blooms pale (two added
+  cylinders): it is the foam of the geyser, left.
+- **Checked, nothing to change (33):** Abyss Jaws, Bloom, Call of the Deep, Dashed on the Rocks, Depth Charge, Eightfold
+  Lash, Enlil's Deluge (the pale flash is the storm cloud's lightning), Fire Hose (white = the jet's foam; the grey disc
+  is the truck's parking shadow), Five-Armed Crush, Fluoride Water, Great Flood (see below), Holy Water, Into the Bog,
+  Land Ho, Long Neck, Maelstrom, Muck Grab, Nematocyst Net, Pull Them Under, Rescue Tube, Sailor's Lure, Spout, Sting,
+  Tail Sweep, Tentacle Lash, Tongue Lash, Tsunami (white = the wave's foam), Tube Feet, Walk the Plank, Water Jet,
+  Watering Can, Whirlpool. What is pale on them is water (foam, spray, the crown splash + ripples of `_wvMark`, the
+  element's base) or the sheet above.
+- **Could not judge (3):** Out of the Loch ("must be above the target"), Poseidon's Wrath ("no enemies are standing in
+  water"), Drag Under ("no water close enough"): the audit board has no water / height, the cast never lands.
+- **Leads, not closed:**
+  - Great Flood: about 0.3 s after the hit a hard-edged WHITE DISC a square wide sits in the middle of the flood for
+    about 0.6 s and the flooded squares turn white with it. It is not the spell's recipe (`raceFlood_aura` emptied: still
+    there), not the noise sheet (recoloured: still white) and not the ring wave's shape. Not traced further; likely the
+    new water squares themselves (the terrain change), outside this file's spell code.
+  - Watering Can's "big tan ring" (the brief): not found on a frame every 300 ms. What shows is the caster's own gold
+    active ring pulsing, L1's small shower + two small ripples, and the water mark's ripples (`_wvMark` from
+    `_stageBurst`, about a square wide, pale blue): that mark on a quiet utility cast is the cleanup thread's call.
+
+## THE VFX SWEEP, B10, part 1: bodies and tech (2026-11-17, three-vfx-effects.js block "THE VFX SWEEP, B10" + marked lines)
+List `docs/plans/vfx-cleanup/batches/B10.txt` (112 spells: human, kinetic, grapple, skyfall, rig, tech, alien). All 112 were
+traced in the code (each one's recipes, its own look, every near-white literal in them) and shot once at 0.45 s a frame.
+All 112 have a look of their own today (`_vcOwn`), so the shared stage burst was already off for every one of them: what
+was left is small. Everything is behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP = true` = the old look). Looks only.
+- **The recipe layers** (`_B10_LAYERS`: recipe -> [sprite, old tint, new tint | 'skip']; it writes the same `vcTint` /
+  `vcOff` layer tags B8a's `_b8Tint` writes, read by the emitter). A near-white hit flash takes the spell's colour, it is
+  never removed; a second flash on the same spot is dropped. Hydraulic Punch (steam blue; its second, pure white flash
+  off; Tail Whip shares the recipe), Grapple Arm (steel blue), Place Bomb (every square's flash + the ring in the blast's
+  orange, they drew cream; the middle's second flash off), Executive Order (the seal's gold), Saw in Half (spark gold),
+  Feral Dive (leaf green flash + ring), Drive-By (muzzle yellow), Stampede (dust amber: the hit, the six streaks, the
+  ring), Chivalry (the shield's blue), Spring Snare (steel), Stuffed Double (straw), Predator Drop (a vampire's rake is
+  blood red; it was pale green).
+- **Divine Swoop** (`_spell3DGeometry.raceDivineSwoop`): the pale speed burst and the screen flash are off; the silver cut
+  (a shade deeper) and its ring are the swoop.
+- **Meteor**: no pale speed burst and no screen flash on the landing; the rock, the fire, the ring and the circle stay
+  (the circle is the Black Mage's own cast and the mark of where it lands).
+- **Nebula** (`_sigSupernova3D`, its only spell): the white-out of the board is a short gold blink (0.6 -> 0.2), the shell
+  is half as solid so the bodies read through it, the white second ring and the white pillar are star gold.
+- **Megazord Blast** (`_CAP_SIGS`): each lance's hot core is its ranger's colour made light and the lances no longer burn
+  out to white (gain 1.8 -> 0.95), the charge is red, the blast light gold, the white screen flash off.
+- **Checked, nothing to change (95):** every other spell on the list. Their whites are the thing itself (paper, a contract,
+  a library card, chalk, snow, ice, a pie's cream, a referee's lines, feathers, steam, a lure's bulb, a saw blade) or go
+  through `_vcCol` already (Flat Earth's, Gator Toss's and Timeout's rings).
+- **Ice Slide (the brief's lead):** the flat white slab in the frames is the ICE TERRAIN the spell leaves
+  (`leaveTerrain: 'ice'`, three-renderer.js), not a VFX; L3's strip lies on it for about a second. Left alone.
+- **Could not judge on frames, code only:** the self-centred dashes and rig casts resolve before the runner's first frame
+  (Blitz, Body Check, Bull Rush, Dark Feather, Drive-By, Giant Stride, Lunar Lander, Popemobile, Quickdraw, Ram Charge,
+  both Rampages, Ride-By, Shadow Infiltration, Sleigh Dash, Sprint, Stampede, Vault, Fifty Times, Suplex, Horn Toss, the
+  traps and deploys). The recoloured flashes last about 0.1 s and are not in a frame either.
+- **Seen, not mine (for the threads that hold them):** the METAL noise wash is still white static on every square (Runaway
+  Train about 14 discs, Tether Line, Grapple Arm, Electromagnet, Shoulder Through, Quickdraw) and the metal stamp puts a
+  giant pale cog under Lasso / Round Up (B7's leads); the WIND wash on Dust Devil (white-mint blobs on every square; sand
+  would suit it); the explosion kit's cream ring on every blast (Place Bomb, Mortar Salvo, Artillery Strike, Rocket Fist);
+  a white light column on the lifted body at the start of the three sky throws (Dragon Toss, Infernal Hurl, To the Moon)
+  and a cream crescent where a leap lands (Abominable Ambush, Grotesque Dive): source not found in this file's spell code
+  (three-renderer.js's carry / leap?); Transform's gold halo is the shared buff burst (`_buff_div_burst_center`).
+- No line spell of the brief's list is on B10 (Piercing Arrow, Bullet Pass, Shockwave Clap and Ki Charge are on B3's list).
+- Frames: docs/plans/vfx-cleanup/img/sweep/b10_p1_*.jpg. Online: every piece rides `fire()` / the stage beats; nothing on `state`.
+
+## THE VFX SWEEP, B9b, part 2: the unholy half + the list is done (2026-11-17, three-vfx-effects.js; `batches/B9b.txt` lines 52-108)
+Same method and the same two tables as part 1 (block "THE VFX SWEEP, B9b"). All behind `EW_NO_VFX_CLEANUP`; looks only.
+**Changed (28):**
+- **No cast rune** (`_VC_RUNE_NOT_B9B`; unholy is a rune school, these are a body, a bite, a breath, a kiss, a thrown
+  thing, a song, a flock): Absorb, Bone Barrage, Broken Halo, Carrion Feast, Crow Storm, Death Rattle, Dragonfear, Embalm,
+  Last Kiss, Sleep Paralysis, Soul Suck, Stolen Vitality, Rigormortis, Dark Lullaby, Heat Death.
+  **The rune stays** (rune magic): Ammit Devours, Weigh the Heart, Curse of the Tomb (the Egyptian rites), Cataclysm
+  Decree, Infernal Decree, Dark Dominion, Consuming Dark, Family Curse, Needle Work, Voodoo, Soul Bind, Shadow Crush, The Reaping.
+- **The cream-white floor ring in the spell's colour** (`_B9B_TINT`; an untinted `shockwave` / `halo-ring` layer of the
+  spell's own recipe): Bone Barrage (violet), Dark Dominion (violet), Demonic Roar (its red), Labyrinth Roar (its amber,
+  + Demonic Roar's ring it borrows), Dread Aura, Shadow Crush, Infernal Decree + Cataclysm Decree (fire orange), Carrion Feast.
+- **A white / pale flash in the spell's colour:** Shadow Step (a square-sized pure white flash, now shadow violet),
+  Family Curse (three pale-blue flashes, now the curse's violet), Soul Bind + Voodoo (bone white, now the ink's gold;
+  the recipe `raceContract_impact` is shared with Contract on B9a's list, which gets the same gold).
+- **No pale screen flash:** Danse Macabre (the bell's toll), Zombie Rush.
+**Checked, nothing to change (29):** Ammit Devours, Bone Toss, Car Toss, Clone Jutsu, Consuming Dark, Corner of Your Eye,
+Curse of the Tomb, Demonic Claw, Evil Eye, Fear, Frenzy, Grab, Grave Whisper, KNEEL, Linen Bind (linen), Marrowstorm
+(bone), Needle Work, No Mercy, Out of the Dark, Rend, Scare Off, Shambling Horde, Skull Crack (bone), Skyscraper Toss,
+Terror Pounce, The Reaping, Tithe, Treeline Scream, Weigh the Heart. Their white helper calls (the jaws', the claw
+combo's and the sonic boom's speed burst and third cut) are already drawn in the spell's colour by `_vcCol` (B1).
+- Frames (before on top, after under): `docs/plans/vfx-cleanup/img/sweep/b9b_p2_*.jpg`. Seen: the rune gone on Broken
+  Halo, Carrion Feast, Dragonfear, Embalm, Sleep Paralysis, Soul Suck, Stolen Vitality; the roars' rings red / amber.
+  NOT seen on a frame (0.45 s apart misses them, or the before frame had no rune at that tick either): the other eight
+  runes, the other rings, the four flashes, the two screen flashes. Those rest on the code trace.
+- B9b is done: 108 of 108 (43 changed, 65 nothing). Open for the cleanup thread: see part 1's last line.
+
+## THE VFX SWEEP, B10, part 2: the last check: basic attacks, items, combos (2026-11-17, battle.js)
+Not in any table; one of each was fired by hand on the audit board (`doAttack`, `doItem` healPotion, `doComboAttack`
+Combined Arms) and shot every 0.12 s.
+- **Basic attack (melee):** the action shot, THE HIT BLINK, the number, blood. No ring, no flash, no speed burst. Its hit
+  spark is the `hit04` sprite sheet (three-anim). Nothing to change. A RANGED basic attack was not shot (its round is the
+  tracer kit, `fireBoltDirect`).
+- **Item (Heal Potion):** a thin green ring + the number (`_itemHealPotion_burst`, the heal palette). Nothing to change.
+  The Mana Potion's recipe is the same shape in blue (code only). Thrown items (grenade, bane) were not shot.
+- **Combo (Combined Arms):** the slash combo + two cream sonic rings + a `#fff2cc` flash of the whole screen. The combo
+  finishers (`_COMBO_IMPACT_FX`, 16 screen flashes) are mostly in the combo's own colour; the three near-white ones
+  (Combined Arms `#fff2cc`, Celestial Chorus `#e8dcff`, Purifying Pulse `#ffffff`) are off while the cleanup is on
+  (`_vcComboFlash`; `EW_NO_VFX_CLEANUP = true` = as before). The guest runs the same table through the `combo-cine`
+  relay, so both seats match. NOT seen: the flash is 0.22 s and fell between frames before and after.
+- **Reported, not changed:** the other 13 combo flashes are coloured but still screen-wide at 0.30-0.35 (mondo's call:
+  a combo is a finisher); four combo pillars have a white core (`coreColor: 0xffffff`), Purifying Pulse's ring is pure
+  white (a purify light: the thing itself?); the KILL finisher of an action shot (`_actionCamKillFlare`) flashes the
+  whole screen white at 0.5 with a ring, by design ("the full JRPG treatment"); the Entropy Strike presentations
+  (battle.js 19000-24800) draw white-cored pillars on every charge.
+- Frames: docs/plans/vfx-cleanup/img/sweep/b10_p2_attack_item_combo.jpg (in it the caster is a black card: the harness
+  board's raider sprite did not load; not a game fault I traced).
+- **B10 is done:** 112 spells traced, 17 changed, 95 no change; list of what belongs to other threads in part 1.
+
+## THE VFX SWEEP, B9a, part 1: anomaly + arcane, and the three leads (2026-11-17, three-vfx-effects.js; list `docs/plans/vfx-cleanup/batches/B9a.txt`)
+Thread B9a, 109 spells (arcane, hex, anomaly, mind, half the psychic), in four parts. All behind `EW_NO_VFX_CLEANUP`; looks only, nothing on
+`state`, every piece rides `fire()` / the stage beats. Edits sit where each spell is written (grep "THE VFX SWEEP B9a"). Method: a static
+trace of every spell's own code for white (its signature, the helpers it calls, its recipes), a capture of all 109 before, then the changed
+ones again after. The capture frames are 0.45 s apart, so a hit that is over in 0.2 s is judged from the code, not from a frame.
+- **THE CAST RUNE, spell by spell** (`_VC_SPELL_NO_RUNE`, read by `_vcRuneOK`; one hook line beside B9b's `_VC_RUNE_NOT_B9B`): B1 kept the
+  purple circle under the caster for every spell of a rune school. Inside those schools a spell that is not rune magic now draws none.
+  Arcane, off: Cocoon (silk), Dead Man's Hand (cards), Hall of Mirrors, Mirror Shard, Seven Years, Shattered Mirror, Prism Mirror (glass),
+  Jackpot (a slot machine), Kneel (the winged disk is its mark), Strange Loop, Web Shoot. **Kept (rune magic):** Annihilation, Arcane Sigil,
+  Crystal Ball, Hocus Pocus. The thin ring that still closes round a caster is the charge, not the rune.
+- **The lead, Jackpot + Shattered Mirror (the glass orb + the wide ring 0.45 s after the hit): FOUND.** It is `aoe()`, the FALLBACK
+  detonation battle.js fires for an area spell that has no `aoe` recipe and no A-F geometry (battle.js `_vfxAoe` path): eight white
+  flashes, 70 sparks, a ring, a shockwave, `_sigMagicOrb3D` and a 2.2-square `_sigShockRing3D`. An L-thread look sits in `_GO_SIG`, which
+  that path does not know, so both drew. `aoe()` now returns for a spell with a look of its own (`_vcOwn`). The same fix reaches
+  Eyewitness and Hypnotic Pulse (same path) and any other batch's area spell in that state. Each of these looks flashes its own squares.
+- **The lead, Love Ray's purple circle under the shooter:** it was the cast rune (psychicHex is a rune school; `_afLoveRay3D` is not in
+  the gun tables B4 reads). Love Ray is in `_VC_SPELL_NO_RUNE`; its laser core is the ray's pink, not white.
+- **The target telegraph** (`_stageWindup`): the glass orb that implodes on the victim before a heavy / ultimate magic hit no longer
+  draws for a spell with a look of its own (B1's rule for the burst's orb, one condition added to `_teleOrbOK`); the closing ring stays.
+  Seen on Annihilation, Hocus Pocus, Death Gaze. It reaches every batch's own-look heavy magic spell.
+- **Kneel** (`_afKneel3D`): the three pressing rings are gold (`0xd89a2a`, the comment always said gold) at 0.42, they were lilac at 0.7 and
+  drew near-white over the 3 x 3.
+- **Reality Pulse**: the rainbow burst (`_sigSpectrumBurst3D`: seven stacked rings, a white core, a white screen flash) drew as one white
+  disc over the three bodies; it is off for this spell, a second violet ring takes its beat; the eye, the glass and the light are the spell.
+- **Borrowed Claw**: `plain` (B8b's option on `_sigClawCombo3D`): the claws + their marks, no screen flash, speed burst, end ring, rush lines.
+- **Hall of Mirrors**: no pale ring over the area when the mirrors break (the shards are the hit). **Strange Loop**: the ribbon's core violet.
+- **Checked, nothing to change (17):** Chest Pound, Cocktail Hour (its ice is ice), Death Gaze, Eyewitness (the bulb is a bulb), Flying Kick,
+  Harbinger, Leapfrog, Prophecy of Disaster, Sucker Punch, Annihilation, Arcane Sigil, Crystal Ball, Dead Man's Hand, Hocus Pocus, Mirror
+  Shard, Seven Years, Prism Mirror (the last four beyond the rune / the telegraph above). **Not mine to change:** Iai Draw and Ronin's Wake
+  (the Samurai Slug's VFX are held by the polish thread, claims.md; Iai Draw's hit flash is pure white `0xffffff` in `nrIaiDraw_impact`).
+- **Seen, left for the cleanup thread:** the support burst's pale ring on a hex victim; Arcane Sigil's cross reads pale lilac (it is the sigil);
+  Love Ray shows a very wide pale arc across the screen about 1.2 s in (not traced).
+- **Not seen:** Prism Mirror's fold, Mirror Shard's and Borrowed Claw's hit frames (too fast for the frames), an enemy's cast, online.
+- Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part1_hits.jpg, B9a_part1_runes.jpg, B9a_part1_loveRay.jpg (after only).
+
+## THE VFX SWEEP, B9a, part 2: hex, the first 30 (2026-11-17, three-vfx-effects.js; Anchor ... Memory Leak in `batches/B9a.txt`)
+Same method and switch as part 1. A hex draws no noise wash and its stage beat is the support burst, so nearly all the generic layer on
+these was ONE thing: the purple cast rune under the caster, on a referee's card and a tailpipe alike.
+- **The cast rune off (`_VC_SPELL_NO_RUNE`, 26):** Anchor, Blue Screen, Call Out, Campaign Promise, Card, Charm, Cold Spot, Constrict,
+  Designate Target, Discordance, Eagle Eye, Exhaust Cloud, Filibuster, Flower in the Barrel, Freeze! Police!, Go Viral, Gravity Crush,
+  Haunt, Hogtie, Implant, Ink Cloud, Iron Grip, Lamp Smoke, Low Gravity, Mean Mug, Memory Leak. **Kept (rune magic): Contract** (a demon's
+  contract), **Forsaken, Hex of Agony** (its candles, circle and skull are the rite), **Mark of the Beast**.
+- **Call Out** (`provoke`): no screen flash (`flashPeak: 0` passed to `_sigSonicBoom3D`); the shout is its orange jagged rings.
+- **Discordance**: its two rune circles on the victim are off (a sour chord is not rune magic); the jagged pink rings and the broken notes
+  are the spell. No screen flash.
+- **Cold Spot**: the rune circle on the zone's own squares is off, and the pool under the fog (`noPool`, B8b's option); the fog is cold
+  blue (`0x6fb4d8` / core `0x8fc4e6`), its core was near-white `0xdff4ff`.
+- **Ink Cloud**: `noPool` (no circle of light under ink).
+- **Checked beyond the rune, nothing to change:** every one of the 30. What is pale in them is the thing: the referee's card, Freeze!
+  Police!'s searchlights and red / blue lamps, Flower in the Barrel's petals, Implant's chip, the exhaust.
+- **Seen, not mine:** the pale squares over an area during the windup are the aim tiles (the tile glow), not a spell layer.
+- **Not seen:** Campaign Promise, Mean Mug and Constrict have no look of their own (the support burst only); an enemy's cast; online.
+- Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part2_a.jpg, B9a_part2_b.jpg.
+
+## THE VFX SWEEP, B9a, part 3: hex, the other 31 (2026-11-17, three-vfx-effects.js; Mirror Splinter ... Wither Starlight in `batches/B9a.txt`)
+Same method and switch as parts 1 and 2.
+- **The cast rune off (`_VC_SPELL_NO_RUNE`, 27):** Mirror Splinter, Misdirection, Naughty List, Outbreak, Pick a Card, Pixie Prank,
+  Predictive Model, Red Eyes, Selfie Flash, Short Sell, Showdown, Smoke Screen, Spiked Martini, Spotlight, Stacked Deck, Stasis Beam,
+  Steal from the Rich, Stutter, Surveillance, System Analysis, The Hat Man, The Kool-Aid, Throw Down the Gauntlet, Vow of Silence,
+  Wanted Poster, White Christmas, Wither Starlight. **Kept (rune magic): Mummify** (Anubis' rite), **Polymorph, Spellsteal** (the
+  wizard's), **Star Crossed** (the fortune teller's tarot; its own circle under the card stays too).
+- **Star Crossed** (`_sigTarotReversed3D`): no screen flash when the card turns over.
+- **Checked beyond the rune, nothing to change:** all 31. What is pale in them is the thing itself: Selfie Flash (the flash IS the
+  spell), Spotlight (a spotlight), Mummify's linen, Pick a Card's cards, Wanted Poster's paper, Spiked Martini's glass, Mirror Splinter's
+  glass, Smoke Screen's smoke, Naughty List's scroll.
+- **Seen, not mine:** Stasis Beam's beam is a near-white dotted line from battle.js's spiral projectile (the f4 look calls it "gold-white",
+  the Nordic's light); it is not in three-vfx-effects.js and was left.
+- **Not seen:** Predictive Model's after frames (the run caught the boot screen; its only change is the rune table row); Misdirection,
+  Stacked Deck, Stutter, Surveillance have no look of their own (the support burst only); an enemy's cast; online.
+- Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part3_a.jpg, B9a_part3_b.jpg.
+
+## THE VFX SWEEP, B9a, part 4: mind + psychic, and the list is done (2026-11-17, three-vfx-effects.js; the last 20 of `batches/B9a.txt`)
+Same method and switch. Neither school is a rune school, so no cast rune was in play here; the white was inside the looks.
+- **Bad Trip** (`_sigBadTrip3D`): no pink screen flash (0.24); the skulls, the neon grid and the kaleidoscope are the trip.
+- **Call the Ancestors**: no pale screen flash (0.3) when the elders strike; the ring in spirit blue `0x5fc4e8` (was `0xbfeaff`). The
+  elders stay pale: they are ghosts.
+- **Ascension Day**: the light is the spell and stays; only its core is warm `0xffe2a0`, not pure white.
+- **Air Mail**: the landing keeps its dust ring; the 1.4-square pale ring over it is off.
+- **Shatter the Lattice**: its ring in the lattice's violet `0x8a5cf0` (was pale lilac `0xe0c8ff`).
+- **Hypnotic Pulse**: the fallback detonation no longer fires under its spiral (part 1's `aoe()` fix; it has an `impact` row but no `aoe` row).
+- **Aneurysm, Boo, Crushing Will, Devour the Dream**: no imploding telegraph orb before the hit (part 1's change), nothing else.
+- **Checked, nothing to change (10):** Cosmic Sight, Omni-Vision (the eye's sigil under the seer is the scan itself), Pulse Lattice,
+  Rangefinder, Trick Room (the checkered room), Tune Frequency, Amethyst Lull, Counting Sheep, Cut the Cord (the cord is silver), Dosed.
+- **Seen, left (the psychic element pass is not a sweep's to touch):** a pink clock-like sigil lies on the hit squares of Counting Sheep and
+  Ascension Day, under the psychic noise wash: the rune-under-the-wash clash mondo named, for the cleanup thread. Ascension Day's column is
+  one square wide and covers the three bodies for about a second; left because the light is the spell: his call.
+- **Could not judge:** Shatter the Lattice, Pulse Lattice and Tune Frequency did not cast on the audit board (no lattice up), so the
+  Shatter ring's new colour is from the code only. Rangefinder and Prism Mirror cast on a tile click, before the first frame.
+- **THE LIST IS DONE: 109 of 109** (parts 1-4) + the Love Ray lead. For the cleanup thread, the three one-line changes in shared code are
+  listed in claims.md (the B9a row) and in part 1 above.
+- Frames (before left, after right): docs/plans/vfx-cleanup/img/sweep/B9a_part4.jpg.
+
+
+## COLOUR-TRUE: a thing handed a colour draws in that colour (2026-11-17, three-vfx-effects.js)
+mondo: "why are things white when they are given a color. That is not right. Fix it." (the sweeps had reported the light
+pillar, the sacred rings and the support rings as white whatever colour they were handed).
+- **Why:** `_SIG_ENERGY_FS` / `_SIG_ORB_FS` draw `mix(uColor, uHot, n^2.2) * uGain`, and `opts.hot` defaulted to
+  `0xffffff` with `gain` 1.6 (`_sigEnergyMat`, `_sigOrbShellMat`); `_sigLightPillar3D`'s `coreColor` defaulted to white,
+  `_sigSacredRings3D`'s to `0xfff2c8`; additive layers of a pale colour sum to white on each other and on a lit floor;
+  `_vcCol` returned white unchanged when the casting spell's palette was pale (heal, mana, aura).
+- **`_vcTrueOn()`** = the cleanup is on and the casting spell is not in `_VC_WHITE_OK`. **`_vcTrue(col, sMin)`** = the
+  colour at no less than `sMin` saturation, value capped 92 %. **`_vcHot(col, k)`** = its own lighter tone.
+- `_sigEnergyMat`: colour `_vcTrue(.., 0.72)`, `hot` = `_vcHot(colour, 0.2)` when not given or near-white, gain capped
+  1.25. `_sigOrbShellMat`: the same at 0.6 / 0.25.
+- `_sigLightPillar3D`: colour toned, the core = `_vcHot` and NORMAL blending (`_vcCore`).
+- `_sigSacredRings3D`: the rings and the core NORMAL blending in the toned colour.
+- `_sigShockRing3D`: its colour `_vcTrue(.., 0.62)`.
+- `_fireAuraMapped`'s sprite column (`pillarSprite`): untinted = the casting spell's colour.
+- `_vcCol`: a pale palette is toned, not skipped.
+- Off with the rest: `EW_NO_VFX_CLEANUP`. Seen before / after: docs/plans/vfx-cleanup/img/colour_true_*.jpg.
+- Not done: `_capRing` (Hallelujah's first beat still reads pale), `_sigSpectrumBurst3D`'s white core (a spectrum is
+  white light: left), `_sigMat` itself (it also carries textured props, where white means "the texture as it is").
+
