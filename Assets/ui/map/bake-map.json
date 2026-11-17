@@ -205,9 +205,9 @@
   "nz": 72,
   "h0": -0.8,
   "hs": 0.25,
-  "v": "406ee6c8cf",
-  "bytes": 1453,
-  "s": "19.5"
+  "v": "80ca3fb295",
+  "bytes": 1198,
+  "s": "13.9"
  },
  "site_prebuilt_lookingglass_realm": {
   "id": "site_prebuilt_lookingglass_realm",
@@ -508,5 +508,45 @@
   "v": "63f3360a33",
   "bytes": 142,
   "s": "1.5"
+ },
+ "site_prebuilt_hollow_earth_ow_long": {
+  "id": "site_prebuilt_hollow_earth_ow_long",
+  "nx": 12,
+  "nz": 120,
+  "h0": 0,
+  "hs": 0.25,
+  "v": "5e70c0dbed",
+  "bytes": 142,
+  "s": "0.5"
+ },
+ "site_prebuilt_hollow_earth_ow_tunnelway": {
+  "id": "site_prebuilt_hollow_earth_ow_tunnelway",
+  "nx": 36,
+  "nz": 96,
+  "h0": 0,
+  "hs": 0.25,
+  "v": "10217b72db",
+  "bytes": 190,
+  "s": "0.9"
+ },
+ "site_prebuilt_hollow_earth_ow_agartha": {
+  "id": "site_prebuilt_hollow_earth_ow_agartha",
+  "nx": 60,
+  "nz": 48,
+  "h0": -0.8,
+  "hs": 0.25,
+  "v": "648c963db4",
+  "bytes": 475,
+  "s": "3.6"
+ },
+ "site_prebuilt_hollow_earth_ow_west": {
+  "id": "site_prebuilt_hollow_earth_ow_west",
+  "nx": 84,
+  "nz": 132,
+  "h0": 0,
+  "hs": 0.25,
+  "v": "f22705b9a1",
+  "bytes": 339,
+  "s": "4.0"
  }
 }

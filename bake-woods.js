@@ -131,7 +131,7 @@ door('shasta', 'P00-00', 'n', { way: 'trail', label: 'MOUNT SHASTA · THE TRAILH
    each is a plain signposted trail and no longer secret (2026-11-16, mondo on the hollow-tree way's ball-crowned stand-in: "get rid of those and delete them from the game";
    the path back to Room 420 is a trail end too). NOT a `tunnel`: a tunnel end in this open room builds a big stone block on the wall
    (seen in the probe 11-16: the "castle wall" mondo walked through, and a black shaft over the trees). Still draughts (on no plate, on the map once found). */
-door('lemuria', 'P01-00', 'n', { way: 'trail', label: 'AGARTHA · THE CRYSTAL CITY', sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN', action: { room: 'site_prebuilt_hollow_earth_cavern', at: 'woods' },   // THE CAVERN ON PLOTS: Agartha is a district of the Cavern room; its `woods` door at the Lemuria Stair walks back here (2026-11-16, was the retired crystal city)
+door('lemuria', 'P01-00', 'n', { way: 'trail', label: 'AGARTHA · THE CRYSTAL CITY', sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN', action: { room: 'site_prebuilt_hollow_earth_ow_agartha', at: 'woods' },   // THE CAVERN, ONE WORLD (2026-11-17): Agartha is a room of its own under the Lemuria adit; THE CAVERN ON PLOTS: its `woods` door at the Lemuria Stair walks back here (2026-11-16, was the retired crystal city)
     desc: 'A draught out of the rock shelf, warmer than the snow above it.' });
 /* THE OLD SITES RETIRED (2026-11-16, mondo: "can we remove all of the old sites from the game, if we already rebuilt them with plots"): the old Lodge room is
    Disaster City's Members club and the old Bohemian Grove is this district G (data.js DOOR_HQ.retired). The members' tunnel (was the one-way door `lodge`) is the
