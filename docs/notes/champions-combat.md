@@ -5688,14 +5688,14 @@ The rules (battle.js block "THE NEW RACES 2", before _lifeguardSave; statuses da
 dormant / bodiless):
 - 🛵 Delivery Boy, THE RIDE-ALONG: Hop On (range 1, `riding`, unit._rideWithId); his next finished walk drops the rider on the
   free square beside him nearest where it got on (`_deliveryDrop`, finishMoveAt). A rider that walks first just gets off.
+  Polished 11-17: see "THE DELIVERY BOY POLISH" below (the ride drawn on his back, Doorstep Dash drops too, the capstone).
 - 📚 Librarian, THE RENEWAL: Overdue (utility) recasts `state._lastAllySpell[player]` (written at the cast record; never a
   Librarian's own cast, never Mimic/Overdue) through the old Mimic resolver (healPct heals use the row's percent).
 - 🙌 Televangelist, THE TITHE: Collection Plate (`tithe`, 3 rounds): `_titheSkim` in applyHealingToUnit takes 15% of every heal
   landing within 3 of him (either team; not his own heals, not heals on him) into unit._plate; Miracle (`spendPlate`) adds the
   plate in spellHealAmountFor (the forecast reads it) and empties it after the heal.
 - 📱 Influencer, GOING VIRAL: a `viral` unit shares 30% of every hit with its teammates within 2 (`_viralShare`, after the
-  Lifeguard save; shared hits carry `_viralShare` so they never spread). The doc's Filter (disguise) is NOT built: it needs the
-  renderer to draw a fake unit for one side only.
+  Lifeguard save; shared hits carry `_viralShare` so they never spread). Filter (disguise) is built since THE INFLUENCER POLISH below.
 - 🟥 Referee, THE RED CARD: Card = `yellowCard` 3 rounds + Marked; a card on a booked unit (STATUS_DEFS.yellowCard.onApply,
   `refreshed`) calls `_refereeRedCard`: the `exited` status 1 round with unit._sentOff (no door); `_doorExitReturn`'s sent-off
   branch puts it back on the field where it stood, no Stagger. Bosses / cubes are never sent off.
@@ -5707,6 +5707,12 @@ dormant / bodiless):
   (battle.js `_realmShieldLine`: sent off / out through a door / held behind a door / Shadow Realm; it said Shadow Realm for all).
 - 📰 Florida Man, TODAY'S HEADLINE: his three rows carry `floridaHeadline`; spellBlockReason greys the two that are not
   `_floridaHeadline(unit)` ("Not today"), a hash of the unit id + round, so the guest's menu agrees with no relay.
+  POLISH (11-17, thread "Polish Florida Man spells and VFX"): `_floridaTurnStart` (battle.js, at the start of his activation, after
+  the tower damage) says the day's headline over his head ("📰 GATOR TOSS", relayed floating text) and in the log, once a round;
+  a unit whose kit lacks the headline spell is told so (no fallback pick: equipping one headline must not make it castable every
+  round). Gator Toss got `bonusVsStatus: wet x1.5`, so Hurricane Party (Wet 2 rounds) sets up a later Gator Toss: the headline
+  order makes it a plan across rounds, not a same-turn combo. Tested in a VS-CPU match with both leads Florida Men: every cast
+  matched its headline, the CPU took the Wet toss on its own. Stats unchanged.
 - 🧠 Boltzmann Brain, THE FLUCTUATION: never walks or jumps (`_unitIsBodiless` in unitMoveBlockedByStatus / moveBlockWord
   'Bodiless' / unitMoveBlockKey 'bodiless'; casts that move the caster are greyed too, so its tree has no Phase Walk). Every
   round end (`_nrRoundEnd` in processEndOfRoundStatuses) it appears on a free square 2-4 away, picked by hash. Model = the
@@ -5769,6 +5775,31 @@ Models: /mnt/project-files/new-races-2/models (concepts, run.py). The Wendigo ha
 originals in models/orig/. R2: `Assets/characters/races/<slug>/<gender>/Meshy_AI_<slug>[_f]_Running.glb` + `<slug>.png`
 (cut from the Meshy thumbnail), then the same night `<slug>_px.png` = 128x128 Sprite AI restyles of the concepts (models-assets.md "THE PIXEL SPRITES FROM SPRITE AI"; the Wendigo from its model thumbnail, its grey concept background would not cut; brain, cicada, slug and wendigo re-rolled with `palette_extras: 0` because the first roll drifted their colours). Not done: VFX polish per spell (they use the generic family looks), sprites restyle, NPC
 residents in their zones.
+
+## THE DELIVERY BOY POLISH (2026-11-17, thread "Polish Delivery Boy spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
+What was wrong: the ride did not show (the ally stood on its own square through his whole walk, then jumped from there);
+his RACE_TREE row was borrowed rungs, so a default or CPU Delivery Boy carried none of his own spells (no Hop On); the CPU
+had no idea what a ride was for; a rider knocked away still teleported back to him; Doorstep Dash dropped nobody.
+- THE RIDE ON SCREEN: three-renderer.js THE RIDE-ALONG (looks only): while he travels (walk, dash) the Riding ally hops up
+  onto his back (from the square it stood on, `rec.home`), sits piggyback (the chair sit, no straddle), turns to face his
+  way at once, rides the path; battle.js `_deliveryDrop` hops it off from HIS square (`nrHopOn:drop` look). finishMoveAt
+  runs as the walk STARTS, so the hop off waits for the walk tween (`_walkAnimEndAt`, like the ledge-drop damage).
+  Probe: `window._rideAlongProbe()` (rider + carrier 3D positions). Fog: an enemy carrier's rider shows only where the viewer sees him.
+  Kill switch `window.EW_NO_RIDE_ALONG`.
+- RULES (battle.js "THE RIDE-ALONG"): Doorstep Dash drops the rider too, beside him at the victim, after the slide (both
+  charge paths: `_runPostEffects` and the chase-cam `_runCharge`). A rider more than 1 square (any way) from where he set
+  off was knocked off: it stays where it is. A pinned body never rides (`_deliveryRideBlock`: Rooted, Charmed, Roped,
+  Frozen, Stoneform, Climbing, Exited, Captured; and colossal bodies, the shove rule): Hop On on one is refused, a rider
+  that became pinned stays put.
+- THIRTY MINUTES OR LESS (new capstone, tier 4, cd 4, `rideAlong: { max: 2 }` + `timedStatBonus` +1 MOV): up to two allies
+  beside him (8 squares, most hurt first) climb on at once (`_deliveryLoadUp`); refused with nobody beside him.
+- HIS OWN TREE: `['nrHotAndFresh', 'nrHopOn', 'nrDoorstepDash', 'nrThirtyMinutes']`.
+- THE CPU (ai.js "THE RIDE-ALONG"): Hop On / the capstone score the best drop his walk can give (`_rideBestAI` over his move
+  tiles, `window._deliveryDropPreview` = the engine's drop square): a hurt rider (< 45%) = the hits it leaves behind, a
+  healthy one = squares gained on the nearest enemy; 0 when he cannot walk after the cast. With a rider aboard, scoreMoves
+  adds the best ride walk (90 + its value). In a 3-round CPU-vs-CPU probe both CPU Delivery Boys cast Hot and Fresh and
+  never Hop On (no ride beat their other picks); the ride itself is proven by hand.
+- Stats unchanged (support median). Proof: /mnt/project-files/delivery-boy-polish/.
 - **THE BOLTZMANN BRAIN PASS (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new
   mechanics are tested out and work as intended")**, thread cmsg_01XWpxyTn3nnw98znVzKdFjsH9oWgzPy7wwhJEhrsf2fQY:
   - OBSERVER EFFECT (new, `nrObserverEffect`, tier 1, 25 MP, 1 AP, cd 2, self `buff`, `observe: true`, status `observed`): the one say
@@ -5786,6 +5817,31 @@ residents in their zones.
   - Stats kept: POWER 548, #92 of 154 (median 563).
   - Proof + probes: /mnt/project-files/boltzmann-brain-polish/ (probe/p3_show.js = frozen-clock looks + the rules in a CPU match).
 
+
+## THE INFLUENCER POLISH (2026-11-17, thread "Polish Influencer spells and VFX"; mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
+- THE SHARE FIX: `_viralShare` passed the hitter's type / STAB / ATK into each mate's share (a 154 hit shared 347 "super effective").
+  The share is now a flat 30 % of the damage dealt: no sourceUnit, `typeEffect:'neutral'`, ignoreArmor; the kill credit goes
+  through `a._lastDamageSourceId = src.id`. Multi-hit casts: one log line per mate ("… (9 hits)"), via a per-mate sub-sink
+  `sink._viral[id]` that `_multiHitLogFlush` flushes. `state._lastViralHitId` = the last viral unit hit (Ratio reads it, because a
+  killing hit or a status wearing off in the same cast must not lose the spread).
+- FILTER (tier 2, beside Sponsored; `filterSwap`): a single ally within 4 and the NEAREST living ally of ANOTHER race+gender (no
+  boss, cube or summon; `_influencerFilterPartner`) trade looks for 2 rounds (`filtered` status on both, `_filterLookId/Race/Gender`).
+  Both halves end together (shared `_stFresh` + the higher count), so two identical faces never stand on the board. No partner =
+  refused before any cost ("Filter: no ally of another race to swap faces with."). THE DRAWN UNIT: battle.js `ewDrawnUnit(unit,
+  viewer)` returns, for the OTHER seat only, a copy wearing the partner's race / gender / appearance / sprite / portrait / types;
+  sprites.js portraits + map sprite, three-renderer.js (model, creator rig, plate race, the rebuild hashes carry `flt:`), hud.js
+  race line + types and `unitDisplayName` all read it. Own side sees the truth. Known, on purpose: the 🤳 status badge stays
+  visible to the enemy (the honest read + counterplay); inspector stats are not disguised; log lines name the disguise for
+  everyone. Kill-switch `window.EW_NO_FILTER_LOOK = true`.
+- RATIO'D (tier 4, new; `viralSpread {radius 2, duration 1}`): MEDIUM light magic hit at range 5; on a Viral target every
+  teammate within 2 also goes Viral for 1 round (`_influencerRatioSpread`, in `_runPostEffects`). The kit is now Selfie Flash →
+  Go Viral → Sponsored / Filter → Ratio'd (RACE_TREE; the borrowed popstar rungs left).
+- THE CPU (ai.js): Go Viral = 55 per foe mate within 2 (0 alone / already viral); Filter 35 (+55 when either half is a healer, 0
+  with no partner); a hit on a viral foe adds the share per mate, Ratio +45 per mate it would spread to; `getTargetPriority`
+  judges a filtered foe by the unit it LOOKS like (what a player sees).
+- Proof (VS-CPU TDM, 0 page errors; /mnt/project-files/influencer-polish/): Selfie blinds; Ratio 163 on the viral target, 49 flat
+  to each mate, 2 mates go Viral; Sponsored +2/+2; Filter refusal costs 0 MP; enemy view draws the Influencer as the Catgirl and
+  back, own view real; all wear off; the CPU cast Filter and Ratio itself.
 
 ## THE WENDIGO PASS (2026-11-17, thread "Polish Wendigo spells and VFX", mondo: "flesh out their unique spells and spell animations/vfx and make sure that any new mechanics are tested out and work as intended")
 - THE PLAYSTYLE: a hunter that has to keep eating. Rend (Bleed 2 rounds) sets up Feast, which now carries

@@ -10473,10 +10473,17 @@ const RACE_ABILITIES = {
         { id: 'nrHopOn', name: 'Hop On', tier: 2, families: ['delivery'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
           type: 'buff', kind: 'buff', range: 1, noSelf: true,
           statusEffects: [{ id: 'riding', duration: 1 }],
-          desc: 'A Single Ally beside him climbs on the back. When he finishes his next walk this turn, the ally gets off on the free square beside him nearest where it got on. It keeps its own turn. Cooldown: 2 rounds.' },
+          desc: 'A Single Ally beside him climbs on his back. When he finishes his next walk or Doorstep Dash, the ally hops off on the free square beside him nearest where it got on. It keeps its own turn. Not on a Rooted, Charmed, Roped or Frozen ally. Cooldown: 2 rounds.' },
         { id: 'nrDoorstepDash', name: 'Doorstep Dash', tier: 3, families: ['delivery'], cost: 75, apCost: 1, spellType: 'human',
           type: 'damage', kind: 'damage', damageType: 'physical', dmg: 130, range: 3, chargeToTarget: true,
-          desc: 'Rings the bell with his shoulder. Charges a Single Enemy up to 3 squares away and deals MEDIUM physical damage.' },
+          desc: 'Rings the bell with his shoulder. Charges a Single Enemy up to 3 squares away and deals MEDIUM physical damage. Anyone on his back hops off beside him.' },
+        /* THIRTY MINUTES OR LESS (2026-11-17, the Delivery Boy's capstone; mondo: "flesh out their unique spells"): the whole order
+           at once. Up to two allies beside him (any of the 8 squares, the most hurt first) climb on (Riding, the Hop On ride), and he
+           is Quickened (+1 MOV) for the run. Refused with nobody beside him. battle.js _deliveryLoadUp. */
+        { id: 'nrThirtyMinutes', name: 'Thirty Minutes or Less', tier: 4, families: ['delivery'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 0, noDamage: true,
+          rideAlong: { max: 2 }, timedStatBonus: { move: 1, rounds: 1 },
+          desc: 'The whole order at once. Up to two allies beside him climb on his back and he gets +1 MOV for 1 round. When he finishes his next walk or Doorstep Dash, they hop off beside him. Cooldown: 4 rounds.' },
     ],
     'librarian': [
         /* THE RENEWAL: the one race that casts its allies' spells. Overdue renews the last spell a teammate cast this match (battle.js state._lastAllySpell, written where every cast is recorded). THE LOADED BOOK (the Librarian pass, 2026-11-17): her Overdue row takes the borrowed spell's whole shape and doSpell casts it under its own id (battle.js _overdueLoad / _overdueCastRow). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
@@ -10518,6 +10525,22 @@ const RACE_ABILITIES = {
         { id: 'nrSponsored', name: 'Sponsored', tier: 3, families: ['socialmedia'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'human',
           type: 'buff', kind: 'buff', range: 3, statStageBoost: { atk: 2, int: 2 },
           desc: 'A brand deal for a friend. Raises a Single Ally\'s ATK and INT by 2 stages. Cooldown: 2 rounds.' },
+        /* THE INFLUENCER POLISH (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx and make sure that any
+           new mechanics are tested out and work as intended"). FILTER is the doc's own idea ("an ally looks like another unit to
+           the enemy"), built as a face swap: the ally and the nearest ally of another race trade looks for 2 rounds, drawn so on
+           the other side's screen only (model, sprite, portrait, name: sprites.js ewDrawnUnit + battle.js unitDisplayName). The
+           CPU is fooled the same way: ai.js getTargetPriority prices a filtered enemy as the unit it looks like. Refused with no
+           ally of another race to swap with. battle.js _influencerFilter. */
+        { id: 'nrFilter', name: 'Filter', tier: 2, families: ['socialmedia'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 4, noDamage: true, filterSwap: true,
+          statusEffects: [{ id: 'filtered', duration: 2 }],
+          desc: 'Face swap. A Single Ally within 4 and the nearest ally of another race trade looks for 2 rounds: to the enemy each one looks, and is named, like the other. Cooldown: 3 rounds.' },
+        /* RATIO (her capstone): the pile-on. A magic hit; on a Viral target the tag spreads to every teammate within 2 of it for
+           1 round after the hit lands (the hit itself is shared first). The trade: it only pays when the enemy stands close. */
+        { id: 'nrRatio', name: 'Ratio', tier: 4, families: ['socialmedia'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 150, range: 5,
+          viralSpread: { radius: 2, duration: 1 },
+          desc: 'Ratio\'d. Deals MEDIUM magic damage to a Single Enemy within 5. If it is Viral, every teammate within 2 of it goes Viral too, for 1 round. Cooldown: 3 rounds.' },
     ],
     'referee': [
         /* THE CARDS: the one race that sends a unit off the field. Card gives Yellow Card for 3 rounds; a card on a unit that already has one is a RED CARD: it is sent off (cannot move, act or be targeted) until its next turn starts (the `exited` status, no door; battle.js _refereeCard + _doorExitReturn's sent-off branch). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
@@ -10538,7 +10561,9 @@ const RACE_ABILITIES = {
         { id: 'nrGatorToss', name: 'Gator Toss', tier: 1, families: ['floridaman'], cost: 25, apCost: 1, spellType: 'human', floridaHeadline: true,
           type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 3,
           statusEffects: [{ id: 'bleed', duration: 2 }],
-          desc: 'FLORIDA MAN THROWS ALLIGATOR. Deals MEDIUM physical damage to a Single Enemy within 3 and leaves it Bleeding for 2 rounds. Only on the rounds it is the headline.' },
+          /* 🐊 THE GATOR IN ITS ELEMENT (11-17 polish): x1.5 on a Wet target, so yesterday's Hurricane Party sets up today's toss */
+          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          desc: 'FLORIDA MAN THROWS ALLIGATOR. Deals MEDIUM physical damage to a Single Enemy within 3 and leaves it Bleeding for 2 rounds. Deals bonus damage to Wet targets. Only on the rounds it is the headline.' },
         { id: 'nrBathSalts', name: 'Bath Salts', tier: 2, families: ['floridaman'], cost: 50, apCost: 1, spellType: 'human', floridaHeadline: true,
           type: 'buff', kind: 'buff', range: 0, statStageBoost: { atk: 2, spd: 2 },
           statusEffects: [{ id: 'regen', duration: 2 }],
@@ -14296,7 +14321,7 @@ const STATUS_DEFS = {
         }
     },
     /* THE NEW RACES 2 (2026-11-17, mondo's picks from the zone characters). Ids only on units (RULE #2).
-       riding: on the Delivery Boy's back; his next finished walk drops it beside him (battle.js _deliveryDrop).
+       riding: on the Delivery Boy's back; his next finished walk or Doorstep Dash drops it beside him (battle.js _deliveryDrop).
        tithe: the Televangelist's plate is out; battle.js applyHealingToUnit skims 15% of heals within 3 into unit._plate.
        viral: every hit it takes also hits its teammates within 2 for 30% (battle.js _viralShare).
        yellowCard: booked; a second card on a booked unit is a RED CARD: off the board until its next turn (battle.js _refereeRedCard).
@@ -14322,6 +14347,15 @@ const STATUS_DEFS = {
         colorText: 'going viral — its hits are shared',
         kind: 'debuff', category: 'status', stack: 'replace',
         iconSrc: createStatusIconDataUri('📱', '#2a1424', '#ffe0f4', '#d04a9a')
+    },
+    /* filtered (2026-11-17, the Influencer's Filter): wears another ally's look on the enemy's screen. The look is
+       unit._filterLookId (an id, RULE #2) + _filterRace / _filterGender (a copy, so it holds if that ally falls). */
+    filtered: {
+        icon: '🤳', glyph: '🤳', short: 'FLT', label: 'Filtered',
+        colorText: 'wearing a filter',
+        kind: 'buff', category: 'buff', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🤳', '#2a1424', '#ffe0f4', '#d04a9a'),
+        onRemove(unit) { delete unit._filterLookId; delete unit._filterRace; delete unit._filterGender; }
     },
     yellowCard: {
         icon: '🟨', glyph: '🟨', short: 'YEL', label: 'Yellow Card',
@@ -14572,9 +14606,10 @@ const STATUS_LIBRARY_DESCS = {
     serpentForm: 'The head of a 3-square feathered serpent: the body follows its path and blocks every other unit; it cannot be pushed or pulled; a hit on the body hits the head.',
     coiled:    'In the serpent\'s coils: cannot move and is squeezed for 45 at every round end.',
     onDuty:    'On watch: the first ally within 4 that takes a killing blow holds on at 1 HP and is hauled beside her. Spent on the first save.',
-    riding:     'On the Delivery Boy\'s back: when he finishes his next walk, it gets off on the free square beside him.',
+    riding:     'On the Delivery Boy\'s back: when he finishes his next walk or Doorstep Dash, it hops off on the free square beside him.',
     tithe:      'Collection Plate: 15% of every heal that lands within 3 of the Televangelist (not his own) goes in his plate. Miracle spends it.',
     viral:      'Going viral: every hit it takes also hits each of its teammates within 2 for 30% of the damage.',
+    filtered:   'Filtered: to the other side it looks like, and is named as, the ally it traded faces with.',
     yellowCard: 'Booked: a second card on this unit is a RED CARD. It is sent off until its next turn starts: it cannot move, act or be targeted.',
     dormant:    'Dug in: cannot move. Every round end under the ground adds a Brood stack (up to 3) that Chorus spends.',
     bodiless:   'A mind with no body: it never walks. At every round end it is somewhere else, on a random free square within 4.',
@@ -21297,10 +21332,10 @@ const RACE_TREE = {
     'magician':      ['raceBorrowedClaw', ['raceShedSkin', 'raceCharm'], ['raceSkinSwap', 'racePopSpotlight'], 'raceMimicry'],   // 2026-11-16
     'mole man':      ['raceTremorStomp', ['sharedFissure', 'raceCryptidVanish'], ['groundSlam', 'raceBrutalSlam'], 'raceQuake'],   // 2026-11-16
     'quetzalcoatl':  ['raceWingGust', ['raceCrosswind', 'raceDivineLight'], ['raceTailwind', 'raceDivineSmite'], 'raceSupernova'],   // 2026-11-16
-    'delivery boy':  ['raceSprint', ['healingSeed', 'raceNimbleDodge'], ['raceVault', 'raceHitALick'], 'raceBumperCrop'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'delivery boy':  ['nrHotAndFresh', 'nrHopOn', 'nrDoorstepDash', 'nrThirtyMinutes'],   // 2026-11-17 THE DELIVERY BOY POLISH: his own four rungs (the borrowed row carried none of his signature spells, so a default / CPU kit had no Hop On)
     'librarian':     ['raceSacredGeometry', 'raceZigguratProtocol', 'raceOvercharge', 'raceWeighTheHeart'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'televangelist': ['raceCultTithe', ['heal1', 'racePopSpotlight'], ['raceCultKoolAid', 'protect1'], 'raceHallelujah'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
-    'influencer':    ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'influencer':    ['nrSelfieFlash', 'nrGoViral', ['nrSponsored', 'nrFilter'], 'nrRatio'],   // 2026-11-17 THE INFLUENCER POLISH: her own rungs (the borrowed popstar row left her default kit without Go Viral, her one rule)
     'referee':       ['raceBulletPass', ['racePoliceTaser', 'raceAudible'], 'racePoliceCuffs', 'raceHailMary'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'florida man':   ['raceStompOut', ['raceHitALick', 'raceSprint'], ['raceVault', 'skullCrack'], 'rampage'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'boltzmann brain':['raceEntropicBeam', ['racePsychicBarrier', 'raceGravityWell'], 'raceMindCrush', 'raceHeatDeath'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
@@ -23241,7 +23276,7 @@ const SPELL_FAMILIES = {
         glyph: '🛵',
         color: '#c8342c',
         kind: 'signature',
-        desc: 'Thirty minutes or less: a hot meal for an ally, a ride on the back for another, and the door kicked in on the way out.',
+        desc: 'Thirty minutes or less: a hot meal for an ally, a ride on the back for another, the door kicked in on the way out, and the whole order delivered at once.',
         unique: 'delivery boy',
         identity: { who: ['Delivery Boy', 'Courier', 'Driver'], adj: ['Hurried', 'Tip-hungry', 'Sweaty'], look: ['a red cap worn backwards', 'a red polo with a name tag', 'an insulated delivery bag'], vibe: ['brings a friend along for the ride', 'is never late twice'] }
     },
@@ -23271,7 +23306,7 @@ const SPELL_FAMILIES = {
         glyph: '📱',
         color: '#d04a9a',
         kind: 'signature',
-        desc: 'Content is king: a flash that blinds, a tag that makes a foe go viral, and a sponsorship for a friend.',
+        desc: 'Content is king: a flash that blinds, a tag that makes a foe go viral, a sponsorship for a friend, a face-swap filter and a ratio that spreads the tag.',
         unique: 'influencer',
         identity: { who: ['Influencer', 'Content Creator', 'Brand Ambassador'], adj: ['Glossy', 'Trending', 'Filtered'], look: ['a ring light on her belt', 'sunglasses pushed up on her head', 'a designer handbag'], vibe: ['makes you go viral', 'sponsors her friends'] }
     },
