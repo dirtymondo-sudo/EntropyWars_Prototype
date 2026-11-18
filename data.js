@@ -389,6 +389,7 @@ const FINISHERS = {
     'ninja':          { id: 'fin_ninja', name: 'Thousand Shadows', glyph: '🥷', type: 'human', sig: 'thousandCuts', built: true, tagline: 'YOU NEVER SAW HIM', desc: 'Smoke, a log where he stood, and a dozen of him from every side. The victim falls before the smoke clears.' },   // 2026-11-17 THE NINJA (borrows the thousandCuts staging)
     'haunted doll':   { id: 'fin_haunted_doll', name: 'Lights Out', glyph: '🪆', type: 'anomaly', sig: 'possessedPhoto', built: true, tagline: 'PLAY WITH ME', desc: 'The lights go out. When they come back on, the doll is sitting on the victim\'s chest, and the victim is not moving.' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) (borrows the possessedPhoto staging)
     'cursed tv':      { id: 'fin_cursed_tv', name: 'Off the Air', glyph: '📺', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'WE NOW RETURN YOU TO YOUR REGULARLY SCHEDULED PROGRAMMING', desc: 'The screen shrinks to a white line, then a dot, and the victim goes with it. The test card comes up and the anthem plays.' },   // 2026-11-17 THE CURSED TV (mondo approved the kit) (borrows the corruptedSave staging)
+    'virus':          { id: 'fin_virus', name: 'Format C:', glyph: '🦠', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ALL DATA ON THIS DRIVE WILL BE LOST', desc: 'A progress bar opens over the victim and fills, file by file, and then there is nothing left to delete.' },   // 2026-11-18 THE VIRUS (mondo approved the kit) (borrows the corruptedSave staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
@@ -630,6 +631,7 @@ const RACE_ELEMENT_AFFINITY = {
     'ninja': { poison: 'resist', light: 'weak' },   // 2026-11-17 THE NINJA
     'haunted doll': { psychic: 'resist', fire: 'weak' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): porcelain and old lace
     'cursed tv': { lightning: 'resist', water: 'weak' },   // 2026-11-17 THE CURSED TV (mondo approved the kit): it runs on the mains, and water in a set is the end of it
+    'virus': { poison: 'resist', lightning: 'resist', water: 'weak' },   // 2026-11-18 THE VIRUS (mondo approved the kit): made of poison and current; water shorts it
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
@@ -2984,6 +2986,10 @@ const RACE_PROFILES = {
         label: 'Cursed TV',
         types: ['anomaly', 'tech']
     },
+    'virus': {   // 2026-11-18 THE VIRUS (mondo approved the kit)
+        label: 'Virus',
+        types: ['anomaly', 'tech']
+    },
     'haunted doll': {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
         label: 'Haunted Doll',
         types: ['anomaly', 'unholy']
@@ -3872,7 +3878,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3891,6 +3897,7 @@ const RACE_KITS = {
     'robinhood': { range: 4, inspect: 2 }, 'symbiote': { range: 2, inspect: 2 },
     'ice queen': { range: 2 },   // race editor 2026-10-17: range 1 → 2
     'cursed tv': { range: 2 },   // 2026-11-17 THE CURSED TV (mondo approved the kit): the basic attack is a jolt down the power cable, and the cable reaches
+    'virus': { range: 2 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the basic attack is a lash of code from its tendrils, and they reach
 };
 function raceKit(race) {
     const k = RACE_KITS[race] || {};
@@ -4026,6 +4033,7 @@ const RACE_CLASS = {
     'ninja': 'assassin',   // 2026-11-17 THE NINJA
     'haunted doll': 'assassin',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': 'caster',   // 2026-11-17 THE CURSED TV (mondo approved the kit)
+    'virus': 'specialist',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
@@ -4084,6 +4092,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'ninja': 'tree',   // 2026-11-17 THE NINJA — at home in the trees
     'haunted doll': 'tree',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': 'wasteland',   // 2026-11-17 THE CURSED TV (mondo approved the kit)
+    'virus': 'wasteland',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
     'siren': 'deep_water',
     'reptilian': 'water',
@@ -4478,6 +4487,7 @@ const RACE_BASE_STATS = {
     'ninja':              { hp:  940, mp: 140, atk: 150, def:  86, mdef:  90, int:  80, vision: 3, crt: 26, spd: 165 },   // 2026-11-17 THE NINJA — first pass on the assassin median (a little faster, a little lighter)
     'haunted doll':       { hp:  880, mp: 180, atk:  70, def:  80, mdef: 110, int: 150, vision: 4, crt: 22, spd: 160 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — fragile and quick, a magic assassin
     'cursed tv':          { hp:  900, mp: 210, atk:  20, def:  85, mdef: 120, int: 175, vision: 4, crt: 15, spd: 140 },   // 2026-11-17 THE CURSED TV (mondo approved the kit) — frail and quick, a magic caster
+    'virus':              { hp:  780, mp: 220, atk:  40, def:  60, mdef: 160, int: 180, vision: 3, crt: 18, spd:  90 },   // 2026-11-18 THE VIRUS (mondo approved the kit) — first pass: a frail magic specialist
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -4648,6 +4658,7 @@ const RACE_PHYSIQUE = {
     'ninja':               { h: 1.72, w: 62 },   // 2026-11-17 THE NINJA
     'haunted doll':        { h: 1.10, w: 18 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv':           { h: 1.45, w: 40 },   // 2026-11-17 THE CURSED TV (mondo approved the kit): the set on its cart, antennae up
+    'virus':               { h: 1.50, w: 30 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the spiked ball hovering, tendrils down
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
@@ -10788,6 +10799,31 @@ const RACE_ABILITIES = {
           rewindTape: 0.4,
           desc: 'The haunted remote rewinds the tape. A Single Enemy within 5 takes TINY magic damage, then takes again all the damage it took last round, up to 40% of its max HP. Needs something on the tape. Cooldown: 3 rounds.' },
     ],
+    'virus': [
+        /* THE PAYLOAD (2026-11-18, the Virus; mondo OK'd the kit 11-18 and said it sounded like Hexed, so it is NOT an
+           acting tax): a Payload sits on an enemy for 3 rounds doing nothing on its own. At every round end it COPIES itself
+           to each teammate standing next to the carrier (a copy lasts 2 rounds), and when it runs out it goes off for 70
+           (DEF ignored, the Virus credited). Zero Day sets every Payload within 5 off at once. battle.js THE PAYLOAD
+           (_payloadSpread / _payloadBurst). The Virus is a body of moving parts, no bones (three-renderer.js THE VIRUS).
+           Notes: docs/notes/champions-combat.md "THE VIRUS". */
+        { id: 'nrWorm', name: 'Worm', tier: 1, families: ['malware'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 70, range: 3, animSlot: 'vrWorm',
+          statusEffects: [{ id: 'payload', duration: 3 }],
+          desc: 'A worm crawls in. Deals WEAK poison magic damage to a Single Enemy within 3 and plants a Payload (3 rounds): every round end it copies itself to each teammate next to the carrier, and when it runs out it goes off for 70.' },
+        { id: 'nrSelfReplicate', name: 'Self-Replicate', tier: 2, families: ['malware'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'tech',
+          type: 'utility', kind: 'summonUnit', range: 1, maxActivePerCaster: 1, animSlot: 'vrReplicate',
+          summonDef: { key: 'replica', name: 'Replica', move: 3, dmg: 40, hits: 2, hitStatus: { id: 'payload', duration: 3 }, burstStatus: { id: 'payload', duration: 3 } },
+          desc: 'The core splits. A Replica appears on an adjacent tile: at the end of every round it floats 3 tiles at the nearest enemy and lashes it for 40, planting a Payload. Two hits to bring it down, and when it goes down it bursts and plants a Payload on every enemy next to it. One at a time. Cooldown: 3 rounds.' },
+        { id: 'nrRansomware', name: 'Ransomware', tier: 3, families: ['malware'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          type: 'debuff', kind: 'debuff', range: 3, animSlot: 'vrRansom',
+          statusEffects: [{ id: 'silence', duration: 1 }, { id: 'jammed', duration: 2 }],
+          mpDrainVsStatus: { status: 'payload', mp: 40 },
+          desc: 'YOUR FILES ARE ENCRYPTED. A Single Enemy within 3 is Silenced for 1 round and Jammed for 2. A Payload carrier also loses 40 MP. Cooldown: 2 rounds.' },
+        { id: 'nrZeroDay', name: 'Zero Day', tier: 4, families: ['malware'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'tech',
+          type: 'damage', kind: 'barrage', damageType: 'magic', dmg: 110, range: 0, aoeOriginSelf: true, aoeRadius: 5,
+          ignoresLineOfSight: true, hitsStatusOnly: 'payload', animSlot: 'vrZeroDay',
+          desc: 'The exploit nobody patched. Every enemy within 5 that carries a Payload takes MEDIUM magic damage, through cover, and its Payload goes off at once (70 more). Needs a Payload out. Cooldown: 3 rounds.' },
+    ],
     'haunted doll': [
         /* NOBODY'S LOOKING (2026-11-17, the Haunted Doll; mondo approved the kit + asked for the pull-string spell): "sits on the
            shelf, and moves when you look away". At every round end, when no enemy within 5 has it in its front cone (the facing
@@ -14490,6 +14526,15 @@ const STATUS_DEFS = {
         colorText: 'going viral — its hits are shared',
         kind: 'debuff', category: 'status', stack: 'replace',
         iconSrc: createStatusIconDataUri('📱', '#2a1424', '#ffe0f4', '#d04a9a')
+    },
+    /* 🦠 PAYLOAD (2026-11-18, the Virus): does nothing on its own; every round end it copies itself to each teammate next to
+       the carrier (2 rounds), and when it runs out it goes off for 70 (battle.js THE PAYLOAD). Both sides see it. The Virus is
+       credited (unit._payloadSrcId, an id: RULE #2). */
+    payload: {
+        icon: '🦠', glyph: '🦠', short: 'PAY', label: 'Payload',
+        colorText: 'carrying a payload — it spreads, then goes off',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🦠', '#10240f', '#d8ffd0', '#4ac04a')
     },
     /* filtered (2026-11-17, the Influencer's Filter): wears another ally's look on the enemy's screen. The look is
        unit._filterLookId (an id, RULE #2) + _filterRace / _filterGender (a copy, so it holds if that ally falls). */
@@ -20856,6 +20901,7 @@ const EW_RACE_BIOMES = {
     'ninja': ['urban', 'clandestine'],   // 2026-11-17 THE NINJA — the rooftops of Disaster City
     'haunted doll': ['gothic'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — The Estate, the Haunted House
     'cursed tv': ['urban', 'gothic'],   // 2026-11-17 THE CURSED TV (mondo approved the kit) — Disaster City's pawn shops, the Haunted House's attic
+    'virus': ['neon_city', 'astral'],   // 2026-11-18 THE VIRUS (mondo approved the kit) — The Internet's quarantine
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
@@ -21514,6 +21560,7 @@ const RACE_TREE = {
     'ninja':         ['nrShuriken', 'nrKawarimi', 'nrShadowStep', 'nrCloneJutsu'],   // 2026-11-17 THE NINJA: his own four
     'haunted doll':  ['nrPinPrick', 'nrPlayWithMe', 'nrPullString', 'nrLookBehindYou'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): its own four
     'cursed tv':     ['nrStaticBurst', 'nrEmergencyBroadcast', 'nrFastForward', 'nrRewind'],   // 2026-11-17 THE CURSED TV (mondo approved the kit): its own four
+    'virus':         ['nrWorm', 'nrSelfReplicate', 'nrRansomware', 'nrZeroDay'],   // 2026-11-18 THE VIRUS (mondo approved the kit): its own four
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -23580,6 +23627,16 @@ const SPELL_FAMILIES = {
         desc: 'A haunted set on a rolling cart: snow, colour bars, and a remote that fast-forwards friends and rewinds enemies.',
         unique: 'cursed tv',
         identity: { who: ['Cursed TV', 'Haunted Set', 'Dead Channel'], adj: ['Flickering', 'Humming', 'Static'], look: ['a wood-cased CRT on a steel cart', 'rabbit-ear antennae', 'a haunted remote'], vibe: ['changes the channel to cast', 'rewinds what you just did'] }
+    },
+    malware: {   // 2026-11-18 THE VIRUS (mondo approved the kit) — the Virus's own
+        id: 'malware',
+        name: 'Malware',
+        glyph: '🦠',
+        color: '#5ad06a',
+        kind: 'signature',
+        desc: 'A living computer virus: it plants payloads that copy themselves from body to body, splits off replicas, and sets them all off at once.',
+        unique: 'virus',
+        identity: { who: ['Virus', 'Worm', 'Trojan'], adj: ['Spiked', 'Glitching', 'Infectious'], look: ['a spiked ball of dark green crystal', 'a ring of red eyes', 'tendrils of broken code'], vibe: ['copies itself from body to body', 'sets everything off at once'] }
     },
     hauntedtoy: {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — the Haunted Doll's own
         id: 'hauntedtoy',
@@ -25845,6 +25902,7 @@ const RACE_FAMILIES = {
     'ninja': ['ninjutsu', 'martialarts', 'spygear', 'athleticism'],   // 2026-11-17 THE NINJA
     'haunted doll': ['hauntedtoy', 'haunted', 'blackmagic', 'trickery'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': ['cursedtv', 'haunted', 'lightning', 'glitch'],   // 2026-11-17 THE CURSED TV (mondo approved the kit)
+    'virus': ['malware', 'computerhacking', 'glitch', 'internetaddiction'],   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
@@ -26473,6 +26531,7 @@ const CAMPAIGN_RACE_PRICES = {
   'ninja': 450,   // 2026-11-17 THE NINJA
   'haunted doll': 450,   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
   'cursed tv': 450,   // 2026-11-17 THE CURSED TV (mondo approved the kit)
+  'virus': 450,   // 2026-11-18 THE VIRUS (mondo approved the kit)
   'lifeguard': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
@@ -28458,7 +28517,7 @@ const DOOR_TEXT = {
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
         'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown', 'magician': 'The Strip', 'mole man': 'Hollow Earth', 'quetzalcoatl': 'Technoticlan', 'lifeguard': 'The Bermuda Triangle',   // banker + sewer gator + skater + tech ceo + magician + mole man + quetzalcoatl + lifeguard 2026-11-16
         'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'pope': 'Vatican City',   // 2026-11-17 THE NEW RACES 2
-        'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House',   // 2026-11-17 THE NEW RACES 2
+        'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet',   // 2026-11-17 THE NEW RACES 2
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',
@@ -68642,10 +68701,10 @@ const DOOR_HQ = {
                     {k:'arch',id:'net:bait2:look',x:30.8,z:134.4,rot:170,y:12.25,parts:[{s:'cyl',p:[0,0,0],r:0.55,h:0.22,key:'gunmetal',tint:3159098,seg:10,glow:0.3},{s:'cyl',p:[0,0.22,0],r:0.32,h:0.08,tint:4251903,seg:10,glow:1},{s:'cyl',p:[0,0.3,0],r:0.05,h:4.7,tint:4251903,seg:5,glow:0.9},{s:'quad',p:[0,5,0.04],size:[11,1.5],key:'txt:YOU WON\'T BELIEVE WHAT HAPPENS NEXT|#111111|#ffffff|7.33||archivo',uv:'fit',kind:'wall',glow:1,ry:0},{s:'quad',p:[0,5,-0.04],size:[11,1.5],key:'txt:YOU WON\'T BELIEVE WHAT HAPPENS NEXT|#111111|#ffffff|7.33||archivo',uv:'fit',kind:'wall',glow:1,ry:180},{s:'box',p:[0,4.9,0],size:[11.24,0.08,0.1],tint:4251903,ry:0,glow:1},{s:'box',p:[0,6.52,0],size:[11.24,0.08,0.1],tint:4251903,ry:0,glow:1}]},
                     {k:'arch',id:'net:bait3:look',x:51.8,z:134.4,rot:195,y:12.25,parts:[{s:'cyl',p:[0,0,0],r:0.55,h:0.22,key:'gunmetal',tint:3159098,seg:10,glow:0.3},{s:'cyl',p:[0,0.22,0],r:0.32,h:0.08,tint:4251903,seg:10,glow:1},{s:'cyl',p:[0,0.3,0],r:0.05,h:1.9000000000000001,tint:4251903,seg:5,glow:0.9},{s:'quad',p:[0,2.2,0.04],size:[8.2,1.5],key:'txt:THEN THIS HAPPENED|#ffffff|#3fa0ff|5.47||archivo',uv:'fit',kind:'wall',glow:1,ry:0},{s:'quad',p:[0,2.2,-0.04],size:[8.2,1.5],key:'txt:THEN THIS HAPPENED|#ffffff|#3fa0ff|5.47||archivo',uv:'fit',kind:'wall',glow:1,ry:180},{s:'box',p:[0,2.1,0],size:[8.44,0.08,0.1],tint:4251903,ry:0,glow:1},{s:'box',p:[0,3.72,0],size:[8.44,0.08,0.1],tint:4251903,ry:0,glow:1}]},
                     {k:'arch',id:'net:bait4:look',x:54.6,z:120.4,rot:270,y:12.25,parts:[{s:'cyl',p:[0,0,0],r:0.55,h:0.22,key:'gunmetal',tint:3159098,seg:10,glow:0.3},{s:'cyl',p:[0,0.22,0],r:0.32,h:0.08,tint:4251903,seg:10,glow:1},{s:'cyl',p:[0,0.3,0],r:0.05,h:3.3000000000000003,tint:4251903,seg:5,glow:0.9},{s:'quad',p:[0,3.6,0.04],size:[11,1.5],key:'txt:THE ANSWER MAY SURPRISE YOU|#ffffff|#b070ff|7.33||archivo',uv:'fit',kind:'wall',glow:1,ry:0},{s:'quad',p:[0,3.6,-0.04],size:[11,1.5],key:'txt:THE ANSWER MAY SURPRISE YOU|#ffffff|#b070ff|7.33||archivo',uv:'fit',kind:'wall',glow:1,ry:180},{s:'box',p:[0,3.5,0],size:[11.24,0.08,0.1],tint:4251903,ry:0,glow:1},{s:'box',p:[0,5.12,0],size:[11.24,0.08,0.1],tint:4251903,ry:0,glow:1}]},
-                    {k:'arch',id:'net:virus0:look',x:75.25,z:117.25,rot:0,y:14,parts:[{s:'cyl',p:[0,0,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'cyl',p:[0,0.1,0],r:2.1,h:4.6,tint:16724048,seg:14,ri:2.06,cap:false,ds:true,glow:0.35},{s:'dome',p:[0,1.9,0],r:0.9,h:0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'dome',p:[0,1.9,0],r:0.9,h:-0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'cyl',p:[1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,-1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,2.7,0],r:0.2,r2:0,h:1,tint:3211120,glow:0.9,seg:5},{s:'quad',p:[0,5,0],size:[4,0.8],key:'txt:TROJAN.EXE|#ffffff|#b01020|5||dot',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,5,-0.05],size:[4,0.8],key:'txt:TROJAN.EXE|#ffffff|#b01020|5||dot',uv:'fit',kind:'wall',glow:0.9,ry:180}]},
-                    {k:'arch',id:'net:virus1:look',x:92.75,z:117.25,rot:90,y:14,parts:[{s:'cyl',p:[0,0,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'cyl',p:[0,0.1,0],r:2.1,h:4.6,tint:16724048,seg:14,ri:2.06,cap:false,ds:true,glow:0.35},{s:'dome',p:[0,1.9,0],r:0.9,h:0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'dome',p:[0,1.9,0],r:0.9,h:-0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'cyl',p:[1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,-1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,2.7,0],r:0.2,r2:0,h:1,tint:3211120,glow:0.9,seg:5},{s:'quad',p:[0,5,0],size:[4,0.8],key:'txt:WORM.BAT|#ffffff|#b01020|5||dot',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,5,-0.05],size:[4,0.8],key:'txt:WORM.BAT|#ffffff|#b01020|5||dot',uv:'fit',kind:'wall',glow:0.9,ry:180}]},
-                    {k:'arch',id:'net:virus2:look',x:75.25,z:134.75,rot:180,y:14,parts:[{s:'cyl',p:[0,0,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'cyl',p:[0,0.1,0],r:2.1,h:4.6,tint:16724048,seg:14,ri:2.06,cap:false,ds:true,glow:0.35},{s:'dome',p:[0,1.9,0],r:0.9,h:0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'dome',p:[0,1.9,0],r:0.9,h:-0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'cyl',p:[1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,-1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,2.7,0],r:0.2,r2:0,h:1,tint:3211120,glow:0.9,seg:5},{s:'quad',p:[0,5,0],size:[5.76,0.8],key:'txt:TOTALLY_SAFE.ZIP|#ffffff|#b01020|7.2||dot',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,5,-0.05],size:[5.76,0.8],key:'txt:TOTALLY_SAFE.ZIP|#ffffff|#b01020|7.2||dot',uv:'fit',kind:'wall',glow:0.9,ry:180}]},
-                    {k:'arch',id:'net:virus3:look',x:92.75,z:134.75,rot:270,y:14,parts:[{s:'cyl',p:[0,0,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'cyl',p:[0,0.1,0],r:2.1,h:4.6,tint:16724048,seg:14,ri:2.06,cap:false,ds:true,glow:0.35},{s:'dome',p:[0,1.9,0],r:0.9,h:0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'dome',p:[0,1.9,0],r:0.9,h:-0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'cyl',p:[1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,-1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,2.7,0],r:0.2,r2:0,h:1,tint:3211120,glow:0.9,seg:5},{s:'quad',p:[0,5,0],size:[5.76,0.8],key:'txt:ILOVEYOU.TXT.VBS|#ffffff|#b01020|7.2||dot',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,5,-0.05],size:[5.76,0.8],key:'txt:ILOVEYOU.TXT.VBS|#ffffff|#b01020|7.2||dot',uv:'fit',kind:'wall',glow:0.9,ry:180}]},
+                    {k:'arch',id:'net:virus0:look',x:75.25,z:117.25,rot:0,y:14,parts:[{s:'cyl',p:[0,0,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'box',p:[2.1,0.1,0],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.82,0.1,1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.05,0.1,1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[0,0.1,2.1],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.05,0.1,1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.82,0.1,1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-2.1,0.1,0],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.82,0.1,-1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.05,0.1,-1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[0,0.1,-2.1],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.05,0.1,-1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.82,0.1,-1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'cyl',p:[0,4.7,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'dome',p:[0,1.9,0],r:0.9,h:0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'dome',p:[0,1.9,0],r:0.9,h:-0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'cyl',p:[1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,-1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,2.7,0],r:0.2,r2:0,h:1,tint:3211120,glow:0.9,seg:5},{s:'quad',p:[0,5,0],size:[4,0.8],key:'txt:TROJAN.EXE|#ffffff|#b01020|5||dot',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,5,-0.05],size:[4,0.8],key:'txt:TROJAN.EXE|#ffffff|#b01020|5||dot',uv:'fit',kind:'wall',glow:0.9,ry:180}]},
+                    {k:'arch',id:'net:virus1:look',x:92.75,z:117.25,rot:90,y:14,parts:[{s:'cyl',p:[0,0,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'box',p:[2.1,0.1,0],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.82,0.1,1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.05,0.1,1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[0,0.1,2.1],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.05,0.1,1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.82,0.1,1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-2.1,0.1,0],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.82,0.1,-1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.05,0.1,-1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[0,0.1,-2.1],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.05,0.1,-1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.82,0.1,-1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'cyl',p:[0,4.7,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'dome',p:[0,1.9,0],r:0.9,h:0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'dome',p:[0,1.9,0],r:0.9,h:-0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'cyl',p:[1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,-1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,2.7,0],r:0.2,r2:0,h:1,tint:3211120,glow:0.9,seg:5},{s:'quad',p:[0,5,0],size:[4,0.8],key:'txt:WORM.BAT|#ffffff|#b01020|5||dot',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,5,-0.05],size:[4,0.8],key:'txt:WORM.BAT|#ffffff|#b01020|5||dot',uv:'fit',kind:'wall',glow:0.9,ry:180}]},
+                    {k:'arch',id:'net:virus2:look',x:75.25,z:134.75,rot:180,y:14,parts:[{s:'cyl',p:[0,0,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'box',p:[2.1,0.1,0],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.82,0.1,1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.05,0.1,1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[0,0.1,2.1],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.05,0.1,1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.82,0.1,1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-2.1,0.1,0],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.82,0.1,-1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.05,0.1,-1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[0,0.1,-2.1],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.05,0.1,-1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.82,0.1,-1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'cyl',p:[0,4.7,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'dome',p:[0,1.9,0],r:0.9,h:0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'dome',p:[0,1.9,0],r:0.9,h:-0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'cyl',p:[1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,-1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,2.7,0],r:0.2,r2:0,h:1,tint:3211120,glow:0.9,seg:5},{s:'quad',p:[0,5,0],size:[5.76,0.8],key:'txt:TOTALLY_SAFE.ZIP|#ffffff|#b01020|7.2||dot',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,5,-0.05],size:[5.76,0.8],key:'txt:TOTALLY_SAFE.ZIP|#ffffff|#b01020|7.2||dot',uv:'fit',kind:'wall',glow:0.9,ry:180}]},
+                    {k:'arch',id:'net:virus3:look',x:92.75,z:134.75,rot:270,y:14,parts:[{s:'cyl',p:[0,0,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'box',p:[2.1,0.1,0],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.82,0.1,1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.05,0.1,1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[0,0.1,2.1],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.05,0.1,1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.82,0.1,1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-2.1,0.1,0],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.82,0.1,-1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[-1.05,0.1,-1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[0,0.1,-2.1],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.05,0.1,-1.82],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'box',p:[1.82,0.1,-1.05],size:[0.07,4.6,0.07],tint:16724048,glow:1},{s:'cyl',p:[0,4.7,0],r:2.2,h:0.1,tint:16724048,seg:16,ri:2,glow:1},{s:'dome',p:[0,1.9,0],r:0.9,h:0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'dome',p:[0,1.9,0],r:0.9,h:-0.9,seg:8,rings:3,tint:3211120,glow:0.8},{s:'cyl',p:[1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-1,1.75,0],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[-0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,1.75,-1],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0.71,1.75,-0.71],r:0.16,r2:0,h:0.9,tint:3211120,glow:0.9,seg:5},{s:'cyl',p:[0,2.7,0],r:0.2,r2:0,h:1,tint:3211120,glow:0.9,seg:5},{s:'quad',p:[0,5,0],size:[5.76,0.8],key:'txt:ILOVEYOU.TXT.VBS|#ffffff|#b01020|7.2||dot',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,5,-0.05],size:[5.76,0.8],key:'txt:ILOVEYOU.TXT.VBS|#ffffff|#b01020|7.2||dot',uv:'fit',kind:'wall',glow:0.9,ry:180}]},
                     {k:'arch',id:'net:qname:look',x:84,z:126,rot:0,y:14,parts:[{s:'quad',p:[0,7.6,0],size:[13,1.2],key:'txt:QUARANTINE · DO NOT OPEN|#ff3050||10.83||archivo',uv:'fit',kind:'over',glow:1},{s:'quad',p:[0,7.6,-0.04],size:[13,1.2],key:'txt:QUARANTINE · DO NOT OPEN|#ff3050||10.83||archivo',uv:'fit',kind:'over',glow:1,ry:180}]},
                     {k:'arch',id:'net:onion:look',x:-114.8,z:42,rot:90,y:14,parts:[{s:'box',p:[-4.6,0,0],size:[0.6,7.4,0.6],tint:10112255,glow:0.7},{s:'box',p:[4.6,0,0],size:[0.6,7.4,0.6],tint:10112255,glow:0.7},{s:'box',p:[0,7.4,0],size:[9.8,0.6,0.6],tint:10112255,glow:0.7},{s:'box',p:[-4,0,-1.6],size:[0.6,6.4,0.6],tint:8010456,glow:0.7},{s:'box',p:[4,0,-1.6],size:[0.6,6.4,0.6],tint:8010456,glow:0.7},{s:'box',p:[0,6.4,-1.6],size:[8.6,0.6,0.6],tint:8010456,glow:0.7},{s:'box',p:[-3.4,0,-3.2],size:[0.6,5.4,0.6],tint:5909160,glow:0.7},{s:'box',p:[3.4,0,-3.2],size:[0.6,5.4,0.6],tint:5909160,glow:0.7},{s:'box',p:[0,5.4,-3.2],size:[7.4,0.6,0.6],tint:5909160,glow:0.7},{s:'box',p:[-2.8,0,-4.8],size:[0.6,4.4,0.6],tint:3807864,glow:0.7},{s:'box',p:[2.8,0,-4.8],size:[0.6,4.4,0.6],tint:3807864,glow:0.7},{s:'box',p:[0,4.4,-4.8],size:[6.2,0.6,0.6],tint:3807864,glow:0.7},{s:'quad',p:[0,8.2,0.3],size:[8,0.7],key:'txt:YOU ARE LEAVING THE INDEXED WEB|#ffffff|#2a0a3a|11.43||stencil',uv:'fit',kind:'wall',glow:0.9}]},
                     {k:'arch',id:'net:code:look',x:-126,z:177.1,rot:180,y:3.5,parts:[{s:'box',p:[0,0,0],size:[10,6,0.3],key:'gunmetal_2',tint:329733,glow:0.3},{s:'box',p:[-4.5,4.3,0.17],size:[0.12,1.5,0.02],tint:3211120,glow:0.9},{s:'box',p:[-3.97,3.2,0.17],size:[0.12,2.6,0.02],tint:3211120,glow:0.9},{s:'box',p:[-3.44,2.1,0.17],size:[0.12,3.7,0.02],tint:3211120,glow:0.9},{s:'box',p:[-2.91,1,0.17],size:[0.12,4.8,0.02],tint:3211120,glow:0.9},{s:'box',p:[-2.38,3.75,0.17],size:[0.12,2.05,0.02],tint:3211120,glow:0.9},{s:'box',p:[-1.85,2.65,0.17],size:[0.12,3.15,0.02],tint:3211120,glow:0.9},{s:'box',p:[-1.32,1.55,0.17],size:[0.12,4.25,0.02],tint:3211120,glow:0.9},{s:'box',p:[-0.79,4.3,0.17],size:[0.12,1.5,0.02],tint:3211120,glow:0.9},{s:'box',p:[-0.26,3.2,0.17],size:[0.12,2.6,0.02],tint:3211120,glow:0.9},{s:'box',p:[0.27,2.1,0.17],size:[0.12,3.7,0.02],tint:3211120,glow:0.9},{s:'box',p:[0.8,1,0.17],size:[0.12,4.8,0.02],tint:3211120,glow:0.9},{s:'box',p:[1.33,3.75,0.17],size:[0.12,2.05,0.02],tint:3211120,glow:0.9},{s:'box',p:[1.86,2.65,0.17],size:[0.12,3.15,0.02],tint:3211120,glow:0.9},{s:'box',p:[2.39,1.55,0.17],size:[0.12,4.25,0.02],tint:3211120,glow:0.9},{s:'box',p:[2.92,4.3,0.17],size:[0.12,1.5,0.02],tint:3211120,glow:0.9},{s:'box',p:[3.45,3.2,0.17],size:[0.12,2.6,0.02],tint:3211120,glow:0.9},{s:'box',p:[3.98,2.1,0.17],size:[0.12,3.7,0.02],tint:3211120,glow:0.9},{s:'box',p:[4.51,1,0.17],size:[0.12,4.8,0.02],tint:3211120,glow:0.9},{s:'quad',p:[0,1,0.2],size:[6,0.9],key:'txt:ACCESS GRANTED|#30ff70|#020602|6.67||dot',uv:'fit',kind:'wall',glow:0.9}]},
@@ -68744,7 +68803,7 @@ const DOOR_HQ = {
                     {k:'arch',id:'net:headset:shell',x:168,z:-178.5,rot:0,y:24.5,parts:[{s:'box',p:[0,0,0],size:[28.12,7,14.12],top:false,faces:'blr',key:null,tint:15263982,glow:0.4},{s:'quad',p:[0,0,7.06],size:[28.12,7],hole:[-0.87,1.74,2.2],key:null,tint:15263982,glow:0.4},{s:'box',p:[0,7,0],size:[28.62,0.3,14.62],key:'gunmetal',tint:13684952,glow:0.15,roof:true},{s:'box',p:[0,2.6,7.2],size:[26.8,3.6,0.3],tint:1052696,glow:0.15},{s:'box',p:[-6.72,3,7.38],size:[8.4,2.6,0.06],tint:4251903,glow:0.9},{s:'box',p:[6.72,3,7.38],size:[8.4,2.6,0.06],tint:16736176,glow:0.9},{s:'cyl',p:[0,3.2,-7],r:14,h:1.2,tint:2763316,ri:13.5,arc:180,a0:90,seg:14,cap:false,ds:true,glow:0.3},{s:'box',p:[-0.87,0,7.12],size:[2.24,2.5,0.12],tint:8388560,glow:1},{s:'quad',p:[0,8.2,7],size:[9,1.3],key:'txt:PUT ME ON|#ffffff||6.92||archivo',uv:'fit',kind:'over',glow:1},{s:'quad',p:[0,8.2,6.96],size:[9,1.3],key:'txt:PUT ME ON|#ffffff||6.92||archivo',uv:'fit',kind:'over',glow:1,ry:180}]},
                     {k:'arch',id:'net:headset:inside',x:168,z:-178.5,rot:0,y:24.5,parts:[{s:'box',p:[-11.5,0,-4.5],size:[2.2,2.2,2.2],key:'checkerboard_2',tint:16728319,glow:0.6,ry:20},{s:'cyl',p:[11,0,-4.5],r:1.4,r2:0,h:3.2,key:'checkerboard_2',tint:16728319,glow:0.6,seg:6},{s:'dome',p:[0,0,-4.8],r:1.5,h:1.5,seg:8,rings:3,key:'checkerboard_2',tint:16728319,glow:0.6},{s:'quad',p:[0,4.6,-6.6],size:[12,1.2],key:'txt:TEXTURE NOT FOUND|#ff40ff||10||dot',uv:'fit',kind:'over',glow:0.9},{s:'quad',p:[0,3.4,-6.6],size:[9,0.8],key:'txt:LOADING WORLD... 12%|#ffffff||11.25||dot',uv:'fit',kind:'over',glow:0.9}]},
                     {k:'arch',id:'net:vr_out:look',x:168,z:-158.9,rot:0,y:24.5,parts:[{s:'box',p:[-9,0,0.6],size:[1.6,1.6,1.6],key:'checkerboard_2',tint:16728319,glow:0.6,ry:0},{s:'box',p:[-9,2.4,0.6],size:[0.9,0.9,0.9],tint:8388560,glow:1,ry:45},{s:'box',p:[9,0,0.9],size:[1.6,1.6,1.6],key:'checkerboard_2',tint:16728319,glow:0.6,ry:25},{s:'box',p:[9,2.4,0.9],size:[0.9,0.9,0.9],tint:8388560,glow:1,ry:45},{s:'box',p:[-11,0,-2],size:[1.6,1.6,1.6],key:'checkerboard_2',tint:16728319,glow:0.6,ry:50},{s:'box',p:[-11,2.4,-2],size:[0.9,0.9,0.9],tint:8388560,glow:1,ry:45},{s:'quad',p:[0,0.2,2.4],size:[9,0.9],key:'txt:VIRTUAL REALITY|#b070ff||10||archivo',uv:'fit',kind:'over',glow:1},{s:'quad',p:[0,0.2,2.36],size:[9,0.9],key:'txt:VIRTUAL REALITY|#b070ff||10||archivo',uv:'fit',kind:'over',glow:1,ry:180}]},
-                    {k:'arch',id:'net:holo:look',x:177.1,z:-135.1,rot:0,y:22.75,parts:[{s:'cyl',p:[0,0.4,0],r:3,h:9,tint:11563263,seg:16,ri:2.94,cap:false,ds:true,glow:0.5},{s:'quad',p:[-5.2,6.4,0],size:[2.6,1],key:'txt:LIVE|#ffffff|#e01030|2.6||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[-5.2,6.4,-0.05],size:[2.6,1],key:'txt:LIVE|#ffffff|#e01030|2.6||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[0,10,0],size:[9,1],key:'txt:41,209 WATCHING|#ffffff||9||dot',uv:'fit',kind:'over',glow:1},{s:'quad',p:[0,10,-0.04],size:[9,1],key:'txt:41,209 WATCHING|#ffffff||9||dot',uv:'fit',kind:'over',glow:1,ry:180}]},
+                    {k:'arch',id:'net:holo:look',x:177.1,z:-135.1,rot:0,y:22.75,parts:[{s:'box',p:[3,0.4,0],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[2.77,0.4,1.15],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[2.12,0.4,2.12],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[1.15,0.4,2.77],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[0,0.4,3],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[-1.15,0.4,2.77],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[-2.12,0.4,2.12],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[-2.77,0.4,1.15],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[-3,0.4,0],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[-2.77,0.4,-1.15],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[-2.12,0.4,-2.12],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[-1.15,0.4,-2.77],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[0,0.4,-3],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[1.15,0.4,-2.77],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[2.12,0.4,-2.12],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'box',p:[2.77,0.4,-1.15],size:[0.06,9,0.06],tint:11563263,glow:1},{s:'cyl',p:[0,9.4,0],r:3.1,h:0.1,tint:11563263,seg:20,ri:2.9,glow:1},{s:'quad',p:[-5.2,6.4,0],size:[2.6,1],key:'txt:LIVE|#ffffff|#e01030|2.6||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[-5.2,6.4,-0.05],size:[2.6,1],key:'txt:LIVE|#ffffff|#e01030|2.6||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[0,10,0],size:[9,1],key:'txt:41,209 WATCHING|#ffffff||9||dot',uv:'fit',kind:'over',glow:1},{s:'quad',p:[0,10,-0.04],size:[9,1],key:'txt:41,209 WATCHING|#ffffff||9||dot',uv:'fit',kind:'over',glow:1,ry:180}]},
                     {k:'arch',id:'net:chatcol:look',x:155.4,z:-117.6,rot:0,y:22.75,parts:[{s:'quad',p:[-0.5,0.8,0],size:[1.7999999999999998,0.7],key:'txt:FIRST|#ffffff|#3fa0ff|2.57||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[-0.5,0.8,-0.05],size:[1.7999999999999998,0.7],key:'txt:FIRST|#ffffff|#3fa0ff|2.57||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[0,1.75,0],size:[1.6,0.7],key:'txt:POG|#ffffff|#b070ff|2.29||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,1.75,-0.05],size:[1.6,0.7],key:'txt:POG|#ffffff|#b070ff|2.29||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[0.5,2.7,0],size:[2.52,0.7],key:'txt:HI CHAT|#ffffff|#20a040|3.6||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0.5,2.7,-0.05],size:[2.52,0.7],key:'txt:HI CHAT|#ffffff|#20a040|3.6||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[-0.5,3.65,0],size:[1.6,0.7],key:'txt:LOL|#ffffff|#ff5fb0|2.29||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[-0.5,3.65,-0.05],size:[1.6,0.7],key:'txt:LOL|#ffffff|#ff5fb0|2.29||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[0,4.6,0],size:[1.6,0.7],key:'txt:W|#ffffff|#ffb020|2.29||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,4.6,-0.05],size:[1.6,0.7],key:'txt:W|#ffffff|#ffb020|2.29||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[0.5,5.55,0],size:[1.6,0.7],key:'txt:???|#ffffff|#555555|2.29||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0.5,5.55,-0.05],size:[1.6,0.7],key:'txt:???|#ffffff|#555555|2.29||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[-0.5,6.5,0],size:[2.52,0.7],key:'txt:CLIP IT|#ffffff|#e01030|3.6||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[-0.5,6.5,-0.05],size:[2.52,0.7],key:'txt:CLIP IT|#ffffff|#e01030|3.6||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[0,7.45,0],size:[2.52,0.7],key:'txt:SO TRUE|#ffffff|#3fa0ff|3.6||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,7.45,-0.05],size:[2.52,0.7],key:'txt:SO TRUE|#ffffff|#3fa0ff|3.6||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[0.5,8.4,0],size:[1.6,0.7],key:'txt:F|#ffffff|#555555|2.29||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0.5,8.4,-0.05],size:[1.6,0.7],key:'txt:F|#ffffff|#555555|2.29||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[-0.5,9.35,0],size:[1.6,0.7],key:'txt:MODS|#ffffff|#20a040|2.29||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[-0.5,9.35,-0.05],size:[1.6,0.7],key:'txt:MODS|#ffffff|#20a040|2.29||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[0,10.3,0],size:[1.6,0.7],key:'txt:GG|#ffffff|#b070ff|2.29||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0,10.3,-0.05],size:[1.6,0.7],key:'txt:GG|#ffffff|#b070ff|2.29||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180},{s:'quad',p:[0.5,11.25,0],size:[3.2399999999999998,0.7],key:'txt:NOTICE ME|#ffffff|#ff5fb0|4.63||archivo',uv:'fit',kind:'wall',glow:0.9},{s:'quad',p:[0.5,11.25,-0.05],size:[3.2399999999999998,0.7],key:'txt:NOTICE ME|#ffffff|#ff5fb0|4.63||archivo',uv:'fit',kind:'wall',glow:0.9,ry:180}]},
                     {k:'arch',id:'net:ring:look',x:168,z:-95.9,rot:0,y:21,parts:[{s:'quad',p:[0,18.4,0],size:[12,1],key:'txt:GOOD LIGHTING IS EVERYTHING|#ffffff||12||dot',uv:'fit',kind:'over',glow:1},{s:'quad',p:[0,18.4,-0.04],size:[12,1],key:'txt:GOOD LIGHTING IS EVERYTHING|#ffffff||12||dot',uv:'fit',kind:'over',glow:1,ry:180}]},
                     {k:'arch',id:'net:select:look',x:168,z:-42,rot:0,y:19.25,parts:[{s:'cyl',p:[12.2,0,5.05],r:1.3,h:0.5,tint:1708080,seg:12,glow:0.3},{s:'cyl',p:[12.2,0.5,5.05],r:1.2,h:0.06,tint:4251903,seg:12,glow:1},{s:'cyl',p:[5.05,0,12.2],r:1.3,h:0.5,tint:1708080,seg:12,glow:0.3},{s:'cyl',p:[5.05,0.5,12.2],r:1.2,h:0.06,tint:16736176,seg:12,glow:1},{s:'cyl',p:[-5.05,0,12.2],r:1.3,h:0.5,tint:1708080,seg:12,glow:0.3},{s:'cyl',p:[-5.05,0.5,12.2],r:1.2,h:0.06,tint:16769088,seg:12,glow:1},{s:'cyl',p:[-12.2,0,5.05],r:1.3,h:0.5,tint:1708080,seg:12,glow:0.3},{s:'cyl',p:[-12.2,0.5,5.05],r:1.2,h:0.06,tint:11563263,seg:12,glow:1},{s:'cyl',p:[-12.2,0,-5.05],r:1.3,h:0.5,tint:1708080,seg:12,glow:0.3},{s:'cyl',p:[-12.2,0.5,-5.05],r:1.2,h:0.06,tint:4251903,seg:12,glow:1},{s:'cyl',p:[-5.05,0,-12.2],r:1.3,h:0.5,tint:1708080,seg:12,glow:0.3},{s:'cyl',p:[-5.05,0.5,-12.2],r:1.2,h:0.06,tint:16736176,seg:12,glow:1},{s:'cyl',p:[5.05,0,-12.2],r:1.3,h:0.5,tint:1708080,seg:12,glow:0.3},{s:'cyl',p:[5.05,0.5,-12.2],r:1.2,h:0.06,tint:16769088,seg:12,glow:1},{s:'cyl',p:[12.2,0,-5.05],r:1.3,h:0.5,tint:1708080,seg:12,glow:0.3},{s:'cyl',p:[12.2,0.5,-5.05],r:1.2,h:0.06,tint:11563263,seg:12,glow:1},{s:'quad',p:[0,7.2,0],size:[13,1.5],key:'txt:CHOOSE YOUR AVATAR|#ffffff||8.67||archivo',uv:'fit',kind:'over',glow:1},{s:'quad',p:[0,7.2,-0.04],size:[13,1.5],key:'txt:CHOOSE YOUR AVATAR|#ffffff||8.67||archivo',uv:'fit',kind:'over',glow:1,ry:180},{s:'quad',p:[0,6.2,0],size:[11,0.7],key:'txt:YOU CAN CHANGE IT LATER (YOU WILL NOT)|#7fffd0||15.71||dot',uv:'fit',kind:'over',glow:1},{s:'quad',p:[0,6.2,-0.04],size:[11,0.7],key:'txt:YOU CAN CHANGE IT LATER (YOU WILL NOT)|#7fffd0||15.71||dot',uv:'fit',kind:'over',glow:1,ry:180}]},
@@ -77778,11 +77837,21 @@ function hqClockRead(profile, nowMs) {
     if (rec.run && isFinite(+rec.at) && isFinite(+nowMs) && nowMs > rec.at) h += ((nowMs - rec.at) / 1000) * hqClockRate();
     return hqClockNorm(h);
 }
-function hqClockWrite(profile, h, nowMs, run) {
+/* THE RUNNING HOURS (NPC encounters step 5a, 2026-11-18): every world hour the clock has run on this profile (`t`; its hour of the day = t mod 24), so a
+   wound can heal "at the next game day" across a reload. A record from before it starts from its hour. */
+function hqClockTotal(profile, nowMs) {
+    const rec = profile && profile.door && profile.door.hq && profile.door.hq.clock;
+    if (!rec || !isFinite(+rec.h)) return hqClockNorm(HQ_WORLD_CLOCK.start);
+    let t = isFinite(+rec.t) ? +rec.t : hqClockNorm(+rec.h);
+    if (rec.run && isFinite(+rec.at) && isFinite(+nowMs) && nowMs > rec.at) t += ((nowMs - rec.at) / 1000) * hqClockRate();
+    return t;
+}
+function hqClockWrite(profile, h, nowMs, run, t) {
     if (!profile) return null;
     if (!profile.door || typeof profile.door !== 'object') profile.door = {};
     if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
     profile.door.hq.clock = { h: Math.round(hqClockNorm(h) * 10000) / 10000, at: Math.round(+nowMs || 0), run: !!run };
+    if (t != null && isFinite(+t)) profile.door.hq.clock.t = Math.round(+t * 10000) / 10000;
     return profile.door.hq.clock;
 }
 function _hqClkSmooth(a, b, x) { if (b === a) return x >= b ? 1 : 0; const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
@@ -89970,6 +90039,10 @@ const HQ_NPC_TEMPERS = {
     mug: { perDay: 0.25, goldPerLevel: 8, chaseSpeed: 2.7, reachM: 2.2, giveUpM: 32, loseMs: 6000, againMs: 4000 },
     lossGoldPerLevel: 8,       // a lost story fight (quest fights too): 8 gold x the strongest enemy's level, never more than held; a retreat costs nothing (mondo 11-17)
     payOffGoldPerLevel: 8,     // what an NPC that gave up pays (PLAN 4.4)
+    /* THE WOUNDS (step 5a, 2026-11-18; mondo: "track health outside of battle ... as for the player and party"; wounds heal at the next game day "or after
+       they sleep"): an NPC that walks away from a fight hurt keeps its HP into the next one (data.js hqNpcWoundFor / hqNpcWoundsAfter, the profile's
+       `door.hq.wounds`). `downHp`: an NPC that went down in a fight the party LOST or left stands up again with this many HP (PROPOSAL). `max`: rows kept. */
+    wounds: { downHp: 1, max: 64 },
     /* THE LINES (mondo 11-17: "these lines are fine for now"). talk: after the second strike, or E first. warn: over the head, once. */
     lines: {
         talk: { 'chef': '“Hey! What was that for?”', 'hippie': '“Not cool, man.”', 'skater': '“What is your problem?”', 'popstar': '“Do you know who I am?”',
@@ -90127,6 +90200,68 @@ function hqNpcStarts(ch, o) {
 function hqNpcLossGold(profile, lvl) {
     const cost = Math.max(1, lvl | 0) * HQ_NPC_TEMPERS.lossGoldPerLevel, held = Math.max(0, (profile && profile.account && profile.account.gold) | 0);
     return { cost, lost: Math.min(cost, held), held };
+}
+/* ══ NPC HEALTH ON THE WALK (NPC encounters step 5a, 2026-11-18; PLAN 4.5 + section 0 round 1 answer 11, round 2 answer 2) ══
+   THE LEDGER: the profile's `door.hq.wounds` = { '<room>|<npc id>': { hp, max, t, rest } }, beside `cleared` (local to the device, like the party's
+   vitals; not in the synced blob). `t` = the world clock's running hours when the fight ended (hqClockTotal: survives a reload, stands still in a fight);
+   `rest` = the hour a resident's Sleep block ends (hqNpcRestHour), null for a walker with no day.
+   HEALED: a resident once its Sleep block has ended after the wound ("or after they sleep"); a walker at the next game day (the clock passing midnight).
+   The commit (battle.js) writes it after every story fight, won, lost or left; the launch (map.js) reads it into the enemy's seats (state.js). Step 6b
+   (an NPC that escapes) writes through the same hqNpcWoundsAfter: one row a body, { id, hp, max, down, gone }. */
+function hqNpcWoundKey(roomId, id) { return String(roomId || '') + '|' + String(id || ''); }
+/* the hour a resident's Sleep block ends (its row in HQ_CITY_RESIDENTS: `day` = [[from, to, kind, place]], kind 'S' = asleep) | null */
+function hqNpcRestHour(r) {
+    const b = r && Array.isArray(r.day) ? r.day.find(x => x && x[2] === 'S') : null;
+    return (b && isFinite(+b[1])) ? hqClockNorm(+b[1]) : null;
+}
+/* the world clock's running hours now: the walk's live count (map.js), else the profile's */
+function hqNpcWorldT(profile) {
+    try { if (typeof window !== 'undefined' && typeof window._hqClockTotal === 'function') { const t = +window._hqClockTotal(); if (isFinite(t)) return t; } } catch (e) {}
+    return hqClockTotal(profile, Date.now());
+}
+/* has a wound stamped at `w` healed by running hour `t`? */
+function hqNpcWoundHealed(w, t) {
+    if (!w || !isFinite(+w.t) || !isFinite(+t)) return true;
+    if (t < w.t) return true;   // the clock went back (a fresh profile): nothing to hold on to
+    if (w.rest == null || !isFinite(+w.rest)) return Math.floor(t / 24) > Math.floor(w.t / 24);   // a walker: the next game day
+    const k = Math.floor((w.t - w.rest) / 24) + 1, end = k * 24 + (+w.rest);   // a resident: the first end of its Sleep block after the wound
+    return t >= end;
+}
+function hqNpcWoundBook(profile, make) {
+    const H = profile && profile.door && profile.door.hq;
+    if (H && H.wounds && typeof H.wounds === 'object') return H.wounds;
+    if (!make || !profile) return null;
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    return (profile.door.hq.wounds = {});
+}
+/* THE READ (the launch): { hp, max } of a hurt NPC, or null (never hurt, or healed) */
+function hqNpcWoundFor(profile, roomId, id, t) {
+    const B = hqNpcWoundBook(profile, false); if (!B || !id) return null;
+    const w = B[hqNpcWoundKey(roomId, id)]; if (!w) return null;
+    if (t == null) t = hqNpcWorldT(profile);
+    if (hqNpcWoundHealed(w, t) || !(w.max > 0) || !(w.hp > 0) || w.hp >= w.max) return null;
+    return { hp: w.hp | 0, max: w.max | 0 };
+}
+/* THE WRITE (the commit; step 6b's escape too): `rows` = [{ id, hp, max, down, gone, rest }]. `gone` = beaten on a win, or captured: the row goes (the
+   cleared ledger has it until tomorrow). `down` (it fell in a fight you lost or left) = `downHp`. Whole = the row goes. Healed rows are pruned. The caller saves. */
+function hqNpcWoundsAfter(profile, roomId, rows, t) {
+    if (!profile || !roomId || !Array.isArray(rows)) return null;
+    const B = hqNpcWoundBook(profile, true), W = HQ_NPC_TEMPERS.wounds;
+    if (t == null) t = hqNpcWorldT(profile);
+    for (const k of Object.keys(B)) if (hqNpcWoundHealed(B[k], t)) delete B[k];
+    const out = [];
+    rows.forEach(r => {
+        if (!r || !r.id) return;
+        const k = hqNpcWoundKey(roomId, r.id), max = r.max | 0;
+        const hp = r.down ? Math.min(max, W.downHp | 0 || 1) : (r.hp | 0);
+        if (r.gone || !(max > 0) || hp >= max) { delete B[k]; return; }
+        B[k] = { hp: Math.max(1, hp), max, t: Math.round(+t * 1000) / 1000, rest: (r.rest != null && isFinite(+r.rest)) ? +r.rest : null };
+        out.push({ id: r.id, hp: B[k].hp, max });
+    });
+    const keys = Object.keys(B);
+    if (keys.length > W.max) keys.sort((a, b) => B[a].t - B[b].t).slice(0, keys.length - W.max).forEach(k => { delete B[k]; });
+    return out;
 }
 let _hqCityGridCache = null;
 /* THE ROUTE MAP of a room: { nx, nz, x0, z0, res, walk (Uint8: 0 no, 1 ground, 2 road), comp (the walk's own component: 1), openE / openS (Uint8: the
@@ -91725,7 +91860,8 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
         doorId: 'crossing', counterId: 'crossing',
         encounter: { race: ch.race, gender: ch.gender || 'male', id: ch.id || null, room: roomId, x: +(ch.x || 0), z: +(ch.z || 0), gesture: opts.gesture || 'attack', label: ch.label || ch.race,
                      name: ch.label || null,   // D2: the room's own name for the native — the enemy lead wears it on the nameplate
-                     members: grp.members.map(x => ({ id: x.id || null, race: x.race, gender: x.gender || 'male', name: x.label || null })),   // the group's own people seat 2..n (state.js)
+                     members: grp.members.map(x => ({ id: x.id || null, race: x.race, gender: x.gender || 'male', name: x.label || null, rest: (x.rest != null && isFinite(+x.rest)) ? +x.rest : null })),   // the group's own people seat 2..n (state.js) · `rest`: THE WOUNDS (step 5a)
+                     rest: (ch.rest != null && isFinite(+ch.rest)) ? +ch.rest : null,   // THE WOUNDS (step 5a): the hour a resident's Sleep block ends (hqNpcRestHour), null = a walker with no day
                      swarm: swarm ? swarm.n : 0 },
     };
 }
@@ -100146,7 +100282,7 @@ if (typeof window !== 'undefined') {
     window.hqRoomBase = hqRoomBase;
     window.hqRoomVariantIds = hqRoomVariantIds;
     window.hqVariantRoll = hqVariantRoll;
-    window.HQ_WORLD_CLOCK = HQ_WORLD_CLOCK; window.hqClockRead = hqClockRead; window.hqClockWrite = hqClockWrite; window.hqClockRate = hqClockRate; window.hqClockNorm = hqClockNorm; window.hqWorldSun = hqWorldSun; window.hqWorldDir = hqWorldDir; window.hqRoomClock = hqRoomClock; window.hqRoomLandmarks = hqRoomLandmarks;   // THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3)
+    window.HQ_WORLD_CLOCK = HQ_WORLD_CLOCK; window.hqClockRead = hqClockRead; window.hqClockWrite = hqClockWrite; window.hqClockTotal = hqClockTotal; window.hqNpcWorldT = hqNpcWorldT; window.hqNpcWoundFor = hqNpcWoundFor; window.hqNpcWoundsAfter = hqNpcWoundsAfter; window.hqNpcRestHour = hqNpcRestHour; window.hqClockRate = hqClockRate; window.hqClockNorm = hqClockNorm; window.hqWorldSun = hqWorldSun; window.hqWorldDir = hqWorldDir; window.hqRoomClock = hqRoomClock; window.hqRoomLandmarks = hqRoomLandmarks;   // THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3)
     window.hqApplyRoomVariant = hqApplyRoomVariant;
     window.hqRollRoomVariants = hqRollRoomVariants;
     window.hqVariantRollEach = hqVariantRollEach;

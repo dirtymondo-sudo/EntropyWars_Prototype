@@ -1545,7 +1545,8 @@
             if (_hqClock && _hqClock.idx === idx) return _hqClock;
             let h = (window.HQ_WORLD_CLOCK && window.HQ_WORLD_CLOCK.start) || 9;
             try { if (typeof window.hqClockRead === 'function') h = window.hqClockRead(_hqProfile(), Date.now()); } catch (e) {}
-            _hqClock = { h, idx, savedAt: performance.now(), tagAt: 0 };
+            let t = h; try { if (typeof window.hqClockTotal === 'function') t = window.hqClockTotal(_hqProfile(), Date.now()); } catch (e) {}   // THE RUNNING HOURS (NPC encounters step 5a): the wounds' clock
+            _hqClock = { h, t: isFinite(t) ? t : h, idx, savedAt: performance.now(), tagAt: 0 };
             return _hqClock;
         }
         function _hqClockSave(run) {
@@ -1556,16 +1557,18 @@
                 if (idx === null || idx === undefined || idx !== _hqClock.idx) return;
                 const p = PS.loadProfile(idx);
                 if (!p) return;
-                window.hqClockWrite(p, _hqClock.h, Date.now(), !!run);
+                window.hqClockWrite(p, _hqClock.h, Date.now(), !!run, _hqClock.t);
                 PS.saveProfile(idx, p);
                 _hqClock.savedAt = performance.now();
             } catch (e) {}
         }
         window._hqClockHour = function () { return _hqClockLoad().h; };
+        window._hqClockTotal = function () { return _hqClockLoad().t; };   // the world hours run on this profile (data.js hqNpcWorldT)
         window._hqClockAdvance = function (sec) {
             const C = _hqClockLoad();
             if (!(sec > 0) || typeof window.hqClockRate !== 'function') return C.h;
             C.h = window.hqClockNorm(C.h + sec * window.hqClockRate());
+            C.t += sec * window.hqClockRate();
             const now = performance.now(), CK = window.HQ_WORLD_CLOCK || {};
             if (now - C.savedAt > (CK.saveMs || 30000)) _hqClockSave(true);
             if (now - C.tagAt > 2000) { C.tagAt = now; _hqClockTag(); }
@@ -1577,7 +1580,9 @@
         window.hqClockSet = function (h) {
             const C = _hqClockLoad();
             if (!isFinite(+h)) return C.h;
+            const _h0 = C.h;
             C.h = window.hqClockNorm ? window.hqClockNorm(+h) : ((+h % 24) + 24) % 24;
+            C.t += (((C.h - _h0) % 24) + 24) % 24;   // a hand on the dial moves the running hours forward to that hour (never back)
             _hqClockSave(false);
             try { if (ThreeRenderer.hq && ThreeRenderer.hq.clockSnap) ThreeRenderer.hq.clockSnap(); } catch (e) {}
             _hqClockTag();
@@ -6026,6 +6031,13 @@
             if (!cr || cr.cleared || !site || cr.site !== site) cr = null;
             const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr, partyLevel: _hqPartyLevelNow() }) : null;
             if (!L) return false;
+            /* NPC HEALTH ON THE WALK (NPC encounters step 5a, 2026-11-18): who the enemy's seats are, in seat order (the one struck, then its group), and the
+               wounds each still carries from an earlier fight (data.js hqNpcWoundFor; null = whole). The run marker takes the ids for the commit's write. */
+            try {
+                const _wp = _hqProfile(), _wt = (typeof window.hqNpcWorldT === 'function') ? window.hqNpcWorldT(_wp) : null, _wr = L.room || _hqCurRoom;
+                L.npcs = [{ id: L.encounter.id || null, rest: L.encounter.rest }].concat((L.encounter.members || []).map(m => ({ id: m.id || null, rest: m.rest })));
+                L.wounds = L.npcs.map(n => (n.id && typeof window.hqNpcWoundFor === 'function') ? window.hqNpcWoundFor(_wp, _wr, n.id, _wt) : null);
+            } catch (e) { console.warn('[HQ] the wounds could not be read', e); L.npcs = null; L.wounds = null; }
             /* WHOEVER STARTS THE FIGHT OPENS ROUND 1 (mondo 11-17): an NPC that came for you acts first (battle.js reads the run's `opener`) */
             if (ev.npcStart) {
                 L.opener = 'npc';
@@ -6138,6 +6150,7 @@
                 party.enemyTeam = L.enemyTeam || L.teamSize;   // THE GROUP (2026-09-21): the native + its companions — never the crossing's team size; the bench is the officer's alone
                 party.enemyLevels = Array.isArray(L.levels) ? L.levels.slice() : null;   // THE LEVELS: the adaptive levels, the lead's first
                 party.swarm = L.swarm || null;   // THE SWARM (CAPTURE_PLAN §5.2): all n on the board — the seats below size for it
+                party.enemyWounds = Array.isArray(L.wounds) ? L.wounds.slice() : null;   // NPC HEALTH ON THE WALK (step 5a): seat i's carried HP, or null
                 /* THE QUESTS (2026-11-12): a quest fight's GUEST stands on the board beside the first shift (one seat more than
                    the shift for this fight only; she carries no partyId, so nothing of hers is written back to the party) */
                 try {
@@ -6176,7 +6189,7 @@
             window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture, id: L.encounter.id || null,
                                        date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true, armed: true,   // `armed`: battle.js startMatch spends it on THIS launch; a later match finds it spent and drops a stale marker
                                        eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null, field: field || null, gm: L.gm,
-                                       swarm: L.swarm || null, entry: _entryDoor, quest: L.quest || null, sceneOnly: L.sceneOnly || null, opener: L.opener || null };   // THE SWARM: battle.js keeps every native on the board · THE QUESTS: the quest's own fight (battle.js seats it round the portal, the commit files it)
+                                       swarm: L.swarm || null, entry: _entryDoor, quest: L.quest || null, sceneOnly: L.sceneOnly || null, opener: L.opener || null, npcs: L.npcs || null };   // npcs (step 5a): the enemy seats' NPC ids, for the wounds the commit writes · THE SWARM: battle.js keeps every native on the board · THE QUESTS: the quest's own fight (battle.js seats it round the portal, the commit files it)
             window._hqEncounterRun.night = _hqClockNightIn(L.room || _hqCurRoom);   // THE WORLD CLOCK (Phase 3): the fight starts at the room's hour — round 1 is night when the sun is down (getCurrentCyclePhase)
             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's standing doors (and a pre-placed capture door) on the
                fight's board go onto their cells before the seats (battle.js encounterCarryDoors); the striking door's act is
@@ -12146,6 +12159,12 @@
                         const lv = _encParty.enemyLevels;
                         state.partyMeta[2].forEach((mm, i) => { if (mm) mm.storyLevel = lv[Math.min(i, lv.length - 1)] | 0; });
                     }
+                    /* NPC HEALTH ON THE WALK (NPC encounters step 5a, 2026-11-18; mondo: "track health outside of battle ... as for the player and party"):
+                       a hurt NPC comes into this fight with the HP it walked away with, through the party's own carried-vitals path (createUnit: scaled to
+                       this build's max, never under 1) */
+                    if (Array.isArray(_encParty.enemyWounds) && Array.isArray(state.partyMeta[2])) {
+                        state.partyMeta[2].forEach((mm, i) => { const w = _encParty.enemyWounds[i]; if (mm && w && w.hp > 0 && w.max > 0) { mm.hp = w.hp | 0; mm.hpMax = w.max | 0; } });
+                    }
                 }
                 /* no roster on file (Delivery 6): the human's stand-in squad gets identities + spell loadouts like the CPU's */
                 if (_encParty.fallback && typeof optimizeRandomizeParty === 'function') {
@@ -14410,7 +14429,7 @@
             return true;
         }
 
-        const SKY_RACES = ['fairy', 'shadow entity', 'ai', 'angel', 'seraphim', 'orb of light', 'demon', 'mech', 'ghost', 'annunaki', 'gargoyle', 'djinn', 'mothman', 'glitch', 'demon prince', 'demon princess', 'fallen angel', 'cyborg', 'nephilim', 'vampire', 'superhero', 'antihero', 'chosen one', 'dragon', 'occulus', 'valkraye', 'watcher', 'jellyfish', 'unicorn'];
+        const SKY_RACES = ['virus', 'fairy', 'shadow entity', 'ai', 'angel', 'seraphim', 'orb of light', 'demon', 'mech', 'ghost', 'annunaki', 'gargoyle', 'djinn', 'mothman', 'glitch', 'demon prince', 'demon princess', 'fallen angel', 'cyborg', 'nephilim', 'vampire', 'superhero', 'antihero', 'chosen one', 'dragon', 'occulus', 'valkraye', 'watcher', 'jellyfish', 'unicorn'];
         function unitHasJetpack(unit) { return unitHasAccessory(unit, 'jetpack'); }
         function canFly(unit) {
             /* 🪽 Levitating (CHAMP REWORK Phase 4, STATUS_DEFS grantsFlight):

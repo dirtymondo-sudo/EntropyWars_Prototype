@@ -6489,16 +6489,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var row = _VC_PORTAL[spellId]; if (!row) return;
         var sx = p.sx != null ? p.sx : p.tx, sy = p.sy != null ? p.sy : p.ty;
         var o = { col: row.col, col2: row.col2, flat: row.flat, smoke: row.smoke, scale: row.scale, hostile: row.col == null && _vcPortalHostile(sx, sy) };
-        if (row.at === 'target') {   /* a summon / a rift: one portal where it comes out, on the hit beat */
-            if (phase !== 'burst' || p.tx == null || !_pzSeen(p.tx, p.ty)) return;
-            o.ms = 700; _portalKit3D(p.tx, p.ty, o); return;
+        if (row.at === 'target') {   /* a summon / a rift: one portal where it comes out */
+            /* THE VFX CLEANUP B11: it opened on the hit beat, 1.2-1.6 s after the cast (timed in real casts), when the thing had
+               long been standing there. It opens on the cast now, so the thing comes OUT of it. */
+            if (phase !== 'windup' || p.tx == null || !_pzSeen(p.tx, p.ty)) return;
+            o.ms = Math.max(600, Math.min(1400, p.holdMs || 900)); _portalKit3D(p.tx, p.ty, o); return;
         }
-        if (row.mover && phase === 'windup') {   /* the unit being moved stands somewhere else: the portal opens under IT */
-            try {
-                var mid = (typeof state !== 'undefined') ? state._teleportingUnitId : null;
-                if (mid != null && state.units) for (var mi = 0; mi < state.units.length; mi++) { var mu = state.units[mi];
-                    if (mu && mu.id === mid && !mu.dead) { sx = mu.x; sy = mu.y; o.hostile = row.col == null && _vcPortalHostile(p.sx != null ? p.sx : sx, p.sy != null ? p.sy : sy); break; } }
-            } catch (e) {}
+        if (row.mover) {
+            /* THE VFX CLEANUP B11: a cast that moves ANOTHER unit. It read state._teleportingUnitId on the windup beat, which an
+               online guest does not have yet (seen in the two-seat probe: host '1-1', guest null, so the guest's leaving portal
+               opened under the caster), and the FIRST pick fires a windup too (a portal under the caster while the player is
+               still choosing a square). Its two portals now ride the relayed 'teleport' beat, which names both squares
+               (_vcPortalMove, from _fireTeleport). The windup only remembers whose cast it is, for the colour. */
+            if (phase === 'windup' && sx != null) _vcPortalMoverBy = { hostile: o.hostile, at: performance.now() };
+            return;
         }
         if (phase === 'windup') {
             if (sx == null || !_pzSeen(sx, sy)) return;
@@ -6506,11 +6510,34 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _portalKit3D(sx, sy, o);
         } else if (phase === 'burst') {
             if (p.tx == null || (p.tx === sx && p.ty === sy) || !_pzSeen(p.tx, p.ty)) return;
+            if (_vcPortalDone[spellId] && performance.now() - _vcPortalDone[spellId] < 5000) { delete _vcPortalDone[spellId]; return; }   /* the 'teleport' beat already opened it (B11) */
             var from = _vcPortalFrom[sx + ',' + sy]; if (from && row.col == null) o.hostile = from.hostile;   /* the caster has left its square by now */
             o.ms = 520; _portalKit3D(p.tx, p.ty, o);
         }
     }
-    var _vcPortalFrom = {};
+    var _vcPortalFrom = {}, _vcPortalMoverBy = null, _vcPortalDone = {};
+    /* THE VFX CLEANUP B11: a teleport's ARRIVING portal. It opened on the hit beat, about 1.2 s after the unit had already
+       come out (timed in a real Shadow Step). The relayed 'teleport' beat fires with the cast and names both squares, so the
+       portal opens there and then; the hit beat then draws none. A cast with no 'teleport' beat keeps the hit beat's. */
+    function _vcPortalArrive(spellId, fromX, fromY, toX, toY) {
+        if (!_vcOn()) return;
+        var row = _VC_PORTAL[spellId]; if (!row || row.mover || row.at || fromX == null || toX == null || (toX === fromX && toY === fromY)) return;
+        _vcPortalDone[spellId] = performance.now();
+        if (!_pzSeen(toX, toY)) return;
+        var from = _vcPortalFrom[fromX + ',' + fromY];
+        _portalKit3D(toX, toY, { col: row.col, col2: row.col2, flat: row.flat, smoke: row.smoke, scale: row.scale, ms: 560,
+            hostile: row.col == null && (from ? from.hostile : _vcPortalHostile(toX, toY)) });
+    }
+    /* a `mover` row's two portals, on the 'teleport' beat: one under the unit being moved, one where it comes out */
+    function _vcPortalMove(spellId, fromX, fromY, toX, toY, arriveMs) {
+        if (!_vcOn()) return false;
+        var row = _VC_PORTAL[spellId]; if (!row || !row.mover || fromX == null || toX == null) return false;
+        var by = _vcPortalMoverBy, hostile = row.col == null && ((by && performance.now() - by.at < 6000) ? by.hostile : _vcPortalHostile(fromX, fromY));
+        var mk = function (ms) { return { col: row.col, col2: row.col2, flat: row.flat, smoke: row.smoke, scale: row.scale, hostile: hostile, ms: ms }; };
+        if (_pzSeen(fromX, fromY)) _portalKit3D(fromX, fromY, mk(Math.max(360, (arriveMs || 200) + 260)));
+        if (!(toX === fromX && toY === fromY)) _fxDelay(function () { if (!_suppressed() && _pzSeen(toX, toY)) _portalKit3D(toX, toY, mk(520)); }, Math.max(0, (arriveMs || 200) - 120));
+        return true;
+    }
 
     /* ════════════════════════════════════════════════════════════════════
        THE BEAM KIT (THE VFX CLEANUP B3, 2026-11-17, docs/plans/vfx-cleanup/VFX_CLEANUP_PLAN.md section 4)
@@ -17978,6 +18005,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var color = opts.color != null ? opts.color : 0x9fe8ff;
         var coreColor = opts.coreColor != null ? opts.coreColor : 0xffffff;
         if (_vcTrueOn() && _vcNearWhite(coreColor)) coreColor = _vcHot(color, 0.3);   /* COLOUR-TRUE: the spiral beam's core in its own colour (it defaulted to white) */
+        /* THE VFX CLEANUP B11 (Stasis Beam still read WHITE in a real cast): the core, the glow, two strands and three rings were
+           all additive in a pale colour and summed to white over each other. The colour is given its hue, and the core, the
+           strands and the rings are normal-blended; only the soft glow still adds. */
+        var _sbTrue = _vcTrueOn(), _sbN = _sbTrue ? { normal: true } : null;
+        if (_sbTrue) { color = _vcTrue(color, 0.68); coreColor = _vcHot(color, 0.22); }
         var helixR = opts.helixRadius != null ? opts.helixRadius : ts * 0.17;
         var turns = opts.turns != null ? opts.turns : Math.max(3, (length / ts) * 1.25);
         var spin = opts.spinSpeed != null ? opts.spinSpeed : 0.009;
@@ -17988,7 +18020,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         /* core lance + soft sheath */
         var cylGeo = new THREE.CylinderGeometry(1, 1, 1, 12, 1, true);
-        var coreMat = _sigMat(coreColor);
+        var coreMat = _sigMat(coreColor, _sbN);
         var core = new THREE.Mesh(cylGeo, coreMat);
         core.renderOrder = 211; group.add(core);
         var glowMat = _sigMat(color);
@@ -18007,7 +18039,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 pts.push(new THREE.Vector3(Math.cos(angH) * helixR, f * length, Math.sin(angH) * helixR));
             }
             var curve = new THREE.CatmullRomCurve3(pts);
-            var tubeMat = _sigMat(color);
+            var tubeMat = _sigMat(color, _sbN);
             var tube = new THREE.Mesh(
                 new THREE.TubeGeometry(curve, 120, Math.max(1.6, ts * 0.03), 6, false), tubeMat);
             tube.renderOrder = 212;
@@ -18019,7 +18051,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var rings = [];
         var RINGS = opts.rings != null ? opts.rings : 3;
         for (var rI = 0; rI < RINGS; rI++) {
-            var rm = _sigMat(color);
+            var rm = _sigMat(color, _sbN);
             var ring = new THREE.Mesh(
                 new THREE.TorusGeometry(helixR * 1.8, Math.max(1.2, ts * 0.02), 6, 24), rm);
             ring.rotation.x = Math.PI / 2;   /* torus axis = beam axis */
@@ -18032,7 +18064,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_canSpawn() && !_catOff('spells')) {
             var mp = tilePx(fromTx, fromTy);
             var mz = unitSurfaceZ(fromTx, fromTy) + unitZBoost();
-            _spawn({ x: mp.x, y: mp.y, z: mz, mode: 'billboard', sprite: 'flash',
+            _spawn({ x: mp.x, y: mp.y, z: mz, mode: 'billboard', sprite: 'flash', tint: _sbTrue ? color : undefined,
                 ml: 220, size0: ts * 0.45, size1: ts * 0.08, opacity0: 1, opacity1: 0 });
             var ip = tilePx(toTx, toTy);
             var iz = unitSurfaceZ(toTx, toTy) + unitZBoost();
@@ -18058,7 +18090,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             core.scale.set(rCore, curLen, rCore); core.position.y = curLen / 2;
             glow.scale.set(rGlow, curLen, rGlow); glow.position.y = curLen / 2;
             coreMat.opacity = 0.95 * fade;
-            glowMat.opacity = 0.3 * fade;
+            glowMat.opacity = (_sbTrue ? 0.2 : 0.3) * fade;
             for (var si = 0; si < strands.length; si++) {
                 strands[si].mesh.rotation.y = el * spin * (si % 2 ? -1 : 1);
                 strands[si].mesh.scale.set(1, ext, 1);
@@ -22205,6 +22237,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return;
         if (!_canSpawn()) return;
         if (!params) return;
+        try { _vcPortalArrive(spellId, params.fromX != null ? params.fromX : params.sx, params.fromY != null ? params.fromY : params.sy,
+            params.toX != null ? params.toX : params.tx, params.toY != null ? params.toY : params.ty); } catch (e) {}
         /* THE ESCAPE LOOKS (FX-5): an escape with its own look draws it instead of the shared ring + glide */
         if (_ESC_LOOKS && _ESC_LOOKS[spellId]) {
             var _efx = params.fromX != null ? params.fromX : params.sx, _efy = params.fromY != null ? params.fromY : params.sy;
@@ -22212,8 +22246,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (_efx != null && _efy != null && _etx != null && _ety != null && _fx5Escape(spellId, _efx, _efy, _etx, _ety)) return;
         }
         var teleEffectId = SPELL_MAP[spellId] && SPELL_MAP[spellId].teleport;
-        if (!teleEffectId) return;
-        var teleDef = EFFECTS[teleEffectId];
+        var teleDef = teleEffectId ? EFFECTS[teleEffectId] : null;
+        /* THE VFX CLEANUP B11: a `mover` portal row (Teleport) opens its two portals from this beat's own squares, map row or not */
+        try { if (_VC_PORTAL[spellId] && _VC_PORTAL[spellId].mover) _vcPortalMove(spellId, params.fromX != null ? params.fromX : params.sx, params.fromY != null ? params.fromY : params.sy,
+            params.toX != null ? params.toX : params.tx, params.toY != null ? params.toY : params.ty, teleDef && teleDef.arrivalDelayMs != null ? teleDef.arrivalDelayMs : 200); } catch (e) {}
         if (!teleDef) return;
         /* accept both spellings: fromX/toX (teleport path) and sx/tx (the
            generic travel handler) — the second used to bail out silently */
@@ -22224,10 +22260,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (fromX == null || fromY == null || toX == null || toY == null) return;
 
         var arrivalDelayMs = teleDef.arrivalDelayMs != null ? teleDef.arrivalDelayMs : 200;
+        /* THE VFX CLEANUP B11: a portal spell's portal IS its ring: the shared blue ring (additive, white on a pale floor) is
+           not drawn over it at either end. A `mover` row (Teleport) opens its two portals here, from the beat's own squares. */
+        var _tpKit = _vcOn() && !!_VC_PORTAL[spellId];
         if (spellId === 'raceMistForm') { try { _hwcMistCoffin3D(fromX, fromY); } catch (e) {} }   // THE HALLOWEEN COFFINS: the cross coffin shuts on the mist
         if (spellId === 'raceJellyDrift') { try { _jellyCurrent3D(fromX, fromY, toX, toY); } catch (e) {} }   // THE JELLYFISH MODELS: the current carries a few jellies along
 
-        _spawnPortalRing3D(fromX, fromY);
+        if (!_tpKit) _spawnPortalRing3D(fromX, fromY);
 
         var dispersalEffectId = teleDef.dispersalEffect;
         if (dispersalEffectId) {
@@ -22243,7 +22282,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     if (_suppressed()) return;
                     _spawnEffect(arrDef, { tx: toX, ty: toY });
 
-                    _spawnPortalRing3D(toX, toY);
+                    if (!_tpKit) _spawnPortalRing3D(toX, toY);
                 }, arrivalDelayMs);
             }
         }
@@ -47171,6 +47210,116 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         nrStaticBurst: _tvxStatic3D, nrEmergencyBroadcast: _tvxBroadcast3D, nrFastForward: _tvxFF3D, nrRewind: _tvxRewind3D,
     });
 
+    /* ══ THE VIRUS (2026-11-18, mondo approved the kit) ══ A living computer virus: payloads that copy themselves from body to body.
+       The virus's own colour is toxic green; the side reads on the rings and threads (THE RIOT PASS: own side cyan-blue, the other
+       side pink-orange). Nothing sits on the caster, the target, the hit or the number. Kill-switch window.EW_NO_VIRUS_VFX.
+         WORM (impact + geometry): a wriggling green thread of code from the virus to the victim, a side ring and green bits on the hit.
+         SELF-REPLICATE (aura on the new Replica's tile): a green pop and a ring of pixels.
+         RANSOMWARE (geometry): the ransom note (a red window, a padlock, YOUR FILES ARE ENCRYPTED) pops up BESIDE the victim
+           and flickers; a side ring closes in.
+         ZERO DAY (aura + geometry on the virus): three side rings out to 5; every carrier's own payload burst does the rest.
+         PAYLOAD COPY ('nrPayload:copy', battle.js _payloadSpread at the round end): a short green thread from the carrier to the
+           teammate it copied to, a small ring under the new one.
+         PAYLOAD BURST ('nrPayload:burst', _payloadBurst / the Replica going down): a green flash, a side ring, green bits up. */
+    var _VRX_G = 0x5ad06a, _VRX_GLOW = 0x9dff7a;
+    function _vrxOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_VIRUS_VFX); }
+    function _vrxRansomTex() {
+        return _sigTex('vrx-ransom', 128, function (g, S) {
+            g.fillStyle = '#7a0000'; g.fillRect(0, 0, S, S);
+            g.fillStyle = '#c00000'; g.fillRect(0, 0, S, 18);
+            g.fillStyle = '#ffffff'; g.font = 'bold 11px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText('RANSOM.EXE', 5, 9);
+            g.fillStyle = '#ff4040'; g.fillRect(S - 16, 3, 12, 12); g.fillStyle = '#fff'; g.fillText('x', S - 13, 9);
+            /* the padlock */
+            g.strokeStyle = '#ffd040'; g.lineWidth = 5; g.beginPath(); g.arc(S / 2, 48, 13, Math.PI, 0); g.stroke();
+            g.fillStyle = '#ffd040'; g.fillRect(S / 2 - 19, 47, 38, 28); g.fillStyle = '#7a0000'; g.fillRect(S / 2 - 3, 55, 6, 12);
+            g.fillStyle = '#ffffff'; g.font = 'bold 12px monospace'; g.textAlign = 'center';
+            g.fillText('YOUR FILES ARE', S / 2, 92); g.fillText('ENCRYPTED', S / 2, 108);
+            g.fillStyle = 'rgba(0,0,0,0.2)'; for (var y = 20; y < S; y += 4) g.fillRect(0, y, S, 1);
+        });
+    }
+    EFFECTS['nrWorm_impact'] = { layers: [
+        { sprite: 'flash', ml: 170, z: 55, size0: 10, size1: 46, tint: _VRX_GLOW, opacity0: 0.6, delayMs: 260 },
+        { count: 10, sprite: 'spark', ml: [280, 460], offsetXY: 8, z: [40, 75], tint: _VRX_G, vxRange: 110, vyRange: 110, vzRange: [20, 70], drag: 1, size0: [3, 5], size1: 1, opacity0: 0.9, delayMs: 260 },
+    ] };
+    function _vrxWorm3D(tx, ty, r, o) {
+        if (_vrxOff() || _afFogHides(tx, ty)) return;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        var h = _lgBodyH(_lgUidAt(tx, ty), ts) * 0.55;
+        var th = from.fogged ? null : _hdThread(F, from.x, from.y, h, _VRX_G, 560, ts * 0.07, 240);
+        if (th) _sigRunOwned(F.g, 580, function (el) {
+            th.run(el);
+            th.hold.position.x += Math.sin(el / 30) * ts * 0.004;   // it wriggles
+            th.strip.material.opacity *= ((Math.floor(el / 50) % 3) === 1) ? 0.6 : 1;
+        });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.15, r1: ts * 0.6, ms: 420, color: C.a, height: ts * 0.05 }); } catch (e) {} }, 270);
+    }
+    EFFECTS['nrSelfReplicate_aura'] = { layers: [
+        { sprite: 'flash', ml: 220, z: 40, size0: 14, size1: 60, tint: _VRX_GLOW, opacity0: 0.55 },
+        { count: 14, sprite: 'spark', ml: [360, 600], offsetXY: 10, z: [20, 60], tint: _VRX_G, vxRange: 160, vyRange: 160, vzRange: [10, 50], drag: 1.1, size0: [3, 5], size1: 1, opacity0: 0.9 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 520, z: 3, tint: _VRX_G, size0: 16, size1: 64, opacity0: 0.35 },
+    ] };
+    function _vrxRansom3D(tx, ty, r, o) {
+        if (_vrxOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var ts = _worldPos(tx, ty).ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        _tvxPanel(tx, ty, _vrxRansomTex(), { w: 0.85, ms: 1700, flicker: true });
+        for (var i = 0; i < 2; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.9, r1: ts * 0.25, ms: 380, color: j ? C.b : C.a, height: ts * 0.05 }); } catch (e) {} }, 120 + j * 160);
+        })(i);
+        return true;
+    }
+    EFFECTS['nrRansomware_impact'] = { layers: [
+        { sprite: 'flash', ml: 180, z: 55, size0: 12, size1: 50, tint: 0xff3030, opacity0: 0.5, delayMs: 120 },
+    ] };
+    EFFECTS['nrZeroDay_aura'] = { layers: [
+        { sprite: 'flash', ml: 260, z: 60, size0: 16, size1: 80, tint: _VRX_GLOW, opacity0: 0.45 },
+    ] };
+    function _vrxZeroDay3D(tx, ty, r, o) {
+        if (_vrxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, cu = _fx5UnitAt(tx, ty), C = _hdSide(cu || { player: (o && o.owner) != null ? o.owner : _cbOwnerNear(tx, ty) });
+        var reach = (r > 0 ? r : 5) + 0.5;
+        for (var i = 0; i < 3; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * reach, ms: 700, color: j === 1 ? _VRX_G : (j ? C.b : C.a), height: ts * (0.05 + 0.08 * j), opacity: 0.3, torus: j > 0 }); } catch (e) {} }, 150 + j * 150);
+        })(i);
+        return true;
+    }
+    function _vrxCopy3D(tx, ty, r, o) {
+        if (_vrxOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, h = _lgBodyH(_lgUidAt(tx, ty), ts) * 0.5;
+        if (o.fromX != null && !_afFogHides(o.fromX, o.fromY)) {
+            var th = _hdThread(F, o.fromX, o.fromY, h, _VRX_G, 600, ts * 0.05, 260);
+            _sigRunOwned(F.g, 620, function (el) { th.run(el); });
+        }
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.1, r1: ts * 0.45, ms: 380, color: _VRX_G, height: ts * 0.04 }); } catch (e) {} }, 260);
+        return true;
+    }
+    EFFECTS['nrPayload_burst'] = { layers: [
+        { sprite: 'flash', ml: 200, z: 50, size0: 14, size1: 64, tint: _VRX_GLOW, opacity0: 0.65 },
+        { count: 16, sprite: 'spark', ml: [380, 640], offsetXY: 10, z: [30, 70], tint: _VRX_G, vxRange: 150, vyRange: 150, vzRange: [40, 120], gravity: 160, size0: [3, 6], size1: 1, opacity0: 0.95 },
+    ] };
+    function _vrxBurst3D(tx, ty, r, o) {
+        if (_vrxOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var ts = _worldPos(tx, ty).ts, C = _hdSide({ player: o.owner });
+        try { fire('impact', 'nrPayload:burst', { tx: tx, ty: ty }); } catch (e) {}
+        _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 0.85, ms: 460, color: C.a, height: ts * 0.05 });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.15, r1: ts * 0.7, ms: 420, color: _VRX_G, height: ts * 0.5, torus: true, opacity: 0.4 }); } catch (e) {} }, 80);
+        return true;
+    }
+    Object.assign(SPELL_MAP, {
+        nrWorm:          { impact: 'nrWorm_impact' },
+        nrSelfReplicate: { aura: 'nrSelfReplicate_aura' },
+        nrRansomware:    { impact: 'nrRansomware_impact' },
+        nrZeroDay:       { aura: 'nrZeroDay_aura' },
+        'nrPayload:burst': { impact: 'nrPayload_burst' },
+    });
+    Object.assign(_spell3DGeometry, {
+        nrWorm: _vrxWorm3D, nrRansomware: _vrxRansom3D, nrZeroDay: _vrxZeroDay3D,
+        'nrPayload:copy': _vrxCopy3D, 'nrPayload:burst': _vrxBurst3D,
+    });
+
     /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build
        his spells around the space props in the game". His three new Assets/misc files (the satellite, the space shuttle, the
        space station) and two already in the game (the torn hull plate with its wiring hanging out = the spaceship debris; the
@@ -51188,7 +51337,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (tx == null || ty == null || _PS_OWN[spellId]) return;
         if (!_psClaim(spellId + '#aoe@' + tx + ',' + ty, 900)) return;
         _psLanded(spellId);
-        _psSigil(tx, ty, r);
+        /* THE VFX CLEANUP B11: a psychic DAMAGE area gets the psychic noise wash on every hit square (_nzStage); the mind
+           sigil lay under it (the rune under the wash, mondo 11-17). The sigil stays where no wash is drawn. */
+        var _psD = _spellDefFor(spellId) || {};
+        if (!(_vcOn() && _nzOn() && _psD.type === 'damage' && _NZ.psychic)) _psSigil(tx, ty, r);
         var c = _psCast[spellId], me = c ? _psUnitAt(c.sx, c.sy) : null, us = _psUnitsIn(tx, ty, r), n = 0;
         for (var i = 0; i < us.length && n < 6; i++) {
             var u = us[i];

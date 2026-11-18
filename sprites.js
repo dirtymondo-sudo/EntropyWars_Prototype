@@ -151,6 +151,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/karate_frog/', 'Assets/characters/races/karate_frog/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/samurai_slug/', 'Assets/characters/races/samurai_slug/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/cursed_tv/', 'Assets/characters/races/cursed_tv/'],   // 2026-11-17 📺 THE CURSED TV
+  ['Assets/Sprites/Races/virus/', 'Assets/characters/races/virus/'],   // 2026-11-18 🦠 THE VIRUS
   ['Assets/Sprites/Races/cicada_brood/', 'Assets/characters/races/cicada_brood/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/pope/', 'Assets/characters/races/pope/'],   // 2026-11-17 THE POPE
   ['Assets/Sprites/Races/ninja/', 'Assets/characters/races/ninja/'],   // 2026-11-17 THE NINJA
@@ -565,6 +566,7 @@ const RACE_SPRITE_GENDERS = {
   'ninja': 'both',   // 2026-11-17 THE NINJA (male + female)
   'haunted doll': 'female',   // 2026-11-17 THE HAUNTED DOLL
   'cursed tv': 'male',   // 2026-11-17 THE CURSED TV (one set; the model def sits under male)
+  'virus': 'male',   // 2026-11-18 THE VIRUS (one body; the model def sits under male)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
   'dinosaur': 'male',
@@ -746,6 +748,7 @@ const _CHARACTER_SPRITES = {
   'ninja': `${_S}/Races/ninja/male/ninja_m_px.png`,   // 2026-11-17 THE NINJA — 128x128 pixel sprite (Sprite AI restyle of its Meshy model); the woman's is _NEW_FEMALE_SPRITES
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (Sprite AI restyle of its model render, PR #1910)
   'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
+  'virus': `${_S}/Races/virus/male/virus_px.png`,   // 2026-11-18 THE VIRUS — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
@@ -2633,6 +2636,14 @@ const RACE_MODELS_3D = {
      cutscene's set (data.js HQ prop cursed_tv_set): the cart, the TV, the remote and the cable. Front +Z, metres. */
   'cursed tv': {
     male: { model: `${_S}/Races/cursed_tv/male/cursed_tv.glb`, clips: {}, procRig: 'cursedTv', heightRatio: 1.0, yawOffset: 0, basicAttackKind: 'magic',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
+  },
+  /* 🦠 THE VIRUS (2026-11-18, mondo: "unique animations and individual moving parts similar to the seraphim or cursed TV"): no
+     bones; procRig 'virusBody' (three-renderer.js THE VIRUS) flares the 14 spikes, turns and blinks the eight eyes and swings
+     the nine code tendrils. The Meshy core + spike, the eyes and tendrils made in code (models-assets.md "THE VIRUS"). Front +Z,
+     metres, the body hovering 1 m up. */
+  'virus': {
+    male: { model: `${_S}/Races/virus/male/virus.glb`, clips: {}, procRig: 'virusBody', heightRatio: 1.15, yawOffset: 0, basicAttackKind: 'magic',
       moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
   },
   'wendigo': {
@@ -6963,6 +6974,7 @@ const RACE_SPRITES = {
   'ninja': `${_S}/Races/ninja/male/ninja_m_px.png`,   // 2026-11-17 THE NINJA — 128x128 pixel sprite (Sprite AI restyle of its Meshy model); the woman's is _NEW_FEMALE_SPRITES
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (PR #1910)
   'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
+  'virus': `${_S}/Races/virus/male/virus_px.png`,   // 2026-11-18 THE VIRUS — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
