@@ -101153,7 +101153,7 @@ const HQ_CITY_LOOKS = {
            Window sheets from the Urban Decay pack, lit; a mast and a beacon on the tall ones; the billboard hangs on the tower's two long faces
            and the hologram stands over its top. `sky` = glass skyways between neighbouring towers. */
         tower: { p: 0.8, gap: 3.5, storey: 3.5, min: 5, max: 16, smallM: 7, small: [2, 4], inset: 0.5, leg: 0.9, tierAt: 8, tierK: 0.4, tierIn: 1.6,
-                 wins: ['urban:GlassWindowTall1a', 'urban:GlassWindowSquare2a', 'urban:GlassWindowTall1a-Glow'], winGlow: 0.34, mastAt: 10, sign: 5.0 },
+                 wins: ['urban:GlassWindowTall1a', 'urban:GlassWindowSquare2a', 'urban:GlassWindowTall1a-Glow'], winGlow: 0.45, mastAt: 10, sign: 5.0 },
         sky: { min: 9, max: 46, w: 2.6, h: 2.8, glow: 0.3 },                          // the hologram: a word of light standing over a tall roof (no board, seen from both sides)
         /* the old Cyberpunk room's own sign words (three-renderer.js _HQ_NEON_NAMES + _NR_BUILDERS.cyberpunk): nothing new is named here */
         names: ['NOODLE', 'RAMEN 24H', 'PACHINKO', 'HOLO', 'BAR', 'NO VACANCY', 'ARCADE', 'HOTEL', 'SYNTH', 'IMPLANTS', 'LEASE 2047', 'RETINA', 'ATM · CRYPTO', 'TENANTS'],
@@ -101269,7 +101269,7 @@ function hqCityLookTerrain(roomId, base, lookId) {
                 } else mass(yb, H, tw, td);
                 parts.push({ s: 'box', p: [cx, yTop + 0.35, cz + md / 2 + t / 2], size: [mw + t * 2, t, t], tint: ink, glow: g }, { s: 'box', p: [cx, yTop + 0.35, cz - md / 2 - t / 2], size: [mw + t * 2, t, t], tint: ink, glow: g },
                            { s: 'box', p: [cx + mw / 2 + t / 2, yTop + 0.35, cz], size: [t, t, md], tint: ink, glow: g }, { s: 'box', p: [cx - mw / 2 - t / 2, yTop + 0.35, cz], size: [t, t, md], tint: ink, glow: g });
-                if (n >= TW.mastAt) { const mh = 6 + (h >>> 4) % 7; parts.push({ s: 'box', p: [cx, yTop + 0.35, cz], size: [0.3, mh, 0.3], tint: L.board.frame }, { s: 'box', p: [cx, yTop + 0.35 + mh, cz], size: [0.5, 0.5, 0.5], tint: 0xff3030, glow: 1 }); yTop += 0; }
+                if (n >= TW.mastAt) { const mh = 6 + (h >>> 4) % 7; parts.push({ s: 'box', p: [cx, yTop + 0.35, cz], size: [0.3, mh, 0.3], tint: L.board.frame }, { s: 'box', p: [cx, yTop + 0.35 + mh, cz], size: [0.5, 0.5, 0.5], tint: 0xff3030, glow: 1 }); }
                 /* the sign on the tower's two long faces (the roof billboard's words, on the wall) */
                 if (tw >= L.board.minW && H >= TW.sign + 3) {
                     const bw = Math.min(tw * 0.82, 14), bh = Math.min(TW.sign, bw * 0.5), sy = yb + Math.min(H - bh - 1.5, TW.storey * 2), name = L.names[(h >>> 3) % L.names.length];
