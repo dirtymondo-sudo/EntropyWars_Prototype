@@ -16920,7 +16920,7 @@ const ThreeRenderer = (function () {
        `procClips`: plain keyframe clips on named groups, wired into the board's own mixer / slots / one-shots exactly like
        a library bake (death, hits, the cast chains all resolve the same way). Display only and decided per screen from the
        synced state, so the online guest plays the same motion. */
-    var _procRigUrlMap = null;
+    var _procRigUrlMap = null, _procRigDefMap = {};
     function _procRigFor(url) {
         if (!_procRigUrlMap) {
             _procRigUrlMap = {};
@@ -16929,14 +16929,131 @@ const ThreeRenderer = (function () {
                     var set = RACE_MODELS_3D[race];
                     for (var g in set) {
                         var d = set[g];
-                        if (d && d.procRig && d.model) _procRigUrlMap[d.model] = d.procRig;
+                        if (d && d.procRig && d.model) { _procRigUrlMap[d.model] = d.procRig; _procRigDefMap[d.model] = d; }
                         /* a form a cast swaps in (THE UFO FORM: the grey's craft) */
                         if (d && d.overrideForms) for (var fk in d.overrideForms) { var fd = d.overrideForms[fk]; if (fd && fd.procRig && fd.model) _procRigUrlMap[fd.model] = fd.procRig; }
                     }
                 }
             } catch (e) {}
         }
+        if (_procRigUrlMap[url] === 'unitGear') return _gearRigFor(url, _procRigDefMap[url]);   // THE UNIT GEAR
         return _PROC_RIGS[_procRigUrlMap[url]] || null;
+    }
+    /* ══ THE UNIT GEAR (2026-11-18, mondo: "the same way we have made separated animated parts for the virus and the cursed tv
+       and seraphim and unicorn"): a library-animated Meshy unit (the shared UAL clips, its own skin) wearing loose parts made
+       apart from it, so they move on their own: wings that beat (one wing file, mirrored: THE SINGLE WINGS), a halo that bobs
+       over the head, a cape that swings on the back, a piece held in a hand (the Atlantean's trident). A def says
+       `procRig: 'unitGear', gear: { wings: 'angel'|'bat'|'dragon'|{ url, root }, wingLen, wingTint, halo: url, cape: url,
+       capeLen, held: { url, len, hand } }` (lengths are parts of the body's height). The parts hang on the body's bones once,
+       on the cached root (every clone copies them); the builder returns no clips, so the unit keeps the library's. Each frame
+       THE SWAY's tick (the root is flagged ewSway) moves them (_gearTick). Their meshes carry userData.ewGear, so the fit box
+       (_skinnedBBox) measures the body alone and the unit's size is unchanged. Cosmetic and local: nothing is relayed. */
+    var _gearRigCache = {};
+    function _gearRigFor(url, def) {
+        if (_gearRigCache[url]) return _gearRigCache[url];
+        var g = (def && def.gear) || {}, deps = [], at = {};
+        var wf = g.wings ? (typeof g.wings === 'string' ? EW_WING_FILES[g.wings] : g.wings) : null;
+        if (wf && wf.url) { at.wings = deps.length; deps.push(wf.url); }
+        if (g.halo) { at.halo = deps.length; deps.push(g.halo); }
+        if (g.cape) { at.cape = deps.length; deps.push(g.cape); }
+        if (g.held && g.held.url) { at.held = deps.length; deps.push(g.held.url); }
+        var fn = function (root, anims, got) { try { _gearBuild(root, g, wf, at, got || []); } catch (e) { console.warn('[3D] unit gear failed', e); } return null; };
+        fn.deps = deps;
+        return (_gearRigCache[url] = fn);
+    }
+    function _gearMesh(src) { var m = null; if (src) src.traverse(function (n) { if (!m && n.isMesh && n.geometry) m = n; }); return m; }
+    function _gearPlain(mesh) {
+        /* a part as a plain mesh in its file's world frame (a skinned part loses its skin: it rides one bone) */
+        mesh.updateMatrixWorld(true);
+        var geo = mesh.geometry.clone(); geo.applyMatrix4(mesh.matrixWorld);
+        ['skinIndex', 'skinWeight'].forEach(function (a) { if (geo.attributes[a]) geo.deleteAttribute(a); });
+        geo.computeBoundingBox(); geo.computeBoundingSphere();
+        var mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+        var m = new THREE.Mesh(geo, mat); m.userData.ewGear = true; return m;
+    }
+    function _gearHang(bone, worldPos, child, name) {
+        /* a group on `bone` whose frame is the model's (no turn) at worldPos: what is put in it is placed in model terms */
+        var G = new THREE.Group(); G.name = name;
+        var W = new THREE.Matrix4().makeTranslation(worldPos.x, worldPos.y, worldPos.z);
+        new THREE.Matrix4().multiplyMatrices(bone.matrixWorld.clone().invert(), W).decompose(G.position, G.quaternion, G.scale);
+        if (child) G.add(child);
+        bone.add(G);
+        return G;
+    }
+    function _gearBuild(root, g, wf, at, got) {
+        root.updateMatrixWorld(true);
+        var bone = function (n) { return root.getObjectByName(n); };
+        var chest = bone('Spine02') || bone('Spine01') || bone('Spine'), head = bone('Head'), neck = bone('neck') || bone('Neck') || head;
+        if (!chest || !head) return;
+        var box = _skinnedBBox(root), H = Math.max(0.01, box.max.y - box.min.y);
+        var cp = chest.getWorldPosition(new THREE.Vector3()), hp = head.getWorldPosition(new THREE.Vector3()), np = neck.getWorldPosition(new THREE.Vector3());
+        var made = false;
+        /* the wings: the pair of one file (shoulder on the origin, L reaching +X = the unit's left), on hinges on the chest */
+        if (at.wings != null && got[at.wings]) {
+            var pair = _ewWingPair(got[at.wings], wf.root);
+            if (pair) {
+                var ws = (g.wingLen || 0.7) * H / EW_WING_LEN, mat = pair.material;
+                if (g.wingTint && mat && mat.color) { mat = mat.clone(); mat.color.set(g.wingTint); }
+                var lift = g.wingLift != null ? g.wingLift : (wf.lift != null ? wf.lift : ({ angel: 0.35, bat: 0.15, dragon: -0.75 })[g.wings] || 0);   // the creator's CC_WING_LIFT
+                [['L', pair.L, 1], ['R', pair.R, -1]].forEach(function (sd) {
+                    var m = new THREE.Mesh(sd[1], mat); m.userData.ewGear = true; m.name = 'ewGearWingMesh' + sd[0];
+                    m.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), sd[2] * lift);
+                    var hinge = new THREE.Group(); hinge.name = 'ewGearWing' + sd[0]; hinge.scale.setScalar(ws); hinge.add(m);
+                    _gearHang(chest, new THREE.Vector3(cp.x + sd[2] * 0.035 * H, cp.y + 0.03 * H, cp.z - 0.07 * H), hinge, 'ewGearWingMount' + sd[0]);
+                });
+                made = true;
+            }
+        }
+        /* the halo: centred over the crown, it bobs and turns slowly (_gearTick) */
+        var hm = at.halo != null && _gearMesh(got[at.halo]);
+        if (hm) {
+            var h = _gearPlain(hm), hb = h.geometry.boundingBox, hc = hb.getCenter(new THREE.Vector3());
+            var hsc = (g.haloSize || 0.11) * H / Math.max(1e-6, hb.max.x - hb.min.x);
+            h.geometry.translate(-hc.x, -hc.y, -hc.z);
+            var hh = new THREE.Group(); hh.name = 'ewGearHalo'; hh.scale.setScalar(hsc); hh.add(h); hh.userData.ewH = H;
+            _gearHang(head, new THREE.Vector3(hp.x, box.max.y + (g.haloLift || 0.05) * H, hp.z), hh, 'ewGearHaloMount');
+            made = true;
+        }
+        /* the cape: its top on the shoulder line, hung behind the back on a hinge that swings (_gearTick) */
+        var cm = at.cape != null && _gearMesh(got[at.cape]);
+        if (cm) {
+            var c = _gearPlain(cm), cb = c.geometry.boundingBox, csc = (g.capeLen || 0.72) * H / Math.max(1e-6, cb.max.y - cb.min.y);
+            c.geometry.translate(-(cb.min.x + cb.max.x) / 2, -cb.max.y, -cb.max.z);   // the top edge's front on the hinge
+            var ch = new THREE.Group(); ch.name = 'ewGearCape'; ch.scale.setScalar(csc); ch.add(c);
+            _gearHang(chest, new THREE.Vector3(np.x, np.y - 0.01 * H, cp.z - (g.capeBack || 0.06) * H), ch, 'ewGearCapeMount');
+            made = true;
+        }
+        /* the held piece: upright in the hand, the grip (a third up its length) in the palm; it turns with the hand */
+        var hd = g.held || {}, km = at.held != null && _gearMesh(got[at.held]), hand = bone(hd.hand || 'RightHand');
+        if (km && hand) {
+            var k = _gearPlain(km), kb = k.geometry.boundingBox, ksc = (hd.len || 1.0) * H / Math.max(1e-6, kb.max.y - kb.min.y);
+            k.geometry.translate(-(kb.min.x + kb.max.x) / 2, -(kb.min.y + (kb.max.y - kb.min.y) * (hd.grip != null ? hd.grip : 0.35)), -(kb.min.z + kb.max.z) / 2);
+            k.scale.setScalar(ksc); k.name = 'ewGearHeld';
+            _gearHang(hand, hand.getWorldPosition(new THREE.Vector3()), k, 'ewGearHeldMount');
+            made = true;
+        }
+        if (made) root.userData.ewGear = true;
+    }
+    var _gearE = null;
+    function _gearTick(S) {
+        var G = S.gear; if (!G || !G.length) return;
+        if (!_gearE) _gearE = new THREE.Euler(0, 0, 0, 'YZX');
+        var t = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) / 1000 + (S.gearPhase || 0);
+        for (var i = 0; i < G.length; i++) {
+            var n = G[i], nm = n.name;
+            if (nm === 'ewGearWingL' || nm === 'ewGearWingR') {
+                var sgn = nm === 'ewGearWingL' ? 1 : -1, ph = t * 2.2 - (sgn < 0 ? 0.25 : 0);
+                /* at rest swept back and a little up, a slow beat (the unicorn's) */
+                _gearE.set(0, sgn * (0.55 + 0.1 * Math.cos(ph)), sgn * (0.25 + 0.22 * Math.sin(ph)), 'YZX');
+                n.quaternion.setFromEuler(_gearE);
+            } else if (nm === 'ewGearHalo') {
+                n.position.y = 0.014 * (n.userData.ewH || 1.7) * Math.sin(t * 1.8);   // the mount's frame is the model's: metres of the file
+                n.rotation.y = t * 0.6;
+            } else if (nm === 'ewGearCape') {
+                n.rotation.x = 0.06 + 0.04 * Math.sin(t * 1.6);
+                n.rotation.z = 0.025 * Math.sin(t * 1.1);
+            }
+        }
     }
     /* SERAPH: "a wheel in the middle of a wheel" (Ezekiel 1:16). Ring A is the model as exported (upright, eyes on both
        faces); ring B is the same mesh at SER_B scale, nested in A's hole on a gimbal: it turns with A and tumbles on A's
@@ -18453,12 +18570,14 @@ const ThreeRenderer = (function () {
     function _swayScan(root) {
         var has = false;
         root.traverse(function (n) { if (!has && n.isBone && /^ewsway_c\d+_\d+$/.test(n.name)) has = true; });
+        if (root.userData.ewGear) has = true;   // THE UNIT GEAR: its parts move in the sway's tick
         root.userData.ewSway = has;
         return has;
     }
     function _swayInit(model, opts) {
         var o = {}, k; for (k in _SW_DEF) o[k] = _SW_DEF[k]; if (opts) for (k in opts) o[k] = opts[k];
-        var cols = {}, byName = {};
+        var cols = {}, byName = {}, gear = [];
+        model.traverse(function (n) { if (/^ewGear(WingL|WingR|Halo|Cape)$/.test(n.name || '')) gear.push(n); });   // THE UNIT GEAR
         model.traverse(function (n) {
             if (!n.isBone) return;
             byName[n.name] = n;
@@ -18481,7 +18600,7 @@ const ThreeRenderer = (function () {
             var a = byName[o.caps[ci][0]], b = byName[o.caps[ci][1]];
             if (a && b) caps.push({ a: a, b: b, k: o.caps[ci][2] });
         }
-        return { chains: chains, caps: caps, o: o, fresh: true };
+        return { chains: chains, caps: caps, o: o, fresh: true, gear: gear, gearPhase: Math.random() * 6 };
     }
     function _swayCapPush(p, a, b, r) {
         _swF.subVectors(b, a); var L2 = _swF.lengthSq();
@@ -18500,6 +18619,7 @@ const ThreeRenderer = (function () {
         var sKey = (opts && opts.key) || model;   // THE BLENDER CAPES: a second set of chains on the same rig keeps its own state
         var S = _swStates.get(sKey);
         if (!S) { S = _swayInit(model, opts); _swStates.set(sKey, S); }
+        if (S.gear && S.gear.length) _gearTick(S);   // THE UNIT GEAR (before the world matrices: they carry the parts' new turn)
         if (!(dt > 0)) return;
         dt = Math.min(dt, 1 / 30);
         model.updateWorldMatrix(true, true);   // the body as the clip left it, under wherever the unit stands NOW
@@ -19640,6 +19760,7 @@ const ThreeRenderer = (function () {
         var tmp = new THREE.Box3();
         root.traverse(function (n) {
             if (!n.isMesh || !n.geometry) return;
+            if (n.userData && n.userData.ewGear) return;   // THE UNIT GEAR: wings, halo, cape, held piece are not the body
             if (n.isSkinnedMesh && (typeof n.applyBoneTransform === 'function' || typeof n.boneTransform === 'function')
                 && n.geometry.attributes && n.geometry.attributes.position) {   // R2: r151+ has only applyBoneTransform — an old gate here skipped the skinned path and the fit scale blew up (94×)
                 if (n.skeleton && n.skeleton.update) n.skeleton.update();

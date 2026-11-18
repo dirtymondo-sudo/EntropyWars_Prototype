@@ -2163,3 +2163,19 @@ place, no Blender re-export): the 14 long triangles made degenerate, the RightUp
 (renormalised). New key `Assets/characters/races/gargoyle/male/Meshy_AI_gargoyle_m_Running_v2.glb` (old file kept on R2). Before/after +
 scripts: /mnt/project-files/unit-concepts-20261118/gargoyle_fix/. Way to find such slivers: pose the Running clip in bpy and list faces
 whose longest edge grows > 4x its rest length.
+
+### THE NEW LOOKS + THE UNIT GEAR (2026-11-18, thread "Make new Meshy concepts for 13 units")
+mondo's round of new Meshy concepts -> models for 12 races (all made + Meshy-rigged by Claude: concept nano-banana-pro image-to-image
+from a render of the old model, image-to-3d meshy-t2.5 a-pose, Meshy rigging; files + scripts /mnt/project-files/unit-concepts-20261118/).
+New `..._v2_Running.glb` models (old files kept on R2, named in each def's comment): bigfoot M, valkraye F, necromancer F, atlantean F,
+cosmic wraith M, angel F, dragon M, fairy F, fallen angel F, fortune teller F, krampus M (no sack) + the FIRST ANGEL M (`angel/male`).
+His rules for this round: parts he wants animated apart are never in the body (wings, halos, cape, trident); females with bare midriff
+(Meshy refuses "bikini" / "sexy costume" / "Halloween" in a prompt); A-pose legs apart (a tight skirt joins the legs for the rig).
+THE UNIT GEAR (three-renderer.js, beside THE PROCEDURAL RIGS): a def with `procRig: 'unitGear', gear: {...}` keeps the shared library
+clips and wears loose parts on its bones, put on once on the cached root: `wings` ('angel' | 'bat' | 'dragon' = THE SINGLE WINGS files,
+or `{ url, root, lift }`; `wingLen` part of the body height, `wingTint`), `halo` (url; bobs + turns over the head), `cape` (url, `capeLen`;
+swings on the back), `held` ({ url, len, grip, hand }). The parts move in THE SWAY's per-frame tick (`_gearTick`; the root is flagged
+ewSway) and are skipped by the fit box (userData.ewGear), so the unit's size is the body's. Parts on R2: Assets/characters/gear/
+halos/angel_f_halo.glb + angel_m_halo.glb (cut out of the angel models), wings/fairy_wing_single.glb (cut out of the old fairy),
+held/atlantean_trident.glb, capes/cosmic_wraith_cape.glb (hoodless). Cosmetic, local, nothing relayed (RULE #2: both screens build it).
+Known: the cape is one rigid piece on a hinge (legs can pass through it mid-run); the halo is a flat ring.
