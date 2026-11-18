@@ -86618,6 +86618,17 @@ const ThreeRenderer = (function () {
         g.beginPath(); g.arc(32, 106, 10, 0, Math.PI * 2); g.stroke(); g.fill();
         _hqAwareTexC = new THREE.CanvasTexture(c); return _hqAwareTexC;
     }
+    /* THE SCARED MARK (mondo 11-18: "when they run away, they need some sort of symbol to indicate they are scared"): a blue sweat drop over the head of
+       an NPC on the strike ladder's run (`_run.mode` 'flee', and the stand after it), drawn like the red `!` (the same size on screen, hidden by walls) */
+    var _hqScaredTexC = null;
+    function _hqScaredMarkTex() {
+        if (_hqScaredTexC) return _hqScaredTexC;
+        var c = document.createElement('canvas'); c.width = 96; c.height = 128; var g = c.getContext('2d');
+        g.lineJoin = 'round'; g.lineWidth = 10; g.strokeStyle = '#000'; g.fillStyle = '#3fb4ff';
+        g.beginPath(); g.moveTo(48, 10); g.bezierCurveTo(60, 40, 82, 62, 82, 84); g.arc(48, 84, 34, 0, Math.PI, false); g.bezierCurveTo(14, 62, 36, 40, 48, 10); g.closePath(); g.stroke(); g.fill();
+        g.fillStyle = '#d8f2ff'; g.beginPath(); g.ellipse(36, 82, 7, 13, -0.35, 0, Math.PI * 2); g.fill();
+        _hqScaredTexC = new THREE.CanvasTexture(c); return _hqScaredTexC;
+    }
     function _hqAwareSayTex(text) {
         var c = document.createElement('canvas'), g = c.getContext('2d'), f = '600 34px "IBM Plex Mono", monospace';
         g.font = f; var w = Math.ceil(g.measureText(text).width) + 36; c.width = w; c.height = 60; g = c.getContext('2d');
@@ -86702,8 +86713,12 @@ const ThreeRenderer = (function () {
             H.chars.forEach(function (c) { if (c._awWarned && alert.indexOf(c) < 0) c._awWarned = false; });
         }
         H.chars.forEach(function (c) { if ((st.forced[c.id] || (on && (c._awHold > now || (c._run && c._run.mode === 'chase')))) && !c.away && alert.indexOf(c) < 0) { alert.push(c); if (!st.forced[c.id]) n++; } });   // dev.awareMark: a mark held on for a picture · THE STRIKE LADDER: a Guard that warned, or comes   // dev.awareMark: a mark held on for a picture
-        for (i = st.marks.length - 1; i >= 0; i--) { var mk = st.marks[i]; if (alert.indexOf(mk.ch) < 0 || H.chars.indexOf(mk.ch) < 0) { _hqAwareDrop(H, mk); st.marks.splice(i, 1); H.dirty = true; } }
-        alert.forEach(function (c) { if (st.marks.some(function (m) { return m.ch === c; })) return; var mh = (A && A.markH) || 0.05; st.marks.push({ ch: c, sp: _hqAwareSprite(H, _hqAwareMarkTex(), mh * 0.5, mh) }); H.dirty = true; });
+        /* THE SCARED MARK: whoever runs from a strike (and stands after the run) wears the blue drop in place of the red `!` */
+        var scared = H.chars.filter(function (c) { return c && c._run && (c._run.mode === 'flee' || c._run.mode === 'rest') && !c.away && c.kind !== 'player'; });
+        alert = alert.filter(function (c) { return scared.indexOf(c) < 0; });
+        for (i = st.marks.length - 1; i >= 0; i--) { var mk = st.marks[i]; if ((mk.k === 'scared' ? scared : alert).indexOf(mk.ch) < 0 || H.chars.indexOf(mk.ch) < 0) { _hqAwareDrop(H, mk); st.marks.splice(i, 1); H.dirty = true; } }
+        alert.forEach(function (c) { if (st.marks.some(function (m) { return m.ch === c && m.k !== 'scared'; })) return; var mh = (A && A.markH) || 0.05; st.marks.push({ ch: c, k: 'alert', sp: _hqAwareSprite(H, _hqAwareMarkTex(), mh * 0.5, mh) }); H.dirty = true; });
+        scared.forEach(function (c) { if (st.marks.some(function (m) { return m.ch === c && m.k === 'scared'; })) return; var mh = (A && A.markH) || 0.05; st.marks.push({ ch: c, k: 'scared', sp: _hqAwareSprite(H, _hqScaredMarkTex(), mh * 0.75, mh) }); H.dirty = true; });
         st.n = n;
         if (on !== st.on || (n > 0) !== st.seen) { st.on = on; st.seen = n > 0; if (H.opts && H.opts.onAware) { try { H.opts.onAware({ on: on, seen: n > 0, n: n }); } catch (e) {} } }
     }
@@ -86792,6 +86807,20 @@ const ThreeRenderer = (function () {
         if (ch._resBlk) { ch._resBlk.y = ch.y; ch._resBlk.top = ch.y + 2.6; }
         _hq.dirty = true;
         return moved;
+    }
+    /* THE TALK BOX FACES YOU (mondo 11-18: "when they are running away and i hit them again and they talk, they need to stop running and turn around
+       and face me"): the run stops (the stand of the run: it keeps facing the walker, then walks back to its day once the box is closed and the stand is
+       over); turned at once, since the walk's ticks hold while a box is up */
+    function _hqLadderFace(id) {
+        var H = _hq, ch = _hqLadderChar(id), pl = H && H.player; if (!ch || !pl || typeof HQ_NPC_TEMPERS === 'undefined') return false;
+        var now = performance.now(), L = HQ_NPC_TEMPERS.ladder;
+        if (ch._run && ch._run.mode === 'flee') ch._run = { mode: 'rest', until: now + L.restMs, home: ch._run.home || _hqLadderHome(ch), stuck: 0 };
+        ch.moving = false; ch._runFast = false;
+        ch.targetYaw = ch.yaw = Math.atan2(pl.x - ch.x, pl.z - ch.z);
+        if (ch.entry && ch.entry.model) ch.entry.model.rotation.y = ch.yaw;
+        if (H.aware) H.aware.next = 0;
+        H.dirty = true;
+        return true;
     }
     function _hqLadderFree(ch) {
         var H = _hq; ch._run = null; ch._runFast = false; ch.moving = false;
@@ -99774,6 +99803,7 @@ const ThreeRenderer = (function () {
             else r.ask = now + HQ_NPC_TEMPERS.mug.againMs;
             if (_hq.aware) _hq.aware.next = 0; _hq.dirty = true; return true;
         },
+        npcFace: function (id) { try { return _hq ? _hqLadderFace(id) : false; } catch (e) { console.warn('[HQ] npcFace', e); return false; } },   // the Talk box: it stops and faces the walker
         npcStruck: function (id, rung) { try { return _hq ? _hqLadderStruck(id, rung) : false; } catch (e) { console.warn('[HQ] npcStruck', e); return false; } },
         encounterEvent: function (id, gesture) {
             var H = _hq, pl = H && H.player, ch = H ? _hqLadderChar(id) : null; if (!ch || !pl) return null;

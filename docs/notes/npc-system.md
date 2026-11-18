@@ -425,6 +425,14 @@ Story walk only (the encounter's own launch and commit). Plan: `docs/plans/npc-e
   needs `gone: true` on its row (the arrest) or its HP (spared).
 - **Nothing on screen:** no nameplate or aim prompt shows a hurt NPC's HP (a UI change: mock-up and mondo's OK first). Not run in a browser (not visual).
 
+## THE RUNNER ON THE WALK: SCARED + FACES YOU (2026-11-18, mondo: "when they run away, they need some sort of symbol to indicate they are scared, and then when they are running away and i hit them again and they talk, they need to stop running and turn around and face me")
+
+- **The scared mark:** an NPC on the strike ladder's run (`_run.mode` 'flee', and the stand after it) wears a blue sweat drop over its head in place of
+  the red `!` (three-renderer.js `_hqScaredMarkTex`, the marks in `_hqTickAware`, `k: 'scared'`; the same size on screen as the `!`).
+- **The Talk box faces you:** map.js `_hqLadderTalk` calls `ThreeRenderer.hq.npcFace(id)` (three-renderer.js `_hqLadderFace`): the run becomes its stand
+  (`mode: 'rest'`), it stops, turns to the walker at once (the walk's ticks hold while a box is up, so before it ran in place), and walks back to its day after.
+- Proof: Disaster City, a resident struck once (runs, drop over its head), struck again (stops, faces, the box).
+
 ## THE LOSING NPC (NPC encounters step 6b, 2026-11-18; STEP-6A.md, mondo: "OK sounds good"; REPLACES "natives never escape")
 
 - **When:** a hit that leaves an NPC alive at or under 30 % of its max HP (`HQ_NPC_TEMPERS.losing.giveUpAt`). It decides ONCE, by its temper
