@@ -2972,3 +2972,10 @@ from the copies it left alone. The scan was `traverseVisible`, and a prop chunk 
 count moved every time a chunk went out or came back and the pass re-ran for nothing. `_hqInstScan` now walks a culled chunk as if
 shown (hidden pieces are still skipped), so the count moves only when a file lands or a copy is handed back. The "Bundle spikes"
 line in the same F3 showed six 6 ms checks with 0 re-records: the bundle side is quiet. Off: `window.EW_HQ_INST_SCAN_VISIBLE = true`.
+
+## THE RIDER'S GRID (2026-11-18, spikes thread)
+His 11:51 F3: "walker: ride" 6-8 ms on every slow frame (on the board: `_hqTickRide` steps at 120 Hz and each step asks the floor several
+times, each ask reading every blocker of the city). While `_hqTickWalker` runs (`_hqWalkGridOn`; the body is `_hqTickWalkerIn`) the
+officer's own asks read THE NAV GRID over the whole blocker list, in its own slot (`_hqNavGrid(L, 'wgrid')`): same answers (the people in
+the list are seen moving and read every ask; a list that grows or is replaced is laid again). Off `EW_HQ_WALK_GRID_OFF`. The lens's
+"Inside the ticks" gains the static batch's steps (batch: check / stack prep / scan step / build step) for its 17-30 ms frames.
