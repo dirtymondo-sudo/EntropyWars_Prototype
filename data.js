@@ -101100,13 +101100,14 @@ const HQ_CITY_LOOKS = {
            sci-fi and chrome and neon and metal and glass ... cyberpunk 2047 or 2001 a space odyssey retro futurism ... futuristic
            version of Tokyo"): every wall sheet of the old city (brick, plaster, stucco, concrete, wood, corrugated iron, roof tiles,
            marble) is REPLACED, one finish a building, all four sheets from the Urban Decay pack already on R2:
-           chrome (polished steel panels), white (2001's white panels), glass (a dark glass curtain wall), black (black steel). */
+           chrome (polished steel panels), white (2001's white panels), glass (a blue glass curtain wall), steel (brushed blue steel), black (black steel). */
         wallRe: /^(urban:(Brick|PlasterWall|Concrete|Wood|MetalCorrugated|MetalRoofTiles|MetalShutter|TileMarble|TileSubway|MetalTruss)|bricks_|marble$|aluminium$)/,
         finishes: [
-            { id: 'chrome', key: 'urban:MetalPanel2a',        tint: 0xd4deee, gain: 1.9, shine: 90, trim: 0x8a94a6 },
-            { id: 'white',  key: 'urban:MetalPanelPainted1a', tint: 0xf4f4f8, gain: 2.0, shine: 40, trim: 0xc8ccd6 },
-            { id: 'glass',  key: 'urban:GlassGeneric3a',      tint: 0x7088c8, gain: 1.5, shine: 120, trim: 0x30384c, glow: 0.1 },
-            { id: 'black',  key: 'urban:MetalPanel1a',        tint: 0x4a5060, gain: 1.0, shine: 70, trim: 0x20242c },
+            { id: 'chrome', key: 'urban:MetalPanel2a',        tint: 0xe4ecfa, gain: 2.3, shine: 110, trim: 0x8a94a6 },
+            { id: 'white',  key: 'urban:MetalPanelPainted1a', tint: 0xf4f4f8, gain: 2.1, shine: 40, trim: 0xc8ccd6 },
+            { id: 'glass',  key: 'urban:GlassGeneric3a',      tint: 0x86b4f0, gain: 2.4, shine: 120, trim: 0x30384c, glow: 0.2 },
+            { id: 'steel',  key: 'urban:MetalGeneric1a',      tint: 0xb8d0ec, gain: 1.9, shine: 90, trim: 0x6a7890 },
+            { id: 'black',  key: 'urban:MetalPanel1a',        tint: 0x5a6274, gain: 1.1, shine: 70, trim: 0x20242c },
         ],
         bare: { keep: 0.3, cool: [0.86, 0.92, 1.08] },                                // a sheetless part (frames, trims, awnings): 70 % of its colour goes to steel grey, then cooled
         inks: ['#ff3ad8', '#35e0ff', '#ffe04a', '#ff6ad8', '#7cf0ff', '#9cff5a'],     // the neon inks (three-renderer.js _HQ_NEON_INKS, the old Cyberpunk room's)
@@ -101115,7 +101116,7 @@ const HQ_CITY_LOOKS = {
         trim: { h: 0.16, glow: 1.0, band: 3.5 },                                      // the neon lines: round the roof, down the four corners, one round every storey (`band` m)
         fascia: { y: 2.75, h: 0.55, glow: 0.9 },                                      // the lit strip over the ground floor's front
         board: { minW: 4, h: 4.0, post: 1.2, glow: 0.95, frame: 0x16141e },           // the roof billboard (a rectangle on two posts)
-        blade: { cell: 1.0, out: 0.75, y0: 3.3, glow: 1.0 },                          // the blade sign: one lit square a character, stacked down the front's corner
+        blade: { cell: 1.0, out: 0.75, y0: 3.3, yLow: 1.1, glow: 1.0 },                          // the blade sign: one lit square a character, stacked down the front's corner
         holo: { minTop: 6.5, h: 5.0, lift: 7.5, glow: 1.0 },                          // the hologram: a word of light standing over a tall roof (no board, seen from both sides)
         /* the old Cyberpunk room's own sign words (three-renderer.js _HQ_NEON_NAMES + _NR_BUILDERS.cyberpunk): nothing new is named here */
         names: ['NOODLE', 'RAMEN 24H', 'PACHINKO', 'HOLO', 'BAR', 'NO VACANCY', 'ARCADE', 'HOTEL', 'SYNTH', 'IMPLANTS', 'LEASE 2047', 'RETINA', 'ATM · CRYPTO', 'TENANTS'],
@@ -101147,9 +101148,10 @@ function hqCityLookTerrain(roomId, base, lookId) {
         nRow++;
         const h = hqHash(String(row.id || row.x + ',' + row.z)) >>> 0;
         const F = L.finishes[h % L.finishes.length], glassTint = L.glass.tints[(h >>> 2) % L.glass.tints.length];
-        let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, top = 0;
+        let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, top = 0, topAny = 0;
         const parts = row.parts.map((p, i) => {
             const key = String(p.key || '');
+            if (p.s === 'box' && p.size && p.size[0] >= 3 && p.size[2] >= 3 && !p.ry) topAny = Math.max(topAny, (p.p[1] || 0) + p.size[1]);   // any wide slab: a roof counts
             if (p.s === 'box' && p.size && p.size[0] >= 3 && p.size[2] >= 3 && p.size[1] >= 2.4 && !p.ry) {   // the building's masses: its plan and its top
                 x0 = Math.min(x0, p.p[0] - p.size[0] / 2); x1 = Math.max(x1, p.p[0] + p.size[0] / 2);
                 z0 = Math.min(z0, p.p[2] - p.size[2] / 2); z1 = Math.max(z1, p.p[2] + p.size[2] / 2);
@@ -101177,8 +101179,8 @@ function hqCityLookTerrain(roomId, base, lookId) {
             return o;
         });
         const B = builds[row.id];
-        if (B) {   // the plan is the footprint row's own (the arch row stands on it, same centre, same turn); the top is the tallest mass, at least its storeys
-            x0 = -B.w / 2; x1 = B.w / 2; z0 = -B.d / 2; z1 = B.d / 2; top = Math.max(top, (B.storeys || 1) * 3.5);
+        if (B) {   // the plan is the footprint row's own (the arch row stands on it, same centre, same turn); the top is its tallest mass or slab (its storeys only when the row holds none: a line never hangs in the air over a roof)
+            x0 = -B.w / 2; x1 = B.w / 2; z0 = -B.d / 2; z1 = B.d / 2; top = Math.max(top, topAny) || (B.storeys || 1) * 3.5;
         }
         if (B && top >= 3 && x1 - x0 >= 4 && z1 - z0 >= 3) {
             const inkS = L.inks[h % L.inks.length], ink = hx(inkS), ink2 = L.inks[(h + 3) % L.inks.length], w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, t = L.trim.h, g = L.trim.glow;
@@ -101191,9 +101193,9 @@ function hqCityLookTerrain(roomId, base, lookId) {
             /* the lit fascia over the ground floor's front (+Z) */
             parts.push({ s: 'box', p: [cx, L.fascia.y, z1 + 0.09], size: [w * 0.94, L.fascia.h, 0.12], tint: glassTint, glow: L.fascia.glow });
             /* the blade sign: lit squares stacked down the front's corner, one character each, read from both sides of the street */
-            const word = Array.from(L.blades[(h >>> 5) % L.blades.length]), cell = L.blade.cell, nC = Math.min(word.length, Math.max(1, Math.floor((top - L.blade.y0) / cell)));
-            if (nC >= 1 && top >= L.blade.y0 + cell) {
-                const bx = (h & 16) ? x1 - 0.5 : x0 + 0.5, bz = z1 + L.blade.out, yTop = Math.min(top - 0.1, L.blade.y0 + nC * cell);
+            const word = Array.from(L.blades[(h >>> 5) % L.blades.length]), cell = L.blade.cell, by0 = (top < 5.5) ? L.blade.yLow : L.blade.y0, nC = Math.min(word.length, Math.floor((top - by0) / cell));
+            if (nC >= 2) {
+                const bx = (h & 16) ? x1 - 0.5 : x0 + 0.5, bz = z1 + L.blade.out, yTop = Math.min(top - 0.1, by0 + nC * cell);
                 parts.push({ s: 'box', p: [bx, yTop - nC * cell - 0.1, bz], size: [0.14, nC * cell + 0.2, cell + 0.14], tint: L.board.frame },
                            { s: 'box', p: [bx, yTop - 0.35, z1 + L.blade.out / 2 - cell / 4], size: [0.1, 0.1, L.blade.out], tint: L.board.frame });
                 for (let c = 0; c < nC; c++) {
@@ -101215,7 +101217,8 @@ function hqCityLookTerrain(roomId, base, lookId) {
                 if (top >= L.holo.minTop) {
                     /* the hologram: a word of light standing in the air over the roof, no board behind it */
                     const hw = L.holos[(h >>> 7) % L.holos.length], hl = Array.from(hw).length, hh = L.holo.h, hwid = Math.min(hh * Math.max(1, hl * 0.75), 16), hk = 'txt:' + hw + '|' + inkS + '||' + (hwid / hh).toFixed(2);
-                    parts.push({ s: 'quad', p: [cx, top + L.holo.lift, cz], size: [hwid, hh], key: hk, uv: 'fit', kind: 'over', ds: true, glow: L.holo.glow });
+                    parts.push({ s: 'quad', p: [cx, top + L.holo.lift, cz + 0.05], size: [hwid, hh], key: hk, uv: 'fit', kind: 'over', glow: L.holo.glow },          // two faces, so it never reads mirrored
+                               { s: 'quad', p: [cx, top + L.holo.lift, cz - 0.05], ry: 180, size: [hwid, hh], key: hk, uv: 'fit', kind: 'over', glow: L.holo.glow });
                     nHolo++;
                 }
             }
