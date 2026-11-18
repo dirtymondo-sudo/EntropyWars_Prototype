@@ -134,6 +134,24 @@ make that)". 8. Yes: Entertainment.
 - Counted: 125 rows re-dressed, 60 signs relit, 111 glass parts lit, 22 billboards.
 - To give a district the look: add its box to `HQ_CITY_LOOKS.future.boxes`.
 
+## 10. PASS 2 (2026-11-18, after mondo saw the pilot)
+
+mondo: "almost all of the brick building textures need to be replaced, needs to be futuristic and sci-fi and chrome and neon and
+metal and glass and like cyberpunk 2047 or 2001 a space odyssey retro futurism. this isn't nearly enough yet, at all. needs to
+look like futuristic version of Tokyo."
+- The tint rule is gone. Every old wall sheet (brick, plaster, stucco, concrete, wood, corrugated iron, roof tiles, marble,
+  truss: `wallRe`) is REPLACED by the building's finish, one of five by the row's hash (`finishes`): chrome `MetalPanel2a`, white
+  `MetalPanelPainted1a`, blue glass `GlassGeneric3a`, brushed steel `MetalGeneric1a`, black steel `MetalPanel1a` (all Urban Decay
+  sheets already on R2). Sheetless parts go steel grey. 2,787 parts refinished in Entertainment.
+- New part field `shine` (three-renderer.js, the arch build): a polished part's shininess and a cool highlight.
+- Per building: a neon line round the roof, round every storey and down the four corners; a lit fascia over the ground floor; a
+  roof billboard (29); a blade sign of stacked lit kana squares (24); a hologram word over a roof 6.5 m or taller (14, two faces
+  so it never reads mirrored). Entertainment's lamps are cyan.
+- A building's plan and height are measured on its own wall parts (a footprint row can stand turned or off centre from its arch
+  row: the first cut drew cages in the air beside buildings).
+- Pictures: `pass2_*.jpg`. Known limits: the engine has no reflections, so chrome reads as bright steel; the buildings' shapes,
+  the ground and the palms are the old city's; long blank side walls stay blank.
+
 ## Pictures in this folder
 
 `today_day.jpg` (the city today, above the main road), `test_neon_switch_above.jpg` + `test_neon_switch_street.jpg` (the same
