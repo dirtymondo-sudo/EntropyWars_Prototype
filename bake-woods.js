@@ -117,7 +117,7 @@ function door(id, plotId, wall, o) { const a = spur(plotId, wall); doors.push(Ob
 door('forest', 'P02-05', 's', { way: 'trail', label: 'THE FAIRY FOREST', sub: 'THE HOLLOW TREE · BACK · ROOM 420', action: { room: 'site_prebuilt_fairy_forest', at: 'woods' },
     desc: 'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.' });
 /* the trail west to Camelot is the LINK `woods_camelot` (data.js DOOR_HQ.links, a two-way door at w, z 3.5); the HQ Stair is the LINK `woods_stair`: only the path is cut here */
-{ const z = spur('P00-03', 'w'); if (z !== 3.5) throw new Error('the Camelot trail moved to z ' + z + ': move the woods_camelot link end in data.js too'); }
+{ const z = spur('P00-03', 'w'); if (z !== 3.5) throw new Error('the Came A Lot trail moved to z ' + z + ': move the woods_camelot link end in data.js too'); }
 door('estate', 'P01-05', 's', { way: 'trail', label: 'THE ESTATE · THE CORN FIELDS', sub: 'THE FENCE LINE · THE GATE', action: { room: 'site_prebuilt_skinwalker_estate', at: 'woods' },
     desc: 'A fence, and a gate in it. The corn starts on the other side.' });
 /* the storm drain's three ways are LINKS now, two-way (data.js DOOR_HQ.links; the tool writes their Woods ends at the end of the bake): `streets_drain`
@@ -348,11 +348,11 @@ const STAND = [
              BUILT 2026-11-17, room site_ow_r4). L1 comes out on the road's south verge; the trail crosses it and goes on north to the Redwood Trail */
           '-16,0:N': { room: 'site_ow_r4', label: 'THE OLD ROAD', sub: 'THE TRAIL NORTH · ACROSS THE OLD ROAD', desc: 'The trail comes out of the trees onto a wide old road, and goes on north across it under much bigger trees.' },
           /* THE STAIR's north side (One World phase 4.1, 2026-11-17): the Old Road runs past the top of the Stair (the design's fork R4b) */
-          'P02-04:N': { room: 'site_ow_r4', label: 'THE OLD ROAD', sub: 'THE STAIR · UP TO THE OLD ROAD', desc: 'At the top of the Stair the trees open on a wide old road: west to Camelot, east to the Vatican.' },
+          'P02-04:N': { room: 'site_ow_r4', label: 'THE OLD ROAD', sub: 'THE STAIR · UP TO THE OLD ROAD', desc: 'At the top of the Stair the trees open on a wide old road: west to Came A Lot, east to the Vatican.' },
           /* the wild link L2 starts on Deep woods, west's south side: the Ritual Ground's room */
           'P00-04:S': { room: R_RIT, label: 'THE RITUAL GROUND', sub: 'THE TRAIL SOUTH-WEST · THE FIRE', desc: 'A narrow path, walked often and by many feet, all going the same way.' },
           /* the wild link L4 comes in on Deep woods, west, from the north: its own route room (bake-route.js L4); the link woods_camelot is on L4's west end now */
-          'P00-04:N': { room: 'site_ow_l4', label: 'THE TRAIL WEST · CAMELOT', sub: 'THE TRAIL · WEST TO CAMELOT', desc: 'The path goes west under the trees towards the castle.' },
+          'P00-04:N': { room: 'site_ow_l4', label: 'THE TRAIL WEST · CAME A LOT', sub: 'THE TRAIL · WEST TO CAME A LOT', desc: 'The path goes west under the trees towards the castle.' },
           /* ONE WORLD PHASE 4.2 (2026-11-17, the south routes thread): the Valley Road (route R6, `node bake-route.js R6`) starts on the Tunnel Way's south side */
           'P05-05:S': { room: 'site_ow_r6', k: 5, label: 'THE VALLEY ROAD', sub: 'THE PATH SOUTH · THE ROAD TO THE CITY', desc: 'The trees thin out. A dirt road runs south and east down a green valley.' },
       },
@@ -381,7 +381,7 @@ const STAND = [
           '-17,2:N': { room: R_CLEAR, label: 'THE CLEARING', sub: 'THE PATH NORTH · AWAY FROM THE FIRE', desc: 'A narrow path out between the trees, away from the fire.' },
           '-21,10:S': { room: R_HOUSE, label: 'THE ESTATE · THE IRON GATE', sub: 'THE PATH SOUTH · THE GATE', desc: 'The path ends at an iron gate in a wall. There is a house behind it.' },
           /* the wild link L7 (Camelot's: it stands in Camelot's Forest room) meets the Mound's west side */
-          'P03-00:W': { room: R_CAMW, label: 'CAMELOT · THE FOREST', sub: 'THE PATH WEST · UNDER THE OLD OAKS', desc: 'The path goes west into an older forest.' },
+          'P03-00:W': { room: R_CAMW, label: 'CAME A LOT · THE FOREST', sub: 'THE PATH WEST · UNDER THE OLD OAKS', desc: 'The path goes west into an older forest.' },
       },
       /* the two link ends whose east side is a joint now (the Stage, L2): the members' tunnel on the lake's north shore, Room 333's circle in the ring's hollow middle */
       ends: { grove_lodge: { plot: 'P05-00', side: 'N' }, woods_ritual: { plot: 'P05-01', side: 'W' } },

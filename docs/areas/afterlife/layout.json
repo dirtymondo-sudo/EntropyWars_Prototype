@@ -1110,9 +1110,9 @@
      "wall": "w",
      "sy": 25,
      "room": "site_ow_r4",
-     "name": "The Old Road (route R4): the west gate, to Camelot and the Woods",
+     "name": "The Old Road (route R4): the west gate, to Came A Lot and the Woods",
      "label": "THE OLD ROAD",
-     "sub": "THE WEST GATE · TO CAMELOT AND THE WOODS"
+     "sub": "THE WEST GATE · TO CAME A LOT AND THE WOODS"
     }
    ]
   },
@@ -1265,7 +1265,7 @@
      "name": "The Stair in the Sky",
      "d": "T",
      "level": 2,
-     "what": "the foot of the stair (from the telescope); the Sky Bridge to Camelot",
+     "what": "the foot of the stair (from the telescope); the Sky Bridge to Came A Lot",
      "from": "Stairway: THE STAIR THAT ONLY GOES UP"
     },
     {
@@ -1519,7 +1519,7 @@
      "kind": "link",
      "wall": "w",
      "sy": 53,
-     "name": "Camelot: the Castle in the Sky (the Sky Bridge)"
+     "name": "Came A Lot: the Castle in the Sky (the Sky Bridge)"
     },
     {
      "id": "link_heaven_olympus",

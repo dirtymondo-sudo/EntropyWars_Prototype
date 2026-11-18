@@ -1,10 +1,10 @@
 {
-  "about": "ROUTE R4, THE OLD ROAD (One World phase 4.1, the owner's north routes thread, 2026-11-17): the highway from Camelot's East Row, north through the forest past the Woods to the Vatican's west gate. ONE room, 26 plots (11 x 5 box, the longest straight row 9 plots: inside the room-splitting rule). It runs east on the line between rows -2 and -1, drops into the middle of row -1 past the Redwood Trail's last plot (-16,-2), turns north on the line x -14 and east again into the Vatican's west gate (y -3.92, the gate beside the west tower). THE FORK (the design's R4b): two short footpaths cross the road from the Woods: at -15.46 the trail from the wild link L1 (the Clearing, south) to the Redwood Trail's Creek, lower (north), and at -13.54 the top of the Clearing's Stair. PLACES (ow-places.js, every name an idea of Claude's): the design page gives 'a crossroads inn and standing stones between Camelot and the Vatican': the inn stands at the fork, the stones half way to Camelot; the rest are the kit's pick. Four plots carry no place, the road fills them: the castle end (-23,-2, one plot wide), the drop into row -1 (-17,-1) and the fork (-16,-1, -15,-1).",
+  "about": "ROUTE R4, THE OLD ROAD (One World phase 4.1, the owner's north routes thread, 2026-11-17): the highway from Came A Lot's East Row, north through the forest past the Woods to the Vatican's west gate. ONE room, 26 plots (11 x 5 box, the longest straight row 9 plots: inside the room-splitting rule). It runs east on the line between rows -2 and -1, drops into the middle of row -1 past the Redwood Trail's last plot (-16,-2), turns north on the line x -14 and east again into the Vatican's west gate (y -3.92, the gate beside the west tower). THE FORK (the design's R4b): two short footpaths cross the road from the Woods: at -15.46 the trail from the wild link L1 (the Clearing, south) to the Redwood Trail's Creek, lower (north), and at -13.54 the top of the Clearing's Stair. PLACES (ow-places.js, every name an idea of Claude's): the design page gives 'a crossroads inn and standing stones between Came A Lot and the Vatican': the inn stands at the fork, the stones half way to Came A Lot; the rest are the kit's pick. Four plots carry no place, the road fills them: the castle end (-23,-2, one plot wide), the drop into row -1 (-17,-1) and the fork (-16,-1, -15,-1).",
   "hub": "kingdom",
   "room": "site_ow_r4",
   "part": "ow_r4",
   "label": "THE OLD ROAD",
-  "sub": "THE HIGHWAY · CAMELOT TO THE VATICAN · 26 PLOTS",
+  "sub": "THE HIGHWAY · CAME A LOT TO THE VATICAN · 26 PLOTS",
   "line": [
     [
       -24.1,
@@ -84,7 +84,7 @@
   "ends": {
     "ow_v_m23_m2": {
       "room": "site_prebuilt_camelot_kingdom",
-      "label": "CAMELOT KINGDOM",
+      "label": "CAME A LOT KINGDOM",
       "sub": "THE EAST ROW · INTO THE TOWN",
       "desc": "The road narrows between the first houses of the town."
     },

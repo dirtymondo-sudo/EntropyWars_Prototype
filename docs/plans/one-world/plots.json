@@ -601,7 +601,7 @@
         {"n":"The Tunnel Way","x":-7,"y":2,"was":"P05-05"},
         {"n":"The Storm Drain","x":-6,"y":1,"was":"P05-03"}
       ]},
-    {"id":"cam","hub":"kingdom","zone":"Camelot Kingdom","name":"Castle + Village","state":"moves","layer":"surface","x":-29,"y":-3,"w":6,"h":6,"shape":"block","count":36,"today":{"room":"site_prebuilt_camelot_kingdom","districts":["K","T"],"at":[1,1]},
+    {"id":"cam","hub":"kingdom","zone":"Came A Lot Kingdom","name":"Castle + Village","state":"moves","layer":"surface","x":-29,"y":-3,"w":6,"h":6,"shape":"block","count":36,"today":{"room":"site_prebuilt_camelot_kingdom","districts":["K","T"],"at":[1,1]},
       "plots": [
         {"n":"The North-West Tower","x":-29,"y":-3,"was":"P01-01"},
         {"n":"North Row, west","x":-28,"y":-3,"was":"P02-01"},
@@ -640,7 +640,7 @@
         {"n":"South Row, east","x":-25,"y":2,"was":"P05-06"},
         {"n":"The South-East Tower","x":-24,"y":2,"was":"P06-06"}
       ]},
-    {"id":"camN","hub":"kingdom","zone":"Camelot Kingdom","name":"The Snowy Pines","state":"moves","layer":"surface","x":-26,"y":-10,"w":2,"h":7,"shape":"path","count":8,"today":{"room":"site_prebuilt_camelot_kingdom","districts":["N"]},
+    {"id":"camN","hub":"kingdom","zone":"Came A Lot Kingdom","name":"The Snowy Pines","state":"moves","layer":"surface","x":-26,"y":-10,"w":2,"h":7,"shape":"path","count":8,"today":{"room":"site_prebuilt_camelot_kingdom","districts":["N"]},
       "plots": [
         {"n":"The Snowfield","x":-26,"y":-4,"was":"P04-00"},
         {"n":"The Sleigh Road","x":-26,"y":-5,"was":"P03-00"},
@@ -651,7 +651,7 @@
         {"n":"Snowy pines, north-west","x":-25,"y":-9,"was":"P00-00"},
         {"n":"Snowy pines, north-east","x":-25,"y":-10,"was":"P07-00"}
       ]},
-    {"id":"camL","hub":"kingdom","zone":"Camelot Kingdom","name":"The Looking-Glass Garden","state":"moves","layer":"surface","x":-33,"y":-1,"w":4,"h":3,"shape":"path","count":6,"today":{"room":"site_prebuilt_camelot_kingdom","districts":["L"]},
+    {"id":"camL","hub":"kingdom","zone":"Came A Lot Kingdom","name":"The Looking-Glass Garden","state":"moves","layer":"surface","x":-33,"y":-1,"w":4,"h":3,"shape":"path","count":6,"today":{"room":"site_prebuilt_camelot_kingdom","districts":["L"]},
       "plots": [
         {"n":"The Lawn","x":-30,"y":0,"was":"P00-02"},
         {"n":"The Chessboard","x":-31,"y":0,"was":"P00-03"},
@@ -660,7 +660,7 @@
         {"n":"The Hedges, south","x":-31,"y":1,"was":"P00-06"},
         {"n":"The Tea Party","x":-33,"y":0,"was":"P00-05"}
       ]},
-    {"id":"camF","hub":"kingdom","zone":"Camelot Kingdom","name":"The Fairy Forest","state":"moves","layer":"surface","x":-23,"y":-1,"w":4,"h":3,"shape":"path","count":6,"today":{"room":"site_prebuilt_camelot_kingdom","districts":["F"]},
+    {"id":"camF","hub":"kingdom","zone":"Came A Lot Kingdom","name":"The Fairy Forest","state":"moves","layer":"surface","x":-23,"y":-1,"w":4,"h":3,"shape":"path","count":6,"today":{"room":"site_prebuilt_camelot_kingdom","districts":["F"]},
       "plots": [
         {"n":"The Knoll, north","x":-23,"y":-1,"was":"P07-01"},
         {"n":"The Pond","x":-23,"y":0,"was":"P07-02"},
@@ -669,7 +669,7 @@
         {"n":"The Woods Trail","x":-21,"y":0,"was":"P07-04"},
         {"n":"The Spring","x":-20,"y":0,"was":"P07-05"}
       ]},
-    {"id":"camW","hub":"kingdom","zone":"Camelot Kingdom","name":"The Forest","state":"moves","layer":"surface","x":-26,"y":3,"w":4,"h":5,"shape":"path","count":8,"today":{"room":"site_prebuilt_camelot_kingdom","districts":["W"]},
+    {"id":"camW","hub":"kingdom","zone":"Came A Lot Kingdom","name":"The Forest","state":"moves","layer":"surface","x":-26,"y":3,"w":4,"h":5,"shape":"path","count":8,"today":{"room":"site_prebuilt_camelot_kingdom","districts":["W"]},
       "plots": [
         {"n":"The Crown's Road","x":-26,"y":3,"was":"P03-07"},
         {"n":"The Forest Road","x":-26,"y":4,"was":"P04-07"},
@@ -941,7 +941,7 @@
         {"plot":[-10,-13],"side":"w","district":"mtn","at":[-11,-13]},
         {"plot":[-11,-12],"side":"n","district":"mtn","at":[-11,-13]}
       ]},
-    {"id":"R4","name":"Old Road","look":"highway","wide":2,"from":"cam","to":"vat","onTheWay":"a crossroads inn and standing stones between Camelot and the Vatican","legs":[[-23,-2],[-18,-2],[-15,-2],[-15,-5],[-14,-5]],"note":"the fork to the Woods (R4b on the sheet) lies inside this band: the Old Road passes the Clearing’s Stair",
+    {"id":"R4","name":"Old Road","look":"highway","wide":2,"from":"cam","to":"vat","onTheWay":"a crossroads inn and standing stones between Came A Lot and the Vatican","legs":[[-23,-2],[-18,-2],[-15,-2],[-15,-5],[-14,-5]],"note":"the fork to the Woods (R4b on the sheet) lies inside this band: the Old Road passes the Clearing’s Stair",
       "plots": [
         [-23,-2],
         [-22,-2],
@@ -1206,7 +1206,7 @@
         {"plot":[15,28],"side":"s","district":"giza","at":[15,29]},
         {"plot":[16,28],"side":"s","district":"giza","at":[16,29]}
       ]},
-    {"id":"R12","name":"Stone Path","look":"trail","wide":2,"from":"stone","to":"cam","onTheWay":"from Camelot’s north woods up onto the plain to the stones","legs":[[-30,-6],[-30,-5],[-29,-5]],
+    {"id":"R12","name":"Stone Path","look":"trail","wide":2,"from":"stone","to":"cam","onTheWay":"from Came A Lot’s north woods up onto the plain to the stones","legs":[[-30,-6],[-30,-5],[-29,-5]],
       "plots": [
         [-30,-6],
         [-29,-6],
@@ -1390,7 +1390,7 @@
         {"plot":[-17,-10],"side":"s","district":"woodsT","at":[-17,-9]},
         {"plot":[-17,-14],"side":"e","district":"mtnP","at":[-16,-14]}
       ]},
-    {"id":"L4","zone":"Camelot Kingdom","hub":"kingdom","look":"trail","wide":1,"from":"camF","to":"woods","fromPlot":[-20,0],"toPlot":[-17,1],"legs":[[-20,0],[-17,0],[-17,1]],
+    {"id":"L4","zone":"Came A Lot Kingdom","hub":"kingdom","look":"trail","wide":1,"from":"camF","to":"woods","fromPlot":[-20,0],"toPlot":[-17,1],"legs":[[-20,0],[-17,0],[-17,1]],
       "plots": [
         [-19,0],
         [-18,0],
@@ -1409,7 +1409,7 @@
         {"plot":[-21,9],"side":"n","district":"woodsG","at":[-21,8]},
         {"plot":[-21,10],"side":"s","district":"estH","at":[-21,11]}
       ]},
-    {"id":"L6","zone":"Camelot Kingdom","hub":"kingdom","look":"trail","wide":1,"from":"camN","to":"mtnK","fromPlot":[-25,-10],"toPlot":[-22,-16],"legs":[[-25,-10],[-25,-16],[-22,-16]],
+    {"id":"L6","zone":"Came A Lot Kingdom","hub":"kingdom","look":"trail","wide":1,"from":"camN","to":"mtnK","fromPlot":[-25,-10],"toPlot":[-22,-16],"legs":[[-25,-10],[-25,-16],[-22,-16]],
       "plots": [
         [-25,-11],
         [-25,-12],
@@ -1424,7 +1424,7 @@
         {"plot":[-25,-11],"side":"s","district":"camN","at":[-25,-10]},
         {"plot":[-23,-16],"side":"e","district":"mtnK","at":[-22,-16]}
       ]},
-    {"id":"L7","zone":"Camelot Kingdom","hub":"kingdom","look":"trail","wide":1,"from":"camW","to":"woodsG","fromPlot":[-23,5],"toPlot":[-22,6],"legs":[[-23,5],[-23,6],[-22,6]],
+    {"id":"L7","zone":"Came A Lot Kingdom","hub":"kingdom","look":"trail","wide":1,"from":"camW","to":"woodsG","fromPlot":[-23,5],"toPlot":[-22,6],"legs":[[-23,5],[-23,6],[-22,6]],
       "plots": [
         [-23,6]
       ],
@@ -2024,5 +2024,5 @@
     {"name":"the vortex","sheet":[36.8,1.5],"up":"tri","down":"deepA"}
   ]},
   "beyond": {"space":[{"world":"THE MOON","hub":"space","landings":[{"name":"The Mare","plots":7},{"name":"The Crater","plots":9},{"name":"The Far Side","plots":4}]},{"world":"MARS","hub":"space","landings":[{"name":"Cydonia","plots":10},{"name":"The Canyon","plots":5},{"name":"The Rover Bay","plots":5}]},{"world":"SATURN","hub":"space","landings":[{"name":"The Hexagon","plots":12},{"name":"The Ring Shard","plots":4}]},{"world":"THE SINGULARITY","hub":"space","landings":[{"name":"The Accretion Rim","plots":12},{"name":"The Drop","plots":4}]}],"heaven":{"hub":"divine","room":"site_prebuilt_heaven_plots","up":{"from":"mtn","plot":"Grand Stair","name":"The Stairway, up from Olympus"},"districts":[{"name":"The Stairway","plots":8},{"name":"The Gate","plots":4},{"name":"The Cloud Fields","plots":4},{"name":"The City","plots":4}],"note":"cloud districts apart above the Vatican, cloud paths between"},"astral":{"hub":"astral","room":"site_prebuilt_lookingglass_realm","islands":[{"name":"The Sea of Possibility","plots":16},{"name":"The Library","plots":10},{"name":"The Nightmare","plots":10}],"crossings":2},"internet":{"plots":36,"state":"new","way":"the D.U.M.B.’s server rooms"},"colosseum":{"plots":9,"state":"new","district":"col"},"spaceship":{"way":"the Collar, Antarctica (district H)","note":"the Spaceship stays handmade; it flies between the landings"}},
-  "scenery": {"note":"not plots: seen past the edges","rivers":{"tiber":[[-4,-10],[-5,-7],[-5.4,-3.4],[-4.4,1],[-5.6,6],[-7.4,10],[-9.2,13.4],[-10.4,16]],"canal":[[3,-8],[4,-6],[5,-2.4],[5.4,1.5],[7.5,4.8],[10,6.8],[12.6,7.2]],"nile":[[19.4,27.6],[18.4,30],[18.6,34],[20,38.6]],"west":[[-19,-13],[-21,-9],[-24,-6.5],[-27.5,-5],[-30,-3.5],[-32.6,-0.6]]},"places":[{"name":"vineyards","x":-13,"y":-1.4,"kind":"farm","idea":true},{"name":"monastery","x":-15,"y":-11,"kind":"monastery","idea":true},{"name":"market town","x":-17,"y":-2.4,"kind":"town","idea":true},{"name":"water mill","x":-6.6,"y":3.2,"kind":"mill","idea":true},{"name":"logging camp","x":-19.6,"y":9,"kind":"camp","idea":true},{"name":"homestead","x":-21,"y":13.6,"kind":"farm","idea":true},{"name":"abandoned village","x":-9.6,"y":11.6,"kind":"ruin","idea":true},{"name":"fishing village","x":-31.4,"y":5.4,"kind":"fish","idea":true},{"name":"silver mine","x":-7.6,"y":-10.4,"kind":"mine","idea":true},{"name":"reservoir","x":3,"y":-8.6,"kind":"dam","idea":true},{"name":"wind farm","x":1.6,"y":15.6,"kind":"wind","idea":true},{"name":"grain farms","x":-5,"y":14.4,"kind":"farm","idea":true},{"name":"well","x":3.4,"y":30.4,"kind":"well","idea":true},{"name":"well","x":9.6,"y":28.6,"kind":"well","idea":true},{"name":"caravan stop","x":12.6,"y":23.4,"kind":"camp","idea":true},{"name":"oasis","x":20.8,"y":27.2,"kind":"oasis","idea":true},{"name":"stone quarry","x":10.6,"y":32.6,"kind":"mine","idea":true},{"name":"salt works","x":-8,"y":17.6,"kind":"mine","idea":true},{"name":"fishing village","x":-6.8,"y":36.4,"kind":"fish","idea":true},{"name":"port","x":31.6,"y":38.6,"kind":"port","idea":true},{"name":"whaling station","x":6.8,"y":-26.6,"kind":"fish","idea":true},{"name":"reindeer camp","x":-6,"y":-24.4,"kind":"camp","idea":true},{"name":"ski village","x":-20.75,"y":-15.5,"kind":"town","idea":true},{"name":"lumber mill","x":-26.6,"y":7.6,"kind":"mill","idea":true}],"ports":[{"name":"the Harbour","x":15.4,"y":7},{"name":"Camelot bay","x":-32.6,"y":1.4},{"name":"Pirates’ Cove","x":-28.5,"y":32.5},{"name":"south port","x":31.6,"y":38.6},{"name":"Antarctic port","x":3,"y":45},{"name":"Pole landing","x":2,"y":-30.6}],"islets":[[-27,27],[-26,27],[-27,28],[-26,28],[-25,28],[-26,29],[-24,30],[-23,30],[-24,31],[-23,30],[-22,30],[-23,31],[-21,33],[-20,33],[-21,34],[-33,18],[-32,18],[-33,19],[-34,19],[-33,19],[-34,20],[16,-20],[17,-20],[16,-19],[17,-21],[18,-21],[17,-20],[19,-23],[20,-23],[19,-22],[12,41],[13,41],[12,42],[13,42],[14,42],[13,43],[-12,38],[-11,38],[-12,39],[26,41],[27,41],[26,42],[30,18],[31,18],[30,19],[31,19],[32,19],[31,20]],"roundVoyage":[[16,9.5],[21,2],[20,-10],[18,-21],[12,-27.6],[3,-31.4],[-8,-30],[-22,-25],[-30,-17],[-37,-6],[-37,6],[-34,16],[-28.5,27],[-20,34],[-10,40],[0,44],[9,44],[20,42],[30,39.6],[37,33],[36,22],[27,17],[21,13],[16,9.5]]}
+  "scenery": {"note":"not plots: seen past the edges","rivers":{"tiber":[[-4,-10],[-5,-7],[-5.4,-3.4],[-4.4,1],[-5.6,6],[-7.4,10],[-9.2,13.4],[-10.4,16]],"canal":[[3,-8],[4,-6],[5,-2.4],[5.4,1.5],[7.5,4.8],[10,6.8],[12.6,7.2]],"nile":[[19.4,27.6],[18.4,30],[18.6,34],[20,38.6]],"west":[[-19,-13],[-21,-9],[-24,-6.5],[-27.5,-5],[-30,-3.5],[-32.6,-0.6]]},"places":[{"name":"vineyards","x":-13,"y":-1.4,"kind":"farm","idea":true},{"name":"monastery","x":-15,"y":-11,"kind":"monastery","idea":true},{"name":"market town","x":-17,"y":-2.4,"kind":"town","idea":true},{"name":"water mill","x":-6.6,"y":3.2,"kind":"mill","idea":true},{"name":"logging camp","x":-19.6,"y":9,"kind":"camp","idea":true},{"name":"homestead","x":-21,"y":13.6,"kind":"farm","idea":true},{"name":"abandoned village","x":-9.6,"y":11.6,"kind":"ruin","idea":true},{"name":"fishing village","x":-31.4,"y":5.4,"kind":"fish","idea":true},{"name":"silver mine","x":-7.6,"y":-10.4,"kind":"mine","idea":true},{"name":"reservoir","x":3,"y":-8.6,"kind":"dam","idea":true},{"name":"wind farm","x":1.6,"y":15.6,"kind":"wind","idea":true},{"name":"grain farms","x":-5,"y":14.4,"kind":"farm","idea":true},{"name":"well","x":3.4,"y":30.4,"kind":"well","idea":true},{"name":"well","x":9.6,"y":28.6,"kind":"well","idea":true},{"name":"caravan stop","x":12.6,"y":23.4,"kind":"camp","idea":true},{"name":"oasis","x":20.8,"y":27.2,"kind":"oasis","idea":true},{"name":"stone quarry","x":10.6,"y":32.6,"kind":"mine","idea":true},{"name":"salt works","x":-8,"y":17.6,"kind":"mine","idea":true},{"name":"fishing village","x":-6.8,"y":36.4,"kind":"fish","idea":true},{"name":"port","x":31.6,"y":38.6,"kind":"port","idea":true},{"name":"whaling station","x":6.8,"y":-26.6,"kind":"fish","idea":true},{"name":"reindeer camp","x":-6,"y":-24.4,"kind":"camp","idea":true},{"name":"ski village","x":-20.75,"y":-15.5,"kind":"town","idea":true},{"name":"lumber mill","x":-26.6,"y":7.6,"kind":"mill","idea":true}],"ports":[{"name":"the Harbour","x":15.4,"y":7},{"name":"Came A Lot bay","x":-32.6,"y":1.4},{"name":"Pirates’ Cove","x":-28.5,"y":32.5},{"name":"south port","x":31.6,"y":38.6},{"name":"Antarctic port","x":3,"y":45},{"name":"Pole landing","x":2,"y":-30.6}],"islets":[[-27,27],[-26,27],[-27,28],[-26,28],[-25,28],[-26,29],[-24,30],[-23,30],[-24,31],[-23,30],[-22,30],[-23,31],[-21,33],[-20,33],[-21,34],[-33,18],[-32,18],[-33,19],[-34,19],[-33,19],[-34,20],[16,-20],[17,-20],[16,-19],[17,-21],[18,-21],[17,-20],[19,-23],[20,-23],[19,-22],[12,41],[13,41],[12,42],[13,42],[14,42],[13,43],[-12,38],[-11,38],[-12,39],[26,41],[27,41],[26,42],[30,18],[31,18],[30,19],[31,19],[32,19],[31,20]],"roundVoyage":[[16,9.5],[21,2],[20,-10],[18,-21],[12,-27.6],[3,-31.4],[-8,-30],[-22,-25],[-30,-17],[-37,-6],[-37,6],[-34,16],[-28.5,27],[-20,34],[-10,40],[0,44],[9,44],[20,42],[30,39.6],[37,33],[36,22],[27,17],[21,13],[16,9.5]]}
 }

@@ -343,9 +343,9 @@ const ZONES = NOTREE.concat([zone(0, 0, W, 17, { kinds: SNOW, treeH: [5.5, 8] })
 const AIR = [].concat(...DISTRICTS.filter(m => typeof m.airZones === 'function').map(m => m.airZones(ctx).map(z => { const q = Object.assign({}, z, { x0: gx(z.x0), z0: gx(z.y0), x1: gx(z.x1), z1: gx(z.y1) }); delete q.y0; delete q.y1; return q; })));
 const ATMOS = AIR.length ? ", atmos: " + J({ kind: 'embers', n: 160, tier: 'open', zones: AIR.concat([{ x0: -HALF, z0: -HALF, x1: HALF, z1: HALF, kind: 'embers', n: 160 }]) }) : "";
 const LINES = OLD.l.concat(OG.l), M = [];
-M.push("        /* CAMELOT-KINGDOM-BEGIN — CAMELOT KINGDOM ON PLOTS, PLAN 3 (2026-11-15): written by `node bake-camelot.js` from docs/areas/camelot/layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
+M.push("        /* CAMELOT-KINGDOM-BEGIN — CAME A LOT KINGDOM ON PLOTS, PLAN 3 (2026-11-15): written by `node bake-camelot.js` from docs/areas/camelot/layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
 M.push("        site_prebuilt_camelot_kingdom: {");
-M.push("            label: 'CAMELOT KINGDOM',");
+M.push("            label: 'CAME A LOT KINGDOM',");
 M.push("            sub: 'THE CASTLE · THE VILLAGE · THE TOWN WALL · THE MOAT · THE WOODS',");
 M.push("            kind: 'box', site: 'prebuilt_camelot', part: 'kingdom',");
 M.push("            shell: hqCastleShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + BAYX + ", z: " + gc(93) + ", y: 4.4 }" + ATMOS + " }),");
@@ -408,7 +408,7 @@ const OWP = require('./ow-places.js');
 const KROOM = 'site_prebuilt_camelot_kingdom', R_PINES = 'site_prebuilt_camelot_ow_pines', R_GARDEN = 'site_prebuilt_camelot_ow_garden', R_FAIRY = 'site_prebuilt_camelot_ow_fairy', R_FOREST = 'site_prebuilt_camelot_ow_forest';
 const R_RITUAL = 'site_prebuilt_fairy_forest_ow_ritual', R_L6 = 'site_ow_l6';
 const RITUAL_STANDS = /\bsite_prebuilt_fairy_forest_ow_ritual: \{/.test(fs.readFileSync(path.join(__dirname, 'data.js'), 'utf8'));   // the Woods zone thread writes that room; rerun this tool after it lands
-const v13 = id => { const d = PJ.districts.find(q => q.id === id); if (!d || !d.today || d.today.room !== KROOM) throw new Error('plots.json has no Camelot district ' + id);
+const v13 = id => { const d = PJ.districts.find(q => q.id === id); if (!d || !d.today || d.today.room !== KROOM) throw new Error('plots.json has no Came A Lot district ' + id);
     return d.plots.map(q => { const p = plot[q.was]; if (!p || p.name !== q.n) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
 /* THE DRAWN ROWS WIDE AS A DISTRICT: a drawn row (`k: 'arch'`) whose parts stand on several plots (a district's whole dressing in one row,
    `cam:w:forest`, `cam:l:garden`, `cam:n:dress`) is cut into one row a plot (`<id>@<plot>`), each part where it stood, so each moves with its plot.
@@ -426,16 +426,16 @@ const LETTER = { K: 'c', T: 'c', N: 'i', L: 'm', F: 'p', W: 'p', R: 'p' };   // 
 const L7 = (() => { const l = PJ.links.find(q => q.id === 'L7'); if (!l || l.plots.length !== 1) throw new Error('plots.json: L7 is not one plot'); return { wx: l.plots[0][0], wy: l.plots[0][1] }; })();
 /* a spawn's face: 0 north (-z), 90 east, 180 south, 270 west (data.js HQ_HEAL_ZONE: ahead = sin, -cos); each wood room's spawn stands by its seam to the block and faces away from it, into the wood */
 const STAND = [
-    { id: KROOM, part: 'kingdom', label: 'CAMELOT KINGDOM', sub: 'THE CASTLE · THE VILLAGE · THE TOWN WALL · THE MOAT · 36 PLOTS', list: v13('cam'), letters: ['K', 'T'], block: true,
+    { id: KROOM, part: 'kingdom', label: 'CAME A LOT KINGDOM', sub: 'THE CASTLE · THE VILLAGE · THE TOWN WALL · THE MOAT · 36 PLOTS', list: v13('cam'), letters: ['K', 'T'], block: true,
       parti: 'A castle in the middle of its village, one wall round them both and a moat round the wall; four roads leave by the four gates into four woods: snowy pines to the north, a forest that glows to the east, a hedge garden to the west, the forest and the road home to the south.',
       spawn: [43, 81], face: 0 },
-    { id: R_PINES, part: 'ow_pines', label: 'THE SNOWY PINES', sub: 'CAMELOT · THE SLEIGH ROAD NORTH · 8 PLOTS', list: v13('camN'), letters: ['N'], spawn: 'P04-00', face: 0,
+    { id: R_PINES, part: 'ow_pines', label: 'THE SNOWY PINES', sub: 'CAME A LOT · THE SLEIGH ROAD NORTH · 8 PLOTS', list: v13('camN'), letters: ['N'], spawn: 'P04-00', face: 0,
       parti: 'The snowy pines north of the moat as one walk: the sleigh road climbs north from the castle’s north gate through eight plots of snow and pines, past the huts, the frozen pond and the cave, to the Pass where the trail goes on into the mountains.' },
-    { id: R_GARDEN, part: 'ow_garden', label: 'THE LOOKING-GLASS GARDEN', sub: 'CAMELOT · THE HEDGES WEST OF THE MOAT · 6 PLOTS', list: v13('camL'), letters: ['L'], spawn: 'P00-02', face: 270,
+    { id: R_GARDEN, part: 'ow_garden', label: 'THE LOOKING-GLASS GARDEN', sub: 'CAME A LOT · THE HEDGES WEST OF THE MOAT · 6 PLOTS', list: v13('camL'), letters: ['L'], spawn: 'P00-02', face: 270,
       parti: 'The hedge garden west of the moat as one walk: in from the west gate across the lawn, the chessboard with a hedge to either side, the mirror, and at the far end the tea party.' },
-    { id: R_FAIRY, part: 'ow_fairy', label: 'THE FAIRY FOREST', sub: 'CAMELOT · THE GLOWING WOODS EAST OF THE MOAT · 6 PLOTS', list: v13('camF'), letters: ['F'], spawn: 'P07-02', face: 90,
+    { id: R_FAIRY, part: 'ow_fairy', label: 'THE FAIRY FOREST', sub: 'CAME A LOT · THE GLOWING WOODS EAST OF THE MOAT · 6 PLOTS', list: v13('camF'), letters: ['F'], spawn: 'P07-02', face: 90,
       parti: 'The forest that glows, east of the moat, as one walk: out of the east gate past the knoll to the pond, the fairy ring between its two knolls, the woods trail and the spring, where the trail goes on east to the Woods.' },
-    { id: R_FOREST, part: 'ow_forest', label: 'THE FOREST', sub: 'CAMELOT · THE CROWN’S ROAD SOUTH · 9 PLOTS', list: v13('camW').concat([{ wx: L7.wx, wy: L7.wy, name: 'The Forest Trail', district: 'W', level: 0, isNew: true, link: 'L7' }]), letters: ['W'], spawn: 'P03-07', spawnStep: [0, -1], face: 180,   /* ONE WORLD PHASE 5 (2026-11-17): the plot's hub square holds the Wayside Cross (district W); arriving there (the map's GO, an old save) stood the walker ON the cross, 2.2 m up. One square north, on the Crown's Road */
+    { id: R_FOREST, part: 'ow_forest', label: 'THE FOREST', sub: 'CAME A LOT · THE CROWN’S ROAD SOUTH · 9 PLOTS', list: v13('camW').concat([{ wx: L7.wx, wy: L7.wy, name: 'The Forest Trail', district: 'W', level: 0, isNew: true, link: 'L7' }]), letters: ['W'], spawn: 'P03-07', spawnStep: [0, -1], face: 180,   /* ONE WORLD PHASE 5 (2026-11-17): the plot's hub square holds the Wayside Cross (district W); arriving there (the map's GO, an old save) stood the walker ON the cross, 2.2 m up. One square north, on the Crown's Road */
       parti: 'The forest south of the moat as one walk: the Crown’s Road down from the drawbridge, the glades, the woodcutter’s hut and the dead tree, and east a trail on through the trees to the Woods’ Ritual Ground.' },
 ];
 /* which plots move the same way (one room, one shift): a drawn row is cut only between plots that do not */
@@ -454,10 +454,10 @@ const FO = [].concat(...F.filter(f => f.o && !f.ridge).map(f => f.split || [f.o]
 const MOVER = require('./ow-move.js')({ cols: G, rows: G, cell, fill: 't', plots: PLAN.plots, features: FO, props, npc, doors });
 /* the seams between the rooms (both sides are this tool's) */
 const SEAMS = [
-    { a: [KROOM, 'P04-01', 'N'], b: [R_PINES, 'P04-00', 'S'], k: [1, 2, 3], ch: 'i', way: 'trail', la: ['THE SNOWY PINES', 'THE NORTH GATE · THE SLEIGH ROAD NORTH', 'The road out of the north gate turns to snow under the pines.'], lb: ['CAMELOT KINGDOM', 'THE SLEIGH ROAD · SOUTH TO THE NORTH GATE', 'The road comes down out of the pines to the moat and the north gate.'] },
-    { a: [KROOM, 'P01-04', 'W'], b: [R_GARDEN, 'P00-02', 'E'], ch: 'p', way: 'trail', la: ['THE LOOKING-GLASS GARDEN', 'THE WEST GATE · THE HEDGES', 'Past the ring road the hedges start, cut very square.'], lb: ['CAMELOT KINGDOM', 'THE LAWN · BACK TO THE WEST GATE', 'Through the hedge, the ring road round the moat and the west gate.'] },
-    { a: [KROOM, 'P06-04', 'E'], b: [R_FAIRY, 'P07-02', 'W'], ch: 'p', way: 'trail', la: ['THE FAIRY FOREST', 'THE EAST GATE · THE GLOWING WOODS', 'The trees past the ring road are lit from inside.'], lb: ['CAMELOT KINGDOM', 'THE POND · BACK TO THE EAST GATE', 'Out of the glowing trees, the ring road and the east gate.'] },
-    { a: [KROOM, 'P04-06', 'S'], b: [R_FOREST, 'P03-07', 'N'], k: [6, 7], ch: 'p', way: 'trail', la: ['THE FOREST', 'THE CROWN’S ROAD · SOUTH INTO THE FOREST', 'The ring road meets the Crown’s Road going south into the forest.'], lb: ['CAMELOT KINGDOM', 'THE CROWN’S ROAD · NORTH TO THE MOAT', 'The road runs north out of the trees to the moat.'] },
+    { a: [KROOM, 'P04-01', 'N'], b: [R_PINES, 'P04-00', 'S'], k: [1, 2, 3], ch: 'i', way: 'trail', la: ['THE SNOWY PINES', 'THE NORTH GATE · THE SLEIGH ROAD NORTH', 'The road out of the north gate turns to snow under the pines.'], lb: ['CAME A LOT KINGDOM', 'THE SLEIGH ROAD · SOUTH TO THE NORTH GATE', 'The road comes down out of the pines to the moat and the north gate.'] },
+    { a: [KROOM, 'P01-04', 'W'], b: [R_GARDEN, 'P00-02', 'E'], ch: 'p', way: 'trail', la: ['THE LOOKING-GLASS GARDEN', 'THE WEST GATE · THE HEDGES', 'Past the ring road the hedges start, cut very square.'], lb: ['CAME A LOT KINGDOM', 'THE LAWN · BACK TO THE WEST GATE', 'Through the hedge, the ring road round the moat and the west gate.'] },
+    { a: [KROOM, 'P06-04', 'E'], b: [R_FAIRY, 'P07-02', 'W'], ch: 'p', way: 'trail', la: ['THE FAIRY FOREST', 'THE EAST GATE · THE GLOWING WOODS', 'The trees past the ring road are lit from inside.'], lb: ['CAME A LOT KINGDOM', 'THE POND · BACK TO THE EAST GATE', 'Out of the glowing trees, the ring road and the east gate.'] },
+    { a: [KROOM, 'P04-06', 'S'], b: [R_FOREST, 'P03-07', 'N'], k: [6, 7], ch: 'p', way: 'trail', la: ['THE FOREST', 'THE CROWN’S ROAD · SOUTH INTO THE FOREST', 'The ring road meets the Crown’s Road going south into the forest.'], lb: ['CAME A LOT KINGDOM', 'THE CROWN’S ROAD · NORTH TO THE MOAT', 'The road runs north out of the trees to the moat.'] },
 ];
 /* the ways out of the zone, and the link ends (data.js DOOR_HQ.links: this tool writes their Camelot ends) */
 const OUT = {
@@ -609,7 +609,7 @@ ROOMS_OUT.forEach(o => { const R = o.R, Wn = R.W, Dn = R.D, wet = (x, y) => o.c2
     if (cold.length && !process.env.CAM_NOTHROW) throw new Error(o.S.id + ': plots not reached: ' + cold.join(', '));
     o.tied = tied;
     if (process.env.CAM_DUMP) console.log('\n' + o.S.id + '\n' + o.c2.map((r, cy) => r.map((ch, cx) => !R.plotOfSq(cx, cy) ? '.' : o.stood.has(cx + ':' + cy) && !SOLIDC(ch) ? 'o' : o.openR(cx, cy) && !wet(cx, cy) && !seen[cy * Wn + cx] ? '!' : SOLIDC(ch) ? ' ' : ch).join('')).join('\n')); });
-if (STRAYS.length) console.log('STRAYS (each is answered in the notes, "CAMELOT KINGDOM, THE ONE WORLD MOVE"):\n  ' + STRAYS.join('\n  '));
+if (STRAYS.length) console.log('STRAYS (each is answered in the notes, "CAME A LOT KINGDOM, THE ONE WORLD MOVE"):\n  ' + STRAYS.join('\n  '));
 
 /* 8. the rooms, written: each plot's pieces where the mover stood them, the tree mass and the air cut to the plots, the land past the lines read off the map */
 const clip = (z, o) => { const out = []; o.R.order.forEach(e => { if (!e.home) return; const hx0 = -HHALF + e.home.x * PL, hz0 = -HHALF + e.home.y * PL, x0 = Math.max(z.x0, hx0), x1 = Math.min(z.x1, hx0 + PL), z0 = Math.max(z.z0, hz0), z1 = Math.min(z.z1, hz0 + PL);
@@ -668,13 +668,13 @@ ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ;
     console.log(S.id + ' ' + JSON.stringify({ plots: S.list.length, box: R.cols + 'x' + R.rows, world: [R.wx, R.wy], joints: o.joints, laid: o.laid, deadEndsBack: o.back, tied: o.tied, spaces: spaces.length, features: rows.length, props: P2.length, doors: o.doorsOut.length, natives: R.npc.length, zones: zones.length, air: air.length })); });
 if (CNT.ridge) console.log('the ridge ' + JSON.stringify(CNT.ridge));
 console.log('links ' + JSON.stringify(LINKS_OUT));
-const owBlock = "        /* CAMELOT-KINGDOM-BEGIN — CAMELOT KINGDOM ON PLOTS, PLAN 3 (2026-11-15) + THE ONE WORLD MOVE (2026-11-17: the castle + the village and the four woods stand at their One World places, five rooms): written by `node bake-camelot.js` from docs/areas/camelot/layout.json + docs/plans/one-world/plots.json. Never hand-edit between the markers; edit the tool, a district file or the layout and rerun. */\n" + OUTB.join('\n') + "\n        /* CAMELOT-KINGDOM-END */\n";
+const owBlock = "        /* CAMELOT-KINGDOM-BEGIN — CAME A LOT KINGDOM ON PLOTS, PLAN 3 (2026-11-15) + THE ONE WORLD MOVE (2026-11-17: the castle + the village and the four woods stand at their One World places, five rooms): written by `node bake-camelot.js` from docs/areas/camelot/layout.json + docs/plans/one-world/plots.json. Never hand-edit between the markers; edit the tool, a district file or the layout and rerun. */\n" + OUTB.join('\n') + "\n        /* CAMELOT-KINGDOM-END */\n";
 if (DRY) process.exit(0);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 src = splice(src, OW_HOME ? kingdomBlock : owBlock, 'CAMELOT-KINGDOM', '        site_prebuilt_camelot_ward: {');
 /* THE LINKS' CAMELOT ENDS (data.js DOOR_HQ.links): each link's `a:` / `b:` line gets its room (part) and its place rewritten; the rest of the line (its sub, its passage) is kept */
 if (!OW_HOME) Object.keys(LINKS_OUT).forEach(id => { const [side, e] = LINKS_OUT[id], i = src.indexOf("{ id: '" + id + "'"); if (i < 0) throw new Error('link not found: ' + id);
-    const re = new RegExp('(\\n +' + side + ": \\{ site: 'prebuilt_camelot', part: )'[a-z0-9_]+', wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+(?:, passage: \\{ len: 3, deep: 1\\.2 \\})?"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('no Camelot end on link ' + id);
+    const re = new RegExp('(\\n +' + side + ": \\{ site: 'prebuilt_camelot', part: )'[a-z0-9_]+', wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+(?:, passage: \\{ len: 3, deep: 1\\.2 \\})?"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('no Came A Lot end on link ' + id);
     const head = m[1] + "'" + e.part + "', wall: '" + e.wall + "'" + (e.x != null ? ', x: ' + e.x : '') + (e.z != null ? ', z: ' + e.z : '') + (e.face != null ? ', face: ' + e.face : '') + (e.passage ? ', passage: { len: 3, deep: 1.2 }' : '');
     src = src.slice(0, i + m.index) + head + src.slice(i + m.index + m[0].length); });
 fs.writeFileSync(file, src);

@@ -2,7 +2,7 @@
 {"id":"P00-00","name":"The Card Catalogue","d":"L","level":12,"what":"drawers of ideas nobody has had; the catalogue is alphabetical and longer than the room","from":"Library: THE CARD CATALOGUE","ports":"ES","style":"isle","way":null},
 {"id":"P01-00","name":"The Library Frame","d":"L","level":10,"what":"the frame from the Waiting Room, at the end of the nave","from":"Library: THE FRAME · INTO THE STACKS","ports":"WS","style":"isle","way":"library"},
 {"id":"P02-00","name":"The Frame","d":"S","level":7,"what":"the frame you were called through: the Waiting Room is behind it; the healing ring","from":"Sea: THE FRAME · BACK TO THE CHAIRS + the healing zone","ports":"ES","style":"isle","way":"waiting"},
-{"id":"P03-00","name":"The Mirror","d":"S","level":7,"what":"the other side of the looking glass: Camelot's Looking-Glass Garden","from":"mondo 11-16: \"a door from the looking garden to the astral sea of possibility\"","ports":"WE","style":"isle","way":"mirror"},
+{"id":"P03-00","name":"The Mirror","d":"S","level":7,"what":"the other side of the looking glass: Came A Lot's Looking-Glass Garden","from":"mondo 11-16: \"a door from the looking garden to the astral sea of possibility\"","ports":"WE","style":"isle","way":"mirror"},
 {"id":"P04-00","name":"The Closet","d":"S","level":6,"what":"a closet standing on its own in the field, the door ajar, coats inside, no back to it: the way down into the Nightmare","from":"Sea: THE CLOSET · NO BACK WALL","ports":"WES","style":"isle","way":null},
 {"id":"P05-00","name":"The Carousel","d":"S","level":6,"what":"the carousel: somebody thought of it once, it has not stopped","from":"Sea: the carousel + the pearly gate","ports":"W","style":"small","way":null},
 {"id":"P00-01","name":"The Stacks","d":"L","level":14,"what":"LANDMARK: the tallest shelves, the highest ground in the Realm; the top shelf","from":"Library: THE STACKS","ports":"NS","style":"isle","way":null},
@@ -38,7 +38,7 @@
 {"id":"waiting","plot":"P02-00","kind":"door","to":"inside: the Waiting Room (take a number)"},
 {"id":"library","plot":"P01-00","kind":"door","to":"inside: the Waiting Room"},
 {"id":"nightmare","plot":"P05-01","kind":"door","to":"inside: the Waiting Room"},
-{"id":"mirror","plot":"P03-00","kind":"door","to":"Camelot: the Looking-Glass Garden (the mirror, two-way)"},
+{"id":"mirror","plot":"P03-00","kind":"door","to":"Came A Lot: the Looking-Glass Garden (the mirror, two-way)"},
 {"id":"dumb_astral","plot":"P00-04","kind":"link","to":"The D.U.M.B.: Dream Research (a screen)"},
 {"id":"attic_nightmare","plot":"P05-04","kind":"link","to":"The Estate: the Haunted House attic (a screen)"}],
 "cells":[

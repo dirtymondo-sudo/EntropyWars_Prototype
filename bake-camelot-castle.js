@@ -353,13 +353,13 @@ guard('u', 1, 17, 20, LB, 'stone'); guard('u', 2, 17, 20, LB, 'stone'); guard('v
 
 /* ── THE WAYS OUT (all on floor 0, the upper court's level, but the sally port and the well, which are in the cellar) ── */
 R.doors.push(
-    { id: 'portal', wall: 's', x: X(15), leaf: LEAF, wide: true, label: 'CAMELOT KINGDOM', sub: 'THE PORTAL · OUT TO THE UPPER COURT', action: { room: 'site_prebuilt_camelot_kingdom', at: 'portal' },
+    { id: 'portal', wall: 's', x: X(15), leaf: LEAF, wide: true, label: 'CAME A LOT KINGDOM', sub: 'THE PORTAL · OUT TO THE UPPER COURT', action: { room: 'site_prebuilt_camelot_kingdom', at: 'portal' },
       desc: 'The great doors, or the man-sized door in them. Outside: the upper court, the two stairs, the Market, the wall, the woods.' },
-    { id: 'kitchen', wall: 'free', x: X(6.5), z: r2(Z(10) - 0.5), face: 0, leaf: LEAF, label: 'CAMELOT KINGDOM', sub: 'THE KITCHEN DOOR · OUT TO THE UPPER COURT', action: { room: 'site_prebuilt_camelot_kingdom', at: 'kitchen' },
+    { id: 'kitchen', wall: 'free', x: X(6.5), z: r2(Z(10) - 0.5), face: 0, leaf: LEAF, label: 'CAME A LOT KINGDOM', sub: 'THE KITCHEN DOOR · OUT TO THE UPPER COURT', action: { room: 'site_prebuilt_camelot_kingdom', at: 'kitchen' },
       desc: 'The kitchen door. It is the door everything in the castle actually comes in by.' },
-    { id: 'guard', wall: 'free', x: X(23.5), z: r2(Z(10) - 0.5), face: 0, leaf: LEAF, label: 'CAMELOT KINGDOM', sub: 'THE GUARD DOOR · OUT TO THE UPPER COURT', action: { room: 'site_prebuilt_camelot_kingdom', at: 'guard' },
+    { id: 'guard', wall: 'free', x: X(23.5), z: r2(Z(10) - 0.5), face: 0, leaf: LEAF, label: 'CAME A LOT KINGDOM', sub: 'THE GUARD DOOR · OUT TO THE UPPER COURT', action: { room: 'site_prebuilt_camelot_kingdom', at: 'guard' },
       desc: 'The guard room’s own door onto the court. The Knights use it so that nobody sees how late they are.' },
-    { id: 'postern', wall: 'free', x: X(9.5), z: r2(Z(12) - 0.5), face: 0, leaf: LEAF, label: 'CAMELOT KINGDOM', sub: 'THE SALLY PORT · OUT AT THE HILL’S FOOT', action: { room: 'site_prebuilt_camelot_kingdom', at: 'postern' },
+    { id: 'postern', wall: 'free', x: X(9.5), z: r2(Z(12) - 0.5), face: 0, leaf: LEAF, label: 'CAME A LOT KINGDOM', sub: 'THE SALLY PORT · OUT AT THE HILL’S FOOT', action: { room: 'site_prebuilt_camelot_kingdom', at: 'postern' },
       desc: 'A low door at the end of the passage. It lets out in the foot of the castle hill, beside the Grand Stair, which the besiegers should have found suspicious.' });
 R.lvl = L0; R.must.push(R.sq(15, 11), R.sq(14, 11), R.sq(6, 9), R.sq(23, 9)); R.lvl = LU; R.must.push(R.sq(9, 11), R.sq(9, 10));
 R.spawn = { x: X(15), z: Z(11.3), face: 0 };
@@ -375,9 +375,9 @@ check('the castle', R);
 /* ── the room's text ── */
 const M = [], F = R.F.concat([{ k: 'arch', id: 'cam:palace:in', x: 0, z: 0, y: 0, parts: R.P }]);
 if (R.inner.length) F.push({ k: 'texbuilding', id: 'cam:palace:doors', x: 0, z: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_wooden', inner: R.inner });
-M.push("        /* CAMELOT-PALACE-BEGIN — CAMELOT CASTLE, ONE STACKED BUILDING (2026-11-15): written by `node bake-camelot-castle.js` from the approved plan (docs/plans/camelot/camelot_castle_stacked_plan.png). Never hand-edit between the markers; edit the tool and rerun. */");
+M.push("        /* CAMELOT-PALACE-BEGIN — CAME A LOT CASTLE, ONE STACKED BUILDING (2026-11-15): written by `node bake-camelot-castle.js` from the approved plan (docs/plans/camelot/camelot_castle_stacked_plan.png). Never hand-edit between the markers; edit the tool and rerun. */");
 M.push('        site_prebuilt_camelot_palace: {');
-["label: 'CAMELOT CASTLE',", "sub: 'THE THRONE HALL · THE GREAT STAIR · THE ROYAL FLOOR · THE LIBRARY · THE BATTLEMENTS · MERLIN’S UNDERCROFT',", "kind: 'box', site: 'prebuilt_camelot', part: 'palace',",
+["label: 'CAME A LOT CASTLE',", "sub: 'THE THRONE HALL · THE GREAT STAIR · THE ROYAL FLOOR · THE LIBRARY · THE BATTLEMENTS · MERLIN’S UNDERCROFT',", "kind: 'box', site: 'prebuilt_camelot', part: 'palace',",
  "shell: hqCastleShell({ w: " + R.W + ", d: " + R.D + ", plate: { x: " + R.spawn.x + ", z: " + r2(R.D / 2 - 1.2) + ", y: " + (L0 + 4.4) + " },",
  "                       sunShadow: false, mood: { lamp: 0xffd090, glow: 0xffb060, strip: 0xffe0b0, light: 0xfff2e0, ambient: 0.85 } }),   // no sun shadow: an open room (the roof walk needs the sky) whose floors would stand in the shadow of the floors over them (three-renderer.js _hqShadowArm)",
  "parti: 'One palace on six levels, every floor over the last: the cellar under the throne, the hall two floors high with a gallery round it, the royal rooms, the library, the roof walk; one long stair up the north wall joins them.',",

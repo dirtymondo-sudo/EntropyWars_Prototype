@@ -729,7 +729,7 @@
      "district": "The North Pole village",
      "level": 9,
      "what": "snowy pines: the woods between the kingdoms",
-     "from": "Camelot plan: the woods between",
+     "from": "Came A Lot plan: the woods between",
      "ports": [
       "E",
       "N",
@@ -743,7 +743,7 @@
      "district": "The North Pole village",
      "level": 9,
      "what": "snowy pines",
-     "from": "Camelot plan: the woods between",
+     "from": "Came A Lot plan: the woods between",
      "ports": [
       "E",
       "N",
@@ -757,13 +757,13 @@
      "district": "The North Pole village",
      "level": 9,
      "what": "the hidden path down to the castle postern",
-     "from": "Camelot plan: the path up from the postern",
+     "from": "Came A Lot plan: the path up from the postern",
      "ports": [
       "N",
       "W"
      ],
      "exit": [
-      "Camelot: the castle postern",
+      "Came A Lot: the castle postern",
       "secret"
      ]
     },

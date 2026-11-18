@@ -136,7 +136,7 @@ const ROUTE_SPEC = [
   ['R1', 'River Road', 'vat', 'city', [[-3, -3]], 'the bridge over the Tiber into Civic Center'],
   ['R2', 'Canyon Trail', 'hills', 'shasta', [[0, -8]], 'up behind the Hollywood sign to Shasta’s foot; a ranger station'],
   ['R3', 'Pilgrim Way', 'col', 'mtn', [[-9, -12]], 'shrines on the climb from the Colosseum to Olympus'],
-  ['R4', 'Old Road', 'cam', 'vat', [[-17, -1], [-14, -4]], 'a crossroads inn and standing stones between Camelot and the Vatican'],
+  ['R4', 'Old Road', 'cam', 'vat', [[-17, -1], [-14, -4]], 'a crossroads inn and standing stones between Came A Lot and the Vatican'],
   ['R4b', '', 'woods', null, [[-17, -1]], ''],
   ['R5', 'Polar Trail', 'mtnP', 'np', [[-12.5, -22], [-6, -26]], 'a frozen lake and a mountain hut on the way up to the Pole'],
   ['R6', 'Valley Road', 'woods', 'city', [[-5, 5]], 'a covered bridge over the Tiber; the city’s skyline ahead'],
@@ -144,7 +144,7 @@ const ROUTE_SPEC = [
   ['R8', 'Ranch Road', 'estate', 'wt', [[-6, 21]], 'cattle ranges and a crop circle, into Western Town'],
   ['R9', 'Badlands Highway', 'city', 'circus', [[7, 16]], 'the chain gas station, a motel, billboards (Exit 1), to the Circus'],
   ['R10', 'Coast Road', 'beach', 'giza', [[15.5, 15], [16.5, 22]], 'cliff tunnel, surf coves, a lookout over the sea'],
-  ['R12', 'Stone Path', 'stone', 'cam', [], 'from Camelot’s north woods up onto the plain to the stones'],
+  ['R12', 'Stone Path', 'stone', 'cam', [], 'from Came A Lot’s north woods up onto the plain to the stones'],
   ['R11', 'Delta Causeway', 'giza', 'ley', [[20, 32]], 'reed flats; the ley line runs across it'],
 ];
 // THE DESERT'S HIGHWAY: its districts' own Highway plots (district R, 87 today) as the loop between them; the grown world needs more
@@ -163,7 +163,7 @@ const DIST = [
   ['the Shore', 13, 4], ['the Harbour', 15.6, 6.6], ['the islet', 18.4, 3.6],
   ['Göbekli Tepe', 24.5, 30.7], ['Bug Colony', 27.6, 32.4], ['Babel', 25, 35.4], ['Technoticlan', 29.6, 35.4],
 ];
-const CITIES = [['Disaster City', 6, 3, 'mega'], ['Vatican City', -9, -4.4, 'holy'], ['Camelot', -24, -1.4, 'castle'], ['Western Town', -2, 27.6, 'town'],
+const CITIES = [['Disaster City', 6, 3, 'mega'], ['Vatican City', -9, -4.4, 'holy'], ['Came A Lot', -24, -1.4, 'castle'], ['Western Town', -2, 27.6, 'town'],
   ['North Pole', 2, -26.4, 'town'], ['Babel', 25, 34.4, 'tower'], ['Technoticlan', 29.6, 34.4, 'town']];
 const LAND = [[-32, -14], [-22, -23], [-15, -27.4], [-6, -27.6], [-2, -29], [0, -27.8], [1.6, -29.8], [3.4, -28.4], [5.4, -29.2], [6.2, -27], [7, -25], [8.4, -23.6], [9.6, -21], [8.6, -17], [8, -14], [11, -12.6], [14, -9], [14.8, -6.6], [16.2, -5.4], [15, -4], [15.8, -1.6], [14.6, 1], [15.4, 3.2], [14.4, 6], [14.6, 12], [16.4, 13.4], [18, 15], [17.2, 18.6], [18.6, 22], [20, 27], [23, 27.2], [26, 28.4], [33, 28.4], [35.6, 32], [34.6, 38.6], [31, 40.4], [28, 40], [25, 38.6], [23, 40.6], [21, 38.4], [17, 39.8], [14, 38.6], [11, 41], [8, 40.6], [5, 42], [2, 40.4], [-2, 39], [-5, 36.4], [-8, 35.2], [-10, 32], [-14, 30], [-16, 26], [-20, 23.6], [-22, 20], [-26, 12], [-28.6, 10.6], [-30, 7], [-29.4, 4.4], [-33, 3], [-34.6, -1.4], [-32.6, -4.2], [-34, -7], [-33.4, -10.4]];
 // ── the plot grid: band cells, the land mask ──
@@ -232,7 +232,7 @@ function gridOverlay(minor = 'rgba(255,255,255,.07)', major = 'rgba(255,255,255,
   s += `</g>`;
   return s;
 }
-const ZNAME = { np: 'NORTH POLE', mtn: 'THE MOUNTAINS', hills: 'THE HOLLYWOOD HILLS', city: 'DISASTER CITY', vat: 'THE VATICAN', col: 'THE COLOSSEUM', cam: 'CAMELOT KINGDOM', woods: 'THE WOODS', estate: 'THE ESTATE', desert: 'THE DESERT', beach: 'THE BEACH', ley: 'LEYLINES', ant: 'ANTARCTICA' };
+const ZNAME = { np: 'NORTH POLE', mtn: 'THE MOUNTAINS', hills: 'THE HOLLYWOOD HILLS', city: 'DISASTER CITY', vat: 'THE VATICAN', col: 'THE COLOSSEUM', cam: 'CAME A LOT KINGDOM', woods: 'THE WOODS', estate: 'THE ESTATE', desert: 'THE DESERT', beach: 'THE BEACH', ley: 'LEYLINES', ant: 'ANTARCTICA' };
 function plen(pts) { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
 function rect(z, fill, stroke, extra = '') {
   if (z.cells) return `<path shape-rendering="crispEdges" d="${cellsPath(z.cells)}" fill="${fill}"/><path d="${cellsOutline(z.cells)}" fill="none" stroke="${stroke}" ${extra}/>`;
@@ -359,7 +359,7 @@ const PLACES = [
   ['stone quarry', 10.6, 32.6, 'mine'], ['salt works', -8, 17.6, 'mine'], ['fishing village', -6.8, 36.4, 'fish'], ['port', 31.6, 38.6, 'port'],
   ['whaling station', 6.8, -26.6, 'fish'], ['reindeer camp', -6, -24.4, 'camp'], ['ski village', -20.75, -15.5, 'town'], ['lumber mill', -26.6, 7.6, 'mill'],
 ];
-const PORTS = [['the Harbour', 15.4, 7], ['Camelot bay', -32.6, 1.4], ['Pirates’ Cove', -28.5, 32.5], ['south port', 31.6, 38.6], ['Antarctic port', 3, 45], ['Pole landing', 2, -30.6]];
+const PORTS = [['the Harbour', 15.4, 7], ['Came A Lot bay', -32.6, 1.4], ['Pirates’ Cove', -28.5, 32.5], ['south port', 31.6, 38.6], ['Antarctic port', 3, 45], ['Pole landing', 2, -30.6]];
 const ROADCLASS = { R1: 'major', R4: 'major', R9: 'major', R6: 'regional', R7: 'regional', R8: 'regional', R10: 'regional', R11: 'regional', R2: 'trail', R3: 'trail', R5: 'trail', R12: 'trail', R4b: 'trail' };
 const ROADSTYLE = { major: { w: 5, col: '#2b2622', edge: '#f3d58a', dash: '' }, regional: { w: 3.2, col: '#7a5a34', edge: '#e8c890', dash: '' }, trail: { w: 1.8, col: '#f2ead2', edge: 'none', dash: '4 3' } };
 function placeGlyph(kind, x, y) {
@@ -463,13 +463,13 @@ function roadLines(scale = 1) { let s = '';
 function zoneTrails() { let s = ''; for (const pts of TRAILPTS) { const d = 'M' + pts.map(([x, y]) => P(x + .5, y + .5).join(',')).join('L'); s += `<path d="${d}" fill="none" stroke="#f6e7b0" stroke-width="1.3" stroke-dasharray="1.5 2.5"/>`; } return s; }
 function compass() { return `<g transform="translate(${W - 50},${H - 60})"><circle r="24" fill="#0b0f16" stroke="#fff"/><path d="M0,-18L5,0L0,18L-5,0Z" fill="#fff"/><text y="-28" text-anchor="middle" font-size="10" class="lbl" fill="#fff">N</text></g>`; }
 function scaleBar() { return `<g transform="translate(30,${H - 30})"><rect width="${10 * S}" height="5" fill="#fff"/><text y="-6" font-size="9" fill="#fff" class="dl">10 PLOTS · 120 SQUARES · 420 M</text></g>`; }
-const BIG = [['THE MOUNTAINS', -11, -13.2], ['NORTH POLE', 2, -23.2], ['THE HOLLYWOOD HILLS', 6.5, -1.5], ['DISASTER CITY', 6, 4.8], ['THE VATICAN', -9, -2.6], ['THE COLOSSEUM', -9.5, -10.6], ['CAMELOT KINGDOM', -24, 4.9], ['THE WOODS', -11, 8.9], ['THE ESTATE', -12, 21.9], ['THE DESERT', 7.5, 29.6], ['THE BEACH', 16, 1.2], ['LEYLINES', 27.5, 37.9], ['ANTARCTICA', 3, 52.9], ['STONEHENGE', -27.4, -10.1]];
+const BIG = [['THE MOUNTAINS', -11, -13.2], ['NORTH POLE', 2, -23.2], ['THE HOLLYWOOD HILLS', 6.5, -1.5], ['DISASTER CITY', 6, 4.8], ['THE VATICAN', -9, -2.6], ['THE COLOSSEUM', -9.5, -10.6], ['CAME A LOT KINGDOM', -24, 4.9], ['THE WOODS', -11, 8.9], ['THE ESTATE', -12, 21.9], ['THE DESERT', 7.5, 29.6], ['THE BEACH', 16, 1.2], ['LEYLINES', 27.5, 37.9], ['ANTARCTICA', 3, 52.9], ['STONEHENGE', -27.4, -10.1]];
 { const gone = new Set(['Snowy Pass', 'Ski Lodge', 'Olympus', 'Shasta', 'Fairy Forest', 'the Castle', 'Snowy Pines', 'the Village', 'Corn', 'Haunted House', 'Ranch', 'Göbekli Tepe', 'Bug Colony', 'Babel', 'Technoticlan']);
   for (let i = DIST.length - 1; i >= 0; i--) if (gone.has(DIST[i][0])) DIST.splice(i, 1);
   for (const id in DNAME) { const z = ZB(id); if (z.plots) { const m = z.plots[Math.floor(z.plots.length / 2)]; DIST.push([DNAME[id], m[1] + .5, m[2] + 1.6, true]); continue; } DIST.push([DNAME[id], z.x + z.w / 2, z.y + z.h + .9, true]); }
-  const goneB = new Set(['THE MOUNTAINS', 'CAMELOT KINGDOM', 'THE WOODS', 'THE ESTATE', 'LEYLINES']);
+  const goneB = new Set(['THE MOUNTAINS', 'CAME A LOT KINGDOM', 'THE WOODS', 'THE ESTATE', 'LEYLINES']);
   for (let i = BIG.length - 1; i >= 0; i--) if (goneB.has(BIG[i][0])) BIG.splice(i, 1);
-  for (const [t, x, y] of [['THE MOUNTAINS', -47, -48], ['CAMELOT KINGDOM', -66, -12], ['THE WOODS', -46, -4], ['THE ESTATE', -40, 33.5], ['LEYLINES', 38, 51]]) BIG.push([t, ...F(x, y), true]);
+  for (const [t, x, y] of [['THE MOUNTAINS', -47, -48], ['CAME A LOT KINGDOM', -66, -12], ['THE WOODS', -46, -4], ['THE ESTATE', -40, 33.5], ['LEYLINES', 38, 51]]) BIG.push([t, ...F(x, y), true]);
   for (let i = CITIES.length - 1; i >= 0; i--) if (['Babel', 'Technoticlan'].includes(CITIES[i][0])) CITIES.splice(i, 1); }
 const ISLBL = [['VOLCANO ISLAND', 25, -20], ['BERMUDA TRIANGLE', 37, -1], ['PIRATES’ COVE', -28.5, 35], ['THE FROZEN SEA', 2, -31]];
 
@@ -811,9 +811,9 @@ function plotsExtract() {
     ant: ['antarctica', 'Antarctica', 'Antarctica', 'stays', 'site_prebuilt_antarctica_plots', ['H', 'W', 'C', 'O', 'S', 'F']],
     woods: ['woods', 'The Woods', 'The Clearing', 'moves', WD, ['C']], woodsT: ['woods', 'The Woods', 'The Redwood Trail', 'moves', WD, ['T']],
     woodsG: ['woods', 'The Woods', 'The Ritual Ground', 'moves', WD, ['G']], woodsM: ['woods', 'The Woods', 'Dead Man’s Cave', 'moves', WD, ['M']],
-    cam: ['kingdom', 'Camelot Kingdom', 'Castle + Village', 'moves', CM, ['K', 'T']], camN: ['kingdom', 'Camelot Kingdom', 'The Snowy Pines', 'moves', CM, ['N']],
-    camL: ['kingdom', 'Camelot Kingdom', 'The Looking-Glass Garden', 'moves', CM, ['L']], camF: ['kingdom', 'Camelot Kingdom', 'The Fairy Forest', 'moves', CM, ['F']],
-    camW: ['kingdom', 'Camelot Kingdom', 'The Forest', 'moves', CM, ['W']],
+    cam: ['kingdom', 'Came A Lot Kingdom', 'Castle + Village', 'moves', CM, ['K', 'T']], camN: ['kingdom', 'Came A Lot Kingdom', 'The Snowy Pines', 'moves', CM, ['N']],
+    camL: ['kingdom', 'Came A Lot Kingdom', 'The Looking-Glass Garden', 'moves', CM, ['L']], camF: ['kingdom', 'Came A Lot Kingdom', 'The Fairy Forest', 'moves', CM, ['F']],
+    camW: ['kingdom', 'Came A Lot Kingdom', 'The Forest', 'moves', CM, ['W']],
     estate: ['ranch', 'The Estate', 'The Lake', 'moves', ES, ['L']], estC: ['ranch', 'The Estate', 'The Corn Fields', 'moves', ES, ['C']],
     estH: ['ranch', 'The Estate', 'The Haunted House', 'moves', ES, ['H']], estR: ['ranch', 'The Estate', 'The Ranch', 'moves', ES, ['R']],
     mtn: ['mountains', 'The Mountains', 'Mount Olympus', 'moves', MT, ['Mount Olympus']], mtnP: ['mountains', 'The Mountains', 'The Snowy Pass', 'moves', MT, ['The Snowy Pass']],
