@@ -491,7 +491,7 @@ to tighten them up and only have the necessary ones and ones that make the most 
   entry rows and its link rows exactly as before: do not remove them from a tool.** `hqSiteEarned` is false for every site but Room 64.
 - The link rows, the baked door rows and the tools are untouched on purpose, so a rebake neither fails nor brings a cut door back.
 - Old Cyberpunk City (`site_prebuilt_cyberpunk_streets`, `_noodle`) is in `DOOR_HQ.retired` (to Disaster City): its four ways in are cut; it
-  stands only as the fight board's source. The new Cyberpunk City is a reskin of the whole Disaster City (its own plan thread).
+  stands only as the fight board's source. The new Cyberpunk City is a reskin of the whole Disaster City (its own plan thread). The plan: `docs/plans/cyberpunk-city/PLAN.md` (11-18, waits his answers).
 - New link `tunnel_downtown`: the train at DOOR HQ's platform (`tunnel`) to the platform under Downtown (`site_prebuilt_downtown_subway`)
   and back; both trains stand where they stood.
 
