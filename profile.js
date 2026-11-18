@@ -854,14 +854,14 @@ async function serverFetchEconomy() {
   }
 }
 
-async function serverBankGold(matchGold, mode) {
+async function serverBankGold(matchGold, mode, matchId) {
   const token = getServerToken();
   if (!token) return { ok: false, error: 'No account.' };
   try {
     const resp = await fetch('/api/economy/bank', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, matchGold, mode }),
+      body: JSON.stringify({ token, matchGold, mode, matchId: matchId || undefined }),
     });
     const data = await resp.json();
     if (!resp.ok) return { ok: false, error: data.error || 'Bank failed.' };

@@ -162,13 +162,32 @@ function setSave() {
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout' }), ms))]);
 /* THE GAME'S SERVER (2026-11-18): opened from the game (Settings > Developer > Relationship Web, /dev/relationship-web), the
    boards save on the game server (server.js /api/story-web), so every computer that opens it there sees the same boards. */
+/* THE PASSWORD (2026-11-18): the server asks for one; the first open picks it, each computer types it once (kept here) */
+const webKey = { get: () => { try { return localStorage.getItem('ewWebKey') || ''; } catch (e) { return ''; } },
+  set: k => { try { if (k) localStorage.setItem('ewWebKey', k); else localStorage.removeItem('ewWebKey'); } catch (e) {} } };
+async function askWebKey(setup) {
+  const k = window.prompt(setup
+    ? 'Pick a password for your Relationship Web (6+ characters). Each computer asks for it once.'
+    : 'Relationship Web password:');
+  if (!k) return false;
+  if (setup) {
+    const r = await fetch('/api/story-web/key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: k }) });
+    if (!r.ok && r.status !== 409) { let m = ''; try { m = (await r.json()).error || ''; } catch (e) {} window.alert(m || 'Could not set the password.'); return false; }
+  }
+  webKey.set(k); return true;
+}
 function serverDb() {
-  const post = (p, data) => fetch('/api/story-web/doc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: p, data }) })
-    .then(r => { if (!r.ok) { const e = new Error('save ' + r.status); if (r.status === 400) e.code = 'invalid_argument'; throw e; } });
+  const post = (p, data) => fetch('/api/story-web/doc', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-web-key': webKey.get() }, body: JSON.stringify({ path: p, data }) })
+    .then(r => { if (!r.ok) { if (r.status === 401) webKey.set(''); const e = new Error('save ' + r.status); if (r.status === 400) e.code = 'invalid_argument'; throw e; } });
   return { server: true, doc: p => ({ set: d => post(p, d), delete: () => post(p, null) }) };
 }
-async function serverPull() {
-  const r = await withTimeout(fetch('/api/story-web', { cache: 'no-store' }), 12000);
+async function serverPull(asked) {
+  const r = await withTimeout(fetch('/api/story-web', { cache: 'no-store', headers: { 'x-web-key': webKey.get() } }), 12000);
+  if (r.status === 401 && !asked) {
+    let setup = false; try { setup = !!(await r.json()).setup; } catch (e) {}
+    webKey.set('');
+    if (await askWebKey(setup)) return serverPull(true);
+  }
   if (!r.ok) throw new Error('load ' + r.status);
   const d = (await r.json()).docs || {};
   return [d['web/index'] || null, Object.keys(d).filter(k => k.startsWith('boards/')).map(k => d[k])];
@@ -181,7 +200,7 @@ async function serverInit() {
   /* the other computer's changes: look again every 10 s and when this tab comes back */
   const again = async () => {
     const ae = document.activeElement; if (document.hidden || editing || (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) || cloud.busy || drag || pinch || cloud.dirty.size || cloud.dels.size || cloud.idx) return;
-    try { const r = await serverPull(); if (cloud.busy || drag || pinch || cloud.dirty.size) return; mergeRemote(r[0], r[1]); if (cloud.state === 'err') { cloud.state = 'ok'; setSave(); } } catch (e) {}
+    try { if (!webKey.get()) return; const r = await serverPull(true); if (cloud.busy || drag || pinch || cloud.dirty.size) return; mergeRemote(r[0], r[1]); if (cloud.state === 'err') { cloud.state = 'ok'; setSave(); } } catch (e) {}
   };
   setInterval(again, 10000); window.addEventListener('focus', again); document.addEventListener('visibilitychange', again);
   return true;

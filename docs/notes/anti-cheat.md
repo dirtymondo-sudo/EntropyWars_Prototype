@@ -39,11 +39,19 @@ the Relationship Web (`/dev/relationship-web`, `/api/story-web*`), `/api/bot/syn
 The local-only ones cannot touch the server wallet; they matter because anything a player can do in the console a
 cheat tool can do too, which is why the server must decide.
 
-## The fix plan (needs mondo's OK, see the thread)
-A. The server pays PvP Hazard Pay itself when it records the result; `/bank` stops taking a client amount. VS-CPU pay:
-   a small daily cap, or none for accounts.
-B. Sell-backs: the bag moves to the server, or sell-backs stop paying the server wallet.
-C. Story progress cannot unlock PvP units or pay the PvP wallet beyond a daily cap (or story gets its own wallet).
-D. PvP referee: the server re-runs every ranked fight from the recorded actions (headless engine, load-data.js style)
-   and only then pays Elo + gold. Big; the real fix for hole 4. Cheaper first step: the host's party is checked too.
-E. Relationship Web behind a secret key (one-time setup on each of his computers).
+## The fix plan: SHIPPED 11-18 (mondo: "okay let's do it. But I want units unlocked in story mode to be able to be used in PvP")
+All in server.js THE CHEAT GUARD (`CHEAT_CAPS`, migration 006_anti_cheat.sql):
+- A. A ranked match pays only against a ticket (`match_payouts`) the server writes when it records the result
+  (`applyRankedEloInner`); battle.js sends the match id with the bank call, and a bank that arrives while the result
+  is still being written waits for it (`rankedSettling`). VS-CPU / friendly / no ticket: 3,000 a day (`cpu`); the
+  result screen says "daily Hazard Pay limit reached" when it cut the pay.
+- B. A sell-back gives back what the account spent (`spent_total − refunded_total`) plus 500 a day for found items.
+- C. Captured races STILL join the PvP roster, 8 new races a day (the rest join on later days by themselves). Story +
+  achievement gold from a sync: 5,000 a day, the rest waits in `players.sync_owed`. Bounty days older than a week or
+  past tomorrow are not taken in (`dropFutureDays`).
+- D. The host's own team (its snapshot's `partyMeta[1]`) is checked against its account; an unowned unit voids the
+  ranked match (no Elo, no tickets). The real fix for a modified host (the server replaying the fight) is NOT built:
+  it needs the battle engine to run headless on the server, a big separate job.
+- E. The Relationship Web asks for a password (picked on first open, hashed in `server_settings`), every computer once.
+Tested 11-18 against an in-memory SQLite stand-in for D1 (register, bank, spend, refund, sync, web key); the ranked
+ticket path was read, not run.

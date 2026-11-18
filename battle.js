@@ -55707,9 +55707,14 @@
 
                 if (hasAccount && typeof PS.serverBankGold === 'function') {
                     // Online account → server is authoritative.
-                    PS.serverBankGold(calc.matchGold, modeId).then(function(r) {
+                    /* THE CHEAT GUARD (2026-11-18): a ranked match names its match id, so the server pays it against the ticket it
+                       wrote when it recorded the result (server.js /api/economy/bank); VS-CPU / friendly pay under a daily ceiling */
+                    var _bankMatchId = (window._NET && window._NET.ranked && window._NET.matchId) ? window._NET.matchId : null;
+                    PS.serverBankGold(calc.matchGold, modeId, _bankMatchId).then(function(r) {
                         if (r && r.ok && r.data) {
-                            _setBalance('Wallet: 💰 ' + (r.data.gold || 0).toLocaleString(), '#ffd86a');
+                            /* the server paid less than the match counted: today's VS-CPU ceiling (server.js CHEAT_CAPS.cpu) */
+                            var _bankCut = (typeof r.data.banked === 'number' && r.data.banked < calc.matchGold) ? '  (daily Hazard Pay limit reached)' : '';
+                            _setBalance('Wallet: 💰 ' + (r.data.gold || 0).toLocaleString() + _bankCut, '#ffd86a');
                         } else {
                             // Server unreachable → fall back to the local mirror so play still rewards.
                             // creditLocalGold returns 0 when there is NO active profile to bank
