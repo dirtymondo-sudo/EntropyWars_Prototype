@@ -10803,6 +10803,13 @@ llvmpipe swings 2 to 18 a second in any room and says nothing.
 (`window._hqEncounterFire`), ends the fight (`u.hp = 0; checkWin()`), presses `#encReturnBtn` and comes back; pictures in
 `shots/fight/`, counts (merged meshes, squares, "BACK after N s") and the `[HQ] left / resumed` lines in the log. Use it for any
 change to the walk -> fight -> walk hand-over (rendering-loading-perf.md "THE PARKED ROOM").
+**A PROBE THAT NEVER GETS READY (2026-11-18):** since NPCs start fights (npc-system.md "NPC-STARTED FIGHTS"), a room with a Brute or a mugger near its
+spawn hands the room to a battle seconds after the probe enters it (`[HQ] left (the room handed to the battle)` in `EW_LIVE_LOG=1`), and the probe
+waits for a room that is gone: no SHOT lines, no error, it runs until killed (seen on `site_prebuilt_downtown_subway`). Run such a probe with
+`--flags=EW_HQ_NO_ENCOUNTER` and under `timeout -s KILL <s>`. To press E in a view: `"eval"` a `setTimeout` that dispatches a `KeyboardEvent`
+(`keydown` + `keyup`, `key: 'e', code: 'KeyE'`) on `document` and `window`, with `"settle": 3000` (the door audit's subway panel pictures). To
+arrive at a door as the game does: `"keep": true` + `"eval": "ThreeRenderer.hq.goTo('<door id>', true)"`. `--pre=<js>` runs before the room is
+entered (file a value on the active profile with `ProfileSystem.loadProfile / saveProfile` there: `_hqEnter` reads the saved card, not a session value).
 **THE FAST PROBE (2026-11-16, read this first; it replaces tip 2 and RULE 3 below).** Every harness now launches through
 `probe-fast.js` (`require('./probe-fast.js').launch(chromium, {...})`); a probe you write yourself must do the same. What it does:
 (1) runs Chromium on Mesa llvmpipe under its own Xvfb, 2-4x the frame rate of SwiftShader (`EW_PROBE_GL=swiftshader` = the old

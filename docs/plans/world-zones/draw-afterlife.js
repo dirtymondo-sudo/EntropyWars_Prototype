@@ -114,16 +114,23 @@ V.plots = [
    own wall is its south side; the Pilgrim Stair's gate (the Courtyard's terrace, 1.75 m) is reached by a flight up from the plaza.
    Its own small grid (36 x 36 squares): `bake-afterlife.js` THE ONE WORLD MOVE stands the Vatican three plots south and lays this grid on the
    room's columns 1-3, rows 0-2. Names of the plots are mine (marked). ════════ */
-const COL_T = 0.875, O = grid(3, 3, 'c', 0);
-{ const cx = 18, cy = 16, rx = 15.5, ry = 12.5;
-  for (let y = 0; y < 36; y++) for (let x = 0; x < 36; x++) { const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, r = Math.sqrt(dx * dx + dy * dy);
-      if (r > 1) continue;
-      if (r <= 0.48) O.set(x, y, 'a', 0);                                                          // THE ARENA: sand
-      else if (r <= 0.55) O.set(x, y, 'p', 3.5);                                                   // THE PODIUM: the wall round the sand
-      else if (r <= 0.89) O.set(x, y, 'e', COL_T * Math.min(6, 1 + Math.floor((r - 0.55) / 0.057)));   // THE STANDS: six tiers, a short step each
-      else O.set(x, y, 'k', 0); }                                                                  // THE ARCADE: the ring walk under the outer wall
-  [17, 18].forEach(x => { for (let y = 0; y < 36; y++) { const c = O.k[y][x]; if (c === 'p' || c === 'e') O.set(x, y, 'm', 0); } });
-  for (let y = 0; y < 36; y++) for (let x = 0; x < 36; x++) if (O.k[y][x] === 'e') { const d = x < 17 ? 17 - x : x - 18; O.h[y][x] = Math.min(O.h[y][x], COL_T * d); }   // the gates' flanks step up into the stands, a tier a square (the way onto the tiers)   // THE TWO GATES: the Gate of Life (north) + the Gate of Death (south), through the stands to the sand
+/* THE REDESIGN (2026-11-18, mondo: "improve the coliseum to be more realistic and epic ... plan and design and build it like an actual architect would"):
+   the plan is a FOUR-CENTRE OVAL, as the Roman surveyors set one out (two small arcs at the ends of the long axis, two big arcs along the sides, the
+   four meeting on one tangent), so every ring of the building is the same distance from the arena all round (a scaled ellipse squeezes the seats on
+   the short axis: the first build's). The arena's edge is the base line (half axes 26.25 x 15.75 m); the outer wall's face is 28 m out from it
+   (54.25 x 43.75 m: the first build's footprint, to the square). THE GROUND IS FLAT under the whole building: the seats, the podium, the gallery and
+   the tunnels' walls are the district's own rows (O.js: tier walls, bridges, drawn sections), never the map's heights.
+   `a` the arena (d < 0.35 m), `e` under the seats (to 23.5 m), `k` the ring corridor behind the arches (to 28 m), `m` the four gates' tunnels
+   (7 m wide on the two axes). */
+const COL_OVAL = { a: 26.25, b: 15.75, r1: 9, out: 28, ring: 23.5 }, O = grid(3, 3, 'c', 0);
+{ const cx = 18, cy = 16, V = COL_OVAL, r2 = (V.a * V.a - 2 * V.a * V.r1 + V.b * V.b) / (2 * (V.b - V.r1)), c1 = V.a - V.r1, c2 = r2 - V.b, phi = Math.atan2(c2, c1);
+  const off = (X, Z) => { X = Math.abs(X); Z = Math.abs(Z); return Math.atan2(Z, X - c1) < phi ? Math.hypot(X - c1, Z) - V.r1 : Math.hypot(X, Z + c2) - r2; };   // metres out from the arena's edge (under 0 = on the sand)
+  for (let y = 0; y < 36; y++) for (let x = 0; x < 36; x++) { const X = (x + 0.5 - cx) * 3.5, Z = (y + 0.5 - cy) * 3.5, d = off(X, Z);
+      if (d > V.out) continue;
+      if (d < 0.35) O.set(x, y, 'a', 0);                                                            // THE ARENA: sand
+      else if (Math.abs(X) < 3.5 || Math.abs(Z) < 3.5) O.set(x, y, 'm', 0);                         // THE FOUR GATES: a tunnel on each axis, the plaza to the sand
+      else if (d < V.ring) O.set(x, y, 'e', 0);                                                     // UNDER THE SEATS
+      else O.set(x, y, 'k', 0); }                                                                  // THE RING CORRIDOR behind the facade's arches
   O.rect(0, 0, 36, 1, 'h', 2.6); O.rect(0, 0, 1, 36, 'h', 2.6); O.rect(35, 0, 36, 36, 'h', 2.6);   // the plaza's hedges (the land past them is the map's own)
   O.rect(17, 0, 19, 1, 'c', 0);                                                                     // the north opening (the Pilgrim Way comes in here)
   O.stair(29, 31, 31, 36, 'S', 0, 1.75, 's', { model: 'stone', key: 'marble_light' }); }           // THE PILGRIM STAIR, the foot: up to the gate in the Vatican's wall
@@ -320,7 +327,7 @@ ROOMS.forEach(R => { const G = R.G;
 { const plots = O.plots.map(p => { let s = 0, n = 0; for (let y = p[1] * N; y < p[1] * N + N; y++) for (let x = p[0] * N; x < p[0] * N + N; x++) if ('hp'.indexOf(O.k[y][x]) < 0) { s += O.h[y][x]; n++; }
       return { id: pid(p[0], p[1]), name: p[3], d: p[2], level: n ? Math.round(s / n / LEVEL) : 0, what: p[4], from: p[5] }; });
   out.colosseum = { note: 'laid on the Vatican room\'s columns 1-3, rows 0-2 by bake-afterlife.js THE ONE WORLD MOVE', cols: 3, rows: 3, at: [1, 0],
-      legend: { c: 'cobbles (the plaza)', h: 'hedge (2.6 m)', k: 'the arcade (the ring walk)', e: 'the stands (six tiers, 0.875 m a step)', p: 'the podium wall (3.5 m)', a: 'the arena\'s sand', m: 'a gate\'s way through the stands', s: 'steps' },
+      legend: { c: 'cobbles (the plaza)', h: 'hedge (2.6 m)', k: 'the ring corridor behind the arches', e: 'under the seats (flat ground: the tiers are the district\'s rows)', a: 'the arena\'s sand', m: 'a gate\'s tunnel', s: 'steps' }, oval: COL_OVAL,
       plots, cells: O.k.map(r => r.join('')), heights: O.h.map(r => r.map(v => Math.round(v * 100)).join(',')), stairs: O.stairs, slopes: O.slopes, ways: O.ways }; }
 const json = JSON.stringify(out, null, 1).replace(/\[\n\s+("[^"]*"|-?[\d.]+)(,\n\s+("[^"]*"|-?[\d.]+)){0,3}\n\s+\]/g, m => m.replace(/\n\s+/g, ' '));
 fs.writeFileSync(path.join(__dirname, 'heaven-hell-vatican-layout-2.json'), json + '\n');

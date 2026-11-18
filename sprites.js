@@ -568,6 +568,7 @@ const RACE_SPRITE_GENDERS = {
   'cursed tv': 'male',   // 2026-11-17 THE CURSED TV (one set; the model def sits under male)
   'virus': 'male',   // 2026-11-18 THE VIRUS (one body; the model def sits under male)
   'streamer': 'both',   // 2026-11-18 THE STREAMER + E-GIRL (one race: the Streamer is the male, the E-Girl the female)
+  'vtuber': 'female',   // 2026-11-18 THE V-TUBER (female only for now, mondo 11-18)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
   'dinosaur': 'male',
@@ -2694,6 +2695,19 @@ const RACE_MODELS_3D = {
       stepFps: 9,   // three-renderer.js THE STOP-MOTION: the mixer only advances 9 times a second, so every clip jerks like a puppet
     }),
   },
+  'streamer': {   // 2026-11-18 THE STREAMER + E-GIRL: mondo 11-18 "make it like the other units where the meshy one is the default" — the
+                  // Meshy models from the approved concepts; the MPFB creator look (RACE_CREATOR_LOOKS.streamer) stays selectable (creator / dev switch)
+    male: _mkUAL('streamer/male', 'streamer_m', {
+      model: `${_S}/Races/streamer/male/Meshy_AI_streamer_m_Running.glb`,
+      heightRatio: 1.0,
+      basicAttackKind: 'punch',
+    }),
+    female: _mkUAL('streamer/female', 'egirl_f', {
+      model: `${_S}/Races/streamer/female/Meshy_AI_egirl_f_Running.glb`,
+      heightRatio: 0.94,
+      basicAttackKind: 'punch',
+    }),
+  },
   'ninja': {   // 2026-11-17 THE NINJA (mondo: male + female, the woman in a sexy ninja costume, no weapons)
     male: _mkUAL('ninja/male', 'ninja_m', {
       model: `${_S}/Races/ninja/male/Meshy_AI_ninja_m_Running.glb`,
@@ -4196,6 +4210,7 @@ EW_MH_WEAR.push(['ewm_tricorn', 'Pirate tricorn', 'hats', 56], ['ewm_officercap'
   ['ewm_lizardhead', 'Lizard head', 'heads', 58], ['ewm_mothhead', 'Moth head', 'heads', 58],
   ['ewm_sheriffstar', 'Sheriff star', 'equipment', 61], ['ewm_policebadge', 'Police badge', 'equipment', 61],
   ['ewm_egwig', 'Split-dye pigtail wig', 'hats', 56], ['ewm_stheadset', 'Gaming headset (round the neck)', 'equipment', 61],   // 2026-11-18 THE STREAMER + E-GIRL (bake-meshy.py)
+  ['ewm_vtwig', 'Idol side-ponytail wig', 'hats', 56],   // 2026-11-18 THE V-TUBER (Meshy, bake-meshy.py; the bangs trimmed off the eyes)
   ['ewm_crosspendant', 'Cross pendant', 'equipment', 61], ['ewm_talisman', 'Talisman pendant', 'equipment', 61],
   ['ewm_hagstone', 'Hagstone', 'equipment', 61], ['ewm_binoculars', 'Binoculars', 'equipment', 61],
   ['ewm_walkietalkie', 'Walkie-talkie', 'equipment', 61], ['ewm_egyptcollar', 'Egyptian collar', 'equipment', 61],
@@ -6130,19 +6145,31 @@ const RACE_CREATOR_LOOKS = {
    his gaming headset round the neck) are `ewm_` picks from bake-meshy.py. Notes: champions-combat.md "THE STREAMER". */
 RACE_CREATOR_LOOKS['streamer'] = {
   male: {"model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","height":1.0,"mhSkin":"young_caucasian_male","mhEyes":"brown","mhBrows":"eyebrow010","browTint":"pick","browColor":"#3a2a1e",
-    "hair":"mh_cortu_short_messy_hair","hairColor":"#4a3322","jaw":-0.1,"eyeBags":0.35,
+    "hair":"mh_cortu_short_messy_hair","hairColor":"#4a3322","outfit":"none","bottoms":"none","outer":"none","feet":"none","jaw":-0.1,"eyeBags":0.35,
     "wear":["mhw_elvs_hooded_sweat_jacket1","mhw_toigo_harem_pants","mhw_culturalibre_sneakers","ewm_stheadset"],
     "wearTint":{"mhw_elvs_hooded_sweat_jacket1":"#141418","mhw_toigo_harem_pants":"#77797e"},"wearFabric":{}},
   female: {"model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","height":0.95,"mhSkin":"toigo_light_skin_with_natural_makeup","mhEyes":"brown","mhBrows":"eyebrow010",
     "jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04",
     "lipTint":"pick","lipColor":"#8a2a3c","browTint":"pick","browColor":"#121012","linerTint":"pick","linerColor":"#0e0b0c","shadowTint":"pick","shadowColor":"#5a2a40",
-    "hair":"bald","hairColor":"#121012",
+    "hair":"bald","hairColor":"#121012","outfit":"none","bottoms":"none","outer":"none","feet":"none",
     "wear":["ewm_egwig","mhw_ews_striped_shirt","mhw_elvs_pleated_plaid_mini_skirt","mhw_kwnet_at_pantyhose01","mhw_mindfront_shoes_biker_boots_female"],
     "wearTint":{"mhw_elvs_pleated_plaid_mini_skirt":"#c4242c","mhw_kwnet_at_pantyhose01":"#151515","mhw_mindfront_shoes_biker_boots_female":"#121212"},"wearFabric":{},
     "bust":0.35,"waist":-0.25,"hips":0.2},
 };
+/* 2026-11-18 THE V-TUBER (mondo picked the pop idol look, with new hair in place of the concept's cyan twin tails): an MPFB
+   body in creator clothes, white and cyan; the hair and the idol headset are Meshy pieces fitted by bake-meshy.py. */
+RACE_CREATOR_LOOKS['vtuber'] = {
+  female: {"model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","height":0.94,"mhSkin":"toigo_light_skin_with_natural_makeup","mhEyes":"blue","mhBrows":"eyebrow010",
+    "jaw":-0.45,"head":-0.15,"nose":-0.35,"noseWidth":-0.45,"eyeSize":0.2,"browRidge":-0.6,"mouthCorners":0.3,"mhLashes":"mindfront_eyelashes_04",
+    "lipTint":"pick","lipColor":"#d46a8a","browTint":"pick","browColor":"#b8a8c0","linerTint":"pick","linerColor":"#2a1e2c","shadowTint":"pick","shadowColor":"#9aa8e8",
+    "hair":"mh_toigo_blunt_bob","hairColor":"#d8d4e0","outfit":"none","bottoms":"none","outer":"none","feet":"none",
+    "wear":["ewm_vtwig","mhw_punkduck_high_neck_crop_top","mhw_toigo_tiered_mini_skirt","mhw_scailman_gogo_platform_boots"],
+    "wearTint":{"mhw_punkduck_high_neck_crop_top":"#f4f6fa","mhw_toigo_tiered_mini_skirt":"#8fdcff","mhw_scailman_gogo_platform_boots":"#f4f6fa"},"wearFabric":{},
+    "bust":0.3,"waist":-0.3,"hips":0.15},
+};
 const RACE_CREATOR_LOOK_DEFS = {
   'streamer': { basicAttackKind: 'punch' },   // 2026-11-18 THE STREAMER + E-GIRL: the keyboard slam (nothing held; the VFX throws the keycaps)
+  'vtuber': { basicAttackKind: 'magic' },   // 2026-11-18 THE V-TUBER: the pixel heart bolt (a cast, nothing held)
   'cowboy': { basicAttackKind: 'ranged', hold: { key: 'revolver', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.21,
     grip: { c: [0.657, -0.215, 0], down: [0.404, -0.915, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },   // THE GRIP, THE SEAT: the revolver GLB's handle (three-renderer.js _gripFrame)
 };
@@ -6299,10 +6326,13 @@ function setRemadeLooksOn(on) {
   return !!on;
 }
 function raceLooksAreDefault() { return EW_RACE_LOOKS_ARE_DEFAULT || (typeof window !== 'undefined' && window.EW_RACE_LOOKS_ARE_DEFAULT === true); }
+/* 2026-11-18 THE STREAMER + E-GIRL: the Meshy models are the default (RACE_MODELS_3D.streamer); the MPFB creator look stays
+   pickable: Settings > Developer > Remade Race Looks, and in the creator (RACE_CREATOR_LOOKS.streamer). */
+RACE_REMADE_LOOKS['streamer'] = RACE_CREATOR_LOOKS['streamer'];
 /* the races whose creator look is their DEFAULT (the human base + the DOOR Agent; + the saved race looks only while
    EW_RACE_LOOKS_ARE_DEFAULT is on). THE MESHY DEFAULT: every race may WEAR a creator look (ewCreatorLookRace); only these
    wear one without the slot picking it. */
-const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent', 'streamer'].concat(EW_RACE_LOOKS_ARE_DEFAULT ? Object.keys(RACE_CREATOR_LOOKS) : []);
+const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent', 'vtuber'].concat(EW_RACE_LOOKS_ARE_DEFAULT ? Object.keys(RACE_CREATOR_LOOKS) : []);
 function ewCreatorLookRace(race) { return typeof race === 'string' && !!race; }   // THE MESHY DEFAULT: the creator dresses every unit
 function getCharacterAppearanceModel(race, gender, appearance) {
   const own0 = ewCreatorLookRace(race) && normalizeCharacterAppearance(appearance);

@@ -7497,8 +7497,83 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* 📽 THE HOLO PROJECTOR (2026-11-18, the V-Tuber): the Internet zone's Meshy projector pad, a cone of light over it
+       (scanlines scrolling up), a pixel heart turning in the beam, and the HP bar. Own side cyan, enemy side pink (the Riot
+       colours). Kill-switch: none needed, it is the piece itself. */
+    var _HOLO_PAD_URL = 'https://cdn.entropywars.net/Assets/world/props/meshy/internet/holo_projector.glb';
+    var _holoTexCache = {};
+    function _holoTex(kind) {
+        if (_holoTexCache[kind]) return _holoTexCache[kind];
+        var c = document.createElement('canvas'), x;
+        if (kind === 'scan') {
+            c.width = 8; c.height = 64; x = c.getContext('2d');
+            var gr = x.createLinearGradient(0, 0, 0, 64);
+            gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.75, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0.9)');
+            x.fillStyle = gr; x.fillRect(0, 0, 8, 64);
+            x.fillStyle = 'rgba(0,0,0,0.55)'; for (var yy = 0; yy < 64; yy += 4) x.fillRect(0, yy, 8, 1);
+        } else {
+            var H = ['0110110', '1111111', '1111111', '0111110', '0011100', '0001000'];
+            c.width = 7; c.height = 6; x = c.getContext('2d'); x.fillStyle = '#fff';
+            for (var r = 0; r < H.length; r++) for (var q = 0; q < 7; q++) if (H[r][q] === '1') x.fillRect(q, r, 1, 1);
+        }
+        var t = new THREE.CanvasTexture(c);
+        t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter;
+        if (kind === 'scan') { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 2); }
+        _holoTexCache[kind] = t; return t;
+    }
+    function _buildHoloProjector3D(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var own = _isAllyPlayer(turret.owner), col = own ? 0x5ad6ff : 0xff6aa8;
+        var beamH = ts * 0.95;
+        g.add(_plantHpBar(turret, ts, beamH + ts * 0.18));
+        var scan = _holoTex('scan').clone(); scan.needsUpdate = true;
+        var cone = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.13, beamH, 20, 1, true),
+            new THREE.MeshBasicMaterial({ color: col, map: scan, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
+        cone.position.y = beamH / 2 + ts * 0.06; g.add(cone);
+        var heart = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.26),
+            new THREE.MeshBasicMaterial({ color: col, map: _holoTex('heart'), transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
+        heart.position.y = beamH * 0.62; g.add(heart);
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.36, 1.2, 4, 24), new THREE.MeshBasicMaterial({ color: col, fog: false }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 1.2; g.add(ring);
+        var ph = (turret.x * 31 + turret.y * 17) * 0.13;
+        cone.onBeforeRender = function () {
+            var now = _animNow();
+            scan.offset.y = -(now / 1400) % 1;
+            var fl = (Math.sin(now / 37 + ph) > 0.93) ? 0.25 : 0;   // the odd glitch flicker
+            cone.material.opacity = 0.5 + Math.sin(now / 300 + ph) * 0.08 - fl;
+            heart.rotation.y = now / 700 + ph;
+            heart.position.y = beamH * 0.62 + Math.sin(now / 520 + ph) * ts * 0.04;
+            heart.material.opacity = 0.95 - fl * 2;
+        };
+        var fill = function () {
+            var e = _miscModelCache[_HOLO_PAD_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true);
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; } });
+            var sc = (ts * 0.72) / (Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) || 1);
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            g.add(m);
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_HOLO_PAD_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_HOLO_PAD_URL, true, fill, { front: true }); } catch (x) { console.warn('[ThreeRenderer] holo projector load threw', x); } }
+        return g;
+    }
+
     function _buildTurret(turret) {
         if (turret.plant) return _buildPlant3D(turret);   // THE GARDEN
+        if (turret.projector) return _buildHoloProjector3D(turret);   // 📽 the V-Tuber
         if (turret.summon) return _buildSummon3D(turret);
         if (turret.zombie) return _buildZombie3D(turret);
         if (turret.spellId === 'fiveGTower') return _buildFiveGTower(turret);
@@ -8598,11 +8673,16 @@ const ThreeRenderer = (function () {
        Settings > Video > Grass: High / Low / Off (ThreeRenderer.setGrassField, stored ew_grassField). Off for everything:
        window.EW_NO_GRASS_FIELD = true (the board's next build). Tunables live as EW_GGRASS. */
     var GGRASS = {
-        shape: 'crown',
-        perTile: 24,        // tufts per square = perTile² (a jittered grid, so the cover is even)
-        hMin: 0.110, hMax: 0.210,   // tuft height × tile
-        width: 0.070,       // tuft width × tile: WIDE, so neighbours overlap and the field reads as one soft coat
-        lean: 0.55,         // the still bow of a tuft × its height
+        /* THE CURVED BLADES (2026-11-18, mondo: "make the grass look better, more realistic"; on the first fan of five wide blades: "too spiky
+           and unrealistic"; on this one: "yeah that's better"): a tuft is a FAN of seven thin blades from one root, each narrowing in three
+           steps and arching outward, a few of them dry straw (_ggBlade, dry / dryShare). Fewer, bigger tufts than the clumps, so the triangle
+           count stays about the old High's. The clumps' values: shape 'crown', perTile 24, hMin 0.110, hMax 0.210, width 0.070, lean 0.55,
+           rootK 0.50, patchM 2.6, low { perTile 15, width 0.105 }, HQ_GRASS perSquare 16, low 10, height 0.8 */
+        shape: 'fan',
+        perTile: 10,        // tufts per square = perTile² (a jittered grid, so the cover is even)
+        hMin: 0.075, hMax: 0.210,   // tuft height × tile
+        width: 0.170,       // tuft width × tile: a fan's blades spread over ~4 widths
+        lean: 0.30,         // the still bow of a tuft × its height
         /* THE CALMER WIND (mondo 11-12, on the first live build: "it's maybe a little too wavy"): about half the bend, gusts that roll
            by a third slower, half the flutter, a fainter crest. The first build's values: wind 0.45, sheen 0.30, gust 1.25, flutter 0.10 */
         wind: 0.24,         // tip travel on a gust crest × height
@@ -8615,21 +8695,28 @@ const ThreeRenderer = (function () {
            ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
         sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
                   grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
-        lit: 1.0, rootK: 0.50, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
-        patchM: 2.6,        // patch size, squares
+        lit: 1.0, rootK: 0.40, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
+        patchM: 1.8,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
         pressN: 4,          // press map texels per square
         fringe: 5, fringeDensity: 0.7,   // the meadow past the board's edge: squares out, tufts per square side × this
-        low: { perTile: 15, width: 0.105, fringe: 2 },   // the Low setting: under half the tufts, each wider, a narrow meadow
-        order: 50, shadow: true
+        low: { perTile: 7, width: 0.240, fringe: 2 },   // the Low setting: half the tufts, each wider, a narrow meadow
+        order: 50, shadow: true, dry: [0.42, 0.38, 0.20], dryShare: 0.10
     };
     try { window.EW_GGRASS = GGRASS; GGRASS.flush = function () { _ggPalCache = {}; _ggFringe = null; _lastTerrainDecoSerial = ''; }; } catch (e) {}   // flush = retune live: the next frame rebuilds
     /* a tuft's outline (x in half-widths, y in heights) + its 5 triangles, wound to face the camera.
        crown = one thick clump of three points (a tall middle, two splayed sides); tongue = one round pad */
     var _GG_SHAPES = {
         crown: { P: [[-1, 0], [1, 0], [-1.55, 0.66], [-0.5, 0.40], [0, 1], [0.5, 0.40], [1.55, 0.72]], T: [0, 1, 5, 0, 5, 3, 0, 3, 2, 3, 5, 4, 1, 6, 5] },
+        fan: { P: [[-0.46,0.0,0],[-0.14,0.0,0],[-0.781,0.236,0],[-0.552,0.236,0],[-1.461,0.446,0],[-1.313,0.446,0],[-2.2,0.62,0],[-0.34,0.0,1],[-0.02,0.0,1],[-0.511,0.319,1],[-0.282,0.319,1],[-0.894,0.605,1],[-0.747,0.605,1],[-1.3,0.84,1],[-0.24,0.0,2],[0.08,0.0,2],[-0.275,0.369,2],[-0.047,0.369,2],[-0.394,0.698,2],[-0.247,0.698,2],[-0.5,0.97,2],[-0.16,0.0,3],[0.16,0.0,3],[-0.085,0.38,3],[0.143,0.38,3],[0.012,0.72,3],[0.159,0.72,3],[0.15,1.0,3],[-0.06,0.0,4],[0.26,0.0,4],[0.121,0.342,4],[0.35,0.342,4],[0.427,0.648,4],[0.574,0.648,4],[0.8,0.9,4],[0.04,0.0,5],[0.36,0.0,5],[0.337,0.289,5],[0.565,0.289,5],[0.87,0.547,5],[1.017,0.547,5],[1.5,0.76,5],[0.14,0.0,6],[0.46,0.0,6],[0.572,0.22,6],[0.8,0.22,6],[1.371,0.418,6],[1.518,0.418,6],[2.3,0.58,6]], T: [0,1,3,0,3,2,2,3,5,2,5,4,4,5,6,7,8,10,7,10,9,9,10,12,9,12,11,11,12,13,14,15,17,14,17,16,16,17,19,16,19,18,18,19,20,21,22,24,21,24,23,23,24,26,23,26,25,25,26,27,28,29,31,28,31,30,30,31,33,30,33,32,32,33,34,35,36,38,35,38,37,37,38,40,37,40,39,39,40,41,42,43,45,42,45,44,44,45,47,44,47,46,46,47,48] },
         tongue: { P: [[-1, 0], [1, 0], [-1.05, 0.42], [1.05, 0.42], [-0.72, 0.80], [0.72, 0.80], [0, 1]], T: [0, 1, 3, 0, 3, 2, 2, 3, 5, 2, 5, 4, 4, 5, 6] }
     };
+    /* THE CURVED BLADES: one blade's own shade + its dry share (a few straw blades in every tuft) */
+    function _ggBlade(r, b, f) {
+        var hsh = (Math.sin((r * 91.7 + b * 12.93) * 43.1) * 43758.5453) % 1; hsh = hsh < 0 ? hsh + 1 : hsh;
+        var sh = 0.80 + 0.32 * hsh, dry = (hsh > 1 - GGRASS.dryShare) ? (0.25 + 0.6 * f) : 0;
+        return [sh * (1 - dry), sh * (1 - dry), sh * (1 - dry), dry];
+    }
     var _ggRightU = { value: new THREE.Vector2(1, 0) };   // the camera's right, flat, in the field's own frame: every tuft turns its face to the eye
     /* the setting: 'high' (default) | 'low' | 'off' */
     var _ggLevel = 'high';
@@ -8817,12 +8904,13 @@ const ThreeRenderer = (function () {
                 /* 7 corners, a soft rounded tongue: foot L / R, belly L / R, shoulder L / R, tip. The side offset (aGgS) is laid along
                    the camera's right in the shader, so the tongue always shows its full face */
                 var P = _GG_SHAPES[C.shape] ? _GG_SHAPES[C.shape].P : _GG_SHAPES.crown.P;
-                for (var k = 0; k < 7; k++) {
+                for (var k = 0; k < P.length; k++) {
                     var f = P[k][1], bf = f * f;
                     pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
                     var cr, cg, cb;
                     if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
                     else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
+                    if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; }
                     col.push(cr, cg, cb);
                     gg.push(wx, wz, h * f, f);
                     gs.push(P[k][0] * hw);
@@ -8843,7 +8931,7 @@ const ThreeRenderer = (function () {
         geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
         geo.setAttribute('aGg', new THREE.BufferAttribute(gg, 4));
         geo.setAttribute('aGgS', new THREE.BufferAttribute(gs, 1));
-        var nB = roots.length / 2, ia = new Uint32Array(nB * 15);
+        var nB = roots.length / 2, ia = new Uint32Array(nB * (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T.length);
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
         var pr = _ggPressTex(W, H);
         var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', blades: nB, roots: roots, ia: ia, sortDir: null };
@@ -8883,7 +8971,7 @@ const ThreeRenderer = (function () {
         for (i = 0; i < nB; i++) { k = (B - 1) - Math.floor((R[i * 2] * dx + R[i * 2 + 1] * dz - lo) * sc); key[i] = k; cnt[k + 1]++; }   // far first
         for (i = 0; i < B; i++) cnt[i + 1] += cnt[i];
         var ia = G.ia, T = (_GG_SHAPES[GGRASS.shape] || _GG_SHAPES.crown).T;
-        for (i = 0; i < nB; i++) { var o = cnt[key[i]]++ * 15, b = i * 7; for (k = 0; k < 15; k++) ia[o + k] = b + T[k]; }
+        var TL = T.length, PL = (_GG_SHAPES[GGRASS.shape] || _GG_SHAPES.crown).P.length; for (i = 0; i < nB; i++) { var o = cnt[key[i]]++ * TL, b = i * PL; for (k = 0; k < TL; k++) ia[o + k] = b + T[k]; }
         G.mesh.geometry.index.needsUpdate = true;
     }
     /* the press map, once a frame: every standing unit's feet (rebuilt only when a body moved) */
@@ -8919,7 +9007,7 @@ const ThreeRenderer = (function () {
        water, not a steep face and not inside a building. The tufts write no depth, so the cells are drawn far to near (renderOrder by
        distance) and each cell sorts its own tufts (_ggFace). Settings > Video > Grass (High / Low / Off) rules it as on the board.
        Kill switch: window.EW_NO_HQ_GRASS. No press map (nothing lays the tufts down here yet). */
-    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 16, low: { radiusM: 16, perSquare: 10 }, perTick: 2, tickMs: 100, steep: 0.55, height: 0.8 };   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
+    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 9, low: { radiusM: 16, perSquare: 6 }, perTick: 2, tickMs: 100, steep: 0.55, height: 1.43 };   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
     try { window.EW_HQ_GRASS = HQ_GRASS; } catch (e) {}
     var _hqGG = null;
     function _hqGrassDrop() {
@@ -8953,11 +9041,12 @@ const ThreeRenderer = (function () {
             var hw = ts * S.width * 0.5 * (0.8 + 0.4 * r2);
             var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm, jit = 0.97 + 0.06 * r0;
             var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
-            for (var k = 0; k < 7; k++) {
+            for (var k = 0; k < P.length; k++) {
                 var f = P[k][1], bf = f * f, cr, cg, cb;
                 pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
                 if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
                 else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
+                if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; }
                 col.push(cr, cg, cb); gg.push(wx * kw, wz * kw, h * f, f); gs.push(P[k][0] * hw);
             }
             roots.push(wx, wz);
@@ -8966,8 +9055,8 @@ const ThreeRenderer = (function () {
         var geo = new THREE.BufferGeometry(), pa = new Float32Array(pos), nor = new Float32Array(pa.length); for (var q = 1; q < nor.length; q += 3) nor[q] = 1;
         geo.setAttribute('position', new THREE.BufferAttribute(pa, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
         geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3)); geo.setAttribute('aGg', new THREE.BufferAttribute(new Float32Array(gg), 4)); geo.setAttribute('aGgS', new THREE.BufferAttribute(new Float32Array(gs), 1));
-        var nB = roots.length / 2, ia = new Uint32Array(nB * 15), T = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T;
-        for (var t = 0; t < nB; t++) for (var e = 0; e < 15; e++) ia[t * 15 + e] = t * 7 + T[e];
+        var T = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T, nB = roots.length / 2, ia = new Uint32Array(nB * T.length);
+        for (var t = 0; t < nB; t++) for (var e = 0; e < T.length; e++) ia[t * T.length + e] = t * P.length + T[e];
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
         var mesh = new THREE.Mesh(geo, S.mat);
         mesh.frustumCulled = false; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
@@ -74258,10 +74347,21 @@ const ThreeRenderer = (function () {
                roof   form: 'gable' | 'hip' | 'pyramid' | 'shed' | 'barrel', size: [w, h, d] (the ridge along x; a shed's high edge at -z) · over (the eaves' overhang) · keyEnd (the gable wall) · seg
                quad   size: [w, h] (a panel facing +z: a wall, a sign with uv: 'fit', a window) · hole: [x, w, h] (a doorway cut from its foot) · flat: true (size [w, d], lying, facing up: paint, water)
                poly   pts: [[x, z], ...] (a convex plan), h · keyTop · top: false
+               archw  size: [w, h, d] (a wall, its front at +z) with a ROUND-HEADED OPENING · hole: [width, the springing's height, centre x] · rise (the head's
+                      height: none = half the width, a true half circle) · seg · keyIn / tintIn (the sheet / tint inside the opening) · faces: 'fb' · top: true · ends: true
+                      · rim: [width, how far it stands out] (the archivolt: a raised band round the head, on the front; keyRim / tintRim)
+               sweep  prof: [[d, y], ...] (a SECTION: d metres out from the path along its normal, y up) carried along `path` (a name in the row's `paths`, or
+                      [[x, z, nx, nz], ...]: a point and its unit normal, the part's frame) · closed · from / to (the points it runs between) · keys / tints
+                      (a sheet / a tint a section's segment; a key `false` = that segment not drawn) · flip · ud (the sheet is measured along the line this far out). The section is listed CLOCKWISE round the
+                      solid (d to the right, y up): going up = the face that looks in, going out = a top, going down = the face that looks out.
+       THE CURVED BUILDINGS (2026-11-18, the Colosseum): a row's `paths: { name: [[x, z, nx, nz], ...] }` are lines in the row's frame that its parts
+       share. along: { path, at: [points] | from / to / step, off } on ANY part = the part once at each of those points, its front turned along the
+       point's normal, `off` m out along it (the part's own p[0] = a shift sideways along the line, p[1] its height, p[2] added to `off`).
        One mesh per material per row (a building never joins a city-wide mesh: the plot chunks cull it whole). */
     function _hqArchGeometry(row, C) {
         var G = {}, D2R = Math.PI / 180;
         var parts = [];
+        var pathOf = function (q) { return (typeof q === 'string') ? ((row.paths && row.paths[q]) || null) : (Array.isArray(q) ? q : null); };   // THE CURVED BUILDINGS: a row's named lines
         (row.parts || []).forEach(function (p0) {
             if (!p0 || !p0.s) return;
             var list = [p0];
@@ -74271,6 +74371,16 @@ const ThreeRenderer = (function () {
                     var a = ((p0.ring.a0 || 0) + (p0.ring.arc || 360) * i / (p0.ring.arc && p0.ring.arc < 360 ? Math.max(1, p0.ring.n - 1) : p0.ring.n)) * D2R, pp = p0.p || [0, 0, 0];
                     list.push(Object.assign({}, p0, { p: [pp[0] + Math.cos(a) * p0.ring.r, pp[1], pp[2] + Math.sin(a) * p0.ring.r], ry: (p0.ry || 0) + 90 - a / D2R, ring: null }));
                 }
+            }
+            if (p0.along) {   // THE CURVED BUILDINGS: the part once at each named point of a path, its front along the point's normal
+                var alP = pathOf(p0.along.path), alL = [];
+                if (alP && alP.length) {
+                    var alI = p0.along.at; if (!alI) { alI = []; for (var alK = p0.along.from || 0; alK <= (p0.along.to != null ? p0.along.to : alP.length - 1); alK += Math.max(1, p0.along.step || 1)) alI.push(alK); }
+                    var alQ = p0.p || [0, 0, 0], alO = (+p0.along.off || 0) + alQ[2];
+                    alI.forEach(function (ii) { var q4 = alP[((ii % alP.length) + alP.length) % alP.length]; if (!q4 || q4.length < 4) return;
+                        alL.push(Object.assign({}, p0, { p: [q4[0] + q4[2] * alO + q4[3] * alQ[0], alQ[1], q4[1] + q4[3] * alO - q4[2] * alQ[0]], ry: (p0.ry || 0) + Math.atan2(-q4[2], q4[3]) / D2R, along: null })); });
+                }
+                list = alL;
             }
             list.forEach(function (p1) {
                 var n = Math.max(1, Math.min(200, Math.round(p1.n || 1))), st = p1.step || [0, 0, 0], q = p1.p || [0, 0, 0];
@@ -74419,6 +74529,70 @@ const ThreeRenderer = (function () {
                 if (P.top !== false) {
                     var gp = grp(P.keyTop || key, tT), ti = pts.map(function (q) { return put(gp, [q[0], phh, q[1]], [q[0] / mu, q[1] / mv]); });
                     for (var pk = 1; pk < ti.length - 1; pk++) gp.idx.push(ti[0], ti[pk], ti[pk + 1]);
+                }
+            } else if (P.s === 'archw') {
+                /* THE ROUND ARCH (2026-11-18, the Colosseum: "it looks like absolute shit": its arches were boxes): a wall with a round-headed opening
+                   through it. The two faces, the opening's two jambs and its curved soffit; the wall's top and ends only when asked (a pier and a cornice hide them). */
+                var aW = S[0] / 2, aH = S[1], aD = S[2] / 2, aHo = P.hole || [S[0] * 0.6, S[1] * 0.5], aO = Math.min(S[0] - 0.02, +aHo[0] || 1) / 2, aC = +aHo[2] || 0, aS = +aHo[1] || 0;
+                var aR = (P.rise != null) ? +P.rise : aO, aN = Math.max(2, Math.min(24, Math.round(P.seg || 10)));
+                if (aS + aR > aH - 0.01) aR = Math.max(0.01, aH - 0.01 - aS);
+                var aX0 = aC - aO, aX1 = aC + aO, aArc = [], aLen = 0;
+                for (var ai = 0; ai <= aN; ai++) { var aT = Math.PI * ai / aN, aPx = aC - aO * Math.cos(aT), aPy = aS + aR * Math.sin(aT); if (ai) aLen += Math.hypot(aPx - aArc[ai - 1][0], aPy - aArc[ai - 1][1]); aArc.push([aPx, aPy, aLen]); }
+                var aFaces = P.faces || 'fb';
+                var aFace = function (z, front) {
+                    var gf = grp(key), fv = function (x, y) { return put(gf, [x, y, z], [(front ? x + aW : aW - x) / mu, y / mv]); };
+                    var f4 = function (i0, i1, i2, i3) { if (front) gf.idx.push(i0, i1, i2, i0, i2, i3); else gf.idx.push(i0, i2, i1, i0, i3, i2); };
+                    if (aX0 > -aW + 1e-3) f4(fv(-aW, 0), fv(aX0, 0), fv(aX0, aH), fv(-aW, aH));
+                    if (aX1 < aW - 1e-3) f4(fv(aX1, 0), fv(aW, 0), fv(aW, aH), fv(aX1, aH));
+                    var flo = [], fhi = []; aArc.forEach(function (q) { flo.push(fv(q[0], q[1])); fhi.push(fv(q[0], aH)); });
+                    for (var fk = 0; fk < aN; fk++) f4(flo[fk], flo[fk + 1], fhi[fk + 1], fhi[fk]);
+                };
+                if (aFaces.indexOf('f') >= 0) aFace(aD, true);
+                if (aFaces.indexOf('b') >= 0) aFace(-aD, false);
+                if (P.inside !== false) {
+                    var gi = grp(P.keyIn || key, (P.tintIn != null) ? P.tintIn : null), iv = function (x, y, z, u, v) { return put(gi, [x, y, z], [u / mu, v / mv]); };
+                    var j0 = iv(aX0, 0, aD, 0, 0), j1 = iv(aX0, 0, -aD, 2 * aD, 0), j2 = iv(aX0, aS, -aD, 2 * aD, aS), j3 = iv(aX0, aS, aD, 0, aS); gi.idx.push(j0, j1, j2, j0, j2, j3);
+                    j0 = iv(aX1, 0, -aD, 0, 0); j1 = iv(aX1, 0, aD, 2 * aD, 0); j2 = iv(aX1, aS, aD, 2 * aD, aS); j3 = iv(aX1, aS, -aD, 0, aS); gi.idx.push(j0, j1, j2, j0, j2, j3);
+                    var sB = [], sF = []; aArc.forEach(function (q) { sB.push(iv(q[0], q[1], -aD, 0, aS + q[2])); sF.push(iv(q[0], q[1], aD, 2 * aD, aS + q[2])); });
+                    for (var sk = 0; sk < aN; sk++) gi.idx.push(sB[sk], sB[sk + 1], sF[sk + 1], sB[sk], sF[sk + 1], sF[sk]);
+                }
+                if (P.rim && +P.rim[0] > 0) {   // the ARCHIVOLT: a raised band round the head of the opening, on the front
+                    var rW = +P.rim[0], rD = +P.rim[1] || 0.1, gr = grp(P.keyRim || key, (P.tintRim != null) ? P.tintRim : null), rI = [], rO = [], rOb = [], rIb = [];
+                    aArc.forEach(function (q, qi) { var rt = Math.PI * qi / aN, ox = aC - (aO + rW) * Math.cos(rt), oy = aS + (aR + rW) * Math.sin(rt);
+                        rI.push(put(gr, [q[0], q[1], aD + rD], [q[2] / mu, 0])); rO.push(put(gr, [ox, oy, aD + rD], [q[2] / mu, rW / mv]));
+                        rOb.push([ox, oy]); rIb.push([q[0], q[1]]); });
+                    for (var rk = 0; rk < aN; rk++) gr.idx.push(rI[rk], rI[rk + 1], rO[rk + 1], rI[rk], rO[rk + 1], rO[rk]);
+                    for (var rk2 = 0; rk2 < aN; rk2++) {
+                        quad(P.keyRim || key, [rOb[rk2][0], rOb[rk2][1], aD + rD], [rOb[rk2 + 1][0], rOb[rk2 + 1][1], aD + rD], [rOb[rk2 + 1][0], rOb[rk2 + 1][1], aD], [rOb[rk2][0], rOb[rk2][1], aD], 0.3, rD, P.tintRim);
+                        quad(P.keyRim || key, [rIb[rk2][0], rIb[rk2][1], aD], [rIb[rk2 + 1][0], rIb[rk2 + 1][1], aD], [rIb[rk2 + 1][0], rIb[rk2 + 1][1], aD + rD], [rIb[rk2][0], rIb[rk2][1], aD + rD], 0.3, rD, P.tintRim);
+                    }
+                }
+                if (P.top) quad(P.keyTop || key, [-aW, aH, aD], [aW, aH, aD], [aW, aH, -aD], [-aW, aH, -aD], 2 * aW, 2 * aD, tT);
+                if (P.ends) { quad(key, [aW, 0, aD], [aW, 0, -aD], [aW, aH, -aD], [aW, aH, aD], 2 * aD, aH); quad(key, [-aW, 0, -aD], [-aW, 0, aD], [-aW, aH, aD], [-aW, aH, -aD], 2 * aD, aH); }
+            } else if (P.s === 'sweep') {
+                /* THE SECTION ALONG A LINE (2026-11-18): how an amphitheatre is drawn: one section carried round the plan. Sharp between two segments of the
+                   section (a moulding's edges), smooth along the line (a curved wall reads round). */
+                var wP = pathOf(P.path), wF = P.prof || [];
+                if (!wP || wP.length < 2 || wF.length < 2) return;
+                var wN = wP.length, wC = !!P.closed, wI0 = (P.from != null) ? +P.from : 0, wI1 = (P.to != null) ? +P.to : (wC ? wI0 + wN : wN - 1), wS = [], wRun = 0, wPrev = null;
+                for (var wi = wI0; wi <= wI1; wi++) {
+                    var w0 = wP[((wi % wN) + wN) % wN], wnx, wnz;
+                    if (w0.length >= 4) { wnx = w0[2]; wnz = w0[3]; }
+                    else { var wa = wP[(((wi - 1) % wN) + wN) % wN], wb = wP[(((wi + 1) % wN) + wN) % wN]; if (!wC) { if (wi <= 0) wa = w0; if (wi >= wN - 1) wb = w0; } var wtx = wb[0] - wa[0], wtz = wb[1] - wa[1], wtl = Math.hypot(wtx, wtz) || 1; wnx = wtz / wtl; wnz = -wtx / wtl; }
+                    var wU = [w0[0] + wnx * (+P.ud || 0), w0[1] + wnz * (+P.ud || 0)];   // `ud`: the sheet's repeats are measured along the line this far out (a facade 28 m out from the arena's edge)
+                    if (wPrev) wRun += Math.hypot(wU[0] - wPrev[0], wU[1] - wPrev[1]);
+                    wPrev = wU; wS.push([w0[0], w0[1], wnx, wnz, wRun]);
+                }
+                var wV = 0;
+                for (var wj = 0; wj + 1 < wF.length; wj++) {
+                    var wA = wF[wj], wB = wF[wj + 1], wL = Math.hypot(wB[0] - wA[0], wB[1] - wA[1]); if (wL < 1e-4) continue;
+                    var wK = (P.keys && P.keys[wj] !== undefined) ? P.keys[wj] : key; if (wK === false) { wV += wL; continue; }
+                    var gs = grp(wK || null, (P.tints && P.tints[wj] != null) ? P.tints[wj] : null), wlo = [], whi = [];
+                    for (var wk = 0; wk < wS.length; wk++) { var ws = wS[wk];
+                        wlo.push(put(gs, [ws[0] + ws[2] * wA[0], wA[1], ws[1] + ws[3] * wA[0]], [ws[4] / mu, wV / mv]));
+                        whi.push(put(gs, [ws[0] + ws[2] * wB[0], wB[1], ws[1] + ws[3] * wB[0]], [ws[4] / mu, (wV + wL) / mv])); }
+                    for (var wq2 = 0; wq2 + 1 < wS.length; wq2++) { if (P.flip) gs.idx.push(wlo[wq2], whi[wq2 + 1], wlo[wq2 + 1], wlo[wq2], whi[wq2], whi[wq2 + 1]); else gs.idx.push(wlo[wq2], wlo[wq2 + 1], whi[wq2 + 1], wlo[wq2], whi[wq2 + 1], whi[wq2]); }
+                    wV += wL;
                 }
             }
         });
@@ -89476,6 +89650,21 @@ const ThreeRenderer = (function () {
             cloth.position.set(0, (H / 2) * U, 0.03 * U); g.add(cloth);
             var cord = _hqMat(null, 1, 1, { color: 0xe8e0d0 });
             for (var cx = -1; cx <= 1; cx += 2) { var c = new THREE.Mesh(new THREE.CylinderGeometry(0.004 * U, 0.004 * U, 0.16 * U, 4), cord); c.position.set(cx * (W / 2 - 0.02) * U, (H + 0.06) * U, 0.03 * U); c.rotation.z = cx * 0.35; g.add(c); }
+            return g;
+        },
+    });
+    /* THE SUBWAY's NAME BOARD (2026-11-18, data.js DOOR_HQ.subway): an enamel plate on the wall (front +z), white capitals on dark green in a
+       white line, the line's name small under the station's. It reads its own placement row (`p.text`: data.js hqSubwayApply writes the
+       station on file into the platform room's rows before the room is built); the sheet is cached per wording. */
+    Object.assign(_hqProcBuilders, {
+        station_sign: function (U, p) {
+            var g = new THREE.Group(), W = 2.8, H = 0.62;
+            var text = (p && Array.isArray(p.text) && p.text.length) ? p.text.map(String) : ['STATION'];
+            var key = 'hq_station_' + text.join('|').replace(/[^A-Za-z0-9]/g, '_');
+            var tex = (typeof _hzTextTex === 'function') ? _hzTextTex(key, text, { w: 1024, h: 228, bg: '#1f5a3c', color: '#ffffff', border: '#ffffff', pad: 0.1, sizes: [112, 44], weight: 'bold', font: '"Arial Narrow", Arial, Helvetica, sans-serif' }) : null;
+            var back = _hqBox(W + 0.08, H + 0.08, 0.03, _hqMat(null, 1, 1, { color: 0x16382a, shininess: 30 })); back.position.set(0, (H / 2) * U, 0.015 * U); g.add(back);
+            var face = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), tex ? new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.35 }) : _hqBasic(0x1f5a3c));
+            face.position.set(0, (H / 2) * U, 0.033 * U); g.add(face);
             return g;
         },
     });
