@@ -462,6 +462,14 @@ toned too, gently (they were left alone in B1; their cream rings read white on a
 img/white_fallback_after.jpg (Heal, Overclock, Protect, Hallelujah). `sparkle` (51 recipes) is also undefined and
 still white: a sparkle's glint is white, left on purpose.
 
+**B11, the final pass (11-18):** two real VS-CPU matches, a two-seat online check (19 casts, the beats compared on both
+seats), every spell the harness could not cast now cast on a hand-set board, the open single items. Fixed: Stasis Beam
+(white, and missing for the guest), Teleport's portals (they read state the guest did not have; now on the relayed
+`'teleport'` beat), a teleport's arriving portal and a summon's portal (1.2-1.6 s late; now with the cast), the old blue
+ring under a kit portal, the mind sigil under the psychic noise wash. Left for mondo: Ki Charge's gold ring, `sparkle`,
+Eternal Slumber's puffs, and deleting the switch + the old paths. Notes: spells-vfx.md "THE VFX CLEANUP, B11"; pictures
+`img/b11/`. The capture runner has `--fine` (a frame every 100 ms).
+
 **The sweeps (B6a-B10) run as nine threads from 11-17:** brief `docs/plans/vfx-cleanup/SWEEP_BRIEF.md`.
 **The own-look threads:** L1-L5 reported their lists done and merged on 11-17 (notes: spells-vfx.md "THE OWN LOOKS, L<n>").
 

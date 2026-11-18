@@ -3282,6 +3282,9 @@
                 spawnProbeDescent3D:[[0, 1]],
                 /* Trunk Throw's tumbling tree (battle.js calls it directly; host-only until the FX-3 look fix, 2026-10-26) */
                 spawnTrunkThrow3D:  [[0, 1], [2, 3]],
+                /* THE VFX CLEANUP B11: Stasis Beam's lance (battle.js calls it directly: (fromTx, fromTy, toTx, toTy,
+                   {color, coreColor, ms})); the guest drew no beam at all */
+                sigSpiralBeam3D:    [[0, 1], [2, 3]],
                 /* action tile glow for attacks / bane throws / detonations
                    (2026-09-02): (sx, sy, tx, ty, opts) — fog anchors on
                    both ends; the renderer drops any hidden tile itself. */
