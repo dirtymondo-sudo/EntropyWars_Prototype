@@ -25477,8 +25477,20 @@
                                     const m = /^(\d+)-(\d+)$/.exec(String(u.id)), n = m ? _np[+m[2]] : null;
                                     if (n && n.id && _encBeaten.indexOf(n.id) < 0) _encBeaten.push(n.id);
                                 }
+                                /* 🏳 THE LOSING NPC (step 6b): one paid off, let go or arrested is out of the room today too */
+                                _npcDealt.forEach(d => { const m = d && d.unit && /^(\d+)-(\d+)$/.exec(String(d.unit.id)), n = m ? _np[+m[2]] : null; if (n && n.id && _encBeaten.indexOf(n.id) < 0) _encBeaten.push(n.id); });
                             } catch (e) { console.warn('[HQ] the beaten list failed', e); }
-                            hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, retreat: !won && _encRetreatOn, beaten: _encBeaten, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
+                            /* 🏳 a runner that got away is NOT beaten (not even the one struck, on a win) */
+                            const _encAway = [];
+                            try {
+                                const _np = Array.isArray(erun.npcs) ? erun.npcs : [], _sv = getViewerPlayer();
+                                Object.keys(state.escaped || {}).forEach(k => (state.escaped[k] || []).forEach(u => {
+                                    if (!u || unitHomePlayer(u) === _sv) return;
+                                    const m = /^(\d+)-(\d+)$/.exec(String(u.id)), n = m ? _np[+m[2]] : null;
+                                    if (n && n.id && _encAway.indexOf(n.id) < 0) _encAway.push(n.id);
+                                }));
+                            } catch (e) {}
+                            hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, retreat: !won && _encRetreatOn, beaten: _encBeaten, away: _encAway, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
                             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's doors go home with the hits the board left them (a
                                broken door is gone); a capture door that went onto the board is spent */
                             try {
@@ -25516,7 +25528,12 @@
                                     /* THE SPOILS (2026-09-23): every fallen enemy rolls the SAME drop table (data.js hqEncounterDrops — a bane of its own type);
                                        the commit puts them in the bag on a win, the debrief's REWARDS sheet lists them */
                                     let drops = null;
-                                    try { if (won && typeof hqEncounterDrops === 'function') drops = hqEncounterDrops(_encFallenEnemies(seat)); } catch (e) { drops = null; }
+                                    try {
+                                        /* 🏳 THE PAY-OFF (step 6b): each NPC that paid adds its certain rolls (`sure`) to the same table */
+                                        const _paid = [];
+                                        _npcDealt.forEach(d => { if (d && d.how === 'pay' && d.unit) for (let i = 0; i < (d.rolls | 0); i++) _paid.push({ race: d.unit.race || '', name: d.unit.name || d.unit.race || '', types: Array.isArray(d.unit.types) ? d.unit.types.slice() : [], sure: true }); });
+                                        if (won && typeof hqEncounterDrops === 'function') drops = hqEncounterDrops(_encFallenEnemies(seat).concat(_paid));
+                                    } catch (e) { drops = null; }
                                     /* THE RECRUIT WALKS OUT (mondo 2026-11-13): a WON quest fight puts the officer back on their feet (the story's scenes and the walk after it are theirs) */
                                     let _qRevive = false; try { const _qr = _encRun(); _qRevive = !!(won && _qr && _qr.quest); } catch (e) { _qRevive = false; }
                                     if (vit.length) partyRes = hqPartyAfterMatch(p, { won, retreat: !won && _encRetreatOn, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops, reviveYou: _qRevive });
@@ -25540,7 +25557,7 @@
                                     /* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §2.6): every native the party SEALED joins — the party, else the roster
                                        (the captured ledger: owned at once, never bought), else a bounty in gold */
                                     try {
-                                        const caps = won ? (state.captures || []).filter(c => c && c.player === seat) : [];
+                                        const caps = (state.captures || []).filter(c => c && c.player === seat && (won || c.arrest));   // 🏳 an ARREST (step 6b) goes through, win or lose
                                         if (caps.length && typeof hqCaptureEnlist === 'function') {
                                             const cr = hqCaptureEnlist(p, caps.map(c => ({ race: c.race, gender: c.gender, name: c.name, lvl: c.lvl, tier: c.tier })));
                                             if (cr && cr.gold > 0) { if (!p.account) p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 }; p.account.gold = (p.account.gold | 0) + cr.gold; }   // the local mirror, on the profile this commit saves (creditLocalGold would be overwritten by it); the server pays the bounty ledger on the sync (Phase 4)
@@ -25560,6 +25577,17 @@
                                     } catch (e) { console.warn('[HQ] the captures failed', e); }
                                 }
                             } catch (e) { console.warn('[HQ] the party record failed', e); }
+                            /* 🏳 THE PAY-OFF (step 6b): the gold the NPCs paid, kept whatever the outcome (the local mirror on the profile this commit
+                               saves, like the capture bounty; a server account reconciles on its sync) */
+                            try {
+                                const _payGold = _npcDealt.reduce((a, d) => a + ((d && d.how === 'pay') ? (d.gold | 0) : 0), 0);
+                                if (_payGold > 0) {
+                                    if (!p.account) p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 };
+                                    p.account.gold = (p.account.gold | 0) + _payGold;
+                                    if (partyRes && typeof partyRes === 'object') partyRes.payOffGold = _payGold; else partyRes = { payOffGold: _payGold };
+                                    addLog(`💰 PAY-OFF: +${_payGold} GOLD.`);
+                                }
+                            } catch (e) { console.warn('[HQ] the pay-off failed', e); }
                             /* NPC HEALTH ON THE WALK (NPC encounters step 5a, 2026-11-18; mondo: "track health outside of battle then, already do for the player
                                and party"): every enemy seat that was a real NPC (the run's `npcs`, in seat order: the one struck, then its group) files the HP it
                                walked away with (data.js hqNpcWoundsAfter, door.hq.wounds; whole again after its Sleep block, or at the next game day). Down in the
@@ -25569,7 +25597,7 @@
                                 if (npcs && npcs.some(n => n && n.id) && typeof hqNpcWoundsAfter === 'function') {
                                     const seat = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
                                     const capIds = won ? (state.captures || []).filter(c => c && c.player === seat).map(c => c.unitId).filter(Boolean) : [];
-                                    const pool = (state.units || []).concat(...Object.keys(state.bench || {}).map(k => state.bench[k] || []), ...Object.keys(state.escaped || {}).map(k => state.escaped[k] || []), state.sealedUnits || []);
+                                    const pool = (state.units || []).concat(...Object.keys(state.bench || {}).map(k => state.bench[k] || []), ...Object.keys(state.escaped || {}).map(k => state.escaped[k] || []), state.sealedUnits || [], _npcDealt.map(d => d && d.unit).filter(Boolean));
                                     const rows = [], seen = {};
                                     for (const u of pool) {
                                         if (!u || u.id == null || seen[u.id]) continue;
@@ -25579,7 +25607,7 @@
                                         const n = npcs[+m[2]]; if (!n || !n.id) continue;
                                         seen[u.id] = 1;
                                         const down = !!(u.dead || u._dying || !(u.hp > 0));
-                                        rows.push({ id: n.id, rest: n.rest, hp: u.hp | 0, max: u.maxHp | 0, down, gone: capIds.indexOf(u.id) >= 0 || (state.sealedUnits || []).indexOf(u) >= 0 });
+                                        rows.push({ id: n.id, rest: n.rest, hp: u.hp | 0, max: u.maxHp | 0, down, gone: capIds.indexOf(u.id) >= 0 || (state.sealedUnits || []).indexOf(u) >= 0 || !!u._npcDealtOff });
                                     }
                                     const hurt = hqNpcWoundsAfter(p, erun.room, rows);
                                     if (hurt && hurt.length) console.log('[HQ] the wounds: ' + hurt.map(h => h.id + ' ' + h.hp + '/' + h.max).join(', '));   // nothing on screen (a UI change waits for mondo's OK)
@@ -51438,6 +51466,319 @@
         window.doTeamEscape = doTeamEscape;
         window._escapeStoryFight = _escapeStoryFight;
 
+        /* ══ THE LOSING NPC (NPC encounters step 6b, 2026-11-18; docs/plans/npc-encounters/STEP-6A.md, mondo: "OK sounds good") ══
+           Story fights only, never a quest's fight, only an enemy seat that is a real NPC (the run's `npcs`, seat order). A hit that leaves
+           it alive at or under data.js HQ_NPC_TEMPERS.losing.giveUpAt of its max HP: it decides ONCE by its temper (hqNpcLosingWay):
+           - 'give' = GIVES UP at once (a free reaction): `_gaveUp`, the kneel (sprites.js PODIUM_POSES defKneel, held), the white flag + the grey
+             HP bar (three-renderer.js THE WHITE FLAG); its turns are skipped (state.js getNextBlitzUnit), the AI never targets it (ai.js), and it
+             counts as OUT for the win check (getTeamWipeoutCount). A hit on it by the party = it fights on, and never gives up again that fight.
+           - 'run' = THE ESCAPE TURNED ROUND: on its turn it walks to a square nobody of the party sees (nearest the rim); unseen on its turn = it
+             leaves the board (state.escaped[2], `_escaped`: no XP, no drop, not beaten, keeps its wounds). No such square in its move = cornered:
+             it gives up instead.
+           TALK (hud.js): the party unit on its own turn, within losing.talkRange squares of a unit that gave up, free (no AP, the turn goes on):
+           the panel = TAKE THE PAY-OFF (gold now, certain spoils rolls at the debrief) · ARREST (a door to DOOR HQ: hqCaptureEnlist, win or lose)
+           · LET IT GO (walks off). No XP for any. Pay-off and let it go = beaten today (the commit's `beaten`); arrest = captured. ESC / E /
+           right click close it with no answer. The fight's last enemy giving up wins the fight: the panel opens by itself first (checkWin).
+           VS-CPU only (an encounter is never online), so nothing here is relayed (RULE #2 is moot, like THE RETREAT). */
+        let _npcDealt = [];      // units the panel took off the board this match ({ unit, how, gold, rolls }); reset at startMatch
+        let _npcTalkEl = null;   // the open panel
+        function _npcLoseRules() {
+            const T = (typeof HQ_NPC_TEMPERS !== 'undefined') ? HQ_NPC_TEMPERS : null;
+            return Object.assign({ giveUpAt: 0.30, talkRange: 3, rolls: 1, rollsAt: 20, by: {} }, (T && T.losing) || {});
+        }
+        function _npcLoseRun() {
+            if (!_escapeStoryFight()) return null;
+            const r = _encRun();
+            return (r && !r.quest && Array.isArray(r.npcs)) ? r : null;
+        }
+        /* the run's NPC row of an enemy seat ({ id, rest }) | null */
+        function _npcRowOf(u) {
+            const r = _npcLoseRun(); if (!r || !u) return null;
+            const m = /^(\d+)-(\d+)$/.exec(String(u.id)); if (!m) return null;
+            const home = unitHomePlayer(u), seat = getViewerPlayer();
+            if (home === seat || home === 0 || u.player !== home) return null;
+            const n = r.npcs[+m[2]];
+            return (n && n.id) ? n : null;
+        }
+        function _npcLoseWay(u) {
+            if (!u || u._isBoss || u.isBoss || u._isSummon || u.summonedBy != null || u._summonerId != null) return null;
+            const n = _npcRowOf(u); if (!n) return null;
+            const r = _npcLoseRun();
+            return (typeof hqNpcLosingWay === 'function') ? hqNpcLosingWay({ race: u.race, id: n.id, room: r && r.room }) : null;
+        }
+        /* the kneel: the renderer reads window._ewGaveUpIds every frame and plays the podium's defKneel (three-renderer.js _kneelReady) */
+        function _npcKneel(u, on) {
+            if (!u) return;
+            if (!window._ewGaveUpIds) window._ewGaveUpIds = new Set();
+            if (on) window._ewGaveUpIds.add(u.id); else window._ewGaveUpIds.delete(u.id);
+        }
+        function _npcGiveUp(u) {
+            u._gaveUp = true; u._npcRunning = false; u._npcDecided = true;
+            const T = (typeof HQ_NPC_TEMPERS !== 'undefined') ? HQ_NPC_TEMPERS : null;
+            const line = (T && T.lines && T.lines.giveUp) || '';
+            addLog(`🏳️ ${_ctName(u)} gives up. ${line}`);
+            if (!_skipVisuals()) showFloatingTextForUnit(u, '🏳️ GIVES UP', 'buff', { durationMs: 1600 });
+            _npcKneel(u, true);
+            scheduleBoardRender();
+        }
+        /* a hit on a unit that gave up: it fights on, for good */
+        function _npcRefuse(u) {
+            u._gaveUp = false; u._npcRefused = true; u._npcDecided = true;
+            _npcKneel(u, false);
+            addLog(`⚔ ${_ctName(u)} fights on — it will not give up again.`);
+            if (!_skipVisuals()) showFloatingTextForUnit(u, 'FIGHTS ON', 'debuff', { durationMs: 1400 });
+            if (_npcTalkEl && _npcTalkEl._uid === u.id) _npcTalkClose();
+            scheduleBoardRender();
+        }
+        /* applyDamageToUnit's two reads (the wrapper below): before the hit (a party hit on a unit that gave up) and after it (losing?) */
+        function _npcBeforeHit(target, damage, opts) {
+            if (!target || !target._gaveUp || !(damage > 0)) return;
+            const src = opts && opts.sourceUnit;
+            if (src && unitHomePlayer(src) !== unitHomePlayer(target)) _npcRefuse(target);
+        }
+        function _npcAfterHit(target) {
+            if (!target || target.dead || target._dying || !(target.hp > 0) || target._npcDecided || target._gaveUp || target._sealed || target._escaped) return;
+            if (target.hp > (target.maxHp || 1) * _npcLoseRules().giveUpAt) return;
+            const way = _npcLoseWay(target); if (!way) return;
+            target._npcDecided = true;
+            if (way === 'give') { _npcGiveUp(target); return; }
+            target._npcRunning = true;
+            addLog(`🏃 ${_ctName(target)} turns to run!`);
+            if (!_skipVisuals()) showFloatingTextForUnit(target, 'RUNS!', 'debuff', { durationMs: 1400 });
+        }
+        if (typeof applyDamageToUnit === 'function' && !applyDamageToUnit._npc6b) {
+            const _adtuBase = applyDamageToUnit;
+            applyDamageToUnit = function (target, damage, sourceText, opts) {
+                try { _npcBeforeHit(target, damage, opts || {}); } catch (e) { console.warn('[NPC] before-hit read failed', e); }
+                const r = _adtuBase.apply(this, arguments);
+                try { _npcAfterHit(target); } catch (e) { console.warn('[NPC] losing read failed', e); }
+                return r;
+            };
+            applyDamageToUnit._npc6b = true;
+            window.applyDamageToUnit = applyDamageToUnit;
+        }
+        /* the runner's square: within its move, nobody of the party sees it there (nearest the rim, then farthest from the party) | null */
+        function _npcRunPick(unit) {
+            let tiles = [];
+            try { tiles = getMoveTiles(unit) || []; } catch (e) { tiles = []; }
+            const W = bw(), H = bh();
+            const foes = (state.units || []).filter(f => f && !f.dead && unitHomePlayer(f) !== unitHomePlayer(unit));
+            const rim = (x, y) => Math.min(x, y, W - 1 - x, H - 1 - y);
+            const foeD = (x, y) => foes.length ? Math.min.apply(null, foes.map(f => Math.abs(f.x - x) + Math.abs(f.y - y))) : 99;
+            const ox = unit.x, oy = unit.y, oz = unit.z;
+            let best = null;
+            try {
+                for (const t of tiles) {
+                    if (!t || (t.x === ox && t.y === oy)) continue;
+                    unit.x = t.x; unit.y = t.y; unit.z = t.z;
+                    const seen = isUnitSeenByAnyEnemy(unit);
+                    if (seen) continue;
+                    if (!best || rim(t.x, t.y) < rim(best.x, best.y) || (rim(t.x, t.y) === rim(best.x, best.y) && foeD(t.x, t.y) > foeD(best.x, best.y))) best = t;
+                }
+            } finally { unit.x = ox; unit.y = oy; unit.z = oz; }
+            return best;
+        }
+        /* out of the fight unseen: off the board onto state.escaped (the player's own escape's remove) */
+        function _npcLeave(unit) {
+            const R = _escapeRules();
+            clearAiSafetyTimer(); state.aiThinking = false;
+            state._actionExecuting = true;
+            addLog(`🏃 ${_ctName(unit)} got away.`);
+            if (!_skipVisuals()) showFloatingTextForUnit(unit, 'GOT AWAY', 'debuff', { durationMs: 1400 });
+            _escapeWalkOff(unit);
+            unit.ap = 0;
+            scheduleBoardRender();
+            window.setTimeout(() => {
+                _escapeRemove(unit);
+                state._actionExecuting = false;
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                scheduleBoardRender();
+                if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: true });
+                checkWin();
+                if (state.phase === 'battle' && !state.winner) _waitForAnimationsThen(() => maybeAdvanceTurn());
+            }, actionMs(R.ms));
+        }
+        /* runComputerTurn's hook: a unit that gave up spends nothing; a runner runs. true = the turn is handled */
+        function _npcRunTurn(unit) {
+            if (!unit || !_npcLoseRun()) return false;
+            const done = () => { unit._npcRunMoved = false; unit.ap = 0; clearAiSafetyTimer(); state.aiThinking = false; finishComputerAction(); };
+            if (unit._gaveUp) { done(); return true; }
+            if (!unit._npcRunning) return false;
+            if (!isUnitSeenByAnyEnemy(unit)) { unit._npcRunMoved = false; _npcLeave(unit); return true; }
+            if (unit._npcRunMoved || !canUnitMove(unit)) { done(); return true; }
+            const t = _npcRunPick(unit);
+            if (!t) { addLog(`🏃 ${_ctName(unit)} is cornered.`); _npcGiveUp(unit); done(); return true; }
+            unit._npcRunMoved = true;
+            state.actionMode = 'move';
+            const prevX = unit.x, prevY = unit.y;
+            const res = doMove(unit, t.x, t.y, t.z);
+            state.actionMode = null;
+            if (unit.x === prevX && unit.y === prevY) { done(); return true; }
+            const delay = (typeof res === 'number' && res > 1) ? res : 0;
+            if (delay > 0) window.setTimeout(() => finishComputerAction(), delay); else finishComputerAction();
+            return true;
+        }
+        /* ── TALK ── the units that gave up which `unit` can talk to now (nearest first) */
+        function _npcTalkTargets(unit) {
+            if (!unit || !_npcLoseRun()) return [];
+            const R = _npcLoseRules();
+            return (state.units || []).filter(u => u && u._gaveUp && !u.dead && !u._dying && !u._sealed
+                && Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) <= R.talkRange)
+                .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
+        }
+        /* the command row's read: null = no row (nobody gave up); { why } greyed; { ok } lit */
+        function npcTalkRow(unit) {
+            if (!_npcLoseRun() || !(state.units || []).some(u => u && u._gaveUp && !u.dead)) return null;
+            if (!unit || unit.dead || state.phase !== 'battle' || state.winner) return { why: 'Unavailable' };
+            if (state._blitzActiveUnitId && state._blitzActiveUnitId !== unit.id) return { why: 'Not this unit’s turn' };
+            if (!_npcTalkTargets(unit).length) return { why: 'Within ' + _npcLoseRules().talkRange + ' squares' };
+            return { ok: true };
+        }
+        function doNpcTalk(unit) {
+            const t = _npcTalkTargets(unit)[0];
+            if (!t) return false;
+            _npcTalkOpen(t, unit, false);
+            return true;
+        }
+        /* off the board for good (pay-off / let it go: it walks off first; arrest: the door) */
+        function _npcOffBoard(u) {
+            state.units = state.units.filter(x => x.id !== u.id);
+            u.ap = 0; u._gaveUp = false; u._npcDealtOff = true;
+            if (Array.isArray(state._blitzTurnOrderIds)) {
+                state._blitzTurnOrderIds = state._blitzTurnOrderIds.filter(id => id !== u.id);
+                if (typeof window._rebuildBlitzTurnOrderFromIds === 'function') window._rebuildBlitzTurnOrderFromIds();
+            }
+            if (state.selectedUnitId === u.id) state.selectedUnitId = null;
+            if (state.focusedUnitId === u.id) state.focusedUnitId = null;
+            if (state._blitzActiveUnitId === u.id) state._blitzActiveUnitId = null;
+        }
+        function _npcAnswer(u, how, talker) {
+            if (!u || u.dead || !state.units.includes(u)) return;
+            const R = _escapeRules(), seat = getViewerPlayer();
+            const lvl = getUnitLevel(u) | 0;
+            const po = (typeof hqNpcPayOff === 'function') ? hqNpcPayOff(lvl) : { gold: 8 * lvl, rolls: 1 };
+            const T = (typeof HQ_NPC_TEMPERS !== 'undefined') ? HQ_NPC_TEMPERS : null, Lb = (T && T.labels) || {};
+            const rec = { unit: u, how, gold: how === 'pay' ? po.gold : 0, rolls: how === 'pay' ? po.rolls : 0 };
+            _npcDealt.push(rec);
+            const after = () => {
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                scheduleBoardRender();
+                if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: true });
+                checkWin();
+            };
+            if (how === 'arrest') {
+                u._sealed = true; u._gaveUp = false; _npcKneel(u, false); u.status = u.status || {}; u.status.sealed = 99;
+                if (!Array.isArray(state.captures)) state.captures = [];
+                state.captures.push({ unitId: u.id, player: seat, capturerId: talker ? talker.id : null, race: u.race || '', gender: u.gender || null, name: u.name || '',
+                                      lvl, tier: 1, round: state.round || 0, x: u.x, y: u.y, arrest: true });
+                if (!_skipVisuals()) {
+                    showFloatingTextAtTile(u.x, u.y, '🚪 ' + (Lb.arrest || 'ARREST'), 'buff');
+                    try { window._doorGeom('raceCaptureDoor:seal', u.x, u.y, { fromX: talker ? talker.x : u.x, fromY: talker ? talker.y : u.y + 1, tier: 1 }); } catch (e) {}
+                }
+                if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
+                addLog(`🚪 ARRESTED — ${_ctName(u)} goes through the door to DOOR HQ.`);
+                _npcOffBoard(u);
+                u._npcDealtOff = true;
+                if (!Array.isArray(state.sealedUnits)) state.sealedUnits = [];
+                state.sealedUnits.push(u);
+                after();
+                return;
+            }
+            if (how === 'pay') {
+                addLog(`💰 ${_ctName(u)} pays ${rec.gold} ${Lb.gold || 'GOLD'} to be let go.`);
+                if (!_skipVisuals()) showFloatingTextForUnit(u, '💰 +' + rec.gold + ' ' + (Lb.gold || 'GOLD'), 'heal', { durationMs: 1600 });
+            } else {
+                addLog(`🚶 ${_ctName(u)} is let go.`);
+            }
+            _npcKneel(u, false);
+            u._gaveUp = false;
+            state._actionExecuting = true;
+            _escapeWalkOff(u);
+            scheduleBoardRender();
+            window.setTimeout(() => { _npcOffBoard(u); state._actionExecuting = false; after(); }, actionMs(R.ms));
+        }
+        function _npcTalkClose(noAnswer) {
+            const el = _npcTalkEl; _npcTalkEl = null;
+            if (el) { try { document.removeEventListener('keydown', el._key, true); } catch (e) {} if (el.parentNode) el.parentNode.removeChild(el); }
+            if (noAnswer && el && el._end) {   // the fight is over: closing it lets it go (the debrief waits on an answer)
+                const u = state.units.find(x => x.id === el._uid);
+                if (u) _npcAnswer(u, 'let', null);
+            }
+        }
+        function _npcTalkOpen(u, talker, end) {
+            if (_npcTalkEl) _npcTalkClose(false);
+            if (typeof document === 'undefined') return;
+            const T = (typeof HQ_NPC_TEMPERS !== 'undefined') ? HQ_NPC_TEMPERS : null, Lb = (T && T.labels) || {};
+            const lvl = getUnitLevel(u) | 0;
+            const po = (typeof hqNpcPayOff === 'function') ? hqNpcPayOff(lvl) : { gold: 8 * lvl, rolls: 1 };
+            const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            let port = ''; try { port = _vicPortrait(u) || ''; } catch (e) { port = ''; }
+            if (!document.getElementById('ew-npc-talk-css')) {
+                /* the battle's own black box with the white outline (owner rules: PS1 window UI, panels black with a white outline) */
+                const st = document.createElement('style'); st.id = 'ew-npc-talk-css';
+                st.textContent = [
+                    '.ew-npc-talk { position: fixed; left: 50%; bottom: 14vh; transform: translateX(-50%); z-index: 9000; width: min(760px, calc(100vw - 32px));',
+                    '  box-sizing: border-box; background: #000; border: 2px solid #fff; padding: 18px 20px 12px; color: #fff; font-family: "IBM Plex Mono", monospace; }',
+                    '.ew-npc-talk-top { display: flex; gap: 18px; align-items: flex-start; }',
+                    '.ew-npc-talk-port { position: relative; flex: none; width: 108px; height: 108px; border: 2px solid #fff; background: #111; overflow: hidden; }',
+                    '.ew-npc-talk-port img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; display: block; }',
+                    '.ew-npc-talk-flag { position: absolute; top: 2px; right: 4px; font-size: 16px; text-shadow: 0 1px 2px #000; }',
+                    '.ew-npc-talk-txt { min-width: 0; flex: 1; }',
+                    '.ew-npc-talk-name { font-size: 30px; font-weight: 700; letter-spacing: 1px; line-height: 1.1; overflow-wrap: anywhere; }',
+                    '.ew-npc-talk-lv { font-size: 14px; font-weight: 400; color: #bbb; margin-left: 16px; letter-spacing: 1px; white-space: nowrap; }',
+                    '.ew-npc-talk-line { font-size: 24px; margin-top: 14px; line-height: 1.25; }',
+                    '.ew-npc-talk-btns { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }',
+                    '.ew-npc-talk-btns button { background: #000; color: #fff; font: 700 15px "IBM Plex Mono", monospace; letter-spacing: 0.5px; padding: 9px 11px; cursor: pointer; border: 2px solid #9a9a9a; white-space: normal; text-align: left; }',
+                    '.ew-npc-talk-btns button:hover { background: #1a1a1a; }',
+                    '.ew-npc-talk-btns .ew-npc-talk-pay { border-color: #2ed158; }',
+                    '.ew-npc-talk-btns .ew-npc-talk-arrest { border-color: #4a8cff; }',
+                    '.ew-npc-talk-hint { margin-top: 12px; font-size: 13px; color: #aaa; }',
+                ].join('\n');
+                document.head.appendChild(st);
+            }
+            const el = document.createElement('div');
+            el.className = 'ew-npc-talk';
+            el._uid = u.id; el._end = !!end;
+            el.innerHTML =
+                '<div class="ew-npc-talk-top">' +
+                    '<div class="ew-npc-talk-port">' + (port ? '<img src="' + esc(port) + '" alt="">' : '') + '<span class="ew-npc-talk-flag">🏳️</span></div>' +
+                    '<div class="ew-npc-talk-txt">' +
+                        '<div class="ew-npc-talk-name">' + esc(String(unitDisplayName(u) || u.race || '').toUpperCase()) + '<span class="ew-npc-talk-lv">LV ' + lvl + ' · GAVE UP</span></div>' +
+                        '<div class="ew-npc-talk-line">' + esc((T && T.lines && T.lines.giveUp) || '') + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="ew-npc-talk-btns">' +
+                    '<button type="button" data-a="pay" class="ew-npc-talk-pay">1 · ' + esc(Lb.payOff || 'TAKE THE PAY-OFF') + ' · ' + po.gold + ' ' + esc(Lb.gold || 'GOLD') + '</button>' +
+                    '<button type="button" data-a="arrest" class="ew-npc-talk-arrest">2 · ' + esc(Lb.arrest || 'ARREST') + '</button>' +
+                    '<button type="button" data-a="let" class="ew-npc-talk-let">3 · ' + esc(Lb.letGo || 'LET IT GO') + '</button>' +
+                '</div>' +
+                '<div class="ew-npc-talk-hint">' + (end ? 'ESC · E · RIGHT CLICK = let it go' : 'ESC · E · RIGHT CLICK = close, ask later') + '</div>';
+            const pick = how => { _npcTalkClose(false); _npcAnswer(u, how, talker); };
+            el.addEventListener('click', ev => { const b = ev.target && ev.target.closest && ev.target.closest('button[data-a]'); if (b) { ev.stopPropagation(); pick(b.getAttribute('data-a')); } });
+            el.addEventListener('contextmenu', ev => { ev.preventDefault(); ev.stopPropagation(); _npcTalkClose(true); });
+            el._key = ev => {
+                const k = ev.key;
+                if (k === '1' || k === '2' || k === '3') { ev.preventDefault(); ev.stopPropagation(); pick(k === '1' ? 'pay' : k === '2' ? 'arrest' : 'let'); }
+                else if (k === 'Escape' || k === 'e' || k === 'E') { ev.preventDefault(); ev.stopPropagation(); _npcTalkClose(true); }
+            };
+            document.addEventListener('keydown', el._key, true);
+            (document.getElementById('game-root') || document.body).appendChild(el);
+            _npcTalkEl = el;
+            if (typeof playUiSfx === 'function') { try { playUiSfx('open'); } catch (e) {} }
+        }
+        /* checkWin's hold: the fight is won but a unit that gave up is still unanswered = the panel opens by itself (true = hold the debrief) */
+        function _npcAskBeforeEnd() {
+            if (!state.winner || state.winner !== getViewerPlayer() || state._winLogged || !_npcLoseRun()) return false;
+            const left = (state.units || []).filter(u => u && u._gaveUp && !u.dead && !u._dying && !u._sealed);
+            if (!left.length) return false;
+            if (!_npcTalkEl) _npcTalkOpen(left[0], null, true);
+            return true;
+        }
+        /* the commit's reads: ids dealt with (beaten), arrested ids, the pay-off { gold, bodies } */
+        function _npcDealtRows() { return _npcDealt.slice(); }
+        window.npcTalkRow = npcTalkRow;
+        window.doNpcTalk = doNpcTalk;
+
         function canCastAnySpell(unit) {
             return TargetQuery.canCastAny(unit);
         }
@@ -62859,6 +63200,7 @@
                skip that match's intro, seed a dead eye or file a result. */
             _encMatch = null; window._ewEncounterFirstId = null;   // THE FIRST STRIKE: a stale marker never reaches another match
             _encRetreatOn = false;   // THE RETREAT belongs to the match that ended in it
+            _npcDealt = []; window._ewGaveUpIds = new Set(); try { _npcTalkClose(false); } catch (e) {}   // 🏳 THE LOSING NPC (step 6b): the answers belong to the match they were given in
             try {
                 const er = window._hqEncounterRun;
                 if (er) { if (er.armed) { er.armed = false; _encMatch = er; } else window._hqEncounterRun = null; }
@@ -69886,6 +70228,9 @@
                 return;
             }
             _aiActionGen = _blitzTurnGen;
+
+            /* 🏳 THE LOSING NPC (step 6b): a unit that gave up spends its turn kneeling; a runner runs for it */
+            try { if (_npcRunTurn(unit)) return; } catch (e) { console.error('[NPC] the losing turn failed:', e); }
 
             /* Mystery Dungeon 'Stay Close' tactic: regroup toward the leader
                before letting the stock AI fight. */
@@ -90685,7 +91030,7 @@
         // A controlled body keeps its home-team survival credit. Promised
         // reserves still count even though they are unavailable for switching.
         function getTeamWipeoutCount(player) {
-            return state.units.filter(u => unitHomePlayer(u) === player && !u.dead && !u._dying && !u._sealed).length
+            return state.units.filter(u => unitHomePlayer(u) === player && !u.dead && !u._dying && !u._sealed && !u._gaveUp).length   // 🏳 a unit that gave up is out (step 6b)
                 + (_benchOn() ? _gauntletReservesAlive(player) : 0);
         }
 
@@ -90736,6 +91081,7 @@
             /* THE TUTORIAL: no result screen — a forfeit (the pause menu) just leaves the lesson. */
             if (typeof window !== 'undefined' && window._tutActive) { if (state.winner && typeof window._tutorialLeave === 'function') { state.winner = null; window._tutorialLeave(true); } return; }
             if (state.winner) {
+                if (!state._winLogged && _npcAskBeforeEnd()) return;   // 🏳 THE LOSING NPC (step 6b): answer the one that gave up first
                 if (!state._winLogged) {
                     state._winLogged = true;
                     addLog('All remaining Keys and hidden items are now revealed.');
@@ -90814,6 +91160,7 @@
                 }
             }
 
+            if (state.winner && !state._winLogged && _npcAskBeforeEnd()) return;   // 🏳 THE LOSING NPC (step 6b): the panel opens by itself before the debrief
             if (state.winner && !state._winLogged) {
                 state._winLogged = true;
                 const winMsgs = {
