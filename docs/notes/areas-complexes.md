@@ -12017,6 +12017,7 @@ None were in MODEL_LIST / R2 / the packs (near misses in project files `internet
   search bar's end, the cookie; V the holo projector + the hearts, the ring light (17 m), a VR headset outside the Headset, gaming chairs +
   a mic; F the streamer's set on the Influencer Stage, the bell + the like over Going Viral, speech bubbles over the comment pit; M the
   envelope over the Inbox hill and the Outbox; S the cyber dishes on the Uplink. Words, signs, beams and the old pieces nobody named stay drawn.
+- **SEEN IN PLACE (11-18, the plan 3 thread's check, probe-fast, 23 views, no page error)**: every model but the magnifier and the cyber dishes (not in a view). Fixed on that look: the Hologram Stage's beam and the Quarantine's four rings were drawn as hollow cylinders, which are SOLID (an arch part has no see-through): they hid the avatar and the viruses. They are thin bars of light now. Rule: never draw a see-through wall as a `cyl` with `ri`; use bars.
 - **Units** (v-tuber, e-girl + streamer as one unit's F/M, the virus with its own moving parts like the Seraphim or the Cursed TV): a
   separate thread; concepts in project files `internet-models/concepts/`.
 
