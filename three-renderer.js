@@ -39437,13 +39437,16 @@ const ThreeRenderer = (function () {
     }
     /* the geometries every drawn thing holds (a LOD level counts as its full mesh) */
     function _mmLive(H) {
-        var live = {}, roots = [];
+        var live = new Set(), roots = [];   // (a Set of geometries, 2026-11-18: was an object keyed by 18,000 uuid strings, 21 ms a sweep)
         if (H && H.scene) roots.push(H.scene);
         if (H && H.stage) for (var id in H.stage.parts) { var P = H.stage.parts[id].P; if (P && P.partRoot) roots.push(P.partRoot); }
         if (scene) roots.push(scene);
         if (_menu && _menu.scene) roots.push(_menu.scene);
         var ho = _hqRoomHandover; if (ho) [ho.shellGroup, ho.doorGroup, ho.propGroup, ho.sky && ho.sky.group, ho.sky && ho.sky.landmarks].forEach(function (g) { if (g) roots.push(g); });
-        roots.forEach(function (R) { R.traverse(function (o) { var g = o.geometry; if (g) live[(g._ew_lodBase || g).uuid] = 1; }); });
+        /* (and in the same walk what the drawn things wear: materials + their colour sheets, `live.worn`, for the unit models' list: it
+           walked the whole scene a second time) */
+        var worn = live.worn = new Set();
+        roots.forEach(function (R) { R.traverse(function (o) { var g = o.geometry; if (g) live.add(g._ew_lodBase || g); var m = o.material; if (m) { if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) if (m[i]) { worn.add(m[i]); if (m[i].map) worn.add(m[i].map); } } else { worn.add(m); if (m.map) worn.add(m.map); } } }); });
         return live;
     }
     function _mmEvict(url) {
@@ -39492,7 +39495,7 @@ const ThreeRenderer = (function () {
         var rigs = [];
         for (var r in _unitGlbCache) {
             var ue = _unitGlbCache[r]; if (!ue || !ue.root) continue;
-            var hit = false; ue.root.traverse(function (o) { if (!hit && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) hit = true; });
+            var hit = false; ue.root.traverse(function (o) { if (!hit && o.geometry && live.has(o.geometry._ew_lodBase || o.geometry)) hit = true; });
             rigs.push({ url: r, bytes: ue._ew_mmBytes || 0, live: hit });
         }
         var rLive = 0; rigs.forEach(function (x) { if (x.live) rLive += x.bytes; });
@@ -39506,7 +39509,7 @@ const ThreeRenderer = (function () {
         var list = [];
         for (var u in _miscModelCache) {
             var e = _miscModelCache[u], isLive = false; if (e._ewPiece) continue;
-            if (e.root) e.root.traverse(function (o) { if (!isLive && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) isLive = true; });
+            if (e.root) e.root.traverse(function (o) { if (!isLive && o.geometry && live.has(o.geometry._ew_lodBase || o.geometry)) isLive = true; });
             list.push({ url: u, bytes: e.bytes || 0, live: isLive });
         }
         return list;
@@ -39533,7 +39536,8 @@ const ThreeRenderer = (function () {
     /* the unit models as budget rows (THE WALK DROPS UNIT MODELS TOO): pushed onto `list` as 'r|<url>' */
     function _mmListRigs(H, live, list) {
         if (typeof window !== 'undefined' && window.EW_WALK_KEEP_UNITS) return;
-        var keep = {}, worn = _mmWorn(H);
+        var keep = {}, wornS = live.worn || null, wornO = wornS ? null : _mmWorn(H);
+        var worn = function (m) { return wornS ? (wornS.has(m) || (m.map && wornS.has(m.map))) : (wornO[m.uuid] || (m.map && wornO[m.map.uuid])); };
         _unitModelRigs.forEach(function (rig) { if (rig && rig.url) keep[rig.url] = 1; });
         _rigCarry.forEach(function (c) { if (c.rig && c.rig.url) keep[c.rig.url] = 1; });
         _libUrlsAll().forEach(function (u2) { keep[u2] = 1; });
@@ -39544,9 +39548,9 @@ const ThreeRenderer = (function () {
             var hit = false;
             if (ue.root) ue.root.traverse(function (o) {
                 if (hit) return;
-                if (o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) { hit = true; return; }
+                if (o.geometry && live.has(o.geometry._ew_lodBase || o.geometry)) { hit = true; return; }
                 var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
-                for (var mi = 0; mi < ms.length; mi++) { var m = ms[mi]; if (m && (worn[m.uuid] || (m.map && worn[m.map.uuid]))) { hit = true; return; } }
+                for (var mi = 0; mi < ms.length; mi++) { var m = ms[mi]; if (m && worn(m)) { hit = true; return; } }
             });
             list.push({ url: 'r|' + r, at: ue.at || 0, bytes: ue._ew_mmBytes || 0, loading: !!ue.loading, failed: !!ue.failed, one: !!keep[r] || r.indexOf('/characters/creator/') >= 0, x: false, live: hit });
         }
@@ -39564,7 +39568,7 @@ const ThreeRenderer = (function () {
         var H = (typeof _hq !== 'undefined') ? _hq : null, live = _mmLive(H), list = [];
         for (var u in _miscModelCache) {
             var e = _miscModelCache[u], isLive = false;
-            if (e.root) e.root.traverse(function (o) { if (!isLive && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) isLive = true; });
+            if (e.root) e.root.traverse(function (o) { if (!isLive && o.geometry && live.has(o.geometry._ew_lodBase || o.geometry)) isLive = true; });
             list.push({ url: u, at: e.at || 0, bytes: e.bytes || 0, loading: !!e.loading, failed: !!e.failed, one: !!e._ewOneFile, x: !!(e.xcbs && e.xcbs.length), live: isLive });
         }
         _mmListRigs(H, live, list);
@@ -39580,7 +39584,7 @@ const ThreeRenderer = (function () {
     var _mmQueue = [];
     function _mmWears(root, live) {
         var st = [root];
-        while (st.length) { var o = st.pop(), g = o.geometry; if (g && live[(g._ew_lodBase || g).uuid]) return true; var ch = o.children; for (var i = 0; i < ch.length; i++) st.push(ch[i]); }
+        while (st.length) { var o = st.pop(), g = o.geometry; if (g && live.has(g._ew_lodBase || g)) return true; var ch = o.children; for (var i = 0; i < ch.length; i++) st.push(ch[i]); }
         return false;
     }
     function _mmDrain() {
@@ -39709,12 +39713,12 @@ const ThreeRenderer = (function () {
         var cap = R.budget * 1048576, tot = (R.misc.mb + R.rigs.mb) * 1048576;
         if (tot <= cap) return;
         var live = _mmLive(_hq), keep = {}, t = Date.now(), list = [];
-        var wear = function (g) { g.traverse(function (o) { var gg = o.geometry; if (gg) live[(gg._ew_lodBase || gg).uuid] = 1; }); };
+        var wear = function (g) { g.traverse(function (o) { var gg = o.geometry; if (gg) live.add(gg._ew_lodBase || gg); }); };
         _unitModelRigs.forEach(function (rig) { if (rig && rig.inner) wear(rig.inner); if (rig && rig.url) keep[rig.url] = 1; });
         _rigCarry.forEach(function (c) { if (c.rig && c.rig.inner) wear(c.rig.inner); if (c.rig && c.rig.url) keep[c.rig.url] = 1; });
         _libUrlsAll().forEach(function (u) { keep[u] = 1; });
         _mmRosterUrls(keep);
-        var isLive = function (root) { var hit = false; if (root) root.traverse(function (o) { if (!hit && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) hit = true; }); return hit; };
+        var isLive = function (root) { var hit = false; if (root) root.traverse(function (o) { if (!hit && o.geometry && live.has(o.geometry._ew_lodBase || o.geometry)) hit = true; }); return hit; };
         for (var u in _miscModelCache) {
             var e = _miscModelCache[u]; if (e._ewPiece) continue;
             list.push({ url: 'm|' + u, at: e.at || 0, bytes: e.bytes || 0, loading: !!e.loading, failed: !!e.failed, one: !!e._ewOneFile, x: !!(e.xcbs && e.xcbs.length), live: isLive(e.root) });
