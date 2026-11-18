@@ -82426,6 +82426,13 @@ const ThreeRenderer = (function () {
         if (!def) { race = 'men in black'; def = getRace3DModel(race, gender) || getRace3DModel(race, 'male'); if (def && !getRace3DModel(race, gender)) gender = 'male'; }
         _hq3DOff(_h3d);
         if (!def) { console.warn('[HQ] no rig resolves for', race, gender, '— ' + (spec.id || spec.kind) + ' was not spawned'); return null; }   // never silent again (2026-09-22)
+        /* THE PEOPLE OFF THE GROUND: a posed body of ANY race borrows the pose's clip from the library (a seated clerk did this for the men
+           in black only); a clone, the shared def is never written */
+        if (spec.pose && spec.kind !== 'player' && def.libClips && !def.libClips[spec.pose] && typeof _CAST_POSES !== 'undefined' && _CAST_POSES[spec.pose]) {
+            var _po = _CAST_POSES[spec.pose], _plc = Object.assign({}, def.libClips), _plt = Object.assign({}, def.libTimeScales);
+            _plc[spec.pose] = { clip: _po.clip, lib: _po.lib || 0 }; if (_po.pinXZ) _plc[spec.pose].pinXZ = true; if (_po.pinHips) _plc[spec.pose].pinHips = true; if (_po.ts) _plt[spec.pose] = _po.ts;
+            def = Object.assign({}, def, { libClips: _plc, libTimeScales: _plt });
+        }
         /* SKATEBOARDING rev 2 (2026-09-15): the walker's rig bakes THE RIDE
            clip (sprites.js HQ_RIDE_CLIP = the library's Idle_10, the
            brawler's loose stance — sideways on the deck it reads as a
@@ -84781,7 +84788,11 @@ const ThreeRenderer = (function () {
                     if (!crowd.take(sg ? rh + ':' + sg : rh)) return;   // THE CROWD CAP: full, or this race already stands here
                     var hm = !!getRace3DModel(rh, 'male'), hf = !!getRace3DModel(rh, 'female');
                     var hg = sg || ((hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female'));
-                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0, line: sayOf(spot), label: (spot.talk && spot.talk.name) || undefined, spot: spot, spotIndex: si });   // THE TALK (2026-10-08): the editor's name
+                    /* THE PEOPLE OFF THE GROUND (2026-11-18, the Colosseum; mondo: "make the stands walkable and those thrones able to be sat in"): a spot's
+                       own `y` (metres; a box over a tunnel, a gallery: a floor that is a BRIDGE, which a spot with no y never finds: it reads the
+                       ground under it) and its `pose` (a sprites.js _CAST_POSES slot: `hqSit` on a throne) ride to the body. A spot with no y still
+                       stands on what is under it (the ground, a row of seats). */
+                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, y: (typeof spot.y === 'number') ? spot.y : undefined, pose: spot.pose || null, face: spot.face || 0, line: sayOf(spot), label: (spot.talk && spot.talk.name) || undefined, spot: spot, spotIndex: si });   // THE TALK (2026-10-08): the editor's name
                     var oi = owned.indexOf(rh); if (oi >= 0) owned.splice(oi, 1);
                 } else free.push(spot);
             });
@@ -90838,7 +90849,9 @@ const ThreeRenderer = (function () {
         }
         if (cat.sway && !_polishOff('sway', 'EW_HQ_NO_SWAY')) _hqSwayArm(grp, cat, o);
         if (o.kick) H.kicks.push({ key: p.key, grp: grp, disc: o.disc || null, rad: Math.max(0.12, cat.foot || 0.15), y0: o.y, x: grp.position.x / U, z: grp.position.z / U, y: o.y, vx: 0, vz: 0, vy: 0, spin: 0, tilt: 0, cool: 0, h: cat.h || 0.5 });
-        if (cat.seat != null && floorProp) H.seats.push({ id: 'seat:' + H.seats.length, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, y: o.y + cat.seat, yaw: grp.rotation.y, label: String(p.key).replace(/_/g, ' ').toUpperCase() });
+        /* (2026-11-18, the Colosseum's thrones: a seat that stands on a raised floor, `p.y`, is a seat too; `floor` = what it stands on, where the sitter gets up) */
+        var raisedSeat = cat.seat != null && !floorProp && p.y > 0.5 && !o.onWall && !o.onCeil && !o.flip && !o.tabletop && !cat.float && !cat.hover && !cat.wall && !cat.ceil;
+        if (cat.seat != null && (floorProp || raisedSeat)) H.seats.push({ id: 'seat:' + H.seats.length, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, y: o.y + cat.seat, floor: o.y, yaw: grp.rotation.y, label: String(p.key).replace(/_/g, ' ').toUpperCase() });
     }
     /* 5.1 THE SWAY: a hanging prop (catalogue `sway: { amp, period }`) hangs from a pivot at its top on a damped spring — the
        room's draught keeps it moving a little, the walker's wake within a metre gives it a push */
@@ -90923,8 +90936,9 @@ const ThreeRenderer = (function () {
         var H = _hq, st = pl.sit && pl.sit.seat; pl.sit = null; if (!st) return;
         var U = _hqUnits(), fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
         var nx = st.x + fx * 0.72, nz = st.z + fz * 0.72;
-        var y = _hqSurface(nx, nz, null, false);
-        if (y === null) { nx = st.x; nz = st.z; y = _hqSurface(st.x, st.z, null, true); }
+        var fl = (st.floor > 0.5) ? st.floor + 0.05 : null;   // (a seat on a raised floor: the sitter gets up onto THAT floor, never the ground under it)
+        var y = _hqSurface(nx, nz, fl, false);
+        if (y === null) { nx = st.x; nz = st.z; y = _hqSurface(st.x, st.z, fl, true); }
         pl.x = nx; pl.z = nz; pl.y = (y === null || !isFinite(y)) ? st.y : y; pl.visY = pl.y; pl.air = false; pl.vy = 0;
         pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
         H.dirty = true; if (H.shadows) H.shadows.dirty = true;

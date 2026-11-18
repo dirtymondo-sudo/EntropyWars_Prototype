@@ -425,3 +425,10 @@ Story walk only (the encounter's own launch and commit). Plan: `docs/plans/npc-e
   needs `gone: true` on its row (the arrest) or its HP (spared).
 - **Nothing on screen:** no nameplate or aim prompt shows a hurt NPC's HP (a UI change: mock-up and mondo's OK first). Not run in a browser (not visual).
 
+## PEOPLE OFF THE GROUND (2026-11-18, the Colosseum thread; mondo: "make the stands walkable and those thrones able to be sat in")
+A native spot (`npcSpots` row) may carry `y` (metres: a floor that is a bridge, which a spot with no height never finds) and `pose` (a
+sprites.js `_CAST_POSES` slot; `hqSit` = seated, `y` then = the seat's own height). Any race borrows the pose's clip. A posed spot never roams.
+A spot with no `y` still stands on what is under it (the ground, a wall's top such as a row of seats). The walker sits on a seat prop on a
+raised floor too and gets up onto that floor. Code: three-renderer.js `_hqSpawnPopulation`, `_hqSpawnCharacter`, `_hqPolishProp`, `_hqStand`.
+Notes with the numbers: areas-complexes.md "THE COLOSSEUM, THE REDESIGN", THE PEOPLE OFF THE GROUND. The crowd cap (`HQ_CROWD_RULES.areaMax` 14,
+one body a race) still decides how many stand: a crowd in an arena needs his word on that cap.
