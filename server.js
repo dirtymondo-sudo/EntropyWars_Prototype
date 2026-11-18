@@ -142,10 +142,40 @@ app.get('/dev/relationship-web', (req, res) => {
         + '<style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>'
         + page + '</body></html>');
 });
+/* THE WEB'S PASSWORD (2026-11-18, anti-cheat plan E): the boards had no login, so anyone who found the address could
+   read or wipe them. The first time the page opens it asks mondo to PICK a password (stored hashed, server_settings
+   'story_web_key'); every computer types it once (the page keeps it). Reads and writes need it (x-web-key). */
+async function storyWebKeyHash() {
+    const r = await d1.getOne("SELECT v FROM server_settings WHERE k = 'story_web_key'");
+    return r ? r.v : null;
+}
+async function storyWebAuthed(req, res) {
+    const want = await storyWebKeyHash();
+    if (!want) { res.status(401).json({ error: 'Pick a password.', setup: true }); return false; }
+    const got = String(req.headers['x-web-key'] || '');
+    if (!got || hashToken('web:' + got) !== want) { res.status(401).json({ error: 'Wrong password.', setup: false }); return false; }
+    return true;
+}
+app.post('/api/story-web/key', httpRateLimit('story-web-key', 6, 6), async (req, res) => {
+    if (!d1.isConfigured()) return res.status(503).json({ error: 'Database not configured.' });
+    try {
+        await ensureMigrations();
+        const key = req.body && req.body.key;
+        if (typeof key !== 'string' || key.length < 6 || key.length > 200) return res.status(400).json({ error: 'Use 6 or more characters.' });
+        if (await storyWebKeyHash()) return res.status(409).json({ error: 'A password is already set.' });
+        await d1.execute("INSERT OR IGNORE INTO server_settings (k, v) VALUES ('story_web_key', ?1)", [hashToken('web:' + key)]);
+        console.log('[WEB] the Relationship Web password was set');
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('[WEB] key error:', err.message);
+        res.status(500).json({ error: 'Failed to set the password.' });
+    }
+});
 app.get('/api/story-web', limitStoryWeb, async (req, res) => {
     if (!d1.isConfigured()) return res.status(503).json({ error: 'Database not configured.' });
     try {
         await ensureMigrations();
+        if (!await storyWebAuthed(req, res)) return;
         const rows = await d1.getAll('SELECT path, data FROM story_web_docs');
         const docs = {};
         (rows || []).forEach(r => { try { docs[r.path] = JSON.parse(r.data); } catch {} });
@@ -160,6 +190,7 @@ app.post('/api/story-web/doc', limitStoryWeb, async (req, res) => {
     if (!d1.isConfigured()) return res.status(503).json({ error: 'Database not configured.' });
     try {
         await ensureMigrations();
+        if (!await storyWebAuthed(req, res)) return;
         const { path: p, data } = req.body || {};
         if (typeof p !== 'string' || !STORY_WEB_PATH.test(p)) return res.status(400).json({ error: 'Bad path.' });
         if (data === null) {
@@ -425,16 +456,51 @@ async function unionCapturedUnits(playerId, unlocked, progress) {
         }
         const u = ACH.capturedUnion(unlocked, prog);
         if (!u || !Array.isArray(u.added) || !u.added.length) return unlocked;
-        const list = unlocked.concat(u.added.filter(r => ECON.AVAILABLE_RACES.has(r)));
-        if (list.length === unlocked.length) return unlocked;
+        /* THE CHEAT GUARD: a captured race still joins the PvP roster, at most CHEAT_CAPS.units a day (a hand-edited
+           blob naming every race cannot hand over the whole roster at once; the rest join on the next days) */
+        let add = u.added.filter(r => ECON.AVAILABLE_RACES.has(r));
+        const room = await dailyRoom(playerId, 'units');
+        if (add.length > room) {
+            console.warn(`[GUARD] ${playerId}: ${add.length} captured races waiting, ${room} may join today`);
+            add = add.slice(0, room);
+        }
+        if (!add.length) return unlocked;
+        const list = unlocked.concat(add);
         await d1.execute('UPDATE players SET unlocked_units = ?1 WHERE id = ?2', [JSON.stringify(list), playerId]);
-        console.log(`[ECON] captured units (${u.added.join(', ')}) joined ${playerId}'s roster`);
+        await dailyAdd(playerId, 'units', add.length);
+        console.log(`[ECON] captured units (${add.join(', ')}) joined ${playerId}'s roster`);
         return list;
     } catch (e) {
         console.warn('[ECON] captured-unit union skipped:', e.message);
         return unlocked;
     }
 }
+
+// ── THE CHEAT GUARD (2026-11-18, mondo: "i dont want them to be able to edit their wallets and stats and stuff at all")
+// The wallet lives on this server, but several endpoints used to take the client's word for HOW MUCH to pay. Now:
+//  • a RANKED match pays only against a ticket the server wrote when it recorded that match (applyRankedElo),
+//  • a VS-CPU / friendly match pays under a daily ceiling (`cpu`),
+//  • story + achievement gold from /api/progress/sync pays under a daily ceiling (`sync`); the rest waits in sync_owed,
+//  • captured races still join the PvP roster (mondo 11-18: "units unlocked in story mode ... used in PvP"), at most
+//    `units` new races a day (the rest join on the next days by themselves: the blob still names them),
+//  • a sell-back gives back what the account spent, plus a small daily allowance for found items (`sell`).
+// Notes: docs/notes/anti-cheat.md.
+const CHEAT_CAPS = { cpu: 3000, sync: 5000, units: 8, sell: 500 };
+function utcDay(offsetDays) { return new Date(Date.now() + (offsetDays || 0) * 86400000).toISOString().slice(0, 10); }
+async function dailyUsed(playerId, kind) {
+    const r = await d1.getOne('SELECT amount FROM daily_pay WHERE player_id = ?1 AND day = ?2 AND kind = ?3', [playerId, utcDay(), kind]);
+    return r ? (r.amount | 0) : 0;
+}
+async function dailyAdd(playerId, kind, n) {
+    if (!(n > 0)) return;
+    await d1.execute(
+        'INSERT INTO daily_pay (player_id, day, kind, amount) VALUES (?1, ?2, ?3, ?4) '
+        + 'ON CONFLICT(player_id, day, kind) DO UPDATE SET amount = amount + excluded.amount',
+        [playerId, utcDay(), kind, n]
+    );
+}
+// the room-left of today's ceiling for `kind` (never below 0)
+async function dailyRoom(playerId, kind) { return Math.max(0, CHEAT_CAPS[kind] - await dailyUsed(playerId, kind)); }
 
 const rooms = new Map();
 
@@ -810,10 +876,22 @@ const MIN_RANKED_MATCH_MS = 30000;
 const TURN_STALL_MS = 5 * 60 * 1000;   // one side holding the turn this long forfeits
 const SYNC_SILENCE_MS = 2 * 60 * 1000; // host sync stream dead during guest's turn
 
+// matchId (room._matchId, the id both clients hold) -> the promise of that match's settling, so a bank call that
+// arrives while the result is still being written waits for its ticket instead of falling to the daily ceiling
+const rankedSettling = new Map();
 async function applyRankedElo(room, code, winnerPlayerNum, reason) {
     if (!room.ranked || room._resultProcessed) return;
     if (winnerPlayerNum !== 1 && winnerPlayerNum !== 2) return;
     room._resultProcessed = true;
+    const mid = room._matchId;
+    const p = applyRankedEloInner(room, code, winnerPlayerNum, reason);
+    if (mid) {
+        rankedSettling.set(mid, p);
+        p.finally(() => setTimeout(() => rankedSettling.delete(mid), 60000));
+    }
+    return p;
+}
+async function applyRankedEloInner(room, code, winnerPlayerNum, reason) {
     room._matchEnded = true;
     clearDisconnectDeadlines(room);
 
@@ -845,6 +923,18 @@ async function applyRankedElo(room, code, winnerPlayerNum, reason) {
 
     const hostPlayerId = hostAuth.playerId;
     const guestPlayerId = guestAuth.playerId;
+    /* THE CHEAT GUARD (plan D): the host's own team was never checked against its account (only the guest sends a
+       party-config). The host's snapshots carry partyMeta[1]; a host that fielded units it does not own gets no Elo
+       and no pay for the match. */
+    if (room._hostPartyCheck) {
+        let bad = null;
+        try { bad = await room._hostPartyCheck; } catch (e) { bad = null; }
+        if (bad && bad.length) {
+            console.warn(`[GUARD] ranked match in room ${code} voided: host ${hostAuth.username} fielded unowned units (${bad.join(', ')})`);
+            replayWrite(room, { t: Date.now(), e: 'blocked', from: 'host', reason: 'unowned-units', races: bad });
+            return;
+        }
+    }
     const actualWinnerId = winnerPlayerNum === 1 ? hostPlayerId : guestPlayerId;
     const actualLoserId = winnerPlayerNum === 1 ? guestPlayerId : hostPlayerId;
     const teamSize = room.teamSize || 4;
@@ -889,6 +979,14 @@ async function applyRankedElo(room, code, winnerPlayerNum, reason) {
             [matchId, actualWinnerId, actualLoserId, winner.elo, newWinnerElo,
              loser.elo, newLoserElo, teamSize, mapModeId, durationMs]
         );
+
+        /* THE CHEAT GUARD (plan A): one pay ticket per seat for THIS match; /api/economy/bank pays a ranked match
+           only against it, once */
+        if (room._matchId) {
+            for (const pid of [hostPlayerId, guestPlayerId]) {
+                await d1.execute('INSERT OR IGNORE INTO match_payouts (player_id, match_id) VALUES (?1, ?2)', [pid, room._matchId]);
+            }
+        }
 
         console.log(`[ELO] ${hostAuth.username} vs ${guestAuth.username} (${reason}): winner=${actualWinnerId === hostPlayerId ? hostAuth.username : guestAuth.username} (${winner.elo}→${newWinnerElo}), loser=(${loser.elo}→${newLoserElo})`);
 
@@ -1355,7 +1453,7 @@ app.post('/api/economy/bank', limitEcon, async (req, res) => {
     }
     try {
         await ensureMigrations();
-        const { token, matchGold, mode } = req.body || {};
+        const { token, matchGold, mode, matchId } = req.body || {};
         if (!token) {
             return res.status(401).json({ error: 'Authentication required.' });
         }
@@ -1370,11 +1468,30 @@ app.post('/api/economy/bank', limitEcon, async (req, res) => {
         if (!isFinite(amt) || amt < 0) amt = 0;
         amt = Math.min(amt, ECON.ACCT_MATCH_GOLD_CAP); // server-enforced anti-cheat cap
 
-        await d1.execute('UPDATE players SET gold = gold + ?1 WHERE id = ?2', [amt, player.id]);
+        /* THE CHEAT GUARD: a ranked match (matchId) pays once, against the ticket the server wrote when IT recorded
+           that match; anything else (VS-CPU, friendly) pays under the daily ceiling. */
+        let ticketed = false;
+        if (typeof matchId === 'string' && matchId) {
+            const settling = rankedSettling.get(matchId);
+            if (settling) { try { await Promise.race([settling, new Promise(r => setTimeout(r, 8000))]); } catch (e) {} }
+            const r = await d1.execute('UPDATE match_payouts SET used = 1 WHERE player_id = ?1 AND match_id = ?2 AND used = 0', [player.id, matchId.slice(0, 64)]);
+            ticketed = !!(r && r.meta && r.meta.changes);
+        }
+        if (!ticketed) {
+            const room = await dailyRoom(player.id, 'cpu');
+            if (amt > room) {
+                if (matchId) console.warn(`[GUARD] ${player.id}: bank for match ${String(matchId).slice(0, 12)} with no server ticket — daily ceiling`);
+                amt = room;
+            }
+            await dailyAdd(player.id, 'cpu', amt);
+        }
+
+        if (amt > 0) await d1.execute('UPDATE players SET gold = gold + ?1 WHERE id = ?2', [amt, player.id]);
         const updated = await d1.getOne('SELECT gold, unlocked_units, free_tokens FROM players WHERE id = ?1', [player.id]);
         res.json({
             gold: updated.gold,
             banked: amt,
+            dailyLeft: ticketed ? undefined : await dailyRoom(player.id, 'cpu'),
             unlockedUnits: parseUnlocked(updated.unlocked_units),
             freeTokens: updated.free_tokens,
         });
@@ -1489,13 +1606,25 @@ app.post('/api/economy/spend', limitEcon, async (req, res) => {
         let result;
         if (amt > 0) {
             // Atomic: WHERE gold >= amount refuses an overdraft and a double-click.
-            result = await d1.execute('UPDATE players SET gold = gold - ?1 WHERE id = ?2 AND gold >= ?1', [amt, player.id]);
+            result = await d1.execute('UPDATE players SET gold = gold - ?1, spent_total = spent_total + ?1 WHERE id = ?2 AND gold >= ?1', [amt, player.id]);
             const changes = result && result.meta ? (result.meta.changes || 0) : 0;
             if (!changes) {
                 return res.status(402).json({ error: 'Insufficient Hazard Pay.' });
             }
         } else {
-            await d1.execute('UPDATE players SET gold = gold + ?1 WHERE id = ?2', [-amt, player.id]);
+            /* THE CHEAT GUARD: a sell-back gives back what this account SPENT here (spent_total − refunded_total);
+               beyond that only a small daily allowance (a found item sold), never free money */
+            const want = -amt;
+            const led = await d1.getOne('SELECT spent_total, refunded_total FROM players WHERE id = ?1', [player.id]);
+            const back = Math.max(0, ((led && led.spent_total) | 0) - ((led && led.refunded_total) | 0));
+            const fromSpent = Math.min(want, back);
+            const extra = want - fromSpent;
+            if (extra > 0 && extra > await dailyRoom(player.id, 'sell')) {
+                console.warn(`[GUARD] ${player.id}: sell-back of ${want} refused (${back} spent to give back, daily allowance used up)`);
+                return res.status(403).json({ error: 'Sell-back limit reached for today.' });
+            }
+            await d1.execute('UPDATE players SET gold = gold + ?1, refunded_total = refunded_total + ?2 WHERE id = ?3', [want, fromSpent, player.id]);
+            await dailyAdd(player.id, 'sell', extra);
         }
         const updated = await d1.getOne('SELECT gold, unlocked_units, free_tokens FROM players WHERE id = ?1', [player.id]);
         console.log(`[ECON] ${player.id} ${amt > 0 ? 'spent' : 'refunded'} ${Math.abs(amt)} (${String(reason || '').slice(0, 40)}) → gold=${updated.gold}`);
@@ -1555,8 +1684,10 @@ function dropFutureDays(progress) {
     if (!hq || typeof hq !== 'object') return;
     const max = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     const late = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d) && d.slice(0, 10) > max;
+    /* (11-18, plan C) and a bounty day older than a week is not taken in (a forged blob cannot back-fill 64 days) */
+    const min = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     if (hq.bounties && typeof hq.bounties === 'object') {
-        Object.keys(hq.bounties).forEach(d => { if (late(d)) delete hq.bounties[d]; });
+        Object.keys(hq.bounties).forEach(d => { if (late(d) || (/^\d{4}-\d{2}-\d{2}$/.test(d) && d < min)) delete hq.bounties[d]; });
     }
     const taken = hq.finds && hq.finds.taken;
     if (taken && typeof taken === 'object') {
@@ -1624,6 +1755,19 @@ app.post('/api/progress/sync', limitProgress, async (req, res) => {
         if (ACH.bountyPay) {
             bountyGold = Math.max(0, Math.round(Number(ACH.bountyPay(stored, merged)) || 0));
             rewardGold += bountyGold;
+        }
+        /* THE CHEAT GUARD: story + achievement gold pays under CHEAT_CAPS.sync a day; the rest waits in sync_owed and
+           pays on the next days' syncs (an honest big first sync arrives over a few days, a forged one cannot print) */
+        {
+            const owedRow = await d1.getOne('SELECT sync_owed FROM players WHERE id = ?1', [player.id]);
+            const due = rewardGold + ((owedRow && owedRow.sync_owed) | 0);
+            const pay = Math.min(due, await dailyRoom(player.id, 'sync'));
+            if (due !== rewardGold || pay !== rewardGold) {
+                await d1.execute('UPDATE players SET sync_owed = ?1 WHERE id = ?2', [due - pay, player.id]);
+                if (due - pay > 0) console.log(`[GUARD] ${player.id}: story gold ${due - pay} waits for the next days`);
+            }
+            await dailyAdd(player.id, 'sync', pay);
+            rewardGold = pay;
         }
         if (rewardGold > 0 || rewardTokens > 0) {
             await d1.execute(
@@ -2355,6 +2499,7 @@ io.on('connection', (socket) => {
                 room._terminalSnapshot = null;
                 room._outageAt = null;
                 room._resultProcessed = false;
+                room._hostPartyCheck = null;
                 room._battleStartAt = null;
                 room._turnMark = null;
                 replayWrite(room, { t: Date.now(), e: 'rematch' });
@@ -2368,6 +2513,21 @@ io.on('connection', (socket) => {
                 round: data.round,
             };
             room._lastSyncAt = Date.now();
+            /* THE CHEAT GUARD (plan D): the host's own team, read once from its snapshot, checked against its account */
+            if (room.ranked && !room._hostPartyCheck && data.partyMeta && d1.isConfigured()) {
+                const meta = Array.isArray(data.partyMeta) ? data.partyMeta[1] : data.partyMeta[1] || data.partyMeta['1'];
+                const auth = authenticatedSockets.get(room.host);
+                if (Array.isArray(meta) && meta.length && auth) {
+                    const races = meta.map(m => m && m.race).filter(r => typeof r === 'string' && r);
+                    room._hostPartyCheck = d1.getOne('SELECT unlocked_units FROM players WHERE id = ?1', [auth.playerId]).then(row => {
+                        if (!row) return null;
+                        const owned = new Set(parseUnlocked(row.unlocked_units).concat(ECON.ACCT_STARTER_UNITS));
+                        const bad = races.filter(r => !owned.has(r));
+                        if (bad.length) console.warn(`[GUARD] host ${auth.username} in room ${code} fielded unowned units: ${bad.join(', ')}`);
+                        return bad;
+                    }).catch(e => { console.warn('[GUARD] host party check failed:', e.message); return null; });
+                }
+            }
             // Battle-start stamp: server-side match duration + stall watchdog
             // arming both key off this, never off host-reported numbers.
             if (data.phase === 'battle' && !room._battleStartAt) {
