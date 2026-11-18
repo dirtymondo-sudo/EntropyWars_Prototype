@@ -53886,7 +53886,7 @@ const ThreeRenderer = (function () {
                 bk[kd] = (bk[kd] | 0) + (mst.n | 0); bn[kd] = (bn[kd] | 0) + 1; top.push([mst.n | 0, kd + ' ' + (mg._ew_chunk || (typeof mg._ew_pChunk === 'string' ? mg._ew_pChunk : '') || mg.name || '')]);
                 if (mg._ew_sCell) for (var ci2 = 0; ci2 < mg.children.length; ci2++) {
                     var cm2 = mg.children[ci2], mm = cm2.material; if (!cm2.isMesh || !mm || cm2.visible === false) continue;
-                    var why = !cm2._ew_hqBatch ? 'not a batch' : mm._ew_stacked ? ((mm._ewNode && mm._ewNode.bare) ? 'stacked (no sheet)' : 'stacked') : !cm2._ew_bSingle ? (mm._ew_onePaint ? 'one paint' : (mm._ewNode && mm._ewNode.k === 'terrain') ? 'ground, merged' : 'merged') :
+                    var why = !cm2._ew_hqBatch ? 'not a batch' : cm2._ew_glowB ? 'glows, joined' : mm._ew_stacked ? ((mm._ewNode && mm._ewNode.bare) ? 'stacked (no sheet)' : 'stacked') : !cm2._ew_bSingle ? (mm._ew_onePaint ? 'one paint' : (mm._ewNode && mm._ewNode.k === 'terrain') ? 'ground, merged' : 'merged') :
                         ('alone: ' + (Array.isArray(mm) ? 'many looks' : mm._ewNode ? 'node ' + mm._ewNode.k : (mm.transparent || mm.alphaTest > 0) ? 'see-through / cut-out' : !mm.map ? ((mm.emissiveIntensity > 0 && mm.emissive && (mm.emissive.r + mm.emissive.g + mm.emissive.b) > 0.2) ? 'no sheet, lit' : 'no sheet') : mm.map.isCanvasTexture ? 'sign canvas' : mm.map.isCompressedTexture ? 'compressed sheet' : 'sheet ' + (mm.map.image ? mm.map.image.width + 'px' : '?')));
                     sq[why] = (sq[why] | 0) + 1;
                 }
@@ -97058,6 +97058,71 @@ const ThreeRenderer = (function () {
         for (var q = o.parent; q; q = q.parent) if (q._ew_pd) return false;
         return true;
     }
+    /* THE JOINED GLOWS (2026-11-18, the 60 FPS thread, mondo's F3 at 36 FPS: "shell rest 296 (1 groups)"). The shell's leftover
+       draws were the lamp glows: 386 additive glow sprites (the street lamps' halos and the like), every one on its own material,
+       all on ONE glow picture, hung in the shell group itself, so all of them were replayed wherever the camera looked: the
+       whole city's lamps, every frame. An additive glow that writes no depth adds the same light whatever order it is drawn
+       in, so in a big room's shell the glows of a 96 m square that share a picture and a blend are now ONE mesh in that square
+       (culled with it): a quad per glow, each quad's centre, size, colour and strength in its points, drawn by three's own
+       sprite material (SpriteNodeMaterial) that faces each quad to the camera exactly as a sprite is faced (its centre through
+       the view, its corners in view space, times its size). colour = picture x the glow's colour, strength = picture alpha x the
+       glow's opacity, as the sprite drew. A glow that breathes (_hzPulse), a night lamp (_ew_night), one that turns or sits off
+       centre, or one that keeps changing is never taken; one that changes later (a colour, a strength, shown or hidden, moved)
+       hands its square's glows back at once, as any merged piece does. WebGPU only. Off: window.EW_HQ_NO_GLOW_BATCH before the
+       room. Lens: "glows, joined N" in the squares line. */
+    function _hqGlowOff() { return _ewGpu !== 'webgpu' || !_ewNodeU || !_ewNodeU.G || !_ewNodeU.G.SpriteNodeMaterial || !_ewNodeU.T || !_ewNodeU.T.materialColor || (typeof window !== 'undefined' && !!(window.EW_HQ_NO_GLOW_BATCH || window.EW_HQ_NO_SHELL_CELLS)); }
+    function _hqGlowOk(o, pulse) {
+        if (!o || !o.isSprite || o.children.length || (o.count !== undefined && o.count !== 1) || o._ew_bRec || o._ew_bAnc || o._ew_night || o._ew_bunOut) return false;
+        if (o.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender || o.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return false;
+        if (!o.center || o.center.x !== 0.5 || o.center.y !== 0.5) return false;
+        var m = o.material; if (!m || !m.isSpriteMaterial || m.isNodeMaterial || !m.visible || m.rotation !== 0 || m.blending !== THREE.AdditiveBlending || m.depthWrite !== false || !m.transparent || m.alphaMap) return false;
+        if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || (m.clippingPlanes && m.clippingPlanes.length)) return false;
+        var t = m.map; if (!t || !t.image || !(t.version > 0) || t.isVideoTexture || t.isRenderTargetTexture) return false;
+        if (pulse && pulse.has(m)) return false;
+        for (var k in o) if (_HQ_BATCH_FLAG_OFF[k]) return false;
+        for (var q = o.parent; q; q = q.parent) if (q._ew_pd || q._ew_night) return false;
+        return true;
+    }
+    function _hqGlowKey(m) { return [_hqBatchTexKey(m.map), m.blending, m.depthTest, m.depthFunc, m.toneMapped, m.sizeAttenuation, m.premultipliedAlpha, m.alphaTest, m.fog, m.colorWrite, m.side].join('|'); }
+    function _hqGlowMat(B, m) {
+        var U = _ewNodeU, G = U && U.G, T = U && U.T; if (!G || !G.SpriteNodeMaterial || !T) return null;
+        var k = 'glow:' + _hqGlowKey(m), L = B.vcMats || (B.vcMats = {}), c = L[k];
+        if (c) return c;
+        try {
+            c = new G.SpriteNodeMaterial();
+            c.map = m.map; c.color.setRGB(1, 1, 1); c.opacity = 1; c.transparent = true; c.blending = m.blending; c.depthWrite = false; c.depthTest = m.depthTest; c.depthFunc = m.depthFunc;
+            c.toneMapped = m.toneMapped; c.fog = m.fog; c.sizeAttenuation = m.sizeAttenuation; c.premultipliedAlpha = m.premultipliedAlpha; c.alphaTest = m.alphaTest; c.side = m.side; c.colorWrite = m.colorWrite;
+            c.positionNode = T.attribute('ewGc', 'vec3'); c.scaleNode = T.attribute('ewGs', 'vec2');
+            c.colorNode = T.materialColor.mul(T.attribute('ewGk', 'vec4'));   // the picture (x white) x the glow's colour and strength
+            c.name = 'glows (joined)'; c._ew_glowJ = true;
+        } catch (e) { console.warn('[HQ batch] the joined glows could not be made, the glows stay their own', e); return null; }
+        return (L[k] = c);
+    }
+    function _hqGlowGeo(cs) {
+        var n = cs.length, pos = new Float32Array(n * 12), uv = new Float32Array(n * 8), gc = new Float32Array(n * 12), gs = new Float32Array(n * 8), gk = new Float32Array(n * 16);
+        var idx = (n * 4 > 65535) ? new Uint32Array(n * 6) : new Uint16Array(n * 6);
+        var P = [-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5], UV = [0, 0, 1, 0, 1, 1, 0, 1], box = new THREE.Box3(), v = new THREE.Vector3(), rr = 0;
+        for (var i = 0; i < n; i++) {
+            var e = cs[i].M.elements, m = cs[i].m, col = m.color, cx = e[12], cy = e[13], cz = e[14];
+            var sx = Math.hypot(e[0], e[1], e[2]), sy = Math.hypot(e[4], e[5], e[6]);
+            for (var q = 0; q < 4; q++) {
+                var a = i * 4 + q;
+                pos[a * 3] = P[q * 2]; pos[a * 3 + 1] = P[q * 2 + 1]; pos[a * 3 + 2] = 0;
+                uv[a * 2] = UV[q * 2]; uv[a * 2 + 1] = UV[q * 2 + 1];
+                gc[a * 3] = cx; gc[a * 3 + 1] = cy; gc[a * 3 + 2] = cz;
+                gs[a * 2] = sx; gs[a * 2 + 1] = sy;
+                gk[a * 4] = col.r; gk[a * 4 + 1] = col.g; gk[a * 4 + 2] = col.b; gk[a * 4 + 3] = m.opacity;
+            }
+            var b = i * 4, j = i * 6; idx[j] = b; idx[j + 1] = b + 1; idx[j + 2] = b + 2; idx[j + 3] = b; idx[j + 4] = b + 2; idx[j + 5] = b + 3;
+            box.expandByPoint(v.set(cx, cy, cz)); rr = Math.max(rr, Math.max(sx, sy) * 0.7072);
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+        geo.setAttribute('ewGc', new THREE.BufferAttribute(gc, 3)); geo.setAttribute('ewGs', new THREE.BufferAttribute(gs, 2)); geo.setAttribute('ewGk', new THREE.BufferAttribute(gk, 4));
+        geo.setIndex(new THREE.BufferAttribute(idx, 1));
+        var bs = new THREE.Sphere(); box.getBoundingSphere(bs); bs.radius += rr; geo.boundingSphere = bs; geo.boundingBox = box.clone().expandByScalar(rr);
+        return geo;
+    }
     function _hqBatchSnapOf(m) { if (!Array.isArray(m)) return _hqBatchMatSnap(m); var s = 'A' + m.length; for (var i = 0; i < m.length; i++) s += '/' + (m[i] ? _hqBatchMatSnap(m[i]) : ''); return s; }
     function _hqBatchRel(o, inv, out) { return out.multiplyMatrices(inv, o.matrixWorld); }
     function _hqBatchSame(a, b) { var x = a.elements, y = b.elements; for (var i = 0; i < 16; i++) if (Math.abs(x[i] - y[i]) > 1e-4 * (1 + Math.abs(y[i]))) return false; return true; }
@@ -97068,6 +97133,7 @@ const ThreeRenderer = (function () {
         root.updateMatrixWorld(true);
         var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), list = [], n = 0;
         var loose = !!(_hq && root === _hq.shellGroup && _hqChunkBig(_hq) && !_hqBatchLooseOff());   // THE LOOSE PIECES
+        var glows = (loose && !_hqGlowOff()) ? new Set(_hzGlowPulse.map(function (p) { return p.mat; })) : null;   // THE JOINED GLOWS: a breathing glow is never joined
         /* the pieces with their chain: an ancestor that is hidden or flagged off keeps everything under it out */
         (function walk(g, ok) {
             for (var i = 0; i < g.children.length; i++) {
@@ -97075,10 +97141,12 @@ const ThreeRenderer = (function () {
                 if (cok) for (var k in c) if (_HQ_BATCH_FLAG_OFF[k]) { cok = false; break; }
                 if (c.children.length) walk(c, cok);
                 else if (c.isMesh && (cok || (loose && vis))) list.push(c);   // THE LOOSE PIECES: a flagged leaf is read too (_hqBatchLooseOk says which flags may stand in)
+                else if (c.isSprite && cok && glows) list.push(c);   // THE JOINED GLOWS
             }
         })(root, true);
         for (var j = 0; j < list.length; j++) {
             var o = list[j];
+            if (o.isSprite) { if (_hqGlowOk(o, glows)) B.cands.push({ o: o, m: o.material, g: o.geometry, gv: o.geometry.attributes.position.version, snap: _hqBatchMatSnap(o.material), M: _hqBatchRel(o, inv, new THREE.Matrix4()), sig: 'glow', parent: o.parent, glow: true }); if ((++n & 63) === 0 && _hqSliceDue()) yield; continue; }
             var ter = loose && !!o._ew_hqTerrain && !_hqGroundMergeOff();   // THE GROUND MERGES
             if (_hqBatchPieceOk(o, ter) && !(B.grp === 'propGroup' && (o._ew_noInstance || o._ew_instHidden || _hqInstKey(o)))) {   // a prop the instance pass can take is its
                 var sig = _hqBatchGeoSig(o.geometry);
@@ -97174,13 +97242,14 @@ const ThreeRenderer = (function () {
     function _hqBatchParOn(o) { o._ew_bp = o.parent; Object.defineProperty(o, 'parent', { configurable: true, enumerable: true, get: _hqBatchParGet, set: _hqBatchParSet }); }
     function _hqBatchParOff(o) { var p = o._ew_bp; delete o.parent; o.parent = p; o._ew_bp = undefined; }
     function _hqBatchInstall(root, cs, B) {
-        var c0 = cs[0], o0 = c0.o, single = cs.length === 1;
+        var c0 = cs[0], o0 = c0.o, glow = !!c0.glow, single = cs.length === 1 && !glow;
         /* THE SHELL CELLS, a piece alone in its look and square: no merge — a stand-in mesh on the piece's OWN geometry (nothing
            copied), placed where the piece stands, hung in the square's group so it is culled with the square. Only when the
            square's group exists and the piece's place splits cleanly into position / turn / scale. */
-        var ske = (!single && B.vc && !c0.ter) ? _hqStackOf(c0.m) : null;   // THE SHEET STACK
-        var vcm = ske ? _hqStackMat(B, c0.m, ske) : (!single && B.vc && !c0.ter && _hqBatchVcOk(c0.m)) ? _hqBatchVcMat(B, c0.m) : null;   // THE ONE PAINT
-        var geo = single ? c0.g : _hqBatchMerge(cs, !!vcm, ske);
+        var ske = (!single && !glow && B.vc && !c0.ter) ? _hqStackOf(c0.m) : null;   // THE SHEET STACK
+        var vcm = glow ? _hqGlowMat(B, c0.m) : ske ? _hqStackMat(B, c0.m, ske) : (!single && B.vc && !c0.ter && _hqBatchVcOk(c0.m)) ? _hqBatchVcMat(B, c0.m) : null;   // THE ONE PAINT (+ THE JOINED GLOWS)
+        if (glow && !vcm) return null;
+        var geo = glow ? _hqGlowGeo(cs) : single ? c0.g : _hqBatchMerge(cs, !!vcm, ske);
         var mesh = new THREE.Mesh(geo, vcm || c0.m);
         if (single) {
             c0.M.decompose(mesh.position, mesh.quaternion, mesh.scale); mesh.updateMatrix();
@@ -97189,9 +97258,10 @@ const ThreeRenderer = (function () {
         mesh.name = 'hq_batch'; mesh._ew_hqBatch = true; mesh._ew_bSingle = !!single; mesh._ew_occSkip = true; mesh._ew_shadowFlagged = true;
         mesh.castShadow = o0.castShadow; mesh.receiveShadow = o0.receiveShadow; mesh.renderOrder = o0.renderOrder; mesh.layers.mask = o0.layers.mask;
         mesh.raycast = function () {};   // the pieces answer the rays, as they always did
+        if (glow) { mesh.frustumCulled = false; mesh._ew_glowB = true; }   // (its square is the cull: the quads stand at the points' places, not the geometry's)
         var host = _hqBatchHost(o0, root);   // THE PROP CHUNKS: the merged mesh lives in its pieces' chunk (culled and bundled with them)
         if (host === root) { var shc = null; try { shc = _hqShellCell(root, geo, single ? c0.M : null); } catch (eSC) { shc = null; } if (shc) host = shc; }   // THE SHELL CELLS
-        if (single && !host._ew_sCell) return null;   // a stand-in is only worth its square's cull
+        if ((single || glow) && !host._ew_sCell) { if (glow) { try { geo.dispose(); } catch (eG) {} } return null; }   // a stand-in is only worth its square's cull
         var rec = { mesh: mesh, cs: cs, root: root, host: host, B: B, anc: [], live: true, single: single };
         _hqBatchWrap();
         host.add(mesh);
@@ -97416,7 +97486,14 @@ const ThreeRenderer = (function () {
         B.vc = !!(((_hq && root === _hq.shellGroup && _hqChunkBig(_hq)) || R.field) && !(typeof window !== 'undefined' && (window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_ONE_PAINT)));   // THE ONE PAINT (+ THE FIELD MERGE: the fight's pieces merge as the walk's did)
         for (var i = 0; i < B.cands.length; i++) {
             var c = B.cands[i];
-            if (c.loose) {   // THE LOOSE PIECES: always alone (its own key), so it takes the stand-in path
+            if (c.glow) {   // THE JOINED GLOWS: the square's glows that share a picture and a blend, one mesh
+                if (_hqBatchStill(c, root, inv, tmp) && _hqGlowOk(c.o, null)) {
+                    sph.setFromMatrixPosition(c.M);
+                    var gkey = 'glow|' + _hqGlowKey(c.m) + '#' + c.o.renderOrder + '#' + c.o.layers.mask + '#' + Math.floor(sph.x / T) + ':' + Math.floor(sph.z / T) + '#' + _hqBatchHost(c.o, root).id;
+                    if (!groups[gkey]) { groups[gkey] = []; keys.push(gkey); } groups[gkey].push(c);
+                }
+            }
+            else if (c.loose) {   // THE LOOSE PIECES: always alone (its own key), so it takes the stand-in path
                 if (!c.g.boundingSphere) c.g.computeBoundingSphere();
                 var lbs = c.g.boundingSphere, lsc = c.M.getMaxScaleOnAxis(), lcell = (HQ_BATCH.cellM || 96) * U;
                 if (!lbs || !isFinite(lbs.radius) || lbs.radius * lsc > lcell * 0.75) { /* a piece wider than a square would hold its whole square on camera: it stays where it is */ }
