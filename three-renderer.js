@@ -8598,11 +8598,16 @@ const ThreeRenderer = (function () {
        Settings > Video > Grass: High / Low / Off (ThreeRenderer.setGrassField, stored ew_grassField). Off for everything:
        window.EW_NO_GRASS_FIELD = true (the board's next build). Tunables live as EW_GGRASS. */
     var GGRASS = {
-        shape: 'crown',
-        perTile: 24,        // tufts per square = perTile² (a jittered grid, so the cover is even)
-        hMin: 0.110, hMax: 0.210,   // tuft height × tile
-        width: 0.070,       // tuft width × tile: WIDE, so neighbours overlap and the field reads as one soft coat
-        lean: 0.55,         // the still bow of a tuft × its height
+        /* THE CURVED BLADES (2026-11-18, mondo: "make the grass look better, more realistic"; on the first fan of five wide blades: "too spiky
+           and unrealistic"; on this one: "yeah that's better"): a tuft is a FAN of seven thin blades from one root, each narrowing in three
+           steps and arching outward, a few of them dry straw (_ggBlade, dry / dryShare). Fewer, bigger tufts than the clumps, so the triangle
+           count stays about the old High's. The clumps' values: shape 'crown', perTile 24, hMin 0.110, hMax 0.210, width 0.070, lean 0.55,
+           rootK 0.50, patchM 2.6, low { perTile 15, width 0.105 }, HQ_GRASS perSquare 16, low 10, height 0.8 */
+        shape: 'fan',
+        perTile: 10,        // tufts per square = perTile² (a jittered grid, so the cover is even)
+        hMin: 0.075, hMax: 0.210,   // tuft height × tile
+        width: 0.170,       // tuft width × tile: a fan's blades spread over ~4 widths
+        lean: 0.30,         // the still bow of a tuft × its height
         /* THE CALMER WIND (mondo 11-12, on the first live build: "it's maybe a little too wavy"): about half the bend, gusts that roll
            by a third slower, half the flutter, a fainter crest. The first build's values: wind 0.45, sheen 0.30, gust 1.25, flutter 0.10 */
         wind: 0.24,         // tip travel on a gust crest × height
@@ -8615,21 +8620,28 @@ const ThreeRenderer = (function () {
            ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
         sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
                   grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
-        lit: 1.0, rootK: 0.50, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
-        patchM: 2.6,        // patch size, squares
+        lit: 1.0, rootK: 0.40, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
+        patchM: 1.8,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
         pressN: 4,          // press map texels per square
         fringe: 5, fringeDensity: 0.7,   // the meadow past the board's edge: squares out, tufts per square side × this
-        low: { perTile: 15, width: 0.105, fringe: 2 },   // the Low setting: under half the tufts, each wider, a narrow meadow
-        order: 50, shadow: true
+        low: { perTile: 7, width: 0.240, fringe: 2 },   // the Low setting: half the tufts, each wider, a narrow meadow
+        order: 50, shadow: true, dry: [0.42, 0.38, 0.20], dryShare: 0.10
     };
     try { window.EW_GGRASS = GGRASS; GGRASS.flush = function () { _ggPalCache = {}; _ggFringe = null; _lastTerrainDecoSerial = ''; }; } catch (e) {}   // flush = retune live: the next frame rebuilds
     /* a tuft's outline (x in half-widths, y in heights) + its 5 triangles, wound to face the camera.
        crown = one thick clump of three points (a tall middle, two splayed sides); tongue = one round pad */
     var _GG_SHAPES = {
         crown: { P: [[-1, 0], [1, 0], [-1.55, 0.66], [-0.5, 0.40], [0, 1], [0.5, 0.40], [1.55, 0.72]], T: [0, 1, 5, 0, 5, 3, 0, 3, 2, 3, 5, 4, 1, 6, 5] },
+        fan: { P: [[-0.46,0.0,0],[-0.14,0.0,0],[-0.781,0.236,0],[-0.552,0.236,0],[-1.461,0.446,0],[-1.313,0.446,0],[-2.2,0.62,0],[-0.34,0.0,1],[-0.02,0.0,1],[-0.511,0.319,1],[-0.282,0.319,1],[-0.894,0.605,1],[-0.747,0.605,1],[-1.3,0.84,1],[-0.24,0.0,2],[0.08,0.0,2],[-0.275,0.369,2],[-0.047,0.369,2],[-0.394,0.698,2],[-0.247,0.698,2],[-0.5,0.97,2],[-0.16,0.0,3],[0.16,0.0,3],[-0.085,0.38,3],[0.143,0.38,3],[0.012,0.72,3],[0.159,0.72,3],[0.15,1.0,3],[-0.06,0.0,4],[0.26,0.0,4],[0.121,0.342,4],[0.35,0.342,4],[0.427,0.648,4],[0.574,0.648,4],[0.8,0.9,4],[0.04,0.0,5],[0.36,0.0,5],[0.337,0.289,5],[0.565,0.289,5],[0.87,0.547,5],[1.017,0.547,5],[1.5,0.76,5],[0.14,0.0,6],[0.46,0.0,6],[0.572,0.22,6],[0.8,0.22,6],[1.371,0.418,6],[1.518,0.418,6],[2.3,0.58,6]], T: [0,1,3,0,3,2,2,3,5,2,5,4,4,5,6,7,8,10,7,10,9,9,10,12,9,12,11,11,12,13,14,15,17,14,17,16,16,17,19,16,19,18,18,19,20,21,22,24,21,24,23,23,24,26,23,26,25,25,26,27,28,29,31,28,31,30,30,31,33,30,33,32,32,33,34,35,36,38,35,38,37,37,38,40,37,40,39,39,40,41,42,43,45,42,45,44,44,45,47,44,47,46,46,47,48] },
         tongue: { P: [[-1, 0], [1, 0], [-1.05, 0.42], [1.05, 0.42], [-0.72, 0.80], [0.72, 0.80], [0, 1]], T: [0, 1, 3, 0, 3, 2, 2, 3, 5, 2, 5, 4, 4, 5, 6] }
     };
+    /* THE CURVED BLADES: one blade's own shade + its dry share (a few straw blades in every tuft) */
+    function _ggBlade(r, b, f) {
+        var hsh = (Math.sin((r * 91.7 + b * 12.93) * 43.1) * 43758.5453) % 1; hsh = hsh < 0 ? hsh + 1 : hsh;
+        var sh = 0.80 + 0.32 * hsh, dry = (hsh > 1 - GGRASS.dryShare) ? (0.25 + 0.6 * f) : 0;
+        return [sh * (1 - dry), sh * (1 - dry), sh * (1 - dry), dry];
+    }
     var _ggRightU = { value: new THREE.Vector2(1, 0) };   // the camera's right, flat, in the field's own frame: every tuft turns its face to the eye
     /* the setting: 'high' (default) | 'low' | 'off' */
     var _ggLevel = 'high';
@@ -8817,12 +8829,13 @@ const ThreeRenderer = (function () {
                 /* 7 corners, a soft rounded tongue: foot L / R, belly L / R, shoulder L / R, tip. The side offset (aGgS) is laid along
                    the camera's right in the shader, so the tongue always shows its full face */
                 var P = _GG_SHAPES[C.shape] ? _GG_SHAPES[C.shape].P : _GG_SHAPES.crown.P;
-                for (var k = 0; k < 7; k++) {
+                for (var k = 0; k < P.length; k++) {
                     var f = P[k][1], bf = f * f;
                     pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
                     var cr, cg, cb;
                     if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
                     else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
+                    if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; }
                     col.push(cr, cg, cb);
                     gg.push(wx, wz, h * f, f);
                     gs.push(P[k][0] * hw);
@@ -8843,7 +8856,7 @@ const ThreeRenderer = (function () {
         geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
         geo.setAttribute('aGg', new THREE.BufferAttribute(gg, 4));
         geo.setAttribute('aGgS', new THREE.BufferAttribute(gs, 1));
-        var nB = roots.length / 2, ia = new Uint32Array(nB * 15);
+        var nB = roots.length / 2, ia = new Uint32Array(nB * (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T.length);
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
         var pr = _ggPressTex(W, H);
         var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', blades: nB, roots: roots, ia: ia, sortDir: null };
@@ -8883,7 +8896,7 @@ const ThreeRenderer = (function () {
         for (i = 0; i < nB; i++) { k = (B - 1) - Math.floor((R[i * 2] * dx + R[i * 2 + 1] * dz - lo) * sc); key[i] = k; cnt[k + 1]++; }   // far first
         for (i = 0; i < B; i++) cnt[i + 1] += cnt[i];
         var ia = G.ia, T = (_GG_SHAPES[GGRASS.shape] || _GG_SHAPES.crown).T;
-        for (i = 0; i < nB; i++) { var o = cnt[key[i]]++ * 15, b = i * 7; for (k = 0; k < 15; k++) ia[o + k] = b + T[k]; }
+        var TL = T.length, PL = (_GG_SHAPES[GGRASS.shape] || _GG_SHAPES.crown).P.length; for (i = 0; i < nB; i++) { var o = cnt[key[i]]++ * TL, b = i * PL; for (k = 0; k < TL; k++) ia[o + k] = b + T[k]; }
         G.mesh.geometry.index.needsUpdate = true;
     }
     /* the press map, once a frame: every standing unit's feet (rebuilt only when a body moved) */
@@ -8919,7 +8932,7 @@ const ThreeRenderer = (function () {
        water, not a steep face and not inside a building. The tufts write no depth, so the cells are drawn far to near (renderOrder by
        distance) and each cell sorts its own tufts (_ggFace). Settings > Video > Grass (High / Low / Off) rules it as on the board.
        Kill switch: window.EW_NO_HQ_GRASS. No press map (nothing lays the tufts down here yet). */
-    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 16, low: { radiusM: 16, perSquare: 10 }, perTick: 2, tickMs: 100, steep: 0.55, height: 0.8 };   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
+    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 9, low: { radiusM: 16, perSquare: 6 }, perTick: 2, tickMs: 100, steep: 0.55, height: 1.43 };   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
     try { window.EW_HQ_GRASS = HQ_GRASS; } catch (e) {}
     var _hqGG = null;
     function _hqGrassDrop() {
@@ -8953,11 +8966,12 @@ const ThreeRenderer = (function () {
             var hw = ts * S.width * 0.5 * (0.8 + 0.4 * r2);
             var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm, jit = 0.97 + 0.06 * r0;
             var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
-            for (var k = 0; k < 7; k++) {
+            for (var k = 0; k < P.length; k++) {
                 var f = P[k][1], bf = f * f, cr, cg, cb;
                 pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
                 if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
                 else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
+                if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; }
                 col.push(cr, cg, cb); gg.push(wx * kw, wz * kw, h * f, f); gs.push(P[k][0] * hw);
             }
             roots.push(wx, wz);
@@ -8966,8 +8980,8 @@ const ThreeRenderer = (function () {
         var geo = new THREE.BufferGeometry(), pa = new Float32Array(pos), nor = new Float32Array(pa.length); for (var q = 1; q < nor.length; q += 3) nor[q] = 1;
         geo.setAttribute('position', new THREE.BufferAttribute(pa, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
         geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3)); geo.setAttribute('aGg', new THREE.BufferAttribute(new Float32Array(gg), 4)); geo.setAttribute('aGgS', new THREE.BufferAttribute(new Float32Array(gs), 1));
-        var nB = roots.length / 2, ia = new Uint32Array(nB * 15), T = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T;
-        for (var t = 0; t < nB; t++) for (var e = 0; e < 15; e++) ia[t * 15 + e] = t * 7 + T[e];
+        var T = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T, nB = roots.length / 2, ia = new Uint32Array(nB * T.length);
+        for (var t = 0; t < nB; t++) for (var e = 0; e < T.length; e++) ia[t * T.length + e] = t * P.length + T[e];
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
         var mesh = new THREE.Mesh(geo, S.mat);
         mesh.frustumCulled = false; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
