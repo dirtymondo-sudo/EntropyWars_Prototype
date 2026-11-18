@@ -98221,6 +98221,19 @@ var ZONE_LOOKS = {
             ground: { 'urban:WoodGeneric1a': 'urban:WoodFlooring1d' },
             decals: { dirt: 0.2, drip: 0.3 },
         },
+        /* ── BATCH 6 ── DOOR HQ (the hub, handmade, last): ONLY the calm sheets change; his own painted sheets (terrazzo, oxblood, teal,
+           ceiling, concrete, the Metro tiles, the H-Wing's yellow wallpaper) stay. Calm plaster -> textured plaster, calm stone -> grey stone,
+           calm carpet -> a real red carpet (the H-Wing's patchwork -> mustard), calm metal -> worn plate. No stains: the HQ rooms are shell rooms
+           (no terrain), and the stains are laid on terrain rows */
+        doorhq: {
+            rooms: ['central_egress', 'foyer', 'continuity', 'office', 'cafeteria', 'clockroom', 'barbershop', 'trophycase', 'reception', 'dispensary', 'medical', 'padded', 'medwing', 'recwing', 'execwing', 'executive', 'corner', 'pool', 'interrogation', 'records', 'it', 'observatorium', 'training_pit', 'training_hall', 'car', 'garage', 'dock', 'services', 'kitchen', 'coldroom', 'laundry', 'corridor_a', 'boiler', 'corridor_b', 'deadend', 'server', 'dungeon', 'ritual', 'sacrifice', 'orb', 'annex', 'classroom', 'cubicles', 'bathroom', 'crawlspace', 'thirteenth', 'locker', 'natatorium', 'garden', 'works', 'warehouse', 'incinerator', 'autopsy', 'intro_desert', 'intro_shaft', 'doorgarden', 'control', 'lostfound', 'stairwell', 'woodstair', 'tunnel', 'labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'hwing_lobby', 'hwing_floor', 'hwing_home', 'training'],
+            wall: { drywall: 'hz:Wall_03', drywall_2: 'hz:Wall_03', drywall_3: 'hz:Wall_03', drywall_4: 'hz:Wall_03', stone: 'hz:Stone_11', rocks_5: 'hz:Stone_11',
+                    bricks_2: 'hz:Brick_10', bricks_1: 'hz:Brick_11', bricks_3: 'hz:Brick_11', dungeon: 'hz:Brick_09', dungeon_3: 'hz:Brick_08', dungeon_4: 'hz:Brick_08',
+                    gunmetal: 'hz:Metal_02', gunmetal_2: 'hz:Metal_02', metal: 'hz:Metal_02', aluminium: 'hz:Metal_05', metal_3: 'hz:Metal_05',
+                    marble_light: 'hz:Wall_01', marble: 'hz:Stone_12', marble_2: 'hz:Stone_12', rock_wall_1: 'hz:Stone_09', wood: 'urban:WoodBeams1a', gold: 'px:gold' },
+            ground: { carpet: 'urban:CarpetPlain1c', carpet_4: 'urban:CarpetPlain1d', carpet_2: 'urban:CarpetPlain1d', dungeon_2: 'hz:Floor_13', dungeon: 'hz:Floor_13',
+                      aluminium: 'hz:Floor_09', metal_3: 'hz:Floor_09', gold: 'px:gold' },
+        },
     },
 };
 function zlHorrorKey(n) { return 'hz_' + String(n).toLowerCase(); }   // 'Brick_09' -> 'hz_brick_09'
