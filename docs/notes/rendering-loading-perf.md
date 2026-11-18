@@ -3036,3 +3036,9 @@ instance pass 36-37 ms", because each prop chunk shown for the first time had ca
 - `_hqLodTick`: arrivals' meshes join `L.list`; full read when a LOD level landed (`_lodLandN`), the desk overflowed, every 60 s.
 - `_css2dRender`: arrivals looked through for a label; recount when one arrived / overflow / every 60 s.
 - Alarm names now parse Firefox's `ThreeRenderer</fn/<` frames; the lens's own census is marked "(the F3 lens itself)".
+
+### THE RARE READ (2026-11-18, spikes thread, his 12:30 F3)
+The "Scene walks" alarm named `_mmLive` (77K objects every 2-4 s): over the budget, `_mmTick` read the whole scene every 4 s to drop 6
+files. After a sweep that found files the next read waits 20 s (8 s when 1.5x over) and takes up to 24 (48 far over); the drops still go
+two a frame. Off: `EW_MM_READ_EVERY_4S`. Same F3: two 176-179 ms frames with only 19-20 ms of JS (the browser, not our code: KTX2 uploads /
+pipelines while new models loaded, or GC); the instance pass 39-43 ms frames went to the 60 FPS thread.
