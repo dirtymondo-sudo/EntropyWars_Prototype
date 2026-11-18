@@ -1170,15 +1170,14 @@ let dlCap; /* undefined = not asked yet, null = unavailable */
 async function saveFile(name, text, btn) {
   if (window.claude && typeof window.claude.use === 'function') {
     if (dlCap === undefined) { try { dlCap = await window.claude.use('downloads'); } catch (e) { dlCap = null; } }
-    if (!dlCap) return toast('This view cannot save files. Use Copy instead.');
-    try { await dlCap.save({ filename: name, data: text }); toast('Saved ' + name); } catch (e) { toast(e && e.code === 'declined' ? 'Save cancelled' : 'Could not save the file. Use Copy instead.'); }
-    return;
+    if (dlCap) { try { await dlCap.save({ filename: name, data: text }); toast('Saved ' + name); return; } catch (e) { if (e && e.code === 'declined') return toast('Save cancelled'); } }
   }
+  /* no downloads capability here (the page opened on its own, outside the viewer): an ordinary browser download */
   try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast('Saved ' + name); } catch (e) { toast('Could not save the file. Use Copy instead.'); }
 }
 function copyText(ta) { const done = () => toast('Copied'); const fb = () => { ta.focus(); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Select the text and copy it'); } }; try { navigator.clipboard.writeText(ta.value).then(done, fb); } catch (e) { fb(); } }
 const stamp = () => new Date().toISOString().slice(0, 10);
-function backupJSON() { return JSON.stringify({ app: 'ew-relationship-web', v: 1, exported: new Date().toISOString(), order: S.order, boards: S.boards }, null, 1); }
+function backupJSON() { return JSON.stringify({ app: 'ew-relationship-web', v: 1, exported: new Date().toISOString(), order: S.order, boards: S.boards }); }
 /* the export shaped for data.js: race keys exactly as in AVAILABLE_RACES */
 function gameExport(all) {
   const boards = all ? S.order.map(id => S.boards[id]).filter(b => !b.sample) : [B];
