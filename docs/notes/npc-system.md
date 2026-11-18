@@ -404,9 +404,12 @@ Story walk only (the encounter's own launch and commit). Plan: `docs/plans/npc-e
 - **The rule:** an NPC that walks away from a story fight hurt keeps its HP and comes into the next fight with it (the party's own carried-vitals path:
   map.js `createUnit` scales it to that build's max, never under 1). It heals ("at the next game day or after they sleep"): **a resident with a day is whole
   once its Sleep block has ended after the fight; a walker with no day at the next game day** (the world clock passing midnight).
-- **Who keeps wounds today:** the struck NPC and its group's members, in the fights where they are met again: a fight the party LOST, or LEFT (the retreat).
-  Beaten on a win, or captured = no row (the cleared ledger / the party has them). An NPC that went down in a fight you lost or left stands up again with
-  `HQ_NPC_TEMPERS.wounds.downHp` = 1 HP (a PROPOSAL, put to mondo). HP only; MP is not carried.
+- **Who keeps wounds today:** the struck NPC and its group's members that were still standing at the end, in the fights where they are met again: a fight
+  the party LOST, or LEFT (the retreat). HP only; MP is not carried.
+- **EVERY ENEMY BEATEN STAYS BEATEN** (mondo 11-18: "any enemy beat should not magically come back at full health"; "no" to a downed enemy getting up with 1 HP):
+  every enemy NPC that went DOWN in a story fight, won, lost or left, goes on the cleared list (`hqEncounterRecord`'s new `beaten` ids) and is out of the room
+  until tomorrow, the struck one and its group alike. Before, only the struck NPC of a WON fight was filed and its fallen group came back at once, whole.
+  Captured = no row either (the party has it).
 - **Where it lives: the profile, beside `cleared`** (the plan's row 5a; the party's vitals live there too): `door.hq.wounds` = `{ '<room>|<npc id>': { hp, max, t, rest } }`,
   local to the device (not in the synced blob), at most `wounds.max` 64 rows (the oldest go). So a reload does not heal anyone; only the clock does.
 - **THE RUNNING HOURS** (data.js `hqClockTotal(profile, nowMs)`; map.js `_hqClock.t`, `window._hqClockTotal()`): the world hours the clock has run on this profile,
@@ -421,5 +424,4 @@ Story walk only (the encounter's own launch and commit). Plan: `docs/plans/npc-e
 - **For step 6b (the losing NPC, escape):** an escaped NPC is in `state.escaped[2]`; the commit already reads it and files its HP. Giving up / the arrest only
   needs `gone: true` on its row (the arrest) or its HP (spared).
 - **Nothing on screen:** no nameplate or aim prompt shows a hurt NPC's HP (a UI change: mock-up and mondo's OK first). Not run in a browser (not visual).
-- **Found, not changed (the spawn system's ledger):** on a WON fight only the struck NPC goes on the cleared list; its group's members who fell are back at once, whole.
 
