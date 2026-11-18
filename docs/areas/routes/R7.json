@@ -1,56 +1,53 @@
 {
-  "about": "COUNTY LANE's ROOM (One World, THE JOINING RULE: mondo after the test slice, 2026-11-17): County Lane (route R7, plots 3 to 14), the wild link L8 and the Estate's Lake are ONE room, 5 x 8, 25 plots, so there is no loading card between the corn and the water. R7's first three plots (-13,5 · -13,8 · -13,10) stand in the gaps of the Corn Fields' two columns and belong to that room (bake-estate.js). The lane leaves the corn on the line x = -13, bends east along row 11 and runs south on the line x = -11 to the Lake's north shore. L8 (the footpath) leaves the corn by its own gap in the south field, crosses the lane at the bend and runs down the west side through the long grass to the Reeds. The Lake's plots are stood by bake-estate.js and brought in (`join`). Bake: node bake-estate.js, then node bake-route.js R7. PLACES (ow-places.js; every name an idea of Claude's): the design page gives County Lane \"farm fields and a scarecrow row down to the Lake\", so the scarecrow row stands on -12,12; the two salt-flat plots at the Lake's end carry the old jetty and the stranded boat (the lake used to reach here); the rest are the kit's pick by ground kind.",
-  "hub": "ranch",
-  "room": "site_prebuilt_skinwalker_ow_lake",
-  "part": "ow_lake",
-  "label": "COUNTY LANE · THE LAKE",
-  "sub": "THE ESTATE · THE LANE, THE FOOTPATH AND THE LAKE · 25 PLOTS",
-  "from": 3,
-  "to": 14,
-  "line": [
-    [
-      -13,
-      10.9
-    ],
-    [
-      -13,
-      11.5
-    ],
-    [
-      -11,
-      11.5
-    ],
-    [
-      -11,
-      15.1
-    ]
+ "about": "THE ESTATE's ROOM (2026-11-18, mondo: a zone's districts are one place): the Corn Fields, County Lane (route R7, plots 3 to 14), the wild link L8, the Lake and the Ranch are ONE room, 5 x 18, 47 plots; the Haunted House stands apart in the forest (the Woods' trail lies between). The three districts are stood by bake-estate.js and brought in (`join`, a list). Bake: node bake-estate.js, then node bake-route.js R7. WAS (11-17): COUNTY LANE's ROOM (One World, THE JOINING RULE: mondo after the test slice, 2026-11-17): County Lane (route R7, plots 3 to 14), the wild link L8 and the Estate's Lake are ONE room, 5 x 8, 25 plots, so there is no loading card between the corn and the water. R7's first three plots (-13,5 · -13,8 · -13,10) stand in the gaps of the Corn Fields' two columns and belong to that room (bake-estate.js). The lane leaves the corn on the line x = -13, bends east along row 11 and runs south on the line x = -11 to the Lake's north shore. L8 (the footpath) leaves the corn by its own gap in the south field, crosses the lane at the bend and runs down the west side through the long grass to the Reeds. The Lake's plots are stood by bake-estate.js and brought in (`join`). Bake: node bake-estate.js, then node bake-route.js R7. PLACES (ow-places.js; every name an idea of Claude's): the design page gives County Lane \"farm fields and a scarecrow row down to the Lake\", so the scarecrow row stands on -12,12; the two salt-flat plots at the Lake's end carry the old jetty and the stranded boat (the lake used to reach here); the rest are the kit's pick by ground kind.",
+ "hub": "ranch",
+ "room": "site_prebuilt_skinwalker_ow_lake",
+ "part": "ow_lake",
+ "label": "THE ESTATE",
+ "sub": "THE CORN FIELDS · COUNTY LANE · THE LAKE · THE RANCH · 47 PLOTS",
+ "from": 3,
+ "to": 14,
+ "line": [
+  [
+   -13,
+   10.9
   ],
-  "with": [
-    {
-      "id": "L8"
-    }
+  [
+   -13,
+   11.5
   ],
-  "join": {
-    "tool": "bake-estate.js",
-    "part": "ow_lake"
-  },
-  "ends": {
-    "ow_h_m14_11": {
-      "room": "site_prebuilt_skinwalker_ow_corn",
-      "label": "THE CORN FIELDS",
-      "sub": "THE LANE NORTH · INTO THE CORN",
-      "desc": "The lane runs in between two walls of corn."
-    },
-    "ow_h_m13_11": {
-      "room": "site_prebuilt_skinwalker_ow_corn",
-      "label": "THE CORN FIELDS",
-      "sub": "THE FOOTPATH NORTH · THE GAP IN THE CORN",
-      "desc": "The footpath goes in through a gap in the corn."
-    }
-  },
-  "places": {
-    "-12,14": "jetty",
-    "-11,14": "boat",
-    "-12,12": "scarecrows"
+  [
+   -11,
+   11.5
+  ],
+  [
+   -11,
+   15.1
+  ]
+ ],
+ "with": [
+  {
+   "id": "L8"
   }
+ ],
+ "join": [
+  {
+   "tool": "bake-estate.js",
+   "part": "ow_corn"
+  },
+  {
+   "tool": "bake-estate.js",
+   "part": "ow_lake"
+  },
+  {
+   "tool": "bake-estate.js",
+   "part": "ow_ranch"
+  }
+ ],
+ "ends": {},
+ "places": {
+  "-12,14": "jetty",
+  "-11,14": "boat",
+  "-12,12": "scarecrows"
+ }
 }
