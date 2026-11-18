@@ -47493,6 +47493,134 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         nrDonationGoal: _stxGoal3D, nrRaid: _stxRaid3D, 'nrViewers:hype': _stxViewers3D, 'nrViewers:spend': _stxViewers3D,
     });
 
+    /* ══ THE V-TUBER (2026-11-18, mondo approved the kit + picked the pop idol look) ══ A pop idol made of light who streams from
+       Holo Projectors (THE PROJECTORS, battle.js). Her own colour is idol cyan with pixel hearts; the side reads on the rings
+       (THE RIOT PASS: own side cyan-blue, the other side pink-orange). Pop-ups stand BESIDE the body (_tvxPanel). Kill-switch
+       window.EW_NO_VTUBER_VFX.
+         KAWAII BEAM (beam): a light beam with pixel hearts bursting on each square it crosses.
+         HOLO PROJECTOR (geometry on the square): a ring opens and an ON AIR window flickers on beside the projector.
+         SCENE CHANGE ('nrSceneChange:swap'): a cyan streak between her old square and the projector's, a SCENE 2 window.
+         LO-FI LOOP (impact + geometry): soft blue notes drift down on the victim and a LO-FI BEATS window beside it.
+         COLLAB STREAM (aura + 'nrCollabStream:ring' on every projector): side rings pulse out of her and each projector at once,
+           a COLLAB! window beside her.
+         A SHOT FROM A PROJECTOR ('vtProjector:fire'): a thin cyan streak from the projector to the target, so the origin reads. */
+    var _VTX_C = 0x5ad6ff, _VTX_GLOW = 0xbff0ff, _VTX_PINK = 0xff8ac8;
+    function _vtxOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_VTUBER_VFX); }
+    function _vtxWin(key, title, draw) {
+        return _sigTex('vtx-' + key, 128, function (g, S) {
+            g.fillStyle = '#f4fbff'; g.fillRect(0, 0, S, S);
+            g.fillStyle = '#2bb8ec'; g.fillRect(0, 0, S, 18);
+            g.fillStyle = '#ffffff'; g.font = 'bold 11px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(title, 5, 9);
+            g.fillStyle = '#ff6ab4'; g.fillText('♥', S - 14, 9);
+            g.strokeStyle = '#2bb8ec'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, S - 3, S - 3);
+            draw(g, S);
+        });
+    }
+    function _vtxHeart(g, cx, cy, k, col) {
+        var H = ['0110110', '1111111', '1111111', '0111110', '0011100', '0001000'];
+        g.fillStyle = col;
+        for (var r = 0; r < H.length; r++) for (var q = 0; q < 7; q++) if (H[r][q] === '1') g.fillRect(cx + (q - 3.5) * k, cy + (r - 3) * k, k, k);
+    }
+    function _vtxOnAirTex() {
+        return _vtxWin('onair', 'HOLO.CAM', function (g, S) {
+            g.fillStyle = '#ff2a5a'; g.fillRect(18, 34, S - 36, 30);
+            g.fillStyle = '#ffffff'; g.font = 'bold 20px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('ON AIR', S / 2, 50);
+            _vtxHeart(g, S / 2, 96, 4, '#2bb8ec');
+        });
+    }
+    function _vtxSceneTex() {
+        return _vtxWin('scene', 'SCENES', function (g, S) {
+            g.fillStyle = '#16323f'; g.font = 'bold 13px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText('SCENE 1', S / 2, 38); g.fillStyle = '#2bb8ec'; g.fillText('▼', S / 2, 56);
+            g.fillStyle = '#ffffff'; g.fillRect(16, 68, S - 32, 28); g.strokeStyle = '#2bb8ec'; g.lineWidth = 2; g.strokeRect(16, 68, S - 32, 28);
+            g.fillStyle = '#2bb8ec'; g.font = 'bold 16px monospace'; g.fillText('SCENE 2', S / 2, 82);
+        });
+    }
+    function _vtxLofiTex() {
+        return _vtxWin('lofi', 'NOW PLAYING', function (g, S) {
+            g.fillStyle = '#6a7ad8'; g.font = 'bold 26px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('♪ ♫', S / 2, 46);
+            g.fillStyle = '#16323f'; g.font = 'bold 11px monospace'; g.fillText('LO-FI BEATS TO', S / 2, 80); g.fillText('SLEEP TO', S / 2, 94);
+            g.fillStyle = '#cfe0ff'; g.fillRect(14, 108, S - 28, 6); g.fillStyle = '#6a7ad8'; g.fillRect(14, 108, (S - 28) * 0.4, 6);
+        });
+    }
+    function _vtxCollabTex() {
+        return _vtxWin('collab', 'LIVE x3', function (g, S) {
+            g.fillStyle = '#ff2a5a'; g.beginPath(); g.arc(20, 32, 5, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#ff2a5a'; g.font = 'bold 11px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText('LIVE', 30, 33);
+            g.fillStyle = '#2bb8ec'; g.font = 'bold 26px monospace'; g.textAlign = 'center'; g.fillText('COLLAB!', S / 2, 66);
+            _vtxHeart(g, S / 2 - 30, 100, 3, '#ff6ab4'); _vtxHeart(g, S / 2, 100, 3, '#2bb8ec'); _vtxHeart(g, S / 2 + 30, 100, 3, '#ff6ab4');
+        });
+    }
+    EFFECTS['nrKawaiiBeam_tile'] = { layers: [
+        { sprite: 'flash', ml: 160, z: 50, size0: 10, size1: 42, tint: _VTX_GLOW, opacity0: 0.6 },
+        { count: 8, sprite: 'spark-pink', ml: [380, 620], offsetXY: 8, z: [35, 70], tint: _VTX_PINK, vxRange: 70, vyRange: 70, vzRange: [30, 80], drag: 1, size0: [4, 6], size1: 2, opacity0: 0.95 },
+    ] };
+    EFFECTS['nrKawaiiBeam_beam'] = { sigLine: true, beamElement: 'light', chargeMs: 140, beamMs: 460, beamThickness: 10, impactTileEffect: 'nrKawaiiBeam_tile', shake: 'soft' };
+    function _vtxProj3D(tx, ty, r, o) {
+        if (_vtxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, S = _stxSide(tx, ty, o);
+        _sigShockRing3D(tx, ty, { r0: ts * 0.1, r1: ts * 0.6, ms: 420, color: S.C.a, height: ts * 0.05 });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 0.45, ms: 520, color: _VTX_C, height: ts * 0.6, torus: true, opacity: 0.4 }); } catch (e) {} }, 120);
+        _fxDelay(function () { try { _tvxPanel(tx, ty, _vtxOnAirTex(), { w: 0.7, ms: 1300, flicker: true }); } catch (e) {} }, 200);
+        return true;
+    }
+    function _vtxStreak(tx, ty, o, color, ms) {
+        if (!o || o.fromX == null || _afFogHides(o.fromX, o.fromY) || _afFogHides(tx, ty)) return;
+        var ts = _worldPos(tx, ty).ts, F = _nrvFrame(tx, ty), th = _hdThread(F, o.fromX, o.fromY, ts * 0.45, color, ms, ts * 0.08, 140);
+        if (th) _sigRunOwned(F.g, ms + 20, function (el) { th.run(el); });
+    }
+    function _vtxSwap3D(tx, ty, r, o) {
+        if (_vtxOff()) return null;
+        var ts = _worldPos(tx, ty).ts;
+        _vtxStreak(tx, ty, o, _VTX_C, 420);
+        if (o && o.fromX != null && !_afFogHides(o.fromX, o.fromY)) _sigShockRing3D(o.fromX, o.fromY, { r0: ts * 0.5, r1: ts * 0.1, ms: 360, color: _VTX_C, height: ts * 0.05 });
+        if (!_afFogHides(tx, ty)) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.1, r1: ts * 0.6, ms: 380, color: _VTX_GLOW, height: ts * 0.05 }); } catch (e) {} }, 300);
+            _fxDelay(function () { try { _tvxPanel(tx, ty, _vtxSceneTex(), { w: 0.7, ms: 1300 }); } catch (e) {} }, 320);
+        }
+        return true;
+    }
+    EFFECTS['nrLoFiLoop_impact'] = { layers: [
+        { sprite: 'flash', ml: 220, z: 60, size0: 10, size1: 40, tint: 0xa8b8ff, opacity0: 0.45, delayMs: 200 },
+        { count: 10, sprite: 'sparkle', ml: [700, 1000], offsetXY: 12, z: [70, 100], tint: 0xa8b8ff, vxRange: 30, vyRange: 30, vzRange: [-50, -20], drag: 0.5, size0: [3, 5], size1: 2, opacity0: 0.9, delayMs: 200 },
+    ] };
+    function _vtxLofi3D(tx, ty, r, o) {
+        if (_vtxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, S = _stxSide(tx, ty, o);
+        _fxDelay(function () { try { _tvxPanel(tx, ty, _vtxLofiTex(), { w: 0.75, ms: 1600 }); } catch (e) {} }, 220);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.55, r1: ts * 0.2, ms: 520, color: S.C.a, height: ts * 0.05 }); } catch (e) {} }, 220);
+        return true;
+    }
+    EFFECTS['nrCollabStream_aura'] = { layers: [
+        { sprite: 'flash', ml: 220, z: 50, size0: 14, size1: 64, tint: _VTX_GLOW, opacity0: 0.5 },
+        { count: 16, sprite: 'spark-pink', ml: [500, 800], offsetXY: 14, z: [20, 70], tint: _VTX_PINK, vxRange: 110, vyRange: 110, vzRange: [30, 90], drag: 0.9, size0: [3, 6], size1: 1, opacity0: 0.95 },
+    ] };
+    function _vtxCollabRing(tx, ty, o, panel) {
+        if (_afFogHides(tx, ty)) return;
+        var ts = _worldPos(tx, ty).ts, S = _stxSide(tx, ty, o);
+        for (var i = 0; i < 2; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 1.5, ms: 480, color: j ? _VTX_C : S.C.a, height: ts * (0.05 + 0.25 * j), torus: j > 0, opacity: j ? 0.4 : 1 }); } catch (e) {} }, 100 + j * 140);
+        })(i);
+        if (panel) _fxDelay(function () { try { _tvxPanel(tx, ty, _vtxCollabTex(), { w: 0.8, ms: 1500 }); } catch (e) {} }, 160);
+    }
+    function _vtxCollab3D(tx, ty, r, o) { if (_vtxOff()) return null; _vtxCollabRing(tx, ty, o, true); return true; }
+    function _vtxCollabProj3D(tx, ty, r, o) {
+        if (_vtxOff()) return null;
+        _vtxStreak(tx, ty, o, _VTX_C, 300);
+        _vtxCollabRing(tx, ty, o, false);
+        return true;
+    }
+    function _vtxFire3D(tx, ty, r, o) { if (_vtxOff()) return null; _vtxStreak(tx, ty, o, _VTX_C, 360); return true; }
+    Object.assign(SPELL_MAP, {
+        nrKawaiiBeam:   { beam: 'nrKawaiiBeam_beam' },
+        nrLoFiLoop:     { impact: 'nrLoFiLoop_impact' },
+        nrCollabStream: { aura: 'nrCollabStream_aura' },
+    });
+    Object.assign(_spell3DGeometry, {
+        nrHoloProjector: _vtxProj3D, 'nrSceneChange:swap': _vtxSwap3D, nrLoFiLoop: _vtxLofi3D,
+        nrCollabStream: _vtxCollab3D, 'nrCollabStream:ring': _vtxCollabProj3D, 'vtProjector:fire': _vtxFire3D,
+    });
+
     /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build
        his spells around the space props in the game". His three new Assets/misc files (the satellite, the space shuttle, the
        space station) and two already in the game (the torn hull plate with its wiring hanging out = the spaceship debris; the

@@ -8208,6 +8208,7 @@ function spellTagline(sp) {
   else if (k === 'doorBreach') parts.push(sp.fromAbove ? 'Drop in from above · rear hit' + (sp.splashDmg ? ' · slam 3×3' : '') : 'Teleport beside · rear hit');
   else if (k === 'doorDelivery') parts.push('Out of your nearest open door · ' + (sp.range || 3) + ' from it · rear hit');
   else if (k === 'doorSlam') parts.push('Shut a door · twin slams 3×3 · push ' + (sp.pushDistance || 1));
+  else if (k === 'projectorSwap') parts.push('Swap places with your Holo Projector · any distance');   // 2026-11-18 THE V-TUBER
   else if (k === 'doorExit') parts.push('Off the board 1 round · back out of the twin');
   else if (k === 'doorTrap') parts.push('Drop out of your farthest door');
   else if (k === 'tackle') parts.push('Charge · carries ' + (sp.pushDistance || 1) + ' tiles');
@@ -8265,6 +8266,7 @@ function spellTargetMode(sp) {
   if (k === 'dash' && sp.afterShot) return 'Dash · then Shoot';
   if (k === 'door') return 'Tile · Door';
   if (k === 'doorSlam') return 'Your Door';
+  if (k === 'projectorSwap') return 'Your Projector';   // 2026-11-18 THE V-TUBER
   if (k === 'doorDelivery') return 'Through a Door';
   if (k === 'doorExit') return 'Enemy at a Door';
   if (k === 'doorBreach' || k === 'doorTrap') return 'Single Target';

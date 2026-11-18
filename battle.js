@@ -875,6 +875,8 @@
             doorBreach:   { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
             doorDelivery: { minRange: 0, offensive: true,  breaksStealth: true, noStrikeLeap: true, doorOrigin: true },
             doorSlam:     { minRange: 0, offensive: false, tileTargeted: true, fogExempt: true, noStrikeLeap: true },
+            // 📽 THE V-TUBER (2026-11-18): Scene Change aims at one of her own Holo Projectors (she knows where they are)
+            projectorSwap:{ minRange: 0, offensive: false, tileTargeted: true, fogExempt: true, noStrikeLeap: true },
             doorExit:     { minRange: 0, offensive: true,  breaksStealth: true, noStrikeLeap: true, doorOrigin: true },
             doorTrap:     { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
             deployTurret: { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
@@ -9051,6 +9053,12 @@
                     if (spell.hitsStatusOnly) { const _hu = unitAt(x, y); if (!_hu || !_barrageStatusOk(spell, _hu)) continue; }   // 🦠 Zero Day
                     out.push({ x, y });
                 }
+                if (spell.projectorPulse) {   // 📽 Collab Stream: the rings round her projectors
+                    for (const t of vtProjectorsOf(unit)) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                        const px = t.x + dx, py = t.y + dy;
+                        if (isInside(px, py) && !out.some(q => q.x === px && q.y === py)) out.push({ x: px, y: py });
+                    }
+                }
                 return out;
             }
             if (kind === 'dash') {
@@ -9089,7 +9097,7 @@
             zoneHeal: 1, scan: 1, remoteView: 1, utility: 1, escape: 1, teleport: 1,
             warpRune: 1, swap: 1, placeMirror: 1, tuneFrequency: 1, deployObject: 1,
             deployPair: 1, deployTurret: 1, buildBridge: 1, buildStructure: 1,
-            door: 1, doorSlam: 1, doorDeploy: 1,
+            door: 1, doorSlam: 1, doorDeploy: 1, projectorSwap: 1,
             placeBlock: 1, terrainCreate: 1, placeTrap: 1, summonWeather: 1,
         };
         function _spellGlowTiles(unit, spell, tx, ty) {
@@ -9144,6 +9152,14 @@
                 } else if (kind === 'barrage') {
                     if (spell.aoeOriginSelf && !spell.hitsWetOnly && !spell.hitsStatusOnly) {
                         tiles = spellStrikeTiles(unit, spell, tx, ty);   // the nova's true reach (combatDist), not a square
+                        /* 📽 Collab Stream: the rings round her projectors light too */
+                        if (spell.projectorPulse && tiles) {
+                            const _pr = spell.aoeRadius || 1;
+                            for (const t of vtProjectorsOf(unit)) for (let dy = -_pr; dy <= _pr; dy++) for (let dx = -_pr; dx <= _pr; dx++) {
+                                const px = t.x + dx, py = t.y + dy;
+                                if (isInside(px, py) && !tiles.some(q => q.x === px && q.y === py)) tiles.push({ x: px, y: py });
+                            }
+                        }
                     } else if (typeof _barrageTargets === 'function') {
                         tiles = _barrageTargets(unit, spell).map(e => ({ x: e.x, y: e.y }));
                     }
@@ -17894,7 +17910,7 @@
             if (!attacker || !target) return 0;
             if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return 0;
             const src = (from && from.x != null) ? { x: from.x, y: from.y } : attacker;
-            const arc = attacker._doorAttackOrigin ? 'back' : getAttackArc(src, target);
+            const arc = (attacker._doorAttackOrigin && !attacker._doorAttackOrigin.projector) ? 'back' : getAttackArc(src, target);
             let p = arc === 'back' ? 1 : 1 - getEvasionChance(target);
             if (unitHasStatus(attacker, 'blind')) p *= 0.5;
             return Math.max(0, Math.min(1, p));
@@ -32945,7 +32961,7 @@
                    them their own cat so the exec switch politely refuses. */
                 else if (kind === 'rallyPull' || kind === 'raiseDead' || kind === 'summonUnit'
                     || kind === 'possess' || kind === 'link' || kind === 'transfer' || kind === 'shadowRealm' || kind === 'cannibalize'
-                    || kind === 'door' || kind === 'doorBreach' || kind === 'doorDelivery' || kind === 'doorSlam'
+                    || kind === 'door' || kind === 'doorBreach' || kind === 'doorDelivery' || kind === 'doorSlam' || kind === 'projectorSwap'
                     || kind === 'doorExit' || kind === 'doorTrap'
                     || kind === 'steal') cat = kind;
                 else if (kind === 'cleanse' || kind === 'cleanseArea') cat = 'cleanse';
@@ -38952,7 +38968,7 @@
             summonWeather: 'weather',
             scan: 'recon', remoteView: 'recon',
             /* 2026-09-23 — THE SPELL DIRECTOR: every kind has a director */
-            steal: 'strike', doorSlam: 'strike',
+            steal: 'strike', doorSlam: 'strike', projectorSwap: 'blink',
             tackle: 'dash',
             doorBreach: 'blink', doorDelivery: 'blink', doorExit: 'blink',
             cleanseArea: 'partyCry', rallyPull: 'partyCry',
@@ -44020,7 +44036,7 @@
                 const pb = unitPassiveValue(unit, 'closeRangeBonus');
                 const d = (typeof distToTarget === 'function') ? distToTarget(unit.x, unit.y, target, unit.z) : (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y));
                 const pbOn = !!(pb && pb.mult && d <= (pb.within || 2));
-                const fm = getFacingDamageMult(unit._doorAttackOrigin ? 'back' : getAttackArc(unit, target));
+                const fm = getFacingDamageMult((unit._doorAttackOrigin && !unit._doorAttackOrigin.projector) ? 'back' : getAttackArc(unit, target));
                 const raw = (roll) => {
                     let v = Math.max(BASIC_ATTACK_MIN_RAW, base + roll);
                     if (bdm !== 1) v = Math.floor(v * bdm);
@@ -45702,7 +45718,7 @@
             const shots = [];
             if (state.turrets && state.turrets.length) {
                 for (const turret of state.turrets) {
-                    if (turret.hp <= 0 || turret.auraDebuff || turret.plant) continue;   // 5G towers don't shoot; a plant acts with the seeds (applySeedTileEffects_endOfRound)
+                    if (turret.hp <= 0 || turret.auraDebuff || turret.plant || turret.projector) continue;   // 📽 a Holo Projector never shoots   // 5G towers don't shoot; a plant acts with the seeds (applySeedTileEffects_endOfRound)
                     if (turret.zombie || turret.summon) {
                         // 🧟 Raised abomination: mindless — hunts the NEAREST unit,
                         // friend or foe. Shambles up to 2 tiles toward it, then
@@ -46010,6 +46026,7 @@
             if (turret.plant) return `🌿 The ${_plantName(turret.plant)}`;
             if (turret.summon) return `${_summonLook(turret.summon).icon} ${turret.spellName || 'The summon'}`;
             if (turret.zombie) return '🧟 The flesh abomination';
+            if (turret.projector) return '📽 The Holo Projector';
             return `🔧 ${turret.auraDebuff ? '5G Tower' : 'Siege Turret'}`;
         }
         /* opts.damageType (wave C): an ARMORED summon (the creation) counts a
@@ -46035,6 +46052,7 @@
                 turret.hp = Math.max(0, turret.hp - dmg);
                 addLog(turret.plant
                     ? `${_turretLogName(turret)} at ${coordLabel(x, y)} takes ${dmg} damage! (${turret.hp}/${turret.maxHp} HP)`
+                    : turret.projector ? `${_turretLogName(turret)} at ${coordLabel(x, y)} takes ${dmg} damage! (${turret.hp}/${turret.maxHp} HP)`
                     : `🔧 Turret at ${coordLabel(x, y)} takes ${dmg} damage! (${turret.hp}/${turret.maxHp} HP)`);
                 showFloatingTextAtTile(x, y, `-${dmg}`, 'damage', {
                     durationMs: 700
@@ -46047,6 +46065,8 @@
                     ? `${_turretLogName(turret)} at ${coordLabel(x, y)} goes down!`
                     : turret.zombie
                     ? `🧟 The flesh abomination at ${coordLabel(x, y)} collapses into carrion!`
+                    : turret.projector
+                    ? `📽 The Holo Projector at ${coordLabel(x, y)} flickers out!`
                     : `🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
                 state.turrets = state.turrets.filter(t => t !== turret);
                 if (turret.burstStatus) _summonBurst(turret);   // 🦠 the Virus's Replica
@@ -51504,8 +51524,14 @@
                 const dist = (typeof combatReach === 'function')
                     ? combatReach(unit.x, unit.y, srcZ, e.x, e.y, e.z ?? 0, longR)
                     : Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
-                return dist >= 1 && dist <= barrageRange
-                    && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, srcZ));
+                if (dist >= 1 && dist <= barrageRange
+                    && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, srcZ))) return true;
+                /* 📽 Collab Stream (`projectorPulse`): every Holo Projector of hers pulses too — an enemy within the radius of
+                   any of them is in (once) */
+                if (spell.projectorPulse) {
+                    return vtProjectorsOf(unit).some(t => Math.max(Math.abs(e.x - t.x), Math.abs(e.y - t.y)) <= barrageRange);
+                }
+                return false;
             });
         }
 
@@ -51729,6 +51755,7 @@
             }
             if (spell.kind === 'skyThrow' && unit._skyThrowGrab) return null;   // the throw judges its own reach
             if (spell.kind === 'doorDeploy') return null;                       // the door's aim resolver judges
+            if (spell.kind === 'projectorSwap') return vtProjectorsOf(unit).some(t => t.x === x && t.y === y) ? null : 'range';   // 📽 Scene Change: one of her projectors
             if (z === undefined || z === null) {
                 z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, unit.z ?? 0)
                     : (state.boardHeights?.[y]?.[x] ?? 0);
@@ -51743,8 +51770,8 @@
                 if (!_doorOriginForSpell(unit, spell, x, y)) return 'range';
                 viaDoor = true;
             }
-            if (!viaDoor && unitHasStatus(unit, 'castFromDoors') && !km.selfCast
-                && spell.kind !== 'teleport' && spell.kind !== 'door' && spell.kind !== 'doorSlam'
+            if (!viaDoor && _castsFromAfar(unit) && !km.selfCast
+                && spell.kind !== 'teleport' && spell.kind !== 'door' && spell.kind !== 'doorSlam' && spell.kind !== 'projectorSwap'
                 && !r.directForDoors()) {
                 viaDoor = !!doorCastOriginFor(unit, x, y, r.effRange, { minRange: r.minRange, noLos: spell.kind === 'delayed' || !!spell.ignoresLineOfSight });
             }
@@ -51894,7 +51921,7 @@
                doorDelivery / doorExit need an enemy a door of yours reaches;
                doorBreach / doorTrap are plain single-target hits (the list
                below). */
-            if (kind === 'door' || kind === 'doorSlam' || kind === 'doorDeploy') return getSpellRangeTiles(unit, spell).length > 0;
+            if (kind === 'door' || kind === 'doorSlam' || kind === 'doorDeploy' || kind === 'projectorSwap') return getSpellRangeTiles(unit, spell).length > 0;
             if (kind === 'doorDelivery' || kind === 'doorExit') {
                 const _dFog = visionGatesTargeting(unit);
                 return state.units.some(u => !u.dead && u.player !== unit.player
@@ -70960,7 +70987,7 @@
                (the board is their drum — no unit is ever a valid pick);
                Special Delivery and EXIT list the enemies a door of yours
                reaches, never the caster's own disc. */
-            if (spell.kind === 'door' || spell.kind === 'doorSlam' || spell.kind === 'doorDeploy') return targets;
+            if (spell.kind === 'door' || spell.kind === 'doorSlam' || spell.kind === 'doorDeploy' || spell.kind === 'projectorSwap') return targets;
             /* THE DOOR WHEEL: Swing Door aims at a HINGE tile, never at a unit — the board is its drum (the painter
                shows the victim and its landing on hover) */
             if (spell.hinge) return targets;
@@ -76483,6 +76510,8 @@
                 }
                 return _lt;
             }
+            /* 📽 Scene Change: her own Holo Projectors, any distance */
+            if (k === 'projectorSwap') return vtProjectorsOf(unit).map(t => ({ x: t.x, y: t.y }));
             if (k !== 'door' && k !== 'doorSlam' && k !== 'doorDelivery' && k !== 'doorExit') return null;
             const out = [], seen = new Set();
             const push = (x, y) => { const key = x + ',' + y; if (!seen.has(key) && isInside(x, y)) { seen.add(key); out.push({ x, y }); } };
@@ -76739,13 +76768,30 @@
         /* The Long Way Round: the twin of every friendly open door the unit
            stands on or beside, as a cast ORIGIN */
         function doorCastOrigins(unit) {
-            if (!unit || !unitHasStatus(unit, 'castFromDoors')) return [];
+            if (!unit) return [];
             const out = [];
-            for (const d of doorsBeside(unit, { open: true })) {
-                const tw = doorTwin(d);
-                if (tw && tw.open) out.push({ x: tw.x, y: tw.y, z: tw.z || 0, doorId: d.id, twinId: tw.id });
+            if (unitHasStatus(unit, 'castFromDoors')) {
+                for (const d of doorsBeside(unit, { open: true })) {
+                    const tw = doorTwin(d);
+                    if (tw && tw.open) out.push({ x: tw.x, y: tw.y, z: tw.z || 0, doorId: d.id, twinId: tw.id });
+                }
+            }
+            /* 📽 THE PROJECTORS (2026-11-18, the V-Tuber): each of her Holo Projectors is an origin too (no rear rider) */
+            for (const t of vtProjectorsOf(unit)) {
+                const tz = (t.z != null) ? t.z : ((typeof getHeightAt === 'function') ? getHeightAt(t.x, t.y) : 0);
+                out.push({ x: t.x, y: t.y, z: tz || 0, projectorId: t.id });
             }
             return out;
+        }
+        /* 📽 THE PROJECTORS (2026-11-18, the V-Tuber; mondo approved the kit): her live Holo Projectors (state.turrets rows,
+           `projector: true`), and whether a unit has any origin besides its own square (a door under The Long Way Round, or
+           a projector). Notes: docs/notes/champions-combat.md "THE V-TUBER". */
+        function vtProjectorsOf(unit) {
+            if (!unit || !state.turrets) return [];
+            return state.turrets.filter(t => t && t.projector && t.hp > 0 && t.casterUnitId === unit.id);
+        }
+        function _castsFromAfar(unit) {
+            return !!unit && (unitHasStatus(unit, 'castFromDoors') || vtProjectorsOf(unit).length > 0);
         }
         /* the first twin origin that reaches (tx, ty) within `range` with line of sight, else null */
         function doorCastOriginFor(unit, tx, ty, range, opts = {}) {
@@ -76815,6 +76861,7 @@
             window.placeDoorPair = placeDoorPair; window.setDoorOpen = setDoorOpen; window.breakDoorPair = breakDoorPair;
             window.damageDoorAt = damageDoorAt; window.doorStepThrough = doorStepThrough;
             window.doorCastOrigins = doorCastOrigins; window.doorCastOriginFor = doorCastOriginFor;
+            window.vtProjectorsOf = vtProjectorsOf; window._castsFromAfar = _castsFromAfar;
             window._doorOriginForSpell = _doorOriginForSpell; window.doorMaxHits = doorMaxHits;
             /* EXITED comes home: STATUS_DEFS.exited.onRemove → out of the twin
                door (or where it stood if the twin is gone), Staggered. */
@@ -78278,13 +78325,13 @@
                 /* 🚪 The Long Way Round: out of the unit's own reach — try the
                    twin of a friendly open door beside it as the origin. */
                 let _dOrg = null;
-                if (unitHasStatus(unit, 'castFromDoors') && _clickedTarget) {
+                if (_castsFromAfar(unit) && _clickedTarget) {
                     const _tzO = _clickedTarget.z ?? 0;
                     _dOrg = doorCastOriginFor(unit, x, y, getEffectiveRange(unit), { dist: o => combatDist(o.x, o.y, o.z || 0, x, y, _tzO) });
                 }
                 if (!_dOrg) { addLog('Target tile is out of range.'); return 0; }
                 d = combatDist(_dOrg.x, _dOrg.y, _dOrg.z || 0, x, y, _clickedTarget.z ?? 0);
-                unit._doorAttackOrigin = { x: _dOrg.x, y: _dOrg.y };
+                unit._doorAttackOrigin = { x: _dOrg.x, y: _dOrg.y, projector: !!_dOrg.projectorId };   // 📽 a projector shot is no rear attack
             } else {
                 delete unit._doorAttackOrigin;
             }
@@ -78304,7 +78351,7 @@
                the reach and the sight are the twin's; the hit is a rear one. */
             let _doorOrg = null;
             if (isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) {
-                if (unitHasStatus(unit, 'castFromDoors') && _clickedTarget) {
+                if (_castsFromAfar(unit) && _clickedTarget) {
                     const _tzO = _clickedTarget.z ?? 0;
                     _doorOrg = doorCastOriginFor(unit, x, y, getEffectiveRange(unit), { dist: o => combatDist(o.x, o.y, o.z || 0, x, y, _tzO) });
                 }
@@ -78740,10 +78787,14 @@
             // be dodged (and later: cannot be countered).
             setUnitFacing(unit, target.x - unit.x, target.y - unit.y);
             /* 🚪 an attack launched from a twin door is always a rear attack */
-            const _atkArc = (_doorOrg || unit._doorAttackOrigin) ? 'back' : getAttackArc(unit, target);
-            if (_doorOrg || unit._doorAttackOrigin) {
-                const _dOr = _doorOrg || unit._doorAttackOrigin;
-                addLog(`🚪 ${_ctName(unit)} strikes out of the door at ${coordLabel(_dOr.x, _dOr.y)} — from behind!`);
+            const _dOrA = _doorOrg || unit._doorAttackOrigin || null;
+            const _dOrProj = !!(_dOrA && (_dOrA.projectorId || _dOrA.projector));   // 📽 a V-Tuber projector: no rear rider
+            const _atkArc = (_dOrA && !_dOrProj) ? 'back' : getAttackArc(unit, target);
+            if (_dOrA) {
+                if (_dOrProj) {
+                    addLog(`📽 ${_ctName(unit)} fires from her Holo Projector at ${coordLabel(_dOrA.x, _dOrA.y)}.`);
+                    _sigVfxGeom('vtProjector:fire', target.x, target.y, 0, { fromX: _dOrA.x, fromY: _dOrA.y });
+                } else addLog(`🚪 ${_ctName(unit)} strikes out of the door at ${coordLabel(_dOrA.x, _dOrA.y)} — from behind!`);
                 delete unit._doorAttackOrigin;
             }
             const _facingMult = getFacingDamageMult(_atkArc);
@@ -83233,8 +83284,8 @@
                     return 0;
                 }
             }
-            if (!_doorOrg && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && unitHasStatus(unit, 'castFromDoors')
-                && !_kindMeta(spell).selfCast && spell.kind !== 'teleport' && spell.kind !== 'door' && spell.kind !== 'doorSlam') {
+            if (!_doorOrg && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && _castsFromAfar(unit)
+                && !_kindMeta(spell).selfCast && spell.kind !== 'teleport' && spell.kind !== 'door' && spell.kind !== 'doorSlam' && spell.kind !== 'projectorSwap') {
                 const _effR = _aimReach.effRange;
                 if (!_aimReach.directForDoors()) _doorOrg = doorCastOriginFor(unit, x, y, _effR, { minRange, noLos: spell.kind === 'delayed' || !!spell.ignoresLineOfSight });
             }
@@ -83649,8 +83700,12 @@
 
             /* 🚪 the rear-attack rider: a door spell that says so, or any cast
                launched out of a twin door under The Long Way Round */
-            state._doorRearCast = (spell.rearAttack || _doorOrg) ? { unitId: unit.id, spellId: spell.id, x: _doorOrg ? _doorOrg.x : null, y: _doorOrg ? _doorOrg.y : null } : null;
-            if (_doorOrg && !_kindMeta(spell).doorOrigin) addLog(`🚪 ${_ctName(unit)} casts ${_ctSp(spell.name)} out of the door at ${coordLabel(_doorOrg.x, _doorOrg.y)}.`);
+            const _doorOrgRear = !!(_doorOrg && !_doorOrg.projectorId);   // 📽 a V-Tuber projector origin carries no rear rider
+            state._doorRearCast = (spell.rearAttack || _doorOrgRear) ? { unitId: unit.id, spellId: spell.id, x: _doorOrgRear ? _doorOrg.x : null, y: _doorOrgRear ? _doorOrg.y : null } : null;
+            if (_doorOrg && _doorOrg.projectorId) {
+                addLog(`📽 ${_ctName(unit)} casts ${_ctSp(spell.name)} from her Holo Projector at ${coordLabel(_doorOrg.x, _doorOrg.y)}.`);
+                _sigVfxGeom('vtProjector:fire', x, y, 0, { fromX: _doorOrg.x, fromY: _doorOrg.y });
+            } else if (_doorOrg && !_kindMeta(spell).doorOrigin) addLog(`🚪 ${_ctName(unit)} casts ${_ctSp(spell.name)} out of the door at ${coordLabel(_doorOrg.x, _doorOrg.y)}.`);
 
             // Choice lock commits here — every validation gate has passed, so
             // this cast WILL happen and it becomes the unit's bound spell.
@@ -85328,6 +85383,20 @@
                 }
                 playSfx(spellLaunchSfx(spell));
                 unit.mp -= effectiveSpellCost;
+                /* 📽 Collab Stream (`projectorPulse`, the V-Tuber): every projector pulses with her (the ring VFX on each), and
+                   allies standing in any ring (her own included) get pulseAllyStatus */
+                if (spell.projectorPulse) {
+                    const _pr = spell.aoeRadius || 1;
+                    const _rings = [{ x: unit.x, y: unit.y }].concat(vtProjectorsOf(unit).map(t => ({ x: t.x, y: t.y })));
+                    for (const c of _rings.slice(1)) _sigVfxGeom(spell.id + ':ring', c.x, c.y, 0, { fromX: unit.x, fromY: unit.y });
+                    if (spell.pulseAllyStatus && spell.pulseAllyStatus.length) {
+                        for (const a of aliveUnitsFor(unit.player)) {
+                            if (!a || a.dead || a._dying) continue;
+                            if (!_rings.some(c => Math.max(Math.abs(a.x - c.x), Math.abs(a.y - c.y)) <= _pr)) continue;
+                            applyStatusEffects(a, spell.pulseAllyStatus, `${spell.name}: `, unit);
+                        }
+                    }
+                }
 
                 if (spell.aoeOriginSelf && typeof window !== 'undefined'
                     && window.ThreeVFXEffects && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
@@ -86157,6 +86226,38 @@
                     (_pullCam?.totalMs ?? 0) + actionMs(120));
             }
 
+            /* 📽 SCENE CHANGE (2026-11-18, the V-Tuber): she and one of her own Holo Projectors trade squares, any distance */
+            else if (spell.kind === 'projectorSwap') {
+                const proj = vtProjectorsOf(unit).find(t => t.x === x && t.y === y);
+                if (!proj) {
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: choose one of your Holo Projectors.`, _clickSeat()); playErrorSfx(); }
+                    return 0;
+                }
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+                const ux = unit.x, uy = unit.y, uz = unit.z;
+                const _scCam = _spellFocusCamera(unit, ux, uy, { spellName: spell.name, spellId: spell.id });
+                const _scAt = actionMs(450);
+                window.setTimeout(() => {
+                    if (unit.dead || proj.hp <= 0) return;
+                    _sigVfxGeom(spell.id + ':swap', proj.x, proj.y, 0, { fromX: ux, fromY: uy });
+                    const px = proj.x, py = proj.y;
+                    unit.x = px; unit.y = py;
+                    proj.x = ux; proj.y = uy; proj.z = uz;
+                    if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(unit.x, unit.y, unit.z);
+                    addLog(`📽 ${_ctName(unit)} cuts to the other camera: she and her Holo Projector trade places (${coordLabel(ux, uy)} ↔ ${coordLabel(px, py)}).`);
+                    resolveTileArrival(unit, { via: 'self' });
+                    showFloatingTextForUnit(unit, '📽 SCENE CHANGE!', 'streak', { durationMs: 900 });
+                    if (!state.cameraDisabled && camera._cineShotId == null) {
+                        stopBoardCameraAnimation();
+                        animateBoardCameraPath({ x: ux, y: uy }, { x: px, y: py },
+                            { duration: 300, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: _fogCamAllSeen({ x: ux, y: uy }, { x: px, y: py }) });
+                    }
+                    if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+                    scheduleBoardRender();
+                }, _scAt);
+                completionDelay = Math.max(actionMs(900), _scAt + actionMs(500), (_scCam?.totalMs ?? 0) + actionMs(120));
+            }
             else if (spell.kind === 'swap') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 /* THE SPELL AUDIT Batch D: an `allyOnly` row (Tag In, Miracle) swaps with a friendly unit, never an enemy */
@@ -89221,7 +89322,10 @@
                 // THE SPELL AUDIT Batch D — Foreman's `deployStatBonus`: +dmg always, +hp only on a real HP pool (a
                 // hitsToKill turret counts blows, not HP).
                 const _fmB = passiveDeployBonus(unit);
-                const turretHp = (spell.turretHp || 20) + (spell.hitsToKill ? 0 : _fmB.hp);
+                /* 📽 a V-Tuber Holo Projector's HP is a share of her own max HP (turretHpPct) */
+                const turretHp = (spell.turretHpPct > 0)
+                    ? Math.max(1, Math.round((unit.maxHp || unit.hp || 100) * spell.turretHpPct))
+                    : (spell.turretHp || 20) + (spell.hitsToKill ? 0 : _fmB.hp);
                 const turretDmg = spell.auraDebuff ? 0 : (spell.turretDmg || 8) + _fmB.dmg;   // a 5G Tower (turretDmg 0) never shoots (A3)
                 // Tinker (passive row, the `turretRangeBonus` hook — was the Engineer job, THE JOBS REMOVAL 2026-09-27): turrets reach +1 tile.
                 const turretRange = (spell.turretRange || 2) + (unitPassiveSum(unit, 'turretRangeBonus') || 0);
@@ -89251,10 +89355,13 @@
                     hitsToKill: spell.hitsToKill || 0,
                     auraDebuff: spell.auraDebuff || false,
                     auraDefReduction: spell.auraDefReduction || 0,
+                    projector: !!spell.projector,   // 📽 the V-Tuber's Holo Projector: never shoots, her cast origin
+                    spellName: spell.projector ? spell.name : undefined,
                     facingAngle: _initFacing,
                     id: `turret_${Date.now()}_${randInt(9999)}`
                 });
-                showFloatingTextAtTile(x, y, '🔧', 'buff', {
+                if (spell.projector) _sigVfxGeom(spell.id, x, y, 0, { fromX: unit.x, fromY: unit.y });   // 📽 ON AIR
+                showFloatingTextAtTile(x, y, spell.projector ? '📽' : '🔧', 'buff', {
                     durationMs: 900
                 });
 
