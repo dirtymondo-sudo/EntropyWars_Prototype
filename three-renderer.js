@@ -49248,6 +49248,7 @@ const ThreeRenderer = (function () {
             return;
         }
         var t0 = performance.now(), W = _ewBun.why;
+        var spL = (_lens && _lens.cur) ? { w0: Object.assign({}, W), r0: _ewBun.recs, walked: 0, re: [], lamp: false } : null;   // THE BUNDLE SPIKES (lens): this tick's re-records
         _ewBun.frame = (_ewBun.frame | 0) + 1;
         _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0 }; _ewBun.rpAsked = 0; _ewBun.rpAll = 0;   // THE QUIET REPLAY: the last frame's count
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
@@ -49345,10 +49346,21 @@ const ThreeRenderer = (function () {
             st.quiet = (_ewBun.recs === recs0 && !miss) ? (st.quiet | 0) + 1 : 0;
             if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; W.cold++; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
             g.static = stat;
+            if (spL) { spL.walked++; if (g.version !== v0) spL.re.push([String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, '') + (g._ew_pChunk || g._ew_chunk ? ' ' + (g._ew_pChunk || g._ew_chunk) : ''), S.n | 0]); }
             /* THE FIELD BUNDLES: the sphere a held-still piece is culled by, measured again at each recording (never one that
                holds a light: a culled lamp would change the frame's light set, and every material would rebuild) */
             if (g._ew_bunCull && stat && !S.lit && g.isBundleGroup) { if (!g._ew_bunSph || g.version !== v0) g._ew_bunSph = _ewBunSphere(g); }
             else g._ew_bunSph = null;
+        }
+        if (spL) {   // THE BUNDLE SPIKES (2026-11-18, mondo's slow frames: "bundle check 58", "scene: bundle replays 82 / 36 / 26" ms): a tick that took
+            // 6 ms or more, or re-recorded 300+ meshes (three records them in this frame's replays), is kept with its causes, last 6
+            var spMs = performance.now() - t0, spN = 0; for (var sq = 0; sq < spL.re.length; sq++) spN += spL.re[sq][1];
+            if (spMs >= 6 || spN >= 300) {
+                var spW = []; for (var swk in W) { var swd = (W[swk] | 0) - (spL.w0[swk] | 0); if (swd > 0) spW.push(swk + ' ' + swd); }
+                spL.re.sort(function (a, b) { return b[1] - a[1]; });
+                (_ewBun.spikes || (_ewBun.spikes = [])).push(spMs.toFixed(0) + ' ms check · ' + spL.walked + ' walked · ' + spL.re.length + ' re-recorded (' + spN + ' meshes' + (spW.length ? '; ' + spW.join(', ') : '') + (lampMoved ? '; LAMPS MOVED' : '') + ')' + (spL.re.length ? ': ' + spL.re.slice(0, 3).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : ''));
+                if (_ewBun.spikes.length > 6) _ewBun.spikes.shift();
+            }
         }
         _ewBun.objs = objs; _ewBun.quietN = quietN; _ewBun.groupsN = T.length; _ewBun.noMShow = _ewBun.noMN | 0; _ewBun.noMN = 0;
         _ewBun.last = T;
@@ -54140,6 +54152,7 @@ const ThreeRenderer = (function () {
             if (top.length) L.push('  biggest groups: ' + top.slice(0, 6).map(function (t) { return t[1] + ' ' + t[0]; }).join(' · '));
         } catch (eBK) {}
         try {   // THE CHECK'S SPLIT + THE WALK'S SPLIT (2026-11-18): where the bundle check and the matrix walk spend their time
+            if (_ewBun.spikes && _ewBun.spikes.length) L.push('Bundle spikes (last ' + _ewBun.spikes.length + '): ' + _ewBun.spikes.join(' | '));
             if (_ewBun.splitShow) L.push('Bundle check by group (ms a frame, meshes; ' + (_ewBun.splitN | 0) + ' groups walked): ' + _ewBun.splitShow);
             var mwS = _hqStillSplitText(); if (mwS) L.push('Matrix walk by group (ms a frame): ' + mwS);
         } catch (eSp) {}
