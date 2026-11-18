@@ -77755,11 +77755,21 @@ function hqClockRead(profile, nowMs) {
     if (rec.run && isFinite(+rec.at) && isFinite(+nowMs) && nowMs > rec.at) h += ((nowMs - rec.at) / 1000) * hqClockRate();
     return hqClockNorm(h);
 }
-function hqClockWrite(profile, h, nowMs, run) {
+/* THE RUNNING HOURS (NPC encounters step 5a, 2026-11-18): every world hour the clock has run on this profile (`t`; its hour of the day = t mod 24), so a
+   wound can heal "at the next game day" across a reload. A record from before it starts from its hour. */
+function hqClockTotal(profile, nowMs) {
+    const rec = profile && profile.door && profile.door.hq && profile.door.hq.clock;
+    if (!rec || !isFinite(+rec.h)) return hqClockNorm(HQ_WORLD_CLOCK.start);
+    let t = isFinite(+rec.t) ? +rec.t : hqClockNorm(+rec.h);
+    if (rec.run && isFinite(+rec.at) && isFinite(+nowMs) && nowMs > rec.at) t += ((nowMs - rec.at) / 1000) * hqClockRate();
+    return t;
+}
+function hqClockWrite(profile, h, nowMs, run, t) {
     if (!profile) return null;
     if (!profile.door || typeof profile.door !== 'object') profile.door = {};
     if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
     profile.door.hq.clock = { h: Math.round(hqClockNorm(h) * 10000) / 10000, at: Math.round(+nowMs || 0), run: !!run };
+    if (t != null && isFinite(+t)) profile.door.hq.clock.t = Math.round(+t * 10000) / 10000;
     return profile.door.hq.clock;
 }
 function _hqClkSmooth(a, b, x) { if (b === a) return x >= b ? 1 : 0; const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
@@ -89945,6 +89955,10 @@ const HQ_NPC_TEMPERS = {
     mug: { perDay: 0.25, goldPerLevel: 8, chaseSpeed: 2.7, reachM: 2.2, giveUpM: 32, loseMs: 6000, againMs: 4000 },
     lossGoldPerLevel: 8,       // a lost story fight (quest fights too): 8 gold x the strongest enemy's level, never more than held; a retreat costs nothing (mondo 11-17)
     payOffGoldPerLevel: 8,     // what an NPC that gave up pays (PLAN 4.4)
+    /* THE WOUNDS (step 5a, 2026-11-18; mondo: "track health outside of battle ... as for the player and party"; wounds heal at the next game day "or after
+       they sleep"): an NPC that walks away from a fight hurt keeps its HP into the next one (data.js hqNpcWoundFor / hqNpcWoundsAfter, the profile's
+       `door.hq.wounds`). `downHp`: an NPC that went down in a fight the party LOST or left stands up again with this many HP (PROPOSAL). `max`: rows kept. */
+    wounds: { downHp: 1, max: 64 },
     /* THE LINES (mondo 11-17: "these lines are fine for now"). talk: after the second strike, or E first. warn: over the head, once. */
     lines: {
         talk: { 'chef': '“Hey! What was that for?”', 'hippie': '“Not cool, man.”', 'skater': '“What is your problem?”', 'popstar': '“Do you know who I am?”',
@@ -90102,6 +90116,68 @@ function hqNpcStarts(ch, o) {
 function hqNpcLossGold(profile, lvl) {
     const cost = Math.max(1, lvl | 0) * HQ_NPC_TEMPERS.lossGoldPerLevel, held = Math.max(0, (profile && profile.account && profile.account.gold) | 0);
     return { cost, lost: Math.min(cost, held), held };
+}
+/* ══ NPC HEALTH ON THE WALK (NPC encounters step 5a, 2026-11-18; PLAN 4.5 + section 0 round 1 answer 11, round 2 answer 2) ══
+   THE LEDGER: the profile's `door.hq.wounds` = { '<room>|<npc id>': { hp, max, t, rest } }, beside `cleared` (local to the device, like the party's
+   vitals; not in the synced blob). `t` = the world clock's running hours when the fight ended (hqClockTotal: survives a reload, stands still in a fight);
+   `rest` = the hour a resident's Sleep block ends (hqNpcRestHour), null for a walker with no day.
+   HEALED: a resident once its Sleep block has ended after the wound ("or after they sleep"); a walker at the next game day (the clock passing midnight).
+   The commit (battle.js) writes it after every story fight, won, lost or left; the launch (map.js) reads it into the enemy's seats (state.js). Step 6b
+   (an NPC that escapes) writes through the same hqNpcWoundsAfter: one row a body, { id, hp, max, down, gone }. */
+function hqNpcWoundKey(roomId, id) { return String(roomId || '') + '|' + String(id || ''); }
+/* the hour a resident's Sleep block ends (its row in HQ_CITY_RESIDENTS: `day` = [[from, to, kind, place]], kind 'S' = asleep) | null */
+function hqNpcRestHour(r) {
+    const b = r && Array.isArray(r.day) ? r.day.find(x => x && x[2] === 'S') : null;
+    return (b && isFinite(+b[1])) ? hqClockNorm(+b[1]) : null;
+}
+/* the world clock's running hours now: the walk's live count (map.js), else the profile's */
+function hqNpcWorldT(profile) {
+    try { if (typeof window !== 'undefined' && typeof window._hqClockTotal === 'function') { const t = +window._hqClockTotal(); if (isFinite(t)) return t; } } catch (e) {}
+    return hqClockTotal(profile, Date.now());
+}
+/* has a wound stamped at `w` healed by running hour `t`? */
+function hqNpcWoundHealed(w, t) {
+    if (!w || !isFinite(+w.t) || !isFinite(+t)) return true;
+    if (t < w.t) return true;   // the clock went back (a fresh profile): nothing to hold on to
+    if (w.rest == null || !isFinite(+w.rest)) return Math.floor(t / 24) > Math.floor(w.t / 24);   // a walker: the next game day
+    const k = Math.floor((w.t - w.rest) / 24) + 1, end = k * 24 + (+w.rest);   // a resident: the first end of its Sleep block after the wound
+    return t >= end;
+}
+function hqNpcWoundBook(profile, make) {
+    const H = profile && profile.door && profile.door.hq;
+    if (H && H.wounds && typeof H.wounds === 'object') return H.wounds;
+    if (!make || !profile) return null;
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    return (profile.door.hq.wounds = {});
+}
+/* THE READ (the launch): { hp, max } of a hurt NPC, or null (never hurt, or healed) */
+function hqNpcWoundFor(profile, roomId, id, t) {
+    const B = hqNpcWoundBook(profile, false); if (!B || !id) return null;
+    const w = B[hqNpcWoundKey(roomId, id)]; if (!w) return null;
+    if (t == null) t = hqNpcWorldT(profile);
+    if (hqNpcWoundHealed(w, t) || !(w.max > 0) || !(w.hp > 0) || w.hp >= w.max) return null;
+    return { hp: w.hp | 0, max: w.max | 0 };
+}
+/* THE WRITE (the commit; step 6b's escape too): `rows` = [{ id, hp, max, down, gone, rest }]. `gone` = beaten on a win, or captured: the row goes (the
+   cleared ledger has it until tomorrow). `down` (it fell in a fight you lost or left) = `downHp`. Whole = the row goes. Healed rows are pruned. The caller saves. */
+function hqNpcWoundsAfter(profile, roomId, rows, t) {
+    if (!profile || !roomId || !Array.isArray(rows)) return null;
+    const B = hqNpcWoundBook(profile, true), W = HQ_NPC_TEMPERS.wounds;
+    if (t == null) t = hqNpcWorldT(profile);
+    for (const k of Object.keys(B)) if (hqNpcWoundHealed(B[k], t)) delete B[k];
+    const out = [];
+    rows.forEach(r => {
+        if (!r || !r.id) return;
+        const k = hqNpcWoundKey(roomId, r.id), max = r.max | 0;
+        const hp = r.down ? Math.min(max, W.downHp | 0 || 1) : (r.hp | 0);
+        if (r.gone || !(max > 0) || hp >= max) { delete B[k]; return; }
+        B[k] = { hp: Math.max(1, hp), max, t: Math.round(+t * 1000) / 1000, rest: (r.rest != null && isFinite(+r.rest)) ? +r.rest : null };
+        out.push({ id: r.id, hp: B[k].hp, max });
+    });
+    const keys = Object.keys(B);
+    if (keys.length > W.max) keys.sort((a, b) => B[a].t - B[b].t).slice(0, keys.length - W.max).forEach(k => { delete B[k]; });
+    return out;
 }
 let _hqCityGridCache = null;
 /* THE ROUTE MAP of a room: { nx, nz, x0, z0, res, walk (Uint8: 0 no, 1 ground, 2 road), comp (the walk's own component: 1), openE / openS (Uint8: the
@@ -91700,7 +91776,8 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
         doorId: 'crossing', counterId: 'crossing',
         encounter: { race: ch.race, gender: ch.gender || 'male', id: ch.id || null, room: roomId, x: +(ch.x || 0), z: +(ch.z || 0), gesture: opts.gesture || 'attack', label: ch.label || ch.race,
                      name: ch.label || null,   // D2: the room's own name for the native — the enemy lead wears it on the nameplate
-                     members: grp.members.map(x => ({ id: x.id || null, race: x.race, gender: x.gender || 'male', name: x.label || null })),   // the group's own people seat 2..n (state.js)
+                     members: grp.members.map(x => ({ id: x.id || null, race: x.race, gender: x.gender || 'male', name: x.label || null, rest: (x.rest != null && isFinite(+x.rest)) ? +x.rest : null })),   // the group's own people seat 2..n (state.js) · `rest`: THE WOUNDS (step 5a)
+                     rest: (ch.rest != null && isFinite(+ch.rest)) ? +ch.rest : null,   // THE WOUNDS (step 5a): the hour a resident's Sleep block ends (hqNpcRestHour), null = a walker with no day
                      swarm: swarm ? swarm.n : 0 },
     };
 }
@@ -100121,7 +100198,7 @@ if (typeof window !== 'undefined') {
     window.hqRoomBase = hqRoomBase;
     window.hqRoomVariantIds = hqRoomVariantIds;
     window.hqVariantRoll = hqVariantRoll;
-    window.HQ_WORLD_CLOCK = HQ_WORLD_CLOCK; window.hqClockRead = hqClockRead; window.hqClockWrite = hqClockWrite; window.hqClockRate = hqClockRate; window.hqClockNorm = hqClockNorm; window.hqWorldSun = hqWorldSun; window.hqWorldDir = hqWorldDir; window.hqRoomClock = hqRoomClock; window.hqRoomLandmarks = hqRoomLandmarks;   // THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3)
+    window.HQ_WORLD_CLOCK = HQ_WORLD_CLOCK; window.hqClockRead = hqClockRead; window.hqClockWrite = hqClockWrite; window.hqClockTotal = hqClockTotal; window.hqNpcWorldT = hqNpcWorldT; window.hqNpcWoundFor = hqNpcWoundFor; window.hqNpcWoundsAfter = hqNpcWoundsAfter; window.hqNpcRestHour = hqNpcRestHour; window.hqClockRate = hqClockRate; window.hqClockNorm = hqClockNorm; window.hqWorldSun = hqWorldSun; window.hqWorldDir = hqWorldDir; window.hqRoomClock = hqRoomClock; window.hqRoomLandmarks = hqRoomLandmarks;   // THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3)
     window.hqApplyRoomVariant = hqApplyRoomVariant;
     window.hqRollRoomVariants = hqRollRoomVariants;
     window.hqVariantRollEach = hqVariantRollEach;
