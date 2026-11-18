@@ -7844,6 +7844,7 @@
         //         deformCenter, log }
         // ═══════════════════════════════════════════════════════════════════
         function _applyAoeDamage(unit, spell, tiles, baseDmg, spellPower, opts = {}) {
+            try { _crowdStruck(tiles); } catch (e) {}   // THE CROWD (step 7b): an onlooker under the blast steps out (no damage until step 8)
             const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
             const waterMult = (opts.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
             let hitCount = 0;
@@ -25650,7 +25651,8 @@
                         } catch (e) { _endRows = null; }
                         window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null, party: partyRes,   // D1: the swing spot rides home; THE PARTY: what the fight did to it
                                                       retreat: _retreat, escaped: _escNames, escLoss: !won && !_retreat && _escNames.length > 0, entry: erun.entry || null, end: _endRows,
-                                                      quest: erun.quest ? { fight: erun.quest.id, changes: (_questRes && _questRes.changes) || [] } : null };
+                                                      quest: erun.quest ? { fight: erun.quest.id, changes: (_questRes && _questRes.changes) || [] } : null,
+                                                      crowdMug: _crowdEnd(won, (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1) };   // THE CROWD (step 7b): an Opportunist that watched comes to mug a weak winner
                         addLog(won ? `🚪 The encounter is over — ${erun.label || erun.race} is off the room.`
                             : _retreat ? `🏃 THE RETREAT — the party slipped out. ${erun.label || erun.race} still has the room.`
                             : _escNames.length ? `🏃 THE PARTY IS DOWN — ${_escNames.join(', ')} got out and leads the party now.`
@@ -62333,6 +62335,116 @@
             if (seatCell && isFinite(+seatCell.x) && isFinite(+seatCell.y)) { const on = mine.find(u => u.x === +seatCell.x && u.y === +seatCell.y); if (on) return on; }
             return mine[0];
         }
+        /* ══ THE CROWD (NPC encounters step 7b, 2026-11-18; docs/plans/npc-encounters/STEP-7A.md, mondo: "okay build as 7b") ══
+           The onlookers of a story fight: the bodies the walk showed round the strike (map.js reads them off the walk into the run marker, `crowd`).
+           NOT units: no turn, no plate, never a target, they block no move, sight or shot; module-local like `_encMatch` (never on `state`, RULE #2:
+           an encounter is VS-CPU only). Each stands where it stood on the walk, then walks to its square: data.js hqCrowdPlan gives its mode and
+           mark by temper (Civilians watch or run, a Guard that would step in comes closer with the red `!`, an Opportunist watches from the edge ...),
+           its band = squares from the nearest fighter. Never on a square nearer a fighter than `ring` (it steps aside: ewCrowdTick, from the renderer
+           every 300 ms); at the round end a Civilian / Coward that had to step aside runs; an area spell that lands on one makes it step out (no
+           damage, joining is step 8) and do what its preview mark said; a Civilian beside the blast runs. Drawn by three-renderer.js _updateCrowd. */
+        let _crowd = null;
+        function _crowdRules() { return (typeof HQ_NPC_TEMPERS !== 'undefined' && HQ_NPC_TEMPERS.crowd) || { bands: { watch: [4, 6], close: [2, 3], edge: [5, 7] }, ring: 2, mugUnder: 0.5, mugMs: 3000 }; }
+        function _crowdFighters() { return (state.units || []).filter(u => u && !u.dead && !u._dying && !u._benched && !u._escaped); }
+        function _crowdNear(x, y, F) { let d = 1e9; for (const u of F) { const k = Math.max(Math.abs(u.x - x), Math.abs(u.y - y)); if (k < d) d = k; } return d; }
+        function _crowdSeatOk(x, y) {
+            if (!_crowd || x < 0 || y < 0 || x >= _crowd.W || y >= _crowd.H) return false;
+            const r = _crowd.seats && _crowd.seats[y];
+            if (_crowd.seats) { if (typeof r !== 'string' || r.charAt(x) !== '1') return false; }
+            else if (typeof isInside === 'function' && !isInside(x, y)) return false;
+            if (typeof objectBlocksLanding === 'function' && objectBlocksLanding(x, y)) return false;
+            return true;
+        }
+        /* the nearest free square to the onlooker's square: in its band (lo..hi squares from the nearest fighter), never nearer than `ring`;
+           `far` (a runner): the field's rim, or `far` squares off the fight. Else the nearest square that keeps the ring. */
+        function _crowdFind(row, lo, hi, far) {
+            const C = _crowdRules(), ring = C.ring || 2, F = _crowdFighters(), R = Math.max(_crowd.W, _crowd.H);
+            let fall = null;
+            for (let r = 0; r <= R; r++) for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
+                if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                const x = row.tx + dx, y = row.ty + dy;
+                if (!_crowdSeatOk(x, y) || (typeof unitAt === 'function' && unitAt(x, y)) || _crowd.rows.some(o => o !== row && !o.gone && o.tx === x && o.ty === y)) continue;
+                const d = _crowdNear(x, y, F); if (d < ring) continue;
+                if (far) { if (x === 0 || y === 0 || x === _crowd.W - 1 || y === _crowd.H - 1 || d >= far) return { x, y }; }
+                else if (d >= lo && d <= hi) return { x, y };
+                if (!fall) fall = { x, y };
+            }
+            return fall;
+        }
+        function _crowdPlace(row) {
+            const C = _crowdRules(), b = row.band || C.bands.watch;
+            const to = row.mode === 'run' ? _crowdFind(row, 0, 0, (C.bands.edge ? C.bands.edge[1] : 7) + 2) : _crowdFind(row, b[0], b[1], 0);
+            if (to) { row.tx = to.x; row.ty = to.y; }
+        }
+        function _crowdRun(row) { row.mode = 'run'; row.mark = 'drop'; _crowdPlace(row); }
+        function _crowdSeat() {
+            _crowd = null;
+            const er = _encRun(), cr = er && er.crowd;
+            if (!cr || !Array.isArray(cr.rows) || !cr.rows.length || !er.field || !er.field.board || er.quest || state.devAutoSim) return;
+            if (typeof hqFieldTransform !== 'function' || typeof hqCrowdPlan !== 'function') return;
+            const TR = hqFieldTransform(er.field.board); if (!TR) return;
+            let seats = null;
+            try { const fe = (er.fieldId && typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[er.fieldId] : null; if (fe && fe.field && Array.isArray(fe.field.seats)) seats = fe.field.seats; } catch (e) { seats = null; }
+            const W = (typeof bw === 'function') ? bw() : TR.W, H = (typeof bh === 'function') ? bh() : TR.H;
+            if (seats && seats.length !== H) seats = null;
+            _crowd = { rows: [], seats, W, H };
+            for (const w of cr.rows) {
+                if (!w || !w.race) continue;
+                const c = TR.cellOf({ x: w.x, z: w.z });
+                let plan = null;
+                try { plan = hqCrowdPlan({ race: w.race, id: w.id, room: er.room, dist: w.dist }, { foes: cr.foes || [], day: cr.day | 0, x: cr.at ? cr.at.x : w.x, z: cr.at ? cr.at.z : w.z }); } catch (e) { plan = null; }
+                if (!plan) continue;
+                const row = { id: 'crowd:' + w.id, npc: w.id, race: w.race, gender: w.gender || 'male', lvl: w.lvl | 0, temper: plan.temper, mode: plan.mode, mark: plan.mark, band: plan.band, hit: plan.hit,
+                              fx: c.x, fy: c.y, tx: c.x, ty: c.y, gone: false, pressed: false };
+                _crowd.rows.push(row);
+                _crowdPlace(row);
+            }
+            if (!_crowd.rows.length) { _crowd = null; return; }
+            console.log('[CROWD] ' + _crowd.rows.length + ' onlooker(s): ' + _crowd.rows.map(r => r.race + ' ' + r.mode + (r.mark ? ' ' + r.mark : '')).join(', '));
+        }
+        /* every 300 ms (the renderer): an onlooker a fighter came too near steps aside */
+        function ewCrowdTick() {
+            if (!_crowd || state.phase !== 'battle') return;
+            const C = _crowdRules(), ring = C.ring || 2, F = _crowdFighters();
+            for (const row of _crowd.rows) {
+                if (row.gone) continue;
+                if (_crowdNear(row.tx, row.ty, F) < ring || (typeof unitAt === 'function' && unitAt(row.tx, row.ty))) { row.pressed = true; _crowdPlace(row); }
+            }
+        }
+        /* the round end (after the regen, before the overview): a Civilian / Coward that had to step aside this round runs */
+        function _crowdRoundEnd() {
+            if (!_crowd) return;
+            for (const row of _crowd.rows) {
+                if (row.gone) continue;
+                if (row.pressed && row.mode !== 'run' && (row.temper === 'civilian' || row.temper === 'coward')) _crowdRun(row);
+                row.pressed = false;
+            }
+        }
+        /* an area spell landed on `tiles`: who is inside steps out (no damage until step 8) and does what its mark said; a Civilian beside it runs */
+        function _crowdStruck(tiles) {
+            if (!_crowd || !Array.isArray(tiles) || !tiles.length) return;
+            const inT = (x, y) => tiles.some(t => t && t.x === x && t.y === y), near = (x, y) => tiles.some(t => t && Math.max(Math.abs(t.x - x), Math.abs(t.y - y)) <= 1);
+            for (const row of _crowd.rows) {
+                if (row.gone || row.mode === 'run') continue;
+                if (inT(row.tx, row.ty)) { if (row.hit === 'run') _crowdRun(row); else { if (row.hit === 'join') row.mark = 'bang'; _crowdPlace(row); } }
+                else if (near(row.tx, row.ty) && (row.temper === 'civilian' || row.temper === 'coward')) _crowdRun(row);
+            }
+        }
+        /* the fight is over: an Opportunist that watched (and did not run) comes to mug a party that WON with less than `mugUnder` of its HP left */
+        function _crowdEnd(won, seat) {
+            let mug = null;
+            try {
+                if (_crowd && won) {
+                    const C = _crowdRules(), mine = (state.units || []).concat((state.bench && state.bench[seat]) || []).filter(u => u && (typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player) === seat);
+                    let hp = 0, max = 0; for (const u of mine) { hp += Math.max(0, (u.dead ? 0 : u.hp) | 0); max += Math.max(0, u.maxHp | 0); }
+                    if (max > 0 && hp / max < (C.mugUnder || 0)) { const o = _crowd.rows.find(r => !r.gone && r.mode !== 'run' && r.temper === 'opportunist'); if (o) mug = { id: o.npc, race: o.race, ms: C.mugMs | 0 }; }
+                }
+            } catch (e) { mug = null; }
+            _crowd = null;
+            return mug;
+        }
+        window.ewCrowdRows = function () { return _crowd ? _crowd.rows : null; };
+        window.ewCrowdTick = ewCrowdTick;
         function _encArrivalFrame() {
             const er = _encRun();
             if (!er || state.cameraDisabled || typeof camera === 'undefined' || !camera || typeof hqEncounterArrival !== 'function') return false;
@@ -63403,6 +63515,7 @@
             /* THE FIRST STRIKE (2026-09-22): in an encounter the officer's unit — the one that swung — opens round 1
                (set BEFORE the order is built below — state.js buildBlitzTurnOrder consumes it); a plain match never carries one */
             try { if (_encRun() && _encRun().quest) _questFightSeat(); } catch (e) { console.warn('[QUEST] the seats failed', e); }   // THE QUESTS: before the order is built and the first frame is drawn
+            try { _crowdSeat(); } catch (e) { _crowd = null; console.warn('[CROWD] the onlookers could not be stood', e); }   // THE CROWD (NPC encounters step 7b)
             window._ewEncounterFirstId = null;
             try {
                 const _erF = _encRun();
@@ -65115,6 +65228,7 @@
 
                     processEndOfRoundRegen(function _afterRegenPhase() {
                     if (state.winner || _eorMine !== _eorChainGen) return;
+                    try { _crowdRoundEnd(); } catch (e) { console.warn('[CROWD] the round end', e); }   // THE CROWD (step 7b): after the regen, before the overview
 
                     tickSkyEvent();
                     tickWeather();

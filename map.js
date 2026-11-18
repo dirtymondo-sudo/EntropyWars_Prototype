@@ -2880,6 +2880,13 @@
                 if (arrive && !eyeHere) arriveDrop();
                 if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return', seamless: eyeHere ? arrive : null })) {
                     if (encRes && encRes.quest && encRes.quest.changes && encRes.quest.changes.length) { try { _questShow(encRes.quest.changes, 5200); } catch (e) {} }   // THE QUESTS: after the fight's own toast
+                    /* THE CROWD (NPC encounters step 7b): an Opportunist that watched a fight the party won weak comes to mug it (the built mugging, once a game day) */
+                    if (encRes && encRes.won && encRes.crowdMug && encRes.crowdMug.id) { const cm = encRes.crowdMug, rm = encRes.room; setTimeout(() => { try {
+                        if (state.gameState !== GS.HQ || _hqCurRoom !== rm || typeof window.hqNpcMugLine !== 'function' || !window.hqNpcMugLine(cm.race)) return;
+                        const gd = (typeof window.hqGameDay === 'function') ? window.hqGameDay() : 0, m = (typeof window.hqNpcMem === 'function') ? window.hqNpcMem(rm, cm.id, false) : null;
+                        if (m && m.mugDay === gd) return;
+                        if (ThreeRenderer.hq && ThreeRenderer.hq.npcCome && ThreeRenderer.hq.npcCome(cm.id, 'mug') && typeof window.hqNpcMugTried === 'function') window.hqNpcMugTried({ room: rm, id: cm.id }, gd);
+                    } catch (e) { console.warn('[CROWD] the mugger after the fight', e); } }, (cm.ms | 0) + 1400); }
                     if (encRes && !encRes.sceneOnly) setTimeout(() => { try {   // a scene replay is not a fight: no toast
                         /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
                         const pr = encRes.party || null;
@@ -6235,6 +6242,16 @@
                                     doorId: L.doorId, doorLabel: 'THE ENCOUNTER', codeRed: !!L.codeRedRun, locked: true, presets: null, encounter: L.encounter };
             window._msCpuOnly = true;
             _msSelectedMap = idx; _msSelectedGM = gi; _msSelectedTeamSize = L.teamSize; _msSelectedRounds = L.rounds | 0;
+            /* THE CROWD (NPC encounters step 7b, STEP-7A.md): the bodies that watch this fight, read off the walk before it is left (battle.js _crowdSeat
+               stands them on the field). Not in a quest's fight or a scene. */
+            try {
+                if (!L.quest && !L.sceneOnly && field && field.board && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.crowdPick) {
+                    const ids = [L.encounter.id].concat((L.encounter.members || []).map(m => m && m.id)).filter(Boolean);
+                    const rows = ThreeRenderer.hq.crowdPick({ ids, board: field.board });
+                    if (rows && rows.length) window._hqEncounterRun.crowd = { rows, foes: [{ id: L.encounter.id, race: L.encounter.race }].concat((L.encounter.members || []).map(m => ({ id: m.id, race: m.race }))),
+                                                                              day: (typeof window.hqGameDay === 'function') ? window.hqGameDay() : 0, at: ev ? { x: ev.x, z: ev.z } : null };
+                }
+            } catch (e) { console.warn('[HQ] the crowd could not be read', e); }
             window._hqEncounterParty = party;
             _hqClosePanel({ keepPaused: true });
             /* NO HELD FRAME (2026-10-25, mondo: "should be zero seconds, no freeze"): the room's last picture covers only the one

@@ -21475,7 +21475,7 @@ const ThreeRenderer = (function () {
         // Evict cached model rigs whose unit left the board (died, despawned)
         // — live units just had theirs re-parented by _attachUnitModel.
         _unitModelRigs.forEach(function (rig, uid) {
-            if (!unitEntries.has(uid) && !_decoyEntries.has(uid)) {   // a decoy's rig is evicted by rebuildDeployables
+            if (!unitEntries.has(uid) && !_decoyEntries.has(uid) && !_crowdEntries.has(uid)) {   // a decoy's rig is evicted by rebuildDeployables · THE CROWD's by _crowdDrop
                 _disposeModelRig(rig);
                 _unitModelRigs.delete(uid);
                 _modelAnimState.delete(uid);
@@ -22296,6 +22296,135 @@ const ThreeRenderer = (function () {
     /* Per frame, what _updateUnitModels / _updateUnitSelfGlow / _updateUnitFacing do for a real unit: the idle
        clip, the self-glow (with the caster's acting-unit breath), the ring look + vitals, the sprite x-ray ghost
        kept camera-side, and the acting plate class. */
+    /* ══ THE CROWD (NPC encounters step 7b, 2026-11-18; docs/plans/npc-encounters/STEP-7A.md, mondo: "okay build as 7b") ══
+       The onlookers of a story fight: the bodies the walk showed round it (battle.js _crowdSeat stands them, module-local, never on `state`). Each is
+       drawn through the units' own body builder (_buildUnitEntry, so the walk's rig is carried over: THE BODIES CARRY OVER) but is NOT a unit: its
+       own group beside the units', no plate, no ring, no outline, no x-ray, never picked. It walks (its walk clip) to the square battle.js gave it,
+       faces the fight, wears its mark (the walk's red `!` / blue drop sprites), goes see-through when it stands between the camera and a fighter
+       (the framing never counts it), and a runner fades out at its edge. While an area is aimed, an onlooker inside it wears the mark of what a hit
+       would make it do (STEP-7A 4). battle.js ewCrowdTick runs from here every 300 ms (stepping aside). Story fights only; nothing relayed. */
+    var _crowdEntries = new Map(), _crowdGroup = null, _crowdTickAt = 0, _crowdClock = 0, _crowdAim = null, _crowdGhostAt = 0;
+    function _crowdDrop(c) {
+        try { if (c.sp) { if (c.sp.parent) c.sp.parent.remove(c.sp); c.sp.material.dispose(); } } catch (e) {}
+        try { if (c.entry && c.entry.group) { if (c.entry.group.parent) c.entry.group.parent.remove(c.entry.group); c.entry.group.traverse(function (n) { if (n._ew_pickPillar && n.geometry) n.geometry.dispose(); }); } } catch (e) {}
+        try { var rig = _unitModelRigs.get(c.id); if (rig) { _unitModelRigs.delete(c.id); _disposeModelRig(rig); } _modelAnimState.delete(c.id); } catch (e) {}
+        _crowdEntries.delete(c.id);
+    }
+    function _crowdClear() { Array.from(_crowdEntries.values()).forEach(_crowdDrop); _crowdAim = null; }
+    function _crowdBody(row, x, y) {
+        return { id: row.id, race: row.race, gender: row.gender || 'male', player: 0, x: x, y: y, z: 0, facing: { dx: 0, dy: 1 }, hp: 1, maxHp: 1, mp: 0, maxMp: 0, ap: 1,
+                 status: {}, level: row.lvl || 1, name: row.race, _crowd: true };
+    }
+    /* the body, built or re-built (a model that was still loading when it was first built) */
+    function _crowdBuild(row, c) {
+        var ts = CONFIG.tileSize || BASE_TILE, cx = c ? c.cx : row.fx, cy = c ? c.cy : row.fy;
+        if (c && c.entry && c.entry.group && c.entry.group.parent) c.entry.group.parent.remove(c.entry.group);
+        var body = _crowdBody(row, Math.round(cx), Math.round(cy)), entry = null;
+        try { entry = _buildUnitEntry(body); } catch (e) { console.warn('[CROWD] the body could not be built', row.race, e); return null; }
+        var g = entry.group; g.name = 'crowd_' + row.id;
+        /* not a unit: no ring, no x-ray, no team outline, never picked */
+        g.traverse(function (n) {
+            if (n._ew_facingIndicator || n._ew_silhouette) n.visible = false;
+            if (n.isMesh) n.raycast = function () {};
+        });
+        var rig = _unitModelRigs.get(row.id);
+        if (rig) { (rig.outlineMats || []).concat(rig.silMats || []).forEach(function (m) { m.visible = false; }); }
+        _crowdGroup.add(g);
+        var def = null; try { def = (typeof getRace3DModel === 'function') ? getRace3DModel(row.race, row.gender || 'male', null) : null; } catch (e) { def = null; }
+        if (!c) c = { id: row.id, cx: row.fx, cy: row.fy, yaw: 0, anim: null, op: 1, sp: null, mk: null, opaque: null };
+        c.entry = entry; c.def = def; c.body = body; c.anim = null; c.opaque = null;
+        c.h = ts * UNIT_SPRITE_SIZE_RATIO * ((def && def.heightRatio) || 1);
+        if (c.sp) { g.add(c.sp); c.sp.position.set(0, c.h + ts * 0.18, 0); }
+        _crowdEntries.set(row.id, c);
+        return c;
+    }
+    function _crowdPlay(c, name) {
+        var a = c.entry && c.entry.actions; if (!a || c.anim === name) return;
+        var want = a[name] || (name === 'walk' ? a.run : null) || a.idle; if (!want) return;
+        var prev = c.anim && a[c.anim];
+        try { want.reset().setEffectiveWeight(1).fadeIn(0.2).play(); if (prev && prev !== want) prev.fadeOut(0.2); } catch (e) {}
+        c.anim = name;
+    }
+    function _crowdMark(c, key) {
+        if (c.mk === key) return;
+        try { if (c.sp) { if (c.sp.parent) c.sp.parent.remove(c.sp); c.sp.material.dispose(); } } catch (e) {}
+        c.sp = null; c.mk = key;
+        if (!key || !c.entry) return;
+        var A = (typeof HQ_NPC_TEMPERS !== 'undefined' && HQ_NPC_TEMPERS.aware) || {}, mh = A.markH || 0.05, ts = CONFIG.tileSize || BASE_TILE;
+        var tex = key === 'drop' ? _hqScaredMarkTex() : _hqAwareMarkTex();
+        var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, sizeAttenuation: false }));
+        sp.scale.set(key === 'drop' ? mh * 0.75 : mh * 0.5, mh, 1); sp.renderOrder = 8;
+        sp.position.set(0, c.h + ts * 0.18, 0);
+        c.entry.group.add(sp); c.sp = sp;
+    }
+    /* see-through (the fight's own unit fade, OCC_FADE_TARGET-like) while the onlooker stands between the camera and a fighter; `op` 0..1 */
+    function _crowdOpacity(c, op) {
+        var mats = (c.entry && c.entry.modelMats) || []; if (!mats.length) { var rig = _unitModelRigs.get(c.id); mats = (rig && rig.modelMats) || []; }
+        if (!c.opaque) c.opaque = mats.map(function (m) { return [m, m.transparent, m.opacity, m.depthWrite]; });
+        c.opaque.forEach(function (r) {
+            var m = r[0];
+            if (op >= 0.999) { if (m.opacity !== r[2] || m.transparent !== r[1]) { m.opacity = r[2]; m.transparent = r[1]; m.depthWrite = r[3]; m.needsUpdate = true; } }
+            else { if (!m.transparent) { m.transparent = true; m.needsUpdate = true; } m.opacity = r[2] * op; m.depthWrite = false; }
+        });
+    }
+    function _updateCrowd() {
+        var rows = (typeof window !== 'undefined' && typeof window.ewCrowdRows === 'function') ? window.ewCrowdRows() : null;
+        if (!rows || !unitGroup || !unitGroup.parent || !state || state.phase !== 'battle') { if (_crowdEntries.size) _crowdClear(); _crowdClock = 0; return; }
+        var now = _animNow(), dt = _crowdClock ? Math.min((now - _crowdClock) / 1000, 0.1) : 0.016; _crowdClock = now;
+        if (performance.now() - _crowdTickAt > 300) { _crowdTickAt = performance.now(); try { if (typeof window.ewCrowdTick === 'function') window.ewCrowdTick(); } catch (e) { console.warn('[CROWD] tick', e); } }
+        if (!_crowdGroup) { _crowdGroup = new THREE.Group(); _crowdGroup.name = 'ew_crowd'; }
+        if (_crowdGroup.parent !== unitGroup.parent) unitGroup.parent.add(_crowdGroup);
+        var ts = CONFIG.tileSize || BASE_TILE, C = (typeof HQ_NPC_TEMPERS !== 'undefined' && HQ_NPC_TEMPERS.crowd) || {}, speed = (C.walk || 1.6);
+        var fighters = (state.units || []).filter(function (u) { return u && !u.dead && !u._dying && !u._benched && !u._escaped; });
+        var fx = 0, fy = 0; fighters.forEach(function (u) { fx += u.x; fy += u.y; }); if (fighters.length) { fx /= fighters.length; fy /= fighters.length; }
+        var seen = {};
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null, ghostNow = performance.now() - _crowdGhostAt > 90;
+        if (ghostNow) _crowdGhostAt = performance.now();
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i]; seen[row.id] = true;
+            var c = _crowdEntries.get(row.id);
+            if (row.gone) { if (c) _crowdDrop(c); continue; }
+            if (!c) { c = _crowdBuild(row, null); if (!c) continue; }
+            else if (!c.entry._ew_modelAttached && c.def && _unitModelReady(c.def)) { c = _crowdBuild(row, c) || c; }
+            /* walk to its square (runners walk faster) */
+            var sp = speed * (row.mode === 'run' ? 1.6 : 1), dx = row.tx - c.cx, dy = row.ty - c.cy, d = Math.hypot(dx, dy), moving = d > 0.02;
+            if (moving) { var st = Math.min(d, sp * dt); c.cx += dx / d * st; c.cy += dy / d * st; c.yaw = Math.atan2(dx, dy); }
+            else { c.cx = row.tx; c.cy = row.ty; var ax = fx - c.cx, ay = fy - c.cy; if (ax || ay) c.yaw = Math.atan2(ax, ay); }
+            var g = c.entry.group, rx = Math.round(c.cx), ry = Math.round(c.cy);
+            c.body.x = rx; c.body.y = ry;
+            var sy = 0; try { sy = unitSurfaceY(c.body); } catch (e) { sy = 0; }
+            if (c.sy == null) c.sy = sy; c.sy += (sy - c.sy) * Math.min(1, dt * 10);
+            g.position.set(c.cx * ts + ts / 2, c.sy, c.cy * ts + ts / 2);
+            if (c.entry.model) { var wy = c.entry.model.rotation.y, dyaw = c.yaw - wy; while (dyaw > Math.PI) dyaw -= Math.PI * 2; while (dyaw < -Math.PI) dyaw += Math.PI * 2; c.entry.model.rotation.y = wy + dyaw * Math.min(1, dt * 8); }
+            _crowdPlay(c, moving ? 'walk' : 'idle');
+            if (c.entry.mixer && !_ewAnimsOff()) { try { c.entry.mixer.update(dt); } catch (e) {} }
+            /* the mark: what a hit would make it do while an area covers it, else its own */
+            var mk = row.mark || null;
+            if (_crowdAim && _crowdAim[row.tx + ',' + row.ty]) mk = row.hit === 'run' ? 'drop' : row.hit === 'join' ? 'bang' : null;
+            _crowdMark(c, mk);
+            /* the runner leaves at its edge; anyone in front of a fighter is see-through */
+            var want = 1;
+            if (row.mode === 'run' && !moving) { c.op = Math.max(0, c.op - dt * 1.6); want = c.op; if (c.op <= 0) { row.gone = true; _crowdDrop(c); continue; } }
+            else if (ghostNow && cam) {
+                c.ghost = false;
+                var px = g.position.x, py = g.position.y + c.h * 0.55, pz = g.position.z;
+                for (var k = 0; k < fighters.length && !c.ghost; k++) {
+                    var fe = unitEntries.get(fighters[k].id); if (!fe || !fe.group) continue;
+                    var ex = fe.group.position.x - cam.position.x, ey = fe.group.position.y + ts * 0.5 - cam.position.y, ez = fe.group.position.z - cam.position.z;
+                    var L2 = ex * ex + ey * ey + ez * ez; if (!(L2 > 0)) continue;
+                    var t = ((px - cam.position.x) * ex + (py - cam.position.y) * ey + (pz - cam.position.z) * ez) / L2;
+                    if (t <= 0.02 || t >= 0.98) continue;
+                    var qx = cam.position.x + ex * t - px, qy = cam.position.y + ey * t - py, qz = cam.position.z + ez * t - pz;
+                    if (qx * qx + qy * qy + qz * qz < (ts * 0.42) * (ts * 0.42)) c.ghost = true;
+                }
+            }
+            if (row.mode !== 'run' || moving) want = c.ghost ? 0.25 : 1;
+            if (row.mode !== 'run' || moving) { c.op += (want - c.op) * Math.min(1, dt * 9); if (Math.abs(c.op - want) < 0.01) c.op = want; }
+            _crowdOpacity(c, c.op);
+            if (c.sp) c.sp.material.opacity = Math.max(0.35, c.op);
+        }
+        _crowdEntries.forEach(function (c, id) { if (!seen[id]) _crowdDrop(c); });
+    }
     function _decoyGroups() {
         var out = [];
         _decoyEntries.forEach(function (e) { if (e.group && e.group.parent) out.push(e.group); });
@@ -24002,6 +24131,7 @@ const ThreeRenderer = (function () {
 
     function setOverlay(name, tiles, color, opacity) {
         clearOverlay(name);
+        if (name === 'aoe' && tiles && tiles.length) { _crowdAim = {}; for (var _ca = 0; _ca < tiles.length; _ca++) _crowdAim[tiles[_ca].x + ',' + tiles[_ca].y] = true; }   // THE CROWD: an onlooker under the aim wears what a hit would make it do
         if (!highlightGroup || !tiles || !tiles.length) return;
         var ts = CONFIG.tileSize || BASE_TILE;
         var meshes = [];
@@ -24214,6 +24344,7 @@ const ThreeRenderer = (function () {
     }
 
     function clearOverlay(name) {
+        if (name === 'aoe') _crowdAim = null;   // THE CROWD
         var meshes = _overlayMeshes[name];
         if (!meshes || !meshes.length) return;
         for (var i = 0; i < meshes.length; i++) {
@@ -24225,6 +24356,7 @@ const ThreeRenderer = (function () {
     }
 
     function clearAllOverlays() {
+        _crowdAim = null;   // THE CROWD
         for (var name in _overlayMeshes) clearOverlay(name);
         actionGlowKillAll();
 
@@ -35989,6 +36121,7 @@ const ThreeRenderer = (function () {
         _updateUnitModels();
         _updateUnitSelfGlow();
         _updateDecoyEntries();
+        try { _updateCrowd(); } catch (e) { console.warn('[CROWD] the onlookers', e); }   // THE CROWD (NPC encounters step 7b)
         _updateHitBlinks();   // THE HIT BLINK: after the self glow, so its white wins this frame
         _updateHitSides();    // THE HIT SIDE: the flare / the attacker tell, on the real clock like the blink
     }
@@ -100102,6 +100235,30 @@ const ThreeRenderer = (function () {
             else if (what === 'paid' || what === 'off') { r.mode = 'back'; r.stuck = 0; r.t0 = now; }
             else r.ask = now + HQ_NPC_TEMPERS.mug.againMs;
             if (_hq.aware) _hq.aware.next = 0; _hq.dirty = true; return true;
+        },
+        /* THE CROWD (NPC encounters step 7b): who watches the fight about to start. `o` = { ids: the NPC ids in the fight, board: the field's board
+           (data.js hqFieldTransform) }. Every body shown (not away, not asleep, not story cast) inside the fight's frame that can see the walker
+           (_hqLosClear, head to head) and is not in the fight: [{ id, race, gender, lvl, x, z, y, dist, yaw }] in room metres. */
+        crowdPick: function (o) {
+            var H = _hq, pl = H && H.player; if (!H || !pl || !H.chars) return [];
+            o = o || {}; var ids = o.ids || [], TR = null;
+            try { TR = (o.board && typeof hqFieldTransform === 'function') ? hqFieldTransform(o.board) : null; } catch (e) { TR = null; }
+            if (!TR) return [];
+            var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (c) { return c && c.kind === 'npc' && !!c.race && !c.cast; };
+            var out = [];
+            for (var i = 0; i < H.chars.length; i++) {
+                var ch = H.chars[i];
+                if (!ch || ch === pl || ch.away || ch.cleared || ch._resSleep || !okFn(ch) || ids.indexOf(ch.id) >= 0) continue;
+                if (!TR.inside({ x: ch.x, z: ch.z }) || Math.abs((ch.y || 0) - (pl.y || 0)) > 4) continue;
+                if (!_hqLosClear(ch.x, ch.z, ch.y + (ch.heightM || 1.75) * 0.9, pl.x, pl.z, pl.y + 1.5)) continue;
+                out.push({ id: ch.id, race: ch.race, gender: ch.gender || 'male', lvl: ch.lvl || 0, x: ch.x, z: ch.z, y: ch.y || 0, dist: ch.resident ? ch.resident.r.dist : null, yaw: ch.yaw || 0 });
+            }
+            return out;
+        },
+        /* THE CROWD's Opportunist after a fight (step 7b): that NPC comes for the walker to mug him (the built mugging: its line, PAY / FIGHT) */
+        npcCome: function (id, why) {
+            var ch = _hq ? _hqLadderChar(id) : null; if (!ch || ch._run) return false;
+            ch._run = { mode: 'chase', why: why || null, stuck: 0, lost: 0, home: _hqLadderHome(ch), ground: null }; _hq.dirty = true; if (_hq.aware) _hq.aware.next = 0; return true;
         },
         npcFace: function (id) { try { return _hq ? _hqLadderFace(id) : false; } catch (e) { console.warn('[HQ] npcFace', e); return false; } },   // the Talk box: it stops and faces the walker
         npcStruck: function (id, rung) { try { return _hq ? _hqLadderStruck(id, rung) : false; } catch (e) { console.warn('[HQ] npcStruck', e); return false; } },
