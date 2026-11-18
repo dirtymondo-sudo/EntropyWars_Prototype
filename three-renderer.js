@@ -85389,8 +85389,46 @@ const ThreeRenderer = (function () {
     }
     /* the blockers whose footprint overlaps the walker's disc at (x, z) */
     function _hqBlockersUnder(x, z) {
-        var out = [];
-        for (var i = 0; i < _hq.blockers.length; i++) if (_hqBlkContains(_hq.blockers[i], x, z, HQ_BODY_R)) out.push(_hq.blockers[i]);
+        var out = [], L = _hq.blockers, N = _hq.nav;
+        /* THE NAV GRID (2026-11-18, Disaster City 60 FPS): a walking townsperson asks the floor up to three times a frame, and each ask
+           read every one of the city's blockers. The people's own list (_hqNavStatics) now has a grid of 8 m cells; an ask reads only
+           its cell's blockers (+ the ones seen moving), in the list's own order, so the answer is the same. The officer's own walk
+           keeps the whole list. Off: window.EW_HQ_NAV_GRID_OFF = true. */
+        if (N && L === N.statics && L.length > 64) { var G = _hqNavGrid(L); if (G) { var ids = _hqNavGridAt(G, x, z); for (var k = 0; k < ids.length; k++) { var b = L[ids[k]]; if (_hqBlkContains(b, x, z, HQ_BODY_R)) out.push(b); } return out; } }
+        for (var i = 0; i < L.length; i++) if (_hqBlkContains(L[i], x, z, HQ_BODY_R)) out.push(L[i]);
+        return out;
+    }
+    var HQ_NAV_GRID_M = 8;
+    function _hqBlkReach(b) {
+        if (b.mc) { var M = b.mc; return Math.max(Math.hypot(M.bx0, M.bz0), Math.hypot(M.bx1, M.bz0), Math.hypot(M.bx0, M.bz1), Math.hypot(M.bx1, M.bz1)); }
+        if (b.rect) return Math.hypot(b.rect.hw, b.rect.hd);
+        return b.rad || 0;
+    }
+    function _hqNavGrid(L) {
+        if (typeof window !== 'undefined' && window.EW_HQ_NAV_GRID_OFF) return null;
+        var N = _hq.nav, G = N.grid; if (G && G.list === L && G.n === L.length) return G;
+        var U = _hqUnits(), n = L.length, c = HQ_NAV_GRID_M, pad = HQ_BODY_R + 0.1;
+        G = { list: L, n: n, c: c, cells: new Map(), loose: [], moved: new Uint8Array(n), px: new Float64Array(n), pz: new Float64Array(n), reach: new Float64Array(n), sw: 0, swAt: 0 };
+        for (var i = 0; i < n; i++) {
+            var b = L[i], o = b && b.obj, r = b ? _hqBlkReach(b) : NaN;
+            if (!o || !o.position || !isFinite(r) || r > 40) { G.moved[i] = 1; G.loose.push(i); continue; }
+            var bx = o.position.x / U, bz = o.position.z / U; G.px[i] = bx; G.pz[i] = bz; G.reach[i] = r;
+            if (!isFinite(bx) || !isFinite(bz)) { G.moved[i] = 1; G.loose.push(i); continue; }
+            var i0 = Math.floor((bx - r - pad) / c), i1 = Math.floor((bx + r + pad) / c), j0 = Math.floor((bz - r - pad) / c), j1 = Math.floor((bz + r + pad) / c);
+            for (var gi = i0; gi <= i1; gi++) for (var gj = j0; gj <= j1; gj++) { var key = (gi + 32768) * 65536 + (gj + 32768), a = G.cells.get(key); if (!a) G.cells.set(key, a = []); a.push(i); }
+        }
+        N.grid = G; return G;
+    }
+    /* the blockers an ask at (x, z) must read: its cell's, plus every one seen moving since the grid was laid (a slice of the list is
+       re-read once a frame; a blocker that moved or changed size leaves the grid for good) */
+    function _hqNavGridAt(G, x, z) {
+        var now = performance.now(), L = G.list, U = _hqUnits();
+        if (now - G.swAt > 4) { G.swAt = now;
+            for (var s = 0; s < 1500 && G.n; s++) { var i = G.sw; G.sw = (G.sw + 1) % G.n; if (G.moved[i]) continue; var b = L[i], o = b.obj;
+                if (Math.abs(o.position.x / U - G.px[i]) > 0.05 || Math.abs(o.position.z / U - G.pz[i]) > 0.05 || _hqBlkReach(b) > G.reach[i] + 0.04) { G.moved[i] = 1; G.loose.push(i); } } }
+        var a = G.cells.get((Math.floor(x / G.c) + 32768) * 65536 + (Math.floor(z / G.c) + 32768)), out = [];
+        if (a) for (var k = 0; k < a.length; k++) if (!G.moved[a[k]]) out.push(a[k]);
+        if (G.loose.length) { for (var m = 0; m < G.loose.length; m++) out.push(G.loose[m]); out.sort(function (p, q) { return p - q; }); }
         return out;
     }
     /* may the airborne body be at (x, z) with its feet at y? a blocker's
