@@ -432,3 +432,14 @@ A spot with no `y` still stands on what is under it (the ground, a wall's top su
 raised floor too and gets up onto that floor. Code: three-renderer.js `_hqSpawnPopulation`, `_hqSpawnCharacter`, `_hqPolishProp`, `_hqStand`.
 Notes with the numbers: areas-complexes.md "THE COLOSSEUM, THE REDESIGN", THE PEOPLE OFF THE GROUND. The crowd cap (`HQ_CROWD_RULES.areaMax` 14,
 one body a race) still decides how many stand: a crowd in an arena needs his word on that cap.
+
+## THE OUTDOOR AREAS' CROWD (2026-11-18, the Colosseum thread, on mondo's word)
+mondo 11-18: "yes raise the body cap, I thought it was 20 anyway? and there is no one per race rule, there are already multiple of the same
+units in disaster city".
+- `HQ_CROWD_RULES.areaMax` 14 -> 20 (the city's `drawn` 20).
+- In a room built on plots (`room.plots`): a race stands as often as it is placed (no "once per room"), every placed native is made, and the
+  cap is how many are SHOWN at once: the nearest to the walker, every 0.4 s, one already shown kept until another is 6 m nearer
+  (three-renderer.js `_hqCrowdLedger` `area`, `_hqTickCrowdNear`). A body taken out is `away` (hidden, its mixer asleep, not seen, not hit).
+  Somebody on the strike ladder is never taken out. The same on every machine. `window.EW_HQ_AREA_OLD_CAP = true` = the old way, to compare.
+- This changes EVERY plot-built area: a zone that placed the same race twice now shows both.
+- DOOR HQ's own rooms keep "one NPC per model" (his word of 10-01, for small rooms). Ask him before lifting it there.

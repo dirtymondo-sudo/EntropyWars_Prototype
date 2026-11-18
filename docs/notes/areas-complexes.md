@@ -11979,9 +11979,14 @@ mirrored), a wall one stone thick with the sky through it, stands 5 m tall behin
   legs hang over the row below. A posed spot stays (`hqSpotRoams`); `roam: true` walks its rounds from the seats (the walk map reads rows as floor).
   THE WALKER SITS ON A RAISED SEAT: a `seat` prop with `y` over 0.5 m was never a seat (`_hqPolishProp` took floor props only) and getting up set
   him on the ground under the floor; both fixed (`floor` on the seat). The Pope sits on the south throne; the north one is the walker's (E).
-  **THE CROWD IS CAPPED**: `HQ_CROWD_RULES.areaMax` 14 bodies a plot-built room, one body a race. The Vatican's own spots give 4 bodies, so the
-  Colosseum has 10: O.js `people` is written in the order they should stand (the Pope, the seats, the sand; the rest wait for the cap).
-- NOT YET: the rooms under the sand, a full crowd (the cap above), the second storey walked, R3's door text ("a huge ruined arena": bake-route.js's).
+  **THE CROWD (mondo, later on 11-18: "yes raise the body cap, I thought it was 20 anyway? and there is no one per race rule, there are already
+  multiple of the same units in disaster city")**: `HQ_CROWD_RULES.areaMax` 14 -> 20. In a room built on plots a race stands as often as it is
+  placed and EVERY placed native is made; the cap is how many are SHOWN at once, the 20 nearest the walker, checked every 0.4 s
+  (three-renderer.js `_hqCrowdLedger` `area`, `_hqTickCrowdNear`; a body taken out is hidden with its mixer asleep, `away`). Before, the first
+  14 rows of the list stood and a second district in the same room stood empty: this room has 47 placed people (the Vatican 17, the Colosseum
+  30). Walkers and extras fill only what the cap has left. DOOR HQ's own rooms keep "one NPC per model" (his word of 10-01, small rooms).
+  20 PEOPLE DO NOT FILL A BOWL: from the sand it reads as a few spectators. A full crowd is another piece (drawn figures in the far rows, not bodies).
+- NOT YET: the rooms under the sand, a full crowd (20 bodies do not fill the seats), the second storey walked, R3's door text ("a huge ruined arena": bake-route.js's).
 ## THE COLOSSEUM (2026-11-17, One World 4.4; the map's district `col`, 9 plots, world -11..-9 x -9..-7)
 - **IN THE VATICAN'S ROOM** (mondo: smaller than Disaster City = one room): `site_prebuilt_vatican_plots` grows to 6 x 7 plots (world -12..-7
   x -9..-3, `room.world` in the room; mask `.###..` on rows 0-2). bake-afterlife.js THE VATICAN'S ONE WORLD MOVE: the Vatican's districts

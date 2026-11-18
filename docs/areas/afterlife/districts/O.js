@@ -28,8 +28,8 @@
    tunnel's mouth on the sand a platform at 6 m, reached from the fifth row; the north and south ones are boxes under a canopy (a throne each).
    A porch stands before the north and the south gate, a chariot on each. THE FOUR STAIRS (the vomitoria) climb from the ring corridor, in
    bays 8, 24, 40 and 56 (the diagonals), up through the upper seats onto the walk.
-   THE PEOPLE (2026-11-18): the Pope sits on the south throne, a small crowd sits and stands in the seats (the room's crowd cap is the game's own:
-   data.js HQ_CROWD_RULES.areaMax, one body a race), the north throne is the walker's to sit in (E).
+   THE PEOPLE (2026-11-18): the Pope sits on the south throne, a crowd sits and stands in the seats (a race as often as it is placed; the game
+   shows the 20 people nearest the walker), the north throne is the walker's to sit in (E).
    STILL TO DO: the rooms under the sand (the hypogeum) and its lifts; the second storey walked. */
 'use strict';
 const TAU = Math.PI * 2, r3 = v => Math.round(v * 1000) / 1000, r4 = v => Math.round(v * 10000) / 10000;
@@ -257,19 +257,20 @@ exports.people = ctx => { const { native, npc, gx, gz } = ctx, cx = gx(CX), cz =
     /* THE PEOPLE OFF THE GROUND (2026-11-18, mondo: "make the stands walkable and those thrones able to be sat in"). A spot on a row of seats needs
        no height (a body stands on what is under it, and a row is a wall's top); a spot on a BRIDGE (a box, the gallery's outer half) carries its
        own `y`; `pose: 'hqSit'` seats it (its `y` is then the seat's own height, as the walker's is when he sits). The north throne is the walker's.
-       THE ORDER IS WHO STANDS FIRST: the room's bodies are capped (data.js HQ_CROWD_RULES.areaMax 14, one body a race), so the Pope and the seats
-       come before the sand, and the last rows here stand only when the cap is lifted. */
+       THE CROWD (mondo, the same day: "raise the body cap ... there is no one per race rule"): a race sits here as often as it is placed, and the
+       game shows the 20 people nearest the walker (data.js HQ_CROWD_RULES.areaMax, three-renderer.js _hqTickCrowdNear), so the seats are written
+       full enough to read as a crowd from the sand: 29 people in the building. */
     const R2D = 180 / Math.PI, W2 = v => Math.round(v * 100) / 100, inward = th => faceOf(-Math.cos(th), -Math.sin(th));
     npc.push({ x: cx, z: W2(cz + OV.b + 4.6), y: BOX_Y + 0.1 + 0.55, face: 0, race: 'pope', pose: 'hqSit' });   // the Pope on the south throne, looking down the arena
-    /* the crowd: seated on the front of a row (legs over the row below), or standing; two of them walk their rounds from the seats */
+    /* seated on the front of a row (legs over the row below), or standing; four of them walk their rounds from the seats */
     const rowAt = (id, th, f) => { const G = RINGS.find(g => g.id === id), p = pt(th / R2D, G.d0 + (f == null ? 0.3 : f)); return { x: W2(cx + p[0]), z: W2(cz + p[1]), face: inward(th / R2D) }; };
-    const seated = q => npc.push(Object.assign(rowAt(q[1], q[2]), { race: q[0], pose: 'hqSit' }));
-    [['fortune teller', 'low3', 250], ['cowboy', 'low5', 292], ['wizard', 'low2', 112]].forEach(seated);
+    [['fortune teller', 'low3', 250], ['cowboy', 'low5', 292], ['wizard', 'low2', 112], ['politician', 'low6', 68], ['televangelist', 'low4', 205], ['banker', 'up2', 335],
+     ['priest', 'low2', 75, 'female'], ['priest', 'low2', 79, 'female'], ['priest', 'low4', 100], ['fortune teller', 'low5', 128, 'female'], ['cowboy', 'low1', 238],
+     ['influencer', 'low3', 262, 'female'], ['pirate', 'low6', 281], ['wizard', 'up1', 305], ['knight', 'low1', 55], ['politician', 'low2', 155], ['banker', 'low5', 222], ['tech ceo', 'up3', 245]]
+        .forEach(q => npc.push(Object.assign(rowAt(q[1], q[2]), { race: q[0], pose: 'hqSit' }, q[3] ? { gender: q[3] } : {})));
     npc.push(Object.assign(rowAt('walk', 140, 1.3), { race: 'pirate', roam: true })); npc.push(Object.assign(rowAt('up5', 25, 0.45), { race: 'influencer', roam: true }));
-    /* the fighters on the sand and their referee */
-    native('swordfighter', 28, 15, 90, null, { gender: 'male' }); native('minotaur', 31, 15, 270); native('referee', 30, 17, 0); native('knight', 33, 17, 270);
-    /* past the cap today: more of the crowd, the ringmaster at the Gate of Life, the plaza's people */
-    [['politician', 'low6', 68], ['televangelist', 'low4', 205], ['banker', 'up2', 335]].forEach(seated);
-    npc.push(Object.assign(rowAt('podium', 300, 1.8), { race: 'tech ceo' }));
-    native('luchador', 26, 17, 90); native('ringmaster', 32, 3, 180); native('quarterback', 18, 29, 45);
+    npc.push(Object.assign(rowAt('walk', 320, 1.3), { race: 'cowboy', roam: true })); npc.push(Object.assign(rowAt('podium', 300, 1.8), { race: 'tech ceo', roam: true }));
+    /* the fighters on the sand and their referee; a ringmaster at the Gate of Life; the plaza */
+    native('swordfighter', 28, 15, 90, null, { gender: 'male' }); native('minotaur', 31, 15, 270); native('referee', 30, 17, 0); native('knight', 33, 17, 270); native('luchador', 26, 17, 90);
+    native('ringmaster', 32, 3, 180); native('quarterback', 18, 29, 45);
 };
