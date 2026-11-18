@@ -92905,17 +92905,7 @@ const ThreeRenderer = (function () {
         if (H.stage && H.stage.parts) for (var pid in H.stage.parts) { var PE = H.stage.parts[pid]; if (PE && PE.attached && PE.P) gs.push(PE.P.propGroup, PE.P.shellGroup, PE.P.doorGroup); }
         gs.forEach(function (G) {
             if (!G || !G.parent) return;
-            /* THE CULLED CHUNKS COUNT (2026-11-18, mondo's slow frames: "tick: instance pass 42 / 50 / 43 ms"): a prop chunk the camera
-               culls reads hidden (`_ew_ckOut`), so the visible-only walk counted a different number each time a chunk went out or came
-               back, and every rescan "found" a change and ran the whole pass again (a forced matrix walk of the scene, a new scan)
-               for nothing. A culled chunk is walked as if shown: the count changes only when a file lands or a copy is handed back.
-               Off: window.EW_HQ_INST_SCAN_VISIBLE (the old visible-only walk). */
-            if (typeof window !== 'undefined' && window.EW_HQ_INST_SCAN_VISIBLE) { G.traverseVisible(function (o) { var k = _hqInstKey(o); if (!k) return; n++; (byKey[k] || (byKey[k] = [])).push(o); }); return; }
-            (function walk(o) {
-                if (o.visible === false && o._ew_ckOut !== true) return;
-                var k = _hqInstKey(o); if (k) { n++; (byKey[k] || (byKey[k] = [])).push(o); }
-                var ch = o.children; for (var i = 0; i < ch.length; i++) walk(ch[i]);
-            })(G);
+            G.traverseVisible(function (o) { var k = _hqInstKey(o); if (!k) return; n++; (byKey[k] || (byKey[k] = [])).push(o); });
         });
         return { byKey: byKey, n: n };
     }
@@ -92970,10 +92960,10 @@ const ThreeRenderer = (function () {
         H.scene.updateMatrixWorld(true);
         var sc = _hqInstScan(H), wp = new THREE.Vector3(), added = 0;
         var big = _hqChunkBig(H);   // THE CHUNKS: a big room's cells are groups of their own (culled, bundled one by one), its small props a cell apart
-        I.adds++; I.left = 0;
+        I.adds++; I.left = 0; var LS = I.leftSet = new Set();   // THE LEFT ALONE, BY NAME (_hqInstTick)
         Object.keys(sc.byKey).forEach(function (key) {
             var all = sc.byKey[key];
-            if (all.length + (I.per[key] || 0) < RU.min) { I.left += all.length; return; }
+            if (all.length + (I.per[key] || 0) < RU.min) { I.left += all.length; all.forEach(function (o) { LS.add(o); }); return; }
             var cells = {};
             all.forEach(function (o) {
                 o.getWorldPosition(wp);
@@ -92983,7 +92973,7 @@ const ThreeRenderer = (function () {
             });
             Object.keys(cells).forEach(function (ck) {
                 var list = cells[ck];
-                if (list.length < 2) { I.left += list.length; return; }
+                if (list.length < 2) { I.left += list.length; list.forEach(function (o) { LS.add(o); }); return; }
                 var m0 = list[0], geo = m0.geometry._ew_lodBase || m0.geometry;   // THE LOD LEVELS: a batch is built on the full geometry (the LOD tick picks its level)
                 if (!geo.boundingSphere) geo.computeBoundingSphere();
                 var im = new THREE.InstancedMesh(geo, m0.material, list.length);
@@ -93106,7 +93096,15 @@ const ThreeRenderer = (function () {
         if (!I) { if (!H._instTried) { H._instTried = true; try { _hqInstBuild(H); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } } return; }
         if (now - I.scanAt < _hqInstRules().rescanMs) return;
         I.scanAt = now;
-        if (_hqInstScan(H).n !== I.left) { try { _hqInstAdd(H, I); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } }   // a file landed (or a copy was handed back): batch what now repeats
+        /* THE LEFT ALONE, BY NAME (2026-11-18, mondo's slow frames: "tick: instance pass 42-61 ms"): the rescan re-ran the whole pass (a
+           forced matrix walk of the scene, a second scan, the build) whenever the number of loose candidates differed from the number
+           it left alone, and that number moves each time the camera culls or shows a prop chunk or a closed room (the scan reads only
+           what is shown). The pass now keeps the pieces it left alone by name and runs again only when a candidate it has never
+           seen is in view (a file landed, a copy came home, a chunk shown for the first time). Off: window.EW_HQ_INST_RESCAN_COUNT */
+        var scn = _hqInstScan(H), fresh = false;
+        if (I.leftSet && !(typeof window !== 'undefined' && window.EW_HQ_INST_RESCAN_COUNT)) { for (var fk in scn.byKey) { var fl = scn.byKey[fk]; for (var fi = 0; fi < fl.length; fi++) if (!I.leftSet.has(fl[fi])) { fresh = true; break; } if (fresh) break; } }
+        else fresh = scn.n !== I.left;
+        if (fresh) { try { _hqInstAdd(H, I); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } }   // a file landed (or a copy was handed back): batch what now repeats
     }
     function _hqInstStats(H) {
         var I = H && H.inst; if (!I) return null;

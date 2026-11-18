@@ -2972,6 +2972,7 @@ from the copies it left alone. The scan was `traverseVisible`, and a prop chunk 
 count moved every time a chunk went out or came back and the pass re-ran for nothing. `_hqInstScan` now walks a culled chunk as if
 shown (hidden pieces are still skipped), so the count moves only when a file lands or a copy is handed back. The "Bundle spikes"
 line in the same F3 showed six 6 ms checks with 0 re-records: the bundle side is quiet. Off: `window.EW_HQ_INST_SCAN_VISIBLE = true`.
+- 11-18 11:51 CORRECTION (his F3): THE CULLED CHUNKS COUNT made it worse: "tick: instance pass 61 ms" x3 and "2335 left alone" (was ~270): walking culled chunks counted every closed room's and far plot's pieces, mostly singletons, and the count still moved. Reverted to `traverseVisible`. In its place THE LEFT ALONE, BY NAME: `_hqInstAdd` keeps the pieces it left alone in `I.leftSet`; `_hqInstTick` re-runs the pass only when a candidate in view is in neither the set nor a batch (a file landed, a copy came home, a chunk seen for the first time), never because the camera culled or showed a chunk. Off: `window.EW_HQ_INST_RESCAN_COUNT = true` (the old count compare).
 
 ## THE RIDER'S GRID (2026-11-18, spikes thread)
 His 11:51 F3: "walker: ride" 6-8 ms on every slow frame (on the board: `_hqTickRide` steps at 120 Hz and each step asks the floor several
