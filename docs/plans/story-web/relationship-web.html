@@ -145,6 +145,12 @@ aside { background: var(--panel); display: flex; flex-direction: column; min-hei
 .gchip { display: inline-flex; align-items: center; border: 0; border-radius: 16px; padding: 4px 14px; background: var(--gc); color: #fff; font: 700 16px system-ui, -apple-system, "Segoe UI", sans-serif; cursor: pointer; }
 .gchip.sm { font-size: 12px; padding: 2px 10px; margin: 0 4px 4px 0; }
 .gchip.fac { background: var(--panel); color: var(--gc); box-shadow: inset 0 0 0 2px var(--gc); }
+.gdots i.sec { background: var(--panel); box-shadow: inset 0 0 0 2px var(--gc), 0 0 0 1px var(--panel); }
+.gchip.sec { background: var(--panel); color: var(--gc); box-shadow: inset 0 0 0 2px var(--gc); outline: 2px dashed var(--gc); outline-offset: 2px; }
+.gchip.sec i { font-weight: 500; opacity: .8; margin-right: 5px; }
+.gmem li.sec span { font-style: italic; }
+.gmem .gsec { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 10px; padding: 1px 8px; font-size: 11px; margin-left: auto; margin-right: 6px; cursor: pointer; }
+.gmem .gsec.on { background: var(--ink); color: var(--panel); border-color: var(--ink); }
 .gmem li { display: flex; align-items: center; justify-content: space-between; }
 .gmem .x { border: 0; background: transparent; color: var(--ink3); font-size: 16px; cursor: pointer; padding: 0 6px; }
 #orgSeg { margin-right: 6px; }
@@ -390,7 +396,7 @@ const orgK = () => B.org === 'faction' ? 'faction' : 'place';
 const isOrgGrp = n => isGrp(n) && gkOf(n) === orgK();
 /* a unit's home group of one kind: the first of that kind it joined. Its shaded area holds only its home members; a member
    whose home is elsewhere keeps a dashed line to it instead, so areas never stretch over each other */
-function homeMap(kind) { const h = {}; Object.values(B.links).forEach(l => { if (l.type !== 'member' || h[l.a]) return; const g = B.nodes[l.b]; if (isGrp(g) && gkOf(g) === kind && !isGrp(B.nodes[l.a])) h[l.a] = l.b; }); return h; }
+function homeMap(kind) { const h = {}; Object.values(B.links).forEach(l => { if (l.type !== 'member' || l.secret || h[l.a]) return; const g = B.nodes[l.b]; if (isGrp(g) && gkOf(g) === kind && !isGrp(B.nodes[l.a])) h[l.a] = l.b; }); return h; }
 const isGrp = n => !!n && n.kind === 'custom' && n.shape === 'group';
 const gcol = n => GCOL[(n && n.col) || 0] || GCOL[0];
 /* the units in a group node, or the groups a unit is in */
@@ -692,14 +698,14 @@ function centreOn(id) { const n = B.nodes[id]; if (!n) return; const r = stage.g
 function renderNodes() {
   let h = '';
   const fg = sel && sel.kind === 'node' && isGrp(B.nodes[sel.id]) ? sel.id : null, fm = fg ? new Set(membersOf(fg).concat(fg)) : null;
-  const dots = {}; Object.values(B.links).forEach(l => { if (l.type !== 'member') return; const g = B.nodes[l.b]; if (isGrp(g) && !isOrgGrp(g)) (dots[l.a] = dots[l.a] || []).push(g); });
+  const dots = {}; Object.values(B.links).forEach(l => { if (l.type !== 'member') return; const g = B.nodes[l.b]; if (isGrp(g) && (!isOrgGrp(g) || l.secret)) (dots[l.a] = dots[l.a] || []).push({ g, sec: !!l.secret }); });
   Object.values(B.nodes).forEach(n => {
     const s = (sel && sel.kind !== 'link' && sel.id === n.id ? ' sel' : '') + (multi.has(n.id) ? ' lasso' : '') + (fm && n.kind !== 'note' && !fm.has(n.id) ? ' dim' : '');
     if (n.kind === 'note') { h += '<div class="note c-' + (n.color || 'y') + s + '" data-id="' + esc(n.id) + '" style="left:' + n.x + 'px;top:' + n.y + 'px"><div class="grip"><span>Idea</span><span>drag</span></div><textarea spellcheck="false" placeholder="Story idea, hook, open question…" aria-label="Story idea">' + esc(n.text) + '</textarea></div>'; return; }
     if (isGrp(n)) { const k = membersOf(n.id).length; h += '<div class="node gnode' + (gkOf(n) === 'faction' ? ' fac' : '') + s + (pendingSrc === n.id ? ' src' : '') + '" data-id="' + esc(n.id) + '" style="left:' + n.x + 'px;top:' + n.y + 'px;--gc:' + gcol(n) + '"><div class="pic gp">' + esc(n.name) + '<small>' + k + '</small></div><div class="handle"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6h8M6.5 2.5 10 6l-3.500 3.500"/></svg></div></div>'; return; }
     const o = info(n);
     h += '<div class="node' + s + (pendingSrc === n.id ? ' src' : '') + '" data-id="' + esc(n.id) + '" style="left:' + n.x + 'px;top:' + n.y + 'px">' + picHTML(o) + (o.boss ? '<span class="boss">BOSS</span>' : '') + (o.badge ? '<span class="boss story">' + o.badge + '</span>' : '') +
-      '<div class="nm">' + esc(o.name) + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + (dots[n.id] ? '<span class="gdots">' + dots[n.id].map(g => '<i style="--gc:' + gcol(g) + '" title="' + esc(g.name) + '"></i>').join('') + '</span>' : '') + '</div>' +
+      '<div class="nm">' + esc(o.name) + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + (dots[n.id] ? '<span class="gdots">' + dots[n.id].map(d => '<i' + (d.sec ? ' class="sec"' : '') + ' style="--gc:' + gcol(d.g) + '" title="' + (d.sec ? 'Secretly in ' : '') + esc(d.g.name) + '"></i>').join('') + '</span>' : '') + '</div>' +
       '<div class="handle" title="Drag to another unit to tie them together"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6h8M6.5 2.5 10 6l-3.500 3.500"/></svg></div></div>';
   });
   nodesEl.innerHTML = h; elById = new Map();
@@ -735,13 +741,13 @@ function drawEdges() {
   Object.values(B.nodes).forEach(n => { if (!isOrgGrp(n)) return; const pts = [n].concat(membersOf(n.id).filter(id => HM[id] === n.id || isGrp(B.nodes[id])).map(id => B.nodes[id]).filter(Boolean)); if (pts.length < 2) return; const hp = hull(pts).map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)); svg += '<path class="hull" d="M' + hp.join('L') + 'Z" fill="' + gcol(n) + '" stroke="' + gcol(n) + '"/>'; });
   Object.values(groups).forEach(arr => {
     arr.sort((a, b) => a.id < b.id ? -1 : 1).forEach((l, i) => {
-      const away = l.type === 'member' && isOrgGrp(B.nodes[l.b]) && HM[l.a] && HM[l.a] !== l.b;
+      const away = l.type === 'member' && !l.secret && isOrgGrp(B.nodes[l.b]) && HM[l.a] && HM[l.a] !== l.b;
       if (l.type === 'member' && !away && focus !== l.a && focus !== l.b && !(sel && sel.kind === 'link' && sel.id === l.id)) return;
       const g = geom(l, i, arr.length); if (!g) return; G[l.id] = g;
       const mem = l.type === 'member', c = mem ? gcol(B.nodes[l.b]) : 'var(--t-' + g.T.id + ')', isSel = sel && sel.kind === 'link' && sel.id === l.id, dim = focus && l.a !== focus && l.b !== focus;
       svg += '<g class="edge' + (isSel ? ' sel' : '') + (l.secret ? ' secret' : '') + '" data-id="' + esc(l.id) + '"' + (dim ? ' opacity=".22"' : '') + '><path class="hit" d="' + g.path + '"/>' +
         (isSel ? '<path class="halo" d="' + g.path + '" stroke-width="' + (g.sw + 9) + '"/>' : '') +
-        '<path class="ln" d="' + g.path + '" stroke="' + c + '" stroke-width="' + g.sw + '"' + (away ? ' stroke-dasharray="7 6"' : g.T.dash ? ' stroke-dasharray="' + g.T.dash + '"' : '') + '/>' +
+        '<path class="ln" d="' + g.path + '" stroke="' + c + '" stroke-width="' + g.sw + '"' + (l.type === 'member' && l.secret ? ' stroke-dasharray="2 6"' : away ? ' stroke-dasharray="7 6"' : g.T.dash ? ' stroke-dasharray="' + g.T.dash + '"' : '') + '/>' +
         (g.heads ? '<path class="ah" d="' + g.heads + '" fill="' + c + '"/>' : '') + '</g>';
       if (!mem) tags += '<div class="tag' + (isSel ? ' sel' : '') + (dim ? ' dim' : '') + '" data-id="' + esc(l.id) + '" style="left:' + g.m.x.toFixed(1) + 'px;top:' + g.m.y.toFixed(1) + 'px;max-width:' + Math.round(g.tw) + 'px;--c:' + c + (editing === l.id ? ';visibility:hidden' : '') + '"><b>' + (l.secret ? 'secretly ' : '') + g.T.n + '</b>' + (l.label ? ' ' + esc(l.label) : '') + '</div>';
     });
@@ -855,7 +861,7 @@ function renderInspector() {
     h += '<label class="field"><span>Name</span><input class="inp" id="cName" maxlength="40" value="' + esc(n.name) + '"></label>';
     h += '<div><h4>Kind</h4><div class="seg">' + [['place', 'Place'], ['faction', 'Faction']].map(k => '<button data-gk="' + k[0] + '"' + (gkOf(n) === k[0] ? ' class="on"' : '') + '>' + k[1] + '</button>').join('') + '</div></div>';
     h += '<div><h4>Colour</h4><div class="gsw">' + GCOL.map((c, i) => '<button data-gcol="' + i + '"' + ((n.col || 0) === i ? ' class="on"' : '') + ' style="--gc:' + c + '" aria-label="Colour ' + (i + 1) + '"></button>').join('') + '</div></div>';
-    h += '<div><h4>Members (' + mem.length + ')</h4>' + (mem.length ? '<ul class="rel gmem">' + mem.map(l => '<li data-node="' + esc(l.a) + '"><span>' + esc(nm(l.a)) + '</span><button class="x" data-unlink="' + esc(l.id) + '" aria-label="Take out of the group">×</button></li>').join('') + '</ul>' : '<p class="muted">None yet.</p>') + '</div>';
+    h += '<div><h4>Members (' + mem.length + ')</h4>' + (mem.length ? '<ul class="rel gmem">' + mem.map(l => '<li data-node="' + esc(l.a) + '"' + (l.secret ? ' class="sec"' : '') + '><span>' + esc(nm(l.a)) + '</span><button class="gsec' + (l.secret ? ' on' : '') + '" data-gsecret="' + esc(l.id) + '">secret</button><button class="x" data-unlink="' + esc(l.id) + '" aria-label="Take out of the group">×</button></li>').join('') + '</ul>' : '<p class="muted">None yet.</p>') + '</div>';
     if (ties.length) h += '<div><h4>Ties</h4><ul class="rel">' + relList(ties) + '</ul></div>';
     h += '<label class="field"><h4 style="margin:0">Notes</h4><textarea class="inp" id="insNote">' + esc(n.note || '') + '</textarea></label>';
     h += '<div class="prow"><button class="btn danger" data-act="delSel">Take off the board</button></div>';
@@ -880,7 +886,8 @@ function renderInspector() {
       h += '<div class="two"><label class="field"><span>Name</span><input class="inp" id="cName" maxlength="60" value="' + esc(n.name) + '"></label><label class="field"><span>Role or title</span><input class="inp" id="cSub" maxlength="60" value="' + esc(n.sub || '') + '"></label><label class="field"><span>Kind</span><select class="sel" id="cShape">' + [['character', 'Character'], ['boss', 'Boss'], ['org', 'Organisation'], ['place', 'Place']].map(x => '<option value="' + x[0] + '"' + (n.shape === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></label><label class="field"><span>Type</span><select class="sel" id="cFaction"><option value="">None</option>' + FACTIONS.map(f => '<option value="' + f[0] + '"' + (n.faction === f[0] ? ' selected' : '') + '>' + f[1] + '</option>').join('') + '</select></label></div><label class="field"><span>Portrait borrowed from</span><select class="sel" id="cRace"><option value="">Initials only</option>' + D.races.slice().sort((a, b) => a.n.localeCompare(b.n)).map(x => '<option value="' + esc(x.k) + '"' + (n.race === x.k ? ' selected' : '') + '>' + esc(x.n) + '</option>').join('') + '</select></label>';
     }
     const gin = Object.values(B.links).filter(l => l.type === 'member' && l.a === n.id && isGrp(B.nodes[l.b])).map(l => B.nodes[l.b]);
-    if (gin.length) h += '<div><h4>Groups</h4><div class="prow">' + ['place', 'faction'].map(k => gin.filter(g => gkOf(g) === k).map(g => '<button class="gchip sm' + (k === 'faction' ? ' fac' : '') + '" data-node="' + esc(g.id) + '" style="--gc:' + gcol(g) + '">' + esc(g.name) + '</button>').join('')).join('') + '</div></div>';
+    const gsec = new Set(Object.values(B.links).filter(l => l.type === 'member' && l.a === n.id && l.secret).map(l => l.b));
+    if (gin.length) h += '<div><h4>Groups</h4><div class="prow">' + ['place', 'faction'].map(k => gin.filter(g => gkOf(g) === k).map(g => '<button class="gchip sm' + (k === 'faction' ? ' fac' : '') + (gsec.has(g.id) ? ' sec' : '') + '" data-node="' + esc(g.id) + '" style="--gc:' + gcol(g) + '">' + (gsec.has(g.id) ? '<i>secretly</i> ' : '') + esc(g.name) + '</button>').join('')).join('') + '</div></div>';
     h += '<label class="field"><h4 style="margin:0">Wants, fears, motive</h4><textarea class="inp" id="insNote" placeholder="What does ' + name + ' want on this board?">' + esc(n.note || '') + '</textarea></label>';
     h += '<div><h4>Ties on this board</h4>' + (d.all.some(it => it.l.type !== 'member') ? '<ul class="rel">' + relList(d.all.filter(it => it.l.type !== 'member')) + '</ul>' : '<p class="muted">None yet. Drag from the red handle on ' + name + ' to another unit.</p>') + '</div>';
     h += '<div><h4>If ' + name + ' is attacked</h4>';
@@ -1073,7 +1080,7 @@ stage.addEventListener('pointerdown', e => {
   if (ptrs.size > 2) return;
   const p = toWorld(e.clientX, e.clientY), base = { pid: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false };
   if (nodeEl && e.button === 0 && (linkMode || e.shiftKey || onHandle)) drag = Object.assign(base, { kind: 'link', from: nid, tap: linkMode && !onHandle });
-  else if (nid && e.button === 0) { const n = B.nodes[nid], grp = isGrp(n) ? (isOrgGrp(n) !== e.altKey ? [nid].concat(membersOf(nid)) : [nid]) : e.altKey && n.kind !== 'note' ? groupOf(nid) : multi.has(nid) ? [...multi].filter(id => B.nodes[id]) : [nid]; drag = Object.assign(base, { kind: 'node', nid, px: p.x, py: p.y, grp: grp.map(id => ({ id, x: B.nodes[id].x, y: B.nodes[id].y })) }); }
+  else if (nid && e.button === 0) { const n = B.nodes[nid], grp = isGrp(n) ? (isOrgGrp(n) !== e.altKey ? [nid].concat(Object.values(B.links).filter(l => l.type === 'member' && l.b === nid && !l.secret).map(l => l.a)) : [nid]) : e.altKey && n.kind !== 'note' ? groupOf(nid) : multi.has(nid) ? [...multi].filter(id => B.nodes[id]) : [nid]; drag = Object.assign(base, { kind: 'node', nid, px: p.x, py: p.y, grp: grp.map(id => ({ id, x: B.nodes[id].x, y: B.nodes[id].y })) }); }
   else if (lid && e.button === 0) drag = Object.assign(base, { kind: 'edge', lid, vx: B.view.x, vy: B.view.y });
   else if (e.button === 0 && (groupMode || e.altKey)) drag = Object.assign(base, { kind: 'lasso', pts: [p] });
   else drag = Object.assign(base, { kind: 'pan', vx: B.view.x, vy: B.view.y });
@@ -1154,6 +1161,7 @@ $('addShown').addEventListener('click', () => { addEntries(shown.slice()); });
 /* ───────── inspector + popover events ───────── */
 function panelClick(e) {
   const b = e.target.closest('button, li'); if (!b) return;
+  if (e.target.closest('[data-gsecret]')) { const l = B.links[e.target.closest('[data-gsecret]').dataset.gsecret]; if (l) { if (l.secret) delete l.secret; else l.secret = true; } return commit(); }
   if (e.target.closest('[data-unlink]')) { delete B.links[e.target.closest('[data-unlink]').dataset.unlink]; return commit(); }
   if (b.dataset.ltype) return setLink({ type: b.dataset.ltype });
   if (b.dataset.ldir) return setLink({ dir: b.dataset.ldir });
@@ -1227,7 +1235,7 @@ function gameExport(all) {
       if (n.note) (out.motives[r.key] = out.motives[r.key] || []).push(n.note); });
     Object.values(b.links).forEach(l => {
       const at = actorTarget(l), f = ref(b, at[0]), t = ref(b, at[1]);
-      if (l.type === 'member') { const g = out.boardGroups[t.key] = out.boardGroups[t.key] || { name: b.nodes[l.b].name, kind: gkOf(b.nodes[l.b]), members: [] }; if (!g.members.includes(f.key)) g.members.push(f.key); return; }
+      if (l.type === 'member') { const g = out.boardGroups[t.key] = out.boardGroups[t.key] || { name: b.nodes[l.b].name, kind: gkOf(b.nodes[l.b]), members: [], secretMembers: [] }; const ls = l.secret ? g.secretMembers : g.members; if (!ls.includes(f.key)) ls.push(f.key); return; }
       out.relations.push(Object.assign(side(side({}, 'from', f), 'to', t), { type: l.type, mutual: l.dir === 'both', why: l.label || '', strength: l.s || 2, secret: !!l.secret, board: b.name }));
       if (l.dir === 'both' && (l.type === 'allied' || l.type === 'family') && f.kind === 'race' && t.kind === 'race' && f.race !== t.race) { (adj[f.race] = adj[f.race] || new Set()).add(t.race); (adj[t.race] = adj[t.race] || new Set()).add(f.race); }
     });
