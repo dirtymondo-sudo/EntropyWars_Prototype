@@ -101096,14 +101096,33 @@ const HQ_CITY_LOOKS = {
     future: {
         year: 2047,
         boxes: [{ d: 'E', x0: 84, x1: 252, z0: -252, z1: -84 }],                      // Entertainment (after THE DISTRICT MOVE: the north-east block)
-        wall: [0.56, 0.58, 0.76],                                                     // every unlit part's colour is multiplied by this (darker, cooler)
+        /* PASS 2 (mondo 11-18, on the first pilot: "almost all of the brick building textures need to be replaced ... futuristic and
+           sci-fi and chrome and neon and metal and glass ... cyberpunk 2047 or 2001 a space odyssey retro futurism ... futuristic
+           version of Tokyo"): every wall sheet of the old city (brick, plaster, stucco, concrete, wood, corrugated iron, roof tiles,
+           marble) is REPLACED, one finish a building, all four sheets from the Urban Decay pack already on R2:
+           chrome (polished steel panels), white (2001's white panels), glass (a dark glass curtain wall), black (black steel). */
+        wallRe: /^(urban:(Brick|PlasterWall|Concrete|Wood|MetalCorrugated|MetalRoofTiles|MetalShutter|TileMarble|TileSubway|MetalTruss)|bricks_|marble$|aluminium$)/,
+        finishes: [
+            { id: 'chrome', key: 'urban:MetalPanel2a',        tint: 0xd4deee, gain: 1.9, shine: 90, trim: 0x8a94a6 },
+            { id: 'white',  key: 'urban:MetalPanelPainted1a', tint: 0xf4f4f8, gain: 2.0, shine: 40, trim: 0xc8ccd6 },
+            { id: 'glass',  key: 'urban:GlassGeneric3a',      tint: 0x7088c8, gain: 1.5, shine: 120, trim: 0x30384c, glow: 0.1 },
+            { id: 'black',  key: 'urban:MetalPanel1a',        tint: 0x4a5060, gain: 1.0, shine: 70, trim: 0x20242c },
+        ],
+        bare: { keep: 0.3, cool: [0.86, 0.92, 1.08] },                                // a sheetless part (frames, trims, awnings): 70 % of its colour goes to steel grey, then cooled
         inks: ['#ff3ad8', '#35e0ff', '#ffe04a', '#ff6ad8', '#7cf0ff', '#9cff5a'],     // the neon inks (three-renderer.js _HQ_NEON_INKS, the old Cyberpunk room's)
         signBg: '#0b0a16', signGlow: 1.0,                                             // a painted sign: its board goes dark, its words take an ink and light up
-        glass: { glow: 0.62, tints: [0x7ce8ff, 0xff8ae0, 0xffd27a, 0xbfe8ff] },       // glass is lit from inside, one colour a building
-        trim: { h: 0.14, glow: 1.0 },                                                 // the neon line round a roof
-        board: { minW: 5, h: 3.2, post: 1.1, glow: 0.95, frame: 0x16141e },           // the roof billboard (a rectangle on two posts)
+        glass: { glow: 0.7, tints: [0x7ce8ff, 0xff8ae0, 0xffd27a, 0xbfe8ff] },        // windows are lit from inside, one colour a building
+        trim: { h: 0.16, glow: 1.0, band: 3.5 },                                      // the neon lines: round the roof, down the four corners, one round every storey (`band` m)
+        fascia: { y: 2.75, h: 0.55, glow: 0.9 },                                      // the lit strip over the ground floor's front
+        board: { minW: 4, h: 4.0, post: 1.2, glow: 0.95, frame: 0x16141e },           // the roof billboard (a rectangle on two posts)
+        blade: { cell: 1.0, out: 0.75, y0: 3.3, glow: 1.0 },                          // the blade sign: one lit square a character, stacked down the front's corner
+        holo: { minTop: 6.5, h: 5.0, lift: 7.5, glow: 1.0 },                          // the hologram: a word of light standing over a tall roof (no board, seen from both sides)
         /* the old Cyberpunk room's own sign words (three-renderer.js _HQ_NEON_NAMES + _NR_BUILDERS.cyberpunk): nothing new is named here */
         names: ['NOODLE', 'RAMEN 24H', 'PACHINKO', 'HOLO', 'BAR', 'NO VACANCY', 'ARCADE', 'HOTEL', 'SYNTH', 'IMPLANTS', 'LEASE 2047', 'RETINA', 'ATM · CRYPTO', 'TENANTS'],
+        /* the same words in kana for the blade signs (ノイズ and 夢 are the old room's own; the rest spell RAMEN, PACHINKO, HOTEL, BAR, ARCADE, NOODLE) */
+        blades: ['ラーメン', 'パチンコ', 'ホテル', 'バー', 'ノイズ', 'アーケード', 'ヌードル', '夢'],
+        holos: ['夢', 'ノイズ', 'SYNTH', 'HOLO', '2047'],
+        lamps: { E: '#35e0ff' },                                                      // the district's street lamps
         traffic: { swap: { suv: 'cybercar' }, every: 2 },                             // every second `suv` in a traffic loop is the cyberpunk car
     },
 };
@@ -101114,20 +101133,24 @@ function hqCityLookTerrain(roomId, base, lookId) {
     const ck = roomId + '|' + lookId;
     if (_hqCityLookCache[ck] && _hqCityLookCache[ck].from === T) return _hqCityLookCache[ck].terrain;
     const boxOf = (r) => { for (const b of L.boxes) if (r.x >= b.x0 && r.x < b.x1 && r.z >= b.z0 && r.z < b.z1) return b; return null; };
-    const mul = (t) => { const c = (t == null) ? 0xffffff : (t >>> 0); return (Math.round(((c >> 16) & 255) * L.wall[0]) << 16) | (Math.round(((c >> 8) & 255) * L.wall[1]) << 8) | Math.round((c & 255) * L.wall[2]); };
     const hx = (s) => parseInt(String(s).slice(1), 16);
-    const builds = {};   // footprint rows by id: only a real building gets a roof line and a billboard
+    const steel = (t) => {   // a sheetless part: most of its colour goes to its own grey, then cooled
+        const c = (t == null) ? 0xffffff : (t >>> 0), r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255, y = 0.3 * r + 0.59 * g + 0.11 * b, k = L.bare.keep;
+        const f = (v, m) => Math.max(0, Math.min(255, Math.round((y + (v - y) * k) * m)));
+        return (f(r, L.bare.cool[0]) << 16) | (f(g, L.bare.cool[1]) << 8) | f(b, L.bare.cool[2]);
+    };
+    const builds = {};   // footprint rows by id: only a real building gets the lines, the signs and the hologram
     for (const f of T.features) if (f.k === 'texbuilding' && f.id && boxOf(f)) builds[f.id + ':arch'] = f;
-    let nSign = 0, nGlass = 0, nBoard = 0, nRow = 0;
+    let nWall = 0, nSign = 0, nGlass = 0, nBoard = 0, nBlade = 0, nHolo = 0, nRow = 0;
     const features = T.features.map((row) => {
         if (row.k !== 'arch' || !Array.isArray(row.parts) || !boxOf(row)) return row;
         nRow++;
         const h = hqHash(String(row.id || row.x + ',' + row.z)) >>> 0;
-        const glassTint = L.glass.tints[h % L.glass.tints.length];
+        const F = L.finishes[h % L.finishes.length], glassTint = L.glass.tints[(h >>> 2) % L.glass.tints.length];
         let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, top = 0;
         const parts = row.parts.map((p, i) => {
             const key = String(p.key || '');
-            if (p.s === 'box' && p.size && p.size[0] >= 3 && p.size[2] >= 3 && !p.ry) {   // the building's masses: its plan and its top
+            if (p.s === 'box' && p.size && p.size[0] >= 3 && p.size[2] >= 3 && p.size[1] >= 2.4 && !p.ry) {   // the building's masses: its plan and its top
                 x0 = Math.min(x0, p.p[0] - p.size[0] / 2); x1 = Math.max(x1, p.p[0] + p.size[0] / 2);
                 z0 = Math.min(z0, p.p[2] - p.size[2] / 2); z1 = Math.max(z1, p.p[2] + p.size[2] / 2);
                 top = Math.max(top, (p.p[1] || 0) + p.size[1]);
@@ -101138,28 +101161,63 @@ function hqCityLookTerrain(roomId, base, lookId) {
                 q[1] = L.inks[(h + i) % L.inks.length]; if (q[2]) q[2] = L.signBg;
                 nSign++; return Object.assign({}, p, { key: 'txt:' + q.join('|'), glow: L.signGlow });
             }
-            if (key.indexOf('mark:') === 0 || p.kind === 'over' || key === 'gold') return p;
-            if (p.kind === 'glass' || /Glass/.test(key)) { nGlass++; return Object.assign({}, p, { tint: glassTint, glow: Math.max(p.glow || 0, L.glass.glow) }); }
+            if (key.indexOf('mark:') === 0 || p.kind === 'over' || key === 'gold' || /^urban:(Decal|Door|Sign)/.test(key)) return p;
+            if (p.kind === 'glass' || /GlassWindow/.test(key)) { nGlass++; return Object.assign({}, p, { tint: glassTint, glow: Math.max(p.glow || 0, L.glass.glow), shine: 90 }); }
             if ((p.glow || 0) > 0) return p;                                             // a lamp, a screen, a neon: as it is
-            const o = Object.assign({}, p, { tint: mul(p.tint) });
-            if (p.tintTop != null) o.tintTop = mul(p.tintTop); if (p.tintEnd != null) o.tintEnd = mul(p.tintEnd);
+            if (L.wallRe.test(key)) {                                                    // an old wall sheet: the building's finish in its place
+                nWall++;
+                const o = Object.assign({}, p, { key: F.key, tint: F.tint, gain: F.gain, shine: F.shine });
+                if (F.glow) o.glow = F.glow;
+                if (p.keyTop) { o.keyTop = F.key; o.tintTop = F.trim; } if (p.keyEnd) { o.keyEnd = F.key; o.tintEnd = F.trim; }
+                if (p.keyUnder) o.keyUnder = F.key; if (p.keyBase) o.keyBase = F.key;
+                return o;
+            }
+            const o = Object.assign({}, p, { tint: steel(p.tint) });                     // every other part: steel
+            if (p.tintTop != null) o.tintTop = steel(p.tintTop); if (p.tintEnd != null) o.tintEnd = steel(p.tintEnd);
             return o;
         });
         const B = builds[row.id];
+        if (B) {   // the plan is the footprint row's own (the arch row stands on it, same centre, same turn); the top is the tallest mass, at least its storeys
+            x0 = -B.w / 2; x1 = B.w / 2; z0 = -B.d / 2; z1 = B.d / 2; top = Math.max(top, (B.storeys || 1) * 3.5);
+        }
         if (B && top >= 3 && x1 - x0 >= 4 && z1 - z0 >= 3) {
-            const ink = hx(L.inks[h % L.inks.length]), ink2 = L.inks[(h + 3) % L.inks.length], w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, t = L.trim.h;
-            /* the neon line round the roof: four thin lit bars on the parapet */
-            parts.push({ s: 'box', p: [cx, top, z1 + t / 2], size: [w + t * 2, t, t], tint: ink, glow: L.trim.glow }, { s: 'box', p: [cx, top, z0 - t / 2], size: [w + t * 2, t, t], tint: ink, glow: L.trim.glow },
-                       { s: 'box', p: [x1 + t / 2, top, cz], size: [t, t, d], tint: ink, glow: L.trim.glow }, { s: 'box', p: [x0 - t / 2, top, cz], size: [t, t, d], tint: ink, glow: L.trim.glow });
+            const inkS = L.inks[h % L.inks.length], ink = hx(inkS), ink2 = L.inks[(h + 3) % L.inks.length], w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, t = L.trim.h, g = L.trim.glow;
+            const ring = (y, c) => parts.push({ s: 'box', p: [cx, y, z1 + t / 2], size: [w + t * 2, t, t], tint: c, glow: g }, { s: 'box', p: [cx, y, z0 - t / 2], size: [w + t * 2, t, t], tint: c, glow: g },
+                                              { s: 'box', p: [x1 + t / 2, y, cz], size: [t, t, d], tint: c, glow: g }, { s: 'box', p: [x0 - t / 2, y, cz], size: [t, t, d], tint: c, glow: g });
+            ring(top, ink);                                                              // the neon line round the roof
+            for (let y = L.trim.band; y < top - 1; y += L.trim.band) ring(y, hx(ink2));  // one round every storey
+            for (const cxz of [[x0 - t / 2, z0 - t / 2], [x1 + t / 2, z0 - t / 2], [x0 - t / 2, z1 + t / 2], [x1 + t / 2, z1 + t / 2]])   // down the four corners
+                parts.push({ s: 'box', p: [cxz[0], 0.1, cxz[1]], size: [t, top, t], tint: ink, glow: g });
+            /* the lit fascia over the ground floor's front (+Z) */
+            parts.push({ s: 'box', p: [cx, L.fascia.y, z1 + 0.09], size: [w * 0.94, L.fascia.h, 0.12], tint: glassTint, glow: L.fascia.glow });
+            /* the blade sign: lit squares stacked down the front's corner, one character each, read from both sides of the street */
+            const word = Array.from(L.blades[(h >>> 5) % L.blades.length]), cell = L.blade.cell, nC = Math.min(word.length, Math.max(1, Math.floor((top - L.blade.y0) / cell)));
+            if (nC >= 1 && top >= L.blade.y0 + cell) {
+                const bx = (h & 16) ? x1 - 0.5 : x0 + 0.5, bz = z1 + L.blade.out, yTop = Math.min(top - 0.1, L.blade.y0 + nC * cell);
+                parts.push({ s: 'box', p: [bx, yTop - nC * cell - 0.1, bz], size: [0.14, nC * cell + 0.2, cell + 0.14], tint: L.board.frame },
+                           { s: 'box', p: [bx, yTop - 0.35, z1 + L.blade.out / 2 - cell / 4], size: [0.1, 0.1, L.blade.out], tint: L.board.frame });
+                for (let c = 0; c < nC; c++) {
+                    const k2 = 'txt:' + word[c] + '|' + ink2 + '|' + L.signBg + '|1', y = yTop - (c + 1) * cell + 0.04;
+                    parts.push({ s: 'quad', p: [bx + 0.09, y, bz], ry: 90, size: [cell - 0.08, cell - 0.08], key: k2, uv: 'fit', kind: 'wall', glow: L.blade.glow },
+                               { s: 'quad', p: [bx - 0.09, y, bz], ry: 270, size: [cell - 0.08, cell - 0.08], key: k2, uv: 'fit', kind: 'wall', glow: L.blade.glow });
+                }
+                nBlade++;
+            }
             if (w >= L.board.minW) {
                 /* the billboard: a dark rectangle on two posts over the front (+Z), its words lit on both faces */
-                const bw = Math.min(w * 0.72, 12), bh = L.board.h, by = top + L.board.post, bz = z1 - 0.7, name = L.names[(h >>> 3) % L.names.length], asp = (bw / bh).toFixed(2);
+                const bw = Math.min(w * 0.8, 14), bh = Math.min(L.board.h, bw * 0.45), by = top + L.board.post, bz = z1 - 0.7, name = L.names[(h >>> 3) % L.names.length], asp = (bw / bh).toFixed(2);
                 const sk = 'txt:' + name + '|' + ink2 + '|' + L.signBg + '|' + asp;
                 parts.push({ s: 'box', p: [cx - bw * 0.36, top, bz], size: [0.22, L.board.post + bh, 0.22], tint: L.board.frame }, { s: 'box', p: [cx + bw * 0.36, top, bz], size: [0.22, L.board.post + bh, 0.22], tint: L.board.frame },
                            { s: 'box', p: [cx, by, bz], size: [bw + 0.3, bh + 0.3, 0.16], tint: L.board.frame },
                            { s: 'quad', p: [cx, by + 0.15, bz + 0.2], size: [bw, bh], key: sk, uv: 'fit', kind: 'wall', glow: L.board.glow },
                            { s: 'quad', p: [cx, by + 0.15, bz - 0.2], ry: 180, size: [bw, bh], key: sk, uv: 'fit', kind: 'wall', glow: L.board.glow });
                 nBoard++;
+                if (top >= L.holo.minTop) {
+                    /* the hologram: a word of light standing in the air over the roof, no board behind it */
+                    const hw = L.holos[(h >>> 7) % L.holos.length], hl = Array.from(hw).length, hh = L.holo.h, hwid = Math.min(hh * Math.max(1, hl * 0.75), 16), hk = 'txt:' + hw + '|' + inkS + '||' + (hwid / hh).toFixed(2);
+                    parts.push({ s: 'quad', p: [cx, top + L.holo.lift, cz], size: [hwid, hh], key: hk, uv: 'fit', kind: 'over', ds: true, glow: L.holo.glow });
+                    nHolo++;
+                }
             }
         }
         return Object.assign({}, row, { parts: parts });
@@ -101169,9 +101227,15 @@ function hqCityLookTerrain(roomId, base, lookId) {
         let n = 0;
         traffic = T.traffic.map(tr => Array.isArray(tr.kinds) ? Object.assign({}, tr, { kinds: tr.kinds.map(k => (L.traffic.swap[k] && (n++ % L.traffic.every) === 0) ? L.traffic.swap[k] : k) }) : tr);
     }
-    const terrain = Object.assign({}, T, { features: features, traffic: traffic });
+    let gen = T.gen;
+    if (L.lamps && gen && gen.looks) {
+        const looks = Object.assign({}, gen.looks);
+        for (const d in L.lamps) if (looks[d]) looks[d] = Object.assign({}, looks[d], { lamp: L.lamps[d] });
+        gen = Object.assign({}, gen, { looks: looks });
+    }
+    const terrain = Object.assign({}, T, { features: features, traffic: traffic, gen: gen });
     _hqCityLookCache[ck] = { from: T, terrain: terrain };
-    if (typeof console !== 'undefined') console.log('[HQ] city look ' + lookId + ': ' + nRow + ' rows, ' + nSign + ' signs relit, ' + nGlass + ' glass lit, ' + nBoard + ' billboards');
+    if (typeof console !== 'undefined') console.log('[HQ] city look ' + lookId + ': ' + nRow + ' rows, ' + nWall + ' wall parts refinished, ' + nSign + ' signs relit, ' + nGlass + ' glass lit, ' + nBoard + ' billboards, ' + nBlade + ' blade signs, ' + nHolo + ' holograms');
     return terrain;
 }
 /* the city's one variant (set here, outside the baked block: `node bake-disaster-city.js` neither writes nor drops it) */

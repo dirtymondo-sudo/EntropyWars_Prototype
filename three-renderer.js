@@ -74405,8 +74405,9 @@ const ThreeRenderer = (function () {
                 key = key || null;
                 var kind = kindOf(key), tint = (tintOwn != null) ? (tintOwn >>> 0) : (P.tint != null) ? (P.tint >>> 0) : 0xffffff, glow = +P.glow || 0, ds = !!P.ds, roof = !!P.roof;
                 var gain = (+P.gain > 0) ? +P.gain : 1;   // THE PAINTED WALL (2026-11-13, Bayside): `gain` lifts a sheet's tint past white (a grey stucco sheet under the city's tint reads as mud in a pastel; the light still shades it)
-                var id = [key || '', tint, glow, kind, ds ? 1 : 0, roof ? 1 : 0, gain].join('|');
-                return G[id] || (G[id] = { key: key, tint: tint, glow: glow, kind: kind, ds: ds, roof: roof, gain: gain, pos: [], uv: [], idx: [], n: 0 });
+                var shine = (+P.shine > 0) ? +P.shine : 0;   // THE CITY'S FUTURE LOOK (2026-11-18): `shine` = a polished part (chrome, dark glass walls): its own shininess, a bright cool highlight
+                var id = [key || '', tint, glow, kind, ds ? 1 : 0, roof ? 1 : 0, gain, shine].join('|');
+                return G[id] || (G[id] = { key: key, tint: tint, glow: glow, kind: kind, ds: ds, roof: roof, gain: gain, shine: shine, pos: [], uv: [], idx: [], n: 0 });
             };
             var put = function (g, v, uv) {   // a vertex in the part's frame → the room's metres
                 var lx = pp[0] + v[0] * pc + v[2] * ps, ly = pp[1] + v[1], lz = pp[2] - v[0] * ps + v[2] * pc;
@@ -74840,7 +74841,7 @@ const ThreeRenderer = (function () {
     function _hqBuildArchRows(info, G, U) {
         var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
         var matOf = function (b) {
-            var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1].join('|'); if (mats[id]) return mats[id];
+            var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1, b.shine || 0].join('|'); if (mats[id]) return mats[id];
             var sign = !!b.key && (String(b.key).indexOf('txt:') === 0 || String(b.key).indexOf('mark:') === 0);   // THE LETTERING: a sign's words, drawn once on a canvas (+ THE CITY MARKS: 'mark:flag' = the city flag's cloth)
             var tex = b.key ? (sign ? _hqArchSignTex(b.key) : _hzTex(b.key)) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
             /* THE BARE PARTS WEAR A SURFACE (2026-11-15, mondo: "Make sure any generated shapes for buildings and stuff have a
@@ -74857,6 +74858,7 @@ const ThreeRenderer = (function () {
             if (tex && !sign) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
             if (surf) { m.color.r /= surf.avg[0]; m.color.g /= surf.avg[1]; m.color.b /= surf.avg[2]; if (surf.shine) { m.shininess = surf.shine; m.specular = new THREE.Color(0x2a2a2a); } }   // the part's own colour, the sheet's grain
             if (b.gain && b.gain !== 1) m.color.multiplyScalar(b.gain);
+            if (b.shine > 0) { m.shininess = b.shine; m.specular = new THREE.Color(0x9fb4d0); }   // a polished part (data.js HQ_CITY_LOOKS)
             if (b.glow > 0) { m.emissive = m.color.clone(); if (tex) m.emissiveMap = tex; m.emissiveIntensity = b.glow; }
             else m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
             m._ew_hzNear = true;
