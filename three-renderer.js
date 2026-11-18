@@ -53729,6 +53729,65 @@ const ThreeRenderer = (function () {
        drawn frame to the next), CPU (the loop's own JS) of which submit (inside renderer.render: the draw calls' CPU) and anim
        (the mixers), GPU (EXT_disjoint_timer_query_webgl2 when the browser exposes it). Copy puts a text snapshot on the
        clipboard; ThreeRenderer.perfLens.snapshot() returns the same numbers as data. */
+    /* ══ THE SCAN ALARM (2026-11-18, mondo: "every single time we implement something new ... this tiny little lamp is literally
+       scanning for every object in the room every single frame") ══
+       While the F3 lens is open, every walk of the scene's tree (Object3D.traverse / traverseVisible, the way a feature searches
+       the room) is counted; a walk that reads 500 objects or more is put down to the code that asked for it (the first two named
+       functions of the call stack). The lens line "Scene walks" lists who read the most objects a second. A feature that reads
+       the whole room on a timer shows here by name the day it ships. Nothing is counted while the lens is closed (the hooks come
+       off with it). */
+    var _scanW = null;
+    function _scanHook(on) {
+        if (typeof THREE === 'undefined' || !THREE.Object3D) return;
+        var P = THREE.Object3D.prototype;
+        if (on && !P._ew_scanOrig) {
+            var oT = P.traverse, oV = P.traverseVisible, depth = 0;
+            P._ew_scanOrig = [oT, oV];
+            _scanW = { t0: performance.now(), by: {}, last: '' };
+            var _scanWrapMk = function (orig) {
+                return function (cb) {
+                    if (depth) return orig.call(this, cb);
+                    depth++; var n = 0;
+                    try { orig.call(this, function (o) { n++; cb(o); }); } finally { depth--; }
+                    if (n >= 500) _scanNote(n);
+                };
+            };
+            P.traverse = _scanWrapMk(oT); P.traverseVisible = _scanWrapMk(oV);
+        } else if (!on && P._ew_scanOrig) {
+            P.traverse = P._ew_scanOrig[0]; P.traverseVisible = P._ew_scanOrig[1]; P._ew_scanOrig = null; _scanW = null;
+        }
+    }
+    function _scanWho(s) {
+        var L = String(s || '').split('\n'), names = [];
+        for (var i = 0; i < L.length && names.length < 2; i++) {
+            var l = L[i].trim(), m = l.match(/^at (?:new )?([^\s(]+)/) || l.match(/^([^@\s]*)@/);
+            if (!m || !m[1]) continue;
+            var f = m[1].replace(/\/<.*$/, '').replace(/^.*[.\/]/, '');
+            if (!f || f.indexOf(':') >= 0 || /^(_scan|traverse$|traverseVisible$|forEach$|Array$|anonymous$|Object$|call$|apply$)/.test(f)) continue;
+            if (names.indexOf(f) < 0) names.push(f);
+        }
+        return names.join(' < ') || '?';
+    }
+    function _scanNote(n) {
+        var W = _scanW; if (!W) return;
+        var s = ''; try { s = new Error().stack; } catch (e) {}
+        var who = _scanWho(s), r = W.by[who] || (W.by[who] = [0, 0, 0]);
+        r[0] += n; r[1]++; if (n > r[2]) r[2] = n;
+    }
+    function _scanLine() {
+        var W = _scanW; if (!W) return '';
+        var now = performance.now(), dt = now - W.t0;
+        if (dt < 2000) return W.last;
+        var rows = [];
+        for (var k in W.by) { var r = W.by[k], ps = r[0] * 1000 / dt; if (ps >= 1000) rows.push([k, ps, r[1] * 1000 / dt, r[2]]); }
+        rows.sort(function (a, b) { return b[1] - a[1]; });
+        var fmt = function (v) { return v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'K' : String(Math.round(v)); };
+        W.last = rows.length
+            ? 'Scene walks (objects read a second · walks a second · biggest; !! = over 20K a second): ' + rows.slice(0, 8).map(function (t) { return (t[1] >= 20000 ? '!! ' : '') + t[0] + ' ' + fmt(t[1]) + '/s · ' + (t[2] >= 10 ? Math.round(t[2]) : t[2].toFixed(1)) + '/s · ' + fmt(t[3]); }).join(' | ')
+            : 'Scene walks: none over 1K objects a second';
+        W.by = {}; W.t0 = now;
+        return W.last;
+    }
     var _lens = null;
     var _LENS_KINDS = ['chars', 'props', 'terrain', 'fog', 'env', 'fx', 'other'];
     var _LENS_KIND_LABEL = { chars: 'Characters', props: 'Props', terrain: 'Terrain', fog: 'Fog grid', env: 'Environment', fx: 'Particles/FX', other: 'Other' };
@@ -54097,6 +54156,7 @@ const ThreeRenderer = (function () {
         if (L.cur) _lensEnd();
         if (!renderer) return;
         if (!L.orig) { _lensHook(true); _lensGpuInit(L); }
+        _scanHook(true);   // THE SCAN ALARM
         if (now - L.censusAt >= _LENS_CENSUS_MS) _lensCensus(L, now);
         _lensEnforce(L);
         L.frameNo++;
@@ -54294,6 +54354,7 @@ const ThreeRenderer = (function () {
             if (top.length) L.push('  biggest groups: ' + top.slice(0, 6).map(function (t) { return t[1] + ' ' + t[0]; }).join(' · '));
         } catch (eBK) {}
         try {   // THE CHECK'S SPLIT + THE WALK'S SPLIT (2026-11-18): where the bundle check and the matrix walk spend their time
+            var scS = _scanLine(); if (scS) L.push(scS);   // THE SCAN ALARM
             if (_ewBun.spikes && _ewBun.spikes.length) L.push('Bundle spikes (last ' + _ewBun.spikes.length + '): ' + _ewBun.spikes.join(' | '));
             if (_ewBun.splitShow) L.push('Bundle check by group (ms a frame, meshes; ' + (_ewBun.splitN | 0) + ' groups walked): ' + _ewBun.splitShow);
             var mwS = _hqStillSplitText(); if (mwS) L.push('Matrix walk by group (ms a frame): ' + mwS);
@@ -54416,6 +54477,7 @@ const ThreeRenderer = (function () {
         if (L.res) _lensRes(0);
         L.shadows = true; _lensEnforce(L);
         _lensHook(false);
+        _scanHook(false);   // THE SCAN ALARM
         try { if (L.gpu) { L.gpu.q.forEach(function (it) { L.gpu.gl.deleteQuery(it.q); }); } } catch (e) {}
         if (L.el && L.el.parentNode) L.el.parentNode.removeChild(L.el);
         _lens = null;
@@ -91739,7 +91801,7 @@ const ThreeRenderer = (function () {
        The fight never holds (renderFrame clears the hold).
        Off: window.EW_HERO_SHADOW_EVERY_FRAME = true (live). ThreeRenderer.hq.dev.heroShadow() = the counts. */
     var _heroFr = null, _heroFrM = null, _heroFrS = null;
-    var HERO_STILL_MS = 1500, HERO_REFRESH_MS = 3000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35, HERO_RIGID_MS = 100, HERO_NEAR_MS = 500, HERO_NEAR_M = 6;
+    var HERO_LIST_FULL_MS = 20000, HERO_STILL_MS = 1500, HERO_REFRESH_MS = 3000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35, HERO_RIGID_MS = 100, HERO_NEAR_MS = 500, HERO_NEAR_M = 6;
     var _heroF64 = new Float64Array(1), _heroU32 = new Uint32Array(_heroF64.buffer);
     var _heroStat = { frames: 0, held: 0, drawn: 0, moving: 0, changed: 0, drift: 0, inReach: 0, casters: 0, why: '', sides: 63, sidesDrawn: 0, sidesSkipped: 0 };
     var _heroBodies = [];
@@ -91933,17 +91995,27 @@ const ThreeRenderer = (function () {
         }
         /* the list of casters, read again when something joined the scene (at most every HERO_LIST_MS; a piece that lands
            joins the map within that) and every 2 s for a flag set late */
-        var heroAdd = _ewAddCount();
-        if (!G.list || (G.addN !== heroAdd && now - G.listAt > HERO_LIST_MS) || now - G.listAt > 2000) {
-            G.addN = heroAdd;
-            var list = [];
-            H.scene.traverse(function (o) {
-                if (!o.isMesh || !o.castShadow) return;
+        /* THE FRONT DESK (2026-11-18): the arrivals join the list (each a walk of its own subtree); the whole scene is read only when
+           the desk overflowed (a build), the scene changed, and every HERO_LIST_FULL_MS to drop what left (was: the whole scene on any add
+           anywhere, up to ten times a second, and every 2 s). A mesh not yet flagged joins too (the shadow tick may make it a
+           caster); the frame's loop skips a non-caster as before. Off: window.EW_DESK_OFF */
+        if (now - G.listAt > HERO_LIST_MS || !G.list) {
+            var hT = _ewDeskTake(G.desk || (G.desk = _ewDeskQueue()));
+            var hAdd = function (o, into) {
+                if (!o.isMesh || !(o.castShadow || !o._ew_shadowFlagged)) return;
                 var g = o.geometry; if (!g) return;
                 if (!g.boundingSphere) { try { g.computeBoundingSphere(); } catch (e) {} }
-                list.push(o);
-            });
-            G.list = list; G.listAt = now;
+                into.push(o);
+            };
+            if (!G.list || hT.over || G.scn !== H.scene || now - G.listAt > HERO_LIST_FULL_MS) {
+                var list = [];
+                H.scene.traverse(function (o) { hAdd(o, list); });
+                G.list = list; G.listAt = now; G.scn = H.scene; G.seen = new Set(list);
+            } else if (hT.list.length) {
+                var grown = [], seenH = G.seen;
+                for (var hi = 0; hi < hT.list.length; hi++) { var hx = hT.list[hi]; if (_ewDeskUnder(hx, H.scene)) hx.traverse(function (o) { if (!seenH.has(o)) { seenH.add(o); hAdd(o, grown); } }); }
+                if (grown.length) G.list = G.list.concat(grown);   // a new array: the near list below is read again
+            }
         }
         var le = L.matrixWorld.elements, lx = le[12], ly = le[13], lz = le[14];
         var reach = (L.distance > 0) ? L.distance : ((L.shadow.camera && L.shadow.camera.far) || 1e9);
@@ -92070,7 +92142,15 @@ const ThreeRenderer = (function () {
         L.position.copy(snapped).add(dir.clone().multiplyScalar(SH.D));
         L.target.updateMatrixWorld(true);
         SH.frame++;
-        if (SH.frame % 30 === 0) [H.propGroup, H.doorGroup, H.charGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh && !o._ew_shadowFlagged) _flagMeshShadows(o); }); });   // a GLB that landed since
+        /* a GLB that landed since. THE FRONT DESK (2026-11-18): only what joined the room since is read (was: the whole prop, door
+           and people groups every 30 frames, 40,000+ objects in the city); a full read only when the desk overflowed (a build).
+           Off: window.EW_DESK_OFF (every read full) */
+        if (SH.frame % 30 === 0) {
+            var shQ = _ewDeskTake(SH.desk || (SH.desk = _ewDeskQueue())), shG = [H.propGroup, H.doorGroup, H.charGroup];
+            var shF = function (o) { if (o.isMesh && !o._ew_shadowFlagged) _flagMeshShadows(o); };
+            if (shQ.over) shG.forEach(function (G) { if (G) G.traverse(shF); });
+            else for (var shi = 0; shi < shQ.list.length; shi++) { var shx = shQ.list[shi]; for (var shk = 0; shk < 3; shk++) if (shG[shk] && _ewDeskUnder(shx, shG[shk])) { shx.traverse(shF); break; } }
+        }
         if (SH.dirty || (SH.frame % SH.everyN) === 0) { renderer.shadowMap.needsUpdate = true; SH.dirty = false; }
     }
     /* 2.3 THE ROOM-BOX AO's uniforms for this room: a closed box room gets its four walls + the ceiling, an open or polar room
@@ -93101,10 +93181,42 @@ const ThreeRenderer = (function () {
            it left alone, and that number moves each time the camera culls or shows a prop chunk or a closed room (the scan reads only
            what is shown). The pass now keeps the pieces it left alone by name and runs again only when a candidate it has never
            seen is in view (a file landed, a copy came home, a chunk shown for the first time). Off: window.EW_HQ_INST_RESCAN_COUNT */
+        /* THE FRONT DESK (2026-11-18, mondo: "can we just not do that anymore?"): the look for a fresh candidate no longer reads the
+           whole room every 2 s (the shell, prop and door groups: 40,000+ objects in the city, a string key built for each). Each top
+           piece of those groups is read once per pass (stamped with the pass's number); after that only a piece something joined
+           (the desk's arrivals) or a piece shown for the first time (a prop chunk coming into view) is read again. A pass that ran
+           again (_hqInstAdd: a new number) reads everything once. Off: window.EW_HQ_INST_FULL_SCAN (the whole read every time) */
+        if (I.leftSet && !(typeof window !== 'undefined' && (window.EW_HQ_INST_FULL_SCAN || window.EW_HQ_INST_RESCAN_COUNT))) {
+            var fr = _hqInstFresh(H, I);
+            if (fr) { try { _hqInstAdd(H, I); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } }
+            return;
+        }
         var scn = _hqInstScan(H), fresh = false;
         if (I.leftSet && !(typeof window !== 'undefined' && window.EW_HQ_INST_RESCAN_COUNT)) { for (var fk in scn.byKey) { var fl = scn.byKey[fk]; for (var fi = 0; fi < fl.length; fi++) if (!I.leftSet.has(fl[fi])) { fresh = true; break; } if (fresh) break; } }
         else fresh = scn.n !== I.left;
         if (fresh) { try { _hqInstAdd(H, I); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } }   // a file landed (or a copy was handed back): batch what now repeats
+    }
+    /* is a candidate the pass has never seen in view: the top pieces not yet read in this pass, or touched by an arrival */
+    function _hqInstFresh(H, I) {
+        var gs = [H.propGroup, H.shellGroup, H.doorGroup];
+        if (H.stage && H.stage.parts) for (var pid in H.stage.parts) { var PE = H.stage.parts[pid]; if (PE && PE.attached && PE.P) gs.push(PE.P.propGroup, PE.P.shellGroup, PE.P.doorGroup); }
+        var D = _ewDeskTake(I.desk || (I.desk = _ewDeskQueue())), pass = I.adds, LS = I.leftSet, fresh = false;
+        if (D.over) { for (var a = 0; a < gs.length; a++) if (gs[a]) for (var b = 0; b < gs[a].children.length; b++) gs[a].children[b]._ew_instSeen = -1; }
+        else for (var i = 0; i < D.list.length; i++) {
+            /* an arrival: the top piece it joined is read again */
+            for (var q = D.list[i], d = 0; q && q.parent && d < 64; q = q.parent, d++) { if (gs.indexOf(q.parent) >= 0) { q._ew_instSeen = -1; break; } }
+        }
+        var look = function (o) { if (fresh) return; var k = _hqInstKey(o); if (k && !LS.has(o)) fresh = true; };
+        for (var g = 0; g < gs.length && !fresh; g++) {
+            var G = gs[g]; if (!G || !G.parent || !G.visible) continue;
+            var C = G.children;
+            for (var c = 0; c < C.length && !fresh; c++) {
+                var o = C[c]; if (!o.visible || o._ew_instSeen === pass) continue;
+                o.traverseVisible(look);
+                if (!fresh) o._ew_instSeen = pass;
+            }
+        }
+        return fresh;
     }
     function _hqInstStats(H) {
         var I = H && H.inst; if (!I) return null;
@@ -93137,12 +93249,37 @@ const ThreeRenderer = (function () {
                    frame; the others keep their quiet turn (was: any add anywhere had every group of the city checked) */
                 for (var q = this, d = 0; q && d < 32; q = q.parent, d++) if (q._ew_bun) q._ew_bunDirty = true;
                 if (x && x.parent && x.parent !== this) for (q = x.parent, d = 0; q && d < 32; q = q.parent, d++) if (q._ew_bun) q._ew_bunDirty = true;
+                if (_ewDeskQs.length) for (var da = 0; da < arguments.length; da++) _ewDeskIn(arguments[da]);   // THE FRONT DESK
                 return add.apply(this, arguments);
             };
             P._ew_addHookR = true;
         }
         return _ewAddN;
     }
+    /* ══ THE FRONT DESK (2026-11-18, mondo: "this tiny little lamp is literally scanning for every object in the room every single
+       frame ... can we just not do that anymore?" and "can there not be one thing ... it just bounces back to the master observer") ══
+       Every object that joins a scene passes the add hook above. A feature that wants to know what arrived opens a queue here
+       (_ewDeskQueue) and reads only the arrivals (_ewDeskTake: the roots that were added, each with its own subtree), never the
+       whole room. A queue that fills past EW_DESK_CAP (a room being built) says `over`: its owner reads the room once, as before.
+       A queue nobody read for EW_DESK_IDLE_MS is closed (the room left); its next read says `over` too. */
+    var _ewDeskQs = [], EW_DESK_CAP = 4096, EW_DESK_IDLE_MS = 10000;
+    function _ewDeskIn(x) {
+        if (!x) return;
+        for (var i = 0; i < _ewDeskQs.length; i++) { var Q = _ewDeskQs[i]; if (Q.over) continue; if (Q.list.length >= EW_DESK_CAP) { Q.over = true; Q.list.length = 0; } else Q.list.push(x); }
+    }
+    function _ewDeskQueue() { _ewAddCount(); var Q = { list: [], over: true, at: performance.now(), open: true }; _ewDeskQs.push(Q); return Q; }
+    /* the arrivals since the last read: { list, over }; a fresh or reopened queue starts `over` (its owner has seen nothing yet) */
+    function _ewDeskTake(Q) {
+        var now = performance.now();
+        for (var i = _ewDeskQs.length - 1; i >= 0; i--) { var D = _ewDeskQs[i]; if (D !== Q && now - D.at > EW_DESK_IDLE_MS) { D.open = false; D.list.length = 0; _ewDeskQs.splice(i, 1); } }
+        if (!Q.open) { Q.open = true; Q.over = true; Q.list = []; _ewDeskQs.push(Q); }
+        Q.at = now;
+        var out = { list: Q.list, over: Q.over || (typeof window !== 'undefined' && !!window.EW_DESK_OFF) };
+        Q.list = []; Q.over = false;
+        return out;
+    }
+    /* is o inside root (o itself counts) */
+    function _ewDeskUnder(o, root) { for (var q = o, d = 0; q && d < 64; q = q.parent, d++) if (q === root) return true; return false; }
     /* ══ THE STILL WALK (2026-11-14, mondo in Disaster City: "still really slow and laggy ... there have to be multiple huge
        performance saves that you are missing") ══
        three walks EVERY object of the scene once a frame (updateMatrixWorld: each one's matrix composed again from its position,

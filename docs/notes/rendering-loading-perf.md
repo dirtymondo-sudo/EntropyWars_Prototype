@@ -2980,3 +2980,26 @@ times, each ask reading every blocker of the city). While `_hqTickWalker` runs (
 officer's own asks read THE NAV GRID over the whole blocker list, in its own slot (`_hqNavGrid(L, 'wgrid')`): same answers (the people in
 the list are seen moving and read every ask; a list that grows or is replaced is laid again). Off `EW_HQ_WALK_GRID_OFF`. The lens's
 "Inside the ticks" gains the static batch's steps (batch: check / stack prep / scan step / build step) for its 17-30 ms frames.
+
+## THE FRONT DESK + THE SCAN ALARM (2026-11-18, Disaster City 60 FPS thread)
+mondo 11-18: "how does this same bug of counting every single object in the room keep happening ... Can we go through
+everything that does that and make sure it doesnt". The audit (every function reached from `_hqFrame` and `renderFrame`, two
+calls deep, that walks the scene or loops a room-sized list) found four still polling the whole room:
+- the shadow tick's flags (`_hqShadowTick`): prop + door + people groups walked every 30 frames;
+- the hero lamp's caster list (`_hqHeroGate`): the WHOLE scene on any add anywhere (up to 10x a second) and every 2 s;
+- the instance pass's fresh check (`_hqInstTick`): shell + prop + door groups with a string key per object, every 2 s;
+- the airborne landing (`_hqBlockerFloor`): every blocker of the room each frame of a jump/fall (walker: spikes thread).
+Also slow-polled, left for now: chunk spheres of non-prop chunks every 2 s (`_hqChunkTick`, spikes thread), LOD scan safety
+read every 30 s (`_hqLodScan`), CSS2D label count every 60 s.
+
+THE FRONT DESK (`_ewDeskQueue()` / `_ewDeskTake(Q)` / `_ewDeskUnder(o, root)`, beside `_ewAddCount`): the Object3D.add hook
+also pushes each added object into every open queue. A reader takes `{ list, over }`: the roots that joined since its last
+read (walk only those), or `over` = read the room once (new queue, more than 4,096 arrivals, or the queue was closed after
+10 s unread). The shadow flags and the hero list now read arrivals only (hero list: whole scene every 20 s to drop what left,
+`HERO_LIST_FULL_MS`). The instance pass stamps each top piece of its groups with the pass number once read; only an unread
+piece, one an arrival joined, or one shown for the first time is read again (`_hqInstFresh`). Off: `window.EW_DESK_OFF` (desk
+reads always full), `window.EW_HQ_INST_FULL_SCAN` (old fresh check).
+
+THE SCAN ALARM: while F3 is open, `Object3D.prototype.traverse/traverseVisible` are wrapped (`_scanHook`); a walk of 500+
+objects is charged to the first two named functions of its stack. Lens line "Scene walks (objects read a second · walks a
+second · biggest)", top 8, `!!` = 20K+ a second. Rule: CLAUDE.md RULE #1e.

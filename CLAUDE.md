@@ -243,6 +243,16 @@ CDN cached the old file: bump the token again in a new PR.
   Since 2026-09-27 a file changed in place reaches players once ASSET_MANIFEST.json
   lists its new sha (`npm run manifest`, then deploy); else rename it or tell the user.
 
+## RULE #1e — NO WHOLE-ROOM SCANS IN ANYTHING THAT REPEATS (mondo 11-18)
+mondo 11-18: "every single time ... this tiny little lamp is literally scanning for every object in the room every single frame ...
+can we just not do that anymore?" A city room holds 40,000-60,000 objects: a walk that is free in a hallway is 5-20 ms there.
+Code that runs every frame, every N frames or on a timer NEVER calls `scene.traverse` / `traverseVisible` / loops every blocker,
+prop or child of the room "to find what changed". Use, in order: THE FRONT DESK (three-renderer.js `_ewDeskQueue` / `_ewDeskTake`:
+the objects that joined since you last asked), a list kept when the thing is made, a change counter (`_ewAddCount`), the nav grid
+(`_hqNavGrid` / `_hqNavGridAt`) for "what is near x, z". A whole read is for building a room, an overflowed desk, or a rare
+(20 s+) clean-up. Before shipping anything that repeats, open F3 in Disaster City: its line "Scene walks" names every code that
+reads 1,000+ objects a second; a new name there (!! = 20K+/s) is a bug in your change. Notes: rendering-loading-perf.md "THE FRONT DESK".
+
 ## RULE #2 — ONLINE PVP PARITY (every gameplay/visual change MUST work online)
 Online is host-authoritative: the HOST runs the entire engine (blitz turns, AI
 auto-play, damage, banners, camera); the GUEST is a dumb mirror that only (a)
