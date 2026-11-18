@@ -86,8 +86,11 @@ then tough shit. The player experience should be the same"): no weak-PC cut may 
   downhill and fills holes. Reactions R1-R16 (`champions-combat.md`).
 - **Forced movement** is one shared system (push, pull, knockback, fling, slide, ice, bombs, tornado). Airborne units skip
   traps and bombs. The preview draws the whole chain. A push with no picked direction goes straight away from the caster.
-- **Every lost fight costs money** (11-17: "every loss should lose you money"). Story fights; the amount is a number still to set
-  (`docs/plans/npc-encounters/PLAN.md` section 0, round 2). Not built yet.
+- **Every lost fight costs money** (11-17: "every loss should lose you money"). Story fights, quest fights too: 8 gold x the strongest
+  enemy's level, never more than held; a retreat costs nothing. BUILT 11-18 (NPC encounters step 4: data.js `hqNpcLossGold`,
+  `HQ_NPC_TEMPERS.lossGoldPerLevel`; battle.js the encounter commit). The party is still healed after a loss.
+- **NPCs start fights** (11-17/18, replaces "never random"): Brutes at sight, a Territorial after its warning, muggers (a flat chance per
+  game day, PAY or FIGHT). Never one 8 or more levels under the party, never in DOOR HQ, a cutscene or online (`npc-system.md` "NPC-STARTED FIGHTS").
 - No self-combo. Own summons are never hit by own spells. Jump is 1-3. Never write "armour".
 - Celestial arrives round 4, then every 5. The Nexus bar is 8. Preview tiles are green / red. Auto tactics turns off
   with one click. Day / night runs on a clock.
