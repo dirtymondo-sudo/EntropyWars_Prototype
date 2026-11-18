@@ -79528,6 +79528,7 @@ const HQ_STAGE_RULES = {
            doors (hqStageRoundJoins). In the hall every joined room stands beside it; in a joined room only the hall does (the
            hall's other joined doors are plain doors until you step into the hall). A box room has one row at most. */
         { a: 'central_egress', door: 'office', b: 'office', bDoor: 'egress' },   // YOUR OFFICE ⇄ the main hall, the closet door at 135°
+        { a: 'central_egress', door: 'reception', b: 'reception', bDoor: 'egress' },   // ROOM 1 · RECEPTION ⇄ the main hall, the glass door at 90° (2026-11-18, mondo: "okay do reception next")
     ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
