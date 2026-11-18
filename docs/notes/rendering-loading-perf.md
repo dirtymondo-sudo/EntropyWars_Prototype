@@ -2864,3 +2864,10 @@ Three engine pieces came with it:
   ~10 GB in the cloud renderer: shrink GLB bitmaps (createImageBitmap hook) or it is killed.
 - WHAT IS LEFT by the cloud's squares line: cut-out signs ~420 + opaque sign canvases ~88, many looks ~140 (multi-material
   pieces: split per material, then they stack), instance cells ~520.
+
+## THE TICK LENS LINES (2026-11-18, Disaster City 60 FPS thread)
+mondo's Shift+F3 after the joined glows: 1,748 meshes but still 35.5 FPS; the frame is our JS now (CPU 24.2 of 28.2 ms). The
+biggest line was "doors + residents + scene" at 4.3 ms. `_hqFrame` now marks each tick on its own lens line: walker (seam),
+portals + gun doors, scene moves + drop + cut beside, rounds (walking people), residents, ladder, crowd near, awareness + marks,
+grass field, scene door + key + cast. No change on screen. Read the code first: residents / crowd / awareness picks are already
+throttled (300-400 ms), so the per-walker rounds tick and the scene moves are the likely cost; his next readout says which.
