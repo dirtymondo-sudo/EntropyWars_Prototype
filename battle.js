@@ -89372,7 +89372,9 @@
                     }
                 }
                 /* a 5G Tower (auraDebuff) never shoots: its line names it and says what it does, not a turret's 8 dmg (A3) */
-                addLog(spell.auraDebuff
+                addLog(spell.projector   // 📽 the V-Tuber's projector never shoots: say what it is for
+                    ? `📽 ${_ctName(unit)} stands a ${_ctSp(spell.name)} at ${coordLabel(x, y)} (${turretHp} HP): her spells and attacks can fly from it.`
+                    : spell.auraDebuff
                     ? `${_ctName(unit)} deploys ${_ctSp(spell.name)} at ${coordLabel(x, y)} (${spell.hitsToKill ? spell.hitsToKill + ' hits' : turretHp + ' HP'}, enemies within ${turretRange} lose ${spell.auraDefReduction || 0} M.DEF).`
                     : `${_ctName(unit)} deploys a turret at ${coordLabel(x, y)} (${turretHp} HP, ${turretDmg} dmg, range ${turretRange}).`, unit.player);
                 scheduleBoardRender();
@@ -91921,6 +91923,19 @@
                         });
                         tileSet.add(posKey(x, y));
                     }
+                }
+            }
+            /* 📽 THE PROJECTORS (the V-Tuber, 2026-11-18): her basic attack can fly from a Holo Projector too — the squares in
+               reach of one (range + sight from the projector, what she sees) light as well */
+            for (const o of vtProjectorsOf(unit).length ? doorCastOrigins(unit).filter(q => q.projectorId) : []) {
+                const R = getEffectiveRange(unit);
+                for (let y = Math.max(0, o.y - R - 1); y <= Math.min(bh() - 1, o.y + R + 1); y++) for (let x = Math.max(0, o.x - R - 1); x <= Math.min(bw() - 1, o.x + R + 1); x++) {
+                    const k = posKey(x, y);
+                    if (tileSet.has(k) || (x === unit.x && y === unit.y)) continue;
+                    const d = combatDist(o.x, o.y, o.z || 0, x, y, _tileStandZ(x, y));
+                    if (d < 1 || d > R || isRangeBlockedByTerrain(o.x, o.y, x, y, o.z || 0)) continue;
+                    if (visionGatesTargeting(unit) && !isInVision(unit, x, y)) continue;
+                    tiles.push({ x, y }); tileSet.add(k);
                 }
             }
 

@@ -6145,13 +6145,13 @@ const RACE_CREATOR_LOOKS = {
    his gaming headset round the neck) are `ewm_` picks from bake-meshy.py. Notes: champions-combat.md "THE STREAMER". */
 RACE_CREATOR_LOOKS['streamer'] = {
   male: {"model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","height":1.0,"mhSkin":"young_caucasian_male","mhEyes":"brown","mhBrows":"eyebrow010","browTint":"pick","browColor":"#3a2a1e",
-    "hair":"mh_cortu_short_messy_hair","hairColor":"#4a3322","jaw":-0.1,"eyeBags":0.35,
+    "hair":"mh_cortu_short_messy_hair","hairColor":"#4a3322","outfit":"none","bottoms":"none","outer":"none","feet":"none","jaw":-0.1,"eyeBags":0.35,
     "wear":["mhw_elvs_hooded_sweat_jacket1","mhw_toigo_harem_pants","mhw_culturalibre_sneakers","ewm_stheadset"],
     "wearTint":{"mhw_elvs_hooded_sweat_jacket1":"#141418","mhw_toigo_harem_pants":"#77797e"},"wearFabric":{}},
   female: {"model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","height":0.95,"mhSkin":"toigo_light_skin_with_natural_makeup","mhEyes":"brown","mhBrows":"eyebrow010",
     "jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04",
     "lipTint":"pick","lipColor":"#8a2a3c","browTint":"pick","browColor":"#121012","linerTint":"pick","linerColor":"#0e0b0c","shadowTint":"pick","shadowColor":"#5a2a40",
-    "hair":"bald","hairColor":"#121012",
+    "hair":"bald","hairColor":"#121012","outfit":"none","bottoms":"none","outer":"none","feet":"none",
     "wear":["ewm_egwig","mhw_ews_striped_shirt","mhw_elvs_pleated_plaid_mini_skirt","mhw_kwnet_at_pantyhose01","mhw_mindfront_shoes_biker_boots_female"],
     "wearTint":{"mhw_elvs_pleated_plaid_mini_skirt":"#c4242c","mhw_kwnet_at_pantyhose01":"#151515","mhw_mindfront_shoes_biker_boots_female":"#121212"},"wearFabric":{},
     "bust":0.35,"waist":-0.25,"hips":0.2},
@@ -6162,9 +6162,9 @@ RACE_CREATOR_LOOKS['vtuber'] = {
   female: {"model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","height":0.94,"mhSkin":"toigo_light_skin_with_natural_makeup","mhEyes":"blue","mhBrows":"eyebrow010",
     "jaw":-0.45,"head":-0.15,"nose":-0.35,"noseWidth":-0.45,"eyeSize":0.2,"browRidge":-0.6,"mouthCorners":0.3,"mhLashes":"mindfront_eyelashes_04",
     "lipTint":"pick","lipColor":"#d46a8a","browTint":"pick","browColor":"#b8a8c0","linerTint":"pick","linerColor":"#2a1e2c","shadowTint":"pick","shadowColor":"#9aa8e8",
-    "hair":"mh_toigo_blunt_bob","hairColor":"#d8d4e0",
+    "hair":"mh_toigo_blunt_bob","hairColor":"#d8d4e0","outfit":"none","bottoms":"none","outer":"none","feet":"none",
     "wear":["ewm_vtwig","mhw_punkduck_high_neck_crop_top","mhw_toigo_tiered_mini_skirt","mhw_scailman_gogo_platform_boots"],
-    "wearTint":{"mhw_punkduck_high_neck_crop_top":"#f4f6fa","mhw_toigo_tiered_mini_skirt":"#f4f6fa","mhw_scailman_gogo_platform_boots":"#f4f6fa"},"wearFabric":{},
+    "wearTint":{"mhw_punkduck_high_neck_crop_top":"#f4f6fa","mhw_toigo_tiered_mini_skirt":"#8fdcff","mhw_scailman_gogo_platform_boots":"#f4f6fa"},"wearFabric":{},
     "bust":0.3,"waist":-0.3,"hips":0.15},
 };
 const RACE_CREATOR_LOOK_DEFS = {
