@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1243 |
+| Meshy AI | no | 1242 |
 | Meshy AI, reworked by Claude | no | 11 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 86 |
@@ -87,7 +87,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | djinn | `Assets/characters/races/djinn/male/Meshy_AI_a_djinn_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | door agent | `Assets/characters/races/maincharacters/Meshy_AI_Player_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | door agent (female) | `Assets/characters/races/maincharacters/Meshy_AI_Agent_Belle_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| dragon | `Assets/characters/races/dragon/male/Meshy_AI_dragon_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
+| dragon | `Assets/characters/races/dragon/male/Meshy_AI_dragon_r2_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | dreameater | `Assets/characters/races/dreameater/male/Meshy_AI_dream_eater_alien_ent_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | eagleman | `Assets/characters/races/eagleman/Meshy_AI_eagleman__Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | fairy (female) | `Assets/characters/races/fairy/female/Meshy_AI_fairy_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
@@ -229,7 +229,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | tree person | `Assets/characters/races/treeperson/Meshy_AI_treeperson_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | undead | `Assets/characters/races/undead/Meshy_AI_undead_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | unicorn | `Assets/world/animals/horses/Horse_glb.glb#unicorn` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) + Meshy unicorn horn + Meshy angel wing |
-| valkraye (female) | `Assets/characters/races/valkraye/Meshy_AI_valkraye_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
+| valkraye (female) | `Assets/characters/races/valkraye/Meshy_AI_valkraye_r2_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | vampire — creator look also baked | `Assets/characters/races/vampire/male/Meshy_AI_vampire_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | vampire (female) — creator look also baked | `Assets/characters/races/vampire/female/Meshy_AI_beautiful_attractive__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | virus | `Assets/characters/races/virus/male/virus.glb` | Meshy AI, reworked by Claude | Meshy AI parts (a dark green crystal core and ONE crystal spike) put together by Claude in code (project files internet-units/virus/assemble.mjs): the spike used 14 times, each its own node, the eight red eyes and the nine code tendrils built in code, for the Virus race's moving-parts rig (three-renderer.js THE VIRUS) |
@@ -3602,7 +3602,6 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | cosmic_wraith_cape | `Assets/characters/gear/capes/cosmic_wraith_cape.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | angel_f_halo | `Assets/characters/gear/halos/angel_f_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | angel_m_halo | `Assets/characters/gear/halos/angel_m_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
-| atlantean_trident | `Assets/characters/gear/held/atlantean_trident.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | fairy_wing_single | `Assets/characters/gear/wings/fairy_wing_single.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | feathered_serpent | `Assets/characters/races/aztec/feathered_serpent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for Quetzalcoatl's serpent body (THE NEW RACES, mondo 2026-11-16) | three-renderer.js |
 | ew_plant_apple | `Assets/world/props/meshy/ew_plant_apple.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) | three-renderer.js |

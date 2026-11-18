@@ -2180,7 +2180,8 @@ const RACE_MODELS_3D = {
     }),
     female: _mkUAL('atlantean/female', 'atlantean_f_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
          model: 'https://cdn.entropywars.net/Assets/characters/races/atlantean/female/Meshy_AI_atlantean_f_v2_Running.glb',   // was 'hot_attractive_atlant' (kept on R2)
-         procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/atlantean_trident.glb', len: 1.05, grip: 0.4, hand: 'RightHand' } },   // the trident apart, in her hand
+         // no held trident (mondo 11-18: Meshy hands have no fingers to hold it; a trident needs an MPFB look). The gear's `held`
+         // still works for a unit that can grip: { held: { url: '.../gear/held/atlantean_trident.glb', len: 1.05, grip: 0.4 } }
          heightRatio: 0.98,      // statuesque sea-dweller
          basicAttackKind: 'magic' }),  // tide-caller — basic attacks surge, no blades
   },
@@ -3169,8 +3170,8 @@ const RACE_MODELS_3D = {
   // underscore in the file stem (…valkraye__biped_…) → prefix keeps a
   // trailing '_' (same pattern as the psychics/superhero).
   'valkraye': {
-    female: _mkUAL('valkraye', 'valkraye_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
-      model: 'https://cdn.entropywars.net/Assets/characters/races/valkraye/Meshy_AI_valkraye_v2_Running.glb',   // was 'hot_girl_valkraye_' (kept on R2)
+    female: _mkUAL('valkraye', 'valkraye_r2_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/valkraye/Meshy_AI_valkraye_r2_v2_Running.glb',   // 11-18 remade with dark hair (mondo; the silver-haired one stays on R2 as valkraye_v2); was 'hot_girl_valkraye_' (kept on R2)
       procRig: 'unitGear', gear: { wings: 'angel', wingLen: 0.62 },
       heightRatio: 0.98,
       lib: { idle: { clip: 'Sword_Idle' },
@@ -3390,9 +3391,9 @@ const RACE_MODELS_3D = {
   // kong (1.65): monster sway, claw basics; breath attacks fire their mapped
   // beam VFX.
   'dragon': {
-    male: _mkUAL('dragon/male', 'dragon_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
-      model: 'https://cdn.entropywars.net/Assets/characters/races/dragon/male/Meshy_AI_dragon_v2_Running.glb',   // was 'dragon_realistic' (kept on R2)
-      procRig: 'unitGear', gear: { wings: 'dragon', wingLen: 0.72 },   // the game's dragon wing (Hoard's), beating apart
+    male: _mkUAL('dragon/male', 'dragon_r2_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/dragon/male/Meshy_AI_dragon_r2_v2_Running.glb',   // 11-18 regenerated (mondo: the first remake looked messed up; that one stays on R2 as dragon_v2); was 'dragon_realistic'
+      procRig: 'unitGear', gear: { wings: 'dragon', wingLen: 0.6 },   // the game's dragon wing (Hoard's), beating apart
       heightRatio: 1.6,
       basicAttackKind: 'claw',
       lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
@@ -3414,7 +3415,7 @@ const RACE_MODELS_3D = {
   'cosmic wraith': {
     male: _mkUAL('cosmicwraith/male', 'cosmic_wraith_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
       model: 'https://cdn.entropywars.net/Assets/characters/races/cosmicwraith/male/Meshy_AI_cosmic_wraith_v2_Running.glb',   // was 'cosmic_wraith_realis' (kept on R2)
-      procRig: 'unitGear', gear: { cape: 'https://cdn.entropywars.net/Assets/characters/gear/capes/cosmic_wraith_cape.glb', capeLen: 0.74 },   // the hoodless cape apart, swinging
+      procRig: 'unitGear', gear: { cape: 'https://cdn.entropywars.net/Assets/characters/gear/capes/cosmic_wraith_cape.glb', capeLen: 0.74, capeBack: 0.02 },   // the hoodless cape apart, swinging (collar centred on the neck, 11-18)
       heightRatio: 1.2,
       basicAttackKind: 'magic',
     }),

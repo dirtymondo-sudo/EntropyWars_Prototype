@@ -17018,7 +17018,11 @@ const ThreeRenderer = (function () {
         var cm = at.cape != null && _gearMesh(got[at.cape]);
         if (cm) {
             var c = _gearPlain(cm), cb = c.geometry.boundingBox, csc = (g.capeLen || 0.72) * H / Math.max(1e-6, cb.max.y - cb.min.y);
-            c.geometry.translate(-(cb.min.x + cb.max.x) / 2, -cb.max.y, -cb.max.z);   // the top edge's front on the hinge
+            /* centre on the collar (the top tenth's points), not the box: a Meshy cape's hem flares to one side */
+            var cpa = c.geometry.attributes.position, ccx = 0, ccz = 0, ccn = 0, cyc = cb.max.y - 0.1 * (cb.max.y - cb.min.y);
+            for (var ci = 0; ci < cpa.count; ci++) if (cpa.getY(ci) >= cyc) { ccx += cpa.getX(ci); ccz += cpa.getZ(ci); ccn++; }
+            ccx = ccn ? ccx / ccn : (cb.min.x + cb.max.x) / 2; ccz = ccn ? ccz / ccn : cb.max.z;
+            c.geometry.translate(-ccx, -cb.max.y, -ccz);   // the collar's middle on the hinge
             var ch = new THREE.Group(); ch.name = 'ewGearCape'; ch.scale.setScalar(csc); ch.add(c);
             _gearHang(chest, new THREE.Vector3(np.x, np.y - 0.01 * H, cp.z - (g.capeBack || 0.06) * H), ch, 'ewGearCapeMount');
             made = true;
@@ -49247,7 +49251,9 @@ const ThreeRenderer = (function () {
             var noM = walk && !st.dyn && !!g._ew_st && !_hqStillOff() && !(typeof window !== 'undefined' && window.EW_BUN_HASH_MATRICES);
             var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, lit: false, noV: !!st.dyn, noM: noM };
             _ewBun.now = now;
+            var twk = (_lens && _lens.cur) ? performance.now() : 0;
             if (walk) _ewBunWalkTop(g, S); else _ewBunWalk(g, S);
+            if (twk) { st.msA = (st.msA || 0) + performance.now() - twk; st.nA = S.n; }   // THE CHECK'S SPLIT (lens): this group's walk
             if (noM) { var ge = g.matrixWorld.elements; for (var gi = 0; gi < 16; gi++) S.hv = _ewBunMix(S.hv, Math.round(ge[gi] * 1000)); _ewBun.noMN = (_ewBun.noMN | 0) + 1; }
             g._ew_bunDirty = false;
             g._ew_bunOuts = S.outs || null;   // THE MOVERS OUT: the pieces the frame draws beside this group's recording
@@ -49307,6 +49313,12 @@ const ThreeRenderer = (function () {
             var wn = _ewBun.whyN || {}, wr = {};   // the re-records by cause, per second over the last second
             for (var wk in W) { var d = W[wk] - (wn[wk] || 0); if (d > 0) wr[wk] = +(d * 1000 / span).toFixed(1); }
             _ewBun.whyRate = wr; _ewBun.whyN = Object.assign({}, W);
+            if (_lens && _lens.cur && _ewBun.msN) {   // THE CHECK'S SPLIT: the costliest groups' walks, ms a frame over the last second
+                var ct = []; for (var ci = 0; ci < T.length; ci++) { var cs = T[ci]._ew_bun; if (cs && cs.msA) { ct.push([cs.msA / _ewBun.msN, T[ci], cs.nA | 0]); cs.msA = 0; } }
+                ct.sort(function (a, b) { return b[0] - a[0]; });
+                _ewBun.splitShow = ct.slice(0, 8).map(function (c) { var cg = c[1]; return String(cg._ew_bunName || cg.name || cg.type).replace(/^site_prebuilt_/, '') + (cg._ew_pChunk || cg._ew_chunk ? ' ' + (cg._ew_pChunk || cg._ew_chunk) : '') + ' ' + c[0].toFixed(2) + ' (' + c[2] + ')'; }).join(' · ');
+                _ewBun.splitN = ct.length;
+            }
             _ewBun.msAvg = _ewBun.msN ? _ewBun.ms / _ewBun.msN : 0; _ewBun.ms = 0; _ewBun.msN = 0;
         }
     }
@@ -54069,9 +54081,13 @@ const ThreeRenderer = (function () {
             top.sort(function (a, b) { return b[0] - a[0]; });
             if (top.length) L.push('  biggest groups: ' + top.slice(0, 6).map(function (t) { return t[1] + ' ' + t[0]; }).join(' · '));
         } catch (eBK) {}
+        try {   // THE CHECK'S SPLIT + THE WALK'S SPLIT (2026-11-18): where the bundle check and the matrix walk spend their time
+            if (_ewBun.splitShow) L.push('Bundle check by group (ms a frame, meshes; ' + (_ewBun.splitN | 0) + ' groups walked): ' + _ewBun.splitShow);
+            var mwS = _hqStillSplitText(); if (mwS) L.push('Matrix walk by group (ms a frame): ' + mwS);
+        } catch (eSp) {}
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
-            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
+            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + ' · movers kept out ' + (_ewBun.outS | 0));
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
@@ -92982,7 +92998,18 @@ const ThreeRenderer = (function () {
             if (hasMv && mv.has(c)) {
                 c.updateMatrixWorld(true); s = _hqStillSum(c);
                 if (s !== SM[i]) { SM[i] = s; AT[i] = now; }
-                else if (now - AT[i] > (st.hold || HQ_STILL_HOLD_MS)) { mv.delete(c); if (c._ew_bunOutA) { c._ew_bunOut = undefined; c._ew_bunOutA = false; this._ew_bunDirty = true; } }   // at rest: back into its group's recording
+                else if (now - AT[i] > (st.hold || HQ_STILL_HOLD_MS)) {
+                    mv.delete(c);
+                    /* THE MOVERS STAY OUT (2026-11-18, mondo's F3 in Disaster City: 23 FPS, worst 99 ms, "bundle check 15.2", the shell re-recorded
+                       96 times, 70 of them a mover going out or coming back): every start and every stop of a piece in a big still group
+                       re-recorded the group AND checked all its ~10,000 children that frame. A piece that rests once comes back (a prop
+                       knocked once); a piece that moves again after coming back stays drawn outside the recording from then on (it is one
+                       of the few that move: a dozen own draws in place of a re-record each time it starts or stops). Off: window.EW_BUN_OUT_RETURN_ALWAYS. */
+                    if (c._ew_bunOutA) {
+                        if ((c._ew_bunOutR | 0) >= 1 && !(typeof window !== 'undefined' && window.EW_BUN_OUT_RETURN_ALWAYS)) { if (!c._ew_bunOutS) { c._ew_bunOutS = true; _ewBun.outS = (_ewBun.outS | 0) + 1; } }
+                        else { c._ew_bunOutR = (c._ew_bunOutR | 0) + 1; c._ew_bunOut = undefined; c._ew_bunOutA = false; this._ew_bunDirty = true; }
+                    }
+                }   // at rest: back into its group's recording (once)
                 S.movers++; continue;
             }
             if ((i >= i0 && i < i1) || i + n < i1) {   // this frame's slice of the rest
@@ -93001,12 +93028,29 @@ const ThreeRenderer = (function () {
         var S = _hqStS; S.groups = S.out = S.full = S.tops = S.fresh = S.movers = S.swept = 0;
         var t0 = performance.now();
         _hqStNow = t0; _hqStWalk = true;
-        try { sc.updateMatrixWorld(); } finally { _hqStWalk = false; }
+        try {
+            /* THE WALK'S SPLIT (lens open only, 2026-11-18): the scene's own step of three's walk, then each top child timed by its
+               name (the same walk, child by child), for the lens line "Matrix walk by group" */
+            if (_lens && _lens.cur && !sc.parent && sc.matrixAutoUpdate !== undefined) {
+                if (sc.matrixAutoUpdate) sc.updateMatrix();
+                var fo = false; if (sc.matrixWorldNeedsUpdate) { sc.matrixWorld.copy(sc.matrix); sc.matrixWorldNeedsUpdate = false; fo = true; }
+                var MS = _hqStSplit || (_hqStSplit = {}), kids = sc.children;
+                for (var ki = 0; ki < kids.length; ki++) { var kc = kids[ki]; if (kc.matrixWorldAutoUpdate === true || fo) { var kt = performance.now(); kc.updateMatrixWorld(fo); var kn = kc.name || kc.type || '?'; MS[kn] = (MS[kn] || 0) + performance.now() - kt; } }
+                _hqStSplitN = (_hqStSplitN | 0) + 1;
+                if (sc._ew_mwStamp) sc._ew_mwAt = _css2dTick;   // (_css2dRender's mark, as the scene's own walk sets it)
+                if (sc._ew_afterWalk) { var afw = sc._ew_afterWalk; sc._ew_afterWalk = null; afw(); }   // (_hqWalkHook's reader, as the scene's own walk calls it)
+            } else sc.updateMatrixWorld();
+        } finally { _hqStWalk = false; }
         var ms = performance.now() - t0;
         _hqStMs = _hqStMs ? _hqStMs * 0.9 + ms * 0.1 : ms;
         _hqStLast = { groups: S.groups, out: S.out, full: S.full, tops: S.tops, fresh: S.fresh, movers: S.movers, swept: S.swept, ms: +_hqStMs.toFixed(2), off: _hqStillOff() };
     }
     function _hqStillStats() { return _hqStLast; }
+    var _hqStSplit = null, _hqStSplitN = 0;
+    function _hqStillSplitText() {   // the lens line: ms a frame per top group of the walk since the last read
+        var M = _hqStSplit, n = _hqStSplitN; _hqStSplit = null; _hqStSplitN = 0; if (!M || !n) return '';
+        return Object.keys(M).sort(function (a, b) { return M[b] - M[a]; }).slice(0, 8).map(function (k) { return String(k).replace(/^site_prebuilt_/, '') + ' ' + (M[k] / n).toFixed(2); }).join(' · ');
+    }
     function _hqChunkRules() {
         var R = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES) ? HQ_ENGINE_RULES : {};
         return { m: (R.chunkM > 0) ? +R.chunkM : 42, minSpan: (R.chunkMinSpanM > 0) ? +R.chunkMinSpanM : 200, pad: (R.chunkPadM >= 0) ? +R.chunkPadM : 15,

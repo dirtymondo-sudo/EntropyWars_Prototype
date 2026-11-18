@@ -12444,6 +12444,10 @@ areas except disaster city first."
   pack: plaster -> stained grey Wall_09, rust Metal_06/09, grime, drips, a little blood), Leylines (Babel's calm flagstone walls -> sandstone brick
   Brick_14, its cliff/steps too; Stonehenge grey Stone_11; the Bug nest's marble Stone_06), The Deep (Atlantis' calm marble -> drowned pale stone
   Stone_05, the good gold). The pass now also swaps a generated room's `terrain.gen.wallKey` / `fenceKey` (the Cavern's walls are plan walls).
+- BATCH 4: Hell (calm cracked rock -> scorched red-brown rock Stone_10 on cliffs/ramp sides, black rock Stone_02 underfoot; Hell is plateaus, no
+  wall faces, so few stains land), the Catacombs (damp stone blocks Brick_09/10, worn flags Floor_13, drips, a little blood), the Vatican
+  (travertine Wall_01, ochre plaster Wall_12 in place of the plain painted plaster, grey tile floors Floor_12, the good gold), Heaven (clouds
+  stay; marble -> cream stone, clean). A `scatter` row's key is a ROCK MODEL name (menhir, cave_stone), not a sheet: never map it.
 - LESSONS: a stair-built terrain slope draws in `terrain.cliff`, so a cliff sheet shows on steps: pick one that reads as stone blocks. A probe
   needs `--flags=EW_HQ_NO_ENCOUNTER` (a field fight hides the view) and ONE browser at a time (three at once got OOM-killed).
 
@@ -12472,4 +12476,9 @@ night"); a short Meshy list or stand-ins ("a billboard is just a rectangle"); th
   `texbuilding` row (that row can stand turned or off centre: lines then hang in the air). Details: PLAN.md section 10.
 - PASS 3, HEIGHT (11-18, mondo: "let's just do 1 (height) for now"): towers on legs over the buildings (`tower`, the old roofs
   stay clear and walkable, no collision added) and glass skyways between them (`sky`). Details: PLAN.md section 11.
+- THE WHOLE CITY + NO SIGNS (11-18, mondo: "do this look on the rest of the city districts, at least on the buildings it makes
+  sense ... I am going to do a neon sign and font pass later so stop making stuff we are gonna have to undo later"): the look is on
+  all nine districts (`boxes`); landmarks, monuments, street pieces and every inside are kept (`keepPlots`, `keepRows`);
+  **the look writes no words and does not touch the districts' signs: never add sign content to it.** Additions live in one row
+  a district (`look:add:<d>`). Details: PLAN.md section 12.
 
