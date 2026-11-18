@@ -8854,6 +8854,7 @@
             'ninja': 'Human. A ninja of the Disaster City rooftops, in a black hooded gi with no blade at all: throwing stars and bare hands. Hit him and you hit a log; turn round and he is behind you, and then there are eight of him.',   // 2026-11-17 THE NINJA
             'haunted doll': 'Anomaly. A haunted porcelain doll of the Haunted House in The Estate: cracked face, black glass eyes, a stained pink lace dress. It sits on the shelf and moves when you look away, and it pulls its own string to hear what it will say.',   // 2026-11-17 THE HAUNTED DOLL
             'cursed tv': 'Anomaly. A cursed television on a rolling AV cart, found in the attic of the Haunted House in The Estate. Wood-cased screen, rabbit-ear antennae, a power cord that is plugged into nothing. It changes the channel to cast, and its haunted remote can rewind what just happened to you.',   // 2026-11-17 THE CURSED TV
+            'virus': 'Anomaly. A living computer virus out of The Internet\'s quarantine: a floating ball of dark green crystal ringed with red eyes, spikes that glow at the tips, tendrils of broken code hanging under it. It plants payloads that copy themselves from body to body, splits off replicas, and sets everything off at once.',   // 2026-11-18 THE VIRUS
             'lifeguard': 'Human. The lifeguard of the Beach and Bayside. Red swimsuit, red tube, and nobody goes down on her watch.',   // 2026-11-16
             'chess piece': 'Anomaly. A black piece off the Looking-Glass board that plays as all six. Each piece spell turns it into that piece and strikes the way the piece captures; the piece it is decides how it moves.',   // 2026-10-29
             'cult leader': 'Human. Charismatic. Files no forms because the members file them for him — forty-one so far, all in the same handwriting. Operates out of the redwoods of Bohemian Grove, where an owl the size of a house is not the strangest thing at the altar. Subject exhibits verified influence over cooperative minds (charm, indoctrination, the passing of a cup) and an entourage that arrives before it is called for. The robes are cotton. The candles never go out. Do not drink anything he offers. Do not join.',
@@ -9038,7 +9039,7 @@
             return 'EW-' + (Math.abs(race.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 9000 + 1000);
         }
 
-        const _CODEX_SKY_RACES = ['fairy','shadow entity','ai','angel','seraphim','orb of light','demon','mech','ghost','annunaki','gargoyle','djinn','mothman','glitch','demon prince','demon princess','fallen angel','cyborg','nephilim','vampire','superhero','antihero','chosen one','dragon','occulus','unicorn','valkraye','watcher'];
+        const _CODEX_SKY_RACES = ['virus','fairy','shadow entity','ai','angel','seraphim','orb of light','demon','mech','ghost','annunaki','gargoyle','djinn','mothman','glitch','demon prince','demon princess','fallen angel','cyborg','nephilim','vampire','superhero','antihero','chosen one','dragon','occulus','unicorn','valkraye','watcher'];
 
         function _codexTraits(race) {
             const traits = [];

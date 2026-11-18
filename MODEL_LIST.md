@@ -26,7 +26,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
 | Meshy AI | no | 1232 |
-| Meshy AI, reworked by Claude | no | 10 |
+| Meshy AI, reworked by Claude | no | 11 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 84 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
@@ -229,6 +229,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | valkraye (female) | `Assets/characters/races/valkraye/Meshy_AI_hot_girl_valkraye__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | vampire — creator look also baked | `Assets/characters/races/vampire/male/Meshy_AI_vampire_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | vampire (female) — creator look also baked | `Assets/characters/races/vampire/female/Meshy_AI_beautiful_attractive__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| virus | `Assets/characters/races/virus/male/virus.glb` | Meshy AI, reworked by Claude | Meshy AI parts (a dark green crystal core and ONE crystal spike) put together by Claude in code (project files internet-units/virus/assemble.mjs): the spike used 14 times, each its own node, the eight red eyes and the nine code tendrils built in code, for the Virus race's moving-parts rig (three-renderer.js THE VIRUS) |
 | voidweaver | `Assets/characters/races/voidweaver/male/Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | wendigo | `Assets/characters/races/wendigo/male/Meshy_AI_wendigo_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | werewolf — creator look also baked | `Assets/characters/races/werewolf/male/Meshy_AI_werewolf_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |

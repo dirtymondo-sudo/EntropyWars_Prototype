@@ -4370,6 +4370,7 @@
                 const srcZ = standH(g, unit), longR = _isLongRange(sp);
                 for (const e of enemies) {
                     if (sp.hitsWetOnly && !(typeof g._isWetTile === 'function' && g._isWetTile(e.x, e.y))) continue;
+                    if (sp.hitsStatusOnly && !(typeof g._barrageStatusOk === 'function' && g._barrageStatusOk(sp, e))) continue;   // 🦠 Zero Day
                     const d = _reach(g, unit.x, unit.y, srcZ, e, longR);
                     if (d >= 1 && d <= R && (sp.ignoresLineOfSight || !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y))) ids.add(e.id);
                 }
@@ -4895,6 +4896,14 @@
             for (const a of _vm) val += Math.min(est * 0.3, effHp(a)) * landP * 0.9;
             if (sp && sp.viralSpread) val += 45 * _vm.length;
         }
+        /* 🦠 THE PAYLOAD (2026-11-18, the Virus): a fresh Payload is worth its 70 when it runs out plus a copy for every
+           teammate next to the target (it spreads at the round end); Zero Day sets a carrier's off at once (70 more) */
+        if (sp && (sp.statusEffects || []).some(e => e && e.id === 'payload') && !(tg.status && tg.status.payload > 0)) {
+            const _pn = (g.state.units || []).filter(a => a && !a.dead && a.id !== tg.id && a.player === tg.player
+                && Math.max(Math.abs(a.x - tg.x), Math.abs(a.y - tg.y)) <= 1).length;
+            val += 40 + 35 * _pn;
+        }
+        if (sp && sp.hitsStatusOnly === 'payload' && tg.status && tg.status.payload > 0) val += Math.min(70, effHp(tg)) * landP;
         return { est, val };
     }
 
@@ -6096,6 +6105,7 @@
             const srcZ = standH(g, unit);
             const victims = v.visibleEnemies.filter(e => {
                 if (spell.hitsWetOnly && !(typeof g._isWetTile === 'function' && g._isWetTile(e.x, e.y))) return false;
+                if (spell.hitsStatusOnly && !(typeof g._barrageStatusOk === 'function' && g._barrageStatusOk(spell, e))) return false;   // 🦠 Zero Day
                 if (isProtected(g, e)) return false;
                 const d = _reach(g, unit.x, unit.y, srcZ, e, longR);
                 return d >= 1 && d <= bRange
