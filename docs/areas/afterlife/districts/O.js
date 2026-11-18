@@ -28,8 +28,9 @@
    tunnel's mouth on the sand a platform at 6 m, reached from the fifth row; the north and south ones are boxes under a canopy (a throne each).
    A porch stands before the north and the south gate, a chariot on each. THE FOUR STAIRS (the vomitoria) climb from the ring corridor, in
    bays 8, 24, 40 and 56 (the diagonals), up through the upper seats onto the walk.
-   STILL TO DO: the rooms under the sand (the hypogeum) and its lifts; a crowd in the seats (the game's people stand on the ground only: a unit has no
-   height of its own, so nobody can be stood on a row or in a box yet); the second storey walked. */
+   THE PEOPLE (2026-11-18): the Pope sits on the south throne, a small crowd sits and stands in the seats (the room's crowd cap is the game's own:
+   data.js HQ_CROWD_RULES.areaMax, one body a race), the north throne is the walker's to sit in (E).
+   STILL TO DO: the rooms under the sand (the hypogeum) and its lifts; the second storey walked. */
 'use strict';
 const TAU = Math.PI * 2, r3 = v => Math.round(v * 1000) / 1000, r4 = v => Math.round(v * 10000) / 10000;
 const CX = 30, CY = 16;                                   // the oval's middle: a square corner of the moved room
@@ -215,7 +216,7 @@ exports.build = ctx => { const { gx, gz, look, feat, r2 } = ctx, cx = gx(CX), cz
             a.box(0, 9.8, 3.5, 8.3, 0.28, 7.1, null, 0xc8a040, { under: true, glow: 0.22 });
             a.roof('hip', 0, 10.08, 3.5, 8.0, 1.5, 6.8, null, 0x8e1f1f, { roof: true });
             [0.4, 6.6].forEach(z => a.box(0, 9.2, z, 7.6, 0.6, 0.06, null, 0x8e1f1f, {}));
-            a.box(0, 6.0, 4.6, 3.4, 0.35, 2.6, SM, T_SM, mS);                                                                                       // the dais the throne stands on
+            a.box(0, 6.0, 4.6, 3.4, 0.1, 2.6, SM, T_SM, mS);                                                                                       // the dais the throne stands on
         }
         if (g.k === 'n' || g.k === 's') {   /* THE PORCH: four columns, an entablature, a low attic the chariot stands on */
             [-4.85, -3.0, 3.0, 4.85].forEach(x => { a.box(x, 0, 31.0, 1.25, 0.7, 1.25, SM, T_SM, mS); a.cyl(x, 0.7, 31.0, 0.55, 0.22, SM, T_SM, Object.assign({ seg: 14 }, mS));
@@ -238,7 +239,7 @@ exports.dress = ctx => { const { P, dec, at, gx, gz, cell } = ctx, cx = gx(CX), 
     for (let i = 1; i < NB; i += 2) { if (isGate(i)) continue; const th = TH[2 * i], p = pt(th, 26.7); put((i % 4 === 1) ? 'god_statue' : 'angel_statue', p, { y: 7.0, face: faceOf(Math.cos(th), Math.sin(th)) }); }
     /* the tunnels: a brazier pair inside each; the boxes: a throne under the canopy */
     GATES.forEach(g => { const t = [-g.u[1], g.u[0]]; [9, 19].forEach(d => [-1, 1].forEach(k => put('brazier', [g.u[0] * (g.ar + d) + t[0] * k * 2.5, g.u[1] * (g.ar + d) + t[1] * k * 2.5])));
-        if (g.box) put('royal_throne', [g.u[0] * (g.ar + 4.6), g.u[1] * (g.ar + 4.6)], { y: BOX_Y + 0.35, face: faceOf(-g.u[0], -g.u[1]) }); });
+        if (g.box) put('royal_throne', [g.u[0] * (g.ar + 4.6), g.u[1] * (g.ar + 4.6)], { y: BOX_Y + 0.1, face: faceOf(-g.u[0], -g.u[1]) }); });
     /* the sand: braziers at the foot of the arena's wall, the fighters' racks and a training post, a beast's wagon by the Gate of Death */
     for (let k = 0; k < 14; k++) { const th = (k + 0.5) * TAU / 14, p = pt(th, -1.6); if (Math.abs(p[0]) > 5 && Math.abs(p[1]) > 5) put('brazier', p); }
     put('dojo_weapon_rack', [-9, 11.5], { face: 0 }); put('dojo_weapon_rack', [9, 11.5], { face: 0 }); put('wing_chun_dummy', [-15, -6], { face: 90 }); put('wing_chun_dummy', [-15, 6], { face: 90 });
@@ -253,9 +254,22 @@ exports.dress = ctx => { const { P, dec, at, gx, gz, cell } = ctx, cx = gx(CX), 
     P('cage_wagon', 22, 31, { face: 90 }); P('cage_wagon', 37, 31, { face: 270 });
 };
 exports.people = ctx => { const { native, npc, gx, gz } = ctx, cx = gx(CX), cz = gz(CY);
-    /* the fighters on the sand and their referee; a ringmaster at the Gate of Life; the plaza's crowd (units named after their race) */
-    native('swordfighter', 28, 15, 90, null, { gender: 'male' }); native('minotaur', 31, 15, 270);
-    native('luchador', 26, 17, 90); native('knight', 33, 17, 270); native('referee', 30, 17, 0);
-    native('ringmaster', 32, 3, 180); native('quarterback', 18, 29, 45);
-    native('pope', 38, 34, 0);   // (a unit stands on the ground: the game's people have no height of their own, so the south box's throne waits for him)
+    /* THE PEOPLE OFF THE GROUND (2026-11-18, mondo: "make the stands walkable and those thrones able to be sat in"). A spot on a row of seats needs
+       no height (a body stands on what is under it, and a row is a wall's top); a spot on a BRIDGE (a box, the gallery's outer half) carries its
+       own `y`; `pose: 'hqSit'` seats it (its `y` is then the seat's own height, as the walker's is when he sits). The north throne is the walker's.
+       THE ORDER IS WHO STANDS FIRST: the room's bodies are capped (data.js HQ_CROWD_RULES.areaMax 14, one body a race), so the Pope and the seats
+       come before the sand, and the last rows here stand only when the cap is lifted. */
+    const R2D = 180 / Math.PI, W2 = v => Math.round(v * 100) / 100, inward = th => faceOf(-Math.cos(th), -Math.sin(th));
+    npc.push({ x: cx, z: W2(cz + OV.b + 4.6), y: BOX_Y + 0.1 + 0.55, face: 0, race: 'pope', pose: 'hqSit' });   // the Pope on the south throne, looking down the arena
+    /* the crowd: seated on the front of a row (legs over the row below), or standing; two of them walk their rounds from the seats */
+    const rowAt = (id, th, f) => { const G = RINGS.find(g => g.id === id), p = pt(th / R2D, G.d0 + (f == null ? 0.3 : f)); return { x: W2(cx + p[0]), z: W2(cz + p[1]), face: inward(th / R2D) }; };
+    const seated = q => npc.push(Object.assign(rowAt(q[1], q[2]), { race: q[0], pose: 'hqSit' }));
+    [['fortune teller', 'low3', 250], ['cowboy', 'low5', 292], ['wizard', 'low2', 112]].forEach(seated);
+    npc.push(Object.assign(rowAt('walk', 140, 1.3), { race: 'pirate', roam: true })); npc.push(Object.assign(rowAt('up5', 25, 0.45), { race: 'influencer', roam: true }));
+    /* the fighters on the sand and their referee */
+    native('swordfighter', 28, 15, 90, null, { gender: 'male' }); native('minotaur', 31, 15, 270); native('referee', 30, 17, 0); native('knight', 33, 17, 270);
+    /* past the cap today: more of the crowd, the ringmaster at the Gate of Life, the plaza's people */
+    [['politician', 'low6', 68], ['televangelist', 'low4', 205], ['banker', 'up2', 335]].forEach(seated);
+    npc.push(Object.assign(rowAt('podium', 300, 1.8), { race: 'tech ceo' }));
+    native('luchador', 26, 17, 90); native('ringmaster', 32, 3, 180); native('quarterback', 18, 29, 45);
 };

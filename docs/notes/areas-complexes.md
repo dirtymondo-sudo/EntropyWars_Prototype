@@ -11971,9 +11971,17 @@ mirrored), a wall one stone thick with the sky through it, stands 5 m tall behin
 - **CHECKING A WALK WITHOUT THE BROWSER**: compile the room in Node (`hqTerrainCompile(DOOR_HQ.rooms[id], id)` through load-data.js) and step
   `hqTerrainFeet(info, x, z, y)` along a line 0.2 m at a time; a `null` is a wall. Seconds, where the software browser walks 8 m in a minute
   (which reads as "stuck" and is not). Done for the four tunnels, the four stairs, the walk, the gallery, the corridor, the fifth row.
-- **PEOPLE STAND ON THE GROUND ONLY**: `npcSpots` rows carry x, z and no height (three-renderer.js spawns them on the field), so nobody can be stood
-  on a row, in a box or on the gallery. The Pope is on the south plaza; the boxes' thrones are empty. A crowd in the seats needs that first.
-- NOT YET: the rooms under the sand, a crowd, the second storey walked, R3's door text ("a huge ruined arena": bake-route.js's).
+- **THE PEOPLE OFF THE GROUND (2026-11-18, mondo: "make the stands walkable and those thrones able to be sat in"; corrects "people stand on the
+  ground only")**: a spot with no height stands on what is UNDER it, and a row of seats is a wall's top, so a person placed on a row stands on the
+  row. What never worked was a BRIDGE (a box, the gallery's outer half): a spot reads the ground under it. Now a native spot's own `y` (metres) and
+  `pose` ride to its body (three-renderer.js `_hqSpawnPopulation`; any race borrows a `_CAST_POSES` clip, `_hqSpawnCharacter`). `pose: 'hqSit'`: the
+  spot's `y` is the SEAT's height (floor + the catalogue's `seat`), as the walker's is. On a row: no `y`, the spot 0.3 m from the row's front, the
+  legs hang over the row below. A posed spot stays (`hqSpotRoams`); `roam: true` walks its rounds from the seats (the walk map reads rows as floor).
+  THE WALKER SITS ON A RAISED SEAT: a `seat` prop with `y` over 0.5 m was never a seat (`_hqPolishProp` took floor props only) and getting up set
+  him on the ground under the floor; both fixed (`floor` on the seat). The Pope sits on the south throne; the north one is the walker's (E).
+  **THE CROWD IS CAPPED**: `HQ_CROWD_RULES.areaMax` 14 bodies a plot-built room, one body a race. The Vatican's own spots give 4 bodies, so the
+  Colosseum has 10: O.js `people` is written in the order they should stand (the Pope, the seats, the sand; the rest wait for the cap).
+- NOT YET: the rooms under the sand, a full crowd (the cap above), the second storey walked, R3's door text ("a huge ruined arena": bake-route.js's).
 ## THE COLOSSEUM (2026-11-17, One World 4.4; the map's district `col`, 9 plots, world -11..-9 x -9..-7)
 - **IN THE VATICAN'S ROOM** (mondo: smaller than Disaster City = one room): `site_prebuilt_vatican_plots` grows to 6 x 7 plots (world -12..-7
   x -9..-3, `room.world` in the room; mask `.###..` on rows 0-2). bake-afterlife.js THE VATICAN'S ONE WORLD MOVE: the Vatican's districts
