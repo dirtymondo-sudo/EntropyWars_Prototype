@@ -2250,3 +2250,15 @@ use the urban decay textures more across all of the PvP battle maps, or at least
 - **Candidates not done** (want a look on screen first): the Stadium's stands (`concrete_floor` -> ConcretePrecast1c), The Lodge's hall floor
   as parquet (WoodFlooring1c), Antarctica's cover blocks (metal), Area 51's berms.
 - NOT SEEN ON SCREEN (RULE #1c). Flat now / new sheet of the real textures: `/mnt/project-files/urban-decay-pvp/pvp_maps_now_vs_new.jpg`.
+
+## THE CURVED BLADES (2026-11-18)
+mondo: "make the grass look better, more realistic". First mock-up (a fan of 5 wide tapered blades): "too spiky and unrealistic". Second
+(this one): "yeah that's better". THE GRASS FIELD (board + walked rooms) now grows `GGRASS.shape = 'fan'`: 7 thin blades from one root, each
+3 segments narrowing to a point and arching outward (x grows with f^1.7), ~10 % of blades dry straw (`_ggBlade`, `GGRASS.dry` / `dryShare`),
+each blade its own shade (0.80-1.12). A shape row may carry a third number (the blade index); the tuft loops, the index buffers and `_ggFace`'s
+counting sort now take any corner / index count (were fixed at 7 / 15). Fewer, bigger tufts: board `perTile` 10 (Low 7), walked room
+`HQ_GRASS.perSquare` 9 (Low 6), so the triangles stay about the old High's (~5,900 tufts round the walker, 35 triangles each). Heights: board
+0.075-0.21 of a square, walked rooms x1.43. The clump's old values are in the comment above `shape:`; `EW_GGRASS.shape = 'crown'` +
+`EW_GGRASS.flush()` + a Grass setting toggle (Low, then High after a tick) brings the old look back live. Proof: Redwood Trail
+(`site_ow_l3`) + Fairy Forest board, /mnt/project-files/grass-realistic-mockup-20261118/. Not seen: his Mac / real WebGPU, frame cost on a weak PC.
+
