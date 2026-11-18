@@ -3013,6 +3013,19 @@ second · biggest)", top 8, `!!` = 20K+ a second. Rule: CLAUDE.md RULE #1e.
   (at most every 4 s), `g._ew_ckDirty` (set by `_hqInstFit` on its instance cell when a batch refits) or every 60 s. Door swings stay
   inside the 15 m chunk pad. Off: `EW_HQ_CHUNK_POLL_2S`.
 
+### THE ONE BODY A FRAME + THE SLICED SCAN + THE MEASURES SPREAD (2026-11-18, spikes thread, his 12:18 F3)
+Slow frames: "tick: residents 48-50", "tick: chunks 23", "batch: scan step 24".
+- `_hqTickResidents`: the 0.4 s pick stood up EVERY newly wanted resident in the same frame (a whole character each). It now marks them
+  `s.spawnDue` and stands ONE a frame, nearest first. Lens sub-marks "residents: new day / pick / new body / walk". Off: `EW_HQ_RES_SPAWN_ALL`.
+- `_hqBatchScan`: `root.updateMatrixWorld(true)` + the recursive key-reading walk of the whole group ran in one step before the first
+  yield. Now an explicit stack that yields with the slice (a Set stops a piece being taken twice) and each found piece
+  `updateWorldMatrix(true,false)`. Off: `EW_HQ_BATCH_SCAN_WHOLE`.
+- `_hqChunkTick`: the optional re-measures (add count, dirty, 60 s) stop at 2 ms a frame and finish on later frames; a count change or
+  first measure is immediate. Off: `EW_HQ_CHUNK_MEASURE_ALL`.
+- THE LIST'S OWN STAMP: the rider's grid now hangs on its own list (`L._ewWG`, so the stuck watch's near list and the people's list do not
+  make it lay again as lists take turns), `_hqBlkListStamp` counts reorders of `_hq.blockers` (splice/shift/sort...: lay again) and joins
+  at the end are read on every ask (a resident's body joining no longer shifts or rebuilds the grid).
+
 ### THE ONE-BY-ONE PASS + THE DESK FOR LOD AND LABELS (2026-11-18, his first F3 with the alarm)
 The "Scene walks" line on his 12:18 F3 named: `_hqInstAdd` (47K a read: the pass re-ran in full every few seconds, "tick:
 instance pass 36-37 ms", because each prop chunk shown for the first time had candidates the pass never saw), `_hqLodScan`

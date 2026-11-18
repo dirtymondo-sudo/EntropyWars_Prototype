@@ -50,3 +50,10 @@ opens it from the game loads the same boards and picks up the other one's change
 
 Race and story-character nodes take a story **Name** (`nick`, e.g. the Cult Leader = August Tomorrow); the game
 name shows under it, and the game export lists them in `names`.
+
+## Secret groups (2026-11-18)
+A membership can be secret (`secret: true` on the member tie): the group's Members list has a **secret** switch
+per member. A secret group is never the unit's home group (no shaded area, the group pill does not drag it); it
+shows as a hollow dot under the unit, a "secretly" chip in its Groups, and a dotted line only when one end is
+selected. Export: `boardGroups[...].secretMembers`. Example: the Pope in Vatican (place), Christianity
+(faction) and secretly the Illuminati (faction).
