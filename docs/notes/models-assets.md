@@ -2138,3 +2138,12 @@ Mech F sprite redone as `mech_f2_px2.png` from a straight-on front render of her
   shrinks). Spell slots vrWorm / vrReplicate / vrRansom / vrZeroDay. The code scrolls (`_vrCodeTick`, from the unit loop).
 - The Replica summon (`_summonReplica3D`) clones the same file at half size (bob, ring turn, lurch per bite, flinch).
 - Sprite `virus_px.png` (same folder) = Sprite AI restyle of a straight-on render (files in the same project folder).
+
+## THE STREAMER PIECES (2026-11-18) — two Meshy picks for the creator
+
+`ewm_egwig` (Split-dye pigtail wig, hats: pink left half, black right half, two pigtails; the look's hair is `bald` under it) and
+`ewm_stheadset` (Gaming headset round the neck, jewellery shelf). Concepts + models: /mnt/project-files/internet-units/
+(concepts/eg_wig.png, st_headset.png; models/*.glb; run.py). bake-meshy.py rows `egwig` (helm, k 2.45: the piece's width is the
+pigtails, the cap is under half of it) and `stheadset` (drop, rot x -90 = the band behind the neck; new spec keys `nogrow` = keep
+its size instead of growing the hole round the neck, the cups had swelled over the jaw; `nodrop` = stay round the neck, for a
+choker, unused: the Meshy choker came out a flat slab and was dropped). Worn by RACE_CREATOR_LOOKS['streamer'].
