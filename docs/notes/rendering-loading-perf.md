@@ -2911,3 +2911,11 @@ charGroup's own updateMatrixWorld, armed in `_hqStillSceneWalk`, walk frames onl
 full (force) the first frame it is shown, before that frame's draws (visibility is set in the ticks, before the walk). Lens: the
 Matrix walk line ends "N hidden people left as they stand". Off: `window.EW_HQ_CHAR_MW_ALL = true`.
 - 11-18 correction: his next F3 (42.8 FPS, worst 38 ms after the spikes thread's #2107/#2109) showed no "hidden people" tail: "skinned 92 / rigs animating 12" counts skinned MESHES (a body is several), not rigs, so there were few hidden bodies; THE HIDDEN PEOPLE stays (cheap, exact) but bought little. "Matrix walk by group" now splits two more levels below each plain top group (`hq_part/<part>/<group>`, "(still)" = a still-walk group) to find the 1.8 ms in hq_part.
+
+## THE MERGED QUARTER (2026-11-18, Disaster City 60 FPS thread)
+His F3 at 45.5 FPS: "Matrix walk by group: hq_part 1.70 · hq_part/Group (still) 1.00" = the city shell's still walk comparing
+~10,000 children's poses every frame. A child THE STATIC BATCH holds (`_ew_bRec`) is not drawn itself and the batch's watchdog
+(`_hqBatchCheck`, rolling over seconds) is what notices it moved, so `_hqStillUpdate` compares a merged child on one frame in four
+(its turn by its place; never skipped when it is new at its place, fresh, woken, a mover, or in the sweep slice). A moved one becomes
+a mover and is walked every frame as before. Off: `window.EW_HQ_STILL_MERGED_EVERY = true`. The shell's bundle check (1.05 ms) is
+the other ~10,000-child loop; it rests only when the shell stops re-recording ("merge 17" left).
