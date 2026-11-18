@@ -2949,6 +2949,10 @@ and "mask: setup + lights + sort 73 ms"; the lens said "one rig: 2 grows". A poi
 walked and re-recorded that frame. In a big chunked room (`_hqChunkBig`) the walk scene's point rig now takes HQ_RIG_PREGROW_P = 20
 slots on its first frame, behind the card; the spare slots stay dark (intensity 0; THE LAMP'S REACH skips them). The rig is one,
 shared, and never shrinks (as before). Off: `window.EW_RIG_NO_PREGROW = true`.
+- (2026-11-18 later) "Slow frames" entries also say how many bundle groups that frame re-recorded and "epoch moved" (a freed
+  resource / a rig grow re-records every group); "Inside the ticks" gains camera: boom march / feel. His 07:34 F3: the ladder,
+  awareness, memory and sweep spikes are gone; left: bundle replays 26-82 ms and check 58 ms frames (60 FPS thread), one
+  "tick: camera 69 ms" frame (no lazy work found in the camera; likely a GC landing there: the new split will say).
 
 ## THE BUNDLE SPIKES (2026-11-18, Disaster City 60 FPS thread)
 His 07:34 F3 "Slow frames": "scene: bundle replays 82 / 36 / 26 ms", "bundle check 58 ms". A replay spike is three RECORDING groups
