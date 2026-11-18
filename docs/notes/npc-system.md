@@ -366,13 +366,13 @@ seat (`opts.awareOk`, map.js `_hqEncounterFire` / `_hqMugOpen`). Plan: `docs/pla
     map.js `_hqMugOpen` opens the ladder's kind of box with `HQ_NPC_TEMPERS.lines.mug[race]` and `1 · PAY <gold>` / `2 · FIGHT`.
     PAY = 8 gold x its level, never more than held (`hqNpcMugPrice`; profile.js `spendGold`: the local wallet, the server's with an account);
     with 0 gold PAY is off. It then walks back to its day. FIGHT = its fight, it acts first. ESC, right click or E close the box with no answer:
-    it asks again after 4 s if you are still in reach, so you may run. **Only a race with a line in `lines.mug` mugs** (Pirate, Florida Man);
-    Gangster, Goblin, Politician, Televangelist and Tech CEO wait for a line from mondo.
+    it asks again after 4 s if you are still in reach, so you may run. **Only a race with a line in `lines.mug` mugs**: all seven Opportunists
+    have one since 11-18 (Pirate, Florida Man, Gangster, Goblin, Politician, Televangelist, Tech CEO; mondo OK'd the five new lines).
 - **THE GAME DAY** (`hqGameDay(hour)`): a count of the world clock's days in this page (24 real minutes a day); the walk feeds it its hour.
   The ladder's memory (step 3) still clears by the calendar day.
 - **THE LEVEL GAP** (`hqNpcGapHolds`, `levelGap` 8, `levelGapOn`): an NPC 8 or more levels under the party starts nothing, by any of the four ways.
-  It no longer opens the eye. A Territorial under the gap does not warn either (STEP-1A's table). **A Guard that saw a strike is held too**
-  (`'defend'` in `levelGapOn`): it still says its line at the first strike, it does not come at the second. Take `'defend'` out of the row to undo.
+  It no longer opens the eye. A Territorial under the gap does not warn either (STEP-1A's table). **A Guard that saw a strike is NOT held**
+  (mondo 11-18: "cops should always for now ... or this will be part of the wanted level system later"): `'defend'` is out of `levelGapOn`.
 - **THE GRACE** (`graceMs` 5000): nobody starts anything for 5 s after the room is entered or handed back from a fight.
 - **EVERY LOST STORY FIGHT COSTS GOLD** (data.js `hqNpcLossGold`; battle.js, the encounter commit beside `hqPartyAfterMatch`): 8 gold x the level
   of the strongest enemy in the fight (board and bench), never more than held; THE RETREAT costs nothing; quest fights too. Without an account the
@@ -380,8 +380,8 @@ seat (`opts.awareOk`, map.js `_hqEncounterFire` / `_hqMugOpen`). Plan: `docs/pla
   site line (battle.js `_stampHqSite`), in the wake toast (map.js) and in the combat log. `partyRes.lostGold` carries it.
 - **Whoever starts opens round 1:** every NPC-started fight goes through `_hqEncounterFire({ npcStart: true, why })` -> `L.opener = 'npc'` (step 3).
 - **Probe:** `hq.dev.ladder()` rows carry `why`; `hq.dev.come(id, 'sight' | 'mug' | 'ground')` makes one come; `hq.npcMugDone(id, 'paid' | 'fight' | 'none')`.
-- **NOT BUILT: the drive-by.** His words are only "a gangster mugging you or doing a drive by or something" and "starts a fight, rare": nothing says
-  who drives, what the player sees or what he may do. Asked in chat 11-18.
+- **NOT BUILT: the drive-by.** mondo 11-18: "Let's just skip drive-by for now. Since gangster isn't in bayside". It needs who drives, what the
+  player sees and what he may do before anyone builds it.
 - **For other zones:** the rules follow the race wherever it stands, so a Zombie, Shadow Entity, Werewolf, Wendigo, Ghoul or Flesheater in any wild
   room now comes at sight unless the gap holds it. The city has 4 Zombies (district U).
 - **Checked in a browser 11-18** (Bayside's boardwalk, x 257 z 25, 09:00, 861 of 861 files; pictures `docs/plans/npc-encounters/step-4-*.jpg`): a Pirate that saw
@@ -390,7 +390,10 @@ seat (`opts.awareOk`, map.js `_hqEncounterFire` / `_hqMugOpen`). Plan: `docs/pla
   (`opener: 'npc'`), the party lost and the result screen read `EXITED · THE ENCOUNTER · DISASTER CITY · PIRATE · LOST 72 GOLD`.
   NOT checked in a browser: a real Brute (none lives in Bayside), the Ghost's fight after its warning (the hotel at night kills the cloud browser), the
   mugging's FIGHT button and mouse clicks on the box (the keys were used), a server account's wallet, the wake toast's line.
-- **Found, not changed:** a lost story fight still pays the result screen's own +50 Hazard Pay ("Match complete"), so losing to the Pirate was 500 - 72 + 50 = 478. Put to mondo 11-18.
+- **A story fight that is not won pays no match pay** (mondo 11-18: "that +50 is for online"): battle.js `_accountBankMatchGold` returns for an encounter result
+  that was not won (a loss, a retreat). A WON story fight still banks it (not asked; put to him).
+- **mondo's answers 11-18:** skip the drive-by; lost fights pay nothing; cops always come; Brutes in every zone are fine; the closed box asks again; PAY takes what
+  you hold; the five lines; "all those numbers look good" (steps 2, 3 and 4: they are his numbers now, no longer proposals).
 - **Probe lessons:** the first run in a new container crashed as the room got ready and its retry was half loaded (no resident bodies); from the second run on
   the city loads in about 250 s. `EW_LIVE_LOG=1` prints every `[HQ] PROBE` line (the PROBES line keeps only 12). A body sent at a raised speed stops short of the walker now.
 

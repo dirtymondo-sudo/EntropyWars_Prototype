@@ -55120,6 +55120,7 @@
                 if (state.winner === 0 || state.winner === null) return; // no contest
                 if (state.isCampaign) return;                            // Challenge keeps its own wallet
                 if (state.devAutoSim) return;                            // dev-sim grants nothing
+                { const _erPay = window._hqEncounterResult; if (_erPay && !_erPay.won) return; }   // a story fight that was not won pays nothing (mondo 11-18: "that +50 is for online"; NPC encounters step 4)
 
                 const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
                 const modeId = mpMode && mpMode.id;

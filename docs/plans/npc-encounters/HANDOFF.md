@@ -33,16 +33,18 @@ heavy (a headless `load-data.js` script) beside the probe. With the file cache w
 
 | **Step 4:** NPC-started fights (REPLACES "never random"): Brutes come at sight, the Ghost fights if you stay after its warning, THE MUGGING (a flat chance per game day, PAY / FIGHT), the level gap on every way of starting, every lost story fight costs gold | data.js `HQ_NPC_TEMPERS.brute` / `.ground` / `.mug` / `.levelGapOn` / `.graceMs`, `hqNpcStarts`, `hqNpcGapHolds`, `hqGameDay`, `hqNpcMugRoll`, `hqNpcMugPrice`, `hqNpcLossGold`; three-renderer.js `_hqTickAware` (who comes), `_hqTickLadder` (the chase by `why`), `hq.npcMugDone`, `dev.come`; map.js `_hqMugOpen`, `_hqMugAnswer`; battle.js the encounter commit (`lostGold`), `_stampHqSite`; notes `docs/notes/npc-system.md` "NPC-STARTED FIGHTS" |
 
-Not built yet: the drive-by (nothing says what it is: asked 11-18), giving up, everything from step 5a on. A race with no temper still fights on the first strike.
+Not built yet: the drive-by (mondo 11-18: skip it for now), giving up, everything from step 5a on. A race with no temper still fights on the first strike.
 
-**Step 4's PROPOSALS, put to mondo in chat 11-18 (data rows, change them freely):** the mugging 0.25 per mugger per game day (a game day = 24 real minutes of the
+**ANSWERED 11-18: "All those numbers look good" (the numbers of steps 2, 3 and 4 are his now).** His changes: skip the drive-by for now; a story fight
+that is not won pays no match pay (built); cops always come, the level gap does not hold a Guard (built: `'defend'` out of `levelGapOn`); Brutes in every
+zone are fine; the five muggers' lines are OK'd and in. What was asked: the mugging 0.25 per mugger per game day (a game day = 24 real minutes of the
 world clock), one try a game day, it comes at 2.7 m/s and Talks within 2.2 m; closing the box with no answer = it asks again after 4 s, you may run; PAY takes
 what you hold when you hold less than the price, and is off at 0 gold; Brutes 2.7 m/s, fight within 1.9 m, give up past 32 m or 6 s unseen; the Ghost comes
 6 s after its warning if you stay, or when you are within 4 m; nobody starts anything for 5 s after you enter a room; **a Guard 8 or more levels under the
 party warns but does not come** (`levelGapOn` has `'defend'`); the lost gold shows as ` · LOST n GOLD` on the result screen's site line and the wake toast;
 five muggers have no line yet and so do not mug (Gangster, Goblin, Politician, Televangelist, Tech CEO).
 
-**Step 3's PROPOSALS, put to mondo in chat 11-17 (no answer yet; all are data rows, change them freely):** the run 15 m at 2.0 m/s, cornered = no clear 5 m away
+**Step 3's numbers, OK'd by mondo 11-18 ("all those numbers look good"):** the run 15 m at 2.0 m/s, cornered = no clear 5 m away
 from you, rest 5 s, the ladder starts over after 30 s left alone; E first shows the NPC's ordinary line with NOTED / FIGHT (the approved Talk lines are answers
 to a strike); keys 1 / E = back off, 2 = fight; the Guard warns at the first strike it sees and comes at the second (2.7 m/s, fight within 1.9 m, gives up past
 32 m or 6 s unseen); the day's memory lives in the page (a reload forgets it) and "day" is the calendar day, as the beaten-today ledger.
@@ -77,7 +79,7 @@ code path was run by day with a Chef standing in for it in the page only.
 
 1. ~~The check~~, ~~step 1b~~, ~~step 2~~: done 11-17 (sections 1 and 2).
 2. ~~Step 3, the strike ladder~~: done 11-17 (section 2).
-3. ~~Step 4, NPC-started fights~~: done 11-18 (section 2). Left open: the drive-by (needs his words), lines for five muggers.
+3. ~~Step 4, NPC-started fights~~: done 11-18 (section 2). The drive-by is skipped on his word.
 4. **Next: 5a** (NPC health on the walk), then 6a, 6b, the GATE (he plays Bayside), S beside them.
 5. 28 races that live in the city have no temper yet (Priest, Ki Fighter, Swordfighter, Conspiracy Theorist, Cult Leader, Halfdemon, Men in Black, Spy, General, Honda Civic, Mad Scientist, Reptilian, Telepath, Antihero, Nephilim, Clown, Ringmaster, Quarterback, Luchador, Juggernaut, Knight, Astronaut, Marksman, Cursed TV, Super Sentai, Ninja, Magician, Referee; they behave as today and never open the eye):
    they wait for their district's pass, which needs mondo's marks like Bayside's did.
