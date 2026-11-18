@@ -12476,4 +12476,9 @@ night"); a short Meshy list or stand-ins ("a billboard is just a rectangle"); th
   `texbuilding` row (that row can stand turned or off centre: lines then hang in the air). Details: PLAN.md section 10.
 - PASS 3, HEIGHT (11-18, mondo: "let's just do 1 (height) for now"): towers on legs over the buildings (`tower`, the old roofs
   stay clear and walkable, no collision added) and glass skyways between them (`sky`). Details: PLAN.md section 11.
+- THE WHOLE CITY + NO SIGNS (11-18, mondo: "do this look on the rest of the city districts, at least on the buildings it makes
+  sense ... I am going to do a neon sign and font pass later so stop making stuff we are gonna have to undo later"): the look is on
+  all nine districts (`boxes`); landmarks, monuments, street pieces and every inside are kept (`keepPlots`, `keepRows`);
+  **the look writes no words and does not touch the districts' signs: never add sign content to it.** Additions live in one row
+  a district (`look:add:<d>`). Details: PLAN.md section 12.
 
