@@ -76291,7 +76291,7 @@ const ThreeRenderer = (function () {
        The GLB road tiles (_hqBuildRoadTiles) are opt-in now: EW_HQ_ROAD_TILES.
        ═══════════════════════════════════════════════════════════════════════ */
     var HQ_ROAD = { dashLen: 1.6, dashGap: 1.6, dashW: 0.14, edgeIn: 0.35, edgeW: 0.12, zebraBar: 0.42, zebraGap: 0.42, zebraLen: 2.6, zebraBack: 1.0, stopW: 0.32,
-                    kerbW: 0.3, kerbH: 0.13, manholeEvery: 19, manholeR: 0.42, signEvery: 27, signH: 2.3, cornerTrim: 0.6 };
+                    kerbW: 0.3, kerbH: 0.13, edgeInCurb: 0.8, curbW: 0.3, gutterW: 0.5, manholeEvery: 19, manholeR: 0.42, signEvery: 27, signH: 2.3, cornerTrim: 0.6 };
     function _hqRoadTexKey(kind) {
         var K = { asphalt: 'urban:PlasterWallPainted1b', pavement: 'urban:TileGeneric1a', kerb: 'urban:PlasterWallPainted1a', yard: 'urban:ConcreteStriped2a', manhole: 'urban:DecalManholeCover1', stain: 'urban:DecalStainOil1' };   // manhole + stain: the Urban Decay pack's (2026-11-15)
         return K[kind] || null;
@@ -76315,6 +76315,92 @@ const ThreeRenderer = (function () {
             pl.position.set((px + nx * (w.t / 2 + 0.02)) * U, (w.base + 0.3 + Math.min(hM - 0.5, 1.15 + rng() * 0.25)) * U + 0.3, (pz + nz * (w.t / 2 + 0.02)) * U);
             pl.rotation.y = Math.atan2(nx, nz); G.add(pl);
         }
+    }
+    /* THE CURBS (2026-11-18, mondo: "add curbs to disaster city ... small enough to where there is no combat difference/height
+       advantage, but big enough to where there can be gutters. Just a normal curb"): a room whose gen says `curb` has its roads a curb
+       lower (data.js _hqTCurbDrop; the fight's levels never see it). The ground's lattice can only lean from the road up to the
+       sidewalk over one cell, so along every kerb line this draws, merged into THREE meshes for the whole room:
+       - THE STONE: the Urban Decay pack's ConcreteCurb2, its top (curbW) at the sidewalk's height and its face straight down to the road;
+       - THE EDGE: the rest of that one leaning cell at the sidewalk's height in the pack's ConcreteSidewalk1a (laid on the world's
+         squares, so it runs on into the sidewalk's own slabs) — the walker stands on it there too (_hqTFieldAt);
+       - THE GUTTER: a band (gutterW) of ConcreteCurb1 on the road along the stone's foot (the street drains already stand in it).
+       A curb runs wherever the road beside it was lowered and the walk beside it is no street: broken at every mouth, across a dead
+       end, gone past the curbBox. */
+    function _hqBuildCurbs(room, info, G) {
+        var plan = info.genPlan; if (!plan || !plan.streets || !info.curb) return;
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_CURBS) return;
+        var U = _hqUnits(), R = HQ_ROAD, streets = plan.streets, res = info.res, cW = R.curbW, gW = R.gutterW;
+        var hAt = function (x, z) { return hqTerrainHeight(info, x, z); };
+        var inAny = function (px, pz) { for (var j = 0; j < streets.length; j++) { var o = streets[j]; if (_hqTPolyDist(px, pz, o.pts).d < o.w / 2 - 0.01) return true; } return false; };
+        var bucket = function () { return { pos: [], uv: [], idx: [], n: 0 }; };
+        var Bc = bucket(), Be = bucket(), Bg = bucket();   // the stone · the edge · the gutter
+        var quad = function (B, p, uvs) {
+            for (var i = 0; i < 4; i++) { B.pos.push(p[i][0] * U, p[i][1] * U + 0.3, p[i][2] * U); B.uv.push(uvs[i][0], uvs[i][1]); }
+            var b = B.n; B.idx.push(b, b + 1, b + 2, b, b + 2, b + 3); B.n += 4;
+        };
+        var nRuns = 0;
+        /* one kerb line: base (bx, bz), along (dx, dz) for u in [u0, u1], out (nx, nz) = toward the sidewalk; `band` = how far the edge reaches */
+        var line = function (bx, bz, dx, dz, nx, nz, u0, u1, band, lift) {
+            var P = function (u, o) { return [bx + dx * u + nx * o, bz + dz * u + nz * o]; };
+            var ok = function (u) { var r = P(u, -0.3), q = P(u, 0.06); return _hqTCurbAt(info, r[0], r[1]) > 0.02 && !inAny(q[0], q[1]); };
+            var edgeOf = function (a, b) { var A = ok(a); for (var it = 0; it < 7; it++) { var m = (a + b) / 2; if (ok(m) === A) a = m; else b = m; } return (a + b) / 2; };
+            var runs = [], st = 0.125, cur = null, prevU = u0, prevOk = false;
+            for (var u = u0; u <= u1 + 1e-6; u += st) {
+                var o = ok(u);
+                if (o && !cur) cur = [u > u0 ? edgeOf(prevU, u) : u0, u];
+                else if (o) cur[1] = u;
+                else if (cur) { cur[1] = edgeOf(cur[1], u); runs.push(cur); cur = null; }
+                prevU = u; prevOk = o;
+            }
+            if (cur) { if (cur[1] < u1) cur[1] = u1; runs.push(cur); }
+            /* (a winding that faces the camera whichever side the curb is on: the top's normal up, the face's toward the road) */
+            var flip = (dx * nz - dz * nx) < 0;
+            var put = function (B, p, uv) { if (flip) { p = [p[0], p[3], p[2], p[1]]; uv = [uv[0], uv[3], uv[2], uv[1]]; } quad(B, p, uv); };
+            runs.forEach(function (rn) {
+                if (rn[1] - rn[0] < 0.2) return; nRuns++;
+                /* cut where the ground under the run changes slope (a hill street), sampled every lattice step */
+                var cuts = [rn[0]], nS = Math.max(1, Math.ceil((rn[1] - rn[0]) / res)), stp = (rn[1] - rn[0]) / nS;
+                for (var i = 1; i < nS; i++) cuts.push(rn[0] + stp * i);
+                cuts.push(rn[1]);
+                var road = function (u) { var q = P(u, -0.2); return hAt(q[0], q[1]); }, walk = function (u) { var q = P(u, 0.06); return hAt(q[0], q[1]); };
+                for (var ci = 0; ci + 1 < cuts.length; ci++) {
+                    var a = cuts[ci], b = cuts[ci + 1], yA = walk(a) + 0.008 + lift, yB = walk(b) + 0.008 + lift, rA = road(a), rB = road(b);
+                    if (Math.abs(yB - yA) > 0.35 * (b - a) + 0.05 || yA - rA < 0.03) continue;   // a step in the walk (a retaining wall's line) / no drop here
+                    var va = a / 2.1, vb = b / 2.1;
+                    var i0 = P(a, 0), i1 = P(b, 0), c0 = P(a, cW), c1 = P(b, cW), e0 = P(a, band), e1 = P(b, band), g0 = P(a, -gW), g1 = P(b, -gW);
+                    /* the stone: the top, then the face (with a sliver of its rounded nose) */
+                    put(Bc, [[i0[0], yA, i0[1]], [c0[0], yA, c0[1]], [c1[0], yB, c1[1]], [i1[0], yB, i1[1]]], [[va, 0.42], [va, 1], [vb, 1], [vb, 0.42]]);
+                    put(Bc, [[i0[0], rA + 0.005, i0[1]], [i0[0], yA, i0[1]], [i1[0], yB, i1[1]], [i1[0], rB + 0.005, i1[1]]].map(function (q) { return [q[0] - nx * 0.0, q[1], q[2] - nz * 0.0]; }), [[va, 0], [va, 0.42], [vb, 0.42], [vb, 0]]);
+                    /* the edge: the rest of the leaning cell, on the world's squares */
+                    if (band > cW + 0.02) put(Be, [[c0[0], yA - 0.003, c0[1]], [e0[0], yA - 0.003, e0[1]], [e1[0], yB - 0.003, e1[1]], [c1[0], yB - 0.003, c1[1]]], [c0, e0, e1, c1].map(function (q) { return [q[0] / 3.5, q[1] / 3.5]; }));
+                    /* the gutter: on the road at the stone's foot */
+                    put(Bg, [[g0[0], rA + 0.012, g0[1]], [i0[0], rA + 0.012, i0[1]], [i1[0], rB + 0.012, i1[1]], [g1[0], rB + 0.012, g1[1]]], [[0, va * 0.9], [1, va * 0.9], [1, vb * 0.9], [0, vb * 0.9]]);
+                }
+            });
+        };
+        streets.forEach(function (st, si) {
+            var pts = st.pts, n = pts.length, hw = st.w / 2, loop = n > 2 && pts[0][0] === pts[n - 1][0] && pts[0][1] === pts[n - 1][1];
+            var lift = (si % 5) * 0.002;   // two curbs meeting at a corner never share one height (no shimmer where they overlap)
+            for (var k = 0; k + 1 < n; k++) {
+                var dx = pts[k + 1][0] - pts[k][0], dz = pts[k + 1][1] - pts[k][1], L = Math.hypot(dx, dz); if (L < 0.2) continue; dx /= L; dz /= L;
+                var band = res * (Math.abs(dx) + Math.abs(dz)) + 0.02;
+                [-1, 1].forEach(function (sd) { var nx = -dz * sd, nz = dx * sd; line(pts[k][0] + nx * hw, pts[k][1] + nz * hw, dx, dz, nx, nz, 0, L, band, lift); });
+            }
+            /* an open end: a curb across it (data.js cut the lowered road square there) */
+            if (!loop) [[pts[0], pts[1]], [pts[n - 1], pts[n - 2]]].forEach(function (e) {
+                var ex = e[0][0], ez = e[0][1], ox = ex - e[1][0], oz = ez - e[1][1], L = Math.hypot(ox, oz) || 1; ox /= L; oz /= L;   // out = past the end
+                line(ex - oz * hw, ez + ox * hw, oz, -ox, ox, oz, 0, 2 * hw, res * (Math.abs(ox) + Math.abs(oz)) + 0.02, lift);
+            });
+        });
+        var mk = function (B, key, color, order) {
+            if (!B.n) return null;
+            var g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.Float32BufferAttribute(B.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(B.uv, 2)); g.setIndex(B.idx); g.computeVertexNormals();
+            var tex = _hzTex(key), mat = new THREE.MeshLambertMaterial({ map: tex || null, color: color, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+            var m = new THREE.Mesh(g, mat); m.renderOrder = order; m._ew_hqRoadMark = true; m._ew_hqCurb = true; G.add(m); return m;
+        };
+        mk(Bg, 'urban:ConcreteCurb1', 0xb4b2ac, 2); mk(Be, 'urban:ConcreteSidewalk1a', 0xffffff, 2); mk(Bc, 'urban:ConcreteCurb2', 0xe2e0da, 2);
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] curbs', 'runs', nRuns, 'stone quads', Bc.n / 4, 'edge', Be.n / 4, 'gutter', Bg.n / 4);
     }
     function _hqBuildRoadMarkings(room, info, G, TM) {
         var plan = info.genPlan; if (!plan || !plan.streets || !plan.streets.length) return;
@@ -76392,7 +76478,7 @@ const ThreeRenderer = (function () {
             };
             for (var k = 0; k + 1 < n; k++) {
                 var d = dir(pts[k], pts[k + 1]), L = d.L, t0 = corner[k] || 0, t1 = L - (corner[k + 1] || 0);
-                var edgeOff = w / 2 - R.edgeIn;
+                var edgeOff = w / 2 - (info.curb ? R.edgeInCurb : R.edgeIn);   // THE CURBS: the line stands clear of the gutter
                 /* THE CENTRE DASHES */
                 for (var s = t0 + 0.4; s + R.dashLen <= t1; s += R.dashLen + R.dashGap) {
                     var cx = pts[k][0] + d.x * (s + R.dashLen / 2), cz = pts[k][1] + d.z * (s + R.dashLen / 2);
@@ -76411,8 +76497,8 @@ const ThreeRenderer = (function () {
                     }
                     flush();
                 });
-                /* THE KERB STONES: a light strip on the sidewalk's edge (top face + the face down to the road), broken at the mouths */
-                [-1, 1].forEach(function (sd) {
+                /* THE KERB STONES: a light strip on the sidewalk's edge (top face + the face down to the road), broken at the mouths (a room with THE CURBS draws its own, _hqBuildCurbs) */
+                if (!info.curb) [-1, 1].forEach(function (sd) {
                     var run = null, kOff = w / 2 + R.kerbW / 2;
                     var flushK = function () {
                         if (!run || run[1] - run[0] < 0.4) { run = null; return; }
@@ -76505,6 +76591,7 @@ const ThreeRenderer = (function () {
         var kerbTex = _hzTex(_hqRoadTexKey('kerb')), kerbMat = new THREE.MeshPhongMaterial({ map: kerbTex || null, color: neon ? 0x9a9ab0 : 0xc8c6c0, shininess: 4, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); kerbMat.emissive = new THREE.Color(0x1a1a1a);
         var mhTex = (room && /DISASTER CITY/.test(String(room.label || ''))) ? _hqCityManholeTex() : _hzTex(_hqRoadTexKey('manhole')), mhMat = new THREE.MeshLambertMaterial({ map: mhTex || null, transparent: true, alphaTest: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff });
         mk(Bk, kerbMat, 2); mk(Bw, paint, 3); if (mhTex) mk(Bm, mhMat, 3);
+        if (info.curb) { try { _hqBuildCurbs(room, info, G); } catch (e) { console.warn('[HQ] the curbs failed', e); } }
         if (Bs.n) { var stTex = _hzTex(_hqRoadTexKey('stain')); if (stTex) mk(Bs, new THREE.MeshLambertMaterial({ map: stTex, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff }), 2); }   // under the paint and the manholes
         /* the posts: a plate on a pole, a blocker under it */
         var poleMat = new THREE.MeshPhongMaterial({ color: 0x5a5e66, shininess: 40 });

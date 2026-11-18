@@ -921,7 +921,7 @@ if (ROOM.north && ROOM.zone) lines.push("                zones: " + J([Object.as
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
 DISTRICTS.forEach(m => (m.streets || []).forEach(st => streets.push(st)));   // a district's own streets past the plots (the Hills' roads: districts/N.js): lane lines, kerbs and covers like the city's; laid in last, so no lamp, bus or traffic rule of the plan reads them
-lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0," + (UD ? " stains: true," : "") + " streets: " + J(streets) + ",");
+lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, curb: 0.15, curbBox: [-" + HALF + ", -" + HALF + ", " + HALF + ", " + HALF + "], prisms: false, yardsOpen: false, packP: 0," + (UD ? " stains: true," : "") + " streets: " + J(streets) + ",");
 const lampLine = lines.length; lines.push("");   // written after the district files' build (a district may take a lamp off a square it built on: ctx.lamps)
 lines.push("                       open: [] },");
 const paintLine = lines.length; lines.push("");   // written last of all: THE TREES STAND IN SOIL may still lay a bed
