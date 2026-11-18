@@ -12448,6 +12448,12 @@ areas except disaster city first."
   wall faces, so few stains land), the Catacombs (damp stone blocks Brick_09/10, worn flags Floor_13, drips, a little blood), the Vatican
   (travertine Wall_01, ochre plaster Wall_12 in place of the plain painted plaster, grey tile floors Floor_12, the good gold), Heaven (clouds
   stay; marble -> cream stone, clean). A `scatter` row's key is a ROCK MODEL name (menhir, cave_stone), not a sheet: never map it.
+- BATCH 5: Outer Space (moon rock on walls -> Stone_12, painted tin -> Metal_05), the Astral Realm (the Library's calm carpet stacks ->
+  urban CarpetPattern, calm wood -> WoodBeams1a / WoodFlooring1a, the islands' calm crystal cliffs -> Misc_05, marble cream Wall_01; no
+  stains), Antarctica (bark boards -> WoodCladding, rock -> Brick_11; snow and ice stay), the Internet (calm gunmetal -> Metal_02, deck plate ->
+  Floor_09, wood -> WoodPainted4a; no stains), THE ONE WORLD ROUTES (zone `routes`, every live `site_ow_*`: bark boards -> WoodCladding, rock ->
+  Stone_07). OPEN-GROUND STAINS: `floorDecals: { blood, soot, dirt }` = stains per 1000 m2 on a room's painted squares (not grass, not liquid),
+  cap 160 a kind; Hell has them (mondo 11-18 "yes"). A route room added later must be added to `routes.rooms` by hand.
 - LESSONS: a stair-built terrain slope draws in `terrain.cliff`, so a cliff sheet shows on steps: pick one that reads as stone blocks. A probe
   needs `--flags=EW_HQ_NO_ENCOUNTER` (a field fight hides the view) and ONE browser at a time (three at once got OOM-killed).
 
