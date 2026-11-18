@@ -567,6 +567,7 @@ const RACE_SPRITE_GENDERS = {
   'haunted doll': 'female',   // 2026-11-17 THE HAUNTED DOLL
   'cursed tv': 'male',   // 2026-11-17 THE CURSED TV (one set; the model def sits under male)
   'virus': 'male',   // 2026-11-18 THE VIRUS (one body; the model def sits under male)
+  'streamer': 'both',   // 2026-11-18 THE STREAMER + E-GIRL (one race: the Streamer is the male, the E-Girl the female)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
   'dinosaur': 'male',
@@ -4194,6 +4195,7 @@ EW_MH_WEAR.push(['ewm_tricorn', 'Pirate tricorn', 'hats', 56], ['ewm_officercap'
   ['ewm_goathead', 'Goat head', 'heads', 58], ['ewm_eaglehead', 'Eagle head', 'heads', 58], ['ewm_sharkhead', 'Shark head', 'heads', 58],
   ['ewm_lizardhead', 'Lizard head', 'heads', 58], ['ewm_mothhead', 'Moth head', 'heads', 58],
   ['ewm_sheriffstar', 'Sheriff star', 'equipment', 61], ['ewm_policebadge', 'Police badge', 'equipment', 61],
+  ['ewm_egwig', 'Split-dye pigtail wig', 'hats', 56], ['ewm_stheadset', 'Gaming headset (round the neck)', 'equipment', 61],   // 2026-11-18 THE STREAMER + E-GIRL (bake-meshy.py)
   ['ewm_crosspendant', 'Cross pendant', 'equipment', 61], ['ewm_talisman', 'Talisman pendant', 'equipment', 61],
   ['ewm_hagstone', 'Hagstone', 'equipment', 61], ['ewm_binoculars', 'Binoculars', 'equipment', 61],
   ['ewm_walkietalkie', 'Walkie-talkie', 'equipment', 61], ['ewm_egyptcollar', 'Egyptian collar', 'equipment', 61],
@@ -4807,7 +4809,7 @@ const EW_WEAR_SHELF_MOVE = {
   mhw_elvs_emt_uniform_jacket_female: 'outer', mhw_elvs_emt_uniform_jacket_male: 'outer',
   ewb_belt: 'belts', ewb_tie: 'belts', ewb_bowtie: 'belts', ewb_suspenders: 'belts', ewb_coinbelt: 'belts',   // worn, not held
   // THE MESHY PIECES (the halo with the hats; the hip pieces with the belts; the tails + moth wings find their tabs by name)
-  ewm_brokenhalo: 'hats', ewm_sheriffstar: 'jewellery', ewm_policebadge: 'jewellery', ewm_crosspendant: 'jewellery',
+  ewm_brokenhalo: 'hats', ewm_sheriffstar: 'jewellery', ewm_policebadge: 'jewellery', ewm_crosspendant: 'jewellery', ewm_stheadset: 'jewellery',
   ewm_talisman: 'jewellery', ewm_hagstone: 'jewellery', ewm_egyptcollar: 'jewellery', ewm_airtank: 'back', ewm_astropack: 'back',
   ewm_backpack: 'back', ewm_jetpack: 'back', ewm_quiver: 'back', ewm_katana: 'back', ewm_dowsingrod: 'back', ewm_dorsalfin: 'creature',
   ewm_mothwings: 'wings', ewm_gunbelt: 'belts', ewm_toolbelt: 'belts', ewm_thighholster: 'belts', ewm_flaregun: 'belts',
@@ -6120,7 +6122,27 @@ const RACE_CREATOR_LOOKS = {
   },
 };
 // RACE_CREATOR_LOOKS:END
+/* 🎮 THE STREAMER + E-GIRL (2026-11-18, mondo: "E-girl and Streamer can probably just be male and female versions of the same
+   unit"; plan approved 11-18: MPFB2 bodies in creator clothes, Meshy only for the pieces the packs lack). The race has NO Meshy
+   model: it is in EW_CREATOR_LOOK_RACES, so these two looks ARE its default (battle, forge, exploration). Outside the
+   bake-looks.js block on purpose (bake-looks.js rewrites only BEGIN..END). Pieces: the packs' hoodie / joggers / sneakers
+   (him: the harem pants, grey, are the joggers) and striped shirt / plaid skirt / pantyhose / biker boots (her); the Meshy ones (her split-dyed pigtail wig + choker,
+   his gaming headset round the neck) are `ewm_` picks from bake-meshy.py. Notes: champions-combat.md "THE STREAMER". */
+RACE_CREATOR_LOOKS['streamer'] = {
+  male: {"model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","height":1.0,"mhSkin":"young_caucasian_male","mhEyes":"brown","mhBrows":"eyebrow010","browTint":"pick","browColor":"#3a2a1e",
+    "hair":"mh_cortu_short_messy_hair","hairColor":"#4a3322","jaw":-0.1,"eyeBags":0.35,
+    "wear":["mhw_elvs_hooded_sweat_jacket1","mhw_toigo_harem_pants","mhw_culturalibre_sneakers","ewm_stheadset"],
+    "wearTint":{"mhw_elvs_hooded_sweat_jacket1":"#141418","mhw_toigo_harem_pants":"#77797e"},"wearFabric":{}},
+  female: {"model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","height":0.95,"mhSkin":"toigo_light_skin_with_natural_makeup","mhEyes":"brown","mhBrows":"eyebrow010",
+    "jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04",
+    "lipTint":"pick","lipColor":"#8a2a3c","browTint":"pick","browColor":"#121012","linerTint":"pick","linerColor":"#0e0b0c","shadowTint":"pick","shadowColor":"#5a2a40",
+    "hair":"bald","hairColor":"#121012",
+    "wear":["ewm_egwig","mhw_ews_striped_shirt","mhw_elvs_pleated_plaid_mini_skirt","mhw_kwnet_at_pantyhose01","mhw_mindfront_shoes_biker_boots_female"],
+    "wearTint":{"mhw_elvs_pleated_plaid_mini_skirt":"#c4242c","mhw_kwnet_at_pantyhose01":"#151515","mhw_mindfront_shoes_biker_boots_female":"#121212"},"wearFabric":{},
+    "bust":0.35,"waist":-0.25,"hips":0.2},
+};
 const RACE_CREATOR_LOOK_DEFS = {
+  'streamer': { basicAttackKind: 'punch' },   // 2026-11-18 THE STREAMER + E-GIRL: the keyboard slam (nothing held; the VFX throws the keycaps)
   'cowboy': { basicAttackKind: 'ranged', hold: { key: 'revolver', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.21,
     grip: { c: [0.657, -0.215, 0], down: [0.404, -0.915, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },   // THE GRIP, THE SEAT: the revolver GLB's handle (three-renderer.js _gripFrame)
 };
@@ -6280,7 +6302,7 @@ function raceLooksAreDefault() { return EW_RACE_LOOKS_ARE_DEFAULT || (typeof win
 /* the races whose creator look is their DEFAULT (the human base + the DOOR Agent; + the saved race looks only while
    EW_RACE_LOOKS_ARE_DEFAULT is on). THE MESHY DEFAULT: every race may WEAR a creator look (ewCreatorLookRace); only these
    wear one without the slot picking it. */
-const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent'].concat(EW_RACE_LOOKS_ARE_DEFAULT ? Object.keys(RACE_CREATOR_LOOKS) : []);
+const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent', 'streamer'].concat(EW_RACE_LOOKS_ARE_DEFAULT ? Object.keys(RACE_CREATOR_LOOKS) : []);
 function ewCreatorLookRace(race) { return typeof race === 'string' && !!race; }   // THE MESHY DEFAULT: the creator dresses every unit
 function getCharacterAppearanceModel(race, gender, appearance) {
   const own0 = ewCreatorLookRace(race) && normalizeCharacterAppearance(appearance);

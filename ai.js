@@ -5931,6 +5931,14 @@
         return 0;
     }
     function scoreSpell(unit, spell, target, v) {
+        /* 🎮 THE VIEWERS (the Streamer + the E-Girl): too small a crowd is no cast; a streaming row is scored as the copy it casts
+           (battle.js _streamCastRow: the count baked into the mark / heal / damage); a spend waits for a bigger crowd while it can */
+        if (spell && (spell.viewersSpend || spell.viewersMarkAt || spell.viewersHealPer || spell.viewersDmgPer) && typeof window._streamCastRow === 'function') {
+            const _vw = (typeof window.getViewers === 'function') ? window.getViewers(unit) : (unit.viewers | 0);
+            if (spell.viewersMin > 0 && _vw < spell.viewersMin) return 0;
+            const _vs = _scoreSpellCore(unit, window._streamCastRow(unit, spell), target, v);
+            return (spell.viewersSpend && _vw < 6 && (unit.hp || 0) > (unit.maxHp || 1) * 0.5) ? _vs * 0.6 : _vs;
+        }
         let base = _scoreSpellCore(unit, spell, target, v);
         /* 📰 TODAY'S HEADLINE (the Florida Man, 11-17 polish): a headline spell is castable only today, so the CPU takes it over a
            plain hit when it is worth anything at all (it sat on Bath Salts in a test match and the round was lost) */
