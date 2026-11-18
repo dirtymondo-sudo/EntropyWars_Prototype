@@ -49381,6 +49381,7 @@ const ThreeRenderer = (function () {
             return;
         }
         var t0 = performance.now(), W = _ewBun.why;
+        var spL = (_lens && _lens.cur) ? { w0: Object.assign({}, W), r0: _ewBun.recs, walked: 0, re: [], lamp: false } : null;   // THE BUNDLE SPIKES (lens): this tick's re-records
         _ewBun.frame = (_ewBun.frame | 0) + 1;
         _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0 }; _ewBun.rpAsked = 0; _ewBun.rpAll = 0;   // THE QUIET REPLAY: the last frame's count
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
@@ -49478,10 +49479,21 @@ const ThreeRenderer = (function () {
             st.quiet = (_ewBun.recs === recs0 && !miss) ? (st.quiet | 0) + 1 : 0;
             if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; W.cold++; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
             g.static = stat;
+            if (spL) { spL.walked++; if (g.version !== v0) spL.re.push([String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, '') + (g._ew_pChunk || g._ew_chunk ? ' ' + (g._ew_pChunk || g._ew_chunk) : ''), S.n | 0]); }
             /* THE FIELD BUNDLES: the sphere a held-still piece is culled by, measured again at each recording (never one that
                holds a light: a culled lamp would change the frame's light set, and every material would rebuild) */
             if (g._ew_bunCull && stat && !S.lit && g.isBundleGroup) { if (!g._ew_bunSph || g.version !== v0) g._ew_bunSph = _ewBunSphere(g); }
             else g._ew_bunSph = null;
+        }
+        if (spL) {   // THE BUNDLE SPIKES (2026-11-18, mondo's slow frames: "bundle check 58", "scene: bundle replays 82 / 36 / 26" ms): a tick that took
+            // 6 ms or more, or re-recorded 300+ meshes (three records them in this frame's replays), is kept with its causes, last 6
+            var spMs = performance.now() - t0, spN = 0; for (var sq = 0; sq < spL.re.length; sq++) spN += spL.re[sq][1];
+            if (spMs >= 6 || spN >= 300) {
+                var spW = []; for (var swk in W) { var swd = (W[swk] | 0) - (spL.w0[swk] | 0); if (swd > 0) spW.push(swk + ' ' + swd); }
+                spL.re.sort(function (a, b) { return b[1] - a[1]; });
+                (_ewBun.spikes || (_ewBun.spikes = [])).push(spMs.toFixed(0) + ' ms check · ' + spL.walked + ' walked · ' + spL.re.length + ' re-recorded (' + spN + ' meshes' + (spW.length ? '; ' + spW.join(', ') : '') + (lampMoved ? '; LAMPS MOVED' : '') + ')' + (spL.re.length ? ': ' + spL.re.slice(0, 3).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : ''));
+                if (_ewBun.spikes.length > 6) _ewBun.spikes.shift();
+            }
         }
         _ewBun.objs = objs; _ewBun.quietN = quietN; _ewBun.groupsN = T.length; _ewBun.noMShow = _ewBun.noMN | 0; _ewBun.noMN = 0;
         _ewBun.last = T;
@@ -54119,8 +54131,11 @@ const ThreeRenderer = (function () {
                is written down with the previous frame's own JS (the gap is that frame's work + what the browser did after it): its CPU
                and its three costliest parts / inner steps. A gap with little JS in it is the browser (a GC, the GPU, the compositor). */
             if (iv >= 50 && iv < 2000 && L.prevF) { var PF = L.prevF, top = []; [PF.parts, PF.sub].forEach(function (M, mi) { if (M) for (var tk in M) top.push([(mi ? '> ' : '') + tk, M[tk]]); }); top.sort(function (a, b) { return b[1] - a[1]; });
-                (L.slow || (L.slow = [])).push({ iv: iv, cpu: PF.cpu, top: top.slice(0, 3) }); if (L.slow.length > 6) L.slow.shift(); } }
-        L.lastT0 = F.t0; L.prevF = { cpu: F.cpu, parts: F.parts || null, sub: F.sub || null };
+                (L.slow || (L.slow = [])).push({ iv: iv, cpu: PF.cpu, top: top.slice(0, 3), rec: PF.rec, ep: PF.ep }); if (L.slow.length > 6) L.slow.shift(); } }
+        /* (and how many bundle groups that frame re-recorded, and whether the shared epoch moved: a freed resource / a rig grow re-records them all) */
+        var recNow = (typeof _ewBun !== 'undefined' && _ewBun) ? (_ewBun.recs | 0) : 0, epNow = (typeof _ewBun !== 'undefined' && _ewBun) ? (_ewBun.epoch | 0) : 0;
+        L.lastT0 = F.t0; L.prevF = { cpu: F.cpu, parts: F.parts || null, sub: F.sub || null, rec: L.recAt != null ? recNow - L.recAt : 0, ep: L.epAt != null && epNow !== L.epAt };
+        L.recAt = recNow; L.epAt = epNow;
         A.n++; A.cpu += F.cpu; A.submit += F.submit; A.anim += F.anim; A.renders += F.renders; A.shadowRuns += F.shadowRuns; A.calls += F.calls; A.tris += F.tris;
         A.meshes += F.meshes; A.skinned += F.skinned; A.inst += F.inst; A.instances += F.instances;
         if (F.parts) { var AP = A.parts || (A.parts = {}); for (var pk in F.parts) AP[pk] = (AP[pk] || 0) + F.parts[pk]; }
@@ -54216,7 +54231,7 @@ const ThreeRenderer = (function () {
             if (pl.length > 9) L.push('  ' + pl.slice(9).join(' · '));
         }
         if (S.sub && S.sub.length) L.push('Inside the ticks (ms/frame): ' + S.sub.filter(function (r) { return r[1] >= 0.02; }).slice(0, 10).map(function (r) { return r[0] + ' ' + r[1].toFixed(2); }).join(' · '));
-        if (S.slow && S.slow.length) L.push('Slow frames (last ' + S.slow.length + ', gap · its JS · top): ' + S.slow.map(function (w) { return Math.round(w.iv) + ' ms · JS ' + Math.round(w.cpu) + ' · ' + w.top.map(function (t) { return t[0] + ' ' + t[1].toFixed(1); }).join(', '); }).join(' | '));
+        if (S.slow && S.slow.length) L.push('Slow frames (last ' + S.slow.length + ', gap · its JS · top): ' + S.slow.map(function (w) { return Math.round(w.iv) + ' ms · JS ' + Math.round(w.cpu) + (w.rec ? ' · ' + w.rec + ' re-recorded' : '') + (w.ep ? ' · epoch moved' : '') + ' · ' + w.top.map(function (t) { return t[0] + ' ' + t[1].toFixed(1); }).join(', '); }).join(' | '));
         if (S.cnt) {   // THE SHADOW SPLIT (2026-11-15): which shadow costs — the sun's map or a lamp's cube sides — and how many objects each pass's walk visits
             var cN = function (k) { return S.cnt[k] || 0; }, cF = function (v) { return v >= 100 ? _lensFmtN(v) : (Math.round(v * 10) / 10); };
             L.push('Shadow split (a frame): sun ' + cF(cN('sun renders')) + ' renders, ' + cF(cN('sun calls')) + ' calls, ' + cF(cN('sun tris')) + ' tris · lamp ' + cF(cN('lamp renders')) + ' side renders, ' + cF(cN('lamp calls')) + ' calls, ' + cF(cN('lamp tris')) + ' tris');
@@ -54273,6 +54288,7 @@ const ThreeRenderer = (function () {
             if (top.length) L.push('  biggest groups: ' + top.slice(0, 6).map(function (t) { return t[1] + ' ' + t[0]; }).join(' · '));
         } catch (eBK) {}
         try {   // THE CHECK'S SPLIT + THE WALK'S SPLIT (2026-11-18): where the bundle check and the matrix walk spend their time
+            if (_ewBun.spikes && _ewBun.spikes.length) L.push('Bundle spikes (last ' + _ewBun.spikes.length + '): ' + _ewBun.spikes.join(' | '));
             if (_ewBun.splitShow) L.push('Bundle check by group (ms a frame, meshes; ' + (_ewBun.splitN | 0) + ' groups walked): ' + _ewBun.splitShow);
             var mwS = _hqStillSplitText(); if (mwS) L.push('Matrix walk by group (ms a frame): ' + mwS);
         } catch (eSp) {}
@@ -90965,12 +90981,13 @@ const ThreeRenderer = (function () {
                EASED (2026-09-05 rev 3): in fast so the eye never clips, back
                out slowly so a passing pillar / the desk / the stair mass no
                longer pops the camera a metre in one frame */
-            var f = 1, NB = 32;
+            var f = 1, NB = 32, _cs = (_lens && _lens.cur) ? performance.now() : 0;   // THE INNER SPLIT (lens)
             for (var i = 1; i <= NB; i++) {
                 var t = i / NB;
                 var px = pivot.x + (ideal.x - pivot.x) * t, py = pivot.y + (ideal.y - pivot.y) * t, pz = pivot.z + (ideal.z - pivot.z) * t;
                 if (_hqCamBlocked(px, pz, py)) { f = Math.max(0.12, (i - 1) / NB); break; }
             }
+            _lensSub('camera: boom march', _cs);
             if (c.f == null || !c.init) c.f = f;
             else if (f < c.f) c.f += (f - c.f) * Math.min(1, dt / 0.04);
             else c.f += (f - c.f) * Math.min(1, dt / 0.45);
@@ -91025,7 +91042,9 @@ const ThreeRenderer = (function () {
         }
         cam.position.set(c.ex * U, c.ey * U, c.ez * U);
         cam.lookAt(c.lx * U, c.ly * U, c.lz * U);
+        var _cf = (_lens && _lens.cur) ? performance.now() : 0;
         if (typeof _hqCamFeel === 'function') _hqCamFeel(H, pl, cam, dt, U);   // THE CAMERA PASS 6.1 (2026-09-21): the bob, the landing, the sprint lens, the carve lean
+        _lensSub('camera: feel', _cf);
     }
     /* Push the camera onto the glass of the CRT nearest a counter (the
        CROSSING / RANGE console's tanker desk, the dispatch desk) — the
