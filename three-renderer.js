@@ -54087,7 +54087,7 @@ const ThreeRenderer = (function () {
         } catch (eSp) {}
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
-            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
+            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + ' · movers kept out ' + (_ewBun.outS | 0));
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
@@ -92998,7 +92998,18 @@ const ThreeRenderer = (function () {
             if (hasMv && mv.has(c)) {
                 c.updateMatrixWorld(true); s = _hqStillSum(c);
                 if (s !== SM[i]) { SM[i] = s; AT[i] = now; }
-                else if (now - AT[i] > (st.hold || HQ_STILL_HOLD_MS)) { mv.delete(c); if (c._ew_bunOutA) { c._ew_bunOut = undefined; c._ew_bunOutA = false; this._ew_bunDirty = true; } }   // at rest: back into its group's recording
+                else if (now - AT[i] > (st.hold || HQ_STILL_HOLD_MS)) {
+                    mv.delete(c);
+                    /* THE MOVERS STAY OUT (2026-11-18, mondo's F3 in Disaster City: 23 FPS, worst 99 ms, "bundle check 15.2", the shell re-recorded
+                       96 times, 70 of them a mover going out or coming back): every start and every stop of a piece in a big still group
+                       re-recorded the group AND checked all its ~10,000 children that frame. A piece that rests once comes back (a prop
+                       knocked once); a piece that moves again after coming back stays drawn outside the recording from then on (it is one
+                       of the few that move: a dozen own draws in place of a re-record each time it starts or stops). Off: window.EW_BUN_OUT_RETURN_ALWAYS. */
+                    if (c._ew_bunOutA) {
+                        if ((c._ew_bunOutR | 0) >= 1 && !(typeof window !== 'undefined' && window.EW_BUN_OUT_RETURN_ALWAYS)) { if (!c._ew_bunOutS) { c._ew_bunOutS = true; _ewBun.outS = (_ewBun.outS | 0) + 1; } }
+                        else { c._ew_bunOutR = (c._ew_bunOutR | 0) + 1; c._ew_bunOut = undefined; c._ew_bunOutA = false; this._ew_bunDirty = true; }
+                    }
+                }   // at rest: back into its group's recording (once)
                 S.movers++; continue;
             }
             if ((i >= i0 && i < i1) || i + n < i1) {   // this frame's slice of the rest
