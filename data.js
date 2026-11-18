@@ -89871,12 +89871,12 @@ const HQ_NPC_TEMPERS = {
        `giveUpM` metres or after `loseMs` without seeing him. PROPOSALS, all of them. */
     guard: { strikesSeen: 2, warnMs: 8000, chaseSpeed: 2.7, reachM: 1.9, giveUpM: 32, loseMs: 6000 },
     levelGap: 8,               // an NPC this many levels (or more) under the party never starts a fight (mondo: "8 is fine")
-    /* NPC-STARTED FIGHTS (step 4, 2026-11-18; PLAN 4.3; REPLACES "never random"). `levelGapOn`: the ways of starting the gap holds back ('defend' = a Guard
-       that saw a strike still says its line, it only does not come). `graceMs`: nobody starts anything this long after the room is entered or handed back.
+    /* NPC-STARTED FIGHTS (step 4, 2026-11-18; PLAN 4.3; REPLACES "never random"). `levelGapOn`: the ways of starting the gap holds back ('defend' in the row would
+       hold a Guard that saw a strike: it would say its line and not come; mondo 11-18 took it out). `graceMs`: nobody starts anything this long after the room is entered or handed back.
        `brute`: one that sees the walker comes at `chaseSpeed` m/s (he walks 2.4, runs 4.6), fights within `reachM`, gives up past `giveUpM` or `loseMs` unseen,
        and does not come again for `againMs`. `ground`: a Territorial that warned fights when he is still on its ground `stayMs` later, or within `nearM` of it
        `warnMs` after the line; it never steps off its ground. PROPOSALS, all of them. */
-    levelGapOn: ['sight', 'ground', 'mug', 'defend'],
+    levelGapOn: ['sight', 'ground', 'mug'],   // not 'defend' (mondo 11-18: "cops should always [come] for now"; the wanted system may change it)
     graceMs: 5000,
     brute: { chaseSpeed: 2.7, reachM: 1.9, giveUpM: 32, loseMs: 6000, againMs: 5000 },
     ground: { stayMs: 6000, nearM: 4, warnMs: 1500, chaseSpeed: 2.7, reachM: 1.9, giveUpM: 32, loseMs: 6000, againMs: 5000 },
@@ -89891,7 +89891,8 @@ const HQ_NPC_TEMPERS = {
         talk: { 'chef': '“Hey! What was that for?”', 'hippie': '“Not cool, man.”', 'skater': '“What is your problem?”', 'popstar': '“Do you know who I am?”',
                 'pirate': '“You want a fight? Say so.”', 'florida man': '“You want some? Come on.”' },
         warn: { 'police officer': '“Hands off. Now.”', 'lifeguard': '“Hey! Leave them alone.”', 'ghost': '“Get out.”' },
-        mug:  { 'pirate': '“Nice shoes. Empty your pockets.”', 'florida man': '“Give me your wallet.”' },
+        mug:  { 'pirate': '“Nice shoes. Empty your pockets.”', 'florida man': '“Give me your wallet.”',
+                'gangster': '“Wallet. Now.”', 'goblin': '“Shiny. Give.”', 'politician': '“A small donation. I insist.”', 'televangelist': '“The Lord needs your money.”', 'tech ceo': '“Your subscription is due.”' },   // the last five: mondo 11-18, "sounds good"
         giveUp: '“Stop. I give up.”',
     },
     labels: { backOff: 'BACK OFF', fight: 'FIGHT', noted: 'NOTED', pay: 'PAY', payOff: 'TAKE THE PAY-OFF', arrest: 'ARREST', letGo: 'LET IT GO', lost: 'LOST', gold: 'GOLD' },
