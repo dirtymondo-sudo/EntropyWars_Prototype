@@ -8683,7 +8683,7 @@ const ThreeRenderer = (function () {
            after (a tile highlight, a ring, a zone, blood, a spell's ground mark) is ever hidden BY a blade — they lie on the grass
            the way they lie on the ground */
         var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, depthWrite: false });
-        var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: _ggRightU, uGgW: { value: new THREE.Vector2(GGRASS.gust, GGRASS.flutter) } };
+        var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: G.right || _ggRightU, uGgW: { value: new THREE.Vector2(GGRASS.gust, GGRASS.flutter) } };
         m.onBeforeCompile = function (shader) {
             shader.uniforms.uGgM = _ggMaskU;
             shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR; shader.uniforms.uGgW = U.uGgW;
@@ -8705,7 +8705,7 @@ const ThreeRenderer = (function () {
                 .replace('#include <dithering_fragment>', '#include <dithering_fragment>\nif ( uGgM.x > 0.5 ) { float ggZ = clamp( log2( 1.0 + max( vGgZ, 0.0 ) ) / 20.0, 0.0, 1.0 ) * 255.0; gl_FragColor = vec4( 0.0, floor( ggZ ) / 255.0, fract( ggZ ), 1.0 ); }');   // THE GRASS TAKES NO INK: the style mask's draw
         };
         m.customProgramCacheKey = function () { return 'ew_ggrass3'; };
-        _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv });   // the WebGPU twin: _ewNodeGGrass
+        _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv, right: G.right || _ggRightU });   // the WebGPU twin: _ewNodeGGrass
         return m;
     }
     function _ggBuild(group) {
@@ -8857,8 +8857,13 @@ const ThreeRenderer = (function () {
        are drawn far to near, so a near tuft's light top always lies over the dark foot of the one behind it (that overlap IS the
        fluff). The order is a counting sort over the view direction, redone only when the camera has turned ~10° */
     var _ggV = null, _ggM = null;
-    function _ggFace(G) {
-        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+    /* THE CAMERA THAT DRAWS IT (2026-11-18, mondo: "In story mode the grass blades are only showing from one side"): a walked room draws
+       through its OWN camera (_hq.camera), not the board's. The walked room's tufts used to turn to the board's camera (which stands still
+       while you walk), so every tuft kept one fixed face; walk round to its back and the front-side-only tuft was culled away. A field now
+       passes the camera that draws it, and a walked room keeps its own right-vector uniform (G.right), so the board's field and the room's
+       never turn each other. */
+    function _ggFace(G, camIn) {
+        var cam = camIn || ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null);
         if (!cam) return;
         if (!_ggV) { _ggV = new THREE.Vector3(); _ggM = new THREE.Matrix4(); }
         G.mesh.updateWorldMatrix(true, false);
@@ -8866,7 +8871,7 @@ const ThreeRenderer = (function () {
         var e = cam.matrixWorld.elements;
         _ggV.set(e[0], e[1], e[2]).transformDirection(_ggM);
         var rl = Math.hypot(_ggV.x, _ggV.z) || 1;
-        _ggRightU.value.set(_ggV.x / rl, _ggV.z / rl);
+        (G.right || _ggRightU).value.set(_ggV.x / rl, _ggV.z / rl);
         _ggV.set(-e[8], -e[9], -e[10]).transformDirection(_ggM);   // the view direction
         var fl = Math.hypot(_ggV.x, _ggV.z); if (fl < 1e-4) return;
         var dx = _ggV.x / fl, dz = _ggV.z / fl;
@@ -8967,7 +8972,7 @@ const ThreeRenderer = (function () {
         var mesh = new THREE.Mesh(geo, S.mat);
         mesh.frustumCulled = false; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
         S.parent.add(mesh);
-        return { mesh: mesh, roots: new Float32Array(roots), blades: nB, ia: ia, sortDir: null, cx: cx, cz: cz };
+        return { mesh: mesh, roots: new Float32Array(roots), blades: nB, ia: ia, sortDir: null, cx: cx, cz: cz, right: S.right };
     }
     function _hqGrassTick() {
         var H = _hq, T = H && H.room && H.room.terrain, on = false;
@@ -8981,13 +8986,14 @@ const ThreeRenderer = (function () {
             S = _hqGG = { H: H, level: _ggLevel, info: H.terrain, U: U, N: LOW ? HQ_GRASS.low.perSquare : HQ_GRASS.perSquare, R: LOW ? HQ_GRASS.low.radiusM : HQ_GRASS.radiusM,
                 width: (LOW ? GGRASS.low.width : GGRASS.width) * (LOW ? 1 : GGRASS.perTile / HQ_GRASS.perSquare), windK: (CONFIG.tileSize || BASE_TILE) / (3.5 * U),
                 cells: new Map(), pals: {}, boxes: boxes, press: pr.tex, at: 0, parent: (H.propGroup && H.propGroup.parent) || scene };
-            S.mat = _ggMat({ press: pr.tex, inv: [0, 0] });
+            S.right = { value: new THREE.Vector2(1, 0) };   // THE CAMERA THAT DRAWS IT: the room's own (see _ggFace)
+            S.mat = _ggMat({ press: pr.tex, inv: [0, 0], right: S.right });
             /* THE DEPTH (seen in the browser: dark lines of tuft feet along every cell's edge): the board's field writes no depth and sorts ALL its tufts far to
                near in one mesh; here each cell sorts only its own, so two cells side by side overlapped wrongly at their shared edge whatever order the
                cells were drawn in. A walked room's tufts write depth, so the order does not matter (and the walker's shins stand IN the grass). */
             S.mat.depthWrite = true;
         }
-        var live = []; S.cells.forEach(function (c) { if (c && c.mesh) { _ggFace(c); live.push(c); } });
+        var live = []; S.cells.forEach(function (c) { if (c && c.mesh) { _ggFace(c, H.camera); live.push(c); } });
         var now = performance.now(); if (now - S.at < HQ_GRASS.tickMs) return; S.at = now;
         var cm = HQ_GRASS.cellM, px = H.player.x, pz = H.player.z, pcx = Math.floor(px / cm), pcz = Math.floor(pz / cm), rc = Math.ceil(S.R / cm), want = [];
         for (var dz = -rc; dz <= rc; dz++) for (var dx = -rc; dx <= rc; dx++) { var cx = pcx + dx, cz = pcz + dz, d = Math.hypot((cx + 0.5) * cm - px, (cz + 0.5) * cm - pz); if (d > S.R) continue; if (!S.cells.has(cx + ',' + cz)) want.push([d, cx, cz]); }
@@ -8997,7 +9003,7 @@ const ThreeRenderer = (function () {
         /* far cells first: no tuft writes depth, so a near cell must be drawn over a far one */
         /* (far = along the camera's own view direction, as each cell sorts its tufts: a distance from the camera's place put a cell behind
            the eye in front of the one it looks at, and the cells' edges showed as dark lines of tuft feet) */
-        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null, fx = 0, fz = 0;
+        var cam = H.camera || ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null), fx = 0, fz = 0;
         live = live.filter(function (c) { return c.mesh && c.mesh.parent; });
         if (cam && live.length) {   // the view direction in the cells' OWN frame (the room's group may be turned or mirrored against the world)
             if (!_ggV) { _ggV = new THREE.Vector3(); _ggM = new THREE.Matrix4(); }
@@ -48130,7 +48136,7 @@ const ThreeRenderer = (function () {
     }
     /* THE GRASS FIELD on the node renderer (the GLSL is _ggMat): the gust, the flutter, the press map, the crest sheen, the normal up */
     function _ewNodeGGrass(nm, D) {
-        var T = _ewNodeU.T, P = T.positionLocal, A = T.attribute('aGg', 'vec4'), S = T.attribute('aGgS', 'float'), t = _ewNodeRef(_grassWindTime), Rt = _ewNodeRef(_ggRightU), C = GGRASS;
+        var T = _ewNodeU.T, P = T.positionLocal, A = T.attribute('aGg', 'vec4'), S = T.attribute('aGgS', 'float'), t = _ewNodeRef(_grassWindTime), Rt = _ewNodeRef(D.right || _ggRightU), C = GGRASS;
         var gust = function () {
             var g = T.sin(A.x.mul(0.0105).add(A.y.mul(0.0062)).sub(t.mul(C.gust)).add(T.sin(A.x.mul(-0.0040).add(A.y.mul(0.0070)).add(t.mul(0.31))).mul(1.4))).mul(0.5).add(0.5);
             return g.mul(g);
