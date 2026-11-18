@@ -2901,3 +2901,12 @@ saw move going out of the shell's recording, or coming back 4 s after it rests).
 (three projects all ~10,000 children that frame) and a full check of the shell (`_ew_bunDirty` wakes it out of THE QUIET GROUPS).
 Now (`_hqStillUpdate`): a piece comes back into the recording once; if it moves again it stays drawn outside the recording for good
 (`_ew_bunOutS`). Lens: "movers kept out N" at the end of "Re-recorded most". Off: `window.EW_BUN_OUT_RETURN_ALWAYS`.
+
+## THE HIDDEN PEOPLE (2026-11-18, Disaster City 60 FPS thread)
+His F3 with the split lines: "Matrix walk by group: hq_part 2.31 · hq_instances 0.75"; "Bundle check by group: downtown_streets
+shell 1.22 (10)" (the shell's ~10,000 children walked for 10 meshes; it is quiet-skipped only once its re-records stop: THE MOVERS
+STAY OUT, PR #2107, other thread). The room holds 122 rigs, 22 animating: three's walk composed every bone of every hidden body
+(residents past the drawn count, the crowd past its cap, a scene's taken-out cast) each frame. `_hqCharGroupMW` (the walk room's
+charGroup's own updateMatrixWorld, armed in `_hqStillSceneWalk`, walk frames only) leaves a hidden body as it stands and walks it in
+full (force) the first frame it is shown, before that frame's draws (visibility is set in the ticks, before the walk). Lens: the
+Matrix walk line ends "N hidden people left as they stand". Off: `window.EW_HQ_CHAR_MW_ALL = true`.
