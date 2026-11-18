@@ -91826,6 +91826,11 @@ const HQ_NPC_TEMPERS = {
        they sleep"): an NPC that walks away from a fight hurt keeps its HP into the next one (data.js hqNpcWoundFor / hqNpcWoundsAfter, the profile's
        `door.hq.wounds`). One that went down is BEATEN, whatever the fight's outcome (the cleared ledger, hqEncounterRecord `beaten`). `max`: rows kept. */
     wounds: { max: 64 },
+    /* THE LOSING NPC (step 6b, 2026-11-18; STEP-6A.md, mondo: "OK sounds good"). A hit that leaves an NPC alive at or under `giveUpAt` of its max HP: it decides
+       ONCE by its temper (`by`: 'give' = gives up on the spot, 'run' = runs for the rim and leaves once nobody sees it, gives up if it cannot get out of sight);
+       a temper not named fights on, so do bosses. TALK reaches `talkRange` squares (free). The pay-off: payOffGoldPerLevel x its level + `rolls` certain spoils
+       rolls (`rollsAt` and up: one more). Story fights only, never a quest's fight. Every number is a PROPOSAL. */
+    losing: { giveUpAt: 0.30, talkRange: 3, rolls: 1, rollsAt: 20, by: { civilian: 'give', coward: 'run', opportunist: 'run' } },
     /* THE LINES (mondo 11-17: "these lines are fine for now"). talk: after the second strike, or E first. warn: over the head, once. */
     lines: {
         talk: { 'chef': '“Hey! What was that for?”', 'hippie': '“Not cool, man.”', 'skater': '“What is your problem?”', 'popstar': '“Do you know who I am?”',
@@ -91844,6 +91849,16 @@ function hqNpcTemper(ch) {
     const R = o.room && T.rooms[o.room], own = R && R.residents && o.id ? R.residents[o.id] : null;
     const key = own || T.races[String(o.race || '').toLowerCase()] || null;
     return (key && T.tempers[key]) ? Object.assign({ key }, T.tempers[key]) : null;
+}
+/* THE LOSING NPC (step 6b): what an NPC of this temper does when it is losing: 'give' | 'run' | null (fights on) */
+function hqNpcLosingWay(ch) {
+    const t = hqNpcTemper(ch), L = HQ_NPC_TEMPERS.losing || {};
+    return (t && L.by && L.by[t.key]) || null;
+}
+/* THE PAY-OFF of an NPC of level `lvl`: { gold, rolls } (gold = payOffGoldPerLevel x level; rolls = the certain spoils rolls) */
+function hqNpcPayOff(lvl) {
+    const T = HQ_NPC_TEMPERS, L = T.losing || {}, n = Math.max(1, lvl | 0);
+    return { gold: (T.payOffGoldPerLevel | 0) * n, rolls: (L.rolls | 0) + (n >= (L.rollsAt | 0) && L.rollsAt ? 1 : 0) };
 }
 /* the named group of a race ('emergency' ...) | null */
 function hqNpcGroup(race) {
@@ -94104,12 +94119,13 @@ function hqEncounterRecord(profile, ev) {
        the NPC ids that went down in this fight, whatever its outcome (a win, a loss, a retreat): each is out of the room until tomorrow, like the one
        struck on a win. Before, only the struck NPC of a WON fight was filed; its group's fallen came back at once, whole. */
     const _bt = (Array.isArray(ev.beaten) ? ev.beaten : []).filter(x => x).map(String);
+    const _away = (Array.isArray(ev.away) ? ev.away : []).filter(x => x).map(String);   // THE LOSING NPC (step 6b): NPCs that RAN and got away are not beaten, even on a win
     if (ev.room && (ev.won || _bt.length)) {
         const C = H.cleared = hqClearedRecord(profile);
         let c = C[ev.room];
         if (!c || typeof c !== 'object' || c.date !== date) c = C[ev.room] = { date, ids: [] };
         if (!Array.isArray(c.ids)) c.ids = [];
-        if (ev.won && ev.id && c.ids.indexOf(ev.id) < 0) c.ids.push(String(ev.id));
+        if (ev.won && ev.id && c.ids.indexOf(ev.id) < 0 && _away.indexOf(String(ev.id)) < 0) c.ids.push(String(ev.id));
         _bt.forEach(id => { if (c.ids.indexOf(id) < 0) c.ids.push(id); });
     }
     const synced = hqSyncedHq(profile, true);
@@ -94490,7 +94506,7 @@ const HQ_PARTY_RULES = {
    THE RETREAT (also when the last body on the board escapes). A RETREAT is neither a win nor a loss: no pool, no drops,
    no capture, nothing cleared, no ward, counted as `retreats`. A LOSS with escapes is not a wipe: nobody is treated, the
    loss is counted, the escaped move to the FRONT of the party (slot 1 walks), and the way back is the room at the door
-   you came in by (`landsAtDoor`; the swing spot when there is no door on file). Natives never escape (fork §10.2). */
+   you came in by (`landsAtDoor`; the swing spot when there is no door on file). Natives never escaped (fork §10.2) until NPC encounters step 6b (2026-11-18): a Coward or Opportunist NPC that is losing RUNS and leaves unseen (battle.js THE LOSING NPC). */
 const HQ_ESCAPE_RULES = {
     apMin: 1,          // AP the unit must still hold to slip out (it spends all of it)
     ms: 900,           // the walk-off
@@ -95332,7 +95348,7 @@ function hqEncounterDrops(fallen, opts) {
     const sum = keys.reduce((a, k) => a + (R.weights[k] | 0), 0); if (!sum) return out;
     fallen.forEach(f => {
         if (!f) return; out.rolled++;
-        if (rng() >= R.chance) return;
+        if (!f.sure && rng() >= R.chance) return;   // `sure`: a certain roll (THE PAY-OFF, NPC encounters step 6b)
         let r = rng() * sum, pick = keys[keys.length - 1];
         for (const k of keys) { r -= R.weights[k] | 0; if (r < 0) { pick = k; break; } }
         let key = pick, rarity = R.rarity[pick] || 'common';

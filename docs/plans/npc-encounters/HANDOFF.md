@@ -82,7 +82,7 @@ code path was run by day with a Chef standing in for it in the page only.
 1. ~~The check~~, ~~step 1b~~, ~~step 2~~: done 11-17 (sections 1 and 2).
 2. ~~Step 3, the strike ladder~~: done 11-17 (section 2).
 3. ~~Step 4, NPC-started fights~~: done 11-18 (section 2). The drive-by is skipped on his word.
-4. ~~5a, NPC health on the walk~~: done 11-18 (section 2). **6a DELIVERED 11-18** (`STEP-6A.md` + `step-6a-give-up.jpg` / `step-6a-talk-panel.jpg`; put to mondo in chat): **6b builds only after his OK**, and from his answers to it, then 6b, the GATE (he plays Bayside), S beside them.
+4. ~~5a, NPC health on the walk~~: done 11-18 (section 2). ~~6a~~ OK'd 11-18 ("OK sounds good"). ~~6b, the losing NPC~~: BUILT 11-18 (npc-system.md "THE LOSING NPC"; proof pictures in `/mnt/project-files/npc-encounters/step-6b/`). Next: the GATE (he plays Bayside), S beside it.
 5. 28 races that live in the city have no temper yet (Priest, Ki Fighter, Swordfighter, Conspiracy Theorist, Cult Leader, Halfdemon, Men in Black, Spy, General, Honda Civic, Mad Scientist, Reptilian, Telepath, Antihero, Nephilim, Clown, Ringmaster, Quarterback, Luchador, Juggernaut, Knight, Astronaut, Marksman, Cursed TV, Super Sentai, Ninja, Magician, Referee; they behave as today and never open the eye):
    they wait for their district's pass, which needs mondo's marks like Bayside's did.
 

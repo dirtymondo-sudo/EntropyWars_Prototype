@@ -7594,6 +7594,13 @@ function ActionMenu({ st, hidden }) {
     }
   }
 
+  // 🏳 TALK (NPC encounters step 6b, battle.js npcTalkRow): shows while an enemy has GIVEN UP; lit on this unit's own turn
+  // within 3 squares of it. Free: no AP, the turn goes on. Opens the panel (pay-off / arrest / let it go).
+  {
+    const _talk = typeof window.npcTalkRow === 'function' ? window.npcTalkRow(unit) : null;
+    if (_talk) actions.push({ id: 'npcTalk', label: 'Talk', icon: '🏳️', cost: null, available: !!_talk.ok, sub: _talk.ok ? 'Free' : (_talk.why || null) });
+  }
+
   // ── special-action pushers: situational one-shots surfaced as extra
   // stopwatch buttons on the bezel (the tile quick menu mirrors most of
   // them). Only built when usable right now — presence == opportunity.
@@ -7760,6 +7767,7 @@ function ActionMenu({ st, hidden }) {
       case 'cubeTurn': if (typeof chooseActionMenu === 'function') chooseActionMenu('cubeTurn'); break;
       case 'escape': if (typeof window.doEscape === 'function' && typeof getSelectedUnit === 'function') window.doEscape(getSelectedUnit()); break;
       case 'teamEscape': if (typeof window.doTeamEscape === 'function' && typeof getSelectedUnit === 'function') window.doTeamEscape(getSelectedUnit()); break;
+      case 'npcTalk': if (typeof window.doNpcTalk === 'function' && typeof getSelectedUnit === 'function') window.doNpcTalk(getSelectedUnit()); break;
     }
   }
 

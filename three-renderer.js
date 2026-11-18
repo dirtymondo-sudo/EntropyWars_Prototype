@@ -15054,6 +15054,7 @@ const ThreeRenderer = (function () {
             h = _hashInt(h, u.x); h = _hashInt(h, u.y); h = _hashInt(h, u.z || 0);
             h = _hashInt(h, u.hp); h = _hashInt(h, u.mp); h = _hashInt(h, u.ap);
             h = _hashInt(h, u.player);
+            h = _hashInt(h, u._gaveUp ? 1 : 0);   // 🏳 THE WHITE FLAG (step 6b): giving up / fighting on patches the plate
             if (u.appearance) h = _hashStr(h, _apSerial(u.appearance)); h = _hashInt(h, u.shield || 0);
             if (typeof getActiveStatusKeys === 'function' && u.status) {
                 var sk = getActiveStatusKeys(u);
@@ -15401,6 +15402,31 @@ const ThreeRenderer = (function () {
         else el.appendChild(document.createTextNode(txt));
     }
 
+    /* THE WHITE FLAG (NPC encounters step 6b, 2026-11-18; mondo OK'd STEP-6A): an enemy that GAVE UP (battle.js `_gaveUp`) shows a white
+       flag in its name row where the eye sits (and on the portrait's corner at far zoom), and its HP bar greys. Read on every stats patch
+       and when a plate is built (a rebuild rewrites the plate's insides). */
+    function _plateFlagSync(po, u) {
+        if (!po || !po.el || !u) return;
+        var gaveUp = !!u._gaveUp;
+        if (!gaveUp && !po._gaveUp) return;
+        po._gaveUp = gaveUp;
+        if (po.el.classList.contains('tp-gaveup') !== gaveUp) po.el.classList.toggle('tp-gaveup', gaveUp);
+        var nameRow = po.el.querySelector('.tp-name'), flagEl = po.el.querySelector('[data-flag]');
+        if (gaveUp && !flagEl && nameRow) {
+            flagEl = document.createElement('span');
+            flagEl.className = 'tp-eye tp-flag'; flagEl.setAttribute('data-flag', ''); flagEl.title = 'Gave up — Talk to it on your turn';
+            flagEl.textContent = '\u{1F3F3}\uFE0F';
+            var nmEl = nameRow.querySelector('.tp-nm');
+            if (nmEl && nmEl.nextSibling) nameRow.insertBefore(flagEl, nmEl.nextSibling); else nameRow.appendChild(flagEl);
+        } else if (!gaveUp && flagEl) flagEl.remove();
+        var portEl = po.el.querySelector('.tp-portrait'), pflag = po.el.querySelector('[data-pflag]');
+        if (gaveUp && portEl && !pflag) {
+            pflag = document.createElement('span');
+            pflag.className = 'tp-pflag'; pflag.setAttribute('data-pflag', ''); pflag.textContent = '\u{1F3F3}\uFE0F';
+            portEl.appendChild(pflag);
+        } else if (!gaveUp && pflag) pflag.remove();
+    }
+
     function _patchPlateStats() {
         if (!state.units) return;
         for (var i = 0; i < state.units.length; i++) {
@@ -15467,6 +15493,8 @@ const ThreeRenderer = (function () {
                     rowEl.innerHTML = sbHtml;
                 }
             }
+
+            _plateFlagSync(po, u);   // 🏳 THE WHITE FLAG (step 6b)
 
             // Vision eye: open when any enemy can see this unit, closed/slashed
             // when hidden. Recomputed each frame so it tracks movement/fog live.
@@ -20764,6 +20792,9 @@ const ThreeRenderer = (function () {
                defeat's kneel — plays under every one-shot and outranks the locomotion reads
                (nothing moves on the podium); cleared by ThreeRenderer.podium.release */
             else if (entry._ew_hold && entry.actions[entry._ew_hold]) want = entry._ew_hold;
+            /* 🏳 THE LOSING NPC (battle.js, step 6b): a unit that gave up kneels (the podium's defKneel, baked on demand; re-read every frame so a
+               rebuilt or late-attaching rig kneels too) */
+            else if (window._ewGaveUpIds && window._ewGaveUpIds.has(uid) && _kneelReady(entry, uid)) want = 'defKneel';
             else if (_freeRoam && uid === _freeRoam.uid) want = _freeRoam.want || 'idle';   // hub free-roam owns this unit's clip
             else if (_rtMode && _rtUnits.has(uid)) want = _rtUnits.get(uid).want || 'idle'; // Strike real-time driver owns it
             else if (_jumpTweens.has(uid)) want = 'jump';   // falls back walk→idle
@@ -21443,6 +21474,14 @@ const ThreeRenderer = (function () {
                 '  box-shadow: 0 0 6px rgba(255,74,86,0.45);',
                 '}',
 
+                /* THE WHITE FLAG (step 6b): a unit that gave up: the flag where the eye sits, the HP bar grey */
+                '.tp-wrap .tp-eye.tp-flag { color: #ffffff; text-shadow: 0 0 4px rgba(255,255,255,0.7), 0 1px 2px #000; }',
+                '.tp-wrap.tp-gaveup .tp-portrait { position: relative; }',
+                '.tp-wrap .tp-pflag { position: absolute; top: -7px; right: -7px; font-size: 13px; line-height: 1; color: #fff; background: #000; border: 1px solid #fff; padding: 2px 2px 1px; }',
+                /* over the UI Maker's bar colours too (hud.js barsCss writes `:root:root … !important`) */
+                ':root:root:not(#ew-gu):not(#ew-gu) .tp-wrap.tp-gaveup .tp-hp-fill {',
+                '  background: #9a9a9a !important; box-shadow: none !important;',
+                '}',
                 '.tp-wrap .tp-shield {',
                 '  position: absolute; top: 0; right: 0; height: 100%;',
                 '  background: rgba(130,200,255,0.6);',
@@ -21941,6 +21980,7 @@ const ThreeRenderer = (function () {
         var _po = { css2d: css2d, el: wrap, statusBadgesHtml: _sbInner,
                     _headY: _headY, _footY: SELECTED_RING_OFFSET + 2 };
         _plateObjs.set(unit.id, _po);
+        _plateFlagSync(_po, unit);   // 🏳 THE WHITE FLAG (step 6b)
         _pmBind(_po);
         _anchorPlateForStyle(_po);
 
@@ -30621,6 +30661,14 @@ const ThreeRenderer = (function () {
             if (ue.actions[list[i]]) { ue._ew_hold = list[i]; return true; }
         }
         return false;
+    }
+    function _kneelReady(entry, uid) {
+        if (entry.actions && entry.actions.defKneel) return true;
+        var now = Date.now();
+        if (entry._ew_kneelTry && now - entry._ew_kneelTry < 500) return false;   // a rig still attaching: ask again in a moment
+        entry._ew_kneelTry = now;
+        try { _podiumBakePoses(uid); } catch (e) {}
+        return !!(entry.actions && entry.actions.defKneel);
     }
     function _podiumHas(uid, slot) {
         var ue = _getUnitEntry(uid);
