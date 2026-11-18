@@ -39766,8 +39766,13 @@ const ThreeRenderer = (function () {
         var far = tot > cap * 1.5;
         if (far) idle = Math.min(idle, 15000);
         else if (tot > cap) idle = Math.min(idle, 30000);   // over at all (his Camelot trail: 895 of 700 MB, 607 MB idle and "nothing idle long enough"): half a minute, not two
-        var go = _mmPick(list, t, idle, tot - cap * MM_FLOOR, far ? 48 : MM_MAX);
-        if (!go.length) _mmAt = now + (far ? 6000 : 26000);   // over the budget with nothing free to drop (it is all on the stage): the whole-scene read waits 30 s
+        /* THE RARE READ (2026-11-18, spikes thread: his F3 alarm "_mmLive 38K/s · 0.5/s · 77K", RULE #1e): over the budget the sweep read the
+           whole scene every 4 s for 6 files. After a sweep that found files to drop the next read now waits 20 s (8 s when far over) and
+           takes up to 24 files (48 far over); the drops still go two a frame. Off: window.EW_MM_READ_EVERY_4S. */
+        var rare = !(typeof window !== 'undefined' && window.EW_MM_READ_EVERY_4S);
+        var go = _mmPick(list, t, idle, tot - cap * MM_FLOOR, far ? 48 : rare ? 24 : MM_MAX);
+        if (!go.length) _mmAt = now + (far ? 6000 : 26000);
+        else if (rare) _mmAt = now + (far ? 4000 : 16000);   // over the budget with nothing free to drop (it is all on the stage): the whole-scene read waits 30 s
         try { _mmReport(H, R, miscList, live, go.length); } catch (x) {}
         if (!(typeof window !== 'undefined' && window.EW_MM_DROP_ALL_AT_ONCE)) {
             var atOf = {}; list.forEach(function (r) { atOf[r.url] = r.at || 0; });
