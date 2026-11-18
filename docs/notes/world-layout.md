@@ -491,7 +491,7 @@ to tighten them up and only have the necessary ones and ones that make the most 
   entry rows and its link rows exactly as before: do not remove them from a tool.** `hqSiteEarned` is false for every site but Room 64.
 - The link rows, the baked door rows and the tools are untouched on purpose, so a rebake neither fails nor brings a cut door back.
 - Old Cyberpunk City (`site_prebuilt_cyberpunk_streets`, `_noodle`) is in `DOOR_HQ.retired` (to Disaster City): its four ways in are cut; it
-  stands only as the fight board's source. The new Cyberpunk City is a reskin of the whole Disaster City (its own plan thread).
+  stands only as the fight board's source. The new Cyberpunk City is a reskin of the whole Disaster City (its own plan thread). The plan: `docs/plans/cyberpunk-city/PLAN.md` (11-18, waits his answers).
 - New link `tunnel_downtown`: the train at DOOR HQ's platform (`tunnel`) to the platform under Downtown (`site_prebuilt_downtown_subway`)
   and back; both trains stand where they stood.
 
@@ -532,6 +532,19 @@ four mezzanine bay doors and the mezzanine ring close. `subway_station_plan_mock
 Sports + Culture's Bus stop court), a spur to DOOR HQ's platform, the dead track to the Sewers' ghost station, the Freight Line to the D.U.M.B.
 FOUND: DOOR HQ's platform (`tunnel`) is reached today only through two hidden hatches (the garage's and the stairwell's draughts), so the
 third public way out is not public yet: the redesign's stair in the Ring is what opens it.
+
+**THE EIGHT DOORS, BUILT (11-18, mondo on the mock-up: "there are 8 doors inside, they should all be equally spaced apart").** The Main Hall's
+ground floor has eight doors, one every 45 degrees, clockwise from the north: the Ring (0), the Quartermaster (45), Reception (90), Your Office
+(135), the Training Room (180), the Foyer (225), the Ring's west door (270), the Stair to the Woods (315). The two flights to the mezzanine ran 44
+degrees of wall each and stood where two doors had to go: they are 24 degrees now (the same 24 steps, a 0.35 m tread; `stairs` 10-34 and 350-326).
+The Cafeteria, the Barbershop, the Medical Wing, the Records Wing and a plain stair down to the subway stand on the ground Ring's outer wall (18,
+346, 282, 250, 314 degrees): a Main Hall door row with `onRing: { level, deg }` is authored in the hall and moved into the ring room at load
+(`hqRingRoom` reads it, `hqRingMoveDoors` takes it out of the hall and re-points the room's own way back; `ringProps` hangs wall pieces beside it:
+the barber's pole). The ring is THE RING (was the Containment Ring); it makes no thresholds, no bay guards and no bay lines while
+`HQ_EARNED_DOOR_RULES.thresholds` is false. The four mezzanine bay doors are in `DOOR_HQ.cut.doors` and `ring_m` is retired. The platform room is
+THE SUBWAY (was THE TUNNEL); its door `ring` (north wall) is the stair back up. Wall dressing moved with its door: the reception desk group and the
+clerk (30 degrees back with Reception), the lockers, the vending machine, cameras, cabinets, a clock; the man waiting outside your office.
+Seen on screen: the eight doors, both stairs from the mezzanine, the Ring's five doors, the platform's stair door.
 
 **Still to come (mondo's answers, 11-18):** (1) DOOR HQ's ground floor is crowded with doors: move some of the Main Hall's doors into the
 Containment Ring ("basically redesign DOOR HQ"): a plan and a mock-up for his OK first. (2) The subway: stations in several districts of

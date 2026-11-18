@@ -12342,3 +12342,19 @@ barricades across the asphalt), Shasta's east road, Shasta's Trailhead arch, the
 stair foot, the North Pole's sleigh road south, the Pines' sleigh road east. Seen in a probe, one picture each. When a road or door is built at
 one of them again, delete its row.
 
+## CYBERPUNK CITY, THE PLAN (2026-11-18, owner side; a plan only, nothing built)
+
+The plan is `docs/plans/cyberpunk-city/PLAN.md` (pictures beside it). It waits mondo's answers; build nothing before his OK.
+What a later thread must know:
+- The old switch (`hqCityShell({ neon: true })` + `terrain.gen.neon`) was tried on Disaster City in a probe (`--pre`, no file
+  changed): it gives a purple night and darker walls only. It does not reach the district files' `arch` rows, so no neon names,
+  no holograms, no lit glass. A reskin needs a look that reaches the arch parts.
+- Recommended: ONE room (`site_prebuilt_downtown_streets`) with a second LOOK: a look file (`docs/disaster-city/future.js`,
+  tables + rules: tint rule per district, glass glows, signs relit, a sheet table, a prop table, lamps, traffic, people,
+  music), written by the bake as a small block on the room, applied at entry by the room-variant code once it reaches
+  `terrain`. No second room (3.8 MB more data.js, 37 places name the room id), no district file edited.
+- Reached as a YEAR of the same city (the mall closet's time machine, his idea of 09-17), not a place on the map; needs his OK.
+- MODEL_LIST.md holds no cyberpunk pack: no neon sign, billboard, hologram, drone, flying car or tower model. The list of what
+  does exist is in the plan, section 1.
+- A probe view in the city needs its own `"y"` (the street is not at 0: a view at y 0 stands under the ground).
+

@@ -32656,7 +32656,8 @@ const DOOR_HQ = {
     /* THE OLD WOODS (same day, the same rule): the Clearing, the Redwood Trail, Dead Man's Cave and the Ritual Ground stand in data.js (nothing of his deleted)
        but are never entered: the 36-plot room `site_prebuilt_fairy_forest_plots` stood for all four; since ONE WORLD (2026-11-17) that room is retired too and the
        Woods are three rooms at their v13 places (the Clearing + Dead Man's Cave, the Redwood Trail, the Ritual Ground) + the route rooms of the links L3 and L4. */
-    retired: { site_prebuilt_cyberpunk_streets: 'site_prebuilt_downtown_streets', site_prebuilt_cyberpunk_noodle: 'site_prebuilt_downtown_streets',   /* THE DOOR AUDIT (2026-11-18, mondo: the new Cyberpunk City is "a reskin/reimagining of current disaster city"): the old Cyberpunk City's two rooms are never entered (its four ways in are cut); they stand only as the fight board's source */
+    retired: { ring_m: 'central_egress',   /* THE EIGHT DOORS (2026-11-18): the mezzanine ring held only bay doors; its four doors in the Main Hall are closed */
+               site_prebuilt_cyberpunk_streets: 'site_prebuilt_downtown_streets', site_prebuilt_cyberpunk_noodle: 'site_prebuilt_downtown_streets',   /* THE DOOR AUDIT (2026-11-18, mondo: the new Cyberpunk City is "a reskin/reimagining of current disaster city"): the old Cyberpunk City's two rooms are never entered (its four ways in are cut); they stand only as the fight board's source */
                site_ow_r5_0_17: 'site_ow_r5', site_ow_r5_18_35: 'site_ow_r5', site_ow_r10_0_25: 'site_ow_r10', site_ow_r10_26_37: 'site_ow_r10', site_ow_r2: 'site_ow_r1',
                site_prebuilt_atlantis_ow_trench: 'site_prebuilt_atlantis_deep',   /* ONE WORLD PHASE 5: the Trench was a room of its own for a few hours on 11-17 (the Deep's move); it stands in the Deep's room, and a save made there fell back to the Egress */   /* ONE WORLD PHASE 5 (2026-11-17): the Polar Trail and the Coast Road are one room each (each was two stretches with a card between them); the Canyon Trail stands in the River Road's room */
                site_prebuilt_area51_highway: 'site_ow_r9',   /* ONE WORLD 4.2 (2026-11-17): the Desert Highway is four route rooms now (site_ow_dh1..dh4) + the Badlands Highway R9 in from the city (bake-desert.js THE HIGHWAY, RETIRED) */
@@ -32763,6 +32764,7 @@ const DOOR_HQ = {
         scenery: { bureau_vatican: ['a'], mirror_lookingglass: ['a'], observatorium_singularity: ['a'], well_garden: ['a'], timemachine_cyberpunk: ['a'],
                    northpole_haunted: ['a', 'b'], attic_nightmare: ['a'] },
         doors: {
+            central_egress: ['bay_ancient', 'bay_diplomatic', 'bay_urban', 'bay_hollow'],   // THE EIGHT DOORS (2026-11-18): the four mezzanine bay doors (their ring is empty and retired)
             tunnel: ['carnival'], mandela: ['mirrors'], site_prebuilt_area51_ow_circus: ['tunnel', 'mirrors'],   // the two doors to the Circus that stood open from the first minute
             dungeon: ['oubliette'], site_prebuilt_hollow_earth_cavern: ['dungeon'],                              // the Dungeon's moving wall to the Cavern
             site_prebuilt_fairy_forest_ow_ritual: ['lookingglass'], site_prebuilt_camelot_ow_forest: ['deadtree'],   // the dead tree: the Ritual Ground and Camelot's Forest touch by a trail
@@ -33472,8 +33474,10 @@ const DOOR_HQ = {
             /* stairs: curved flights hugging the lower wall from `from` (floor)
                to `to` (mezzanine). r band is the tread width. */
             stairs: [
-                { id: 'stair_e', from: 18, to: 62,  rIn: 19.35, rOut: 20.6, steps: 24 },
-                { id: 'stair_w', from: 342, to: 298, rIn: 19.35, rOut: 20.6, steps: 24 },
+                /* THE EIGHT DOORS (2026-11-18): each flight ran 44 degrees of wall (18-62, 342-298); the ground floor's doors stand every 45 degrees now, so
+                   a flight is 24 degrees (the same 24 steps, a 0.35 m tread) and stands between the north door and the next one on each side */
+                { id: 'stair_e', from: 10, to: 34,  rIn: 19.35, rOut: 20.6, steps: 24 },
+                { id: 'stair_w', from: 350, to: 326, rIn: 19.35, rOut: 20.6, steps: 24 },
             ],
             /* doors: `leaf` = catalogue key (leaf), `wide` = 2.2 m opening.
                `action` is exactly one of {fn}, {sector}, {room}, {overlay}.
@@ -33483,31 +33487,38 @@ const DOOR_HQ = {
                wear bay numbers, not room numbers. The elevator's `floors`
                is its floor panel — there is no 13 (Room 13 is a door in
                Bay 1, not a floor). */
+            /* THE EIGHT DOORS (mondo 2026-11-18, the door audit: "the bottom floor is crowded with doors so move some of them into the containment ring,
+               basically redesign DOOR HQ"; on the mock-up: "there are 8 doors inside, they should all be equally spaced apart"). The ground floor had
+               twelve doors; it has EIGHT, one every 45 degrees, clockwise from the north: the Ring (0), the Quartermaster (45), Reception (90), Your
+               Office (135), the Training Room (180), the Foyer (225), the Ring's west door (270), the Stair to the Woods (315). The Cafeteria, the
+               Barbershop, the Medical Wing and the Records Wing stand on the Ring's outer wall now, with the stair down to the subway: a row with
+               `onRing: { level, deg }` is authored here and MOVED into the ring room at load (hqRingMoveDoors; the room's own way back is re-pointed
+               too). The four mezzanine bay doors are closed (DOOR_HQ.cut.doors) and the mezzanine ring is retired. */
             doors: [
                 /* ── ground ring (operations) ── */
-                { id: 'bay_celestial',  deg: 0,   level: 0, leaf: 'leaf_bulkhead',     wide: true,  label: 'BAY 4 · CELESTIAL',      sub: 'BATTLE MAPS',            action: { sector: 'celestial' } },
+                { id: 'bay_celestial',  deg: 0,   level: 0, leaf: 'leaf_bulkhead',     wide: true,  label: 'THE RING',      sub: 'CAFETERIA · BARBER · MEDICAL · RECORDS · SUBWAY',            action: { sector: 'celestial' } },
                 /* ROOM 86 (2026-09-11, plan 7.4): the one free stretch of the ground
                    ring, between the east stair's top and the Quartermaster (plan 7.5
                    measured it for a bay and gave the bay to the mezzanine instead);
                    5.5 m of wall to the vault door, 2.9 needed. The saloon leaf swings
                    both ways. After hours the plate reads MÖBIUS STRIP CLUB — same
                    room, same number (DOOR_HQ.rooms.cafeteria.variants). */
-                { id: 'cafeteria',      deg: 75,  level: 0, leaf: 'leaf_saloon',                    label: 'THE CAFETERIA',          sub: 'ON BREAK · THE KITCHEN', action: { room: 'cafeteria', at: 'egress' }, desc: 'Room 86. The menu is out of it. The clocks disagree, the chairs are signed out, and the vending machine that was on the other side yesterday is on this side today. Doors swing both ways; nobody has decided which.' },
-                { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'SHOP',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
+                { id: 'cafeteria',      deg: 75,  level: 0, onRing: { level: 0, deg: 18 }, leaf: 'leaf_saloon',                    label: 'THE CAFETERIA',          sub: 'ON BREAK · THE KITCHEN', action: { room: 'cafeteria', at: 'egress' }, desc: 'Room 86. The menu is out of it. The clocks disagree, the chairs are signed out, and the vending machine that was on the other side yesterday is on this side today. Doors swing both ways; nobody has decided which.' },
+                { id: 'quartermaster',  deg: 45,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'SHOP',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
                 /* ROOM 1287 (2026-09-11, plan 7.4): OCCAM'S BARBERSHOP between the
                    Quartermaster and Reception — 15° each way (5.5 m of wall at
                    r 21; 2.9 and 2.5 needed, 2 m of pier is the rule). A glass
                    shop door; the pole hangs in the hall beside it (111°). The
                    vending machine moved from 105° to 98° to make the doorway. */
-                { id: 'barbershop',     deg: 105, level: 0, leaf: 'leaf_birch_glass',                     label: 'OCCAM’S BARBERSHOP',      sub: 'CHANGE AVATAR', action: { room: 'barbershop', at: 'egress' },
+                { id: 'barbershop',     deg: 105, level: 0, onRing: { level: 0, deg: 346 }, ringProps: [{ key: 'barber_pole', ddeg: 5 }], leaf: 'leaf_birch_glass',                     label: 'OCCAM’S BARBERSHOP',      sub: 'CHANGE AVATAR', action: { room: 'barbershop', at: 'egress' },
                   desc: 'Room 1287. Change your appearance: sit, and walk out as the recruit, your most-played vessel, an agent in black, or anything the Department has declassified. The mirror is Reception’s — the photo on your card follows the chair. Two explanations for how you look; he only does the shorter one.' },
                 /* ROOM 1 · RECEPTION (plan 7.4, 2026-09-14): the door is now the way
                    INTO the intake office — the window (your ID card / profile), the
                    laminator (the intake sheet), the ticket dispenser. The number
                    moved onto the room (hqDoorNo reads it through). */
-                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_window_large',                     label: 'RECEPTION',               sub: 'ID CARD · SIGN IN',       action: { room: 'reception', at: 'egress' },
+                { id: 'reception',      deg: 90,  level: 0, leaf: 'leaf_window_large',                     label: 'RECEPTION',               sub: 'ID CARD · SIGN IN',       action: { room: 'reception', at: 'egress' },
                   desc: 'Room 1. Intake. Employee ID cards, the laminator, LOST CARD FEE. Take a number; the number is being served in an order the office does not explain.' },
-                { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'STORY · CASE FILE',          action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
+                { id: 'office',         deg: 135, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'STORY · CASE FILE',          action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
                 { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING ROOM',           sub: 'PRACTICE · GAUNTLET · DUNGEON',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
                 /* THE FOURIER FOYER (2026-09-15, plan 7.4's last row): the front door.
                    The only free stretch of the lower wall — 15° from the Training Room
@@ -33517,22 +33528,26 @@ const DOOR_HQ = {
                    (§5.6), the same door from the foyer's side; a fresh arrival from
                    Play stands in the foyer and walks IN through it (map.js
                    _hqArrivalRoom — `?nofoyer` / ew_hq_foyer='off' lands in the hall). */
-                { id: 'foyer',          deg: 195, level: 0, leaf: 'leaf_lobby_glass_double', wide: true,  label: 'THE FOYER',       sub: 'THE FRONT DOOR · EXIT',   action: { room: 'foyer', at: 'egress' }, desc: 'The vestibule. The double doors, the seal in the terrazzo, the inspection desk that verifies your corners. The street is on the other side of it; the street is the main menu.' },
+                { id: 'foyer',          deg: 225, level: 0, leaf: 'leaf_lobby_glass_double', wide: true,  label: 'THE FOYER',       sub: 'THE FRONT DOOR · EXIT',   action: { room: 'foyer', at: 'egress' }, desc: 'The vestibule. The double doors, the seal in the terrazzo, the inspection desk that verifies your corners. The street is on the other side of it; the street is the main menu.' },
                 /* ROOM 1111 · MEDICAL (plan 7.4, 2026-09-13 rev 3): the door is now the
                    way INTO the ward — the services desk (Challenge mode), the chart
                    (your record), the cell door into Room 5150. The number moved onto
                    the room (hqDoorNo reads it through). */
-                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'THE MEDICAL WING',        sub: 'WARD · INTERROGATION',     action: { room: 'medwing', at: 'egress' },
+                { id: 'medical',        deg: 210, level: 0, onRing: { level: 0, deg: 282 }, leaf: 'leaf_hospital',                  label: 'THE MEDICAL WING',        sub: 'WARD · INTERROGATION',     action: { room: 'medwing', at: 'egress' },
                   desc: 'The wing, not the ward. One hospital door onto a corridor with three off it: Room 1111 (the ward, the services desk, the chart), Room 5150 at the back of it, and Room 1984 at the far end — Internal Affairs was moved in with Medical during a reorganisation nobody can produce the memo for.' },
                 /* THE RECORDS WING (plan 9.3 / C-27, 2026-09-15): the wired double
                    door is now the way into the WING — Room 42 off its north wall,
                    Room 247 off its east. The Clock Room's own door left the ring at
                    225°; the number stays on each room (hqDoorNo reads it through). */
-                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'THE RECORDS WING',        sub: 'CODEX · DAILY TASKS', action: { room: 'recwing', at: 'egress' },
+                { id: 'records',        deg: 240, level: 0, onRing: { level: 0, deg: 250 }, leaf: 'leaf_wired_double', wide: true,  label: 'THE RECORDS WING',        sub: 'CODEX · DAILY TASKS', action: { room: 'recwing', at: 'egress' },
                   desc: 'The wing. Room 42 keeps the file — dossiers on the reading desk, the unfiled sites in the card catalogue, the service stair up to Room 360. Room 247 keeps the time: three requirements a day, the punch clock, and every clock in the building that disagrees with every other one.' },
                 /* THE STAIRCASE TO THE WOODS (LEVEL_DESIGN_PLAN §4, 2026-09-30): the free stretch at 255° (Room 1984's door until 2026-09-13) */
-                { id: 'woods',          deg: 255, level: 0, leaf: 'leaf_bulkhead',                  label: 'THE STAIRCASE TO THE WOODS', sub: 'THE STAIR · UP INTO THE WOODS', action: { room: 'woodstair', at: 'egress' }, desc: 'A tall hall with one stair in it. The stair climbs into the dark and comes out in the Woods.' },
-                { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'BATTLE MAPS',            action: { sector: 'terrestrial' } },
+                { id: 'woods',          deg: 315, level: 0, leaf: 'leaf_bulkhead',                  label: 'THE STAIRCASE TO THE WOODS', sub: 'THE STAIR · UP INTO THE WOODS', action: { room: 'woodstair', at: 'egress' }, desc: 'A tall hall with one stair in it. The stair climbs into the dark and comes out in the Woods.' },
+                { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'THE RING',    sub: 'RECORDS · MEDICAL · SUBWAY · BARBER · CAFETERIA',            action: { sector: 'terrestrial' } },
+                /* THE SUBWAY (2026-11-18): the plain stair down to the platform under the building (the third public way out of DOOR HQ; the platform was
+                   reached only through two hidden hatches). It stands on the Ring's outer wall; the platform's own door back is `ring` on its north wall. */
+                { id: 'subway',         deg: 300, level: 0, onRing: { level: 0, deg: 314 }, leaf: 'leaf_white_wood',  label: 'THE SUBWAY',  sub: 'THE STAIR DOWN · THE PLATFORM', action: { room: 'tunnel', at: 'ring' },
+                  desc: 'A stair down to the platform under the building. One train. It runs to Disaster City and back.' },
                 /* ── mezzanine (support / executive access) ── */
                 { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'B · G · M · 2 · 3 · 4 · PH',     action: { room: 'car', at: 'out' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'The car. It stops at B, G, M, 2, 3, 4 and PH now; the PH button still wants KEYHOLDER clearance and twelve Keys (DOOR_HQ.elevator.stops).' },
                 { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'BATTLE MAPS',            action: { sector: 'ancient' } },
@@ -33608,18 +33623,18 @@ const DOOR_HQ = {
                 /* RECEPTION · INTAKE counter (the reception wedge, plan 2.2):
                    curved front to the hall, the clerk's chair on the wall
                    side, a terminal on the 0.77 m work surface behind the ledge */
-                { key: 'reception_wedge', deg: 128, r: 17.9, level: 0, rot: 45 },
-                { key: 'office_chair',    deg: 129, r: 18.95, level: 0 },
-                { key: 'crt_terminal',    deg: 126.5, r: 18.45, level: 0, y: 0.77 },
-                { key: 'papers_a',        deg: 130.5, r: 18.3, level: 0, y: 0.77, rot: 20 },
-                { key: 'pen',             deg: 131.5, r: 18.15, level: 0, y: 0.77, rot: 60 },
-                { key: 'notebook_paper',  deg: 128.3, r: 18.05, level: 0, y: 0.77, rot: -25 },   // Rhonda's: conveniently misfiled (DOOR_CAST)
+                { key: 'reception_wedge', deg: 98, r: 17.9, level: 0, rot: 15 },
+                { key: 'office_chair',    deg: 99, r: 18.95, level: 0 },
+                { key: 'crt_terminal',    deg: 96.5, r: 18.45, level: 0, y: 0.77 },
+                { key: 'papers_a',        deg: 100.5, r: 18.3, level: 0, y: 0.77, rot: -10 },
+                { key: 'pen',             deg: 101.5, r: 18.15, level: 0, y: 0.77, rot: 30 },
+                { key: 'notebook_paper',  deg: 98.3, r: 18.05, level: 0, y: 0.77, rot: -55 },   // Rhonda's: conveniently misfiled (DOOR_CAST)
                 /* the LOST CARD FEE has a till (2026-09-10): the beige 1980s
                    register on the transaction ledge, a clipboard beside it,
                    the bin the forms end up in */
-                { key: 'cash_register',   deg: 124.5, r: 18.4, level: 0, y: 0.77, rot: -10 },
-                { key: 'clipboard_flat',  deg: 132.5, r: 18.35, level: 0, y: 0.77, rot: 15 },
-                { key: 'trash_bin',       deg: 131.5, r: 19.4, level: 0 },
+                { key: 'cash_register',   deg: 94.5, r: 18.4, level: 0, y: 0.77, rot: -40 },
+                { key: 'clipboard_flat',  deg: 102.5, r: 18.35, level: 0, y: 0.77, rot: -15 },
+                { key: 'trash_bin',       deg: 101.5, r: 19.4, level: 0 },
                 /* the briefing table: four 45° table sectors as a half-ring
                    (r 1.28 m) opening toward the hall, folding chairs on the
                    convex side facing in — the seats are at the sectors'
@@ -33660,13 +33675,13 @@ const DOOR_HQ = {
                 { key: 'globe_lamp',   deg: 340, r: 9.9, level: 0 },
                 { key: 'globe_lamp',   deg: 20,  r: 9.9, level: 0 },
                 /* against the lower wall, between doors */
-                { key: 'filing_cabinet', deg: 232, level: 0, wall: true },   // moved 6° for the Clock Room's door at 225° (2026-09-11)
-                { key: 'filing_cabinet', deg: 235, level: 0, wall: true },
+                { key: 'filing_cabinet', deg: 238, level: 0, wall: true },   // moved 6° for the Clock Room's door at 225° (2026-09-11)
+                { key: 'filing_cabinet', deg: 241, level: 0, wall: true },
                 { key: 'cardboard_boxes', deg: 263, r: 19.3, level: 0, rot: 15 },   // moved from 256°: Room 1984's door (2026-09-13)
-                { key: 'office_locker',  deg: 134, level: 0, wall: true },
-                { key: 'locker',         deg: 137, level: 0, wall: true },
-                { key: 'vending_machine', deg: 98,  level: 0, wall: true },     // 105° until Room 1287's door took the spot (2026-09-11)
-                { key: 'barber_pole',    deg: 111, level: 0, wall: true },     // Occam's, next door
+                { key: 'office_locker',  deg: 108, level: 0, wall: true },
+                { key: 'locker',         deg: 111, level: 0, wall: true },
+                { key: 'vending_machine', deg: 68,  level: 0, wall: true },     // 105° until Room 1287's door took the spot (2026-09-11)
+                /* (2026-11-18: the barber's pole left the hall with the shop: the shop's door row hangs it on the Ring, `ringProps`) */
                 /* THE BREAK NOOK (2026-09-10 → 2026-09-11): the round fridge, the
                    microwave, the coffee maker, the mug, the cup, the rail and the
                    bin stood in for the Cafeterium at 98–107° until Room 86 was
@@ -33684,30 +33699,30 @@ const DOOR_HQ = {
                 { key: 'round_cubicle',  deg: 325, r: 15.4, level: 0, rot: 20 },
                 { key: 'round_cubicle',  deg: 337, r: 16.2, level: 0, rot: -15 },
                 { key: 'computer_chair_blue', deg: 322, r: 14.3, level: 0, rot: 40 },   // the cubicles' chairs (2026-09-13)
-                { key: 'computer_chair_grey', deg: 340, r: 17.6, level: 0, rot: 200 },
+                { key: 'computer_chair_grey', deg: 340, r: 17.0, level: 0, rot: 200 },
                 /* the building's muzak, on top of the lockers */
-                { key: 'retro_speakers', deg: 135.5, r: 20.35, level: 0, y: 1.85 },
+                { key: 'retro_speakers', deg: 105.5, r: 20.35, level: 0, y: 1.85 },
                 /* three empty round frames on the lower wall. Records has the
                    photographs. Records is not releasing the photographs. */
                 { key: 'picture_round_a', deg: 186, level: 0, wall: true },   // moved from 188° for the foyer door (2026-09-15)
                 { key: 'picture_round_b', deg: 216, level: 0, wall: true },   // 2° west for the Clock Room's door (2026-09-11)
                 { key: 'picture_round_c', deg: 247, level: 0, wall: true },         // moved from 250°: Room 1984's door
-                { key: 'potted_plant',   deg: 84,  r: 19.2, level: 0 },   // 2026-09-11: was 76° — Room 86's door is there now
+                { key: 'potted_plant',   deg: 78,  r: 19.2, level: 0 },   // 2026-09-11: was 76° — Room 86's door is there now
                 { key: 'potted_plant',   deg: 284, r: 19.2, level: 0 },
                 { key: 'fire_extinguisher', deg: 172, level: 0, wall: true },
                 { key: 'fire_extinguisher', deg: 262, level: 0, wall: true },       // moved from 258°: Room 1984's door
                 { key: 'wall_clock',     deg: 165, level: 0, wall: true },
-                { key: 'wall_clock',     deg: 345, level: 0, wall: true },
+                { key: 'wall_clock',     deg: 293, level: 0, wall: true },
                 /* the cameras (2026-09-13): over Reception's counter and over the vault — the building watches the till */
-                { key: 'security_camera', deg: 135, level: 0, wall: true, mount: 3.3 },
-                { key: 'security_camera', deg: 84,  level: 0, wall: true, mount: 3.3 },
+                { key: 'security_camera', deg: 113, level: 0, wall: true, mount: 3.3 },
+                { key: 'security_camera', deg: 62,  level: 0, wall: true, mount: 3.3 },
                 { key: 'exit_sign',      deg: 180, level: 0, r: 20.42, mount: 2.62 },
                 { key: 'wet_floor_sign', deg: 156, r: 18.4, level: 0, rot: -30 },
                 { key: 'mop_bucket',     deg: 143, r: 19.4, level: 0 },
                 /* Kit's waiting chair (DOOR_CAST): a folding chair at the desk, facing Rhonda */
                 { key: 'folding_chair',  deg: 158, r: 6.7, level: 0 },
-                { key: 'cardboard_box',  deg: 236, r: 19.0, level: 0, rot: 20 },
-                { key: 'cardboard_box',  deg: 236, r: 19.0, level: 0, y: 0.42, rot: 60 },
+                { key: 'cardboard_box',  deg: 245, r: 19.0, level: 0, rot: 20 },
+                { key: 'cardboard_box',  deg: 245, r: 19.0, level: 0, y: 0.42, rot: 60 },
                 /* mezzanine */
                 { key: 'filing_cabinet', deg: 20,  level: 1, wall: true },
                 { key: 'filing_cabinet', deg: 23,  level: 1, wall: true },
@@ -33766,7 +33781,7 @@ const DOOR_HQ = {
             agents: [
                 { deg: 0,   r: 1.4, level: 0, face: 0,   line: 'The agent does not look up. “Take a number.”' },
                 /* the intake clerk on the reception wedge's chair (seated; Rhonda moved to the round desk 2026-09-06) */
-                { deg: 129, r: 18.95, level: 0, face: 309, gender: 'female', pose: 'hqSit', reach: 3.2, label: 'INTAKE CLERK', line: '“Forms are on the left. The left has moved.”' },
+                { deg: 99, r: 18.95, level: 0, face: 279, gender: 'female', pose: 'hqSit', reach: 3.2, label: 'INTAKE CLERK', line: '“Forms are on the left. The left has moved.”' },
                 { deg: 288, r: 18.8, level: 0, face: 108, line: '“It’s 90 degrees.” … “Oh shit.”', patrol: true },   // THE ROUNDS (2026-09-19): the floor watch walks a loop
                 { deg: 45,  r: 22.4, level: 1, face: 225, line: '“Check your corners.” Not a greeting.', patrol: true },   // … and the mezzanine's
                 /* THE GALLERY (2026-09-16): the watch on the third ring, at the top of its stair */
@@ -39026,8 +39041,8 @@ const DOOR_HQ = {
            service hatch off the side, and at the far end THE END OF THE
            LINE. No number (a tunnel). ── */
         tunnel: {
-            label: 'THE TUNNEL',
-            sub: 'THE PLATFORM · ALL LINES',
+            label: 'THE SUBWAY',   // (2026-11-18, the door audit: was THE TUNNEL; mondo calls it the subway, and it is the third public way out)
+            sub: 'THE PLATFORM · DOOR HQ',
             kind: 'box',
             shell: {
                 w: 8, d: 36, h: 4,
@@ -39047,6 +39062,12 @@ const DOOR_HQ = {
                   label: 'THE STAIRWELL', sub: 'THE FIRE STAIR · UP',
                   action: { room: 'stairwell', at: 'tunnel' },
                   desc: 'Up the fire stair. Up as far as you like.' },
+                /* THE SUBWAY (2026-11-18, the eight doors): the plain way down from the Main Hall's Ring comes out here, at the platform's north end,
+                   where Room 1893's barn door stood (that door is cut: DOOR_HQ.cut.doors) */
+                { id: 'ring', wall: 'n', x: 2.7, leaf: 'leaf_white_wood',   // (east of the departures board: at x 0 its surround stood through the board)
+                  label: 'THE RING', sub: 'THE STAIR UP · THE MAIN HALL',
+                  action: { room: 'ring_g', at: 'subway' },
+                  desc: 'The stair up to the ring round the Main Hall.' },
                 { id: 'carnival', wall: 'n', x: 0, leaf: 'leaf_barn',
                   label: 'THE END OF THE LINE', sub: 'ROOM 1893 · THE MIDWAY',
                   action: { room: 'site_prebuilt_area51_ow_circus', at: 'tunnel' },   // THE DESERT ON PLOTS (2026-11-15): the circus stands in the desert now · THE ONE WORLD MOVE (2026-11-17): in the Circus' own room
@@ -76662,8 +76683,9 @@ function hqRingRoom(level) {
             action: { room: 'central_egress', at: bd.id || null },
             desc: 'Back to the ring. The desk will still be there. Probably the same desk.',
         });
-        /* the thresholds, `spacing` apart along the outer wall, centred on the run */
-        sec.maps.forEach((id, i) => {
+        /* the thresholds, `spacing` apart along the outer wall, centred on the run. THE BAY DOORS ARE GONE (2026-11-18): none is made */
+        const noBays = (typeof HQ_EARNED_DOOR_RULES !== 'undefined') && !HQ_EARNED_DOOR_RULES.thresholds;
+        if (!noBays) sec.maps.forEach((id, i) => {
             const th = T[id] || {};
             const meta = META.find(m => m.id === id);
             doors.push({
@@ -76683,8 +76705,18 @@ function hqRingRoom(level) {
         (F.props || []).forEach(p => props.push(hqRingSpot(seg.sector, p)));
         /* the bay guard: by the outer wall just past the way in, facing back across the corridor toward it */
         const gOff = ((bd.wide ? 3.3 : 2.5) / 2 + 1.8) / (lay.rOut - 1.4) * 180 / Math.PI;
-        agents.push({ deg: norm(seg.deg + gOff), r: lay.rOut - 1.4, level: 0, face: Math.round(norm(seg.deg + gOff + 205)), line: F.agent || '“Sign the book.”', sector: seg.sector });
-        (F.lines || []).forEach(l => lines.push(l));
+        /* (2026-11-18: the guard and the bay's overheard lines are about the bay's doors: with no bay doors they do not stand; DOOR_HQ.bays keeps them) */
+        if (!noBays) { agents.push({ deg: norm(seg.deg + gOff), r: lay.rOut - 1.4, level: 0, face: Math.round(norm(seg.deg + gOff + 205)), line: F.agent || '“Sign the book.”', sector: seg.sector });
+            (F.lines || []).forEach(l => lines.push(l)); }
+    });
+    /* THE ROOMS ON THE RING (2026-11-18, the eight doors): a Main Hall door row with `onRing: { level, deg }` stands on THIS ring's outer wall at
+       that angle (the Cafeteria, the Barbershop, the Medical Wing, the Records Wing, the stair down to the subway); `ringProps` = wall pieces that
+       hang beside it (`ddeg` degrees along the wall: the barber's pole). hqRingMoveDoors takes the rows out of the hall once the rings stand. */
+    (((DOOR_HQ.rooms.central_egress || {}).doors) || []).filter(d => d && d.onRing && (d.onRing.level || 0) === level).forEach(d => {
+        const row = Object.assign({}, d, { deg: norm(d.onRing.deg), side: 'out', level: 0 });
+        delete row.onRing; delete row.ringProps;
+        doors.push(row);
+        (d.ringProps || []).forEach(q => props.push({ key: q.key, deg: norm(d.onRing.deg + (q.ddeg || 0)), side: 'out', wall: true }));
     });
     /* fluorescents along the centreline (the shell adds its own strips; these are the kit's fixtures) */
     const stripStep = m2degMid(3.2);
@@ -76707,7 +76739,7 @@ function hqRingRoom(level) {
             doors.push({
                 id: 'cap_' + cap, cap: cap, deg: norm(at), level: 0,
                 leaf: B.ringLeaf || 'leaf_wired_double', wide: !!((DOOR_HQ.catalogue[B.ringLeaf || 'leaf_wired_double'] || {}).wide),
-                label: 'CONTAINMENT RING', sub: 'CONTINUES ' + way,
+                label: 'THE RING', sub: 'CONTINUES ' + way,
                 action: { room: lay.id, at: far }, ring: true,
                 desc: 'The ring continues past the service core. Fire door, held open by a wedge that is not on the inventory. That stretch is not on the plan and is not lit; Records says it is shorter than it looks.',
             });
@@ -76724,7 +76756,7 @@ function hqRingRoom(level) {
     const bayList = lay.segments.map(sg => sg.bayNo != null ? sg.bayNo : '?').join(' · ');
     const s0 = lay.segments[0];
     return {
-        label: 'CONTAINMENT RING', sub: lay.floor + ' · BAYS ' + bayList,
+        label: 'THE RING', sub: lay.floor + (lay.segments.some(sg => /BAY/.test(String(sg.label || ''))) ? ' · BAYS ' + bayList : ''),
         kind: 'bay', corridor: true, level: lay.level, ring: null, segments: lay.segments.map(sg => Object.assign({}, sg, { door: undefined, lines: ((DOOR_HQ.bays || {})[sg.sector] || {}).lines || [] })),
         shell: { rIn: lay.rIn, rOut: lay.rOut, arc: lay.arc.slice(), full: lay.full, wallH: B.wallH, dadoH: B.dadoH,
                  floor: B.floor, wall: B.wall, dado: B.dado, trim: B.trim, ceiling: B.ceiling },
@@ -76738,6 +76770,22 @@ function hqRingRoom(level) {
     };
 }
 if (hqCorridorOn()) [0, 1].forEach(l => { const r = hqRingRoom(l); if (r) DOOR_HQ.rooms[hqRingId(l)] = r; });
+/* THE ROOMS ON THE RING (2026-11-18): once a ring stands, its `onRing` rows leave the Main Hall, and each moved room's own way back to the hall
+   (a door `{ room: 'central_egress', at: <the row's id> }`) opens on the ring at that door instead. With the corridor off the rows stay in the hall. */
+function hqRingMoveDoors() {
+    const hall = DOOR_HQ.rooms.central_egress, out = [];
+    if (!hall || !Array.isArray(hall.doors) || !hqCorridorOn()) return out;
+    hall.doors.filter(d => d && d.onRing).forEach(d => {
+        const rid = hqRingId(d.onRing.level || 0), ring = DOOR_HQ.rooms[rid];
+        if (!ring || !(ring.doors || []).some(x => x.id === d.id)) return;
+        const T = (d.action && d.action.room) ? DOOR_HQ.rooms[d.action.room] : null;
+        ((T && T.doors) || []).forEach(b => { if (b && b.action && b.action.room === 'central_egress' && b.action.at === d.id) { b.action = { room: rid, at: d.id }; b.label = 'THE RING'; b.sub = 'BACK TO THE RING'; } });
+        out.push(d.id);
+    });
+    hall.doors = hall.doors.filter(d => !(d && d.onRing && out.indexOf(d.id) >= 0));
+    return out;
+}
+hqRingMoveDoors();
 /* ── THE WALKABLE SITE (HQ plan 7.2, 2026-09-07) ────────────────────────
    hqSiteRoomId(mapId) → 'site_<id>' (the room id; the bay's threshold DOOR
    wears the same id in its own room — doors and rooms are separate
@@ -98846,7 +98894,7 @@ const DOOR_CAST = {
         spots: [
             { room: 'training', x: 30.2, z: 6.7, face: 260, pose: 'hqSit', reach: 2.0, p: 0.6,
               doing: 'Under the east deck, watching the grid. He started a few months before you. He is still watching the grid.' },
-            { room: 'central_egress', deg: 152.5, r: 19.5, level: 0, face: 150, reach: 1.9, p: 0.4,
+            { room: 'central_egress', deg: 137.5, r: 19.5, level: 0, face: 135, reach: 1.9, p: 0.4,
               doing: 'Waiting outside your office. He knocked. He always knocks first.' },
         ],
     },
