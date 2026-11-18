@@ -81,9 +81,13 @@ exports.build = c => { const C = c.C;
     c.look('viral', 'P07-02', 3, 8.2, 90, a => { a.box(0, 0, 0, 10, 0.5, 4, STEEL, 0x22262c); a.sign('GOING VIRAL', 0, 6.4, 1.5, 8, 1.3, '#ffffff', '#ff2a6a', 'archivo');
         a.box(0, 0.5, 1.6, 8.6, 5.6, 0.3, STEEL, 0x0a0a0c); a.sign('9,999,999 VIEWS', 0, 3.3, 1.8, 8, 1.4, '#7fffd0', '#08221c', 'dot'); a.sign('15 MINUTES LEFT', 0, 1.4, 1.8, 6, 0.9, '#ffe23a', '#08221c', 'dot'); });
     solid(c, 'P07-02', 2, 7, 3, 9, 7);
+    /* the notification bell and the like, hanging over the view counter; three speech bubbles over the comment pit (THE INTERNET ICONS, 11-18) */
+    c.at('icon_bell', 'P07-02', 3, 6.2, { h: 3.2, y: 8.6, face: 90 }); c.at('icon_like', 'P07-02', 3, 10.2, { h: 3.0, y: 8.4, face: 90 });
+    [[5.5, 4.2, 6.6, 20], [3.6, 6.4, 8.2, -30], [7.4, 6.8, 7.4, 160]].forEach(([x, y, h, f]) => c.at('icon_speech_bubble', 'P05-02', x, y, { h: 2.6, y: h, face: f }));
 };
 exports.dress = c => {
     /* the stages' kit */
+    c.put('ring_light', 'P05-00', 4, 7, { face: 20 }); c.put('gaming_chair', 'P05-00', 6, 8, { face: 180 }); c.put('stream_mic', 'P05-00', 7, 8, { face: 180 });   // the streamer's set (THE INTERNET MODELS, 11-18)
     c.put('studio_light', 'P05-00', 2, 5, { face: 30 }); c.put('studio_light', 'P05-00', 9, 5, { face: 330 }); c.put('studio_camera', 'P05-00', 7, 7, { face: 0 });
     c.put('followspot', 'P07-02', 2, 4, { face: 150 }); c.put('followspot', 'P07-02', 9, 4, { face: 210 }); c.put('pa_speaker', 'P07-02', 2, 7, { face: 180 }); c.put('pa_speaker', 'P07-02', 9, 7, { face: 180 });
     c.put('cardboard_boxes', 'P07-00', 2, 7); c.put('cardboard_boxes', 'P07-00', 9, 7); c.dec('cardboard_box', 'P07-00', 3, 8); c.put('studio_camera', 'P07-00', 6, 7, { face: 0 });
