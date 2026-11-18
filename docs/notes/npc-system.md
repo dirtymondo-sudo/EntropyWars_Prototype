@@ -384,3 +384,13 @@ seat (`opts.awareOk`, map.js `_hqEncounterFire` / `_hqMugOpen`). Plan: `docs/pla
   who drives, what the player sees or what he may do. Asked in chat 11-18.
 - **For other zones:** the rules follow the race wherever it stands, so a Zombie, Shadow Entity, Werewolf, Wendigo, Ghoul or Flesheater in any wild
   room now comes at sight unless the gap holds it. The city has 4 Zombies (district U).
+- **Checked in a browser 11-18** (Bayside's boardwalk, x 257 z 25, 09:00, 861 of 861 files; pictures `docs/plans/npc-encounters/step-4-*.jpg`): a Pirate that saw
+  the walker set off by itself (`perDay` raised to 1 for the run) wearing the red `!`; its box (line, `1 · PAY 72` / `2 · FIGHT`); the box closed with no
+  answer = asked again; PAY took 72 of 500 gold and it walked back; a body sent with `dev.come(id, 'sight')` started its own fight, the enemy acted first
+  (`opener: 'npc'`), the party lost and the result screen read `EXITED · THE ENCOUNTER · DISASTER CITY · PIRATE · LOST 72 GOLD`.
+  NOT checked in a browser: a real Brute (none lives in Bayside), the Ghost's fight after its warning (the hotel at night kills the cloud browser), the
+  mugging's FIGHT button and mouse clicks on the box (the keys were used), a server account's wallet, the wake toast's line.
+- **Found, not changed:** a lost story fight still pays the result screen's own +50 Hazard Pay ("Match complete"), so losing to the Pirate was 500 - 72 + 50 = 478. Put to mondo 11-18.
+- **Probe lessons:** the first run in a new container crashed as the room got ready and its retry was half loaded (no resident bodies); from the second run on
+  the city loads in about 250 s. `EW_LIVE_LOG=1` prints every `[HQ] PROBE` line (the PROBES line keeps only 12). A body sent at a raised speed stops short of the walker now.
+

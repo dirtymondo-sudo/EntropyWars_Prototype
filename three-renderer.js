@@ -86272,7 +86272,7 @@ const ThreeRenderer = (function () {
                     continue;
                 }
                 ch._runFast = true;
-                var cst = Math.min(d, W.chaseSpeed * dt), stay = false;
+                var cst = Math.min(Math.max(0, d - W.reachM * 0.7), W.chaseSpeed * dt), stay = false;   // it stops short of him, never on him
                 if (r.ground) { try { stay = !hqNpcOnGround(H.opts.room, r.ground, ch.x + dx / d * cst, ch.z + dz / d * cst); } catch (e) { stay = false; } }   // a Territorial never steps off its ground
                 if (stay) { ch.moving = false; r.stuck += dt; }
                 else if (_hqLadderMove(ch, dx / d, dz / d, cst, dt)) r.stuck = 0; else r.stuck += dt;

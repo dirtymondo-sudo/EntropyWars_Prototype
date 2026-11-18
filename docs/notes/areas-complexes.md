@@ -12286,3 +12286,28 @@ What the pass found and changed, one group a PR. The finished world is listed in
 | `site_prebuilt_bermuda_ow_cove` | 30.9 | 233 | 0.9 | 1517 |
 | `site_prebuilt_bermuda_ow_frozen` | 29.4 | 187 | 0.15 | 726 |
 
+## A ZONE'S DISTRICTS ARE ONE PLACE (2026-11-18, mondo: "yes join them"; the memory line is dropped)
+mondo 11-18: the 1.4 GB "memory line" of the room-splitting rule means nothing (the game always runs over its own 700 MB readout), so it is no
+reason to keep a zone's districts apart. His rule stands alone: two places that belong together and are smaller than Disaster City = one room.
+- **THE TOOL**: `bake-route.js` `join` takes a LIST (`[{ tool, part }, ...]`): each district is stood by its own zone tool (`--export <part>`), laid
+  on its own plots in the route room's box; a door of a joined district that leads to this room or to another joined district is dropped (open
+  ground there); `spec.joinRooms { old: new }` re-points a joined district's door. A single-join spec bakes byte for byte as before (checked on
+  R7 and L14). To join a zone: give its tool `--export` (bake-estate.js is the pattern), mark the districts `kit: true`, list them in the road's spec.
+- **THE ESTATE (done)**: the Corn Fields, County Lane (R7 + L8), the Lake and the Ranch are ONE room, `site_prebuilt_skinwalker_ow_lake`, label THE
+  ESTATE, 5 x 18, 47 plots (`docs/areas/routes/R7.json`). `…_ow_corn` and `…_ow_ranch` are retired into it; the hub's room, the well link, the lodge
+  link and the stable door's entry row name it (bake-estate.js moves its PLACES into the joined frame and still checks those rows). The Haunted House
+  stays its own room: it does not touch the others (the Woods' trail L5 lies between). Probe: ready in 107 s on llvmpipe (was 42 to 50 s a piece).
+  Bake order: `node bake-estate.js`, `node bake-route.js R7`, `node bake-woods.js`, `node bake-route.js R8`, `node bake-map.js <rooms>`.
+- **NOT YET JOINED** (same recipe, a zone a PR): the Woods (Clearing, Redwood, Ritual + L3, L4), Camelot (castle block, Pines, Garden, Fairy Forest,
+  Forest + R12, L6), the Mountains (Lodge, Olympus, Shasta + R3), the Desert (Circus, Western Town, Area 51, Giza do not touch: only through the
+  Highway legs), Leylines (the Line + Babel + Bug Colony), the Cavern's tunnels, the Deep (Atlantis and the Sea Floor do not touch).
+
+## THE DEAD ENDS (2026-11-18, mondo: "a road that leads to nothing and just ends is not realistic, at least some road signs")
+Phase 5 took away eight stand-in jump doors and left the bit of road or trail that led to each. data.js `HQ_DEAD_ENDS` (just above `hqLinkLive`)
+closes each one: a row = room, the spot, which way the road runs, a kind (road = police barricades across + cones + a road sign; trail = a fallen
+log + a trail board; snow = snow heaps + a board; stone = a fallen column + rocks). The pieces are pushed onto the room's own `props` once at load
+(marked `deadEnd: true`), so no zone tool has to know about them and a rebake never drops them. The eight: the Hills' Shasta Road spur (4
+barricades across the asphalt), Shasta's east road, Shasta's Trailhead arch, the Redwood Trail's Snowline, the Vatican's Pilgrim Stair, Olympus'
+stair foot, the North Pole's sleigh road south, the Pines' sleigh road east. Seen in a probe, one picture each. When a road or door is built at
+one of them again, delete its row.
+

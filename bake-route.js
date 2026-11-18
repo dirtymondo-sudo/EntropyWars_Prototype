@@ -91,9 +91,12 @@ const partOfPlot = p => PARTS.find(pt => pt.plots.some(o => o[0] === p[0] && o[1
 /* A DISTRICT BROUGHT IN (the same rule): the spec's `join: { tool: 'bake-estate.js', part: 'ow_lake' }` = a district's plots stand in this room
    too. The district's own tool stands them (`node <tool> --export <part> <file>`: squares, heights, paint, every piece, its doors) and this
    kit lays them into the room's box beside the route's plots. The district keeps every plot and everything on it. */
-const JOIN = SPEC.join ? (() => { const tmp = path.join(require('os').tmpdir(), 'ow-join-' + process.pid + '.json');
-    require('child_process').execFileSync('node', [path.join(REPO, SPEC.join.tool), '--export', SPEC.join.part, tmp], { stdio: ['ignore', 'ignore', 'inherit'] });
-    const j = JSON.parse(fs.readFileSync(tmp, 'utf8')); fs.unlinkSync(tmp); return j; })() : null;
+/* SEVERAL DISTRICTS (2026-11-18, mondo: "smaller than the city = one place"; a zone's districts are joined): `join` may be a list; each district
+   stands on its own plots, a door between two of them (or to this room) is dropped: the ground is open there. */
+const JOINS = (SPEC.join ? (Array.isArray(SPEC.join) ? SPEC.join : [SPEC.join]) : []).map((jn, i) => { const tmp = path.join(require('os').tmpdir(), 'ow-join-' + process.pid + '-' + i + '.json');
+    require('child_process').execFileSync('node', [path.join(REPO, jn.tool), '--export', jn.part, tmp], { stdio: ['ignore', 'ignore', 'inherit'], maxBuffer: 1 << 28 });
+    const j = JSON.parse(fs.readFileSync(tmp, 'utf8')); fs.unlinkSync(tmp); return j; });
+const JOIN = JOINS[0] || null;
 const ROOM = SPEC.room || ('site_ow_' + ID.toLowerCase() + STRETCH);
 
 const D = require('./load-data.js').loadGameData();
@@ -105,17 +108,18 @@ const FROMN = (DNAME[SRC.from] || {}).name, TON = (DNAME[SRC.to] || {}).name;
 const LABEL = SPEC.label || (SRC.name ? SRC.name.toUpperCase() : ('THE TRAIL · ' + String(FROMN).toUpperCase() + ' TO ' + String(TON).toUpperCase()));
 
 /* ── the box ── */
-const ALLC = PLOTS.map(p => [p[0], p[1]]).concat(JOIN ? JOIN.plots.map(q => [JOIN.wx + q.col, JOIN.wy + q.row]) : []);
+const ALLC = PLOTS.map(p => [p[0], p[1]]).concat(...JOINS.map(J => J.plots.map(q => [J.wx + q.col, J.wy + q.row])));
 const BX0 = Math.min(...ALLC.map(p => p[0])), BY0 = Math.min(...ALLC.map(p => p[1])), COLS = Math.max(...ALLC.map(p => p[0])) - BX0 + 1, ROWS = Math.max(...ALLC.map(p => p[1])) - BY0 + 1;
 const W = COLS * N, Dq = ROWS * N, HX = W * C / 2, HZ = Dq * C / 2;
 const gx = c => r2(-HX + c * C), gz = c => r2(-HZ + c * C), gcx = c => r2(-HX + (c + 0.5) * C), gcz = c => r2(-HZ + (c + 0.5) * C);
 const inPlot = {}; PLOTS.forEach((p, i) => { inPlot[(p[0] - BX0) + ',' + (p[1] - BY0)] = i; });
 const plotOf = (sx, sy) => (sx < 0 || sy < 0 || sx >= W || sy >= Dq) ? -1 : (inPlot[Math.floor(sx / N) + ',' + Math.floor(sy / N)] != null ? inPlot[Math.floor(sx / N) + ',' + Math.floor(sy / N)] : -1);
 /* the joined district's plots in this room's box: FCELL['col,row']; its first square here = (FOX, FOY); its room's middle here = (FMX, FMZ) metres */
-const FCELL = {}; if (JOIN) JOIN.plots.forEach(q => { const k = (JOIN.wx + q.col - BX0) + ',' + (JOIN.wy + q.row - BY0); if (inPlot[k] != null) { console.error('bake-route: the joined district stands on a route plot at ' + k); process.exit(1); } FCELL[k] = q; });
-const FOX = JOIN ? (JOIN.wx - BX0) * N : 0, FOY = JOIN ? (JOIN.wy - BY0) * N : 0, FMX = JOIN ? r2(-HX + FOX * C + JOIN.W * C / 2) : 0, FMZ = JOIN ? r2(-HZ + FOY * C + JOIN.D * C / 2) : 0;
-const foreign = (sx, sy) => sx >= 0 && sy >= 0 && sx < W && sy < Dq && FCELL[Math.floor(sx / N) + ',' + Math.floor(sy / N)] != null;
-const inRoom = (sx, sy) => plotOf(sx, sy) >= 0 || foreign(sx, sy);
+const FCELL = {}; JOINS.forEach(J => { J.FOX = (J.wx - BX0) * N; J.FOY = (J.wy - BY0) * N; J.FMX = r2(-HX + J.FOX * C + J.W * C / 2); J.FMZ = r2(-HZ + J.FOY * C + J.D * C / 2);
+    J.plots.forEach(q => { const k = (J.wx + q.col - BX0) + ',' + (J.wy + q.row - BY0); if (inPlot[k] != null || FCELL[k]) { console.error('bake-route: the joined district ' + J.part + ' stands on a taken plot at ' + k); process.exit(1); } FCELL[k] = J; }); });
+/* foreign(sx, sy) = the joined district that owns the square, or null */
+const foreign = (sx, sy) => (sx >= 0 && sy >= 0 && sx < W && sy < Dq && FCELL[Math.floor(sx / N) + ',' + Math.floor(sy / N)]) || null;
+const inRoom = (sx, sy) => plotOf(sx, sy) >= 0 || !!foreign(sx, sy);
 const kindOfCell = (cx, cy) => groundAt(BX0 + cx, BY0 + cy);
 const kindAt = (sx, sy) => kindOfCell(Math.floor(sx / N), Math.floor(sy / N));
 
@@ -168,7 +172,7 @@ PARTS.forEach(pt => { pt.LINE = lineOf(pt); });
 const LINE = PARTS[0].LINE;
 const cell = []; for (let y = 0; y < Dq; y++) { cell.push(new Array(W).fill(' ')); }   // ' ' scenery, 'v' verge, 'g' walked ground, 'p' the path, 's' shoulder, 'm' median; a joined district's squares: 'f' walked, 'x' not
 const lookSq = []; for (let y = 0; y < Dq; y++) lookSq.push(new Array(W).fill(null));   // the look of the path that lies on a square
-for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) { if (plotOf(x, y) >= 0) cell[y][x] = 'g'; else if (foreign(x, y)) cell[y][x] = JOIN.cell[y - FOY][x - FOX] === JOIN.fill ? 'x' : 'f'; }
+for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) { if (plotOf(x, y) >= 0) cell[y][x] = 'g'; else { const J = foreign(x, y); if (J) cell[y][x] = J.cell[y - J.FOY][x - J.FOX] === J.fill ? 'x' : 'f'; } }
 const pathPts = [];   // every path's own line, every quarter square: [x, y, dirx, diry, in the room, the part]
 PARTS.forEach(pt => { const LK = LOOKS[pt.look]; let s = 0;
   for (let i = 1; i < pt.LINE.length; i++) {
@@ -222,7 +226,7 @@ for (let y = 0; y <= Dq; y++) for (let x = 0; x <= W; x++) {
     let near = 9; for (let j = -2; j <= 1; j++) for (let i = -2; i <= 1; i++) { const c = (cell[y + j] || [])[x + i]; if (c === 'p' || c === 'm' || c === 's') near = Math.min(near, Math.max(Math.abs(i + 0.5), Math.abs(j + 0.5))); }
     let nl = null; for (let j = -2; j <= 1 && !nl; j++) for (let i = -2; i <= 1 && !nl; i++) nl = (lookSq[y + j] || [])[x + i] || null;
     const ease = nl === 'trail' ? Math.min(1, 0.45 + near / 4) : Math.min(1, near / 3);
-    let fd = 9, fh = 0; if (JOIN) for (let j = -5; j <= 4; j++) for (let i = -5; i <= 4; i++) { if (!foreign(x + i, y + j)) continue; const d = Math.max(Math.abs(i + 0.5), Math.abs(j + 0.5)) - 0.5; if (d < fd) { fd = d; fh = JOIN.h[Math.max(0, Math.min(JOIN.D, y - FOY)) * (JOIN.W + 1) + Math.max(0, Math.min(JOIN.W, x - FOX))]; } }
+    let fd = 9, fh = 0; if (JOIN) for (let j = -5; j <= 4; j++) for (let i = -5; i <= 4; i++) { const J = foreign(x + i, y + j); if (!J) continue; const d = Math.max(Math.abs(i + 0.5), Math.abs(j + 0.5)) - 0.5; if (d < fd) { fd = d; fh = J.h[Math.max(0, Math.min(J.D, y - J.FOY)) * (J.W + 1) + Math.max(0, Math.min(J.W, x - J.FOX))]; } }
     const own = (AMP[g.kit] || 0.6) * ease * ((vnoise(wx / 9, wy / 9, 1) - 0.5) * 2 + (vnoise(wx / 3.1, wy / 3.1, 2) - 0.5) * 0.35), k = Math.min(1, fd / 4);
     Hc[y * (W + 1) + x] = fd <= 0 ? fh : fh * (1 - k) + own * k;
 }
@@ -250,18 +254,18 @@ for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) {
     if (ly < n - 1.5 && cy > 0) cy--; else if (N - 1 - ly < n - 2.5 && cy < ROWS - 1) cy++;
     const k = kitOf(kindOfCell(cx, cy)), ch = cell[y][x];
     if (RUNON[x + ',' + y]) { paint[y * W + x] = pal(RUNON[x + ',' + y]); continue; }
-    if (foreign(x, y)) { const pi = JOIN.paint[(y - FOY) * JOIN.W + (x - FOX)]; paint[y * W + x] = pal(pi ? JOIN.pal[pi - 1] : JOIN.floor); continue; }
+    { const J = foreign(x, y); if (J) { const pi = J.paint[(y - J.FOY) * J.W + (x - J.FOX)]; paint[y * W + x] = pal(pi ? J.pal[pi - 1] : J.floor); continue; } }
     paint[y * W + x] = pal(ch === 'p' ? (lookSq[y][x] === 'highway' ? ASPH : kitOf(kindAt(x, y)).path) : (ch === 's' || ch === 'm') ? SHOULDER : k.floor);
 }
 
 /* A JOINED DISTRICT PAINTED AT HALF SQUARES (2026-11-17, the Leylines zone thread: Bug Colony's rings and paths are painted at the ground mesh's own
    1.75 m step): the export's `paintHalf: true` = its paint is 2W x 2D. Then this room's paint is written at half squares too (the kit's own squares
    twice over), so the district's ground comes in as it was drawn. */
-const PR = JOIN && JOIN.paintHalf ? 2 : 1;
+const PR = JOINS.some(J => J.paintHalf) ? 2 : 1;
 let paintOut = paint;
 if (PR === 2) { paintOut = new Uint8Array(4 * W * Dq);
     for (let y = 0; y < 2 * Dq; y++) for (let x = 0; x < 2 * W; x++) { const sx = x >> 1, sy = y >> 1;
-        if (foreign(sx, sy)) { const pi = JOIN.paint[(y - 2 * FOY) * (2 * JOIN.W) + (x - 2 * FOX)]; paintOut[y * 2 * W + x] = pal(pi ? JOIN.pal[pi - 1] : JOIN.floor); } else paintOut[y * 2 * W + x] = paint[sy * W + sx]; } }
+        const J = foreign(sx, sy); if (J && J.paintHalf) { const pi = J.paint[(y - 2 * J.FOY) * (2 * J.W) + (x - 2 * J.FOX)]; paintOut[y * 2 * W + x] = pal(pi ? J.pal[pi - 1] : J.floor); } else paintOut[y * 2 * W + x] = paint[sy * W + sx]; } }
 if (PAL.length > 8) console.log('WARNING: ' + PAL.length + ' ground sheets (the game draws eight; a ninth draws as the floor): ' + PAL.join(', '));
 
 /* ── placing things ── */
@@ -432,7 +436,8 @@ const uniqErr = [...new Set(errs)]; if (uniqErr.length) { console.error(uniqErr.
 
 /* ── THE JOINED DISTRICT's pieces: every feature, prop, native and door of its own, moved from its room's middle to where its plots stand here ── */
 const LINES_OUT = [], AIR = [];
-if (JOIN) { const sh = (o) => { const q = Object.assign({}, o); if (q.x != null && q.z != null) { q.x = r2(q.x + FMX); q.z = r2(q.z + FMZ); } if (q.x0 != null) { q.x0 = r2(q.x0 + FMX); q.x1 = r2(q.x1 + FMX); q.z0 = r2(q.z0 + FMZ); q.z1 = r2(q.z1 + FMZ); }
+const JOIN_IDS = JOINS.map(J => J.id).concat([ROOM]);
+JOINS.forEach(JOIN => { const FMX = JOIN.FMX, FMZ = JOIN.FMZ; const sh = (o) => { const q = Object.assign({}, o); if (q.x != null && q.z != null) { q.x = r2(q.x + FMX); q.z = r2(q.z + FMZ); } if (q.x0 != null) { q.x0 = r2(q.x0 + FMX); q.x1 = r2(q.x1 + FMX); q.z0 = r2(q.z0 + FMZ); q.z1 = r2(q.z1 + FMZ); }
         if (Array.isArray(q.pts)) q.pts = q.pts.map(v => Array.isArray(v) ? [r2(v[0] + FMX), r2(v[1] + FMZ)].concat(v.slice(2)) : Object.assign({}, v, { x: r2(v.x + FMX), z: r2(v.z + FMZ) }));
         if (Array.isArray(q.off)) q.off = [r2(q.off[0] + FMX), r2(q.off[1] + FMZ), r2(q.off[2] + FMX), r2(q.off[3] + FMZ)]; return q; };
     JOIN.features.forEach(f => { if (f.k === 'space') return;
@@ -443,14 +448,16 @@ if (JOIN) { const sh = (o) => { const q = Object.assign({}, o); if (q.x != null 
     (JOIN.air || []).forEach(z => AIR.push(Object.assign({}, z, { x0: r2(z.x0 + FMX), x1: r2(z.x1 + FMX), z0: r2(z.z0 + FMZ), z1: r2(z.z1 + FMZ) })));
     /* its doors: on this room's wall where its plot's side lies on the box's edge, else free (crossed on the plot's own squares) */
     /* (2026-11-17) a district's own door with no plot side (Bug Colony's hive + nest) stays where it stands, moved with the district */
-    JOIN.doors.forEach(d => { if (!d.side) { doors.push(sh(d)); return; } const o = Object.assign({}, d), col = JOIN.wx + d.plotCol - BX0, row = JOIN.wy + d.plotRow - BY0, sd = d.side, ns = sd === 'N' || sd === 'S';
+    JOIN.doors.forEach(d => { if (d.action && JOIN_IDS.indexOf(d.action.room) >= 0) return;   // a way to another part of this same place: open ground now
+        if (d.action && d.action.room && (SPEC.joinRooms || {})[d.action.room]) d = Object.assign({}, d, { action: Object.assign({}, d.action, { room: SPEC.joinRooms[d.action.room] }) });
+        if (!d.side) { doors.push(sh(d)); return; } const o = Object.assign({}, d), col = JOIN.wx + d.plotCol - BX0, row = JOIN.wy + d.plotRow - BY0, sd = d.side, ns = sd === 'N' || sd === 'S';
         ['plotCol', 'plotRow', 'side', 'along', 'x', 'z', 'face', 'passage'].forEach(k => delete o[k]); const keepW = d.way === 'open' && d.passage && d.passage.w ? { w: d.passage.w } : null;
         const onWall = (sd === 'N' && row === 0) || (sd === 'S' && row === ROWS - 1) || (sd === 'W' && col === 0) || (sd === 'E' && col === COLS - 1);
         const bx = sd === 'W' ? col * N : sd === 'E' ? col * N + N - 1 : col * N + Math.max(0, Math.min(N - 1, Math.floor(d.along - 0.01))), by = sd === 'N' ? row * N : sd === 'S' ? row * N + N - 1 : row * N + Math.max(0, Math.min(N - 1, Math.floor(d.along - 0.01)));
         if (onWall) { o.wall = sd.toLowerCase(); if (ns) o.x = gx(col * N + d.along); else o.z = gz(row * N + d.along); ENDS.push({ id: o.id, side: o.wall, onWall: true, along: ns ? o.x : o.z, sq: [bx, by], look: 'trail', foreign: true }); }
         else { o.wall = 'free'; o.x = ns ? gx(col * N + d.along) : gcx(bx); o.z = ns ? gcz(by) : gz(row * N + d.along); o.face = sd === 'N' ? 180 : sd === 'E' ? 270 : sd === 'S' ? 0 : 90; o.passage = Object.assign({}, FREE_PASS, keepW || {}); }
         if (onWall && keepW) o.passage = keepW;
-        doors.push(o); }); }
+        doors.push(o); }); });
 
 /* ── the sky + the room ── */
 const major = (() => { const c = {}; PLOTS.forEach(p => { const k = groundAt(p[0], p[1]).kit; c[k] = (c[k] || 0) + 1; }); return Object.keys(c).sort((a, b) => c[b] - c[a])[0]; })();
@@ -469,7 +476,7 @@ const SPQ2 = (() => { if (SPEC.spawnOnPath) return SPQ; for (let r = 3; r <= 14;
 const SP = { x: gcx(SPQ2[0]), z: gcz(SPQ2[1]) }, face = SPQ2 !== SPQ ? Math.round(((Math.atan2(SPQ[0] - SPQ2[0], -(SPQ[1] - SPQ2[1])) * 180 / Math.PI) + 360) % 360) : ENDS[0] ? ({ n: 180, s: 0, w: 90, e: 270 })[ENDS[0].side] : 180;
 const pidOf = (c, r) => 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0');
 const names = PLOTS.map((p, i) => [pidOf(p[0] - BX0, p[1] - BY0), (partOfPlot(p).src.name || 'The trail') + ', ' + ((SPEC.names || {})[p[0] + ',' + p[1]] ? SPEC.names[p[0] + ',' + p[1]] : PLACE_AT[p[0] + ',' + p[1]] ? PLACE_AT[p[0] + ',' + p[1]].name : PJ.ground.key[groundAt(p[0], p[1]).c].label.toLowerCase()), 'R', 0])
-    .concat(JOIN ? JOIN.plots.map(q => [pidOf(JOIN.wx + q.col - BX0, JOIN.wy + q.row - BY0), q.name, q.district, q.level]) : []);
+    .concat(...JOINS.map(J => J.plots.map(q => [pidOf(J.wx + q.col - BX0, J.wy + q.row - BY0), q.name, q.district, q.level])));
 const mask = []; for (let cy = 0; cy < ROWS; cy++) { let s = ''; for (let cx = 0; cx < COLS; cx++) s += (inPlot[cx + ',' + cy] != null || FCELL[cx + ',' + cy]) ? '#' : '.'; mask.push(s); }
 const grounds = [...new Set(PLOTS.map(p => groundAt(p[0], p[1]).kind))];
 const L = [];
@@ -490,7 +497,7 @@ L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + COLS + ",
 L.push("            terrain: {");
 L.push("                res: 1.75, floor: " + J(FLOOR) + ", cliff: 'rocks_5', path: 'dirt_2',");
 L.push("                noise: { amp: 0.08, scale: 9 },");
-if ((JOIN && JOIN.grassField) || grounds.some(k => KIT[PJ.ground.key[Object.keys(PJ.ground.key).find(c => PJ.ground.key[c].kind === k)].kit].grass)) L.push("                grassField: true,");
+if (JOINS.some(J => J.grassField) || grounds.some(k => KIT[PJ.ground.key[Object.keys(PJ.ground.key).find(c => PJ.ground.key[c].kind === k)].kit].grass)) L.push("                grassField: true,");
 L.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */");
 L.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(ENDS.filter(e => e.onWall).map(e => ({ side: e.side, at: e.along }))) + " },");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + Dq + ", d: '" + slope.toString('base64') + "' } },");

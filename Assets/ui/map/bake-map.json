@@ -159,16 +159,6 @@
   "bytes": 1686,
   "s": "194.4"
  },
- "site_prebuilt_skinwalker_ow_corn": {
-  "id": "site_prebuilt_skinwalker_ow_corn",
-  "nx": 24,
-  "nz": 72,
-  "h0": 1.56,
-  "hs": 0.25,
-  "v": "390d82f0e4",
-  "bytes": 621,
-  "s": "2.6"
- },
  "site_prebuilt_fairy_forest_ow_clearing": {
   "id": "site_prebuilt_fairy_forest_ow_clearing",
   "nx": 144,
@@ -177,17 +167,17 @@
   "hs": 0.25,
   "v": "29c6d30ad9",
   "bytes": 1624,
-  "s": "14.6"
+  "s": "7.9"
  },
  "site_prebuilt_skinwalker_ow_lake": {
   "id": "site_prebuilt_skinwalker_ow_lake",
   "nx": 60,
-  "nz": 96,
+  "nz": 216,
   "h0": -0.8,
   "hs": 0.25,
-  "v": "24d7365b55",
-  "bytes": 1656,
-  "s": "2.6"
+  "v": "3482179583",
+  "bytes": 3362,
+  "s": "25.8"
  },
  "site_prebuilt_camelot_ow_garden": {
   "id": "site_prebuilt_camelot_ow_garden",
@@ -238,16 +228,6 @@
   "v": "5cb47d5a9b",
   "bytes": 353,
   "s": "1.2"
- },
- "site_prebuilt_skinwalker_ow_ranch": {
-  "id": "site_prebuilt_skinwalker_ow_ranch",
-  "nx": 36,
-  "nz": 60,
-  "h0": 1.67,
-  "hs": 0.25,
-  "v": "c7b10bed4d",
-  "bytes": 828,
-  "s": "2.5"
  },
  "site_prebuilt_skinwalker_ow_house": {
   "id": "site_prebuilt_skinwalker_ow_house",
@@ -327,7 +307,7 @@
   "hs": 0.25,
   "v": "5a278d6550",
   "bytes": 1376,
-  "s": "3.9"
+  "s": "2.7"
  },
  "site_prebuilt_fairy_forest_ow_ritual": {
   "id": "site_prebuilt_fairy_forest_ow_ritual",
@@ -337,7 +317,7 @@
   "hs": 0.25,
   "v": "190656fa99",
   "bytes": 2804,
-  "s": "9.0"
+  "s": "5.2"
  },
  "site_prebuilt_area51_ow_circus": {
   "id": "site_prebuilt_area51_ow_circus",
@@ -497,7 +477,7 @@
   "hs": 0.25,
   "v": "92c8bfed50",
   "bytes": 2190,
-  "s": "1.1"
+  "s": "0.8"
  },
  "site_ow_r9": {
   "id": "site_ow_r9",

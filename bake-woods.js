@@ -325,7 +325,7 @@ const PJ = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plot
 const MOVER = require('./ow-move.js')({ cols: G, rows: G, cell, fill: 't', plots: PLAN.plots, features, props, npc, doors });
 const v13 = letter => { const d = PJ.districts.find(q => q.today && q.today.room === 'site_prebuilt_fairy_forest_plots' && q.today.districts.indexOf(letter) >= 0); if (!d) throw new Error('plots.json has no Woods district ' + letter);
     return d.plots.map(q => { const p = plot[q.was]; if (!p || p.name !== q.n || p.district !== letter) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
-const R_CLEAR = 'site_prebuilt_fairy_forest_ow_clearing', R_REST = 'site_prebuilt_fairy_forest_plots', R_CORN = 'site_prebuilt_skinwalker_ow_corn';
+const R_CLEAR = 'site_prebuilt_fairy_forest_ow_clearing', R_REST = 'site_prebuilt_fairy_forest_plots', R_CORN = 'site_prebuilt_skinwalker_ow_lake';   // (2026-11-18: the Estate is one room, County Lane's)
 /* ONE WORLD, PHASE 3 (2026-11-17, BUILD_PLAN wave A, the Woods zone thread): the Redwood Trail and the Ritual Ground leave the old room (R_REST, now in
    DOOR_HQ.retired) for their v13 places, and the Woods' wild links are built. R_RED = the Redwood Trail alone (9 plots: it cannot join the Clearing, whose
    room is full by the triangle number, nor L3, which would make the box 13 plots tall). R_RIT = the Ritual Ground + the wild links L2 (from the Clearing)
