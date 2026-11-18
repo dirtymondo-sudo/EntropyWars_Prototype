@@ -38,6 +38,13 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
 - **Zones, no open world.** DOOR HQ is the hub; zones sit behind doors. The zone names, word for word: DOOR HQ, The Woods,
   Fairy Forest, Camelot Kingdom, Disaster City, The Beach, The Desert, The Sewers, The Estate, The D.U.M.B., Atlantis,
   The Deep, Outer Space, Heaven + Hell + Vatican, The Cavern, Leylines. H-Wing = the backrooms.
+- **THE DOORS (11-18, the door audit; the full list is `world-layout.md` "THE DOOR AUDIT").** One World is walked: roads, trails, boats,
+  stairs and wells down to what lies underneath; no door jumps across the map. DOOR HQ has three public ways out (the Stair to the Woods, the
+  Taxi to Disaster City, the Subway) and a few secrets. **No bay doors** ("they just look like random doors in the middle of areas ... you
+  don't have to work for them"), and nothing is earned by stabilizing a site. **A secret or shortcut is hard to find or mundane**: "a random
+  janitor's closet down a sideway in a building, or a random bathroom in a building, or down a small side trail that wouldn't get noticed at
+  first glance, or somewhere where it is hard to reach vertically or at the end of a maze"; never a free-standing framed door out in the open.
+  A new way between two places needs his OK and a row in data.js beside `DOOR_HQ.cut`'s rules.
 - **World vision (11-15).** The world is a parody of the real world; each area is the ULTIMATE form of its idea. DOOR HQ
   is the subconscious. Every area is plot-built (12x12 plots, districts) like Disaster City; only DOOR HQ stays handmade.
   Cyberpunk City is a future reskin of the WHOLE Disaster City, not a district. The Desert = Western Town + Giza + Area 51.

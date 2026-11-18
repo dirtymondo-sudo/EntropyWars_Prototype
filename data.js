@@ -32536,7 +32536,8 @@ const DOOR_HQ = {
     /* THE OLD WOODS (same day, the same rule): the Clearing, the Redwood Trail, Dead Man's Cave and the Ritual Ground stand in data.js (nothing of his deleted)
        but are never entered: the 36-plot room `site_prebuilt_fairy_forest_plots` stood for all four; since ONE WORLD (2026-11-17) that room is retired too and the
        Woods are three rooms at their v13 places (the Clearing + Dead Man's Cave, the Redwood Trail, the Ritual Ground) + the route rooms of the links L3 and L4. */
-    retired: { site_ow_r5_0_17: 'site_ow_r5', site_ow_r5_18_35: 'site_ow_r5', site_ow_r10_0_25: 'site_ow_r10', site_ow_r10_26_37: 'site_ow_r10', site_ow_r2: 'site_ow_r1',
+    retired: { site_prebuilt_cyberpunk_streets: 'site_prebuilt_downtown_streets', site_prebuilt_cyberpunk_noodle: 'site_prebuilt_downtown_streets',   /* THE DOOR AUDIT (2026-11-18, mondo: the new Cyberpunk City is "a reskin/reimagining of current disaster city"): the old Cyberpunk City's two rooms are never entered (its four ways in are cut); they stand only as the fight board's source */
+               site_ow_r5_0_17: 'site_ow_r5', site_ow_r5_18_35: 'site_ow_r5', site_ow_r10_0_25: 'site_ow_r10', site_ow_r10_26_37: 'site_ow_r10', site_ow_r2: 'site_ow_r1',
                site_prebuilt_atlantis_ow_trench: 'site_prebuilt_atlantis_deep',   /* ONE WORLD PHASE 5: the Trench was a room of its own for a few hours on 11-17 (the Deep's move); it stands in the Deep's room, and a save made there fell back to the Egress */   /* ONE WORLD PHASE 5 (2026-11-17): the Polar Trail and the Coast Road are one room each (each was two stretches with a card between them); the Canyon Trail stands in the River Road's room */
                site_prebuilt_area51_highway: 'site_ow_r9',   /* ONE WORLD 4.2 (2026-11-17): the Desert Highway is four route rooms now (site_ow_dh1..dh4) + the Badlands Highway R9 in from the city (bake-desert.js THE HIGHWAY, RETIRED) */
                site_prebuilt_downtown_ow_cells: 'site_prebuilt_downtown_underworld', site_prebuilt_downtown_ow_workings: 'site_prebuilt_downtown_underworld', site_prebuilt_downtown_ow_drain: 'site_prebuilt_downtown_underworld',   // THE UNDERGROUND WALKS (2026-11-17, One World phase 4.4): the culverts join the Sewers' five districts into one room again
@@ -32609,6 +32610,46 @@ const DOOR_HQ = {
         astral:  { label: 'THE ASTRAL REALM', room: 'site_prebuilt_lookingglass_realm', rooms: ['site_prebuilt_lookingglass_waiting', 'site_prebuilt_lookingglass_realm'], color: '#d8b4ff' },   // THE ASTRAL REALM ON PLOTS (2026-11-16): one 36-plot room + the Waiting Room, its inside
         /* THE INTERNET (2026-11-17, One World phase 4.4): one 36-plot room beyond the map, beside the Astral Realm (bake-internet.js) */
         internet: { label: 'THE INTERNET', room: 'site_prebuilt_internet_web', rooms: ['site_prebuilt_internet_web'], color: '#7fffd0' },
+    },
+    /* ══ THE DOOR AUDIT (mondo 2026-11-18: "I think there are too many connections and ways out of DOOR HQ ... a lot of those doors were placed
+       before we did this whole one world map rework ... I just really want to tighten them up and only have the necessary ones and ones that make
+       the most logical sense"; his OK on the list the same day: "looks good") ══
+       One World is WALKED: roads, trails, boats, and stairs or wells down to what lies underneath. DOOR HQ has three public ways out (the Stair to
+       the Woods, the Taxi to Disaster City, the Subway) and three secrets (the Dungeon's fourth wall to the Sewers, the Garage ramp to the D.U.M.B.,
+       the Dream Lab's screen to the Astral Realm). Every way named here is CUT: `links` = a DOOR_HQ.links row that is never live (hqLinkLive: no
+       door at either end, no line on the map); `doors` = a door row dropped from its room at load (hqApplyCutDoors), both ends of a pair. The rows
+       themselves stay where they are, so a zone tool's checks and rebake never trip, and one deleted line here brings a way back. The 36 bay doors
+       went the same day (HQ_EARNED_DOOR_RULES). A SECRET that stays is never a free-standing door: a closet, a manhole, a well or a hatch in a
+       real wall, down a side way or at the end of a maze. Notes: docs/notes/world-layout.md "THE DOOR AUDIT". */
+    cut: {
+        links: {
+            /* out of DOOR HQ */
+            bureau_vatican: 'the Bureau painting to the Vatican', mirror_lookingglass: 'the barbershop mirror to the Looking-Glass Garden',
+            weir_bermuda: 'the Infinity Pool weir to the Bermuda Triangle', natatorium_dutchman: 'the plunge pool to the Dutchman\'s hold',
+            observatorium_singularity: 'the Observatory screen to Outer Space', well_garden: 'the garden well to the Sewers',
+            woods_ritual: 'Room 333\'s chalk circle to the Ritual Ground', woods_sewer: 'the Tunnel\'s storm drain to the Clearing',
+            tunnel_cyberpunk: 'the platform train to old Cyberpunk City (it runs to Disaster City now: link tunnel_downtown)',
+            /* jumps across the map */
+            lodge_olympus: 'the Members club painting to Mount Olympus', ranch_lodge: 'the Members club back door to the Estate',
+            grove_lodge: 'the Members\' tunnel to the Ritual Ground', streets_drain: 'the city gutter to the Clearing',
+            subway_downtown: 'the Downtown platform train to old Cyberpunk City', timemachine_cyberpunk: 'the mall time machine to old Cyberpunk City',
+            northpole_haunted: 'the Haunted House hearth to the North Pole (the cellar well and the wardrobe stay)',
+            attic_nightmare: 'the Haunted House attic screen to the Astral Realm',
+            antarctica_polar: 'the Admiral\'s Tunnel, Antarctica to Agartha (the Polar Opening, link hollow_byrd, stays)',
+        },
+        /* THE SCENERY STAYS: a cut link's end whose `way` is the room's own furniture (the Bureau's painting, the barber's mirror, the Observatory's
+           screen, the garden's well, the mall's time machine, the two hearths, the attic's screen) is still DRAWN there, as scenery: no plate, no
+           prompt, nothing to press (hqApplyCutScenery -> room.wayProps -> three-renderer.js _hqBuildDoors). Every other cut end draws nothing. */
+        scenery: { bureau_vatican: ['a'], mirror_lookingglass: ['a'], observatorium_singularity: ['a'], well_garden: ['a'], timemachine_cyberpunk: ['a'],
+                   northpole_haunted: ['a', 'b'], attic_nightmare: ['a'] },
+        doors: {
+            tunnel: ['carnival'], mandela: ['mirrors'], site_prebuilt_area51_ow_circus: ['tunnel', 'mirrors'],   // the two doors to the Circus that stood open from the first minute
+            dungeon: ['oubliette'], site_prebuilt_hollow_earth_cavern: ['dungeon'],                              // the Dungeon's moving wall to the Cavern
+            site_prebuilt_fairy_forest_ow_ritual: ['lookingglass'], site_prebuilt_camelot_ow_forest: ['deadtree'],   // the dead tree: the Ritual Ground and Camelot's Forest touch by a trail
+            site_prebuilt_fairy_forest_ow_redwood: ['lemuria'], site_prebuilt_hollow_earth_ow_agartha: ['woods'],     // the second Lemuria way (Mount Shasta's hidden adit stays)
+            /* Area 51 to the D.U.M.B. was five ways: the floor lift (link area51_dumb) and the hidden vent stay */
+            site_prebuilt_area51_hangar: ['white'], site_prebuilt_area51_desert: ['ward', 'stormdrain'], site_prebuilt_dumb_base: ['hangar', 'yard', 'stormdrain'],
+        },
     },
     links: [
         /* THE LUNAR ROUTE (the pilot's two, plus Mars and the drop) */
@@ -32955,6 +32996,12 @@ const DOOR_HQ = {
         /* THE TAXI (ZONES_PLAN Z1, 2026-09-29): DOOR HQ's exit to Disaster City. The cab waits in the garage's lower ring by
            the elevator (a FREE end — the rear door faces the plaza), and at the far end on the kerb of the cross street's east
            leg in Downtown (parked on the east kerb, the rear door to the road). Open from the start (HQ_EXIT_RULES.open). */
+        /* THE SUBWAY, DOOR HQ TO DISASTER CITY (the door audit, 2026-11-18): the train at the building's platform runs to the platform under Downtown and back.
+           The two trains stand where they stood (the ends are the old Cyberpunk links' own platform ends); the third public way out of DOOR HQ (HQ_EXIT_RULES.open). */
+        { id: 'tunnel_downtown', route: 'subway', way: 'train',
+          a: { room: 'tunnel', wall: 'free', x: -1.5, z: 6, face: 90, sub: 'THE TRAIN · DISASTER CITY · DOWNTOWN' },
+          b: { site: 'prebuilt_downtown', part: 'subway', wall: 'free', x: -1.5, z: 3, face: 90, sub: 'THE TRAIN · DOOR HQ' },
+          why: 'the train at the building\'s platform runs one stop, to the platform under Downtown, and back', note: 'mind the gap', draft: true },
         { id: 'garage_taxi', route: 'taxi', way: 'taxi',
           a: { room: 'garage', wall: 'free', x: 21.3, z: 9.9, face: 295, sub: 'THE TAXI · DISASTER CITY' },
           b: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: 96.25, z: -113.75, face: 270, sub: 'THE TAXI · DOOR HQ · THE GARAGE' },
@@ -76089,7 +76136,13 @@ function hqMasteryCount(profile) {
      hqEarnedDoorsStamp(profile, ids) → THE ONE WRITE (the caller saves)
    Dev: `?alldoors` / window.EW_HQ_ALL_DOORS = every threshold stands (the
    old building). Viewer-local, nothing on `state`, nothing relayed. */
-const HQ_EARNED_DOOR_RULES = { free: ['prebuilt_training'], hiddenKey: 'hidden' };
+/* THE BAY DOORS ARE GONE (mondo 2026-11-18, the door audit: "all of these bay doors I want gone, they just look like random doors
+   in the middle of areas ... you don't have to work for them"; on the reward for stabilizing a site: "We aren't really doing the
+   stabilizing a site anymore, so nothing"). `thresholds: false` = no site is ever EARNED, so no threshold stands in the Containment
+   Ring, Otto builds nothing and the ceremony never plays; `entries: false` = no bay door stands in a zone room (hqApplySiteEntries
+   makes none): a row of DOOR_HQ.siteRooms.entry is only the site's ROOM and its LANDING SPOT now (hqSiteEntry; the zone tools still
+   check those rows). `?alldoors` does not bring them back. Room 64 (the free list) is untouched. */
+const HQ_EARNED_DOOR_RULES = { free: ['prebuilt_training'], hiddenKey: 'hidden', thresholds: false, entries: false };
 function hqDoorsAllOpen() {
     if (typeof window === 'undefined') return false;
     try { if (window.EW_HQ_ALL_DOORS) return true; } catch (e) {}
@@ -76100,6 +76153,7 @@ function hqSiteEarned(mapId, profile) {
     const site = hqSiteId(mapId);
     if (!site) return false;
     if (HQ_EARNED_DOOR_RULES.free.indexOf(site) >= 0) return true;
+    if (!HQ_EARNED_DOOR_RULES.thresholds) return false;   // THE BAY DOORS ARE GONE (2026-11-18)
     if (hqDoorsAllOpen()) return true;
     if (!profile) return false;
     return hqMapMastered(site, profile);
@@ -76149,7 +76203,7 @@ function hqApplyEarnedDoors(profile) {
    rule's own `hidden` is never cleared) on those rows; map.js _hqEnter runs
    it on EVERY entry, next to hqApplyEarnedDoors. `?alldoors` opens them all.
    Viewer-local, nothing on `state`, nothing relayed. */
-const HQ_EXIT_RULES = { open: ['garage_taxi', 'woods_stair'] };
+const HQ_EXIT_RULES = { open: ['garage_taxi', 'woods_stair', 'tunnel_downtown'] };   // (2026-11-18, the door audit: the Subway is the third public way out)
 function hqApplyShutExits(profile) {
     const rooms = DOOR_HQ.rooms || {};
     const out = { shut: [], open: [] };
@@ -76179,7 +76233,7 @@ function hqEarnedDoorsRecord(profile) {
     try { const e = profile && profile.door && profile.door.hq && profile.door.hq.earned; return (e && typeof e === 'object') ? e : {}; } catch (e) { return {}; }
 }
 function hqEarnedDoorsNew(profile) {
-    if (!profile) return [];
+    if (!profile || !HQ_EARNED_DOOR_RULES.thresholds) return [];   // THE BAY DOORS ARE GONE (2026-11-18): Otto builds nothing
     const rec = hqEarnedDoorsRecord(profile);
     return hqThresholdSites().filter(id => HQ_EARNED_DOOR_RULES.free.indexOf(id) < 0 && !rec[id] && hqMapMastered(id, profile));
 }
@@ -76582,6 +76636,12 @@ function hqSiteEntry(roomId, at) {
     const ent = E[mapId], part = DOOR_HQ.rooms[ent.room];
     if (!part) return null;
     let landing = ent.door ? ent.door.id : null;
+    /* THE BAY DOORS ARE GONE (2026-11-18): the row's door is only a SPOT now. A free one lands you where it stood; a wall one
+       (no x and z of its own) lands at the room's spawn */
+    if (!HQ_EARNED_DOOR_RULES.entries) { const ed = ent.door;
+        if (ed && ed.wall === 'free' && isFinite(ed.x) && isFinite(ed.z)) { const fr = (ed.face || 0) * Math.PI / 180, r2 = v => Math.round(v * 100) / 100;   // 2.4 m out along the way the door faced (the renderer's own door landing), looking that way
+            landing = Object.assign({ x: r2(ed.x + Math.sin(fr) * 2.4), z: r2(ed.z - Math.cos(fr) * 2.4), face: ed.face || 0 }, isFinite(ed.y) ? { y: ed.y } : {}); }
+        else landing = null; }
     if (at && typeof at === 'object') landing = at;
     else if (typeof at === 'string' && (part.doors || []).some(d => d.id === at)) landing = at;
     return { room: ent.room, at: landing, site: mapId, from: roomId };
@@ -76608,6 +76668,7 @@ function hqApplySiteEntries() {
     Object.keys(E).forEach(mapId => {
         const ent = E[mapId], part = DOOR_HQ.rooms[ent.room];
         if (!part || !ent.door) return;
+        if (!HQ_EARNED_DOOR_RULES.entries) { part.doors = (part.doors || []).filter(d => d.id !== ent.door.id); return; }   // THE BAY DOORS ARE GONE (2026-11-18): no door on the part (a baked row of that id goes too)
         const eg = hqSiteEgressDoor(mapId); if (!eg) return;
         part.doors = (part.doors || []).filter(d => d.id !== ent.door.id);
         part.doors.push(Object.assign({ leaf: eg.leaf, wide: eg.wide, label: eg.label, sub: eg.sub, desc: eg.desc, note: eg.note }, ent.door, { action: Object.assign({}, eg.action), entry: mapId, site: mapId }));   // `site` = the plate reads the site's number (hqDoorNo)
@@ -76696,8 +76757,28 @@ const HQ_DEAD_ENDS = [
    are well-formed and both wear something the catalogue lists? The ONE
    rule hqLinkDoors and hqWorldRoutes share: `{ a, b, wearA, wearB }` (room
    ids + wear), else null. A held-back link is held at BOTH ends. */
+/* THE DOOR AUDIT (2026-11-18): DOOR_HQ.cut. A cut link is never live; a cut door is dropped from its room once, at load. */
+function hqLinkCut(id) { const C = (DOOR_HQ.cut || {}).links || {}; return Object.prototype.hasOwnProperty.call(C, id); }
+function hqApplyCutDoors() {
+    const C = (DOOR_HQ.cut || {}).doors || {}, out = [];
+    Object.keys(C).forEach(rid => { const R = DOOR_HQ.rooms[rid]; if (!R || !Array.isArray(R.doors)) return;
+        R.doors = R.doors.filter(d => { const cut = C[rid].indexOf(d.id) >= 0; if (cut) out.push(rid + '/' + d.id); return !cut; }); });
+    return out;
+}
+/* a cut link's scenery ends: the way's own object, in the room's `wayProps` (never in `doors`: no edge, no plate, no prompt). Once, at load. */
+function hqApplyCutScenery() {
+    const SC = (DOOR_HQ.cut || {}).scenery || {}, out = [];
+    (DOOR_HQ.links || []).forEach(link => { const ends = SC[link.id]; if (!ends || !hqLinkCut(link.id)) return;
+        ends.forEach(k => { const end = link[k], rid = end ? hqLinkRoom(end) : null, R = rid ? DOOR_HQ.rooms[rid] : null, wear = end ? hqLinkEndWear(link, end) : null;
+            if (!R || !wear || !wear.way) return;
+            const row = { id: 'cut_' + link.id, way: wear.way, wall: end.wall, inert: true };
+            ['x', 'z', 'y', 'face', 'deg', 'level', 'side'].forEach(f => { if (end[f] != null) row[f] = end[f]; });
+            R.wayProps = (R.wayProps || []).filter(w => w.id !== row.id).concat(row); out.push(rid + '/' + row.id); }); });
+    return out;
+}
 function hqLinkLive(link) {
     if (!link || !/^[a-z0-9_]+$/.test(link.id || '')) return null;
+    if (hqLinkCut(link.id)) return null;
     const a = hqLinkRoom(link.a), b = hqLinkRoom(link.b);
     // Fail closed for unbuilt endpoints, malformed ends and unsupported wear (either end).
     if (!a || !b || a === b) return null;
@@ -76830,6 +76911,7 @@ function hqWorldGraph() {
         const act = d.action || {};
         let to = act.room, at = act.at || null;
         if (act.sector) { to = hqBayId(act.sector); at = act.at || hqBayEntry(act.sector); }
+        if (act.mission && !HQ_EARNED_DOOR_RULES.thresholds && HQ_EARNED_DOOR_RULES.free.indexOf(hqSiteId(act.mission)) < 0) return;   // THE BAY DOORS ARE GONE (2026-11-18): a threshold that never stands is no edge
         if (act.mission && ((DOOR_HQ.siteRooms || {}).built || []).includes(hqSiteId(act.mission))) {
             const ent = hqSiteEntryOf(act.mission);
             if (ent) { to = ent.room; at = ent.door ? ent.door.id : null; }
@@ -81123,6 +81205,8 @@ function hqBuildHealZones() {
 }
 hqBuildAreas();          // THE AREAS (2026-09-18): every board is an area — the twenty generated parts + the marker on every entry part, before the entries
 hqApplySiteEntries();   // THE ENTRY (2026-09-17): the bypassed board rooms' egress doors, on their parts
+hqApplyCutDoors();      // THE DOOR AUDIT (2026-11-18): the ways DOOR_HQ.cut names, before the links and the plates
+hqApplyCutScenery();    // ...and the furniture a cut way leaves standing (a painting is just a painting)
 hqRefreshComplexLinks();
 hqReplateDoors();       // THE PLATE READS THE ROOM THROUGH THE DOOR (2026-09-18) — after the entries and the links
 hqBuildHealZones();     // THE HEALING ZONES (2026-09-20): one per hub anchor, beside the marker — after the areas (the markers) and the entries
