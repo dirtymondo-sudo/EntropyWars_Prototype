@@ -3012,3 +3012,14 @@ second · biggest)", top 8, `!!` = 20K+ a second. Rule: CLAUDE.md RULE #1e.
   frame (a door chunk's measure is a walk of the door). They now follow the prop chunks' rule: own count changed, add count changed
   (at most every 4 s), `g._ew_ckDirty` (set by `_hqInstFit` on its instance cell when a batch refits) or every 60 s. Door swings stay
   inside the 15 m chunk pad. Off: `EW_HQ_CHUNK_POLL_2S`.
+
+### THE ONE-BY-ONE PASS + THE DESK FOR LOD AND LABELS (2026-11-18, his first F3 with the alarm)
+The "Scene walks" line on his 12:18 F3 named: `_hqInstAdd` (47K a read: the pass re-ran in full every few seconds, "tick:
+instance pass 36-37 ms", because each prop chunk shown for the first time had candidates the pass never saw), `_hqLodScan`
+(74K every 2 s: any add anywhere re-read the room), `_css2dRender` (77K every second: same), `_lensCensus` (the lens itself).
+- `_hqInstAdd(H, I, only)`: a run for fresh candidates reads only them + the left-alone set (no room-wide flags, no
+  `scene.updateMatrixWorld(true)`, no scan; the new batches fill at the next sync). `_hqInstFresh` returns the fresh list; its
+  stamps reset only when the desk overflowed (`I.seenN`). Full read: first run, `EW_HQ_INST_FULL_SCAN`.
+- `_hqLodTick`: arrivals' meshes join `L.list`; full read when a LOD level landed (`_lodLandN`), the desk overflowed, every 60 s.
+- `_css2dRender`: arrivals looked through for a label; recount when one arrived / overflow / every 60 s.
+- Alarm names now parse Firefox's `ThreeRenderer</fn/<` frames; the lens's own census is marked "(the F3 lens itself)".
