@@ -11484,6 +11484,9 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${typeof window.remadeLooksOn === 'function' && window.remadeLooksOn() ? ' active' : ''}" id="mmRemadeLooksBtn" onclick="window._toggleRemadeLooks()">${typeof window.remadeLooksOn === 'function' && window.remadeLooksOn() ? 'Remade Race Looks: ON' : 'Remade Race Looks: OFF'}</button>
                         </div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn" id="mmStoryWebBtn" onclick="window.open('/dev/relationship-web', '_blank')">Relationship Web</button>
+                        </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Face Lab (experimental) — in the character creator, a FACE LAB button by FACE CLOSE-UP opens a window that plays the MPFB body's face shapes: open mouth, talk (reads a line you type), lip flap, roll eyes, blink, wink, look around, laugh, moan, cry, scream and more, plus a slider for each of the 67 raw face shapes. Looks only, nothing saved. ?facelab=1 in the address turns it on too.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${window.EWFaceLab && window.EWFaceLab.enabled() ? ' active' : ''}" id="mmFaceLabBtn" onclick="window._toggleFaceLab()">${window.EWFaceLab && window.EWFaceLab.enabled() ? 'Face Lab: ON' : 'Face Lab: OFF'}</button>
