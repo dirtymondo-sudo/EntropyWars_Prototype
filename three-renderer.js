@@ -49143,6 +49143,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < outs.length; i++) { var o = outs[i]; if (o._ew_bunOut === true && o.parent) R._projectObject(o, camera, go, renderList, clippingContext); }
     }
     function _ewBunNoOut() { return typeof window !== 'undefined' && !!window.EW_BUN_NO_OUT; }
+    function _ewBunOutHideHash() { return typeof window !== 'undefined' && !!window.EW_BUN_OUT_HIDE_HASH; }
     /* THE CHANGERS OUT (2026-11-14, mondo's readout after THE MOVERS OUT: "1.9 re-records/s (values 1.9)", the shell drawn piece by
        piece again): with the cars out the shell's recording was a STILL one, so each change of a traffic signal's lens colour
        re-recorded all 4,400 pieces — about twice a second, too slow to count as churning (5 in 2 s) and be demoted. The top walk
@@ -49152,8 +49153,13 @@ const ThreeRenderer = (function () {
         var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
+            /* THE OUTS SHOWN OR HIDDEN (2026-11-18, mondo's F3 after THE MOVERS STAY OUT: the shell still re-recorded 140 times, "movers 97,
+               other 27", worst frame 66 ms): a car is hidden past `carFarM` and shown again inside it, and a hidden out piece used to
+               leave the out list (and mix -id into the tree's hash): every car crossing its draw distance re-recorded the whole shell.
+               An out piece is never in the recording, shown or hidden, so it is listed out either way and only that it is out is
+               hashed; three's projection skips it while it is hidden. Off: window.EW_BUN_OUT_HIDE_HASH. */
+            if (c._ew_bunOut === true && !_ewBunNoOut() && (c.visible !== false || !_ewBunOutHideHash())) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); if (c._ew_bRec) S.cB = (S.cB | 0) + 1; else S.cH = (S.cH | 0) + 1; continue; }   // (a piece the merge holds reads hidden while a frame draws)
-            if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
             if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); S.cB = (S.cB | 0) + 1; continue; }
             var v0 = S.hv; S.hv = 0;
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
@@ -49179,8 +49185,8 @@ const ThreeRenderer = (function () {
         var ch = o.children;
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
+            if (c._ew_bunOut === true && !_ewBunNoOut() && (c.visible !== false || !_ewBunOutHideHash())) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }   // THE MOVERS OUT: drawn outside the recording, only that it is out (shown or hidden: THE OUTS SHOWN OR HIDDEN)
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
-            if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }   // THE MOVERS OUT: drawn outside the recording, only that it is out
             if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); continue; }   // THE CHUNKS: a piece THE STATIC BATCH holds is not drawn (its merged mesh is hashed): only that it is held
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
             else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
