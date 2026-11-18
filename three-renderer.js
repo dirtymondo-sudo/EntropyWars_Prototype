@@ -92985,10 +92985,16 @@ const ThreeRenderer = (function () {
         var k = n ? Math.min(n, Math.ceil(n * dt / HQ_STILL_SWEEP_MS)) : 0, i0 = n ? st.i % n : 0, i1 = i0 + k;
         st.i = n ? i1 % n : 0;
         var hasMv = mv.size > 0, hasFr = fr.size > 0, hasWk = wk.size > 0;
+        /* THE MERGED QUARTER (2026-11-18, mondo's F3: "Matrix walk by group: hq_part/Group (still) 1.00", the city shell's ~10,000
+           children each compared on ten numbers every frame): a piece THE STATIC BATCH holds is not drawn itself (its merged mesh
+           is), and the batch's own watchdog finds it moved over seconds, so its pose is compared on one frame in four (its turn by
+           its place); a piece that moves is a mover from then on and is walked every frame as before. Off: window.EW_HQ_STILL_MERGED_EVERY */
+        var mq = !(typeof window !== 'undefined' && window.EW_HQ_STILL_MERGED_EVERY), mqT = (st.mq = ((st.mq | 0) + 1) & 3);
         for (i = 0; i < n; i++) {
             /* (2026-11-15: a kept child's three pose objects are read from the group's own arrays — 11,000 children of many
                kinds, three property reads off each were half of the walk's own time) */
             c = ch[i]; j = i * 10;
+            if (mq && ((i + mqT) & 3) !== 0 && C[i] === c && c._ew_bRec && !(hasMv && mv.has(c)) && !(hasWk && wk.has(c)) && !(hasFr && fr.has(c)) && !((i >= i0 && i < i1) || i + n < i1)) continue;
             var isNew = C[i] !== c;
             if (isNew) { p = PP[i] = c.position; q = QQ[i] = c.quaternion; sc = SS[i] = c.scale; }
             else { p = PP[i]; q = QQ[i]; sc = SS[i]; if (hasFr && fr.has(c)) isNew = true; }   // new at this place, or something landed under it
