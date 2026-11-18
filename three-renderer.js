@@ -89428,6 +89428,21 @@ const ThreeRenderer = (function () {
             return g;
         },
     });
+    /* THE SUBWAY's NAME BOARD (2026-11-18, data.js DOOR_HQ.subway): an enamel plate on the wall (front +z), white capitals on dark green in a
+       white line, the line's name small under the station's. It reads its own placement row (`p.text`: data.js hqSubwayApply writes the
+       station on file into the platform room's rows before the room is built); the sheet is cached per wording. */
+    Object.assign(_hqProcBuilders, {
+        station_sign: function (U, p) {
+            var g = new THREE.Group(), W = 2.8, H = 0.62;
+            var text = (p && Array.isArray(p.text) && p.text.length) ? p.text.map(String) : ['STATION'];
+            var key = 'hq_station_' + text.join('|').replace(/[^A-Za-z0-9]/g, '_');
+            var tex = (typeof _hzTextTex === 'function') ? _hzTextTex(key, text, { w: 1024, h: 228, bg: '#1f5a3c', color: '#ffffff', border: '#ffffff', pad: 0.1, sizes: [112, 44], weight: 'bold', font: '"Arial Narrow", Arial, Helvetica, sans-serif' }) : null;
+            var back = _hqBox(W + 0.08, H + 0.08, 0.03, _hqMat(null, 1, 1, { color: 0x16382a, shininess: 30 })); back.position.set(0, (H / 2) * U, 0.015 * U); g.add(back);
+            var face = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), tex ? new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.35 }) : _hqBasic(0x1f5a3c));
+            face.position.set(0, (H / 2) * U, 0.033 * U); g.add(face);
+            return g;
+        },
+    });
     /* THE RETRO-FUTURIST KIT's procs (2026-09-21) — the helpers sit beside the curved shell's builders, before _hqBuildGallery */
     Object.assign(_hqProcBuilders, {
         lava_lamp: function (U, p) { return _hqLavaLampBuild(U, p, 1); },

@@ -546,7 +546,32 @@ THE SUBWAY (was THE TUNNEL); its door `ring` (north wall) is the stair back up. 
 clerk (30 degrees back with Reception), the lockers, the vending machine, cameras, cabinets, a clock; the man waiting outside your office.
 Seen on screen: the eight doors, both stairs from the mezzanine, the Ring's five doors, the platform's stair door.
 
-**Still to come (mondo's answers, 11-18):** (1) DOOR HQ's ground floor is crowded with doors: move some of the Main Hall's doors into the
-Containment Ring ("basically redesign DOOR HQ"): a plan and a mock-up for his OK first. (2) The subway: stations in several districts of
-Disaster City (the street stair heads), a station opens once walked to; outside the city only the D.U.M.B. (the Freight Line): a station plan
-and a mock-up for his OK first. (3) Each kept secret moves to a hidden spot, one picture each. (4) A plan thread for the new Cyberpunk City.
+**THE SUBWAY, BUILT (11-18, mondo on the station plan: the five stations "that's fine", "One room with the name changing on the signs", outside the
+city "Just The DUMB").** One loop under Disaster City, five stations, plus DOOR HQ's own platform (the Freight Line to the D.U.M.B. is the Sewers'
+own late-game door, not a stop).
+- **The table:** data.js `DOOR_HQ.subway` (`platform`, `city`, `hq`, `link`, `first`, `stations: [{ id, label, sub, door }]`): CIVIC CENTER (Transit
+  square, the old `metro` door), HERO PLAZA (Transit court), BAYSIDE (the Boardwalk exit), INDUSTRIAL (Rail service), SPORTS + CULTURE (Bus stop court).
+- **One platform room** (`site_prebuilt_downtown_subway`) is every city station. The station you came down at or rode to is on file
+  (`hqSubwayRecord`: the officer's card `profile.door.hq.subway`, the session with no card); `hqSubwayApply(profile)` (at load and on EVERY entry,
+  map.js `_hqEnter`) writes it into the room: the three name boards (prop `station_sign`, three-renderer.js `_hqProcBuilders.station_sign`, reads its
+  row's `text`), the room's plate line, and where the stair up comes out (the `street` door > that station's stair head in the city).
+- **The train** (link `tunnel_downtown`; its two doors are stamped `subway`) is never a direct door: E opens THE LINE (map.js `_hqSubwayHtml`, the
+  elevator panel's rows): DOOR HQ and the five stations; YOU ARE HERE, RIDE, or NOT WALKED TO YET. `window._hqSubwayRide(id)` files the station
+  and goes to the far platform's train door; two city stations are the same room entered again.
+- **A station opens once you have walked to it:** a stair head taken from the street (`door.station`, map.js `_hqSubwayStair` > `hqSubwayArrive`)
+  puts its station on the line, with a toast the first time. Civic Center is open from the start (`first`).
+- **The stair heads in the city** (bake-disaster-city.js `STATIONS`): each is Hero Plaza's green iron and glass kiosk built OPEN (H.js `KIOSK(open)`;
+  `ctx.stationKiosk` hands it to the tool) on two yard squares, its mouth to the north or the south only, with a `stairway` door in its mouth
+  (`metro_hero`, `metro_bayside`, `metro_industrial`, `metro_sports`). Hero Plaza's is its own west kiosk, opened (its east one stays shut). To add
+  a station: a row in `STATIONS` + a row in `DOOR_HQ.subway.stations`; `STATIONS_DUMP=1 node bake-disaster-city.js --dry-run` prints a plot's squares.
+- DOOR HQ's platform (THE SUBWAY) wears two fixed boards (`station_text`).
+- Seen on screen: the four new kiosks (Hero Plaza, Bayside, Industrial, Sports + Culture), THE LINE at both platforms, the name board reading HERO
+  PLAZA after the station was filed on a card (and the stair then set to `metro_hero`), DOOR HQ's boards. An arrival stands 0.9 m out of the
+  kiosk's mouth (read off the HUD: 211.75, 72.8 at Bayside). NOT seen: the first second after coming up (the boom starts inside the kiosk),
+  and a walk INTO a kiosk by hand (the same `stairway` door as Civic Center's, shorter: `len 7, deep 5`).
+- NOT DONE: the departures boards and the tube map still list the old routes; Civic Center's entrance is still C.js's own (a canopy, a painted well
+  and a sign pylon that stands on the door's square), not the kiosk: the second side's district.
+
+**Still to come (mondo's answers, 11-18):** (1) each kept secret out of DOOR HQ (the Dungeon's fourth wall, the Garage ramp, the Dream Lab's screen)
+moves to a hidden spot, one picture each. (2) The dressing left round the cut doors, zone by zone (the NOT DONE list above). (3) The new Cyberpunk
+City: its own plan thread (started 11-18, session "New Cyberpunk City: the plan").
