@@ -98160,6 +98160,7 @@ var ZONE_LOOKS = {
             wall: { rocks_3: 'hz:Stone_10', rocks_5: 'hz:Stone_01' },
             ground: { rocks_3: 'hz:Stone_02', rubble_3: 'hz:Stone_01' },
             decals: { blood: 0.25, soot: 0.3, drip: 0.4, dirt: 0.2 },
+            floorDecals: { blood: 10, soot: 3, dirt: 2 },
         },
         /* THE CATACOMBS under the Vatican: old dark brick and stone gone damp, worn flag floors; dirt, drips, a little blood */
         catacombs: {
@@ -98182,6 +98183,43 @@ var ZONE_LOOKS = {
             rooms: ['site_prebuilt_heaven_plots'],
             wall: { marble_light: 'hz:Wall_01', gold: 'px:gold' },
             ground: { gold: 'px:gold' },
+        },
+        /* ── BATCH 5 ── OUTER SPACE (the four worlds' room): the bases are already the urban pack's metal; the calm moon rock on walls
+           -> grey pitted stone, painted tin -> worn corrugated, dust; no blood */
+        space: {
+            rooms: ['site_prebuilt_moon_plots'],
+            wall: { moon_3: 'hz:Stone_12', moon: 'hz:Stone_12', 'urban:MetalCorrugatedPainted1a': 'hz:Metal_05', wood: 'urban:WoodBeams2a' },
+            ground: {},
+            decals: { dirt: 0.15, drip: 0.1 },
+        },
+        /* THE ASTRAL REALM: the Library's calm carpet stacks a real patterned carpet, its calm wood dark beams and worn floorboards, its
+           marble aged cream stone, the good gold; no stains (a dream, kept clean) */
+        astral: {
+            rooms: ['site_prebuilt_lookingglass_realm', 'site_prebuilt_lookingglass_waiting'],
+            wall: { carpet: 'urban:CarpetPattern2a', wood: 'urban:WoodBeams1a', marble_light: 'hz:Wall_01', gold: 'px:gold', drywall_2: 'hz:Wall_03', crystal: 'hz:Misc_05' },
+            ground: { carpet: 'urban:CarpetPattern2a', carpet_2: 'urban:CarpetPattern1a', carpet_3: 'urban:CarpetDiamond1a', wood: 'urban:WoodFlooring1a', gold: 'px:gold' },
+        },
+        /* ANTARCTICA: the station's bark-like boards real weathered siding, rock grey brick blocks; the snow and ice stay; a few drips */
+        antarctica: {
+            rooms: ['site_prebuilt_antarctica_plots'],
+            wall: { 'urban:WoodGeneric1a': 'urban:WoodCladding2a', 'urban:WoodGeneric1b': 'urban:WoodCladding1a', rocks_5: 'hz:Brick_11', rock_wall_1: 'hz:Brick_11', bricks_1: 'hz:Brick_11', wood: 'urban:WoodBeams2a' },
+            ground: { 'urban:WoodGeneric1a': 'urban:WoodFlooring1d', wood_planks: 'urban:WoodFlooring1c' },
+            decals: { drip: 0.2, dirt: 0.1 },
+        },
+        /* THE INTERNET: cyberspace, so no grime; the calm gunmetal walls worn steel plate, the calm deck plate real tread plate, calm
+           wood real painted boards, the good gold */
+        internet: {
+            rooms: ['site_prebuilt_internet_web'],
+            wall: { gunmetal: 'hz:Metal_02', gunmetal_2: 'hz:Metal_02', metal_2: 'hz:Metal_02', metal_3: 'hz:Floor_09', wood: 'urban:WoodPainted4a', gold: 'px:gold', gold_2: 'px:gold' },
+            ground: { aluminium: 'hz:Floor_09', metal_3: 'hz:Floor_09', gunmetal_2: 'hz:Metal_02', metal_2: 'hz:Metal_02', carpet_3: 'urban:CarpetDiamond1a', gold_2: 'px:gold' },
+        },
+        /* THE ONE WORLD ROUTES (the roads and trails between zones): the bark-like boards on the motels, gas stops and sheds real weathered
+           siding, the calm rock on cliffs and boulders grey streaked stone; the ground keeps its dirt and grass; dust and drips */
+        routes: {
+            rooms: ['site_ow_l3', 'site_ow_l4', 'site_ow_l6', 'site_ow_r11', 'site_ow_r6', 'site_ow_r8', 'site_ow_r9', 'site_ow_dh1', 'site_ow_dh2', 'site_ow_dh3', 'site_ow_dh4', 'site_ow_r12', 'site_ow_r4', 'site_ow_r1', 'site_ow_r3', 'site_ow_r5', 'site_ow_r10'],
+            wall: { 'urban:WoodGeneric1a': 'urban:WoodCladding1a', 'urban:WoodGeneric1b': 'urban:WoodCladding2a', rocks_5: 'hz:Stone_07', 'urban:MetalCorrugated1a': 'hz:Metal_06' },
+            ground: { 'urban:WoodGeneric1a': 'urban:WoodFlooring1d' },
+            decals: { dirt: 0.2, drip: 0.3 },
         },
     },
 };
@@ -98302,7 +98340,7 @@ function zoneLookDecals(roomId, room) {
             });
         }
     });
-    if (!F.length) return out;
+    if (!F.length && !Z.floorDecals) return out;
     /* the ground's sheet under a point (the painted grid, else the room's floor): a grassy one hides a stain */
     const T = room.terrain, P = T.paint, SOFT = /grass|leaves|forest|dark_woods|hedge|canopy|wild/;
     let grid = null; try { if (P && P.d && P.nx && typeof atob === 'function') { const b = atob(P.d); grid = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) grid[i] = b.charCodeAt(i); } } catch (e) { grid = null; }
@@ -98327,6 +98365,23 @@ function zoneLookDecals(roomId, room) {
             }
         }
     });
+    /* OPEN-GROUND STAINS (mondo 11-18, Hell: "yes" to blood on its ground): `floorDecals: { blood, dirt, soot }` = stains per 1000 m2 of the
+       room's painted ground, laid on random painted squares (not grass, not a liquid), capped at 160 a kind */
+    const FD = Z.floorDecals;
+    if (FD && grid) {
+        const cells = []; for (let i = 0; i < grid.length; i++) if (grid[i] > 0) cells.push(i);
+        const area = cells.length * P.res * P.res, WET = /lava|water|ocean|acid|sludge|ice/;
+        Object.keys(FD).forEach(kind => {
+            const sheets = ST[kind]; if (!sheets || !cells.length) return;
+            const want = Math.min(160, Math.round(FD[kind] * area / 1000));
+            for (let i = 0, tries = 0; i < want && tries < want * 4; tries++) {
+                const c = cells[Math.floor(rnd() * cells.length)], x = P.x0 + (c % P.nx) * P.res + (rnd() - 0.5) * P.res, z = P.z0 + Math.floor(c / P.nx) * P.res + (rnd() - 0.5) * P.res;
+                const k = hqRuleKeyOf(String(P.pal[grid[c] - 1] || '')); if (SOFT.test(k) || WET.test(k)) continue;
+                const sz = (kind === 'blood' ? 1.6 : 1.4) + rnd() * (kind === 'blood' ? 1.6 : 2.0);
+                out.push({ k: 'decal', tex: zlHorrorKey(sheets[Math.floor(rnd() * sheets.length)]), x, z, w: sz, d: sz, rot: Math.floor(rnd() * 360), a: 0.9 }); i++;
+            }
+        });
+    }
     return out;
 }
 if (typeof window !== 'undefined') { window.ZONE_LOOKS = ZONE_LOOKS; window.zoneLookDecals = zoneLookDecals; window.zoneLooksApply = zoneLooksApply; }
