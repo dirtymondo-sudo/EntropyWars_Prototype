@@ -101148,14 +101148,18 @@ function hqCityLookTerrain(roomId, base, lookId) {
         nRow++;
         const h = hqHash(String(row.id || row.x + ',' + row.z)) >>> 0;
         const F = L.finishes[h % L.finishes.length], glassTint = L.glass.tints[(h >>> 2) % L.glass.tints.length];
-        let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, top = 0, topAny = 0;
+        let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, top = 0;
         const parts = row.parts.map((p, i) => {
             const key = String(p.key || '');
-            if (p.s === 'box' && p.size && p.size[0] >= 3 && p.size[2] >= 3 && !p.ry) topAny = Math.max(topAny, (p.p[1] || 0) + p.size[1]);   // any wide slab: a roof counts
-            if (p.s === 'box' && p.size && p.size[0] >= 3 && p.size[2] >= 3 && p.size[1] >= 2.4 && !p.ry) {   // the building's masses: its plan and its top
-                x0 = Math.min(x0, p.p[0] - p.size[0] / 2); x1 = Math.max(x1, p.p[0] + p.size[0] / 2);
-                z0 = Math.min(z0, p.p[2] - p.size[2] / 2); z1 = Math.max(z1, p.p[2] + p.size[2] / 2);
-                top = Math.max(top, (p.p[1] || 0) + p.size[1]);
+            /* the building's own walls give its plan and its top (measured on the parts, in the row's frame: a footprint row can stand turned or off
+               centre from its arch row, and a line drawn on it then hangs in the air beside the building) */
+            const quarter = (((p.ry || 0) % 90) === 0), side = quarter && ((((p.ry || 0) % 180) + 180) % 180 === 90);
+            if (quarter && p.size && p.p && (p.s === 'box' || p.s === 'quad') && p.size[1] >= 2 && p.kind !== 'over' && key.indexOf('txt:') !== 0) {
+                const bw2 = p.size[0] / 2, bd2 = (p.s === 'box') ? p.size[2] / 2 : 0, ex = side ? bd2 : bw2, ez = side ? bw2 : bd2;
+                if (Math.max(ex, ez) >= 1.5 && (p.p[1] || 0) < 1.5) {
+                    x0 = Math.min(x0, p.p[0] - ex); x1 = Math.max(x1, p.p[0] + ex); z0 = Math.min(z0, p.p[2] - ez); z1 = Math.max(z1, p.p[2] + ez);
+                    top = Math.max(top, (p.p[1] || 0) + p.size[1]);
+                }
             }
             if (key.indexOf('txt:') === 0) {
                 if ((p.glow || 0) >= 0.8) return p;                                      // a sign that is neon already keeps its colours
@@ -101179,10 +101183,7 @@ function hqCityLookTerrain(roomId, base, lookId) {
             return o;
         });
         const B = builds[row.id];
-        if (B) {   // the plan is the footprint row's own (the arch row stands on it, same centre, same turn); the top is its tallest mass or slab (its storeys only when the row holds none: a line never hangs in the air over a roof)
-            x0 = -B.w / 2; x1 = B.w / 2; z0 = -B.d / 2; z1 = B.d / 2; top = Math.max(top, topAny) || (B.storeys || 1) * 3.5;
-        }
-        if (B && top >= 3 && x1 - x0 >= 4 && z1 - z0 >= 3) {
+        if (B && top >= 3 && x1 - x0 >= 4 && z1 - z0 >= 3 && (x1 - x0) * (z1 - z0) <= B.w * B.d * 1.5) {   // a measured plan much larger than the footprint is not one building: left alone
             const inkS = L.inks[h % L.inks.length], ink = hx(inkS), ink2 = L.inks[(h + 3) % L.inks.length], w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, t = L.trim.h, g = L.trim.glow;
             const ring = (y, c) => parts.push({ s: 'box', p: [cx, y, z1 + t / 2], size: [w + t * 2, t, t], tint: c, glow: g }, { s: 'box', p: [cx, y, z0 - t / 2], size: [w + t * 2, t, t], tint: c, glow: g },
                                               { s: 'box', p: [x1 + t / 2, y, cz], size: [t, t, d], tint: c, glow: g }, { s: 'box', p: [x0 - t / 2, y, cz], size: [t, t, d], tint: c, glow: g });
