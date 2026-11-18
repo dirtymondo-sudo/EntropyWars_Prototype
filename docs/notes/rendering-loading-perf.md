@@ -2871,3 +2871,19 @@ biggest line was "doors + residents + scene" at 4.3 ms. `_hqFrame` now marks eac
 portals + gun doors, scene moves + drop + cut beside, rounds (walking people), residents, ladder, crowd near, awareness + marks,
 grass field, scene door + key + cast. No change on screen. Read the code first: residents / crowd / awareness picks are already
 throttled (300-400 ms), so the per-walker rounds tick and the scene moves are the likely cost; his next readout says which.
+
+## THE NAV GRID (2026-11-18, Disaster City 60 FPS thread)
+His Shift+F3 after the tick lens lines: "tick: rounds (walking people)" 1.9 ms, the biggest tick. Each walking townsperson asks
+`_hqNavQuery` for the floor up to three times a frame, and `_hqBlockersUnder` read EVERY blocker in the city for each ask. Now the
+people's own list (`_hqNavStatics`) gets a grid of 8 m cells (`_hqNavGrid`, rebuilt when that list changes); an ask reads its cell
+plus the blockers seen moving (1,500 positions re-read a frame; a blocker that moved or grew leaves the grid for good), in the list's
+own order, so the answer is the same. Node check on 5,000 random discs / turned rects / model boxes: 0 of 6,000 asks differ, 39x
+faster. The officer's walk and the ladder keep the whole list. Off: `window.EW_HQ_NAV_GRID_OFF = true`.
+
+## THE HIDDEN CELLS (2026-11-18, Disaster City 60 FPS thread)
+"mask: setup + lights + sort 2.6 ms" on his F3 was not the mask: the instance pass's sync (`_hqInstSync`, the scene's
+onBeforeRender) runs once a frame inside the FIRST render, and the model mask renders first. It read ~15,000 copies (the quiet
+ones every 4th frame) although 351 of 414 instance cells were hidden (off the camera / past far). A batch whose cell is hidden
+draws in no pass that frame (the sun's own chunks re-show only shell cells and door chunks), so its copies are skipped and the
+batch syncs in full (`qN = 0`) the first frame its cell is shown; the sync runs before that frame's first draw. Off:
+`window.EW_HQ_INST_SYNC_HIDDEN = true`.

@@ -1253,10 +1253,11 @@ mondo: "can you make my office in door hq not be behind a loading screen? its li
   the room on a SCENE (the first quest's last step, scene F in the office) loads the room the old way that one time, so its cast
   and camera are set; that is the one card left on this door.
 - Adding another ground-floor room: one row, if its box does not overlap a neighbour's (`hqStageNeighbours('central_egress')`
-  prints each `rect`). Reception (8 x 6, 90°) fits. The Training Room (63 x 63, 180°) and the Woods stair (30 x 44, 315°) do not:
+  prints each `rect`). RECEPTION (8 x 6, 90°) IS JOINED too (same day, mondo: "okay do reception next"): the third row; seen on
+  screen, hall -> Reception -> hall on foot, no card. The Training Room (63 x 63, 180°) and the Woods stair (30 x 44, 315°) do not:
   they would stand through the foyer and the office. Upper-floor doors (IT, Observatory, Executive wing) are not joined: the join
   reads level 0 only.
-- Still a load card inside DOOR HQ (11-18): hall ⇄ Reception, Training, Woods stair, the Ring, the three upper-floor rooms, the
+- Still a load card inside DOOR HQ (11-18): hall ⇄ Training, Woods stair, the Ring, the three upper-floor rooms, the
   lift; the Ring ⇄ cafeteria, barbershop, medical wing, records wing, tunnel (the Ring is a `bay` room, not staged); cafeteria ⇄
   kitchen, IT ⇄ server room, Observatory ⇄ records, stairwell ⇄ works / tunnel, dock ⇄ garage, services ⇄ Training.
 - Seen on screen (probe, llvmpipe): hall -> office -> hall on foot, no card either way.

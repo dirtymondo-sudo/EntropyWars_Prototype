@@ -12439,6 +12439,13 @@ areas except disaster city first."
 - BATCH 1: Camelot Kingdom (castle stone Brick_09, floors Floor_13, timber WoodBeams, marble Stone_12, rock Stone_07, gold = gilt), The Estate
   (WoodGeneric siding -> WoodCladding, graves Stone_03, mossy walls Brick_08, peeling plaster Wall_08 in the old haunted rooms, blood),
   The Sewers (green brick Brick_03/04, rusted corrugated Metal_06, Floor_01, heavy drips).
+- BATCH 2 (PR #2089): Woods, Desert, Beach + Dutchman, Mountains + North Pole, Olympus; `byRoom` = per-room overrides of a zone's maps.
+- BATCH 3: The Cavern (calm cracked rock -> wet black rock Stone_01/02, the mine's dungeon brick Brick_11, drips), The D.U.M.B. (already the urban
+  pack: plaster -> stained grey Wall_09, rust Metal_06/09, grime, drips, a little blood), Leylines (Babel's calm flagstone walls -> sandstone brick
+  Brick_14, its cliff/steps too; Stonehenge grey Stone_11; the Bug nest's marble Stone_06), The Deep (Atlantis' calm marble -> drowned pale stone
+  Stone_05, the good gold). The pass now also swaps a generated room's `terrain.gen.wallKey` / `fenceKey` (the Cavern's walls are plan walls).
+- LESSONS: a stair-built terrain slope draws in `terrain.cliff`, so a cliff sheet shows on steps: pick one that reads as stone blocks. A probe
+  needs `--flags=EW_HQ_NO_ENCOUNTER` (a field fight hides the view) and ONE browser at a time (three at once got OOM-killed).
 
 ## CYBERPUNK CITY, THE PILOT (2026-11-18, owner side; waits mondo's look)
 

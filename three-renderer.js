@@ -16920,7 +16920,7 @@ const ThreeRenderer = (function () {
        `procClips`: plain keyframe clips on named groups, wired into the board's own mixer / slots / one-shots exactly like
        a library bake (death, hits, the cast chains all resolve the same way). Display only and decided per screen from the
        synced state, so the online guest plays the same motion. */
-    var _procRigUrlMap = null;
+    var _procRigUrlMap = null, _procRigDefMap = {};
     function _procRigFor(url) {
         if (!_procRigUrlMap) {
             _procRigUrlMap = {};
@@ -16929,14 +16929,131 @@ const ThreeRenderer = (function () {
                     var set = RACE_MODELS_3D[race];
                     for (var g in set) {
                         var d = set[g];
-                        if (d && d.procRig && d.model) _procRigUrlMap[d.model] = d.procRig;
+                        if (d && d.procRig && d.model) { _procRigUrlMap[d.model] = d.procRig; _procRigDefMap[d.model] = d; }
                         /* a form a cast swaps in (THE UFO FORM: the grey's craft) */
                         if (d && d.overrideForms) for (var fk in d.overrideForms) { var fd = d.overrideForms[fk]; if (fd && fd.procRig && fd.model) _procRigUrlMap[fd.model] = fd.procRig; }
                     }
                 }
             } catch (e) {}
         }
+        if (_procRigUrlMap[url] === 'unitGear') return _gearRigFor(url, _procRigDefMap[url]);   // THE UNIT GEAR
         return _PROC_RIGS[_procRigUrlMap[url]] || null;
+    }
+    /* ══ THE UNIT GEAR (2026-11-18, mondo: "the same way we have made separated animated parts for the virus and the cursed tv
+       and seraphim and unicorn"): a library-animated Meshy unit (the shared UAL clips, its own skin) wearing loose parts made
+       apart from it, so they move on their own: wings that beat (one wing file, mirrored: THE SINGLE WINGS), a halo that bobs
+       over the head, a cape that swings on the back, a piece held in a hand (the Atlantean's trident). A def says
+       `procRig: 'unitGear', gear: { wings: 'angel'|'bat'|'dragon'|{ url, root }, wingLen, wingTint, halo: url, cape: url,
+       capeLen, held: { url, len, hand } }` (lengths are parts of the body's height). The parts hang on the body's bones once,
+       on the cached root (every clone copies them); the builder returns no clips, so the unit keeps the library's. Each frame
+       THE SWAY's tick (the root is flagged ewSway) moves them (_gearTick). Their meshes carry userData.ewGear, so the fit box
+       (_skinnedBBox) measures the body alone and the unit's size is unchanged. Cosmetic and local: nothing is relayed. */
+    var _gearRigCache = {};
+    function _gearRigFor(url, def) {
+        if (_gearRigCache[url]) return _gearRigCache[url];
+        var g = (def && def.gear) || {}, deps = [], at = {};
+        var wf = g.wings ? (typeof g.wings === 'string' ? EW_WING_FILES[g.wings] : g.wings) : null;
+        if (wf && wf.url) { at.wings = deps.length; deps.push(wf.url); }
+        if (g.halo) { at.halo = deps.length; deps.push(g.halo); }
+        if (g.cape) { at.cape = deps.length; deps.push(g.cape); }
+        if (g.held && g.held.url) { at.held = deps.length; deps.push(g.held.url); }
+        var fn = function (root, anims, got) { try { _gearBuild(root, g, wf, at, got || []); } catch (e) { console.warn('[3D] unit gear failed', e); } return null; };
+        fn.deps = deps;
+        return (_gearRigCache[url] = fn);
+    }
+    function _gearMesh(src) { var m = null; if (src) src.traverse(function (n) { if (!m && n.isMesh && n.geometry) m = n; }); return m; }
+    function _gearPlain(mesh) {
+        /* a part as a plain mesh in its file's world frame (a skinned part loses its skin: it rides one bone) */
+        mesh.updateMatrixWorld(true);
+        var geo = mesh.geometry.clone(); geo.applyMatrix4(mesh.matrixWorld);
+        ['skinIndex', 'skinWeight'].forEach(function (a) { if (geo.attributes[a]) geo.deleteAttribute(a); });
+        geo.computeBoundingBox(); geo.computeBoundingSphere();
+        var mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+        var m = new THREE.Mesh(geo, mat); m.userData.ewGear = true; return m;
+    }
+    function _gearHang(bone, worldPos, child, name) {
+        /* a group on `bone` whose frame is the model's (no turn) at worldPos: what is put in it is placed in model terms */
+        var G = new THREE.Group(); G.name = name;
+        var W = new THREE.Matrix4().makeTranslation(worldPos.x, worldPos.y, worldPos.z);
+        new THREE.Matrix4().multiplyMatrices(bone.matrixWorld.clone().invert(), W).decompose(G.position, G.quaternion, G.scale);
+        if (child) G.add(child);
+        bone.add(G);
+        return G;
+    }
+    function _gearBuild(root, g, wf, at, got) {
+        root.updateMatrixWorld(true);
+        var bone = function (n) { return root.getObjectByName(n); };
+        var chest = bone('Spine02') || bone('Spine01') || bone('Spine'), head = bone('Head'), neck = bone('neck') || bone('Neck') || head;
+        if (!chest || !head) return;
+        var box = _skinnedBBox(root), H = Math.max(0.01, box.max.y - box.min.y);
+        var cp = chest.getWorldPosition(new THREE.Vector3()), hp = head.getWorldPosition(new THREE.Vector3()), np = neck.getWorldPosition(new THREE.Vector3());
+        var made = false;
+        /* the wings: the pair of one file (shoulder on the origin, L reaching +X = the unit's left), on hinges on the chest */
+        if (at.wings != null && got[at.wings]) {
+            var pair = _ewWingPair(got[at.wings], wf.root);
+            if (pair) {
+                var ws = (g.wingLen || 0.7) * H / EW_WING_LEN, mat = pair.material;
+                if (g.wingTint && mat && mat.color) { mat = mat.clone(); mat.color.set(g.wingTint); }
+                var lift = g.wingLift != null ? g.wingLift : (wf.lift != null ? wf.lift : ({ angel: 0.35, bat: 0.15, dragon: -0.75 })[g.wings] || 0);   // the creator's CC_WING_LIFT
+                [['L', pair.L, 1], ['R', pair.R, -1]].forEach(function (sd) {
+                    var m = new THREE.Mesh(sd[1], mat); m.userData.ewGear = true; m.name = 'ewGearWingMesh' + sd[0];
+                    m.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), sd[2] * lift);
+                    var hinge = new THREE.Group(); hinge.name = 'ewGearWing' + sd[0]; hinge.scale.setScalar(ws); hinge.add(m);
+                    _gearHang(chest, new THREE.Vector3(cp.x + sd[2] * 0.035 * H, cp.y + 0.03 * H, cp.z - 0.07 * H), hinge, 'ewGearWingMount' + sd[0]);
+                });
+                made = true;
+            }
+        }
+        /* the halo: centred over the crown, it bobs and turns slowly (_gearTick) */
+        var hm = at.halo != null && _gearMesh(got[at.halo]);
+        if (hm) {
+            var h = _gearPlain(hm), hb = h.geometry.boundingBox, hc = hb.getCenter(new THREE.Vector3());
+            var hsc = (g.haloSize || 0.11) * H / Math.max(1e-6, hb.max.x - hb.min.x);
+            h.geometry.translate(-hc.x, -hc.y, -hc.z);
+            var hh = new THREE.Group(); hh.name = 'ewGearHalo'; hh.scale.setScalar(hsc); hh.add(h); hh.userData.ewH = H;
+            _gearHang(head, new THREE.Vector3(hp.x, box.max.y + (g.haloLift || 0.05) * H, hp.z), hh, 'ewGearHaloMount');
+            made = true;
+        }
+        /* the cape: its top on the shoulder line, hung behind the back on a hinge that swings (_gearTick) */
+        var cm = at.cape != null && _gearMesh(got[at.cape]);
+        if (cm) {
+            var c = _gearPlain(cm), cb = c.geometry.boundingBox, csc = (g.capeLen || 0.72) * H / Math.max(1e-6, cb.max.y - cb.min.y);
+            c.geometry.translate(-(cb.min.x + cb.max.x) / 2, -cb.max.y, -cb.max.z);   // the top edge's front on the hinge
+            var ch = new THREE.Group(); ch.name = 'ewGearCape'; ch.scale.setScalar(csc); ch.add(c);
+            _gearHang(chest, new THREE.Vector3(np.x, np.y - 0.01 * H, cp.z - (g.capeBack || 0.06) * H), ch, 'ewGearCapeMount');
+            made = true;
+        }
+        /* the held piece: upright in the hand, the grip (a third up its length) in the palm; it turns with the hand */
+        var hd = g.held || {}, km = at.held != null && _gearMesh(got[at.held]), hand = bone(hd.hand || 'RightHand');
+        if (km && hand) {
+            var k = _gearPlain(km), kb = k.geometry.boundingBox, ksc = (hd.len || 1.0) * H / Math.max(1e-6, kb.max.y - kb.min.y);
+            k.geometry.translate(-(kb.min.x + kb.max.x) / 2, -(kb.min.y + (kb.max.y - kb.min.y) * (hd.grip != null ? hd.grip : 0.35)), -(kb.min.z + kb.max.z) / 2);
+            k.scale.setScalar(ksc); k.name = 'ewGearHeld';
+            _gearHang(hand, hand.getWorldPosition(new THREE.Vector3()), k, 'ewGearHeldMount');
+            made = true;
+        }
+        if (made) root.userData.ewGear = true;
+    }
+    var _gearE = null;
+    function _gearTick(S) {
+        var G = S.gear; if (!G || !G.length) return;
+        if (!_gearE) _gearE = new THREE.Euler(0, 0, 0, 'YZX');
+        var t = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) / 1000 + (S.gearPhase || 0);
+        for (var i = 0; i < G.length; i++) {
+            var n = G[i], nm = n.name;
+            if (nm === 'ewGearWingL' || nm === 'ewGearWingR') {
+                var sgn = nm === 'ewGearWingL' ? 1 : -1, ph = t * 2.2 - (sgn < 0 ? 0.25 : 0);
+                /* at rest swept back and a little up, a slow beat (the unicorn's) */
+                _gearE.set(0, sgn * (0.55 + 0.1 * Math.cos(ph)), sgn * (0.25 + 0.22 * Math.sin(ph)), 'YZX');
+                n.quaternion.setFromEuler(_gearE);
+            } else if (nm === 'ewGearHalo') {
+                n.position.y = 0.014 * (n.userData.ewH || 1.7) * Math.sin(t * 1.8);   // the mount's frame is the model's: metres of the file
+                n.rotation.y = t * 0.6;
+            } else if (nm === 'ewGearCape') {
+                n.rotation.x = 0.06 + 0.04 * Math.sin(t * 1.6);
+                n.rotation.z = 0.025 * Math.sin(t * 1.1);
+            }
+        }
     }
     /* SERAPH: "a wheel in the middle of a wheel" (Ezekiel 1:16). Ring A is the model as exported (upright, eyes on both
        faces); ring B is the same mesh at SER_B scale, nested in A's hole on a gimbal: it turns with A and tumbles on A's
@@ -18453,12 +18570,14 @@ const ThreeRenderer = (function () {
     function _swayScan(root) {
         var has = false;
         root.traverse(function (n) { if (!has && n.isBone && /^ewsway_c\d+_\d+$/.test(n.name)) has = true; });
+        if (root.userData.ewGear) has = true;   // THE UNIT GEAR: its parts move in the sway's tick
         root.userData.ewSway = has;
         return has;
     }
     function _swayInit(model, opts) {
         var o = {}, k; for (k in _SW_DEF) o[k] = _SW_DEF[k]; if (opts) for (k in opts) o[k] = opts[k];
-        var cols = {}, byName = {};
+        var cols = {}, byName = {}, gear = [];
+        model.traverse(function (n) { if (/^ewGear(WingL|WingR|Halo|Cape)$/.test(n.name || '')) gear.push(n); });   // THE UNIT GEAR
         model.traverse(function (n) {
             if (!n.isBone) return;
             byName[n.name] = n;
@@ -18481,7 +18600,7 @@ const ThreeRenderer = (function () {
             var a = byName[o.caps[ci][0]], b = byName[o.caps[ci][1]];
             if (a && b) caps.push({ a: a, b: b, k: o.caps[ci][2] });
         }
-        return { chains: chains, caps: caps, o: o, fresh: true };
+        return { chains: chains, caps: caps, o: o, fresh: true, gear: gear, gearPhase: Math.random() * 6 };
     }
     function _swayCapPush(p, a, b, r) {
         _swF.subVectors(b, a); var L2 = _swF.lengthSq();
@@ -18500,6 +18619,7 @@ const ThreeRenderer = (function () {
         var sKey = (opts && opts.key) || model;   // THE BLENDER CAPES: a second set of chains on the same rig keeps its own state
         var S = _swStates.get(sKey);
         if (!S) { S = _swayInit(model, opts); _swStates.set(sKey, S); }
+        if (S.gear && S.gear.length) _gearTick(S);   // THE UNIT GEAR (before the world matrices: they carry the parts' new turn)
         if (!(dt > 0)) return;
         dt = Math.min(dt, 1 / 30);
         model.updateWorldMatrix(true, true);   // the body as the clip left it, under wherever the unit stands NOW
@@ -19640,6 +19760,7 @@ const ThreeRenderer = (function () {
         var tmp = new THREE.Box3();
         root.traverse(function (n) {
             if (!n.isMesh || !n.geometry) return;
+            if (n.userData && n.userData.ewGear) return;   // THE UNIT GEAR: wings, halo, cape, held piece are not the body
             if (n.isSkinnedMesh && (typeof n.applyBoneTransform === 'function' || typeof n.boneTransform === 'function')
                 && n.geometry.attributes && n.geometry.attributes.position) {   // R2: r151+ has only applyBoneTransform — an old gate here skipped the skinned path and the fit scale blew up (94×)
                 if (n.skeleton && n.skeleton.update) n.skeleton.update();
@@ -85389,8 +85510,46 @@ const ThreeRenderer = (function () {
     }
     /* the blockers whose footprint overlaps the walker's disc at (x, z) */
     function _hqBlockersUnder(x, z) {
-        var out = [];
-        for (var i = 0; i < _hq.blockers.length; i++) if (_hqBlkContains(_hq.blockers[i], x, z, HQ_BODY_R)) out.push(_hq.blockers[i]);
+        var out = [], L = _hq.blockers, N = _hq.nav;
+        /* THE NAV GRID (2026-11-18, Disaster City 60 FPS): a walking townsperson asks the floor up to three times a frame, and each ask
+           read every one of the city's blockers. The people's own list (_hqNavStatics) now has a grid of 8 m cells; an ask reads only
+           its cell's blockers (+ the ones seen moving), in the list's own order, so the answer is the same. The officer's own walk
+           keeps the whole list. Off: window.EW_HQ_NAV_GRID_OFF = true. */
+        if (N && L === N.statics && L.length > 64) { var G = _hqNavGrid(L); if (G) { var ids = _hqNavGridAt(G, x, z); for (var k = 0; k < ids.length; k++) { var b = L[ids[k]]; if (_hqBlkContains(b, x, z, HQ_BODY_R)) out.push(b); } return out; } }
+        for (var i = 0; i < L.length; i++) if (_hqBlkContains(L[i], x, z, HQ_BODY_R)) out.push(L[i]);
+        return out;
+    }
+    var HQ_NAV_GRID_M = 8;
+    function _hqBlkReach(b) {
+        if (b.mc) { var M = b.mc; return Math.max(Math.hypot(M.bx0, M.bz0), Math.hypot(M.bx1, M.bz0), Math.hypot(M.bx0, M.bz1), Math.hypot(M.bx1, M.bz1)); }
+        if (b.rect) return Math.hypot(b.rect.hw, b.rect.hd);
+        return b.rad || 0;
+    }
+    function _hqNavGrid(L) {
+        if (typeof window !== 'undefined' && window.EW_HQ_NAV_GRID_OFF) return null;
+        var N = _hq.nav, G = N.grid; if (G && G.list === L && G.n === L.length) return G;
+        var U = _hqUnits(), n = L.length, c = HQ_NAV_GRID_M, pad = HQ_BODY_R + 0.1;
+        G = { list: L, n: n, c: c, cells: new Map(), loose: [], moved: new Uint8Array(n), px: new Float64Array(n), pz: new Float64Array(n), reach: new Float64Array(n), sw: 0, swAt: 0 };
+        for (var i = 0; i < n; i++) {
+            var b = L[i], o = b && b.obj, r = b ? _hqBlkReach(b) : NaN;
+            if (!o || !o.position || !isFinite(r) || r > 40) { G.moved[i] = 1; G.loose.push(i); continue; }
+            var bx = o.position.x / U, bz = o.position.z / U; G.px[i] = bx; G.pz[i] = bz; G.reach[i] = r;
+            if (!isFinite(bx) || !isFinite(bz)) { G.moved[i] = 1; G.loose.push(i); continue; }
+            var i0 = Math.floor((bx - r - pad) / c), i1 = Math.floor((bx + r + pad) / c), j0 = Math.floor((bz - r - pad) / c), j1 = Math.floor((bz + r + pad) / c);
+            for (var gi = i0; gi <= i1; gi++) for (var gj = j0; gj <= j1; gj++) { var key = (gi + 32768) * 65536 + (gj + 32768), a = G.cells.get(key); if (!a) G.cells.set(key, a = []); a.push(i); }
+        }
+        N.grid = G; return G;
+    }
+    /* the blockers an ask at (x, z) must read: its cell's, plus every one seen moving since the grid was laid (a slice of the list is
+       re-read once a frame; a blocker that moved or changed size leaves the grid for good) */
+    function _hqNavGridAt(G, x, z) {
+        var now = performance.now(), L = G.list, U = _hqUnits();
+        if (now - G.swAt > 4) { G.swAt = now;
+            for (var s = 0; s < 1500 && G.n; s++) { var i = G.sw; G.sw = (G.sw + 1) % G.n; if (G.moved[i]) continue; var b = L[i], o = b.obj;
+                if (Math.abs(o.position.x / U - G.px[i]) > 0.05 || Math.abs(o.position.z / U - G.pz[i]) > 0.05 || _hqBlkReach(b) > G.reach[i] + 0.04) { G.moved[i] = 1; G.loose.push(i); } } }
+        var a = G.cells.get((Math.floor(x / G.c) + 32768) * 65536 + (Math.floor(z / G.c) + 32768)), out = [];
+        if (a) for (var k = 0; k < a.length; k++) if (!G.moved[a[k]]) out.push(a[k]);
+        if (G.loose.length) { for (var m = 0; m < G.loose.length; m++) out.push(G.loose[m]); out.sort(function (p, q) { return p - q; }); }
         return out;
     }
     /* may the airborne body be at (x, z) with its feet at y? a blocker's
@@ -86580,6 +86739,17 @@ const ThreeRenderer = (function () {
         g.beginPath(); g.arc(32, 106, 10, 0, Math.PI * 2); g.stroke(); g.fill();
         _hqAwareTexC = new THREE.CanvasTexture(c); return _hqAwareTexC;
     }
+    /* THE SCARED MARK (mondo 11-18: "when they run away, they need some sort of symbol to indicate they are scared"): a blue sweat drop over the head of
+       an NPC on the strike ladder's run (`_run.mode` 'flee', and the stand after it), drawn like the red `!` (the same size on screen, hidden by walls) */
+    var _hqScaredTexC = null;
+    function _hqScaredMarkTex() {
+        if (_hqScaredTexC) return _hqScaredTexC;
+        var c = document.createElement('canvas'); c.width = 96; c.height = 128; var g = c.getContext('2d');
+        g.lineJoin = 'round'; g.lineWidth = 10; g.strokeStyle = '#000'; g.fillStyle = '#3fb4ff';
+        g.beginPath(); g.moveTo(48, 10); g.bezierCurveTo(60, 40, 82, 62, 82, 84); g.arc(48, 84, 34, 0, Math.PI, false); g.bezierCurveTo(14, 62, 36, 40, 48, 10); g.closePath(); g.stroke(); g.fill();
+        g.fillStyle = '#d8f2ff'; g.beginPath(); g.ellipse(36, 82, 7, 13, -0.35, 0, Math.PI * 2); g.fill();
+        _hqScaredTexC = new THREE.CanvasTexture(c); return _hqScaredTexC;
+    }
     function _hqAwareSayTex(text) {
         var c = document.createElement('canvas'), g = c.getContext('2d'), f = '600 34px "IBM Plex Mono", monospace';
         g.font = f; var w = Math.ceil(g.measureText(text).width) + 36; c.width = w; c.height = 60; g = c.getContext('2d');
@@ -86664,8 +86834,12 @@ const ThreeRenderer = (function () {
             H.chars.forEach(function (c) { if (c._awWarned && alert.indexOf(c) < 0) c._awWarned = false; });
         }
         H.chars.forEach(function (c) { if ((st.forced[c.id] || (on && (c._awHold > now || (c._run && c._run.mode === 'chase')))) && !c.away && alert.indexOf(c) < 0) { alert.push(c); if (!st.forced[c.id]) n++; } });   // dev.awareMark: a mark held on for a picture · THE STRIKE LADDER: a Guard that warned, or comes   // dev.awareMark: a mark held on for a picture
-        for (i = st.marks.length - 1; i >= 0; i--) { var mk = st.marks[i]; if (alert.indexOf(mk.ch) < 0 || H.chars.indexOf(mk.ch) < 0) { _hqAwareDrop(H, mk); st.marks.splice(i, 1); H.dirty = true; } }
-        alert.forEach(function (c) { if (st.marks.some(function (m) { return m.ch === c; })) return; var mh = (A && A.markH) || 0.05; st.marks.push({ ch: c, sp: _hqAwareSprite(H, _hqAwareMarkTex(), mh * 0.5, mh) }); H.dirty = true; });
+        /* THE SCARED MARK: whoever runs from a strike (and stands after the run) wears the blue drop in place of the red `!` */
+        var scared = H.chars.filter(function (c) { return c && c._run && (c._run.mode === 'flee' || c._run.mode === 'rest') && !c.away && c.kind !== 'player'; });
+        alert = alert.filter(function (c) { return scared.indexOf(c) < 0; });
+        for (i = st.marks.length - 1; i >= 0; i--) { var mk = st.marks[i]; if ((mk.k === 'scared' ? scared : alert).indexOf(mk.ch) < 0 || H.chars.indexOf(mk.ch) < 0) { _hqAwareDrop(H, mk); st.marks.splice(i, 1); H.dirty = true; } }
+        alert.forEach(function (c) { if (st.marks.some(function (m) { return m.ch === c && m.k !== 'scared'; })) return; var mh = (A && A.markH) || 0.05; st.marks.push({ ch: c, k: 'alert', sp: _hqAwareSprite(H, _hqAwareMarkTex(), mh * 0.5, mh) }); H.dirty = true; });
+        scared.forEach(function (c) { if (st.marks.some(function (m) { return m.ch === c && m.k === 'scared'; })) return; var mh = (A && A.markH) || 0.05; st.marks.push({ ch: c, k: 'scared', sp: _hqAwareSprite(H, _hqScaredMarkTex(), mh * 0.75, mh) }); H.dirty = true; });
         st.n = n;
         if (on !== st.on || (n > 0) !== st.seen) { st.on = on; st.seen = n > 0; if (H.opts && H.opts.onAware) { try { H.opts.onAware({ on: on, seen: n > 0, n: n }); } catch (e) {} } }
     }
@@ -86754,6 +86928,20 @@ const ThreeRenderer = (function () {
         if (ch._resBlk) { ch._resBlk.y = ch.y; ch._resBlk.top = ch.y + 2.6; }
         _hq.dirty = true;
         return moved;
+    }
+    /* THE TALK BOX FACES YOU (mondo 11-18: "when they are running away and i hit them again and they talk, they need to stop running and turn around
+       and face me"): the run stops (the stand of the run: it keeps facing the walker, then walks back to its day once the box is closed and the stand is
+       over); turned at once, since the walk's ticks hold while a box is up */
+    function _hqLadderFace(id) {
+        var H = _hq, ch = _hqLadderChar(id), pl = H && H.player; if (!ch || !pl || typeof HQ_NPC_TEMPERS === 'undefined') return false;
+        var now = performance.now(), L = HQ_NPC_TEMPERS.ladder;
+        if (ch._run && ch._run.mode === 'flee') ch._run = { mode: 'rest', until: now + L.restMs, home: ch._run.home || _hqLadderHome(ch), stuck: 0 };
+        ch.moving = false; ch._runFast = false;
+        ch.targetYaw = ch.yaw = Math.atan2(pl.x - ch.x, pl.z - ch.z);
+        if (ch.entry && ch.entry.model) ch.entry.model.rotation.y = ch.yaw;
+        if (H.aware) H.aware.next = 0;
+        H.dirty = true;
+        return true;
     }
     function _hqLadderFree(ch) {
         var H = _hq; ch._run = null; ch._runFast = false; ch.moving = false;
@@ -92559,6 +92747,10 @@ const ThreeRenderer = (function () {
                HQ_INST_REST frames is synced every 4th frame (its turn by its place); a change wakes it to every frame again. The
                parents' visibility is worked out once per parent a frame (_hqInstShown). Off: window.EW_HQ_INST_SYNC_EVERY. */
             if (rest && (rec.qN | 0) >= HQ_INST_REST && ((ST + r) & 3) !== 0) continue;
+            /* THE HIDDEN CELLS (2026-11-18, mondo's F3: "mask: setup + lights + sort 2.6" = this sync, 15,000 copies, 351 of 414 cells
+               off the camera): a batch whose cell is hidden this frame draws in no pass, so its copies are not read; it is synced
+               in full the first frame its cell is shown (the sync runs before that frame's first draw). Off: EW_HQ_INST_SYNC_HIDDEN */
+            if (!force && im.parent && im.parent._ew_instCell != null && im.parent.visible === false && !_hqInstSyncHidden()) { rec.qN = 0; continue; }
             if (rec.fitStamp === _hqInstStamp) refit = null;   // one refit a frame per batch
             for (var i = 0; i < c.length; i++) {
                 var o = c[i], off = i * 16, e = null;
@@ -92591,6 +92783,7 @@ const ThreeRenderer = (function () {
         }
     }
     var HQ_INST_REST = 30;
+    function _hqInstSyncHidden() { return typeof window !== 'undefined' && !!window.EW_HQ_INST_SYNC_HIDDEN; }
     function _hqInstSyncEvery() { return typeof window !== 'undefined' && !!window.EW_HQ_INST_SYNC_EVERY; }
     /* a copy's parent chain drawn (every one visible, up to the scene): once per parent a frame */
     function _hqInstShown(q, sc, st) {
@@ -99736,6 +99929,7 @@ const ThreeRenderer = (function () {
             else r.ask = now + HQ_NPC_TEMPERS.mug.againMs;
             if (_hq.aware) _hq.aware.next = 0; _hq.dirty = true; return true;
         },
+        npcFace: function (id) { try { return _hq ? _hqLadderFace(id) : false; } catch (e) { console.warn('[HQ] npcFace', e); return false; } },   // the Talk box: it stops and faces the walker
         npcStruck: function (id, rung) { try { return _hq ? _hqLadderStruck(id, rung) : false; } catch (e) { console.warn('[HQ] npcStruck', e); return false; } },
         encounterEvent: function (id, gesture) {
             var H = _hq, pl = H && H.player, ch = H ? _hqLadderChar(id) : null; if (!ch || !pl) return null;
