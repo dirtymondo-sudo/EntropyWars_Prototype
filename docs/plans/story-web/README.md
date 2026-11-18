@@ -20,6 +20,14 @@ to feed story ideas and the encounter system's "who defends who".
   Stored as a custom node with `shape: 'group'` + `col`, members as ties of type `member` (unit -> group); Alt-drag
   of a unit does not travel through member ties. The game export lists them under `boardGroups`, not `relations`
   or `groups` (what a group means in a fight is not decided).
+- **Places and Factions** (11-18, second ask): every group is a Place (filled pill) or a Faction (outlined pill), set
+  with its colour in the group's panel (`gk`, `col`; 12 colours). The board is organised by one kind at a time (toolbar
+  Places | Factions, `B.org`): that kind gets the shaded areas and drags its members; the other kind shows as coloured
+  dots under each unit and its pills sit in a row on top. Each kind keeps its own layout (`B.lay`), so switching back
+  restores where things were. Arrange > Sort into groups lays it out: one area per group, units in none at the end.
+  A unit's home group of a kind is the first one it joined; areas hold only home members, other memberships are a
+  dashed line, so areas never pile on each other. Member lines show only when the group or unit is picked; picking a
+  group dims everyone outside it. A tie from group to group is an ordinary tie (rival factions).
 - No hint text in the panels (mondo hates helper text); the button title says it.
 
 ## Rebuilding after the roster changes
