@@ -101,6 +101,7 @@ function sanitizeBoard(b) {
       }
       else if (n.kind === 'cast') { m.cast = n.cast; m.id = 's:' + n.cast; if (m.id !== String(n.id)) remap[String(n.id)] = m.id; }
       else { m.kind = 'custom'; m.name = String(n.name || n.race || 'Unnamed').slice(0, 60); m.sub = String(n.sub || '').slice(0, 60); m.faction = FNAME[n.faction] ? n.faction : ''; m.shape = /^(character|org|boss|place|group)$/.test(n.shape) ? n.shape : 'character'; if (m.shape === 'group') { m.col = clamp(Math.round(num(n.col, 0)), 0, GCOL.length - 1); m.gk = n.gk === 'faction' ? 'faction' : 'place'; } if (RACE[n.race] && n.kind !== 'race') m.race = n.race; }
+      if ((m.kind === 'race' || m.kind === 'cast') && n.nick && String(n.nick).trim()) m.nick = String(n.nick).trim().slice(0, 60);
     }
     o.nodes[m.id] = m;
   });
@@ -137,14 +138,41 @@ function setSave() {
   const el = $('saveState'); let cls = 'local', txt = 'Saved on this device', tip = 'Boards are kept in this browser. Use Export, then Save a backup, to keep a copy elsewhere.';
   const pend = cloud.dirty.size || cloud.dels.size || cloud.idx;
   if (cloud.state === 'loading') { cls = 'busy'; txt = 'Loading saved boards'; tip = ''; }
-  else if (cloud.state === 'ok') { if (cloud.busy || pend) { cls = 'busy'; txt = 'Saving'; } else { cls = ''; txt = 'Saved'; } tip = 'Saved with this page, and in this browser.'; }
+  else if (cloud.state === 'ok') { if (cloud.busy || pend) { cls = 'busy'; txt = 'Saving'; } else { cls = ''; txt = 'Saved'; } tip = cloud.db && cloud.db.server ? 'Saved on the game server: every computer that opens it from the game sees it.' : 'Saved with this page, and in this browser.'; }
   else if (cloud.state === 'ro') { txt = 'View only: changes stay on this device'; tip = 'You can change this board here, but only the owner can save it to the page.'; }
   else if (cloud.state === 'err') { cls = 'err'; txt = 'Not saved online: kept on this device'; tip = 'Saving to the page failed. Your work is in this browser. Save a backup from Export to be safe.'; }
   if (!localOk && cloud.state !== 'ok') { cls = 'err'; txt = 'Could not save: export a backup'; }
   el.className = cls; el.lastElementChild.textContent = txt; el.title = tip;
 }
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout' }), ms))]);
+/* THE GAME'S SERVER (2026-11-18): opened from the game (Settings > Developer > Relationship Web, /dev/relationship-web), the
+   boards save on the game server (server.js /api/story-web), so every computer that opens it there sees the same boards. */
+function serverDb() {
+  const post = (p, data) => fetch('/api/story-web/doc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: p, data }) })
+    .then(r => { if (!r.ok) { const e = new Error('save ' + r.status); if (r.status === 400) e.code = 'invalid_argument'; throw e; } });
+  return { server: true, doc: p => ({ set: d => post(p, d), delete: () => post(p, null) }) };
+}
+async function serverPull() {
+  const r = await withTimeout(fetch('/api/story-web', { cache: 'no-store' }), 12000);
+  if (!r.ok) throw new Error('load ' + r.status);
+  const d = (await r.json()).docs || {};
+  return [d['web/index'] || null, Object.keys(d).filter(k => k.startsWith('boards/')).map(k => d[k])];
+}
+async function serverInit() {
+  if (!/^https?:$/.test(location.protocol) || !/\/dev\/relationship-web/.test(location.pathname)) return false;
+  cloud.db = serverDb(); cloud.state = 'loading'; setSave();
+  try { const r = await serverPull(); mergeRemote(r[0], r[1]); cloud.state = 'ok'; } catch (e) { cloud.state = 'err'; }
+  setSave(); if (cloud.state === 'ok') flushSoon(50);
+  /* the other computer's changes: look again every 10 s and when this tab comes back */
+  const again = async () => {
+    const ae = document.activeElement; if (document.hidden || editing || (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) || cloud.busy || drag || pinch || cloud.dirty.size || cloud.dels.size || cloud.idx) return;
+    try { const r = await serverPull(); if (cloud.busy || drag || pinch || cloud.dirty.size) return; mergeRemote(r[0], r[1]); if (cloud.state === 'err') { cloud.state = 'ok'; setSave(); } } catch (e) {}
+  };
+  setInterval(again, 10000); window.addEventListener('focus', again); document.addEventListener('visibilitychange', again);
+  return true;
+}
 async function cloudInit() {
+  if (await serverInit()) return;
   if (!(window.claude && typeof window.claude.use === 'function')) return;
   let db = null; try { db = await window.claude.use('db'); } catch (e) {}
   if (!db) return;
@@ -223,8 +251,8 @@ const redo = () => { if (hi < hist.length - 1) restore(hi + 1); };
 /* ───────── model helpers ───────── */
 const initials = s => String(s || '?').split(/[\s\-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 function info(n) {
-  if (n.kind === 'race') { const r = RACE[n.race], v = r.v.find(x => x.g === n.g) || r.v.find(x => x.g === r.dg) || r.v[0]; return { name: v.n, t: r.t, img: v.img, ini: initials(v.n), race: r, v }; }
-  if (n.kind === 'cast') { const c = CAST[n.cast]; return { name: c.n, t: c.t, img: c.img, ini: initials(c.n), cast: c, badge: GRP_BADGE[c.grp] }; }
+  if (n.kind === 'race') { const r = RACE[n.race], v = r.v.find(x => x.g === n.g) || r.v.find(x => x.g === r.dg) || r.v[0]; return { name: n.nick || v.n, sub: n.nick ? v.n : '', gname: v.n, t: r.t, img: v.img, ini: initials(n.nick || v.n), race: r, v }; }
+  if (n.kind === 'cast') { const c = CAST[n.cast]; return { name: n.nick || c.n, sub: n.nick ? c.n : '', gname: c.n, t: c.t, img: c.img, ini: initials(n.nick || c.n), cast: c, badge: GRP_BADGE[c.grp] }; }
   const r = n.race && RACE[n.race];
   return { name: n.name, sub: n.sub, t: n.faction ? [n.faction] : [], img: r ? r.img : '', ini: initials(n.name), sq: n.shape === 'org' || n.shape === 'place', boss: n.shape === 'boss', custom: true };
 }
@@ -490,6 +518,7 @@ function renderInspector() {
   } else if (sel && sel.kind === 'node' && B.nodes[sel.id]) {
     const n = B.nodes[sel.id], o = info(n), r = o.race, cst = o.cast, d = defence(B, n.id), name = esc(o.name);
     h += '<div class="idh">' + picHTML(o) + '<div class="meta"><h2>' + name + '</h2>' + (r ? '<span class="key">race key: ' + esc(r.k) + (r.v.length > 1 ? ' \u00b7 gender: ' + o.v.g : '') + '</span>' : cst ? '<span class="key">' + (cst.grp === 'cast' ? 'DOOR_CAST.' : cst.grp === 'boss' ? 'BOSS_DEFS: ' : 'tutorial tape: ') + esc(cst.grp === 'tape' ? cst.raw : cst.id) + '</span>' : '<span class="key">custom ' + esc(n.shape || 'character') + '</span>') + '<div class="badges">' + (o.t.length ? o.t.map(t => '<span class="badge" style="--c:var(--f-' + t + ')">' + FNAME[t] + '</span>').join('') : '<span class="badge">no type</span>') + (r && r.role ? '<span class="badge">' + esc(r.role) + '</span>' : '') + (cst ? '<span class="badge">' + GRP_NAME[cst.grp] + '</span>' : '') + '</div>' + (r && r.cs ? '<span class="stamp">' + esc(r.cs) + '</span>' : '') + '</div></div>';
+    if (r || cst) h += '<label class="field"><span>Name</span><input class="inp" id="cNick" maxlength="60" value="' + esc(n.nick || '') + '" placeholder="' + esc(o.gname) + '"></label>';
     if (r) {
       h += '<dl class="facts"><dt>Home site</dt><dd>' + esc(r.home || 'none on file') + (r.also.length ? ', also ' + esc(r.also.join(', ')) : '') + '</dd><dt>Biomes</dt><dd>' + (r.bio.length ? esc(r.bio.map(pretty).join(', ')) : 'none on file') + '</dd>' + (r.walks.length ? '<dt>Walks</dt><dd>' + esc(r.walks.join(', ')) + ' (encounter tables)</dd>' : '') + '<dt>Families</dt><dd>' + esc(r.fam.join(', ')) + '</dd>' + (r.fin ? '<dt>Finisher</dt><dd>' + esc(r.fin[0]) + '</dd>' : '') + '</dl>';
       const lore = r.dos || (r.cn ? 'Customs: ' + r.cn + '.' : ''), qs = o.v.q || r.q;
@@ -808,7 +837,7 @@ $('inspector').addEventListener('change', e => {
   if (t.id === 'insNote') return commit({ light: true });
   if (t.id === 'insSecret') return setLink({ secret: t.checked });
   if (!n) return;
-  if (t.id === 'cName') n.name = t.value.trim() || 'Unnamed'; else if (t.id === 'cSub') n.sub = t.value.trim(); else if (t.id === 'cShape') n.shape = t.value; else if (t.id === 'cFaction') n.faction = t.value; else if (t.id === 'cRace') { if (t.value) n.race = t.value; else delete n.race; } else return;
+  if (t.id === 'cNick') { const v = t.value.trim(); if (v && v !== info(Object.assign({}, n, { nick: '' })).gname) n.nick = v; else delete n.nick; } else if (t.id === 'cName') n.name = t.value.trim() || 'Unnamed'; else if (t.id === 'cSub') n.sub = t.value.trim(); else if (t.id === 'cShape') n.shape = t.value; else if (t.id === 'cFaction') n.faction = t.value; else if (t.id === 'cRace') { if (t.value) n.race = t.value; else delete n.race; } else return;
   commit();
 });
 
@@ -842,14 +871,15 @@ function gameExport(all) {
     if (n.kind === 'race') { const r = RACE[n.race], g = r.v.length > 1 ? n.g : r.v[0].g; return { key: r.v.length > 1 ? n.race + ':' + g : n.race, kind: 'race', race: n.race, gender: g }; }
     if (n.kind === 'cast') { const c = CAST[n.cast]; return { key: 'character:' + c.id, kind: 'character', id: c.id, race: c.race || null, gender: c.g || null }; }
     return { key: 'custom:' + n.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''), kind: 'custom', race: null, gender: null }; };
-  const out = { _about: 'Entropy Wars relationship web. `race` values match AVAILABLE_RACES and `gender` is separate (male / female). Story characters are listed in `characters` under their own id from the game data (DOOR_CAST, BOSS_DEFS, the tutorial tape) and referenced as character:<id>. Custom characters are custom:<name>, listed in `custom`. `from` is the one who acts, `to` the one acted on.', version: 2, exported: new Date().toISOString(), boards: boards.map(b => b.name),
-    types: Object.fromEntries(TYPES.map(t => [t.id, { effect: t.fx || 'none', means: t.fx ? FX_NOTE[t.fx] : 'no effect on who joins a fight' }])), relations: [], defence: {}, groups: {}, boardGroups: {}, motives: {}, characters: {}, custom: {} };
+  const out = { _about: 'Entropy Wars relationship web. `race` values match AVAILABLE_RACES and `gender` is separate (male / female). Story characters are listed in `characters` under their own id from the game data (DOOR_CAST, BOSS_DEFS, the tutorial tape) and referenced as character:<id>. Custom characters are custom:<name>, listed in `custom`. `names` holds the story name given to a race or character on the board (key -> name). `from` is the one who acts, `to` the one acted on.', version: 2, exported: new Date().toISOString(), boards: boards.map(b => b.name),
+    types: Object.fromEntries(TYPES.map(t => [t.id, { effect: t.fx || 'none', means: t.fx ? FX_NOTE[t.fx] : 'no effect on who joins a fight' }])), relations: [], defence: {}, groups: {}, boardGroups: {}, motives: {}, names: {}, characters: {}, custom: {} };
   const D2 = out.defence, adj = {};
   const side = (o, p, r) => { o[p] = r.kind === 'race' ? r.race : r.key; o[p + 'Kind'] = r.kind; o[p + 'Gender'] = r.gender; return o; };
   boards.forEach(b => {
     Object.values(b.nodes).forEach(n => { if (n.kind === 'note') return; const r = ref(b, n.id);
       if (n.kind === 'custom') out.custom[r.key] = { name: n.name, title: n.sub || '', kind: n.shape, type: n.faction || null, portraitRace: n.race || null };
       if (n.kind === 'cast') { const c = CAST[n.cast]; out.characters[c.id] = { name: c.raw, title: c.title || '', source: c.grp === 'cast' ? 'DOOR_CAST' : c.grp === 'boss' ? 'BOSS_DEFS' : 'TUTORIAL_LESSONS', race: c.race || null, gender: c.g || null }; }
+      if (n.nick) out.names[r.key] = n.nick;
       if (n.note) (out.motives[r.key] = out.motives[r.key] || []).push(n.note); });
     Object.values(b.links).forEach(l => {
       const at = actorTarget(l), f = ref(b, at[0]), t = ref(b, at[1]);

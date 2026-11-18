@@ -40,3 +40,13 @@ Order: `node extract.js`, `node urls.js`, `python3 dl.py`, `python3 faces.py`, `
 (`extract2.js`, `urls2.js`, `dl2.py`, `render.js`, `faces2.py`, `roster2.js`), then `node build.js` writes the page.
 Downloaded art and intermediate JSON are not committed. To change only the code (`app.js` / `template.html`)
 without the art, pull `build/roster.json` back out of the built page (the `const EW_DATA = …;` line) and run `node build.js`.
+
+## In the game, one board for every computer (2026-11-18)
+mondo works on two computers. Settings > Developer > **Relationship Web** (map.js) opens `/dev/relationship-web`,
+which server.js serves from `relationship-web.html` (wrapped in a page skeleton). There the boards save on the game
+server (`/api/story-web`, D1 table `story_web_docs`, migration 005): no account, no export; every computer that
+opens it from the game loads the same boards and picks up the other one's changes every 10 s and on focus
+(app.js `serverInit`). The claude.ai artifact copy keeps its own save.
+
+Race and story-character nodes take a story **Name** (`nick`, e.g. the Cult Leader = August Tomorrow); the game
+name shows under it, and the game export lists them in `names`.

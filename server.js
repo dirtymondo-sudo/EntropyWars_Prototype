@@ -37,6 +37,8 @@ try { app.use(require('compression')()); } catch (e) { console.warn('[BOOT] comp
 // 512kb: a fully-completed profile.progress blob (96 champs × 3 ladders of
 // unlock keys) runs ~120KB — Express's 100kb default would 413 the progress
 // sync. Everything else stays tiny; flood protection is the rate limiters'.
+// THE RELATIONSHIP WEB saves whole boards (a big board passes 512 kB): its own body limit, parsed first.
+app.use('/api/story-web', express.json({ limit: '8mb' }));
 app.use(express.json({ limit: '512kb' }));
 
 // ── HTTP RATE LIMITING ─────────────────────────────────────────────────
@@ -124,6 +126,65 @@ if (process.env.EW_DEV_STATIC === '1') {
         res.sendFile(INDEX_HTML);
     });
 }
+
+// ── THE RELATIONSHIP WEB (2026-11-18) ── the story-planning web (docs/plans/story-web/) served from the game
+// (Settings > Developer > Relationship Web), its boards saved in D1 table story_web_docs (migration 005) so every
+// computer that opens it sees the same boards. No account; the page merges by each board's own time stamp.
+const STORY_WEB_HTML = path.join(__dirname, 'docs', 'plans', 'story-web', 'relationship-web.html');
+const STORY_WEB_PATH = /^(web\/index|boards\/[A-Za-z0-9_-]{1,64})$/;
+const limitStoryWeb = httpRateLimit('story-web', 90, 30);
+// The file is an artifact page (no <html>/<head>; claude.ai wraps it), so it gets the same skeleton here.
+app.get('/dev/relationship-web', (req, res) => {
+    let page;
+    try { page = fs.readFileSync(STORY_WEB_HTML, 'utf8'); } catch { return res.sendStatus(404); }
+    res.set('Cache-Control', 'no-cache');
+    res.type('html').send('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
+        + '<style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>'
+        + page + '</body></html>');
+});
+app.get('/api/story-web', limitStoryWeb, async (req, res) => {
+    if (!d1.isConfigured()) return res.status(503).json({ error: 'Database not configured.' });
+    try {
+        await ensureMigrations();
+        const rows = await d1.getAll('SELECT path, data FROM story_web_docs');
+        const docs = {};
+        (rows || []).forEach(r => { try { docs[r.path] = JSON.parse(r.data); } catch {} });
+        res.set('Cache-Control', 'no-store');
+        res.json({ docs });
+    } catch (err) {
+        console.error('[WEB] load error:', err.message);
+        res.status(500).json({ error: 'Failed to load the web.' });
+    }
+});
+app.post('/api/story-web/doc', limitStoryWeb, async (req, res) => {
+    if (!d1.isConfigured()) return res.status(503).json({ error: 'Database not configured.' });
+    try {
+        await ensureMigrations();
+        const { path: p, data } = req.body || {};
+        if (typeof p !== 'string' || !STORY_WEB_PATH.test(p)) return res.status(400).json({ error: 'Bad path.' });
+        if (data === null) {
+            await d1.execute('DELETE FROM story_web_docs WHERE path = ?1', [p]);
+            return res.json({ ok: true });
+        }
+        if (!data || typeof data !== 'object' || Array.isArray(data)) return res.status(400).json({ error: 'Bad document.' });
+        const raw = JSON.stringify(data);
+        if (raw.length > 1900000) return res.status(400).json({ error: 'Board too large.' }); // D1 caps a value at 2 MB
+        const n = await d1.getOne('SELECT COUNT(*) AS n FROM story_web_docs');
+        if (n && n.n >= 300) {
+            const has = await d1.getOne('SELECT path FROM story_web_docs WHERE path = ?1', [p]);
+            if (!has) return res.status(400).json({ error: 'Too many boards.' });
+        }
+        await d1.execute(
+            "INSERT INTO story_web_docs (path, data, updated_at) VALUES (?1, ?2, datetime('now')) "
+            + 'ON CONFLICT(path) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at',
+            [p, raw]
+        );
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('[WEB] save error:', err.message);
+        res.status(500).json({ error: 'Failed to save the web.' });
+    }
+});
 
 function uuid() { return crypto.randomUUID(); }
 
