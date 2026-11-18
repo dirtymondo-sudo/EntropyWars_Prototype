@@ -5280,3 +5280,92 @@ A scan for `core / hot ... : 0xffffff` defaults in shared helpers found ten. Eig
 cleanup on: `_sigSpiralBeam3D`'s `coreColor`, `_f4Beam`'s `core`. Seen: Blue Beam (its hologram is pale blue by design).
 Stasis Beam's shot still reads white: it is the old ice bolt recipe (`_bolt_ice`), not these helpers; left.
 
+
+
+## THE VFX CLEANUP, B11: the final pass in real play (2026-11-18, three-vfx-effects.js + online.js + the capture runner)
+The plan's last batch: look at the whole cleanup in real play and from the guest's seat, see what the capture harness never
+showed, close the open single items. Everything behind `_vcOn()` (`window.EW_NO_VFX_CLEANUP`). The switch and the old paths
+are NOT deleted: mondo's call. Pictures: `docs/plans/vfx-cleanup/img/b11/`.
+
+**How it was looked at**
+- Two real VS-CPU matches as Player 1 (the menus, a real CPU, 9 rounds each, 0 page errors): the first with the party the
+  game dealt, the second with both sides holding the beam / portal / turret / Take Aim spells so the CPU cast them too
+  (Railgun, Orichalcum Ray, Entropic Beam, Consuming Dark, Nightmare Pulse, Hypnotic Pulse, Luminous Shield, two turrets).
+  A real match on the cloud's software GPU draws about one frame a second: good for "is anything broken or white", too
+  slow to judge a 0.4 s effect.
+- So every detail was judged on the capture harness at a frame every 100 ms of game time: `sv-run.js --fine [--fineMs
+  4000]` (new) for a list, and `sv-ctl.js`'s new `/fine?dir=&n=&step=` for one cast on a board set up by hand.
+- Online: two seats (host + guest, a friendly room), 19 casts from both sides, every public `ThreeVFXEffects` call
+  logged on both pages and compared, plus paired pictures.
+
+**Fixed**
+- **Stasis Beam was still WHITE in a real cast.** Not the ice bolt: battle.js draws its lance with `sigSpiralBeam3D`, whose
+  core, glow, two strands and three rings were all additive in pale gold and summed to white. With the cleanup on the
+  colour gets its hue (`_vcTrue 0.68`), the core / strands / rings are normal-blended, the glow is lower, the charge blink is
+  tinted. Seen: gold.
+- **Stasis Beam's lance did not exist for the guest**: battle.js calls `sigSpiralBeam3D` directly and it was not on
+  online.js's sibling relay list (`_VFXX_ANCHORS`). Added. Seen in the two-seat log: one call on each seat.
+- **Teleport's portals (the known risk, confirmed).** The leaving portal read `state._teleportingUnitId` on the windup beat:
+  host `'1-1'`, guest `null` (both seats logged), so the guest's opened under the caster. Also the FIRST pick fires a windup,
+  which opened a portal under the caster while the player was still choosing. A `mover` row now draws nothing on the stage
+  beats; `_vcPortalMove` opens both portals from the relayed `'teleport'` beat, which names both squares
+  (`fromX, fromY, toX, toY`). No state is read.
+- **A teleport's arriving portal came 1.2 s late** (timed: `windup` + `teleport` at 0, `burst` at 1.22 s; the unit is out at
+  once). `_vcPortalArrive` opens it on the `'teleport'` beat; the hit beat then draws none (a cast with no `'teleport'`
+  beat keeps the hit beat's). Seen: Shadow Step, both ends from 0.3 s.
+- **A summon's / rift's portal came after the thing** (`at: 'target'` rows: Summon Creation's hit beat is 1.6 s after the
+  cast). It opens on the windup beat at the target square, for the hold. Seen: Summon Creation, Dimensional Web.
+- **The old blue teleport ring under a kit portal** (`_spawnPortalRing3D`: two additive blue rings that read white on a
+  pale floor, seen on Mount Olympus online) is not drawn at either end for a `_VC_PORTAL` spell.
+- **The rune under the psychic noise wash** (Ascension Day, Counting Sheep, Nightmare Pulse, Eternal Slumber): `_psAoeOn`
+  no longer lays the mind sigil on a psychic DAMAGE area (those squares get the wash). A stun-only or support area
+  (Hypnotic Pulse) keeps it.
+
+**Seen working, nothing to change**
+- Real match: Dragon Slash, Railgun (both sides), Ki Wave, Judgment, Divine Smite, Hallelujah, Sword Beam, Ki Volley,
+  Shadow Step, Take Aim, Baleful Gaze, Psychic Beam, Plasma Cannon, Consuming Dark, Nightmare Pulse, turrets on both sides.
+  No white stage burst, no white pillar, no rune under a heal.
+- COLOUR-TRUE: Judgment, Divine Smite, Hallelujah read gold / cream, not white and not oversaturated; Ascension Day's
+  column is warm cream.
+- The beam kit in real casts: Railgun (teal), Ki Wave (gold), Psychic Beam (pink): charge, lance, ring.
+- The sight lasers: a turret's own (cyan, and its lock sweep), the enemy colour (red-pink; a turret whose owner was flipped
+  on the test board), Take Aim's. Online: P1's Take Aim is cyan on the host and red-pink on the guest, and the reverse.
+- The clash: the knot draws at a shielded body, at a prism on the line and at the wall case. In its real colours it is
+  small and hard to tell from Railgun's own impact ring at match distance.
+- The four "possibly too busy" spells: Consuming Dark and Hypnotic Pulse are clean. Nightmare Pulse is its spikes + the
+  wash. Eternal Slumber is the heaviest: purple puffs on all 25 squares for about a second over the bodies; the numbers
+  stay readable. Its own colour, not generic: left, mondo's call.
+
+**The spells nobody could cast before, now cast and looked at** (board set up by hand in the `pre` hook)
+- Cannibalize (a corpse: `applyDamageToUnit(E[0], 99999)`), Sacrifice (both picks: two `doSpell` calls), Pollinate
+  (`c.pollen = 3` + a seed pushed into `state.plantedSeeds`), Hurricane Party (the round stepped until
+  `_floridaHeadline(c)` is its headline), Pulse Lattice / Tune Frequency / Shatter the Lattice (three prisms pushed into
+  `state.mirrors`, two of them in a column through the enemies), Out of the Loch (the caster's square raised 2), Poseidon's
+  Wrath (`setTerrainAt(enemy, 'water')`), Dragon Toss / Infernal Hurl / To the Moon (the grab, 1.8 s, then the drop square),
+  Horn Toss (the body, then the direction square), Raise the Dead (a corpse). None draws generic white. Pulse Lattice's
+  own grid (pale lilac squares, 3.7 squares wide) lands about a second after the hit.
+
+**Left on purpose (mondo's call)**
+- Ki Charge: a gold ring on the floor for about 0.4 s and a pale cream glow on the caster's square under it. Gold reads as
+  ki; not removed.
+- `sparkle` (51 recipes) is still an undefined sprite name and draws white. Nothing in the two matches or the captures
+  made it stand out; left.
+- Eternal Slumber's puffs (above). Pulse Lattice's grid timing.
+
+**Host vs guest**
+- Every relayed beat arrived with the same parameters on both seats for all 19 casts (Railgun, Ki Wave, Psychic Beam at a
+  shield, Teleport from both sides, Shadow Step from both sides, Summon Creation, turrets from both sides, Take Aim from
+  both sides, Divine Smite, Hallelujah, Blade Waltz, Sword Beam, Ki Volley, Stun Ray).
+- Differences found: Teleport's leaving portal (fixed), Stasis Beam's lance (fixed). By the code, battle.js still calls
+  other signatures directly that are not on the relay list (`sigLightPillar3D`, `sigCalcify3D`, `sigUFO3D`): not checked
+  here, each would be host-only if so.
+- The guest's board is mirrored and its fog hides far units: that is by design.
+
+**Could NOT see**
+- The fixed Teleport / Shadow Step portals from the guest's seat in a picture: two software-drawn pages give 1-2 frames a
+  second, and a portal lives half a second. The fix reads only the relayed beat, and the beat log is the same on both seats.
+- The beam visibly stopping at a wall (the test board's raised square did not rebuild the ground mesh).
+- An enemy turret's sight in a real match at a readable size (seen on the test board by flipping the turret's owner).
+- Ascension Day's sigil BEFORE the fix in this thread's own frames (B9a's sheet shows it; after: none).
+
+**The capture runner**: `--fine` + `/fine` (above); recipes for the hand-set boards are in this section.
