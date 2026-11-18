@@ -1,5 +1,5 @@
 // Spell VFX audit batch runner (visuals ON). node sv-run.js --ids ids.txt --out DIR [--gpu webgl2|webgl|webgpu] [--only a,b] [--race r]
-// --dense = a frame every tick for the first 3 s (beams, fast projectiles).
+// --dense = a frame every tick for the first 3 s (beams, fast projectiles). --fine [--fineMs 4000] = a frame every 100 ms (B11).
 // One headful llvmpipe page (WebGL2 node renderer by default), art + 3D models on, Playwright fake clock.
 // Per spell: the real HUD path (ABILITIES -> spell row -> aim still -> CONFIRM) on the audit board, then the clock is
 // stepped in 150 ms ticks and frames are drawn + saved at the windup, the hit and the aftermath.
@@ -10,6 +10,8 @@ const { install, REPO } = require(HD + '/route.js');
 const A = process.argv.slice(2); const F = (n, d) => { const i = A.indexOf('--' + n); return i < 0 ? d : A[i + 1]; };
 const OUT = F('out', '/tmp/sv/out'), GPU = F('gpu', 'webgl2'), W = +F('w', 1280), H = +F('h', 720), RECYCLE = +F('recycle', 60);
 const SVD = __dirname;
+const FINE = A.includes('--fine');   // --fine (B11): a frame every 100 ms of game time for the first --fineMs (default 4000): hit flashes (0.2 s), teleports (0.4 s)
+const FINEMS = +F('fineMs', 4000);
 const LIBS = [fs.readFileSync(path.join(F('sa', SVD), 'sa-lib.js'), 'utf8'), fs.readFileSync(path.join(SVD, 'sv-lib.js'), 'utf8')];
 const PAGEJS = fs.readFileSync(path.join(SVD, 'page.js'), 'utf8').replace('__DRAW__', 'demand');
 const MENUJS = fs.readFileSync(path.join(SVD, 'menu.js'), 'utf8');
@@ -69,8 +71,8 @@ log('jobs', jobs.length, 'gpu', GPU);
   async function resume() { if (paused) { await ctx.clock.resume(); paused = false; } }
   async function run(ms) { await ctx.clock.runFor(ms); }
   async function shot(file) {
-    await ev(() => { __ph.draw.frames = 3; });
-    if (paused) await run(150); else for (let i = 0; i < 50; i++) { if ((await ev(() => __ph.draw.frames)) <= 0) break; await sleep(100); }
+    await ev((n) => { __ph.draw.frames = n; }, FINE && paused ? 2 : 3);
+    if (paused) await run(FINE ? 50 : 150); else for (let i = 0; i < 50; i++) { if ((await ev(() => __ph.draw.frames)) <= 0) break; await sleep(100); }
     await page.screenshot({ path: file, type: 'jpeg', quality: 80, timeout: 120000 });
     await ev(() => { __ph.draw.frames = 0; });
   }
@@ -181,8 +183,9 @@ log('jobs', jobs.length, 'gpu', GPU);
     // after the first HP change / log line is labelled 'hit' (HP can move at the cast for heals/teleports, so it is a hint)
     const MAXT = 9000; let next = 250; let changeAt = null;
     const DENSE = A.includes('--dense');   // --dense: a frame every 150 ms tick for the first 3 s (a beam lives 0.3-0.5 s: the normal cadence misses it)
-    while (t < MAXT && k < (DENSE ? 26 : 15)) {
-      await run(150); t += 150;
+    const TK = FINE ? 50 : 150; if (FINE) next = 0;
+    while (t < MAXT && k < (FINE ? 60 : DENSE ? 26 : 15)) {
+      await run(TK); t += TK;
       const fi = await frameInfo();
       const hpChanged = Object.keys(hp0).some(id => fi.hp[id] !== hp0[id]);
       if (changeAt == null && (hpChanged || fi.logN > 0)) changeAt = t;
@@ -191,8 +194,8 @@ log('jobs', jobs.length, 'gpu', GPU);
         const label = (changeAt != null && hitAt == null) ? 'chg' : (t < 400 ? 'windup' : 'mid');
         if (label === 'chg') hitAt = t;
         const f = path.join(dir, String(k).padStart(2, '0') + '_' + label + '_' + t + 'ms.jpg');
-        await shot(f); rec.frames.push(Object.assign({ label, ms: t }, fi)); k++; t += 150; lastShot = t;
-        next = DENSE && t < 3000 ? t : (t < 3200 ? t + 250 : t + 850);
+        await shot(f); rec.frames.push(Object.assign({ label, ms: t }, fi)); k++; t += TK; lastShot = t;
+        next = FINE && t < FINEMS ? t : DENSE && t < 3000 ? t : (t < 3200 ? t + 250 : t + 850);
       }
       if (idle >= 600 && t > 2000 && (changeAt == null || t - changeAt > 1200)) break;
     }

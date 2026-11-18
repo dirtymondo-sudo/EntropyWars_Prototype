@@ -38,6 +38,11 @@ function up(){return new Promise(res=>{const q=http.get({host:'localhost',port:P
       await page.evaluate(()=>{__ph.draw.frames=3;});
       if(p.get('paused')){await ctx.clock.runFor(150);} else {for(let i=0;i<40;i++){const d=await page.evaluate(()=>__ph.draw.frames);if(d<=0)break;await sleep(100);}}
       await page.screenshot({path:f,type:'jpeg',quality:82,timeout:120000});await page.evaluate(()=>{__ph.draw.frames=0;});res.end(f);}
+    else if(u.pathname==='/fine'){/* B11: n frames, one every `step` ms of game time (default 100), on the PAUSED clock: /fine?dir=/tmp/x&n=30&step=100&pre=name */
+      const dir=p.get('dir')||'/tmp/sv/fine',n=+p.get('n')||30,step=Math.max(50,+p.get('step')||100),pre=p.get('pre')||'f';fs.mkdirSync(dir,{recursive:true});
+      for(let i=0;i<n;i++){ if(step>50)await ctx.clock.runFor(step-50); await page.evaluate(()=>{__ph.draw.frames=2;}); await ctx.clock.runFor(50);
+        await page.screenshot({path:path.join(dir,pre+'_'+String(i).padStart(2,'0')+'_'+((i+1)*step)+'ms.jpg'),type:'jpeg',quality:82,timeout:120000}); }
+      await page.evaluate(()=>{__ph.draw.frames=0;});res.end(dir+' '+n);}
     else if(u.pathname==='/click'){await page.mouse.click(+p.get('x'),+p.get('y'),{button:p.get('b')||'left'});res.end('ok');}
     else if(u.pathname==='/move'){await page.mouse.move(+p.get('x'),+p.get('y'));res.end('ok');}
     else if(u.pathname==='/key'){await page.keyboard.press(p.get('k'));res.end('ok');}
