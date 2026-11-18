@@ -454,3 +454,7 @@ Antarctica's are still hand-set, not the neighbours' ground (the row "THE WORLD'
 the Hills and on Shasta, the Pilgrim Stair's foot on Olympus and the Pole's south sleigh road end without a door now; Giza's east road arrives
 3.7 m from the Great Pyramid's foot; the Beach's and Leylines' zone sheets on the map span far islands.
 
+**2026-11-18, THE ESTATE IS ONE PLACE**: the Corn Fields, County Lane, the Lake and the Ranch rows in the table above are one room now,
+`site_prebuilt_skinwalker_ow_lake` (THE ESTATE, x -14..-9, y 5..23, 47 plots); ways out: the Clearing (the Woods Gate, north), the Ranch Road (east),
+the well, the lodge door, the stable door. See areas-complexes.md "A ZONE'S DISTRICTS ARE ONE PLACE".
+
