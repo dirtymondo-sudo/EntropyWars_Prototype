@@ -439,6 +439,13 @@ const ThreeVFX = (function () {
         'shockwave':         { r: 1.00, g: 0.90, b: 0.70, blend: 'world' },
         'halo-ring':         { r: 1.00, g: 0.95, b: 0.70, blend: 'world' },
         'stun-ring':         { r: 1.00, g: 1.00, b: 0.40, blend: 'world' },
+
+        /* THE VFX CLEANUP, the white fallback (2026-11-18, mondo: "why are things white when they are given a color"): the
+           recipes name these three, nothing defined them, and _spriteColor hands an unknown name PURE WHITE. `buff-aura` is
+           the column of 41 buff / ward recipes (protect, overclock, ...): every one stood in a white pillar. */
+        'buff-aura':         { r: 1.00, g: 0.80, b: 0.36, blend: 'add' },
+        'spark':             { r: 1.00, g: 0.84, b: 0.42, blend: 'add' },
+        'star':              { r: 1.00, g: 0.90, b: 0.55, blend: 'add' },
     };
 
     function _spriteColor(key) {

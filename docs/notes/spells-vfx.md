@@ -5261,3 +5261,14 @@ pillar, the sacred rings and the support rings as white whatever colour they wer
   (docs/plans/vfx-cleanup/img/b5_portals_part2_and_hallelujah.jpg); not seen in a real cast.
 - **`_sigLightPillar3D`** with the cleanup on: `O_OUT` 0.36, `O_AURA` 0.13 (were 0.55 / 0.22).
 
+
+## THE WHITE FALLBACK: undefined sprite names + the support palettes (2026-11-18, three-vfx.js + three-vfx-effects.js)
+- three-vfx.js `_spriteColor(key)` returns `{ r: 1, g: 1, b: 1, blend: 'add' }` for a name missing from `_spriteMap`.
+  A headless pass over every recipe (layers, `pillarSprite`, the bolt parts) found: `buff-aura` (41, all as
+  `pillarSprite`), `spark` (12), `star` (2), `sparkle` (51), + `blood-glob` and `wave-anim`, which have their own code
+  paths. Defined now: `buff-aura` `1.00 / 0.80 / 0.36`, `spark` `1.00 / 0.84 / 0.42`, `star` `1.00 / 0.90 / 0.55`.
+  `sparkle` left white (a glint). To re-run the check: load three-vfx-effects.js in a vm (tools/audit.js shows how) and
+  compare every sprite name against the keys of `_spriteMap`.
+- `_vcPal`: a support palette is toned as well (ring 0.5, flash 0.38, line 0.35 saturation floors); it was returned as is.
+- Seen: Heal, Overclock, Protect, Hallelujah (docs/plans/vfx-cleanup/img/white_fallback_after.jpg).
+
