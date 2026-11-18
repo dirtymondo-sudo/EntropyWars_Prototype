@@ -2959,3 +2959,11 @@ His 07:34 F3 "Slow frames": "scene: bundle replays 82 / 36 / 26 ms", "bundle che
 (a re-record draws every mesh of the group into a new bundle). Lens line "Bundle spikes (last 6)": each `_ewBunTick` that took
 6 ms+ or re-recorded 300+ meshes, with groups walked, groups re-recorded (+ meshes), the causes (tree / values / lamps / frees /
 lod / cold / rests), LAMPS MOVED, and the three biggest re-recorded groups. Lens open only.
+
+## THE CULLED CHUNKS COUNT (2026-11-18, Disaster City 60 FPS thread)
+His 07:44 F3 "Slow frames": "tick: instance pass 42 / 50 / 43 ms" (three of six). `_hqInstTick` rescans every rescanMs and runs the whole
+`_hqInstAdd` (a forced `scene.updateMatrixWorld(true)` of ~45,000 objects, a second scan, the build) when the scan's count differs
+from the copies it left alone. The scan was `traverseVisible`, and a prop chunk the camera culls reads hidden (`_ew_ckOut`), so the
+count moved every time a chunk went out or came back and the pass re-ran for nothing. `_hqInstScan` now walks a culled chunk as if
+shown (hidden pieces are still skipped), so the count moves only when a file lands or a copy is handed back. The "Bundle spikes"
+line in the same F3 showed six 6 ms checks with 0 re-records: the bundle side is quiet. Off: `window.EW_HQ_INST_SCAN_VISIBLE = true`.
