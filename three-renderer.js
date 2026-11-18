@@ -85364,14 +85364,16 @@ const ThreeRenderer = (function () {
         if (!best) return null;
         return _hqEncounterTargetOf(best, bestD);
     }
+    /* THE WOUNDS (NPC encounters step 5a): the hour a resident's Sleep block ends (it is whole again after it), null for a walker with no day */
+    function _hqRestOf(ch) { try { return (ch && ch.resident && ch.resident.r && typeof hqNpcRestHour === 'function') ? hqNpcRestHour(ch.resident.r) : null; } catch (e) { return null; } }
     /* the onEncounter target record of a native (the swing's and the door strike's — DOOR_GUN_PLAN §5.3) */
     function _hqEncounterTargetOf(best, bestD) {
         var H = _hq;
         var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (ch) { return ch && ch.kind === 'npc' && !!ch.race && !ch.cast; };
         /* THE ROAMING GROUP (2026-09-21): the target's companions in the room (the same `group`, not away) — data.js hqEncounterGroup seats them */
         var group = [];
-        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, lvl: c.lvl || 0, x: c.x, z: c.z, y: c.y }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
-        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, line: best.line || null, lvl: best.lvl || 0, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
+        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, lvl: c.lvl || 0, x: c.x, z: c.z, y: c.y, rest: _hqRestOf(c) }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
+        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, line: best.line || null, lvl: best.lvl || 0, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null, rest: _hqRestOf(best) };   // an authored spot may say `swarm: true`
     }
     /* THE EYE (9.4 seam 2): the camera as it stands when the swing lands — position
        + gaze in METRES in the room frame, and the ground under the eye's column
