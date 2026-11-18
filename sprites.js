@@ -2693,6 +2693,14 @@ const RACE_MODELS_3D = {
       stepFps: 9,   // three-renderer.js THE STOP-MOTION: the mixer only advances 9 times a second, so every clip jerks like a puppet
     }),
   },
+  'vtuber': {   // 2026-11-18 THE V-TUBER: mondo 11-18 "yes" to a full Meshy model (the pop idol, silver side ponytail, bare midriff); the
+                // MPFB creator look (RACE_CREATOR_LOOKS.vtuber) stays pickable (party builder race look / Remade Race Looks)
+    female: _mkUAL('vtuber/female', 'vtuber_f', {
+      model: `${_S}/Races/vtuber/female/Meshy_AI_vtuber_f_Running.glb`,
+      heightRatio: 0.95,
+      basicAttackKind: 'magic',
+    }),
+  },
   'streamer': {   // 2026-11-18 THE STREAMER + E-GIRL: mondo 11-18 "make it like the other units where the meshy one is the default" — the
                   // Meshy models from the approved concepts; the MPFB creator look (RACE_CREATOR_LOOKS.streamer) stays selectable (creator / dev switch)
     male: _mkUAL('streamer/male', 'streamer_m', {
@@ -6343,10 +6351,11 @@ function raceLooksAreDefault() { return EW_RACE_LOOKS_ARE_DEFAULT || (typeof win
 /* 2026-11-18 THE STREAMER + E-GIRL: the Meshy models are the default (RACE_MODELS_3D.streamer); the MPFB creator look stays
    pickable: Settings > Developer > Remade Race Looks, and in the creator (RACE_CREATOR_LOOKS.streamer). */
 RACE_REMADE_LOOKS['streamer'] = RACE_CREATOR_LOOKS['streamer'];
+RACE_REMADE_LOOKS['vtuber'] = RACE_CREATOR_LOOKS['vtuber'];   // 2026-11-18 THE V-TUBER: same, the Meshy model is her default
 /* the races whose creator look is their DEFAULT (the human base + the DOOR Agent; + the saved race looks only while
    EW_RACE_LOOKS_ARE_DEFAULT is on). THE MESHY DEFAULT: every race may WEAR a creator look (ewCreatorLookRace); only these
    wear one without the slot picking it. */
-const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent', 'vtuber'].concat(EW_RACE_LOOKS_ARE_DEFAULT ? Object.keys(RACE_CREATOR_LOOKS) : []);
+const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent'].concat(EW_RACE_LOOKS_ARE_DEFAULT ? Object.keys(RACE_CREATOR_LOOKS) : []);
 function ewCreatorLookRace(race) { return typeof race === 'string' && !!race; }   // THE MESHY DEFAULT: the creator dresses every unit
 function getCharacterAppearanceModel(race, gender, appearance) {
   const own0 = ewCreatorLookRace(race) && normalizeCharacterAppearance(appearance);
