@@ -2200,6 +2200,7 @@
                     /* THE ENCOUNTER (HQ plan 9.4): a thrown gesture (the beat) and the one that LANDS on a native with the gun drawn (the crossing) */
                     onStrike: (typeof _hqStrikeEvent === 'function') ? _hqStrikeEvent : null,
                     onEncounter: (typeof _hqEncounterFire === 'function') ? _hqEncounterFire : null,
+                    onMug: (typeof _hqMugOpen === 'function') ? _hqMugOpen : null,   // THE MUGGING (NPC encounters step 4): a mugger reached the walker, it Talks first
                     /* THE AWARENESS (NPC encounters step 2, 2026-11-17): the eye by the portrait. Story walk only: where a strike could start a fight, never from an online seat */
                     awareOk: function () { try { return _hqEncounterEnabled() && _hqEncounterRoomOkNow() && !(typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()); } catch (e) { return false; } },
                     onAware: (typeof _hqAwareEvent === 'function') ? _hqAwareEvent : null,
@@ -2875,6 +2876,7 @@
                     if (encRes && !encRes.sceneOnly) setTimeout(() => { try {   // a scene replay is not a fight: no toast
                         /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
                         const pr = encRes.party || null;
+                        const lostLine = (pr && pr.lostGold > 0) ? ` · LOST ${pr.lostGold | 0} GOLD` : '';   // EVERY LOST FIGHT COSTS GOLD (NPC encounters step 4)
                         const partyLine = (pr ? (pr.restored ? ' · THE PARTY WAS TREATED' : pr.down ? ` · ${pr.down} DOWN — HEAL THEM OR REST IN MEDICAL` : ' · THE PARTY STANDS') : '')
                             + ((pr && pr.leadChanged && !encRes.escLoss && pr.lead) ? ` · ${_hqEsc(String(pr.lead).toUpperCase())} LEADS THE PARTY` : '')   // THE FAINTED LEAD (2026-10-06): slot 1 went down, the first fit member walks
                             + ((pr && pr.leveled) ? ` · ${pr.leveled} LEVELLED UP · THE PARTY IS LV ${pr.partyLevel}` : '')   // THE LEVELS (2026-09-21)
@@ -2886,8 +2888,8 @@
                                 return (j.length ? ` · ${j.map(up).join(', ')} JOINED THE PARTY` : '') + (ro.length ? ` · ${ro.map(up).join(', ')} ON YOUR ROSTER` : '') + ((cr && cr.gold > 0) ? ` · CAPTURE BOUNTY 💰 +${cr.gold | 0}` : '');
                             })();
                         if (encRes.retreat) { _hqToast(`<b>THE RETREAT</b><span>THE PARTY SLIPPED OUT · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} STILL HAS THE ROOM${partyLine}</span>`, 4200); return; }
-                        if (encRes.escLoss) { _hqToast(`<b>THE PARTY IS DOWN</b><span>${_hqEsc((encRes.escaped || []).join(', ').toUpperCase())} GOT OUT${pr && pr.lead ? ' · ' + _hqEsc(String(pr.lead).toUpperCase()) + ' LEADS THE PARTY' : ''} · HEAL THE DOWN OR REST IN MEDICAL</span>`, 4600); return; }
-                        _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS${partyLine}</span>` : `<b>EXITED</b><span>${encRes.wake === 'office' ? 'YOU CAME TO AT YOUR DESK' : 'YOU CAME TO IN THE WARD'} · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM${partyLine}</span>`, 4200);
+                        if (encRes.escLoss) { _hqToast(`<b>THE PARTY IS DOWN</b><span>${_hqEsc((encRes.escaped || []).join(', ').toUpperCase())} GOT OUT${pr && pr.lead ? ' · ' + _hqEsc(String(pr.lead).toUpperCase()) + ' LEADS THE PARTY' : ''} · HEAL THE DOWN OR REST IN MEDICAL${lostLine}</span>`, 4600); return; }
+                        _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS${partyLine}</span>` : `<b>EXITED</b><span>${encRes.wake === 'office' ? 'YOU CAME TO AT YOUR DESK' : 'YOU CAME TO IN THE WARD'} · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM${partyLine}${lostLine}</span>`, 4200);
                     } catch (e) {} }, 1400);
                     return true;
                 }
@@ -5942,6 +5944,51 @@
             if (e.key === '2') { e.preventDefault(); e.stopPropagation(); _hqLadderFight(); return; }
             if (e.key === '1' || e.key === 'e' || e.key === 'E') { e.preventDefault(); e.stopPropagation(); try { playSfx('uiButtonConfirm'); } catch (err) {} window._hqClosePanel(); _hqInteractHold(); }
         }, true);
+        /* ══ THE MUGGING (NPC encounters step 4, 2026-11-18; PLAN 4.3; mondo: "flat chance per gameday") ══
+           A mugger that reached the walker (three-renderer.js, the chase with `why: 'mug'`) Talks first: the ladder's own kind of box with its line
+           (data.js HQ_NPC_TEMPERS.lines.mug) and `1 · PAY <gold>` / `2 · FIGHT`. PAY = 8 gold x its level, never more than held (profile.js spendGold:
+           the local wallet, or the server's with an account); it walks back to its day. FIGHT = its fight, it acts first (`npcStart`). ESC, RIGHT
+           CLICK or E close the box with no answer: it asks again while he is in reach (he may run). Never where a strike cannot start a fight. */
+        function _hqMugOpen(ev) {
+            try {
+                if (!ev || !ev.target || _hqSuspended || state.gameState !== GS.HQ || _hqTerm || _hqPause || _hqPanelTarget) return false;
+                if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return false;
+                if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
+                if (typeof hqNpcMugPrice !== 'function' || !hqNpcMugLine(ev.target.race)) return false;
+                const t = ev.target, q = hqNpcMugPrice(_hqProfile(), t.lvl);
+                _hqOpenPanel({ kind: 'npc', id: t.id, race: t.race, gender: t.gender, label: t.label || String(t.race || '').toUpperCase(), sub: t.sub || '', line: null, _mug: q });
+                return true;
+            } catch (e) { console.warn('[HQ] the mugging box', e); return false; }
+        }
+        function _hqMugAnswer(what) {
+            const t = _hqPanelTarget; if (!t || !t._mugBox || t._mugDone) return;
+            const pay = (t._mug && t._mug.pay) | 0, name = _hqEsc(t.label || t.race || 'THE NATIVE'), LB = (typeof HQ_NPC_TEMPERS !== 'undefined' && HQ_NPC_TEMPERS.labels) || {};
+            if (what === 'pay') {
+                if (pay <= 0) { try { playSfx('uiError'); } catch (e) {} return; }
+                t._mugDone = true;
+                try { ThreeRenderer.hq.npcMugDone(t.id, 'paid'); } catch (e) {}
+                window._hqClosePanel(); _hqInteractHold();
+                try { playSfx('uiButtonConfirm'); } catch (e) {}
+                const PS = window.ProfileSystem;
+                Promise.resolve((PS && typeof PS.spendGold === 'function') ? PS.spendGold(pay, 'mugged') : { ok: false }).then(r => {
+                    _hqToast(`<b>${name}</b><span>${_hqEsc(LB.pay || 'PAY')} · ${(r && r.ok) ? '−' + pay : '0'} ${_hqEsc(LB.gold || 'GOLD')}</span>`, 2600);
+                }).catch(() => {});
+                return;
+            }
+            t._mugDone = true;
+            let ev = null; try { ev = ThreeRenderer.hq.encounterEvent(t.id, (typeof hqEncounterGesture === 'function' && hqEncounterGesture('click')) || 'attack'); } catch (e) { ev = null; }
+            window._hqClosePanel(); _hqInteractHold();
+            let ok = false;
+            if (ev && ev.target) ok = !!_hqEncounterFire(Object.assign(ev, { npcStart: true, why: 'mug' }));
+            try { ThreeRenderer.hq.npcMugDone(t.id, ok ? 'fight' : 'off'); } catch (e) {}
+        }
+        document.addEventListener('keydown', (e) => {
+            const t = _hqPanelTarget; if (!t || !t._mugBox || e.repeat || e.ctrlKey || e.metaKey || e.altKey || _hqPause || _hqTerm) return;
+            if (performance.now() - _hqPanelAt < 250) return;
+            if (e.key === '1') { e.preventDefault(); e.stopPropagation(); _hqMugAnswer('pay'); return; }
+            if (e.key === '2') { e.preventDefault(); e.stopPropagation(); _hqMugAnswer('fight'); return; }
+            if (e.key === 'e' || e.key === 'E') { e.preventDefault(); e.stopPropagation(); window._hqClosePanel(); _hqInteractHold(); }
+        }, true);
         function _hqEncounterFire(ev) {
             if (!ev || !ev.target) return false;
             if (_hqSuspended || state.gameState !== GS.HQ || _hqTerm || _hqPause || _hqPanelTarget) return false;
@@ -5982,7 +6029,7 @@
             /* WHOEVER STARTS THE FIGHT OPENS ROUND 1 (mondo 11-17): an NPC that came for you acts first (battle.js reads the run's `opener`) */
             if (ev.npcStart) {
                 L.opener = 'npc';
-                _hqToast(`<b>${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>STEPS IN · ENGAGING · ${_hqEncounterBoardCopy()}</span>`, 1800);
+                _hqToast(`<b>${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>${ev.why ? '' : 'STEPS IN · '}ENGAGING · ${_hqEncounterBoardCopy()}</span>`, 1800);   // `why` (step 4): a Brute, a mugger, a Territorial started it itself; none = a Guard stepped in
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
             }
             /* THE DOOR STRIKE (DOOR_GUN_PLAN §5.3, Phase 4): the door says who it struck */
@@ -9000,7 +9047,14 @@
             if (!line && pool.length) line = pool[Math.floor(Math.random() * pool.length)];
             /* THE STRIKE LADDER (NPC encounters step 3): an NPC whose temper Talks carries FIGHT in its box. After the strike that reached its Talk rung it
                says its Talk line (data.js HQ_NPC_TEMPERS.lines.talk) and the way out reads BACK OFF; on E it says its ordinary line. */
-            t._ladderBox = false;
+            t._ladderBox = false; t._mugBox = false;
+            /* THE MUGGING (step 4): the mugger's own line, PAY (what it takes, never more than held) / FIGHT */
+            if (t._mug) {
+                const LB = (typeof HQ_NPC_TEMPERS !== 'undefined' && HQ_NPC_TEMPERS.labels) || {}, pay = t._mug.pay | 0;
+                t._mugBox = true;
+                return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(((typeof hqNpcMugLine === 'function') ? hqNpcMugLine(t.race) : '') || line || '…')}</p><div class="hq-panel-actions">`
+                    + `<button class="hq-btn" data-npc-mug="pay"${pay > 0 ? '' : ' disabled'}>1 · ${_hqEsc(LB.pay || 'PAY')} ${pay}</button><button class="hq-btn hq-btn-primary" data-npc-mug="fight">2 · ${_hqEsc(LB.fight || 'FIGHT')}</button></div>`;
+            }
             if (_hqLadderTalkOk(t)) {
                 const LB = (typeof HQ_NPC_TEMPERS !== 'undefined' && HQ_NPC_TEMPERS.labels) || {};
                 if (t._struck) line = ((typeof hqNpcTalkLine === 'function') ? hqNpcTalkLine(t.race) : '') || line;
@@ -9115,7 +9169,7 @@
             else html = _hqNpcPanelHtml(t);
             body.innerHTML = html + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
             _hqPanelAt = performance.now();
-            if (_hqPanelPlain() || t._ladderBox) { const ft = body.querySelector('.hq-panel-foot'); if (ft) ft.textContent = 'E · ESC · RIGHT CLICK · CLOSE'; }
+            if (_hqPanelPlain() || t._ladderBox || t._mugBox) { const ft = body.querySelector('.hq-panel-foot'); if (ft) ft.textContent = 'E · ESC · RIGHT CLICK · CLOSE'; }
             /* THE MAP is a FULL-SCREEN sheet (the user's rule, 2026-09-16): the
                stage fills the screen, the card + the register ride a side column
                (styles-base.css .hq-panel-map); every other target keeps the card */
@@ -9142,6 +9196,8 @@
             if (_hqMap.resize) { _hqMap.resize.disconnect(); _hqMap.resize = null; }
             const panel = _hqEl('hqPanel');
             if (panel) { panel.style.display = 'none'; panel.classList.remove('hq-panel-map'); panel.classList.remove('hq-panel-say'); }
+            const mugT = _hqPanelTarget;
+            if (mugT && mugT._mugBox && !mugT._mugDone) { try { ThreeRenderer.hq.npcMugDone(mugT.id, 'none'); } catch (e) {} }   // THE MUGGING: closed with no answer, it asks again
             _hqPanelTarget = null;
             if (o && o.keepPaused) return;
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) { ThreeRenderer.hq.setPaused(false); _hqSetPrompt(ThreeRenderer.hq.target()); } } catch (e) {}
@@ -9311,6 +9367,8 @@
             const tk = e.target.closest('[data-talk],[data-talk-choice]');
             if (tk) { _hqTalkStep(tk.hasAttribute('data-talk-choice') ? +tk.getAttribute('data-talk-choice') : null); return; }
             if (e.target.closest('[data-npc-fight]')) { _hqLadderFight(); return; }   // THE STRIKE LADDER: the Talk box's FIGHT
+            const mugB = e.target.closest('[data-npc-mug]');
+            if (mugB) { if (!mugB.disabled) _hqMugAnswer(mugB.getAttribute('data-npc-mug')); return; }   // THE MUGGING: PAY / FIGHT
             /* THE CHAIR (Room 1287): a pick swaps the avatar in place */
             const avBtn = e.target.closest('[data-avatar]');
             if (avBtn && !avBtn.disabled) { window._hqPickAvatar(avBtn.getAttribute('data-avatar')); return; }

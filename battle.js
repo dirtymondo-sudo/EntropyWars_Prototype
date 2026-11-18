@@ -25318,6 +25318,7 @@
                         const p = (idx !== null && idx !== undefined && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
                         let partyRes = null;
                         let _questRes = null;   // THE QUESTS: what this fight did to a quest (data.js questEvent's return)
+                        let _lossGoldSrv = 0;   // EVERY LOST FIGHT COSTS GOLD: what the server's wallet pays after the save
                         if (p) {
                             hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, retreat: !won && _encRetreatOn, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
                             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's doors go home with the hits the board left them (a
@@ -25361,6 +25362,23 @@
                                     /* THE RECRUIT WALKS OUT (mondo 2026-11-13): a WON quest fight puts the officer back on their feet (the story's scenes and the walk after it are theirs) */
                                     let _qRevive = false; try { const _qr = _encRun(); _qRevive = !!(won && _qr && _qr.quest); } catch (e) { _qRevive = false; }
                                     if (vit.length) partyRes = hqPartyAfterMatch(p, { won, retreat: !won && _encRetreatOn, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops, reviveYou: _qRevive });
+                                    /* EVERY LOST STORY FIGHT COSTS GOLD (NPC encounters step 4, 2026-11-18; mondo 11-17: "every loss should lose you money", quest fights too):
+                                       8 gold x the strongest enemy's level (data.js hqNpcLossGold), never more than held; THE RETREAT costs nothing. Without an account the
+                                       local wallet pays on the profile this commit saves; with one the wallet is the server's (profile.js spendGold, after the save). */
+                                    try {
+                                        if (!won && !_encRetreatOn && typeof hqNpcLossGold === 'function') {
+                                            let top = 0;
+                                            const foes = (state.units || []).concat(...Object.keys(state.bench || {}).map(k => state.bench[k] || []));
+                                            for (const u of foes) { if (!u) continue; const hm = (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player; if (hm === seat || hm === 0) continue; top = Math.max(top, getUnitLevel(u) | 0); }
+                                            const lg = top > 0 ? hqNpcLossGold(p, top) : null;
+                                            if (lg && lg.lost > 0) {
+                                                if (PS && typeof PS.getServerToken === 'function' && PS.getServerToken()) _lossGoldSrv = lg.lost;
+                                                else p.account.gold = lg.held - lg.lost;
+                                                if (partyRes && typeof partyRes === 'object') partyRes.lostGold = lg.lost; else partyRes = { lostGold: lg.lost };
+                                                addLog(`💰 LOST ${lg.lost} GOLD.`);
+                                            }
+                                        }
+                                    } catch (e) { console.warn('[HQ] the lost gold failed', e); }
                                     /* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §2.6): every native the party SEALED joins — the party, else the roster
                                        (the captured ledger: owned at once, never bought), else a bounty in gold */
                                     try {
@@ -25394,6 +25412,7 @@
                                 }
                             } catch (e) { console.warn('[QUEST] the fight could not be filed', e); _questRes = null; }
                             PS.saveProfile(idx, p);
+                            if (_lossGoldSrv > 0) { try { Promise.resolve(PS.spendGold(_lossGoldSrv, 'lost fight')).catch(() => {}); } catch (e) {} }
                         }
                         /* ESCAPE (EXPLORATION_BATTLES §6): who got out (by name), THE RETREAT, and the door the room was entered by (the way back) */
                         const _escSeat = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
@@ -55558,7 +55577,7 @@
                     const labels = DOOR_HQ.masteryLabels || {};
                     tail = flag.mastered ? ' · THRESHOLD STABILIZED' : (flag.cond ? ' · FILED ' + (labels[flag.cond] || flag.cond) : '');
                 }
-                el.textContent = (er.won ? 'HELD' : er.retreat ? 'RETREAT' : 'EXITED') + ' · THE ENCOUNTER · ' + roomLabel + (er.label ? ' · ' + String(er.label).toUpperCase() : '') + tail + (f3Tag ? ' · ' + f3Tag : '');
+                el.textContent = (er.won ? 'HELD' : er.retreat ? 'RETREAT' : 'EXITED') + ' · THE ENCOUNTER · ' + roomLabel + (er.label ? ' · ' + String(er.label).toUpperCase() : '') + tail + ((!er.won && er.party && er.party.lostGold > 0) ? ' · LOST ' + (er.party.lostGold | 0) + ' GOLD' : '') + (f3Tag ? ' · ' + f3Tag : '');   // EVERY LOST FIGHT COSTS GOLD (NPC encounters step 4)
                 el.className = 'drs-site on' + (er.won ? '' : ' partial');
                 return;
             }

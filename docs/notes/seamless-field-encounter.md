@@ -5,6 +5,10 @@ Append new notes for this system at the end of this file.
 
 ## THE ENCOUNTER — PLAYER-INITIATED (HQ plan 9.4 stage 1) — 2026-09-15 rev 16 / rev 17 THE CLICK, local delivery
 **REPLACED 2026-11-17 (NPC encounters step 3, THE STRIKE LADDER): a strike no longer starts the fight at once for an NPC with a temper. It walks the NPC's ladder (run, Talk, fight; three strikes at most); only the last rung launches. A race with no temper still fights on the first strike. Notes: `docs/notes/npc-system.md` "THE STRIKE LADDER".**
+**REPLACED 2026-11-18 (NPC encounters step 4, mondo's answers of 11-17): "never random" no longer holds.** NPCs start fights on their own
+now: Brutes at sight, a Territorial after its warning, muggers by a flat chance per game day; never in DOOR HQ, a cutscene, a quest scene or
+from an online seat. Notes: `npc-system.md` "NPC-STARTED FIGHTS". The paragraph below is history.
+
 **Never random (the user's rule).** In a WILD room (data.js
 `hqEncounterRoomOk(roomId)` = `hqRoomSite` non-null — a site's board room
 or a complex part; the facility is safe by construction) the officer

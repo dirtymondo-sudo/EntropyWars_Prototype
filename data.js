@@ -89762,7 +89762,7 @@ function hqSpawnExpand() {
 }
 hqSpawnExpand();
 /* ══ THE NPC TEMPERS (NPC encounters step 1b, 2026-11-17; docs/plans/npc-encounters/PLAN.md + STEP-1A.md; mondo's answers of 11-17) ══
-   DATA ONLY: nothing reads this yet (step 2 awareness + the marks, step 3 the ladder, step 4 the muggings, step 6b giving up).
+   Read by step 2 (awareness + the marks), step 3 (the ladder) and step 4 (NPC-started fights, the muggings, the gold a lost fight costs); step 6b (giving up) is not built.
    A temper is how a race answers the player on the walk. `ladder` = what each strike does, in order ('flee' → 'talk' → 'fight': three at most,
    a temper may skip steps, never add). `starts` = how it starts a fight on its own: 'mug' (walks up and Talks: pay or fight), 'ground' (one
    warning when you step on its ground, then fights), 'sight' (comes at you when it sees you), 'defend' (when it sees you strike one it defends).
@@ -89826,7 +89826,19 @@ const HQ_NPC_TEMPERS = {
        `giveUpM` metres or after `loseMs` without seeing him. PROPOSALS, all of them. */
     guard: { strikesSeen: 2, warnMs: 8000, chaseSpeed: 2.7, reachM: 1.9, giveUpM: 32, loseMs: 6000 },
     levelGap: 8,               // an NPC this many levels (or more) under the party never starts a fight (mondo: "8 is fine")
-    mug: { perDay: 0.25, goldPerLevel: 8 },   // a flat chance per mugger per game day (mondo 11-17: "flat chance per gameday"; the number is a PROPOSAL); the price = 8 gold x its level
+    /* NPC-STARTED FIGHTS (step 4, 2026-11-18; PLAN 4.3; REPLACES "never random"). `levelGapOn`: the ways of starting the gap holds back ('defend' = a Guard
+       that saw a strike still says its line, it only does not come). `graceMs`: nobody starts anything this long after the room is entered or handed back.
+       `brute`: one that sees the walker comes at `chaseSpeed` m/s (he walks 2.4, runs 4.6), fights within `reachM`, gives up past `giveUpM` or `loseMs` unseen,
+       and does not come again for `againMs`. `ground`: a Territorial that warned fights when he is still on its ground `stayMs` later, or within `nearM` of it
+       `warnMs` after the line; it never steps off its ground. PROPOSALS, all of them. */
+    levelGapOn: ['sight', 'ground', 'mug', 'defend'],
+    graceMs: 5000,
+    brute: { chaseSpeed: 2.7, reachM: 1.9, giveUpM: 32, loseMs: 6000, againMs: 5000 },
+    ground: { stayMs: 6000, nearM: 4, warnMs: 1500, chaseSpeed: 2.7, reachM: 1.9, giveUpM: 32, loseMs: 6000, againMs: 5000 },
+    /* THE MUGGING: a flat chance per mugger per game day (mondo 11-17: "flat chance per gameday"; `perDay` is a PROPOSAL), one try a game day; it comes at
+       `chaseSpeed`, Talks within `reachM` (PAY / FIGHT; the price = `goldPerLevel` x its level, never more than held); a box closed with no answer is asked
+       again after `againMs` if he is still in reach. Only a race with a line in `lines.mug` mugs. */
+    mug: { perDay: 0.25, goldPerLevel: 8, chaseSpeed: 2.7, reachM: 2.2, giveUpM: 32, loseMs: 6000, againMs: 4000 },
     lossGoldPerLevel: 8,       // a lost story fight (quest fights too): 8 gold x the strongest enemy's level, never more than held; a retreat costs nothing (mondo 11-17)
     payOffGoldPerLevel: 8,     // what an NPC that gave up pays (PLAN 4.4)
     /* THE LINES (mondo 11-17: "these lines are fine for now"). talk: after the second strike, or E first. warn: over the head, once. */
@@ -89901,7 +89913,7 @@ function hqNpcTalkLine(race) { return HQ_NPC_TEMPERS.lines.talk[String(race || '
 function hqNpcGuardSees(guard, victim, o) {
     if (!guard || !victim || guard.id === victim.id || !hqNpcDefends(guard, victim)) return null;
     const m = hqNpcMem(guard.room, guard.id, true); m.saw++;
-    if (m.saw >= HQ_NPC_TEMPERS.guard.strikesSeen) return 'come';
+    if (m.saw >= HQ_NPC_TEMPERS.guard.strikesSeen) return hqNpcGapHolds(guard, o && o.partyLevel, 'defend') ? null : 'come';   // step 4, the level gap: a Guard far under the party has said its line and does not come
     if (!m.warned) { m.warned = true; return 'warn'; }
     return null;
 }
@@ -89925,15 +89937,66 @@ function hqNpcOnGround(roomId, ground, x, z) {
    eye by the portrait opens); 'alert' = it is coming for him or will step in (the red mark over its head).
    `ch` = { race, id, room, lvl, dist }; `o` = { aim: the NPC under the player's strike aim { id, race } | null, x, z: the player, partyLevel }.
    Today's rows: a Guard / Protector watches, and is on alert while the aim is on someone it defends; a Territorial with a ground counts only while the
-   player stands on that ground, and is then on alert (it warns); a mugger or a Brute watches unless the level gap says it never starts a fight. The
-   muggers' and Brutes' own alert (they are coming) is set by step 4, which makes them come. */
+   player stands on that ground, and is then on alert (it warns); a mugger or a Brute watches unless the level gap says it never starts a fight. Their
+   own alert (the red mark while one comes for him: a Brute, a mugger, the Ghost after its warning) is the walk's (three-renderer.js: a body in a chase). */
 function hqNpcActs(ch, o) {
     const t = hqNpcTemper(ch); if (!t || !t.watch) return null;
     o = o || {};
     if (t.starts === 'defend') return (o.aim && o.aim.id !== ch.id && hqNpcDefends(ch, o.aim)) ? 'alert' : 'watch';
+    if (hqNpcGapHolds(ch, o.partyLevel, t.starts)) return null;   // the level gap: it never starts a fight, so it does not count (step 4: a Territorial too)
     if (t.starts === 'ground') { const g = hqNpcGround(ch); if (!g) return 'watch'; return hqNpcOnGround(ch.room, g, o.x, o.z) ? 'alert' : null; }
-    if (ch.lvl > 0 && o.partyLevel > 0 && o.partyLevel - ch.lvl >= HQ_NPC_TEMPERS.levelGap) return null;
     return 'watch';
+}
+/* ══ NPC-STARTED FIGHTS, the rules (NPC encounters step 4, 2026-11-18; PLAN 4.3; REPLACES "never random") ══
+   THE LEVEL GAP (mondo: "8 is fine"): an NPC `levelGap` or more levels under the party never starts a fight (`how` = its temper's `starts`). */
+function hqNpcGapHolds(ch, partyLevel, how) {
+    const T = HQ_NPC_TEMPERS; if (how && T.levelGapOn.indexOf(how) < 0) return false;
+    return !!(ch && ch.lvl > 0 && partyLevel > 0 && partyLevel - ch.lvl >= T.levelGap);
+}
+/* THE GAME DAY: a count of the world clock's days in this page (the hour passing midnight starts a new one). The walk feeds it its hour. */
+let _hqGameDayBook = { n: 0, h: null, seed: Date.now() };
+function hqGameDay(hour) {
+    const B = _hqGameDayBook; hour = +hour;
+    if (isFinite(hour)) { if (B.h !== null && hour < B.h - 12) B.n++; B.h = hour; }
+    return B.n;
+}
+/* THE MUGGING'S ROLL: is this mugger out to rob the walker this game day? The same answer all that day. */
+function hqNpcMugRoll(roomId, id, gameDay) {
+    return (hqHash(_hqGameDayBook.seed + '|' + (gameDay | 0) + '|' + roomId + '|' + id + '|mug') / 4294967296) < HQ_NPC_TEMPERS.mug.perDay;
+}
+function hqNpcMugLine(race) { return HQ_NPC_TEMPERS.lines.mug[String(race || '').toLowerCase()] || ''; }
+/* a mugger set off (or the walker paid / fought it): no second try that game day */
+function hqNpcMugTried(ch, gameDay) { const m = hqNpcMem(ch.room, ch.id, true); m.mugDay = gameDay | 0; return m; }
+/* the price a mugger asks: { price, pay (never more than held), held } */
+function hqNpcMugPrice(profile, lvl) {
+    const price = Math.max(1, lvl | 0) * HQ_NPC_TEMPERS.mug.goldPerLevel, held = Math.max(0, (profile && profile.account && profile.account.gold) | 0);
+    return { price, pay: Math.min(price, held), held };
+}
+/* WHAT AN NPC THAT SEES THE WALKER STARTS, right now: 'sight' (a Brute comes) | 'mug' (a mugger comes to Talk) | 'ground' (a Territorial that warned comes) | null.
+   `ch` = { race, id, room, lvl, dist }; `o` = { x, z: the walker, d: metres between them, partyLevel, gameDay, warnedMs: since its warning line (0 = not said) }.
+   A Guard / Protector is not here: it answers a strike it saw (hqNpcGuardSees). */
+function hqNpcStarts(ch, o) {
+    const t = hqNpcTemper(ch); if (!t || !t.starts || t.starts === 'defend') return null;
+    o = o || {};
+    if (hqNpcGapHolds(ch, o.partyLevel, t.starts)) return null;
+    const T = HQ_NPC_TEMPERS;
+    if (t.starts === 'sight') return 'sight';
+    if (t.starts === 'ground') {
+        const g = hqNpcGround(ch); if (!g || !(o.warnedMs > 0) || !hqNpcOnGround(ch.room, g, o.x, o.z)) return null;
+        return o.warnedMs >= ((o.d <= T.ground.nearM) ? T.ground.warnMs : T.ground.stayMs) ? 'ground' : null;
+    }
+    if (t.starts === 'mug') {
+        if (!hqNpcMugLine(ch.race)) return null;
+        const m = hqNpcMem(ch.room, ch.id, false); if (m && m.mugDay === (o.gameDay | 0)) return null;
+        return hqNpcMugRoll(ch.room, ch.id, o.gameDay) ? 'mug' : null;
+    }
+    return null;
+}
+/* EVERY LOST STORY FIGHT COSTS GOLD (mondo 11-17: "every loss should lose you money"; quest fights too; a retreat costs nothing):
+   `lossGoldPerLevel` x the strongest enemy's level, never more than held. { cost, lost, held }; nothing is written here. */
+function hqNpcLossGold(profile, lvl) {
+    const cost = Math.max(1, lvl | 0) * HQ_NPC_TEMPERS.lossGoldPerLevel, held = Math.max(0, (profile && profile.account && profile.account.gold) | 0);
+    return { cost, lost: Math.min(cost, held), held };
 }
 let _hqCityGridCache = null;
 /* THE ROUTE MAP of a room: { nx, nz, x0, z0, res, walk (Uint8: 0 no, 1 ground, 2 road), comp (the walk's own component: 1), openE / openS (Uint8: the
