@@ -57,3 +57,14 @@ per member. A secret group is never the unit's home group (no shaded area, the g
 shows as a hollow dot under the unit, a "secretly" chip in its Groups, and a dotted line only when one end is
 selected. Export: `boardGroups[...].secretMembers`. Example: the Pope in Vatican (place), Christianity
 (faction) and secretly the Illuminati (faction).
+
+## One unit in many places, places inside places, the game's map (2026-11-18)
+- **Copies:** a unit in more groups of the board's kind than its home one shows a copy of its icon in each other group
+  (`copyList`; spot kept on the member tie as `cx, cy`). A copy is the same unit: click it to open the unit, drag it
+  alone. When the unit is selected, dotted lines join it to its copies. Secret groups get no copy.
+- **Places inside places:** a group's `parent` (inspector: Inside). The parent's shaded area takes in its children's,
+  dragging its pill moves them, Sort into groups rings the children round the parent.
+- **Map** (toolbar): every zone, district and Disaster City plot from data.js `HQ_ZONE_MAP` + the hub labels, with the
+  world map; Add puts it on the board as a place group nested in its zone / district (`src: map:<zone>[:<district>[:<plot>]]`).
+  A place group already on the board with the same name ("Sewers" = "The Sewers") is reused. build.js reads data.js
+  at build time (`places()`), so rebuild after the map changes.
