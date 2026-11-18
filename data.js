@@ -101146,7 +101146,15 @@ const HQ_CITY_LOOKS = {
         fascia: { y: 2.75, h: 0.55, glow: 0.9 },                                      // the lit strip over the ground floor's front
         board: { minW: 4, h: 4.0, post: 1.2, glow: 0.95, frame: 0x16141e },           // the roof billboard (a rectangle on two posts)
         blade: { cell: 1.0, out: 0.75, y0: 3.3, yLow: 1.1, glow: 1.0 },                          // the blade sign: one lit square a character, stacked down the front's corner
-        holo: { minTop: 6.5, h: 5.0, lift: 7.5, glow: 1.0 },                          // the hologram: a word of light standing over a tall roof (no board, seen from both sides)
+        holo: { minTop: 6.5, h: 5.0, lift: 7.5, glow: 1.0 },
+        /* PASS 3, HEIGHT (mondo 11-18: "let's just do 1 (height) for now"): a tower stands OVER most buildings, on four legs, `gap` m clear of the
+           old roof (the roof walks, its stairs and its routes stay as they are: nothing of the old building is closed or moved). `min`..`max`
+           storeys by the row's hash (a plan under `smallM` m gets `small` storeys); from `tierAt` storeys up the top `tierK` of it steps in.
+           Window sheets from the Urban Decay pack, lit; a mast and a beacon on the tall ones; the billboard hangs on the tower's two long faces
+           and the hologram stands over its top. `sky` = glass skyways between neighbouring towers. */
+        tower: { p: 0.8, gap: 3.5, storey: 3.5, min: 5, max: 16, smallM: 7, small: [2, 4], inset: 0.5, leg: 0.9, tierAt: 8, tierK: 0.4, tierIn: 1.6,
+                 wins: ['urban:GlassWindowTall1a', 'urban:GlassWindowSquare2a', 'urban:GlassWindowTall1a-Glow'], winGlow: 0.34, mastAt: 10, sign: 5.0 },
+        sky: { min: 9, max: 46, w: 2.6, h: 2.8, glow: 0.3 },                          // the hologram: a word of light standing over a tall roof (no board, seen from both sides)
         /* the old Cyberpunk room's own sign words (three-renderer.js _HQ_NEON_NAMES + _NR_BUILDERS.cyberpunk): nothing new is named here */
         names: ['NOODLE', 'RAMEN 24H', 'PACHINKO', 'HOLO', 'BAR', 'NO VACANCY', 'ARCADE', 'HOTEL', 'SYNTH', 'IMPLANTS', 'LEASE 2047', 'RETINA', 'ATM · CRYPTO', 'TENANTS'],
         /* the same words in kana for the blade signs (ノイズ and 夢 are the old room's own; the rest spell RAMEN, PACHINKO, HOTEL, BAR, ARCADE, NOODLE) */
@@ -101171,7 +101179,8 @@ function hqCityLookTerrain(roomId, base, lookId) {
     };
     const builds = {};   // footprint rows by id: only a real building gets the lines, the signs and the hologram
     for (const f of T.features) if (f.k === 'texbuilding' && f.id && boxOf(f)) builds[f.id + ':arch'] = f;
-    let nWall = 0, nSign = 0, nGlass = 0, nBoard = 0, nBlade = 0, nHolo = 0, nRow = 0;
+    let nWall = 0, nSign = 0, nGlass = 0, nBoard = 0, nBlade = 0, nHolo = 0, nRow = 0, nTower = 0, nSky = 0;
+    const towers = [];
     const features = T.features.map((row) => {
         if (row.k !== 'arch' || !Array.isArray(row.parts) || !boxOf(row)) return row;
         nRow++;
@@ -101235,7 +101244,50 @@ function hqCityLookTerrain(roomId, base, lookId) {
                 }
                 nBlade++;
             }
-            if (w >= L.board.minW) {
+            /* THE TOWER over the building (PASS 3) */
+            let tower = null;
+            const TW = L.tower;
+            if (TW && ((h >>> 11) % 100) < TW.p * 100) {
+                const small = Math.min(w, d) < TW.smallM, n = small ? TW.small[0] + (h >>> 9) % (TW.small[1] - TW.small[0] + 1) : TW.min + (h >>> 9) % (TW.max - TW.min + 1);
+                const yb = top + TW.gap, H = n * TW.storey, tw = w - TW.inset * 2, td = d - TW.inset * 2, lg = TW.leg;
+                const win = TW.wins[(h >>> 13) % TW.wins.length], band = hx(ink2);
+                const mass = (y, hh, mw, md) => {   // one tier: the lit glass, four steel corners, a neon line every second storey, a cap
+                    parts.push({ s: 'box', p: [cx, y, cz], size: [mw, hh, md], key: win, tint: glassTint, glow: TW.winGlow, shine: 90, uv: [1.75, TW.storey], win: 'keep' });
+                    for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.push({ s: 'box', p: [cx + sx * mw / 2, y, cz + sz * md / 2], size: [0.5, hh, 0.5], key: F.key, tint: F.tint, gain: F.gain, shine: F.shine });
+                    for (let yy = y + TW.storey * 2; yy < y + hh - 1; yy += TW.storey * 2)
+                        parts.push({ s: 'box', p: [cx, yy, cz + md / 2 + t / 2], size: [mw + t * 2, t, t], tint: band, glow: g }, { s: 'box', p: [cx, yy, cz - md / 2 - t / 2], size: [mw + t * 2, t, t], tint: band, glow: g },
+                                   { s: 'box', p: [cx + mw / 2 + t / 2, yy, cz], size: [t, t, md], tint: band, glow: g }, { s: 'box', p: [cx - mw / 2 - t / 2, yy, cz], size: [t, t, md], tint: band, glow: g });
+                    parts.push({ s: 'box', p: [cx, y + hh, cz], size: [mw + 0.5, 0.35, md + 0.5], key: F.key, tint: F.trim, shine: F.shine });
+                };
+                for (const sx of [-1, 1]) for (const sz of [-1, 1])   // the four legs, from the old roof up to the tower's floor
+                    parts.push({ s: 'box', p: [cx + sx * (tw / 2 - lg / 2), top, cz + sz * (td / 2 - lg / 2)], size: [lg, TW.gap, lg], key: F.key, tint: F.trim, shine: F.shine });
+                parts.push({ s: 'box', p: [cx, yb - 0.3, cz], size: [tw + 0.4, 0.3, td + 0.4], tint: glassTint, glow: 0.55 });   // the lit soffit over the old roof
+                let yTop = yb + H, mw = tw, md = td;
+                if (n >= TW.tierAt && tw - TW.tierIn * 2 >= 4 && td - TW.tierIn * 2 >= 3) {
+                    const h2 = Math.round(n * TW.tierK) * TW.storey, h1 = H - h2;
+                    mass(yb, h1, tw, td); mw = tw - TW.tierIn * 2; md = td - TW.tierIn * 2; mass(yb + h1, h2, mw, md);
+                } else mass(yb, H, tw, td);
+                parts.push({ s: 'box', p: [cx, yTop + 0.35, cz + md / 2 + t / 2], size: [mw + t * 2, t, t], tint: ink, glow: g }, { s: 'box', p: [cx, yTop + 0.35, cz - md / 2 - t / 2], size: [mw + t * 2, t, t], tint: ink, glow: g },
+                           { s: 'box', p: [cx + mw / 2 + t / 2, yTop + 0.35, cz], size: [t, t, md], tint: ink, glow: g }, { s: 'box', p: [cx - mw / 2 - t / 2, yTop + 0.35, cz], size: [t, t, md], tint: ink, glow: g });
+                if (n >= TW.mastAt) { const mh = 6 + (h >>> 4) % 7; parts.push({ s: 'box', p: [cx, yTop + 0.35, cz], size: [0.3, mh, 0.3], tint: L.board.frame }, { s: 'box', p: [cx, yTop + 0.35 + mh, cz], size: [0.5, 0.5, 0.5], tint: 0xff3030, glow: 1 }); yTop += 0; }
+                /* the sign on the tower's two long faces (the roof billboard's words, on the wall) */
+                if (tw >= L.board.minW && H >= TW.sign + 3) {
+                    const bw = Math.min(tw * 0.82, 14), bh = Math.min(TW.sign, bw * 0.5), sy = yb + Math.min(H - bh - 1.5, TW.storey * 2), name = L.names[(h >>> 3) % L.names.length];
+                    const sk = 'txt:' + name + '|' + ink2 + '|' + L.signBg + '|' + (bw / bh).toFixed(2);
+                    parts.push({ s: 'quad', p: [cx, sy, cz + td / 2 + 0.3], size: [bw, bh], key: sk, uv: 'fit', kind: 'wall', glow: L.board.glow },
+                               { s: 'quad', p: [cx, sy, cz - td / 2 - 0.3], ry: 180, size: [bw, bh], key: sk, uv: 'fit', kind: 'wall', glow: L.board.glow });
+                    nBoard++;
+                }
+                if (n >= TW.tierAt) {   // the hologram over the tower's top
+                    const hw = L.holos[(h >>> 7) % L.holos.length], hl = Array.from(hw).length, hh = L.holo.h * 1.4, hwid = Math.min(hh * Math.max(1, hl * 0.75), 20), hk = 'txt:' + hw + '|' + inkS + '||' + (hwid / hh).toFixed(2), hy = yTop + 9;
+                    parts.push({ s: 'quad', p: [cx, hy, cz + 0.05], size: [hwid, hh], key: hk, uv: 'fit', kind: 'over', glow: L.holo.glow }, { s: 'quad', p: [cx, hy, cz - 0.05], ry: 180, size: [hwid, hh], key: hk, uv: 'fit', kind: 'over', glow: L.holo.glow });
+                    nHolo++;
+                }
+                const a = -(row.rot || 0) * Math.PI / 180, rc = Math.cos(a), rs = Math.sin(a);
+                tower = { x: row.x + cx * rc + cz * rs, z: row.z - cx * rs + cz * rc, y0: (row.y || 0) + yb, y1: (row.y || 0) + yb + H, r: Math.min(tw, td) / 2, tint: glassTint, ink: band };
+                towers.push(tower); nTower++;
+            }
+            if (!tower && w >= L.board.minW) {
                 /* the billboard: a dark rectangle on two posts over the front (+Z), its words lit on both faces */
                 const bw = Math.min(w * 0.8, 14), bh = Math.min(L.board.h, bw * 0.45), by = top + L.board.post, bz = z1 - 0.7, name = L.names[(h >>> 3) % L.names.length], asp = (bw / bh).toFixed(2);
                 const sk = 'txt:' + name + '|' + ink2 + '|' + L.signBg + '|' + asp;
@@ -101255,6 +101307,25 @@ function hqCityLookTerrain(roomId, base, lookId) {
         }
         return Object.assign({}, row, { parts: parts });
     });
+    /* THE SKYWAYS (PASS 3): each tower is joined to its nearest neighbour that is tall enough, by one glass bridge a storey over the lower tower's
+       floor; a row of its own, so no building's row is touched */
+    if (L.sky) {
+        const done = {};
+        towers.forEach((A, i) => {
+            let best = -1, bd = 1e9;
+            towers.forEach((B, j) => { if (j === i) return; const dd = Math.hypot(B.x - A.x, B.z - A.z); const y = Math.max(A.y0, B.y0) + 3.5; if (dd >= L.sky.min && dd <= L.sky.max && dd < bd && y + L.sky.h < Math.min(A.y1, B.y1)) { bd = dd; best = j; } });
+            if (best < 0) return;
+            const k2 = Math.min(i, best) + ':' + Math.max(i, best); if (done[k2]) return; done[k2] = 1;
+            const B = towers[best], y = Math.max(A.y0, B.y0) + 3.5, len = bd - A.r - B.r + 0.6, mx = (A.x + B.x) / 2 + (A.r - B.r) / 2 * (B.x - A.x) / bd, mz = (A.z + B.z) / 2 + (A.r - B.r) / 2 * (B.z - A.z) / bd;
+            if (len < 3) return;
+            const ry = Math.atan2(B.x - A.x, B.z - A.z) * 180 / Math.PI + 90;   // the box's long side (its x) along the line between the towers
+            features.push({ k: 'arch', id: 'look:sky:' + k2, x: mx, z: mz, y: 0, rot: 0, parts: [
+                { s: 'box', p: [0, y, 0], ry: ry, size: [len, L.sky.h, L.sky.w], key: 'urban:GlassWindowSquare2a', tint: A.tint, glow: L.sky.glow, shine: 90, uv: [1.75, L.sky.h], win: 'keep' },
+                { s: 'box', p: [0, y - 0.16, 0], ry: ry, size: [len, 0.16, L.sky.w + 0.3], tint: A.ink, glow: 1 },
+                { s: 'box', p: [0, y + L.sky.h, 0], ry: ry, size: [len, 0.16, L.sky.w + 0.3], tint: A.ink, glow: 1 }] });
+            nSky++;
+        });
+    }
     let traffic = T.traffic;
     if (L.traffic && Array.isArray(T.traffic)) {
         let n = 0;
@@ -101268,7 +101339,7 @@ function hqCityLookTerrain(roomId, base, lookId) {
     }
     const terrain = Object.assign({}, T, { features: features, traffic: traffic, gen: gen });
     _hqCityLookCache[ck] = { from: T, terrain: terrain };
-    if (typeof console !== 'undefined') console.log('[HQ] city look ' + lookId + ': ' + nRow + ' rows, ' + nWall + ' wall parts refinished, ' + nSign + ' signs relit, ' + nGlass + ' glass lit, ' + nBoard + ' billboards, ' + nBlade + ' blade signs, ' + nHolo + ' holograms');
+    if (typeof console !== 'undefined') console.log('[HQ] city look ' + lookId + ': ' + nRow + ' rows, ' + nWall + ' wall parts refinished, ' + nSign + ' signs relit, ' + nGlass + ' glass lit, ' + nBoard + ' billboards, ' + nBlade + ' blade signs, ' + nHolo + ' holograms, ' + nTower + ' towers, ' + nSky + ' skyways');
     return terrain;
 }
 /* the city's one variant (set here, outside the baked block: `node bake-disaster-city.js` neither writes nor drops it) */
