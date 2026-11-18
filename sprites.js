@@ -3419,7 +3419,7 @@ const RACE_MODELS_3D = {
   // feminine idle.
   'gargoyle': {
     male: _mkUAL('gargoyle/male', 'gargoyle_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
-      model: `${_S}/Races/gargoyle/male/Meshy_AI_gargoyle_m_Running.glb`,
+      model: `${_S}/Races/gargoyle/male/Meshy_AI_gargoyle_m_Running_v2.glb`,   // 11-18: the claw-to-wing sliver by his right hand removed (mondo: "a piece sticking out")
       heightRatio: 1.1, basicAttackKind: 'claw',
     }),
     female: _mkUAL('gargoyle/female', 'female_gargoyle_real', {
