@@ -77,7 +77,7 @@ exports.dress = c => {
     /* the Recycle Bin: crumpled things round its foot */
     [[7.5, 6.6], [10.4, 6.8], [6.7, 10.2]].forEach(([x, y]) => c.dec('cardboard_box', 'P02-02', x, y));
     /* the Uplink (P02-01): the trunk out to the Feed: dishes on the hall's east rim */
-    c.put('antenna_dish', 'P02-01', 9, 1, { face: 90 }); c.put('antenna_dish', 'P02-01', 9, 10, { face: 90 });
+    c.put('cyber_dish', 'P02-01', 9, 1, { face: 90, h: 3.4 }); c.put('cyber_dish', 'P02-01', 9, 10, { face: 90, h: 3.4 });   // the Meshy `cyber_dish` (THE INTERNET MODELS, 11-18)
     /* fire kit and the odd chair along the aisles */
     [['P00-01', 4, 4], ['P01-00', 7, 4], ['P02-01', 4, 7], ['P01-02', 7, 7]].forEach(([id, x, y]) => c.dec('fire_extinguisher', id, x, y));
 };
