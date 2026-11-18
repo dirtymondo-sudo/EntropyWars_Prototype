@@ -85825,7 +85825,14 @@ const ThreeRenderer = (function () {
     function _hqNavGrid(L, slot) {
         if (typeof window !== 'undefined' && window.EW_HQ_NAV_GRID_OFF) return null;
         slot = slot || 'grid';
-        var N = _hq.nav, G = N[slot]; if (G && G.list === L && G.n === L.length) return G;
+        /* the rider's grid hangs on its own list (a list swapped in for a moment, the stuck watch's near list, the people's list, keeps its
+           own: no laying again as the lists take turns) */
+        var N = _hq.nav, own = slot === 'wgrid', G = own ? L._ewWG : N[slot];
+        /* THE LIST'S OWN STAMP (2026-11-18, spikes thread): the rider's grid reads _hq.blockers itself, which a resident's body joins (push)
+           and leaves (splice): a leave and a join kept the length and shifted every index after it. The list now counts its reorders
+           (splice / shift / sort ...): a reorder lays the grid again; a join only adds the new ones at the end, read on every ask. */
+        if (slot === 'wgrid') _hqBlkListStamp(L);
+        if (G && G.list === L && (L._ewReo == null ? G.n === L.length : (G.reo === L._ewReo && L.length >= G.n))) return G;
         var U = _hqUnits(), n = L.length, c = HQ_NAV_GRID_M, pad = HQ_BODY_R + 0.1;
         G = { list: L, n: n, c: c, cells: new Map(), loose: [], moved: new Uint8Array(n), px: new Float64Array(n), pz: new Float64Array(n), reach: new Float64Array(n), sw: 0, swAt: 0 };
         for (var i = 0; i < n; i++) {
@@ -85836,7 +85843,15 @@ const ThreeRenderer = (function () {
             var i0 = Math.floor((bx - r - pad) / c), i1 = Math.floor((bx + r + pad) / c), j0 = Math.floor((bz - r - pad) / c), j1 = Math.floor((bz + r + pad) / c);
             for (var gi = i0; gi <= i1; gi++) for (var gj = j0; gj <= j1; gj++) { var key = (gi + 32768) * 65536 + (gj + 32768), a = G.cells.get(key); if (!a) G.cells.set(key, a = []); a.push(i); }
         }
-        N[slot] = G; return G;
+        G.reo = L._ewReo; if (own) Object.defineProperty(L, '_ewWG', { value: G, writable: true, configurable: true, enumerable: false }); else N[slot] = G; return G;
+    }
+    function _hqBlkListStamp(L) {
+        if (!L || L._ewReo != null) return;
+        Object.defineProperty(L, '_ewReo', { value: 0, writable: true, enumerable: false });
+        ['splice', 'shift', 'unshift', 'pop', 'sort', 'reverse', 'fill', 'copyWithin'].forEach(function (m) {
+            var f = Array.prototype[m];
+            Object.defineProperty(L, m, { value: function () { L._ewReo++; return f.apply(L, arguments); }, writable: true, configurable: true, enumerable: false });
+        });
     }
     /* the blockers an ask at (x, z) must read: its cell's, plus every one seen moving since the grid was laid (a slice of the list is
        re-read once a frame; a blocker that moved or changed size leaves the grid for good) */
@@ -85848,6 +85863,7 @@ const ThreeRenderer = (function () {
         var a = G.cells.get((Math.floor(x / G.c) + 32768) * 65536 + (Math.floor(z / G.c) + 32768)), out = [];
         if (a) for (var k = 0; k < a.length; k++) if (!G.moved[a[k]]) out.push(a[k]);
         if (G.loose.length) { for (var m = 0; m < G.loose.length; m++) out.push(G.loose[m]); out.sort(function (p, q) { return p - q; }); }
+        for (var e = G.n; e < L.length; e++) out.push(e);   // the ones that joined since the grid was laid (THE LIST'S OWN STAMP)
         return out;
     }
     /* may the airborne body be at (x, z) with its feet at y? a blocker's
@@ -85879,7 +85895,7 @@ const ThreeRenderer = (function () {
            blockers + the ones seen moving; the grid's pad 0.44 m holds the stand pad 0.12 m); the highest top is the same in any order.
            Off: window.EW_HQ_WALK_GRID_OFF (with the rider's grid) or window.EW_HQ_FLOOR_FULL_LIST. */
         var FL = _hq.blockers, fIds = null;
-        if (_hq.nav && _hqWalkGridOn && FL.length > 64 && typeof window !== 'undefined' && !window.EW_HQ_WALK_GRID_OFF && !window.EW_HQ_FLOOR_FULL_LIST) { var FG = _hqNavGrid(FL, 'wgrid'); if (FG) fIds = _hqNavGridAt(FG, x, z); }
+        if (_hq.nav && _hqWalkGridOn && FL.length > 64 && typeof window !== 'undefined' && !window.EW_HQ_WALK_GRID_OFF && !window.EW_HQ_FLOOR_FULL_LIST) { var FG = _hqNavGrid(FL, FL === _hq.nav.statics ? undefined : 'wgrid'); if (FG) fIds = _hqNavGridAt(FG, x, z); }
         for (var fi = 0, fn = fIds ? fIds.length : FL.length; fi < fn; fi++) {
             var b = FL[fIds ? fIds[fi] : fi], top = _hqBlkTop(b);
             if (b.mc) { var mt = _mcTopUnder(b, x, z, feetY + 0.05, null); if (mt !== null && (best === null || mt > best)) best = mt; continue; }   // THE REAL COLLISION: a jump lands on the model's own top under the feet
@@ -86969,6 +86985,8 @@ const ThreeRenderer = (function () {
         var day = (typeof hqToday === 'function') ? hqToday() : S.day; if (day !== S.day) S.day = day;
         if (!off) for (var b = 0; b < S.list.length; b++) { var s0 = S.list[(S.next + b) % S.list.length]; if (s0.day !== S.day && !(s0.ch && !s0.ch.away)) { try { s0.tl = hqResidentTimeline(S.G, s0.r, S.day); } catch (e) { s0.tl = null; } s0.day = S.day; S.next = (S.next + b + 1) % S.list.length; break; } }
         var pl = H.player, scene = !!H._sceneCastIds;
+        var spawnAll = typeof window !== 'undefined' && !!window.EW_HQ_RES_SPAWN_ALL, _rt = (_lens && _lens.cur) ? performance.now() : 0;
+        _rt = _lensSub('residents: new day', _rt);
         /* who has a body: the nearest in the street (every 0.4 s) */
         if (now - S.lastPick > 400) {
             S.lastPick = now;
@@ -86985,7 +87003,7 @@ const ThreeRenderer = (function () {
                 if (s.want && !s.ch && !s.loading) {
                     var def = (typeof getRace3DModel === 'function') ? getRace3DModel(s.r.race, s.gender) : null, url = def && def.model;
                     var hot = !url || !!(_unitGlbCache[url] && _unitGlbCache[url].root) || (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS);
-                    if (hot) _hqResSpawn(H, s, s.at);
+                    if (hot) { if (spawnAll) _hqResSpawn(H, s, s.at); else s.spawnDue = true; }   // THE ONE BODY A FRAME (below)
                     else { s.loading = true; _bgLoadDepth++; try { _loadUnitGLB(url, function () { s.loading = false; }); } finally { _bgLoadDepth--; } }   // streams in the background lane; the next pick stands it
                 }
                 if (s.ch) { var show = s.want && !scene && !s.ch._sceneOut && !s.ch.cleared; if (show === !!s.ch.away) { _hqRoundsSetVisible(s.ch, show); H.dirty = true; } }
@@ -86997,6 +87015,16 @@ const ThreeRenderer = (function () {
                     .sort(function (a, b) { return b.d - a.d; }).slice(0, kept.length - R.bodies).forEach(function (o) { _hqResDispose(H, o.s); });
             }
         }
+        _rt = _lensSub('residents: pick', _rt);
+        /* THE ONE BODY A FRAME (2026-11-18, spikes thread: mondo's F3 "tick: residents 50.0" frames while walking the city): every resident the
+           pick gave a body was stood up in that same frame, each a whole character made (its model copied, its rig, its plate). A pick that
+           wants several now stands one a frame, the nearest first, still wanted and still visible. Off: window.EW_HQ_RES_SPAWN_ALL. */
+        if (!spawnAll && !off) { var due = null, dueD = 1e9;
+            for (var q = 0; q < S.list.length; q++) { var sq = S.list[q]; if (!sq.spawnDue) continue;
+                if (!sq.want || sq.ch || sq.loading || !sq.at || !sq.at.vis) { sq.spawnDue = false; continue; }
+                var dq = pl ? Math.hypot(sq.at.x - pl.x, sq.at.z - pl.z) : 0; if (dq < dueD) { dueD = dq; due = sq; } }
+            if (due) { due.spawnDue = false; var nb = _hqResSpawn(H, due, due.at); if (nb) { var showN = !scene && !nb._sceneOut && !nb.cleared; if (!showN) { _hqRoundsSetVisible(nb, false); H.dirty = true; } } } }
+        _rt = _lensSub('residents: new body', _rt);
         /* the drawn ones walk their day */
         var pts = []; if (pl) pts.push(pl);
         if (!H.paused) S.list.forEach(function (s) {
@@ -87035,6 +87063,7 @@ const ThreeRenderer = (function () {
             pts.push(ch);
         });
         S.pts = pts;
+        _lensSub('residents: walk', _rt);
     }
     /* ── THE AWARENESS + THE MARKS (NPC encounters step 2, 2026-11-17; docs/plans/npc-encounters/PLAN.md 4.1, mondo: "eyes on player and red ! on
        npcs", "eye can be by the portrait") ──
@@ -93599,6 +93628,7 @@ const ThreeRenderer = (function () {
         }
         var ce = cam ? cam.matrixWorld.elements : null, S = _hqCkS;
         var mwAll = typeof window !== 'undefined' && !!window.EW_HQ_CHUNK_MW_ALWAYS, addN = _ewAddCount(), addMoved = H._ckAddN !== addN; H._ckAddN = addN;
+        var ckT0 = performance.now(), ckAll = typeof window !== 'undefined' && !!window.EW_HQ_CHUNK_MEASURE_ALL;
         for (var i = L.length - 1; i >= 0; i--) {
             var g = L[i];
             if (!g.parent) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; _hqStillDisarm(g); L.splice(i, 1); continue; }
@@ -93607,7 +93637,10 @@ const ThreeRenderer = (function () {
             if (off) { if (g._ew_ckOut) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; } drawn++; continue; }
             /* a prop chunk is measured through every piece in it (a walk of the chunk): again only when something joined the
                scene since (a file landed: at most every 4 s) or its own count changed, and every 60 s */
-            if (g._ew_ckN !== g.children.length || (g._ew_pChunk || !_hqCkOldPoll() ? (g._ew_ckDirty || (g._ew_ckAdd !== addN && now - g._ew_ckAt > 4000) || now - g._ew_ckAt > 60000) : now - g._ew_ckAt > 2000)) { g._ew_ckN = g.children.length; g._ew_ckAt = now; g._ew_ckAdd = addN; g._ew_ckDirty = false; g._ew_ckSph = _hqChunkSphere(g); }
+            /* THE MEASURES SPREAD (2026-11-18, his F3: "tick: chunks 23.0" in one frame): something joining the scene made every chunk due on the
+               same frame (a door chunk's measure is a walk of the door). A count change or a first measure is done at once; the others stop at
+               2 ms a frame and are done on the next frames. Off: window.EW_HQ_CHUNK_MEASURE_ALL. */
+            if (g._ew_ckN !== g.children.length || ((g._ew_pChunk || !_hqCkOldPoll() ? (g._ew_ckDirty || (g._ew_ckAdd !== addN && now - g._ew_ckAt > 4000) || now - g._ew_ckAt > 60000) : now - g._ew_ckAt > 2000) && (ckAll || performance.now() - ckT0 < 2))) { g._ew_ckN = g.children.length; g._ew_ckAt = now; g._ew_ckAdd = addN; g._ew_ckDirty = false; g._ew_ckSph = _hqChunkSphere(g); }
             var sp = g._ew_ckSph, out = false;
             if (sp) {
                 var dx = sp.center.x - ce[12], dy = sp.center.y - ce[13], dz = sp.center.z - ce[14];
@@ -97909,20 +97942,29 @@ const ThreeRenderer = (function () {
     function* _hqBatchScan(R, B) {
         var root = R[B.grp]; if (!root) return;
         var skip = {}; (R.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { skip[t.id] = 1; }); });
-        root.updateMatrixWorld(true);
+        /* THE SLICED SCAN (2026-11-18, spikes thread: mondo's F3 "tick: static batch 26.0, > batch: scan step 24.0" in one frame): the scan
+           walked the matrices of the whole group (40,000 objects in the city) and then read every object's keys, both in ONE step before its
+           first pause. The walk now pauses with the rest of the scan (a stack, read a slice a frame; a piece seen twice is taken once) and
+           each piece found has its own chain made current (updateWorldMatrix), not the whole group. Off: window.EW_HQ_BATCH_SCAN_WHOLE. */
+        var whole = typeof window !== 'undefined' && !!window.EW_HQ_BATCH_SCAN_WHOLE;
+        if (whole) root.updateMatrixWorld(true); else root.updateWorldMatrix(true, false);
         var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), list = [], n = 0;
         var loose = !!(_hq && root === _hq.shellGroup && _hqChunkBig(_hq) && !_hqBatchLooseOff());   // THE LOOSE PIECES
         var glows = (loose && !_hqGlowOff()) ? new Set(_hzGlowPulse.map(function (p) { return p.mat; })) : null;   // THE JOINED GLOWS: a breathing glow is never joined
         /* the pieces with their chain: an ancestor that is hidden or flagged off keeps everything under it out */
-        (function walk(g, ok) {
-            for (var i = 0; i < g.children.length; i++) {
-                var c = g.children[i], vis = ok && (c.visible !== false || !!c._ew_pChunk) && !skip[c.id], cok = vis;   // THE PROP CHUNKS: a chunk off the camera is still the room's
-                if (cok) for (var k in c) if (_HQ_BATCH_FLAG_OFF[k]) { cok = false; break; }
-                if (c.children.length) walk(c, cok);
-                else if (c.isMesh && (cok || (loose && vis))) list.push(c);   // THE LOOSE PIECES: a flagged leaf is read too (_hqBatchLooseOk says which flags may stand in)
-                else if (c.isSprite && cok && glows) list.push(c);   // THE JOINED GLOWS
+        var stk = [root, 0, true], seen = whole ? null : new Set(), wn = 0;
+        while (stk.length) {
+            var top = stk.length - 3, g = stk[top], gi = stk[top + 1], ok = stk[top + 2];
+            if (gi >= g.children.length) { stk.length = top; continue; }
+            stk[top + 1] = gi + 1;
+            var c = g.children[gi], vis = ok && (c.visible !== false || !!c._ew_pChunk) && !skip[c.id], cok = vis;   // THE PROP CHUNKS: a chunk off the camera is still the room's
+            if (cok) for (var k in c) if (_HQ_BATCH_FLAG_OFF[k]) { cok = false; break; }
+            if (c.children.length) stk.push(c, 0, cok);
+            else if ((c.isMesh && (cok || (loose && vis))) || (c.isSprite && cok && glows)) {   // THE LOOSE PIECES: a flagged leaf is read too (_hqBatchLooseOk says which flags may stand in); THE JOINED GLOWS
+                if (!seen || !seen.has(c)) { if (seen) { seen.add(c); c.updateWorldMatrix(true, false); } list.push(c); }
             }
-        })(root, true);
+            if (!whole && (++wn & 255) === 0 && _hqSliceDue()) yield;
+        }
         for (var j = 0; j < list.length; j++) {
             var o = list[j];
             if (o.isSprite) { if (_hqGlowOk(o, glows)) B.cands.push({ o: o, m: o.material, g: o.geometry, gv: o.geometry.attributes.position.version, snap: _hqBatchMatSnap(o.material), M: _hqBatchRel(o, inv, new THREE.Matrix4()), sig: 'glow', parent: o.parent, glow: true }); if ((++n & 63) === 0 && _hqSliceDue()) yield; continue; }
