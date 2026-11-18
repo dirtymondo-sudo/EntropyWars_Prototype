@@ -2941,3 +2941,11 @@ His 07:18 / 07:19 F3s named the slow frames: "tick: ladder 12.3" every frame (10
 - THE DROPS SPREAD: `_mmTick` queues its drops, two a frame (`_mmDrain`; a file used again since the pick is kept); the worn walks stop
   at a file's first worn piece (`_mmWears`). Lens "Inside the ticks" gains memory: read / worn list / props list / unit models list /
   pick / drops. Off `EW_MM_DROP_ALL_AT_ONCE`.
+
+## THE RIG GROWN AT THE DOOR (2026-11-18, Disaster City 60 FPS thread)
+The spikes thread's "Slow frames" line (his 07:18/07:19 F3s) showed frames with "bundle check 81 ms" / "scene: bundle replays 32 ms"
+and "mask: setup + lights + sort 73 ms"; the lens said "one rig: 2 grows". A point-rig grow (`_ewRigTick`, steps of 4 when a 9th /
+13th / ... lamp is in view) is a new light list: every shader of the scene again and `_ewBun.epoch++`, so every recorded group is
+walked and re-recorded that frame. In a big chunked room (`_hqChunkBig`) the walk scene's point rig now takes HQ_RIG_PREGROW_P = 20
+slots on its first frame, behind the card; the spare slots stay dark (intensity 0; THE LAMP'S REACH skips them). The rig is one,
+shared, and never shrinks (as before). Off: `window.EW_RIG_NO_PREGROW = true`.
