@@ -390,6 +390,7 @@ const FINISHERS = {
     'haunted doll':   { id: 'fin_haunted_doll', name: 'Lights Out', glyph: '🪆', type: 'anomaly', sig: 'possessedPhoto', built: true, tagline: 'PLAY WITH ME', desc: 'The lights go out. When they come back on, the doll is sitting on the victim\'s chest, and the victim is not moving.' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) (borrows the possessedPhoto staging)
     'cursed tv':      { id: 'fin_cursed_tv', name: 'Off the Air', glyph: '📺', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'WE NOW RETURN YOU TO YOUR REGULARLY SCHEDULED PROGRAMMING', desc: 'The screen shrinks to a white line, then a dot, and the victim goes with it. The test card comes up and the anthem plays.' },   // 2026-11-17 THE CURSED TV (mondo approved the kit) (borrows the corruptedSave staging)
     'virus':          { id: 'fin_virus', name: 'Format C:', glyph: '🦠', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ALL DATA ON THIS DRIVE WILL BE LOST', desc: 'A progress bar opens over the victim and fills, file by file, and then there is nothing left to delete.' },   // 2026-11-18 THE VIRUS (mondo approved the kit) (borrows the corruptedSave staging)
+    'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
@@ -632,6 +633,7 @@ const RACE_ELEMENT_AFFINITY = {
     'haunted doll': { psychic: 'resist', fire: 'weak' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): porcelain and old lace
     'cursed tv': { lightning: 'resist', water: 'weak' },   // 2026-11-17 THE CURSED TV (mondo approved the kit): it runs on the mains, and water in a set is the end of it
     'virus': { poison: 'resist', lightning: 'resist', water: 'weak' },   // 2026-11-18 THE VIRUS (mondo approved the kit): made of poison and current; water shorts it
+    'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
@@ -2990,6 +2992,12 @@ const RACE_PROFILES = {
         label: 'Virus',
         types: ['anomaly', 'tech']
     },
+    'streamer': {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): one race, the E-Girl is its female (like the Priest + the Nun)
+        label: 'Streamer',
+        labelMale: 'Streamer',
+        labelFemale: 'E-Girl',
+        types: ['human', 'tech']
+    },
     'haunted doll': {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
         label: 'Haunted Doll',
         types: ['anomaly', 'unholy']
@@ -3878,7 +3886,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3898,6 +3906,7 @@ const RACE_KITS = {
     'ice queen': { range: 2 },   // race editor 2026-10-17: range 1 → 2
     'cursed tv': { range: 2 },   // 2026-11-17 THE CURSED TV (mondo approved the kit): the basic attack is a jolt down the power cable, and the cable reaches
     'virus': { range: 2 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the basic attack is a lash of code from its tendrils, and they reach
+    'streamer': { range: 1 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the basic attack is a keyboard slam
 };
 function raceKit(race) {
     const k = RACE_KITS[race] || {};
@@ -4034,6 +4043,7 @@ const RACE_CLASS = {
     'haunted doll': 'assassin',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': 'caster',   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': 'specialist',   // 2026-11-18 THE VIRUS (mondo approved the kit)
+    'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
@@ -4093,6 +4103,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'haunted doll': 'tree',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': 'wasteland',   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': 'wasteland',   // 2026-11-18 THE VIRUS (mondo approved the kit)
+    'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
     'siren': 'deep_water',
     'reptilian': 'water',
@@ -4488,6 +4499,7 @@ const RACE_BASE_STATS = {
     'haunted doll':       { hp:  880, mp: 180, atk:  70, def:  80, mdef: 110, int: 150, vision: 4, crt: 22, spd: 160 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — fragile and quick, a magic assassin
     'cursed tv':          { hp:  900, mp: 210, atk:  20, def:  85, mdef: 120, int: 175, vision: 4, crt: 15, spd: 140 },   // 2026-11-17 THE CURSED TV (mondo approved the kit) — frail and quick, a magic caster
     'virus':              { hp:  780, mp: 220, atk:  40, def:  60, mdef: 160, int: 180, vision: 3, crt: 18, spd:  90 },   // 2026-11-18 THE VIRUS (mondo approved the kit) — first pass: a frail magic specialist
+    'streamer':           { hp:  950, mp: 200, atk: 120, def:  80, mdef: 100, int: 130, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -4659,6 +4671,7 @@ const RACE_PHYSIQUE = {
     'haunted doll':        { h: 1.10, w: 18 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv':           { h: 1.45, w: 40 },   // 2026-11-17 THE CURSED TV (mondo approved the kit): the set on its cart, antennae up
     'virus':               { h: 1.50, w: 30 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the spiked ball hovering, tendrils down
+    'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
@@ -10823,6 +10836,38 @@ const RACE_ABILITIES = {
           type: 'damage', kind: 'barrage', damageType: 'magic', dmg: 110, range: 0, aoeOriginSelf: true, aoeRadius: 5,
           ignoresLineOfSight: true, hitsStatusOnly: 'payload', animSlot: 'vrZeroDay',
           desc: 'The exploit nobody patched. Every enemy within 5 that carries a Payload takes MEDIUM magic damage, through cover, and its Payload goes off at once (70 more). Needs a Payload out. Cooldown: 3 rounds.' },
+    ],
+    'streamer': [
+        /* THE VIEWERS (2026-11-18, the Streamer + the E-Girl; mondo OK'd the kit 11-18): a count from 0 to 10 on the unit
+           (unit.viewers, a plain number, so it rides the state sync). +1 for every hit it lands on an enemy, +2 for a KO, +1 when
+           one enemy hit takes 15 % of its max HP or more (the clip); going down halves it. Clip It reads it, Donation Goal and
+           Raid spend all of it (battle.js THE VIEWERS: _viewersAdd, _streamCastRow). One race: the male (Streamer) and the female
+           (E-Girl) share three spells and each has two of its own (RACE_GENDER_SPELLS). Notes: champions-combat.md "THE STREAMER". */
+        { id: 'nrClipIt', name: 'Clip It', tier: 1, families: ['streaming'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 70, range: 4, viewersMarkAt: 5,
+          desc: 'That one is going in the highlights. Deals WEAK lightning magic damage to a Single Enemy within 4. At 5+ Viewers it is also Marked for 1 round.' },
+        { id: 'nrRageQuit', name: 'Rage Quit', tier: 2, families: ['streaming'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'damage', kind: 'barrage', range: 0, dmg: 100, damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
+          statusEffects: [{ id: 'stagger', duration: 1 }], selfStatusAfter: [{ id: 'invisible', duration: 1 }],
+          desc: 'He smashes the desk. Deals MEDIUM physical damage to every enemy next to him and Staggers each of them, then he goes Invisible until his next turn (disconnected). Cooldown: 3 rounds.' },
+        _mkCharge({ id: 'nrSpeedrun', name: 'Speedrun Strat', tier: 2, families: ['streaming'], cost: 50, cooldownRounds: 2, spellType: 'human',
+          kind: 'dash', apCost: 1, dmg: 80, range: 4,
+          desc: 'Skips the whole level. Dashes up to 4 tiles in a line and deals WEAK physical damage to the first enemy. Cooldown: 2 rounds.' }),
+        { id: 'nrUwu', name: 'Uwu', tier: 2, families: ['streaming'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'debuff', kind: 'debuff', range: 3, viewersGain: 1,
+          statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'Hearts in the chat. Charms a Single Enemy within 3 for 1 round, and she gains 1 Viewer. Cooldown: 2 rounds.' },
+        { id: 'nrGiftedSub', name: 'Gifted Sub', tier: 2, families: ['streaming'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 4,
+          statusEffects: [{ id: 'protect', duration: 1 }, { id: 'regen', duration: 2 }],
+          desc: 'Thanks for the sub! A Single Ally within 4 gets Protect for 1 round and Regen for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'nrDonationGoal', name: 'Donation Goal', tier: 3, families: ['streaming'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'heal', kind: 'healAll', range: 0, auraRadius: 2, healAmt: 0, viewersSpend: true, viewersMin: 1, viewersHealPer: 20, viewersSpdAt: 5,
+          desc: 'Goal reached! Spends all Viewers: the caster and every ally within 2 heal 20 HP per Viewer spent; at 5+ Viewers they also gain +1 SPD stage. Needs 1 Viewer. Cooldown: 3 rounds.' },
+        { id: 'nrRaid', name: 'Raid', tier: 4, families: ['streaming'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          element: 'sonic', type: 'damage', kind: 'aoe', range: 5, dmg: 130, damageType: 'magic', aoeRadius: 1,
+          viewersSpend: true, viewersMin: 3, viewersDmgPer: 0.1, viewersFearAt: 8,
+          desc: 'Sends the whole chat over. Spends all Viewers: MEDIUM sonic magic damage to All Enemies in a 3x3 within 5, +10% per Viewer spent; at 8+ Viewers they are Feared for 1 round. Needs 3 Viewers. Cooldown: 3 rounds.' },
     ],
     'haunted doll': [
         /* NOBODY'S LOOKING (2026-11-17, the Haunted Doll; mondo approved the kit + asked for the pull-string spell): "sits on the
@@ -20902,6 +20947,7 @@ const EW_RACE_BIOMES = {
     'haunted doll': ['gothic'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — The Estate, the Haunted House
     'cursed tv': ['urban', 'gothic'],   // 2026-11-17 THE CURSED TV (mondo approved the kit) — Disaster City's pawn shops, the Haunted House's attic
     'virus': ['neon_city', 'astral'],   // 2026-11-18 THE VIRUS (mondo approved the kit) — The Internet's quarantine
+    'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
@@ -21561,6 +21607,7 @@ const RACE_TREE = {
     'haunted doll':  ['nrPinPrick', 'nrPlayWithMe', 'nrPullString', 'nrLookBehindYou'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): its own four
     'cursed tv':     ['nrStaticBurst', 'nrEmergencyBroadcast', 'nrFastForward', 'nrRewind'],   // 2026-11-17 THE CURSED TV (mondo approved the kit): its own four
     'virus':         ['nrWorm', 'nrSelfReplicate', 'nrRansomware', 'nrZeroDay'],   // 2026-11-18 THE VIRUS (mondo approved the kit): its own four
+    'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -22194,6 +22241,10 @@ const RACE_GENDER_SPELLS = {
     'priest': {
         male:   ['pzHolyWater', 'pzLastRites'],      // Holy Orders: the priest's sacraments
         female: ['goRulerSmack', 'goVowOfSilence'],  // the Convent: the nun's ruler and her vow
+    },
+    'streamer': {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
+        male:   ['nrRageQuit', 'nrSpeedrun'],   // the Streamer: aggressive
+        female: ['nrUwu', 'nrGiftedSub'],       // the E-Girl: support and control
     },
 };
 function raceGenderOffSpellIds(race, gender) {
@@ -23637,6 +23688,16 @@ const SPELL_FAMILIES = {
         desc: 'A living computer virus: it plants payloads that copy themselves from body to body, splits off replicas, and sets them all off at once.',
         unique: 'virus',
         identity: { who: ['Virus', 'Worm', 'Trojan'], adj: ['Spiked', 'Glitching', 'Infectious'], look: ['a spiked ball of dark green crystal', 'a ring of red eyes', 'tendrils of broken code'], vibe: ['copies itself from body to body', 'sets everything off at once'] }
+    },
+    streaming: {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — the Streamer's and the E-Girl's own
+        id: 'streaming',
+        name: 'Streaming',
+        glyph: '🎮',
+        color: '#b06aff',
+        kind: 'signature',
+        desc: 'Live, all day, every day: a streamer builds a crowd from every hit, then cashes the chat in for heals or a raid.',
+        unique: 'streamer',
+        identity: { who: ['Streamer', 'E-Girl', 'Content Creator'], adj: ['Live', 'Sweaty', 'Terminally Online'], look: ['a gaming headset', 'an RGB-lit hoodie', 'pigtails dyed in two colours'], vibe: ['plays for the chat', 'cashes in the crowd'] }
     },
     hauntedtoy: {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — the Haunted Doll's own
         id: 'hauntedtoy',
@@ -25903,6 +25964,7 @@ const RACE_FAMILIES = {
     'haunted doll': ['hauntedtoy', 'haunted', 'blackmagic', 'trickery'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': ['cursedtv', 'haunted', 'lightning', 'glitch'],   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': ['malware', 'computerhacking', 'glitch', 'internetaddiction'],   // 2026-11-18 THE VIRUS (mondo approved the kit)
+    'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
@@ -26532,6 +26594,7 @@ const CAMPAIGN_RACE_PRICES = {
   'haunted doll': 450,   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
   'cursed tv': 450,   // 2026-11-17 THE CURSED TV (mondo approved the kit)
   'virus': 450,   // 2026-11-18 THE VIRUS (mondo approved the kit)
+  'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
   'lifeguard': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
@@ -28517,7 +28580,7 @@ const DOOR_TEXT = {
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
         'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown', 'magician': 'The Strip', 'mole man': 'Hollow Earth', 'quetzalcoatl': 'Technoticlan', 'lifeguard': 'The Bermuda Triangle',   // banker + sewer gator + skater + tech ceo + magician + mole man + quetzalcoatl + lifeguard 2026-11-16
         'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'pope': 'Vatican City',   // 2026-11-17 THE NEW RACES 2
-        'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet',   // 2026-11-17 THE NEW RACES 2
+        'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'streamer': 'The Internet',   // 2026-11-17 THE NEW RACES 2
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',

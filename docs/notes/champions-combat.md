@@ -5993,3 +5993,25 @@ Probe /mnt/project-files/ninja-race/probe_ninja.js (NINJA_CPU=1 = a CPU ninja pl
 - VFX = three-vfx-effects.js "THE VIRUS" (kill-switch `window.EW_NO_VIRUS_VFX`): Worm's wriggling code thread, the Replica's green
   pop, the RANSOM.EXE window beside the victim (reuses the TV's `_tvxPanel`), Zero Day's rings, 'nrPayload:copy' / 'nrPayload:burst'.
 - Not done yet: Virus natives in The Internet's district C (`docs/areas/internet/districts/C.js` c.native), the balance loop.
+
+## THE STREAMER + E-GIRL (2026-11-18, mondo approved the kit; thread "Internet units")
+
+One race (`streamer`), like the Priest + Nun: the male is the Streamer, the female the E-Girl (`labelFemale`). Human + Tech,
+specialist, home The Internet. Resists sonic, weak to light. Basic attack: melee (the keyboard slam).
+
+- **THE VIEWERS** (battle.js THE VIEWERS): `unit.viewers`, 0 to 10, a plain number (rides the state sync). +1 per hit it lands on
+  an enemy, +2 per KO, +1 when one enemy hit takes 15 % of its max HP or more (the clip); going down halves it. HUD chip VIEWERS n/10
+  + the nameplate badge. A spending row casts a copy with the count baked in (`_streamCastRow`, the spellWeatherResolved pattern);
+  `_viewersSpendNow` empties the count once every refusal has passed, and its own hits earn nothing (`_viewersHold`, cleared at
+  finishAction). Row keys: `viewersMarkAt`, `viewersHealPer` + `viewersSpdAt`, `viewersDmgPer` + `viewersFearAt`, `viewersSpend`,
+  `viewersMin` (refused + `spellBlockReason` "Need N viewers"), `viewersGain` (Uwu). The CPU scores the baked copy (ai.js scoreSpell).
+- Shared: Clip It (T1, lightning, Marked at 5+), Donation Goal (T3, healAll radius 2, 20 HP per viewer, +1 SPD stage at 5+, needs 1),
+  Raid (T4, sonic 3x3 within 5, +10 % per viewer, Feared at 8+, needs 3).
+- Streamer only (RACE_GENDER_SPELLS): Rage Quit (barrage round him, Stagger, then Invisible: `selfStatusAfter` now works on any kind,
+  not only dashes), Speedrun Strat (dash 4). E-Girl only: Uwu (Charm + 1 viewer), Gifted Sub (Protect 1 + Regen 2).
+- Checked in a test match: Clip It +1 viewer and Marked at 6, Donation Goal at 6 healed 120 each and +1 SPD stage, Raid at 9 did
+  ~400 and Feared both, Rage Quit staggered + cloaked, Uwu charmed + 1 viewer, Gifted Sub gave Protect + Regen.
+- Looks: no Meshy body. The race is in sprites.js EW_CREATOR_LOOK_RACES, so its two RACE_CREATOR_LOOKS rows (outside the
+  bake-looks block) ARE its default: MPFB bodies in pack clothes + two Meshy pieces (models-assets.md "THE STREAMER PIECES").
+- VFX: three-vfx-effects.js THE STREAMER + E-GIRL (stream purple, side rings, pop-up windows beside the body). Kill-switch
+  EW_NO_STREAMER_VFX.
