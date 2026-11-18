@@ -36,7 +36,7 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
 ## 2. The world
 
 - **Zones, no open world.** DOOR HQ is the hub; zones sit behind doors. The zone names, word for word: DOOR HQ, The Woods,
-  Fairy Forest, Camelot Kingdom, Disaster City, The Beach, The Desert, The Sewers, The Estate, The D.U.M.B., Atlantis,
+  Fairy Forest, Came A Lot Kingdom (was Camelot Kingdom; see the renames below), Disaster City, The Beach, The Desert, The Sewers, The Estate, The D.U.M.B., Atlantis,
   The Deep, Outer Space, Heaven + Hell + Vatican, The Cavern, Leylines. H-Wing = the backrooms.
 - **THE DOORS (11-18, the door audit; the full list is `world-layout.md` "THE DOOR AUDIT").** One World is walked: roads, trails, boats,
   stairs and wells down to what lies underneath; no door jumps across the map. DOOR HQ has three public ways out (the Stair to the Woods, the
@@ -45,6 +45,10 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
   janitor's closet down a sideway in a building, or a random bathroom in a building, or down a small side trail that wouldn't get noticed at
   first glance, or somewhere where it is hard to reach vertically or at the end of a maze"; never a free-standing framed door out in the open.
   A new way between two places needs his OK and a row in data.js beside `DOOR_HQ.cut`'s rules.
+- **THE PARODY RENAMES (11-18, mondo: "to avoid copyright and because i think it's funny").** On screen the Men in Black are the
+  **Men in Slacks** (one: Man in Slacks) and Camelot is **Came A Lot** (Came A Lot Kingdom, Came A Lot Castle, Walls of Came A Lot).
+  Display text only: the race id stays `'men in black'` and every room id stays `site_prebuilt_camelot_*`, so saves, plots and
+  marker comments (`CAMELOT-KINGDOM-BEGIN`) are unchanged. New player-visible text uses the new names.
 - **World vision (11-15).** The world is a parody of the real world; each area is the ULTIMATE form of its idea. DOOR HQ
   is the subconscious. Every area is plot-built (12x12 plots, districts) like Disaster City; only DOOR HQ stays handmade.
   Cyberpunk City is a future reskin of the WHOLE Disaster City, not a district. The Desert = Western Town + Giza + Area 51.

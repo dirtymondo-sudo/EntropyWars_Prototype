@@ -1,14 +1,14 @@
 {
-  "about": "ROUTE R12, THE STONE PATH (One World phase 4.1, the owner's north routes thread, 2026-11-17): a trail from Stonehenge's South Gate down off the stone plain through Camelot's north woods to the castle block's North Row, west. Its own room, 8 plots (joined to Stonehenge it would be two zones, rule 5). The path leaves the South Gate's middle (x -29.5), bends east and enters the North Row, west from the north (x -27.5). PLACES (ow-places.js, every name an idea of Claude's): the design page gives 'from Camelot's north woods up onto the plain to the stones', so the standing stones stand on the plain plot next to the henge; the rest are the kit's pick.",
+  "about": "ROUTE R12, THE STONE PATH (One World phase 4.1, the owner's north routes thread, 2026-11-17): a trail from Stonehenge's South Gate down off the stone plain through Came A Lot's north woods to the castle block's North Row, west. Its own room, 8 plots (joined to Stonehenge it would be two zones, rule 5). The path leaves the South Gate's middle (x -29.5), bends east and enters the North Row, west from the north (x -27.5). PLACES (ow-places.js, every name an idea of Claude's): the design page gives 'from Came A Lot's north woods up onto the plain to the stones', so the standing stones stand on the plain plot next to the henge; the rest are the kit's pick.",
   "hub": "kingdom",
   "room": "site_ow_r12",
   "part": "ow_r12",
   "label": "THE STONE PATH",
-  "sub": "THE TRAIL · CAMELOT TO STONEHENGE · 8 PLOTS",
+  "sub": "THE TRAIL · CAME A LOT TO STONEHENGE · 8 PLOTS",
   "line": [[-29.5, -6.1], [-29.5, -5.3], [-27.5, -4.7], [-27.5, -2.9]],
   "ends": {
     "ow_h_m30_m6": { "room": "site_prebuilt_gobekli_ow_henge", "label": "STONEHENGE", "sub": "THE SOUTH GATE · UP ONTO THE PLAIN", "desc": "The trees stop. Ahead the plain is open, and the stones stand on it." },
-    "ow_h_m28_m3": { "room": "site_prebuilt_camelot_kingdom", "label": "CAMELOT KINGDOM", "sub": "THE NORTH ROW · DOWN TO THE TOWN", "desc": "The path drops out of the woods to the moat road and the town's north row." }
+    "ow_h_m28_m3": { "room": "site_prebuilt_camelot_kingdom", "label": "CAME A LOT KINGDOM", "sub": "THE NORTH ROW · DOWN TO THE TOWN", "desc": "The path drops out of the woods to the moat road and the town's north row." }
   },
   "places": { "-29,-6": "menhirs" }
 }

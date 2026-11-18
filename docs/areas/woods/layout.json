@@ -278,15 +278,15 @@
 "name": "The Trail West",
 "district": "C",
 "level": 2,
-"what": "the trail out to Camelot",
-"from": "Clearing: THE TRAIL WEST TO CAMELOT",
+"what": "the trail out to Came A Lot",
+"from": "Clearing: THE TRAIL WEST TO CAME A LOT",
 "ports": [
 "E",
 "N",
 "S"
 ],
 "exit": [
-"Camelot Kingdom (trail)",
+"Came A Lot Kingdom (trail)",
 "open"
 ]
 },

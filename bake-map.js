@@ -67,7 +67,7 @@ const ZONES = [
 const EDGE_OF = { peak: 'mountain', rock: 'mountain', alpine: 'mountain', cliff: 'mountain', foot: 'grass', tundra: 'snow', ice: 'snow', wall: 'snow', forest: 'forest', wood: 'forest',
     meadow: 'grass', grass: 'grass', farm: 'grass', marsh: 'grass', scrub: 'scrub', bad: 'mesa', desert: 'desert', dunes: 'desert', saltflat: 'desert', sand: 'desert', sea: 'coast' };
 const SIGHTS = [   // [name, district in plots.json, landmark kind, size, hub]
-    ['Disaster City', 'city', 'tower', 1, 'city'], ['The Vatican', 'vat', 'dome', 0.8, 'divine'], ['Camelot', 'cam', 'castle', 0.8, 'kingdom'],
+    ['Disaster City', 'city', 'tower', 1, 'city'], ['The Vatican', 'vat', 'dome', 0.8, 'divine'], ['Came A Lot', 'cam', 'castle', 0.8, 'kingdom'],
 ];
 function buildWorld() {
     const PJ = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plots.json'), 'utf8'));

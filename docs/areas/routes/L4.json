@@ -1,7 +1,7 @@
 {
-  "about": "WILD LINK L4 (One World, the Woods zone thread, BUILD_PLAN phase 3, 2026-11-17): three plots of forest trail from the Clearing's Deep woods, west (its north side, seam ow_h_m17_1) west to Camelot's Fairy Forest (The Spring's east side, seam ow_v_m19_0). Its own room: the Clearing's room is full and its box would be 14 plots wide; two zones never join. The west end is the two-way link woods_camelot (its id kept; the Camelot zone thread puts its other end on The Spring's east side), so no seam door is written there.",
+  "about": "WILD LINK L4 (One World, the Woods zone thread, BUILD_PLAN phase 3, 2026-11-17): three plots of forest trail from the Clearing's Deep woods, west (its north side, seam ow_h_m17_1) west to Came A Lot's Fairy Forest (The Spring's east side, seam ow_v_m19_0). Its own room: the Clearing's room is full and its box would be 14 plots wide; two zones never join. The west end is the two-way link woods_camelot (its id kept; the Came A Lot zone thread puts its other end on The Spring's east side), so no seam door is written there.",
   "hub": "woods",
-  "label": "THE TRAIL \u00b7 WEST TO CAMELOT",
+  "label": "THE TRAIL \u00b7 WEST TO CAME A LOT",
   "sub": "THE WOODS \u00b7 THE TRAIL TO THE FAIRY FOREST \u00b7 3 PLOTS",
   "ends": {
     "ow_h_m17_1": {
