@@ -53733,6 +53733,8 @@ const ThreeRenderer = (function () {
         var P = sp.F.parts || (sp.F.parts = {}); P[sp.k] = (P[sp.k] || 0) + d - sp.c;
     }
     function _lensMark(k, t) { var L = _lens; if (!t || !L || !L.cur) return 0; var n = performance.now(), P = L.cur.parts || (L.cur.parts = {}); P[k] = (P[k] || 0) + n - t; return n; }
+    /* THE INNER SPLIT (2026-11-18, spikes thread): a tick's own steps, kept apart from the frame's parts (they are inside one of them) */
+    function _lensSub(k, t) { var L = _lens; if (!t || !L || !L.cur) return 0; var n = performance.now(), P = L.cur.sub || (L.cur.sub = {}); P[k] = (P[k] || 0) + n - t; return n; }
     function _lensSpanHook(R, on) {
         var W = R._ew_lensSpans;
         if (!on || W) return;   // never unwrapped: other hooks (the bundles') may wrap over these later; closed, each is one check
@@ -53939,11 +53941,17 @@ const ThreeRenderer = (function () {
         }
         if (!F.renders) return;   // a capped / throttled tick that drew nothing is not a frame
         var A = L.acc;
-        if (L.lastT0) { var iv = F.t0 - L.lastT0; if (iv > 0 && iv < 2000) { A.iv += iv; A.ivN++; if (iv > A.worst) A.worst = iv; } }
-        L.lastT0 = F.t0;
+        if (L.lastT0) { var iv = F.t0 - L.lastT0; if (iv > 0 && iv < 2000) { A.iv += iv; A.ivN++; if (iv > A.worst) A.worst = iv; }
+            /* THE SLOW FRAMES (2026-11-18, mondo: "common fps drop to the 20s or teens or even lower"): a gap over 50 ms between two frames
+               is written down with the previous frame's own JS (the gap is that frame's work + what the browser did after it): its CPU
+               and its three costliest parts / inner steps. A gap with little JS in it is the browser (a GC, the GPU, the compositor). */
+            if (iv >= 50 && iv < 2000 && L.prevF) { var PF = L.prevF, top = []; [PF.parts, PF.sub].forEach(function (M, mi) { if (M) for (var tk in M) top.push([(mi ? '> ' : '') + tk, M[tk]]); }); top.sort(function (a, b) { return b[1] - a[1]; });
+                (L.slow || (L.slow = [])).push({ iv: iv, cpu: PF.cpu, top: top.slice(0, 3) }); if (L.slow.length > 6) L.slow.shift(); } }
+        L.lastT0 = F.t0; L.prevF = { cpu: F.cpu, parts: F.parts || null, sub: F.sub || null };
         A.n++; A.cpu += F.cpu; A.submit += F.submit; A.anim += F.anim; A.renders += F.renders; A.shadowRuns += F.shadowRuns; A.calls += F.calls; A.tris += F.tris;
         A.meshes += F.meshes; A.skinned += F.skinned; A.inst += F.inst; A.instances += F.instances;
         if (F.parts) { var AP = A.parts || (A.parts = {}); for (var pk in F.parts) AP[pk] = (AP[pk] || 0) + F.parts[pk]; }
+        if (F.sub) { var AS = A.sub || (A.sub = {}); for (var sk in F.sub) AS[sk] = (AS[sk] || 0) + F.sub[sk]; }
         if (F.cnt) { var AC = A.cnt || (A.cnt = {}); for (var ck in F.cnt) AC[ck] = (AC[ck] || 0) + F.cnt[ck]; }
         _LENS_PASSES.forEach(function (p) { A.pass[p][0] += F.pass[p][0]; A.pass[p][1] += F.pass[p][1]; });
         _LENS_KINDS.forEach(function (k) { A.kind[k][0] += F.kind[k][0]; A.kind[k][1] += F.kind[k][1]; });
@@ -53982,6 +53990,8 @@ const ThreeRenderer = (function () {
         _LENS_KINDS.forEach(function (k) { S.kind[k] = [avg(A.kind[k][0]), avg(A.kind[k][1])]; });
         if (A.parts) { S.parts = []; var psum = 0; for (var pk2 in A.parts) { var pv = avg(A.parts[pk2]); psum += pv; S.parts.push([pk2, pv]); } S.parts.sort(function (a, b) { return b[1] - a[1]; }); S.partsOther = Math.max(0, S.cpuMs - psum); }
         if (A.cnt) { S.cnt = {}; for (var ck2 in A.cnt) S.cnt[ck2] = avg(A.cnt[ck2]); }
+        if (A.sub) { S.sub = []; for (var sk2 in A.sub) S.sub.push([sk2, avg(A.sub[sk2])]); S.sub.sort(function (a, b) { return b[1] - a[1]; }); }
+        S.slow = L.slow ? L.slow.slice() : null;
         L.worstHist.push(A.worst); if (L.worstHist.length > 4) L.worstHist.shift();
         S.worst2s = Math.max.apply(null, L.worstHist);
         var inf = renderer ? renderer.info : null;
@@ -54032,6 +54042,8 @@ const ThreeRenderer = (function () {
             L.push('Frame JS (ms/frame): ' + pl.slice(0, 9).join(' · '));
             if (pl.length > 9) L.push('  ' + pl.slice(9).join(' · '));
         }
+        if (S.sub && S.sub.length) L.push('Inside the ticks (ms/frame): ' + S.sub.filter(function (r) { return r[1] >= 0.02; }).slice(0, 10).map(function (r) { return r[0] + ' ' + r[1].toFixed(2); }).join(' · '));
+        if (S.slow && S.slow.length) L.push('Slow frames (last ' + S.slow.length + ', gap · its JS · top): ' + S.slow.map(function (w) { return Math.round(w.iv) + ' ms · JS ' + Math.round(w.cpu) + ' · ' + w.top.map(function (t) { return t[0] + ' ' + t[1].toFixed(1); }).join(', '); }).join(' | '));
         if (S.cnt) {   // THE SHADOW SPLIT (2026-11-15): which shadow costs — the sun's map or a lamp's cube sides — and how many objects each pass's walk visits
             var cN = function (k) { return S.cnt[k] || 0; }, cF = function (v) { return v >= 100 ? _lensFmtN(v) : (Math.round(v * 10) / 10); };
             L.push('Shadow split (a frame): sun ' + cF(cN('sun renders')) + ' renders, ' + cF(cN('sun calls')) + ' calls, ' + cF(cN('sun tris')) + ' tris · lamp ' + cF(cN('lamp renders')) + ' side renders, ' + cF(cN('lamp calls')) + ' calls, ' + cF(cN('lamp tris')) + ' tris');
@@ -87689,6 +87701,11 @@ const ThreeRenderer = (function () {
             }
             return fy;
         };
+        /* THE NEAR LIST (2026-11-18, spikes thread): the search asks the floor up to 2,560 times, and each ask read every blocker of the
+           room (Disaster City: thousands) — one way out of a wedge could hold a frame for 100 ms. The asks read only the blockers within
+           the search's reach (the same ones the full list would answer with, in the same order). Off: window.EW_HQ_STUCK_FULL_LIST. */
+        var BL = H.blockers, near = null;
+        if (BL && BL.length > 64 && !(typeof window !== 'undefined' && window.EW_HQ_STUCK_FULL_LIST)) { near = []; for (var bi = 0; bi < BL.length; bi++) { try { if (_hqBlkContains(BL[bi], pl.x, pl.z, 8.6 + HQ_BODY_R)) near.push(BL[bi]); } catch (e) { near.push(BL[bi]); } } H.blockers = near; }
         try {
             for (var pass = 0; pass < 2 && !best; pass++)
                 for (var r = 0.3; r <= 8.01 && !best; r += 0.2)
@@ -87699,6 +87716,7 @@ const ThreeRenderer = (function () {
                         if (!best || sc < best.sc) best = { x: cx, z: cz, y: fy, sc: sc };
                     }
         } catch (e) { best = null; }
+        finally { if (near && H.blockers === near) H.blockers = BL; }
         if (!best) return false;
         pl.x = best.x; pl.z = best.z; pl.y = best.y; pl.visY = pl.y; pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.mvx = 0; pl.mvz = 0; pl.velX = pl.velY = pl.velZ = 0; pl._hopped = true;
         var R = H.ride; if (R && R.on) { R.v = 0; R.grind = null; R.bal = 0; R.lastY = pl.y; R.onRamp = null; R.rise = 0; }
@@ -90452,9 +90470,11 @@ const ThreeRenderer = (function () {
         var k = H.keys;
         /* THE SLIDE (Delivery 6): onto the cells, no input, then the cut */
         if (H.snap) { _hqTickSnap(dt); return; }
+        var _ws = (_lens && _lens.cur) ? performance.now() : 0;   // THE INNER SPLIT (lens): the walker's own steps
         _hqStuckWatch(H, pl, dt);   // THE WAY OUT OF A COLLIDER (2026-11-15): a body that cannot move on a spot that refuses it is put on the nearest ground
         /* SKATEBOARDING (HQ plan 9.8): on the board the frame is the rider's */
-        if (H.ride && H.ride.on) { _hqTickRide(dt); return; }
+        _ws = _lensSub('walker: stuck watch', _ws);
+        if (H.ride && H.ride.on) { _hqTickRide(dt); _lensSub('walker: ride', _ws); return; }
         /* THE DEEP (2026-09-18): aboard the skiff / the bathyscaphe the frame is the helm's; in deep water it is the swimmer's */
         if (H._spaceRings) { _hqTickSpace(dt); if (H.ready && !H._spaceArrived) _hqSpaceArrive(); }   // THE SPACESHIP (2026-11-17)
         if (H.vehicle && H.vehicle.on) { _hqTickVehicle(dt); return; }
@@ -90472,14 +90492,16 @@ const ThreeRenderer = (function () {
         var moving = !!(ix || iy);
         var running = (!!k.shift || padRun) && moving;
         var mx = 0, mz = 0;
-        if (!moving && !H.paused && _hqPortalSweep(dt, { x: pl.mvx || 0, y: pl.air ? pl.vy - HQ_GRAV * dt : 0, z: pl.mvz || 0 })) return;
+        _ws = _lensSub('walker: modes', _ws);
+        if (!moving && !H.paused && _hqPortalSweep(dt, { x: pl.mvx || 0, y: pl.air ? pl.vy - HQ_GRAV * dt : 0, z: pl.mvz || 0 })) { _lensSub('walker: portal sweep', _ws); return; }
         if (moving) {
             var fx = Math.sin(H.cam.yaw), fz = -Math.cos(H.cam.yaw);     // camera forward, flattened
             var rx = Math.cos(H.cam.yaw), rz = Math.sin(H.cam.yaw);      // camera right
             mx = fx * (-iy) + rx * ix; mz = fz * (-iy) + rz * ix;
             var ml = Math.hypot(mx, mz); if (ml > 0.001) { mx /= ml; mz /= ml; }
             var speed = running ? 4.6 : 2.4;   // m/s (air control keeps it)
-            if (_hqPortalSweep(dt, { x: mx * speed + (pl.mvx || 0), y: pl.air ? pl.vy - HQ_GRAV * dt : 0, z: mz * speed + (pl.mvz || 0) })) return;
+            if (_hqPortalSweep(dt, { x: mx * speed + (pl.mvx || 0), y: pl.air ? pl.vy - HQ_GRAV * dt : 0, z: mz * speed + (pl.mvz || 0) })) { _lensSub('walker: portal sweep', _ws); return; }
+            _ws = _lensSub('walker: portal sweep', _ws);
             var nx = pl.x + mx * speed * dt, nz = pl.z + mz * speed * dt;
             if (pl.air) {
                 /* airborne: hard walls and furniture SIDES — no step limits */
@@ -90503,11 +90525,13 @@ const ThreeRenderer = (function () {
             }
             pl.targetYaw = Math.atan2(mx, mz);
         }
+        _ws = _lensSub('walker: step (floor + blockers)', _ws);
         /* THE PUSH (rev 4): the walk's INTENDED velocity — a body held against a wall door's discs
            still pushes into the door, and that is the crossing (`_hqPortalWallTouch`) */
         pl.pushX = moving ? mx * (running ? 4.6 : 2.4) : 0; pl.pushZ = moving ? mz * (running ? 4.6 : 2.4) : 0;
         pl.moving = moving; pl.running = running;
         _hqTickCarry(pl, dt, moving);   // THE CARRY (THE DOOR GUN rev 4): momentum through a pair — run off on the ground, kept in the air
+        _ws = _lensSub('walker: carry', _ws);
         /* real jump (2026-09-04): a physics arc replaces the cosmetic hop.
            Apex ≈ 1.46 m — over the mezzanine railing down to the floor, onto
            and over the dispatch counter, over couches and cabinets. The latch
@@ -90539,6 +90563,7 @@ const ThreeRenderer = (function () {
             pl.y = ny;
             if (_hq.terrain && _hq.terrain.void && pl.y < _hq.terrain.void.fall) { _hqVoidReturn(pl); return; }
         } else if (!pl.air && _hq.terrain && !H.paused && !pl._onMover) { pl._landSafe = { x: pl.x, z: pl.z, y: pl.y, yaw: pl.yaw, rid: _hq.terrain.roomId }; if (_hq.terrain.void) pl._voidSafe = pl._landSafe; }   // THE VOID / THE DEEP WATER: the last ground stood on
+        _ws = _lensSub('walker: jump + landing', _ws);
         pl.visY += (pl.y - pl.visY) * Math.min(1, dt * (pl.air ? 60 : 14));
         if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
         if (pl._hopped) pl._hopped = false;   // a hop set the velocity itself — the jump across the room is not a speed
@@ -90550,12 +90575,15 @@ const ThreeRenderer = (function () {
         pl.yaw += dy * Math.min(1, dt * 14);
         var U = _hqUnits();
         pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        _ws = _lensSub('walker: turn + place', _ws);
         _hqSwimCheck(pl);   // THE DEEP (2026-09-18): deep water under the feet — or a drowned room — makes the walker the swimmer
+        _ws = _lensSub('walker: swim check', _ws);
         _hqClimbCheck(pl);   // THE CLIMB (2026-09-19): a ladder's foot walked into (or its head walked off) puts the walker on the line
         /* NO auto-follow (2026-09-05): the mouse owns the camera outright —
            hover-look and pointer lock both steer it — so walking never swings
            the view behind the runner any more (that swing, kicking in 1.4 s
            after the last mouse move, was the "snap" that fought mouse-look). */
+        _lensSub('walker: climb check', _ws);
     }
     /* THE VOID (LEVEL_DESIGN_PLAN §5): a body fallen past the room's `void.fall` comes back on the last ground it stood on — a quick
        fade to the void's colour and back, no damage, the camera following (the jump is the only way off an island: hqTerrainFeet
