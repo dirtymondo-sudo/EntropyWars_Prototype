@@ -2965,3 +2965,10 @@ His 07:44 F3 "Slow frames": "tick: memory budget 44 ms" = "memory: worn list 21"
 uuid strings written into an object) + "memory: unit models list 21" (`_mmListRigs` -> `_mmWorn`: the whole scene walked AGAIN for the
 materials). Now `_mmLive` returns a Set of geometries and, from the same walk, `live.worn` (a Set of materials + colour sheets) that
 `_mmListRigs` reads; `_mmWorn` stays as the fallback. Same answers.
+## THE CULLED CHUNKS COUNT (2026-11-18, Disaster City 60 FPS thread)
+His 07:44 F3 "Slow frames": "tick: instance pass 42 / 50 / 43 ms" (three of six). `_hqInstTick` rescans every rescanMs and runs the whole
+`_hqInstAdd` (a forced `scene.updateMatrixWorld(true)` of ~45,000 objects, a second scan, the build) when the scan's count differs
+from the copies it left alone. The scan was `traverseVisible`, and a prop chunk the camera culls reads hidden (`_ew_ckOut`), so the
+count moved every time a chunk went out or came back and the pass re-ran for nothing. `_hqInstScan` now walks a culled chunk as if
+shown (hidden pieces are still skipped), so the count moves only when a file lands or a copy is handed back. The "Bundle spikes"
+line in the same F3 showed six 6 ms checks with 0 re-records: the bundle side is quiet. Off: `window.EW_HQ_INST_SCAN_VISIBLE = true`.
