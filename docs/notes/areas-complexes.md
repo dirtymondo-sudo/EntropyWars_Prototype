@@ -12302,3 +12302,12 @@ reason to keep a zone's districts apart. His rule stands alone: two places that 
   Forest + R12, L6), the Mountains (Lodge, Olympus, Shasta + R3), the Desert (Circus, Western Town, Area 51, Giza do not touch: only through the
   Highway legs), Leylines (the Line + Babel + Bug Colony), the Cavern's tunnels, the Deep (Atlantis and the Sea Floor do not touch).
 
+## THE DEAD ENDS (2026-11-18, mondo: "a road that leads to nothing and just ends is not realistic, at least some road signs")
+Phase 5 took away eight stand-in jump doors and left the bit of road or trail that led to each. data.js `HQ_DEAD_ENDS` (just above `hqLinkLive`)
+closes each one: a row = room, the spot, which way the road runs, a kind (road = police barricades across + cones + a road sign; trail = a fallen
+log + a trail board; snow = snow heaps + a board; stone = a fallen column + rocks). The pieces are pushed onto the room's own `props` once at load
+(marked `deadEnd: true`), so no zone tool has to know about them and a rebake never drops them. The eight: the Hills' Shasta Road spur (4
+barricades across the asphalt), Shasta's east road, Shasta's Trailhead arch, the Redwood Trail's Snowline, the Vatican's Pilgrim Stair, Olympus'
+stair foot, the North Pole's sleigh road south, the Pines' sleigh road east. Seen in a probe, one picture each. When a road or door is built at
+one of them again, delete its row.
+

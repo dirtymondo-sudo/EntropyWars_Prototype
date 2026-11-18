@@ -76592,6 +76592,36 @@ function hqLinkEndWear(link, end) {
     const cat = DOOR_HQ.catalogue[leaf];
     return (cat && cat.leaf) ? { leaf: leaf, cat: cat } : null;
 }
+/* ══ THE DEAD ENDS (2026-11-18, mondo: "having a road lead to nothing and just end is not realistic, there at least need to be some road
+   signs or something") ══ One World phase 5 took away the stand-in jump doors; the bit of road or trail that led to each still runs to the place's
+   edge. Each row closes one: `kind` road = a police barricade across it, two cones and a road sign; trail = a fallen log and a trail sign; snow =
+   snow heaps and a trail sign; stone = a fallen column and rocks. `x, z` = the middle of the closing, `ew: true` = the way runs east-west (the
+   closing lies north-south). The pieces are added to the room's own props here, once, at load, so a zone tool's rebake never drops them. When a
+   door or a road is built there again, delete its row. */
+const HQ_DEAD_ENDS = [
+    { room: 'site_prebuilt_downtown_streets',        x: -247.5, z: -313.5,  ew: true,  kind: 'road', n: 4 },    // the Hills: the old Shasta Road's west spur
+    { room: 'site_prebuilt_shasta_ow_shasta',        x: 143,    z: -49,     ew: true,  kind: 'road' },    // Mount Shasta: the old Shasta Road, east
+    { room: 'site_prebuilt_shasta_ow_shasta',        x: -80.5,  z: 143,     ew: false, kind: 'snow' },    // the Trailhead's old trail down to the Redwoods
+    { room: 'site_prebuilt_fairy_forest_ow_redwood', x: -1.75,  z: -140,    ew: true,  kind: 'trail' },   // the Snowline's old trail up to Shasta
+    { room: 'site_prebuilt_vatican_plots',           x: -21,    z: -143,    ew: false, kind: 'stone' },   // the Pilgrim Stair behind the cortile
+    { room: 'site_prebuilt_shasta_ow_olympus',       x: -70,    z: 122,     ew: false, kind: 'stone' },   // the Pilgrim Stair's foot on Olympus
+    { room: 'site_prebuilt_northpole_plots',         x: 45.5,   z: 80,      ew: false, kind: 'snow' },    // the sleigh road south out of the village
+    { room: 'site_prebuilt_camelot_ow_pines',        x: 38,     z: -124.25, ew: true,  kind: 'snow' },    // the Pines' old sleigh road east
+];
+(function () {
+    const r2 = v => Math.round(v * 100) / 100;
+    HQ_DEAD_ENDS.forEach(e => { const R = DOOR_HQ.rooms[e.room]; if (!R || !Array.isArray(R.props)) return;
+        /* (a, c) = metres along the closing line and back from it towards the room's middle */
+        const back = e.ew ? (e.x > 0 ? -1 : 1) : (e.z > 0 ? -1 : 1);
+        const P = (key, a, c, face, more) => R.props.push(Object.assign({ key: key, x: r2(e.x + (e.ew ? c * back : a)), z: r2(e.z + (e.ew ? a : c * back)), face: face, deadEnd: true }, more || {}));
+        const across = e.ew ? 90 : 0, facing = e.ew ? (back > 0 ? 90 : 270) : (back > 0 ? 180 : 0);
+        if (e.kind === 'road') { const n = e.n || 2, hw = n * 1.2;   // `n` barricades side by side (a wide road)
+            for (let i = 0; i < n; i++) P('item_police_barricade', -hw + 1.2 + i * 2.4, 0, across); P('traffic_cone', -hw - 0.4, 0.6, 0); P('traffic_cone', hw + 0.4, 0.6, 0); P('roads_g_sign_003', hw + 1.2, 1.6, facing); }
+        else if (e.kind === 'trail') { P('fallen_log', 0, 0, across); P('trail_sign', 2.4, 1.6, facing); }
+        else if (e.kind === 'snow') { P('snow_heap', -1.3, 0, 0); P('snow_heap', 1.3, 0.3, 40); P('trail_sign', 3.2, 1.8, facing); }
+        else { P('fallen_column', 0, 0, across); P('psxg_rock_1', -2.2, 0.9, 0); P('psxg_rock_2', 2.4, 0.7, 30); } });
+})();
+
 /* is a link LIVE — both ends resolve to a built / authored room, both ends
    are well-formed and both wear something the catalogue lists? The ONE
    rule hqLinkDoors and hqWorldRoutes share: `{ a, b, wearA, wearB }` (room
