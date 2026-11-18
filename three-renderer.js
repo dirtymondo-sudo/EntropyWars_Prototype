@@ -53986,8 +53986,11 @@ const ThreeRenderer = (function () {
                is written down with the previous frame's own JS (the gap is that frame's work + what the browser did after it): its CPU
                and its three costliest parts / inner steps. A gap with little JS in it is the browser (a GC, the GPU, the compositor). */
             if (iv >= 50 && iv < 2000 && L.prevF) { var PF = L.prevF, top = []; [PF.parts, PF.sub].forEach(function (M, mi) { if (M) for (var tk in M) top.push([(mi ? '> ' : '') + tk, M[tk]]); }); top.sort(function (a, b) { return b[1] - a[1]; });
-                (L.slow || (L.slow = [])).push({ iv: iv, cpu: PF.cpu, top: top.slice(0, 3) }); if (L.slow.length > 6) L.slow.shift(); } }
-        L.lastT0 = F.t0; L.prevF = { cpu: F.cpu, parts: F.parts || null, sub: F.sub || null };
+                (L.slow || (L.slow = [])).push({ iv: iv, cpu: PF.cpu, top: top.slice(0, 3), rec: PF.rec, ep: PF.ep }); if (L.slow.length > 6) L.slow.shift(); } }
+        /* (and how many bundle groups that frame re-recorded, and whether the shared epoch moved: a freed resource / a rig grow re-records them all) */
+        var recNow = (typeof _ewBun !== 'undefined' && _ewBun) ? (_ewBun.recs | 0) : 0, epNow = (typeof _ewBun !== 'undefined' && _ewBun) ? (_ewBun.epoch | 0) : 0;
+        L.lastT0 = F.t0; L.prevF = { cpu: F.cpu, parts: F.parts || null, sub: F.sub || null, rec: L.recAt != null ? recNow - L.recAt : 0, ep: L.epAt != null && epNow !== L.epAt };
+        L.recAt = recNow; L.epAt = epNow;
         A.n++; A.cpu += F.cpu; A.submit += F.submit; A.anim += F.anim; A.renders += F.renders; A.shadowRuns += F.shadowRuns; A.calls += F.calls; A.tris += F.tris;
         A.meshes += F.meshes; A.skinned += F.skinned; A.inst += F.inst; A.instances += F.instances;
         if (F.parts) { var AP = A.parts || (A.parts = {}); for (var pk in F.parts) AP[pk] = (AP[pk] || 0) + F.parts[pk]; }
@@ -54083,7 +54086,7 @@ const ThreeRenderer = (function () {
             if (pl.length > 9) L.push('  ' + pl.slice(9).join(' · '));
         }
         if (S.sub && S.sub.length) L.push('Inside the ticks (ms/frame): ' + S.sub.filter(function (r) { return r[1] >= 0.02; }).slice(0, 10).map(function (r) { return r[0] + ' ' + r[1].toFixed(2); }).join(' · '));
-        if (S.slow && S.slow.length) L.push('Slow frames (last ' + S.slow.length + ', gap · its JS · top): ' + S.slow.map(function (w) { return Math.round(w.iv) + ' ms · JS ' + Math.round(w.cpu) + ' · ' + w.top.map(function (t) { return t[0] + ' ' + t[1].toFixed(1); }).join(', '); }).join(' | '));
+        if (S.slow && S.slow.length) L.push('Slow frames (last ' + S.slow.length + ', gap · its JS · top): ' + S.slow.map(function (w) { return Math.round(w.iv) + ' ms · JS ' + Math.round(w.cpu) + (w.rec ? ' · ' + w.rec + ' re-recorded' : '') + (w.ep ? ' · epoch moved' : '') + ' · ' + w.top.map(function (t) { return t[0] + ' ' + t[1].toFixed(1); }).join(', '); }).join(' | '));
         if (S.cnt) {   // THE SHADOW SPLIT (2026-11-15): which shadow costs — the sun's map or a lamp's cube sides — and how many objects each pass's walk visits
             var cN = function (k) { return S.cnt[k] || 0; }, cF = function (v) { return v >= 100 ? _lensFmtN(v) : (Math.round(v * 10) / 10); };
             L.push('Shadow split (a frame): sun ' + cF(cN('sun renders')) + ' renders, ' + cF(cN('sun calls')) + ' calls, ' + cF(cN('sun tris')) + ' tris · lamp ' + cF(cN('lamp renders')) + ' side renders, ' + cF(cN('lamp calls')) + ' calls, ' + cF(cN('lamp tris')) + ' tris');
@@ -90832,12 +90835,13 @@ const ThreeRenderer = (function () {
                EASED (2026-09-05 rev 3): in fast so the eye never clips, back
                out slowly so a passing pillar / the desk / the stair mass no
                longer pops the camera a metre in one frame */
-            var f = 1, NB = 32;
+            var f = 1, NB = 32, _cs = (_lens && _lens.cur) ? performance.now() : 0;   // THE INNER SPLIT (lens)
             for (var i = 1; i <= NB; i++) {
                 var t = i / NB;
                 var px = pivot.x + (ideal.x - pivot.x) * t, py = pivot.y + (ideal.y - pivot.y) * t, pz = pivot.z + (ideal.z - pivot.z) * t;
                 if (_hqCamBlocked(px, pz, py)) { f = Math.max(0.12, (i - 1) / NB); break; }
             }
+            _lensSub('camera: boom march', _cs);
             if (c.f == null || !c.init) c.f = f;
             else if (f < c.f) c.f += (f - c.f) * Math.min(1, dt / 0.04);
             else c.f += (f - c.f) * Math.min(1, dt / 0.45);
@@ -90892,7 +90896,9 @@ const ThreeRenderer = (function () {
         }
         cam.position.set(c.ex * U, c.ey * U, c.ez * U);
         cam.lookAt(c.lx * U, c.ly * U, c.lz * U);
+        var _cf = (_lens && _lens.cur) ? performance.now() : 0;
         if (typeof _hqCamFeel === 'function') _hqCamFeel(H, pl, cam, dt, U);   // THE CAMERA PASS 6.1 (2026-09-21): the bob, the landing, the sprint lens, the carve lean
+        _lensSub('camera: feel', _cf);
     }
     /* Push the camera onto the glass of the CRT nearest a counter (the
        CROSSING / RANGE console's tanker desk, the dispatch desk) — the
