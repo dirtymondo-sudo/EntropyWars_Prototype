@@ -667,7 +667,7 @@
             if (!unit || unit.dead) return;
             if (fromZ == null) fromZ = unit.z ?? 0;
             if (fromStandH == null) fromStandH = fromZ;
-            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
+            const enemies = realmReachableFrom(aliveHostilesOf(unit.player), unit);
             for (const enemy of enemies) {
 
                 if (Math.abs(enemy.x - fromX) > 1 || Math.abs(enemy.y - fromY) > 1) continue;
@@ -2299,12 +2299,12 @@
                 ? (unitAt(x, y, z) || unitAt(x, y))
                 : unitAt(x, y);
             /* 🐍 a spell aimed at the serpent's body lands on its king (THE BODY IS HIM) */
-            if (!target) { const _sk = _serpentKingAt(x, y); if (_sk && _sk.player !== unit.player) target = _sk; }
+            if (!target) { const _sk = _serpentKingAt(x, y); if (_sk && sidesHostile(_sk.player, unit.player)) target = _sk; }
 
             // Sky telescope: earth unit targeting above-section enemy
             if (!target && unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth') {
                 const skyTarget = state.units.find(u =>
-                    !u.dead && u.player !== unit.player
+                    !u.dead && sidesHostile(u.player, unit.player)
                     && getSectionForUnit(u) === 'above'
                     && u.x === x && u.y === y);
                 if (skyTarget) {
@@ -2317,7 +2317,7 @@
             // basic attacks damage them. Reject the cast cleanly (no MP/AP
             // spent) so the AI marks the spell failed and humans get feedback.
             const tower = !target ? towerAt(x, y) : null;
-            if (tower && tower.owner !== unit.player) {
+            if (tower && sidesHostile(tower.owner, unit.player)) {
                 addLog(`⬡ The Cube shrugs off ${_ctSp(spell.name)} — only physical strikes damage it.`, _clickSeat());
                 playErrorSfx();
                 return { handled: true, returnVal: 0 };
@@ -2326,7 +2326,7 @@
             // Turret targeting
             if (!target && state.turrets) {
                 const turret = state.turrets.find(t =>
-                    t.x === x && t.y === y && t.owner !== unit.player && t.hp > 0);
+                    t.x === x && t.y === y && sidesHostile(t.owner, unit.player) && t.hp > 0);
                 if (turret) {
                     pushUndoSnapshot(true);
                     playSfx(spellLaunchSfx(spell));
@@ -2356,7 +2356,7 @@
             if (!target && state._deployedObjects) {
                 const dobjIdx = state._deployedObjects.findIndex(o => {
                     if (o.x !== x || o.y !== y || o.hp <= 0) return false;
-                    const isOwn = o.ownerPlayer === unit.player;
+                    const isOwn = sidesAllied(o.ownerPlayer, unit.player);
                     if (isOwn && !(o.detonateOnAttack && o.blastRadius > 0)) return false;
                     return true;
                 });
@@ -5066,7 +5066,7 @@
                     if (typeof captureDoorAt === 'function' && captureDoorAt(out.x, out.y)) break;
                     { const _tr = (typeof doorAt === 'function') ? doorAt(out.x, out.y) : null; if (_tr && _tr.transit && _tr.open) break; }
                     // D · a bomb the forecaster's side can see
-                    const bomb = (state.bombs || []).find(b => b && b.x === out.x && b.y === out.y && b.owner !== u.player
+                    const bomb = (state.bombs || []).find(b => b && b.x === out.x && b.y === out.y && sidesHostile(b.owner, u.player)
                         && !usedBombs.has(b) && (viewer == null || b.owner === viewer));
                     if (bomb) {
                         usedBombs.add(bomb);
@@ -5080,7 +5080,7 @@
                         const ctx = { trigger: { unitId: u.id, dirX: dx, dirY: dy } };
                         for (const t of area) {
                             const v = (t.x === out.x && t.y === out.y) ? u : unitAt(t.x, t.y);
-                            if (!v || v.dead || v.player === bomb.owner) continue;
+                            if (!v || v.dead || sidesAllied(v.player, bomb.owner)) continue;
                             out.simHits.push({ unitId: v.id, mid: bomb.dmg, lo: bomb.dmg, hi: bomb.dmg, opts: bOpts, tag: 'bomb' });
                             if (v === u) continue;
                             const bd = bombKnockDir(bomb, v, ctx), bn = getUnitPushDistance(v, BOMB_KNOCK_TILES);
@@ -5100,7 +5100,7 @@
                         continue;
                     }
                     // D · a hidden trap the forecaster's side laid springs (it moves nobody; the chain goes on)
-                    if ((state.traps || []).some(t => t && t.x === out.x && t.y === out.y && t.owner !== u.player && (viewer == null || t.owner === viewer))) {
+                    if ((state.traps || []).some(t => t && t.x === out.x && t.y === out.y && sidesHostile(t.owner, u.player) && (viewer == null || t.owner === viewer))) {
                         out.simNotes.push({ unitId: u.id, kind: 'trap', x: out.x, y: out.y });
                     }
                     // F · every storm eye on the tile strikes it, and a displacing one flings it on its heading (once per
@@ -5170,7 +5170,7 @@
             const zones = state._activeZones;
             if (!zones || !zones.length) return [];
             return zones.filter(z => z && z.type === 'debuff' && !z.gravityField
-                && z.ownerPlayer !== unit.player
+                && sidesHostile(z.ownerPlayer, unit.player)
                 && _zoneCovers(z, unit.x, unit.y));
         }
         window._chainZonesAt = _chainZonesAt;
@@ -5438,7 +5438,7 @@
             let fired = 0;
             const x = unit.x, y = unit.y;
             if (state.bombs && state.bombs.length) {
-                const bombIndex = state.bombs.findIndex(b => b.x === x && b.y === y && b.owner !== unit.player);
+                const bombIndex = state.bombs.findIndex(b => b.x === x && b.y === y && sidesHostile(b.owner, unit.player));
                 if (bombIndex >= 0) {
                     const bomb = state.bombs.splice(bombIndex, 1)[0];
                     /* THE TRAP'S BEAT: the blast waits for the walk / shove still bringing the body onto it, and the camera
@@ -5459,7 +5459,7 @@
             /* ── detonateOnStep: deployed objects that go off underfoot ── */
             if (state._deployedObjects) {
                 const trapIdx = state._deployedObjects.findIndex(o =>
-                    _trapCovers(o, x, y) && o.hp > 0 && o.detonateOnStep && o.ownerPlayer !== unit.player && !o._detonated
+                    _trapCovers(o, x, y) && o.hp > 0 && o.detonateOnStep && sidesHostile(o.ownerPlayer, unit.player) && !o._detonated
                 );
                 if (trapIdx >= 0) {
                     const trap = state._deployedObjects[trapIdx];
@@ -6509,7 +6509,7 @@
                the same byUnit, so every displaced enemy counts once. Preview
                slides pass opts.simulate and never land here. */
             if (!simulate && res.moved > 0 && opts.byUnit
-                && (typeof isEnemyUnit === 'function' ? isEnemyUnit(opts.byUnit, target) : opts.byUnit.player !== target.player)) {
+                && (typeof isEnemyUnit === 'function' ? isEnemyUnit(opts.byUnit, target) : sidesHostile(opts.byUnit.player, target.player))) {
                 opts.byUnit._matchDisplacements = (opts.byUnit._matchDisplacements || 0) + 1;
             }
 
@@ -7140,7 +7140,7 @@
             const r = spell && spell.jammedArc;
             if (!r || !target || !(dmg > 0)) return;
             const arcDmg = Math.max(1, Math.round(dmg * (r.mult > 0 ? r.mult : 0.5)));
-            for (const e of realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)) {
+            for (const e of realmReachableFrom(aliveHostilesOf(unit.player), unit)) {
                 if (!e || e.dead || e.id === target.id || !unitHasStatus(e, 'jammed')) continue;
                 if (Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) !== 1) continue;
                 applyDamageToUnit(e, arcDmg, `${spell.name} arcs to `, {
@@ -7161,14 +7161,14 @@
                    that many more times (the extra hops carry the last hop's damage). */
                 let _chainProfile = spell.chainProfile;
                 if (spell.chainWetHops > 0) {
-                    const _probe = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)), _chainProfile.length, spell.chainRadius || 1);
+                    const _probe = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveHostilesOf(unit.player), unit)), _chainProfile.length, spell.chainRadius || 1);
                     if (_probe.some(u => u && (unitHasStatus(u, 'wet') || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(u))))) {
                         _chainProfile = _chainProfile.concat(Array(spell.chainWetHops).fill(_chainProfile[_chainProfile.length - 1]));
                         addLog(`⚡💧 ${_ctSp(spell.name)} finds water — the chain jumps further!`);
                     }
                 }
                 const chain = calcChainTargets(target,
-                    spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)),   // THE SEEN SPLIT: links only find seen enemies
+                    spellHopPool(unit, spell, realmReachableFrom(aliveHostilesOf(unit.player), unit)),   // THE SEEN SPLIT: links only find seen enemies
                     _chainProfile.length, spell.chainRadius || 1);
 
                 const staggerMs = actionMs(140);
@@ -7495,7 +7495,7 @@
         function getTauntDecoy(unit) {
             if (!unit || !unit._tauntObjKey || !unitHasStatus(unit, 'taunt')) return null;
             const o = (state._deployedObjects || []).find(d => d.hp > 0 && !d._detonated && (d.x + ',' + d.y) === unit._tauntObjKey);
-            if (!o || o.ownerPlayer === unit.player) return null;
+            if (!o || sidesAllied(o.ownerPlayer, unit.player)) return null;
             return o;
         }
         window.getTauntDecoy = getTauntDecoy;
@@ -7519,7 +7519,7 @@
            exception is the existing single-target rule: an own object that explodes when hit (a bomb) can still be set off. */
         function _ownPieceSpared(obj, byUnit) {
             if (obj && obj.serpentOf != null) return true;   // 🐍 the serpent's body is the king, never a breakable object (_serpentKingAt)
-            if (!obj || !byUnit || obj.ownerPlayer !== byUnit.player) return false;
+            if (!obj || !byUnit || sidesHostile(obj.ownerPlayer, byUnit.player)) return false;
             return !((obj.detonateOnAttack || obj.detonateOnFire) && obj.blastRadius > 0);
         }
         function _onDecoyBroken(obj, byUnit) {
@@ -7527,7 +7527,7 @@
             if (!obj || !Array.isArray(obj.breakStatus) || !obj.breakStatus.length || obj._breakSprung) return;
             obj._breakSprung = true;
             const src = obj.ownerUnitId ? unitFromId(obj.ownerUnitId) : null;
-            const foes = state.units.filter(u => !u.dead && !u._dying && u.player !== obj.ownerPlayer
+            const foes = state.units.filter(u => !u.dead && !u._dying && sidesHostile(u.player, obj.ownerPlayer)
                 && Math.max(Math.abs(u.x - obj.x), Math.abs(u.y - obj.y)) === 1);
             for (const u of foes) {
                 for (const eff of obj.breakStatus) applyStatusPayload(u, { id: eff.id, duration: eff.duration || 1 }, `${obj.spellName || 'The decoy'} comes apart → `, (src && !src.dead) ? src : null);
@@ -7765,7 +7765,7 @@
         function _resolveMultiHitTower(unit, spell, x, y, effectiveSpellCost, spellPower, finishAction) {
             const target = unitAt(x, y);
             const tower = !target ? towerAt(x, y) : null;
-            if (!tower || tower.owner === unit.player) return { handled: false };
+            if (!tower || sidesAllied(tower.owner, unit.player)) return { handled: false };
 
             // Cubes are immune to ALL spells by design — only basic attacks
             // damage them. Reject cleanly (no MP/AP spent).
@@ -7799,7 +7799,7 @@
                 // Bounce pick is pure (calcBounceTarget, see PURE DAMAGE
                 // MATH); the wrapper supplies the enemy roster.
                 const second = calcBounceTarget(first,
-                    spellHopPool(unit, spell, state.units.filter(u => u.player !== unit.player)),   // THE SEEN SPLIT
+                    spellHopPool(unit, spell, state.units.filter(u => sidesHostile(u.player, unit.player))),   // THE SEEN SPLIT
                     spell.bounceRadius || 2, first.id);
                 if (second) {
                     playProjectile(first.x, first.y, second.x, second.y,
@@ -7845,7 +7845,7 @@
         // ═══════════════════════════════════════════════════════════════════
         function _applyAoeDamage(unit, spell, tiles, baseDmg, spellPower, opts = {}) {
             try { _crowdStruck(tiles); } catch (e) {}   // THE CROWD (step 7b): an onlooker under the blast steps out (no damage until step 8)
-            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
+            const enemies = realmReachableFrom(aliveHostilesOf(unit.player), unit);
             const waterMult = (opts.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
             let hitCount = 0;
             let _aoeDrainTotal = 0;   // THE SPELL AUDIT Batch D: aoeLifeDrain's pool (HP actually taken, every victim)
@@ -8149,7 +8149,7 @@
         // Returns { cam, projectileDelay, impactDelay, completionDelay }.
         // ═══════════════════════════════════════════════════════════════════
         function _setupAoeCameraAndTiming(unit, spell, tx, ty, tiles) {
-            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
+            const enemies = realmReachableFrom(aliveHostilesOf(unit.player), unit);
             const firstHit = enemies.find(e => tiles.some(t => t.x === e.x && t.y === e.y));
             const extraTargets = firstHit ? enemies.filter(e => e !== firstHit && tiles.some(t => t.x === e.x && t.y === e.y)) : [];
             const camTarget = firstHit || { x: tx, y: ty };
@@ -8381,13 +8381,13 @@
         function _beamCellVictims(unit, spell, x, y, lineZ) {
             {   // 🐍 a beam across the serpent's body hits its king (callers keep each victim once)
                 const _sk = _serpentKingAt(x, y);
-                if (_sk && _sk.player !== unit.player) return [_sk];
+                if (_sk && sidesHostile(_sk.player, unit.player)) return [_sk];
             }
             if (lineZ == null && !spell.beamZigzag) {
                 const u = unitAt(x, y);   // the flat lane (no aim)
-                return (u && !u.dead && u.player !== unit.player) ? [u] : [];
+                return (u && !u.dead && sidesHostile(u.player, unit.player)) ? [u] : [];
             }
-            return _beamColumnUnits(x, y).filter(u => u.player !== unit.player
+            return _beamColumnUnits(x, y).filter(u => sidesHostile(u.player, unit.player)
                 && (spell.beamZigzag || beamBodyOnLine(u, lineZ)));
         }
         // Would this cast's beam strike `victim`? (AI scoring, one call per victim.)
@@ -8543,7 +8543,7 @@
                     (o.detonateOnAttack || o.detonateOnFire) && o.blastRadius > 0);
                 if ((building && building.hp <= 1) || explosive) { uncertain = true; break; }
                 const door = board.doors.find(d => d.x === x && d.y === y && d.hp > 0);
-                if (door && door.owner !== unit.player) {
+                if (door && sidesHostile(door.owner, unit.player)) {
                     door.hp--;
                     if (door.hp <= 0) board.doors = board.doors.filter(d => d.pairId !== door.pairId);
                 }
@@ -9168,17 +9168,17 @@
                     const t0 = unitAt(tx, ty);
                     tiles = [{ x: tx, y: ty }];
                     if (t0) {
-                        spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e => e.id !== t0.id && !e.dead
+                        spellHopPool(unit, spell, realmReachableFrom(aliveHostilesOf(unit.player), unit)).filter(e => e.id !== t0.id && !e.dead
                             && Math.abs(e.x - t0.x) + Math.abs(e.y - t0.y) <= (spell.splitRadius || 2))
                             .sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2)
                             .forEach(e => tiles.push({ x: e.x, y: e.y }));
                     }
                 } else if (kind === 'healAll' || kind === 'manaRestoreAll') {
                     // Free Energy (manaRestoreAll) skips its caster (doSpell), so its tiles do too
-                    tiles = realmReachableFrom(aliveUnitsFor(unit.player), unit).filter(a => kind !== 'manaRestoreAll' || a.id !== unit.id).map(a => ({ x: a.x, y: a.y }));
+                    tiles = realmReachableFrom(aliveAlliesOf(unit.player), unit).filter(a => kind !== 'manaRestoreAll' || a.id !== unit.id).map(a => ({ x: a.x, y: a.y }));
                 } else if (kind === 'warCry') {
                     const r = spell.auraRadius || 3;
-                    tiles = realmReachableFrom(aliveUnitsFor(unit.player), unit)
+                    tiles = realmReachableFrom(aliveAlliesOf(unit.player), unit)
                         .filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= r)
                         .map(a => ({ x: a.x, y: a.y }));
                 } else if (kind === 'terrainCreate' && spell.orientable) {
@@ -9836,7 +9836,7 @@
                     let tz = _tileStandZ(cx, cy);
                     if (dxy === 0 && minR >= 1) {
                         const colEnemy = (typeof unitsAtColumn === 'function')
-                            ? unitsAtColumn(cx, cy).find(u => u.id !== unit.id && u.player !== unit.player && (u.z ?? 0) !== (unit.z ?? 0))
+                            ? unitsAtColumn(cx, cy).find(u => u.id !== unit.id && sidesHostile(u.player, unit.player) && (u.z ?? 0) !== (unit.z ?? 0))
                             : null;
                         if (colEnemy) tz = colEnemy.z ?? 0;
                     }
@@ -10170,7 +10170,7 @@
             const out = [];
             if (!unit || !Array.isArray(state.units) || typeof getUnitPassives !== 'function') return out;
             for (const h of state.units) {
-                if (!h || h.dead || h._dying || h.id === unit.id || h.player !== unit.player) continue;
+                if (!h || h.dead || h._dying || h.id === unit.id || sidesHostile(h.player, unit.player)) continue;
                 // aura keys live on rows: read the cached row wraps directly (getUnitPassives asks canFly — too dear for
                 // getEffectiveArmor, which the AI calls per candidate)
                 const _rows = (typeof unitPassiveRowIds === 'function') ? unitPassiveRowIds(h) : [];
@@ -10234,7 +10234,7 @@
             if (hg && ctx.srcH != null && ctx.tgtH != null && ctx.srcH > ctx.tgtH) { out.mult *= 1 + hg; out.parts.push(`⛰ +${Math.round(hg * 100)}%`); }
             const fb = unitPassiveSum(src, 'flankBonus') || 0;
             if (fb && (state.units || []).some(a => a && !a.dead && !a._dying && a.id !== src.id && a.id !== tgt.id
-                && a.player === src.player && Math.max(Math.abs(a.x - tgt.x), Math.abs(a.y - tgt.y)) === 1)) {
+                && sidesAllied(a.player, src.player) && Math.max(Math.abs(a.x - tgt.x), Math.abs(a.y - tgt.y)) === 1)) {
                 out.mult *= 1 + fb; out.parts.push(`🐺 PACK +${Math.round(fb * 100)}%`);
             }
             for (const p of getUnitPassives(src)) {
@@ -10816,7 +10816,7 @@
            enemy within `range` (Manhattan) of the landing tile that the
            shooter can see (not concealed from them, no terrain in the way). */
         function _afterShotTarget(unit, lx, ly, range) {
-            const cands = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => !e.dead
+            const cands = realmReachableFrom(aliveHostilesOf(unit.player), unit).filter(e => !e.dead
                 && Math.abs(e.x - lx) + Math.abs(e.y - ly) <= range
                 && !(typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(e, unit))
                 && !(typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(lx, ly, e.x, e.y)));
@@ -10994,7 +10994,7 @@
             if ((payload.id === 'poison' || payload.id === 'burn' || payload.id === 'bleed'
                 || payload.id === 'haunted' || payload.id === 'corroded' || payload.id === 'radioactive'
                 || payload.id === 'soulBound' || payload.id === 'voodoo') && sourceUnit
-                && sourceUnit.player !== target.player) {
+                && sidesHostile(sourceUnit.player, target.player)) {
                 target._statusSrc = target._statusSrc || {};
                 target._statusSrc[payload.id] = sourceUnit.id;
             }
@@ -11442,7 +11442,7 @@
                 state._activeZones = state._activeZones.filter(zone => {
                     const area = _zoneTiles(zone);
                     if (zone.type === 'heal') {
-                        const allies = state.units.filter(u => !u.dead && u.player === zone.ownerPlayer);
+                        const allies = state.units.filter(u => !u.dead && sidesAllied(u.player, zone.ownerPlayer));
                         for (const ally of allies) {
                             if (area.some(t => t.x === ally.x && t.y === ally.y)) {
                                 const healAmt = zone.healPerTurn || 48;
@@ -11470,7 +11470,7 @@
                            inside at the round end takes them. */
                         if (Array.isArray(zone.enemyStatusEffects) && zone.enemyStatusEffects.length) {
                             const _zhCaster = zone.casterUnitId ? unitFromId(zone.casterUnitId) : null;
-                            for (const foe of state.units.filter(u => !u.dead && !u._dying && u.player !== zone.ownerPlayer)) {
+                            for (const foe of state.units.filter(u => !u.dead && !u._dying && sidesHostile(u.player, zone.ownerPlayer))) {
                                 if (!area.some(t => t.x === foe.x && t.y === foe.y)) continue;
                                 for (const eff of zone.enemyStatusEffects) applyStatusPayload(foe, { id: eff.id, duration: eff.duration || 1 }, `${zone.spellName} → `, (_zhCaster && !_zhCaster.dead) ? _zhCaster : null);
                                 let evt = events.find(e => e.unit === foe);
@@ -11494,7 +11494,7 @@
                                 }
                             }
                         } else {
-                        const enemies = state.units.filter(u => !u.dead && u.player !== zone.ownerPlayer);
+                        const enemies = state.units.filter(u => !u.dead && sidesHostile(u.player, zone.ownerPlayer));
                         // Resolve the zone's caster so DOTs it applies (poison
                         // clouds…) credit them for tick damage and kills.
                         const _zoneCaster = zone.casterUnitId
@@ -11536,7 +11536,7 @@
                         /* …only while the cloud stays: the tick it fades on gave its allies one more round of Invisible
                            with no cloud left (spell audit F4, 2026-10-26 — "invisible only while they remain in the cloud") */
                         if (zone.allyStatusEffects && zone.allyStatusEffects.length && zone.duration > 1) {
-                            const allies = state.units.filter(u => !u.dead && u.player === zone.ownerPlayer);
+                            const allies = state.units.filter(u => !u.dead && sidesAllied(u.player, zone.ownerPlayer));
                             for (const ally of allies) {
                                 if (area.some(t => t.x === ally.x && t.y === ally.y)) {
                                     for (const eff of zone.allyStatusEffects) {
@@ -11576,8 +11576,8 @@
 
             /* THE GARDEN fix (2026-11-12): the grown plants and aura trees act with NO seed left on the board too */
             if (state.plantedSeeds?.length || (state.plantedTrees || []).some(t => t.aura || t.apple) || (state.turrets || []).some(t => t.plant && t.hp > 0)) {
-                for (let p = 1; p <= 2; p++) {
-                    applySeedTileEffects_endOfRound(p, events);
+                for (const p of battleSides()) {   // THE ONE SIDE QUESTION (step S): every side's units, not only seats 1 and 2
+                    if (p > 0) applySeedTileEffects_endOfRound(p, events);
                 }
             }
 
@@ -11591,7 +11591,7 @@
                 for (const obj of state._deployedObjects) {
                     if (obj.hp <= 0 || !obj.auraHeal || !obj.auraRadius || obj.healOnTurnStart) continue;
                     let _totemHealedAny = false;
-                    const allies = state.units.filter(u => !u.dead && u.player === obj.ownerPlayer);
+                    const allies = state.units.filter(u => !u.dead && sidesAllied(u.player, obj.ownerPlayer));
                     for (const ally of allies) {
                         const dist = Math.abs(ally.x - obj.x) + Math.abs(ally.y - obj.y);
                         if (dist > obj.auraRadius) continue;
@@ -11647,7 +11647,7 @@
                         ? ((typeof NEXUS_HOLD_HEAL_PCT !== 'undefined') ? NEXUS_HOLD_HEAL_PCT : SPAWN_ZONE_HEAL_PCT)
                         : SPAWN_ZONE_HEAL_PCT;
 
-                    if (unit.player === zoneOwner) {
+                    if (sidesAllied(unit.player, zoneOwner)) {
                         /* Friendly in a zone the team owns: HP/MP regen + debuff cleanse */
                         const healAmt = Math.floor(unit.maxHp * _zoneHealPct);
                         const manaAmt = Math.floor(unit.maxMp * _zoneHealPct);
@@ -11921,7 +11921,7 @@
                     if (_hagR > 0) {
                         const _hagName = (getUnitPassives(u).find(p => p && p.revealInvisibleWithin) || {}).name || 'Hagstone';
                         for (const e of state.units) {
-                            if (e.dead || e._dying || e.player === u.player) continue;
+                            if (e.dead || e._dying || sidesAllied(e.player, u.player)) continue;
                             if (!unitHasStatus(e, 'invisible')) continue;
                             const _hd = Math.max(Math.abs(e.x - u.x), Math.abs(e.y - u.y));
                             if (_hd > _hagR) continue;
@@ -11936,7 +11936,7 @@
                     if (_dowseR > 0 && state.traps && state.traps.length) {
                         let _found = 0;
                         for (const t of state.traps) {
-                            if (t.owner === u.player) continue;
+                            if (sidesAllied(t.owner, u.player)) continue;
                             if (t._revealedTo && t._revealedTo[u.player]) continue;
                             const _td = Math.max(Math.abs(t.x - u.x), Math.abs(t.y - u.y));
                             if (_td > _dowseR) continue;
@@ -12182,7 +12182,7 @@
             const t = getTerrainAt(x, y);
             if (t === 'water' || t === 'healing_spring') return true;
             const u = unitAt(x, y);
-            return !!(u && !_unitIsDown(u) && (owner == null || u.player === owner) && unitHasStatus(u, 'wet')
+            return !!(u && !_unitIsDown(u) && (owner == null || sidesAllied(u.player, owner)) && unitHasStatus(u, 'wet')
                 && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u)));
         }
         function _waterSeed(seed, quiet) {
@@ -12385,7 +12385,7 @@
         function _plantLashTarget(plant, player) {
             let best = null, bestD = Infinity;
             for (const u of aliveUnitsFor(player)) {
-                if (u.player === plant.owner || _unitIsDown(u)) continue;
+                if (sidesAllied(u.player, plant.owner) || _unitIsDown(u)) continue;
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
                 if (shadowRealmKey(u)) continue;
                 if (typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(u, plant.owner)) continue;
@@ -12436,7 +12436,7 @@
                 if (float) evt.floats.push(float);
             };
 
-            if (seed.type === 'heal' && unit.player === seed.owner) {
+            if (seed.type === 'heal' && sidesAllied(unit.player, seed.owner)) {
                 const isRaining = _seedRainAt(unit.x, unit.y);
                 const healAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * SEED_HEAL_PCT)) * (isRaining ? 2 : 1);
                 const healed = applyHealingToUnit(unit, healAmt, null);
@@ -12447,7 +12447,7 @@
                 return healed > 0;
             }
 
-            if (seed.type === 'poison' && unit.player !== seed.owner) {
+            if (seed.type === 'poison' && sidesHostile(unit.player, seed.owner)) {
                 const caster = unitFromId(seed.casterUnitId);
                 const hpBefore = unit.hp;
                 const dmgAmt = seedPlantDamage('poison', unit);
@@ -12471,7 +12471,7 @@
             }
 
             if (seed.type === 'leech') {
-                if (unit.player !== seed.owner) {
+                if (sidesHostile(unit.player, seed.owner)) {
                     const caster = unitFromId(seed.casterUnitId);
                     const hpBefore = unit.hp;
                     const drainAmt = seedPlantDamage('leech', unit);
@@ -12484,7 +12484,7 @@
                         pushEvt(unit, `<span class="dlg-damage">🌿 Leech Seed drains ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                     }
                     // Everything drained is channeled to the owner's weakest ally.
-                    const ownerAllies = realmReachableFrom(aliveUnitsFor(seed.owner), null);   // 🌑 the seed is the board's
+                    const ownerAllies = realmReachableFrom(aliveAlliesOf(seed.owner), null);   // 🌑 the seed is the board's
                     if (dmg > 0 && ownerAllies.length > 0) {
                         const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
                         const healed = applyHealingToUnit(target, dmg, null);
@@ -12674,7 +12674,7 @@
                 if (float) evt.floats.push(float);
             };
 
-            if (tree.aura === 'heal' && unit.player === tree.owner) {
+            if (tree.aura === 'heal' && sidesAllied(unit.player, tree.owner)) {
                 const isRaining = _seedRainAt(unit.x, unit.y);
                 const healAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * TREE_AURA_HEAL_PCT)) * (isRaining ? 2 : 1);
                 const healed = applyHealingToUnit(unit, healAmt, null);
@@ -12685,7 +12685,7 @@
                 return healed > 0;
             }
 
-            if (tree.aura === 'poison' && unit.player !== tree.owner) {
+            if (tree.aura === 'poison' && sidesHostile(unit.player, tree.owner)) {
                 const caster = unitFromId(tree.casterUnitId);
                 const hpBefore = unit.hp;
                 const dmgAmt = Math.max(_lvlScaledMin(14, unit), Math.round(unit.maxHp * TREE_AURA_POISON_PCT));
@@ -12709,7 +12709,7 @@
                 return true;
             }
 
-            if (tree.aura === 'leech' && unit.player !== tree.owner) {
+            if (tree.aura === 'leech' && sidesHostile(unit.player, tree.owner)) {
                 const caster = unitFromId(tree.casterUnitId);
                 const hpBefore = unit.hp;
                 const drainAmt = Math.max(_lvlScaledMin(19, unit), Math.round(unit.maxHp * TREE_AURA_LEECH_PCT));
@@ -12726,7 +12726,7 @@
                     pushEvt(unit, `<span class="dlg-damage">🌳 ${_auraSrcName(tree)} saps ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                 }
                 // Everything drained is channeled to the owner's weakest ally.
-                const ownerAllies = realmReachableFrom(aliveUnitsFor(tree.owner), null);   // 🌑 the tree is the board's
+                const ownerAllies = realmReachableFrom(aliveAlliesOf(tree.owner), null);   // 🌑 the tree is the board's
                 if (dmg > 0 && ownerAllies.length > 0) {
                     const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
                     const healed = applyHealingToUnit(target, dmg, null);
@@ -12824,14 +12824,14 @@
             });
             for (const pl of _plantsAct) {
                 if (pl.plant === 'leech') {
-                    if (pl.owner === player) continue;
+                    if (sidesAllied(pl.owner, player)) continue;
                     const prey = _plantLashTarget(pl, player);
                     if (!prey) continue;
                     _plantFx('raceThornlash', prey.x, prey.y);
                     applyAuraTreeEffectToUnit({ x: pl.x, y: pl.y, owner: pl.owner, casterUnitId: pl.casterUnitId, aura: 'leech', plant: true }, prey, events);
                 } else {
                     auraTrees.push({ x: pl.x, y: pl.y, owner: pl.owner, casterUnitId: pl.casterUnitId, aura: pl.plant, plant: true });
-                    if (pl.plant === 'poison' && pl.owner !== player && aliveUnitsFor(player).some(u => Math.max(Math.abs(u.x - pl.x), Math.abs(u.y - pl.y)) <= TREE_AURA_RADIUS)) _plantFx('goSporeCloud', pl.x, pl.y);
+                    if (pl.plant === 'poison' && sidesHostile(pl.owner, player) && aliveUnitsFor(player).some(u => Math.max(Math.abs(u.x - pl.x), Math.abs(u.y - pl.y)) <= TREE_AURA_RADIUS)) _plantFx('goSporeCloud', pl.x, pl.y);
                 }
             }
             if (!_seedsLeft && !auraTrees.length) return;
@@ -12901,7 +12901,7 @@
         function _isUnitVisibleToViewer(unit, viewer) {
             if (!unit) return false;
             if (isUnitOutOfRealmView(unit)) return false;   // 🌑 not on this turn's plane (own units too)
-            if (unit.player === viewer) return true;
+            if (sidesAllied(unit.player, viewer)) return true;
             /* Invisibility / smoke concealment hides enemy units even with fog OFF
                (isUnitConcealedFrom also handles the smoke adjacency reveal). */
             if (isUnitConcealedFrom(unit, viewer)) return false;
@@ -12924,14 +12924,14 @@
                 if (typeof isVisionBlockedByTerrain !== 'function') return true;
                 return !isVisionBlockedByTerrain(sx, sy, unit.x, unit.y, sz, unit.z ?? null);
             };
-            const friendlies = state.units.filter(u => !u.dead && u.player === viewer);
+            const friendlies = state.units.filter(u => !u.dead && sidesAllied(u.player, viewer));
             for (const f of friendlies) {
                 if (f.wallVision || _losOk(f.x, f.y, f.z ?? null)) return true;
             }
 
             if (state._visionWards?.length) {
                 for (const w of state._visionWards) {
-                    if (w.player === viewer) {
+                    if (sidesAllied(w.player, viewer)) {
                         const dist = Math.abs(w.x - unit.x) + Math.abs(w.y - unit.y);
                         if (dist <= (w.radius || 3) && _losOk(w.x, w.y, w.z ?? null)) return true;
                     }
@@ -12949,7 +12949,7 @@
            what it can't see). */
         function isUnitConcealedFrom(unit, viewer) {
             if (!unit || unit.dead) return false;
-            if (unit.player === viewer) return false;
+            if (sidesAllied(unit.player, viewer)) return false;
 
             /* A Marked unit cannot hide: tracking implants, spotter dye and
                blood-marks pierce invisibility and smoke alike. Mark first,
@@ -12970,7 +12970,7 @@
                 const _rp = unitShadowRealmPartnerId(unit);
                 if (_rp) {
                     const _partner = unitFromId(_rp);
-                    if (!_partner || _partner.player !== viewer) return true;
+                    if (!_partner || sidesHostile(_partner.player, viewer)) return true;
                 }
             }
 
@@ -12979,7 +12979,7 @@
             let smokeHidden = false;
             if (state._activeZones && state._activeZones.length) {
                 for (const zone of state._activeZones) {
-                    if (!zone.smokeConcealment || zone.ownerPlayer === viewer) continue;
+                    if (!zone.smokeConcealment || sidesAllied(zone.ownerPlayer, viewer)) continue;
                     if (_zoneCovers(zone, unit.x, unit.y)) { smokeHidden = true; break; }
                 }
             }
@@ -12994,7 +12994,7 @@
                invisible unit can walk right up to a foe and stay hidden. */
             if (smokeHidden && !invisible) {
                 for (const f of state.units) {
-                    if (f.dead || f.player !== viewer) continue;
+                    if (f.dead || sidesHostile(f.player, viewer)) continue;
                     /* Keen senses pierce the haze: units with exceptional
                        VISION (4+, VISION_RULES.keenSenseVision) spot
                        smoke-hidden enemies from 2 tiles instead of 1. LIVE
@@ -13060,12 +13060,12 @@
         }
 
         function unitCryptidHiddenFrom(unit, viewer) {
-            if (!unit || unit.dead || unit.player === viewer) return false;
+            if (!unit || unit.dead || sidesAllied(unit.player, viewer)) return false;
             const within = (typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'targetableWithin') : undefined;
             if (!within) return false;
             if (unitHasStatus(unit, 'marked')) return false;   // a Mark pierces every kind of hiding
             for (const f of state.units) {
-                if (f.dead || f._dying || f.player !== viewer) continue;
+                if (f.dead || f._dying || sidesHostile(f.player, viewer)) continue;
                 if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= within) return false;
             }
             return true;
@@ -13087,7 +13087,7 @@
             if (typeof _visionOn === 'function' && _visionOn()) {
                 const _seen = new Set();
                 for (const f of state.units) {
-                    if (f.dead || f.player === unit.player || _seen.has(f.player)) continue;
+                    if (f.dead || sidesAllied(f.player, unit.player) || _seen.has(f.player)) continue;
                     _seen.add(f.player);
                     if (isUnitConcealedFrom(unit, f.player)) continue;
                     if (teamSeesTile(f.player, unit.x, unit.y, unit.z ?? null)) return true;
@@ -13095,7 +13095,7 @@
                 return false;
             }
             for (const f of state.units) {
-                if (f.dead || f.player === unit.player) continue;   // enemies only
+                if (f.dead || sidesAllied(f.player, unit.player)) continue;   // enemies only
                 if (isUnitConcealedFrom(unit, f.player)) continue;  // cloaked/smoked → this enemy can't see us
                 if (typeof isInVision === 'function') {
                     if (isInVision(f, unit.x, unit.y)) return true;
@@ -13115,12 +13115,12 @@
            and disagreed with the eye icon, letting lasers hit "hidden" units. */
         function isUnitSeenByTeam(unit, teamPlayer) {
             if (!unit || unit.dead) return false;
-            if (unit.player === teamPlayer) return true;
+            if (sidesAllied(unit.player, teamPlayer)) return true;
             if (isUnitConcealedFrom(unit, teamPlayer)) return false;
             /* VISION (2026-10-09): the team's shared sight — vision range + LOS — fog or no fog */
             if (typeof _visionOn === 'function' && _visionOn()) return teamSeesTile(teamPlayer, unit.x, unit.y, unit.z ?? null);
             for (const f of state.units) {
-                if (f.dead || f.player !== teamPlayer) continue;
+                if (f.dead || sidesHostile(f.player, teamPlayer)) continue;
                 if (state.fogOfWar && typeof isInVision === 'function') {
                     if (isInVision(f, unit.x, unit.y)) return true;
                 } else {
@@ -13139,7 +13139,7 @@
             /* Vision wards grant sight even with no unit in range. */
             if (state._visionWards?.length) {
                 for (const w of state._visionWards) {
-                    if (w.player !== teamPlayer) continue;
+                    if (sidesHostile(w.player, teamPlayer)) continue;
                     if (Math.abs(w.x - unit.x) + Math.abs(w.y - unit.y) <= (w.radius || 3)) return true;
                 }
             }
@@ -13176,7 +13176,7 @@
                 if (_cloaked && unit._smokeCloaked && unit.status) {
                     let inSmoke = false;
                     for (const zone of (state._activeZones || [])) {
-                        if (!zone.smokeConcealment || zone.ownerPlayer !== unit.player) continue;
+                        if (!zone.smokeConcealment || sidesHostile(zone.ownerPlayer, unit.player)) continue;
                         if (_zoneCovers(zone, x, y)) { inSmoke = true; break; }
                     }
                     if (!inSmoke) { invisRestore = unit.status.invisible; unit.status.invisible = 0; }
@@ -13244,7 +13244,7 @@
             const ids = [];
             for (const zone of zones) {
                 if (!zone || !_zoneCovers(zone, x, y)) continue;
-                const mine = zone.ownerPlayer === unit.player;
+                const mine = sidesAllied(zone.ownerPlayer, unit.player);
                 let list = null;
                 if (zone.type === 'heal') list = mine ? null : zone.enemyStatusEffects;
                 else if (zone.type === 'debuff') {
@@ -13428,7 +13428,7 @@
             for (const zone of (state._activeZones || [])) {
                 if (!zone || !_zoneCovers(zone, x, y)) continue;
                 const nm = zone.spellName || 'Zone';
-                const foe = !!unit && zone.ownerPlayer !== unit.player;
+                const foe = !!unit && sidesHostile(zone.ownerPlayer, unit.player);
                 const left = zone.duration > 0 ? ' · ' + zone.duration + ' RND' : '';
                 chips.push({ kind: 'zone', text: nm.toUpperCase() + left, foe, title: nm + (zone.duration > 0 ? ' (' + zone.duration + ' rounds left)' : '') });
                 if (foe && zone.tickDamage > 0) chips.push({ kind: 'hp', dmg: true, text: '−' + zone.tickDamage + ' HP AT ROUND END', title: nm + ' hits every enemy inside at the end of each round' });
@@ -13506,7 +13506,7 @@
                 const candidates = movedUnit ? [movedUnit] : state.units;
                 let revealer = null;
                 for (const f of candidates) {
-                    if (f.dead || f.player === u.player) continue;
+                    if (f.dead || sidesAllied(f.player, u.player)) continue;
                     /* Keen-eyed units (VISION 4+) sense cloaked enemies from
                        2 tiles away — the seer's answer to invisibility. LIVE
                        vision — a blinded unit loses the edge. */
@@ -13539,7 +13539,7 @@
             if (typeof showCombatBanner !== 'function') return;
             const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
             const nm = (typeof unitDisplayName === 'function') ? unitDisplayName(unit) : (unit.name || 'A unit');
-            if (unit.player === viewer) {
+            if (sidesAllied(unit.player, viewer)) {
                 showCombatBanner('⚠️ Spotted!', `${nm} was discovered — cover blown!`, 'pickup-enemy');
             } else {
                 showCombatBanner('👁️ Hidden Enemy Revealed!', `${nm} steps out of hiding!`, 'pickup-friendly');
@@ -13552,10 +13552,10 @@
             /* Concealment (Invisible / smoke) hides an enemy even with fog
                OFF — the camera must never trace a unit the viewer can't see
                (that pan IS the information leak). */
-            if (unit && unit.player !== viewer && isUnitConcealedFrom(unit, viewer)) return false;
+            if (unit && sidesHostile(unit.player, viewer) && isUnitConcealedFrom(unit, viewer)) return false;
             if (!state.fogOfWar) return true;
             if (!unit) return false;
-            if (unit.player === viewer) return true;
+            if (sidesAllied(unit.player, viewer)) return true;
             /* Screen-true fog gate: follow only units standing on a tile the
                fog renderer actually draws as visible. The old flat awareness-
                radius check (_isUnitVisibleToViewer) sees THROUGH walls, so the
@@ -13645,7 +13645,7 @@
                 if (computeVisibleTilesCached(viewer).has(posKey(tx, ty))) return true;
             } else {
                 /* No fog cache: LOS-only fallback — distance never gates sight. */
-                const friendlies = state.units.filter(u => !u.dead && u.player === viewer);
+                const friendlies = state.units.filter(u => !u.dead && sidesAllied(u.player, viewer));
                 for (const f of friendlies) {
                     if (f.wallVision || typeof isVisionBlockedByTerrain !== 'function'
                         || !isVisionBlockedByTerrain(f.x, f.y, tx, ty, f.z ?? null)) return true;
@@ -13653,7 +13653,7 @@
             }
             if (state._visionWards?.length) {
                 for (const w of state._visionWards) {
-                    if (w.player === viewer) {
+                    if (sidesAllied(w.player, viewer)) {
                         const dist = Math.abs(w.x - tx) + Math.abs(w.y - ty);
                         if (dist <= (w.radius || 3)) return true;
                     }
@@ -14040,7 +14040,7 @@
            switch — the next enemy hit on an ally lands on his box: the ally and the Magician trade squares, no damage (applyDamageToUnit).
            Host-side; positions + statuses state-sync, floating text relays. */
         function _magicianWith(trick, player, notId) {
-            return (state.units || []).find(m => m && !m.dead && !m._dying && m.player === player && m.id !== notId
+            return (state.units || []).find(m => m && !m.dead && !m._dying && sidesAllied(m.player, player) && m.id !== notId
                 && m._trick === trick && unitHasStatus(m, 'trickSet')) || null;
         }
         function _magicianSpring(m, label) {
@@ -14253,11 +14253,11 @@
             } else if (spell.disrupt) {
                 const area = getSquareArea(x, y, spell.aoeRadius != null ? spell.aoeRadius : 1);
                 for (const z of (state._activeZones || [])) {
-                    if (!z || z.ownerPlayer == null || z.ownerPlayer === unit.player) continue;
+                    if (!z || z.ownerPlayer == null || sidesAllied(z.ownerPlayer, unit.player)) continue;
                     if (area.some(t => _zoneCovers(z, t.x, t.y))) out.push({ L: '_activeZones', o: z });
                 }
                 for (const t of (state._timedTerrain || [])) {
-                    if (!t || typeof t.owner !== 'number' || t.owner === unit.player) continue;
+                    if (!t || typeof t.owner !== 'number' || sidesAllied(t.owner, unit.player)) continue;
                     if (area.some(a => a.x === t.x && a.y === t.y)) out.push({ L: '_timedTerrain', o: t });
                 }
             } else if (spell.layoffs) {
@@ -14542,7 +14542,7 @@
         function _deliveryLoadList(unit, spell) {
             const ra = spell && spell.rideAlong;
             if (!ra || !unit || !Array.isArray(state.units)) return [];
-            return state.units.filter(a => _nrAlive(a) && a.id !== unit.id && a.player === unit.player && !a._isCube && !a._summonStatic
+            return state.units.filter(a => _nrAlive(a) && a.id !== unit.id && sidesAllied(a.player, unit.player) && !a._isCube && !a._summonStatic
                     && Math.max(Math.abs(a.x - unit.x), Math.abs(a.y - unit.y)) === 1 && !_deliveryRideBlock(a))
                 .sort((p, q) => (p.hp / Math.max(1, p.maxHp)) - (q.hp / Math.max(1, q.maxHp)))
                 .slice(0, ra.max || 2);
@@ -14591,7 +14591,7 @@
         function _viralShare(target, dmg, opts) {
             if (!(dmg > 0) || !target || !(target.status && target.status.viral > 0) || (opts && opts._viralShare) || !Array.isArray(state.units)) return;
             state._lastViralHitId = target.id;   // 📱 Ratio reads it: the target was Viral when this hit landed (it may be down now)
-            const mates = state.units.filter(a => _nrAlive(a) && a.id !== target.id && a.player === target.player
+            const mates = state.units.filter(a => _nrAlive(a) && a.id !== target.id && sidesAllied(a.player, target.player)
                 && Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= 2);
             if (!mates.length) return;
             const share = Math.max(1, Math.round(dmg * 0.3));
@@ -14610,7 +14610,7 @@
                 const ms = sink ? (sink._viral[a.id] || (sink._viral[a.id] = _multiHitLogSink())) : null;
                 if (ms) ms.last = !!sink.last;
                 if (!ms || !ms.hits) _sigVfxGeom('nrGoViral:share', a.x, a.y, 0, { fromX: target.x, fromY: target.y, owner: target.player, delay: i * 90 });
-                if (src && src.player !== a.player) a._lastDamageSourceId = src.id;
+                if (src && sidesHostile(src.player, a.player)) a._lastDamageSourceId = src.id;
                 applyDamageToUnit(a, share, `📱 ${unitDisplayName(target)} went viral: `, {
                     ignoreArmor: true, damageType: 'dot', typeEffect: 'neutral',
                     consumeMarked: false, allowMarkBonus: false, noPress: true, _viralShare: true, logSink: ms || undefined
@@ -14626,7 +14626,7 @@
             state._lastViralHitId = null;
             if (!was) return 0;
             const r = vs.radius || 2;
-            const mates = state.units.filter(a => _nrAlive(a) && a.id !== target.id && a.player === target.player
+            const mates = state.units.filter(a => _nrAlive(a) && a.id !== target.id && sidesAllied(a.player, target.player)
                 && !(a.status && a.status.viral > (vs.duration || 1))
                 && Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= r);
             mates.forEach((a, i) => {
@@ -14643,7 +14643,7 @@
             if (!target || !Array.isArray(state.units)) return null;
             let best = null, bd = 1e9;
             for (const a of state.units) {
-                if (!_nrAlive(a) || a.id === target.id || a.player !== target.player || !a.race) continue;
+                if (!_nrAlive(a) || a.id === target.id || sidesHostile(a.player, target.player) || !a.race) continue;
                 if (a._isBoss || a.isBoss || a._isCube || a._isSummon || a.summonedBy != null || a._summonerId != null) continue;
                 if (a.race === target.race && (a.gender || 'male') === (target.gender || 'male')) continue;
                 const d = Math.abs(a.x - target.x) + Math.abs(a.y - target.y);
@@ -14680,7 +14680,7 @@
             if (!unit || !(unit.status && unit.status.filtered > 0) || !unit._filterRace) return unit;
             if (typeof window !== 'undefined' && window.EW_NO_FILTER_LOOK) return unit;
             const vp = viewer != null ? viewer : ((typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1);
-            if (unit.player === vp) return unit;
+            if (sidesAllied(unit.player, vp)) return unit;
             const src = (unit._filterLookId != null && typeof unitFromId === 'function') ? unitFromId(unit._filterLookId) : null;
             const look = Object.assign({}, unit, { race: unit._filterRace, gender: unit._filterGender || 'male', _spriteOverride: null, _spriteFlipX: unit._spriteFlipX });
             look.appearance = (src && src.race === unit._filterRace) ? src.appearance : null;
@@ -14834,7 +14834,7 @@
                 const src = _payloadSrc(c);
                 const got = [];
                 for (const m of state.units) {
-                    if (!m || m === c || m.dead || m._dying || m._sealed || m.player !== c.player) continue;
+                    if (!m || m === c || m.dead || m._dying || m._sealed || sidesHostile(m.player, c.player)) continue;
                     if (Math.max(Math.abs(m.x - c.x), Math.abs(m.y - c.y)) > 1) continue;
                     if (unitHasStatus(m, 'payload')) continue;
                     applyStatusPayload(m, { id: 'payload', duration: 2 }, '🦠 The payload copies itself: ', src);
@@ -14866,7 +14866,7 @@
             const src = state.units.find(x => x.id === turret.casterUnitId && !x.dead) || null;
             const hit = [];
             for (const e of state.units) {
-                if (!e || e.dead || e._dying || e.player === turret.owner) continue;
+                if (!e || e.dead || e._dying || sidesAllied(e.player, turret.owner)) continue;
                 if (Math.max(Math.abs(e.x - turret.x), Math.abs(e.y - turret.y)) > 1) continue;
                 applyStatusEffects(e, [].concat(turret.burstStatus), `🦠 ${turret.spellName || 'The replica'} bursts: `, src);
                 hit.push(e);
@@ -15226,7 +15226,7 @@
            state-sync to the guest. */
         function _lifeguardSave(target) {
             if (!target || target.dead || !(target.hp <= 0) || !Array.isArray(state.units)) return false;
-            const guard = state.units.find(g => g && g.id !== target.id && !g.dead && !g._dying && g.hp > 0 && g.player === target.player
+            const guard = state.units.find(g => g && g.id !== target.id && !g.dead && !g._dying && g.hp > 0 && sidesAllied(g.player, target.player)
                 && g.status && g.status.onDuty > 0 && Math.abs(g.x - target.x) + Math.abs(g.y - target.y) <= 4);
             if (!guard) return false;
             clearStatus(guard, 'onDuty');
@@ -15263,7 +15263,7 @@
             if (!guard || !mr || !Array.isArray(state.units)) return [];
             const R = mr.radius || 4, P = mr.hpPct || 0.5;
             return state.units.filter(a => a && a.id !== guard.id && !a.dead && !a._dying && a.hp > 0 && a.maxHp > 0
-                && a.player === guard.player && a.hp / a.maxHp < P && Math.abs(a.x - guard.x) + Math.abs(a.y - guard.y) <= R)
+                && sidesAllied(a.player, guard.player) && a.hp / a.maxHp < P && Math.abs(a.x - guard.x) + Math.abs(a.y - guard.y) <= R)
                 .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
         }
         function _lifeguardMassRescue(guard, spell) {
@@ -15809,7 +15809,7 @@
             const _echo = (victim, pct, srcId, label, icon) => {
                 if (!victim || victim.dead || victim._dying || !(pct > 0)) return;
                 const src = (srcId && typeof unitFromId === 'function') ? unitFromId(srcId) : null;
-                if (src && !src.dead && src.player !== victim.player) victim._lastDamageSourceId = src.id;
+                if (src && !src.dead && sidesHostile(src.player, victim.player)) victim._lastDamageSourceId = src.id;
                 const amount = Math.max(1, Math.round(dealt * pct));
                 const hpB = victim.hp;
                 applyDamageToUnit(victim, amount, `${icon} ${label}: `, {
@@ -15823,7 +15823,7 @@
                     floatKind: 'combo'
                 });
                 const took = hpB - victim.hp;
-                if (src && !src.dead && src.player !== victim.player && took > 0) {
+                if (src && !src.dead && sidesHostile(src.player, victim.player) && took > 0) {
                     src._trackDmgDealt = (src._trackDmgDealt || 0) + took;
                 }
             };
@@ -16062,7 +16062,7 @@
                 target._possessAfter = spell.possessAfterStatus.map(e => ({ id: e.id, duration: e.duration || 1 }));
                 target._possessAfterSrcId = caster.id;
             }
-            if (target.player !== caster.player) {
+            if (sidesHostile(target.player, caster.player)) {
                 target._origPlayer = target.player;
                 /* THE HOME SIDE: the body keeps its home seat until its own activation (_possessSettleSeats);
                    simul still hands it over for the whole duration. */
@@ -16192,7 +16192,7 @@
                 addLog(`${def.icon || '🪢'} ${_ctName(v)} is dragged ${tiles} tile${tiles === 1 ? '' : 's'} behind ${_ctName(roper)}!`);
                 const dmg = ((v._tetherDragDmg > 0) ? v._tetherDragDmg : (def.dragDamagePerTile || 0)) * tiles;   // Barbed Rope: 35 a tile
                 if (dmg > 0) {
-                    if (roper.player !== v.player) v._lastDamageSourceId = roper.id;
+                    if (sidesHostile(roper.player, v.player)) v._lastDamageSourceId = roper.id;
                     const hpB = v.hp;
                     applyDamageToUnit(v, dmg, 'Dragged by the rope: ', {
                         ignoreArmor: true,
@@ -16202,7 +16202,7 @@
                         flashColor: 'hit'
                     });
                     const took = hpB - v.hp;
-                    if (took > 0 && roper.player !== v.player) roper._trackDmgDealt = (roper._trackDmgDealt || 0) + took;
+                    if (took > 0 && sidesHostile(roper.player, v.player)) roper._trackDmgDealt = (roper._trackDmgDealt || 0) + took;
                 }
                 if (typeof markDirty === 'function') markDirty('board');
                 resolveTileArrival(v, { via: 'dragged', dirX: _tdDx, dirY: _tdDy });   // ⛓ dragged onto whatever waits there
@@ -16220,7 +16220,7 @@
             const srcId = dead._statusSrc ? dead._statusSrc.haunted : null;
             const src = (srcId != null && typeof unitFromId === 'function') ? unitFromId(srcId) : null;
             const next = state.units
-                .filter(u => u && !u.dead && !u._dying && u.id !== dead.id && u.player === dead.player)
+                .filter(u => u && !u.dead && !u._dying && u.id !== dead.id && sidesAllied(u.player, dead.player))
                 .sort((a, b) => (Math.abs(a.x - dead.x) + Math.abs(a.y - dead.y)) - (Math.abs(b.x - dead.x) + Math.abs(b.y - dead.y)))[0];
             if (!next) return;
             const landed = applyStatusPayload(next, { id: 'haunted', duration: left, restless: true }, 'Restless: ', (src && !src.dead) ? src : null);
@@ -17574,7 +17574,7 @@
                 const _revealed = state._fogRevealTiles && state._fogRevealTiles.has(posKey(x, y));
                 if (!_revealed) {
                     const _u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
-                    if (_u && _u.player !== _viewer && !_isUnitVisibleToViewer(_u, _viewer)) return;
+                    if (_u && sidesHostile(_u.player, _viewer) && !_isUnitVisibleToViewer(_u, _viewer)) return;
                     if (state.fogOfWar && state.activePlayer !== _viewer && !_isTileVisibleToViewer(x, y)) return;
                 }
             }
@@ -18009,7 +18009,7 @@
                 // (units open a battle facing the other side, not the camera).
                 let best = null, bestD = Infinity;
                 for (const e of (state.units || [])) {
-                    if (e.dead || e.player === unit.player) continue;
+                    if (e.dead || sidesAllied(e.player, unit.player)) continue;
                     const ed = Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
                     if (ed < bestD) { bestD = ed; best = e; }
                 }
@@ -18197,7 +18197,7 @@
         // processKillStreak/defeatUnit so victim._killStreak is still intact.
         function processBountyClaim(killer, victim) {
             const bounty = getUnitBountyGold(victim);
-            if (!bounty || !killer || killer.player === victim.player) return;
+            if (!bounty || !killer || sidesAllied(killer.player, victim.player)) return;
             killer.gold = (killer.gold || 0) + bounty;
             killer._matchBounties = (killer._matchBounties || 0) + 1;
             const mpMode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
@@ -18273,7 +18273,7 @@
             const blastArea = _omask ? aoeMaskTiles(_omask, bx, by, bw(), bh()) : getSquareArea(bx, by, radius);
             for (const tile of blastArea) {
                 const hit = unitAt(tile.x, tile.y);
-                if (hit && !hit.dead && !(_spares && hit.player === obj.ownerPlayer)) {
+                if (hit && !hit.dead && !(_spares && sidesAllied(hit.player, obj.ownerPlayer))) {
                     if (_fxMs > 0) _floatHoldUntil[hit.id] = Date.now() + _fxMs;   // its numbers land with the blast's look
                     const blastDmg = dmg + Math.floor(engineRng() * 20) - 10;
                     const _hpBefore = hit.hp;
@@ -18442,13 +18442,13 @@
                 vis = computeVisibleTilesCached(unit.player);
             }
             return (state.units || []).filter(e =>
-                e && !e.dead && !e._dying && e.player !== unit.player
+                e && !e.dead && !e._dying && sidesHostile(e.player, unit.player)
                 && !isUnitRealmShieldedFrom(e, unit)   // 🌑 the Shadow Realm's line
                 && (!vis || vis.has(posKey(e.x, e.y))));
         }
 
         function getEntropyStrikeDamage(unit) {
-            const allies = (state.units || []).filter(u => u.player === unit.player && !u.dead && !u._dying);
+            const allies = (state.units || []).filter(u => sidesAllied(u.player, unit.player) && !u.dead && !u._dying);
             const teamAtk = allies.reduce((s, u) => s + (u.atk || 0), 0);
             return ENTROPY_STRIKE_BASE_DMG + Math.round(teamAtk * ENTROPY_STRIKE_ATK_SCALE);
         }
@@ -18859,7 +18859,7 @@
             }
             const targets = getEntropyStrikeTargets(unit);
             const dmgBase = getEntropyStrikeDamage(unit);
-            const allies = (state.units || []).filter(u => u.player === unit.player && !u.dead && !u._dying);
+            const allies = (state.units || []).filter(u => sidesAllied(u.player, unit.player) && !u.dead && !u._dying);
 
             // Training-match imitation: the CPU learns which apocalypse the
             // human reaches for (ai.js _candMatchesHuman knows strikeType).
@@ -19722,7 +19722,7 @@
         }
         function getFinisherDamage(unit) {
             const R = _finRules();
-            const allies = (state.units || []).filter(u => u.player === unit.player && !u.dead && !u._dying);
+            const allies = (state.units || []).filter(u => sidesAllied(u.player, unit.player) && !u.dead && !u._dying);
             const teamAtk = allies.reduce((s, u) => s + (u.atk || 0), 0);
             return R.baseDmg + Math.round((unit.atk || 0) * R.atkScale) + Math.round(teamAtk * R.teamAtkScale);
         }
@@ -26157,7 +26157,7 @@
                 if (!src || !target || !(dmg > 0)) return;
                 if (state._mdRun || state.isCampaign) return;
                 if (typeof isEnemyUnit === 'function' ? !isEnemyUnit(src, target)
-                    : src.player === target.player) return;
+                    : sidesAllied(src.player, target.player)) return;
                 if (damageType !== 'dot') {
                     const b = _recActionBursts[src.id]
                         || (_recActionBursts[src.id] = { total: 0, timer: null, unit: src });
@@ -26984,7 +26984,7 @@
             const viewer = opts.viewer;
             const free = (tx, ty) => {
                 const occ = unitAt(tx, ty);
-                if (occ && occ.id !== unit.id && viewer != null && occ.player !== viewer
+                if (occ && occ.id !== unit.id && viewer != null && sidesHostile(occ.player, viewer)
                     && ((typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(occ, viewer))
                         || (state.fogOfWar && typeof computeVisibleTiles === 'function' && !computeVisibleTiles(viewer).has(posKey(tx, ty))))) {
                     return canOccupyIgnoringUnits(tx, ty);
@@ -27028,7 +27028,7 @@
                 let beamHitsViewer = false;
                 for (let i = 0; i <= (range || 4); i++) {
                     const bx = fromX + dx * i, by = fromY + dy * i;
-                    if (state.units.some(u => !u.dead && u.player === viewer && u.x === bx && u.y === by)) {
+                    if (state.units.some(u => !u.dead && sidesAllied(u.player, viewer) && u.x === bx && u.y === by)) {
                         beamHitsViewer = true; break;
                     }
                 }
@@ -27096,7 +27096,7 @@
 
             if (state.fogOfWar && state.activePlayer !== getViewerPlayer()) {
                 const viewer = getViewerPlayer();
-                const viewerHit = state.units.some(u => !u.dead && u.player === viewer && (
+                const viewerHit = state.units.some(u => !u.dead && sidesAllied(u.player, viewer) && (
                     Math.abs(u.x - cx) + Math.abs(u.y - cy) <= radius ||
                     (u.x === cx && Math.abs(u.y - cy) <= radius) ||
                     (u.y === cy && Math.abs(u.x - cx) <= radius)
@@ -28252,7 +28252,7 @@
                         <g stroke="#ff5a5a" stroke-width="3"><path d="M18 8 l8 8 m0 -8 l-8 8"/><path d="M98 6 l8 8 m0 -8 l-8 8"/></g></svg><span>PLAY CALL</span></div>` };
             }
             case 'chess': {
-                const side = u => (typeof isEnemyUnit === 'function') ? !isEnemyUnit(lk.unit, u) : u.player === lk.unit.player;
+                const side = u => (typeof isEnemyUnit === 'function') ? !isEnemyUnit(lk.unit, u) : sidesAllied(u.player, lk.unit.player);
                 let mine = 0, theirs = 0;
                 (state.units || []).forEach(u => { if (!u || !(u.hp > 0)) return; if (side(u)) mine += u.hp; else theirs += u.hp; });
                 const tot = mine + theirs || 1, adv = mine / tot;
@@ -28525,7 +28525,7 @@
         }
         function _acApSide(d) {
             if (d.side) return d.side;
-            return d.player === getViewerPlayer() ? 'own' : 'enemy';
+            return sidesAllied(d.player, getViewerPlayer()) ? 'own' : 'enemy';
         }
         /* the corner keeps its shot's chrome up while the tally reads (same hold the damage total buys); with no shot
            chrome (Action Cam off, a counter) the tally shows alone in the same corner and clears itself */
@@ -30533,7 +30533,7 @@
                         if (state.autoPlayers?.[p]) return true;
                         if (window._NET && window._NET.online && window._NET.myPlayer) {
                             if (p !== window._NET.myPlayer) return true;
-                        } else if (state.controllers?.[p] === CTRL.AI) return true;
+                        } else if (sideController(p) === CTRL.AI) return true;
                     }
                 }
                 if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return true;
@@ -32480,7 +32480,7 @@
                     const pk = lastPick;
                     if (inBattle && u && pk && pk.unitId != null) {
                         const t = state.units.find(x => x.id === pk.unitId && !x.dead);
-                        if (t) tint = t.player === u.player ? '#8effa9' : '#ff6a6a';
+                        if (t) tint = sidesAllied(t.player, u.player) ? '#8effa9' : '#ff6a6a';
                     }
                     reticleEl.style.color = tint;
                 } else {
@@ -32928,7 +32928,7 @@
             function _alive(u) { return !!u && !u.dead && !u._dying; }
             function _findU(id) { return _units().find(x => x.id === id) || null; }
             function playerUnit() { return playerUid != null ? _findU(playerUid) : null; }
-            function _enemiesOf(u) { return _units().filter(x => _alive(x) && x.player !== u.player); }
+            function _enemiesOf(u) { return _units().filter(x => _alive(x) && sidesHostile(x.player, u.player)); }
 
             /* float position: the player rides the free-roam walker, bots ride
                their brain's fx/fy, everyone else sits on their tile */
@@ -33229,7 +33229,7 @@
                 } else if (d.cat === 'encore') {
                     exec = () => _encoreSelf(u, sp);
                 } else if (d.cat === 'revive') {
-                    if (!_units().some(x => x.player === u.player && x.dead && deadTimers.has(x.id))) return { ok: false, why: 'target' };
+                    if (!_units().some(x => sidesAllied(x.player, u.player) && x.dead && deadTimers.has(x.id))) return { ok: false, why: 'target' };
                     exec = () => _reviveAllies(u, sp);
                 } else if (d.cat === 'dash') {
                     exec = () => _doDash(u, sp, d, aim);
@@ -33338,7 +33338,7 @@
                 if (d.dmg || d.statuses) {
                     const radius = Math.max(0.8, (d.radius || 0) + 0.6);
                     for (const t of _units()) {
-                        if (!_alive(t) || t.player === caster.player) continue;
+                        if (!_alive(t) || sidesAllied(t.player, caster.player)) continue;
                         const tp = _posOf(t);
                         if (Math.hypot(tp.fx - gx, tp.fy - gy) > radius) continue;
                         if (d.dmg) {
@@ -33379,7 +33379,7 @@
                 const radius = Math.max(2, d.radius || 3);
                 const cp = _posOf(caster);
                 for (const a of _units()) {
-                    if (!_alive(a) || a.player !== caster.player) continue;
+                    if (!_alive(a) || sidesHostile(a.player, caster.player)) continue;
                     const ap2 = _posOf(a);
                     if (Math.hypot(ap2.fx - cp.fx, ap2.fy - cp.fy) > radius + 0.4) continue;
                     if (d.cat === 'manaAll' || sp.kind === 'manaRestoreAll') {
@@ -33405,7 +33405,7 @@
                     /* radius versions splash the same payload on nearby allies */
                     const cp = _posOf(caster);
                     for (const a of _units()) {
-                        if (!_alive(a) || a.player !== caster.player || a.id === target.id) continue;
+                        if (!_alive(a) || sidesHostile(a.player, caster.player) || a.id === target.id) continue;
                         const ap2 = _posOf(a);
                         if (Math.hypot(ap2.fx - cp.fx, ap2.fy - cp.fy) > (d.radius || 3) + 0.4) continue;
                         if (d.shield) { const _sh = (typeof levelScale === 'function') ? Math.round(d.shield * levelScale(getUnitLevel(a))) : d.shield; a.shield = Math.min((a.shield || 0) + _sh, Math.max(_sh, Math.floor((a.maxHp || 0) * (sp.shieldCapPct || 0.5)))); }
@@ -33453,7 +33453,7 @@
                 let n = 0;
                 deadTimers.forEach((at, uid) => {
                     const u = _findU(uid);
-                    if (!u || u.player !== caster.player) return;
+                    if (!u || sidesHostile(u.player, caster.player)) return;
                     deadTimers.set(uid, Math.min(at, now + 1200));
                     n++;
                 });
@@ -33603,7 +33603,7 @@
                 if (pick && pick.unitId != null) {
                     const t = _findU(pick.unitId);
                     if (_alive(t)) {
-                        if (t.player !== u.player) enemy = t;
+                        if (sidesHostile(t.player, u.player)) enemy = t;
                         else if (t.id !== u.id) ally = t;
                     }
                 }
@@ -33631,7 +33631,7 @@
                     try { s = ThreeRenderer.worldToScreen(t.x, t.y, ts * 0.55); } catch (e) { continue; }
                     if (!s) continue;
                     const dpx = Math.hypot((rect.left + s.x) - aim.x, (rect.top + s.y) - aim.y);
-                    if (t.player !== u.player) { if (dpx < bestE) { bestE = dpx; out.enemy = t; } }
+                    if (sidesHostile(t.player, u.player)) { if (dpx < bestE) { bestE = dpx; out.enemy = t; } }
                     else if (dpx < bestA) { bestA = dpx; out.ally = t; }
                 }
                 return out;
@@ -33713,7 +33713,7 @@
                     if (!d || (d.cat !== 'heal' && d.cat !== 'healAll')) continue;
                     if (!_slotReadyRaw(u, sp, d, _now()).ready) continue;
                     for (const a of _units()) {
-                        if (!_alive(a) || a.player !== u.player) continue;
+                        if (!_alive(a) || sidesHostile(a.player, u.player)) continue;
                         if (a.hp > a.maxHp * 0.55) continue;
                         if (_dist(u, a) > (d.cat === 'healAll' ? (d.radius || 3) : d.range) + 0.5) continue;
                         if (!woundedBest || a.hp / a.maxHp < woundedBest.a.hp / woundedBest.a.maxHp) woundedBest = { sp, a, d };
@@ -33804,7 +33804,7 @@
                 }
                 /* ally separation so packs don't stack on one tile */
                 for (const a of _units()) {
-                    if (a.id === u.id || !_alive(a) || a.player !== u.player) continue;
+                    if (a.id === u.id || !_alive(a) || sidesHostile(a.player, u.player)) continue;
                     const ap2 = _posOf(a);
                     const sx = b.fx - ap2.fx, sy = b.fy - ap2.fy;
                     const sd = Math.hypot(sx, sy);
@@ -34111,7 +34111,7 @@
                     if (z.trap) {
                         if (now < (z.armAt || 0)) continue;
                         const vic = _units().find(x => {
-                            if (!_alive(x) || x.player === z.player) return false;
+                            if (!_alive(x) || sidesAllied(x.player, z.player)) return false;
                             const xp = _posOf(x);
                             return Math.hypot(xp.fx - z.x, xp.fy - z.y) <= z.r;
                         });
@@ -34131,7 +34131,7 @@
                     if (now >= z.next) {
                         z.next = now + z.every;
                         for (const x of _units()) {
-                            if (!_alive(x) || x.player === z.player) continue;
+                            if (!_alive(x) || sidesAllied(x.player, z.player)) continue;
                             const xp = _posOf(x);
                             if (Math.hypot(xp.fx - z.x, xp.fy - z.y) <= z.r + 0.4) {
                                 _dmg(x, z.dmg, (z.sp && z.sp.name) || 'Hazard', {
@@ -34152,7 +34152,7 @@
                         let best = null, bestD = 1e9;
                         for (const x of _units()) {
                             /* zombies are mindless — the NEAREST unit of EITHER side */
-                            if (!_alive(x) || (!t.zombie && x.player === t.owner)) continue;
+                            if (!_alive(x) || (!t.zombie && sidesAllied(x.player, t.owner))) continue;
                             const dd = Math.hypot(x.x - t.x, x.y - t.y);
                             if (dd < bestD && (t.zombie || t.summon || (dd <= (t.range || 4) && turretHasShotAt(t, x)))) { bestD = dd; best = x; }
                         }
@@ -35089,7 +35089,7 @@
             if (state.controllers?.[unit.player] !== CTRL.LOCAL || state.autoPlayers?.[unit.player]) return;
             const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : unit.player;
             if (unit.player !== viewer) return;
-            if (tgt.player !== viewer && (isUnitConcealedFrom(tgt, viewer)
+            if (sidesHostile(tgt.player, viewer) && (isUnitConcealedFrom(tgt, viewer)
                 || (state.fogOfWar && !_isTileVisibleToViewer(tgt.x, tgt.y)))) return;
             try { doFaceUnit(unit, tgt.id); } catch (e) {}
         }
@@ -36020,7 +36020,7 @@
             const isUnit = o && o.id != null && o.player != null;
             const cube = !isUnit && typeof towerAt === 'function' && !!towerAt(Math.round(o.x), Math.round(o.y));
             const side = {
-                kind: isUnit ? (o.player === viewer ? 'ally' : 'enemy') : (cube ? 'cube' : 'tile'),
+                kind: isUnit ? (sidesAllied(o.player, viewer) ? 'ally' : 'enemy') : (cube ? 'cube' : 'tile'),
                 x: o.x, y: o.y, body: b,
                 footTiles: b.foot / ts, heightTiles: (b.top - b.foot) / ts
             };
@@ -37446,7 +37446,7 @@
             if (!u) return false;
             if (u.id != null && u.player != null && isUnitOutOfRealmView(u)) return false;   // 🌑 not on this turn's plane
             const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
-            if (u.player === viewer) return true;
+            if (sidesAllied(u.player, viewer)) return true;
             try {
                 if (typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(u, viewer)) return false;
             } catch (e) {}
@@ -39115,7 +39115,7 @@
             for (const u of (reached || state.units || [])) {
                 if (!u || u.dead || u._dying || u.id === caster.id) continue;
                 if (!reached) {
-                    const ally = (typeof isAllyUnit === 'function') ? isAllyUnit(u, caster) : (u.player === caster.player);
+                    const ally = (typeof isAllyUnit === 'function') ? isAllyUnit(u, caster) : (sidesAllied(u.player, caster.player));
                     if (!ally) continue;
                     if (Math.max(Math.abs(u.x - caster.x), Math.abs(u.y - caster.y)) > r) continue;
                 }
@@ -42070,7 +42070,7 @@
                    the SAME fog set the renderer draws. The old flat awareness-
                    radius check saw through walls, so the shot could still
                    swing behind an attacker the screen showed as fogged. */
-                const _screenSeen = (u) => !!u && (u.player === viewer
+                const _screenSeen = (u) => !!u && (sidesAllied(u.player, viewer)
                     || (!isUnitConcealedFrom(u, viewer)
                         && (!state.fogOfWar || _isTileVisibleToViewer(u.x, u.y))));
                 const srcVisible = _screenSeen(sourceUnit);
@@ -42889,7 +42889,7 @@
             if (_pressDamageCollector) _collectPressHit(opts.sourceUnit || null, target, opts);
 
             const sourceUnit_pre = opts.sourceUnit || null;
-            if (state.fogOfWar && !state.devAutoSim && sourceUnit_pre && sourceUnit_pre.player !== target.player) {
+            if (state.fogOfWar && !state.devAutoSim && sourceUnit_pre && sidesHostile(sourceUnit_pre.player, target.player)) {
                 const humanPlayer = getViewerPlayer();
                 if (humanPlayer && (target.player === humanPlayer || sourceUnit_pre.player === humanPlayer)) {
 
@@ -42949,7 +42949,7 @@
                 // (a miss vetoes any press from the rest of the cast).
                 if (_pressDamageCollector && opts.sourceUnit && !opts.noPress
                     && opts.sourceUnit.id === _pressDamageCollector.casterId
-                    && opts.sourceUnit.player !== target.player) {
+                    && sidesHostile(opts.sourceUnit.player, target.player)) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
                 addLog(_dmgLogLine(sourceText, target, 'is protected and takes no damage!', null, opts.sourceUnit || null));
@@ -42968,7 +42968,7 @@
             if (!opts._linkEcho && isUnitRealmShieldedFrom(target, opts.sourceUnit || null)) {
                 if (_pressDamageCollector && opts.sourceUnit && !opts.noPress
                     && opts.sourceUnit.id === _pressDamageCollector.casterId
-                    && opts.sourceUnit.player !== target.player) {
+                    && sidesHostile(opts.sourceUnit.player, target.player)) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
                 /* a splash across the realm's line says nothing: the line would tell the board where a hidden body stands */
@@ -43076,7 +43076,7 @@
             if (_immDT && (opts.damageType || 'physical') === _immDT && damage > 0) {
                 if (_pressDamageCollector && opts.sourceUnit && !opts.noPress
                     && opts.sourceUnit.id === _pressDamageCollector.casterId
-                    && opts.sourceUnit.player !== target.player) {
+                    && sidesHostile(opts.sourceUnit.player, target.player)) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
                 addLog('👻 ' + _dmgLogLine(sourceText, target, `has no body to strike — the ${_immDT} blow passes straight through!`, null, opts.sourceUnit || null));
@@ -43093,7 +43093,7 @@
             /* THE ELEMENT PAYS ENTROPY: a cast's element part that lands on an enemy's weakness is filed once per
                enemy on the press collector; _consumePressCollector charges the gauge. */
             if (_affinity === 'weak' && _hm.elemShare > 0 && _pressDamageCollector && !opts.noPress && _hm.damageType !== 'dot'
-                && _hm.sourceUnit && _hm.sourceUnit.id === _pressDamageCollector.casterId && _hm.sourceUnit.player !== target.player
+                && _hm.sourceUnit && _hm.sourceUnit.id === _pressDamageCollector.casterId && sidesHostile(_hm.sourceUnit.player, target.player)
                 && !_pressDamageCollector.elemWeakIds.includes(target.id)) {
                 _pressDamageCollector.elemWeakIds.push(target.id);
             }
@@ -43154,7 +43154,7 @@
                 target._tookDamageThisRound = true;
                 target._trackDmgReceived = (target._trackDmgReceived || 0) + finalDamage;
                 target._tapeNow = (target._tapeNow || 0) + finalDamage;   // 📺 THE TAPE: what it took this round (the Cursed TV's Rewind plays last round's back)
-                if (sourceUnit && sourceUnit.race === 'wendigo' && sourceUnit.player !== target.player) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
+                if (sourceUnit && sourceUnit.race === 'wendigo' && sidesHostile(sourceUnit.player, target.player)) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
 
                 /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
                    multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
@@ -43205,7 +43205,7 @@
                     // Balance Lab per-cast telemetry: attribute enemy damage to
                     // the spell currently resolving for this caster.
                     if (_balSpellCollector && sourceUnit.id === _balSpellCollector.casterId
-                        && target.player !== sourceUnit.player) {
+                        && sidesHostile(target.player, sourceUnit.player)) {
                         _balSpellCollector.dmg += finalDamage;
                         _balSpellCollector.targetsHit++;
                     }
@@ -43277,7 +43277,7 @@
                         for (const bufferId of Object.keys(sourceUnit._xpBuffSources)) {
                             if (bufferId === String(sourceUnit.id)) continue;
                             const buffer = state.units.find(u => u.id === bufferId);
-                            if (buffer && !buffer.dead && buffer.player === sourceUnit.player) {
+                            if (buffer && !buffer.dead && sidesAllied(buffer.player, sourceUnit.player)) {
                                 grantXP(buffer, XP_BUFF_ASSIST, 'buffAssist');
                             }
                         }
@@ -43634,7 +43634,7 @@
             }
 
             if (sourceUnit && state.plantedSeeds && !target.dead) {
-                const seedIdx = state.plantedSeeds.findIndex(s => s.x === target.x && s.y === target.y && s.owner !== sourceUnit.player);
+                const seedIdx = state.plantedSeeds.findIndex(s => s.x === target.x && s.y === target.y && sidesHostile(s.owner, sourceUnit.player));
                 if (seedIdx >= 0) {
                     const destroyed = state.plantedSeeds[seedIdx];
                     state.plantedSeeds.splice(seedIdx, 1);
@@ -43645,7 +43645,7 @@
             }
 
             if (sourceUnit && state.wards) {
-                const wardIdx = state.wards.findIndex(w => w.x === target.x && w.y === target.y && w.owner !== sourceUnit.player);
+                const wardIdx = state.wards.findIndex(w => w.x === target.x && w.y === target.y && sidesHostile(w.owner, sourceUnit.player));
                 if (wardIdx >= 0) {
                     state.wards.splice(wardIdx, 1);
                     addLog(`👁💥 The attack destroys a Ward at ${coordLabel(target.x, target.y)}!`);
@@ -43712,12 +43712,12 @@
                 const _lastHitter = sourceUnit || (target._lastDamageSourceId != null ? unitFromId(target._lastDamageSourceId) : null) || null;
                 const killer = (_lastHitter && (typeof isEnemyUnit === 'function'
                     ? isEnemyUnit(_lastHitter, target)
-                    : _lastHitter.player !== target.player)) ? _lastHitter : null;
+                    : sidesHostile(_lastHitter.player, target.player))) ? _lastHitter : null;
                 _viewersOnKO(killer, target);   // 🎮 THE VIEWERS: +2 for the KO, half the chat leaves a downed streamer
                 if (typeof _balTrackKill === 'function') _balTrackKill(killer, target);
                 // Balance Lab per-cast telemetry: credit the resolving spell.
                 if (_balSpellCollector && killer && killer.id === _balSpellCollector.casterId
-                    && target.player !== killer.player) {
+                    && sidesHostile(target.player, killer.player)) {
                     _balSpellCollector.kills++;
                 }
                 if (killer && killer === sourceUnit && _balHitRec) _balRecordHitKill(_balHitRec);
@@ -43780,7 +43780,7 @@
                         }
                     }
                     for (const _se of _spreadIds) {
-                        const _next = state.units.find(u => u && !u.dead && !u._dying && u.id !== target.id && u.player === target.player
+                        const _next = state.units.find(u => u && !u.dead && !u._dying && u.id !== target.id && sidesAllied(u.player, target.player)
                             && Math.max(Math.abs(u.x - target.x), Math.abs(u.y - target.y)) === 1 && !unitHasStatus(u, _se.id));
                         if (!_next) continue;
                         const _left = Math.max(1, Number(target.status[_se.id]) || 1);
@@ -43890,7 +43890,7 @@
             if (!candidates.length) return null;
             // THE FOG (2026-10-21 audit #1): run from the enemies your side can SEE — the preview shows this landing,
             // so a hidden enemy must not bend it (the cast reads the same rule, so preview = cast)
-            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => _isUnitVisibleToViewer(e, unit.player));
+            const enemies = realmReachableFrom(aliveHostilesOf(unit.player), unit).filter(e => _isUnitVisibleToViewer(e, unit.player));
             candidates.sort((a, b) => {
                 const aMin = Math.min(...enemies.map(e => Math.abs(e.x - a.x) + Math.abs(e.y - a.y)), 99);
                 const bMin = Math.min(...enemies.map(e => Math.abs(e.x - b.x) + Math.abs(e.y - b.y)), 99);
@@ -43995,7 +43995,7 @@
         /* Knights of Round (rallyPull): ring-by-ring from the caster, the nearest free tiles go to the nearest
            allies first; rooted allies cannot answer. Returns [{ unit, x, y }]. */
         function rallyPullPlan(unit) {
-            const knights = realmReachableFrom(aliveUnitsFor(unit.player), unit)
+            const knights = realmReachableFrom(aliveAlliesOf(unit.player), unit)
                 .filter(a => a.id !== unit.id && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > 1 && !unitHasStatus(a, 'root'))
                 .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
             const taken = new Set(state.units.filter(u2 => !u2.dead).map(u2 => u2.x + ',' + u2.y));
@@ -44109,12 +44109,12 @@
         // kind 'healAll': THE SPELL AUDIT Batch C — auraRadius limits it to allies within that many tiles of the caster
         // (Rejuvenation, Milk and Cookies); without it the whole team
         function healAllAlliesOf(unit, spell) {
-            return realmReachableFrom(aliveUnitsFor(unit.player), unit).filter(a => !spell.auraRadius
+            return realmReachableFrom(aliveAlliesOf(unit.player), unit).filter(a => !spell.auraRadius
                 || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
         }
         // aoeAllyHeal (Trick or Treat, 2026-10-29): the allies standing on the area's tiles, the caster included
         function aoeAllyHealAlliesOf(unit, tiles) {
-            return realmReachableFrom(aliveUnitsFor(unit.player, unit), unit).filter(a => (tiles || []).some(t => t.x === a.x && t.y === a.y));
+            return realmReachableFrom(aliveAlliesOf(unit.player, unit), unit).filter(a => (tiles || []).some(t => t.x === a.x && t.y === a.y));
         }
         function aoeAllyHealAmountFor(unit, spell, ally) {
             const base = spell.aoeAllyHeal || 0;
@@ -44515,7 +44515,7 @@
                     for (const other of state.units) {
                         if (other.dead || other._dying || other.id === target.id) continue;
                         if (Math.max(Math.abs(other.x - bx), Math.abs(other.y - by)) > rule.aoeRadius) continue;
-                        hit(other, rule.aoeDmg, { sourceUnit: other.player === thrower.player ? null : thrower,
+                        hit(other, rule.aoeDmg, { sourceUnit: sidesAllied(other.player, thrower.player) ? null : thrower,
                             allowMarkBonus: false, damageType: 'magic', typeEffect: 'neutral' }, 'splash');
                     }
                 }
@@ -44821,10 +44821,10 @@
                 if (spell.chainProfile && spell.chainProfile.length) {
                     let prof = spell.chainProfile;
                     if (spell.chainWetHops > 0) {
-                        const probe = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)), prof.length, spell.chainRadius || 1);
+                        const probe = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveHostilesOf(unit.player), unit)), prof.length, spell.chainRadius || 1);
                         if (probe.some(u => u && (unitHasStatus(u, 'wet') || _unitIsSoaked(u)))) prof = prof.concat(Array(spell.chainWetHops).fill(prof[prof.length - 1]));
                     }
-                    const chain = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)), prof.length, spell.chainRadius || 1);
+                    const chain = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveHostilesOf(unit.player), unit)), prof.length, spell.chainRadius || 1);
                     chain.forEach((u, i) => { const d = calcFlatSpellDamage(prof[i], sp, 16); hit(u, d, d, d, hopts, i ? { tag: 'chain' } : null); });
                 } else {
                     const riders = (b) => calcSpellHitRiders({
@@ -44951,7 +44951,7 @@
                     mopts = { pullCenter: spell.pullToCenter ? { x, y } : null, groundAirborne: true };
                 }
                 plan.tiles = area;
-                const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
+                const enemies = realmReachableFrom(aliveHostilesOf(unit.player), unit);
                 const clash = _isClashMode();
                 const canPullIn = !!(spell.pullToCenter && mopts.pullCenter && !clash);
                 const pullJobs = [], pull1Jobs = [], pushJobs = [];
@@ -45076,7 +45076,7 @@
                 const dt = spell.damageType || 'physical';
                 const d = calcFlatSpellDamage(spell.dmg || 0, sp, 0);
                 hit(first, d, d, d, baseOpts(dt, { allowMarkBonus: undefined }));
-                const second = calcBounceTarget(first, spellHopPool(unit, spell, state.units.filter(u => u.player !== unit.player)), spell.bounceRadius || 2, first.id);
+                const second = calcBounceTarget(first, spellHopPool(unit, spell, state.units.filter(u => sidesHostile(u.player, unit.player))), spell.bounceRadius || 2, first.id);
                 if (second) {
                     const b = calcFlatSpellDamage(spell.bounceDamage || 8, sp, 0);
                     hit(second, b, b, b, baseOpts(dt, { allowMarkBonus: undefined, element: undefined, shieldIgnore: spell.bounceShieldIgnore || 0 }), { tag: 'bounce' });
@@ -45181,7 +45181,7 @@
                 if (!target) return;
                 const primary = Math.max(32, (spell.dmg || 0) + sp);
                 const hopts = baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined, element: undefined });
-                const near = spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e => e.id !== target.id && !e.dead
+                const near = spellHopPool(unit, spell, realmReachableFrom(aliveHostilesOf(unit.player), unit)).filter(e => e.id !== target.id && !e.dead
                     && Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= (spell.splitRadius || 2))
                     .sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2);
                 hit(target, primary, primary, primary, hopts);
@@ -45449,7 +45449,7 @@
                     for (const t of area) {
                         plan.tiles.push({ x: t.x, y: t.y });
                         const v = unitAt(t.x, t.y);
-                        if (!v || v.dead || v.player === b.owner || caught.includes(v)) continue;
+                        if (!v || v.dead || sidesAllied(v.player, b.owner) || caught.includes(v)) continue;
                         hit(v, b.dmg, b.dmg, b.dmg, { sourceUnit: unit, allowMarkBonus: false, noAtkBonus: true, spellType: b.spellType || 'tech', spellElement: b.spellElement || null, elemShare: b.elemShare });
                         caught.push(v);
                     }
@@ -45474,7 +45474,7 @@
                 const caught = [];
                 for (const t of area) {
                     const v = unitAt(t.x, t.y);
-                    if (v && !v.dead && v.player !== unit.player) { hit(v, d, d, d, { sourceUnit: unit, allowMarkBonus: false, noAtkBonus: true, spellType: spell.spellType || 'tech', spellElement: el || null, elemShare: _spellElemShare(spell) }); caught.push(v); }
+                    if (v && !v.dead && sidesHostile(v.player, unit.player)) { hit(v, d, d, d, { sourceUnit: unit, allowMarkBonus: false, noAtkBonus: true, spellType: spell.spellType || 'tech', spellElement: el || null, elemShare: _spellElemShare(spell) }); caught.push(v); }
                 }
                 /* 🧭 a contact blast is set off by its thrower: every body caught is thrown the opposite way it faces */
                 for (const v of caught) {
@@ -45507,7 +45507,7 @@
                 plan.notes.push('delayed');
                 const d = (spell.dmg || 0) + sp;
                 for (const t of area) {
-                    const v = state.units.find(u => !u.dead && u.x === t.x && u.y === t.y && (spell.friendlyFire || u.player !== unit.player));
+                    const v = state.units.find(u => !u.dead && u.x === t.x && u.y === t.y && (spell.friendlyFire || sidesHostile(u.player, unit.player)));
                     if (v) hit(v, d, d, d, { sourceUnit: unit, damageType: spell.damageType || 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: el || null, elemShare: _spellElemShare(spell) }, { tag: 'delayed' });
                 }
                 return;
@@ -45595,7 +45595,7 @@
                 let sprung = false;
                 for (const t of fp.tiles) {
                     const v = unitAt(t.x, t.y);
-                    if (!v || v.dead || v.player === unit.player || (typeof isUnitAirborne === 'function' && isUnitAirborne(v))) continue;
+                    if (!v || v.dead || sidesAllied(v.player, unit.player) || (typeof isUnitAirborne === 'function' && isUnitAirborne(v))) continue;
                     if (spell.trapType === 'trapdoor' && sprung && !spell.trapHitsAll) continue;
                     sprung = true;
                     hit(v, d, d, d, { sourceUnit: unit, noRangeMult: true, damageType: 'physical', spellType: spell.spellType || null });
@@ -45614,7 +45614,7 @@
                     bx = own.obj.x; by = own.obj.y;
                 } else {
                     const occ = unitAt(x, y);
-                    const contact = !!(occ && spell.detonateOnStep && !occ.dead && occ.player !== unit.player
+                    const contact = !!(occ && spell.detonateOnStep && !occ.dead && sidesHostile(occ.player, unit.player)
                         && !(typeof isUnitAirborne === 'function' && isUnitAirborne(occ)));
                     if (!contact || !(radius > 0) || !(spell.blastDmg > 0)) { plan.notes.push('armed'); return; }
                     bd = spell.blastDmg + passiveDeployBonus(unit).dmg;
@@ -45624,7 +45624,7 @@
                 for (const t of area) {
                     const v = unitAt(t.x, t.y);
                     if (!v || v.dead) continue;
-                    if (spell.sparesOwnTeam && !own && v.player === unit.player) continue;   // the coil's blast spares the owner's team
+                    if (spell.sparesOwnTeam && !own && sidesAllied(v.player, unit.player)) continue;   // the coil's blast spares the owner's team
                     hit(v, bd, bd - 10, bd + 9, { sourceUnit: unit, noRangeMult: true, damageType: 'physical', spellType: spell.spellType || 'tech' },
                         isEnemyUnit(v, unit) ? null : { tag: 'bomb' });
                 }
@@ -45703,7 +45703,7 @@
                 }
                 for (const t of foot) {
                     const v = unitAt(t.x, t.y);
-                    if (!v || v.dead || v.player === unit.player) continue;
+                    if (!v || v.dead || sidesAllied(v.player, unit.player)) continue;
                     if (spellMissesFlyer(spell, v)) { tag(v, 'overhead'); continue; }
                     const ex = (spell.executePct && v.hp <= v.maxHp * spell.executePct) ? v.hp : 0;
                     hit(v, Math.max(b, ex), Math.max(b - 10, ex), Math.max(b + 9, ex), ho);
@@ -45759,7 +45759,7 @@
                         // `reveals` tiles first (the Hagstone rule).
                         if (turret.summon && turret.reveals > 0) {
                             for (const e of state.units) {
-                                if (e.dead || e._dying || e.player === turret.owner) continue;
+                                if (e.dead || e._dying || sidesAllied(e.player, turret.owner)) continue;
                                 if (shadowRealmKey(e)) continue;   // 🌑 no nose reaches into the Shadow Realm
                                 if (!unitHasStatus(e, 'invisible')) continue;
                                 if (Math.max(Math.abs(e.x - turret.x), Math.abs(e.y - turret.y)) > turret.reveals) continue;
@@ -45771,7 +45771,7 @@
                         const _wPrey = state.units
                             .filter(u => !u.dead && !u._dying
                                 && !shadowRealmKey(u)   // 🌑 the Wolf "bit" the Fairy in the Shadow Realm: no hunter on the board sees in
-                                && (!turret.summon || u.player !== turret.owner)
+                                && (!turret.summon || sidesHostile(u.player, turret.owner))
                                 && (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth'));
                         if (!_wPrey.length) continue;
                         const _zBlocked = (nx, ny) => {
@@ -46069,7 +46069,7 @@
                turrets (Mitosis Blob, the abomination, Siege Turret, 5G Tower ...), the same rule as their own units and
                their own doors. Single-target casts and basic attacks already refused them. opts.anyOwner = a bomb's
                blast, which still hits every turret around it. */
-            if (attackerUnit && turret.owner === attackerUnit.player && !opts.anyOwner) return false;
+            if (attackerUnit && sidesAllied(turret.owner, attackerUnit.player) && !opts.anyOwner) return false;
             if (turret.hitsToKill) {
 
                 const _chip = (turret.armored && opts.damageType === 'physical') ? 0.5 : 1;
@@ -46100,7 +46100,7 @@
                     : `🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
                 state.turrets = state.turrets.filter(t => t !== turret);
                 if (turret.burstStatus) _summonBurst(turret);   // 🦠 the Virus's Replica
-                if (attackerUnit && turret.owner !== attackerUnit.player) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);   // no pay for wrecking your own
+                if (attackerUnit && sidesHostile(turret.owner, attackerUnit.player)) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);   // no pay for wrecking your own
                 // 🧱 Wrecked machinery is a metal mine (meat isn't) — the
                 // scrap scatters as debris cubes around the wreck.
                 if (!turret.zombie && !turret.summon && !turret.plant) {
@@ -46301,7 +46301,7 @@
                 let n = 0, cx = x + dx, cy = y + dy, guard = 0;
                 while (!blocked(cx, cy) && guard++ < 64) {
                     const u = unitAt(cx, cy);
-                    if (u && !u.dead && u.player !== player && (typeof isUnitSeenByTeam !== 'function' || isUnitSeenByTeam(u, player))) n++;
+                    if (u && !u.dead && sidesHostile(u.player, player) && (typeof isUnitSeenByTeam !== 'function' || isUnitSeenByTeam(u, player))) n++;
                     if ((state.mirrors || []).some(m => m.x === cx && m.y === cy && m.hp > 0)) break;
                     cx += dx; cy += dy;
                 }
@@ -46379,9 +46379,9 @@
         }
         function prismReflectFor(caster, spell, target) {
             if (!caster || !target || target.dead || !spellReflectable(spell)) return null;
-            if (target.player === caster.player || !(state.mirrors || []).length) return null;
+            if (sidesAllied(target.player, caster.player) || !(state.mirrors || []).length) return null;
             const round = state.round || 0;
-            const own = (state.mirrors || []).filter(m => m.owner === target.player && m.hp > 0);
+            const own = (state.mirrors || []).filter(m => sidesAllied(m.owner, target.player) && m.hp > 0);
             if (!own.length) return null;
             const near = own.some(m => Math.max(Math.abs(m.x - target.x), Math.abs(m.y - target.y)) <= 1);
             if (!near && !computeMirrorNetwork(target.player).beamTiles.has(target.x + ',' + target.y)) return null;
@@ -46449,7 +46449,7 @@
         /* B3: a prism hit by an enemy's attack or blast fires back at the attacker — the beam's damage (the walk sear's
            number) in the current frequency, once per prism per round. Lands a beat after the hit. */
         function _prismBiteBack(m, attackerUnit) {
-            if (!m || !attackerUnit || attackerUnit.dead || attackerUnit.player === m.owner) return;
+            if (!m || !attackerUnit || attackerUnit.dead || sidesAllied(attackerUnit.player, m.owner)) return;
             const round = state.round || 0;
             if (m.biteRound === round) return;
             m.biteRound = round;
@@ -46481,7 +46481,7 @@
             const label = `${f.glyph} ${f.label}: `;
             let n = 0;
             for (const e of state.units) {
-                if (!e || e.dead || e._dying || e.player === unit.player) continue;
+                if (!e || e.dead || e._dying || sidesAllied(e.player, unit.player)) continue;
                 const on = net.beamTiles.has(e.x + ',' + e.y)
                     || net.mirrors.some(m => Math.max(Math.abs(m.x - e.x), Math.abs(m.y - e.y)) <= 1);
                 if (!on) continue;
@@ -46527,7 +46527,7 @@
             if (!state.mirrors) return false;
             const m = state.mirrors.find(mm => mm.x === x && mm.y === y && mm.hp > 0);
             if (!m) return false;
-            if (attackerUnit && m.owner === attackerUnit.player) return false;   // OWN PIECES ARE SAFE (11-07): own blasts / lines pass over own prisms
+            if (attackerUnit && sidesAllied(m.owner, attackerUnit.player)) return false;   // OWN PIECES ARE SAFE (11-07): own blasts / lines pass over own prisms
             _prismBiteBack(m, attackerUnit);   // B3: the glass bites back (once per prism per round)
             m.hp = Math.max(0, m.hp - 1);
             if (m.hp <= 0) {
@@ -46553,7 +46553,7 @@
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return null;
             const tileOwner = new Map();
             for (const owner of _mirrorOwners()) {
-                if (owner === unit.player) continue;   // your own lattice never sears you
+                if (sidesAllied(owner, unit.player)) continue;   // your own lattice never sears you
                 const net = computeMirrorNetwork(owner);
                 for (const t of net.beamTiles) if (!tileOwner.has(t)) tileOwner.set(t, owner);
             }
@@ -46591,7 +46591,7 @@
                 const dmg = Math.max(22, Math.floor((34 + pw * 0.45) * f.dmgMult));
                 const ownerId = laserOwnerUnitId(p);
                 for (const e of state.units) {
-                    if (e.dead || e._dying || e.player === p) continue;   // foes only
+                    if (e.dead || e._dying || sidesAllied(e.player, p)) continue;   // foes only
                     if (net.beamTiles.has(e.x + ',' + e.y)) burns.push({ unit: e, dmg: dmg, f: f, ownerId: ownerId });
                 }
             }
@@ -46642,7 +46642,7 @@
             }
             let hit = 0;
             for (const e of state.units) {
-                if (e.dead || e._dying || e.player === unit.player) continue;
+                if (e.dead || e._dying || sidesAllied(e.player, unit.player)) continue;
                 if (tiles.has(e.x + ',' + e.y)) {
                     applyDamageToUnit(e, dmg, `${f.glyph} Pulse Lattice: `, {
                         sourceUnit: unit, damageType: 'magic', spellType: f.spellType, ..._mirrorElemOpts(f),
@@ -46680,7 +46680,7 @@
                 // FX-4: the prism itself bursts into glass where it stood (fire() is relayed to the guest)
                 if (_fx && _fx.hasMapping(spell.id, 'impact')) _fx.fire('impact', spell.id, { tx: m.x, ty: m.y });
                 for (const e of state.units) {
-                    if (!e || e.dead || e._dying || e.player === unit.player) continue;
+                    if (!e || e.dead || e._dying || sidesAllied(e.player, unit.player)) continue;
                     if (Math.max(Math.abs(e.x - m.x), Math.abs(e.y - m.y)) > 1) continue;
                     applyDamageToUnit(e, dmg, label, {
                         sourceUnit: unit, damageType: 'magic', spellType: f.spellType, ..._mirrorElemOpts(f),
@@ -47288,10 +47288,10 @@
             if (unitIsSpirit(unit)) return false;   // 👁 no hands
             if ((unit.items?.[itemKey] || 0) <= 0) return false;
             if (_ewItemLike(itemKey, 'healPotion')) {
-                return state.units.some(t => !t.dead && t.player === unit.player && t.hp < t.maxHp);
+                return state.units.some(t => !t.dead && sidesAllied(t.player, unit.player) && t.hp < t.maxHp);
             }
             if (_ewItemLike(itemKey, 'manaPotion')) {
-                return state.units.some(t => !t.dead && t.player === unit.player && (t.maxMp || 0) > 0 && t.mp < t.maxMp);
+                return state.units.some(t => !t.dead && sidesAllied(t.player, unit.player) && (t.maxMp || 0) > 0 && t.mp < t.maxMp);
             }
             if (itemKey === 'scanner') return true;
             if (itemKey === 'panacea') {
@@ -47343,7 +47343,7 @@
         function canTradeWithUnit(source, target) {
             if (!source || !target || source.id === target.id) return false;
             if (source.dead || target.dead) return false;
-            if (source.player !== target.player) return false;
+            if (sidesHostile(source.player, target.player)) return false;
             return Math.max(Math.abs(source.x - target.x), Math.abs(source.y - target.y)) <= 1;
         }
 
@@ -47542,7 +47542,7 @@
                         if (!_pathBlocker && _pathIsAirborne && typeof airborneOccupantInPocket === 'function') {
                             _pathBlocker = airborneOccupantInPocket(nx, ny, nz, unit);
                         }
-                        if (!_pathPhasing && (nx !== destX || ny !== destY || nz !== destZ) && _pathBlocker && _pathBlocker.player !== unit.player) continue;
+                        if (!_pathPhasing && (nx !== destX || ny !== destY || nz !== destZ) && _pathBlocker && sidesHostile(_pathBlocker.player, unit.player)) continue;
                         let _deployBlocks = false;
                         if (!_pathPhasing && state._deployedObjects) {
                             for (const dObj of state._deployedObjects) {
@@ -47613,7 +47613,7 @@
 
             const _airborne = typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
             if (!_airborne) {
-                const bomb = state.bombs.find(b => b.x === x && b.y === y && b.owner !== unit.player) || null;
+                const bomb = state.bombs.find(b => b.x === x && b.y === y && sidesHostile(b.owner, unit.player)) || null;
                 if (bomb) return {
                     kind: 'bomb',
                     x,
@@ -47621,13 +47621,13 @@
                 };
                 // New trap arsenal (placeTrap): walking THROUGH the tile stops
                 // the move there; the post-move checkTrapTrigger springs it.
-                if (state.traps && state.traps.some(t => t.x === x && t.y === y && t.owner !== unit.player)) {
+                if (state.traps && state.traps.some(t => t.x === x && t.y === y && sidesHostile(t.owner, unit.player))) {
                     return { kind: 'trap', x, y };
                 }
                 /* ── detonateOnStep trap check ── */
                 if (state._deployedObjects) {
                     const trap = state._deployedObjects.find(o =>
-                        _trapCovers(o, x, y) && o.hp > 0 && o.detonateOnStep && o.ownerPlayer !== unit.player && !o._detonated
+                        _trapCovers(o, x, y) && o.hp > 0 && o.detonateOnStep && sidesHostile(o.ownerPlayer, unit.player) && !o._detonated
                     );
                     if (trap) return { kind: 'trap', x, y, trap };
                 }
@@ -47658,7 +47658,7 @@
             if (!state._activeZones.length && !unit._smokeCloaked) return;
             let inFriendlySmoke = false;
             for (const zone of state._activeZones) {
-                if (!zone.smokeConcealment || zone.ownerPlayer !== unit.player) continue;
+                if (!zone.smokeConcealment || sidesHostile(zone.ownerPlayer, unit.player)) continue;
                 if (!_zoneCovers(zone, unit.x, unit.y)) continue;
                 inFriendlySmoke = true;
                 if (!unitHasStatus(unit, 'invisible')) {
@@ -47848,7 +47848,7 @@
                 /* 🦴 Bone-pile looting — ending a move on an enemy's remains rifles
                    them for items. Ally graves are left intact (their gear stays with
                    them for a revive); allies can still be looted deliberately via scan. */
-                const _corpse = state.units.find(u => u.dead && u.player !== unit.player && u.x === x && u.y === y);
+                const _corpse = state.units.find(u => u.dead && sidesHostile(u.player, unit.player) && u.x === x && u.y === y);
                 if (_corpse && typeof lootCorpseItems === 'function') {
                     const _took = {};
                     const _got = lootCorpseItems(unit, _corpse, _took);
@@ -47880,7 +47880,7 @@
             fromUnit.hourglassBuff = Math.max(0, (fromUnit.hourglassBuff || 0) - buffTransfer);
             toUnit.hourglassBuff = (toUnit.hourglassBuff || 0) + buffTransfer;
 
-            if (fromUnit.player !== toUnit.player && buffTransfer > 0) {
+            if (sidesHostile(fromUnit.player, toUnit.player) && buffTransfer > 0) {
                 state.hourglassBuffs[fromUnit.player] = Math.max(0, (state.hourglassBuffs[fromUnit.player] || 0) - buffTransfer);
                 state.hourglassBuffs[toUnit.player] = (state.hourglassBuffs[toUnit.player] || 0) + buffTransfer;
             }
@@ -48353,7 +48353,7 @@
             state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
-            state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
+            state.captures = []; state.sealedUnits = []; state.sideTies = null;   // 🚪 THE ONE-WAY DOOR; THE ONE SIDE QUESTION (state.js sidesAllied): no ties at a new fight
             state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
@@ -48836,7 +48836,7 @@
             const msg = _logMsg(entry).replace(/<[^>]+>/g, '');
             if (!msg) return true;
 
-            const enemyUnits = (state.units || []).filter(u => u.player !== viewer);
+            const enemyUnits = (state.units || []).filter(u => sidesHostile(u.player, viewer));
             let mentionsEnemy = false, mentionsHidden = false;
             for (const u of enemyUnits) {
                 const name = unitDisplayName(u);
@@ -48849,7 +48849,7 @@
             /* 2026-10-21 PvP audit #12: a line about an enemy the viewer can't see, with none of the viewer's own units in
                it, says nothing the screen shows (no coordinate needed to leak: "… breaks camouflage", "… is poisoned") */
             if (mentionsHidden) {
-                const ownNamed = (state.units || []).some(u => u.player === viewer && (n => n && msg.includes(n))(unitDisplayName(u)));
+                const ownNamed = (state.units || []).some(u => sidesAllied(u.player, viewer) && (n => n && msg.includes(n))(unitDisplayName(u)));
                 if (!ownNamed) return false;
             }
 
@@ -49310,13 +49310,13 @@
             if (!a || !b) return false;
             if (a.id === b.id) return true;
             if (_isFFA()) return false;
-            return a.player === b.player;
+            return sidesAllied(a.player, b.player);
         }
         function isEnemyUnit(a, b) {
             if (!a || !b) return false;
             if (a.id === b.id) return false;
             if (_isFFA()) return true;
-            return a.player !== b.player;
+            return sidesHostile(a.player, b.player);
         }
 
         function aliveUnitsFor(player, refUnit) {
@@ -49328,12 +49328,30 @@
                 .sort((a, b) => ((b.spd || 5) + getStatStageDelta(b, 'spd')) - ((a.spd || 5) + getStatStageDelta(a, 'spd')));
         }
 
+        /* THE ONE SIDE QUESTION (step S): every living unit on side `player` OR a side standing with it (state.js sidesAllied),
+           fastest first. aliveUnitsFor(p) stays "the units of side p" (a membership list: round upkeep per side, result screens);
+           a spell or the AI asking "who are my allies?" asks this one. */
+        function aliveAlliesOf(player, refUnit) {
+            if (_isFFA() && refUnit) {
+                return refUnit.dead || refUnit._dying ? [] : [refUnit];
+            }
+            return state.units.filter(u => sidesAllied(u.player, player) && !u.dead && !u._dying)
+                .sort((a, b) => ((b.spd || 5) + getStatStageDelta(b, 'spd')) - ((a.spd || 5) + getStatStageDelta(a, 'spd')));
+        }
+
+        /* THE ONE SIDE QUESTION (step S): every living unit hostile to side `player`, fastest first (the order
+           aliveUnitsFor gives). It replaced aliveUnitsFor(enemyOf(p)), which only ever saw the other seat. */
+        function aliveHostilesOf(player) {
+            return state.units.filter(u => sidesHostile(u.player, player) && !u.dead && !u._dying)
+                .sort((a, b) => ((b.spd || 5) + getStatStageDelta(b, 'spd')) - ((a.spd || 5) + getStatStageDelta(a, 'spd')));
+        }
+
         function getHostileUnits(player, refUnit) {
             if (_isFFA() && refUnit) {
 
                 return state.units.filter(u => !u.dead && !u._dying && u.id !== refUnit.id);
             }
-            return state.units.filter(u => !u.dead && !u._dying && u.player !== player);
+            return state.units.filter(u => !u.dead && !u._dying && sidesHostile(u.player, player));
         }
 
         function aliveUnitsOnFloor(player, _floor) {
@@ -50681,7 +50699,7 @@
         function _apTallyNote(sourceUnit, target, opts, kind, mult, el) {
             const o = _apTallyOwner;
             if (!o || !sourceUnit || !target || sourceUnit.id !== o.id || Date.now() > o.until) return false;
-            if (window.EW_NO_AP_TALLY || (opts && opts.noPress) || target.player === sourceUnit.player) return false;
+            if (window.EW_NO_AP_TALLY || (opts && opts.noPress) || sidesAllied(target.player, sourceUnit.player)) return false;
             const group = kind === 'type' || kind === 'typeRes' ? 'type' : kind === 'combo' ? 'combo' : 'elem';
             if (!o.kinds[group]) return false;
             if (!o.notes[kind]) {
@@ -50845,7 +50863,7 @@
                CASTER's own types, and a target that resists those vetoed the spell's super effective press (and drained
                an AP). Only the spell's own hits judge the press now. */
             if (opts && opts.noPress) return null;
-            if (target.player === sourceUnit.player) return null; // enemies only
+            if (sidesAllied(target.player, sourceUnit.player)) return null; // enemies only
             /* THE SPELL'S TYPE, never the caster's: a divine spell from an
                anomaly caster is judged as divine vs the target (the caster's
                own types only ever add STAB). Only a TYPELESS hit (a basic
@@ -51343,7 +51361,7 @@
         function _escapeWalkPath(unit) {
             const R = _escapeRules();
             const W = bw(), H = bh();
-            const foes = (state.units || []).filter(f => f && !f.dead && f.player !== unit.player);
+            const foes = (state.units || []).filter(f => f && !f.dead && sidesHostile(f.player, unit.player));
             const zOf = (x, y) => (typeof getHeightAt === 'function') ? (getHeightAt(x, y) | 0) : 0;
             const rim = (x, y) => Math.min(x, y, W - 1 - x, H - 1 - y);
             const foeD = (x, y) => foes.length ? Math.min.apply(null, foes.map(f => Math.abs(f.x - x) + Math.abs(f.y - y))) : 99;
@@ -51805,7 +51823,7 @@
                 const area = (spell.kind === 'aoePull')   // the aoePull branch's own footprint
                     ? (_spellMaskTiles(spell, unit.x, unit.y) || getSquareArea(unit.x, unit.y, spell.aoeRadius || 1))
                     : getSpellAoeArea(spell, unit.x, unit.y);
-                pool = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => (e.x !== unit.x || e.y !== unit.y)
+                pool = realmReachableFrom(aliveHostilesOf(unit.player), unit).filter(e => (e.x !== unit.x || e.y !== unit.y)
                     && area.some(t => t.x === e.x && t.y === e.y));
             }
             return pool.filter(e => _novaSeesEnemy(unit, spell, e) && spellTargetUsableOn(unit, spell, e));
@@ -51820,10 +51838,10 @@
             for (const t of area) {
                 if (t.x === unit.x && t.y === unit.y) continue;
                 /* THE SEEN NOVA: an unseen enemy never lights a self-centred blast (it would tell where it hides) */
-                if (state.units.some(e => !e.dead && e.player !== unit.player && e.x === t.x && e.y === t.y
+                if (state.units.some(e => !e.dead && sidesHostile(e.player, unit.player) && e.x === t.x && e.y === t.y
                     && _novaSeesEnemy(unit, spell, e))) return true;
                 if (state.turrets?.some(tr => tr.hp > 0 && tr.x === t.x && tr.y === t.y)) return true;
-                if (state._deployedObjects?.some(o => o.hp > 0 && !o._detonated && o.x === t.x && o.y === t.y && o.ownerPlayer !== unit.player)) return true;
+                if (state._deployedObjects?.some(o => o.hp > 0 && !o._detonated && o.x === t.x && o.y === t.y && sidesHostile(o.ownerPlayer, unit.player))) return true;
             }
             return false;
         }
@@ -51841,7 +51859,7 @@
                 ? spell.aoeRadius : getEffectiveSpellRange(unit, spell);
             const srcZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
             const longR = isLongRangeSpell(spell);
-            return realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => {
+            return realmReachableFrom(aliveHostilesOf(unit.player), unit).filter(e => {
                 if (spell.hitsWetOnly && !_isWetTile(e.x, e.y)) return false;
                 if (!_barrageStatusOk(spell, e)) return false;   // 🦠 Zero Day: Payload carriers only
                 const dist = (typeof combatReach === 'function')
@@ -51870,7 +51888,7 @@
             /* A hollow mask (no [0,0]) needs the centre picker too — its centre never hits. */
             const _m = _spellMaskOf(spell); const _hollow = !!(_m && !_m.some(o => !o[0] && !o[1]));
             if (spell.aoeShape !== 'ring' && !_hollow) return { x: tx, y: ty };
-            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
+            const enemies = realmReachableFrom(aliveHostilesOf(unit.player), unit);
             let best = null, bestScore = -Infinity;
             for (const c of getSpellRangeTiles(unit, spell)) {
                 const area = getSpellAoeArea(spell, c.x, c.y);
@@ -52061,7 +52079,7 @@
         }
         function _spellSkyTelescopeTarget(unit, x, y) {
             return unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth'
-                && state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
+                && state.units.some(u => !u.dead && sidesHostile(u.player, unit.player) && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
         }
         /* null when doSpell(unit, x, y, z) gets past every aim gate from where the caster stands now, else
            'range' | 'los' | 'sight' | 'hidden' | 'above'. Costs, cooldowns and per-target effect (spellTargetUsableOn)
@@ -52247,7 +52265,7 @@
             if (kind === 'door' || kind === 'doorSlam' || kind === 'doorDeploy' || kind === 'projectorSwap') return getSpellRangeTiles(unit, spell).length > 0;
             if (kind === 'doorDelivery' || kind === 'doorExit') {
                 const _dFog = visionGatesTargeting(unit);
-                return state.units.some(u => !u.dead && u.player !== unit.player
+                return state.units.some(u => !u.dead && sidesHostile(u.player, unit.player)
                     && (!_dFog || isInVision(unit, u.x, u.y))
                     && spellTargetUsableOn(unit, spell, u)
                     && !!_doorOriginForSpell(unit, spell, u.x, u.y));
@@ -52260,7 +52278,7 @@
             // immediately fail with "Must be above the target".
             if (kind === 'leapStrike') {
                 // THE ONE AIM RULE: spellAimProblem holds the above-the-target gate too.
-                return state.units.some(e => !e.dead && e.player !== unit.player && spellCastableOnUnit(unit, spell, e));
+                return state.units.some(e => !e.dead && sidesHostile(e.player, unit.player) && spellCastableOnUnit(unit, spell, e));
             }
 
             if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam', 'tackle', 'possess', 'shadowRealm', 'link', 'doorBreach', 'doorTrap'].includes(kind)) {
@@ -52270,7 +52288,7 @@
                    (forced-movement playtest 2026-11-07 D1: an ally in range 4 still read MOVE→CAST) */
                 const enemies = spell.allyOnly
                     ? state.units.filter(u => !u.dead && u.id !== unit.id && isAllyUnit(u, unit))
-                    : state.units.filter(u => !u.dead && u.player !== unit.player);
+                    : state.units.filter(u => !u.dead && sidesHostile(u.player, unit.player));
                 const hasEnemy = enemies.some(e => spellCastableOnUnit(unit, spell, e));
                 // (Towers don't count — Cubes are immune to spells by design.)
                 return hasEnemy;
@@ -52324,7 +52342,7 @@
                 // Only a revivable corpse actually IN RANGE makes the spell castable
                 // (this used to return true if any dead ally existed anywhere on the
                 // map, lighting the spell up with nothing to click).
-                return state.units.some(u => u.player === unit.player && u.dead && !u.reviveLocked &&
+                return state.units.some(u => sidesAllied(u.player, unit.player) && u.dead && !u.reviveLocked &&
                     !spellAimProblem(unit, spell, u.x, u.y, u.z));   // THE ONE AIM RULE
             }
 
@@ -52336,7 +52354,7 @@
 
             if (kind === 'rallyPull') {
                 // Castable when at least one living ally isn't already at the King's side.
-                return state.units.some(u => !u.dead && u.player === unit.player && u.id !== unit.id &&
+                return state.units.some(u => !u.dead && sidesAllied(u.player, unit.player) && u.id !== unit.id &&
                     Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) > 1);
             }
 
@@ -52748,7 +52766,7 @@
                 let n = 0;
                 for (const t of area) {
                     if (t.x === unit.x && t.y === unit.y) continue;
-                    if (state.units.some(e => !e.dead && e.player !== unit.player && e.x === t.x && e.y === t.y)) n++;
+                    if (state.units.some(e => !e.dead && sidesHostile(e.player, unit.player) && e.x === t.x && e.y === t.y)) n++;
                 }
                 return n;
             };
@@ -52978,7 +52996,7 @@
         // move-then-cast (heals/self-casts/empty far tiles are left untouched).
         function _tryMoveThenCast(actingUnit, x, y, z, clickedUnit) {
             if (!actingUnit || state.actionMode !== 'spell') return false;
-            if (!clickedUnit || clickedUnit.dead || clickedUnit.player === actingUnit.player) return false;
+            if (!clickedUnit || clickedUnit.dead || sidesAllied(clickedUnit.player, actingUnit.player)) return false;
             const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
                 || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
             if (!spell || _selfCastNoWalk(spell)) return false;
@@ -53266,7 +53284,7 @@
                 if (!row) return false;
                 tz = row.unit ? row.unit.z : undefined;
             } else if (state.actionMode === 'spell') {
-                if (!clickedUnit || clickedUnit.dead || clickedUnit.player === actingUnit.player) return false;
+                if (!clickedUnit || clickedUnit.dead || sidesAllied(clickedUnit.player, actingUnit.player)) return false;
                 const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
                     || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
                 if (!spell || _selfCastNoWalk(spell)) return false;
@@ -54305,7 +54323,7 @@
         function _spellApproachHoverPreview(unit, x, y) {
             if (!unit || state.actionMode !== 'spell') { _clearSpellApproachPreview(); return false; }
             const enemy = unitAt(x, y);
-            if (!enemy || enemy.dead || enemy.player === unit.player) { _clearSpellApproachPreview(); return false; }
+            if (!enemy || enemy.dead || sidesAllied(enemy.player, unit.player)) { _clearSpellApproachPreview(); return false; }
             const spell = (unit.spells || []).find(s => s.name === state.selectedTool)
                 || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
             if (!spell || _selfCastNoWalk(spell)) { _clearSpellApproachPreview(); return false; }
@@ -54730,7 +54748,7 @@
                 const unit = (state.units || []).find(u => u.id === hoveredUnitId && !u.dead);
                 if (!unit) return;
                 const viewer = getViewerPlayer();
-                if (unit.player !== viewer) {
+                if (sidesHostile(unit.player, viewer)) {
                     // Screen-true fog gate: never trace a unit the viewer's
                     // screen doesn't actually show (fog OR concealment).
                     if (typeof isUnitConcealedFrom === 'function'
@@ -54739,7 +54757,7 @@
                 }
                 const tiles = getAttackTiles(unit) || [];
                 if (!tiles.length) return;
-                const color = unit.player === viewer ? 0x5aa8ff : 0xff4545;
+                const color = sidesAllied(unit.player, viewer) ? 0x5aa8ff : 0xff4545;
                 ThreeRenderer.setOverlay('enemyRange',
                     tiles.map(t => ({ x: t.x, y: t.y })), color, 0.5);
                 state._enemyRangeActive = true;
@@ -54965,7 +54983,7 @@
             if (state.phase !== 'battle' || state.winner) return false;
             try { if (typeof isOnlineMatch === 'function' && isOnlineMatch()) return false; } catch (e) {}
             if (!unit || unit.dead) return false;
-            if (state.controllers?.[unit.player] === CTRL.AI) return true;
+            if (sideController(unit.player) === CTRL.AI) return true;
             if (state.autoPlayers?.[unit.player]) return true;
             return false;
         }
@@ -54995,7 +55013,7 @@
             if (want && !_trainRecapSnap) _trainRecapSnap = _trainRecapTake();
             _setAiTurbo(want);
             if (!want && _trainRecapSnap && unit && !unit.dead && state.trainingMatch
-                && state.controllers?.[unit.player] !== CTRL.AI && !state.autoPlayers?.[unit.player]) {
+                && sideController(unit.player) !== CTRL.AI && !state.autoPlayers?.[unit.player]) {
                 const snap = _trainRecapSnap;
                 _trainRecapSnap = null;
                 _trainRecapShow(snap);
@@ -55022,10 +55040,10 @@
             for (const u of state.units) {
                 const was = snap.map[u.id];
                 if (!was || u.dead || u._dying) continue;
-                if (u.player !== viewer && !_isUnitVisibleToViewer(u, viewer)) continue;
+                if (sidesHostile(u.player, viewer) && !_isUnitVisibleToViewer(u, viewer)) continue;
                 const d = (u.hp || 0) - was.hp;
                 if (d) showFloatingTextForUnit(u, (d > 0 ? '+' : '-') + Math.abs(d), d > 0 ? 'heal' : 'damage', { durationMs: TRAIN_RECAP_MS });
-                if (u.player !== viewer && (u.x !== was.x || u.y !== was.y)) moved.push({ x: u.x, y: u.y });
+                if (sidesHostile(u.player, viewer) && (u.x !== was.x || u.y !== was.y)) moved.push({ x: u.x, y: u.y });
             }
             const R = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive()) ? ThreeRenderer : null;
             if (!R || !moved.length) return;
@@ -57406,7 +57424,7 @@
         function unitOnTactic(u) {
             if (!u || u.dead || !u.tactic || UNIT_TACTIC_IDS.indexOf(u.tactic) < 0) return false;
             if (state.phase !== 'battle' || state.winner) return false;
-            if (state.controllers?.[u.player] === CTRL.AI) return false;   // the CPU's planner owns its own units
+            if (sideController(u.player) === CTRL.AI) return false;   // the CPU's planner owns its own units
             if (unitIsControlled(u)) return false;                          // a possessed body plays for its captor
             if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return false;   // MD keeps its own tactic chips
             if (window._tutActive) return false;
@@ -57453,7 +57471,7 @@
                respawns and goes on playing by itself (mondo 2026-11-11) */
             const u = state.units.find(x => x.id === unitId && (!x.dead || !tactic));
             if (!u || state.phase !== 'battle' || state.winner) return false;
-            if (state.controllers?.[u.player] === CTRL.AI) return false;
+            if (sideController(u.player) === CTRL.AI) return false;
             const t = UNIT_TACTIC_IDS.indexOf(tactic) >= 0 ? tactic : null;
             if (t && unitTacticProblem(u, t)) return false;
             if ((u.tactic || null) === t) return true;
@@ -57844,7 +57862,7 @@
                tween and swing starts together. */
             const actors = state.units.filter(u =>
                 u && !u.dead && !u._dying && !u._mdNpc && u.id !== leadId);
-            actors.sort((a, b) => (a.player === b.player) ? 0 : (a.player === 1 ? -1 : 1));
+            actors.sort((a, b) => (sidesAllied(a.player, b.player)) ? 0 : (a.player === 1 ? -1 : 1));
 
             let longest = 0;
             for (const u of actors) {
@@ -58120,7 +58138,7 @@
             let best = Infinity;
             for (const e of state.units) {
                 if (!e || e.dead || e._dying || e._mdNpc) continue;
-                if (e.player === u.player || e.player === 0) continue;
+                if (sidesAllied(e.player, u.player) || e.player === 0) continue;
                 const d = Math.abs(e.x - u.x) + Math.abs(e.y - u.y);
                 if (d < best) best = d;
             }
@@ -58189,7 +58207,7 @@
            tile toward the closest opposing unit it knows about. */
         function _mdStepTowardNearestFoe(u) {
             const foes = state.units.filter(e => !e.dead && !e._dying && !e._mdNpc
-                && e.player !== u.player && e.player !== 0);
+                && sidesHostile(e.player, u.player) && e.player !== 0);
             if (!foes.length) return 0;
             let best = foes[0], bestD = Infinity;
             for (const e of foes) {
@@ -59862,7 +59880,7 @@
             state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
-            state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
+            state.captures = []; state.sealedUnits = []; state.sideTies = null;   // 🚪 THE ONE-WAY DOOR; THE ONE SIDE QUESTION (state.js sidesAllied): no ties at a new fight
             state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
@@ -60382,12 +60400,12 @@
             if (state.controllers[p] === CTRL.LOCAL) {
                 state.controllers[p] = CTRL.AI;
                 addLog(`Player ${p} auto mode enabled.`);
-            } else if (state.controllers[p] === CTRL.AI) {
+            } else if (sideController(p) === CTRL.AI) {
                 state.controllers[p] = CTRL.LOCAL;
                 addLog(`Player ${p} auto mode disabled.`);
             }
             render();
-            if (state.controllers[p] === CTRL.AI && state.activePlayer === p) {
+            if (sideController(p) === CTRL.AI && state.activePlayer === p) {
                 maybeTriggerComputerTurn();
             }
         }
@@ -60490,7 +60508,7 @@
             state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
-            state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
+            state.captures = []; state.sealedUnits = []; state.sideTies = null;   // 🚪 THE ONE-WAY DOOR; THE ONE SIDE QUESTION (state.js sidesAllied): no ties at a new fight
             state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
@@ -60546,7 +60564,7 @@
             if (!validateBuilderLoadouts(showLog)) return false;
 
             [1, 2].forEach(player => {
-                if (state.controllers[player] === CTRL.AI) {
+                if (sideController(player) === CTRL.AI) {
                     state.partyBuilds[player].forEach((cls, idx) => {
                         const race = state.partyMeta?.[player]?.[idx]?.race || '';
                         state.loadouts[player][idx] = randomSpellLoadoutForClass(cls, race, state.partyMeta?.[player]?.[idx]?.gender);
@@ -60557,7 +60575,7 @@
             const warnings = [];
             [1, 2].forEach(player => {
 
-                if (state.controllers[player] === CTRL.AI) return;
+                if (sideController(player) === CTRL.AI) return;
                 state.partyBuilds[player].forEach((cls, idx) => {
                     const loadout = state.loadouts[player][idx];
                     const emptySlots = [];
@@ -60578,7 +60596,7 @@
 
                     let canAutoFill = false;
                     [1, 2].forEach(p => {
-                        if (state.controllers[p] === CTRL.AI) return;
+                        if (sideController(p) === CTRL.AI) return;
                         state.partyBuilds[p].forEach((c, i) => {
                             const lo = state.loadouts[p][i];
                             const r = state.partyMeta?.[p]?.[i]?.race || '';
@@ -60597,7 +60615,7 @@
 
                     const _doAutoFill = function() {
                         [1, 2].forEach(p => {
-                            if (state.controllers[p] === CTRL.AI) return;
+                            if (sideController(p) === CTRL.AI) return;
                             state.partyBuilds[p].forEach((c, i) => {
                                 const lo = state.loadouts[p][i];
                                 const r = state.partyMeta?.[p]?.[i]?.race || '';
@@ -60706,7 +60724,7 @@
             state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
-            state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
+            state.captures = []; state.sealedUnits = []; state.sideTies = null;   // 🚪 THE ONE-WAY DOOR; THE ONE SIDE QUESTION (state.js sidesAllied): no ties at a new fight
             state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
@@ -62455,7 +62473,7 @@
                 const lead = _encLeadUnit(viewer, seats && seats[viewer]);
                 if (!lead) return false;
                 const foeSeat = (viewer === 1) ? 2 : 1;
-                const foe = _encLeadUnit(foeSeat, seats && seats[foeSeat]) || (state.units || []).find(u => u.player !== viewer && !u.dead) || null;
+                const foe = _encLeadUnit(foeSeat, seats && seats[foeSeat]) || (state.units || []).find(u => sidesHostile(u.player, viewer) && !u.dead) || null;
                 const eye = er.eyeSeeded || er.eye || null;
                 /* THE QUESTS: a quest fight's arrival lands on its portal (most of the way from the lead to it), where the guest and the enemies come out */
                 const _qP = (er.quest && er.quest.portal) ? er.quest.portal : null;
@@ -63043,7 +63061,7 @@
             if (!u || u.dead) return;
             /* the CPU's own fighters: never between the steps of a plan it already made in this frame's squares (its hand turn
                lays the frame itself, doCubeTurn) */
-            if (state.aiThinking || state.controllers?.[u.player] === CTRL.AI || state.autoPlayers?.[u.player]) return;
+            if (state.aiThinking || sideController(u.player) === CTRL.AI || state.autoPlayers?.[u.player]) return;
             if (cubeFocus(u)) _cubeAfterMidTurnRelay(u);
         }
         function _cubeAfterMidTurnRelay(u) {
@@ -63235,7 +63253,7 @@
                     if (_gen !== _blitzTurnGen || state.winner || state._blitzActiveUnitId !== unit.id) return;
                     try {
                         if ((unit.ap || 0) <= 0 || unit.dead) endUnitIfDone(unit);
-                        else if (state.controllers?.[unit.player] === CTRL.AI) maybeTriggerComputerTurn();
+                        else if (sideController(unit.player) === CTRL.AI) maybeTriggerComputerTurn();
                     } catch (e) {}
                 }, relaid ? 850 : 50);
             }, 1250);
@@ -63247,7 +63265,7 @@
             if (cubeTurnProblem(unit) || (unit.ap || 0) < CUBE_HAND.ap + 1) return null;
             const f = cubeFrameNow(), N = state._cube.N;
             const reach = (typeof getEffectiveMove === 'function' ? getEffectiveMove(unit) : 3) + Math.max(1, typeof getEffectiveRange === 'function' ? getEffectiveRange(unit) : 1);
-            const foes = state.units.filter(u => u && !u.dead && u.id !== unit.id && (typeof isEnemyUnit === 'function' ? isEnemyUnit(unit, u) : u.player !== unit.player));
+            const foes = state.units.filter(u => u && !u.dead && u.id !== unit.id && (typeof isEnemyUnit === 'function' ? isEnemyUnit(unit, u) : sidesHostile(u.player, unit.player)));
             if (!foes.length) return null;
             const d = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
             const before = foes.reduce((s, e) => s + (d(unit, e) <= reach ? 1 : 0), 0);
@@ -63642,7 +63660,7 @@
                 return 0;
             }
 
-            if (state.pings.some(p => p.x === x && p.y === y && p.player === unit.player)) {
+            if (state.pings.some(p => p.x === x && p.y === y && sidesAllied(p.player, unit.player))) {
                 addLog('This tile is already pinged.');
                 return 0;
             }
@@ -63675,7 +63693,7 @@
         }
 
         function updateEnemySightings(viewerPlayer) {
-            const enemies = state.units.filter(u => u.player !== viewerPlayer);
+            const enemies = state.units.filter(u => sidesHostile(u.player, viewerPlayer));
             const visibleTiles = computeVisibleTiles(viewerPlayer);
             for (const enemy of enemies) {
                 const key = enemy.id;
@@ -63810,7 +63828,7 @@
       if (state.winner || _skipVisuals()) return;
       const roundText = isNewRound ? `Round ${roundNum}` : '';
       const viewer = getViewerPlayer();
-      const isEnemyTurn = blitzUnit ? (blitzUnit.player !== viewer) : (player !== viewer);
+      const isEnemyTurn = blitzUnit ? (sidesHostile(blitzUnit.player, viewer)) : sidesHostile(player, viewer);
 
       overlay.classList.toggle('enemy-turn', isEnemyTurn);
 
@@ -65710,7 +65728,7 @@
                        human player thinking on their turn never trips this. */
                     const au = state.units.find(u => u.id === state._blitzActiveUnitId);
                     const aiOwned = au && !au.dead && !au._dying
-                        && (state.controllers?.[au.player] === CTRL.AI
+                        && (sideController(au.player) === CTRL.AI
                             || (typeof _mdUnitAuto === 'function' && _mdUnitAuto(au)));
                     if (!aiOwned || state.aiThinking || state._actionExecuting
                         || state._runComputerTurnTimer || _aiSafetyTimer) return reset();
@@ -65915,7 +65933,7 @@
                     if (state._recentDefeats?.length) {
                         const viewer = getViewerPlayer();
                         for (const d of state._recentDefeats) {
-                            const isEnemy = d.player !== viewer;
+                            const isEnemy = sidesHostile(d.player, viewer);
                             const icon = isEnemy ? '⚔' : '💀';
                             // no line colour: the name wears its side's colour, the words their caps (THE COMBAT TEXT COLOURS)
                             dlgLines.push(`${icon} ${d.name} returned to the void`);
@@ -66042,7 +66060,7 @@
                 /* Mystery Dungeon: AUTO-tactic companions are player-1 units
                    driven by the stock unit AI — route them down the AI branch
                    even though controllers[1] is LOCAL. */
-                if (state.controllers?.[nextUnit.player] === CTRL.AI
+                if (sideController(nextUnit.player) === CTRL.AI
                     || (typeof _mdUnitAuto === 'function' && _mdUnitAuto(nextUnit))) {
 
                     _stopShotClock();
@@ -66230,10 +66248,10 @@
             const _shouldAIRun = () => {
                 if (state._blitzActiveUnitId) {
                     const bUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
-                    return bUnit && (state.controllers?.[bUnit.player] === CTRL.AI
+                    return bUnit && (sideController(bUnit.player) === CTRL.AI
                         || (typeof _mdUnitAuto === 'function' && _mdUnitAuto(bUnit)));
                 }
-                if (state.controllers?.[state.activePlayer] === CTRL.AI) return true;
+                if (sideController(state.activePlayer) === CTRL.AI) return true;
                 if (state.squadLeaderMode && state.activePlayer === 1) {
                     const nextUnit = aliveUnitsFor(1).find(u => (u.ap || 0) > 0);
                     if (nextUnit && nextUnit.id !== state.squadLeaderUnitId) return true;
@@ -66269,7 +66287,7 @@
                     state.selectedTool = null;
                     if (state._blitzActiveUnitId) {
                         const stuckUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
-                        if (stuckUnit && (state.controllers?.[stuckUnit.player] === CTRL.AI
+                        if (stuckUnit && (sideController(stuckUnit.player) === CTRL.AI
                             || (typeof _mdUnitAuto === 'function' && _mdUnitAuto(stuckUnit)))) {
                             stuckUnit.ap = 0;
                             endUnitIfDone(stuckUnit);
@@ -68520,7 +68538,7 @@
             const who = _balSetterOf(tgt, id);
             const setter = (who != null && who !== 'board' && typeof unitFromId === 'function') ? unitFromId(who) : null;
             const kind = who === 'board' ? 'board' : !setter ? 'other' : setter.id === fin.id ? 'self'
-                : (setter.player === fin.player ? 'team' : 'other');
+                : (sidesAllied(setter.player, fin.player) ? 'team' : 'other');
             const r = _balComboRow(id);
             r.payoffs++; r[kind]++; r.dmg += dmg || 0;
             if (kind === 'team') {
@@ -70316,7 +70334,7 @@
             }
 
             const _mdAuto = typeof _mdUnitAuto === 'function' && _mdUnitAuto(unit);
-            if (state.controllers?.[unit.player] !== CTRL.AI && !_mdAuto) {
+            if (sideController(unit.player) !== CTRL.AI && !_mdAuto) {
                 state.aiThinking = false;
                 clearAiSafetyTimer();
                 return;
@@ -70389,7 +70407,7 @@
             unitAt3D, unitsAtColumn, getTerrainAt3D, dist3D, distXY, combatDist, combatReach,
             buildColumnsFromLegacy, buildColumnsFromVoxels, ensureUnitZCoords,
 
-            aliveUnitsFor, aliveUnitsOnFloor, enemyOf, unitDisplayName,
+            aliveUnitsFor, aliveUnitsOnFloor, enemyOf, unitDisplayName, aliveHostilesOf, aliveAlliesOf, sidesAllied, sidesHostile, battleSides,
             getHostileUnits, isBossUnit, getBossOccupiedTiles,
             isAllyUnit, isEnemyUnit, _isFFA,
             /* Provoke reads for ai.js (the taunter unit; THE SPELL AUDIT Batch D's decoy straw) */
@@ -71106,7 +71124,7 @@
             if (!ph || !ph.tiles || !ph.tiles.length) return;
             // the viewer's own hand only: never a CPU / auto seat, never the other seat's pick
             if (unit.player !== getViewerPlayer() || state.autoPlayers?.[unit.player]
-                || state.controllers?.[unit.player] === CTRL.AI) return;
+                || sideController(unit.player) === CTRL.AI) return;
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return;
             if (!_fogCamAllSeen(unit)) return;
             /* THE CLICKABLE PICK (forced-movement playtest 2026-11-07 C2): a pick whose clicks land ANYWHERE in the frame (a
@@ -71392,7 +71410,7 @@
                 const _held = unit._skyThrowGrab.id, _ltFog = visionGatesTargeting(unit);
                 for (const t of getSkyThrowLandingTiles(unit)) {
                     const u = unitAt(t.x, t.y);
-                    if (!u || u.dead || u.id === _held || u.player === unit.player) continue;
+                    if (!u || u.dead || u.id === _held || sidesAllied(u.player, unit.player)) continue;
                     if (_ltFog && !isInVision(unit, u.x, u.y)) continue;   // the list never leaks a hidden enemy
                     targets.push({ x: u.x, y: u.y, dist: Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y), unit: u });
                 }
@@ -71411,7 +71429,7 @@
                 const _lnFogLimit = visionGatesTargeting(unit);
                 const _raySet = new Set(getLineSpellRayTiles(unit, spell).map(t => t.x + ',' + t.y));
                 for (const u of state.units) {
-                    if (u.dead || u.player === unit.player) continue;
+                    if (u.dead || sidesAllied(u.player, unit.player)) continue;
                     const _lnCells = (u._isBoss && u._bossSize === 2)
                         ? [[u.x, u.y], [u.x + 1, u.y], [u.x, u.y + 1], [u.x + 1, u.y + 1]]
                         : [[u.x, u.y]];
@@ -71433,7 +71451,7 @@
             if (spell.kind === 'doorDelivery' || spell.kind === 'doorExit') {
                 const _dFog = visionGatesTargeting(unit);
                 for (const u of state.units) {
-                    if (u.dead || u.player === unit.player) continue;
+                    if (u.dead || sidesAllied(u.player, unit.player)) continue;
                     if (_dFog && !isInVision(unit, u.x, u.y)) continue;
                     if (!spellTargetUsableOn(unit, spell, u)) continue;
                     if (!_doorOriginForSpell(unit, spell, u.x, u.y)) continue;
@@ -71459,7 +71477,7 @@
                 if (u.dead) {
                     if (spellTargetsCorpses(spell)) {
                         if (!spellCorpseUsable(unit, spell, u)) continue;
-                    } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
+                    } else if (spell.kind !== 'revive' || sidesHostile(u.player, unit.player) || u.reviveLocked) continue;
                 }
                 // raiseDead only ever targets the dead.
                 if (!u.dead && spellTargetsCorpses(spell)) continue;
@@ -71562,7 +71580,7 @@
                 if (u.dead) {
                     if (spellTargetsCorpses(spell)) {
                         if (!spellCorpseUsable(unit, spell, u)) continue;
-                    } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
+                    } else if (spell.kind !== 'revive' || sidesHostile(u.player, unit.player) || u.reviveLocked) continue;
                 }
                 if (!u.dead && spellTargetsCorpses(spell)) continue;
                 if (haveSet && u.id != null && haveSet.has(u.id)) continue;
@@ -72041,7 +72059,7 @@
 
             if (state.turrets) {
                 for (const t of state.turrets) {
-                    if (t.owner !== unit.player && t.hp > 0) {
+                    if (sidesHostile(t.owner, unit.player) && t.hp > 0) {
                         const d = Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y);
                         if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, t.x, t.y, unitZ)) {
                             targets.push({ x: t.x, y: t.y, dist: d, turret: t, kind: 'turret' });
@@ -72054,7 +72072,7 @@
                never listed here, so no attack could pick one (Machine Elves proof run 2026-10-29) */
             if (state.mirrors) {
                 for (const m of state.mirrors) {
-                    if (!m || m.owner === unit.player || m.hp <= 0) continue;
+                    if (!m || sidesAllied(m.owner, unit.player) || m.hp <= 0) continue;
                     const _mZ = (typeof getHeightAt === 'function') ? getHeightAt(m.x, m.y) : 0;
                     const d = combatDist(unit.x, unit.y, unitZ, m.x, m.y, _mZ);
                     if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, m.x, m.y, unitZ)
@@ -72068,7 +72086,7 @@
                 for (const obj of state._deployedObjects) {
                     if (obj.hp > 0) {
 
-                        const isOwn = obj.ownerPlayer === unit.player;
+                        const isOwn = sidesAllied(obj.ownerPlayer, unit.player);
                         if (isOwn && !(obj.detonateOnAttack && obj.blastRadius > 0)) continue;
                         const d = Math.abs(obj.x - unit.x) + Math.abs(obj.y - unit.y);
                         if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, obj.x, obj.y, unitZ)) {
@@ -72081,7 +72099,7 @@
 
             if (state.plantedSeeds) {
                 for (const s of state.plantedSeeds) {
-                    if (s.owner !== unit.player) {
+                    if (sidesHostile(s.owner, unit.player)) {
                         const d = Math.abs(s.x - unit.x) + Math.abs(s.y - unit.y);
                         if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, s.x, s.y, unitZ)) {
                             if (visionGatesTargeting(unit) && !isInVision(unit, s.x, s.y)) continue;
@@ -72772,7 +72790,7 @@
 
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                 const _infoViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
-                const _infoColor = (unit.player === _infoViewer) ? 0xffcc33 : 0xff3333;
+                const _infoColor = (sidesAllied(unit.player, _infoViewer)) ? 0xffcc33 : 0xff3333;
                 ThreeRenderer.setOverlay('infoRange', rangeTiles, _infoColor, 0.4);
                 return;
             }
@@ -73146,7 +73164,7 @@
                 && actingUnit.player === state.activePlayer && actingUnit.player === getViewerPlayer()
                 && canUnitAct(actingUnit) && !state.winner;
             if (!canControl) return false;
-            if (u.player !== actingUnit.player && !_isTileVisibleToViewer(u.x, u.y)) return false;
+            if (sidesHostile(u.player, actingUnit.player) && !_isTileVisibleToViewer(u.x, u.y)) return false;
             if (u.id === actingUnit.id || (state._enemyActionTargetId === u.id && !state.actionMode)) {
                 state._enemyActionTargetId = null;
                 state._tileActionTarget = null;
@@ -73419,7 +73437,7 @@
 
                     const _isTelescopeAction = (state.actionMode === 'attack' || state.actionMode === 'spell') && _actUnit && unitHasTelescope(_actUnit) &&
                         true &&
-                        state.units.some(u => !u.dead && u.player !== _actUnit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
+                        state.units.some(u => !u.dead && sidesHostile(u.player, _actUnit.player) && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
                     /* THE BLINK LANDING, the fog click (2026-10-16, mondo: "im clicking on a tile it tells me i can teleport
                        to but its not letting me move there ... its not even telling me an error"): a teleport's landing
                        click (a self blink's only click included) passes the fogged tile on to the cast — the board lights
@@ -74016,7 +74034,7 @@
                     // Use the outer sprite-aware clickedUnit (clickTile top):
                     // a bare unitAt(x,y) here resolved a flying partner to the
                     // ground unit stacked beneath it.
-                    if (clickedUnit && clickedUnit.player === actingUnit.player && !clickedUnit.dead) {
+                    if (clickedUnit && sidesAllied(clickedUnit.player, actingUnit.player) && !clickedUnit.dead) {
                         const partners = getComboPartners(actingUnit);
                         if (partners.some(p => p.id === clickedUnit.id)) {
                             state.comboPartner = clickedUnit;
@@ -74075,7 +74093,7 @@
             const _bkDirs = {};
             for (const tile of area) {
                 const target = unitAt(tile.x, tile.y);
-                if (target && target.player !== bomb.owner) {
+                if (target && sidesHostile(target.player, bomb.owner)) {
                     if (!_bombVictims.includes(target)) { _bombVictims.push(target); _bkDirs[target.id] = bombKnockDir(bomb, target, _bkCtx); }
                     if (opts.fxDelayMs > 0 && !_skipVisuals()) _floatHoldUntil[target.id] = Date.now() + opts.fxDelayMs;   // its numbers land with the blast's look
                     const _hpBefore = target.hp;
@@ -74142,7 +74160,7 @@
             if (typeof _mdCheckStairs === 'function') _mdCheckStairs(unit);
 
             if (state.wards && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
-                const wardIdx = state.wards.findIndex(w => w.x === unit.x && w.y === unit.y && w.owner !== unit.player);
+                const wardIdx = state.wards.findIndex(w => w.x === unit.x && w.y === unit.y && sidesHostile(w.owner, unit.player));
                 if (wardIdx >= 0) {
                     state.wards.splice(wardIdx, 1);
                     addLog(`👁💥 ${_ctName(unit)} destroys an enemy Ward at ${coordLabel(unit.x, unit.y)}!`);
@@ -74229,7 +74247,7 @@
             if (mote.casterId === unit.id) return false;   // the fairy doesn't eat her own dust
             state.pixieDust.splice(idx, 1);
             markDirty('board');
-            if (unit.player === mote.owner) {
+            if (sidesAllied(unit.player, mote.owner)) {
                 // HP compresses with level so the heal scales; MP restores
                 // stay FLAT like spell costs (classic JRPG Ether behavior).
                 const _pdLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(unit)) : 1;
@@ -74304,7 +74322,7 @@
             if (shadowRealmKey(unit)) return false;   // 🌑 the board's traps never reach into the Shadow Realm
             if (unitIsSpirit(unit)) return false;   // 👁 a spirit sets off nothing on the ground
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
-            const idx = state.traps.findIndex(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player);
+            const idx = state.traps.findIndex(t => t.x === unit.x && t.y === unit.y && sidesHostile(t.owner, unit.player));
             if (idx < 0) return false;
             const trap = state.traps.splice(idx, 1)[0];
             _springTrap(trap, unit, opts);
@@ -74382,7 +74400,7 @@
                 const _tdVictims = [victim];
                 if (trap.hitAll) {
                     for (const u of state.units) {
-                        if (!u || u.dead || u.id === victim.id || u.player === trap.owner) continue;
+                        if (!u || u.dead || u.id === victim.id || sidesAllied(u.player, trap.owner)) continue;
                         if (!tiles.some(t => t.x === u.x && t.y === u.y)) continue;
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
                         _tdVictims.push(u);
@@ -74468,7 +74486,7 @@
                     const _mgN = getUnitPushDistance(u, 1, 'pull');
                     if (!(_mgN > 0)) continue;
                     const _mgR = resolveForcedSlide(u, pdx, pdy, _mgN, {
-                        byUnit: (owner && owner.player !== u.player) ? owner : null, label: `${trap.spellName || 'Magnet Mine'}: `,
+                        byUnit: (owner && sidesHostile(owner.player, u.player)) ? owner : null, label: `${trap.spellName || 'Magnet Mine'}: `,
                         toward: { x: trap.x, y: trap.y }, stopWithin: 1, perStepMs: 160, delayMs: _beatMs
                     });
                     if (_mgR.moved > 0) dragged++;
@@ -76056,7 +76074,7 @@
                opts.byUnit = the unit that CAUSED the grounding. Only enemy
                flyers count — self-crashes (reason 'wounded') and flying into
                a standing field pass no byUnit and stay unattributed. */
-            if (opts.byUnit && !opts.byUnit.dead && opts.byUnit.player !== unit.player) {
+            if (opts.byUnit && !opts.byUnit.dead && sidesHostile(opts.byUnit.player, unit.player)) {
                 opts.byUnit._matchGroundings = (opts.byUnit._matchGroundings || 0) + 1;
             }
             const _fgFromZ = unit.z ?? 0;
@@ -76887,7 +76905,7 @@
         function doorMaxHits(unit) {   // every door the same (the user, 2026-09-25: no Keyholder exceptions)
             return DOOR_RULES.hits;
         }
-        function doorIsFriendly(door, unit) { return !!(door && unit && door.owner === unit.player); }
+        function doorIsFriendly(door, unit) { return !!(door && unit && sidesAllied(door.owner, unit.player)); }
         function _doorCheb(a, x, y) { return Math.max(Math.abs(a.x - x), Math.abs(a.y - y)); }
         /* the friendly doors the unit stands ON or BESIDE (Chebyshev ≤ 1) */
         function doorsBeside(unit, opts = {}) {
@@ -77172,7 +77190,7 @@
         function damageDoorAt(x, y, byUnit, opts = {}) {
             const door = doorAt(x, y);
             if (!door) return false;
-            if (byUnit && door.owner === byUnit.player && !opts.friendly) return false;
+            if (byUnit && sidesAllied(door.owner, byUnit.player) && !opts.friendly) return false;
             door.hp -= (opts.hits || 1);
             if (door.hp > 0) {
                 if (!_skipVisuals()) showFloatingTextAtTile(x, y, `🚪 ${door.hp}/${door.maxHp}`, 'damage');
@@ -77437,7 +77455,7 @@
         function captureDoorCanTake(door, unit) {
             if (!door || door.kind !== 'capture' || door.hp <= 0 || door.held || door.sealed) return false;
             if (!unit || unit.dead || unit._dying || unit._sealed) return false;
-            if (door.owner === unit.player) return false;
+            if (sidesAllied(door.owner, unit.player)) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             if (unit._isBoss || unit.isBoss || unit._isCube) return false;
             if ((unit._captureGraceUntil | 0) >= (state.round || 0)) return false;
@@ -77476,7 +77494,7 @@
         function captureDoorTake(door, unit, via) {
             if (!captureDoorCanTake(door, unit)) {
                 /* ONE OF EACH: say why the door let an enemy through (once per body per door) */
-                if (door && door.kind === 'capture' && door.hp > 0 && !door.held && unit && !unit.dead && door.owner !== unit.player && captureRaceOwned(unit)) {
+                if (door && door.kind === 'capture' && door.hp > 0 && !door.held && unit && !unit.dead && sidesHostile(door.owner, unit.player) && captureRaceOwned(unit)) {
                     if (!door._ownedSaid) door._ownedSaid = [];
                     if (door._ownedSaid.indexOf(unit.id) < 0) {
                         door._ownedSaid.push(unit.id);
@@ -77723,7 +77741,7 @@
                 let n = 0, x = x0 + dx, y = y0 + dy, guard = 0;
                 while (!blocked(x, y) && guard++ < 64) {
                     const u = unitAt(x, y);
-                    if (u && !u.dead && u.player !== door.owner) n++;
+                    if (u && !u.dead && sidesHostile(u.player, door.owner)) n++;
                     if (prismAt(x, y)) break;
                     x += dx; y += dy;
                 }
@@ -77923,7 +77941,7 @@
             for (const t of standingDoorLaneTiles(door)) {
                 const u = unitAt(t.x, t.y);
                 if (!u || u.dead || u._dying || u._sealed || (u.status && u.status.captured > 0)) continue;
-                if (!all && u.player === door.owner) continue;
+                if (!all && sidesAllied(u.player, door.owner)) continue;
                 out.push(u);
             }
             return out;
@@ -77992,7 +78010,7 @@
            back (a slide — the chain). `only` = one body (E′). */
         function _gunDoorMawBite(door, u, opts = {}) {
             const def = _gunDoorDef(door), sp = _gunDoorSpell(door);
-            if (!u || u.dead || u._dying || u.x !== door.x || u.y !== door.y || u.player === door.owner) return false;
+            if (!u || u.dead || u._dying || u.x !== door.x || u.y !== door.y || sidesAllied(u.player, door.owner)) return false;
             if (!door.laneStamps || typeof door.laneStamps !== 'object') door.laneStamps = {};
             const key = 'bite' + (typeof _chainRootSeq !== 'undefined' ? _chainRootSeq : 0);
             if (door.laneStamps['b:' + u.id] === key) return false;
@@ -78013,7 +78031,7 @@
             const def = _gunDoorDef(door);
             const R = def.radius | 0;
             const inReach = u => Math.max(Math.abs(u.x - door.x), Math.abs(u.y - door.y)) <= R;
-            let bodies = state.units.filter(u => !u.dead && !u._dying && u.player !== door.owner && _gunDoorMovable(u) && inReach(u))
+            let bodies = state.units.filter(u => !u.dead && !u._dying && sidesHostile(u.player, door.owner) && _gunDoorMovable(u) && inReach(u))
                 .sort((a, b) => (Math.max(Math.abs(a.x - door.x), Math.abs(a.y - door.y)) - Math.max(Math.abs(b.x - door.x), Math.abs(b.y - door.y))) || String(a.id).localeCompare(String(b.id)));
             if (only) bodies = bodies.filter(u => u.id === only.id);
             if (!only && !_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { pull: 1, r: R, delay: opts.delayMs || 0, owner: door.owner });
@@ -78078,7 +78096,7 @@
             for (const u of _gunDoorLaneBodies(door, true)) {
                 if (only && u.id !== only.id) continue;
                 if (!only) _gunDoorStampOk(door, u);
-                if (u.player === door.owner) {
+                if (sidesAllied(u.player, door.owner)) {
                     const healed = (typeof applyHealingToUnit === 'function') ? applyHealingToUnit(u, sp.laneHeal || 40, owner, { scaleByTargetLevel: true }) : 0;
                     let cleansed = 0;
                     if (u.status && typeof STATUS_DEFS !== 'undefined') for (const k of Object.keys(u.status)) {
@@ -78156,7 +78174,7 @@
             if (!def) return [];
             const R = def.radius | 0;
             const dz = door.z || 0;
-            return state.units.filter(u => !u.dead && !u._dying && !u._sealed && u.player !== door.owner
+            return state.units.filter(u => !u.dead && !u._dying && !u._sealed && sidesHostile(u.player, door.owner)
                 && !(u.status && u.status.captured > 0)
                 && Math.max(Math.abs(u.x - door.x), Math.abs(u.y - door.y)) <= R
                 && !(typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(door.x, door.y, u.x, u.y, dz))
@@ -78261,7 +78279,7 @@
                     continue;
                 }
                 if (def.act === 'laneTerrain') continue;   // the burning / frozen ground is step B's (it already bit the body)
-                if (def.act !== 'lanePush' && def.act !== 'laneLight' && unit.player === door.owner) continue;   // the archers, the maw and the beam spare their own side
+                if (def.act !== 'lanePush' && def.act !== 'laneLight' && sidesAllied(unit.player, door.owner)) continue;   // the archers, the maw and the beam spare their own side
                 if (!standingDoorLaneTiles(door).some(t => t.x === unit.x && t.y === unit.y)) continue;
                 if (def.act === 'volley' && !_gunDoorVolleyTargets(door).some(u => u.id === unit.id)) continue;
                 /* THE GUST STREAM blows a body EVERY time it enters (once per chain); every other door once per round */
@@ -78494,7 +78512,7 @@
             if (!unit || unit.dead || unit._dying) return 0;
             let n = 0;
             for (const door of standingDoorsOf(null)) {
-                if (door._revealAt || door.owner === unit.player) continue;
+                if (door._revealAt || sidesAllied(door.owner, unit.player)) continue;
                 const def = _gunDoorDef(door);
                 if (!def || def.act !== 'beam' || !_gunDoorOnLane(door, x, y)) continue;
                 if (!_gunDoorStampOk(door, unit)) continue;
@@ -78575,16 +78593,16 @@
                         const hits = _gunDoorVolleyTargets(probe).length;
                         if (!hits) continue;
                         s = 40 + hits * 30;
-                        if (state.units.some(u => !u.dead && u.player !== unit.player && Math.max(Math.abs(u.x - t.x), Math.abs(u.y - t.y)) <= 1)) s -= 25;
+                        if (state.units.some(u => !u.dead && sidesHostile(u.player, unit.player) && Math.max(Math.abs(u.x - t.x), Math.abs(u.y - t.y)) <= 1)) s -= 25;
                     } else if (def.act === 'pullIn') {
                         /* the maw: hostiles the draught reaches (a body beside it is bitten) */
                         const R = def.radius | 0;
                         for (const u of state.units) {
-                            if (u.dead || u._dying || u.player === unit.player || !_gunDoorMovable(u)) continue;
+                            if (u.dead || u._dying || sidesAllied(u.player, unit.player) || !_gunDoorMovable(u)) continue;
                             const k = Math.max(Math.abs(u.x - t.x), Math.abs(u.y - t.y));
                             if (k <= R) s += (k === 1 ? 55 : 35);
                         }
-                        if (s && state.units.some(u => !u.dead && u.player !== unit.player && Math.max(Math.abs(u.x - t.x), Math.abs(u.y - t.y)) <= 1)) s -= 10;
+                        if (s && state.units.some(u => !u.dead && sidesHostile(u.player, unit.player) && Math.max(Math.abs(u.x - t.x), Math.abs(u.y - t.y)) <= 1)) s -= 10;
                     } else {
                         /* a lane / beam door (Hell, Frost, Laser, Light): the best face's worth */
                         face = doorGunBestFacing(unit, spell, t.x, t.y);
@@ -78600,14 +78618,14 @@
 
         function _structureAt(x, y, unit) {
             const tw = (typeof towerAt === 'function') ? towerAt(x, y) : null;
-            if (tw && tw.hp > 0 && (!unit || tw.owner !== unit.player)) return tw;
+            if (tw && tw.hp > 0 && (!unit || sidesHostile(tw.owner, unit.player))) return tw;
             /* 🚪 an enemy door is a structure you can shoot */
-            if (doorAt(x, y) && (!unit || doorAt(x, y).owner !== unit.player)) return true;
-            if (state.mirrors && state.mirrors.some(m => m.x === x && m.y === y && m.hp > 0 && (!unit || m.owner !== unit.player))) return true;
-            if (state.turrets && state.turrets.some(t => t.x === x && t.y === y && t.hp > 0 && (!unit || t.owner !== unit.player))) return true;
+            if (doorAt(x, y) && (!unit || sidesHostile(doorAt(x, y).owner, unit.player))) return true;
+            if (state.mirrors && state.mirrors.some(m => m.x === x && m.y === y && m.hp > 0 && (!unit || sidesHostile(m.owner, unit.player)))) return true;
+            if (state.turrets && state.turrets.some(t => t.x === x && t.y === y && t.hp > 0 && (!unit || sidesHostile(t.owner, unit.player)))) return true;
             if (state._deployedObjects && state._deployedObjects.some(o => o.x === x && o.y === y && o.hp > 0
-                && (!unit || o.ownerPlayer !== unit.player || (o.detonateOnAttack && o.blastRadius > 0)))) return true;
-            if (state.plantedSeeds && state.plantedSeeds.some(sd => sd.x === x && sd.y === y && (!unit || sd.owner !== unit.player))) return true;
+                && (!unit || sidesHostile(o.ownerPlayer, unit.player) || (o.detonateOnAttack && o.blastRadius > 0)))) return true;
+            if (state.plantedSeeds && state.plantedSeeds.some(sd => sd.x === x && sd.y === y && (!unit || sidesHostile(sd.owner, unit.player)))) return true;
             return null;
         }
 
@@ -78649,9 +78667,9 @@
         /* opts.castFrom = the tile a MOVE→ATK swing leaves from (VS CPU playtest 2026-10-28: the Cube row in ATTACK read
            only "HP 92%" — the swing was read from where the unit stood, out of reach) */
         function getCubeAttackForecast(unit, tw, opts = {}) {
-            if (!unit || !tw || tw.hp <= 0 || tw.owner === unit.player || !canUnitAct(unit) || (unit.ap || 0) < AP_COST_ACTION) return null;
+            if (!unit || !tw || tw.hp <= 0 || sidesAllied(tw.owner, unit.player) || !canUnitAct(unit) || (unit.ap || 0) < AP_COST_ACTION) return null;
             if (Object.keys(unit.status || {}).some(k => Number(unit.status[k] || 0) > 0 && STATUS_DEFS[k]?.blockAction)) return null;
-            if ((state.units || []).some(u => !u.dead && u.player !== unit.player && u.x === tw.x && u.y === tw.y)) return null;
+            if ((state.units || []).some(u => !u.dead && sidesHostile(u.player, unit.player) && u.x === tw.x && u.y === tw.y)) return null;
             const probe = { ...unit, status: { ...(unit.status || {}) } };
             const from = opts && opts.castFrom;
             if (from && from.x != null) { probe.x = from.x; probe.y = from.y; if (from.z != null) probe.z = from.z; }
@@ -78777,10 +78795,10 @@
             if (d === 0) {
 
                 let hasObj0 = false;
-                if (state.turrets) hasObj0 = hasObj0 || state.turrets.some(t => t.x === x && t.y === y && t.owner !== unit.player && t.hp > 0);
-                if (state.mirrors) hasObj0 = hasObj0 || state.mirrors.some(m => m.x === x && m.y === y && m.owner !== unit.player && m.hp > 0);
-                if (state._deployedObjects) hasObj0 = hasObj0 || state._deployedObjects.some(o => o.x === x && o.y === y && o.hp > 0 && (o.ownerPlayer !== unit.player || (o.detonateOnAttack && o.blastRadius > 0)));
-                if (state.plantedSeeds) hasObj0 = hasObj0 || state.plantedSeeds.some(s => s.x === x && s.y === y && s.owner !== unit.player);
+                if (state.turrets) hasObj0 = hasObj0 || state.turrets.some(t => t.x === x && t.y === y && sidesHostile(t.owner, unit.player) && t.hp > 0);
+                if (state.mirrors) hasObj0 = hasObj0 || state.mirrors.some(m => m.x === x && m.y === y && sidesHostile(m.owner, unit.player) && m.hp > 0);
+                if (state._deployedObjects) hasObj0 = hasObj0 || state._deployedObjects.some(o => o.x === x && o.y === y && o.hp > 0 && (sidesHostile(o.ownerPlayer, unit.player) || (o.detonateOnAttack && o.blastRadius > 0)));
+                if (state.plantedSeeds) hasObj0 = hasObj0 || state.plantedSeeds.some(s => s.x === x && s.y === y && sidesHostile(s.owner, unit.player));
                 if (!hasObj0) {
                     addLog('Target tile is out of range.');
                     return 0;
@@ -78798,7 +78816,7 @@
             }
 
             const _isSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
-                state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
+                state.units.some(u => !u.dead && sidesHostile(u.player, unit.player) && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
             if (visionGatesTargeting(unit) && !isInVision(unit, x, y, (_clickedTarget && _clickedTarget.z != null) ? _clickedTarget.z : undefined) && !_isSkyTelescopeTarget) {
                 addLog(outOfSightMessage(unit, x, y), _clickSeat());
                 playErrorSfx();
@@ -78815,12 +78833,12 @@
             let target = _clickedTarget;
 
             if (target && target.id === unit.id) {
-                const colEnemy = unitsAtColumn(x, y).find(u => u.id !== unit.id && u.player !== unit.player);
+                const colEnemy = unitsAtColumn(x, y).find(u => u.id !== unit.id && sidesHostile(u.player, unit.player));
                 target = colEnemy || null;
             }
 
             if (!target && unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true) {
-                const skyTarget = state.units.find(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
+                const skyTarget = state.units.find(u => !u.dead && sidesHostile(u.player, unit.player) && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
                 if (skyTarget) {
                     const vr = getTelescopeRange(unit);
                     if ((Math.abs(unit.x - x) + Math.abs(unit.y - y)) <= vr) {
@@ -78856,7 +78874,7 @@
             /* THE SPELL AUDIT Batch D: Provoked by a DECOY (Stuffed Double) — the blade is bound to the straw while it
                can be hit from here; the decoy's own tile is always a legal swing. */
             /* 🐍 a swing at the serpent's body lands on its king (THE BODY IS HIM) */
-            if (!target || target.id === unit.id) { const _sk = _serpentKingAt(x, y); if (_sk && _sk.player !== unit.player) target = _sk; }
+            if (!target || target.id === unit.id) { const _sk = _serpentKingAt(x, y); if (_sk && sidesHostile(_sk.player, unit.player)) target = _sk; }
             const _atkDecoy = getTauntDecoy(unit);
             if (_atkDecoy && target && isEnemyUnit(unit, target) && !(x === _atkDecoy.x && y === _atkDecoy.y)) {
                 const _tdD = Math.abs(unit.x - _atkDecoy.x) + Math.abs(unit.y - _atkDecoy.y);
@@ -78887,7 +78905,7 @@
             }
 
             const tw = towerAt(x, y);
-            if (tw && !target && tw.owner !== unit.player) {
+            if (tw && !target && sidesHostile(tw.owner, unit.player)) {
                 pushUndoSnapshot(true);
                 setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                 /* THE CUBE SWING (mondo 2026-10-18: "mech's basic attack should be a bullet, not the fist sprite"): the
@@ -79023,7 +79041,7 @@
             }
 
             if ((!target || target.id === unit.id) && state.mirrors) {
-                const enemyMirror = state.mirrors.find(m => m.x === x && m.y === y && m.owner !== unit.player && m.hp > 0);
+                const enemyMirror = state.mirrors.find(m => m.x === x && m.y === y && sidesHostile(m.owner, unit.player) && m.hp > 0);
                 if (enemyMirror) {
                     pushUndoSnapshot(true);
                 setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
@@ -79045,7 +79063,7 @@
             }
 
             if ((!target || target.id === unit.id) && state.turrets) {
-                const enemyTurret = state.turrets.find(t => t.x === x && t.y === y && t.owner !== unit.player && t.hp > 0);
+                const enemyTurret = state.turrets.find(t => t.x === x && t.y === y && sidesHostile(t.owner, unit.player) && t.hp > 0);
                 if (enemyTurret) {
                     pushUndoSnapshot(true);
                 setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
@@ -79068,9 +79086,9 @@
             }
 
             /* 🚪 THE ONE-WAY DOOR: a swing at a HELD body lands on the door holding it (the void takes no hit) */
-            if (target && target.id !== unit.id && unitHasStatus(target, 'captured') && captureDoorAt(x, y) && captureDoorAt(x, y).owner !== unit.player) target = null;
+            if (target && target.id !== unit.id && unitHasStatus(target, 'captured') && captureDoorAt(x, y) && sidesHostile(captureDoorAt(x, y).owner, unit.player)) target = null;
             /* 🚪 Shooting a door: one hit; at 0 the door AND its twin break. */
-            if ((!target || target.id === unit.id) && doorAt(x, y) && doorAt(x, y).owner !== unit.player) {
+            if ((!target || target.id === unit.id) && doorAt(x, y) && sidesHostile(doorAt(x, y).owner, unit.player)) {
                 pushUndoSnapshot(true);
                 setUnitFacing(unit, x - unit.x, y - unit.y);
                 if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
@@ -79089,7 +79107,7 @@
             if ((!target || target.id === unit.id) && state._deployedObjects) {
                 const dObjIdx = state._deployedObjects.findIndex(o => {
                     if (o.x !== x || o.y !== y || o.hp <= 0) return false;
-                    const isOwn = o.ownerPlayer === unit.player;
+                    const isOwn = sidesAllied(o.ownerPlayer, unit.player);
 
                     if (isOwn && !(o.detonateOnAttack && o.blastRadius > 0)) return false;
                     return true;
@@ -79125,7 +79143,7 @@
             }
 
             if ((!target || target.id === unit.id) && state.plantedSeeds) {
-                const seedIdx = state.plantedSeeds.findIndex(s => s.x === x && s.y === y && s.owner !== unit.player);
+                const seedIdx = state.plantedSeeds.findIndex(s => s.x === x && s.y === y && sidesHostile(s.owner, unit.player));
                 if (seedIdx >= 0) {
                     const seed = state.plantedSeeds[seedIdx];
                     const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : seed.type === 'plain' ? 'Bumper Crop' : seed.type === 'apple' ? 'Apple' : 'Leech';
@@ -79607,7 +79625,7 @@
                     const _fuX = target.x + (target.x - unit.x);
                     const _fuY = target.y + (target.y - unit.y);
                     const _fuAlly = state.units.find(a => !a.dead && !a._dying && a.id !== unit.id
-                        && a.player === unit.player && a.x === _fuX && a.y === _fuY
+                        && sidesAllied(a.player, unit.player) && a.x === _fuX && a.y === _fuY
                         && Math.abs((a.z ?? 0) - (target.z ?? 0)) <= 1
                         && !unitHasStatus(a, 'invisible')
                         && !getActiveStatusKeys(a).some(k => STATUS_DEFS[k]?.blockMove));
@@ -79828,7 +79846,7 @@
                     }
                 }
 
-                const bombIndex = state.bombs.findIndex(b => b.x === tile.x && b.y === tile.y && b.owner !== unit.player);
+                const bombIndex = state.bombs.findIndex(b => b.x === tile.x && b.y === tile.y && sidesHostile(b.owner, unit.player));
                 if (bombIndex >= 0) {
                     const bomb = state.bombs.splice(bombIndex, 1)[0];
                     detonateBomb(bomb, `Scan triggers a hidden bomb at ${coordLabel(tile.x, tile.y)}.`);
@@ -81157,7 +81175,7 @@
         function _placeTrapProblem(x, y, caster) {
             if (!isInside(x, y)) return 'Cannot place there';
             const _occ = unitAt(x, y);
-            if (_occ && !(caster && !_occ.dead && _occ.player !== caster.player)) return 'Needs an empty tile';
+            if (_occ && !(caster && !_occ.dead && sidesHostile(_occ.player, caster.player))) return 'Needs an empty tile';
             if (!isTerrainPassable(x, y)) return 'Impassable terrain';
             if ((state.traps || []).some(t => t.x === x && t.y === y) ||
                 (state.bombs || []).some(b => b.x === x && b.y === y)) return 'Already rigged';
@@ -81888,7 +81906,7 @@
             const comboRange = combo.range || 3;
 
             if (isOffensive) {
-                if (!target || target.player === initiator.player) {
+                if (!target || sidesAllied(target.player, initiator.player)) {
                     addLog('Choose an enemy target for the combo attack.', _clickSeat());
                     playErrorSfx();
                     return 0;
@@ -81941,7 +81959,7 @@
             // Press Turn: an offensive combo that hits a weakness refunds AP to
             // the initiator (extends its turn). Type tier from the combo's own
             // spellType when set, else the pair's combined types.
-            if (isOffensive && target && target.player !== initiator.player) {
+            if (isOffensive && target && sidesHostile(target.player, initiator.player)) {
                 const _comboAtkTypes = combo.spellType
                     ? [combo.spellType]
                     : [...(initiator.types || []), ...(partner.types || [])];
@@ -82025,7 +82043,7 @@
 
             grantXP(initiator, XP_COMBO, 'combo');
             grantXP(partner, XP_COMBO, 'combo');
-            const playerCombos = state.units.filter(u => u.player === initiator.player).reduce((s, u) => s + (u._matchCombos || 0), 0);
+            const playerCombos = state.units.filter(u => sidesAllied(u.player, initiator.player)).reduce((s, u) => s + (u._matchCombos || 0), 0);
             if (playerCombos >= 3) checkAchievement('comboKing', initiator);
             // Impact shake/VFX/hitstop are scheduled by _comboPlayPresentation
             // on the same _hitAt clock; support combos keep the old kick.
@@ -82114,7 +82132,7 @@
             else if (combo.kind === 'aoe') {
                 window.setTimeout(() => {
                     const area = getSquareArea(targetX, targetY, combo.aoeRadius || 1);
-                    const enemies = realmReachableFrom(aliveUnitsOnFloor(enemyOf(initiator.player), null), initiator);
+                    const enemies = realmReachableFrom(getHostileUnits(initiator.player), initiator);
                     for (const tile of area) {
                         // Every enemy in the tile's column (a flyer over a ground unit).
                         for (const hit of enemies.filter(e => e.x === tile.x && e.y === tile.y)) {
@@ -82140,7 +82158,7 @@
 
             else if (combo.kind === 'healAll') {
                 const healAmt = Math.round((combo.heal || 20) * synergyMult);
-                for (const ally of realmReachableFrom(aliveUnitsFor(initiator.player), initiator)) {
+                for (const ally of realmReachableFrom(aliveAlliesOf(initiator.player), initiator)) {
                     const hpGain = Math.min(healAmt, ally.maxHp - ally.hp);
                     if (hpGain > 0) {
                         applyHealingToUnit(ally, hpGain, initiator);
@@ -82174,7 +82192,7 @@
 
             if (combo.comboHeal && combo.comboHeal > 0) {
                 const healAmt = Math.round(combo.comboHeal * synergyMult);
-                for (const ally of realmReachableFrom(aliveUnitsFor(initiator.player), initiator)) {
+                for (const ally of realmReachableFrom(aliveAlliesOf(initiator.player), initiator)) {
                     const hpGain = Math.min(healAmt, ally.maxHp - ally.hp);
                     if (hpGain > 0) {
                         applyHealingToUnit(ally, hpGain, initiator);
@@ -82687,7 +82705,7 @@
                             const _bd = Math.max(Math.abs(other.x - _blastX), Math.abs(other.y - _blastY));
                             if (_bd > baneRule.aoeRadius) continue;
                             applyDamageToUnit(other, baneRule.aoeDmg, `${baneRule.name} blast: `, {
-                                sourceUnit: other.player === unit.player ? null : unit,
+                                sourceUnit: sidesAllied(other.player, unit.player) ? null : unit,
                                 allowMarkBonus: false,
                                 damageType: 'magic',
                                 typeEffect: 'neutral'
@@ -83406,7 +83424,7 @@
             if (state.fogOfWar && !_isTileVisibleToViewer(x, y)) return false;
             let victim = opts.victimId != null && typeof unitFromId === 'function' ? unitFromId(opts.victimId) : null;
             if (victim && (victim.x !== x || victim.y !== y)) victim = null;   // already thrown off the tile: frame the tile
-            if (victim && victim.player !== viewer && !_isUnitVisibleToViewer(victim, viewer)) return false;
+            if (victim && sidesHostile(victim.player, viewer) && !_isUnitVisibleToViewer(victim, viewer)) return false;
             /* the board jolts on the discharge (the look charges for ~280 ms first: three-vfx-effects.js raceTeslaTrap:detonate) */
             window.setTimeout(() => { if (state.phase === 'battle') shakeBoard('heavy'); }, 280);
             if (state.cameraDisabled) return false;
@@ -83563,10 +83581,10 @@
                     && Math.abs(unit.x - x) + Math.abs(unit.y - y) <= ((getEffectiveSpellRange(unit, spell) || spell.range || 4))) _shutToggle = _stD;
             }
             if (spell.kind === 'doorDeploy' && !_shutToggle) {
-                const _gdAuto = state.controllers?.[unit.player] === CTRL.AI || !!state.autoPlayers?.[unit.player];
+                const _gdAuto = sideController(unit.player) === CTRL.AI || !!state.autoPlayers?.[unit.player];
                 _gunDoorAim = doorGunAimResolve(unit, spell, x, y, { auto: _gdAuto });
                 if (_gunDoorAim.error) {
-                    if (state.controllers?.[unit.player] !== CTRL.AI) {
+                    if (sideController(unit.player) !== CTRL.AI) {
                         addLog(`${_ctSp(spell.name)}: pick an empty tile within ${getEffectiveSpellRange(unit, spell) || spell.range || 4} you can see.`, _clickSeat());
                         playErrorSfx();
                     }
@@ -83584,7 +83602,7 @@
                travels with partnerId (online.js) and the host seats it as the pick. */
             let _throwDir = null, _throwResolved = false;
             if (spell.throwAnyDirection && spell.kind === 'displacement') {
-                const _thAuto = state.controllers?.[unit.player] === CTRL.AI || !!state.autoPlayers?.[unit.player];
+                const _thAuto = sideController(unit.player) === CTRL.AI || !!state.autoPlayers?.[unit.player];
                 const _thPk = _thAuto ? null : _twoClickPick(spell);
                 if (_thAuto) _throwResolved = true;
                 else if (_thPk) {
@@ -83705,7 +83723,7 @@
                scoring, and the "out of range" line + error beep leaked into
                the player-facing combat log every few rounds. Rejection
                feedback is for the local human's own clicks only. */
-            const _silentReject = state.controllers?.[unit.player] === CTRL.AI;
+            const _silentReject = sideController(unit.player) === CTRL.AI;
             /* 🚪 DOOR ORIGINS (DOOR_RACE_DESIGN): doorDelivery / doorExit read
                their reach from a DOOR (_doorOriginForSpell is the whole gate);
                any other cast under The Long Way Round may launch from a twin
@@ -83763,7 +83781,7 @@
                the hinge (range, sight, fog); from here the cast is the old single-target swing at the VICTIM, and
                _runPostEffects pushes it away from the hinge (unit._swingHinge, a plain {x, y} — never a unit ref). */
             if (spell.hinge) {
-                const _auto = state.controllers?.[unit.player] === CTRL.AI || !!state.autoPlayers?.[unit.player];
+                const _auto = sideController(unit.player) === CTRL.AI || !!state.autoPlayers?.[unit.player];
                 const _sw = swingDoorResolve(unit, spell, x, y, { auto: _auto });
                 if (_sw.error || (_sw.victim && isUnitRealmShieldedFrom(_sw.victim, unit))) {
                     if (!_silentReject) {
@@ -84026,7 +84044,7 @@
                places the first mouth on the free tile beside itself nearest the click (_doorNearSpot). */
             let _pairPick = null;
             if (spell.kind === 'deployPair' && spell.pairPicks) {
-                const _ppAuto = state.controllers?.[unit.player] === CTRL.AI || !!state.autoPlayers?.[unit.player];
+                const _ppAuto = sideController(unit.player) === CTRL.AI || !!state.autoPlayers?.[unit.player];
                 const _ppReach = getEffectiveSpellRange(unit, spell) || spell.range || 4;
                 const _ppOk = (tx, ty) => isInside(tx, ty) && doorTileFree(tx, ty) && (tx !== unit.x || ty !== unit.y)
                     && Math.abs(unit.x - tx) + Math.abs(unit.y - ty) <= _ppReach;
@@ -84321,7 +84339,7 @@
                 if (spell.id !== 'nrOverdue' && !spell._overdueOf && spell.id !== 'mimic' && unit.race !== 'librarian' && _overdueEligible(spell)) {
                     if (!state._lastAllySpell) state._lastAllySpell = {};
                     state._lastAllySpell[unit.player] = { spellId: spell.id, caster: unit.id };
-                    for (const _odU of (state.units || [])) if (_odU && _odU.player === unit.player) _overdueLoad(_odU);
+                    for (const _odU of (state.units || [])) if (_odU && sidesAllied(_odU.player, unit.player)) _overdueLoad(_odU);
                 }
                 _markSpellUsedThisTurn(unit, spell, _placementStruck);
                 // Damaging casts — and Protect-granting casts — end the turn
@@ -84634,7 +84652,7 @@
                 /* 🛵 Hop On: a body pinned to the ground (Rooted, Frozen, Roped...) or a colossal one cannot ride */
                 if (spell.statusEffects && spell.statusEffects.some(se => se && se.id === 'riding')) {
                     const _hoT = unitAt(x, y, z) || unitAt(x, y);
-                    const _hoBlk = _hoT && _hoT.player === unit.player ? _deliveryRideBlock(_hoT) : null;
+                    const _hoBlk = _hoT && sidesAllied(_hoT.player, unit.player) ? _deliveryRideBlock(_hoT) : null;
                     if (_hoBlk) {
                         if (!_silentReject) { addLog(`${_ctSp(spell.name)}: ${_ctName(_hoT)} cannot ride along (${String(_hoBlk).toLowerCase()}).`, _clickSeat()); playErrorSfx(); }
                         return 0;
@@ -84915,7 +84933,7 @@
                     }
                 }, impactDelay);
             } else if (spell.kind === 'revive') {
-                const target = state.units.find(u => u.player === unit.player && u.dead && u.x === x && u.y === y);
+                const target = state.units.find(u => sidesAllied(u.player, unit.player) && u.dead && u.x === x && u.y === y);
                 if (!target) {
                     addLog('Choose a fallen ally tile to revive.', _clickSeat());
                     playErrorSfx();
@@ -85089,7 +85107,7 @@
                    an empty-tile placement stays quiet tactical setup (short
                    focus dip, a lobbed arc onto the tile, an ARMED tag). */
                 const _bOcc = unitAt(x, y);
-                if (_bOcc && !_bOcc.dead && _bOcc.player !== unit.player
+                if (_bOcc && !_bOcc.dead && sidesHostile(_bOcc.player, unit.player)
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_bOcc))) {
                     addLog(`${_ctName(unit)} hurls a bomb right at ${_ctName(_bOcc)}!`, unit.player);
                     const cam = playOffensiveActionCamera(unit, _bOcc, {
@@ -85308,7 +85326,7 @@
                 const _tSpringMs = (_tShot && _tShot.mode === 'support') ? (_tShot.sourceHold || 0) + (_tShot.travelMs || 0) : 0;
                 for (const t of _tfp.tiles) {
                     const _tOcc = unitAt(t.x, t.y);
-                    if (!_tOcc || _tOcc.dead || _tOcc.player === unit.player) continue;
+                    if (!_tOcc || _tOcc.dead || sidesAllied(_tOcc.player, unit.player)) continue;
                     if (checkTrapTrigger(_tOcc, { fxDelayMs: _tSpringMs, inShot: !!_tShot })) _placementStruck = true;
                 }
                 if (_placementStruck && typeof checkWin === 'function') checkWin();
@@ -85680,7 +85698,7 @@
                 // healAll: sender ≠ payoff).
                 _vfxMana(unit.x, unit.y, { soft: true });
                 unit.mp -= effectiveSpellCost;
-                const allies = realmReachableFrom(aliveUnitsFor(unit.player), unit);   // 🌑 nobody across the realm's line
+                const allies = realmReachableFrom(aliveAlliesOf(unit.player), unit);   // 🌑 nobody across the realm's line
                 // Same two-beat structure as healAll: cast on the caster,
                 // then the camera cuts wide and the restore visibly lands on
                 // each ally (blue burst + floating MP), staggered.
@@ -85829,7 +85847,7 @@
                     const _rings = [{ x: unit.x, y: unit.y }].concat(vtProjectorsOf(unit).map(t => ({ x: t.x, y: t.y })));
                     for (const c of _rings.slice(1)) _sigVfxGeom(spell.id + ':ring', c.x, c.y, 0, { fromX: unit.x, fromY: unit.y });
                     if (spell.pulseAllyStatus && spell.pulseAllyStatus.length) {
-                        for (const a of aliveUnitsFor(unit.player)) {
+                        for (const a of aliveAlliesOf(unit.player)) {
                             if (!a || a.dead || a._dying) continue;
                             if (!_rings.some(c => Math.max(Math.abs(a.x - c.x), Math.abs(a.y - c.y)) <= _pr)) continue;
                             applyStatusEffects(a, spell.pulseAllyStatus, `${spell.name}: `, unit);
@@ -87091,7 +87109,7 @@
                    floating text announcing the decoy. The viewer's OWN decoys still
                    get full feedback. */
                 const _escViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
-                const _stealthDecoy = !!spell.spawnDecoy && unit.player !== _escViewer;
+                const _stealthDecoy = !!spell.spawnDecoy && sidesHostile(unit.player, _escViewer);
                 /* THE ESCAPE SHOT (spell look fix FX-CAM, 2026-10-26: Shed Skin, Deep Dive, Abyssal Wings… cast from the board
                    showed nothing): the shot is the caster leaving and the landing (the two-beat support shot to the landing
                    tile, read before the body moves), and the 220 ms board glide below no longer cuts it. A cast with no
@@ -87409,7 +87427,7 @@
                 // Predict the split victims (same filter the impact resolution
                 // uses) so beat 2 frames the whole cluster, not just the
                 // primary target.
-                const _sbNearby = spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e =>   // THE SEEN SPLIT
+                const _sbNearby = spellHopPool(unit, spell, realmReachableFrom(aliveHostilesOf(unit.player), unit)).filter(e =>   // THE SEEN SPLIT
                     e.id !== target.id && !e.dead &&
                     Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= (spell.splitRadius || 2)
                 ).sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2);
@@ -87450,7 +87468,7 @@
                 const splitStartDelay = impactDelay + actionMs(350);
                 const splitGap = actionMs(280);
                 window.setTimeout(() => {
-                    const nearby = spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e =>   // THE SEEN SPLIT (K4)
+                    const nearby = spellHopPool(unit, spell, realmReachableFrom(aliveHostilesOf(unit.player), unit)).filter(e =>   // THE SEEN SPLIT (K4)
                         e.id !== target.id && !e.dead &&
                         Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= splitRadius
                     ).sort((a, b) => a.hp - b.hp).slice(0, splitCount);
@@ -87547,7 +87565,7 @@
                    objects and still need an empty tile. */
                 const _dOcc = unitAt(x, y);
                 const _dContact = !!(_dOcc && spell.detonateOnStep && !_dOcc.dead
-                    && _dOcc.player !== unit.player
+                    && sidesHostile(_dOcc.player, unit.player)
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_dOcc)));
                 if ((_dOcc && !_dContact) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ the Cube fills its tile
                     addLog('Cannot deploy on an occupied tile.', _clickSeat());
@@ -87656,7 +87674,7 @@
                    decoy. The viewer's own deploys (and all non-decoy deploys) still
                    log normally. */
                 const _depViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
-                if (!_deployedEntry.isDecoy || unit.player === _depViewer) {
+                if (!_deployedEntry.isDecoy || sidesAllied(unit.player, _depViewer)) {
                     addLog(`${_ctName(unit)} deploys ${_ctSp(spell.name)} at ${coordLabel(x, y)}.`, _deployedEntry.isDecoy ? unit.player : undefined);
                 }
                 scheduleBoardRender();
@@ -88067,7 +88085,7 @@
                 // Apply ally buffs (e.g. Smoke Screen invisibility) to friendly units already inside the zone.
                 if (spell.allyStatusEffects && spell.allyStatusEffects.length) {
                     const zoneArea = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
-                    for (const ally of state.units.filter(u => !u.dead && u.player === unit.player)) {
+                    for (const ally of state.units.filter(u => !u.dead && sidesAllied(u.player, unit.player))) {
                         if (zoneArea.some(t => t.x === ally.x && t.y === ally.y)) {
                             for (const eff of spell.allyStatusEffects) {
                                 applyStatusPayload(ally, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${spell.name} → `);
@@ -88538,9 +88556,9 @@
                         const _wlLead = _castLeadOnce(unit, spell);
                         for (const ct of affectedTiles) {
                             const hit = unitAt(ct.x, ct.y);
-                            if (hit && hit.player !== unit.player && !hit.dead && spellMissesFlyer(spell, hit)) {
+                            if (hit && sidesHostile(hit.player, unit.player) && !hit.dead && spellMissesFlyer(spell, hit)) {
                                 addLog(`${_ctName(hit)} flies above ${_ctSp(spell.name)}.`);
-                            } else if (hit && hit.player !== unit.player && !hit.dead) {
+                            } else if (hit && sidesHostile(hit.player, unit.player) && !hit.dead) {
                                 let dmg = baseDmg + Math.floor(engineRng() * 20) - 10;
                                 const _tcExec = !!(spell.executePct && hit.hp <= hit.maxHp * spell.executePct);
                                 if (_tcExec) {
@@ -88586,7 +88604,7 @@
                     if (!spell.dmg && spell.statusEffects && spell.statusEffects.length) {
                         for (const ct of affectedTiles) {
                             const hit = unitAt(ct.x, ct.y);
-                            if (hit && !hit.dead && hit.player !== unit.player && !spellMissesFlyer(spell, hit)) applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
+                            if (hit && !hit.dead && sidesHostile(hit.player, unit.player) && !spellMissesFlyer(spell, hit)) applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
                         }
                     }
 
@@ -89770,7 +89788,7 @@
                 const turretRange = (spell.turretRange || 2) + (unitPassiveSum(unit, 'turretRangeBonus') || 0);
 
                 let _initFacing = Math.PI * 0.75;
-                const _deployEnemies = aliveUnitsOnFloor(enemyOf(unit.player), null);
+                const _deployEnemies = getHostileUnits(unit.player);
                 if (_deployEnemies.length > 0) {
                     let _closestE = _deployEnemies[0], _closestD = Infinity;
                     for (const e of _deployEnemies) {
@@ -89862,7 +89880,7 @@
                 if (VFX && VFX.hasMapping(spell.id, 'aura')) {
                     if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: unit.x, ty: unit.y, aoeRadius: radius });
                 } else { _vfxBuff(unit.x, unit.y); }
-                const allies = realmReachableFrom(aliveUnitsFor(unit.player), unit).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);   // 🌑 Oath of Valor counted the Demon in the realm
+                const allies = realmReachableFrom(aliveAlliesOf(unit.player), unit).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);   // 🌑 Oath of Valor counted the Demon in the realm
                 let buffCount = 0;
                 // THE SPELL AUDIT Batch C: cleanse N debuffs (true = 1, 99 =
                 // every one) from each ally in the aura (Mantra, Everybody Up).
@@ -91128,6 +91146,21 @@
                 + (_benchOn() ? _gauntletReservesAlive(player) : 0);
         }
 
+        /* THE ONE SIDE QUESTION (step S): the wipeout read for any number of sides. Returns the winning side when every side
+           still standing is on one side of the fight (state.js sidesAllied) and at least one side has been wiped out; the
+           lowest side number of the ones left wins (side 1 when it is among them). Null while the fight goes on, and when
+           nobody is left. With only seats 1 and 2 this is exactly the old rule: P1 wiped and P2 standing = 2, and so on.
+           Seatless side 0 never counts, as before. */
+        function _wipeoutWinner() {
+            const sides = battleSides().filter(p => p > 0);
+            const alive = sides.filter(p => getTeamWipeoutCount(p) > 0);
+            if (!alive.length || alive.length === sides.length) return null;
+            for (let i = 0; i < alive.length; i++) {
+                for (let j = i + 1; j < alive.length; j++) if (sidesHostile(alive[i], alive[j])) return null;
+            }
+            return alive[0];
+        }
+
         function checkWinConditionOnly() {
 
             /* Mystery Dungeon resolves its own outcome (_mdCheckWin) — killing
@@ -91148,11 +91181,9 @@
 
             if ((wcs.includes('wipeout') || wcs.includes('most_kills'))
                 && !(typeof window._isStrikeRT === 'function' && window._isStrikeRT())) {
-                const p1Alive = getTeamWipeoutCount(1);
-                const p2Alive = getTeamWipeoutCount(2);
                 if (_isFFA()) {
                     if (state.units.filter(u => !u.dead && !u._dying).length <= 1) return true;
-                } else if ((p1Alive === 0 && p2Alive > 0) || (p2Alive === 0 && p1Alive > 0)) return true;
+                } else if (_wipeoutWinner() != null) return true;   // THE ONE SIDE QUESTION: any number of sides
             }
 
             if (state.matchClock && !state.suddenDeathActive) {
@@ -91212,10 +91243,9 @@
                 } else {
                     // 🎭 A possessed body still counts for its HOME team (wave B):
                     // stealing a side's last unit must not wipe that side out.
-                    const p1Alive = getTeamWipeoutCount(1);
-                    const p2Alive = getTeamWipeoutCount(2);
-                    if (p1Alive === 0 && p2Alive > 0) { state.winner = 2; state._winCondition = 'wipeout'; }
-                    else if (p2Alive === 0 && p1Alive > 0) { state.winner = 1; state._winCondition = 'wipeout'; }
+                    // THE ONE SIDE QUESTION (step S): the same rule for any number of sides (_wipeoutWinner)
+                    const _wipeW = _wipeoutWinner();
+                    if (_wipeW != null) { state.winner = _wipeW; state._winCondition = 'wipeout'; }
                 }
             }
 
@@ -92167,7 +92197,7 @@
                         } else {
                             _occupant = _has3D ? unitAt(nx, ny, nz) : unitAt(nx, ny);
                         }
-                        if (!_phasing && _occupant && _occupant.player !== unit.player) { continue; }
+                        if (!_phasing && _occupant && sidesHostile(_occupant.player, unit.player)) { continue; }
 
                         if (!_isAirborne) {
                             let _decoyBlocks = false;
@@ -92387,15 +92417,15 @@
 
                     if (!hasTarget0) {
                         const colUnits = unitsAtColumn(unit.x, unit.y);
-                        hasTarget0 = colUnits.some(u => u.id !== unit.id && u.player !== unit.player && (u.z ?? 0) !== (unit.z ?? 0));
+                        hasTarget0 = colUnits.some(u => u.id !== unit.id && sidesHostile(u.player, unit.player) && (u.z ?? 0) !== (unit.z ?? 0));
                     }
 
-                    if (!hasTarget0 && state.turrets) hasTarget0 = state.turrets.some(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player && t.hp > 0);
-                    if (!hasTarget0 && state.mirrors) hasTarget0 = state.mirrors.some(m => m.x === unit.x && m.y === unit.y && m.owner !== unit.player && m.hp > 0);
+                    if (!hasTarget0 && state.turrets) hasTarget0 = state.turrets.some(t => t.x === unit.x && t.y === unit.y && sidesHostile(t.owner, unit.player) && t.hp > 0);
+                    if (!hasTarget0 && state.mirrors) hasTarget0 = state.mirrors.some(m => m.x === unit.x && m.y === unit.y && sidesHostile(m.owner, unit.player) && m.hp > 0);
 
-                    if (!hasTarget0 && state._deployedObjects) hasTarget0 = state._deployedObjects.some(o => o.x === unit.x && o.y === unit.y && o.hp > 0 && (o.ownerPlayer !== unit.player || (o.detonateOnAttack && o.blastRadius > 0)));
+                    if (!hasTarget0 && state._deployedObjects) hasTarget0 = state._deployedObjects.some(o => o.x === unit.x && o.y === unit.y && o.hp > 0 && (sidesHostile(o.ownerPlayer, unit.player) || (o.detonateOnAttack && o.blastRadius > 0)));
 
-                    if (!hasTarget0 && state.plantedSeeds) hasTarget0 = state.plantedSeeds.some(s => s.x === unit.x && s.y === unit.y && s.owner !== unit.player);
+                    if (!hasTarget0 && state.plantedSeeds) hasTarget0 = state.plantedSeeds.some(s => s.x === unit.x && s.y === unit.y && sidesHostile(s.owner, unit.player));
                     if (hasTarget0) {
                         tiles.push({ x: unit.x, y: unit.y });
                         tileSet.add(pk0);

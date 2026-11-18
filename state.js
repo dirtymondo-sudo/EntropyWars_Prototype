@@ -584,6 +584,40 @@
         let _blitzTurnOrder = [];
         let _blitzTurnIndex = 0;
 
+        /* ═══ THE ONE SIDE QUESTION (NPC encounters step S, 2026-11-18; docs/plans/npc-encounters/PLAN.md row S) ═══
+           A battle has SIDES: the number on `unit.player` (1 and 2 are the two seats; 0 = a seatless boss; 3+ = a side
+           that is neither seat, e.g. a group of onlookers that joins a story fight, step 8). Every FRIEND-OR-FOE question
+           in battle.js, ai.js, map.js and hud.js asks these two functions; nothing compares `.player` to `.player` to
+           decide who is hostile any more. MEMBERSHIP questions (whose unit is it, whose turn, whose seat, which units go
+           on my result screen) still read `.player` directly: those are not friend-or-foe.
+           `state.sideTies` (null in every match today) is where step 8 writes which sides stand together:
+           { '1|3': 'ally' } (the lower side first). Nothing else changes a side's friends. With no ties the two functions
+           are exactly `a === b` / `a !== b`, so PvP and every two-side fight play as before (RULE #2). The ties ride
+           state-sync like any rule field. */
+        function sideTie(a, b) {
+            const t = state.sideTies;
+            if (!t || a == null || b == null || a === b) return null;
+            return t[a < b ? a + '|' + b : b + '|' + a] || null;
+        }
+        /* do sides a and b fight on the same side? (a side is always its own friend) */
+        function sidesAllied(a, b) {
+            return a === b || (!!state.sideTies && sideTie(a, b) === 'ally');
+        }
+        /* are sides a and b hostile to each other? */
+        function sidesHostile(a, b) {
+            return a !== b && !(state.sideTies && sideTie(a, b) === 'ally');
+        }
+        /* every side that has a unit in the fight (dead ones too), lowest first; 1 and 2 are always in it */
+        function battleSides() {
+            const out = [1, 2];
+            for (const u of state.units || []) {
+                if (!u) continue;
+                for (const p of [u.player, u._origPlayer]) if (p != null && out.indexOf(p) < 0) out.push(p);   // a possessed body's home side too
+            }
+            return out.sort((a, b) => a - b);
+        }
+        window.sidesAllied = sidesAllied; window.sidesHostile = sidesHostile; window.battleSides = battleSides;
+
         function buildBlitzTurnOrder() {
             // Hub-world roster NPCs (Mystery Dungeon) are scenery: never in the turn order.
             const alive = state.units.filter(u => !u.dead && !u._mdNpc);
@@ -635,8 +669,22 @@
                     const p1 = bucket.filter(u => _seat(u) === 1);
                     const p2 = bucket.filter(u => _seat(u) === 2);
 
+                    /* THE ONE SIDE QUESTION (step S): a side that is neither seat (3, 4, ...) is not dropped from the order any
+                       more. Its units join the same alternation after the two seats, one per side per pass, in side order,
+                       each side shuffled like the seats. With no such side the order is built exactly as before. */
+                    const pX = [];
+                    for (const u of bucket) {
+                        const s = _seat(u);
+                        if (s == null || s === 0 || s === 1 || s === 2) continue;
+                        let grp = pX.find(g => g.side === s);
+                        if (!grp) { grp = { side: s, units: [] }; pX.push(grp); }
+                        grp.units.push(u);
+                    }
+                    pX.sort((a, b) => a.side - b.side);
+
                     for (let i = p1.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p1[i], p1[j]] = [p1[j], p1[i]]; }
                     for (let i = p2.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p2[i], p2[j]] = [p2[j], p2[i]]; }
+                    for (const g of pX) for (let i = g.units.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [g.units[i], g.units[j]] = [g.units[j], g.units[i]]; }
 
                     /* THE COIN FLIP LEADS (2026-10-21 PvP audit #4): state.startingPlayer (startMatch's flip) takes the
                        tie on round 1 and every odd round, the other side on the even ones — it used to be P1 always,
@@ -644,10 +692,12 @@
                     const _lead = state.startingPlayer === 2 ? 2 : 1;
                     let first = ((state.round % 2 === 1) === (_lead === 1)) ? p1 : p2;
                     let second = (first === p1) ? p2 : p1;
-                    let fi = 0, si = 0;
-                    while (fi < first.length || si < second.length) {
+                    let fi = 0, si = 0, xi = 0;
+                    const xMax = pX.reduce((m, g) => Math.max(m, g.units.length), 0);
+                    while (fi < first.length || si < second.length || xi < xMax) {
                         if (fi < first.length) _blitzTurnOrder.push(first[fi++]);
                         if (si < second.length) _blitzTurnOrder.push(second[si++]);
+                        if (xi < xMax) { for (const g of pX) if (xi < g.units.length) _blitzTurnOrder.push(g.units[xi]); xi++; }
                     }
 
                     for (const boss of p0) _blitzTurnOrder.push(boss);
@@ -1201,7 +1251,7 @@
             addLog(`💥 ${ds.spellName} detonates at ${coordLabel(ds.x, ds.y)}!`);
             const allUnits = state.units.filter(u => !u.dead);
             for (const tile of area) {
-                const hit = allUnits.find(u => u.x === tile.x && u.y === tile.y && (ds.friendlyFire || u.player !== ds.sourcePlayer));
+                const hit = allUnits.find(u => u.x === tile.x && u.y === tile.y && (ds.friendlyFire || sidesHostile(u.player, ds.sourcePlayer)));
                 if (hit && !hit.dead) {
                     const _dsHpB = hit.hp;
                     applyDamageToUnit(hit, ds.dmg, `${ds.spellName} detonates: `, {
@@ -2372,7 +2422,7 @@
                 const target = unitAt(tile.x, tile.y);
                 if (!target || target.dead || seen.has(target.id)) continue;
 
-                if (ownerPlayer != null && target.player === ownerPlayer) continue;
+                if (ownerPlayer != null && sidesAllied(target.player, ownerPlayer)) continue;
                 seen.add(target.id);
                 targets.push(target);
             }
@@ -3127,7 +3177,7 @@
                     if (typeof shadowRealmKey === 'function' && shadowRealmKey(u)) return false;   // 🌑 no eye hunts into the Shadow Realm
                     if (typeof unitIsSpirit === 'function' && unitIsSpirit(u)) return false;   // 👁 nor a spirit
                     if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
-                    if (caster && u.player === caster.player) return false;
+                    if (caster && sidesAllied(u.player, caster.player)) return false;
                     return true;
                 });
                 if (!candidates.length) {
@@ -3900,7 +3950,7 @@
             let fiveGPenalty = 0;
             if (dt === 'magic' && unit && state.turrets) {
                 for (const t of state.turrets) {
-                    if (t.hp > 0 && t.auraDebuff && t.owner !== unit.player) {
+                    if (t.hp > 0 && t.auraDebuff && sidesHostile(t.owner, unit.player)) {
                         const dist = Math.abs(unit.x - t.x) + Math.abs(unit.y - t.y);
                         if (dist <= t.range) {
                             fiveGPenalty += (t.auraDefReduction || 2);
@@ -4099,7 +4149,7 @@
             };
             const base = Number(payload.chance ?? baseByStatus[payload.id] ?? 1);
             let chance;
-            if (!sourceUnit || !targetUnit || sourceUnit.player === targetUnit.player || base >= 0.999) {
+            if (!sourceUnit || !targetUnit || sidesAllied(sourceUnit.player, targetUnit.player) || base >= 0.999) {
                 chance = Math.max(0, Math.min(1, base));
             } else {
                 chance = Math.max(0.6, Math.min(0.95, base + getDebuffIntModifier(sourceUnit, targetUnit)));
@@ -4174,8 +4224,8 @@
                (not 1), line of sight clear, and — with fog on — the target
                actually visible to the initiator. Support combos (heal/buff
                kinds) aim at ALLIES instead, so they check ally reach. */
-            const enemies = aliveUnitsOnFloor(unit.player === 1 ? 2 : 1);
-            const allies = aliveUnitsOnFloor(unit.player).filter(a => a.id !== unit.id);
+            const enemies = state.units.filter(u => sidesHostile(u.player, unit.player) && !u.dead && !u._dying);   // THE ONE SIDE QUESTION (step S)
+            const allies = state.units.filter(u => sidesAllied(u.player, unit.player) && !u.dead && !u._dying).filter(a => a.id !== unit.id);
             const _cpDist = (u) => (typeof combatDist === 'function')
                 ? combatDist(unit.x, unit.y, unit.z ?? 0, u.x, u.y, u.z ?? 0)
                 : Math.abs(unit.x - u.x) + Math.abs(unit.y - u.y);
@@ -4719,6 +4769,16 @@
             return state.controllers[p] === CTRL.LOCAL || state.controllers[p] === CTRL.REMOTE;
         }
 
+        /* THE ONE SIDE QUESTION (step S): who plays side p. The two seats read state.controllers as always; a side that is
+           neither seat (3, 4, ...: onlookers who join a story fight, step 8) and has no entry there is the computer's, so its
+           units are auto-played by the stock AI. Every "is this the CPU's unit?" check in battle.js asks this. */
+        function sideController(p) {
+            const c = state.controllers ? state.controllers[p] : undefined;
+            if (c != null || !(p >= 3)) return c;   // seats 1 and 2, side 0 and a missing side read the table as before
+            return CTRL.AI;
+        }
+        window.sideController = sideController;
+
         function getLocalPlayer() {
             if (window._NET && window._NET.online && window._NET.myPlayer) return window._NET.myPlayer;
             return 1;
@@ -4811,6 +4871,7 @@
             matchClock: null,
             matchScores: { 1: 0, 2: 0 },
             matchKills: { 1: 0, 2: 0 },
+            sideTies: null,         // THE ONE SIDE QUESTION (step S): which sides stand together; null = every side alone (sidesAllied)
             suddenDeathActive: false,
             flags: null,
             roamingNexus: null,
@@ -5427,7 +5488,7 @@
             // Attack button isn't greyed out in that case.
             if (!hasAttack && !_apcList && state.turrets) {
                 for (const t of state.turrets) {
-                    if (t.owner !== unit.player && t.hp > 0) {
+                    if (sidesHostile(t.owner, unit.player) && t.hp > 0) {
                         const d = Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y);
                         if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, t.x, t.y)) { hasAttack = true; break; }
                     }
@@ -5437,7 +5498,7 @@
             if (!hasAttack && !_apcList && state._deployedObjects) {
                 for (const obj of state._deployedObjects) {
                     if (obj.hp <= 0) continue;
-                    const isOwn = obj.ownerPlayer === unit.player;
+                    const isOwn = sidesAllied(obj.ownerPlayer, unit.player);
                     if (isOwn && !(obj.detonateOnAttack && obj.blastRadius > 0)) continue;
                     const d = Math.abs(obj.x - unit.x) + Math.abs(obj.y - unit.y);
                     if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, obj.x, obj.y)) { hasAttack = true; break; }
@@ -5446,7 +5507,7 @@
 
             if (!hasAttack && !_apcList && state.plantedSeeds) {
                 for (const s of state.plantedSeeds) {
-                    if (s.owner === unit.player) continue;
+                    if (sidesAllied(s.owner, unit.player)) continue;
                     const d = Math.abs(s.x - unit.x) + Math.abs(s.y - unit.y);
                     if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, s.x, s.y)) { hasAttack = true; break; }
                 }
