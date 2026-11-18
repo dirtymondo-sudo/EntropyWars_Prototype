@@ -1232,3 +1232,10 @@ issue, like the cafeteria, my office".
 - Fix: the mirror also turns each triangle. Applies to every round room's deck and landing (the only caller of `down`).
 - Audit used (read-only, in the page): for every FrontSide mesh compare the triangle's own facing with its normals; after the
   fix the hall has none that disagree.
+
+## THE EIGHT DOORS — the Main Hall's ground floor and the Ring, redesigned (2026-11-18, the door audit thread)
+The Main Hall's ground floor went from twelve doors to eight, one every 45 degrees; four rooms and a stair to the subway stand on the Ring
+(was the Containment Ring); the two flights to the mezzanine are shorter; the mezzanine's bay doors and its ring are closed. The full list, the
+door angles, how a door is put on the Ring (`onRing` on its Main Hall row) and what moved with the doors: `docs/notes/world-layout.md`
+"THE DOOR AUDIT", paragraph THE EIGHT DOORS, BUILT. Before moving or adding a Main Hall door: the eight stand at 0, 45, 90 ... 315 and
+mondo wants them equally spaced; a new room's door goes on the Ring.
