@@ -68,3 +68,9 @@ selected. Export: `boardGroups[...].secretMembers`. Example: the Pope in Vatican
   world map; Add puts it on the board as a place group nested in its zone / district (`src: map:<zone>[:<district>[:<plot>]]`).
   A place group already on the board with the same name ("Sewers" = "The Sewers") is reused. build.js reads data.js
   at build time (`places()`), so rebuild after the map changes.
+
+## The "In the game now" board (2026-11-18)
+Boards > **Board: in the game now** makes (or brings up to date) board `game_spawns`: where the game puts every unit today,
+read from data.js at build time by `build/spawns.js` (Disaster City residents in their home district, every `npcSpots` NPC
+with a race (in the city by its plot), the `HQ_AREA_ENCOUNTERS` walk-in tables per zone, the story cast in DOOR HQ). A unit
+in several places gets a copy in each. Other boards are not touched. Rebuild the page after the game's spawns change.
