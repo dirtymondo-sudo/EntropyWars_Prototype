@@ -4,7 +4,8 @@ mondo 11-18: "we need to start a thread to start making a plan to do the new cyb
 current disaster city". 11-15: "cyberpunk city is not a district, it is going to be a reskin of the entire disaster city. Same
 city but in the future." 09-17: "basically a reskin of disaster city but cyberpunk". 11-15: "Tokyo = for the Cyberpunk reskin".
 
-**STATE: waits mondo's answers (the eight questions at the bottom, posted in chat 11-18). Build nothing before his OK.**
+**STATE (11-18): mondo answered the eight questions the same day (section 8). THE PILOT IS BUILT (section 9): the look for
+Entertainment, behind the dev switch `?hqvariant=future`. It waits his look. Nothing wider is built before his OK.**
 
 ## 1. What was found
 
@@ -107,6 +108,31 @@ beach and the sea by Bayside, the ways out to the other zones, the map, the dist
 6. The sky: blue-black with the neon giving the colour, or the purple haze of the test picture? Clock or always night?
 7. Missing art (flying car, drone, future lamp, big sign frames): go without, or a short Meshy list?
 8. The pilot: Entertainment?
+
+## 8. mondo's answers (2026-11-18, in chat)
+
+1. A: one room with a second look. 2. Yes: the mall closet's time machine, the same closet in the future. 3. "2047 for now".
+4. "Yes for now": the roads out work, the rest of the world is unchanged. 5. The dinosaurs: "Yes but we can add the dinosaurs
+when we get to that quest". 6. THE SKY DOES NOT CHANGE: "Just keep the sky the same as it is now, the sky wouldn't change just
+bc its the future, day is still day and night is still night" (so: no neon shell, no purple, no locked night, no rain added;
+section 4's sky row is void). 7. "Approve short meshy list or make stand ins (a billboard is just a rectangle, surely you can
+make that)". 8. Yes: Entertainment.
+
+## 9. THE PILOT, as built (2026-11-18)
+
+- data.js only, no new file, no district file or baked row edited: `HQ_CITY_LOOKS.future` (the table) + `hqCityLookTerrain()`
+  (the rules) + one line in `hqApplyRoomVariant` (a variant with a `look` gets its terrain made by rule) + the city's one variant
+  `future` (set outside the baked block, so a rebake keeps it). The look file of section 2 became this data.js table: simpler,
+  and nothing has to be baked.
+- The dev switch is the room variants' own: `?hqvariant=future` or `window.EW_HQ_VARIANT = 'future'`. The variant has no `when`,
+  so it is never rolled: players cannot reach it.
+- What the rules do inside a district's box (`boxes`, one box = one district; the pilot's is Entertainment): every unlit part's
+  colour x (0.56, 0.58, 0.76); glass lit from inside, one colour a building; every painted sign relit (a neon ink, a dark board);
+  signs that were neon already, cloth banners, decals and gold are left; every building with a footprint row gets a neon line
+  round its roof and, when 5 m wide or more, a lit billboard on two posts (the words are the old Cyberpunk room's own sign
+  words). Every second `suv` in traffic is the cyberpunk car.
+- Counted: 125 rows re-dressed, 60 signs relit, 111 glass parts lit, 22 billboards.
+- To give a district the look: add its box to `HQ_CITY_LOOKS.future.boxes`.
 
 ## Pictures in this folder
 
