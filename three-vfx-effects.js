@@ -22454,8 +22454,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* an archetype's palette with the white taken out (the support families keep theirs: a blessing was never the clutter) */
     var _vcPalC = {};
     function _vcPal(arch, P) {
-        if (!P || P.support) return P;
+        if (!P) return P;
         if (_vcPalC[arch]) return _vcPalC[arch];
+        if (P.support) {   /* 11-18: the blessings too, gently (their rings + flash were cream and read white on a lit floor; the sweeps flagged it) */
+            var q = {}; for (var k2 in P) q[k2] = P[k2];
+            q.ring = _vcTone(P.ring, P.orb, 0.5, 0.92); q.flash = _vcTone(P.flash, P.orb, 0.38, 0.92); q.lineColor = _vcTone(P.lineColor, P.orb, 0.35, 0.92);
+            return (_vcPalC[arch] = q);
+        }
         var o = {}; for (var k in P) o[k] = P[k];
         o.ring = _vcTone(P.ring, P.orb, 0.55, 0.92);
         o.flash = _vcTone(P.flash, P.orb, 0.45, 0.92);

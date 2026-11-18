@@ -455,6 +455,13 @@ two shells are lower with the cleanup on (Hallelujah's columns washed pale as th
 shock ring keeps its hue. NOT done from B5's list, on purpose (decision 3): the doors (they have the door rig), the
 creatures that walk / fly / hatch in, the black holes (own looks).
 
+**11-18, the white fallback:** three-vfx.js `_spriteColor` hands any sprite name it does not know PURE WHITE, additive.
+The recipes used three undefined names: `buff-aura` (the column of 41 buff / ward recipes: Protect, Overclock ...),
+`spark` (12) and `star` (2). They are defined now (gold tones). The support palettes (heal, mana, aura, hex ...) are
+toned too, gently (they were left alone in B1; their cream rings read white on a lit floor). Frames:
+img/white_fallback_after.jpg (Heal, Overclock, Protect, Hallelujah). `sparkle` (51 recipes) is also undefined and
+still white: a sparkle's glint is white, left on purpose.
+
 **The sweeps (B6a-B10) run as nine threads from 11-17:** brief `docs/plans/vfx-cleanup/SWEEP_BRIEF.md`.
 **The own-look threads:** L1-L5 reported their lists done and merged on 11-17 (notes: spells-vfx.md "THE OWN LOOKS, L<n>").
 
