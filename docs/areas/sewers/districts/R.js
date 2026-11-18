@@ -12,7 +12,7 @@
    STANDS TODAY (2 passes): the valve gallery (pumps, a gate valve, a boiler, breaker panels, radiation signs; pass 2: the control wall, the
    lab bench, compressor, generator, gas rack, pipe runs, glowing caps by the sludge, six
    goo tendrils in the tank, bodies, parts and bones on the Pit's walk, chains), barrels and warning tape along the
-   channel, hanging bulbs, five bystanders (kaiju, black goo x 2, mad scientist, swamp monster;
+   channel, hanging bulbs, five bystanders (a sewer gator since 2026-11-18, was the kaiju; black goo x 2, mad scientist, swamp monster;
    they have no lines: nobody wrote any).
    THE MODEL PASS (stage `pieces`): the waste pipe in the channel's head, hazmat suits on hooks, radiation drums, a valve wheel, cage lamps, rats.
    NOT YET: a rail along the channel; drips, mist,
@@ -90,6 +90,6 @@ module.exports = {
     people(ctx) {
         /* mondo 11-16: "kaiju can live there, black goo, whatever else fits". No lines: none were written. */
         ctx.native('mad scientist', DRAIN, 4, 3, 90); ctx.native('black goo', DRAIN, 7, 7, 0);
-        ctx.native('kaiju', PIT, 10, 7, 270); ctx.native('black goo', PIT, 5, 10, 0); ctx.native('swamp monster', PIT, 1, 3, 90);
+        ctx.native('sewer gator', PIT, 10, 7, 270);   /* 2026-11-18 RACE PLACEMENT (mondo: "Kaiju to one frozen fixed spot in Antarctica plus the Disaster City harbour"): the pit's kaiju is a sewer gator now */ ctx.native('black goo', PIT, 5, 10, 0); ctx.native('swamp monster', PIT, 1, 3, 90);
     },
 };

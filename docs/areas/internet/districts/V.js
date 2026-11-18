@@ -54,5 +54,8 @@ exports.people = c => {
     c.native('catgirl', 'P08-01', 8, 4, 225); c.native('popstar', 'P08-01', 4, 4, 90); c.native('influencer', 'P08-02', 6, 4, 0); c.native('bunny girl', 'P08-02', 4, 7, 45);
     ['super sentai', 'knight', 'wizard', 'catgirl', 'robot', 'ninja', 'pirate', 'astronaut'].forEach((r, i) => { const t = (i + 0.5) / 8 * Math.PI * 2; c.native(r, 'P08-03', Math.round(5.5 + Math.cos(t) * 3.8), Math.round(5.5 + Math.sin(t) * 3.8), 0); });
     c.native('quarterback', 'P07-03', 7, 7, 270); c.native('skater', 'P07-03', 4, 7, 90); c.native('android', 'P06-03', 8, 7, 270);
+    /* 2026-11-18 RACE PLACEMENT (mondo: "virus, streamer and vtuber in their named districts"): the streamer in The Ring Light between the mic and the ring, the vtuber
+       centre stage on The Hologram Stage (no 3D model yet: she stands when it ships) */
+    c.native('streamer', 'P08-02', 5, 3, 0); c.native('vtuber', 'P08-01', 6, 4, 0);
 };
 exports.airZones = c => [{ sx0: 96, sy0: 0, sx1: 108, sy1: 48, kind: 'motes', n: 90, color: 0xff5fb0 }];

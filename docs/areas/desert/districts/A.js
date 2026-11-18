@@ -60,7 +60,7 @@
    - THE WALL DETAIL + THE CLIPPING CHECK (11-16): skirting, dado rail, crown, pendants and wall pieces in the huts (rows `des:<id>:in`);
      a plate over every door, a number on every cell, wall pieces and floor lines in both rooms. `pieces` runs the city's interior polish
      over the huts; `tidy()` checks the two rooms (39 props stood on wall tops; none in a wall). A part's `ry: 90` looks WEST.
-   - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS; outside the markers, not this file's).
+   - Fights: Area 51 has its own table since 2026-11-18 (data.js HQ_AREA_ENCOUNTERS.site_prebuilt_area51_desert, `spots: false`; THE RACE PLACEMENT PASS, npc-system.md; not this file's).
    - A plateau in this room draws as a mound (the ground is sampled every 1.75 m): anything raised needs a drawn skin 1.2 m wider than it,
      and an `arch` row over raised ground needs `y: 0` or it stands on the plateau's top (the tower floated 7 m up without it).
    FOUND AND CLOSED (11-16): "no door leaf drew in the probe" was the OLD probe: it took its picture before the leaf models were asked for.

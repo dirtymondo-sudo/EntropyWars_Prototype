@@ -89,7 +89,7 @@
      THE MINE has no inside. The hotel's rooms were seen only through a doorway.
    - The insides read dark in the cloud browser even with lit linings (mondo's Firefox renders brighter): judge on his machine.
    - The lanterns glow and light nothing (the room has ten lamps for all four districts).
-   - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS, not this file's).
+   - Fights: Western Town has its own table since 2026-11-18 (data.js HQ_AREA_ENCOUNTERS.site_prebuilt_area51_ow_town, `spots: false`; THE RACE PLACEMENT PASS, npc-system.md; not this file's).
    - Door leaves DO draw in the probe here (saloon, church, jail seen 11-16); the open finding in "THE LOOK PASS" is not true of this town.
 
    THE HOOKS (bake-desert.js "THE DISTRICT FILES" has the whole list of what ctx holds; each hook is optional):
