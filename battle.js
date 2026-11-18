@@ -25468,6 +25468,31 @@
                                     } catch (e) { console.warn('[HQ] the captures failed', e); }
                                 }
                             } catch (e) { console.warn('[HQ] the party record failed', e); }
+                            /* NPC HEALTH ON THE WALK (NPC encounters step 5a, 2026-11-18; mondo: "track health outside of battle then, already do for the player
+                               and party"): every enemy seat that was a real NPC (the run's `npcs`, in seat order: the one struck, then its group) files the HP it
+                               walked away with (data.js hqNpcWoundsAfter, door.hq.wounds; whole again after its Sleep block, or at the next game day). Beaten on a
+                               win or captured = no row (the cleared ledger / the party has it); down in a fight you lost or left = it stands up with `downHp`. */
+                            try {
+                                const npcs = Array.isArray(erun.npcs) ? erun.npcs : null;
+                                if (npcs && npcs.some(n => n && n.id) && typeof hqNpcWoundsAfter === 'function') {
+                                    const seat = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+                                    const capIds = won ? (state.captures || []).filter(c => c && c.player === seat).map(c => c.unitId).filter(Boolean) : [];
+                                    const pool = (state.units || []).concat(...Object.keys(state.bench || {}).map(k => state.bench[k] || []), ...Object.keys(state.escaped || {}).map(k => state.escaped[k] || []), state.sealedUnits || []);
+                                    const rows = [], seen = {};
+                                    for (const u of pool) {
+                                        if (!u || u.id == null || seen[u.id]) continue;
+                                        const hm = (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
+                                        if (hm === seat || hm === 0) continue;
+                                        const m = /^(\d+)-(\d+)$/.exec(String(u.id)); if (!m) continue;
+                                        const n = npcs[+m[2]]; if (!n || !n.id) continue;
+                                        seen[u.id] = 1;
+                                        const down = !!(u.dead || u._dying || !(u.hp > 0));
+                                        rows.push({ id: n.id, rest: n.rest, hp: u.hp | 0, max: u.maxHp | 0, down, gone: capIds.indexOf(u.id) >= 0 || (won && down) || (state.sealedUnits || []).indexOf(u) >= 0 });
+                                    }
+                                    const hurt = hqNpcWoundsAfter(p, erun.room, rows);
+                                    if (hurt && hurt.length) console.log('[HQ] the wounds: ' + hurt.map(h => h.id + ' ' + h.hp + '/' + h.max).join(', '));   // nothing on screen (a UI change waits for mondo's OK)
+                                }
+                            } catch (e) { console.warn('[HQ] the NPC wounds failed', e); }
                             /* THE QUESTS (2026-11-12): a quest's own fight reports its outcome — only a WIN of THAT fight moves its stage
                                (data.js questEvent, the one writer; the reward is paid there, once). After the party's commit, so a
                                unit the quest hands over joins the party the fight left. */
