@@ -12394,3 +12394,11 @@ What a later thread must know:
   does exist is in the plan, section 1.
 - A probe view in the city needs its own `"y"` (the street is not at 0: a view at y 0 stands under the ground).
 
+## DISASTER CITY, THE SUBWAY's STAIR HEADS (2026-11-18, the door audit thread, owner side)
+Five subway stations stand in the city, one a district: Civic Center (Transit square, the old `metro` door), Hero Plaza (Transit court), Bayside
+(Boardwalk exit), Industrial (Rail service), Sports + Culture (Bus stop court). The four new ones are written by the TOOL (`bake-disaster-city.js`
+`STATIONS`, after `dcRun('build')`): Hero Plaza's kiosk built open (`docs/disaster-city/districts/H.js` `KIOSK(open)`, handed over as
+`ctx.stationKiosk`) as an `arch` feature on two yard squares (`col`, `rows` in the plot's own squares; `rot` 0 or 180 only), and a `stairway` door
+in its mouth with `station: '<id>'`. A prop a district stood on those squares steps one square east (moved, never dropped). No district file but
+H.js was edited. The system (one platform room, the name boards, the train's list, a station opening when walked to) is in
+`docs/notes/world-layout.md` "THE DOOR AUDIT", paragraph THE SUBWAY, BUILT.
