@@ -89957,8 +89957,8 @@ const HQ_NPC_TEMPERS = {
     payOffGoldPerLevel: 8,     // what an NPC that gave up pays (PLAN 4.4)
     /* THE WOUNDS (step 5a, 2026-11-18; mondo: "track health outside of battle ... as for the player and party"; wounds heal at the next game day "or after
        they sleep"): an NPC that walks away from a fight hurt keeps its HP into the next one (data.js hqNpcWoundFor / hqNpcWoundsAfter, the profile's
-       `door.hq.wounds`). `downHp`: an NPC that went down in a fight the party LOST or left stands up again with this many HP (PROPOSAL). `max`: rows kept. */
-    wounds: { downHp: 1, max: 64 },
+       `door.hq.wounds`). One that went down is BEATEN, whatever the fight's outcome (the cleared ledger, hqEncounterRecord `beaten`). `max`: rows kept. */
+    wounds: { max: 64 },
     /* THE LINES (mondo 11-17: "these lines are fine for now"). talk: after the second strike, or E first. warn: over the head, once. */
     lines: {
         talk: { 'chef': '“Hey! What was that for?”', 'hippie': '“Not cool, man.”', 'skater': '“What is your problem?”', 'popstar': '“Do you know who I am?”',
@@ -90159,8 +90159,8 @@ function hqNpcWoundFor(profile, roomId, id, t) {
     if (hqNpcWoundHealed(w, t) || !(w.max > 0) || !(w.hp > 0) || w.hp >= w.max) return null;
     return { hp: w.hp | 0, max: w.max | 0 };
 }
-/* THE WRITE (the commit; step 6b's escape too): `rows` = [{ id, hp, max, down, gone, rest }]. `gone` = beaten on a win, or captured: the row goes (the
-   cleared ledger has it until tomorrow). `down` (it fell in a fight you lost or left) = `downHp`. Whole = the row goes. Healed rows are pruned. The caller saves. */
+/* THE WRITE (the commit; step 6b's escape too): `rows` = [{ id, hp, max, down, gone, rest }]. `down` (it fell, in any fight) or `gone` (captured): the row
+   goes (the cleared ledger has it until tomorrow). Whole = the row goes. Healed rows are pruned. The caller saves. */
 function hqNpcWoundsAfter(profile, roomId, rows, t) {
     if (!profile || !roomId || !Array.isArray(rows)) return null;
     const B = hqNpcWoundBook(profile, true), W = HQ_NPC_TEMPERS.wounds;
@@ -90170,8 +90170,8 @@ function hqNpcWoundsAfter(profile, roomId, rows, t) {
     rows.forEach(r => {
         if (!r || !r.id) return;
         const k = hqNpcWoundKey(roomId, r.id), max = r.max | 0;
-        const hp = r.down ? Math.min(max, W.downHp | 0 || 1) : (r.hp | 0);
-        if (r.gone || !(max > 0) || hp >= max) { delete B[k]; return; }
+        const hp = r.hp | 0;
+        if (r.gone || r.down || !(max > 0) || !(hp > 0) || hp >= max) { delete B[k]; return; }
         B[k] = { hp: Math.max(1, hp), max, t: Math.round(+t * 1000) / 1000, rest: (r.rest != null && isFinite(+r.rest)) ? +r.rest : null };
         out.push({ id: r.id, hp: B[k].hp, max });
     });
@@ -92233,17 +92233,22 @@ function hqEncounterRecord(profile, ev) {
         if (ev.won) E.wins = (E.wins | 0) + 1; else E.losses = (E.losses | 0) + 1;
         E.last = { site: ev.site || null, room: ev.room || null, race: ev.race || null, date, won: !!ev.won };
     }
-    if (ev.won && ev.room) {
+    /* EVERY ENEMY BEATEN STAYS BEATEN (NPC encounters step 5a, mondo 11-18: "any enemy beat should not magically come back at full health"): `beaten` =
+       the NPC ids that went down in this fight, whatever its outcome (a win, a loss, a retreat): each is out of the room until tomorrow, like the one
+       struck on a win. Before, only the struck NPC of a WON fight was filed; its group's fallen came back at once, whole. */
+    const _bt = (Array.isArray(ev.beaten) ? ev.beaten : []).filter(x => x).map(String);
+    if (ev.room && (ev.won || _bt.length)) {
         const C = H.cleared = hqClearedRecord(profile);
         let c = C[ev.room];
         if (!c || typeof c !== 'object' || c.date !== date) c = C[ev.room] = { date, ids: [] };
         if (!Array.isArray(c.ids)) c.ids = [];
-        if (ev.id && c.ids.indexOf(ev.id) < 0) c.ids.push(String(ev.id));
+        if (ev.won && ev.id && c.ids.indexOf(ev.id) < 0) c.ids.push(String(ev.id));
+        _bt.forEach(id => { if (c.ids.indexOf(id) < 0) c.ids.push(id); });
     }
     const synced = hqSyncedHq(profile, true);
     if (synced) {
         synced.encounters = { count: E.count, wins: E.wins, losses: E.losses, retreats: E.retreats | 0, last: E.last ? Object.assign({}, E.last) : null };
-        if (ev.won && ev.room) synced.cleared = hqClearedUnion(synced.cleared, H.cleared);
+        if (ev.room && (ev.won || _bt.length)) synced.cleared = hqClearedUnion(synced.cleared, H.cleared);
     }
     return E;
 }

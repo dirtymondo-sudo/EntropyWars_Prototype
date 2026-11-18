@@ -25386,7 +25386,19 @@
                         let _questRes = null;   // THE QUESTS: what this fight did to a quest (data.js questEvent's return)
                         let _lossGoldSrv = 0;   // EVERY LOST FIGHT COSTS GOLD: what the server's wallet pays after the save
                         if (p) {
-                            hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, retreat: !won && _encRetreatOn, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
+                            /* EVERY ENEMY BEATEN STAYS BEATEN (step 5a, mondo 11-18): the NPC ids of every enemy seat that went down, win, loss or retreat */
+                            const _encBeaten = [];
+                            try {
+                                const _np = Array.isArray(erun.npcs) ? erun.npcs : [];
+                                const _sv = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+                                for (const u of (state.units || []).concat(...Object.keys(state.bench || {}).map(k => state.bench[k] || []))) {
+                                    if (!u || !(u.dead || u._dying || !(u.hp > 0))) continue;
+                                    const hm = (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player; if (hm === _sv || hm === 0) continue;
+                                    const m = /^(\d+)-(\d+)$/.exec(String(u.id)), n = m ? _np[+m[2]] : null;
+                                    if (n && n.id && _encBeaten.indexOf(n.id) < 0) _encBeaten.push(n.id);
+                                }
+                            } catch (e) { console.warn('[HQ] the beaten list failed', e); }
+                            hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, retreat: !won && _encRetreatOn, beaten: _encBeaten, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
                             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's doors go home with the hits the board left them (a
                                broken door is gone); a capture door that went onto the board is spent */
                             try {
@@ -25470,8 +25482,8 @@
                             } catch (e) { console.warn('[HQ] the party record failed', e); }
                             /* NPC HEALTH ON THE WALK (NPC encounters step 5a, 2026-11-18; mondo: "track health outside of battle then, already do for the player
                                and party"): every enemy seat that was a real NPC (the run's `npcs`, in seat order: the one struck, then its group) files the HP it
-                               walked away with (data.js hqNpcWoundsAfter, door.hq.wounds; whole again after its Sleep block, or at the next game day). Beaten on a
-                               win or captured = no row (the cleared ledger / the party has it); down in a fight you lost or left = it stands up with `downHp`. */
+                               walked away with (data.js hqNpcWoundsAfter, door.hq.wounds; whole again after its Sleep block, or at the next game day). Down in the
+                               fight (any outcome) or captured = no row (the cleared ledger / the party has it: mondo 11-18, a beaten enemy never comes back). */
                             try {
                                 const npcs = Array.isArray(erun.npcs) ? erun.npcs : null;
                                 if (npcs && npcs.some(n => n && n.id) && typeof hqNpcWoundsAfter === 'function') {
@@ -25487,7 +25499,7 @@
                                         const n = npcs[+m[2]]; if (!n || !n.id) continue;
                                         seen[u.id] = 1;
                                         const down = !!(u.dead || u._dying || !(u.hp > 0));
-                                        rows.push({ id: n.id, rest: n.rest, hp: u.hp | 0, max: u.maxHp | 0, down, gone: capIds.indexOf(u.id) >= 0 || (won && down) || (state.sealedUnits || []).indexOf(u) >= 0 });
+                                        rows.push({ id: n.id, rest: n.rest, hp: u.hp | 0, max: u.maxHp | 0, down, gone: capIds.indexOf(u.id) >= 0 || (state.sealedUnits || []).indexOf(u) >= 0 });
                                     }
                                     const hurt = hqNpcWoundsAfter(p, erun.room, rows);
                                     if (hurt && hurt.length) console.log('[HQ] the wounds: ' + hurt.map(h => h.id + ' ' + h.hp + '/' + h.max).join(', '));   // nothing on screen (a UI change waits for mondo's OK)
