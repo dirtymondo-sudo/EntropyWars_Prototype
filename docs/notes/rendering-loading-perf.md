@@ -3025,3 +3025,14 @@ Slow frames: "tick: residents 48-50", "tick: chunks 23", "batch: scan step 24".
 - THE LIST'S OWN STAMP: the rider's grid now hangs on its own list (`L._ewWG`, so the stuck watch's near list and the people's list do not
   make it lay again as lists take turns), `_hqBlkListStamp` counts reorders of `_hq.blockers` (splice/shift/sort...: lay again) and joins
   at the end are read on every ask (a resident's body joining no longer shifts or rebuilds the grid).
+
+### THE ONE-BY-ONE PASS + THE DESK FOR LOD AND LABELS (2026-11-18, his first F3 with the alarm)
+The "Scene walks" line on his 12:18 F3 named: `_hqInstAdd` (47K a read: the pass re-ran in full every few seconds, "tick:
+instance pass 36-37 ms", because each prop chunk shown for the first time had candidates the pass never saw), `_hqLodScan`
+(74K every 2 s: any add anywhere re-read the room), `_css2dRender` (77K every second: same), `_lensCensus` (the lens itself).
+- `_hqInstAdd(H, I, only)`: a run for fresh candidates reads only them + the left-alone set (no room-wide flags, no
+  `scene.updateMatrixWorld(true)`, no scan; the new batches fill at the next sync). `_hqInstFresh` returns the fresh list; its
+  stamps reset only when the desk overflowed (`I.seenN`). Full read: first run, `EW_HQ_INST_FULL_SCAN`.
+- `_hqLodTick`: arrivals' meshes join `L.list`; full read when a LOD level landed (`_lodLandN`), the desk overflowed, every 60 s.
+- `_css2dRender`: arrivals looked through for a label; recount when one arrived / overflow / every 60 s.
+- Alarm names now parse Firefox's `ThreeRenderer</fn/<` frames; the lens's own census is marked "(the F3 lens itself)".
