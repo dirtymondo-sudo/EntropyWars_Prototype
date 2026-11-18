@@ -98154,6 +98154,35 @@ var ZONE_LOOKS = {
             ground: { gold: 'px:gold' },
             byRoom: { site_prebuilt_atlantis_pocket: { decals: { dirt: 0.2, drip: 0.4 } } },
         },
+        /* ── BATCH 4 ── HELL: scorched red-black rock, the pit's walls burnt; soot, drips and blood (the one place it belongs most) */
+        hell: {
+            rooms: ['site_prebuilt_hell_plots'],
+            wall: { rocks_3: 'hz:Stone_10', rocks_5: 'hz:Stone_01' },
+            ground: { rocks_3: 'hz:Stone_02', rubble_3: 'hz:Stone_01' },
+            decals: { blood: 0.25, soot: 0.3, drip: 0.4, dirt: 0.2 },
+        },
+        /* THE CATACOMBS under the Vatican: old dark brick and stone gone damp, worn flag floors; dirt, drips, a little blood */
+        catacombs: {
+            rooms: ['site_prebuilt_vatican_under'],
+            wall: { bricks_3: 'hz:Brick_09', bricks_2: 'hz:Brick_10', marble: 'hz:Stone_03' },
+            ground: { dungeon: 'hz:Floor_13', bricks_3: 'hz:Floor_13' },
+            decals: { blood: 0.05, dirt: 0.35, drip: 0.6, grime: 0.3 },
+        },
+        /* VATICAN CITY: aged travertine (cream stone, not the calm marble), ochre plaster, worn grey stone, the good gold; the plaza keeps its
+           pale paving; a little dust and drips, no blood */
+        vatican: {
+            rooms: ['site_prebuilt_vatican_plots'],
+            wall: { marble_light: 'hz:Wall_01', calm_marble: 'hz:Wall_01', marble: 'hz:Stone_12', marble_2: 'hz:Stone_12', calm_castle: 'hz:Brick_09', castle_wall: 'hz:Brick_09',
+                    bricks_3: 'hz:Brick_10', 'urban:PlasterWallPainted1a': 'hz:Wall_12', gold: 'px:gold', wood: 'urban:WoodBeams2a' },
+            ground: { marble: 'hz:Floor_12', calm_marble: 'hz:Floor_12', marble_2: 'hz:Floor_12', gold: 'px:gold' },
+            decals: { dirt: 0.15, drip: 0.25 },
+        },
+        /* HEAVEN: the clouds stay clouds; its marble aged cream stone and the good gold, clean (no stains) */
+        heaven: {
+            rooms: ['site_prebuilt_heaven_plots'],
+            wall: { marble_light: 'hz:Wall_01', gold: 'px:gold' },
+            ground: { gold: 'px:gold' },
+        },
     },
 };
 function zlHorrorKey(n) { return 'hz_' + String(n).toLowerCase(); }   // 'Brick_09' -> 'hz_brick_09'

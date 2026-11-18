@@ -12444,6 +12444,10 @@ areas except disaster city first."
   pack: plaster -> stained grey Wall_09, rust Metal_06/09, grime, drips, a little blood), Leylines (Babel's calm flagstone walls -> sandstone brick
   Brick_14, its cliff/steps too; Stonehenge grey Stone_11; the Bug nest's marble Stone_06), The Deep (Atlantis' calm marble -> drowned pale stone
   Stone_05, the good gold). The pass now also swaps a generated room's `terrain.gen.wallKey` / `fenceKey` (the Cavern's walls are plan walls).
+- BATCH 4: Hell (calm cracked rock -> scorched red-brown rock Stone_10 on cliffs/ramp sides, black rock Stone_02 underfoot; Hell is plateaus, no
+  wall faces, so few stains land), the Catacombs (damp stone blocks Brick_09/10, worn flags Floor_13, drips, a little blood), the Vatican
+  (travertine Wall_01, ochre plaster Wall_12 in place of the plain painted plaster, grey tile floors Floor_12, the good gold), Heaven (clouds
+  stay; marble -> cream stone, clean). A `scatter` row's key is a ROCK MODEL name (menhir, cave_stone), not a sheet: never map it.
 - LESSONS: a stair-built terrain slope draws in `terrain.cliff`, so a cliff sheet shows on steps: pick one that reads as stone blocks. A probe
   needs `--flags=EW_HQ_NO_ENCOUNTER` (a field fight hides the view) and ONE browser at a time (three at once got OOM-killed).
 
