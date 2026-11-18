@@ -98007,8 +98007,8 @@ if (typeof window !== 'undefined') { window.CALM_TERRAIN = CALM_TERRAIN; window.
    `urban:<Name>` (the Urban Decay pack) or `px:<key>` (the key's own pixel sheet: gold = gilt.png, his approved gold). At load the key is
    renamed to a twin `zl_<sheet>__<key>` that draws the new sheet and PLAYS BY THE OLD KEY's rules (hqRuleKeyOf), so nothing about a fight or
    a walk changes; no zone file or bake tool is touched, and a district thread writing its usual keys still comes out in the zone's look.
-   `decals` = blood / dirt / grime laid on the ground at the foot of walls and down wall faces (three-renderer.js _hqBuildMarks, k 'decal',
-   one draw per stain sheet). Gore rule: blood only where the zone is horror (Estate, Sewers, Hell...), never Heaven or a fairy wood.
+   `decals` = blood / dirt / grime laid on the ground at the foot of walls and down wall faces (three-renderer.js _hqBuildZoneDecals, laid on the
+   surface a ray finds, one draw per stain sheet). Gore rule: blood only where the zone is horror (Estate, Sewers, Hell...), never Heaven or a fairy wood.
    Off switch: window.EW_NO_ZONE_LOOKS = true before data.js loads (the rooms keep their own keys); window.EW_NO_ZONE_DECALS hides the stains. */
 var HZ_TWIN = { Brick: 'bricks_2', Floor: 'concrete_floor', Metal: 'metal', Misc: 'metal', Stone: 'rocks_5', Wall: 'drywall', Stain: 'concrete_floor' };
 var ZONE_LOOKS = {
@@ -98043,6 +98043,54 @@ var ZONE_LOOKS = {
             wall: { bricks_2: 'hz:Brick_03', 'urban:MetalCorrugatedPainted2a': 'hz:Metal_06', metal: 'hz:Metal_09', gunmetal: 'hz:Metal_09', 'urban:ConcreteStriped2c': 'hz:Wall_14' },
             ground: { bricks_2: 'hz:Brick_04', 'urban:ConcreteStriped2c': 'hz:Floor_01' },
             decals: { blood: 0.06, dirt: 0.4, drip: 0.9, grime: 0.3 },
+        },
+        /* ── BATCH 2 ── THE WOODS: Bigfoot country, the cave, the ritual ground. The log cabins KEEP their WoodGeneric (the bark is the logs,
+           on purpose since 11-15); boulders and rock walls wear mossy stone; dirt, drips and a little blood (the Ritual Ground) */
+        woods: {
+            rooms: ['site_prebuilt_fairy_forest_ow_clearing', 'site_prebuilt_fairy_forest_ow_redwood', 'site_prebuilt_fairy_forest_ow_ritual'],
+            wall: { rocks_5: 'hz:Brick_07', mushroom: 'hz:Brick_07', 'urban:BrickMasonry1a': 'hz:Brick_01', wood: 'urban:WoodBeams2a', 'urban:MetalCorrugatedPainted1a': 'hz:Metal_06' },
+            ground: {},
+            decals: { dirt: 0.3, drip: 0.5 },
+            byRoom: { site_prebuilt_fairy_forest_ow_ritual: { decals: { blood: 0.12, dirt: 0.4, drip: 0.7 } } },
+        },
+        /* THE DESERT: Giza's blocks sun-bleached sandstone brick, Western Town's bark-like boards real weathered siding, the Circus painted
+           red boards, Area 51's sheds as they are (the pack's own); dust, a few drips, no blood */
+        desert: {
+            rooms: ['site_prebuilt_area51_ow_giza', 'site_prebuilt_giza_pyramid', 'site_prebuilt_area51_ow_town', 'site_prebuilt_area51_ow_circus', 'site_prebuilt_area51_desert', 'site_prebuilt_area51_hangar'],
+            wall: { bricks_1: 'hz:Brick_14', 'urban:WoodGeneric1a': 'urban:WoodCladding1a', 'urban:WoodGeneric1b': 'urban:WoodCladding2a', 'urban:WoodGeneric2a': 'urban:WoodBeams2a',
+                    gold: 'px:gold', rock_wall_1: 'hz:Stone_09', wood: 'urban:WoodBeams2a' },
+            ground: { 'urban:WoodGeneric1a': 'urban:WoodFlooring1d', 'urban:WoodGeneric1b': 'urban:WoodFlooring1c' },
+            decals: { dirt: 0.25, drip: 0.3 },
+            byRoom: { site_prebuilt_area51_ow_circus: { wall: { 'urban:WoodGeneric1a': 'urban:WoodPainted2a', 'urban:WoodGeneric1b': 'urban:WoodPainted3a' } } },
+        },
+        /* THE BEACH: salt-grey weathered boards on the huts and the boardwalk rails, rust on the tin; the Flying Dutchman (a ghost ship) dark
+           beams, drips and a little blood below decks */
+        beach: {
+            rooms: ['site_prebuilt_bermuda_beach', 'site_prebuilt_bermuda_ow_cove', 'site_prebuilt_bermuda_ow_volcano', 'site_prebuilt_bermuda_ow_triangle', 'site_prebuilt_bermuda_ow_frozen', 'site_prebuilt_bermuda_island'],
+            wall: { wood_planks: 'urban:WoodCladding3a', 'urban:WoodGeneric1a': 'urban:WoodCladding3a', 'urban:WoodGeneric1b': 'urban:WoodCladding1a', 'urban:WoodGeneric2a': 'urban:WoodBeams2a',
+                    'urban:MetalCorrugatedPainted1a': 'hz:Metal_06', wood: 'urban:WoodBeams2a' },
+            ground: { 'urban:WoodGeneric1a': 'urban:WoodFlooring1d', 'urban:WoodGeneric2a': 'urban:WoodFlooring1c' },
+            decals: { dirt: 0.15, drip: 0.35 },
+        },
+        dutchman: {
+            rooms: ['site_prebuilt_revenge_deck', 'site_prebuilt_revenge_hold', 'site_prebuilt_revenge_gundeck', 'site_prebuilt_revenge_cabin'],
+            wall: { wood: 'urban:WoodBeams2a', wood_planks: 'urban:WoodBeams1a', gold: 'px:gold' },
+            ground: {},
+            decals: { blood: 0.1, dirt: 0.3, drip: 0.8 },
+        },
+        /* THE MOUNTAINS + THE NORTH POLE: the lodges and cabins dark weathered siding, metal worn grey, the North Pole's brick real red brick;
+           Mount Olympus aged cream stone and gilt, clean (no stains: a god's house). The snow (marble_light, the North Pole's place sheet) stays. */
+        mountains: {
+            rooms: ['site_prebuilt_shasta_ow_lodge', 'site_prebuilt_shasta_ow_shasta', 'site_prebuilt_northpole_plots'],
+            wall: { 'urban:WoodGeneric1a': 'urban:WoodCladding2a', 'urban:WoodGeneric1b': 'urban:WoodCladding1a', 'urban:WoodGeneric2a': 'urban:WoodBeams2a',
+                    gunmetal: 'hz:Metal_02', bricks_2: 'urban:BrickClassic1a', gold: 'px:gold', gold_2: 'px:gold', rocks_5: 'hz:Brick_11' },
+            ground: { 'urban:WoodGeneric1a': 'urban:WoodFlooring1d', bricks_2: 'hz:Floor_13' },
+            decals: { drip: 0.35, dirt: 0.15 },
+        },
+        olympus: {
+            rooms: ['site_prebuilt_shasta_ow_olympus'],
+            wall: { marble_light: 'hz:Wall_01', gold: 'px:gold', 'urban:WoodGeneric2a': 'urban:WoodBeams2a' },
+            ground: { gold: 'px:gold' },
         },
     },
 };
@@ -98110,12 +98158,17 @@ function zoneLookRoom(room, Z) {
     room._zl = 1;
     return n;
 }
+/* a zone's look for one of its rooms: the zone's maps with the room's own `byRoom` entry over them */
+function zlLookFor(zid, rid) {
+    const Z = ZONE_LOOKS.zones[zid], B = Z && Z.byRoom && Z.byRoom[rid]; if (!B) return Z;
+    return Object.assign({}, Z, { wall: Object.assign({}, Z.wall, B.wall), ground: Object.assign({}, Z.ground, B.ground), decals: B.decals || Z.decals });
+}
 /* every zone room, once (run at the end of data.js, after every room is in DOOR_HQ.rooms) */
 function zoneLooksApply() {
     if (typeof window !== 'undefined' && window.EW_NO_ZONE_LOOKS) return 0;
     if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ || !DOOR_HQ.rooms) return 0;
     let n = 0;
-    Object.keys(ZONE_LOOKS.zones).forEach(zid => { const Z = ZONE_LOOKS.zones[zid]; (Z.rooms || []).forEach(rid => { const R = DOOR_HQ.rooms[rid]; if (!R) return; try { n += zoneLookRoom(R, Z); R._zlId = rid; R._zlZone = zid; } catch (e) {} }); });
+    Object.keys(ZONE_LOOKS.zones).forEach(zid => { const Z = ZONE_LOOKS.zones[zid]; (Z.rooms || []).forEach(rid => { const R = DOOR_HQ.rooms[rid]; if (!R) return; try { n += zoneLookRoom(R, zlLookFor(zid, rid)); R._zlId = rid; R._zlZone = zid; } catch (e) {} }); });
     return n;
 }
 /* THE STAINS: decal rows for a room (three-renderer.js _hqBuildMarks draws them). Laid where grime gathers: down the face of a wall row or
@@ -98127,7 +98180,7 @@ function zoneLookDecals(roomId, room) {
     if (!room || !room.terrain || (typeof window !== 'undefined' && (window.EW_NO_ZONE_DECALS || window.EW_NO_ZONE_LOOKS))) return [];
     if (room._zlDecals) return room._zlDecals;
     roomId = roomId || room._zlId || '';
-    let Z = room._zlZone ? ZONE_LOOKS.zones[room._zlZone] : null;
+    let Z = room._zlZone ? zlLookFor(room._zlZone, roomId) : null;
     if (!Z) Object.keys(ZONE_LOOKS.zones).forEach(zid => { if ((ZONE_LOOKS.zones[zid].rooms || []).indexOf(roomId) >= 0) Z = ZONE_LOOKS.zones[zid]; });
     const out = []; room._zlDecals = out;
     if (!Z || !Z.decals) return out;
