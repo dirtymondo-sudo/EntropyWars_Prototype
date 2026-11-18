@@ -47169,6 +47169,7 @@ const ThreeRenderer = (function () {
        SHADERS holds them). It starts at 1 ambient, 1 hemisphere, 1 shadow sun, 2 plain suns and 8 points; a kind only grows.
        A spare is dark (a spare shadow sun never renders its map). A shadowed sun's camera, map size, bias and pulse are
        copied onto the rig's own. Spot lights and shadow-casting point lights stay real. */
+    var HQ_RIG_PREGROW_P = 20;   // THE RIG GROWN AT THE DOOR (_ewRigTick)
     var _EW_RIG_STEP = 4, _EW_RIG_MAX = 64, _ewRigV = null, _ewRigV2 = null, _ewRigM = null, _ewRigG = null;
     var _EW_RIG_KINDS = ['a', 'h', 'ds', 'd', 'p'], _EW_RIG_SEED = { a: 1, h: 1, ds: 1, d: 2, p: 8 }, _EW_RIG_KMAX = { a: 4, h: 4, ds: 4, d: 8, p: _EW_RIG_MAX };
     function _ewRigOff() {
@@ -47297,6 +47298,12 @@ const ThreeRenderer = (function () {
         for (i = 0; i < _EW_RIG_KINDS.length; i++) {
             k = _EW_RIG_KINDS[i];
             var n = R.src[k].length, L = R.k[k];
+            /* THE RIG GROWN AT THE DOOR (2026-11-18, mondo's slow frames in Disaster City: "bundle check 81 ms", "mask: setup + lights
+               + sort 73 ms", and the lens's "one rig: 2 grows"): each step the point rig grows mid-walk (a 9th, a 13th lamp in view)
+               is a new light list, every shader of the scene again and every recorded group re-recorded on that frame. In a big
+               chunked room the point rig takes HQ_RIG_PREGROW_P slots on its first frame (behind the card), so the walk never grows it
+               up to there; the spare slots are dark (THE LAMP'S REACH skips a dark lamp). Off: window.EW_RIG_NO_PREGROW */
+            if (k === 'p' && n < HQ_RIG_PREGROW_P && _hq && sc === _hq.scene && !(typeof window !== 'undefined' && window.EW_RIG_NO_PREGROW)) { var bigR = false; try { bigR = _hqChunkBig(_hq); } catch (eB) {} if (bigR) n = HQ_RIG_PREGROW_P; }
             if (n > L.length) {
                 var want = (k === 'p') ? Math.min(_EW_RIG_MAX, Math.ceil(n / _EW_RIG_STEP) * _EW_RIG_STEP) : n;
                 while (L.length < want) _ewRigLamp(R, k);
