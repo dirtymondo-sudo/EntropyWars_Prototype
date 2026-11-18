@@ -3003,3 +3003,12 @@ reads always full), `window.EW_HQ_INST_FULL_SCAN` (old fresh check).
 THE SCAN ALARM: while F3 is open, `Object3D.prototype.traverse/traverseVisible` are wrapped (`_scanHook`); a walk of 500+
 objects is charged to the first two named functions of its stack. Lens line "Scene walks (objects read a second · walks a
 second · biggest)", top 8, `!!` = 20K+ a second. Rule: CLAUDE.md RULE #1e.
+
+### THE LANDING ON THE GRID + THE CHUNKS MEASURE ON CHANGE (2026-11-18, spikes thread, from the 60 FPS thread's whole-room-scan audit)
+- `_hqBlockerFloor` (the landing under a jump, a fall, a ride's landing) read every blocker of the city on each airborne frame. During
+  the walker's / rider's own tick (`_hqWalkGridOn`) it now reads THE RIDER'S GRID (`_hqNavGrid(L,'wgrid')` + `_hqNavGridAt`): the grid
+  pad (HQ_BODY_R + 0.1) holds HQ_BLK_STAND_PAD, and the highest top does not depend on order. Off: `EW_HQ_FLOOR_FULL_LIST` (or `EW_HQ_WALK_GRID_OFF`).
+- `_hqChunkTick`: the non-prop chunks (fence, shell, door, instance cells, signals) re-measured their sphere every 2 s, all on the same
+  frame (a door chunk's measure is a walk of the door). They now follow the prop chunks' rule: own count changed, add count changed
+  (at most every 4 s), `g._ew_ckDirty` (set by `_hqInstFit` on its instance cell when a batch refits) or every 60 s. Door swings stay
+  inside the 15 m chunk pad. Off: `EW_HQ_CHUNK_POLL_2S`.
