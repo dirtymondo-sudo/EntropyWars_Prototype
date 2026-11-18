@@ -48,7 +48,21 @@ const isOrgGrp = n => isGrp(n) && gkOf(n) === orgK();
    whose home is elsewhere keeps a dashed line to it instead, so areas never stretch over each other */
 function homeMap(kind) { const h = {}; Object.values(B.links).forEach(l => { if (l.type !== 'member' || l.secret || h[l.a]) return; const g = B.nodes[l.b]; if (isGrp(g) && gkOf(g) === kind && !isGrp(B.nodes[l.a])) h[l.a] = l.b; }); return h; }
 const isGrp = n => !!n && n.kind === 'custom' && n.shape === 'group';
-const gcol = n => GCOL[(n && n.col) || 0] || GCOL[0];
+/* PLACES INSIDE PLACES (2026-11-18): a group can sit inside another group of its kind (`parent`): Disaster City holds Hero Plaza,
+   Hero Plaza holds the Superhero Tower. The parent's area takes in its children's, and dragging it moves them too. */
+const parentOf = n => { const p = n && n.parent && B.nodes[n.parent]; return isGrp(p) && gkOf(p) === gkOf(n) && p.id !== n.id ? p : null; };
+const kidsOf = id => Object.values(B.nodes).filter(n => isGrp(n) && n.parent === id && parentOf(n));
+function descOf(id) { const out = [], seen = new Set([id]), q = [id]; while (q.length) kidsOf(q.shift()).forEach(k => { if (!seen.has(k.id)) { seen.add(k.id); out.push(k); q.push(k.id); } }); return out; }
+/* ONE UNIT, AN ICON IN EVERY PLACE (2026-11-18): a unit in more groups of the board's kind than its home one gets a copy of its
+   icon in each of the others (where it spawns, too). A copy is the same unit: its spot is kept on the member tie (cx, cy). */
+function copyList() {
+  const k = orgK(), HM = homeMap(k), out = [], seen = {};
+  Object.values(B.links).forEach(l => { if (l.type !== 'member' || l.secret) return; const g = B.nodes[l.b], u = B.nodes[l.a]; if (!isGrp(g) || gkOf(g) !== k || !u || isGrp(u) || u.kind === 'note' || !HM[l.a] || HM[l.a] === l.b) return;
+    const i = seen[l.b] = (seen[l.b] || 0) + 1, a = i * 2.39996, r = 70 * Math.sqrt(i + 1.2);
+    out.push({ l, u, g, x: Number.isFinite(l.cx) ? l.cx : Math.round(g.x + Math.cos(a) * r), y: Number.isFinite(l.cy) ? l.cy : Math.round(g.y + Math.sin(a) * r) }); });
+  return out;
+}
+const gcol = n => (n && /^#[0-9a-f]{6}$/i.test(n.hex || '') ? n.hex : GCOL[(n && n.col) || 0] || GCOL[0]);
 /* the units in a group node, or the groups a unit is in */
 const membersOf = (id, board) => Object.values((board || B).links).filter(l => l.type === 'member' && l.b === id).map(l => l.a);
 const groupsOf = (id, board) => Object.values((board || B).links).filter(l => l.type === 'member' && l.a === id).map(l => l.b);
@@ -58,7 +72,7 @@ const STARTS_TEXT = { mug: 'walks up and mugs (pay or fight)', ground: 'gives on
 
 /* ───────── state ───────── */
 let S = null, B = null, sel = null, linkMode = false, groupMode = false, multi = new Set(), pendingSrc = null, editing = null;
-let hist = [], hi = -1, G = {}, elById = new Map(), fresh = false;
+let hist = [], hi = -1, G = {}, elById = new Map(), fresh = false, CP = [];
 const stage = $('stage'), world = $('world'), edgesEl = $('edges'), tagsEl = $('tags'), nodesEl = $('nodes');
 
 function seed() {
@@ -100,17 +114,18 @@ function sanitizeBoard(b) {
         m.id = raceId(m.race, m.g); if (m.id !== String(n.id)) remap[String(n.id)] = m.id; if (o.nodes[m.id] && m.id !== String(n.id)) return;
       }
       else if (n.kind === 'cast') { m.cast = n.cast; m.id = 's:' + n.cast; if (m.id !== String(n.id)) remap[String(n.id)] = m.id; }
-      else { m.kind = 'custom'; m.name = String(n.name || n.race || 'Unnamed').slice(0, 60); m.sub = String(n.sub || '').slice(0, 60); m.faction = FNAME[n.faction] ? n.faction : ''; m.shape = /^(character|org|boss|place|group)$/.test(n.shape) ? n.shape : 'character'; if (m.shape === 'group') { m.col = clamp(Math.round(num(n.col, 0)), 0, GCOL.length - 1); m.gk = n.gk === 'faction' ? 'faction' : 'place'; } if (RACE[n.race] && n.kind !== 'race') m.race = n.race; }
+      else { m.kind = 'custom'; m.name = String(n.name || n.race || 'Unnamed').slice(0, 60); m.sub = String(n.sub || '').slice(0, 60); m.faction = FNAME[n.faction] ? n.faction : ''; m.shape = /^(character|org|boss|place|group)$/.test(n.shape) ? n.shape : 'character'; if (m.shape === 'group') { m.col = clamp(Math.round(num(n.col, 0)), 0, GCOL.length - 1); m.gk = n.gk === 'faction' ? 'faction' : 'place'; if (n.parent) m.parent = String(n.parent); if (/^#[0-9a-f]{6}$/i.test(n.hex || '')) m.hex = n.hex; if (n.src) m.src = String(n.src).slice(0, 80); } if (RACE[n.race] && n.kind !== 'race') m.race = n.race; }
       if ((m.kind === 'race' || m.kind === 'cast') && n.nick && String(n.nick).trim()) m.nick = String(n.nick).trim().slice(0, 60);
     }
     o.nodes[m.id] = m;
   });
+  Object.values(o.nodes).forEach(m => { if (m.parent) { m.parent = remap[m.parent] || m.parent; if (!o.nodes[m.parent] || m.parent === m.id) delete m.parent; } });
   o.org = b.org === 'faction' ? 'faction' : 'place';
   if (b.lay && typeof b.lay === 'object') { o.lay = {}; ['place', 'faction'].forEach(k => { const L = b.lay[k]; if (!L || typeof L !== 'object') return; o.lay[k] = {}; Object.keys(L).forEach(id => { const q = L[id], nid = remap[id] || id; if (Array.isArray(q) && o.nodes[nid]) o.lay[k][nid] = [num(q[0], 0), num(q[1], 0)]; }); }); }
   Object.values(b.links || {}).forEach(l => {
     if (l && (remap[l.a] || remap[l.b])) l = Object.assign({}, l, { a: remap[l.a] || l.a, b: remap[l.b] || l.b });
     if (!l || !l.id || !o.nodes[l.a] || !o.nodes[l.b] || l.a === l.b || o.nodes[l.a].kind === 'note' || o.nodes[l.b].kind === 'note') return;
-    o.links[l.id] = { id: String(l.id), a: l.a, b: l.b, type: TYPE[l.type] ? l.type : 'other', dir: /^(ab|ba|both)$/.test(l.dir) ? l.dir : 'ab', label: String(l.label || '').slice(0, 300), s: clamp(Math.round(num(l.s, 2)), 1, 3), ...(l.secret ? { secret: true } : {}) };
+    o.links[l.id] = { id: String(l.id), a: l.a, b: l.b, type: TYPE[l.type] ? l.type : 'other', dir: /^(ab|ba|both)$/.test(l.dir) ? l.dir : 'ab', label: String(l.label || '').slice(0, 300), s: clamp(Math.round(num(l.s, 2)), 1, 3), ...(l.secret ? { secret: true } : {}), ...(l.type === 'member' && Number.isFinite(+l.cx) && Number.isFinite(+l.cy) && l.cx !== null && l.cy !== null ? { cx: Math.round(+l.cx), cy: Math.round(+l.cy) } : {}) };
   });
   return o;
 }
@@ -358,8 +373,12 @@ function renderNodes() {
       '<div class="nm">' + esc(o.name) + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + (dots[n.id] ? '<span class="gdots">' + dots[n.id].map(d => '<i' + (d.sec ? ' class="sec"' : '') + ' style="--gc:' + gcol(d.g) + '" title="' + (d.sec ? 'Secretly in ' : '') + esc(d.g.name) + '"></i>').join('') + '</span>' : '') + '</div>' +
       '<div class="handle" title="Drag to another unit to tie them together"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6h8M6.5 2.5 10 6l-3.500 3.500"/></svg></div></div>';
   });
+  CP = copyList();
+  CP.forEach(c => { const o = info(c.u), sl = (sel && sel.kind === 'node' && sel.id === c.u.id ? ' sel' : '') + (fm && !fm.has(c.u.id) ? ' dim' : '');
+    h += '<div class="node copy' + sl + '" data-cid="' + esc(c.l.id) + '" style="left:' + c.x + 'px;top:' + c.y + 'px;--gc:' + gcol(c.g) + '">' + picHTML(o) + '<div class="nm">' + esc(o.name) + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + '</div></div>'; });
   nodesEl.innerHTML = h; elById = new Map();
   nodesEl.querySelectorAll('[data-id]').forEach(el => { elById.set(el.dataset.id, el); });
+  nodesEl.querySelectorAll('[data-cid]').forEach(el => { elById.set('cp:' + el.dataset.cid, el); });
   nodesEl.querySelectorAll('.note textarea').forEach(autosize);
 }
 function autosize(t) { t.style.height = 'auto'; t.style.height = Math.max(54, t.scrollHeight) + 'px'; }
@@ -388,10 +407,13 @@ function drawEdges() {
   let svg = '', tags = '';
   const focus = sel && sel.kind === 'node' ? sel.id : null;
   const HM = homeMap(orgK());
-  Object.values(B.nodes).forEach(n => { if (!isOrgGrp(n)) return; const pts = [n].concat(membersOf(n.id).filter(id => HM[id] === n.id || isGrp(B.nodes[id])).map(id => B.nodes[id]).filter(Boolean)); if (pts.length < 2) return; const hp = hull(pts).map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)); svg += '<path class="hull" d="M' + hp.join('L') + 'Z" fill="' + gcol(n) + '" stroke="' + gcol(n) + '"/>'; });
+  const CPS = copyList(), own = g => [g].concat(membersOf(g.id).filter(id => HM[id] === g.id || isGrp(B.nodes[id])).map(id => B.nodes[id]).filter(Boolean), CPS.filter(c => c.g.id === g.id).map(c => ({ x: c.x, y: c.y })));
+  const depth = g => { let d = 0, p = g; while ((p = parentOf(p)) && d < 20) d++; return d; };
+  Object.values(B.nodes).filter(isOrgGrp).sort((a, b) => depth(a) - depth(b)).forEach(n => { const pts = own(n).concat(...descOf(n.id).filter(isOrgGrp).map(own)); if (pts.length < 2) return; const hp = hull(pts).map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)); svg += '<path class="hull" d="M' + hp.join('L') + 'Z" fill="' + gcol(n) + '" stroke="' + gcol(n) + '"/>'; });
+  if (focus) CPS.filter(c => c.u.id === focus || c.g.id === focus).forEach(c => { const u = c.u; svg += '<path class="cpline" d="M' + u.x + ' ' + u.y + 'L' + c.x + ' ' + c.y + '" stroke="' + gcol(c.g) + '"/>'; });
   Object.values(groups).forEach(arr => {
     arr.sort((a, b) => a.id < b.id ? -1 : 1).forEach((l, i) => {
-      const away = l.type === 'member' && !l.secret && isOrgGrp(B.nodes[l.b]) && HM[l.a] && HM[l.a] !== l.b;
+      const away = false;
       if (l.type === 'member' && !away && focus !== l.a && focus !== l.b && !(sel && sel.kind === 'link' && sel.id === l.id)) return;
       const g = geom(l, i, arr.length); if (!g) return; G[l.id] = g;
       const mem = l.type === 'member', c = mem ? gcol(B.nodes[l.b]) : 'var(--t-' + g.T.id + ')', isSel = sel && sel.kind === 'link' && sel.id === l.id, dim = focus && l.a !== focus && l.b !== focus;
@@ -510,7 +532,10 @@ function renderInspector() {
     h += '<div class="idh"><div class="gchip' + (gkOf(n) === 'faction' ? ' fac' : '') + '" style="--gc:' + gcol(n) + '">' + esc(n.name) + '</div></div>';
     h += '<label class="field"><span>Name</span><input class="inp" id="cName" maxlength="40" value="' + esc(n.name) + '"></label>';
     h += '<div><h4>Kind</h4><div class="seg">' + [['place', 'Place'], ['faction', 'Faction']].map(k => '<button data-gk="' + k[0] + '"' + (gkOf(n) === k[0] ? ' class="on"' : '') + '>' + k[1] + '</button>').join('') + '</div></div>';
-    h += '<div><h4>Colour</h4><div class="gsw">' + GCOL.map((c, i) => '<button data-gcol="' + i + '"' + ((n.col || 0) === i ? ' class="on"' : '') + ' style="--gc:' + c + '" aria-label="Colour ' + (i + 1) + '"></button>').join('') + '</div></div>';
+    h += '<div><h4>Colour</h4><div class="gsw">' + GCOL.map((c, i) => '<button data-gcol="' + i + '"' + (!n.hex && (n.col || 0) === i ? ' class="on"' : '') + ' style="--gc:' + c + '" aria-label="Colour ' + (i + 1) + '"></button>').join('') + '</div></div>';
+    { const bad = new Set([n.id].concat(descOf(n.id).map(k => k.id))), opts = Object.values(B.nodes).filter(g => isGrp(g) && gkOf(g) === gkOf(n) && !bad.has(g.id)).sort((a, b) => a.name.localeCompare(b.name)), par = parentOf(n), kids = kidsOf(n.id);
+      h += '<label class="field"><span>Inside</span><select class="sel" id="gParent"><option value="">Nowhere</option>' + opts.map(g => '<option value="' + esc(g.id) + '"' + (par && par.id === g.id ? ' selected' : '') + '>' + esc(g.name) + '</option>').join('') + '</select></label>';
+      if (kids.length) h += '<div><h4>Inside it (' + kids.length + ')</h4><div class="prow">' + kids.sort((a, b) => a.name.localeCompare(b.name)).map(g => '<button class="gchip sm' + (gkOf(g) === 'faction' ? ' fac' : '') + '" data-node="' + esc(g.id) + '" style="--gc:' + gcol(g) + '">' + esc(g.name) + '</button>').join('') + '</div></div>'; }
     h += '<div><h4>Members (' + mem.length + ')</h4>' + (mem.length ? '<ul class="rel gmem">' + mem.map(l => '<li data-node="' + esc(l.a) + '"' + (l.secret ? ' class="sec"' : '') + '><span>' + esc(nm(l.a)) + '</span><button class="gsec' + (l.secret ? ' on' : '') + '" data-gsecret="' + esc(l.id) + '">secret</button><button class="x" data-unlink="' + esc(l.id) + '" aria-label="Take out of the group">×</button></li>').join('') + '</ul>' : '<p class="muted">None yet.</p>') + '</div>';
     if (ties.length) h += '<div><h4>Ties</h4><ul class="rel">' + relList(ties) + '</ul></div>';
     h += '<label class="field"><h4 style="margin:0">Notes</h4><textarea class="inp" id="insNote">' + esc(n.note || '') + '</textarea></label>';
@@ -664,20 +689,31 @@ function setOrg(k) {
    round it; units in none of them together at the end; the other kind's pills in a row along the top; idea cards to the right */
 function sortGroups() {
   const k = orgK(), N = Object.values(B.nodes), grps = N.filter(n => isGrp(n) && gkOf(n) === k), other = N.filter(n => isGrp(n) && gkOf(n) !== k);
-  const home = homeMap(k);
-  const cl = grps.map(g => ({ g, m: N.filter(n => home[n.id] === g.id).map(n => n.id).sort((a, b) => nm(a).localeCompare(nm(b))) }));
-  const loose = N.filter(n => n.kind !== 'note' && !isGrp(n) && !home[n.id]).map(n => n.id).sort((a, b) => nm(a).localeCompare(nm(b)));
-  if (loose.length) cl.push({ g: null, m: loose });
+  const home = homeMap(k), cps = copyList(), byName = (a, b) => nm(a).localeCompare(nm(b));
+  /* one cluster a group: its pill, its own units and copies round it, the places inside it in a ring outside those */
+  const make = g => { const m = N.filter(n => home[n.id] === g.id).map(n => n.id).sort(byName).map(id => ({ id })).concat(cps.filter(c => c.g.id === g.id).sort((a, b) => byName(a.u.id, b.u.id)).map(c => ({ lid: c.l.id })));
+    const kids = kidsOf(g.id).filter(c => gkOf(c) === k).map(make).sort((a, b) => b.r - a.r), inner = m.length ? 70 * Math.sqrt(m.length + 2.2) + 40 : 70;
+    let r = inner; if (kids.length) { const ring = inner + Math.max(...kids.map(c => c.r)) + 30, circ = kids.reduce((t, c) => t + 2 * c.r + 30, 0); const R = Math.max(ring, circ / (2 * Math.PI)); r = R + Math.max(...kids.map(c => c.r)); }
+    return { g, m, kids, inner, r: r + 20 }; };
+  const put = (c, cx, cy) => {
+    c.g.x = Math.round(cx); c.g.y = Math.round(cy);
+    c.m.forEach((e, i) => { const r = 70 * Math.sqrt(i + 2.2), a = i * 2.39996, x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r); if (e.id) { B.nodes[e.id].x = x; B.nodes[e.id].y = y; } else { B.links[e.lid].cx = x; B.links[e.lid].cy = y; } });
+    if (!c.kids.length) return;
+    const big = Math.max(...c.kids.map(q => q.r)), circ = c.kids.reduce((t, q) => t + 2 * q.r + 30, 0), R = Math.max(c.inner + big + 30, circ / (2 * Math.PI));
+    let ang = -Math.PI / 2; c.kids.forEach(q => { const span = (2 * q.r + 30) / circ * Math.PI * 2; ang += span / 2; put(q, cx + Math.cos(ang) * R, cy + Math.sin(ang) * R); ang += span / 2; });
+  };
+  const cl = grps.filter(g => !parentOf(g)).map(make);
+  const loose = N.filter(n => n.kind !== 'note' && !isGrp(n) && !home[n.id]).map(n => n.id).sort(byName);
+  if (loose.length) cl.push({ g: null, m: loose.map(id => ({ id })), kids: [], r: 70 * Math.sqrt(loose.length + .35) + 60 });
   if (!cl.length) return toast('Pin a few units first');
-  cl.forEach(c => { c.r = 70 * Math.sqrt(c.m.length + (c.g ? 2.2 : .35)) + 60; });
-  cl.sort((a, b) => (!a.g) - (!b.g) || b.m.length - a.m.length);
+  cl.sort((a, b) => (!a.g) - (!b.g) || b.r - a.r);
   const W = Math.max(Math.sqrt(cl.reduce((t, c) => t + 4 * c.r * c.r, 0)) * 1.5, 2 * Math.max(...cl.map(c => c.r)));
   let x = 0, y = 0, rowH = 0, maxX = 0;
   cl.forEach(c => {
     if (x > 0 && x + 2 * c.r > W) { x = 0; y += rowH + 40; rowH = 0; }
     const cx = x + c.r, cy = y + c.r; x += 2 * c.r + 40; rowH = Math.max(rowH, 2 * c.r); maxX = Math.max(maxX, x);
-    if (c.g) { c.g.x = Math.round(cx); c.g.y = Math.round(cy); }
-    c.m.forEach((id, i) => { const r = 70 * Math.sqrt(i + (c.g ? 2.2 : .35)), a = i * 2.39996; B.nodes[id].x = Math.round(cx + Math.cos(a) * r); B.nodes[id].y = Math.round(cy + Math.sin(a) * r); });
+    if (c.g) put(c, cx, cy);
+    else c.m.forEach((e, i) => { const r = 70 * Math.sqrt(i + .35), a = i * 2.39996; B.nodes[e.id].x = Math.round(cx + Math.cos(a) * r); B.nodes[e.id].y = Math.round(cy + Math.sin(a) * r); });
   });
   let px = 0; other.forEach(g => { g.x = Math.round(px + 70); g.y = -150; px += Math.max(150, g.name.length * 9 + 70) + 24; });
   N.filter(n => n.kind === 'note').forEach((n, i) => { n.x = Math.round(maxX + 60); n.y = i * 180; });
@@ -718,7 +754,9 @@ stage.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse' && e.button > 1) return;
   const t = e.target;
   if (t.closest('.overlay') || t.closest('#tagedit')) return;
-  const nodeEl = t.closest('.node'), noteEl = t.closest('.note'), tagEl = t.closest('.tag'), edgeEl = t.closest('.edge'), onHandle = !!t.closest('.handle');
+  const copyEl = t.closest('.copy');
+  if (copyEl && e.button === 0 && !linkMode) { closeMenus(); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { stage.setPointerCapture(e.pointerId); } catch (err) {} e.preventDefault(); const c = CP.find(q => q.l.id === copyEl.dataset.cid); if (!c) return; const p0 = toWorld(e.clientX, e.clientY); drag = { pid: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false, kind: 'node', nid: c.u.id, px: p0.x, py: p0.y, grp: [], cps: [{ lid: c.l.id, x: c.x, y: c.y }], copy: true }; return; }
+  const nodeEl = t.closest('.node:not(.copy)'), noteEl = t.closest('.note'), tagEl = t.closest('.tag'), edgeEl = t.closest('.edge'), onHandle = !!t.closest('.handle');
   const nid = nodeEl ? nodeEl.dataset.id : noteEl ? noteEl.dataset.id : null, lid = tagEl ? tagEl.dataset.id : edgeEl ? edgeEl.getAttribute('data-id') : null;
   if (noteEl && t.tagName === 'TEXTAREA') { if (!sel || sel.id !== nid) { sel = { kind: 'node', id: nid }; noteEl.classList.add('sel'); drawEdges(); renderPanels(); } return; }
   closeMenus();
@@ -730,7 +768,7 @@ stage.addEventListener('pointerdown', e => {
   if (ptrs.size > 2) return;
   const p = toWorld(e.clientX, e.clientY), base = { pid: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false };
   if (nodeEl && e.button === 0 && (linkMode || e.shiftKey || onHandle)) drag = Object.assign(base, { kind: 'link', from: nid, tap: linkMode && !onHandle });
-  else if (nid && e.button === 0) { const n = B.nodes[nid], grp = isGrp(n) ? (isOrgGrp(n) !== e.altKey ? [nid].concat(Object.values(B.links).filter(l => l.type === 'member' && l.b === nid && !l.secret).map(l => l.a)) : [nid]) : e.altKey && n.kind !== 'note' ? groupOf(nid) : multi.has(nid) ? [...multi].filter(id => B.nodes[id]) : [nid]; drag = Object.assign(base, { kind: 'node', nid, px: p.x, py: p.y, grp: grp.map(id => ({ id, x: B.nodes[id].x, y: B.nodes[id].y })) }); }
+  else if (nid && e.button === 0) { const n = B.nodes[nid], gset = isGrp(n) && isOrgGrp(n) !== e.altKey ? [n].concat(descOf(nid)) : null, HMd = gset ? homeMap(orgK()) : null, grp = gset ? [...new Set(gset.map(g => g.id).concat(...gset.map(g => Object.values(B.links).filter(l => l.type === 'member' && l.b === g.id && !l.secret && (HMd[l.a] === g.id || !isOrgGrp(g) || isGrp(B.nodes[l.a]))).map(l => l.a))))] : isGrp(n) ? [nid] : e.altKey && n.kind !== 'note' ? groupOf(nid) : multi.has(nid) ? [...multi].filter(id => B.nodes[id]) : [nid]; const gids = gset ? new Set(gset.map(g => g.id)) : null; drag = Object.assign(base, { kind: 'node', nid, px: p.x, py: p.y, grp: grp.filter(id => B.nodes[id]).map(id => ({ id, x: B.nodes[id].x, y: B.nodes[id].y })), cps: gids ? CP.filter(c => gids.has(c.g.id)).map(c => ({ lid: c.l.id, x: c.x, y: c.y })) : [] }); }
   else if (lid && e.button === 0) drag = Object.assign(base, { kind: 'edge', lid, vx: B.view.x, vy: B.view.y });
   else if (e.button === 0 && (groupMode || e.altKey)) drag = Object.assign(base, { kind: 'lasso', pts: [p] });
   else drag = Object.assign(base, { kind: 'pan', vx: B.view.x, vy: B.view.y });
@@ -747,6 +785,7 @@ stage.addEventListener('pointermove', e => {
   else if (drag.kind === 'node') {
     const mx = p.x - drag.px, my = p.y - drag.py;
     drag.grp.forEach(g => { const n = B.nodes[g.id]; if (!n) return; n.x = Math.round(g.x + mx); n.y = Math.round(g.y + my); const el = elById.get(n.id); if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; if (drag.grp.length > 1) el.classList.add('grab'); } });
+    (drag.cps || []).forEach(c => { const l = B.links[c.lid]; if (!l) return; l.cx = Math.round(c.x + mx); l.cy = Math.round(c.y + my); const el = elById.get('cp:' + c.lid); if (el) { el.style.left = l.cx + 'px'; el.style.top = l.cy + 'px'; } const q = CP.find(z => z.l.id === c.lid); if (q) { q.x = l.cx; q.y = l.cy; } });
     if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawEdges(); });
   } else if (drag.kind === 'lasso') {
     drag.pts.push(p); $('temp').setAttribute('d', 'M' + drag.pts.map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)).join('L') + 'Z');
@@ -818,7 +857,7 @@ function panelClick(e) {
   if (b.dataset.lstr) return setLink({ s: +b.dataset.lstr });
   if (b.dataset.unlink) { e.stopPropagation(); delete B.links[b.dataset.unlink]; return commit(); }
   if (b.dataset.gk) { B.nodes[sel.id].gk = b.dataset.gk; return commit(); }
-  if (b.dataset.gcol) { B.nodes[sel.id].col = +b.dataset.gcol; return commit(); }
+  if (b.dataset.gcol) { B.nodes[sel.id].col = +b.dataset.gcol; delete B.nodes[sel.id].hex; return commit(); }
   if (b.dataset.link) { select({ kind: 'link', id: b.dataset.link }); return; }
   if (b.dataset.node) { select({ kind: 'node', id: b.dataset.node }); centreOn(b.dataset.node); return; }
   if (b.dataset.notecol) { B.nodes[sel.id].color = b.dataset.notecol; return commit(); }
@@ -839,6 +878,7 @@ $('inspector').addEventListener('change', e => {
   if (t.id === 'insNote') return commit({ light: true });
   if (t.id === 'insSecret') return setLink({ secret: t.checked });
   if (!n) return;
+  if (t.id === 'gParent') { if (t.value) n.parent = t.value; else delete n.parent; return commit(); }
   if (t.id === 'cNick') { const v = t.value.trim(); if (v && v !== info(Object.assign({}, n, { nick: '' })).gname) n.nick = v; else delete n.nick; } else if (t.id === 'cName') n.name = t.value.trim() || 'Unnamed'; else if (t.id === 'cSub') n.sub = t.value.trim(); else if (t.id === 'cShape') n.shape = t.value; else if (t.id === 'cFaction') n.faction = t.value; else if (t.id === 'cRace') { if (t.value) n.race = t.value; else delete n.race; } else return;
   commit();
 });
@@ -938,6 +978,68 @@ $('btnGroup').addEventListener('click', () => { groupMode = !groupMode; if (grou
 $('btnLink').addEventListener('click', () => { linkMode = !linkMode; if (linkMode) groupMode = false; pendingSrc = null; renderNodes(); renderOverlays(); if (linkMode) toast('Tie mode: drag from one unit to another, or tap one then the other'); });
 $('btnNote').addEventListener('click', addNote);
 $('orgSeg').addEventListener('click', e => { const b = e.target.closest('[data-org]'); if (b) setOrg(b.dataset.org); });
+/* ───────── THE GAME'S MAP (2026-11-18): every zone, district and Disaster City plot as a ready place group, the world map beside them ───────── */
+const PL = D.places || { zones: [], world: null };
+const TERR = { coast: '#9cc9e0', snow: '#f1f4f6', mountain: '#a39b8f', grass: '#a9c98c', forest: '#5d8d59', scrub: '#c3b585', mesa: '#c38c5e', desert: '#e2cf98' };
+function hueCol(hex) { const v = parseInt(hex.slice(1), 16), r = (v >> 16) / 255, g = (v >> 8 & 255) / 255, b = (v & 255) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  const hue = c => { if (c.mx === c.mn) return -1; let h = c.mx === c.r ? (c.g - c.b) / (c.mx - c.mn) : c.mx === c.g ? 2 + (c.b - c.r) / (c.mx - c.mn) : 4 + (c.r - c.g) / (c.mx - c.mn); return (h * 60 + 360) % 360; };
+  const me = { r, g, b, mx, mn }; if (mx - mn < .12) return 11; const h = hue(me); let best = 0, bd = 999;
+  GCOL.forEach((c, i) => { if (i === 11) return; const w = parseInt(c.slice(1), 16), q = { r: (w >> 16) / 255, g: (w >> 8 & 255) / 255, b: (w & 255) / 255 }; q.mx = Math.max(q.r, q.g, q.b); q.mn = Math.min(q.r, q.g, q.b); const d = Math.min(Math.abs(hue(q) - h), 360 - Math.abs(hue(q) - h)); if (d < bd) { bd = d; best = i; } }); return best; }
+const placeSrc = (z, dk, pn) => 'map:' + z.k + (dk != null ? ':' + dk : '') + (pn != null ? ':' + pn : '');
+/* a place already on the board: the same map place, or a place group of his with the same name ("Sewers" = "The Sewers", "Came A Lot" = "Came A Lot Kingdom") */
+const pwords = t => String(t).toLowerCase().replace(/^the\s+/, '').split(/\s+/).map(w => w.replace(/[^a-z0-9+]+/g, '')).filter(Boolean);
+const psame = (x, y) => { const a = pwords(x), b = pwords(y), [s1, l1] = a.length <= b.length ? [a, b] : [b, a]; return s1.length > 0 && s1.every((w, i) => w === l1[i]) && l1.length - s1.length <= 1 && !l1.slice(s1.length).includes('+') && s1.join('').length >= 4; };
+function placeOnBoard(src, name) { return Object.values(B.nodes).find(n => isGrp(n) && n.src === src) || Object.values(B.nodes).find(n => isGrp(n) && !n.src && gkOf(n) === 'place' && psame(n.name, name)); }
+function addPlace(src, name, hex, parentId) {
+  let g = placeOnBoard(src, name);
+  if (g) { g.src = src; if (parentId && !parentOf(g) && parentId !== g.id) g.parent = parentId; return g.id; }
+  const par = parentId && B.nodes[parentId], p = freeSpot(par ? { x: par.x + 160, y: par.y + 120 } : viewCentre(), takenList()), id = uid('c');
+  B.nodes[id] = { id, kind: 'custom', name: String(name).slice(0, 40), sub: '', shape: 'group', col: hueCol(hex), gk: 'place', faction: '', x: p.x, y: p.y, note: '', src };
+  if (parentId) B.nodes[id].parent = parentId; return id;
+}
+function addFromMap(zk, dk, pn, withKids) {
+  const z = PL.zones.find(q => q.k === zk); if (!z) return;
+  const zid = addPlace(placeSrc(z), z.n, z.c, null); let last = zid;
+  const addD = d => { const did = addPlace(placeSrc(z, d.k), d.n, d.c, zid); last = did; return did; };
+  if (dk == null) { if (withKids) z.d.forEach(addD); }
+  else { const d = z.d.find(q => q.k === dk); if (!d) return; const did = addD(d); if (pn != null) last = addPlace(placeSrc(z, d.k, pn), pn, d.c, did); else if (withKids) d.p.forEach(n => addPlace(placeSrc(z, d.k, n), n, d.c, did)); }
+  commit(); return last;
+}
+function mapHTML() {
+  const on = (src, n) => !!placeOnBoard(src, n), btn = (on2, a) => on2 ? '<span class="pon">on board</span>' : '<button class="btn sm" ' + a + '>Add</button>';
+  return PL.zones.map(z => '<div class="pz" data-z="' + esc(z.k) + '"><div class="pzh"><i style="--gc:' + z.c + '"></i><button class="pzn" data-zopen="' + esc(z.k) + '">' + esc(z.n) + '</button>' + btn(on(placeSrc(z), z.n), 'data-padd="' + esc(z.k) + '"') + (z.d.length ? '<button class="btn sm" data-paddall="' + esc(z.k) + '">Add with ' + z.d.length + ' districts</button>' : '') + '</div>' +
+    '<div class="pzd"' + (mapOpen === z.k ? '' : ' hidden') + '>' + z.d.map(d => '<div class="pd"><div class="pdh"><span>' + esc(d.n) + '</span>' + btn(on(placeSrc(z, d.k), d.n), 'data-padd="' + esc(z.k) + '" data-pd="' + esc(d.k) + '"') + (d.p.length ? '<button class="btn sm" data-paddall="' + esc(z.k) + '" data-pd="' + esc(d.k) + '">Add with ' + d.p.length + ' places</button>' : '') + '</div>' +
+      (d.p.length ? '<div class="pps">' + d.p.map(n => on(placeSrc(z, d.k, n), n) ? '<span class="pp on">' + esc(n) + '</span>' : '<button class="pp" data-padd="' + esc(z.k) + '" data-pd="' + esc(d.k) + '" data-pp="' + esc(n) + '">' + esc(n) + '</button>').join('') + '</div>' : '') + '</div>').join('') + '</div></div>').join('');
+}
+let mapOpen = null;
+function drawWorld(cv) {
+  const W = PL.world; if (!W || !cv) return; const S = 5, x = cv.getContext('2d'); cv.width = W.w * S; cv.height = W.h * S;
+  x.fillStyle = '#dfe4de'; x.fillRect(0, 0, cv.width, cv.height);
+  W.g.forEach((row, j) => { for (let i = 0; i < row.length; i++) { const t = W.key[row[i]]; x.fillStyle = TERR[t] || '#dfe4de'; x.fillRect(i * S, j * S, S, S); } });
+  x.font = '600 11px system-ui, sans-serif'; x.textAlign = 'center';
+  const placed = [], hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  PL.zones.forEach(z => { if (!z.at) return; const px = (z.at[0] - W.x0) * S, py = (z.at[1] - W.y0) * S; x.beginPath(); x.arc(px, py, mapOpen === z.k ? 9 : 6, 0, Math.PI * 2); x.fillStyle = z.c; x.fill(); x.lineWidth = 2; x.strokeStyle = '#1b2421'; x.stroke(); placed.push({ x: px - 7, y: py - 7, w: 14, h: 14 }); });
+  PL.zones.forEach(z => { if (!z.at) return; const px = (z.at[0] - W.x0) * S, py = (z.at[1] - W.y0) * S, tw = x.measureText(z.n).width + 8;
+    const tries = [[-tw / 2, 9], [-tw / 2, -24], [10, -7], [-tw - 10, -7], [-tw / 2, 26], [-tw / 2, -41], [10, 10], [-tw - 10, 10], [10, -24], [-tw - 10, -24]].map(o => ({ x: px + o[0], y: py + o[1], w: tw, h: 15 }));
+    const r = tries.find(t => !placed.some(q => hit(t, q))) || tries[0]; placed.push(r);
+    x.fillStyle = mapOpen === z.k ? '#1b2421' : 'rgba(255,255,255,.88)'; x.fillRect(r.x, r.y, r.w, r.h); x.fillStyle = mapOpen === z.k ? '#fff' : '#1b2421'; x.fillText(z.n, r.x + r.w / 2, r.y + 11); });
+}
+function openMap() {
+  const off = PL.zones.filter(z => !z.at);
+  modal('<h2>Places from the game</h2><div class="mapwrap"><div class="mapside"><canvas id="worldMap"></canvas>' + (off.length ? '<div class="prow offmap">' + off.map(z => '<button class="gchip sm" style="--gc:' + z.c + ';color:#1b2421" data-zopen="' + esc(z.k) + '">' + esc(z.n) + '</button>').join('') + '</div>' : '') + '</div><div class="maplist" id="mapList">' + mapHTML() + '</div></div><div class="acts"><button class="btn pri" data-x="cancel">Done</button></div>', d => {
+    d.classList.add('wide'); drawWorld($('worldMap'));
+    const redraw = () => { const sc = $('mapList').scrollTop; $('mapList').innerHTML = mapHTML(); $('mapList').scrollTop = sc; drawWorld($('worldMap')); };
+    const show = k => { mapOpen = mapOpen === k ? null : k; redraw(); const row = d.querySelector('.pz[data-z="' + k + '"]'); if (row && mapOpen) row.scrollIntoView({ block: 'nearest' }); };
+    $('worldMap').addEventListener('click', e => { const W = PL.world, r = e.target.getBoundingClientRect(), sx = e.target.width / r.width, mx = (e.clientX - r.left) * sx, my = (e.clientY - r.top) * sx; let best = null, bd = 40; PL.zones.forEach(z => { if (!z.at) return; const dd = Math.hypot((z.at[0] - W.x0) * 5 - mx, (z.at[1] - W.y0) * 5 - my); if (dd < bd) { bd = dd; best = z.k; } }); if (best) show(best); });
+    d.addEventListener('click', e => {
+      const o = e.target.closest('[data-zopen]'); if (o) return show(o.dataset.zopen);
+      const a = e.target.closest('[data-padd],[data-paddall]'); if (!a) { if (e.target.closest('[data-x]')) closeModal(); return; }
+      const all = a.hasAttribute('data-paddall'), zk = a.dataset.padd || a.dataset.paddall, id = addFromMap(zk, a.dataset.pd != null ? a.dataset.pd : null, a.dataset.pp != null ? a.dataset.pp : null, all);
+      if (id) { const n = B.nodes[id]; toast(n.name + ' is on the board'); } redraw();
+    });
+  });
+}
+$('btnMap').addEventListener('click', openMap);
 $('btnGroupNode').addEventListener('click', () => {
   modal('<h2>Add a group</h2><label class="field"><span>Name</span><input class="inp" id="mName" maxlength="40" autofocus placeholder="The Circus"></label><div class="seg" id="mGk"><button data-gk="place"' + (orgK() === 'place' ? ' class="on"' : '') + '>Place</button><button data-gk="faction"' + (orgK() === 'faction' ? ' class="on"' : '') + '>Faction</button></div><div class="gsw" id="mCol">' + GCOL.map((c, i) => '<button data-col="' + i + '"' + (i ? '' : ' class="on"') + ' style="--gc:' + c + '" aria-label="Colour ' + (i + 1) + '"></button>').join('') + '</div><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="ok">Pin to board</button></div>', d => {
     let col = Object.values(B.nodes).filter(isGrp).length % GCOL.length, gk = orgK(); [...$('mCol').children].forEach((c, i) => c.classList.toggle('on', i === col));
