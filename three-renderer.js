@@ -74199,10 +74199,21 @@ const ThreeRenderer = (function () {
                roof   form: 'gable' | 'hip' | 'pyramid' | 'shed' | 'barrel', size: [w, h, d] (the ridge along x; a shed's high edge at -z) · over (the eaves' overhang) · keyEnd (the gable wall) · seg
                quad   size: [w, h] (a panel facing +z: a wall, a sign with uv: 'fit', a window) · hole: [x, w, h] (a doorway cut from its foot) · flat: true (size [w, d], lying, facing up: paint, water)
                poly   pts: [[x, z], ...] (a convex plan), h · keyTop · top: false
+               archw  size: [w, h, d] (a wall, its front at +z) with a ROUND-HEADED OPENING · hole: [width, the springing's height, centre x] · rise (the head's
+                      height: none = half the width, a true half circle) · seg · keyIn / tintIn (the sheet / tint inside the opening) · faces: 'fb' · top: true · ends: true
+                      · rim: [width, how far it stands out] (the archivolt: a raised band round the head, on the front; keyRim / tintRim)
+               sweep  prof: [[d, y], ...] (a SECTION: d metres out from the path along its normal, y up) carried along `path` (a name in the row's `paths`, or
+                      [[x, z, nx, nz], ...]: a point and its unit normal, the part's frame) · closed · from / to (the points it runs between) · keys / tints
+                      (a sheet / a tint a section's segment; a key `false` = that segment not drawn) · flip · ud (the sheet is measured along the line this far out). The section is listed CLOCKWISE round the
+                      solid (d to the right, y up): going up = the face that looks in, going out = a top, going down = the face that looks out.
+       THE CURVED BUILDINGS (2026-11-18, the Colosseum): a row's `paths: { name: [[x, z, nx, nz], ...] }` are lines in the row's frame that its parts
+       share. along: { path, at: [points] | from / to / step, off } on ANY part = the part once at each of those points, its front turned along the
+       point's normal, `off` m out along it (the part's own p[0] = a shift sideways along the line, p[1] its height, p[2] added to `off`).
        One mesh per material per row (a building never joins a city-wide mesh: the plot chunks cull it whole). */
     function _hqArchGeometry(row, C) {
         var G = {}, D2R = Math.PI / 180;
         var parts = [];
+        var pathOf = function (q) { return (typeof q === 'string') ? ((row.paths && row.paths[q]) || null) : (Array.isArray(q) ? q : null); };   // THE CURVED BUILDINGS: a row's named lines
         (row.parts || []).forEach(function (p0) {
             if (!p0 || !p0.s) return;
             var list = [p0];
@@ -74212,6 +74223,16 @@ const ThreeRenderer = (function () {
                     var a = ((p0.ring.a0 || 0) + (p0.ring.arc || 360) * i / (p0.ring.arc && p0.ring.arc < 360 ? Math.max(1, p0.ring.n - 1) : p0.ring.n)) * D2R, pp = p0.p || [0, 0, 0];
                     list.push(Object.assign({}, p0, { p: [pp[0] + Math.cos(a) * p0.ring.r, pp[1], pp[2] + Math.sin(a) * p0.ring.r], ry: (p0.ry || 0) + 90 - a / D2R, ring: null }));
                 }
+            }
+            if (p0.along) {   // THE CURVED BUILDINGS: the part once at each named point of a path, its front along the point's normal
+                var alP = pathOf(p0.along.path), alL = [];
+                if (alP && alP.length) {
+                    var alI = p0.along.at; if (!alI) { alI = []; for (var alK = p0.along.from || 0; alK <= (p0.along.to != null ? p0.along.to : alP.length - 1); alK += Math.max(1, p0.along.step || 1)) alI.push(alK); }
+                    var alQ = p0.p || [0, 0, 0], alO = (+p0.along.off || 0) + alQ[2];
+                    alI.forEach(function (ii) { var q4 = alP[((ii % alP.length) + alP.length) % alP.length]; if (!q4 || q4.length < 4) return;
+                        alL.push(Object.assign({}, p0, { p: [q4[0] + q4[2] * alO + q4[3] * alQ[0], alQ[1], q4[1] + q4[3] * alO - q4[2] * alQ[0]], ry: (p0.ry || 0) + Math.atan2(-q4[2], q4[3]) / D2R, along: null })); });
+                }
+                list = alL;
             }
             list.forEach(function (p1) {
                 var n = Math.max(1, Math.min(200, Math.round(p1.n || 1))), st = p1.step || [0, 0, 0], q = p1.p || [0, 0, 0];
@@ -74360,6 +74381,70 @@ const ThreeRenderer = (function () {
                 if (P.top !== false) {
                     var gp = grp(P.keyTop || key, tT), ti = pts.map(function (q) { return put(gp, [q[0], phh, q[1]], [q[0] / mu, q[1] / mv]); });
                     for (var pk = 1; pk < ti.length - 1; pk++) gp.idx.push(ti[0], ti[pk], ti[pk + 1]);
+                }
+            } else if (P.s === 'archw') {
+                /* THE ROUND ARCH (2026-11-18, the Colosseum: "it looks like absolute shit": its arches were boxes): a wall with a round-headed opening
+                   through it. The two faces, the opening's two jambs and its curved soffit; the wall's top and ends only when asked (a pier and a cornice hide them). */
+                var aW = S[0] / 2, aH = S[1], aD = S[2] / 2, aHo = P.hole || [S[0] * 0.6, S[1] * 0.5], aO = Math.min(S[0] - 0.02, +aHo[0] || 1) / 2, aC = +aHo[2] || 0, aS = +aHo[1] || 0;
+                var aR = (P.rise != null) ? +P.rise : aO, aN = Math.max(2, Math.min(24, Math.round(P.seg || 10)));
+                if (aS + aR > aH - 0.01) aR = Math.max(0.01, aH - 0.01 - aS);
+                var aX0 = aC - aO, aX1 = aC + aO, aArc = [], aLen = 0;
+                for (var ai = 0; ai <= aN; ai++) { var aT = Math.PI * ai / aN, aPx = aC - aO * Math.cos(aT), aPy = aS + aR * Math.sin(aT); if (ai) aLen += Math.hypot(aPx - aArc[ai - 1][0], aPy - aArc[ai - 1][1]); aArc.push([aPx, aPy, aLen]); }
+                var aFaces = P.faces || 'fb';
+                var aFace = function (z, front) {
+                    var gf = grp(key), fv = function (x, y) { return put(gf, [x, y, z], [(front ? x + aW : aW - x) / mu, y / mv]); };
+                    var f4 = function (i0, i1, i2, i3) { if (front) gf.idx.push(i0, i1, i2, i0, i2, i3); else gf.idx.push(i0, i2, i1, i0, i3, i2); };
+                    if (aX0 > -aW + 1e-3) f4(fv(-aW, 0), fv(aX0, 0), fv(aX0, aH), fv(-aW, aH));
+                    if (aX1 < aW - 1e-3) f4(fv(aX1, 0), fv(aW, 0), fv(aW, aH), fv(aX1, aH));
+                    var flo = [], fhi = []; aArc.forEach(function (q) { flo.push(fv(q[0], q[1])); fhi.push(fv(q[0], aH)); });
+                    for (var fk = 0; fk < aN; fk++) f4(flo[fk], flo[fk + 1], fhi[fk + 1], fhi[fk]);
+                };
+                if (aFaces.indexOf('f') >= 0) aFace(aD, true);
+                if (aFaces.indexOf('b') >= 0) aFace(-aD, false);
+                if (P.inside !== false) {
+                    var gi = grp(P.keyIn || key, (P.tintIn != null) ? P.tintIn : null), iv = function (x, y, z, u, v) { return put(gi, [x, y, z], [u / mu, v / mv]); };
+                    var j0 = iv(aX0, 0, aD, 0, 0), j1 = iv(aX0, 0, -aD, 2 * aD, 0), j2 = iv(aX0, aS, -aD, 2 * aD, aS), j3 = iv(aX0, aS, aD, 0, aS); gi.idx.push(j0, j1, j2, j0, j2, j3);
+                    j0 = iv(aX1, 0, -aD, 0, 0); j1 = iv(aX1, 0, aD, 2 * aD, 0); j2 = iv(aX1, aS, aD, 2 * aD, aS); j3 = iv(aX1, aS, -aD, 0, aS); gi.idx.push(j0, j1, j2, j0, j2, j3);
+                    var sB = [], sF = []; aArc.forEach(function (q) { sB.push(iv(q[0], q[1], -aD, 0, aS + q[2])); sF.push(iv(q[0], q[1], aD, 2 * aD, aS + q[2])); });
+                    for (var sk = 0; sk < aN; sk++) gi.idx.push(sB[sk], sB[sk + 1], sF[sk + 1], sB[sk], sF[sk + 1], sF[sk]);
+                }
+                if (P.rim && +P.rim[0] > 0) {   // the ARCHIVOLT: a raised band round the head of the opening, on the front
+                    var rW = +P.rim[0], rD = +P.rim[1] || 0.1, gr = grp(P.keyRim || key, (P.tintRim != null) ? P.tintRim : null), rI = [], rO = [], rOb = [], rIb = [];
+                    aArc.forEach(function (q, qi) { var rt = Math.PI * qi / aN, ox = aC - (aO + rW) * Math.cos(rt), oy = aS + (aR + rW) * Math.sin(rt);
+                        rI.push(put(gr, [q[0], q[1], aD + rD], [q[2] / mu, 0])); rO.push(put(gr, [ox, oy, aD + rD], [q[2] / mu, rW / mv]));
+                        rOb.push([ox, oy]); rIb.push([q[0], q[1]]); });
+                    for (var rk = 0; rk < aN; rk++) gr.idx.push(rI[rk], rI[rk + 1], rO[rk + 1], rI[rk], rO[rk + 1], rO[rk]);
+                    for (var rk2 = 0; rk2 < aN; rk2++) {
+                        quad(P.keyRim || key, [rOb[rk2][0], rOb[rk2][1], aD + rD], [rOb[rk2 + 1][0], rOb[rk2 + 1][1], aD + rD], [rOb[rk2 + 1][0], rOb[rk2 + 1][1], aD], [rOb[rk2][0], rOb[rk2][1], aD], 0.3, rD, P.tintRim);
+                        quad(P.keyRim || key, [rIb[rk2][0], rIb[rk2][1], aD], [rIb[rk2 + 1][0], rIb[rk2 + 1][1], aD], [rIb[rk2 + 1][0], rIb[rk2 + 1][1], aD + rD], [rIb[rk2][0], rIb[rk2][1], aD + rD], 0.3, rD, P.tintRim);
+                    }
+                }
+                if (P.top) quad(P.keyTop || key, [-aW, aH, aD], [aW, aH, aD], [aW, aH, -aD], [-aW, aH, -aD], 2 * aW, 2 * aD, tT);
+                if (P.ends) { quad(key, [aW, 0, aD], [aW, 0, -aD], [aW, aH, -aD], [aW, aH, aD], 2 * aD, aH); quad(key, [-aW, 0, -aD], [-aW, 0, aD], [-aW, aH, aD], [-aW, aH, -aD], 2 * aD, aH); }
+            } else if (P.s === 'sweep') {
+                /* THE SECTION ALONG A LINE (2026-11-18): how an amphitheatre is drawn: one section carried round the plan. Sharp between two segments of the
+                   section (a moulding's edges), smooth along the line (a curved wall reads round). */
+                var wP = pathOf(P.path), wF = P.prof || [];
+                if (!wP || wP.length < 2 || wF.length < 2) return;
+                var wN = wP.length, wC = !!P.closed, wI0 = (P.from != null) ? +P.from : 0, wI1 = (P.to != null) ? +P.to : (wC ? wI0 + wN : wN - 1), wS = [], wRun = 0, wPrev = null;
+                for (var wi = wI0; wi <= wI1; wi++) {
+                    var w0 = wP[((wi % wN) + wN) % wN], wnx, wnz;
+                    if (w0.length >= 4) { wnx = w0[2]; wnz = w0[3]; }
+                    else { var wa = wP[(((wi - 1) % wN) + wN) % wN], wb = wP[(((wi + 1) % wN) + wN) % wN]; if (!wC) { if (wi <= 0) wa = w0; if (wi >= wN - 1) wb = w0; } var wtx = wb[0] - wa[0], wtz = wb[1] - wa[1], wtl = Math.hypot(wtx, wtz) || 1; wnx = wtz / wtl; wnz = -wtx / wtl; }
+                    var wU = [w0[0] + wnx * (+P.ud || 0), w0[1] + wnz * (+P.ud || 0)];   // `ud`: the sheet's repeats are measured along the line this far out (a facade 28 m out from the arena's edge)
+                    if (wPrev) wRun += Math.hypot(wU[0] - wPrev[0], wU[1] - wPrev[1]);
+                    wPrev = wU; wS.push([w0[0], w0[1], wnx, wnz, wRun]);
+                }
+                var wV = 0;
+                for (var wj = 0; wj + 1 < wF.length; wj++) {
+                    var wA = wF[wj], wB = wF[wj + 1], wL = Math.hypot(wB[0] - wA[0], wB[1] - wA[1]); if (wL < 1e-4) continue;
+                    var wK = (P.keys && P.keys[wj] !== undefined) ? P.keys[wj] : key; if (wK === false) { wV += wL; continue; }
+                    var gs = grp(wK || null, (P.tints && P.tints[wj] != null) ? P.tints[wj] : null), wlo = [], whi = [];
+                    for (var wk = 0; wk < wS.length; wk++) { var ws = wS[wk];
+                        wlo.push(put(gs, [ws[0] + ws[2] * wA[0], wA[1], ws[1] + ws[3] * wA[0]], [ws[4] / mu, wV / mv]));
+                        whi.push(put(gs, [ws[0] + ws[2] * wB[0], wB[1], ws[1] + ws[3] * wB[0]], [ws[4] / mu, (wV + wL) / mv])); }
+                    for (var wq2 = 0; wq2 + 1 < wS.length; wq2++) { if (P.flip) gs.idx.push(wlo[wq2], whi[wq2 + 1], wlo[wq2 + 1], wlo[wq2], whi[wq2], whi[wq2 + 1]); else gs.idx.push(wlo[wq2], wlo[wq2 + 1], whi[wq2 + 1], wlo[wq2], whi[wq2 + 1], whi[wq2]); }
+                    wV += wL;
                 }
             }
         });
