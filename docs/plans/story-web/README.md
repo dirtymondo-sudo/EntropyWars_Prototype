@@ -14,6 +14,12 @@ to feed story ideas and the encounter system's "who defends who".
 - **Lasso** (toolbar, or G; or hold Alt / Option and drag on empty board): draw a loop; every unit and idea card
   inside it is picked (red ring). Drag any picked one and they all move. Click empty board or Escape to let go.
 - **Alt / Option-drag a unit**: moves everything tied to it, through any chain of ties.
+- **Group nodes** (`+ Group`, 11-18): a named, coloured pill (The Circus, DOOR, a faction). Tie a unit to it the usual way
+  (red handle or Shift-drag onto the pill) and it joins: a thin line in the group's colour and a soft shade around
+  the members, no tie needed between them. Drag the pill and its members come along (Alt-drag moves the pill alone).
+  Stored as a custom node with `shape: 'group'` + `col`, members as ties of type `member` (unit -> group); Alt-drag
+  of a unit does not travel through member ties. The game export lists them under `boardGroups`, not `relations`
+  or `groups` (what a group means in a fight is not decided).
 - No hint text in the panels (mondo hates helper text); the button title says it.
 
 ## Rebuilding after the roster changes

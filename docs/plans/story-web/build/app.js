@@ -35,6 +35,14 @@ const TYPES = [
   { id: 'other', n: 'knows', one: '{a} is tied to {b}', both: '{a} and {b} are tied', fx: null, sym: 1, dir: 'both' },
 ];
 const TYPE = Object.fromEntries(TYPES.map(t => [t.id, t]));
+/* a group node (Circus, DOOR, a faction): a unit tied to it is in that group; no tie needed between members */
+TYPE.member = { id: 'member', n: 'in', one: '{a} is in {b}', both: '{a} and {b} share a group', fx: null, dir: 'ab' };
+const GCOL = ['#c6352b', '#d06a12', '#c79a12', '#46962f', '#0e9393', '#3274c4', '#7d4fc4', '#a02d63'];
+const isGrp = n => !!n && n.kind === 'custom' && n.shape === 'group';
+const gcol = n => GCOL[(n && n.col) || 0] || GCOL[0];
+/* the units in a group node, or the groups a unit is in */
+const membersOf = (id, board) => Object.values((board || B).links).filter(l => l.type === 'member' && l.b === id).map(l => l.a);
+const groupsOf = (id, board) => Object.values((board || B).links).filter(l => l.type === 'member' && l.a === id).map(l => l.b);
 const FX_NOTE = { defend: 'the actor steps in when the target is attacked', defendRev: 'the target steps in when the actor is attacked', maybe: 'the actor might step in for the target', maybeRev: 'the target might step in for the actor', attack: 'the actor joins in against the target', avoid: 'the actor stays out of it' };
 const TEMPER_TEXT = { flee: 'runs', talk: 'talks', fight: 'fights' };
 const STARTS_TEXT = { mug: 'walks up and mugs (pay or fight)', ground: 'gives one warning on its own ground, then fights', sight: 'attacks on sight', defend: 'starts a fight when it sees someone it defends get struck' };
@@ -83,7 +91,7 @@ function sanitizeBoard(b) {
         m.id = raceId(m.race, m.g); if (m.id !== String(n.id)) remap[String(n.id)] = m.id; if (o.nodes[m.id] && m.id !== String(n.id)) return;
       }
       else if (n.kind === 'cast') { m.cast = n.cast; m.id = 's:' + n.cast; if (m.id !== String(n.id)) remap[String(n.id)] = m.id; }
-      else { m.kind = 'custom'; m.name = String(n.name || n.race || 'Unnamed').slice(0, 60); m.sub = String(n.sub || '').slice(0, 60); m.faction = FNAME[n.faction] ? n.faction : ''; m.shape = /^(character|org|boss|place)$/.test(n.shape) ? n.shape : 'character'; if (RACE[n.race] && n.kind !== 'race') m.race = n.race; }
+      else { m.kind = 'custom'; m.name = String(n.name || n.race || 'Unnamed').slice(0, 60); m.sub = String(n.sub || '').slice(0, 60); m.faction = FNAME[n.faction] ? n.faction : ''; m.shape = /^(character|org|boss|place|group)$/.test(n.shape) ? n.shape : 'character'; if (m.shape === 'group') m.col = clamp(Math.round(num(n.col, 0)), 0, 7); if (RACE[n.race] && n.kind !== 'race') m.race = n.race; }
     }
     o.nodes[m.id] = m;
   });
@@ -303,6 +311,7 @@ function renderNodes() {
   Object.values(B.nodes).forEach(n => {
     const s = (sel && sel.kind !== 'link' && sel.id === n.id ? ' sel' : '') + (multi.has(n.id) ? ' lasso' : '');
     if (n.kind === 'note') { h += '<div class="note c-' + (n.color || 'y') + s + '" data-id="' + esc(n.id) + '" style="left:' + n.x + 'px;top:' + n.y + 'px"><div class="grip"><span>Idea</span><span>drag</span></div><textarea spellcheck="false" placeholder="Story idea, hook, open question…" aria-label="Story idea">' + esc(n.text) + '</textarea></div>'; return; }
+    if (isGrp(n)) { const k = membersOf(n.id).length; h += '<div class="node gnode' + s + (pendingSrc === n.id ? ' src' : '') + '" data-id="' + esc(n.id) + '" style="left:' + n.x + 'px;top:' + n.y + 'px;--gc:' + gcol(n) + '"><div class="pic gp">' + esc(n.name) + '<small>' + k + '</small></div><div class="handle"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6h8M6.5 2.5 10 6l-3.500 3.500"/></svg></div></div>'; return; }
     const o = info(n);
     h += '<div class="node' + s + (pendingSrc === n.id ? ' src' : '') + '" data-id="' + esc(n.id) + '" style="left:' + n.x + 'px;top:' + n.y + 'px">' + picHTML(o) + (o.boss ? '<span class="boss">BOSS</span>' : '') + (o.badge ? '<span class="boss story">' + o.badge + '</span>' : '') +
       '<div class="nm">' + esc(o.name) + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + '</div>' +
@@ -319,8 +328,8 @@ function geom(l, i, n) {
   const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
   const off = (i - (n - 1) / 2) * 52, mx = (p.x + q.x) / 2 + nx * off, my = (p.y + q.y) / 2 + ny * off;
   const cx = 2 * mx - (p.x + q.x) / 2, cy = 2 * my - (p.y + q.y) / 2;
-  const T = TYPE[l.type] || TYPE.other, arrows = !(T.sym && l.dir === 'both'), aA = arrows && (l.dir === 'ba' || l.dir === 'both'), aB = arrows && (l.dir === 'ab' || l.dir === 'both');
-  const sw = [0, 1.7, 2.7, 4.4][l.s || 2], al = 9 + sw * 1.6;
+  const T = TYPE[l.type] || TYPE.other, arrows = !(T.sym && l.dir === 'both') && l.type !== 'member', aA = arrows && (l.dir === 'ba' || l.dir === 'both'), aB = arrows && (l.dir === 'ab' || l.dir === 'both');
+  const sw = l.type === 'member' ? 1.6 : [0, 1.7, 2.7, 4.4][l.s || 2], al = 9 + sw * 1.6;
   const end = (N, arrow) => { let ux = cx - N.x, uy = cy - N.y; const m = Math.hypot(ux, uy) || 1; ux /= m; uy /= m; const r0 = R_NODE + 5; return { tx: N.x + ux * r0, ty: N.y + uy * r0, lx: N.x + ux * (r0 + (arrow ? al * .8 : 0)), ly: N.y + uy * (r0 + (arrow ? al * .8 : 0)), ux, uy }; };
   const ea = end(A, aA), eb = end(Bn, aB);
   const path = 'M' + ea.lx.toFixed(1) + ' ' + ea.ly.toFixed(1) + 'Q' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ' ' + eb.lx.toFixed(1) + ' ' + eb.ly.toFixed(1);
@@ -328,20 +337,25 @@ function geom(l, i, n) {
   const tw = clamp(Math.hypot(eb.tx - ea.tx, eb.ty - ea.ty) - 36, 96, 230);
   return { tw, path, sw, heads: (aA ? head(ea) : '') + (aB ? head(eb) : ''), m: { x: .25 * ea.lx + .5 * cx + .25 * eb.lx, y: .25 * ea.ly + .5 * cy + .25 * eb.ly }, T };
 }
+function hull(P) { const p = P.map(q => ({ x: q.x, y: q.y })).sort((a, b) => a.x - b.x || a.y - b.y), cr = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x), lo = [], up = [];
+  p.forEach(q => { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); });
+  p.slice().reverse().forEach(q => { while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); });
+  return lo.slice(0, -1).concat(up.slice(0, -1)); }
 function drawEdges() {
   const groups = {}; G = {};
   Object.values(B.links).forEach(l => { const k = l.a < l.b ? l.a + '|' + l.b : l.b + '|' + l.a; (groups[k] = groups[k] || []).push(l); });
   let svg = '', tags = '';
   const focus = sel && sel.kind === 'node' ? sel.id : null;
+  Object.values(B.nodes).forEach(n => { if (!isGrp(n)) return; const pts = [n].concat(membersOf(n.id).map(id => B.nodes[id]).filter(Boolean)); if (pts.length < 2) return; const hp = hull(pts).map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)); svg += '<path class="hull" d="M' + hp.join('L') + 'Z" fill="' + gcol(n) + '" stroke="' + gcol(n) + '"/>'; });
   Object.values(groups).forEach(arr => {
     arr.sort((a, b) => a.id < b.id ? -1 : 1).forEach((l, i) => {
       const g = geom(l, i, arr.length); if (!g) return; G[l.id] = g;
-      const c = 'var(--t-' + g.T.id + ')', isSel = sel && sel.kind === 'link' && sel.id === l.id, dim = focus && l.a !== focus && l.b !== focus;
+      const mem = l.type === 'member', c = mem ? gcol(B.nodes[l.b]) : 'var(--t-' + g.T.id + ')', isSel = sel && sel.kind === 'link' && sel.id === l.id, dim = focus && l.a !== focus && l.b !== focus;
       svg += '<g class="edge' + (isSel ? ' sel' : '') + (l.secret ? ' secret' : '') + '" data-id="' + esc(l.id) + '"' + (dim ? ' opacity=".22"' : '') + '><path class="hit" d="' + g.path + '"/>' +
         (isSel ? '<path class="halo" d="' + g.path + '" stroke-width="' + (g.sw + 9) + '"/>' : '') +
         '<path class="ln" d="' + g.path + '" stroke="' + c + '" stroke-width="' + g.sw + '"' + (g.T.dash ? ' stroke-dasharray="' + g.T.dash + '"' : '') + '/>' +
         (g.heads ? '<path class="ah" d="' + g.heads + '" fill="' + c + '"/>' : '') + '</g>';
-      tags += '<div class="tag' + (isSel ? ' sel' : '') + (dim ? ' dim' : '') + '" data-id="' + esc(l.id) + '" style="left:' + g.m.x.toFixed(1) + 'px;top:' + g.m.y.toFixed(1) + 'px;max-width:' + Math.round(g.tw) + 'px;--c:' + c + (editing === l.id ? ';visibility:hidden' : '') + '"><b>' + (l.secret ? 'secretly ' : '') + g.T.n + '</b>' + (l.label ? ' ' + esc(l.label) : '') + '</div>';
+      if (!mem) tags += '<div class="tag' + (isSel ? ' sel' : '') + (dim ? ' dim' : '') + '" data-id="' + esc(l.id) + '" style="left:' + g.m.x.toFixed(1) + 'px;top:' + g.m.y.toFixed(1) + 'px;max-width:' + Math.round(g.tw) + 'px;--c:' + c + (editing === l.id ? ';visibility:hidden' : '') + '"><b>' + (l.secret ? 'secretly ' : '') + g.T.n + '</b>' + (l.label ? ' ' + esc(l.label) : '') + '</div>';
     });
   });
   edgesEl.innerHTML = svg + '<path id="temp" d="" />'; tagsEl.innerHTML = tags;
@@ -541,6 +555,11 @@ function removeSel() {
 }
 function createLink(a, b) {
   if (a === b || !B.nodes[a] || !B.nodes[b]) return;
+  if (isGrp(B.nodes[a]) || isGrp(B.nodes[b])) {
+    if (isGrp(B.nodes[a]) && !isGrp(B.nodes[b])) { const x = a; a = b; b = x; }
+    if (!Object.values(B.links).some(l => l.type === 'member' && l.a === a && l.b === b)) { const id = uid('l'); B.links[id] = { id, a, b, type: 'member', dir: 'ab', label: '', s: 1 }; }
+    sel = { kind: 'node', id: b }; pendingSrc = null; $('toast').hidden = true; commit(); return;
+  }
   const T = TYPE[S.ui.lastType] || TYPE.defends, id = uid('l');
   B.links[id] = { id, a, b, type: T.id, dir: T.dir || 'ab', label: '', s: 2 };
   sel = { kind: 'link', id }; pendingSrc = null; $('toast').hidden = true; commit(); startEdit(id);
@@ -600,7 +619,7 @@ function arrange(mode) {
 /* ───────── pointer handling on the board ───────── */
 const ptrs = new Map(); let drag = null, pinch = null, raf = 0;
 /* every unit tied to this one, through any chain of ties */
-function groupOf(id) { const seen = new Set([id]), q = [id], adj = {}; Object.values(B.links).forEach(l => { (adj[l.a] = adj[l.a] || []).push(l.b); (adj[l.b] = adj[l.b] || []).push(l.a); }); while (q.length) (adj[q.shift()] || []).forEach(o => { if (!seen.has(o) && B.nodes[o]) { seen.add(o); q.push(o); } }); return [...seen]; }
+function groupOf(id) { const seen = new Set([id]), q = [id], adj = {}; Object.values(B.links).forEach(l => { if (l.type === 'member') return; (adj[l.a] = adj[l.a] || []).push(l.b); (adj[l.b] = adj[l.b] || []).push(l.a); }); while (q.length) (adj[q.shift()] || []).forEach(o => { if (!seen.has(o) && B.nodes[o]) { seen.add(o); q.push(o); } }); return [...seen]; }
 function inPoly(x, y, P) { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i].y > y) !== (P[j].y > y) && x < (P[j].x - P[i].x) * (y - P[i].y) / (P[j].y - P[i].y) + P[i].x) c = !c; return c; }
 function setMulti(ids) { multi = new Set(ids.filter(id => B.nodes[id])); renderNodes(); }
 function nodeAt(p, not) { let best = null, bd = 46; Object.values(B.nodes).forEach(n => { if (n.kind === 'note' || n.id === not) return; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bd) { bd = d; best = n.id; } }); return best; }
@@ -620,7 +639,7 @@ stage.addEventListener('pointerdown', e => {
   if (ptrs.size > 2) return;
   const p = toWorld(e.clientX, e.clientY), base = { pid: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false };
   if (nodeEl && e.button === 0 && (linkMode || e.shiftKey || onHandle)) drag = Object.assign(base, { kind: 'link', from: nid, tap: linkMode && !onHandle });
-  else if (nid && e.button === 0) { const n = B.nodes[nid], grp = e.altKey && n.kind !== 'note' ? groupOf(nid) : multi.has(nid) ? [...multi].filter(id => B.nodes[id]) : [nid]; drag = Object.assign(base, { kind: 'node', nid, px: p.x, py: p.y, grp: grp.map(id => ({ id, x: B.nodes[id].x, y: B.nodes[id].y })) }); }
+  else if (nid && e.button === 0) { const n = B.nodes[nid], grp = isGrp(n) ? (e.altKey ? [nid] : [nid].concat(membersOf(nid))) : e.altKey && n.kind !== 'note' ? groupOf(nid) : multi.has(nid) ? [...multi].filter(id => B.nodes[id]) : [nid]; drag = Object.assign(base, { kind: 'node', nid, px: p.x, py: p.y, grp: grp.map(id => ({ id, x: B.nodes[id].x, y: B.nodes[id].y })) }); }
   else if (lid && e.button === 0) drag = Object.assign(base, { kind: 'edge', lid, vx: B.view.x, vy: B.view.y });
   else if (e.button === 0 && (groupMode || e.altKey)) drag = Object.assign(base, { kind: 'lasso', pts: [p] });
   else drag = Object.assign(base, { kind: 'pan', vx: B.view.x, vy: B.view.y });
@@ -760,7 +779,7 @@ function gameExport(all) {
     if (n.kind === 'cast') { const c = CAST[n.cast]; return { key: 'character:' + c.id, kind: 'character', id: c.id, race: c.race || null, gender: c.g || null }; }
     return { key: 'custom:' + n.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''), kind: 'custom', race: null, gender: null }; };
   const out = { _about: 'Entropy Wars relationship web. `race` values match AVAILABLE_RACES and `gender` is separate (male / female). Story characters are listed in `characters` under their own id from the game data (DOOR_CAST, BOSS_DEFS, the tutorial tape) and referenced as character:<id>. Custom characters are custom:<name>, listed in `custom`. `from` is the one who acts, `to` the one acted on.', version: 2, exported: new Date().toISOString(), boards: boards.map(b => b.name),
-    types: Object.fromEntries(TYPES.map(t => [t.id, { effect: t.fx || 'none', means: t.fx ? FX_NOTE[t.fx] : 'no effect on who joins a fight' }])), relations: [], defence: {}, groups: {}, motives: {}, characters: {}, custom: {} };
+    types: Object.fromEntries(TYPES.map(t => [t.id, { effect: t.fx || 'none', means: t.fx ? FX_NOTE[t.fx] : 'no effect on who joins a fight' }])), relations: [], defence: {}, groups: {}, boardGroups: {}, motives: {}, characters: {}, custom: {} };
   const D2 = out.defence, adj = {};
   const side = (o, p, r) => { o[p] = r.kind === 'race' ? r.race : r.key; o[p + 'Kind'] = r.kind; o[p + 'Gender'] = r.gender; return o; };
   boards.forEach(b => {
@@ -770,6 +789,7 @@ function gameExport(all) {
       if (n.note) (out.motives[r.key] = out.motives[r.key] || []).push(n.note); });
     Object.values(b.links).forEach(l => {
       const at = actorTarget(l), f = ref(b, at[0]), t = ref(b, at[1]);
+      if (l.type === 'member') { const g = out.boardGroups[t.key] = out.boardGroups[t.key] || { name: b.nodes[l.b].name, members: [] }; if (!g.members.includes(f.key)) g.members.push(f.key); return; }
       out.relations.push(Object.assign(side(side({}, 'from', f), 'to', t), { type: l.type, mutual: l.dir === 'both', why: l.label || '', strength: l.s || 2, secret: !!l.secret, board: b.name }));
       if (l.dir === 'both' && (l.type === 'allied' || l.type === 'family') && f.kind === 'race' && t.kind === 'race' && f.race !== t.race) { (adj[f.race] = adj[f.race] || new Set()).add(t.race); (adj[t.race] = adj[t.race] || new Set()).add(f.race); }
     });
@@ -820,6 +840,13 @@ $('boardSel').addEventListener('change', e => switchBoard(e.target.value));
 $('btnGroup').addEventListener('click', () => { groupMode = !groupMode; if (groupMode) linkMode = false; pendingSrc = null; renderNodes(); renderOverlays(); });
 $('btnLink').addEventListener('click', () => { linkMode = !linkMode; if (linkMode) groupMode = false; pendingSrc = null; renderNodes(); renderOverlays(); if (linkMode) toast('Tie mode: drag from one unit to another, or tap one then the other'); });
 $('btnNote').addEventListener('click', addNote);
+$('btnGroupNode').addEventListener('click', () => {
+  modal('<h2>Add a group</h2><label class="field"><span>Name</span><input class="inp" id="mName" maxlength="40" autofocus placeholder="The Circus"></label><div class="gsw" id="mCol">' + GCOL.map((c, i) => '<button data-col="' + i + '"' + (i ? '' : ' class="on"') + ' style="--gc:' + c + '" aria-label="Colour ' + (i + 1) + '"></button>').join('') + '</div><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="ok">Pin to board</button></div>', d => {
+    let col = Object.values(B.nodes).filter(isGrp).length % GCOL.length; [...$('mCol').children].forEach((c, i) => c.classList.toggle('on', i === col));
+    const ok = () => { const name = $('mName').value.trim(); if (!name) { $('mName').focus(); return; } const id = uid('c'), p = freeSpot(viewCentre(), takenList()); B.nodes[id] = { id, kind: 'custom', name, sub: '', shape: 'group', col, faction: '', x: p.x, y: p.y, note: '' }; sel = { kind: 'node', id }; closeModal(); commit(); };
+    d.addEventListener('click', e => { const c = e.target.closest('[data-col]'); if (c) { col = +c.dataset.col; [...$('mCol').children].forEach((x, i) => x.classList.toggle('on', i === col)); return; } const x = e.target.dataset.x; if (x === 'ok') ok(); else if (x === 'cancel') closeModal(); }); d.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') ok(); });
+  });
+});
 $('btnCustom').addEventListener('click', () => {
   modal('<h2>Add a character</h2><p>For anyone who is not a roster race: a named boss, an agent, an organisation, a place.</p><div class="two"><label class="field"><span>Name</span><input class="inp" id="mName" maxlength="60" autofocus placeholder="Agent Forrest"></label><label class="field"><span>Role or title</span><input class="inp" id="mSub" maxlength="60" placeholder="Field agent"></label><label class="field"><span>Kind</span><select class="sel" id="mShape"><option value="character">Character</option><option value="boss">Boss</option><option value="org">Organisation</option><option value="place">Place</option></select></label><label class="field"><span>Type</span><select class="sel" id="mFac"><option value="">None</option>' + FACTIONS.map(f => '<option value="' + f[0] + '">' + f[1] + '</option>').join('') + '</select></label></div><label class="field"><span>Portrait borrowed from a race</span><select class="sel" id="mRace"><option value="">Initials only</option>' + D.races.slice().sort((a, b) => a.n.localeCompare(b.n)).map(x => '<option value="' + esc(x.k) + '">' + esc(x.n) + '</option>').join('') + '</select></label><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="ok">Pin to board</button></div>', d => {
     const ok = () => { const name = $('mName').value.trim(); if (!name) { $('mName').focus(); return; } const id = uid('c'), p = freeSpot(viewCentre(), takenList()); B.nodes[id] = { id, kind: 'custom', name, sub: $('mSub').value.trim(), shape: $('mShape').value, faction: $('mFac').value, x: p.x, y: p.y, note: '' }; if ($('mRace').value) B.nodes[id].race = $('mRace').value; sel = { kind: 'node', id }; closeModal(); commit(); };

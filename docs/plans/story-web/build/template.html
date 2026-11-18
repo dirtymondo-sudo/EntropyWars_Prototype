@@ -131,6 +131,14 @@ aside { background: var(--panel); display: flex; flex-direction: column; min-hei
 .node.src .pic, .node.drop .pic { outline: 3px dashed var(--accent); outline-offset: 5px; }
 .node.grab .pic, .node.lasso .pic { outline: 3px solid var(--accent); outline-offset: 5px; }
 .note.lasso { outline: 3px solid var(--accent); outline-offset: 4px; }
+.node.gnode .pic.gp { left: 0; top: 0; transform: translate(-50%, -50%); width: auto; min-width: 96px; height: 46px; padding: 0 16px; border-radius: 23px; border: 0; background: var(--gc); color: #fff; font: 700 15px system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap; display: flex; align-items: center; gap: 8px; image-rendering: auto; }
+.node.gnode .pic.gp small { font: 600 11px var(--font-mono); background: rgba(0,0,0,.25); border-radius: 9px; padding: 1px 6px; }
+.node.gnode .handle { left: auto; right: -20px; top: -30px; }
+.hull { opacity: .12; stroke-width: 150; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+.gsw { display: flex; gap: 8px; margin: 12px 0 4px; }
+.gsw button { width: 30px; height: 30px; border-radius: 50%; background: var(--gc); border: 3px solid transparent; cursor: pointer; }
+.gsw button.on { border-color: var(--ink); }
+
 #stage.lassomode { cursor: crosshair; }
 .node.dim { opacity: .28; }
 .node .handle { position: absolute; left: 16px; top: 14px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); border: 3px solid var(--panel); box-shadow: 0 1px 4px rgba(0,0,0,.4); cursor: crosshair; display: none; place-items: center; color: var(--accent-ink); }
@@ -252,6 +260,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
       <button class="btn" id="btnGroup" title="Lasso (G)">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2.6 2"><path d="M8 2.5c3.6 0 6 1.7 6 4s-2.4 4-6 4-6-1.7-6-4 2.4-4 6-4Z"/><path d="M5 10.2 4 14" stroke-dasharray="none"/></svg><span class="hide-phone">Lasso</span></button>
       <button class="btn" id="btnNote" title="Add a story-idea card (N)"><span class="hide-phone">+</span><span>Note</span></button>
+      <button class="btn" id="btnGroupNode"><span class="hide-phone">+</span><span>Group</span></button>
       <button class="btn" id="btnCustom" title="Add a named character, organisation, boss or place"><span class="hide-phone">+</span><span>Character</span></button>
     </div>
     <div class="grp menuwrap hide-phone">
