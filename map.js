@@ -16097,7 +16097,7 @@
         function _teamStructureSeesTile(player, tx, ty) {
             if (state.wards) {
                 for (const w of state.wards) {
-                    if (w.owner !== player) continue;
+                    if (sidesHostile(w.owner, player)) continue;
                     const wr = w.visionRange || 3;
                     if ((Math.abs(w.x - tx) + Math.abs(w.y - ty)) <= wr && !isVisionBlockedByTerrain(w.x, w.y, tx, ty)) return true;
                 }
@@ -16111,7 +16111,7 @@
             const pk = posKey(tx, ty);
             if (state._visionWards?.length) {
                 for (const ward of state._visionWards) {
-                    if (ward.player === player && ward.tiles && (ward.tiles.has ? ward.tiles.has(pk) : ward.tiles.includes(pk))) return true;
+                    if (sidesAllied(ward.player, player) && ward.tiles && (ward.tiles.has ? ward.tiles.has(pk) : ward.tiles.includes(pk))) return true;
                 }
             }
             if (state._flairRevealTiles?.[player]?.has(pk)) return true;
@@ -16119,7 +16119,7 @@
             if (state.doors && state.doors.length) {
                 const _dr = (typeof DOOR_RULES !== 'undefined' && DOOR_RULES.revealRadius != null) ? DOOR_RULES.revealRadius : 1;
                 for (const d of state.doors) {
-                    if (d.owner !== player || !d.open || d.hp <= 0) continue;
+                    if (sidesHostile(d.owner, player) || !d.open || d.hp <= 0) continue;
                     const tw = state.doors.find(o => o.pairId === d.pairId && o.id !== d.id && o.hp > 0);
                     if (tw && tw.open && Math.abs(tw.x - tx) <= _dr && Math.abs(tw.y - ty) <= _dr) return true;
                 }
@@ -16132,7 +16132,7 @@
            own (shrunken) sight — the team just can't lend them its eyes. */
         function teamSeesTile(player, tx, ty, tz) {
             for (const u of state.units) {
-                if (u.dead || u._dying || u.player !== player) continue;
+                if (u.dead || u._dying || sidesHostile(u.player, player)) continue;
                 if (typeof unitHasStatus === 'function' && unitHasStatus(u, 'captured')) continue;
                 if (_realmKeyOf(u)) continue;   // 🌑 a unit in the Shadow Realm lends the board no eyes
                 if (unitSeesTile(u, tx, ty, tz)) return true;
@@ -16205,11 +16205,11 @@
             if (state._activeZones?.length) {
                 const player = unit.player;
                 for (const zone of state._activeZones) {
-                    if (!zone.smokeConcealment || zone.ownerPlayer === player) continue;
+                    if (!zone.smokeConcealment || sidesAllied(zone.ownerPlayer, player)) continue;
                     const r = (zone.radius ?? 1);
                     if (Math.abs(tx - zone.x) <= r && Math.abs(ty - zone.y) <= r) {
                         /* Target tile is in enemy smoke — only visible if a friendly is adjacent */
-                        const friendlies = state.units.filter(u => !u.dead && u.player === player);
+                        const friendlies = state.units.filter(u => !u.dead && sidesAllied(u.player, player));
                         let adj = false;
                         for (const f of friendlies) {
                             if (Math.abs(f.x - tx) + Math.abs(f.y - ty) <= 1) { adj = true; break; }
@@ -16227,12 +16227,12 @@
             if (!_visionOn()) {
                 if (state.teamVision) {
                     for (const ally of state.units) {
-                        if (ally.dead || ally.player !== unit.player || ally.id === unit.id) continue;
+                        if (ally.dead || sidesHostile(ally.player, unit.player) || ally.id === unit.id) continue;
                         if (unitSeesTile(ally, tx, ty, tz)) return true;
                     }
                 } else if (unitHasWalkieTalkie(unit)) {
                     for (const ally of state.units) {
-                        if (ally.dead || ally.player !== unit.player || ally.id === unit.id || !unitHasWalkieTalkie(ally)) continue;
+                        if (ally.dead || sidesHostile(ally.player, unit.player) || ally.id === unit.id || !unitHasWalkieTalkie(ally)) continue;
                         if (unitSeesTile(ally, tx, ty, tz)) return true;
                     }
                 }
@@ -16244,10 +16244,10 @@
         function getTelescopeSkyTargets(player) {
             const result = new Map();
 
-            const telescopers = state.units.filter(u => !u.dead && u.player === player && getSectionForUnit(u) === 'earth' && unitHasTelescope(u));
+            const telescopers = state.units.filter(u => !u.dead && sidesAllied(u.player, player) && getSectionForUnit(u) === 'earth' && unitHasTelescope(u));
             if (telescopers.length === 0) return result;
 
-            const skyEnemies = state.units.filter(u => !u.dead && u.player !== player && getSectionForUnit(u) === 'above');
+            const skyEnemies = state.units.filter(u => !u.dead && sidesHostile(u.player, player) && getSectionForUnit(u) === 'above');
             for (const enemy of skyEnemies) {
                 for (const tele of telescopers) {
                     const vr = getTelescopeRange(tele);
@@ -16312,9 +16312,9 @@
             /* Smoke concealment: enemy smoke zones hide their tiles unless a friendly stands beside them. */
             function _dropEnemySmokeTiles() {
                 if (state._activeZones?.length) {
-                    const smokeZones = state._activeZones.filter(z => z.smokeConcealment && z.ownerPlayer !== player);
+                    const smokeZones = state._activeZones.filter(z => z.smokeConcealment && sidesHostile(z.ownerPlayer, player));
                     if (smokeZones.length > 0) {
-                        const friendlies = state.units.filter(u => !u.dead && u.player === player);
+                        const friendlies = state.units.filter(u => !u.dead && sidesAllied(u.player, player));
                         for (const zone of smokeZones) {
                             const r = (zone.radius ?? 1);
                             for (let dy = -r; dy <= r; dy++) {
@@ -16355,11 +16355,11 @@
                 for (const u of state.units) {
                     if (u.dead || u._dying || _realmKeyOf(u) !== _rv) continue;
                     visible.add(posKey(u.x, u.y));
-                    if (u.player === player) addVisibleFrom(_vx(u), _vy(u), getUnitVisionRange(u), _vz(u), u.wallVision, _losOnlyVision());
+                    if (sidesAllied(u.player, player)) addVisibleFrom(_vx(u), _vy(u), getUnitVisionRange(u), _vz(u), u.wallVision, _losOnlyVision());
                 }
                 return visible;
             }
-            const isAlive = u => !u.dead && u.player === player && !_realmKeyOf(u);
+            const isAlive = u => !u.dead && sidesAllied(u.player, player) && !_realmKeyOf(u);
 
             const _solo = fogSoloUnit(player);
             if (_solo) {
@@ -16418,7 +16418,7 @@
             }
             if (state._visionWards?.length) {
                 for (const ward of state._visionWards) {
-                    if (ward.player !== player) continue;
+                    if (sidesHostile(ward.player, player)) continue;
                     for (const pk of ward.tiles) visible.add(pk);
                 }
             }
@@ -16433,7 +16433,7 @@
             }
             if (state.wards) {
                 for (const w of state.wards) {
-                    if (w.owner === player) {
+                    if (sidesAllied(w.owner, player)) {
                         addVisibleFrom(w.x, w.y, w.visionRange || 3);
                     }
                 }
@@ -16444,7 +16444,7 @@
             if (state.doors && state.doors.length) {
                 const _dr = (typeof DOOR_RULES !== 'undefined' && DOOR_RULES.revealRadius != null) ? DOOR_RULES.revealRadius : 1;
                 for (const d of state.doors) {
-                    if (d.owner !== player || !d.open || d.hp <= 0) continue;
+                    if (sidesHostile(d.owner, player) || !d.open || d.hp <= 0) continue;
                     const tw = state.doors.find(o => o.pairId === d.pairId && o.id !== d.id && o.hp > 0);
                     if (!tw || !tw.open) continue;
                     for (let dy = -_dr; dy <= _dr; dy++) for (let dx = -_dr; dx <= _dr; dx++) {
@@ -18919,7 +18919,7 @@
                            that was dug into lava / flooded deep / walled off
                            (zones are buildable now) is skipped the same way. */
                         const blocker = state.units.find(u => !u.dead && u.x === zoneTile.x && u.y === zoneTile.y && u.id !== unit.id);
-                        if (blocker && blocker.player !== unit.player && _respawnTileSafe(zoneTile.x, zoneTile.y)) {
+                        if (blocker && sidesHostile(blocker.player, unit.player) && _respawnTileSafe(zoneTile.x, zoneTile.y)) {
                             pushUnitToNearestOpen(blocker, zoneTile.x, zoneTile.y);
                             addLog(`⚡ ${_ctName(blocker)} is pushed out of the respawn zone!`);
                         }
@@ -19062,7 +19062,7 @@
                 const banner = document.createElement('div');
                 banner.className = 'death-banner';
                 const killerText = killer ? `by ${escapeHtml(killer.name || killer.cls)}` : '';
-                const isEnemy = deadUnit.player !== getViewerPlayer();
+                const isEnemy = sidesHostile(deadUnit.player, getViewerPlayer());
                 banner.innerHTML = `
             <div class="death-banner-icon">${isEnemy ? '⚔' : '💀'}</div>
             <div class="death-banner-text">

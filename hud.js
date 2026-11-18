@@ -329,7 +329,7 @@ const ENEMY_COLOR = '#ff4a5a';
 function getAllianceColor(unit) {
   const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
   if (!unit) return ALLY_COLOR;
-  return unit.player === viewer ? ALLY_COLOR : ENEMY_COLOR;
+  return sidesAllied(unit.player, viewer) ? ALLY_COLOR : ENEMY_COLOR;
 }
 
 /* the unit panels' accent colour (one for every unit since the factions went, 2026-10-17) */
@@ -2773,7 +2773,7 @@ function TurnColumn({ st }) {
     const now = !!(nowRow && e.active);
     items.push(h(TurnIcon, {
       key: e.id, e, size: now ? Math.round(size * 1.3) : size, now, next: e.id === nextId,
-      foe: e.unit.player !== viewer, forecast, inspecting: inspectId === e.id,
+      foe: sidesHostile(e.unit.player, viewer), forecast, inspecting: inspectId === e.id,
     }));
   });
   if (folded > 0) items.push(h('div', { key: 'fold', className: 'ew-tc-fold', style: { width: size * 0.8, height: size * 0.8 }, title: folded + ' more' }, '+' + folded));
@@ -4600,7 +4600,7 @@ function _ewdPanelName(p) {
 function _ewdFocusOf(activePanel, viewKey, selBlade, apUnit, focusSelf) {
   const S = (typeof state !== 'undefined' && state) ? state : {};
   if (activePanel && activePanel.card) return { kind: 'card', view: activePanel.card };
-  const seen = (u) => !!u && (!apUnit || u.player === apUnit.player || typeof _shouldCameraFollowUnit !== 'function' || _shouldCameraFollowUnit(u));
+  const seen = (u) => !!u && (!apUnit || sidesAllied(u.player, apUnit.player) || typeof _shouldCameraFollowUnit !== 'function' || _shouldCameraFollowUnit(u));
   let fu = null;
   const m = /^(enemy|ally)\|(.+)$/.exec(viewKey || '');
   if (m) fu = _ewdUnitById(m[2]);
@@ -4614,7 +4614,7 @@ function _ewdFocusOf(activePanel, viewKey, selBlade, apUnit, focusSelf) {
     if (q && !q.dead && seen(q)) fu = q;
   }
   if (fu && (!apUnit || fu.id !== apUnit.id)) {
-    const ally = apUnit && !(typeof isEnemyUnit === 'function' ? isEnemyUnit(apUnit, fu) : fu.player !== apUnit.player);
+    const ally = apUnit && !(typeof isEnemyUnit === 'function' ? isEnemyUnit(apUnit, fu) : sidesHostile(fu.player, apUnit.player));
     return { kind: 'unit', ukey: (ally ? 'ally|' : 'enemy|') + fu.id, unit: fu };
   }
   if (apUnit && (focusSelf || fu)) {
@@ -6006,7 +6006,7 @@ const _hrlgSortDmgCache = { key: '', map: new Map() };
 function _hrlgSpellSortDmg(unit, sp) {
   if (!unit || !sp || (typeof hudSpellShowsDamage === 'function' && !hudSpellShowsDamage(sp))) return 0;
   const S = typeof state !== 'undefined' ? state : null;
-  const foes = S && Array.isArray(S.units) ? S.units.filter(e => e && !e.dead && e.player !== unit.player
+  const foes = S && Array.isArray(S.units) ? S.units.filter(e => e && !e.dead && sidesHostile(e.player, unit.player)
     && (typeof isEnemyUnit !== 'function' || isEnemyUnit(unit, e))
     && (typeof _isTileVisibleToViewer !== 'function' || _isTileVisibleToViewer(e.x, e.y))) : [];
   const key = unit.id + '|' + (S ? S.round : 0) + '|' + unit.x + ',' + unit.y + '|' + unit.mp + '|' + foes.map(e => e.id + ':' + e.x + ',' + e.y + ':' + e.hp).join(';');
@@ -6109,7 +6109,7 @@ function _hrlgSpellBlades(unit, st) {
       // carries the status (statuses don't stack) — say so.
       /* timing/counters playtest 2026-11-07 (F6): Revive works once per unit per match — a grave in reach whose unit was
          already revived read "No target", which hid the reason */
-      else if (!hasTarget && sp.kind === 'revive' && Array.isArray(st.units) && st.units.some(u => u.player === unit.player && u.dead
+      else if (!hasTarget && sp.kind === 'revive' && Array.isArray(st.units) && st.units.some(u => sidesAllied(u.player, unit.player) && u.dead
         && u.reviveLocked && (typeof spellAimProblem !== 'function' || !spellAimProblem(unit, sp, u.x, u.y, u.z)))) reason = 'Already revived';
       else if (!hasTarget) reason = (typeof spellIsPureStatus === 'function' && spellIsPureStatus(sp)) ? 'No valid target' : 'No target';
     }
@@ -6555,7 +6555,7 @@ function _hrlgTacticLabel(id) {
 }
 function _hrlgTacticParty(unit, st) {
   const home = typeof unitHomePlayer === 'function' ? unitHomePlayer : (u => u.player);
-  const party = (st.units || []).filter(u => u && !u.dead && !u._dying && u.player === unit.player && home(u) === unit.player);
+  const party = (st.units || []).filter(u => u && !u.dead && !u._dying && sidesAllied(u.player, unit.player) && home(u) === unit.player);
   party.sort((a, b) => (a.id === unit.id ? -1 : b.id === unit.id ? 1 : 0));
   return party;
 }
@@ -6679,7 +6679,7 @@ function _hrlgPortraitData(u, actingUnit) {
   if (!url) return null;
   return {
     url, isFace,
-    ally: actingUnit ? u.player === actingUnit.player : false,
+    ally: actingUnit ? sidesAllied(u.player, actingUnit.player) : false,
     ko: !!u.dead,
     hp: Math.max(0, Math.round(u.hp || 0)), maxHp: u.maxHp || 0,
     shield: u.shield || 0,
@@ -6964,12 +6964,12 @@ function _hrlgItemTargetList(unit, key) {
   if (isBane) {
     const range = (typeof getEffectiveRange === 'function' ? getEffectiveRange(unit, { item: true }) : 1) + 2;
     targets = living
-      .filter(u => (typeof isEnemyUnit === 'function' ? isEnemyUnit(u, unit) : u.player !== unit.player))
+      .filter(u => (typeof isEnemyUnit === 'function' ? isEnemyUnit(u, unit) : sidesHostile(u.player, unit.player)))
       .map(u => ({ unit: u, dist: Math.max(Math.abs(u.x - unit.x), Math.abs(u.y - unit.y)) }))
       .filter(t => t.dist <= range);
   } else {
     targets = living
-      .filter(u => u.player === unit.player)
+      .filter(u => sidesAllied(u.player, unit.player))
       .map(u => ({ unit: u, dist: Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) }));
   }
   // Priority order (same rule as the spell/attack drums): potions list the
@@ -7076,7 +7076,7 @@ function _hrlgComboTargetList(unit, partner) {
     : Math.abs(unit.x - u.x) + Math.abs(unit.y - u.y);
   const targets = (st.units || [])
     .filter(u => !u.dead && u.id !== unit.id
-      && (isOffensive ? u.player !== unit.player : u.player === unit.player))
+      && (isOffensive ? sidesHostile(u.player, unit.player) : sidesAllied(u.player, unit.player)))
     .map(u => ({ u, d: _dist(u) }))
     .filter(t => t.d >= 1 && t.d <= comboRange)
     .filter(t => !(typeof isRangeBlockedByTerrain === 'function'
@@ -7547,7 +7547,7 @@ function ActionMenu({ st, hidden }) {
   // Not on Mystery Dungeon floors (their own tactic chips) or in the tutorial (unitOnTactic is off there).
   if (typeof setUnitTactic === 'function' && !(typeof window._isDungeonMode === 'function' && window._isDungeonMode())
       && !window._tutActive) {
-    const _onTac = (st.units || []).filter(u => u && !u.dead && u.player === unit.player && u.tactic).length;
+    const _onTac = (st.units || []).filter(u => u && !u.dead && sidesAllied(u.player, unit.player) && u.tactic).length;
     actions.push({
       id: 'tactics', label: 'Tactics', icon: '♟', cost: null,
       available: true,
@@ -8004,7 +8004,7 @@ function ActionMenu({ st, hidden }) {
     // (heals / buffs / potions / trade) — decided here by team.
     const _qtU = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
     const _qtAlly = !!(_qtU && _qtU.id !== unit.id
-      && !(typeof isEnemyUnit === 'function' ? isEnemyUnit(unit, _qtU) : _qtU.player !== unit.player));
+      && !(typeof isEnemyUnit === 'function' ? isEnemyUnit(unit, _qtU) : sidesHostile(_qtU.player, unit.player)));
     const _qtKey = (_qtAlly ? 'ally|' : 'enemy|') + st._enemyActionTargetId;
     panels.push(_mkPanel(_qtKey, _hrlgWithTileTabs(unit, _qtU, _qtKey, _qtAlly ? _hrlgAllyBlades(unit, st) : _hrlgEnemyBlades(unit, st))));
     view = 'quick';
@@ -10935,7 +10935,7 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
   if (tr) {
     const sp = (typeof SPELL_BY_ID !== 'undefined' && tr.spellId) ? SPELL_BY_ID[tr.spellId] : null;
     const name = _turretDisplayName(tr);
-    const enemy = actingUnit ? tr.owner !== actingUnit.player : false;
+    const enemy = actingUnit ? sidesHostile(tr.owner, actingUnit.player) : false;
     const hits = !!tr.hitsToKill;
     let desc;
     if (tr.plant) {   // THE GARDEN (2026-11-12): a grown plant
@@ -10985,7 +10985,7 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
   const sdoor = (s.doors || []).find(d => d && d.kind === 'standing' && d.x === tx && d.y === ty && d.hp > 0);
   if (sdoor) {
     const gd = (typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[sdoor.door]) || { name: 'Door', icon: '🚪' };
-    const enemy = actingUnit ? sdoor.owner !== actingUnit.player : false;
+    const enemy = actingUnit ? sidesHostile(sdoor.owner, actingUnit.player) : false;
     const sp = (typeof SPELL_BY_ID !== 'undefined' && sdoor.spellId) ? SPELL_BY_ID[sdoor.spellId] : null;
     const dir = (fx, fy) => ((fy < 0 ? 'north' : fy > 0 ? 'south' : '') + (fx < 0 ? 'west' : fx > 0 ? 'east' : '')) || 'ahead';
     let what;
@@ -11016,9 +11016,9 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
   // are excluded on purpose: they render as units, and an object card naming
   // them "Decoy" would give the trick away for free.
   const dep = (s._deployedObjects || []).find(o => o.x === tx && o.y === ty && o.hp > 0);
-  if (dep && !(dep.isDecoy && actingUnit && dep.ownerPlayer !== actingUnit.player)) {
+  if (dep && !(dep.isDecoy && actingUnit && sidesHostile(dep.ownerPlayer, actingUnit.player))) {
     const sp = (typeof SPELL_BY_ID !== 'undefined' && dep.spellId) ? SPELL_BY_ID[dep.spellId] : null;
-    const enemy = actingUnit ? dep.ownerPlayer !== actingUnit.player : false;
+    const enemy = actingUnit ? sidesHostile(dep.ownerPlayer, actingUnit.player) : false;
     let desc;
     if (dep.isDecoy) desc = 'Your decoy. It draws enemy attacks meant for the real unit and shatters after one hit.';
     else if (dep.detonateOnStep && dep.blastRadius > 0) {
@@ -11048,7 +11048,7 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
   // 🌱 Planted seeds
   const sd = (s.plantedSeeds || []).find(q => q.x === tx && q.y === ty);
   if (sd) {
-    const enemy = actingUnit ? sd.owner !== actingUnit.player : false;
+    const enemy = actingUnit ? sidesHostile(sd.owner, actingUnit.player) : false;
     /* THE GARDEN (2026-11-12): a seed needs water; the card says which state it is in and what it grows into */
     const _sdBase = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'leech' ? 'Leech Seed' : sd.type === 'apple' ? 'Apple Seed' : 'Seed';
     const name = sd.watered ? _sdBase.replace(/Seed$/, 'Sprout') : _sdBase;
@@ -11071,7 +11071,7 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
   // trees so the sprouted grove reads as what it is, not scenery.
   const pt = (s.plantedTrees || []).find(q => q.x === tx && q.y === ty);
   if (pt) {
-    const enemy = actingUnit ? pt.owner !== actingUnit.player : false;
+    const enemy = actingUnit ? sidesHostile(pt.owner, actingUnit.player) : false;
     const name = (typeof _auraTreeName === 'function') ? _auraTreeName(pt.aura)
       : (pt.aura === 'poison' ? 'Toxin Tree' : pt.aura === 'leech' ? 'Leech Tree' : 'Healing Tree');
     const desc = (pt.aura === 'poison'
@@ -11179,7 +11179,7 @@ function _hrlgTileView(actingUnit, tx, ty, tz, opts) {
   if (objInfo) tabs.push({ id: 'object', label: objInfo.name, enemy: !!objInfo.enemy, own: !objInfo.enemy && !objInfo.neutral, sprite: objInfo.sprite || null, icon: objInfo.icon });
   let uSide = null, uPort = null;
   if (u) {
-    uSide = (actingUnit && (typeof isEnemyUnit === 'function' ? isEnemyUnit(actingUnit, u) : u.player !== actingUnit.player)) ? 'enemy' : 'ally';
+    uSide = (actingUnit && (typeof isEnemyUnit === 'function' ? isEnemyUnit(actingUnit, u) : sidesHostile(u.player, actingUnit.player))) ? 'enemy' : 'ally';
     uPort = _hrlgPortraitData(u, actingUnit);
     tabs.push({ id: 'unit', label: (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.race || 'Unit')), enemy: uSide === 'enemy', own: uSide === 'ally', sprite: uPort ? uPort.url : null, face: !!(uPort && uPort.isFace), icon: '☻' });
   }
@@ -11617,9 +11617,9 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
   const _tileOcc = (typeof G.unitAt === 'function') ? G.unitAt(tx, ty) : null;
   const _occLive = _tileOcc && !_tileOcc.dead;
   const _occAlly = _occLive && (typeof isAllyUnit === 'function'
-    ? isAllyUnit(_tileOcc, actingUnit) : _tileOcc.player === actingUnit.player);
+    ? isAllyUnit(_tileOcc, actingUnit) : sidesAllied(_tileOcc.player, actingUnit.player));
   const _occEnemy = _occLive && (typeof isEnemyUnit === 'function'
-    ? isEnemyUnit(_tileOcc, actingUnit) : _tileOcc.player !== actingUnit.player);
+    ? isEnemyUnit(_tileOcc, actingUnit) : sidesHostile(_tileOcc.player, actingUnit.player));
 
   for (const sp of allSpells) {
     if (!tileTargetKinds.has(sp.kind) && !_elemTileOk(sp)) continue;
@@ -11856,19 +11856,19 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       actions.push(_objAtkRow('attack:tower', 'Attack Cube', canAtk));
     }
 
-    const turret = (state.turrets || []).find(t => t.x === tx && t.y === ty && t.owner !== actingUnit.player && t.hp > 0);
+    const turret = (state.turrets || []).find(t => t.x === tx && t.y === ty && sidesHostile(t.owner, actingUnit.player) && t.hp > 0);
     if (turret) {
       const canAtk = inRange && !losBlocked && _fogSees;
       actions.push(_objAtkRow('attack:turret', 'Attack ' + _turretDisplayName(turret), canAtk));
     }
 
-    const deploy = (state._deployedObjects || []).find(o => o.x === tx && o.y === ty && o.hp > 0 && (o.ownerPlayer !== actingUnit.player || (o.detonateOnAttack && o.blastRadius > 0)));
+    const deploy = (state._deployedObjects || []).find(o => o.x === tx && o.y === ty && o.hp > 0 && (sidesHostile(o.ownerPlayer, actingUnit.player) || (o.detonateOnAttack && o.blastRadius > 0)));
     if (deploy) {
       const canAtk = inRange && !losBlocked && _fogSees;
       actions.push(_objAtkRow('attack:deploy', 'Attack ' + (deploy.spellName || 'Object'), canAtk));
     }
 
-    const seed = (state.plantedSeeds || []).find(s => s.x === tx && s.y === ty && s.owner !== actingUnit.player);
+    const seed = (state.plantedSeeds || []).find(s => s.x === tx && s.y === ty && sidesHostile(s.owner, actingUnit.player));
     if (seed) {
       const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : seed.type === 'apple' ? 'Apple Seed' : 'Leech Seed';
       const canAtk = inRange && !losBlocked && _fogSees;
@@ -11877,7 +11877,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
     // 🚪 An enemy STANDING DOOR (the door wheel): one hit per attack breaks it down — offered only when nobody stands in
     // the doorway (the swing hits the body first, the engine's own rule)
-    const sdoorAtk = (state.doors || []).find(d => d && d.kind === 'standing' && d.x === tx && d.y === ty && d.hp > 0 && d.owner !== actingUnit.player);
+    const sdoorAtk = (state.doors || []).find(d => d && d.kind === 'standing' && d.x === tx && d.y === ty && d.hp > 0 && sidesHostile(d.owner, actingUnit.player));
     if (sdoorAtk && !(typeof G.unitAt === 'function' && G.unitAt(tx, ty))) {
       const canAtk = inRange && !losBlocked && _fogSees;
       const _gdn = (typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[sdoorAtk.door]) ? DOOR_GUN_DOORS[sdoorAtk.door].name : 'Door';

@@ -517,3 +517,37 @@ Story fights only (an encounter run with a field; quest and scene-only fights ge
 - **Known:** the Honda Civic is a resident race, so a car can watch a fight. Guards / Brutes / Territorials stand closer with the red `!`
   but do not join until step 8 (needs step S).
 
+## THE ONE SIDE QUESTION (NPC encounters step S, 2026-11-18, BUILT; mondo's answer 6: "if its hard to add to our game then that means the battle code ... needs to be fixed")
+
+No rule changed. A battle now has SIDES, not only seats 1 and 2, and every friend-or-foe question asks one place.
+
+- **The two functions** (state.js, before `buildBlitzTurnOrder`): `sidesAllied(a, b)` and `sidesHostile(a, b)` take two SIDE numbers
+  (a unit's `.player`, an object's `owner` / `ownerPlayer`, a viewer seat). With `state.sideTies` null (every match today) they are
+  exactly `a === b` / `a !== b`, so PvP and every two-side fight play as before (RULE #2). `isAllyUnit` / `isEnemyUnit` sit on them.
+- **`state.sideTies`** (state.js `state`, reset to null at every fight start beside `state.captures`): step 8 writes which sides stand
+  together, `{ '1|3': 'ally' }` (lower side first). Nothing else changes a side's friends. It rides state-sync.
+- **What was switched** (about 400 places): every `.player === / !== .player` in battle.js, ai.js, map.js, hud.js and state.js (none is
+  left); every owner check on a zone, seed, plant, tree, bomb, trap, mirror, turret, door, ward or deployed object that decides who it
+  hurts, helps or blocks; vision (map.js `computeVisibleTiles`, `teamSeesTile`, the wards; battle.js `_isUnitVisibleToViewer`,
+  `isUnitConcealedFrom`, `isUnitSeenByTeam` / `ByAnyEnemy`, the Cryptid): an allied side shares sight; the ally / enemy colours (hud.js
+  `getAllianceColor`, the hover ring, the AP tally's side, the death banner). ai.js asks `_sidesAllied` / `_sidesHostile` (top of the file).
+- **The lists:** battle.js `aliveHostilesOf(p)` (replaced every `aliveUnitsFor(enemyOf(p))`, same fastest-first order) and
+  `aliveAlliesOf(p)` (the AI's and the spells' ally lists); `getHostileUnits(p)` asks `sidesHostile`. `aliveUnitsFor(p)` stays "the units
+  OF side p" (a membership list).
+- **Win check:** battle.js `_wipeoutWinner()`: the fight ends when every side still standing is on one side (no two hostile) and a side
+  was wiped out; the lowest side number left wins (side 1 when it is among them). Two seats = exactly the old rule. Side 0 never counts.
+- **Turn order:** state.js `buildBlitzTurnOrder`: a side that is neither seat (3, 4, ...) joins the same speed tiers and alternation after
+  the two seats, one per side per pass, each side shuffled. Before, such a unit was DROPPED from the order. With no such side the order
+  and the random draws are the same as before.
+- **Who plays it:** state.js `sideController(p)`: the seats read `state.controllers` as always; a side 3+ with no entry there is the CPU's,
+  so the stock AI auto-plays its units. Every "is this the CPU's unit?" check in battle.js asks it (26 places).
+- **Round upkeep per side:** the end-of-round garden (`applySeedTileEffects_endOfRound`) runs for every side in `battleSides()` (state.js;
+  1 and 2 always, then every side with a unit), not only 1 and 2.
+- **What still reads `.player` directly, on purpose:** MEMBERSHIP (whose unit is it, whose turn, `state.activePlayer`, the viewer's own
+  units on the result screens and the party, captures by seat, possession's home side) and the SEAT OBJECTIVES of the PvP modes (the
+  Cube / towers, Keys, flags, Nexus, scores, `enemyOf` in those): a third side never plays a PvP mode. Object ownership LISTS ("my
+  mirrors", "my doors") are membership too.
+- **Not done here (step 8):** making a side 3 exist (unit creation mid-fight, the joiners' seat, their controller row if not the CPU),
+  the grudge list that writes `state.sideTies`, the stray hits, the camera and HUD for a third colour (today an allied side shows in the
+  ally colour, a hostile one in the enemy colour). three-vfx-effects.js keeps one plain compare (a VFX ally list), out of this step.
+
