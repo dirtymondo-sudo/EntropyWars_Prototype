@@ -6997,6 +6997,8 @@ const ThreeRenderer = (function () {
             gz.add(seam);
             return gz;
         }
+        /* 🦠 THE VIRUS's Replica (2026-11-18): a half-size copy of the Virus's own body, bobbing and turning over its tile */
+        if (turret.summon === 'replica') return _summonReplica3D(turret, ts, topY);
         /* THE NEW PROPS (2026-10-28): Mitosis's Blob is mondo's black blob (was the box dog below) */
         if (turret.summon === 'blob' && !window.EW_DISABLE_WEAPON_GLB) return _summonBlob3D(turret, ts, topY);
         /* THE ANIMALS (2026-10-27, mondo's upload): the hound is his dog, the wolves (Wolf Pack, Spirit Animal) his wolf, the hawk
@@ -7170,6 +7172,51 @@ const ThreeRenderer = (function () {
         var e0 = _miscModelCache[_NP_BLOB_URL];
         if (e0 && e0.root) fill();
         else { try { _loadMiscModel(_NP_BLOB_URL, true, fill); } catch (x) {} }
+        return g;
+    }
+
+    /* 🦠 THE REPLICA (2026-11-18, the Virus's Self-Replicate): the Virus's own file (sprites.js RACE_MODELS_3D.virus) at half its
+       size, its parts in their rest pose; it bobs, its eye ring turns, it lurches at a bite and flinches at a hit. Nothing shows
+       while the file streams (NO STAND-INS). Both screens build it from the same turret, so the guest sees the same. */
+    function _summonReplica3D(turret, ts, topY) {
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var def = (typeof RACE_MODELS_3D !== 'undefined' && RACE_MODELS_3D.virus && RACE_MODELS_3D.virus.male) || null;
+        if (!def || !def.model) return g;
+        var to = g.position.clone(), seen = _summonSeen[turret.id], tid = turret.id;
+        var from = seen && (seen.x !== to.x || seen.z !== to.z) && Math.hypot(seen.x - to.x, seen.z - to.z) < ts * 12 ? new THREE.Vector3(seen.x, seen.y, seen.z) : null;
+        var hurt = seen && turret.hp < seen.hp;
+        _summonSeen[turret.id] = { x: to.x, y: to.y, z: to.z, hp: turret.hp, ry: 0 };
+        var b0 = turret._bites || 0, seed = (turret.x * 31 + turret.y * 17) * 0.11;
+        _loadUnitGLB(def.model, function (e) {
+            if (g._ew_filled || !e || !e.root) return;
+            g._ew_filled = true;
+            var m = e.root.clone(true), anchor = null;
+            var bb = new THREE.Box3().setFromObject(e.root);
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (!anchor) anchor = n; } });
+            var sc = ts * 0.5 / ((bb.max.y - bb.min.y) || 1);
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            var body = new THREE.Group(); body.add(m); g.add(body);
+            var ring = m.getObjectByName('ewVrEyeRing');
+            if (!anchor) return;
+            var t0 = _animNow(), hitAt = hurt ? t0 : -1e9, biteAt = -1e9, run = null;
+            if (from) { run = { ms: Math.max(320, Math.min(1300, from.distanceTo(to) / ts * 300)) }; g.position.copy(from); }
+            anchor.onBeforeRender = function () {
+                var now = _animNow(), el = now - t0;
+                if (run) { var k = Math.min(1, el / run.ms); g.position.lerpVectors(from, to, k); if (k >= 1) run = null; }
+                var L = (typeof state !== 'undefined' && state && state.turrets) || [];
+                for (var i = 0; i < L.length; i++) if (L[i].id === tid) { if ((L[i]._bites || 0) > b0) { b0 = L[i]._bites; biteAt = now; } break; }
+                var bite = Math.sin(Math.min(1, (now - biteAt) / 420) * Math.PI), hit = Math.sin(Math.min(1, (now - hitAt) / 320) * Math.PI);
+                body.position.y = ts * (0.08 + 0.03 * Math.sin(now / 420 + seed));
+                body.position.z = ts * 0.18 * bite;
+                body.rotation.x = 0.5 * bite - 0.3 * hit;
+                body.rotation.z = 0.15 * Math.sin(now / 37) * hit;
+                if (ring) ring.rotation.y = now / 1800 + seed;
+            };
+            _objectsDirty = true;
+        });
         return g;
     }
 
@@ -17872,6 +17919,157 @@ const ThreeRenderer = (function () {
         clips.run = clips.walk;
         return clips;
     }
+    /* 🦠 THE VIRUS (2026-11-18, mondo: "give it unique animations and individual moving parts similar to the seraphim or
+       cursed TV to give it personality and expression since the regular rigging and animations wont work"). ONE file
+       (Assets/characters/races/virus/virus.glb, made by project files internet-units/virus/assemble.mjs; models-assets.md "THE
+       VIRUS"): the Meshy crystal core, ONE Meshy spike used 14 times (ewVrSpike0..13, each its own node, +Y along the spike),
+       the ring of eight red eyes (ewVrEyeRing > ewVrEye0..7, each looking out along its own +Z) and nine tendrils of code in
+       three hanging segments (ewVrTen<i> > ewVrTen<i>b > ewVrTen<i>c). In metres, front +Z, floor y 0, the body's centre
+       (ewVrBody) hovers 1 m up. A clip is keyframes on those nodes, so every spike flares, every eye blinks and every
+       tendril swings on its own; the online guest plays the same clips (display only). The code on the tendrils scrolls
+       (_vrCodeTick, from the unit loop, like the TV's static). */
+    var _vrCodeTex = null;
+    function _vrCodeTick(now) {
+        if (!_vrCodeTex) return;
+        _vrCodeTex.offset.y = ((now || performance.now()) / 2600) % 1;
+    }
+    function _vrS(u, a, b) { var t = b > a ? Math.max(0, Math.min(1, (u - a) / (b - a))) : (u >= a ? 1 : 0); return t * t * (3 - 2 * t); }
+    function _vrBump(u, a, b, c) { return _vrS(u, a, b) * (1 - _vrS(u, b, c)); }
+    /* A pose is a function of (u, R) (u 0 … 1 over the clip, sampled at 30 fps). Fields (default 0): x y z (the body's offset,
+       m), rx (tips forward) ry (turns) rz (rolls), sx sy (the body's squash), core (the core's scale - 1), ring (the eye ring's
+       turn, radians), ext(i) (spike i: > 0 flares out, < 0 pulls in, -1 = gone), drop(i) (spike i falls off, 0 … 1), blink(i)
+       (eye i shut, 0 … 1), look (0 … 1: every eye turns to the front), eye (the eyes' swell), sway (the tendrils' swing,
+       radians), trail (the tendrils lean back, radians), hz (their swing per clip). */
+    function _vrClip(name, dur, pose, R) {
+        var N = Math.max(8, Math.round(dur * 30)), tt = [];
+        var T = { bp: [], bq: [], bs: [], cs: [], rq: [] }, sp = [], ss = [], eq = [], es = [], ta = [], tb = [], tc = [];
+        var i, k;
+        for (i = 0; i < R.spikes.length; i++) { sp.push([]); ss.push([]); }
+        for (i = 0; i < R.eyes.length; i++) { eq.push([]); es.push([]); }
+        for (i = 0; i < R.tens.length; i++) { ta.push([]); tb.push([]); tc.push([]); }
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion(), q2 = new THREE.Quaternion();
+        var pq = function (arr) { arr.push(q.x, q.y, q.z, q.w); };
+        for (k = 0; k <= N; k++) {
+            var u = k / N, p = pose(u, R) || {};
+            var f = function (n) { return p[n] || 0; };
+            tt.push(u * dur);
+            T.bp.push(R.body0.x + f('x'), R.body0.y + f('y'), R.body0.z + f('z'));
+            e.set(f('rx'), f('ry'), -f('rz'), 'YXZ'); q.setFromEuler(e); pq(T.bq);
+            T.bs.push(1 + f('sx'), 1 + f('sy'), 1 + f('sx'));
+            var cs = Math.max(0.0001, 1 + f('core')); T.cs.push(cs, cs, cs);
+            e.set(0, f('ring'), 0, 'YXZ'); q.setFromEuler(e); pq(T.rq);
+            for (i = 0; i < R.spikes.length; i++) {
+                var S = R.spikes[i], ex = p.ext ? p.ext(i, S) : 0, dr = p.drop ? p.drop(i, S) : 0;
+                var gone = ex <= -0.999 || dr >= 0.999, sy = gone ? 0.0001 : Math.max(0.05, 1 + ex), out = ex * 0.12;
+                sp[i].push(S.p.x + S.d.x * out + S.d.x * 0.25 * dr, S.p.y + S.d.y * out - 0.6 * dr * dr + 0.1 * dr, S.p.z + S.d.z * out + S.d.z * 0.25 * dr);
+                ss[i].push(gone ? 0.0001 : 1 - 0.3 * dr, sy * (1 - 0.3 * dr), gone ? 0.0001 : 1 - 0.3 * dr);
+            }
+            var look = f('look'), sw = 1 + f('eye');
+            for (i = 0; i < R.eyes.length; i++) {
+                var E = R.eyes[i], bl = p.blink ? Math.max(0, Math.min(1, p.blink(i, E))) : 0;
+                var a = E.th; while (a > Math.PI) a -= Math.PI * 2;
+                var turn = -Math.max(-0.75, Math.min(0.75, a)) * look;
+                e.set(0, E.th + turn, 0, 'YXZ'); q.setFromEuler(e); pq(eq[i]);
+                es[i].push(sw, Math.max(0.06, sw * (1 - 0.94 * bl)), sw);
+            }
+            var hz = p.hz || 1, swa = f('sway'), tr = f('trail');
+            for (i = 0; i < R.tens.length; i++) {
+                var Tn = R.tens[i], ph = Tn.ph, w = Math.sin((u * hz + ph) * Math.PI * 2);
+                /* segment a: the trail in the body's own frame (the tip goes back, -Z) on top of its rest yaw, then the swing */
+                e.set(tr + swa * w, 0, swa * 0.6 * Math.cos((u * hz + ph) * Math.PI * 2), 'YXZ'); q2.setFromEuler(e);
+                q.copy(q2).multiply(Tn.q0); pq(ta[i]);
+                e.set(swa * 1.2 * Math.sin((u * hz + ph + 0.18) * Math.PI * 2) + tr * 0.4, 0, 0, 'YXZ'); q.setFromEuler(e); pq(tb[i]);
+                e.set(swa * 1.6 * Math.sin((u * hz + ph + 0.36) * Math.PI * 2) + tr * 0.4, 0, 0, 'YXZ'); q.setFromEuler(e); pq(tc[i]);
+            }
+        }
+        var V = THREE.VectorKeyframeTrack, Q = THREE.QuaternionKeyframeTrack, out = [
+            new V('ewVrBody.position', tt, T.bp), new Q('ewVrBody.quaternion', tt, T.bq), new V('ewVrBody.scale', tt, T.bs),
+            new V('ewVrCore.scale', tt, T.cs), new Q('ewVrEyeRing.quaternion', tt, T.rq)
+        ];
+        R.spikes.forEach(function (S, j) { out.push(new V(S.n + '.position', tt, sp[j]), new V(S.n + '.scale', tt, ss[j])); });
+        R.eyes.forEach(function (E, j) { out.push(new Q(E.n + '.quaternion', tt, eq[j]), new V(E.n + '.scale', tt, es[j])); });
+        R.tens.forEach(function (Tn, j) { out.push(new Q(Tn.n + '.quaternion', tt, ta[j]), new Q(Tn.n + 'b.quaternion', tt, tb[j]), new Q(Tn.n + 'c.quaternion', tt, tc[j])); });
+        return new THREE.AnimationClip(name, dur, out);
+    }
+    /* each eye blinks once per idle loop, at its own moment */
+    function _vrIdleBlink(u, i) { var t = (i * 0.37) % 1 * 0.9 + 0.03; return _vrBump(u, t, t + 0.025, t + 0.06); }
+    var _VR_POSES = {
+        /* idle (4 s): it bobs, the eye ring steps round one eye, the spikes breathe one after another, the eyes blink in turn */
+        idle: [4.0, function (u) {
+            return { y: 0.035 * Math.sin(u * Math.PI * 4), rz: 0.03 * Math.sin(u * Math.PI * 2), rx: 0.02 * Math.sin(u * Math.PI * 2 + 1),
+                ring: u * Math.PI / 4, ext: function (i) { return 0.07 * Math.sin((u * 2 + i * 0.13) * Math.PI * 2); },
+                blink: function (i) { return _vrIdleBlink(u, i); }, sway: 0.16, hz: 2 };
+        }],
+        /* the glide (1 s): tilted into the move, the tendrils streaming back, spikes laid back a little */
+        walk: [1.0, function (u) {
+            return { rx: 0.2, y: 0.02 * Math.sin(u * Math.PI * 4), rz: 0.03 * Math.sin(u * Math.PI * 2), ring: u * Math.PI / 8,
+                ext: function (i, S) { return -0.12 * Math.max(0, S.d.z); }, trail: 0.7, sway: 0.12, hz: 3 };
+        }],
+        /* a cast / the lash (1.3 s): every eye turns to the front and swells, the spikes on the front side flare, a lunge */
+        cast: [1.3, function (u) {
+            var j = _vrS(u, 0.2, 0.36) - _vrS(u, 0.55, 0.95), w = _vrBump(u, 0.02, 0.18, 0.3);
+            return { z: 0.12 * j - 0.05 * w, rx: 0.15 * j - 0.1 * w, look: _vrS(u, 0.05, 0.25) - _vrS(u, 0.8, 1), eye: 0.25 * j,
+                ext: function (i, S) { return 0.9 * j * Math.max(0, S.d.z) + 0.1 * j - 0.2 * w; }, trail: 0.4 * j, sway: 0.2, hz: 2,
+                blink: function (i) { return 0.8 * _vrBump(u, 0.12, 0.16, 0.22); } };
+        }],
+        /* the area (1.6 s): it spins up, every spike shoots out and snaps back, the eyes wide */
+        castAOE: [1.6, function (u) {
+            var spin = _vrS(u, 0.05, 0.7), out = _vrBump(u, 0.45, 0.55, 0.85);
+            return { ry: spin * Math.PI * 4, y: 0.1 * _vrBump(u, 0.1, 0.45, 0.9), ring: -spin * Math.PI, eye: 0.3 * out,
+                ext: function () { return 1.1 * out - 0.25 * _vrBump(u, 0.05, 0.3, 0.45); }, sway: 0.3, hz: 4, trail: -0.3 * out };
+        }],
+        /* Self-Replicate (1.7 s): the core bulges sideways, the body squashes and stretches, the spikes draw in, then a shudder */
+        castSupport: [1.7, function (u) {
+            var b = _vrBump(u, 0.1, 0.5, 0.8);
+            return { sx: 0.32 * b - 0.08 * _vrBump(u, 0.75, 0.82, 0.95), sy: -0.2 * b + 0.12 * _vrBump(u, 0.75, 0.82, 0.95),
+                x: 0.04 * Math.sin(u * Math.PI * 30) * _vrBump(u, 0.45, 0.55, 0.8), core: 0.15 * b,
+                ext: function () { return -0.45 * b; }, blink: function (i) { return i % 2 ? b * 0.9 : 0; }, sway: 0.25, hz: 3 };
+        }],
+        /* Zero Day (1.9 s): it rises, the ring whirls, every eye to the front blazing, the spikes pulse twice */
+        castUltimate: [1.9, function (u) {
+            var on = _vrS(u, 0.05, 0.3) - _vrS(u, 0.85, 1), p = Math.max(0, Math.sin(u * Math.PI * 4)) * on;
+            return { y: 0.18 * on, rx: -0.08 * on, ring: _vrS(u, 0, 1) * Math.PI * 3, look: on, eye: 0.35 * on,
+                ext: function () { return 0.8 * p; }, sway: 0.35, hz: 5, trail: -0.4 * on };
+        }],
+        /* the ram (1.2 s): it rolls forward spikes first and back */
+        castMelee: [1.2, function (u) {
+            var go = _vrS(u, 0.1, 0.35) - _vrS(u, 0.55, 0.95);
+            return { z: 0.35 * go, rx: 0.9 * go, look: go, ext: function (i, S) { return 0.8 * go * Math.max(0, S.d.z); }, trail: 0.6 * go, sway: 0.2, hz: 2 };
+        }],
+        /* hit (0.7 s): every eye shut, a glitchy jitter, the spikes pulled in */
+        hit: [0.7, function (u) {
+            var k = _vrBump(u, 0, 0.08, 0.6), jit = Math.sin(u * Math.PI * 34) * k;
+            return { x: 0.04 * jit, z: -0.06 * k, rx: -0.15 * k, rz: 0.08 * jit, ext: function () { return -0.4 * k; },
+                blink: function () { return _vrS(u, 0, 0.05) - _vrS(u, 0.45, 0.6); }, sway: 0.3, hz: 3 };
+        }],
+        /* death (2.4 s): the spikes drop off one by one, the eyes go dark one by one, it sinks and the core shrinks away */
+        death: [2.4, function (u) {
+            return { y: -0.72 * _vrS(u, 0.45, 0.95), rz: 0.4 * _vrS(u, 0.45, 0.95), core: -0.85 * _vrS(u, 0.7, 1), sy: -0.2 * _vrS(u, 0.75, 1),
+                drop: function (i) { var t = 0.05 + i * 0.035; return _vrS(u, t, t + 0.18); },
+                blink: function (i) { var t = 0.1 + i * 0.06; return _vrS(u, t, t + 0.05); }, sway: 0.08, hz: 1, trail: -0.3 * _vrS(u, 0.5, 1) };
+        }]
+    };
+    function _vrBuild(root) {
+        var body = root.getObjectByName('ewVrBody');
+        if (!body || !root.getObjectByName('ewVrEyeRing')) return null;
+        var R = { body0: body.position.clone(), spikes: [], eyes: [], tens: [] }, i, n;
+        for (i = 0; (n = root.getObjectByName('ewVrSpike' + i)); i++) R.spikes.push({ n: n.name, p: n.position.clone(), d: n.position.clone().normalize() });
+        for (i = 0; (n = root.getObjectByName('ewVrEye' + i)); i++) R.eyes.push({ n: n.name, th: Math.atan2(n.position.x, n.position.z) });
+        for (i = 0; (n = root.getObjectByName('ewVrTen' + i)); i++) R.tens.push({ n: n.name, q0: n.quaternion.clone(), ph: (i * 0.29) % 1 });
+        /* the code scrolls down the tendrils: one shared texture, repeated */
+        root.traverse(function (m) {
+            if (!m.isMesh || !m.material) return;
+            [].concat(m.material).forEach(function (mm) {
+                if (mm && mm.name === 'ewVrCode' && mm.map) { mm.map.wrapS = mm.map.wrapT = THREE.RepeatWrapping; mm.map.needsUpdate = true; _vrCodeTex = mm.map; if (mm.emissiveMap) mm.emissiveMap = mm.map; }
+            });
+        });
+        var clips = {};
+        Object.keys(_VR_POSES).forEach(function (slot) { var p = _VR_POSES[slot]; clips[slot] = _vrClip(slot, p[0], p[1], R); });
+        clips.run = clips.walk;
+        clips.castMagic = clips.cast; clips.castRanged = clips.cast; clips.castHeal = clips.castSupport;
+        clips.vrWorm = clips.cast; clips.vrReplicate = clips.castSupport; clips.vrRansom = clips.castAOE; clips.vrZeroDay = clips.castUltimate;
+        return clips;
+    }
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -18043,7 +18241,9 @@ const ThreeRenderer = (function () {
         /* THE UNICORN (above, _uniBuild): the horse + the horn + the angel wing twice; `deps` load first */
         unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); },
         /* 📺 THE CURSED TV (above, _tvBuild): the cart's casters, the wheels, the ears, the remote, THE CHANNELS */
-        cursedTv: function (root) { return _tvBuild(root); }
+        cursedTv: function (root) { return _tvBuild(root); },
+        /* 🦠 THE VIRUS (above, _vrBuild): the spikes, the eye ring, the code tendrils */
+        virusBody: function (root) { return _vrBuild(root); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
     /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
@@ -20507,6 +20707,7 @@ const ThreeRenderer = (function () {
             if (_digRecs.size && _digRecs.has(uid)) _digPose(entry, uid, now);   // THE SHOVEL DIG: the left hand on the grip, the shovel in the hands
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (_tvStatic) _tvStaticTick();   // 📺 THE CURSED TV: the shared snow moves (throttled, once a frame whoever asks)
+            if (_vrCodeTex) _vrCodeTick();   // 🦠 THE VIRUS: the code runs down the tendrils
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = _unitModelRigs.get(uid); if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
             if (entry._ew_sway) _swayTick(entry._ew_sway, dt, entry.modelDef && entry.modelDef.sway);   // THE SWAY: the cape swings after the clip
