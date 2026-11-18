@@ -6418,7 +6418,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceAgentVanish:         {},
         raceDimensionalFold:     {},
         raceTemporalShift:       { col: 0xffc060, col2: 0x8fd8ff, smoke: false },
-        raceShadowRealm:         { col: 0x7a3cff, col2: 0x3a1466, scale: 1.25 }
+        raceShadowRealm:         { col: 0x7a3cff, col2: 0x3a1466, scale: 1.25 },
+        /* B5 part 2. `mover` = the cast moves ANOTHER unit (state._teleportingUnitId): the leaving portal opens under that
+           unit, not the caster. `at: 'target'` = nothing leaves: one portal, on the square the thing comes out at. */
+        teleport:                { mover: true },
+        raceSummonCreation:      { at: 'target' },
+        raceRaiseDead:           { at: 'target', flat: true, col: 0x7a3cff, col2: 0x58d890 },
+        raceDimensionalWeb:      { at: 'target', col: 0x9a5cff, col2: 0x3a1466 }
     };
     function _vcPortalHostile(sx, sy) {
         try {
@@ -6483,6 +6489,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var row = _VC_PORTAL[spellId]; if (!row) return;
         var sx = p.sx != null ? p.sx : p.tx, sy = p.sy != null ? p.sy : p.ty;
         var o = { col: row.col, col2: row.col2, flat: row.flat, smoke: row.smoke, scale: row.scale, hostile: row.col == null && _vcPortalHostile(sx, sy) };
+        if (row.at === 'target') {   /* a summon / a rift: one portal where it comes out, on the hit beat */
+            if (phase !== 'burst' || p.tx == null || !_pzSeen(p.tx, p.ty)) return;
+            o.ms = 700; _portalKit3D(p.tx, p.ty, o); return;
+        }
+        if (row.mover && phase === 'windup') {   /* the unit being moved stands somewhere else: the portal opens under IT */
+            try {
+                var mid = (typeof state !== 'undefined') ? state._teleportingUnitId : null;
+                if (mid != null && state.units) for (var mi = 0; mi < state.units.length; mi++) { var mu = state.units[mi];
+                    if (mu && mu.id === mid && !mu.dead) { sx = mu.x; sy = mu.y; o.hostile = row.col == null && _vcPortalHostile(p.sx != null ? p.sx : sx, p.sy != null ? p.sy : sy); break; } }
+            } catch (e) {}
+        }
         if (phase === 'windup') {
             if (sx == null || !_pzSeen(sx, sy)) return;
             o.ms = Math.max(300, Math.min(1600, (p.holdMs || 700) - 200)); _vcPortalFrom[sx + ',' + sy] = { hostile: o.hostile, at: performance.now() };
@@ -10716,6 +10733,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            number out (Judgment, Divine Smite, Blue Beam, Exorcism, every capstone bloom) — dimmer shells, a fainter core,
            and the outer shell fades in over the lower part of the column, where the body stands */
         var O_OUT = 0.55, O_AURA = 0.22, O_CORE = 0.26;
+        if (opts._vcCore) { O_OUT = 0.36; O_AURA = 0.13; }   /* COLOUR-TRUE: two additive shells at full strength still washed the column pale as it formed */
         var matOuter = _sigEnergyMat(color, {
             opacity: O_OUT, gain: 1.2,
             s1y: -0.5, s2y: -0.24, scale1: 2.0, scale2: 1.0,
