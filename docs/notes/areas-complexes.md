@@ -12426,3 +12426,23 @@ areas except disaster city first."
 - BATCH 1: Camelot Kingdom (castle stone Brick_09, floors Floor_13, timber WoodBeams, marble Stone_12, rock Stone_07, gold = gilt), The Estate
   (WoodGeneric siding -> WoodCladding, graves Stone_03, mossy walls Brick_08, peeling plaster Wall_08 in the old haunted rooms, blood),
   The Sewers (green brick Brick_03/04, rusted corrugated Metal_06, Floor_01, heavy drips).
+
+## CYBERPUNK CITY, THE PILOT (2026-11-18, owner side; waits mondo's look)
+
+mondo's answers 11-18: one room with a second look; the way in = the mall closet's time machine, the same closet in 2047 ("for
+now"); the roads out work; the dinosaurs come with their quest; **the sky does not change** ("day is still day and night is still
+night"); a short Meshy list or stand-ins ("a billboard is just a rectangle"); the pilot = Entertainment.
+- Built in data.js only: `HQ_CITY_LOOKS.future` (table), `hqCityLookTerrain(roomId, base, lookId)` (rules), one line in
+  `hqApplyRoomVariant` (`v.look`), and the city's variant `future` set OUTSIDE the DC144 block (a rebake keeps it).
+- See it: `?hqvariant=future` (or `window.EW_HQ_VARIANT = 'future'`), then walk into Disaster City. No `when` on the variant: it is
+  never rolled, so players cannot reach it. `window.EW_NO_CITY_LOOK = true` = the variant with plain terrain.
+- The rules work on `arch` rows inside a district's box (by POSITION: arch ids are mixed, `dc:E-…`, `dc:P08-04…`, `dc:in76…`):
+  unlit parts darker and cooler, glass lit, painted signs relit as neon, a roof line + a billboard per building that has a
+  `texbuilding` footprint row (`<id>:arch`). An arch part is plain data (`key`, `tint`, `glow`, `kind`), so no renderer change
+  was needed. Part frames, learned: a `box` part's `p` is its centre in x / z and its BASE in y; a `quad`'s `p` is its centre x
+  and bottom y; a building's front is local +Z.
+- A wider look = more boxes in `HQ_CITY_LOOKS.future.boxes`. Not built: the other districts, props, people, music, the subway
+  platform's look, the time machine (the plan's later steps).
+- Probe: `node playtest_city.js site_prebuilt_downtown_streets '<views>' "--pre=window.EW_HQ_VARIANT='future';"` (the harness
+  sets the variant to 'none' by default; `--pre` runs after that). Night in a view: `"eval": "window._hqClockAdvance(60*13)"`.
+
