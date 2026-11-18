@@ -691,6 +691,20 @@ function newBoard(name, from) {
   S.boards[id] = { id, name, t: Date.now(), nodes: src.nodes, links: src.links, view: src.view }; S.order.push(id); S.active = id; B = S.boards[id]; sel = null;
   ensureView(); commit({ index: true });
 }
+/* THE "IN THE GAME NOW" BOARD (2026-11-18): where the game puts every unit today (build/spawns.js reads data.js). Made once as its own
+   board; asked again, it is brought up to date: units and places that are still there keep their spots, the rest is laid out. */
+function gameBoard() {
+  const G0 = D.spawns; if (!G0) return toast('No game data in this build');
+  const id = 'game_spawns', old = S.boards[id], N = JSON.parse(JSON.stringify(G0.nodes)), L = JSON.parse(JSON.stringify(G0.links));
+  Object.values(N).forEach(n => { const o = old && old.nodes[n.id]; n.x = o ? o.x : 0; n.y = o ? o.y : 0; });
+  if (old) { const at = {}; Object.values(old.links).forEach(l => { if (l.type === 'member' && Number.isFinite(l.cx)) at[l.a + '>' + l.b] = [l.cx, l.cy]; }); Object.values(L).forEach(l => { const q = at[l.a + '>' + l.b]; if (q) { l.cx = q[0]; l.cy = q[1]; } }); }
+  const fresh = !old || Object.values(N).some(n => !old.nodes[n.id]);
+  S.boards[id] = sanitizeBoard({ id, name: old ? old.name : 'In the game now', t: Date.now(), nodes: N, links: L, view: old ? old.view : null, org: 'place' });
+  if (!S.order.includes(id)) S.order.push(id); delete S.deleted[id]; cloud.dels.delete(id);
+  S.active = id; B = S.boards[id]; sel = null; multi.clear(); ensureView(); cloud.idx = true;
+  if (fresh) sortGroups(); else { commit({ index: true }); fit(); }
+  toast(old ? 'Brought up to date with the game' : 'Made from the game: every unit where it spawns');
+}
 function deleteBoard(id) {
   delete S.boards[id]; S.order = S.order.filter(x => x !== id); S.deleted[id] = Date.now(); cloud.dels.add(id); cloud.dirty.delete(id);
   if (!S.order.length) { S.boards.main = { id: 'main', name: 'Main board', t: Date.now(), nodes: {}, links: {}, view: null }; S.order.push('main'); delete S.deleted.main; cloud.dels.delete('main'); cloud.dirty.add('main'); }
@@ -970,6 +984,7 @@ function act(a) {
     case 'goMain': switchBoard(S.boards.main ? 'main' : (S.order.find(id => !S.boards[id].sample) || S.order[0])); if (B.sample) newBoard('Main board'); break;
     case 'newBoard': newBoard('Board ' + (S.order.length + 1)); act('renameBoard'); break;
     case 'dupBoard': newBoard(B.name + ' copy', B); break;
+    case 'gameBoard': gameBoard(); break;
     case 'renameBoard': modal('<h2>Name this board</h2><input class="inp" id="mName" maxlength="80" autofocus value="' + esc(B.name) + '"><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="ok">Save name</button></div>', d => { const ok = () => { const v = $('mName').value.trim(); if (v && v !== B.name) { B.name = v; delete B.sample; commit(); } closeModal(); }; d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'ok') ok(); else if (x === 'cancel') closeModal(); }); $('mName').addEventListener('keydown', e => { if (e.key === 'Enter') ok(); }); $('mName').select(); }); break;
     case 'delBoard': { const n = Object.keys(B.nodes).length; modal('<h2>Delete “' + esc(B.name) + '”?</h2><p>' + (n ? 'Its ' + n + ' pinned items and ' + Object.keys(B.links).length + ' ties go with it. ' : '') + 'Undo brings it back until you close the page.</p><div class="acts"><button class="btn" data-x="cancel" autofocus>Keep it</button><button class="btn pri" data-x="ok">Delete board</button></div>', d => d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'ok') { closeModal(); deleteBoard(B.id); } else if (x === 'cancel') closeModal(); })); break; }
     case 'arrGroups': sortGroups(); break;
