@@ -17977,6 +17977,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ms = opts.ms != null ? opts.ms : 900;
         var color = opts.color != null ? opts.color : 0x9fe8ff;
         var coreColor = opts.coreColor != null ? opts.coreColor : 0xffffff;
+        if (_vcTrueOn() && _vcNearWhite(coreColor)) coreColor = _vcHot(color, 0.3);   /* COLOUR-TRUE: the spiral beam's core in its own colour (it defaulted to white) */
         var helixR = opts.helixRadius != null ? opts.helixRadius : ts * 0.17;
         var turns = opts.turns != null ? opts.turns : Math.max(3, (length / ts) * 1.25);
         var spin = opts.spinSpeed != null ? opts.spinSpeed : 0.009;
@@ -65848,7 +65849,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var G = new THREE.Group(); G.position.copy(a); G.quaternion.copy(q); parent.add(G);
         var geo = _f4Shared('beamCyl', function () { var g = new THREE.CylinderGeometry(1, 1, 1, 14, 1, true); g.translate(0, 0.5, 0); return g; });
         var r = ts * (o.r || 0.08), parts = [];
-        [[r * 2.6, o.haze != null ? o.haze : o.glow, 0.22], [r * 1.35, o.glow, 0.65], [r * 0.45, o.core != null ? o.core : 0xffffff, 1]].forEach(function (s, i) {
+        [[r * 2.6, o.haze != null ? o.haze : o.glow, 0.22], [r * 1.35, o.glow, 0.65], [r * 0.45, (_vcTrueOn() && (o.core == null || _vcNearWhite(o.core)) && typeof o.glow === 'number') ? _vcHot(o.glow, 0.3) : (o.core != null ? o.core : 0xffffff), 1]].forEach(function (s, i) {   /* COLOUR-TRUE: the core was white */
             var m = _pzMesh(geo, _pzGlow(s[1], i === 0 ? null : (o.map || null)), G); m.scale.set(s[0], L, s[0]); m.renderOrder = 158 + i; parts.push({ m: m, op: s[2] });
         });
         return {

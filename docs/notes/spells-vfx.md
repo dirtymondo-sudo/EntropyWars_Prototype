@@ -5272,3 +5272,11 @@ pillar, the sacred rings and the support rings as white whatever colour they wer
 - `_vcPal`: a support palette is toned as well (ring 0.5, flash 0.38, line 0.35 saturation floors); it was returned as is.
 - Seen: Heal, Overclock, Protect, Hallelujah (docs/plans/vfx-cleanup/img/white_fallback_after.jpg).
 
+
+## COLOUR-TRUE, the last white default cores (2026-11-18, three-vfx-effects.js)
+A scan for `core / hot ... : 0xffffff` defaults in shared helpers found ten. Eight were already covered (`_sigEnergyMat`,
+`_sigOrbShellMat`, `_sigLightPillar3D`, and `_capShell` / `_capLance` / `_capColumn` / `_finShaftMat` /
+`_spawnLaserBeam3D`, which hand their white to those). The other two now take their own colour's hot tone with the
+cleanup on: `_sigSpiralBeam3D`'s `coreColor`, `_f4Beam`'s `core`. Seen: Blue Beam (its hologram is pale blue by design).
+Stasis Beam's shot still reads white: it is the old ice bolt recipe (`_bolt_ice`), not these helpers; left.
+
