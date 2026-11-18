@@ -82,6 +82,8 @@ piece('overlordhelm', '14_overlord-helmet', 'Overlord helmet', 'hats', 56, mode=
 piece('mushroomcap', '15_mushroom-cap-hat', 'Mushroom cap', 'hats', 56, mode='helm', k=2.1, sink=0.66, rot=[['x', 22]])
 piece('beret', '16_beret', 'Beret', 'hats', 56, mode='helm', k=1.3, sink=0.16, rot=[['x', -8]])
 piece('strawhat', '17_straw-hat', 'Floppy straw hat', 'hats', 56, mode='hat', k=2.7, line=0.30)
+# THE STREAMER + E-GIRL (2026-11-18): her split-dyed pigtail wig (the look's own hair goes 'bald' under it); src = /mnt/project-files/internet-units/models
+piece('egwig', 'eg_wig', 'Split-dye pigtail wig', 'hats', 56, mode='helm', k=2.45, top=0.07, dy=0.004)
 piece('brokenhalo', '57_broken-halo', 'Broken halo', 'equipment', 60, mode='float', size=0.24, lift=0.07, rot=[['x', -12]], shelf='hats')
 
 # ── creature heads (the MPFB head hidden under them) ──
@@ -101,6 +103,8 @@ piece('talisman', '67_talisman-pendant', 'Talisman pendant', 'equipment', 61, mo
 piece('hagstone', '71_hagstone', 'Hagstone', 'equipment', 61, mode='front', size=0.06, fx=0.0, fz=0.68, bone='spine_03', shelf='jewellery')
 piece('binoculars', '62_binoculars', 'Binoculars', 'equipment', 61, mode='front', size=0.17, fx=0.0, fz=0.48, bone='spine_03', rot=[['x', -90]])
 piece('walkietalkie', '63_walkie-talkie', 'Walkie-talkie', 'equipment', 61, mode='front', size=0.17, fx=0.62, fz=0.86, bone='spine_03')
+# THE STREAMER + E-GIRL (2026-11-18): his gaming headset resting round the neck (the band behind, the cups on the collarbones; `nogrow`: at its own size)
+piece('stheadset', 'st_headset', 'Gaming headset (round the neck)', 'equipment', 61, mode='drop', size=0.20, nogrow=True, dy=-0.03, up=-0.07, bone='neck_01', rot=[['x', -90]], shelf='jewellery')
 piece('egyptcollar', '22_egyptian-collar', 'Egyptian collar', 'equipment', 61, mode='drop', size=0.30, bone='spine_03', rot=[['x', -90]], cone=28, shelf='jewellery')
 
 # ── the back (from behind until it touches) ──
@@ -487,11 +491,13 @@ def _fit(spec, body, R0, N0):
                                  nz + spec.get('up', 0.0) * sc - (Q0[:, 2].max() if spec.get('cone') else 0.5 * (Q0[:, 2].min() + Q0[:, 2].max()))])
         Q0, start = at(s)
         rx = 0.5 * (Nk[:, 0].max() - Nk[:, 0].min()) + ease; ry = 0.5 * (Nk[:, 1].max() - Nk[:, 1].min()) + ease
-        for it in range(40):           # (its hole wider than the neck's oval)
+        for it in range(0 if spec.get('nogrow') else 40):           # (its hole wider than the neck's oval; `nogrow`: kept at its size)
             P = Q0 + start
             if (((P[:, 0] - cxy[0]) / rx) ** 2 + ((P[:, 1] - cxy[1]) / ry) ** 2).min() >= 1.0:
                 break
             s *= 1.03; Q0, start = at(s)
+        if spec.get('nodrop'):         # a choker: stays round the neck where it was grown to fit (THE STREAMER + E-GIRL)
+            return Q0 + start, [{bone: 1.0}] * len(Q0), 'scale %.3f grown %d at the neck' % (s, it), rN[0]
         place = lambda d: Q0 + start - np.array([0, 0, d])
         d, hit = first_contact(body, place, allv, ease, 0.6 * sc, bvh=body.bvh_without(('head', 'neck')))
         return place(d), [{bone: 1.0}] * len(Q0), 'scale %.3f grown %d rest %s' % (s, it, hit), rN[0]

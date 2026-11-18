@@ -14862,6 +14862,70 @@
             return !spell || !spell.hitsStatusOnly || (!!e && unitHasStatus(e, spell.hitsStatusOnly));
         }
         window._barrageStatusOk = _barrageStatusOk;
+        /* ═══ THE VIEWERS (2026-11-18, the Streamer + the E-Girl; mondo OK'd the kit) ═══ A count from 0 to VIEWERS_MAX on the
+           unit (`unit.viewers`, a plain number: it rides the state sync to the guest with nothing to relay). +1 for every hit it
+           lands on an enemy, +2 for a KO, +1 when one enemy hit takes VIEWERS_CLIP_PCT of its max HP or more (the clip); going
+           down halves it. A spending cast (Donation Goal, Raid) reads a copy of its row with the count baked in
+           (_streamCastRow, the spellWeatherResolved pattern) and empties the count before it resolves; its own hits earn
+           nothing (`_viewersHold`, cleared at finishAction). Notes: docs/notes/champions-combat.md "THE STREAMER". */
+        const VIEWERS_MAX = 10, VIEWERS_CLIP_PCT = 0.15;
+        function getViewers(u) { return Math.max(0, Math.min(VIEWERS_MAX, (u && u.viewers) | 0)); }
+        function _countsViewers(u) { return !!u && u.race === 'streamer' && !u.dead; }
+        function _viewersAdd(u, n, why) {
+            if (!_countsViewers(u) || !(n > 0) || u._viewersHold) return 0;
+            const was = getViewers(u), now = Math.min(VIEWERS_MAX, was + n);
+            if (now === was) return 0;
+            u.viewers = now;
+            if (state.phase === 'battle' && !_skipVisuals()) {
+                showFloatingTextForUnit(u, `👁 ${now} VIEWER${now === 1 ? '' : 'S'}`, 'buff', { durationMs: 900, jitterY: -30 });
+                if (now >= 5 && was < 5) _sigVfxGeom('nrViewers:hype', u.x, u.y, now, { owner: u.player });   // the chat goes wild (relayed)
+            }
+            if (why) addLog(`🎮 ${_ctName(u)} ${why}: ${now} viewer${now === 1 ? '' : 's'}.`);
+            if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
+            return now - was;
+        }
+        /* applyDamageToUnit, after the hit lands: the hitter's crowd and the clip */
+        function _viewersOnHit(target, dmg, src) {
+            if (!target || !src || !(dmg > 0) || src.id === target.id || !isEnemyUnit(src, target)) return;
+            if (_countsViewers(src)) _viewersAdd(src, 1);
+            if (_countsViewers(target) && target.hp > 0 && dmg >= (target.maxHp || 0) * VIEWERS_CLIP_PCT) _viewersAdd(target, 1, 'gets clipped taking that one');
+        }
+        /* the kill branch: +2 for the killer, half the crowd leaves a streamer who goes down */
+        function _viewersOnKO(killer, target) {
+            if (killer && killer.id !== (target && target.id)) _viewersAdd(killer, 2, 'gets the KO');
+            if (target && target.race === 'streamer' && getViewers(target) > 0) {
+                target.viewers = Math.floor(getViewers(target) / 2);
+                addLog(`🎮 ${_ctName(target)} goes down: half the chat leaves (${target.viewers} left).`);
+            }
+        }
+        /* a streaming row's cast copy: the count baked in (Clip It's mark, Donation Goal's heal, Raid's damage + fear) */
+        function _streamCastRow(unit, spell) {
+            const v = getViewers(unit);
+            const s = Object.assign({}, spell);
+            if (spell.viewersMarkAt && v >= spell.viewersMarkAt) s.statusEffects = (spell.statusEffects || []).concat([{ id: 'marked', duration: 1 }]);
+            if (spell.viewersHealPer) {
+                s.healAmt = v * spell.viewersHealPer;
+                if (spell.viewersSpdAt && v >= spell.viewersSpdAt) s.statStageBoost = Object.assign({}, spell.statStageBoost || {}, { spd: 1 });
+            }
+            if (spell.viewersDmgPer) {
+                s.dmg = Math.round((spell.dmg || 0) * (1 + spell.viewersDmgPer * v));
+                if (spell.viewersFearAt && v >= spell.viewersFearAt) s.statusEffects = (spell.statusEffects || []).concat([{ id: 'feared', duration: 1 }]);
+            }
+            if (spell.viewersSpend) s._viewersSpent = v;
+            return s;
+        }
+        /* doSpell, once every refusal has passed: a spending cast empties the count; its own hits earn nothing */
+        function _viewersSpendNow(unit, spell) {
+            if (!spell || !spell.viewersSpend || !unit) return;
+            const n = getViewers(unit);
+            unit.viewers = 0;
+            unit._viewersHold = true;
+            if (n > 0) {
+                addLog(`🎮 ${_ctName(unit)} cashes in the chat: ${n} viewer${n === 1 ? '' : 's'} spent on ${_ctSp(spell.name)}.`);
+                if (state.phase === 'battle' && !_skipVisuals()) _sigVfxGeom('nrViewers:spend', unit.x, unit.y, n, { owner: unit.player });
+            }
+        }
+        window.getViewers = getViewers; window._viewersAdd = _viewersAdd; window.VIEWERS_MAX = VIEWERS_MAX; window._streamCastRow = _streamCastRow;
         /* ═══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit and asked for the pull-string spell) ═══ "Sits on the shelf, and
            moves when you look away." Host-side like the rest of THE NEW RACES 2: the squares, the facings, the statuses and the HP
            state-sync to the guest; the voice-box line comes from _nrHash (the unit id + the round), so the guest's log agrees.
@@ -43425,6 +43489,7 @@
             }
             if (target.hp <= 0) _lifeguardSave(target);   // 🛟 a Lifeguard On Duty pulls an ally out of a killing blow
             if (finalDamage > 0) _viralShare(target, finalDamage, opts);   // 📱 a Viral unit's hit is shared
+            if (finalDamage > 0) _viewersOnHit(target, finalDamage, sourceUnit);   // 🎮 THE VIEWERS: the hitter's crowd, the clip
 
             if (opts.statusEffects || opts.status) {
                 let _stFx = opts.statusEffects || opts.status;
@@ -43602,6 +43667,7 @@
                 const killer = (_lastHitter && (typeof isEnemyUnit === 'function'
                     ? isEnemyUnit(_lastHitter, target)
                     : _lastHitter.player !== target.player)) ? _lastHitter : null;
+                _viewersOnKO(killer, target);   // 🎮 THE VIEWERS: +2 for the KO, half the chat leaves a downed streamer
                 if (typeof _balTrackKill === 'function') _balTrackKill(killer, target);
                 // Balance Lab per-cast telemetry: credit the resolving spell.
                 if (_balSpellCollector && killer && killer.id === _balSpellCollector.casterId
@@ -49957,6 +50023,7 @@
                 if (unitSpellsBlocked(unit)) return 'Silenced';
                 if (spell.floridaHeadline && _floridaHeadline(unit) !== spell.id) return 'Not today';   // 📰 not today's headline
                 if (spell.hitsStatusOnly === 'payload' && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && unitHasStatus(e, 'payload'))) return '🦠 No Payload out';
+                if (spell.viewersMin > 0 && getViewers(unit) < spell.viewersMin) return '🎮 Need ' + spell.viewersMin + ' viewers';   // 🎮 THE VIEWERS
                 if (spell.rewindTape > 0 && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && _tvTapeAmount(e, spell) > 0)) return '📼 Nothing on tape';   // 📺 Rewind: no enemy took a hit last round
                 if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
                 if (unitHasStatus(unit, 'celibate') && _isSummonSpell(spell)) return '⛪ Celibate';   // ⛪ Celibacy: no summoning
@@ -82959,6 +83026,8 @@
             /* 📚 THE LOADED BOOK: Overdue casts a copy of the borrowed spell under its own id (its branch, its VFX), on the
                book's MP, AP and cooldown (_overdueCastRow; nothing loaded = the row as it is, refused below) */
             if (spell && spell.id === 'nrOverdue') spell = _overdueCastRow(unit, spell);
+            /* 🎮 THE VIEWERS: a streaming row casts a copy with the viewer count baked in (_streamCastRow) */
+            if (spell && (spell.viewersSpend || spell.viewersMarkAt || spell.viewersHealPer || spell.viewersDmgPer)) spell = _streamCastRow(unit, spell);
             /* Clash final authority: movement/positioning spells can never
                fire, whatever path armed them (kits are already stripped —
                this catches stale online/AI edge cases). */
@@ -83359,6 +83428,13 @@
                     return 0;
                 }
             }
+            /* 🎮 `viewersMin` (Donation Goal, Raid): too small a crowd is refused before any MP, AP or cooldown is spent */
+            if (spell.viewersMin > 0 && getViewers(unit) < spell.viewersMin) {
+                addLog(`🎮 ${_ctSp(spell.name)} needs ${spell.viewersMin} viewer${spell.viewersMin === 1 ? '' : 's'} (${_ctName(unit)} has ${getViewers(unit)}).`, _clickSeat());
+                state._teleportingUnitId = null;
+                playErrorSfx();
+                return 0;
+            }
             /* 📺 `rewindTape` (Rewind): a target with nothing on last round's tape is refused before any MP, AP or cooldown is spent */
             if (spell.rewindTape > 0) {
                 const _rwT = unitAt(x, y, z) || unitAt(x, y);
@@ -83677,6 +83753,7 @@
             if (spellArmsPress(spell)) {
                 _armPressCollector(unit);
             }
+            _viewersSpendNow(unit, spell);   // 🎮 THE VIEWERS: a spending cast empties the count now (every refusal has passed)
 
             // Balance Lab: arm the per-cast spell telemetry collector (same
             // lifecycle as the press collector — one action resolves at a time).
@@ -83714,6 +83791,12 @@
             const finishAction = () => {
                 if (_pendingSpellHits > 0 && _finishWaits++ < 40) { window.setTimeout(finishAction, 100); return; }
                 if (typeof endCastTerrainWatch === 'function') endCastTerrainWatch();   // 🜃 the cast is done
+                /* 🎮 THE VIEWERS: the spend's hold lifts; Uwu's crowd; a non-dash row's selfStatusAfter (Rage Quit's disconnect) */
+                if (unit._viewersHold) unit._viewersHold = false;
+                if (spell.viewersGain > 0) _viewersAdd(unit, spell.viewersGain, 'gets hearts in the chat');
+                if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
+                    applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
+                }
                 unit._trackSpellsCast = (unit._trackSpellsCast || 0) + 1;
                 if (_focusCamSpellCtx && _focusCamSpellCtx.spellId === spell.id) {
                     _focusCamSpellCtx = null;

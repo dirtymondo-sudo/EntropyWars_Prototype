@@ -4065,6 +4065,11 @@ function _hrlgStatusChips(unit) {
   /* 🦗 THE BROOD (the Cicada Brood, 2026-11-17): the stacks it banked dug in, and what they add to Chorus */
   const brd = unit._brood | 0;
   if (brd > 0) chips.push({ key: 'brood', label: 'BROOD ' + brd + '/3', kind: 'up', title: 'Brood: Chorus deals +' + brd * 45 + ' damage and spends them.' });
+  /* 🎮 THE VIEWERS (the Streamer + the E-Girl, 2026-11-18): the crowd it banked (battle.js unit.viewers, rides the state sync) */
+  if (unit.race === 'streamer' && !unit.dead) {
+    const vw = Math.max(0, Math.min(window.VIEWERS_MAX || 10, unit.viewers | 0));
+    chips.push({ key: 'viewers', label: 'VIEWERS ' + vw + '/' + (window.VIEWERS_MAX || 10), kind: vw > 0 ? 'up' : 'dn', title: 'Viewers: +1 per hit landed, +2 per KO, +1 when a big hit gets clipped; going down halves them. Clip It marks at 5+; Donation Goal and Raid spend them all.' });
+  }
   if (totalMov) chips.push({
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
