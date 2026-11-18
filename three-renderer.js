@@ -85874,8 +85874,14 @@ const ThreeRenderer = (function () {
             var bbf = hqTerrainBridgeBelow(_hq.terrain, x, z, feetY + 0.05);
             if (bbf && (best === null || bbf.y > best)) best = bbf.y;
         }
-        for (var i = 0; i < _hq.blockers.length; i++) {
-            var b = _hq.blockers[i], top = _hqBlkTop(b);
+        /* THE LANDING ON THE GRID (2026-11-18, the 60 FPS thread's audit): every airborne frame of the walker or the rider (a jump, a
+           fall, a ride's landing) read every blocker of the city here. During their own tick the ask reads the rider's grid (its cell's
+           blockers + the ones seen moving; the grid's pad 0.44 m holds the stand pad 0.12 m); the highest top is the same in any order.
+           Off: window.EW_HQ_WALK_GRID_OFF (with the rider's grid) or window.EW_HQ_FLOOR_FULL_LIST. */
+        var FL = _hq.blockers, fIds = null;
+        if (_hq.nav && _hqWalkGridOn && FL.length > 64 && typeof window !== 'undefined' && !window.EW_HQ_WALK_GRID_OFF && !window.EW_HQ_FLOOR_FULL_LIST) { var FG = _hqNavGrid(FL, 'wgrid'); if (FG) fIds = _hqNavGridAt(FG, x, z); }
+        for (var fi = 0, fn = fIds ? fIds.length : FL.length; fi < fn; fi++) {
+            var b = FL[fIds ? fIds[fi] : fi], top = _hqBlkTop(b);
             if (b.mc) { var mt = _mcTopUnder(b, x, z, feetY + 0.05, null); if (mt !== null && (best === null || mt > best)) best = mt; continue; }   // THE REAL COLLISION: a jump lands on the model's own top under the feet
             if (b.y != null && b.y > feetY + 1.2) continue;
             if (top > feetY + 0.05 || (best !== null && top <= best)) continue;
@@ -93006,6 +93012,7 @@ const ThreeRenderer = (function () {
         rec.im.matrixWorldNeedsUpdate = true;
         rec.inv.copy(rec.im.matrix).invert();
         rec.C.copy(C); rec.R = R;
+        if (rec.im.parent && rec.im.parent._ew_instCell != null) rec.im.parent._ew_ckDirty = true;   // THE CHUNKS MEASURE ON CHANGE
         rec.cache.fill(NaN);
     }
     function _hqInstDrop(H) {
@@ -93567,6 +93574,11 @@ const ThreeRenderer = (function () {
             c._ew_dChunk = true; _hqChunkReg(H, c, 1e12);
         }
     }
+    /* THE CHUNKS MEASURE ON CHANGE (2026-11-18, the 60 FPS thread's audit): a fence / shell / door / instance chunk was measured again
+       every 2 s, every chunk of the city on the SAME frame (they all started at 0): a door chunk is a walk of its door. They now follow
+       the prop chunks' rule: again when their own count changes, when something joined the scene (at most every 4 s), when an instance
+       batch in them refits (_hqInstFit marks its cell) and every 60 s. A door's swing stays inside the 15 m pad. Off: window.EW_HQ_CHUNK_POLL_2S. */
+    function _hqCkOldPoll() { return typeof window !== 'undefined' && !!window.EW_HQ_CHUNK_POLL_2S; }
     /* per frame, before the draw: which chunk groups the camera draws */
     function _hqChunkTick(H, now) {
         var L = H.ckList; if (!L || !L.length) return;
@@ -93595,7 +93607,7 @@ const ThreeRenderer = (function () {
             if (off) { if (g._ew_ckOut) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; } drawn++; continue; }
             /* a prop chunk is measured through every piece in it (a walk of the chunk): again only when something joined the
                scene since (a file landed: at most every 4 s) or its own count changed, and every 60 s */
-            if (g._ew_ckN !== g.children.length || (g._ew_pChunk ? ((g._ew_ckAdd !== addN && now - g._ew_ckAt > 4000) || now - g._ew_ckAt > 60000) : now - g._ew_ckAt > 2000)) { g._ew_ckN = g.children.length; g._ew_ckAt = now; g._ew_ckAdd = addN; g._ew_ckSph = _hqChunkSphere(g); }
+            if (g._ew_ckN !== g.children.length || (g._ew_pChunk || !_hqCkOldPoll() ? (g._ew_ckDirty || (g._ew_ckAdd !== addN && now - g._ew_ckAt > 4000) || now - g._ew_ckAt > 60000) : now - g._ew_ckAt > 2000)) { g._ew_ckN = g.children.length; g._ew_ckAt = now; g._ew_ckAdd = addN; g._ew_ckDirty = false; g._ew_ckSph = _hqChunkSphere(g); }
             var sp = g._ew_ckSph, out = false;
             if (sp) {
                 var dx = sp.center.x - ce[12], dy = sp.center.y - ce[13], dz = sp.center.z - ce[14];
