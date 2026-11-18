@@ -2125,3 +2125,16 @@ the first Robot M restyle came back WHITE: name the colour + "NOT white" + palet
 triangles); degenerated in all three files (originals in models/orig/). Pipeline = new-chars run.py (concept nano-banana-pro -> meshy-t2.5 a-pose -> rig).
 Robot F lost the old "chassis walk" lib override (Idle_5 / Running walk): she uses the female defaults now (mondo 11-17: "no stiff walk").
 Mech F sprite redone as `mech_f2_px2.png` from a straight-on front render of her model (the concept was turned; mondo: "face straight").
+## THE VIRUS — a boneless body of moving parts (2026-11-18, thread "Design the Internet zone units")
+- ONE file `Assets/characters/races/virus/male/virus.glb` (1.0 MB), built by `/mnt/project-files/internet-units/virus/assemble.mjs`
+  (+ eye.png, code.png): a Meshy crystal core (`ewVrCore`, 0.72 m across) and ONE Meshy crystal spike (PCA-aligned to +Y, tip up,
+  0.42 m) used 14 times (`ewVrSpike0..13`, 1 on top, 7 round lat 42, 6 round lat -40), eight eyes made in code (`ewVrEyeRing >
+  ewVrEye0..7`, red slit iris texture, emissive), nine tendrils in three segments (`ewVrTen<i> > b > c`, green code texture).
+  `ewVrBody` hovers 1 m up. Meshy sheets resized to 1024 in the script.
+- Rig = three-renderer.js "THE VIRUS" (`_PROC_RIGS.virusBody` -> `_vrBuild`, `_VR_POSES`): keyframe clips on those nodes: idle
+  (bob, ring steps one eye, spikes breathe, eyes blink in turn), walk (tilted, tendrils trail), cast (eyes turn front + swell,
+  front spikes flare), castAOE (spin up, all spikes out), castSupport = Self-Replicate (bulge + squash), castUltimate = Zero Day
+  (rise, ring whirls, spikes pulse), castMelee, hit (eyes shut, glitch jitter), death (spikes drop one by one, eyes go dark, core
+  shrinks). Spell slots vrWorm / vrReplicate / vrRansom / vrZeroDay. The code scrolls (`_vrCodeTick`, from the unit loop).
+- The Replica summon (`_summonReplica3D`) clones the same file at half size (bob, ring turn, lurch per bite, flinch).
+- Sprite `virus_px.png` (same folder) = Sprite AI restyle of a straight-on render (files in the same project folder).
