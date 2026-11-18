@@ -6011,7 +6011,35 @@ specialist, home The Internet. Resists sonic, weak to light. Basic attack: melee
   not only dashes), Speedrun Strat (dash 4). E-Girl only: Uwu (Charm + 1 viewer), Gifted Sub (Protect 1 + Regen 2).
 - Checked in a test match: Clip It +1 viewer and Marked at 6, Donation Goal at 6 healed 120 each and +1 SPD stage, Raid at 9 did
   ~400 and Feared both, Rage Quit staggered + cloaked, Uwu charmed + 1 viewer, Gifted Sub gave Protect + Regen.
-- Looks: no Meshy body. The race is in sprites.js EW_CREATOR_LOOK_RACES, so its two RACE_CREATOR_LOOKS rows (outside the
-  bake-looks block) ARE its default: MPFB bodies in pack clothes + two Meshy pieces (models-assets.md "THE STREAMER PIECES").
+- Looks (CHANGED same day, mondo: "make it like the other units where the meshy one is the default but i can still select this
+  look from the character creator or dev settings"): the DEFAULT is now two rigged Meshy models from the approved concepts
+  (sprites.js RACE_MODELS_3D.streamer, R2 Assets/characters/races/streamer/male/Meshy_AI_streamer_m_Running.glb +
+  female/Meshy_AI_egirl_f_Running.glb). The MPFB creator looks stay as RACE_CREATOR_LOOKS.streamer (the party builder's race look)
+  and RACE_REMADE_LOOKS.streamer (Settings > Developer > Remade Race Looks); 'streamer' left EW_CREATOR_LOOK_RACES.
 - VFX: three-vfx-effects.js THE STREAMER + E-GIRL (stream purple, side rings, pop-up windows beside the body). Kill-switch
   EW_NO_STREAMER_VFX.
+
+## THE V-TUBER (2026-11-18, mondo approved the kit + picked the pop idol look; thread "Internet units")
+- Race `vtuber`, label V-Tuber, female only for now. Tech + Anomaly, caster. HP 820 MP 240 ATK 30 DEF 70 MDEF 150 INT 185 vis 3
+  crit 20 SPD 100. Resists lightning, weak to water. Basic attack range 2, magic (passive `heartBolt` = basicAttackMagic).
+- THE PROJECTORS (new rule): Holo Projector (deployTurret, `projector: true`, `turretHpPct: 0.2` = HP is 20 % of her max HP,
+  turretDmg 0, range 3, 2 at a time, a third replaces the oldest) puts a state.turrets row that never shoots
+  (processTurretVolleys skips it) and enemies can break (damageTurretAt). battle.js vtProjectorsOf(unit) lists hers;
+  doorCastOrigins now also returns each projector as an origin `{x, y, z, projectorId}`, and every gate that read
+  `castFromDoors` reads `_castsFromAfar(unit)` (a door under The Long Way Round OR a projector): spellAimProblem, doSpell, the
+  basic attack (doAttack) and getAttackTiles (projector reach lights too). A projector origin carries NO rear-attack rider (doors
+  still do: `_doorRearCast` / `_doorAttackOrigin.projector`). Line spells (Kawaii Beam) fire from her own square (lines are
+  directional from the caster; not routed through origins). A shot from a projector fires `vtProjector:fire` (a cyan streak).
+- Spells: Kawaii Beam (T1 line 3, light magic 70), Holo Projector (T2, CD 1), Scene Change (T2, new kind `projectorSwap`: aims at
+  one of her projectors, any distance, fogExempt, ignoresLineOfSight; she and the projector trade squares), Lo-Fi Loop (T3, Sleep
+  1, range 4, CD 3), Collab Stream (T4 barrage radius 1 with `projectorPulse`: _barrageTargets also takes enemies within 1 of any
+  projector, each once; `pulseAllyStatus` Regen 1 on allies in any ring; the preview/glow tiles add the rings; CD 3).
+- AI (ai.js): a projector is worth 60 + 70 per enemy within 4 of its square; Scene Change scores when more enemies crowd her than
+  the quietest projector (more when hurt) and aims at that projector.
+- Finisher Graduation (borrows farewellTour). Family `vtubing` (signature, idol cyan).
+- Look: creator-look race (EW_CREATOR_LOOK_RACES; RACE_CREATOR_LOOKS.vtuber): MPFB female, white high-neck crop top, white tiered
+  mini skirt, white gogo platform boots, the Meshy wig `ewm_vtwig` (models-assets.md "THE V-TUBER WIG") over a silver blunt bob.
+- Projector model: three-renderer.js _buildHoloProjector3D (the Internet zone's Meshy holo_projector pad + a scanline light cone +
+  a turning pixel heart + HP bar; own cyan, enemy pink).
+- VFX: three-vfx-effects.js THE V-TUBER (idol cyan, side rings, pop-up windows beside the body: ON AIR, SCENE 2, LO-FI BEATS,
+  COLLAB!). Kill-switch EW_NO_VTUBER_VFX. Every geometry goes through _sigVfxGeom (relayed online).

@@ -7497,8 +7497,83 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* 📽 THE HOLO PROJECTOR (2026-11-18, the V-Tuber): the Internet zone's Meshy projector pad, a cone of light over it
+       (scanlines scrolling up), a pixel heart turning in the beam, and the HP bar. Own side cyan, enemy side pink (the Riot
+       colours). Kill-switch: none needed, it is the piece itself. */
+    var _HOLO_PAD_URL = 'https://cdn.entropywars.net/Assets/world/props/meshy/internet/holo_projector.glb';
+    var _holoTexCache = {};
+    function _holoTex(kind) {
+        if (_holoTexCache[kind]) return _holoTexCache[kind];
+        var c = document.createElement('canvas'), x;
+        if (kind === 'scan') {
+            c.width = 8; c.height = 64; x = c.getContext('2d');
+            var gr = x.createLinearGradient(0, 0, 0, 64);
+            gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.75, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0.9)');
+            x.fillStyle = gr; x.fillRect(0, 0, 8, 64);
+            x.fillStyle = 'rgba(0,0,0,0.55)'; for (var yy = 0; yy < 64; yy += 4) x.fillRect(0, yy, 8, 1);
+        } else {
+            var H = ['0110110', '1111111', '1111111', '0111110', '0011100', '0001000'];
+            c.width = 7; c.height = 6; x = c.getContext('2d'); x.fillStyle = '#fff';
+            for (var r = 0; r < H.length; r++) for (var q = 0; q < 7; q++) if (H[r][q] === '1') x.fillRect(q, r, 1, 1);
+        }
+        var t = new THREE.CanvasTexture(c);
+        t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter;
+        if (kind === 'scan') { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 2); }
+        _holoTexCache[kind] = t; return t;
+    }
+    function _buildHoloProjector3D(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var own = _isAllyPlayer(turret.owner), col = own ? 0x5ad6ff : 0xff6aa8;
+        var beamH = ts * 0.95;
+        g.add(_plantHpBar(turret, ts, beamH + ts * 0.18));
+        var scan = _holoTex('scan').clone(); scan.needsUpdate = true;
+        var cone = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.13, beamH, 20, 1, true),
+            new THREE.MeshBasicMaterial({ color: col, map: scan, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
+        cone.position.y = beamH / 2 + ts * 0.06; g.add(cone);
+        var heart = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.26),
+            new THREE.MeshBasicMaterial({ color: col, map: _holoTex('heart'), transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
+        heart.position.y = beamH * 0.62; g.add(heart);
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.36, 1.2, 4, 24), new THREE.MeshBasicMaterial({ color: col, fog: false }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 1.2; g.add(ring);
+        var ph = (turret.x * 31 + turret.y * 17) * 0.13;
+        cone.onBeforeRender = function () {
+            var now = _animNow();
+            scan.offset.y = -(now / 1400) % 1;
+            var fl = (Math.sin(now / 37 + ph) > 0.93) ? 0.25 : 0;   // the odd glitch flicker
+            cone.material.opacity = 0.5 + Math.sin(now / 300 + ph) * 0.08 - fl;
+            heart.rotation.y = now / 700 + ph;
+            heart.position.y = beamH * 0.62 + Math.sin(now / 520 + ph) * ts * 0.04;
+            heart.material.opacity = 0.95 - fl * 2;
+        };
+        var fill = function () {
+            var e = _miscModelCache[_HOLO_PAD_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true);
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; } });
+            var sc = (ts * 0.72) / (Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) || 1);
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            g.add(m);
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_HOLO_PAD_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_HOLO_PAD_URL, true, fill, { front: true }); } catch (x) { console.warn('[ThreeRenderer] holo projector load threw', x); } }
+        return g;
+    }
+
     function _buildTurret(turret) {
         if (turret.plant) return _buildPlant3D(turret);   // THE GARDEN
+        if (turret.projector) return _buildHoloProjector3D(turret);   // 📽 the V-Tuber
         if (turret.summon) return _buildSummon3D(turret);
         if (turret.zombie) return _buildZombie3D(turret);
         if (turret.spellId === 'fiveGTower') return _buildFiveGTower(turret);
