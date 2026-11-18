@@ -2910,3 +2910,4 @@ STAY OUT, PR #2107, other thread). The room holds 122 rigs, 22 animating: three'
 charGroup's own updateMatrixWorld, armed in `_hqStillSceneWalk`, walk frames only) leaves a hidden body as it stands and walks it in
 full (force) the first frame it is shown, before that frame's draws (visibility is set in the ticks, before the walk). Lens: the
 Matrix walk line ends "N hidden people left as they stand". Off: `window.EW_HQ_CHAR_MW_ALL = true`.
+- 11-18 correction: his next F3 (42.8 FPS, worst 38 ms after the spikes thread's #2107/#2109) showed no "hidden people" tail: "skinned 92 / rigs animating 12" counts skinned MESHES (a body is several), not rigs, so there were few hidden bodies; THE HIDDEN PEOPLE stays (cheap, exact) but bought little. "Matrix walk by group" now splits two more levels below each plain top group (`hq_part/<part>/<group>`, "(still)" = a still-walk group) to find the 1.8 ms in hq_part.
