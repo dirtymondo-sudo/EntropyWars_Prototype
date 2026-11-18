@@ -15054,6 +15054,7 @@ const ThreeRenderer = (function () {
             h = _hashInt(h, u.x); h = _hashInt(h, u.y); h = _hashInt(h, u.z || 0);
             h = _hashInt(h, u.hp); h = _hashInt(h, u.mp); h = _hashInt(h, u.ap);
             h = _hashInt(h, u.player);
+            h = _hashInt(h, u._gaveUp ? 1 : 0);   // 🏳 THE WHITE FLAG (step 6b): giving up / fighting on patches the plate
             if (u.appearance) h = _hashStr(h, _apSerial(u.appearance)); h = _hashInt(h, u.shield || 0);
             if (typeof getActiveStatusKeys === 'function' && u.status) {
                 var sk = getActiveStatusKeys(u);
@@ -15401,6 +15402,31 @@ const ThreeRenderer = (function () {
         else el.appendChild(document.createTextNode(txt));
     }
 
+    /* THE WHITE FLAG (NPC encounters step 6b, 2026-11-18; mondo OK'd STEP-6A): an enemy that GAVE UP (battle.js `_gaveUp`) shows a white
+       flag in its name row where the eye sits (and on the portrait's corner at far zoom), and its HP bar greys. Read on every stats patch
+       and when a plate is built (a rebuild rewrites the plate's insides). */
+    function _plateFlagSync(po, u) {
+        if (!po || !po.el || !u) return;
+        var gaveUp = !!u._gaveUp;
+        if (!gaveUp && !po._gaveUp) return;
+        po._gaveUp = gaveUp;
+        if (po.el.classList.contains('tp-gaveup') !== gaveUp) po.el.classList.toggle('tp-gaveup', gaveUp);
+        var nameRow = po.el.querySelector('.tp-name'), flagEl = po.el.querySelector('[data-flag]');
+        if (gaveUp && !flagEl && nameRow) {
+            flagEl = document.createElement('span');
+            flagEl.className = 'tp-eye tp-flag'; flagEl.setAttribute('data-flag', ''); flagEl.title = 'Gave up — Talk to it on your turn';
+            flagEl.textContent = '\u{1F3F3}\uFE0F';
+            var nmEl = nameRow.querySelector('.tp-nm');
+            if (nmEl && nmEl.nextSibling) nameRow.insertBefore(flagEl, nmEl.nextSibling); else nameRow.appendChild(flagEl);
+        } else if (!gaveUp && flagEl) flagEl.remove();
+        var portEl = po.el.querySelector('.tp-portrait'), pflag = po.el.querySelector('[data-pflag]');
+        if (gaveUp && portEl && !pflag) {
+            pflag = document.createElement('span');
+            pflag.className = 'tp-pflag'; pflag.setAttribute('data-pflag', ''); pflag.textContent = '\u{1F3F3}\uFE0F';
+            portEl.appendChild(pflag);
+        } else if (!gaveUp && pflag) pflag.remove();
+    }
+
     function _patchPlateStats() {
         if (!state.units) return;
         for (var i = 0; i < state.units.length; i++) {
@@ -15467,6 +15493,8 @@ const ThreeRenderer = (function () {
                     rowEl.innerHTML = sbHtml;
                 }
             }
+
+            _plateFlagSync(po, u);   // 🏳 THE WHITE FLAG (step 6b)
 
             // Vision eye: open when any enemy can see this unit, closed/slashed
             // when hidden. Recomputed each frame so it tracks movement/fog live.
@@ -20764,6 +20792,9 @@ const ThreeRenderer = (function () {
                defeat's kneel — plays under every one-shot and outranks the locomotion reads
                (nothing moves on the podium); cleared by ThreeRenderer.podium.release */
             else if (entry._ew_hold && entry.actions[entry._ew_hold]) want = entry._ew_hold;
+            /* 🏳 THE LOSING NPC (battle.js, step 6b): a unit that gave up kneels (the podium's defKneel, baked on demand; re-read every frame so a
+               rebuilt or late-attaching rig kneels too) */
+            else if (window._ewGaveUpIds && window._ewGaveUpIds.has(uid) && _kneelReady(entry, uid)) want = 'defKneel';
             else if (_freeRoam && uid === _freeRoam.uid) want = _freeRoam.want || 'idle';   // hub free-roam owns this unit's clip
             else if (_rtMode && _rtUnits.has(uid)) want = _rtUnits.get(uid).want || 'idle'; // Strike real-time driver owns it
             else if (_jumpTweens.has(uid)) want = 'jump';   // falls back walk→idle
@@ -21443,6 +21474,14 @@ const ThreeRenderer = (function () {
                 '  box-shadow: 0 0 6px rgba(255,74,86,0.45);',
                 '}',
 
+                /* THE WHITE FLAG (step 6b): a unit that gave up: the flag where the eye sits, the HP bar grey */
+                '.tp-wrap .tp-eye.tp-flag { color: #ffffff; text-shadow: 0 0 4px rgba(255,255,255,0.7), 0 1px 2px #000; }',
+                '.tp-wrap.tp-gaveup .tp-portrait { position: relative; }',
+                '.tp-wrap .tp-pflag { position: absolute; top: -7px; right: -7px; font-size: 13px; line-height: 1; color: #fff; background: #000; border: 1px solid #fff; padding: 2px 2px 1px; }',
+                /* over the UI Maker's bar colours too (hud.js barsCss writes `:root:root … !important`) */
+                ':root:root:not(#ew-gu):not(#ew-gu) .tp-wrap.tp-gaveup .tp-hp-fill {',
+                '  background: #9a9a9a !important; box-shadow: none !important;',
+                '}',
                 '.tp-wrap .tp-shield {',
                 '  position: absolute; top: 0; right: 0; height: 100%;',
                 '  background: rgba(130,200,255,0.6);',
@@ -21941,6 +21980,7 @@ const ThreeRenderer = (function () {
         var _po = { css2d: css2d, el: wrap, statusBadgesHtml: _sbInner,
                     _headY: _headY, _footY: SELECTED_RING_OFFSET + 2 };
         _plateObjs.set(unit.id, _po);
+        _plateFlagSync(_po, unit);   // 🏳 THE WHITE FLAG (step 6b)
         _pmBind(_po);
         _anchorPlateForStyle(_po);
 
@@ -30621,6 +30661,14 @@ const ThreeRenderer = (function () {
             if (ue.actions[list[i]]) { ue._ew_hold = list[i]; return true; }
         }
         return false;
+    }
+    function _kneelReady(entry, uid) {
+        if (entry.actions && entry.actions.defKneel) return true;
+        var now = Date.now();
+        if (entry._ew_kneelTry && now - entry._ew_kneelTry < 500) return false;   // a rig still attaching: ask again in a moment
+        entry._ew_kneelTry = now;
+        try { _podiumBakePoses(uid); } catch (e) {}
+        return !!(entry.actions && entry.actions.defKneel);
     }
     function _podiumHas(uid, slot) {
         var ue = _getUnitEntry(uid);
@@ -74405,8 +74453,9 @@ const ThreeRenderer = (function () {
                 key = key || null;
                 var kind = kindOf(key), tint = (tintOwn != null) ? (tintOwn >>> 0) : (P.tint != null) ? (P.tint >>> 0) : 0xffffff, glow = +P.glow || 0, ds = !!P.ds, roof = !!P.roof;
                 var gain = (+P.gain > 0) ? +P.gain : 1;   // THE PAINTED WALL (2026-11-13, Bayside): `gain` lifts a sheet's tint past white (a grey stucco sheet under the city's tint reads as mud in a pastel; the light still shades it)
-                var id = [key || '', tint, glow, kind, ds ? 1 : 0, roof ? 1 : 0, gain].join('|');
-                return G[id] || (G[id] = { key: key, tint: tint, glow: glow, kind: kind, ds: ds, roof: roof, gain: gain, pos: [], uv: [], idx: [], n: 0 });
+                var shine = (+P.shine > 0) ? +P.shine : 0;   // THE CITY'S FUTURE LOOK (2026-11-18): `shine` = a polished part (chrome, dark glass walls): its own shininess, a bright cool highlight
+                var id = [key || '', tint, glow, kind, ds ? 1 : 0, roof ? 1 : 0, gain, shine].join('|');
+                return G[id] || (G[id] = { key: key, tint: tint, glow: glow, kind: kind, ds: ds, roof: roof, gain: gain, shine: shine, pos: [], uv: [], idx: [], n: 0 });
             };
             var put = function (g, v, uv) {   // a vertex in the part's frame → the room's metres
                 var lx = pp[0] + v[0] * pc + v[2] * ps, ly = pp[1] + v[1], lz = pp[2] - v[0] * ps + v[2] * pc;
@@ -74840,7 +74889,7 @@ const ThreeRenderer = (function () {
     function _hqBuildArchRows(info, G, U) {
         var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
         var matOf = function (b) {
-            var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1].join('|'); if (mats[id]) return mats[id];
+            var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1, b.shine || 0].join('|'); if (mats[id]) return mats[id];
             var sign = !!b.key && (String(b.key).indexOf('txt:') === 0 || String(b.key).indexOf('mark:') === 0);   // THE LETTERING: a sign's words, drawn once on a canvas (+ THE CITY MARKS: 'mark:flag' = the city flag's cloth)
             var tex = b.key ? (sign ? _hqArchSignTex(b.key) : _hzTex(b.key)) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
             /* THE BARE PARTS WEAR A SURFACE (2026-11-15, mondo: "Make sure any generated shapes for buildings and stuff have a
@@ -74857,6 +74906,7 @@ const ThreeRenderer = (function () {
             if (tex && !sign) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
             if (surf) { m.color.r /= surf.avg[0]; m.color.g /= surf.avg[1]; m.color.b /= surf.avg[2]; if (surf.shine) { m.shininess = surf.shine; m.specular = new THREE.Color(0x2a2a2a); } }   // the part's own colour, the sheet's grain
             if (b.gain && b.gain !== 1) m.color.multiplyScalar(b.gain);
+            if (b.shine > 0) { m.shininess = b.shine; m.specular = new THREE.Color(0x9fb4d0); }   // a polished part (data.js HQ_CITY_LOOKS)
             if (b.glow > 0) { m.emissive = m.color.clone(); if (tex) m.emissiveMap = tex; m.emissiveIntensity = b.glow; }
             else m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
             m._ew_hzNear = true;
@@ -85339,8 +85389,46 @@ const ThreeRenderer = (function () {
     }
     /* the blockers whose footprint overlaps the walker's disc at (x, z) */
     function _hqBlockersUnder(x, z) {
-        var out = [];
-        for (var i = 0; i < _hq.blockers.length; i++) if (_hqBlkContains(_hq.blockers[i], x, z, HQ_BODY_R)) out.push(_hq.blockers[i]);
+        var out = [], L = _hq.blockers, N = _hq.nav;
+        /* THE NAV GRID (2026-11-18, Disaster City 60 FPS): a walking townsperson asks the floor up to three times a frame, and each ask
+           read every one of the city's blockers. The people's own list (_hqNavStatics) now has a grid of 8 m cells; an ask reads only
+           its cell's blockers (+ the ones seen moving), in the list's own order, so the answer is the same. The officer's own walk
+           keeps the whole list. Off: window.EW_HQ_NAV_GRID_OFF = true. */
+        if (N && L === N.statics && L.length > 64) { var G = _hqNavGrid(L); if (G) { var ids = _hqNavGridAt(G, x, z); for (var k = 0; k < ids.length; k++) { var b = L[ids[k]]; if (_hqBlkContains(b, x, z, HQ_BODY_R)) out.push(b); } return out; } }
+        for (var i = 0; i < L.length; i++) if (_hqBlkContains(L[i], x, z, HQ_BODY_R)) out.push(L[i]);
+        return out;
+    }
+    var HQ_NAV_GRID_M = 8;
+    function _hqBlkReach(b) {
+        if (b.mc) { var M = b.mc; return Math.max(Math.hypot(M.bx0, M.bz0), Math.hypot(M.bx1, M.bz0), Math.hypot(M.bx0, M.bz1), Math.hypot(M.bx1, M.bz1)); }
+        if (b.rect) return Math.hypot(b.rect.hw, b.rect.hd);
+        return b.rad || 0;
+    }
+    function _hqNavGrid(L) {
+        if (typeof window !== 'undefined' && window.EW_HQ_NAV_GRID_OFF) return null;
+        var N = _hq.nav, G = N.grid; if (G && G.list === L && G.n === L.length) return G;
+        var U = _hqUnits(), n = L.length, c = HQ_NAV_GRID_M, pad = HQ_BODY_R + 0.1;
+        G = { list: L, n: n, c: c, cells: new Map(), loose: [], moved: new Uint8Array(n), px: new Float64Array(n), pz: new Float64Array(n), reach: new Float64Array(n), sw: 0, swAt: 0 };
+        for (var i = 0; i < n; i++) {
+            var b = L[i], o = b && b.obj, r = b ? _hqBlkReach(b) : NaN;
+            if (!o || !o.position || !isFinite(r) || r > 40) { G.moved[i] = 1; G.loose.push(i); continue; }
+            var bx = o.position.x / U, bz = o.position.z / U; G.px[i] = bx; G.pz[i] = bz; G.reach[i] = r;
+            if (!isFinite(bx) || !isFinite(bz)) { G.moved[i] = 1; G.loose.push(i); continue; }
+            var i0 = Math.floor((bx - r - pad) / c), i1 = Math.floor((bx + r + pad) / c), j0 = Math.floor((bz - r - pad) / c), j1 = Math.floor((bz + r + pad) / c);
+            for (var gi = i0; gi <= i1; gi++) for (var gj = j0; gj <= j1; gj++) { var key = (gi + 32768) * 65536 + (gj + 32768), a = G.cells.get(key); if (!a) G.cells.set(key, a = []); a.push(i); }
+        }
+        N.grid = G; return G;
+    }
+    /* the blockers an ask at (x, z) must read: its cell's, plus every one seen moving since the grid was laid (a slice of the list is
+       re-read once a frame; a blocker that moved or changed size leaves the grid for good) */
+    function _hqNavGridAt(G, x, z) {
+        var now = performance.now(), L = G.list, U = _hqUnits();
+        if (now - G.swAt > 4) { G.swAt = now;
+            for (var s = 0; s < 1500 && G.n; s++) { var i = G.sw; G.sw = (G.sw + 1) % G.n; if (G.moved[i]) continue; var b = L[i], o = b.obj;
+                if (Math.abs(o.position.x / U - G.px[i]) > 0.05 || Math.abs(o.position.z / U - G.pz[i]) > 0.05 || _hqBlkReach(b) > G.reach[i] + 0.04) { G.moved[i] = 1; G.loose.push(i); } } }
+        var a = G.cells.get((Math.floor(x / G.c) + 32768) * 65536 + (Math.floor(z / G.c) + 32768)), out = [];
+        if (a) for (var k = 0; k < a.length; k++) if (!G.moved[a[k]]) out.push(a[k]);
+        if (G.loose.length) { for (var m = 0; m < G.loose.length; m++) out.push(G.loose[m]); out.sort(function (p, q) { return p - q; }); }
         return out;
     }
     /* may the airborne body be at (x, z) with its feet at y? a blocker's
@@ -86530,6 +86618,17 @@ const ThreeRenderer = (function () {
         g.beginPath(); g.arc(32, 106, 10, 0, Math.PI * 2); g.stroke(); g.fill();
         _hqAwareTexC = new THREE.CanvasTexture(c); return _hqAwareTexC;
     }
+    /* THE SCARED MARK (mondo 11-18: "when they run away, they need some sort of symbol to indicate they are scared"): a blue sweat drop over the head of
+       an NPC on the strike ladder's run (`_run.mode` 'flee', and the stand after it), drawn like the red `!` (the same size on screen, hidden by walls) */
+    var _hqScaredTexC = null;
+    function _hqScaredMarkTex() {
+        if (_hqScaredTexC) return _hqScaredTexC;
+        var c = document.createElement('canvas'); c.width = 96; c.height = 128; var g = c.getContext('2d');
+        g.lineJoin = 'round'; g.lineWidth = 10; g.strokeStyle = '#000'; g.fillStyle = '#3fb4ff';
+        g.beginPath(); g.moveTo(48, 10); g.bezierCurveTo(60, 40, 82, 62, 82, 84); g.arc(48, 84, 34, 0, Math.PI, false); g.bezierCurveTo(14, 62, 36, 40, 48, 10); g.closePath(); g.stroke(); g.fill();
+        g.fillStyle = '#d8f2ff'; g.beginPath(); g.ellipse(36, 82, 7, 13, -0.35, 0, Math.PI * 2); g.fill();
+        _hqScaredTexC = new THREE.CanvasTexture(c); return _hqScaredTexC;
+    }
     function _hqAwareSayTex(text) {
         var c = document.createElement('canvas'), g = c.getContext('2d'), f = '600 34px "IBM Plex Mono", monospace';
         g.font = f; var w = Math.ceil(g.measureText(text).width) + 36; c.width = w; c.height = 60; g = c.getContext('2d');
@@ -86614,8 +86713,12 @@ const ThreeRenderer = (function () {
             H.chars.forEach(function (c) { if (c._awWarned && alert.indexOf(c) < 0) c._awWarned = false; });
         }
         H.chars.forEach(function (c) { if ((st.forced[c.id] || (on && (c._awHold > now || (c._run && c._run.mode === 'chase')))) && !c.away && alert.indexOf(c) < 0) { alert.push(c); if (!st.forced[c.id]) n++; } });   // dev.awareMark: a mark held on for a picture · THE STRIKE LADDER: a Guard that warned, or comes   // dev.awareMark: a mark held on for a picture
-        for (i = st.marks.length - 1; i >= 0; i--) { var mk = st.marks[i]; if (alert.indexOf(mk.ch) < 0 || H.chars.indexOf(mk.ch) < 0) { _hqAwareDrop(H, mk); st.marks.splice(i, 1); H.dirty = true; } }
-        alert.forEach(function (c) { if (st.marks.some(function (m) { return m.ch === c; })) return; var mh = (A && A.markH) || 0.05; st.marks.push({ ch: c, sp: _hqAwareSprite(H, _hqAwareMarkTex(), mh * 0.5, mh) }); H.dirty = true; });
+        /* THE SCARED MARK: whoever runs from a strike (and stands after the run) wears the blue drop in place of the red `!` */
+        var scared = H.chars.filter(function (c) { return c && c._run && (c._run.mode === 'flee' || c._run.mode === 'rest') && !c.away && c.kind !== 'player'; });
+        alert = alert.filter(function (c) { return scared.indexOf(c) < 0; });
+        for (i = st.marks.length - 1; i >= 0; i--) { var mk = st.marks[i]; if ((mk.k === 'scared' ? scared : alert).indexOf(mk.ch) < 0 || H.chars.indexOf(mk.ch) < 0) { _hqAwareDrop(H, mk); st.marks.splice(i, 1); H.dirty = true; } }
+        alert.forEach(function (c) { if (st.marks.some(function (m) { return m.ch === c && m.k !== 'scared'; })) return; var mh = (A && A.markH) || 0.05; st.marks.push({ ch: c, k: 'alert', sp: _hqAwareSprite(H, _hqAwareMarkTex(), mh * 0.5, mh) }); H.dirty = true; });
+        scared.forEach(function (c) { if (st.marks.some(function (m) { return m.ch === c && m.k === 'scared'; })) return; var mh = (A && A.markH) || 0.05; st.marks.push({ ch: c, k: 'scared', sp: _hqAwareSprite(H, _hqScaredMarkTex(), mh * 0.75, mh) }); H.dirty = true; });
         st.n = n;
         if (on !== st.on || (n > 0) !== st.seen) { st.on = on; st.seen = n > 0; if (H.opts && H.opts.onAware) { try { H.opts.onAware({ on: on, seen: n > 0, n: n }); } catch (e) {} } }
     }
@@ -86704,6 +86807,20 @@ const ThreeRenderer = (function () {
         if (ch._resBlk) { ch._resBlk.y = ch.y; ch._resBlk.top = ch.y + 2.6; }
         _hq.dirty = true;
         return moved;
+    }
+    /* THE TALK BOX FACES YOU (mondo 11-18: "when they are running away and i hit them again and they talk, they need to stop running and turn around
+       and face me"): the run stops (the stand of the run: it keeps facing the walker, then walks back to its day once the box is closed and the stand is
+       over); turned at once, since the walk's ticks hold while a box is up */
+    function _hqLadderFace(id) {
+        var H = _hq, ch = _hqLadderChar(id), pl = H && H.player; if (!ch || !pl || typeof HQ_NPC_TEMPERS === 'undefined') return false;
+        var now = performance.now(), L = HQ_NPC_TEMPERS.ladder;
+        if (ch._run && ch._run.mode === 'flee') ch._run = { mode: 'rest', until: now + L.restMs, home: ch._run.home || _hqLadderHome(ch), stuck: 0 };
+        ch.moving = false; ch._runFast = false;
+        ch.targetYaw = ch.yaw = Math.atan2(pl.x - ch.x, pl.z - ch.z);
+        if (ch.entry && ch.entry.model) ch.entry.model.rotation.y = ch.yaw;
+        if (H.aware) H.aware.next = 0;
+        H.dirty = true;
+        return true;
     }
     function _hqLadderFree(ch) {
         var H = _hq; ch._run = null; ch._runFast = false; ch.moving = false;
@@ -92509,6 +92626,10 @@ const ThreeRenderer = (function () {
                HQ_INST_REST frames is synced every 4th frame (its turn by its place); a change wakes it to every frame again. The
                parents' visibility is worked out once per parent a frame (_hqInstShown). Off: window.EW_HQ_INST_SYNC_EVERY. */
             if (rest && (rec.qN | 0) >= HQ_INST_REST && ((ST + r) & 3) !== 0) continue;
+            /* THE HIDDEN CELLS (2026-11-18, mondo's F3: "mask: setup + lights + sort 2.6" = this sync, 15,000 copies, 351 of 414 cells
+               off the camera): a batch whose cell is hidden this frame draws in no pass, so its copies are not read; it is synced
+               in full the first frame its cell is shown (the sync runs before that frame's first draw). Off: EW_HQ_INST_SYNC_HIDDEN */
+            if (!force && im.parent && im.parent._ew_instCell != null && im.parent.visible === false && !_hqInstSyncHidden()) { rec.qN = 0; continue; }
             if (rec.fitStamp === _hqInstStamp) refit = null;   // one refit a frame per batch
             for (var i = 0; i < c.length; i++) {
                 var o = c[i], off = i * 16, e = null;
@@ -92541,6 +92662,7 @@ const ThreeRenderer = (function () {
         }
     }
     var HQ_INST_REST = 30;
+    function _hqInstSyncHidden() { return typeof window !== 'undefined' && !!window.EW_HQ_INST_SYNC_HIDDEN; }
     function _hqInstSyncEvery() { return typeof window !== 'undefined' && !!window.EW_HQ_INST_SYNC_EVERY; }
     /* a copy's parent chain drawn (every one visible, up to the scene): once per parent a frame */
     function _hqInstShown(q, sc, st) {
@@ -99686,6 +99808,7 @@ const ThreeRenderer = (function () {
             else r.ask = now + HQ_NPC_TEMPERS.mug.againMs;
             if (_hq.aware) _hq.aware.next = 0; _hq.dirty = true; return true;
         },
+        npcFace: function (id) { try { return _hq ? _hqLadderFace(id) : false; } catch (e) { console.warn('[HQ] npcFace', e); return false; } },   // the Talk box: it stops and faces the walker
         npcStruck: function (id, rung) { try { return _hq ? _hqLadderStruck(id, rung) : false; } catch (e) { console.warn('[HQ] npcStruck', e); return false; } },
         encounterEvent: function (id, gesture) {
             var H = _hq, pl = H && H.player, ch = H ? _hqLadderChar(id) : null; if (!ch || !pl) return null;

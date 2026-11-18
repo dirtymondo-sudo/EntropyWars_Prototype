@@ -695,6 +695,7 @@
                 if (u.dead || u._dying) continue;
                 if (unitFinished(u)) continue;
                 if (u._skippedTurn) continue;
+                if (u._gaveUp) continue;   // 🏳 THE LOSING NPC (battle.js, step 6b): a unit that gave up acts no more
                 // ⏳ THE FULL ROUND (battle.js): a held debuff that already covered this unit's turns comes off before it acts
                 if (typeof _statusHoldsBeforeTurn === 'function') _statusHoldsBeforeTurn(u);
                 // 🧊/⚡ Hard CC skips the whole activation — frozen units stay

@@ -425,6 +425,45 @@ Story walk only (the encounter's own launch and commit). Plan: `docs/plans/npc-e
   needs `gone: true` on its row (the arrest) or its HP (spared).
 - **Nothing on screen:** no nameplate or aim prompt shows a hurt NPC's HP (a UI change: mock-up and mondo's OK first). Not run in a browser (not visual).
 
+## THE RUNNER ON THE WALK: SCARED + FACES YOU (2026-11-18, mondo: "when they run away, they need some sort of symbol to indicate they are scared, and then when they are running away and i hit them again and they talk, they need to stop running and turn around and face me")
+
+- **The scared mark:** an NPC on the strike ladder's run (`_run.mode` 'flee', and the stand after it) wears a blue sweat drop over its head in place of
+  the red `!` (three-renderer.js `_hqScaredMarkTex`, the marks in `_hqTickAware`, `k: 'scared'`; the same size on screen as the `!`).
+- **The Talk box faces you:** map.js `_hqLadderTalk` calls `ThreeRenderer.hq.npcFace(id)` (three-renderer.js `_hqLadderFace`): the run becomes its stand
+  (`mode: 'rest'`), it stops, turns to the walker at once (the walk's ticks hold while a box is up, so before it ran in place), and walks back to its day after.
+- Proof: Disaster City, a resident struck once (runs, drop over its head), struck again (stops, faces, the box).
+
+## THE LOSING NPC (NPC encounters step 6b, 2026-11-18; STEP-6A.md, mondo: "OK sounds good"; REPLACES "natives never escape")
+
+- **When:** a hit that leaves an NPC alive at or under 30 % of its max HP (`HQ_NPC_TEMPERS.losing.giveUpAt`). It decides ONCE, by its temper
+  (`losing.by`, data.js `hqNpcLosingWay`): Civilian GIVES UP; Coward and Opportunist RUN; everyone else fights on (Territorial, Guard,
+  Protector, Brute, a race with no temper yet, a boss). Story fights only, never a quest's fight, only an enemy seat that is a real NPC (the
+  run marker's `npcs`, seat `2-<i>` = `npcs[i]`). VS-CPU only, nothing is relayed (RULE #2 is moot, like THE RETREAT).
+- **Giving up:** `unit._gaveUp`. It kneels (the podium's `defKneel`, sprites.js PODIUM_POSES; three-renderer.js reads `window._ewGaveUpIds`
+  every frame, `_kneelReady`); a white flag sits in its nameplate's name row (at far zoom on the portrait's corner) and its HP bar is grey
+  (three-renderer.js `_plateFlagSync`, the `tp-gaveup` class, over the UI Maker's bar colours; `_gaveUp` is in the unit serial). Its turns are
+  skipped (state.js `getNextBlitzUnit`); the AI never targets it (ai.js visibleEnemies); it counts as OUT for the win check
+  (`getTeamWipeoutCount`). A party hit on it = it FIGHTS ON for good (`_npcRefused`; `_npcBeforeHit` in the applyDamageToUnit wrapper).
+- **TALK** (hud.js command row `npcTalk`, battle.js `npcTalkRow` / `doNpcTalk`): the row shows while any enemy has given up; lit on the unit's
+  own turn within 3 squares (`losing.talkRange`, Manhattan), free (no AP, the turn goes on). The panel (battle.js `_npcTalkOpen`, the battle's
+  black box with the white outline): portrait + flag, NAME, LV, GAVE UP, the line "Stop. I give up.", buttons (keys 1 / 2 / 3)
+  TAKE THE PAY-OFF · 8 x LV GOLD / ARREST / LET IT GO. ESC / E / right click close it with no answer.
+- **The answers** (each takes it off the board at once; `_npcDealt` holds them till the commit; no XP for any):
+  PAY-OFF = `hqNpcPayOff(lvl)`: gold now on screen, paid into the profile at the commit in ANY outcome (the local mirror, like the capture
+  bounty), plus `rolls` CERTAIN spoils rolls (1; 2 from level 20) in the same drop table (hqEncounterDrops `sure: true` bodies; the bag gets
+  them on a win like every drop); it walks off. LET IT GO = it walks off. ARREST = a door on its square (`raceCaptureDoor:seal`), a capture
+  record with `arrest: true` that `hqCaptureEnlist` takes WIN OR LOSE (the party, else the roster, else a bounty). All three: its NPC id is in
+  the commit's `beaten` (out of the room today); its wounds row is dropped (`_npcDealtOff` = gone).
+- **The last one:** when the last enemy gives up, the fight is won, and checkWin holds the debrief (`_npcAskBeforeEnd`) and opens the panel by
+  itself; then the back keys answer LET IT GO (the hint says so).
+- **Running** (`_npcRunTurn`, hooked first in runComputerTurn): on its turn, unseen (`isUnitSeenByAnyEnemy` false) = it LEAVES (`_escapeRemove`:
+  `state.escaped[2]`, no XP, no drop, keeps its wounds, and `hqEncounterRecord(... away)` keeps it off the cleared list even when the fight is
+  won). Seen = it moves (`doMove`) to the square in its move nobody of the party sees, nearest the rim; none = cornered = it gives up.
+- **Proof:** a staged VS-CPU frame with a fake run marker (`_encMatch`, `state.activePlayer = 1`), build HEAD 6207ed3: the kneel, the flag + grey
+  bar, the TALK row, the panel, the pay-off, the last-one panel; a runner checked moving to an unseen square. Pictures in
+  `/mnt/project-files/npc-encounters/step-6b/`.
+- **Numbers are PROPOSALS** (`HQ_NPC_TEMPERS.losing`): 30 %, 3 squares, 1 roll (+1 from level 20), and the tempers in `by`.
+
 ## PEOPLE OFF THE GROUND (2026-11-18, the Colosseum thread; mondo: "make the stands walkable and those thrones able to be sat in")
 A native spot (`npcSpots` row) may carry `y` (metres: a floor that is a bridge, which a spot with no height never finds) and `pose` (a
 sprites.js `_CAST_POSES` slot; `hqSit` = seated, `y` then = the seat's own height). Any race borrows the pose's clip. A posed spot never roams.

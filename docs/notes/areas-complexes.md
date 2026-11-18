@@ -12465,4 +12465,9 @@ night"); a short Meshy list or stand-ins ("a billboard is just a rectangle"); th
   platform's look, the time machine (the plan's later steps).
 - Probe: `node playtest_city.js site_prebuilt_downtown_streets '<views>' "--pre=window.EW_HQ_VARIANT='future';"` (the harness
   sets the variant to 'none' by default; `--pre` runs after that). Night in a view: `"eval": "window._hqClockAdvance(60*13)"`.
+- PASS 2 (11-18, mondo on the pilot: "almost all of the brick building textures need to be replaced ... chrome and neon and metal
+  and glass ... futuristic version of Tokyo"): wall sheets are REPLACED (five finishes, `HQ_CITY_LOOKS.future.finishes`, picked by
+  the row's hash), storey / corner / roof neon lines, a lit fascia, roof billboards, kana blade signs, holograms, cyan lamps; a
+  new arch part field `shine` (three-renderer.js). A building's plan is measured on its own wall parts, never on its
+  `texbuilding` row (that row can stand turned or off centre: lines then hang in the air). Details: PLAN.md section 10.
 

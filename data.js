@@ -79523,6 +79523,12 @@ const HQ_STAGE_RULES = {
        of any HQ_WORLD zone; every id, counter, ledger key and save is untouched. Off: window.EW_HQ_NO_STAGE (every door loads). */
     round: [
         { a: 'central_egress', door: 'foyer', b: 'foyer', bDoor: 'egress' },   // THE FOURIER FOYER ⇄ the main hall, the double doors at 195° (the revolving door until 2026-11-12)
+        /* MORE THAN ONE ROOM ROUND THE HALL (2026-11-18, mondo: "can you make my office in door hq not be behind a loading screen?
+           its literally a tiny office, it should fit in the same room"): a round hall may hold a row for each of its ground-floor
+           doors (hqStageRoundJoins). In the hall every joined room stands beside it; in a joined room only the hall does (the
+           hall's other joined doors are plain doors until you step into the hall). A box room has one row at most. */
+        { a: 'central_egress', door: 'office', b: 'office', bDoor: 'egress' },   // YOUR OFFICE ⇄ the main hall, the closet door at 135°
+        { a: 'central_egress', door: 'reception', b: 'reception', bDoor: 'egress' },   // ROOM 1 · RECEPTION ⇄ the main hall, the glass door at 90° (2026-11-18, mondo: "okay do reception next")
     ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
@@ -80251,8 +80257,8 @@ function hqStagePart(roomId) {
 /* toId's frame seen from fromId's room: a point (x, z) of toId's room lies at hqStageToRoom(rel, x, z) in fromId's.
    rot = toId's quarter turns relative to fromId's (rotation.y = rot·π/2 on the group that carries toId). */
 function hqStageRel(fromId, toId) {
-    const rj = hqStageRoundJoin(fromId);   // THE ROUND JOIN: the hall and its box at the door's own angle
-    if (rj && (rj.a === toId || rj.b === toId) && fromId !== toId) { const G = hqStageRoundGeom(rj); return G ? Object.assign({}, fromId === rj.a ? G.rel : G.back) : null; }
+    const rj = fromId !== toId ? hqStageRoundJoin(fromId, toId) : null;   // THE ROUND JOIN: the hall and its box at the door's own angle
+    if (rj) { const G = hqStageRoundGeom(rj); return G ? Object.assign({}, fromId === rj.a ? G.rel : G.back) : null; }
     const A = hqWorldFrame(fromId), B = hqWorldFrame(toId);
     if (!A || !B || A.ground !== B.ground || A.absorbedBy || B.absorbedBy) return null;
     const o = hqZoneToRoom(fromId, B.x, B.z);
@@ -80275,18 +80281,21 @@ function hqStageFromRoom(rel, x, z) {
    HQ_WORLD_RULES.wallM behind the hall's wall at the door's angle, its door facing the hall's centre. → the row (with its
    two doors) for a room of either end, or null (the rows are checked here: a level-0 door of a round room, a wall door of a
    box room). */
-function hqStageRoundJoin(roomId) {
-    const rows = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.round) || [], R = DOOR_HQ.rooms || {};
+function hqStageRoundJoin(roomId, otherId) { return hqStageRoundJoins(roomId, otherId)[0] || null; }
+/* every row of a room (2026-11-18: a hall has one for each joined door, a box room one); `otherId` = only the row with that room */
+function hqStageRoundJoins(roomId, otherId) {
+    const rows = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.round) || [], R = DOOR_HQ.rooms || {}, out = [];
     for (let i = 0; i < rows.length; i++) {
         const j = rows[i]; if (!j || (j.a !== roomId && j.b !== roomId)) continue;
+        if (otherId && j.a !== otherId && j.b !== otherId) continue;
         const A = R[j.a], B = R[j.b];
         if (!A || !B || A.kind === 'box' || A.kind === 'bay' || !(A.shell && A.shell.radius > 0)) continue;
         if (B.kind !== 'box' || !(B.shell && B.shell.w > 0 && B.shell.d > 0)) continue;
         const da = (A.doors || []).find(d => d && d.id === j.door), db = (B.doors || []).find(d => d && d.id === j.bDoor);
         if (!da || !db || (da.level || 0) !== 0 || !isFinite(+da.deg) || !_hqDoorOnWall(B, db)) continue;
-        return { a: j.a, b: j.b, door: da, bDoor: db };
+        out.push({ a: j.a, b: j.b, door: da, bDoor: db });
     }
-    return null;
+    return out;
 }
 /* the join's geometry: `rel` = the box in the hall's metres, `back` = the hall in the box's; `R` the hall's wall, `deg` the
    door's angle, `gap` the wall between, `ow` / `oh` the doorway (the narrower leaf's), `pb` the box door on its wall */
@@ -80307,15 +80316,20 @@ function hqStageRoundGeom(j) {
 /* the stage's neighbour row for a room of a round join (hqStageNeighbours' shape; the hall's span is `side: 'round'` at the
    door's angle, `t0` / `t1` across the doorway) — null for any other room */
 function hqStageRoundNeighbours(roomId) {
-    const j = hqStageRoundJoin(roomId); if (!j) return null;
-    const G = hqStageRoundGeom(j); if (!G) return null;
-    if (roomId === j.a) {
-        const S = DOOR_HQ.rooms[j.b].shell, hw = S.w / 2, hd = S.d / 2;
-        const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(G.rel, p[0], p[1]));
-        return [{ id: j.b, rel: G.rel, round: true, links: [],
-                  rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) },
-                  spans: [{ side: 'round', deg: G.deg, R: G.R, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] }];
+    const js = hqStageRoundJoins(roomId); if (!js.length) return null;
+    if (roomId === js[0].a) {   // the hall: every room joined to it
+        const out = [];
+        js.forEach(j => {
+            const G = hqStageRoundGeom(j); if (!G) return;
+            const S = DOOR_HQ.rooms[j.b].shell, hw = S.w / 2, hd = S.d / 2;
+            const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(G.rel, p[0], p[1]));
+            out.push({ id: j.b, rel: G.rel, round: true, links: [],
+                       rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) },
+                       spans: [{ side: 'round', deg: G.deg, R: G.R, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] });
+        });
+        return out.length ? out : null;
     }
+    const j = js[0], G = hqStageRoundGeom(j); if (!G) return null;
     const SA = DOOR_HQ.rooms[j.a].shell, Ro = Math.max(SA.radius, (SA.mezz && SA.mezz.outer) || 0, (SA.ring3 && SA.ring3.outer) || 0), c = hqStageToRoom(G.back, 0, 0);
     return [{ id: j.a, rel: G.back, round: true, links: [],
               rect: { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro },
@@ -80544,9 +80558,9 @@ function hqWorldDoorJoinResolve(j) {
 }
 /* the door join (if any) that door `doorId` of room `roomId` belongs to, on a staged part: { nb, gap, ow, oh, other door id } */
 function hqStageDoorJoin(roomId, doorId) {
-    const rj = hqStageRoundJoin(roomId);   // THE ROUND JOIN: `round`, and `keep` = this side's leaf is the one in the doorway (the hall's)
-    if (rj) {
-        const mine = roomId === rj.a ? rj.door : rj.bDoor; if (!mine || mine.id !== doorId) return null;
+    const rjs = hqStageRoundJoins(roomId);   // THE ROUND JOIN: `round`, and `keep` = this side's leaf is the one in the doorway (the hall's)
+    if (rjs.length) {
+        const rj = rjs.find(x => { const m = roomId === x.a ? x.door : x.bDoor; return !!m && m.id === doorId; }); if (!rj) return null;
         const G = hqStageRoundGeom(rj); if (!G) return null;
         return { nb: roomId === rj.a ? rj.b : rj.a, gap: G.gap, ow: G.ow, oh: G.oh, otherDoor: roomId === rj.a ? rj.bDoor.id : rj.door.id, round: true, keep: roomId === rj.a };
     }
@@ -91826,6 +91840,11 @@ const HQ_NPC_TEMPERS = {
        they sleep"): an NPC that walks away from a fight hurt keeps its HP into the next one (data.js hqNpcWoundFor / hqNpcWoundsAfter, the profile's
        `door.hq.wounds`). One that went down is BEATEN, whatever the fight's outcome (the cleared ledger, hqEncounterRecord `beaten`). `max`: rows kept. */
     wounds: { max: 64 },
+    /* THE LOSING NPC (step 6b, 2026-11-18; STEP-6A.md, mondo: "OK sounds good"). A hit that leaves an NPC alive at or under `giveUpAt` of its max HP: it decides
+       ONCE by its temper (`by`: 'give' = gives up on the spot, 'run' = runs for the rim and leaves once nobody sees it, gives up if it cannot get out of sight);
+       a temper not named fights on, so do bosses. TALK reaches `talkRange` squares (free). The pay-off: payOffGoldPerLevel x its level + `rolls` certain spoils
+       rolls (`rollsAt` and up: one more). Story fights only, never a quest's fight. Every number is a PROPOSAL. */
+    losing: { giveUpAt: 0.30, talkRange: 3, rolls: 1, rollsAt: 20, by: { civilian: 'give', coward: 'run', opportunist: 'run' } },
     /* THE LINES (mondo 11-17: "these lines are fine for now"). talk: after the second strike, or E first. warn: over the head, once. */
     lines: {
         talk: { 'chef': '“Hey! What was that for?”', 'hippie': '“Not cool, man.”', 'skater': '“What is your problem?”', 'popstar': '“Do you know who I am?”',
@@ -91844,6 +91863,16 @@ function hqNpcTemper(ch) {
     const R = o.room && T.rooms[o.room], own = R && R.residents && o.id ? R.residents[o.id] : null;
     const key = own || T.races[String(o.race || '').toLowerCase()] || null;
     return (key && T.tempers[key]) ? Object.assign({ key }, T.tempers[key]) : null;
+}
+/* THE LOSING NPC (step 6b): what an NPC of this temper does when it is losing: 'give' | 'run' | null (fights on) */
+function hqNpcLosingWay(ch) {
+    const t = hqNpcTemper(ch), L = HQ_NPC_TEMPERS.losing || {};
+    return (t && L.by && L.by[t.key]) || null;
+}
+/* THE PAY-OFF of an NPC of level `lvl`: { gold, rolls } (gold = payOffGoldPerLevel x level; rolls = the certain spoils rolls) */
+function hqNpcPayOff(lvl) {
+    const T = HQ_NPC_TEMPERS, L = T.losing || {}, n = Math.max(1, lvl | 0);
+    return { gold: (T.payOffGoldPerLevel | 0) * n, rolls: (L.rolls | 0) + (n >= (L.rollsAt | 0) && L.rollsAt ? 1 : 0) };
 }
 /* the named group of a race ('emergency' ...) | null */
 function hqNpcGroup(race) {
@@ -94104,12 +94133,13 @@ function hqEncounterRecord(profile, ev) {
        the NPC ids that went down in this fight, whatever its outcome (a win, a loss, a retreat): each is out of the room until tomorrow, like the one
        struck on a win. Before, only the struck NPC of a WON fight was filed; its group's fallen came back at once, whole. */
     const _bt = (Array.isArray(ev.beaten) ? ev.beaten : []).filter(x => x).map(String);
+    const _away = (Array.isArray(ev.away) ? ev.away : []).filter(x => x).map(String);   // THE LOSING NPC (step 6b): NPCs that RAN and got away are not beaten, even on a win
     if (ev.room && (ev.won || _bt.length)) {
         const C = H.cleared = hqClearedRecord(profile);
         let c = C[ev.room];
         if (!c || typeof c !== 'object' || c.date !== date) c = C[ev.room] = { date, ids: [] };
         if (!Array.isArray(c.ids)) c.ids = [];
-        if (ev.won && ev.id && c.ids.indexOf(ev.id) < 0) c.ids.push(String(ev.id));
+        if (ev.won && ev.id && c.ids.indexOf(ev.id) < 0 && _away.indexOf(String(ev.id)) < 0) c.ids.push(String(ev.id));
         _bt.forEach(id => { if (c.ids.indexOf(id) < 0) c.ids.push(id); });
     }
     const synced = hqSyncedHq(profile, true);
@@ -94490,7 +94520,7 @@ const HQ_PARTY_RULES = {
    THE RETREAT (also when the last body on the board escapes). A RETREAT is neither a win nor a loss: no pool, no drops,
    no capture, nothing cleared, no ward, counted as `retreats`. A LOSS with escapes is not a wipe: nobody is treated, the
    loss is counted, the escaped move to the FRONT of the party (slot 1 walks), and the way back is the room at the door
-   you came in by (`landsAtDoor`; the swing spot when there is no door on file). Natives never escape (fork §10.2). */
+   you came in by (`landsAtDoor`; the swing spot when there is no door on file). Natives never escaped (fork §10.2) until NPC encounters step 6b (2026-11-18): a Coward or Opportunist NPC that is losing RUNS and leaves unseen (battle.js THE LOSING NPC). */
 const HQ_ESCAPE_RULES = {
     apMin: 1,          // AP the unit must still hold to slip out (it spends all of it)
     ms: 900,           // the walk-off
@@ -95332,7 +95362,7 @@ function hqEncounterDrops(fallen, opts) {
     const sum = keys.reduce((a, k) => a + (R.weights[k] | 0), 0); if (!sum) return out;
     fallen.forEach(f => {
         if (!f) return; out.rolled++;
-        if (rng() >= R.chance) return;
+        if (!f.sure && rng() >= R.chance) return;   // `sure`: a certain roll (THE PAY-OFF, NPC encounters step 6b)
         let r = rng() * sum, pick = keys[keys.length - 1];
         for (const k of keys) { r -= R.weights[k] | 0; if (r < 0) { pick = k; break; } }
         let key = pick, rarity = R.rarity[pick] || 'common';
@@ -101129,14 +101159,34 @@ const HQ_CITY_LOOKS = {
     future: {
         year: 2047,
         boxes: [{ d: 'E', x0: 84, x1: 252, z0: -252, z1: -84 }],                      // Entertainment (after THE DISTRICT MOVE: the north-east block)
-        wall: [0.56, 0.58, 0.76],                                                     // every unlit part's colour is multiplied by this (darker, cooler)
+        /* PASS 2 (mondo 11-18, on the first pilot: "almost all of the brick building textures need to be replaced ... futuristic and
+           sci-fi and chrome and neon and metal and glass ... cyberpunk 2047 or 2001 a space odyssey retro futurism ... futuristic
+           version of Tokyo"): every wall sheet of the old city (brick, plaster, stucco, concrete, wood, corrugated iron, roof tiles,
+           marble) is REPLACED, one finish a building, all four sheets from the Urban Decay pack already on R2:
+           chrome (polished steel panels), white (2001's white panels), glass (a blue glass curtain wall), steel (brushed blue steel), black (black steel). */
+        wallRe: /^(urban:(Brick|PlasterWall|Concrete|Wood|MetalCorrugated|MetalRoofTiles|MetalShutter|TileMarble|TileSubway|MetalTruss)|bricks_|marble$|aluminium$)/,
+        finishes: [
+            { id: 'chrome', key: 'urban:MetalPanel2a',        tint: 0xe4ecfa, gain: 2.3, shine: 110, trim: 0x8a94a6 },
+            { id: 'white',  key: 'urban:MetalPanelPainted1a', tint: 0xf4f4f8, gain: 2.1, shine: 40, trim: 0xc8ccd6 },
+            { id: 'glass',  key: 'urban:GlassGeneric3a',      tint: 0x86b4f0, gain: 2.4, shine: 120, trim: 0x30384c, glow: 0.2 },
+            { id: 'steel',  key: 'urban:MetalGeneric1a',      tint: 0xb8d0ec, gain: 1.9, shine: 90, trim: 0x6a7890 },
+            { id: 'black',  key: 'urban:MetalPanel1a',        tint: 0x5a6274, gain: 1.1, shine: 70, trim: 0x20242c },
+        ],
+        bare: { keep: 0.3, cool: [0.86, 0.92, 1.08] },                                // a sheetless part (frames, trims, awnings): 70 % of its colour goes to steel grey, then cooled
         inks: ['#ff3ad8', '#35e0ff', '#ffe04a', '#ff6ad8', '#7cf0ff', '#9cff5a'],     // the neon inks (three-renderer.js _HQ_NEON_INKS, the old Cyberpunk room's)
         signBg: '#0b0a16', signGlow: 1.0,                                             // a painted sign: its board goes dark, its words take an ink and light up
-        glass: { glow: 0.62, tints: [0x7ce8ff, 0xff8ae0, 0xffd27a, 0xbfe8ff] },       // glass is lit from inside, one colour a building
-        trim: { h: 0.14, glow: 1.0 },                                                 // the neon line round a roof
-        board: { minW: 5, h: 3.2, post: 1.1, glow: 0.95, frame: 0x16141e },           // the roof billboard (a rectangle on two posts)
+        glass: { glow: 0.7, tints: [0x7ce8ff, 0xff8ae0, 0xffd27a, 0xbfe8ff] },        // windows are lit from inside, one colour a building
+        trim: { h: 0.16, glow: 1.0, band: 3.5 },                                      // the neon lines: round the roof, down the four corners, one round every storey (`band` m)
+        fascia: { y: 2.75, h: 0.55, glow: 0.9 },                                      // the lit strip over the ground floor's front
+        board: { minW: 4, h: 4.0, post: 1.2, glow: 0.95, frame: 0x16141e },           // the roof billboard (a rectangle on two posts)
+        blade: { cell: 1.0, out: 0.75, y0: 3.3, yLow: 1.1, glow: 1.0 },                          // the blade sign: one lit square a character, stacked down the front's corner
+        holo: { minTop: 6.5, h: 5.0, lift: 7.5, glow: 1.0 },                          // the hologram: a word of light standing over a tall roof (no board, seen from both sides)
         /* the old Cyberpunk room's own sign words (three-renderer.js _HQ_NEON_NAMES + _NR_BUILDERS.cyberpunk): nothing new is named here */
         names: ['NOODLE', 'RAMEN 24H', 'PACHINKO', 'HOLO', 'BAR', 'NO VACANCY', 'ARCADE', 'HOTEL', 'SYNTH', 'IMPLANTS', 'LEASE 2047', 'RETINA', 'ATM · CRYPTO', 'TENANTS'],
+        /* the same words in kana for the blade signs (ノイズ and 夢 are the old room's own; the rest spell RAMEN, PACHINKO, HOTEL, BAR, ARCADE, NOODLE) */
+        blades: ['ラーメン', 'パチンコ', 'ホテル', 'バー', 'ノイズ', 'アーケード', 'ヌードル', '夢'],
+        holos: ['夢', 'ノイズ', 'SYNTH', 'HOLO', '2047'],
+        lamps: { E: '#35e0ff' },                                                      // the district's street lamps
         traffic: { swap: { suv: 'cybercar' }, every: 2 },                             // every second `suv` in a traffic loop is the cyberpunk car
     },
 };
@@ -101147,23 +101197,32 @@ function hqCityLookTerrain(roomId, base, lookId) {
     const ck = roomId + '|' + lookId;
     if (_hqCityLookCache[ck] && _hqCityLookCache[ck].from === T) return _hqCityLookCache[ck].terrain;
     const boxOf = (r) => { for (const b of L.boxes) if (r.x >= b.x0 && r.x < b.x1 && r.z >= b.z0 && r.z < b.z1) return b; return null; };
-    const mul = (t) => { const c = (t == null) ? 0xffffff : (t >>> 0); return (Math.round(((c >> 16) & 255) * L.wall[0]) << 16) | (Math.round(((c >> 8) & 255) * L.wall[1]) << 8) | Math.round((c & 255) * L.wall[2]); };
     const hx = (s) => parseInt(String(s).slice(1), 16);
-    const builds = {};   // footprint rows by id: only a real building gets a roof line and a billboard
+    const steel = (t) => {   // a sheetless part: most of its colour goes to its own grey, then cooled
+        const c = (t == null) ? 0xffffff : (t >>> 0), r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255, y = 0.3 * r + 0.59 * g + 0.11 * b, k = L.bare.keep;
+        const f = (v, m) => Math.max(0, Math.min(255, Math.round((y + (v - y) * k) * m)));
+        return (f(r, L.bare.cool[0]) << 16) | (f(g, L.bare.cool[1]) << 8) | f(b, L.bare.cool[2]);
+    };
+    const builds = {};   // footprint rows by id: only a real building gets the lines, the signs and the hologram
     for (const f of T.features) if (f.k === 'texbuilding' && f.id && boxOf(f)) builds[f.id + ':arch'] = f;
-    let nSign = 0, nGlass = 0, nBoard = 0, nRow = 0;
+    let nWall = 0, nSign = 0, nGlass = 0, nBoard = 0, nBlade = 0, nHolo = 0, nRow = 0;
     const features = T.features.map((row) => {
         if (row.k !== 'arch' || !Array.isArray(row.parts) || !boxOf(row)) return row;
         nRow++;
         const h = hqHash(String(row.id || row.x + ',' + row.z)) >>> 0;
-        const glassTint = L.glass.tints[h % L.glass.tints.length];
+        const F = L.finishes[h % L.finishes.length], glassTint = L.glass.tints[(h >>> 2) % L.glass.tints.length];
         let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, top = 0;
         const parts = row.parts.map((p, i) => {
             const key = String(p.key || '');
-            if (p.s === 'box' && p.size && p.size[0] >= 3 && p.size[2] >= 3 && !p.ry) {   // the building's masses: its plan and its top
-                x0 = Math.min(x0, p.p[0] - p.size[0] / 2); x1 = Math.max(x1, p.p[0] + p.size[0] / 2);
-                z0 = Math.min(z0, p.p[2] - p.size[2] / 2); z1 = Math.max(z1, p.p[2] + p.size[2] / 2);
-                top = Math.max(top, (p.p[1] || 0) + p.size[1]);
+            /* the building's own walls give its plan and its top (measured on the parts, in the row's frame: a footprint row can stand turned or off
+               centre from its arch row, and a line drawn on it then hangs in the air beside the building) */
+            const quarter = (((p.ry || 0) % 90) === 0), side = quarter && ((((p.ry || 0) % 180) + 180) % 180 === 90);
+            if (quarter && p.size && p.p && (p.s === 'box' || p.s === 'quad') && p.size[1] >= 2 && p.kind !== 'over' && key.indexOf('txt:') !== 0) {
+                const bw2 = p.size[0] / 2, bd2 = (p.s === 'box') ? p.size[2] / 2 : 0, ex = side ? bd2 : bw2, ez = side ? bw2 : bd2;
+                if (Math.max(ex, ez) >= 1.5 && (p.p[1] || 0) < 1.5) {
+                    x0 = Math.min(x0, p.p[0] - ex); x1 = Math.max(x1, p.p[0] + ex); z0 = Math.min(z0, p.p[2] - ez); z1 = Math.max(z1, p.p[2] + ez);
+                    top = Math.max(top, (p.p[1] || 0) + p.size[1]);
+                }
             }
             if (key.indexOf('txt:') === 0) {
                 if ((p.glow || 0) >= 0.8) return p;                                      // a sign that is neon already keeps its colours
@@ -101171,28 +101230,61 @@ function hqCityLookTerrain(roomId, base, lookId) {
                 q[1] = L.inks[(h + i) % L.inks.length]; if (q[2]) q[2] = L.signBg;
                 nSign++; return Object.assign({}, p, { key: 'txt:' + q.join('|'), glow: L.signGlow });
             }
-            if (key.indexOf('mark:') === 0 || p.kind === 'over' || key === 'gold') return p;
-            if (p.kind === 'glass' || /Glass/.test(key)) { nGlass++; return Object.assign({}, p, { tint: glassTint, glow: Math.max(p.glow || 0, L.glass.glow) }); }
+            if (key.indexOf('mark:') === 0 || p.kind === 'over' || key === 'gold' || /^urban:(Decal|Door|Sign)/.test(key)) return p;
+            if (p.kind === 'glass' || /GlassWindow/.test(key)) { nGlass++; return Object.assign({}, p, { tint: glassTint, glow: Math.max(p.glow || 0, L.glass.glow), shine: 90 }); }
             if ((p.glow || 0) > 0) return p;                                             // a lamp, a screen, a neon: as it is
-            const o = Object.assign({}, p, { tint: mul(p.tint) });
-            if (p.tintTop != null) o.tintTop = mul(p.tintTop); if (p.tintEnd != null) o.tintEnd = mul(p.tintEnd);
+            if (L.wallRe.test(key)) {                                                    // an old wall sheet: the building's finish in its place
+                nWall++;
+                const o = Object.assign({}, p, { key: F.key, tint: F.tint, gain: F.gain, shine: F.shine });
+                if (F.glow) o.glow = F.glow;
+                if (p.keyTop) { o.keyTop = F.key; o.tintTop = F.trim; } if (p.keyEnd) { o.keyEnd = F.key; o.tintEnd = F.trim; }
+                if (p.keyUnder) o.keyUnder = F.key; if (p.keyBase) o.keyBase = F.key;
+                return o;
+            }
+            const o = Object.assign({}, p, { tint: steel(p.tint) });                     // every other part: steel
+            if (p.tintTop != null) o.tintTop = steel(p.tintTop); if (p.tintEnd != null) o.tintEnd = steel(p.tintEnd);
             return o;
         });
         const B = builds[row.id];
-        if (B && top >= 3 && x1 - x0 >= 4 && z1 - z0 >= 3) {
-            const ink = hx(L.inks[h % L.inks.length]), ink2 = L.inks[(h + 3) % L.inks.length], w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, t = L.trim.h;
-            /* the neon line round the roof: four thin lit bars on the parapet */
-            parts.push({ s: 'box', p: [cx, top, z1 + t / 2], size: [w + t * 2, t, t], tint: ink, glow: L.trim.glow }, { s: 'box', p: [cx, top, z0 - t / 2], size: [w + t * 2, t, t], tint: ink, glow: L.trim.glow },
-                       { s: 'box', p: [x1 + t / 2, top, cz], size: [t, t, d], tint: ink, glow: L.trim.glow }, { s: 'box', p: [x0 - t / 2, top, cz], size: [t, t, d], tint: ink, glow: L.trim.glow });
+        if (B && top >= 3 && x1 - x0 >= 4 && z1 - z0 >= 3 && (x1 - x0) * (z1 - z0) <= B.w * B.d * 1.5) {   // a measured plan much larger than the footprint is not one building: left alone
+            const inkS = L.inks[h % L.inks.length], ink = hx(inkS), ink2 = L.inks[(h + 3) % L.inks.length], w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, t = L.trim.h, g = L.trim.glow;
+            const ring = (y, c) => parts.push({ s: 'box', p: [cx, y, z1 + t / 2], size: [w + t * 2, t, t], tint: c, glow: g }, { s: 'box', p: [cx, y, z0 - t / 2], size: [w + t * 2, t, t], tint: c, glow: g },
+                                              { s: 'box', p: [x1 + t / 2, y, cz], size: [t, t, d], tint: c, glow: g }, { s: 'box', p: [x0 - t / 2, y, cz], size: [t, t, d], tint: c, glow: g });
+            ring(top, ink);                                                              // the neon line round the roof
+            for (let y = L.trim.band; y < top - 1; y += L.trim.band) ring(y, hx(ink2));  // one round every storey
+            for (const cxz of [[x0 - t / 2, z0 - t / 2], [x1 + t / 2, z0 - t / 2], [x0 - t / 2, z1 + t / 2], [x1 + t / 2, z1 + t / 2]])   // down the four corners
+                parts.push({ s: 'box', p: [cxz[0], 0.1, cxz[1]], size: [t, top, t], tint: ink, glow: g });
+            /* the lit fascia over the ground floor's front (+Z) */
+            parts.push({ s: 'box', p: [cx, L.fascia.y, z1 + 0.09], size: [w * 0.94, L.fascia.h, 0.12], tint: glassTint, glow: L.fascia.glow });
+            /* the blade sign: lit squares stacked down the front's corner, one character each, read from both sides of the street */
+            const word = Array.from(L.blades[(h >>> 5) % L.blades.length]), cell = L.blade.cell, by0 = (top < 5.5) ? L.blade.yLow : L.blade.y0, nC = Math.min(word.length, Math.floor((top - by0) / cell));
+            if (nC >= 2) {
+                const bx = (h & 16) ? x1 - 0.5 : x0 + 0.5, bz = z1 + L.blade.out, yTop = Math.min(top - 0.1, by0 + nC * cell);
+                parts.push({ s: 'box', p: [bx, yTop - nC * cell - 0.1, bz], size: [0.14, nC * cell + 0.2, cell + 0.14], tint: L.board.frame },
+                           { s: 'box', p: [bx, yTop - 0.35, z1 + L.blade.out / 2 - cell / 4], size: [0.1, 0.1, L.blade.out], tint: L.board.frame });
+                for (let c = 0; c < nC; c++) {
+                    const k2 = 'txt:' + word[c] + '|' + ink2 + '|' + L.signBg + '|1', y = yTop - (c + 1) * cell + 0.04;
+                    parts.push({ s: 'quad', p: [bx + 0.09, y, bz], ry: 90, size: [cell - 0.08, cell - 0.08], key: k2, uv: 'fit', kind: 'wall', glow: L.blade.glow },
+                               { s: 'quad', p: [bx - 0.09, y, bz], ry: 270, size: [cell - 0.08, cell - 0.08], key: k2, uv: 'fit', kind: 'wall', glow: L.blade.glow });
+                }
+                nBlade++;
+            }
             if (w >= L.board.minW) {
                 /* the billboard: a dark rectangle on two posts over the front (+Z), its words lit on both faces */
-                const bw = Math.min(w * 0.72, 12), bh = L.board.h, by = top + L.board.post, bz = z1 - 0.7, name = L.names[(h >>> 3) % L.names.length], asp = (bw / bh).toFixed(2);
+                const bw = Math.min(w * 0.8, 14), bh = Math.min(L.board.h, bw * 0.45), by = top + L.board.post, bz = z1 - 0.7, name = L.names[(h >>> 3) % L.names.length], asp = (bw / bh).toFixed(2);
                 const sk = 'txt:' + name + '|' + ink2 + '|' + L.signBg + '|' + asp;
                 parts.push({ s: 'box', p: [cx - bw * 0.36, top, bz], size: [0.22, L.board.post + bh, 0.22], tint: L.board.frame }, { s: 'box', p: [cx + bw * 0.36, top, bz], size: [0.22, L.board.post + bh, 0.22], tint: L.board.frame },
                            { s: 'box', p: [cx, by, bz], size: [bw + 0.3, bh + 0.3, 0.16], tint: L.board.frame },
                            { s: 'quad', p: [cx, by + 0.15, bz + 0.2], size: [bw, bh], key: sk, uv: 'fit', kind: 'wall', glow: L.board.glow },
                            { s: 'quad', p: [cx, by + 0.15, bz - 0.2], ry: 180, size: [bw, bh], key: sk, uv: 'fit', kind: 'wall', glow: L.board.glow });
                 nBoard++;
+                if (top >= L.holo.minTop) {
+                    /* the hologram: a word of light standing in the air over the roof, no board behind it */
+                    const hw = L.holos[(h >>> 7) % L.holos.length], hl = Array.from(hw).length, hh = L.holo.h, hwid = Math.min(hh * Math.max(1, hl * 0.75), 16), hk = 'txt:' + hw + '|' + inkS + '||' + (hwid / hh).toFixed(2);
+                    parts.push({ s: 'quad', p: [cx, top + L.holo.lift, cz + 0.05], size: [hwid, hh], key: hk, uv: 'fit', kind: 'over', glow: L.holo.glow },          // two faces, so it never reads mirrored
+                               { s: 'quad', p: [cx, top + L.holo.lift, cz - 0.05], ry: 180, size: [hwid, hh], key: hk, uv: 'fit', kind: 'over', glow: L.holo.glow });
+                    nHolo++;
+                }
             }
         }
         return Object.assign({}, row, { parts: parts });
@@ -101202,9 +101294,15 @@ function hqCityLookTerrain(roomId, base, lookId) {
         let n = 0;
         traffic = T.traffic.map(tr => Array.isArray(tr.kinds) ? Object.assign({}, tr, { kinds: tr.kinds.map(k => (L.traffic.swap[k] && (n++ % L.traffic.every) === 0) ? L.traffic.swap[k] : k) }) : tr);
     }
-    const terrain = Object.assign({}, T, { features: features, traffic: traffic });
+    let gen = T.gen;
+    if (L.lamps && gen && gen.looks) {
+        const looks = Object.assign({}, gen.looks);
+        for (const d in L.lamps) if (looks[d]) looks[d] = Object.assign({}, looks[d], { lamp: L.lamps[d] });
+        gen = Object.assign({}, gen, { looks: looks });
+    }
+    const terrain = Object.assign({}, T, { features: features, traffic: traffic, gen: gen });
     _hqCityLookCache[ck] = { from: T, terrain: terrain };
-    if (typeof console !== 'undefined') console.log('[HQ] city look ' + lookId + ': ' + nRow + ' rows, ' + nSign + ' signs relit, ' + nGlass + ' glass lit, ' + nBoard + ' billboards');
+    if (typeof console !== 'undefined') console.log('[HQ] city look ' + lookId + ': ' + nRow + ' rows, ' + nWall + ' wall parts refinished, ' + nSign + ' signs relit, ' + nGlass + ' glass lit, ' + nBoard + ' billboards, ' + nBlade + ' blade signs, ' + nHolo + ' holograms');
     return terrain;
 }
 /* the city's one variant (set here, outside the baked block: `node bake-disaster-city.js` neither writes nor drops it) */
