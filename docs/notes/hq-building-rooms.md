@@ -1239,3 +1239,24 @@ The Main Hall's ground floor went from twelve doors to eight, one every 45 degre
 door angles, how a door is put on the Ring (`onRing` on its Main Hall row) and what moved with the doors: `docs/notes/world-layout.md`
 "THE DOOR AUDIT", paragraph THE EIGHT DOORS, BUILT. Before moving or adding a Main Hall door: the eight stand at 0, 45, 90 ... 315 and
 mondo wants them equally spaced; a new room's door goes on the Ring.
+
+## YOUR OFFICE ON THE HALL'S STAGE — more than one room round the Main Hall (2026-11-18)
+mondo: "can you make my office in door hq not be behind a loading screen? its literally a tiny office, it should fit in the same room".
+- THE ROUND JOIN took ONE box room (the foyer). It now takes a row for each ground-floor door of the hall: data.js
+  `HQ_STAGE_RULES.round` has a second row, `{ a: 'central_egress', door: 'office', b: 'office', bDoor: 'egress' }`.
+- data.js: `hqStageRoundJoins(roomId, otherId)` = every row of a room (a hall: one for each joined door; a box room: one).
+  `hqStageRoundJoin(roomId, otherId)` is its first. `hqStageRel`, `hqStageRoundNeighbours` (the hall returns every joined room) and
+  `hqStageDoorJoin` (the row of THAT door) read it. The renderer needed no change: it already walked `st.nbs` by `nb.round`.
+- In the hall, the foyer AND the office stand beside it (the load card waits for both). In the office only the hall stands beside
+  it; the hall's foyer door is a plain door until you step into the hall, then the foyer builds.
+- map.js `_hqStageCrossed` now files the quest's room event on a crossing (it was only filed by a room load). A stage that ends in
+  the room on a SCENE (the first quest's last step, scene F in the office) loads the room the old way that one time, so its cast
+  and camera are set; that is the one card left on this door.
+- Adding another ground-floor room: one row, if its box does not overlap a neighbour's (`hqStageNeighbours('central_egress')`
+  prints each `rect`). Reception (8 x 6, 90°) fits. The Training Room (63 x 63, 180°) and the Woods stair (30 x 44, 315°) do not:
+  they would stand through the foyer and the office. Upper-floor doors (IT, Observatory, Executive wing) are not joined: the join
+  reads level 0 only.
+- Still a load card inside DOOR HQ (11-18): hall ⇄ Reception, Training, Woods stair, the Ring, the three upper-floor rooms, the
+  lift; the Ring ⇄ cafeteria, barbershop, medical wing, records wing, tunnel (the Ring is a `bay` room, not staged); cafeteria ⇄
+  kitchen, IT ⇄ server room, Observatory ⇄ records, stairwell ⇄ works / tunnel, dock ⇄ garage, services ⇄ Training.
+- Seen on screen (probe, llvmpipe): hall -> office -> hall on foot, no card either way.
