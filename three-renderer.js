@@ -84684,12 +84684,20 @@ const ThreeRenderer = (function () {
         var cap = (typeof hqRoomCrowdCap === 'function') ? hqRoomCrowdCap(rid, planned) : planned;
         if (typeof window !== 'undefined' && window.EW_HQ_NO_CROWD_CAP) cap = 999;
         var L = { room: rid, cap: cap, n: 0, races: {}, day: (typeof hqToday === 'function') ? hqToday() : '' };
+        /* THE OUTDOOR AREAS (2026-11-18, mondo on the Colosseum's crowd: "yes raise the body cap, I thought it was 20 anyway? and there is no one per
+           race rule, there are already multiple of the same units in disaster city"): in a room built on plots a race stands as often as it is
+           placed, and EVERY placed native is made; the cap (data.js HQ_CROWD_RULES.areaMax) is how many of them are SHOWN at once, the nearest
+           to the walker (_hqTickCrowdNear: the city's residents' rule). Walkers and extras still fill only what the cap has left.
+           DOOR HQ's own rooms keep "one NPC per model" (his word of 10-01, for small rooms). */
+        L.area = !!(room && room.plots) && !(typeof window !== 'undefined' && window.EW_HQ_AREA_OLD_CAP);
+        L.placed = 0;
         L.left = function () { return Math.max(0, L.cap - L.n); };
-        L.has = function (rk) { return !!L.races[rk]; };
-        /* take a body: false = the room is full, or this race already stands here (dupOk: the backup employees, a swarm) */
-        L.take = function (rk, dupOk) {
+        L.has = function (rk) { return !L.area && !!L.races[rk]; };
+        /* take a body: false = the room is full, or this race already stands here (dupOk: the backup employees, a swarm; `placed`: a native at its own spot) */
+        L.take = function (rk, dupOk, placed) {
+            if (L.area && placed) { if (rk) L.races[rk] = (L.races[rk] || 0) + 1; L.n++; L.placed++; return true; }
             if (L.n >= L.cap) return false;
-            if (rk && rk !== 'men in black' && !dupOk && L.races[rk]) return false;
+            if (rk && rk !== 'men in black' && !dupOk && !L.area && L.races[rk]) return false;
             if (rk) L.races[rk] = (L.races[rk] || 0) + 1;
             L.n++;
             return true;
@@ -84785,7 +84793,7 @@ const ThreeRenderer = (function () {
                     /* PRIEST + NUN MERGED (2026-10-27): a spot's `gender` stands that gender (the Nun's spots are the priest's female),
                        and a priest and a nun are two bodies to the crowd cap, not the same race twice */
                     var sg = (spot.gender === 'male' || spot.gender === 'female') && getRace3DModel(rh, spot.gender) ? spot.gender : null;
-                    if (!crowd.take(sg ? rh + ':' + sg : rh)) return;   // THE CROWD CAP: full, or this race already stands here
+                    if (!crowd.take(sg ? rh + ':' + sg : rh, false, true)) return;   // THE CROWD CAP: full, or this race already stands here (an outdoor area: every placed native is made, the nearest are shown)
                     var hm = !!getRace3DModel(rh, 'male'), hf = !!getRace3DModel(rh, 'female');
                     var hg = sg || ((hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female'));
                     /* THE PEOPLE OFF THE GROUND (2026-11-18, the Colosseum; mondo: "make the stands walkable and those thrones able to be sat in"): a spot's
@@ -84810,6 +84818,7 @@ const ThreeRenderer = (function () {
             }
         } catch (e) { console.warn('[HQ] roster NPCs skipped', e); }
         try { spawnAgents(); } catch (e) { console.warn('[HQ] agents skipped', e); }   // THE CROWD CAP: the men in black after the one-of-a-kind people
+        _hq.crowdNear = (crowd.area && crowd.placed > crowd.cap) ? { cap: crowd.cap, keep: 6, next: 0 } : null;   // THE OUTDOOR AREAS: more placed natives than the cap = the nearest are shown
         /* THE OTHER OPERATIVES ON SHIFT (Room 86, 2026-09-11; plan §8's open
            question, answered): one D.O.O.R. agent per online player besides
            you (online.js `_ewOnlineCount`, the lobby's live counter) at the
@@ -86537,6 +86546,23 @@ const ThreeRenderer = (function () {
         var A = HQ_NPC_TEMPERS.aware, st = H.aware; if (!text || !st) return;
         var tex = _hqAwareSayTex(String(text).replace(/[“”]/g, '')), h = (A.markH || 0.05) * 0.62;
         st.says.push({ ch: ch, sp: _hqAwareSprite(H, tex, h * tex._ewAspect, h), until: performance.now() + (A.sayMs || 3500), own: true, up: 0.95 });
+    }
+    /* THE CROWD NEAR THE WALKER (2026-11-18, THE OUTDOOR AREAS above): a plot-built room with more placed natives than the cap shows the `cap`
+       nearest to the walker, checked every 0.4 s (one already shown is kept until another is `keep` m nearer: no flicker on a line). A body
+       taken out is hidden, not removed (its mixer sleeps: THE PEOPLE OFF SCREEN; nobody sees it, hits it or is seen by it: `away`), so a room
+       of two districts is peopled wherever the walker stands. Somebody on the strike ladder is never taken out. The same on every machine. */
+    function _hqTickCrowdNear(now) {
+        var H = _hq, N = H && H.crowdNear, pl = H && H.player; if (!N || !pl || now < N.next) return;
+        N.next = now + 400;
+        var list = [];
+        for (var i = 0; i < H.chars.length; i++) { var ch = H.chars[i]; if (!ch || ch.kind !== 'npc' || !ch.spot || ch.cast || String(ch.id).indexOf('hq-native-') !== 0) continue;
+            if (ch.cleared || (ch.rounds && ch.rounds.state === 'away')) continue;   // (out of the room for another reason: it takes nobody's place)
+            var d = (ch._run || ch._awHold) ? -1e6 : Math.hypot(ch.x - pl.x, ch.z - pl.z) + Math.abs((ch.y || 0) - (pl.y || 0)) * 0.5;
+            list.push({ ch: ch, d: ch._nearOut ? d : d - N.keep }); }
+        list.sort(function (a, b) { return a.d - b.d; });
+        for (var k = 0; k < list.length; k++) { var c = list[k].ch;
+            if (k >= N.cap) { if (!c._nearOut || !c.away) { c._nearOut = true; _hqRoundsSetVisible(c, false); H.dirty = true; } }
+            else if (c._nearOut) { c._nearOut = false; if (!(c.rounds && c.rounds.state === 'away') && !c.cleared && !c._sceneOut) { _hqRoundsSetVisible(c, true); H.dirty = true; } } }
     }
     function _hqTickAware(now) {
         var H = _hq; if (!H || !H.charGroup) return;
@@ -92235,6 +92261,7 @@ const ThreeRenderer = (function () {
         try { _hqTickResidents(wdt); } catch (e) { if (!H._resWarned) { H._resWarned = true; console.warn('[HQ] the residents tick', e); } }   // THE RESIDENTS (2026-11-14)
         try { _hqTickLadder(wdt, now); } catch (e) { if (!H._ldrWarned) { H._ldrWarned = true; console.warn('[HQ] the ladder tick', e); } }   // THE STRIKE LADDER (NPC encounters step 3)
         if (_hq !== H) return;
+        try { _hqTickCrowdNear(now); } catch (e) {}
         try { _hqTickAware(now); } catch (e) { if (!H._awWarnedTick) { H._awWarnedTick = true; console.warn('[HQ] the awareness tick', e); } }   // THE AWARENESS + THE MARKS (NPC encounters step 2)
         try { _hqGrassTick(); } catch (e) { if (!H._ggWarned) { H._ggWarned = true; console.warn('[HQ] the grass field tick', e); } }   // THE GRASS FIELD IN A WALKED ROOM (2026-11-15)
         if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
