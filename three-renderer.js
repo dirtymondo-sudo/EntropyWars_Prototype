@@ -93063,7 +93063,17 @@ const ThreeRenderer = (function () {
                 if (sc.matrixAutoUpdate) sc.updateMatrix();
                 var fo = false; if (sc.matrixWorldNeedsUpdate) { sc.matrixWorld.copy(sc.matrix); sc.matrixWorldNeedsUpdate = false; fo = true; }
                 var MS = _hqStSplit || (_hqStSplit = {}), kids = sc.children;
-                for (var ki = 0; ki < kids.length; ki++) { var kc = kids[ki]; if (kc.matrixWorldAutoUpdate === true || fo) { var kt = performance.now(); kc.updateMatrixWorld(fo); var kn = kc.name || kc.type || '?'; MS[kn] = (MS[kn] || 0) + performance.now() - kt; } }
+                var pUMW = THREE.Object3D.prototype.updateMatrixWorld;
+                var stepIn = function (o, f, pre, MSx, dep) {   // one object's own step of three's walk, each child timed under `pre/name` (one level down)
+                    if (o.matrixAutoUpdate) o.updateMatrix();
+                    if (o.matrixWorldNeedsUpdate || f) { if (o.matrixWorldAutoUpdate === true) { if (o.parent === null) o.matrixWorld.copy(o.matrix); else o.matrixWorld.multiplyMatrices(o.parent.matrixWorld, o.matrix); } o.matrixWorldNeedsUpdate = false; f = true; }
+                    var oc = o.children; for (var oi = 0; oi < oc.length; oi++) { var cc = oc[oi], ct = performance.now(), cn = pre + '/' + (cc.name || cc.type || '?') + (cc._ew_st ? ' (still)' : '');
+                        if ((dep | 0) < 2 && cc.updateMatrixWorld === pUMW && cc.children.length && cc.children.length <= 64) stepIn(cc, f, cn, MSx, (dep | 0) + 1); else cc.updateMatrixWorld(f);
+                        MSx[cn] = (MSx[cn] || 0) + performance.now() - ct; }
+                };
+                for (var ki = 0; ki < kids.length; ki++) { var kc = kids[ki]; if (kc.matrixWorldAutoUpdate === true || fo) { var kt = performance.now(), kn = kc.name || kc.type || '?';
+                    if (kc.updateMatrixWorld === pUMW && kc.children.length && kc.children.length <= 64) stepIn(kc, fo, kn, MS); else kc.updateMatrixWorld(fo);
+                    MS[kn] = (MS[kn] || 0) + performance.now() - kt; } }
                 _hqStSplitN = (_hqStSplitN | 0) + 1;
                 if (sc._ew_mwStamp) sc._ew_mwAt = _css2dTick;   // (_css2dRender's mark, as the scene's own walk sets it)
                 if (sc._ew_afterWalk) { var afw = sc._ew_afterWalk; sc._ew_afterWalk = null; afw(); }   // (_hqWalkHook's reader, as the scene's own walk calls it)
@@ -93077,7 +93087,7 @@ const ThreeRenderer = (function () {
     var _hqStSplit = null, _hqStSplitN = 0;
     function _hqStillSplitText() {   // the lens line: ms a frame per top group of the walk since the last read
         var M = _hqStSplit, n = _hqStSplitN; _hqStSplit = null; _hqStSplitN = 0; if (!M || !n) return '';
-        return Object.keys(M).sort(function (a, b) { return M[b] - M[a]; }).slice(0, 8).map(function (k) { return String(k).replace(/^site_prebuilt_/, '') + ' ' + (M[k] / n).toFixed(2); }).join(' · ');
+        return Object.keys(M).sort(function (a, b) { return M[b] - M[a]; }).slice(0, 12).map(function (k) { return String(k).replace(/site_prebuilt_/g, '') + ' ' + (M[k] / n).toFixed(2); }).join(' · ');
     }
     function _hqChunkRules() {
         var R = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES) ? HQ_ENGINE_RULES : {};
