@@ -91854,6 +91854,14 @@ const HQ_NPC_TEMPERS = {
                 'gangster': '“Wallet. Now.”', 'goblin': '“Shiny. Give.”', 'politician': '“A small donation. I insist.”', 'televangelist': '“The Lord needs your money.”', 'tech ceo': '“Your subscription is due.”' },   // the last five: mondo 11-18, "sounds good"
         giveUp: '“Stop. I give up.”',
     },
+    /* THE CROWD (step 7b, 2026-11-18; STEP-7A.md, mondo: "okay build as 7b"). Onlookers: bodies the walk showed inside the fight's frame that could see
+       it (not units: no turn, no plate, never a target, they block nothing). `watch`: the share of Civilians / Cowards that watch (the rest run off the field).
+       `bands`: how far (squares, from the nearest fighter) each stands: watch, close (a Guard that would step in, a Brute, a Territorial on its ground),
+       edge (an Opportunist). `ring`: never nearer a fighter than this (2 = never on a square next to one; it steps aside first). `hitRun`: the share that
+       would run if a spell caught it (Civilian / Coward / Opportunist; the rest of those brush it off / fight back). `mugUnder`: an Opportunist that watched
+       comes to mug after a fight the party WON with less than this share of its HP left, `mugMs` after the walk is back (the built mugging, once a game
+       day). `walk`: squares a second. Joining (a cop becoming a fighter) is step 8. Every number is a PROPOSAL. */
+    crowd: { watch: 0.6, bands: { watch: [4, 6], close: [2, 3], edge: [5, 7] }, ring: 2, hitRun: 0.5, mugUnder: 0.5, mugMs: 3000, walk: 1.6 },
     labels: { backOff: 'BACK OFF', fight: 'FIGHT', noted: 'NOTED', pay: 'PAY', payOff: 'TAKE THE PAY-OFF', arrest: 'ARREST', letGo: 'LET IT GO', lost: 'LOST', gold: 'GOLD' },
 };
 /* the temper of a walking NPC: { key, ladder, starts, joins, watch } | null (no temper: story cast, or a race not tagged yet).
@@ -91863,6 +91871,25 @@ function hqNpcTemper(ch) {
     const R = o.room && T.rooms[o.room], own = R && R.residents && o.id ? R.residents[o.id] : null;
     const key = own || T.races[String(o.race || '').toLowerCase()] || null;
     return (key && T.tempers[key]) ? Object.assign({ key }, T.tempers[key]) : null;
+}
+/* THE CROWD (step 7b): what an onlooker does in a fight. `ch` = { race, id, room, dist, x, z }; `o` = { foes: the NPCs in the fight [{ race, id }],
+   day: a seed (the game day) }. { temper, mode: 'watch' | 'close' | 'edge' | 'run', mark: 'bang' | 'drop' | null, band: [lo, hi], hit: 'run' | 'join' | 'shrug' }
+   (`hit` = what it does when a spell catches it: the preview shows that mark before the cast; until step 8 a joiner only keeps its red `!`).
+   A race with no temper yet watches and brushes a hit off. The roll is the same all that game day for that NPC. */
+function hqCrowdPlan(ch, o) {
+    const T = HQ_NPC_TEMPERS, C = T.crowd; o = o || {};
+    const t = hqNpcTemper(ch), key = t ? t.key : null, foes = Array.isArray(o.foes) ? o.foes : [];
+    // the plain hash's high bits barely move when only the last word differs (every roll came out the same way): mix it first
+    const mix = (h) => { h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return h >>> 0; };
+    const roll = (k) => mix(hqHash(k + '|crowd|' + String(o.day | 0) + '|' + (ch && ch.room) + '|' + (ch && ch.id))) / 4294967296;
+    const out = (mode, mark, hit) => ({ temper: key, mode, mark, band: C.bands[mode] || C.bands.watch, hit });
+    const hitRun = roll('hit') < C.hitRun;
+    if (key === 'civilian' || key === 'coward') return roll('watch') < C.watch ? out('watch', null, hitRun ? 'run' : 'shrug') : out('run', 'drop', 'run');
+    if (key === 'guard' || key === 'protector') { const steps = foes.some(f => f && f.id !== ch.id && hqNpcDefends(ch, f)); return out('close', steps ? 'bang' : null, 'join'); }
+    if (key === 'brute') return out('close', 'bang', 'join');
+    if (key === 'territorial') { const g = hqNpcGround(ch), on = !!(g && hqNpcOnGround(ch.room, g, o.x, o.z)); return on ? out('close', 'bang', 'join') : out('watch', null, 'join'); }
+    if (key === 'opportunist') return out('edge', null, hitRun ? 'run' : 'join');
+    return out('watch', null, 'shrug');
 }
 /* THE LOSING NPC (step 6b): what an NPC of this temper does when it is losing: 'give' | 'run' | null (fights on) */
 function hqNpcLosingWay(ch) {
