@@ -96322,6 +96322,197 @@ function hqRuleKeyOf(k) { const S = (typeof CALM_TERRAIN !== 'undefined' && CALM
     try { if (typeof TERRAIN_SPRITES === 'undefined' || !TERRAIN_SPRITES) return; Object.keys(CALM_TERRAIN.sheets).forEach(k => { if (!TERRAIN_SPRITES[k]) TERRAIN_SPRITES[k] = [calmSheetUrl(k)]; }); } catch (e) {}
 })();
 if (typeof window !== 'undefined') { window.CALM_TERRAIN = CALM_TERRAIN; window.hqRuleKeyOf = hqRuleKeyOf; window.calmSheetUrl = calmSheetUrl; }
+/* ══ THE ZONE LOOKS (2026-11-18, mondo: "I added an SBS horror texture pack in the inbox. Its basically just more textured and weathered
+   textures. Can you use this horror pack and the urban decay texture pack to improve the aesthetics of the game, zone by zone. I especially
+   want the "calm" textures replaced, those textures were only meant to be used on the ground, and even then i am okay with you not using them
+   at all if the area or building calls for it. There is also blood splatters and stains that can be used to add more detail and textures to
+   places. Focus on all areas except disaster city first") ══════════════════════════════════════════════════════════════════════════════
+   THE HORROR PACK = Screaming Brain Studios' SBS Horror Texture Pack (CC0): 98 seamless 128 px sheets (Brick, Floor, Metal, Misc, Stone, Wall)
+   + 15 RGBA stains, on R2 as they came (Assets/world/terrain/horror/Horror_<Family>_<nn>.png; only the "-128x128" left the name). Each is a
+   texture key `hz_<family>_<nn>` (the editor's picker lists them, each plays by the rules of the key in HZ_TWIN).
+   THE PASS: a zone names, per role, which sheet a key wears there — `wall` (walls, buildings, every standing part, a terrain cliff), `ground`
+   (a room's floor, path, painted sheets, a ramp / bridge deck, a lying-flat part). A sheet is `hz:<Family>_<nn>` (the horror pack),
+   `urban:<Name>` (the Urban Decay pack) or `px:<key>` (the key's own pixel sheet: gold = gilt.png, his approved gold). At load the key is
+   renamed to a twin `zl_<sheet>__<key>` that draws the new sheet and PLAYS BY THE OLD KEY's rules (hqRuleKeyOf), so nothing about a fight or
+   a walk changes; no zone file or bake tool is touched, and a district thread writing its usual keys still comes out in the zone's look.
+   `decals` = blood / dirt / grime laid on the ground at the foot of walls and down wall faces (three-renderer.js _hqBuildMarks, k 'decal',
+   one draw per stain sheet). Gore rule: blood only where the zone is horror (Estate, Sewers, Hell...), never Heaven or a fairy wood.
+   Off switch: window.EW_NO_ZONE_LOOKS = true before data.js loads (the rooms keep their own keys); window.EW_NO_ZONE_DECALS hides the stains. */
+var HZ_TWIN = { Brick: 'bricks_2', Floor: 'concrete_floor', Metal: 'metal', Misc: 'metal', Stone: 'rocks_5', Wall: 'drywall', Stain: 'concrete_floor' };
+var ZONE_LOOKS = {
+    horror: 'https://cdn.entropywars.net/Assets/world/terrain/horror/',
+    urban: 'https://cdn.entropywars.net/Assets/world/terrain/urban/',
+    counts: { Brick: 14, Floor: 14, Metal: 14, Misc: 15, Stone: 14, Wall: 14, Stain: 15 },
+    /* the stain sheets: blood (01-03), dirt (04-05), grime (06-09, light), drips down a wall (10-14), soot (15) */
+    stains: { blood: ['Stain_01', 'Stain_02', 'Stain_03'], dirt: ['Stain_04', 'Stain_05'], grime: ['Stain_06', 'Stain_07', 'Stain_08'], drip: ['Stain_10', 'Stain_11', 'Stain_12', 'Stain_13', 'Stain_14'], soot: ['Stain_15'] },
+    zones: {
+        /* CAMELOT KINGDOM: a fairy-tale castle and its village, not a horror place — weathered stone blocks, dark timber, no blood */
+        camelot: {
+            rooms: ['site_prebuilt_camelot_kingdom', 'site_prebuilt_camelot_palace', 'site_prebuilt_camelot_ow_garden', 'site_prebuilt_camelot_ow_pines',
+                    'site_prebuilt_camelot_ow_fairy', 'site_prebuilt_camelot_ow_forest', 'site_prebuilt_camelot_sky'],
+            wall: { castle_wall: 'hz:Brick_09', bricks_2: 'hz:Brick_09', calm_castle: 'hz:Brick_09', wood: 'urban:WoodBeams1a', wood_planks: 'urban:WoodBeams2a',
+                    marble: 'hz:Stone_12', rocks_5: 'hz:Stone_07', gold: 'px:gold' },
+            ground: { castle_wall: 'hz:Floor_13', bricks_2: 'hz:Floor_13' },
+            decals: { drip: 0.5, dirt: 0.25 },
+        },
+        /* THE ESTATE: the haunted house, its graveyard and the ranch by the lake — grey weathered siding, mossy stone, lichen graves, some blood */
+        estate: {
+            rooms: ['site_prebuilt_skinwalker_ow_house', 'site_prebuilt_skinwalker_ow_lake', 'site_prebuilt_haunted_hall', 'site_prebuilt_haunted_upstairs',
+                    'site_prebuilt_haunted_attic', 'site_prebuilt_haunted_nursery', 'site_prebuilt_haunted_cellar'],
+            wall: { 'urban:WoodGeneric1a': 'urban:WoodCladding3a', 'urban:WoodGeneric1b': 'urban:WoodCladding1a', 'urban:WoodGeneric2a': 'urban:WoodBeams2a',
+                    marble: 'hz:Stone_03', castle_wall: 'hz:Brick_08', bricks_2: 'hz:Brick_01', 'urban:BrickMasonry1a': 'hz:Brick_01',
+                    drywall_2: 'hz:Wall_08', dark_woods: 'hz:Wall_14', wood: 'urban:WoodBeams2a', wood_planks: 'urban:WoodCladding2a', 'urban:MetalCorrugated1a': 'hz:Metal_06' },
+            ground: { marble: 'hz:Stone_04', castle_wall: 'hz:Floor_13' },
+            decals: { blood: 0.12, dirt: 0.35, drip: 0.6, grime: 0.25 },
+        },
+        /* THE SEWERS: brick tunnels gone green, rusted sheet metal, grimy floors, drips everywhere, a little blood */
+        sewers: {
+            rooms: ['site_prebuilt_downtown_underworld'],
+            wall: { bricks_2: 'hz:Brick_03', 'urban:MetalCorrugatedPainted2a': 'hz:Metal_06', metal: 'hz:Metal_09', gunmetal: 'hz:Metal_09', 'urban:ConcreteStriped2c': 'hz:Wall_14' },
+            ground: { bricks_2: 'hz:Brick_04', 'urban:ConcreteStriped2c': 'hz:Floor_01' },
+            decals: { blood: 0.06, dirt: 0.4, drip: 0.9, grime: 0.3 },
+        },
+    },
+};
+function zlHorrorKey(n) { return 'hz_' + String(n).toLowerCase(); }   // 'Brick_09' -> 'hz_brick_09'
+function zlSheetUrl(s) {
+    s = String(s || '');
+    if (s.indexOf('hz:') === 0) return ZONE_LOOKS.horror + 'Horror_' + s.slice(3) + '.png';
+    if (s.indexOf('urban:') === 0) return (typeof URBAN_TEXTURES !== 'undefined' && URBAN_TEXTURES[s.slice(6)]) || (ZONE_LOOKS.urban + s.slice(6) + '.png');
+    if (s.indexOf('px:') === 0) { const k = s.slice(3); return (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[k]) ? TERRAIN_SPRITES[k][0] : null; }
+    return null;
+}
+/* the horror sheets as texture keys (+ the stains, for the editor's paint and the decals) */
+(function zlRegisterHorror() {
+    try {
+        const S = CALM_TERRAIN.sheets;
+        Object.keys(ZONE_LOOKS.counts).forEach(fam => { for (let i = 1; i <= ZONE_LOOKS.counts[fam]; i++) {
+            const n = fam + '_' + (i < 10 ? '0' : '') + i, k = zlHorrorKey(n);
+            if (!S[k]) S[k] = [ZONE_LOOKS.horror + 'Horror_' + n + '.png', HZ_TWIN[fam], 'Horror ' + fam.toLowerCase() + ' ' + n.slice(-2) + (fam === 'Stain' ? ' (stain)' : '')];
+            if (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES && !TERRAIN_SPRITES[k]) TERRAIN_SPRITES[k] = [S[k][0]];
+        } });
+    } catch (e) {}
+})();
+/* one key's twin in a zone: `zl_<sheet>__<key>` (drawn as the sheet, plays as the key) — made once, registered as a sheet */
+function zlTwin(sheet, key) {
+    const S = CALM_TERRAIN.sheets, tk = 'zl_' + String(sheet).replace(/[^A-Za-z0-9]+/g, '_') + '__' + String(key).replace(/[^A-Za-z0-9]+/g, '_');
+    if (!S[tk]) {
+        const url = zlSheetUrl(sheet); if (!url) return null;
+        S[tk] = [url, hqRuleKeyOf(key), String(sheet).replace(/^hz:/, 'Horror ').replace(/^urban:/, '') + ' (as ' + key + ')'];
+        if (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES && !TERRAIN_SPRITES[tk]) TERRAIN_SPRITES[tk] = [url];
+    }
+    return tk;
+}
+/* a part that lies flat (a floor slab, a step tread, a crop ridge) is ground; every other part stands */
+function zlFlatPart(p) {
+    if (!p) return false;
+    if ((!p.s || p.s === 'box') && Array.isArray(p.size)) return p.size[1] <= 0.35 && Math.max(p.size[0], p.size[2]) >= 0.8;
+    if (p.s === 'quad') return !!p.flat;
+    return false;
+}
+function zoneLookRoom(room, Z) {
+    if (!room || !Z || room._zl) return 0;
+    let n = 0;
+    const W = Z.wall || {}, G = Z.ground || {};
+    const sw = (M, k) => { if (typeof k !== 'string' || k.indexOf('zl_') === 0 || !M[k]) return k; const t = zlTwin(M[k], k); if (t) { n++; return t; } return k; };
+    const sh = room.shell, t = room.terrain;
+    if (sh) { ['floor', 'apron'].forEach(k => { sh[k] = sw(G, sh[k]); }); ['wall', 'dado', 'trim', 'ceiling', 'skirt'].forEach(k => { sh[k] = sw(W, sh[k]); }); }
+    if (t) {
+        t.floor = sw(G, t.floor); t.path = sw(G, t.path); t.cliff = sw(W, t.cliff);
+        if (t.paint && Array.isArray(t.paint.pal)) t.paint.pal = t.paint.pal.map(k => sw(G, k));
+        (t.zones || []).forEach(z => { if (!z) return; z.floor = sw(G, z.floor); z.path = sw(G, z.path); z.cliff = sw(W, z.cliff); if (Array.isArray(z.pal)) z.pal = z.pal.map(k => sw(G, k)); });
+        (t.features || []).forEach(f => {
+            if (!f) return;
+            const deck = f.k === 'ramp' || f.k === 'plateau' || f.k === 'bridge' || f.k === 'spiral' || f.k === 'stream';
+            if (typeof f.key === 'string') f.key = sw(deck ? G : W, f.key);
+            if (typeof f.side === 'string') f.side = sw(W, f.side);
+            if (typeof f.floorIn === 'string') f.floorIn = sw(G, f.floorIn);
+            if (typeof f.keyIn === 'string') f.keyIn = sw(W, f.keyIn);
+            (f.parts || []).forEach(p => {
+                if (!p) return;
+                if (typeof p.key === 'string') p.key = sw(zlFlatPart(p) ? G : W, p.key);
+                ['keyTop', 'keyEnd', 'keyBase'].forEach(k => { if (typeof p[k] === 'string') p[k] = sw(W, p[k]); });
+            });
+        });
+    }
+    room._zl = 1;
+    return n;
+}
+/* every zone room, once (run at the end of data.js, after every room is in DOOR_HQ.rooms) */
+function zoneLooksApply() {
+    if (typeof window !== 'undefined' && window.EW_NO_ZONE_LOOKS) return 0;
+    if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ || !DOOR_HQ.rooms) return 0;
+    let n = 0;
+    Object.keys(ZONE_LOOKS.zones).forEach(zid => { const Z = ZONE_LOOKS.zones[zid]; (Z.rooms || []).forEach(rid => { const R = DOOR_HQ.rooms[rid]; if (!R) return; try { n += zoneLookRoom(R, Z); R._zlId = rid; R._zlZone = zid; } catch (e) {} }); });
+    return n;
+}
+/* THE STAINS: decal rows for a room (three-renderer.js _hqBuildMarks draws them). Laid where grime gathers: down the face of a wall row or
+   a building's standing box (a drip from the top) and on the ground at its foot (a pool of dirt / blood). The count is the zone's rate x the
+   faces' metres / 10, capped; seeded by the room id, so the stains stand in the same places on every visit and for both players online.
+   A row: { k: 'decal', tex, x, z, a } + lying: w, d, rot (degrees) · standing: w, h, yaw (radians, the face's outward normal), top (metres
+   from the face's foot to its top), yAbs (the foot's height; null = the ground there) + yOff */
+function zoneLookDecals(roomId, room) {
+    if (!room || !room.terrain || (typeof window !== 'undefined' && (window.EW_NO_ZONE_DECALS || window.EW_NO_ZONE_LOOKS))) return [];
+    if (room._zlDecals) return room._zlDecals;
+    roomId = roomId || room._zlId || '';
+    let Z = room._zlZone ? ZONE_LOOKS.zones[room._zlZone] : null;
+    if (!Z) Object.keys(ZONE_LOOKS.zones).forEach(zid => { if ((ZONE_LOOKS.zones[zid].rooms || []).indexOf(roomId) >= 0) Z = ZONE_LOOKS.zones[zid]; });
+    const out = []; room._zlDecals = out;
+    if (!Z || !Z.decals) return out;
+    let h = 2166136261; for (let i = 0; i < roomId.length; i++) { h ^= roomId.charCodeAt(i); h = Math.imul(h, 16777619); }
+    const rnd = () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+    /* the faces: { x, z (the face's foot middle), ux, uz (along it), nx, nz (out of it), w, top, yAbs, yOff } */
+    const F = [], D2R = Math.PI / 180;
+    (room.terrain.features || []).forEach(f => {
+        if (!f) return;
+        if (f.k === 'wall' && typeof f.x0 === 'number' && (f.h || 0) >= 1.6) {
+            const L = Math.hypot(f.x1 - f.x0, f.z1 - f.z0); if (L < 1.5) return;
+            const ux = (f.x1 - f.x0) / L, uz = (f.z1 - f.z0) / L, half = (f.t || 0.2) / 2;
+            [-1, 1].forEach(sd => F.push({ x: (f.x0 + f.x1) / 2 - uz * sd * half, z: (f.z0 + f.z1) / 2 + ux * sd * half, ux, uz, nx: -uz * sd, nz: ux * sd, w: L, top: f.h, yAbs: (typeof f.y === 'number') ? f.y : null, yOff: 0 }));
+        } else if (f.k === 'arch' && Array.isArray(f.parts) && typeof f.x === 'number') {
+            const rc = Math.cos(-(f.rot || 0) * D2R), rs = Math.sin(-(f.rot || 0) * D2R);
+            f.parts.forEach(p => {
+                if (!p || (p.s && p.s !== 'box') || !Array.isArray(p.size) || p.n > 1 || p.ring || p.roof || p.kind || p.glow || /Glass|Window/.test(p.key || '')) return;
+                const sw = p.size[0], sh = p.size[1], sd = p.size[2]; if (sh < 2.2 || Math.max(sw, sd) < 1.5) return;
+                const pp = p.p || [0, 0, 0], pc = Math.cos(-(p.ry || 0) * D2R), ps = Math.sin(-(p.ry || 0) * D2R), faces = (typeof p.faces === 'string') ? p.faces : 'fblr';
+                const toW = (lx0, lz0) => { const lx = pp[0] + lx0 * pc + lz0 * ps, lz = pp[2] - lx0 * ps + lz0 * pc; return [f.x + lx * rc + lz * rs, f.z - lx * rs + lz * rc]; };
+                const dirW = (dx, dz) => { const lx = dx * pc + dz * ps, lz = -dx * ps + dz * pc; return [lx * rc + lz * rs, -lx * rs + lz * rc]; };
+                [['f', 0, sd / 2, 0, 1, sw], ['b', 0, -sd / 2, 0, -1, sw], ['l', -sw / 2, 0, -1, 0, sd], ['r', sw / 2, 0, 1, 0, sd]].forEach(q => {
+                    if (faces.indexOf(q[0]) < 0 || q[5] < 1.5) return;
+                    const c = toW(q[1], q[2]), n = dirW(q[3], q[4]);
+                    F.push({ x: c[0], z: c[1], ux: -n[1], uz: n[0], nx: n[0], nz: n[1], w: q[5], top: sh, yAbs: (typeof f.y === 'number') ? f.y + (pp[1] || 0) : null, yOff: (typeof f.y === 'number') ? 0 : (pp[1] || 0) });
+                });
+            });
+        }
+    });
+    if (!F.length) return out;
+    /* the ground's sheet under a point (the painted grid, else the room's floor): a grassy one hides a stain */
+    const T = room.terrain, P = T.paint, SOFT = /grass|leaves|forest|dark_woods|hedge|canopy|wild/;
+    let grid = null; try { if (P && P.d && P.nx && typeof atob === 'function') { const b = atob(P.d); grid = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) grid[i] = b.charCodeAt(i); } } catch (e) { grid = null; }
+    const soft = (x, z) => { let k = T.floor; if (grid) { const i = Math.floor((x - P.x0) / P.res + 0.5), j = Math.floor((z - P.z0) / P.res + 0.5); if (i >= 0 && j >= 0 && i < P.nx && j < P.nz) { const v = grid[j * P.nx + i]; if (v > 0) k = P.pal[v - 1]; } } return SOFT.test(hqRuleKeyOf(String(k || ''))); };
+    let metres = 0; F.forEach(q => { metres += q.w; });
+    const D = Z.decals, ST = ZONE_LOOKS.stains, CAP = { blood: 40, dirt: 140, grime: 90, drip: 320 };
+    Object.keys(D).forEach(kind => {
+        const sheets = ST[kind]; if (!sheets) return;
+        const want = Math.min(CAP[kind] || 60, Math.round(D[kind] * metres / 10));
+        for (let i = 0; i < want; i++) {
+            let r = rnd() * metres, q = F[F.length - 1];
+            for (let j = 0; j < F.length; j++) { if (r <= F[j].w) { q = F[j]; break; } r -= F[j].w; }
+            const along = (rnd() - 0.5) * Math.max(0, q.w - 1.2), x = q.x + q.ux * along, z = q.z + q.uz * along, tex = zlHorrorKey(sheets[Math.floor(rnd() * sheets.length)]);
+            if (kind === 'drip') {
+                const top = (q.top > 4.5 && rnd() < 0.6) ? 3 + rnd() * 1.5 : q.top;   // a tall wall: most drips run from a storey's sill, in eye reach; the rest from the top
+                const hh = Math.min(top, 1.4 + rnd() * 1.8), w = Math.min(q.w - 0.2, 0.9 + rnd() * 1.3);
+                out.push({ k: 'decal', tex, x: x + q.nx * 0.015, z: z + q.nz * 0.015, w, h: hh, yaw: Math.atan2(q.nx, q.nz), top, yAbs: q.yAbs, yOff: q.yOff, a: 0.85 });
+            } else {
+                if (soft(x + q.nx, z + q.nz)) continue;   // grass and leaves hide a stain: none laid there
+                const s = (kind === 'blood' ? 0.9 : 1.2) + rnd() * (kind === 'blood' ? 1.0 : 1.6), off = s * 0.4 + rnd() * 0.5;
+                out.push({ k: 'decal', tex, x: x + q.nx * off, z: z + q.nz * off, w: s, d: s, rot: Math.floor(rnd() * 360), a: kind === 'grime' ? 0.6 : 0.9 });
+            }
+        }
+    });
+    return out;
+}
+if (typeof window !== 'undefined') { window.ZONE_LOOKS = ZONE_LOOKS; window.zoneLookDecals = zoneLookDecals; window.zoneLooksApply = zoneLooksApply; }
 /* ══ THE CLASH TEMPLE (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... They should be able to be built with
    the tools in the map editor, and remember to design them with square tiles in mind. And make them look good ... Dont delete these
    voxel maps though") ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -100882,3 +101073,5 @@ window.EWDataMods = (function () {
         counts, total, summary, export: exportDoc, import: importDoc,
     };
 })();
+/* THE ZONE LOOKS: every zone room wears its zone's sheets (after every room is in DOOR_HQ.rooms; see ZONE_LOOKS) */
+try { zoneLooksApply(); } catch (e) { if (typeof console !== 'undefined') console.warn('[ZONE LOOKS] failed', e); }

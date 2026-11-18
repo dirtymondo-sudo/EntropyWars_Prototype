@@ -12358,3 +12358,27 @@ What a later thread must know:
   does exist is in the plan, section 1.
 - A probe view in the city needs its own `"y"` (the street is not at 0: a view at y 0 stands under the ground).
 
+
+## THE ZONE LOOKS — the horror + urban decay retexture, zone by zone (2026-11-18, owner side)
+mondo 11-18: "I added an SBS horror texture pack in the inbox. Its basically just more textured and weathered textures. Can you use this
+horror pack and the urban decay texture pack to improve the aesthetics of the game, zone by zone. I especially want the "calm" textures
+replaced, those textures were only meant to be used on the ground, and even then i am okay with you not using them at all if the area or
+building calls for it. There is also blood splatters and stains that can be used to add more detail and textures to places. Focus on all
+areas except disaster city first."
+- THE PACK: SBS Horror Texture Pack (Screaming Brain Studios, CC0), 98 seamless 128 px sheets + 15 RGBA stains, on R2 as they came:
+  `Assets/world/terrain/horror/Horror_<Brick|Floor|Metal|Misc|Stone|Wall|Stain>_<nn>.png`. Texture keys `hz_<family>_<nn>` (editor picker group
+  HORROR). Stains: 01-03 blood, 04-05 dirt, 06-09 grime, 10-14 drips down a wall, 15 soot. Originals: /mnt/project-files/asset-packs/sbs-horror/.
+- THE TABLE: data.js `ZONE_LOOKS.zones.<zone>` = `{ rooms, wall: {key: sheet}, ground: {key: sheet}, decals: {blood, dirt, grime, drip} }`.
+  sheet = `hz:Brick_09` (horror), `urban:WoodCladding3a` (Urban Decay) or `px:gold` (the key's pixel sheet: gold = gilt.png, the approved gold).
+  `wall` = wall rows, standing arch parts, keyTop/keyEnd/keyBase, ramp sides, terrain cliff, shell wall/dado/trim/ceiling; `ground` = floor,
+  path, paint palette, ground zones, ramp/bridge/plateau decks, floorIn, a lying-flat part (box under 0.35 m tall, or a `flat` quad).
+- THE PASS: `zoneLooksApply()` (last line of data.js) renames each mapped key to a twin `zl_<sheet>__<key>` registered in CALM_TERRAIN.sheets
+  with the OLD key as its rule twin (hqRuleKeyOf), so nothing in a fight or a walk changes, and NO zone tool / district file is touched: a
+  district thread keeps writing its usual keys and the zone still comes out in its look. To change a zone's look, edit its table entry.
+- THE STAINS: `zoneLookDecals(roomId, room)` lays decal rows (seeded by the room id, same for both players) down wall faces (rows >= 1.6 m and
+  standing arch boxes >= 2.2 m, not glass/roofs) and on the ground at their foot; rate x face metres / 10, capped. three-renderer.js
+  `_hqBuildMarks` draws `k: 'decal'` rows, one buffer + one draw per stain sheet. Blood only where the zone is horror (gore rules).
+- Off switches: `window.EW_NO_ZONE_LOOKS` (before data.js), `window.EW_NO_ZONE_DECALS`.
+- BATCH 1: Camelot Kingdom (castle stone Brick_09, floors Floor_13, timber WoodBeams, marble Stone_12, rock Stone_07, gold = gilt), The Estate
+  (WoodGeneric siding -> WoodCladding, graves Stone_03, mossy walls Brick_08, peeling plaster Wall_08 in the old haunted rooms, blood),
+  The Sewers (green brick Brick_03/04, rusted corrugated Metal_06, Floor_01, heavy drips).
