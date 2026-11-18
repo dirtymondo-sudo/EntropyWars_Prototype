@@ -85745,6 +85745,11 @@ const ThreeRenderer = (function () {
            its cell's blockers (+ the ones seen moving), in the list's own order, so the answer is the same. The officer's own walk
            keeps the whole list. Off: window.EW_HQ_NAV_GRID_OFF = true. */
         if (N && L === N.statics && L.length > 64) { var G = _hqNavGrid(L); if (G) { var ids = _hqNavGridAt(G, x, z); for (var k = 0; k < ids.length; k++) { var b = L[ids[k]]; if (_hqBlkContains(b, x, z, HQ_BODY_R)) out.push(b); } return out; } }
+        /* THE RIDER'S GRID (2026-11-18, spikes thread: mondo's F3 "walker: ride 6-8 ms" every frame on the board — the ride ticks at 120 Hz
+           and every step asks the floor several times, each ask reading every blocker of the city): while the walker's or the rider's own
+           tick runs, its asks read the same grid over the whole list (its own slot; the people in it are seen moving and read every ask;
+           a list that grows or is replaced is laid again). Off: window.EW_HQ_WALK_GRID_OFF. */
+        if (N && _hqWalkGridOn && L === _hq.blockers && L.length > 64 && !(typeof window !== 'undefined' && window.EW_HQ_WALK_GRID_OFF)) { var G2 = _hqNavGrid(L, 'wgrid'); if (G2) { var ids2 = _hqNavGridAt(G2, x, z); for (var k2 = 0; k2 < ids2.length; k2++) { var b2 = L[ids2[k2]]; if (_hqBlkContains(b2, x, z, HQ_BODY_R)) out.push(b2); } return out; } }
         for (var i = 0; i < L.length; i++) if (_hqBlkContains(L[i], x, z, HQ_BODY_R)) out.push(L[i]);
         return out;
     }
@@ -85754,9 +85759,11 @@ const ThreeRenderer = (function () {
         if (b.rect) return Math.hypot(b.rect.hw, b.rect.hd);
         return b.rad || 0;
     }
-    function _hqNavGrid(L) {
+    var _hqWalkGridOn = false;
+    function _hqNavGrid(L, slot) {
         if (typeof window !== 'undefined' && window.EW_HQ_NAV_GRID_OFF) return null;
-        var N = _hq.nav, G = N.grid; if (G && G.list === L && G.n === L.length) return G;
+        slot = slot || 'grid';
+        var N = _hq.nav, G = N[slot]; if (G && G.list === L && G.n === L.length) return G;
         var U = _hqUnits(), n = L.length, c = HQ_NAV_GRID_M, pad = HQ_BODY_R + 0.1;
         G = { list: L, n: n, c: c, cells: new Map(), loose: [], moved: new Uint8Array(n), px: new Float64Array(n), pz: new Float64Array(n), reach: new Float64Array(n), sw: 0, swAt: 0 };
         for (var i = 0; i < n; i++) {
@@ -85767,7 +85774,7 @@ const ThreeRenderer = (function () {
             var i0 = Math.floor((bx - r - pad) / c), i1 = Math.floor((bx + r + pad) / c), j0 = Math.floor((bz - r - pad) / c), j1 = Math.floor((bz + r + pad) / c);
             for (var gi = i0; gi <= i1; gi++) for (var gj = j0; gj <= j1; gj++) { var key = (gi + 32768) * 65536 + (gj + 32768), a = G.cells.get(key); if (!a) G.cells.set(key, a = []); a.push(i); }
         }
-        N.grid = G; return G;
+        N[slot] = G; return G;
     }
     /* the blockers an ask at (x, z) must read: its cell's, plus every one seen moving since the grid was laid (a slice of the list is
        re-read once a frame; a blocker that moved or changed size leaves the grid for good) */
@@ -90674,6 +90681,10 @@ const ThreeRenderer = (function () {
         return true;
     }
     function _hqTickWalker(dt) {
+        _hqWalkGridOn = true;
+        try { _hqTickWalkerIn(dt); } finally { _hqWalkGridOn = false; }
+    }
+    function _hqTickWalkerIn(dt) {
         var H = _hq, pl = H.player; if (!pl) return;
         var k = H.keys;
         /* THE SLIDE (Delivery 6): onto the cells, no input, then the cut */
@@ -98209,7 +98220,9 @@ const ThreeRenderer = (function () {
             for (var bi = 0; bi < BB.length; bi++) {
             var B = BB[bi]; if (!B) continue;
             if (B.phase === 'off') continue;
+            var _bt = (_lens && _lens.cur) ? performance.now() : 0;   // THE INNER SPLIT (lens): which step of the merge
             if (B.batches.length && (B.ck || now - B.checkAt >= HQ_BATCH.checkMs)) { try { if (_hqBatchCheck(R, B, (typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_WHOLE) ? 0 : HQ_BATCH.rollMs)) B.checkAt = now; } catch (e) { B.ck = null; console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
+            _bt = _lensSub('batch: check', _bt);
             if (B.phase === 'live') {
                 if (now - B.at < HQ_BATCH.rescanMs) continue;
                 /* THE RESCAN ON CHANGE (2026-11-15): the late-piece scan force-walked the matrices of the whole group and read every
@@ -98221,12 +98234,15 @@ const ThreeRenderer = (function () {
                 B.scanAn = _bAn; B.phase = 'scan'; B.it = _hqBatchScan(R, B);   // THE PERF PASS 2: the late pieces
             }
             if (B.phase === 'wait') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
-            if (B.phase === 'watch') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs) && _hqStackPrep(R, B, now)) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
+            if (B.phase === 'watch') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs) && _hqStackPrep(R, B, now)) { _lensSub('batch: stack prep', _bt); B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else { _lensSub('batch: stack prep', _bt); continue; } }
+            _bt = (_lens && _lens.cur) ? performance.now() : 0;
+            var _bPh = B.phase;
             if (_alNow() >= end) return;
             _hqSliceEnd = end;
             var res = null;
             try { res = B.it.next(); } catch (e) { console.warn('[HQ batch] the pass failed — every piece handed back', e); _hqBatchDrop(R); res = { done: true }; B.phase = 'off'; }
             finally { _hqSliceEnd = 0; }
+            _lensSub('batch: ' + _bPh + ' step', _bt);
             if (res && res.done && B.phase !== 'off') {
                 B.it = null;
                 if (B.phase === 'scan') { if (B.cands.length) { B.phase = 'watch'; B.stats.scanned += B.cands.length; } else { B.phase = 'live'; B.lived = true; } B.at = now; }
