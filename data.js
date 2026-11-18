@@ -101203,7 +101203,7 @@ const HQ_CITY_LOOKS = {
         /* HEIGHT (mondo 11-18): a tower stands OVER a building, on four legs, `gap` m clear of the old roof (the roof walks, its stairs and its
            routes stay: nothing of the old building is closed or moved, no collision is added). A plan under `smallM` m gets `small` storeys;
            from `tierAt` storeys up the top `tierK` of it steps in; a mast and a beacon from `mastAt`. `sky` = glass skyways between neighbours. */
-        tower: { gap: 3.5, storey: 3.5, smallM: 7, small: [2, 4], inset: 0.5, leg: 0.9, tierAt: 8, tierK: 0.4, tierIn: 1.6,
+        tower: { gap: 3.5, storey: 3.5, slim: 2.6, smallM: 7, small: [2, 4], inset: 0.5, leg: 0.9, tierAt: 8, tierK: 0.4, tierIn: 1.6,
                  wins: ['urban:GlassWindowTall1a', 'urban:GlassWindowSquare2a', 'urban:GlassWindowTall1a-Glow'], winGlow: 0.45, mastAt: 10 },
         sky: { min: 9, max: 40, w: 2.6, h: 2.8, glow: 0.3 },
         lamps: { E: '#35e0ff' },                                                      // a district's street lamps
@@ -101283,7 +101283,8 @@ function hqCityLookTerrain(roomId, base, lookId) {
             /* THE TOWER over the building */
             const TW = L.tower;
             if (TW && ((h >>> 11) % 100) < box.p * 100 && !L.noTowerPlots.test(rid)) {
-                const small = Math.min(w, d) < TW.smallM, n = small ? TW.small[0] + (h >>> 9) % (TW.small[1] - TW.small[0] + 1) : box.n[0] + (h >>> 9) % (box.n[1] - box.n[0] + 1);
+                const small = Math.min(w, d) < TW.smallM, n0 = small ? TW.small[0] + (h >>> 9) % (TW.small[1] - TW.small[0] + 1) : box.n[0] + (h >>> 9) % (box.n[1] - box.n[0] + 1);
+                const n = Math.max(2, Math.min(n0, Math.floor(Math.min(w, d) * TW.slim / TW.storey)));   // never a needle on a hut: no taller than `slim` x its narrow side
                 const yb = top + TW.gap, H = n * TW.storey, tw = w - TW.inset * 2, td = d - TW.inset * 2, lg = TW.leg, win = TW.wins[(h >>> 13) % TW.wins.length];
                 const mass = (y, hh, mw, md) => {   // one tier: the lit glass, four steel corners, a neon line every second storey, a cap
                     put({ s: 'box', p: [cx, y, cz], size: [mw, hh, md], key: win, tint: glassTint, glow: TW.winGlow, shine: 90, uv: [1.75, TW.storey], win: 'keep' });
