@@ -5251,3 +5251,13 @@ pillar, the sacred rings and the support rings as white whatever colour they wer
 - Not done: `_capRing` (Hallelujah's first beat still reads pale), `_sigSpectrumBurst3D`'s white core (a spectrum is
   white light: left), `_sigMat` itself (it also carries textured props, where white means "the texture as it is").
 
+
+## THE VFX CLEANUP, leftovers (2026-11-18, three-vfx-effects.js)
+- **No double draw.** `sv-run.js` records console errors in `pageErrs` AND `SA.errs` and prints both, so a debug line per
+  call shows twice with identical timestamps. `_fireBeamMapped`, `_stageWindup` and `_stageBurst` run once per cast.
+- **`_VC_PORTAL`, B5 part 2:** `teleport: { mover: true }` (windup: the portal opens at the unit `state._teleportingUnitId`
+  names, else the caster's square), and three `at: 'target'` rows (one portal at `p.tx, p.ty` on the burst beat, 700 ms):
+  raceSummonCreation, raceRaiseDead (`flat`, violet / green), raceDimensionalWeb. Seen fired by hand
+  (docs/plans/vfx-cleanup/img/b5_portals_part2_and_hallelujah.jpg); not seen in a real cast.
+- **`_sigLightPillar3D`** with the cleanup on: `O_OUT` 0.36, `O_AURA` 0.13 (were 0.55 / 0.22).
+

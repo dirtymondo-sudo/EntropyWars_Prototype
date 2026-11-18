@@ -446,6 +446,15 @@ hue, and the pale palettes are toned instead of skipped. `_VC_WHITE_OK` spells a
 img/colour_true_before.jpg / colour_true_after.jpg (Divine Smite, Absolution, Judgment, Hallelujah, Rapture, Ki Wave).
 Still pale after it: Hallelujah's first beat (`_capRing` + the columns as they form).
 
+**11-18, leftovers:** (1) NO double draw: the capture runner prints each console line from two lists, so every call
+looked doubled; the timestamps are identical. (2) B5 part 2: `teleport` (`mover: true`: the leaving portal opens under
+the unit being moved, `state._teleportingUnitId`), Summon Creation, Raise Dead (flat, on the floor), Dimensional Web
+(`at: 'target'`: one portal where the thing comes out, on the hit beat). Seen fired by hand only. On the guest
+`_teleportingUnitId` may not be set, and then Teleport's leaving portal opens under the caster. (3) The light pillar's
+two shells are lower with the cleanup on (Hallelujah's columns washed pale as they formed); its ring is gold since the
+shock ring keeps its hue. NOT done from B5's list, on purpose (decision 3): the doors (they have the door rig), the
+creatures that walk / fly / hatch in, the black holes (own looks).
+
 **The sweeps (B6a-B10) run as nine threads from 11-17:** brief `docs/plans/vfx-cleanup/SWEEP_BRIEF.md`.
 **The own-look threads:** L1-L5 reported their lists done and merged on 11-17 (notes: spells-vfx.md "THE OWN LOOKS, L<n>").
 
