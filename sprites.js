@@ -1885,10 +1885,9 @@ const RACE_MODELS_3D = {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
     }, { heightRatio: 1.0, basicAttackKind: 'magic' }),
-    female: _mk3d('Homosapien/Female/harbinger', 'hot_attractive_fortun', {
-      idle: 'Idle_3', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
-      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }, { heightRatio: 0.95, basicAttackKind: 'magic' }),
+    female: _mkUAL('Homosapien/Female/harbinger', 'fortune_teller_f_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/homosapien/female/harbinger/Meshy_AI_fortune_teller_f_v2_Running.glb',
+      heightRatio: 0.95, basicAttackKind: 'magic' }),   // was 'hot_attractive_fortun' (kept on R2)
   },
   // The Spy (mondo 2026-10-25: a James Bond spy, not an "intel spy") — "spy_female" Running export in
   // Races/spy/. The shared library animates her; its castRanged is the trimmed quick-draw she shot with before.
@@ -2131,18 +2130,15 @@ const RACE_MODELS_3D = {
     }),
   },
   'fairy': {
-    female: _mk3d('Fairy/female', 'young_fairy', {
-      idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
-      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-      castSupport: 'mage_soell_cast',
-      // spare emotes on R2: Mirror_Viewing, Wave_for_Help_1 (future victory/emote slots)
-    }, { heightRatio: 0.6, basicAttackKind: 'magic' }),   // tiny winged sprite
+    female: _mkUAL('Fairy/female', 'fairy_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/fairy/female/Meshy_AI_fairy_v2_Running.glb',
+      procRig: 'unitGear', gear: { wings: { url: 'https://cdn.entropywars.net/Assets/characters/gear/wings/fairy_wing_single.glb', root: -1, lift: 0.1 }, wingLen: 0.42 },   // her old model's wing, cut out, beating apart
+      heightRatio: 0.6, basicAttackKind: 'magic' }),   // tiny winged sprite (was 'young_fairy', kept on R2)
   },
   'bigfoot': {
-    male: _mk3d('bigfoot/male', 'bigfoot', {
-      idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump',
-      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }, { heightRatio: 1.4,      // towering cryptid
+    male: _mkUAL('bigfoot/male', 'bigfoot_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+         model: 'https://cdn.entropywars.net/Assets/characters/races/bigfoot/male/Meshy_AI_bigfoot_v2_Running.glb',   // was 'bigfoot' (kept on R2)
+         heightRatio: 1.4,      // towering cryptid
          lib: { idle: { clip: 'Idle_10', lib: 2 },                    // brawler sway
                 castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } } }),
   },
@@ -2182,10 +2178,10 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/atlantean/male/Meshy_AI_atlantean_m_Running.glb`,
       heightRatio: 1.0, basicAttackKind: 'magic',
     }),
-    female: _mk3d('atlantean/female', 'hot_attractive_atlant', {
-      walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
-      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }, { heightRatio: 0.98,      // statuesque sea-dweller
+    female: _mkUAL('atlantean/female', 'atlantean_f_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+         model: 'https://cdn.entropywars.net/Assets/characters/races/atlantean/female/Meshy_AI_atlantean_f_v2_Running.glb',   // was 'hot_attractive_atlant' (kept on R2)
+         procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/atlantean_trident.glb', len: 1.05, grip: 0.4, hand: 'RightHand' } },   // the trident apart, in her hand
+         heightRatio: 0.98,      // statuesque sea-dweller
          basicAttackKind: 'magic' }),  // tide-caller — basic attacks surge, no blades
   },
   // Werewolf NIGHT form (the beast). The DAY form is the Homosapien Freelancer
@@ -2339,7 +2335,8 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/necromancer/male/Meshy_AI_necromancer_m_Running.glb`,
       heightRatio: 1.0, basicAttackKind: 'magic',
     }),
-    female: _mkUAL('necromancer/female', 'hot_girl_necromancer', {
+    female: _mkUAL('necromancer/female', 'necromancer_f_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/necromancer/female/Meshy_AI_necromancer_f_v2_Running.glb',   // was 'hot_girl_necromancer' (kept on R2)
       heightRatio: 0.95,
       basicAttackKind: 'magic',
     }),
@@ -2499,7 +2496,7 @@ const RACE_MODELS_3D = {
   },
   'krampus': {
     male: _mkUAL('krampus', 'krampus', {
-      model: `${_S}/Races/krampus/Meshy_AI_krampus_Running.glb`,
+      model: 'https://cdn.entropywars.net/Assets/characters/races/krampus/Meshy_AI_krampus_v2_Running.glb',   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR): no sack (was Meshy_AI_krampus_Running.glb, kept on R2)
       heightRatio: 1.2, basicAttackKind: 'claw',
     }),
   },
@@ -3037,7 +3034,9 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/fallenangel/male/Meshy_AI_fallen_angel_m_Running.glb`,
       heightRatio: 1.02, basicAttackKind: 'magic',
     }),
-    female: _mkUAL('fallenangel/female', 'fallen_angel_r', {
+    female: _mkUAL('fallenangel/female', 'fallen_angel_f_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/fallenangel/female/Meshy_AI_fallen_angel_f_v2_Running.glb',   // was 'fallen_angel_r' (kept on R2)
+      procRig: 'unitGear', gear: { wings: 'angel', wingLen: 0.62, wingTint: '#2b2730' },   // the black wings apart, beating
       heightRatio: 1.0,
       basicAttackKind: 'magic',
     }),
@@ -3170,7 +3169,9 @@ const RACE_MODELS_3D = {
   // underscore in the file stem (…valkraye__biped_…) → prefix keeps a
   // trailing '_' (same pattern as the psychics/superhero).
   'valkraye': {
-    female: _mkUAL('valkraye', 'hot_girl_valkraye_', {
+    female: _mkUAL('valkraye', 'valkraye_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/valkraye/Meshy_AI_valkraye_v2_Running.glb',   // was 'hot_girl_valkraye_' (kept on R2)
+      procRig: 'unitGear', gear: { wings: 'angel', wingLen: 0.62 },
       heightRatio: 0.98,
       lib: { idle: { clip: 'Sword_Idle' },
              castMelee: { clip: 'Sword_Regular_Combo', lib: 1, ts: 2.4 } },
@@ -3180,8 +3181,16 @@ const RACE_MODELS_3D = {
   // castHeal staff wave from the shared slots. Doubled underscore in
   // …angel_girl__biped_… → trailing '_' prefix.
   'angel': {
-    female: _mkUAL('angel/female', 'beautiful_angel_girl_', {
+    female: _mkUAL('angel/female', 'angel_f_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/angel/female/Meshy_AI_angel_f_v2_Running.glb',   // was 'beautiful_angel_girl_' (kept on R2)
+      procRig: 'unitGear', gear: { wings: 'angel', wingLen: 0.62, halo: 'https://cdn.entropywars.net/Assets/characters/gear/halos/angel_f_halo.glb' },   // wings + a bobbing halo, apart
       heightRatio: 1.0,
+      basicAttackKind: 'magic',
+    }),
+    male: _mkUAL('angel/male', 'angel_m', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR): the first male angel
+      model: 'https://cdn.entropywars.net/Assets/characters/races/angel/male/Meshy_AI_angel_m_Running.glb',
+      procRig: 'unitGear', gear: { wings: 'angel', wingLen: 0.62, halo: 'https://cdn.entropywars.net/Assets/characters/gear/halos/angel_m_halo.glb' },
+      heightRatio: 1.05,
       basicAttackKind: 'magic',
     }),
   },
@@ -3381,7 +3390,9 @@ const RACE_MODELS_3D = {
   // kong (1.65): monster sway, claw basics; breath attacks fire their mapped
   // beam VFX.
   'dragon': {
-    male: _mkUAL('dragon/male', 'dragon_realistic', {
+    male: _mkUAL('dragon/male', 'dragon_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/dragon/male/Meshy_AI_dragon_v2_Running.glb',   // was 'dragon_realistic' (kept on R2)
+      procRig: 'unitGear', gear: { wings: 'dragon', wingLen: 0.72 },   // the game's dragon wing (Hoard's), beating apart
       heightRatio: 1.6,
       basicAttackKind: 'claw',
       lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
@@ -3401,7 +3412,9 @@ const RACE_MODELS_3D = {
   // Cosmic Wraith (Sniper, ranged) — 2.2m spectral horror (djinn 2.3m → 1.25):
   // entropic beams / heat death → magic basics.
   'cosmic wraith': {
-    male: _mkUAL('cosmicwraith/male', 'cosmic_wraith_realis', {
+    male: _mkUAL('cosmicwraith/male', 'cosmic_wraith_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/cosmicwraith/male/Meshy_AI_cosmic_wraith_v2_Running.glb',   // was 'cosmic_wraith_realis' (kept on R2)
+      procRig: 'unitGear', gear: { cape: 'https://cdn.entropywars.net/Assets/characters/gear/capes/cosmic_wraith_cape.glb', capeLen: 0.74 },   // the hoodless cape apart, swinging
       heightRatio: 1.2,
       basicAttackKind: 'magic',
     }),
