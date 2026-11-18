@@ -46,7 +46,7 @@ exports.build = c => { const C = c.C;
     c.look('lastmile', 'P08-04', 9.2, 6, 90, a => { K.words(a, 'THE LAST MILE', 0, 5.6, 0, 11, 1.6, '#7fffd0', 'archivo'); K.words(a, 'IT IS ALWAYS THE LAST MILE', 0, 4.6, 0, 9, 0.8, '#ffffff'); });
     /* THE ON-RAMP (P04-02): the name of the whole thing, standing in the air at the north end */
     c.look('onramp', 'P04-02', 6, 1.2, 0, a => { K.words(a, 'INFORMATION', 0, 9.4, 0, 16, 2.6, '#7fffd0', 'archivo'); K.words(a, 'HIGHWAY', 0, 6.6, 0, 12, 2.6, '#ffffff', 'archivo'); });
-    c.at('wifi_router', 'P04-03', 10.2, 6, { h: 6.5, face: 270, y: 0.6 });   // the router the size of a shed hanging off the river's east side, its antennas up (THE INTERNET MODELS)
+    c.at('wifi_router', 'P04-03', 10.2, 6, { h: 6.5, face: 270, y: c.base('P04-03') + 0.6 });   // the router the size of a shed hanging off the river's east side, its antennas up (THE INTERNET MODELS)
     c.look('bandwidth', 'P04-03', 6, 6, 0, a => { a.quad(0, 0.05, 0, 13.4, 0.25, 0, null, 0xffe040, { flat: true, glow: 1 }); K.words(a, 'BANDWIDTH: 14 M', 0, 5.4, 0, 9, 1.0, '#ffe040', 'archivo'); });
     /* THE BACKBONE (P04-05): ribs of bone over the light, the spine along their tops */
     c.look('backbone', 'P04-05', 6, 0, 0, a => { for (let i = 0; i < 6; i++) { const z = (1 + i * 2) * C, s = 8.4 - Math.abs(i - 2.5) * 0.4;
@@ -55,8 +55,8 @@ exports.build = c => { const C = c.C;
     /* THE DESKTOP (P04-04, the landmark): the round island at the crossing. Four icons the size of monuments on its four quarters (a
        folder, a document, a picture, the bin), each with its name under it; THE POINTER, the arrow, hanging over the middle 14 m up */
     /* the folder, the document, the picture and THE POINTER are the extruded icons (THE INTERNET ICONS, 11-18: mondo "just extrude their flat icons") */
-    { const Q = 12.6 / C; c.at('icon_folder', 'P04-04', 6 - Q, 6 - Q, { h: 4.6, y: 1.0 }); c.at('icon_document', 'P04-04', 6 + Q, 6 - Q, { h: 5.4, y: 1.0 });
-      c.at('icon_picture', 'P04-04', 6 - Q, 6 + Q, { h: 4.4, y: 1.0 }); c.at('icon_pointer', 'P04-04', 6 + 1.4 / C, 6, { h: 7, y: 13 }); }
+    { const Q = 12.6 / C; c.at('icon_folder', 'P04-04', 6 - Q, 6 - Q, { h: 4.6, y: c.base('P04-04') + 1.0 }); c.at('icon_document', 'P04-04', 6 + Q, 6 - Q, { h: 5.4, y: c.base('P04-04') + 1.0 });
+      c.at('icon_picture', 'P04-04', 6 - Q, 6 + Q, { h: 4.4, y: c.base('P04-04') + 1.0 }); c.at('icon_pointer', 'P04-04', 6 + 1.4 / C, 6, { h: 7, y: c.base('P04-04') + 13 }); }
     c.look('desktop', 'P04-04', 6, 6, 0, a => { const Q = 12.6;
         a.sign('NEW FOLDER (3)', -Q, 0.2, -Q + 0.5, 5.6, 0.8, '#ffffff', '#0a2a90', 'dot');
         a.sign('final_FINAL_v2.doc', Q, 0.2, -Q + 0.5, 6.4, 0.8, '#ffffff', '#0a2a90', 'dot');

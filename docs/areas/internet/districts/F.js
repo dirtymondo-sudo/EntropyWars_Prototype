@@ -82,8 +82,8 @@ exports.build = c => { const C = c.C;
         a.box(0, 0.5, 1.6, 8.6, 5.6, 0.3, STEEL, 0x0a0a0c); a.sign('9,999,999 VIEWS', 0, 3.3, 1.8, 8, 1.4, '#7fffd0', '#08221c', 'dot'); a.sign('15 MINUTES LEFT', 0, 1.4, 1.8, 6, 0.9, '#ffe23a', '#08221c', 'dot'); });
     solid(c, 'P07-02', 2, 7, 3, 9, 7);
     /* the notification bell and the like, hanging over the view counter; three speech bubbles over the comment pit (THE INTERNET ICONS, 11-18) */
-    c.at('icon_bell', 'P07-02', 3, 6.2, { h: 3.2, y: 8.6, face: 90 }); c.at('icon_like', 'P07-02', 3, 10.2, { h: 3.0, y: 8.4, face: 90 });
-    [[5.5, 4.2, 6.6, 20], [3.6, 6.4, 8.2, -30], [7.4, 6.8, 7.4, 160]].forEach(([x, y, h, f]) => c.at('icon_speech_bubble', 'P05-02', x, y, { h: 2.6, y: h, face: f }));
+    c.at('icon_bell', 'P07-02', 3, 6.2, { h: 3.2, y: c.base('P07-02') + 8.6, face: 90 }); c.at('icon_like', 'P07-02', 3, 10.2, { h: 3.0, y: c.base('P07-02') + 8.4, face: 90 });
+    [[5.5, 4.2, 6.6, 20], [3.6, 6.4, 8.2, -30], [7.4, 6.8, 7.4, 160]].forEach(([x, y, h, f]) => c.at('icon_speech_bubble', 'P05-02', x, y, { h: 2.6, y: c.base('P05-02') + h, face: f }));
 };
 exports.dress = c => {
     /* the stages' kit */

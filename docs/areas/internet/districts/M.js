@@ -26,8 +26,8 @@ exports.build = c => {
     c.look('hill', 'P03-01', 2.5, 7.5, 0, a => { let n = 0; for (let L = 0; L < 7; L++) { const r = 5.2 - L * 0.7, k = Math.max(3, 9 - L); for (let i = 0; i < k; i++) { const t = (i / k + L * 0.13) * Math.PI * 2; env(a, Math.cos(t) * r * 0.6, L * 0.62, Math.sin(t) * r * 0.6, 3.6, 2.4, 0.6, (n++ * 37) % 180); } }
         K.words(a, '@', 0, 4.6, 0, 3.6, 3.6, '#40e0ff', 'archivo'); K.words(a, '4,096 UNREAD', 0, 8.6, 0, 9, 1.4, '#ff3050', 'archivo'); });
     K.solid(c, 'P03-01', 1, 7, 3, 8, 5);
-    c.at('icon_envelope', 'P03-01', 2.5, 7.5, { h: 3.2, y: 10.4 });   // the envelope icon over the hill (THE INTERNET ICONS, 11-18)
-    c.at('icon_envelope', 'P03-00', 2.6, 3.4, { h: 2.2, y: 3.2, face: 15 });   // and over the sent stack
+    c.at('icon_envelope', 'P03-01', 2.5, 7.5, { h: 3.2, y: c.base('P03-01') + 10.4 });   // the envelope icon over the hill (THE INTERNET ICONS, 11-18)
+    c.at('icon_envelope', 'P03-00', 2.6, 3.4, { h: 2.2, y: c.base('P03-00') + 3.2, face: 15 });   // and over the sent stack
     c.look('inbox2', 'P03-01', 8.5, 3.5, 0, a => { K.popup(a, 0, 1.2, 0, 6.4, 4.2, 'New mail', ['RE: RE: FWD: RE: RE:', 'PLEASE SEE BELOW', ['(NOTHING IS BELOW)', '#a03040']], ['REPLY ALL']); });
     /* THE PIGEONHOLES (P03-02): a wall of pigeonholes four metres high, every hole a letter */
     c.look('holes', 'P03-02', 2.5, 2.6, 0, a => { a.box(0, 0, 0, 10.2, 4.6, 0.9, 'urban:WoodGeneric1a', 0x8a6a48, { glow: 0.2 });

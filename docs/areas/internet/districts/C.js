@@ -33,7 +33,7 @@ exports.build = c => { const C = c.C;
     c.look('search', 'P06-06', 6, 3.0, 0, a => { a.box(0, 9, 0, 24, 2.6, 0.6, null, 0xf6f6f2, { glow: 0.85 }); a.cyl(-12, 9, 0, 1.3, 0.6, null, 0xf6f6f2, { seg: 12, glow: 0.85 }); a.cyl(12, 9, 0, 1.3, 0.6, null, 0xf6f6f2, { seg: 12, glow: 0.85 });
         a.sign('how do i', -5.5, 9.4, 0.32, 9, 1.8, '#202020', '', 'way', { kind: 'over' }); a.sign('how do i', 5.5, 9.4, -0.32, 9, 1.8, '#202020', '', 'way', { kind: 'over', ry: 180 });
         ['how do i exit the internet', 'how do i know if i am a bot', 'how do i stop scrolling', 'how do i'].forEach((s, i) => { a.sign(s, -1.5, 7.6 - i * 1.25, 0.1, 18, 1.05, '#404040', '#ffffff', 'way'); a.sign(s, 1.5, 7.6 - i * 1.25, -0.1, 18, 1.05, '#404040', '#ffffff', 'way', { ry: 180 }); }); });
-    c.at('magnifier', 'P06-06', 6 + 10.2 / C, 3.0, { h: 3.4, y: 7.9 });   // the glass at the bar's end = the Meshy `magnifier` (THE INTERNET MODELS, 11-18)
+    c.at('magnifier', 'P06-06', 6 + 10.2 / C, 3.0, { h: 4.6, y: c.base('P06-06') + 7.2 });   // the glass at the bar's end = the Meshy `magnifier` (THE INTERNET MODELS, 11-18)
     /* THE CHECKOUT (P07-05): a shopping cart the size of a house, made of wire; the button */
     c.at('shopping_cart', 'P07-05', 3, 3.6, { h: 6.2, face: 180 });   // the cart = the Meshy `shopping_cart` (THE INTERNET MODELS, 11-18), house-size
     K.solid(c, 'P07-05', 2, 3, 3, 4, 6);
