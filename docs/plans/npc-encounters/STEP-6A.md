@@ -1,6 +1,9 @@
 # NPC ENCOUNTERS, STEP 6A: THE LOSING NPC (design + mock-up, 2026-11-18)
 
 mondo 11-18: "Go ahead and start 6a". Plan rule: design + mock-up first, then WAIT for his OK; step 6b builds it.
+**OK'D 11-18 ("OK sounds good"); BUILT as step 6b the same day** (docs/notes/npc-system.md "THE LOSING NPC"). Built differences: the kneel is the
+podium's `defKneel` (UAL1 Crouch_Idle_Loop, a loop; `Fixing_Kneeling` is a one-shot); at far zoom the flag rides the portrait's corner; when the
+fight is already won (the last enemy gave up) the back keys answer LET IT GO, since the debrief waits on an answer.
 What his answers already fix (PLAN.md section 0): giving up is a STATE on the unit, answered on the player's own turn (round 1, 4);
 taking it is THE ARREST, a door on the spot to DOOR HQ (round 1, 5), free (round 2, 1); the pay-off = 8 gold x its level + one certain
 spoils roll, a second from level 20 (round 2, 9; rev 4: no XP); "Spare me" counts as beaten (4.4); an escaped NPC keeps its wounds (5a);

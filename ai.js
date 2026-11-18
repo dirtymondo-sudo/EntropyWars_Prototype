@@ -1853,7 +1853,8 @@
         const visibleEnemies = g.getHostileUnits(player)
             .filter(e => !(g.unitHasStatus(e, 'invisible') && !g.unitHasStatus(e, 'marked')))
             .filter(e => !(typeof g.isUnitConcealedFrom === 'function' && g.isUnitConcealedFrom(e, player)))
-            .filter(e => visTiles.has(g.posKey(e.x, e.y)));
+            .filter(e => visTiles.has(g.posKey(e.x, e.y)))
+            .filter(e => !e._gaveUp);   // 🏳 THE LOSING NPC (step 6b): a unit that gave up is not a target (the player answers it with TALK; a hit by hand = it fights on)
         _aiNoteSightings(g, player, visibleEnemies, visTiles);
 
         const allies = g._isFFA()
