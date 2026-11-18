@@ -72833,12 +72833,62 @@ const ThreeRenderer = (function () {
         var cope = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.035 * U, f.w * U, 8), _hqMat(null, 1, 1, { color: 0x9aa2aa, shininess: 60, specular: 0x888888 }));
         cope.rotation.z = Math.PI / 2; cope.rotation.y = Math.atan2(-ux, -uz); cope.position.set(f.x1 * U, (hi + 0.02) * U + 0.3, f.z1 * U); G.add(cope);
     }
+    /* THE STAINS (2026-11-18, THE ZONE LOOKS: data.js zoneLookDecals): a horror-pack stain sheet once across a quad, lying on what is under it
+       or hung on a wall face, see-through where the sheet is; one buffer + one draw per sheet. Built AFTER the room's walls and buildings, so
+       each stain is laid on the surface a ray finds (a floor slab, a deck, the wall's own face): no stain under a floor or inside a wall, and
+       a stain the ray finds nothing for is dropped. Off: window.EW_NO_ZONE_DECALS. */
+    function _hqBuildZoneDecals(room, info, G, U) {
+        if (typeof zoneLookDecals !== 'function' || (typeof window !== 'undefined' && window.EW_NO_ZONE_DECALS)) return 0;
+        var rows = zoneLookDecals(null, room); if (!rows || !rows.length) return 0;
+        G.updateMatrixWorld(true);
+        var targets = []; G.traverse(function (o) { if (o.isMesh && !o.isInstancedMesh && !o._ew_hqMarks && o.material && !(o.material.transparent && o.material.opacity < 0.6)) targets.push(o); });
+        var rc = new THREE.Raycaster(), V3 = THREE.Vector3, bufs = {}, n = 0;
+        var cast = function (ox, oy, oz, dx, dy, dz, far) {
+            rc.set(new V3(ox, oy, oz), new V3(dx, dy, dz).normalize()); rc.far = far;
+            var h = rc.intersectObjects(targets, false); return h.length ? h[0] : null;
+        };
+        rows.forEach(function (m) {
+            try {
+                var P = [], N, tex = m.tex;
+                if (m.h) {   // standing: cast at the face from half a metre out, at the stain's middle
+                    var nx = Math.sin(m.yaw || 0), nz = Math.cos(m.yaw || 0), ax = nz, az = -nx, hw = (m.w || 1) / 2;
+                    var foot = (m.yAbs != null) ? m.yAbs : hqTerrainHeight(info, m.x, m.z) + (m.yOff || 0), y1 = foot + (m.top || m.h) - 0.04, y0 = y1 - m.h;
+                    var hit = cast((m.x + nx * 0.6) * U, ((y0 + y1) / 2) * U + 0.3, (m.z + nz * 0.6) * U, -nx, 0, -nz, 1.2 * U);
+                    if (!hit) return;
+                    var hx = hit.point.x / U + nx * 0.02, hz = hit.point.z / U + nz * 0.02;
+                    [[-1, y0, 0, 0], [1, y0, 1, 0], [1, y1, 1, 1], [-1, y1, 0, 1]].forEach(function (q) { P.push([hx + ax * hw * q[0], q[1], hz + az * hw * q[0], q[2], q[3]]); });
+                    N = [nx, 0, nz];
+                } else {     // lying: the first surface under it (from 2.5 m over the ground there)
+                    var g0 = hqTerrainHeight(info, m.x, m.z), hd = cast(m.x * U, (g0 + 2.5) * U + 0.3, m.z * U, 0, -1, 0, 3.2 * U);
+                    var yy = hd ? (hd.point.y - 0.3) / U + 0.025 : g0 + 0.04;
+                    if (hd && hd.face && hd.face.normal) { var wn = hd.face.normal.clone().transformDirection(hd.object.matrixWorld); if (wn.y < 0.8) return; }   // a slope or a wall top: no pool there
+                    var a0 = -((m.rot || 0) * Math.PI / 180), cs = Math.cos(a0), sn = Math.sin(a0);
+                    [[-0.5, -0.5, 0, 0], [0.5, -0.5, 1, 0], [0.5, 0.5, 1, 1], [-0.5, 0.5, 0, 1]].forEach(function (q) { var dx = q[0] * (m.w || 1), dz = q[1] * (m.d || m.w || 1); P.push([m.x + dx * cs + dz * sn, yy, m.z - dx * sn + dz * cs, q[2], q[3]]); });
+                    N = [0, 1, 0];
+                }
+                var ck = tex + '|' + (m.a || 1), B = bufs[ck] || (bufs[ck] = { P: [], T: [], N: [], I: [] }), base = B.P.length / 3;
+                P.forEach(function (q) { B.P.push(q[0] * U, q[1] * U + 0.3, q[2] * U); B.T.push(q[3], q[4]); B.N.push(N[0], N[1], N[2]); });
+                B.I.push(base, base + 1, base + 2, base, base + 2, base + 3); n++;
+            } catch (e) {}
+        });
+        Object.keys(bufs).forEach(function (ck) {
+            var B = bufs[ck], parts = ck.split('|'), map = _hzTex(parts[0]); if (!map) return;
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(B.P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(B.N, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(B.T, 2));
+            geo.setIndex(B.P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.I, 1) : new THREE.Uint16BufferAttribute(B.I, 1));
+            var mat = new THREE.MeshLambertMaterial({ map: map, transparent: true, opacity: +parts[1] || 1, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+            var mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 3; mesh.receiveShadow = true; mesh._ew_hqDecals = true; G.add(mesh);
+        });
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] zone stains', n, 'of', rows.length);
+        return n;
+    }
     /* THE PAINT (2026-09-26): flat marks on the ground or a deck — a football field's chalk (the yard lines, the hashes, the numbers,
        the end zones), a garage's bay lines, lane rings and arrows. `room.terrain.marks` rows: { k: 'rect', x, z, w, d, rot?, color, a? } ·
        { k: 'line', x0, z0, x1, z1, w, color } · { k: 'ring', x, z, r, w, a0?, a1?, color } · { k: 'text', x, z, text, size, rot?, color }
        — `y` = the surface (else the ground under the mark), `rot` degrees clockwise. Drawn only: 1.5 cm proud, no depth write fight. */
     function _hqBuildMarks(room, info, G, U) {
-        var marks = ((room.terrain && room.terrain.marks) || []).concat(info.marksX || []); if (!marks.length) return 0;   // + a kit's / a prefab's paint (E1)
+        var marks = ((room.terrain && room.terrain.marks) || []).concat(info.marksX || []);   // + a kit's / a prefab's paint (E1)
+        if (!marks.length) return 0;
         /* THE CRATER UNDER THE PAINT (2026-11-05): every mark carries the field's lattice (room metres, the field's x0 / z0 / res, the
            units) — a dig in the battle sinks the paint on the field's own grid with it (_fieldDeformMarks) */
         var lat = { x0: info.x0, z0: info.z0, res: info.res, U: U };
@@ -73821,6 +73871,7 @@ const ThreeRenderer = (function () {
         if (info.arch && info.arch.length) { try { _hqBuildArchRows(info, G, U); } catch (e) { console.warn('[HQ] the architecture rows failed', e); } }   // THE ARCHITECTURE (2026-11-13)
         if (info.texb && info.texb.length) { try { _hqBuildTexPacks(info, G, U, TM); } catch (e) { console.warn('[HQ] the pack buildings failed', e); } }   // THE PACK BUILDINGS (2026-11-03)
         if (info.texb && info.texb.length) { try { _hqBuildTexDoors(info, G, U); } catch (e) { console.warn('[HQ] the city doors failed', e); } }   // THE CITY DOORS (2026-11-13)
+        try { _hqBuildZoneDecals(room, info, G, U); } catch (e) { console.warn('[HQ] the zone stains failed', e); }   // THE ZONE LOOKS (2026-11-18)
         /* THE HALLS (D.U.M.B., 2026-09-17): the floor plan's own walls — the mask's boundary traced by data.js _hqTTraceMaskWalls, drawn to the ceiling in the plan's sheet; the walker never reads them (the mass is) */
         for (var pwi = 0, pws = info.planWalls || []; pwi < pws.length; pwi++) { drawWall(pws[pwi]); if ((pwi & 15) === 15 && _hqSliceDue()) yield; }
         if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
@@ -89610,6 +89661,21 @@ const ThreeRenderer = (function () {
             cloth.position.set(0, (H / 2) * U, 0.03 * U); g.add(cloth);
             var cord = _hqMat(null, 1, 1, { color: 0xe8e0d0 });
             for (var cx = -1; cx <= 1; cx += 2) { var c = new THREE.Mesh(new THREE.CylinderGeometry(0.004 * U, 0.004 * U, 0.16 * U, 4), cord); c.position.set(cx * (W / 2 - 0.02) * U, (H + 0.06) * U, 0.03 * U); c.rotation.z = cx * 0.35; g.add(c); }
+            return g;
+        },
+    });
+    /* THE SUBWAY's NAME BOARD (2026-11-18, data.js DOOR_HQ.subway): an enamel plate on the wall (front +z), white capitals on dark green in a
+       white line, the line's name small under the station's. It reads its own placement row (`p.text`: data.js hqSubwayApply writes the
+       station on file into the platform room's rows before the room is built); the sheet is cached per wording. */
+    Object.assign(_hqProcBuilders, {
+        station_sign: function (U, p) {
+            var g = new THREE.Group(), W = 2.8, H = 0.62;
+            var text = (p && Array.isArray(p.text) && p.text.length) ? p.text.map(String) : ['STATION'];
+            var key = 'hq_station_' + text.join('|').replace(/[^A-Za-z0-9]/g, '_');
+            var tex = (typeof _hzTextTex === 'function') ? _hzTextTex(key, text, { w: 1024, h: 228, bg: '#1f5a3c', color: '#ffffff', border: '#ffffff', pad: 0.1, sizes: [112, 44], weight: 'bold', font: '"Arial Narrow", Arial, Helvetica, sans-serif' }) : null;
+            var back = _hqBox(W + 0.08, H + 0.08, 0.03, _hqMat(null, 1, 1, { color: 0x16382a, shininess: 30 })); back.position.set(0, (H / 2) * U, 0.015 * U); g.add(back);
+            var face = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), tex ? new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.35 }) : _hqBasic(0x1f5a3c));
+            face.position.set(0, (H / 2) * U, 0.033 * U); g.add(face);
             return g;
         },
     });
