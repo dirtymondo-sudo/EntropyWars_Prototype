@@ -4,7 +4,7 @@ A story-planning tool, not part of the game. Portraits are nodes; you draw label
 (defends, allied, rivals, hunts, fears, serves, owes, family, …) and it shows who comes to whose defence and why,
 to feed story ideas and the encounter system's "who defends who".
 
-- **Live copy:** https://claude.ai/artifact/8fUwyEP4Vqkj8UZdZaihvq (private to mondo; saves boards to the page's own store and to the browser).
+- **Live copy:** https://claude.ai/artifact/GWefCFyrBLAPfanNL5TUYv (owner account, 11-18, with the lasso). The first copy, https://claude.ai/artifact/8fUwyEP4Vqkj8UZdZaihvq, sits on the other account and has no lasso; move boards across with Export > Save a backup, then Load a backup. Both save to the page's own store and to the browser.
 - **This folder:** `relationship-web.html` is the same single self-contained page (open it in any browser; boards then save to that browser only). `relationship-web.png` is a screenshot.
 - **Roster:** every race in `AVAILABLE_RACES` (two-gender races as separate male / female nodes), plus the story cast from `DOOR_CAST`, the orientation-tape squad from `TUTORIAL_LESSONS` and the two `BOSS_DEFS` entries. Faction ring = the race's `types`.
 - **Game export:** a JSON of ties keyed by exact race keys (gender as its own field) and cast ids, shaped to be baked into data.js later. Nothing reads it yet.
