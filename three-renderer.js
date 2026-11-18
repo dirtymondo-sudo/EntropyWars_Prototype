@@ -17018,7 +17018,11 @@ const ThreeRenderer = (function () {
         var cm = at.cape != null && _gearMesh(got[at.cape]);
         if (cm) {
             var c = _gearPlain(cm), cb = c.geometry.boundingBox, csc = (g.capeLen || 0.72) * H / Math.max(1e-6, cb.max.y - cb.min.y);
-            c.geometry.translate(-(cb.min.x + cb.max.x) / 2, -cb.max.y, -cb.max.z);   // the top edge's front on the hinge
+            /* centre on the collar (the top tenth's points), not the box: a Meshy cape's hem flares to one side */
+            var cpa = c.geometry.attributes.position, ccx = 0, ccz = 0, ccn = 0, cyc = cb.max.y - 0.1 * (cb.max.y - cb.min.y);
+            for (var ci = 0; ci < cpa.count; ci++) if (cpa.getY(ci) >= cyc) { ccx += cpa.getX(ci); ccz += cpa.getZ(ci); ccn++; }
+            ccx = ccn ? ccx / ccn : (cb.min.x + cb.max.x) / 2; ccz = ccn ? ccz / ccn : cb.max.z;
+            c.geometry.translate(-ccx, -cb.max.y, -ccz);   // the collar's middle on the hinge
             var ch = new THREE.Group(); ch.name = 'ewGearCape'; ch.scale.setScalar(csc); ch.add(c);
             _gearHang(chest, new THREE.Vector3(np.x, np.y - 0.01 * H, cp.z - (g.capeBack || 0.06) * H), ch, 'ewGearCapeMount');
             made = true;

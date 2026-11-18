@@ -152,6 +152,19 @@ look like futuristic version of Tokyo."
 - Pictures: `pass2_*.jpg`. Known limits: the engine has no reflections, so chrome reads as bright steel; the buildings' shapes,
   the ground and the palms are the old city's; long blank side walls stay blank.
 
+## 11. PASS 3, HEIGHT (2026-11-18)
+
+mondo, offered height / ground + trees / reflections: "let's just do 1 (height) for now".
+- `HQ_CITY_LOOKS.future.tower`: a tower stands OVER 23 of Entertainment's 29 buildings, on four legs, 3.5 m clear of the old roof
+  (the roof, its stairs and its routes are not closed or moved; the tower has no collision). 5 to 16 storeys by the row's hash
+  (2 to 4 on a plan under 7 m); from 8 storeys the top 40 % steps in. Lit window sheets (Urban Decay, on R2), steel corners in
+  the building's finish, a neon line every second storey, a cap, a mast + beacon from 10 storeys, the building's sign on the
+  tower's two long faces, a hologram over the tall ones, a lit soffit over the old roof.
+- `sky`: 19 glass skyways, each tower to its nearest tall neighbour (9 to 46 m), rows of their own (`look:sky:<i>:<j>`).
+- A row's frame to the room's: `wx = row.x + lx cos(-rot) + lz sin(-rot)`, `wz = row.z - lx sin(-rot) + lz cos(-rot)`.
+- Pictures: `pass3_*.jpg`. Not measured: draw calls and memory (the cloud browser crashed on several runs, with and without
+  the look). Not done on his word: ground, trees, reflections.
+
 ## Pictures in this folder
 
 `today_day.jpg` (the city today, above the main road), `test_neon_switch_above.jpg` + `test_neon_switch_street.jpg` (the same
