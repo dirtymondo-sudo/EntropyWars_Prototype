@@ -92597,6 +92597,10 @@ const ThreeRenderer = (function () {
                HQ_INST_REST frames is synced every 4th frame (its turn by its place); a change wakes it to every frame again. The
                parents' visibility is worked out once per parent a frame (_hqInstShown). Off: window.EW_HQ_INST_SYNC_EVERY. */
             if (rest && (rec.qN | 0) >= HQ_INST_REST && ((ST + r) & 3) !== 0) continue;
+            /* THE HIDDEN CELLS (2026-11-18, mondo's F3: "mask: setup + lights + sort 2.6" = this sync, 15,000 copies, 351 of 414 cells
+               off the camera): a batch whose cell is hidden this frame draws in no pass, so its copies are not read; it is synced
+               in full the first frame its cell is shown (the sync runs before that frame's first draw). Off: EW_HQ_INST_SYNC_HIDDEN */
+            if (!force && im.parent && im.parent._ew_instCell != null && im.parent.visible === false && !_hqInstSyncHidden()) { rec.qN = 0; continue; }
             if (rec.fitStamp === _hqInstStamp) refit = null;   // one refit a frame per batch
             for (var i = 0; i < c.length; i++) {
                 var o = c[i], off = i * 16, e = null;
@@ -92629,6 +92633,7 @@ const ThreeRenderer = (function () {
         }
     }
     var HQ_INST_REST = 30;
+    function _hqInstSyncHidden() { return typeof window !== 'undefined' && !!window.EW_HQ_INST_SYNC_HIDDEN; }
     function _hqInstSyncEvery() { return typeof window !== 'undefined' && !!window.EW_HQ_INST_SYNC_EVERY; }
     /* a copy's parent chain drawn (every one visible, up to the scene): once per parent a frame */
     function _hqInstShown(q, sc, st) {
