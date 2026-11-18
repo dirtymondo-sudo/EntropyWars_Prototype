@@ -482,3 +482,11 @@ units in disaster city".
   Somebody on the strike ladder is never taken out. The same on every machine. `window.EW_HQ_AREA_OLD_CAP = true` = the old way, to compare.
 - This changes EVERY plot-built area: a zone that placed the same race twice now shows both.
 - DOOR HQ's own rooms keep "one NPC per model" (his word of 10-01, for small rooms). Ask him before lifting it there.
+
+## CROWDS, THE DESIGN (NPC encounters step 7a, 2026-11-18; docs only, NOT BUILT, waits for mondo's OK)
+mondo 11-17: crowds are "a clear step after the street test"; 11-18 he played Bayside and said to start the next step. The design is
+`docs/plans/npc-encounters/STEP-7A.md` (+ `step-7a-crowd.jpg`, `step-7a-preview.jpg`): who becomes an onlooker (a shown body inside the fight's
+frame that can see a fighter), what each temper does (his OK'd onlooker table as moves), where they stand (never next to a fighter, they step
+aside for any move, never block sight), the round-end check, the area preview's mark over an onlooker it would hit, the camera (frames fighters
+only; an onlooker in front of a fighter is ghosted). Joining is step 8. Nothing in code changed; 7b builds it after his yes.
+
