@@ -2893,3 +2893,11 @@ His F3 after THE NAV GRID + THE HIDDEN CELLS: 35.1 -> 42.6 FPS (frame 28.2 -> 23
 Left on top: bundle replays 3.9, bundle check 2.3, matrix walk 2.1. Two lens lines (lens open only) say where the last two go:
 "Bundle check by group" (each group's walk in `_ewBunTick`, ms a frame + meshes) and "Matrix walk by group" (`_hqStillSceneWalk`
 does the scene's step of three's walk itself and times each top child; keeps `_hqWalkHook`'s reader and `_css2dRender`'s mark).
+
+## THE MOVERS STAY OUT (2026-11-18, spikes thread)
+mondo's Shift+F3 in Disaster City (23.4 FPS, worst 99 ms; three minutes earlier at the same spot 42.6 FPS): "bundle check 15.2"
+(was 2.3), "scene: projection walk 4.8" (was 0.7), and the shell re-recorded 96 times, 70 of them "movers" (a piece the still walk
+saw move going out of the shell's recording, or coming back 4 s after it rests). Each start and each stop cost a shell re-record
+(three projects all ~10,000 children that frame) and a full check of the shell (`_ew_bunDirty` wakes it out of THE QUIET GROUPS).
+Now (`_hqStillUpdate`): a piece comes back into the recording once; if it moves again it stays drawn outside the recording for good
+(`_ew_bunOutS`). Lens: "movers kept out N" at the end of "Re-recorded most". Off: `window.EW_BUN_OUT_RETURN_ALWAYS`.
