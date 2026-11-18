@@ -91879,7 +91879,9 @@ function hqNpcTemper(ch) {
 function hqCrowdPlan(ch, o) {
     const T = HQ_NPC_TEMPERS, C = T.crowd; o = o || {};
     const t = hqNpcTemper(ch), key = t ? t.key : null, foes = Array.isArray(o.foes) ? o.foes : [];
-    const roll = (k) => hqHash(String(o.day | 0) + '|' + (ch && ch.room) + '|' + (ch && ch.id) + '|crowd|' + k) / 4294967296;
+    // the plain hash's high bits barely move when only the last word differs (every roll came out the same way): mix it first
+    const mix = (h) => { h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return h >>> 0; };
+    const roll = (k) => mix(hqHash(k + '|crowd|' + String(o.day | 0) + '|' + (ch && ch.room) + '|' + (ch && ch.id))) / 4294967296;
     const out = (mode, mark, hit) => ({ temper: key, mode, mark, band: C.bands[mode] || C.bands.watch, hit });
     const hitRun = roll('hit') < C.hitRun;
     if (key === 'civilian' || key === 'coward') return roll('watch') < C.watch ? out('watch', null, hitRun ? 'run' : 'shrug') : out('run', 'drop', 'run');

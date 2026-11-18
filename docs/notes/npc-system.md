@@ -483,10 +483,37 @@ units in disaster city".
 - This changes EVERY plot-built area: a zone that placed the same race twice now shows both.
 - DOOR HQ's own rooms keep "one NPC per model" (his word of 10-01, for small rooms). Ask him before lifting it there.
 
-## CROWDS, THE DESIGN (NPC encounters step 7a, 2026-11-18; docs only, NOT BUILT, waits for mondo's OK)
+## CROWDS, THE DESIGN (NPC encounters step 7a, 2026-11-18; OK'd by mondo 11-18, BUILT as step 7b below)
 mondo 11-17: crowds are "a clear step after the street test"; 11-18 he played Bayside and said to start the next step. The design is
 `docs/plans/npc-encounters/STEP-7A.md` (+ `step-7a-crowd.jpg`, `step-7a-preview.jpg`): who becomes an onlooker (a shown body inside the fight's
 frame that can see a fighter), what each temper does (his OK'd onlooker table as moves), where they stand (never next to a fighter, they step
 aside for any move, never block sight), the round-end check, the area preview's mark over an onlooker it would hit, the camera (frames fighters
 only; an onlooker in front of a fighter is ghosted). Joining is step 8. Nothing in code changed; 7b builds it after his yes.
+
+## THE CROWD (NPC encounters step 7b, 2026-11-18, BUILT; mondo: "okay build as 7b")
+Story fights only (an encounter run with a field; quest and scene-only fights get none). PvP and online untouched.
+- **Who:** map.js `_hqEncounterStart` asks three-renderer.js `hq.crowdPick({ids, board})`: every drawn resident that is not away, asleep,
+  cleared or story cast, not in the fight, inside the field's frame (`hqFieldTransform(board).inside`, |dy| <= 4) and with a clear line of
+  sight to the walker (`_hqLosClear`). The rows ride on `window._hqEncounterRun.crowd`.
+- **What it does:** data.js `hqCrowdPlan(ch, o)` turns the 7a table into `{temper, mode, mark, band, hit}` (rolls hashed on
+  day|room|id, the same on every machine); the numbers are `HQ_NPC_TEMPERS.crowd` (watch 60 %, bands watch 4-6 / close 2-3 / edge 5-7,
+  ring 2, hitRun 50 %, mugUnder 50 %, mugMs 3000, walk 1.6 squares a second). Races without a temper watch and never run.
+- **Where:** battle.js THE CROWD block (before `_encArrivalFrame`). `_crowdSeat()` runs under "A fight breaks out!": the first square is the
+  free seat (`field.seats` '1', no `objectBlocksLanding`, no unit, no other onlooker, ring 2 from every fighter) nearest where the body stood,
+  then it walks to its band. A runner walks off the field's edge and fades. `[CROWD] n onlooker(s): ...` in the console.
+- **Never blocks:** `window.ewCrowdTick` (three-renderer.js calls it every 300 ms) steps an onlooker aside when a fighter comes inside the
+  ring. Onlookers are not in `state.units`: the turn order, the AI, line of sight and moves never see them.
+- **Round end** (`_afterRegenPhase`): `_crowdRoundEnd` sends a Civilian / Coward that was crowded (a fighter came within the ring) running.
+- **The aim:** `setOverlay('aoe')` records the tiles; an onlooker standing in them shows its mark (red `!` = would come for you, blue drop =
+  would run; none for a shrug). **The cast** (`_applyAoeDamage` -> `_crowdStruck`): an onlooker inside steps out (no damage until step 8) or
+  runs; one next to it runs if it is a Civilian / Coward.
+- **The bodies:** three-renderer.js THE CROWD block (`_crowdEntries`, `_updateCrowd`): `_buildUnitEntry` on a pseudo-unit (ids `crowd:<npc id>`,
+  so `_rigCarryTake` hands over the walk's rig: no pop), ring / silhouette / outline hidden, not clickable, no nameplate, walk / idle clips,
+  faces the fight. A body between the camera and a fighter is ghosted to 25 %. `rebuildUnits` never evicts a `crowd:` rig.
+- **After:** `_hqEncounterResult` returns `crowdMug` when the party won under half its HP and an Opportunist watched; map.js then (3 s after
+  the walk is back, still in the room, once a game day by `hqNpcMugTried`) sends that resident at the walker with `hq.npcCome(id, 'mug')`, the
+  built mugging (PAY / FIGHT). Everyone else goes back to its timeline place when the walk resumes (not where it stood: the walk respawns the
+  residents from their timelines; a proposal to keep as is).
+- **Known:** the Honda Civic is a resident race, so a car can watch a fight. Guards / Brutes / Territorials stand closer with the red `!`
+  but do not join until step 8 (needs step S).
 

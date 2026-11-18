@@ -22311,6 +22311,8 @@ const ThreeRenderer = (function () {
         _crowdEntries.delete(c.id);
     }
     function _crowdClear() { Array.from(_crowdEntries.values()).forEach(_crowdDrop); _crowdAim = null; }
+    /* a read-out for probes: where each onlooker body stands (squares), whether it has its model, its fade */
+    window.ewCrowdBodies = function () { return Array.from(_crowdEntries.values()).map(function (c) { var g = c.entry && c.entry.group; return { id: c.id, cx: +(+c.cx).toFixed(2), cy: +(+c.cy).toFixed(2), rig: _unitModelRigs.has(c.id), shown: !!(g && g.visible && g.parent), op: +(+c.op).toFixed(2), mark: c.mk || null }; }); };
     function _crowdBody(row, x, y) {
         return { id: row.id, race: row.race, gender: row.gender || 'male', player: 0, x: x, y: y, z: 0, facing: { dx: 0, dy: 1 }, hp: 1, maxHp: 1, mp: 0, maxMp: 0, ap: 1,
                  status: {}, level: row.lvl || 1, name: row.race, _crowd: true };
