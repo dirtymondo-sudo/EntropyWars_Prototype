@@ -458,3 +458,82 @@ the Hills and on Shasta, the Pilgrim Stair's foot on Olympus and the Pole's sout
 `site_prebuilt_skinwalker_ow_lake` (THE ESTATE, x -14..-9, y 5..23, 47 plots); ways out: the Clearing (the Woods Gate, north), the Ranch Road (east),
 the well, the lodge door, the stable door. See areas-complexes.md "A ZONE'S DISTRICTS ARE ONE PLACE".
 
+
+
+## THE DOOR AUDIT (2026-11-18, owner side; mondo's order and his OK the same day)
+
+mondo: "I think there are too many connections and ways out of DOOR HQ ... a lot of those doors were placed before we did this whole one world
+map rework. Like all of these bay doors I want gone, they just look like random doors in the middle of areas and they all have this ugly frame
+around them, and you don't have to work for them at all because they are just out in the open. Secret doors/shortcuts should be hard to find or
+mundane and hard to spot, like a random janitor's closet down a sideway in a building, or a random bathroom in a building, or down a small side
+trail that wouldn't get noticed at first glance, or somewhere where it is hard to reach vertically or at the end of a maze ... I just really want
+to tighten them up and only have the necessary ones and ones that make the most logical sense." On the list below: "looks good".
+
+**The count before:** 54 ways out of DOOR HQ (36 bay doors + 18 others); 84 door ends went in all (88 with old Cyberpunk City's own).
+
+**THE RULES (they bind every zone and every thread):**
+1. One World is WALKED: roads, trails, boats, and stairs or wells down to what lies underneath. A door that jumps across the map is not built.
+2. DOOR HQ has three public ways out: the Stair (the Woods), the Taxi (Disaster City), the Subway (the train to the platform under Downtown).
+   `HQ_EXIT_RULES.open` names them.
+3. No bay doors, at either end. Nothing is earned by stabilizing a site any more (mondo: "We aren't really doing the stabilizing a site
+   anymore, so nothing"): no threshold in the Containment Ring, no Otto ceremony (`HQ_EARNED_DOOR_RULES.thresholds / entries: false`).
+4. A secret is never a free-standing door (every free door wears the same frame). It is a closet, a manhole, a well or a hatch in a real wall,
+   down a side way or at the end of a maze.
+
+**How it is built (data.js; nothing was deleted, one line brings a way back):**
+- `DOOR_HQ.cut.links` = link rows that are never live (`hqLinkLive`): no door at either end, no line on the map. `DOOR_HQ.cut.doors` = door
+  rows dropped from their rooms at load (`hqApplyCutDoors`), both ends of a pair. `DOOR_HQ.cut.scenery` = cut link ends whose way is the
+  room's own furniture and is still DRAWN, with nothing to press (`hqApplyCutScenery` -> `room.wayProps` -> three-renderer.js
+  `_hqBuildDoors` / `_hqBuildWay` `door.inert`): the Bureau's painting, the barber's mirror, the Observatory's screen, the garden's well, the
+  mall's time machine, the two hearths (the Haunted House hall, the North Pole), the attic's screen.
+- The bay doors: `hqApplySiteEntries` makes no door; a `DOOR_HQ.siteRooms.entry` row is now only the site's ROOM and its LANDING SPOT
+  (`hqSiteEntry`: 2.4 m out from where a free door stood, the room's spawn for a wall one). **Every zone tool still writes and checks its
+  entry rows and its link rows exactly as before: do not remove them from a tool.** `hqSiteEarned` is false for every site but Room 64.
+- The link rows, the baked door rows and the tools are untouched on purpose, so a rebake neither fails nor brings a cut door back.
+- Old Cyberpunk City (`site_prebuilt_cyberpunk_streets`, `_noodle`) is in `DOOR_HQ.retired` (to Disaster City): its four ways in are cut; it
+  stands only as the fight board's source. The new Cyberpunk City is a reskin of the whole Disaster City (its own plan thread).
+- New link `tunnel_downtown`: the train at DOOR HQ's platform (`tunnel`) to the platform under Downtown (`site_prebuilt_downtown_subway`)
+  and back; both trains stand where they stood.
+
+**The ways out of DOOR HQ now (7 doors):** the Stair `woodstair` > the Clearing · the Taxi `garage` > Disaster City · the Train `tunnel` >
+the Downtown platform · the platform's Track `tunnel` > the Sewers' Running Tunnels (the subway's own tunnel) · SECRETS: the Dungeon's fourth
+wall > the Sewers' holding cells, the Garage ramp > the D.U.M.B. motor pool, the Dream Lab's screen > the Astral Realm's waiting room.
+
+**Cut, out of DOOR HQ:** the Bureau painting (Vatican), the barbershop mirror (Looking-Glass Garden), the Infinity Pool weir (Bermuda
+Triangle), the plunge pool (the Dutchman's hold), the Observatory screen (Outer Space), the garden well (Sewers), the Dungeon's moving wall
+(the Cavern), Room 333's chalk circle (Ritual Ground), the Tunnel's storm drain (the Clearing), the Tunnel's Room 1893 and the Mandela Room's
+mirrors (both to the Circus, and both stood open from the first minute against the two-exits rule of 09-29), the train to old Cyberpunk.
+
+**Cut, jumps across the map:** the Members club's painting (Mount Olympus), back door (the Estate) and tunnel (Ritual Ground); the city gutter
+to the Clearing; the dead tree (Ritual Ground <> Camelot's Forest: they touch by a trail); the Redwood Trail's Lemuria trail to Agartha (Mount
+Shasta's hidden adit stays); the mall time machine and the Downtown platform's train to old Cyberpunk; Area 51 <> the D.U.M.B. is two ways now
+(the floor lift, the hidden vent; the white door, the yard gate and the storm drain went); Antarctica <> the Cavern is one (the Polar Opening;
+the Admiral's Tunnel went); the Haunted House keeps the cellar well and the wardrobe (the hearth and the attic screen went).
+
+**Checked on the door graph after the cuts** (`hqWorldGraph`, retired rooms dropped): every live place is reached from DOOR HQ and has a way
+back (the Bermuda island has no door, as before: a board source); no live door leads into a retired room; no bay door stands in any room.
+Outer Space is reached only by the Spaceship now, boarded at the hull in the Antarctic ice.
+
+**NOT DONE, for the zone threads (each in its own district file / tool, when that zone is next worked):** the dressing that was built round a
+door that is gone still stands and should be reworked or taken away where it reads as a door: the D.U.M.B.'s freight-lift cage (P.js,
+`ctx.way('bay')`), Giza's stone mouth for the Tomb Door (G.js), Camelot's portcullis bay in the south forest (W.js: also the room's spawn),
+Olympus' amphitheatre anchor (O.js), Saturn's airlock on the south rim and the Singularity's standing frame (H.js, A.js), the Deep's bulkhead
+surround in the Temple (C.js), the Station Yard's door spot in Antarctica (S.js), the Vatican / Hell / Heaven spots (P.js, R.js, Y.js), the
+Members club's three door spots on the road's dead end in Financial. A trail spur that ran to a cut door (the Clearing: the hollow tree path,
+the storm-drain spurs; the Ritual Ground: four spurs; the Redwood Trail's Lemuria spur; Camelot's Forest dead tree; Agartha's trail up) may
+need a `HQ_DEAD_ENDS` row (mondo 11-18: a road or trail never just ends). Seen on screen so far: the Ritual Ground's four spots, the city's
+bay and Members club spots, and DOOR HQ's barbershop, Tunnel and Mandela Room.
+
+**The two mock-ups waiting for his OK** (`docs/plans/door-audit/`, drawn by `draw-hq-redesign.js` / `draw-subway-plan.js`, which write an SVG):
+`door_hq_redesign_mockup.png` = the Main Hall's ground floor from 12 doors to 8: the Cafeteria, the Barbershop, the Medical Wing and the Records
+Wing move onto the ground Ring's outer wall with a plain stair down to the subway; the Ring's two doors (the old Bay 4 and Bay 1 doors) stay; the
+four mezzanine bay doors and the mezzanine ring close. `subway_station_plan_mockup.png` = one loop under Disaster City with five stations
+(Civic Center's Transit square, where the stair stands today; Hero Plaza's Transit court; Bayside by the boardwalk; Industrial's Rail service;
+Sports + Culture's Bus stop court), a spur to DOOR HQ's platform, the dead track to the Sewers' ghost station, the Freight Line to the D.U.M.B.
+FOUND: DOOR HQ's platform (`tunnel`) is reached today only through two hidden hatches (the garage's and the stairwell's draughts), so the
+third public way out is not public yet: the redesign's stair in the Ring is what opens it.
+
+**Still to come (mondo's answers, 11-18):** (1) DOOR HQ's ground floor is crowded with doors: move some of the Main Hall's doors into the
+Containment Ring ("basically redesign DOOR HQ"): a plan and a mock-up for his OK first. (2) The subway: stations in several districts of
+Disaster City (the street stair heads), a station opens once walked to; outside the city only the D.U.M.B. (the Freight Line): a station plan
+and a mock-up for his OK first. (3) Each kept secret moves to a hidden spot, one picture each. (4) A plan thread for the new Cyberpunk City.
