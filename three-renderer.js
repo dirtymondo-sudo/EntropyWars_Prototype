@@ -86083,6 +86083,8 @@ const ThreeRenderer = (function () {
         /* every frame: the marks and the lines ride their heads */
         for (i = st.says.length - 1; i >= 0; i--) { var sy = st.says[i]; if (now > sy.until || H.chars.indexOf(sy.ch) < 0 || sy.ch.away) { _hqAwareDrop(H, sy); st.says.splice(i, 1); } }
         st.marks.concat(st.says).forEach(function (m) { var c = m.ch; m.sp.position.set(c.x * U, (c.visY + (c.heightM || 1.75) + (m.up || 0.45)) * U, c.z * U); });
+        if (now - (st.last || 0) > 3000) st.t0 = now;   // the room was entered or handed back (a fight, a load): nobody starts anything for `graceMs`
+        st.last = now;
         if (now < st.next) return; st.next = now + ((A && A.tickMs) || 300);
         var on = !!(A && pl && !pl.away && typeof hqNpcActs === 'function' && H.opts && typeof H.opts.awareOk === 'function' && H.opts.awareOk() && !H._sceneCastIds && !H.snap);
         var n = 0, alert = [];
@@ -86091,10 +86093,13 @@ const ThreeRenderer = (function () {
             var aim = null; try { aim = _hqEncounterAim(); } catch (e) { aim = null; }
             var plv = 0; try { plv = (typeof hqPartyLevel === 'function') ? hqPartyLevel(H.opts.profile) : 0; } catch (e) { plv = 0; }
             var room = H.opts.room;
+            var gday = 0; try { gday = (typeof hqGameDay === 'function') ? hqGameDay(_hqClockHourNow()) : 0; } catch (e) { gday = 0; }
+            var mayStart = typeof hqNpcStarts === 'function' && !H.paused && now - (st.t0 || 0) > (T.graceMs || 0);
             for (i = 0; i < H.chars.length; i++) {
                 var ch = H.chars[i];
                 if (ch === pl || ch.away || ch.cleared || ch._resSleep || !okFn(ch)) continue;
-                if (Math.hypot(ch.x - pl.x, ch.z - pl.z) > A.sightM || Math.abs(ch.y - pl.y) > A.dyM) continue;
+                var chD = Math.hypot(ch.x - pl.x, ch.z - pl.z);
+                if (chD > A.sightM || Math.abs(ch.y - pl.y) > A.dyM) continue;
                 var act = null; try { act = hqNpcActs({ race: ch.race, id: ch.id, room: room, lvl: ch.lvl || 0, dist: ch.resident ? ch.resident.r.dist : null }, { aim: aim, x: pl.x, z: pl.z, partyLevel: plv }); } catch (e) { act = null; }
                 if (!act) continue;
                 if (!_hqLosClear(ch.x, ch.z, ch.y + (ch.heightM || 1.75) * 0.9, pl.x, pl.z, pl.y + 1.5)) continue;
@@ -86102,7 +86107,19 @@ const ThreeRenderer = (function () {
                 if (act === 'alert') {
                     alert.push(ch);
                     /* a Territorial on its ground: the warning, once a visit (said again after the walker has been out of its sight) */
-                    if (!ch._awWarned) { ch._awWarned = true; var tp = hqNpcTemper({ race: ch.race, id: ch.id, room: room }); if (tp && tp.starts === 'ground') _hqAwareSay(H, ch, T.lines.warn[ch.race]); }
+                    if (!ch._awWarned) { ch._awWarned = true; ch._awWarnedAt = now; var tp = hqNpcTemper({ race: ch.race, id: ch.id, room: room }); if (tp && tp.starts === 'ground') _hqAwareSay(H, ch, T.lines.warn[ch.race]); }
+                }
+                /* NPC-STARTED FIGHTS (step 4, 2026-11-18; PLAN 4.3; REPLACES "never random"): one that sees the walker may come for him. data.js hqNpcStarts
+                   says who: a Brute at sight, a mugger whose roll for this game day says so (one try a day), a Territorial that warned and he stayed or came
+                   closer. The body gets the chase of _hqTickLadder (`why` picks its numbers and what it does on arrival) and wears the red mark while it comes. */
+                if (mayStart && !ch._run && now > (ch._startCool || 0)) {
+                    var how = null, crec = { race: ch.race, id: ch.id, room: room, lvl: ch.lvl || 0, dist: ch.resident ? ch.resident.r.dist : null };
+                    try { how = hqNpcStarts(crec, { x: pl.x, z: pl.z, d: chD, partyLevel: plv, gameDay: gday, warnedMs: ch._awWarned ? Math.max(1, now - (ch._awWarnedAt || now)) : 0 }); } catch (e) { how = null; }
+                    if (how) {
+                        if (how === 'mug') { try { hqNpcMugTried(crec, gday); } catch (e) {} }
+                        ch._run = { mode: 'chase', why: how, stuck: 0, lost: 0, home: _hqLadderHome(ch), ground: how === 'ground' ? hqNpcGround(crec) : null };
+                        H.dirty = true;
+                    }
                 }
             }
             H.chars.forEach(function (c) { if (c._awWarned && alert.indexOf(c) < 0) c._awWarned = false; });
@@ -86170,10 +86187,10 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < H.chars.length; i++) {
             var g = H.chars[i]; if (g === ch || g === pl || g.away || g.cleared || g._resSleep || g.kind !== 'npc' || !g.race || g.cast) continue;
             if (Math.hypot(g.x - pl.x, g.z - pl.z) > A.sightM || Math.abs(g.y - pl.y) > A.dyM) continue;
-            var gr = { race: g.race, id: g.id, room: room }, vr = { race: ch.race, id: ch.id, room: room }, act = null;
+            var gr = { race: g.race, id: g.id, room: room, lvl: g.lvl || 0 }, vr = { race: ch.race, id: ch.id, room: room }, act = null;
             try { if (!hqNpcDefends(gr, vr)) continue; } catch (e) { continue; }
             if (!_hqLosClear(g.x, g.z, g.y + (g.heightM || 1.75) * 0.9, pl.x, pl.z, pl.y + 1.5)) continue;
-            try { act = hqNpcGuardSees(gr, vr); } catch (e) { act = null; }
+            try { act = hqNpcGuardSees(gr, vr, { partyLevel: (typeof hqPartyLevel === 'function') ? hqPartyLevel(H.opts.profile) : 0 }); } catch (e) { act = null; }
             if (!act) continue;
             g._awHold = now + T.guard.warnMs;
             if (act === 'warn') { if (H.aware) _hqAwareSay(H, g, T.lines.warn[g.race]); }
@@ -86225,23 +86242,40 @@ const ThreeRenderer = (function () {
                 continue;
             }
             if (r.mode === 'chase') {
+                /* step 4: `why` = who comes ('sight' a Brute, 'mug' a mugger, 'ground' a Territorial after its warning; none = the Guard that saw a strike) */
+                var TT = HQ_NPC_TEMPERS, W = (r.why === 'mug' ? TT.mug : r.why === 'ground' ? TT.ground : r.why === 'sight' ? TT.brute : null) || Gd;
                 var dx = pl.x - ch.x, dz = pl.z - ch.z, d = Math.hypot(dx, dz);
                 var sees = d <= A.sightM * 1.5 && _hqLosClear(ch.x, ch.z, ch.y + 1.5, pl.x, pl.z, pl.y + 1.5);
                 r.lost = sees ? 0 : r.lost + dt * 1000;
-                if (d > Gd.giveUpM || r.lost > Gd.loseMs || r.stuck > 3) { r.mode = 'back'; r.stuck = 0; r.t0 = now; ch._awHold = 0; if (H.aware) H.aware.next = 0; continue; }
-                if (d <= Gd.reachM && Math.abs(pl.y - ch.y) < 1.8) {
+                var offGround = false; if (r.ground) { try { offGround = !hqNpcOnGround(H.opts.room, r.ground, pl.x, pl.z); } catch (e) { offGround = false; } }   // he left its ground: it lets him go
+                if (d > W.giveUpM || r.lost > W.loseMs || r.stuck > 3 || offGround) { r.mode = 'back'; r.stuck = 0; r.t0 = now; ch._awHold = 0; ch._startCool = now + (W.againMs || 0); if (H.aware) H.aware.next = 0; continue; }
+                if (r.why === 'mug' && d <= W.reachM && Math.abs(pl.y - ch.y) < 1.8) {
+                    /* THE MUGGING: it Talks first (map.js opens the PAY / FIGHT box, which holds the walk); the answer comes back through hq.npcMugDone */
+                    ch.moving = false; ch.targetYaw = Math.atan2(dx, dz); ch.yaw += _hqYawDelta(ch.yaw || 0, ch.targetYaw) * Math.min(1, dt * 8); H.dirty = true;
+                    if (now > (r.ask || 0)) {
+                        r.ask = now + W.againMs; var asked = false;
+                        try { asked = !!(H.opts.onMug && H.opts.onMug({ target: _hqEncounterTargetOf(ch, d), room: H.opts.room })); } catch (e) { console.warn('[HQ] the mugging failed', e); }
+                        if (_hq !== H) return;
+                        if (!asked && !(H.opts.onMug && H.paused)) { r.mode = 'back'; r.stuck = 0; r.t0 = now; if (H.aware) H.aware.next = 0; }
+                    }
+                    continue;
+                }
+                if (d <= W.reachM && Math.abs(pl.y - ch.y) < 1.8) {
                     ch.moving = false; var done = false;
                     if (now > (r.ask || 0)) {
                         r.ask = now + 1500;
-                        try { done = !!(H.opts.onEncounter && H.opts.onEncounter({ gesture: 'attack', npcStart: true, target: _hqEncounterTargetOf(ch, d), room: H.opts.room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye() })); } catch (e) { console.warn('[HQ] the guard\'s fight failed', e); }
+                        try { done = !!(H.opts.onEncounter && H.opts.onEncounter({ gesture: 'attack', npcStart: true, why: r.why || null, target: _hqEncounterTargetOf(ch, d), room: H.opts.room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye() })); } catch (e) { console.warn('[HQ] the guard\'s fight failed', e); }
                         if (_hq !== H) return;
                         if (done) { ch._run = null; ch._awHold = 0; }
-                        else { r.mode = 'back'; r.stuck = 0; r.t0 = now; ch._awHold = 0; if (H.aware) H.aware.next = 0; }   // refused (the party is down…): it lets it go
+                        else { r.mode = 'back'; r.stuck = 0; r.t0 = now; ch._awHold = 0; ch._startCool = now + 30000; if (H.aware) H.aware.next = 0; }   // refused (the party is down…): it lets it go
                     }
                     continue;
                 }
                 ch._runFast = true;
-                if (_hqLadderMove(ch, dx / d, dz / d, Math.min(d, Gd.chaseSpeed * dt), dt)) r.stuck = 0; else r.stuck += dt;
+                var cst = Math.min(Math.max(0, d - W.reachM * 0.7), W.chaseSpeed * dt), stay = false;   // it stops short of him, never on him
+                if (r.ground) { try { stay = !hqNpcOnGround(H.opts.room, r.ground, ch.x + dx / d * cst, ch.z + dz / d * cst); } catch (e) { stay = false; } }   // a Territorial never steps off its ground
+                if (stay) { ch.moving = false; r.stuck += dt; }
+                else if (_hqLadderMove(ch, dx / d, dz / d, cst, dt)) r.stuck = 0; else r.stuck += dt;
                 continue;
             }
             /* back to its day (a resident: where its timeline has it now; anyone else: where it stood) */
@@ -99050,6 +99084,14 @@ const ThreeRenderer = (function () {
         /* THE STRIKE LADDER (NPC encounters step 3): is that NPC cornered · a strike on it that started no fight (the run, the Guards who saw it) · the
            onEncounter record for a fight the Talk box starts (FIGHT), as the swing would have made it */
         npcCornered: function (id) { return _hq ? _hqLadderCornered(id) : false; },
+        /* THE MUGGING's answer (map.js): 'paid' = it walks back to its day · 'fight' = the fight is starting · 'none' = the box was closed, it asks again */
+        npcMugDone: function (id, what) {
+            var ch = _hq ? _hqLadderChar(id) : null, r = ch && ch._run, now = performance.now(); if (!r || r.why !== 'mug') return false;
+            if (what === 'fight') { ch._run = null; }
+            else if (what === 'paid' || what === 'off') { r.mode = 'back'; r.stuck = 0; r.t0 = now; }
+            else r.ask = now + HQ_NPC_TEMPERS.mug.againMs;
+            if (_hq.aware) _hq.aware.next = 0; _hq.dirty = true; return true;
+        },
         npcStruck: function (id, rung) { try { return _hq ? _hqLadderStruck(id, rung) : false; } catch (e) { console.warn('[HQ] npcStruck', e); return false; } },
         encounterEvent: function (id, gesture) {
             var H = _hq, pl = H && H.player, ch = H ? _hqLadderChar(id) : null; if (!ch || !pl) return null;
@@ -99366,7 +99408,8 @@ const ThreeRenderer = (function () {
             },
             /* THE AWARENESS (NPC encounters step 2): what the eye and the marks say right now; awareMark holds a red mark on one NPC for a picture */
             aware: function () { var st = _hq && _hq.aware; return st ? { on: st.on, seen: st.seen, n: st.n, marks: st.marks.map(function (m) { return m.ch.id; }), says: st.says.length } : null; },
-            ladder: function () { var H = _hq; if (!H) return null; return H.chars.filter(function (c) { return c._run || c._awHold; }).map(function (c) { return { id: c.id, race: c.race, mode: c._run ? c._run.mode : null, left: c._run && c._run.left, x: +c.x.toFixed(1), z: +c.z.toFixed(1), hold: c._awHold ? Math.round(c._awHold - performance.now()) : 0 }; }); },
+            ladder: function () { var H = _hq; if (!H) return null; return H.chars.filter(function (c) { return c._run || c._awHold; }).map(function (c) { return { id: c.id, race: c.race, mode: c._run ? c._run.mode : null, why: (c._run && c._run.why) || null, left: c._run && c._run.left, x: +c.x.toFixed(1), z: +c.z.toFixed(1), hold: c._awHold ? Math.round(c._awHold - performance.now()) : 0 }; }); },
+            come: function (id, why) { var c = _hq ? _hqLadderChar(id) : null; if (!c) return false; c._run = { mode: 'chase', why: why || null, stuck: 0, lost: 0, home: _hqLadderHome(c), ground: null }; _hq.dirty = true; return true; },   // step 4 probe: make one come ('sight' | 'mug' | 'ground' | none = a Guard)
             awareMark: function (id, on) { if (!_hq) return false; if (!_hq.aware) _hqTickAware(performance.now()); _hq.aware.forced[id] = on !== false; _hq.aware.next = 0; return true; },
             /* aim the camera at a world point (metres) from where the walker stands */
             lookAt: function (x, z, pitch) {
