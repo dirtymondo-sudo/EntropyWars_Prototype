@@ -53762,8 +53762,8 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < L.length && names.length < 2; i++) {
             var l = L[i].trim(), m = l.match(/^at (?:new )?([^\s(]+)/) || l.match(/^([^@\s]*)@/);
             if (!m || !m[1]) continue;
-            var f = m[1].replace(/\/<.*$/, '').replace(/^.*[.\/]/, '');
-            if (!f || f.indexOf(':') >= 0 || /^(_scan|traverse$|traverseVisible$|forEach$|Array$|anonymous$|Object$|call$|apply$)/.test(f)) continue;
+            var f = m[1].replace(/(\/<)+$/, '').replace(/^.*[.\/<]/, '');   // Firefox: ThreeRenderer</_hqLodScan/< -> _hqLodScan
+            if (!f || f.indexOf(':') >= 0 || /^(_scan|traverse$|traverseVisible$|forEach$|Array$|anonymous$|Object$|call$|apply$|ThreeRenderer$)/.test(f)) continue;
             if (names.indexOf(f) < 0) names.push(f);
         }
         return names.join(' < ') || '?';
@@ -53771,7 +53771,8 @@ const ThreeRenderer = (function () {
     function _scanNote(n) {
         var W = _scanW; if (!W) return;
         var s = ''; try { s = new Error().stack; } catch (e) {}
-        var who = _scanWho(s), r = W.by[who] || (W.by[who] = [0, 0, 0]);
+        var who = _scanWho(s); if (/_lens/.test(who)) who += ' (the F3 lens itself)';
+        var r = W.by[who] || (W.by[who] = [0, 0, 0]);
         r[0] += n; r[1]++; if (n > r[2]) r[2] = n;
     }
     function _scanLine() {
@@ -54876,10 +54877,14 @@ const ThreeRenderer = (function () {
            and every 60 s; with none, and none last time (the renderer has hidden what left), the pass is skipped.
            Off: window.EW_CSS2D_ALWAYS = true. */
         if (!window.EW_CSS2D_ALWAYS) {
-            var cNow = performance.now(), cAdd = _ewAddCount();
-            if (sc._ew_c2N === undefined || (sc._ew_c2Add !== cAdd && cNow - sc._ew_c2At > 500) || cNow - sc._ew_c2At > 60000) {
+            var cNow = performance.now();
+            /* THE FRONT DESK (2026-11-18, the F3 alarm: "_css2dRender 77K objects a read" each second): only the arrivals are
+               looked through for a label; the scene is counted again when one arrived (or the desk overflowed) and every 60 s */
+            var cD = (sc._ew_c2N === undefined || cNow - (sc._ew_c2DAt || 0) > 500) ? (sc._ew_c2DAt = cNow, _ewDeskTake(sc._ew_c2Q || (sc._ew_c2Q = _ewDeskQueue()))) : null, cHit = false;
+            if (cD && !cD.over) for (var ci = 0; ci < cD.list.length && !cHit; ci++) { var cx = cD.list[ci]; if (_ewDeskUnder(cx, sc)) cx.traverse(function (o) { if (o.isCSS2DObject) cHit = true; }); }
+            if (sc._ew_c2N === undefined || (cD && (cD.over || cHit)) || cNow - sc._ew_c2At > 60000) {
                 var cn = 0; sc.traverse(function (o) { if (o.isCSS2DObject) cn++; });
-                sc._ew_c2Was = sc._ew_c2N; sc._ew_c2N = cn; sc._ew_c2Add = cAdd; sc._ew_c2At = cNow;
+                sc._ew_c2Was = sc._ew_c2N; sc._ew_c2N = cn; sc._ew_c2At = cNow;
             }
             if (sc._ew_c2N === 0 && sc._ew_c2Was === 0) { _css2dTick++; return; }
             if (sc._ew_c2N === 0) sc._ew_c2Was = 0;   // this pass hides what left; the next is skipped
@@ -93041,13 +93046,38 @@ const ThreeRenderer = (function () {
     }
     /* batch what is drawing itself now (the first pass, then every file that lands after the gate): a kind counts its
        copies already batched toward instanceMin, so three late bins join the five already batched as a batch of their own */
-    function _hqInstAdd(H, I) {
+    function _hqInstAdd(H, I, only) {
         var RU = _hqInstRules(), cellU = H.cellU || RU.cell * _hqUnits();   // THE PERF PASS: the battle's room batches per kind (H.cellU)
-        if (H.shadows) [H.propGroup, H.doorGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh && !o._ew_shadowFlagged) _flagMeshShadows(o); }); });   // the shadow tick's own flags, now — a batch copies them once
-        H.scene.updateMatrixWorld(true);
-        var sc = _hqInstScan(H), wp = new THREE.Vector3(), added = 0;
+        var sc, LS;
+        /* THE ONE-BY-ONE PASS (2026-11-18, mondo's F3: "tick: instance pass 36-37 ms" every few seconds while walking, the alarm
+           line "_hqInstAdd 47K objects a read"): a run for fresh candidates (a prop chunk shown for the first time, a file landed)
+           no longer flags, matrix-walks and scans the whole room. It reads only the fresh pieces plus the ones it left alone (a kind
+           left alone may now have enough copies); the rest of the room stands batched as it is. The first run (and EW_HQ_INST_FULL_SCAN)
+           reads the room. */
+        if (only && I.leftSet) {
+            LS = I.leftSet;
+            var cand = [], seenC = new Set();
+            var put = function (o) { if (seenC.has(o) || !o.parent || o._ew_instHidden) return; seenC.add(o); cand.push(o); };
+            only.forEach(put); LS.forEach(function (o) { if (o.visible) put(o); });
+            var byKey = {};
+            cand.forEach(function (o) {
+                if (H.shadows && o.isMesh && !o._ew_shadowFlagged) _flagMeshShadows(o);   // before the key: the key reads castShadow
+                o.updateWorldMatrix(true, false);
+                var k = _hqInstKey(o); if (!k) return;
+                LS.delete(o);   // in again below if it is left alone again
+                (byKey[k] || (byKey[k] = [])).push(o);
+            });
+            sc = { byKey: byKey };
+            I.adds++;
+        } else {
+            if (H.shadows) [H.propGroup, H.doorGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh && !o._ew_shadowFlagged) _flagMeshShadows(o); }); });   // the shadow tick's own flags, now — a batch copies them once
+            H.scene.updateMatrixWorld(true);
+            sc = _hqInstScan(H);
+            I.adds++; LS = I.leftSet = new Set();   // THE LEFT ALONE, BY NAME (_hqInstTick)
+        }
+        var wp = new THREE.Vector3(), added = 0;
         var big = _hqChunkBig(H);   // THE CHUNKS: a big room's cells are groups of their own (culled, bundled one by one), its small props a cell apart
-        I.adds++; I.left = 0; var LS = I.leftSet = new Set();   // THE LEFT ALONE, BY NAME (_hqInstTick)
+        I.left = 0;
         Object.keys(sc.byKey).forEach(function (key) {
             var all = sc.byKey[key];
             if (all.length + (I.per[key] || 0) < RU.min) { I.left += all.length; all.forEach(function (o) { LS.add(o); }); return; }
@@ -93085,7 +93115,8 @@ const ThreeRenderer = (function () {
                 I.per[key] = (I.per[key] || 0) + list.length;
             });
         });
-        if (added) _hqInstSync(H, true);
+        if (only) I.left = LS.size;   // the ones left alone in earlier runs still are
+        if (added) _hqInstSync(H, !only);   // a one-by-one run: the next draw's sync fills the new batches (a hidden cell's on its first shown frame)
         return added;
     }
     /* per frame (once — the reflectors and the pixel mask render the same scene): the copies' matrices, read back
@@ -93195,7 +93226,7 @@ const ThreeRenderer = (function () {
            again (_hqInstAdd: a new number) reads everything once. Off: window.EW_HQ_INST_FULL_SCAN (the whole read every time) */
         if (I.leftSet && !(typeof window !== 'undefined' && (window.EW_HQ_INST_FULL_SCAN || window.EW_HQ_INST_RESCAN_COUNT))) {
             var fr = _hqInstFresh(H, I);
-            if (fr) { try { _hqInstAdd(H, I); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } }
+            if (fr.length) { try { _hqInstAdd(H, I, fr); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } }
             return;
         }
         var scn = _hqInstScan(H), fresh = false;
@@ -93203,27 +93234,29 @@ const ThreeRenderer = (function () {
         else fresh = scn.n !== I.left;
         if (fresh) { try { _hqInstAdd(H, I); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } }   // a file landed (or a copy was handed back): batch what now repeats
     }
-    /* is a candidate the pass has never seen in view: the top pieces not yet read in this pass, or touched by an arrival */
+    /* the candidates the pass has never seen in view: read only in the top pieces not read yet, or touched by an arrival (each top
+       piece is stamped once read; the stamps are reset only when the desk overflowed). Returns the fresh candidates. */
     function _hqInstFresh(H, I) {
         var gs = [H.propGroup, H.shellGroup, H.doorGroup];
         if (H.stage && H.stage.parts) for (var pid in H.stage.parts) { var PE = H.stage.parts[pid]; if (PE && PE.attached && PE.P) gs.push(PE.P.propGroup, PE.P.shellGroup, PE.P.doorGroup); }
-        var D = _ewDeskTake(I.desk || (I.desk = _ewDeskQueue())), pass = I.adds, LS = I.leftSet, fresh = false;
-        if (D.over) { for (var a = 0; a < gs.length; a++) if (gs[a]) for (var b = 0; b < gs[a].children.length; b++) gs[a].children[b]._ew_instSeen = -1; }
-        else for (var i = 0; i < D.list.length; i++) {
+        var D = _ewDeskTake(I.desk || (I.desk = _ewDeskQueue())), LS = I.leftSet, out = [];
+        if (D.over) I.seenN = (I.seenN | 0) + 1;   // every top piece is read again
+        var pass = I.seenN || (I.seenN = 1);
+        if (!D.over) for (var i = 0; i < D.list.length; i++) {
             /* an arrival: the top piece it joined is read again */
             for (var q = D.list[i], d = 0; q && q.parent && d < 64; q = q.parent, d++) { if (gs.indexOf(q.parent) >= 0) { q._ew_instSeen = -1; break; } }
         }
-        var look = function (o) { if (fresh) return; var k = _hqInstKey(o); if (k && !LS.has(o)) fresh = true; };
-        for (var g = 0; g < gs.length && !fresh; g++) {
+        var look = function (o) { if (!o._ew_instHidden && !LS.has(o) && _hqInstKey(o)) out.push(o); };
+        for (var g = 0; g < gs.length; g++) {
             var G = gs[g]; if (!G || !G.parent || !G.visible) continue;
             var C = G.children;
-            for (var c = 0; c < C.length && !fresh; c++) {
+            for (var c = 0; c < C.length; c++) {
                 var o = C[c]; if (!o.visible || o._ew_instSeen === pass) continue;
                 o.traverseVisible(look);
-                if (!fresh) o._ew_instSeen = pass;
+                o._ew_instSeen = pass;
             }
         }
-        return fresh;
+        return out;
     }
     function _hqInstStats(H) {
         var I = H && H.inst; if (!I) return null;
@@ -93924,7 +93957,7 @@ const ThreeRenderer = (function () {
                 if (b._ew_lods || o._ew_lodCull) list.push(o);
             });
         });
-        L.list = list; L.scanAt = performance.now();
+        L.list = list; L.scanAt = performance.now(); L.seen = null;
     }
     /* a mesh's screen size: its full geometry's sphere through its world matrix, from the camera */
     function _lodScreen(o, base, cam, k) {
@@ -93942,8 +93975,20 @@ const ThreeRenderer = (function () {
         H._lodAt = now;
         var L = H.lod || (H.lod = { list: [], scanAt: 0, swaps: 0, culled: 0, lv: [0, 0, 0] });
         /* the list is read again when something joined the scene or a level landed (at most every rescanMs), and every 30 s */
-        var lodSig = _ewAddCount() + '|' + _lodLandN;
-        if ((L.sig !== lodSig && now - L.scanAt > RU.rescanMs) || now - L.scanAt > 30000 || !L.scanAt) { L.sig = lodSig; _hqLodScan(H, L); }
+        /* THE FRONT DESK (2026-11-18, the F3 alarm: "_hqLodScan 74K objects a read" every 2 s): an add only joins the arrivals'
+           own meshes to the list; the room is read again when a LOD level landed (a geometry gains its levels), the desk
+           overflowed, and every 60 s (what left). Off: window.EW_DESK_OFF */
+        var lodD = (now - L.scanAt > RU.rescanMs || !L.scanAt) ? _ewDeskTake(L.desk || (L.desk = _ewDeskQueue())) : null;
+        if (!L.scanAt || now - L.scanAt > 60000 || (lodD && (lodD.over || L.landN !== _lodLandN))) { L.landN = _lodLandN; _hqLodScan(H, L); }
+        else if (lodD && lodD.list.length) {
+            var lodRoots = [H.partRoot]; if (H.stage) for (var lid in H.stage.parts) { var LE = H.stage.parts[lid]; if (LE.attached) lodRoots.push(LE.P.partRoot); }
+            var lodSeen = L.seen || (L.seen = new Set(L.list)), lodAdd = [];
+            lodD.list.forEach(function (x) {
+                var inR = false; for (var r = 0; r < lodRoots.length && !inR; r++) if (lodRoots[r] && _ewDeskUnder(x, lodRoots[r])) inR = true;
+                if (inR) x.traverse(function (o) { if (!o.isMesh || o.isInstancedMesh || !o.geometry || lodSeen.has(o)) return; var b = o.geometry._ew_lodBase || o.geometry; if (b._ew_lods || o._ew_lodCull) { lodSeen.add(o); lodAdd.push(o); } });
+            });
+            if (lodAdd.length) L.list = L.list.concat(lodAdd);
+        }
         var cam = H.camera, cp = _lodS || (_lodS = new THREE.Vector3());
         cam.updateMatrixWorld(); cp.setFromMatrixPosition(cam.matrixWorld);
         /* k: the screen fraction per unit of (diameter / distance) — the vertical field of view */
