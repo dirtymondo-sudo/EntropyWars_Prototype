@@ -39573,17 +39573,41 @@ const ThreeRenderer = (function () {
         if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: left the room over the budget, ' + go.length + ' file(s) nothing wears dropped (' + ((_mmFreed - before) / 1048576).toFixed(0) + ' MB)'); } catch (x) {} }
         return go.length;
     }
+    /* THE DROPS SPREAD (2026-11-18, spikes thread: mondo's F3 "tick: memory budget 91 ms" and 36 ms frames): a sweep that found files to drop
+       disposed all of them (up to 48) in its own frame, after walking the whole scene and every cached file. The drops now go two a frame;
+       a file used again since it was picked (its `at` moved) or worn again is kept. The walks stop at a file's first worn piece.
+       Off: window.EW_MM_DROP_ALL_AT_ONCE. */
+    var _mmQueue = [];
+    function _mmWears(root, live) {
+        var st = [root];
+        while (st.length) { var o = st.pop(), g = o.geometry; if (g && live[(g._ew_lodBase || g).uuid]) return true; var ch = o.children; for (var i = 0; i < ch.length; i++) st.push(ch[i]); }
+        return false;
+    }
+    function _mmDrain() {
+        var n = 0;
+        while (_mmQueue.length && n < 2) {
+            var q = _mmQueue.shift(), k = q.k;
+            if (k.slice(0, 2) === 'r|') { var ue = _unitGlbCache[k.slice(2)]; if (!ue || (ue.at || 0) !== q.at) continue; _mmRigEvict(k.slice(2)); }
+            else { var e = _miscModelCache[k]; if (!e || (e.at || 0) !== q.at || e.loading) continue; _mmEvict(k); }
+            n++; _objectsDirty = true;
+        }
+    }
     function _mmTick(H, now) {
+        if (_mmQueue.length) { var tq = (_lens && _lens.cur) ? performance.now() : 0; _mmDrain(); _lensSub('memory: drops', tq); }
         if (now - _mmAt < MM_EVERY_MS) return;
         _mmAt = now;
+        var tm = (_lens && _lens.cur) ? performance.now() : 0;
         var R = _mmLast = _mmRead();
+        tm = _lensSub('memory: read', tm);
         if (_mmOff()) return;
         var cap = R.budget * 1048576, tot = (R.misc.mb + R.rigs.mb) * 1048576;
         if (tot <= cap) return;
+        if (_mmQueue.length) return;   // the last sweep's drops are still going
         var live = _mmLive(H), list = [], t = Date.now(), idle = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES.cacheIdleMs > 0) ? HQ_ENGINE_RULES.cacheIdleMs : 120000;
+        tm = _lensSub('memory: worn list', tm);
         for (var u in _miscModelCache) {
             var e = _miscModelCache[u], isLive = false;
-            if (e.root) e.root.traverse(function (o) { if (!isLive && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) isLive = true; });
+            if (e.root) isLive = _mmWears(e.root, live);
             list.push({ url: u, at: e.at || 0, bytes: e.bytes || 0, loading: !!e.loading, failed: !!e.failed, one: !!e._ewOneFile, x: !!(e.xcbs && e.xcbs.length), live: isLive });
         }
         /* THE WALK DROPS UNIT MODELS TOO (2026-11-15, mondo's [MEM] block in the Main Hall: "unit models 56 files 278.3 MB (worn
@@ -39594,7 +39618,9 @@ const ThreeRenderer = (function () {
            files (bodies, clothes, hair: every character is built from them), a file still loading or failed. A dropped model
            loads again from the disk store when something asks for it. Off: window.EW_WALK_KEEP_UNITS = true. */
         var miscList = list.slice(), rigN = 0;
+        tm = _lensSub('memory: props list', tm);
         _mmListRigs(H, live, list);
+        tm = _lensSub('memory: unit models list', tm);
         /* FAR OVER (2026-11-15, his trail: 5.5 GB in Disaster City, then a crash loading Camelot): at 6 files a sweep after two
            minutes idle, leaving a big room gave its files back over many minutes while the next room loaded on top. Past 1.5x
            the budget a file nothing wears goes after 15 s, 48 a sweep. */
@@ -39604,6 +39630,13 @@ const ThreeRenderer = (function () {
         var go = _mmPick(list, t, idle, tot - cap * MM_FLOOR, far ? 48 : MM_MAX);
         if (!go.length) _mmAt = now + (far ? 6000 : 26000);   // over the budget with nothing free to drop (it is all on the stage): the whole-scene read waits 30 s
         try { _mmReport(H, R, miscList, live, go.length); } catch (x) {}
+        if (!(typeof window !== 'undefined' && window.EW_MM_DROP_ALL_AT_ONCE)) {
+            var atOf = {}; list.forEach(function (r) { atOf[r.url] = r.at || 0; });
+            go.forEach(function (k) { _mmQueue.push({ k: k, at: atOf[k] || 0 }); });
+            _lensSub('memory: pick', tm);
+            if (go.length) { try { console.log('[ThreeRenderer] THE MEMORY BUDGET: ' + go.length + ' idle model(s) to drop, two a frame (' + (_mmFreed / 1048576).toFixed(1) + ' MB so far)'); } catch (x) {} }
+            return;
+        }
         go.forEach(function (k) { if (k.slice(0, 2) === 'r|') { _mmRigEvict(k.slice(2)); rigN++; } else _mmEvict(k); });
         if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: ' + go.length + ' idle model(s) dropped (' + (_mmFreed / 1048576).toFixed(1) + ' MB so far)'); } catch (x) {} }
     }
@@ -85836,11 +85869,20 @@ const ThreeRenderer = (function () {
         var dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
         if (L < 0.01) return true;
         var n = Math.max(2, Math.ceil(L / 0.35));
+        /* THE NEAR LINE (2026-11-18, spikes thread: mondo's F3 "tick: awareness + marks 26 ms" frames, and a chasing Guard's look every frame):
+           each of the line's samples (one every 35 cm) read every blocker of the room. The blockers that can touch the line are found once
+           (within half the line's length of its middle) and only those are read at each sample, in the list's order: the same answer.
+           Off: window.EW_HQ_LOS_FULL_LIST. */
+        var BL = _hq.blockers, NB = BL;
+        if (BL.length > 32 && !(typeof window !== 'undefined' && window.EW_HQ_LOS_FULL_LIST)) {
+            var cxm = ax + dx * 0.5, czm = az + dz * 0.5, rr = L * 0.5 + 0.1; NB = [];
+            for (var q = 0; q < BL.length; q++) { var bq = BL[q]; if (bq.npc || bq.portal) continue; try { if (_hqBlkContains(bq, cxm, czm, rr)) NB.push(bq); } catch (e) { NB.push(bq); } }
+        }
         for (var i = 1; i < n; i++) {
             var t = i / n, x = ax + dx * t, z = az + dz * t, y = ay + (by - ay) * t;
             if (L * (1 - t) < 0.45) break;   // the last half metre is the target's own body
-            for (var b = 0; b < _hq.blockers.length; b++) {
-                var bl = _hq.blockers[b];
+            for (var b = 0; b < NB.length; b++) {
+                var bl = NB[b];
                 if (bl.npc || bl.portal) continue;
                 if (!_hqBlkContains(bl, x, z, 0)) continue;
                 if (bl.mc) { if (_mcSolid(bl, x, z, y - 0.05, y + 0.05, 0)) return false; continue; }   // THE REAL COLLISION: an arch is seen through
@@ -86886,8 +86928,12 @@ const ThreeRenderer = (function () {
        dev: hq.dev.ladder(). */
     function _hqLadderQuery(x, z, curY) {
         var H = _hq, B = H.blockers;
-        if (H._ldrKey !== B.length) { H._ldrStatics = B.filter(function (b) { return !b.npc; }); H._ldrKey = B.length; }
-        H.blockers = H._ldrStatics;
+        /* THE LADDER ON THE NAV GRID (2026-11-18, spikes thread: mondo's F3 "tick: ladder 12.3 ms" every frame while one body ran / walked home):
+           the ladder kept its own copy of the people-less list, so each ask read every blocker of the city (no grid), up to three asks a body a
+           frame and 16 x 20 more for a way out. It is the townspeople's list (the same filter), which THE NAV GRID answers from 8 m cells.
+           Off: window.EW_HQ_LADDER_OWN_LIST. */
+        if (H.nav && !(typeof window !== 'undefined' && window.EW_HQ_LADDER_OWN_LIST)) H.blockers = _hqNavStatics();
+        else { if (H._ldrKey !== B.length) { H._ldrStatics = B.filter(function (b) { return !b.npc; }); H._ldrKey = B.length; } H.blockers = H._ldrStatics; }
         try { return _hqSurface(x, z, curY, false); } catch (e) { return null; } finally { H.blockers = B; }
     }
     /* the city's walk map says no (the sea, a tree, a block): only asked when the body stands on a walked square itself */
@@ -93348,7 +93394,12 @@ const ThreeRenderer = (function () {
         var RU = _hqChunkRules(), PR = _hqPropChunkRules(), U = _hqUnits(), box = _hqPcBox || (_hqPcBox = new THREE.Box3()), sph = _hqPcSph || (_hqPcSph = new THREE.Sphere());
         var take = [];
         for (var c = 0; c < n; c++) { var o = G.children[c]; if (!o._ew_pChunk && !o._ew_pcNo && mine.has(o)) take.push(o); }
+        /* THE SWEEP'S SHARE (2026-11-18, spikes thread: mondo's F3 "tick: prop chunk sweep 96 ms" on one frame, a batch of late props landing
+           at once — each measured and moved into its chunk in the same frame): 3 ms a frame at most; what is left goes on the next frame.
+           Off: window.EW_HQ_PC_SWEEP_ALL. */
+        var pcT0 = performance.now(), pcAll = typeof window !== 'undefined' && !!window.EW_HQ_PC_SWEEP_ALL;
         for (var t = 0; t < take.length; t++) {
+            if (!pcAll && t > 0 && performance.now() - pcT0 > 3) { H._pcN = -1; break; }   // the rest next frame
             var p = take[t], lit = false;
             p.traverse(function (q) { if (q.isLight) lit = true; });
             if (lit) { p._ew_pcNo = true; continue; }   // a lamp stays where it was: the frame's light set never changes with a chunk

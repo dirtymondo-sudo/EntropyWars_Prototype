@@ -2929,3 +2929,15 @@ His 07:06 F3 during drops (26 FPS, worst 102 ms) had a new top line "tick: walke
   modes, portal sweep, step (floor + blockers), carry, jump + landing, turn + place, swim check, climb check (prefixed "walker:").
 - `_hqStuckFree` (THE WAY OUT OF A COLLIDER) asked the floor up to 2,560 times over EVERY blocker of the room (the officer's walk keeps
   the whole list): now the search swaps in the blockers within its 8.6 m reach. Off: `window.EW_HQ_STUCK_FULL_LIST`.
+
+## THE SPIKES, ROUND 4 (2026-11-18, spikes thread; from the "Slow frames" lens line)
+His 07:18 / 07:19 F3s named the slow frames: "tick: ladder 12.3" every frame (10.9 FPS), "tick: awareness + marks" 25 ms frames,
+"tick: memory budget" 91 / 36 ms, "tick: prop chunk sweep" 96 ms (and "mask: setup" 73, "bundle check" 81: the 60 FPS thread's code).
+- THE LADDER ON THE NAV GRID: `_hqLadderQuery` (a running / chasing / homing body's floor asks) uses `_hqNavStatics()` (THE NAV GRID's
+  8 m cells) in place of its own people-less copy read whole. Off `EW_HQ_LADDER_OWN_LIST`.
+- THE NEAR LINE: `_hqLosClear` reads only the blockers within half the line's length of its middle (once a line, not once a 35 cm
+  sample). Off `EW_HQ_LOS_FULL_LIST`.
+- THE SWEEP'S SHARE: `_hqPropChunkSweep` moves props into chunks 3 ms a frame at most, the rest next frame. Off `EW_HQ_PC_SWEEP_ALL`.
+- THE DROPS SPREAD: `_mmTick` queues its drops, two a frame (`_mmDrain`; a file used again since the pick is kept); the worn walks stop
+  at a file's first worn piece (`_mmWears`). Lens "Inside the ticks" gains memory: read / worn list / props list / unit models list /
+  pick / drops. Off `EW_MM_DROP_ALL_AT_ONCE`.
