@@ -70,7 +70,7 @@
      lost the bulbs under the bunting with it.
    - The mirrors do not reflect. The fortune tent is still the prop. `carousel` is still the 3.6 m code one (no model was asked).
    - `trapeze_rig` is a steel tower with a net: it fills the middle of the ring and hides the band from the door.
-   - Fights use the old plateau's table everywhere (data.js HQ_AREA_ENCOUNTERS). No residents with homes and a day. No sound bed.
+   - Fights: the Circus has its own table since 2026-11-18 (data.js HQ_AREA_ENCOUNTERS.site_prebuilt_area51_ow_circus, `spots: false`; THE RACE PLACEMENT PASS, npc-system.md). No residents with homes and a day. No sound bed.
    - Frame rate was read on the cloud's software renderer only (0.6 to 2.8 FPS, noisy): it wants a look on a real machine.
 
    THE HOOKS (bake-desert.js "THE DISTRICT FILES" has the whole list of what ctx holds; each hook is optional):

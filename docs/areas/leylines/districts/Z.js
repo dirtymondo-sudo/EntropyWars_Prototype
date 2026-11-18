@@ -55,4 +55,7 @@ exports.dress = ctx => {
 };
 exports.people = ctx => { const { A, native, npc, sayOf, OLD, cx, cz } = ctx;
     native('annunaki', 80, 65, 40, sayOf(OLD.temple, 'annunaki')); native('reptilian', 74 + 2, 59 - 1, 250, sayOf(OLD.temple, 'reptilian'));
-    npc.push({ x: cx(A.observatory.x) + 3, z: cz(A.observatory.y) + 2, y: 7, face: 180, race: 'annunaki', say: sayOf(OLD.temple, 'annunaki', 1) }); };
+    npc.push({ x: cx(A.observatory.x) + 3, z: cz(A.observatory.y) + 2, y: 7, face: 180, race: 'annunaki', say: sayOf(OLD.temple, 'annunaki', 1) });
+    /* 2026-11-18 RACE PLACEMENT (mondo: "Quetzalcoatl to Technoticlan"; Technoticlan is the ancient city, Tenochtitlan): the feathered serpent at the foot of The Pyramid's west stair
+       between the lions, a shaman at the altar inside The Portcullis, an atlantean (the other city built on water) on the canal bank by the rowboat */
+    native('quetzalcoatl', 86, 66, 270); native('shaman', 81, 72, 90); native('atlantean', 76, 78, 270); };

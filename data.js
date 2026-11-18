@@ -21018,7 +21018,7 @@ const EW_RACE_BIOMES = {
     'tree person': ['forest'],   // 2026-09-30
     'sheriff': ['desert', 'ranch'],   // 2026-09-30
     'astronaut': ['space'],   // 2026-09-30
-    'krampus': ['forest', 'polar'],   // 2026-09-30
+    'krampus': ['polar'],   // 2026-09-30   // 2026-11-18 RACE PLACEMENT: was ['forest', 'polar']; the forest tag kept him in the Woods' (and the Cavern's) walker pool. Polar like the yeti
     'rabbit': ['astral', 'forest'],   // 2026-09-30
     'luchador': ['urban', 'stadium'],   // 2026-09-30
     'firefighter': ['urban'],   // 2026-09-30
@@ -28606,7 +28606,7 @@ const DOOR_TEXT = {
         'tree person': 'Fairy Forest',   // 2026-09-30 — The Woods
         'sheriff': 'Area 51',   // 2026-09-30 — The Desert
         'astronaut': 'Spaceship',   // 2026-09-30 — Outer Space
-        'krampus': 'Fairy Forest',   // 2026-09-30 — The Woods
+        'krampus': 'North Pole',   // 2026-09-30 — The Woods   // 2026-11-18 RACE PLACEMENT (mondo: "Krampus and yeti out of the Woods and into the Snowy Pass and Snowy Pines"): was 'Fairy Forest', which made him a native walker of every Woods room; the North Pole is where he already stands
         'rabbit': 'The Looking-Glass',   // 2026-09-30 — The Fairy Forest
         'luchador': 'The Strip',   // 2026-09-30 — The Desert
         'firefighter': 'Downtown',   // 2026-09-30 — Disaster City
@@ -28624,14 +28624,14 @@ const DOOR_TEXT = {
         'chess piece': 'The Looking-Glass',   // 2026-10-29 — the chessboard (The Fairy Forest), as the rabbit
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
         'nordic': 'Antarctica', 'grey': 'Saturn', 'bigfoot': 'Mount Shasta', 'shadow entity': 'H-Wing',
-        'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',
+        'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Cyberpunk City', 'android': 'Cyberpunk City',   // 2026-11-18 RACE PLACEMENT (mondo: Technoticlan "is not meant to be techno anything", it is the ancient city): robot was filed 'Technoticlan' by the name; refiled to the neon city with the ai and the android
         'angel': 'Heaven', 'seraphim': 'Heaven', 'orb of light': 'Mount Olympus', 'demon': 'Hell',
-        'succubus': 'Hell', 'skeleton': 'Hell', 'mech': 'Technoticlan', 'ghost': 'The Haunted House',
+        'succubus': 'Hell', 'skeleton': 'Hell', 'mech': 'Cyberpunk City', 'ghost': 'The Haunted House',   // 2026-11-18 RACE PLACEMENT: mech was 'Technoticlan' (the name); refiled to the neon city
         'zombie': 'Downtown', 'annunaki': 'Pyramids of Giza', 'skinwalker': 'Skinwalker Ranch', 'werewolf': 'The Haunted House',
         'gargoyle': 'Vatican City', 'djinn': 'Pyramids of Giza', 'anubis': 'Pyramids of Giza', 'catgirl': 'Cyberpunk City',
         'mantid': 'Moon', 'antperson': 'Hollow Earth', 'mothman': 'Skinwalker Ranch', 'siren': 'Atlantis',
         'scarecrow': 'Skinwalker Ranch', 'glitch': 'CERN', 'machine elves': 'CERN', 'cyclops': 'Mount Olympus',
-        'cyborg': 'Technoticlan', 'demon prince': 'Hell', 'demon princess': 'Hell', 'dreameater': 'The Looking-Glass',
+        'cyborg': 'Cyberpunk City', 'demon prince': 'Hell', 'demon princess': 'Hell', 'dreameater': 'The Looking-Glass',   // 2026-11-18 RACE PLACEMENT: cyborg was 'Technoticlan' (the name); refiled to the neon city
         'fallen angel': 'Hell', 'goatman': 'Skinwalker Ranch', 'halfdemon': 'Hell', 'mermaid': 'Atlantis',
         'nephilim': 'Göbekli Tepe', 'vampire': 'The Haunted House', 'voidweaver': 'Moon', 'cosmic wraith': 'The Singularity',
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
@@ -28645,7 +28645,7 @@ const DOOR_TEXT = {
         'honda civic': 'The Strip', 'ice queen': 'North Pole', 'juggernaut': 'D.U.M.B.', 'ki fighter': 'Mount Shasta',
         'king arthur': 'Camelot', 'king kong': 'Downtown', 'minotaur': 'Mount Olympus', 'necromancer': 'Stonehenge',
         'occulus': 'The Looking-Glass', 'quarterback': 'Football Stadium', 'robinhood': 'Camelot', 'santa clause': 'North Pole',
-        'super sentai': 'Technoticlan', 'symbiote': 'Spaceship', 'valkraye': 'Heaven', 'watcher': 'The Singularity',
+        'super sentai': 'Downtown', 'symbiote': 'Spaceship', 'valkraye': 'Heaven', 'watcher': 'The Singularity',   // 2026-11-18 RACE PLACEMENT: super sentai was 'Technoticlan' (the name); refiled to Downtown, where it lives (Hero Plaza, HQ_SPAWN_RULES)
     },
 
     // THE SECOND HOMES (2026-09-30, the user): a race native to more than one site. doorSiteCrossings reads these too;
@@ -39981,7 +39981,9 @@ const DOOR_HQ = {
                 { key: 'rug_round',      x: 1.4, z: 1.4 },
             ],
             agents: [],
-            npcSpots: [],
+            npcSpots: [
+                { x: -4.9, z: -5.6, face: 30, race: 'cursed tv' },   // 2026-11-18 RACE PLACEMENT (mondo: "cursed tv to the Attic"): by the trunk, off the hatch's line (its own comment: "the Haunted House's attic")
+            ],
             onlineSpots: [],
             lines: [
                 '“One bulb.” “It is enough.” “For what?” “For the bulb.”',
@@ -40000,6 +40002,7 @@ const DOOR_HQ = {
             label: 'THE HAUNTED HOUSE · THE NURSERY',
             sub: 'THE FIFTH BEDROOM · FIVE COTS · THE MOBILE',
             kind: 'box', site: 'prebuilt_haunted', part: 'nursery',
+            crowdMin: 2,   // 2026-11-18 RACE PLACEMENT: the nurse and the doll both stand (hqRoomCrowdCap: one body was the budget here)
             shell: {
                 w: 24, d: 21, h: 3.0,
                 wallH: 3.0, dadoH: 0.9,
@@ -40051,6 +40054,7 @@ const DOOR_HQ = {
             agents: [],
             npcSpots: [
                 { x: 8.175, z: 6.825, face: 250, race: 'priest', gender: 'female', stay: true, say: ['“Hush. It is asleep.” “What is?” “Hush.”', '“Five beds, four children.” “Where is the fifth?” “You are standing in its room.”', '“The chair rocks it.” “Nobody is in the chair.” “The chair does not need anybody.”'] },   // THE NURSE, beside the chair; she does not leave it
+                { x: -6.3, z: -1.75, face: 30, race: 'haunted doll' },   // 2026-11-18 RACE PLACEMENT (mondo: "Haunted doll to the Nursery"): on the floor between the west cots, her own filed room (EW_RACE_BIOMES: the Haunted House)
             ],
             onlineSpots: [],
             lines: [
@@ -43319,7 +43323,7 @@ const DOOR_HQ = {
                 {key:'cairn',x:92.75,z:-134.75},
             ],
             agents: [],
-            npcSpots: [{x:155.75,z:-134.75,face:200,race:'yeti'},{x:145.25,z:92.75,face:300,race:'yeti'},{x:155.75,z:162.75,face:220,race:'yeti'}],
+            npcSpots: [{x:155.75,z:-134.75,face:200,race:'yeti'},{x:145.25,z:92.75,face:300,race:'krampus'},{x:155.75,z:162.75,face:220,race:'yeti'}],
             onlineSpots: [],
             lines: [],
             spawn: { x: -148.75, z: 85.75, face: 0 },
@@ -45021,7 +45025,7 @@ const DOOR_HQ = {
                 {key:'river_fish',x:20.55,z:23.05,face:28}, {key:'river_fish',x:20.85,z:23.25,face:229}, {key:'lean_to',x:-29.75,z:26.25,face:90}, {key:'firewood_stack',x:-29.75,z:19.25,face:0},
                 {key:'leafy_bush',x:-29.75,z:15.75,face:354}, {key:'leafy_bush',x:-5.25,z:15.75,face:84}, {key:'leafy_bush',x:-33.25,z:29.75,face:80}, {key:'prayer_flags',x:-25.65,z:30.55,face:20},
                 {key:'carved_totem_pole',x:-8.75,z:26.25,face:250}, {key:'deer',x:-29.75,z:12.25,face:110}, {key:'sleeping_bag',x:-17.45,z:31.35,face:80}, {key:'timber_lookout',x:-29.75,z:-99.75,face:0},
-                {key:'trail_sign',x:-8.75,z:-117.25,face:180}, {key:'backpack',x:-26.25,z:-96.25,face:121}, {key:'snow_heap',x:-33.25,z:-145.25,face:103}, {key:'snow_heap',x:-15.75,z:-152.25,face:97},
+                {key:'trail_sign',x:-8.75,z:-117.25,face:180}, {key:'backpack',x:-26.25,z:-99.75,face:121}, {key:'snow_heap',x:-33.25,z:-145.25,face:103}, {key:'snow_heap',x:-15.75,z:-152.25,face:97},
                 {key:'snow_heap',x:-12.25,z:-141.75,face:248}, {key:'snow_heap',x:-22.75,z:-138.25,face:355}, {key:'ice_block',x:-12.25,z:-155.75,face:82}, {key:'ice_block',x:-29.75,z:-131.25,face:70},
                 {key:'reindeer',x:-12.25,z:-131.25,face:300}, {key:'snowshoes',x:-16.55,z:-136.85,face:266}, {key:'ice_axe',x:-18.65,z:-138.05,face:12}, {key:'snow_sled',x:-30.35,z:-138.05,face:40},
                 {key:'backpack',x:-19.25,z:-134.75,face:248}, {key:'icicles',x:-38.2,z:-155.75,face:90,y:5.2}, {key:'icicles',x:-38.2,z:-141.75,face:90,y:3.6}, {key:'icicles',x:-8.75,z:-119.2,face:0,y:3.2},
@@ -45029,7 +45033,7 @@ const DOOR_HQ = {
                 {key:'psx_metal_barrel_mp_1',x:14.85,z:19.55,face:99}, {key:'psx_lighter_mp_1',x:19.55,z:23.85,face:319}, {key:'psx_supply_crate_1_empty',x:21.85,z:142.95,face:202}, {key:'psx_bandage_mp_1',x:20.65,z:141.15,face:22},
             ],
             agents: [],
-            npcSpots: [{x:-26.25,z:29.75,face:0,race:'shaman'},{x:-22.75,z:-19.25,face:120,race:'bigfoot'},{x:-8.75,z:29.75,face:300,race:'ki fighter'},{x:-26.25,z:-141.75,face:150,race:'yeti'},{x:-26.25,z:-99.75,face:180,race:'krampus'},{x:-12.25,z:-113.75,face:200,race:'skinwalker'}],
+            npcSpots: [{x:-26.25,z:29.75,face:0,race:'shaman'},{x:-22.75,z:-19.25,face:120,race:'bigfoot'},{x:-8.75,z:29.75,face:300,race:'ki fighter'},{x:-12.25,z:-113.75,face:200,race:'skinwalker'}],
             onlineSpots: [],
             lines: [],
             spawn: { x: 17.5, z: 141.75, face: 180 },
@@ -65146,7 +65150,7 @@ const DOOR_HQ = {
                 {key:'leafy_bush',x:65.24,z:166.86,face:123},
             ],
             agents: [],
-            npcSpots: [{x:141.75,z:-155.75,face:250,race:'giant',say:['“We carried the bricks.” “All of them?” “The big ones. The small ones were yours.”','“The crane never lifted the load.” “Why?” “The word for LIFT went first.”']},{x:19.25,z:-110.25,face:100,race:'golem',say:['“Fired. Fired. Fired.” “The bricks?” “Everybody.”']},{x:131.25,z:-54.25,face:320,race:'conspiracy theorist',say:['“One language.” “Before?” “After. It is one word. Listen.”','“Genesis eleven.” “The chapter?” “The floor. There is no floor eleven.”']},{x:-33.25,z:103.25,face:40,race:'annunaki',say:'“The calendar did not end. It was turned over.”'},{x:-47.25,z:78.75,face:250,race:'reptilian',say:'“The ball court is not a game. The losing side knows that.”'},{x:-75.75,z:140.25,y:7,face:180,race:'annunaki',say:'“Venus rises there. Every eight years it is exactly where the wall says, and every eight years somebody is surprised.”'}],
+            npcSpots: [{x:141.75,z:-155.75,face:250,race:'giant',say:['“We carried the bricks.” “All of them?” “The big ones. The small ones were yours.”','“The crane never lifted the load.” “Why?” “The word for LIFT went first.”']},{x:19.25,z:-110.25,face:100,race:'golem',say:['“Fired. Fired. Fired.” “The bricks?” “Everybody.”']},{x:131.25,z:-54.25,face:320,race:'conspiracy theorist',say:['“One language.” “Before?” “After. It is one word. Listen.”','“Genesis eleven.” “The chapter?” “The floor. There is no floor eleven.”']},{x:-33.25,z:103.25,face:40,race:'annunaki',say:'“The calendar did not end. It was turned over.”'},{x:-47.25,z:78.75,face:250,race:'reptilian',say:'“The ball court is not a game. The losing side knows that.”'},{x:-75.75,z:140.25,y:7,face:180,race:'annunaki',say:'“Venus rises there. Every eight years it is exactly where the wall says, and every eight years somebody is surprised.”'},{x:-12.25,z:106.75,face:270,race:'quetzalcoatl'},{x:-29.75,z:127.75,face:90,race:'shaman'},{x:-47.25,z:148.75,face:270,race:'atlantean'}],
             onlineSpots: [],
             lines: ['“Which way up?” “North face, then east, then south, then west.” “That is a spiral.” “That is the only way anyone agreed on.”','“The load.” “It is still on the hook.” “What is in it?” “A tape, and whatever they were lifting.”','“Everyone here says the same word.” “What is it?” “It is not a word.”','“The tower is still going up.” “It looks finished.” “It looks STOPPED. That is different.”','“The shaft under the north stair.” “Where does it go?” “To Giza, straight, and it was here first.”','“Which stair is the other stair?” “Both of them.”'],
             spawn: { x: -12.25, z: -103.25, face: 90 },
@@ -67233,7 +67237,7 @@ const DOOR_HQ = {
                 {key:'tire_stack',x:-33.39,z:320.01,face:324}, {key:'cave_torch',x:-89.25,z:313.25,noLight:true}, {key:'tire_stack',x:-74.87,z:319.94,face:86},
             ],
             agents: [],
-            npcSpots: [{x:-344.75,z:-309.75,face:0,race:'men in black',say:['“Six cells, two occupied.” “Who is in the other four?” “Nobody we have charged.”','“The drain is a door.” “Every drain is a door.” “Not every door is a drain. Do not go in the tank.”']},{x:-337.75,z:-323.75,face:180,race:'gangster',say:['“Lawyer.” “You have not been charged.” “Then I am not here.”','“How long?” “Since the musical.” “Which musical?” “The one with the number.”']},{x:-295.75,z:-323.75,face:180,race:'politician',say:['“I was elected.” “To what?” “This cell, apparently. It was a landslide.”']},{x:-288.75,z:-309.75,face:0,race:'zombie',say:['“Drunk.” “On what?” “Tank.” “That is the room.” “Then the room.”']},{x:-288.75,z:50.75,face:90,race:'ghoul',say:['“The mine was here before the city.” “What did they mine?” “Cells.”','“Do not wade the sump.” “I was not going to.” “Everyone says that.”']},{x:-341.25,z:64.75,face:20,race:'skeleton',say:['“There is daylight down the chimney.” “From where?” “Nowhere you can get to from here.”']},{x:-302.75,z:54.25,face:270,race:'flesheater'},{x:-309.75,z:68.25,face:90,race:'swamp monster'},{x:-330.75,z:64.75,face:250,race:'zombie'},{x:-344.75,z:54.25,face:180,race:'ghost'},{x:36.75,z:-323.75,face:90,race:'mad scientist'},{x:47.25,z:-309.75,face:0,race:'black goo'},{x:99.75,z:-309.75,face:270,race:'kaiju'},{x:82.25,z:-299.25,face:0,race:'black goo'},{x:68.25,z:-323.75,face:90,race:'swamp monster'},{x:-8.75,z:64.75,face:90,race:'skeleton',say:['“I missed the last one.” “The last one is in the depot.” “Then I have not missed it.”','“This station is closed.” “I am standing in it.” “That is why it is closed.”']},{x:-1.75,z:36.75,face:90,race:'zombie',say:['“Walking the line.” “Which line?” “All lines. It is one tunnel.”']},{x:-8.75,z:-33.25,face:90,race:'ai',say:['“Signals green.” “There is no train.” “The signals do not know that. Neither do I, officially.”']},{x:-1.75,z:-92.75,face:0,race:'gangster',say:['“Two cars. One lit.” “Which one goes?” “The dark one. The lit one has never moved.”']},{x:-124.25,z:-204.75,face:180,race:'ghoul',say:['“Storm drain.” “Sewer.” “What is the difference?” “Which way it smells.”','“The pumps run all night.” “For who?” “The water. Somebody has to.”']},{x:-173.25,z:-113.75,face:180,race:'gangster',say:['“Nobody comes down here.” “You are down here.” “I am nobody. It is a job.”']},{x:-50.75,z:-78.75,face:180,race:'zombie',say:['“Light.” “That is the outfall.” “Where does it go?” “Up.” “Up where?” “Up.”']},{x:-92.75,z:-159.25,face:180,race:'conspiracy theorist',say:['“Every gutter in the city drains into this culvert.” “That is what a sewer is.” “That is what they WANT a sewer to be.”']}],
+            npcSpots: [{x:-344.75,z:-309.75,face:0,race:'men in black',say:['“Six cells, two occupied.” “Who is in the other four?” “Nobody we have charged.”','“The drain is a door.” “Every drain is a door.” “Not every door is a drain. Do not go in the tank.”']},{x:-337.75,z:-323.75,face:180,race:'gangster',say:['“Lawyer.” “You have not been charged.” “Then I am not here.”','“How long?” “Since the musical.” “Which musical?” “The one with the number.”']},{x:-295.75,z:-323.75,face:180,race:'politician',say:['“I was elected.” “To what?” “This cell, apparently. It was a landslide.”']},{x:-288.75,z:-309.75,face:0,race:'zombie',say:['“Drunk.” “On what?” “Tank.” “That is the room.” “Then the room.”']},{x:-288.75,z:50.75,face:90,race:'ghoul',say:['“The mine was here before the city.” “What did they mine?” “Cells.”','“Do not wade the sump.” “I was not going to.” “Everyone says that.”']},{x:-341.25,z:64.75,face:20,race:'skeleton',say:['“There is daylight down the chimney.” “From where?” “Nowhere you can get to from here.”']},{x:-302.75,z:54.25,face:270,race:'flesheater'},{x:-309.75,z:68.25,face:90,race:'swamp monster'},{x:-330.75,z:64.75,face:250,race:'zombie'},{x:-344.75,z:54.25,face:180,race:'ghost'},{x:36.75,z:-323.75,face:90,race:'mad scientist'},{x:47.25,z:-309.75,face:0,race:'black goo'},{x:99.75,z:-309.75,face:270,race:'sewer gator'},{x:82.25,z:-299.25,face:0,race:'black goo'},{x:68.25,z:-323.75,face:90,race:'swamp monster'},{x:-8.75,z:64.75,face:90,race:'skeleton',say:['“I missed the last one.” “The last one is in the depot.” “Then I have not missed it.”','“This station is closed.” “I am standing in it.” “That is why it is closed.”']},{x:-1.75,z:36.75,face:90,race:'zombie',say:['“Walking the line.” “Which line?” “All lines. It is one tunnel.”']},{x:-8.75,z:-33.25,face:90,race:'ai',say:['“Signals green.” “There is no train.” “The signals do not know that. Neither do I, officially.”']},{x:-1.75,z:-92.75,face:0,race:'gangster',say:['“Two cars. One lit.” “Which one goes?” “The dark one. The lit one has never moved.”']},{x:-124.25,z:-204.75,face:180,race:'ghoul',say:['“Storm drain.” “Sewer.” “What is the difference?” “Which way it smells.”','“The pumps run all night.” “For who?” “The water. Somebody has to.”']},{x:-173.25,z:-113.75,face:180,race:'gangster',say:['“Nobody comes down here.” “You are down here.” “I am nobody. It is a job.”']},{x:-50.75,z:-78.75,face:180,race:'zombie',say:['“Light.” “That is the outfall.” “Where does it go?” “Up.” “Up where?” “Up.”']},{x:-92.75,z:-159.25,face:180,race:'conspiracy theorist',say:['“Every gutter in the city drains into this culvert.” “That is what a sewer is.” “That is what they WANT a sewer to be.”']}],
             onlineSpots: [],
             lines: ['“Which way is out?” “Follow the water.” “The water goes both ways.” “Then you are at the junction.”','“The cistern is deep.” “How deep?” “Nobody who found out came back to say.” “Take the plank.”','“Somebody painted the wall.” “Somebody paints every wall.” “This one says the Department’s name.” “Everybody knows the Department’s name.”','“The Strip drains here.” “Downtown drains here.” “The woods drain here.” “Nothing drains OUT.”','“There is a light at the end of the main culvert.” “The outfall.” “The outfall of what?” “Do not climb it.”','“Which way does the loop go?” “Round.” “Clockwise?” “Round.”','“The crossover.” “Two tracks crossing in the dark.” “What happens when two trains meet there?” “Nothing has met there since 1954.”','“Ghost station.” “It has a platform.” “It has a platform and no stairs up.” “Then it is a ghost station.”','“The Works’ platform is that way.” “Downtown’s is the other.” “Same tunnel.” “Same tunnel.”','“Somebody left the headlight on.” “Since when?” “Since the depot was built round it.”','“Whose precinct?” “The city’s.” “The city fell down.” “The basement did not.”','“Six cells.” “Room 24601 has three.” “Room 24601 has three you can see.”','“The catwalk.” “For who?” “Whoever watches the cells.” “Nobody is up there.” “That is who watches the cells.”','“Property room.” “What property?” “One ring of keys.” “Whose?” “Everyone’s.”','“Old workings.” “How old?” “The bricks are Roman.” “The city is not.” “The bricks did not ask.”','“The flood is knee deep.” “And the sump?” “The sump is the reason there is a pump.”','“Somebody put a pump on a ledge.” “Somebody put a ledge on a pump.” “Either way it is running.”','“The oubliette is through the west wall.” “The cave’s?” “The cave’s. Every cell down here joins up eventually.”'],
             spawn: { x: -176.75, z: -103.25, face: 90 },
@@ -68938,7 +68942,7 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 13.5, z: -21, y: 0, face: 150, race: 'homosapien', say: ['“The skiff is the harbour’s.” “Who do I sign for it?” “The harbour does not have a desk. It has a skiff.”', '“The ship out there dropped anchor in the flood.” “Which flood?” “She has not said.”'] },
+                { x: 13.5, z: -21, y: 0, face: 150, race: 'pirate', say: ['“The skiff is the harbour’s.” “Who do I sign for it?” “The harbour does not have a desk. It has a skiff.”', '“The ship out there dropped anchor in the flood.” “Which flood?” “She has not said.”'] },
                 { x: -46.2, z: 22, y: 1.4, face: 270, race: 'pirate', say: ['“The light is for her.” “For the ship?” “She keeps coming in. She never arrives.”', '“Past the buoys the sea stops being the city’s.” “Whose is it?” “Room 345’s.”'] },
             ],
             onlineSpots: [],
@@ -70653,7 +70657,7 @@ const DOOR_HQ = {
                 {key:'arcade_cabinet',x:117.25,z:-33.25,face:0}, {key:'retro_console',x:92.75,z:-33.25}, {key:'egg_chair',x:92.75,z:-50.75},
             ],
             agents: [],
-            npcSpots: [{x:-178.5,z:-117.5,face:90,race:'ai'},{x:168,z:-177,face:180,race:'occulus'},{x:74,z:-52.75,face:90,race:'ghost'},{x:162.75,z:36.75,face:180,race:'conspiracy theorist'},{x:173.25,z:92.75,face:0,race:'professor'},{x:127.75,z:176.75,face:0,race:'librarian'},{x:120.75,z:134.75,face:90,race:'karate frog'},{x:162.75,z:117.25,face:180,race:'goblin'},{x:176.75,z:159.25,face:180,race:'politician'},{x:82.25,z:176.75,face:0,race:'watcher'},{x:173.25,z:159.25,face:180,race:'referee'},{x:117.25,z:113.75,face:135,race:'mime'},{x:36.75,z:36.75,face:90,race:'tech ceo'},{x:47.25,z:47.25,face:270,race:'magician'},{x:78.75,z:36.75,face:180,race:'televangelist'},{x:50.75,z:89.25,face:270,race:'robot'},{x:36.75,z:92.75,face:0,race:'police officer'},{x:131.25,z:36.75,face:180,race:'banker'},{x:120.75,z:47.25,face:90,race:'delivery boy'},{x:134.75,z:89.25,face:180,race:'politician'},{x:36.75,z:131.25,face:90,race:'clown'},{x:47.25,z:120.75,face:180,race:'florida man'},{x:89.25,z:120.75,face:180,race:'glitch'},{x:78.75,z:131.25,face:90,race:'symbiote'},{x:89.25,z:131.25,face:0,race:'mad scientist'},{x:78.75,z:89.25,face:0,race:'fortune teller'},{x:92.75,z:92.75,face:0,race:'professor'},{x:-120.75,z:29.75,face:90,race:'men in black'},{x:-120.75,z:75.25,face:180,race:'gangster'},{x:-166.25,z:173.25,face:0,race:'black goo'},{x:-120.75,z:173.25,face:180,race:'spy'},{x:-120.75,z:138.25,face:0,race:'ghoul'},{x:-173.25,z:134.75,face:90,race:'skeleton'},{x:-162.75,z:92.75,face:270,race:'mantid'},{x:-82.25,z:173.25,face:0,race:'shadow entity'},{x:-162.75,z:36.75,face:180,race:'voidweaver'},{x:-176.75,z:176.75,face:45,race:'cursed tv'},{x:47.25,z:-169.75,face:0,race:'influencer'},{x:89.25,z:-162.75,face:0,race:'popstar'},{x:120.75,z:-159.25,face:0,race:'delivery boy'},{x:40.25,z:-78.75,face:90,race:'florida man'},{x:75.25,z:-82.25,face:90,race:'tech ceo'},{x:131.25,z:-89.25,face:0,race:'skater'},{x:78.75,z:-134.75,face:180,race:'televangelist'},{x:50.75,z:-89.25,face:270,race:'clown'},{x:-8.75,z:8.75,face:90,race:'robot'},{x:8.75,z:-8.75,face:270,race:'ai'},{x:-12.25,z:8.75,face:45,race:'glitch'},{x:-5.25,z:78.75,face:180,race:'machine elves'},{x:5.25,z:99.75,face:0,race:'boltzmann brain'},{x:-50.75,z:36.75,face:90,race:'mech'},{x:-89.25,z:50.75,face:0,race:'cyborg'},{x:-75.25,z:36.75,face:180,race:'mad scientist'},{x:-89.25,z:92.75,face:90,race:'android'},{x:-36.75,z:75.25,face:180,race:'droid'},{x:-89.25,z:134.75,face:0,race:'robot'},{x:-47.25,z:120.75,face:90,race:'ai'},{x:-75.25,z:134.75,face:0,race:'machine elves'},{x:-36.75,z:92.75,face:0,race:'mole man'},{x:-36.75,z:-159.25,face:0,race:'delivery boy'},{x:-33.25,z:-120.75,face:270,race:'robot'},{x:-36.75,z:-78.75,face:0,race:'librarian'},{x:-176.75,z:-36.75,face:90,race:'banker'},{x:-162.75,z:-47.25,face:180,race:'televangelist'},{x:-117.25,z:-36.75,face:270,race:'droid'},{x:-173.25,z:-159.25,face:180,race:'ai'},{x:-134.75,z:-131.25,face:90,race:'robot'},{x:-75.25,z:-131.25,face:270,race:'droid'},{x:-117.25,z:-180.25,face:180,race:'cyborg'},{x:-134.75,z:-78.75,face:45,race:'glitch'},{x:-78.75,z:-148.75,face:0,race:'mech'},{x:176.75,z:-131.25,face:225,race:'catgirl'},{x:162.75,z:-131.25,face:90,race:'popstar'},{x:173.25,z:-89.25,face:0,race:'influencer'},{x:162.75,z:-78.75,face:45,race:'bunny girl'},{x:180.25,z:-36.75,face:0,race:'super sentai'},{x:173.25,z:-29.75,face:0,race:'knight'},{x:162.75,z:-29.75,face:0,race:'wizard'},{x:155.75,z:-36.75,face:0,race:'catgirl'},{x:155.75,z:-47.25,face:0,race:'robot'},{x:162.75,z:-54.25,face:0,race:'ninja'},{x:173.25,z:-54.25,face:0,race:'pirate'},{x:180.25,z:-47.25,face:0,race:'astronaut'},{x:131.25,z:-36.75,face:270,race:'quarterback'},{x:120.75,z:-36.75,face:90,race:'skater'},{x:92.75,z:-36.75,face:270,race:'android'}],
+            npcSpots: [{x:-178.5,z:-117.5,face:90,race:'ai'},{x:168,z:-177,face:180,race:'occulus'},{x:74,z:-52.75,face:90,race:'ghost'},{x:162.75,z:36.75,face:180,race:'conspiracy theorist'},{x:173.25,z:92.75,face:0,race:'professor'},{x:127.75,z:176.75,face:0,race:'librarian'},{x:120.75,z:134.75,face:90,race:'karate frog'},{x:162.75,z:117.25,face:180,race:'goblin'},{x:176.75,z:159.25,face:180,race:'politician'},{x:82.25,z:176.75,face:0,race:'watcher'},{x:173.25,z:159.25,face:180,race:'referee'},{x:117.25,z:113.75,face:135,race:'mime'},{x:36.75,z:36.75,face:90,race:'tech ceo'},{x:47.25,z:47.25,face:270,race:'magician'},{x:78.75,z:36.75,face:180,race:'televangelist'},{x:50.75,z:89.25,face:270,race:'robot'},{x:36.75,z:92.75,face:0,race:'police officer'},{x:131.25,z:36.75,face:180,race:'banker'},{x:120.75,z:47.25,face:90,race:'delivery boy'},{x:134.75,z:89.25,face:180,race:'politician'},{x:36.75,z:131.25,face:90,race:'clown'},{x:47.25,z:120.75,face:180,race:'florida man'},{x:89.25,z:120.75,face:180,race:'glitch'},{x:78.75,z:131.25,face:90,race:'symbiote'},{x:89.25,z:131.25,face:0,race:'mad scientist'},{x:78.75,z:117.25,face:0,race:'virus'},{x:78.75,z:89.25,face:0,race:'fortune teller'},{x:92.75,z:92.75,face:0,race:'professor'},{x:-120.75,z:29.75,face:90,race:'men in black'},{x:-120.75,z:75.25,face:180,race:'gangster'},{x:-166.25,z:173.25,face:0,race:'black goo'},{x:-120.75,z:173.25,face:180,race:'spy'},{x:-120.75,z:138.25,face:0,race:'ghoul'},{x:-173.25,z:134.75,face:90,race:'skeleton'},{x:-162.75,z:92.75,face:270,race:'mantid'},{x:-82.25,z:173.25,face:0,race:'shadow entity'},{x:-162.75,z:36.75,face:180,race:'voidweaver'},{x:-176.75,z:176.75,face:45,race:'cursed tv'},{x:47.25,z:-169.75,face:0,race:'influencer'},{x:89.25,z:-162.75,face:0,race:'popstar'},{x:120.75,z:-159.25,face:0,race:'delivery boy'},{x:40.25,z:-78.75,face:90,race:'florida man'},{x:75.25,z:-82.25,face:90,race:'tech ceo'},{x:131.25,z:-89.25,face:0,race:'skater'},{x:78.75,z:-134.75,face:180,race:'televangelist'},{x:50.75,z:-89.25,face:270,race:'clown'},{x:-8.75,z:8.75,face:90,race:'robot'},{x:8.75,z:-8.75,face:270,race:'ai'},{x:-12.25,z:8.75,face:45,race:'glitch'},{x:-5.25,z:78.75,face:180,race:'machine elves'},{x:5.25,z:99.75,face:0,race:'boltzmann brain'},{x:-50.75,z:36.75,face:90,race:'mech'},{x:-89.25,z:50.75,face:0,race:'cyborg'},{x:-75.25,z:36.75,face:180,race:'mad scientist'},{x:-89.25,z:92.75,face:90,race:'android'},{x:-36.75,z:75.25,face:180,race:'droid'},{x:-89.25,z:134.75,face:0,race:'robot'},{x:-47.25,z:120.75,face:90,race:'ai'},{x:-75.25,z:134.75,face:0,race:'machine elves'},{x:-36.75,z:92.75,face:0,race:'mole man'},{x:-36.75,z:-159.25,face:0,race:'delivery boy'},{x:-33.25,z:-120.75,face:270,race:'robot'},{x:-36.75,z:-78.75,face:0,race:'librarian'},{x:-176.75,z:-36.75,face:90,race:'banker'},{x:-162.75,z:-47.25,face:180,race:'televangelist'},{x:-117.25,z:-36.75,face:270,race:'droid'},{x:-173.25,z:-159.25,face:180,race:'ai'},{x:-134.75,z:-131.25,face:90,race:'robot'},{x:-75.25,z:-131.25,face:270,race:'droid'},{x:-117.25,z:-180.25,face:180,race:'cyborg'},{x:-134.75,z:-78.75,face:45,race:'glitch'},{x:-78.75,z:-148.75,face:0,race:'mech'},{x:176.75,z:-131.25,face:225,race:'catgirl'},{x:162.75,z:-131.25,face:90,race:'popstar'},{x:173.25,z:-89.25,face:0,race:'influencer'},{x:162.75,z:-78.75,face:45,race:'bunny girl'},{x:180.25,z:-36.75,face:0,race:'super sentai'},{x:173.25,z:-29.75,face:0,race:'knight'},{x:162.75,z:-29.75,face:0,race:'wizard'},{x:155.75,z:-36.75,face:0,race:'catgirl'},{x:155.75,z:-47.25,face:0,race:'robot'},{x:162.75,z:-54.25,face:0,race:'ninja'},{x:173.25,z:-54.25,face:0,race:'pirate'},{x:180.25,z:-47.25,face:0,race:'astronaut'},{x:131.25,z:-36.75,face:270,race:'quarterback'},{x:120.75,z:-36.75,face:90,race:'skater'},{x:92.75,z:-36.75,face:270,race:'android'},{x:162.75,z:-96.25,face:0,race:'streamer'},{x:173.25,z:-131.25,face:0,race:'vtuber'}],
             onlineSpots: [],
             lines: [],
             spawn: { x: -176.75, z: -173.25, face: 0 },
@@ -91278,7 +91282,12 @@ const HQ_POPULATION_RULES = {
     wildWeights: [0.5, 0.3, 0.2],   // a wild room's draw: a TRUE native (its point of entry) · a biome-tagged resident · a neighbouring site's native; the first draw is always a native
     cityWeights: [0.5, 0.3, 0.2],   // a city street's draw: the site's own (natives + the urban-tagged) · ordinary people (a `human` type) · the other cities' natives
     /* THE UNDERWORLD's own people (hubs.underworld) — the sewers, the tunnels, the cells, the workings */
-    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer', 'swamp monster', 'undead', 'flesheater'],   // 2026-10-25: + swamp monster, undead, flesheater
+    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer', 'swamp monster', 'undead', 'flesheater', 'sewer gator', 'karate frog', 'samurai slug', 'mole man'],   // 2026-10-25: + swamp monster, undead, flesheater   // 2026-11-18 RACE PLACEMENT (mondo: "Add the sewer races and mole man to the sewer list"): + sewer gator, karate frog, samurai slug, mole man
+    /* THE ONE-OF-A-KIND (2026-11-18 RACE PLACEMENT, mondo on the race-zone audit: "Take unique characters off random pools"): a race here stands only where it is
+       PLACED (an npcSpot, a resident's row): hqSiteResidents leaves it out of every site's people, so no room without a table draws it as a
+       walker, a companion or a swarm; its rows are off the live HQ_AREA_ENCOUNTERS tables too. The four heroes are HQ_SPAWN_RULES' `unique`
+       tier. Empty the list = the old rule. */
+    fixedOnly: ['king arthur', 'pope', 'king kong', 'superhero', 'antihero', 'sidekick', 'kaiju', 'kraken'],
 };
 /* THE CROWD CAP (2026-10-01, mondo: "way less people inside DOOR HQ ... I walk into a tiny room like reception and there
    like 6 or 7 people in there ... one NPC per model and use the men in black as back up employees ... for all areas ...
@@ -91310,7 +91319,7 @@ function hqRoomCrowdCap(roomId, planned) {
     let n = Math.floor(planned * R.share);
     let m2 = 0; try { m2 = hqRoomFloorM2(room, roomId); } catch (e) { m2 = 0; }
     if (m2 > 0) n = Math.min(n, Math.floor(m2 / R.m2PerBody));
-    return Math.max(R.min, Math.min(hi, n));
+    return Math.max(R.min, Math.min(hi, Math.max(n, room.crowdMin | 0)));   // `crowdMin` (2026-11-18 RACE PLACEMENT): a small room's own floor under the budget, for a room with two placed people (the Nursery: the nurse AND the doll); never over the clamp
 }
 /* ONE PER MODEL: the rooms a roster race may live in (no site, not a street, not the car), and the one it lives in today */
 let _hqRosterHomeCache = null;
@@ -91343,7 +91352,8 @@ function hqSiteResidents(siteId) {
     const ready = (r) => (typeof isRace3DReady !== 'function') || isRace3DReady(r);
     const out = [];
     out.tiers = {};
-    const push = (list, tier) => { for (const r of list) if (r !== 'men in black' && out.indexOf(r) < 0 && ready(r)) { out.push(r); out.tiers[r] = tier; } };
+    const solo = HQ_POPULATION_RULES.fixedOnly || [];   // THE ONE-OF-A-KIND (2026-11-18 RACE PLACEMENT): placed, never drawn
+    const push = (list, tier) => { for (const r of list) if (r !== 'men in black' && solo.indexOf(r) < 0 && out.indexOf(r) < 0 && ready(r)) { out.push(r); out.tiers[r] = tier; } };
     push(doorSiteCrossings(meta.label), 'native');
     out.natives = out.length;
     const P = (typeof RACE_PROFILES !== 'undefined') ? RACE_PROFILES : {};
@@ -91400,7 +91410,7 @@ function hqRoomPopulation(roomId, profile, opts) {
         const mine = site ? hqSiteResidents(site) : [];
         mine.forEach(r => { if (!seen[r] && (mine.tiers[r] === 'native' || mine.tiers[r] === 'biome')) { seen[r] = 1; pool.push(r); tiers[r] = mine.tiers[r]; } });
         sites.forEach(s => { const rs = hqSiteResidents(s); rs.forEach(r => { if (!seen[r] && rs.tiers[r] === 'native') { seen[r] = 1; pool.push(r); tiers[r] = 'city'; } }); });
-        Object.keys(P).forEach(r => { if (!seen[r] && P[r] && (P[r].types || []).indexOf('human') >= 0 && r !== 'men in black' && ready(r)) { seen[r] = 1; pool.push(r); tiers[r] = 'people'; } });
+        Object.keys(P).forEach(r => { if (!seen[r] && P[r] && (P[r].types || []).indexOf('human') >= 0 && r !== 'men in black' && (R.fixedOnly || []).indexOf(r) < 0 && ready(r)) { seen[r] = 1; pool.push(r); tiers[r] = 'people'; } });   // (THE ONE-OF-A-KIND, 2026-11-18 RACE PLACEMENT: not ordinary people)
         /* THE UNDERWORLD: the sewer's own people (the table), never the street's crowd */
         if (hubId === 'underworld') { pool = R.underworld.filter(r => ready(r)); tiers = {}; pool.forEach(r => { tiers[r] = 'native'; }); }
         /* THE AREA UNITS (2026-10-24): a city room's table is its people too (the street read none, so Disaster City and The Sewers never changed) */
@@ -92877,9 +92887,8 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "orb of light", w: 1 },
         { race: "wizard", w: 1 },
     ] },
-    "site_prebuilt_downtown_lobby": { list: [
+    "site_prebuilt_downtown_lobby": { spots: false, list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - king kong, superhero, antihero, sidekick; `spots: false` so the Tower Lobby's superhero still stands where placed
         { race: "conspiracy theorist", w: 7 },
-        { race: "antihero", w: 2 },
         { race: "bunny girl", w: 2 },
         { race: "chef", w: 2 },
         { race: "clown", w: 2 },
@@ -92887,7 +92896,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "gangster", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
-        { race: "king kong", w: 2 },
         { race: "luchador", w: 2 },
         { race: "marksman", w: 2 },
         { race: "mime", w: 2 },
@@ -92896,8 +92904,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "professor", w: 2 },
         { race: "quarterback", w: 2 },
         { race: "ringmaster", w: 2 },
-        { race: "sidekick", w: 2 },
-        { race: "superhero", w: 2 },
         { race: "swordfighter", w: 2 },
         { race: "zombie", w: 2 },
         { race: "astronaut", w: 1 },
@@ -92917,9 +92923,8 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "priest", w: 1 },
         { race: "time cop", w: 1 },
     ] },
-    "site_prebuilt_downtown_showroom": { list: [
+    "site_prebuilt_downtown_showroom": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - king kong, superhero, antihero, sidekick
         { race: "conspiracy theorist", w: 7 },
-        { race: "antihero", w: 2 },
         { race: "bunny girl", w: 2 },
         { race: "chef", w: 2 },
         { race: "clown", w: 2 },
@@ -92927,7 +92932,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "gangster", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
-        { race: "king kong", w: 2 },
         { race: "luchador", w: 2 },
         { race: "marksman", w: 2 },
         { race: "mime", w: 2 },
@@ -92936,8 +92940,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "professor", w: 2 },
         { race: "quarterback", w: 2 },
         { race: "ringmaster", w: 2 },
-        { race: "sidekick", w: 2 },
-        { race: "superhero", w: 2 },
         { race: "swordfighter", w: 2 },
         { race: "zombie", w: 2 },
         { race: "astronaut", w: 1 },
@@ -92957,9 +92959,8 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "priest", w: 1 },
         { race: "time cop", w: 1 },
     ] },
-    "site_prebuilt_downtown_subway": { list: [
+    "site_prebuilt_downtown_subway": { spots: false, list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - king kong, superhero, antihero, sidekick; `spots: false` so the Platform's antihero still stands where placed
         { race: "conspiracy theorist", w: 7 },
-        { race: "antihero", w: 2 },
         { race: "bunny girl", w: 2 },
         { race: "chef", w: 2 },
         { race: "clown", w: 2 },
@@ -92967,7 +92968,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "gangster", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
-        { race: "king kong", w: 2 },
         { race: "luchador", w: 2 },
         { race: "marksman", w: 2 },
         { race: "mime", w: 2 },
@@ -92976,8 +92976,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "professor", w: 2 },
         { race: "quarterback", w: 2 },
         { race: "ringmaster", w: 2 },
-        { race: "sidekick", w: 2 },
-        { race: "superhero", w: 2 },
         { race: "swordfighter", w: 2 },
         { race: "zombie", w: 2 },
         { race: "astronaut", w: 1 },
@@ -92997,9 +92995,8 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "priest", w: 1 },
         { race: "time cop", w: 1 },
     ] },
-    "site_prebuilt_downtown_streets": { list: [
+    "site_prebuilt_downtown_streets": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - king kong, superhero, antihero, sidekick
         { race: "conspiracy theorist", w: 7 },
-        { race: "antihero", w: 2 },
         { race: "bunny girl", w: 2 },
         { race: "chef", w: 2 },
         { race: "clown", w: 2 },
@@ -93007,7 +93004,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "gangster", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
-        { race: "king kong", w: 2 },
         { race: "luchador", w: 2 },
         { race: "marksman", w: 2 },
         { race: "mime", w: 2 },
@@ -93016,8 +93012,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "professor", w: 2 },
         { race: "quarterback", w: 2 },
         { race: "ringmaster", w: 2 },
-        { race: "sidekick", w: 2 },
-        { race: "superhero", w: 2 },
         { race: "swordfighter", w: 2 },
         { race: "zombie", w: 2 },
         { race: "astronaut", w: 1 },
@@ -93037,9 +93031,8 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "priest", w: 1 },
         { race: "time cop", w: 1 },
     ] },
-    "site_prebuilt_downtown_mall": { list: [
+    "site_prebuilt_downtown_mall": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - king kong, superhero, antihero, sidekick
         { race: "conspiracy theorist", w: 7 },
-        { race: "antihero", w: 2 },
         { race: "bunny girl", w: 2 },
         { race: "chef", w: 2 },
         { race: "clown", w: 2 },
@@ -93047,7 +93040,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "gangster", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
-        { race: "king kong", w: 2 },
         { race: "luchador", w: 2 },
         { race: "marksman", w: 2 },
         { race: "mime", w: 2 },
@@ -93056,8 +93048,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "professor", w: 2 },
         { race: "quarterback", w: 2 },
         { race: "ringmaster", w: 2 },
-        { race: "sidekick", w: 2 },
-        { race: "superhero", w: 2 },
         { race: "swordfighter", w: 2 },
         { race: "zombie", w: 2 },
         { race: "astronaut", w: 1 },
@@ -93077,9 +93067,8 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "priest", w: 1 },
         { race: "time cop", w: 1 },
     ] },
-    "site_prebuilt_downtown_closet": { list: [
+    "site_prebuilt_downtown_closet": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - king kong, superhero, antihero, sidekick
         { race: "conspiracy theorist", w: 7 },
-        { race: "antihero", w: 2 },
         { race: "bunny girl", w: 2 },
         { race: "chef", w: 2 },
         { race: "clown", w: 2 },
@@ -93087,7 +93076,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "gangster", w: 2 },
         { race: "honda civic", w: 2 },
         { race: "ki fighter", w: 2 },
-        { race: "king kong", w: 2 },
         { race: "luchador", w: 2 },
         { race: "marksman", w: 2 },
         { race: "mime", w: 2 },
@@ -93096,8 +93084,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "professor", w: 2 },
         { race: "quarterback", w: 2 },
         { race: "ringmaster", w: 2 },
-        { race: "sidekick", w: 2 },
-        { race: "superhero", w: 2 },
         { race: "swordfighter", w: 2 },
         { race: "zombie", w: 2 },
         { race: "astronaut", w: 1 },
@@ -93157,9 +93143,8 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "priest", w: 1 },
         { race: "time cop", w: 1 },
     ] },
-    "site_prebuilt_camelot_ward": { list: [
+    "site_prebuilt_camelot_ward": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - king arthur
         { race: "dragon", w: 10 },
-        { race: "king arthur", w: 10 },
         { race: "knight", w: 10 },
         { race: "robinhood", w: 10 },
         { race: "swordfighter", w: 10 },
@@ -93217,9 +93202,8 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "priest", w: 1 },
         { race: "rabbit", w: 1 },
     ] },
-    "site_prebuilt_camelot_keep": { list: [
+    "site_prebuilt_camelot_keep": { spots: false, list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - king arthur; `spots: false` so King Arthur on his throne (the castle reads this table) still stands where placed
         { race: "dragon", w: 10 },
-        { race: "king arthur", w: 10 },
         { race: "knight", w: 10 },
         { race: "robinhood", w: 10 },
         { race: "swordfighter", w: 10 },
@@ -93277,9 +93261,8 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "priest", w: 1 },
         { race: "rabbit", w: 1 },
     ] },
-    "site_prebuilt_camelot_sky": { list: [
+    "site_prebuilt_camelot_sky": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - king arthur
         { race: "dragon", w: 10 },
-        { race: "king arthur", w: 10 },
         { race: "knight", w: 10 },
         { race: "robinhood", w: 10 },
         { race: "swordfighter", w: 10 },
@@ -93322,30 +93305,26 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "orb of light", w: 1 },
         { race: "reptilian", w: 1 },
     ] },
-    "site_prebuilt_atlantis_deep": { list: [
+    "site_prebuilt_atlantis_deep": { spots: false, list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - kaiju, kraken; `spots: false` so the Trench's kraken and kaiju still stand where placed
         { race: "atlantean", w: 8 },
         { race: "deep sea fish", w: 8 },
-        { race: "kraken", w: 8 },
         { race: "mermaid", w: 8 },
         { race: "sharkman", w: 8 },
         { race: "starfish", w: 8 },
         { race: "jellyfish", w: 2 },
-        { race: "kaiju", w: 2 },
         { race: "loch ness monster", w: 2 },
         { race: "pirate", w: 2 },
         { race: "nordic", w: 1 },
         { race: "orb of light", w: 1 },
         { race: "reptilian", w: 1 },
     ] },
-    "site_prebuilt_atlantis_pocket": { list: [
+    "site_prebuilt_atlantis_pocket": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - kaiju, kraken
         { race: "atlantean", w: 8 },
         { race: "deep sea fish", w: 8 },
-        { race: "kraken", w: 8 },
         { race: "mermaid", w: 8 },
         { race: "sharkman", w: 8 },
         { race: "starfish", w: 8 },
         { race: "jellyfish", w: 2 },
-        { race: "kaiju", w: 2 },
         { race: "loch ness monster", w: 2 },
         { race: "pirate", w: 2 },
         { race: "nordic", w: 1 },
@@ -93367,50 +93346,43 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "orb of light", w: 1 },
         { race: "reptilian", w: 1 },
     ] },
-    "site_prebuilt_bermuda_beach": { list: [
+    "site_prebuilt_bermuda_beach": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "rebuild the Beach table with shore people (lifeguard, florida man)"): was deep sea fish 17, jellyfish 17, sharkman 17, atlantean 4, kaiju 4, kraken 4, loch ness monster 4, mermaid 4, pirate 4, starfish 4, dinosaur 2. NO `spots: false` YET: the Beach's districts are the second side's (claims.md), so its 11 homosapien spots still stand in the baked room and this table re-races them as shore people; once those spots carry their own races, add `spots: false` here
+        { race: "lifeguard", w: 13 },
+        { race: "florida man", w: 10 },
+        { race: "pirate", w: 10 },
+        { race: "hippie", w: 4 },
+        { race: "skater", w: 4 },
+        { race: "mermaid", w: 4 },
+        { race: "sharkman", w: 4 },
+        { race: "starfish", w: 4 },
+        { race: "jellyfish", w: 2 },
+        { race: "siren", w: 2 },
+    ] },
+    "site_prebuilt_bermuda_ow_triangle": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - kaiju, kraken
         { race: "deep sea fish", w: 17 },
         { race: "jellyfish", w: 17 },
         { race: "sharkman", w: 17 },
         { race: "atlantean", w: 4 },
-        { race: "kaiju", w: 4 },
-        { race: "kraken", w: 4 },
         { race: "loch ness monster", w: 4 },
         { race: "mermaid", w: 4 },
         { race: "pirate", w: 4 },
         { race: "starfish", w: 4 },
         { race: "dinosaur", w: 2 },
     ] },
-    "site_prebuilt_bermuda_ow_triangle": { list: [
-        { race: "deep sea fish", w: 17 },
-        { race: "jellyfish", w: 17 },
-        { race: "sharkman", w: 17 },
-        { race: "atlantean", w: 4 },
-        { race: "kaiju", w: 4 },
-        { race: "kraken", w: 4 },
-        { race: "loch ness monster", w: 4 },
-        { race: "mermaid", w: 4 },
-        { race: "pirate", w: 4 },
-        { race: "starfish", w: 4 },
-        { race: "dinosaur", w: 2 },
-    ] },
-    "site_prebuilt_bermuda_ow_cove": { list: [
+    "site_prebuilt_bermuda_ow_cove": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - kraken
         { race: "pirate", w: 17 },
         { race: "sharkman", w: 4 },
         { race: "mermaid", w: 4 },
-        { race: "kraken", w: 2 },
     ] },
-    "site_prebuilt_bermuda_ow_frozen": { list: [
+    "site_prebuilt_bermuda_ow_frozen": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - kraken
         { race: "yeti", w: 17 },
         { race: "deep sea fish", w: 4 },
-        { race: "kraken", w: 2 },
     ] },
-    "site_prebuilt_bermuda_ow_volcano": { list: [
+    "site_prebuilt_bermuda_ow_volcano": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - kaiju, kraken
         { race: "deep sea fish", w: 17 },
         { race: "jellyfish", w: 17 },
         { race: "sharkman", w: 17 },
         { race: "atlantean", w: 4 },
-        { race: "kaiju", w: 4 },
-        { race: "kraken", w: 4 },
         { race: "loch ness monster", w: 4 },
         { race: "mermaid", w: 4 },
         { race: "pirate", w: 4 },
@@ -93430,20 +93402,18 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "starfish", w: 4 },
         { race: "dinosaur", w: 2 },
     ] },
-    "site_prebuilt_bermuda_island": { list: [
+    "site_prebuilt_bermuda_island": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - kaiju, kraken
         { race: "deep sea fish", w: 17 },
         { race: "jellyfish", w: 17 },
         { race: "sharkman", w: 17 },
         { race: "atlantean", w: 4 },
-        { race: "kaiju", w: 4 },
-        { race: "kraken", w: 4 },
         { race: "loch ness monster", w: 4 },
         { race: "mermaid", w: 4 },
         { race: "pirate", w: 4 },
         { race: "starfish", w: 4 },
         { race: "dinosaur", w: 2 },
     ] },
-    "site_prebuilt_giza_plateau": { list: [
+    "site_prebuilt_giza_plateau": { list: [   // 2026-11-18 RACE PLACEMENT (mondo: "Take unique characters off random pools"): - kraken
         { race: "annunaki", w: 13 },
         { race: "anubis", w: 13 },
         { race: "djinn", w: 13 },
@@ -93460,7 +93430,6 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "shaman", w: 2 },
         { race: "deep sea fish", w: 1 },
         { race: "dragon", w: 1 },
-        { race: "kraken", w: 1 },
         { race: "loch ness monster", w: 1 },
         { race: "martian", w: 1 },
         { race: "mech", w: 1 },
@@ -93474,12 +93443,45 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "wizard", w: 10 },
     ] },
 };
-HQ_AREA_ENCOUNTERS.site_prebuilt_area51_desert = HQ_AREA_ENCOUNTERS.site_prebuilt_giza_plateau;
 HQ_AREA_ENCOUNTERS.site_prebuilt_atlantis_ow_floor = HQ_AREA_ENCOUNTERS.site_prebuilt_atlantis_deep;   // THE DEEP, THE ONE WORLD MOVE (2026-11-17): the Sea Floor meets the Deep's own units
-['site_ow_r9', 'site_ow_dh1', 'site_ow_dh2', 'site_ow_dh3', 'site_ow_dh4', 'site_prebuilt_area51_ow_circus', 'site_prebuilt_area51_ow_town', 'site_prebuilt_area51_ow_giza'].forEach(id => { HQ_AREA_ENCOUNTERS[id] = HQ_AREA_ENCOUNTERS.site_prebuilt_giza_plateau; });   // THE ONE WORLD MOVE (2026-11-17): every room the Desert became meets the same units   // THE DESERT ON PLOTS (2026-11-15): the desert meets the plateau's own units
+['site_ow_r9', 'site_ow_dh1', 'site_ow_dh2', 'site_ow_dh3', 'site_ow_dh4', 'site_prebuilt_area51_ow_giza'].forEach(id => { HQ_AREA_ENCOUNTERS[id] = HQ_AREA_ENCOUNTERS.site_prebuilt_giza_plateau; });   // THE ONE WORLD MOVE (2026-11-17): every room the Desert became meets the same units   // THE DESERT ON PLOTS (2026-11-15): the desert meets the plateau's own units
 HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_palace = HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_keep;   // CAMELOT CASTLE, ONE STACKED BUILDING (2026-11-15): the castle meets the old Keep's units
 HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_kingdom = { list: HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_ward.list.concat([{ race: 'fairy', w: 3 }, { race: 'unicorn', w: 3 }, { race: 'gnome', w: 3 }, { race: 'mushroom girl', w: 3 }]) };   // THE FAIRY FOLK (mondo 2026-11-16: "add fairy, unicorn, gnome, and mushroom girl to Camelot"): the ward's units + the four, each at the middle weight   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the kingdom meets the ward's own units too
-['site_prebuilt_camelot_ow_pines', 'site_prebuilt_camelot_ow_garden', 'site_prebuilt_camelot_ow_fairy', 'site_prebuilt_camelot_ow_forest'].forEach(id => { HQ_AREA_ENCOUNTERS[id] = HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_kingdom; });   // THE ONE WORLD MOVE (2026-11-17): the four woods were the kingdom's plots; they meet the kingdom's units as before
+/* THE OWN TABLES (2026-11-18 RACE PLACEMENT, mondo on the race-zone audit: "Give the Circus, Western Town, Area 51 and the four Camelot woods their own tables (or set
+   spots: false). This restores most of the existing cast without touching a single spot"): these seven rooms read the Giza plateau's / the kingdom's
+   table since the one-world move, and hqSpotRaces re-raced every placed person off it (mummies for the clowns, King Arthur in the fairy glade). Each
+   has its own now: its placed cast and the races filed for the place, in his weights (13 / 10 / 4 / 2); `spots: false` = the placed keep their races
+   whatever the list says (the Circus's cyclops has no model and is on no list). A one-of-a-kind stays a spot, not a walker (the ringmaster, the Red Queen). */
+HQ_AREA_ENCOUNTERS.site_prebuilt_area51_ow_circus = { spots: false, list: [
+    { race: 'clown', w: 13 }, { race: 'mime', w: 13 }, { race: 'magician', w: 13 }, { race: 'bunny girl', w: 10 }, { race: 'luchador', w: 10 },
+    { race: 'fortune teller', w: 4 }, { race: 'chef', w: 4 }, { race: 'giant', w: 2 }, { race: 'gnome', w: 2 }, { race: 'catgirl', w: 2 }, { race: 'wizard', w: 2 },
+] };
+HQ_AREA_ENCOUNTERS.site_prebuilt_area51_ow_town = { spots: false, list: [
+    { race: 'cowboy', w: 13 }, { race: 'skeleton', w: 4 }, { race: 'marksman', w: 4 }, { race: 'sheriff', w: 2 }, { race: 'ghost', w: 2 },
+] };
+HQ_AREA_ENCOUNTERS.site_prebuilt_area51_desert = { spots: false, list: [
+    { race: 'grey', w: 13 }, { race: 'marksman', w: 10 }, { race: 'mad scientist', w: 10 }, { race: 'spy', w: 4 }, { race: 'bligblog', w: 4 }, { race: 'general', w: 4 }, { race: 'conspiracy theorist', w: 2 },
+] };   // (no men in black row: they are the base's placed staff, never walkers, as in every site pool)
+HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_ow_pines = { spots: false, list: [   // + "Krampus and yeti out of the Woods and into the Snowy Pass and Snowy Pines"
+    { race: 'yeti', w: 13 }, { race: 'bigfoot', w: 13 }, { race: 'krampus', w: 10 }, { race: 'wendigo', w: 4 }, { race: 'ice queen', w: 2 },
+] };
+HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_ow_garden = { spots: false, list: [
+    { race: 'chess piece', w: 13 }, { race: 'rabbit', w: 13 }, { race: 'fairy', w: 4 }, { race: 'gnome', w: 4 }, { race: 'mushroom girl', w: 4 }, { race: 'catgirl', w: 2 }, { race: 'dreameater', w: 2 },
+] };
+HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_ow_fairy = { spots: false, list: [
+    { race: 'fairy', w: 13 }, { race: 'mushroom girl', w: 13 }, { race: 'gnome', w: 10 }, { race: 'unicorn', w: 4 }, { race: 'tree person', w: 4 }, { race: 'rabbit', w: 2 },
+] };
+HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_ow_forest = { spots: false, list: [
+    { race: 'robinhood', w: 13 }, { race: 'tree person', w: 10 }, { race: 'knight', w: 4 }, { race: 'swordfighter', w: 4 }, { race: 'rabbit', w: 4 }, { race: 'wizard', w: 2 },
+] };
+/* THE INTERNET'S TABLE (2026-11-18 RACE PLACEMENT, mondo: "give the Internet a table with virus, streamer and vtuber in their named districts"): the room drew NO
+   walkers (its site prebuilt_internet is no EW_MAP_META map and 'The Internet' no site label, so hqSiteResidents had nobody to give). A table is its
+   people whatever the site: the three filed here and the machines and posters already placed on its tiles. `spots: false`: its 89 placed people keep
+   their races. The vtuber has no 3D model (hqRoomEncTable would drop the row): she is a placed spot only until it ships. */
+HQ_AREA_ENCOUNTERS.site_prebuilt_internet_web = { spots: false, list: [
+    { race: 'virus', w: 13 }, { race: 'streamer', w: 13 }, { race: 'glitch', w: 10 }, { race: 'ai', w: 10 }, { race: 'robot', w: 10 },
+    { race: 'influencer', w: 4 }, { race: 'conspiracy theorist', w: 4 }, { race: 'delivery boy', w: 4 }, { race: 'cyborg', w: 2 }, { race: 'mech', w: 2 }, { race: 'tech ceo', w: 2 },
+] };
 function hqRoomEncTable(roomId, skip) {
     if (skip) return null;   // the game's own people (THE AREA UNITS window's "game default" read)
     const room = (DOOR_HQ.rooms || {})[roomId];

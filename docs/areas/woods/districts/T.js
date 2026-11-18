@@ -4,9 +4,9 @@
 
    THE LOOK: ancient and overgrown, "you are being watched". Giant redwoods, mushrooms, boulders, ferns, logs; pale green spores, snow on the Snowline.
    THE PLOTS AND WHAT STANDS THERE TODAY
-     P00-00 The Snowline (L8)          three pines, two dead snags, a stone, two skull piles, a bird cage, skulls; native: yeti.
+     P00-00 The Snowline (L8)          three pines, two dead snags, a stone, two skull piles, a bird cage, skulls; no native since 2026-11-18 (the yeti went to the Snowy Pass + Pines, RACE PLACEMENT).
                                        The shasta door (Mount Shasta's Trailhead) is north. Ice sheet on the ground (the game has no snow sheet).
-     P01-00 The Shelf (L7)             three cave stones, a sea chest, a signpost, five crosses; natives: krampus, skinwalker.
+     P01-00 The Shelf (L7)             three cave stones, a sea chest, a signpost, five crosses; native: skinwalker (the krampus left 2026-11-18, RACE PLACEMENT).
                                        The lemuria door (Agartha's Crystal City) is north.
      P02-00 The Falls (L6)             two cave stones, a lantern, frogs, an eagle. The Falls' pool is the tool's water.
      P00-01 The Old Trees, north (L5)  LANDMARK: the giant redwood (16 m) and a second (11 m), a log, five hung voodoo dolls, a ward totem; native: bigfoot.
@@ -91,7 +91,7 @@ module.exports = {
         put('P01-00', 'cave_stone', 0, 0); put('P01-00', 'cave_stone', 2, 1); put('P01-00', 'cave_stone', -2, 1); dec('P01-00', 'sea_chest', 1, -1); put('P01-00', 'signpost', 0, 3);
         tree('P00-00', 'pine', 6.5, 0, 0); tree('P00-00', 'pine', 6.0, 3, 2); tree('P00-00', 'pine', 5.5, -3, 2); put('P00-00', 'dead_snag', 2, -3); put('P00-00', 'dead_snag', -2, -2); put('P00-00', 'cave_stone', 0, 3);
         put('P02-00', 'cave_stone', 0, 0); put('P02-00', 'cave_stone', 1, 1); dec('P01-02', 'hw_candles', 0, 0); put('P02-01', 'cave_torch', 0, 0); put('P02-02', 'cave_torch', 0, 0);
-        native('P01-01', 'shaman', -2, 2, 0); native('P00-01', 'bigfoot', -2, -1, 120); native('P01-01', 'ki fighter', 3, 2, 300); native('P00-00', 'yeti', -1, 1, 150); native('P01-00', 'krampus', -1, 2, 180);
+        native('P01-01', 'shaman', -2, 2, 0); native('P00-01', 'bigfoot', -2, -1, 120); native('P01-01', 'ki fighter', 3, 2, 300);   // 2026-11-18 RACE PLACEMENT (mondo: "Krampus and yeti out of the Woods and into the Snowy Pass and Snowy Pines"): the Snowline's yeti and the Shelf's krampus are gone (the Pass's Sleigh Bend has the krampus, the Pines' table both)
     },
     /* THE HORROR PASS (mondo 11-15): it gets worse the farther you walk from the Stair */
     horror(ctx) {

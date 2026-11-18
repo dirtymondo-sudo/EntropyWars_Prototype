@@ -517,3 +517,36 @@ Story fights only (an encounter run with a field; quest and scene-only fights ge
 - **Known:** the Honda Civic is a resident race, so a car can watch a fight. Guards / Brutes / Territorials stand closer with the red `!`
   but do not join until step 8 (needs step S).
 
+
+## THE RACE PLACEMENT PASS (11-18) (owner side; mondo's OK in chat on the race-zone audit, docs PR #2124 `https://github.com/dirtymondo-sudo/EntropyWars_Prototype/pull/2124`)
+Who stands and walks where, outside the city's residents. Data plus two small logic lines; no resident row, no `HQ_SPAWN_RULES`, no
+residents code touched (that is the second side's "Disaster City NPCs" row). Every data.js edit carries a `2026-11-18 RACE PLACEMENT` comment.
+- **Own tables** (`HQ_AREA_ENCOUNTERS`, after the alias lines): the Circus, Western Town, Area 51 (no longer Giza's plateau table) and the four
+  Camelot woods, the Snowy Pines, the Looking-Glass Garden, the Fairy Forest, the Forest (no longer the kingdom's). Each is its own placed cast
+  plus races filed for the place, weights 13 / 10 / 4 / 2, and `spots: false`, so 28 placed people stand as themselves again (mummies no longer
+  re-race the clowns). Giza and the five highway rooms still read the plateau table.
+- **The Internet** draws walkers now (it drew none: its site is no `EW_MAP_META` map): `HQ_AREA_ENCOUNTERS.site_prebuilt_internet_web`,
+  `spots: false`, virus 13, streamer 13, glitch / ai / robot 10, ... Placed: virus in The Quarantine (C.js), streamer in The Ring Light, vtuber
+  on The Hologram Stage (V.js; no 3D model yet, she stands when it ships). The bake puts people only on non-walk squares, so each stands one
+  square off the audit's spot (the audit's three squares were on the walk).
+- **The Sewers' list** `HQ_POPULATION_RULES.underworld` + sewer gator, karate frog, samurai slug, mole man (13 -> 17).
+- **NEW `HQ_POPULATION_RULES.fixedOnly`** (king arthur, pope, king kong, superhero, antihero, sidekick, kaiju, kraken): `hqSiteResidents`
+  skips them, and so does the city room's "ordinary people" tier in `hqRoomPopulation`; their rows are cut from the 17 live tables that had
+  them (the six city rooms, Camelot ward / keep / sky, Atlantis deep / pocket, five Bermuda tables, Giza). `spots: false` on the Tower Lobby,
+  the Platform, the Camelot keep and the Deep so their placed unique still stands. Empty the list = the old rule. Not read by `hqMissionPool`.
+- **NEW per-room `crowdMin`** (`hqRoomCrowdCap`: a floor under a small room's budget, never over its clamp). Only the Nursery sets it (2): the
+  nurse and the new haunted doll both stand. Every other room's cap is unchanged.
+- **Moves:** krampus filed 'North Pole', tags `['polar']` (was 'Fairy Forest' + forest); the Redwood Trail's yeti and krampus removed (T.js);
+  the Snowy Pass's Sleigh Bend yeti is the krampus (P.js); the Pines' table has yeti + krampus. Quetzalcoatl, a shaman and an atlantean stand
+  in Technoticlan (Z.js). Robot, mech, cyborg refiled 'Cyberpunk City', super sentai 'Downtown' (Technoticlan is the ancient city: no tech
+  races there). Haunted doll in the Nursery, cursed tv in the Attic (both handmade rooms). The Sludge Pit's kaiju is a sewer gator (R.js).
+  Machine elves untouched (the Astral, mondo's correction).
+- **The Beach table** is shore people (lifeguard 13, florida man 10, pirate 10, ...), but WITHOUT `spots: false` for now: the Beach's
+  districts are the second side's, so its 11 homosapien spots still stand and the table re-races them as shore people. Waiting on the second
+  side (notes in claims.md): the Beach spots + the kaiju at The Harbour Mouth, the city beach strip's 4 homosapien spots (W.js), the
+  Antarctica kaiju's `stay: true` (The Floes). The kaiju is off every walker pool already (`fixedOnly`).
+- **Open, decided for mondo (one line each to reverse):** the Trench's third kaiju kept (one row in the Deep's T.js); the Sludge Pit kaiju
+  is a sewer gator (his 11-16 word was "kaiju can live there": put `'kaiju'` back in R.js); `fixedOnly` and `crowdMin` (empty the list /
+  drop the field).
+- Rebake check: `bake-mountains/woods/leylines/sewers/internet.js` each reproduced main exactly before the edit and reproduce this PR's rows
+  after it. One side effect of the Woods rebake: a backpack (a find) on the Shelf moved 3.5 m onto the krampus's old square.

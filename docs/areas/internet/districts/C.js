@@ -63,5 +63,6 @@ exports.dress = c => {
 exports.people = c => {
     c.native('tech ceo', 'P05-05', 4, 4, 90); c.native('magician', 'P05-05', 7, 7, 270); c.native('televangelist', 'P06-05', 4, 4, 180); c.native('robot', 'P05-06', 8, 7, 270); c.native('police officer', 'P05-06', 4, 8, 0);
     c.native('banker', 'P07-05', 7, 4, 180); c.native('delivery boy', 'P07-05', 4, 7, 90); c.native('politician', 'P07-06', 8, 7, 180); c.native('clown', 'P05-07', 4, 7, 90); c.native('florida man', 'P05-07', 7, 4, 180);
-    c.native('glitch', 'P06-07', 6, 4, 180); c.native('symbiote', 'P06-07', 4, 6, 90); c.native('mad scientist', 'P06-07', 7, 7, 0); c.native('fortune teller', 'P06-06', 4, 7, 0); c.native('professor', 'P06-06', 8, 8, 0);
+    c.native('glitch', 'P06-07', 6, 4, 180); c.native('symbiote', 'P06-07', 4, 6, 90); c.native('mad scientist', 'P06-07', 7, 7, 0); c.native('virus', 'P06-07', 5, 3, 0);   /* 2026-11-18 RACE PLACEMENT (mondo: "virus, streamer and vtuber in their named districts"): the virus on the open deck between the cages */
+    c.native('fortune teller', 'P06-06', 4, 7, 0); c.native('professor', 'P06-06', 8, 8, 0);
 };
