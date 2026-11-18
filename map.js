@@ -5933,6 +5933,7 @@
         }
         /* THE TALK BOX of the ladder: opened by the strike that reached the Talk rung (`struck`: the approved line), or by E (the NPC's ordinary line) */
         function _hqLadderTalk(target, struck) {
+            try { ThreeRenderer.hq.npcFace(target.id); } catch (e) {}   // it stops running and turns to face you (mondo 11-18)
             _hqOpenPanel({ kind: 'npc', id: target.id, race: target.race, gender: target.gender, label: target.label || String(target.race || '').toUpperCase(), sub: target.sub || '', line: target.line || null, _struck: !!struck });
         }
         function _hqLadderFight() {
