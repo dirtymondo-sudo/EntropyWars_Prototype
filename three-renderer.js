@@ -92755,7 +92755,17 @@ const ThreeRenderer = (function () {
         if (H.stage && H.stage.parts) for (var pid in H.stage.parts) { var PE = H.stage.parts[pid]; if (PE && PE.attached && PE.P) gs.push(PE.P.propGroup, PE.P.shellGroup, PE.P.doorGroup); }
         gs.forEach(function (G) {
             if (!G || !G.parent) return;
-            G.traverseVisible(function (o) { var k = _hqInstKey(o); if (!k) return; n++; (byKey[k] || (byKey[k] = [])).push(o); });
+            /* THE CULLED CHUNKS COUNT (2026-11-18, mondo's slow frames: "tick: instance pass 42 / 50 / 43 ms"): a prop chunk the camera
+               culls reads hidden (`_ew_ckOut`), so the visible-only walk counted a different number each time a chunk went out or came
+               back, and every rescan "found" a change and ran the whole pass again (a forced matrix walk of the scene, a new scan)
+               for nothing. A culled chunk is walked as if shown: the count changes only when a file lands or a copy is handed back.
+               Off: window.EW_HQ_INST_SCAN_VISIBLE (the old visible-only walk). */
+            if (typeof window !== 'undefined' && window.EW_HQ_INST_SCAN_VISIBLE) { G.traverseVisible(function (o) { var k = _hqInstKey(o); if (!k) return; n++; (byKey[k] || (byKey[k] = [])).push(o); }); return; }
+            (function walk(o) {
+                if (o.visible === false && o._ew_ckOut !== true) return;
+                var k = _hqInstKey(o); if (k) { n++; (byKey[k] || (byKey[k] = [])).push(o); }
+                var ch = o.children; for (var i = 0; i < ch.length; i++) walk(ch[i]);
+            })(G);
         });
         return { byKey: byKey, n: n };
     }
