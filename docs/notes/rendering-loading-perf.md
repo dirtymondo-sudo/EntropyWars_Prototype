@@ -2960,6 +2960,11 @@ His 07:34 F3 "Slow frames": "scene: bundle replays 82 / 36 / 26 ms", "bundle che
 6 ms+ or re-recorded 300+ meshes, with groups walked, groups re-recorded (+ meshes), the causes (tree / values / lamps / frees /
 lod / cold / rests), LAMPS MOVED, and the three biggest re-recorded groups. Lens open only.
 
+## THE ONE WORN WALK (2026-11-18, spikes thread)
+His 07:44 F3 "Slow frames": "tick: memory budget 44 ms" = "memory: worn list 21" (`_mmLive`: the whole scene walked, 18,000 geometry
+uuid strings written into an object) + "memory: unit models list 21" (`_mmListRigs` -> `_mmWorn`: the whole scene walked AGAIN for the
+materials). Now `_mmLive` returns a Set of geometries and, from the same walk, `live.worn` (a Set of materials + colour sheets) that
+`_mmListRigs` reads; `_mmWorn` stays as the fallback. Same answers.
 ## THE CULLED CHUNKS COUNT (2026-11-18, Disaster City 60 FPS thread)
 His 07:44 F3 "Slow frames": "tick: instance pass 42 / 50 / 43 ms" (three of six). `_hqInstTick` rescans every rescanMs and runs the whole
 `_hqInstAdd` (a forced `scene.updateMatrixWorld(true)` of ~45,000 objects, a second scan, the build) when the scan's count differs
