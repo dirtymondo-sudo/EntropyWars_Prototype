@@ -47210,6 +47210,116 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         nrStaticBurst: _tvxStatic3D, nrEmergencyBroadcast: _tvxBroadcast3D, nrFastForward: _tvxFF3D, nrRewind: _tvxRewind3D,
     });
 
+    /* ══ THE VIRUS (2026-11-18, mondo approved the kit) ══ A living computer virus: payloads that copy themselves from body to body.
+       The virus's own colour is toxic green; the side reads on the rings and threads (THE RIOT PASS: own side cyan-blue, the other
+       side pink-orange). Nothing sits on the caster, the target, the hit or the number. Kill-switch window.EW_NO_VIRUS_VFX.
+         WORM (impact + geometry): a wriggling green thread of code from the virus to the victim, a side ring and green bits on the hit.
+         SELF-REPLICATE (aura on the new Replica's tile): a green pop and a ring of pixels.
+         RANSOMWARE (geometry): the ransom note (a red window, a padlock, YOUR FILES ARE ENCRYPTED) pops up BESIDE the victim
+           and flickers; a side ring closes in.
+         ZERO DAY (aura + geometry on the virus): three side rings out to 5; every carrier's own payload burst does the rest.
+         PAYLOAD COPY ('nrPayload:copy', battle.js _payloadSpread at the round end): a short green thread from the carrier to the
+           teammate it copied to, a small ring under the new one.
+         PAYLOAD BURST ('nrPayload:burst', _payloadBurst / the Replica going down): a green flash, a side ring, green bits up. */
+    var _VRX_G = 0x5ad06a, _VRX_GLOW = 0x9dff7a;
+    function _vrxOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_VIRUS_VFX); }
+    function _vrxRansomTex() {
+        return _sigTex('vrx-ransom', 128, function (g, S) {
+            g.fillStyle = '#7a0000'; g.fillRect(0, 0, S, S);
+            g.fillStyle = '#c00000'; g.fillRect(0, 0, S, 18);
+            g.fillStyle = '#ffffff'; g.font = 'bold 11px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText('RANSOM.EXE', 5, 9);
+            g.fillStyle = '#ff4040'; g.fillRect(S - 16, 3, 12, 12); g.fillStyle = '#fff'; g.fillText('x', S - 13, 9);
+            /* the padlock */
+            g.strokeStyle = '#ffd040'; g.lineWidth = 5; g.beginPath(); g.arc(S / 2, 48, 13, Math.PI, 0); g.stroke();
+            g.fillStyle = '#ffd040'; g.fillRect(S / 2 - 19, 47, 38, 28); g.fillStyle = '#7a0000'; g.fillRect(S / 2 - 3, 55, 6, 12);
+            g.fillStyle = '#ffffff'; g.font = 'bold 12px monospace'; g.textAlign = 'center';
+            g.fillText('YOUR FILES ARE', S / 2, 92); g.fillText('ENCRYPTED', S / 2, 108);
+            g.fillStyle = 'rgba(0,0,0,0.2)'; for (var y = 20; y < S; y += 4) g.fillRect(0, y, S, 1);
+        });
+    }
+    EFFECTS['nrWorm_impact'] = { layers: [
+        { sprite: 'flash', ml: 170, z: 55, size0: 10, size1: 46, tint: _VRX_GLOW, opacity0: 0.6, delayMs: 260 },
+        { count: 10, sprite: 'spark', ml: [280, 460], offsetXY: 8, z: [40, 75], tint: _VRX_G, vxRange: 110, vyRange: 110, vzRange: [20, 70], drag: 1, size0: [3, 5], size1: 1, opacity0: 0.9, delayMs: 260 },
+    ] };
+    function _vrxWorm3D(tx, ty, r, o) {
+        if (_vrxOff() || _afFogHides(tx, ty)) return;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        var h = _lgBodyH(_lgUidAt(tx, ty), ts) * 0.55;
+        var th = from.fogged ? null : _hdThread(F, from.x, from.y, h, _VRX_G, 560, ts * 0.07, 240);
+        if (th) _sigRunOwned(F.g, 580, function (el) {
+            th.run(el);
+            th.hold.position.x += Math.sin(el / 30) * ts * 0.004;   // it wriggles
+            th.strip.material.opacity *= ((Math.floor(el / 50) % 3) === 1) ? 0.6 : 1;
+        });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.15, r1: ts * 0.6, ms: 420, color: C.a, height: ts * 0.05 }); } catch (e) {} }, 270);
+    }
+    EFFECTS['nrSelfReplicate_aura'] = { layers: [
+        { sprite: 'flash', ml: 220, z: 40, size0: 14, size1: 60, tint: _VRX_GLOW, opacity0: 0.55 },
+        { count: 14, sprite: 'spark', ml: [360, 600], offsetXY: 10, z: [20, 60], tint: _VRX_G, vxRange: 160, vyRange: 160, vzRange: [10, 50], drag: 1.1, size0: [3, 5], size1: 1, opacity0: 0.9 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 520, z: 3, tint: _VRX_G, size0: 16, size1: 64, opacity0: 0.35 },
+    ] };
+    function _vrxRansom3D(tx, ty, r, o) {
+        if (_vrxOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var ts = _worldPos(tx, ty).ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        _tvxPanel(tx, ty, _vrxRansomTex(), { w: 0.85, ms: 1700, flicker: true });
+        for (var i = 0; i < 2; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.9, r1: ts * 0.25, ms: 380, color: j ? C.b : C.a, height: ts * 0.05 }); } catch (e) {} }, 120 + j * 160);
+        })(i);
+        return true;
+    }
+    EFFECTS['nrRansomware_impact'] = { layers: [
+        { sprite: 'flash', ml: 180, z: 55, size0: 12, size1: 50, tint: 0xff3030, opacity0: 0.5, delayMs: 120 },
+    ] };
+    EFFECTS['nrZeroDay_aura'] = { layers: [
+        { sprite: 'flash', ml: 260, z: 60, size0: 16, size1: 80, tint: _VRX_GLOW, opacity0: 0.45 },
+    ] };
+    function _vrxZeroDay3D(tx, ty, r, o) {
+        if (_vrxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, cu = _fx5UnitAt(tx, ty), C = _hdSide(cu || { player: (o && o.owner) != null ? o.owner : _cbOwnerNear(tx, ty) });
+        var reach = (r > 0 ? r : 5) + 0.5;
+        for (var i = 0; i < 3; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * reach, ms: 700, color: j === 1 ? _VRX_G : (j ? C.b : C.a), height: ts * (0.05 + 0.08 * j), opacity: 0.3, torus: j > 0 }); } catch (e) {} }, 150 + j * 150);
+        })(i);
+        return true;
+    }
+    function _vrxCopy3D(tx, ty, r, o) {
+        if (_vrxOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, h = _lgBodyH(_lgUidAt(tx, ty), ts) * 0.5;
+        if (o.fromX != null && !_afFogHides(o.fromX, o.fromY)) {
+            var th = _hdThread(F, o.fromX, o.fromY, h, _VRX_G, 600, ts * 0.05, 260);
+            _sigRunOwned(F.g, 620, function (el) { th.run(el); });
+        }
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.1, r1: ts * 0.45, ms: 380, color: _VRX_G, height: ts * 0.04 }); } catch (e) {} }, 260);
+        return true;
+    }
+    EFFECTS['nrPayload_burst'] = { layers: [
+        { sprite: 'flash', ml: 200, z: 50, size0: 14, size1: 64, tint: _VRX_GLOW, opacity0: 0.65 },
+        { count: 16, sprite: 'spark', ml: [380, 640], offsetXY: 10, z: [30, 70], tint: _VRX_G, vxRange: 150, vyRange: 150, vzRange: [40, 120], gravity: 160, size0: [3, 6], size1: 1, opacity0: 0.95 },
+    ] };
+    function _vrxBurst3D(tx, ty, r, o) {
+        if (_vrxOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var ts = _worldPos(tx, ty).ts, C = _hdSide({ player: o.owner });
+        try { fire('impact', 'nrPayload:burst', { tx: tx, ty: ty }); } catch (e) {}
+        _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 0.85, ms: 460, color: C.a, height: ts * 0.05 });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.15, r1: ts * 0.7, ms: 420, color: _VRX_G, height: ts * 0.5, torus: true, opacity: 0.4 }); } catch (e) {} }, 80);
+        return true;
+    }
+    Object.assign(SPELL_MAP, {
+        nrWorm:          { impact: 'nrWorm_impact' },
+        nrSelfReplicate: { aura: 'nrSelfReplicate_aura' },
+        nrRansomware:    { impact: 'nrRansomware_impact' },
+        nrZeroDay:       { aura: 'nrZeroDay_aura' },
+        'nrPayload:burst': { impact: 'nrPayload_burst' },
+    });
+    Object.assign(_spell3DGeometry, {
+        nrWorm: _vrxWorm3D, nrRansomware: _vrxRansom3D, nrZeroDay: _vrxZeroDay3D,
+        'nrPayload:copy': _vrxCopy3D, 'nrPayload:burst': _vrxBurst3D,
+    });
+
     /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build
        his spells around the space props in the game". His three new Assets/misc files (the satellite, the space shuttle, the
        space station) and two already in the game (the torn hull plate with its wiring hanging out = the spaceship debris; the

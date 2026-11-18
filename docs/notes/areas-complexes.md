@@ -11997,6 +11997,29 @@ landmarks; for the interior pass a few INSIDES OF THINGS; the four first distric
 - **NOT YET**: the Forums and the Dark Web redone in the new style; the screens scroll; the glyphs drift (arch rows cannot move); sound; DOOR HQ's
   monitor way in; a map picture for the room (`node bake-map.js` + `--put`).
 
+### THE INTERNET, THE REAL MODELS (2026-11-18, mondo's Internet models thread)
+mondo on the zone's box-built props: "check to see if we have any of these models ... if not get some meshy concept images for me to approve".
+None were in MODEL_LIST / R2 / the packs (near misses in project files `internet-models/STATUS.md`). What he chose and what stands now:
+- **15 Meshy models** (concept -> image-to-3D meshy-t2.5, scaled, base y 0, centred, metallic 0, `.opt.glb` beside each; R2
+  `Assets/world/props/meshy/internet/`; data.js THE INTERNET MODELS, group `Meshy props · the Internet`): `vr_headset`, `dialup_modem`,
+  `wifi_router`, `cpu_fan`, `ram_stick`, `capacitor`, `coin_battery`, `toggle_switch`, `cyber_dish`, `ring_light`, `gaming_chair`,
+  `stream_mic`, `holo_projector`, `shopping_cart`, `magnifier`. The computer parts carry a game size (they only appear giant); the rest
+  are real size (the cart + the glass are for Disaster City too: "those could be reused elsewhere"). mondo's redos: the mic without its desk.
+- **9 extruded icons** (mondo: "these are normally 2d icons ... just extrude their flat icons a little bit"): the flat icon traced
+  (cv2 contours) and extruded (trimesh), face in the icon colour, sides darker, 2 m high facing +z; R2 `Assets/world/props/internet_icons/`,
+  keys `icon_envelope|speech_bubble|folder|heart|like|pointer|document|picture|bell`. Sources: his SunGraphica 600 pack (R2 dirtymondo
+  `inbox/Minimal icons(1).zip`) for the first five, Phosphor Icons (MIT) for the other four (the pack has none). Credits in EW_CREDITS ICONS.
+  The script: project files `internet-models/` (extrude.py beside the icons). Pass `h` for the size.
+- **The cookie** = the Christmas pack's round cookie, new row `xmas_cookie_round` (mondo: "we already have cookies from the christmas pack").
+- **Where they stand** (`c.at(key, plot, lx, ly, { h | span, y, face })`, a prop row's own `h`/`span` overrides the catalogue size):
+  H the modem (Dial-Up), the router (Bandwidth, hung off the river), the desktop's folder / document / picture + the pointer 13 m up;
+  K the eight switches, the processor, the four RAM sticks, the capacitor wood, the coin cell on edge; C the cart, the glass at the
+  search bar's end, the cookie; V the holo projector + the hearts, the ring light (17 m), a VR headset outside the Headset, gaming chairs +
+  a mic; F the streamer's set on the Influencer Stage, the bell + the like over Going Viral, speech bubbles over the comment pit; M the
+  envelope over the Inbox hill and the Outbox; S the cyber dishes on the Uplink. Words, signs, beams and the old pieces nobody named stay drawn.
+- **Units** (v-tuber, e-girl + streamer as one unit's F/M, the virus with its own moving parts like the Seraphim or the Cursed TV): a
+  separate thread; concepts in project files `internet-models/concepts/`.
+
 ## THE INTERNET ON PLOTS, THE FIRST BUILD (replaced by PLAN 3 above) (2026-11-17, One World phase 4.4, BUILD_PLAN row 4.4: "the Internet (36)"; the owner's 4.4 thread)
 mondo OK'd the four districts 11-17 ("that is okay" to: the Feed, a long boulevard of giant scrolling screens; the Forums, plazas of message
 boards; the Server Farm, aisles of racks and cables; the Dark Web, a lower, darker level underneath; reached from the D.U.M.B.'s server rooms).

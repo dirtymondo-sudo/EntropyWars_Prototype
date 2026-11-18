@@ -5973,3 +5973,23 @@ Probe /mnt/project-files/ninja-race/probe_ninja.js (NINJA_CPU=1 = a CPU ninja pl
 - VFX = three-vfx-effects.js "THE CURSED TV" (after THE HAUNTED DOLL; kill-switch `window.EW_NO_TV_VFX`): channel cards stand BESIDE
   the unit, screen right at chest height (over the head they sat under the DOM nameplate and could not be seen) (bars + EMERGENCY BROADCAST, the blue VCR screen with FF / REWIND), static on the victim, side rings (own cyan-blue /
   enemy pink-orange), Broadcast's three rings in the bar colours. All through `_spell3DGeometry` + SPELL_MAP (relayed like every cast).
+## THE VIRUS (2026-11-18, thread "Design the Internet zone units"; mondo: "i like the virus concept but I would want to give it unique animations and individual moving parts similar to the seraphim or cursed TV"; he OK'd the plan 11-18 and said Payload "sounds similar to hexed", so the Payload never reads the carrier's actions)
+- Race `'virus'` (label Virus, types anomaly + tech), specialist, family `malware` (+ computerhacking, glitch, internetaddiction),
+  poison + lightning resist, water weak, a SKY_RACE (map.js + ui.js codex list), RACE_KITS reach 2 (`basicAttackKind: 'magic'`,
+  a lash of code), stats first pass HP 780, MP 220, INT 180, M.DEF 160, SPD 90. Finisher "Format C:" borrows the corruptedSave
+  staging. Price 450, POINT_OF_ENTRY The Internet, biomes neon_city + astral.
+- **THE PAYLOAD** (battle.js "THE PAYLOAD", STATUS_DEFS.payload, both sides see it): does nothing on its own. `_nrRoundEnd` ->
+  `_payloadSpread`: every carrier copies it to each teammate next to it (Chebyshev 1) that has none, 2 rounds. When one runs out
+  (`_tickAllStatusDurations`) it goes off: `_payloadBurst`, PAYLOAD_BURST_DAMAGE 70, DEF ignored, the Virus credited
+  (`unit._payloadSrcId`, an id). Plain status + id on the unit: state-syncs; the copy/burst VFX go through `_sigVfxGeom`
+  (fireGeometry, relayed).
+- Worm (T1, range 3, 70 poison magic + Payload 3). Self-Replicate (T2, summonUnit `replica`: move 3, bite 40 + Payload, 2 hits,
+  `summonDef.burstStatus` = when it goes down every enemy next to it gets a Payload (`_summonBurst` in damageTurretAt), CD 3).
+  Ransomware (T3, range 3, Silence 1 + Jammed 2; `mpDrainVsStatus { status: 'payload', mp: 40 }`, CD 2). Zero Day (T4, barrage,
+  self nova radius 5, through cover, `hitsStatusOnly: 'payload'` = only carriers (every hitsWetOnly check reads it too:
+  _barrageTargets, the aim tiles, the menus, hud.js, ai.js), 110 + spell power, then that carrier's Payload goes off; refused
+  `🦠 No Payload out` with none on the board, CD 3).
+- THE CPU (ai.js): a fresh Payload = +40 and +35 per teammate next to the target; Zero Day values each carrier's burst.
+- VFX = three-vfx-effects.js "THE VIRUS" (kill-switch `window.EW_NO_VIRUS_VFX`): Worm's wriggling code thread, the Replica's green
+  pop, the RANSOM.EXE window beside the victim (reuses the TV's `_tvxPanel`), Zero Day's rings, 'nrPayload:copy' / 'nrPayload:burst'.
+- Not done yet: Virus natives in The Internet's district C (`docs/areas/internet/districts/C.js` c.native), the balance loop.

@@ -9048,6 +9048,7 @@
                     const d = (adx <= 1 && ady <= 1) ? Math.max(adx, ady) : (adx + ady);
                     if (d > r) continue;
                     if (spell.hitsWetOnly && !_isWetTile(x, y)) continue;
+                    if (spell.hitsStatusOnly) { const _hu = unitAt(x, y); if (!_hu || !_barrageStatusOk(spell, _hu)) continue; }   // 🦠 Zero Day
                     out.push({ x, y });
                 }
                 return out;
@@ -9141,7 +9142,7 @@
                 } else if (kind === 'leapStrike' || kind === 'teleport') {
                     tiles = spellStrikeTiles(unit, spell, tx, ty) || [{ x: tx, y: ty }];
                 } else if (kind === 'barrage') {
-                    if (spell.aoeOriginSelf && !spell.hitsWetOnly) {
+                    if (spell.aoeOriginSelf && !spell.hitsWetOnly && !spell.hitsStatusOnly) {
                         tiles = spellStrikeTiles(unit, spell, tx, ty);   // the nova's true reach (combatDist), not a square
                     } else if (typeof _barrageTargets === 'function') {
                         tiles = _barrageTargets(unit, spell).map(e => ({ x: e.x, y: e.y }));
@@ -10969,6 +10970,7 @@
             // its curse-layer (kill credit on hex procs).
             if (payload.id === 'taunt' && sourceUnit) { target._tauntCasterId = sourceUnit.id; delete target._tauntObjKey; }   // Batch D: a unit's taunt replaces a decoy's
             if (payload.id === 'hexed' && sourceUnit) target._hexCasterId = sourceUnit.id;
+            if (payload.id === 'payload' && sourceUnit) target._payloadSrcId = sourceUnit.id;   // 🦠 THE PAYLOAD: the Virus is credited when it goes off
             // DOT appliers get credit for their ticks: poison/burn end-of-round
             // damage resolves source-less (STATUS_DEFS onRoundEnd), so the
             // applier is remembered here and credited at tick time.
@@ -13809,6 +13811,7 @@
                 for (const e of tick.next) u.status[e.key] = e.value;
                 for (const key of tick.expired) {
                     const def = STATUS_DEFS[key];
+                    if (key === 'payload') { _payloadBurst(u, null, 'runs out and goes off'); continue; }   // 🦠 THE PAYLOAD
                     clearStatus(u, key);
                     addLog(`${def.icon || '✓'} ${_ctName(u)}'s ${def.label || key} wore off.`);
                 }
@@ -14776,6 +14779,7 @@
         /* the round end (processEndOfRoundStatuses, before the status ticks) */
         function _nrRoundEnd() {
             if (!Array.isArray(state.units)) return;
+            _payloadSpread();   // 🦠 THE PAYLOAD (the Virus): every carrier copies it to the teammates next to it
             for (const u of state.units.slice()) {
                 if (!u || !u.race) continue;
                 if (u.race === 'wendigo') _wendigoHunger(u);
@@ -14796,6 +14800,68 @@
             return Math.max(0, Math.min(Math.round(target._tapeLast || 0), Math.round((target.maxHp || 0) * spell.rewindTape)));
         }
         window._tvTapeAmount = _tvTapeAmount;
+        /* ═══ THE PAYLOAD (2026-11-18, the Virus; mondo OK'd the kit) ═══ A Payload does nothing on its own. At each round end
+           every carrier copies it to each teammate standing next to it (Chebyshev 1) that has none (2 rounds, the carrier's
+           Virus credited); when one runs out (_tickAllStatusDurations) it goes off for PAYLOAD_BURST_DAMAGE, DEF ignored.
+           Zero Day (`hitsStatusOnly: 'payload'`) hits every carrier within 5 and sets its Payload off at once; the Replica
+           (`summonDef.burstStatus`) plants one on every enemy next to it when it goes down. mondo said it read like Hexed
+           (acting costs HP), so it never reads a carrier's actions. Host-side; the status and `_payloadSrcId` (an id, RULE #2)
+           ride the snapshot, so the online guest sees the chips with nothing to relay. Notes: champions-combat.md "THE VIRUS". */
+        const PAYLOAD_BURST_DAMAGE = 70;
+        function _payloadSrc(u) {
+            return (u && u._payloadSrcId && state.units.find(x => x.id === u._payloadSrcId && !x.dead)) || null;
+        }
+        function _payloadSpread() {
+            const carriers = state.units.filter(u => u && !u.dead && !u._dying && unitHasStatus(u, 'payload'));
+            for (const c of carriers) {
+                const src = _payloadSrc(c);
+                const got = [];
+                for (const m of state.units) {
+                    if (!m || m === c || m.dead || m._dying || m._sealed || m.player !== c.player) continue;
+                    if (Math.max(Math.abs(m.x - c.x), Math.abs(m.y - c.y)) > 1) continue;
+                    if (unitHasStatus(m, 'payload')) continue;
+                    applyStatusPayload(m, { id: 'payload', duration: 2 }, '🦠 The payload copies itself: ', src);
+                    if (unitHasStatus(m, 'payload')) { if (!src && c._payloadSrcId) m._payloadSrcId = c._payloadSrcId; got.push(m); }
+                }
+                if (got.length) {
+                    addLog(`🦠 The payload on ${_ctName(c)} copies itself to ${got.map(_ctName).join(', ')}.`);
+                    for (const m of got) _sigVfxGeom('nrPayload:copy', m.x, m.y, 0, { owner: src ? src.player : null, fromX: c.x, fromY: c.y });
+                }
+            }
+        }
+        function _payloadBurst(u, srcUnit, why) {
+            if (!u || u.dead || u._dying) return;
+            const src = srcUnit || _payloadSrc(u);
+            if (unitHasStatus(u, 'payload')) clearStatus(u, 'payload');
+            delete u._payloadSrcId;
+            showFloatingTextForUnit(u, '🦠 PAYLOAD', 'debuff', { durationMs: 1000 });
+            _sigVfxGeom('nrPayload:burst', u.x, u.y, 0, { owner: src ? src.player : null });
+            applyDamageToUnit(u, PAYLOAD_BURST_DAMAGE, `🦠 The payload ${why || 'goes off'} on ${unitDisplayName(u)}: `, {
+                ignoreArmor: true, damageType: 'magic', consumeMarked: false, allowMarkBonus: false,
+                sourceUnit: src || undefined, flashColor: 'poison'
+            });
+            if (typeof checkWin === 'function') checkWin();
+        }
+        window._payloadBurst = _payloadBurst; window._payloadSpread = _payloadSpread;
+        /* 🦠 a summon with `burstStatus` (the Virus's Replica) plants it on every enemy next to it as it goes down */
+        function _summonBurst(turret) {
+            if (!turret || !turret.burstStatus) return;
+            const src = state.units.find(x => x.id === turret.casterUnitId && !x.dead) || null;
+            const hit = [];
+            for (const e of state.units) {
+                if (!e || e.dead || e._dying || e.player === turret.owner) continue;
+                if (Math.max(Math.abs(e.x - turret.x), Math.abs(e.y - turret.y)) > 1) continue;
+                applyStatusEffects(e, [].concat(turret.burstStatus), `🦠 ${turret.spellName || 'The replica'} bursts: `, src);
+                hit.push(e);
+            }
+            _sigVfxGeom('nrPayload:burst', turret.x, turret.y, 0, { owner: turret.owner });
+            if (hit.length) addLog(`🦠 ${turret.spellName || 'The replica'} bursts over ${hit.map(_ctName).join(', ')}.`);
+        }
+        /* 🦠 `hitsStatusOnly` (Zero Day): a barrage that only touches enemies carrying that status */
+        function _barrageStatusOk(spell, e) {
+            return !spell || !spell.hitsStatusOnly || (!!e && unitHasStatus(e, spell.hitsStatusOnly));
+        }
+        window._barrageStatusOk = _barrageStatusOk;
         /* ═══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit and asked for the pull-string spell) ═══ "Sits on the shelf, and
            moves when you look away." Host-side like the rest of THE NEW RACES 2: the squares, the facings, the statuses and the HP
            state-sync to the guest; the voice-box line comes from _nrHash (the unit id + the round), so the guest's log agrees.
@@ -45834,7 +45900,7 @@
         const SUMMON_LOOK = {
             hawk: { icon: '🦅', verb: 'dives at' }, wolf: { icon: '🐺', verb: 'bites' }, elephant: { icon: '🐘', verb: 'strikes' },
             creation: { icon: '🧟', verb: 'clubs' }, hound: { icon: '🐕', verb: 'bites' }, cultist: { icon: '🕯️', verb: 'strikes' },
-            drone: { icon: '🐝', verb: 'stings' }, blob: { icon: '🟢', verb: 'strikes' },
+            drone: { icon: '🐝', verb: 'stings' }, blob: { icon: '🟢', verb: 'strikes' }, replica: { icon: '🦠', verb: 'lashes' },   // 🦠 the Virus's Replica (2026-11-18)
         };
         function _summonLook(key) { return SUMMON_LOOK[key] || { icon: '🧟', verb: 'strikes' }; }
         function _turretLogName(turret) {
@@ -45880,6 +45946,7 @@
                     ? `🧟 The flesh abomination at ${coordLabel(x, y)} collapses into carrion!`
                     : `🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
                 state.turrets = state.turrets.filter(t => t !== turret);
+                if (turret.burstStatus) _summonBurst(turret);   // 🦠 the Virus's Replica
                 if (attackerUnit && turret.owner !== attackerUnit.player) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);   // no pay for wrecking your own
                 // 🧱 Wrecked machinery is a metal mine (meat isn't) — the
                 // scrap scatters as debris cubes around the wreck.
@@ -49852,6 +49919,7 @@
                 if (!unit || !spell) return null;
                 if (unitSpellsBlocked(unit)) return 'Silenced';
                 if (spell.floridaHeadline && _floridaHeadline(unit) !== spell.id) return 'Not today';   // 📰 not today's headline
+                if (spell.hitsStatusOnly === 'payload' && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && unitHasStatus(e, 'payload'))) return '🦠 No Payload out';
                 if (spell.rewindTape > 0 && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && _tvTapeAmount(e, spell) > 0)) return '📼 Nothing on tape';   // 📺 Rewind: no enemy took a hit last round
                 if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
                 if (unitHasStatus(unit, 'celibate') && _isSummonSpell(spell)) return '⛪ Celibate';   // ⛪ Celibacy: no summoning
@@ -51328,6 +51396,7 @@
             const longR = isLongRangeSpell(spell);
             return realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => {
                 if (spell.hitsWetOnly && !_isWetTile(e.x, e.y)) return false;
+                if (!_barrageStatusOk(spell, e)) return false;   // 🦠 Zero Day: Payload carriers only
                 const dist = (typeof combatReach === 'function')
                     ? combatReach(unit.x, unit.y, srcZ, e.x, e.y, e.z ?? 0, longR)
                     : Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
@@ -51679,7 +51748,7 @@
             // cast hits nothing, so the menus grey it instead of letting a dead
             // cast through. Plain barrages keep the blanket pass (their radius is
             // the caster's problem, and casting into empty air is a player choice).
-            if (kind === 'barrage' && spell.hitsWetOnly) return _selfNovaSeenVictims(unit, spell).length > 0;
+            if (kind === 'barrage' && (spell.hitsWetOnly || spell.hitsStatusOnly)) return _selfNovaSeenVictims(unit, spell).length > 0;
             if (spell.pollinate && getPollen(unit) <= 0) return false;   // 🐝 THE POLLEN: no pollen carried = the row reads NO TARGET
             // THE SEEN NOVA (playtest 2026-11-07 F): a nova that only touches enemies (Hey, Over Here!, Meow, Demonic
             // Roar…) reads NO TARGET when no enemy the caster's side can see stands in its reach.
@@ -55120,6 +55189,7 @@
                 if (state.winner === 0 || state.winner === null) return; // no contest
                 if (state.isCampaign) return;                            // Challenge keeps its own wallet
                 if (state.devAutoSim) return;                            // dev-sim grants nothing
+                { const _erPay = window._hqEncounterResult; if (_erPay && !_erPay.won) return; }   // a story fight that was not won pays nothing (mondo 11-18: "that +50 is for online"; NPC encounters step 4)
 
                 const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
                 const modeId = mpMode && mpMode.id;
@@ -69847,6 +69917,7 @@
             _elementalTileCastInfo, classifySpellElement,
             igniteTile, extinguishTile, tickBurningTiles,
             _isFlammableTile, _isWaterTile, _isWetTile, _isOilTile, _isLavaTile, _floodConnectedTiles,
+            _barrageStatusOk,   // 🦠 THE PAYLOAD (the Virus): Zero Day's carriers-only nova
             // ⚖️ physique (RACE_PHYSIQUE height/weight → displacement physics)
             getUnitPhysique, getUnitWeightClass, getUnitPushDistance, getUnitFallDamageMult, isUnitWeightless, getUnitDisplaceWeightClass,
             settleWaterAround, checkTrapTrigger,
@@ -84198,6 +84269,16 @@
                             markDirty('teams', 'selectedUnit', 'hud');
                         }
                     }
+                    /* 🦠 mpDrainVsStatus (Ransomware): a target carrying that status also loses N MP */
+                    if (spell.mpDrainVsStatus && !target.dead && unitHasStatus(target, spell.mpDrainVsStatus.status)) {
+                        const _mvLost = Math.min(Math.max(0, target.mp || 0), spell.mpDrainVsStatus.mp || 0);
+                        if (_mvLost > 0) {
+                            target.mp -= _mvLost;
+                            showFloatingTextForUnit(target, `-${_mvLost} MP`, 'debuff', { durationMs: 1000 });
+                            addLog(`${_ctSp(spell.name)}: ${_ctName(target)} pays the ransom, ${_mvLost} MP.`);
+                            markDirty('teams', 'selectedUnit', 'hud');
+                        }
+                    }
                     if (_ssbBefore && !unit.dead) {
                         const _gain = {};
                         for (const k of Object.keys(spell.selfStageBoost)) {
@@ -84341,6 +84422,7 @@
                     range: 1, move: _sd.move || 3, reveals: _sd.reveals || 0, armored: !!_sd.armored,
                     /* THE SPELL AUDIT Batch D: summonDef.hitStatus — the pet's bite carries a status (Brood's Poison 2) */
                     hitStatus: _sd.hitStatus ? [].concat(_sd.hitStatus) : null,
+                    burstStatus: _sd.burstStatus ? [].concat(_sd.burstStatus) : null,   // 🦠 the Replica bursts as it goes down (_summonBurst)
                 });
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
@@ -84354,7 +84436,7 @@
                     const _stT = state.turrets[state.turrets.length - 1];
                     if (_stT) _stT.trailTerrain = { terrain: _sd.trailTerrain.terrain, radius: 0, rounds: _sd.trailTerrain.rounds || 3 };
                 }
-                showFloatingTextAtTile(x, y, `${_sd.key === 'hound' ? '🐕' : '🧟'} ${_sName.toUpperCase()}`, 'damage', { durationMs: 1200 });
+                showFloatingTextAtTile(x, y, `${_sd.key === 'hound' ? '🐕' : _sd.key === 'replica' ? '🦠' : '🧟'} ${_sName.toUpperCase()}`, 'damage', { durationMs: 1200 });
                 addLog(`${_ctName(unit)} calls ${_sName} to ${coordLabel(x, y)}! It hunts the nearest enemy at the end of every round — ${_sd.move || 3} tiles a round, ${_sHits} hits to destroy${_sd.armored ? ', physical blows count half' : ''}${_sd.reveals ? `, sniffs out invisible enemies within ${_sd.reveals}` : ''}.`, unit.player);
                 scheduleBoardRender();
                 completionDelay = actionMs(900);
@@ -85112,8 +85194,8 @@
                 // menus grey this case out (hasSpellTargetInRange), but a board
                 // click could still reach here and used to burn 55 MP on a nova
                 // that hit nothing.
-                if (spell.hitsWetOnly && _barrageTargets(unit, spell).length === 0) {
-                    addLog(`${_ctSp(spell.name)}: no enemies are standing in water.`, _clickSeat());
+                if ((spell.hitsWetOnly || spell.hitsStatusOnly) && _barrageTargets(unit, spell).length === 0) {
+                    addLog(spell.hitsStatusOnly ? `${_ctSp(spell.name)}: no Payload carrier in range.` : `${_ctSp(spell.name)}: no enemies are standing in water.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -85191,6 +85273,7 @@
                                         });
                                         // 💥 the struck tile reacts like any spell hit (Solar Flare on a target in oil blows the slick)
                                         triggerTerrainSpellReaction(unit, spell, [{ x: _brX, y: _brY }]);
+                                        if (spell.hitsStatusOnly === 'payload' && !enemy.dead) _payloadBurst(enemy, unit, 'is set off by ' + spell.name);   // 🦠 Zero Day
                                     } finally { _pendingSpellHits--; }
                                 }, actionMs(400));
                             }, idx * barrageGap);
