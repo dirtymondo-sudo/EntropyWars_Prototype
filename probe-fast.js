@@ -95,6 +95,15 @@ async function launch(chromium, opts) {
   const base = (opts.args || []).filter(a => !GL_FLAG.test(a));
   if (!opts.executablePath || !fs.existsSync(opts.executablePath)) { if (EXE) opts.executablePath = EXE; else delete opts.executablePath; }
   const want = String(process.env.EW_PROBE_GL || '').toLowerCase();
+  /* EW_PROBE_GL=webgpu (2026-11-18, the 60 FPS thread): WebGPU on SwiftShader, the flags that keep the device alive in
+     this headless Chromium (plain --use-webgpu-adapter=swiftshader loses it at boot). The picture is BLACK here: read
+     counts (the perf lens, ThreeRenderer.perfLens.text()), never pixels. Open the page with ?ew_gpu=webgpu. */
+  if (want === 'webgpu') {
+    const browser = await chromium.launch(Object.assign({}, opts, { args: base.concat(['--enable-unsafe-webgpu', '--use-webgpu-adapter=swiftshader', '--use-gl=angle', '--use-angle=swiftshader', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--disable-vulkan-surface', '--ignore-gpu-blocklist', '--disable-background-timer-throttling', '--disable-renderer-backgrounding']) }));
+    say('renderer: WebGPU on SwiftShader (counts only, the picture is black)');
+    browser.__ewGL = 'webgpu';
+    return patchBrowser(browser);
+  }
   if (want !== 'swiftshader' && hasLlvmpipe()) {
     const x = await startXvfb();
     if (x) {

@@ -2838,3 +2838,36 @@ Three engine pieces came with it:
   meshes. NOT measured on his machine: his F3 on the mountain road looking north is the number that counts.
 - If his F3 says the Hills cost too much: (1) a coarser lattice for a zone (`zones[].res`, not built: the field is one lattice); (2) the 95 oaks +
   5 palms are single `tree` rows (the thicket's instanced trees were the old room's generator).
+
+## THE JOINED GLOWS (2026-11-18, the 60 FPS thread, restarted; mondo's F3: 36 FPS, 2,126 replayed meshes, "shell rest 296 (1 groups)")
+
+- The 216K "chars" triangles in that F3 are six bodies counted twice (scene pass + style mask), ~18K each: normal. No character
+  model has a distance LOD (the 11-14 `.opt.glb` copies are smaller files, same triangles).
+- What "shell rest" was (census in the cloud, WebGPU): 386 additive glow SPRITES (`_hzGlowSprite`: street lamp halos and the
+  like), each on its own material, all on ONE glow picture, hung in the shell group itself = replayed wherever the camera looks.
+- `_hqGlowOk` / `_hqGlowKey` / `_hqGlowMat` / `_hqGlowGeo` (three-renderer.js, beside THE LOOSE PIECES): in a big room's shell the
+  static batch scans sprites too; glows that share picture + blend + square join into ONE mesh per 96 m square (hung in the
+  square, culled with it): a quad per glow, centre / size / colour+opacity in the points (`ewGc`, `ewGs`, `ewGk`), drawn by
+  three's SpriteNodeMaterial (positionNode = centre, scaleNode = size, colorNode = materialColor x ewGk), which faces each quad
+  exactly as a sprite. Additive + no depth write = order-free, so the sum is the same. Never: breathing glows (`_hzGlowPulse`),
+  `_ew_night` lamps, turned / off-centre sprites, changers out. A later change hands the square's glows back (the batch's own
+  watch: material snapshot, visible, parent, matrix). WebGPU only. Off: `window.EW_HQ_NO_GLOW_BATCH` before the room.
+  Lens: "glows, joined N" in the squares line.
+- PROOF: cloud (WebGPU on SwiftShader, counts): 286 glows -> 41 meshes (29 in view at the spawn), "shell rest" 296 -> 10, worst
+  place difference 0.0008 units. Picture: standalone three 0.186.1 page, 40 random glows vs the joined mesh, render-target
+  readback: max 3/255 on 7 of 307,200 channels (summing order), the glows themselves change 59,357 pixels.
+- Tried and dropped: instance cells at 128 m (in view 526 -> 588 meshes: more cells reach the view); signs stacked by rounding
+  their canvas width up (far copies differ, up to 101/255 on letter edges). Signs of the SAME canvas size in one stack (exact)
+  are written but not shipped yet (scratchpad diff), not counted in the cloud.
+- Cloud harness: `EW_PROBE_GL=webgpu` in probe-fast.js (the flags that keep WebGPU alive headless; counts only, picture black;
+  the device still gets lost after a while in the full city, so no compile proof there). The full city with real sheets is
+  ~10 GB in the cloud renderer: shrink GLB bitmaps (createImageBitmap hook) or it is killed.
+- WHAT IS LEFT by the cloud's squares line: cut-out signs ~420 + opaque sign canvases ~88, many looks ~140 (multi-material
+  pieces: split per material, then they stack), instance cells ~520.
+
+## THE TICK LENS LINES (2026-11-18, Disaster City 60 FPS thread)
+mondo's Shift+F3 after the joined glows: 1,748 meshes but still 35.5 FPS; the frame is our JS now (CPU 24.2 of 28.2 ms). The
+biggest line was "doors + residents + scene" at 4.3 ms. `_hqFrame` now marks each tick on its own lens line: walker (seam),
+portals + gun doors, scene moves + drop + cut beside, rounds (walking people), residents, ladder, crowd near, awareness + marks,
+grass field, scene door + key + cast. No change on screen. Read the code first: residents / crowd / awareness picks are already
+throttled (300-400 ms), so the per-walker rounds tick and the scene moves are the likely cost; his next readout says which.
