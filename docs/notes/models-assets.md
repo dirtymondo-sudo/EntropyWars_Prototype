@@ -2147,3 +2147,11 @@ Mech F sprite redone as `mech_f2_px2.png` from a straight-on front render of her
 pigtails, the cap is under half of it) and `stheadset` (drop, rot x -90 = the band behind the neck; new spec keys `nogrow` = keep
 its size instead of growing the hole round the neck, the cups had swelled over the jaw; `nodrop` = stay round the neck, for a
 choker, unused: the Meshy choker came out a flat slab and was dropped). Worn by RACE_CREATOR_LOOKS['streamer'].
+
+## THE V-TUBER WIG (2026-11-18)
+`ewm_vtwig` (Idol side-ponytail wig, hats): platinum silver, lavender-to-pink tips, one high side ponytail with a cyan pixel-heart
+clip (mondo picked the pop idol concept but the cyan twin tails read as Miku, so new hair). Meshy concept + model in
+/mnt/project-files/internet-units/ (concepts/vt_wig.png, models/vt_wig.glb). The raw wig's bangs hung over the eyes: trimmed in
+Blender (front-centre verts below 27 % of its height deleted) to models/vt_wig_cut.glb, which bake-meshy.py row `vtwig` fits
+(helm, k 2.55, top 0.13). Worn over a silver blunt bob (hides the scalp at the sides). A Meshy idol headset + visor was tried and
+dropped (a loose panel, nothing like a headset).

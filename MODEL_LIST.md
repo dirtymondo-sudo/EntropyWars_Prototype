@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1234 |
+| Meshy AI | no | 1237 |
 | Meshy AI, reworked by Claude | no | 11 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 86 |
@@ -210,6 +210,8 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | skeleton | `Assets/characters/races/skeleton/male/Meshy_AI_skeleton_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | spy (female) | `Assets/characters/races/spy/Meshy_AI_spy_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | starfish | `Assets/characters/races/starfish/Meshy_AI_sentient_starfish_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| streamer — creator look also baked | `Assets/characters/races/streamer/male/Meshy_AI_streamer_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved concepts (the Streamer + the E-Girl, mondo 2026-11-18: the Meshy look is the default, the MPFB look stays pickable) |
+| streamer (female) — creator look also baked | `Assets/characters/races/streamer/female/Meshy_AI_egirl_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved concepts (the Streamer + the E-Girl, mondo 2026-11-18: the Meshy look is the default, the MPFB look stays pickable) |
 | succubus | `Assets/characters/races/succubus/male/Meshy_AI_incubus_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | succubus (female) | `Assets/characters/races/succubus/female/Meshy_AI_hot_seductive_pink_su_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | superhero — creator look also baked | `Assets/characters/races/superhero/male/Meshy_AI_a_superhero_Running_sway.glb` | Meshy AI, reworked by Claude | Meshy rig + spring-bone cape chain baked by Claude (bake-sway.py) |
@@ -546,7 +548,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | ewf_fur · Fur (whole body) | `Assets/characters/creator/wear/ewf_fur.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 | ewf_fur_werewolf · Fur (whole body), werewolf colours | `Assets/characters/creator/wear/ewf_fur_werewolf.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 
-### 5e. Meshy pieces in the creator (166 files, `Assets/characters/creator/wear/ewm_*`, PR #829)
+### 5e. Meshy pieces in the creator (167 files, `Assets/characters/creator/wear/ewm_*`, PR #829)
 
 Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) and fitted on the MPFB bodies in Blender
 (bake-meshy.py): hats, creature heads, armour, equipment, tails. Column = the creator's own id · label (tab).
@@ -714,6 +716,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ewm_toolbelt · Tool belt (equipment) | `Assets/characters/creator/wear/ewm_toolbelt.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_tricorn · Pirate tricorn (hats) | `Assets/characters/creator/wear/ewm_tricorn.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_trident · Trident (equipment) | `Assets/characters/creator/wear/ewm_trident.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_vtwig · Idol side-ponytail wig (hats) | `Assets/characters/creator/wear/ewm_vtwig.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_walkietalkie · Walkie-talkie (equipment) | `Assets/characters/creator/wear/ewm_walkietalkie.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_wardtotem · Ward totem (belt) (equipment) | `Assets/characters/creator/wear/ewm_wardtotem.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_wizardstaff · Wizard staff (equipment) | `Assets/characters/creator/wear/ewm_wizardstaff.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |

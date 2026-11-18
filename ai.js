@@ -6800,6 +6800,12 @@
         if (kind === 'deployTurret') {
             if (!target) return 0;
             const tRange = spell.turretRange || 2;
+            /* 📽 the V-Tuber's Holo Projector (2026-11-18): worth the enemies it puts in reach of her spells */
+            if (spell.projector) {
+                const n = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= tRange).length;
+                if (n === 0) return 0;
+                return 60 + n * 70;
+            }
             if (spell.auraDebuff) {
                 const enemiesInRange = v.visibleEnemies.filter(e =>
                     Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= tRange).length;
@@ -7080,6 +7086,15 @@
         /* doorSlam: the friendly door whose twin has the most enemies on or
            beside it — damage + a shove each; the two walls left behind are
            worth a little on their own. */
+        /* 📽 Scene Change (the V-Tuber, 2026-11-18): get out when enemies crowd her, onto the quieter projector */
+        if (kind === 'projectorSwap') {
+            if (!target) return 0;
+            const near = (x, y) => v.visibleEnemies.filter(e => Math.max(Math.abs(e.x - x), Math.abs(e.y - y)) <= 2).length;
+            const here = near(unit.x, unit.y), there = near(target.x, target.y);
+            if (here === 0 || there >= here) return 0;
+            const hurt = unit.maxHp ? (1 - unit.hp / unit.maxHp) : 0;
+            return 40 + (here - there) * 50 + hurt * 120;
+        }
         if (kind === 'doorSlam') {
             if (!target) return 0;
             const door = (typeof g.doorAt === 'function') ? g.doorAt(target.x, target.y) : null;
@@ -9651,6 +9666,15 @@
             const ok = v.visibleEnemies.filter(e => !isProtected(g, e) && !!origin(unit, spell, e.x, e.y));
             ok.sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v));
             return ok[0] || null;
+        }
+        if (kind === 'projectorSwap') {   // 📽 the projector with the fewest enemies near it
+            const ps = (g.state.turrets || []).filter(t => t && t.projector && t.hp > 0 && t.casterUnitId === unit.id);
+            let best = null, bestN = Infinity;
+            for (const t of ps) {
+                const n = v.visibleEnemies.filter(e => Math.max(Math.abs(e.x - t.x), Math.abs(e.y - t.y)) <= 2).length;
+                if (n < bestN) { bestN = n; best = { x: t.x, y: t.y }; }
+            }
+            return best;
         }
         if (kind === 'doorSlam') {
             const doors = (g.state.doors || []).filter(d => d.owner === unit.player && d.hp > 0 && !d.fixed
