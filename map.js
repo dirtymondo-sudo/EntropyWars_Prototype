@@ -2122,6 +2122,8 @@
             } catch (e) { console.warn('[HQ] per-entry variant roll failed', e); }
             /* THE SHIP'S ONE DOOR (2026-09-16): the collar's plate reads the course on file (the room builds it) */
             try { if (typeof window.hqShipApplyCourse === 'function') window.hqShipApplyCourse(_hqProfile()); } catch (e) {}
+            /* THE SUBWAY (2026-11-18): the one platform room wears the station on file (its name boards, where its stair comes up) */
+            try { if (typeof hqSubwayApply === 'function') hqSubwayApply(_hqProfile()); } catch (e) { console.warn('[HQ] subway apply failed', e); }
             /* THE EARNED DOORS (2026-09-20): a bay threshold stands in the ring only for a site the officer has STABILIZED
                (data.js hqApplyEarnedDoors → `hidden` on the row; the renderer builds nothing for it). Re-read on EVERY
                entry, so a return from the crossing that filed the last win finds the door Otto built. */
@@ -6671,6 +6673,46 @@
                 return true;
             } catch (e) { console.warn('[HQ] set course', e); return false; }
         };
+        /* ── THE SUBWAY (2026-11-18, data.js DOOR_HQ.subway): THE LINE, the train's panel. One row a stop (DOOR HQ, then the loop's stations): the
+           stop you stand at reads YOU ARE HERE, a station whose stair you have not walked to yet reads NOT WALKED TO YET, the rest are RIDE buttons
+           (`[data-station]` -> window._hqSubwayRide). The elevator panel's own rows and classes; ESC / right click / E close it like every panel. */
+        function _hqSubwayHtml() {
+            const profile = _hqProfile(), W = DOOR_HQ.subway || {};
+            const rows = (typeof hqSubwayStops === 'function') ? hqSubwayStops(profile, _hqCurRoom) : [];
+            let html = `<div class="hq-panel-hd"><b>THE SUBWAY</b><span>${_hqEsc(W.line || 'THE LOOP')} · DOORS OPEN</span></div>`;
+            html += '<p class="hq-panel-desc">One train. It runs the loop under Disaster City and back to the platform under the building. A station is on the line once you have walked down its stair.</p>';
+            html += '<div class="hq-rows">' + rows.map(r => {
+                const chip = r.here ? '<i class="hq-lamp-chip st-stabilized">YOU ARE HERE</i>' : (r.open ? `<button class="hq-btn hq-btn-sm hq-btn-primary" data-station="${_hqEsc(r.id)}">RIDE</button>` : '<i class="hq-lamp-chip st-clearance">NOT WALKED TO YET</i>');
+                return `<div class="hq-row hq-row-tray"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span>${chip}</div>`;
+            }).join('') + '</div>';
+            html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">STEP BACK</button></div>';
+            return html;
+        }
+        /* the ride: the station goes on file (the officer's card, else the session), then the train's door at the far platform. Two city stations
+           are the same room: it is entered again, so its boards and its stair are the new station's. */
+        window._hqSubwayRide = function (id) {
+            try {
+                const W = DOOR_HQ.subway || {}, PS = window.ProfileSystem;
+                const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                const p = (idx !== null && idx !== undefined && PS && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
+                const stop = ((typeof hqSubwayStops === 'function') ? hqSubwayStops(p, _hqCurRoom) : []).find(r => r.id === id);
+                if (!stop || stop.here || !stop.open || !_hqRoomExists(stop.room)) { try { playSfx('uiError'); } catch (e) {} return false; }
+                if (id !== 'hq') { hqSubwayArrive(p, id); if (p) PS.saveProfile(idx, p); }
+                _hqRecordVisit('link_' + W.link);
+                try { if (typeof playDoorSfx === 'function') playDoorSfx(_hqWayCat('train').sfx || 'wayTrain', { volume: 0.9 }); } catch (e) {}
+                return window._hqGoRoom(stop.room, stop.at);
+            } catch (e) { console.warn('[HQ] subway ride', e); return false; }
+        };
+        /* a stair head taken from the street: that station is the one on file and it is on the line from now on */
+        function _hqSubwayStair(door) {
+            try {
+                if (!door || !door.station || typeof hqSubwayArrive !== 'function') return;
+                const PS = window.ProfileSystem, idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                const p = (idx !== null && idx !== undefined && PS && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
+                const r = hqSubwayArrive(p, door.station); if (p) PS.saveProfile(idx, p);
+                if (r && r.ok && r.fresh) _hqToast(`<b>${_hqEsc(r.station.label)} STATION</b><span>ON THE LINE · THE TRAIN STOPS HERE NOW</span>`);
+            } catch (e) { console.warn('[HQ] subway stair', e); }
+        }
         function _hqFloorPanelHtml(c, html) {
             const profile = _hqProfile();
             const from = (_hqCurRoom === 'car') ? (window._hqCarFrom || null) : _hqCurRoom;
@@ -6723,6 +6765,7 @@
             const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
             const act = d.action || {};
             if (act.mission) return _hqThresholdPanelHtml(t, st);
+            if (d.subway) return _hqSubwayHtml();   // THE SUBWAY (2026-11-18)
             /* THE UNDISCOVERED DOOR (2026-09-21): the head is the plate — a room not yet stood in is '?' with no number, no sub, no why */
             const PL = _hqPlateFor(d);
             let html = `<div class="hq-panel-hd">${PL.known ? _hqNoTag(_hqNo(d), d.why || (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].why) || '') : ''}<b>${_hqEsc(PL.label)}</b>${_hqStateChip(st)}</div>`;
@@ -9097,6 +9140,7 @@
                 return null;
             }
             if (d.alt || d.alt2) return null;
+            if (d.subway) return null;   // THE SUBWAY (2026-11-18): the train opens THE LINE (its panel), where you pick the station
             /* THE SHIP'S ONE DOOR (2026-09-16): the collar opens on the course the bridge laid in;
                no course = the panel (which says where to set one). `link` charts the route walked. */
             if (act.ship) {
@@ -9348,6 +9392,7 @@
                 const roomId = act.room || ((typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector));
                 const from = t || _hqPanelTarget;
                 if (from && from.kind === 'door') _hqRecordVisit(act.link ? ('link_' + act.link) : from.id);   // the collar charts the link it opened on (THE SHIP'S ONE DOOR)
+                if (from && from.kind === 'door' && from.door && from.door.station) _hqSubwayStair(from.door);   // THE SUBWAY (2026-11-18): the stair head's station goes on file
                 const at = act.at || (act.sector ? _hqBayEntry(act.sector) : null);
                 /* a `way` seam voices its own kind (the creak, the rope) instead of the strike plate */
                 const waySfx = (from && from.kind === 'door' && from.door && from.door.way) ? _hqWayCat(from.door.way).sfx : null;
@@ -9399,6 +9444,8 @@
             if (mapZoom) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number); const f = mapZoom.getAttribute('data-mapzoom') === 'in' ? 1 / 1.3 : 1.3; const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]); const nv = [v[0] + (v[2] - w) / 2, v[1] + (v[3] - h) / 2, w, h]; if (!_hqMapZoomSwitch(nv, null)) _hqMapSetView(svg, nv); } return; }
             if (e.target.closest('[data-mapfit]')) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; _hqMap.view = null; svg.setAttribute('viewBox', svg.getAttribute('data-fit') || ''); _hqMapDetail(svg); } return; }
             /* THE NAV CONSOLE (THE SHIP'S ONE DOOR): SET COURSE — the console re-renders in place */
+            const stn = e.target.closest('[data-station]');   // THE SUBWAY (2026-11-18): THE LINE's RIDE button
+            if (stn && !stn.disabled) { window._hqSubwayRide(stn.getAttribute('data-station')); return; }
             const course = e.target.closest('[data-course]');
             if (course && !course.disabled) { if (window._hqSetCourse(course.getAttribute('data-course'))) body.innerHTML = _hqNavHtml() + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>'; return; }
             /* THE DISPENSARY (Room 911): buy / sell — the hatch re-renders in place after the wallet answers */

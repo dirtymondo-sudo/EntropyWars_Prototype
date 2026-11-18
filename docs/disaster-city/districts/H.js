@@ -984,6 +984,22 @@ const nycTint = (bid, P) => { const m = NYC_TINT[bid]; if (!m) return P; P.forEa
 function star(a, y, R, h, key, tint) { const r = R * 0.42, P = (ang, d) => [Math.round(d * Math.cos(ang * Math.PI / 180) * 1000) / 1000, Math.round(d * Math.sin(ang * Math.PI / 180) * 1000) / 1000];
     a.P.push({ s: 'poly', p: [0, y, 0], pts: [0, 1, 2, 3, 4].map(k => P(-54 + 72 * k, r)), h, key, tint });
     for (let k = 0; k < 5; k++) { const t = -90 + 72 * k; a.P.push({ s: 'poly', p: [0, y, 0], pts: [P(t, R), P(t + 36, r), P(t - 36, r)], h, key, tint }); } }
+/* THE STREET STAIR's KIOSK (11-16; a function since 2026-11-18): `open` = a working station's (no gate, the board reads SUBWAY) */
+const KIOSK = open => { const a = sheet(), GG = 0x2f6a4a, GD = 0x1f4a34, ST = 0xcfc8b8, GLB = 0x16a052, GLS = 0x9ab8a8;
+        a.box(0, 0, 0, 3.0, 0.05, 6.6, null, 0x0a0a0c);
+        [0xb4ae9e, 0x8f8a7c, 0x6a665c, 0x48453f, 0x2a2826, 0x171615].forEach((t, k) => a.box(0, 0.05, 3.1 - k * 0.34, 2.9, 0.02, 0.32, TILE, t));   // the first steps, darker as they go down
+        for (const e of [-1, 1]) a.box(e * 1.6, 0, 0, 0.3, 0.3, 6.9, MARBLE, ST); a.box(0, 0, -3.3, 3.5, 0.3, 0.3, MARBLE, ST);                      // a stone kerb round three sides
+        for (const e of [-1, 1]) { for (const z of [-3.3, -1.2, 0.9]) a.box(e * 1.6, 0.3, z, 0.14, 2.4, 0.14, METAL, GG);                              // the kiosk: posts, an iron dado, glass
+            a.box(e * 1.6, 0.3, -1.2, 0.06, 0.9, 4.2, METAL, GD); a.box(e * 1.6, 1.2, -1.2, 0.05, 1.5, 4.2, G_SQ, GLS);
+            a.box(e * 1.6, 1.2, 2.2, 0.06, 0.06, 2.6, METAL, GG); a.P.push({ s: 'box', p: [e * 1.6, 0.3, 1.05], size: [0.04, 0.9, 0.04], key: METAL, tint: GG, n: 9, step: [0, 0, 0.3] }); }   // the open mouth's rails
+        a.box(0, 0.3, -3.3, 3.2, 0.9, 0.06, METAL, GD); a.box(0, 1.2, -3.3, 3.2, 1.5, 0.05, G_SQ, GLS);
+        a.box(0, 2.7, -1.2, 3.6, 0.16, 4.6, METAL, GG, { under: true }); a.roof('barrel', 0, 2.86, -1.2, 4.6, 0.8, 3.6, METAL, GG, { ry: 90, keyEnd: METAL, tintEnd: GD });
+        a.box(0, 2.25, 0.9, 3.34, 0.45, 0.12, METAL, GD); const q = a.quad(0, 2.28, 0.97, 2.6, 0.4, 0, (open ? 'txt:SUBWAY|#ffffff|#1f5a3c|6.5' : 'txt:TRANSIT|#ffffff|#1f5a3c|6.5'), null, { uv: 'fit', kind: 'over' }); q.glow = 0.7;
+        for (const e of [-1, 1]) { a.cyl(e * 1.6, 0, 3.45, 0.07, 2.7, METAL, GG, { seg: 6 }); a.cyl(e * 1.6, 2.7, 3.45, 0.09, 0.1, METAL, GG, { seg: 8, r2: 0.13 });    // a lamp post each side of the mouth, a green globe on it
+            a.cyl(e * 1.6, 2.8, 3.45, 0.13, 0.13, null, GLB, { seg: 12, r2: 0.27, glow: 0.45 }); a.cyl(e * 1.6, 2.93, 3.45, 0.27, 0.1, null, GLB, { seg: 12, r2: 0.3, glow: 0.45 }); a.dome(e * 1.6, 3.03, 3.45, 0.3, 0.3, null, GLB, { glow: 0.45 }); }
+        if (!open) { for (const y of [0.25, 1.9]) a.box(0, y, 3.45, 3.06, 0.05, 0.05, METAL, IRON); a.P.push({ s: 'box', p: [-1.4, 0.2, 3.45], size: [0.035, 1.75, 0.035], key: METAL, tint: IRON, n: 15, step: [0.2, 0, 0] });   // the folding gate, shut
+            a.box(0, 1.1, 3.49, 1.1, 0.4, 0.03, null, 0xf4f0e6); a.quad(0, 1.13, 3.51, 1.0, 0.34, 0, 'txt:CLOSED|#b02020||2.9', null, { uv: 'fit', kind: 'over' }); }
+        return a.P; };
 const NYC_OPEN = [
     /* the star base under the Memorial walk's statue (the statue stands on it, its foot 1 m up) */
     { id: 'star', x: -10.5, z: 20.65, parts() { const a = sheet(); star(a, 0, 3.4, 0.55, MARBLE, 0xcfc8b8); star(a, 0.55, 2.5, 0.45, MARBLE, 0xf0eadc);   /* (11-16: the lower star was a concrete sheet that drew near black) */ return a.P; } },
@@ -996,21 +1012,10 @@ const NYC_OPEN = [
        iron and glass kiosk roofs the stair so the well is dark inside, the lamps are green GLOBES, a folding gate shuts the mouth (there is no room
        below) and the two squares block (`walls`, one storey). NEVER under a roof bridge: the game stands the bridge's piers on the ground under it
        (the east one first stood under RF91, z 10.5..14, and a pier came up through its roof). */
-    ...[[1.75, 14, 0, 0, 0], [40.25, 28, 180, 0, 7]].map((q, i) => ({ id: 'subway' + i, x: q[0], z: q[1], rot: q[2], wallStoreys: 1, walls: [[0, 0, 3.5, 7]], clear: [1.75, 3.5, q[3], q[4]], parts() { const a = sheet(), GG = 0x2f6a4a, GD = 0x1f4a34, ST = 0xcfc8b8, GLB = 0x16a052, GLS = 0x9ab8a8;
-        a.box(0, 0, 0, 3.0, 0.05, 6.6, null, 0x0a0a0c);
-        [0xb4ae9e, 0x8f8a7c, 0x6a665c, 0x48453f, 0x2a2826, 0x171615].forEach((t, k) => a.box(0, 0.05, 3.1 - k * 0.34, 2.9, 0.02, 0.32, TILE, t));   // the first steps, darker as they go down
-        for (const e of [-1, 1]) a.box(e * 1.6, 0, 0, 0.3, 0.3, 6.9, MARBLE, ST); a.box(0, 0, -3.3, 3.5, 0.3, 0.3, MARBLE, ST);                      // a stone kerb round three sides
-        for (const e of [-1, 1]) { for (const z of [-3.3, -1.2, 0.9]) a.box(e * 1.6, 0.3, z, 0.14, 2.4, 0.14, METAL, GG);                              // the kiosk: posts, an iron dado, glass
-            a.box(e * 1.6, 0.3, -1.2, 0.06, 0.9, 4.2, METAL, GD); a.box(e * 1.6, 1.2, -1.2, 0.05, 1.5, 4.2, G_SQ, GLS);
-            a.box(e * 1.6, 1.2, 2.2, 0.06, 0.06, 2.6, METAL, GG); a.P.push({ s: 'box', p: [e * 1.6, 0.3, 1.05], size: [0.04, 0.9, 0.04], key: METAL, tint: GG, n: 9, step: [0, 0, 0.3] }); }   // the open mouth's rails
-        a.box(0, 0.3, -3.3, 3.2, 0.9, 0.06, METAL, GD); a.box(0, 1.2, -3.3, 3.2, 1.5, 0.05, G_SQ, GLS);
-        a.box(0, 2.7, -1.2, 3.6, 0.16, 4.6, METAL, GG, { under: true }); a.roof('barrel', 0, 2.86, -1.2, 4.6, 0.8, 3.6, METAL, GG, { ry: 90, keyEnd: METAL, tintEnd: GD });
-        a.box(0, 2.25, 0.9, 3.34, 0.45, 0.12, METAL, GD); const q = a.quad(0, 2.28, 0.97, 2.6, 0.4, 0, 'txt:TRANSIT|#ffffff|#1f5a3c|6.5', null, { uv: 'fit', kind: 'over' }); q.glow = 0.7;
-        for (const e of [-1, 1]) { a.cyl(e * 1.6, 0, 3.45, 0.07, 2.7, METAL, GG, { seg: 6 }); a.cyl(e * 1.6, 2.7, 3.45, 0.09, 0.1, METAL, GG, { seg: 8, r2: 0.13 });    // a lamp post each side of the mouth, a green globe on it
-            a.cyl(e * 1.6, 2.8, 3.45, 0.13, 0.13, null, GLB, { seg: 12, r2: 0.27, glow: 0.45 }); a.cyl(e * 1.6, 2.93, 3.45, 0.27, 0.1, null, GLB, { seg: 12, r2: 0.3, glow: 0.45 }); a.dome(e * 1.6, 3.03, 3.45, 0.3, 0.3, null, GLB, { glow: 0.45 }); }
-        for (const y of [0.25, 1.9]) a.box(0, y, 3.45, 3.06, 0.05, 0.05, METAL, IRON); a.P.push({ s: 'box', p: [-1.4, 0.2, 3.45], size: [0.035, 1.75, 0.035], key: METAL, tint: IRON, n: 15, step: [0.2, 0, 0] });   // the folding gate, shut
-        a.box(0, 1.1, 3.49, 1.1, 0.4, 0.03, null, 0xf4f0e6); a.quad(0, 1.13, 3.51, 1.0, 0.34, 0, 'txt:CLOSED|#b02020||2.9', null, { uv: 'fit', kind: 'over' });
-        return a.P; } })),
+    /* THE SUBWAY (2026-11-18, the door audit): the WEST kiosk is a real station now (HERO PLAZA: data.js DOOR_HQ.subway). It is built OPEN (no gate, no
+       CLOSED card, its board reads SUBWAY), it blocks nothing, and the tool stands the stair's door in its mouth (bake-disaster-city.js STATIONS).
+       The east one stays shut. `KIOSK(open)` is the one kiosk; the tool builds the same open kiosk at the other stations (ctx.stationKiosk). */
+    ...[[1.75, 14, 0, 0, 0], [40.25, 28, 180, 0, 7]].map((q, i) => ({ id: 'subway' + i, x: q[0], z: q[1], rot: q[2], wallStoreys: 1, walls: i === 0 ? [] : [[0, 0, 3.5, 7]], clear: [1.75, 3.5, q[3], q[4]], parts() { return KIOSK(i === 0); } })),
     /* (the green sidewalk shed over the north pavement is OUT, 11-16: it stood alone in front of an open lot and a stair, against no building) */
 ];
 OPEN.push(...NYC_OPEN);
@@ -1076,6 +1081,7 @@ function build(ctx) {
             RING_COURSE = false;
             if (def.props) def.props(c).forEach(q => props.push(R3(q)));
         });
+        ctx.stationKiosk = () => LIFT(R3(dress(KIOSK(true), DET_OPEN.subway, null)));   // THE SUBWAY (2026-11-18): the open kiosk, for the tool's other stations
         (M.OPEN || []).forEach(o => {
             features.push({ k: 'arch', id: 'arch:' + M.district + ':' + o.id, x: o.x, z: o.z, rot: o.rot || 0, parts: LIFT(R3(dress(o.parts(), DET_OPEN[o.id.replace(/\d+$/, '')], null))) }); nArch++;
             (o.walls || []).forEach((q, n) => features.push({ k: 'texbuilding', id: 'dc:' + M.district + ':' + o.id + '-w' + n, x: r3(o.x + q[0]), z: r3(o.z + q[1]), w: q[2], d: q[3], rot: 0, storeys: o.wallStoreys || 3, seed: 1, skin: false }));

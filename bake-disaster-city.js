@@ -929,6 +929,45 @@ const marksLine = lines.length; lines.push("");   // THE PAINT (2026-11-15): a d
 lines.push("                features: [");
 dcCtx.lamps = lamps;
 dcRun('build');
+/* ── THE SUBWAY's STAIR HEADS (2026-11-18, the door audit; data.js DOOR_HQ.subway: five stations, one platform room) ──
+   CIVIC CENTER is the old `metro` door on the Transit square (JOIN.metro, dressed by C.js). The four others are the SAME open kiosk (Hero Plaza's,
+   H.js KIOSK(true) through ctx.stationKiosk): HERO PLAZA is H.js's own west kiosk on the Transit court (`fixed`, built there); the three others the
+   tool stands on two yard squares of the named plot (`col`, `rows`, in the plot's own squares; `rot` 0 = the mouth to the south, 180 = to the north:
+   only those two, so a stair never crosses a square line). Each gets a stair door in its mouth (id `door`: written with the room's doors below) that
+   lands on the one platform. A prop that stands on a kiosk's squares steps to the nearest free yard square (clearStations: moved, never dropped, so the
+   list keeps its order; run again after the exterior polish and the last stage, which put pieces back).
+   Adding a station = a row here + a row in data.js DOOR_HQ.subway.stations. */
+const STATIONS = [
+    { id: 'hero',       door: 'metro_hero',       name: 'HERO PLAZA',       fixed: { x: 1.75, z: 14, rot: 0 } },
+    { id: 'bayside',    door: 'metro_bayside',    name: 'BAYSIDE',          plot: 'Boardwalk exit', col: 0, rows: [9, 10], rot: 180 },   // the yard's west edge, its mouth on the walk along the road
+    { id: 'industrial', door: 'metro_industrial', name: 'INDUSTRIAL',       plot: 'Rail service',   col: 2, rows: [3, 4],  rot: 0 },     // the west yard, its mouth on the cross walk
+    /* (`STATIONS_DUMP=1 node bake-disaster-city.js --dry-run` prints these plots' squares as the districts left them: a small letter or `o` = taken) */
+    { id: 'sports',     door: 'metro_sports',     name: 'SPORTS + CULTURE', plot: 'Bus stop court', col: 4, rows: [9, 10], rot: 180 },
+];
+if (process.env.STATIONS_DUMP) STATIONS.concat((process.env.STATIONS_DUMP || '').split(',').filter(n => n.length > 1).map(n => ({ plot: n }))).forEach(S => { if (!S.plot) return; const p = plotNamed(S.plot); if (!p) return console.log('no plot', S.plot); console.log(S.plot, 'at', p.x, p.y);
+    for (let r = 0; r < N; r++) { let row = ''; for (let c = 0; c < N; c++) { const ch = cellAt(p.x * N + c, p.y * N + r); row += occ.has((p.x * N + c) + ',' + (p.y * N + r)) ? ch.toLowerCase().replace('.', 'o') : ch; } console.log('   ' + row); } });
+STATIONS.forEach(S => {
+    let K = S.fixed;
+    if (!K) {
+        if (typeof dcCtx.stationKiosk !== 'function') throw new Error('STATIONS: no ctx.stationKiosk (docs/disaster-city/districts/H.js builds the kiosk)');
+        const p = plotNamed(S.plot); if (!p) throw new Error('STATIONS: no plot named ' + S.plot);
+        const cx = p.x * N + S.col, cys = S.rows.map(r => p.y * N + r);
+        cys.forEach(cy => { const ch = cellAt(cx, cy); if (ch !== '.') throw new Error('STATIONS: ' + S.id + ' stands on a square that is not yard: ' + cx + ',' + cy + ' is "' + ch + '"'); if (occ.has(cx + ',' + cy)) console.warn('STATIONS: ' + S.id + ' square ' + cx + ',' + cy + ' was taken (a door or a piece stands there): look at the picture'); take(cx, cy); });
+        K = { x: gc(cx), z: r3((gc(cys[0]) + gc(cys[1])) / 2), rot: S.rot };
+        features.push({ k: 'arch', id: 'arch:station:' + S.id, x: K.x, z: K.z, rot: K.rot, parts: dcCtx.stationKiosk() });
+        S.kiosk = K;
+    }
+    S.at = { x: K.x, z: r3(K.z + (K.rot === 0 ? 3.3 : -3.3)), face: K.rot === 0 ? 180 : 0 };   // the stair's door: in the kiosk's mouth, facing out of it
+});
+count.stations = STATIONS.length + 1;
+const clearStations = () => { let n = 0; STATIONS.forEach(S => { const K = S.kiosk; if (!K) return;
+    props.forEach(q => { if (q.floor || Math.abs(q.x - K.x) >= 1.75 || Math.abs(q.z - K.z) >= 3.5) return;
+        const c0 = Math.floor((q.x + HALF) / C), r0 = Math.floor((q.z + HALF) / C); let best = null;
+        for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const cx = c0 + dx, cy = r0 + dy; if (cellAt(cx, cy) !== '.' || occ.has(cx + ',' + cy)) continue; const d = Math.hypot(dx, dy); if (!best || d < best[0]) best = [d, cx, cy]; }
+        if (!best) { console.warn('STATIONS: no free yard square near the ' + S.id + ' kiosk for', q.key); return; }
+        take(best[1], best[2]); q.x = gc(best[1]); q.z = gc(best[2]); n++; }); });
+    if (n) count.stationProps = (count.stationProps || 0) + n; return n; };
+clearStations();
 /* THE ROADS JOIN AGAIN: Bayside's streets carry the city's cars now (they were the police line, no traffic). A vehicle or a barricade that
    stood in a driving lane there is drawn in to the kerb square on its own side, parked along the street. Nothing is removed. */
 { const LANES = [[gx(102), gx(48), gx(102), gx(90)], [gx(96), gx(90), gx(144), gx(90)], [gx(138), gx(48), gx(138), gx(96)]]; let n = 0;
@@ -1178,6 +1217,10 @@ lines.push("                  desc: 'The mall\\'s main entrance: sliding glass, 
 lines.push("                { id: 'metro', " + dj(JOIN.metro) + ", way: 'stairway', passage: { model: 'metro_stairs', w: 3.6, h: 3.6, len: 10, deep: 6.5, rise: -0.55, land: 3.2, wall: 'urban:MetroWallTile', wallColor: 0xf0eee8, trim: 'urban:MetroConcrete', lift: 0.3 },");
 lines.push("                  label: 'THE METRO', sub: 'THE STAIR DOWN · THE PLATFORM', action: { room: 'site_prebuilt_downtown_subway', at: 'street' },");
 lines.push("                  desc: 'A stair down under a sign for every line. The platform under the tower has never once been touched; this is the other way onto it.' },");
+/* THE SUBWAY's other four stair heads (STATIONS): the same stair, shorter (it runs down inside the kiosk) */
+STATIONS.forEach(S => { lines.push("                { id: '" + S.door + "', " + dj(S.at) + ", way: 'stairway', station: '" + S.id + "', passage: { model: 'metro_stairs', w: 2.9, h: 2.6, len: 7, deep: 5, rise: -0.55, land: 3.2, wall: 'urban:MetroWallTile', wallColor: 0xf0eee8, trim: 'urban:MetroConcrete', lift: 0.3 },");
+    lines.push("                  label: 'THE SUBWAY', sub: 'THE STAIR DOWN · " + S.name + " STATION', action: { room: 'site_prebuilt_downtown_subway', at: 'street' },");
+    lines.push("                  desc: 'A stair down under a green kiosk. One platform, one train: it runs the loop under the city and back to the building.' },"); });
 lines.push("                { id: 'sewer', " + dj(JOIN.sewer) + ", leaf: 'leaf_bulkhead', wide: true, label: 'THE SEWERS', sub: 'THE PUMPING STATION · DOWN INTO THE CULVERTS', action: { room: 'site_prebuilt_downtown_underworld', at: 'pump' },");   // the Sewers' one room (2026-11-16; was the retired downtown_sewers)
 lines.push("                  desc: 'A pumping station at the end of an alley, its bulkhead door open and its pumps running for a city that stopped paying them. The ladder inside goes down further than the tower ever went up.' },");
 lines.push("            ],");
@@ -1220,6 +1263,7 @@ if (!process.env.DC_NO_EXT) {
         let sb = null; try { sb = require(path.join(REPO, 'load-data.js')).loadGameData({ quiet: true, file: tmp }); } finally { try { fs.unlinkSync(tmp); } catch (e) {} }
         count.exteriorPolish = require(path.join(REPO, 'docs/disaster-city/exterior-polish.js'))({ sb, props, ctx: dcCtx, dropped: dcCtx.dropped || [] });
         clearLanes();   // (the polish put a left-out piece back: not into a lane)
+        clearStations();   // (... nor into a subway kiosk)
         lines.splice(propsLine, propsN, ...props.map(f => "                " + J(f) + ","));
         block = lines.join('\n') + '\n';
     }
@@ -1227,7 +1271,7 @@ if (!process.env.DC_NO_EXT) {
 /* THE LAST STAGE (2026-11-16, Hero Plaza's planted beds): a district file's `last(ctx)` runs here, after the exterior polish, when every prop
    stands where the game will draw it (a row glued to a prop, a hedge in a planter, is written at the prop's real place). The rows are written
    again; the polish and the passes before it are NOT run again, so a `last` hook adds only drawn rows they do not read and moves nothing. */
-if (DISTRICTS.some(m => typeof m.last === 'function')) { dcRun('last');
+if (DISTRICTS.some(m => typeof m.last === 'function')) { dcRun('last'); clearStations();
     const pNow = lines.slice(propsLine).findIndex(l => l === "            ],");
     lines.splice(propsLine, pNow, ...props.map(f => "                " + J(f) + ","));
     lines.splice(featLine, featN, ...features.filter(f => f.k !== 'gone').map(f => "                    " + J(f) + ","));

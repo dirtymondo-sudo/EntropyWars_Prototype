@@ -84,6 +84,7 @@ piece('beret', '16_beret', 'Beret', 'hats', 56, mode='helm', k=1.3, sink=0.16, r
 piece('strawhat', '17_straw-hat', 'Floppy straw hat', 'hats', 56, mode='hat', k=2.7, line=0.30)
 # THE STREAMER + E-GIRL (2026-11-18): her split-dyed pigtail wig (the look's own hair goes 'bald' under it); src = /mnt/project-files/internet-units/models
 piece('egwig', 'eg_wig', 'Split-dye pigtail wig', 'hats', 56, mode='helm', k=2.45, top=0.07, dy=0.004)
+piece('vtwig','vt_wig','Idol side-ponytail wig (silver, lavender tips)','hats',56,mode='helm',k=2.55,top=0.13,dy=0.004)   # 2026-11-18 THE V-TUBER
 piece('brokenhalo', '57_broken-halo', 'Broken halo', 'equipment', 60, mode='float', size=0.24, lift=0.07, rot=[['x', -12]], shelf='hats')
 
 # ── creature heads (the MPFB head hidden under them) ──

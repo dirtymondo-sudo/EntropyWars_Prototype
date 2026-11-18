@@ -25,10 +25,10 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1234 |
+| Meshy AI | no | 1237 |
 | Meshy AI, reworked by Claude | no | 11 |
 | Claude in Blender | no | 105 |
-| Claude in code (three.js, no file) | no | 84 |
+| Claude in code (three.js, no file) | no | 86 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
 | Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
 
@@ -210,6 +210,8 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | skeleton | `Assets/characters/races/skeleton/male/Meshy_AI_skeleton_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | spy (female) | `Assets/characters/races/spy/Meshy_AI_spy_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | starfish | `Assets/characters/races/starfish/Meshy_AI_sentient_starfish_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| streamer — creator look also baked | `Assets/characters/races/streamer/male/Meshy_AI_streamer_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved concepts (the Streamer + the E-Girl, mondo 2026-11-18: the Meshy look is the default, the MPFB look stays pickable) |
+| streamer (female) — creator look also baked | `Assets/characters/races/streamer/female/Meshy_AI_egirl_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved concepts (the Streamer + the E-Girl, mondo 2026-11-18: the Meshy look is the default, the MPFB look stays pickable) |
 | succubus | `Assets/characters/races/succubus/male/Meshy_AI_incubus_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | succubus (female) | `Assets/characters/races/succubus/female/Meshy_AI_hot_seductive_pink_su_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | superhero — creator look also baked | `Assets/characters/races/superhero/male/Meshy_AI_a_superhero_Running_sway.glb` | Meshy AI, reworked by Claude | Meshy rig + spring-bone cape chain baked by Claude (bake-sway.py) |
@@ -546,7 +548,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | ewf_fur · Fur (whole body) | `Assets/characters/creator/wear/ewf_fur.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 | ewf_fur_werewolf · Fur (whole body), werewolf colours | `Assets/characters/creator/wear/ewf_fur_werewolf.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 
-### 5e. Meshy pieces in the creator (166 files, `Assets/characters/creator/wear/ewm_*`, PR #829)
+### 5e. Meshy pieces in the creator (167 files, `Assets/characters/creator/wear/ewm_*`, PR #829)
 
 Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) and fitted on the MPFB bodies in Blender
 (bake-meshy.py): hats, creature heads, armour, equipment, tails. Column = the creator's own id · label (tab).
@@ -714,6 +716,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ewm_toolbelt · Tool belt (equipment) | `Assets/characters/creator/wear/ewm_toolbelt.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_tricorn · Pirate tricorn (hats) | `Assets/characters/creator/wear/ewm_tricorn.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_trident · Trident (equipment) | `Assets/characters/creator/wear/ewm_trident.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_vtwig · Idol side-ponytail wig (hats) | `Assets/characters/creator/wear/ewm_vtwig.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_walkietalkie · Walkie-talkie (equipment) | `Assets/characters/creator/wear/ewm_walkietalkie.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_wardtotem · Ward totem (belt) (equipment) | `Assets/characters/creator/wear/ewm_wardtotem.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_wizardstaff · Wizard staff (equipment) | `Assets/characters/creator/wear/ewm_wizardstaff.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
@@ -3606,12 +3609,12 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | Street Lamp | `Assets/world/props/meshy/streetlamp/Street Lamp.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
 | UFO_Low_Poly | `Assets/world/props/meshy/UFO_Low_Poly.fbx` | Asset pack | 3D Game Ready UFO Spaceship · FlexUnit · CC0 | sprites.js |
 
-## 8. Made in code — procedural stand-ins still in the catalogue (84)
+## 8. Made in code — procedural stand-ins still in the catalogue (86)
 
 Catalogue rows with a `proc` and no file: Claude drew them from three.js primitives. These are the props that still
 want a real model; §10 ranks which ones are worth one. (Pack-backed procs — bats, traps — and the car pack are not here.)
 
-`barber_mirror`, `bigtop`, `car_panel`, `cell_bars`, `chimney_smoke`, `clipboard`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_logo_wall`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `evac_button`, `ew_cube_piece`, `ew_rubiks_cube`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `goo_tendril`, `graffiti_wall`, `hearth_fire`, `house_stairs`, `impossible_stair`, `infinity_pool`, `keypad`, `lap_pool`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `sale_banner`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `street_drain`, `sun_viewport`, `temple_dome`, `thoughtform`, `tiki_torch`, `track_bed`, `tube_map`, `wall_padding`, `wall_plaques`, `warning_tape`, `world_clocks`
+`barber_mirror`, `bigtop`, `car_panel`, `cell_bars`, `chimney_smoke`, `clipboard`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_logo_wall`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `evac_button`, `ew_cube_piece`, `ew_rubiks_cube`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `goo_tendril`, `graffiti_wall`, `hearth_fire`, `house_stairs`, `impossible_stair`, `infinity_pool`, `keypad`, `lap_pool`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `sale_banner`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `station_sign`, `station_text`, `street_drain`, `sun_viewport`, `temple_dome`, `thoughtform`, `tiki_torch`, `track_bed`, `tube_map`, `wall_padding`, `wall_plaques`, `warning_tape`, `world_clocks`
 
 **Procs that already wear a real model** (91: the builder hangs a model file over its own pieces, which only
 show if the file fails) — counted under that model's maker, not as code:

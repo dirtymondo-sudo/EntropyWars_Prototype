@@ -11938,6 +11938,50 @@ What the map's `under.walks` asked for, and where each one is now (plots.json is
   D.U.M.B.'s Sub-Level 7 (bake-dumb.js `fw('P03-01', 2, 3, 270)`, `leaf_vault`), both ends `minClearance: 6` (L6 is my pick: the game's
   highest door gate). A probe walks it with `"eval": "window.doorClearance = () => ({ level: 9, title: 'PROBE' })"`.
 
+## THE COLOSSEUM, THE REDESIGN (2026-11-18; replaces THE MAP and THE DISTRICT FILE bullets of the 11-17 section below)
+mondo 11-18: "improve the coliseum to be more realistic and epic, it looks like absolute shit currently. plan and design and build it like an
+actual architect would. would using blender help?" What was wrong: arches made of boxes (every band turned the wrong way: the part's `ry` was
+mirrored), a wall one stone thick with the sky through it, stands 5 m tall behind a 23 m wall, a scaled ellipse for a plan, a mud tint.
+- **BLENDER: no.** A Blender model is one prop: nobody walks its seats or its gallery, it wears baked textures and no game sheet, and mondo's rule is
+  "buildings are walk-in architecture". The building is drawn by the game's own `arch` rows; what was missing was two shapes, added to
+  three-renderer.js `_hqArchGeometry` for every zone (THE CURVED BUILDINGS, below).
+- **THE PLAN** is a FOUR-CENTRE OVAL (how an amphitheatre was set out: two small arcs, two big arcs, one tangent), so every ring is the same
+  distance from the arena all round and ONE SECTION carried round the plan is the building. draw-afterlife.js `COL_OVAL` (a 26.25, b 15.75, r1 9,
+  facade 28 m out) and O.js `OV` hold the same numbers; `pt(th, d)` = the point whose normal's angle is th, d metres out from the arena's edge.
+  64 bays by length along the facade: 60 of 4.63 m + a 7.6 m gate bay on each axis (bay 0 east, 16 south, 32 west, 48 north).
+- **THE GROUND IS FLAT** under the whole building (the map: `a` sand, `e` under the seats, `k` the ring corridor, `m` the four tunnels). Everything
+  raised is O.js's own rows: 1,152 tier WALL rows (data.js THE STANDS: `tier`, `quad`, a step up each; cut by straight strips where a tunnel or a
+  stair goes through, a ghost closing each cut end), plain tier BRIDGES where a row carries on over a tunnel or a stair, a `hide` bridge a bay for
+  the gallery's outer half (14 m) and one for each gate's platform (6 m), four `ramp` stairs (the vomitoria, bays 8 / 24 / 40 / 56, corridor to the
+  walk at 8 m), hung ghost walls (`y0`) for the parapets and the upper piers. **ALL WALLS ARE WRITTEN HIGH TO LOW** (one sort before `feat`): the
+  walker reads the FIRST wall he touches, so a parapet written after the row it stands on never stops him.
+- **THE SECTION** (d out from the arena's edge): podium 0-3.5 (3.5 m), lower seats 3.5-10.5 (8 rows, 0.5 m), the walk 10.5-13.1 (8 m), upper seats
+  13.1-21 (9 rows, 0.6 m: under the 0.62 m step), the gallery 21-28 (14 m; a colonnade in, the third storey's arches out, a roof at 21 m), the ring
+  corridor 23.5-25.8, the facade 25.8-28: three 7 m storeys of round arches between half columns (three orders), an entablature a storey, the attic
+  21-28.5 m (pilasters, windows, two corbels + two masts a bay), the awning (canvas on every other bay, lit from below with `glow`).
+- **THE GATES**: a 6 m vaulted tunnel on each axis, a portal on the sand, a platform over it at 6 m (stepped onto from the fifth row); north and
+  south are boxes under a canopy with a throne; a porch (four columns, COLOSSEVM, a chariot) before the north and the south gate.
+- **THE STONE** is the calm pack: `calm_castle` (coursed ashlar) lifted to travertine with `gain` 2.75 (the city's building tint 0xa8a49c darkens
+  every sheet: a pale stone needs gain), `calm_marble` for dressed stone and the seats (`marble_light` on wall rows), `calm_sand` on the arena (a
+  drawn `poly`: a palette's `desert` painted cobbles).
+- **THE CURVED BUILDINGS** (three-renderer.js, the `arch` rows' doc): `s: 'archw'` = a wall with a round-headed opening (jambs, soffit, `rim` = the
+  archivolt); `s: 'sweep'` = a section `prof: [[d, y]]` carried along a path (listed clockwise round the solid; `ud` = where the sheet is
+  measured); `paths` on the row + `along: { path, at, off }` on any part = the part once at each point, turned along its normal. A part's `ry`
+  turns its front (+z) to (-sin ry, cos ry): a piece that faces (nx, nz) is `ry = atan2(-nx, nz)`.
+- **CHECKING A WALK WITHOUT THE BROWSER**: compile the room in Node (`hqTerrainCompile(DOOR_HQ.rooms[id], id)` through load-data.js) and step
+  `hqTerrainFeet(info, x, z, y)` along a line 0.2 m at a time; a `null` is a wall. Seconds, where the software browser walks 8 m in a minute
+  (which reads as "stuck" and is not). Done for the four tunnels, the four stairs, the walk, the gallery, the corridor, the fifth row.
+- **THE PEOPLE OFF THE GROUND (2026-11-18, mondo: "make the stands walkable and those thrones able to be sat in"; corrects "people stand on the
+  ground only")**: a spot with no height stands on what is UNDER it, and a row of seats is a wall's top, so a person placed on a row stands on the
+  row. What never worked was a BRIDGE (a box, the gallery's outer half): a spot reads the ground under it. Now a native spot's own `y` (metres) and
+  `pose` ride to its body (three-renderer.js `_hqSpawnPopulation`; any race borrows a `_CAST_POSES` clip, `_hqSpawnCharacter`). `pose: 'hqSit'`: the
+  spot's `y` is the SEAT's height (floor + the catalogue's `seat`), as the walker's is. On a row: no `y`, the spot 0.3 m from the row's front, the
+  legs hang over the row below. A posed spot stays (`hqSpotRoams`); `roam: true` walks its rounds from the seats (the walk map reads rows as floor).
+  THE WALKER SITS ON A RAISED SEAT: a `seat` prop with `y` over 0.5 m was never a seat (`_hqPolishProp` took floor props only) and getting up set
+  him on the ground under the floor; both fixed (`floor` on the seat). The Pope sits on the south throne; the north one is the walker's (E).
+  **THE CROWD IS CAPPED**: `HQ_CROWD_RULES.areaMax` 14 bodies a plot-built room, one body a race. The Vatican's own spots give 4 bodies, so the
+  Colosseum has 10: O.js `people` is written in the order they should stand (the Pope, the seats, the sand; the rest wait for the cap).
+- NOT YET: the rooms under the sand, a full crowd (the cap above), the second storey walked, R3's door text ("a huge ruined arena": bake-route.js's).
 ## THE COLOSSEUM (2026-11-17, One World 4.4; the map's district `col`, 9 plots, world -11..-9 x -9..-7)
 - **IN THE VATICAN'S ROOM** (mondo: smaller than Disaster City = one room): `site_prebuilt_vatican_plots` grows to 6 x 7 plots (world -12..-7
   x -9..-3, `room.world` in the room; mask `.###..` on rows 0-2). bake-afterlife.js THE VATICAN'S ONE WORLD MOVE: the Vatican's districts
@@ -12342,3 +12386,51 @@ barricades across the asphalt), Shasta's east road, Shasta's Trailhead arch, the
 stair foot, the North Pole's sleigh road south, the Pines' sleigh road east. Seen in a probe, one picture each. When a road or door is built at
 one of them again, delete its row.
 
+## CYBERPUNK CITY, THE PLAN (2026-11-18, owner side; a plan only, nothing built)
+
+The plan is `docs/plans/cyberpunk-city/PLAN.md` (pictures beside it). It waits mondo's answers; build nothing before his OK.
+What a later thread must know:
+- The old switch (`hqCityShell({ neon: true })` + `terrain.gen.neon`) was tried on Disaster City in a probe (`--pre`, no file
+  changed): it gives a purple night and darker walls only. It does not reach the district files' `arch` rows, so no neon names,
+  no holograms, no lit glass. A reskin needs a look that reaches the arch parts.
+- Recommended: ONE room (`site_prebuilt_downtown_streets`) with a second LOOK: a look file (`docs/disaster-city/future.js`,
+  tables + rules: tint rule per district, glass glows, signs relit, a sheet table, a prop table, lamps, traffic, people,
+  music), written by the bake as a small block on the room, applied at entry by the room-variant code once it reaches
+  `terrain`. No second room (3.8 MB more data.js, 37 places name the room id), no district file edited.
+- Reached as a YEAR of the same city (the mall closet's time machine, his idea of 09-17), not a place on the map; needs his OK.
+- MODEL_LIST.md holds no cyberpunk pack: no neon sign, billboard, hologram, drone, flying car or tower model. The list of what
+  does exist is in the plan, section 1.
+- A probe view in the city needs its own `"y"` (the street is not at 0: a view at y 0 stands under the ground).
+
+## DISASTER CITY, THE SUBWAY's STAIR HEADS (2026-11-18, the door audit thread, owner side)
+Five subway stations stand in the city, one a district: Civic Center (Transit square, the old `metro` door), Hero Plaza (Transit court), Bayside
+(Boardwalk exit), Industrial (Rail service), Sports + Culture (Bus stop court). The four new ones are written by the TOOL (`bake-disaster-city.js`
+`STATIONS`, after `dcRun('build')`): Hero Plaza's kiosk built open (`docs/disaster-city/districts/H.js` `KIOSK(open)`, handed over as
+`ctx.stationKiosk`) as an `arch` feature on two yard squares (`col`, `rows` in the plot's own squares; `rot` 0 or 180 only), and a `stairway` door
+in its mouth with `station: '<id>'`. A prop a district stood on those squares steps one square east (moved, never dropped). No district file but
+H.js was edited. The system (one platform room, the name boards, the train's list, a station opening when walked to) is in
+`docs/notes/world-layout.md` "THE DOOR AUDIT", paragraph THE SUBWAY, BUILT.
+
+## THE ZONE LOOKS — the horror + urban decay retexture, zone by zone (2026-11-18, owner side)
+mondo 11-18: "I added an SBS horror texture pack in the inbox. Its basically just more textured and weathered textures. Can you use this
+horror pack and the urban decay texture pack to improve the aesthetics of the game, zone by zone. I especially want the "calm" textures
+replaced, those textures were only meant to be used on the ground, and even then i am okay with you not using them at all if the area or
+building calls for it. There is also blood splatters and stains that can be used to add more detail and textures to places. Focus on all
+areas except disaster city first."
+- THE PACK: SBS Horror Texture Pack (Screaming Brain Studios, CC0), 98 seamless 128 px sheets + 15 RGBA stains, on R2 as they came:
+  `Assets/world/terrain/horror/Horror_<Brick|Floor|Metal|Misc|Stone|Wall|Stain>_<nn>.png`. Texture keys `hz_<family>_<nn>` (editor picker group
+  HORROR). Stains: 01-03 blood, 04-05 dirt, 06-09 grime, 10-14 drips down a wall, 15 soot. Originals: /mnt/project-files/asset-packs/sbs-horror/.
+- THE TABLE: data.js `ZONE_LOOKS.zones.<zone>` = `{ rooms, wall: {key: sheet}, ground: {key: sheet}, decals: {blood, dirt, grime, drip} }`.
+  sheet = `hz:Brick_09` (horror), `urban:WoodCladding3a` (Urban Decay) or `px:gold` (the key's pixel sheet: gold = gilt.png, the approved gold).
+  `wall` = wall rows, standing arch parts, keyTop/keyEnd/keyBase, ramp sides, terrain cliff, shell wall/dado/trim/ceiling; `ground` = floor,
+  path, paint palette, ground zones, ramp/bridge/plateau decks, floorIn, a lying-flat part (box under 0.35 m tall, or a `flat` quad).
+- THE PASS: `zoneLooksApply()` (last line of data.js) renames each mapped key to a twin `zl_<sheet>__<key>` registered in CALM_TERRAIN.sheets
+  with the OLD key as its rule twin (hqRuleKeyOf), so nothing in a fight or a walk changes, and NO zone tool / district file is touched: a
+  district thread keeps writing its usual keys and the zone still comes out in its look. To change a zone's look, edit its table entry.
+- THE STAINS: `zoneLookDecals(roomId, room)` lays decal rows (seeded by the room id, same for both players) down wall faces (rows >= 1.6 m and
+  standing arch boxes >= 2.2 m, not glass/roofs) and on the ground at their foot; rate x face metres / 10, capped. three-renderer.js
+  `_hqBuildZoneDecals` (after the walls + buildings) lays each on the surface a ray finds (dropped if none), one buffer + one draw per stain sheet. Blood only where the zone is horror (gore rules).
+- Off switches: `window.EW_NO_ZONE_LOOKS` (before data.js), `window.EW_NO_ZONE_DECALS`.
+- BATCH 1: Camelot Kingdom (castle stone Brick_09, floors Floor_13, timber WoodBeams, marble Stone_12, rock Stone_07, gold = gilt), The Estate
+  (WoodGeneric siding -> WoodCladding, graves Stone_03, mossy walls Brick_08, peeling plaster Wall_08 in the old haunted rooms, blood),
+  The Sewers (green brick Brick_03/04, rusted corrugated Metal_06, Floor_01, heavy drips).
