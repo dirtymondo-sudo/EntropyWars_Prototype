@@ -92251,19 +92251,28 @@ const ThreeRenderer = (function () {
            building (_hqEncounterStart → _hqLeave) — the frame must not tick a disposed room's characters; the same
            guard covers a portal step that re-enters another room from the crossing tick below */
         if (_hq !== H) return;
+        _lt = _lensMark('tick: walker (seam)', _lt);   // THE SPLIT DOORS LINE (2026-11-18): the old "doors + residents + scene" span, tick by tick
         if (!editing) _hqTickPortalCross(dt);   /* THE DOOR GUN rev 2: a flat threshold is crossed by touch, the same frame the feet land in it */
         if (_hq !== H) return;
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
+        _lt = _lensMark('tick: portals + gun doors', _lt);
         _hqTickSceneMoves();
         _hqTickDrop();   // THE DROP: the ride down's shaft rides up past the cage
         try { _hqTickClipBeside(); } catch (e) { if (!_hq._cbWarned) { _hq._cbWarned = true; console.warn('[HQ] clip beside', e); } }   // THE CUT BESIDE
+        _lt = _lensMark('tick: scene moves + drop + cut beside', _lt);
         _hqTickRounds(wdt);
+        _lt = _lensMark('tick: rounds (walking people)', _lt);
         try { _hqTickResidents(wdt); } catch (e) { if (!H._resWarned) { H._resWarned = true; console.warn('[HQ] the residents tick', e); } }   // THE RESIDENTS (2026-11-14)
+        _lt = _lensMark('tick: residents', _lt);
         try { _hqTickLadder(wdt, now); } catch (e) { if (!H._ldrWarned) { H._ldrWarned = true; console.warn('[HQ] the ladder tick', e); } }   // THE STRIKE LADDER (NPC encounters step 3)
         if (_hq !== H) return;
+        _lt = _lensMark('tick: ladder', _lt);
         try { _hqTickCrowdNear(now); } catch (e) {}
+        _lt = _lensMark('tick: crowd near', _lt);
         try { _hqTickAware(now); } catch (e) { if (!H._awWarnedTick) { H._awWarnedTick = true; console.warn('[HQ] the awareness tick', e); } }   // THE AWARENESS + THE MARKS (NPC encounters step 2)
+        _lt = _lensMark('tick: awareness + marks', _lt);
         try { _hqGrassTick(); } catch (e) { if (!H._ggWarned) { H._ggWarned = true; console.warn('[HQ] the grass field tick', e); } }   // THE GRASS FIELD IN A WALKED ROOM (2026-11-15)
+        _lt = _lensMark('tick: grass field', _lt);
         if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
             var _sd = H._sceneDoor, _sn = performance.now();
             if (_sd.k !== _sd.to) { var _sq = Math.min(1, (_sn - _sd.t0) / _sd.ms); _sd.k = _sd.from + (_sd.to - _sd.from) * (1 - Math.pow(1 - _sq, 3)); if (_sq >= 1) _sd.k = _sd.to; H.dirty = true; }
@@ -92275,7 +92284,7 @@ const ThreeRenderer = (function () {
         if (H._sceneCastIds) _hqSceneCastApply();
         if (H.vehicle && H.vehicle.on && H.vehicle.kind === 'ship' && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // (mondo 11-17: "if i am flying the spaceship then we dont need the ... character model standing up and clipping through it": the walker's own tick drew him again every frame after the helm hid him)
         if (H._scenePlayerOut && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // a scene took the officer out of the picture   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
-        _lt = _lensMark('tick: doors + residents + scene', _lt);
+        _lt = _lensMark('tick: scene door + key + cast', _lt);
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
         else _hqTickChars(wdt);
         if (window.EWCine) { try { window.EWCine.frame(_hqCine() ? H.camera : null, { kind: 'hq', unit: _hqUnits(), key: String(H.opts.room || ''), site: (H.room && H.room.site) ? ((typeof window.hqSiteId === 'function') ? window.hqSiteId(H.room.site) : H.room.site) : String(H.opts.room || '') }); } catch (e) {} }
