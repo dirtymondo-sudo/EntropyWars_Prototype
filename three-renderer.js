@@ -54089,7 +54089,7 @@ const ThreeRenderer = (function () {
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
             if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + ' · movers kept out ' + (_ewBun.outS | 0));
         } catch (e) {}
-        if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept');
+        if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept' + (S.still.hid ? ' · ' + S.still.hid + ' hidden people left as they stand' : ''));
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
         if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '') + (b.loose ? ' (' + b.loose + ' loose pieces stood in)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ') + ((typeof _hqStk !== 'undefined' && _hqStk.arrays.length) ? ' · sheet stacks ' + _hqStk.arrays.length + ' (' + _hqStk.sheets + ' sheets)' : '')); }
         if (S.why && S.why.length) {
@@ -93024,8 +93024,30 @@ const ThreeRenderer = (function () {
         S.tops += n;
     }
     /* the frame's one walk of the walk's scene */
+    /* THE HIDDEN PEOPLE (2026-11-18, mondo's F3 in Disaster City: "Matrix walk by group: hq_part 2.31", 122 rigs in the room and
+       22 animating): three's walk composed every bone of every body each frame, the townspeople put away out of sight (the
+       residents beyond the drawn count, the crowd past its cap, the ones a scene took out) included. A body hidden is not drawn
+       in any pass, so the walk leaves it as it stands; the first frame it is shown it is walked in full (force), before that
+       frame's draws. Off: window.EW_HQ_CHAR_MW_ALL = true. */
+    function _hqCharGroupMW(force) {
+        var proto = THREE.Object3D.prototype.updateMatrixWorld;
+        if (!_hqStWalk || (typeof window !== 'undefined' && window.EW_HQ_CHAR_MW_ALL)) return proto.call(this, force);
+        if (this.matrixAutoUpdate) this.updateMatrix();
+        if (this.matrixWorldNeedsUpdate || force) {
+            if (this.matrixWorldAutoUpdate === true) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); }
+            this.matrixWorldNeedsUpdate = false; force = true;
+        }
+        var ch = this.children;
+        for (var i = 0, n = ch.length; i < n; i++) {
+            var c = ch[i];
+            if (c.visible === false) { c._ew_mwSkip = true; _hqStS.hid = (_hqStS.hid | 0) + 1; continue; }
+            if (c._ew_mwSkip) { c._ew_mwSkip = false; c.updateMatrixWorld(true); continue; }
+            c.updateMatrixWorld(force);
+        }
+    }
     function _hqStillSceneWalk(sc) {
-        var S = _hqStS; S.groups = S.out = S.full = S.tops = S.fresh = S.movers = S.swept = 0;
+        try { var CG = _hq && _hq.charGroup; if (CG && !CG._ew_st && CG.updateMatrixWorld !== _hqCharGroupMW && !Object.prototype.hasOwnProperty.call(CG, 'updateMatrixWorld')) CG.updateMatrixWorld = _hqCharGroupMW; } catch (eCG) {}
+        var S = _hqStS; S.hid = 0; S.groups = S.out = S.full = S.tops = S.fresh = S.movers = S.swept = 0;
         var t0 = performance.now();
         _hqStNow = t0; _hqStWalk = true;
         try {
@@ -93043,7 +93065,7 @@ const ThreeRenderer = (function () {
         } finally { _hqStWalk = false; }
         var ms = performance.now() - t0;
         _hqStMs = _hqStMs ? _hqStMs * 0.9 + ms * 0.1 : ms;
-        _hqStLast = { groups: S.groups, out: S.out, full: S.full, tops: S.tops, fresh: S.fresh, movers: S.movers, swept: S.swept, ms: +_hqStMs.toFixed(2), off: _hqStillOff() };
+        _hqStLast = { groups: S.groups, out: S.out, full: S.full, tops: S.tops, fresh: S.fresh, movers: S.movers, swept: S.swept, hid: S.hid | 0, ms: +_hqStMs.toFixed(2), off: _hqStillOff() };
     }
     function _hqStillStats() { return _hqStLast; }
     var _hqStSplit = null, _hqStSplitN = 0;
