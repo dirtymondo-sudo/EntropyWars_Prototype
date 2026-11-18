@@ -76320,10 +76320,10 @@ const ThreeRenderer = (function () {
        advantage, but big enough to where there can be gutters. Just a normal curb"): a room whose gen says `curb` has its roads a curb
        lower (data.js _hqTCurbDrop; the fight's levels never see it). The ground's lattice can only lean from the road up to the
        sidewalk over one cell, so along every kerb line this draws, merged into THREE meshes for the whole room:
-       - THE STONE: the Urban Decay pack's ConcreteCurb2, its top (curbW) at the sidewalk's height and its face straight down to the road;
+       - THE STONE: the Urban Decay pack's ConcreteGeneric1a, its top (curbW) at the sidewalk's height and its face straight down to the road;
        - THE EDGE: the rest of that one leaning cell at the sidewalk's height in the pack's ConcreteSidewalk1a (laid on the world's
          squares, so it runs on into the sidewalk's own slabs) — the walker stands on it there too (_hqTFieldAt);
-       - THE GUTTER: a band (gutterW) of ConcreteCurb1 on the road along the stone's foot (the street drains already stand in it).
+       - THE GUTTER: a band (gutterW) of ConcreteSlab1a on the road along the stone's foot (the street drains already stand in it).
        A curb runs wherever the road beside it was lowered and the walk beside it is no street: broken at every mouth, across a dead
        end, gone past the curbBox. */
     function _hqBuildCurbs(room, info, G) {
@@ -76366,15 +76366,15 @@ const ThreeRenderer = (function () {
                 for (var ci = 0; ci + 1 < cuts.length; ci++) {
                     var a = cuts[ci], b = cuts[ci + 1], yA = walk(a) + 0.008 + lift, yB = walk(b) + 0.008 + lift, rA = road(a), rB = road(b);
                     if (Math.abs(yB - yA) > 0.35 * (b - a) + 0.05 || yA - rA < 0.03) continue;   // a step in the walk (a retaining wall's line) / no drop here
-                    var va = a / 2.1, vb = b / 2.1;
+                    var va = a / 1.6, vb = b / 1.6;
                     var i0 = P(a, 0), i1 = P(b, 0), c0 = P(a, cW), c1 = P(b, cW), e0 = P(a, band), e1 = P(b, band), g0 = P(a, -gW), g1 = P(b, -gW);
                     /* the stone: the top, then the face (with a sliver of its rounded nose) */
-                    put(Bc, [[i0[0], yA, i0[1]], [c0[0], yA, c0[1]], [c1[0], yB, c1[1]], [i1[0], yB, i1[1]]], [[va, 0.42], [va, 1], [vb, 1], [vb, 0.42]]);
-                    put(Bc, [[i0[0], rA + 0.005, i0[1]], [i0[0], yA, i0[1]], [i1[0], yB, i1[1]], [i1[0], rB + 0.005, i1[1]]].map(function (q) { return [q[0] - nx * 0.0, q[1], q[2] - nz * 0.0]; }), [[va, 0], [va, 0.42], [vb, 0.42], [vb, 0]]);
+                    put(Bc, [[i0[0], yA, i0[1]], [c0[0], yA, c0[1]], [c1[0], yB, c1[1]], [i1[0], yB, i1[1]]], [[va, 0.1], [va, 0.29], [vb, 0.29], [vb, 0.1]]);
+                    put(Bc, [[i0[0], rA + 0.005, i0[1]], [i0[0], yA, i0[1]], [i1[0], yB, i1[1]], [i1[0], rB + 0.005, i1[1]]].map(function (q) { return [q[0] - nx * 0.0, q[1], q[2] - nz * 0.0]; }), [[va, 0], [va, 0.1], [vb, 0.1], [vb, 0]]);
                     /* the edge: the rest of the leaning cell, on the world's squares */
                     if (band > cW + 0.02) put(Be, [[c0[0], yA - 0.003, c0[1]], [e0[0], yA - 0.003, e0[1]], [e1[0], yB - 0.003, e1[1]], [c1[0], yB - 0.003, c1[1]]], [c0, e0, e1, c1].map(function (q) { return [q[0] / 3.5, q[1] / 3.5]; }));
                     /* the gutter: on the road at the stone's foot */
-                    put(Bg, [[g0[0], rA + 0.012, g0[1]], [i0[0], rA + 0.012, i0[1]], [i1[0], rB + 0.012, i1[1]], [g1[0], rB + 0.012, g1[1]]], [[0, va * 0.9], [1, va * 0.9], [1, vb * 0.9], [0, vb * 0.9]]);
+                    put(Bg, [[g0[0], rA + 0.012, g0[1]], [i0[0], rA + 0.012, i0[1]], [i1[0], rB + 0.012, i1[1]], [g1[0], rB + 0.012, g1[1]]], [[0, va], [0.31, va], [0.31, vb], [0, vb]]);
                 }
             });
         };
@@ -76399,7 +76399,7 @@ const ThreeRenderer = (function () {
             var tex = _hzTex(key), mat = new THREE.MeshLambertMaterial({ map: tex || null, color: color, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
             var m = new THREE.Mesh(g, mat); m.renderOrder = order; m._ew_hqRoadMark = true; m._ew_hqCurb = true; G.add(m); return m;
         };
-        mk(Bg, 'urban:ConcreteCurb1', 0xb4b2ac, 2); mk(Be, 'urban:ConcreteSidewalk1a', 0xffffff, 2); mk(Bc, 'urban:ConcreteCurb2', 0xe2e0da, 2);
+        mk(Bg, 'urban:ConcreteSlab1a', 0xc4c2bc, 2); mk(Be, 'urban:ConcreteSidewalk1a', 0xffffff, 2); mk(Bc, 'urban:ConcreteGeneric1a', 0xf2f0ea, 2);   // (11-18: the pack's ConcreteCurb sheets are streaked along their length and read as a ramp from above: plain cast concrete)
         if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] curbs', 'runs', nRuns, 'stone quads', Bc.n / 4, 'edge', Be.n / 4, 'gutter', Bg.n / 4);
     }
     function _hqBuildRoadMarkings(room, info, G, TM) {
