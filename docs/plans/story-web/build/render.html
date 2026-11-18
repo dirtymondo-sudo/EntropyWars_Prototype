@@ -1,0 +1,18 @@
+<!doctype html><meta charset=utf8><body style="margin:0;background:transparent">
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three'; import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const S = 320; const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); renderer.setSize(S, S); renderer.setClearColor(0, 0); renderer.outputColorSpace = THREE.SRGBColorSpace; document.body.appendChild(renderer.domElement);
+window.shoot = async (url, opt) => { opt = opt || {};
+  const gltf = await new GLTFLoader().loadAsync(url); const scene = new THREE.Scene(); scene.add(gltf.scene);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x666677, 2.2)); const d = new THREE.DirectionalLight(0xffffff, 2.0); d.position.set(1.5, 2.5, 3); scene.add(d);
+  gltf.scene.updateMatrixWorld(true); const box = new THREE.Box3().setFromObject(gltf.scene); const size = box.getSize(new THREE.Vector3()); const H = size.y;
+  let head = null; const names = []; gltf.scene.traverse(o => { if (o.isBone) { names.push(o.name); if (/^(mixamorig:?)?head$/i.test(o.name) || (!head && /head/i.test(o.name) && !/top|end/i.test(o.name))) head = head && /^(mixamorig:?)?head$/i.test(head.name) ? head : o; } });
+  const hp = new THREE.Vector3(); if (head) head.getWorldPosition(hp); else hp.set((box.min.x + box.max.x) / 2, box.max.y - H * 0.08, (box.min.z + box.max.z) / 2);
+  const top = box.max.y; const cy = head ? (hp.y + top) / 2 + (opt.dy || 0) * H : hp.y; const span = Math.max((top - hp.y) * (opt.zoom || 2.1), H * 0.14);
+  const cam = new THREE.OrthographicCamera(-span / 2, span / 2, span / 2, -span / 2, 0.01, 100); const yaw = (opt.yaw || 0) * Math.PI / 180;
+  cam.position.set(hp.x + Math.sin(yaw) * 5, cy, hp.z + Math.cos(yaw) * 5); cam.lookAt(hp.x, cy, hp.z);
+  renderer.render(scene, cam); return { png: renderer.domElement.toDataURL('image/png'), head: head && head.name, H, bones: names.length };
+};
+window.ready = true;
+</script>
