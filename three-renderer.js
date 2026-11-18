@@ -81060,6 +81060,17 @@ const ThreeRenderer = (function () {
         var built = b(U, { room: room, door: door, free: !!(box && box.free), cat: W, wx: grp.position.x / U, wz: grp.position.z / U, yaw: grp.rotation.y, y0: y0 });   // THE ROAD (2026-09-17): the placed frame, for a builder that samples the ground
         grp.add(built.g);
         if (joined) { grp._ew_hqJoined = door.id; G.add(grp); return; }   // THE STAGE: the gantry alone — no plate, no record (nothing to press: you walk on)
+        /* THE DOOR AUDIT (2026-11-18, data.js DOOR_HQ.cut.scenery): a cut way's furniture stands as SCENERY (the painting is just a painting):
+           the object and its body's blockers, no plate, no record, nothing to press */
+        if (door.inert) {
+            G.add(grp);
+            (built.blockers || []).forEach(function (bl) {
+                var cyI = Math.cos(grp.rotation.y), syI = Math.sin(grp.rotation.y);
+                var obI = new THREE.Group(); obI.position.set((grp.position.x / U + bl.x * cyI + bl.z * syI) * U, y0 * U, (grp.position.z / U - bl.x * syI + bl.z * cyI) * U);
+                _hq.blockers.push({ obj: obI, y: y0, top: bl.top || null, rad: bl.r || 0.5, way: kind });
+            });
+            return;
+        }
         /* THE PASSAGES (2026-10-01): no plate on a tunnel's dark or a stair's (a trail keeps its waymark post), never a target, never
            pressed — a record the walker's surface, the boom, the dark and the crossing read (_hq.passages) */
         var PS = _hqPassageSpec(door);
@@ -81132,6 +81143,11 @@ const ThreeRenderer = (function () {
         var capMat = _hqMat(S.trim || 'teal', 2, 0.2, { shininess: 45, specular: 0x666666 });
         var backMat = _hqMat(null, 1, 1, { color: 0x15161a, shininess: 4 });
         var housingMat = _hqMat(null, 1, 1, { color: 0x2b2d33, shininess: 30 });
+        /* THE DOOR AUDIT (2026-11-18): the furniture of the ways that were cut (data.js hqApplyCutScenery), drawn as scenery */
+        (room.wayProps || []).forEach(function (wp) {
+            if (!wp || !wp.way || !wp.inert) return;
+            try { var wl = wp.level || 0; _hqBuildWay(room, wp, wl, wl ? _hqLevelY(S, wl) : _hqDoorFloorY(room, wp), _hqWallR(room, wl, wp.side), wp.side === 'in'); } catch (e) { console.warn('[HQ] way scenery failed', wp.id, e); }
+        });
         (room.doors || []).forEach(function (door) {
             /* THE EARNED DOORS (2026-09-20): a bay threshold Otto has not built (data.js hqApplyEarnedDoors → `hidden`) is
                NOTHING — no frame, no leaf, no plate, no record (the scan, the walk-in, the map and the rounds never see it);
