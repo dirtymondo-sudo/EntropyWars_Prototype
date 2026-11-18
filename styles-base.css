@@ -6324,6 +6324,72 @@ body.diorama-3d .tile-underpass.jump::before {
 #hqPage .hq-panel.hq-panel-say .hq-panel-foot { display: none; }
 @media (max-width: 720px) { #hqPage .hq-panel.hq-panel-say .hq-panel-card { padding: 10px 34px 10px; } #hqPage .hq-panel.hq-panel-say .hq-panel-line { font-size: 18px; } }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   THE DIALOGUE BOX (mondo 11-18, option B "THE PORTRAIT") — every story line:
+   the walk (map.js _hqDlgBox), the battle's pay-off box (battle.js
+   _npcTalkOpen), the cutscene words (three-camera.js EWScene). A black band
+   with faded sides (the battle spell description's), the speaker's face in a
+   PS1 window, the name in gold, the answers in their own PS1 window under YOU.
+   ITS OWN LOOK: the classes are `ew-dlg-*` (no UI Maker / theme / battle
+   button selector names them) and, on the walk, the rules below strip the
+   themed panel card with !important. No hint line under it (his order).
+   ══════════════════════════════════════════════════════════════════════════ */
+.ew-dlg { position: relative; width: 100%; box-sizing: border-box; color: #fff !important; text-align: left !important; pointer-events: auto; font-family: 'IBM Plex Mono', monospace !important; letter-spacing: 0; text-transform: none; }
+.ew-dlg *, .ew-dlg *::before, .ew-dlg *::after { box-sizing: border-box; }
+.ew-dlg-band { position: relative; display: flex; align-items: flex-start; gap: 26px; min-height: 140px; padding: 22px max(20px, calc(50% - 480px)) 24px;
+  background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.93) 13%, rgba(0,0,0,0.95) 87%, rgba(0,0,0,0) 100%) !important; }
+.ew-dlg-band::before, .ew-dlg-band::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 4%, rgba(255,255,255,0.75) 22%, rgba(255,255,255,0.75) 78%, rgba(255,255,255,0) 96%); }
+.ew-dlg-band::before { top: 0; } .ew-dlg-band::after { bottom: 0; }
+.ew-dlg-band[data-close], .ew-dlg-band[data-talk] { cursor: pointer; }
+.ew-dlg-face { position: relative; flex: none; width: 128px; height: 128px; margin-top: -62px; overflow: hidden; background: #000; border: 3px solid #fff; box-shadow: 0 0 0 2px #000, 6px 6px 0 rgba(0,0,0,0.55); }
+.ew-dlg-face img { display: block; width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.ew-dlg-face.none { display: none; }
+.ew-dlg-flag { position: absolute; top: 3px; right: 5px; font-size: 18px; text-shadow: 0 1px 2px #000; }
+.ew-dlg-text { flex: 1 1 auto; min-width: 0; max-width: 780px; }
+.ew-dlg-who { font-family: 'Press Start 2P', monospace !important; font-size: 13px; line-height: 1.5; letter-spacing: 2px; color: #ffd86a !important; text-shadow: 2px 2px 0 #000; text-transform: uppercase; overflow-wrap: anywhere; }
+.ew-dlg-who:empty { display: none; }
+.ew-dlg-line { margin-top: 10px; font-family: 'IBM Plex Mono', monospace !important; font-size: 25px; font-weight: 600; line-height: 1.45; color: #fff !important; text-shadow: 2px 2px 0 #000; overflow-wrap: anywhere; white-space: pre-wrap; }
+.ew-dlg-who:empty + .ew-dlg-line { margin-top: 0; }
+.ew-dlg-line[data-full=""] { display: none; }
+.ew-dlg-desc { margin-top: 8px; font-family: 'IBM Plex Mono', monospace !important; font-size: 15px; font-style: italic; line-height: 1.45; color: rgba(255,255,255,0.72) !important; }
+.ew-dlg-adv { display: inline-block; margin-left: 10px; font-style: normal; font-size: 16px; color: #fff; animation: ewDlgAdv 0.9s steps(2, jump-none) infinite; }
+.ew-dlg.typing .ew-dlg-adv, .ew-dlg.typing .ew-dlg-opts { visibility: hidden; }
+@keyframes ewDlgAdv { from { transform: translateY(0); } to { transform: translateY(4px); } }
+.ew-dlg-opts { position: absolute; right: max(20px, calc(50% - 520px)); bottom: calc(100% + 14px); width: max-content; min-width: 300px; max-width: min(480px, calc(100% - 40px));
+  background: #000 !important; border: 3px solid #fff !important; box-shadow: 0 0 0 2px #000, 6px 6px 0 rgba(0,0,0,0.55) !important; animation: ewDlgOpts 0.14s ease-out; }
+@keyframes ewDlgOpts { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.ew-dlg-opts:empty { display: none; }
+.ew-dlg-you { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 2px solid #fff; }
+.ew-dlg-you-face { flex: none; width: 34px; height: 34px; border-radius: 50%; overflow: hidden; background: #1a1a1a; }
+.ew-dlg-you-face img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ew-dlg-you-face.none { display: none; }
+.ew-dlg-you b { font-family: 'Press Start 2P', monospace !important; font-size: 11px; font-weight: 400; letter-spacing: 2px; color: #fff !important; }
+.ew-dlg .ew-dlg-opt { all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; width: 100%; padding: 12px 18px 12px 40px; cursor: pointer;
+  font-family: 'Press Start 2P', monospace !important; font-size: 14px; line-height: 1.6; letter-spacing: 1px; color: #fff !important; text-transform: uppercase; white-space: normal; overflow-wrap: anywhere; }
+.ew-dlg .ew-dlg-opt.sel { background: rgba(255,255,255,0.14) !important; }
+.ew-dlg .ew-dlg-opt.sel::before { content: '▶'; position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 13px; color: #fff; }
+.ew-dlg .ew-dlg-opt:disabled { opacity: 0.4; cursor: not-allowed; }
+.ew-dlg .ew-dlg-opt:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
+.ew-dlg-key { flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 5px; margin-right: 14px; font-size: 11px; line-height: 1; color: #000 !important; background: #fff; }
+.ew-dlg .ew-dlg-opt.back { color: #ff6a6a !important; } .ew-dlg .ew-dlg-opt.back .ew-dlg-key { background: #ff4a4a; }
+.ew-dlg .ew-dlg-opt.go { color: #5cf283 !important; } .ew-dlg .ew-dlg-opt.go .ew-dlg-key { background: #3ee86a; }
+@media (max-width: 720px) {
+  .ew-dlg-band { gap: 14px; min-height: 0; padding: 14px 18px 16px; }
+  .ew-dlg-face { width: 76px; height: 76px; margin-top: -34px; }
+  .ew-dlg-line { font-size: 18px; }
+  .ew-dlg-opts { right: 16px; min-width: 0; max-width: calc(100% - 32px); }
+  .ew-dlg .ew-dlg-opt { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) { .ew-dlg-adv, .ew-dlg-opts { animation: none; } }
+/* on the walk: the panel's card is only a holder, whatever the theme gives a panel card */
+#hqPage .hq-panel.hq-panel-say { align-items: flex-end !important; justify-content: center !important; padding: 0 0 4vh !important; background: transparent !important; }
+#hqPage .hq-panel.hq-panel-say .hq-panel-card { width: 100% !important; max-width: none !important; max-height: none !important; overflow: visible !important; padding: 0 !important; margin: 0 !important;
+  background: none !important; border: 0 !important; border-image: none !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; filter: none !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important; clip-path: none !important; -webkit-mask: none !important; mask: none !important; text-align: left !important; }
+#hqPage .hq-panel.hq-panel-say .hq-panel-card::before, #hqPage .hq-panel.hq-panel-say .hq-panel-card::after { content: none !important; display: none !important; }
+#hqPage .hq-panel.hq-panel-say .hq-panel-x, #hqPage .hq-panel.hq-panel-say .hq-panel-foot { display: none !important; }
+
 /* ══ THE LEVELS (2026-09-21) — the ledger on the party cards: the Lv chip, the EXP bar ══ */
 .hq-pp-lv { display: inline-block; font-family: 'Cinzel', serif; font-weight: 900; font-size: 10px; letter-spacing: 0.08em; color: #ffd86a; background: rgba(255, 216, 106, 0.12); border: 1px solid rgba(255, 216, 106, 0.45); border-radius: 999px; padding: 0 6px; line-height: 15px; margin-right: 4px; vertical-align: 1px; text-shadow: 0 0 6px rgba(255, 200, 80, 0.45); }
 .hq-pp-vbar.xp { height: 4px; }

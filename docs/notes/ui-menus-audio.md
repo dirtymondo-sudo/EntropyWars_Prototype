@@ -2869,3 +2869,27 @@ The walk's party dock (map.js `_hqFillDock`) draws one eye right of the lead's p
 slashed = nobody who would act sees you, amber = someone does. `.hq-dock-pp.lead.has-eye .hq-dock-tag` moves the name tag 30 px right when the tag sits beside
 the portrait (hud.js zeroes that margin when the UI Maker puts the tag under it). The rules are in `docs/notes/npc-system.md` "THE AWARENESS + THE MARKS".
 
+
+## THE DIALOGUE BOX (2026-11-18, mondo picked option B "THE PORTRAIT")
+mondo: "story dialogue needs to be separated from all that [the UI Maker + theme] ... not get overriden by how the battle buttons
+are", "we dont need where they live in a panel", "text on a black background with the sides faded, like the spell description in
+battle", fight / back off buttons were invisible; then on the mock-ups: "B, but ... delete all of that [hint text under the box]".
+Mock-ups: /mnt/project-files/dialogue-boxes/ (A faded bar, B portrait, C cinema). Proof: /mnt/project-files/dialogue-boxes/proof/.
+- ONE builder, map.js `window.EWDlg` (html / start / finish / face / move / answer): a black band with faded sides (the spell
+  description bar's gradient + hairlines), the speaker's face in a PS1 window on its left, the name in gold (Press Start 2P), the
+  line typing in (55 letters a second; the band takes the full line's height first), a ▼ when there is nothing to answer, the
+  answers in a PS1 window on the right under YOU (the walker's dock face) with a ▶ on the picked one. Tones: `back` red (BACK OFF,
+  NOTED on the ladder, LET IT GO), `go` green (FIGHT, TAKE THE PAY-OFF), the rest white. NO hint line under any of it.
+- ITS OWN LOOK: classes `ew-dlg-*` only (styles-base.css "THE DIALOGUE BOX"); no UI Maker role / theme / battle-button selector
+  names them; on the walk the themed `.hq-panel-card` is stripped with !important under `.hq-panel-say` and the ✕ + foot hidden.
+  Restyle the dialogue THERE, never through the UI Maker.
+- Used by: the walk (map.js `_hqDlgBox`: the plain line, THE TALK pages + choices, the strike ladder's Talk box, THE MUGGING, a
+  cast member's line + what they are doing), the battle pay-off box (battle.js `_npcTalkOpen`), the cutscene words
+  (three-camera.js EWScene mount / sayShow / choiceShow; root has `ew-dlg-own` = the scene keeps its own keys and timing, no typing).
+- The name only: the target's `sub` (LV, "LIVES AT …", a title) is never shown in the box.
+- Faces: `window.ewDlgFace({ cast | name, race, gender }, late)`: a story character (DOOR_CAST with a `model`) shows ONLY its own
+  model portrait (three-renderer THE PORTRAIT STUDIO, async; the face window stays hidden until it is in, never a race stand-in);
+  anyone else its race face (getUnitPortraitUrl / hud.js EWFaces). A cutscene finds the cast member by the line's `who` name.
+- Keys: E / ENTER / SPACE / a click finish the typing first (window capture, before the box's own keys); ↑ ↓ ← → move the ▶,
+  ENTER answers it, E answers it only once the ▶ was moved (else E keeps its job: BACK OFF on the ladder, close elsewhere);
+  1-4 answer straight; ESC + RIGHT CLICK = back (unchanged). Viewer-local, nothing relayed.
