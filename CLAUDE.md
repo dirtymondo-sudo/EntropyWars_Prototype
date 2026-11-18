@@ -44,6 +44,7 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 | `docs/notes/ui-menus-audio.md` | Main menu, terminal, forge, HUD, nameplates, pause menu, music. | UI / audio work. |
 | `docs/notes/editor.md` | The in-game editor (EDITOR_PLAN.md): editor.js, world file, E0+. | Editor work. |
 | `docs/notes/rendering-loading-perf.md` | Polish passes, bloom, textures, loading/lanes, freezes, crashes. RENDERER_PLAN.md = the three.js r128→current upgrade + add-ons (R1-R7). WEBGPU_PLAN.md = the WebGL→WebGPU (TSL) port, W0-W13; read it before any shader/renderer work. | Render / load / perf work; before touching three.js versions. |
+| `docs/notes/anti-cheat.md` | ANTI-CHEAT (11-18): where wallet, roster, Elo, results live, who decides, the open holes, dev tools to gate, the fix plan. | Before ANY wallet / economy / Elo / PvP-result / progress-sync / dev-tool work. |
 | `docs/notes/inbox.md` | THE INBOX: mondo's drop-off folder `/mnt/project-files/inbox/` + the sorting routine (where each kind of file goes). | Whenever he says "sort the inbox" / "I dropped X", or a task needs a file he dropped. |
 
 ## RULE #0 — THE INBOX (mondo 11-03)

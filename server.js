@@ -1546,6 +1546,23 @@ app.get('/api/progress', limitProgress, async (req, res) => {
     }
 });
 
+/* THE CHEAT GUARD (2026-11-18, mondo: "I don't want them to be able to edit their wallets"): a capture bounty and a
+   daily find are paid per DATE, so a forged blob naming dates in the future (2099-01-01, -02, ...) printed new Hazard
+   Pay on every sync. A date past tomorrow (UTC; tomorrow covers a clock ahead of UTC) is dropped before the merge, so
+   nothing ever pays for a day that has not come yet. A real player never writes one. */
+function dropFutureDays(progress) {
+    const hq = progress && progress.hq;
+    if (!hq || typeof hq !== 'object') return;
+    const max = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const late = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d) && d.slice(0, 10) > max;
+    if (hq.bounties && typeof hq.bounties === 'object') {
+        Object.keys(hq.bounties).forEach(d => { if (late(d)) delete hq.bounties[d]; });
+    }
+    const taken = hq.finds && hq.finds.taken;
+    if (taken && typeof taken === 'object') {
+        Object.keys(taken).forEach(k => { if (late(taken[k])) delete taken[k]; });
+    }
+}
 app.post('/api/progress/sync', limitProgress, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -1575,6 +1592,7 @@ app.post('/api/progress/sync', limitProgress, async (req, res) => {
         if (!player) {
             return res.status(401).json({ error: 'Invalid token.' });
         }
+        dropFutureDays(progress);
 
         const row = await d1.getOne('SELECT data FROM player_progress WHERE player_id = ?1', [player.id]);
         let stored = null;
