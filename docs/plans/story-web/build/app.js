@@ -40,7 +40,7 @@ const TEMPER_TEXT = { flee: 'runs', talk: 'talks', fight: 'fights' };
 const STARTS_TEXT = { mug: 'walks up and mugs (pay or fight)', ground: 'gives one warning on its own ground, then fights', sight: 'attacks on sight', defend: 'starts a fight when it sees someone it defends get struck' };
 
 /* ───────── state ───────── */
-let S = null, B = null, sel = null, linkMode = false, pendingSrc = null, editing = null;
+let S = null, B = null, sel = null, linkMode = false, groupMode = false, multi = new Set(), pendingSrc = null, editing = null;
 let hist = [], hi = -1, G = {}, elById = new Map(), fresh = false;
 const stage = $('stage'), world = $('world'), edgesEl = $('edges'), tagsEl = $('tags'), nodesEl = $('nodes');
 
@@ -301,7 +301,7 @@ function centreOn(id) { const n = B.nodes[id]; if (!n) return; const r = stage.g
 function renderNodes() {
   let h = '';
   Object.values(B.nodes).forEach(n => {
-    const s = sel && sel.kind !== 'link' && sel.id === n.id ? ' sel' : '';
+    const s = (sel && sel.kind !== 'link' && sel.id === n.id ? ' sel' : '') + (multi.has(n.id) ? ' lasso' : '');
     if (n.kind === 'note') { h += '<div class="note c-' + (n.color || 'y') + s + '" data-id="' + esc(n.id) + '" style="left:' + n.x + 'px;top:' + n.y + 'px"><div class="grip"><span>Idea</span><span>drag</span></div><textarea spellcheck="false" placeholder="Story idea, hook, open question…" aria-label="Story idea">' + esc(n.text) + '</textarea></div>'; return; }
     const o = info(n);
     h += '<div class="node' + s + (pendingSrc === n.id ? ' src' : '') + '" data-id="' + esc(n.id) + '" style="left:' + n.x + 'px;top:' + n.y + 'px">' + picHTML(o) + (o.boss ? '<span class="boss">BOSS</span>' : '') + (o.badge ? '<span class="boss story">' + o.badge + '</span>' : '') +
@@ -354,8 +354,9 @@ function renderOverlays() {
   if (!n) hint.innerHTML = '<h2>Nothing pinned yet</h2><p>Pick units from the roster to pin them here. Then drag from a unit’s red handle to another unit and type why they are tied.</p><p class="muted">Add named characters and story-idea cards from the bar above.</p>';
   ban.hidden = !B.sample;
   if (B.sample) ban.innerHTML = '<span><b>Sample board.</b> Two ties come from the game’s rules, two are made up to show how it works.</span><button class="btn sm pri" data-act="goMain">Start on a blank board</button>';
-  stage.classList.toggle('linkmode', linkMode);
+  stage.classList.toggle('linkmode', linkMode); stage.classList.toggle('lassomode', groupMode);
   $('btnLink').classList.toggle('on', linkMode);
+  $('btnGroup').classList.toggle('on', groupMode);
 }
 function renderLegend() {
   const cnt = {}; Object.values(B.nodes).forEach(n => { if (n.kind !== 'note') (info(n).t.length ? info(n).t : ['none']).forEach(t => { cnt[t] = (cnt[t] || 0) + 1; }); });
@@ -561,7 +562,7 @@ function stopEdit(save) {
 }
 $('tagInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); stopEdit(true); } else if (e.key === 'Escape') { e.preventDefault(); stopEdit(false); } e.stopPropagation(); });
 $('tagInput').addEventListener('blur', () => { stopEdit(true); });
-function switchBoard(id) { if (!S.boards[id]) return; stopEdit(true); S.active = id; B = S.boards[id]; sel = null; pendingSrc = null; ensureView(); saveLocal(); renderAll(); }
+function switchBoard(id) { if (!S.boards[id]) return; stopEdit(true); S.active = id; B = S.boards[id]; sel = null; multi.clear(); pendingSrc = null; ensureView(); saveLocal(); renderAll(); }
 function newBoard(name, from) {
   const id = uid('b'), src = from ? JSON.parse(JSON.stringify(from)) : { nodes: {}, links: {}, view: null };
   S.boards[id] = { id, name, t: Date.now(), nodes: src.nodes, links: src.links, view: src.view }; S.order.push(id); S.active = id; B = S.boards[id]; sel = null;
@@ -598,6 +599,10 @@ function arrange(mode) {
 
 /* ───────── pointer handling on the board ───────── */
 const ptrs = new Map(); let drag = null, pinch = null, raf = 0;
+/* every unit tied to this one, through any chain of ties */
+function groupOf(id) { const seen = new Set([id]), q = [id], adj = {}; Object.values(B.links).forEach(l => { (adj[l.a] = adj[l.a] || []).push(l.b); (adj[l.b] = adj[l.b] || []).push(l.a); }); while (q.length) (adj[q.shift()] || []).forEach(o => { if (!seen.has(o) && B.nodes[o]) { seen.add(o); q.push(o); } }); return [...seen]; }
+function inPoly(x, y, P) { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i].y > y) !== (P[j].y > y) && x < (P[j].x - P[i].x) * (y - P[i].y) / (P[j].y - P[i].y) + P[i].x) c = !c; return c; }
+function setMulti(ids) { multi = new Set(ids.filter(id => B.nodes[id])); renderNodes(); }
 function nodeAt(p, not) { let best = null, bd = 46; Object.values(B.nodes).forEach(n => { if (n.kind === 'note' || n.id === not) return; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bd) { bd = d; best = n.id; } }); return best; }
 stage.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse' && e.button > 1) return;
@@ -615,11 +620,12 @@ stage.addEventListener('pointerdown', e => {
   if (ptrs.size > 2) return;
   const p = toWorld(e.clientX, e.clientY), base = { pid: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false };
   if (nodeEl && e.button === 0 && (linkMode || e.shiftKey || onHandle)) drag = Object.assign(base, { kind: 'link', from: nid, tap: linkMode && !onHandle });
-  else if (nid && e.button === 0) { const n = B.nodes[nid]; drag = Object.assign(base, { kind: 'node', nid, ox: n.x - p.x, oy: n.y - p.y }); }
+  else if (nid && e.button === 0) { const n = B.nodes[nid], grp = e.altKey && n.kind !== 'note' ? groupOf(nid) : multi.has(nid) ? [...multi].filter(id => B.nodes[id]) : [nid]; drag = Object.assign(base, { kind: 'node', nid, px: p.x, py: p.y, grp: grp.map(id => ({ id, x: B.nodes[id].x, y: B.nodes[id].y })) }); }
   else if (lid && e.button === 0) drag = Object.assign(base, { kind: 'edge', lid, vx: B.view.x, vy: B.view.y });
+  else if (e.button === 0 && (groupMode || e.altKey)) drag = Object.assign(base, { kind: 'lasso', pts: [p] });
   else drag = Object.assign(base, { kind: 'pan', vx: B.view.x, vy: B.view.y });
 });
-function clearTemp() { const t = $('temp'); if (t) t.setAttribute('d', ''); stage.classList.remove('linking', 'panning'); nodesEl.querySelectorAll('.node.drop').forEach(n => n.classList.remove('drop')); }
+function clearTemp() { const t = $('temp'); if (t) t.setAttribute('d', ''); stage.classList.remove('linking', 'panning'); nodesEl.querySelectorAll('.node.drop, .node.grab').forEach(n => n.classList.remove('drop', 'grab')); }
 stage.addEventListener('pointermove', e => {
   const P = ptrs.get(e.pointerId); if (!P) return; P.x = e.clientX; P.y = e.clientY;
   if (pinch) { const a = [...ptrs.values()]; if (a.length < 2) return; const d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1, cx = (a[0].x + a[1].x) / 2, cy = (a[0].y + a[1].y) / 2; B.view.x += cx - pinch.cx; B.view.y += cy - pinch.cy; pinch.cx = cx; pinch.cy = cy; zoomAt(cx, cy, (pinch.k * d / pinch.d) / B.view.k); return; }
@@ -629,9 +635,11 @@ stage.addEventListener('pointermove', e => {
   const p = toWorld(e.clientX, e.clientY);
   if (drag.kind === 'pan' || drag.kind === 'edge') { B.view.x = drag.vx + dx; B.view.y = drag.vy + dy; applyView(); }
   else if (drag.kind === 'node') {
-    const n = B.nodes[drag.nid]; if (!n) return; n.x = Math.round(p.x + drag.ox); n.y = Math.round(p.y + drag.oy);
-    const el = elById.get(n.id); if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; }
+    const mx = p.x - drag.px, my = p.y - drag.py;
+    drag.grp.forEach(g => { const n = B.nodes[g.id]; if (!n) return; n.x = Math.round(g.x + mx); n.y = Math.round(g.y + my); const el = elById.get(n.id); if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; if (drag.grp.length > 1) el.classList.add('grab'); } });
     if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawEdges(); });
+  } else if (drag.kind === 'lasso') {
+    drag.pts.push(p); $('temp').setAttribute('d', 'M' + drag.pts.map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)).join('L') + 'Z');
   } else if (drag.kind === 'link') {
     const a = B.nodes[drag.from], hit = nodeAt(p, drag.from), q = hit ? B.nodes[hit] : p;
     $('temp').setAttribute('d', 'M' + a.x + ' ' + a.y + 'L' + q.x + ' ' + q.y);
@@ -645,6 +653,7 @@ function endPtr(e) {
   if (!drag || drag.pid !== e.pointerId) return;
   const d = drag; drag = null; clearTemp();
   if (e.type === 'pointercancel') { if (d.kind === 'node' && d.moved) commit(); return; }
+  if (d.kind === 'lasso') { if (d.moved && d.pts.length > 2) { setMulti(Object.values(B.nodes).filter(n => inPoly(n.x, n.y, d.pts)).map(n => n.id)); if (sel) select(null); } else if (multi.size) setMulti([]); return; }
   if (d.kind === 'node') { if (d.moved) { sel = { kind: 'node', id: d.nid }; commit(); } else select({ kind: 'node', id: d.nid }); }
   else if (d.kind === 'link') {
     if (d.moved) { const hit = nodeAt(toWorld(e.clientX, e.clientY), d.from); if (hit) createLink(d.from, hit); }
@@ -652,7 +661,7 @@ function endPtr(e) {
     else select({ kind: 'node', id: d.from });
   }
   else if (d.kind === 'edge') { if (!d.moved) { const now = Date.now(), dbl = lastTap.id === d.lid && now - lastTap.t < 420; lastTap = { id: d.lid, t: now }; select({ kind: 'link', id: d.lid }); if (dbl) startEdit(d.lid); } }
-  else if (!d.moved) { if (pendingSrc) { pendingSrc = null; } if (sel) select(null); else renderNodes(); }
+  else if (!d.moved) { if (pendingSrc) { pendingSrc = null; } multi.clear(); if (sel) select(null); else renderNodes(); }
 }
 stage.addEventListener('pointerup', endPtr); stage.addEventListener('pointercancel', endPtr);
 stage.addEventListener('wheel', e => { if (e.target.closest('.overlay')) return; e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0016))); }, { passive: false });
@@ -782,7 +791,7 @@ function act(a) {
     case 'delSel': removeSel(); break;
     case 'swapLink': { const l = sel && B.links[sel.id]; if (l) { const x = l.a; l.a = l.b; l.b = x; commit(); } break; }
     case 'editLabel': if (sel) startEdit(sel.id); break;
-    case 'tieFrom': linkMode = true; pendingSrc = sel.id; $('inspector').classList.remove('open'); renderNodes(); renderOverlays(); toast('Now tap the unit to tie ' + nm(sel.id) + ' to'); break;
+    case 'tieFrom': linkMode = true; groupMode = false; pendingSrc = sel.id; $('inspector').classList.remove('open'); renderNodes(); renderOverlays(); toast('Now tap the unit to tie ' + nm(sel.id) + ' to'); break;
     case 'goMain': switchBoard(S.boards.main ? 'main' : (S.order.find(id => !S.boards[id].sample) || S.order[0])); if (B.sample) newBoard('Main board'); break;
     case 'newBoard': newBoard('Board ' + (S.order.length + 1)); act('renameBoard'); break;
     case 'dupBoard': newBoard(B.name + ' copy', B); break;
@@ -808,7 +817,8 @@ function importJSON(text, replace) {
 }
 $('fileIn').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { const t = $('mText'); if (t) { t.value = String(rd.result); $('mFile').textContent = f.name; } }; rd.readAsText(f); e.target.value = ''; });
 $('boardSel').addEventListener('change', e => switchBoard(e.target.value));
-$('btnLink').addEventListener('click', () => { linkMode = !linkMode; pendingSrc = null; renderNodes(); renderOverlays(); if (linkMode) toast('Tie mode: drag from one unit to another, or tap one then the other'); });
+$('btnGroup').addEventListener('click', () => { groupMode = !groupMode; if (groupMode) linkMode = false; pendingSrc = null; renderNodes(); renderOverlays(); });
+$('btnLink').addEventListener('click', () => { linkMode = !linkMode; if (linkMode) groupMode = false; pendingSrc = null; renderNodes(); renderOverlays(); if (linkMode) toast('Tie mode: drag from one unit to another, or tap one then the other'); });
 $('btnNote').addEventListener('click', addNote);
 $('btnCustom').addEventListener('click', () => {
   modal('<h2>Add a character</h2><p>For anyone who is not a roster race: a named boss, an agent, an organisation, a place.</p><div class="two"><label class="field"><span>Name</span><input class="inp" id="mName" maxlength="60" autofocus placeholder="Agent Forrest"></label><label class="field"><span>Role or title</span><input class="inp" id="mSub" maxlength="60" placeholder="Field agent"></label><label class="field"><span>Kind</span><select class="sel" id="mShape"><option value="character">Character</option><option value="boss">Boss</option><option value="org">Organisation</option><option value="place">Place</option></select></label><label class="field"><span>Type</span><select class="sel" id="mFac"><option value="">None</option>' + FACTIONS.map(f => '<option value="' + f[0] + '">' + f[1] + '</option>').join('') + '</select></label></div><label class="field"><span>Portrait borrowed from a race</span><select class="sel" id="mRace"><option value="">Initials only</option>' + D.races.slice().sort((a, b) => a.n.localeCompare(b.n)).map(x => '<option value="' + esc(x.k) + '">' + esc(x.n) + '</option>').join('') + '</select></label><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="ok">Pin to board</button></div>', d => {
@@ -830,8 +840,9 @@ document.addEventListener('keydown', e => {
   if (mod && e.key.toLowerCase() === 'y' && !typing) { e.preventDefault(); redo(); return; }
   if (typing || mod || e.altKey) return;
   if (e.key === 'Delete' || e.key === 'Backspace') { if (sel) { e.preventDefault(); removeSel(); } }
-  else if (e.key === 'Escape') { closeMenus(); if (linkMode || pendingSrc) { linkMode = false; pendingSrc = null; renderNodes(); renderOverlays(); } else if (sel) select(null); }
+  else if (e.key === 'Escape') { closeMenus(); if (multi.size) setMulti([]); else if (linkMode || pendingSrc) { linkMode = false; pendingSrc = null; renderNodes(); renderOverlays(); } else if (sel) select(null); }
   else if (e.key === 'l' || e.key === 'L') $('btnLink').click();
+  else if (e.key === 'g' || e.key === 'G') $('btnGroup').click();
   else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); addNote(); }
   else if (e.key === 'f' || e.key === 'F') fit();
   else if (e.key === '/') { e.preventDefault(); $('roster').classList.add('open'); $('q').focus(); }

@@ -9,6 +9,13 @@ to feed story ideas and the encounter system's "who defends who".
 - **Roster:** every race in `AVAILABLE_RACES` (two-gender races as separate male / female nodes), plus the story cast from `DOOR_CAST`, the orientation-tape squad from `TUTORIAL_LESSONS` and the two `BOSS_DEFS` entries. Faction ring = the race's `types`.
 - **Game export:** a JSON of ties keyed by exact race keys (gender as its own field) and cast ids, shaped to be baked into data.js later. Nothing reads it yet.
 
+## Moving groups (11-18, mondo's ask)
+
+- **Lasso** (toolbar, or G; or hold Alt / Option and drag on empty board): draw a loop; every unit and idea card
+  inside it is picked (red ring). Drag any picked one and they all move. Click empty board or Escape to let go.
+- **Alt / Option-drag a unit**: moves everything tied to it, through any chain of ties.
+- No hint text in the panels (mondo hates helper text); the button title says it.
+
 ## Rebuilding after the roster changes
 
 Scripts in `build/` read the repo's `data.js` / `sprites.js`. Portraits are fetched read-only from the R2 bucket
@@ -17,4 +24,5 @@ Scripts in `build/` read the repo's `data.js` / `sprites.js`. Portraits are fetc
 
 Order: `node extract.js`, `node urls.js`, `python3 dl.py`, `python3 faces.py`, `node roster.js`, then the second pass
 (`extract2.js`, `urls2.js`, `dl2.py`, `render.js`, `faces2.py`, `roster2.js`), then `node build.js` writes the page.
-Downloaded art and intermediate JSON are not committed.
+Downloaded art and intermediate JSON are not committed. To change only the code (`app.js` / `template.html`)
+without the art, pull `build/roster.json` back out of the built page (the `const EW_DATA = …;` line) and run `node build.js`.
