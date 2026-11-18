@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1242 |
+| Meshy AI | no | 1243 |
 | Meshy AI, reworked by Claude | no | 11 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 86 |
@@ -234,6 +234,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | vampire (female) — creator look also baked | `Assets/characters/races/vampire/female/Meshy_AI_beautiful_attractive__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | virus | `Assets/characters/races/virus/male/virus.glb` | Meshy AI, reworked by Claude | Meshy AI parts (a dark green crystal core and ONE crystal spike) put together by Claude in code (project files internet-units/virus/assemble.mjs): the spike used 14 times, each its own node, the eight red eyes and the nine code tendrils built in code, for the Virus race's moving-parts rig (three-renderer.js THE VIRUS) |
 | voidweaver | `Assets/characters/races/voidweaver/male/Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| vtuber (female) — creator look also baked | `Assets/characters/races/vtuber/female/Meshy_AI_vtuber_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved concepts (the Streamer + the E-Girl, mondo 2026-11-18: the Meshy look is the default, the MPFB look stays pickable) |
 | wendigo | `Assets/characters/races/wendigo/male/Meshy_AI_wendigo_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | werewolf — creator look also baked | `Assets/characters/races/werewolf/male/Meshy_AI_werewolf_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | wizard | `Assets/characters/races/homosapien/male/blackmage/Meshy_AI_wizard_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |

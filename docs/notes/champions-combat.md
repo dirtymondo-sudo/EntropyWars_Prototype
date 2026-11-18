@@ -6037,7 +6037,10 @@ specialist, home The Internet. Resists sonic, weak to light. Basic attack: melee
 - AI (ai.js): a projector is worth 60 + 70 per enemy within 4 of its square; Scene Change scores when more enemies crowd her than
   the quietest projector (more when hurt) and aims at that projector.
 - Finisher Graduation (borrows farewellTour). Family `vtubing` (signature, idol cyan).
-- Look: creator-look race (EW_CREATOR_LOOK_RACES; RACE_CREATOR_LOOKS.vtuber): MPFB female, white high-neck crop top, white tiered
+- Look (CHANGED 11-18, mondo "yes" to a full Meshy model): DEFAULT = rigged Meshy model from concepts/vtuber_f.png (sprites.js
+  RACE_MODELS_3D.vtuber, R2 Assets/characters/races/vtuber/female/Meshy_AI_vtuber_f_Running.glb). The old look below stays pickable
+  (RACE_REMADE_LOOKS.vtuber = Remade Race Looks dev switch; party builder race look); 'vtuber' left EW_CREATOR_LOOK_RACES.
+- Old look: RACE_CREATOR_LOOKS.vtuber: MPFB female, white high-neck crop top, white tiered
   mini skirt, white gogo platform boots, the Meshy wig `ewm_vtwig` (models-assets.md "THE V-TUBER WIG") over a silver blunt bob.
 - Projector model: three-renderer.js _buildHoloProjector3D (the Internet zone's Meshy holo_projector pad + a scanline light cone +
   a turning pixel heart + HP bar; own cyan, enemy pink).
