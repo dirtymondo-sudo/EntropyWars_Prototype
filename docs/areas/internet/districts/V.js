@@ -23,7 +23,7 @@ exports.build = c => { const C = c.C;
     /* THE HOLOGRAM STAGE (P08-01): a disc of light, the beam, the avatar standing in it (a resident); LIVE, the count, the hearts going up */
     c.at('holo_projector', 'P08-01', 8.6, 3.4, { span: 6.8 });   // the disc = the Meshy `holo_projector` (THE INTERNET MODELS, 11-18); the beam stays drawn
     [[4.6, 3, 0.5], [5.4, 5.4, 0.7], [4.2, 7.8, 0.45], [6.0, 9.6, 0.6], [-4.6, 9, 0.5]].forEach(([x, y, s], i) => c.at('icon_heart', 'P08-01', 8.6 + x / C, 3.4 + (i % 2) * 0.8 / C, { h: s * 2.6, y: c.base('P08-01') + y, face: (i * 23) % 50 - 25 }));   // the hearts going up (THE INTERNET ICONS)
-    c.look('holo', 'P08-01', 8.6, 3.4, 0, a => { a.cyl(0, 0.4, 0, 3.0, 9, null, VIO, { seg: 16, ri: 2.94, cap: false, ds: true, glow: 0.5 });
+    c.look('holo', 'P08-01', 8.6, 3.4, 0, a => { for (let b = 0; b < 16; b++) { const t = b / 16 * Math.PI * 2; a.box(Math.cos(t) * 3.0, 0.4, Math.sin(t) * 3.0, 0.06, 9, 0.06, null, VIO, { glow: 1 }); } a.cyl(0, 9.4, 0, 3.1, 0.1, null, VIO, { seg: 20, ri: 2.9, glow: 1 });   // (threads of light: a drawn tube is solid, it hid the avatar)
         a.sign('LIVE', -5.2, 6.4, 0, 2.6, 1.0, '#ffffff', '#e01030', 'archivo'); a.sign('LIVE', -5.2, 6.4, -0.05, 2.6, 1.0, '#ffffff', '#e01030', 'archivo', { ry: 180 }); K.words(a, '41,209 WATCHING', 0, 10, 0, 9, 1.0, '#ffffff');
     });
     K.solid(c, 'P08-01', 8, 2, 9, 3, 1);
