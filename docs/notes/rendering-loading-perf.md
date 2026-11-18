@@ -2887,3 +2887,9 @@ ones every 4th frame) although 351 of 414 instance cells were hidden (off the ca
 draws in no pass that frame (the sun's own chunks re-show only shell cells and door chunks), so its copies are skipped and the
 batch syncs in full (`qN = 0`) the first frame its cell is shown; the sync runs before that frame's first draw. Off:
 `window.EW_HQ_INST_SYNC_HIDDEN = true`.
+
+## THE CHECK'S + THE WALK'S SPLIT (2026-11-18, Disaster City 60 FPS thread)
+His F3 after THE NAV GRID + THE HIDDEN CELLS: 35.1 -> 42.6 FPS (frame 28.2 -> 23.6 ms; rounds 1.9 -> 0.4, "mask setup" 2.6 -> 1.0).
+Left on top: bundle replays 3.9, bundle check 2.3, matrix walk 2.1. Two lens lines (lens open only) say where the last two go:
+"Bundle check by group" (each group's walk in `_ewBunTick`, ms a frame + meshes) and "Matrix walk by group" (`_hqStillSceneWalk`
+does the scene's step of three's walk itself and times each top child; keeps `_hqWalkHook`'s reader and `_css2dRender`'s mark).
