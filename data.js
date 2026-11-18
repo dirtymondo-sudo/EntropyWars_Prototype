@@ -98092,6 +98092,38 @@ var ZONE_LOOKS = {
             wall: { marble_light: 'hz:Wall_01', gold: 'px:gold', 'urban:WoodGeneric2a': 'urban:WoodBeams2a' },
             ground: { gold: 'px:gold' },
         },
+        /* ── BATCH 3 ── THE CAVERN: wet black rock, cracked; the old mine's concrete stained; drips off every face */
+        cavern: {
+            rooms: ['site_prebuilt_hollow_earth_cavern', 'site_prebuilt_hollow_earth_ow_agartha', 'site_prebuilt_hollow_earth_ow_west', 'site_prebuilt_hollow_earth_ow_long', 'site_prebuilt_hollow_earth_ow_tunnelway'],
+            wall: { rocks_5: 'hz:Stone_02', cave_wall: 'hz:Stone_01', rock_wall_2: 'hz:Stone_01', rocks_dark_fantasy: 'hz:Stone_01', dungeon_3: 'hz:Brick_11', 'urban:ConcreteStriped2c': 'hz:Wall_14' },
+            ground: {},
+            decals: { drip: 0.5, dirt: 0.2 },
+            byRoom: { site_prebuilt_hollow_earth_ow_agartha: { decals: { drip: 0.15 } } },
+        },
+        /* THE D.U.M.B.: already the urban pack's own concrete + steel; it gets rust, grime, drips and some blood (it is that kind of base) */
+        dumb: {
+            rooms: ['site_prebuilt_dumb_base'],
+            wall: { rocks_5: 'hz:Stone_02', 'urban:MetalCorrugatedPainted2a': 'hz:Metal_06', metal: 'hz:Metal_09', gunmetal: 'hz:Metal_02', 'urban:PlasterWallPainted1a': 'hz:Wall_09' },
+            ground: {},
+            decals: { blood: 0.07, dirt: 0.3, drip: 0.6, grime: 0.35 },
+        },
+        /* LEYLINES: Babel in weathered sandstone brick, Stonehenge grey stone, Gobekli's line in old desert stone, the Bug Colony's rock mossy */
+        leylines: {
+            rooms: ['site_prebuilt_gobekli_ow_line', 'site_prebuilt_gobekli_ow_babel', 'site_prebuilt_gobekli_ow_henge', 'site_prebuilt_gobekli_ow_bugs', 'site_prebuilt_gobekli_hive', 'site_prebuilt_gobekli_nest'],
+            wall: { rock_wall_1: 'hz:Stone_09', bricks_1: 'hz:Brick_14', cobblestone: 'hz:Brick_10', gold: 'px:gold', rocks_5: 'hz:Stone_09', mushroom: 'hz:Brick_07', wood: 'urban:WoodBeams2a' },
+            ground: { gold: 'px:gold' },
+            decals: { dirt: 0.2, drip: 0.3 },
+            byRoom: { site_prebuilt_gobekli_ow_henge: { wall: { rock_wall_1: 'hz:Stone_11' }, ground: { rock_wall_1: 'hz:Stone_11' } },
+                      site_prebuilt_gobekli_ow_babel: { wall: { rocks_5: 'hz:Brick_14' } },
+                      site_prebuilt_gobekli_nest: { wall: { marble_light: 'hz:Stone_06' }, decals: { dirt: 0.3, drip: 0.5 } } },
+        },
+        /* THE DEEP: Atlantis' white marble drowned (pale stone gone green and gold); the Temple's dry inside the same stone, its gold the good gold */
+        deep: {
+            rooms: ['site_prebuilt_atlantis_deep', 'site_prebuilt_atlantis_ow_floor', 'site_prebuilt_atlantis_pocket'],
+            wall: { marble_light: 'hz:Stone_05', gold: 'px:gold', rocks_5: 'hz:Stone_02' },
+            ground: { gold: 'px:gold' },
+            byRoom: { site_prebuilt_atlantis_pocket: { decals: { dirt: 0.2, drip: 0.4 } } },
+        },
     },
 };
 function zlHorrorKey(n) { return 'hz_' + String(n).toLowerCase(); }   // 'Brick_09' -> 'hz_brick_09'
@@ -98139,6 +98171,7 @@ function zoneLookRoom(room, Z) {
     if (sh) { ['floor', 'apron'].forEach(k => { sh[k] = sw(G, sh[k]); }); ['wall', 'dado', 'trim', 'ceiling', 'skirt'].forEach(k => { sh[k] = sw(W, sh[k]); }); }
     if (t) {
         t.floor = sw(G, t.floor); t.path = sw(G, t.path); t.cliff = sw(W, t.cliff);
+        if (t.gen) { if (typeof t.gen.wallKey === 'string') t.gen.wallKey = sw(W, t.gen.wallKey); if (typeof t.gen.fenceKey === 'string') t.gen.fenceKey = sw(W, t.gen.fenceKey); }   // a generated room's walls (the Cavern's plan walls, 11-18)
         if (t.paint && Array.isArray(t.paint.pal)) t.paint.pal = t.paint.pal.map(k => sw(G, k));
         (t.zones || []).forEach(z => { if (!z) return; z.floor = sw(G, z.floor); z.path = sw(G, z.path); z.cliff = sw(W, z.cliff); if (Array.isArray(z.pal)) z.pal = z.pal.map(k => sw(G, k)); });
         (t.features || []).forEach(f => {
