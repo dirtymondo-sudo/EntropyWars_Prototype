@@ -6489,9 +6489,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var row = _VC_PORTAL[spellId]; if (!row) return;
         var sx = p.sx != null ? p.sx : p.tx, sy = p.sy != null ? p.sy : p.ty;
         var o = { col: row.col, col2: row.col2, flat: row.flat, smoke: row.smoke, scale: row.scale, hostile: row.col == null && _vcPortalHostile(sx, sy) };
-        if (row.at === 'target') {   /* a summon / a rift: one portal where it comes out, on the hit beat */
-            if (phase !== 'burst' || p.tx == null || !_pzSeen(p.tx, p.ty)) return;
-            o.ms = 700; _portalKit3D(p.tx, p.ty, o); return;
+        if (row.at === 'target') {   /* a summon / a rift: one portal where it comes out */
+            /* THE VFX CLEANUP B11: it opened on the hit beat, 1.2-1.6 s after the cast (timed in real casts), when the thing had
+               long been standing there. It opens on the cast now, so the thing comes OUT of it. */
+            if (phase !== 'windup' || p.tx == null || !_pzSeen(p.tx, p.ty)) return;
+            o.ms = Math.max(600, Math.min(1400, p.holdMs || 900)); _portalKit3D(p.tx, p.ty, o); return;
         }
         if (row.mover) {
             /* THE VFX CLEANUP B11: a cast that moves ANOTHER unit. It read state._teleportingUnitId on the windup beat, which an
@@ -6508,11 +6510,24 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _portalKit3D(sx, sy, o);
         } else if (phase === 'burst') {
             if (p.tx == null || (p.tx === sx && p.ty === sy) || !_pzSeen(p.tx, p.ty)) return;
+            if (_vcPortalDone[spellId] && performance.now() - _vcPortalDone[spellId] < 5000) { delete _vcPortalDone[spellId]; return; }   /* the 'teleport' beat already opened it (B11) */
             var from = _vcPortalFrom[sx + ',' + sy]; if (from && row.col == null) o.hostile = from.hostile;   /* the caster has left its square by now */
             o.ms = 520; _portalKit3D(p.tx, p.ty, o);
         }
     }
-    var _vcPortalFrom = {}, _vcPortalMoverBy = null;
+    var _vcPortalFrom = {}, _vcPortalMoverBy = null, _vcPortalDone = {};
+    /* THE VFX CLEANUP B11: a teleport's ARRIVING portal. It opened on the hit beat, about 1.2 s after the unit had already
+       come out (timed in a real Shadow Step). The relayed 'teleport' beat fires with the cast and names both squares, so the
+       portal opens there and then; the hit beat then draws none. A cast with no 'teleport' beat keeps the hit beat's. */
+    function _vcPortalArrive(spellId, fromX, fromY, toX, toY) {
+        if (!_vcOn()) return;
+        var row = _VC_PORTAL[spellId]; if (!row || row.mover || row.at || fromX == null || toX == null || (toX === fromX && toY === fromY)) return;
+        _vcPortalDone[spellId] = performance.now();
+        if (!_pzSeen(toX, toY)) return;
+        var from = _vcPortalFrom[fromX + ',' + fromY];
+        _portalKit3D(toX, toY, { col: row.col, col2: row.col2, flat: row.flat, smoke: row.smoke, scale: row.scale, ms: 560,
+            hostile: row.col == null && (from ? from.hostile : _vcPortalHostile(toX, toY)) });
+    }
     /* a `mover` row's two portals, on the 'teleport' beat: one under the unit being moved, one where it comes out */
     function _vcPortalMove(spellId, fromX, fromY, toX, toY, arriveMs) {
         if (!_vcOn()) return false;
@@ -22222,6 +22237,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return;
         if (!_canSpawn()) return;
         if (!params) return;
+        try { _vcPortalArrive(spellId, params.fromX != null ? params.fromX : params.sx, params.fromY != null ? params.fromY : params.sy,
+            params.toX != null ? params.toX : params.tx, params.toY != null ? params.toY : params.ty); } catch (e) {}
         /* THE ESCAPE LOOKS (FX-5): an escape with its own look draws it instead of the shared ring + glide */
         if (_ESC_LOOKS && _ESC_LOOKS[spellId]) {
             var _efx = params.fromX != null ? params.fromX : params.sx, _efy = params.fromY != null ? params.fromY : params.sy;
