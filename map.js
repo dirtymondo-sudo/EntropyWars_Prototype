@@ -9019,10 +9019,8 @@
             const T = _hqTalk, t = T.t;
             const last = T.i >= T.pages.length - 1;
             const showChoices = last && T.choices.length && !T.choiceSet;
-            let acts = '';
-            if (showChoices) acts = T.choices.map((c, i) => `<button class="hq-btn${i ? '' : ' hq-btn-primary'}" data-talk-choice="${i}">${i + 1} · ${_hqEsc(String(c.label))}</button>`).join('');
-            else acts = `<button class="hq-btn hq-btn-primary" data-talk="next">${last ? 'NOTED' : 'NEXT ▸'}</button>`;
-            return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(T.pages[T.i] || '…')}</p><div class="hq-panel-actions">${acts}</div>`;
+            /* THE DIALOGUE BOX (mondo 11-18): a page with no answers turns on a click on the band (or E / ENTER / SPACE) */
+            return _hqDlgBox(t, T.pages[T.i] || '…', showChoices ? T.choices.map((c, i) => ({ label: String(c.label), attrs: `data-talk-choice="${i}"` })) : null, { band: 'data-talk="next"' });
         }
         function _hqTalkStep(choice) {
             const T = _hqTalk; if (!T) return;
@@ -9038,7 +9036,9 @@
                 if (T.choices.length && !T.choiceSet) return;
                 _hqTalkEnd(); return;
             } else T.i++;
-            body.innerHTML = _hqTalkHtml() + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
+            body.innerHTML = _hqTalkHtml();   // THE DIALOGUE BOX: no hint line under it (mondo 11-18)
+            window.EWDlg.start(body.querySelector('.ew-dlg'));
+            _hqDlgFaceFill(body, T.t);
             try { playSfx('uiButtonConfirm'); } catch (e) {}
         }
         function _hqTalkEnd() {
@@ -9077,6 +9077,161 @@
             window._hqClosePanel();
             _hqInteractHold();
         }, true);
+        /* ══ THE DIALOGUE BOX (mondo 11-18, option B "THE PORTRAIT": "story dialogue needs to be separated from all that or treated
+           separately, not get overriden by how the battle buttons are" + "we dont need where they live in a panel" + "the text
+           should be on a black background with the sides faded, like the spell description in battle" + no hint text under it) ══
+           ONE look for every story line: a person's line on the walk (the plain line, THE TALK, the strike ladder's Talk box, THE
+           MUGGING, a cast member), the battle's pay-off box (battle.js _npcTalkOpen) and the cutscene words (three-camera.js
+           EWScene). The speaker's face in a PS1 window on the left of a black band with faded sides; the name in gold over the
+           line; the line types in; the answers in their own PS1 window on the right under YOU, a ▶ on the picked one (BACK red,
+           the rest white, the forward one green). Its classes are its own (`ew-dlg-*`, styles-base.css THE DIALOGUE BOX): no UI
+           Maker / theme / battle-button selector names them, and the rules there beat the themed panel card with !important.
+           Keys: E / ENTER / SPACE / a click finish the typing first; ↑ ↓ (← →) move the ▶, ENTER answers it, E answers it once
+           the ▶ was moved (before that E keeps its own job: BACK OFF / close); 1-4 still answer straight; ESC + RIGHT CLICK = back.
+           Viewer-local, nothing relayed (the walk and the boxes are local). */
+        window.EWDlg = (function () {
+            const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const CPS = 55;   // letters a second
+            /* o: { who, line, desc, face, flag, band: 'attr="…"', opts: [{ label, key, attrs, tone: 'back'|'go'|'' }], you: { face } } */
+            function html(o) {
+                o = o || {};
+                const opts = Array.isArray(o.opts) ? o.opts : [];
+                const you = o.you || {};
+                let h = `<div class="ew-dlg${opts.length ? ' has-opts' : ''}">`
+                    + `<div class="ew-dlg-band"${o.band ? ' ' + o.band : ''}>`
+                    + `<div class="ew-dlg-face${o.face ? '' : ' none'}"><img alt=""${o.face ? ` src="${esc(o.face)}"` : ''}>${o.flag ? `<span class="ew-dlg-flag">${esc(o.flag)}</span>` : ''}</div>`
+                    + `<div class="ew-dlg-text"><div class="ew-dlg-who">${esc(o.who || '')}</div>`
+                    + `<div class="ew-dlg-line" data-full="${esc(o.line || '')}"></div>`
+                    + (o.desc ? `<div class="ew-dlg-desc">${esc(o.desc)}</div>` : '')
+                    + `${opts.length ? '' : '<i class="ew-dlg-adv">▼</i>'}</div></div>`;
+                if (opts.length) {
+                    h += `<div class="ew-dlg-opts"><div class="ew-dlg-you"><span class="ew-dlg-you-face${you.face ? '' : ' none'}">${you.face ? `<img alt="" src="${esc(you.face)}">` : ''}</span><b>YOU</b></div>`
+                        + opts.map((p, i) => `<button type="button" class="ew-dlg-opt${p.tone ? ' ' + p.tone : ''}${i === 0 ? ' sel' : ''}"${p.attrs ? ' ' + p.attrs : ''}${p.disabled ? ' disabled' : ''}><span class="ew-dlg-key">${esc(p.key != null ? p.key : i + 1)}</span><span class="ew-dlg-lab">${esc(p.label)}</span></button>`).join('')
+                        + '</div>';
+                }
+                return h + '</div>';
+            }
+            function stop(root) { if (root && root._dlgT) { clearInterval(root._dlgT); root._dlgT = 0; } }
+            function finish(root) {
+                const d = root && root.querySelector('.ew-dlg-line'); stop(root);
+                if (d) d.textContent = d.getAttribute('data-full') || '';
+                if (root) { root.classList.remove('typing'); root._dlgTyping = false; }
+            }
+            /* the line types in (root = the .ew-dlg); o.instant shows it whole */
+            function start(root, o) {
+                if (!root) return;
+                stop(root); root._dlgMoved = false;
+                const d = root.querySelector('.ew-dlg-line'); if (!d) return;
+                const full = d.getAttribute('data-full') || '';
+                if ((o && o.instant) || !full) { finish(root); return; }
+                /* the box takes the whole line's size before it types (the band never grows under the reader's eyes) */
+                d.style.minHeight = ''; d.textContent = full; d.style.minHeight = d.offsetHeight + 'px'; d.textContent = '';
+                root.classList.add('typing'); root._dlgTyping = true;
+                const t0 = performance.now();
+                root._dlgT = setInterval(() => {
+                    if (!root.isConnected) { stop(root); return; }
+                    const n = Math.min(full.length, Math.floor((performance.now() - t0) / 1000 * CPS) + 1);
+                    d.textContent = full.slice(0, n);
+                    if (n >= full.length) finish(root);
+                }, 16);
+            }
+            function opts(root) { return root ? Array.from(root.querySelectorAll('.ew-dlg-opt')) : []; }
+            function move(root, step) {
+                const b = opts(root).filter(x => !x.disabled); if (!b.length) return;
+                let i = b.findIndex(x => x.classList.contains('sel')); i = ((i < 0 ? 0 : i + step) % b.length + b.length) % b.length;
+                opts(root).forEach(x => x.classList.toggle('sel', x === b[i]));
+                root._dlgMoved = true;
+                try { playSfx('uiButtonHover'); } catch (e) {}
+            }
+            function answer(root) { const s = root && root.querySelector('.ew-dlg-opt.sel:not(:disabled)'); if (s) { s.click(); return true; } return false; }
+            /* the box on screen the keys belong to (the cutscene keeps its own keys) */
+            function live() {
+                const all = document.querySelectorAll('.ew-dlg:not(.ew-dlg-own)');
+                for (let i = all.length - 1; i >= 0; i--) if (all[i].offsetParent !== null || all[i].getClientRects().length) return all[i];
+                return null;
+            }
+            window.addEventListener('keydown', (e) => {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                const tg = e.target; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT' || tg.isContentEditable)) return;
+                const root = live(); if (!root) return;
+                const k = e.key;
+                if (root._dlgTyping && (k === 'e' || k === 'E' || k === 'Enter' || k === ' ')) { e.preventDefault(); e.stopPropagation(); if (!e.repeat) finish(root); return; }
+                if (root._dlgTyping || !root.classList.contains('has-opts') || e.repeat) return;
+                if (k === 'ArrowUp' || k === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); move(root, -1); return; }
+                if (k === 'ArrowDown' || k === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); move(root, 1); return; }
+                if (k === 'Enter' || ((k === 'e' || k === 'E') && root._dlgMoved)) { if (answer(root)) { e.preventDefault(); e.stopPropagation(); } }
+            }, true);
+            /* a click on a typing box finishes the line (it never answers or closes the box under the reader) */
+            window.addEventListener('click', (e) => {
+                const root = e.target && e.target.closest ? e.target.closest('.ew-dlg') : null;
+                if (root && root._dlgTyping && !root.classList.contains('ew-dlg-own')) { e.preventDefault(); e.stopPropagation(); finish(root); }
+            }, true);
+            document.addEventListener('mouseover', (e) => {
+                const b = e.target && e.target.closest ? e.target.closest('.ew-dlg-opt') : null; if (!b || b.disabled) return;
+                const root = b.closest('.ew-dlg'); if (!root || root.classList.contains('ew-dlg-own')) return;
+                opts(root).forEach(x => x.classList.toggle('sel', x === b));
+            });
+            /* a face that is not ready yet (a sprite still loading, a story character's model portrait still being shot) fills in
+               when it is: get() is asked again for a few seconds; `wait` ms = how long a better face may take before `get(true)`
+               (the stand-in) is used */
+            function face(root, get, wait) {
+                if (!root || typeof get !== 'function') return;
+                const box = root.querySelector('.ew-dlg-face'), img = box && box.querySelector('img'); if (!img) return;
+                const t0 = performance.now(), gen = root._dlgFaceGen = (root._dlgFaceGen || 0) + 1;   // a newer line's face wins
+                const put = u => { if (!u || img.getAttribute('src') === u) return; img.src = u; box.classList.remove('none'); };
+                let n = 0;
+                const step = () => {
+                    if (!root.isConnected || root._dlgFaceGen !== gen) return;
+                    const late = performance.now() - t0 > (wait || 0);
+                    let u = ''; try { u = get(late) || ''; } catch (e) { u = ''; }
+                    if (u) put(u);
+                    if (u && !late) return;   // the real face: done (a stand-in keeps asking a while for the better one)
+                    if (++n < 45) setTimeout(step, 160);
+                };
+                step();
+            }
+            return { html, start, finish, face, move, answer, esc };
+        })();
+        /* who is talking -> their face: a story character (data.js DOOR_CAST) wears the face cut from its own model (three-renderer
+           THE PORTRAIT STUDIO), anyone else its race's face (hud.js EWFaces); `late` = the stand-in is fine now */
+        const _hqDlgApps = {};
+        window.ewDlgFace = function (who, late) {
+            try {
+                if (!who) return '';
+                let castId = who.cast || null, m = null;
+                const C = window.DOOR_CAST || (typeof DOOR_CAST !== 'undefined' ? DOOR_CAST : null);
+                if (!castId && who.name && C) { const nm = String(who.name).trim().toUpperCase(); castId = Object.keys(C).find(k => k !== 'player' && C[k] && String(C[k].name || '').toUpperCase() === nm) || null; }
+                if (castId && C) m = C[castId] || null;
+                const race = who.race || (m && (m.base || m.race)) || null, gender = who.gender || (m && m.gender) || 'male';
+                if (m && m.model) {
+                    if (!window.EWPortraits) return '';
+                    const a = _hqDlgApps[m.model] || (_hqDlgApps[m.model] = { cast: m.model });
+                    /* only their own face: a race stand-in would be somebody else's (Agent Belle wore a man's sunglasses face) */
+                    return window.EWPortraits.url({ race: race || 'men in black', gender, appearance: a }) || '';
+                }
+                if (!race) return '';
+                return (typeof getUnitPortraitUrl === 'function' && getUnitPortraitUrl({ race, gender })) || '';
+            } catch (e) { return ''; }
+        };
+        /* the walker's own face over the answers (the dock's lead portrait) */
+        function _hqDlgYouFace() {
+            try {
+                const rec = _hqParty(), m = rec && rec.members && rec.members[0];
+                const po = m ? _hqPausePortrait(m, null) : null;
+                return (po && po.url) || '';
+            } catch (e) { return ''; }
+        }
+        window.ewDlgYouFace = _hqDlgYouFace;
+        /* a person's box on the walk: THE DIALOGUE BOX with the target's name (never its `sub`: where it lives, its level) */
+        function _hqDlgFaceFill(body, t) {
+            const root = body && body.querySelector('.ew-dlg'); if (!root || !t) return;
+            window.EWDlg.face(root, late => window.ewDlgFace({ cast: t.kind === 'cast' ? t.cast : null, race: t.race, gender: t.gender }, late), 2500);
+        }
+        function _hqDlgBox(t, line, opts, o) {
+            o = o || {};
+            return window.EWDlg.html({ who: t.label || String(t.race || '').toUpperCase(), line: line == null ? '…' : line, desc: o.desc || '',
+                band: (opts && opts.length) ? '' : (o.band || 'data-close="1"'), opts: opts || null, you: (opts && opts.length) ? { face: _hqDlgYouFace() } : null });
+        }
         function _hqNpcPanelHtml(t) {
             const room = _hqRoom();
             if (t.talk && _hqTalkStart(t)) return _hqTalkHtml();
@@ -9087,11 +9242,8 @@
                    line when they have one (user-authored, A15 rule), the stage
                    direction for what they are doing under it */
                 const cl = (typeof window.hqCastLine === 'function') ? window.hqCastLine(t.cast) : null;
-                let html = `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div>`;
-                if (cl) html += `<p class="hq-panel-line">${_hqEsc(cl)}</p>`;
-                if (t.doing) html += `<p class="hq-panel-desc">${_hqEsc(t.doing)}</p>`;
-                if (!cl && !t.doing) html += '<p class="hq-panel-line">…</p>';
-                return html + '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>';
+                /* THE DIALOGUE BOX (mondo 11-18): the name, the line, what they are doing under it; a click / E closes it */
+                return _hqDlgBox(t, cl || (t.doing ? '' : '…'), null, { desc: t.doing || '' });
             }
             let line = t.line;
             /* roster vessels speak their own lines (data.js DOOR_ROSTER_LINES,
@@ -9109,17 +9261,19 @@
             if (t._mug) {
                 const LB = (typeof HQ_NPC_TEMPERS !== 'undefined' && HQ_NPC_TEMPERS.labels) || {}, pay = t._mug.pay | 0;
                 t._mugBox = true;
-                return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(((typeof hqNpcMugLine === 'function') ? hqNpcMugLine(t.race) : '') || line || '…')}</p><div class="hq-panel-actions">`
-                    + `<button class="hq-btn" data-npc-mug="pay"${pay > 0 ? '' : ' disabled'}>1 · ${_hqEsc(LB.pay || 'PAY')} ${pay}</button><button class="hq-btn hq-btn-primary" data-npc-mug="fight">2 · ${_hqEsc(LB.fight || 'FIGHT')}</button></div>`;
+                return _hqDlgBox(t, ((typeof hqNpcMugLine === 'function') ? hqNpcMugLine(t.race) : '') || line || '…', [
+                    { label: (LB.pay || 'PAY') + ' ' + pay, attrs: 'data-npc-mug="pay"', disabled: !(pay > 0) },
+                    { label: LB.fight || 'FIGHT', attrs: 'data-npc-mug="fight"', tone: 'go' }]);
             }
             if (_hqLadderTalkOk(t)) {
                 const LB = (typeof HQ_NPC_TEMPERS !== 'undefined' && HQ_NPC_TEMPERS.labels) || {};
                 if (t._struck) line = ((typeof hqNpcTalkLine === 'function') ? hqNpcTalkLine(t.race) : '') || line;
                 t._ladderBox = true;
-                return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(line || '…')}</p><div class="hq-panel-actions">`
-                    + `<button class="hq-btn" data-close="1">1 · ${_hqEsc(t._struck ? (LB.backOff || 'BACK OFF') : (LB.noted || 'NOTED'))}</button><button class="hq-btn hq-btn-primary" data-npc-fight="1">2 · ${_hqEsc(LB.fight || 'FIGHT')}</button></div>`;
+                return _hqDlgBox(t, line || '…', [
+                    { label: t._struck ? (LB.backOff || 'BACK OFF') : (LB.noted || 'NOTED'), attrs: 'data-close="1"', tone: 'back' },
+                    { label: LB.fight || 'FIGHT', attrs: 'data-npc-fight="1"', tone: 'go' }]);
             }
-            return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(line || '…')}</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
+            return _hqDlgBox(t, line || '…', null);
         }
         /* A plain unlocked door with exactly one obvious outcome — a built
            room, a bay corridor, or a screen — is entered directly, no
@@ -9234,9 +9388,11 @@
             else if (t.kind === 'counter') html = _hqCounterPanelHtml(t);
             else if (t.kind === 'notice') html = _hqNoticePanelHtml(t);
             else html = _hqNpcPanelHtml(t);
-            body.innerHTML = html + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
+            const say = !(t.kind === 'door' || t.kind === 'counter' || t.kind === 'notice');
+            /* THE DIALOGUE BOX (mondo 11-18: "delete all of that bullshit"): a person's box has no hint line under it */
+            body.innerHTML = say ? html : html + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
             _hqPanelAt = performance.now();
-            if (_hqPanelPlain() || t._ladderBox || t._mugBox) { const ft = body.querySelector('.hq-panel-foot'); if (ft) ft.textContent = 'E · ESC · RIGHT CLICK · CLOSE'; }
+            if (!say && _hqPanelPlain()) { const ft = body.querySelector('.hq-panel-foot'); if (ft) ft.textContent = 'E · ESC · RIGHT CLICK · CLOSE'; }
             /* THE MAP is a FULL-SCREEN sheet (the user's rule, 2026-09-16): the
                stage fills the screen, the card + the register ride a side column
                (styles-base.css .hq-panel-map); every other target keeps the card */
@@ -9244,7 +9400,8 @@
             /* THE SUBTITLE (2026-09-20, the user: "character dialogue should still look like subtitles, black bar with
                white text"): a person's line (a native, the roster, the cast, an agent) is a black bar along the foot
                of the screen with white text — never the themed plate (styles-base.css .hq-panel-say) */
-            panel.classList.toggle('hq-panel-say', !(t.kind === 'door' || t.kind === 'counter' || t.kind === 'notice'));
+            panel.classList.toggle('hq-panel-say', say);
+            if (say) { window.EWDlg.start(body.querySelector('.ew-dlg')); _hqDlgFaceFill(body, t); }
             if (typeof _hqMapAfterRender === 'function') _hqMapAfterRender(body);   // THE MAP: the reveal + the handlers
             panel.style.display = '';
             _hqSetPrompt(null);

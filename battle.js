@@ -51714,45 +51714,24 @@
             const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
             let port = ''; try { port = _vicPortrait(u) || ''; } catch (e) { port = ''; }
             if (!document.getElementById('ew-npc-talk-css')) {
-                /* the battle's own black box with the white outline (owner rules: PS1 window UI, panels black with a white outline) */
+                /* THE DIALOGUE BOX (mondo 11-18, option B): the box is map.js EWDlg (styles-base.css THE DIALOGUE BOX), the same look as
+                   every story line; this only holds it along the foot of the screen. No hint line under it (his order). */
                 const st = document.createElement('style'); st.id = 'ew-npc-talk-css';
-                st.textContent = [
-                    '.ew-npc-talk { position: fixed; left: 50%; bottom: 14vh; transform: translateX(-50%); z-index: 9000; width: min(760px, calc(100vw - 32px));',
-                    '  box-sizing: border-box; background: #000; border: 2px solid #fff; padding: 18px 20px 12px; color: #fff; font-family: "IBM Plex Mono", monospace; }',
-                    '.ew-npc-talk-top { display: flex; gap: 18px; align-items: flex-start; }',
-                    '.ew-npc-talk-port { position: relative; flex: none; width: 108px; height: 108px; border: 2px solid #fff; background: #111; overflow: hidden; }',
-                    '.ew-npc-talk-port img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; display: block; }',
-                    '.ew-npc-talk-flag { position: absolute; top: 2px; right: 4px; font-size: 16px; text-shadow: 0 1px 2px #000; }',
-                    '.ew-npc-talk-txt { min-width: 0; flex: 1; }',
-                    '.ew-npc-talk-name { font-size: 30px; font-weight: 700; letter-spacing: 1px; line-height: 1.1; overflow-wrap: anywhere; }',
-                    '.ew-npc-talk-lv { font-size: 14px; font-weight: 400; color: #bbb; margin-left: 16px; letter-spacing: 1px; white-space: nowrap; }',
-                    '.ew-npc-talk-line { font-size: 24px; margin-top: 14px; line-height: 1.25; }',
-                    '.ew-npc-talk-btns { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }',
-                    '.ew-npc-talk-btns button { background: #000; color: #fff; font: 700 15px "IBM Plex Mono", monospace; letter-spacing: 0.5px; padding: 9px 11px; cursor: pointer; border: 2px solid #9a9a9a; white-space: normal; text-align: left; }',
-                    '.ew-npc-talk-btns button:hover { background: #1a1a1a; }',
-                    '.ew-npc-talk-btns .ew-npc-talk-pay { border-color: #2ed158; }',
-                    '.ew-npc-talk-btns .ew-npc-talk-arrest { border-color: #4a8cff; }',
-                    '.ew-npc-talk-hint { margin-top: 12px; font-size: 13px; color: #aaa; }',
-                ].join('\n');
+                st.textContent = '.ew-npc-talk { position: fixed; left: 0; right: 0; bottom: 4vh; z-index: 9000; pointer-events: none; }';
                 document.head.appendChild(st);
             }
+            let you = ''; try { you = (talker && _vicPortrait(talker)) || (typeof window.ewDlgYouFace === 'function' ? window.ewDlgYouFace() : '') || ''; } catch (e) { you = ''; }
             const el = document.createElement('div');
             el.className = 'ew-npc-talk';
             el._uid = u.id; el._end = !!end;
-            el.innerHTML =
-                '<div class="ew-npc-talk-top">' +
-                    '<div class="ew-npc-talk-port">' + (port ? '<img src="' + esc(port) + '" alt="">' : '') + '<span class="ew-npc-talk-flag">🏳️</span></div>' +
-                    '<div class="ew-npc-talk-txt">' +
-                        '<div class="ew-npc-talk-name">' + esc(String(unitDisplayName(u) || u.race || '').toUpperCase()) + '<span class="ew-npc-talk-lv">LV ' + lvl + ' · GAVE UP</span></div>' +
-                        '<div class="ew-npc-talk-line">' + esc((T && T.lines && T.lines.giveUp) || '') + '</div>' +
-                    '</div>' +
-                '</div>' +
-                '<div class="ew-npc-talk-btns">' +
-                    '<button type="button" data-a="pay" class="ew-npc-talk-pay">1 · ' + esc(Lb.payOff || 'TAKE THE PAY-OFF') + ' · ' + po.gold + ' ' + esc(Lb.gold || 'GOLD') + '</button>' +
-                    '<button type="button" data-a="arrest" class="ew-npc-talk-arrest">2 · ' + esc(Lb.arrest || 'ARREST') + '</button>' +
-                    '<button type="button" data-a="let" class="ew-npc-talk-let">3 · ' + esc(Lb.letGo || 'LET IT GO') + '</button>' +
-                '</div>' +
-                '<div class="ew-npc-talk-hint">' + (end ? 'ESC · E · RIGHT CLICK = let it go' : 'ESC · E · RIGHT CLICK = close, ask later') + '</div>';
+            el.innerHTML = window.EWDlg.html({
+                who: String(unitDisplayName(u) || u.race || '').toUpperCase(), line: (T && T.lines && T.lines.giveUp) || '…', face: port, flag: '🏳️', you: { face: you },
+                opts: [
+                    { label: (Lb.payOff || 'TAKE THE PAY-OFF') + ' · ' + po.gold + ' ' + (Lb.gold || 'GOLD'), attrs: 'data-a="pay"', tone: 'go' },
+                    { label: Lb.arrest || 'ARREST', attrs: 'data-a="arrest"' },
+                    { label: Lb.letGo || 'LET IT GO', attrs: 'data-a="let"', tone: 'back' },
+                ],
+            });
             const pick = how => { _npcTalkClose(false); _npcAnswer(u, how, talker); };
             el.addEventListener('click', ev => { const b = ev.target && ev.target.closest && ev.target.closest('button[data-a]'); if (b) { ev.stopPropagation(); pick(b.getAttribute('data-a')); } });
             el.addEventListener('contextmenu', ev => { ev.preventDefault(); ev.stopPropagation(); _npcTalkClose(true); });
@@ -51764,6 +51743,7 @@
             document.addEventListener('keydown', el._key, true);
             (document.getElementById('game-root') || document.body).appendChild(el);
             _npcTalkEl = el;
+            try { window.EWDlg.start(el.querySelector('.ew-dlg')); } catch (e) {}
             if (typeof playUiSfx === 'function') { try { playUiSfx('open'); } catch (e) {} }
         }
         /* checkWin's hold: the fight is won but a unit that gave up is still unanswered = the panel opens by itself (true = hold the debrief) */
