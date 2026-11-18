@@ -12454,6 +12454,10 @@ areas except disaster city first."
   Floor_09, wood -> WoodPainted4a; no stains), THE ONE WORLD ROUTES (zone `routes`, every live `site_ow_*`: bark boards -> WoodCladding, rock ->
   Stone_07). OPEN-GROUND STAINS: `floorDecals: { blood, soot, dirt }` = stains per 1000 m2 on a room's painted squares (not grass, not liquid),
   cap 160 a kind; Hell has them (mondo 11-18 "yes"). A route room added later must be added to `routes.rooms` by hand.
+- BATCH 6, DOOR HQ (zone `doorhq`, 73 hub rooms; not the plot dungeons, rings, bays, arenas): ONLY calm sheets; his painted ones (terrazzo,
+  oxblood, teal, ceiling, concrete, Metro tiles, the H-Wing's yellow wallpaper) stay. Calm plaster -> Wall_03, calm stone -> Stone_11, calm
+  carpet -> urban CarpetPlain1c (red), the H-Wing patchwork -> CarpetPlain1d (mustard, the backrooms look), dungeon -> Brick_09/08 + Floor_13,
+  calm metal -> Metal_02/05 + Floor_09. No stains: HQ rooms are shell rooms, the stains need terrain rows. Every zone except Disaster City is done.
 - LESSONS: a stair-built terrain slope draws in `terrain.cliff`, so a cliff sheet shows on steps: pick one that reads as stone blocks. A probe
   needs `--flags=EW_HQ_NO_ENCOUNTER` (a field fight hides the view) and ONE browser at a time (three at once got OOM-killed).
 
