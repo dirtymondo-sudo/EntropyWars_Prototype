@@ -2953,3 +2953,9 @@ shared, and never shrinks (as before). Off: `window.EW_RIG_NO_PREGROW = true`.
   resource / a rig grow re-records every group); "Inside the ticks" gains camera: boom march / feel. His 07:34 F3: the ladder,
   awareness, memory and sweep spikes are gone; left: bundle replays 26-82 ms and check 58 ms frames (60 FPS thread), one
   "tick: camera 69 ms" frame (no lazy work found in the camera; likely a GC landing there: the new split will say).
+
+## THE BUNDLE SPIKES (2026-11-18, Disaster City 60 FPS thread)
+His 07:34 F3 "Slow frames": "scene: bundle replays 82 / 36 / 26 ms", "bundle check 58 ms". A replay spike is three RECORDING groups
+(a re-record draws every mesh of the group into a new bundle). Lens line "Bundle spikes (last 6)": each `_ewBunTick` that took
+6 ms+ or re-recorded 300+ meshes, with groups walked, groups re-recorded (+ meshes), the causes (tree / values / lamps / frees /
+lod / cold / rests), LAMPS MOVED, and the three biggest re-recorded groups. Lens open only.
