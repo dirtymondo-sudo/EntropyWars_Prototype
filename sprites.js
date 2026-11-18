@@ -3170,8 +3170,8 @@ const RACE_MODELS_3D = {
   // underscore in the file stem (…valkraye__biped_…) → prefix keeps a
   // trailing '_' (same pattern as the psychics/superhero).
   'valkraye': {
-    female: _mkUAL('valkraye', 'valkraye_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
-      model: 'https://cdn.entropywars.net/Assets/characters/races/valkraye/Meshy_AI_valkraye_v2_Running.glb',   // was 'hot_girl_valkraye_' (kept on R2)
+    female: _mkUAL('valkraye', 'valkraye_r2_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/valkraye/Meshy_AI_valkraye_r2_v2_Running.glb',   // 11-18 remade with dark hair (mondo; the silver-haired one stays on R2 as valkraye_v2); was 'hot_girl_valkraye_' (kept on R2)
       procRig: 'unitGear', gear: { wings: 'angel', wingLen: 0.62 },
       heightRatio: 0.98,
       lib: { idle: { clip: 'Sword_Idle' },

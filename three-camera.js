@@ -2600,7 +2600,11 @@ var EWScene = (function () {
         var el = document.getElementById('ewScene');
         if (!el) { el = document.createElement('div'); el.id = 'ewScene'; document.body.appendChild(el); }
         el.innerHTML = '<div class="ew-scene-bar top"></div><div class="ew-scene-bar bot"></div>'
-            + '<div class="ew-scene-sub" id="ewSceneSub"><span class="ew-scene-who" id="ewSceneWho"></span><span class="ew-scene-line" id="ewSceneLine"></span><div class="ew-scene-choice" id="ewSceneChoice"></div></div>'
+            /* THE DIALOGUE BOX (mondo 11-18, option B): the words wear map.js EWDlg's look (styles-base.css), the speaker's face on the left,
+               the choices in their own window under YOU; `ew-dlg-own` = the scene keeps its own keys and timing (no typing) */
+            + '<div class="ew-scene-sub ew-dlg ew-dlg-own" id="ewSceneSub"><div class="ew-dlg-band"><div class="ew-dlg-face none" id="ewSceneFace"><img alt=""></div>'
+            + '<div class="ew-dlg-text"><div class="ew-scene-who ew-dlg-who" id="ewSceneWho"></div><div class="ew-scene-line ew-dlg-line" id="ewSceneLine"></div></div></div>'
+            + '<div class="ew-scene-choice ew-dlg-opts" id="ewSceneChoice"></div></div>'
             + '<div class="ew-scene-skip" id="ewSceneSkip"><i id="ewSceneSkipFill"></i><span>HOLD ESC TO SKIP</span></div>'
             + '<div class="ew-scene-fade" id="ewSceneFade"></div>'
             + (devOn() ? '<div class="ew-scene-dev" id="ewSceneDev"><button type="button" data-dev="prev">\u25C2 PREV SHOT</button><button type="button" data-dev="next">NEXT SHOT \u25B8</button><button type="button" data-dev="note" class="note">N \u00B7 NOTE</button><span id="ewSceneDevAt"></span></div><div class="ew-scene-note" id="ewSceneNote"></div>' : '');
@@ -2679,6 +2683,12 @@ var EWScene = (function () {
         if (!say || !say.text) { box.classList.remove('on'); return; }
         document.getElementById('ewSceneWho').textContent = say.who || '';
         document.getElementById('ewSceneLine').textContent = say.text;
+        /* the speaker's face (a story character's own model portrait; none for a name the cast does not know) */
+        if (box._who !== (say.who || '')) {
+            box._who = say.who || '';
+            var fc = document.getElementById('ewSceneFace'); if (fc) { fc.classList.add('none'); var fi = fc.querySelector('img'); if (fi) fi.removeAttribute('src'); }
+            try { if (say.who && window.EWDlg && window.ewDlgFace) window.EWDlg.face(box, function (late) { return window.ewDlgFace({ name: say.who }, late); }, 2500); } catch (e) {}
+        }
         box.classList.add('on');
     }
     /* THE CHOICE BOX (2026-11-13, scene F: "she asks if you want your door open or closed. Player can choose open or closed in
@@ -2688,7 +2698,9 @@ var EWScene = (function () {
     function choiceShow(c, sel) {
         var box = document.getElementById('ewSceneChoice'), sub = document.getElementById('ewSceneSub'); if (!box) return;
         if (!c) { box.innerHTML = ''; if (sub) sub.classList.remove('pick'); return; }
-        box.innerHTML = c.options.map(function (o, i) { return '<button type="button" data-i="' + i + '" class="' + (i === sel ? 'sel' : '') + '">' + esc(o.label) + '</button>'; }).join('');
+        var yf = ''; try { yf = (window.ewDlgYouFace && window.ewDlgYouFace()) || ''; } catch (e) { yf = ''; }
+        box.innerHTML = '<div class="ew-dlg-you"><span class="ew-dlg-you-face' + (yf ? '' : ' none') + '">' + (yf ? '<img alt="" src="' + esc(yf) + '">' : '') + '</span><b>YOU</b></div>'
+            + c.options.map(function (o, i) { return '<button type="button" data-i="' + i + '" class="ew-dlg-opt' + (i === sel ? ' sel' : '') + '"><span class="ew-dlg-key">' + (i + 1) + '</span><span class="ew-dlg-lab">' + esc(o.label) + '</span></button>'; }).join('');
         if (sub) sub.classList.add('pick');
     }
     function pick(i) {

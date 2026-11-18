@@ -2887,3 +2887,35 @@ ones every 4th frame) although 351 of 414 instance cells were hidden (off the ca
 draws in no pass that frame (the sun's own chunks re-show only shell cells and door chunks), so its copies are skipped and the
 batch syncs in full (`qN = 0`) the first frame its cell is shown; the sync runs before that frame's first draw. Off:
 `window.EW_HQ_INST_SYNC_HIDDEN = true`.
+
+## THE CHECK'S + THE WALK'S SPLIT (2026-11-18, Disaster City 60 FPS thread)
+His F3 after THE NAV GRID + THE HIDDEN CELLS: 35.1 -> 42.6 FPS (frame 28.2 -> 23.6 ms; rounds 1.9 -> 0.4, "mask setup" 2.6 -> 1.0).
+Left on top: bundle replays 3.9, bundle check 2.3, matrix walk 2.1. Two lens lines (lens open only) say where the last two go:
+"Bundle check by group" (each group's walk in `_ewBunTick`, ms a frame + meshes) and "Matrix walk by group" (`_hqStillSceneWalk`
+does the scene's step of three's walk itself and times each top child; keeps `_hqWalkHook`'s reader and `_css2dRender`'s mark).
+
+## THE MOVERS STAY OUT (2026-11-18, spikes thread)
+mondo's Shift+F3 in Disaster City (23.4 FPS, worst 99 ms; three minutes earlier at the same spot 42.6 FPS): "bundle check 15.2"
+(was 2.3), "scene: projection walk 4.8" (was 0.7), and the shell re-recorded 96 times, 70 of them "movers" (a piece the still walk
+saw move going out of the shell's recording, or coming back 4 s after it rests). Each start and each stop cost a shell re-record
+(three projects all ~10,000 children that frame) and a full check of the shell (`_ew_bunDirty` wakes it out of THE QUIET GROUPS).
+Now (`_hqStillUpdate`): a piece comes back into the recording once; if it moves again it stays drawn outside the recording for good
+(`_ew_bunOutS`). Lens: "movers kept out N" at the end of "Re-recorded most". Off: `window.EW_BUN_OUT_RETURN_ALWAYS`.
+
+## THE HIDDEN PEOPLE (2026-11-18, Disaster City 60 FPS thread)
+His F3 with the split lines: "Matrix walk by group: hq_part 2.31 · hq_instances 0.75"; "Bundle check by group: downtown_streets
+shell 1.22 (10)" (the shell's ~10,000 children walked for 10 meshes; it is quiet-skipped only once its re-records stop: THE MOVERS
+STAY OUT, PR #2107, other thread). The room holds 122 rigs, 22 animating: three's walk composed every bone of every hidden body
+(residents past the drawn count, the crowd past its cap, a scene's taken-out cast) each frame. `_hqCharGroupMW` (the walk room's
+charGroup's own updateMatrixWorld, armed in `_hqStillSceneWalk`, walk frames only) leaves a hidden body as it stands and walks it in
+full (force) the first frame it is shown, before that frame's draws (visibility is set in the ticks, before the walk). Lens: the
+Matrix walk line ends "N hidden people left as they stand". Off: `window.EW_HQ_CHAR_MW_ALL = true`.
+- 11-18 correction: his next F3 (42.8 FPS, worst 38 ms after the spikes thread's #2107/#2109) showed no "hidden people" tail: "skinned 92 / rigs animating 12" counts skinned MESHES (a body is several), not rigs, so there were few hidden bodies; THE HIDDEN PEOPLE stays (cheap, exact) but bought little. "Matrix walk by group" now splits two more levels below each plain top group (`hq_part/<part>/<group>`, "(still)" = a still-walk group) to find the 1.8 ms in hq_part.
+
+## THE MERGED QUARTER (2026-11-18, Disaster City 60 FPS thread)
+His F3 at 45.5 FPS: "Matrix walk by group: hq_part 1.70 · hq_part/Group (still) 1.00" = the city shell's still walk comparing
+~10,000 children's poses every frame. A child THE STATIC BATCH holds (`_ew_bRec`) is not drawn itself and the batch's watchdog
+(`_hqBatchCheck`, rolling over seconds) is what notices it moved, so `_hqStillUpdate` compares a merged child on one frame in four
+(its turn by its place; never skipped when it is new at its place, fresh, woken, a mover, or in the sweep slice). A moved one becomes
+a mover and is walked every frame as before. Off: `window.EW_HQ_STILL_MERGED_EVERY = true`. The shell's bundle check (1.05 ms) is
+the other ~10,000-child loop; it rests only when the shell stops re-recording ("merge 17" left).

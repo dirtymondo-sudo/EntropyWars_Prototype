@@ -165,6 +165,27 @@ mondo, offered height / ground + trees / reflections: "let's just do 1 (height) 
 - Pictures: `pass3_*.jpg`. Not measured: draw calls and memory (the cloud browser crashed on several runs, with and without
   the look). Not done on his word: ground, trees, reflections.
 
+## 12. THE WHOLE CITY + NO SIGNS (2026-11-18)
+
+mondo: "go ahead and do this look on the rest of the city districts, at least on the buildings it makes sense. also the big neon
+2047 signs is fucking retarded. I am going to do a neon sign and font pass later so stop making stuff we are gonna have to undo
+later".
+- **THE LOOK WRITES NO WORDS.** The holograms, roof billboards, blade signs and tower signs of passes 1 to 3 are removed, and the
+  old city's own signs are no longer relit or recoloured: they stand exactly as their districts wrote them, for his sign and
+  font pass. Do not add sign content to the look.
+- `boxes`: all nine districts (C F E / U H B / R S I), each with `p` (share of buildings a tower stands over) and `n` (storeys):
+  Hero Plaza and Financial tallest, Industrial low. The Hills, the Shore and the Quay have no box.
+- "The buildings it makes sense": `keepPlots` (a row whose id holds one of these plot names stays the old city's: the Church, the
+  Fire Station, City Hall, the Civic plaza, the Courthouse, the Public library, the Goblin Bank, the Observatory, the old campus,
+  the Science museum, the Hero plaza, the Memorial walk, the Museum, the Wrestling hall, the parks, the Marina lookout),
+  `keepRows` (street pieces, monuments, weeds, fires, subway heads, piers, cranes, tanks, and every INSIDE row `:in` / `-in`),
+  `noTowerPlots` (re-clad, no tower: the Superhero Tower, the Power station, the Transformer yard, the Concert hall).
+- A building = an arch row whose id shares its name token (`P08-04-B1`, `in76`) with a `texbuilding` row.
+- What the look adds (lines, fascia, towers, skyways) goes into ONE row a district, `look:add:<d>`, in the room's own metres, so
+  every building's parts of one colour are one mesh. A tower is never taller than 2.6 x its building's narrow side.
+- Counted: 217 rows re-clad, 304 kept, 4,497 wall parts refinished, 623 glass parts lit, 102 towers, 56 skyways.
+- Pictures: `city_*.jpg`.
+
 ## Pictures in this folder
 
 `today_day.jpg` (the city today, above the main road), `test_neon_switch_above.jpg` + `test_neon_switch_street.jpg` (the same

@@ -49143,6 +49143,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < outs.length; i++) { var o = outs[i]; if (o._ew_bunOut === true && o.parent) R._projectObject(o, camera, go, renderList, clippingContext); }
     }
     function _ewBunNoOut() { return typeof window !== 'undefined' && !!window.EW_BUN_NO_OUT; }
+    function _ewBunOutHideHash() { return typeof window !== 'undefined' && !!window.EW_BUN_OUT_HIDE_HASH; }
     /* THE CHANGERS OUT (2026-11-14, mondo's readout after THE MOVERS OUT: "1.9 re-records/s (values 1.9)", the shell drawn piece by
        piece again): with the cars out the shell's recording was a STILL one, so each change of a traffic signal's lens colour
        re-recorded all 4,400 pieces — about twice a second, too slow to count as churning (5 in 2 s) and be demoted. The top walk
@@ -49152,8 +49153,13 @@ const ThreeRenderer = (function () {
         var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
+            /* THE OUTS SHOWN OR HIDDEN (2026-11-18, mondo's F3 after THE MOVERS STAY OUT: the shell still re-recorded 140 times, "movers 97,
+               other 27", worst frame 66 ms): a car is hidden past `carFarM` and shown again inside it, and a hidden out piece used to
+               leave the out list (and mix -id into the tree's hash): every car crossing its draw distance re-recorded the whole shell.
+               An out piece is never in the recording, shown or hidden, so it is listed out either way and only that it is out is
+               hashed; three's projection skips it while it is hidden. Off: window.EW_BUN_OUT_HIDE_HASH. */
+            if (c._ew_bunOut === true && !_ewBunNoOut() && (c.visible !== false || !_ewBunOutHideHash())) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); if (c._ew_bRec) S.cB = (S.cB | 0) + 1; else S.cH = (S.cH | 0) + 1; continue; }   // (a piece the merge holds reads hidden while a frame draws)
-            if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
             if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); S.cB = (S.cB | 0) + 1; continue; }
             var v0 = S.hv; S.hv = 0;
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
@@ -49179,8 +49185,8 @@ const ThreeRenderer = (function () {
         var ch = o.children;
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
+            if (c._ew_bunOut === true && !_ewBunNoOut() && (c.visible !== false || !_ewBunOutHideHash())) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }   // THE MOVERS OUT: drawn outside the recording, only that it is out (shown or hidden: THE OUTS SHOWN OR HIDDEN)
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
-            if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }   // THE MOVERS OUT: drawn outside the recording, only that it is out
             if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); continue; }   // THE CHUNKS: a piece THE STATIC BATCH holds is not drawn (its merged mesh is hashed): only that it is held
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
             else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
@@ -49251,7 +49257,9 @@ const ThreeRenderer = (function () {
             var noM = walk && !st.dyn && !!g._ew_st && !_hqStillOff() && !(typeof window !== 'undefined' && window.EW_BUN_HASH_MATRICES);
             var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, lit: false, noV: !!st.dyn, noM: noM };
             _ewBun.now = now;
+            var twk = (_lens && _lens.cur) ? performance.now() : 0;
             if (walk) _ewBunWalkTop(g, S); else _ewBunWalk(g, S);
+            if (twk) { st.msA = (st.msA || 0) + performance.now() - twk; st.nA = S.n; }   // THE CHECK'S SPLIT (lens): this group's walk
             if (noM) { var ge = g.matrixWorld.elements; for (var gi = 0; gi < 16; gi++) S.hv = _ewBunMix(S.hv, Math.round(ge[gi] * 1000)); _ewBun.noMN = (_ewBun.noMN | 0) + 1; }
             g._ew_bunDirty = false;
             g._ew_bunOuts = S.outs || null;   // THE MOVERS OUT: the pieces the frame draws beside this group's recording
@@ -49311,6 +49319,12 @@ const ThreeRenderer = (function () {
             var wn = _ewBun.whyN || {}, wr = {};   // the re-records by cause, per second over the last second
             for (var wk in W) { var d = W[wk] - (wn[wk] || 0); if (d > 0) wr[wk] = +(d * 1000 / span).toFixed(1); }
             _ewBun.whyRate = wr; _ewBun.whyN = Object.assign({}, W);
+            if (_lens && _lens.cur && _ewBun.msN) {   // THE CHECK'S SPLIT: the costliest groups' walks, ms a frame over the last second
+                var ct = []; for (var ci = 0; ci < T.length; ci++) { var cs = T[ci]._ew_bun; if (cs && cs.msA) { ct.push([cs.msA / _ewBun.msN, T[ci], cs.nA | 0]); cs.msA = 0; } }
+                ct.sort(function (a, b) { return b[0] - a[0]; });
+                _ewBun.splitShow = ct.slice(0, 8).map(function (c) { var cg = c[1]; return String(cg._ew_bunName || cg.name || cg.type).replace(/^site_prebuilt_/, '') + (cg._ew_pChunk || cg._ew_chunk ? ' ' + (cg._ew_pChunk || cg._ew_chunk) : '') + ' ' + c[0].toFixed(2) + ' (' + c[2] + ')'; }).join(' · ');
+                _ewBun.splitN = ct.length;
+            }
             _ewBun.msAvg = _ewBun.msN ? _ewBun.ms / _ewBun.msN : 0; _ewBun.ms = 0; _ewBun.msN = 0;
         }
     }
@@ -54073,11 +54087,15 @@ const ThreeRenderer = (function () {
             top.sort(function (a, b) { return b[0] - a[0]; });
             if (top.length) L.push('  biggest groups: ' + top.slice(0, 6).map(function (t) { return t[1] + ' ' + t[0]; }).join(' · '));
         } catch (eBK) {}
+        try {   // THE CHECK'S SPLIT + THE WALK'S SPLIT (2026-11-18): where the bundle check and the matrix walk spend their time
+            if (_ewBun.splitShow) L.push('Bundle check by group (ms a frame, meshes; ' + (_ewBun.splitN | 0) + ' groups walked): ' + _ewBun.splitShow);
+            var mwS = _hqStillSplitText(); if (mwS) L.push('Matrix walk by group (ms a frame): ' + mwS);
+        } catch (eSp) {}
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
-            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
+            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + ' · movers kept out ' + (_ewBun.outS | 0));
         } catch (e) {}
-        if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept');
+        if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept' + (S.still.hid ? ' · ' + S.still.hid + ' hidden people left as they stand' : ''));
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
         if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '') + (b.loose ? ' (' + b.loose + ' loose pieces stood in)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ') + ((typeof _hqStk !== 'undefined' && _hqStk.arrays.length) ? ' · sheet stacks ' + _hqStk.arrays.length + ' (' + _hqStk.sheets + ' sheets)' : '')); }
         if (S.why && S.why.length) {
@@ -92967,10 +92985,16 @@ const ThreeRenderer = (function () {
         var k = n ? Math.min(n, Math.ceil(n * dt / HQ_STILL_SWEEP_MS)) : 0, i0 = n ? st.i % n : 0, i1 = i0 + k;
         st.i = n ? i1 % n : 0;
         var hasMv = mv.size > 0, hasFr = fr.size > 0, hasWk = wk.size > 0;
+        /* THE MERGED QUARTER (2026-11-18, mondo's F3: "Matrix walk by group: hq_part/Group (still) 1.00", the city shell's ~10,000
+           children each compared on ten numbers every frame): a piece THE STATIC BATCH holds is not drawn itself (its merged mesh
+           is), and the batch's own watchdog finds it moved over seconds, so its pose is compared on one frame in four (its turn by
+           its place); a piece that moves is a mover from then on and is walked every frame as before. Off: window.EW_HQ_STILL_MERGED_EVERY */
+        var mq = !(typeof window !== 'undefined' && window.EW_HQ_STILL_MERGED_EVERY), mqT = (st.mq = ((st.mq | 0) + 1) & 3);
         for (i = 0; i < n; i++) {
             /* (2026-11-15: a kept child's three pose objects are read from the group's own arrays — 11,000 children of many
                kinds, three property reads off each were half of the walk's own time) */
             c = ch[i]; j = i * 10;
+            if (mq && ((i + mqT) & 3) !== 0 && C[i] === c && c._ew_bRec && !(hasMv && mv.has(c)) && !(hasWk && wk.has(c)) && !(hasFr && fr.has(c)) && !((i >= i0 && i < i1) || i + n < i1)) continue;
             var isNew = C[i] !== c;
             if (isNew) { p = PP[i] = c.position; q = QQ[i] = c.quaternion; sc = SS[i] = c.scale; }
             else { p = PP[i]; q = QQ[i]; sc = SS[i]; if (hasFr && fr.has(c)) isNew = true; }   // new at this place, or something landed under it
@@ -92986,7 +93010,18 @@ const ThreeRenderer = (function () {
             if (hasMv && mv.has(c)) {
                 c.updateMatrixWorld(true); s = _hqStillSum(c);
                 if (s !== SM[i]) { SM[i] = s; AT[i] = now; }
-                else if (now - AT[i] > (st.hold || HQ_STILL_HOLD_MS)) { mv.delete(c); if (c._ew_bunOutA) { c._ew_bunOut = undefined; c._ew_bunOutA = false; this._ew_bunDirty = true; } }   // at rest: back into its group's recording
+                else if (now - AT[i] > (st.hold || HQ_STILL_HOLD_MS)) {
+                    mv.delete(c);
+                    /* THE MOVERS STAY OUT (2026-11-18, mondo's F3 in Disaster City: 23 FPS, worst 99 ms, "bundle check 15.2", the shell re-recorded
+                       96 times, 70 of them a mover going out or coming back): every start and every stop of a piece in a big still group
+                       re-recorded the group AND checked all its ~10,000 children that frame. A piece that rests once comes back (a prop
+                       knocked once); a piece that moves again after coming back stays drawn outside the recording from then on (it is one
+                       of the few that move: a dozen own draws in place of a re-record each time it starts or stops). Off: window.EW_BUN_OUT_RETURN_ALWAYS. */
+                    if (c._ew_bunOutA) {
+                        if ((c._ew_bunOutR | 0) >= 1 && !(typeof window !== 'undefined' && window.EW_BUN_OUT_RETURN_ALWAYS)) { if (!c._ew_bunOutS) { c._ew_bunOutS = true; _ewBun.outS = (_ewBun.outS | 0) + 1; } }
+                        else { c._ew_bunOutR = (c._ew_bunOutR | 0) + 1; c._ew_bunOut = undefined; c._ew_bunOutA = false; this._ew_bunDirty = true; }
+                    }
+                }   // at rest: back into its group's recording (once)
                 S.movers++; continue;
             }
             if ((i >= i0 && i < i1) || i + n < i1) {   // this frame's slice of the rest
@@ -93001,16 +93036,65 @@ const ThreeRenderer = (function () {
         S.tops += n;
     }
     /* the frame's one walk of the walk's scene */
+    /* THE HIDDEN PEOPLE (2026-11-18, mondo's F3 in Disaster City: "Matrix walk by group: hq_part 2.31", 122 rigs in the room and
+       22 animating): three's walk composed every bone of every body each frame, the townspeople put away out of sight (the
+       residents beyond the drawn count, the crowd past its cap, the ones a scene took out) included. A body hidden is not drawn
+       in any pass, so the walk leaves it as it stands; the first frame it is shown it is walked in full (force), before that
+       frame's draws. Off: window.EW_HQ_CHAR_MW_ALL = true. */
+    function _hqCharGroupMW(force) {
+        var proto = THREE.Object3D.prototype.updateMatrixWorld;
+        if (!_hqStWalk || (typeof window !== 'undefined' && window.EW_HQ_CHAR_MW_ALL)) return proto.call(this, force);
+        if (this.matrixAutoUpdate) this.updateMatrix();
+        if (this.matrixWorldNeedsUpdate || force) {
+            if (this.matrixWorldAutoUpdate === true) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); }
+            this.matrixWorldNeedsUpdate = false; force = true;
+        }
+        var ch = this.children;
+        for (var i = 0, n = ch.length; i < n; i++) {
+            var c = ch[i];
+            if (c.visible === false) { c._ew_mwSkip = true; _hqStS.hid = (_hqStS.hid | 0) + 1; continue; }
+            if (c._ew_mwSkip) { c._ew_mwSkip = false; c.updateMatrixWorld(true); continue; }
+            c.updateMatrixWorld(force);
+        }
+    }
     function _hqStillSceneWalk(sc) {
-        var S = _hqStS; S.groups = S.out = S.full = S.tops = S.fresh = S.movers = S.swept = 0;
+        try { var CG = _hq && _hq.charGroup; if (CG && !CG._ew_st && CG.updateMatrixWorld !== _hqCharGroupMW && !Object.prototype.hasOwnProperty.call(CG, 'updateMatrixWorld')) CG.updateMatrixWorld = _hqCharGroupMW; } catch (eCG) {}
+        var S = _hqStS; S.hid = 0; S.groups = S.out = S.full = S.tops = S.fresh = S.movers = S.swept = 0;
         var t0 = performance.now();
         _hqStNow = t0; _hqStWalk = true;
-        try { sc.updateMatrixWorld(); } finally { _hqStWalk = false; }
+        try {
+            /* THE WALK'S SPLIT (lens open only, 2026-11-18): the scene's own step of three's walk, then each top child timed by its
+               name (the same walk, child by child), for the lens line "Matrix walk by group" */
+            if (_lens && _lens.cur && !sc.parent && sc.matrixAutoUpdate !== undefined) {
+                if (sc.matrixAutoUpdate) sc.updateMatrix();
+                var fo = false; if (sc.matrixWorldNeedsUpdate) { sc.matrixWorld.copy(sc.matrix); sc.matrixWorldNeedsUpdate = false; fo = true; }
+                var MS = _hqStSplit || (_hqStSplit = {}), kids = sc.children;
+                var pUMW = THREE.Object3D.prototype.updateMatrixWorld;
+                var stepIn = function (o, f, pre, MSx, dep) {   // one object's own step of three's walk, each child timed under `pre/name` (one level down)
+                    if (o.matrixAutoUpdate) o.updateMatrix();
+                    if (o.matrixWorldNeedsUpdate || f) { if (o.matrixWorldAutoUpdate === true) { if (o.parent === null) o.matrixWorld.copy(o.matrix); else o.matrixWorld.multiplyMatrices(o.parent.matrixWorld, o.matrix); } o.matrixWorldNeedsUpdate = false; f = true; }
+                    var oc = o.children; for (var oi = 0; oi < oc.length; oi++) { var cc = oc[oi], ct = performance.now(), cn = pre + '/' + (cc.name || cc.type || '?') + (cc._ew_st ? ' (still)' : '');
+                        if ((dep | 0) < 2 && cc.updateMatrixWorld === pUMW && cc.children.length && cc.children.length <= 64) stepIn(cc, f, cn, MSx, (dep | 0) + 1); else cc.updateMatrixWorld(f);
+                        MSx[cn] = (MSx[cn] || 0) + performance.now() - ct; }
+                };
+                for (var ki = 0; ki < kids.length; ki++) { var kc = kids[ki]; if (kc.matrixWorldAutoUpdate === true || fo) { var kt = performance.now(), kn = kc.name || kc.type || '?';
+                    if (kc.updateMatrixWorld === pUMW && kc.children.length && kc.children.length <= 64) stepIn(kc, fo, kn, MS); else kc.updateMatrixWorld(fo);
+                    MS[kn] = (MS[kn] || 0) + performance.now() - kt; } }
+                _hqStSplitN = (_hqStSplitN | 0) + 1;
+                if (sc._ew_mwStamp) sc._ew_mwAt = _css2dTick;   // (_css2dRender's mark, as the scene's own walk sets it)
+                if (sc._ew_afterWalk) { var afw = sc._ew_afterWalk; sc._ew_afterWalk = null; afw(); }   // (_hqWalkHook's reader, as the scene's own walk calls it)
+            } else sc.updateMatrixWorld();
+        } finally { _hqStWalk = false; }
         var ms = performance.now() - t0;
         _hqStMs = _hqStMs ? _hqStMs * 0.9 + ms * 0.1 : ms;
-        _hqStLast = { groups: S.groups, out: S.out, full: S.full, tops: S.tops, fresh: S.fresh, movers: S.movers, swept: S.swept, ms: +_hqStMs.toFixed(2), off: _hqStillOff() };
+        _hqStLast = { groups: S.groups, out: S.out, full: S.full, tops: S.tops, fresh: S.fresh, movers: S.movers, swept: S.swept, hid: S.hid | 0, ms: +_hqStMs.toFixed(2), off: _hqStillOff() };
     }
     function _hqStillStats() { return _hqStLast; }
+    var _hqStSplit = null, _hqStSplitN = 0;
+    function _hqStillSplitText() {   // the lens line: ms a frame per top group of the walk since the last read
+        var M = _hqStSplit, n = _hqStSplitN; _hqStSplit = null; _hqStSplitN = 0; if (!M || !n) return '';
+        return Object.keys(M).sort(function (a, b) { return M[b] - M[a]; }).slice(0, 12).map(function (k) { return String(k).replace(/site_prebuilt_/g, '') + ' ' + (M[k] / n).toFixed(2); }).join(' · ');
+    }
     function _hqChunkRules() {
         var R = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES) ? HQ_ENGINE_RULES : {};
         return { m: (R.chunkM > 0) ? +R.chunkM : 42, minSpan: (R.chunkMinSpanM > 0) ? +R.chunkMinSpanM : 200, pad: (R.chunkPadM >= 0) ? +R.chunkPadM : 15,

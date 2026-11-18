@@ -2184,3 +2184,4 @@ Known: the cape is one rigid piece on a hinge (legs can pass through it mid-run)
 - Atlantean F: no held trident (Meshy hands have no fingers to hold it; a trident needs an MPFB look). The gear's `held` stays for units that can grip.
 - Cosmic wraith cape: the gear now centres a cape on its COLLAR (the top tenth of its points), not its box: the Meshy cape's hem flares to one side, so box-centring hung it off one shoulder. `capeBack: 0.02` puts the collar round the neck.
 - Dragon: regenerated (Meshy t2.5 from the same concept, now with its tail), new key `dragon/male/Meshy_AI_dragon_r2_v2_Running.glb`; the first remake stays on R2 as `dragon_v2`. Wings 0.6 of its height.
+- Valkraye: remade with dark hair (mondo 11-18: concept valkraye_f_3, same armour), key `valkraye/Meshy_AI_valkraye_r2_v2_Running.glb`; the silver-haired one stays on R2 as `valkraye_v2`.
