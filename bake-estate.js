@@ -235,7 +235,7 @@ const R8 = PJ.routes.find(r => r.id === 'R8'), R8_HERE = [[-10, 18, 'Ranch Road,
 R8_HERE.forEach(q => { if (!R8.plots.some(p => p[0] === q[0] && p[1] === q[1])) throw new Error('plots.json: R8 has no plot ' + q[0] + ',' + q[1]); });
 /* the seams: the plot, its side, how many squares along that side from the plot's corner the path crosses (left out: where the plot is open), the room past it */
 const STAND = [
-    { id: R_CORN, part: 'ow_corn', label: 'THE CORN FIELDS', sub: 'THE ESTATE · COUNTY LANE · 12 PLOTS', letters: ['C'], world: true, lane: true,
+    { id: R_CORN, part: 'ow_corn', label: 'THE CORN FIELDS', sub: 'THE ESTATE · COUNTY LANE · 12 PLOTS', letters: ['C'], world: true, lane: true, kit: true,   // (2026-11-18, mondo: a zone's districts are ONE place: the Corn Fields, County Lane, the Lake and the Ranch are all the route kit's room now, R7.json `join`)
       list: v13('C').concat(R7_HERE.map(q => ({ wx: q[0], wy: q[1], name: q[2], district: 'C', level: 1 }))),
       parti: 'Corn you cannot see over, two plots wide and six long, the walk south from the Woods Gate to the Hub: tracks cut through it, and County Lane straight down the middle.',
       seams: [
@@ -262,7 +262,7 @@ const STAND = [
           /* THE DRIVE IN: the Iron Gate's north side, where the Woods' wild link L5 comes down from the Ritual Ground (the Woods thread writes the other side) */
           { plot: 'P01-03', side: 'N', id: 'ow_h_m21_11', room: R_RITUAL, spawn: true, label: 'THE WOODS · THE RITUAL GROUND', sub: 'THE TRAIL NORTH · OUT OF THE IRON GATE', desc: 'Past the gate a trail goes off north into the trees.' },
       ] },
-    { id: R_RANCH, part: 'ow_ranch', label: 'THE RANCH', sub: 'THE ESTATE · THE RANCH · 10 PLOTS', letters: ['R'], world: true, fields: true, fieldPlaces: ['bees'],
+    { id: R_RANCH, part: 'ow_ranch', label: 'THE RANCH', sub: 'THE ESTATE · THE RANCH · 10 PLOTS', letters: ['R'], world: true, fields: true, fieldPlaces: ['bees'], kit: true,
       /* THE STABLE DOOR (Room 512's bay, siteRooms.entry.prebuilt_skinwalker): it stood on the Yard's south wall; the Yard is inside the room now (the Paddock
          stands south of it), so the door goes on the room's own south wall, at the Cow Field's foot, with a track cut up to the field's open ground */
       bay: { plot: 'P05-05', k: 5 },
@@ -462,6 +462,14 @@ L.push("        /* ESTATE36-END */");
 const block = L.join('\n') + '\n';
 console.log(JSON.stringify(count));
 /* the rows in data.js that name a place in one of these rooms (written by hand there): the tool refuses to bake when one has drifted */
+/* THE ESTATE IS ONE PLACE (2026-11-18): the kit's room (`kit: true` rows: the Corn Fields, the Lake, the Ranch + County Lane, R7.json `join`) holds
+   these places now, so a place in one of them is named in that room's frame: moved from its district's middle to where the district stands in the
+   kit's box (the box = the kit rows' plots; County Lane's own plots lie inside it) */
+{ const K = ROOMS_OUT.filter(o => o.S.kit), bx0 = Math.min(...K.map(o => o.R.wx)), by0 = Math.min(...K.map(o => o.R.wy)), bx1 = Math.max(...K.map(o => o.R.wx + o.R.cols)), by1 = Math.max(...K.map(o => o.R.wy + o.R.rows));
+  const HXk = (bx1 - bx0) * PL / 2, HZk = (by1 - by0) * PL / 2;
+  Object.keys(PLACES).forEach(k => { const pl = PLACES[k], o = K.find(q => q.S.id === pl.room || q.S.part === pl.part); if (!o) return;
+      const mx = r2(-HXk + (o.R.wx - bx0) * PL + o.R.cols * PL / 2), mz = r2(-HZk + (o.R.wy - by0) * PL + o.R.rows * PL / 2);
+      if (pl.x != null) pl.x = r2(pl.x + mx); if (pl.z != null) pl.z = r2(pl.z + mz); if (pl.room) pl.room = R_LAKE; if (pl.part) pl.part = 'ow_lake'; }); }
 const WANT = [
     ["prebuilt_skinwalker: { room: '" + PLACES.bay.room + "', door: { id: 'bay', wall: 's', x: " + PLACES.bay.x + " } }", 'siteRooms.entry.prebuilt_skinwalker'],
     ["prebuilt_haunted: { room: '" + PLACES.bay13.room + "', door: { id: 'bay13', wall: 'free', x: " + PLACES.bay13.x + ", z: " + PLACES.bay13.z + ", face: " + PLACES.bay13.face + " } }", 'siteRooms.entry.prebuilt_haunted'],
