@@ -79523,6 +79523,11 @@ const HQ_STAGE_RULES = {
        of any HQ_WORLD zone; every id, counter, ledger key and save is untouched. Off: window.EW_HQ_NO_STAGE (every door loads). */
     round: [
         { a: 'central_egress', door: 'foyer', b: 'foyer', bDoor: 'egress' },   // THE FOURIER FOYER ⇄ the main hall, the double doors at 195° (the revolving door until 2026-11-12)
+        /* MORE THAN ONE ROOM ROUND THE HALL (2026-11-18, mondo: "can you make my office in door hq not be behind a loading screen?
+           its literally a tiny office, it should fit in the same room"): a round hall may hold a row for each of its ground-floor
+           doors (hqStageRoundJoins). In the hall every joined room stands beside it; in a joined room only the hall does (the
+           hall's other joined doors are plain doors until you step into the hall). A box room has one row at most. */
+        { a: 'central_egress', door: 'office', b: 'office', bDoor: 'egress' },   // YOUR OFFICE ⇄ the main hall, the closet door at 135°
     ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
@@ -80251,8 +80256,8 @@ function hqStagePart(roomId) {
 /* toId's frame seen from fromId's room: a point (x, z) of toId's room lies at hqStageToRoom(rel, x, z) in fromId's.
    rot = toId's quarter turns relative to fromId's (rotation.y = rot·π/2 on the group that carries toId). */
 function hqStageRel(fromId, toId) {
-    const rj = hqStageRoundJoin(fromId);   // THE ROUND JOIN: the hall and its box at the door's own angle
-    if (rj && (rj.a === toId || rj.b === toId) && fromId !== toId) { const G = hqStageRoundGeom(rj); return G ? Object.assign({}, fromId === rj.a ? G.rel : G.back) : null; }
+    const rj = fromId !== toId ? hqStageRoundJoin(fromId, toId) : null;   // THE ROUND JOIN: the hall and its box at the door's own angle
+    if (rj) { const G = hqStageRoundGeom(rj); return G ? Object.assign({}, fromId === rj.a ? G.rel : G.back) : null; }
     const A = hqWorldFrame(fromId), B = hqWorldFrame(toId);
     if (!A || !B || A.ground !== B.ground || A.absorbedBy || B.absorbedBy) return null;
     const o = hqZoneToRoom(fromId, B.x, B.z);
@@ -80275,18 +80280,21 @@ function hqStageFromRoom(rel, x, z) {
    HQ_WORLD_RULES.wallM behind the hall's wall at the door's angle, its door facing the hall's centre. → the row (with its
    two doors) for a room of either end, or null (the rows are checked here: a level-0 door of a round room, a wall door of a
    box room). */
-function hqStageRoundJoin(roomId) {
-    const rows = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.round) || [], R = DOOR_HQ.rooms || {};
+function hqStageRoundJoin(roomId, otherId) { return hqStageRoundJoins(roomId, otherId)[0] || null; }
+/* every row of a room (2026-11-18: a hall has one for each joined door, a box room one); `otherId` = only the row with that room */
+function hqStageRoundJoins(roomId, otherId) {
+    const rows = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.round) || [], R = DOOR_HQ.rooms || {}, out = [];
     for (let i = 0; i < rows.length; i++) {
         const j = rows[i]; if (!j || (j.a !== roomId && j.b !== roomId)) continue;
+        if (otherId && j.a !== otherId && j.b !== otherId) continue;
         const A = R[j.a], B = R[j.b];
         if (!A || !B || A.kind === 'box' || A.kind === 'bay' || !(A.shell && A.shell.radius > 0)) continue;
         if (B.kind !== 'box' || !(B.shell && B.shell.w > 0 && B.shell.d > 0)) continue;
         const da = (A.doors || []).find(d => d && d.id === j.door), db = (B.doors || []).find(d => d && d.id === j.bDoor);
         if (!da || !db || (da.level || 0) !== 0 || !isFinite(+da.deg) || !_hqDoorOnWall(B, db)) continue;
-        return { a: j.a, b: j.b, door: da, bDoor: db };
+        out.push({ a: j.a, b: j.b, door: da, bDoor: db });
     }
-    return null;
+    return out;
 }
 /* the join's geometry: `rel` = the box in the hall's metres, `back` = the hall in the box's; `R` the hall's wall, `deg` the
    door's angle, `gap` the wall between, `ow` / `oh` the doorway (the narrower leaf's), `pb` the box door on its wall */
@@ -80307,15 +80315,20 @@ function hqStageRoundGeom(j) {
 /* the stage's neighbour row for a room of a round join (hqStageNeighbours' shape; the hall's span is `side: 'round'` at the
    door's angle, `t0` / `t1` across the doorway) — null for any other room */
 function hqStageRoundNeighbours(roomId) {
-    const j = hqStageRoundJoin(roomId); if (!j) return null;
-    const G = hqStageRoundGeom(j); if (!G) return null;
-    if (roomId === j.a) {
-        const S = DOOR_HQ.rooms[j.b].shell, hw = S.w / 2, hd = S.d / 2;
-        const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(G.rel, p[0], p[1]));
-        return [{ id: j.b, rel: G.rel, round: true, links: [],
-                  rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) },
-                  spans: [{ side: 'round', deg: G.deg, R: G.R, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] }];
+    const js = hqStageRoundJoins(roomId); if (!js.length) return null;
+    if (roomId === js[0].a) {   // the hall: every room joined to it
+        const out = [];
+        js.forEach(j => {
+            const G = hqStageRoundGeom(j); if (!G) return;
+            const S = DOOR_HQ.rooms[j.b].shell, hw = S.w / 2, hd = S.d / 2;
+            const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(G.rel, p[0], p[1]));
+            out.push({ id: j.b, rel: G.rel, round: true, links: [],
+                       rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) },
+                       spans: [{ side: 'round', deg: G.deg, R: G.R, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] });
+        });
+        return out.length ? out : null;
     }
+    const j = js[0], G = hqStageRoundGeom(j); if (!G) return null;
     const SA = DOOR_HQ.rooms[j.a].shell, Ro = Math.max(SA.radius, (SA.mezz && SA.mezz.outer) || 0, (SA.ring3 && SA.ring3.outer) || 0), c = hqStageToRoom(G.back, 0, 0);
     return [{ id: j.a, rel: G.back, round: true, links: [],
               rect: { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro },
@@ -80544,9 +80557,9 @@ function hqWorldDoorJoinResolve(j) {
 }
 /* the door join (if any) that door `doorId` of room `roomId` belongs to, on a staged part: { nb, gap, ow, oh, other door id } */
 function hqStageDoorJoin(roomId, doorId) {
-    const rj = hqStageRoundJoin(roomId);   // THE ROUND JOIN: `round`, and `keep` = this side's leaf is the one in the doorway (the hall's)
-    if (rj) {
-        const mine = roomId === rj.a ? rj.door : rj.bDoor; if (!mine || mine.id !== doorId) return null;
+    const rjs = hqStageRoundJoins(roomId);   // THE ROUND JOIN: `round`, and `keep` = this side's leaf is the one in the doorway (the hall's)
+    if (rjs.length) {
+        const rj = rjs.find(x => { const m = roomId === x.a ? x.door : x.bDoor; return !!m && m.id === doorId; }); if (!rj) return null;
         const G = hqStageRoundGeom(rj); if (!G) return null;
         return { nb: roomId === rj.a ? rj.b : rj.a, gap: G.gap, ow: G.ow, oh: G.oh, otherDoor: roomId === rj.a ? rj.bDoor.id : rj.door.id, round: true, keep: roomId === rj.a };
     }

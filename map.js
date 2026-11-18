@@ -9207,6 +9207,15 @@
             try { if (typeof startDoorRoomTone === 'function') startDoorRoomTone(); } catch (e) {}
             try { syncMusicToState().catch(() => {}); } catch (e) {}
             try { _hqSurveyWarmAround(to); } catch (e) {}
+            /* THE QUESTS ON A CROSSING (2026-11-18, your office joined to the Main Hall): walking through a joined doorway is
+               entering the room, so a stage that wants this room is done. A stage that ends here on a SCENE (F, the office) needs
+               the room set for it (its cast, its camera): that one entry loads the room the old way, and the load plays the scene. */
+            try {
+                if (!window._ewSceneReplayStage && !window._ewSceneEdPlay && _questRoomSceneDue(to)) {
+                    let back = null; try { const dj = link ? window.hqStageDoorJoin(from, link) : null; back = (dj && dj.otherDoor) || null; } catch (e) {}
+                    setTimeout(() => { try { if (_hqCurRoom === to) window._hqGoRoom(to, back); } catch (e) { console.warn('[SCENE] room scene', e); } }, 0);
+                } else if (typeof window._questEvent === 'function') window._questEvent({ type: 'room', room: to }, { delay: 900 });
+            } catch (e) { console.warn('[QUEST] room event', e); }
         }
         function _hqWalkThroughDoor(t) {
             if (!t || t.kind !== 'door' || !t.door) return;
