@@ -2155,3 +2155,11 @@ clip (mondo picked the pop idol concept but the cyan twin tails read as Miku, so
 Blender (front-centre verts below 27 % of its height deleted) to models/vt_wig_cut.glb, which bake-meshy.py row `vtwig` fits
 (helm, k 2.55, top 0.13). Worn over a silver blunt bob (hides the scalp at the sides). A Meshy idol headset + visor was tried and
 dropped (a loose panel, nothing like a headset).
+
+### GARGOYLE M, THE CLAW SLIVER (2026-11-18)
+mondo: "the current one has a piece sticking out through it". It was a thin strip of 14 triangles joining his right hand's claw tip to
+the right wing tip, its vertices skinned partly to RightUpLeg, so it stretched from hand to thigh while running. Fix (GLB edited in
+place, no Blender re-export): the 14 long triangles made degenerate, the RightUpLeg weight dropped from the 119 hand-claw vertices
+(renormalised). New key `Assets/characters/races/gargoyle/male/Meshy_AI_gargoyle_m_Running_v2.glb` (old file kept on R2). Before/after +
+scripts: /mnt/project-files/unit-concepts-20261118/gargoyle_fix/. Way to find such slivers: pose the Running clip in bpy and list faces
+whose longest edge grows > 4x its rest length.
