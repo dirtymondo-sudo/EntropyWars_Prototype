@@ -47320,6 +47320,179 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'nrPayload:copy': _vrxCopy3D, 'nrPayload:burst': _vrxBurst3D,
     });
 
+    /* ══ THE STREAMER + E-GIRL (2026-11-18, mondo approved the kit) ══ One race, live all day: every hit builds the chat (THE
+       VIEWERS, battle.js), the spends cash it in. The race's own colour is stream purple; the side reads on the rings (THE RIOT
+       PASS: own side cyan-blue, the other side pink-orange). The pop-ups stand BESIDE the body (_tvxPanel), never on the caster,
+       the target, the hit or the number. Kill-switch window.EW_NO_STREAMER_VFX.
+         CLIP IT (impact + geometry): a lightning crack on the victim and a CLIPPED! frame with a red REC dot beside it.
+         RAGE QUIT (aura + geometry on him): keycaps fly off the slammed desk, a side ring out to the squares round him, and a
+           DISCONNECTED window beside him (he goes Invisible: the cloak's own look takes over).
+         SPEEDRUN STRAT ('nrSpeedrun:dash'): a purple speed streak along the run and a SPLIT timer flash at the end.
+         UWU (impact + geometry): pink hearts on the victim and a chat bubble beside it.
+         GIFTED SUB (aura + geometry on the ally): a gift box window (GIFTED SUB!) beside the ally and gold sparkles.
+         DONATION GOAL (aura + geometry on the caster): a GOAL REACHED bar beside the caster, gold coins rising, a side ring out to 2.
+         RAID (aoe + geometry): a RAID! banner over the square and a flood of purple chat sparks across the 3x3.
+         THE VIEWERS ('nrViewers:hype' at 5, 'nrViewers:spend' on a cash-in): a small purple ring under the streamer. */
+    var _STX_P = 0xb06aff, _STX_GLOW = 0xd8a8ff, _STX_GOLD = 0xffd060, _STX_PINK = 0xff7ab8;
+    function _stxOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_STREAMER_VFX); }
+    function _stxWin(key, title, bar, draw) {
+        return _sigTex('stx-' + key, 128, function (g, S) {
+            g.fillStyle = '#16101f'; g.fillRect(0, 0, S, S);
+            g.fillStyle = bar; g.fillRect(0, 0, S, 18);
+            g.fillStyle = '#ffffff'; g.font = 'bold 11px monospace'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(title, 5, 9);
+            g.strokeStyle = bar; g.lineWidth = 3; g.strokeRect(1.5, 1.5, S - 3, S - 3);
+            draw(g, S);
+            g.fillStyle = 'rgba(0,0,0,0.18)'; for (var y = 20; y < S; y += 4) g.fillRect(0, y, S, 1);
+        });
+    }
+    function _stxClipTex() {
+        return _stxWin('clip', 'CLIP.MP4', '#9146ff', function (g, S) {
+            g.fillStyle = '#ff2a2a'; g.beginPath(); g.arc(20, 34, 6, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#ff6060'; g.font = 'bold 12px monospace'; g.textAlign = 'left'; g.fillText('REC', 30, 35);
+            g.fillStyle = '#ffffff'; g.font = 'bold 22px monospace'; g.textAlign = 'center'; g.fillText('CLIPPED!', S / 2, 72);
+            g.fillStyle = '#c9a6ff'; g.font = 'bold 11px monospace'; g.fillText('+1 HIGHLIGHT', S / 2, 100);
+        });
+    }
+    function _stxDiscoTex() {
+        return _stxWin('disco', 'CONNECTION', '#6a6a7a', function (g, S) {
+            g.strokeStyle = '#ff5050'; g.lineWidth = 5; g.beginPath(); g.arc(S / 2, 54, 18, 0, Math.PI * 2); g.stroke();
+            g.beginPath(); g.moveTo(S / 2 - 12, 42); g.lineTo(S / 2 + 12, 66); g.stroke();
+            g.fillStyle = '#ffffff'; g.font = 'bold 13px monospace'; g.textAlign = 'center'; g.fillText('DISCONNECTED', S / 2, 96);
+            g.fillStyle = '#a0a0b0'; g.font = 'bold 10px monospace'; g.fillText('GG NO RE', S / 2, 112);
+        });
+    }
+    function _stxUwuTex() {
+        return _stxWin('uwu', 'CHAT', '#ff5aa8', function (g, S) {
+            g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(14, 30); g.lineTo(S - 14, 30); g.lineTo(S - 14, 84); g.lineTo(46, 84); g.lineTo(28, 102); g.lineTo(32, 84); g.lineTo(14, 84); g.closePath(); g.fill();
+            g.fillStyle = '#ff3a8c'; g.font = 'bold 30px monospace'; g.textAlign = 'center'; g.fillText('uwu', S / 2, 58);
+            g.font = 'bold 18px sans-serif'; g.fillText('♥ ♥ ♥', S / 2, 116);
+        });
+    }
+    function _stxSubTex() {
+        return _stxWin('sub', 'GIFTED SUB', '#9146ff', function (g, S) {
+            g.fillStyle = '#9146ff'; g.fillRect(S / 2 - 24, 38, 48, 38); g.fillStyle = '#b98aff'; g.fillRect(S / 2 - 28, 30, 56, 12);
+            g.fillStyle = '#ffd060'; g.fillRect(S / 2 - 4, 30, 8, 46); g.fillRect(S / 2 - 28, 34, 56, 5);
+            g.fillStyle = '#ffffff'; g.font = 'bold 13px monospace'; g.textAlign = 'center'; g.fillText('THANKS FOR', S / 2, 96); g.fillText('THE SUB!', S / 2, 112);
+        });
+    }
+    function _stxGoalTex() {
+        return _stxWin('goal', 'DONATION GOAL', '#2fbf6a', function (g, S) {
+            g.fillStyle = '#ffffff'; g.font = 'bold 14px monospace'; g.textAlign = 'center'; g.fillText('GOAL REACHED', S / 2, 42);
+            g.fillStyle = '#2a2a33'; g.fillRect(12, 58, S - 24, 18); g.fillStyle = '#3fe07f'; g.fillRect(14, 60, S - 28, 14);
+            g.fillStyle = '#0b2a16'; g.font = 'bold 11px monospace'; g.fillText('100%', S / 2, 68);
+            g.fillStyle = '#ffd060'; g.font = 'bold 18px monospace'; g.fillText('$ $ $', S / 2, 104);
+        });
+    }
+    function _stxRaidTex() {
+        return _stxWin('raid', 'INCOMING', '#9146ff', function (g, S) {
+            g.fillStyle = '#ffffff'; g.font = 'bold 34px monospace'; g.textAlign = 'center'; g.fillText('RAID!', S / 2, 62);
+            g.fillStyle = '#c9a6ff'; g.font = 'bold 11px monospace'; g.fillText('THE WHOLE CHAT', S / 2, 92); g.fillText('IS COMING', S / 2, 106);
+        });
+    }
+    function _stxSide(tx, ty, o) { var from = _afCaster(tx, ty, o || {}), cu = _fx5UnitAt(from.x, from.y); return { from: from, C: _hdSide(cu || { player: (o && o.owner) }) }; }
+    EFFECTS['nrClipIt_impact'] = { layers: [
+        { sprite: 'flash', ml: 150, z: 60, size0: 12, size1: 52, tint: 0xfff0a0, opacity0: 0.7, delayMs: 220 },
+        { count: 10, sprite: 'spark-elec', ml: [220, 380], offsetXY: 8, z: [40, 80], tint: _STX_GLOW, vxRange: 120, vyRange: 120, vzRange: [10, 60], drag: 1, size0: [3, 6], size1: 1, opacity0: 0.95, delayMs: 220 },
+    ] };
+    function _stxClip3D(tx, ty, r, o) {
+        if (_stxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, S = _stxSide(tx, ty, o);
+        _fxDelay(function () { try { _tvxPanel(tx, ty, _stxClipTex(), { w: 0.8, ms: 1400 }); } catch (e) {} }, 240);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.15, r1: ts * 0.6, ms: 380, color: S.C.a, height: ts * 0.05 }); } catch (e) {} }, 240);
+        return true;
+    }
+    EFFECTS['nrRageQuit_aura'] = { layers: [
+        { sprite: 'flash', ml: 180, z: 45, size0: 14, size1: 70, tint: _STX_GLOW, opacity0: 0.5 },
+        { count: 22, sprite: 'debris', ml: [420, 700], offsetXY: 8, z: [30, 60], tint: 0xe8e4f0, vxRange: 210, vyRange: 210, vzRange: [60, 150], gravity: 260, size0: [3, 6], size1: 2, opacity0: 1 },
+        { count: 10, sprite: 'spark', ml: [260, 420], offsetXY: 10, z: [35, 60], tint: _STX_P, vxRange: 180, vyRange: 180, vzRange: [20, 80], drag: 1, size0: [3, 5], size1: 1, opacity0: 0.9 },
+    ] };
+    function _stxRage3D(tx, ty, r, o) {
+        if (_stxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, cu = _fx5UnitAt(tx, ty), C = _hdSide(cu || { player: o && o.owner });
+        _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.5, ms: 420, color: C.a, height: ts * 0.06 });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.3, ms: 380, color: _STX_P, height: ts * 0.35, torus: true, opacity: 0.35 }); } catch (e) {} }, 90);
+        _fxDelay(function () { try { _tvxPanel(tx, ty, _stxDiscoTex(), { w: 0.8, ms: 1500, flicker: true }); } catch (e) {} }, 380);
+        return true;
+    }
+    function _stxSpeed3D(tx, ty, dist, o) {
+        if (_stxOff()) return null;
+        o = o || {};
+        var ts = _worldPos(tx, ty).ts;
+        if (o.fromX != null && !_afFogHides(o.fromX, o.fromY) && !_afFogHides(tx, ty)) {
+            var F = _nrvFrame(tx, ty), th = _hdThread(F, o.fromX, o.fromY, ts * 0.35, _STX_P, 420, ts * 0.12, 160);
+            if (th) _sigRunOwned(F.g, 440, function (el) { th.run(el); });
+        }
+        if (!_afFogHides(tx, ty)) _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.1, r1: ts * 0.55, ms: 320, color: _STX_GLOW, height: ts * 0.04 }); } catch (e) {} }, 300);
+        return true;
+    }
+    EFFECTS['nrUwu_impact'] = { layers: [
+        { sprite: 'flash', ml: 180, z: 55, size0: 10, size1: 44, tint: _STX_PINK, opacity0: 0.5, delayMs: 200 },
+        { count: 12, sprite: 'spark-pink', ml: [500, 800], offsetXY: 10, z: [40, 80], tint: _STX_PINK, vxRange: 60, vyRange: 60, vzRange: [40, 90], drag: 1.2, size0: [4, 7], size1: 2, opacity0: 0.95, delayMs: 200 },
+    ] };
+    function _stxUwu3D(tx, ty, r, o) {
+        if (_stxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, S = _stxSide(tx, ty, o);
+        _fxDelay(function () { try { _tvxPanel(tx, ty, _stxUwuTex(), { w: 0.75, ms: 1500 }); } catch (e) {} }, 220);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.6, r1: ts * 0.2, ms: 420, color: S.C.a, height: ts * 0.05 }); } catch (e) {} }, 220);
+        return true;
+    }
+    EFFECTS['nrGiftedSub_aura'] = { layers: [
+        { sprite: 'flash', ml: 200, z: 50, size0: 12, size1: 56, tint: _STX_GOLD, opacity0: 0.45 },
+        { count: 14, sprite: 'sparkle', ml: [500, 800], offsetXY: 12, z: [20, 70], tint: _STX_GOLD, vxRange: 50, vyRange: 50, vzRange: [40, 90], drag: 1, size0: [3, 6], size1: 1, opacity0: 0.95 },
+    ] };
+    function _stxSub3D(tx, ty, r, o) {
+        if (_stxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, cu = _fx5UnitAt(tx, ty), C = _hdSide(cu || { player: o && o.owner });
+        _tvxPanel(tx, ty, _stxSubTex(), { w: 0.75, ms: 1500 });
+        _sigShockRing3D(tx, ty, { r0: ts * 0.15, r1: ts * 0.55, ms: 420, color: C.a, height: ts * 0.05 });
+        return true;
+    }
+    EFFECTS['nrDonationGoal_aura'] = { layers: [
+        { sprite: 'flash', ml: 220, z: 50, size0: 14, size1: 66, tint: _STX_GOLD, opacity0: 0.45 },
+        { count: 20, sprite: 'ember', ml: [700, 1000], offsetXY: 16, z: [10, 40], tint: _STX_GOLD, vxRange: 40, vyRange: 40, vzRange: [70, 130], drag: 0.6, size0: [4, 6], size1: 2, opacity0: 1 },
+    ] };
+    function _stxGoal3D(tx, ty, r, o) {
+        if (_stxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, cu = _fx5UnitAt(tx, ty), C = _hdSide(cu || { player: o && o.owner });
+        _tvxPanel(tx, ty, _stxGoalTex(), { w: 0.85, ms: 1700 });
+        for (var i = 0; i < 2; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 2.5, ms: 600, color: j ? _STX_GOLD : C.a, height: ts * (0.05 + 0.1 * j), torus: j > 0, opacity: 0.35 }); } catch (e) {} }, 120 + j * 160);
+        })(i);
+        return true;
+    }
+    EFFECTS['nrRaid_aoe'] = { geom3D: true, layers: [
+        { sprite: 'flash', ml: 240, z: 50, size0: 20, size1: 110, tint: _STX_GLOW, opacity0: 0.5 },
+        { count: 30, sprite: 'spark', ml: [500, 800], offsetXY: 60, z: [20, 70], tint: _STX_P, vxRange: 140, vyRange: 140, vzRange: [20, 80], drag: 0.8, size0: [3, 6], size1: 1, opacity0: 0.95 },
+        { count: 14, sprite: 'spark-pink', ml: [500, 800], offsetXY: 60, z: [20, 70], tint: _STX_GLOW, vxRange: 120, vyRange: 120, vzRange: [20, 80], drag: 0.8, size0: [3, 5], size1: 1, opacity0: 0.9 },
+    ] };
+    function _stxRaid3D(tx, ty, r, o) {
+        if (_stxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, S = _stxSide(tx, ty, o);
+        _tvxPanel(tx, ty, _stxRaidTex(), { w: 1.0, ms: 1500 });
+        for (var i = 0; i < 3; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 1.6, r1: ts * 0.2, ms: 520, color: j === 1 ? _STX_P : (j ? S.C.b : S.C.a), height: ts * 0.06 }); } catch (e) {} }, 80 + j * 140);
+        })(i);
+        return true;
+    }
+    function _stxViewers3D(tx, ty, n, o) {
+        if (_stxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts;
+        _sigShockRing3D(tx, ty, { r0: ts * 0.15, r1: ts * 0.7, ms: 420, color: _STX_P, height: ts * 0.05 });
+        return true;
+    }
+    Object.assign(SPELL_MAP, {
+        nrClipIt:       { impact: 'nrClipIt_impact' },
+        nrRageQuit:     { aura: 'nrRageQuit_aura' },
+        nrUwu:          { impact: 'nrUwu_impact' },
+        nrGiftedSub:    { aura: 'nrGiftedSub_aura' },
+        nrDonationGoal: { aura: 'nrDonationGoal_aura' },
+        nrRaid:         { aoe: 'nrRaid_aoe' },
+    });
+    Object.assign(_spell3DGeometry, {
+        nrClipIt: _stxClip3D, nrRageQuit: _stxRage3D, 'nrSpeedrun:dash': _stxSpeed3D, nrUwu: _stxUwu3D, nrGiftedSub: _stxSub3D,
+        nrDonationGoal: _stxGoal3D, nrRaid: _stxRaid3D, 'nrViewers:hype': _stxViewers3D, 'nrViewers:spend': _stxViewers3D,
+    });
+
     /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build
        his spells around the space props in the game". His three new Assets/misc files (the satellite, the space shuttle, the
        space station) and two already in the game (the torn hull plate with its wiring hanging out = the spaceship debris; the

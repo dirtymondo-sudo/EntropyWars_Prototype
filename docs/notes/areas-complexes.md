@@ -5672,6 +5672,13 @@ mondo: "the sky is glitching/flickering in the estate. keep improving the visual
   `window._ewHqGrass` reads the live count. Not done: nothing lays the tufts down (no press map: the walker wades through), props stand in grass,
   the WebGPU twin was not run. The lawn's ground sheet is tinted by the shell, the tufts by the sheet's own colour: they are a little brighter.
 - Seen in the cloud browser (`[EW BUILD]` base 73c958d): one even field at the farmhouse and the barn, no seams; the sky with no bodies.
+- **THE GRASS FROM BOTH SIDES (2026-11-18, mondo: "In story mode the grass blades are only showing from one side"):** each tuft turns its face to
+  the camera (`_ggFace`, the `uGgR` right vector) and is drawn front side only. The walked room's cells turned to the BOARD's camera
+  (`ThreeCamera.getCamera()`), which stands still while you walk; the room is drawn through `_hq.camera`. So every tuft kept one fixed face, and
+  looking the other way (south on the Redwood Trail) the whole field was culled. Now `_ggFace(G, cam)` takes the camera that draws the field
+  (`_hqGrassTick` passes `H.camera`, also for the cells' far-to-near order) and the walked room has its own right-vector uniform (`S.right`, via
+  `_ggMat({ right })` and the node twin's `D.right`), so the board's field and the room's never turn each other. Proof: Redwood Trail
+  (`site_ow_l3`) north + south, before / after, /mnt/project-files/grass-two-sides-20261118/.
 - **THE CLEAN SKY:** what flickered was the ranch shell's night scenery (`scenery: 'eyes'`: a ringed body, a door frame and an orb, turning) drawn
   as black outlines in the daytime sky since the room rides the clock. The Estate's shell now carries its own `sky` (the ranch's colours and fog,
   `scenery: 'none'`, no landmarks, fewer stars). The ranch shell itself is unchanged (the old Corn Fields board still uses it).
@@ -12370,4 +12377,20 @@ log + a trail board; snow = snow heaps + a board; stone = a fallen column + rock
 barricades across the asphalt), Shasta's east road, Shasta's Trailhead arch, the Redwood Trail's Snowline, the Vatican's Pilgrim Stair, Olympus'
 stair foot, the North Pole's sleigh road south, the Pines' sleigh road east. Seen in a probe, one picture each. When a road or door is built at
 one of them again, delete its row.
+
+## CYBERPUNK CITY, THE PLAN (2026-11-18, owner side; a plan only, nothing built)
+
+The plan is `docs/plans/cyberpunk-city/PLAN.md` (pictures beside it). It waits mondo's answers; build nothing before his OK.
+What a later thread must know:
+- The old switch (`hqCityShell({ neon: true })` + `terrain.gen.neon`) was tried on Disaster City in a probe (`--pre`, no file
+  changed): it gives a purple night and darker walls only. It does not reach the district files' `arch` rows, so no neon names,
+  no holograms, no lit glass. A reskin needs a look that reaches the arch parts.
+- Recommended: ONE room (`site_prebuilt_downtown_streets`) with a second LOOK: a look file (`docs/disaster-city/future.js`,
+  tables + rules: tint rule per district, glass glows, signs relit, a sheet table, a prop table, lamps, traffic, people,
+  music), written by the bake as a small block on the room, applied at entry by the room-variant code once it reaches
+  `terrain`. No second room (3.8 MB more data.js, 37 places name the room id), no district file edited.
+- Reached as a YEAR of the same city (the mall closet's time machine, his idea of 09-17), not a place on the map; needs his OK.
+- MODEL_LIST.md holds no cyberpunk pack: no neon sign, billboard, hologram, drone, flying car or tower model. The list of what
+  does exist is in the plan, section 1.
+- A probe view in the city needs its own `"y"` (the street is not at 0: a view at y 0 stands under the ground).
 

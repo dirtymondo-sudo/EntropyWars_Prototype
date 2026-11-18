@@ -8598,11 +8598,16 @@ const ThreeRenderer = (function () {
        Settings > Video > Grass: High / Low / Off (ThreeRenderer.setGrassField, stored ew_grassField). Off for everything:
        window.EW_NO_GRASS_FIELD = true (the board's next build). Tunables live as EW_GGRASS. */
     var GGRASS = {
-        shape: 'crown',
-        perTile: 24,        // tufts per square = perTile² (a jittered grid, so the cover is even)
-        hMin: 0.110, hMax: 0.210,   // tuft height × tile
-        width: 0.070,       // tuft width × tile: WIDE, so neighbours overlap and the field reads as one soft coat
-        lean: 0.55,         // the still bow of a tuft × its height
+        /* THE CURVED BLADES (2026-11-18, mondo: "make the grass look better, more realistic"; on the first fan of five wide blades: "too spiky
+           and unrealistic"; on this one: "yeah that's better"): a tuft is a FAN of seven thin blades from one root, each narrowing in three
+           steps and arching outward, a few of them dry straw (_ggBlade, dry / dryShare). Fewer, bigger tufts than the clumps, so the triangle
+           count stays about the old High's. The clumps' values: shape 'crown', perTile 24, hMin 0.110, hMax 0.210, width 0.070, lean 0.55,
+           rootK 0.50, patchM 2.6, low { perTile 15, width 0.105 }, HQ_GRASS perSquare 16, low 10, height 0.8 */
+        shape: 'fan',
+        perTile: 10,        // tufts per square = perTile² (a jittered grid, so the cover is even)
+        hMin: 0.075, hMax: 0.210,   // tuft height × tile
+        width: 0.170,       // tuft width × tile: a fan's blades spread over ~4 widths
+        lean: 0.30,         // the still bow of a tuft × its height
         /* THE CALMER WIND (mondo 11-12, on the first live build: "it's maybe a little too wavy"): about half the bend, gusts that roll
            by a third slower, half the flutter, a fainter crest. The first build's values: wind 0.45, sheen 0.30, gust 1.25, flutter 0.10 */
         wind: 0.24,         // tip travel on a gust crest × height
@@ -8615,21 +8620,28 @@ const ThreeRenderer = (function () {
            ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
         sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
                   grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
-        lit: 1.0, rootK: 0.50, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
-        patchM: 2.6,        // patch size, squares
+        lit: 1.0, rootK: 0.40, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
+        patchM: 1.8,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
         pressN: 4,          // press map texels per square
         fringe: 5, fringeDensity: 0.7,   // the meadow past the board's edge: squares out, tufts per square side × this
-        low: { perTile: 15, width: 0.105, fringe: 2 },   // the Low setting: under half the tufts, each wider, a narrow meadow
-        order: 50, shadow: true
+        low: { perTile: 7, width: 0.240, fringe: 2 },   // the Low setting: half the tufts, each wider, a narrow meadow
+        order: 50, shadow: true, dry: [0.42, 0.38, 0.20], dryShare: 0.10
     };
     try { window.EW_GGRASS = GGRASS; GGRASS.flush = function () { _ggPalCache = {}; _ggFringe = null; _lastTerrainDecoSerial = ''; }; } catch (e) {}   // flush = retune live: the next frame rebuilds
     /* a tuft's outline (x in half-widths, y in heights) + its 5 triangles, wound to face the camera.
        crown = one thick clump of three points (a tall middle, two splayed sides); tongue = one round pad */
     var _GG_SHAPES = {
         crown: { P: [[-1, 0], [1, 0], [-1.55, 0.66], [-0.5, 0.40], [0, 1], [0.5, 0.40], [1.55, 0.72]], T: [0, 1, 5, 0, 5, 3, 0, 3, 2, 3, 5, 4, 1, 6, 5] },
+        fan: { P: [[-0.46,0.0,0],[-0.14,0.0,0],[-0.781,0.236,0],[-0.552,0.236,0],[-1.461,0.446,0],[-1.313,0.446,0],[-2.2,0.62,0],[-0.34,0.0,1],[-0.02,0.0,1],[-0.511,0.319,1],[-0.282,0.319,1],[-0.894,0.605,1],[-0.747,0.605,1],[-1.3,0.84,1],[-0.24,0.0,2],[0.08,0.0,2],[-0.275,0.369,2],[-0.047,0.369,2],[-0.394,0.698,2],[-0.247,0.698,2],[-0.5,0.97,2],[-0.16,0.0,3],[0.16,0.0,3],[-0.085,0.38,3],[0.143,0.38,3],[0.012,0.72,3],[0.159,0.72,3],[0.15,1.0,3],[-0.06,0.0,4],[0.26,0.0,4],[0.121,0.342,4],[0.35,0.342,4],[0.427,0.648,4],[0.574,0.648,4],[0.8,0.9,4],[0.04,0.0,5],[0.36,0.0,5],[0.337,0.289,5],[0.565,0.289,5],[0.87,0.547,5],[1.017,0.547,5],[1.5,0.76,5],[0.14,0.0,6],[0.46,0.0,6],[0.572,0.22,6],[0.8,0.22,6],[1.371,0.418,6],[1.518,0.418,6],[2.3,0.58,6]], T: [0,1,3,0,3,2,2,3,5,2,5,4,4,5,6,7,8,10,7,10,9,9,10,12,9,12,11,11,12,13,14,15,17,14,17,16,16,17,19,16,19,18,18,19,20,21,22,24,21,24,23,23,24,26,23,26,25,25,26,27,28,29,31,28,31,30,30,31,33,30,33,32,32,33,34,35,36,38,35,38,37,37,38,40,37,40,39,39,40,41,42,43,45,42,45,44,44,45,47,44,47,46,46,47,48] },
         tongue: { P: [[-1, 0], [1, 0], [-1.05, 0.42], [1.05, 0.42], [-0.72, 0.80], [0.72, 0.80], [0, 1]], T: [0, 1, 3, 0, 3, 2, 2, 3, 5, 2, 5, 4, 4, 5, 6] }
     };
+    /* THE CURVED BLADES: one blade's own shade + its dry share (a few straw blades in every tuft) */
+    function _ggBlade(r, b, f) {
+        var hsh = (Math.sin((r * 91.7 + b * 12.93) * 43.1) * 43758.5453) % 1; hsh = hsh < 0 ? hsh + 1 : hsh;
+        var sh = 0.80 + 0.32 * hsh, dry = (hsh > 1 - GGRASS.dryShare) ? (0.25 + 0.6 * f) : 0;
+        return [sh * (1 - dry), sh * (1 - dry), sh * (1 - dry), dry];
+    }
     var _ggRightU = { value: new THREE.Vector2(1, 0) };   // the camera's right, flat, in the field's own frame: every tuft turns its face to the eye
     /* the setting: 'high' (default) | 'low' | 'off' */
     var _ggLevel = 'high';
@@ -8683,7 +8695,7 @@ const ThreeRenderer = (function () {
            after (a tile highlight, a ring, a zone, blood, a spell's ground mark) is ever hidden BY a blade — they lie on the grass
            the way they lie on the ground */
         var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, depthWrite: false });
-        var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: _ggRightU, uGgW: { value: new THREE.Vector2(GGRASS.gust, GGRASS.flutter) } };
+        var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: G.right || _ggRightU, uGgW: { value: new THREE.Vector2(GGRASS.gust, GGRASS.flutter) } };
         m.onBeforeCompile = function (shader) {
             shader.uniforms.uGgM = _ggMaskU;
             shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR; shader.uniforms.uGgW = U.uGgW;
@@ -8705,7 +8717,7 @@ const ThreeRenderer = (function () {
                 .replace('#include <dithering_fragment>', '#include <dithering_fragment>\nif ( uGgM.x > 0.5 ) { float ggZ = clamp( log2( 1.0 + max( vGgZ, 0.0 ) ) / 20.0, 0.0, 1.0 ) * 255.0; gl_FragColor = vec4( 0.0, floor( ggZ ) / 255.0, fract( ggZ ), 1.0 ); }');   // THE GRASS TAKES NO INK: the style mask's draw
         };
         m.customProgramCacheKey = function () { return 'ew_ggrass3'; };
-        _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv });   // the WebGPU twin: _ewNodeGGrass
+        _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv, right: G.right || _ggRightU });   // the WebGPU twin: _ewNodeGGrass
         return m;
     }
     function _ggBuild(group) {
@@ -8817,12 +8829,13 @@ const ThreeRenderer = (function () {
                 /* 7 corners, a soft rounded tongue: foot L / R, belly L / R, shoulder L / R, tip. The side offset (aGgS) is laid along
                    the camera's right in the shader, so the tongue always shows its full face */
                 var P = _GG_SHAPES[C.shape] ? _GG_SHAPES[C.shape].P : _GG_SHAPES.crown.P;
-                for (var k = 0; k < 7; k++) {
+                for (var k = 0; k < P.length; k++) {
                     var f = P[k][1], bf = f * f;
                     pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
                     var cr, cg, cb;
                     if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
                     else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
+                    if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; }
                     col.push(cr, cg, cb);
                     gg.push(wx, wz, h * f, f);
                     gs.push(P[k][0] * hw);
@@ -8843,7 +8856,7 @@ const ThreeRenderer = (function () {
         geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
         geo.setAttribute('aGg', new THREE.BufferAttribute(gg, 4));
         geo.setAttribute('aGgS', new THREE.BufferAttribute(gs, 1));
-        var nB = roots.length / 2, ia = new Uint32Array(nB * 15);
+        var nB = roots.length / 2, ia = new Uint32Array(nB * (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T.length);
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
         var pr = _ggPressTex(W, H);
         var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', blades: nB, roots: roots, ia: ia, sortDir: null };
@@ -8857,8 +8870,13 @@ const ThreeRenderer = (function () {
        are drawn far to near, so a near tuft's light top always lies over the dark foot of the one behind it (that overlap IS the
        fluff). The order is a counting sort over the view direction, redone only when the camera has turned ~10° */
     var _ggV = null, _ggM = null;
-    function _ggFace(G) {
-        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+    /* THE CAMERA THAT DRAWS IT (2026-11-18, mondo: "In story mode the grass blades are only showing from one side"): a walked room draws
+       through its OWN camera (_hq.camera), not the board's. The walked room's tufts used to turn to the board's camera (which stands still
+       while you walk), so every tuft kept one fixed face; walk round to its back and the front-side-only tuft was culled away. A field now
+       passes the camera that draws it, and a walked room keeps its own right-vector uniform (G.right), so the board's field and the room's
+       never turn each other. */
+    function _ggFace(G, camIn) {
+        var cam = camIn || ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null);
         if (!cam) return;
         if (!_ggV) { _ggV = new THREE.Vector3(); _ggM = new THREE.Matrix4(); }
         G.mesh.updateWorldMatrix(true, false);
@@ -8866,7 +8884,7 @@ const ThreeRenderer = (function () {
         var e = cam.matrixWorld.elements;
         _ggV.set(e[0], e[1], e[2]).transformDirection(_ggM);
         var rl = Math.hypot(_ggV.x, _ggV.z) || 1;
-        _ggRightU.value.set(_ggV.x / rl, _ggV.z / rl);
+        (G.right || _ggRightU).value.set(_ggV.x / rl, _ggV.z / rl);
         _ggV.set(-e[8], -e[9], -e[10]).transformDirection(_ggM);   // the view direction
         var fl = Math.hypot(_ggV.x, _ggV.z); if (fl < 1e-4) return;
         var dx = _ggV.x / fl, dz = _ggV.z / fl;
@@ -8878,7 +8896,7 @@ const ThreeRenderer = (function () {
         for (i = 0; i < nB; i++) { k = (B - 1) - Math.floor((R[i * 2] * dx + R[i * 2 + 1] * dz - lo) * sc); key[i] = k; cnt[k + 1]++; }   // far first
         for (i = 0; i < B; i++) cnt[i + 1] += cnt[i];
         var ia = G.ia, T = (_GG_SHAPES[GGRASS.shape] || _GG_SHAPES.crown).T;
-        for (i = 0; i < nB; i++) { var o = cnt[key[i]]++ * 15, b = i * 7; for (k = 0; k < 15; k++) ia[o + k] = b + T[k]; }
+        var TL = T.length, PL = (_GG_SHAPES[GGRASS.shape] || _GG_SHAPES.crown).P.length; for (i = 0; i < nB; i++) { var o = cnt[key[i]]++ * TL, b = i * PL; for (k = 0; k < TL; k++) ia[o + k] = b + T[k]; }
         G.mesh.geometry.index.needsUpdate = true;
     }
     /* the press map, once a frame: every standing unit's feet (rebuilt only when a body moved) */
@@ -8914,7 +8932,7 @@ const ThreeRenderer = (function () {
        water, not a steep face and not inside a building. The tufts write no depth, so the cells are drawn far to near (renderOrder by
        distance) and each cell sorts its own tufts (_ggFace). Settings > Video > Grass (High / Low / Off) rules it as on the board.
        Kill switch: window.EW_NO_HQ_GRASS. No press map (nothing lays the tufts down here yet). */
-    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 16, low: { radiusM: 16, perSquare: 10 }, perTick: 2, tickMs: 100, steep: 0.55, height: 0.8 };   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
+    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 9, low: { radiusM: 16, perSquare: 6 }, perTick: 2, tickMs: 100, steep: 0.55, height: 1.43 };   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
     try { window.EW_HQ_GRASS = HQ_GRASS; } catch (e) {}
     var _hqGG = null;
     function _hqGrassDrop() {
@@ -8948,11 +8966,12 @@ const ThreeRenderer = (function () {
             var hw = ts * S.width * 0.5 * (0.8 + 0.4 * r2);
             var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm, jit = 0.97 + 0.06 * r0;
             var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
-            for (var k = 0; k < 7; k++) {
+            for (var k = 0; k < P.length; k++) {
                 var f = P[k][1], bf = f * f, cr, cg, cb;
                 pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
                 if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
                 else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
+                if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; }
                 col.push(cr, cg, cb); gg.push(wx * kw, wz * kw, h * f, f); gs.push(P[k][0] * hw);
             }
             roots.push(wx, wz);
@@ -8961,13 +8980,13 @@ const ThreeRenderer = (function () {
         var geo = new THREE.BufferGeometry(), pa = new Float32Array(pos), nor = new Float32Array(pa.length); for (var q = 1; q < nor.length; q += 3) nor[q] = 1;
         geo.setAttribute('position', new THREE.BufferAttribute(pa, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
         geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3)); geo.setAttribute('aGg', new THREE.BufferAttribute(new Float32Array(gg), 4)); geo.setAttribute('aGgS', new THREE.BufferAttribute(new Float32Array(gs), 1));
-        var nB = roots.length / 2, ia = new Uint32Array(nB * 15), T = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T;
-        for (var t = 0; t < nB; t++) for (var e = 0; e < 15; e++) ia[t * 15 + e] = t * 7 + T[e];
+        var T = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T, nB = roots.length / 2, ia = new Uint32Array(nB * T.length);
+        for (var t = 0; t < nB; t++) for (var e = 0; e < T.length; e++) ia[t * T.length + e] = t * P.length + T[e];
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
         var mesh = new THREE.Mesh(geo, S.mat);
         mesh.frustumCulled = false; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
         S.parent.add(mesh);
-        return { mesh: mesh, roots: new Float32Array(roots), blades: nB, ia: ia, sortDir: null, cx: cx, cz: cz };
+        return { mesh: mesh, roots: new Float32Array(roots), blades: nB, ia: ia, sortDir: null, cx: cx, cz: cz, right: S.right };
     }
     function _hqGrassTick() {
         var H = _hq, T = H && H.room && H.room.terrain, on = false;
@@ -8981,13 +9000,14 @@ const ThreeRenderer = (function () {
             S = _hqGG = { H: H, level: _ggLevel, info: H.terrain, U: U, N: LOW ? HQ_GRASS.low.perSquare : HQ_GRASS.perSquare, R: LOW ? HQ_GRASS.low.radiusM : HQ_GRASS.radiusM,
                 width: (LOW ? GGRASS.low.width : GGRASS.width) * (LOW ? 1 : GGRASS.perTile / HQ_GRASS.perSquare), windK: (CONFIG.tileSize || BASE_TILE) / (3.5 * U),
                 cells: new Map(), pals: {}, boxes: boxes, press: pr.tex, at: 0, parent: (H.propGroup && H.propGroup.parent) || scene };
-            S.mat = _ggMat({ press: pr.tex, inv: [0, 0] });
+            S.right = { value: new THREE.Vector2(1, 0) };   // THE CAMERA THAT DRAWS IT: the room's own (see _ggFace)
+            S.mat = _ggMat({ press: pr.tex, inv: [0, 0], right: S.right });
             /* THE DEPTH (seen in the browser: dark lines of tuft feet along every cell's edge): the board's field writes no depth and sorts ALL its tufts far to
                near in one mesh; here each cell sorts only its own, so two cells side by side overlapped wrongly at their shared edge whatever order the
                cells were drawn in. A walked room's tufts write depth, so the order does not matter (and the walker's shins stand IN the grass). */
             S.mat.depthWrite = true;
         }
-        var live = []; S.cells.forEach(function (c) { if (c && c.mesh) { _ggFace(c); live.push(c); } });
+        var live = []; S.cells.forEach(function (c) { if (c && c.mesh) { _ggFace(c, H.camera); live.push(c); } });
         var now = performance.now(); if (now - S.at < HQ_GRASS.tickMs) return; S.at = now;
         var cm = HQ_GRASS.cellM, px = H.player.x, pz = H.player.z, pcx = Math.floor(px / cm), pcz = Math.floor(pz / cm), rc = Math.ceil(S.R / cm), want = [];
         for (var dz = -rc; dz <= rc; dz++) for (var dx = -rc; dx <= rc; dx++) { var cx = pcx + dx, cz = pcz + dz, d = Math.hypot((cx + 0.5) * cm - px, (cz + 0.5) * cm - pz); if (d > S.R) continue; if (!S.cells.has(cx + ',' + cz)) want.push([d, cx, cz]); }
@@ -8997,7 +9017,7 @@ const ThreeRenderer = (function () {
         /* far cells first: no tuft writes depth, so a near cell must be drawn over a far one */
         /* (far = along the camera's own view direction, as each cell sorts its tufts: a distance from the camera's place put a cell behind
            the eye in front of the one it looks at, and the cells' edges showed as dark lines of tuft feet) */
-        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null, fx = 0, fz = 0;
+        var cam = H.camera || ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null), fx = 0, fz = 0;
         live = live.filter(function (c) { return c.mesh && c.mesh.parent; });
         if (cam && live.length) {   // the view direction in the cells' OWN frame (the room's group may be turned or mirrored against the world)
             if (!_ggV) { _ggV = new THREE.Vector3(); _ggM = new THREE.Matrix4(); }
@@ -15084,6 +15104,8 @@ const ThreeRenderer = (function () {
         if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
         /* 🐝 THE POLLEN (battle.js): the Bee Queen's carried pollen */
         if ((unit.pollen | 0) > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Pollen: +' + (unit.pollen * 8) + ' ATK, spell power and SPD">POL ' + (unit.pollen | 0) + '</span>');
+        /* 🎮 THE VIEWERS (battle.js): the Streamer's / E-Girl's crowd */
+        if (unit.race === 'streamer' && !unit.dead) badges.push('<span class="tp-sbadge ' + ((unit.viewers | 0) > 0 ? 'tp-stat-up' : 'tp-stat-dn') + '" title="Viewers: Clip It marks at 5+, Donation Goal and Raid spend them">👁 ' + Math.min(10, unit.viewers | 0) + '</span>');
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
         else if (totalMov < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MOV' + totalMov + '</span>');
         /* 🏜 the storm the unit stands in: its stat change, the moment it steps in (state.js getWeatherStatChips) */
@@ -48130,7 +48152,7 @@ const ThreeRenderer = (function () {
     }
     /* THE GRASS FIELD on the node renderer (the GLSL is _ggMat): the gust, the flutter, the press map, the crest sheen, the normal up */
     function _ewNodeGGrass(nm, D) {
-        var T = _ewNodeU.T, P = T.positionLocal, A = T.attribute('aGg', 'vec4'), S = T.attribute('aGgS', 'float'), t = _ewNodeRef(_grassWindTime), Rt = _ewNodeRef(_ggRightU), C = GGRASS;
+        var T = _ewNodeU.T, P = T.positionLocal, A = T.attribute('aGg', 'vec4'), S = T.attribute('aGgS', 'float'), t = _ewNodeRef(_grassWindTime), Rt = _ewNodeRef(D.right || _ggRightU), C = GGRASS;
         var gust = function () {
             var g = T.sin(A.x.mul(0.0105).add(A.y.mul(0.0062)).sub(t.mul(C.gust)).add(T.sin(A.x.mul(-0.0040).add(A.y.mul(0.0070)).add(t.mul(0.31))).mul(1.4))).mul(0.5).add(0.5);
             return g.mul(g);
@@ -81346,6 +81368,17 @@ const ThreeRenderer = (function () {
         var built = b(U, { room: room, door: door, free: !!(box && box.free), cat: W, wx: grp.position.x / U, wz: grp.position.z / U, yaw: grp.rotation.y, y0: y0 });   // THE ROAD (2026-09-17): the placed frame, for a builder that samples the ground
         grp.add(built.g);
         if (joined) { grp._ew_hqJoined = door.id; G.add(grp); return; }   // THE STAGE: the gantry alone — no plate, no record (nothing to press: you walk on)
+        /* THE DOOR AUDIT (2026-11-18, data.js DOOR_HQ.cut.scenery): a cut way's furniture stands as SCENERY (the painting is just a painting):
+           the object and its body's blockers, no plate, no record, nothing to press */
+        if (door.inert) {
+            G.add(grp);
+            (built.blockers || []).forEach(function (bl) {
+                var cyI = Math.cos(grp.rotation.y), syI = Math.sin(grp.rotation.y);
+                var obI = new THREE.Group(); obI.position.set((grp.position.x / U + bl.x * cyI + bl.z * syI) * U, y0 * U, (grp.position.z / U - bl.x * syI + bl.z * cyI) * U);
+                _hq.blockers.push({ obj: obI, y: y0, top: bl.top || null, rad: bl.r || 0.5, way: kind });
+            });
+            return;
+        }
         /* THE PASSAGES (2026-10-01): no plate on a tunnel's dark or a stair's (a trail keeps its waymark post), never a target, never
            pressed — a record the walker's surface, the boom, the dark and the crossing read (_hq.passages) */
         var PS = _hqPassageSpec(door);
@@ -81418,6 +81451,11 @@ const ThreeRenderer = (function () {
         var capMat = _hqMat(S.trim || 'teal', 2, 0.2, { shininess: 45, specular: 0x666666 });
         var backMat = _hqMat(null, 1, 1, { color: 0x15161a, shininess: 4 });
         var housingMat = _hqMat(null, 1, 1, { color: 0x2b2d33, shininess: 30 });
+        /* THE DOOR AUDIT (2026-11-18): the furniture of the ways that were cut (data.js hqApplyCutScenery), drawn as scenery */
+        (room.wayProps || []).forEach(function (wp) {
+            if (!wp || !wp.way || !wp.inert) return;
+            try { var wl = wp.level || 0; _hqBuildWay(room, wp, wl, wl ? _hqLevelY(S, wl) : _hqDoorFloorY(room, wp), _hqWallR(room, wl, wp.side), wp.side === 'in'); } catch (e) { console.warn('[HQ] way scenery failed', wp.id, e); }
+        });
         (room.doors || []).forEach(function (door) {
             /* THE EARNED DOORS (2026-09-20): a bay threshold Otto has not built (data.js hqApplyEarnedDoors → `hidden`) is
                NOTHING — no frame, no leaf, no plate, no record (the scan, the walk-in, the map and the rounds never see it);
@@ -85449,14 +85487,16 @@ const ThreeRenderer = (function () {
         if (!best) return null;
         return _hqEncounterTargetOf(best, bestD);
     }
+    /* THE WOUNDS (NPC encounters step 5a): the hour a resident's Sleep block ends (it is whole again after it), null for a walker with no day */
+    function _hqRestOf(ch) { try { return (ch && ch.resident && ch.resident.r && typeof hqNpcRestHour === 'function') ? hqNpcRestHour(ch.resident.r) : null; } catch (e) { return null; } }
     /* the onEncounter target record of a native (the swing's and the door strike's — DOOR_GUN_PLAN §5.3) */
     function _hqEncounterTargetOf(best, bestD) {
         var H = _hq;
         var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (ch) { return ch && ch.kind === 'npc' && !!ch.race && !ch.cast; };
         /* THE ROAMING GROUP (2026-09-21): the target's companions in the room (the same `group`, not away) — data.js hqEncounterGroup seats them */
         var group = [];
-        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, lvl: c.lvl || 0, x: c.x, z: c.z, y: c.y }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
-        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, line: best.line || null, lvl: best.lvl || 0, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
+        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, lvl: c.lvl || 0, x: c.x, z: c.z, y: c.y, rest: _hqRestOf(c) }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
+        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, line: best.line || null, lvl: best.lvl || 0, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null, rest: _hqRestOf(best) };   // an authored spot may say `swarm: true`
     }
     /* THE EYE (9.4 seam 2): the camera as it stands when the swing lands — position
        + gaze in METRES in the room frame, and the ground under the eye's column

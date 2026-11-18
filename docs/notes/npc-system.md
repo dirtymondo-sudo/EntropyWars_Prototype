@@ -391,9 +391,37 @@ seat (`opts.awareOk`, map.js `_hqEncounterFire` / `_hqMugOpen`). Plan: `docs/pla
   NOT checked in a browser: a real Brute (none lives in Bayside), the Ghost's fight after its warning (the hotel at night kills the cloud browser), the
   mugging's FIGHT button and mouse clicks on the box (the keys were used), a server account's wallet, the wake toast's line.
 - **A story fight that is not won pays no match pay** (mondo 11-18: "that +50 is for online"): battle.js `_accountBankMatchGold` returns for an encounter result
-  that was not won (a loss, a retreat). A WON story fight still banks it (not asked; put to him).
+  that was not won (a loss, a retreat). A WON story fight keeps its pay (mondo 11-18: "winning a fight should obviously still give you money").
 - **mondo's answers 11-18:** skip the drive-by; lost fights pay nothing; cops always come; Brutes in every zone are fine; the closed box asks again; PAY takes what
   you hold; the five lines; "all those numbers look good" (steps 2, 3 and 4: they are his numbers now, no longer proposals).
 - **Probe lessons:** the first run in a new container crashed as the room got ready and its retry was half loaded (no resident bodies); from the second run on
   the city loads in about 250 s. `EW_LIVE_LOG=1` prints every `[HQ] PROBE` line (the PROBES line keeps only 12). A body sent at a raised speed stops short of the walker now.
+
+## NPC HEALTH ON THE WALK (NPC encounters step 5a, 2026-11-18; mondo: "Need to track health outside of battle then, already do for the player and party")
+
+Story walk only (the encounter's own launch and commit). Plan: `docs/plans/npc-encounters/PLAN.md` 4.5, section 0 round 1 answer 11 + round 2 answer 2.
+
+- **The rule:** an NPC that walks away from a story fight hurt keeps its HP and comes into the next fight with it (the party's own carried-vitals path:
+  map.js `createUnit` scales it to that build's max, never under 1). It heals ("at the next game day or after they sleep"): **a resident with a day is whole
+  once its Sleep block has ended after the fight; a walker with no day at the next game day** (the world clock passing midnight).
+- **Who keeps wounds today:** the struck NPC and its group's members that were still standing at the end, in the fights where they are met again: a fight
+  the party LOST, or LEFT (the retreat). HP only; MP is not carried.
+- **EVERY ENEMY BEATEN STAYS BEATEN** (mondo 11-18: "any enemy beat should not magically come back at full health"; "no" to a downed enemy getting up with 1 HP):
+  every enemy NPC that went DOWN in a story fight, won, lost or left, goes on the cleared list (`hqEncounterRecord`'s new `beaten` ids) and is out of the room
+  until tomorrow, the struck one and its group alike. Before, only the struck NPC of a WON fight was filed and its fallen group came back at once, whole.
+  Captured = no row either (the party has it).
+- **Where it lives: the profile, beside `cleared`** (the plan's row 5a; the party's vitals live there too): `door.hq.wounds` = `{ '<room>|<npc id>': { hp, max, t, rest } }`,
+  local to the device (not in the synced blob), at most `wounds.max` 64 rows (the oldest go). So a reload does not heal anyone; only the clock does.
+- **THE RUNNING HOURS** (data.js `hqClockTotal(profile, nowMs)`; map.js `_hqClock.t`, `window._hqClockTotal()`): the world hours the clock has run on this profile,
+  saved in the clock record as `t` (`hqClockWrite`'s 5th argument). It stands still in a fight, as the clock does; `hqClockSet` moves it forward to the hour set.
+  `t` = when the fight ended; `rest` = the hour the resident's Sleep block ends (`hqNpcRestHour(row)` off `HQ_CITY_RESIDENTS.list[..].day`), null for a walker.
+  Step 4's `hqGameDay` (the page's count, the mugging's day) is not touched.
+- **The code:** data.js `hqNpcWoundFor(profile, room, id, t)` (the read: `{ hp, max }` or null), `hqNpcWoundsAfter(profile, room, rows, t)` (the write: one row a
+  body, `{ id, hp, max, down, gone, rest }`; prunes healed rows), `hqNpcWoundHealed`, `hqNpcWorldT`; three-renderer.js the target record carries `rest`
+  (`_hqRestOf`), its group's rows too; data.js `hqEncounterLaunch` passes it on the encounter (`rest`, `members[..].rest`); map.js `_hqEncounterFire` reads the wounds
+  (`L.npcs`, `L.wounds`), `_hqEncounterStart` hands them on (`party.enemyWounds`, the run marker's `npcs`), the encounter start puts them on the enemy seats
+  (`state.partyMeta[2][i].hp / hpMax`); battle.js the encounter commit maps each enemy unit (`2-<seat>`) to its NPC id and writes (`[HQ] the wounds: ...` in the console).
+- **For step 6b (the losing NPC, escape):** an escaped NPC is in `state.escaped[2]`; the commit already reads it and files its HP. Giving up / the arrest only
+  needs `gone: true` on its row (the arrest) or its HP (spared).
+- **Nothing on screen:** no nameplate or aim prompt shows a hurt NPC's HP (a UI change: mock-up and mondo's OK first). Not run in a browser (not visual).
 

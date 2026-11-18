@@ -1,4 +1,4 @@
-# NPC ENCOUNTERS: where it stands, for the next thread (2026-11-18, after steps 1b, 2, 3 and 4)
+# NPC ENCOUNTERS: where it stands, for the next thread (2026-11-18, after steps 1b, 2, 3, 4 and 5a)
 
 Read this first, then `PLAN.md` section 0 (four rounds of mondo's answers; they win over everything below them), then `STEP-1A.md`.
 **mondo cannot see repo files.** Anything that needs his answer or OK goes to him IN CHAT, in full (tables, lines, pictures sent as files).
@@ -33,7 +33,9 @@ heavy (a headless `load-data.js` script) beside the probe. With the file cache w
 
 | **Step 4:** NPC-started fights (REPLACES "never random"): Brutes come at sight, the Ghost fights if you stay after its warning, THE MUGGING (a flat chance per game day, PAY / FIGHT), the level gap on every way of starting, every lost story fight costs gold | data.js `HQ_NPC_TEMPERS.brute` / `.ground` / `.mug` / `.levelGapOn` / `.graceMs`, `hqNpcStarts`, `hqNpcGapHolds`, `hqGameDay`, `hqNpcMugRoll`, `hqNpcMugPrice`, `hqNpcLossGold`; three-renderer.js `_hqTickAware` (who comes), `_hqTickLadder` (the chase by `why`), `hq.npcMugDone`, `dev.come`; map.js `_hqMugOpen`, `_hqMugAnswer`; battle.js the encounter commit (`lostGold`), `_stampHqSite`; notes `docs/notes/npc-system.md` "NPC-STARTED FIGHTS" |
 
-Not built yet: the drive-by (mondo 11-18: skip it for now), giving up, everything from step 5a on. A race with no temper still fights on the first strike.
+| **Step 5a:** NPC health on the walk: a hurt NPC keeps its HP into the next fight (a fight you lost or left); whole after its Sleep block, a walker at the next game day; every enemy that went down, in any outcome, is beaten for the day (the cleared list; mondo 11-18) | data.js `HQ_NPC_TEMPERS.wounds`, `hqNpcWoundFor`, `hqNpcWoundsAfter`, `hqNpcRestHour`, `hqClockTotal` (the clock's running hours `t`); the profile's `door.hq.wounds`; three-renderer.js `_hqRestOf`; map.js `_hqEncounterFire` (`L.wounds`), the encounter start (`partyMeta[2][i].hp`), `_hqClock.t`; battle.js the encounter commit; notes `docs/notes/npc-system.md` "NPC HEALTH ON THE WALK" |
+
+Not built yet: the drive-by (mondo 11-18: skip it for now), giving up, everything from step 6a on. Nothing shows a hurt NPC's HP on screen (a UI change: mock-up first). A race with no temper still fights on the first strike.
 
 **ANSWERED 11-18: "All those numbers look good" (the numbers of steps 2, 3 and 4 are his now).** His changes: skip the drive-by for now; a story fight
 that is not won pays no match pay (built); cops always come, the level gap does not hold a Guard (built: `'defend'` out of `levelGapOn`); Brutes in every
@@ -80,7 +82,7 @@ code path was run by day with a Chef standing in for it in the page only.
 1. ~~The check~~, ~~step 1b~~, ~~step 2~~: done 11-17 (sections 1 and 2).
 2. ~~Step 3, the strike ladder~~: done 11-17 (section 2).
 3. ~~Step 4, NPC-started fights~~: done 11-18 (section 2). The drive-by is skipped on his word.
-4. **Next: 5a** (NPC health on the walk), then 6a, 6b, the GATE (he plays Bayside), S beside them.
+4. ~~5a, NPC health on the walk~~: done 11-18 (section 2). **Next: 6a** (the losing NPC: design and mock-up, WAITS FOR MONDO'S OK before 6b builds), then 6b, the GATE (he plays Bayside), S beside them.
 5. 28 races that live in the city have no temper yet (Priest, Ki Fighter, Swordfighter, Conspiracy Theorist, Cult Leader, Halfdemon, Men in Black, Spy, General, Honda Civic, Mad Scientist, Reptilian, Telepath, Antihero, Nephilim, Clown, Ringmaster, Quarterback, Luchador, Juggernaut, Knight, Astronaut, Marksman, Cursed TV, Super Sentai, Ninja, Magician, Referee; they behave as today and never open the eye):
    they wait for their district's pass, which needs mondo's marks like Bayside's did.
 
