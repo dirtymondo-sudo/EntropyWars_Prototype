@@ -2919,3 +2919,13 @@ His F3 at 45.5 FPS: "Matrix walk by group: hq_part 1.70 · hq_part/Group (still)
 (its turn by its place; never skipped when it is new at its place, fresh, woken, a mover, or in the sweep slice). A moved one becomes
 a mover and is walked every frame as before. Off: `window.EW_HQ_STILL_MERGED_EVERY = true`. The shell's bundle check (1.05 ms) is
 the other ~10,000-child loop; it rests only when the shell stops re-recording ("merge 17" left).
+
+## THE SLOW FRAMES + THE NEAR LIST (2026-11-18, spikes thread)
+His 07:06 F3 during drops (26 FPS, worst 102 ms) had a new top line "tick: walker 7.2" (0.1 in steady play), "Static batch ... watch",
+400 draws held. The lens averages could not say which frames.
+- Lens "Slow frames": every gap of 50 ms+ between two frames, with the previous frame's JS and its three costliest parts / inner steps
+  (last 6). A gap with little JS = the browser (GC, GPU, compositor).
+- Lens "Inside the ticks": `_lensSub(k, t)` = a tick's own steps (kept out of the parts sum); `_hqTickWalker` marks stuck watch,
+  modes, portal sweep, step (floor + blockers), carry, jump + landing, turn + place, swim check, climb check (prefixed "walker:").
+- `_hqStuckFree` (THE WAY OUT OF A COLLIDER) asked the floor up to 2,560 times over EVERY blocker of the room (the officer's walk keeps
+  the whole list): now the search swaps in the blockers within its 8.6 m reach. Off: `window.EW_HQ_STUCK_FULL_LIST`.
