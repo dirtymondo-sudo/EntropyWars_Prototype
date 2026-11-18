@@ -5672,6 +5672,13 @@ mondo: "the sky is glitching/flickering in the estate. keep improving the visual
   `window._ewHqGrass` reads the live count. Not done: nothing lays the tufts down (no press map: the walker wades through), props stand in grass,
   the WebGPU twin was not run. The lawn's ground sheet is tinted by the shell, the tufts by the sheet's own colour: they are a little brighter.
 - Seen in the cloud browser (`[EW BUILD]` base 73c958d): one even field at the farmhouse and the barn, no seams; the sky with no bodies.
+- **THE GRASS FROM BOTH SIDES (2026-11-18, mondo: "In story mode the grass blades are only showing from one side"):** each tuft turns its face to
+  the camera (`_ggFace`, the `uGgR` right vector) and is drawn front side only. The walked room's cells turned to the BOARD's camera
+  (`ThreeCamera.getCamera()`), which stands still while you walk; the room is drawn through `_hq.camera`. So every tuft kept one fixed face, and
+  looking the other way (south on the Redwood Trail) the whole field was culled. Now `_ggFace(G, cam)` takes the camera that draws the field
+  (`_hqGrassTick` passes `H.camera`, also for the cells' far-to-near order) and the walked room has its own right-vector uniform (`S.right`, via
+  `_ggMat({ right })` and the node twin's `D.right`), so the board's field and the room's never turn each other. Proof: Redwood Trail
+  (`site_ow_l3`) north + south, before / after, /mnt/project-files/grass-two-sides-20261118/.
 - **THE CLEAN SKY:** what flickered was the ranch shell's night scenery (`scenery: 'eyes'`: a ringed body, a door frame and an orb, turning) drawn
   as black outlines in the daytime sky since the room rides the clock. The Estate's shell now carries its own `sky` (the ranch's colours and fog,
   `scenery: 'none'`, no landmarks, fewer stars). The ranch shell itself is unchanged (the old Corn Fields board still uses it).
