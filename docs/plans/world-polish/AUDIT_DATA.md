@@ -28,13 +28,13 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 | THE BERMUDA TRIANGLE `bermuda_ow_triangle` | beach | 10 | 378 x 294 | 33 % | 4.9 | 26 | 8 | 0.8 | 5 | 5 | 22 | 1 | 0 (+24 sea) | **4** |
 | CAME A LOT KINGDOM `camelot_kingdom` | camelot | 36 | 252 x 252 | 70 % | 4.7 | 49 | 12 | 0 | 7 | 22 | 23 | 3 | 16 | **4** |
 | THE DESERT HIGHWAY `site_ow_dh2` | routes | 14 | 168 x 210 | 89 % | 11.8 | 63 | 0 | 0.4 | 1 | 13 | 19 | 4 | 13 | **3.9** |
-| GIZA `area51_ow_giza` | desert | 16 | 168 x 168 | 100 % | 24.2 | 64 | 0 | 0.1 | 10 | 12 | 18 | 5 | 8 | **3.8** |
 | THE RITUAL GROUND `fairy_forest_ow_ritual` | woods | 18 | 252 x 378 | 48 % | 3.8 | 53 | 0 | 0.9 | 10 | 4 | 28 | 9 | 23 | **3.8** |
 | LEYLINES · THE LINE `gobekli_ow_line` | leylines | 18 | 504 x 126 | 100 % | 14.6 | 64 | 0 | 0.9 | 7 | 9 | 9 | 6 | 23 | **3.8** |
 | OUTER SPACE `moon_plots` | space | 95 | 1932 x 798 | 100 % | 88.8 | 64 | 0 | 2.2 | 29 | 9 | 3 | 83 | off the map | **3.6** |
 | THE OLD ROAD `site_ow_r4` | routes | 26 | 462 x 210 | 87 % | 9.9 | 62 | 0 | 0.4 | 1 | 25 | 32 | 4 | 14 | **3.5** |
 | THE BEACH `bermuda_beach` | beach | 20 | 336 x 420 | 54 % | 6.2 | 44 | 6 | 0.6 | 4 | 8 | 26 | 2 | 11 (+12 sea) | **3.5** |
 | AREA 51 `area51_desert` | desert | 16 | 168 x 168 | 94 % | 9.2 | 61 | 0 | 0.1 | 11 | 13 | 24 | 0 | 12 | **3.4** |
+| GIZA `area51_ow_giza` | desert | 16 | 168 x 168 | 100 % | 24.2 | 64 | 0 | 0.1 | 12 | 10 | 19 | 5 | 8 | **3.4** |
 | THE DESERT HIGHWAY `site_ow_dh1` | routes | 20 | 336 x 168 | 90 % | 15.8 | 64 | 0 | 0.5 | 1 | 16 | 23 | 0 | 15 | **3.3** |
 | THE DEEP · THE SEA FLOOR `atlantis_ow_floor` | deep | 9 | 126 x 126 | 100 % | 18.5 | 64 | 0 | 3.7 | 17 | 2 | 7 | 4 | 0 (+11 sea) | **3.3** |
 | HELL `hell_plots` | hell | 16 | 168 x 168 | 83 % | 9.4 | 58 | 4 | 12.4 | 25 | 0 | 4 | 11 | off the map | **3.3** |
@@ -121,7 +121,7 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 | THE DEEP · THE SEA FLOOR | The Sea Floor | 9 | 100 % | 18.5 | 64 | 0 | 3.7 | 17 | 2 | 16 | 55 | 0 | 0 | 0 | 0 | 0 | 2 | 3 % | 7 | 4 | 0 | 0.9 | 2.4 | **3.3** |
 | AREA 51 | Area 51 | 16 | 94 % | 9.2 | 61 | 0 | 0.1 | 11 | 13 | 4 | 4 | 1 | 0 | 0 | 0 | 18 | 8 | 27 % | 24 | 0 | 0 | 2.3 | 1.1 | **3.4** |
 | THE CIRCUS | The Circus | 9 | 92 % | 6 | 61 | 0 | 0.1 | 1 | 8 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 33 | 4 % | 46 | 0 | 0.1 | 2.8 | 0 | **2.9** |
-| GIZA | Giza | 16 | 100 % | 24.2 | 64 | 0 | 0.1 | 10 | 12 | 7 | 4 | 2 | 0 | 0 | 1 | 21 | 3 | 36 % | 18 | 5 | 0 | 2.3 | 1.5 | **3.8** |
+| GIZA | Giza | 16 | 100 % | 24.2 | 64 | 0 | 0.1 | 12 | 10 | 15 | 19 | 5 | 0 | 0 | 1 | 30 | 3 | 37 % | 19 | 5 | 0 | 1.9 | 1.5 | **3.4** |
 | WESTERN TOWN | Western Town | 16 | 96 % | 10.9 | 63 | 0 | 0.1 | 10 | 12 | 7 | 4 | 0 | 0 | 0 | 1 | 18 | 29 | 3 % | 37 | 0 | 0 | 2.3 | 0.4 | **2.6** |
 | THE D.U.M.B. | CERN, The Ring | 22 | 33 % | 3.8 | 33 | 18 | 0 | 4 | 21 | 1 | 0 | 1 | 1 | 0 | 0 | 23 | 0 | 100 % | 3 | 19 | 2.5 | 1.9 | 2.8 | **7.2** |
 | THE D.U.M.B. | Command | 7 | 65 % | 5 | 63 | 0 | 0 | 1 | 6 | 0 | 5 | 0 | 0 | 0 | 1 | 7 | 0 | 100 % | 11 | 1 | 0 | 1.9 | 1.9 | **3.7** |
@@ -252,8 +252,6 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 
 **THE DESERT HIGHWAY** (4 of 14): P02-03 The Desert Highway, Western Town–Area 51, the trailers (0/3/3); P02-04 The Desert Highway, Western Town–Area 51, the trailers, south (0/3/3); P03-03 The Desert Highway, Western Town–Area 51, the trailers, the dish (0/3/3); P03-04 The Desert Highway, Western Town–Area 51, the trailers, the turn-off (0/3/3)
 
-**GIZA** (5 of 16): P02-01 Khafre (0/3/3); P02-02 The Great Pyramid, north-west (0/3/3); P03-02 The Great Pyramid, north-east (0/3/3); P02-03 The Great Pyramid, south-west (0/3/3); P03-03 The Great Pyramid, south-east (0/3/3)
-
 **THE RITUAL GROUND** (8 of 18): P01-07 The trail, the camp (1/3/3); P01-08 The trail, the rest (1/3/3); P05-00 The trail, the rest (1/2/3); P05-01 The trail, the camp (1/2/3); P05-02 The trail, the woodcutter’s stack (1/2/3); P05-03 The trail, the fire watch sign (1/2/3); P04-04 The trail, the camp (1/2/3); P03-04 The trail, the rest (0/3/3)
 
 **LEYLINES · THE LINE** (3 of 18): P06-01 The Great Line (0/3/3); P08-01 The Great Line, east (0/3/3); P09-01 The Forks, east (0/3/3)
@@ -263,6 +261,8 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 **THE OLD ROAD** (4 of 26): P00-03 Old Road, forest (0/3/3); P06-04 Old Road, forest (0/3/3); P07-04 Old Road, forest (0/3/3); P08-04 Old Road, forest (0/3/3)
 
 **THE BEACH** (3 of 20): P03-03 The Breakwater (3/3/1); P03-06 The Roads (3/0/3); P03-05 The Channel (0/3/3)
+
+**GIZA** (5 of 16): P02-01 Khafre (0/3/3); P02-02 The Great Pyramid, north-west (0/3/3); P03-02 The Great Pyramid, north-east (0/3/3); P02-03 The Great Pyramid, south-west (0/3/3); P03-03 The Great Pyramid, south-east (0/3/3)
 
 **THE DEEP · THE SEA FLOOR** (1 of 9): P00-00 The Kelp Forest (0/3/3)
 

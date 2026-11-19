@@ -343,11 +343,11 @@
   "id": "site_prebuilt_area51_ow_giza",
   "nx": 48,
   "nz": 48,
-  "h0": -1,
+  "h0": -3.5,
   "hs": 0.25,
-  "v": "8b379b0343",
-  "bytes": 333,
-  "s": "0.5"
+  "v": "3c9c999464",
+  "bytes": 596,
+  "s": "0.2"
  },
  "site_prebuilt_atlantis_ow_floor": {
   "id": "site_prebuilt_atlantis_ow_floor",

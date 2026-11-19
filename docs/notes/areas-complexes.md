@@ -8270,6 +8270,34 @@ too short ... you didn't even get the shape right". So:
 - **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
   scatter and the pine mountains on the east and south edges are the tool row's.
 
+**THE VERTICALITY PASS (2026-11-19, the owner's world audit thread; the pilot of `docs/plans/world-polish/PLAN.md` wave 1, on mondo's "go").**
+File `districts/G.js` only (the block at the end of `ground()`); `node bake-desert.js && node bake-desert-insides.js`, then `node bake-map.js site_prebuilt_area51_ow_giza`.
+- **What was built:** the Sand Sea as real dunes (three `ridge` crests + two `hill` rows, to 5 m); THE CANYON STAIR (an earth `ramp` up the dead canyon to a
+  rock bridge at the mesa's 5.25 m shelf, a path along the shelf's one-square rim to THE LOOKOUT over the Dig, a chest and an idol left on it); THE DEEP CUT
+  (a `sink` pit two fight tiers down, -1.75 and -3.5, an earth ramp into each, a stone pavement at the bottom).
+- **The numbers** (`docs/plans/world-polish/audit.js`, a plot's relief in metres): The Sand Sea 0.1 -> 3.4, The Sand Sea, east 0.1 -> 4.3, The Canyon
+  Mouth 8.8 -> 10.5, The Robbers' Tunnel 8.8 -> 12.3; dead-flat plots 12 -> 10 of 16; the district's NEED 3.8 -> 3.4. The ten plots still flat are the
+  monuments' (below): the tool also counts a pyramid's footprint as walkable, which it is not.
+- **What any flat district's pass can copy:**
+  1. **A PROP STANDS ON THE GROUND UNDER IT** (three-renderer.js `_hqCaveTop`: the walker's feet at its x, z; its `y` is added on top). Raise the ground and
+     everything on it rides up; nothing has to be re-placed. A long model (a wagon, a skeleton) does not tilt: keep crests off them.
+  2. **AN `arch` ROW WITH `y: 0` DOES NOT.** Giza's pyramids, Sphinx floor, hall, kerb and tunnel mouth are parts lists at a fixed height, and its doors sit
+     at their pads. So a monument district keeps its monuments' ground and gets its height BETWEEN them. A district built of props and `texbuilding`
+     rows (Western Town, the Circus) is freer.
+  3. `ridge` and `hill` ADD to the ground; a `plateau` takes the higher of itself and the ground; a `sink` plateau cuts down; a `ramp` takes the higher,
+     so a ramp inside a sink is the way out of it. Rows are read in order: cut first, then the ramps.
+  4. **How steep a dune may be:** a ridge's steepest point is about 1.5 x h / (w / 2); keep it under 0.85 (the walker stops at 1). 4.4 m on a 13 m wide
+     ridge was 1.02 and was widened to 16.
+  5. **KEEP RAMPS OFF THE ROOM'S LINE** and off both road seams: the land past the line carries the edge's height on.
+  6. **A ONE-SQUARE PAD IS EXACTLY ONE SQUARE** (`w: 3.5, d: 3.5`): a pad of 3.9 that overlapped its neighbours' lines beside a ramp was taken for the
+     ramp's landing and the 8.75 m shelf next to it was cut down to 1 m. Check heights offline after every bake (print `hqTerrainFeet` a square).
+  7. The tool's rock (`m` squares: a 5.25 m shelf, 8.75 m cap) has a one-square rim round every cap. It was "never climbed"; a ramp to the shelf turns
+     every mesa's rim into a ledge trail for free.
+- **Seen** through probe-fast.js, three runs, 21 views, no page error (HEAD 412115e + this change): the dunes from four sides, the canyon from below and
+  from its head, the rim, the lookout, the Deep Cut from its south rim and its floor.
+- **Open:** the shelf's top draws its sheet in stretched stripes (the tool's rock, never stood on before); the brown spire and red tables on the north
+  horizon are the edge land's (the edges row); the walker was not driven up the ramp by hand (the way was checked on the height sheet).
+
 ## THE MOUNTAINS, THE SNOWY PASS — district P, pass by pass (2026-11-16, second side, the Snowy Pass district thread)
 
 File `docs/areas/mountains/districts/P.js` only (no tool change); rebake `node bake-mountains.js`. mondo's 11-16 order (docs/plans/DISTRICT_THREAD_BRIEF.md): five passes at most, no questions.
