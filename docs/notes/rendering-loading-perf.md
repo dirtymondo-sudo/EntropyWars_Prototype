@@ -3202,3 +3202,17 @@ group three replayed itself: recorded again, not static, or not yet seen through
   batches 0.59 (58 a frame). The label now says where the object hangs (parent chain to the named one), its copies (drawn / room for),
   corners, looks and "never culled"; the top four also show full / shared refreshes and ms a frame per step: check (needsRefresh),
   before (updateBefore), geometry (attribute uploads), nodes (updateForRender), bindings (uniform / sheet writes), after.)
+
+### THE SUN IN THE FIRST REFRESH + THE LONGER TURN + THE WAITING LEVELS (2026-11-19, his 18:28 F3: 36.0 FPS, worst 46 ms)
+- READ THIS before chasing "Refreshes by object": its top row ("Mesh in Group<hq_part · MeshLambertMaterial · batch · 1610/1610 copies",
+  2.03 ms, all of it "before") is the SUN'S SHADOW PASS: three draws the shadow map from the first lit object's updateBefore, inside that
+  object's refresh. The row's ms are the shadow pass's, already counted in the "sun shadow:" rows. The rest (~4.4 ms) is ~220 small
+  refreshes a frame (firsts ~110, turns ~70, awake ~30), ~20 µs each, mostly "bindings".
+- THE LONGER TURN: a rested object (still rests after REST = 20 quiet frames) is asked on its turn every RP_TURN = 60 frames (was 20):
+  turns a frame / 3. A change that moves no version (a node value set by hand on a still object) shows up to ~1 s late. Old:
+  `window.EW_BUN_TURN_20`.
+- THE WAITING LEVELS: `_hqLodTick` re-read the whole room (74,000 objects; the scan alarm's "!! _hqLodScan < _hqLodTick 36K/s") on every
+  LOD level landing, i.e. every 2 s while models streamed ("tick: LOD 12 ms" frames). `_lodAttach` marks a model's geometries
+  `_ew_lodWait`; meshes on them are kept aside as they arrive (`L.pend`, filled by the desk and the whole read), and a landing moves the
+  ones whose levels came into the list. Whole read: first run, overflowed desk, every 60 s. A mesh placed BEFORE its model's attach
+  marked it waits for the 60 s read. Old rule: `window.EW_LOD_LAND_RESCAN`.
