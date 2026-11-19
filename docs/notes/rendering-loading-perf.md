@@ -3042,3 +3042,10 @@ The "Scene walks" alarm named `_mmLive` (77K objects every 2-4 s): over the budg
 files. After a sweep that found files the next read waits 20 s (8 s when 1.5x over) and takes up to 24 (48 far over); the drops still go
 two a frame. Off: `EW_MM_READ_EVERY_4S`. Same F3: two 176-179 ms frames with only 19-20 ms of JS (the browser, not our code: KTX2 uploads /
 pipelines while new models loaded, or GC); the instance pass 39-43 ms frames went to the 60 FPS thread.
+
+### NO WARM IN PLAY ON FIREFOX (2026-11-19, spikes thread, his 12:16 F3)
+His Disaster City F3: 10.6 FPS, frames 94 ms, slow frames 136-283 ms, each with only 18-24 ms of JS; the shader cache line "warmed 661
+(67 to go)". Firefox builds a WebGPU pipeline in its GPU process in line with the frame submits, so even createRenderPipelineAsync holds the
+frame (his 11-18 12:30 F3 already had 176 ms frames with 20 ms of JS beside "35 pipelines made off the frame"). `_ewScTick`'s warm made those
+pipelines one after another during play. On Firefox (`_ewScGeckoHold`) the warm now runs only in the menu and while the walk's card is up
+(`!_hq.ready`); in play a look builds when it first shows (THE LATE LOOK). Off: `EW_SC_WARM_IN_PLAY`.

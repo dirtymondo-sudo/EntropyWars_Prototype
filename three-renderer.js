@@ -47982,6 +47982,13 @@ const ThreeRenderer = (function () {
         if (tag !== _ewSC.wFor) { _ewSC.wFor = tag; _ewSC.wTag = null; _ewSC.wq = []; _ewSC.wAt = 0; }   // a fight, a walk or the menu began
         var ref = tag ? _ewSC.refs[tag] : null;
         if (!ref || ref.r !== r || ref.scene !== (tag === 'b' ? scene : (tag === 'w' ? _hq.scene : _menu.scene))) return;
+        /* NO WARM IN PLAY ON FIREFOX (2026-11-19, spikes thread: mondo's F3 in Disaster City, 10.6 FPS, frames 94 ms with 18-24 ms of JS, the
+           warm still going, "warmed 661 (67 to go)"): Firefox makes a WebGPU pipeline in its GPU process on the same line as the frames'
+           submits, so an "async" pipeline still holds the frame there (his 12:30 F3 the day before: 176 ms frames with 20 ms of JS beside
+           "35 pipelines made off the frame"). The warm makes pipelines one after another for looks that may never show, so on Firefox it
+           runs only while the walk's card is up (the room not ready) and in the menu; in play a look builds when it first shows (the late
+           look). Off: window.EW_SC_WARM_IN_PLAY. */
+        if ((tag === 'w' || tag === 'b') && _ewScGeckoHold(tag)) return;
         if (_ewSC.wTag === null) {
             if (!_ewSC.wAt) { _ewSC.wAt = performance.now() + 600; return; }   // the scene's own first frames build first
             if (performance.now() < _ewSC.wAt) return;
@@ -47989,6 +47996,16 @@ const ThreeRenderer = (function () {
         }
         if (_ewSC.wq.length) _ewScWarmOne(r);
         else _ewScSave(false);
+    }
+    var _ewScGecko = null;
+    function _ewScGeckoHold(tag) {
+        try {
+            if (window.EW_SC_WARM_IN_PLAY) return false;
+            if (_ewScGecko === null) _ewScGecko = /firefox\/|gecko\/\d/i.test(navigator.userAgent) && !/like gecko/i.test(navigator.userAgent);
+            if (!_ewScGecko) return false;
+            if (tag === 'w') return !!(_hq && _hq.ready);
+            return true;
+        } catch (e) { return false; }
     }
     function _ewScSetup(r) {
         if (r._ew_sc || _ewScOff()) return;
