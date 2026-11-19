@@ -49190,15 +49190,40 @@ const ThreeRenderer = (function () {
             var o = ro.object, m = ro.material, q = o, nm = '';
             for (var d = 0; q && d < 4 && !nm; d++, q = q.parent) nm = q.name || '';
             var mk = !m ? '?' : m._ewNode ? 'node ' + m._ewNode.k : (m.map && m.map.isCanvasTexture) ? 'sign canvas' : (m.map && m.map.isVideoTexture) ? 'video' : (m.transparent || m.alphaTest > 0) ? 'see-through' : m.type;
-            return (ro._ew_rfL = (nm || o.type) + ' · ' + mk + (o.isInstancedMesh ? ' · batch' : o.isSkinnedMesh ? ' · skinned' : ''));
+            /* (11-19, his 18:12 F3: "hq_part · MeshLambertMaterial · batch 1.91 ms a frame" for ONE refresh a frame) where it hangs and what
+               it holds: the parent chain up to the named one, the copies (drawn / room for), the corners, the looks */
+            var ch = [], q2 = o.parent;
+            for (var d2 = 0; q2 && d2 < 4; d2++, q2 = q2.parent) { ch.push(q2.name || q2.type); if (q2.name) break; }
+            var gp = o.geometry && o.geometry.attributes && o.geometry.attributes.position, extra = '';
+            if (o.isInstancedMesh) extra += ' · ' + o.count + '/' + (o.instanceMatrix ? o.instanceMatrix.count : '?') + ' copies';
+            if (gp) extra += ' · ' + gp.count + ' corners';
+            if (Array.isArray(o.material)) extra += ' · ' + o.material.length + ' looks';
+            if (o.frustumCulled === false) extra += ' · never culled';
+            return (ro._ew_rfL = (o.name || o.type) + ' in ' + ch.join('<') + ' · ' + mk + (o.isInstancedMesh ? ' · batch' : o.isSkinnedMesh ? ' · skinned' : '') + extra);
         };
         var rpStep = function (R, ro) {
             var RF = _lensOn() ? (_ewBun.rf || (_ewBun.rf = { m: {}, f: 0 })) : null, t0 = 0, u0 = 0;
-            if (RF) { t0 = performance.now(); u0 = _ewBun.uplN | 0; }
-            var N = R._nodes, t = N.needsRefresh(ro);
-            if (t === 2 || t === 'full') { N.updateBefore(ro); R._geometries.updateForRender(ro); N.updateForRender(ro); R._bindings.updateForRender(ro); N.updateAfter(ro); }
-            else if (t === 1 || t === 'shared') { N.updateBefore(ro); N.updateForRender(ro); R._bindings.updateSharedForRender(ro); N.updateAfter(ro); }
-            if (RF) { var dd = performance.now() - t0, kk = rpLabel(ro), e = RF.m[kk] || (RF.m[kk] = [0, 0, 0, 0]); e[0] += dd; e[1]++; e[2] += (_ewBun.uplN | 0) - u0; if (dd > e[3]) e[3] = dd; }
+            if (!RF) {
+                var N = R._nodes, t = N.needsRefresh(ro);
+                if (t === 2 || t === 'full') { N.updateBefore(ro); R._geometries.updateForRender(ro); N.updateForRender(ro); R._bindings.updateForRender(ro); N.updateAfter(ro); }
+                else if (t === 1 || t === 'shared') { N.updateBefore(ro); N.updateForRender(ro); R._bindings.updateSharedForRender(ro); N.updateAfter(ro); }
+                return;
+            }
+            /* the same steps, each timed (THE REFRESH BY OBJECT's split: check, before, geometry, nodes, bindings, after) */
+            t0 = performance.now(); u0 = _ewBun.uplN | 0;
+            var kk = rpLabel(ro), e = RF.m[kk] || (RF.m[kk] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), N2 = R._nodes, ta = t0, tb;
+            var t2 = N2.needsRefresh(ro); tb = performance.now(); e[4] += tb - ta; ta = tb;
+            if (t2 === 2 || t2 === 'full' || t2 === 1 || t2 === 'shared') {
+                var full = t2 === 2 || t2 === 'full';
+                N2.updateBefore(ro); tb = performance.now(); e[5] += tb - ta; ta = tb;
+                if (full) { R._geometries.updateForRender(ro); tb = performance.now(); e[6] += tb - ta; ta = tb; }
+                N2.updateForRender(ro); tb = performance.now(); e[7] += tb - ta; ta = tb;
+                if (full) R._bindings.updateForRender(ro); else R._bindings.updateSharedForRender(ro);
+                tb = performance.now(); e[8] += tb - ta; ta = tb;
+                N2.updateAfter(ro); tb = performance.now(); e[9] += tb - ta; ta = tb;
+                e[full ? 10 : 11]++;
+            }
+            var dd = performance.now() - t0; e[0] += dd; e[1]++; e[2] += (_ewBun.uplN | 0) - u0; if (dd > e[3]) e[3] = dd;
         };
         ['updateTexture', 'generateMipmaps'].forEach(function (k) {   // the sheet uploads a refresh causes (THE REFRESH BY OBJECT)
             var f = B[k]; if (typeof f !== 'function') return;
@@ -54768,7 +54793,9 @@ const ThreeRenderer = (function () {
             if (RFw && RFw.f > 0) {   // THE REFRESH BY OBJECT
                 var RFm = RFw.m, RFf = RFw.f, RFk = Object.keys(RFm).sort(function (a, b) { return RFm[b][0] - RFm[a][0]; });
                 var RFt = 0; for (var rfi = 0; rfi < RFk.length; rfi++) RFt += RFm[RFk[rfi]][0];
-                L.push('Refreshes by object (ms a frame, refreshes a frame, sheet uploads, worst ms; ' + (RFt / RFf).toFixed(2) + ' ms a frame in all, ' + RFk.length + ' kinds, ' + RFf + ' frames): ' + RFk.slice(0, 10).map(function (k) { var e = RFm[k]; return k + ' ' + (e[0] / RFf).toFixed(2) + ' (' + (e[1] / RFf).toFixed(1) + ', ' + e[2] + ' up, worst ' + e[3].toFixed(0) + ')'; }).join(' | '));
+                L.push('Refreshes by object (ms a frame, refreshes a frame, sheet uploads, worst ms; ' + (RFt / RFf).toFixed(2) + ' ms a frame in all, ' + RFk.length + ' kinds, ' + RFf + ' frames): ' + RFk.slice(0, 10).map(function (k, ix) { var e = RFm[k], sp = '';
+                    if (ix < 4) sp = '; full ' + e[10] + ' / shared ' + e[11] + ' of ' + e[1] + '; ms a frame: check ' + (e[4] / RFf).toFixed(2) + ', before ' + (e[5] / RFf).toFixed(2) + ', geometry ' + (e[6] / RFf).toFixed(2) + ', nodes ' + (e[7] / RFf).toFixed(2) + ', bindings ' + (e[8] / RFf).toFixed(2) + ', after ' + (e[9] / RFf).toFixed(2);
+                    return k + ' ' + (e[0] / RFf).toFixed(2) + ' (' + (e[1] / RFf).toFixed(1) + ', ' + e[2] + ' up, worst ' + e[3].toFixed(0) + sp + ')'; }).join(' | '));
             }
             if (_ewBun.spikes && _ewBun.spikes.length) L.push('Bundle spikes (last ' + _ewBun.spikes.length + '): ' + _ewBun.spikes.join(' | '));
             if (_ewBun.splitShow) L.push('Bundle check by group (ms a frame, meshes; ' + (_ewBun.splitN | 0) + ' groups walked): ' + _ewBun.splitShow);

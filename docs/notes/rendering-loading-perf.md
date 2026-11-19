@@ -3197,3 +3197,8 @@ group three replayed itself: recorded again, not static, or not yet seen through
   "Refreshes by object": the top 10 by ms a frame, refreshes a frame, uploads, worst single refresh.
   (11-19, his 18:06 F3 had no such line: it filled only on the lens's own sampled frames. It now fills from the dip log too (always on
   in the walk), over a rolling window of ~300 frames (`_ewBun.rf`, the last full window kept in `_ewBun.rfLast`).)
+  (11-19, his 18:12 F3, the first with the line: 6.05 ms of refreshes a frame; the top one "hq_part · MeshLambertMaterial · batch 1.91
+  ms a frame" for ONE refresh a frame (worst 4 ms), then static-batch "node stack" 0.86 (24 a frame) and the instance pass's Lambert
+  batches 0.59 (58 a frame). The label now says where the object hangs (parent chain to the named one), its copies (drawn / room for),
+  corners, looks and "never culled"; the top four also show full / shared refreshes and ms a frame per step: check (needsRefresh),
+  before (updateBefore), geometry (attribute uploads), nodes (updateForRender), bindings (uniform / sheet writes), after.)
