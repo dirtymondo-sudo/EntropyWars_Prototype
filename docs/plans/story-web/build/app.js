@@ -369,7 +369,7 @@ function zoomAt(cx, cy, f) {
 }
 function bbox(ids) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  (ids || Object.keys(B.nodes)).forEach(id => { const n = B.nodes[id]; if (!n) return; if (n.kind === 'note') { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x + 190); y1 = Math.max(y1, n.y + 130); } else { x0 = Math.min(x0, n.x - 60); y0 = Math.min(y0, n.y - 50); x1 = Math.max(x1, n.x + 60); y1 = Math.max(y1, n.y + 76); } });
+  (ids || (VIEW ? Object.keys(VIEW.pos) : Object.keys(B.nodes))).forEach(id => { const n0 = B.nodes[id]; if (!n0) return; const n = vp(n0); if (n.kind === 'note') { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x + 190); y1 = Math.max(y1, n.y + 130); } else { x0 = Math.min(x0, n.x - 60); y0 = Math.min(y0, n.y - 50); x1 = Math.max(x1, n.x + 60); y1 = Math.max(y1, n.y + 76); } });
   return x0 === Infinity ? null : { x0, y0, x1, y1 };
 }
 function fit(silent) {
@@ -379,14 +379,16 @@ function fit(silent) {
   else { const pad = 40, k = clamp(Math.min((r.width - pad * 2) / (b.x1 - b.x0), (r.height - pad * 2 - 40) / (b.y1 - b.y0)), .15, 1.15); v.k = k; v.x = r.width / 2 - (b.x0 + b.x1) / 2 * k; v.y = r.height / 2 - (b.y0 + b.y1) / 2 * k; }
   if (!silent) applyView();
 }
-function centreOn(id) { const n = B.nodes[id]; if (!n) return; const r = stage.getBoundingClientRect(), v = B.view; v.x = r.width / 2 - n.x * v.k; v.y = r.height / 2 - n.y * v.k; applyView(); }
+function centreOn(id) { const n0 = B.nodes[id]; if (!n0) return; const n = vp(n0); const r = stage.getBoundingClientRect(), v = B.view; v.x = r.width / 2 - n.x * v.k; v.y = r.height / 2 - n.y * v.k; applyView(); }
 
 /* ───────── rendering: board ───────── */
 function renderNodes() {
   let h = '';
   const fg = sel && sel.kind === 'node' && isGrp(B.nodes[sel.id]) ? sel.id : null, fm = fg ? new Set(membersOf(fg).concat(fg)) : null;
   const dots = {}; Object.values(B.links).forEach(l => { if (l.type !== 'member') return; const g = B.nodes[l.b]; if (isGrp(g) && (!isOrgGrp(g) || l.secret)) (dots[l.a] = dots[l.a] || []).push({ g, sec: !!l.secret }); });
-  Object.values(B.nodes).forEach(n => {
+  Object.values(B.nodes).forEach(n0 => {
+    if (VIEW && !VIEW.pos[n0.id]) return;
+    const n = VIEW ? Object.assign({}, n0, vp(n0)) : n0;
     const s = (sel && sel.kind !== 'link' && sel.id === n.id ? ' sel' : '') + (multi.has(n.id) ? ' lasso' : '') + (fm && n.kind !== 'note' && !fm.has(n.id) ? ' dim' : '');
     if (n.kind === 'note') { h += '<div class="note c-' + (n.color || 'y') + s + '" data-id="' + esc(n.id) + '" style="left:' + n.x + 'px;top:' + n.y + 'px"><div class="grip"><span>Idea</span><span>drag</span></div><textarea spellcheck="false" placeholder="Story idea, hook, open question…" aria-label="Story idea">' + esc(n.text) + '</textarea></div>'; return; }
     if (isGrp(n)) { const k = membersOf(n.id).length; h += '<div class="node gnode' + (gkOf(n) === 'faction' ? ' fac' : '') + s + (pendingSrc === n.id ? ' src' : '') + '" data-id="' + esc(n.id) + '" style="left:' + n.x + 'px;top:' + n.y + 'px;--gc:' + gcol(n) + '"><div class="pic gp">' + esc(n.name) + '<small>' + k + '</small></div><div class="handle"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6h8M6.5 2.5 10 6l-3.500 3.500"/></svg></div></div>'; return; }
@@ -395,7 +397,8 @@ function renderNodes() {
       '<div class="nm">' + esc(o.name) + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + (dots[n.id] ? '<span class="gdots">' + dots[n.id].map(d => '<i' + (d.sec ? ' class="sec"' : '') + ' style="--gc:' + gcol(d.g) + '" title="' + (d.sec ? 'Secretly in ' : '') + esc(d.g.name) + '"></i>').join('') + '</span>' : '') + '</div>' +
       '<div class="handle" title="Drag to another unit to tie them together"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6h8M6.5 2.5 10 6l-3.500 3.500"/></svg></div></div>';
   });
-  CP = copyList();
+  CP = VIEW ? [] : copyList();
+  if (VIEW && VIEW.labels) VIEW.labels.forEach(q => { h += '<div class="vlabel' + (q.fac ? ' fac' : '') + (q.none ? ' none' : '') + '" style="left:' + q.x + 'px;top:' + q.y + 'px;--gc:' + q.col + '">' + esc(q.t) + '</div>'; });
   CP.forEach(c => { const o = info(c.u), sl = (sel && sel.kind === 'node' && sel.id === c.u.id ? ' sel' : '') + (fm && !fm.has(c.u.id) ? ' dim' : '');
     h += '<div class="node copy' + sl + '" data-cid="' + esc(c.l.id) + '" style="left:' + c.x + 'px;top:' + c.y + 'px;--gc:' + gcol(c.g) + '">' + picHTML(o) + '<div class="nm">' + esc(o.name) + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + '</div></div>'; });
   nodesEl.innerHTML = h; elById = new Map();
@@ -405,7 +408,7 @@ function renderNodes() {
 }
 function autosize(t) { t.style.height = 'auto'; t.style.height = Math.max(54, t.scrollHeight) + 'px'; }
 function geom(l, i, n) {
-  const A = B.nodes[l.a], Bn = B.nodes[l.b]; if (!A || !Bn) return null;
+  const A0 = B.nodes[l.a], B0 = B.nodes[l.b]; if (!A0 || !B0) return null; const A = vp(A0), Bn = vp(B0);
   let p = A, q = Bn; if (l.a > l.b) { p = Bn; q = A; }
   const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
   const off = (i - (n - 1) / 2) * 52, mx = (p.x + q.x) / 2 + nx * off, my = (p.y + q.y) / 2 + ny * off;
@@ -429,14 +432,16 @@ function drawEdges() {
   let svg = '', tags = '';
   const focus = sel && sel.kind === 'node' ? sel.id : null;
   const HM = homeMap(orgK());
-  const CPS = copyList(), own = g => [g].concat(membersOf(g.id).filter(id => HM[id] === g.id || isGrp(B.nodes[id])).map(id => B.nodes[id]).filter(Boolean), CPS.filter(c => c.g.id === g.id).map(c => ({ x: c.x, y: c.y })));
+  const CPS = VIEW ? [] : copyList(), own = g => [g].concat(membersOf(g.id).filter(id => HM[id] === g.id || isGrp(B.nodes[id])).map(id => B.nodes[id]).filter(Boolean), CPS.filter(c => c.g.id === g.id).map(c => ({ x: c.x, y: c.y })));
   const depth = g => { let d = 0, p = g; while ((p = parentOf(p)) && d < 20) d++; return d; };
-  Object.values(B.nodes).filter(isOrgGrp).sort((a, b) => depth(a) - depth(b)).forEach(n => { const pts = own(n).concat(...descOf(n.id).filter(isOrgGrp).map(own)); if (pts.length < 2) return; const hp = hull(pts).map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)); svg += '<path class="hull" d="M' + hp.join('L') + 'Z" fill="' + gcol(n) + '" stroke="' + gcol(n) + '"/>'; });
+  if (VIEW) (VIEW.hulls || []).forEach(q => { if (q.pts.length < 2) return; const hp = hull(q.pts).map(p => p.x.toFixed(1) + ' ' + p.y.toFixed(1)); svg += '<path class="hull' + (q.zone ? ' vz' : '') + '" d="M' + hp.join('L') + 'Z" fill="' + q.col + '" stroke="' + q.col + '"/>'; });
+  else Object.values(B.nodes).filter(isOrgGrp).sort((a, b) => depth(a) - depth(b)).forEach(n => { const pts = own(n).concat(...descOf(n.id).filter(isOrgGrp).map(own)); if (pts.length < 2) return; const hp = hull(pts).map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)); svg += '<path class="hull" d="M' + hp.join('L') + 'Z" fill="' + gcol(n) + '" stroke="' + gcol(n) + '"/>'; });
   if (focus) CPS.filter(c => c.u.id === focus || c.g.id === focus).forEach(c => { const u = c.u; svg += '<path class="cpline" d="M' + u.x + ' ' + u.y + 'L' + c.x + ' ' + c.y + '" stroke="' + gcol(c.g) + '"/>'; });
   Object.values(groups).forEach(arr => {
     arr.sort((a, b) => a.id < b.id ? -1 : 1).forEach((l, i) => {
       const away = false;
-      if (l.type === 'member' && !away && focus !== l.a && focus !== l.b && !(sel && sel.kind === 'link' && sel.id === l.id)) return;
+      if (VIEW && (!VIEW.pos[l.a] || !VIEW.pos[l.b] || (VIEW.links === 'sel' ? focus !== l.a && focus !== l.b : !VIEW.links.has(l.id)))) return;
+      if (l.type === 'member' && !VIEW && !away && focus !== l.a && focus !== l.b && !(sel && sel.kind === 'link' && sel.id === l.id)) return;
       const g = geom(l, i, arr.length); if (!g) return; G[l.id] = g;
       const mem = l.type === 'member', c = mem ? gcol(B.nodes[l.b]) : 'var(--t-' + g.T.id + ')', isSel = sel && sel.kind === 'link' && sel.id === l.id, dim = focus && l.a !== focus && l.b !== focus;
       svg += '<g class="edge' + (isSel ? ' sel' : '') + (l.secret ? ' secret' : '') + '" data-id="' + esc(l.id) + '"' + (dim ? ' opacity=".22"' : '') + '><path class="hit" d="' + g.path + '"/>' +
@@ -596,6 +601,7 @@ function renderInspector() {
     h += '</div>';
     if (r) h += '<div><h4>Already in the game’s encounter rules</h4><ul class="rel">' + temperText(r).map(t => '<li class="game">' + esc(t) + '</li>').join('') + '</ul></div>';
     else if (cst && cst.grp === 'cast') h += '<div><h4>Already in the game\u2019s encounter rules</h4><ul class="rel"><li class="game">Story cast have no temper: they cannot be struck on the walk (HQ_NPC_TEMPERS).</li></ul></div>';
+    h += '<div class="prow"><button class="btn" data-act="vFocus">Show connections</button><button class="btn" data-act="vPath">Find the way to…</button></div>';
     h += '<div class="prow"><button class="btn" data-act="tieFrom">Tie to another unit</button><button class="btn danger" data-act="delSel">Take off the board</button></div>';
   } else {
     const ns = Object.values(B.nodes), units = ns.filter(n => n.kind !== 'note'), nl = Object.keys(B.links).length, hk = hooks(B);
@@ -631,7 +637,7 @@ function renderPanels() { if (pressing) { deferred = true; return; } renderRoste
 document.addEventListener('pointerdown', () => { pressing = true; }, true);
 const release = () => { pressing = false; if (deferred) { deferred = false; setTimeout(renderPanels, 0); } };
 document.addEventListener('pointerup', release, true); document.addEventListener('pointercancel', release, true);
-function renderAll() { renderMapBg(); renderBoardSel(); renderNodes(); drawEdges(); renderOverlays(); renderLegend(); applyView(); renderPanels(); updateButtons(); }
+function renderAll() { if (VIEW && VIEW.board !== B.id) VIEW = null; renderViewBar(); renderMapBg(); renderBoardSel(); renderNodes(); drawEdges(); renderOverlays(); renderLegend(); applyView(); renderPanels(); updateButtons(); }
 
 /* ───────── actions ───────── */
 let toastT = 0;
@@ -743,6 +749,7 @@ function deleteBoard(id) {
   S.active = S.order[0]; B = S.boards[S.active]; sel = null; ensureView(); cloud.idx = true; pushHist(); saveLocal(); flushSoon(); renderAll();
 }
 function setOrg(k) {
+  if (VIEW) closeView();
   if (orgK() === k) return;
   const cur = orgK(); B.lay = B.lay || {}; B.lay[cur] = {}; Object.values(B.nodes).forEach(n => { B.lay[cur][n.id] = [n.x, n.y]; });
   B.org = k; multi.clear();
@@ -846,13 +853,135 @@ function arrange(mode) {
   commit(); fit();
 }
 
+/* ───────── THE VIEWS (2026-11-19, mondo: "choosing a person and just seeing who all they are connected to, or grouping by location
+   but then grouping by faction in each zone"): a view lays out part of the board for looking at. It keeps its own spots (VIEW.pos);
+   nothing on the board moves or saves, and closing it (the bar's Close, or Escape) brings the board back as it was.
+   focus: one unit and everyone tied to it, 1-3 steps out, friends on the left, enemies on the right
+   path: the shortest chains of ties between two units (through shared groups only when ties alone do not join them)
+   zones: every top place, its units sorted into their factions inside it
+   command: serves / employs / worships as org charts, the boss on top
+   family: created / family as family trees, makers above what they made, family side by side ───────── */
+let VIEW = null, pathFrom = null;
+const vp = n => (VIEW && VIEW.pos[n.id]) || n;
+const FRIEND = new Set(['defend', 'defendRev']), FOE = new Set(['attack', 'avoid']);
+const sideOf = l => { const fx = (TYPE[l.type] || TYPE.other).fx; return FRIEND.has(fx) ? 0 : FOE.has(fx) ? 2 : 1; };
+function tieAdj(withGroups) {
+  const adj = {}, add = (a, b, l) => { (adj[a] = adj[a] || []).push({ o: b, l }); };
+  Object.values(B.links).forEach(l => { const A = B.nodes[l.a], Bn = B.nodes[l.b]; if (!A || !Bn || A.kind === 'note' || Bn.kind === 'note') return; if (l.type === 'member' && (!withGroups || l.secret)) return; add(l.a, l.b, l); add(l.b, l.a, l); });
+  return adj;
+}
+function openView(v) {
+  if (!Object.keys(v.pos).length) return false;
+  if (!VIEW) v.back = Object.assign({}, B.view); else v.back = VIEW.back;
+  v.board = B.id; VIEW = v; multi.clear(); linkMode = false; pendingSrc = null; renderAll(); fit(); return true;
+}
+function closeView() { if (!VIEW) return; const back = VIEW.back; VIEW = null; pathFrom = null; if (back) B.view = back; renderAll(); }
+function viewFocus(id, hops) {
+  hops = clamp(hops || 1, 1, 3);
+  const adj = tieAdj(false), depth = { [id]: 0 }, par = {}, side = {}, q = [id];
+  while (q.length) { const x = q.shift(); if (depth[x] >= hops) continue; (adj[x] || []).forEach(e => { if (depth[e.o] == null) { depth[e.o] = depth[x] + 1; par[e.o] = x; side[e.o] = depth[x] ? side[x] : sideOf(e.l); q.push(e.o); } }); }
+  const ids = Object.keys(depth); if (ids.length < 2) { toast(nm(id) + ' has no ties yet'); return false; }
+  const pos = { [id]: { x: 0, y: 0 } }, ang = { [id]: 0 }; let R = 0;
+  for (let k = 1; k <= hops; k++) {
+    const ring = ids.filter(x => depth[x] === k); if (!ring.length) break;
+    const key = x => k === 1 ? side[x] * 10 : ((-Math.PI / 2 - ang[par[x]]) % (2 * Math.PI) + 4 * Math.PI) % (2 * Math.PI);
+    ring.sort((a, b) => key(a) - key(b) || nm(a).localeCompare(nm(b)));
+    R = Math.max(R + 230, ring.length * 125 / (2 * Math.PI));
+    ring.forEach((x, i) => { const a = -Math.PI / 2 - (i + .5) / ring.length * 2 * Math.PI; ang[x] = a; pos[x] = { x: Math.round(Math.cos(a) * R), y: Math.round(Math.sin(a) * R) }; });
+  }
+  const shown = new Set(ids), links = new Set(Object.values(B.links).filter(l => l.type !== 'member' && shown.has(l.a) && shown.has(l.b)).map(l => l.id));
+  const cnt = [0, 0, 0]; ids.forEach(x => { if (depth[x] === 1) cnt[side[x]]++; });
+  return openView({ kind: 'focus', id, hops, pos, links, n: ids.length - 1, cnt });
+}
+function viewPath(a, b) {
+  let via = false, best = null;
+  for (const wg of [false, true]) {
+    const adj = tieAdj(wg), dist = { [a]: 0 }, q = [a];
+    while (q.length) { const x = q.shift(); if (x === b) break; (adj[x] || []).forEach(e => { if (dist[e.o] == null) { dist[e.o] = dist[x] + 1; q.push(e.o); } }); }
+    if (dist[b] == null) continue;
+    /* every shortest route: walk back from b over steps that go one closer to a */
+    const back = {}; Object.keys(dist).forEach(x => (adj[x] || []).forEach(e => { if (dist[e.o] === dist[x] + 1) (back[e.o] = back[e.o] || []).push({ o: x, l: e.l }); }));
+    const routes = [], walk = (x, acc) => { if (routes.length >= 6) return; if (x === a) { routes.push(acc); return; } (back[x] || []).forEach(e => walk(e.o, [e].concat(acc))); };
+    walk(b, []); best = { routes, d: dist[b] }; via = wg; break;
+  }
+  if (!best) { toast(nm(a) + ' and ' + nm(b) + ' are not joined by any chain of ties or groups'); return false; }
+  const cols = {}, links = new Set(); cols[a] = 0;
+  best.routes.forEach(r => { let step = 0; r.forEach(e => { step++; links.add(e.l.id); }); });
+  best.routes.forEach(r => { let x = a; r.forEach((e, i) => { const o = e.l.a === x ? e.l.b : e.l.a; cols[o] = i + 1; x = o; }); });
+  const pos = {}, byCol = {}; Object.entries(cols).forEach(([id, c]) => (byCol[c] = byCol[c] || []).push(id));
+  Object.entries(byCol).forEach(([c, ids]) => ids.sort((p, q) => nm(p).localeCompare(nm(q))).forEach((id, i) => { pos[id] = { x: +c * 300, y: Math.round((i - (ids.length - 1) / 2) * 170) }; }));
+  return openView({ kind: 'path', a, b, pos, links, d: best.d, routes: best.routes.length, via });
+}
+function viewZones() {
+  const N = Object.values(B.nodes), units = N.filter(n => n.kind !== 'note' && !isGrp(n)), hp = homeMap('place'), hf = homeMap('faction');
+  const top = id => { let g = B.nodes[id], seen = 0; while (g && parentOf(g) && seen++ < 30) g = parentOf(g); return g; };
+  const Z = new Map(); units.forEach(u => { const z = hp[u.id] ? top(hp[u.id]) : null, zk = z ? z.id : '', fk = hf[u.id] || '';
+    if (!Z.has(zk)) Z.set(zk, { g: z, f: new Map() }); const zz = Z.get(zk); if (!zz.f.has(fk)) zz.f.set(fk, []); zz.f.get(fk).push(u.id); });
+  const pos = {}, hulls = [], labels = [], byName = (p, q) => nm(p).localeCompare(nm(q));
+  const zones = [...Z.values()].map(z => { const fs = [...z.f.entries()].map(([fk, ids]) => ({ g: fk ? B.nodes[fk] : null, ids: ids.sort(byName), r: 66 * Math.sqrt(ids.length + 1.5) + 34 })).sort((p, q) => (!p.g) - (!q.g) || q.r - p.r);
+    /* the factions of a zone in a tight row-packed block */
+    const W = Math.max(Math.sqrt(fs.reduce((t, f) => t + 4 * f.r * f.r, 0)) * 1.25, 2 * Math.max(...fs.map(f => f.r)));
+    let x = 0, y = 0, rowH = 0, w = 0; fs.forEach(f => { if (x > 0 && x + 2 * f.r > W) { x = 0; y += rowH + 30; rowH = 0; } f.cx = x + f.r; f.cy = y + f.r; x += 2 * f.r + 30; rowH = Math.max(rowH, 2 * f.r); w = Math.max(w, x - 30); });
+    return { g: z.g, fs, w, h: y + rowH, n: fs.reduce((t, f) => t + f.ids.length, 0) }; }).sort((p, q) => (!p.g) - (!q.g) || q.n - p.n);
+  const W = Math.max(Math.sqrt(zones.reduce((t, z) => t + (z.w + 260) * (z.h + 300), 0)) * 1.35, Math.max(...zones.map(z => z.w + 260)));
+  let x = 0, y = 0, rowH = 0;
+  zones.forEach(z => { const zw = z.w + 260, zh = z.h + 300; if (x > 0 && x + zw > W) { x = 0; y += rowH + 60; rowH = 0; }
+    const ox = x + 130, oy = y + 200, pts = [];
+    z.fs.forEach(f => { const cx = ox + f.cx, cy = oy + f.cy, fp = [];
+      f.ids.forEach((id, i) => { const r = 66 * Math.sqrt(i + .35), a = i * 2.39996, p = { x: Math.round(cx + Math.cos(a) * r), y: Math.round(cy + Math.sin(a) * r) }; pos[id] = p; fp.push(p); pts.push(p); });
+      const top0 = Math.min(...fp.map(p => p.y));
+      if (f.g) { hulls.push({ pts: fp.concat([{ x: cx, y: top0 - 70 }]), col: gcol(f.g) }); labels.push({ x: cx, y: top0 - 70, t: f.g.name, col: gcol(f.g), fac: 1, id: f.g.id }); }
+      else labels.push({ x: cx, y: top0 - 70, t: 'No faction', col: '#7a807a', fac: 1, none: 1 }); });
+    const zt = Math.min(...pts.map(p => p.y)) - 150;
+    hulls.unshift({ pts: pts.concat([{ x: ox + z.w / 2, y: zt }]), col: z.g ? gcol(z.g) : '#7a807a', zone: 1 });
+    labels.push({ x: ox + z.w / 2, y: zt, t: z.g ? z.g.name : 'In no place yet', col: z.g ? gcol(z.g) : '#7a807a', id: z.g && z.g.id, none: !z.g });
+    x += zw + 60; rowH = Math.max(rowH, zh); });
+  return openView({ kind: 'zones', pos, hulls, labels, links: 'sel', n: zones.length });
+}
+/* org charts and family trees: up = [child, parent, link], peer = [a, b, link] on one row */
+function viewTree(kind) {
+  const up = [], peer = [];
+  Object.values(B.links).forEach(l => { const A = B.nodes[l.a], Bn = B.nodes[l.b]; if (!A || !Bn || A.kind === 'note' || Bn.kind === 'note') return; const [x, y] = actorTarget(l);
+    if (kind === 'command') { if (l.type === 'serves' || l.type === 'worships') (l.dir === 'both' ? peer.push([l.a, l.b, l]) : up.push([x, y, l])); else if (l.type === 'employs') (l.dir === 'both' ? peer.push([l.a, l.b, l]) : up.push([y, x, l])); }
+    else { if (l.type === 'created') (l.dir === 'both' ? peer.push([l.a, l.b, l]) : up.push([y, x, l])); else if (l.type === 'family') peer.push([l.a, l.b, l]); } });
+  if (!up.length && !peer.length) { toast(kind === 'command' ? 'No serves, employs or worships ties on this board' : 'No created or family ties on this board'); return false; }
+  const L = {}; up.concat(peer).forEach(e => { L[e[0]] = 0; L[e[1]] = 0; });
+  for (let it = 0; it < 40; it++) { let ch = false; up.forEach(([c, p]) => { if (L[c] < L[p] + 1 && L[p] < 10) { L[c] = L[p] + 1; ch = true; } }); peer.forEach(([a, b]) => { const m = Math.max(L[a], L[b]); if (L[a] !== m || L[b] !== m) { L[a] = L[b] = m; ch = true; } }); if (!ch) break; }
+  /* one tree a joined set */
+  const root = {}, find = x => root[x] === x ? x : (root[x] = find(root[x])); Object.keys(L).forEach(x => { root[x] = x; }); up.concat(peer).forEach(e => { root[find(e[0])] = find(e[1]); });
+  const comps = {}; Object.keys(L).forEach(x => (comps[find(x)] = comps[find(x)] || []).push(x));
+  const pars = {}, peers = {}; up.forEach(([c, p]) => (pars[c] = pars[c] || []).push(p)); peer.forEach(([a, b]) => { (peers[a] = peers[a] || []).push(b); (peers[b] = peers[b] || []).push(a); });
+  const trees = Object.values(comps).map(ids => { const rows = {}; ids.forEach(x => (rows[L[x]] = rows[L[x]] || []).push(x)); const ks = Object.keys(rows).map(Number).sort((a, b) => a - b), ix = {};
+    ks.forEach(k => { rows[k].sort((a, b) => nm(a).localeCompare(nm(b))); rows[k].forEach((x, i) => { ix[x] = i; }); });
+    for (let s = 0; s < 6; s++) ks.forEach(k => { const bc = x => { const ps = (pars[x] || []).filter(p => ix[p] != null), qs = (peers[x] || []).filter(p => ix[p] != null); const all = ps.concat(qs); return all.length ? all.reduce((t, p) => t + ix[p], 0) / all.length : ix[x]; };
+      const v = {}; rows[k].forEach(x => { v[x] = bc(x); }); rows[k].sort((a, b) => v[a] - v[b] || nm(a).localeCompare(nm(b))); rows[k].forEach((x, i) => { ix[x] = i; }); });
+    const w = Math.max(...ks.map(k => rows[k].length)); return { ids, rows, ks, w, h: ks.length }; }).sort((a, b) => b.ids.length - a.ids.length);
+  const pos = {}, labels = [], MAXW = 2600; let x = 0, y = 0, rowH = 0;
+  trees.forEach(t => { const tw = t.w * 150; if (x > 0 && x + tw > MAXW) { x = 0; y += rowH + 260; rowH = 0; }
+    t.ks.forEach((k, li) => { const r = t.rows[k], off = (t.w - r.length) * 75; r.forEach((id, i) => { pos[id] = { x: x + off + i * 150, y: y + li * 210 }; }); });
+    x += tw + 220; rowH = Math.max(rowH, t.h * 210); });
+  return openView({ kind, pos, labels, links: new Set(up.concat(peer).map(e => e[2].id)), n: trees.length });
+}
+function renderViewBar() {
+  const bar = $('viewbar'); if (!VIEW) { bar.hidden = true; return; }
+  const V = VIEW, b = s => '<b>' + esc(s) + '</b>'; let t = '';
+  if (V.kind === 'focus') t = b(nm(V.id)) + ': ' + V.n + ' tied within ' + V.hops + (V.hops === 1 ? ' step' : ' steps') + (V.hops === 1 ? ' <span class="muted">(' + V.cnt[0] + ' friendly, left · ' + V.cnt[2] + ' hostile, right · ' + V.cnt[1] + ' other)</span>' : '') + '<div class="seg">' + [1, 2, 3].map(k => '<button data-hops="' + k + '"' + (V.hops === k ? ' class="on"' : '') + '>' + k + '</button>').join('') + '</div><button class="btn sm" data-vact="pathFrom">Path to…</button>';
+  else if (V.kind === 'path') t = b(nm(V.a)) + ' to ' + b(nm(V.b)) + ': ' + V.d + (V.d === 1 ? ' step' : ' steps') + (V.routes > 1 ? ', ' + V.routes + ' routes' : '') + (V.via ? ' <span class="muted">(through shared groups: no chain of ties joins them)</span>' : '');
+  else if (V.kind === 'zones') t = b('Places, factions inside') + ' <span class="muted">' + V.n + ' places · each unit in its first place and first faction</span>';
+  else if (V.kind === 'command') t = b('Chain of command') + ' <span class="muted">serves, employs, worships · boss on top · ' + V.n + (V.n === 1 ? ' chart' : ' charts') + '</span>';
+  else if (V.kind === 'family') t = b('Family trees') + ' <span class="muted">made above, what they made below · family side by side · ' + V.n + (V.n === 1 ? ' tree' : ' trees') + '</span>';
+  bar.innerHTML = '<span>' + t + '</span><button class="btn sm pri" data-vact="close">Close view</button>'; bar.hidden = false;
+}
+$('viewbar').addEventListener('click', e => { const h = e.target.closest('[data-hops]'); if (h) return viewFocus(VIEW.id, +h.dataset.hops); const a = e.target.closest('[data-vact]'); if (!a) return;
+  if (a.dataset.vact === 'close') closeView(); else if (a.dataset.vact === 'pathFrom') { pathFrom = VIEW.id; toast('Now tap the unit to find the way to'); } });
+
 /* ───────── pointer handling on the board ───────── */
 const ptrs = new Map(); let drag = null, pinch = null, raf = 0;
 /* every unit tied to this one, through any chain of ties */
 function groupOf(id) { const seen = new Set([id]), q = [id], adj = {}; Object.values(B.links).forEach(l => { if (l.type === 'member') return; (adj[l.a] = adj[l.a] || []).push(l.b); (adj[l.b] = adj[l.b] || []).push(l.a); }); while (q.length) (adj[q.shift()] || []).forEach(o => { if (!seen.has(o) && B.nodes[o]) { seen.add(o); q.push(o); } }); return [...seen]; }
 function inPoly(x, y, P) { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i].y > y) !== (P[j].y > y) && x < (P[j].x - P[i].x) * (y - P[i].y) / (P[j].y - P[i].y) + P[i].x) c = !c; return c; }
 function setMulti(ids) { multi = new Set(ids.filter(id => B.nodes[id])); renderNodes(); }
-function nodeAt(p, not) { let best = null, bd = 46; Object.values(B.nodes).forEach(n => { if (n.kind === 'note' || n.id === not) return; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bd) { bd = d; best = n.id; } }); return best; }
+function nodeAt(p, not) { let best = null, bd = 46; Object.values(B.nodes).forEach(n0 => { if (n0.kind === 'note' || n0.id === not || (VIEW && !VIEW.pos[n0.id])) return; const n = Object.assign({}, n0, vp(n0)); const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bd) { bd = d; best = n.id; } }); return best; }
 stage.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse' && e.button > 1) return;
   const t = e.target;
@@ -870,6 +999,7 @@ stage.addEventListener('pointerdown', e => {
   if (ptrs.size === 2) { const a = [...ptrs.values()]; if (drag && drag.kind === 'node' && drag.moved) commit(); drag = null; clearTemp(); pinch = { d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1, k: B.view.k, cx: (a[0].x + a[1].x) / 2, cy: (a[0].y + a[1].y) / 2 }; return; }
   if (ptrs.size > 2) return;
   const p = toWorld(e.clientX, e.clientY), base = { pid: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false };
+  if (VIEW) { if (nid && e.button === 0 && VIEW.pos[nid]) { const q = VIEW.pos[nid]; drag = Object.assign(base, { kind: 'vnode', nid, px: p.x, py: p.y, x0: q.x, y0: q.y }); } else if (lid && e.button === 0) drag = Object.assign(base, { kind: 'edge', lid, vx: B.view.x, vy: B.view.y }); else drag = Object.assign(base, { kind: 'pan', vx: B.view.x, vy: B.view.y }); return; }
   if (nodeEl && e.button === 0 && (linkMode || e.shiftKey || onHandle)) drag = Object.assign(base, { kind: 'link', from: nid, tap: linkMode && !onHandle });
   else if (nid && e.button === 0) { const n = B.nodes[nid], gset = isGrp(n) && isOrgGrp(n) !== e.altKey ? [n].concat(descOf(nid)) : null, HMd = gset ? homeMap(orgK()) : null, grp = gset ? [...new Set(gset.map(g => g.id).concat(...gset.map(g => Object.values(B.links).filter(l => l.type === 'member' && l.b === g.id && !l.secret && (HMd[l.a] === g.id || !isOrgGrp(g) || isGrp(B.nodes[l.a]))).map(l => l.a))))] : isGrp(n) ? [nid] : e.altKey && n.kind !== 'note' ? groupOf(nid) : multi.has(nid) ? [...multi].filter(id => B.nodes[id]) : [nid]; const gids = gset ? new Set(gset.map(g => g.id)) : null; drag = Object.assign(base, { kind: 'node', nid, px: p.x, py: p.y, grp: grp.filter(id => B.nodes[id]).map(id => ({ id, x: B.nodes[id].x, y: B.nodes[id].y })), cps: gids ? CP.filter(c => gids.has(c.g.id)).map(c => ({ lid: c.l.id, x: c.x, y: c.y })) : [] }); }
   else if (lid && e.button === 0) drag = Object.assign(base, { kind: 'edge', lid, vx: B.view.x, vy: B.view.y });
@@ -885,6 +1015,7 @@ stage.addEventListener('pointermove', e => {
   if (!drag.moved) { if (Math.hypot(dx, dy) < 5) return; drag.moved = true; if (drag.kind === 'link') stage.classList.add('linking'); if (drag.kind === 'pan' || drag.kind === 'edge') stage.classList.add('panning'); }
   const p = toWorld(e.clientX, e.clientY);
   if (drag.kind === 'pan' || drag.kind === 'edge') { B.view.x = drag.vx + dx; B.view.y = drag.vy + dy; applyView(); }
+  else if (drag.kind === 'vnode') { const q = VIEW && VIEW.pos[drag.nid]; if (!q) return; q.x = Math.round(drag.x0 + p.x - drag.px); q.y = Math.round(drag.y0 + p.y - drag.py); const el = elById.get(drag.nid); if (el) { el.style.left = q.x + 'px'; el.style.top = q.y + 'px'; } if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawEdges(); }); }
   else if (drag.kind === 'node') {
     const mx = p.x - drag.px, my = p.y - drag.py;
     drag.grp.forEach(g => { const n = B.nodes[g.id]; if (!n) return; n.x = Math.round(g.x + mx); n.y = Math.round(g.y + my); const el = elById.get(n.id); if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; if (drag.grp.length > 1) el.classList.add('grab'); } });
@@ -899,6 +1030,7 @@ stage.addEventListener('pointermove', e => {
   }
 });
 let lastTap = { id: null, t: 0 };
+function tapNode(id) { if (pathFrom && pathFrom !== id && B.nodes[id] && B.nodes[id].kind !== 'note') { const a = pathFrom; pathFrom = null; viewPath(a, id); return; } select({ kind: 'node', id }); }
 function endPtr(e) {
   if (!ptrs.has(e.pointerId)) return; ptrs.delete(e.pointerId);
   if (pinch) { if (ptrs.size < 2) pinch = null; drag = null; return; }
@@ -906,7 +1038,8 @@ function endPtr(e) {
   const d = drag; drag = null; clearTemp();
   if (e.type === 'pointercancel') { if (d.kind === 'node' && d.moved) commit(); return; }
   if (d.kind === 'lasso') { if (d.moved && d.pts.length > 2) { setMulti(Object.values(B.nodes).filter(n => inPoly(n.x, n.y, d.pts)).map(n => n.id)); if (sel) select(null); } else if (multi.size) setMulti([]); return; }
-  if (d.kind === 'node') { if (d.moved) { sel = { kind: 'node', id: d.nid }; commit(); } else select({ kind: 'node', id: d.nid }); }
+  if (d.kind === 'vnode') { if (!d.moved) tapNode(d.nid); }
+  else if (d.kind === 'node') { if (d.moved) { sel = { kind: 'node', id: d.nid }; commit(); } else tapNode(d.nid); }
   else if (d.kind === 'link') {
     if (d.moved) { const hit = nodeAt(toWorld(e.clientX, e.clientY), d.from); if (hit) createLink(d.from, hit); }
     else if (d.tap) { if (pendingSrc && pendingSrc !== d.from) createLink(pendingSrc, d.from); else { pendingSrc = pendingSrc === d.from ? null : d.from; renderNodes(); if (pendingSrc) toast('Now tap the unit to tie ' + nm(d.from) + ' to'); } }
@@ -941,7 +1074,7 @@ $('rlist').addEventListener('click', e => {
   if (swallow) return;
   const g = e.target.closest('[data-addgroup]'); if (g) { const grp = $('rlist')._groups[+g.dataset.addgroup]; if (!addEntries(grp.list.map(x => x.id))) toast('All of these are already on the board'); return; }
   const t = e.target.closest('.tile'); if (!t) return; const k = t.dataset.id;
-  if (B.nodes[k]) { select({ kind: 'node', id: k }); centreOn(k); } else addEntries([k]);
+  if (B.nodes[k] && pathFrom && pathFrom !== k) tapNode(k); else if (B.nodes[k]) { select({ kind: 'node', id: k }); centreOn(k); } else addEntries([k]);
   if (window.matchMedia('(max-width: 860px)').matches && !e.shiftKey) toast(ENT[k].n + ' pinned');
 });
 $('q').addEventListener('input', e => { rf.q = e.target.value.trim().toLowerCase(); renderRoster(); });
@@ -1047,6 +1180,7 @@ function gameExport(all) {
   return out;
 }
 function act(a) {
+  if (VIEW && /^arr/.test(a)) closeView();
   switch (a) {
     case 'closeIns': $('inspector').classList.remove('open'); break;
     case 'delSel': removeSel(); break;
@@ -1060,6 +1194,9 @@ function act(a) {
     case 'renameBoard': modal('<h2>Name this board</h2><input class="inp" id="mName" maxlength="80" autofocus value="' + esc(B.name) + '"><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="ok">Save name</button></div>', d => { const ok = () => { const v = $('mName').value.trim(); if (v && v !== B.name) { B.name = v; delete B.sample; commit(); } closeModal(); }; d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'ok') ok(); else if (x === 'cancel') closeModal(); }); $('mName').addEventListener('keydown', e => { if (e.key === 'Enter') ok(); }); $('mName').select(); }); break;
     case 'delBoard': { const n = Object.keys(B.nodes).length; modal('<h2>Delete “' + esc(B.name) + '”?</h2><p>' + (n ? 'Its ' + n + ' pinned items and ' + Object.keys(B.links).length + ' ties go with it. ' : '') + 'Undo brings it back until you close the page.</p><div class="acts"><button class="btn" data-x="cancel" autofocus>Keep it</button><button class="btn pri" data-x="ok">Delete board</button></div>', d => d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'ok') { closeModal(); deleteBoard(B.id); } else if (x === 'cancel') closeModal(); })); break; }
     case 'arrGroups': sortGroups(); break;
+    case 'vFocus': if (sel) viewFocus(sel.id, VIEW && VIEW.kind === 'focus' ? VIEW.hops : 1); break;
+    case 'vPath': if (sel) { pathFrom = sel.id; $('inspector').classList.remove('open'); toast('Now tap the unit to find the way to'); } break;
+    case 'vZones': viewZones(); break; case 'vCommand': viewTree('command'); break; case 'vFamily': viewTree('family'); break;
     case 'arrMap': if (!B.mapK) { toast('Sort into groups by places first: the map comes with it'); break; } if (B.mapHide) delete B.mapHide; else B.mapHide = true; commit(); break;
     case 'arrFaction': arrange('faction'); break; case 'arrHome': arrange('home'); break; case 'arrTies': arrange('ties'); break;
     case 'backup': modal('<h2>Save a backup</h2><p>Every board, as one JSON file. Keep it anywhere; load it back from Export, Load a backup.</p><textarea class="inp code" id="mText" readonly></textarea><div class="acts"><button class="btn" data-x="cancel">Close</button><button class="btn" data-x="copy">Copy</button><button class="btn pri" data-x="save">Save file</button></div>', d => { $('mText').value = backupJSON(); d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'cancel') closeModal(); else if (x === 'copy') copyText($('mText')); else if (x === 'save') saveFile('entropy-wars-relationship-web-' + stamp() + '.json', $('mText').value); }); }); break;
@@ -1202,7 +1339,7 @@ document.addEventListener('keydown', e => {
   if (mod && e.key.toLowerCase() === 'y' && !typing) { e.preventDefault(); redo(); return; }
   if (typing || mod || e.altKey) return;
   if (e.key === 'Delete' || e.key === 'Backspace') { if (sel) { e.preventDefault(); removeSel(); } }
-  else if (e.key === 'Escape') { closeMenus(); if (multi.size) setMulti([]); else if (linkMode || pendingSrc) { linkMode = false; pendingSrc = null; renderNodes(); renderOverlays(); } else if (sel) select(null); }
+  else if (e.key === 'Escape') { closeMenus(); if (multi.size) setMulti([]); else if (linkMode || pendingSrc) { linkMode = false; pendingSrc = null; renderNodes(); renderOverlays(); } else if (pathFrom) { pathFrom = null; toast('Path search off'); } else if (sel) select(null); else if (VIEW) closeView(); }
   else if (e.key === 'l' || e.key === 'L') $('btnLink').click();
   else if (e.key === 'g' || e.key === 'G') $('btnGroup').click();
   else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); addNote(); }
