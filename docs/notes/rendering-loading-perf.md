@@ -3371,3 +3371,16 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   HOW TO READ ALLOCATIONS FROM A PLAIN PROFILE: the samples whose stack holds a `Nursery` / `Minor GC` frame, grouped by the
   nearest JS frames above it, are a sample of the allocation sites weighted by bytes. 136 of 209 had no JS frame (the browser's
   own objects, e.g. WebGPU wrappers per render).
+- THE CHAIN MAPS, SECOND CUT (11-19, mondo's 21:37 F3 with "The cars are always glitching out of place"; cause NOT proven, the
+  cloud has no WebGPU): THE REST OF THE MAPS had patched ChainMap's PROTOTYPE, so three's other chain maps changed too. One of
+  them starts with a SHARED key: `NodeManager.groupsData` [group node, uniforms group]. With the entry on the one group node its
+  inner Map collected every uniforms group of the scene, hit the 32-key valve constantly and forgot them all, so `updateGroup`
+  answered "update" for shared groups again and again inside one render (three means once per render / frame). That is a real
+  change of behaviour on the path the classic-drawn movers (the traffic cars, `_ew_bunOut`) take, and the one thing found that
+  could misplace them. Now only the render objects' own chain maps are dressed (`RenderObjects.getChainMap` wrapped, per
+  instance); every other ChainMap is three's own again. RULE: a "keep it on the key" map is only right when the FIRST key is one
+  of a kind; and such data is INHERITED by `Object.create(key)` (a WeakMap's is not): `_ewScCheck`'s stand-in render object now
+  shadows every such Symbol first (`_ewOwnSymbols`). A probe showed three's shader build does not read them off the stand-in (12
+  builds, 0 inherited reads), so that one was a hazard, not the cause.
+  If the cars still jump after this: bisect on his Mac with the off switches, set before the page loads: `EW_GPU_WEAKMAPS`,
+  `EW_HQ_STILL_NO_HELD_BOOK`, `EW_BONES_WALK_ALL`, `EW_SHADOW_KEY_EVERY`, `EW_BUN_TARGETS_EVERY`.

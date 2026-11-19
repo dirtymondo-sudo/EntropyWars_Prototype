@@ -47553,16 +47553,19 @@ const ThreeRenderer = (function () {
                 NMP.setupObserver = function () { var ob = so.apply(this, arguments); if (ob && ob.renderObjects instanceof WeakMap) ob.renderObjects = new _EwPropMap(ob.renderObjects); return ob; };
                 NMP._ewObsPM = true;
             }
-            var cm = r._objects && typeof r._objects.getChainMap === 'function' ? r._objects.getChainMap('default') : null, CP = cm ? Object.getPrototypeOf(cm) : null;
-            if (CP && !CP._ewPMOn && typeof CP._getWeakMap === 'function' && typeof CP.set === 'function' && /new WeakMap/.test(String(CP.set))) {
-                CP._ewPMOn = true;
-                CP._getWeakMap = function (keys) {
+            /* (2026-11-19, second cut) ONLY the render objects' chain maps (first key = the object, one of a kind). three's other
+               ChainMaps start with a SHARED key (`groupsData`: the group node, then every uniforms group of the scene): with the
+               entry on that one node its inner Map collected every uniforms group, hit the valve on every 32nd and forgot them
+               all, so each shared group was updated again and again. Those stay WeakMaps (a few hundred entries). */
+            var RO = r._objects, cmOn = false;
+            if (RO && typeof RO.getChainMap === 'function' && !RO._ewPMOn) {
+                var cmGet = function (keys) {
                     var n = keys.length, m = this.weakMaps[n];
                     if (m === undefined) m = this.weakMaps[n] = new _EwPropMap(null);
                     else if (m.isEwPropMap !== true) m = this.weakMaps[n] = new _EwPropMap(m);
                     return m;
                 };
-                CP.set = function (keys, value) {
+                var cmSet = function (keys, value) {
                     var map = this._getWeakMap(keys), last = keys.length - 1;
                     for (var i = 0; i < last; i++) { var key = keys[i], nx = map.get(key); if (nx === undefined) { nx = new Map(); map.set(key, nx); } map = nx; }
                     /* (the valve: an inner Map holds its keys for as long as the object lives; should one object ever collect 32 at a
@@ -47571,9 +47574,21 @@ const ThreeRenderer = (function () {
                     map.set(keys[last], value);
                     return this;
                 };
+                var dress = function (cm) { if (cm && !cm._ewPM1 && typeof cm._getWeakMap === 'function' && cm.weakMaps) { cm._ewPM1 = true; cm._getWeakMap = cmGet; cm.set = cmSet; } return cm; };
+                var gcm = RO.getChainMap;
+                RO.getChainMap = function () { return dress(gcm.apply(this, arguments)); };
+                if (RO._chainMaps) for (var pid in RO._chainMaps) dress(RO._chainMaps[pid]);
+                RO._ewPMOn = true; cmOn = true;
             }
-            _ewGpuInfo.propMaps += ' + info, geometries, observers' + (CP && CP._ewPMOn ? ', chain maps' : '');
+            _ewGpuInfo.propMaps += ' + info, geometries, observers' + (cmOn ? ', render objects' : '');
         } catch (e) { console.warn('[ThreeRenderer] node renderer: the rest of the maps stay WeakMaps', e); }
+    }
+    /* a prototype clone (Object.create(src)) must not see src's hidden per-object records: give it an own undefined for each */
+    function _ewOwnSymbols(clone, src) {
+        for (var q = src, d = 0; q && q !== Object.prototype && d < 8; q = Object.getPrototypeOf(q), d++) {
+            var sy = Object.getOwnPropertySymbols(q);
+            for (var i = 0; i < sy.length; i++) { try { Object.defineProperty(clone, sy[i], { value: undefined, writable: true, configurable: true, enumerable: false }); } catch (e) {} }
+        }
     }
     function _EwPropMap(old) { this.k = Symbol('ewPropMap'); this.old = old || null; }
     _EwPropMap.prototype.isEwPropMap = true;
@@ -48239,6 +48254,11 @@ const ThreeRenderer = (function () {
                 o = _ewScMake(q.R);
                 if (!o) { _ewScNo('stand-in'); continue; }
                 var fake = Object.create(q.ro);
+                /* (2026-11-19, mondo: "The cars are always glitching out of place") THE MAPS ON THE OBJECTS keep three's per-object
+                   data under Symbol properties of the object; a stand-in made with Object.create INHERITS those, so whatever
+                   three filed "for the stand-in" during this build was read from and written into the REAL render object's
+                   records (its nodes, bindings, pipeline). Every such property is shadowed with an own, empty one first. */
+                _ewOwnSymbols(fake, q.ro);
                 fake.object = o; fake.material = o.material; fake.geometry = o.geometry;
                 fake.scene = q.ref.scene; fake.camera = q.ref.camera; fake.lightsNode = q.ref.lightsNode; fake.context = q.ref.context; fake.clippingContext = q.ref.clip;
                 if (q.ro.getMaterialCacheKey.call(fake) !== q.key) { _ewScNo('key'); continue; }
