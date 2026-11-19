@@ -12382,6 +12382,20 @@ reason to keep a zone's districts apart. His rule stands alone: two places that 
   Forest + R12, L6), the Mountains (Lodge, Olympus, Shasta + R3), the Desert (Circus, Western Town, Area 51, Giza do not touch: only through the
   Highway legs), Leylines (the Line + Babel + Bug Colony), the Cavern's tunnels, the Deep (Atlantis and the Sea Floor do not touch).
 
+## THE ESTATE, NO INVISIBLE WALLS — THE EDGE STOPPERS (2026-11-19, mondo: "a lot of invisible walls or places where there is just a patch of grass and it looks like I can walk there but I can't. Any boundaries need to have a believable obstacle")
+- **Why it happened.** When the Estate's districts were joined into one room (11-18, `site_prebuilt_skinwalker_ow_lake` = the route kit's room), the
+  corn lost its wall: the district rooms had `gen.look: 'rock'` (a 2.4 m leaf bank, "THE CORN IS THE WALL"); the kit's room is `look: 'trees'`, whose
+  unwalked squares are flat grass and the joined districts' cells grow nothing (`zones` `none`). Only the `corn_row` props (two sides in three)
+  were left. The kit's own verge stoppers stand on about 4 verge squares in 10, and the lake shore ran right up to the room's east wall.
+- **The fix, `bake-route.js` THE EDGE STOPPERS** (opt-in: the spec's `edgeStop: { key, rows, rock }`; only R7.json has it, every other route bakes
+  as before). It runs last, over the kit's pieces and every joined district's: each side of a walked square that meets unwalked ground, or the
+  room's wall away from a door or open seam, with nothing standing on it (a blocking or tall prop, a tree, a rail, a wall, a building, a forest's
+  mass) gets two rows of `corn_row` on the unwalked side (past the wall at the room's edge), or a boulder (`ocean_rock_3/4`, `lake_rock`) where the
+  ground is desert / rock / scrub (the salt flats). All `noBlock`: not one square of the walk changes. First bake: 432 bare sides, 864 pieces.
+- **The Haunted House** (`…_ow_house`, still written by bake-estate.js with the rock bank) had no bare edge: not changed.
+- **Other zones:** any route room with joined districts or open-ground verges has the same gaps. Add `edgeStop` to its spec (pick the zone's `key`:
+  a hedge, rocks, snow heaps) and rebake. Checked with a square-by-square scan of the walk mask against what stands there (no tool kept).
+
 ## THE DEAD ENDS (2026-11-18, mondo: "a road that leads to nothing and just ends is not realistic, at least some road signs")
 Phase 5 took away eight stand-in jump doors and left the bit of road or trail that led to each. data.js `HQ_DEAD_ENDS` (just above `hqLinkLive`)
 closes each one: a row = room, the spot, which way the road runs, a kind (road = police barricades across + cones + a road sign; trail = a fallen

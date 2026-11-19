@@ -459,6 +459,40 @@ JOINS.forEach(JOIN => { const FMX = JOIN.FMX, FMZ = JOIN.FMZ; const sh = (o) => 
         if (onWall && keepW) o.passage = keepW;
         doors.push(o); }); });
 
+/* ── THE EDGE STOPPERS (2026-11-19, mondo: "there are a lot of invisible walls or places where there is just a patch of grass and it looks like I can
+   walk there but I can't. Any boundaries need to have a believable obstacle"). Opt-in: the spec's `edgeStop: { key, rows, rock }` (R7.json, the
+   Estate). Run last, over everything the room holds (the kit's pieces and every joined district's): each side of a walked square that meets ground
+   nobody walks (or the room's own wall, away from a door) and has nothing standing on it (a blocker prop, a tree, a rail, a wall, a building, a
+   forest's mass) gets a line of `key` (the Estate: its corn, two rows deep), or a boulder where the plot's ground is desert / rock / scrub. The
+   pieces stand on the unwalked side (past the room's wall at its edge), so not one square of the walk changes. ── */
+const EDGE = { added: 0, sides: 0, wall: 0 };
+if (SPEC.edgeStop) { const ES = SPEC.edgeStop, KEY = ES.key || 'corn_row', ROWS_DEEP = ES.rows || 2, ROCKS = ES.rock || ['ocean_rock_3', 'ocean_rock_4', 'ocean_rock_3', 'lake_rock'];
+    [KEY].concat(ROCKS).forEach(k => { if (!CAT[k]) { console.error('bake-route: edgeStop: not in the catalogue: ' + k); process.exit(1); } });
+    const FLAT = /flower|stain|decal|grass$|^bee$|butterfly|ladybug|grasshopper|frog|crow|rabbit|duck|chicken|candle|skull|bucket|sack|rope|lantern$/;
+    const pts = [], add = (x, z, r) => pts.push([x, z, r]);
+    props.forEach(p => { if (p.wall || p.ceil || p.x == null) return; const c = CAT[p.key] || {}; if (FLAT.test(p.key) || (!c.block && !(c.h >= 0.9) && p.key !== 'corn_row')) return; add(p.x, p.z, Math.min(2.0, Math.max(0.7, ((c.rect && c.rect.hw) || (c.span || 1.2) / 2)))); });
+    F.forEach(f => { if (f.k === 'tree') add(f.x, f.z, 1.2);
+        else if ((f.k === 'rail' || f.k === 'wall') && f.x0 != null) { const Ls = Math.hypot(f.x1 - f.x0, f.z1 - f.z0), n = Math.max(1, Math.ceil(Ls)); for (let s = 0; s <= n; s++) add(f.x0 + (f.x1 - f.x0) * s / n, f.z0 + (f.z1 - f.z0) * s / n, 0.9); }
+        else if (f.k === 'texbuilding' && f.w) { const q = (f.rot || 0) * Math.PI / 180, cs = Math.cos(q), sn = Math.sin(q); for (let a = -f.w / 2; a <= f.w / 2 + 0.01; a += 1) for (let b = -f.d / 2; b <= f.d / 2 + 0.01; b += 1) add(f.x + a * cs - b * sn, f.z + a * sn + b * cs, 0.9); } });
+    const HB = new Map(); pts.forEach(p => { const k = Math.floor(p[0] / 4) + ':' + Math.floor(p[1] / 4); if (!HB.has(k)) HB.set(k, []); HB.get(k).push(p); });
+    const seen = (x, z, r) => { const gi = Math.floor(x / 4), gj = Math.floor(z / 4); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const Lb = HB.get((gi + a) + ':' + (gj + b)); if (Lb) for (const p of Lb) if (Math.hypot(p[0] - x, p[1] - z) <= p[2] + r) return true; } return false; };
+    const massAt = (sx, sy) => { const z = zones.find(q => gcx(sx) >= q.x0 && gcx(sx) < q.x1 && gcz(sy) >= q.z0 && gcz(sy) < q.z1); return !!(z && !z.none); };
+    const rocky = (sx, sy) => { const k = kitOf(kindAt(sx, sy)); return k === KIT.desert || k === KIT.rock || k === KIT.scrub; };
+    const nearDoor = (side, along) => doors.some(d => d.wall === side && Math.abs((side === 'n' || side === 's' ? d.x : d.z) - along) < 9) || ENDS.some(e => e.onWall && e.side === side && Math.abs(e.along - along) < 9);
+    /* one side: (mx, mz) its middle, (dx, dz) the way from the walked square across it, `inset` the first row's distance past the line */
+    const line = (sx, sy, mx, mz, dx, dz, inset, n) => {
+        if (seen(mx, mz, 0.9) || (seen(mx - dz * 1.1, mz - dx * 1.1, 0.45) && seen(mx + dz * 1.1, mz + dx * 1.1, 0.45))) return;
+        EDGE.sides++;
+        if (rocky(sx, sy)) { const k = ROCKS[Math.floor(h2(sx, sy, 31 + dx * 3 + dz * 5) * ROCKS.length)]; props.push({ key: k, x: r2(mx + dx * (inset + 0.6)), z: r2(mz + dz * (inset + 0.6)), face: Math.round(h2(sx, sy, 33) * 360), noBlock: true }); EDGE.added++; return; }
+        for (let r = 0; r < n; r++) { const o = inset + r * 1.15 + (h2(sx, sy, 40 + r) - 0.5) * 0.2, sl = (h2(sx, sy, 50 + r) - 0.5) * 0.5;
+            props.push({ key: KEY, x: r2(mx + dx * o + dz * sl), z: r2(mz + dz * o + dx * sl), face: (dx ? 90 : 0) + (h2(sx, sy, 60 + r) < 0.5 ? 180 : 0), noBlock: true }); EDGE.added++; } };
+    for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) { if (!walked(x, y)) continue;
+        for (const [dx, dy, side] of [[1, 0, 'e'], [-1, 0, 'w'], [0, 1, 's'], [0, -1, 'n']]) { const X = x + dx, Y = y + dy, mx = r2(gcx(x) + dx * C / 2), mz = r2(gcz(y) + dy * C / 2);
+            if (X < 0 || Y < 0 || X >= W || Y >= Dq) { if (nearDoor(side, side === 'n' || side === 's' ? mx : mz)) continue; const before = EDGE.added; line(x, y, mx, mz, dx, dy, 0.5, ROWS_DEEP); if (EDGE.added > before) EDGE.wall++; continue; }   // the room's wall: the rows stand just past it (the land past the wall is drawn; a piece there is seen)
+            if (walked(X, Y) || massAt(X, Y)) continue;
+            line(X, Y, mx, mz, dx, dy, 0.5, ROWS_DEEP); } }
+    console.log('THE EDGE STOPPERS: ' + EDGE.sides + ' bare sides closed (' + EDGE.wall + ' on the room\'s wall), ' + EDGE.added + ' pieces (' + KEY + ', rocks on desert ground)'); }
+
 /* ── the sky + the room ── */
 const major = (() => { const c = {}; PLOTS.forEach(p => { const k = groundAt(p[0], p[1]).kit; c[k] = (c[k] || 0) + 1; }); return Object.keys(c).sort((a, b) => c[b] - c[a])[0]; })();
 const SKY = { forest: { tint: 0xa9c4dc, fog: 0xb4c6b6, density: 0.009, clouds: 0.3, light: 0xfff2dc, ambient: 0.52 }, grass: { tint: 0xa9c8e8, fog: 0xc2d2c4, density: 0.007, clouds: 0.3, light: 0xfff4e0, ambient: 0.56 },
