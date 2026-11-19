@@ -3253,3 +3253,22 @@ What it said:
   property read off `window` is slow on Firefox, never put one in a per-object loop); the always-on dip log no longer does lens-only
   work (the per-pass visit count on every `_projectObject` 0.40 ms; the refresh-by-object clock reads run on lens frames or 1 dip frame
   in 8; the "replay:" sub-spans lens-only).
+
+### HIS SECOND FIREFOX PROFILE: THE 6-SECOND HITCH IS FIREFOX'S CYCLE COLLECTOR (2026-11-19 19:26, 42 s, Mac 120 Hz)
+- Recording tips that worked: raise the buffer on `about:profiling` (the Graphics preset's default kept only the last ~2 s); Control+Shift+1
+  ONCE (pressing it again throws the recording away), play 20-30 s, Control+Shift+2; in the profiler tab Upload's panel → Download, drop the
+  `.json.gz`. RefreshObserver markers come in pairs (~0 ms apart): count frames from one of each pair.
+- Steady walk: ~1,550 frames in 42 s (~37 FPS), frame JS median 19.4 ms (p90 24, p99 34): it lands on the 25 ms beat of 120 Hz; under
+  ~16 ms lands on 16.7 (60). Firefox's WebGPU C++ is ~0.6 ms of the frame; the rest is our JS + three's.
+- THE HITCHES (100-161 ms gaps after a normal ~20 ms frame): the CYCLE COLLECTOR, `CC` markers every ~6.5 s, reason MANY_SUSPECTED
+  (2,000-10,000 suspected), its first slice 77-134 ms on the main thread, NOT idle (the frame leaves no idle time). Inside it:
+  `CycleCollectedJSRuntime::FixWeakMappingGrayBits` (~half; walks the runtime's WeakMap entries: three's WebGPU keeps a WeakMap entry per
+  attribute / texture / binding / render object) and `TraverseRoots` (~a third; native objects holding JS). Also one GCMajor
+  (TOO_MUCH_MALLOC, max pause 74 ms) and 6 GC slices over 20 ms in the 42 s. Timers: 0 (THE TIMERS BETWEEN FRAMES).
+- What feeds "suspected": per-frame browser objects (each render's GPUCommandEncoder / render pass / command buffer: ~12 renders a frame
+  with the 9 post passes), not audio (SFX go through Web Audio buffers). The 6.5 s cadence is Firefox's own CC timer; the lever is how
+  much each CC has to read (live WebGPU objects, WeakMap entries), not when it runs.
+- Next experiments (not done yet): (1) the same walk in Chrome (no cycle collector) to split "Firefox-only" from "the game";
+  (2) free the GPU-side data of the static batch's merged originals (their geometries were uploaded while the room loaded and stay
+  live while they are hidden: ~15,800 pieces' attribute buffers + three's WeakMap entries + render objects), a geometry `dispose()`
+  once per geometry not shared with anything drawn; a handed-back piece re-uploads.
