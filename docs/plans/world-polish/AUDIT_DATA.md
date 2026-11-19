@@ -57,12 +57,12 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 | THE TRAIL · WEST TO CAME A LOT `site_ow_l4` | routes | 3 | 126 x 42 | 80 % | 7.8 | 64 | 0 | 0.5 | 1 | 2 | 38 | 0 | 2 | **2.7** |
 | BUG COLONY `gobekli_ow_bugs` | leylines | 15 | 294 x 210 | 93 % | 13.7 | 64 | 0 | 0.5 | 49 | 8 | 28 | 0 | 17 | **2.7** |
 | THE TRAIL · THE SNOWLINE TO THE TREE LINE `site_ow_l3` | routes | 5 | 42 x 210 | 81 % | 8.6 | 64 | 0 | 0.4 | 1 | 3 | 39 | 0 | 10 | **2.6** |
-| WESTERN TOWN `area51_ow_town` | desert | 16 | 168 x 168 | 96 % | 10.9 | 63 | 0 | 0.1 | 10 | 12 | 37 | 0 | 10 | **2.6** |
 | THE VOLCANO ISLAND `bermuda_ow_volcano` | beach | 10 | 252 x 252 | 57 % | 11.5 | 50 | 2 | 1.9 | 16 | 3 | 26 | 1 | 14 (+5 sea) | **2.6** |
 | THE ESTATE `skinwalker_ow_lake` | estate | 47 | 210 x 756 | 89 % | 10.7 | 62 | 0 | 0.5 | 5 | 24 | 49 | 0 | 37 | **2.6** |
 | THE COAST ROAD `site_ow_r10` | routes | 38 | 126 x 714 | 91 % | 20.1 | 64 | 0 | 0.6 | 2 | 18 | 28 | 0 | 19 (+11 sea) | **2.5** |
 | THE DEEP · ATLANTIS + THE TRENCH `atlantis_deep` | deep | 31 | 336 x 672 | 99 % | 31.5 | 64 | 0 | 5.6 | 27 | 1 | 7 | 17 | 0 (+30 sea) | **2.5** |
 | THE TRAIL · THE PINES TO THE SKI LODGE `site_ow_l6` | routes | 8 | 126 x 252 | 82 % | 9.1 | 64 | 0 | 0.8 | 2 | 2 | 32 | 0 | 15 | **2.4** |
+| WESTERN TOWN `area51_ow_town` | desert | 16 | 168 x 168 | 96 % | 10.5 | 63 | 0 | 0.1 | 11 | 11 | 37 | 0 | 10 | **2.4** |
 | THE REDWOOD TRAIL `fairy_forest_ow_redwood` | woods | 9 | 84 x 336 | 56 % | 3.9 | 52 | 2 | 2.1 | 23 | 0 | 27 | 0 | 11 | **2.3** |
 | THE VATICAN `vatican_plots` | vatican | 33 | 252 x 294 | 90 % | 9.3 | 61 | 2 | 2.6 | 15 | 4 | 13 | 9 | 18 | **2.3** |
 | THE DELTA CAUSEWAY `site_ow_r11` | routes | 8 | 168 x 126 | 87 % | 12.5 | 64 | 0 | 0.9 | 2 | 1 | 34 | 0 | 6 | **1.9** |
@@ -122,7 +122,7 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 | AREA 51 | Area 51 | 16 | 94 % | 9.2 | 61 | 0 | 0.1 | 11 | 13 | 4 | 4 | 1 | 0 | 0 | 0 | 18 | 8 | 27 % | 24 | 0 | 0 | 2.3 | 1.1 | **3.4** |
 | THE CIRCUS | The Circus | 9 | 92 % | 6 | 61 | 0 | 0.1 | 1 | 8 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 33 | 4 % | 46 | 0 | 0.1 | 2.8 | 0 | **2.9** |
 | GIZA | Giza | 16 | 100 % | 24.2 | 64 | 0 | 0.1 | 12 | 10 | 15 | 19 | 5 | 0 | 0 | 1 | 30 | 3 | 37 % | 19 | 5 | 0 | 1.9 | 1.5 | **3.4** |
-| WESTERN TOWN | Western Town | 16 | 96 % | 10.9 | 63 | 0 | 0.1 | 10 | 12 | 7 | 4 | 0 | 0 | 0 | 1 | 18 | 29 | 3 % | 37 | 0 | 0 | 2.3 | 0.4 | **2.6** |
+| WESTERN TOWN | Western Town | 16 | 96 % | 10.5 | 63 | 0 | 0.1 | 11 | 11 | 10 | 6 | 3 | 1 | 0 | 1 | 22 | 29 | 3 % | 37 | 0 | 0 | 2 | 0.4 | **2.4** |
 | THE D.U.M.B. | CERN, The Ring | 22 | 33 % | 3.8 | 33 | 18 | 0 | 4 | 21 | 1 | 0 | 1 | 1 | 0 | 0 | 23 | 0 | 100 % | 3 | 19 | 2.5 | 1.9 | 2.8 | **7.2** |
 | THE D.U.M.B. | Command | 7 | 65 % | 5 | 63 | 0 | 0 | 1 | 6 | 0 | 5 | 0 | 0 | 0 | 1 | 7 | 0 | 100 % | 11 | 1 | 0 | 1.9 | 1.9 | **3.7** |
 | THE D.U.M.B. | Level P3 | 7 | 59 % | 4.6 | 58 | 0 | 0 | 0 | 7 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 1 | 100 % | 4 | 5 | 0.3 | 2 | 2.7 | **5** |

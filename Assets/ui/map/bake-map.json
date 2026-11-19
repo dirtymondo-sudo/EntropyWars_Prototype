@@ -333,11 +333,11 @@
   "id": "site_prebuilt_area51_ow_town",
   "nx": 48,
   "nz": 48,
-  "h0": -0.7,
+  "h0": -1.75,
   "hs": 0.25,
-  "v": "089c961a55",
-  "bytes": 410,
-  "s": "0.6"
+  "v": "76be1c7221",
+  "bytes": 477,
+  "s": "0.2"
  },
  "site_prebuilt_area51_ow_giza": {
   "id": "site_prebuilt_area51_ow_giza",

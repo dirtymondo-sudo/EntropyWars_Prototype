@@ -34,6 +34,11 @@
    - THE TRAIL IN (P08-04): the way in from the Highway's Exit 3 (the county road and the overpass are the tool's).
    - People: sheriff, two cowboys (one says the old flight line's cowboy line), a skeleton on Boot Hill.
 
+   THE VERTICALITY PASS (11-19, docs/plans/world-polish/PLAN.md wave 1; the block at the end of ground()): BOOT HILL is 4.6 m; THE GULCH (a dry
+   wash across the south range, -1.75, squares x 57..78 · y 38..41, an earth ramp at each end, the road south over it on a plank bridge);
+   THE RIDGE TRAIL (an earth ramp on squares x 76..79 · y 44..45 up to the south-east mesa's shelf, the rim path x 80 · y 41..47, y 41 · x 80..84,
+   the added square 84,40, x 85 · y 38..40, to THE OUTLOOK at 85..86,38). Main Street, the fronts and the three road seams did not move.
+
    NEEDS A MODEL: nothing open. THE MODEL PASS (2026-11-16, mondo's wish-list models, docs/plans/WISHLIST_MODELS_ADDED.md; seen in the browser)
    placed every piece the list asked for and crossed it off: ~~anvil + forge~~ (the smith's, with `bellows` and `grindstone`; the drawn brick
    forge is out), ~~water trough~~ (six, by the rails, in the corral, at the camp), ~~hay bale~~ (the livery's loft and floor, its porch, the
@@ -402,7 +407,7 @@ exports.ground = ctx => { bind(ctx);
     for (let x = 49; x < 95; x++) if (x !== 70 && x !== 71) setPaint(x, 21, PLANKS);
     for (let x = 49; x < 83; x++) if (x !== 70 && x !== 71) setPaint(x, 26, PLANKS);
     /* BOOT HILL: the low hill, a ranch rail round it, the gate on the back street */
-    feat({ k: 'hill', x: gc(53), z: gc(3), r: 13, h: 2.6 }); pen(49, 0, 57, 6, [2, 53]);
+    feat({ k: 'hill', x: gc(53), z: gc(3), r: 14, h: 4.6 });   /* (THE VERTICALITY PASS, 11-19: was 2.6 m on 13) */ pen(49, 0, 57, 6, [2, 53]);
     { const a = sheet(); for (const s of [-1, 1]) a.box(s * 1.9, 0, 0, 0.28, 3.6, 0.28, WD2, 0x6a4e3a); a.box(0, 3.3, 0, 4.4, 0.24, 0.3, WD2, 0x6a4e3a); a.sign('BOOT HILL', 0, 2.5, 0.06, 3.4, 0.75, '#2a1a10', '#d8c090', 'rye'); a.sign('BOOT HILL', 0, 2.5, -0.06, 3.4, 0.75, '#2a1a10', '#d8c090', 'rye', { ry: 180 });
         feat({ k: 'arch', id: 'des:w:boothill', x: gc(53), z: gc(6), rot: 0, parts: a.P }); }
     [[51, 1], [53, 1], [55, 1], [50, 3], [52, 3], [54, 3], [56, 3], [51, 5], [55, 5]].forEach((q, i) => { const k = i % 3;
@@ -430,8 +435,30 @@ exports.ground = ctx => { bind(ctx);
     pen(84, 28, 88, 34, [0, 86]); P('horse_black', 85, 30, { face: 90 }); P('cow', 86, 32, { face: 300 }); P('cow', 87, 30, { face: 40 }); dec('wooden_bucket', 85, 33);                           // THE CORRAL
     P('campfire', 66, 44, {}); P('canvas_tent', 64, 45, { face: 0 }); P('canvas_tent', 68, 46, { face: 180 }); dec('sea_chest', 66, 46);   // the camp's tents are the 1800s canvas wall tent now (they were modern nylon)
     dec('instrument_guitar_lying', 65, 43);
-    dec('cattle_skull', 76, 43); dec('cattle_skull', 80, 39); dec('psx_fish_skeleton_mp_1', 78, 45, { y: 0.02 }); P('dead_snag', 74, 40, {}); P('dead_snag', 79, 42, {});
+    dec('cattle_skull', 76, 43); dec('cattle_skull', 80, 39); dec('psx_fish_skeleton_mp_1', 75, 47, { y: 0.02 }); P('dead_snag', 74, 40, {}); P('dead_snag', 79, 42, {});
     dress();
+    /* ════ THE VERTICALITY PASS (2026-11-19, docs/plans/world-polish/PLAN.md wave 1; mondo on Giza's pilot: "looks decent, continue"). The town
+       measured 0.1 m of relief a plot. Main Street, the fronts and the three road seams keep their level (a street you fight and skate on); the
+       height goes on the open ground round the town. What lay there rides the new ground (areas-complexes.md "THE DESERT, GIZA", THE VERTICALITY PASS). ════ */
+    /* 1. BOOT HILL is a hill now: 4.6 m (its row above). */
+    /* 2. THE GULCH: a dry wash across the south range, one fight tier down (-1.75), in three reaches that step north and south so it never runs
+       ruler straight. An earth ramp at each end; the road south out of town crosses it on a plank bridge the walker passes under. */
+    feat({ k: 'plateau', x: gx(60), z: gx(41), w: 21, d: 7, h: -1.75, sink: true, edge: 0.3 });         // the west reach: squares x 57..62 · y 40..41
+    feat({ k: 'plateau', x: gx(67.5), z: gx(39.5), w: 38.5, d: 10.5, h: -1.75, sink: true, edge: 0.3 }); // the middle: x 62..72 · y 38..40
+    feat({ k: 'plateau', x: gx(75.5), z: gx(40.5), w: 24.5, d: 10.5, h: -1.75, sink: true, edge: 0.3 }); // the east reach: x 72..78 · y 39..41
+    feat({ k: 'ramp', x0: gx(59.5), z0: gx(41), x1: gx(57), z1: gx(41), w: 7, h0: -1.75, h1: 0, edge: 0.3, key: 'dirt_2' });
+    feat({ k: 'ramp', x0: gx(77.5), z0: gx(40.5), x1: gx(79), z1: gx(40.5), w: 10.5, h0: -1.75, h1: 0, edge: 0.3, key: 'dirt_2' });
+    feat({ k: 'bridge', id: 'des:town:gulch', absY: true, x0: gx(71), z0: gx(37.6), x1: gx(71), z1: gx(41.4), w: 7, y: 0.06, thick: 0.35, key: 'urban:WoodFlooring1a' });
+    for (let j = 38; j <= 41; j++) for (let i = 57; i < 79; i++) if ((i < 62 && j >= 40) || (i >= 62 && i < 72 && j <= 40) || (i >= 72 && j >= 39)) setPaint(i, j, 'dirt_2');
+    /* 3. THE RIDGE TRAIL: an earth ramp from the open range up to the south-east mesa's shelf (5.25 m; the tool's rock: a one-square rim round
+       its cap), a worn path along the rim and one added square (84,40: exactly one square) to THE OUTLOOK over the Corral and Main Street,
+       where somebody left a stash. Hard to reach, as a secret should be. */
+    feat({ k: 'ramp', x0: gx(76), z0: gx(45), x1: gx(80), z1: gx(45), w: 7, h0: 0, h1: 5.25, edge: 0.3, key: 'dirt_2' });
+    feat({ k: 'plateau', x: gc(84), z: gc(40), w: 3.5, d: 3.5, h: 5.25, edge: 0.5 });
+    for (let j = 41; j <= 47; j++) setPaint(80, j, 'dirt_2'); for (let i = 80; i <= 84; i++) setPaint(i, 41, 'dirt_2'); setPaint(84, 40, 'dirt_2'); for (let j = 38; j <= 40; j++) setPaint(85, j, 'dirt_2'); setPaint(86, 38, 'dirt_2');
+    for (let i = 76; i < 80; i++) { setPaint(i, 44, 'dirt_2'); setPaint(i, 45, 'dirt_2'); }
+    Pm('money_sacks', gx(86.5), gx(38.6), {}); Pm('psx_wooden_crate_2', gx(85.4), gx(38.4), { face: 20 }); Pm('saddle', gx(85.5), gx(39.6), { face: 110 }); Pm('wanted_poster', gx(86.3), gx(38.25), { face: 200 });
+    Pm('cattle_skull', gx(82.5), gx(41.5), { face: 40 }); Pm('hawk', gx(80.5), gx(42.4), { face: 300 }); Pm('firewood_stack', gx(85.6), gx(40.5), {});
     native('sheriff', 52, 25, 0); native('cowboy', 64, 22, 180, sayOf(O_LINE, 'cowboy')); native('cowboy', 60, 24, 90); native('skeleton', 54, 2, 180);
 };
 
@@ -473,7 +500,7 @@ function dress() {
     P('fallen_log', 66, 42, { face: 0 }); P('fallen_log', 68, 44, { face: 90 }); dec(keg, 63, 42); dec(crate, 70, 46); dec(sack, 62, 44); dec('wooden_bucket', 65, 46); lamp(gc(64), gc(43), 0.02);
     P('hitching_rail', 62, 46, { face: 0 }); Pm('horse', gc(62), gc(46) + 1.7, { face: 0 }); Pm('horse_brown', gc(62) + 1.5, gc(46) - 1.7, { face: 180 }); dec('psxg_dead_bush_1', 61, 38); dec('psxg_rock_2', 70, 40);
     /* OPEN RANGE (P10-04): cattle on poor grazing, a stretch of old fence */
-    [[75, 38, 200], [78, 41, 60], [81, 38, 310], [76, 45, 140], [73, 43, 20]].forEach(q => P('cow', q[0], q[1], { face: q[2] }));
+    [[75, 38, 200], [78, 41, 60], [81, 38, 310], [74, 46, 140], [73, 43, 20]].forEach(q => P('cow', q[0], q[1], { face: q[2] }));
     feat({ k: 'rail', x0: gc(73), z0: gc(36), x1: gc(77), z1: gc(36), model: 'ranch' }); feat({ k: 'rail', x0: gc(79), z0: gc(36), x1: gc(82), z1: gc(36), model: 'ranch' });
     [[73, 39], [77, 43], [78, 46], [83, 39], [74, 46], [79, 37]].forEach((q, i) => dec(i % 2 ? 'psxg_dead_bush_1' : 'psxg_dead_bush_2', q[0], q[1])); dec('psxg_rock_1', 76, 40); dec('psxg_rock_4', 79, 42); dec('psxg_rock_2', 74, 43);
     /* THE CANYON (P11-04): the box canyon is somebody's hideout */
@@ -513,7 +540,7 @@ function dress() {
     /* the camp + the range + the trail: a kettle by the fire, cattle skulls, a vulture, a hawk on the old fence's post, snake, scorpion, lizards, agave and yucca */
     Pm('kettle', gc(66) + 0.95, gc(44) + 0.6, {}); Pm('vulture', gc(77) + 0.9, gc(39) + 0.4, { face: 200 }); P('vulture', 58, 3, { face: 240 }); Pm('hawk', gc(78), gc(36), { face: 180 });
     Pm('rattlesnake', gc(80) + 0.5, gc(44), { face: 300 }); dec('rattlesnake', 57, 41); dec('scorpion', 75, 46); dec('lizard', 71, 39); dec('lizard', 50, 37);
-    P('yucca', 58, 38, {}); P('agave', 50, 43, {}); P('yucca', 61, 35, {}); P('agave', 69, 37, {}); P('agave', 78, 44, {}); P('yucca', 72, 38, {});
+    P('yucca', 58, 38, {}); P('agave', 50, 43, {}); P('yucca', 61, 35, {}); P('agave', 69, 37, {}); P('agave', 78, 47, {}); P('yucca', 72, 38, {});
     /* the lanterns' flames: one drawn row of lit cores (a glow costs none of the room's ten lamps) */
     feat({ k: 'arch', id: 'des:w:lamps', x: OX, z: OZ, rot: 0, parts: LIT.P });
 }
