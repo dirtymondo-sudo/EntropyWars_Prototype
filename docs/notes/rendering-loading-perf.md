@@ -3323,3 +3323,10 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   check 1.5, the matrix walk 3.3 (before THE HELD BOOK), the ticks ~2.5. On his 120 Hz screen a frame lands on 16.7 ms only when
   JS + Paint stay under ~16 ms AND the GPU does; at pixel ratio 2.0 (3456×1812, 9 post passes) the GPU was part of the limit in
   THE PIXEL RATIO TEST, so Render Scale 75 % is the test for "is it the GPU now".
+- THE RESULT + THE LIST KEPT (11-19, his 20:11 F3 after #2189, same streets, pixel ratio 2.0): **59.5 FPS, frame 16.8 ms, CPU 13.7 ms**
+  (was 41.7 / 24.0 / 18.2); matrix walk 2.3 (88 swept, was 1,000), walk visits scene 2.6K / shadow 2.5K / mask 3.4K. Left: (1) a
+  70-99 ms gap every ~6 s with 11-17 ms of JS and "nothing loaded or rebuilt" = Firefox's cycle collector still (was 100-160 ms);
+  the next Firefox profile's `CC` markers say what it reads now (TraverseRoots, ChainMap, the node caches). (2) "bundle check 40 /
+  43 ms ... targets 29 / 38 (1044)": `_ewBunTargets` refilled its list every frame with three `for in` walks and a closure, about
+  the only allocation left in a settled frame, so the collector's slices landed there. The list now stands until the add counter
+  moves, the room changes or 30 frames passed. Every frame: `window.EW_BUN_TARGETS_EVERY`.
