@@ -402,6 +402,9 @@ const FINISHERS = {
     'trucker':        { id: 'fin_trucker', name: 'Eighteen Wheels', glyph: '🚚', type: 'human', sig: 'driveBy', built: true, tagline: 'TEN-FOUR', desc: 'Air horn, high beams, eighteen wheels and no brakes. The victim was in the wrong lane.' },   // 2026-11-19 THE NEW RACES 3 (borrows the driveBy staging)
     'pharaoh':        { id: 'fin_pharaoh', name: 'By Decree of Pharaoh', glyph: '𓂀', type: 'divine', sig: 'byOrderOf', built: true, tagline: 'SO IT IS WRITTEN', desc: 'The scribes read the decree, the sun agrees with it, and the victim is written out of history.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the byOrderOf staging)
     'deep sea diver': { id: 'fin_deep_sea_diver', name: 'Crush Depth', glyph: '🤿', type: 'human', sig: 'poseidonsWrath', built: true, tagline: 'TOO DEEP, TOO FAST', desc: 'The board floods, the pressure comes down all at once, and the victim finds out what the helmet was for.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the poseidonsWrath staging)
+    'gladiator':      { id: 'fin_gladiator', name: 'Pollice Verso', glyph: '🛡', type: 'human', sig: 'thousandCuts', built: true, tagline: 'THE CROWD HAS SPOKEN', desc: 'The sand goes quiet, every face in the stands turns to the box, and the thumb goes down.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the thousandCuts staging)
+    'farmer':         { id: 'fin_farmer', name: 'Reap What You Sow', glyph: '🌾', type: 'human', sig: 'gardenVariety', built: true, tagline: 'HARVEST TIME', desc: 'The field comes up all at once round the victim, and the pitchfork comes down with the season.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the gardenVariety staging)
+    'jellyfish ufo':  { id: 'fin_jellyfish_ufo', name: 'Abyssal Glow', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'LIGHTS IN THE DEEP', desc: 'The bell lights the victim from the inside like the things that live in the dark, brighter and brighter, then everything goes dark.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the theBloom staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
@@ -656,6 +659,9 @@ const RACE_ELEMENT_AFFINITY = {
     'trucker': { wind: 'resist', ice: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): drives through any storm; black ice
     'pharaoh': { fire: 'resist', water: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the son of the sun; the desert king hates the flood
     'deep sea diver': { water: 'resist', lightning: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the suit is made for the sea; the metal tanks carry a shock
+    'gladiator': { earth: 'resist', lightning: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): bronze plates on sand; lightning finds the bronze
+    'farmer': { nature: 'resist', fire: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a life in the fields; dry hay goes up
+    'jellyfish ufo': { psychic: 'immune', lightning: 'resist', water: 'resist', earth: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a jellyfish mind, a lightning bell, a sea creature on dry ground
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
@@ -3064,17 +3070,17 @@ const RACE_PROFILES = {
         label: 'Deep Sea Diver',
         types: ['human', 'tech']
     },
-    'gladiator': {   // 2026-11-19 THE COMING RACES (mondo picked the models; kit to come)
+    'gladiator': {   // 2026-11-19 THE COMING RACES (mondo picked the models, OK'd the kit 11-19)
         label: 'Gladiator',
         types: ['human']
     },
-    'farmer': {   // 2026-11-19 THE COMING RACES (mondo picked the model; kit to come)
+    'farmer': {   // 2026-11-19 THE COMING RACES (mondo picked the model, OK'd the kit 11-19)
         label: 'Farmer',
         types: ['human']
     },
-    'jellyfish ufo': {   // 2026-11-19 THE COMING RACES (mondo: "jellyfish UFO looking things", another jellyfish species, their fighter class; kit to come)
+    'jellyfish ufo': {   // 2026-11-19 THE COMING RACES (mondo: "jellyfish UFO looking things", another jellyfish species, their fighter class; OK'd the kit 11-19)
         label: 'Jellyfish UFO',
-        types: ['anomaly', 'alien']
+        types: ['anomaly', 'tech']   // mondo 11-19: NOT a UFO (the Grey is that); an advanced, sentient jellyfish species that lives underwater
     },
     'haunted doll': {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
         label: 'Haunted Doll',
@@ -3970,13 +3976,13 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
    To unlock one: give it its kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, stats, physique, prices, ...), MOVE it from here into
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
-const EW_COMING_RACES = ['gladiator', 'farmer', 'jellyfish ufo'];
+const EW_COMING_RACES = [];   // 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES (THE COMING RACES)
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4149,6 +4155,8 @@ const RACE_CLASS = {
     'jellyfish ufo': 'bruiser',   // 2026-11-19 THE COMING RACES (mondo: the jellyfishes' fighter class)
     'pharaoh': 'caster',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': 'specialist',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the controller who makes moving hurt
+    'gladiator': 'bruiser',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'farmer': 'support',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the field heals the team
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
@@ -4220,6 +4228,9 @@ const RACE_TERRAIN_PREFERENCE = {
     'trucker': 'desert',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): the open road
     'pharaoh': 'desert',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': 'deep_water',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the sealed helmet: never drowns (map.js unitIsDeepWaterAdapted)
+    'gladiator': 'desert',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the arena's sand
+    'farmer': 'grass',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the fields
+    'jellyfish ufo': 'deep_water',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a sea creature: never drowns (map.js unitIsDeepWaterAdapted)
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
     'siren': 'deep_water',
     'reptilian': 'water',
@@ -4627,6 +4638,9 @@ const RACE_BASE_STATS = {
     'trucker':            { hp: 1350, mp: 100, atk: 125, def: 160, mdef:  75, int:  45, vision: 3, crt: 14, spd: 110 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the tank median
     'pharaoh':            { hp: 1050, mp: 220, atk:  40, def:  95, mdef: 150, int: 180, vision: 3, crt: 20, spd:  80 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass on the caster median (Librarian / Televangelist)
     'deep sea diver':     { hp: 1100, mp: 180, atk: 120, def: 110, mdef: 100, int: 130, vision: 3, crt: 18, spd:  95 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass: a sturdy controller, the harpoon on ATK, the water on INT
+    'gladiator':          { hp: 1250, mp: 120, atk: 135, def: 120, mdef:  85, int:  60, vision: 3, crt: 20, spd: 115 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the bruiser median
+    'farmer':             { hp: 1100, mp: 170, atk: 110, def: 105, mdef: 100, int: 115, vision: 3, crt: 15, spd: 100 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the support median
+    'jellyfish ufo':      { hp: 1200, mp: 150, atk: 125, def: 120, mdef: 130, int: 125, vision: 3, crt: 18, spd: 105 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass: a bruiser with claws on ATK and the bell on M.ATK
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -4810,6 +4824,9 @@ const RACE_PHYSIQUE = {
     'trucker':             { h: 1.88, w: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'pharaoh':             { h: 1.85, w: 82 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver':      { h: 1.72, w: 62 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+    'gladiator':           { h: 1.82, w: 88 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'farmer':              { h: 1.78, w: 85 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'jellyfish ufo':       { h: 1.90, w: 60 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — a bell over a metal body; floats
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
@@ -11238,6 +11255,76 @@ const RACE_ABILITIES = {
         { id: 'nrPressureWave', name: 'Pressure Wave', tier: 3, families: ['deepdive'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'tech',
           element: 'water', type: 'damage', kind: 'linePush', damageType: 'magic', dmg: 130, range: 4, lineWidth: 1, pushDistance: 3,
           desc: 'The sea pushes back. Deals MEDIUM water magic damage to All Enemies in a 4-square line and shoves them 3 squares back. Cooldown: 2 rounds.' },
+    ],
+    'gladiator': [
+        /* THE CROWD (2026-11-19 THE COMING RACES, mondo OK'd the kit; he renamed Trident Thrust -> Sword Lunge, Ave Imperator ->
+           Come At Me): Favor 0-5 (`unit.favor`). +1 for every hit he lands on an enemy, +2 more for a knockout; each Favor = +4%
+           on all his damage; a whole round with no hit of his loses 1. Crowd Pleaser spends it all. battle.js "THE COMING RACES". */
+        { id: 'nrNetToss', name: 'Net Toss', tier: 1, families: ['gladiatorial'], cost: 25, apCost: 1, spellType: 'human',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 80, range: 2,
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'A weighted net, thrown low. Deals WEAK physical damage to a Single Enemy within 2 and Roots it for 1 round.' },
+        { id: 'nrSwordLunge', name: 'Sword Lunge', tier: 2, families: ['gladiatorial'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'line', damageType: 'physical', dmg: 120, range: 2, lineWidth: 1,
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'All his weight behind the short sword. Deals MEDIUM physical damage to All Enemies in a 2-square line and makes them Bleed for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'nrShieldBash', name: 'Shield Bash', tier: 2, families: ['gladiatorial'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 1, pushDistance: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'The bronze boss of the shield, in the face. Deals MEDIUM physical damage to an adjacent enemy, pushes it 1 square and Staggers it for 1 round. Cooldown: 2 rounds.' },
+        { id: 'nrComeAtMe', name: 'Come At Me', tier: 3, families: ['gladiatorial'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 0, statStageBoost: { def: 2 }, comeAtMe: { radius: 2, rounds: 1 },
+          desc: 'He bangs his sword on his shield. Every enemy within 2 is Provoked for 1 round, and he gains +2 DEF stages. Cooldown: 3 rounds.' },
+        { id: 'nrCrowdPleaser', name: 'Crowd Pleaser', tier: 4, families: ['gladiatorial'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 150, range: 0, aoeRadius: 1, aoeOriginSelf: true, favorSpend: 50,
+          desc: 'For the crowd. Deals HEAVY physical damage to every enemy next to him and spends all his Favor: +50 damage for each. Cooldown: 4 rounds.' },
+    ],
+    'farmer': [
+        /* THE HARVEST (2026-11-19 THE COMING RACES, mondo OK'd the kit): every seed he plants grows a round sooner (a seed that
+           finds water at a round end grows at once), he can keep 4 plants of a kind (the cap is 2), and at every round end a grown
+           plant beside him feeds his side: the ally lowest on HP within 3 heals 8% of its max HP. Harvest Moon cuts his plants for
+           a big heal. Sow the Field + the Garden rules (seeds need water): battle.js THE GARDEN. battle.js "THE COMING RACES". */
+        { id: 'nrPitchforkJab', name: 'Pitchfork Jab', tier: 1, families: ['farming'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'line', damageType: 'physical', dmg: 95, range: 2, lineWidth: 1,
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Three iron tines on a long handle. Deals WEAK physical damage to All Enemies in a 2-square line and makes them Bleed for 2 rounds.' },
+        { id: 'nrSowField', name: 'Sow the Field', tier: 2, families: ['farming'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          element: 'nature', type: 'utility', kind: 'aoe', range: 3, aoeRadius: 1, noDamage: true, sowField: { type: 'heal', max: 4 },
+          desc: 'A fistful of seed, broadcast wide. Plants Healing Seeds on up to 4 free squares of a 3×3 within 3 (the middle first). They need water to sprout, like every seed; his grow into Healing Flowers a round sooner. Cooldown: 3 rounds.' },
+        { id: 'nrHayBale', name: 'Hay Bale', tier: 2, families: ['farming'], cost: 35, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'utility', kind: 'deployObject', range: 2, objectHp: 60, blocksMovement: true, maxActivePerCaster: 2,
+          desc: 'Drops a hay bale on an empty square within 2: cover that blocks the way and takes 60 damage to break. Two at a time. Cooldown: 2 rounds.' },
+        { id: 'nrGetOffMyLand', name: 'Get Off My Land!', tier: 3, families: ['farming'], cost: 70, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'damage', kind: 'linePush', damageType: 'physical', dmg: 110, range: 3, lineWidth: 1, pushDistance: 2,
+          statusEffects: [{ id: 'feared', duration: 1 }],
+          desc: 'The pitchfork comes up and he means it. Deals MEDIUM physical damage to All Enemies in a 3-square line, shoves them 2 squares back and Fears them for 1 round. Cooldown: 2 rounds.' },
+        { id: 'nrHarvestMoon', name: 'Harvest Moon', tier: 4, families: ['farming'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          element: 'nature', type: 'buff', kind: 'buff', range: 0, noDamage: true, harvestMoon: { radius: 4, healPct: 0.15, dmg: 130 },
+          desc: 'He brings the whole crop in. Every grown plant of his within 4 is harvested: each heals every ally next to it for 15% of its max HP and deals MEDIUM physical damage to every enemy next to it, then it is gone. No plant of his within 4: refused. Cooldown: 4 rounds.' },
+    ],
+    'jellyfish ufo': [
+        /* BIOELECTRIC CHARGE (2026-11-19 THE COMING RACES, mondo OK'd the kit; mondo: NOT a UFO, the Grey is that: an advanced,
+           sentient jellyfish species that lives underwater, the jellyfishes' fighter): Charge 0-3 (`unit.charge`). +1 for every
+           claw hit (its physical hits on an enemy), +1 for ending a round in water; each Charge = +15% on its lightning spells.
+           Venom Injector Stuns at 2+ Charge; Abyssal Overload spends it all. battle.js "THE COMING RACES". */
+        { id: 'nrPincerClaw', name: 'Pincer Claw', tier: 1, families: ['bioelectric'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 100, range: 2, pullDistance: 1,
+          desc: 'The claw arm shoots out and closes. Deals WEAK physical damage to a Single Enemy within 2 and drags it 1 square toward it. A claw hit: +1 Charge.' },
+        { id: 'nrBioLash', name: 'Bioelectric Lash', tier: 2, families: ['bioelectric'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 110, range: 3, chainProfile: [110, 75, 50], chainRadius: 2,
+          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          desc: 'The bell flashes. Deals MEDIUM lightning damage to a Single Enemy within 3, then jumps to up to 2 more enemies within 2 of the last, weaker each jump. Wet targets take bonus damage. Cooldown: 2 rounds.' },
+        { id: 'nrJetPulse', name: 'Jet Pulse', tier: 2, families: ['bioelectric'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'dash', damageType: 'physical', dmg: 110, range: 3,
+          desc: 'The bell pumps once, hard. Jets up to 3 squares in a line and deals MEDIUM physical damage to the enemy at the end. Cooldown: 2 rounds.' },
+        { id: 'nrVenomInjector', name: 'Venom Injector', tier: 3, families: ['bioelectric'], cost: 70, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 125, range: 1, chargeStunAt: 2,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'The claws close and sting. Deals MEDIUM physical damage to an adjacent enemy and Poisons it for 2 rounds; with 2 or more Charge it is Stunned for 1 round too. Cooldown: 2 rounds.' },
+        { id: 'nrAbyssalOverload', name: 'Abyssal Overload', tier: 4, families: ['bioelectric'], cost: 100, apCost: 1, cooldownRounds: 4, spellType: 'anomaly',
+          element: 'lightning', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 140, range: 0, aoeRadius: 2, aoeOriginSelf: true, chargeSpend: 50,
+          statusIfTargetHas: { has: 'wet', status: [{ id: 'root', duration: 1 }] },
+          desc: 'Everything the bell holds, all at once. Deals HEAVY lightning damage to All Enemies within 2 and spends all its Charge: +50 damage for each. Wet targets are Rooted for 1 round. Cooldown: 4 rounds.' },
     ],
     'haunted doll': [
         /* NOBODY'S LOOKING (2026-11-17, the Haunted Doll; mondo approved the kit + asked for the pull-string spell): "sits on the
@@ -21388,6 +21475,9 @@ const EW_RACE_BIOMES = {
     'trucker': ['urban', 'desert', 'ranch'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — the highway routes
     'pharaoh': ['desert', 'ancient'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Desert, Giza
     'deep sea diver': ['deep_sea', 'tropical'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Deep, Atlantis, The Beach
+    'gladiator': ['ancient', 'stadium'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Colosseum
+    'farmer': ['ranch', 'forest'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Estate's Corn Fields + Ranch
+    'jellyfish ufo': ['deep_sea', 'tropical'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — The Deep (the Trench)
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
@@ -22059,6 +22149,9 @@ const RACE_TREE = {
     'trucker':       ['nrAirHorn', 'nrJackknife', 'nrUnload', 'nrBreakerBreaker'],   // 2026-11-19 THE NEW RACES 3
     'pharaoh':       ['nrAspsKiss', 'nrPrepareTomb', 'nrEyeOfRa', 'sharedSummonSandstorm'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from the desert)
     'deep sea diver': ['nrHarpoonGun', 'nrDepthCharge', 'nrPressureWave', 'sharedTidalSurge'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from water)
+    'gladiator':     ['nrNetToss', ['nrSwordLunge', 'nrShieldBash'], 'nrComeAtMe', 'nrCrowdPleaser'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'farmer':        ['nrPitchforkJab', ['nrSowField', 'nrHayBale'], 'nrGetOffMyLand', 'nrHarvestMoon'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'jellyfish ufo': ['nrPincerClaw', ['nrBioLash', 'nrJetPulse'], 'nrVenomInjector', 'nrAbyssalOverload'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -24249,6 +24342,36 @@ const SPELL_FAMILIES = {
         desc: 'A sealed helmet, a harpoon and the Bends: everyone she touches pays for every square they move.',
         unique: 'deep sea diver',
         identity: { who: ['Diver', 'Aquanaut', 'Salvager'], adj: ['Pressurised', 'Sealed', 'Fearless'], look: ['a glass bubble helmet', 'a navy and orange wetsuit', 'twin air tanks'], vibe: ['goes down where the light does not', 'knows what pressure does to a body'] }
+    },
+    gladiatorial: {   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Gladiator's own
+        id: 'gladiatorial',
+        name: 'Gladiatorial',
+        glyph: '🛡',
+        color: '#c89a3a',
+        kind: 'signature',
+        desc: 'Fight for the crowd: a net, a sword, a shield and a challenge, and the louder they cheer the harder he hits.',
+        unique: 'gladiator',
+        identity: { who: ['Gladiator', 'Champion of the Arena', 'Murmillo'], adj: ['Bronzed', 'Cheered', 'Fearless'], look: ['a crested bronze helmet', 'a blue cape', 'greaves and a leather belt'], vibe: ['fights for the crowd', 'the louder they cheer, the harder he hits'] }
+    },
+    farming: {   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Farmer's own
+        id: 'farming',
+        name: 'Farming',
+        glyph: '🌾',
+        color: '#8aa03a',
+        kind: 'signature',
+        desc: 'Work the land: a pitchfork, a field of seeds, a hay bale wall and a harvest that feeds the whole team.',
+        unique: 'farmer',
+        identity: { who: ['Farmer', 'Rancher', 'Old Hand'], adj: ['Weathered', 'Stubborn', 'Patient'], look: ['a straw hat', 'a plaid shirt', 'muddy overalls'], vibe: ['his crops grow faster', 'wants you off his land'] }
+    },
+    bioelectric: {   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Jellyfish UFO's own
+        id: 'bioelectric',
+        name: 'Bioelectric',
+        glyph: '⚡',
+        color: '#7ac8ff',
+        kind: 'signature',
+        desc: 'An advanced jellyfish from the deep: claws that grip and sting, and a lightning bell that charges with every hit.',
+        unique: 'jellyfish ufo',
+        identity: { who: ['Jellyfish UFO', 'Bell-Warden', 'Deep Mind'], adj: ['Charged', 'Sentient', 'Abyssal'], look: ['a glass bell with lightning in it', 'a metal body', 'claw arms'], vibe: ['charges its bell with every hit', 'lives where the light does not reach'] }
     },
     streaming: {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — the Streamer's and the E-Girl's own
         id: 'streaming',
@@ -26537,6 +26660,9 @@ const RACE_FAMILIES = {
     'trucker': ['trucking', 'drivingskills', 'humangrit', 'teamwork'],   // 2026-11-19 THE NEW RACES 3
     'pharaoh': ['pharaoh', 'royalty', 'ancientknowledge', 'desertacclimation'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': ['deepdive', 'water', 'deepsea', 'engineering'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+    'gladiator': ['gladiatorial', 'swordsmanship', 'weaponstraining', 'humangrit'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'farmer': ['farming', 'agriculture', 'humangrit', 'teamwork'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'jellyfish ufo': ['bioelectric', 'jellyfish', 'lightning', 'deepsea'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
@@ -27178,6 +27304,9 @@ const CAMPAIGN_RACE_PRICES = {
   'trucker': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
   'pharaoh': 500,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
   'deep sea diver': 400,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+  'gladiator': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+  'farmer': 350,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+  'jellyfish ufo': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'lifeguard': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
@@ -29165,6 +29294,7 @@ const DOOR_TEXT = {
         'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'pope': 'Vatican City',   // 2026-11-17 THE NEW RACES 2
         'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'streamer': 'The Internet', 'vtuber': 'The Internet',   // 2026-11-17 THE NEW RACES 2
         'pharaoh': 'Pyramids of Giza', 'deep sea diver': 'Atlantis',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+        'gladiator': 'Vatican City', 'farmer': 'Skinwalker Ranch', 'jellyfish ufo': 'Atlantis',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (the Colosseum on the Vatican's plots; the Estate's fields; the Trench of The Deep)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
         'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
        
@@ -58987,7 +59117,7 @@ const DOOR_HQ = {
                 {key:'cage_wagon',x:5.25,z:-36.75,face:270},
             ],
             agents: [],
-            npcSpots: [{x:-19.25,z:43.75,face:180,race:'priest',gender:'female',say:['“Cover your head. Not for Him. For the draught.”','“The gallery is for the choir. The choir is for the gallery. Neither has been up there since the decree.”']},{x:-47.25,z:61.25,face:90,race:'priest',gender:'male',say:['“The door behind the altar goes down. Everyone assumes I mean it theologically.”','“Immunity claimed, three times. The third time was for the paperwork.”']},{x:-57.75,z:40.25,face:180,race:'seraphim',say:'“I sit up here. I was told to wait, and the view is of the waiting.”'},{x:26.25,z:54.25,face:90,race:'priest',gender:'male'},{x:71.75,z:57.75,face:90,race:'priest',gender:'female',say:'“The façade is the front of the building. We are behind it. That is the whole doctrine.”'},{x:117.25,z:57.75,face:270,race:'gargoyle'},{x:92.75,z:85.75,face:0,race:'priest',gender:'male'},{x:61.25,z:1.75,face:135,race:'gargoyle'},{x:-61.25,z:1.75,face:300,race:'watcher',say:['“It is not the moon. It is closer than the moon. It has a door at the top and the door is open.”','“Look for as long as you like. That is the only instruction, and it is a trap, and the trap is the stair.”']},{x:22.75,z:8.75,face:180,race:'priest',gender:'female',say:'“The façade is the front of the building. We are behind it. That is the whole doctrine.”'},{x:-15.25,z:6,face:270,race:'priest',gender:'male',say:['“The index is not secret. The index is the secret.”','“Every card in this drawer is your callsign. I did not file them. Please stop asking who did.”']},{x:-25.25,z:-4,face:90,race:'priest',gender:'female',say:'“Four hundred and one steps. I count them going up and it is a different number coming down.”'},{x:15.75,z:131.25,face:45,race:'priest',gender:'male',say:['“I am the gardener. The hedges were planted as a maze and grew as a maze and I am told that is a miracle.”','“Do not draw from the well. It is not that the water is bad. It is that something drinks.”']},{x:-57.75,z:120.75,face:180,race:'priest',gender:'female'},{x:-15.75,z:134.75,face:0,race:'gargoyle'},{x:-96.25,z:64.75,face:90,race:'gargoyle'},{x:-110.25,z:40.25,face:90,race:'priest',gender:'female'},{x:-21,z:-70.65,y:6.6499999999999995,face:0,race:'pope',pose:'hqSit'},{x:-34.67,z:-109.89,face:160,race:'fortune teller',pose:'hqSit'},{x:-5.37,z:-111.01,face:-158,race:'cowboy',pose:'hqSit'},{x:-35.64,z:-73.42,face:22,race:'wizard',pose:'hqSit'},{x:-5.04,z:-70.18,face:-22,race:'politician',pose:'hqSit'},{x:-52.23,z:-97.52,face:115,race:'televangelist',pose:'hqSit'},{x:17.37,z:-100.85,face:-115,race:'banker',pose:'hqSit'},{x:-10.88,z:-71.91,face:-15,race:'priest',pose:'hqSit',gender:'female'},{x:-13.54,z:-71.29,face:-11,race:'priest',pose:'hqSit',gender:'female'},{x:-28.09,z:-69.45,face:10,race:'priest',pose:'hqSit'},{x:-46.68,z:-76.79,face:38,race:'fortune teller',pose:'hqSit',gender:'female'},{x:-41.25,z:-104.74,face:148,race:'cowboy',pose:'hqSit'},{x:-26.56,z:-111.91,face:172,race:'influencer',pose:'hqSit',gender:'female'},{x:-12.87,z:-114.14,face:-169,race:'pirate',pose:'hqSit'},{x:6.44,z:-111.52,face:-145,race:'wizard',pose:'hqSit'},{x:0.92,z:-78.36,face:-35,race:'knight',pose:'hqSit'},{x:-50.64,z:-85.22,face:65,race:'politician',pose:'hqSit'},{x:-50.36,z:-101.91,face:132,race:'banker',pose:'hqSit'},{x:-41.96,z:-117.28,face:155,race:'tech ceo',pose:'hqSit'},{x:-54.18,z:-77.63,face:50,race:'pirate',roam:true},{x:19.88,z:-79.98,face:-65,race:'influencer',roam:true},{x:12.18,z:-104.37,face:-130,race:'cowboy',roam:true},{x:-2.89,z:-103.7,face:-150,race:'tech ceo',roam:true},{x:-26.25,z:-92.75,face:90,race:'swordfighter',gender:'male'},{x:-15.75,z:-92.75,face:270,race:'minotaur'},{x:-19.25,z:-85.75,face:0,race:'referee'},{x:-8.75,z:-85.75,face:270,race:'knight'},{x:-33.25,z:-85.75,face:90,race:'luchador'},{x:-12.25,z:-134.75,face:180,race:'ringmaster'},{x:-61.25,z:-43.75,face:45,race:'quarterback'}],
+            npcSpots: [{x:-19.25,z:43.75,face:180,race:'priest',gender:'female',say:['“Cover your head. Not for Him. For the draught.”','“The gallery is for the choir. The choir is for the gallery. Neither has been up there since the decree.”']},{x:-47.25,z:61.25,face:90,race:'priest',gender:'male',say:['“The door behind the altar goes down. Everyone assumes I mean it theologically.”','“Immunity claimed, three times. The third time was for the paperwork.”']},{x:-57.75,z:40.25,face:180,race:'seraphim',say:'“I sit up here. I was told to wait, and the view is of the waiting.”'},{x:26.25,z:54.25,face:90,race:'priest',gender:'male'},{x:71.75,z:57.75,face:90,race:'priest',gender:'female',say:'“The façade is the front of the building. We are behind it. That is the whole doctrine.”'},{x:117.25,z:57.75,face:270,race:'gargoyle'},{x:92.75,z:85.75,face:0,race:'priest',gender:'male'},{x:61.25,z:1.75,face:135,race:'gargoyle'},{x:-61.25,z:1.75,face:300,race:'watcher',say:['“It is not the moon. It is closer than the moon. It has a door at the top and the door is open.”','“Look for as long as you like. That is the only instruction, and it is a trap, and the trap is the stair.”']},{x:22.75,z:8.75,face:180,race:'priest',gender:'female',say:'“The façade is the front of the building. We are behind it. That is the whole doctrine.”'},{x:-15.25,z:6,face:270,race:'priest',gender:'male',say:['“The index is not secret. The index is the secret.”','“Every card in this drawer is your callsign. I did not file them. Please stop asking who did.”']},{x:-25.25,z:-4,face:90,race:'priest',gender:'female',say:'“Four hundred and one steps. I count them going up and it is a different number coming down.”'},{x:15.75,z:131.25,face:45,race:'priest',gender:'male',say:['“I am the gardener. The hedges were planted as a maze and grew as a maze and I am told that is a miracle.”','“Do not draw from the well. It is not that the water is bad. It is that something drinks.”']},{x:-57.75,z:120.75,face:180,race:'priest',gender:'female'},{x:-15.75,z:134.75,face:0,race:'gargoyle'},{x:-96.25,z:64.75,face:90,race:'gargoyle'},{x:-110.25,z:40.25,face:90,race:'priest',gender:'female'},{x:-21,z:-70.65,y:6.6499999999999995,face:0,race:'pope',pose:'hqSit'},{x:-34.67,z:-109.89,face:160,race:'fortune teller',pose:'hqSit'},{x:-5.37,z:-111.01,face:-158,race:'cowboy',pose:'hqSit'},{x:-35.64,z:-73.42,face:22,race:'wizard',pose:'hqSit'},{x:-5.04,z:-70.18,face:-22,race:'politician',pose:'hqSit'},{x:-52.23,z:-97.52,face:115,race:'televangelist',pose:'hqSit'},{x:17.37,z:-100.85,face:-115,race:'banker',pose:'hqSit'},{x:-10.88,z:-71.91,face:-15,race:'priest',pose:'hqSit',gender:'female'},{x:-13.54,z:-71.29,face:-11,race:'priest',pose:'hqSit',gender:'female'},{x:-28.09,z:-69.45,face:10,race:'priest',pose:'hqSit'},{x:-46.68,z:-76.79,face:38,race:'fortune teller',pose:'hqSit',gender:'female'},{x:-41.25,z:-104.74,face:148,race:'cowboy',pose:'hqSit'},{x:-26.56,z:-111.91,face:172,race:'influencer',pose:'hqSit',gender:'female'},{x:-12.87,z:-114.14,face:-169,race:'pirate',pose:'hqSit'},{x:6.44,z:-111.52,face:-145,race:'wizard',pose:'hqSit'},{x:0.92,z:-78.36,face:-35,race:'knight',pose:'hqSit'},{x:-50.64,z:-85.22,face:65,race:'politician',pose:'hqSit'},{x:-50.36,z:-101.91,face:132,race:'banker',pose:'hqSit'},{x:-41.96,z:-117.28,face:155,race:'tech ceo',pose:'hqSit'},{x:-54.18,z:-77.63,face:50,race:'pirate',roam:true},{x:19.88,z:-79.98,face:-65,race:'influencer',roam:true},{x:12.18,z:-104.37,face:-130,race:'cowboy',roam:true},{x:-2.89,z:-103.7,face:-150,race:'tech ceo',roam:true},{x:-26.25,z:-92.75,face:90,race:'swordfighter',gender:'male'},{x:-15.75,z:-92.75,face:270,race:'minotaur'},{x:-19.25,z:-85.75,face:0,race:'referee'},{x:-8.75,z:-85.75,face:270,race:'knight'},{x:-33.25,z:-85.75,face:90,race:'luchador'},{x:-12.25,z:-134.75,face:180,race:'ringmaster'},{x:-61.25,z:-43.75,face:45,race:'quarterback'},{x:-22.75,z:-89.25,face:0,race:'gladiator',gender:'male'},{x:-12.25,z:-89.25,face:270,race:'gladiator',gender:'female'}],
             onlineSpots: [],
             lines: ['“Is this the mass?” “This is the building. The mass is the paperwork.”','“Who sits in the chair?” “Nobody sits in the chair.” “It is warm.” “Nobody sits in it for long.”','“The windows tell a story.” “Which?” “Ours. Badly.”','“The galleries are closed.” “There are no doors on the galleries.” “That is how they are closed.”','“Where is the floor plan of the Bureau?” “Open, on the desk, under the lamp.” “That is a map of this room.” “Yes.”','“The stacks move.” “The stacks are shelves.” “The shelves move.”','“Can I borrow it?” “You can read it here.” “Where is here?” “That is the first question the book answers.”','“The stair goes up inside the dome.” “To what?” “To the part of the dome that is outside.”','“Where does the well go?” “Down.” “To what?” “To the part of the building that is filed under S.”','“The fountain runs on consecrated water.” “The pump?” “Nobody asks.”','“Is the campanile ringing?” “The campanile is a stump.” “Then what is ringing?”','“The hedges are a maze.” “The hedges are hedges.” “Then why do we keep losing the gardener?”','“What am I looking at?” “A stair.” “In the sky.” “That is where they keep it.”','“Is it real?” “Optical effect. Filed and sealed. The seal is on the eyepiece.”','“How do I get there?” “You are already looking.”','“Four hundred and one steps up, to look at a stair.” “Four flights more, once you are on it.”'],
             spawn: { x: 50.75, z: 64.75, face: 270 },
@@ -69853,7 +69983,7 @@ const DOOR_HQ = {
                 {key:'sea_chest',x:106.01,z:148.36,face:19}, {key:'anemone',x:93.29,z:197.14,face:0}, {key:'anemone',x:95.7,z:253.35,face:179}, {key:'anemone',x:92.58,z:296,face:296},
             ],
             agents: [],
-            npcSpots: [{x:-68.25,z:-232.75,face:180,race:'atlantean',say:['“The road goes up to the temple.” “Up?” “Everything here is up. You are at the bottom.”','“The wreck by the wall is the Dutchman.” “The Dutchman is up there.” “Yes.”']},{x:-50.75,z:-218.75,face:300,race:'mermaid'},{x:-99.75,z:-260.75,face:135,race:'atlantean'},{x:-78.75,z:-211.75,face:60,race:'starfish'},{x:-78.75,z:-229.25,face:90,race:'atlantean'},{x:-47.25,z:-239.75,face:240,race:'mermaid'},{x:-26.25,z:-267.75,face:200,race:'siren'},{x:-15.75,z:-211.75,face:280,race:'atlantean'},{x:-106.75,z:-201.25,face:30,race:'starfish'},{x:-92.75,z:-180.25,face:10,race:'mermaid'},{x:-43.75,z:-278.25,face:170,race:'atlantean'},{x:-82.25,z:-215.25,face:120,race:'deep sea diver'},{x:-33.25,z:-250.25,face:250,race:'deep sea diver'},{x:-57.75,z:-148.75,face:0,race:'atlantean'},{x:-131.25,z:-194.25,face:90,race:'mermaid'},{x:-26.25,z:-302.75,face:180,race:'atlantean'},{x:8.75,z:-187.25,face:270,race:'starfish'},{x:-141.75,z:-257.25,face:120,race:'siren'},{x:89.25,z:222.25,face:90,race:'mermaid',say:['“Do not go in the trench.” “Why?” “Something in the trench keeps the smokers lit.”']},{x:152.25,z:236.25,face:270,race:'kraken',say:['“…”','“THE SHIP.” “Which ship?” “THE SHIP.”']},{x:141.75,z:204.75,face:200,race:'deep sea fish'},{x:131.25,z:295.75,face:20,race:'deep sea fish'},{x:155.75,z:155.75,face:180,race:'kaiju'}],
+            npcSpots: [{x:-68.25,z:-232.75,face:180,race:'atlantean',say:['“The road goes up to the temple.” “Up?” “Everything here is up. You are at the bottom.”','“The wreck by the wall is the Dutchman.” “The Dutchman is up there.” “Yes.”']},{x:-50.75,z:-218.75,face:300,race:'mermaid'},{x:-99.75,z:-260.75,face:135,race:'atlantean'},{x:-78.75,z:-211.75,face:60,race:'starfish'},{x:-78.75,z:-229.25,face:90,race:'atlantean'},{x:-47.25,z:-239.75,face:240,race:'mermaid'},{x:-26.25,z:-267.75,face:200,race:'siren'},{x:-15.75,z:-211.75,face:280,race:'atlantean'},{x:-106.75,z:-201.25,face:30,race:'starfish'},{x:-92.75,z:-180.25,face:10,race:'mermaid'},{x:-43.75,z:-278.25,face:170,race:'atlantean'},{x:-82.25,z:-215.25,face:120,race:'deep sea diver'},{x:-33.25,z:-250.25,face:250,race:'deep sea diver'},{x:-57.75,z:-148.75,face:0,race:'atlantean'},{x:-131.25,z:-194.25,face:90,race:'mermaid'},{x:-26.25,z:-302.75,face:180,race:'atlantean'},{x:8.75,z:-187.25,face:270,race:'starfish'},{x:-141.75,z:-257.25,face:120,race:'siren'},{x:89.25,z:222.25,face:90,race:'mermaid',say:['“Do not go in the trench.” “Why?” “Something in the trench keeps the smokers lit.”']},{x:152.25,z:236.25,face:270,race:'kraken',say:['“…”','“THE SHIP.” “Which ship?” “THE SHIP.”']},{x:141.75,z:204.75,face:200,race:'deep sea fish'},{x:131.25,z:295.75,face:20,race:'deep sea fish'},{x:155.75,z:155.75,face:180,race:'kaiju'},{x:134.75,z:211.75,face:160,race:'jellyfish ufo'},{x:145.25,z:281.75,face:300,race:'jellyfish ufo'}],
             onlineSpots: [],
             lines: ['“The sea floor.” “How far down?” “Twenty-six metres to the surface and it does not matter; the surface is not the sea you left.”','“The upwelling goes up.” “To where?” “The Triangle.” “The whirlpool goes down.” “To here.” “Then the sea is a loop.” “The sea is a form.”','“That is the Dutchman.” “On her side.” “The hatch in the wall is hers. It opens on her hold.” “Her hold is up there.” “Her hatch does not know that.”','“Something answers the sonar.” “In a voice?” “In a voice.” “What does it say?” “It asks for the ship.”'],
             spawn: {x:-63,z:-239.75,face:0},
@@ -73201,7 +73331,7 @@ const DOOR_HQ = {
                 {key:'wild_flowers',x:98.7,z:183.05}, {key:'wooden_bucket',x:94.15,z:188.65},
             ],
             agents: [],
-            npcSpots: [{x:-43.75,z:-309.75,face:180,race:'scarecrow',say:['“Nobody put me here.”','“The circle was here before the corn.”']},{x:-96.25,z:-281.75,face:60,race:'scarecrow',say:'“Count us on the way in. Count us on the way out.”'},{x:-29.75,z:-285.25,face:200,race:'scarecrow'},{x:-47.25,z:-257.25,face:180,race:'skinwalker'},{x:-78.75,z:-358.75,face:200,race:'mothman'},{x:43.75,z:124.25,face:0,race:'loch ness monster'},{x:36.75,z:183.75,face:340,race:'cowboy'},{x:50.75,z:316.75,face:200,race:'goatman'},{x:61.25,z:285.25,face:250,race:'cowboy'},{x:57.75,z:173.25,face:200,race:'conspiracy theorist'},{x:47.25,z:351.75,face:300,race:'grey'}],
+            npcSpots: [{x:-43.75,z:-309.75,face:180,race:'scarecrow',say:['“Nobody put me here.”','“The circle was here before the corn.”']},{x:-96.25,z:-281.75,face:60,race:'scarecrow',say:'“Count us on the way in. Count us on the way out.”'},{x:-29.75,z:-285.25,face:200,race:'scarecrow'},{x:-47.25,z:-257.25,face:180,race:'skinwalker'},{x:-78.75,z:-358.75,face:200,race:'mothman'},{x:43.75,z:124.25,face:0,race:'loch ness monster'},{x:36.75,z:183.75,face:340,race:'cowboy'},{x:50.75,z:316.75,face:200,race:'goatman'},{x:61.25,z:285.25,face:250,race:'cowboy'},{x:57.75,z:173.25,face:200,race:'conspiracy theorist'},{x:47.25,z:351.75,face:300,race:'grey'},{x:43.75,z:183.75,face:320,race:'farmer'},{x:54.25,z:323.75,face:200,race:'farmer'}],
             onlineSpots: [],
             lines: ['“Whose corn is it?” “The ranch’s.” “And the circles?” “The corn’s.”','“Something on the mesa.” “That is the mesa.” “Then what is it standing on?”','“The Lodge keeps a door onto the fields. The house keeps a tree. The grove keeps its own counsel.”','“The scarecrows are counted at dusk. The count is filed at dawn. The two forms never agree.”'],
             spawn: { x: -68.25, z: -134.75, face: 180 },
@@ -92327,6 +92457,7 @@ const HQ_NPC_TEMPERS = {
         'superhero': 'protector', 'sidekick': 'protector', 'firefighter': 'protector', 'eagleman': 'protector',
         'gangster': 'opportunist', 'goblin': 'opportunist', 'politician': 'opportunist', 'televangelist': 'opportunist', 'tech ceo': 'opportunist',
         'gambler': 'opportunist', 'hacker': 'opportunist', 'monk': 'protector', 'shogun': 'territorial',   // 2026-11-19 THE NEW RACES 4
+        'gladiator': 'territorial', 'farmer': 'guard', 'jellyfish ufo': 'territorial',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
     /* THE GROUPS: races who stand up for each other (no factions). Units of ONE race are a group by themselves (`sameRace`). A unit is in one

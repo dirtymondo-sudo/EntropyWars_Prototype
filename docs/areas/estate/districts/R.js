@@ -319,6 +319,7 @@ module.exports = {
           put(BARN, 'wheelbarrow', -5.6, -8.6, { floor: true, face: 40 }); put(BARN, 'owl_perched', -11.4, -4.4, { y: 1.75 + 3.06, noBlock: true });
           put(FARM, 'wood_stove', -10.0, -6.2, { floor: true, face: 90 }); put(FARM, 'oil_lamp', -7.0, 3.5, { floor: true, y: 0.8 }); put(FARM, 'antler_trophy', 6.6, -7.45, { y: 1.75 + 1.63, noBlock: true }); put(FARM, 'firewood_stack', 9.1, -7.9, { floor: true }); }
         native('cowboy', 40, 64, 340); native('goatman', 44, 42, 200); native('cowboy', 47, 57, 250); native('conspiracy theorist', 46, 61, 200); native('grey', 67, 64, 300);
+        native('farmer', 42, 64, 320); native('farmer', 45, 44, 200);   // 2026-11-19 THE COMING RACES: the farmers work the Ranch
         flat(53, 40, 55, 42);   // the ground levelled under the windmill
     },
 };
