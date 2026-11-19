@@ -7282,6 +7282,10 @@
                 }
                 const _sitHas = _statusIfTargetHasArmed(spell, target);
                 const _rwTape = spell.rewindTape > 0 ? _tvTapeAmount(target, spell) : 0;   // 📺 Rewind: read the tape before this hit lands on it
+                if (spell._diceWhiff) {   // 🪙 Double or Nothing came up tails: nothing lands (no 1-damage floor, no hit on the target)
+                    addLog(`🪙 Tails: ${_ctSp(spell.name)} lands nothing on ${_ctName(target)}.`);
+                    if (!_skipVisuals()) showFloatingTextForUnit(target, '🪙 TAILS · MISS', 'miss', { durationMs: 1000 });
+                } else
                 applyDamageToUnit(target, damage,
                     `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
