@@ -3067,3 +3067,13 @@ in line with the submit, the first time a look is drawn (new in a pass: the sun'
 "Slow frames" entries now say how many shader builds (`_ewKeep.builds`) and new pipelines (`_ewKeep.pipes`, every
 createRenderPipeline) the frame made. "Bundle spikes" keeps only ticks of 12 ms or more (was 6 ms: the steady 6 ms ticks
 pushed the big ones off the list).
+
+### THE DESK SCAN + THE BAKES KEPT SIDE BY SIDE (2026-11-19, spikes thread, his 12:52 F3 via the 60 FPS thread)
+- "batch: scan step 2.06 ms" every frame, the props' merge always in 'scan': since THE SLICED SCAN a rescan of the whole group took many
+  frames and any add anywhere began the next one. A live merge's rescan now reads only THE FRONT DESK's arrivals under its group (`B.dq`;
+  each arrival's chain read upward for visibility + `_HQ_BATCH_FLAG_OFF` flags); a whole walk on the first scan, an overflowed desk, and
+  every `HQ_BATCH.rescanIdleMs` (30 s, `B.fullAt`). Off: `EW_HQ_BATCH_SCAN_WHOLE` (whole walks) / `EW_HQ_BATCH_RESCAN_ALWAYS`.
+- "residents: new body 48 ms" with one body a frame: `_animLibBakeForModel0` kept ONE bake per model keyed by its slot count; a city
+  resident's def has one more slot (`hqSleep`) than a native of the same race, so alternating bodies re-baked every clip. Bakes now stay
+  by key (`modelEntry._libBakedMap`) and are handed back at once. Off: `EW_LIB_BAKE_ONE`. (If a body still costs 40 ms+, the next step is
+  a body pool by model.)
