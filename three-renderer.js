@@ -49193,7 +49193,7 @@ const ThreeRenderer = (function () {
             return (ro._ew_rfL = (nm || o.type) + ' · ' + mk + (o.isInstancedMesh ? ' · batch' : o.isSkinnedMesh ? ' · skinned' : ''));
         };
         var rpStep = function (R, ro) {
-            var RF = (_lens && _lens.cur) ? (_ewBun.rf || (_ewBun.rf = { m: {}, f: 0 })) : null, t0 = 0, u0 = 0;
+            var RF = _lensOn() ? (_ewBun.rf || (_ewBun.rf = { m: {}, f: 0 })) : null, t0 = 0, u0 = 0;
             if (RF) { t0 = performance.now(); u0 = _ewBun.uplN | 0; }
             var N = R._nodes, t = N.needsRefresh(ro);
             if (t === 2 || t === 'full') { N.updateBefore(ro); R._geometries.updateForRender(ro); N.updateForRender(ro); R._bindings.updateForRender(ro); N.updateAfter(ro); }
@@ -49716,7 +49716,7 @@ const ThreeRenderer = (function () {
         var t0 = performance.now(), W = _ewBun.why;
         var spL = (_lens && _lens.cur) ? { w0: Object.assign({}, W), r0: _ewBun.recs, walked: 0, re: [], lamp: false } : null;   // THE BUNDLE SPIKES (lens): this tick's re-records
         _ewBun.frame = (_ewBun.frame | 0) + 1;
-        if (_ewBun.rf && _lens && _lens.cur) _ewBun.rf.f++;
+        if (_ewBun.rf && _lensOn()) { if (++_ewBun.rf.f > 300) { _ewBun.rfLast = _ewBun.rf; _ewBun.rf = null; } }   // THE REFRESH BY OBJECT: a rolling window of ~300 frames (the dip log keeps it filled with the lens shut)
         _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0, quiet: _ewBun.rpQuiet | 0 }; _ewBun.rpQuiet = 0; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
         var tpa = spL ? performance.now() : 0;
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
@@ -54764,11 +54764,11 @@ const ThreeRenderer = (function () {
         } catch (eBK) {}
         try {   // THE CHECK'S SPLIT + THE WALK'S SPLIT (2026-11-18): where the bundle check and the matrix walk spend their time
             var scS = _scanLine(); if (scS) L.push(scS);   // THE SCAN ALARM
-            if (_ewBun.rf && _ewBun.rf.f > 0) {   // THE REFRESH BY OBJECT
-                var RFm = _ewBun.rf.m, RFf = _ewBun.rf.f, RFk = Object.keys(RFm).sort(function (a, b) { return RFm[b][0] - RFm[a][0]; });
+            var RFw = (_ewBun.rf && _ewBun.rf.f >= 60) ? _ewBun.rf : (_ewBun.rfLast || _ewBun.rf);
+            if (RFw && RFw.f > 0) {   // THE REFRESH BY OBJECT
+                var RFm = RFw.m, RFf = RFw.f, RFk = Object.keys(RFm).sort(function (a, b) { return RFm[b][0] - RFm[a][0]; });
                 var RFt = 0; for (var rfi = 0; rfi < RFk.length; rfi++) RFt += RFm[RFk[rfi]][0];
                 L.push('Refreshes by object (ms a frame, refreshes a frame, sheet uploads, worst ms; ' + (RFt / RFf).toFixed(2) + ' ms a frame in all, ' + RFk.length + ' kinds, ' + RFf + ' frames): ' + RFk.slice(0, 10).map(function (k) { var e = RFm[k]; return k + ' ' + (e[0] / RFf).toFixed(2) + ' (' + (e[1] / RFf).toFixed(1) + ', ' + e[2] + ' up, worst ' + e[3].toFixed(0) + ')'; }).join(' | '));
-                _ewBun.rf = null;
             }
             if (_ewBun.spikes && _ewBun.spikes.length) L.push('Bundle spikes (last ' + _ewBun.spikes.length + '): ' + _ewBun.spikes.join(' | '));
             if (_ewBun.splitShow) L.push('Bundle check by group (ms a frame, meshes; ' + (_ewBun.splitN | 0) + ' groups walked): ' + _ewBun.splitShow);

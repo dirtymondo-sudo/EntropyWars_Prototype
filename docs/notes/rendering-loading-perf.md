@@ -3195,3 +3195,5 @@ group three replayed itself: recorded again, not static, or not yet seen through
   (name of the object or its nearest named parent, its look: node kind / sign canvas / video / see-through / material type, batch or
   skinned) with the sheet uploads it caused (backend `updateTexture` / `generateMipmaps`, counted in `_ewBun.uplN`). New lens line
   "Refreshes by object": the top 10 by ms a frame, refreshes a frame, uploads, worst single refresh.
+  (11-19, his 18:06 F3 had no such line: it filled only on the lens's own sampled frames. It now fills from the dip log too (always on
+  in the walk), over a rolling window of ~300 frames (`_ewBun.rf`, the last full window kept in `_ewBun.rfLast`).)
