@@ -3113,3 +3113,12 @@ group changes, and every 240 checks. Off: `window.EW_BUN_HELD_EVERY`. Same F3: o
   forgot the frame before (`_ewGpuFreeLater`), hundreds at once when a chunk or room lets go. Now at most `EW_FREE_PER_FRAME` (48) a
   frame, the rest kept for later frames (a count, not a time: Firefox's whole-ms clock). The lens shows it as its own row
   "render: gpu frees". All at once: `window.EW_FREE_ALL_AT_ONCE`.
+
+### THE DIP LOG (2026-11-19, 60 FPS thread; mondo: "do i have to shift f3 the exact moment it happens ... no where near stable yet")
+Always on in the walk, lens open or not (`_dipBegin` / `_dipEnd` at `_hqFrameGuarded`'s edges). The walk's named parts are timed every
+frame through the lens's own spans (`_dip.cur` stands in for the lens frame; `_lensIn` / `_lensMark` / `_lensSub` and the tick gates read
+`_lensOn()`), without the lens's draw counting or census. A frame gap of 50 ms+ or a second under 30 FPS opens or extends a dip (closed
+1.5 s after its last slow frame; a room's first 3 s are the load and skipped). Each dip keeps: time, length, lowest FPS, worst gap, slow
+frames + their JS, where the officer stood (squares, start → end), its top 4 parts summed, and what happened in it (bundle re-records,
+epoch moves, shader builds, new pipelines, GPU buffers freed, objects added, models loaded). Shift+F3 prints the last 12 of the session
+as "Dips this session" (40 kept). Off: `window.EW_DIP_OFF`. Stability (the dips), not the average, is the goal from here.
