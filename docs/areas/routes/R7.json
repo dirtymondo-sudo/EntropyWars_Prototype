@@ -3,6 +3,11 @@
  "hub": "ranch",
  "room": "site_prebuilt_skinwalker_ow_lake",
  "part": "ow_lake",
+ "edgeStop": {
+  "about": "THE EDGE STOPPERS (2026-11-19, mondo: no invisible walls; every boundary needs a believable obstacle): every bare edge of the walk gets two rows of the Estate's corn (boulders on the salt flats). bake-route.js THE EDGE STOPPERS.",
+  "key": "corn_row",
+  "rows": 2
+ },
  "label": "THE ESTATE",
  "sub": "THE CORN FIELDS · COUNTY LANE · THE LAKE · THE RANCH · 47 PLOTS",
  "from": 3,
