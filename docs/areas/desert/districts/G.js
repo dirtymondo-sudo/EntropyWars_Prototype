@@ -230,6 +230,8 @@ exports.ground = ctx => { bind(ctx);
     P('camel', 70, 93, { face: 250 });
     native('anubis', 76, 54, 200, sayOf(O_GIZA, 'anubis')); native('annunaki', 86, 70, 270, sayOf(O_GIZA, 'annunaki')); native('skeleton', 79, 55, 300, sayOf(O_GIZA, 'skeleton'));
     native('conspiracy theorist', 91, 70, 40, sayOf(O_GIZA, 'conspiracy theorist')); native('mummy', 69, 80, 270); native('djinn', 55, 84, 0);
+    /* THE PHARAOH (2026-11-19, the new race: the Pharaoh + Cleopatra, home Giza): one on the Tomb Door path between the braziers, one at the oasis market */
+    native('pharaoh', 64, 78, 90); native('pharaoh', 57, 83, 180);
 };
 
 /* THE DESERT'S INSIDES (2026-11-15): the three ways into the Great Pyramid's inside. The entrance in the north face beside the North Stair, the

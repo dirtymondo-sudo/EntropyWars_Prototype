@@ -18559,7 +18559,8 @@
             if (typeof _serpentDrop === 'function') _serpentDrop(unit);   // 🐍 the serpent sinks with its king (battle.js)
             if (typeof endStatusesTiedToUnit === 'function') endStatusesTiedToUnit(unit);
 
-            if (state.turrets) state.turrets = state.turrets.filter(t => t.casterUnitId !== unit.id);
+            /* ⚱ THE TOMB (the Pharaoh, 2026-11-19): his tomb outlives him; it is what he rises from (battle.js _tombRise) */
+            if (state.turrets) state.turrets = state.turrets.filter(t => t.casterUnitId !== unit.id || (t.tomb && !unit._tombSpent));
 
             if (state.plantedSeeds) state.plantedSeeds = state.plantedSeeds.filter(s => s.casterUnitId !== unit.id);
 

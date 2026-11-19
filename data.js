@@ -396,6 +396,8 @@ const FINISHERS = {
     'virus':          { id: 'fin_virus', name: 'Format C:', glyph: '🦠', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ALL DATA ON THIS DRIVE WILL BE LOST', desc: 'A progress bar opens over the victim and fills, file by file, and then there is nothing left to delete.' },   // 2026-11-18 THE VIRUS (mondo approved the kit) (borrows the corruptedSave staging)
     'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
     'vtuber':         { id: 'fin_vtuber', name: 'Graduation', glyph: '🎀', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'END OF STREAM', desc: 'She waves goodbye to the chat, the stream cuts to a pixel heart, and the victim\'s name card reads END OF STREAM.' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) (borrows the farewellTour staging)
+    'pharaoh':        { id: 'fin_pharaoh', name: 'By Decree of Pharaoh', glyph: '𓂀', type: 'divine', sig: 'byOrderOf', built: true, tagline: 'SO IT IS WRITTEN', desc: 'The scribes read the decree, the sun agrees with it, and the victim is written out of history.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the byOrderOf staging)
+    'deep sea diver': { id: 'fin_deep_sea_diver', name: 'Crush Depth', glyph: '🤿', type: 'human', sig: 'poseidonsWrath', built: true, tagline: 'TOO DEEP, TOO FAST', desc: 'The board floods, the pressure comes down all at once, and the victim finds out what the helmet was for.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the poseidonsWrath staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
@@ -644,6 +646,8 @@ const RACE_ELEMENT_AFFINITY = {
     'virus': { poison: 'resist', lightning: 'resist', water: 'weak' },   // 2026-11-18 THE VIRUS (mondo approved the kit): made of poison and current; water shorts it
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
     'vtuber': { lightning: 'resist', water: 'weak' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): lives on current; water shorts the projectors
+    'pharaoh': { fire: 'resist', water: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the son of the sun; the desert king hates the flood
+    'deep sea diver': { water: 'resist', lightning: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the suit is made for the sea; the metal tanks carry a shock
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
@@ -3028,6 +3032,14 @@ const RACE_PROFILES = {
         label: 'V-Tuber',
         types: ['tech', 'anomaly']
     },
+    'pharaoh': {   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): one race, the Pharaoh (male) and Cleopatra (female)
+        label: 'Pharaoh',
+        types: ['human', 'divine']
+    },
+    'deep sea diver': {   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+        label: 'Deep Sea Diver',
+        types: ['human', 'tech']
+    },
     'haunted doll': {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
         label: 'Haunted Doll',
         types: ['anomaly', 'unholy']
@@ -3922,7 +3934,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'gambler', 'hacker', 'monk', 'shogun'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4088,6 +4100,8 @@ const RACE_CLASS = {
     'virus': 'specialist',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'caster',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'pharaoh': 'caster',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+    'deep sea diver': 'specialist',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the controller who makes moving hurt
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
@@ -4153,6 +4167,8 @@ const RACE_TERRAIN_PREFERENCE = {
     'virus': 'wasteland',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'urban',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'pharaoh': 'desert',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+    'deep sea diver': 'deep_water',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the sealed helmet: never drowns (map.js unitIsDeepWaterAdapted)
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
     'siren': 'deep_water',
     'reptilian': 'water',
@@ -4554,6 +4570,8 @@ const RACE_BASE_STATS = {
     'virus':              { hp:  780, mp: 220, atk:  40, def:  60, mdef: 160, int: 180, vision: 3, crt: 18, spd:  90 },   // 2026-11-18 THE VIRUS (mondo approved the kit) — first pass: a frail magic specialist
     'streamer':           { hp:  950, mp: 200, atk: 120, def:  80, mdef: 100, int: 130, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd
     'vtuber':             { hp:  820, mp: 240, atk:  30, def:  70, mdef: 150, int: 185, vision: 3, crt: 20, spd: 100 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — first pass: a frail caster who is never where she seems
+    'pharaoh':            { hp: 1050, mp: 220, atk:  40, def:  95, mdef: 150, int: 180, vision: 3, crt: 20, spd:  80 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass on the caster median (Librarian / Televangelist)
+    'deep sea diver':     { hp: 1100, mp: 180, atk: 120, def: 110, mdef: 100, int: 130, vision: 3, crt: 18, spd:  95 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass: a sturdy controller, the harpoon on ATK, the water on INT
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -4731,6 +4749,8 @@ const RACE_PHYSIQUE = {
     'virus':               { h: 1.50, w: 30 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the spiked ball hovering, tendrils down
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber':              { h: 1.64, w: 50 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'pharaoh':             { h: 1.85, w: 82 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+    'deep sea diver':      { h: 1.72, w: 62 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
@@ -11033,6 +11053,41 @@ const RACE_ABILITIES = {
           projectorPulse: true, pulseAllyStatus: [{ id: 'regen', duration: 1 }],
           desc: 'Everyone is on stream. She and every Holo Projector pulse at once: MEDIUM light magic damage to All Enemies within 1 of any of them (each hit once), and allies in the rings get Regen for 1 round. Cooldown: 3 rounds.' },
     ],
+    'pharaoh': [
+        /* THE TOMB (2026-11-19, the Pharaoh + Cleopatra; mondo's concepts round): Prepare the Tomb stands his sarcophagus on a free
+           square beside him (state.turrets row `tomb: true`, 3 hits to break, never acts). While it stands, the first time he goes
+           down he rises from it at the round's end with half his max HP and the tomb crumbles; once a match (unit._tombSpent greys
+           the spell after). Whoever breaks the tomb first gets the Curse of the Pharaoh: Hexed for 3 rounds.
+           battle.js "THE TOMB"; notes docs/notes/champions-combat.md "THE PHARAOH". */
+        { id: 'nrAspsKiss', name: "Asp's Kiss", tier: 1, families: ['pharaoh'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 120, range: 2,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'The asp from the basket. Deals MEDIUM poison magic damage to a Single Enemy within 2 and leaves it Poisoned for 2 rounds.' },
+        { id: 'nrPrepareTomb', name: 'Prepare the Tomb', tier: 2, families: ['pharaoh'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          type: 'utility', kind: 'deployTurret', range: 1, maxActivePerCaster: 1, tomb: true, hitsToKill: 3, turretHp: 3, turretDmg: 0, turretRange: 0,
+          desc: 'Raises his sarcophagus on an empty square beside him (3 hits to break). While it stands, the first time he falls he rises from it at the end of the round with half his HP, and it crumbles. Once a match. Whoever breaks it is Cursed: Hexed for 3 rounds. Cooldown: 2 rounds.' },
+        { id: 'nrEyeOfRa', name: 'Eye of Ra', tier: 3, families: ['pharaoh'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          element: 'fire', vfxElement: 'light', type: 'damage', kind: 'line', damageType: 'magic', dmg: 170, range: 5, lineWidth: 1,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'The sun opens its eye. Deals HEAVY fire magic damage to All Enemies in a 5-square line and sets them Burning for 2 rounds. Cooldown: 2 rounds.' },
+    ],
+    'deep sea diver': [
+        /* THE BENDS (2026-11-19, the Deep Sea Diver; mondo's concepts round): a unit with the Bends (STATUS_DEFS.bends) loses 5% of its
+           max HP for every square it moves while the status lasts, however it moves: a walk counts every square of its path, a push,
+           pull, fling or jump counts the squares between where it was and where it lands; a teleport counts none. The Diver's own
+           harpoon and shove (and her teammates' knockbacks) turn every square into damage. battle.js "THE BENDS"; notes
+           docs/notes/champions-combat.md "THE DEEP SEA DIVER". Her helmet is sealed: she never drowns (RACE_TERRAIN_PREFERENCE). */
+        { id: 'nrHarpoonGun', name: 'Harpoon Gun', tier: 1, families: ['deepdive'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 120, range: 4, pullDistance: 2,
+          desc: 'A barbed harpoon on a line. Deals MEDIUM physical damage to a Single Enemy within 4 and reels it 2 squares toward her.' },
+        { id: 'nrDepthCharge', name: 'Depth Charge', tier: 2, families: ['deepdive'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          element: 'water', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 110, range: 3, aoeRadius: 1,
+          statusEffects: [{ id: 'wet', duration: 2 }, { id: 'bends', duration: 1 }],
+          desc: 'A charge set to go off deep. Deals MEDIUM water magic damage to All Enemies in a 3x3 within 3, leaves them Wet and gives them the Bends: every square they move costs 5% of their max HP. Cooldown: 2 rounds.' },
+        { id: 'nrPressureWave', name: 'Pressure Wave', tier: 3, families: ['deepdive'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          element: 'water', type: 'damage', kind: 'linePush', damageType: 'magic', dmg: 130, range: 4, lineWidth: 1, pushDistance: 3,
+          desc: 'The sea pushes back. Deals MEDIUM water magic damage to All Enemies in a 4-square line and shoves them 3 squares back. Cooldown: 2 rounds.' },
+    ],
     'haunted doll': [
         /* NOBODY'S LOOKING (2026-11-17, the Haunted Doll; mondo approved the kit + asked for the pull-string spell): "sits on the
            shelf, and moves when you look away". At every round end, when no enemy within 5 has it in its front cone (the facing
@@ -14740,6 +14795,14 @@ const STATUS_DEFS = {
     /* 🦠 PAYLOAD (2026-11-18, the Virus): does nothing on its own; every round end it copies itself to each teammate next to
        the carrier (2 rounds), and when it runs out it goes off for 70 (battle.js THE PAYLOAD). Both sides see it. The Virus is
        credited (unit._payloadSrcId, an id: RULE #2). */
+    /* bends (2026-11-19, the Deep Sea Diver's Depth Charge): every square the unit moves while it lasts costs 5% of its max HP
+       (battle.js THE BENDS: _bendsMoved; the anchor unit._bendsAt / the Diver unit._bendsSrcId are plain fields on the unit) */
+    bends: {
+        icon: '🫧', glyph: '🫧', short: 'BND', label: 'The Bends',
+        colorText: 'has the Bends — every square it moves hurts',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🫧', '#0d1f33', '#d8f0ff', '#ff8a2a')
+    },
     payload: {
         icon: '🦠', glyph: '🦠', short: 'PAY', label: 'Payload',
         colorText: 'carrying a payload — it spreads, then goes off',
@@ -15064,6 +15127,7 @@ const STATUS_LIBRARY_DESCS = {
     onDuty:    'On watch: the first ally within 4 that takes a killing blow holds on at 1 HP and is hauled beside her. Spent on the first save.',
     riding:     'On the Delivery Boy\'s back: when he finishes his next walk or Doorstep Dash, it hops off on the free square beside him.',
     tithe:      'Collection Plate: 15% of every heal that lands within 3 of the Televangelist (not his own) goes in his plate. Miracle spends it.',
+    bends:      'The Bends: every square it moves (walked, jumped, pushed or pulled) costs 5% of its max HP.',
     viral:      'Going viral: every hit it takes also hits each of its teammates within 2 for 30% of the damage.',
     filtered:   'Filtered: to the other side it looks like, and is named as, the ally it traded faces with.',
     yellowCard: 'Booked: a second card on this unit is a RED CARD. It is sent off until its next turn starts: it cannot move, act or be targeted.',
@@ -21158,6 +21222,8 @@ const EW_RACE_BIOMES = {
     'virus': ['neon_city', 'astral'],   // 2026-11-18 THE VIRUS (mondo approved the kit) — The Internet's quarantine
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
     'vtuber': ['neon_city', 'urban'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — The Internet, district V
+    'pharaoh': ['desert', 'ancient'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Desert, Giza
+    'deep sea diver': ['deep_sea', 'tropical'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Deep, Atlantis, The Beach
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
@@ -21823,6 +21889,8 @@ const RACE_TREE = {
     'virus':         ['nrWorm', 'nrSelfReplicate', 'nrRansomware', 'nrZeroDay'],   // 2026-11-18 THE VIRUS (mondo approved the kit): its own four
     'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
     'vtuber':        ['nrKawaiiBeam', ['nrHoloProjector', 'nrSceneChange'], 'nrLoFiLoop', 'nrCollabStream'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'pharaoh':       ['nrAspsKiss', 'nrPrepareTomb', 'nrEyeOfRa', 'sharedSummonSandstorm'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from the desert)
+    'deep sea diver': ['nrHarpoonGun', 'nrDepthCharge', 'nrPressureWave', 'sharedTidalSurge'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from water)
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -23953,6 +24021,26 @@ const SPELL_FAMILIES = {
         desc: 'A pop idol made of light: she streams from hologram projectors around the field and shoots from them.',
         unique: 'vtuber',
         identity: { who: ['V-Tuber', 'Virtual Idol', 'Hologram'], adj: ['Kawaii', 'Pixel-Perfect', 'Always Live'], look: ['a white idol jacket with glowing seams', 'a frilled skirt', 'a hologram visor'], vibe: ['is never where she seems', 'streams from every camera at once'] }
+    },
+    pharaoh: {   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — the Pharaoh's own
+        id: 'pharaoh',
+        name: 'Pharaoh',
+        glyph: '𓂀',
+        color: '#e0b040',
+        kind: 'signature',
+        desc: 'The god-king of the Nile: the asp, the eye of the sun, and a tomb that sends him back once.',
+        unique: 'pharaoh',
+        identity: { who: ['Pharaoh', 'God-King', 'Queen of the Nile'], adj: ['Divine', 'Gilded', 'Eternal'], look: ['a striped nemes headdress', 'a jewelled gold collar', 'white pleated linen'], vibe: ['has already planned the afterlife', 'curses whoever opens the tomb'] }
+    },
+    deepdive: {   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — the Deep Sea Diver's own
+        id: 'deepdive',
+        name: 'Deep Dive',
+        glyph: '🤿',
+        color: '#ff8a2a',
+        kind: 'signature',
+        desc: 'A sealed helmet, a harpoon and the Bends: everyone she touches pays for every square they move.',
+        unique: 'deep sea diver',
+        identity: { who: ['Diver', 'Aquanaut', 'Salvager'], adj: ['Pressurised', 'Sealed', 'Fearless'], look: ['a glass bubble helmet', 'a navy and orange wetsuit', 'twin air tanks'], vibe: ['goes down where the light does not', 'knows what pressure does to a body'] }
     },
     streaming: {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — the Streamer's and the E-Girl's own
         id: 'streaming',
@@ -26235,6 +26323,8 @@ const RACE_FAMILIES = {
     'virus': ['malware', 'computerhacking', 'glitch', 'internetaddiction'],   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': ['vtubing', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'pharaoh': ['pharaoh', 'royalty', 'ancientknowledge', 'desertacclimation'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+    'deep sea diver': ['deepdive', 'water', 'deepsea', 'engineering'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
@@ -26870,6 +26960,8 @@ const CAMPAIGN_RACE_PRICES = {
   'virus': 450,   // 2026-11-18 THE VIRUS (mondo approved the kit)
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
   'vtuber': 400,   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+  'pharaoh': 500,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+  'deep sea diver': 400,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
   'lifeguard': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
@@ -28856,6 +28948,7 @@ const DOOR_TEXT = {
         'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown', 'magician': 'The Strip', 'mole man': 'Hollow Earth', 'quetzalcoatl': 'Technoticlan', 'lifeguard': 'The Bermuda Triangle',   // banker + sewer gator + skater + tech ceo + magician + mole man + quetzalcoatl + lifeguard 2026-11-16
         'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'pope': 'Vatican City',   // 2026-11-17 THE NEW RACES 2
         'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'streamer': 'The Internet', 'vtuber': 'The Internet',   // 2026-11-17 THE NEW RACES 2
+        'pharaoh': 'Pyramids of Giza', 'deep sea diver': 'Atlantis',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Came A Lot', 'ghoul': 'The Haunted House',
@@ -63370,7 +63463,7 @@ const DOOR_HQ = {
                 {key:'saguaro_cactus',x:-43.75,z:1.75,face:168,h:6.32}, {key:'saguaro_cactus',x:-75.25,z:-71.75,face:97,h:4.09}, {key:'saguaro_cactus',x:-5.25,z:-50.75,face:177,h:5.21},
             ],
             agents: [],
-            npcSpots: [{x:-26.25,z:64.75,face:300,race:'skeleton'},{x:-15.75,z:5.25,face:180,race:'mummy'},{x:8.75,z:-75.25,face:90,race:'anubis'},{x:68.25,z:-29.75,face:200,race:'skeleton'},{x:-68.25,z:-12.25,face:0,race:'mummy'},{x:-40.25,z:22.75,face:270,race:'anubis'},{x:-61.25,z:5.25,face:180,race:'djinn'},{x:15.75,z:-61.25,face:200,race:'anubis',say:['“She faces east.” “Why?” “That is where the line comes out of the ground.”','“Do not climb her.” “Something is on her head.” “Something is always on her head.”']},{x:50.75,z:-5.25,face:270,race:'annunaki',say:['“We did not build it.” “You are on the stair.” “We built the STAIR. The stair is the easy part.”']},{x:26.25,z:-57.75,face:300,race:'skeleton',say:['“The trench hit a door.” “Whose?” “Mine, apparently. I have the paperwork.”']},{x:68.25,z:-5.25,face:40,race:'conspiracy theorist',say:['“The robbers’ tunnel.” “Robbers of what?” “It was dug INWARD. Ask yourself who was robbing whom.”','“Four faces, three times.” “Three pyramids.” “Three times. Not three pyramids.”']},{x:-8.75,z:29.75,face:270,race:'mummy'},{x:-57.75,z:43.75,face:0,race:'djinn'}],
+            npcSpots: [{x:-26.25,z:64.75,face:300,race:'skeleton'},{x:-15.75,z:5.25,face:180,race:'mummy'},{x:8.75,z:-75.25,face:90,race:'anubis'},{x:68.25,z:-29.75,face:200,race:'skeleton'},{x:-68.25,z:-12.25,face:0,race:'mummy'},{x:-40.25,z:22.75,face:270,race:'anubis'},{x:-61.25,z:5.25,face:180,race:'djinn'},{x:15.75,z:-61.25,face:200,race:'anubis',say:['“She faces east.” “Why?” “That is where the line comes out of the ground.”','“Do not climb her.” “Something is on her head.” “Something is always on her head.”']},{x:50.75,z:-5.25,face:270,race:'annunaki',say:['“We did not build it.” “You are on the stair.” “We built the STAIR. The stair is the easy part.”']},{x:26.25,z:-57.75,face:300,race:'skeleton',say:['“The trench hit a door.” “Whose?” “Mine, apparently. I have the paperwork.”']},{x:68.25,z:-5.25,face:40,race:'conspiracy theorist',say:['“The robbers’ tunnel.” “Robbers of what?” “It was dug INWARD. Ask yourself who was robbing whom.”','“Four faces, three times.” “Three pyramids.” “Three times. Not three pyramids.”']},{x:-8.75,z:29.75,face:270,race:'mummy'},{x:-57.75,z:43.75,face:0,race:'djinn'},{x:-26.25,z:22.75,face:90,race:'pharaoh'},{x:-50.75,z:40.25,face:180,race:'pharaoh'}],
             onlineSpots: [],
             lines: ['“The top.” “Walk up the north face. Four flights.” “And then?” “Then you are on top. Nobody says what for.”','“The sphinx has a tape on her head.” “How do you get it?” “Not by climbing.”','“The causeway runs to the paws.” “Then where?” “Then under the sand, straight, to the tower.”','“Which pyramid is the ministry’s?” “All three.” “Which one has the treaty?” “The one with the door.”','“It is hot.” “It is always hot.” “Even underground?” “Especially.”'],
             spawn: { x: -61.25, z: -75.25, face: 180 },
@@ -69543,7 +69636,7 @@ const DOOR_HQ = {
                 {key:'sea_chest',x:106.01,z:148.36,face:19}, {key:'anemone',x:93.29,z:197.14,face:0}, {key:'anemone',x:95.7,z:253.35,face:179}, {key:'anemone',x:92.58,z:296,face:296},
             ],
             agents: [],
-            npcSpots: [{x:-68.25,z:-232.75,face:180,race:'atlantean',say:['“The road goes up to the temple.” “Up?” “Everything here is up. You are at the bottom.”','“The wreck by the wall is the Dutchman.” “The Dutchman is up there.” “Yes.”']},{x:-50.75,z:-218.75,face:300,race:'mermaid'},{x:-99.75,z:-260.75,face:135,race:'atlantean'},{x:-78.75,z:-211.75,face:60,race:'starfish'},{x:-78.75,z:-229.25,face:90,race:'atlantean'},{x:-47.25,z:-239.75,face:240,race:'mermaid'},{x:-26.25,z:-267.75,face:200,race:'siren'},{x:-15.75,z:-211.75,face:280,race:'atlantean'},{x:-106.75,z:-201.25,face:30,race:'starfish'},{x:-92.75,z:-180.25,face:10,race:'mermaid'},{x:-43.75,z:-278.25,face:170,race:'atlantean'},{x:-57.75,z:-148.75,face:0,race:'atlantean'},{x:-131.25,z:-194.25,face:90,race:'mermaid'},{x:-26.25,z:-302.75,face:180,race:'atlantean'},{x:8.75,z:-187.25,face:270,race:'starfish'},{x:-141.75,z:-257.25,face:120,race:'siren'},{x:89.25,z:222.25,face:90,race:'mermaid',say:['“Do not go in the trench.” “Why?” “Something in the trench keeps the smokers lit.”']},{x:152.25,z:236.25,face:270,race:'kraken',say:['“…”','“THE SHIP.” “Which ship?” “THE SHIP.”']},{x:141.75,z:204.75,face:200,race:'deep sea fish'},{x:131.25,z:295.75,face:20,race:'deep sea fish'},{x:155.75,z:155.75,face:180,race:'kaiju'}],
+            npcSpots: [{x:-68.25,z:-232.75,face:180,race:'atlantean',say:['“The road goes up to the temple.” “Up?” “Everything here is up. You are at the bottom.”','“The wreck by the wall is the Dutchman.” “The Dutchman is up there.” “Yes.”']},{x:-50.75,z:-218.75,face:300,race:'mermaid'},{x:-99.75,z:-260.75,face:135,race:'atlantean'},{x:-78.75,z:-211.75,face:60,race:'starfish'},{x:-78.75,z:-229.25,face:90,race:'atlantean'},{x:-47.25,z:-239.75,face:240,race:'mermaid'},{x:-26.25,z:-267.75,face:200,race:'siren'},{x:-15.75,z:-211.75,face:280,race:'atlantean'},{x:-106.75,z:-201.25,face:30,race:'starfish'},{x:-92.75,z:-180.25,face:10,race:'mermaid'},{x:-43.75,z:-278.25,face:170,race:'atlantean'},{x:-82.25,z:-215.25,face:120,race:'deep sea diver'},{x:-33.25,z:-250.25,face:250,race:'deep sea diver'},{x:-57.75,z:-148.75,face:0,race:'atlantean'},{x:-131.25,z:-194.25,face:90,race:'mermaid'},{x:-26.25,z:-302.75,face:180,race:'atlantean'},{x:8.75,z:-187.25,face:270,race:'starfish'},{x:-141.75,z:-257.25,face:120,race:'siren'},{x:89.25,z:222.25,face:90,race:'mermaid',say:['“Do not go in the trench.” “Why?” “Something in the trench keeps the smokers lit.”']},{x:152.25,z:236.25,face:270,race:'kraken',say:['“…”','“THE SHIP.” “Which ship?” “THE SHIP.”']},{x:141.75,z:204.75,face:200,race:'deep sea fish'},{x:131.25,z:295.75,face:20,race:'deep sea fish'},{x:155.75,z:155.75,face:180,race:'kaiju'}],
             onlineSpots: [],
             lines: ['“The sea floor.” “How far down?” “Twenty-six metres to the surface and it does not matter; the surface is not the sea you left.”','“The upwelling goes up.” “To where?” “The Triangle.” “The whirlpool goes down.” “To here.” “Then the sea is a loop.” “The sea is a form.”','“That is the Dutchman.” “On her side.” “The hatch in the wall is hers. It opens on her hold.” “Her hold is up there.” “Her hatch does not know that.”','“Something answers the sonar.” “In a voice?” “In a voice.” “What does it say?” “It asks for the ship.”'],
             spawn: {x:-63,z:-239.75,face:0},

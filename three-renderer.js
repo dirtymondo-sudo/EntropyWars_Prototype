@@ -7571,6 +7571,44 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ⚱ THE TOMB (2026-11-19, the Pharaoh's Prepare the Tomb): mondo's stone sarcophagus (the HQ catalogue's `sarcophagus`, a Meshy
+       prop) lying along its square, a slow gold shimmer on the lid's line, and the hits bar. Own side cyan rim, enemy pink. */
+    var _TOMB_URL = 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_stone_sarcophagus_0917035255_texture.glb';
+    function _buildTomb3D(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var own = _isAllyPlayer(turret.owner), col = own ? 0x5ad6ff : 0xff6aa8;
+        g.add(_plantHpBar(turret, ts, ts * 0.62));
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.42, 1.2, 4, 28), new THREE.MeshBasicMaterial({ color: col, fog: false }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 1.2; g.add(ring);
+        var fill = function () {
+            var e = _miscModelCache[_TOMB_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true);
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; n.castShadow = true; if (n.geometry) n.geometry._ew_shared = true; } });
+            var len = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) || 1;
+            var sc = (ts * 0.92) / len;
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            var turn = new THREE.Group(); turn.add(m);
+            if ((bb.max.z - bb.min.z) > (bb.max.x - bb.min.x)) turn.rotation.y = Math.PI / 2;   // its length along the square's x
+            g.add(turn);
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_TOMB_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_TOMB_URL, true, fill, { front: true }); } catch (x) { console.warn('[ThreeRenderer] tomb load threw', x); } }
+        return g;
+    }
+
     /* 🏯 THE CLAN BANNER (2026-11-19, the Shogun): the Meshy heraldic banner (meshy_decor/banner.glb, mondo's decor set) hung
        from a crossbar on a wooden pole planted in the square, a ring on the ground in the side's colour (own cyan, enemy red),
        the HP bar. The cloth sways a little. */
@@ -7620,6 +7658,7 @@ const ThreeRenderer = (function () {
     function _buildTurret(turret) {
         if (turret.plant) return _buildPlant3D(turret);   // THE GARDEN
         if (turret.projector) return _buildHoloProjector3D(turret);   // 📽 the V-Tuber
+        if (turret.tomb) return _buildTomb3D(turret);   // ⚱ the Pharaoh
         if (turret.banner) return _buildClanBanner3D(turret);   // 🏯 the Shogun
         if (turret.summon) return _buildSummon3D(turret);
         if (turret.zombie) return _buildZombie3D(turret);
@@ -17006,6 +17045,7 @@ const ThreeRenderer = (function () {
         if (g.cape) { at.cape = deps.length; deps.push(g.cape); }
         if (g.held && g.held.url) { at.held = deps.length; deps.push(g.held.url); }
         if (g.held2 && g.held2.url) { at.held2 = deps.length; deps.push(g.held2.url); }   // a second piece in the other hand (the Hacker's mouse)
+        if (g.helmet && g.helmet.url) { at.helmet = deps.length; deps.push(g.helmet.url); }   // THE BUBBLE HELMET
         var fn = function (root, anims, got) { try { _gearBuild(root, g, wf, at, got || []); } catch (e) { console.warn('[3D] unit gear failed', e); } return null; };
         fn.deps = deps;
         return (_gearRigCache[url] = fn);
