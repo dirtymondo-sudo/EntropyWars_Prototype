@@ -12226,6 +12226,11 @@ const ThreeRenderer = (function () {
     };
     _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaTrapProp3D;
     _DEPLOY_3D_BUILDERS.nrFeatheredSerpent = _buildSerpentBody3D;
+    /* THE NEW RACES 3 (2026-11-19): the Trucker's Unload boxes (the PSX pack's cardboard box), the Mechanic's Jury Rig crate (its supply
+       crate) and the Janitor's Wet Floor Sign (the HQ's yellow sign), each one of the props already on R2 (null while it streams) */
+    _DEPLOY_3D_BUILDERS.nrUnload = function (x, y) { return _npDeployProp('https://cdn.entropywars.net/Assets/world/packs/pizzadoggy_psx_mega_pack/large_props/cardboard_box_2.glb', x, y, { w: 0.3 }); };
+    _DEPLOY_3D_BUILDERS.nrJuryRig = function (x, y) { return _npDeployProp('https://cdn.entropywars.net/Assets/world/packs/elbolilloduro/ebd_housesonwater_generator.glb', x, y, { w: 0.4 }); };
+    _DEPLOY_3D_BUILDERS.nrWetFloorSign = function (x, y) { return _npDeployProp('https://cdn.entropywars.net/Assets/world/hq/models/Meshy_AI_a_yellow_wet_floor_sign_0903105220_texture.glb', x, y, { h: 0.26 }); };
 
     /* Teleport gate pairs (Grave Passage / Tunnel Network) — until now
        state._gatePairs was never rendered AT ALL. Each endpoint gets a prop:

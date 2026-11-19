@@ -16346,6 +16346,8 @@
                     if (!u || u.dead || u._dying || _realmKeyOf(u)) continue;
                     if (u.status && Number(u.status.radioactive || 0) > 0) visible.add(posKey(u.x, u.y));
                     if (u.status && Number(u.status.doxxed || 0) > 0) visible.add(posKey(u.x, u.y));   // 🪪 Doxxed (the Hacker, 2026-11-19): the same, seen by every viewer
+                    /* 🎥 ON CAMERA (the Cameraman, THE NEW RACES 3): the filmed unit is seen through the fog by the other side */
+                    if (u.status && Number(u.status.onCamera || 0) > 0 && typeof sidesAllied === 'function' && !sidesAllied(u.player, player)) visible.add(posKey(u.x, u.y));
                 }
             }
 
@@ -18556,6 +18558,7 @@
             /* ⛓ a status that only works through this unit (Provoked by it, its Contract, a Voodoo doll tied to it, the other end
                of its Soul Bind) ends now instead of staying up as a badge with nothing behind it (battle.js endStatusesTiedToUnit) */
             if (typeof _settleBankOnDeath === 'function') _settleBankOnDeath(unit);   // 💰 the Banker's Debt / Short (battle.js)
+            if (typeof _mechScrapDowned === 'function') _mechScrapDowned(unit);   // 🔩 a machine / summon down near a Mechanic is a Part (battle.js)
             if (typeof _serpentDrop === 'function') _serpentDrop(unit);   // 🐍 the serpent sinks with its king (battle.js)
             if (typeof endStatusesTiedToUnit === 'function') endStatusesTiedToUnit(unit);
 

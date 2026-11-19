@@ -396,6 +396,10 @@ const FINISHERS = {
     'virus':          { id: 'fin_virus', name: 'Format C:', glyph: '🦠', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ALL DATA ON THIS DRIVE WILL BE LOST', desc: 'A progress bar opens over the victim and fills, file by file, and then there is nothing left to delete.' },   // 2026-11-18 THE VIRUS (mondo approved the kit) (borrows the corruptedSave staging)
     'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
     'vtuber':         { id: 'fin_vtuber', name: 'Graduation', glyph: '🎀', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'END OF STREAM', desc: 'She waves goodbye to the chat, the stream cuts to a pixel heart, and the victim\'s name card reads END OF STREAM.' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) (borrows the farewellTour staging)
+    'cameraman':      { id: 'fin_cameraman', name: "That's a Wrap", glyph: '🎥', type: 'human', sig: 'blurryFootage', built: true, tagline: 'CUT. PRINT.', desc: 'The light goes red, the lens racks in and the last frame is the victim, held forever.' },   // 2026-11-19 THE NEW RACES 3 (borrows the blurryFootage staging)
+    'mechanic':       { id: 'fin_mechanic', name: 'Totaled', glyph: '🔧', type: 'human', sig: 'compactor', built: true, tagline: 'NOT WORTH FIXING', desc: 'He takes one look, sucks his teeth and writes it off. Parts only from here.' },   // 2026-11-19 THE NEW RACES 3 (borrows the compactor staging)
+    'janitor':        { id: 'fin_janitor', name: 'Down the Drain', glyph: '🧹', type: 'human', sig: 'theDrain', built: true, tagline: 'CLEANUP COMPLETE', desc: 'One last push of the mop. What is left goes down the drain with the rest of the mess.' },   // 2026-11-19 THE NEW RACES 3 (borrows theDrain staging)
+    'trucker':        { id: 'fin_trucker', name: 'Eighteen Wheels', glyph: '🚚', type: 'human', sig: 'driveBy', built: true, tagline: 'TEN-FOUR', desc: 'Air horn, high beams, eighteen wheels and no brakes. The victim was in the wrong lane.' },   // 2026-11-19 THE NEW RACES 3 (borrows the driveBy staging)
     'pharaoh':        { id: 'fin_pharaoh', name: 'By Decree of Pharaoh', glyph: '𓂀', type: 'divine', sig: 'byOrderOf', built: true, tagline: 'SO IT IS WRITTEN', desc: 'The scribes read the decree, the sun agrees with it, and the victim is written out of history.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the byOrderOf staging)
     'deep sea diver': { id: 'fin_deep_sea_diver', name: 'Crush Depth', glyph: '🤿', type: 'human', sig: 'poseidonsWrath', built: true, tagline: 'TOO DEEP, TOO FAST', desc: 'The board floods, the pressure comes down all at once, and the victim finds out what the helmet was for.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the poseidonsWrath staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
@@ -646,6 +650,10 @@ const RACE_ELEMENT_AFFINITY = {
     'virus': { poison: 'resist', lightning: 'resist', water: 'weak' },   // 2026-11-18 THE VIRUS (mondo approved the kit): made of poison and current; water shorts it
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
     'vtuber': { lightning: 'resist', water: 'weak' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): lives on current; water shorts the projectors
+    'cameraman': { light: 'resist', water: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): the flash is his; water kills the camera
+    'mechanic': { fire: 'resist', lightning: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): works by the welder; a live wire bites
+    'janitor': { poison: 'resist', ice: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): forty years of bleach fumes; slips on ice like anyone
+    'trucker': { wind: 'resist', ice: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): drives through any storm; black ice
     'pharaoh': { fire: 'resist', water: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the son of the sun; the desert king hates the flood
     'deep sea diver': { water: 'resist', lightning: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the suit is made for the sea; the metal tanks carry a shock
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
@@ -3032,6 +3040,22 @@ const RACE_PROFILES = {
         label: 'V-Tuber',
         types: ['tech', 'anomaly']
     },
+    'cameraman': {   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+        label: 'Cameraman',
+        types: ['human']
+    },
+    'mechanic': {   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+        label: 'Mechanic',
+        types: ['human']
+    },
+    'janitor': {   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+        label: 'Janitor',
+        types: ['human']
+    },
+    'trucker': {   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+        label: 'Trucker',
+        types: ['human']
+    },
     'pharaoh': {   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): one race, the Pharaoh (male) and Cleopatra (female)
         label: 'Pharaoh',
         types: ['human', 'divine']
@@ -3934,7 +3958,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4100,6 +4124,10 @@ const RACE_CLASS = {
     'virus': 'specialist',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'caster',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'cameraman': 'ranged',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'mechanic': 'support',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'janitor': 'specialist',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'trucker': 'tank',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'pharaoh': 'caster',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': 'specialist',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the controller who makes moving hurt
     'lifeguard': 'support',   // 2026-11-16
@@ -4167,6 +4195,10 @@ const RACE_TERRAIN_PREFERENCE = {
     'virus': 'wasteland',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'urban',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'cameraman': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'mechanic': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'janitor': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'trucker': 'desert',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): the open road
     'pharaoh': 'desert',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': 'deep_water',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the sealed helmet: never drowns (map.js unitIsDeepWaterAdapted)
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
@@ -4570,6 +4602,10 @@ const RACE_BASE_STATS = {
     'virus':              { hp:  780, mp: 220, atk:  40, def:  60, mdef: 160, int: 180, vision: 3, crt: 18, spd:  90 },   // 2026-11-18 THE VIRUS (mondo approved the kit) — first pass: a frail magic specialist
     'streamer':           { hp:  950, mp: 200, atk: 120, def:  80, mdef: 100, int: 130, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd
     'vtuber':             { hp:  820, mp: 240, atk:  30, def:  70, mdef: 150, int: 185, vision: 3, crt: 20, spd: 100 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — first pass: a frail caster who is never where she seems
+    'cameraman':          { hp:  900, mp: 140, atk: 105, def:  78, mdef:  70, int:  60, vision: 5, crt: 26, spd: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the ranged median (vision 5: he sees everything)
+    'mechanic':           { hp: 1150, mp: 170, atk: 120, def: 115, mdef:  90, int: 120, vision: 3, crt: 18, spd:  95 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass between the support and bruiser medians
+    'janitor':            { hp: 1100, mp: 170, atk: 110, def: 110, mdef: 110, int: 110, vision: 3, crt: 18, spd: 100 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the specialist median, physical
+    'trucker':            { hp: 1350, mp: 100, atk: 125, def: 160, mdef:  75, int:  45, vision: 3, crt: 14, spd: 110 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the tank median
     'pharaoh':            { hp: 1050, mp: 220, atk:  40, def:  95, mdef: 150, int: 180, vision: 3, crt: 20, spd:  80 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass on the caster median (Librarian / Televangelist)
     'deep sea diver':     { hp: 1100, mp: 180, atk: 120, def: 110, mdef: 100, int: 130, vision: 3, crt: 18, spd:  95 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass: a sturdy controller, the harpoon on ATK, the water on INT
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
@@ -4749,6 +4785,10 @@ const RACE_PHYSIQUE = {
     'virus':               { h: 1.50, w: 30 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the spiked ball hovering, tendrils down
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber':              { h: 1.64, w: 50 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'cameraman':           { h: 1.78, w: 78 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'mechanic':            { h: 1.80, w: 105 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'janitor':             { h: 1.72, w: 68 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'trucker':             { h: 1.88, w: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'pharaoh':             { h: 1.85, w: 82 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver':      { h: 1.72, w: 62 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
@@ -11053,6 +11093,98 @@ const RACE_ABILITIES = {
           projectorPulse: true, pulseAllyStatus: [{ id: 'regen', duration: 1 }],
           desc: 'Everyone is on stream. She and every Holo Projector pulse at once: MEDIUM light magic damage to All Enemies within 1 of any of them (each hit once), and allies in the rings get Regen for 1 round. Cooldown: 3 rounds.' },
     ],
+    'cameraman': [
+        /* THE FOOTAGE: every hit he lands puts the target On Camera for 2 rounds (seen through the fog by his side) and every
+           DIFFERENT enemy he films adds a Reel (up to 3); Say Cheese spends them. battle.js "THE NEW RACES 3". (2026-11-19, mondo's
+           moves: Money Shot, Photographic Evidence, Tilt Shift, Zoom In, Say Cheese the ultimate.) */
+        { id: 'nrZoomIn', name: 'Zoom In', tier: 1, families: ['cameraman'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 85, range: 6,
+          statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 30 }],
+          desc: 'Racks the lens all the way in. Deals WEAK magic damage to a Single Enemy within 6 and Marks it for 2 rounds. Puts it On Camera.' },
+        { id: 'nrTiltShift', name: 'Tilt Shift', tier: 2, families: ['cameraman'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          element: 'light', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 70, range: 5, aoeRadius: 1,
+          statusEffects: [{ id: 'minimize', duration: 2 }],
+          desc: 'Blurs the edges until the street looks like a model town. Deals WEAK magic damage to All Enemies in a 3×3 within 5 and Minimizes them (-2 ATK) for 2 rounds. Puts them On Camera. Cooldown: 2 rounds.' },
+        { id: 'nrPhotographicEvidence', name: 'Photographic Evidence', tier: 2, families: ['cameraman'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 130, range: 6,
+          bonusVsStatus: { status: 'onCamera', mult: 1.5 },
+          desc: 'He has it on film. Deals MEDIUM magic damage to a Single Enemy within 6. Deals bonus damage to targets already On Camera. Cooldown: 2 rounds.' },
+        { id: 'nrMoneyShot', name: 'Money Shot', tier: 3, families: ['cameraman'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 140, range: 5, critChance: 1,
+          desc: 'The one shot that pays for the whole year. Deals MEDIUM magic damage to a Single Enemy within 5 and always lands a critical hit. Puts it On Camera. Cooldown: 3 rounds.' },
+        { id: 'nrSayCheese', name: 'Say Cheese', tier: 4, families: ['cameraman'], cost: 100, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          element: 'light', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 70, range: 0, aoeOriginSelf: true, aoeRadius: 12, aoeShape: 'diamond',
+          aoeOnStatus: 'onCamera', reelSpend: 50,
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'Everybody smile. One flash for every face on his reels: deals WEAK magic damage to All Enemies On Camera within 12, +50 for every Reel he spends (up to 3), and Blinds them for 1 round. Cooldown: 4 rounds.' },
+    ],
+    'mechanic': [
+        /* SPARE PARTS: a machine (robot, mech, android, cyborg, droid, AI, Cursed TV, Honda Civic) or a summon that goes down, or an
+           object that is broken, within 3 of him gives him a Part (up to 3). Patch Job and Jury Rig spend them. battle.js "THE NEW
+           RACES 3". (2026-11-19, mondo's moves: Oil Change, Labor Fee, Wrench Throw; Patch Job + Jury Rig kept.) */
+        { id: 'nrWrenchThrow', name: 'Wrench Throw', tier: 1, families: ['mechanic'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 3,
+          bonusVsStatus: { status: 'machine', mult: 1.5 },
+          desc: 'A 14 mm, end over end. Deals WEAK physical damage to a Single Enemy within 3. Deals bonus damage to machines.' },
+        { id: 'nrOilChange', name: 'Oil Change', tier: 2, families: ['mechanic'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'heal', kind: 'heal', range: 1, healPct: 0.1, cleanse: 2, healVsMachineMult: 2.5,
+          statusEffects: [{ id: 'quickened', duration: 1 }],
+          desc: 'Fresh oil, new filter. Heals a Single Ally beside him for 10% of its max HP (25% on a machine), cleanses 2 debuffs and Quickens it (+1 MOV) for 1 round. Cooldown: 2 rounds.' },
+        { id: 'nrLaborFee', name: 'Labor Fee', tier: 2, families: ['mechanic'], cost: 20, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'debuff', kind: 'debuff', range: 3, mpDrain: 40, laborFee: true,
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'That will be extra. A Single Enemy within 3 loses 40 MP, which he pockets, and is Slowed for 1 round. Cooldown: 2 rounds.' },
+        { id: 'nrPatchJob', name: 'Patch Job', tier: 3, families: ['mechanic'], cost: 60, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'heal', kind: 'heal', range: 3, healPct: 0.2, partsShield: 60, healVsMachineMult: 2,
+          desc: 'Duct tape and a prayer. Heals a Single Ally within 3 for 20% of its max HP (double on a machine) and spends his Parts: +60 shield for each. Cooldown: 2 rounds.' },
+        { id: 'nrJuryRig', name: 'Jury Rig', tier: 4, families: ['mechanic'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'utility', kind: 'deployObject', range: 2, objectHp: 160, blocksMovement: true, maxActivePerCaster: 2, partsCost: 2,
+          desc: 'Spends 2 Parts to bolt together a crate of scrap on a square within 2: cover that blocks the way and takes 160 damage to break. Two at a time. Cooldown: 3 rounds.' },
+    ],
+    'janitor': [
+        /* WET FLOOR: the puddles he makes (Mop Swing, the Wet Floor Sign, Cleanup on Aisle 4) are slick: everyone but him slides
+           across them like ice. He never slides. battle.js "THE NEW RACES 3". (2026-11-19, mondo's moves: Bleach, Cleanup on
+           Aisle 4; Mop Swing, Wet Floor Sign, Mop Up kept.) */
+        { id: 'nrMopSwing', name: 'Mop Swing', tier: 1, families: ['janitorial'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 95, range: 1, pushDistance: 1,
+          wetFloor: { radius: 0, rounds: 2 },
+          desc: 'A wet mop across the shins. Deals WEAK physical damage to an adjacent enemy, pushes it 1 square and leaves the square it stood on a slippery puddle for 2 rounds.' },
+        { id: 'nrBleach', name: 'Bleach', tier: 2, families: ['janitorial'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 120, range: 3, purgeBuffs: true,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'Do not mix with anything. Deals MEDIUM magic damage to a Single Enemy within 3, strips every buff it has and Poisons it for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'nrWetFloorSign', name: 'Wet Floor Sign', tier: 2, families: ['janitorial'], cost: 40, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'utility', kind: 'deployObject', range: 3, objectHp: 40, blocksMovement: true, maxActivePerCaster: 1,
+          wetFloor: { radius: 1, rounds: 2 },
+          desc: 'He did put a sign out. Sets a wet floor sign on a square within 3 (it blocks the way) and mops the 3×3 round it into a slippery puddle for 2 rounds. One at a time. Cooldown: 3 rounds.' },
+        { id: 'nrMopUp', name: 'Mop Up', tier: 3, families: ['janitorial'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 0, noDamage: true, mopUp: { radius: 2, healPctPer: 0.05, healPctMax: 0.3 },
+          desc: 'Cleans up every mess within 2: fire, ooze, oil, sludge, poison ground, puddles, ice and enemy zones. Heals him 5% of his max HP for every square he cleans (up to 30%). Nothing to clean: refused. Cooldown: 3 rounds.' },
+        { id: 'nrCleanupAisle4', name: 'Cleanup on Aisle 4', tier: 4, families: ['janitorial'], cost: 100, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          element: 'water', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 140, range: 4, aoeRadius: 1,
+          aisleFour: { rounds: 2 },
+          statusEffects: [{ id: 'wet', duration: 2 }],
+          desc: 'Mop, bucket and a very bad mood. Deals MEDIUM physical damage to All Enemies in a 3×3 within 4 and Soaks them, cleans every mess in the 3×3 and leaves it a slippery puddle for 2 rounds. Cooldown: 4 rounds.' },
+    ],
+    'trucker': [
+        /* HITCHHIKE: when he walks, up to 2 allies standing next to him when he sets off ride along and get out on the squares
+           behind him at the end of his walk. It costs them nothing and they keep their own turn. battle.js "THE NEW RACES 3".
+           (2026-11-19, mondo: "rename Convoy to Hitchhike", and Unload: cardboard boxes out the back of his truck.) */
+        { id: 'nrAirHorn', name: 'Air Horn', tier: 1, families: ['trucking'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'sonic', type: 'damage', kind: 'linePush', damageType: 'magic', dmg: 75, range: 3, lineWidth: 1, pushDistance: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'HOOONK. Deals WEAK magic damage to All Enemies in a line of 3, pushes them 1 square and Staggers them.' },
+        { id: 'nrJackknife', name: 'Jackknife', tier: 2, families: ['trucking'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'damage', kind: 'dash', damageType: 'physical', dmg: 110, range: 4, dashSweep: 1,
+          desc: 'The trailer swings out. Barrels up to 4 squares in a line; every enemy on or beside the path takes MEDIUM physical damage. Cooldown: 2 rounds.' },
+        { id: 'nrUnload', name: 'Unload', tier: 3, families: ['trucking'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'buff', kind: 'buff', range: 0, noDamage: true, unload: { boxes: 3, dmg: 100, boxHp: 30, keep: 6 },
+          desc: 'Rolls up the back door. Cardboard boxes tumble out onto the 3 squares behind him: each free square gets a box (cover that blocks the way, 30 HP), and an enemy standing there takes MEDIUM physical damage instead. Cooldown: 3 rounds.' },
+        { id: 'nrBreakerBreaker', name: 'Breaker Breaker', tier: 4, families: ['trucking'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          type: 'buff', kind: 'warCry', range: 0, auraRadius: 4,
+          teamStatusEffects: [{ id: 'quickened', duration: 1 }], statStageBoost: { def: 1 },
+          desc: 'Breaker breaker, this is the big rig. Every ally within 4 is Quickened (+1 MOV) for 1 round and gains +1 DEF stage.' },
+    ],
     'pharaoh': [
         /* THE TOMB (2026-11-19, the Pharaoh + Cleopatra; mondo's concepts round): Prepare the Tomb stands his sarcophagus on a free
            square beside him (state.turrets row `tomb: true`, 3 hits to break, never acts). While it stands, the first time he goes
@@ -14791,6 +14923,15 @@ const STATUS_DEFS = {
         colorText: 'going viral — its hits are shared',
         kind: 'debuff', category: 'status', stack: 'replace',
         iconSrc: createStatusIconDataUri('📱', '#2a1424', '#ffe0f4', '#d04a9a')
+    },
+    /* 🎥 ON CAMERA (2026-11-19, the Cameraman's FOOTAGE): his hits put the target on film for 2 rounds. Its square is seen through
+       the fog by every side that is not its own (map.js computeVisibleTiles, like the Radioactive glow), Photographic Evidence
+       hits it harder and Say Cheese finds it anywhere within 12. Rides the snapshot. */
+    onCamera: {
+        icon: '🎥', glyph: '🎥', short: 'CAM', label: 'On Camera',
+        colorText: 'on camera — it can be seen through the fog',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🎥', '#2a1414', '#ffe0e0', '#e04848')
     },
     /* 🦠 PAYLOAD (2026-11-18, the Virus): does nothing on its own; every round end it copies itself to each teammate next to
        the carrier (2 rounds), and when it runs out it goes off for 70 (battle.js THE PAYLOAD). Both sides see it. The Virus is
@@ -21222,6 +21363,10 @@ const EW_RACE_BIOMES = {
     'virus': ['neon_city', 'astral'],   // 2026-11-18 THE VIRUS (mondo approved the kit) — The Internet's quarantine
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
     'vtuber': ['neon_city', 'urban'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — The Internet, district V
+    'cameraman': ['urban', 'forest', 'ranch'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City, The Woods, the Lake
+    'mechanic': ['urban', 'desert'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City Industrial, the gas station
+    'janitor': ['urban', 'underground_base'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City, The D.U.M.B., The Sewers
+    'trucker': ['urban', 'desert', 'ranch'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — the highway routes
     'pharaoh': ['desert', 'ancient'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Desert, Giza
     'deep sea diver': ['deep_sea', 'tropical'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Deep, Atlantis, The Beach
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
@@ -21889,6 +22034,10 @@ const RACE_TREE = {
     'virus':         ['nrWorm', 'nrSelfReplicate', 'nrRansomware', 'nrZeroDay'],   // 2026-11-18 THE VIRUS (mondo approved the kit): its own four
     'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
     'vtuber':        ['nrKawaiiBeam', ['nrHoloProjector', 'nrSceneChange'], 'nrLoFiLoop', 'nrCollabStream'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'cameraman':     ['nrZoomIn', ['nrTiltShift', 'nrPhotographicEvidence'], 'nrMoneyShot', 'nrSayCheese'],   // 2026-11-19 THE NEW RACES 3
+    'mechanic':      ['nrWrenchThrow', ['nrOilChange', 'nrLaborFee'], 'nrPatchJob', 'nrJuryRig'],   // 2026-11-19 THE NEW RACES 3
+    'janitor':       ['nrMopSwing', ['nrBleach', 'nrWetFloorSign'], 'nrMopUp', 'nrCleanupAisle4'],   // 2026-11-19 THE NEW RACES 3
+    'trucker':       ['nrAirHorn', 'nrJackknife', 'nrUnload', 'nrBreakerBreaker'],   // 2026-11-19 THE NEW RACES 3
     'pharaoh':       ['nrAspsKiss', 'nrPrepareTomb', 'nrEyeOfRa', 'sharedSummonSandstorm'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from the desert)
     'deep sea diver': ['nrHarpoonGun', 'nrDepthCharge', 'nrPressureWave', 'sharedTidalSurge'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from water)
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
@@ -24021,6 +24170,46 @@ const SPELL_FAMILIES = {
         desc: 'A pop idol made of light: she streams from hologram projectors around the field and shoots from them.',
         unique: 'vtuber',
         identity: { who: ['V-Tuber', 'Virtual Idol', 'Hologram'], adj: ['Kawaii', 'Pixel-Perfect', 'Always Live'], look: ['a white idol jacket with glowing seams', 'a frilled skirt', 'a hologram visor'], vibe: ['is never where she seems', 'streams from every camera at once'] }
+    },
+    cameraman: {   // 2026-11-19 THE NEW RACES 3 — the Cameraman's own
+        id: 'cameraman',
+        name: 'Cameraman',
+        glyph: '🎥',
+        color: '#c83a3a',
+        kind: 'signature',
+        desc: 'Rolling: a lens that reaches across the board, a look that shrinks the street, the evidence, the money shot and one last flash for everyone on the reel.',
+        unique: 'cameraman',
+        identity: { who: ['Cameraman', 'Camera Operator', 'Shooter'], adj: ['Nosy', 'Relentless', 'Unblinking'], look: ['a Hawaiian shirt', 'a photographer\'s vest', 'a camera always up'], vibe: ['never stops rolling', 'gets the shot no matter what'] }
+    },
+    mechanic: {   // 2026-11-19 THE NEW RACES 3 — the Mechanic's own
+        id: 'mechanic',
+        name: 'Mechanic',
+        glyph: '🔧',
+        color: '#3a5a9a',
+        kind: 'signature',
+        desc: 'Grease and know-how: a thrown wrench, an oil change, a bill nobody can argue with, a patch and a crate bolted out of scrap.',
+        unique: 'mechanic',
+        identity: { who: ['Mechanic', 'Grease Monkey', 'Wrench'], adj: ['Greasy', 'Gruff', 'Handy'], look: ['navy coveralls', 'a red rag in the back pocket', 'a belt of wrenches'], vibe: ['turns wrecks into parts', 'charges for labor'] }
+    },
+    janitorial: {   // 2026-11-19 THE NEW RACES 3 — the Janitorial's own
+        id: 'janitorial',
+        name: 'Janitorial',
+        glyph: '🧹',
+        color: '#7aa07a',
+        kind: 'signature',
+        desc: 'The floor is wet and it is your problem: a mop to the shins, bleach, a sign, a clean sweep and the big spill on aisle 4.',
+        unique: 'janitor',
+        identity: { who: ['Janitor', 'Custodian', 'Night Cleaner'], adj: ['Tired', 'Thorough', 'Underpaid'], look: ['green work clothes', 'yellow rubber boots', 'a ring of keys'], vibe: ['cleans up every mess', 'did put a sign out'] }
+    },
+    trucking: {   // 2026-11-19 THE NEW RACES 3 — the Trucking's own
+        id: 'trucking',
+        name: 'Trucking',
+        glyph: '🚚',
+        color: '#b03a2a',
+        kind: 'signature',
+        desc: 'The long haul: an air horn, a jackknifed trailer, a load of boxes out the back and a call on the CB that gets the whole convoy moving.',
+        unique: 'trucker',
+        identity: { who: ['Trucker', 'Long-Hauler', 'Big Rig Driver'], adj: ['Bearded', 'Road-worn', 'Loyal'], look: ['a plaid vest', 'a long grey beard', 'cowboy boots'], vibe: ['never leaves anyone at the truck stop', 'keeps on trucking'] }
     },
     pharaoh: {   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — the Pharaoh's own
         id: 'pharaoh',
@@ -26323,6 +26512,10 @@ const RACE_FAMILIES = {
     'virus': ['malware', 'computerhacking', 'glitch', 'internetaddiction'],   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': ['vtubing', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'cameraman': ['cameraman', 'stagepresence', 'eyesight', 'internetaddiction'],   // 2026-11-19 THE NEW RACES 3
+    'mechanic': ['mechanic', 'machinery', 'engineering', 'gear'],   // 2026-11-19 THE NEW RACES 3
+    'janitor': ['janitorial', 'chemistry', 'humangrit', 'streetsmarts'],   // 2026-11-19 THE NEW RACES 3
+    'trucker': ['trucking', 'drivingskills', 'humangrit', 'teamwork'],   // 2026-11-19 THE NEW RACES 3
     'pharaoh': ['pharaoh', 'royalty', 'ancientknowledge', 'desertacclimation'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': ['deepdive', 'water', 'deepsea', 'engineering'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
@@ -26960,6 +27153,10 @@ const CAMPAIGN_RACE_PRICES = {
   'virus': 450,   // 2026-11-18 THE VIRUS (mondo approved the kit)
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
   'vtuber': 400,   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+  'cameraman': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+  'mechanic': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+  'janitor': 300,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+  'trucker': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
   'pharaoh': 500,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
   'deep sea diver': 400,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
   'lifeguard': 500,   // 2026-11-16
@@ -28950,6 +29147,7 @@ const DOOR_TEXT = {
         'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'streamer': 'The Internet', 'vtuber': 'The Internet',   // 2026-11-17 THE NEW RACES 2
         'pharaoh': 'Pyramids of Giza', 'deep sea diver': 'Atlantis',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
+        'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Came A Lot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',
@@ -91592,7 +91790,7 @@ const HQ_POPULATION_RULES = {
     wildWeights: [0.5, 0.3, 0.2],   // a wild room's draw: a TRUE native (its point of entry) · a biome-tagged resident · a neighbouring site's native; the first draw is always a native
     cityWeights: [0.5, 0.3, 0.2],   // a city street's draw: the site's own (natives + the urban-tagged) · ordinary people (a `human` type) · the other cities' natives
     /* THE UNDERWORLD's own people (hubs.underworld) — the sewers, the tunnels, the cells, the workings */
-    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer', 'swamp monster', 'undead', 'flesheater'],   // 2026-10-25: + swamp monster, undead, flesheater
+    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer', 'swamp monster', 'undead', 'flesheater', 'janitor'],   // + the janitor (THE NEW RACES 3, 2026-11-19)   // 2026-10-25: + swamp monster, undead, flesheater
 };
 /* THE CROWD CAP (2026-10-01, mondo: "way less people inside DOOR HQ ... I walk into a tiny room like reception and there
    like 6 or 7 people in there ... one NPC per model and use the men in black as back up employees ... for all areas ...
@@ -92009,9 +92207,18 @@ const HQ_SPAWN_RULES = {
                 { race: 'chef', d: 'I', n: 1, work: 'd:I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
                 { race: 'delivery boy', d: 'I', n: 1, work: 'b:P01-09-B1', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
                 { race: 'police officer', d: 'I', n: 2, work: 'd:I', patrol: true, beat: 'CFEUHBSI', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
+                /* THE NEW RACES 3 (2026-11-19): the Cameraman shoots Hero Plaza and the Entertainment strip, the Mechanic works the Industrial
+                   yards, the Janitor cleans the University and City Hall, the Trucker hauls through Industrial. Counts are PROPOSALS */
+                { race: 'cameraman', d: 'H', n: 1, work: 'd:H', homes: ['P07-04-B2'] },
+                { race: 'cameraman', d: 'E', n: 1, work: 'p:P08-06', homes: ['P10-07-B1', 'P11-06-B2'] },
+                { race: 'mechanic', d: 'I', n: 2, work: 'd:I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
+                { race: 'janitor', d: 'U', n: 1, work: 'b:P01-05-B1', homes: ['P03-04-B1', 'P00-04-B1'] },
+                { race: 'janitor', d: 'C', n: 1, work: 'b:P06-00-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
+                { race: 'trucker', d: 'I', n: 1, work: 'd:I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
             ],
             /* a race's tier in this room (a race not named = defaultTier); `race|gender` names one gender */
             races: {
+                'cameraman': 'common', 'mechanic': 'common', 'janitor': 'common', 'trucker': 'uncommon',   // THE NEW RACES 3 (2026-11-19)
                 'police officer': 'common', 'chef': 'common', 'lifeguard': 'common', 'skater': 'common', 'delivery boy': 'common', 'gangster': 'common', 'zombie': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
                 'priest': 'uncommon', 'conspiracy theorist': 'uncommon', 'goblin': 'uncommon', 'spy': 'uncommon', 'professor': 'uncommon', 'telepath': 'uncommon', 'clown': 'uncommon', 'mime': 'uncommon',
                 'bunny girl': 'uncommon', 'quarterback': 'uncommon', 'luchador': 'uncommon', 'marksman': 'uncommon', 'pirate': 'uncommon', 'politician': 'uncommon', 'florida man': 'uncommon', 'banker': 'uncommon', 'magician': 'uncommon', 'influencer': 'uncommon', 'librarian': 'uncommon', 'referee': 'uncommon',
@@ -93315,6 +93522,10 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "time cop", w: 1 },
     ] },
     "site_prebuilt_downtown_streets": { list: [
+        { race: "cameraman", w: 2 },   // THE NEW RACES 3 (2026-11-19)
+        { race: "mechanic", w: 2 },
+        { race: "janitor", w: 2 },
+        { race: "trucker", w: 1 },
         { race: "conspiracy theorist", w: 7 },
         { race: "antihero", w: 2 },
         { race: "bunny girl", w: 2 },

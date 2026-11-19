@@ -6047,6 +6047,35 @@ specialist, home The Internet. Resists sonic, weak to light. Basic attack: melee
 - VFX: three-vfx-effects.js THE V-TUBER (idol cyan, side rings, pop-up windows beside the body: ON AIR, SCENE 2, LO-FI BEATS,
   COLLAB!). Kill-switch EW_NO_VTUBER_VFX. Every geometry goes through _sigVfxGeom (relayed online).
 
+## THE NEW RACES 3 (2026-11-19, thread "Add paparazzi, mechanic, janitor and trucker")
+mondo 11-19 picked four of the new Meshy models (concepts thread, `/mnt/project-files/new-char-concepts-20261119/`) and named the
+moves himself: the camera unit is a CAMERAMAN (not paparazzi: only one or two moves about paparazzi), the Mechanic is generic (NOT
+Otto), the Janitor is generic (whether the story Janitor in HQ takes this model is his open question), the Trucker uses the `_v2`
+model. Each race has ONE new rule; all code is in battle.js block "THE NEW RACES 3" (after `window._aoeTerrainFilter`).
+- **Cameraman** (ranged, R2 folder `paparazzi`, held DSLR = THE UNIT GEAR `held`, `Assets/characters/gear/held/paparazzi_camera.glb`,
+  len 0.14). RULE THE FOOTAGE: any hit of his films the target: status `onCamera` (2 rounds; seen through fog by the other side,
+  map.js `_addGlowingUnits`) and a Reel (max 3, `unit._reels`, one per foe per cast). Kit: Zoom In (T1, light, Marked), Tilt Shift
+  (T2 aoe, Minimized) | Photographic Evidence (T2, x1.5 on On Camera), Money Shot (T3, sure crit), Say Cheese (T4 ultimate: hits only
+  foes On Camera anywhere in 12 squares, `aoeOnStatus`; spends every Reel for +50 each; Blind). Finisher "That's a Wrap".
+- **Mechanic** (support). RULE SPARE PARTS: a Part (max 3, `unit._parts`) when any object/summon breaks within 3 squares
+  (`_onDecoyBroken`) or a machine unit goes down near him (map.js defeatUnit -> `_mechScrapDowned`). Machines = `_NR3_MACHINES`
+  (ai, robot, android, mech, cyborg, droid, cursed tv, honda civic; pseudo-status `machine` for bonusVsStatus). Kit: Wrench Throw
+  (x1.5 vs machines), Oil Change (heal + cleanse, x2.5 on machines) | Labor Fee (drains 40 MP to him + Slow), Patch Job (heal; every
+  Part he holds becomes +60 shield), Jury Rig (T4, a 160 HP blocker, costs 2 Parts: `partsCost`, greyed "Need N Parts"; look =
+  elbolilloduro generator). Finisher "Totaled".
+- **Janitor** (specialist). RULE WET FLOOR: squares he mops are timed `water` tagged `wetFloor` (+ `wetFloorPlayer`): everyone
+  slides on them like ice (`_isSlickTile`) except him (`_unitSlidesOnIce`). Kit: Mop Swing (push 1, mops the square), Bleach
+  (poison, strips buffs) | Wet Floor Sign (40 HP sign, mops a 3x3 around it), Mop Up (cleans timed hazard ground, fires and enemy
+  zones within 2, NOT his own side's wet floor; +5 % HP a square, max 30 %; refused with nothing to clean), Cleanup on Aisle 4 (T4
+  aoe, mops the hit area). Finisher "Down the Drain".
+- **Trucker** (tank). RULE HITCHHIKE (mondo renamed Convoy): when he walks, up to 2 allies standing next to his start square ride
+  along and land on his trail (`_truckerHitchhike` in finishMoveAt; skips anyone `_deliveryRideBlock` stops). Kit: Air Horn (line
+  push + stagger), Jackknife (dash sweep), Unload (3 cardboard boxes out of the back: the squares behind his facing, 30 HP each,
+  a box landing on a foe hits instead; keeps 6; `_DEPLOY_3D_BUILDERS.nrUnload` = cardboard_box_2), Breaker Breaker (team Quickened +
+  DEF up within 4). Finisher "Eighteen Wheels".
+Residents: HQ_SPAWN_RULES Disaster City people rows (cameraman H/E, mechanic I x2, janitor U/C, trucker I), HQ_AREA_ENCOUNTERS
+downtown, EW_RACE_BIOMES (cameraman forest + ranch = The Woods and the Lake; trucker desert/ranch/urban = the highway routes),
+janitor in HQ_POPULATION_RULES.underworld (The Sewers). Proof: `/mnt/project-files/new-char-concepts-20261119/proof/` (probe nr3.js).
 ## THE PHARAOH + THE DEEP SEA DIVER (2026-11-19, mondo approved the kits: "Okay those sound good"; thread "Add pharaoh and deep sea diver")
 Two new playable races from the 11-19 concepts. Each has a unique style and ONE new rule.
 - **Pharaoh** (`pharaoh`, both genders: the male Pharaoh + Cleopatra, model `pharaoh_f_v3`; caster; Human + Divine; fire resist, water weak;

@@ -6493,6 +6493,20 @@
             const _agNear = v.visibleEnemies.some(e => _dist(g, target.x, target.y, target.z, e) <= 4);
             return _agNear ? Math.min(160, 30 + _agT.totalDmg * 0.3) : 0;
         }
+        /* 🧹 Mop Up / 🚚 Unload (THE NEW RACES 3, 2026-11-19): Mop Up is worth the mess it clears plus the HP it gives back; Unload
+           is worth the enemies behind him a box lands on and some cover when foes are near. */
+        if (kind === 'buff' && spell.mopUp) {
+            const _mu = (typeof window._janitorCleanCount === 'function') ? window._janitorCleanCount(unit, spell) : 0;
+            if (!_mu) return 0;
+            const _miss = Math.max(0, 1 - (unit.hp || 0) / Math.max(1, unit.maxHp || 1));
+            return Math.min(200, 25 * _mu + 120 * _miss);
+        }
+        if (kind === 'buff' && spell.unload) {
+            const _ul = (typeof window._truckerUnloadPlan === 'function') ? window._truckerUnloadPlan(unit, spell) : null;
+            if (!_ul || (!_ul.hits && !_ul.free)) return 0;
+            const _near = v.visibleEnemies.some(e => _dist(g, unit.x, unit.y, unit.z, e) <= 4);
+            return _ul.hits * 90 + (_near ? _ul.free * 15 : 0);
+        }
         /* 🛵 THE RIDE-ALONG (2026-11-17, the Delivery Boy polish): Hop On / Thirty Minutes or Less are worth the best drop his
            walk this turn can give the riders (_rideBestAI: a hurt rider carried out of the hits, a healthy one carried into
            reach), never more than nothing when he cannot walk after the cast. */
@@ -11154,6 +11168,10 @@
         return tiles;
     }
     function getSpellAoeAreaAI(spell, cx, cy) {
+        if (spell && spell.aoeOnStatus && typeof window._aoeStatusFilter === 'function') {   // 🎥 Say Cheese: the filmed only
+            const _sp = Object.assign({}, spell); delete _sp.aoeOnStatus;
+            return window._aoeStatusFilter(spell, getSpellAoeAreaAI(_sp, cx, cy));
+        }
         if (spell && spell.aoeOnTerrain && typeof window._aoeTerrainFilter === 'function') {   // 🐌 Ronin's Wake: the ooze squares only
             const _sp = Object.assign({}, spell); delete _sp.aoeOnTerrain;
             return window._aoeTerrainFilter(spell, getSpellAoeAreaAI(_sp, cx, cy));

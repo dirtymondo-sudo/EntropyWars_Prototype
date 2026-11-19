@@ -2519,6 +2519,7 @@
                 }
             }
             if (spell.paintTerrain && target) _paintTimedTerrain(target.x, target.y, spell.paintTerrain, unit, spell.name, target.z);
+            if (spell.wetFloor && target && spell.kind !== 'deployObject') _janitorWet(unit, target.x, target.y, spell.wetFloor.radius || 0, spell.wetFloor.rounds || 2, target.z);   // 🧹 Mop Swing
             /* Clash: the charge-in hop and the swap-through are repositioning —
                the strike itself already landed, formation holds. */
             const _clashPinned = typeof _isClashMode === 'function' && _isClashMode();
@@ -4616,6 +4617,7 @@
             if (typeof canFly === 'function' && canFly(unit)
                 && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             if (unit.terrainPreference === 'ice') return false;
+            if (unit.race === 'janitor') return false;   // 🧹 WET FLOOR: rubber boots, he never slips (THE NEW RACES 3)
             // THE SPELL AUDIT Batch D — Snowborn's `noIceSlide`: sure-footed like the yeti (a unit-row read the guest mirrors).
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'noIceSlide')) return false;
             return true;
@@ -4626,7 +4628,7 @@
             const steps = [];
             if (!dx && !dy) return steps;
             let cx = fromX, cy = fromY, guard = 0;
-            while (_isIceTile(cx, cy) && guard++ < 64) {
+            while (_isSlickTile(cx, cy) && guard++ < 64) {
                 const nx = cx + dx, ny = cy + dy;
                 if (!isInside(nx, ny)) break;
                 if (!isTerrainPassable(nx, ny)) break;
@@ -4661,7 +4663,7 @@
             if (!unit || opts.takeoff || !isInside(x, y)) return null;
             /* 🌪 a storm eye on the way stops the walk and flings it (resolveMovePath + THE CHAIN's F) */
             { const st = _predictWalkStorm(unit, x, y, z, opts); if (st) return st; }
-            if (!_isIceTile(x, y)) return null;
+            if (!_isSlickTile(x, y)) return null;
             const sx = unit.x, sy = unit.y, sz = unit.z;
             if (sx === x && sy === y) return null;
             try {
@@ -4763,7 +4765,7 @@
 
         function _resolveIceSlide(unit, dir) {
             if (!_unitSlidesOnIce(unit)) return false;
-            if (!_isIceTile(unit.x, unit.y)) return false;
+            if (!_isSlickTile(unit.x, unit.y)) return false;
             /* `dir` (THE CHAIN's ice rule): a displaced body slides in its TRAVEL direction, not the way it faces */
             const f = (dir && (dir.dx || dir.dy)) ? { dx: dir.dx, dy: dir.dy }
                 : (typeof getUnitFacing === 'function') ? getUnitFacing(unit) : null;
@@ -5054,7 +5056,7 @@
                     if (typeof canFly === 'function' && canFly(u) && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) break;
                     groundBite(depth);
                     // B′ · ice: the glide goes on the way the body was travelling
-                    if (glide && (dx || dy) && _isIceTile(out.x, out.y) && _unitSlidesOnIce(u)) {
+                    if (glide && (dx || dy) && _isSlickTile(out.x, out.y) && _unitSlidesOnIce(u)) {
                         const ice = _iceSlideSteps(u, out.x, out.y, dx, dy);
                         glide = false;
                         if (ice.length) {
@@ -5268,7 +5270,7 @@
                 // a pull — never a walk, doMove's own slide owns that) keeps sliding the way it was travelling until it
                 // leaves the ice; the slide's landing runs its own chain. A Frost lane turns a 2-tile swing into the
                 // lane's whole length.
-                if (via !== 'move' && (opts.dirX || opts.dirY) && !opts.noGlide && typeof _isIceTile === 'function' && _isIceTile(unit.x, unit.y)
+                if (via !== 'move' && (opts.dirX || opts.dirY) && !opts.noGlide && typeof _isSlickTile === 'function' && _isSlickTile(unit.x, unit.y)
                     && typeof _resolveIceSlide === 'function'
                     && _resolveIceSlide(unit, { dx: opts.dirX, dy: opts.dirY, delayMs: opts.fxDelayMs || 0 })) {
                     fired++;
@@ -7535,6 +7537,7 @@
         }
         function _onDecoyBroken(obj, byUnit) {
             _clearDecoyTaunts(obj);
+            if (obj && !obj._partTaken && obj.serpentOf == null) { obj._partTaken = true; _mechGainPart(obj.x, obj.y, `the broken ${obj.spellName || 'object'}`); }   // 🔩 SPARE PARTS
             if (!obj || !Array.isArray(obj.breakStatus) || !obj.breakStatus.length || obj._breakSprung) return;
             obj._breakSprung = true;
             const src = obj.ownerUnitId ? unitFromId(obj.ownerUnitId) : null;
@@ -8084,6 +8087,7 @@
                 scheduleBoardRender();
             }
             triggerTerrainSpellReaction(unit, spell, tiles);
+            if (spell.aisleFour) _janitorAisle(unit, spell, tiles);   // 🧹 Cleanup on Aisle 4
             /* THE SPELL AUDIT Batch D: aoeLifeDrain (Bat Swarm 30%, Nightmare Pulse 25%) — the caster heals that share
                of the TOTAL damage the area dealt across every victim (lifeSapMult rides it like drainPct). */
             if (spell.aoeLifeDrain > 0 && _aoeDrainTotal > 0 && unit && !unit.dead) {
@@ -10411,6 +10415,7 @@
             /* THE SPELL AUDIT Batch D: a `wet` finisher (Depth Charge, Sting) pays on anything Soaked — the status OR a
                grounded unit standing in water (_unitIsSoaked), the same test the lightning combo uses. */
             if (statusId === 'wet' && _unitIsSoaked(target)) return true;
+            if (statusId === 'machine' && _isMachineUnit(target)) return true;   // 🔧 Wrench Throw: machines count (THE NEW RACES 3)
             // CHAMP REWORK Phase 4: a status that COUNTS AS others for the
             // payoff check (Corroded is Burn and Poison — STATUS_DEFS countsAs).
             return getActiveStatusKeys(target).some(k => {
@@ -15411,6 +15416,237 @@
             });
         }
         window._aoeTerrainFilter = _aoeTerrainFilter;
+
+        /* ═══ THE NEW RACES 3 (2026-11-19, mondo's picks from the 11-19 concepts round: Cameraman, Mechanic, Janitor, Trucker): one new
+           rule a race, host-side like THE NEW RACES 2 (the HP, statuses, squares and unit fields ride the state-sync; ids only on
+           units, RULE #2). Notes: docs/notes/champions-combat.md "THE NEW RACES 3". */
+        /* the machines (Spare Parts, Wrench Throw's `machine` combo, the heals that do more on a machine) */
+        const _NR3_MACHINES = new Set(['ai', 'robot', 'android', 'mech', 'cyborg', 'droid', 'cursed tv', 'honda civic']);
+        function _isMachineUnit(u) { return !!u && (_NR3_MACHINES.has(u.race) || (!!u.base && _NR3_MACHINES.has(u.base))); }
+        window._isMachineUnit = _isMachineUnit;
+        function _nr3Float(u, txt, kind) { if (u && !u.dead && !_skipVisuals()) showFloatingTextForUnit(u, txt, kind || 'buff', { durationMs: 1100 }); }
+        /* 🎥 THE FOOTAGE (the Cameraman): every hit he lands on an enemy puts it On Camera for 2 rounds (seen through the fog by his
+           side: map.js computeVisibleTiles) and every DIFFERENT enemy he films this life adds a Reel, up to 3 (applyDamageToUnit
+           calls this). Say Cheese (`reelSpend`) spends them. */
+        function _camFilm(src, target) {
+            if (!src || src.race !== 'cameraman' || !target || src.id === target.id) return;
+            if (target.dead || target._dying || !(target.hp > 0) || !sidesHostile(src.player, target.player)) return;
+            if (target._isCube || target._summonStatic) return;
+            const had = unitHasStatus(target, 'onCamera');
+            applyStatusPayload(target, { id: 'onCamera', duration: 2 }, '', src);
+            if (!had && unitHasStatus(target, 'onCamera')) _nr3Float(target, '🎥 ON CAMERA', 'debuff');
+            if (!Array.isArray(src._filmedIds)) src._filmedIds = [];
+            if (src._filmedIds.indexOf(target.id) >= 0) return;
+            src._filmedIds.push(target.id);
+            if ((src._reels || 0) >= 3) return;
+            src._reels = (src._reels || 0) + 1;
+            addLog(`🎞 ${_ctName(src)} has ${_ctName(target)} on film: Reel ${src._reels} of 3.`);
+            _nr3Float(src, `🎞 REEL ${src._reels}/3`, 'buff');
+        }
+        window._camFilm = _camFilm;
+        /* Say Cheese: the Reels are spent on the cast, +reelSpend damage each (the area resolver adds it like the Brood) */
+        function _camReelSpend(unit, spell) {
+            if (!unit || !spell || !(spell.reelSpend > 0)) return 0;
+            const n = Math.min(3, unit._reels || 0);
+            unit._reels = 0; unit._filmedIds = [];
+            if (n > 0) addLog(`🎞 ${_ctName(unit)} spends ${n} Reel${n !== 1 ? 's' : ''}: +${n * spell.reelSpend} damage.`);
+            return n * spell.reelSpend;
+        }
+        /* `aoeOnStatus` (Say Cheese): an area that only holds the squares of units wearing that status (On Camera) */
+        function _aoeStatusFilter(spell, area) {
+            if (!spell || !spell.aoeOnStatus || !Array.isArray(area)) return area;
+            const st = spell.aoeOnStatus, keep = new Set();
+            for (const u of (state.units || [])) if (u && !u.dead && !u._dying && unitHasStatus(u, st)) keep.add(u.x + ',' + u.y);
+            return area.filter(t => keep.has(t.x + ',' + t.y));
+        }
+        /* 🔧 SPARE PARTS (the Mechanic): a machine or a summon that goes down (map.js defeatUnit) or an object that is broken
+           (_onDecoyBroken, every break path calls it) within 3 of a Mechanic gives him a Part, up to 3. */
+        function _mechGainPart(x, y, what) {
+            for (const m of (state.units || [])) {
+                if (!_nrAlive(m) || m.race !== 'mechanic') continue;
+                if (Math.max(Math.abs(m.x - x), Math.abs(m.y - y)) > 3 || (m._parts || 0) >= 3) continue;
+                m._parts = (m._parts || 0) + 1;
+                addLog(`🔩 ${_ctName(m)} salvages a Part from ${what} (${m._parts} of 3).`);
+                _nr3Float(m, `🔩 PART ${m._parts}/3`, 'buff');
+            }
+        }
+        function _mechScrapDowned(unit) {
+            if (!unit) return;
+            const summon = !!(unit._isSummon || unit.summonedBy != null || unit._summonerId != null);
+            if (!summon && !_isMachineUnit(unit)) return;
+            _mechGainPart(unit.x, unit.y, `the wreck of ${_ctName(unit)}`);
+        }
+        window._mechScrapDowned = _mechScrapDowned;
+        /* Patch Job (`partsShield`): every Part he has goes into the ally as shield (capped at half its max HP) */
+        function _mechPatch(unit, spell, ally) {
+            if (!unit || !spell || !(spell.partsShield > 0) || !ally || ally.dead) return;
+            const n = unit._parts || 0;
+            if (!n) return;
+            unit._parts = 0;
+            const cap = Math.max(0, Math.floor((ally.maxHp || 0) * 0.5) - (ally.shield || 0));
+            const gain = Math.max(0, Math.min(cap, n * spell.partsShield));
+            if (gain > 0) ally.shield = (ally.shield || 0) + gain;
+            addLog(`🔩 ${_ctName(unit)} bolts ${n} Part${n !== 1 ? 's' : ''} onto ${_ctName(ally)}: +${gain} shield.`);
+            _nr3Float(ally, `+${gain} 🛡`, 'heal');
+        }
+        /* 🧹 WET FLOOR (the Janitor): the puddles he makes are timed Water marked `wetFloor`; everyone but him slides across them
+           like ice (_isSlickTile in the slide paths; _unitSlidesOnIce lets him keep his footing). */
+        function _isWetFloorTile(x, y) {
+            if (getTerrainAt(x, y) !== 'water') return false;
+            const L = state._timedTerrain;
+            if (!L || !L.length) return false;
+            for (let i = 0; i < L.length; i++) { const e = L[i]; if (e && e.wetFloor && e.x === x && e.y === y && e.z == null) return true; }
+            return false;
+        }
+        function _isSlickTile(x, y) { return _isIceTile(x, y) || _isWetFloorTile(x, y); }
+        window._isSlickTile = _isSlickTile;
+        window._aoeStatusFilter = _aoeStatusFilter;
+        window._janitorCleanCount = function (unit, spell) { try { return _janitorClean(unit, _janitorMopUpTiles(unit, spell), true); } catch (e) { return 0; } };
+        window._truckerUnloadPlan = function (unit, spell) {
+            try {
+                let hits = 0, free = 0;
+                for (const q of _truckerUnloadSquares(unit, spell)) { const v = unitAt(q.x, q.y); if (v && !v.dead && sidesHostile(v.player, unit.player)) hits++; else if (!v && _nrFreeSquare(q.x, q.y)) free++; }
+                return { hits, free };
+            } catch (e) { return null; }
+        };
+        function _janitorWet(unit, cx, cy, radius, rounds, refZ) {
+            const n = _paintTimedTerrain(cx, cy, { terrain: 'water', radius: radius || 0, rounds: rounds || 2 }, unit, null, refZ != null ? refZ : unit.z) || 0;
+            const r = radius || 0;
+            for (const e of (state._timedTerrain || [])) {
+                if (e && e.terrain === 'water' && Math.max(Math.abs(e.x - cx), Math.abs(e.y - cy)) <= r) { e.wetFloor = true; e.wetFloorPlayer = unit.player; }
+            }
+            if (n) {
+                addLog(`🧹 ${_ctName(unit)} mops ${n} square${n !== 1 ? 's' : ''}: the floor is wet for ${rounds || 2} rounds.`);
+                if (!_skipVisuals() && typeof showFloatingTextAtTile === 'function') showFloatingTextAtTile(cx, cy, '⚠ WET FLOOR', 'debuff', { durationMs: 1200 });
+            }
+            return n;
+        }
+        /* the messes he cleans: timed hazard ground, burning squares, the other side's zones */
+        const _NR3_MESS = new Set(['swamp', 'oil', 'sludge', 'poison', 'poison_bog', 'lava', 'scorched', 'blood', 'water', 'ice', 'plague_flesh', 'purple_bog']);
+        function _janitorClean(unit, tiles, dry) {
+            const inA = new Set((tiles || []).map(t => t.x + ',' + t.y)), done = new Set();
+            const terr = (state._timedTerrain || []).filter(e => e && inA.has(e.x + ',' + e.y) && _NR3_MESS.has(e.terrain)
+                && !(e.wetFloor && e.wetFloorPlayer != null && sidesAllied(e.wetFloorPlayer, unit.player)));   // his own side's wet floor is not mess
+            for (const e of terr) done.add(e.x + ',' + e.y);
+            const fires = Object.keys(state.burningTiles || {}).filter(k => inA.has(k));
+            for (const k of fires) done.add(k);
+            const zones = (state._activeZones || []).filter(z => z && z.ownerPlayer != null && !sidesAllied(z.ownerPlayer, unit.player)
+                && (tiles || []).some(t => _zoneCovers(z, t.x, t.y)));
+            const n = done.size + zones.length;
+            if (dry || !n) return n;
+            if (terr.length) { for (const e of terr) e.expiresRound = 0; _tickTimedTerrain(); }
+            for (const k of fires) { const [fx, fy] = k.split(',').map(Number); extinguishTile(fx, fy); }
+            if (zones.length) { const gone = new Set(zones); state._activeZones = state._activeZones.filter(z => !gone.has(z)); }
+            state._terrainVersion = (state._terrainVersion || 0) + 1;
+            try { if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid(); } catch (e) {}
+            scheduleBoardRender();
+            const parts = [];
+            if (terr.length) parts.push(`${terr.length} square${terr.length !== 1 ? 's' : ''} of mess`);
+            if (fires.length) parts.push(`${fires.length} fire${fires.length !== 1 ? 's' : ''}`);
+            if (zones.length) parts.push(`${zones.length} enemy zone${zones.length !== 1 ? 's' : ''}`);
+            addLog(`🧹 ${_ctName(unit)} cleans up ${parts.join(', ')}.`);
+            return n;
+        }
+        function _janitorMopUpTiles(unit, spell) {
+            const r = (spell && spell.mopUp && spell.mopUp.radius) || 2;
+            return getSquareArea(unit.x, unit.y, r).filter(t => isInside(t.x, t.y));
+        }
+        function _janitorMopUp(unit, spell) {
+            const n = _janitorClean(unit, _janitorMopUpTiles(unit, spell), false);
+            if (!n || unit.dead) return;
+            const mu = spell.mopUp || {};
+            const pct = Math.min(mu.healPctMax || 0.3, n * (mu.healPctPer || 0.05));
+            const healed = applyHealingToUnit(unit, Math.max(1, Math.floor((unit.maxHp || 0) * pct)), unit, { preScaled: true });
+            if (healed > 0) addLog(`🧹 ${_ctName(unit)} feels better for it: +${healed} HP.`);
+            _nr3Float(unit, '🧹 SPOTLESS', 'buff');
+        }
+        /* Cleanup on Aisle 4 (`aisleFour`, _applyAoeDamage): the 3×3 is cleaned, then left a slippery puddle */
+        function _janitorAisle(unit, spell, tiles) {
+            if (!unit || unit.dead || !spell || !spell.aisleFour || !Array.isArray(tiles) || !tiles.length) return;
+            _janitorClean(unit, tiles, false);
+            let n = 0;
+            for (const t of tiles) n += _paintTimedTerrain(t.x, t.y, { terrain: 'water', radius: 0, rounds: spell.aisleFour.rounds || 2 }, unit, null) || 0;
+            const keys = new Set(tiles.map(t => t.x + ',' + t.y));
+            for (const e of (state._timedTerrain || [])) if (e && e.terrain === 'water' && keys.has(e.x + ',' + e.y)) e.wetFloor = true;
+            if (n) addLog(`🧹 Aisle 4 is wet: ${n} square${n !== 1 ? 's' : ''} for ${spell.aisleFour.rounds || 2} rounds.`);
+        }
+        /* 🚚 HITCHHIKE (the Trucker): when he walks, up to 2 allies standing next to where he set off ride along and get out on the
+           squares he walked across last (finishMoveAt, like the Serpent's body). Not a Rooted / Frozen / Roped / colossal ally. */
+        function _truckerHitchhike(unit, ox, oy, trail) {
+            if (!_nrAlive(unit) || unit.race !== 'trucker' || (unit.x === ox && unit.y === oy)) return;
+            const riders = (state.units || []).filter(a => _nrAlive(a) && a.id !== unit.id && sidesAllied(a.player, unit.player)
+                && !a._isCube && !a._summonStatic && Math.max(Math.abs(a.x - ox), Math.abs(a.y - oy)) === 1 && !_deliveryRideBlock(a)
+                && !(typeof isUnitAirborne === 'function' && isUnitAirborne(a)));
+            if (!riders.length) return;
+            const cand = (Array.isArray(trail) ? trail.map(t => ({ x: t.x, y: t.y })) : []).concat([{ x: ox, y: oy }]);
+            const taken = new Set();
+            const _walkLeft = (!_skipVisuals() && !_bufferingRoundEvents && _walkAnimActive && _walkAnimUnitId === unit.id)
+                ? Math.max(0, _walkAnimEndAt - Date.now()) : 0;
+            let moved = 0;
+            for (const a of riders.slice(0, 2)) {
+                const q = cand.find(c => !taken.has(c.x + ',' + c.y) && !(c.x === unit.x && c.y === unit.y) && _nrFreeSquare(c.x, c.y));
+                if (!q) break;
+                taken.add(q.x + ',' + q.y);
+                const fx = a.x, fy = a.y;
+                a.x = q.x; a.y = q.y;
+                if (typeof nearestWalkableZ === 'function') a.z = nearestWalkableZ(a.x, a.y, a.z);
+                a._trackTilesMoved = (a._trackTilesMoved || 0) + Math.abs(a.x - fx) + Math.abs(a.y - fy);
+                animateDisplacement(a, fx, fy, a.x, a.y, 420, { delayMs: _walkLeft });
+                resolveTileArrival(a, { via: 'self' });
+                addLog(`🚚 ${_ctName(a)} hitchhikes with ${_ctName(unit)} to ${coordLabel(a.x, a.y)}.`, undefined, undefined, { actor: unit });
+                if (!_skipVisuals()) { const _ft = () => { if (!a.dead) showFloatingTextForUnit(a, '👍 HITCHHIKE', 'buff', { durationMs: 1000 }); }; if (_walkLeft > 0) window.setTimeout(_ft, _walkLeft); else _ft(); }
+                moved++;
+            }
+            if (moved) { try { if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid(); } catch (e) {} }
+        }
+        /* Unload (`unload`): the 3 squares straight behind him (the way he faces, turned round). A free square gets a cardboard box (a
+           blocking object, 30 HP); an enemy standing there takes the box instead. His older boxes past `keep` are cleared. */
+        function _truckerUnloadSquares(unit, spell) {
+            const u = spell && spell.unload; if (!u || !unit) return [];
+            const f = getUnitFacing(unit) || { dx: 0, dy: 1 };
+            let bx = -(f.dx || 0), by = -(f.dy || 0);
+            if (Math.abs(bx) >= Math.abs(by)) { bx = Math.sign(bx) || 0; by = 0; } else { by = Math.sign(by); bx = 0; }
+            if (!bx && !by) by = -1;
+            const out = [];
+            let px = unit.x, py = unit.y;
+            for (let i = 1; i <= (u.boxes || 3); i++) {
+                const x = unit.x + bx * i, y = unit.y + by * i;
+                if (!isInside(x, y)) break;
+                if (state.edgeWalls && typeof wallBlocksStep === 'function' && wallBlocksStep(px, py, x, y)) break;
+                if (!isTerrainPassable(x, y)) break;
+                out.push({ x, y });
+                px = x; py = y;
+            }
+            return out;
+        }
+        function _truckerUnload(unit, spell) {
+            const u = spell && spell.unload; if (!u || !_nrAlive(unit)) return;
+            const sq = _truckerUnloadSquares(unit, spell);
+            if (!state._deployedObjects) state._deployedObjects = [];
+            const dmg = calcFlatSpellDamage(u.dmg || 100, spellPowerOf(unit, spell), 16);
+            let boxes = 0, hits = 0;
+            for (const q of sq) {
+                const v = unitAt(q.x, q.y);
+                if (v && !v.dead && sidesHostile(v.player, unit.player)) {
+                    applyDamageToUnit(v, dmg, `${spell.name}: a box lands on `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null });
+                    hits++;
+                    continue;
+                }
+                if (v || !_nrFreeSquare(q.x, q.y)) continue;
+                state._deployedObjects.push({
+                    x: q.x, y: q.y, z: (typeof getHeightAt === 'function') ? getHeightAt(q.x, q.y) : 0,
+                    ownerUnitId: unit.id, ownerId: unit.id, ownerPlayer: unit.player, hp: u.boxHp || 30, maxHp: u.boxHp || 30,
+                    blocksMovement: true, spellId: 'nrUnload', spellName: 'Cardboard Box', spellType: spell.spellType || null, statusEffects: []
+                });
+                boxes++;
+            }
+            const mine = state._deployedObjects.filter(o => o && o.spellId === 'nrUnload' && o.ownerUnitId === unit.id);
+            if (mine.length > (u.keep || 6)) { const drop = new Set(mine.slice(0, mine.length - (u.keep || 6))); state._deployedObjects = state._deployedObjects.filter(o => !drop.has(o)); }
+            addLog(`🚚 ${_ctName(unit)} rolls up the back door: ${boxes} box${boxes !== 1 ? 'es' : ''} out${hits ? `, ${hits} landing on the enemy` : ''}.`);
+            _nr3Float(unit, '📦 UNLOAD', 'buff');
+            try { if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid(); } catch (e) {}
+            scheduleBoardRender();
+        }
         /* 🦗 THE BROOD (the Cicada Brood, THE CICADA POLISH 2026-11-17): every round end it spends dug in (`dormant`) adds a Brood
            stack, up to 3 (STATUS_DEFS.dormant.onRoundEnd, run from _nrRoundEnd: the round-end status pass only runs the ticks in
            state.js _STATUS_EFFECT_IDS, so the stacks never grew before). The pulse under the ground is drawn for its own side only
@@ -43412,6 +43648,7 @@
                 target._trackDmgReceived = (target._trackDmgReceived || 0) + finalDamage;
                 target._tapeNow = (target._tapeNow || 0) + finalDamage;   // 📺 THE TAPE: what it took this round (the Cursed TV's Rewind plays last round's back)
                 if (sourceUnit && sourceUnit.race === 'wendigo' && sidesHostile(sourceUnit.player, target.player)) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
+                if (sourceUnit && sourceUnit.race === 'cameraman' && target.hp > 0) _camFilm(sourceUnit, target);   // 🎥 THE FOOTAGE
 
                 /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
                    multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
@@ -44359,6 +44596,7 @@
             if (preScaled) amount = Math.floor(target.maxHp * spell.healPct);
             if (spell.lowHpBonus && target.hp / target.maxHp < 0.4) amount += spell.lowHpBonus;
             if (spell.spendPlate && unit) amount += Math.max(0, unit._plate || 0);   // 🙌 Miracle heals the collection plate too
+            if (spell.healVsMachineMult > 0 && _isMachineUnit(target)) amount = Math.round(amount * spell.healVsMachineMult);   // 🔧 the Mechanic's heals on a machine
             // Tinker (passive row, the `repairMult` hook, mult — was the Engineer job, THE JOBS REMOVAL 2026-09-27): Repair heals 20% more.
             if (spell.id === 'repair') { const rm = unitPassiveMult(unit, 'repairMult') || 1; if (rm !== 1) amount = Math.round(amount * rm); }
             return { amount, preScaled };
@@ -47380,6 +47618,7 @@
         window._spellMaskOf = _spellMaskOf; window._spellMaskTiles = _spellMaskTiles; window._spellAoeReach = _spellAoeReach;
         function getSpellAoeArea(spell, cx, cy) {
             if (spell && spell.aoeOnTerrain) return _aoeTerrainFilter(spell, _getSpellAoeAreaRaw(spell, cx, cy));   // 🐌 Ronin's Wake
+            if (spell && spell.aoeOnStatus) return _aoeStatusFilter(spell, _getSpellAoeAreaRaw(spell, cx, cy));   // 🎥 Say Cheese
             return _getSpellAoeAreaRaw(spell, cx, cy);
         }
         function _getSpellAoeAreaRaw(spell, cx, cy) {
@@ -48110,6 +48349,7 @@
             _magicianVanish(unit);   // 🎩 Vanishing Act: an enemy ended beside a Magician with it set
             _deliveryDrop(unit, _originX, _originY);   // 🛵 the Delivery Boy drops his rider off
             _slugTrail(unit, _originX, _originY, opts.trail);   // 🐌 the Samurai Slug's slime trail
+            _truckerHitchhike(unit, _originX, _originY, opts.trail);   // 🚚 the Trucker's hitchhikers ride along
             if (unit.race === 'monk' && (_originX !== x || _originY !== y)) unit._walkedRound = state.round || 0;   // 📿 a walk breaks the Stillness
 
             if (!_wasAirborne) {
@@ -50362,6 +50602,7 @@
                 if (spell.hitsStatusOnly === 'payload' && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && unitHasStatus(e, 'payload'))) return '🦠 No Payload out';
                 if (spell.viewersMin > 0 && getViewers(unit) < spell.viewersMin) return '🎮 Need ' + spell.viewersMin + ' viewers';   // 🎮 THE VIEWERS
                 if (spell.rewindTape > 0 && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && _tvTapeAmount(e, spell) > 0)) return '📼 Nothing on tape';   // 📺 Rewind: no enemy took a hit last round
+                if (spell.partsCost > 0 && (unit._parts || 0) < spell.partsCost) return '🔩 Need ' + spell.partsCost + ' Parts';   // 🔧 Jury Rig (SPARE PARTS)
                 if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
                 if (unitHasStatus(unit, 'celibate') && _isSummonSpell(spell)) return '⛪ Celibate';   // ⛪ Celibacy: no summoning
                 /* 👁 a spirit casts magic only (no body, no physical spells) and cannot project again while it is out */
@@ -52077,7 +52318,7 @@
            ground effects (deform, terrain reactions, turrets) and stay a player choice. */
         function _selfNovaEnemyOnly(spell) {
             if (!spell) return false;
-            if (spell.aoeOnTerrain && spell.aoeOriginSelf && spell.kind === 'aoe') return true;   // 🐌 Ronin's Wake: nobody in the ooze = refused
+            if ((spell.aoeOnTerrain || spell.aoeOnStatus) && spell.aoeOriginSelf && spell.kind === 'aoe') return true;   // 🐌 Ronin's Wake / 🎥 Say Cheese: nobody to hit = refused
             if (spell.paintTerrain || spell.aoeAllyHeal || spell.leaveTerrain || spell.zoneTickDamage > 0) return false;
             if (spell.kind === 'barrage') return true;
             return !!spell.aoeOriginSelf && (spell.kind === 'aoe' || spell.kind === 'aoePull')
@@ -84852,6 +85093,7 @@
                 window.setTimeout(() => {
                     const healed = applyHealingToUnit(_ht, healAmount, unit, _healPreScaled ? { preScaled: true } : {});
                     if (spell.spendPlate && unit._plate > 0) { addLog(`🙌 ${_ctName(unit)} spends the collection plate (${unit._plate}).`); unit._plate = 0; }
+                    if (spell.partsShield > 0) _mechPatch(unit, spell, _ht);   // 🔧 Patch Job
                     /* THE SPELL AUDIT (2026-09-30): a heal row's `cleanse` (a count, 99 = all) was never read here —
                        Herbal Remedy, Séance, Absolution and Tidal Blessing all promise it. */
                     let _hcGone = [];
@@ -84918,6 +85160,15 @@
                         addLog(`${_ctSp(spell.name)}: no ally within ${spell.massRescue.radius || 4} is under ${Math.round((spell.massRescue.hpPct || 0.5) * 100)}% HP.`, _clickSeat());
                         playErrorSfx();
                     }
+                    return 0;
+                }
+                /* 🧹 Mop Up with nothing to clean, 🚚 Unload with no square behind him: refused before anything is spent */
+                if (spell.mopUp && !_janitorClean(unit, _janitorMopUpTiles(unit, spell), true)) {
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: nothing to clean within ${spell.mopUp.radius || 2}.`, _clickSeat()); playErrorSfx(); }
+                    return 0;
+                }
+                if (spell.unload && !_truckerUnloadSquares(unit, spell).length) {
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no room behind ${_ctName(unit)} to unload.`, _clickSeat()); playErrorSfx(); }
                     return 0;
                 }
                 /* 🛵 Thirty Minutes or Less with nobody beside him to carry is refused before anything is spent */
@@ -85029,6 +85280,8 @@
                     if (spell.massRescue && !unit.dead) _lifeguardMassRescue(unit, spell);   // 🛟 Three Whistles
                     if (spell.pullString && !unit.dead) _dollPullString(unit, spell);   // 🪆 Pull My String
                     if (spell.rideAlong && !unit.dead) _deliveryLoadUp(unit, spell);   // 🛵 Thirty Minutes or Less
+                    if (spell.mopUp && !unit.dead) _janitorMopUp(unit, spell);   // 🧹 Mop Up
+                    if (spell.unload && !unit.dead) _truckerUnload(unit, spell);   // 🚚 Unload
                     if (spell.filterSwap && !_bt.dead) _influencerFilter(unit, _bt, spell);   // 🤳 Filter
                     if (spell.slimeRing && !unit.dead) { _sigVfxGeom('nrSaltProof:ring', unit.x, unit.y, 1, { owner: unit.player }); _slugRing(unit, spell); }   // 🐌 Salt-Proof Stance
                     markDirty('hud');
@@ -85177,6 +85430,7 @@
                             target.mp -= _mdLost;
                             showFloatingTextForUnit(target, `-${_mdLost} MP`, 'debuff', { durationMs: 1000 });
                             addLog(`${_ctSp(spell.name)}: ${_ctName(target)} leaks ${_mdLost} MP.`);
+                            if (spell.laborFee && !unit.dead) { const _lf0 = unit.mp || 0; unit.mp = Math.min(unit.maxMp || (_lf0 + _mdLost), _lf0 + _mdLost); if (unit.mp > _lf0) { addLog(`🔧 ${_ctName(unit)} pockets it: +${unit.mp - _lf0} MP.`); _nr3Float(unit, `+${unit.mp - _lf0} MP`, 'heal'); } }   // 🔧 Labor Fee
                             markDirty('teams', 'selectedUnit', 'hud');
                         }
                     }
@@ -86072,7 +86326,7 @@
                 window.setTimeout(() => {
                     const area = getSpellAoeArea(spell, x, y);
                     const hitCount = _applyAoeDamage(unit, spell, area,
-                        (spell.dmg || 0) + spellPower + _broodSpend(unit, spell), spellPower, {
+                        (spell.dmg || 0) + spellPower + _broodSpend(unit, spell) + _camReelSpend(unit, spell), spellPower, {
                             waterBonus: spell.waterBonus,
                             rngRange: 40, minDmg: 32,
                             deformCenter: { x, y },
@@ -87934,6 +88188,8 @@
                     _deployedEntry.spriteUnit = _decoyLookOf(unit);
                 }
                 state._deployedObjects.push(_deployedEntry);
+                if (spell.partsCost > 0) { unit._parts = Math.max(0, (unit._parts || 0) - spell.partsCost); addLog(`🔩 ${_ctName(unit)} uses ${spell.partsCost} Parts (${unit._parts} left).`); }   // 🔧 Jury Rig
+                if (spell.wetFloor) _janitorWet(unit, x, y, spell.wetFloor.radius || 0, spell.wetFloor.rounds || 2, z);   // 🧹 the Wet Floor Sign's puddle
                 _sigVfxGeom(spell.id + ':deploy', x, y, 0, { onlyPlayer: unit.player, fromX: unit.x, fromY: unit.y });
                 /* THE SPELL AUDIT Batch D: decoyTaunt { radius, duration } (Stuffed Double) — every enemy within radius of
                    the decoy is Provoked toward IT: the taunt status, keyed to the object's tile (_tauntObjKey) instead of

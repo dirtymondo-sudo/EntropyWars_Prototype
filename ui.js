@@ -8861,6 +8861,10 @@
             'virus': 'Anomaly. A living computer virus out of The Internet\'s quarantine: a floating ball of dark green crystal ringed with red eyes, spikes that glow at the tips, tendrils of broken code hanging under it. It plants payloads that copy themselves from body to body, splits off replicas, and sets everything off at once.',   // 2026-11-18 THE VIRUS
             'streamer': 'Human + Tech. Lives on The Internet\'s stage, live all day every day. One race: the Streamer and the E-Girl. Every hit he lands, every KO, every big hit he eats builds the chat (up to 10 viewers); then he cashes the crowd in, for a Donation Goal that heals the team or a Raid that sends the whole chat at the enemy. He rage-quits and dashes; she charms and gifts subs.',   // 2026-11-18 THE STREAMER + E-GIRL
             'vtuber': 'Tech + Anomaly. A pop idol made of light who lives on The Internet\'s stage. She stands up to two Holo Projectors on the field and every spell and basic attack she has can fly from her own square or from either one; Scene Change swaps her onto a projector, Lo-Fi Loop puts a target to sleep, and Collab Stream pulses from her and every projector at once.',
+            'cameraman': 'Human. A cameraman who works Disaster City, The Woods and the Lake: Hawaiian shirt, photographer\'s vest, the camera always up. Everyone he catches on camera stays in the shot, and the last frame finds them wherever they hide.',   // 2026-11-19 THE NEW RACES 3
+            'mechanic': 'Human. A grease monkey from Disaster City\'s Industrial yards and the gas station: navy coveralls, a rag in the pocket, wrenches on the belt. Anything that breaks near him is spare parts.',   // 2026-11-19 THE NEW RACES 3
+            'janitor': 'Human. A janitor who works everywhere nobody looks: Disaster City, The D.U.M.B., The Sewers. Green work clothes, yellow boots, a ring of keys. The floor is wet. He did put a sign out.',   // 2026-11-19 THE NEW RACES 3
+            'trucker': 'Human. A long-haul trucker off the highway: plaid vest, grey beard, cowboy boots. Nobody gets left behind: the ones lined up behind him come along for the ride.',   // 2026-11-19 THE NEW RACES 3
             'pharaoh': 'Human + Divine. The god-king of the Nile and his queen, Cleopatra, from the Pyramids of Giza. The asp, the eye of the sun, and a tomb he raises on the field: the first time he falls he rises from it, and whoever breaks it is cursed.',
             'deep sea diver': 'Human + Tech. A deep sea diver from the wrecks off Atlantis, in a sealed glass bubble helmet. Her Depth Charge gives the Bends: every square a unit moves costs it HP, and her harpoon and shove make sure they move.',
             'lifeguard': 'Human. The lifeguard of the Beach and Bayside. Red swimsuit, red tube, and nobody goes down on her watch.',   // 2026-11-16
@@ -14711,6 +14715,10 @@
                 const mcx = (spell.aoeOriginSelf && casterUnit && spell.kind !== 'bomb') ? casterUnit.x : tx;
                 const mcy = (spell.aoeOriginSelf && casterUnit && spell.kind !== 'bomb') ? casterUnit.y : ty;
                 return aoeMaskTiles(spell.aoeMask, mcx, mcy, bw(), bh());
+            }
+            if (spell.kind === 'aoe' && spell.aoeOnStatus && typeof window._aoeStatusFilter === 'function') {   // 🎥 Say Cheese: the filmed only
+                const _sp = Object.assign({}, spell); delete _sp.aoeOnStatus;
+                return window._aoeStatusFilter(spell, getSpellAoeFootprint(_sp, tx, ty, casterUnit));
             }
             if (spell.kind === 'aoe' && spell.aoeOnTerrain && typeof window._aoeTerrainFilter === 'function') {   // 🐌 Ronin's Wake: the ooze squares only
                 const _sp = Object.assign({}, spell); delete _sp.aoeOnTerrain;
