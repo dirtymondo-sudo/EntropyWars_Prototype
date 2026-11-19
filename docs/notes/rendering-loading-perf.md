@@ -3087,3 +3087,8 @@ in the recursive checksum, 12.5 MB), `_hqSeaRules` (a fresh merged object per bo
 `_hqNavPath` / `_mmVisit` / `_hqChunkTick` (spikes thread's areas, passed on). Cut here: `_hqSeaRules` caches its merge per rules
 pair; `_hqNavGridAt` refills one array per grid (`G.out`, every caller reads it at once and keeps nothing; comparator hoisted to
 `_hqNumUp`). Finding: the garbage rate is modest, so GC is a small part of the drops at best; minor collections, not big pauses.
+
+### THE SLOWER WATCHDOG (2026-11-19, spikes thread, his 13:36 F3: 32.5 FPS, no slow frame in this thread's code)
+"batch: check 1.35 ms" every frame: the merged pieces' check (~16,000 pieces, 0.35 ms a frame per merge, a round ~3 s) restarted 0.5 s
+after each round. In a chunked room (`_hqChunkBig`, the current room) the next round now starts 4 s after the last (`ckGap`). Off:
+`EW_HQ_BATCH_CHECK_FAST`. Same F3: #2156 holds (no re-bakes, 0 builds/s); bundle check/replay spikes 29-80 ms are the 60 FPS thread's.
