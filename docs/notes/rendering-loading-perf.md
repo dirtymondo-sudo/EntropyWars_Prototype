@@ -3110,6 +3110,21 @@ for a group over 1,000 children, a book (`g._ew_bunF`): the held pieces' hash on
 check. The book is laid again when the child count, `_hqBatchHoldN` (bumped where the batch takes / hands back a piece) or an add under the
 group changes, and every 240 checks. Off: `window.EW_BUN_HELD_EVERY`. Same F3: one slow frame left (rig ticks 11 ms), 0 builds/s.
 
+
+- THE FREES SPREAD (11-19, same F3: one slow frame, "render: node + rig ticks 11 ms"): that tick also destroyed every GPU buffer three
+  forgot the frame before (`_ewGpuFreeLater`), hundreds at once when a chunk or room lets go. Now at most `EW_FREE_PER_FRAME` (48) a
+  frame, the rest kept for later frames (a count, not a time: Firefox's whole-ms clock). The lens shows it as its own row
+  "render: gpu frees". All at once: `window.EW_FREE_ALL_AT_ONCE`.
+
+### THE DIP LOG (2026-11-19, 60 FPS thread; mondo: "do i have to shift f3 the exact moment it happens ... no where near stable yet")
+Always on in the walk, lens open or not (`_dipBegin` / `_dipEnd` at `_hqFrameGuarded`'s edges). The walk's named parts are timed every
+frame through the lens's own spans (`_dip.cur` stands in for the lens frame; `_lensIn` / `_lensMark` / `_lensSub` and the tick gates read
+`_lensOn()`), without the lens's draw counting or census. A frame gap of 50 ms+ or a second under 30 FPS opens or extends a dip (closed
+1.5 s after its last slow frame; a room's first 3 s are the load and skipped). Each dip keeps: time, length, lowest FPS, worst gap, slow
+frames + their JS, where the officer stood (squares, start → end), its top 4 parts summed, and what happened in it (bundle re-records,
+epoch moves, shader builds, new pipelines, GPU buffers freed, objects added, models loaded). Shift+F3 prints the last 12 of the session
+as "Dips this session" (40 kept). Off: `window.EW_DIP_OFF`. Stability (the dips), not the average, is the goal from here.
+
 ### THE ZSEP — FACES SHARING A PLANE (2026-11-19, mondo: "z fighting ... textures flickering ... mostly on the sides/walls of buildings, some on the ground")
 Cause: two surfaces drawn in the SAME plane (the depth test cannot choose, they trade pixels each frame). Not depth precision (near 4 units,
 the separations were exactly 0). A detector sweep of Disaster City (121 squares of 62 m, every visible shell triangle, same-facing coplanar
@@ -3125,17 +3140,3 @@ City: 5,666 pairs, 4,732 faces lifted on 979 pieces, ~4.3 s sliced on the cloud'
 recipe: walk `dev.hqScene()` skipping `_ew_bRec`-merged originals' copies (`_ew_hqBatch`) and hidden instance sources.
 The Bayside sea-wall ground in his second picture showed no overlapping surfaces in a sweep with decals and cut-outs included; if it still
 flickers, suspect shadow acne at a low sun (HQ_LIGHT_RULES.shadows.normalBias 2.4 vs a ~3-6 cm shadow texel).
-
-- THE FREES SPREAD (11-19, same F3: one slow frame, "render: node + rig ticks 11 ms"): that tick also destroyed every GPU buffer three
-  forgot the frame before (`_ewGpuFreeLater`), hundreds at once when a chunk or room lets go. Now at most `EW_FREE_PER_FRAME` (48) a
-  frame, the rest kept for later frames (a count, not a time: Firefox's whole-ms clock). The lens shows it as its own row
-  "render: gpu frees". All at once: `window.EW_FREE_ALL_AT_ONCE`.
-
-### THE DIP LOG (2026-11-19, 60 FPS thread; mondo: "do i have to shift f3 the exact moment it happens ... no where near stable yet")
-Always on in the walk, lens open or not (`_dipBegin` / `_dipEnd` at `_hqFrameGuarded`'s edges). The walk's named parts are timed every
-frame through the lens's own spans (`_dip.cur` stands in for the lens frame; `_lensIn` / `_lensMark` / `_lensSub` and the tick gates read
-`_lensOn()`), without the lens's draw counting or census. A frame gap of 50 ms+ or a second under 30 FPS opens or extends a dip (closed
-1.5 s after its last slow frame; a room's first 3 s are the load and skipped). Each dip keeps: time, length, lowest FPS, worst gap, slow
-frames + their JS, where the officer stood (squares, start → end), its top 4 parts summed, and what happened in it (bundle re-records,
-epoch moves, shader builds, new pipelines, GPU buffers freed, objects added, models loaded). Shift+F3 prints the last 12 of the session
-as "Dips this session" (40 kept). Off: `window.EW_DIP_OFF`. Stability (the dips), not the average, is the goal from here.
