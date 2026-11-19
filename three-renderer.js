@@ -19840,7 +19840,9 @@ const ThreeRenderer = (function () {
             if (!entries[0] || !entries[0].root) { settle(null); return; }
             var baked = null;
             try {
+                var _cbT = _lensOn() ? performance.now() : 0;
                 baked = _libBakeClips(entries, modelEntry, def);
+                _lensSub('new body: clip bake (first of a model)', _cbT);
             } catch (ex) {
                 console.warn('[ThreeRenderer] animation-library retarget failed — using per-character clips:', ex && ex.message);
             }
@@ -83233,7 +83235,9 @@ const ThreeRenderer = (function () {
         var unit;
         try {
             var template = CLASS_TEMPLATES[UNIT_CLASS];   // THE JOBS REMOVAL (2026-09-27): one neutral template
+            var _cuT = _lensOn() ? performance.now() : 0;
             unit = createUnit(spec.id, 1, 0, 0, template, emptyLoadout(), { race: race, gender: gender });
+            _lensSub('new body: game unit', _cuT);
         } catch (e) { console.warn('[HQ] createUnit failed for', race, e); return null; }
         unit.ap = 1;
         if (spec.appearance && def && (def.creatorBase || def.mpfbBody)) unit.appearance = spec.appearance;   // _attachUnitModel builds the creator rig off it
@@ -83241,7 +83245,9 @@ const ThreeRenderer = (function () {
         unit.facing = { dx: Math.sin(yaw), dy: Math.cos(yaw) };
         var entry = { group: new THREE.Group(), id: spec.id, unit: unit, modelDef: def };
         entry.group.name = 'hq_' + spec.id;
+        var _nbT = _lensOn() ? performance.now() : 0;   // (2026-11-19, spikes thread: "residents: new body 51 ms" named no step: the model + its rig, and the clip bake inside it, now show apart)
         _attachUnitModel(entry, unit, def, BASE_TILE);
+        _lensSub('new body: model + rig', _nbT);
         var y = _hqLevelY(S, spec.level || 0) + (spec.y || 0);
         if (spec.y == null && spec.x != null && _hqHasGround()) { var chy = _hqCaveTop(spec.x, spec.z || 0); if (chy != null) y += chy; }   // THE CAVE (rev 11): a native / the walker stands on its cell
         /* box rooms place by (x, z) metres; polar rooms by (deg, r) */
