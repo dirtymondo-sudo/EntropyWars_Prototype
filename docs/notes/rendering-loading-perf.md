@@ -3109,3 +3109,7 @@ The shell's ~10,000 children are nearly all held by the static batch, and every 
 for a group over 1,000 children, a book (`g._ew_bunF`): the held pieces' hash once (`hh`, count `hc`) and the rest (`live`) walked each
 check. The book is laid again when the child count, `_hqBatchHoldN` (bumped where the batch takes / hands back a piece) or an add under the
 group changes, and every 240 checks. Off: `window.EW_BUN_HELD_EVERY`. Same F3: one slow frame left (rig ticks 11 ms), 0 builds/s.
+- THE FREES SPREAD (11-19, same F3: one slow frame, "render: node + rig ticks 11 ms"): that tick also destroyed every GPU buffer three
+  forgot the frame before (`_ewGpuFreeLater`), hundreds at once when a chunk or room lets go. Now at most `EW_FREE_PER_FRAME` (48) a
+  frame, the rest kept for later frames (a count, not a time: Firefox's whole-ms clock). The lens shows it as its own row
+  "render: gpu frees". All at once: `window.EW_FREE_ALL_AT_ONCE`.
