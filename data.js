@@ -383,6 +383,10 @@ const FINISHERS = {
     'boltzmann brain':{ id: 'fin_boltzmann_brain', name: 'Spontaneous Existence', glyph: '🧠', type: 'alien', sig: 'heatDeath', built: true, tagline: 'I THINK, THEREFORE I AM', desc: 'For one moment the brain imagines a universe without the victim in it, and the universe agrees.' },   // 2026-11-17 THE NEW RACES 2 (borrows the heatDeath staging)
     'wendigo':        { id: 'fin_wendigo', name: 'Insatiable', glyph: '🦌', type: 'unholy', sig: 'fullMoon', built: true, tagline: 'IT IS STILL HUNGRY', desc: 'The antlers come down out of the snow. When it is done, it is hungrier than when it started.' },   // 2026-11-17 THE NEW RACES 2 (borrows the fullMoon staging)
     'karate frog':    { id: 'fin_karate_frog', name: 'Hopping Mad', glyph: '🐸', type: 'human', sig: 'spiritBomb', built: true, tagline: 'RIBBIT', desc: 'A leap off the sewer wall, a flying kick, and the victim is washed down the drain.' },   // 2026-11-17 THE NEW RACES 2 (borrows the spiritBomb staging)
+    'gambler':        { id: 'fin_gambler', name: 'Snake Eyes', glyph: '🎲', type: 'human', sig: 'lastCall', built: true, tagline: 'THE HOUSE ALWAYS WINS', desc: 'Two dice tumble across the felt, both land on one, and the victim\'s marker comes due all at once.' },   // 2026-11-19 THE NEW RACES 4 (borrows the lastCall staging)
+    'hacker':         { id: 'fin_hacker', name: 'rm -rf', glyph: '⌨', type: 'tech', sig: 'corruptedSave', built: true, tagline: 'ACCESS GRANTED', desc: 'One keystroke. The victim is deleted from the root down, no recycle bin.' },   // 2026-11-19 THE NEW RACES 4 (borrows the corruptedSave staging)
+    'monk':           { id: 'fin_monk', name: 'Inner Peace', glyph: '📿', type: 'human', sig: 'spiritBomb', built: true, tagline: 'BE STILL', desc: 'He has not moved in three turns. The palm moves once, and the victim never moves again.' },   // 2026-11-19 THE NEW RACES 4 (borrows the spiritBomb staging)
+    'shogun':         { id: 'fin_shogun', name: 'By Decree', glyph: '🏯', type: 'human', sig: 'thousandCuts', built: true, tagline: 'THE SHOGUN HAS SPOKEN', desc: 'A fan snaps shut, a hundred retainers move as one, and the victim is cut down where it stood.' },   // 2026-11-19 THE NEW RACES 4 (borrows the thousandCuts staging)
     'samurai slug':   { id: 'fin_samurai_slug', name: 'Slow Death', glyph: '🐌', type: 'human', sig: 'thousandCuts', built: true, tagline: 'PATIENCE', desc: 'He took an hour to cross the room. The cut takes no time at all.' },   // 2026-11-17 THE NEW RACES 2 (borrows the thousandCuts staging)
     'cicada brood':   { id: 'fin_cicada_brood', name: 'Seventeen Years', glyph: '🦗', type: 'alien', sig: 'theColony', built: true, tagline: 'IT WAS ALWAYS HERE', desc: 'The ground opens and the brood comes up singing. The victim is buried for the next seventeen years.' },   // 2026-11-17 THE NEW RACES 2 (borrows the theColony staging)
     'pope':           { id: 'fin_pope', name: 'White Smoke', glyph: '⛪', type: 'divine', sig: 'excommunicated', built: true, tagline: 'HABEMUS PAPAM', desc: 'The bells ring, a cathedral rises round the victim, the doors slam, and white smoke goes up from the chimney.' },   // 2026-11-17 THE POPE (borrows the excommunicated staging)
@@ -396,6 +400,8 @@ const FINISHERS = {
     'mechanic':       { id: 'fin_mechanic', name: 'Totaled', glyph: '🔧', type: 'human', sig: 'compactor', built: true, tagline: 'NOT WORTH FIXING', desc: 'He takes one look, sucks his teeth and writes it off. Parts only from here.' },   // 2026-11-19 THE NEW RACES 3 (borrows the compactor staging)
     'janitor':        { id: 'fin_janitor', name: 'Down the Drain', glyph: '🧹', type: 'human', sig: 'theDrain', built: true, tagline: 'CLEANUP COMPLETE', desc: 'One last push of the mop. What is left goes down the drain with the rest of the mess.' },   // 2026-11-19 THE NEW RACES 3 (borrows theDrain staging)
     'trucker':        { id: 'fin_trucker', name: 'Eighteen Wheels', glyph: '🚚', type: 'human', sig: 'driveBy', built: true, tagline: 'TEN-FOUR', desc: 'Air horn, high beams, eighteen wheels and no brakes. The victim was in the wrong lane.' },   // 2026-11-19 THE NEW RACES 3 (borrows the driveBy staging)
+    'pharaoh':        { id: 'fin_pharaoh', name: 'By Decree of Pharaoh', glyph: '𓂀', type: 'divine', sig: 'byOrderOf', built: true, tagline: 'SO IT IS WRITTEN', desc: 'The scribes read the decree, the sun agrees with it, and the victim is written out of history.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the byOrderOf staging)
+    'deep sea diver': { id: 'fin_deep_sea_diver', name: 'Crush Depth', glyph: '🤿', type: 'human', sig: 'poseidonsWrath', built: true, tagline: 'TOO DEEP, TOO FAST', desc: 'The board floods, the pressure comes down all at once, and the victim finds out what the helmet was for.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the poseidonsWrath staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
@@ -631,6 +637,10 @@ const RACE_ELEMENT_AFFINITY = {
     'boltzmann brain': { psychic: 'resist', lightning: 'weak' },   // 2026-11-17 THE NEW RACES 2
     'wendigo': { ice: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
     'karate frog': { water: 'resist', ice: 'weak' },   // 2026-11-17 THE NEW RACES 2
+    'gambler': { psychic: 'resist', light: 'weak' },   // 2026-11-19 THE NEW RACES 4: nobody reads his tell; the casino lights hide every clock
+    'hacker': { lightning: 'resist', water: 'weak' },   // 2026-11-19 THE NEW RACES 4: lives on current; water shorts the keyboard
+    'monk': { psychic: 'resist', fire: 'weak' },   // 2026-11-19 THE NEW RACES 4: the still mind; the robe catches
+    'shogun': { earth: 'resist', lightning: 'weak' },   // 2026-11-19 THE NEW RACES 4: the lacquered plates; lightning finds the metal
     'samurai slug': { poison: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
     'cicada brood': { earth: 'resist', fire: 'weak' },   // 2026-11-17 THE NEW RACES 2
     'pope': { light: 'resist', psychic: 'weak' },   // 2026-11-17 THE POPE
@@ -644,6 +654,8 @@ const RACE_ELEMENT_AFFINITY = {
     'mechanic': { fire: 'resist', lightning: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): works by the welder; a live wire bites
     'janitor': { poison: 'resist', ice: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): forty years of bleach fumes; slips on ice like anyone
     'trucker': { wind: 'resist', ice: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): drives through any storm; black ice
+    'pharaoh': { fire: 'resist', water: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the son of the sun; the desert king hates the flood
+    'deep sea diver': { water: 'resist', lightning: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the suit is made for the sea; the metal tanks carry a shock
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
@@ -2978,6 +2990,22 @@ const RACE_PROFILES = {
         label: 'Karate Frog',
         types: ['anomaly']
     },
+    'gambler': {   // 2026-11-19 THE NEW RACES 4 (mondo picked the model, OK'd the kit 11-19)
+        label: 'Gambler',
+        types: ['human']
+    },
+    'hacker': {   // 2026-11-19 THE NEW RACES 4 (mondo picked the model, OK'd the kit 11-19)
+        label: 'Hacker',
+        types: ['human', 'tech']
+    },
+    'monk': {   // 2026-11-19 THE NEW RACES 4 (mondo picked the model, OK'd the kit 11-19)
+        label: 'Monk',
+        types: ['human', 'divine']
+    },
+    'shogun': {   // 2026-11-19 THE NEW RACES 4 (mondo picked the model, OK'd the kit 11-19)
+        label: 'Shogun',
+        types: ['human']
+    },
     'samurai slug': {   // 2026-11-17 THE NEW RACES 2 (mondo picked it from the zone characters)
         label: 'Samurai Slug',
         types: ['anomaly']
@@ -3027,6 +3055,14 @@ const RACE_PROFILES = {
     'trucker': {   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
         label: 'Trucker',
         types: ['human']
+    },
+    'pharaoh': {   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): one race, the Pharaoh (male) and Cleopatra (female)
+        label: 'Pharaoh',
+        types: ['human', 'divine']
+    },
+    'deep sea diver': {   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+        label: 'Deep Sea Diver',
+        types: ['human', 'tech']
     },
     'haunted doll': {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
         label: 'Haunted Doll',
@@ -3922,7 +3958,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'cameraman', 'mechanic', 'janitor', 'trucker'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3944,6 +3980,8 @@ const RACE_KITS = {
     'virus': { range: 2 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the basic attack is a lash of code from its tendrils, and they reach
     'streamer': { range: 1 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the basic attack is a keyboard slam
     'vtuber': { range: 2 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): the basic attack is a pixel heart bolt (magic: her Heart Bolt passive)
+    'gambler': { range: 2 },   // 2026-11-19 THE NEW RACES 4: the basic attack is a flicked casino chip
+    'hacker': { range: 2 },   // 2026-11-19 THE NEW RACES 4: the basic attack is a zap off the keyboard (magic)
 };
 function raceKit(race) {
     const k = RACE_KITS[race] || {};
@@ -4073,6 +4111,10 @@ const RACE_CLASS = {
     'boltzmann brain': 'caster',   // 2026-11-17 THE NEW RACES 2
     'wendigo': 'bruiser',   // 2026-11-17 THE NEW RACES 2
     'karate frog': 'bruiser',   // 2026-11-17 THE NEW RACES 2
+    'gambler': 'caster',   // 2026-11-19 THE NEW RACES 4
+    'hacker': 'caster',   // 2026-11-19 THE NEW RACES 4
+    'monk': 'bruiser',   // 2026-11-19 THE NEW RACES 4
+    'shogun': 'tank',   // 2026-11-19 THE NEW RACES 4
     'samurai slug': 'bruiser',   // 2026-11-17 THE NEW RACES 2
     'cicada brood': 'assassin',   // 2026-11-17 THE NEW RACES 2
     'pope': 'support',   // 2026-11-17 THE POPE
@@ -4086,6 +4128,8 @@ const RACE_CLASS = {
     'mechanic': 'support',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'janitor': 'specialist',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'trucker': 'tank',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'pharaoh': 'caster',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+    'deep sea diver': 'specialist',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the controller who makes moving hurt
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
@@ -4138,6 +4182,10 @@ const RACE_TERRAIN_PREFERENCE = {
     'boltzmann brain': 'grass',   // 2026-11-17 THE NEW RACES 2
     'wendigo': 'mountain',   // 2026-11-17 THE NEW RACES 2
     'karate frog': 'water',   // 2026-11-17 THE NEW RACES 2
+    'gambler': 'desert',   // 2026-11-19 THE NEW RACES 4: the Western Town's card tables
+    'hacker': 'urban',   // 2026-11-19 THE NEW RACES 4
+    'monk': 'mountain',   // 2026-11-19 THE NEW RACES 4: the volcano's slopes
+    'shogun': 'grass',   // 2026-11-19 THE NEW RACES 4
     'samurai slug': 'water',   // 2026-11-17 THE NEW RACES 2
     'cicada brood': 'grass',   // 2026-11-17 THE NEW RACES 2
     'pope': 'grass',   // 2026-11-17 THE POPE
@@ -4151,6 +4199,8 @@ const RACE_TERRAIN_PREFERENCE = {
     'mechanic': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'janitor': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'trucker': 'desert',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): the open road
+    'pharaoh': 'desert',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+    'deep sea diver': 'deep_water',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the sealed helmet: never drowns (map.js unitIsDeepWaterAdapted)
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
     'siren': 'deep_water',
     'reptilian': 'water',
@@ -4539,6 +4589,10 @@ const RACE_BASE_STATS = {
     'boltzmann brain':    { hp: 950, mp: 240, atk:  10, def:  70, mdef: 170, int: 210, vision: 5, crt: 22, spd: 60 },   // 2026-11-17 THE NEW RACES 2 — first pass on the caster median
     'wendigo':            { hp: 1250, mp: 90, atk: 150, def: 100, mdef:  60, int:  30, vision: 3, crt: 18, spd: 130 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median; THE WENDIGO PASS 11-17: HP 1350→1250 (POWER 887 → 862, the median 811 +6 %: a fed Wendigo pays no tax and Feast now bites Bleeding targets 30 % harder)
     'karate frog':        { hp: 1150, mp: 110, atk: 135, def: 105, mdef:  70, int:  60, vision: 3, crt: 20, spd: 150 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
+    'gambler':            { hp:  900, mp: 220, atk:  40, def:  80, mdef: 120, int: 170, vision: 3, crt: 25, spd: 110 },   // 2026-11-19 THE NEW RACES 4 — first pass on the caster median (crit high: the dice like him)
+    'hacker':             { hp:  820, mp: 240, atk:  30, def:  70, mdef: 140, int: 180, vision: 4, crt: 18, spd: 100 },   // 2026-11-19 THE NEW RACES 4 — first pass on the caster median (vision 4: he sees the network)
+    'monk':               { hp: 1200, mp: 130, atk: 125, def: 115, mdef: 115, int:  80, vision: 3, crt: 18, spd: 120 },   // 2026-11-19 THE NEW RACES 4 — first pass on the bruiser median (Stillness adds DEF stages)
+    'shogun':             { hp: 1350, mp: 120, atk: 130, def: 150, mdef:  90, int:  60, vision: 3, crt: 16, spd: 100 },   // 2026-11-19 THE NEW RACES 4 — first pass on the tank median
     'samurai slug':       { hp: 1450, mp: 100, atk: 130, def: 150, mdef:  80, int:  50, vision: 2, crt: 16, spd: 70 },   // 2026-11-17 THE NEW RACES 2 — first pass on the bruiser median
     'cicada brood':       { hp: 1000, mp: 150, atk: 150, def: 110, mdef:  90, int: 110, vision: 3, crt: 24, spd: 120 },   // 2026-11-17 THE NEW RACES 2 — first pass on the assassin median
     'pope':               { hp: 1150, mp: 210, atk:  40, def: 100, mdef: 150, int: 160, vision: 3, crt: 12, spd: 80 },   // 2026-11-17 THE POPE — first pass on the support median (slow on foot: the Popemobile is his legs)
@@ -4552,6 +4606,8 @@ const RACE_BASE_STATS = {
     'mechanic':           { hp: 1150, mp: 170, atk: 120, def: 115, mdef:  90, int: 120, vision: 3, crt: 18, spd:  95 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass between the support and bruiser medians
     'janitor':            { hp: 1100, mp: 170, atk: 110, def: 110, mdef: 110, int: 110, vision: 3, crt: 18, spd: 100 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the specialist median, physical
     'trucker':            { hp: 1350, mp: 100, atk: 125, def: 160, mdef:  75, int:  45, vision: 3, crt: 14, spd: 110 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the tank median
+    'pharaoh':            { hp: 1050, mp: 220, atk:  40, def:  95, mdef: 150, int: 180, vision: 3, crt: 20, spd:  80 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass on the caster median (Librarian / Televangelist)
+    'deep sea diver':     { hp: 1100, mp: 180, atk: 120, def: 110, mdef: 100, int: 130, vision: 3, crt: 18, spd:  95 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass: a sturdy controller, the harpoon on ATK, the water on INT
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -4716,6 +4772,10 @@ const RACE_PHYSIQUE = {
     'boltzmann brain':     { h: 1.60, w: 20 },   // 2026-11-17 THE NEW RACES 2
     'wendigo':             { h: 2.60, w: 120 },   // 2026-11-17 THE NEW RACES 2
     'karate frog':         { h: 1.50, w: 70 },   // 2026-11-17 THE NEW RACES 2
+    'gambler':             { h: 1.80, w: 82 },   // 2026-11-19 THE NEW RACES 4
+    'hacker':              { h: 1.76, w: 66 },   // 2026-11-19 THE NEW RACES 4
+    'monk':                { h: 1.72, w: 68 },   // 2026-11-19 THE NEW RACES 4
+    'shogun':              { h: 1.78, w: 95 },   // 2026-11-19 THE NEW RACES 4
     'samurai slug':        { h: 1.70, w: 140 },   // 2026-11-17 THE NEW RACES 2
     'cicada brood':        { h: 1.90, w: 80 },   // 2026-11-17 THE NEW RACES 2
     'pope':                { h: 1.80, w: 85 },   // 2026-11-17 THE POPE
@@ -4729,6 +4789,8 @@ const RACE_PHYSIQUE = {
     'mechanic':            { h: 1.80, w: 105 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'janitor':             { h: 1.72, w: 68 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'trucker':             { h: 1.88, w: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'pharaoh':             { h: 1.85, w: 82 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+    'deep sea diver':      { h: 1.72, w: 62 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
@@ -10747,6 +10809,86 @@ const RACE_ABILITIES = {
           type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 150, range: 3, chargeToTarget: true, chargeStyle: 'flykick', pushDistance: 2, collisionBonus: 40,
           desc: 'Off the wall and through the air. Charges a Single Enemy up to 3 squares away, deals HEAVY physical damage and kicks it up to 2 squares back; hitting a wall or a unit deals 40 more. Cooldown: 2 rounds.' },
     ],
+    'gambler': [
+        /* THE HOT STREAK (2026-11-19 THE NEW RACES 4, mondo OK'd the kit): every damaging Gambler spell (`diceRoll`) rolls two
+           dice in the open before it lands (battle.js THE HOT STREAK: _diceCastRow bakes the roll into the cast's copy, finishAction
+           books the streak). 7+ adds a Streak (max 5, +8% damage a stack on his dice spells); 2-4 busts it to 0; 6+6 is a sure crit.
+           Craps Shot's damage follows the roll (the total / 7); Let It Ride rolls three dice and keeps the best two; Double or Nothing
+           flips a coin (tails: no hit and 10% of his own max HP); High Roller cashes the whole Streak in (+25% a stack) and spends it. */
+        { id: 'nrCrapsShot', name: 'Craps Shot', tier: 1, families: ['highroller'], cost: 25, apCost: 1, spellType: 'human',
+          vfxElement: 'arcane', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 90, range: 4, diceRoll: 'scale',
+          desc: 'Throws the dice at a Single Enemy within 4. Deals WEAK-to-HEAVY magic damage that follows the roll (a 7 is the plain hit, a 12 nearly double). Hot Streak: 7+ adds a Streak, 2-4 busts it, double sixes always crit.' },
+        { id: 'nrLetItRide', name: 'Let It Ride', tier: 2, families: ['highroller'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          vfxElement: 'arcane', type: 'buff', kind: 'buff', range: 0,
+          statusEffects: [{ id: 'letItRide', duration: 2 }],
+          desc: 'He blows on the dice. His next dice roll (within 2 rounds) throws three dice and keeps the best two. Cooldown: 2 rounds.' },
+        { id: 'nrDoubleOrNothing', name: 'Double or Nothing', tier: 3, families: ['highroller'], cost: 60, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          vfxElement: 'arcane', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 250, range: 3, diceRoll: true, coinFlip: { tailsSelfPct: 0.1 },
+          desc: 'A coin in the air over a Single Enemy within 3. Heads: VERY HEAVY magic damage. Tails: nothing lands, and he loses 10% of his own max HP. The dice still roll for the Streak. Cooldown: 2 rounds.' },
+        { id: 'nrHighRoller', name: 'High Roller', tier: 4, families: ['highroller'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          vfxElement: 'arcane', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 110, range: 4, aoeRadius: 1, diceRoll: true, streakCashIn: 0.25,
+          desc: 'He cashes in. Deals MEDIUM magic damage to All Enemies in a 3×3 within 4, +25% for every Streak he holds (up to +125%), then the Streak is spent. Cooldown: 3 rounds.' },
+    ],
+    'hacker': [
+        /* THE RANSOM (2026-11-19 THE NEW RACES 4, mondo OK'd the kit): Crypto Locker Encrypts an enemy for 2 rounds; its two
+           most expensive spells cost double MP while it lasts (battle.js getSpellMpCostFor reads unit._ransomSpells, written by
+           STATUS_DEFS.encrypted.onApply), and the extra MP of every such cast goes to the Hacker who set it (_ransomPay, finishAction).
+           Doxx shows its target through the fog (map.js computeVisibleTiles reads `doxxed`, like the Radioactive glow). */
+        { id: 'nrPing', name: 'Ping', tier: 1, families: ['blackhat'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 5,
+          desc: 'ping -t. Deals WEAK lightning magic damage to a Single Enemy within 5.' },
+        { id: 'nrDoxx', name: 'Doxx', tier: 2, families: ['blackhat'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          type: 'debuff', kind: 'debuff', range: 5,
+          statusEffects: [{ id: 'doxxed', duration: 2 }, { id: 'marked', duration: 2, bonusDamage: 40 }],
+          desc: 'Name, address, browser history. A Single Enemy within 5 is Doxxed for 2 rounds (seen through the fog by his whole team) and Marked (the next physical hit on it deals +40). Cooldown: 2 rounds.' },
+        { id: 'nrDDoS', name: 'DDoS', tier: 3, families: ['blackhat'], cost: 70, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          element: 'lightning', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 120, range: 5, aoeRadius: 1,
+          statusEffects: [{ id: 'jammed', duration: 1 }],
+          desc: 'A million requests a second. Deals MEDIUM lightning magic damage to All Enemies in a 3×3 within 5 and Jams them for 1 round. Cooldown: 2 rounds.' },
+        { id: 'nrCryptoLocker', name: 'Crypto Locker', tier: 4, families: ['blackhat'], cost: 80, apCost: 1, cooldownRounds: 3, spellType: 'tech',
+          type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'encrypted', duration: 2 }],
+          desc: 'YOUR SPELLS HAVE BEEN ENCRYPTED. A Single Enemy within 4 is Encrypted for 2 rounds: its two most expensive spells cost double MP, and the extra MP goes to the Hacker. Cooldown: 3 rounds.' },
+    ],
+    'monk': [
+        /* STILLNESS (2026-11-19 THE NEW RACES 4, mondo OK'd the kit): a round in which the Monk took his turn and ended it on the
+           square he started it on gives him a Stillness stack (max 3, unit.stillness, +1 DEF stage each through getStatStageCount);
+           a round in which he walked, or was shoved off his square, clears them (battle.js THE STILLNESS, _nrRoundEnd).
+           Meditate adds one at once; Nirvana Palm spends them all (+70 damage a stack). */
+        { id: 'nrOpenPalm', name: 'Open Palm', tier: 1, families: ['zen'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 105, range: 1, pushDistance: 1,
+          desc: 'One open hand to the chest. Deals WEAK physical damage to a Single Enemy beside him and shoves it 1 square back.' },
+        { id: 'nrMeditate', name: 'Meditate', tier: 2, families: ['zen'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          type: 'heal', kind: 'selfHeal', range: 0, selfHealPct: 0.15, stillnessGain: 1,
+          selfStatusAfter: [{ id: 'levitating', duration: 1 }],
+          desc: 'He sits and breathes. Gains 1 Stillness at once, restores 15% of his max HP, and Levitates over floor hazards for 1 round. Cooldown: 2 rounds.' },
+        { id: 'nrMalaSnap', name: 'Mala Snap', tier: 3, families: ['zen'], cost: 60, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'damage', kind: 'multiHit', damageType: 'physical', hitDamages: [45, 45, 45], range: 3,
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'The prayer beads snap out like a whip. Three WEAK physical hits on a Single Enemy within 3, and it is Rooted for 1 round. Cooldown: 2 rounds.' },
+        { id: 'nrNirvanaPalm', name: 'Nirvana Palm', tier: 4, families: ['zen'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'divine',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 150, range: 1, stillnessSpend: 70,
+          desc: 'Everything he did not do, in one palm. Deals HEAVY physical damage to a Single Enemy beside him, +70 for every Stillness he holds (up to +210), then the Stillness is spent. Cooldown: 3 rounds.' },
+    ],
+    'shogun': [
+        /* ZONE OF CONTROL (2026-11-19 THE NEW RACES 4, mondo OK'd the kit): an enemy that walks onto a square next to the Shogun
+           (Chebyshev 1; 2 under Bushido Edict) or next to his Clan Banner stops there: getMoveTiles and findMovePath never walk on
+           from such a square (battle.js THE ZONE OF CONTROL, _zocHolds). A unit that starts its walk inside the zone may leave. */
+        { id: 'nrWarFan', name: 'War Fan Strike', tier: 1, families: ['shogunate'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 110, range: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'The iron war fan snaps open across the face. Deals WEAK physical damage to a Single Enemy beside him and Staggers it for 1 round.' },
+        { id: 'nrClanBanner', name: 'Clan Banner', tier: 2, families: ['shogunate'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'utility', kind: 'deployTurret', range: 3, maxActivePerCaster: 1, banner: true, bannerRounds: 3, turretHpPct: 0.15, turretDmg: 0, turretRange: 1,
+          desc: 'Plants the clan banner on an empty square within 3 for 3 rounds (HP: 15% of his; enemies can cut it down). Enemies that walk onto a square next to the banner stop there, like next to him. One at a time. Cooldown: 2 rounds.' },
+        { id: 'nrArrowRain', name: 'Arrow Rain', tier: 3, families: ['shogunate'], cost: 70, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 125, range: 5, aoeRadius: 1,
+          desc: 'The fan comes down and his archers loose. Deals MEDIUM physical damage to All Enemies in a 3×3 within 5. Cooldown: 2 rounds.' },
+        { id: 'nrBushidoEdict', name: 'Bushido Edict', tier: 4, families: ['shogunate'], cost: 85, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          type: 'buff', kind: 'warCry', range: 0, aoeRadius: 3, auraRadius: 3, statStageBoost: { atk: 2 },
+          selfStatusAfter: [{ id: 'edict', duration: 2 }],
+          desc: 'The edict is read. Every ally within 3 (him too) gains +2 ATK stages, and for 2 rounds his Zone of Control reaches 2 squares round him. Cooldown: 4 rounds.' },
+    ],
     'samurai slug': [
         /* THE SLIME TRAIL: the one race that paints the squares it walks off. Every square he walks off becomes Black Ooze for 2 rounds (double cost to cross, and it burns; battle.js _slugTrail from finishMoveAt, painted with _paintTimedTerrain). (2026-11-17 THE NEW RACES 2, mondo's picks.)
            THE SAMURAI SLUG POLISH (2026-11-17, mondo: "flesh out their unique spells ... make sure that any new mechanics are tested"):
@@ -11042,6 +11184,41 @@ const RACE_ABILITIES = {
           type: 'buff', kind: 'warCry', range: 0, auraRadius: 4,
           teamStatusEffects: [{ id: 'quickened', duration: 1 }], statStageBoost: { def: 1 },
           desc: 'Breaker breaker, this is the big rig. Every ally within 4 is Quickened (+1 MOV) for 1 round and gains +1 DEF stage.' },
+    ],
+    'pharaoh': [
+        /* THE TOMB (2026-11-19, the Pharaoh + Cleopatra; mondo's concepts round): Prepare the Tomb stands his sarcophagus on a free
+           square beside him (state.turrets row `tomb: true`, 3 hits to break, never acts). While it stands, the first time he goes
+           down he rises from it at the round's end with half his max HP and the tomb crumbles; once a match (unit._tombSpent greys
+           the spell after). Whoever breaks the tomb first gets the Curse of the Pharaoh: Hexed for 3 rounds.
+           battle.js "THE TOMB"; notes docs/notes/champions-combat.md "THE PHARAOH". */
+        { id: 'nrAspsKiss', name: "Asp's Kiss", tier: 1, families: ['pharaoh'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 120, range: 2,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'The asp from the basket. Deals MEDIUM poison magic damage to a Single Enemy within 2 and leaves it Poisoned for 2 rounds.' },
+        { id: 'nrPrepareTomb', name: 'Prepare the Tomb', tier: 2, families: ['pharaoh'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          type: 'utility', kind: 'deployTurret', range: 1, maxActivePerCaster: 1, tomb: true, hitsToKill: 3, turretHp: 3, turretDmg: 0, turretRange: 0,
+          desc: 'Raises his sarcophagus on an empty square beside him (3 hits to break). While it stands, the first time he falls he rises from it at the end of the round with half his HP, and it crumbles. Once a match. Whoever breaks it is Cursed: Hexed for 3 rounds. Cooldown: 2 rounds.' },
+        { id: 'nrEyeOfRa', name: 'Eye of Ra', tier: 3, families: ['pharaoh'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          element: 'fire', vfxElement: 'light', type: 'damage', kind: 'line', damageType: 'magic', dmg: 170, range: 5, lineWidth: 1,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'The sun opens its eye. Deals HEAVY fire magic damage to All Enemies in a 5-square line and sets them Burning for 2 rounds. Cooldown: 2 rounds.' },
+    ],
+    'deep sea diver': [
+        /* THE BENDS (2026-11-19, the Deep Sea Diver; mondo's concepts round): a unit with the Bends (STATUS_DEFS.bends) loses 5% of its
+           max HP for every square it moves while the status lasts, however it moves: a walk counts every square of its path, a push,
+           pull, fling or jump counts the squares between where it was and where it lands; a teleport counts none. The Diver's own
+           harpoon and shove (and her teammates' knockbacks) turn every square into damage. battle.js "THE BENDS"; notes
+           docs/notes/champions-combat.md "THE DEEP SEA DIVER". Her helmet is sealed: she never drowns (RACE_TERRAIN_PREFERENCE). */
+        { id: 'nrHarpoonGun', name: 'Harpoon Gun', tier: 1, families: ['deepdive'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 120, range: 4, pullDistance: 2,
+          desc: 'A barbed harpoon on a line. Deals MEDIUM physical damage to a Single Enemy within 4 and reels it 2 squares toward her.' },
+        { id: 'nrDepthCharge', name: 'Depth Charge', tier: 2, families: ['deepdive'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          element: 'water', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 110, range: 3, aoeRadius: 1,
+          statusEffects: [{ id: 'wet', duration: 2 }, { id: 'bends', duration: 1 }],
+          desc: 'A charge set to go off deep. Deals MEDIUM water magic damage to All Enemies in a 3x3 within 3, leaves them Wet and gives them the Bends: every square they move costs 5% of their max HP. Cooldown: 2 rounds.' },
+        { id: 'nrPressureWave', name: 'Pressure Wave', tier: 3, families: ['deepdive'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          element: 'water', type: 'damage', kind: 'linePush', damageType: 'magic', dmg: 130, range: 4, lineWidth: 1, pushDistance: 3,
+          desc: 'The sea pushes back. Deals MEDIUM water magic damage to All Enemies in a 4-square line and shoves them 3 squares back. Cooldown: 2 rounds.' },
     ],
     'haunted doll': [
         /* NOBODY'S LOOKING (2026-11-17, the Haunted Doll; mondo approved the kit + asked for the pull-string spell): "sits on the
@@ -14759,6 +14936,14 @@ const STATUS_DEFS = {
     /* 🦠 PAYLOAD (2026-11-18, the Virus): does nothing on its own; every round end it copies itself to each teammate next to
        the carrier (2 rounds), and when it runs out it goes off for 70 (battle.js THE PAYLOAD). Both sides see it. The Virus is
        credited (unit._payloadSrcId, an id: RULE #2). */
+    /* bends (2026-11-19, the Deep Sea Diver's Depth Charge): every square the unit moves while it lasts costs 5% of its max HP
+       (battle.js THE BENDS: _bendsMoved; the anchor unit._bendsAt / the Diver unit._bendsSrcId are plain fields on the unit) */
+    bends: {
+        icon: '🫧', glyph: '🫧', short: 'BND', label: 'The Bends',
+        colorText: 'has the Bends — every square it moves hurts',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🫧', '#0d1f33', '#d8f0ff', '#ff8a2a')
+    },
     payload: {
         icon: '🦠', glyph: '🦠', short: 'PAY', label: 'Payload',
         colorText: 'carrying a payload — it spreads, then goes off',
@@ -14821,6 +15006,42 @@ const STATUS_DEFS = {
        takes a killing blow (held at 1 HP, hauled beside her). */
     /* 🪵 SUBSTITUTE (2026-11-17 THE NINJA, Kawarimi): the first enemy blow aimed at him hits a log; he reappears behind the
        attacker (battle.js _ninjaKawarimi). The status goes when it springs. */
+    /* ═══ THE NEW RACES 4 (2026-11-19, mondo OK'd the kits): the Gambler, the Hacker, the Shogun ═══ */
+    letItRide: {   // 🎲 Let It Ride: his next dice roll throws three and keeps the best two (battle.js _diceCastRow spends it)
+        icon: '🎲', glyph: '🎲', short: 'RIDE', label: 'Let It Ride',
+        colorText: 'letting it ride',
+        kind: 'buff', category: 'buff', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🎲', '#2a1438', '#f4e0ff', '#a050e0')
+    },
+    doxxed: {   // ⌨ Doxx: seen through the fog by every viewer (map.js computeVisibleTiles, like the Radioactive glow)
+        icon: '🪪', glyph: '🪪', short: 'DOX', label: 'Doxxed',
+        colorText: 'doxxed — seen through the fog',
+        kind: 'debuff', category: 'debuff', stack: 'max',
+        iconSrc: createStatusIconDataUri('🪪', '#102818', '#d8ffe4', '#30d070')
+    },
+    encrypted: {   // ⌨ Crypto Locker: its two most expensive spells cost double MP; the extra goes to the Hacker (battle.js THE RANSOM)
+        icon: '🔒', glyph: '🔒', short: 'ENC', label: 'Encrypted',
+        colorText: 'encrypted — the best spells cost double',
+        kind: 'debuff', category: 'debuff', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🔒', '#102818', '#d8ffe4', '#30d070'),
+        onApply(unit, src) {
+            /* the two most expensive spells it carries (the kit + race spells), by MP; ties keep the earlier one */
+            try {
+                const all = [].concat(unit.spells || [], unit._raceAbilities || []).filter(s => s && s.id && Number(s.cost) > 0);
+                const seen = {}; const uniq = all.filter(s => (seen[s.id] ? false : (seen[s.id] = true)));
+                uniq.sort((a, b) => (Number(b.cost) || 0) - (Number(a.cost) || 0));
+                unit._ransomSpells = uniq.slice(0, 2).map(s => s.id);
+                unit._ransomById = (src && src.id) || null;   // an ID (RULE #2), never the unit
+            } catch (e) { unit._ransomSpells = []; }
+        },
+        onRemove(unit) { unit._ransomSpells = null; unit._ransomById = null; }
+    },
+    edict: {   // 🏯 Bushido Edict: his Zone of Control reaches 2 squares (battle.js _zocHolds)
+        icon: '🏯', glyph: '🏯', short: 'EDCT', label: 'Bushido Edict',
+        colorText: 'under the edict — the zone reaches 2',
+        kind: 'buff', category: 'buff', stack: 'max',
+        iconSrc: createStatusIconDataUri('🏯', '#381414', '#ffe4d8', '#e05030')
+    },
     substitute: {
         icon: '🪵', glyph: '🪵', short: 'SUB', label: 'Substitute',
         colorText: 'ready to leave a log behind',
@@ -15027,6 +15248,10 @@ const STATUS_LIBRARY_DESCS = {
     shield:    'A damage-absorbing barrier soaks incoming hits until it breaks.',
     hourglass: 'Carrying a secured Key — its charge empowers the bearer.',
     scanner:   'Scanned — this unit is revealed and tracked.',
+    letItRide: 'Let It Ride (the Gambler): his next dice roll throws three dice and keeps the best two.',   // 2026-11-19 THE NEW RACES 4
+    doxxed:    'Doxxed (the Hacker): its square is seen through the fog by every viewer.',
+    encrypted: 'Encrypted (the Hacker): its two most expensive spells cost double MP, and the extra MP goes to the Hacker who encrypted it.',
+    edict:     'Bushido Edict (the Shogun): his Zone of Control reaches 2 squares round him.',
     invisible: 'Cannot be seen or directly targeted by enemies. Attacking, an attack spell or taking a hit from an enemy reveals it; moving, buffs and heals do not.',
     charm:     'Beguiled: cannot move at all while it lasts, and cannot attack or cast at the unit that charmed it. It can still attack and cast at anyone else. Evasion drops to zero.',
     indomitable: 'Refuses to die: the next killing blow leaves this unit at 1 HP.',
@@ -15043,6 +15268,7 @@ const STATUS_LIBRARY_DESCS = {
     onDuty:    'On watch: the first ally within 4 that takes a killing blow holds on at 1 HP and is hauled beside her. Spent on the first save.',
     riding:     'On the Delivery Boy\'s back: when he finishes his next walk or Doorstep Dash, it hops off on the free square beside him.',
     tithe:      'Collection Plate: 15% of every heal that lands within 3 of the Televangelist (not his own) goes in his plate. Miracle spends it.',
+    bends:      'The Bends: every square it moves (walked, jumped, pushed or pulled) costs 5% of its max HP.',
     viral:      'Going viral: every hit it takes also hits each of its teammates within 2 for 30% of the damage.',
     filtered:   'Filtered: to the other side it looks like, and is named as, the ally it traded faces with.',
     yellowCard: 'Booked: a second card on this unit is a RED CARD. It is sent off until its next turn starts: it cannot move, act or be targeted.',
@@ -21124,6 +21350,10 @@ const EW_RACE_BIOMES = {
     'boltzmann brain': ['space', 'astral'],   // 2026-11-17 THE NEW RACES 2 — Outer Space, the Singularity
     'wendigo': ['forest', 'polar'],   // 2026-11-17 THE NEW RACES 2 — The Mountains, the Snowy Pass
     'karate frog': ['underground_base', 'urban'],   // 2026-11-17 THE NEW RACES 2 — The Sewers
+    'gambler': ['desert', 'urban'],   // 2026-11-19 THE NEW RACES 4 — the Western Town (The Desert), Disaster City's Entertainment district
+    'hacker': ['urban', 'neon_city'],   // 2026-11-19 THE NEW RACES 4 — Disaster City, The Internet
+    'monk': ['tropical', 'ancient'],   // 2026-11-19 THE NEW RACES 4 — the Volcano Island (Katana Bay)
+    'shogun': ['tropical', 'ancient'],   // 2026-11-19 THE NEW RACES 4 — the Volcano Island (Katana Bay)
     'samurai slug': ['underground_base', 'urban'],   // 2026-11-17 THE NEW RACES 2 — The Sewers
     'cicada brood': ['ancient', 'forest'],   // 2026-11-17 THE NEW RACES 2 — Leylines, the Bug Colony
     'pope': ['holy_city', 'urban'],   // 2026-11-17 THE POPE — Vatican City
@@ -21137,6 +21367,8 @@ const EW_RACE_BIOMES = {
     'mechanic': ['urban', 'desert'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City Industrial, the gas station
     'janitor': ['urban', 'underground_base'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City, The D.U.M.B., The Sewers
     'trucker': ['urban', 'desert', 'ranch'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — the highway routes
+    'pharaoh': ['desert', 'ancient'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Desert, Giza
+    'deep sea diver': ['deep_sea', 'tropical'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Deep, Atlantis, The Beach
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
@@ -21789,6 +22021,10 @@ const RACE_TREE = {
     'boltzmann brain':['raceEntropicBeam', ['racePsychicBarrier', 'raceGravityWell'], 'raceMindCrush', 'raceHeatDeath'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'wendigo':       ['raceBite', 'raceHowl', 'raceFeralDive', 'raceBloodFrenzy'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
     'karate frog':   [['raceKiBlast', 'raceFlurryOfBlows'], ['raceKiCharge', 'raceKiWave'], 'raceInstantTransmission', 'raceDragonFist'],   // 2026-11-17 THE NEW RACES 2: borrowed rungs from its families
+    'gambler':       ['nrCrapsShot', 'nrLetItRide', 'nrDoubleOrNothing', 'nrHighRoller'],   // 2026-11-19 THE NEW RACES 4: his own four
+    'hacker':        ['nrPing', 'nrDoxx', 'nrDDoS', 'nrCryptoLocker'],   // 2026-11-19 THE NEW RACES 4: his own four
+    'monk':          ['nrOpenPalm', 'nrMeditate', 'nrMalaSnap', 'nrNirvanaPalm'],   // 2026-11-19 THE NEW RACES 4: his own four
+    'shogun':        ['nrWarFan', 'nrClanBanner', 'nrArrowRain', 'nrBushidoEdict'],   // 2026-11-19 THE NEW RACES 4: his own four
     'samurai slug':  ['nrSlimeSlash', 'nrSaltProof', 'nrIaiDraw', 'nrRoninsWake'],   // 2026-11-17 THE SAMURAI SLUG POLISH: his own four rungs (the borrowed row was Sad Backstory / Plot Armor / To Be Continued / Roll Credits, none of them a sword or the slime)
     'cicada brood':  ['nrDigIn', 'nrBuzz', 'nrScreech', 'raceSwarmSignal'],   // 2026-11-17 THE CICADA POLISH: its own three + Swarm Signal (the borrowed row held none of Dig In / Buzz / Chorus, and Corrosive Splash + Rot are outside its families)
     'pope':          ['nrThoughtsAndPrayers', 'nrPopemobile', 'nrExcommunication', 'nrCelibacy'],   // 2026-11-17 THE POPE: his own four
@@ -21802,6 +22038,8 @@ const RACE_TREE = {
     'mechanic':      ['nrWrenchThrow', ['nrOilChange', 'nrLaborFee'], 'nrPatchJob', 'nrJuryRig'],   // 2026-11-19 THE NEW RACES 3
     'janitor':       ['nrMopSwing', ['nrBleach', 'nrWetFloorSign'], 'nrMopUp', 'nrCleanupAisle4'],   // 2026-11-19 THE NEW RACES 3
     'trucker':       ['nrAirHorn', 'nrJackknife', 'nrUnload', 'nrBreakerBreaker'],   // 2026-11-19 THE NEW RACES 3
+    'pharaoh':       ['nrAspsKiss', 'nrPrepareTomb', 'nrEyeOfRa', 'sharedSummonSandstorm'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from the desert)
+    'deep sea diver': ['nrHarpoonGun', 'nrDepthCharge', 'nrPressureWave', 'sharedTidalSurge'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from water)
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -23823,6 +24061,46 @@ const SPELL_FAMILIES = {
         unique: 'karate frog',
         identity: { who: ['Karate Frog', 'Frog Master', 'Sewer Brother'], adj: ['Slimy', 'Disciplined', 'Bouncy'], look: ['a white gi with a black belt', 'a red bandana', 'big golden eyes'], vibe: ['vaults over whoever he hits', 'drags you in with his tongue'] }
     },
+    highroller: {   // 2026-11-19 THE NEW RACES 4 — the Gambler's own
+        id: 'highroller',
+        name: 'High Roller',
+        glyph: '🎲',
+        color: '#9a3ad0',
+        kind: 'signature',
+        desc: 'Let it ride: the dice decide how hard it lands, a hot streak makes it land harder, and the whole streak cashes in at once.',
+        unique: 'gambler',
+        identity: { who: ['Gambler', 'High Roller', 'Card Shark'], adj: ['Sleazy', 'Lucky', 'All-In'], look: ['a purple velvet blazer', 'gold aviators', 'an open shirt and a gold chain'], vibe: ['rolls the dice on every spell', 'is on a hot streak'] }
+    },
+    blackhat: {   // 2026-11-19 THE NEW RACES 4 — the Hacker's own
+        id: 'blackhat',
+        name: 'Black Hat',
+        glyph: '⌨',
+        color: '#2ad070',
+        kind: 'signature',
+        desc: 'Ping it, doxx it, flood it, then hold its best spells for ransom.',
+        unique: 'hacker',
+        identity: { who: ['Hacker', 'Black Hat', 'Script Kiddie'], adj: ['Anonymous', 'Caffeinated', 'Root-Access'], look: ['a black hoodie with green circuit sleeves', 'a beanie', 'a keyboard and a mouse in his hands'], vibe: ['encrypts your best spells', 'charges you double to use them'] }
+    },
+    zen: {   // 2026-11-19 THE NEW RACES 4 — the Monk's own
+        id: 'zen',
+        name: 'Zen',
+        glyph: '📿',
+        color: '#e0902a',
+        kind: 'signature',
+        desc: 'Stand still and grow harder to move: a palm that shoves, a meditation that heals, beads that bind, and a palm that spends the stillness.',
+        unique: 'monk',
+        identity: { who: ['Monk', 'Abbot', 'Ascetic'], adj: ['Still', 'Serene', 'Unmoved'], look: ['a saffron and maroon robe', 'wooden prayer beads', 'a shaved head'], vibe: ['grows harder every turn he stands still', 'spends the stillness in one palm'] }
+    },
+    shogunate: {   // 2026-11-19 THE NEW RACES 4 — the Shogun's own
+        id: 'shogunate',
+        name: 'Shogunate',
+        glyph: '🏯',
+        color: '#c03030',
+        kind: 'signature',
+        desc: 'The ground is his: no enemy walks past him, the clan banner holds the line, the archers fill the sky, and the edict makes the army.',
+        unique: 'shogun',
+        identity: { who: ['Shogun', 'Warlord', 'Daimyo'], adj: ['Commanding', 'Lacquered', 'Unyielding'], look: ['dark lacquered samurai armour', 'a horned kabuto with a gold crest', 'a black beard'], vibe: ['stops every enemy that comes near', 'plants the clan banner'] }
+    },
     slugbushido: {   // 2026-11-17 THE NEW RACES 2 — the Samurai Slug's own
         id: 'slugbushido',
         name: 'Slug Bushido',
@@ -23932,6 +24210,26 @@ const SPELL_FAMILIES = {
         desc: 'The long haul: an air horn, a jackknifed trailer, a load of boxes out the back and a call on the CB that gets the whole convoy moving.',
         unique: 'trucker',
         identity: { who: ['Trucker', 'Long-Hauler', 'Big Rig Driver'], adj: ['Bearded', 'Road-worn', 'Loyal'], look: ['a plaid vest', 'a long grey beard', 'cowboy boots'], vibe: ['never leaves anyone at the truck stop', 'keeps on trucking'] }
+    },
+    pharaoh: {   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — the Pharaoh's own
+        id: 'pharaoh',
+        name: 'Pharaoh',
+        glyph: '𓂀',
+        color: '#e0b040',
+        kind: 'signature',
+        desc: 'The god-king of the Nile: the asp, the eye of the sun, and a tomb that sends him back once.',
+        unique: 'pharaoh',
+        identity: { who: ['Pharaoh', 'God-King', 'Queen of the Nile'], adj: ['Divine', 'Gilded', 'Eternal'], look: ['a striped nemes headdress', 'a jewelled gold collar', 'white pleated linen'], vibe: ['has already planned the afterlife', 'curses whoever opens the tomb'] }
+    },
+    deepdive: {   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — the Deep Sea Diver's own
+        id: 'deepdive',
+        name: 'Deep Dive',
+        glyph: '🤿',
+        color: '#ff8a2a',
+        kind: 'signature',
+        desc: 'A sealed helmet, a harpoon and the Bends: everyone she touches pays for every square they move.',
+        unique: 'deep sea diver',
+        identity: { who: ['Diver', 'Aquanaut', 'Salvager'], adj: ['Pressurised', 'Sealed', 'Fearless'], look: ['a glass bubble helmet', 'a navy and orange wetsuit', 'twin air tanks'], vibe: ['goes down where the light does not', 'knows what pressure does to a body'] }
     },
     streaming: {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — the Streamer's and the E-Girl's own
         id: 'streaming',
@@ -26201,6 +26499,10 @@ const RACE_FAMILIES = {
     'boltzmann brain': ['fluctuation', 'cosmic', 'psychic', 'fractal'],   // 2026-11-17 THE NEW RACES 2
     'wendigo': ['wendigo', 'apexpredator', 'cryptid', 'ice'],   // 2026-11-17 THE NEW RACES 2
     'karate frog': ['frogfu', 'martialarts', 'water', 'athleticism'],   // 2026-11-17 THE NEW RACES 2
+    'gambler': ['highroller', 'gambling', 'trickery', 'seduction'],   // 2026-11-19 THE NEW RACES 4
+    'hacker': ['blackhat', 'computerhacking', 'internetaddiction', 'glitch'],   // 2026-11-19 THE NEW RACES 4
+    'monk': ['zen', 'martialarts', 'ancientknowledge', 'humangrit'],   // 2026-11-19 THE NEW RACES 4
+    'shogun': ['shogunate', 'swordsmanship', 'militarysupport', 'weaponstraining'],   // 2026-11-19 THE NEW RACES 4
     'samurai slug': ['slugbushido', 'swordsmanship', 'swordsaint', 'poison'],   // 2026-11-17 THE NEW RACES 2
     'cicada brood': ['brood', 'insectoid', 'sonic', 'colony'],   // 2026-11-17 THE NEW RACES 2
     'pope': ['papacy', 'holyorders', 'stagepresence'],   // 2026-11-17 THE POPE
@@ -26214,6 +26516,8 @@ const RACE_FAMILIES = {
     'mechanic': ['mechanic', 'machinery', 'engineering', 'gear'],   // 2026-11-19 THE NEW RACES 3
     'janitor': ['janitorial', 'chemistry', 'humangrit', 'streetsmarts'],   // 2026-11-19 THE NEW RACES 3
     'trucker': ['trucking', 'drivingskills', 'humangrit', 'teamwork'],   // 2026-11-19 THE NEW RACES 3
+    'pharaoh': ['pharaoh', 'royalty', 'ancientknowledge', 'desertacclimation'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+    'deep sea diver': ['deepdive', 'water', 'deepsea', 'engineering'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
@@ -26836,6 +27140,10 @@ const CAMPAIGN_RACE_PRICES = {
   'boltzmann brain': 800,   // 2026-11-17 THE NEW RACES 2
   'wendigo': 500,   // 2026-11-17 THE NEW RACES 2
   'karate frog': 400,   // 2026-11-17 THE NEW RACES 2
+  'gambler': 400,   // 2026-11-19 THE NEW RACES 4
+  'hacker': 400,   // 2026-11-19 THE NEW RACES 4
+  'monk': 400,   // 2026-11-19 THE NEW RACES 4
+  'shogun': 500,   // 2026-11-19 THE NEW RACES 4
   'samurai slug': 400,   // 2026-11-17 THE NEW RACES 2
   'cicada brood': 400,   // 2026-11-17 THE NEW RACES 2
   'pope': 500,   // 2026-11-17 THE POPE
@@ -26849,6 +27157,8 @@ const CAMPAIGN_RACE_PRICES = {
   'mechanic': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
   'janitor': 300,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
   'trucker': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+  'pharaoh': 500,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+  'deep sea diver': 400,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
   'lifeguard': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
@@ -28834,7 +29144,10 @@ const DOOR_TEXT = {
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
         'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown', 'magician': 'The Strip', 'mole man': 'Hollow Earth', 'quetzalcoatl': 'Technoticlan', 'lifeguard': 'The Bermuda Triangle',   // banker + sewer gator + skater + tech ceo + magician + mole man + quetzalcoatl + lifeguard 2026-11-16
         'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'pope': 'Vatican City',   // 2026-11-17 THE NEW RACES 2
-        'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'streamer': 'The Internet', 'vtuber': 'The Internet', 'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-17 THE NEW RACES 2
+        'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'streamer': 'The Internet', 'vtuber': 'The Internet',   // 2026-11-17 THE NEW RACES 2
+        'pharaoh': 'Pyramids of Giza', 'deep sea diver': 'Atlantis',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
+        'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
+        'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
        
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Came A Lot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',
@@ -28852,6 +29165,8 @@ const DOOR_TEXT = {
         'sharkman': ['Atlantis'],
         'deep sea fish': ['Atlantis'],
         'undead': ['Hell'],   // 2026-10-25
+        'gambler': ['Area 51'],   // 2026-11-19 THE NEW RACES 4: the Western Town's card tables (The Desert)
+        'hacker': ['Cyberpunk City'],   // 2026-11-19 THE NEW RACES 4
     },
 
     // "D.O.O.R. ANNOTATION" — an extra paragraph on the dossiers where the
@@ -63346,7 +63661,7 @@ const DOOR_HQ = {
                 {key:'saguaro_cactus',x:-43.75,z:1.75,face:168,h:6.32}, {key:'saguaro_cactus',x:-75.25,z:-71.75,face:97,h:4.09}, {key:'saguaro_cactus',x:-5.25,z:-50.75,face:177,h:5.21},
             ],
             agents: [],
-            npcSpots: [{x:-26.25,z:64.75,face:300,race:'skeleton'},{x:-15.75,z:5.25,face:180,race:'mummy'},{x:8.75,z:-75.25,face:90,race:'anubis'},{x:68.25,z:-29.75,face:200,race:'skeleton'},{x:-68.25,z:-12.25,face:0,race:'mummy'},{x:-40.25,z:22.75,face:270,race:'anubis'},{x:-61.25,z:5.25,face:180,race:'djinn'},{x:15.75,z:-61.25,face:200,race:'anubis',say:['“She faces east.” “Why?” “That is where the line comes out of the ground.”','“Do not climb her.” “Something is on her head.” “Something is always on her head.”']},{x:50.75,z:-5.25,face:270,race:'annunaki',say:['“We did not build it.” “You are on the stair.” “We built the STAIR. The stair is the easy part.”']},{x:26.25,z:-57.75,face:300,race:'skeleton',say:['“The trench hit a door.” “Whose?” “Mine, apparently. I have the paperwork.”']},{x:68.25,z:-5.25,face:40,race:'conspiracy theorist',say:['“The robbers’ tunnel.” “Robbers of what?” “It was dug INWARD. Ask yourself who was robbing whom.”','“Four faces, three times.” “Three pyramids.” “Three times. Not three pyramids.”']},{x:-8.75,z:29.75,face:270,race:'mummy'},{x:-57.75,z:43.75,face:0,race:'djinn'}],
+            npcSpots: [{x:-26.25,z:64.75,face:300,race:'skeleton'},{x:-15.75,z:5.25,face:180,race:'mummy'},{x:8.75,z:-75.25,face:90,race:'anubis'},{x:68.25,z:-29.75,face:200,race:'skeleton'},{x:-68.25,z:-12.25,face:0,race:'mummy'},{x:-40.25,z:22.75,face:270,race:'anubis'},{x:-61.25,z:5.25,face:180,race:'djinn'},{x:15.75,z:-61.25,face:200,race:'anubis',say:['“She faces east.” “Why?” “That is where the line comes out of the ground.”','“Do not climb her.” “Something is on her head.” “Something is always on her head.”']},{x:50.75,z:-5.25,face:270,race:'annunaki',say:['“We did not build it.” “You are on the stair.” “We built the STAIR. The stair is the easy part.”']},{x:26.25,z:-57.75,face:300,race:'skeleton',say:['“The trench hit a door.” “Whose?” “Mine, apparently. I have the paperwork.”']},{x:68.25,z:-5.25,face:40,race:'conspiracy theorist',say:['“The robbers’ tunnel.” “Robbers of what?” “It was dug INWARD. Ask yourself who was robbing whom.”','“Four faces, three times.” “Three pyramids.” “Three times. Not three pyramids.”']},{x:-8.75,z:29.75,face:270,race:'mummy'},{x:-57.75,z:43.75,face:0,race:'djinn'},{x:-26.25,z:22.75,face:90,race:'pharaoh'},{x:-50.75,z:40.25,face:180,race:'pharaoh'}],
             onlineSpots: [],
             lines: ['“The top.” “Walk up the north face. Four flights.” “And then?” “Then you are on top. Nobody says what for.”','“The sphinx has a tape on her head.” “How do you get it?” “Not by climbing.”','“The causeway runs to the paws.” “Then where?” “Then under the sand, straight, to the tower.”','“Which pyramid is the ministry’s?” “All three.” “Which one has the treaty?” “The one with the door.”','“It is hot.” “It is always hot.” “Even underground?” “Especially.”'],
             spawn: { x: -61.25, z: -75.25, face: 180 },
@@ -69519,7 +69834,7 @@ const DOOR_HQ = {
                 {key:'sea_chest',x:106.01,z:148.36,face:19}, {key:'anemone',x:93.29,z:197.14,face:0}, {key:'anemone',x:95.7,z:253.35,face:179}, {key:'anemone',x:92.58,z:296,face:296},
             ],
             agents: [],
-            npcSpots: [{x:-68.25,z:-232.75,face:180,race:'atlantean',say:['“The road goes up to the temple.” “Up?” “Everything here is up. You are at the bottom.”','“The wreck by the wall is the Dutchman.” “The Dutchman is up there.” “Yes.”']},{x:-50.75,z:-218.75,face:300,race:'mermaid'},{x:-99.75,z:-260.75,face:135,race:'atlantean'},{x:-78.75,z:-211.75,face:60,race:'starfish'},{x:-78.75,z:-229.25,face:90,race:'atlantean'},{x:-47.25,z:-239.75,face:240,race:'mermaid'},{x:-26.25,z:-267.75,face:200,race:'siren'},{x:-15.75,z:-211.75,face:280,race:'atlantean'},{x:-106.75,z:-201.25,face:30,race:'starfish'},{x:-92.75,z:-180.25,face:10,race:'mermaid'},{x:-43.75,z:-278.25,face:170,race:'atlantean'},{x:-57.75,z:-148.75,face:0,race:'atlantean'},{x:-131.25,z:-194.25,face:90,race:'mermaid'},{x:-26.25,z:-302.75,face:180,race:'atlantean'},{x:8.75,z:-187.25,face:270,race:'starfish'},{x:-141.75,z:-257.25,face:120,race:'siren'},{x:89.25,z:222.25,face:90,race:'mermaid',say:['“Do not go in the trench.” “Why?” “Something in the trench keeps the smokers lit.”']},{x:152.25,z:236.25,face:270,race:'kraken',say:['“…”','“THE SHIP.” “Which ship?” “THE SHIP.”']},{x:141.75,z:204.75,face:200,race:'deep sea fish'},{x:131.25,z:295.75,face:20,race:'deep sea fish'},{x:155.75,z:155.75,face:180,race:'kaiju'}],
+            npcSpots: [{x:-68.25,z:-232.75,face:180,race:'atlantean',say:['“The road goes up to the temple.” “Up?” “Everything here is up. You are at the bottom.”','“The wreck by the wall is the Dutchman.” “The Dutchman is up there.” “Yes.”']},{x:-50.75,z:-218.75,face:300,race:'mermaid'},{x:-99.75,z:-260.75,face:135,race:'atlantean'},{x:-78.75,z:-211.75,face:60,race:'starfish'},{x:-78.75,z:-229.25,face:90,race:'atlantean'},{x:-47.25,z:-239.75,face:240,race:'mermaid'},{x:-26.25,z:-267.75,face:200,race:'siren'},{x:-15.75,z:-211.75,face:280,race:'atlantean'},{x:-106.75,z:-201.25,face:30,race:'starfish'},{x:-92.75,z:-180.25,face:10,race:'mermaid'},{x:-43.75,z:-278.25,face:170,race:'atlantean'},{x:-82.25,z:-215.25,face:120,race:'deep sea diver'},{x:-33.25,z:-250.25,face:250,race:'deep sea diver'},{x:-57.75,z:-148.75,face:0,race:'atlantean'},{x:-131.25,z:-194.25,face:90,race:'mermaid'},{x:-26.25,z:-302.75,face:180,race:'atlantean'},{x:8.75,z:-187.25,face:270,race:'starfish'},{x:-141.75,z:-257.25,face:120,race:'siren'},{x:89.25,z:222.25,face:90,race:'mermaid',say:['“Do not go in the trench.” “Why?” “Something in the trench keeps the smokers lit.”']},{x:152.25,z:236.25,face:270,race:'kraken',say:['“…”','“THE SHIP.” “Which ship?” “THE SHIP.”']},{x:141.75,z:204.75,face:200,race:'deep sea fish'},{x:131.25,z:295.75,face:20,race:'deep sea fish'},{x:155.75,z:155.75,face:180,race:'kaiju'}],
             onlineSpots: [],
             lines: ['“The sea floor.” “How far down?” “Twenty-six metres to the surface and it does not matter; the surface is not the sea you left.”','“The upwelling goes up.” “To where?” “The Triangle.” “The whirlpool goes down.” “To here.” “Then the sea is a loop.” “The sea is a form.”','“That is the Dutchman.” “On her side.” “The hatch in the wall is hers. It opens on her hold.” “Her hold is up there.” “Her hatch does not know that.”','“Something answers the sonar.” “In a voice?” “In a voice.” “What does it say?” “It asks for the ship.”'],
             spawn: {x:-63,z:-239.75,face:0},
@@ -91864,6 +92179,8 @@ const HQ_SPAWN_RULES = {
                 { race: 'chef', d: 'H', n: 1, work: 'b:P04-05-B1', homes: ['P07-04-B2'] },
                 { race: 'police officer', d: 'H', n: 2, work: 'd:H', patrol: true, beat: 'CFEUHBSI', homes: ['P07-04-B2'] },
                 { race: 'magician', d: 'E', n: 2, work: 'b:P09-06-B1', homes: ['P10-07-B1', 'P11-06-B2'] },
+                { race: 'gambler', d: 'E', n: 2, work: 'b:P08-04-B1', homes: ['P10-07-B1', 'P11-06-B2'] },   // 2026-11-19 THE NEW RACES 4: at the casino tables
+                { race: 'hacker', d: 'E', n: 1, work: 'p:P08-06', homes: ['P11-06-B2'] },   // 2026-11-19 THE NEW RACES 4
                 { race: 'influencer', d: 'E', n: 2, work: 'p:P08-06', homes: ['P10-07-B1', 'P11-06-B2'] },
                 { race: 'bunny girl', d: 'E', n: 1, work: 'b:P08-04-B1', homes: ['P10-07-B1', 'P11-06-B2'] },
                 { race: 'clown', d: 'E', n: 1, work: 'b:P09-05-B1', homes: ['P10-07-B1', 'P11-06-B2'] },
@@ -91990,6 +92307,7 @@ const HQ_NPC_TEMPERS = {
         'king kong': 'territorial', 'yeti': 'territorial', 'bigfoot': 'territorial', 'minotaur': 'territorial', 'sewer gator': 'territorial',
         'superhero': 'protector', 'sidekick': 'protector', 'firefighter': 'protector', 'eagleman': 'protector',
         'gangster': 'opportunist', 'goblin': 'opportunist', 'politician': 'opportunist', 'televangelist': 'opportunist', 'tech ceo': 'opportunist',
+        'gambler': 'opportunist', 'hacker': 'opportunist', 'monk': 'protector', 'shogun': 'territorial',   // 2026-11-19 THE NEW RACES 4
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
     /* THE GROUPS: races who stand up for each other (no factions). Units of ONE race are a group by themselves (`sameRace`). A unit is in one
@@ -93615,6 +93933,8 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "kraken", w: 2 },
     ] },
     "site_prebuilt_bermuda_ow_volcano": { list: [
+        { race: "monk", w: 12 },   // 2026-11-19 THE NEW RACES 4: the Volcano Island (Katana Bay in the story plans)
+        { race: "shogun", w: 12 },   // 2026-11-19 THE NEW RACES 4
         { race: "deep sea fish", w: 17 },
         { race: "jellyfish", w: 17 },
         { race: "sharkman", w: 17 },
@@ -93687,6 +94007,8 @@ const HQ_AREA_ENCOUNTERS = {
 HQ_AREA_ENCOUNTERS.site_prebuilt_area51_desert = HQ_AREA_ENCOUNTERS.site_prebuilt_giza_plateau;
 HQ_AREA_ENCOUNTERS.site_prebuilt_atlantis_ow_floor = HQ_AREA_ENCOUNTERS.site_prebuilt_atlantis_deep;   // THE DEEP, THE ONE WORLD MOVE (2026-11-17): the Sea Floor meets the Deep's own units
 ['site_ow_r9', 'site_ow_dh1', 'site_ow_dh2', 'site_ow_dh3', 'site_ow_dh4', 'site_prebuilt_area51_ow_circus', 'site_prebuilt_area51_ow_town', 'site_prebuilt_area51_ow_giza'].forEach(id => { HQ_AREA_ENCOUNTERS[id] = HQ_AREA_ENCOUNTERS.site_prebuilt_giza_plateau; });   // THE ONE WORLD MOVE (2026-11-17): every room the Desert became meets the same units   // THE DESERT ON PLOTS (2026-11-15): the desert meets the plateau's own units
+/* 🎲 THE NEW RACES 4 (2026-11-19, mondo): the Gambler sits at the Western Town's card tables (its own table: the Desert's + him) */
+HQ_AREA_ENCOUNTERS.site_prebuilt_area51_ow_town = { list: HQ_AREA_ENCOUNTERS.site_prebuilt_giza_plateau.list.concat([{ race: 'gambler', w: 12 }]) };
 HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_palace = HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_keep;   // CAMELOT CASTLE, ONE STACKED BUILDING (2026-11-15): the castle meets the old Keep's units
 HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_kingdom = { list: HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_ward.list.concat([{ race: 'fairy', w: 3 }, { race: 'unicorn', w: 3 }, { race: 'gnome', w: 3 }, { race: 'mushroom girl', w: 3 }]) };   // THE FAIRY FOLK (mondo 2026-11-16: "add fairy, unicorn, gnome, and mushroom girl to Camelot"): the ward's units + the four, each at the middle weight   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the kingdom meets the ward's own units too
 ['site_prebuilt_camelot_ow_pines', 'site_prebuilt_camelot_ow_garden', 'site_prebuilt_camelot_ow_fairy', 'site_prebuilt_camelot_ow_forest'].forEach(id => { HQ_AREA_ENCOUNTERS[id] = HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_kingdom; });   // THE ONE WORLD MOVE (2026-11-17): the four woods were the kingdom's plots; they meet the kingdom's units as before

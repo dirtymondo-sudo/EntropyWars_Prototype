@@ -7571,9 +7571,95 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ⚱ THE TOMB (2026-11-19, the Pharaoh's Prepare the Tomb): mondo's stone sarcophagus (the HQ catalogue's `sarcophagus`, a Meshy
+       prop) lying along its square, a slow gold shimmer on the lid's line, and the hits bar. Own side cyan rim, enemy pink. */
+    var _TOMB_URL = 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_stone_sarcophagus_0917035255_texture.glb';
+    function _buildTomb3D(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var own = _isAllyPlayer(turret.owner), col = own ? 0x5ad6ff : 0xff6aa8;
+        g.add(_plantHpBar(turret, ts, ts * 0.62));
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.42, 1.2, 4, 28), new THREE.MeshBasicMaterial({ color: col, fog: false }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 1.2; g.add(ring);
+        var fill = function () {
+            var e = _miscModelCache[_TOMB_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true);
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; n.castShadow = true; if (n.geometry) n.geometry._ew_shared = true; } });
+            var len = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) || 1;
+            var sc = (ts * 0.92) / len;
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            var turn = new THREE.Group(); turn.add(m);
+            if ((bb.max.z - bb.min.z) > (bb.max.x - bb.min.x)) turn.rotation.y = Math.PI / 2;   // its length along the square's x
+            g.add(turn);
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_TOMB_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_TOMB_URL, true, fill, { front: true }); } catch (x) { console.warn('[ThreeRenderer] tomb load threw', x); } }
+        return g;
+    }
+
+    /* 🏯 THE CLAN BANNER (2026-11-19, the Shogun): the Meshy heraldic banner (meshy_decor/banner.glb, mondo's decor set) hung
+       from a crossbar on a wooden pole planted in the square, a ring on the ground in the side's colour (own cyan, enemy red),
+       the HP bar. The cloth sways a little. */
+    var _BANNER_URL = 'https://cdn.entropywars.net/Assets/world/props/meshy_decor/banner.glb';
+    function _buildClanBanner3D(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var own = _isAllyPlayer(turret.owner), col = own ? 0x5ad6ff : 0xff5040;
+        var poleH = ts * 1.25;
+        g.add(_plantHpBar(turret, ts, poleH + ts * 0.15));
+        var wood = _turretMetalTex('wood', 1, 4) || _turretMetalTex('wood_planks', 1, 4);
+        var poleMat = new THREE.MeshLambertMaterial({ color: wood ? 0xffffff : 0x5a3a20, map: wood || null });
+        var pole = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.025, ts * 0.03, poleH, 8), poleMat);
+        pole.position.y = poleH / 2; g.add(pole);
+        var bar = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.018, ts * 0.42, 6), poleMat);
+        bar.rotation.z = Math.PI / 2; bar.position.set(ts * 0.2, poleH * 0.96, 0); g.add(bar);
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.4, 1.2, 4, 28), new THREE.MeshBasicMaterial({ color: col, fog: false }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 1.2; g.add(ring);
+        var cloth = new THREE.Group(); cloth.position.set(ts * 0.2, poleH * 0.96, 0); g.add(cloth);
+        var ph = (turret.x * 31 + turret.y * 17) * 0.13;
+        ring.onBeforeRender = function () { cloth.rotation.x = Math.sin(_animNow() / 900 + ph) * 0.06; };
+        var fill = function () {
+            var e = _miscModelCache[_BANNER_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true);
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; } });
+            var sc = (ts * 0.7) / (Math.max(bb.max.y - bb.min.y, 1e-3));
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.max.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);   // hung from its top
+            cloth.add(m);
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_BANNER_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_BANNER_URL, true, fill, { front: true }); } catch (x) { console.warn('[ThreeRenderer] clan banner load threw', x); } }
+        return g;
+    }
+
     function _buildTurret(turret) {
         if (turret.plant) return _buildPlant3D(turret);   // THE GARDEN
         if (turret.projector) return _buildHoloProjector3D(turret);   // 📽 the V-Tuber
+        if (turret.tomb) return _buildTomb3D(turret);   // ⚱ the Pharaoh
+        if (turret.banner) return _buildClanBanner3D(turret);   // 🏯 the Shogun
         if (turret.summon) return _buildSummon3D(turret);
         if (turret.zombie) return _buildZombie3D(turret);
         if (turret.spellId === 'fiveGTower') return _buildFiveGTower(turret);
@@ -16963,6 +17049,8 @@ const ThreeRenderer = (function () {
         if (g.halo) { at.halo = deps.length; deps.push(g.halo); }
         if (g.cape) { at.cape = deps.length; deps.push(g.cape); }
         if (g.held && g.held.url) { at.held = deps.length; deps.push(g.held.url); }
+        if (g.held2 && g.held2.url) { at.held2 = deps.length; deps.push(g.held2.url); }   // a second piece in the other hand (the Hacker's mouse)
+        if (g.helmet && g.helmet.url) { at.helmet = deps.length; deps.push(g.helmet.url); }   // THE BUBBLE HELMET
         var fn = function (root, anims, got) { try { _gearBuild(root, g, wf, at, got || []); } catch (e) { console.warn('[3D] unit gear failed', e); } return null; };
         fn.deps = deps;
         return (_gearRigCache[url] = fn);
@@ -17034,14 +17122,23 @@ const ThreeRenderer = (function () {
             made = true;
         }
         /* the held piece: upright in the hand, the grip (a third up its length) in the palm; it turns with the hand */
-        var hd = g.held || {}, km = at.held != null && _gearMesh(got[at.held]), hand = bone(hd.hand || 'RightHand');
-        if (km && hand) {
-            var k = _gearPlain(km), kb = k.geometry.boundingBox, ksc = (hd.len || 1.0) * H / Math.max(1e-6, kb.max.y - kb.min.y);
+        /* `fit: 'max'` sizes a flat piece (a keyboard, a mouse) by its longest side, not its height; `rot` [x, y, z] turns it in
+           the palm; `off` [x, y, z] (parts of the body's height) nudges it off the hand bone */
+        var _heldOne = function (hd, idx, defHand, nm) {
+            var km = idx != null && _gearMesh(got[idx]), hand = bone(hd.hand || defHand);
+            if (!km || !hand) return;
+            var k = _gearPlain(km), kb = k.geometry.boundingBox;
+            var span = hd.fit === 'max' ? Math.max(kb.max.x - kb.min.x, kb.max.y - kb.min.y, kb.max.z - kb.min.z) : (kb.max.y - kb.min.y);
+            var ksc = (hd.len || 1.0) * H / Math.max(1e-6, span);
             k.geometry.translate(-(kb.min.x + kb.max.x) / 2, -(kb.min.y + (kb.max.y - kb.min.y) * (hd.grip != null ? hd.grip : 0.35)), -(kb.min.z + kb.max.z) / 2);
-            k.scale.setScalar(ksc); k.name = 'ewGearHeld';
-            _gearHang(hand, hand.getWorldPosition(new THREE.Vector3()), k, 'ewGearHeldMount');
+            k.scale.setScalar(ksc); k.name = nm;
+            if (hd.rot) k.rotation.set(hd.rot[0] || 0, hd.rot[1] || 0, hd.rot[2] || 0);
+            if (hd.off) k.position.set((hd.off[0] || 0) * H, (hd.off[1] || 0) * H, (hd.off[2] || 0) * H);
+            _gearHang(hand, hand.getWorldPosition(new THREE.Vector3()), k, nm + 'Mount');
             made = true;
-        }
+        };
+        _heldOne(g.held || {}, at.held, 'RightHand', 'ewGearHeld');
+        if (g.held2) _heldOne(g.held2, at.held2, 'LeftHand', 'ewGearHeld2');
         if (made) root.userData.ewGear = true;
     }
     var _gearE = null;

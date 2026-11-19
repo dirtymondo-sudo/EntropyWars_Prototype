@@ -150,9 +150,15 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/influencer/', 'Assets/characters/races/influencer/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/referee/', 'Assets/characters/races/referee/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/florida_man/', 'Assets/characters/races/florida_man/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/pharaoh/', 'Assets/characters/races/pharaoh/'],   // 2026-11-19 THE PHARAOH (+ Cleopatra)
+  ['Assets/Sprites/Races/deep_sea_diver/', 'Assets/characters/races/deep_sea_diver/'],   // 2026-11-19 THE DEEP SEA DIVER
   ['Assets/Sprites/Races/boltzmann_brain/', 'Assets/characters/races/boltzmann_brain/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/wendigo/', 'Assets/characters/races/wendigo/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/karate_frog/', 'Assets/characters/races/karate_frog/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/gambler/', 'Assets/characters/races/gambler/'],   // 2026-11-19 THE NEW RACES 4
+  ['Assets/Sprites/Races/hacker/', 'Assets/characters/races/hacker/'],   // 2026-11-19 THE NEW RACES 4
+  ['Assets/Sprites/Races/monk/', 'Assets/characters/races/monk/'],   // 2026-11-19 THE NEW RACES 4
+  ['Assets/Sprites/Races/shogun/', 'Assets/characters/races/shogun/'],   // 2026-11-19 THE NEW RACES 4
   ['Assets/Sprites/Races/samurai_slug/', 'Assets/characters/races/samurai_slug/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/cursed_tv/', 'Assets/characters/races/cursed_tv/'],   // 2026-11-17 📺 THE CURSED TV
   ['Assets/Sprites/Races/virus/', 'Assets/characters/races/virus/'],   // 2026-11-18 🦠 THE VIRUS
@@ -565,9 +571,15 @@ const RACE_SPRITE_GENDERS = {
   'influencer': 'female',   // 2026-11-17 THE NEW RACES 2
   'referee': 'male',   // 2026-11-17 THE NEW RACES 2
   'florida man': 'male',   // 2026-11-17 THE NEW RACES 2
+  'pharaoh': 'both',   // 2026-11-19 THE PHARAOH (one race: the Pharaoh is the male, Cleopatra the female)
+  'deep sea diver': 'female',   // 2026-11-19 THE DEEP SEA DIVER
   'boltzmann brain': 'male',   // 2026-11-17 THE NEW RACES 2
   'wendigo': 'male',   // 2026-11-17 THE NEW RACES 2
   'karate frog': 'male',   // 2026-11-17 THE NEW RACES 2
+  'gambler': 'male',   // 2026-11-19 THE NEW RACES 4
+  'hacker': 'male',   // 2026-11-19 THE NEW RACES 4
+  'monk': 'male',   // 2026-11-19 THE NEW RACES 4
+  'shogun': 'male',   // 2026-11-19 THE NEW RACES 4
   'samurai slug': 'male',   // 2026-11-17 THE NEW RACES 2
   'cicada brood': 'male',   // 2026-11-17 THE NEW RACES 2
   'pope': 'male',   // 2026-11-17 THE POPE
@@ -753,9 +765,15 @@ const _CHARACTER_SPRITES = {
   'influencer': `${_S}/Races/influencer/female/influencer_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'referee': `${_S}/Races/referee/male/referee_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'florida man': `${_S}/Races/florida_man/male/florida_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'pharaoh': `${_S}/Races/pharaoh/male/pharaoh_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his model's front render)
+  'deep sea diver': `${_S}/Races/deep_sea_diver/female/deep_sea_diver_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her helmeted Meshy concept)
   'boltzmann brain': `${_S}/Races/boltzmann_brain/male/boltzmann_brain_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'wendigo': `${_S}/Races/wendigo/male/wendigo_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'karate frog': `${_S}/Races/karate_frog/male/karate_frog_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'gambler': `${_S}/Races/gambler/male/gambler_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'hacker': `${_S}/Races/hacker/male/hacker_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'monk': `${_S}/Races/monk/male/monk_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'shogun': `${_S}/Races/shogun/male/shogun_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'pope': `${_S}/Races/pope/male/pope_px2.png`,   // 2026-11-17 THE POPE — 128x128 pixel sprite (Sprite AI restyle of his model's front render, round 2: no shoulder cape)
@@ -856,6 +874,7 @@ const _NEW_FEMALE_SPRITES = {
   'ninja': `${_S}/Races/ninja/female/ninja_f_px.png`,   // 2026-11-17 THE NINJA — the female ninja (Sprite AI restyle of her Meshy model)
   'robot': `${_S}/Races/robot/female/robot_f2_px.png`,   // 2026-11-17 THE ROBOT REDESIGN — Sprite AI restyles of the new Meshy concepts
   'cyborg': `${_S}/Races/cyborg/female/cyborg_f2_px.png`,
+  'pharaoh': `${_S}/Races/pharaoh/female/pharaoh_f_px.png`,   // 2026-11-19 — Cleopatra (Sprite AI restyle of her model's front render)
   'mech': `${_S}/Races/mech/female/mech_f2_px2.png`,   // straight-on: Sprite AI restyle of her model's front render (the concept was turned)
 };
 const _NEW_MALE_SPRITES = {
@@ -2667,6 +2686,30 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'physical',
     }),
   },
+  /* 𓂀 THE PHARAOH (2026-11-19, mondo's concepts round: "pharaoh m and f"): one race, the Pharaoh and Cleopatra; Meshy made + rigged.
+     Cleopatra is the face-fixed remake (pharaoh_f_v3: the UV-seam flecks bled out). */
+  'pharaoh': {
+    male: _mkUAL('pharaoh/male', 'pharaoh', {
+      model: `${_S}/Races/pharaoh/male/Meshy_AI_pharaoh_Running.glb`,
+      heightRatio: 1.03,
+      basicAttackKind: 'magic',
+    }),
+    female: _mkUAL('pharaoh/female', 'pharaoh_f', {
+      model: `${_S}/Races/pharaoh/female/Meshy_AI_pharaoh_f_v3_Running.glb`,
+      heightRatio: 0.96,
+      basicAttackKind: 'magic',
+    }),
+  },
+  /* 🤿 THE DEEP SEA DIVER (2026-11-19): her Meshy model is bare-headed; the bubble helmet rides her head apart (three-renderer.js
+     THE BUBBLE HELMET: the brass collar file + a clear glass dome drawn in code, so her face shows through the glass). */
+  'deep sea diver': {
+    female: _mkUAL('deep_sea_diver/female', 'deep_sea_diver_f', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/deep_sea_diver/female/Meshy_AI_deep_sea_diver_f_Running.glb',   // the real path: the gear (procRig) is keyed by the loaded URL
+      heightRatio: 0.95,
+      basicAttackKind: 'physical',
+      procRig: 'unitGear', gear: { helmet: { url: 'https://cdn.entropywars.net/Assets/characters/gear/helmets/deep_sea_diver_helmet.glb', size: 0.2 } },
+    }),
+  },
   'boltzmann brain': {
     male: { model: `${_S}/Races/boltzmann_brain/male/Meshy_AI_boltzmann_brain.glb`, clips: {}, heightRatio: 0.7, yawOffset: Math.PI, basicAttackKind: 'magic' },   // the eye looks down -Z in the file
   },
@@ -2690,6 +2733,38 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/wendigo/male/Meshy_AI_wendigo_Running.glb`,
       heightRatio: 1.45,
       basicAttackKind: 'physical',
+    }),
+  },
+  /* THE NEW RACES 4 (2026-11-19, mondo's picks from the 11-19 concepts round, kits OK'd 11-19): Meshy image-to-3d from a
+     nano-banana-pro concept, rigged by the Meshy rigging API, animated by the shared library. The Hacker holds the PSX Mega
+     Pack's keyboard (left hand) and mouse (right hand), each its own piece (three-renderer.js THE UNIT GEAR `held` + `held2`).
+     No weapons in any outfit. Sources: /mnt/project-files/new-char-concepts-20261119/ + new-races-4/. */
+  'gambler': {
+    male: _mkUAL('gambler', 'gambler', {
+      model: `${_S}/Races/gambler/male/Meshy_AI_gambler_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'magic',
+    }),
+  },
+  'hacker': {
+    male: _mkUAL('hacker', 'hacker', {
+      model: `${_S}/Races/hacker/male/Meshy_AI_hacker_Running.glb`,
+      heightRatio: 0.98, basicAttackKind: 'magic',
+      procRig: 'unitGear', gear: {
+        held: { url: 'https://cdn.entropywars.net/Assets/world/packs/pizzadoggy_psx_mega_pack/electronics_and_misc/pc_mouse_mp_1.glb', len: 0.06, fit: 'max', grip: 0.5 },
+        held2: { url: 'https://cdn.entropywars.net/Assets/world/packs/pizzadoggy_psx_mega_pack/electronics_and_misc/pc_keyboard_mp_1.glb', len: 0.26, fit: 'max', grip: 0.5 },
+      },
+    }),
+  },
+  'monk': {
+    male: _mkUAL('monk', 'monk', {
+      model: `${_S}/Races/monk/male/Meshy_AI_monk_Running.glb`,
+      heightRatio: 0.97, basicAttackKind: 'punch',
+    }),
+  },
+  'shogun': {
+    male: _mkUAL('shogun', 'shogun', {
+      model: `${_S}/Races/shogun/male/Meshy_AI_shogun_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'physical',
     }),
   },
   'karate frog': {
@@ -7106,9 +7181,15 @@ const RACE_SPRITES = {
   'influencer': `${_S}/Races/influencer/female/influencer_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'referee': `${_S}/Races/referee/male/referee_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'florida man': `${_S}/Races/florida_man/male/florida_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'pharaoh': `${_S}/Races/pharaoh/male/pharaoh_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his model's front render)
+  'deep sea diver': `${_S}/Races/deep_sea_diver/female/deep_sea_diver_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her helmeted Meshy concept)
   'boltzmann brain': `${_S}/Races/boltzmann_brain/male/boltzmann_brain_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'wendigo': `${_S}/Races/wendigo/male/wendigo_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'karate frog': `${_S}/Races/karate_frog/male/karate_frog_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'gambler': `${_S}/Races/gambler/male/gambler_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'hacker': `${_S}/Races/hacker/male/hacker_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'monk': `${_S}/Races/monk/male/monk_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'shogun': `${_S}/Races/shogun/male/shogun_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'pope': `${_S}/Races/pope/male/pope_px2.png`,   // 2026-11-17 THE POPE — 128x128 pixel sprite (Sprite AI restyle of his model's front render, round 2: no shoulder cape)

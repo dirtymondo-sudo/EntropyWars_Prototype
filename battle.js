@@ -3271,6 +3271,8 @@
             /* 🧾 TAX EXEMPT (the Televangelist, 2026-11-17): a status's mpCostMult (0.5) on the whole bill, Picked a Card's +40 too */
             let _scm = 1;
             if (unit && typeof getActiveStatusKeys === 'function') for (const k of getActiveStatusKeys(unit)) { const m = STATUS_DEFS[k]?.mpCostMult; if (m > 0) _scm *= m; }
+            /* 🔒 THE RANSOM (the Hacker, 2026-11-19): an Encrypted unit's two priciest spells cost double */
+            if (typeof _ransomed === 'function' && _ransomed(unit, spell)) _scm *= 2;
             if (_scm !== 1 && base + delta > 0) return Math.max(1, Math.round((base + delta) * _scm));
             return Math.max(0, base + delta);
         }
@@ -5224,6 +5226,8 @@
             if (state.phase !== 'battle') return 0;
             const via = opts.via || 'displaced';
             _gatorSurfaceCheck(unit);   // 🐊 a Submerged unit off the liquid comes up
+            _bendsDisplaced(unit, via);   // 🫧 THE BENDS: a push, pull, fling or lunge costs HP by the square
+            if (unit.dead || unit._dying) return 0;
             _serpentKeepUp(unit, via);   // 🐍 a serpent body left behind by a blink is laid fresh beside him
             const depth = _chainDepth;
             if (depth >= CHAIN_RULES.maxDepth) {
@@ -7131,6 +7135,9 @@
         /* THE SPELL AUDIT Batch D (Loaded Dice): spells never crit — a row with `critChance` (0..1, the critChanceAdd patch)
            rolls each hit on the seeded stream and lands ×getCritMultiplier on a crit. Host-side; isCrit rides the hit opts. */
         function _spellCritRoll(unit, spell, dmg, target) {
+            /* 🎲 THE HOT STREAK (2026-11-19): a dice cast's every hit is ×_diceMult; a tails on Double or Nothing lands nothing */
+            if (spell && spell._diceWhiff) return { dmg: 0, isCrit: false };
+            if (spell && spell._diceMult > 0 && dmg > 0) dmg = Math.max(1, Math.round(dmg * spell._diceMult));
             const c = (spell && typeof spell.critChance === 'number') ? spell.critChance : 0;
             if (!(c > 0) || !(dmg > 0) || (target && unitCritWarded(target)) || engineRng() >= c) return { dmg, isCrit: false };   // Foresight wards spell crits too
             if (unit) unit._matchCrits = (unit._matchCrits || 0) + 1;
@@ -7277,6 +7284,10 @@
                 }
                 const _sitHas = _statusIfTargetHasArmed(spell, target);
                 const _rwTape = spell.rewindTape > 0 ? _tvTapeAmount(target, spell) : 0;   // 📺 Rewind: read the tape before this hit lands on it
+                if (spell._diceWhiff) {   // 🪙 Double or Nothing came up tails: nothing lands (no 1-damage floor, no hit on the target)
+                    addLog(`🪙 Tails: ${_ctSp(spell.name)} lands nothing on ${_ctName(target)}.`);
+                    if (!_skipVisuals()) showFloatingTextForUnit(target, '🪙 TAILS · MISS', 'miss', { durationMs: 1000 });
+                } else
                 applyDamageToUnit(target, damage,
                     `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
@@ -10110,6 +10121,7 @@
                 if (mod && mod[stat]) stages += mod[stat];
             }
             stages += _passiveSituationalStages(unit, stat);
+            if (stat === 'def' && unit.race === 'monk' && (unit.stillness | 0) > 0) stages += Math.min(3, unit.stillness | 0);   // 📿 THE STILLNESS
             return stages;
         }
 
@@ -10992,7 +11004,8 @@
             // its curse-layer (kill credit on hex procs).
             if (payload.id === 'taunt' && sourceUnit) { target._tauntCasterId = sourceUnit.id; delete target._tauntObjKey; }   // Batch D: a unit's taunt replaces a decoy's
             if (payload.id === 'hexed' && sourceUnit) target._hexCasterId = sourceUnit.id;
-            if (payload.id === 'payload' && sourceUnit) target._payloadSrcId = sourceUnit.id;   // 🦠 THE PAYLOAD: the Virus is credited when it goes off
+            if (payload.id === 'payload' && sourceUnit) target._payloadSrcId = sourceUnit.id;
+            if (payload.id === 'bends') { target._bendsAt = { x: target.x, y: target.y }; if (sourceUnit) target._bendsSrcId = sourceUnit.id; }   // 🫧 THE BENDS: counting starts here   // 🦠 THE PAYLOAD: the Virus is credited when it goes off
             // DOT appliers get credit for their ticks: poison/burn end-of-round
             // damage resolves source-less (STATUS_DEFS onRoundEnd), so the
             // applier is remembered here and credited at tick time.
@@ -14798,15 +14811,61 @@
                 _sigVfxGeom('wdHunger', u.x, u.y, 0);   // the cold comes back into it (three-vfx-effects.js THE WENDIGO'S LOOKS; relayed)
             }
         }
+        /* ═══ THE TOMB (2026-11-19, the Pharaoh + Cleopatra; mondo's concepts round) ═══ Prepare the Tomb stands a state.turrets row
+           with `tomb: true` (3 hits, never acts: processTurretVolleys skips it). At the round's end (_nrRoundEnd) a fallen unit whose
+           own tomb still stands rises on the tomb's square with TOMB_RISE_PCT of its max HP and the tomb crumbles; once a match
+           (unit._tombSpent, which also greys the spell: TargetQuery.spellBlockReason). An enemy that breaks the tomb (damageTurretAt)
+           gets the Curse of the Pharaoh: Hexed TOMB_CURSE_ROUNDS rounds. Host-side; the units and the turret row ride the snapshot
+           and the log / floating text / VFX geometry relay as usual. Notes: docs/notes/champions-combat.md "THE PHARAOH". */
+        const TOMB_RISE_PCT = 0.5, TOMB_CURSE_ROUNDS = 3;
+        function _tombOf(u) {
+            return (state.turrets || []).find(t => t && t.tomb && t.hp > 0 && t.casterUnitId === u.id) || null;
+        }
+        function _tombRise(u) {
+            if (!u || !u.dead || u._tombSpent || u._isBoss) return;
+            const t = _tombOf(u);
+            if (!t) return;
+            if (unitAt(t.x, t.y)) return;   // something stands on it: wait a round
+            const from = { x: u._dyingX != null ? u._dyingX : u.x, y: u._dyingY != null ? u._dyingY : u.y, z: u.z };
+            state.turrets = state.turrets.filter(o => o !== t);
+            if (typeof leaveRemainsOnRespawn === 'function') leaveRemainsOnRespawn(u, from);
+            u.dead = false; u._dying = false; u._respawnIn = null; delete u._dyingX; delete u._dyingY;
+            u.x = t.x; u.y = t.y;
+            try { u.z = (typeof getHeightAt === 'function') ? getHeightAt(t.x, t.y) : (t.z || 0); } catch (e) { u.z = t.z || 0; }
+            u.hp = Math.max(1, Math.round((u.maxHp || 1) * TOMB_RISE_PCT));
+            u.shield = 0;
+            u._tombSpent = true;
+            if (typeof resetUnitPowerState === 'function') resetUnitPowerState(u);
+            removeDebuffs(u);
+            addLog(`⚱ ${_ctName(u)} rises from the tomb at ${coordLabel(t.x, t.y)} with ${u.hp} HP. The tomb crumbles.`, u.player);
+            if (!_skipVisuals()) {
+                _sigVfxGeom('nrPrepareTomb:rise', t.x, t.y, 0, { owner: u.player });
+                showFloatingTextForUnit(u, `⚱ RISES +${u.hp}`, 'revive', { durationMs: 1400 });
+                try { flashHeal(u); } catch (e) {}
+            }
+            scheduleBoardRender();
+            if (typeof markDirty === 'function') markDirty('teams', 'selectedUnit', 'hud');
+        }
+        function _tombBroken(t, attacker) {
+            if (!t || !attacker || attacker.dead || !sidesHostile(t.owner, attacker.player)) return;
+            const ph = state.units.find(x => x.id === t.casterUnitId) || null;
+            showFloatingTextForUnit(attacker, '⚱ CURSED', 'debuff', { durationMs: 1300 });
+            _sigVfxGeom('nrPrepareTomb:curse', attacker.x, attacker.y, 0, { owner: t.owner });
+            applyStatusEffects(attacker, [{ id: 'hexed', duration: TOMB_CURSE_ROUNDS }], `⚱ The Curse of the Pharaoh falls on ${unitDisplayName(attacker)}: `, ph && !ph.dead ? ph : null);
+        }
+        window._tombRise = _tombRise;
         /* the round end (processEndOfRoundStatuses, before the status ticks) */
         function _nrRoundEnd() {
             if (!Array.isArray(state.units)) return;
             _payloadSpread();   // 🦠 THE PAYLOAD (the Virus): every carrier copies it to the teammates next to it
+            _bannerRoundEnd();   // 🏯 the Clan Banners that stood their rounds come down
             for (const u of state.units.slice()) {
                 if (!u || !u.race) continue;
+                if (u.dead && u._tombRiseOk !== false && !u._tombSpent) _tombRise(u);   // ⚱ THE TOMB: the Pharaoh rises
                 if (u.race === 'wendigo') _wendigoHunger(u);
                 else if (u.race === 'boltzmann brain') _boltzmannFluctuate(u);
                 else if (u.race === 'haunted doll') _dollCreep(u);
+                else if (u.race === 'monk') _monkStillness(u);   // 📿 THE STILLNESS
                 if (u.status && u.status.dormant > 0) _cicadaBrood(u);
                 /* 📺 THE TAPE (the Cursed TV): this round's recording becomes last round's, the one Rewind plays back */
                 if (u._tapeNow || u._tapeLast) { u._tapeLast = u._tapeNow || 0; u._tapeNow = 0; }
@@ -14948,6 +15007,162 @@
             }
         }
         window.getViewers = getViewers; window._viewersAdd = _viewersAdd; window.VIEWERS_MAX = VIEWERS_MAX; window._streamCastRow = _streamCastRow;
+        /* ═══ THE NEW RACES 4 (2026-11-19, mondo OK'd the kits: the Gambler, the Hacker, the Monk, the Shogun) ═══
+           Plain numbers and ids on the unit (hotStreak, stillness, _ransomSpells, _ransomById), so the online guest's menu, HUD
+           and pathing read the same through the state sync; the floating texts go through showFloatingTextForUnit (relayed).
+           Notes: docs/notes/champions-combat.md "THE NEW RACES 4". */
+        const HOT_STREAK_MAX = 5, HOT_STREAK_STEP = 0.08, STILLNESS_MAX = 3;
+        /* the cast's own copy (doSpell, where _streamCastRow is): no roll yet, a refusal must not spend the dice */
+        function _nr4CastRow(unit, spell) {
+            if (!spell || !(spell.diceRoll || spell.stillnessSpend)) return spell;
+            const s = Object.assign({}, spell);
+            if (spell.stillnessSpend) s.dmg = (spell.dmg || 0) + spell.stillnessSpend * Math.max(0, Math.min(STILLNESS_MAX, unit.stillness | 0));
+            return s;
+        }
+        /* 🎲 THE HOT STREAK: doSpell, once every refusal has passed. Two dice (three keep two under Let It Ride) on the engine's
+           seeded stream (host-side); the roll rides the cast copy as `_dice`, `_diceMult` (_spellCritRoll multiplies every hit of
+           the cast by it), `critChance` 1 on double sixes, `_diceWhiff` on a tails. finishAction books the streak. */
+        function _diceRollNow(unit, spell) {
+            if (!spell || !spell.diceRoll || !unit) return;
+            const d6 = () => 1 + Math.floor(engineRng() * 6);
+            let dice = [d6(), d6()];
+            const ride = unitHasStatus(unit, 'letItRide');
+            if (ride) {
+                dice.push(d6());
+                dice.sort((a, b) => b - a);
+                dice = dice.slice(0, 2);
+                if (unit.status) delete unit.status.letItRide;
+            }
+            const sum = dice[0] + dice[1], bust = sum <= 4, boxcars = dice[0] === 6 && dice[1] === 6;
+            const streak = Math.max(0, Math.min(HOT_STREAK_MAX, unit.hotStreak | 0));
+            let mult = 1 + HOT_STREAK_STEP * streak;
+            if (spell.diceRoll === 'scale') mult *= sum / 7;
+            if (spell.streakCashIn) mult = 1 + spell.streakCashIn * streak;
+            spell._dice = { a: dice[0], b: dice[1], sum, bust, boxcars, ride };
+            spell._diceMult = mult;
+            if (boxcars) spell.critChance = 1;
+            let coin = '';
+            if (spell.coinFlip) {
+                const heads = engineRng() < 0.5;
+                coin = heads ? ' · 🪙 HEADS' : ' · 🪙 TAILS';
+                if (!heads) { spell._diceWhiff = true; spell.selfDamagePct = spell.coinFlip.tailsSelfPct || 0.1; }
+            }
+            const word = boxcars ? 'BOXCARS!' : bust ? 'BUST' : (sum >= 7 ? 'HOT' : '');
+            addLog(`🎲 ${_ctName(unit)} rolls ${dice[0]} + ${dice[1]} = ${sum}${ride ? ' (let it ride: best two of three)' : ''}${word ? ' — ' + word : ''}${coin}.`);
+            if (state.phase === 'battle' && !_skipVisuals()) {
+                showFloatingTextForUnit(unit, `🎲 ${dice[0]}+${dice[1]}${word ? ' ' + word : ''}${coin}`, boxcars ? 'crit' : (bust ? 'damage' : 'buff'), { durationMs: 1400, jitterY: -18 });
+            }
+        }
+        /* finishAction: the streak (7+ adds one, 2-4 busts it, High Roller spends it), the stillness, the ransom */
+        function _nr4AfterCast(unit, spell) {
+            if (!unit || !spell) return;
+            if (spell._dice) {
+                const before = unit.hotStreak | 0;
+                let after = before;
+                if (spell.streakCashIn) after = 0;
+                else if (spell._dice.bust) after = 0;
+                else if (spell._dice.sum >= 7) after = Math.min(HOT_STREAK_MAX, before + 1);
+                unit.hotStreak = after;
+                if (after !== before) {
+                    addLog(spell.streakCashIn ? `🎲 ${_ctName(unit)} cashes in a streak of ${before}.`
+                        : after > before ? `🎲 ${_ctName(unit)} is on a HOT STREAK: ${after} (+${Math.round(after * HOT_STREAK_STEP * 100)}% on his dice).`
+                        : `🎲 ${_ctName(unit)} busts: the streak of ${before} is gone.`);
+                    if (state.phase === 'battle' && !_skipVisuals() && !spell.streakCashIn) {
+                        showFloatingTextForUnit(unit, after > before ? `🔥 STREAK ${after}` : '💸 STREAK LOST', after > before ? 'buff' : 'damage', { durationMs: 1100, jitterY: -30 });
+                    }
+                }
+            }
+            if (spell.stillnessGain > 0) {
+                unit.stillness = Math.min(STILLNESS_MAX, (unit.stillness | 0) + spell.stillnessGain);
+                unit._stillFrom = { x: unit.x, y: unit.y, r: state.round || 0 };
+                addLog(`📿 ${_ctName(unit)} is still: Stillness ${unit.stillness} (+${unit.stillness} DEF stage${unit.stillness === 1 ? '' : 's'}).`);
+                if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(unit, `📿 STILLNESS ${unit.stillness}`, 'buff', { durationMs: 1100, jitterY: -26 });
+            }
+            if (spell.stillnessSpend && (unit.stillness | 0) > 0) {
+                addLog(`📿 ${_ctName(unit)} spends ${unit.stillness} Stillness in one palm.`);
+                unit.stillness = 0;
+            }
+            _ransomPay(unit, spell);
+        }
+        /* ⌨ THE RANSOM: an Encrypted unit's two priciest spells cost double (getSpellMpCostFor); the extra half of the bill goes
+           to the Hacker who set it, up to his max MP */
+        function _ransomed(unit, spell) {
+            if (!unit || !spell || !Array.isArray(unit._ransomSpells) || !unit._ransomSpells.length) return false;
+            if (!unitHasStatus(unit, 'encrypted')) return false;
+            const id = spell._overdueOf || spell.id;
+            return unit._ransomSpells.indexOf(id) >= 0;
+        }
+        function _ransomPay(unit, spell) {
+            if (!_ransomed(unit, spell)) return;
+            const paid = getSpellMpCostFor(unit, spell);
+            const extra = Math.floor(paid / 2);
+            const hk = unit._ransomById && (state.units || []).find(u => u && u.id === unit._ransomById && !u.dead);
+            if (!(extra > 0)) return;
+            const got = hk ? Math.max(0, Math.min(extra, (hk.maxMp || hk.mp || 0) - (hk.mp || 0))) : 0;
+            if (hk && got > 0) hk.mp = (hk.mp || 0) + got;
+            addLog(`🔒 ${_ctName(unit)} pays the ransom on ${_ctSp(spell.name)}: ${extra} MP extra${hk ? `, ${got} to ${_ctName(hk)}` : ''}.`);
+            if (state.phase === 'battle' && !_skipVisuals()) {
+                showFloatingTextForUnit(unit, `🔒 RANSOM −${extra} MP`, 'damage', { durationMs: 1100, jitterY: -26 });
+                if (hk && got > 0) showFloatingTextForUnit(hk, `+${got} MP 💰`, 'mana', { durationMs: 1100 });
+            }
+        }
+        /* 📿 THE STILLNESS: the round end. A Monk that took his turn this round and stands where it began, with no walk of his
+           own, gains a stack; a walk, or being moved off the square (a shove), clears them. */
+        function _monkStillness(u) {
+            if (!_nrAlive(u) || u.race !== 'monk') return;
+            const r = state.round || 0, f = u._stillFrom;
+            if (!f || f.r !== r) return;   // no turn this round (stunned, exited): nothing changes
+            const moved = u._walkedRound === r || f.x !== u.x || f.y !== u.y;
+            if (moved) {
+                if ((u.stillness | 0) > 0) addLog(`📿 ${_ctName(u)} moved: the Stillness is gone.`);
+                u.stillness = 0;
+                return;
+            }
+            if ((u.stillness | 0) >= STILLNESS_MAX) return;
+            u.stillness = (u.stillness | 0) + 1;
+            addLog(`📿 ${_ctName(u)} did not move: Stillness ${u.stillness} (+${u.stillness} DEF stage${u.stillness === 1 ? '' : 's'}).`);
+            if (!_skipVisuals()) showFloatingTextForUnit(u, `📿 STILLNESS ${u.stillness}`, 'buff', { durationMs: 1100 });
+        }
+        /* the start of his activation (the blitz turn hand-off): where the turn began */
+        function _monkTurnStart(unit) {
+            if (!unit || unit.race !== 'monk') return;
+            const r = state.round || 0;
+            if (unit._stillFrom && unit._stillFrom.r === r) return;   // a second activation in a round keeps the first square
+            unit._stillFrom = { x: unit.x, y: unit.y, r };
+        }
+        /* 🏯 THE ZONE OF CONTROL: who stops `unit`'s walk. Every enemy Shogun (Chebyshev 1, 2 under his Edict) and every live Clan
+           Banner of his (Chebyshev 1). Returns a test (x, y) -> true where a walk must end, or null when nothing holds it.
+           getMoveTiles and findMovePath never walk on from such a square (the square itself can be reached). */
+        function _zocHolds(unit) {
+            if (!unit || !Array.isArray(state.units)) return null;
+            if (typeof unitIsPhasing === 'function' && unitIsPhasing(unit)) return null;
+            const src = [];
+            for (const s of state.units) {
+                if (!s || s.dead || s.race !== 'shogun' || s.id === unit.id || !sidesHostile(s.player, unit.player)) continue;
+                if (unitHasStatus(s, 'exited') || unitHasStatus(s, 'captured')) continue;
+                src.push({ x: s.x, y: s.y, r: unitHasStatus(s, 'edict') ? 2 : 1 });
+            }
+            for (const t of (state.turrets || [])) {
+                if (t && t.banner && t.hp > 0 && sidesHostile(t.owner, unit.player)) src.push({ x: t.x, y: t.y, r: 1 });
+            }
+            if (!src.length) return null;
+            return (x, y) => {
+                for (const s of src) if (Math.max(Math.abs(s.x - x), Math.abs(s.y - y)) <= s.r && !(s.x === x && s.y === y)) return true;
+                return false;
+            };
+        }
+        window._zocHolds = _zocHolds;
+        /* 🏯 the Clan Banner stands its rounds, then comes down (the round end) */
+        function _bannerRoundEnd() {
+            if (!Array.isArray(state.turrets)) return;
+            const r = state.round || 0;
+            state.turrets = state.turrets.filter(t => {
+                if (!t || !t.banner || !(t.bannerUntil > 0) || r < t.bannerUntil) return true;
+                addLog(`🏯 The Clan Banner at ${coordLabel(t.x, t.y)} comes down.`);
+                return false;
+            });
+        }
+        window._nr4CastRow = _nr4CastRow; window._diceRollNow = _diceRollNow; window._monkStillness = _monkStillness; window._monkTurnStart = _monkTurnStart;
         /* ═══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit and asked for the pull-string spell) ═══ "Sits on the shelf, and
            moves when you look away." Host-side like the rest of THE NEW RACES 2: the squares, the facings, the statuses and the HP
            state-sync to the guest; the voice-box line comes from _nrHash (the unit id + the round), so the guest's log agrees.
@@ -15108,6 +15323,48 @@
            data.js TERRAIN_RULES.swamp.endTurn; the CPU's hazard cost: ai.js). Everyone else, his allies too, pays 2 and is Gooed. */
         function _slugOozeProof(unit) { return !!unit && unit.race === 'samurai slug'; }
         window._slugOozeProof = _slugOozeProof;
+        /* ═══ THE BENDS (2026-11-19, the Deep Sea Diver; mondo's concepts round) ═══ A unit with the Bends (data.js STATUS_DEFS.bends,
+           from Depth Charge) loses BENDS_PCT of its max HP for every square it moves while it lasts, however it moves. A walk counts
+           every step of its path (finishMoveAt -> _bendsWalk); any other arrival (a push, pull, fling, charge, jump: resolveTileArrival)
+           counts the squares between unit._bendsAt (where it last stood, set when the status lands and after every count) and where
+           it lands; a teleport only moves the anchor. Host-side damage through applyDamageToUnit (DEF ignored, the Diver credited by
+           unit._bendsSrcId, an id: RULE #2), so the guest sees the hit like any other. Notes: champions-combat.md "THE DEEP SEA DIVER". */
+        const BENDS_PCT = 0.05;
+        function _bendsHurt(unit, squares, how) {
+            if (!unit || unit.dead || unit._dying || !(squares > 0) || !unitHasStatus(unit, 'bends')) return;
+            const dmg = Math.max(1, Math.round((unit.maxHp || 0) * BENDS_PCT * squares));
+            const src = (unit._bendsSrcId && state.units.find(x => x.id === unit._bendsSrcId && !x.dead)) || null;
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(unit, `🫧 THE BENDS ×${squares}`, 'debuff', { durationMs: 1000 });
+                try { _sigVfxGeom('nrBends', unit.x, unit.y, 0, { owner: src ? src.player : null }); } catch (e) {}
+            }
+            applyDamageToUnit(unit, dmg, `🫧 ${unitDisplayName(unit)} ${how || 'moves'} ${squares} square${squares !== 1 ? 's' : ''} with the Bends: `, {
+                ignoreArmor: true, damageType: 'dot', consumeMarked: false, allowMarkBonus: false, noPress: true,   // exact: no type / element multiplier
+                sourceUnit: src || undefined, flashColor: 'water'
+            });
+            if (typeof checkWin === 'function') checkWin();
+        }
+        function _bendsWalk(unit, fx, fy, trail) {
+            if (!unit || !unitHasStatus(unit, 'bends')) return;
+            const pts = [{ x: fx, y: fy }].concat(Array.isArray(trail) ? trail : [], [{ x: unit.x, y: unit.y }]);
+            let n = 0;
+            for (let i = 1; i < pts.length; i++) {
+                const a = pts[i - 1], b = pts[i];
+                if (!a || !b || (a.x === b.x && a.y === b.y)) continue;
+                n += Math.max(1, Math.abs(a.x - b.x) + Math.abs(a.y - b.y));
+            }
+            unit._bendsAt = { x: unit.x, y: unit.y };
+            _bendsHurt(unit, n, 'walks');
+        }
+        function _bendsDisplaced(unit, via) {
+            if (!unit || !unitHasStatus(unit, 'bends')) return;
+            const at = unit._bendsAt;
+            unit._bendsAt = { x: unit.x, y: unit.y };
+            if (!at || via === 'teleport' || via === 'move') return;
+            const n = Math.abs(at.x - unit.x) + Math.abs(at.y - unit.y);
+            if (n > 0) _bendsHurt(unit, n, via === 'self' ? 'lunges' : 'is thrown');
+        }
+        window._bendsWalk = _bendsWalk; window._bendsDisplaced = _bendsDisplaced;
         /* the squares a straight-ish run from (fx, fy) to where he stands crossed (Iai Draw's charge, `slimeLane`): a Manhattan
            walk, the long axis first, his own square left out (he stands in it; the next walk paints it) */
         function _slugLaneSquares(fx, fy, tx, ty) {
@@ -45986,7 +46243,7 @@
             const shots = [];
             if (state.turrets && state.turrets.length) {
                 for (const turret of state.turrets) {
-                    if (turret.hp <= 0 || turret.auraDebuff || turret.plant || turret.projector) continue;   // 📽 a Holo Projector never shoots   // 5G towers don't shoot; a plant acts with the seeds (applySeedTileEffects_endOfRound)
+                    if (turret.hp <= 0 || turret.auraDebuff || turret.plant || turret.projector || turret.tomb || turret.banner) continue;   // 🏯 a Clan Banner never shoots   // ⚱ the Pharaoh's tomb never acts   // 📽 a Holo Projector never shoots   // 5G towers don't shoot; a plant acts with the seeds (applySeedTileEffects_endOfRound)
                     if (turret.zombie || turret.summon) {
                         // 🧟 Raised abomination: mindless — hunts the NEAREST unit,
                         // friend or foe. Shambles up to 2 tiles toward it, then
@@ -46295,6 +46552,8 @@
             if (turret.summon) return `${_summonLook(turret.summon).icon} ${turret.spellName || 'The summon'}`;
             if (turret.zombie) return '🧟 The flesh abomination';
             if (turret.projector) return '📽 The Holo Projector';
+            if (turret.tomb) return '⚱ The Tomb';
+            if (turret.banner) return '🏯 The Clan Banner';
             return `🔧 ${turret.auraDebuff ? '5G Tower' : 'Siege Turret'}`;
         }
         /* opts.damageType (wave C): an ARMORED summon (the creation) counts a
@@ -46335,9 +46594,12 @@
                     ? `🧟 The flesh abomination at ${coordLabel(x, y)} collapses into carrion!`
                     : turret.projector
                     ? `📽 The Holo Projector at ${coordLabel(x, y)} flickers out!`
+                    : turret.tomb
+                    ? `⚱ The Tomb at ${coordLabel(x, y)} is broken open!`
                     : `🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
                 state.turrets = state.turrets.filter(t => t !== turret);
                 if (turret.burstStatus) _summonBurst(turret);   // 🦠 the Virus's Replica
+                if (turret.tomb) _tombBroken(turret, attackerUnit);   // ⚱ the Curse of the Pharaoh
                 if (attackerUnit && sidesHostile(turret.owner, attackerUnit.player)) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);   // no pay for wrecking your own
                 // 🧱 Wrecked machinery is a metal mine (meat isn't) — the
                 // scrap scatters as debris cubes around the wreck.
@@ -46348,6 +46610,8 @@
             }
             return true;
         }
+
+        window.damageTurretAt = damageTurretAt;   // (probes: a hit on a turret / summon / tomb through the real path)
 
         // ═══════════════ MACHINE ELVES — PRISM MIRROR LATTICE ═══════════════
         // Placeable laser-reflecting prisms (state.mirrors). Beams auto-connect
@@ -47690,6 +47954,7 @@
                move budget stops capping the search — the caller wants the REAL
                route to a far destination, not just this turn's reach. */
             const maxMove = (_routeOpts && _routeOpts.maxMove) || getMoveRangeThisTurn(unit);
+            const _pathZoc = _routeOpts ? null : _zocHolds(unit);   // a far route plan (findRouteTo) is not this turn's walk
             while (open.length) {
                 let minI = 0;
                 for (let i = 1; i < open.length; i++) {
@@ -47701,6 +47966,7 @@
                 const curKey = _has3D ? posKey3(cur.x, cur.y, cur.z) : posKey(cur.x, cur.y);
                 if (curKey === goalKey) break;
                 if (cur.cost > (costs.get(curKey) ?? Infinity)) continue;
+                if (_pathZoc && curKey !== startKey && _pathZoc(cur.x, cur.y)) continue;   // 🏯 THE ZONE OF CONTROL (mirrors getMoveTiles)
                 /* Movement is 4-directional (cardinal only) — diagonal steps
                    let units clip through wall corners instead of walking
                    around them. EXCEPTION: Mystery Dungeon floors move in 8
@@ -48076,6 +48342,7 @@
             // warp rune — ONE resolver, ONE order, the same for a walk and a
             // shove (resolveTileArrival). A flyer that lands at the end of its
             // move takes it too; one still in the air only meets the gravity field.
+            _bendsWalk(unit, _originX, _originY, opts.trail);   // 🫧 THE BENDS: every square of the walk costs HP
             resolveTileArrival(unit, { via: 'move' });
             _skaterBankMove(unit, _originX, _originY, x, y, dist, opts.trail);   // 🛹 a straight roll banks Momentum
             _serpentFollow(unit, _originX, _originY, opts.trail);   // 🐍 the serpent's body follows the path
@@ -48083,6 +48350,7 @@
             _deliveryDrop(unit, _originX, _originY);   // 🛵 the Delivery Boy drops his rider off
             _slugTrail(unit, _originX, _originY, opts.trail);   // 🐌 the Samurai Slug's slime trail
             _truckerHitchhike(unit, _originX, _originY, opts.trail);   // 🚚 the Trucker's hitchhikers ride along
+            if (unit.race === 'monk' && (_originX !== x || _originY !== y)) unit._walkedRound = state.round || 0;   // 📿 a walk breaks the Stillness
 
             if (!_wasAirborne) {
                 /* 🦴 Bone-pile looting — ending a move on an enemy's remains rifles
@@ -50329,7 +50597,8 @@
             spellBlockReason(unit, spell) {
                 if (!unit || !spell) return null;
                 if (unitSpellsBlocked(unit)) return 'Silenced';
-                if (spell.floridaHeadline && _floridaHeadline(unit) !== spell.id) return 'Not today';   // 📰 not today's headline
+                if (spell.floridaHeadline && _floridaHeadline(unit) !== spell.id) return 'Not today';
+                if (spell.tomb && unit._tombSpent) return 'The tomb is spent';   // ⚱ THE TOMB: once a match   // 📰 not today's headline
                 if (spell.hitsStatusOnly === 'payload' && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && unitHasStatus(e, 'payload'))) return '🦠 No Payload out';
                 if (spell.viewersMin > 0 && getViewers(unit) < spell.viewersMin) return '🎮 Need ' + spell.viewersMin + ' viewers';   // 🎮 THE VIEWERS
                 if (spell.rewindTape > 0 && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && _tvTapeAmount(e, spell) > 0)) return '📼 Nothing on tape';   // 📺 Rewind: no enemy took a hit last round
@@ -66277,6 +66546,7 @@
                     return;
                 }
                 if (nextUnit.race === 'florida man' || (nextUnit.spells || []).some(sp => sp && sp.floridaHeadline)) { try { _floridaTurnStart(nextUnit); } catch (e) {} }   // 📰 today's headline
+                if (nextUnit.race === 'monk') { try { _monkTurnStart(nextUnit); } catch (e) {} }   // 📿 where his turn began (THE STILLNESS)
 
                 /* 😱 Feared (CHAMP REWORK Phase 4, STATUS_DEFS fear): the
                    activation is the flight — one engine-driven move away from
@@ -83782,6 +84052,8 @@
             if (spell && spell.id === 'nrOverdue') spell = _overdueCastRow(unit, spell);
             /* 🎮 THE VIEWERS: a streaming row casts a copy with the viewer count baked in (_streamCastRow) */
             if (spell && (spell.viewersSpend || spell.viewersMarkAt || spell.viewersHealPer || spell.viewersDmgPer)) spell = _streamCastRow(unit, spell);
+            /* 🎲📿 THE NEW RACES 4: a dice row / a stillness-spending row casts its own copy (_nr4CastRow) */
+            if (spell && (spell.diceRoll || spell.stillnessSpend)) spell = _nr4CastRow(unit, spell);
             /* Clash final authority: movement/positioning spells can never
                fire, whatever path armed them (kits are already stripped —
                this catches stale online/AI edge cases). */
@@ -84512,6 +84784,7 @@
                 _armPressCollector(unit);
             }
             _viewersSpendNow(unit, spell);   // 🎮 THE VIEWERS: a spending cast empties the count now (every refusal has passed)
+            if (spell.diceRoll) _diceRollNow(unit, spell);   // 🎲 THE HOT STREAK: the dice roll now (every refusal has passed)
 
             // Balance Lab: arm the per-cast spell telemetry collector (same
             // lifecycle as the press collector — one action resolves at a time).
@@ -84552,6 +84825,7 @@
                 /* 🎮 THE VIEWERS: the spend's hold lifts; Uwu's crowd; a non-dash row's selfStatusAfter (Rage Quit's disconnect) */
                 if (unit._viewersHold) unit._viewersHold = false;
                 if (spell.viewersGain > 0) _viewersAdd(unit, spell.viewersGain, 'gets hearts in the chat');
+                _nr4AfterCast(unit, spell);   // 🎲📿🔒 THE NEW RACES 4: the streak, the stillness, the ransom
                 if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
                     applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                 }
@@ -90074,12 +90348,16 @@
                     auraDebuff: spell.auraDebuff || false,
                     auraDefReduction: spell.auraDefReduction || 0,
                     projector: !!spell.projector,   // 📽 the V-Tuber's Holo Projector: never shoots, her cast origin
-                    spellName: spell.projector ? spell.name : undefined,
+                    tomb: !!spell.tomb,   // ⚱ the Pharaoh's tomb: never acts; he rises from it once (THE TOMB)
+                    banner: !!spell.banner,   // 🏯 the Shogun's Clan Banner: never shoots, holds a Zone of Control (_zocHolds)
+                    bannerUntil: spell.banner ? (state.round || 0) + (spell.bannerRounds || 3) : undefined,
+                    spellName: (spell.projector || spell.banner) ? spell.name : undefined,
                     facingAngle: _initFacing,
                     id: `turret_${Date.now()}_${randInt(9999)}`
                 });
                 if (spell.projector) _sigVfxGeom(spell.id, x, y, 0, { fromX: unit.x, fromY: unit.y });   // 📽 ON AIR
-                showFloatingTextAtTile(x, y, spell.projector ? '📽' : '🔧', 'buff', {
+                if (spell.tomb) _sigVfxGeom('nrPrepareTomb:deploy', x, y, 0, { owner: unit.player });   // ⚱ the sand rises round it
+                showFloatingTextAtTile(x, y, spell.tomb ? '⚱ THE TOMB' : spell.projector ? '📽' : spell.banner ? '🏯' : '🔧', 'buff', {
                     durationMs: 900
                 });
 
@@ -90090,7 +90368,11 @@
                     }
                 }
                 /* a 5G Tower (auraDebuff) never shoots: its line names it and says what it does, not a turret's 8 dmg (A3) */
-                addLog(spell.projector   // 📽 the V-Tuber's projector never shoots: say what it is for
+                addLog(spell.banner   // 🏯 the Shogun's banner never shoots either
+                    ? `🏯 ${_ctName(unit)} plants the ${_ctSp(spell.name)} at ${coordLabel(x, y)} (${turretHp} HP, ${spell.bannerRounds || 3} rounds): no enemy walks past it.`
+                    : spell.tomb
+                    ? `⚱ ${_ctName(unit)} raises his tomb at ${coordLabel(x, y)} (${turretHp} hits): the first time he falls, he rises from it. Whoever breaks it is cursed.`
+                    : spell.projector   // 📽 the V-Tuber's projector never shoots: say what it is for
                     ? `📽 ${_ctName(unit)} stands a ${_ctSp(spell.name)} at ${coordLabel(x, y)} (${turretHp} HP): her spells and attacks can fly from it.`
                     : spell.auraDebuff
                     ? `${_ctName(unit)} deploys ${_ctSp(spell.name)} at ${coordLabel(x, y)} (${spell.hitsToKill ? spell.hitsToKill + ' hits' : turretHp + ' HP'}, enemies within ${turretRange} lose ${spell.auraDefReduction || 0} M.DEF).`
@@ -92311,6 +92593,7 @@
             /* 👻 Spectral Passage (Ghost passive): phase through edge walls,
                enemy units and deployed barricades while pathing. */
             const _phasing = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
+            const _zoc = _zocHolds(unit);   // 🏯 THE ZONE OF CONTROL (the Shogun, 2026-11-19)
             const startKey = _has3D ? posKey3(unit.x, unit.y, unitZ) : posKey(unit.x, unit.y);
             const bestCost = new Map([
                 [startKey, 0]
@@ -92334,6 +92617,7 @@
                 open.pop();
                 const curKey = _has3D ? posKey3(cur.x, cur.y, cur.z) : posKey(cur.x, cur.y);
                 if (cur.cost > (bestCost.get(curKey) ?? Infinity)) continue;
+                if (_zoc && curKey !== startKey && _zoc(cur.x, cur.y)) continue;   // 🏯 THE ZONE OF CONTROL: the walk stops here
 
                 /* Movement is 4-directional (cardinal only) — diagonal steps
                    let units clip through wall corners instead of walking

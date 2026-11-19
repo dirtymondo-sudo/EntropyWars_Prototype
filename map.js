@@ -16345,8 +16345,9 @@
                 for (const u of state.units) {
                     if (!u || u.dead || u._dying || _realmKeyOf(u)) continue;
                     if (u.status && Number(u.status.radioactive || 0) > 0) visible.add(posKey(u.x, u.y));
+                    if (u.status && Number(u.status.doxxed || 0) > 0) visible.add(posKey(u.x, u.y));   // 🪪 Doxxed (the Hacker, 2026-11-19): the same, seen by every viewer
                     /* 🎥 ON CAMERA (the Cameraman, THE NEW RACES 3): the filmed unit is seen through the fog by the other side */
-                    else if (u.status && Number(u.status.onCamera || 0) > 0 && typeof sidesAllied === 'function' && !sidesAllied(u.player, player)) visible.add(posKey(u.x, u.y));
+                    if (u.status && Number(u.status.onCamera || 0) > 0 && typeof sidesAllied === 'function' && !sidesAllied(u.player, player)) visible.add(posKey(u.x, u.y));
                 }
             }
 
@@ -18561,7 +18562,8 @@
             if (typeof _serpentDrop === 'function') _serpentDrop(unit);   // 🐍 the serpent sinks with its king (battle.js)
             if (typeof endStatusesTiedToUnit === 'function') endStatusesTiedToUnit(unit);
 
-            if (state.turrets) state.turrets = state.turrets.filter(t => t.casterUnitId !== unit.id);
+            /* ⚱ THE TOMB (the Pharaoh, 2026-11-19): his tomb outlives him; it is what he rises from (battle.js _tombRise) */
+            if (state.turrets) state.turrets = state.turrets.filter(t => t.casterUnitId !== unit.id || (t.tomb && !unit._tombSpent));
 
             if (state.plantedSeeds) state.plantedSeeds = state.plantedSeeds.filter(s => s.casterUnitId !== unit.id);
 
