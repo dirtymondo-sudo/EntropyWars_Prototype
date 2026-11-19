@@ -3091,3 +3091,8 @@ pair; `_hqNavGridAt` refills one array per grid (`G.out`, every caller reads it 
   de-duplicated its ~722 groups with `out.indexOf` every frame (~260,000 compares); now a per-call stamp `_ew_bunTS` and one kept array
   (`_ewBun.tOut`). The F3 "Bundle spikes" entry now also says the time before the groups and the slowest group's walk (name, ms,
   pieces), so the next 80 ms spike names its cause.
+
+### THE SLOWER WATCHDOG (2026-11-19, spikes thread, his 13:36 F3: 32.5 FPS, no slow frame in this thread's code)
+"batch: check 1.35 ms" every frame: the merged pieces' check (~16,000 pieces, 0.35 ms a frame per merge, a round ~3 s) restarted 0.5 s
+after each round. In a chunked room (`_hqChunkBig`, the current room) the next round now starts 4 s after the last (`ckGap`). Off:
+`EW_HQ_BATCH_CHECK_FAST`. Same F3: #2156 holds (no re-bakes, 0 builds/s); bundle check/replay spikes 29-80 ms are the 60 FPS thread's.

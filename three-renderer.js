@@ -98648,11 +98648,15 @@ const ThreeRenderer = (function () {
             if (!R.batch) R.batch = _hqBatchNew('shellGroup', now);
             if (!R.batchP && HQ_BATCH.props && !(typeof window !== 'undefined' && window.EW_HQ_NO_PROP_BATCH)) R.batchP = _hqBatchNew('propGroup', now);
             var BB = [R.batch, R.batchP];
+            /* THE SLOWER WATCHDOG (2026-11-19, spikes thread: his F3 "batch: check 1.35 ms" every frame in the city): 2,000 merged pieces' check
+               rounds ran back to back (0.35 ms a frame each, the next round 0.5 s after). In a chunked room a round now starts 4 s after the
+               last; a merged piece that moves or is hidden is handed back within ~4 s. Off: window.EW_HQ_BATCH_CHECK_FAST. */
+            var ckGap = (R === H && _hqChunkBig(H) && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_FAST)) ? 4000 : HQ_BATCH.checkMs;
             for (var bi = 0; bi < BB.length; bi++) {
             var B = BB[bi]; if (!B) continue;
             if (B.phase === 'off') continue;
             var _bt = (_lens && _lens.cur) ? performance.now() : 0;   // THE INNER SPLIT (lens): which step of the merge
-            if (B.batches.length && (B.ck || now - B.checkAt >= HQ_BATCH.checkMs)) { try { if (_hqBatchCheck(R, B, (typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_WHOLE) ? 0 : HQ_BATCH.rollMs)) B.checkAt = now; } catch (e) { B.ck = null; console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
+            if (B.batches.length && (B.ck || now - B.checkAt >= ckGap)) { try { if (_hqBatchCheck(R, B, (typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_WHOLE) ? 0 : HQ_BATCH.rollMs)) B.checkAt = now; } catch (e) { B.ck = null; console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
             _bt = _lensSub('batch: check', _bt);
             if (B.phase === 'live') {
                 if (now - B.at < HQ_BATCH.rescanMs) continue;
