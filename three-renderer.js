@@ -49182,11 +49182,28 @@ const ThreeRenderer = (function () {
             B[k] = function (b) { var gn = b && b.groupNode; if (!(gn && gn.shared === true)) _ewBun.upN = (_ewBun.upN | 0) + 1; return f.apply(this, arguments); };   // the frame's shared buffers (camera, lights) are written every frame by whoever comes first: not a sign the object changed
         });
         var RP_REST = 20, _rpDepth = 0, _rpHeldPool = [];
+        /* THE REFRESH BY OBJECT (2026-11-19, lens open only; mondo's 17:40 F3: "replay: the refreshes 20.88" ms for ~400 refreshes a
+           frame): each refresh is timed and filed under what it is (the object's name, its look, mesh or batch), with the sheet uploads
+           it caused, for the lens line "Refreshes by object" */
+        var rpLabel = function (ro) {
+            var L0 = ro._ew_rfL; if (L0) return L0;
+            var o = ro.object, m = ro.material, q = o, nm = '';
+            for (var d = 0; q && d < 4 && !nm; d++, q = q.parent) nm = q.name || '';
+            var mk = !m ? '?' : m._ewNode ? 'node ' + m._ewNode.k : (m.map && m.map.isCanvasTexture) ? 'sign canvas' : (m.map && m.map.isVideoTexture) ? 'video' : (m.transparent || m.alphaTest > 0) ? 'see-through' : m.type;
+            return (ro._ew_rfL = (nm || o.type) + ' · ' + mk + (o.isInstancedMesh ? ' · batch' : o.isSkinnedMesh ? ' · skinned' : ''));
+        };
         var rpStep = function (R, ro) {
+            var RF = (_lens && _lens.cur) ? (_ewBun.rf || (_ewBun.rf = { m: {}, f: 0 })) : null, t0 = 0, u0 = 0;
+            if (RF) { t0 = performance.now(); u0 = _ewBun.uplN | 0; }
             var N = R._nodes, t = N.needsRefresh(ro);
             if (t === 2 || t === 'full') { N.updateBefore(ro); R._geometries.updateForRender(ro); N.updateForRender(ro); R._bindings.updateForRender(ro); N.updateAfter(ro); }
             else if (t === 1 || t === 'shared') { N.updateBefore(ro); N.updateForRender(ro); R._bindings.updateSharedForRender(ro); N.updateAfter(ro); }
+            if (RF) { var dd = performance.now() - t0, kk = rpLabel(ro), e = RF.m[kk] || (RF.m[kk] = [0, 0, 0, 0]); e[0] += dd; e[1]++; e[2] += (_ewBun.uplN | 0) - u0; if (dd > e[3]) e[3] = dd; }
         };
+        ['updateTexture', 'generateMipmaps'].forEach(function (k) {   // the sheet uploads a refresh causes (THE REFRESH BY OBJECT)
+            var f = B[k]; if (typeof f !== 'function') return;
+            B[k] = function () { _ewBun.uplN = (_ewBun.uplN | 0) + 1; return f.apply(this, arguments); };
+        });
         /* one object per set of shared buffers among a group's own-node objects: what THE HELD KEEP THE CAMERA must refresh for a
            quiet group (rpShared over all the held objects skips every one after the first of each set anyway) */
         var rpShrList = function (D) {
@@ -49699,6 +49716,7 @@ const ThreeRenderer = (function () {
         var t0 = performance.now(), W = _ewBun.why;
         var spL = (_lens && _lens.cur) ? { w0: Object.assign({}, W), r0: _ewBun.recs, walked: 0, re: [], lamp: false } : null;   // THE BUNDLE SPIKES (lens): this tick's re-records
         _ewBun.frame = (_ewBun.frame | 0) + 1;
+        if (_ewBun.rf && _lens && _lens.cur) _ewBun.rf.f++;
         _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0, quiet: _ewBun.rpQuiet | 0 }; _ewBun.rpQuiet = 0; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
         var tpa = spL ? performance.now() : 0;
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
@@ -54746,6 +54764,12 @@ const ThreeRenderer = (function () {
         } catch (eBK) {}
         try {   // THE CHECK'S SPLIT + THE WALK'S SPLIT (2026-11-18): where the bundle check and the matrix walk spend their time
             var scS = _scanLine(); if (scS) L.push(scS);   // THE SCAN ALARM
+            if (_ewBun.rf && _ewBun.rf.f > 0) {   // THE REFRESH BY OBJECT
+                var RFm = _ewBun.rf.m, RFf = _ewBun.rf.f, RFk = Object.keys(RFm).sort(function (a, b) { return RFm[b][0] - RFm[a][0]; });
+                var RFt = 0; for (var rfi = 0; rfi < RFk.length; rfi++) RFt += RFm[RFk[rfi]][0];
+                L.push('Refreshes by object (ms a frame, refreshes a frame, sheet uploads, worst ms; ' + (RFt / RFf).toFixed(2) + ' ms a frame in all, ' + RFk.length + ' kinds, ' + RFf + ' frames): ' + RFk.slice(0, 10).map(function (k) { var e = RFm[k]; return k + ' ' + (e[0] / RFf).toFixed(2) + ' (' + (e[1] / RFf).toFixed(1) + ', ' + e[2] + ' up, worst ' + e[3].toFixed(0) + ')'; }).join(' | '));
+                _ewBun.rf = null;
+            }
             if (_ewBun.spikes && _ewBun.spikes.length) L.push('Bundle spikes (last ' + _ewBun.spikes.length + '): ' + _ewBun.spikes.join(' | '));
             if (_ewBun.splitShow) L.push('Bundle check by group (ms a frame, meshes; ' + (_ewBun.splitN | 0) + ' groups walked): ' + _ewBun.splitShow);
             var mwS = _hqStillSplitText(); if (mwS) L.push('Matrix walk by group (ms a frame): ' + mwS);

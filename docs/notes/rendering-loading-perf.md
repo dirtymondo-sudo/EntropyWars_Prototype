@@ -3189,3 +3189,9 @@ group three replayed itself: recorded again, not static, or not yet seen through
 - THE REPLAY'S SPLIT (lens): "Inside the ticks" gets "replay: a group, all of it" (every group's whole replay, all passes) and "replay:
   the refreshes" (the quiet replay's own work). The quiet groups did not lower "bundle replays", so the cost is either the refreshes
   left (~160 a frame, each a full node update) or three's per-group steps around them; this says which.
+- THE REFRESH BY OBJECT (11-19, his 17:40 F3, ~30 s after the load: 15.2 FPS, "replay: the refreshes 20.88" of "a group, all of it
+  21.13" ms, ~400 refreshes a frame (awake 135, turns 147) = ~50 µs a refresh, ten times a plain one). So the replay's cost IS the
+  refreshes, and something in them is heavy. Lens open only: every refresh of the quiet replay is timed and filed under what it is
+  (name of the object or its nearest named parent, its look: node kind / sign canvas / video / see-through / material type, batch or
+  skinned) with the sheet uploads it caused (backend `updateTexture` / `generateMipmaps`, counted in `_ewBun.uplN`). New lens line
+  "Refreshes by object": the top 10 by ms a frame, refreshes a frame, uploads, worst single refresh.
