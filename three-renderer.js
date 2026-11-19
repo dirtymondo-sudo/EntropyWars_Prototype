@@ -39877,10 +39877,10 @@ const ThreeRenderer = (function () {
         }
     }
     function _mmTick(H, now) {
-        if (_mmQueue.length) { var tq = (_lens && _lens.cur) ? performance.now() : 0; _mmDrain(); _lensSub('memory: drops', tq); }
+        if (_mmQueue.length) { var tq = _lensOn() ? performance.now() : 0; _mmDrain(); _lensSub('memory: drops', tq); }
         if (now - _mmAt < MM_EVERY_MS) return;
         _mmAt = now;
-        var tm = (_lens && _lens.cur) ? performance.now() : 0;
+        var tm = _lensOn() ? performance.now() : 0;
         var R = _mmLast = _mmRead();
         tm = _lensSub('memory: read', tm);
         if (_mmOff()) return;
@@ -47428,11 +47428,18 @@ const ThreeRenderer = (function () {
             return ua.call(this, attribute, type);
         };
     }
+    var EW_FREE_PER_FRAME = 48;
     function _ewGpuFreeLater(r) {
         var q = r._ew_freeLater;
         if (!q || !q.length) return;
-        r._ew_freeLater = null;
-        for (var i = 0; i < q.length; i++) { try { q[i].destroy(); } catch (e) {} }
+        /* THE FREES SPREAD (2026-11-19, mondo's 13:44 F3: one slow frame, "render: node + rig ticks 11 ms", the tick that also runs
+           these frees): a chunk or a room let go frees hundreds of GPU buffers at once, all destroyed on the next frame. At most
+           EW_FREE_PER_FRAME are destroyed a frame now (a count, not a time: Firefox's clock is whole milliseconds); the rest wait,
+           already forgotten by three, so a later frame destroying them is as safe. All at once: window.EW_FREE_ALL_AT_ONCE. */
+        var cap = (typeof window !== 'undefined' && window.EW_FREE_ALL_AT_ONCE) ? q.length : EW_FREE_PER_FRAME, n = Math.min(cap, q.length);
+        for (var i = 0; i < n; i++) { try { q[i].destroy(); } catch (e) {} }
+        _dip.freed += n;
+        if (n >= q.length) r._ew_freeLater = null; else q.splice(0, n);
     }
     /* ══ THE LIGHT RIG (WEBGPU_PLAN W5a, 2026-10-04: battle + spell performance on the node renderer) ═══════════════════
        three's node renderer bakes the scene's light LIST into every shader: LightsNode's cache key is each light's id and
@@ -51120,7 +51127,7 @@ const ThreeRenderer = (function () {
                model mask) is drawn before the frame and is not it either */
             var quad = !!(sc && sc.isQuadMesh), side = !!this._ew_sideRender;
             var outer = !depth && !shadowPass && !quad && !side;
-            if (outer) { this._ew_shadowFrame = true; var _nsp = _lensIn('render: node + rig ticks'); try { _ewGpuFreeLater(this); _ewNodeTick(); _ewRigTick(sc, cam); } finally { _lensOut(_nsp); } var _bsp = _lensIn('bundle check'); try { _ewBunTick(this, sc, cam); } finally { _lensOut(_bsp); } }
+            if (outer) { this._ew_shadowFrame = true; var _fsp = _lensIn('render: gpu frees'); try { _ewGpuFreeLater(this); } finally { _lensOut(_fsp); } var _nsp = _lensIn('render: node + rig ticks'); try { _ewNodeTick(); _ewRigTick(sc, cam); } finally { _lensOut(_nsp); } var _bsp = _lensIn('bundle check'); try { _ewBunTick(this, sc, cam); } finally { _lensOut(_bsp); } }
             /* THE RENDER BUNDLES (W6): a point light's six cube faces share one camera — they draw the groups the classic
                way, frustum-culled per face, instead of replaying a bundle recorded unculled */
             var unb = shadowPass && cam && cam.isPerspectiveCamera && _ewBun.marked.length ? _ewBun.marked : null;
@@ -53976,6 +53983,78 @@ const ThreeRenderer = (function () {
         W.by = {}; W.t0 = now;
         return W.last;
     }
+    /* THE DIP LOG (2026-11-19, mondo: "there are still moments where the game will dip in the teens or 20s, do i have to shift f3 the
+       exact moment it happens for you to catch that? ... no where near stable yet"): always on in the walk, lens open or not. Each frame
+       the walk's named parts are timed (the lens's own spans, without its draw counting or census: `_dip.cur` stands in for the lens's
+       frame), and a frame gap of 50 ms+ or a second under 30 FPS opens or extends a DIP: when, how long, the lowest second, the worst
+       gap, where the officer stood (start and end), its costliest parts summed over the dip, and what happened in it (bundle
+       re-records, a shared epoch move, shader builds, new pipelines, GPU buffers freed, objects added, models loaded). A dip closes
+       1.5 s after its last slow frame. The last 40 of the session print in Shift+F3 as "Dips this session". Off: window.EW_DIP_OFF. */
+    var _dip = { cur: null, t0: 0, lastT0: 0, prev: null, ring: [], st: null, log: [], n: 0, hooked: false, freed: 0, since: 0 };
+    function _dipOff() { try { return !!window.EW_DIP_OFF; } catch (e) { return false; } }
+    function _lensOn() { return !!((_lens && _lens.cur) || _dip.cur); }
+    function _dipCounters() {
+        var B = (typeof _ewBun !== 'undefined' && _ewBun) || {}, K = (typeof _ewKeep !== 'undefined' && _ewKeep) || {};
+        return { rec: B.recs | 0, ep: B.epoch | 0, pb: K.builds | 0, pp: K.pipes | 0, fr: _dip.freed, add: _ewAddN | 0, ld: _asOptLoads | 0 };
+    }
+    function _dipWhere() {
+        var H = _hq, pl = H && H.player; if (!pl) return '?';
+        var U = 3.5;
+        return Math.round(pl.x / U) + ',' + Math.round(pl.z / U) + (pl.y > 1 ? ' up ' + Math.round(pl.y) + ' m' : '') + (H.vehicle && H.vehicle.on ? ' (aboard)' : '');
+    }
+    function _dipBegin(t0) {
+        var D = _dip;
+        if (_dipOff()) { D.cur = null; D.lastT0 = 0; return; }
+        if (!D.hooked && renderer && typeof renderer._renderScene === 'function') { D.hooked = true; try { _lensSpanHook(renderer, true); } catch (e) {} }
+        D.t0 = t0;
+        D.cur = (_lens && _lens.cur) ? null : { parts: null, sub: null, t0: t0 };
+    }
+    function _dipClose(D, now) {
+        var st = D.st; D.st = null; if (!st) return;
+        var c1 = _dipCounters(), c0 = st.c0, top = [];
+        for (var k in st.parts) top.push([k, st.parts[k]]);
+        top.sort(function (a, b) { return b[1] - a[1]; });
+        st.top = top.slice(0, 4); st.parts = null;
+        st.d = { rec: c1.rec - c0.rec, ep: c1.ep - c0.ep, pb: c1.pb - c0.pb, pp: c1.pp - c0.pp, fr: c1.fr - c0.fr, add: c1.add - c0.add, ld: c1.ld - c0.ld };
+        st.whereEnd = _dipWhere(); st.len = st.lastAt - st.t;
+        D.log.push(st); D.n++; if (D.log.length > 40) D.log.shift();
+    }
+    function _dipEnd() {
+        var D = _dip, F = (_lens && _lens.cur) || D.cur; D.cur = null;
+        if (_dipOff() || !D.t0) return;
+        var now = performance.now(), t0 = D.t0; D.t0 = 0;
+        var rm = (_hq && _hq.opts && _hq.opts.room) || '';
+        if (rm !== D.room) { if (D.st) _dipClose(D, now); D.room = rm; D.since = t0; D.ring.length = 0; D.lastT0 = 0; D.prev = null; }   // a new room: its first 3 s are the load
+        var R = D.ring; R.push(t0); while (R.length && t0 - R[0] > 1000) R.shift();
+        var iv = D.lastT0 ? t0 - D.lastT0 : 0, P = D.prev;
+        if (!D.since) D.since = t0;
+        var fps = R.length, full = t0 - D.since > 3000;   // the frames that began in the last second (after the room's first 3 s)
+        if (iv > 0 && iv < 3000 && P && full && (iv >= 50 || fps < 30)) {
+            var st = D.st;
+            if (st && st.calm && t0 - st.lastAt > 1500) { _dipClose(D, now); st = null; }   // (a run of slow frames with long gaps stays one dip)
+            if (st) st.calm = false;
+            if (!st) st = D.st = { at: new Date().toISOString().slice(11, 19), t: D.lastT0, lastAt: t0, frames: 0, worst: 0, minFps: 999, js: 0, parts: {}, where: _dipWhere(), c0: P.c, room: (_hq && _hq.opts && _hq.opts.room) || '' };
+            st.lastAt = t0; st.frames++; st.js += P.cpu; if (iv > st.worst) st.worst = iv; if (fps < st.minFps) st.minFps = fps;
+            var M = P.parts; if (M) for (var pk in M) st.parts[pk] = (st.parts[pk] || 0) + M[pk];
+            var S2 = P.sub; if (S2) for (var sk in S2) st.parts['> ' + sk] = (st.parts['> ' + sk] || 0) + S2[sk];
+        } else if (D.st) { D.st.calm = true; if (t0 - D.st.lastAt > 1500) _dipClose(D, now); }
+        D.prev = { cpu: now - t0, parts: F ? F.parts : null, sub: F ? F.sub : null, c: _dipCounters() };
+        D.lastT0 = t0;
+    }
+    function _dipLines() {
+        var D = _dip, L = [];
+        var all = D.log.slice(); if (D.st) all.push(D.st);
+        if (!all.length) return ['Dips this session: none (no frame gap of 50 ms+ and no second under 30 FPS' + (_dipOff() ? '; the log is OFF' : '') + ')'];
+        L.push('Dips this session (' + (D.n + (D.st ? 1 : 0)) + ', last ' + Math.min(all.length, 12) + '; time · length · lowest FPS · worst gap · slow frames, their JS · where (squares) · top parts summed · what happened):');
+        all.slice(-12).forEach(function (st) {
+            var d = st.d, open = !d;
+            var tp = (st.top || (function () { var t = []; for (var k in st.parts) t.push([k, st.parts[k]]); t.sort(function (a, b) { return b[1] - a[1]; }); return t.slice(0, 4); })()).map(function (x) { return x[0] + ' ' + Math.round(x[1]); }).join(', ');
+            if (open) { var c1 = _dipCounters(); d = { rec: c1.rec - st.c0.rec, ep: c1.ep - st.c0.ep, pb: c1.pb - st.c0.pb, pp: c1.pp - st.c0.pp, fr: c1.fr - st.c0.fr, add: c1.add - st.c0.add, ld: c1.ld - st.c0.ld }; }
+            var hap = []; if (d.rec) hap.push(d.rec + ' re-recorded'); if (d.ep) hap.push('epoch moved ' + d.ep); if (d.pb) hap.push(d.pb + ' shader builds'); if (d.pp) hap.push(d.pp + ' new pipelines'); if (d.fr) hap.push(d.fr + ' GPU buffers freed'); if (d.add) hap.push(d.add + ' objects added'); if (d.ld) hap.push(d.ld + ' models loaded');
+            L.push('  ' + st.at + 'Z · ' + ((st.len != null ? st.len : st.lastAt - st.t) / 1000).toFixed(1) + ' s · ' + st.minFps + ' FPS · ' + Math.round(st.worst) + ' ms · ' + st.frames + ' frames, JS ' + Math.round(st.js) + ' ms · at ' + st.where + (st.whereEnd && st.whereEnd !== st.where ? ' → ' + st.whereEnd : '') + (open ? ' (still going)' : '') + ' · ' + (tp || 'no parts timed') + ' · ' + (hap.length ? hap.join(', ') : 'nothing loaded or rebuilt'));
+        });
+        return L;
+    }
     var _lens = null;
     var _LENS_KINDS = ['chars', 'props', 'terrain', 'fog', 'env', 'fx', 'other'];
     var _LENS_KIND_LABEL = { chars: 'Characters', props: 'Props', terrain: 'Terrain', fog: 'Fog grid', env: 'Environment', fx: 'Particles/FX', other: 'Other' };
@@ -54164,15 +54243,15 @@ const ThreeRenderer = (function () {
        pass. Each span counts its own time only (a shadow pass inside the scene's render is the shadow's). The lens prints the
        biggest as "Frame JS". Lens closed: nothing is wrapped. */
     var _lensTk = null, _lensPassK = 'scene';
-    function _lensIn(k) { var L = _lens; if (!L || !L.cur) return null; var sp = { k: k, t: performance.now(), c: 0, up: _lensTk, F: L.cur }; _lensTk = sp; return sp; }
+    function _lensIn(k) { var L = _lens, F = (L && L.cur) || _dip.cur; if (!F) return null; var sp = { k: k, t: performance.now(), c: 0, up: _lensTk, F: F }; _lensTk = sp; return sp; }
     function _lensOut(sp) {
         if (!sp) return;
         var d = performance.now() - sp.t; _lensTk = sp.up; if (sp.up) sp.up.c += d;
         var P = sp.F.parts || (sp.F.parts = {}); P[sp.k] = (P[sp.k] || 0) + d - sp.c;
     }
-    function _lensMark(k, t) { var L = _lens; if (!t || !L || !L.cur) return 0; var n = performance.now(), P = L.cur.parts || (L.cur.parts = {}); P[k] = (P[k] || 0) + n - t; return n; }
+    function _lensMark(k, t) { var F = t ? ((_lens && _lens.cur) || _dip.cur) : null; if (!F) return 0; var n = performance.now(), P = F.parts || (F.parts = {}); P[k] = (P[k] || 0) + n - t; return n; }
     /* THE INNER SPLIT (2026-11-18, spikes thread): a tick's own steps, kept apart from the frame's parts (they are inside one of them) */
-    function _lensSub(k, t) { var L = _lens; if (!t || !L || !L.cur) return 0; var n = performance.now(), P = L.cur.sub || (L.cur.sub = {}); P[k] = (P[k] || 0) + n - t; return n; }
+    function _lensSub(k, t) { var F = t ? ((_lens && _lens.cur) || _dip.cur) : null; if (!F) return 0; var n = performance.now(), P = F.sub || (F.sub = {}); P[k] = (P[k] || 0) + n - t; return n; }
     function _lensSpanHook(R, on) {
         var W = R._ew_lensSpans;
         if (!on || W) return;   // never unwrapped: other hooks (the bundles') may wrap over these later; closed, each is one check
@@ -54186,7 +54265,7 @@ const ThreeRenderer = (function () {
         if (typeof rs === 'function') {
             W.push([R, '_renderScene', rs]);
             R._renderScene = function (sc, cam) {
-                if (!_lens || !_lens.cur) return rs.apply(this, arguments);
+                if (!_lensOn()) return rs.apply(this, arguments);
                 var pk = _lensPassK;
                 _lensPassK = (sc && sc.isQuadMesh) ? 'post' : (sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial) ? ((cam && cam.isPerspectiveCamera) ? 'lamp shadow' : 'sun shadow')   /* THE SHADOW SPLIT: the sun's map and a lamp's cube sides are two rows */
                     : this._ew_sideRender ? 'mask' : this._ew_paneRender ? 'pane' : (sc && _lensIsMain(sc) && cam !== _lensMainCam(sc)) ? 'mirror/extra' : (sc && _lensIsMain(sc)) ? 'scene' : 'other render';
@@ -54198,7 +54277,7 @@ const ThreeRenderer = (function () {
         if (typeof po === 'function') {
             W.push([R, '_projectObject', po]);
             R._projectObject = function () {
-                var Fv = _lens && _lens.cur;
+                var Fv = (_lens && _lens.cur) || _dip.cur;
                 if (Fv) { var Cv = Fv.cnt || (Fv.cnt = {}); Cv[_lensPassK] = (Cv[_lensPassK] | 0) + 1; }   // THE SHADOW SPLIT: objects the walk visits, per pass
                 if (pd > 0 || !Fv) return po.apply(this, arguments);
                 pd++; var sp = _lensIn(_lensPassK + ': projection walk');
@@ -54489,6 +54568,7 @@ const ThreeRenderer = (function () {
         }
         if (S.sub && S.sub.length) L.push('Inside the ticks (ms/frame): ' + S.sub.filter(function (r) { return r[1] >= 0.02; }).slice(0, 10).map(function (r) { return r[0] + ' ' + r[1].toFixed(2); }).join(' · '));
         if (S.slow && S.slow.length) L.push('Slow frames (last ' + S.slow.length + ', gap · its JS · top): ' + S.slow.map(function (w) { return Math.round(w.iv) + ' ms · JS ' + Math.round(w.cpu) + (w.rec ? ' · ' + w.rec + ' re-recorded' : '') + (w.pb ? ' · ' + w.pb + ' shader builds' : '') + (w.pp ? ' · ' + w.pp + ' new pipelines' : '') + (w.ep ? ' · epoch moved' : '') + ' · ' + w.top.map(function (t) { return t[0] + ' ' + t[1].toFixed(1); }).join(', '); }).join(' | '));
+        try { _dipLines().forEach(function (x) { L.push(x); }); } catch (eDip) {}   // THE DIP LOG: every dip of the session, lens open or not
         if (S.cnt) {   // THE SHADOW SPLIT (2026-11-15): which shadow costs — the sun's map or a lamp's cube sides — and how many objects each pass's walk visits
             var cN = function (k) { return S.cnt[k] || 0; }, cF = function (v) { return v >= 100 ? _lensFmtN(v) : (Math.round(v * 10) / 10); };
             L.push('Shadow split (a frame): sun ' + cF(cN('sun renders')) + ' renders, ' + cF(cN('sun calls')) + ' calls, ' + cF(cN('sun tris')) + ' tris · lamp ' + cF(cN('lamp renders')) + ' side renders, ' + cF(cN('lamp calls')) + ' calls, ' + cF(cN('lamp tris')) + ' tris');
@@ -87184,7 +87264,7 @@ const ThreeRenderer = (function () {
         var day = (typeof hqToday === 'function') ? hqToday() : S.day; if (day !== S.day) S.day = day;
         if (!off) for (var b = 0; b < S.list.length; b++) { var s0 = S.list[(S.next + b) % S.list.length]; if (s0.day !== S.day && !(s0.ch && !s0.ch.away)) { try { s0.tl = hqResidentTimeline(S.G, s0.r, S.day); } catch (e) { s0.tl = null; } s0.day = S.day; S.next = (S.next + b + 1) % S.list.length; break; } }
         var pl = H.player, scene = !!H._sceneCastIds;
-        var spawnAll = typeof window !== 'undefined' && !!window.EW_HQ_RES_SPAWN_ALL, _rt = (_lens && _lens.cur) ? performance.now() : 0;
+        var spawnAll = typeof window !== 'undefined' && !!window.EW_HQ_RES_SPAWN_ALL, _rt = _lensOn() ? performance.now() : 0;
         _rt = _lensSub('residents: new day', _rt);
         /* who has a body: the nearest in the street (every 0.4 s) */
         if (now - S.lastPick > 400) {
@@ -90989,7 +91069,7 @@ const ThreeRenderer = (function () {
         var k = H.keys;
         /* THE SLIDE (Delivery 6): onto the cells, no input, then the cut */
         if (H.snap) { _hqTickSnap(dt); return; }
-        var _ws = (_lens && _lens.cur) ? performance.now() : 0;   // THE INNER SPLIT (lens): the walker's own steps
+        var _ws = _lensOn() ? performance.now() : 0;   // THE INNER SPLIT (lens): the walker's own steps
         _hqStuckWatch(H, pl, dt);   // THE WAY OUT OF A COLLIDER (2026-11-15): a body that cannot move on a spot that refuses it is put on the nearest ground
         /* SKATEBOARDING (HQ plan 9.8): on the board the frame is the rider's */
         _ws = _lensSub('walker: stuck watch', _ws);
@@ -91298,7 +91378,7 @@ const ThreeRenderer = (function () {
                EASED (2026-09-05 rev 3): in fast so the eye never clips, back
                out slowly so a passing pillar / the desk / the stair mass no
                longer pops the camera a metre in one frame */
-            var f = 1, NB = 32, _cs = (_lens && _lens.cur) ? performance.now() : 0;   // THE INNER SPLIT (lens)
+            var f = 1, NB = 32, _cs = _lensOn() ? performance.now() : 0;   // THE INNER SPLIT (lens)
             for (var i = 1; i <= NB; i++) {
                 var t = i / NB;
                 var px = pivot.x + (ideal.x - pivot.x) * t, py = pivot.y + (ideal.y - pivot.y) * t, pz = pivot.z + (ideal.z - pivot.z) * t;
@@ -91359,7 +91439,7 @@ const ThreeRenderer = (function () {
         }
         cam.position.set(c.ex * U, c.ey * U, c.ez * U);
         cam.lookAt(c.lx * U, c.ly * U, c.lz * U);
-        var _cf = (_lens && _lens.cur) ? performance.now() : 0;
+        var _cf = _lensOn() ? performance.now() : 0;
         if (typeof _hqCamFeel === 'function') _hqCamFeel(H, pl, cam, dt, U);   // THE CAMERA PASS 6.1 (2026-09-21): the bob, the landing, the sprint lens, the carve lean
         _lensSub('camera: feel', _cf);
     }
@@ -93017,6 +93097,7 @@ const ThreeRenderer = (function () {
         var t0 = performance.now();
         _perfTick(t0);
         if (_lens) _lensBegin(t0);   // THE PERF LENS: the walk's frame edges
+        _dipBegin(t0);   // THE DIP LOG (always on)
         /* THE READOUT IN THE WALK (OPEN_WORLD_PLAN.md Phase 0, 2026-09-26): behind the FPS counter setting (Video), the
            building's frame counts its draw calls across EVERY render of the frame (renderer.info resets per render call,
            so the post chain's last quad would read as the whole frame) — the numbers the stage's budget is set against */
@@ -93024,6 +93105,7 @@ const ThreeRenderer = (function () {
         if (readout) { renderer.info.autoReset = false; renderer.info.reset(); }
         try { _hqFrameBody(H); }
         finally {
+            try { _dipEnd(); } catch (eD) { _dip.cur = null; }
             if (_lens) _lensEnd();
             if (readout) {
                 _hqFrameInfo = { calls: _ewInfoCalls(renderer.info), tris: renderer.info.render.triangles };
@@ -93071,7 +93153,7 @@ const ThreeRenderer = (function () {
         /* THE DOOR WHEEL (Phase 3): the room runs slowed while the wheel is open (never paused — the world keeps breathing) */
         var wdt = (H.gun && H.gun.wheel) ? dt * _hqGunWheelRules().slow : dt;
         var editing = _hqEditing(H);   // THE EDITOR (EDITOR_PLAN E0): the walker stands still, the editor's fly camera is the eye
-        var _lt = (_lens && _lens.cur) ? performance.now() : 0;   // THE FRAME BREAKDOWN: the ticks' own times
+        var _lt = _lensOn() ? performance.now() : 0;   // THE FRAME BREAKDOWN: the ticks' own times
         if (!editing) _hqTickWalker(wdt);
         if (!editing && H.room && H.room.space && H.room.space.round) _hqPlanetSeam(H);   // THE ROUND WORLDS: off a face, onto the true next one
         _lt = _lensMark('tick: walker', _lt);
@@ -98779,7 +98861,7 @@ const ThreeRenderer = (function () {
     /* every frame of the walk (after the room is ready): the current part and the drawn neighbours, HQ_BATCH.sliceMs in all */
     function _hqBatchTick(H, now) {
         if (_hqBatchOff()) { _hqBatchDropAll(H); return; }
-        var _bw = (_lens && _lens.cur) ? performance.now() : 0;
+        var _bw = _lensOn() ? performance.now() : 0;
         _hqStackWatch();   // THE SHEET STACK
         _bw = _lensSub('batch: sheet stack watch', _bw);   // (2026-11-19: a 70 ms "tick: static batch" frame named none of the inner steps)
         var recs = [H]; if (H.stage) for (var id in H.stage.parts) if (H.stage.parts[id].attached) recs.push(H.stage.parts[id].P);
@@ -98805,7 +98887,7 @@ const ThreeRenderer = (function () {
             for (var bi = 0; bi < BB.length; bi++) {
             var B = BB[bi]; if (!B) continue;
             if (B.phase === 'off') continue;
-            var _bt = (_lens && _lens.cur) ? performance.now() : 0;   // THE INNER SPLIT (lens): which step of the merge
+            var _bt = _lensOn() ? performance.now() : 0;   // THE INNER SPLIT (lens): which step of the merge
             if (B.batches.length && (B.ck || now - B.checkAt >= ckGap)) { try { if (_hqBatchCheck(R, B, (typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_WHOLE) ? 0 : HQ_BATCH.rollMs)) B.checkAt = now; } catch (e) { B.ck = null; console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
             _bt = _lensSub('batch: check', _bt);
             if (B.phase === 'live') {
@@ -98827,7 +98909,7 @@ const ThreeRenderer = (function () {
             }
             if (B.phase === 'wait') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
             if (B.phase === 'watch') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs) && _hqStackPrep(R, B, now)) { _lensSub('batch: stack prep', _bt); B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else { _lensSub('batch: stack prep', _bt); continue; } }
-            _bt = (_lens && _lens.cur) ? performance.now() : 0;
+            _bt = _lensOn() ? performance.now() : 0;
             var _bPh = B.phase;
             if (_alNow() >= end) return;
             _hqSliceEnd = end;
