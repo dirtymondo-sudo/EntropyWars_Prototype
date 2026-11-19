@@ -1353,8 +1353,8 @@ const ThreePost = (function () {
             // Silhouette/x-ray twins share the model's geometry but are a UI
             // read-through, not the model itself — never mask them.
             if (n.isMesh && !n._ew_silhouette && (n._ew_modelSkin || n._ew_pixelate)) {
-                if (!n._ew_pixelTagged) { n._ew_pixelTagged = true; n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC); }
-                if (inUnit && !n.isSkinnedMesh) { if (!n._ew_pixUnitTagged) { n._ew_pixUnitTagged = true; n.layers.enable(PIX_LAYER_UNIT); } units++; }
+                if (!n._ew_pixelTagged) { n._ew_pixelTagged = true; n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC); _pixMkDirty(n); }
+                if (inUnit && !n.isSkinnedMesh) { if (!n._ew_pixUnitTagged) { n._ew_pixUnitTagged = true; n.layers.enable(PIX_LAYER_UNIT); _pixMkDirty(n); } units++; }
             }
             for (i = 0; i < ch.length; i++) walk(ch[i], inUnit);
         })(sc, false);
@@ -1369,6 +1369,8 @@ const ThreePost = (function () {
     // model anyway.
     /* panes (THE CLOSE-UP LOOK, renderPanes): [{ cam, x, y, w, h }] as shares of the target — each pane's models drawn into
        its own rect with its own camera, so the mask lines up with the split screen's picture */
+    /* THE MASK FILES BY THE DESK (three-renderer.js maskFile): a piece newly on a mask layer marks the big groups above it to be filed again */
+    function _pixMkDirty(n) { for (var q = n.parent, d = 0; q && d < 64; q = q.parent, d++) if (q._ew_mkIdx) q._ew_mkDirty = true; }
     function _renderPixelMask(cam, sc, panes, unitOnly) {
         sc = sc || _scene;
         if (unitOnly && typeof window !== 'undefined' && window.EW_STYLE_MASK_PROPS) unitOnly = false;
