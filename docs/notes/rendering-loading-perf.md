@@ -3330,3 +3330,17 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   43 ms ... targets 29 / 38 (1044)": `_ewBunTargets` refilled its list every frame with three `for in` walks and a closure, about
   the only allocation left in a settled frame, so the collector's slices landed there. The list now stands until the add counter
   moves, the room changes or 30 frames passed. Every frame: `window.EW_BUN_TARGETS_EVERY`.
+- THE REST OF THE MAPS (11-19, his third Firefox profile, 20:24, after #2189 / #2190): the ~6.5 s stop was still 62-64 ms (`CC`,
+  MANY_SUSPECTED, 4,000-5,000 suspected) and ALL of it WeakMap reads (`FixWeakMappingGrayBits` 0.57 % + `TraverseRoots >
+  TraceWeakMaps` 0.43 % of the profile). HOW TO COUNT WEAKMAPS (the recipe): a scratch copy of playtest_city.js with an init
+  script that swaps `window.WeakMap` for a subclass (a record per map: its maker's stack, a WeakRef, a count of keys set) and a
+  CDP `HeapProfiler.collectGarbage` exposed to the page; the view's eval collects, then sums the records whose map is still alive.
+  City, node renderer on WebGL 2: **228,760 live entries in 53,781 maps** before; the top: render objects' ChainMap 76,000 entries
+  in 53,000 one-entry maps, `Info.memoryMap` 71,000, `Geometries.attributeCall` 46,000, `NodeMaterialObserver.renderObjects`
+  16,000. (Counting every map ever made, 1.1 million entries: 700,000 in the shader builders' NodeCaches, dead after the build.)
+  `_ewGpuPropMaps` now also moves those: `_EwPropMap` (a WeakMap look-alike keeping the value on the key under its own Symbol;
+  `info.memoryMap`, `_geometries.attributeCall` / `wireframes`, each observer's `renderObjects` through `NodeMaterial.setupObserver`)
+  and ChainMap (`_getWeakMap` / `set` on its prototype: the first key carries the entry, the levels under it are plain Maps; a
+  level that reaches 32 keys on one object is emptied, the valve). After: **17,552 live entries in 406 maps** (three's module
+  caches 14,000, `_hqBatchIds` 1,400), same picture, no page errors. Old maps: `window.EW_GPU_WEAKMAPS`. On his Mac the proof is the
+  next profile's CCSlice length (62-64 ms before).
