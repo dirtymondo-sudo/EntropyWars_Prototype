@@ -47453,7 +47453,7 @@ const ThreeRenderer = (function () {
        no WeakMap entry, a plain property read, and it still dies with its object. An entry made before this ran is found in the old
        WeakMap once and moved; an object that cannot take a property (frozen) stays in the WeakMap. ChainMap (render objects by
        object + material + pass) is left as it is. Old maps: window.EW_GPU_WEAKMAPS = true before the renderer is made. */
-    function _ewGpuPropMaps(r) {
+    function _ewGpuPropMaps(r, G) {
         if (typeof window !== 'undefined' && window.EW_GPU_WEAKMAPS) return;
         if (typeof Symbol !== 'function' || typeof WeakMap !== 'function') return;
         var put = function (o, k, m) { Object.defineProperty(o, k, { value: m, writable: true, configurable: true, enumerable: false }); };
@@ -47498,7 +47498,77 @@ const ThreeRenderer = (function () {
             P.dispose = function () { this.data = new WeakMap(); this._ewPM = Symbol('ewDataMap'); };   // a fresh key: every old entry is out of reach, as with a fresh WeakMap
         }
         _ewGpuInfo.propMaps = (B && B._ewPM ? 'backend' : '') + (P ? ' + managers' : '');
+        /* THE REST OF THE MAPS (2026-11-19, mondo's third Firefox profile, after the above: the stop every ~6.5 s was still 62-64 ms and
+           ALL of it WeakMap reads, `FixWeakMappingGrayBits` + `TraverseRoots > TraceWeakMaps`). A census in a city probe (every
+           WeakMap counted by where it was made, after a forced collection): 228,760 live entries in 53,781 maps. The big ones:
+           `Info.memoryMap` 71,000 (one entry per attribute / texture), `Geometries.attributeCall` 46,000, the render objects'
+           ChainMap 76,000 entries in 53,000 one-entry maps (a WeakMap per object per material per pass), each material's
+           `NodeMaterialObserver.renderObjects` 16,000. They get the same treatment:
+             _EwPropMap  a WeakMap look-alike (get / set / has / delete) that keeps the value on the key under its own Symbol;
+                         what an older WeakMap held is found there once and moved.
+             ChainMap    the first key (the object, the scene) carries the entry; the levels under it (material, pass, lights)
+                         are plain Maps owned by that entry: they live and die with the object. three takes a render object out
+                         by hand when its material or geometry is disposed, as before.
+           Left as WeakMaps: three's module-level caches (no way in from outside), ~15,000 entries. */
+        try {
+            var info = r.info;
+            if (info && info.memoryMap instanceof WeakMap) {
+                var mm = new _EwPropMap(info.memoryMap);
+                Object.defineProperty(info, 'memoryMap', { configurable: true, enumerable: true, get: function () { return mm; }, set: function (v) { mm = (v instanceof WeakMap) ? new _EwPropMap(v) : v; } });
+            }
+            var Gm = r._geometries;
+            if (Gm) { if (Gm.attributeCall instanceof WeakMap) Gm.attributeCall = new _EwPropMap(Gm.attributeCall); if (Gm.wireframes instanceof WeakMap) Gm.wireframes = new _EwPropMap(Gm.wireframes); }
+            var NMP = G && G.NodeMaterial && G.NodeMaterial.prototype;
+            if (NMP && typeof NMP.setupObserver === 'function' && !NMP._ewObsPM) {
+                var so = NMP.setupObserver;
+                NMP.setupObserver = function () { var ob = so.apply(this, arguments); if (ob && ob.renderObjects instanceof WeakMap) ob.renderObjects = new _EwPropMap(ob.renderObjects); return ob; };
+                NMP._ewObsPM = true;
+            }
+            var cm = r._objects && typeof r._objects.getChainMap === 'function' ? r._objects.getChainMap('default') : null, CP = cm ? Object.getPrototypeOf(cm) : null;
+            if (CP && !CP._ewPMOn && typeof CP._getWeakMap === 'function' && typeof CP.set === 'function' && /new WeakMap/.test(String(CP.set))) {
+                CP._ewPMOn = true;
+                CP._getWeakMap = function (keys) {
+                    var n = keys.length, m = this.weakMaps[n];
+                    if (m === undefined) m = this.weakMaps[n] = new _EwPropMap(null);
+                    else if (m.isEwPropMap !== true) m = this.weakMaps[n] = new _EwPropMap(m);
+                    return m;
+                };
+                CP.set = function (keys, value) {
+                    var map = this._getWeakMap(keys), last = keys.length - 1;
+                    for (var i = 0; i < last; i++) { var key = keys[i], nx = map.get(key); if (nx === undefined) { nx = new Map(); map.set(key, nx); } map = nx; }
+                    /* (the valve: an inner Map holds its keys for as long as the object lives; should one object ever collect 32 at a
+                       level, e.g. lights lists that keep changing, the level is emptied and its render objects are made again on demand) */
+                    if (last > 0 && map.size >= 32 && !map.has(keys[last])) map.clear();
+                    map.set(keys[last], value);
+                    return this;
+                };
+            }
+            _ewGpuInfo.propMaps += ' + info, geometries, observers' + (CP && CP._ewPMOn ? ', chain maps' : '');
+        } catch (e) { console.warn('[ThreeRenderer] node renderer: the rest of the maps stay WeakMaps', e); }
     }
+    function _EwPropMap(old) { this.k = Symbol('ewPropMap'); this.old = old || null; }
+    _EwPropMap.prototype.isEwPropMap = true;
+    _EwPropMap.prototype.get = function (o) {
+        var v = o[this.k];
+        if (v === undefined && this.old !== null) { v = this.old.get(o); if (v !== undefined && this.put(o, v)) this.old.delete(o); }
+        return v;
+    };
+    _EwPropMap.prototype.put = function (o, v) {
+        try { if (Object.prototype.hasOwnProperty.call(o, this.k)) o[this.k] = v; else Object.defineProperty(o, this.k, { value: v, writable: true, configurable: true, enumerable: false }); return true; }
+        catch (e) { return false; }
+    };
+    _EwPropMap.prototype.set = function (o, v) {
+        if (this.put(o, v)) { if (this.old !== null && this.old.has(o)) this.old.delete(o); }
+        else { if (this.old === null) this.old = new WeakMap(); this.old.set(o, v); }   // a key that takes no property (frozen)
+        return this;
+    };
+    _EwPropMap.prototype.has = function (o) { return o[this.k] !== undefined || (this.old !== null && this.old.has(o)); };
+    _EwPropMap.prototype.delete = function (o) {
+        var had = o[this.k] !== undefined;
+        if (had) o[this.k] = undefined;
+        if (this.old !== null && this.old.delete(o)) had = true;
+        return had;
+    };
     function _ewGpuOneWrite(r) {
         var B = r.backend, bu = B && B.isWebGPUBackend && B.bindingUtils;
         if (!bu || bu._ewOneWrite || typeof bu.updateBinding !== 'function' || window.EW_NO_ONE_WRITE) return;
@@ -51620,7 +51690,7 @@ const ThreeRenderer = (function () {
         };
         r.init().then(function () {
             _ewGpuInfo.ready = true;
-            try { _ewGpuPropMaps(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the maps stay WeakMaps', e); }
+            try { _ewGpuPropMaps(r, G); } catch (e) { console.warn('[ThreeRenderer] node renderer: the maps stay WeakMaps', e); }
             _ewGpuSafeBuffers(r);
             _ewGpuSafeBindings(r);
             try { _ewGpuNearestGrad(r); } catch (e) {}
