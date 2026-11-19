@@ -49480,16 +49480,34 @@ const ThreeRenderer = (function () {
             }
             return (g._ew_reachIdx = { n: ch.length, at: now, cells: C, big: big, cell: CELL });
         }
+        /* THE MASK FILES BY THE DESK (2026-11-19, mondo's F3: "mask: projection walk 16-22 ms" on the frames "instance: add 1-50 fresh"
+           ran): any add anywhere in the scene made EVERY big group's file stale, and the mask's next render filed them all again in one
+           frame (hundreds of chunk groups, each walked whole). Now the front desk's arrivals mark only the groups they landed under
+           (_ew_mkDirty, climbing their parents), three-post.js marks a group when it tags a piece for the mask, and each file is also
+           made again on its own staggered ~10 s. An overflowed desk refiles all, as before. Old rule: window.EW_MASK_FILE_ANY_ADD */
+        var mkDQ = null, mkDF = -1, mkEpoch = 0;
+        function maskDesk() {
+            var F = _ewBun.frame | 0; if (F === mkDF) return; mkDF = F;
+            var DT = _ewDeskTake(mkDQ || (mkDQ = _ewDeskQueue()));
+            if (DT.over) { mkEpoch++; return; }
+            var Lr = DT.list;
+            for (var i = 0; i < Lr.length; i++) for (var q = Lr[i] && Lr[i].parent, d = 0; q && d < 64; q = q.parent, d++) if (q._ew_mkIdx) q._ew_mkDirty = true;
+        }
         function maskFile(g) {
             var I = g._ew_mkIdx, now = performance.now(), an = _ewAddCount();
-            if (I && I.n === g.children.length && now - I.at < 10000 && (I.an === an || now - I.at < 1000)) return I;
+            if (typeof window !== 'undefined' && window.EW_MASK_FILE_ANY_ADD) { if (I && I.n === g.children.length && now - I.at < 10000 && (I.an === an || now - I.at < 1000)) return I; }
+            else {
+                maskDesk();
+                if (I && I.n === g.children.length && !g._ew_mkDirty && I.ep === mkEpoch && now - I.at < 10000 + (g.id % 40) * 125) return I;
+                g._ew_mkDirty = false;
+            }
             var ch = g.children, list = [], ms = [];
             for (var i = 0; i < ch.length; i++) {
                 var m = 0;
                 ch[i].traverse(function (o) { m |= o.layers.mask; if (o.isLight || o.isBundleGroup || o._ew_ckFar != null || o.isClippingGroup || o.isLOD) m = -1; });
                 if ((m & ~1) !== 0) { list.push(ch[i]); ms.push(m); }   // layer 0 alone: the mask's cameras never see it (the short walk runs only for a camera without layer 0)
             }
-            return (g._ew_mkIdx = { n: ch.length, at: now, an: an, list: list, ms: ms });
+            return (g._ew_mkIdx = { n: ch.length, at: now, an: an, ep: mkEpoch, list: list, ms: ms });
         }
         r._projectObject = function (object, camera, groupOrder, renderList, clippingContext) {
             /* THE MOVERS OUT (2026-11-14, Disaster City): a piece that moves inside a recorded group (a traffic car in the shell, a
@@ -93578,15 +93596,28 @@ const ThreeRenderer = (function () {
             LS = I.leftSet;
             var cand = [], seenC = new Set();
             var put = function (o) { if (seenC.has(o) || !o.parent || o._ew_instHidden) return; seenC.add(o); cand.push(o); };
-            only.forEach(put); LS.forEach(function (o) { if (o.visible) put(o); });
-            var byKey = {};
-            cand.forEach(function (o) {
+            /* THE LEFT ALONE BY KIND (2026-11-19, mondo's F3: "instance: add 1-10 fresh 13-17 ms" several times a minute): every run read
+               the whole left-alone set again (~2,300 pieces: a matrix walk up, a key, a place each) for the few fresh ones. A piece left
+               alone can only join a batch when fresh copies of ITS kind came, so only those kinds are read again (each left-alone piece
+               keeps its key, _ew_instK). Old rule: window.EW_HQ_INST_LEFT_ALL */
+            var leftAll = typeof window !== 'undefined' && !!window.EW_HQ_INST_LEFT_ALL;
+            only.forEach(put);
+            if (leftAll) LS.forEach(function (o) { if (o.visible) put(o); });
+            var byKey = {}, freshK = new Set();
+            var takeC = function (o) {
                 if (H.shadows && o.isMesh && !o._ew_shadowFlagged) _flagMeshShadows(o);   // before the key: the key reads castShadow
                 o.updateWorldMatrix(true, false);
                 var k = _hqInstKey(o); if (!k) return;
                 LS.delete(o);   // in again below if it is left alone again
                 (byKey[k] || (byKey[k] = [])).push(o);
-            });
+                freshK.add(k);
+            };
+            cand.forEach(takeC);
+            if (!leftAll && freshK.size) {
+                var back = [];
+                LS.forEach(function (o) { if (o.visible && o._ew_instK && freshK.has(o._ew_instK) && !seenC.has(o) && o.parent && !o._ew_instHidden) back.push(o); });
+                back.forEach(function (o) { seenC.add(o); takeC(o); });
+            }
             sc = { byKey: byKey };
             I.adds++;
         } else {
@@ -93600,7 +93631,7 @@ const ThreeRenderer = (function () {
         I.left = 0;
         Object.keys(sc.byKey).forEach(function (key) {
             var all = sc.byKey[key];
-            if (all.length + (I.per[key] || 0) < RU.min) { I.left += all.length; all.forEach(function (o) { LS.add(o); }); return; }
+            if (all.length + (I.per[key] || 0) < RU.min) { I.left += all.length; all.forEach(function (o) { o._ew_instK = key; LS.add(o); }); return; }
             var cells = {};
             all.forEach(function (o) {
                 o.getWorldPosition(wp);
@@ -93610,7 +93641,7 @@ const ThreeRenderer = (function () {
             });
             Object.keys(cells).forEach(function (ck) {
                 var list = cells[ck];
-                if (list.length < 2) { I.left += list.length; list.forEach(function (o) { LS.add(o); }); return; }
+                if (list.length < 2) { I.left += list.length; list.forEach(function (o) { o._ew_instK = key; LS.add(o); }); return; }
                 var m0 = list[0], geo = m0.geometry._ew_lodBase || m0.geometry;   // THE LOD LEVELS: a batch is built on the full geometry (the LOD tick picks its level)
                 if (!geo.boundingSphere) geo.computeBoundingSphere();
                 var im = new THREE.InstancedMesh(geo, m0.material, list.length);

@@ -3225,3 +3225,13 @@ group three replayed itself: recorded again, not static, or not yet seen through
   now carry "timers N ms (slowest …)": every setTimeout / setInterval callback made after three-renderer.js loads is timed (wrapper at
   the file's top; off: `window.EW_TIMER_WATCH_OFF` before load). If that reads ~0 on the 6 s frames, the time is the browser's own
   (Firefox GC / cycle collector, its GPU process): record it with the Firefox Profiler (about:profiling, "Graphics" preset).
+- (18:57 F3) "timers 0" on every slow frame: the 6 s ~100 ms gaps are NOT game JS (no timer, no frame code). Firefox's own work (GC /
+  cycle collector / GPU process); next step = a Firefox Profiler recording.
+- THE MASK FILES BY THE DESK: the model mask's short walk (maskFile) made EVERY big group's file stale on any add in the scene, and the
+  next mask render filed them all in one frame ("mask: projection walk 16-22 ms" whenever the instance pass added). Now the front desk's
+  arrivals mark only the groups they landed under (`_ew_mkDirty`, climbing parents), three-post.js `_pixMkDirty` marks a group when a
+  piece is tagged onto a mask layer, and each file is also made again on its own staggered ~10 s (`10000 + (id % 40) * 125` ms); an
+  overflowed desk refiles all (`mkEpoch`). A layer turned on elsewhere waits for the 10 s refile. Old: `window.EW_MASK_FILE_ANY_ADD`.
+- THE LEFT ALONE BY KIND: `_hqInstAdd`'s one-by-one run read the whole left-alone set (~2,300 pieces: matrix walk up, key, place) for
+  every few fresh pieces ("instance: add 1-10 fresh 13-17 ms"). A left-alone piece keeps its key (`_ew_instK`) and is read again only
+  when fresh copies of its kind came. Old: `window.EW_HQ_INST_LEFT_ALL`.
