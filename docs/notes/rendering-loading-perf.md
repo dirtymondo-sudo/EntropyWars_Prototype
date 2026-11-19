@@ -3109,3 +3109,19 @@ The shell's ~10,000 children are nearly all held by the static batch, and every 
 for a group over 1,000 children, a book (`g._ew_bunF`): the held pieces' hash once (`hh`, count `hc`) and the rest (`live`) walked each
 check. The book is laid again when the child count, `_hqBatchHoldN` (bumped where the batch takes / hands back a piece) or an add under the
 group changes, and every 240 checks. Off: `window.EW_BUN_HELD_EVERY`. Same F3: one slow frame left (rig ticks 11 ms), 0 builds/s.
+
+### THE ZSEP — FACES SHARING A PLANE (2026-11-19, mondo: "z fighting ... textures flickering ... mostly on the sides/walls of buildings, some on the ground")
+Cause: two surfaces drawn in the SAME plane (the depth test cannot choose, they trade pixels each frame). Not depth precision (near 4 units,
+the separations were exactly 0). A detector sweep of Disaster City (121 squares of 62 m, every visible shell triangle, same-facing coplanar
+overlaps) found 316 groups / ~8,500 m²: a storey's ceiling on the roof slab's underside, wall on wall, floor on floor, window sheet on its wall
+(the Civic colonnade at x 133 z -19 = his screenshot: the brown base band over the window wall), a road on a roof. Nearly all from the
+plot-built buildings (data.js arch rows + plot shells), so every plot-built area had them.
+Fix: three-renderer.js `_hqZSep` (HQ_ZSEP), called once from `_hqBatchBuild` on the shell's pieces right before they merge (a build-time
+pass, sliced with `_hqSliceDue`; nothing per frame). Faces = vertices joined by triangles; pairs = same quantized normal, same plane within
+3 mm, overlap > 0.01 m². Per stack, biggest face stays, each smaller one is lifted 1.2 cm per layer toward its own front (max 4). The
+terrain / bent sheets never move; polygon-offset decals are left out. A lifted piece's geometry is copied first (it may be shared).
+City: 5,666 pairs, 4,732 faces lifted on 979 pieces, ~4.3 s sliced on the cloud's software renderer. Sweep after: 8 groups / 16 m² left
+(props' instances, a few tilted pieces). Off: `window.EW_HQ_NO_ZSEP = true` before the room. The detector (scratch, not in the repo) is the
+recipe: walk `dev.hqScene()` skipping `_ew_bRec`-merged originals' copies (`_ew_hqBatch`) and hidden instance sources.
+The Bayside sea-wall ground in his second picture showed no overlapping surfaces in a sweep with decals and cut-outs included; if it still
+flickers, suspect shadow acne at a low sun (HQ_LIGHT_RULES.shadows.normalBias 2.4 vs a ~3-6 cm shadow texel).
