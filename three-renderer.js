@@ -19802,6 +19802,12 @@ const ThreeRenderer = (function () {
         var urls = _libUrls(def);
         var bakeKey = urls.join('|') + (_libStandardPose(def) ? '|std' : '|keep') + '|' + Object.keys(def.libClips || {}).filter(function (k) { return k.indexOf('clip:') !== 0; }).length;   // THE LOOK: a 'clip:' slot bakes on demand (_libBakeSlotNow), never forces a re-bake
         if (modelEntry._libBakedFrom === bakeKey) { cb(modelEntry._libBaked); return; }
+        /* THE BAKES KEPT SIDE BY SIDE (2026-11-19, spikes thread: mondo's F3 "residents: new body 48 ms" with one body a frame): a model held
+           ONE bake, keyed by its slot count. A city resident's def carries one slot more (the bed's sleep pose) than a native of the same
+           race on the same model, so every resident body after a native (and back) baked every clip of the model again. Each bake now
+           stays on the model by its key and is handed back at once. Off: window.EW_LIB_BAKE_ONE. */
+        var BM = modelEntry._libBakedMap;
+        if (BM && BM[bakeKey] && !modelEntry._libBakeCbs && !(typeof window !== 'undefined' && window.EW_LIB_BAKE_ONE)) { modelEntry._libBaked = BM[bakeKey]; modelEntry._libBakedFrom = bakeKey; cb(BM[bakeKey]); return; }
         if (modelEntry._libBakeCbs) {
             /* a bake is in flight on this model: join it only when it is the
                SAME slot set — a posed building agent (the cast poses merged
@@ -19818,6 +19824,7 @@ const ThreeRenderer = (function () {
         function settle(result) {
             modelEntry._libBaked = result;
             modelEntry._libBakedFrom = bakeKey;
+            if (result) (modelEntry._libBakedMap || (modelEntry._libBakedMap = {}))[bakeKey] = result;   // THE BAKES KEPT SIDE BY SIDE
             var cbs = modelEntry._libBakeCbs;
             modelEntry._libBakeCbs = null;
             modelEntry._libBakingKey = null;
@@ -49369,8 +49376,11 @@ const ThreeRenderer = (function () {
         return true;
     }
     function _ewBunTargets(H) {
-        var out = [];
-        function add(g, nm) { if (g && g.isObject3D && out.indexOf(g) < 0) { out.push(g); g._ew_bunName = nm; } }
+        /* THE ONE-STAMP LIST (2026-11-19): a group is in the list once by this call's stamp (was out.indexOf per group: 722 groups in
+           Disaster City = 260,000 compares a frame); the list array is kept and refilled */
+        var out = _ewBun.tOut || (_ewBun.tOut = []), tsm = _ewBun.tStamp = (_ewBun.tStamp | 0) + 1;
+        out.length = 0;
+        function add(g, nm) { if (g && g.isObject3D && g._ew_bunTS !== tsm) { g._ew_bunTS = tsm; out.push(g); g._ew_bunName = nm; } }
         var here = (H.opts && H.opts.room) || 'room';
         add(H.shellGroup, here + ' shell');
         var dck = 0, dg = H.doorGroup;
@@ -49489,10 +49499,25 @@ const ThreeRenderer = (function () {
        re-recorded all 4,400 pieces — about twice a second, too slow to count as churning (5 in 2 s) and be demoted. The top walk
        of a group keeps each direct child's own value hash; a child whose values changed 3 times within 20 s is drawn outside the
        recording from then on (`_ew_bunOut`, as a mover is). Only once the room is ready (a room still landing moves everything). */
+    var _hqBatchHoldN = 0;   // THE HELD PIECES ONCE: bumped each time THE STATIC BATCH takes or hands back a piece
     function _ewBunWalkTop(g, S) {
         var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
-        for (var i = 0; i < ch.length; i++) {
-            var c = ch[i];
+        /* THE HELD PIECES ONCE (2026-11-19, mondo's 13:44 F3: "downtown_streets shell 1.59 ms" a frame for 10 drawn meshes): the shell's
+           ~10,000 children are nearly all held by THE STATIC BATCH (drawn in its merged meshes), and each check read every one of them.
+           A big group's held pieces are now hashed once into `F.hh` and listed out of the walk; only the rest (`F.live`) is walked each
+           check. The book is laid again when the group's child count, the batch's hold counter (`_hqBatchHoldN`, bumped where a piece is
+           taken or handed back) or an add under it changes, and every 240 checks. Off: window.EW_BUN_HELD_EVERY. */
+        var F = null, iter = ch;
+        if (ch.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_HELD_EVERY)) {
+            F = g._ew_bunF || (g._ew_bunF = { n: -1, hold: -1, k: 0, hh: 17, hc: 0, live: [] });
+            if (F.n !== ch.length || F.hold !== _hqBatchHoldN || g._ew_bunDirty || ++F.k >= 240) {
+                F.n = ch.length; F.hold = _hqBatchHoldN; F.k = 0; F.hh = 17; F.hc = 0; F.live.length = 0;
+                for (var fi = 0; fi < ch.length; fi++) { var fc = ch[fi]; if (fc._ew_bRec && fc._ew_bunOut !== true) { F.hh = _ewBunMix(F.hh, fc.id ^ 0x2b1d); F.hc++; } else F.live.push(fc); }
+            }
+            S.hs = _ewBunMix(S.hs, F.hh); S.cB = (S.cB | 0) + F.hc; iter = F.live;
+        }
+        for (var i = 0; i < iter.length; i++) {
+            var c = iter[i];
             /* THE OUTS SHOWN OR HIDDEN (2026-11-18, mondo's F3 after THE MOVERS STAY OUT: the shell still re-recorded 140 times, "movers 97,
                other 27", worst frame 66 ms): a car is hidden past `carFarM` and shown again inside it, and a hidden out piece used to
                leave the out list (and mix -id into the tree's hash): every car crossing its draw distance re-recorded the whole shell.
@@ -49569,6 +49594,7 @@ const ThreeRenderer = (function () {
            room (each wall / piece a bundle, 400 on the Atlantis board) rests the same way. Off: window.EW_BUN_FIELD_CHECK_EVERY. */
         var fieldEvery = typeof window !== 'undefined' && !!window.EW_BUN_FIELD_CHECK_EVERY;
         _ewBun.addN = addNB;
+        if (spL) { spL.pre = performance.now() - t0; spL.slowMs = 0; spL.slow = ''; }   // THE SPIKE'S SPLIT (11-19): the time before the groups, and the slowest group
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
             if (g._ew_ckOut) continue;   // THE CHUNKS: a chunk off the camera is not drawn and not checked; its recording waits for it
@@ -49600,7 +49626,7 @@ const ThreeRenderer = (function () {
             _ewBun.now = now;
             var twk = (_lens && _lens.cur) ? performance.now() : 0;
             if (walk) _ewBunWalkTop(g, S); else _ewBunWalk(g, S);
-            if (twk) { st.msA = (st.msA || 0) + performance.now() - twk; st.nA = S.n; }   // THE CHECK'S SPLIT (lens): this group's walk
+            if (twk) { var twd = performance.now() - twk; st.msA = (st.msA || 0) + twd; st.nA = S.n; if (spL && twd > spL.slowMs) { spL.slowMs = twd; spL.slow = String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, '') + (g._ew_pChunk || g._ew_chunk ? ' ' + (g._ew_pChunk || g._ew_chunk) : '') + ' ' + twd.toFixed(0) + ' ms (' + (S.n | 0) + ' pieces)'; } }   // THE CHECK'S SPLIT (lens): this group's walk; THE SPIKE'S SLOWEST (11-19)
             if (noM) { var ge = g.matrixWorld.elements; for (var gi = 0; gi < 16; gi++) S.hv = _ewBunMix(S.hv, Math.round(ge[gi] * 1000)); _ewBun.noMN = (_ewBun.noMN | 0) + 1; }
             g._ew_bunDirty = false;
             g._ew_bunOuts = S.outs || null;   // THE MOVERS OUT: the pieces the frame draws beside this group's recording
@@ -49653,12 +49679,12 @@ const ThreeRenderer = (function () {
             else g._ew_bunSph = null;
         }
         if (spL) {   // THE BUNDLE SPIKES (2026-11-18, mondo's slow frames: "bundle check 58", "scene: bundle replays 82 / 36 / 26" ms): a tick that took
-            // 6 ms or more, or re-recorded 300+ meshes (three records them in this frame's replays), is kept with its causes, last 6
+            // 12 ms or more, or re-recorded 300+ meshes (three records them in this frame's replays), is kept with its causes, last 6
             var spMs = performance.now() - t0, spN = 0; for (var sq = 0; sq < spL.re.length; sq++) spN += spL.re[sq][1];
-            if (spMs >= 6 || spN >= 300) {
+            if (spMs >= 12 || spN >= 300) {   // (12 ms since 11-19: the 6 ms steady ticks pushed his 62-99 ms ones off the list)
                 var spW = []; for (var swk in W) { var swd = (W[swk] | 0) - (spL.w0[swk] | 0); if (swd > 0) spW.push(swk + ' ' + swd); }
                 spL.re.sort(function (a, b) { return b[1] - a[1]; });
-                (_ewBun.spikes || (_ewBun.spikes = [])).push(spMs.toFixed(0) + ' ms check · ' + spL.walked + ' walked · ' + spL.re.length + ' re-recorded (' + spN + ' meshes' + (spW.length ? '; ' + spW.join(', ') : '') + (lampMoved ? '; LAMPS MOVED' : '') + ')' + (spL.re.length ? ': ' + spL.re.slice(0, 3).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : ''));
+                (_ewBun.spikes || (_ewBun.spikes = [])).push(spMs.toFixed(0) + ' ms check (' + (spL.pre || 0).toFixed(0) + ' before the groups' + (spL.slow ? '; slowest ' + spL.slow : '') + ') · ' + spL.walked + ' walked · ' + spL.re.length + ' re-recorded (' + spN + ' meshes' + (spW.length ? '; ' + spW.join(', ') : '') + (lampMoved ? '; LAMPS MOVED' : '') + ')' + (spL.re.length ? ': ' + spL.re.slice(0, 3).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : ''));
                 if (_ewBun.spikes.length > 6) _ewBun.spikes.shift();
             }
         }
@@ -54359,11 +54385,14 @@ const ThreeRenderer = (function () {
                is written down with the previous frame's own JS (the gap is that frame's work + what the browser did after it): its CPU
                and its three costliest parts / inner steps. A gap with little JS in it is the browser (a GC, the GPU, the compositor). */
             if (iv >= 50 && iv < 2000 && L.prevF) { var PF = L.prevF, top = []; [PF.parts, PF.sub].forEach(function (M, mi) { if (M) for (var tk in M) top.push([(mi ? '> ' : '') + tk, M[tk]]); }); top.sort(function (a, b) { return b[1] - a[1]; });
-                (L.slow || (L.slow = [])).push({ iv: iv, cpu: PF.cpu, top: top.slice(0, 3), rec: PF.rec, ep: PF.ep }); if (L.slow.length > 6) L.slow.shift(); } }
+                (L.slow || (L.slow = [])).push({ iv: iv, cpu: PF.cpu, top: top.slice(0, 3), rec: PF.rec, ep: PF.ep, pp: PF.pp, pb: PF.pb }); if (L.slow.length > 6) L.slow.shift(); } }
         /* (and how many bundle groups that frame re-recorded, and whether the shared epoch moved: a freed resource / a rig grow re-records them all) */
         var recNow = (typeof _ewBun !== 'undefined' && _ewBun) ? (_ewBun.recs | 0) : 0, epNow = (typeof _ewBun !== 'undefined' && _ewBun) ? (_ewBun.epoch | 0) : 0;
-        L.lastT0 = F.t0; L.prevF = { cpu: F.cpu, parts: F.parts || null, sub: F.sub || null, rec: L.recAt != null ? recNow - L.recAt : 0, ep: L.epAt != null && epNow !== L.epAt };
-        L.recAt = recNow; L.epAt = epNow;
+        /* THE FIRST DRAWS (2026-11-19, his slow frames "sun shadow: classic draws 68", gaps of 0.5-1 s with 20 ms of JS): the shader
+           builds and new GPU pipelines that frame made (Firefox builds a pipeline in its GPU process, in line with the submit) */
+        var ppNow = (typeof _ewKeep !== 'undefined' && _ewKeep) ? (_ewKeep.pipes | 0) : 0, pbNow = (typeof _ewKeep !== 'undefined' && _ewKeep) ? (_ewKeep.builds | 0) : 0;
+        L.lastT0 = F.t0; L.prevF = { cpu: F.cpu, parts: F.parts || null, sub: F.sub || null, rec: L.recAt != null ? recNow - L.recAt : 0, ep: L.epAt != null && epNow !== L.epAt, pp: L.ppAt != null ? ppNow - L.ppAt : 0, pb: L.pbAt != null ? pbNow - L.pbAt : 0 };
+        L.recAt = recNow; L.epAt = epNow; L.ppAt = ppNow; L.pbAt = pbNow;
         A.n++; A.cpu += F.cpu; A.submit += F.submit; A.anim += F.anim; A.renders += F.renders; A.shadowRuns += F.shadowRuns; A.calls += F.calls; A.tris += F.tris;
         A.meshes += F.meshes; A.skinned += F.skinned; A.inst += F.inst; A.instances += F.instances;
         if (F.parts) { var AP = A.parts || (A.parts = {}); for (var pk in F.parts) AP[pk] = (AP[pk] || 0) + F.parts[pk]; }
@@ -54459,7 +54488,7 @@ const ThreeRenderer = (function () {
             if (pl.length > 9) L.push('  ' + pl.slice(9).join(' · '));
         }
         if (S.sub && S.sub.length) L.push('Inside the ticks (ms/frame): ' + S.sub.filter(function (r) { return r[1] >= 0.02; }).slice(0, 10).map(function (r) { return r[0] + ' ' + r[1].toFixed(2); }).join(' · '));
-        if (S.slow && S.slow.length) L.push('Slow frames (last ' + S.slow.length + ', gap · its JS · top): ' + S.slow.map(function (w) { return Math.round(w.iv) + ' ms · JS ' + Math.round(w.cpu) + (w.rec ? ' · ' + w.rec + ' re-recorded' : '') + (w.ep ? ' · epoch moved' : '') + ' · ' + w.top.map(function (t) { return t[0] + ' ' + t[1].toFixed(1); }).join(', '); }).join(' | '));
+        if (S.slow && S.slow.length) L.push('Slow frames (last ' + S.slow.length + ', gap · its JS · top): ' + S.slow.map(function (w) { return Math.round(w.iv) + ' ms · JS ' + Math.round(w.cpu) + (w.rec ? ' · ' + w.rec + ' re-recorded' : '') + (w.pb ? ' · ' + w.pb + ' shader builds' : '') + (w.pp ? ' · ' + w.pp + ' new pipelines' : '') + (w.ep ? ' · epoch moved' : '') + ' · ' + w.top.map(function (t) { return t[0] + ' ' + t[1].toFixed(1); }).join(', '); }).join(' | '));
         if (S.cnt) {   // THE SHADOW SPLIT (2026-11-15): which shadow costs — the sun's map or a lamp's cube sides — and how many objects each pass's walk visits
             var cN = function (k) { return S.cnt[k] || 0; }, cF = function (v) { return v >= 100 ? _lensFmtN(v) : (Math.round(v * 10) / 10); };
             L.push('Shadow split (a frame): sun ' + cF(cN('sun renders')) + ' renders, ' + cF(cN('sun calls')) + ' calls, ' + cF(cN('sun tris')) + ' tris · lamp ' + cF(cN('lamp renders')) + ' side renders, ' + cF(cN('lamp calls')) + ' calls, ' + cF(cN('lamp tris')) + ' tris');
@@ -86021,14 +86050,18 @@ const ThreeRenderer = (function () {
     }
     /* the blockers an ask at (x, z) must read: its cell's, plus every one seen moving since the grid was laid (a slice of the list is
        re-read once a frame; a blocker that moved or changed size leaves the grid for good) */
+    function _hqNumUp(p, q) { return p - q; }
     function _hqNavGridAt(G, x, z) {
         var now = performance.now(), L = G.list, U = _hqUnits();
         if (now - G.swAt > 4) { G.swAt = now;
             for (var s = 0; s < 1500 && G.n; s++) { var i = G.sw; G.sw = (G.sw + 1) % G.n; if (G.moved[i]) continue; var b = L[i], o = b.obj;
                 if (Math.abs(o.position.x / U - G.px[i]) > 0.05 || Math.abs(o.position.z / U - G.pz[i]) > 0.05 || _hqBlkReach(b) > G.reach[i] + 0.04) { G.moved[i] = 1; G.loose.push(i); } } }
-        var a = G.cells.get((Math.floor(x / G.c) + 32768) * 65536 + (Math.floor(z / G.c) + 32768)), out = [];
+        /* THE GARBAGE CUT (2026-11-19): one answer array per grid, emptied and refilled (every caller reads it at once and keeps
+           nothing; three asks a frame per walker made ~15 MB of throwaway arrays in 90 s of the city walk) */
+        var a = G.cells.get((Math.floor(x / G.c) + 32768) * 65536 + (Math.floor(z / G.c) + 32768)), out = G.out || (G.out = []);
+        out.length = 0;
         if (a) for (var k = 0; k < a.length; k++) if (!G.moved[a[k]]) out.push(a[k]);
-        if (G.loose.length) { for (var m = 0; m < G.loose.length; m++) out.push(G.loose[m]); out.sort(function (p, q) { return p - q; }); }
+        if (G.loose.length) { for (var m = 0; m < G.loose.length; m++) out.push(G.loose[m]); out.sort(_hqNumUp); }
         for (var e = G.n; e < L.length; e++) out.push(e);   // the ones that joined since the grid was laid (THE LIST'S OWN STAMP)
         return out;
     }
@@ -88812,9 +88845,13 @@ const ThreeRenderer = (function () {
         var DEF = (typeof HQ_SEA_DEFAULT !== 'undefined') ? HQ_SEA_DEFAULT : { boat: {}, sub: {} };   // a sandbox may eval this alone
         var R = (typeof HQ_SEA_RULES !== 'undefined') ? HQ_SEA_RULES : ((typeof window !== 'undefined' && window.HQ_SEA_RULES) || null);
         if (!R) return DEF;
+        /* THE GARBAGE CUT (2026-11-19): the merge is made once per rules pair, not on every call (the E-target check asked it per
+           boat per frame: 11 MB in 90 s of the city walk). The rules are fixed tables; a new HQ_SEA_RULES object re-merges. */
+        var C = _hqSeaRules._c; if (C && C.R === R && C.D === DEF) return C.o;
         var o = Object.assign({}, DEF, R);
         o.boat = Object.assign({}, DEF.boat, R.boat || {}); o.sub = Object.assign({}, DEF.sub, R.sub || {}); o.ship = Object.assign({}, DEF.ship || {}, R.ship || {});
         o.labels = Object.assign({}, DEF.labels || {}, R.labels || {});
+        _hqSeaRules._c = { R: R, D: DEF, o: o };
         return o;
     }
     function _hqSea() { return (_hq && _hq.terrain && _hq.terrain.sea) || null; }
@@ -97979,7 +98016,7 @@ const ThreeRenderer = (function () {
        taken: props, doors, people (only the shell group), instanced / skinned / morphing / patched-shader / point / line
        pieces, a piece with children, a see-through piece that is not a cut-out, the terrain tiles, the outer ground, the
        sea, the traffic. The hand-over and the leave hand every piece back first. Off: window.EW_HQ_NO_BATCH. */
-    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, rollMs: 0.35, sliceMs: 3, firstSliceMs: 28, holdSliceMs: 220, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000, rescanIdleMs: 30000 };
+    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, rollMs: 0.35, rollN: 160, sliceMs: 3, firstSliceMs: 28, holdSliceMs: 220, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000, rescanIdleMs: 30000 };
     /* THE PERF PASS 2 (2026-10-01, mondo's Downtown readout: 1,232 scene draws, 315 shell pieces alone in their look and 370
        procedural props each its own draw): the merge squares are HQ_BATCH.cellM (was the terrain's 32 m tile — most looks
        had one piece per square; 96 m took Downtown's shell 1,526 → 444 to 1,841 → 289 draws), a second batch runs on each
@@ -98145,7 +98182,7 @@ const ThreeRenderer = (function () {
     function _hqBatchRel(o, inv, out) { return out.multiplyMatrices(inv, o.matrixWorld); }
     function _hqBatchSame(a, b) { var x = a.elements, y = b.elements; for (var i = 0; i < 16; i++) if (Math.abs(x[i] - y[i]) > 1e-4 * (1 + Math.abs(y[i]))) return false; return true; }
     /* the scan (a generator, sliced): every piece of the record's shell that may merge, with what it looks like now */
-    function* _hqBatchScan(R, B) {
+    function* _hqBatchScan(R, B, only) {
         var root = R[B.grp]; if (!root) return;
         var skip = {}; (R.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { skip[t.id] = 1; }); });
         /* THE SLICED SCAN (2026-11-18, spikes thread: mondo's F3 "tick: static batch 26.0, > batch: scan step 24.0" in one frame): the scan
@@ -98159,12 +98196,21 @@ const ThreeRenderer = (function () {
         var glows = (loose && !_hqGlowOff()) ? new Set(_hzGlowPulse.map(function (p) { return p.mat; })) : null;   // THE JOINED GLOWS: a breathing glow is never joined
         /* the pieces with their chain: an ancestor that is hidden or flagged off keeps everything under it out */
         var stk = [root, 0, true], seen = whole ? null : new Set(), wn = 0;
+        /* THE DESK SCAN (2026-11-19, spikes thread: the 60 FPS thread saw "batch: scan step 2.06 ms" EVERY frame, the props' merge always in
+           'scan': every add anywhere re-walked the whole group, a slice a frame, then began again). A rescan of a live merge reads only the
+           arrivals under the group (THE FRONT DESK), each with its own chain's visibility and flags read upward; a full walk when the desk
+           overflowed and every HQ_BATCH.rescanIdleMs, as before. */
+        if (only) { stk = [];
+            for (var oi = 0; oi < only.length; oi++) { var a0 = only[oi], okA = true, q0 = a0.parent, under = false;
+                for (var dd = 0; q0 && dd < 64; q0 = q0.parent, dd++) { if (q0 === root) { under = true; break; } if (!((q0.visible !== false || !!q0._ew_pChunk) && !skip[q0.id])) okA = false; else if (okA) for (var k0 in q0) if (_HQ_BATCH_FLAG_OFF[k0]) { okA = false; break; } }
+                if (under) stk.push({ children: [a0] }, 0, okA); } }
         while (stk.length) {
             var top = stk.length - 3, g = stk[top], gi = stk[top + 1], ok = stk[top + 2];
             if (gi >= g.children.length) { stk.length = top; continue; }
             stk[top + 1] = gi + 1;
             var c = g.children[gi], vis = ok && (c.visible !== false || !!c._ew_pChunk) && !skip[c.id], cok = vis;   // THE PROP CHUNKS: a chunk off the camera is still the room's
             if (cok) for (var k in c) if (_HQ_BATCH_FLAG_OFF[k]) { cok = false; break; }
+            if (only && c._ew_bRec) continue;   // (already merged: its batch's own)
             if (c.children.length) stk.push(c, 0, cok);
             else if ((c.isMesh && (cok || (loose && vis))) || (c.isSprite && cok && glows)) {   // THE LOOSE PIECES: a flagged leaf is read too (_hqBatchLooseOk says which flags may stand in); THE JOINED GLOWS
                 if (!seen || !seen.has(c)) { if (seen) { seen.add(c); c.updateWorldMatrix(true, false); } list.push(c); }
@@ -98294,7 +98340,7 @@ const ThreeRenderer = (function () {
         host.add(mesh);
         cs.forEach(function (c) {
             var o = c.o;
-            o._ew_bv = o.visible; o._ew_bRec = rec;
+            o._ew_bv = o.visible; o._ew_bRec = rec; _hqBatchHoldN++;
             Object.defineProperty(o, 'visible', { configurable: true, enumerable: true, get: _hqBatchVisGet, set: _hqBatchVisSet });
             _hqBatchParOn(o);
             for (var q = o.parent; q && q !== root; q = q.parent) {
@@ -98493,7 +98539,7 @@ const ThreeRenderer = (function () {
     function _hqBatchBreak(rec, why) {
         if (!rec || !rec.live) return;
         rec.live = false;
-        rec.cs.forEach(function (c) { var o = c.o; if (o._ew_bRec !== rec) return; var v = o._ew_bv; delete o.visible; o.visible = v; o._ew_bRec = null; _hqBatchParOff(o); });
+        rec.cs.forEach(function (c) { var o = c.o; if (o._ew_bRec !== rec) return; var v = o._ew_bv; delete o.visible; o.visible = v; o._ew_bRec = null; _hqBatchHoldN++; _hqBatchParOff(o); });
         rec.anc.forEach(function (q) {
             var L = q._ew_bAnc; if (!L) return; var i = L.indexOf(rec); if (i >= 0) L.splice(i, 1);
             if (!L.length) { var v = q._ew_bv; delete q.visible; q.visible = v; q._ew_bAnc = null; _hqBatchParOff(q); }
@@ -98711,6 +98757,11 @@ const ThreeRenderer = (function () {
         }
         var inv = _hqBatchM || (_hqBatchM = new THREE.Matrix4()), tmp = _hqBatchM2 || (_hqBatchM2 = new THREE.Matrix4());
         inv.copy(root.matrixWorld).invert();
+        /* THE PIECE CAP (2026-11-19, spikes thread: his Firefox F3 still "batch: check 1.25 ms" every frame after the 4 s gap): Firefox's
+           clock steps in whole milliseconds, so "stop after 0.35 ms" ran until the next tick (up to 1 ms a batch, two batches a frame) and the
+           round never ended inside the gap. A slice now also stops after HQ_BATCH.rollN pieces, whatever the clock says.
+           Off: window.EW_HQ_BATCH_CHECK_NOCAP. */
+        var cap = (roll && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_NOCAP)) ? (HQ_BATCH.rollN || 160) : 1e9;
         var K = B.ck, list = K.list, i = K.i, j = K.j, n = 0, end = roll ? _alNow() + rollMs : 0;
         for (; i < list.length; i++, j = 0) {
             var rec = list[i];
@@ -98719,7 +98770,7 @@ const ThreeRenderer = (function () {
             var cs = rec.cs;
             for (; j < cs.length; j++) {
                 if (!_hqBatchStill(cs[j], root, inv, tmp)) { _hqBatchBreak(rec, 'changed'); break; }
-                if (roll && (++n & 15) === 0 && _alNow() >= end) { K.i = i; K.j = j + 1; return false; }
+                if (roll && (++n >= cap || ((n & 15) === 0 && _alNow() >= end))) { K.i = i; K.j = j + 1; return false; }
             }
         }
         B.ck = null;
@@ -98747,11 +98798,15 @@ const ThreeRenderer = (function () {
             if (!R.batch) R.batch = _hqBatchNew('shellGroup', now);
             if (!R.batchP && HQ_BATCH.props && !(typeof window !== 'undefined' && window.EW_HQ_NO_PROP_BATCH)) R.batchP = _hqBatchNew('propGroup', now);
             var BB = [R.batch, R.batchP];
+            /* THE SLOWER WATCHDOG (2026-11-19, spikes thread: his F3 "batch: check 1.35 ms" every frame in the city): 2,000 merged pieces' check
+               rounds ran back to back (0.35 ms a frame each, the next round 0.5 s after). In a chunked room a round now starts 4 s after the
+               last; a merged piece that moves or is hidden is handed back within ~4 s. Off: window.EW_HQ_BATCH_CHECK_FAST. */
+            var ckGap = (R === H && _hqChunkBig(H) && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_FAST)) ? 4000 : HQ_BATCH.checkMs;
             for (var bi = 0; bi < BB.length; bi++) {
             var B = BB[bi]; if (!B) continue;
             if (B.phase === 'off') continue;
             var _bt = (_lens && _lens.cur) ? performance.now() : 0;   // THE INNER SPLIT (lens): which step of the merge
-            if (B.batches.length && (B.ck || now - B.checkAt >= HQ_BATCH.checkMs)) { try { if (_hqBatchCheck(R, B, (typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_WHOLE) ? 0 : HQ_BATCH.rollMs)) B.checkAt = now; } catch (e) { B.ck = null; console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
+            if (B.batches.length && (B.ck || now - B.checkAt >= ckGap)) { try { if (_hqBatchCheck(R, B, (typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_WHOLE) ? 0 : HQ_BATCH.rollMs)) B.checkAt = now; } catch (e) { B.ck = null; console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
             _bt = _lensSub('batch: check', _bt);
             if (B.phase === 'live') {
                 if (now - B.at < HQ_BATCH.rescanMs) continue;
@@ -98761,7 +98816,14 @@ const ThreeRenderer = (function () {
                    landed late). Off: window.EW_HQ_BATCH_RESCAN_ALWAYS = true. */
                 var _bAn = _ewAddCount();
                 if (H.ready && B.lived && B.scanAn === _bAn && now - B.at < HQ_BATCH.rescanIdleMs && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_RESCAN_ALWAYS)) continue;
-                B.scanAn = _bAn; B.phase = 'scan'; B.it = _hqBatchScan(R, B);   // THE PERF PASS 2: the late pieces
+                var onlyD = null;
+                if (H.ready && B.lived && now - (B.fullAt || 0) < HQ_BATCH.rescanIdleMs && !(typeof window !== 'undefined' && (window.EW_HQ_BATCH_RESCAN_ALWAYS || window.EW_HQ_BATCH_SCAN_WHOLE))) {   // THE DESK SCAN
+                    if (!B.dq) B.dq = _ewDeskQueue();
+                    var DT = _ewDeskTake(B.dq);
+                    if (!DT.over) { onlyD = DT.list; if (!onlyD.length) { B.scanAn = _bAn; continue; } }
+                } else if (B.dq) _ewDeskTake(B.dq);   // a whole walk reads everything that came before it
+                if (!onlyD) B.fullAt = now;
+                B.scanAn = _bAn; B.phase = 'scan'; B.it = _hqBatchScan(R, B, onlyD);   // THE PERF PASS 2: the late pieces
             }
             if (B.phase === 'wait') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
             if (B.phase === 'watch') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs) && _hqStackPrep(R, B, now)) { _lensSub('batch: stack prep', _bt); B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else { _lensSub('batch: stack prep', _bt); continue; } }

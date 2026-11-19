@@ -134,9 +134,24 @@ const STORY_WEB_HTML = path.join(__dirname, 'docs', 'plans', 'story-web', 'relat
 const STORY_WEB_PATH = /^(web\/index|boards\/[A-Za-z0-9_-]{1,64})$/;
 const limitStoryWeb = httpRateLimit('story-web', 90, 30);
 // The file is an artifact page (no <html>/<head>; claude.ai wraps it), so it gets the same skeleton here.
+/* THE ROSTER STAYS FRESH (2026-11-19): races added to the game after the page was built join its roster here (story-web/build/fresh.js,
+   read from data.js + sprites.js), so a new unit shows up after a deploy with no rebuild. Done once per file change; on any error the page
+   is served as built. */
+let storyWebCache = null;
+function storyWebPage() {
+    const files = [STORY_WEB_HTML, path.join(__dirname, 'data.js'), path.join(__dirname, 'sprites.js')], key = files.map(f => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } }).join('|');
+    if (storyWebCache && storyWebCache.key === key) return storyWebCache.page;
+    let page = fs.readFileSync(STORY_WEB_HTML, 'utf8');
+    try {
+        const m = /<script>const EW_DATA = ([\s\S]*?);<\/script>/.exec(page);
+        if (m) { const D = JSON.parse(m[1]), added = require('./docs/plans/story-web/build/fresh.js')(D);
+            if (added.length) { const js = JSON.stringify(D).replace(/</g, '\\u003c'); page = page.slice(0, m.index) + '<script>const EW_DATA = ' + js + ';</script>' + page.slice(m.index + m[0].length); console.log('[story-web] new from the game:', added.join(', ')); } }
+    } catch (e) { console.warn('[story-web] fresh roster skipped:', e.message); }
+    storyWebCache = { key, page }; return page;
+}
 app.get('/dev/relationship-web', (req, res) => {
     let page;
-    try { page = fs.readFileSync(STORY_WEB_HTML, 'utf8'); } catch { return res.sendStatus(404); }
+    try { page = storyWebPage(); } catch { return res.sendStatus(404); }
     res.set('Cache-Control', 'no-cache');
     res.type('html').send('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
         + '<style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>'

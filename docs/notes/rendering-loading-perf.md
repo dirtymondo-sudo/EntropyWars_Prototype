@@ -3059,3 +3059,53 @@ pipelines one after another during play. On Firefox (`_ewScGeckoHold`) the warm 
   sheet of a stack whose GPU texture was re-made) and "batch: hold check". Next F3 says which.
 - Same F3, the 60 FPS thread's: bundle check 62/99 ms frames, sun shadow classic draws 68, scene classic draws 25; and 557-1000 ms gaps
   with 21-74 ms of JS (the browser).
+
+### THE FIRST DRAWS ON THE SLOW FRAMES (2026-11-19)
+His 11-19 F3 (40.8 FPS steady after the spikes thread's #2151) still had "sun shadow: classic draws 68 ms", "bundle check
+62 / 99 ms" and 0.5-1 s gaps with 20-74 ms of JS. The suspected cause is Firefox building a GPU pipeline in its GPU process,
+in line with the submit, the first time a look is drawn (new in a pass: the sun's depth pass, or a bundle re-record). The
+"Slow frames" entries now say how many shader builds (`_ewKeep.builds`) and new pipelines (`_ewKeep.pipes`, every
+createRenderPipeline) the frame made. "Bundle spikes" keeps only ticks of 12 ms or more (was 6 ms: the steady 6 ms ticks
+pushed the big ones off the list).
+
+### THE DESK SCAN + THE BAKES KEPT SIDE BY SIDE (2026-11-19, spikes thread, his 12:52 F3 via the 60 FPS thread)
+- "batch: scan step 2.06 ms" every frame, the props' merge always in 'scan': since THE SLICED SCAN a rescan of the whole group took many
+  frames and any add anywhere began the next one. A live merge's rescan now reads only THE FRONT DESK's arrivals under its group (`B.dq`;
+  each arrival's chain read upward for visibility + `_HQ_BATCH_FLAG_OFF` flags); a whole walk on the first scan, an overflowed desk, and
+  every `HQ_BATCH.rescanIdleMs` (30 s, `B.fullAt`). Off: `EW_HQ_BATCH_SCAN_WHOLE` (whole walks) / `EW_HQ_BATCH_RESCAN_ALWAYS`.
+- "residents: new body 48 ms" with one body a frame: `_animLibBakeForModel0` kept ONE bake per model keyed by its slot count; a city
+  resident's def has one more slot (`hqSleep`) than a native of the same race, so alternating bodies re-baked every clip. Bakes now stay
+  by key (`modelEntry._libBakedMap`) and are handed back at once. Off: `EW_LIB_BAKE_ONE`. (If a body still costs 40 ms+, the next step is
+  a body pool by model.)
+
+## THE MEMORY PROFILE + THE GARBAGE CUT (2026-11-19, 60 FPS thread)
+mondo OK'd a cloud memory profile of Disaster City (CDP HeapProfiler sampling, 90 s walking after a 30 s warm, WebGL backend in the
+cloud). About 5 MB a second was thrown away; most of it is three.js's own per-draw work on the WebGL path (not his WebGPU path).
+The game's own share, biggest first: `_hqNavGridAt` (a new answer array per walker ask, ~15 MB/90 s), `_hqStillSum` (number boxing
+in the recursive checksum, 12.5 MB), `_hqSeaRules` (a fresh merged object per boat per frame via `_hqFindTarget`, 11 MB),
+`_hqCharCullSetup` (once per body: the skinned bounding box), `_hqRoutePose` (traffic, 5 MB), `_hqBatchMatSnap` / residents /
+`_hqNavPath` / `_mmVisit` / `_hqChunkTick` (spikes thread's areas, passed on). Cut here: `_hqSeaRules` caches its merge per rules
+pair; `_hqNavGridAt` refills one array per grid (`G.out`, every caller reads it at once and keeps nothing; comparator hoisted to
+`_hqNumUp`). Finding: the garbage rate is modest, so GC is a small part of the drops at best; minor collections, not big pauses.
+- THE ONE-STAMP LIST (11-19, his 13:36 F3: 32.5 FPS, bundle check 2.2 ms/frame, check spikes 80 + 29 ms with 0 re-recorded): `_ewBunTargets`
+  de-duplicated its ~722 groups with `out.indexOf` every frame (~260,000 compares); now a per-call stamp `_ew_bunTS` and one kept array
+  (`_ewBun.tOut`). The F3 "Bundle spikes" entry now also says the time before the groups and the slowest group's walk (name, ms,
+  pieces), so the next 80 ms spike names its cause.
+
+### THE SLOWER WATCHDOG (2026-11-19, spikes thread, his 13:36 F3: 32.5 FPS, no slow frame in this thread's code)
+"batch: check 1.35 ms" every frame: the merged pieces' check (~16,000 pieces, 0.35 ms a frame per merge, a round ~3 s) restarted 0.5 s
+after each round. In a chunked room (`_hqChunkBig`, the current room) the next round now starts 4 s after the last (`ckGap`). Off:
+`EW_HQ_BATCH_CHECK_FAST`. Same F3: #2156 holds (no re-bakes, 0 builds/s); bundle check/replay spikes 29-80 ms are the 60 FPS thread's.
+
+## THE PIECE CAP (2026-11-19, spikes thread)
+mondo's Firefox F3 at 13:42 still showed "batch: check 1.25 ms" every frame after PR #2158's 4 s gap. Firefox's `performance.now()` steps
+coarsely (whole ms outside cross-origin isolation), so the rolling watchdog's "stop after HQ_BATCH.rollMs (0.35 ms)" ran until the next clock
+tick: up to ~1 ms a batch, two batches a frame, and a round over 15,800 merged pieces never finished inside the gap. `_hqBatchCheck` now
+also stops a slice after `HQ_BATCH.rollN` (160) pieces. A city round = ~65 frames, then the 4 s gap. Off: `window.EW_HQ_BATCH_CHECK_NOCAP`.
+Any other "stop after N ms" slice is subject to the same coarse clock on Firefox: give it a count cap too.
+
+### THE HELD PIECES ONCE (2026-11-19, 60 FPS thread, his 13:44 F3: 40.1 FPS after a walk, "downtown_streets shell 1.59 ms" bundle check)
+The shell's ~10,000 children are nearly all held by the static batch, and every bundle check read each of them. `_ewBunWalkTop` now keeps,
+for a group over 1,000 children, a book (`g._ew_bunF`): the held pieces' hash once (`hh`, count `hc`) and the rest (`live`) walked each
+check. The book is laid again when the child count, `_hqBatchHoldN` (bumped where the batch takes / hands back a piece) or an add under the
+group changes, and every 240 checks. Off: `window.EW_BUN_HELD_EVERY`. Same F3: one slow frame left (rig ticks 11 ms), 0 builds/s.
