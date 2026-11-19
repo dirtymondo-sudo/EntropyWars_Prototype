@@ -575,3 +575,8 @@ own late-game door, not a stop).
 **Still to come (mondo's answers, 11-18):** (1) each kept secret out of DOOR HQ (the Dungeon's fourth wall, the Garage ramp, the Dream Lab's screen)
 moves to a hidden spot, one picture each. (2) The dressing left round the cut doors, zone by zone (the NOT DONE list above). (3) The new Cyberpunk
 City: its own plan thread (started 11-18, session "New Cyberpunk City: the plan").
+
+## THE WORLD AUDIT + THE POLISH PLAN (2026-11-19, a proposal, nothing built)
+Every plot of the 62 plot-built rooms measured for space (path width, does an 8 x 8 board fit), height (relief, ledges, ramps, falls) and dressing:
+`docs/plans/world-polish/PLAN.md` (the ranking, what to grow, the verticality kit, the waves) + `AUDIT_DATA.md` (the tables) + `need-map.svg`.
+Rerun `node docs/plans/world-polish/audit.js` after a zone's pass: its tables are the before / after. Read it before picking which zone or district to polish.
