@@ -49610,10 +49610,13 @@ const ThreeRenderer = (function () {
         var spL = (_lens && _lens.cur) ? { w0: Object.assign({}, W), r0: _ewBun.recs, walked: 0, re: [], lamp: false } : null;   // THE BUNDLE SPIKES (lens): this tick's re-records
         _ewBun.frame = (_ewBun.frame | 0) + 1;
         _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0 }; _ewBun.rpAsked = 0; _ewBun.rpAll = 0;   // THE QUIET REPLAY: the last frame's count
+        var tpa = spL ? performance.now() : 0;
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
+        var tpb = spL ? performance.now() : 0, relN = 0;
         _ewBun.cullCam = field ? (cam || null) : null;
         for (i = 0; i < T.length; i++) T[i]._ew_bunT = FR;
-        for (i = _ewBun.marked.length - 1; i >= 0; i--) if (_ewBun.marked[i]._ew_bunT !== FR) _ewBunRelease(_ewBun.marked[i]);
+        for (i = _ewBun.marked.length - 1; i >= 0; i--) if (_ewBun.marked[i]._ew_bunT !== FR) { _ewBunRelease(_ewBun.marked[i]); relN++; }
+        if (spL) { var tpc = performance.now(); spL.preS = 'start ' + (tpa - t0).toFixed(0) + ', targets ' + (tpb - tpa).toFixed(0) + ' (' + T.length + '), releases ' + (tpc - tpb).toFixed(0) + ' (' + relN + ')'; spL.tpc = tpc; }   // THE SPIKE'S SPLIT, finer (11-19)
         /* what the whole scene shares: the lit lamps (the stage swaps them) and the freed-resource epoch */
         var LG = 17, ls = r._ew_lights || [];
         LG = _ewBunMix(LG, ls.length);
@@ -49628,7 +49631,7 @@ const ThreeRenderer = (function () {
            room (each wall / piece a bundle, 400 on the Atlantis board) rests the same way. Off: window.EW_BUN_FIELD_CHECK_EVERY. */
         var fieldEvery = typeof window !== 'undefined' && !!window.EW_BUN_FIELD_CHECK_EVERY;
         _ewBun.addN = addNB;
-        if (spL) { spL.pre = performance.now() - t0; spL.slowMs = 0; spL.slow = ''; }   // THE SPIKE'S SPLIT (11-19): the time before the groups, and the slowest group
+        if (spL) { var tpd = performance.now(); spL.pre = tpd - t0; spL.preS += ', lamps + rest ' + (tpd - spL.tpc).toFixed(0); spL.slowMs = 0; spL.slow = ''; }   // THE SPIKE'S SPLIT (11-19): the time before the groups, and the slowest group
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
             if (g._ew_ckOut) continue;   // THE CHUNKS: a chunk off the camera is not drawn and not checked; its recording waits for it
@@ -49718,7 +49721,7 @@ const ThreeRenderer = (function () {
             if (spMs >= 12 || spN >= 300) {   // (12 ms since 11-19: the 6 ms steady ticks pushed his 62-99 ms ones off the list)
                 var spW = []; for (var swk in W) { var swd = (W[swk] | 0) - (spL.w0[swk] | 0); if (swd > 0) spW.push(swk + ' ' + swd); }
                 spL.re.sort(function (a, b) { return b[1] - a[1]; });
-                (_ewBun.spikes || (_ewBun.spikes = [])).push(spMs.toFixed(0) + ' ms check (' + (spL.pre || 0).toFixed(0) + ' before the groups' + (spL.slow ? '; slowest ' + spL.slow : '') + ') · ' + spL.walked + ' walked · ' + spL.re.length + ' re-recorded (' + spN + ' meshes' + (spW.length ? '; ' + spW.join(', ') : '') + (lampMoved ? '; LAMPS MOVED' : '') + ')' + (spL.re.length ? ': ' + spL.re.slice(0, 3).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : ''));
+                (_ewBun.spikes || (_ewBun.spikes = [])).push(spMs.toFixed(0) + ' ms check (' + (spL.pre || 0).toFixed(0) + ' before the groups' + (spL.pre >= 5 && spL.preS ? ' [' + spL.preS + ']' : '') + (spL.slow ? '; slowest ' + spL.slow : '') + ') · ' + spL.walked + ' walked · ' + spL.re.length + ' re-recorded (' + spN + ' meshes' + (spW.length ? '; ' + spW.join(', ') : '') + (lampMoved ? '; LAMPS MOVED' : '') + ')' + (spL.re.length ? ': ' + spL.re.slice(0, 3).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : ''));
                 if (_ewBun.spikes.length > 6) _ewBun.spikes.shift();
             }
         }
@@ -54061,7 +54064,7 @@ const ThreeRenderer = (function () {
             if (st && st.calm && t0 - st.lastAt > 1500) { _dipClose(D, now); st = null; }   // (a run of slow frames with long gaps stays one dip)
             if (st) st.calm = false;
             if (!st) st = D.st = { at: new Date().toISOString().slice(11, 19), t: D.lastT0, lastAt: t0, frames: 0, worst: 0, minFps: 999, js: 0, parts: {}, where: _dipWhere(), c0: P.c, room: (_hq && _hq.opts && _hq.opts.room) || '' };
-            st.lastAt = t0; st.frames++; st.js += P.cpu; if (!(_hq && _hq.ready)) st.loadF = (st.loadF | 0) + 1;   // a frame under the load card if (iv > st.worst) st.worst = iv; if (fps < st.minFps) st.minFps = fps;
+            st.lastAt = t0; st.frames++; st.js += P.cpu; if (!(_hq && _hq.ready)) st.loadF = (st.loadF | 0) + 1; if (iv > st.worst) st.worst = iv; if (fps < st.minFps) st.minFps = fps;   // (loadF: a frame under the load card)
             var M = P.parts; if (M) for (var pk in M) st.parts[pk] = (st.parts[pk] || 0) + M[pk];
             var S2 = P.sub; if (S2) for (var sk in S2) st.parts['> ' + sk] = (st.parts['> ' + sk] || 0) + S2[sk];
         } else if (D.st) { D.st.calm = true; if (t0 - D.st.lastAt > 1500) _dipClose(D, now); }
@@ -93464,7 +93467,7 @@ const ThreeRenderer = (function () {
             });
         });
         if (only) I.left = LS.size;   // the ones left alone in earlier runs still are
-        if (added) _hqInstSync(H, !only);   // a one-by-one run: the next draw's sync fills the new batches (a hidden cell's on its first shown frame)
+        if (added) { var _isy = _lensOn() ? performance.now() : 0; _hqInstSync(H, !only); _lensSub("instance: sync", _isy); }   // a one-by-one run: the next draw's sync fills the new batches (a hidden cell's on its first shown frame)
         return added;
     }
     /* per frame (once — the reflectors and the pixel mask render the same scene): the copies' matrices, read back
@@ -93573,8 +93576,10 @@ const ThreeRenderer = (function () {
            (the desk's arrivals) or a piece shown for the first time (a prop chunk coming into view) is read again. A pass that ran
            again (_hqInstAdd: a new number) reads everything once. Off: window.EW_HQ_INST_FULL_SCAN (the whole read every time) */
         if (I.leftSet && !(typeof window !== 'undefined' && (window.EW_HQ_INST_FULL_SCAN || window.EW_HQ_INST_RESCAN_COUNT))) {
+            var _it = _lensOn() ? performance.now() : 0;   // THE INNER SPLIT (lens / dip log): the fresh look and the add
             var fr = _hqInstFresh(H, I);
-            if (fr.length) { try { _hqInstAdd(H, I, fr); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } }
+            _it = _lensSub('instance: fresh look', _it);
+            if (fr.length) { try { _hqInstAdd(H, I, fr); _lensSub('instance: add ' + (fr.length > 50 ? '50+' : fr.length > 10 ? '11-50' : '1-10') + ' fresh', _it); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } }
             return;
         }
         var scn = _hqInstScan(H), fresh = false;
