@@ -98001,7 +98001,7 @@ const ThreeRenderer = (function () {
        taken: props, doors, people (only the shell group), instanced / skinned / morphing / patched-shader / point / line
        pieces, a piece with children, a see-through piece that is not a cut-out, the terrain tiles, the outer ground, the
        sea, the traffic. The hand-over and the leave hand every piece back first. Off: window.EW_HQ_NO_BATCH. */
-    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, rollMs: 0.35, sliceMs: 3, firstSliceMs: 28, holdSliceMs: 220, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000, rescanIdleMs: 30000 };
+    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, rollMs: 0.35, rollN: 160, sliceMs: 3, firstSliceMs: 28, holdSliceMs: 220, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000, rescanIdleMs: 30000 };
     /* THE PERF PASS 2 (2026-10-01, mondo's Downtown readout: 1,232 scene draws, 315 shell pieces alone in their look and 370
        procedural props each its own draw): the merge squares are HQ_BATCH.cellM (was the terrain's 32 m tile — most looks
        had one piece per square; 96 m took Downtown's shell 1,526 → 444 to 1,841 → 289 draws), a second batch runs on each
@@ -98612,6 +98612,11 @@ const ThreeRenderer = (function () {
         }
         var inv = _hqBatchM || (_hqBatchM = new THREE.Matrix4()), tmp = _hqBatchM2 || (_hqBatchM2 = new THREE.Matrix4());
         inv.copy(root.matrixWorld).invert();
+        /* THE PIECE CAP (2026-11-19, spikes thread: his Firefox F3 still "batch: check 1.25 ms" every frame after the 4 s gap): Firefox's
+           clock steps in whole milliseconds, so "stop after 0.35 ms" ran until the next tick (up to 1 ms a batch, two batches a frame) and the
+           round never ended inside the gap. A slice now also stops after HQ_BATCH.rollN pieces, whatever the clock says.
+           Off: window.EW_HQ_BATCH_CHECK_NOCAP. */
+        var cap = (roll && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_NOCAP)) ? (HQ_BATCH.rollN || 160) : 1e9;
         var K = B.ck, list = K.list, i = K.i, j = K.j, n = 0, end = roll ? _alNow() + rollMs : 0;
         for (; i < list.length; i++, j = 0) {
             var rec = list[i];
@@ -98620,7 +98625,7 @@ const ThreeRenderer = (function () {
             var cs = rec.cs;
             for (; j < cs.length; j++) {
                 if (!_hqBatchStill(cs[j], root, inv, tmp)) { _hqBatchBreak(rec, 'changed'); break; }
-                if (roll && (++n & 15) === 0 && _alNow() >= end) { K.i = i; K.j = j + 1; return false; }
+                if (roll && (++n >= cap || ((n & 15) === 0 && _alNow() >= end))) { K.i = i; K.j = j + 1; return false; }
             }
         }
         B.ck = null;

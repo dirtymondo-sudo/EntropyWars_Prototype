@@ -3096,3 +3096,10 @@ pair; `_hqNavGridAt` refills one array per grid (`G.out`, every caller reads it 
 "batch: check 1.35 ms" every frame: the merged pieces' check (~16,000 pieces, 0.35 ms a frame per merge, a round ~3 s) restarted 0.5 s
 after each round. In a chunked room (`_hqChunkBig`, the current room) the next round now starts 4 s after the last (`ckGap`). Off:
 `EW_HQ_BATCH_CHECK_FAST`. Same F3: #2156 holds (no re-bakes, 0 builds/s); bundle check/replay spikes 29-80 ms are the 60 FPS thread's.
+
+## THE PIECE CAP (2026-11-19, spikes thread)
+mondo's Firefox F3 at 13:42 still showed "batch: check 1.25 ms" every frame after PR #2158's 4 s gap. Firefox's `performance.now()` steps
+coarsely (whole ms outside cross-origin isolation), so the rolling watchdog's "stop after HQ_BATCH.rollMs (0.35 ms)" ran until the next clock
+tick: up to ~1 ms a batch, two batches a frame, and a round over 15,800 merged pieces never finished inside the gap. `_hqBatchCheck` now
+also stops a slice after `HQ_BATCH.rollN` (160) pieces. A city round = ~65 frames, then the 4 s gap. Off: `window.EW_HQ_BATCH_CHECK_NOCAP`.
+Any other "stop after N ms" slice is subject to the same coarse clock on Firefox: give it a count cap too.
