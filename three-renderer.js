@@ -49228,7 +49228,7 @@ const ThreeRenderer = (function () {
             return (ro._ew_rfL = (o.name || o.type) + ' in ' + ch.join('<') + ' · ' + mk + (o.isInstancedMesh ? ' · batch' : o.isSkinnedMesh ? ' · skinned' : '') + extra);
         };
         var rpStep = function (R, ro) {
-            var RF = _lensOn() ? (_ewBun.rf || (_ewBun.rf = { m: {}, f: 0 })) : null, t0 = 0, u0 = 0;
+            var RF = _ewBun.rfOn ? (_ewBun.rf || (_ewBun.rf = { m: {}, f: 0 })) : null, t0 = 0, u0 = 0;
             if (!RF) {
                 var N = R._nodes, t = N.needsRefresh(ro);
                 if (t === 2 || t === 'full') { N.updateBefore(ro); R._geometries.updateForRender(ro); N.updateForRender(ro); R._bindings.updateForRender(ro); N.updateAfter(ro); }
@@ -49402,7 +49402,7 @@ const ThreeRenderer = (function () {
         };
         var rb = r._renderBundle;
         if (rb) r._renderBundle = function (bundle) {
-            var rgT = _lensOn() ? performance.now() : 0;
+            var rgT = (_lens && _lens.cur) ? performance.now() : 0;
             try { return rbOne.apply(this, arguments); } finally { _lensSub('replay: a group, all of it', rgT); }
         };
         var rbOne = function (bundle) {   // the count three keeps for the bundle, for ThreeRenderer.bundles()
@@ -49411,7 +49411,7 @@ const ThreeRenderer = (function () {
                 bd0 = this.backend.get(this._bundles.get(g0, bundle.camera, this._currentRenderContext));
                 cur = bd0.bundleGPU !== undefined && g0.version === bd0.version && !!bd0.renderObjects;
                 if (cur && g0.static === true && bd0._ewLoopV === bd0.version && !(typeof window !== 'undefined' && window.EW_BUN_FULL_REFRESH)) {
-                    var rpT = _lensOn() ? performance.now() : 0;   // THE REPLAY'S SPLIT (lens): the refresh work vs the rest of a group's replay
+                    var rpT = (_lens && _lens.cur) ? performance.now() : 0;   // THE REPLAY'S SPLIT (lens): the refresh work vs the rest of a group's replay
                     rpReplay(this, bd0);
                     _lensSub('replay: the refreshes', rpT);
                     this.backend.addBundle(this._currentRenderContext, this._bundles.get(g0, bundle.camera, this._currentRenderContext));
@@ -49785,7 +49785,9 @@ const ThreeRenderer = (function () {
         var t0 = performance.now(), W = _ewBun.why;
         var spL = (_lens && _lens.cur) ? { w0: Object.assign({}, W), r0: _ewBun.recs, walked: 0, re: [], lamp: false } : null;   // THE BUNDLE SPIKES (lens): this tick's re-records
         _ewBun.frame = (_ewBun.frame | 0) + 1;
-        if (_ewBun.rf && _lensOn()) { if (++_ewBun.rf.f > 300) { _ewBun.rfLast = _ewBun.rf; _ewBun.rf = null; } }   // THE REFRESH BY OBJECT: a rolling window of ~300 frames (the dip log keeps it filled with the lens shut)
+        /* (his profile: the per-refresh timing ran every frame with the lens shut, ~1,600 clock reads a frame): lens frames, or one dip-log frame in 8 */
+        _ewBun.rfOn = !!((_lens && _lens.cur) || (_dip.cur && ((_ewBun.frame | 0) & 7) === 0));
+        if (_ewBun.rf && _ewBun.rfOn) { if (++_ewBun.rf.f > 300) { _ewBun.rfLast = _ewBun.rf; _ewBun.rf = null; } }   // THE REFRESH BY OBJECT: a rolling window of ~300 frames (the dip log keeps it filled with the lens shut)
         _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0, quiet: _ewBun.rpQuiet | 0 }; _ewBun.rpQuiet = 0; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
         var tpa = spL ? performance.now() : 0;
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
@@ -54485,7 +54487,7 @@ const ThreeRenderer = (function () {
             W.push([R, '_projectObject', po]);
             R._projectObject = function () {
                 var Fv = (_lens && _lens.cur) || _dip.cur;
-                if (Fv) { var Cv = Fv.cnt || (Fv.cnt = {}); Cv[_lensPassK] = (Cv[_lensPassK] | 0) + 1; }   // THE SHADOW SPLIT: objects the walk visits, per pass
+                if (Fv && Fv === (_lens && _lens.cur)) { var Cv = Fv.cnt || (Fv.cnt = {}); Cv[_lensPassK] = (Cv[_lensPassK] | 0) + 1; }   // THE SHADOW SPLIT: objects the walk visits, per pass (lens open only: the dip log never shows it)
                 if (pd > 0 || !Fv) return po.apply(this, arguments);
                 pd++; var sp = _lensIn(_lensPassK + ': projection walk');
                 try { return po.apply(this, arguments); } finally { pd--; _lensOut(sp); }
@@ -93370,7 +93372,15 @@ const ThreeRenderer = (function () {
         H.lastMs = now;
         /* resize to the host */
         var host = H.host;
-        var w = host.clientWidth, h = host.clientHeight;
+        /* THE SIZE BY OBSERVER (2026-11-19, mondo's Firefox profile: "get Element.clientWidth 0.67 ms a frame", each read forcing the
+           page's style + layout in the middle of the frame): the host's size is read when a ResizeObserver says it changed (and once a
+           second as a backstop), not every frame. Old: window.EW_HQ_SIZE_EVERY_FRAME */
+        var w = H.w, h = H.h;
+        if (typeof ResizeObserver === 'undefined' || (typeof window !== 'undefined' && window.EW_HQ_SIZE_EVERY_FRAME)) { w = host.clientWidth; h = host.clientHeight; }
+        else {
+            if (host._ew_ro !== true) { host._ew_ro = true; host._ew_roDirty = true; try { new ResizeObserver(function () { host._ew_roDirty = true; }).observe(host); } catch (eRO) {} }
+            if (host._ew_roDirty || !(w > 0) || now - (host._ew_roAt || 0) > 1000) { host._ew_roDirty = false; host._ew_roAt = now; w = host.clientWidth; h = host.clientHeight; }
+        }
         if (w > 0 && h > 0 && (H.w !== w || H.h !== h)) {
             H.w = w; H.h = h;
             renderer.setSize(w, h);
@@ -93680,7 +93690,7 @@ const ThreeRenderer = (function () {
         var I = H.inst; if (!I || (!H.field && _hq !== H)) return;   // H.field: THE PERF PASS's battle record (_fieldInst*)
         if (!force && I.stamp === _hqInstStamp) return;
         I.stamp = _hqInstStamp;
-        var M = _hqInstM, Z = _hqInstZero.elements, sc = H.scene, ST = _hqInstStamp, rest = !force && !_hqInstSyncEvery();
+        var M = _hqInstM, Z = _hqInstZero.elements, sc = H.scene, ST = _hqInstStamp, rest = !force && !_hqInstSyncEvery(), syncHid = _hqInstSyncHidden();   // (the flag read once a sync, not once a batch: a window lookup is slow on Firefox — his profile, 0.42 ms a frame)
         for (var r = 0; r < I.recs.length; r++) {
             var rec = I.recs[r], c = rec.copies, im = rec.im, arr = im.instanceMatrix.array, cache = rec.cache, dirty = false, refit = false;
             /* THE QUIET SYNC (2026-11-15, mondo's F3 in Disaster City: the mask pass's "setup" 6.3 ms = this sync, 12,000 copies each
@@ -93691,7 +93701,7 @@ const ThreeRenderer = (function () {
             /* THE HIDDEN CELLS (2026-11-18, mondo's F3: "mask: setup + lights + sort 2.6" = this sync, 15,000 copies, 351 of 414 cells
                off the camera): a batch whose cell is hidden this frame draws in no pass, so its copies are not read; it is synced
                in full the first frame its cell is shown (the sync runs before that frame's first draw). Off: EW_HQ_INST_SYNC_HIDDEN */
-            if (!force && im.parent && im.parent._ew_instCell != null && im.parent.visible === false && !_hqInstSyncHidden()) { rec.qN = 0; continue; }
+            if (!force && im.parent && im.parent._ew_instCell != null && im.parent.visible === false && !syncHid) { rec.qN = 0; continue; }
             if (rec.fitStamp === _hqInstStamp) refit = null;   // one refit a frame per batch
             for (var i = 0; i < c.length; i++) {
                 var o = c[i], off = i * 16, e = null;
@@ -93896,6 +93906,7 @@ const ThreeRenderer = (function () {
     var _hqStS = { groups: 0, out: 0, full: 0, tops: 0, fresh: 0, movers: 0, swept: 0, ms: 0 }, _hqStLast = null, _hqStMs = 0;
     var HQ_STILL_SWEEP_MS = 500, HQ_STILL_HOLD_MS = 4000, HQ_STILL_DOOR_HOLD_MS = 30000;
     function _hqStillOff() { return typeof window !== 'undefined' && !!window.EW_HQ_STILL_OFF; }
+    var _hqStOffC = false, _hqStMqEvery = false;
     function _hqStillArm(g) {
         if (!g || g._ew_st) return;
         _ewAddCount();   // the add hook
@@ -93943,7 +93954,7 @@ const ThreeRenderer = (function () {
     }
     function _hqStillUpdate(force) {
         var st = this._ew_st;
-        if (!_hqStWalk || !st || _hqStillOff()) return (_hqStProto || THREE.Object3D.prototype.updateMatrixWorld).call(this, force);
+        if (!_hqStWalk || !st || _hqStOffC) return (_hqStProto || THREE.Object3D.prototype.updateMatrixWorld).call(this, force);
         var S = _hqStS; S.groups++;
         if (this._ew_ckOut) { st.out = true; S.out++; return; }
         if (st.out) { st.out = false; st.full = 2; }
@@ -93977,7 +93988,7 @@ const ThreeRenderer = (function () {
            children each compared on ten numbers every frame): a piece THE STATIC BATCH holds is not drawn itself (its merged mesh
            is), and the batch's own watchdog finds it moved over seconds, so its pose is compared on one frame in four (its turn by
            its place); a piece that moves is a mover from then on and is walked every frame as before. Off: window.EW_HQ_STILL_MERGED_EVERY */
-        var mq = !(typeof window !== 'undefined' && window.EW_HQ_STILL_MERGED_EVERY), mqT = (st.mq = ((st.mq | 0) + 1) & 3);
+        var mq = !_hqStMqEvery, mqT = (st.mq = ((st.mq | 0) + 1) & 3);
         for (i = 0; i < n; i++) {
             /* (2026-11-15: a kept child's three pose objects are read from the group's own arrays — 11,000 children of many
                kinds, three property reads off each were half of the walk's own time) */
@@ -94080,6 +94091,7 @@ const ThreeRenderer = (function () {
         try { var CG = _hq && _hq.charGroup; if (CG && !CG._ew_st && CG.updateMatrixWorld !== _hqCharGroupMW && !Object.prototype.hasOwnProperty.call(CG, 'updateMatrixWorld')) CG.updateMatrixWorld = _hqCharGroupMW; } catch (eCG) {}
         var S = _hqStS; S.hid = 0; S.groups = S.out = S.full = S.tops = S.fresh = S.movers = S.swept = 0;
         var t0 = performance.now();
+        _hqStOffC = _hqStillOff(); _hqStMqEvery = typeof window !== 'undefined' && !!window.EW_HQ_STILL_MERGED_EVERY;   // the walk's flags, read once (not per group: a window lookup is slow on Firefox)
         _hqStNow = t0; _hqStWalk = true;
         try {
             /* THE WALK'S SPLIT (lens open only, 2026-11-18): the scene's own step of three's walk, then each top child timed by its

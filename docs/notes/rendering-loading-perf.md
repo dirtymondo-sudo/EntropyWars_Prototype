@@ -3235,3 +3235,21 @@ group three replayed itself: recorded again, not static, or not yet seen through
 - THE LEFT ALONE BY KIND: `_hqInstAdd`'s one-by-one run read the whole left-alone set (~2,300 pieces: matrix walk up, key, place) for
   every few fresh pieces ("instance: add 1-10 fresh 13-17 ms"). A left-alone piece keeps its key (`_ew_instK`) and is read again only
   when fresh copies of its kind came. Old: `window.EW_HQ_INST_LEFT_ALL`.
+
+### HIS FIRST FIREFOX PROFILE (2026-11-19 19:14, Mac, 120 Hz, ~2 s, Graphics preset; how to record: docs below)
+How to get one from him: Firefox address bar → `about:profiling` → pick "Graphics" (his Firefox has no Start button there) → in the game
+tab Control+Shift+1 (start), ~15 s, Control+Shift+2 (capture) → profiler tab → Upload → link. share.firefox.dev / profiler.firefox.com
+are blocked from the cloud container: ask him to drop the downloaded `.json.gz` instead (Upload's menu has "Download"). Read it with a
+python script over `shared.stackTable` (`prefixOffset`: prefix = i - offset, 0 = root), `frameTable`, `funcTable`, `stringArray`.
+What it said:
+- The walk frame is ~21.5 ms of solid main-thread JS (no blocking; Firefox's WebGPU C++ is only ~0.6 ms of it). On 120 Hz a 21.5 ms
+  frame lands on the 25 ms beat (40 FPS); ≤16.6 ms = 60. No major GC in the window (GCMinor 0.14 ms a frame). The 6 s hitches did not
+  fall in these 2 s.
+- GPU process: WebRender's "WR OS Compositor frame" ~11 ms a frame (max 13.6), "Lock MacIOSurfaceTexture" ~3.7 ms: compositing the
+  3456×1812 canvas. Parallel to the main thread; pixel ratio 1.5 shrinks it.
+- Fixed from it: THE SIZE BY OBSERVER (`_hqFrame` read `host.clientWidth/Height` every frame = a forced style + layout, 0.67 ms;
+  now a ResizeObserver + a 1 s backstop; old: `window.EW_HQ_SIZE_EVERY_FRAME`); window flag reads hoisted out of hot loops
+  (`_hqInstSyncHidden` once per batch = 0.42 ms a frame, `_hqStillOff` / EW_HQ_STILL_MERGED_EVERY once per still group: a missing
+  property read off `window` is slow on Firefox, never put one in a per-object loop); the always-on dip log no longer does lens-only
+  work (the per-pass visit count on every `_projectObject` 0.40 ms; the refresh-by-object clock reads run on lens frames or 1 dip frame
+  in 8; the "replay:" sub-spans lens-only).
