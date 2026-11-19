@@ -16345,6 +16345,7 @@
                 for (const u of state.units) {
                     if (!u || u.dead || u._dying || _realmKeyOf(u)) continue;
                     if (u.status && Number(u.status.radioactive || 0) > 0) visible.add(posKey(u.x, u.y));
+                    if (u.status && Number(u.status.doxxed || 0) > 0) visible.add(posKey(u.x, u.y));   // 🪪 Doxxed (the Hacker, 2026-11-19): the same, seen by every viewer
                 }
             }
 

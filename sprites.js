@@ -149,6 +149,10 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/boltzmann_brain/', 'Assets/characters/races/boltzmann_brain/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/wendigo/', 'Assets/characters/races/wendigo/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/karate_frog/', 'Assets/characters/races/karate_frog/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/gambler/', 'Assets/characters/races/gambler/'],   // 2026-11-19 THE NEW RACES 4
+  ['Assets/Sprites/Races/hacker/', 'Assets/characters/races/hacker/'],   // 2026-11-19 THE NEW RACES 4
+  ['Assets/Sprites/Races/monk/', 'Assets/characters/races/monk/'],   // 2026-11-19 THE NEW RACES 4
+  ['Assets/Sprites/Races/shogun/', 'Assets/characters/races/shogun/'],   // 2026-11-19 THE NEW RACES 4
   ['Assets/Sprites/Races/samurai_slug/', 'Assets/characters/races/samurai_slug/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/cursed_tv/', 'Assets/characters/races/cursed_tv/'],   // 2026-11-17 📺 THE CURSED TV
   ['Assets/Sprites/Races/virus/', 'Assets/characters/races/virus/'],   // 2026-11-18 🦠 THE VIRUS
@@ -560,6 +564,10 @@ const RACE_SPRITE_GENDERS = {
   'boltzmann brain': 'male',   // 2026-11-17 THE NEW RACES 2
   'wendigo': 'male',   // 2026-11-17 THE NEW RACES 2
   'karate frog': 'male',   // 2026-11-17 THE NEW RACES 2
+  'gambler': 'male',   // 2026-11-19 THE NEW RACES 4
+  'hacker': 'male',   // 2026-11-19 THE NEW RACES 4
+  'monk': 'male',   // 2026-11-19 THE NEW RACES 4
+  'shogun': 'male',   // 2026-11-19 THE NEW RACES 4
   'samurai slug': 'male',   // 2026-11-17 THE NEW RACES 2
   'cicada brood': 'male',   // 2026-11-17 THE NEW RACES 2
   'pope': 'male',   // 2026-11-17 THE POPE
@@ -744,6 +752,10 @@ const _CHARACTER_SPRITES = {
   'boltzmann brain': `${_S}/Races/boltzmann_brain/male/boltzmann_brain_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'wendigo': `${_S}/Races/wendigo/male/wendigo_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'karate frog': `${_S}/Races/karate_frog/male/karate_frog_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'gambler': `${_S}/Races/gambler/male/gambler_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'hacker': `${_S}/Races/hacker/male/hacker_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'monk': `${_S}/Races/monk/male/monk_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'shogun': `${_S}/Races/shogun/male/shogun_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'pope': `${_S}/Races/pope/male/pope_px2.png`,   // 2026-11-17 THE POPE — 128x128 pixel sprite (Sprite AI restyle of his model's front render, round 2: no shoulder cape)
@@ -2650,6 +2662,38 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/wendigo/male/Meshy_AI_wendigo_Running.glb`,
       heightRatio: 1.45,
       basicAttackKind: 'physical',
+    }),
+  },
+  /* THE NEW RACES 4 (2026-11-19, mondo's picks from the 11-19 concepts round, kits OK'd 11-19): Meshy image-to-3d from a
+     nano-banana-pro concept, rigged by the Meshy rigging API, animated by the shared library. The Hacker holds the PSX Mega
+     Pack's keyboard (left hand) and mouse (right hand), each its own piece (three-renderer.js THE UNIT GEAR `held` + `held2`).
+     No weapons in any outfit. Sources: /mnt/project-files/new-char-concepts-20261119/ + new-races-4/. */
+  'gambler': {
+    male: _mkUAL('gambler', 'gambler', {
+      model: `${_S}/Races/gambler/male/Meshy_AI_gambler_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'magic',
+    }),
+  },
+  'hacker': {
+    male: _mkUAL('hacker', 'hacker', {
+      model: `${_S}/Races/hacker/male/Meshy_AI_hacker_Running.glb`,
+      heightRatio: 0.98, basicAttackKind: 'magic',
+      procRig: 'unitGear', gear: {
+        held: { url: 'https://cdn.entropywars.net/Assets/world/packs/pizzadoggy_psx_mega_pack/electronics_and_misc/pc_mouse_mp_1.glb', len: 0.06, fit: 'max', grip: 0.5 },
+        held2: { url: 'https://cdn.entropywars.net/Assets/world/packs/pizzadoggy_psx_mega_pack/electronics_and_misc/pc_keyboard_mp_1.glb', len: 0.26, fit: 'max', grip: 0.5 },
+      },
+    }),
+  },
+  'monk': {
+    male: _mkUAL('monk', 'monk', {
+      model: `${_S}/Races/monk/male/Meshy_AI_monk_Running.glb`,
+      heightRatio: 0.97, basicAttackKind: 'punch',
+    }),
+  },
+  'shogun': {
+    male: _mkUAL('shogun', 'shogun', {
+      model: `${_S}/Races/shogun/male/Meshy_AI_shogun_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'physical',
     }),
   },
   'karate frog': {
@@ -7063,6 +7107,10 @@ const RACE_SPRITES = {
   'boltzmann brain': `${_S}/Races/boltzmann_brain/male/boltzmann_brain_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'wendigo': `${_S}/Races/wendigo/male/wendigo_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'karate frog': `${_S}/Races/karate_frog/male/karate_frog_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'gambler': `${_S}/Races/gambler/male/gambler_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'hacker': `${_S}/Races/hacker/male/hacker_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'monk': `${_S}/Races/monk/male/monk_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'shogun': `${_S}/Races/shogun/male/shogun_px.png`,   // 2026-11-19 THE NEW RACES 4 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'samurai slug': `${_S}/Races/samurai_slug/male/samurai_slug_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'cicada brood': `${_S}/Races/cicada_brood/male/cicada_brood_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'pope': `${_S}/Races/pope/male/pope_px2.png`,   // 2026-11-17 THE POPE — 128x128 pixel sprite (Sprite AI restyle of his model's front render, round 2: no shoulder cape)
