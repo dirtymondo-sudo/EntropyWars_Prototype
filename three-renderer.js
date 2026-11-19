@@ -19802,6 +19802,12 @@ const ThreeRenderer = (function () {
         var urls = _libUrls(def);
         var bakeKey = urls.join('|') + (_libStandardPose(def) ? '|std' : '|keep') + '|' + Object.keys(def.libClips || {}).filter(function (k) { return k.indexOf('clip:') !== 0; }).length;   // THE LOOK: a 'clip:' slot bakes on demand (_libBakeSlotNow), never forces a re-bake
         if (modelEntry._libBakedFrom === bakeKey) { cb(modelEntry._libBaked); return; }
+        /* THE BAKES KEPT SIDE BY SIDE (2026-11-19, spikes thread: mondo's F3 "residents: new body 48 ms" with one body a frame): a model held
+           ONE bake, keyed by its slot count. A city resident's def carries one slot more (the bed's sleep pose) than a native of the same
+           race on the same model, so every resident body after a native (and back) baked every clip of the model again. Each bake now
+           stays on the model by its key and is handed back at once. Off: window.EW_LIB_BAKE_ONE. */
+        var BM = modelEntry._libBakedMap;
+        if (BM && BM[bakeKey] && !modelEntry._libBakeCbs && !(typeof window !== 'undefined' && window.EW_LIB_BAKE_ONE)) { modelEntry._libBaked = BM[bakeKey]; modelEntry._libBakedFrom = bakeKey; cb(BM[bakeKey]); return; }
         if (modelEntry._libBakeCbs) {
             /* a bake is in flight on this model: join it only when it is the
                SAME slot set — a posed building agent (the cast poses merged
@@ -19818,6 +19824,7 @@ const ThreeRenderer = (function () {
         function settle(result) {
             modelEntry._libBaked = result;
             modelEntry._libBakedFrom = bakeKey;
+            if (result) (modelEntry._libBakedMap || (modelEntry._libBakedMap = {}))[bakeKey] = result;   // THE BAKES KEPT SIDE BY SIDE
             var cbs = modelEntry._libBakeCbs;
             modelEntry._libBakeCbs = null;
             modelEntry._libBakingKey = null;
@@ -98148,7 +98155,7 @@ const ThreeRenderer = (function () {
     function _hqBatchRel(o, inv, out) { return out.multiplyMatrices(inv, o.matrixWorld); }
     function _hqBatchSame(a, b) { var x = a.elements, y = b.elements; for (var i = 0; i < 16; i++) if (Math.abs(x[i] - y[i]) > 1e-4 * (1 + Math.abs(y[i]))) return false; return true; }
     /* the scan (a generator, sliced): every piece of the record's shell that may merge, with what it looks like now */
-    function* _hqBatchScan(R, B) {
+    function* _hqBatchScan(R, B, only) {
         var root = R[B.grp]; if (!root) return;
         var skip = {}; (R.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { skip[t.id] = 1; }); });
         /* THE SLICED SCAN (2026-11-18, spikes thread: mondo's F3 "tick: static batch 26.0, > batch: scan step 24.0" in one frame): the scan
@@ -98162,12 +98169,21 @@ const ThreeRenderer = (function () {
         var glows = (loose && !_hqGlowOff()) ? new Set(_hzGlowPulse.map(function (p) { return p.mat; })) : null;   // THE JOINED GLOWS: a breathing glow is never joined
         /* the pieces with their chain: an ancestor that is hidden or flagged off keeps everything under it out */
         var stk = [root, 0, true], seen = whole ? null : new Set(), wn = 0;
+        /* THE DESK SCAN (2026-11-19, spikes thread: the 60 FPS thread saw "batch: scan step 2.06 ms" EVERY frame, the props' merge always in
+           'scan': every add anywhere re-walked the whole group, a slice a frame, then began again). A rescan of a live merge reads only the
+           arrivals under the group (THE FRONT DESK), each with its own chain's visibility and flags read upward; a full walk when the desk
+           overflowed and every HQ_BATCH.rescanIdleMs, as before. */
+        if (only) { stk = [];
+            for (var oi = 0; oi < only.length; oi++) { var a0 = only[oi], okA = true, q0 = a0.parent, under = false;
+                for (var dd = 0; q0 && dd < 64; q0 = q0.parent, dd++) { if (q0 === root) { under = true; break; } if (!((q0.visible !== false || !!q0._ew_pChunk) && !skip[q0.id])) okA = false; else if (okA) for (var k0 in q0) if (_HQ_BATCH_FLAG_OFF[k0]) { okA = false; break; } }
+                if (under) stk.push({ children: [a0] }, 0, okA); } }
         while (stk.length) {
             var top = stk.length - 3, g = stk[top], gi = stk[top + 1], ok = stk[top + 2];
             if (gi >= g.children.length) { stk.length = top; continue; }
             stk[top + 1] = gi + 1;
             var c = g.children[gi], vis = ok && (c.visible !== false || !!c._ew_pChunk) && !skip[c.id], cok = vis;   // THE PROP CHUNKS: a chunk off the camera is still the room's
             if (cok) for (var k in c) if (_HQ_BATCH_FLAG_OFF[k]) { cok = false; break; }
+            if (only && c._ew_bRec) continue;   // (already merged: its batch's own)
             if (c.children.length) stk.push(c, 0, cok);
             else if ((c.isMesh && (cok || (loose && vis))) || (c.isSprite && cok && glows)) {   // THE LOOSE PIECES: a flagged leaf is read too (_hqBatchLooseOk says which flags may stand in); THE JOINED GLOWS
                 if (!seen || !seen.has(c)) { if (seen) { seen.add(c); c.updateWorldMatrix(true, false); } list.push(c); }
@@ -98634,7 +98650,14 @@ const ThreeRenderer = (function () {
                    landed late). Off: window.EW_HQ_BATCH_RESCAN_ALWAYS = true. */
                 var _bAn = _ewAddCount();
                 if (H.ready && B.lived && B.scanAn === _bAn && now - B.at < HQ_BATCH.rescanIdleMs && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_RESCAN_ALWAYS)) continue;
-                B.scanAn = _bAn; B.phase = 'scan'; B.it = _hqBatchScan(R, B);   // THE PERF PASS 2: the late pieces
+                var onlyD = null;
+                if (H.ready && B.lived && now - (B.fullAt || 0) < HQ_BATCH.rescanIdleMs && !(typeof window !== 'undefined' && (window.EW_HQ_BATCH_RESCAN_ALWAYS || window.EW_HQ_BATCH_SCAN_WHOLE))) {   // THE DESK SCAN
+                    if (!B.dq) B.dq = _ewDeskQueue();
+                    var DT = _ewDeskTake(B.dq);
+                    if (!DT.over) { onlyD = DT.list; if (!onlyD.length) { B.scanAn = _bAn; continue; } }
+                } else if (B.dq) _ewDeskTake(B.dq);   // a whole walk reads everything that came before it
+                if (!onlyD) B.fullAt = now;
+                B.scanAn = _bAn; B.phase = 'scan'; B.it = _hqBatchScan(R, B, onlyD);   // THE PERF PASS 2: the late pieces
             }
             if (B.phase === 'wait') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
             if (B.phase === 'watch') { if (now - B.at >= ((H.ready && !firstRun) ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs) && _hqStackPrep(R, B, now)) { _lensSub('batch: stack prep', _bt); B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else { _lensSub('batch: stack prep', _bt); continue; } }
