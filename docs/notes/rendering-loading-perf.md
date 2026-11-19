@@ -3087,3 +3087,7 @@ in the recursive checksum, 12.5 MB), `_hqSeaRules` (a fresh merged object per bo
 `_hqNavPath` / `_mmVisit` / `_hqChunkTick` (spikes thread's areas, passed on). Cut here: `_hqSeaRules` caches its merge per rules
 pair; `_hqNavGridAt` refills one array per grid (`G.out`, every caller reads it at once and keeps nothing; comparator hoisted to
 `_hqNumUp`). Finding: the garbage rate is modest, so GC is a small part of the drops at best; minor collections, not big pauses.
+- THE ONE-STAMP LIST (11-19, his 13:36 F3: 32.5 FPS, bundle check 2.2 ms/frame, check spikes 80 + 29 ms with 0 re-recorded): `_ewBunTargets`
+  de-duplicated its ~722 groups with `out.indexOf` every frame (~260,000 compares); now a per-call stamp `_ew_bunTS` and one kept array
+  (`_ewBun.tOut`). The F3 "Bundle spikes" entry now also says the time before the groups and the slowest group's walk (name, ms,
+  pieces), so the next 80 ms spike names its cause.
