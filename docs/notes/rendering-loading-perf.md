@@ -3174,3 +3174,10 @@ every one), and only one that writes something on that refresh stays awake. Old 
 The lens's bundles line now splits "refreshed N of M a frame" into awake (refreshed every frame: they wrote in the last 20), turns
 (rested, their 1-in-20 turn), woken (held, refreshed by a wake), firsts (the one plain object per shader asked) and whole groups (a
 group three replayed itself: recorded again, not static, or not yet seen through once). Next F3 says which one is left to cut.
+- THE QUIET GROUP (11-19, his 16:33 F3: 40.0 FPS, "refreshed 188 of 3137 a frame (... firsts 108 ...)" yet "scene: bundle replays
+  4.1 ms"): what was left was the bookkeeping: every own-node object of every group read each frame to learn that it rests. A group
+  whose objects all rested last frame (none wrote) is a quiet group (`L.quiet` on the bundle's `_ewRep`): only this frame's turns
+  (every REST-th object, by place) are visited, its instanced batches' versions are compared, and one object per set of shared buffers
+  (`L.shr`, `rpShrList`) gets its shared refresh. A turn that writes or a batch rewritten sends that frame to the full loop with the
+  wake already on (every object refreshed, only writers stay awake). Old loop: `window.EW_BUN_QUIET_LOOP`. The lens's bundles line
+  adds "quiet groups N" (per frame, all passes).

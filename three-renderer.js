@@ -47244,7 +47244,7 @@ const ThreeRenderer = (function () {
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost + (_ewGpuInfo.rebuilds ? ' (rebuilt ' + Math.min(3, _ewGpuInfo.rebuilds) + '×)' : '');
         if (_ewBun.marked.length) {
             s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
-            if (_ewBun.rpShow) { var rpS = _ewBun.rpShow; s += ' · refreshed ' + rpS.asked + ' of ' + rpS.all + ' a frame (awake ' + rpS.awake + ', turns ' + rpS.turn + ', woken ' + rpS.wokeN + ', firsts ' + rpS.reps + ', whole groups ' + (rpS.asked - rpS.awake - rpS.turn - rpS.wokeN - rpS.reps) + ')'; }
+            if (_ewBun.rpShow) { var rpS = _ewBun.rpShow; s += ' · refreshed ' + rpS.asked + ' of ' + rpS.all + ' a frame (awake ' + rpS.awake + ', turns ' + rpS.turn + ', woken ' + rpS.wokeN + ', firsts ' + rpS.reps + ', whole groups ' + (rpS.asked - rpS.awake - rpS.turn - rpS.wokeN - rpS.reps) + '; quiet groups ' + rpS.quiet + ')'; }
             var wr = _ewBun.whyRate, ws = []; if (wr) for (var wk in wr) ws.push(wk + ' ' + wr[wk]);
             if (ws.length) s += ' (' + ws.join(', ') + ')';
             s += ' · check ' + _ewBun.msAvg.toFixed(2) + ' ms/frame (' + (_ewBun.quietN | 0) + ' quiet skipped, ' + (_ewBun.noMShow | 0) + ' still-checked)';
@@ -49187,6 +49187,24 @@ const ThreeRenderer = (function () {
             if (t === 2 || t === 'full') { N.updateBefore(ro); R._geometries.updateForRender(ro); N.updateForRender(ro); R._bindings.updateForRender(ro); N.updateAfter(ro); }
             else if (t === 1 || t === 'shared') { N.updateBefore(ro); N.updateForRender(ro); R._bindings.updateSharedForRender(ro); N.updateAfter(ro); }
         };
+        /* one object per set of shared buffers among a group's own-node objects: what THE HELD KEEP THE CAMERA must refresh for a
+           quiet group (rpShared over all the held objects skips every one after the first of each set anyway) */
+        var rpShrList = function (D) {
+            var out = [], keys = new Set();
+            for (var i = 0; i < D.length; i++) {
+                var ro = D[i], sb = ro._ew_rqS;
+                if (sb === undefined) {
+                    sb = null;
+                    var bg = ro.getBindings();
+                    for (var k = 0; k < bg.length; k++) { var b0 = bg[k].bindings && bg[k].bindings[0], gn = b0 && b0.groupNode; if (gn && gn.shared === true) (sb || (sb = [])).push(bg[k]); }
+                    ro._ew_rqS = sb;
+                }
+                if (!sb) continue;
+                var key = ''; for (var k2 = 0; k2 < sb.length; k2++) key += (sb[k2].id != null ? sb[k2].id : ('o' + i)) + ',';
+                if (!keys.has(key)) { keys.add(key); out.push(ro); }
+            }
+            return out;
+        };
         var rpShared = function (R, held) {
             var N = R._nodes, rid = N.nodeFrame ? N.nodeFrame.renderId : (_ewBun.frame | 0), i, k, ro, sb, need;
             for (i = 0; i < held.length; i++) {
@@ -49207,7 +49225,7 @@ const ThreeRenderer = (function () {
             }
         };
         var rpList = function (R, bd) {
-            var ros = bd.renderObjects, reps = [], dyn = [], seen = new Set();
+            var ros = bd.renderObjects, reps = [], dyn = [], ins = [], seen = new Set();
             for (var i = 0; i < ros.length; i++) {
                 var ro = ros[i], mon = ro.getMonitor(), o = ro.object;
                 /* THE COPIES REST (2026-11-15): an instanced batch whose buffers are "dynamic" asks three for a full refresh every
@@ -49216,10 +49234,10 @@ const ThreeRenderer = (function () {
                    Off: window.EW_BUN_INST_NO_REST. */
                 var inst = !!(o && o.isInstancedMesh && mon.hasDynamicInstancing(o)) && !(typeof window !== 'undefined' && window.EW_BUN_INST_NO_REST);
                 var anim = !!(mon.hasAnimation || (!inst && mon.hasDynamicInstancing(o)) || mon.needsVelocity(R) || (o && (o.isSkinnedMesh || o.morphTargetInfluences)));
-                if (mon.hasNode || anim || inst) { ro._ew_rq = 0; ro._ew_rqOk = !anim; ro._ew_rqI = (inst && !anim) ? o : null; ro._ew_rqV = NaN; dyn.push(ro); }
+                if (mon.hasNode || anim || inst) { ro._ew_rq = 0; ro._ew_rqOk = !anim; ro._ew_rqI = (inst && !anim) ? o : null; ro._ew_rqV = NaN; if (ro._ew_rqI) ins.push(dyn.length); dyn.push(ro); }
                 else if (!seen.has(mon)) { seen.add(mon); reps.push(ro); }
             }
-            return (bd._ewRep = { v: bd.version, n: ros.length, reps: reps, dyn: dyn });
+            return (bd._ewRep = { v: bd.version, n: ros.length, reps: reps, dyn: dyn, ins: ins, quiet: false, shr: null });
         };
         var rpReplay = function (R, bd) {
             var L = bd._ewRep; if (!L || L.v !== bd.version || L.n !== bd.renderObjects.length) L = rpList(R, bd);
@@ -49239,10 +49257,41 @@ const ThreeRenderer = (function () {
             }
             asked += nR; _ewBun.rpReps = (_ewBun.rpReps | 0) + nR;
             /* THE HELD LIST KEPT (2026-11-19): one array per replay depth, refilled (was a new array per group per pass: ~750 a frame) */
+            /* THE QUIET GROUP (2026-11-19, mondo's 16:33 F3: "refreshed 188 of 3137 a frame" yet "scene: bundle replays 4.1 ms"): the
+               cost left was the bookkeeping, every own-node object of every group read every frame to learn that it rests. A group whose
+               objects all rested last frame (and none wrote) is now a quiet group: only this frame's turns are visited (every
+               REST-th object, by place), its instanced batches' versions are compared, and one object per set of shared buffers gets
+               its shared refresh (THE HELD KEEP THE CAMERA). Anything that moves (a turn that writes, a batch rewritten) drops it to the
+               full loop below for that frame and until it rests again. Old loop every frame: window.EW_BUN_QUIET_LOOP */
+            var D = L.dyn, u0, qWoke = false;
+            if (L.quiet && !(typeof window !== 'undefined' && window.EW_BUN_QUIET_LOOP)) {
+                var IX = L.ins, qi, io0, iv0;
+                for (qi = 0; qi < IX.length; qi++) {
+                    ro = D[IX[qi]]; io0 = ro._ew_rqI;
+                    iv0 = io0.instanceMatrix.version + io0.count * 8191 + (io0.instanceColor ? io0.instanceColor.version * 131 : 0);
+                    if (iv0 !== ro._ew_rqV) { L.quiet = false; break; }
+                }
+                if (L.quiet) {
+                    var qj = ((-F) % RP_REST + RP_REST) % RP_REST;
+                    for (i = qj; i < D.length; i += RP_REST) {
+                        ro = D[i]; u0 = _ewBun.upN | 0;
+                        rpStep(R, ro); asked++; _ewBun.rpTurn = (_ewBun.rpTurn | 0) + 1;
+                        if ((_ewBun.upN | 0) !== u0) { ro._ew_rq = 0; L.quiet = false; qWoke = true; break; }   // it wrote: the full loop below wakes the group (every one refreshed, as a wake does)
+                        ro._ew_rq++;
+                    }
+                }
+                if (L.quiet) {
+                    if (!(typeof window !== 'undefined' && window.EW_BUN_HELD_NO_SHARED)) { if (!L.shr) L.shr = rpShrList(D); rpShared(R, L.shr); }
+                    _ewBun.rpQuiet = (_ewBun.rpQuiet | 0) + 1;
+                    _ewBun.rpAsked = (_ewBun.rpAsked | 0) + asked; _ewBun.rpAll = (_ewBun.rpAll | 0) + bd.renderObjects.length;
+                    return;
+                }
+            }
             var hDep = _rpDepth++, held = _rpHeldPool[hDep] || (_rpHeldPool[hDep] = []);
             held.length = 0;
+            var allRest = true;
             try {
-            var D = L.dyn, woke = false, u0, rested;
+            var woke = qWoke, rested;
             for (i = 0; i < D.length; i++) {
                 ro = D[i]; rested = ro._ew_rqOk && ro._ew_rq >= RP_REST;
                 if (ro._ew_rqI) {
@@ -49254,6 +49303,7 @@ const ThreeRenderer = (function () {
                 rpStep(R, ro); asked++;
                 if (rested) _ewBun.rpTurn = (_ewBun.rpTurn | 0) + 1; else _ewBun.rpAwake = (_ewBun.rpAwake | 0) + 1;
                 if ((_ewBun.upN | 0) !== u0) { ro._ew_rq = 0; if (rested) woke = true; } else ro._ew_rq++;
+                if (!(ro._ew_rqOk && ro._ew_rq >= RP_REST)) allRest = false;
             }
             /* a rested object wrote on its turn: what changed may be the same for all of them (the pass's camera in an object's
                own buffer) — every rested one is refreshed this frame, and rests again only after REST quiet frames */
@@ -49278,6 +49328,7 @@ const ThreeRenderer = (function () {
                of each shared buffer has its SHARED part refreshed in every render (what three does for a still object); the
                rest stay held. Off: window.EW_BUN_HELD_NO_SHARED. Count: _ewBun.rpShared. */
             else if (held.length && !(typeof window !== 'undefined' && window.EW_BUN_HELD_NO_SHARED)) rpShared(R, held);
+            L.quiet = allRest && !woke;
             } finally { held.length = 0; _rpDepth = hDep; }
             _ewBun.rpAsked = (_ewBun.rpAsked | 0) + asked; _ewBun.rpAll = (_ewBun.rpAll | 0) + bd.renderObjects.length;
         };
@@ -49642,7 +49693,7 @@ const ThreeRenderer = (function () {
         var t0 = performance.now(), W = _ewBun.why;
         var spL = (_lens && _lens.cur) ? { w0: Object.assign({}, W), r0: _ewBun.recs, walked: 0, re: [], lamp: false } : null;   // THE BUNDLE SPIKES (lens): this tick's re-records
         _ewBun.frame = (_ewBun.frame | 0) + 1;
-        _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0 }; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
+        _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0, quiet: _ewBun.rpQuiet | 0 }; _ewBun.rpQuiet = 0; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
         var tpa = spL ? performance.now() : 0;
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
         var tpb = spL ? performance.now() : 0, relN = 0;
