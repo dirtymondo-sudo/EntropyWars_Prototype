@@ -3059,3 +3059,11 @@ pipelines one after another during play. On Firefox (`_ewScGeckoHold`) the warm 
   sheet of a stack whose GPU texture was re-made) and "batch: hold check". Next F3 says which.
 - Same F3, the 60 FPS thread's: bundle check 62/99 ms frames, sun shadow classic draws 68, scene classic draws 25; and 557-1000 ms gaps
   with 21-74 ms of JS (the browser).
+
+### THE FIRST DRAWS ON THE SLOW FRAMES (2026-11-19)
+His 11-19 F3 (40.8 FPS steady after the spikes thread's #2151) still had "sun shadow: classic draws 68 ms", "bundle check
+62 / 99 ms" and 0.5-1 s gaps with 20-74 ms of JS. The suspected cause is Firefox building a GPU pipeline in its GPU process,
+in line with the submit, the first time a look is drawn (new in a pass: the sun's depth pass, or a bundle re-record). The
+"Slow frames" entries now say how many shader builds (`_ewKeep.builds`) and new pipelines (`_ewKeep.pipes`, every
+createRenderPipeline) the frame made. "Bundle spikes" keeps only ticks of 12 ms or more (was 6 ms: the steady 6 ms ticks
+pushed the big ones off the list).
