@@ -3049,3 +3049,13 @@ His Disaster City F3: 10.6 FPS, frames 94 ms, slow frames 136-283 ms, each with 
 frame (his 11-18 12:30 F3 already had 176 ms frames with 20 ms of JS beside "35 pipelines made off the frame"). `_ewScTick`'s warm made those
 pipelines one after another during play. On Firefox (`_ewScGeckoHold`) the warm now runs only in the menu and while the walk's card is up
 (`!_hq.ready`); in play a look builds when it first shows (THE LATE LOOK). Off: `EW_SC_WARM_IN_PLAY`.
+
+### THE SLICED WORN WALK (2026-11-19, spikes thread, his 12:31 F3: 40.8 FPS steady after NO WARM IN PLAY)
+- His slow frames still had "tick: memory budget 20, > memory: worn list 19" (the 20 s whole read). `_mmLiveSliced` walks the same roots
+  2 ms a frame (a stack), then reads THE FRONT DESK's arrivals since the walk began (their whole subtrees) into the live/worn sets, so a
+  file that came into use mid-walk still counts as worn; an overflowed desk = one whole `_mmLive` as before. `_mmTick` re-enters each
+  frame until the walk is done. Off: `EW_MM_WALK_WHOLE`.
+- A 70 ms "tick: static batch" frame named no inner step: new sub-marks "batch: sheet stack watch" (`_hqStackWatch`, which refills every
+  sheet of a stack whose GPU texture was re-made) and "batch: hold check". Next F3 says which.
+- Same F3, the 60 FPS thread's: bundle check 62/99 ms frames, sun shadow classic draws 68, scene classic draws 25; and 557-1000 ms gaps
+  with 21-74 ms of JS (the browser).
