@@ -2185,3 +2185,15 @@ Known: the cape is one rigid piece on a hinge (legs can pass through it mid-run)
 - Cosmic wraith cape: the gear now centres a cape on its COLLAR (the top tenth of its points), not its box: the Meshy cape's hem flares to one side, so box-centring hung it off one shoulder. `capeBack: 0.02` puts the collar round the neck.
 - Dragon: regenerated (Meshy t2.5 from the same concept, now with its tail), new key `dragon/male/Meshy_AI_dragon_r2_v2_Running.glb`; the first remake stays on R2 as `dragon_v2`. Wings 0.6 of its height.
 - Valkraye: remade with dark hair (mondo 11-18: concept valkraye_f_3, same armour), key `valkraye/Meshy_AI_valkraye_r2_v2_Running.glb`; the silver-haired one stays on R2 as `valkraye_v2`.
+
+## THE SUPERS + THE DMT ELF (2026-11-19, mondo's concepts thread)
+- Antihero: wears the SUPERVILLAIN (purple + gold armoured mastermind, `Assets/characters/races/antihero/Meshy_AI_supervillain_Running.glb`);
+  the old yellow antihero stays on R2. mondo: "he would just replace the antihero model".
+- Machine Elves: the DMT ELF (paisley hyperspace imp, third eye; `machineelves/male/Meshy_AI_dmt_elf_Running.glb`). mondo: "they are not
+  literal machinery, they are DMT elves". The clockwork elf stays on R2.
+- THE ICE QUEEN'S SUPER FORM: while any living super (sprites.js `EW_SUPER_RACES`: superhero, sidekick, antihero) stands on the board, either
+  side, every Ice Queen wears the ice sorceress supervillain (`icequeen/Meshy_AI_ice_queen_super_Running.glb`). Looks only; sprites.js
+  getRace3DModel checks `ewSuperOnBoard()` before the creator look; three-renderer.js `_computeUnitStructuralSerial` hashes it so the swap
+  lands when a super joins or falls. Guests see it too (it reads the synced units). A new super race goes in EW_SUPER_RACES.
+- Superhero M: the white + cobalt sun hero (`superhero/male/Meshy_AI_superhero_sun_Running.glb`, mondo 11-19); the caped sway model stays on R2.
+- Concepts, models, scripts: /mnt/project-files/new-char-concepts-20261119/ (gen.py text-to-image 9 credits, models.py image-to-3d + rig).
