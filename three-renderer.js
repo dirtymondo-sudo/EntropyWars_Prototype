@@ -1,6 +1,29 @@
 const ThreeRenderer = (function () {
     'use strict';
 
+    /* THE TIMERS BETWEEN FRAMES (2026-11-19, mondo's F3: a 90-125 ms frame every 6 s exactly with ~20 ms of the frame's own JS, at pixel
+       ratio 2 and 1.5 alike): every setTimeout / setInterval callback made after this file loads is timed, and the time they took
+       between two frames (and the slowest one's name) rides on the lens's "Slow frames" entries. Off: window.EW_TIMER_WATCH_OFF before load. */
+    var _ewTmr = { ms: 0, topMs: 0, topF: null };
+    (function () {
+        if (typeof window === 'undefined' || window.EW_TIMER_WATCH_OFF || window.__ewTmrHooked || typeof performance === 'undefined') return;
+        window.__ewTmrHooked = true;
+        var wrapT = function (orig) {
+            return function (fn) {
+                if (typeof fn !== 'function') return orig.apply(window, arguments);
+                var a = Array.prototype.slice.call(arguments);
+                a[0] = function () {
+                    var t = performance.now();
+                    try { return fn.apply(this, arguments); }
+                    finally { var d = performance.now() - t; _ewTmr.ms += d; if (d > _ewTmr.topMs) { _ewTmr.topMs = d; _ewTmr.topF = fn; } }
+                };
+                return orig.apply(window, a);
+            };
+        };
+        try { window.setTimeout = wrapT(window.setTimeout); window.setInterval = wrapT(window.setInterval); } catch (e) {}
+    })();
+    function _ewTmrName(f) { if (!f) return ''; if (f.name) return f.name; var s = String(f).replace(/\s+/g, ' '); return s.length > 70 ? s.slice(0, 70) + '…' : s; }
+
     const ELEV_STEP_RATIO = 1.0; /* 1 game height = 1 full tile (cube voxels). Keep in sync with three-camera.js, ui.js, hud.js, three-vfx.js, map.js editor preview. */
     const FACE_BRIGHTNESS = [0.48, 0.48, 1.00, 0.30, 0.55, 0.43];
 
@@ -54630,7 +54653,8 @@ const ThreeRenderer = (function () {
                is written down with the previous frame's own JS (the gap is that frame's work + what the browser did after it): its CPU
                and its three costliest parts / inner steps. A gap with little JS in it is the browser (a GC, the GPU, the compositor). */
             if (iv >= 50 && iv < 2000 && L.prevF) { var PF = L.prevF, top = []; [PF.parts, PF.sub].forEach(function (M, mi) { if (M) for (var tk in M) top.push([(mi ? '> ' : '') + tk, M[tk]]); }); top.sort(function (a, b) { return b[1] - a[1]; });
-                (L.slow || (L.slow = [])).push({ iv: iv, cpu: PF.cpu, top: top.slice(0, 3), rec: PF.rec, ep: PF.ep, pp: PF.pp, pb: PF.pb }); if (L.slow.length > 6) L.slow.shift(); } }
+                (L.slow || (L.slow = [])).push({ iv: iv, cpu: PF.cpu, top: top.slice(0, 3), rec: PF.rec, ep: PF.ep, pp: PF.pp, pb: PF.pb, tm: _ewTmr.ms, tmTop: _ewTmr.topMs >= 1 ? Math.round(_ewTmr.topMs) + ' ms ' + _ewTmrName(_ewTmr.topF) : '' }); if (L.slow.length > 6) L.slow.shift(); } }
+        _ewTmr.ms = 0; _ewTmr.topMs = 0; _ewTmr.topF = null;   // THE TIMERS BETWEEN FRAMES: from this frame's end to the next one's
         /* (and how many bundle groups that frame re-recorded, and whether the shared epoch moved: a freed resource / a rig grow re-records them all) */
         var recNow = (typeof _ewBun !== 'undefined' && _ewBun) ? (_ewBun.recs | 0) : 0, epNow = (typeof _ewBun !== 'undefined' && _ewBun) ? (_ewBun.epoch | 0) : 0;
         /* THE FIRST DRAWS (2026-11-19, his slow frames "sun shadow: classic draws 68", gaps of 0.5-1 s with 20 ms of JS): the shader
@@ -54733,7 +54757,7 @@ const ThreeRenderer = (function () {
             if (pl.length > 9) L.push('  ' + pl.slice(9).join(' · '));
         }
         if (S.sub && S.sub.length) L.push('Inside the ticks (ms/frame): ' + S.sub.filter(function (r) { return r[1] >= 0.02; }).slice(0, 10).map(function (r) { return r[0] + ' ' + r[1].toFixed(2); }).join(' · '));
-        if (S.slow && S.slow.length) L.push('Slow frames (last ' + S.slow.length + ', gap · its JS · top): ' + S.slow.map(function (w) { return Math.round(w.iv) + ' ms · JS ' + Math.round(w.cpu) + (w.rec ? ' · ' + w.rec + ' re-recorded' : '') + (w.pb ? ' · ' + w.pb + ' shader builds' : '') + (w.pp ? ' · ' + w.pp + ' new pipelines' : '') + (w.ep ? ' · epoch moved' : '') + ' · ' + w.top.map(function (t) { return t[0] + ' ' + t[1].toFixed(1); }).join(', '); }).join(' | '));
+        if (S.slow && S.slow.length) L.push('Slow frames (last ' + S.slow.length + ', gap · its JS · top): ' + S.slow.map(function (w) { return Math.round(w.iv) + ' ms · JS ' + Math.round(w.cpu) + (w.tm != null ? ' · timers ' + Math.round(w.tm) + (w.tmTop ? ' (slowest ' + w.tmTop + ')' : '') : '') + (w.rec ? ' · ' + w.rec + ' re-recorded' : '') + (w.pb ? ' · ' + w.pb + ' shader builds' : '') + (w.pp ? ' · ' + w.pp + ' new pipelines' : '') + (w.ep ? ' · epoch moved' : '') + ' · ' + w.top.map(function (t) { return t[0] + ' ' + t[1].toFixed(1); }).join(', '); }).join(' | '));
         try { _dipLines().forEach(function (x) { L.push(x); }); } catch (eDip) {}   // THE DIP LOG: every dip of the session, lens open or not
         if (S.cnt) {   // THE SHADOW SPLIT (2026-11-15): which shadow costs — the sun's map or a lamp's cube sides — and how many objects each pass's walk visits
             var cN = function (k) { return S.cnt[k] || 0; }, cF = function (v) { return v >= 100 ? _lensFmtN(v) : (Math.round(v * 10) / 10); };
