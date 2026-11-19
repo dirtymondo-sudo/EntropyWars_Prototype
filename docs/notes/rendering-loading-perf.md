@@ -3155,3 +3155,10 @@ a big model + rig = a parked-body pool per model in `_hqResDispose` / `_hqResSpa
   frame ("mask: projection walk 22" + "tick: characters 11"): three culls a SkinnedMesh by its own sphere, computed once by posing every
   vertex; `_hqCharCullSetup`'s `setFromObject` did the same for the box. The mesh now takes the geometry's padded rest sphere + rest box.
   Exact: `window.EW_HQ_SKIN_BOUNDS_EXACT`. Lesson: the scan alarm only sees `traverse`; hand-written recursions over the scene hide from it.
+
+## THE WAITING PROPS (2026-11-19, spikes thread)
+mondo's 15:14 F3, ~47 s after entering the city: ~160 props still drawn "outside its bundle" (18 when settled). `_hqPropChunkSweep`
+re-measured every prop whose file had not landed (empty box) first on every sweep, in placement order; with hundreds waiting, the 3 ms
+share ran out before a landed prop was reached and "the rest next frame" restarted from the top. Now a waiting prop is skipped for 0.5 s
+after its last try (`p._ew_pcTry`), the share goes to landed props, and while any wait (`H._pcWait`) the sweep runs every 0.5 s, not 1.5 s.
+Off: `window.EW_HQ_PC_RETRY_ALL`.
