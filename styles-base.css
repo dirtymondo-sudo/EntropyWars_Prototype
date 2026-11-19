@@ -4093,6 +4093,12 @@ body.diorama-3d .tile-underpass.jump::before {
    these are the strip, the interaction prompt, the door panel, the CSS2D
    nameplates (.hq-plate), the loading card and the main-menu dev pill.
    ═══════════════════════════════════════════════════════════════════════ */
+/* THE COVERED SCREENS (2026-11-19, three-renderer.js _hqCoverSync): while the walk's page covers the window, what lies behind it
+   is not rendered (Firefox listed the Party Builder's 2,024 elements and 250 gradients every frame: ~3.9 ms) and the hidden
+   menus' animations rest. */
+html.ew-hq-cover #builderOverlay { visibility: hidden !important; content-visibility: hidden; }
+html.ew-hq-cover #startOverlay > .title-page:not(.active):not(#hqPage),
+html.ew-hq-cover #startOverlay > .title-page:not(.active):not(#hqPage) * { animation-play-state: paused !important; }
 #hqPage.title-page { display: block; transform: none; transition: opacity 0.35s ease; background: #07070a; }
 #hqPage.title-page.active, #hqPage.title-page.exit-left { transform: none; }
 /* the hidden HQ page sits over the menu pages (later in the DOM, same z-index); its strip / dock / panels turn pointer

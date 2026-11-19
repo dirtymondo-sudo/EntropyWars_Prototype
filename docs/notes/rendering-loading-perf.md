@@ -3272,3 +3272,54 @@ What it said:
   (2) free the GPU-side data of the static batch's merged originals (their geometries were uploaded while the room loaded and stay
   live while they are hidden: ~15,800 pieces' attribute buffers + three's WeakMap entries + render objects), a geometry `dispose()`
   once per geometry not shared with anything drawn; a handed-back piece re-uploads.
+
+### THE SECOND PROFILE, READ FUNCTION BY FUNCTION: THE PAGE BEHIND THE WALK + FOUR CUTS (2026-11-19, 60 FPS thread; mondo: "Get the game to stable 60 fps")
+His 19:26 Firefox profile again (42 s, 1,546 frames; main thread 100 % busy: 81.9 % the frame's JS, 14.5 % Firefox's own Paint) with
+his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 ms a frame. Reading tool: a node script over
+`shared.stackTable` (`prefixOffset`), `frameTable.func`, `funcTable.name / lineNumber`; the lines of three's own functions match
+`three@0.186.1/build/three.webgpu.js` from jsdelivr exactly (DataMap.get = 31710, Backend.get = 69567, Renderer.render = 63157).
+- THE COVERED SCREENS (the new find, ~3.9 ms a frame): `nsRefreshDriver::PaintIfNeeded` 14.5 % = Firefox building the HTML page's
+  display list on every frame the canvas changes (DisplayList building 4.4 %, WebRender display list 9.9 %, of it
+  `nsCSSGradientRenderer` / `ColorStopInterpolator::CreateStops` 5.8 %, and 124 "Image Paint" markers a frame). A DOM census in a
+  city probe: `#builderOverlay` (the pre-match Party Builder, asleep behind the walk) = 2,024 laid-out elements, 250 gradients,
+  220 background pictures, all still rendered under the opaque `#hqPage`; the menus' 36 motes, grain and title sprites still
+  animating at opacity 0. Fix: three-renderer.js `_hqCoverSync` (a class observer on `#hqPage` / `#startOverlay`) puts
+  `ew-hq-cover` on `<html>` 1.2 s after the walk's page is the active one and takes it off at once when it is not;
+  styles-base.css: under it `#builderOverlay` is `visibility: hidden; content-visibility: hidden` and the other title pages'
+  animations are paused. Off: `window.EW_HQ_NO_COVER`. RULE: a full-screen screen that stays mounted behind another one costs
+  Firefox per element, per gradient, EVERY frame; a covered screen must be `display: none` / `visibility: hidden` /
+  `content-visibility: hidden`, not only under something opaque or at opacity 0 with its animations running.
+- THE FLAGS ARE THERE (~0.7 ms a frame left after #2187; 5.2 % in the profile): a read of a property that does not exist on
+  `window` goes through `nsOuterWindowProxy::get` every time (Firefox cannot cache a miss: it must ask the page for an element of
+  that name). Left after the hoists: `_hqCkOldPoll`, the bundle code's `_projectObject`, `rpReplay`, `rbOne`. Every `window.EW_*`
+  name three-renderer.js and three-post.js read (358) is now defined on `window` at load (undefined, not enumerable) from a list
+  at the top of three-renderer.js, so the read is a plain cached one. A flag set before load or later works as before. Keep the
+  list fresh with the grep in its comment; a name missing from it only reads slowly.
+- THE MAPS ON THE OBJECTS (the 6.5 s hitch + ~0.7 ms a frame): three keeps its per-object data in WeakMaps (`DataMap`: attributes,
+  geometries, textures, pipelines, bindings, nodes; `Backend.data`); Firefox's cycle collector reads every WeakMap entry of the
+  page (`FixWeakMappingGrayBits`, half of each 77-134 ms stop), and the `get`s were 2.6 % of the frame. `_ewGpuPropMaps(r)` (run
+  first after `init()`) keeps that data on the object itself under a per-map Symbol (non-enumerable); an older entry is moved on
+  its first read; a frozen object stays in the WeakMap. ChainMap is untouched. Old maps: `window.EW_GPU_WEAKMAPS` before the
+  renderer is made. NOT measured on his Mac yet: the next profile's `CC` markers say what is left (TraverseRoots is the other third).
+- THE HELD BOOK (`_hqStillUpdate`, 1.47 ms own time, the largest single function): "held by the static batch" is read from a byte
+  array per group (laid again when the child count / `_hqBatchHoldN` changes or a new child is seen), not off each of ~14,000
+  pieces every frame; a held piece with no children is no longer swept (the batch's watchdog has it). Off:
+  `window.EW_HQ_STILL_NO_HELD_BOOK`.
+- `_hqInstSync`: a batch's copies ask "is my parent shown" once per run of the same parent (`_hqInstShown` was 0.5 ms a frame).
+- THE BARE BONES (`_projectObject` + its wrapper ~2.5 ms a frame over the mask, shadow and scene passes; the bones are a share of
+  it: 342 visible bones in the probe's quiet view, more in a crowd): each pass walked every bone of every visible body. A bone whose subtree holds only bones and plain Object3Ds is not walked (`boneBare` in
+  `_ewBunSetup`; the answer is kept on the bone and worked out again when the add counter moved, so a hat or held gear put on a
+  bone later is seen). Off: `window.EW_BONES_WALK_ALL`. The lens's "Walk visits" line shows the drop.
+  Runs on the WebGPU backend only (the bundle set-up), so the cloud cannot draw with it: its rule was run on the city's real rigs
+  in a probe instead: 1,524 bones, 1,498 bare, 15 drawable things under bones (hair, held gear, the door gun), 0 under a bare bone.
+- Checked in a city probe (node renderer on the WebGL 2 backend, HEAD of this PR): `<html>` carries `ew-hq-cover`, the builder is
+  `hidden / hidden`, rendered elements 2,434 → ~420, running animations 39 → 1; `backend._ewPM` / `_attributes._ewPM` are set and
+  26,000-29,000 position attributes carry their data as a property (that many entries left each WeakMap); the still walk sweeps
+  ~290 pieces a frame (was ~1,000); no page errors, same picture. NOT measurable in the cloud: his Mac's frame time; the next F3 /
+  Firefox profile is the proof.
+- What the profile says is left (ms a frame, old code): the scene pass's bundle replay 5.0 (of it the shared uniform groups of
+  ~110 shaders 2.6: `updateSharedForRender` → `NodeUniformsGroup.update` compares every uniform of every shader's shared group
+  each render), the sun's shadow pass 1.7, the mask pass 2.0 without the sync (projection walk 1.3 for a dozen bodies), the bundle
+  check 1.5, the matrix walk 3.3 (before THE HELD BOOK), the ticks ~2.5. On his 120 Hz screen a frame lands on 16.7 ms only when
+  JS + Paint stay under ~16 ms AND the GPU does; at pixel ratio 2.0 (3456×1812, 9 post passes) the GPU was part of the limit in
+  THE PIXEL RATIO TEST, so Render Scale 75 % is the test for "is it the GPU now".
