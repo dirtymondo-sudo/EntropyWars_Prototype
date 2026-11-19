@@ -3216,3 +3216,12 @@ group three replayed itself: recorded again, not static, or not yet seen through
   `_ew_lodWait`; meshes on them are kept aside as they arrive (`L.pend`, filled by the desk and the whole read), and a landing moves the
   ones whose levels came into the list. Whole read: first run, overflowed desk, every 60 s. A mesh placed BEFORE its model's attach
   marked it waits for the 60 s read. Old rule: `window.EW_LOD_LAND_RESCAN`.
+
+### THE PIXEL RATIO TEST + THE TIMERS BETWEEN FRAMES (2026-11-19, his 18:44 / 18:45 F3s)
+- Same spot, ratio 2.0 vs 1.5: 35.4 → 42.0 FPS, frame 28.2 → 23.1 ms, CPU 19.1 → 19.5 ms. At 2.0 the GPU is part of the limit; at 1.5 the
+  CPU (~19.5 ms) is the wall to 60.
+- At both ratios: a 90-125 ms frame EVERY 6 s exactly (18:44:08, :14, :20 ... 18:45:30), with ~20 ms of the frame's own JS and "nothing
+  loaded or rebuilt". Not the HQ save timer (4 s, writes only when he moved), not the memory sweep (timed). The lens's slow-frame entries
+  now carry "timers N ms (slowest …)": every setTimeout / setInterval callback made after three-renderer.js loads is timed (wrapper at
+  the file's top; off: `window.EW_TIMER_WATCH_OFF` before load). If that reads ~0 on the 6 s frames, the time is the browser's own
+  (Firefox GC / cycle collector, its GPU process): record it with the Firefox Profiler (about:profiling, "Graphics" preset).
