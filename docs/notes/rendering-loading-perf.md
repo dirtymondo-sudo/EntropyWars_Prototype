@@ -3344,3 +3344,13 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   level that reaches 32 keys on one object is emptied, the valve). After: **17,552 live entries in 406 maps** (three's module
   caches 14,000, `_hqBatchIds` 1,400), same picture, no page errors. Old maps: `window.EW_GPU_WEAKMAPS`. On his Mac the proof is the
   next profile's CCSlice length (62-64 ms before).
+- THE BAKE IN SLICES (11-19, his 20:49 F3, ~50 s after the load, 45.2 FPS while the static batch still scanned and bodies arrived):
+  four dips in 40 s were "new body: clip bake (first of a model) 49 / 92 / 134 / 231 ms" in one frame each (the first body of a
+  model retargets all 30-45 slots of the library at once). `_animLibBakeForModel0`: while the walk is drawing (`_hq.ready`, a walk
+  frame in the last 250 ms) the eager slots are baked one at a time through `_libBakeClips(…, { only, ctx, byClip })` (new
+  `opts.byClip`: one clip shared by the slots that name it, across calls), ~3 ms or 6 slots a frame on requestAnimationFrame, and
+  the model settles when the last is done; a fight, the menus and the forge bake whole as before. Off: `window.EW_LIB_BAKE_WHOLE`.
+  Probe (sliced vs whole, same view, 10 s): 22 bodies seen in both, 4 vs 5 changing pose, no retarget warning, no page errors.
+  Still in that F3: 59-71 ms gaps with 14-19 ms of JS (the cycle collector, ~15 ms shorter than before THE REST OF THE MAPS; the
+  WebGPU backend's own maps and Firefox's GPU wrappers are what a next profile would name), and "new body: model + rig" without
+  the bake (the clone + rig of a body, ~5-15 ms).

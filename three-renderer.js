@@ -56,7 +56,7 @@ const ThreeRenderer = (function () {
             'EW_HQ_NO_TRUE_GROUND EW_HQ_NO_WORKS_LEAVES EW_HQ_NO_WORLD_EDGES EW_HQ_NO_ZSEP EW_HQ_ONLINE EW_HQ_PARK_STAGE EW_HQ_PC_LAMPS_OUT EW_HQ_PC_RETRY_ALL ' +
             'EW_HQ_PC_SWEEP_ALL EW_HQ_RES_SPAWN_ALL EW_HQ_ROAD_TILES EW_HQ_SEAT_WHOLE EW_HQ_SIZE_EVERY_FRAME EW_HQ_SKATE EW_HQ_SKIN_BOUNDS_EXACT ' +
             'EW_HQ_STACK_NO_SPLIT EW_HQ_STILL_MERGED_EVERY EW_HQ_STILL_NO_HELD_BOOK EW_HQ_NO_COVER EW_GPU_WEAKMAPS EW_HQ_STILL_OFF EW_HQ_STRAIGHT_EDGES EW_HQ_STUCK_FULL_LIST EW_HQ_WALK_GRID_OFF EW_HQ_WATER_STEPS ' +
-            'EW_INK_ON_GRASS EW_JUICE EW_KEEP_PBR_MAPS EW_KTX2_LIB EW_KTX2_P EW_LAMP_LIGHT_MAX EW_LIB_BAKE_ONE EW_LIGHTS_EVERY_PIXEL EW_LOAD_N8AO ' +
+            'EW_INK_ON_GRASS EW_JUICE EW_KEEP_PBR_MAPS EW_KTX2_LIB EW_KTX2_P EW_LAMP_LIGHT_MAX EW_LIB_BAKE_ONE EW_LIB_BAKE_WHOLE EW_LIGHTS_EVERY_PIXEL EW_LOAD_N8AO ' +
             'EW_LOD_LAND_RESCAN EW_LS_AURA_TUNE EW_MAP_META EW_MASK_CHUNK_FULL_WALK EW_MASK_FILE_ANY_ADD EW_MASK_FULL_WALK EW_MASK_NO_BUNDLES EW_MEM_MB ' +
             'EW_MENU_BIOME EW_MENU_CINE_SCALE EW_MENU_NO_POST EW_MM_DROP_ALL_AT_ONCE EW_MM_READ_EVERY_4S EW_MM_WALK_WHOLE EW_MOBILE EW_MODEL_DIFFUSE EW_MOUTH_REST ' +
             'EW_N8AO EW_NO_3D_BATS EW_NO_AIR_DEATH EW_NO_ANIMALS EW_NO_ARM_CLEAR EW_NO_ASSET_MANIFEST EW_NO_ASSET_STORE EW_NO_AUTO_EXPOSURE EW_NO_BATTLE_CYCLE ' +
@@ -19519,7 +19519,7 @@ const ThreeRenderer = (function () {
             return (ctxByLib[idx] = { src: src, setup: _libRetargetSetup(src, modelEntry, standardPose, !!(def && def.palmTwist)) });
         }
         var pv = new THREE.Vector3(), qv = new THREE.Quaternion(), sv = new THREE.Vector3();
-        var bakedByClip = {}, out = {}, missing = [];
+        var bakedByClip = (opts && opts.byClip) || {}, out = {}, missing = [];   // (opts.byClip: THE BAKE IN SLICES shares one clip between its slots across calls)
         Object.keys(def.libClips).forEach(function (slot) {
             var ref = def.libClips[slot];
             if (only ? slot !== only : (ref && typeof ref === 'object' && ref.defer)) return;
@@ -19922,6 +19922,34 @@ const ThreeRenderer = (function () {
             var entries = urls.map(function (u) { return _unitGlbCache[u]; });
             if (!entries[0] || !entries[0].root) { settle(null); return; }
             var baked = null;
+            /* THE BAKE IN SLICES (2026-11-19, mondo's 20:49 F3: four dips in 40 s, "new body: clip bake (first of a model) 49 / 92 /
+               134 / 231 ms" in ONE frame each: the first body of a model in the room retargets every clip of the library, 30-45
+               slots, at once). While the walk is drawing, the same bake runs a slot at a time (same retarget, one shared context,
+               one clip shared by the slots that name it), about LIB_SLICE_MS a frame, and the body is handed its clips when the
+               last slot is done: it steps into the street some frames later in place of stopping the game. Anywhere else
+               (a fight, the menus, the forge) the bake is whole and at once, as before. Off: window.EW_LIB_BAKE_WHOLE. */
+            var Hs = _hq, sliced = !!(Hs && Hs.ready && Hs.lastMs && performance.now() - Hs.lastMs < 250 && def && def.libClips && typeof requestAnimationFrame === 'function' && !window.EW_LIB_BAKE_WHOLE);
+            if (sliced) {
+                var lcS = def.libClips, qS = Object.keys(lcS).filter(function (k) { var rf = lcS[k]; return !(rf && typeof rf === 'object' && rf.defer); });
+                var ctxS = {}, byS = {}, outS = {}, failS = false;
+                var stepS = function () {
+                    var t0 = performance.now(), n = 0;
+                    while (qS.length && !failS) {
+                        var slot = qS.shift();
+                        try { var one = _libBakeClips(entries, modelEntry, def, { only: slot, ctx: ctxS, byClip: byS })[slot]; if (one) outS[slot] = one; }
+                        catch (ex) { failS = true; console.warn('[ThreeRenderer] animation-library retarget failed — using per-character clips:', ex && ex.message); }
+                        n++;
+                        if (performance.now() - t0 >= LIB_SLICE_MS || n >= 6) break;   // (a count too: Firefox's clock steps in whole ms)
+                    }
+                    if (qS.length && !failS) { requestAnimationFrame(stepS); return; }
+                    var res = (!failS && Object.keys(outS).length) ? outS : null;
+                    if (res) modelEntry._libDeferCbs = [];
+                    settle(res);
+                    if (res) _libBakeDeferred(entries, modelEntry, def, bakeKey);
+                };
+                stepS();
+                return;
+            }
             try {
                 var _cbT = _lensOn() ? performance.now() : 0;
                 baked = _libBakeClips(entries, modelEntry, def);
@@ -19933,6 +19961,7 @@ const ThreeRenderer = (function () {
             settle(baked);
             if (baked) _libBakeDeferred(entries, modelEntry, def, bakeKey);
         }
+        var LIB_SLICE_MS = 3;
         urls.forEach(function (url) {
             _loadUnitGLB(url, function () {});
             var le = _unitGlbCache[url];
