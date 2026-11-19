@@ -47508,12 +47508,37 @@ const ThreeRenderer = (function () {
         var ch = o.children;
         for (var i = 0; i < ch.length; i++) { var c = ch[i]; if (c === R.group) continue; if (c.isLight) out.push(c); if (c.children.length) _ewRigListAll(c, R, out); }
     }
+    var _ewRigTmp = null;
     function _ewRigRead(sc, R, mask) {
         if ((typeof window !== 'undefined' && window.EW_RIG_WALK_EVERY) || typeof _ewAddCount !== 'function') { _ewRigWalk(sc, R, mask); return; }
-        var C = sc._ew_rigList, an = _ewAddCount(), now = performance.now(), kids = sc._ew_lentKids || sc.children;   // a mirror render lends the scene's children to its clipping group: the same list, the same lights
-        if (!C || C.an !== an || C.kids !== kids || C.n !== kids.length || now - C.at > 1000) {
-            C = sc._ew_rigList = { an: an, kids: kids, n: kids.length, at: now, list: [] };
-            _ewRigListAll(sc, R, C.list);
+        /* THE LIGHTS AT THE DESK (2026-11-19, mondo's dip log: "render: node + rig ticks 7-8 ms" in four of six slow frames): the kept list
+           was read again from the WHOLE scene (45,000 objects in Disaster City) whenever anything was added anywhere (a walker, a car, a
+           chunk: most frames) and every second. Now the lights that joined come from THE FRONT DESK (an arrival that is a light, or the
+           lights under an arrival); the whole read is for the first frame, an overflowed desk, a lent / handed-back child list (a mirror's
+           render) and every 20 s. A light that left is skipped by the read below (not under this scene) and dropped at the next whole read.
+           The old rule (whole read on any add, every second): window.EW_RIG_LIST_EVERY_ADD. */
+        var C = sc._ew_rigList, now = performance.now(), kids = sc._ew_lentKids || sc.children;   // a mirror render lends the scene's children to its clipping group: the same list, the same lights
+        if (typeof window !== 'undefined' && window.EW_RIG_LIST_EVERY_ADD) {
+            var an = _ewAddCount();
+            if (!C || C.an !== an || C.kids !== kids || C.n !== kids.length || now - C.at > 1000) { C = sc._ew_rigList = { an: an, kids: kids, n: kids.length, at: now, list: [] }; _ewRigListAll(sc, R, C.list); }
+        } else {
+            var DQ = C && C.Q, DT = DQ ? _ewDeskTake(DQ) : null;
+            if (!C || !DQ || DT.over || C.kids !== kids || now - C.at > 20000) {
+                if (!DQ) { DQ = _ewDeskQueue(); _ewDeskTake(DQ); }
+                C = sc._ew_rigList = { Q: DQ, kids: kids, at: now, list: [], seen: new Set() };
+                _ewRigListAll(sc, R, C.list);
+                for (var si = 0; si < C.list.length; si++) C.seen.add(C.list[si]);
+            } else if (DT.list.length) {
+                var AL = DT.list, tmp = _ewRigTmp || (_ewRigTmp = []);
+                for (var ai = 0; ai < AL.length; ai++) {
+                    var ao = AL[ai]; if (!ao || ao === R.group) continue;
+                    tmp.length = 0;
+                    if (ao.isLight) tmp.push(ao);
+                    if (ao.children && ao.children.length) _ewRigListAll(ao, R, tmp);
+                    for (var ti = 0; ti < tmp.length; ti++) if (!C.seen.has(tmp[ti])) { C.seen.add(tmp[ti]); C.list.push(tmp[ti]); }
+                }
+                tmp.length = 0;
+            }
         }
         var L = C.list;
         for (var i = 0; i < L.length; i++) {
@@ -91228,6 +91253,14 @@ const ThreeRenderer = (function () {
             if (!n.isSkinnedMesh || n._ew_silhouette || !n.geometry) return;
             var g = n.geometry;
             if (!g._ew_skinPad) { if (!g.boundingSphere) g.computeBoundingSphere(); if (g.boundingSphere) { g.boundingSphere.radius *= HQ_CHAR_CULL_PAD; g._ew_skinPad = true; } }
+            /* THE BODY'S OWN BOUNDS (2026-11-19, mondo's dip log: a new body's frame = "mask: projection walk 22 ms" + "tick: characters 11 ms"):
+               three culls a skinned mesh by ITS OWN sphere, computed once by posing every vertex through its bones (and the box below the
+               same way): ~30 ms for one townsperson. The mesh now takes the geometry's padded rest-pose sphere and box (the same space at
+               rest; the pad covers the animation), so neither is computed per vertex. Off: window.EW_HQ_SKIN_BOUNDS_EXACT. */
+            if (g._ew_skinPad && !(typeof window !== 'undefined' && window.EW_HQ_SKIN_BOUNDS_EXACT)) {
+                if (!n.boundingSphere) n.boundingSphere = g.boundingSphere.clone();
+                if (!n.boundingBox) { if (!g.boundingBox) g.computeBoundingBox(); if (g.boundingBox) n.boundingBox = g.boundingBox.clone(); }   // (the box below pads its own radius)
+            }
             if (g._ew_skinPad) n.frustumCulled = true;
         });
         try { box.setFromObject(e.model); } catch (err) { box.makeEmpty(); }
