@@ -781,6 +781,10 @@ const _CHARACTER_SPRITES = {
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (Sprite AI restyle of its model render, PR #1910)
   'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'virus': `${_S}/Races/virus/male/virus_px.png`,   // 2026-11-18 THE VIRUS — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
+  'seraphim': `${_S}/Races/seraphim/seraphim_px.png`,   // 2026-11-19 — the wheel within a wheel of eyes (Sprite AI restyle of its 3D design; the old winged pixel art seraphim.png stays on R2)
+  'golem': `${_S}/Races/golem/golem_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of its stone 3D model's front render) (the red-armour golem.png stays on R2)
+  'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
+  'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,
   'mime': `${_S}/Races/mime/mime_female.png`,
@@ -876,14 +880,17 @@ const _NEW_FEMALE_SPRITES = {
   'cyborg': `${_S}/Races/cyborg/female/cyborg_f2_px.png`,
   'pharaoh': `${_S}/Races/pharaoh/female/pharaoh_f_px.png`,   // 2026-11-19 — Cleopatra (Sprite AI restyle of her model's front render)
   'mech': `${_S}/Races/mech/female/mech_f2_px2.png`,   // straight-on: Sprite AI restyle of her model's front render (the concept was turned)
+  'streamer': `${_S}/Races/streamer/female/egirl_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of the E-Girl's 3D model's front render)
+  'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
 };
 const _NEW_MALE_SPRITES = {
+  'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)
   'lifeguard': `${_S}/Races/lifeguard/male/lifeguard_m_px.png`,   // 2026-11-17 — the male lifeguard (same way)
   'vampire': `${_S}/Races/vampire/male/vampire_m_px.png`,
   'zombie': `${_S}/Races/zombie/male/zombie_m_px.png`,
   'knight': `${_S}/Races/knight/male/knight_m_px.png`,
-  'shaman': `${_S}/Races/shaman/male/shaman_m_px2.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'shaman': `${_S}/Races/shaman/male/shaman_m_px3.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render) (px2 was cut from the concept, which his model no longer matches)
   'necromancer': `${_S}/Races/necromancer/male/necromancer_m_px.png`,
   'cyborg': `${_S}/Races/cyborg/male/cyborg_m_px.png`,
   'robot': `${_S}/Races/robot/male/robot_m2_px.png`,   // 2026-11-17 THE ROBOT REDESIGN
@@ -7041,7 +7048,7 @@ const RACE_PORTRAITS = {
   'homosapien':     { female: _pf('freelancer') },          // no male file yet
   'pirate':         { male: _pm('pirate'),       female: _pf('pirate') },
   'knight':         { female: _pf('knight') },
-  'shaman':         { male: _pm('harvester'),    female: _pf('harvester') },
+  'shaman':         { female: _pf('harvester') },   // 2026-11-19 — the man's face is cut from his new sprite (the old harvester portrait was not his model)
   'mad scientist':  { male: _pm('madscientist'), female: _pf('madscientist') },
   'cowboy':         { male: _pm('cowboy'),       female: _pf('cowgirl') },
   'men in black':   { male: _pm('meninblack') },   // 2026-10-25 — the Spy (her own race since 2026-10-27) wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call; glowie.png stays on R2
@@ -7197,6 +7204,10 @@ const RACE_SPRITES = {
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (PR #1910)
   'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'virus': `${_S}/Races/virus/male/virus_px.png`,   // 2026-11-18 THE VIRUS — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
+  'seraphim': `${_S}/Races/seraphim/seraphim_px.png`,   // 2026-11-19 — the wheel within a wheel of eyes (Sprite AI restyle of its 3D design; the old winged pixel art seraphim.png stays on R2)
+  'golem': `${_S}/Races/golem/golem_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of its stone 3D model's front render) (the red-armour golem.png stays on R2)
+  'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
+  'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
   'lifeguard': `${_S}/Races/lifeguard/female/lifeguard_f_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
   'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
@@ -7214,7 +7225,6 @@ const RACE_SPRITES = {
   'orb of light': `${_S}/orb_of_light.png`,
   'reptilian': `${_S}/reptilian.png`,
   'robot': `${_S}/robot.png`,
-  'seraphim': `${_S}/seraphim.png`,
   'shadow entity': `${_S}/Races/shadowentity/male/shadowperson.png`,   // 2026-10-25 — his new shadowperson sprite
   'skeleton': `${_S}/skeleton.png`,
   'skinwalker': `${_S}/skinwalker.png`,
@@ -7260,7 +7270,6 @@ const RACE_SPRITES = {
 
   'barbarella': `${_S}/Races/barbarella/barbarella.png`,
   'black goo': `${_S}/Races/blackgoo/blackgoo.png`,
-  'golem': `${_S}/Races/golem/golem.png`,
   'honda civic': `${_S}/Races/hondacivic/hondacivic.png`,
   'ice queen': `${_S}/character_sprites/icequeen.png`,   // 2026-10-04 — his own sprite
   'juggernaut': `${_S}/Races/juggernaut/juggernaut.png`,
@@ -7350,10 +7359,7 @@ const RACE_HAND_GROUP = {
     left: `${_S}/robot_hand_left.png`,
     right: `${_S}/robot_hand_right.png`
   },
-  'seraphim': {
-    left: `${_S}/seraphim_hand_left.png`,
-    right: `${_S}/seraphim_hand_right.png`
-  },
+  'seraphim': null,   // 2026-11-19 — the new sprite is the wheel of eyes, no hands (seraphim_hand_*.png stay on R2)
   'shadow entity': null,
   'skeleton': {
     left: `${_S}/skeleton_hand_left.png`,
