@@ -2197,3 +2197,11 @@ Known: the cape is one rigid piece on a hinge (legs can pass through it mid-run)
   lands when a super joins or falls. Guests see it too (it reads the synced units). A new super race goes in EW_SUPER_RACES.
 - Superhero M: the white + cobalt sun hero (`superhero/male/Meshy_AI_superhero_sun_Running.glb`, mondo 11-19); the caped sway model stays on R2.
 - Concepts, models, scripts: /mnt/project-files/new-char-concepts-20261119/ (gen.py text-to-image 9 credits, models.py image-to-3d + rig).
+
+## THE BUBBLE HELMET (2026-11-19, the Deep Sea Diver; mondo: the dome "must be a real transparent 3D part showing her face, never textured on")
+The diver model has no helmet. Her helmet is UNIT GEAR (sprites.js `gear: { helmet: { url, size } }`, `procRig: 'unitGear'`; gear is keyed by
+the loaded model URL, so her `model` is the direct `Assets/characters/races/...` URL). The R2 file `Assets/characters/gear/helmets/deep_sea_diver_helmet.glb`
+is the Meshy helmet prop with its dome cut away (only the brass collar left; tool + originals: project files pharaoh-diver/models/cut.py).
+three-renderer.js `_gearBuild` THE BUBBLE HELMET re-centres the collar on the dome centre and adds a real glass sphere (MeshStandardMaterial,
+opacity 0.16, depthWrite off, renderOrder 3), both hung on the Head bone. Sprites (Sprite AI restyle, 128x128): pharaoh_px, pharaoh_f_px,
+deep_sea_diver_f_px; the pharaoh sprites came from model front renders (the background cut ate the white linen).

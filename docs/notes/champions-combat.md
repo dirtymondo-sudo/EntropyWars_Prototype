@@ -6046,3 +6046,20 @@ specialist, home The Internet. Resists sonic, weak to light. Basic attack: melee
   a turning pixel heart + HP bar; own cyan, enemy pink).
 - VFX: three-vfx-effects.js THE V-TUBER (idol cyan, side rings, pop-up windows beside the body: ON AIR, SCENE 2, LO-FI BEATS,
   COLLAB!). Kill-switch EW_NO_VTUBER_VFX. Every geometry goes through _sigVfxGeom (relayed online).
+
+## THE PHARAOH + THE DEEP SEA DIVER (2026-11-19, mondo approved the kits: "Okay those sound good"; thread "Add pharaoh and deep sea diver")
+Two new playable races from the 11-19 concepts. Each has a unique style and ONE new rule.
+- **Pharaoh** (`pharaoh`, both genders: the male Pharaoh + Cleopatra, model `pharaoh_f_v3`; caster; Human + Divine; fire resist, water weak;
+  home 'Pyramids of Giza', two natives in The Desert district G). Kit: Asp's Kiss (`nrAspsKiss`, range 2, Poison), Prepare the Tomb
+  (`nrPrepareTomb`), Eye of Ra (`nrEyeOfRa`, line 5 fire + Burn), Summon Sandstorm. Finisher "By Decree of Pharaoh".
+  **THE TOMB (the new rule):** Prepare the Tomb sets a sarcophagus beside him (a `state.turrets` row with `tomb: true`, 3 hits, never fires;
+  three-renderer.js `_buildTomb3D` draws the Meshy stone sarcophagus). If he is down at a round's end and his tomb stands, he rises on the
+  tomb's square at 50 % HP (battle.js THE TOMB, `_tombRise` from `_nrRoundEnd`), once a match (`_tombSpent`; a second cast is blocked
+  "The tomb is spent"). The tomb survives his death (map.js death cleanup keeps it). Whoever breaks it open is Hexed 3 rounds (the curse).
+- **Deep Sea Diver** (`deep sea diver`, female; specialist; Human + Tech; water resist, lightning weak; deep_water terrain so she never
+  drowns; home 'Atlantis', two natives in The Deep district C). Kit: Harpoon Gun (`nrHarpoonGun`, pull 2), Depth Charge (`nrDepthCharge`, 3x3,
+  Wet + Bends), Pressure Wave (`nrPressureWave`, line push 3), Tidal Surge. Finisher "Crush Depth".
+  **THE BENDS (the new rule):** status `bends` (🫧). A unit with the Bends takes 5 % of its max HP per square it moves or is moved
+  (walks, pulls, pushes, knockbacks; battle.js THE BENDS `_bendsWalk` from finishMoveAt, `_bendsDisplaced` from resolveTileArrival).
+  Damage type 'dot' + noPress so it is never multiplied by elements. So Depth Charge then Harpoon / Pressure Wave is her combo.
+- Online: all of it is host engine state (turret rows, statuses, HP), mirrored by state-sync; the floating texts ride the existing relays.
