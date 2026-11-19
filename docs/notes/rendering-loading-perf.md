@@ -3147,3 +3147,10 @@ and the lens could not say which step. Three lens sub-marks now name it: "new bo
 (`_attachUnitModel` in `_hqSpawnCharacter`), "new body: clip bake (first of a model)" (`_libBakeClips` in `_animLibBakeForModel0`).
 They cost nothing with the lens shut. Next step decided by the readout: a big clip bake = slice the first bake of a model over frames;
 a big model + rig = a parked-body pool per model in `_hqResDispose` / `_hqResSpawn`.
+- THE LIGHTS AT THE DESK + THE BODY'S OWN BOUNDS (11-19, his first dip log, 14:53): the dips after the load were 0.1-2 s at 21-43 FPS.
+  (1) "render: node + rig ticks 7-8 ms" in 4 of 6 slow frames = `_ewRigRead` re-reading the whole scene (45K objects, own recursion, so
+  the scan alarm missed it) on ANY add anywhere and every second. Now arrivals from the front desk (a light, or the lights under an
+  arrival); whole read on first frame / desk over / lent child list / 20 s. Old rule: `window.EW_RIG_LIST_EVERY_ADD`. (2) A new body's
+  frame ("mask: projection walk 22" + "tick: characters 11"): three culls a SkinnedMesh by its own sphere, computed once by posing every
+  vertex; `_hqCharCullSetup`'s `setFromObject` did the same for the box. The mesh now takes the geometry's padded rest sphere + rest box.
+  Exact: `window.EW_HQ_SKIN_BOUNDS_EXACT`. Lesson: the scan alarm only sees `traverse`; hand-written recursions over the scene hide from it.
