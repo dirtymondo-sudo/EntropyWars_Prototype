@@ -11,6 +11,7 @@ read them. PROPOSALS are not approved until the owner says so; check the matchin
 | `world-areas/world-areas-proposal.md` | The world as plot-built areas (14 areas, every unit given a home). Revision 2 holds the owner's answers. The Woods pilot plans sit beside it. |
 | `world-zones/zone-layout-proposals.md` | Plot layouts for the 11 zones not yet built + the whole-world map (`world_layout.png`). One `<zone>-layout.json` + `<zone>_plot_plan.png` per zone, the Mountains included. |
 | `other/zones-and-rooms.md` | Every zone and the rooms it holds today. |
+| `world-polish/PLAN.md` | THE WORLD POLISH PLAN (2026-11-19, a proposal): the audit of every zone, district and plot (too small / cramped / flat / bare), the verticality pass, the order of work. `audit.js` measures the world again; `AUDIT_DATA.md`, `plots.csv`, `need-map.svg` are its tables. |
 | `../areas/<woods, camelot, desert>/layout.json` | The built plot areas (baked by `bake-woods.js`, `bake-camelot.js`, `bake-desert.js`). |
 
 ## Disaster City

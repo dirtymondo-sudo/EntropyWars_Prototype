@@ -8415,6 +8415,17 @@ if (typeof TERRAIN_SPRITES !== 'undefined') {
   [_HERO_RACE_SPRITES, _CHARACTER_SPRITES, _CHARACTER_SPRITES_GENDERED, _NEW_MALE_SPRITES, _NEW_FEMALE_SPRITES, HONDA_CIVIC_SPRITES, TIME_COP_LOOKS, SENTAI_SPRITES,
    RACE_SPRITE_ANIMATIONS, RACE_PORTRAITS, RACE_SPRITES, EQUIP_SPRITES, OBJECT_SPRITES, BOSS_SPRITES, DRAGON_SPRITES,
    WEATHER_SPRITES, SEED_TILE_SPRITES, TRAP_TILE_SPRITES].forEach(t => { try { walk(t, 0); } catch (e) {} });
+  /* THE 3D FORMS FOLLOW THE MOVE (2026-11-19, mondo: "when the sedan uses transform, he just transforms into his pixel sprite"):
+     overrideForms was keyed by the look's OLD url when RACE_MODELS_3D was built, and the walk above then moved the look tables
+     (HONDA_CIVIC_SPRITES, TIME_COP_LOOKS) to the new urls, so unit._spriteOverride no longer matched a key and the renderer fell
+     back to the 2D sprite. Every form is now also filed under its moved url. */
+  try {
+    for (const race of Object.keys(RACE_MODELS_3D)) for (const g of Object.keys(RACE_MODELS_3D[race] || {})) {
+      const forms = RACE_MODELS_3D[race][g] && RACE_MODELS_3D[race][g].overrideForms;
+      if (!forms) continue;
+      for (const k of Object.keys(forms)) { const n = ewAsset(k); if (n !== k && !forms[n]) forms[n] = forms[k]; }
+    }
+  } catch (e) {}
 })();
 {
   const _r2Sprite0 = getR2RaceSpriteUrl, _mapSprite0 = getBattleMapSpriteUrl, _portrait0 = getUnitPortraitUrl, _portraitArt0 = getUnitPortraitArtUrl;
