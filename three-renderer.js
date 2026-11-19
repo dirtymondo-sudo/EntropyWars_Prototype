@@ -49181,7 +49181,10 @@ const ThreeRenderer = (function () {
             var f = B[k]; if (typeof f !== 'function') return;
             B[k] = function (b) { var gn = b && b.groupNode; if (!(gn && gn.shared === true)) _ewBun.upN = (_ewBun.upN | 0) + 1; return f.apply(this, arguments); };   // the frame's shared buffers (camera, lights) are written every frame by whoever comes first: not a sign the object changed
         });
-        var RP_REST = 20, _rpDepth = 0, _rpHeldPool = [];
+        /* THE LONGER TURN (2026-11-19, mondo's 18:28 F3: 72 turns a frame, ~20 µs each on Firefox): an object still rests after REST quiet
+           frames, but a rested one is asked on its turn every TURN = 60 frames (was every 20th); what it would catch is a change that
+           moves no version (a node value set by hand) and now shows up to ~1 s late. Old turn: window.EW_BUN_TURN_20 */
+        var RP_REST = 20, RP_TURN = (typeof window !== 'undefined' && window.EW_BUN_TURN_20) ? 20 : 60, _rpDepth = 0, _rpHeldPool = [];
         /* THE REFRESH BY OBJECT (2026-11-19, lens open only; mondo's 17:40 F3: "replay: the refreshes 20.88" ms for ~400 refreshes a
            frame): each refresh is timed and filed under what it is (the object's name, its look, mesh or batch), with the sheet uploads
            it caused, for the lens line "Refreshes by object" */
@@ -49314,8 +49317,8 @@ const ThreeRenderer = (function () {
                     if (iv0 !== ro._ew_rqV) { L.quiet = false; break; }
                 }
                 if (L.quiet) {
-                    var qj = ((-F) % RP_REST + RP_REST) % RP_REST;
-                    for (i = qj; i < D.length; i += RP_REST) {
+                    var qj = ((-F) % RP_TURN + RP_TURN) % RP_TURN;
+                    for (i = qj; i < D.length; i += RP_TURN) {
                         ro = D[i]; u0 = _ewBun.upN | 0;
                         rpStep(R, ro); asked++; _ewBun.rpTurn = (_ewBun.rpTurn | 0) + 1;
                         if ((_ewBun.upN | 0) !== u0) { ro._ew_rq = 0; L.quiet = false; qWoke = true; break; }   // it wrote: the full loop below wakes the group (every one refreshed, as a wake does)
@@ -49340,7 +49343,7 @@ const ThreeRenderer = (function () {
                     var io = ro._ew_rqI, iv = io.instanceMatrix.version + io.count * 8191 + (io.instanceColor ? io.instanceColor.version * 131 : 0);
                     if (iv !== ro._ew_rqV) { ro._ew_rqV = iv; ro._ew_rq = 0; rested = false; }
                 }
-                if (rested && !woke && ((F + i) % RP_REST) !== 0) { held.push(ro); continue; }
+                if (rested && !woke && ((F + i) % RP_TURN) !== 0) { held.push(ro); continue; }
                 u0 = _ewBun.upN | 0;
                 rpStep(R, ro); asked++;
                 if (rested) _ewBun.rpTurn = (_ewBun.rpTurn | 0) + 1; else _ewBun.rpAwake = (_ewBun.rpAwake | 0) + 1;
@@ -94470,6 +94473,7 @@ const ThreeRenderer = (function () {
         root.traverse(function (n) { if (!n.isMesh) return; meshes.push(n); if (n.isSkinnedMesh || (n.morphTargetInfluences && n.morphTargetInfluences.length)) rigged = true; });
         if (!meshes.length || rigged) return 0;
         root._ew_lodUrls = urls;
+        for (var mw = 0; mw < meshes.length; mw++) if (meshes[mw].geometry) meshes[mw].geometry._ew_lodWait = true;   // THE WAITING LEVELS (_hqLodTick)
         urls.forEach(function (u, i) {
             _scheduleModelLoad(function (done) {
                 var fin = false; function end() { if (!fin) { fin = true; done(); } }
@@ -94492,7 +94496,7 @@ const ThreeRenderer = (function () {
     }
     /* the walk's LOD list: every mesh on the stage whose full geometry carries levels (the current part + the drawn neighbours) */
     function _hqLodScan(H, L) {
-        var list = [], roots = [H.partRoot];
+        var list = [], roots = [H.partRoot], pend = new Set();
         if (H.stage) for (var id in H.stage.parts) { var E = H.stage.parts[id]; if (E.attached) roots.push(E.P.partRoot); }
         roots.forEach(function (R) {
             if (!R) return;
@@ -94500,9 +94504,10 @@ const ThreeRenderer = (function () {
                 if (!o.isMesh || o.isInstancedMesh || !o.geometry) return;
                 var b = o.geometry._ew_lodBase || o.geometry;
                 if (b._ew_lods || o._ew_lodCull) list.push(o);
+                else if (b._ew_lodWait) pend.add(o);
             });
         });
-        L.list = list; L.scanAt = performance.now(); L.seen = null;
+        L.list = list; L.scanAt = performance.now(); L.seen = null; L.pend = pend;
     }
     /* a mesh's screen size: its full geometry's sphere through its world matrix, from the camera */
     function _lodScreen(o, base, cam, k) {
@@ -94524,15 +94529,34 @@ const ThreeRenderer = (function () {
            own meshes to the list; the room is read again when a LOD level landed (a geometry gains its levels), the desk
            overflowed, and every 60 s (what left). Off: window.EW_DESK_OFF */
         var lodD = (now - L.scanAt > RU.rescanMs || !L.scanAt) ? _ewDeskTake(L.desk || (L.desk = _ewDeskQueue())) : null;
-        if (!L.scanAt || now - L.scanAt > 60000 || (lodD && (lodD.over || L.landN !== _lodLandN))) { L.landN = _lodLandN; _hqLodScan(H, L); }
-        else if (lodD && lodD.list.length) {
+        /* THE WAITING LEVELS (2026-11-19, mondo's F3: "!! _hqLodScan < _hqLodTick 36K/s · 74K" and "tick: LOD 12 ms"): a LOD level landing
+           re-read the whole room (74,000 objects) every 2 s while the models streamed. The meshes whose geometry waits for its levels
+           (_lodAttach marks it) are kept aside as they arrive (L.pend); a landing moves the ones whose levels came into the list.
+           The whole read stays for the first run, an overflowed desk and every 60 s. Old rule: window.EW_LOD_LAND_RESCAN */
+        var landRe = typeof window !== 'undefined' && !!window.EW_LOD_LAND_RESCAN;
+        if (!L.scanAt || now - L.scanAt > 60000 || (lodD && (lodD.over || (landRe && L.landN !== _lodLandN)))) { L.landN = _lodLandN; _hqLodScan(H, L); }
+        else {
+        if (lodD && L.landN !== _lodLandN) {
+            L.landN = _lodLandN;
+            if (L.pend && L.pend.size) {
+                var lodSeenP = L.seen || (L.seen = new Set(L.list)), lodUp = [];
+                L.pend.forEach(function (o) {
+                    if (!o.parent) { L.pend.delete(o); return; }
+                    var b = o.geometry && (o.geometry._ew_lodBase || o.geometry);
+                    if (b && b._ew_lods) { L.pend.delete(o); if (!lodSeenP.has(o)) { lodSeenP.add(o); lodUp.push(o); } }
+                });
+                if (lodUp.length) L.list = L.list.concat(lodUp);
+            }
+        }
+        if (lodD && lodD.list.length) {
             var lodRoots = [H.partRoot]; if (H.stage) for (var lid in H.stage.parts) { var LE = H.stage.parts[lid]; if (LE.attached) lodRoots.push(LE.P.partRoot); }
             var lodSeen = L.seen || (L.seen = new Set(L.list)), lodAdd = [];
             lodD.list.forEach(function (x) {
                 var inR = false; for (var r = 0; r < lodRoots.length && !inR; r++) if (lodRoots[r] && _ewDeskUnder(x, lodRoots[r])) inR = true;
-                if (inR) x.traverse(function (o) { if (!o.isMesh || o.isInstancedMesh || !o.geometry || lodSeen.has(o)) return; var b = o.geometry._ew_lodBase || o.geometry; if (b._ew_lods || o._ew_lodCull) { lodSeen.add(o); lodAdd.push(o); } });
+                if (inR) x.traverse(function (o) { if (!o.isMesh || o.isInstancedMesh || !o.geometry || lodSeen.has(o)) return; var b = o.geometry._ew_lodBase || o.geometry; if (b._ew_lods || o._ew_lodCull) { lodSeen.add(o); lodAdd.push(o); } else if (b._ew_lodWait) (L.pend || (L.pend = new Set())).add(o); });
             });
             if (lodAdd.length) L.list = L.list.concat(lodAdd);
+        }
         }
         var cam = H.camera, cp = _lodS || (_lodS = new THREE.Vector3());
         cam.updateMatrixWorld(); cp.setFromMatrixPosition(cam.matrixWorld);
