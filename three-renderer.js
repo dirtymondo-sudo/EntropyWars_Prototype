@@ -39684,8 +39684,43 @@ const ThreeRenderer = (function () {
         /* (and in the same walk what the drawn things wear: materials + their colour sheets, `live.worn`, for the unit models' list: it
            walked the whole scene a second time) */
         var worn = live.worn = new Set();
-        roots.forEach(function (R) { R.traverse(function (o) { var g = o.geometry; if (g) live.add(g._ew_lodBase || g); var m = o.material; if (m) { if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) if (m[i]) { worn.add(m[i]); if (m[i].map) worn.add(m[i].map); } } else { worn.add(m); if (m.map) worn.add(m.map); } } }); });
+        roots.forEach(function (R) { R.traverse(function (o) { _mmVisit(o, live, worn); }); });
         return live;
+    }
+    function _mmVisit(o, live, worn) { var g = o.geometry; if (g) live.add(g._ew_lodBase || g); var m = o.material; if (m) { if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) if (m[i]) { worn.add(m[i]); if (m[i].map) worn.add(m[i].map); } } else { worn.add(m); if (m.map) worn.add(m.map); } } }
+    /* THE SLICED WORN WALK (2026-11-18 -> 19, spikes thread: his F3 "tick: memory budget 20.0, > memory: worn list 19.0" in one frame, every
+       20 s): the walk of every drawn thing (77,000 objects in the city) now goes 2 ms a frame (a stack over the same roots), and what
+       joined the scene while it went (THE FRONT DESK: the arrivals' whole subtrees) is read in at its end, so a file that came into use
+       during the walk still counts as worn. A desk that overflowed (a room being built) reads it all again in one go, as before.
+       Off: window.EW_MM_WALK_WHOLE. Returns the live Set when done, else null (call again next frame). */
+    var _mmLW = null;
+    function _mmLiveSliced(H) {
+        if (typeof window !== 'undefined' && window.EW_MM_WALK_WHOLE) return _mmLive(H);
+        var W = _mmLW;
+        if (!W || !W.stk) {
+            var roots = [];   // (the roots are _mmLive's)
+            if (H && H.scene) roots.push(H.scene);
+            if (H && H.stage) for (var id in H.stage.parts) { var P = H.stage.parts[id].P; if (P && P.partRoot) roots.push(P.partRoot); }
+            if (scene) roots.push(scene);
+            if (_menu && _menu.scene) roots.push(_menu.scene);
+            var ho = _hqRoomHandover; if (ho) [ho.shellGroup, ho.doorGroup, ho.propGroup, ho.sky && ho.sky.group, ho.sky && ho.sky.landmarks].forEach(function (g) { if (g) roots.push(g); });
+            var live = new Set(); live.worn = new Set();
+            W = _mmLW = { stk: roots.slice(), live: live, Q: W && W.Q, H: H };
+            if (!W.Q) W.Q = _ewDeskQueue();
+            _ewDeskTake(W.Q);   // the arrivals before the walk began are in the walk
+        }
+        if (W.H !== H) { _mmLW = { Q: W.Q }; return null; }
+        var end = performance.now() + 2, n = 0, stk = W.stk, live2 = W.live, worn2 = live2.worn;
+        while (stk.length) {
+            var o = stk.pop(); _mmVisit(o, live2, worn2);
+            var ch = o.children; for (var i = 0; i < ch.length; i++) stk.push(ch[i]);
+            if ((++n & 255) === 0 && performance.now() >= end) return null;
+        }
+        var D = _ewDeskTake(W.Q);
+        _mmLW = { Q: W.Q };   // the desk queue stays for the next walk
+        if (D.over) return _mmLive(H);
+        for (var a = 0; a < D.list.length; a++) { var x = D.list[a]; if (x && x.traverse) x.traverse(function (q) { _mmVisit(q, live2, worn2); }); }
+        return live2;
     }
     function _mmEvict(url) {
         var e = _miscModelCache[url]; if (!e || !e.root) return 0;
@@ -39845,7 +39880,8 @@ const ThreeRenderer = (function () {
         var cap = R.budget * 1048576, tot = (R.misc.mb + R.rigs.mb) * 1048576;
         if (tot <= cap) return;
         if (_mmQueue.length) return;   // the last sweep's drops are still going
-        var live = _mmLive(H), list = [], t = Date.now(), idle = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES.cacheIdleMs > 0) ? HQ_ENGINE_RULES.cacheIdleMs : 120000;
+        var live = _mmLiveSliced(H); if (!live) { _mmAt = now - MM_EVERY_MS; return; }   // THE SLICED WORN WALK: on again next frame
+        var list = [], t = Date.now(), idle = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES.cacheIdleMs > 0) ? HQ_ENGINE_RULES.cacheIdleMs : 120000;
         tm = _lensSub('memory: worn list', tm);
         for (var u in _miscModelCache) {
             var e = _miscModelCache[u], isLive = false;
@@ -98562,7 +98598,9 @@ const ThreeRenderer = (function () {
     /* every frame of the walk (after the room is ready): the current part and the drawn neighbours, HQ_BATCH.sliceMs in all */
     function _hqBatchTick(H, now) {
         if (_hqBatchOff()) { _hqBatchDropAll(H); return; }
+        var _bw = (_lens && _lens.cur) ? performance.now() : 0;
         _hqStackWatch();   // THE SHEET STACK
+        _bw = _lensSub('batch: sheet stack watch', _bw);   // (2026-11-19: a 70 ms "tick: static batch" frame named none of the inner steps)
         var recs = [H]; if (H.stage) for (var id in H.stage.parts) if (H.stage.parts[id].attached) recs.push(H.stage.parts[id].P);
         /* THE FIRST MERGE IS FAST (2026-11-15, mondo back from a fight in Disaster City: 12 FPS for 30 s, "Static batch ... build
            6252->1265", 1,086 pieces "not yet merged"): the way back builds the room with no card over it, so its first merge ran
@@ -98572,6 +98610,7 @@ const ThreeRenderer = (function () {
            Off: window.EW_HQ_BATCH_FIRST_SLOW. */
         var firstRun = !!(H.ready && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_FIRST_SLOW) && !(H.batch && H.batch.lived && (!H.batchP || H.batchP.lived || H.batchP.phase === 'off')));
         var held = !H.field && _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: no frame is drawn, the merge has the tick
+        _bw = _lensSub('batch: hold check', _bw);
         var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : held ? (HQ_BATCH.holdSliceMs || 220) : !H.ready ? HQ_CARD_SLICE_MS : firstRun ? (HQ_BATCH.firstSliceMs || 28) : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
         for (var r = 0; r < recs.length; r++) {
             var R = recs[r];
