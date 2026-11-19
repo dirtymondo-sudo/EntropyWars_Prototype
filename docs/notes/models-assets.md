@@ -2085,6 +2085,22 @@ streamer, vtuber), `_NEW_MALE_SPRITES` (streamer, shaman), `_NEW_FEMALE_SPRITES`
 lost the old harvester RACE_PORTRAITS face (his HUD face is cut from the new sprite); the seraphim's paper-doll hands are off
 (RACE_HAND_GROUP null, the wheel has no hands). Scripts + pictures: `/mnt/project-files/sprites-six-20261119/`.
 
+## THE RIG FIX (2026-11-19, mondo: "the e-girl meshy model looks rigged wrong, like her shoulders are wide and broad like she is a man or has shoulder pads on")
+- CAUSE: Meshy's auto-rig of the E-Girl (`streamer/female/Meshy_AI_egirl_f_Running.glb`) put both collarbone joints at the chin in
+  the middle of the chest (LeftShoulder 0.02 / 1.457 m, the spine, neck and head joints all within 1.44-1.46 m) and gave the WHOLE
+  upper sleeve + deltoid (down to 1.30 m) to the collarbone instead of the upper arm. The game's clips drop the arms from the
+  A-pose, the upper arm turns and that block stays out flat with the collarbone: square shoulder pads. Mesh + textures were fine.
+  A healthy Meshy rig (the V-Tuber) has the collarbone at the top of the chest and the upper arm owning the deltoid.
+- FIX, no Meshy credits, no Blender: `python3 -I bake-rig-fix.py <in.glb> <out.glb> --preset egirl` (or `--set Joint=x,y,z`)
+  moves the collarbone + upper-arm joints (each still aimed at its child), re-splits only the weight a vertex already gave to
+  collarbone + upper arm by the shoulder hinge (the plane through the new arm joint halfway between level and the arm's line,
+  soft over -4 / +2.5 cm), rewrites the inverse bind matrices and the file's own Running clip keys. Every other weight untouched.
+  E-Girl: arm joints 0.218 / 1.346 -> 0.163 / 1.388, collarbones -> 0.032 / 1.410. New file (old kept on R2):
+  `Assets/characters/races/streamer/female/Meshy_AI_egirl_f_rig2_Running.glb`; sprites.js RACE_MODELS_3D.streamer.female.
+- CHECK A NEW MESHY UNIT: print its joints (LeftArm should sit at the deltoid, about 0.09 x height from the middle; LeftShoulder
+  at the top of the chest, not the chin) and colour its triangles by top weight: the upper arm's colour must reach the shoulder top.
+  Files + pictures: `/mnt/project-files/egirl-rig-fix/`.
+
 ## THE NEW CHARACTERS, 11-17 (mondo: male skater, female nordic, siren, mermaid redo, male lifeguard, Pope, Haunted Doll, ninja M + F)
 Meshy pipeline of `/mnt/project-files/new-races/run.py` (nano-banana-pro concept -> meshy-t2.5 image-to-3d a-pose -> rigging), copied to
 `/mnt/project-files/new-chars/` (items.py = the prompts; concepts/, models/, sprites/, proof/, models_sprites_sheet.jpg).
