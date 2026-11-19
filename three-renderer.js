@@ -49499,10 +49499,25 @@ const ThreeRenderer = (function () {
        re-recorded all 4,400 pieces — about twice a second, too slow to count as churning (5 in 2 s) and be demoted. The top walk
        of a group keeps each direct child's own value hash; a child whose values changed 3 times within 20 s is drawn outside the
        recording from then on (`_ew_bunOut`, as a mover is). Only once the room is ready (a room still landing moves everything). */
+    var _hqBatchHoldN = 0;   // THE HELD PIECES ONCE: bumped each time THE STATIC BATCH takes or hands back a piece
     function _ewBunWalkTop(g, S) {
         var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
-        for (var i = 0; i < ch.length; i++) {
-            var c = ch[i];
+        /* THE HELD PIECES ONCE (2026-11-19, mondo's 13:44 F3: "downtown_streets shell 1.59 ms" a frame for 10 drawn meshes): the shell's
+           ~10,000 children are nearly all held by THE STATIC BATCH (drawn in its merged meshes), and each check read every one of them.
+           A big group's held pieces are now hashed once into `F.hh` and listed out of the walk; only the rest (`F.live`) is walked each
+           check. The book is laid again when the group's child count, the batch's hold counter (`_hqBatchHoldN`, bumped where a piece is
+           taken or handed back) or an add under it changes, and every 240 checks. Off: window.EW_BUN_HELD_EVERY. */
+        var F = null, iter = ch;
+        if (ch.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_HELD_EVERY)) {
+            F = g._ew_bunF || (g._ew_bunF = { n: -1, hold: -1, k: 0, hh: 17, hc: 0, live: [] });
+            if (F.n !== ch.length || F.hold !== _hqBatchHoldN || g._ew_bunDirty || ++F.k >= 240) {
+                F.n = ch.length; F.hold = _hqBatchHoldN; F.k = 0; F.hh = 17; F.hc = 0; F.live.length = 0;
+                for (var fi = 0; fi < ch.length; fi++) { var fc = ch[fi]; if (fc._ew_bRec && fc._ew_bunOut !== true) { F.hh = _ewBunMix(F.hh, fc.id ^ 0x2b1d); F.hc++; } else F.live.push(fc); }
+            }
+            S.hs = _ewBunMix(S.hs, F.hh); S.cB = (S.cB | 0) + F.hc; iter = F.live;
+        }
+        for (var i = 0; i < iter.length; i++) {
+            var c = iter[i];
             /* THE OUTS SHOWN OR HIDDEN (2026-11-18, mondo's F3 after THE MOVERS STAY OUT: the shell still re-recorded 140 times, "movers 97,
                other 27", worst frame 66 ms): a car is hidden past `carFarM` and shown again inside it, and a hidden out piece used to
                leave the out list (and mix -id into the tree's hash): every car crossing its draw distance re-recorded the whole shell.
@@ -98325,7 +98340,7 @@ const ThreeRenderer = (function () {
         host.add(mesh);
         cs.forEach(function (c) {
             var o = c.o;
-            o._ew_bv = o.visible; o._ew_bRec = rec;
+            o._ew_bv = o.visible; o._ew_bRec = rec; _hqBatchHoldN++;
             Object.defineProperty(o, 'visible', { configurable: true, enumerable: true, get: _hqBatchVisGet, set: _hqBatchVisSet });
             _hqBatchParOn(o);
             for (var q = o.parent; q && q !== root; q = q.parent) {
@@ -98524,7 +98539,7 @@ const ThreeRenderer = (function () {
     function _hqBatchBreak(rec, why) {
         if (!rec || !rec.live) return;
         rec.live = false;
-        rec.cs.forEach(function (c) { var o = c.o; if (o._ew_bRec !== rec) return; var v = o._ew_bv; delete o.visible; o.visible = v; o._ew_bRec = null; _hqBatchParOff(o); });
+        rec.cs.forEach(function (c) { var o = c.o; if (o._ew_bRec !== rec) return; var v = o._ew_bv; delete o.visible; o.visible = v; o._ew_bRec = null; _hqBatchHoldN++; _hqBatchParOff(o); });
         rec.anc.forEach(function (q) {
             var L = q._ew_bAnc; if (!L) return; var i = L.indexOf(rec); if (i >= 0) L.splice(i, 1);
             if (!L.length) { var v = q._ew_bv; delete q.visible; q.visible = v; q._ew_bAnc = null; _hqBatchParOff(q); }

@@ -3103,3 +3103,9 @@ coarsely (whole ms outside cross-origin isolation), so the rolling watchdog's "s
 tick: up to ~1 ms a batch, two batches a frame, and a round over 15,800 merged pieces never finished inside the gap. `_hqBatchCheck` now
 also stops a slice after `HQ_BATCH.rollN` (160) pieces. A city round = ~65 frames, then the 4 s gap. Off: `window.EW_HQ_BATCH_CHECK_NOCAP`.
 Any other "stop after N ms" slice is subject to the same coarse clock on Firefox: give it a count cap too.
+
+### THE HELD PIECES ONCE (2026-11-19, 60 FPS thread, his 13:44 F3: 40.1 FPS after a walk, "downtown_streets shell 1.59 ms" bundle check)
+The shell's ~10,000 children are nearly all held by the static batch, and every bundle check read each of them. `_ewBunWalkTop` now keeps,
+for a group over 1,000 children, a book (`g._ew_bunF`): the held pieces' hash once (`hh`, count `hc`) and the rest (`live`) walked each
+check. The book is laid again when the child count, `_hqBatchHoldN` (bumped where the batch takes / hands back a piece) or an add under the
+group changes, and every 240 checks. Off: `window.EW_BUN_HELD_EVERY`. Same F3: one slow frame left (rig ticks 11 ms), 0 builds/s.
