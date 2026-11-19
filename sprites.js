@@ -2047,13 +2047,12 @@ const RACE_MODELS_3D = {
   // psychedelic clockwork entity: Charged_Spell_Cast is the generic/magic
   // burst, the ray-gun quick-draw covers ranged/tech hits.
   'machine elves': {
-    male: _mk3d('machineelves/male', 'DMT_clockwork_elf', {
-      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
-      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-      castRanged: 'Cowboy_Quick_Draw_Shooting',
-      // spare on R2: Walking, Knock_Down
-    }, { castTimeScales: { castRanged: 5.0 }, heightRatio: 0.72,
-         basicAttackKind: 'magic' }),   // small clockwork elf — psychedelic zaps, not sword swings
+    // 2026-11-19 THE DMT ELF (mondo: "they are not literal machinery, they are DMT elves"; his pick, concept C): a paisley
+    // hyperspace imp with a third eye, Meshy made + rigged, the shared library animates it. The clockwork elf stays on R2.
+    male: _mkUAL('machineelves/male', 'dmt_elf', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/machineelves/male/Meshy_AI_dmt_elf_Running.glb',
+      heightRatio: 0.66, basicAttackKind: 'magic',   // small hyperspace elf: psychedelic zaps, not sword swings
+    }),   // small clockwork elf — psychedelic zaps, not sword swings
   },
   // Nordic (Warrior, support) — "nordic_alien_male". His only action export
   // is the quick-draw, wired to castRanged ONLY so melee swings keep the
@@ -2970,8 +2969,10 @@ const RACE_MODELS_3D = {
   // Antihero (bruiser) — "antihero" Character_output (Races/antihero/, no _biped_ in the stem: an explicit model).
   'antihero': {
     male: _mkUAL('antihero', 'antihero', {
-      model: `${_S}/Races/antihero/Meshy_AI_antihero_Character_output.glb`,
-      heightRatio: 1.0, basicAttackKind: 'punch',
+      // 2026-11-19 THE SUPERVILLAIN (mondo: "he would just replace the antihero model"): the purple + gold armoured
+      // mastermind, Meshy made + rigged; the old yellow antihero stays on R2 (Meshy_AI_antihero_Character_output.glb).
+      model: 'https://cdn.entropywars.net/Assets/characters/races/antihero/Meshy_AI_supervillain_Running.glb',
+      heightRatio: 1.08, basicAttackKind: 'punch',
     }),
   },
   // Shadow Entity (caster; flies — SKY_RACES) — "shadowperson" Walking export (Races/shadowentity/male/), 2026-10-25.
@@ -6489,6 +6490,20 @@ function getCastLookModel(id, race, gender) {
 }
 if (typeof window !== 'undefined') { window.CAST_CREATOR_LOOKS = CAST_CREATOR_LOOKS; window.getCastLookModel = getCastLookModel; }
 
+const EW_SUPER_RACES = ['superhero', 'sidekick', 'antihero'];   // the "super people" (antihero = the supervillain look)
+function ewSuperOnBoard() {
+  let st = null;
+  try { st = (typeof window !== 'undefined' && window.GAME) ? window.GAME.state : null; } catch (e) { st = null; }
+  const us = st && st.units;
+  if (!us || !us.length) return false;
+  for (let i = 0; i < us.length; i++) { const u = us[i]; if (u && !u.dead && EW_SUPER_RACES.indexOf(u.race) >= 0) return true; }
+  return false;
+}
+const ICE_QUEEN_SUPER_3D = _mkUAL('icequeen', 'ice_queen_super', {
+  model: 'https://cdn.entropywars.net/Assets/characters/races/icequeen/Meshy_AI_ice_queen_super_Running.glb',
+  heightRatio: 1.02, basicAttackKind: 'magic', transformFx: true,
+});
+if (typeof window !== 'undefined') { window.ewSuperOnBoard = ewSuperOnBoard; window.EW_SUPER_RACES = EW_SUPER_RACES; }
 const _castUnitDefs = {};
 function getRace3DModel(race, gender, appearance) {
   if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return null;
@@ -6505,6 +6520,11 @@ function getRace3DModel(race, gender, appearance) {
     }
     return _castUnitDefs[ck];
   }
+  /* THE ICE QUEEN'S SUPER FORM (mondo 2026-11-19: "an alternative skin for ice queen, like only if another super person is
+     on the board she takes that form ... it would depend on the player and enemy rosters"): while any living super (either
+     side) stands on the board, every Ice Queen wears the ice sorceress supervillain. Looks only. three-renderer.js
+     _computeUnitStructuralSerial hashes ewSuperOnBoard() for her, so the swap lands the moment a super joins or falls. */
+  if (race === 'ice queen' && ewSuperOnBoard()) return ICE_QUEEN_SUPER_3D;
   const custom = getCharacterAppearanceModel(race, gender, appearance);
   if (custom) return custom;
   // Werewolf transformation: a human (Homosapien Freelancer male) by day,
