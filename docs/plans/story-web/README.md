@@ -74,3 +74,14 @@ Boards > **Board: in the game now** makes (or brings up to date) board `game_spa
 read from data.js at build time by `build/spawns.js` (Disaster City residents in their home district, every `npcSpots` NPC
 with a race (in the city by its plot), the `HQ_AREA_ENCOUNTERS` walk-in tables per zone, the story cast in DOOR HQ). A unit
 in several places gets a copy in each. Other boards are not touched. Rebuild the page after the game's spawns change.
+
+## Zones in their parts, the map behind, the pickers (2026-11-19)
+- Districts of a zone with parts sit in their part: Heaven / Hell / The Vatican (the Catacombs and the Colosseum are the Vatican's),
+  and Outer Space's Moon / Mars / Saturn / Singularity. A board made before this is fixed once on load (`pfix`): a map district that sat
+  right in its zone moves into its part (his own Heaven / Hell / Vatican group by name, else a new one). Nothing is deleted.
+- The game's rooms that are not districts are places too (build.js `places()`): Volcano Island, Pirates' Cove, the Frozen Sea, the
+  Spaceship and its rooms, Hangar 18, inside the Great Pyramid, the Haunted House's rooms, the Castle in the Sky, the city's Mall...
+- Sort into groups on Places stands each place where it is on the world map (pushed apart only to not overlap) and draws the map under
+  it (`B.mapK` = board px a map square; Arrange > Show or hide the world map). Places off the map line up to the right.
+- Unit inspector "Add to a place or a faction" and group inspector "Add a unit": type to pick; game places not on the board yet and
+  roster units not pinned yet are added on the spot.

@@ -52,6 +52,7 @@ const isGrp = n => !!n && n.kind === 'custom' && n.shape === 'group';
    Hero Plaza holds the Superhero Tower. The parent's area takes in its children's, and dragging it moves them too. */
 const parentOf = n => { const p = n && n.parent && B.nodes[n.parent]; return isGrp(p) && gkOf(p) === gkOf(n) && p.id !== n.id ? p : null; };
 const kidsOf = id => Object.values(B.nodes).filter(n => isGrp(n) && n.parent === id && parentOf(n));
+const pathOf = g => { const out = [], seen = new Set(); let q = g; while (q && !seen.has(q.id)) { seen.add(q.id); out.unshift(q.name); q = parentOf(q); } return out.join(' \u203a '); };
 function descOf(id) { const out = [], seen = new Set([id]), q = [id]; while (q.length) kidsOf(q.shift()).forEach(k => { if (!seen.has(k.id)) { seen.add(k.id); out.push(k); q.push(k.id); } }); return out; }
 /* ONE UNIT, AN ICON IN EVERY PLACE (2026-11-18): a unit in more groups of the board's kind than its home one gets a copy of its
    icon in each of the others (where it spawns, too). A copy is the same unit: its spot is kept on the member tie (cx, cy). */
@@ -121,12 +122,14 @@ function sanitizeBoard(b) {
   });
   Object.values(o.nodes).forEach(m => { if (m.parent) { m.parent = remap[m.parent] || m.parent; if (!o.nodes[m.parent] || m.parent === m.id) delete m.parent; } });
   o.org = b.org === 'faction' ? 'faction' : 'place';
+  if (Number.isFinite(+b.mapK) && +b.mapK > 0 && b.mapK !== null) o.mapK = +b.mapK; if (b.mapHide) o.mapHide = true; if (b.pfix) o.pfix = num(b.pfix, 0);
   if (b.lay && typeof b.lay === 'object') { o.lay = {}; ['place', 'faction'].forEach(k => { const L = b.lay[k]; if (!L || typeof L !== 'object') return; o.lay[k] = {}; Object.keys(L).forEach(id => { const q = L[id], nid = remap[id] || id; if (Array.isArray(q) && o.nodes[nid]) o.lay[k][nid] = [num(q[0], 0), num(q[1], 0)]; }); }); }
   Object.values(b.links || {}).forEach(l => {
     if (l && (remap[l.a] || remap[l.b])) l = Object.assign({}, l, { a: remap[l.a] || l.a, b: remap[l.b] || l.b });
     if (!l || !l.id || !o.nodes[l.a] || !o.nodes[l.b] || l.a === l.b || o.nodes[l.a].kind === 'note' || o.nodes[l.b].kind === 'note') return;
     o.links[l.id] = { id: String(l.id), a: l.a, b: l.b, type: TYPE[l.type] ? l.type : 'other', dir: /^(ab|ba|both)$/.test(l.dir) ? l.dir : 'ab', label: String(l.label || '').slice(0, 300), s: clamp(Math.round(num(l.s, 2)), 1, 3), ...(l.secret ? { secret: true } : {}), ...(l.type === 'member' && Number.isFinite(+l.cx) && Number.isFinite(+l.cy) && l.cx !== null && l.cy !== null ? { cx: Math.round(+l.cx), cy: Math.round(+l.cy) } : {}) };
   });
+  try { repairPlaces(o); } catch (e) {}
   return o;
 }
 function sanitizeState(x) {
@@ -556,6 +559,7 @@ function renderInspector() {
       h += '<label class="field"><span>Inside</span><select class="sel" id="gParent"><option value="">Nowhere</option>' + opts.map(g => '<option value="' + esc(g.id) + '"' + (par && par.id === g.id ? ' selected' : '') + '>' + esc(g.name) + '</option>').join('') + '</select></label>';
       if (kids.length) h += '<div><h4>Inside it (' + kids.length + ')</h4><div class="prow">' + kids.sort((a, b) => a.name.localeCompare(b.name)).map(g => '<button class="gchip sm' + (gkOf(g) === 'faction' ? ' fac' : '') + '" data-node="' + esc(g.id) + '" style="--gc:' + gcol(g) + '">' + esc(g.name) + '</button>').join('') + '</div></div>'; }
     h += '<div><h4>Members (' + mem.length + ')</h4>' + (mem.length ? '<ul class="rel gmem">' + mem.map(l => '<li data-node="' + esc(l.a) + '"' + (l.secret ? ' class="sec"' : '') + '><span>' + esc(nm(l.a)) + '</span><button class="gsec' + (l.secret ? ' on' : '') + '" data-gsecret="' + esc(l.id) + '">secret</button><button class="x" data-unlink="' + esc(l.id) + '" aria-label="Take out of the group">×</button></li>').join('') + '</ul>' : '<p class="muted">None yet.</p>') + '</div>';
+    h += '<label class="field"><span>Add a unit</span><input class="inp" id="pickUnit" list="dlPickUnit" autocomplete="off" placeholder="Type a name: Librarian, Pope\u2026"></label><datalist id="dlPickUnit">' + unitPicks(n.id).map(v => '<option value="' + esc(v) + '"></option>').join('') + '</datalist>';
     if (ties.length) h += '<div><h4>Ties</h4><ul class="rel">' + relList(ties) + '</ul></div>';
     h += '<label class="field"><h4 style="margin:0">Notes</h4><textarea class="inp" id="insNote">' + esc(n.note || '') + '</textarea></label>';
     h += '<div class="prow"><button class="btn danger" data-act="delSel">Take off the board</button></div>';
@@ -581,6 +585,7 @@ function renderInspector() {
     }
     const gin = Object.values(B.links).filter(l => l.type === 'member' && l.a === n.id && isGrp(B.nodes[l.b])).map(l => B.nodes[l.b]);
     const gsec = new Set(Object.values(B.links).filter(l => l.type === 'member' && l.a === n.id && l.secret).map(l => l.b));
+    h += '<label class="field"><span>Add to a place or a faction</span><input class="inp" id="pickGrp" list="dlPickGrp" autocomplete="off" placeholder="Type a name: Hell, The Bowl, Illuminati\u2026"></label><datalist id="dlPickGrp">' + grpPicks(n.id).map(v => '<option value="' + esc(v) + '"></option>').join('') + '</datalist>';
     if (gin.length) h += '<div><h4>Groups</h4><div class="prow">' + ['place', 'faction'].map(k => gin.filter(g => gkOf(g) === k).map(g => '<button class="gchip sm' + (k === 'faction' ? ' fac' : '') + (gsec.has(g.id) ? ' sec' : '') + '" data-node="' + esc(g.id) + '" style="--gc:' + gcol(g) + '">' + (gsec.has(g.id) ? '<i>secretly</i> ' : '') + esc(g.name) + '</button>').join('')).join('') + '</div></div>';
     h += '<label class="field"><h4 style="margin:0">Wants, fears, motive</h4><textarea class="inp" id="insNote" placeholder="What does ' + name + ' want on this board?">' + esc(n.note || '') + '</textarea></label>';
     h += '<div><h4>Ties on this board</h4>' + (d.all.some(it => it.l.type !== 'member') ? '<ul class="rel">' + relList(d.all.filter(it => it.l.type !== 'member')) + '</ul>' : '<p class="muted">None yet. Drag from the red handle on ' + name + ' to another unit.</p>') + '</div>';
@@ -626,7 +631,7 @@ function renderPanels() { if (pressing) { deferred = true; return; } renderRoste
 document.addEventListener('pointerdown', () => { pressing = true; }, true);
 const release = () => { pressing = false; if (deferred) { deferred = false; setTimeout(renderPanels, 0); } };
 document.addEventListener('pointerup', release, true); document.addEventListener('pointercancel', release, true);
-function renderAll() { renderBoardSel(); renderNodes(); drawEdges(); renderOverlays(); renderLegend(); applyView(); renderPanels(); updateButtons(); }
+function renderAll() { renderMapBg(); renderBoardSel(); renderNodes(); drawEdges(); renderOverlays(); renderLegend(); applyView(); renderPanels(); updateButtons(); }
 
 /* ───────── actions ───────── */
 let toastT = 0;
@@ -648,6 +653,33 @@ function addEntries(ids, at) {
   commit();
   if (ids.length > 1) { toast('Pinned ' + ids.length); fit(); }
   return ids.length;
+}
+/* THE PICKERS (2026-11-19, mondo: "it is hard to put a unit in more than 1 spot because I have to go hunting for it in this big web, it
+   would be nice if a dropdown menu was there"): type to pick. A unit: any place or faction on the board (with the places it is inside),
+   or any place in the game not on the board yet (it is added in its right spot). A group: any unit on the board, or any from the roster. */
+let PICK = new Map();
+function grpPicks(uid0) {
+  PICK = new Map(); const inG = new Set(Object.values(B.links).filter(l => l.type === 'member' && l.a === uid0).map(l => l.b));
+  Object.values(B.nodes).filter(g => isGrp(g) && !inG.has(g.id)).map(g => [pathOf(g) + (gkOf(g) === 'faction' ? ' (faction)' : ''), g]).sort((a, b) => a[0].localeCompare(b[0])).forEach(([v, g]) => { if (!PICK.has(v)) PICK.set(v, { g: g.id }); });
+  const game = (v, src, name, a) => { if (placeOnBoard(src, name)) return; v += ' (from the game)'; if (!PICK.has(v)) PICK.set(v, { m: a }); };
+  PL.zones.forEach(z => { game(z.n, placeSrc(z), z.n, [z.k, null, null]); (z.s || []).forEach(s => game(z.n + ' \u203a ' + s.n, 'map:' + z.k + ':@' + s.k, s.n, [z.k, '@' + s.k, null]));
+    z.d.forEach(d => { const s = subOf(z, d), pre = z.n + ' \u203a ' + (s ? s.n + ' \u203a ' : ''); game(pre + d.n, placeSrc(z, d.k), d.n, [z.k, d.k, null]); d.p.forEach(pn => game(pre + d.n + ' \u203a ' + pn, placeSrc(z, d.k, pn), pn, [z.k, d.k, pn])); }); });
+  return [...PICK.keys()];
+}
+function unitPicks(gid) {
+  PICK = new Map(); const inG = new Set(Object.values(B.links).filter(l => l.type === 'member' && l.b === gid).map(l => l.a)), seen = {};
+  const add = (v, o) => { if (PICK.has(v)) v += ' (' + (o.id || o.e).replace(/^[rs]:/, '') + ')'; if (!PICK.has(v)) PICK.set(v, o); };
+  Object.values(B.nodes).filter(n => n.kind !== 'note' && !isGrp(n) && !inG.has(n.id)).map(n => { const o = info(n); return [o.name + (n.nick && o.gname && o.gname !== o.name ? ' (' + o.gname + ')' : ''), n.id]; }).sort((a, b) => a[0].localeCompare(b[0])).forEach(([v, id]) => add(v, { id }));
+  ENTS.filter(e => !B.nodes[e.id]).slice().sort((a, b) => a.n.localeCompare(b.n)).forEach(e => add(e.n + ' (from the roster)', { e: e.id }));
+  return [...PICK.keys()];
+}
+function joinGroup(a, b) { if (!B.nodes[a] || !B.nodes[b] || Object.values(B.links).some(l => l.type === 'member' && l.a === a && l.b === b)) return false; const id = uid('l'); B.links[id] = { id, a, b, type: 'member', dir: 'ab', label: '', s: 1 }; return true; }
+function pickChosen(t) {
+  const p = PICK.get(t.value); if (!p || !sel || !B.nodes[sel.id]) return false; const me = sel.id;
+  if (t.id === 'pickGrp') { const g = p.g || addFromMap(p.m[0], p.m[1], p.m[2], false); if (!g) return true; joinGroup(me, g); sel = { kind: 'node', id: me }; commit(); toast(nm(me) + ' is in ' + B.nodes[g].name + ' now'); }
+  else { let u = p.id; if (!u) { const e = ENT[p.e], g = B.nodes[me], q = freeSpot({ x: g.x + 120, y: g.y + 90 }, takenList()); u = e.id; B.nodes[u] = e.kind === 'cast' ? { id: u, kind: 'cast', cast: e.c.id, x: q.x, y: q.y, note: '' } : Object.assign({ id: u, kind: 'race', race: e.r.k, x: q.x, y: q.y, note: '' }, e.r.v.length > 1 ? { g: e.v.g } : {}); }
+    joinGroup(u, me); sel = { kind: 'node', id: me }; commit(); toast(nm(u) + ' is in ' + B.nodes[me].name + ' now'); }
+  setTimeout(() => { const i = $(t.id); if (i) i.focus(); }, 0); return true;
 }
 function addNote() { const c = viewCentre(), p = freeSpot({ x: c.x - 95, y: c.y - 60 }, takenList().map(t => ({ x: t.x - 95, y: t.y - 60 }))), id = uid('n'); B.nodes[id] = { id, kind: 'note', x: p.x, y: p.y, color: 'y', text: '' }; sel = { kind: 'node', id }; commit(); const t = elById.get(id); if (t) t.querySelector('textarea').focus(); }
 function removeSel() {
@@ -720,6 +752,14 @@ function setOrg(k) {
 }
 /* lay the board out by the groups of the kind it is organised by: one area per group, its pill in the middle, its members
    round it; units in none of them together at the end; the other kind's pills in a row along the top; idea cards to the right */
+/* where a place group is on the world map: its map place, else a zone or district of the same name */
+function atOf(g) {
+  if (!g) return null; const m = /^map:([^:]+)(?::(.+))?$/.exec(g.src || ''), z = m && PL.zones.find(q => q.k === m[1]);
+  if (z) { if (!m[2]) return z.at; if (m[2][0] === '@') { const s = (z.s || []).find(q => '@' + q.k === m[2].split(':')[0]); return (s && s.at) || null; } const d = z.d.find(q => m[2] === String(q.k) || m[2].startsWith(q.k + ':')); return (d && d.at) || null; }
+  for (const q of PL.zones) { if (psame(q.n, g.name)) return q.at; const s = (q.s || []).find(x => psame(x.n, g.name)); if (s) return s.at || null; const d = q.d.find(x => psame(x.n, g.name)); if (d) return d.at || null; }
+  return null;
+}
+let mapOn = false;
 function sortGroups() {
   const k = orgK(), N = Object.values(B.nodes), grps = N.filter(n => isGrp(n) && gkOf(n) === k), other = N.filter(n => isGrp(n) && gkOf(n) !== k);
   const home = homeMap(k), cps = copyList(), byName = (a, b) => nm(a).localeCompare(nm(b));
@@ -733,13 +773,42 @@ function sortGroups() {
     c.m.forEach((e, i) => { const r = 70 * Math.sqrt(i + 2.2), a = i * 2.39996, x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r); if (e.id) { B.nodes[e.id].x = x; B.nodes[e.id].y = y; } else { B.links[e.lid].cx = x; B.links[e.lid].cy = y; } });
     if (!c.kids.length) return;
     const big = Math.max(...c.kids.map(q => q.r)), circ = c.kids.reduce((t, q) => t + 2 * q.r + 30, 0), R = Math.max(c.inner + big + 30, circ / (2 * Math.PI));
-    let ang = -Math.PI / 2; c.kids.forEach(q => { const span = (2 * q.r + 30) / circ * Math.PI * 2; ang += span / 2; put(q, cx + Math.cos(ang) * R, cy + Math.sin(ang) * R); ang += span / 2; });
+    /* on the map: each place inside sits on the side of its parent where it really is */
+    const pa = mapOn && atOf(c.g), dir = q => { const a = pa && atOf(q.g); return a && (a[0] !== pa[0] || a[1] !== pa[1]) ? Math.atan2(a[1] - pa[1], a[0] - pa[0]) : null; };
+    const ks = c.kids.map(q => ({ q, a: dir(q) })), known = ks.filter(e => e.a != null).sort((x, y) => x.a - y.a);
+    const order = known.length ? known.concat(ks.filter(e => e.a == null)).map(e => e.q) : c.kids;
+    let ang = known.length ? known[0].a - (2 * known[0].q.r + 30) / circ * Math.PI : -Math.PI / 2;
+    order.forEach(q => { const span = (2 * q.r + 30) / circ * Math.PI * 2; ang += span / 2; put(q, cx + Math.cos(ang) * R, cy + Math.sin(ang) * R); ang += span / 2; });
   };
   const cl = grps.filter(g => !parentOf(g)).map(make);
   const loose = N.filter(n => n.kind !== 'note' && !isGrp(n) && !home[n.id]).map(n => n.id).sort(byName);
   if (loose.length) cl.push({ g: null, m: loose.map(id => ({ id })), kids: [], r: 70 * Math.sqrt(loose.length + .35) + 60 });
   if (!cl.length) return toast('Pin a few units first');
   cl.sort((a, b) => (!a.g) - (!b.g) || b.r - a.r);
+  /* THE MAP BEHIND (2026-11-19, mondo: "when i sort by location the actual map pulls up on the screen and they are sorted the exact same
+     way as now just in the correct spots relative to the map"): each place stands where it is on the world map, pushed apart only
+     as far as it takes to not overlap; places that are not on the map (space, the Astral Realm, DOOR HQ, his own) line up beside it */
+  const WM = PL.world, onMap = k === 'place' && WM ? cl.filter(c => c.g && atOf(c.g)) : [];
+  if (onMap.length >= 3) {
+    mapOn = true;
+    const K = Math.round(Math.sqrt(onMap.reduce((t, c) => t + 4 * c.r * c.r, 0) * 1.25 / (WM.w * WM.h)) * 10) / 10;
+    onMap.forEach(c => { const a = atOf(c.g); c.tx = (a[0] - WM.x0) * K; c.ty = (a[1] - WM.y0) * K; c.x = c.tx; c.y = c.ty; });
+    for (let it = 0; it < 400; it++) {
+      for (let i = 0; i < onMap.length; i++) for (let j = i + 1; j < onMap.length; j++) { const a = onMap[i], b = onMap[j]; let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy); const need = a.r + b.r + 30; if (d >= need) continue; if (d < .01) { dx = (i - j) || 1; dy = .5; d = Math.hypot(dx, dy); } const push = (need - d) / 2, wa = b.r * b.r / (a.r * a.r + b.r * b.r); a.x -= dx / d * push * 2 * wa; a.y -= dy / d * push * 2 * wa; b.x += dx / d * push * 2 * (1 - wa); b.y += dy / d * push * 2 * (1 - wa); }
+      const pull = it < 300 ? .04 : 0; onMap.forEach(c => { c.x += (c.tx - c.x) * pull; c.y += (c.ty - c.y) * pull; });
+    }
+    onMap.forEach(c => put(c, c.x, c.y));
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity; onMap.forEach(c => { x0 = Math.min(x0, c.x - c.r); x1 = Math.max(x1, c.x + c.r); y0 = Math.min(y0, c.y - c.r); });
+    x1 = Math.max(x1, WM.w * K); y0 = Math.min(y0, 0);
+    const rest = cl.filter(c => !onMap.includes(c)), RW = Math.max(Math.sqrt(rest.reduce((t, c) => t + 4 * c.r * c.r, 0)) * 1.2, 2 * Math.max(0, ...rest.map(c => c.r)));
+    let x = 0, y = 0, rowH = 0, maxX = x1;
+    rest.forEach(c => { if (x > 0 && x + 2 * c.r > RW) { x = 0; y += rowH + 40; rowH = 0; } const cx = x1 + 160 + x + c.r, cy = y0 + y + c.r; x += 2 * c.r + 40; rowH = Math.max(rowH, 2 * c.r); maxX = Math.max(maxX, cx + c.r);
+      if (c.g) put(c, cx, cy); else c.m.forEach((e, i) => { const r = 70 * Math.sqrt(i + .35), a = i * 2.39996; B.nodes[e.id].x = Math.round(cx + Math.cos(a) * r); B.nodes[e.id].y = Math.round(cy + Math.sin(a) * r); }); });
+    let px = 0; other.forEach(g => { g.x = Math.round(x0 + px + 70); g.y = Math.round(y0 - 150); px += Math.max(150, g.name.length * 9 + 70) + 24; });
+    N.filter(n => n.kind === 'note').forEach((n, i) => { n.x = Math.round(maxX + 60); n.y = Math.round(y0 + i * 180); });
+    mapOn = false; B.mapK = K; commit(); fit(); return;
+  }
+  delete B.mapK;
   const W = Math.max(Math.sqrt(cl.reduce((t, c) => t + 4 * c.r * c.r, 0)) * 1.5, 2 * Math.max(...cl.map(c => c.r)));
   let x = 0, y = 0, rowH = 0, maxX = 0;
   cl.forEach(c => {
@@ -753,6 +822,7 @@ function sortGroups() {
   commit(); fit();
 }
 function arrange(mode) {
+  delete B.mapK;
   const ids = Object.keys(B.nodes).filter(id => B.nodes[id].kind !== 'note'); if (ids.length < 2) return toast('Pin a few units first');
   if (mode === 'ties') {
     const P = ids.map(id => ({ id, x: B.nodes[id].x, y: B.nodes[id].y })), ix = Object.fromEntries(P.map((p, i) => [p.id, i])), E = Object.values(B.links).map(l => [ix[l.a], ix[l.b]]);
@@ -902,11 +972,13 @@ $('linkpop').addEventListener('pointerdown', e => { if (editing) e.preventDefaul
 $('banner').addEventListener('click', e => { const b = e.target.closest('button'); if (b) act(b.dataset.act); });
 $('inspector').addEventListener('input', e => {
   const t = e.target;
+  if ((t.id === 'pickGrp' || t.id === 'pickUnit') && PICK.has(t.value)) { pickChosen(t); return; }
   if (t.id === 'insLabel' && sel && B.links[sel.id]) { B.links[sel.id].label = t.value; drawEdges(); }
   else if (t.id === 'insNote' && sel && B.nodes[sel.id]) B.nodes[sel.id].note = t.value;
 });
 $('inspector').addEventListener('change', e => {
   const t = e.target, n = sel && sel.kind === 'node' && B.nodes[sel.id];
+  if (t.id === 'pickGrp' || t.id === 'pickUnit') { if (t.value && !pickChosen(t)) toast('Pick one from the list'); return; }
   if (t.id === 'insLabel' && sel && B.links[sel.id]) { B.links[sel.id].label = t.value.trim(); return commit({ light: true }); }
   if (t.id === 'insNote') return commit({ light: true });
   if (t.id === 'insSecret') return setLink({ secret: t.checked });
@@ -988,6 +1060,7 @@ function act(a) {
     case 'renameBoard': modal('<h2>Name this board</h2><input class="inp" id="mName" maxlength="80" autofocus value="' + esc(B.name) + '"><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="ok">Save name</button></div>', d => { const ok = () => { const v = $('mName').value.trim(); if (v && v !== B.name) { B.name = v; delete B.sample; commit(); } closeModal(); }; d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'ok') ok(); else if (x === 'cancel') closeModal(); }); $('mName').addEventListener('keydown', e => { if (e.key === 'Enter') ok(); }); $('mName').select(); }); break;
     case 'delBoard': { const n = Object.keys(B.nodes).length; modal('<h2>Delete “' + esc(B.name) + '”?</h2><p>' + (n ? 'Its ' + n + ' pinned items and ' + Object.keys(B.links).length + ' ties go with it. ' : '') + 'Undo brings it back until you close the page.</p><div class="acts"><button class="btn" data-x="cancel" autofocus>Keep it</button><button class="btn pri" data-x="ok">Delete board</button></div>', d => d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'ok') { closeModal(); deleteBoard(B.id); } else if (x === 'cancel') closeModal(); })); break; }
     case 'arrGroups': sortGroups(); break;
+    case 'arrMap': if (!B.mapK) { toast('Sort into groups by places first: the map comes with it'); break; } if (B.mapHide) delete B.mapHide; else B.mapHide = true; commit(); break;
     case 'arrFaction': arrange('faction'); break; case 'arrHome': arrange('home'); break; case 'arrTies': arrange('ties'); break;
     case 'backup': modal('<h2>Save a backup</h2><p>Every board, as one JSON file. Keep it anywhere; load it back from Export, Load a backup.</p><textarea class="inp code" id="mText" readonly></textarea><div class="acts"><button class="btn" data-x="cancel">Close</button><button class="btn" data-x="copy">Copy</button><button class="btn pri" data-x="save">Save file</button></div>', d => { $('mText').value = backupJSON(); d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'cancel') closeModal(); else if (x === 'copy') copyText($('mText')); else if (x === 'save') saveFile('entropy-wars-relationship-web-' + stamp() + '.json', $('mText').value); }); }); break;
     case 'restore': modal('<h2>Load a backup</h2><p>Choose a backup file, or paste its contents below.</p><div class="prow"><button class="btn" data-x="pick">Choose a file…</button><span class="muted" id="mFile"></span></div><textarea class="inp code" id="mText" placeholder="{ &quot;app&quot;: &quot;ew-relationship-web&quot;, … }" style="min-height:140px"></textarea><p class="muted" id="mErr"></p><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn" data-x="replace">Replace all my boards</button><button class="btn pri" data-x="merge">Add as extra boards</button></div>', d => { d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'cancel') closeModal(); else if (x === 'pick') $('fileIn').click(); else if (x === 'merge' || x === 'replace') { const r = importJSON($('mText').value, x === 'replace'); if (r.err) $('mErr').textContent = r.err; else { closeModal(); toast(r.msg); } } }); }); break;
@@ -1023,6 +1096,23 @@ const placeSrc = (z, dk, pn) => 'map:' + z.k + (dk != null ? ':' + dk : '') + (p
 /* a place already on the board: the same map place, or a place group of his with the same name ("Sewers" = "The Sewers", "Came A Lot" = "Came A Lot Kingdom") */
 const pwords = t => String(t).toLowerCase().replace(/^the\s+/, '').split(/\s+/).map(w => w.replace(/[^a-z0-9+]+/g, '')).filter(Boolean);
 const psame = (x, y) => { const a = pwords(x), b = pwords(y), [s1, l1] = a.length <= b.length ? [a, b] : [b, a]; return s1.length > 0 && s1.every((w, i) => w === l1[i]) && l1.length - s1.length <= 1 && !l1.slice(s1.length).includes('+') && s1.join('').length >= 4; };
+const subOf = (z, d) => d && d.s && z.s ? z.s.find(s => s.k === d.s) : null;
+/* THE ZONES' OWN PARTS (2026-11-19, mondo: "how am i supposed to know if thats in heaven or hell or the vatican? They should just already
+   be in their correct area"): a district from the map that sits right in its zone, in a zone with parts (Heaven + Hell + Vatican, Outer
+   Space), moves into its part: his own Heaven / Hell / Vatican group when there is one, else a new one. Once a board (pfix). Nothing is deleted. */
+function repairPlaces(b) {
+  if (b.pfix >= 1 || !PL.zones.length) return false;
+  const G = Object.values(b.nodes).filter(n => n.kind === 'custom' && n.shape === 'group'), bySrc = src => G.find(n => n.src === src); let ch = false;
+  PL.zones.forEach(z => { if (!z.s) return; const zg = bySrc('map:' + z.k);
+    z.s.forEach(s => {
+      const ds = s.d.map(k => bySrc('map:' + z.k + ':' + k)).filter(g => g && (!g.parent || (zg && g.parent === zg.id))); if (!ds.length) return;
+      let sg = bySrc('map:' + z.k + ':@' + s.k) || G.find(n => !n.src && n.gk !== 'faction' && psame(n.name, s.n));
+      if (!sg) { sg = { id: 'pz_' + z.k + '_' + s.k, kind: 'custom', name: s.n, sub: '', shape: 'group', col: hueCol(z.c), gk: 'place', faction: '', x: Math.round(ds.reduce((t, g) => t + g.x, 0) / ds.length), y: Math.round(ds.reduce((t, g) => t + g.y, 0) / ds.length) - 60, note: '' }; b.nodes[sg.id] = sg; G.push(sg); }
+      sg.src = 'map:' + z.k + ':@' + s.k; if (!sg.parent && zg && zg.id !== sg.id) sg.parent = zg.id;
+      ds.forEach(g => { if (g.id !== sg.id) { g.parent = sg.id; ch = true; } });
+    }); });
+  b.pfix = 1; return ch;
+}
 function placeOnBoard(src, name) { return Object.values(B.nodes).find(n => isGrp(n) && n.src === src) || Object.values(B.nodes).find(n => isGrp(n) && !n.src && gkOf(n) === 'place' && psame(n.name, name)); }
 function addPlace(src, name, hex, parentId) {
   let g = placeOnBoard(src, name);
@@ -1034,16 +1124,18 @@ function addPlace(src, name, hex, parentId) {
 function addFromMap(zk, dk, pn, withKids) {
   const z = PL.zones.find(q => q.k === zk); if (!z) return;
   const zid = addPlace(placeSrc(z), z.n, z.c, null); let last = zid;
-  const addD = d => { const did = addPlace(placeSrc(z, d.k), d.n, d.c, zid); last = did; return did; };
+  const addS = s => addPlace('map:' + z.k + ':@' + s.k, s.n, z.c, zid);
+  const addD = d => { const s = subOf(z, d), did = addPlace(placeSrc(z, d.k), d.n, d.c, s ? addS(s) : zid); last = did; return did; };
   if (dk == null) { if (withKids) z.d.forEach(addD); }
+  else if (dk[0] === '@') { const s = (z.s || []).find(q => '@' + q.k === dk); if (!s) return; last = addS(s); if (withKids) { z.d.filter(d => d.s === s.k).forEach(addD); last = addS(s); } }
   else { const d = z.d.find(q => q.k === dk); if (!d) return; const did = addD(d); if (pn != null) last = addPlace(placeSrc(z, d.k, pn), pn, d.c, did); else if (withKids) d.p.forEach(n => addPlace(placeSrc(z, d.k, n), n, d.c, did)); }
   commit(); return last;
 }
 function mapHTML() {
   const on = (src, n) => !!placeOnBoard(src, n), btn = (on2, a) => on2 ? '<span class="pon">on board</span>' : '<button class="btn sm" ' + a + '>Add</button>';
   return PL.zones.map(z => '<div class="pz" data-z="' + esc(z.k) + '"><div class="pzh"><i style="--gc:' + z.c + '"></i><button class="pzn" data-zopen="' + esc(z.k) + '">' + esc(z.n) + '</button>' + btn(on(placeSrc(z), z.n), 'data-padd="' + esc(z.k) + '"') + (z.d.length ? '<button class="btn sm" data-paddall="' + esc(z.k) + '">Add with ' + z.d.length + ' districts</button>' : '') + '</div>' +
-    '<div class="pzd"' + (mapOpen === z.k ? '' : ' hidden') + '>' + z.d.map(d => '<div class="pd"><div class="pdh"><span>' + esc(d.n) + '</span>' + btn(on(placeSrc(z, d.k), d.n), 'data-padd="' + esc(z.k) + '" data-pd="' + esc(d.k) + '"') + (d.p.length ? '<button class="btn sm" data-paddall="' + esc(z.k) + '" data-pd="' + esc(d.k) + '">Add with ' + d.p.length + ' places</button>' : '') + '</div>' +
-      (d.p.length ? '<div class="pps">' + d.p.map(n => on(placeSrc(z, d.k, n), n) ? '<span class="pp on">' + esc(n) + '</span>' : '<button class="pp" data-padd="' + esc(z.k) + '" data-pd="' + esc(d.k) + '" data-pp="' + esc(n) + '">' + esc(n) + '</button>').join('') + '</div>' : '') + '</div>').join('') + '</div></div>').join('');
+    '<div class="pzd"' + (mapOpen === z.k ? '' : ' hidden') + '>' + (z.s || []).concat([null]).map(s => { const ds = z.d.filter(d => s ? d.s === s.k : !(z.s || []).some(q => q.k === d.s)); return (s ? '<div class="pd psub"><div class="pdh"><span><b>' + esc(s.n) + '</b></span>' + btn(on('map:' + z.k + ':@' + s.k, s.n), 'data-padd="' + esc(z.k) + '" data-pd="@' + esc(s.k) + '"') + '<button class="btn sm" data-paddall="' + esc(z.k) + '" data-pd="@' + esc(s.k) + '">Add with ' + ds.length + ' districts</button></div></div>' : '') + ds.map(d => '<div class="pd' + (s ? ' pin' : '') + '"><div class="pdh"><span>' + esc(d.n) + '</span>' + btn(on(placeSrc(z, d.k), d.n), 'data-padd="' + esc(z.k) + '" data-pd="' + esc(d.k) + '"') + (d.p.length ? '<button class="btn sm" data-paddall="' + esc(z.k) + '" data-pd="' + esc(d.k) + '">Add with ' + d.p.length + ' places</button>' : '') + '</div>' +
+      (d.p.length ? '<div class="pps">' + d.p.map(n => on(placeSrc(z, d.k, n), n) ? '<span class="pp on">' + esc(n) + '</span>' : '<button class="pp" data-padd="' + esc(z.k) + '" data-pd="' + esc(d.k) + '" data-pp="' + esc(n) + '">' + esc(n) + '</button>').join('') + '</div>' : '') + '</div>').join(''); }).join('') + '</div></div>').join('');
 }
 let mapOpen = null;
 function drawWorld(cv) {
@@ -1074,6 +1166,15 @@ function openMap() {
   });
 }
 $('btnMap').addEventListener('click', openMap);
+/* the world map under a board sorted by places (B.mapK = board pixels a map square) */
+let bgDrawn = false;
+function renderMapBg() {
+  const cv = $('bgMap'), W = PL.world, k = W && orgK() === 'place' && !B.mapHide && B.mapK; if (!cv) return;
+  cv.hidden = !k; if (!k) return;
+  if (!bgDrawn) { const S = 4, x = cv.getContext('2d'); cv.width = W.w * S; cv.height = W.h * S; x.fillStyle = '#dfe4de'; x.fillRect(0, 0, cv.width, cv.height);
+    W.g.forEach((row, j) => { for (let i = 0; i < row.length; i++) { x.fillStyle = TERR[W.key[row[i]]] || '#dfe4de'; x.fillRect(i * S, j * S, S, S); } }); bgDrawn = true; }
+  cv.style.width = W.w * k + 'px'; cv.style.height = W.h * k + 'px';
+}
 $('btnGroupNode').addEventListener('click', () => {
   modal('<h2>Add a group</h2><label class="field"><span>Name</span><input class="inp" id="mName" maxlength="40" autofocus placeholder="The Circus"></label><div class="seg" id="mGk"><button data-gk="place"' + (orgK() === 'place' ? ' class="on"' : '') + '>Place</button><button data-gk="faction"' + (orgK() === 'faction' ? ' class="on"' : '') + '>Faction</button></div><div class="gsw" id="mCol">' + GCOL.map((c, i) => '<button data-col="' + i + '"' + (i ? '' : ' class="on"') + ' style="--gc:' + c + '" aria-label="Colour ' + (i + 1) + '"></button>').join('') + '</div><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="ok">Pin to board</button></div>', d => {
     let col = Object.values(B.nodes).filter(isGrp).length % GCOL.length, gk = orgK(); [...$('mCol').children].forEach((c, i) => c.classList.toggle('on', i === col));
