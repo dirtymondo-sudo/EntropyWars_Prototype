@@ -33,7 +33,6 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 | OUTER SPACE `moon_plots` | space | 95 | 1932 x 798 | 100 % | 88.8 | 64 | 0 | 2.2 | 29 | 9 | 3 | 83 | off the map | **3.6** |
 | THE OLD ROAD `site_ow_r4` | routes | 26 | 462 x 210 | 87 % | 9.9 | 62 | 0 | 0.4 | 1 | 25 | 32 | 4 | 14 | **3.5** |
 | THE BEACH `bermuda_beach` | beach | 20 | 336 x 420 | 54 % | 6.2 | 44 | 6 | 0.6 | 4 | 8 | 26 | 2 | 11 (+12 sea) | **3.5** |
-| AREA 51 `area51_desert` | desert | 16 | 168 x 168 | 94 % | 9.2 | 61 | 0 | 0.1 | 11 | 13 | 24 | 0 | 12 | **3.4** |
 | GIZA `area51_ow_giza` | desert | 16 | 168 x 168 | 100 % | 24.2 | 64 | 0 | 0.1 | 12 | 10 | 19 | 5 | 8 | **3.4** |
 | THE DESERT HIGHWAY `site_ow_dh1` | routes | 20 | 336 x 168 | 90 % | 15.8 | 64 | 0 | 0.5 | 1 | 16 | 23 | 0 | 15 | **3.3** |
 | THE DEEP · THE SEA FLOOR `atlantis_ow_floor` | deep | 9 | 126 x 126 | 100 % | 18.5 | 64 | 0 | 3.7 | 17 | 2 | 7 | 4 | 0 (+11 sea) | **3.3** |
@@ -41,6 +40,7 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 | THE CAVERN `hollow_earth_cavern` | cavern | 24 | 252 x 252 | 67 % | 6 | 59 | 2 | 0.9 | 22 | 12 | 17 | 2 | 18 | **3.3** |
 | MOUNT OLYMPUS `shasta_ow_olympus` | olympus | 19 | 420 x 252 | 53 % | 3.5 | 52 | 5 | 2.4 | 28 | 0 | 14 | 9 | 26 | **3.3** |
 | ANTARCTICA `antarctica_plots` | antarctica | 36 | 252 x 252 | 72 % | 6.8 | 55 | 1 | 2.6 | 21 | 0 | 11 | 16 | off the map | **3.2** |
+| AREA 51 `area51_desert` | desert | 16 | 168 x 168 | 94 % | 9.2 | 61 | 0 | 0.1 | 11 | 11 | 25 | 0 | 12 | **3.2** |
 | THE FAIRY FOREST `camelot_ow_fairy` | camelot | 6 | 168 x 126 | 40 % | 3.1 | 42 | 2 | 1.3 | 4 | 3 | 54 | 0 | 4 | **3.2** |
 | THE CLEARING `fairy_forest_ow_clearing` | woods | 19 | 504 x 210 | 48 % | 3.9 | 50 | 6 | 0.9 | 19 | 3 | 30 | 1 | 24 | **3.2** |
 | LEYLINES · BABEL + TECHNOTICLAN `gobekli_ow_babel` | leylines | 29 | 294 x 336 | 100 % | 22 | 64 | 0 | 4.9 | 30 | 5 | 7 | 17 | 22 (+5 sea) | **3.2** |
@@ -119,7 +119,7 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 | THE DEEP · ATLANTIS + THE TRENCH | Atlantis, the Rings | 12 | 100 % | 48 | 64 | 0 | 3.6 | 4 | 0 | 28 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 61 % | 5 | 8 | 0 | 0 | 2.7 | **2.7** |
 | THE DEEP · ATLANTIS + THE TRENCH | The Trench | 10 | 100 % | 34.7 | 64 | 0 | 26.6 | 27 | 0 | 45 | 42 | 0 | 0 | 0 | 0 | 0 | 0 | 0 % | 4 | 8 | 0 | 0 | 2.8 | **2.8** |
 | THE DEEP · THE SEA FLOOR | The Sea Floor | 9 | 100 % | 18.5 | 64 | 0 | 3.7 | 17 | 2 | 16 | 55 | 0 | 0 | 0 | 0 | 0 | 2 | 3 % | 7 | 4 | 0 | 0.9 | 2.4 | **3.3** |
-| AREA 51 | Area 51 | 16 | 94 % | 9.2 | 61 | 0 | 0.1 | 11 | 13 | 4 | 4 | 1 | 0 | 0 | 0 | 18 | 8 | 27 % | 24 | 0 | 0 | 2.3 | 1.1 | **3.4** |
+| AREA 51 | Area 51 | 16 | 94 % | 9.2 | 61 | 0 | 0.1 | 11 | 11 | 5 | 7 | 2 | 0 | 0 | 0 | 19 | 8 | 27 % | 25 | 0 | 0 | 2.1 | 1.1 | **3.2** |
 | THE CIRCUS | The Circus | 9 | 92 % | 6 | 61 | 0 | 0.1 | 1 | 8 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 33 | 4 % | 46 | 0 | 0.1 | 2.8 | 0 | **2.9** |
 | GIZA | Giza | 16 | 100 % | 24.2 | 64 | 0 | 0.1 | 12 | 10 | 15 | 19 | 5 | 0 | 0 | 1 | 30 | 3 | 37 % | 19 | 5 | 0 | 1.9 | 1.5 | **3.4** |
 | WESTERN TOWN | Western Town | 16 | 96 % | 10.5 | 63 | 0 | 0.1 | 11 | 11 | 10 | 6 | 3 | 1 | 0 | 1 | 22 | 29 | 3 % | 37 | 0 | 0 | 2 | 0.4 | **2.4** |
