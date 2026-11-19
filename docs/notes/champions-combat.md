@@ -6063,3 +6063,40 @@ Two new playable races from the 11-19 concepts. Each has a unique style and ONE 
   (walks, pulls, pushes, knockbacks; battle.js THE BENDS `_bendsWalk` from finishMoveAt, `_bendsDisplaced` from resolveTileArrival).
   Damage type 'dot' + noPress so it is never multiplied by elements. So Depth Charge then Harpoon / Pressure Wave is her combo.
 - Online: all of it is host engine state (turret rows, statuses, HP), mirrored by state-sync; the floating texts ride the existing relays.
+
+## THE NEW RACES 4 (2026-11-19, thread "Add gambler, hacker, monk and shogun"; mondo picked the models from the 11-19 concepts round and OK'd the kit plan in the thread: "okay sounds good")
+Four races, each its own four `nr*` spells (tiers 1-4, RACE_TREE = those four) + ONE new rule. Rows sit next to the Karate
+Frog's in every race table (FINISHERS borrow a staging sig: lastCall / corruptedSave / spiritBomb / thousandCuts). Models: Meshy
+image-to-3d + Meshy rig (R2 `Assets/characters/races/<race>/male/Meshy_AI_<race>_Running.glb`), Sprite AI 128px sprites
+(`<race>_px.png`; sources `/mnt/project-files/new-races-4/sprites/`). Homes: Gambler = The Strip (the casino, district E:
+`HQ_SPAWN_RULES` people row at the casino `b:P08-04-B1`) + the Western Town (its own HQ_AREA_ENCOUNTERS table: the Desert's
++ him, ALSO_NATIVE 'Area 51'); Hacker = Downtown (+ Cyberpunk City); Monk + Shogun = the Volcano Island (Katana Bay in the story
+plans; POINT_OF_ENTRY 'The Bermuda Triangle', HQ_AREA_ENCOUNTERS `site_prebuilt_bermuda_ow_volcano`). battle.js block
+"THE NEW RACES 4" (after _streamCastRow).
+- 🎲 Gambler, THE HOT STREAK: a `diceRoll` row casts its own copy (`_nr4CastRow`, where _streamCastRow is); once every refusal
+  has passed (`_diceRollNow`, by _viewersSpendNow) two d6 roll on engineRng (host-side), said over his head + in the log. The roll
+  rides the copy: `_diceMult` (= 1 + 0.08 × unit.hotStreak; × total / 7 on Craps Shot `diceRoll: 'scale'`; High Roller
+  `streakCashIn` 0.25 = 1 + 0.25 × streak instead), `critChance` 1 on double sixes, `_diceWhiff` on Double or Nothing's tails
+  (`coinFlip`, + `selfDamagePct` 0.1 through the recoil block). `_spellCritRoll` applies all three to every hit (single + AoE).
+  finishAction (`_nr4AfterCast`) books the streak: 7+ +1 (max 5), 2-4 = 0, High Roller spends it. Let It Ride = status
+  `letItRide` (3 dice keep 2; the roll spends it). The forecast shows the plain row (the roll is not known before the cast).
+- ⌨ Hacker, THE RANSOM: Crypto Locker = status `encrypted` 2 rounds; STATUS_DEFS.encrypted.onApply writes unit._ransomSpells (its
+  two priciest spells by MP, ids) + unit._ransomById (an id); getSpellMpCostFor doubles those (`_ransomed`), and finishAction
+  (`_ransomPay`) gives the Hacker the extra half of the bill (up to his max MP). Doxx = status `doxxed` (+ Marked 40): map.js
+  computeVisibleTiles adds the square for every viewer (with the Radioactive glow). Keyboard + mouse = the PSX Mega Pack's
+  `pc_keyboard_mp_1` (left hand) + `pc_mouse_mp_1` (right hand), THE UNIT GEAR `held` + the new `held2` (three-renderer.js:
+  `fit: 'max'` sizes a flat piece by its longest side; `rot`, `off` optional).
+- 📿 Monk, THE STILLNESS: unit.stillness 0-3 = +1 DEF stage each (getStatStageCount). `_monkTurnStart` (the blitz hand-off, by
+  _floridaTurnStart) keeps where his turn began; `_monkStillness` (the round end, _nrRoundEnd) adds one when he took a turn and
+  stands there with no walk of his own (finishMoveAt sets `_walkedRound`), and clears them when he walked or was moved off it.
+  Meditate `stillnessGain` 1 (+ selfHeal 15 %, Levitating 1 round); Nirvana Palm `stillnessSpend` 70 a stack (baked by
+  _nr4CastRow), then 0.
+- 🏯 Shogun, THE ZONE OF CONTROL: `_zocHolds(unit)` = every hostile Shogun (Chebyshev 1; 2 under status `edict`, Bushido Edict's
+  selfStatusAfter) + every hostile live Clan Banner (Chebyshev 1). getMoveTiles and findMovePath (not a far route plan,
+  `_routeOpts`) never expand from such a square, so a walk can END next to him but not pass; a unit that starts inside may leave;
+  phasing units ignore it. Clan Banner = a deployTurret row `banner: true` (never shoots, `bannerUntil` = round + 3, taken down
+  by `_bannerRoundEnd`), drawn by three-renderer.js `_buildClanBanner3D` (mondo's Meshy heraldic `meshy_decor/banner.glb` on a
+  wooden pole).
+- CPU: ai.js ccDenialValue values `encrypted` (by the target's 60+ MP spells) and `doxxed`; the rest are plain kinds.
+- Online: everything is host engine state (unit numbers, statuses, turret rows) mirrored by the state sync; the texts ride
+  showFloatingTextForUnit's relay; the guest's own move tiles read the same Shogun / banner rows.

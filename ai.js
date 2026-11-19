@@ -1145,6 +1145,17 @@
             if (_aiStatusBlocked(g, tg, id)) return 0;   // the Ghoul's Pure Negativity shrugs it off
             return 70 + 30 * Math.min(2, n);
         }
+        /* 🔒 Crypto Locker / 🪪 Doxx (the Hacker, 2026-11-19): a tax on a caster's two best spells, worth it on a unit with MP to
+           spend; Doxx is sight (a little) */
+        if (id === 'encrypted') {
+            try { if (g.unitHasStatus(tg, 'encrypted')) return 0; } catch (e) {}
+            const pricey = (tg.spells || []).filter(s => s && Number(s.cost) >= 60).length;
+            return pricey ? 50 + 25 * Math.min(2, pricey) + (unitIsHealerKit(tg) ? 60 : 0) : 10;
+        }
+        if (id === 'doxxed') {
+            try { if (g.unitHasStatus(tg, 'doxxed')) return 0; } catch (e) {}
+            return 25;
+        }
         try { if (g.unitHasStatus(tg, id)) return 0; } catch (e) {}
         if (_aiStatusBlocked(g, tg, id)) return 0;   // WEAK RACES II: Ghoul shrugs off Stun, Rabbit Slow — no denial
         const output = unitThreatOutput(g, tg, unit);
