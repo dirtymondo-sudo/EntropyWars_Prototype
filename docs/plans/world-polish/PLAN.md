@@ -238,8 +238,9 @@ than 1 plot in 3 dead flat unless it is meant (a lake bed, a plaza, a field); 14
 ## 5b. THE PILOT IS BUILT: Giza (2026-11-19, on mondo's "go")
 Dunes on the Sand Sea, the Canyon Stair to a lookout on the mesa's rim, the Deep Cut (a two-level excavation). What it taught, for every flat
 district after it: `docs/notes/areas-complexes.md` "THE DESERT, GIZA", THE VERTICALITY PASS. The short of it: props ride the ground, monuments
-drawn from parts do not, so a monument district gets its height between its monuments. Waits mondo's look before Area 51, Western Town, the
-Circus and the highways.
+drawn from parts do not, so a monument district gets its height between its monuments. mondo 11-19 on Giza: "looks decent, continue".
+**WESTERN TOWN is built too (11-19):** Boot Hill raised, the Gulch with its plank bridge, the Ridge Trail to an outlook over the town
+(areas-complexes.md "THE DESERT, WESTERN TOWN — THE VERTICALITY PASS"). Next: the Circus, Area 51, the highways.
 
 ## 6. Questions for mondo
 

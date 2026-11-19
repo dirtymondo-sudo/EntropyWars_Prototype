@@ -5816,6 +5816,24 @@ Pass 1 of 5 (exteriors, interiors, dressing, atmosphere, polish). Only `docs/are
 - **NEEDS A MODEL:** ~~anvil, forge, trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows, prospector's tent, telegraph
   pole~~ all placed 11-16 ("THE MODEL PASS" below).
 
+## THE DESERT, WESTERN TOWN — THE VERTICALITY PASS (2026-11-19, the owner's world audit thread; docs/plans/world-polish/PLAN.md wave 1, after Giza's pilot)
+File `districts/W.js` only (the block at the end of `ground()` + four moved props + Boot Hill's own row); `node bake-desert.js && node bake-desert-insides.js`,
+then `node bake-map.js site_prebuilt_area51_ow_town`. The rules it follows are Giza's ("THE DESERT, GIZA", THE VERTICALITY PASS).
+- **BOOT HILL** is 4.6 m on 14 (was 2.6 on 13); the graves, the rail and the gate ride it.
+- **THE GULCH**: a dry wash across the south range, one fight tier down (-1.75), three `sink` reaches that step north and south (squares x 57..78 · y 38..41),
+  an earth ramp at each end. The road south out of town crosses it on a plank `bridge` row (`absY`, y 0.06, squares x 70..71): the walker passes under it.
+- **THE RIDGE TRAIL**: an earth ramp on the open range (squares x 76..79 · y 44..45) up to the south-east mesa's shelf, the rim path and one added square
+  (84,40) to THE OUTLOOK (85..86,38) over the Corral and Main Street; a stash on it.
+- **Left level on purpose:** Main Street, every front, the cross street, the three road seams (two on the north line, the canyon on the south line: the
+  canyon is the Desert Highway's way out, so it was NOT ramped the way Giza's dead canyon was).
+- **The numbers** (`docs/plans/world-polish/audit.js`, a plot's relief): Boot Hill 2.2 -> 3.9, The Wagon Camp 0.1 -> 1.8, Open range 8.8 -> 10.5, The Trail
+  In 0.1 -> 0.4; dead-flat plots 12 -> 11 of 16 (the eleven are the town itself). The count moves little because a western town is a street; what changed is
+  what you can do round it.
+- **Learned:** (1) `hqTerrainFeet` with no height given answers null on a square under a `bridge` row (two floors there): a height print shows `##`, the
+  walker is fine. (2) A `bridge` row draws its own grey steel rails; there is no wooden rail look. (3) Props standing on a new ramp's line block it
+  (a cow, an agave): move them in the same change.
+- **Seen** through probe-fast.js, one run, 8 views, no page error: the gulch from both ends and from inside, the bridge, the ramp, the rim, the outlook, Boot Hill.
+
 ## THE DESERT, WESTERN TOWN — THE INTERIORS PASS (2026-11-16, second side, the Western Town district thread)
 
 Pass 2 of 5. Only `docs/areas/desert/districts/W.js`, then a rebake (the Desert's block grew from 153 to 262 KB: the fittings are parts).
