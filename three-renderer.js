@@ -49181,7 +49181,7 @@ const ThreeRenderer = (function () {
             var f = B[k]; if (typeof f !== 'function') return;
             B[k] = function (b) { var gn = b && b.groupNode; if (!(gn && gn.shared === true)) _ewBun.upN = (_ewBun.upN | 0) + 1; return f.apply(this, arguments); };   // the frame's shared buffers (camera, lights) are written every frame by whoever comes first: not a sign the object changed
         });
-        var RP_REST = 20;
+        var RP_REST = 20, _rpDepth = 0, _rpHeldPool = [];
         var rpStep = function (R, ro) {
             var N = R._nodes, t = N.needsRefresh(ro);
             if (t === 2 || t === 'full') { N.updateBefore(ro); R._geometries.updateForRender(ro); N.updateForRender(ro); R._bindings.updateForRender(ro); N.updateAfter(ro); }
@@ -49224,16 +49224,32 @@ const ThreeRenderer = (function () {
         var rpReplay = function (R, bd) {
             var L = bd._ewRep; if (!L || L.v !== bd.version || L.n !== bd.renderObjects.length) L = rpList(R, bd);
             var i, ro, F = _ewBun.frame | 0, asked = 0;
-            for (i = 0; i < L.reps.length; i++) rpStep(R, L.reps[i]);
-            asked += L.reps.length; _ewBun.rpReps = (_ewBun.rpReps | 0) + L.reps.length;
-            var D = L.dyn, woke = false, held = null, u0, rested;
+            /* THE FIRSTS ONCE A RENDER (2026-11-19, mondo's 16:25 F3: "refreshed 1063 of 4251 a frame (... firsts 1001 ...)"): the
+               plain objects of one shader share one monitor and one set of shared buffers (camera, lights, fog) across EVERY group,
+               not only inside one: once any object of that shader was asked in this render (the monitor keeps the render's id),
+               three answers "nothing" for the next, so a first already seen in an earlier group is not asked again. A first is
+               always asked once (its own first look), and every one is asked when the renderer needs motion vectors.
+               Old rule: window.EW_BUN_FIRSTS_EACH */
+            var Nn = R._nodes, rid = Nn && Nn.nodeFrame ? Nn.nodeFrame.renderId : NaN, RP = L.reps, nR = 0;
+            var skipOk = rid === rid && !(typeof window !== 'undefined' && window.EW_BUN_FIRSTS_EACH) && (RP.length === 0 || !RP[0].getMonitor().needsVelocity(R));
+            for (i = 0; i < RP.length; i++) {
+                ro = RP[i];
+                if (skipOk && ro._ew_rpI === true && ro.getMonitor().renderId === rid) continue;
+                rpStep(R, ro); ro._ew_rpI = true; nR++;
+            }
+            asked += nR; _ewBun.rpReps = (_ewBun.rpReps | 0) + nR;
+            /* THE HELD LIST KEPT (2026-11-19): one array per replay depth, refilled (was a new array per group per pass: ~750 a frame) */
+            var hDep = _rpDepth++, held = _rpHeldPool[hDep] || (_rpHeldPool[hDep] = []);
+            held.length = 0;
+            try {
+            var D = L.dyn, woke = false, u0, rested;
             for (i = 0; i < D.length; i++) {
                 ro = D[i]; rested = ro._ew_rqOk && ro._ew_rq >= RP_REST;
                 if (ro._ew_rqI) {
                     var io = ro._ew_rqI, iv = io.instanceMatrix.version + io.count * 8191 + (io.instanceColor ? io.instanceColor.version * 131 : 0);
                     if (iv !== ro._ew_rqV) { ro._ew_rqV = iv; ro._ew_rq = 0; rested = false; }
                 }
-                if (rested && !woke && ((F + i) % RP_REST) !== 0) { (held || (held = [])).push(ro); continue; }
+                if (rested && !woke && ((F + i) % RP_REST) !== 0) { held.push(ro); continue; }
                 u0 = _ewBun.upN | 0;
                 rpStep(R, ro); asked++;
                 if (rested) _ewBun.rpTurn = (_ewBun.rpTurn | 0) + 1; else _ewBun.rpAwake = (_ewBun.rpAwake | 0) + 1;
@@ -49247,7 +49263,7 @@ const ThreeRenderer = (function () {
                its whole square (50-80 pieces) refreshed most of the time. Each held one is still refreshed this frame (a shared
                change reaches all of them, as before), and only one that writes something on it stays awake. Old rule:
                window.EW_BUN_WAKE_ALL. Counts in the lens's bundles line: woken groups, and the awake / turn / rep split. */
-            if (woke && held) {
+            if (woke && held.length) {
                 var wAll = typeof window !== 'undefined' && !!window.EW_BUN_WAKE_ALL;
                 for (i = 0; i < held.length; i++) { u0 = _ewBun.upN | 0; rpStep(R, held[i]); asked++; if (wAll || (_ewBun.upN | 0) !== u0) held[i]._ew_rq = 0; }
                 _ewBun.rpWoke = (_ewBun.rpWoke | 0) + 1; _ewBun.rpWokeN = (_ewBun.rpWokeN | 0) + held.length;
@@ -49261,7 +49277,8 @@ const ThreeRenderer = (function () {
                70 degree turn drew the lamps, boxes and chairs where they stood on screen before it). Now the first held object
                of each shared buffer has its SHARED part refreshed in every render (what three does for a still object); the
                rest stay held. Off: window.EW_BUN_HELD_NO_SHARED. Count: _ewBun.rpShared. */
-            else if (held && !(typeof window !== 'undefined' && window.EW_BUN_HELD_NO_SHARED)) rpShared(R, held);
+            else if (held.length && !(typeof window !== 'undefined' && window.EW_BUN_HELD_NO_SHARED)) rpShared(R, held);
+            } finally { held.length = 0; _rpDepth = hDep; }
             _ewBun.rpAsked = (_ewBun.rpAsked | 0) + asked; _ewBun.rpAll = (_ewBun.rpAll | 0) + bd.renderObjects.length;
         };
         var rb = r._renderBundle;
@@ -49426,17 +49443,21 @@ const ThreeRenderer = (function () {
            Disaster City = 260,000 compares a frame); the list array is kept and refilled */
         var out = _ewBun.tOut || (_ewBun.tOut = []), tsm = _ewBun.tStamp = (_ewBun.tStamp | 0) + 1;
         out.length = 0;
-        function add(g, nm) { if (g && g.isObject3D && g._ew_bunTS !== tsm) { g._ew_bunTS = tsm; out.push(g); g._ew_bunName = nm; } }
-        var here = (H.opts && H.opts.room) || 'room';
-        add(H.shellGroup, here + ' shell');
+        function add(g, nm) { if (g && g.isObject3D && g._ew_bunTS !== tsm) { g._ew_bunTS = tsm; out.push(g); if (g._ew_bunName !== nm) g._ew_bunName = nm; } }
+        /* THE NAMES KEPT (2026-11-19, mondo's F3: "bundle check 38 / 72 ms ... targets 37 / 70 (1058)", a loop of 1,058 plain adds): each
+           group's name was a new string every frame (~1,000 a frame, garbage the collector then stops a frame for); the names are made
+           once per room id */
+        var here = (H.opts && H.opts.room) || 'room', NM = _ewBun.tNames;
+        if (!NM || NM.here !== here) NM = _ewBun.tNames = { here: here, shell: here + ' shell', doors: here + ' doors', rooms: here + ' rooms', props: here + ' props', fences: here + ' fences', parts: {} };
+        add(H.shellGroup, NM.shell);
         var dck = 0, dg = H.doorGroup;
-        if (dg && H.ckList && !_hqDoorChunksOff()) for (var di = 0; di < dg.children.length; di++) if (dg.children[di]._ew_dChunk) { add(dg.children[di], here + ' doors'); dck++; }   // THE DOOR CHUNKS: each door a recording of its own
-        if (!dck) add(H.doorGroup, here + ' doors');
-        if (H.pChunks) { for (var pk in H.pChunks) add(H.pChunks[pk], here + (H.pChunks[pk]._ew_pcBld ? ' rooms' : ' props')); }   // THE PROP CHUNKS: each a bundle of its own (the prop group itself draws classic: its lamps and passing flashes)
-        else add(H.propGroup, here + ' props');
-        if (H.chunks) for (var ck in H.chunks.cells) add(H.chunks.cells[ck], here + ' fences');   // THE CHUNKS: a plot's fences, a bundle of their own
+        if (dg && H.ckList && !_hqDoorChunksOff()) for (var di = 0; di < dg.children.length; di++) if (dg.children[di]._ew_dChunk) { add(dg.children[di], NM.doors); dck++; }   // THE DOOR CHUNKS: each door a recording of its own
+        if (!dck) add(H.doorGroup, NM.doors);
+        if (H.pChunks) { for (var pk in H.pChunks) add(H.pChunks[pk], H.pChunks[pk]._ew_pcBld ? NM.rooms : NM.props); }   // THE PROP CHUNKS: each a bundle of its own (the prop group itself draws classic: its lamps and passing flashes)
+        else add(H.propGroup, NM.props);
+        if (H.chunks) for (var ck in H.chunks.cells) add(H.chunks.cells[ck], NM.fences);   // THE CHUNKS: a plot's fences, a bundle of their own
         var st = H.stage;
-        if (st && st.parts) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P) { add(E.P.shellGroup, id + ' shell'); add(E.P.propGroup, id + ' props'); add(E.P.doorGroup, id + ' doors'); } }
+        if (st && st.parts) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P) { var PN = NM.parts[id] || (NM.parts[id] = [id + ' shell', id + ' props', id + ' doors']); add(E.P.shellGroup, PN[0]); add(E.P.propGroup, PN[1]); add(E.P.doorGroup, PN[2]); } }
         if (H.inst && H.inst.cells) { for (var ic in H.inst.cells) add(H.inst.cells[ic], 'instance pass'); }   // THE CHUNKS: a cell of the pass, a bundle of its own
         else if (H.inst && H.inst.group) add(H.inst.group, 'instance pass');
         return out;
