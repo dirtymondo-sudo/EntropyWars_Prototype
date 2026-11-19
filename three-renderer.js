@@ -98504,12 +98504,142 @@ const ThreeRenderer = (function () {
         B.stats.batches--; B.stats.pieces -= rec.cs.length; B.stats.verts -= rec.mesh.geometry.attributes.position.count; B.stats.broken++;
         if (why && typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ batch] a batch of ' + rec.cs.length + ' handed back (' + why + ')');
     }
+    /* THE ZSEP (2026-11-19, mondo: "z fighting ... in places all throughout the game, where the textures are flickering ... mostly on the
+       sides/walls of buildings, but there is some on the ground too"). The flicker is two surfaces drawn in the SAME plane: the depth test
+       cannot pick one, so they trade pixels from frame to frame. A sweep of Disaster City found ~300 such pairs, nearly all in the plot-built
+       buildings (data.js arch rows + the plot shells): a storey's ceiling on the roof slab's underside, a wall face on another wall, a floor on
+       a floor, a window sheet on its wall, a road on a building's roof. Every plot-built area is made the same way, so it is fixed in one place
+       for every room: right before the shell is merged (_hqBatchBuild), the pieces about to be merged are read ONCE (a build-time pass, sliced
+       like the merge; nothing runs per frame) and every pair of faces that face the same way in the same plane (3 mm) and overlap is found.
+       The SMALLER face of a pair (the window on the wall, the ceiling under the roof, the trim on the facade) is lifted HQ_ZSEP.liftM
+       (1.2 cm) off the plane, toward its own front, so it always wins; a face over two others steps one lift per layer. Nothing is removed,
+       no sheet changes; the ground (the terrain, one bent sheet) never moves, what lies on it does. A face that already has a depth
+       offset (a decal) is left alone. Off: window.EW_HQ_NO_ZSEP = true before the room. */
+    var HQ_ZSEP = { liftM: 0.012, tolM: 0.003, minAreaM2: 0.01, maxLayers: 4, cellM: 3.5 };
+    function* _hqZSep(cands, U) {
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_ZSEP) return;
+        var t0 = _alNow(), ZS = HQ_ZSEP, TOL = ZS.tolM * U, MINA = ZS.minAreaM2 * U * U, CELL = ZS.cellM * U, NQ = 120;
+        var list = [], gUse = new Map();
+        for (var i = 0; i < cands.length; i++) {
+            var c = cands[i]; if (c.glow || !c.o || !c.o.isMesh || !c.g || !c.g.attributes || !c.g.attributes.position) continue;
+            var ms = Array.isArray(c.m) ? c.m : [c.m], bad = false;
+            for (var mi = 0; mi < ms.length; mi++) { var m = ms[mi]; if (!m || m.polygonOffset || m.depthTest === false || m.colorWrite === false || (m.transparent && m.depthWrite === false)) { bad = true; break; } }
+            if (bad) continue;
+            list.push(c); gUse.set(c.g, (gUse.get(c.g) || 0) + 1);
+        }
+        if (!list.length) return;
+        /* pass 1: each triangle's plane key; each piece's faces (vertices joined by triangles = one face: a quad of a box, a whole bent sheet) */
+        var nT = 0; for (var a = 0; a < list.length; a++) { var g0 = list[a].g; nT += g0.index ? g0.index.count / 3 : g0.attributes.position.count / 3; }
+        nT = Math.floor(nT);
+        var KEY = new Float64Array(nT), TC = new Int32Array(nT), TI = new Int32Array(nT), ORD = new Int32Array(nT), n = 0;
+        var faceBase = new Int32Array(list.length + 1), faceOfV = new Array(list.length), fArea = [], fFlat = [], fAx = [], fD = [], fFix = [];
+        var va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), nm = new THREE.Vector3();
+        var nF = 0, steps = 0;
+        for (var ci = 0; ci < list.length; ci++) {
+            var c1 = list[ci], g = c1.g, P = g.attributes.position, I = g.index ? g.index.array : null, nv = P.count, nt = Math.floor(I ? I.length / 3 : nv / 3), M = c1.M;
+            var neg = M.determinant() < 0, ter = !!(c1.ter || c1.o._ew_hqTerrain);
+            /* the faces: a union of the vertices each triangle joins */
+            var par = new Int32Array(nv); for (var v = 0; v < nv; v++) par[v] = v;
+            var find = function (x) { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+            for (var t = 0; t < nt; t++) { var i0 = I ? I[t * 3] : t * 3, i1 = I ? I[t * 3 + 1] : t * 3 + 1, i2 = I ? I[t * 3 + 2] : t * 3 + 2; var r0 = find(i0), r1 = find(i1), r2 = find(i2); if (r1 !== r0) par[r1] = r0; if (r2 !== r0 && find(r2) !== r0) par[find(r2)] = r0; }
+            var fov = new Int32Array(nv), loc = new Map(); faceBase[ci] = nF;
+            for (v = 0; v < nv; v++) { var rt = find(v), f = loc.get(rt); if (f === undefined) { f = nF++; loc.set(rt, f); fArea.push(0); fFlat.push(1); fAx.push(-1); fD.push(0); fFix.push(ter ? 1 : 0); } fov[v] = f; }
+            faceOfV[ci] = fov;
+            for (t = 0; t < nt; t++) {
+                i0 = I ? I[t * 3] : t * 3; i1 = I ? I[t * 3 + 1] : t * 3 + 1; i2 = I ? I[t * 3 + 2] : t * 3 + 2;
+                va.fromBufferAttribute(P, i0).applyMatrix4(M); vb.fromBufferAttribute(P, i1).applyMatrix4(M); vc.fromBufferAttribute(P, i2).applyMatrix4(M);
+                nm.crossVectors(e1.subVectors(vb, va), e2.subVectors(vc, va)); var L = nm.length(); if (!(L > 1e-9)) continue;
+                nm.multiplyScalar((neg ? -1 : 1) / L);
+                var fi = fov[i0], qx = Math.round(nm.x * NQ), qy = Math.round(nm.y * NQ), qz = Math.round(nm.z * NQ), ax = ((qx + NQ) * (2 * NQ + 1) + (qy + NQ)) * (2 * NQ + 1) + (qz + NQ), d = nm.dot(va);
+                fArea[fi] += L / 2;
+                if (fAx[fi] < 0) { fAx[fi] = ax; fD[fi] = d; } else if (fAx[fi] !== ax || Math.abs(fD[fi] - d) > TOL) fFlat[fi] = 0;
+                KEY[n] = ax * 33554432 + (Math.floor(d / TOL) + 16777216); TC[n] = ci; TI[n] = t; ORD[n] = n; n++;
+                if ((++steps & 4095) === 0 && _hqSliceDue()) yield;
+            }
+        }
+        var ordA = Array.prototype.slice.call(ORD.subarray(0, n)); ordA.sort(function (x, y) { return KEY[x] - KEY[y]; }); if (_hqSliceDue()) yield;
+        /* pass 2: in each plane (and the next 3 mm up), the triangles of different faces that overlap */
+        var tri2 = function (k, out) {   // a triangle in the room's space, its 2-D shadow on the plane (the dominant axis dropped), anticlockwise
+            var c2 = list[TC[k]], g2 = c2.g, P2 = g2.attributes.position, I2 = g2.index ? g2.index.array : null, t2 = TI[k];
+            va.fromBufferAttribute(P2, I2 ? I2[t2 * 3] : t2 * 3).applyMatrix4(c2.M); vb.fromBufferAttribute(P2, I2 ? I2[t2 * 3 + 1] : t2 * 3 + 1).applyMatrix4(c2.M); vc.fromBufferAttribute(P2, I2 ? I2[t2 * 3 + 2] : t2 * 3 + 2).applyMatrix4(c2.M);
+            nm.crossVectors(e1.subVectors(vb, va), e2.subVectors(vc, va));
+            var dx = Math.abs(nm.x), dy = Math.abs(nm.y), dz = Math.abs(nm.z), drop = (dx >= dy && dx >= dz) ? 0 : (dy >= dz) ? 1 : 2;
+            var pk = function (p) { return drop === 0 ? [p.y, p.z] : drop === 1 ? [p.x, p.z] : [p.x, p.y]; };
+            var A = pk(va), B = pk(vb), C = pk(vc), s = (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]);
+            out.p = s < 0 ? [C, B, A] : [A, B, C]; out.drop = drop;
+            out.x0 = Math.min(A[0], B[0], C[0]); out.x1 = Math.max(A[0], B[0], C[0]); out.y0 = Math.min(A[1], B[1], C[1]); out.y1 = Math.max(A[1], B[1], C[1]);
+            out.f = faceOfV[TC[k]][I2 ? I2[t2 * 3] : t2 * 3]; return out;
+        };
+        var faceOfT = function (k) { var g4 = list[TC[k]].g, I4 = g4.index ? g4.index.array : null; return faceOfV[TC[k]][I4 ? I4[TI[k] * 3] : TI[k] * 3]; };
+        var clip = function (poly, A, Bp) { var out = []; for (var j = 0; j < poly.length; j++) { var P1 = poly[j], P2 = poly[(j + 1) % poly.length];
+            var s1 = (Bp[0] - A[0]) * (P1[1] - A[1]) - (Bp[1] - A[1]) * (P1[0] - A[0]), s2 = (Bp[0] - A[0]) * (P2[1] - A[1]) - (Bp[1] - A[1]) * (P2[0] - A[0]);
+            if (s1 >= 0) out.push(P1); if ((s1 >= 0) !== (s2 >= 0)) { var q = s1 / (s1 - s2); out.push([P1[0] + (P2[0] - P1[0]) * q, P1[1] + (P2[1] - P1[1]) * q]); } } return out; };
+        var areaOf = function (p) { var s = 0; for (var j = 0; j < p.length; j++) { var q1 = p[j], q2 = p[(j + 1) % p.length]; s += q1[0] * q2[1] - q2[0] * q1[1]; } return Math.abs(s) / 2; };
+        var pairs = new Map(), nbr = new Map();
+        var link = function (fa, fb) { var k2 = fa < fb ? fa * 67108864 + fb : fb * 67108864 + fa; if (pairs.has(k2)) return; pairs.set(k2, 1);
+            (nbr.get(fa) || (nbr.set(fa, []), nbr.get(fa))).push(fb); (nbr.get(fb) || (nbr.set(fb, []), nbr.get(fb))).push(fa); };
+        var runs = [];
+        for (var s0 = 0; s0 < n;) { var s1 = s0 + 1, k0 = KEY[ordA[s0]]; while (s1 < n && KEY[ordA[s1]] === k0) s1++; runs.push(s0, s1); s0 = s1; }
+        for (var ri = 0; ri < runs.length; ri += 2) {
+            var ra = runs[ri], rb = runs[ri + 1], members = [];
+            for (var q = ra; q < rb; q++) members.push(ordA[q]);
+            if (ri + 2 < runs.length && KEY[ordA[runs[ri + 2]]] === KEY[ordA[ra]] + 1) for (q = runs[ri + 2]; q < runs[ri + 3]; q++) members.push(ordA[q]);
+            if (members.length < 2) continue;
+            var f0 = -1, many = false; for (q = 0; q < members.length && !many; q++) { var ftq = faceOfT(members[q]); if (f0 < 0) f0 = ftq; else if (ftq !== f0) many = true; }
+            if (!many) continue;
+            var T2 = members.map(function (k) { return tri2(k, {}); }), grid = new Map();
+            for (q = 0; q < T2.length; q++) { var tq = T2[q], gx0 = Math.floor(tq.x0 / CELL), gx1 = Math.floor(tq.x1 / CELL), gy0 = Math.floor(tq.y0 / CELL), gy1 = Math.floor(tq.y1 / CELL);
+                if ((gx1 - gx0 + 1) * (gy1 - gy0 + 1) > 400) { gx1 = gx0; gy1 = gy0; tq.big = true; }
+                for (var gx = gx0; gx <= gx1; gx++) for (var gy = gy0; gy <= gy1; gy++) { var gk = gx * 1048576 + gy, cl = grid.get(gk); if (!cl) grid.set(gk, cl = []); cl.push(q); } }
+            var bigs = []; for (q = 0; q < T2.length; q++) if (T2[q].big) bigs.push(q);
+            var test = function (x, y) { var A2 = T2[x], B2 = T2[y]; if (A2.f === B2.f || A2.drop !== B2.drop) return;
+                if (A2.x0 >= B2.x1 || B2.x0 >= A2.x1 || A2.y0 >= B2.y1 || B2.y0 >= A2.y1) return;
+                var k3 = A2.f < B2.f ? A2.f * 67108864 + B2.f : B2.f * 67108864 + A2.f; if (pairs.has(k3)) return;
+                var poly = A2.p; for (var j = 0; j < 3 && poly.length; j++) poly = clip(poly, B2.p[j], B2.p[(j + 1) % 3]);
+                if (poly.length >= 3 && areaOf(poly) > MINA) link(A2.f, B2.f); };
+            grid.forEach(function (cl) { for (var x = 0; x < cl.length; x++) for (var y = x + 1; y < cl.length; y++) test(cl[x], cl[y]); });
+            for (q = 0; q < bigs.length; q++) for (var y2 = 0; y2 < T2.length; y2++) if (y2 !== bigs[q]) test(bigs[q], y2);
+            if ((++steps & 63) === 0 && _hqSliceDue()) yield;
+        }
+        if (!pairs.size) { if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] zsep: no faces share a plane (' + n + ' triangles, ' + Math.round(_alNow() - t0) + ' ms)'); return; }
+        /* pass 3: the layers. A face that cannot move (the ground, a bent sheet, a piece in several planes) is the floor of its stack; the rest,
+           biggest first, each one lift over the highest face it lies on */
+        var faces = Array.from(nbr.keys()), lvl = new Map(), movable = function (f) { return fFlat[f] && !fFix[f]; };
+        faces.sort(function (x, y) { var mx = movable(x), my = movable(y); if (mx !== my) return mx ? 1 : -1; return (fArea[y] - fArea[x]) || (x - y); });
+        var rank = new Map(); faces.forEach(function (f, r) { rank.set(f, r); });
+        faces.forEach(function (f) { var L2 = 0; if (movable(f)) nbr.get(f).forEach(function (o) { if (rank.get(o) < rank.get(f)) L2 = Math.max(L2, (lvl.get(o) || 0) + 1); }); lvl.set(f, Math.min(ZS.maxLayers, L2)); });
+        /* pass 4: the lift, in each piece's own space (a shared geometry is copied first) */
+        var lifted = 0, pieces = 0, inv3 = new THREE.Matrix3(), m3 = new THREE.Matrix3(), dW = new THREE.Vector3(), dir = new Map();
+        for (ci = 0; ci < list.length; ci++) {
+            var fov2 = faceOfV[ci], c3 = list[ci], any = false;
+            for (v = 0; v < fov2.length; v++) if ((lvl.get(fov2[v]) || 0) > 0) { any = true; break; }
+            if (!any) continue;
+            var g3 = c3.g;
+            { var cl3 = g3.clone(); for (var gk3 in g3) if (gk3.indexOf('_ew') === 0 && !(gk3 in cl3)) cl3[gk3] = g3[gk3]; c3.o.geometry = cl3; c3.g = cl3; g3 = cl3; }   // always a copy: a geometry may be shared (a kit's cache, another piece)
+            var P3 = g3.attributes.position, I3 = g3.index ? g3.index.array : null, neg3 = c3.M.determinant() < 0;
+            m3.setFromMatrix4(c3.M); inv3.copy(m3).invert();
+            /* each lifted face's front, from its first triangle */
+            dir.clear(); var nt3 = Math.floor(I3 ? I3.length / 3 : P3.count / 3);
+            for (t = 0; t < nt3; t++) { i0 = I3 ? I3[t * 3] : t * 3; var fl = fov2[i0], lv = lvl.get(fl) || 0; if (!lv || dir.has(fl)) continue;
+                i1 = I3 ? I3[t * 3 + 1] : t * 3 + 1; i2 = I3 ? I3[t * 3 + 2] : t * 3 + 2;
+                va.fromBufferAttribute(P3, i0).applyMatrix4(c3.M); vb.fromBufferAttribute(P3, i1).applyMatrix4(c3.M); vc.fromBufferAttribute(P3, i2).applyMatrix4(c3.M);
+                nm.crossVectors(e1.subVectors(vb, va), e2.subVectors(vc, va)); if (!(nm.lengthSq() > 0)) continue; nm.normalize(); if (neg3) nm.negate();
+                dW.copy(nm).multiplyScalar(lv * ZS.liftM * U).applyMatrix3(inv3); dir.set(fl, dW.clone()); lifted++; }
+            for (v = 0; v < P3.count; v++) { var dl = dir.get(fov2[v]); if (dl) P3.setXYZ(v, P3.getX(v) + dl.x, P3.getY(v) + dl.y, P3.getZ(v) + dl.z); }
+            P3.needsUpdate = true; g3.computeBoundingSphere(); if (g3.boundingBox) g3.computeBoundingBox();
+            c3.gv = P3.version; pieces++;
+            if ((++steps & 15) === 0 && _hqSliceDue()) yield;
+        }
+        if (typeof window !== 'undefined') window.EW_ZSEP_LAST = { pairs: pairs.size, faces: lifted, pieces: pieces, tris: n, ms: Math.round(_alNow() - t0) };
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] zsep: ' + pairs.size + ' face pairs shared a plane; lifted ' + lifted + ' faces on ' + pieces + ' pieces (' + n + ' triangles read, ' + Math.round(_alNow() - t0) + ' ms)');
+    }
     /* the build (a generator, sliced): the pieces still as they were at the scan, grouped by look + square, merged */
     function* _hqBatchBuild(R, B) {
         var root = R[B.grp]; if (!root || !root.parent) return;
         root.updateMatrixWorld(true);
         var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), tmp = new THREE.Matrix4(), groups = {}, keys = [], n = 0;
         var U = _hqUnits(), T = (HQ_BATCH.cellM || ((typeof HQ_ENGINE_RULES !== 'undefined') && HQ_ENGINE_RULES.tileM) || 32) * U, sph = new THREE.Vector3(), mk = {};
+        if (_hq && root === _hq.shellGroup) yield* _hqZSep(B.cands, U);   // THE ZSEP: faces sharing a plane, the smaller lifted (once, before the merge reads them)
         B.vc = !!(((_hq && root === _hq.shellGroup && _hqChunkBig(_hq)) || R.field) && !(typeof window !== 'undefined' && (window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_ONE_PAINT)));   // THE ONE PAINT (+ THE FIELD MERGE: the fight's pieces merge as the walk's did)
         for (var i = 0; i < B.cands.length; i++) {
             var c = B.cands[i];
