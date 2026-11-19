@@ -47428,11 +47428,17 @@ const ThreeRenderer = (function () {
             return ua.call(this, attribute, type);
         };
     }
+    var EW_FREE_PER_FRAME = 48;
     function _ewGpuFreeLater(r) {
         var q = r._ew_freeLater;
         if (!q || !q.length) return;
-        r._ew_freeLater = null;
-        for (var i = 0; i < q.length; i++) { try { q[i].destroy(); } catch (e) {} }
+        /* THE FREES SPREAD (2026-11-19, mondo's 13:44 F3: one slow frame, "render: node + rig ticks 11 ms", the tick that also runs
+           these frees): a chunk or a room let go frees hundreds of GPU buffers at once, all destroyed on the next frame. At most
+           EW_FREE_PER_FRAME are destroyed a frame now (a count, not a time: Firefox's clock is whole milliseconds); the rest wait,
+           already forgotten by three, so a later frame destroying them is as safe. All at once: window.EW_FREE_ALL_AT_ONCE. */
+        var cap = (typeof window !== 'undefined' && window.EW_FREE_ALL_AT_ONCE) ? q.length : EW_FREE_PER_FRAME, n = Math.min(cap, q.length);
+        for (var i = 0; i < n; i++) { try { q[i].destroy(); } catch (e) {} }
+        if (n >= q.length) r._ew_freeLater = null; else q.splice(0, n);
     }
     /* ══ THE LIGHT RIG (WEBGPU_PLAN W5a, 2026-10-04: battle + spell performance on the node renderer) ═══════════════════
        three's node renderer bakes the scene's light LIST into every shader: LightsNode's cache key is each light's id and
@@ -51120,7 +51126,7 @@ const ThreeRenderer = (function () {
                model mask) is drawn before the frame and is not it either */
             var quad = !!(sc && sc.isQuadMesh), side = !!this._ew_sideRender;
             var outer = !depth && !shadowPass && !quad && !side;
-            if (outer) { this._ew_shadowFrame = true; var _nsp = _lensIn('render: node + rig ticks'); try { _ewGpuFreeLater(this); _ewNodeTick(); _ewRigTick(sc, cam); } finally { _lensOut(_nsp); } var _bsp = _lensIn('bundle check'); try { _ewBunTick(this, sc, cam); } finally { _lensOut(_bsp); } }
+            if (outer) { this._ew_shadowFrame = true; var _fsp = _lensIn('render: gpu frees'); try { _ewGpuFreeLater(this); } finally { _lensOut(_fsp); } var _nsp = _lensIn('render: node + rig ticks'); try { _ewNodeTick(); _ewRigTick(sc, cam); } finally { _lensOut(_nsp); } var _bsp = _lensIn('bundle check'); try { _ewBunTick(this, sc, cam); } finally { _lensOut(_bsp); } }
             /* THE RENDER BUNDLES (W6): a point light's six cube faces share one camera — they draw the groups the classic
                way, frustum-culled per face, instead of replaying a bundle recorded unculled */
             var unb = shadowPass && cam && cam.isPerspectiveCamera && _ewBun.marked.length ? _ewBun.marked : null;
