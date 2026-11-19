@@ -74,7 +74,7 @@ const ThreeRenderer = (function () {
             'EW_NO_TRUE_DRAPE EW_NO_TWIN_SHARE EW_NO_UNIT_INK EW_NO_UNIT_POP EW_NO_UNIT_RIM EW_NO_VFX_CLEANUP EW_NO_XMAS_PACK EW_NO_ZONE_DECALS EW_NO_ZONE_STEPS ' +
             'EW_OCEAN_STILL EW_OLD_POST EW_PERF_LOW EW_PLATE_ANIM_MS EW_PLATE_DEPTH_ALL EW_PLATE_PILE EW_POP EW_PP_LIB EW_PROC_EYES EW_PROC_ONE_MODEL ' +
             'EW_RAYS_ANY_LIGHT EW_RIG_LIST_EVERY_ADD EW_RIG_NO_PREGROW EW_RIG_WALK_EVERY EW_RIM EW_RISE_MS EW_SC_WARM_IN_PLAY EW_SHADOW_CHUNK_ALL ' +
-            'EW_SHADOW_REACH_LOOSE EW_SHADOW_REACH_OFF EW_SHEET_ANY_DENSITY EW_SHEET_REAL_SIZE EW_SIM_NO_RENDER EW_STYLE_MASK_PROPS EW_TERRAIN_ALL_SAMPLES ' +
+            'EW_SHADOW_REACH_LOOSE EW_SHADOW_REACH_OFF EW_SHADOW_KEY_EVERY EW_SHEET_ANY_DENSITY EW_SHEET_REAL_SIZE EW_SIM_NO_RENDER EW_STYLE_MASK_PROPS EW_TERRAIN_ALL_SAMPLES ' +
             'EW_TERRAIN_COLORS EW_TEXT_LIB EW_TIMER_WATCH_OFF EW_TURBO_FRAME_MS EW_WALK_KEEP_UNITS EW_WORLD_MODE EW_WORLD_STAB EW_ZSEP_LAST').split(' ');
         for (var i = 0; i < names.length; i++) {
             var k = names[i];
@@ -48497,12 +48497,29 @@ const ThreeRenderer = (function () {
         if (!P || P._ew_instShare || typeof P.getMaterialCacheKey !== 'function' || typeof P.getAttributes !== 'function') return;
         P._ew_instShare = true;
         var gk = P.getMaterialCacheKey, ga = P.getAttributes;
-        P.getMaterialCacheKey = function () {
-            var o = this.object;
-            if (!_ewInstShareOk(o)) return gk.call(this);
+        /* THE SHADOW KEY KEPT (2026-11-19, mondo's fourth Firefox profile, 70.9 FPS: `getMaterialCacheKey` 1 % of the frame, all of it
+           under the sun shadow's draws, and the first name among the frame's allocations, ~41 MB of short-lived garbage a second in
+           all). The shadow pass draws every caster with ONE shared material and copies each caster's alphaTest / side / maps onto
+           it per draw; three's `alphaTest` setter bumps the material's version whenever it crosses zero, so with cut-out and solid
+           casters mixed the version moves several times a frame, every shadow render object looks stale on every draw and its
+           key is built again: a string over every property of the material, then hashed. For a shadow-pass material the key is
+           now kept on the render object with the values the pass copies onto the material (and the geometry, receiveShadow, the
+           clipping key) and built again only when one of those differs. Off: window.EW_SHADOW_KEY_EVERY */
+        var gkInst = function (ro) {
+            var o = ro.object;
+            if (!_ewInstShareOk(o)) return gk.call(ro);
             var u = o.uuid;
             o.uuid = 'ewi:' + o.instanceMatrix.usage + ':' + (o.instanceColor ? 'c' + o.instanceColor.usage : '-');
-            try { return gk.call(this); } finally { o.uuid = u; }
+            try { return gk.call(ro); } finally { o.uuid = u; }
+        };
+        P.getMaterialCacheKey = function () {
+            var m = this.material;
+            if (!m || m.isShadowPassMaterial !== true || window.EW_SHADOW_KEY_EVERY) return gkInst(this);
+            var o = this.object, K = this._ew_smk, at = m.alphaTest > 0, g = o.geometry ? o.geometry.id : 0, ds = m.displacementScale !== 0, db = m.displacementBias !== 0, cc = this.clippingContextCacheKey;
+            if (K !== undefined && K.at === at && K.am === m.alphaMap && K.sd === m.side && K.cn === m.colorNode && K.dn === m.depthNode && K.pn === m.positionNode && K.dm === m.displacementMap && K.ds === ds && K.db === db && K.tr === m.transparent && K.g === g && K.rs === o.receiveShadow && K.cc === cc) return K.v;
+            var v = gkInst(this);
+            this._ew_smk = { at: at, am: m.alphaMap, sd: m.side, cn: m.colorNode, dn: m.depthNode, pn: m.positionNode, dm: m.displacementMap, ds: ds, db: db, tr: m.transparent, g: g, rs: o.receiveShadow, cc: cc, v: v };
+            return v;
         };
         P.getAttributes = function () {
             if (this.attributes !== null) return this.attributes;
