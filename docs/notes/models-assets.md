@@ -2195,4 +2195,5 @@ Known: the cape is one rigid piece on a hinge (legs can pass through it mid-run)
   side, every Ice Queen wears the ice sorceress supervillain (`icequeen/Meshy_AI_ice_queen_super_Running.glb`). Looks only; sprites.js
   getRace3DModel checks `ewSuperOnBoard()` before the creator look; three-renderer.js `_computeUnitStructuralSerial` hashes it so the swap
   lands when a super joins or falls. Guests see it too (it reads the synced units). A new super race goes in EW_SUPER_RACES.
+- Superhero M: the white + cobalt sun hero (`superhero/male/Meshy_AI_superhero_sun_Running.glb`, mondo 11-19); the caped sway model stays on R2.
 - Concepts, models, scripts: /mnt/project-files/new-char-concepts-20261119/ (gen.py text-to-image 9 credits, models.py image-to-3d + rig).

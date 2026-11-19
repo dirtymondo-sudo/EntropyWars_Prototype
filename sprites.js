@@ -3099,8 +3099,10 @@ const RACE_MODELS_3D = {
     // THE SWAY (2026-11-01, the first spring-bone test): the same export with 5 chains of cape bones baked in
     // (bake-sway.py) — the cape swings and streams behind him instead of riding his legs (three-renderer.js THE SWAY).
     // Optional per-character tuning: sway: { stiffness, gravity, drag, maxRoot, maxBend }.
-    male: _mkUAL('superhero/male', 'a_superhero', {
-      model: `${_S}/Races/superhero/male/Meshy_AI_a_superhero_Running_sway.glb`,
+    // 2026-11-19 THE SUN HERO (mondo picked "the one with the white costume"): white + cobalt suit, gold sun on the chest, no cape,
+    // Meshy made + rigged in the concepts thread. The caped sway model above stays on R2 (Meshy_AI_a_superhero_Running_sway.glb).
+    male: _mkUAL('superhero/male', 'superhero_sun', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/superhero/male/Meshy_AI_superhero_sun_Running.glb',
       heightRatio: 1.05,
       basicAttackKind: 'punch',
     }),
