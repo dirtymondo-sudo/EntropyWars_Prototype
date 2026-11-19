@@ -49333,13 +49333,19 @@ const ThreeRenderer = (function () {
             _ewBun.rpAsked = (_ewBun.rpAsked | 0) + asked; _ewBun.rpAll = (_ewBun.rpAll | 0) + bd.renderObjects.length;
         };
         var rb = r._renderBundle;
-        if (rb) r._renderBundle = function (bundle) {   // the count three keeps for the bundle, for ThreeRenderer.bundles()
+        if (rb) r._renderBundle = function (bundle) {
+            var rgT = _lensOn() ? performance.now() : 0;
+            try { return rbOne.apply(this, arguments); } finally { _lensSub('replay: a group, all of it', rgT); }
+        };
+        var rbOne = function (bundle) {   // the count three keeps for the bundle, for ThreeRenderer.bundles()
             var out, g0 = bundle.bundleGroup, fast = false, cur = false, bd0 = null;
             try {
                 bd0 = this.backend.get(this._bundles.get(g0, bundle.camera, this._currentRenderContext));
                 cur = bd0.bundleGPU !== undefined && g0.version === bd0.version && !!bd0.renderObjects;
                 if (cur && g0.static === true && bd0._ewLoopV === bd0.version && !(typeof window !== 'undefined' && window.EW_BUN_FULL_REFRESH)) {
+                    var rpT = _lensOn() ? performance.now() : 0;   // THE REPLAY'S SPLIT (lens): the refresh work vs the rest of a group's replay
                     rpReplay(this, bd0);
+                    _lensSub('replay: the refreshes', rpT);
                     this.backend.addBundle(this._currentRenderContext, this._bundles.get(g0, bundle.camera, this._currentRenderContext));
                     fast = true;
                 }
@@ -93471,6 +93477,7 @@ const ThreeRenderer = (function () {
         if (_hqInstOff() || !H.scene) return null;
         if (!_hqInstZero) { _hqInstZero = new THREE.Matrix4(); _hqInstZero.elements.fill(0); _hqInstM = new THREE.Matrix4(); }
         var grp = new THREE.Group(); grp.name = 'hq_instances';
+        grp.updateMatrixWorld = _hqInstGroupMW;   // THE STILL BATCHES' WALK
         var I = { group: grp, recs: [], copies: 0, batches: 0, left: 0, adds: 0, per: {}, at: performance.now(), scanAt: performance.now(), hook: null };
         H.inst = I;
         H.scene.add(grp);
@@ -93927,6 +93934,37 @@ const ThreeRenderer = (function () {
             if (c.visible === false) { c._ew_mwSkip = true; _hqStS.hid = (_hqStS.hid | 0) + 1; continue; }
             if (c._ew_mwSkip) { c._ew_mwSkip = false; c.updateMatrixWorld(true); continue; }
             c.updateMatrixWorld(force);
+        }
+    }
+    /* THE STILL BATCHES' WALK (2026-11-19, mondo's F3 in Disaster City: "Matrix walk by group: hq_instances 0.93"): the instance
+       pass's ~2,700 batches stand where they were made (their copies' places live in the batch's own buffer) and are never moved,
+       yet three composed each one's matrix every frame. Inside the frame's one walk, a cell off the camera is not walked (as THE
+       STILL WALK leaves an off-camera chunk), and in a drawn cell a batch is walked once when it joins and then only when the
+       group or its cell moved, or the batch's own pose changed (ten numbers compared). Off: window.EW_HQ_INST_MW_ALL. */
+    function _hqInstGroupMW(force) {
+        var proto = THREE.Object3D.prototype.updateMatrixWorld;
+        if (!_hqStWalk || (typeof window !== 'undefined' && window.EW_HQ_INST_MW_ALL)) return proto.call(this, force);
+        if (this.matrixAutoUpdate) this.updateMatrix();
+        var e0 = this.matrixWorld.elements, b0 = e0[12] + e0[13] * 1.618 + e0[14] * 2.414 + e0[0] * 3.3 + e0[5] * 5.7 + e0[10] * 7.1 + e0[1] * 11.3 + e0[2] * 13.7 + e0[6] * 17.9;
+        if (this.matrixWorldNeedsUpdate || force) {
+            if (this.matrixWorldAutoUpdate === true) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); }
+            this.matrixWorldNeedsUpdate = false;
+        }
+        var e = this.matrixWorld.elements, own = e[12] + e[13] * 1.618 + e[14] * 2.414 + e[0] * 3.3 + e[5] * 5.7 + e[10] * 7.1 + e[1] * 11.3 + e[2] * 13.7 + e[6] * 17.9;
+        var all = !!force || own !== b0 || own !== this._ew_mwSum; this._ew_mwSum = own;
+        var ch = this.children;
+        for (var i = 0, n = ch.length; i < n; i++) {
+            var c = ch[i];
+            if (c._ew_instCell == null) { c.updateMatrixWorld(true); continue; }   // a batch straight under the group (no cells): three's walk
+            if (c._ew_ckOut && !all) { c._ew_mwStale = true; continue; }
+            var p = c.position, q = c.quaternion, sc = c.scale, cs = p.x + p.y * 1.618 + p.z * 2.414 + q._x * 3.3 + q._y * 5.7 + q._z * 7.1 + q._w * 11.3 + sc.x * 13.7 + sc.y * 17.9 + sc.z * 19.3;
+            var cAll = all || c._ew_mwStale || cs !== c._ew_mwSum;
+            if (cAll) { c._ew_mwSum = cs; c._ew_mwStale = false; c.updateMatrix(); c.matrixWorld.multiplyMatrices(this.matrixWorld, c.matrix); c.matrixWorldNeedsUpdate = false; }
+            var cc = c.children;
+            for (var j = 0, m = cc.length; j < m; j++) {
+                var b = cc[j], bp = b.position, bq = b.quaternion, bs = b.scale, s2 = bp.x + bp.y * 1.618 + bp.z * 2.414 + bq._x * 3.3 + bq._y * 5.7 + bq._z * 7.1 + bq._w * 11.3 + bs.x * 13.7 + bs.y * 17.9 + bs.z * 19.3;
+                if (cAll || b._ew_mwSum !== s2 || b.matrixWorldNeedsUpdate || b.children.length) { b._ew_mwSum = s2; b.updateMatrixWorld(true); }
+            }
         }
     }
     function _hqStillSceneWalk(sc) {

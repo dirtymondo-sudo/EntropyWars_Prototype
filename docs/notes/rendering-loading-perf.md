@@ -3181,3 +3181,11 @@ group three replayed itself: recorded again, not static, or not yet seen through
   (`L.shr`, `rpShrList`) gets its shared refresh. A turn that writes or a batch rewritten sends that frame to the full loop with the
   wake already on (every object refreshed, only writers stay awake). Old loop: `window.EW_BUN_QUIET_LOOP`. The lens's bundles line
   adds "quiet groups N" (per frame, all passes).
+- THE STILL BATCHES' WALK (11-19, his 16:42 F3: 32.8 FPS, "Matrix walk by group: hq_instances 0.93", "quiet groups 311" yet "scene:
+  bundle replays 4.9"): the instance pass's ~2,700 batches never move (their copies' places live in the batch's buffer), yet three
+  composed each one's matrix every frame. `hq_instances` now walks itself in the frame's one walk (`_hqInstGroupMW`): an off-camera
+  cell is skipped (walked in full when it is back), and in a drawn cell a batch is walked when it joins, when its pose changed, or when
+  the group / cell moved. Off: `window.EW_HQ_INST_MW_ALL`.
+- THE REPLAY'S SPLIT (lens): "Inside the ticks" gets "replay: a group, all of it" (every group's whole replay, all passes) and "replay:
+  the refreshes" (the quiet replay's own work). The quiet groups did not lower "bundle replays", so the cost is either the refreshes
+  left (~160 a frame, each a full node update) or three's per-group steps around them; this says which.
