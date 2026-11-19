@@ -3,7 +3,7 @@
 const D = EW_DATA, RACE = {}, CAST = {}, ENT = {}, ENTS = [];
 /* roster entries: one per race variant (id r:<race> or r:<race>:<gender>) and one per story character (id s:<id>) */
 const raceId = (k, g) => { const r = RACE[k]; return r && r.v.length > 1 ? 'r:' + k + ':' + (r.v.some(v => v.g === g) ? g : r.dg) : 'r:' + k; };
-D.races.forEach(r => { RACE[r.k] = r; const d = r.v.find(v => v.g === r.dg) || r.v[0]; r.img = d.img; r.v.forEach(v => { const e = { id: raceId(r.k, v.g), kind: 'race', r, v, n: v.n, t: r.t, img: v.img }; ENT[e.id] = e; ENTS.push(e); }); });
+D.races.forEach(r => { RACE[r.k] = r; const d = r.v.find(v => v.g === r.dg) || r.v[0]; r.img = d.img; r.v.forEach(v => { const e = { id: raceId(r.k, v.g), kind: 'race', r, v, n: v.n, t: r.t, img: v.img, ip: v.ip }; ENT[e.id] = e; ENTS.push(e); }); });
 (D.cast || []).forEach(c => { CAST[c.id] = c; const e = { id: 's:' + c.id, kind: 'cast', c, n: c.n, t: c.t, img: c.img }; ENT[e.id] = e; ENTS.push(e); });
 const GRP_NAME = { cast: 'Story cast', tape: 'Orientation tape squad', boss: 'Bosses' }, GRP_BADGE = { cast: 'STORY', tape: 'TAPE', boss: 'BOSS' };
 const $ = id => document.getElementById(id);
@@ -288,7 +288,7 @@ const redo = () => { if (hi < hist.length - 1) restore(hi + 1); };
 /* ───────── model helpers ───────── */
 const initials = s => String(s || '?').split(/[\s\-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 function info(n) {
-  if (n.kind === 'race') { const r = RACE[n.race], v = r.v.find(x => x.g === n.g) || r.v.find(x => x.g === r.dg) || r.v[0]; return { name: n.nick || v.n, sub: n.nick ? v.n : '', gname: v.n, t: r.t, img: v.img, ini: initials(n.nick || v.n), race: r, v }; }
+  if (n.kind === 'race') { const r = RACE[n.race], v = r.v.find(x => x.g === n.g) || r.v.find(x => x.g === r.dg) || r.v[0]; return { name: n.nick || v.n, sub: n.nick ? v.n : '', gname: v.n, t: r.t, img: v.img, ip: v.ip, ini: initials(n.nick || v.n), race: r, v }; }
   if (n.kind === 'cast') { const c = CAST[n.cast]; return { name: n.nick || c.n, sub: n.nick ? c.n : '', gname: c.n, t: c.t, img: c.img, ini: initials(n.nick || c.n), cast: c, badge: GRP_BADGE[c.grp] }; }
   const r = n.race && RACE[n.race];
   return { name: n.name, sub: n.sub, t: n.faction ? [n.faction] : [], img: r ? r.img : '', ini: initials(n.name), sq: n.shape === 'org' || n.shape === 'place', boss: n.shape === 'boss', custom: true };
@@ -296,7 +296,7 @@ function info(n) {
 const nm = id => { const n = B.nodes[id]; return n ? info(n).name : '?'; };
 function picHTML(o) {
   const c1 = 'var(--f-' + (o.t[0] || 'none') + ')';
-  return '<div class="pic' + (o.sq ? ' sq' : '') + '" style="--c1:' + c1 + (o.t[1] ? ';--c2:var(--f-' + o.t[1] + ')' : '') + (o.img ? ';--img:url(' + o.img + ')' : '') + '">' + (o.img ? '' : esc(o.ini)) + '</div>';
+  return '<div class="pic' + (o.sq ? ' sq' : '') + '" style="--c1:' + c1 + (o.t[1] ? ';--c2:var(--f-' + o.t[1] + ')' : '') + (o.img ? ';--img:url(' + o.img + ')' + (o.ip ? ';--isz:240%;--ipos:50% 4%' : '') : '') + '">' + (o.img ? '' : esc(o.ini)) + '</div>';
 }
 function actorTarget(l) { return l.dir === 'ba' ? [l.b, l.a] : [l.a, l.b]; }
 function sentence(l, names, plain) {
@@ -501,7 +501,7 @@ function rosterGroups() {
 }
 let shown = [];
 function tileHTML(e, label) {
-  return '<button class="tile' + (B.nodes[e.id] ? ' onb' : '') + (e.kind === 'cast' ? ' story' : '') + '" data-id="' + esc(e.id) + '" title="' + esc(e.n + (e.kind === 'cast' ? (e.c.title ? ' · ' + e.c.title : '') : (e.r.home ? ' · ' + e.r.home : ''))) + '">' + picHTML({ t: e.t, img: e.img, ini: initials(e.n) }) + '<span>' + esc(label || e.n) + '</span></button>';
+  return '<button class="tile' + (B.nodes[e.id] ? ' onb' : '') + (e.kind === 'cast' ? ' story' : '') + '" data-id="' + esc(e.id) + '" title="' + esc(e.n + (e.kind === 'cast' ? (e.c.title ? ' · ' + e.c.title : '') : (e.r.home ? ' · ' + e.r.home : ''))) + '">' + picHTML({ t: e.t, img: e.img, ip: e.ip, ini: initials(e.n) }) + '<span>' + esc(label || e.n) + '</span></button>';
 }
 function renderRoster() {
   const gs = rosterGroups(); shown = []; let h = '';
@@ -928,7 +928,7 @@ let rdrag = null, swallow = false;
 $('rlist').addEventListener('pointerdown', e => { const t = e.target.closest('.tile'); if (!t || e.pointerType === 'touch' || e.button !== 0) return; rdrag = { k: t.dataset.id, sx: e.clientX, sy: e.clientY, on: false }; });
 window.addEventListener('pointermove', e => {
   if (!rdrag) return; const g = $('ghost');
-  if (!rdrag.on) { if (Math.hypot(e.clientX - rdrag.sx, e.clientY - rdrag.sy) < 7) return; rdrag.on = true; const en = ENT[rdrag.k]; g.innerHTML = picHTML({ t: en.t, img: en.img, ini: initials(en.n) }); g.hidden = false; }
+  if (!rdrag.on) { if (Math.hypot(e.clientX - rdrag.sx, e.clientY - rdrag.sy) < 7) return; rdrag.on = true; const en = ENT[rdrag.k]; g.innerHTML = picHTML({ t: en.t, img: en.img, ip: en.ip, ini: initials(en.n) }); g.hidden = false; }
   g.style.left = e.clientX + 'px'; g.style.top = e.clientY + 'px';
 });
 window.addEventListener('pointerup', e => {

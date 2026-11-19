@@ -54,7 +54,7 @@ function places() {
     const name = title(R.label.split(' · ').pop()); name.split(' + ').concat([name]).forEach(n => z.d.forEach(q => { if (!q.at && !q.x && (same(n, q.n) || same(q.n, n) || q.n.startsWith(n + ' +'))) q.at = at.map(v => +v.toFixed(2)); })); });
   const W = M.world; return { zones, world: { x0: W.x0, y0: W.y0, w: W.w, h: W.h, g: W.g, key: Object.fromEntries(Object.entries(W.key).map(([c, v]) => [c, v[2]])) } };
 }
-let rosterObj = JSON.parse(fs.readFileSync(d + '/roster.json', 'utf8')); rosterObj.places = places(); rosterObj.spawns = require('./spawns.js')(rosterObj);
+let rosterObj = JSON.parse(fs.readFileSync(d + '/roster.json', 'utf8')); rosterObj.places = places(); const freshAdded = require('./fresh.js')(rosterObj); if (freshAdded.length) console.log('new from the game:', freshAdded.join(', ')); rosterObj.spawns = require('./spawns.js')(rosterObj);
 const roster = JSON.stringify(rosterObj).replace(/</g, '\\u003c');
 const app = fs.readFileSync(d + '/app.js', 'utf8');
 if (/<\/script/i.test(app)) throw new Error('script close in app');

@@ -105,7 +105,7 @@ aside { background: var(--panel); display: flex; flex-direction: column; min-hei
 .tile.story .pic { border-radius: 22%; }
 .tile.onb .pic { opacity: .38; }
 .tile.onb::after { content: "on board"; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font: 500 8.5px var(--font-mono); text-transform: uppercase; letter-spacing: .04em; background: var(--ink); color: var(--panel); padding: 1px 4px; border-radius: 3px; white-space: nowrap; pointer-events: none; }
-.pic { border-radius: 50%; border: var(--rw, 2.5px) solid transparent; background: var(--img, linear-gradient(var(--panel2), var(--panel2))) padding-box center / cover no-repeat, conic-gradient(var(--c1, var(--f-none)) 0 50%, var(--c2, var(--c1, var(--f-none))) 50% 100%) border-box; display: grid; place-items: center; font: 600 15px var(--font-mono); color: var(--ink2); flex: none; }
+.pic { border-radius: 50%; border: var(--rw, 2.5px) solid transparent; background: var(--img, linear-gradient(var(--panel2), var(--panel2))) padding-box var(--ipos, center) / var(--isz, cover) no-repeat, conic-gradient(var(--c1, var(--f-none)) 0 50%, var(--c2, var(--c1, var(--f-none))) 50% 100%) border-box; display: grid; place-items: center; font: 600 15px var(--font-mono); color: var(--ink2); flex: none; }
 .pic.sq { border-radius: 16%; }
 .empty { color: var(--ink3); padding: 18px 4px; font-size: 13px; }
 
