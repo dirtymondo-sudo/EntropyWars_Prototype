@@ -49376,8 +49376,11 @@ const ThreeRenderer = (function () {
         return true;
     }
     function _ewBunTargets(H) {
-        var out = [];
-        function add(g, nm) { if (g && g.isObject3D && out.indexOf(g) < 0) { out.push(g); g._ew_bunName = nm; } }
+        /* THE ONE-STAMP LIST (2026-11-19): a group is in the list once by this call's stamp (was out.indexOf per group: 722 groups in
+           Disaster City = 260,000 compares a frame); the list array is kept and refilled */
+        var out = _ewBun.tOut || (_ewBun.tOut = []), tsm = _ewBun.tStamp = (_ewBun.tStamp | 0) + 1;
+        out.length = 0;
+        function add(g, nm) { if (g && g.isObject3D && g._ew_bunTS !== tsm) { g._ew_bunTS = tsm; out.push(g); g._ew_bunName = nm; } }
         var here = (H.opts && H.opts.room) || 'room';
         add(H.shellGroup, here + ' shell');
         var dck = 0, dg = H.doorGroup;
@@ -49576,6 +49579,7 @@ const ThreeRenderer = (function () {
            room (each wall / piece a bundle, 400 on the Atlantis board) rests the same way. Off: window.EW_BUN_FIELD_CHECK_EVERY. */
         var fieldEvery = typeof window !== 'undefined' && !!window.EW_BUN_FIELD_CHECK_EVERY;
         _ewBun.addN = addNB;
+        if (spL) { spL.pre = performance.now() - t0; spL.slowMs = 0; spL.slow = ''; }   // THE SPIKE'S SPLIT (11-19): the time before the groups, and the slowest group
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
             if (g._ew_ckOut) continue;   // THE CHUNKS: a chunk off the camera is not drawn and not checked; its recording waits for it
@@ -49607,7 +49611,7 @@ const ThreeRenderer = (function () {
             _ewBun.now = now;
             var twk = (_lens && _lens.cur) ? performance.now() : 0;
             if (walk) _ewBunWalkTop(g, S); else _ewBunWalk(g, S);
-            if (twk) { st.msA = (st.msA || 0) + performance.now() - twk; st.nA = S.n; }   // THE CHECK'S SPLIT (lens): this group's walk
+            if (twk) { var twd = performance.now() - twk; st.msA = (st.msA || 0) + twd; st.nA = S.n; if (spL && twd > spL.slowMs) { spL.slowMs = twd; spL.slow = String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, '') + (g._ew_pChunk || g._ew_chunk ? ' ' + (g._ew_pChunk || g._ew_chunk) : '') + ' ' + twd.toFixed(0) + ' ms (' + (S.n | 0) + ' pieces)'; } }   // THE CHECK'S SPLIT (lens): this group's walk; THE SPIKE'S SLOWEST (11-19)
             if (noM) { var ge = g.matrixWorld.elements; for (var gi = 0; gi < 16; gi++) S.hv = _ewBunMix(S.hv, Math.round(ge[gi] * 1000)); _ewBun.noMN = (_ewBun.noMN | 0) + 1; }
             g._ew_bunDirty = false;
             g._ew_bunOuts = S.outs || null;   // THE MOVERS OUT: the pieces the frame draws beside this group's recording
@@ -49665,7 +49669,7 @@ const ThreeRenderer = (function () {
             if (spMs >= 12 || spN >= 300) {   // (12 ms since 11-19: the 6 ms steady ticks pushed his 62-99 ms ones off the list)
                 var spW = []; for (var swk in W) { var swd = (W[swk] | 0) - (spL.w0[swk] | 0); if (swd > 0) spW.push(swk + ' ' + swd); }
                 spL.re.sort(function (a, b) { return b[1] - a[1]; });
-                (_ewBun.spikes || (_ewBun.spikes = [])).push(spMs.toFixed(0) + ' ms check · ' + spL.walked + ' walked · ' + spL.re.length + ' re-recorded (' + spN + ' meshes' + (spW.length ? '; ' + spW.join(', ') : '') + (lampMoved ? '; LAMPS MOVED' : '') + ')' + (spL.re.length ? ': ' + spL.re.slice(0, 3).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : ''));
+                (_ewBun.spikes || (_ewBun.spikes = [])).push(spMs.toFixed(0) + ' ms check (' + (spL.pre || 0).toFixed(0) + ' before the groups' + (spL.slow ? '; slowest ' + spL.slow : '') + ') · ' + spL.walked + ' walked · ' + spL.re.length + ' re-recorded (' + spN + ' meshes' + (spW.length ? '; ' + spW.join(', ') : '') + (lampMoved ? '; LAMPS MOVED' : '') + ')' + (spL.re.length ? ': ' + spL.re.slice(0, 3).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : ''));
                 if (_ewBun.spikes.length > 6) _ewBun.spikes.shift();
             }
         }
