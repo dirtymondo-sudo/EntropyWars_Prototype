@@ -5816,6 +5816,16 @@ Pass 1 of 5 (exteriors, interiors, dressing, atmosphere, polish). Only `docs/are
 - **NEEDS A MODEL:** ~~anvil, forge, trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows, prospector's tent, telegraph
   pole~~ all placed 11-16 ("THE MODEL PASS" below).
 
+## THE DESERT, AREA 51 + THE CIRCUS — THE VERTICALITY PASS (2026-11-19, the owner's world audit thread; docs/plans/world-polish/PLAN.md wave 1)
+- **AREA 51** (`districts/A.js`, the block at the end of `ground()`; `node bake-desert.js && node bake-desert-insides.js`, `node bake-map.js site_prebuilt_area51_desert`):
+  WATCHERS' PEAK = an earth ramp (squares x 10..13 · y 50..51) up the mesa north of the fence to its 5.25 m shelf; the rim's south side (y 52 · x 14..20) is an
+  overlook straight over the wire at Hangar 18, with a telescope and chairs. A line of low dunes (a `ridge`, 2.4 m) east of the watchers' camp, short of the
+  east road's seam. **Everything inside the wire stays level on purpose**: an airfield on a dry lake bed (the runway, the aprons, the lake bed, the yards).
+  Numbers: The Fence 0.2 -> 2.3 m, The Fence, east 0.1 -> 2.3. Seen through probe-fast.js, 4 views, no page error.
+- **THE CIRCUS was looked at and LEFT AS IT IS.** Nine plots, 46 pieces a plot, and nearly all of it drawn at a fixed height (the Big Top, the stalls, the rides:
+  `arch` rows) on a midway ring of roads with three seams. There is no free ground bigger than 4 x 8 squares, so any rise would bury a drawn piece or tilt
+  a midway. A fairground is level. If it is to get height it needs a rebuild of its drawn pieces to ride the ground (a tool-row job), not a district pass.
+
 ## THE DESERT, WESTERN TOWN — THE VERTICALITY PASS (2026-11-19, the owner's world audit thread; docs/plans/world-polish/PLAN.md wave 1, after Giza's pilot)
 File `districts/W.js` only (the block at the end of `ground()` + four moved props + Boot Hill's own row); `node bake-desert.js && node bake-desert-insides.js`,
 then `node bake-map.js site_prebuilt_area51_ow_town`. The rules it follows are Giza's ("THE DESERT, GIZA", THE VERTICALITY PASS).

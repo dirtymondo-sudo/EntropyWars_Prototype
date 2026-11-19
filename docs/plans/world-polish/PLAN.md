@@ -240,7 +240,8 @@ Dunes on the Sand Sea, the Canyon Stair to a lookout on the mesa's rim, the Deep
 district after it: `docs/notes/areas-complexes.md` "THE DESERT, GIZA", THE VERTICALITY PASS. The short of it: props ride the ground, monuments
 drawn from parts do not, so a monument district gets its height between its monuments. mondo 11-19 on Giza: "looks decent, continue".
 **WESTERN TOWN is built too (11-19):** Boot Hill raised, the Gulch with its plank bridge, the Ridge Trail to an outlook over the town
-(areas-complexes.md "THE DESERT, WESTERN TOWN — THE VERTICALITY PASS"). Next: the Circus, Area 51, the highways.
+(areas-complexes.md "THE DESERT, WESTERN TOWN — THE VERTICALITY PASS"). **AREA 51 (11-19):** Watchers' Peak (the mesa outside the wire climbed, an overlook over Hangar 18) and a dune line; inside the wire stays level on
+purpose. **THE CIRCUS: left as it is** (no free ground; its pieces are drawn at a fixed height). Next: the Desert Highway's legs and the route kit.
 
 ## 6. Questions for mondo
 
