@@ -14663,7 +14663,7 @@
             return true;
         }
 
-        const SKY_RACES = ['virus', 'fairy', 'shadow entity', 'ai', 'angel', 'seraphim', 'orb of light', 'demon', 'mech', 'ghost', 'annunaki', 'gargoyle', 'djinn', 'mothman', 'glitch', 'demon prince', 'demon princess', 'fallen angel', 'cyborg', 'nephilim', 'vampire', 'superhero', 'antihero', 'chosen one', 'dragon', 'occulus', 'valkraye', 'watcher', 'jellyfish', 'unicorn'];
+        const SKY_RACES = ['virus', 'fairy', 'shadow entity', 'ai', 'angel', 'seraphim', 'orb of light', 'demon', 'mech', 'ghost', 'annunaki', 'gargoyle', 'djinn', 'mothman', 'glitch', 'demon prince', 'demon princess', 'fallen angel', 'cyborg', 'nephilim', 'vampire', 'superhero', 'antihero', 'chosen one', 'dragon', 'occulus', 'valkraye', 'watcher', 'jellyfish', 'unicorn', 'jellyfish ufo'];   // + the jellyfish UFO (THE COMING RACES 2026-11-19: floats like the jellyfish)
         function unitHasJetpack(unit) { return unitHasAccessory(unit, 'jetpack'); }
         function canFly(unit) {
             /* 🪽 Levitating (CHAMP REWORK Phase 4, STATUS_DEFS grantsFlight):

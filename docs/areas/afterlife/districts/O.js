@@ -273,4 +273,5 @@ exports.people = ctx => { const { native, npc, gx, gz } = ctx, cx = gx(CX), cz =
     /* the fighters on the sand and their referee; a ringmaster at the Gate of Life; the plaza */
     native('swordfighter', 28, 15, 90, null, { gender: 'male' }); native('minotaur', 31, 15, 270); native('referee', 30, 17, 0); native('knight', 33, 17, 270); native('luchador', 26, 17, 90);
     native('ringmaster', 32, 3, 180); native('quarterback', 18, 29, 45);
+    native('gladiator', 29, 16, 0, null, { gender: 'male' }); native('gladiator', 32, 16, 270, null, { gender: 'female' });   // 2026-11-19 THE COMING RACES: the gladiators are home
 };

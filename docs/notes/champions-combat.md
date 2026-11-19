@@ -6142,7 +6142,7 @@ What is IN: sprites.js RACE_MODELS_3D (models on R2 `Assets/characters/races/gla
 RACE_CLASS for the jellyfish UFO only, and the new list data.js `EW_COMING_RACES`. The Relationship Web lists every race in
 AVAILABLE_RACES + EW_COMING_RACES (story-web/build/fresh.js).
 
-What is NOT in (the other account's job, one PR): the kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, a finisher, passives), stats
+**DONE 2026-11-19: the kits are in and all three are unlocked, see "THE COMING RACES, THE KITS" below.** What was NOT in (the other account's job, one PR): the kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, a finisher, passives), stats
 (RACE_BASE_STATS), RACE_PHYSIQUE, RACE_ELEMENT_AFFINITY, RACE_TERRAIN_PREFERENCE, EW_RACE_BIOMES, CAMPAIGN_RACE_PRICES, RACE_CLASS for the
 gladiator + farmer, party-builder.js + ui.js descriptions, residents / zone homes. THE UNLOCK: once a race has its kit, MOVE its key from
 `EW_COMING_RACES` into data.js `AVAILABLE_RACES` AND server.js `AVAILABLE_RACES` (keep both in step), bump `?v=`, upload. THE NEW RACES 3
@@ -6152,3 +6152,36 @@ Model notes: the gladiators' Meshy gold came out pale tan; their files were reco
 files `gladiator-farmer-concepts/gold.py`). The Jellyfish UFO has no Meshy rig: one body mesh + one tentacle mesh drawn 8 times under the
 waist, each copy skinned to its own 6-bone chain, and a 2 s looping clip `Sway` in the same file (`jelly.py`); its RACE_MODELS_3D row plays
 that clip as idle and walk (`clips.idle` = the file). Its claw arms do not move. Flight / hover height is the kit thread's call.
+
+## THE COMING RACES, THE KITS (2026-11-19, the second account's thread "spell and combat plans for the coming races"; mondo OK'd the plans in the thread)
+mondo's words: the Jellyfish UFO "is too close to a stereotypical UFO. We already have grey for that. The jellyfish UFO is just an advanced
+sentient Jellyfish species that lives underwater" (so no abduction kit, types Anomaly + Tech, home The Deep); "I don't like trident thrust or
+ave imperator" (trident = Atlantean): he picked **Sword Lunge** and **Come At Me**; the rest "all good". All three are UNLOCKED: data.js
+`AVAILABLE_RACES` + server.js `AVAILABLE_RACES` (EW_COMING_RACES is empty now). Every rule is in battle.js block "THE COMING RACES" (after
+the New Races 4 block); plain numbers on the unit (`favor`, `charge`) + the seed / plant / object rows, so the guest mirrors it by state-sync.
+- 🛡 **Gladiator** (bruiser, Human, M + F; earth resist, lightning weak; home the Colosseum, two natives in afterlife `districts/O.js`).
+  RULE THE CROWD: `unit.favor` 0-5, +1 a hit he lands on an enemy, +2 more on a knockout (`_crOnHit` from applyDamageToUnit); each Favor =
+  +4 % on all his damage (`_crFavorMult`, before the defences, not on DoT); a round with no hit of his loses 1 (`_crRoundEnd`). Kit: Net Toss
+  (T1, range 2, Root 1), Sword Lunge (T2, 2-square line, Bleed) | Shield Bash (T2, push 1, Stagger), Come At Me (T3, buff: +2 DEF stages,
+  every enemy within 2 Provoked 1 round, `comeAtMe`), Crowd Pleaser (T4, every adjacent enemy, `favorSpend` 50 a Favor, baked by
+  `_crCastRow`, spent in `_crAfterCast`). Finisher "Pollice Verso" (thousandCuts staging).
+- 🌾 **Farmer** (support, Human; nature resist, fire weak; home the Estate, two natives in `districts/R.js`, written by `bake-route.js R7`
+  since the Ranch is County Lane's room). RULE THE HARVEST: his seeds that find water at a round end grow at once (`_crIsFarmerSeed`, the
+  growth tick), his plant cap is 4 a kind (`_crPlantCapBonus` in _standPlant), and at a round end a grown plant beside him heals the ally
+  lowest on HP within 3 for 8 % (`_crRoundEnd`). Kit: Pitchfork Jab (T1, 2-square line, Bleed), Sow the Field (T2, `sowField`: Healing
+  Seeds on up to 4 free squares of a 3x3, the middle first; they still need water) | Hay Bale (T2, a 60 HP blocker, two at a time; look =
+  the wish-list `hay_bale.glb`, three-renderer.js `_DEPLOY_3D_BUILDERS.nrHayBale`), Get Off My Land! (T3, line 3, push 2, Feared), Harvest
+  Moon (T4, `harvestMoon`: every grown plant of his within 4 heals every ally next to it 15 % and hits every enemy next to it, then is cut;
+  refused with no plant). Finisher "Reap What You Sow" (gardenVariety staging).
+- 🪼 **Jellyfish UFO** (bruiser, Anomaly + Tech; psychic immune, lightning + water resist, earth weak; flies like the Jellyfish (map.js
+  SKY_RACES) and `deep_water` terrain, so it never drowns; home The Deep, two natives in `districts/T.js`). RULE BIOELECTRIC CHARGE:
+  `unit.charge` 0-3, +1 a physical (claw) hit on an enemy, +1 for ending a round on water; each Charge = +15 % on its lightning spells
+  (`_crChargeMult` in _spellCritRoll, chain hops too). Kit: Pincer Claw (T1, range 2, pull 1), Bioelectric Lash (T2, chain 110/75/50, x1.5 on
+  Wet) | Jet Pulse (T2, dash 3), Venom Injector (T3, adjacent, Poison; Stun 1 at 2+ Charge, `chargeStunAt`), Abyssal Overload (T4, radius 2
+  round itself, `chargeSpend` 50 a Charge, Wet targets Rooted via statusIfTargetHas). Finisher "Abyssal Glow" (theBloom staging).
+- DECISIONS MADE IN THE BUILD (small, for mondo to overrule): Sow the Field plants 4, not 9 (the Garden cap would wither the rest); Harvest
+  Moon hits enemies NEXT TO a plant (a plant fills its square, nobody stands on it); Pincer Claw reaches 2 (a pull from 1 square does
+  nothing); stats are first passes on the class medians, no Balance Lab run yet; no RACE_PASSIVES rows (the rules are the identity).
+- Proof: a probe (scratch, playtest_riders.js pattern + the jsdelivr modules through curl) cast every spell on the real engine: Favor 1 -> 3
+  -> 5 -> spent by Crowd Pleaser, Come At Me Provoked + DEF up, 4 seeds sown, the Hay Bale stood, Get Off My Land pushed + Feared, Harvest
+  Moon refused with no plant.

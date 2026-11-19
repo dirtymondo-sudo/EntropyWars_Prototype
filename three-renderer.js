@@ -12231,6 +12231,7 @@ const ThreeRenderer = (function () {
     _DEPLOY_3D_BUILDERS.nrUnload = function (x, y) { return _npDeployProp('https://cdn.entropywars.net/Assets/world/packs/pizzadoggy_psx_mega_pack/large_props/cardboard_box_2.glb', x, y, { w: 0.3 }); };
     _DEPLOY_3D_BUILDERS.nrJuryRig = function (x, y) { return _npDeployProp('https://cdn.entropywars.net/Assets/world/packs/elbolilloduro/ebd_housesonwater_generator.glb', x, y, { w: 0.4 }); };
     _DEPLOY_3D_BUILDERS.nrWetFloorSign = function (x, y) { return _npDeployProp('https://cdn.entropywars.net/Assets/world/hq/models/Meshy_AI_a_yellow_wet_floor_sign_0903105220_texture.glb', x, y, { h: 0.26 }); };
+    _DEPLOY_3D_BUILDERS.nrHayBale = function (x, y) { return _npDeployProp('https://cdn.entropywars.net/Assets/world/props/meshy/wishlist/hay_bale.glb', x, y, { w: 0.32 }); };   // 🌾 the Farmer's Hay Bale (THE COMING RACES 2026-11-19)
 
     /* Teleport gate pairs (Grave Passage / Tunnel Network) — until now
        state._gatePairs was never rendered AT ALL. Each endpoint gets a prop:

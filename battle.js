@@ -7138,6 +7138,7 @@
             /* 🎲 THE HOT STREAK (2026-11-19): a dice cast's every hit is ×_diceMult; a tails on Double or Nothing lands nothing */
             if (spell && spell._diceWhiff) return { dmg: 0, isCrit: false };
             if (spell && spell._diceMult > 0 && dmg > 0) dmg = Math.max(1, Math.round(dmg * spell._diceMult));
+            if (unit && unit.race === 'jellyfish ufo' && dmg > 0) dmg = Math.max(1, Math.round(dmg * _crChargeMult(unit, spell)));   // ⚡ BIOELECTRIC CHARGE
             const c = (spell && typeof spell.critChance === 'number') ? spell.critChance : 0;
             if (!(c > 0) || !(dmg > 0) || (target && unitCritWarded(target)) || engineRng() >= c) return { dmg, isCrit: false };   // Foresight wards spell crits too
             if (unit) unit._matchCrits = (unit._matchCrits || 0) + 1;
@@ -8088,6 +8089,7 @@
             }
             triggerTerrainSpellReaction(unit, spell, tiles);
             if (spell.aisleFour) _janitorAisle(unit, spell, tiles);   // 🧹 Cleanup on Aisle 4
+            if (spell.sowField) _crSowField(unit, spell, tiles);   // 🌾 Sow the Field
             /* THE SPELL AUDIT Batch D: aoeLifeDrain (Bat Swarm 30%, Nightmare Pulse 25%) — the caster heals that share
                of the TOTAL damage the area dealt across every victim (lifeSapMult rides it like drainPct). */
             if (spell.aoeLifeDrain > 0 && _aoeDrainTotal > 0 && unit && !unit.dead) {
@@ -12250,7 +12252,7 @@
         function _standPlant(seed, gx, gy) {
             if (!state.turrets) state.turrets = [];
             const caster = unitFromId(seed.casterUnitId);
-            const cap = PLANT_CAP_PER_TYPE + ((caster && typeof unitPassiveValue === 'function' && (unitPassiveValue(caster, 'plantCapBonus') | 0)) || 0);
+            const cap = PLANT_CAP_PER_TYPE + ((caster && typeof unitPassiveValue === 'function' && (unitPassiveValue(caster, 'plantCapBonus') | 0)) || 0) + _crPlantCapBonus(caster);   // 🌾 THE HARVEST: the farmer keeps 4
             const mine = state.turrets.filter(t => t.plant === seed.type && t.hp > 0 && t.casterUnitId === seed.casterUnitId);
             while (mine.length >= cap) _removePlant(mine.shift(), 'withers as a new one takes root');
             const maxHp = Math.max(PLANT_HP_MIN, Math.round(((caster && caster.maxHp) || 0) * PLANT_HP_PCT));
@@ -12793,7 +12795,7 @@
                 const sprouting = [], withered = [];
                 for (const seed of state.plantedSeeds) {
                     if (seed.watered) { sprouting.push(seed); continue; }
-                    if (_seedWaterSourceAt(seed.x, seed.y, seed.owner)) { _waterSeed(seed); continue; }
+                    if (_seedWaterSourceAt(seed.x, seed.y, seed.owner)) { _waterSeed(seed); if (_crIsFarmerSeed(seed)) sprouting.push(seed); continue; }   // 🌾 THE HARVEST: the farmer's grow a round sooner
                     seed.dryRounds = (seed.dryRounds || 0) + 1;
                     if (seed.type === 'plain' && seed.dryRounds >= SEED_PLAIN_DRY_ROUNDS) withered.push(seed);
                 }
@@ -14866,6 +14868,7 @@
                 else if (u.race === 'boltzmann brain') _boltzmannFluctuate(u);
                 else if (u.race === 'haunted doll') _dollCreep(u);
                 else if (u.race === 'monk') _monkStillness(u);   // 📿 THE STILLNESS
+                else if (u.race === 'gladiator' || u.race === 'farmer' || u.race === 'jellyfish ufo') _crRoundEnd(u);   // 🛡🌾⚡ THE COMING RACES
                 if (u.status && u.status.dormant > 0) _cicadaBrood(u);
                 /* 📺 THE TAPE (the Cursed TV): this round's recording becomes last round's, the one Rewind plays back */
                 if (u._tapeNow || u._tapeLast) { u._tapeLast = u._tapeNow || 0; u._tapeNow = 0; }
@@ -15163,6 +15166,159 @@
             });
         }
         window._nr4CastRow = _nr4CastRow; window._diceRollNow = _diceRollNow; window._monkStillness = _monkStillness; window._monkTurnStart = _monkTurnStart;
+        /* ═══ THE COMING RACES (2026-11-19, mondo OK'd the kits: the Gladiator, the Farmer, the Jellyfish UFO) ═══ One new rule a
+           race, host-side like THE NEW RACES 4: plain numbers on the unit (favor, charge) and the seeds / plants rows ride the
+           state sync; the texts go through showFloatingTextForUnit (relayed). Notes: docs/notes/champions-combat.md "THE COMING
+           RACES, THE KITS". */
+        const FAVOR_MAX = 5, FAVOR_STEP = 0.04, CHARGE_MAX = 3, CHARGE_STEP = 0.15;
+        const FARMER_PLANT_CAP_BONUS = 2, FARMER_GATHER_PCT = 0.08, FARMER_GATHER_RANGE = 3;
+        function _crFloat(u, txt, kind) { if (u && !u.dead && state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(u, txt, kind || 'buff', { durationMs: 1100, jitterY: -26 }); }
+        /* 🛡 THE CROWD: each Favor = +4% on all his damage (applyDamageToUnit scales the blow before the defences) */
+        function _crFavorMult(src, target, opts) {
+            if (!src || src.race !== 'gladiator' || !((src.favor | 0) > 0)) return 1;
+            if (!target || !sidesHostile(src.player, target.player) || (opts && (opts._linkEcho || opts.damageType === 'dot'))) return 1;
+            return 1 + FAVOR_STEP * Math.min(FAVOR_MAX, src.favor | 0);
+        }
+        /* applyDamageToUnit, a blow that landed: the Gladiator's Favor, the Jellyfish UFO's claw Charge */
+        function _crOnHit(src, target, opts) {
+            if (!src || !target || src.id === target.id || !sidesHostile(src.player, target.player)) return;
+            if (target._isCube || target._summonStatic || (opts && (opts._linkEcho || opts.damageType === 'dot'))) return;
+            if (src.race === 'gladiator') {
+                const before = src.favor | 0;
+                const gain = 1 + (target.hp <= 0 ? 2 : 0);
+                src.favor = Math.min(FAVOR_MAX, before + gain);
+                src._favorRound = state.round || 0;
+                if (src.favor !== before) {
+                    if (target.hp <= 0) addLog(`🛡 The crowd roars for ${_ctName(src)}: Favor ${src.favor} of ${FAVOR_MAX}.`);
+                    _crFloat(src, `👍 FAVOR ${src.favor}`, 'buff');
+                }
+            } else if (src.race === 'jellyfish ufo' && opts && opts.damageType === 'physical') {
+                if ((src.charge | 0) >= CHARGE_MAX) return;
+                src.charge = (src.charge | 0) + 1;
+                _crFloat(src, `⚡ CHARGE ${src.charge}`, 'buff');
+            }
+        }
+        /* ⚡ BIOELECTRIC CHARGE: +15% a Charge on its lightning spells (_spellCritRoll, every hit, chain hops too) */
+        function _crChargeMult(unit, spell) {
+            if (!unit || unit.race !== 'jellyfish ufo' || !spell || spell.element !== 'lightning') return 1;
+            return 1 + CHARGE_STEP * Math.max(0, Math.min(CHARGE_MAX, unit.charge | 0));
+        }
+        /* the cast's own copy (doSpell, by _nr4CastRow): Crowd Pleaser + Abyssal Overload bake their spend into dmg, Venom
+           Injector adds its Stun at 2+ Charge */
+        function _crCastRow(unit, spell) {
+            if (!spell || !unit || !(spell.favorSpend || spell.chargeSpend || spell.chargeStunAt)) return spell;
+            const s = Object.assign({}, spell);
+            if (spell.favorSpend) s.dmg = (spell.dmg || 0) + spell.favorSpend * Math.max(0, Math.min(FAVOR_MAX, unit.favor | 0));
+            if (spell.chargeSpend) s.dmg = (spell.dmg || 0) + spell.chargeSpend * Math.max(0, Math.min(CHARGE_MAX, unit.charge | 0));
+            if (spell.chargeStunAt && (unit.charge | 0) >= spell.chargeStunAt) s.statusEffects = (spell.statusEffects || []).concat([{ id: 'stun', duration: 1 }]);
+            return s;
+        }
+        /* finishAction: the spends */
+        function _crAfterCast(unit, spell) {
+            if (!unit || !spell) return;
+            if (spell.favorSpend && (unit.favor | 0) > 0) { addLog(`🛡 ${_ctName(unit)} gives the crowd everything: ${unit.favor} Favor spent.`); unit.favor = 0; }
+            if (spell.chargeSpend && (unit.charge | 0) > 0) { addLog(`⚡ ${_ctName(unit)} empties its bell: ${unit.charge} Charge spent.`); unit.charge = 0; }
+        }
+        /* 🛡 Come At Me (`comeAtMe`, the buff branch): every enemy within the radius is Provoked by him */
+        function _crComeAtMe(unit, spell) {
+            const c = spell && spell.comeAtMe; if (!c || !_nrAlive(unit)) return;
+            const r = c.radius || 2;
+            let n = 0;
+            for (const e of (state.units || [])) {
+                if (!_nrAlive(e) || !sidesHostile(unit.player, e.player)) continue;
+                if (Math.max(Math.abs(e.x - unit.x), Math.abs(e.y - unit.y)) > r) continue;
+                applyStatusPayload(e, { id: 'taunt', duration: c.rounds || 1 }, `${spell.name}: `, unit);
+                if (unitHasStatus(e, 'taunt')) n++;
+            }
+            addLog(`🛡 ${_ctName(unit)}: "Come at me!" ${n ? `${n} enem${n === 1 ? 'y is' : 'ies are'} Provoked.` : 'Nobody takes the bait.'}`);
+        }
+        /* 🌾 THE HARVEST: his plants (cap +2 a kind, _standPlant), his seeds a round sooner (the growth tick) */
+        function _crIsFarmerSeed(seed) { const c = seed && unitFromId(seed.casterUnitId); return !!c && c.race === 'farmer'; }
+        function _crPlantCapBonus(caster) { return caster && caster.race === 'farmer' ? FARMER_PLANT_CAP_BONUS : 0; }
+        /* 🌾 Sow the Field (`sowField`, the area resolver): seeds on up to `max` free squares of the area, the middle first */
+        function _crSowField(unit, spell, tiles) {
+            const sf = spell && spell.sowField; if (!sf || !_nrAlive(unit) || !Array.isArray(tiles) || !tiles.length) return 0;
+            if (!state.plantedSeeds) state.plantedSeeds = [];
+            const c = tiles[Math.floor(tiles.length / 2)] || tiles[0];
+            const order = tiles.slice().sort((a, b) => (Math.abs(a.x - c.x) + Math.abs(a.y - c.y)) - (Math.abs(b.x - c.x) + Math.abs(b.y - c.y)));
+            let n = 0, wet = 0;
+            for (const t of order) {
+                if (n >= (sf.max || 4)) break;
+                if (!isInside(t.x, t.y) || !isTerrainPassable(t.x, t.y)) continue;
+                if (state.plantedSeeds.some(q => q.x === t.x && q.y === t.y) || plantAt(t.x, t.y)) continue;
+                const v = unitAt(t.x, t.y);
+                if (v && sidesHostile(v.player, unit.player)) continue;
+                if (getTerrainAt(t.x, t.y) !== 'grass' && getTerrainAt(t.x, t.y) !== 'water') setTerrainAt(t.x, t.y, 'grass');
+                const seed = { x: t.x, y: t.y, z: (typeof getHeightAt === 'function') ? getHeightAt(t.x, t.y) : 0, type: sf.type || 'heal', owner: unit.player, casterUnitId: unit.id, growth: 0 };
+                state.plantedSeeds.push(seed);
+                if (_seedWaterSourceAt(t.x, t.y, unit.player)) { _waterSeed(seed, true); wet++; }
+                n++;
+            }
+            if (n) {
+                _invalidateBoardGrid();
+                state._seedTick = (state._seedTick || 0) + 1;
+                addLog(`🌾 ${_ctName(unit)} sows ${n} Healing Seed${n === 1 ? '' : 's'}${wet ? ` (${wet} watered already)` : ''}. They need water to sprout.`);
+                scheduleBoardRender();
+            } else addLog(`🌾 ${_ctSp(spell.name)}: no free ground to sow.`);
+            return n;
+        }
+        /* 🌾 Harvest Moon (`harvestMoon`, the buff branch): his grown plants within the radius */
+        function _crHarvestPlants(unit, spell) {
+            const h = spell && spell.harvestMoon; if (!h || !unit) return [];
+            const r = h.radius || 4;
+            return _livePlants().filter(p => p.casterUnitId === unit.id && Math.max(Math.abs(p.x - unit.x), Math.abs(p.y - unit.y)) <= r);
+        }
+        function _crHarvestMoon(unit, spell) {
+            const h = spell && spell.harvestMoon; if (!h || !_nrAlive(unit)) return;
+            const plants = _crHarvestPlants(unit, spell);
+            const dmg = calcFlatSpellDamage(h.dmg || 130, spellPowerOf(unit, spell), 16);
+            let healed = 0, hit = 0;
+            for (const p of plants) {
+                for (const u of (state.units || []).slice()) {
+                    if (!_nrAlive(u) || Math.max(Math.abs(u.x - p.x), Math.abs(u.y - p.y)) > 1) continue;
+                    if (sidesAllied(u.player, unit.player)) {
+                        const got = applyHealingToUnit(u, Math.max(1, Math.round((u.maxHp || 0) * (h.healPct || 0.15))), unit, { preScaled: true });
+                        if (got) healed++;
+                    } else if (sidesHostile(u.player, unit.player)) {
+                        applyDamageToUnit(u, dmg, `${spell.name}: the harvest hits `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null });
+                        hit++;
+                    }
+                }
+                _removePlant(p, 'is harvested');
+            }
+            addLog(`🌕 ${_ctName(unit)} brings in the harvest: ${plants.length} plant${plants.length === 1 ? '' : 's'} cut, ${healed} heal${healed === 1 ? '' : 's'}, ${hit} hit${hit === 1 ? '' : 's'}.`);
+        }
+        /* the round end (_nrRoundEnd): the crowd forgets, the farmer gathers, the bell charges in water */
+        function _crRoundEnd(u) {
+            if (!_nrAlive(u)) return;
+            const r = state.round || 0;
+            if (u.race === 'gladiator') {
+                if ((u.favor | 0) > 0 && u._favorRound !== r) {
+                    u.favor = (u.favor | 0) - 1;
+                    addLog(`🛡 The crowd grows bored with ${_ctName(u)}: Favor ${u.favor}.`);
+                }
+            } else if (u.race === 'farmer') {
+                const plant = _livePlants().find(p => Math.max(Math.abs(p.x - u.x), Math.abs(p.y - u.y)) <= 1);
+                if (!plant) return;
+                let best = null;
+                for (const a of (state.units || [])) {
+                    if (!_nrAlive(a) || !sidesAllied(a.player, u.player) || !(a.maxHp > 0) || a.hp >= a.maxHp) continue;
+                    if (Math.max(Math.abs(a.x - u.x), Math.abs(a.y - u.y)) > FARMER_GATHER_RANGE) continue;
+                    if (!best || a.hp / a.maxHp < best.hp / best.maxHp) best = a;
+                }
+                if (!best) return;
+                const got = applyHealingToUnit(best, Math.max(1, Math.round(best.maxHp * FARMER_GATHER_PCT)), u, { preScaled: true });
+                if (got) addLog(`🌾 ${_ctName(u)} picks from the ${_plantName(plant.plant)}: ${_ctName(best)} eats and heals.`);
+            } else if (u.race === 'jellyfish ufo') {
+                const t = getTerrainAt(u.x, u.y);
+                if ((t === 'water' || t === 'deep_water') && (u.charge | 0) < CHARGE_MAX) {
+                    u.charge = (u.charge | 0) + 1;
+                    addLog(`⚡ ${_ctName(u)} drinks the current: Charge ${u.charge}.`);
+                    _crFloat(u, `⚡ CHARGE ${u.charge}`, 'buff');
+                }
+            }
+        }
+        window._crCastRow = _crCastRow; window._crRoundEnd = _crRoundEnd;
         /* ═══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit and asked for the pull-string spell) ═══ "Sits on the shelf, and
            moves when you look away." Host-side like the rest of THE NEW RACES 2: the squares, the facings, the statuses and the HP
            state-sync to the guest; the voice-box line comes from _nrHash (the unit id + the round), so the guest's log agrees.
@@ -43382,6 +43538,7 @@
             if (_pressDamageCollector) _collectPressHit(opts.sourceUnit || null, target, opts);
 
             const sourceUnit_pre = opts.sourceUnit || null;
+            if (damage > 0 && sourceUnit_pre && sourceUnit_pre.race === 'gladiator') damage = Math.max(1, Math.round(damage * _crFavorMult(sourceUnit_pre, target, opts)));   // 🛡 THE CROWD: +4% a Favor
             if (state.fogOfWar && !state.devAutoSim && sourceUnit_pre && sidesHostile(sourceUnit_pre.player, target.player)) {
                 const humanPlayer = getViewerPlayer();
                 if (humanPlayer && (target.player === humanPlayer || sourceUnit_pre.player === humanPlayer)) {
@@ -43649,6 +43806,7 @@
                 target._tapeNow = (target._tapeNow || 0) + finalDamage;   // 📺 THE TAPE: what it took this round (the Cursed TV's Rewind plays last round's back)
                 if (sourceUnit && sourceUnit.race === 'wendigo' && sidesHostile(sourceUnit.player, target.player)) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
                 if (sourceUnit && sourceUnit.race === 'cameraman' && target.hp > 0) _camFilm(sourceUnit, target);   // 🎥 THE FOOTAGE
+                if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);   // 🛡⚡ THE COMING RACES: Favor, claw Charge
 
                 /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
                    multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
@@ -84054,6 +84212,8 @@
             if (spell && (spell.viewersSpend || spell.viewersMarkAt || spell.viewersHealPer || spell.viewersDmgPer)) spell = _streamCastRow(unit, spell);
             /* 🎲📿 THE NEW RACES 4: a dice row / a stillness-spending row casts its own copy (_nr4CastRow) */
             if (spell && (spell.diceRoll || spell.stillnessSpend)) spell = _nr4CastRow(unit, spell);
+            /* 🛡⚡ THE COMING RACES: Crowd Pleaser / Abyssal Overload bake their spend, Venom Injector its Stun (_crCastRow) */
+            if (spell && (spell.favorSpend || spell.chargeSpend || spell.chargeStunAt)) spell = _crCastRow(unit, spell);
             /* Clash final authority: movement/positioning spells can never
                fire, whatever path armed them (kits are already stripped —
                this catches stale online/AI edge cases). */
@@ -84826,6 +84986,7 @@
                 if (unit._viewersHold) unit._viewersHold = false;
                 if (spell.viewersGain > 0) _viewersAdd(unit, spell.viewersGain, 'gets hearts in the chat');
                 _nr4AfterCast(unit, spell);   // 🎲📿🔒 THE NEW RACES 4: the streak, the stillness, the ransom
+                _crAfterCast(unit, spell);   // 🛡⚡ THE COMING RACES: Favor + Charge spent
                 if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
                     applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                 }
@@ -85167,6 +85328,10 @@
                     if (!_silentReject) { addLog(`${_ctSp(spell.name)}: nothing to clean within ${spell.mopUp.radius || 2}.`, _clickSeat()); playErrorSfx(); }
                     return 0;
                 }
+                if (spell.harvestMoon && !_crHarvestPlants(unit, spell).length) {
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no grown plant of ${_ctName(unit)}'s within ${spell.harvestMoon.radius || 4}.`, _clickSeat()); playErrorSfx(); }
+                    return 0;
+                }
                 if (spell.unload && !_truckerUnloadSquares(unit, spell).length) {
                     if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no room behind ${_ctName(unit)} to unload.`, _clickSeat()); playErrorSfx(); }
                     return 0;
@@ -85282,6 +85447,8 @@
                     if (spell.rideAlong && !unit.dead) _deliveryLoadUp(unit, spell);   // 🛵 Thirty Minutes or Less
                     if (spell.mopUp && !unit.dead) _janitorMopUp(unit, spell);   // 🧹 Mop Up
                     if (spell.unload && !unit.dead) _truckerUnload(unit, spell);   // 🚚 Unload
+                    if (spell.comeAtMe && !unit.dead) _crComeAtMe(unit, spell);   // 🛡 Come At Me
+                    if (spell.harvestMoon && !unit.dead) _crHarvestMoon(unit, spell);   // 🌾 Harvest Moon
                     if (spell.filterSwap && !_bt.dead) _influencerFilter(unit, _bt, spell);   // 🤳 Filter
                     if (spell.slimeRing && !unit.dead) { _sigVfxGeom('nrSaltProof:ring', unit.x, unit.y, 1, { owner: unit.player }); _slugRing(unit, spell); }   // 🐌 Salt-Proof Stance
                     markDirty('hud');

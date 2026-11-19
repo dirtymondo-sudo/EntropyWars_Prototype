@@ -8867,6 +8867,9 @@
             'trucker': 'Human. A long-haul trucker off the highway: plaid vest, grey beard, cowboy boots. Nobody gets left behind: the ones lined up behind him come along for the ride.',   // 2026-11-19 THE NEW RACES 3
             'pharaoh': 'Human + Divine. The god-king of the Nile and his queen, Cleopatra, from the Pyramids of Giza. The asp, the eye of the sun, and a tomb he raises on the field: the first time he falls he rises from it, and whoever breaks it is cursed.',
             'deep sea diver': 'Human + Tech. A deep sea diver from the wrecks off Atlantis, in a sealed glass bubble helmet. Her Depth Charge gives the Bends: every square a unit moves costs it HP, and her harpoon and shove make sure they move.',
+            'gladiator': 'Human. A gladiator of the Colosseum, male or female: crested bronze helmet, blue cape, net and short sword. He fights for the crowd: every hit wins Favor (up to 5), each Favor makes all his blows hit harder, and Crowd Pleaser spends it all at once.',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+            'farmer': 'Human. A farmer from the Estate\'s corn fields and ranch: straw hat, plaid shirt, muddy overalls and a pitchfork. His seeds grow a round sooner, he can keep twice the plants, a grown plant beside him heals his weakest ally, and Harvest Moon brings the whole crop in.',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+            'jellyfish ufo': 'Anomaly + Tech. Not a UFO: an advanced, sentient jellyfish species from the deep, the jellyfishes\' fighter. A glass bell full of lightning on a metal body with claw arms. Every claw hit and every round in water adds Charge (up to 3), each Charge makes its lightning hit harder, and Abyssal Overload lets it all out.',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
             'lifeguard': 'Human. The lifeguard of the Beach and Bayside. Red swimsuit, red tube, and nobody goes down on her watch.',   // 2026-11-16
             'chess piece': 'Anomaly. A black piece off the Looking-Glass board that plays as all six. Each piece spell turns it into that piece and strikes the way the piece captures; the piece it is decides how it moves.',   // 2026-10-29
             'cult leader': 'Human. Charismatic. Files no forms because the members file them for him — forty-one so far, all in the same handwriting. Operates out of the redwoods of Bohemian Grove, where an owl the size of a house is not the strangest thing at the altar. Subject exhibits verified influence over cooperative minds (charm, indoctrination, the passing of a cup) and an entourage that arrives before it is called for. The robes are cotton. The candles never go out. Do not drink anything he offers. Do not join.',
@@ -9051,7 +9054,7 @@
             return 'EW-' + (Math.abs(race.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 9000 + 1000);
         }
 
-        const _CODEX_SKY_RACES = ['virus','fairy','shadow entity','ai','angel','seraphim','orb of light','demon','mech','ghost','annunaki','gargoyle','djinn','mothman','glitch','demon prince','demon princess','fallen angel','cyborg','nephilim','vampire','superhero','antihero','chosen one','dragon','occulus','unicorn','valkraye','watcher'];
+        const _CODEX_SKY_RACES = ['virus','fairy','shadow entity','ai','angel','seraphim','orb of light','demon','mech','ghost','annunaki','gargoyle','djinn','mothman','glitch','demon prince','demon princess','fallen angel','cyborg','nephilim','vampire','superhero','antihero','chosen one','dragon','occulus','unicorn','valkraye','watcher','jellyfish','jellyfish ufo'];
 
         function _codexTraits(race) {
             const traits = [];

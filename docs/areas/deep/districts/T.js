@@ -27,4 +27,6 @@ exports.dress = ctx => {
 exports.people = ctx => { const { native, sayOf, O_ABYSS } = ctx;
     native('mermaid', 73, 27, 90, sayOf(O_ABYSS, 'mermaid', 0));                                 // "Do not go in the trench."
     native('kraken', 91, 31, 270, sayOf(O_ABYSS, 'kraken', 0));                                  // "THE SHIP."
-    native('deep sea fish', 88, 22, 200); native('deep sea fish', 85, 48, 20); native('kaiju', 92, 8, 180); };
+    native('deep sea fish', 88, 22, 200); native('deep sea fish', 85, 48, 20); native('kaiju', 92, 8, 180);
+    native('jellyfish ufo', 86, 24, 160); native('jellyfish ufo', 89, 44, 300);   // 2026-11-19 THE COMING RACES: the jellyfish UFOs live in the Trench
+};
