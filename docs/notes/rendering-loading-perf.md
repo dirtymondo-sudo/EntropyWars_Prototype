@@ -3354,3 +3354,20 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   Still in that F3: 59-71 ms gaps with 14-19 ms of JS (the cycle collector, ~15 ms shorter than before THE REST OF THE MAPS; the
   WebGPU backend's own maps and Firefox's GPU wrappers are what a next profile would name), and "new body: model + rig" without
   the bake (the clone + rig of a body, ~5-15 ms).
+- THE RESULT, SETTLED + THE SHADOW KEY KEPT (11-19, his 21:06 F3 + fourth Firefox profile, ~4 min after the load): **70.9 FPS, frame
+  14.2 ms, CPU 11.9 ms**, worst 25 ms. The cycle collector's slice is under 18 ms (was 62-64 before THE REST OF THE MAPS, 77-134
+  before THE MAPS ON THE OBJECTS): no `CCSlice` over 15 ms but one of 18. What the profile shows now:
+  (1) MAJOR GCs: two in 27 s (`FULL_GC_TIMER`, `CC_FINISHED`), each ~300 ms of marking in 60-73 slices, longest 38-59 ms: the JS
+  heap is ~800 MB (malloc heap 4.1-4.9 GB), and the mark time follows the live heap. Not cut here; the lever is the size of what
+  stays alive (the hidden originals of 15,800 merged pieces, the parked rooms).
+  (2) Short-lived garbage: 1,113 MB of nursery in 27 s (~41 MB/s, a minor GC about every frame, ~0.12 ms each). Of the minor GCs
+  with a game frame under them the first name by far was three's `RenderObject.getMaterialCacheKey` under the SUN SHADOW's draws
+  (also 1 % of the frame): the shadow pass draws every caster with one shared material and copies each caster's alphaTest onto
+  it; three's `alphaTest` setter bumps the material's version whenever it crosses zero, so with cut-out and solid casters mixed
+  every shadow render object looked stale on every draw and built its key string again. `_ewInstShareSetup`'s
+  `getMaterialCacheKey` now keeps a shadow-pass key on the render object with the values the pass copies (alphaTest > 0,
+  alphaMap, side, the three nodes, displacement, transparent, geometry id, receiveShadow, the clipping key). Off:
+  `window.EW_SHADOW_KEY_EVERY`. Probe: palm (cut-out), lamp post and body shadows draw as before, no page errors.
+  HOW TO READ ALLOCATIONS FROM A PLAIN PROFILE: the samples whose stack holds a `Nursery` / `Minor GC` frame, grouped by the
+  nearest JS frames above it, are a sample of the allocation sites weighted by bytes. 136 of 209 had no JS frame (the browser's
+  own objects, e.g. WebGPU wrappers per render).
