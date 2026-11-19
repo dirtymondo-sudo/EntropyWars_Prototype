@@ -15256,7 +15256,7 @@
             const n = _paintTimedTerrain(cx, cy, { terrain: 'water', radius: radius || 0, rounds: rounds || 2 }, unit, null, refZ != null ? refZ : unit.z) || 0;
             const r = radius || 0;
             for (const e of (state._timedTerrain || [])) {
-                if (e && e.terrain === 'water' && Math.max(Math.abs(e.x - cx), Math.abs(e.y - cy)) <= r) e.wetFloor = true;
+                if (e && e.terrain === 'water' && Math.max(Math.abs(e.x - cx), Math.abs(e.y - cy)) <= r) { e.wetFloor = true; e.wetFloorPlayer = unit.player; }
             }
             if (n) {
                 addLog(`🧹 ${_ctName(unit)} mops ${n} square${n !== 1 ? 's' : ''}: the floor is wet for ${rounds || 2} rounds.`);
@@ -15268,7 +15268,8 @@
         const _NR3_MESS = new Set(['swamp', 'oil', 'sludge', 'poison', 'poison_bog', 'lava', 'scorched', 'blood', 'water', 'ice', 'plague_flesh', 'purple_bog']);
         function _janitorClean(unit, tiles, dry) {
             const inA = new Set((tiles || []).map(t => t.x + ',' + t.y)), done = new Set();
-            const terr = (state._timedTerrain || []).filter(e => e && inA.has(e.x + ',' + e.y) && _NR3_MESS.has(e.terrain));
+            const terr = (state._timedTerrain || []).filter(e => e && inA.has(e.x + ',' + e.y) && _NR3_MESS.has(e.terrain)
+                && !(e.wetFloor && e.wetFloorPlayer != null && sidesAllied(e.wetFloorPlayer, unit.player)));   // his own side's wet floor is not mess
             for (const e of terr) done.add(e.x + ',' + e.y);
             const fires = Object.keys(state.burningTiles || {}).filter(k => inA.has(k));
             for (const k of fires) done.add(k);

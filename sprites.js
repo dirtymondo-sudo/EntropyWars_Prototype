@@ -2601,7 +2601,7 @@ const RACE_MODELS_3D = {
     male: _mkUAL('paparazzi', 'paparazzi', {
       model: `${_S}/Races/paparazzi/male/Meshy_AI_paparazzi_Running.glb`,
       heightRatio: 1.0, basicAttackKind: 'physical',
-      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/paparazzi_camera.glb', len: 0.09, grip: 0.3 } },
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/paparazzi_camera.glb', len: 0.14, grip: 0.3 } },
     }),
   },
   'mechanic': {

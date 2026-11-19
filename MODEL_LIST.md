@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1245 |
+| Meshy AI | no | 1250 |
 | Meshy AI, reworked by Claude | no | 10 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 86 |
@@ -63,6 +63,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | bligblog | `Assets/characters/races/bligblog/Meshy_AI_bligblog_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | boltzmann brain | `Assets/characters/races/boltzmann_brain/male/Meshy_AI_boltzmann_brain.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | bunny girl (female) | `Assets/characters/races/bunnygirl/Meshy_AI_bunny_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| cameraman | `Assets/characters/races/paparazzi/male/Meshy_AI_paparazzi_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | catgirl (female) — creator look also baked | `Assets/characters/races/catgirl/female/Meshy_AI_catgirl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | chef — creator look also baked | `Assets/characters/races/chef/male/Meshy_AI_chef_male_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | chess piece | `Assets/world/packs/chess/Low Poly Chess Set.fbx#Low_Poly_Black_Pawn` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
@@ -122,6 +123,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | ice queen (female) | `Assets/characters/races/icequeen/Meshy_AI_an_ice_queen_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | influencer (female) | `Assets/characters/races/influencer/female/Meshy_AI_influencer_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | jack o lantern | `Assets/characters/races/jackolantern/Meshy_AI_jack_o_lantern_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| janitor | `Assets/characters/races/janitor/male/Meshy_AI_janitor_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | jellyfish | `Assets/characters/races/jellyfish/Meshy_AI_a_jellyfish_king_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | juggernaut | `Assets/characters/races/juggernaut/Meshy_AI_a_giant_juggernaut_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | kaiju | `Assets/characters/races/kaiju/male/Meshy_AI_kaiju_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -149,6 +151,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | martian | `Assets/characters/races/martian/male/Meshy_AI_Green_martian_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mech | `Assets/characters/races/mech/male/Meshy_AI_mecha_mech_battle_m_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mech (female) | `Assets/characters/races/mech/female/Meshy_AI_mech_f2_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| mechanic | `Assets/characters/races/mechanic/male/Meshy_AI_mechanic_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | men in black — creator look also baked | `Assets/characters/races/homosapien/male/agent/Meshy_AI_men_in_black_male_ag_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mermaid | `Assets/characters/races/mermaid/male/Meshy_AI_merman_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | mermaid (female) | `Assets/characters/races/mermaid/female/Meshy_AI_mermaid_f2_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -227,6 +230,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | televangelist | `Assets/characters/races/televangelist/male/Meshy_AI_televangelist_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | time cop | `Assets/characters/races/police/Meshy_AI_a_cyberpunk_police_officer_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | tree person | `Assets/characters/races/treeperson/Meshy_AI_treeperson_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| trucker | `Assets/characters/races/trucker/male/Meshy_AI_trucker_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | undead | `Assets/characters/races/undead/Meshy_AI_undead_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | unicorn | `Assets/world/animals/horses/Horse_glb.glb#unicorn` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) + Meshy unicorn horn + Meshy angel wing |
 | valkraye (female) | `Assets/characters/races/valkraye/Meshy_AI_valkraye_r2_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
@@ -3602,6 +3606,7 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | cosmic_wraith_cape | `Assets/characters/gear/capes/cosmic_wraith_cape.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | angel_f_halo | `Assets/characters/gear/halos/angel_f_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | angel_m_halo | `Assets/characters/gear/halos/angel_m_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
+| paparazzi_camera | `Assets/characters/gear/held/paparazzi_camera.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | fairy_wing_single | `Assets/characters/gear/wings/fairy_wing_single.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | feathered_serpent | `Assets/characters/races/aztec/feathered_serpent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for Quetzalcoatl's serpent body (THE NEW RACES, mondo 2026-11-16) | three-renderer.js |
 | Meshy_AI_ice_queen_super_Running | `Assets/characters/races/icequeen/Meshy_AI_ice_queen_super_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) | sprites.js |
