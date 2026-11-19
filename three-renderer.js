@@ -54061,7 +54061,7 @@ const ThreeRenderer = (function () {
             if (st && st.calm && t0 - st.lastAt > 1500) { _dipClose(D, now); st = null; }   // (a run of slow frames with long gaps stays one dip)
             if (st) st.calm = false;
             if (!st) st = D.st = { at: new Date().toISOString().slice(11, 19), t: D.lastT0, lastAt: t0, frames: 0, worst: 0, minFps: 999, js: 0, parts: {}, where: _dipWhere(), c0: P.c, room: (_hq && _hq.opts && _hq.opts.room) || '' };
-            st.lastAt = t0; st.frames++; st.js += P.cpu; if (iv > st.worst) st.worst = iv; if (fps < st.minFps) st.minFps = fps;
+            st.lastAt = t0; st.frames++; st.js += P.cpu; if (!(_hq && _hq.ready)) st.loadF = (st.loadF | 0) + 1;   // a frame under the load card if (iv > st.worst) st.worst = iv; if (fps < st.minFps) st.minFps = fps;
             var M = P.parts; if (M) for (var pk in M) st.parts[pk] = (st.parts[pk] || 0) + M[pk];
             var S2 = P.sub; if (S2) for (var sk in S2) st.parts['> ' + sk] = (st.parts['> ' + sk] || 0) + S2[sk];
         } else if (D.st) { D.st.calm = true; if (t0 - D.st.lastAt > 1500) _dipClose(D, now); }
@@ -54078,7 +54078,7 @@ const ThreeRenderer = (function () {
             var tp = (st.top || (function () { var t = []; for (var k in st.parts) t.push([k, st.parts[k]]); t.sort(function (a, b) { return b[1] - a[1]; }); return t.slice(0, 4); })()).map(function (x) { return x[0] + ' ' + Math.round(x[1]); }).join(', ');
             if (open) { var c1 = _dipCounters(); d = { rec: c1.rec - st.c0.rec, ep: c1.ep - st.c0.ep, pb: c1.pb - st.c0.pb, pp: c1.pp - st.c0.pp, fr: c1.fr - st.c0.fr, add: c1.add - st.c0.add, ld: c1.ld - st.c0.ld }; }
             var hap = []; if (d.rec) hap.push(d.rec + ' re-recorded'); if (d.ep) hap.push('epoch moved ' + d.ep); if (d.pb) hap.push(d.pb + ' shader builds'); if (d.pp) hap.push(d.pp + ' new pipelines'); if (d.fr) hap.push(d.fr + ' GPU buffers freed'); if (d.add) hap.push(d.add + ' objects added'); if (d.ld) hap.push(d.ld + ' models loaded');
-            L.push('  ' + st.at + 'Z · ' + ((st.len != null ? st.len : st.lastAt - st.t) / 1000).toFixed(1) + ' s · ' + st.minFps + ' FPS · ' + Math.round(st.worst) + ' ms · ' + st.frames + ' frames, JS ' + Math.round(st.js) + ' ms · at ' + st.where + (st.whereEnd && st.whereEnd !== st.where ? ' → ' + st.whereEnd : '') + (open ? ' (still going)' : '') + ' · ' + (tp || 'no parts timed') + ' · ' + (hap.length ? hap.join(', ') : 'nothing loaded or rebuilt'));
+            L.push('  ' + st.at + 'Z · ' + ((st.len != null ? st.len : st.lastAt - st.t) / 1000).toFixed(1) + ' s · ' + st.minFps + ' FPS · ' + Math.round(st.worst) + ' ms · ' + st.frames + ' frames, JS ' + Math.round(st.js) + ' ms · at ' + st.where + (st.whereEnd && st.whereEnd !== st.where ? ' → ' + st.whereEnd : '') + (open ? ' (still going)' : '') + (st.loadF ? ' · LOADING (' + (st.loadF >= st.frames ? 'all' : st.loadF + ' of ' + st.frames) + ' frames under the load card)' : '') + ' · ' + (tp || 'no parts timed') + ' · ' + (hap.length ? hap.join(', ') : 'nothing loaded or rebuilt'));
         });
         return L;
     }

@@ -3147,6 +3147,7 @@ and the lens could not say which step. Three lens sub-marks now name it: "new bo
 (`_attachUnitModel` in `_hqSpawnCharacter`), "new body: clip bake (first of a model)" (`_libBakeClips` in `_animLibBakeForModel0`).
 They cost nothing with the lens shut. Next step decided by the readout: a big clip bake = slice the first bake of a model over frames;
 a big model + rig = a parked-body pool per model in `_hqResDispose` / `_hqResSpawn`.
+- THE DIP LOG MARKS THE LOAD (11-19, his 15:14 readout: a 32 s dip at 1 FPS = the city load): a dip whose frames ran under the load card (`!H.ready`) prints "LOADING (n of m frames under the load card)".
 - THE LIGHTS AT THE DESK + THE BODY'S OWN BOUNDS (11-19, his first dip log, 14:53): the dips after the load were 0.1-2 s at 21-43 FPS.
   (1) "render: node + rig ticks 7-8 ms" in 4 of 6 slow frames = `_ewRigRead` re-reading the whole scene (45K objects, own recursion, so
   the scan alarm missed it) on ANY add anywhere and every second. Now arrivals from the front desk (a light, or the lights under an
