@@ -22,6 +22,65 @@ const ThreeRenderer = (function () {
         };
         try { window.setTimeout = wrapT(window.setTimeout); window.setInterval = wrapT(window.setInterval); } catch (e) {}
     })();
+    /* THE FLAGS ARE THERE (2026-11-19, mondo's Firefox profiles: ~0.7-1.4 ms a frame inside `nsOuterWindowProxy::get`): reading a
+       property that does NOT exist off `window` cannot be cached by Firefox (it has to ask the page for an element of that name
+       each time), and this file's kill-switches (`window.EW_...`, nearly always unset) are read in per-object loops. Every flag name
+       this file and three-post.js read is given a place on `window` here (value undefined, hidden from key listings), so the same
+       read is a plain cached one. A flag already set (an init script, the console) is left alone; setting one later works as before.
+       The list: `grep -oh "window\.EW_[A-Z0-9_]*" three-renderer.js three-post.js | sort -u`; a name missing from it only reads slowly. */
+    (function () {
+        if (typeof window === 'undefined') return;
+        var names = (
+            'EW_ANIM_LIB_STANDARD_POSE EW_ANIM_LIB_URLS EW_AO_AT_ZERO EW_ARCH_BARE EW_ASYNC_NODE_BUILD EW_BARE_PANES EW_BATTLE_MW_EVERY_RENDER EW_BOARD_FOG_MS ' +
+            'EW_BUN_ADD_ALL EW_BUN_CHECK_EVERY EW_BUN_DRY EW_BUN_FIELD_CHECK_EVERY EW_BUN_FIRSTS_EACH EW_BUN_FULL_REFRESH EW_BUN_HASH_MATRICES EW_BUN_HELD_EVERY ' +
+            'EW_BUN_HELD_NO_SHARED EW_BUN_INST_NO_REST EW_BUN_NO_OUT EW_BUN_OUT_HIDE_HASH EW_BUN_OUT_RETURN_ALWAYS EW_BUN_QUIET_LOOP EW_BUN_REST_AT_5 ' +
+            'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
+            'EW_CC_NO_DETAILS EW_CC_NO_HEMS EW_CLOTH_COLLIDE EW_CSS2D_ALWAYS EW_CSS_PLATES EW_CUBE_NO_ANIM EW_CV_LIT_BAKES EW_DEATH_CAM_ALL_UNITS EW_DESK_OFF ' +
+            'EW_DIP_OFF EW_DISABLE_3D_UNITS EW_DISABLE_ANIM_LIB EW_DISABLE_BOOT_FIT EW_DISABLE_CANOPY_CUTAWAY EW_DISABLE_CLOTH_COLLIDE EW_DISABLE_COAT_FIT ' +
+            'EW_DISABLE_FACE_IDLE EW_DISABLE_GRASS_WIND EW_DISABLE_GRAVESTONES EW_DISABLE_JIGGLE EW_DISABLE_POWER_AURA EW_DISABLE_RIPPLE EW_DISABLE_SHADOW_GATING ' +
+            'EW_DISABLE_SKY_MOON_3D EW_DISABLE_SPELL_GRADE EW_DISABLE_SWAY EW_DISABLE_TERRAIN_MERGE EW_DISABLE_TILE_GLOW EW_DISABLE_WEAPON_GLB EW_FADE_OWN_SHADOW ' +
+            'EW_FC_PILE EW_FIELD_DISPOSE_ALL EW_FIELD_KEY_HIGH EW_FIELD_LAMPS_ALL EW_FIELD_NO_BATCH EW_FIELD_NO_INSTANCE EW_FREE_ALL_AT_ONCE EW_GGRASS EW_GHOST_OLD ' +
+            'EW_GPU_MADE EW_GPU_MODE EW_GPU_WEAKMAPS EW_GPU_WHY EW_GRASS_WIND_T EW_HAIR_STYLES EW_HALF_BLOCK EW_HERO_ALL_SIDES EW_HERO_NO_NEAR ' +
+            'EW_HERO_RIGID_EVERY_FRAME EW_HERO_SHADOW_EVERY_FRAME EW_HERO_SHADOW_UNSEEN EW_HIT_READ EW_HQ_AREA_OLD_CAP EW_HQ_BACK_NO_HOLD EW_HQ_BACK_OLD ' +
+            'EW_HQ_BATCH_CHECK_FAST EW_HQ_BATCH_CHECK_NOCAP EW_HQ_BATCH_CHECK_WHOLE EW_HQ_BATCH_FIRST_SLOW EW_HQ_BATCH_RESCAN_ALWAYS EW_HQ_BATCH_SCAN_WHOLE ' +
+            'EW_HQ_BATCH_SLICE_MS EW_HQ_CHAR_MW_ALL EW_HQ_CHUNK_MEASURE_ALL EW_HQ_CHUNK_MW_ALWAYS EW_HQ_CHUNK_POLL_2S EW_HQ_DEBUG EW_HQ_DRAW_DEAD_STRIP ' +
+            'EW_HQ_FINDS_ALL EW_HQ_FLIP_LEAVES EW_HQ_FLOOR_FULL_LIST EW_HQ_GRASS EW_HQ_INST_FULL_SCAN EW_HQ_INST_LEFT_ALL EW_HQ_INST_MW_ALL EW_HQ_INST_RESCAN_COUNT ' +
+            'EW_HQ_INST_SYNC_EVERY EW_HQ_INST_SYNC_HIDDEN EW_HQ_LADDER_OWN_LIST EW_HQ_LOS_FULL_LIST EW_HQ_MOTTO EW_HQ_MW_EVERY_RENDER EW_HQ_NAV_GRID_OFF ' +
+            'EW_HQ_NO_BARE_STACK EW_HQ_NO_BATCH EW_HQ_NO_CANOPY EW_HQ_NO_CHAR_CULL EW_HQ_NO_CHUNK_CULL EW_HQ_NO_CITY_BACKDROP EW_HQ_NO_CITY_MARKS EW_HQ_NO_CLEAR ' +
+            'EW_HQ_NO_CLIMB EW_HQ_NO_CROWD_CAP EW_HQ_NO_DISSOLVE EW_HQ_NO_DOOR_CHUNKS EW_HQ_NO_EDGE_LAND EW_HQ_NO_FIELD_DEFORM EW_HQ_NO_FIELD_STRATA ' +
+            'EW_HQ_NO_FIELD_WARM EW_HQ_NO_FINDS EW_HQ_NO_GLOW_BATCH EW_HQ_NO_GROUND_MERGE EW_HQ_NO_GROUND_ZONES EW_HQ_NO_GUN_LIGHT EW_HQ_NO_HALL_LIGHTS ' +
+            'EW_HQ_NO_INSTANCE EW_HQ_NO_LEY_VEINS EW_HQ_NO_LIT_KEY EW_HQ_NO_LOOSE EW_HQ_NO_MESH_COLLISION EW_HQ_NO_MOTION_BLUR EW_HQ_NO_MOVERS EW_HQ_NO_ONE_PAINT ' +
+            'EW_HQ_NO_PARK EW_HQ_NO_POST EW_HQ_NO_PROPS EW_HQ_NO_PROP_BATCH EW_HQ_NO_PROP_CHUNKS EW_HQ_NO_REAL_LAND EW_HQ_NO_RESIDENTS EW_HQ_NO_ROAD_MARKS ' +
+            'EW_HQ_NO_ROAD_TILES EW_HQ_NO_ROOM_IN_BATTLE EW_HQ_NO_ROUNDS EW_HQ_NO_SEA_FX EW_HQ_NO_SETTLE EW_HQ_NO_SHELL_CELLS EW_HQ_NO_SHELL_SINGLES ' +
+            'EW_HQ_NO_SIGNALS EW_HQ_NO_SKATE EW_HQ_NO_STACK EW_HQ_NO_STAGE EW_HQ_NO_SWIM EW_HQ_NO_TEX_BUILDINGS EW_HQ_NO_TILES EW_HQ_NO_TRAFFIC ' +
+            'EW_HQ_NO_TRUE_GROUND EW_HQ_NO_WORKS_LEAVES EW_HQ_NO_WORLD_EDGES EW_HQ_NO_ZSEP EW_HQ_ONLINE EW_HQ_PARK_STAGE EW_HQ_PC_LAMPS_OUT EW_HQ_PC_RETRY_ALL ' +
+            'EW_HQ_PC_SWEEP_ALL EW_HQ_RES_SPAWN_ALL EW_HQ_ROAD_TILES EW_HQ_SEAT_WHOLE EW_HQ_SIZE_EVERY_FRAME EW_HQ_SKATE EW_HQ_SKIN_BOUNDS_EXACT ' +
+            'EW_HQ_STACK_NO_SPLIT EW_HQ_STILL_MERGED_EVERY EW_HQ_STILL_NO_HELD_BOOK EW_HQ_NO_COVER EW_GPU_WEAKMAPS EW_HQ_STILL_OFF EW_HQ_STRAIGHT_EDGES EW_HQ_STUCK_FULL_LIST EW_HQ_WALK_GRID_OFF EW_HQ_WATER_STEPS ' +
+            'EW_INK_ON_GRASS EW_JUICE EW_KEEP_PBR_MAPS EW_KTX2_LIB EW_KTX2_P EW_LAMP_LIGHT_MAX EW_LIB_BAKE_ONE EW_LIGHTS_EVERY_PIXEL EW_LOAD_N8AO ' +
+            'EW_LOD_LAND_RESCAN EW_LS_AURA_TUNE EW_MAP_META EW_MASK_CHUNK_FULL_WALK EW_MASK_FILE_ANY_ADD EW_MASK_FULL_WALK EW_MASK_NO_BUNDLES EW_MEM_MB ' +
+            'EW_MENU_BIOME EW_MENU_CINE_SCALE EW_MENU_NO_POST EW_MM_DROP_ALL_AT_ONCE EW_MM_READ_EVERY_4S EW_MM_WALK_WHOLE EW_MOBILE EW_MODEL_DIFFUSE EW_MOUTH_REST ' +
+            'EW_N8AO EW_NO_3D_BATS EW_NO_AIR_DEATH EW_NO_ANIMALS EW_NO_ARM_CLEAR EW_NO_ASSET_MANIFEST EW_NO_ASSET_STORE EW_NO_AUTO_EXPOSURE EW_NO_BATTLE_CYCLE ' +
+            'EW_NO_BITMAPS EW_NO_BOARD_FOG EW_NO_BUNDLES EW_NO_BVH EW_NO_CALM_LOOK EW_NO_CAR_PACK EW_NO_CHESS_SET EW_NO_CITY_DOORS EW_NO_CLIFF_CUT ' +
+            'EW_NO_CLOTH_COLLIDE EW_NO_DECOR_GLB EW_NO_DISTRICT_LOOKS EW_NO_ENTROPY_STYLE EW_NO_FACILITY_SCENERY EW_NO_FIELD_FALLS EW_NO_FIELD_GAP ' +
+            'EW_NO_FIELD_MOUND EW_NO_FIELD_PATCH EW_NO_FIELD_RUNOFF EW_NO_FIELD_SKINS EW_NO_FIT_MEMO EW_NO_FOG_SHARE EW_NO_GEAR_WEAR EW_NO_GPU_TEXT ' +
+            'EW_NO_GRASS_FIELD EW_NO_GROUP_RUNS EW_NO_HALLOWEEN_PACK EW_NO_HDR_BLOOM EW_NO_HIT_SIDE EW_NO_HL_BACKING EW_NO_HL_GHOST EW_NO_HQ_FALLS EW_NO_HQ_GRASS ' +
+            'EW_NO_INST_SHARE EW_NO_KEY_LIGHT EW_NO_KNOCK EW_NO_KTX2 EW_NO_LATE_LOOK EW_NO_LEAVE_SWEEP EW_NO_LIGHT_MATCH EW_NO_LIGHT_RIG EW_NO_LIVE_PORTRAITS ' +
+            'EW_NO_LOD EW_NO_LS_OUTLINE_AURA EW_NO_MAP_MOTION EW_NO_MARKS_DEFORM EW_NO_MEM_BUDGET EW_NO_MENU_FADE EW_NO_MENU_SCENE EW_NO_METRO_PACK ' +
+            'EW_NO_MODEL_PORTRAITS EW_NO_MODEL_QUEUE EW_NO_MOVING_SHEETS EW_NO_NATURAL_ROCK EW_NO_NEAREST_GRAD_FIX EW_NO_NEAR_FIRST EW_NO_NODE_POST ' +
+            'EW_NO_OCEAN_PACK EW_NO_ONE_WRITE EW_NO_OPT_ASSETS EW_NO_OVERHEAD_FADE EW_NO_PAINTED_SKY EW_NO_PARALLAX EW_NO_PB_VFX EW_NO_PORTALS EW_NO_QUIET_COMPILE ' +
+            'EW_NO_RIDE_ALONG EW_NO_RIG_CARRY EW_NO_RIG_LANE EW_NO_RIOT_VFX EW_NO_RIOT_VFX_C EW_NO_RIOT_VFX_D EW_NO_ROUND EW_NO_SCENE_LOOKS EW_NO_SHADER_CACHE ' +
+            'EW_NO_SHADER_KEEP EW_NO_SHEET_WARM EW_NO_SHORE_BLEND EW_NO_SHOVEL_DIG EW_NO_SKIN_PICK EW_NO_SMALL_PROP_CAP EW_NO_SSAO EW_NO_STAGE_STYLE ' +
+            'EW_NO_STAIRS_PACK EW_NO_STEEP_CLIFF EW_NO_STOP_MOTION EW_NO_STRADDLE EW_NO_STRATA_MERGE EW_NO_TERRAIN_RISE EW_NO_TITLE_WARM EW_NO_TRAPS_PACK ' +
+            'EW_NO_TRUE_DRAPE EW_NO_TWIN_SHARE EW_NO_UNIT_INK EW_NO_UNIT_POP EW_NO_UNIT_RIM EW_NO_VFX_CLEANUP EW_NO_XMAS_PACK EW_NO_ZONE_DECALS EW_NO_ZONE_STEPS ' +
+            'EW_OCEAN_STILL EW_OLD_POST EW_PERF_LOW EW_PLATE_ANIM_MS EW_PLATE_DEPTH_ALL EW_PLATE_PILE EW_POP EW_PP_LIB EW_PROC_EYES EW_PROC_ONE_MODEL ' +
+            'EW_RAYS_ANY_LIGHT EW_RIG_LIST_EVERY_ADD EW_RIG_NO_PREGROW EW_RIG_WALK_EVERY EW_RIM EW_RISE_MS EW_SC_WARM_IN_PLAY EW_SHADOW_CHUNK_ALL ' +
+            'EW_SHADOW_REACH_LOOSE EW_SHADOW_REACH_OFF EW_SHEET_ANY_DENSITY EW_SHEET_REAL_SIZE EW_SIM_NO_RENDER EW_STYLE_MASK_PROPS EW_TERRAIN_ALL_SAMPLES ' +
+            'EW_TERRAIN_COLORS EW_TEXT_LIB EW_TIMER_WATCH_OFF EW_TURBO_FRAME_MS EW_WALK_KEEP_UNITS EW_WORLD_MODE EW_WORLD_STAB EW_ZSEP_LAST').split(' ');
+        for (var i = 0; i < names.length; i++) {
+            var k = names[i];
+            try { if (k && !(k in window)) Object.defineProperty(window, k, { value: undefined, writable: true, configurable: true, enumerable: false }); } catch (e) {}
+        }
+    })();
     function _ewTmrName(f) { if (!f) return ''; if (f.name) return f.name; var s = String(f).replace(/\s+/g, ' '); return s.length > 70 ? s.slice(0, 70) + '…' : s; }
 
     const ELEV_STEP_RATIO = 1.0; /* 1 game height = 1 full tile (cube voxels). Keep in sync with three-camera.js, ui.js, hud.js, three-vfx.js, map.js editor preview. */
@@ -47386,6 +47445,60 @@ const ThreeRenderer = (function () {
        changed run is written once, from the first changed value to the last: the values in between are the buffer's own
        current values, so the GPU holds exactly what it would have. Off: window.EW_NO_ONE_WRITE (reload). */
     var _ewOneWrite = { calls: 0, saved: 0 };
+    /* THE MAPS ON THE OBJECTS (2026-11-19, mondo's second Firefox profile: a 77-134 ms stop every ~6.5 s = Firefox's cycle collector,
+       half of it `FixWeakMappingGrayBits`, a read of every WeakMap entry in the page). three's node renderer keeps its per-object data
+       in WeakMaps: `DataMap` (attributes, geometries, textures, pipelines, bindings, nodes) and `Backend.data` (every attribute,
+       texture, binding the GPU knows), a few hundred thousand entries in a city room, and each `get` is a hash lookup (~0.7 ms a frame
+       in the same profile). Here the same data hangs on the object itself, under a hidden (non-enumerable, per-map Symbol) property:
+       no WeakMap entry, a plain property read, and it still dies with its object. An entry made before this ran is found in the old
+       WeakMap once and moved; an object that cannot take a property (frozen) stays in the WeakMap. ChainMap (render objects by
+       object + material + pass) is left as it is. Old maps: window.EW_GPU_WEAKMAPS = true before the renderer is made. */
+    function _ewGpuPropMaps(r) {
+        if (typeof window !== 'undefined' && window.EW_GPU_WEAKMAPS) return;
+        if (typeof Symbol !== 'function' || typeof WeakMap !== 'function') return;
+        var put = function (o, k, m) { Object.defineProperty(o, k, { value: m, writable: true, configurable: true, enumerable: false }); };
+        var mGet = function (o) {
+            var k = this._ewPM, m = o[k];
+            if (m === undefined) {
+                m = this.data.get(o);
+                if (m === undefined) { m = {}; try { put(o, k, m); } catch (e) { this.data.set(o, m); } }
+                else { try { put(o, k, m); this.data.delete(o); } catch (e) {} }
+            }
+            return m;
+        };
+        var mHas = function (o) { return o[this._ewPM] !== undefined || this.data.has(o); };
+        var B = r.backend;
+        if (B && B.data instanceof WeakMap && !B._ewPM && typeof B.get === 'function' && typeof B.set === 'function') {
+            B._ewPM = Symbol('ewBackendData');
+            B.get = mGet; B.has = mHas;
+            B.set = function (o, v) {
+                var k = this._ewPM;
+                try { if (o[k] !== undefined || Object.prototype.hasOwnProperty.call(o, k)) o[k] = v; else put(o, k, v); if (this.data.has(o)) this.data.delete(o); }
+                catch (e) { this.data.set(o, v); }
+            };
+            B.delete = function (o) { var k = this._ewPM; if (o[k] !== undefined) o[k] = undefined; this.data.delete(o); };
+        }
+        /* DataMap: the class every one of the renderer's managers extends (found from one of them; its own get / has / delete / dispose) */
+        var P = null, a = r._attributes || r._geometries || r._textures;
+        for (var q = a ? Object.getPrototypeOf(a) : null; q && q !== Object.prototype; q = Object.getPrototypeOf(q)) {
+            if (Object.prototype.hasOwnProperty.call(q, 'get') && Object.prototype.hasOwnProperty.call(q, 'has') && Object.prototype.hasOwnProperty.call(q, 'delete') && Object.prototype.hasOwnProperty.call(q, 'dispose') && /this\.data\.get/.test(String(q.get))) P = q;
+        }
+        if (P && !P._ewPMOn) {
+            P._ewPMOn = true;
+            var key = function (M) { return M._ewPM || (M._ewPM = Symbol('ewDataMap')); };
+            P.get = function (o) { if (this._ewPM === undefined) key(this); return mGet.call(this, o); };
+            P.has = function (o) { return o[key(this)] !== undefined || this.data.has(o); };
+            P.delete = function (o) {
+                var k = key(this), m = o[k];
+                if (m !== undefined) { o[k] = undefined; if (this.data.has(o)) this.data.delete(o); return m; }
+                m = null;
+                if (this.data.has(o)) { m = this.data.get(o); this.data.delete(o); }
+                return m;
+            };
+            P.dispose = function () { this.data = new WeakMap(); this._ewPM = Symbol('ewDataMap'); };   // a fresh key: every old entry is out of reach, as with a fresh WeakMap
+        }
+        _ewGpuInfo.propMaps = (B && B._ewPM ? 'backend' : '') + (P ? ' + managers' : '');
+    }
     function _ewGpuOneWrite(r) {
         var B = r.backend, bu = B && B.isWebGPUBackend && B.bindingUtils;
         if (!bu || bu._ewOneWrite || typeof bu.updateBinding !== 'function' || window.EW_NO_ONE_WRITE) return;
@@ -49509,7 +49622,29 @@ const ThreeRenderer = (function () {
             }
             return (g._ew_mkIdx = { n: ch.length, at: now, an: an, ep: mkEpoch, list: list, ms: ms });
         }
+        /* THE BARE BONES (2026-11-19, mondo's second Firefox profile: three's `_projectObject` + this wrapper ~2.5 ms a frame over the
+           mask, shadow and scene passes, "Walk visits: scene 3.0K, sun shadow 3.0K, mask 5.0K"): every pass walks each bone of every
+           visible body, though a bone draws nothing. A bone whose subtree holds only bones and plain Object3Ds (no held gear, hat,
+           lamp, sprite: nothing that is not a Bone or a bare Object3D) is not walked. The answer is kept on the bone and worked
+           out again, one pass over the skeleton, when anything joined any scene since (Object3D.add: the add counter).
+           Off: window.EW_BONES_WALK_ALL */
+        var boneAll = typeof window !== 'undefined' && !!window.EW_BONES_WALK_ALL;
+        _ewAddCount();   // the add hook must be on (a hat put on a bone later bumps the counter)
+        function boneBare(b, an) {
+            var ch = b.children, bare = true;
+            for (var i = 0; i < ch.length; i++) {
+                var c = ch[i];
+                if (c.isBone === true || c.type === 'Object3D') { if (!boneBare(c, an)) bare = false; }
+                else bare = false;
+            }
+            b._ew_bbN = an; b._ew_bbV = bare;
+            return bare;
+        }
         r._projectObject = function (object, camera, groupOrder, renderList, clippingContext) {
+            if (object.isBone === true && boneAll === false) {
+                if (object._ew_bbN !== _ewAddN) boneBare(object, _ewAddN);
+                if (object._ew_bbV === true) { _ewBun.boneSkip = (_ewBun.boneSkip | 0) + 1; return; }
+            }
             /* THE MOVERS OUT (2026-11-14, Disaster City): a piece that moves inside a recorded group (a traffic car in the shell, a
                kicked can, a lamp's wax: `_ew_bunOut`, set where it is built or by THE STILL WALK while it moves) is handed to the
                list the group itself was handed to — it draws the classic way, culled, with this frame's matrices, and the group's
@@ -51477,6 +51612,7 @@ const ThreeRenderer = (function () {
         };
         r.init().then(function () {
             _ewGpuInfo.ready = true;
+            try { _ewGpuPropMaps(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the maps stay WeakMaps', e); }
             _ewGpuSafeBuffers(r);
             _ewGpuSafeBindings(r);
             try { _ewGpuNearestGrad(r); } catch (e) {}
@@ -93360,8 +93496,44 @@ const ThreeRenderer = (function () {
         }
     }
     var _hqClockMsLast = 0;   // THE WORLD CLOCK: the real time since the last frame that ran it
+    /* THE COVERED SCREENS (2026-11-19, mondo's second Firefox profile: 14.5 % of the main thread, ~3.9 ms a frame, inside Firefox's own
+       "Paint": the display list of the HTML page built again every frame the canvas changes). The walk's page (#hqPage, opaque)
+       covers the whole window, but the Party Builder behind it (#builderOverlay: 2,024 laid-out elements, 250 gradients, 220
+       pictures, counted in a probe) was still "shown", so Firefox listed every one of them, with their gradients' colour stops,
+       60 times a second; the menus' motes and title sprites kept animating at opacity 0. While #hqPage is the active page of a
+       shown #startOverlay, <html> carries `ew-hq-cover` (styles-base.css: the builder is not rendered, the other title pages'
+       animations are paused). Put on 1.2 s after the page became active (the page change's fade), taken off the moment it is
+       not (a class observer, no polling). Off: window.EW_HQ_NO_COVER = true. */
+    var _hqCov = { armed: false, on: false, t: 0 };
+    function _hqCoverWant() {
+        var pg = document.getElementById('hqPage'), ov = document.getElementById('startOverlay');
+        return !!(pg && ov && pg.classList.contains('active') && !ov.classList.contains('hidden')) && !window.EW_HQ_NO_COVER;
+    }
+    function _hqCoverSync() {
+        var root = document.documentElement, want = _hqCoverWant();
+        if (!want) {
+            if (_hqCov.t) { clearTimeout(_hqCov.t); _hqCov.t = 0; }
+            if (_hqCov.on) { _hqCov.on = false; root.classList.remove('ew-hq-cover'); }
+            return;
+        }
+        if (_hqCov.on || _hqCov.t) return;
+        _hqCov.t = setTimeout(function () {
+            _hqCov.t = 0;
+            if (_hqCoverWant() && !_hqCov.on) { _hqCov.on = true; document.documentElement.classList.add('ew-hq-cover'); }
+        }, 1200);
+    }
+    function _hqCoverArm() {
+        _hqCov.armed = true;
+        if (typeof document === 'undefined') return;
+        try {
+            var mo = new MutationObserver(_hqCoverSync);
+            ['hqPage', 'startOverlay'].forEach(function (id) { var e = document.getElementById(id); if (e) mo.observe(e, { attributes: true, attributeFilter: ['class'] }); });
+        } catch (e) {}
+        _hqCoverSync();
+    }
     function _hqFrame() {
         var H = _hq; if (!H || !renderer) return;
+        if (!_hqCov.armed) _hqCoverArm();
         var now = performance.now();
         var dt = H.lastMs ? Math.min(0.05, (now - H.lastMs) / 1000) : 0.016;
         /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): the exploration day runs while you walk — any room of the building or the
@@ -93703,6 +93875,7 @@ const ThreeRenderer = (function () {
                in full the first frame its cell is shown (the sync runs before that frame's first draw). Off: EW_HQ_INST_SYNC_HIDDEN */
             if (!force && im.parent && im.parent._ew_instCell != null && im.parent.visible === false && !syncHid) { rec.qN = 0; continue; }
             if (rec.fitStamp === _hqInstStamp) refit = null;   // one refit a frame per batch
+            var lp = null, lv = false;
             for (var i = 0; i < c.length; i++) {
                 var o = c[i], off = i * 16, e = null;
                 /* THE PERF PASS (2026-10-01): a copy handed back for a SWAPPED material (the occlusion fade's clone, a highlight)
@@ -93718,7 +93891,9 @@ const ThreeRenderer = (function () {
                     rec.rel[i] = swapped ? 2 : 1; o._ew_instHidden = false; o._ew_noInstance = true; if (swapped) o.visible = true;
                     e = Z; I.copies--;
                 } else {
-                    if (!_hqInstShown(o.parent, sc, ST)) e = Z;
+                    var par = o.parent, shw;   // (11-19, his profile: _hqInstShown 0.5 ms a frame; a batch's copies mostly share one parent, asked once)
+                    if (par === lp) shw = lv; else { shw = _hqInstShown(par, sc, ST); lp = par; lv = shw; }
+                    if (!shw) e = Z;
                     else {
                         var we = o.matrixWorld.elements;
                         /* a copy that left its batch's sphere refits the batch (a seated mug never does; a carried one might) */
@@ -93906,7 +94081,7 @@ const ThreeRenderer = (function () {
     var _hqStS = { groups: 0, out: 0, full: 0, tops: 0, fresh: 0, movers: 0, swept: 0, ms: 0 }, _hqStLast = null, _hqStMs = 0;
     var HQ_STILL_SWEEP_MS = 500, HQ_STILL_HOLD_MS = 4000, HQ_STILL_DOOR_HOLD_MS = 30000;
     function _hqStillOff() { return typeof window !== 'undefined' && !!window.EW_HQ_STILL_OFF; }
-    var _hqStOffC = false, _hqStMqEvery = false;
+    var _hqStOffC = false, _hqStMqEvery = false, _hqStNoBook = false;
     function _hqStillArm(g) {
         if (!g || g._ew_st) return;
         _ewAddCount();   // the add hook
@@ -93977,7 +94152,7 @@ const ThreeRenderer = (function () {
                 T[j] = p.x; T[j + 1] = p.y; T[j + 2] = p.z; T[j + 3] = q._x; T[j + 4] = q._y; T[j + 5] = q._z; T[j + 6] = q._w; T[j + 7] = sc.x; T[j + 8] = sc.y; T[j + 9] = sc.z;
             }
             if (fr.size) fr.clear();
-            st.at = now; S.full++; S.tops += n;
+            st.at = now; S.full++; S.tops += n; st.kN = -1;   // (THE HELD BOOK is laid again: every place was just re-read)
             return;
         }
         var dt = Math.min(HQ_STILL_SWEEP_MS, Math.max(0, now - st.at)); st.at = now;
@@ -93989,18 +94164,33 @@ const ThreeRenderer = (function () {
            is), and the batch's own watchdog finds it moved over seconds, so its pose is compared on one frame in four (its turn by
            its place); a piece that moves is a mover from then on and is walked every frame as before. Off: window.EW_HQ_STILL_MERGED_EVERY */
         var mq = !_hqStMqEvery, mqT = (st.mq = ((st.mq | 0) + 1) & 3);
+        /* THE HELD BOOK (2026-11-19, mondo's second Firefox profile: this function's own time 1.47 ms a frame, the largest single
+           function of the walk's frame): "is this piece held by the static batch" was a property read off each of ~14,000 pieces
+           of many kinds every frame (a slow, megamorphic read), and the held ones were also swept (their subtree summed) twice a
+           second though the batch's own watchdog already looks after them. The answer is now kept per place in the group's own
+           byte array (0 = not held, 1 = held, 2 = held with no children), laid again when the child count or the batch's hold
+           counter (`_hqBatchHoldN`) changes or a new child is seen; a place whose child changed fails `C[i] === c` and takes the
+           full path as before. A held piece with no children is left out of the sweep. Off: window.EW_HQ_STILL_NO_HELD_BOOK */
+        var K = st.K;
+        if (!K || st.kCap < n || st.kN !== n || st.kH !== _hqBatchHoldN) {
+            if (!K || st.kCap < n) { K = st.K = new Uint8Array(st.cap); st.kCap = st.cap; }
+            var kOff = _hqStNoBook;
+            for (i = 0; i < n; i++) { c = ch[i]; K[i] = (!kOff && C[i] === c && c._ew_bRec) ? (c.children.length === 0 ? 2 : 1) : 0; }
+            st.kN = n; st.kH = _hqBatchHoldN;
+        }
         for (i = 0; i < n; i++) {
             /* (2026-11-15: a kept child's three pose objects are read from the group's own arrays — 11,000 children of many
                kinds, three property reads off each were half of the walk's own time) */
             c = ch[i]; j = i * 10;
-            if (mq && ((i + mqT) & 3) !== 0 && C[i] === c && c._ew_bRec && !(hasMv && mv.has(c)) && !(hasWk && wk.has(c)) && !(hasFr && fr.has(c)) && !((i >= i0 && i < i1) || i + n < i1)) continue;
+            var kk = K[i];
+            if (mq && kk !== 0 && ((i + mqT) & 3) !== 0 && C[i] === c && !(hasMv && mv.has(c)) && !(hasWk && wk.has(c)) && !(hasFr && fr.has(c)) && (kk === 2 || !((i >= i0 && i < i1) || i + n < i1))) continue;
             var isNew = C[i] !== c;
             if (isNew) { p = PP[i] = c.position; q = QQ[i] = c.quaternion; sc = SS[i] = c.scale; }
             else { p = PP[i]; q = QQ[i]; sc = SS[i]; if (hasFr && fr.has(c)) isNew = true; }   // new at this place, or something landed under it
             if (isNew || T[j] !== p.x || T[j + 1] !== p.y || T[j + 2] !== p.z || T[j + 3] !== q._x || T[j + 4] !== q._y || T[j + 5] !== q._z || T[j + 6] !== q._w || T[j + 7] !== sc.x || T[j + 8] !== sc.y || T[j + 9] !== sc.z) {
                 c.updateMatrixWorld(true); SM[i] = _hqStillSum(c);
                 T[j] = p.x; T[j + 1] = p.y; T[j + 2] = p.z; T[j + 3] = q._x; T[j + 4] = q._y; T[j + 5] = q._z; T[j + 6] = q._w; T[j + 7] = sc.x; T[j + 8] = sc.y; T[j + 9] = sc.z;
-                if (C[i] !== c) { C[i] = c; AT[i] = now; S.fresh++; }
+                if (C[i] !== c) { C[i] = c; AT[i] = now; S.fresh++; st.kN = -1; }   // (the held book is laid again next frame)
                 else if (isNew) S.fresh++;
                 else { AT[i] = now; mv.add(c); if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; this._ew_bunDirty = true; } S.movers++; }   // it moved: every frame from here (and out of its group's recording)
                 continue;
@@ -94023,7 +94213,7 @@ const ThreeRenderer = (function () {
                 }   // at rest: back into its group's recording (once)
                 S.movers++; continue;
             }
-            if ((i >= i0 && i < i1) || i + n < i1) {   // this frame's slice of the rest
+            if (kk !== 2 && ((i >= i0 && i < i1) || i + n < i1)) {   // this frame's slice of the rest (a held piece with no children: the batch's watchdog)
                 s = _hqStillSum(c);
                 if (s !== SM[i]) { c.updateMatrixWorld(true); mv.add(c); AT[i] = now; SM[i] = s; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; this._ew_bunDirty = true; } }
                 S.swept++;
@@ -94091,7 +94281,7 @@ const ThreeRenderer = (function () {
         try { var CG = _hq && _hq.charGroup; if (CG && !CG._ew_st && CG.updateMatrixWorld !== _hqCharGroupMW && !Object.prototype.hasOwnProperty.call(CG, 'updateMatrixWorld')) CG.updateMatrixWorld = _hqCharGroupMW; } catch (eCG) {}
         var S = _hqStS; S.hid = 0; S.groups = S.out = S.full = S.tops = S.fresh = S.movers = S.swept = 0;
         var t0 = performance.now();
-        _hqStOffC = _hqStillOff(); _hqStMqEvery = typeof window !== 'undefined' && !!window.EW_HQ_STILL_MERGED_EVERY;   // the walk's flags, read once (not per group: a window lookup is slow on Firefox)
+        _hqStOffC = _hqStillOff(); _hqStMqEvery = typeof window !== 'undefined' && !!window.EW_HQ_STILL_MERGED_EVERY; _hqStNoBook = typeof window !== 'undefined' && !!window.EW_HQ_STILL_NO_HELD_BOOK;   // the walk's flags, read once (not per group: a window lookup is slow on Firefox)
         _hqStNow = t0; _hqStWalk = true;
         try {
             /* THE WALK'S SPLIT (lens open only, 2026-11-18): the scene's own step of three's walk, then each top child timed by its
