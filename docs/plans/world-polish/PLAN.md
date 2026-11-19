@@ -235,6 +235,12 @@ rerun `audit.js` for its rooms and put the before / after line in the PR, browse
 **Targets** (a district is done when): main ways 5 squares wide; a board fits (52 of 64) on at least 2 of every 3 plots; no more
 than 1 plot in 3 dead flat unless it is meant (a lake bed, a plaza, a field); 14+ pieces a plot; one high place with a view; NEED under 2.5.
 
+## 5b. THE PILOT IS BUILT: Giza (2026-11-19, on mondo's "go")
+Dunes on the Sand Sea, the Canyon Stair to a lookout on the mesa's rim, the Deep Cut (a two-level excavation). What it taught, for every flat
+district after it: `docs/notes/areas-complexes.md` "THE DESERT, GIZA", THE VERTICALITY PASS. The short of it: props ride the ground, monuments
+drawn from parts do not, so a monument district gets its height between its monuments. Waits mondo's look before Area 51, Western Town, the
+Circus and the highways.
+
 ## 6. Questions for mondo
 
 1. **Is the order right?** It puts the cheap flat surface (Desert, routes) before the worst-scoring underground. If you would rather see the worst fixed first, waves 1 and 3 swap.

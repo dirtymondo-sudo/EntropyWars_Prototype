@@ -40,6 +40,15 @@
    tents), `oil_lamp`, also `tripod_bowl`, `hand_cart`, `hookah`, `kettle`, `cairn`, `rope_coils`, `backpack`, `cattle_skull`.
    STILL NEEDS A MODEL: a hieroglyph / carved-relief wall sheet (a texture, not a model), papyrus plants, a gold pile (neither was made).
 
+   THE VERTICALITY PASS (11-19, the world polish plan's pilot, docs/plans/world-polish/PLAN.md; the block at the end of ground()):
+   - THE SAND SEA is real dunes (three `ridge` crests and two `hill` rows, up to 5 m, all walked; what lay on the sand rides them).
+   - THE CANYON STAIR (P11-08): an earth ramp up the dead canyon to a rock bridge at the mesa's shelf (5.25 m), a worn path along the shelf's rim
+     (squares x 89 · y 51..55, y 55 · x 85..89, x 85 · y 51..55, the one added square 84,51, then y 50 · x 80..84) to THE LOOKOUT over the Dig.
+   - THE DEEP CUT (P11-08 / P11-09, squares x 85..89 · y 56..63): a second excavation two levels down (-1.75, -3.5), an earth ramp into each.
+   - NOT raised: the pyramids, the Sphinx, the causeway, the hall, every door and both road seams (their rows are drawn at a fixed height).
+   - Seen wrong: the shelf's top (the rim path) draws its sheet in stretched stripes; that is the tool's rock, seen for the first time now that
+     somebody can stand on it. A brown spire on the north horizon is the edge land's own (it was there before the ramp).
+
    KNOWN MISSING OR WRONG:
    - PASS 3 (dressing, 11-16): the Dig has an earth ramp into each trench, rope posts, planks, a finds table, a wagon; the causeway has a stone
      kerb and a small pillared hall; the oasis has eleven palms, a well, reeds, a boat, flamingos, the cloth tent; braziers line the path to the
@@ -232,6 +241,40 @@ exports.ground = ctx => { bind(ctx);
     native('conspiracy theorist', 91, 70, 40, sayOf(O_GIZA, 'conspiracy theorist')); native('mummy', 69, 80, 270); native('djinn', 55, 84, 0);
     /* THE PHARAOH (2026-11-19, the new race: the Pharaoh + Cleopatra, home Giza): one on the Tomb Door path between the braziers, one at the oasis market */
     native('pharaoh', 64, 78, 90); native('pharaoh', 57, 83, 180);
+    /* ════ THE VERTICALITY PASS (2026-11-19, docs/plans/world-polish/PLAN.md wave 1, the pilot; mondo: "go"). Giza measured 0.1 m of relief a
+       plot. The monuments, the causeway, the doors and both road seams keep their level (their rows are drawn at a fixed height); the height goes
+       where the ground is free. Every prop stands on the ground under it, so what lay on the sand rides the new ground. ════ */
+    /* 1. THE SAND SEA: real dunes. `ridge` rows ADD to the ground (h at the crest, falling to nothing w / 2 away), walked and skated over: none
+       steeper than the walker's 45 degrees. They end short of the room's south line and stay off the Giza Road's seam on the west wall. */
+    const dune = (pts, h, w) => feat({ k: 'ridge', pts: pts.map(q => [gx(q[0]), gx(q[1])]), h, w });
+    dune([[53, 88.2], [56.5, 87.6], [60, 88.6], [62.5, 90.6]], 3.6, 15);          // the north crest, a crescent open to the south
+    dune([[49.5, 91.8], [52.5, 91], [56, 91.6], [58, 93]], 2.8, 12);              // the low one before it
+    dune([[62, 93], [65.5, 93.3], [69, 92.4], [71, 90]], 4.4, 16);                // the south-east crest, turning up toward the Great Pyramid
+    feat({ k: 'hill', x: gx(69), z: gx(87.2), r: 11, rz: 9, h: 5.2 });            // the Great Dune, banked against the pyramid's west foot
+    feat({ k: 'hill', x: gx(57.5), z: gx(94.6), r: 7, rz: 4.5, h: 1.8 });
+    /* 2. THE CANYON STAIR: the dead canyon (the move cut it off from the town) climbs to the mesa's shelf, 5.25 m. An earth ramp fills it wall to
+       wall, a landing at its head joins the two shelves, and the shelf's own rim (one square wide round the cap) is the way round to THE LOOKOUT
+       over the Dig and the Sphinx: a place that is hard to reach vertically, with something left on it. */
+    /* (the climb stops THREE squares short of the room's north line: the land past the line carries the ground's height and slope on, and a ramp
+       that reached it drew a brown spire on the horizon. The landing is a rock bridge over the slot; behind it the canyon falls back to its floor.) */
+    feat({ k: 'ramp', x0: gx(91), z0: gx(58), x1: gx(91), z1: gx(54.5), w: 7, h0: 0, h1: 5.25, edge: 0.3, key: 'dirt_2' });
+    feat({ k: 'plateau', x: gx(91), z: gx(52.75), w: 7.6, d: 12.25, h: 5.25, edge: 0.3 });
+    feat({ k: 'plateau', x: gc(84), z: gc(51), w: 3.5, d: 3.5, h: 5.25, edge: 0.5 });   // the rim's one missing square, the shelf's corner by the camp (exactly one square: a pad that overlaps its neighbours' lines is read as the canyon ramp's landing and the shelf beside it is cut down)
+    for (let j = 51; j < 58; j++) for (const i of [90, 91]) ctx.setPaint(i, j, 'dirt_2');
+    /* the worn path along the rim, so the way reads from below */
+    for (let j = 51; j <= 55; j++) { ctx.setPaint(89, j, 'dirt_2'); ctx.setPaint(85, j, 'dirt_2'); } for (let i = 85; i <= 89; i++) ctx.setPaint(i, 55, 'dirt_2'); for (let i = 80; i <= 84; i++) ctx.setPaint(i, 50, 'dirt_2'); ctx.setPaint(84, 51, 'dirt_2');
+    Pm('cairn', gx(89.5), gx(55.5), {}); Pm('cairn', gx(85.5), gx(51.5), {}); Pm('item_binoculars', gx(81.6), gx(50.5), {}); Pm('sea_chest', gx(80.6), gx(50.4), { face: 200 });
+    Pm('golden_idol', gx(80.5), gx(50.9), {}); Pm('vulture', gx(84.4), gx(50.5), { face: 190 }); Pm('oil_lamp', gx(89.5), gx(52.4), {}); Pm('backpack', gx(82.5), gx(50.6), { face: 300 });
+    /* 3. THE DEEP CUT: a second excavation south of the mesa, two levels down (-1.75, -3.5: a fight's tiers), an earth ramp into each. The lower
+       floor is a pavement the diggers have just reached. */
+    feat({ k: 'plateau', x: gx(87.5), z: gx(60), w: 17.5, d: 28, h: -1.75, sink: true, edge: 0.3 });
+    feat({ k: 'plateau', x: gx(87.5), z: gx(61), w: 10.5, d: 14, h: -3.5, sink: true, edge: 0.3 });
+    feat({ k: 'ramp', x0: gx(88), z0: gc(56), x1: gx(85), z1: gc(56), w: 3.5, h0: -1.75, h1: 0, edge: 0.3, key: 'dirt_2' });
+    feat({ k: 'ramp', x0: gc(88), z0: gx(63), x1: gc(88), z1: gx(59), w: 3.5, h0: -3.5, h1: -1.75, edge: 0.3, key: 'dirt_2' });
+    for (let j = 56; j < 64; j++) for (let i = 85; i < 90; i++) ctx.setPaint(i, j, (i >= 86 && i <= 88 && j >= 59 && j <= 62) ? 'bricks_1' : 'dirt_2');
+    P('sarcophagus', 86, 61, { face: 90 }); Pm('canopic_jars', gx(87.5), gx(62.5), {}); Pm('wooden_ladder', gx(86.5), gx(59) + 0.3, { face: 0 }); Pm('pickaxe', gx(87.4), gx(60.3), { face: 130 });
+    Pm('wheelbarrow', gx(86.4), gx(57.6), { face: 60 }); Pm('rope_coils', gx(89.4), gx(58.4), {}); Pm('oil_lamp', gx(86.3), gx(62.6), {}); Pm('psx_wooden_crate_2', gx(89.4), gx(62.4), {});
+    for (const q of [[84.7, 56.5], [84.7, 60], [84.7, 63.5], [87.5, 64.3], [90.3, 60], [90.3, 63.5]]) Pm('rope_stanchion', gx(q[0]), gx(q[1]), {});
 };
 
 /* THE DESERT'S INSIDES (2026-11-15): the three ways into the Great Pyramid's inside. The entrance in the north face beside the North Stair, the
