@@ -91,3 +91,10 @@ in several places gets a copy in each. Other boards are not touched. Rebuild the
 sprites.js: name, types, role, families, biomes, temper, lines, and the portrait (or the sprite, shown head and shoulders: `ip`) from
 cdn.entropywars.net. build.js runs it, and server.js runs it on the page it serves (cached per file change), so a unit added to the game
 appears after the next deploy with no rebuild. Board ids are unchanged.
+
+## The portrait refresh + the ideas board (2026-11-19)
+- `build/refresh.js` then `python3 -I build/refresh-faces.py` (run from `build/`) then `node build.js`: every race + gender's picture
+  is cut again from the game's art today (sprites.js RACE_PORTRAITS / sprites, from cdn.entropywars.net). Needs only the built
+  page, no other intermediate files. 11-19 run: the new Shaman M, Golem and Seraphim (eye-wheel, cut whole: `face_overrides.json`),
+  the Streamers' new sprites in place of their 3D renders. Story cast keep their 3D renders.
+- `IDEAS_2026-11-19.md` + `ideas-board-2026-11-19.json` (load as extra boards): a read-through of mondo's board with ties and story cards.
