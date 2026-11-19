@@ -2074,6 +2074,17 @@ is a front render of each cast GLB (`Races/maincharacters/Meshy_AI_<Player|Agent
 page (orthographic, transparent, hemisphere + two key lights), already clean alpha. At 124 px the restyle touched row 0 on both; the
 input at 114 px (more headroom) fixed it. Wired in `_CHARACTER_SPRITES_GENDERED['door agent']` (`door_agent_m_px`, `agent_belle_px`).
 
+SIX MORE (2026-11-19, mondo: "E-girl, golem, seraphim (no m or f), shaman m, streamer m, and v-tuber need their sprite ai 128 px
+portraits ... seraphim's match its new 3d design, not the old pixel art"): each from a three.js front render of its CURRENT 3D model
+(transparent, ortho), fitted to 114 px, `sprite_import`, `sprite_restyle` normal at size 128 with every colour named, one roll each.
+The Seraphim's render is the in-game look: the eye ring plus the 0.54 inner copy tilted (THE PROCEDURAL RIGS `seraphRings`), no
+wings, no body. Files (new names, old ones kept on R2): `seraphim/seraphim_px.png`, `golem/golem_px.png` (was the red-armour golem),
+`shaman/male/shaman_m_px3.png` (px2 came from the concept, his model has war paint + feathers now), `streamer/male/streamer_m_px.png`,
+`streamer/female/egirl_f_px.png`, `vtuber/female/vtuber_f_px.png`. Wired: `_CHARACTER_SPRITES` + `RACE_SPRITES` (seraphim, golem,
+streamer, vtuber), `_NEW_MALE_SPRITES` (streamer, shaman), `_NEW_FEMALE_SPRITES` (streamer = the E-Girl, vtuber). The male shaman
+lost the old harvester RACE_PORTRAITS face (his HUD face is cut from the new sprite); the seraphim's paper-doll hands are off
+(RACE_HAND_GROUP null, the wheel has no hands). Scripts + pictures: `/mnt/project-files/sprites-six-20261119/`.
+
 ## THE NEW CHARACTERS, 11-17 (mondo: male skater, female nordic, siren, mermaid redo, male lifeguard, Pope, Haunted Doll, ninja M + F)
 Meshy pipeline of `/mnt/project-files/new-races/run.py` (nano-banana-pro concept -> meshy-t2.5 image-to-3d a-pose -> rigging), copied to
 `/mnt/project-files/new-chars/` (items.py = the prompts; concepts/, models/, sprites/, proof/, models_sprites_sheet.jpg).
