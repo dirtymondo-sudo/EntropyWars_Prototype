@@ -94105,7 +94105,13 @@ const ThreeRenderer = (function () {
     function _hqPropChunkSweep(H, now) {
         if (!_hqPropChunkOn(H)) return;
         var G = H.propGroup, n = G.children.length;
-        if (H._pcN === n && now - (H._pcAt || 0) < 1500) return;
+        /* THE WAITING PROPS (2026-11-19, spikes thread: mondo's F3 ~47 s after entering the city still drew ~160 props "outside its bundle",
+           18 once settled): a prop whose file had not landed (empty box) was measured again first on EVERY sweep, in placement order, and
+           with hundreds waiting the 3 ms share was spent on them before a landed prop was reached (the share's "rest next frame" restarted
+           from the top). A waiting prop is now measured again 0.5 s after its last try and skipped until then, so the share goes to the
+           props that landed; while any prop waits the sweep runs every 0.5 s, not 1.5 s. Off: window.EW_HQ_PC_RETRY_ALL. */
+        var pcOld = typeof window !== 'undefined' && !!window.EW_HQ_PC_RETRY_ALL;
+        if (H._pcN === n && now - (H._pcAt || 0) < ((H._pcWait && !pcOld) ? 500 : 1500)) return;
         H._pcN = n; H._pcAt = now;
         var mine = H._pcSet;
         if (!mine || mine.n !== H.props.length) { mine = H._pcSet = new Set(); mine.n = H.props.length; for (var i = 0; i < H.props.length; i++) if (H.props[i] && H.props[i].grp) mine.add(H.props[i].grp); }
@@ -94115,14 +94121,17 @@ const ThreeRenderer = (function () {
         /* THE SWEEP'S SHARE (2026-11-18, spikes thread: mondo's F3 "tick: prop chunk sweep 96 ms" on one frame, a batch of late props landing
            at once — each measured and moved into its chunk in the same frame): 3 ms a frame at most; what is left goes on the next frame.
            Off: window.EW_HQ_PC_SWEEP_ALL. */
-        var pcT0 = performance.now(), pcAll = typeof window !== 'undefined' && !!window.EW_HQ_PC_SWEEP_ALL;
+        var pcT0 = performance.now(), pcAll = typeof window !== 'undefined' && !!window.EW_HQ_PC_SWEEP_ALL, pcWait = 0, pcWork = 0;
         for (var t = 0; t < take.length; t++) {
-            if (!pcAll && t > 0 && performance.now() - pcT0 > 3) { H._pcN = -1; break; }   // the rest next frame
             var p = take[t], lit = false;
+            if (!pcOld && p._ew_pcTry && now - p._ew_pcTry < 500) { pcWait++; continue; }   // THE WAITING PROPS: tried a moment ago
+            if (!pcAll && pcWork > 0 && performance.now() - pcT0 > 3) { H._pcN = -1; pcWait++; break; }   // the rest next frame
+            pcWork++;
             p.traverse(function (q) { if (q.isLight) lit = true; });
             if (lit) { p._ew_pcNo = true; continue; }   // a lamp stays where it was: the frame's light set never changes with a chunk
             box.setFromObject(p);
-            if (box.isEmpty()) continue;   // its file has not landed: the next sweep sizes it
+            if (box.isEmpty()) { p._ew_pcTry = now; pcWait++; continue; }   // its file has not landed: measured again in 0.5 s
+            p._ew_pcTry = 0;
             var xm = p.position.x / U, zm = p.position.z / U, bld = _hqPropChunkRoomAt(H, xm, zm), g;
             if (bld) g = _hqPropChunkGroup(H, 'b|' + bld, PR.roomFar * U, bld);
             else {
@@ -94132,6 +94141,7 @@ const ThreeRenderer = (function () {
             g.add(p);
             p._ew_ckSmall = undefined;   // measured again under its chunk (the instance pass's small cells)
         }
+        H._pcWait = pcWait;
     }
     /* every prop back under the prop group (the hand-over, the crossing, the leave) */
     function _hqPropChunkHome(H) {
