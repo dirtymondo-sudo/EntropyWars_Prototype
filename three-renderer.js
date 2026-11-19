@@ -7571,9 +7571,48 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ⚱ THE TOMB (2026-11-19, the Pharaoh's Prepare the Tomb): mondo's stone sarcophagus (the HQ catalogue's `sarcophagus`, a Meshy
+       prop) lying along its square, a slow gold shimmer on the lid's line, and the hits bar. Own side cyan rim, enemy pink. */
+    var _TOMB_URL = 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_stone_sarcophagus_0917035255_texture.glb';
+    function _buildTomb3D(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var own = _isAllyPlayer(turret.owner), col = own ? 0x5ad6ff : 0xff6aa8;
+        g.add(_plantHpBar(turret, ts, ts * 0.62));
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.42, 1.2, 4, 28), new THREE.MeshBasicMaterial({ color: col, fog: false }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 1.2; g.add(ring);
+        var fill = function () {
+            var e = _miscModelCache[_TOMB_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true);
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; n.castShadow = true; if (n.geometry) n.geometry._ew_shared = true; } });
+            var len = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) || 1;
+            var sc = (ts * 0.92) / len;
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            var turn = new THREE.Group(); turn.add(m);
+            if ((bb.max.z - bb.min.z) > (bb.max.x - bb.min.x)) turn.rotation.y = Math.PI / 2;   // its length along the square's x
+            g.add(turn);
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_TOMB_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_TOMB_URL, true, fill, { front: true }); } catch (x) { console.warn('[ThreeRenderer] tomb load threw', x); } }
+        return g;
+    }
+
     function _buildTurret(turret) {
         if (turret.plant) return _buildPlant3D(turret);   // THE GARDEN
         if (turret.projector) return _buildHoloProjector3D(turret);   // 📽 the V-Tuber
+        if (turret.tomb) return _buildTomb3D(turret);   // ⚱ the Pharaoh
         if (turret.summon) return _buildSummon3D(turret);
         if (turret.zombie) return _buildZombie3D(turret);
         if (turret.spellId === 'fiveGTower') return _buildFiveGTower(turret);
@@ -16958,6 +16997,7 @@ const ThreeRenderer = (function () {
         if (g.halo) { at.halo = deps.length; deps.push(g.halo); }
         if (g.cape) { at.cape = deps.length; deps.push(g.cape); }
         if (g.held && g.held.url) { at.held = deps.length; deps.push(g.held.url); }
+        if (g.helmet && g.helmet.url) { at.helmet = deps.length; deps.push(g.helmet.url); }   // THE BUBBLE HELMET
         var fn = function (root, anims, got) { try { _gearBuild(root, g, wf, at, got || []); } catch (e) { console.warn('[3D] unit gear failed', e); } return null; };
         fn.deps = deps;
         return (_gearRigCache[url] = fn);
@@ -17035,6 +17075,23 @@ const ThreeRenderer = (function () {
             k.geometry.translate(-(kb.min.x + kb.max.x) / 2, -(kb.min.y + (kb.max.y - kb.min.y) * (hd.grip != null ? hd.grip : 0.35)), -(kb.min.z + kb.max.z) / 2);
             k.scale.setScalar(ksc); k.name = 'ewGearHeld';
             _gearHang(hand, hand.getWorldPosition(new THREE.Vector3()), k, 'ewGearHeldMount');
+            made = true;
+        }
+        /* THE BUBBLE HELMET (2026-11-19, the Deep Sea Diver; mondo: the dome "must be a real transparent 3D part showing her face,
+           never textured on"): the Meshy helmet's dome came out a solid white shell, so its file is the brass collar and the lamps
+           alone (the dome cut out offline: /mnt/project-files/pharaoh-diver/models/cut.py) and the dome is drawn here, a clear
+           glass sphere in the file's own frame (`dome`: [cx, cy, cz, r], metres of the file). The two ride the head as one: the
+           dome's centre on the head's middle, `size` = the dome across as a part of the body's height. */
+        var hl = g.helmet || {}, lm = at.helmet != null && _gearMesh(got[at.helmet]);
+        if (lm) {
+            var lc = _gearPlain(lm), dm = hl.dome || [0, 0.1326, 0, 0.332];
+            lc.geometry.translate(-dm[0], -dm[1], -dm[2]);   // the dome's centre on the mount
+            var gl = new THREE.Mesh(new THREE.SphereGeometry(dm[3], 40, 24), new THREE.MeshStandardMaterial({ color: 0xe6f6ff, transparent: true,
+                opacity: hl.opacity != null ? hl.opacity : 0.16, roughness: 0.03, metalness: 0.15, depthWrite: false }));
+            gl.userData.ewGear = true; gl.name = 'ewGearGlass'; gl.renderOrder = 3; gl.castShadow = false;
+            var hg = new THREE.Group(); hg.name = 'ewGearHelmet'; hg.scale.setScalar((hl.size || 0.2) * H / (2 * dm[3])); hg.add(lc); hg.add(gl);
+            if (hl.turn) hg.rotation.y = hl.turn * Math.PI / 180;
+            _gearHang(head, new THREE.Vector3(hp.x, hp.y + (hl.lift != null ? hl.lift : 0.045) * H, hp.z + (hl.fwd || 0) * H), hg, 'ewGearHelmetMount');
             made = true;
         }
         if (made) root.userData.ewGear = true;

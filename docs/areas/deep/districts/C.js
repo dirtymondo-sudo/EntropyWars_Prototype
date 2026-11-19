@@ -157,6 +157,8 @@ exports.people = ctx => {
     native('mermaid', 45, 33, 300); native('atlantean', 31, 21, 135); native('starfish', 37, 35, 60);
     /* pass 3: more people (mondo 11-16: more NPCs, none on a road) */
     native('atlantean', 37, 30, 90); native('mermaid', 46, 27, 240); native('siren', 52, 19, 200); native('atlantean', 55, 35, 280); native('starfish', 29, 38, 30); native('mermaid', 33, 44, 10); native('atlantean', 47, 16, 170);
+    /* the deep sea diver (11-19, new race): she works the ring city */
+    native('deep sea diver', 36, 34, 120); native('deep sea diver', 50, 24, 250);
 };
 
 /* ── THE TEMPLE OF THE DEEP, the dry room (18 x 18 squares, the door south, the dais north, the Oracle in its pool) ── */

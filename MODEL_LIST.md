@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1245 |
+| Meshy AI | no | 1249 |
 | Meshy AI, reworked by Claude | no | 10 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 86 |
@@ -78,6 +78,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | cursed tv | `Assets/characters/races/cursed_tv/male/cursed_tv.glb` | Meshy AI, reworked by Claude | Meshy AI parts (the cutscene's AV cart, a new wood-cased TV, the haunted remote) put together by Claude in code (project files cursed-tv/models/assemble.mjs): the casters split off the cart so each wheel spins, rabbit ears + power cable built in code; no bones, the rig is three-renderer.js THE CURSED TV (2026-11-17) |
 | cyborg | `Assets/characters/races/cyborg/male/Meshy_AI_cyborg_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | cyborg (female) | `Assets/characters/races/cyborg/female/Meshy_AI_cyborg_f2_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| deep sea diver (female) | `Assets/characters/races/deep_sea_diver/female/Meshy_AI_deep_sea_diver_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved 11-19 concepts (the Pharaoh M + Cleopatra F v3, the Deep Sea Diver F; concepts + models in project files new-char-concepts-20261119/) |
 | deep sea fish | `Assets/characters/races/deepseafish/Meshy_AI_alien_fish_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | delivery boy | `Assets/characters/races/delivery_boy/male/Meshy_AI_delivery_boy_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | demon — creator look also baked | `Assets/characters/races/demon/male/Meshy_AI_red_demon_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -170,6 +171,8 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | occulus | `Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | orb of light (female) | `Assets/characters/races/orboflight/female/Meshy_AI_hot_girl_sentient_li_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | overlord | `Assets/characters/races/overlord/Meshy_AI_underworld_overlord__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| pharaoh | `Assets/characters/races/pharaoh/male/Meshy_AI_pharaoh_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved 11-19 concepts (the Pharaoh M + Cleopatra F v3, the Deep Sea Diver F; concepts + models in project files new-char-concepts-20261119/) |
+| pharaoh (female) | `Assets/characters/races/pharaoh/female/Meshy_AI_pharaoh_f_v3_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved 11-19 concepts (the Pharaoh M + Cleopatra F v3, the Deep Sea Diver F; concepts + models in project files new-char-concepts-20261119/) |
 | pirate | `Assets/characters/races/homosapien/male/pirate/Meshy_AI_dashingly_handsome_sw_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | pirate (female) | `Assets/characters/races/homosapien/female/pirate/Meshy_AI_hot_female_pirate_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | police officer | `Assets/characters/races/police/Meshy_AI_a_black_police_officer_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -3602,6 +3605,7 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | cosmic_wraith_cape | `Assets/characters/gear/capes/cosmic_wraith_cape.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | angel_f_halo | `Assets/characters/gear/halos/angel_f_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | angel_m_halo | `Assets/characters/gear/halos/angel_m_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
+| deep_sea_diver_helmet | `Assets/characters/gear/helmets/deep_sea_diver_helmet.glb` | Meshy AI | Meshy AI prop (the diver helmet concept), dome cut out by Claude in Blender-free python (pharaoh-diver/models/cut.py); the glass dome is a three.js sphere drawn in three-renderer.js THE BUBBLE HELMET | sprites.js |
 | fairy_wing_single | `Assets/characters/gear/wings/fairy_wing_single.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | feathered_serpent | `Assets/characters/races/aztec/feathered_serpent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for Quetzalcoatl's serpent body (THE NEW RACES, mondo 2026-11-16) | three-renderer.js |
 | Meshy_AI_ice_queen_super_Running | `Assets/characters/races/icequeen/Meshy_AI_ice_queen_super_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) | sprites.js |
