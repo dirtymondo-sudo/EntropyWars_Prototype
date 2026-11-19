@@ -85,3 +85,9 @@ in several places gets a copy in each. Other boards are not touched. Rebuild the
   it (`B.mapK` = board px a map square; Arrange > Show or hide the world map). Places off the map line up to the right.
 - Unit inspector "Add to a place or a faction" and group inspector "Add a unit": type to pick; game places not on the board yet and
   roster units not pinned yet are added on the spot.
+
+## New units show up by themselves (2026-11-19)
+`build/fresh.js` adds every race in data.js `AVAILABLE_RACES` the baked roster lacks (and a gender a race gained), read from data.js +
+sprites.js: name, types, role, families, biomes, temper, lines, and the portrait (or the sprite, shown head and shoulders: `ip`) from
+cdn.entropywars.net. build.js runs it, and server.js runs it on the page it serves (cached per file change), so a unit added to the game
+appears after the next deploy with no rebuild. Board ids are unchanged.
