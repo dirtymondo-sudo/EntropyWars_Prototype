@@ -556,7 +556,7 @@ const RACE_SPRITE_GENDERS = {
   'mole man': 'male',   // 2026-11-16
   'quetzalcoatl': 'male',   // 2026-11-16
   'delivery boy': 'male',   // 2026-11-17 THE NEW RACES 2
-  'paparazzi': 'male',   // 2026-11-19 THE NEW RACES 3
+  'cameraman': 'male',   // 2026-11-19 THE NEW RACES 3
   'mechanic': 'male',   // 2026-11-19 THE NEW RACES 3
   'janitor': 'male',   // 2026-11-19 THE NEW RACES 3
   'trucker': 'male',   // 2026-11-19 THE NEW RACES 3
@@ -744,7 +744,7 @@ const _CHARACTER_SPRITES = {
   'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
   'delivery boy': `${_S}/Races/delivery_boy/male/delivery_boy_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'paparazzi': `${_S}/Races/paparazzi/male/paparazzi_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'cameraman': `${_S}/Races/paparazzi/male/paparazzi_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'mechanic': `${_S}/Races/mechanic/male/mechanic_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'janitor': `${_S}/Races/janitor/male/janitor_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'trucker': `${_S}/Races/trucker/male/trucker_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -2598,7 +2598,7 @@ const RACE_MODELS_3D = {
   /* THE NEW RACES 3 (2026-11-19, mondo's picks from the 11-19 concepts round): Meshy image-to-3d from a nano-banana-pro concept,
      rigged by the Meshy rigging API, animated by the shared library. The paparazzi's camera is made apart (no strap: a strap
      clips when he moves) and held in his hand (three-renderer.js THE UNIT GEAR `held`). Sources: /mnt/project-files/new-char-concepts-20261119/. */
-  'paparazzi': {
+  'cameraman': {
     male: _mkUAL('paparazzi', 'paparazzi', {
       model: `${_S}/Races/paparazzi/male/Meshy_AI_paparazzi_Running.glb`,
       heightRatio: 1.0, basicAttackKind: 'physical',
@@ -7075,7 +7075,7 @@ const RACE_SPRITES = {
   'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
   'delivery boy': `${_S}/Races/delivery_boy/male/delivery_boy_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'paparazzi': `${_S}/Races/paparazzi/male/paparazzi_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'cameraman': `${_S}/Races/paparazzi/male/paparazzi_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'mechanic': `${_S}/Races/mechanic/male/mechanic_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'janitor': `${_S}/Races/janitor/male/janitor_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'trucker': `${_S}/Races/trucker/male/trucker_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
