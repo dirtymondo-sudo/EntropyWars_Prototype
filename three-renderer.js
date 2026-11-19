@@ -86031,14 +86031,18 @@ const ThreeRenderer = (function () {
     }
     /* the blockers an ask at (x, z) must read: its cell's, plus every one seen moving since the grid was laid (a slice of the list is
        re-read once a frame; a blocker that moved or changed size leaves the grid for good) */
+    function _hqNumUp(p, q) { return p - q; }
     function _hqNavGridAt(G, x, z) {
         var now = performance.now(), L = G.list, U = _hqUnits();
         if (now - G.swAt > 4) { G.swAt = now;
             for (var s = 0; s < 1500 && G.n; s++) { var i = G.sw; G.sw = (G.sw + 1) % G.n; if (G.moved[i]) continue; var b = L[i], o = b.obj;
                 if (Math.abs(o.position.x / U - G.px[i]) > 0.05 || Math.abs(o.position.z / U - G.pz[i]) > 0.05 || _hqBlkReach(b) > G.reach[i] + 0.04) { G.moved[i] = 1; G.loose.push(i); } } }
-        var a = G.cells.get((Math.floor(x / G.c) + 32768) * 65536 + (Math.floor(z / G.c) + 32768)), out = [];
+        /* THE GARBAGE CUT (2026-11-19): one answer array per grid, emptied and refilled (every caller reads it at once and keeps
+           nothing; three asks a frame per walker made ~15 MB of throwaway arrays in 90 s of the city walk) */
+        var a = G.cells.get((Math.floor(x / G.c) + 32768) * 65536 + (Math.floor(z / G.c) + 32768)), out = G.out || (G.out = []);
+        out.length = 0;
         if (a) for (var k = 0; k < a.length; k++) if (!G.moved[a[k]]) out.push(a[k]);
-        if (G.loose.length) { for (var m = 0; m < G.loose.length; m++) out.push(G.loose[m]); out.sort(function (p, q) { return p - q; }); }
+        if (G.loose.length) { for (var m = 0; m < G.loose.length; m++) out.push(G.loose[m]); out.sort(_hqNumUp); }
         for (var e = G.n; e < L.length; e++) out.push(e);   // the ones that joined since the grid was laid (THE LIST'S OWN STAMP)
         return out;
     }
@@ -88822,9 +88826,13 @@ const ThreeRenderer = (function () {
         var DEF = (typeof HQ_SEA_DEFAULT !== 'undefined') ? HQ_SEA_DEFAULT : { boat: {}, sub: {} };   // a sandbox may eval this alone
         var R = (typeof HQ_SEA_RULES !== 'undefined') ? HQ_SEA_RULES : ((typeof window !== 'undefined' && window.HQ_SEA_RULES) || null);
         if (!R) return DEF;
+        /* THE GARBAGE CUT (2026-11-19): the merge is made once per rules pair, not on every call (the E-target check asked it per
+           boat per frame: 11 MB in 90 s of the city walk). The rules are fixed tables; a new HQ_SEA_RULES object re-merges. */
+        var C = _hqSeaRules._c; if (C && C.R === R && C.D === DEF) return C.o;
         var o = Object.assign({}, DEF, R);
         o.boat = Object.assign({}, DEF.boat, R.boat || {}); o.sub = Object.assign({}, DEF.sub, R.sub || {}); o.ship = Object.assign({}, DEF.ship || {}, R.ship || {});
         o.labels = Object.assign({}, DEF.labels || {}, R.labels || {});
+        _hqSeaRules._c = { R: R, D: DEF, o: o };
         return o;
     }
     function _hqSea() { return (_hq && _hq.terrain && _hq.terrain.sea) || null; }

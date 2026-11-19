@@ -3077,3 +3077,13 @@ pushed the big ones off the list).
   resident's def has one more slot (`hqSleep`) than a native of the same race, so alternating bodies re-baked every clip. Bakes now stay
   by key (`modelEntry._libBakedMap`) and are handed back at once. Off: `EW_LIB_BAKE_ONE`. (If a body still costs 40 ms+, the next step is
   a body pool by model.)
+
+## THE MEMORY PROFILE + THE GARBAGE CUT (2026-11-19, 60 FPS thread)
+mondo OK'd a cloud memory profile of Disaster City (CDP HeapProfiler sampling, 90 s walking after a 30 s warm, WebGL backend in the
+cloud). About 5 MB a second was thrown away; most of it is three.js's own per-draw work on the WebGL path (not his WebGPU path).
+The game's own share, biggest first: `_hqNavGridAt` (a new answer array per walker ask, ~15 MB/90 s), `_hqStillSum` (number boxing
+in the recursive checksum, 12.5 MB), `_hqSeaRules` (a fresh merged object per boat per frame via `_hqFindTarget`, 11 MB),
+`_hqCharCullSetup` (once per body: the skinned bounding box), `_hqRoutePose` (traffic, 5 MB), `_hqBatchMatSnap` / residents /
+`_hqNavPath` / `_mmVisit` / `_hqChunkTick` (spikes thread's areas, passed on). Cut here: `_hqSeaRules` caches its merge per rules
+pair; `_hqNavGridAt` refills one array per grid (`G.out`, every caller reads it at once and keeps nothing; comparator hoisted to
+`_hqNumUp`). Finding: the garbage rate is modest, so GC is a small part of the drops at best; minor collections, not big pauses.
