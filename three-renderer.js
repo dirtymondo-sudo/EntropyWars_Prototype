@@ -34,7 +34,7 @@ const ThreeRenderer = (function () {
             'EW_ANIM_LIB_STANDARD_POSE EW_ANIM_LIB_URLS EW_AO_AT_ZERO EW_ARCH_BARE EW_ASYNC_NODE_BUILD EW_BARE_PANES EW_BATTLE_MW_EVERY_RENDER EW_BOARD_FOG_MS ' +
             'EW_BUN_ADD_ALL EW_BUN_CHECK_EVERY EW_BUN_DRY EW_BUN_FIELD_CHECK_EVERY EW_BUN_FIRSTS_EACH EW_BUN_FULL_REFRESH EW_BUN_HASH_MATRICES EW_BUN_HELD_EVERY ' +
             'EW_BUN_HELD_NO_SHARED EW_BUN_INST_NO_REST EW_BUN_NO_OUT EW_BUN_OUT_HIDE_HASH EW_BUN_OUT_RETURN_ALWAYS EW_BUN_QUIET_LOOP EW_BUN_REST_AT_5 ' +
-            'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
+            'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_BUN_TARGETS_EVERY EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
             'EW_CC_NO_DETAILS EW_CC_NO_HEMS EW_CLOTH_COLLIDE EW_CSS2D_ALWAYS EW_CSS_PLATES EW_CUBE_NO_ANIM EW_CV_LIT_BAKES EW_DEATH_CAM_ALL_UNITS EW_DESK_OFF ' +
             'EW_DIP_OFF EW_DISABLE_3D_UNITS EW_DISABLE_ANIM_LIB EW_DISABLE_BOOT_FIT EW_DISABLE_CANOPY_CUTAWAY EW_DISABLE_CLOTH_COLLIDE EW_DISABLE_COAT_FIT ' +
             'EW_DISABLE_FACE_IDLE EW_DISABLE_GRASS_WIND EW_DISABLE_GRAVESTONES EW_DISABLE_JIGGLE EW_DISABLE_POWER_AURA EW_DISABLE_RIPPLE EW_DISABLE_SHADOW_GATING ' +
@@ -49719,6 +49719,14 @@ const ThreeRenderer = (function () {
     function _ewBunTargets(H) {
         /* THE ONE-STAMP LIST (2026-11-19): a group is in the list once by this call's stamp (was out.indexOf per group: 722 groups in
            Disaster City = 260,000 compares a frame); the list array is kept and refilled */
+        /* THE LIST KEPT (2026-11-19, mondo's 20:11 F3 at 59.5 FPS: "bundle check 40 / 43 ms ... targets 29 / 38 (1044)" on a frame
+           every few seconds): this list was refilled every frame with three `for in` walks over ~850 keys and a new closure, about
+           the only thing a settled frame still allocates, so the collector's slices landed here. The list now stands until
+           anything joins a scene (the add counter: a new chunk, cell or part is added), the room changes, or 30 frames passed
+           (a group taken away without an add; the check lets go of a group with no parent by itself). Every frame: window.EW_BUN_TARGETS_EVERY */
+        var tAn = _ewAddCount();
+        if (_ewBun.tOut && _ewBun.tH === H && _ewBun.tAn === tAn && (_ewBun.tAge = (_ewBun.tAge | 0) + 1) < 30 && !window.EW_BUN_TARGETS_EVERY) return _ewBun.tOut;
+        _ewBun.tH = H; _ewBun.tAn = tAn; _ewBun.tAge = 0;
         var out = _ewBun.tOut || (_ewBun.tOut = []), tsm = _ewBun.tStamp = (_ewBun.tStamp | 0) + 1;
         out.length = 0;
         function add(g, nm) { if (g && g.isObject3D && g._ew_bunTS !== tsm) { g._ew_bunTS = tsm; out.push(g); if (g._ew_bunName !== nm) g._ew_bunName = nm; } }
