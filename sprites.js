@@ -2830,7 +2830,7 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'punch',
     }),
     female: _mkUAL('streamer/female', 'egirl_f', {
-      model: `${_S}/Races/streamer/female/Meshy_AI_egirl_f_Running.glb`,
+      model: `${_S}/Races/streamer/female/Meshy_AI_egirl_f_rig2_Running.glb`,   // 2026-11-19 THE RIG FIX: shoulders re-rigged (bake-rig-fix.py --preset egirl; the old file stays on R2)
       heightRatio: 0.94,
       basicAttackKind: 'punch',
     }),
