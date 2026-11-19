@@ -8,7 +8,7 @@ const fs = require('fs'), vm = require('vm'), path = require('path');
 const REPO = path.join(__dirname, '..', '..', '..', '..');
 function gameRaces() {
   const { makeSandbox } = require(path.join(REPO, 'load-data.js'));
-  const sb = makeSandbox(); vm.runInContext(fs.readFileSync(path.join(REPO, 'data.js'), 'utf8') + '\n;globalThis.__X = { AVAILABLE_RACES, RACE_PROFILES, RACE_CLASS, RACE_FAMILIES, EW_RACE_BIOMES, HQ_NPC_TEMPERS, HQ_AREA_ENCOUNTERS, DOOR_TEXT: typeof DOOR_TEXT !== "undefined" ? DOOR_TEXT : {}, DOOR_ROSTER_LINES: typeof DOOR_ROSTER_LINES !== "undefined" ? DOOR_ROSTER_LINES : {} };', sb, { filename: 'data.js' });
+  const sb = makeSandbox(); vm.runInContext(fs.readFileSync(path.join(REPO, 'data.js'), 'utf8') + '\n;globalThis.__X = { AVAILABLE_RACES, EW_COMING_RACES: typeof EW_COMING_RACES !== "undefined" ? EW_COMING_RACES : [], RACE_PROFILES, RACE_CLASS, RACE_FAMILIES, EW_RACE_BIOMES, HQ_NPC_TEMPERS, HQ_AREA_ENCOUNTERS, DOOR_TEXT: typeof DOOR_TEXT !== "undefined" ? DOOR_TEXT : {}, DOOR_ROSTER_LINES: typeof DOOR_ROSTER_LINES !== "undefined" ? DOOR_ROSTER_LINES : {} };', sb, { filename: 'data.js' });
   const noop = () => {}, el = () => new Proxy(function () {}, { get: (t, k) => k === 'style' ? {} : (k === 'getContext' ? () => null : (k === 'toDataURL' ? () => '' : el())), apply: () => el(), set: () => true });
   const win = { location: { search: '', href: '', hostname: 'x', protocol: 'https:' }, addEventListener: noop, localStorage: { getItem: () => null, setItem: noop }, navigator: { userAgent: '' } };
   const ctx = { window: win, document: { createElement: el, addEventListener: noop, querySelector: () => null, querySelectorAll: () => [], head: el(), body: el(), documentElement: el() }, location: win.location, navigator: win.navigator, localStorage: win.localStorage, console: { log: noop, warn: noop, error: noop, info: noop }, setTimeout, clearTimeout, URL, Image: function () {}, fetch: () => Promise.reject(), performance: { now: () => 0 } };
@@ -28,7 +28,8 @@ module.exports = function fresh(D) {
   const variant = (k, g, gs) => { const distinct = gs.length > 1 && label(k, 'male') !== label(k, 'female'); const v = Object.assign({ g, n: gs.length > 1 && !distinct ? label(k, g) + (g === 'male' ? ' (M)' : ' (F)') : label(k, g) }, look(k, g));
     const ln = (X.DOOR_ROSTER_LINES || {})[k + ':' + g]; if (ln && ln.length) v.q = ln.slice(0, 2).map(clean); return v; };
   const sites = {}; Object.entries(X.HQ_AREA_ENCOUNTERS || {}).forEach(([id, t]) => { const s = D.rooms && D.rooms[id] && D.rooms[id].site; if (s) (t.list || []).forEach(e => { (sites[e.race] = sites[e.race] || new Set()).add(s); }); });
-  (X.AVAILABLE_RACES || []).forEach(k => {
+  /* THE COMING RACES (2026-11-19): races with a model + sprite but no kit yet (data.js EW_COMING_RACES) are on the web too */
+  [...(X.AVAILABLE_RACES || []), ...(X.EW_COMING_RACES || []).filter(k => !(X.AVAILABLE_RACES || []).includes(k))].forEach(k => {
     const gs = genders(k), r = have[k];
     if (r) { gs.forEach(g => { if (!r.v.some(v => v.g === g)) { r.v.push(variant(k, g, gs)); added.push(k + ' (' + g + ')'); } }); return; }
     const p = P[k] || {}, lines = (X.DOOR_ROSTER_LINES || {})[k] || [], co = (DT.CUSTOMS_OVERRIDES || {})[k];

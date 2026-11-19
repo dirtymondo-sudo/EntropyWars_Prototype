@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1258 |
+| Meshy AI | no | 1263 |
 | Meshy AI, reworked by Claude | no | 10 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 86 |
@@ -95,6 +95,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | fairy (female) | `Assets/characters/races/fairy/female/Meshy_AI_fairy_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | fallen angel | `Assets/characters/races/fallenangel/male/Meshy_AI_fallen_angel_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | fallen angel (female) | `Assets/characters/races/fallenangel/female/Meshy_AI_fallen_angel_f_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
+| farmer | `Assets/characters/races/farmer/male/Meshy_AI_farmer_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | firefighter | `Assets/characters/races/firefighter/Meshy_AI_firefighter_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | flesheater | `Assets/characters/races/flesheater/Meshy_AI_flesheater_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | florida man | `Assets/characters/races/florida_man/male/Meshy_AI_florida_man_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
@@ -109,6 +110,8 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | ghost (female) | `Assets/characters/races/ghost/female/Meshy_AI_ghost_realistic_hot_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | ghoul | `Assets/characters/races/ghoul/male/Meshy_AI_ghoul_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | giant | `Assets/characters/races/giant/male/Meshy_AI_ancient_giant_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| gladiator | `Assets/characters/races/gladiator/male/Meshy_AI_gladiator_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
+| gladiator (female) | `Assets/characters/races/gladiator/female/Meshy_AI_gladiator_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | glitch | `Assets/characters/races/glitch/male/Meshy_AI_glitch_entity_hologr_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | gnome | `Assets/characters/races/gnome/male/Meshy_AI_garden_gnome_realist_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | goatman | `Assets/characters/races/goatman/male/Meshy_AI_goatman_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -128,6 +131,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | jack o lantern | `Assets/characters/races/jackolantern/Meshy_AI_jack_o_lantern_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | janitor | `Assets/characters/races/janitor/male/Meshy_AI_janitor_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | jellyfish | `Assets/characters/races/jellyfish/Meshy_AI_a_jellyfish_king_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| jellyfish ufo | `Assets/characters/races/jellyfish_ufo/male/jellyfish_ufo.glb` | Meshy AI | Meshy AI body + Meshy AI tentacle, put together by Claude in python (THE COMING RACES, 2026-11-19, mondo picked concept B: 8 copies of the tentacle on 6-bone chains under the waist, a Sway loop; project files gladiator-farmer-concepts/jelly.py) |
 | juggernaut | `Assets/characters/races/juggernaut/Meshy_AI_a_giant_juggernaut_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | kaiju | `Assets/characters/races/kaiju/male/Meshy_AI_kaiju_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | karate frog | `Assets/characters/races/karate_frog/male/Meshy_AI_karate_frog_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
@@ -309,6 +313,7 @@ shared library fails, except where a rig keeps its own clip on purpose. Folder =
 | giant | idle, walk, jump, hit, death, cast, castMelee | `Assets/characters/races/giant/male/` |
 | grey | idle, walk, jump, death, cast, castMagic | `Assets/characters/races/grey/male/` |
 | homosapien | idle, walk, jump, death | `Assets/characters/races/homosapien/male/freelancer/` |
+| jellyfish ufo | idle, walk | `Assets/characters/races/jellyfish_ufo/male/` |
 | ki fighter (female) | idle, walk, jump, hit, death, cast, castMelee, castMagic, castSupport | `Assets/characters/races/kifighter/female/` |
 | knight (female) | idle, walk, jump, hit, death, cast, castMelee | `Assets/characters/races/homosapien/female/knight/` |
 | mad scientist (female) | idle, walk, jump, hit, death, cast, castRanged | `Assets/characters/races/homosapien/female/engineer/` |
@@ -3614,6 +3619,7 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | angel_f_halo | `Assets/characters/gear/halos/angel_f_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | angel_m_halo | `Assets/characters/gear/halos/angel_m_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | paparazzi_camera | `Assets/characters/gear/held/paparazzi_camera.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
+| pitchfork | `Assets/characters/gear/held/pitchfork.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | deep_sea_diver_helmet | `Assets/characters/gear/helmets/deep_sea_diver_helmet.glb` | Meshy AI | Meshy AI prop (the diver helmet concept), dome cut out by Claude in Blender-free python (pharaoh-diver/models/cut.py); the glass dome is a three.js sphere drawn in three-renderer.js THE BUBBLE HELMET | sprites.js |
 | fairy_wing_single | `Assets/characters/gear/wings/fairy_wing_single.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | feathered_serpent | `Assets/characters/races/aztec/feathered_serpent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for Quetzalcoatl's serpent body (THE NEW RACES, mondo 2026-11-16) | three-renderer.js |

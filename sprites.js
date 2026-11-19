@@ -145,6 +145,9 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/mechanic/', 'Assets/characters/races/mechanic/'],   // 2026-11-19 THE NEW RACES 3
   ['Assets/Sprites/Races/janitor/', 'Assets/characters/races/janitor/'],   // 2026-11-19 THE NEW RACES 3
   ['Assets/Sprites/Races/trucker/', 'Assets/characters/races/trucker/'],   // 2026-11-19 THE NEW RACES 3
+  ['Assets/Sprites/Races/gladiator/', 'Assets/characters/races/gladiator/'],   // 2026-11-19 THE COMING RACES
+  ['Assets/Sprites/Races/farmer/', 'Assets/characters/races/farmer/'],   // 2026-11-19 THE COMING RACES
+  ['Assets/Sprites/Races/jellyfish_ufo/', 'Assets/characters/races/jellyfish_ufo/'],   // 2026-11-19 THE COMING RACES
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/influencer/', 'Assets/characters/races/influencer/'],   // 2026-11-17 THE NEW RACES 2
@@ -566,6 +569,9 @@ const RACE_SPRITE_GENDERS = {
   'mechanic': 'male',   // 2026-11-19 THE NEW RACES 3
   'janitor': 'male',   // 2026-11-19 THE NEW RACES 3
   'trucker': 'male',   // 2026-11-19 THE NEW RACES 3
+  'gladiator': 'both',   // 2026-11-19 THE COMING RACES
+  'farmer': 'male',   // 2026-11-19 THE COMING RACES
+  'jellyfish ufo': 'male',   // 2026-11-19 THE COMING RACES
   'librarian': 'female',   // 2026-11-17 THE NEW RACES 2
   'televangelist': 'male',   // 2026-11-17 THE NEW RACES 2
   'influencer': 'female',   // 2026-11-17 THE NEW RACES 2
@@ -760,6 +766,9 @@ const _CHARACTER_SPRITES = {
   'mechanic': `${_S}/Races/mechanic/male/mechanic_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'janitor': `${_S}/Races/janitor/male/janitor_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'trucker': `${_S}/Races/trucker/male/trucker_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'gladiator': `${_S}/Races/gladiator/male/gladiator_m_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'farmer': `${_S}/Races/farmer/male/farmer_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'jellyfish ufo': `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its 3D model's front render)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'influencer': `${_S}/Races/influencer/female/influencer_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -873,6 +882,7 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 // 2026-11-17 (mondo: female nordic + siren): their own 128x128 sprites, Sprite AI restyles of each new Meshy model's front render.
 // The mermaid woman keeps her blue sprite: her new model was made to match it.
 const _NEW_FEMALE_SPRITES = {
+  'gladiator': `${_S}/Races/gladiator/female/gladiator_f_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'nordic': `${_S}/Races/Nordic/Female/nordic_f_px.png`,
   'siren': `${_S}/Races/siren/female/siren_f_px2.png`,
   'ninja': `${_S}/Races/ninja/female/ninja_f_px.png`,   // 2026-11-17 THE NINJA — the female ninja (Sprite AI restyle of her Meshy model)
@@ -2647,6 +2657,33 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/trucker/male/Meshy_AI_trucker_Running.glb`,   // the _v2 fix (a stray hand-to-boot strip cut out)
       heightRatio: 1.04, basicAttackKind: 'physical',
     }),
+  },
+  /* THE COMING RACES (2026-11-19, mondo picked the concepts in thread "Make gladiator, farmer and jellyfish UFO models"): models, sprites and
+     names are in, the kits are not: they are in data.js EW_COMING_RACES, not AVAILABLE_RACES, until their spells exist (docs/notes/
+     champions-combat.md "THE COMING RACES"). Meshy image-to-3d + rigging; the gladiators' pale gold was redone as metal gold in the file
+     (gold.py). The farmer's pitchfork is made apart and held (THE UNIT GEAR). The Jellyfish UFO has no rig of its own: one body + 8
+     tentacles, each a 6-bone chain, and a 2 s 'Sway' loop in the same file (jelly.py). Sources + scripts: project files
+     gladiator-farmer-concepts/. */
+  'gladiator': {
+    male: _mkUAL('gladiator/male', 'gladiator_m', {
+      model: `${_S}/Races/gladiator/male/Meshy_AI_gladiator_m_Running.glb`,
+      heightRatio: 1.04, basicAttackKind: 'physical',
+    }),
+    female: _mkUAL('gladiator/female', 'gladiator_f', {
+      model: `${_S}/Races/gladiator/female/Meshy_AI_gladiator_f_Running.glb`,
+      heightRatio: 0.97, basicAttackKind: 'physical',
+    }),
+  },
+  'farmer': {
+    male: _mkUAL('farmer', 'farmer', {
+      model: `${_S}/Races/farmer/male/Meshy_AI_farmer_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'physical',
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/pitchfork.glb', len: 0.95, grip: 0.35 } },
+    }),
+  },
+  'jellyfish ufo': {
+    male: { model: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb`, clips: { idle: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb`, walk: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb` },
+      heightRatio: 1.1, yawOffset: 0, basicAttackKind: 'physical' },
   },
   /* THE NEW RACES 2 (2026-11-17, mondo's picks from the zone characters): Meshy image-to-3d (meshy-t2.5, a-pose) from a
      nano-banana-pro concept, rigged by the Meshy rigging API. The Boltzmann Brain has no body to rig: a still model.
@@ -7183,6 +7220,9 @@ const RACE_SPRITES = {
   'mechanic': `${_S}/Races/mechanic/male/mechanic_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'janitor': `${_S}/Races/janitor/male/janitor_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'trucker': `${_S}/Races/trucker/male/trucker_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'gladiator': `${_S}/Races/gladiator/male/gladiator_m_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'farmer': `${_S}/Races/farmer/male/farmer_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'jellyfish ufo': `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its 3D model's front render)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'influencer': `${_S}/Races/influencer/female/influencer_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)

@@ -6129,3 +6129,26 @@ plans; POINT_OF_ENTRY 'The Bermuda Triangle', HQ_AREA_ENCOUNTERS `site_prebuilt_
 - CPU: ai.js ccDenialValue values `encrypted` (by the target's 60+ MP spells) and `doxxed`; the rest are plain kinds.
 - Online: everything is host engine state (unit numbers, statuses, turret rows) mirrored by the state sync; the texts ride
   showFloatingTextForUnit's relay; the guest's own move tiles read the same Shogun / banner rows.
+
+## THE COMING RACES (2026-11-19, thread "Make gladiator, farmer and jellyfish UFO models")
+mondo picked Meshy concepts for a GLADIATOR (male + female, one race `gladiator`), a FARMER (`farmer`, male, his pitchfork made apart) and a
+JELLYFISH UFO (`jellyfish ufo`: "jellyfish UFO looking things", another jellyfish species, their FIGHTER class, so RACE_CLASS `bruiser`).
+His words 15:27Z: "wire them in the game at least in the relation web, give them sprite ai portraits, but ill have my associate do their spell
+and combat plan on another account".
+
+What is IN: sprites.js RACE_MODELS_3D (models on R2 `Assets/characters/races/gladiator|farmer|jellyfish_ufo/`, the pitchfork at
+`Assets/characters/gear/held/pitchfork.glb`, held through THE UNIT GEAR), RACE_SPRITE_GENDERS, the 128x128 Sprite AI sprites
+(`<race>_px.png`, restyles of the concepts; the jellyfish's from its model's front render), data.js RACE_PROFILES (label + types),
+RACE_CLASS for the jellyfish UFO only, and the new list data.js `EW_COMING_RACES`. The Relationship Web lists every race in
+AVAILABLE_RACES + EW_COMING_RACES (story-web/build/fresh.js).
+
+What is NOT in (the other account's job, one PR): the kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, a finisher, passives), stats
+(RACE_BASE_STATS), RACE_PHYSIQUE, RACE_ELEMENT_AFFINITY, RACE_TERRAIN_PREFERENCE, EW_RACE_BIOMES, CAMPAIGN_RACE_PRICES, RACE_CLASS for the
+gladiator + farmer, party-builder.js + ui.js descriptions, residents / zone homes. THE UNLOCK: once a race has its kit, MOVE its key from
+`EW_COMING_RACES` into data.js `AVAILABLE_RACES` AND server.js `AVAILABLE_RACES` (keep both in step), bump `?v=`, upload. THE NEW RACES 3
+above is the pattern for a full race. Ask mondo for the moves (never invent the names: he names them).
+
+Model notes: the gladiators' Meshy gold came out pale tan; their files were recoloured to metal gold with a metal/rough texture (project
+files `gladiator-farmer-concepts/gold.py`). The Jellyfish UFO has no Meshy rig: one body mesh + one tentacle mesh drawn 8 times under the
+waist, each copy skinned to its own 6-bone chain, and a 2 s looping clip `Sway` in the same file (`jelly.py`); its RACE_MODELS_3D row plays
+that clip as idle and walk (`clips.idle` = the file). Its claw arms do not move. Flight / hover height is the kit thread's call.
