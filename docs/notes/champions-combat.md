@@ -6185,3 +6185,11 @@ the New Races 4 block); plain numbers on the unit (`favor`, `charge`) + the seed
 - Proof: a probe (scratch, playtest_riders.js pattern + the jsdelivr modules through curl) cast every spell on the real engine: Favor 1 -> 3
   -> 5 -> spent by Crowd Pleaser, Come At Me Provoked + DEF up, 4 seeds sown, the Hay Bale stood, Get Off My Land pushed + Feared, Harvest
   Moon refused with no plant.
+
+## THE 3D FORMS FOLLOW THE ASSET MOVE (2026-11-19)
+mondo: "when the sedan uses transform, he just transforms into his pixel sprite". The robot model was always wired
+(sprites.js RACE_MODELS_3D['honda civic'].male.overrideForms, file `Assets/characters/races/hondacivic/Meshy_AI_1990s_sedan_transform_biped_Character_output.glb`),
+but overrideForms is keyed by the look's sprite url, built from the OLD `Assets/Sprites/` path, and since 11-05 `_ewMoveArtTables`
+rewrites HONDA_CIVIC_SPRITES / TIME_COP_LOOKS to the new paths. `unit._spriteOverride` (new url) matched no key, so the renderer
+drew the 2D sprite. Fix: `_ewMoveArtTables` also files every overrideForms entry under its moved url. The Time Cop's three looks
+had the same break. Rule: a table keyed by an asset url must be keyed after the move, or under both urls.
