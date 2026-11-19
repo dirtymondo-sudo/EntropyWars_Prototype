@@ -636,6 +636,10 @@ const RACE_ELEMENT_AFFINITY = {
     'virus': { poison: 'resist', lightning: 'resist', water: 'weak' },   // 2026-11-18 THE VIRUS (mondo approved the kit): made of poison and current; water shorts it
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
     'vtuber': { lightning: 'resist', water: 'weak' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): lives on current; water shorts the projectors
+    'paparazzi': { light: 'resist', water: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): the flash is his; water kills the camera
+    'mechanic': { fire: 'resist', lightning: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): works by the welder; a live wire bites
+    'janitor': { poison: 'resist', ice: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): forty years of bleach fumes; slips on ice like anyone
+    'trucker': { wind: 'resist', ice: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): drives through any storm; black ice
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
@@ -3004,6 +3008,22 @@ const RACE_PROFILES = {
         label: 'V-Tuber',
         types: ['tech', 'anomaly']
     },
+    'paparazzi': {   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+        label: 'Paparazzi',
+        types: ['human']
+    },
+    'mechanic': {   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+        label: 'Mechanic',
+        types: ['human']
+    },
+    'janitor': {   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+        label: 'Janitor',
+        types: ['human']
+    },
+    'trucker': {   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+        label: 'Trucker',
+        types: ['human']
+    },
     'haunted doll': {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
         label: 'Haunted Doll',
         types: ['anomaly', 'unholy']
@@ -3898,7 +3918,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'paparazzi', 'mechanic', 'janitor', 'trucker'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4058,6 +4078,10 @@ const RACE_CLASS = {
     'virus': 'specialist',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'caster',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'paparazzi': 'ranged',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'mechanic': 'support',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'janitor': 'specialist',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'trucker': 'tank',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
     'atlantean': 'support',
@@ -4119,6 +4143,10 @@ const RACE_TERRAIN_PREFERENCE = {
     'virus': 'wasteland',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'urban',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'paparazzi': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'mechanic': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'janitor': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'trucker': 'desert',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): the open road
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
     'siren': 'deep_water',
     'reptilian': 'water',
@@ -4516,6 +4544,10 @@ const RACE_BASE_STATS = {
     'virus':              { hp:  780, mp: 220, atk:  40, def:  60, mdef: 160, int: 180, vision: 3, crt: 18, spd:  90 },   // 2026-11-18 THE VIRUS (mondo approved the kit) — first pass: a frail magic specialist
     'streamer':           { hp:  950, mp: 200, atk: 120, def:  80, mdef: 100, int: 130, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd
     'vtuber':             { hp:  820, mp: 240, atk:  30, def:  70, mdef: 150, int: 185, vision: 3, crt: 20, spd: 100 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — first pass: a frail caster who is never where she seems
+    'paparazzi':          { hp:  900, mp: 140, atk: 105, def:  78, mdef:  70, int:  60, vision: 5, crt: 26, spd: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the ranged median (vision 5: he sees everything)
+    'mechanic':           { hp: 1150, mp: 170, atk: 120, def: 115, mdef:  90, int: 120, vision: 3, crt: 18, spd:  95 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass between the support and bruiser medians
+    'janitor':            { hp: 1100, mp: 170, atk: 110, def: 110, mdef: 110, int: 110, vision: 3, crt: 18, spd: 100 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the specialist median, physical
+    'trucker':            { hp: 1350, mp: 100, atk: 125, def: 160, mdef:  75, int:  45, vision: 3, crt: 14, spd: 110 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the tank median
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -4689,6 +4721,10 @@ const RACE_PHYSIQUE = {
     'virus':               { h: 1.50, w: 30 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the spiked ball hovering, tendrils down
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber':              { h: 1.64, w: 50 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'paparazzi':           { h: 1.78, w: 78 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'mechanic':            { h: 1.80, w: 105 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'janitor':             { h: 1.72, w: 68 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+    'trucker':             { h: 1.88, w: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
@@ -20992,6 +21028,10 @@ const EW_RACE_BIOMES = {
     'virus': ['neon_city', 'astral'],   // 2026-11-18 THE VIRUS (mondo approved the kit) — The Internet's quarantine
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
     'vtuber': ['neon_city', 'urban'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — The Internet, district V
+    'paparazzi': ['urban', 'forest', 'ranch'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City, The Woods, the Lake
+    'mechanic': ['urban', 'desert'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City Industrial, the gas station
+    'janitor': ['urban', 'underground_base'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City, The D.U.M.B., The Sewers
+    'trucker': ['urban', 'desert', 'ranch'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — the highway routes
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
@@ -26652,6 +26692,10 @@ const CAMPAIGN_RACE_PRICES = {
   'virus': 450,   // 2026-11-18 THE VIRUS (mondo approved the kit)
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
   'vtuber': 400,   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+  'paparazzi': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+  'mechanic': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+  'janitor': 300,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
+  'trucker': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
   'lifeguard': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)

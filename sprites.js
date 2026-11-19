@@ -141,6 +141,10 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/magician/', 'Assets/characters/races/magician/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/mole_man/', 'Assets/characters/races/mole_man/'],   // 2026-11-16 THE NEW RACES
   ['Assets/Sprites/Races/delivery_boy/', 'Assets/characters/races/delivery_boy/'],   // 2026-11-17 THE NEW RACES 2
+  ['Assets/Sprites/Races/paparazzi/', 'Assets/characters/races/paparazzi/'],   // 2026-11-19 THE NEW RACES 3
+  ['Assets/Sprites/Races/mechanic/', 'Assets/characters/races/mechanic/'],   // 2026-11-19 THE NEW RACES 3
+  ['Assets/Sprites/Races/janitor/', 'Assets/characters/races/janitor/'],   // 2026-11-19 THE NEW RACES 3
+  ['Assets/Sprites/Races/trucker/', 'Assets/characters/races/trucker/'],   // 2026-11-19 THE NEW RACES 3
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/influencer/', 'Assets/characters/races/influencer/'],   // 2026-11-17 THE NEW RACES 2
@@ -552,6 +556,10 @@ const RACE_SPRITE_GENDERS = {
   'mole man': 'male',   // 2026-11-16
   'quetzalcoatl': 'male',   // 2026-11-16
   'delivery boy': 'male',   // 2026-11-17 THE NEW RACES 2
+  'paparazzi': 'male',   // 2026-11-19 THE NEW RACES 3
+  'mechanic': 'male',   // 2026-11-19 THE NEW RACES 3
+  'janitor': 'male',   // 2026-11-19 THE NEW RACES 3
+  'trucker': 'male',   // 2026-11-19 THE NEW RACES 3
   'librarian': 'female',   // 2026-11-17 THE NEW RACES 2
   'televangelist': 'male',   // 2026-11-17 THE NEW RACES 2
   'influencer': 'female',   // 2026-11-17 THE NEW RACES 2
@@ -736,6 +744,10 @@ const _CHARACTER_SPRITES = {
   'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
   'delivery boy': `${_S}/Races/delivery_boy/male/delivery_boy_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'paparazzi': `${_S}/Races/paparazzi/male/paparazzi_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'mechanic': `${_S}/Races/mechanic/male/mechanic_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'janitor': `${_S}/Races/janitor/male/janitor_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'trucker': `${_S}/Races/trucker/male/trucker_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'influencer': `${_S}/Races/influencer/female/influencer_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -2581,6 +2593,34 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/tech_ceo/male/Meshy_AI_tech_ceo_Running.glb`,
       heightRatio: 1.0,
       basicAttackKind: 'magic',
+    }),
+  },
+  /* THE NEW RACES 3 (2026-11-19, mondo's picks from the 11-19 concepts round): Meshy image-to-3d from a nano-banana-pro concept,
+     rigged by the Meshy rigging API, animated by the shared library. The paparazzi's camera is made apart (no strap: a strap
+     clips when he moves) and held in his hand (three-renderer.js THE UNIT GEAR `held`). Sources: /mnt/project-files/new-char-concepts-20261119/. */
+  'paparazzi': {
+    male: _mkUAL('paparazzi', 'paparazzi', {
+      model: `${_S}/Races/paparazzi/male/Meshy_AI_paparazzi_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'physical',
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/paparazzi_camera.glb', len: 0.09, grip: 0.3 } },
+    }),
+  },
+  'mechanic': {
+    male: _mkUAL('mechanic', 'mechanic', {
+      model: `${_S}/Races/mechanic/male/Meshy_AI_mechanic_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'physical',
+    }),
+  },
+  'janitor': {
+    male: _mkUAL('janitor', 'janitor', {
+      model: `${_S}/Races/janitor/male/Meshy_AI_janitor_Running.glb`,
+      heightRatio: 0.98, basicAttackKind: 'physical',
+    }),
+  },
+  'trucker': {
+    male: _mkUAL('trucker', 'trucker', {
+      model: `${_S}/Races/trucker/male/Meshy_AI_trucker_Running.glb`,   // the _v2 fix (a stray hand-to-boot strip cut out)
+      heightRatio: 1.04, basicAttackKind: 'physical',
     }),
   },
   /* THE NEW RACES 2 (2026-11-17, mondo's picks from the zone characters): Meshy image-to-3d (meshy-t2.5, a-pose) from a
@@ -7035,6 +7075,10 @@ const RACE_SPRITES = {
   'mole man': `${_S}/Races/mole_man/male/mole_man_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept, mondo picked A)
   'quetzalcoatl': `${_S}/Races/aztec/aztec.png`,   // 2026-11-16 — mondo's Aztec king
   'delivery boy': `${_S}/Races/delivery_boy/male/delivery_boy_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'paparazzi': `${_S}/Races/paparazzi/male/paparazzi_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'mechanic': `${_S}/Races/mechanic/male/mechanic_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'janitor': `${_S}/Races/janitor/male/janitor_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'trucker': `${_S}/Races/trucker/male/trucker_px.png`,   // 2026-11-19 THE NEW RACES 3 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'influencer': `${_S}/Races/influencer/female/influencer_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
