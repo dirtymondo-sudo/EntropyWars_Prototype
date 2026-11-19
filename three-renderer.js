@@ -47243,7 +47243,7 @@ const ThreeRenderer = (function () {
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost + (_ewGpuInfo.rebuilds ? ' (rebuilt ' + Math.min(3, _ewGpuInfo.rebuilds) + '×)' : '');
         if (_ewBun.marked.length) {
             s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
-            if (_ewBun.rpShow) s += ' · refreshed ' + _ewBun.rpShow.asked + ' of ' + _ewBun.rpShow.all + ' a frame';
+            if (_ewBun.rpShow) { var rpS = _ewBun.rpShow; s += ' · refreshed ' + rpS.asked + ' of ' + rpS.all + ' a frame (awake ' + rpS.awake + ', turns ' + rpS.turn + ', woken ' + rpS.wokeN + ', firsts ' + rpS.reps + ', whole groups ' + (rpS.asked - rpS.awake - rpS.turn - rpS.wokeN - rpS.reps) + ')'; }
             var wr = _ewBun.whyRate, ws = []; if (wr) for (var wk in wr) ws.push(wk + ' ' + wr[wk]);
             if (ws.length) s += ' (' + ws.join(', ') + ')';
             s += ' · check ' + _ewBun.msAvg.toFixed(2) + ' ms/frame (' + (_ewBun.quietN | 0) + ' quiet skipped, ' + (_ewBun.noMShow | 0) + ' still-checked)';
@@ -49224,7 +49224,7 @@ const ThreeRenderer = (function () {
             var L = bd._ewRep; if (!L || L.v !== bd.version || L.n !== bd.renderObjects.length) L = rpList(R, bd);
             var i, ro, F = _ewBun.frame | 0, asked = 0;
             for (i = 0; i < L.reps.length; i++) rpStep(R, L.reps[i]);
-            asked += L.reps.length;
+            asked += L.reps.length; _ewBun.rpReps = (_ewBun.rpReps | 0) + L.reps.length;
             var D = L.dyn, woke = false, held = null, u0, rested;
             for (i = 0; i < D.length; i++) {
                 ro = D[i]; rested = ro._ew_rqOk && ro._ew_rq >= RP_REST;
@@ -49235,11 +49235,22 @@ const ThreeRenderer = (function () {
                 if (rested && !woke && ((F + i) % RP_REST) !== 0) { (held || (held = [])).push(ro); continue; }
                 u0 = _ewBun.upN | 0;
                 rpStep(R, ro); asked++;
+                if (rested) _ewBun.rpTurn = (_ewBun.rpTurn | 0) + 1; else _ewBun.rpAwake = (_ewBun.rpAwake | 0) + 1;
                 if ((_ewBun.upN | 0) !== u0) { ro._ew_rq = 0; if (rested) woke = true; } else ro._ew_rq++;
             }
             /* a rested object wrote on its turn: what changed may be the same for all of them (the pass's camera in an object's
                own buffer) — every rested one is refreshed this frame, and rests again only after REST quiet frames */
-            if (woke && held) { for (i = 0; i < held.length; i++) { held[i]._ew_rq = 0; rpStep(R, held[i]); asked++; } _ewBun.rpWoke = (_ewBun.rpWoke | 0) + 1; }
+            /* THE WAKE KEEPS THE REST (2026-11-19, mondo's F3 in Disaster City: "bundle replays 5.3 ms", "refreshed 1157 of 3948 a
+               frame"): the woken group's held objects were each set back to "awake" and so refreshed IN FULL every frame for the next
+               REST frames, though most wrote nothing when woken: one object writing once a second (a sign's sheet, a slow blink) kept
+               its whole square (50-80 pieces) refreshed most of the time. Each held one is still refreshed this frame (a shared
+               change reaches all of them, as before), and only one that writes something on it stays awake. Old rule:
+               window.EW_BUN_WAKE_ALL. Counts in the lens's bundles line: woken groups, and the awake / turn / rep split. */
+            if (woke && held) {
+                var wAll = typeof window !== 'undefined' && !!window.EW_BUN_WAKE_ALL;
+                for (i = 0; i < held.length; i++) { u0 = _ewBun.upN | 0; rpStep(R, held[i]); asked++; if (wAll || (_ewBun.upN | 0) !== u0) held[i]._ew_rq = 0; }
+                _ewBun.rpWoke = (_ewBun.rpWoke | 0) + 1; _ewBun.rpWokeN = (_ewBun.rpWokeN | 0) + held.length;
+            }
             /* THE HELD KEEP THE CAMERA (2026-11-15, mondo: "trees and other props are moving when i move my camera ... its in door hq
                too"): the frame's camera (and lamps, fog) sit in SHARED buffers, one per set of shared values a shader reads, and three
                writes each when the first object that reads it is refreshed in a render. A held object is not refreshed, and the
@@ -49609,7 +49620,7 @@ const ThreeRenderer = (function () {
         var t0 = performance.now(), W = _ewBun.why;
         var spL = (_lens && _lens.cur) ? { w0: Object.assign({}, W), r0: _ewBun.recs, walked: 0, re: [], lamp: false } : null;   // THE BUNDLE SPIKES (lens): this tick's re-records
         _ewBun.frame = (_ewBun.frame | 0) + 1;
-        _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0 }; _ewBun.rpAsked = 0; _ewBun.rpAll = 0;   // THE QUIET REPLAY: the last frame's count
+        _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0 }; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
         var tpa = spL ? performance.now() : 0;
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
         var tpb = spL ? performance.now() : 0, relN = 0;

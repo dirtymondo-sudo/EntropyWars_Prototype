@@ -3164,3 +3164,13 @@ re-measured every prop whose file had not landed (empty box) first on every swee
 share ran out before a landed prop was reached and "the rest next frame" restarted from the top. Now a waiting prop is skipped for 0.5 s
 after its last try (`p._ew_pcTry`), the share goes to landed props, and while any wait (`H._pcWait`) the sweep runs every 0.5 s, not 1.5 s.
 Off: `window.EW_HQ_PC_RETRY_ALL`.
+
+### THE WAKE KEEPS THE REST (2026-11-19, 60 FPS thread, his 16:11 F3: 29.7 FPS, "scene: bundle replays 5.3", "refreshed 1157 of 3948 a frame")
+THE QUIET REPLAY wakes a recorded group when one of its rested objects writes something on its turn (every REST = 20th frame): every
+held object of the group is refreshed that frame. Each was also set back to "awake" (`_ew_rq = 0`), so the whole group (a square holds
+50-80 pieces) was refreshed IN FULL every frame for the next 20 frames, though nearly none of them wrote anything. One object writing
+once a second kept its square hot most of the time. Now the woken ones are still all refreshed that frame (a shared change still reaches
+every one), and only one that writes something on that refresh stays awake. Old rule: `window.EW_BUN_WAKE_ALL`.
+The lens's bundles line now splits "refreshed N of M a frame" into awake (refreshed every frame: they wrote in the last 20), turns
+(rested, their 1-in-20 turn), woken (held, refreshed by a wake), firsts (the one plain object per shader asked) and whole groups (a
+group three replayed itself: recorded again, not static, or not yet seen through once). Next F3 says which one is left to cut.
