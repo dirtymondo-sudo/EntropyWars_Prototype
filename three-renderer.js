@@ -15120,6 +15120,7 @@ const ThreeRenderer = (function () {
             if (u._spriteFlipX) h = _hashInt(h, 5);
             if (u.status && u.status.filtered > 0 && u._filterRace) h = _hashStr(h, 'flt:' + u._filterRace + ':' + (u._filterGender || '') + ':' + _viewerPlayerNum());   // 🤳 THE FILTER
             if (u.race === 'werewolf') h = _hashStr(h, (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'night');
+            if (u.race === 'ice queen' && typeof ewSuperOnBoard === 'function' && ewSuperOnBoard()) h = _hashInt(h, 37);   // THE ICE QUEEN'S SUPER FORM
             if (u.status && u.status.submerged > 0) h = _hashInt(h, 31);   // 🐊 going under / surfacing re-seats the body (_submergedSink)
         }
         h = _hashVal(h, state.selectedUnitId || '');
