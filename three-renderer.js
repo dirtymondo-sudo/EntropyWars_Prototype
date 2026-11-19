@@ -54031,12 +54031,13 @@ const ThreeRenderer = (function () {
         var fps = R.length, full = t0 - D.since > 3000;   // the frames that began in the last second (after the room's first 3 s)
         if (iv > 0 && iv < 3000 && P && full && (iv >= 50 || fps < 30)) {
             var st = D.st;
-            if (st && t0 - st.lastAt > 1500) { _dipClose(D, now); st = null; }
+            if (st && st.calm && t0 - st.lastAt > 1500) { _dipClose(D, now); st = null; }   // (a run of slow frames with long gaps stays one dip)
+            if (st) st.calm = false;
             if (!st) st = D.st = { at: new Date().toISOString().slice(11, 19), t: D.lastT0, lastAt: t0, frames: 0, worst: 0, minFps: 999, js: 0, parts: {}, where: _dipWhere(), c0: P.c, room: (_hq && _hq.opts && _hq.opts.room) || '' };
             st.lastAt = t0; st.frames++; st.js += P.cpu; if (iv > st.worst) st.worst = iv; if (fps < st.minFps) st.minFps = fps;
             var M = P.parts; if (M) for (var pk in M) st.parts[pk] = (st.parts[pk] || 0) + M[pk];
             var S2 = P.sub; if (S2) for (var sk in S2) st.parts['> ' + sk] = (st.parts['> ' + sk] || 0) + S2[sk];
-        } else if (D.st && t0 - D.st.lastAt > 1500) _dipClose(D, now);
+        } else if (D.st) { D.st.calm = true; if (t0 - D.st.lastAt > 1500) _dipClose(D, now); }
         D.prev = { cpu: now - t0, parts: F ? F.parts : null, sub: F ? F.sub : null, c: _dipCounters() };
         D.lastT0 = t0;
     }
