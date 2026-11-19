@@ -3140,6 +3140,13 @@ City: 5,666 pairs, 4,732 faces lifted on 979 pieces, ~4.3 s sliced on the cloud'
 recipe: walk `dev.hqScene()` skipping `_ew_bRec`-merged originals' copies (`_ew_hqBatch`) and hidden instance sources.
 The Bayside sea-wall ground in his second picture showed no overlapping surfaces in a sweep with decals and cut-outs included; if it still
 flickers, suspect shadow acne at a low sun (HQ_LIGHT_RULES.shadows.normalBias 2.4 vs a ~3-6 cm shadow texel).
+
+## THE NEW BODY SPLIT (2026-11-19, spikes thread)
+mondo's 14:53 F3 had one 116 ms frame with "residents: new body 51 ms" (one body a frame since PR #2137, bakes kept per key since #2156),
+and the lens could not say which step. Three lens sub-marks now name it: "new body: game unit" (createUnit), "new body: model + rig"
+(`_attachUnitModel` in `_hqSpawnCharacter`), "new body: clip bake (first of a model)" (`_libBakeClips` in `_animLibBakeForModel0`).
+They cost nothing with the lens shut. Next step decided by the readout: a big clip bake = slice the first bake of a model over frames;
+a big model + rig = a parked-body pool per model in `_hqResDispose` / `_hqResSpawn`.
 - THE LIGHTS AT THE DESK + THE BODY'S OWN BOUNDS (11-19, his first dip log, 14:53): the dips after the load were 0.1-2 s at 21-43 FPS.
   (1) "render: node + rig ticks 7-8 ms" in 4 of 6 slow frames = `_ewRigRead` re-reading the whole scene (45K objects, own recursion, so
   the scan alarm missed it) on ANY add anywhere and every second. Now arrivals from the front desk (a light, or the lights under an
