@@ -136,6 +136,13 @@ aside { background: var(--panel); display: flex; flex-direction: column; min-hei
 .node.gnode .pic.gp small { font: 600 11px var(--font-mono); background: rgba(0,0,0,.25); border-radius: 9px; padding: 1px 6px; }
 .node.gnode .handle { left: auto; right: -20px; top: -30px; }
 .hull { opacity: .12; stroke-width: 150; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+.hull.vz { opacity: .07; stroke-width: 300; }
+.vlabel { position: absolute; transform: translate(-50%, -50%); border-radius: 18px; padding: 5px 16px; background: var(--gc); color: #fff; font: 700 48px system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap; pointer-events: none; box-shadow: var(--shadow); border-radius: 40px; padding: 8px 30px; }
+.vlabel.fac { font-size: 24px; padding: 3px 14px; background: var(--panel); color: var(--gc); border: 2px solid var(--gc); box-shadow: none; }
+.vlabel.none { opacity: .75; }
+#viewbar { left: 50%; top: 10px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; box-shadow: var(--shadow); padding: 6px 8px 6px 12px; display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100% - 24px); font-size: 12.5px; }
+#viewbar > span { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#viewbar .seg button { min-width: 28px; }
 .node.copy .pic { box-shadow: 0 0 0 3px var(--gc), 0 0 0 5px var(--panel); }
 .node.copy .nm { opacity: .9; }
 .cpline { stroke-width: 2.5; stroke-dasharray: 3 7; fill: none; opacity: .8; pointer-events: none; }
@@ -264,7 +271,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
 @media (max-width: 860px) {
   .only-phone { display: inline-flex; } .hide-phone { display: none !important; }
   .brand { display: none; }
-  #banner { left: 8px; right: 8px; top: 8px; transform: none; width: auto; max-width: none; flex-wrap: wrap; }
+  #banner, #viewbar { left: 8px; right: 8px; top: 8px; transform: none; width: auto; max-width: none; flex-wrap: wrap; }
   #bar { gap: 6px; }
   #bar > * { order: 4; } #bar > .sp { order: 5; } #bar > #saveState { order: 6; } #bar > #grpFile { order: 7; }
   #bar > #btnRoster { order: 1; } #bar > #grpBoard { order: 2; } #bar > #btnIns { order: 3; margin-left: auto; }
@@ -314,6 +321,10 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
         <button data-act="arrFaction">Cluster by faction</button>
         <button data-act="arrHome">Cluster by home site</button>
         <button data-act="arrTies">Pull tied units together</button>
+        <hr>
+        <button data-act="vZones">View: places, factions inside</button>
+        <button data-act="vCommand">View: chain of command</button>
+        <button data-act="vFamily">View: family trees</button>
       </div>
     </div>
     <div class="grp">
@@ -358,6 +369,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
       </div>
       <div id="hint" class="overlay" hidden></div>
       <div id="banner" class="overlay" hidden></div>
+      <div id="viewbar" class="overlay" hidden></div>
       <div id="linkpop" class="overlay" hidden></div>
       <details id="legend" class="overlay"><summary>Legend</summary><div class="lg" id="legendBody"></div></details>
       <div id="zoomctl" class="overlay">

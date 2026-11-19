@@ -98,3 +98,15 @@ appears after the next deploy with no rebuild. Board ids are unchanged.
   page, no other intermediate files. 11-19 run: the new Shaman M, Golem and Seraphim (eye-wheel, cut whole: `face_overrides.json`),
   the Streamers' new sprites in place of their 3D renders. Story cast keep their 3D renders.
 - `IDEAS_2026-11-19.md` + `ideas-board-2026-11-19.json` (load as extra boards): a read-through of mondo's board with ties and story cards.
+
+## The views (2026-11-19, mondo's pick 1 2 4 6 7)
+A view lays out part of the board for looking at; it keeps its own spots (app.js `VIEW.pos`), nothing on the board moves or saves,
+and the bar's Close (or Escape) brings the board back. Dragging in a view moves things in the view only; ties cannot be drawn there.
+- **Show connections** (unit or group panel): that unit in the middle, everyone tied to it in rings 1, 2 or 3 steps out (bar buttons);
+  on the first ring friends sit left, enemies right. Membership in a place or faction is not a tie here.
+- **Find the way to…** (unit panel, or Path to… on the bar): then tap another unit or its roster tile; shows every shortest chain of ties
+  between the two (up to 6). If no chain of ties joins them it goes through shared groups and says so.
+- Arrange > **View: places, factions inside**: every top place (its places inside folded in), its units split into their factions,
+  "No faction" last; a unit stands in its first place and first faction only. Picking a unit shows its ties.
+- Arrange > **View: chain of command**: serves / worships (actor under target) and employs (employee under employer) as org charts.
+- Arrange > **View: family trees**: created (maker above) and family (side by side) as trees.
