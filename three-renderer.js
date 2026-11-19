@@ -94127,7 +94127,12 @@ const ThreeRenderer = (function () {
             if (!pcOld && p._ew_pcTry && now - p._ew_pcTry < 500) { pcWait++; continue; }   // THE WAITING PROPS: tried a moment ago
             if (!pcAll && pcWork > 0 && performance.now() - pcT0 > 3) { H._pcN = -1; pcWait++; break; }   // the rest next frame
             pcWork++;
-            p.traverse(function (q) { if (q.isLight) lit = true; });
+            /* THE LAMPS IN THEIR CHUNK (2026-11-19, mondo's 15:14 readout: ~160 props drawn one by one outside every bundle): on the node
+               renderer with THE LIGHT RIG, a plain point light (no shadow) is copied into the rig and has left three's light list, so a
+               hidden chunk only darkens its rig lamp: the light set never changes. Such a lamp's prop goes into its chunk (a bundle,
+               culled with it). A shadow-casting or spot light, or the classic path, keeps the old rule. Old rule: window.EW_HQ_PC_LAMPS_OUT. */
+            var rigP = !!_ewGpu && !_ewRigOff() && !(typeof window !== 'undefined' && window.EW_HQ_PC_LAMPS_OUT);
+            p.traverse(function (q) { if (q.isLight && !(rigP && _ewRigKind(q) === 'p')) lit = true; });
             if (lit) { p._ew_pcNo = true; continue; }   // a lamp stays where it was: the frame's light set never changes with a chunk
             box.setFromObject(p);
             if (box.isEmpty()) { p._ew_pcTry = now; pcWait++; continue; }   // its file has not landed: measured again in 0.5 s
