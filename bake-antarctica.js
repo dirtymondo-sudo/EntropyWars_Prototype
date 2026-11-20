@@ -73,7 +73,7 @@ function building(id, q, h, o, parts) {
 }
 const put = (B, key, lx, lz, o) => { const p = B.at(lx, lz), r = Object.assign({ key, x: p[0], z: p[1] }, o || {}); if (r.face != null) r.face = B.face(r.face); props.push(r); };   // `face` in the building's frame
 /* ── THE DRAWN PIECES (arch rows on open ground: walked under or round) ── */
-function look(id, x, z, rot, fn) { const a = sheet(); fn(a); ARCH.push({ k: 'arch', id: 'ant:' + id + ':look', x: r2(x), z: r2(z), rot: rot || 0, parts: a.P }); }
+function look(id, x, z, rot, fn, y) { const a = sheet(); fn(a); const row = { k: 'arch', id: 'ant:' + id + ':look', x: r2(x), z: r2(z), rot: rot || 0, parts: a.P }; if (typeof y === 'number') row.y = r2(y); ARCH.push(row); }   // `y`: the row's base in metres over the sea (else the ground at its middle)
 
 /* ── placing things: a blocker on a square's middle (P), decor off it (dec), people (native); never in the mass, never two on one square ── */
 const errs = [], strays = [];
@@ -92,8 +92,20 @@ const LETTERS = ['C', 'F', 'H', 'O', 'S', 'W'];
 const mkRnd = s => { let v = s >>> 0; return () => { v = (v * 1664525 + 1013904223) >>> 0; return v / 4294967296; }; };
 const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/areas/antarctica/districts'), o = {}; fs.readdirSync(dir).filter(f => /^[A-Z]\.js$/.test(f)).sort().forEach(f => { o[f[0]] = require(path.join(dir, f)); }); return o; })();
 LETTERS.forEach(k => { if (!DISTRICTS[k]) throw new Error('district file missing: docs/areas/antarctica/districts/' + k + '.js'); });
+/* THE ROOM DESIGN (2026-11-20, world polish thread 13): docs/areas/antarctica/districts/room.js = the pieces that belong to no one district (the
+   Ice Wall's stairs, the walk on top, the arch, the icefall: WORLD_POLISH_PLAN.md, plans/antarctica.js). It runs FIRST in every stage, with no
+   district of its own (it may stand on any square). */
+const ROOM_FILE = path.join(REPO, 'docs/areas/antarctica/districts/room.js');
+if (fs.existsSync(ROOM_FILE)) { const all = Object.assign({ room: require(ROOM_FILE) }, DISTRICTS); Object.keys(DISTRICTS).forEach(k => delete DISTRICTS[k]); Object.assign(DISTRICTS, all); }
 /* the height of the walked ground at a square's middle, in metres over the sea (a district's props that hang or stand high add it: UP) */
 const LV = (x, y) => Pxy(x, y).level * LEVEL;
+/* THE OWN HEIGHTS (2026-11-20, thread 13): a square may carry its OWN four corners (metres over the sea: [nw, ne, sw, se], or one number = level),
+   written as they are into the height sheet (the sheet keeps four corners a square, so a stair, a walk on the Wall's top or a heap of blocks stands
+   on its own, a step from its neighbours). `T` = a square walked ON the mass (the Wall's top, a stair cut in its face): open, but the Wall's crest is
+   built round it as if it were Wall, and a crest corner touching it stands a low broken parapet over it. `LINKS` = walk-check edges the squares
+   alone do not show (an arch's deck, a fixed rope). */
+const OVR = new Map(), LINKS = [];
+const surface = (sx, sy, c, ch) => { if (!inR(sx, sy)) throw new Error('surface off the map: ' + sx + ',' + sy); if (typeof c === 'number') c = [c, c, c, c]; OVR.set(sy * W + sx, c.map(r2)); if (ch) cell[sy][sx] = ch; };
 function ground(xm, zm) {
     const px = (xm + HALF) / PL - 0.5, pz = (zm + HALF) / PL - 0.5, i = Math.max(0, Math.min(G - 2, Math.floor(px))), j = Math.max(0, Math.min(G - 2, Math.floor(pz)));
     const t = v => Math.min(1, Math.max(0, (v - 1 / 6) / (2 / 3))), u = t(px - i), v = t(pz - j);
@@ -101,10 +113,10 @@ function ground(xm, zm) {
 }
 const CTX = {};
 Object.keys(DISTRICTS).forEach(k => { const rnd = mkRnd(7919 * k.charCodeAt(0));
-    CTX[k] = { d: k, C, N, G, W, HALF, LEVEL, WALL_H, gx, gc, r2, PLAN, plot, cell, setRect, open, inR, distAt, feat, props, npc, taken, building, put, look, sheet,
+    CTX[k] = { d: k === 'room' ? null : k, C, N, G, W, HALF, LEVEL, WALL_H, gx, gc, r2, PLAN, plot, cell, setRect, open, inR, distAt, feat, props, npc, taken, building, put, look, sheet,
         U, WD, WD2, FLR, GLS, COR, P, dec: decWith(rnd), native, rnd, flat: (x0, y0, x1, y1) => { flats.push([x0, y0, x1, y1]); }, sayOf, O_ST, BUILT,
-        groundAt: (sx, sy) => r2(ground(gc(sx), gc(sy))) }; });
-const run = stage => Object.keys(DISTRICTS).forEach(k => { const m = DISTRICTS[k]; if (m && typeof m[stage] === 'function') { curD = k; try { m[stage](CTX[k]); } finally { curD = null; } } });
+        groundAt: (sx, sy) => r2(ground(gc(sx), gc(sy))), surface, OVR, LINKS, link: (a, b) => LINKS.push([a, b]) }; });
+const run = stage => Object.keys(DISTRICTS).forEach(k => { const m = DISTRICTS[k]; if (m && typeof m[stage] === 'function') { curD = k === 'room' ? null : k; try { m[stage](CTX[k]); } finally { curD = null; } } });
 
 run('plan');      // what a district adds to the plan's squares
 
@@ -135,17 +147,19 @@ const vnoise = (x, y, s) => { const h = (a, b) => { const t = Math.sin(a * 127.1
     const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
     return (h(xi, yi) * (1 - u) + h(xi + 1, yi) * u) * (1 - v) + (h(xi, yi + 1) * (1 - u) + h(xi + 1, yi + 1) * u) * v; };
 const distOf = ch => { const d = new Int16Array(W * W).fill(-1), q = [];
-    for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) if (cell[y][x] !== ch) { d[y * W + x] = 0; q.push(x, y); }
+    for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) if (ch.indexOf(cell[y][x]) < 0) { d[y * W + x] = 0; q.push(x, y); }
     for (let i = 0; i < q.length; i += 2) { const x = q[i], y = q[i + 1], v = d[y * W + x]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (inR(X, Y) && d[Y * W + X] < 0) { d[Y * W + X] = v + 1; q.push(X, Y); } } }
     return d; };
-const dX = distOf('x'), dRr = distOf('r'), dK = distOf('k');
+const dX = distOf('xT'), dRr = distOf('r'), dK = distOf('k');   // a walked square ON the Wall (T) counts as Wall: the crest stands round it
 const Hc = new Float32Array((W + 1) * (W + 1));
 for (let cy = 0; cy <= W; cy++) for (let cx = 0; cx <= W; cx++) {
-    let h = ground(gx(cx), gx(cy)); const n = {}; let cnt = 0, dmin = { x: 99, r: 99, k: 99 }, massAll = true;
-    for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const x = Math.max(0, Math.min(W - 1, cx + dx)), y = Math.max(0, Math.min(W - 1, cy + dy)), ch = cell[y][x]; n[ch] = (n[ch] || 0) + 1; cnt++;
+    let h = ground(gx(cx), gx(cy)); const n = {}; let cnt = 0, dmin = { x: 99, r: 99, k: 99 }, massAll = true, onT = -Infinity;
+    for (const [dx, dy, ci] of [[-1, -1, 3], [0, -1, 2], [-1, 0, 1], [0, 0, 0]]) { const x = Math.max(0, Math.min(W - 1, cx + dx)), y = Math.max(0, Math.min(W - 1, cy + dy)); let ch = cell[y][x];
+        if (ch === 'T') { const o = OVR.get(y * W + x); if (o) onT = Math.max(onT, o[ci]); ch = 'x'; }   // (ci: this corner is the square's se / sw / ne / nw)
+        n[ch] = (n[ch] || 0) + 1; cnt++;
         if (!MASS[ch]) massAll = false; if (ch === 'x') dmin.x = Math.min(dmin.x, dX[y * W + x]); if (ch === 'r') dmin.r = Math.min(dmin.r, dRr[y * W + x]); if (ch === 'k') dmin.k = Math.min(dmin.k, dK[y * W + x]); }
     const nz = vnoise(cx / 4.2, cy / 4.2, 3) * 0.6 + vnoise(cx / 1.6, cy / 1.6, 9) * 0.4;
-    if (n.x === cnt) h += Math.min(WALL_H, 20 * dmin.x - 2) * (0.9 + 0.2 * nz);
+    if (n.x === cnt) { h += Math.min(WALL_H, 20 * dmin.x - 2) * (0.9 + 0.2 * nz); if (onT > -Infinity) h = onT + 0.35 + 1.3 * nz; }   // THE PARAPET: the crest beside a walk on the Wall stands 0.35 to 1.65 m over it (broken ice; you see over it)
     else if (n.a === cnt) h -= CRACK * (0.85 + 0.3 * nz);
     else if (n.z === cnt) h = SEA_BED;
     else if (n.k === cnt) h += Math.min(2.6, 1.3 * dmin.k) * (0.7 + 0.6 * nz);
@@ -158,7 +172,8 @@ flats.forEach(([x0, y0, x1, y1]) => { const ref = ground(gx((x0 + x1) / 2), gx((
         const d = Math.max(x0 - 1 - x, x - x1 - 1, y0 - 1 - y, y - y1 - 1, 0), w = Math.max(0, 1 - d / 2), k = y * (W + 1) + x; Hc[k] = Hc[k] * (1 - w) + ref * w; } });
 const slope = Buffer.alloc(W * W * 8);
 for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) { const o = (cy * W + cx) * 8;
-    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope.writeInt16LE(Math.round(Hc[(cy + q[1]) * (W + 1) + cx + q[0]] * 100), o + k * 2)); }
+    const own = OVR.get(cy * W + cx);
+    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope.writeInt16LE(Math.round((own ? own[k] : Hc[(cy + q[1]) * (W + 1) + cx + q[0]]) * 100), o + k * 2)); }
 
 /* ── THE OPEN GROUND: every square that is not mass, as `space` rows (greedy rectangles) ── */
 const spaces = [];
@@ -171,7 +186,7 @@ const spaces = [];
 /* ── THE PAINT: one sheet a square (0 = the room's own snow) ── */
 const PAL = ['ice_1', 'igloo', 'wood_planks', 'obsidian', 'urban:MetalCorrugated1a'], paint = new Uint8Array(W * W);
 for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x];
-    paint[y * W + x] = (ch === 'i' || ch === 'x' || ch === 'r' || ch === 'a' || ch === 'z' || ch === 'p') ? 1 :   /* a track is ice the sledges polished (`igloo`, the pal's second sheet, read as brick paving on screen: not used) */
+    paint[y * W + x] = ch === 'T' ? 0 : (ch === 'i' || ch === 'x' || ch === 'r' || ch === 'a' || ch === 'z' || ch === 'p') ? 1 :   /* a track is ice the sledges polished (`igloo`, the pal's second sheet, read as brick paving on screen: not used) */
          (ch === 'b' || ch === 'B') ? 3 : ch === 'f' ? (distAt(x, y) === 'H' ? 5 : 3) : ch === 'h' ? 4 : 0; }
 
 /* ── checks: every prop key and unit exists; every plot is walked to from the spawn with no step steeper than the walker climbs ── */
@@ -179,16 +194,19 @@ const CAT = vm.runInContext('DOOR_HQ.catalogue', D), RACES = vm.runInContext('AV
 props.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key); });
 npc.forEach(n => { if (RACES.indexOf(n.race) < 0) throw new Error('not a unit: ' + n.race); });
 const SP = [31, 54];
-{ const hC = (x, y) => (Hc[y * (W + 1) + x] + Hc[y * (W + 1) + x + 1] + Hc[(y + 1) * (W + 1) + x] + Hc[(y + 1) * (W + 1) + x + 1]) / 4;
+{ const hC = (x, y) => OVR.has(y * W + x) ? OVR.get(y * W + x).reduce((a, b) => a + b) / 4 : (Hc[y * (W + 1) + x] + Hc[y * (W + 1) + x + 1] + Hc[(y + 1) * (W + 1) + x] + Hc[(y + 1) * (W + 1) + x + 1]) / 4;
   const seen = new Uint8Array(W * W), st = [SP]; if (!open(SP[0], SP[1])) throw new Error('the spawn is not open'); seen[SP[1] * W + SP[0]] = 1; let steep = 0;
-  while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!open(X, Y) || seen[Y * W + X]) continue;
+  const LK = new Map(); LINKS.forEach(([a, b]) => { [[a, b], [b, a]].forEach(([p, q]) => { const k = p[1] * W + p[0]; if (!LK.has(k)) LK.set(k, []); LK.get(k).push(q); }); });
+  while (st.length) { const [x, y] = st.pop(); (LK.get(y * W + x) || []).forEach(q => { if (!seen[q[1] * W + q[0]]) { seen[q[1] * W + q[0]] = 1; st.push(q); } }); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!open(X, Y) || seen[Y * W + X]) continue;
       if (Math.abs(hC(X, Y) - hC(x, y)) / C > 0.85) { steep++; continue; } seen[Y * W + X] = 1; st.push([X, Y]); } }
   const cold = PLAN.plots.filter(p => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(p.y * N + ly) * W + p.x * N + lx]) return false; return true; }).map(p => p.id);
   if (process.env.ANT_DUMP) console.log(cell.map((r, y) => r.map((ch, x) => open(x, y) && !seen[y * W + x] ? '!' : MASS[ch] ? (ch === 's' ? ' ' : ch.toUpperCase()) : ch === 's' ? ' ' : ch).join('')).join('\n'));
   if (cold.length) throw new Error('plots not reached on foot: ' + cold.join(' '));
   for (const q of [[36, 0], [0, 40], [71, 39], [32, 52]]) if (!seen[q[1] * W + q[0]]) throw new Error('a way out is not reached on foot: square ' + q);
   let op = 0, un = 0; for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) if (open(x, y)) { op++; if (!seen[y * W + x]) un++; }
-  Object.assign(count, { openSquares: op, unreachedSquares: un, steepSteps: steep }); }
+  Object.assign(count, { openSquares: op, unreachedSquares: un, steepSteps: steep });
+  const lostT = []; for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) if (cell[y][x] === 'T' && !seen[y * W + x]) lostT.push(x + ',' + y);
+  if (lostT.length) throw new Error('squares on the Wall not walked to: ' + lostT.slice(0, 20).join(' ')); }
 Object.assign(count, { spaces: spaces.length, features: F.length + ARCH.length, props: props.length, natives: npc.length });
 
 /* THE AIR BY DISTRICT (the Estate's way, three-renderer.js _hqBuildAtmos `shell.atmos.zones`): a district file may export `airZones(ctx)` =
@@ -214,7 +232,7 @@ L.push("            parti: 'The frozen end of the world on thirty-six plots, wal
 L.push("            typology: 'grid',");
 L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + G + ", names: " + J(PLAN.plots.map(p => [p.id, p.name.replace(' (label mine)', ''), p.d, p.level])) + " },");
 L.push("            terrain: {");
-L.push("                res: 1.75, floor: 'ice', cliff: 'ice_1', path: 'ice_1',   // half a square a node (the Mountains' grain)");
+L.push("                res: 0.875, floor: 'ice', cliff: 'ice_1', path: 'ice_1',   // a quarter square a node (2026-11-20, thread 13: was 1.75, the Mountains' grain; at half a square the slope test sampled the square lines, so a stair one square wide between higher squares read as a cliff)");
 L.push("                noise: { amp: 0.08, scale: 8 },");
 L.push("                sea: { y: 0, key: 'water' },");
 L.push("                backdrop: false, edges: { reach: 440, n: { kind: 'mountain' }, w: { kind: 'mountain' }, e: { kind: 'mountain' }, s: { kind: 'coast' } },");

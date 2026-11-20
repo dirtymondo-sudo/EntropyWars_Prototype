@@ -10881,6 +10881,47 @@ Copy from `docs/areas/antarctica/districts/S.js`. A helper all six want belongs 
   (7 m), a marble pier (10.5 x 3.5 m), crystal lamp posts (3 m), the Loch Ness Monster's neck rising from the Lake (5 m).
   ALL: a moss / lichen ground sheet; a light shaft that draws.
 
+## ANTARCTICA, WORLD POLISH THREAD 13 — THE ICE WALL, the pilot (2026-11-20, owner side; WORLD_POLISH_PLAN.md thread 13)
+
+Built from mondo's approved height plan `docs/plans/world-polish/plans/antarctica.js` ("yep looks good", 11-20), laid OVER the room as it
+stood. The plan changes first, the room second: the room reads the plan's squares through the plan tool itself.
+- **THE ROOM DESIGN FILE** `docs/areas/antarctica/districts/room.js` (NEW; room frame = the layout's frame, Antarctica is one room): it
+  `require`s `draw-plan.js` and calls `build(plan)` (underlay off) and turns the plan's squares into the room: the lane at level 31 on the
+  Wall's body = the walk on top, the `e` squares = the west stair, the plan's `bridges` at level 31 = the ice arch, the icefall's level-13
+  ground, the found ways' chain and rope, the Cove's cut step. `bake-antarctica.js` runs it first in every stage (`plan / pieces / dress`),
+  with no district of its own. Edit the PLAN, rerun `node bake-antarctica.js`.
+- **THE TOOL LEARNED (bake-antarctica.js):** `ctx.surface(sx, sy, corners | metres, ch)` = a square's OWN four corners [nw, ne, sw, se]
+  written as they are into `terrain.slope.cells` (the sheet holds four corners a square, so a step between neighbours is free); a `T`
+  square = walked ON the mass (open, but the Wall's crest is built round it as Wall, and a crest corner touching it stands a low broken
+  parapet 0.35 to 1.65 m over it); `ctx.link(a, b)` = a walk-check edge the squares do not show (the arch, the rope); the walk check
+  fails the bake when a `T` square is not reached; `look(..., y)` = a drawn piece's base in metres (else the ground at its middle).
+- **THE GRAIN: `terrain.res` 0.875 (was 1.75).** The game's slope test (`hqTerrainSlope`) samples one lattice step either side: at 1.75
+  that step lands ON the square lines, which take the higher side, so a stair one square wide beside a higher square read as a cliff
+  (climbing refused). At 0.875 a square's middle reads its own slope. The Cavern (252 m too) runs 0.875. The bake's own walk check is
+  unchanged (square by square).
+- **A FLIGHT'S FIELD STANDS 15 cm UNDER THE FLIGHT ROW**, so the flight (an exact piece, `info.exact`) is the surface; at the same height
+  the room's ground noise (0.08 m) won and the slope test read the lattice again.
+- **WHAT STANDS (pilot):** THE WEST STAIR, three flights cut in the face (`ant:weststair:A/B/C`, `model: 'stone'` = a precast flight in
+  the room's ice sheets): foot landing 13,17 off the Traverse (level 11) > A west along the face (row 17, to level 19) > landing 4,16-17 >
+  B east, one square deeper (row 16, to 25) > landing 11,15-16 > C west, deeper again (row 15, to 31) > the top step 5,14. It stands WEST
+  of the planned Traverse's ramp at 14..15,18 (the plan tool refuses a ramp beside a stair). THE WALK ON TOP, the plan's lane, two squares
+  wide at 54.25 m right across the zone (it reads as a snow trough along the crest; the low parapet is the crest itself), drawn bamboo
+  wands with orange flags every fourth square, a cairn at each lookout. From its east end (66,16) the whole zone is in view: station, crevasse, sea.
+  THE ICE ARCH over the Gap (the Gap is three squares now, 30..32): a `bridge` row `ant:arch`, 2.4 m of ice, `plain` (no piers in the road
+  below), drawn haunches under both ends and a rope on stakes along each edge. THE ICEFALL at the Wall's east foot (65..69 x 18..20, level
+  13): `ice_block` models 1.4 to 7.5 m tumbled on and round it (drawn boxes read as grey concrete: replaced), three blocks of ground up from the snow at 64,21-22 (a jump each, about 0.96 m), and a fixed rope
+  (`climb`, look `rope`, 22.75 to 54.25 m) from the heap to 66,17 on the walk. THE COVE LANDING: see below.
+- **FOUND AND FIXED: PIRATES' COVE'S BOAT LANDED ON A CUT-OFF FLOE.** `cove_antarctica`'s end (x 92.75, z 110.25 = square 62,67) stood in
+  the sea next to a floe the shelf did not reach: the game's own solver (`hqTerrainReach` from the door's landing) reached 8 nodes. The
+  plan's cut step (61..63 x 65..70) is ice now: from the landing the solver reaches the spawn.
+- **CHECKED HEADLESS (the game's own code through load-data.js):** every lane, stair and arch square stands within 5 cm of the plan's level
+  and is reached from the spawn (`hqTerrainReach`); the heap is reached with the jump rule; `hqTerrainTraps` = 0; the rope reads 22.75 to
+  54.25 m. A one-off script, not a test (CLAUDE.md: no tests).
+- **NOT DONE (waits mondo's word on the pilot):** the east stair (60,16-18) and the north stair down to the Hull (38,11-13); the rest of the
+  plan (the Traverse's new line, the trails, the landmarks of the other districts, the Snow Bridge, the berg); the dressing passes. THE LISTS
+  (section 1b of the plan) were searched for snow / ice / rope / marker keys only (`ice_block`, `snow_heap`, `cairn`, `ice_axe`,
+  `rope_coils`; NOT `line_marker`: it is a sports-field line painting cart); the full read comes before the dressing passes.
+
 ## THE CAVERN, THE ZONE KIT — for the H and A district threads (2026-11-16, written by the pilot, district K)
 
 - **THE LIGHT FIRST.** Ambient 0.24; fog 0.007 (you see across a district). The room has TEN prop lights and K's torches hold all
@@ -13569,3 +13610,30 @@ ground moves, no new way. It still passes `draw-plan.js` (3 warnings, the plan's
   Alcove is blue from the rim. The walls are warmer but still dark: the next lever is a stronger hemisphere in Hell or a lighter cliff sheet.
 - NEXT (after mondo's word): the Bowl (the Plinth's white fire, the lake's glow, the altar fire), the Walkways (the red / amber / green beacons
   on tall pillars), then Heaven, the Catacombs, the Vatican.
+## THE LEY LINE, THE ROOM DESIGN — world polish thread 12, the pilot (2026-11-20, owner side)
+mondo's OK of 11-20 on `docs/plans/world-polish/plans/leylines-line.js` ("yep looks good"; the Line is CROSSED, never walked end to end; "Yes that's fine" to
+18 new plots; new buildings ANCIENT, "or at least one of the early civilizations"). The plan's first edit by the build thread: MORE LEDGES ON THE CLIMBS (his ask
+before he looks): four shelves on the west climbs (off the North Knoll's walk 4 -> 3 -> 1, off its south lip 4 -> 2, off the Nexus's west way 0 -> -2 back into
+the Sink) and one on the east (off the Shoulder 2 -> 1); the plan's ledge edges 9 -> 18, `draw-plan.js` passes.
+- **THE ROOM GROWS** in its own 12 x 3 box: `docs/plans/one-world/after-v13.js` row 8 adds the plan's new plots to district `leyY` (no `was`), ground `s`.
+  THE PILOT adds the west ten (box x 3..7 = wx 22..26, wy 29 + 31); `LEY_UPTO = 11` adds the east eight. `bake-leylines.js` reads them (`LINE_NEW`); `v13()` keeps
+  only the plots with a `was` (the home frame's).
+- **THE ROOM DESIGN** (`bake-leylines.js`, step "THE ROOM DESIGN", `S.design` on the Line's STAND row; the room-frame file is `docs/areas/leylines/districts/Y-room.js`):
+  the plan is built with `draw-plan.js` `build()` and laid square for square on the designed squares (district Y, room x `x0..x1`; the pilot 36..95). An OPEN
+  plan square = a `space`, flat at its level (a ramp square: one level over two squares); two open squares 0.6 levels or more apart = a LEDGE, its face a rock slab
+  (`ley:y:ledges`). A closed square = THE MASS: the `gen: plan` trees (Y-room.js `gen`: low autumn kit oaks, dead trees, Joshua trees, 2.6-4.6 m) + boulders,
+  dry bushes and menhirs on one mass square in five beside the walk. THE LINE'S BED (plan tile `y`, squares y 17..18) = level 0, refused like the mass, no tree
+  (a `none` zone), gold paint + the home frame's glow strip, a stone kerb where level ground meets it. THE SLABS over the cut = `bridge` rows (stone, absY) from
+  bank to bank. Mass corners take the highest open corner they touch (the mass hides each drop's face). Home pieces on the designed squares: the gold forks and
+  the old niches go (`dropHome`), the fork signs, the niche fittings, the West Mouth camp and any menhir / obelisk on opened ground go (`dropProp`), a blocking
+  piece on the walk goes, a person off the open ground steps to the nearest open, level square. The tool's walk check allows a ledge downhill only.
+- **WHAT STANDS (the pilot):** THE REST HOUSE (new, ancient: a dry-stone ring 9.1 m across with its door west on the West Mouth, two T-pillars in the middle,
+  a stone bench round the inside, a hearth, an offering table, a porthole doorway of two slabs and a lintel; terrain `wall` rows, so the inside is the outside's
+  own ring; open to the sky as the enclosures are seen today), the West Mouth's camp and two braziers, the four NICHES re-laid on the cut's banks (alcoves opening
+  onto the niche rows, a sarcophagus, a skull pile, two braziers), a ring of menhirs round the North Knoll and a cairn on its lookout, THE LONE STONE (a 5.6 m
+  sarsen with an offering stone), the Sink's fire ring, THE FORK'S END secret (a golden idol on an altar between two torches), the obelisks at the Nexus.
+- **PILOT ONLY:** the Nexus's south-east corner opens one square east (Y-room.js `extra`) onto the old level plain of the east half, which the plan reaches
+  over the Rise and the Shoulder; the walk over the Rise ends at the plot's east side until the Shoulder is built. Both go with `x1: 143`.
+- **TO BUILD THE REST:** `LEY_UPTO = 11` in after-v13.js + `node docs/plans/one-world/after-v13.js`; `X1 = 143` in Y-room.js (the east slabs, the Watch Tower,
+  the High Stone); `node bake-leylines.js`; `node bake-map.js site_prebuilt_gobekli_ow_line site_prebuilt_gobekli_ow_babel` (Babel's box holds the Line's new
+  plots at wx 28..30 as ghost cells). Then Babel + Technoticlan from their own plans.

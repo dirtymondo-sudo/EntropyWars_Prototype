@@ -65,9 +65,9 @@
   "nz": 72,
   "h0": 0,
   "hs": 0.25,
-  "v": "30d103b68d",
-  "bytes": 2781,
-  "s": "4.7"
+  "v": "13559e1cae",
+  "bytes": 2736,
+  "s": "11.1"
  },
  "site_prebuilt_downtown_streets": {
   "id": "site_prebuilt_downtown_streets",
@@ -177,7 +177,7 @@
   "hs": 0.25,
   "v": "8dc9b1c9c8",
   "bytes": 4491,
-  "s": "4.5"
+  "s": "4.4"
  },
  "site_prebuilt_camelot_ow_garden": {
   "id": "site_prebuilt_camelot_ow_garden",
@@ -253,11 +253,11 @@
   "id": "site_prebuilt_gobekli_ow_line",
   "nx": 144,
   "nz": 36,
-  "h0": -1.13,
+  "h0": -3.55,
   "hs": 0.25,
-  "v": "7173797cde",
-  "bytes": 1626,
-  "s": "1.0"
+  "v": "c2a8737424",
+  "bytes": 2162,
+  "s": "0.9"
  },
  "site_prebuilt_gobekli_ow_bugs": {
   "id": "site_prebuilt_gobekli_ow_bugs",
