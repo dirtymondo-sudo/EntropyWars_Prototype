@@ -3384,3 +3384,9 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   builds, 0 inherited reads), so that one was a hazard, not the cause.
   If the cars still jump after this: bisect on his Mac with the off switches, set before the page loads: `EW_GPU_WEAKMAPS`,
   `EW_HQ_STILL_NO_HELD_BOOK`, `EW_BONES_WALK_ALL`, `EW_SHADOW_KEY_EVERY`, `EW_BUN_TARGETS_EVERY`.
+- CONFIRMED (11-20, mondo's 00:20 F3 after #2199: "Cars are good now"): the cars out of place WERE the prototype-wide ChainMap
+  patch (`groupsData` emptied by the valve, shared uniform groups updated over and over inside one render). Same F3, a busier
+  corner (squares 28-32, 6-13; 259 draw calls, 214 meshes drawn one by one): 47.3 FPS, frame 21.3 ms, CPU 15.5 ms. The frame is
+  5.8 ms longer than its CPU there (2.3 ms at the 70.9 FPS spot), so at pixel ratio 2.0 the GPU side is likely the limit at this
+  corner: Render Scale 75 % is the test. CPU left at this corner: "props: one of a kind" 90 own draws, `_ew_hqSignal` 39,
+  `_ew_hqCar` 22, fx 36 (131 props drawn outside their bundle).
