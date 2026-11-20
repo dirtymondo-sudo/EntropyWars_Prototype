@@ -5668,6 +5668,15 @@
             const R = (typeof HQ_SKATE_RULES !== 'undefined' && HQ_SKATE_RULES.ranks) || [[0, 'LANDED']];
             let word = R[0][1]; R.forEach(r => { if (score >= r[0]) word = r[1]; }); return word;
         }
+        /* THE FLOOR IS LAVA (2026-11-20): the seconds off the ground, on the card's head row */
+        function _hqLavaTail(ev) { const t = +ev.offT || 0; return t >= 1 ? 'OFF THE GROUND ' + t.toFixed(1) + ' S' : null; }
+        /* the 10 Hz tick while the clock runs: only the number and the head words change (no rebuild, no pop) */
+        function _hqComboTick(ev) {
+            const el = _hqEl('hqTrick'); if (!el || !el.classList.contains('live')) { _hqComboCard(ev, 'live', _hqLavaTail(ev), 0); return; }
+            const b = el.querySelector('.hq-trick-head b'), i = el.querySelector('.hq-trick-head i'), tail = _hqLavaTail(ev);
+            if (b) b.textContent = (ev.score | 0).toLocaleString();
+            if (i) i.textContent = '× ' + (ev.mult | 0) + (tail ? ' · ' + tail : '');
+        }
         function _hqComboCard(ev, cls, tail, ms) {
             const html = `<div class="hq-trick-head"><b>${(ev.score | 0).toLocaleString()}</b><i>× ${ev.mult | 0}${tail ? ' · ' + tail : ''}</i></div><div class="hq-trick-list">${_hqComboChips(ev.text)}</div>`;
             _hqTrickLine(html, cls, ms);
@@ -5733,7 +5742,8 @@
                 case 'grindstart': _hqSkateSfx('skateGrind', 0.5); break;
                 case 'grind': _hqSkateSfx('skateGrind', 0.22); break;
                 case 'trick': try { playSfx('uiCursorMove'); } catch (e) {} break;
-                case 'combo': _hqComboCard(ev, 'live', null, 0); _hqComboLive = true; break;   // DISASTER CITY (2026-09-17): a live combo beats the lap timer's tick; rev 4: THE COMBO CARD
+                case 'combo': if (ev.tick) _hqComboTick(ev); else _hqComboCard(ev, 'live', _hqLavaTail(ev), 0); _hqComboLive = true; break;
+                case 'lava': _hqSkateSfx('skateTrick', Math.min(0.75, 0.35 + 0.05 * (ev.steps | 0))); break;   // THE FLOOR IS LAVA (2026-11-20): the multiplier went up one   // DISASTER CITY (2026-09-17): a live combo beats the lap timer's tick; rev 4: THE COMBO CARD
                 case 'land': _hqSkateSfx('skateLand', 0.3 + 0.4 * (ev.k || 0.5)); break;
                 case 'bank': {
                     _hqComboLive = false;
@@ -5742,7 +5752,7 @@
                     const best = sk && sk.best && sk.best.score === ev.score && sk.best.text === ev.text;
                     const rank = _hqSkateRank(ev.score | 0);
                     if (rank !== 'LANDED') _hqSkateSfx('skateSick', 0.5);
-                    _hqComboCard({ score: ev.score, mult: ev.count, text: ev.text }, 'bank' + (rank === 'LANDED' ? '' : ' rank-' + rank.toLowerCase()), best ? rank + ' · NEW BEST LINE' : rank, 3000);
+                    _hqComboCard({ score: ev.score, mult: ev.mult || ev.count, text: ev.text }, 'bank' + (rank === 'LANDED' ? '' : ' rank-' + rank.toLowerCase()), (best ? rank + ' · NEW BEST LINE' : rank) + ((+ev.offT || 0) >= 2 ? ' · ' + (+ev.offT).toFixed(1) + ' S OFF THE GROUND' : ''), 3000);
                     _hqFillStrip(_hqProfile());
                     break;
                 }

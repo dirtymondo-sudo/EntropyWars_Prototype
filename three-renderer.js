@@ -88383,6 +88383,7 @@ const ThreeRenderer = (function () {
             launch:    { pts: 60,  label: 'AIR' },
         },
         ranks: [[0, 'LANDED'], [400, 'NICE'], [1500, 'SICK'], [5000, 'INSANE'], [15000, 'LEGENDARY']],
+        lava: { perS: 30, ramp: 0.25, multEveryS: 2, tickS: 0.1 },   // THE FLOOR IS LAVA (2026-11-20)
     };
     var _hqRideMem = { on: false };   // the board through a door
     function _hqSkateRules() {
@@ -88534,16 +88535,42 @@ const ThreeRenderer = (function () {
     }
     function _hqRideKeyEdge(R, k, key) { var down = !!k[key], was = !!R.keyLatch[key]; R.keyLatch[key] = down; return down && !was; }
     /* the combo: add a line, tell the strip */
+    /* THE FLOOR IS LAVA (2026-11-20, mondo: "not touching the ground continues your combo ... the longer you can stay doing tricks in
+       the air or grinding on rails and not touching the ground, it keeps adding to your score"): `R.offT` = the seconds since the wheels
+       left the ground (air + rails, one clock; the ground zeroes it). While a line is open every second off the ground pays
+       `lava.perS` points, faster the longer it runs (× 1 + offT × `lava.ramp`), and every `lava.multEveryS` seconds adds ONE to the
+       line's multiplier. The score is ONE read: pts × (tricks + the lava steps). Table: data.js HQ_SKATE_RULES.lava. */
+    var HQ_LAVA_DEFAULT = { perS: 30, ramp: 0.25, multEveryS: 2, tickS: 0.1 };
+    function _hqLavaRules() { var R = (typeof HQ_SKATE_RULES !== 'undefined') ? HQ_SKATE_RULES : ((typeof window !== 'undefined' && window.HQ_SKATE_RULES) || null); return (R && R.lava) || HQ_LAVA_DEFAULT; }
+    function _hqRideLavaSteps(R) { var L = _hqLavaRules(); return (L.multEveryS > 0) ? Math.floor((R.offT || 0) / L.multEveryS) : 0; }
+    function _hqRideComboMult(R) { return R.combo ? R.combo.tricks.length + _hqRideLavaSteps(R) : 0; }
+    function _hqRideComboScore(R) { return R.combo ? Math.round(R.combo.pts * _hqRideComboMult(R)) : 0; }
+    function _hqRideComboEmit(R, tick) {
+        if (!R.combo) return;
+        _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: _hqRideComboMult(R), score: _hqRideComboScore(R), offT: R.offT || 0, lava: _hqRideLavaSteps(R), tick: !!tick });
+    }
+    /* one call a frame off the ground (the air branch, the grind branch): the clock, the points, the step, the card's 10 Hz tick */
+    function _hqRideLava(R, dt) {
+        R.offT = (R.offT || 0) + dt;
+        var c = R.combo; if (!c || !c.tricks.length) return;
+        var L = _hqLavaRules();
+        c.pts += (L.perS || 0) * (1 + R.offT * (L.ramp || 0)) * dt;
+        var m = _hqRideLavaSteps(R);
+        if (c.lavaM == null) c.lavaM = m;
+        if (m > c.lavaM) { c.lavaM = m; c.lavaT = 0; _hqRideComboEmit(R); _hqRideEmit({ kind: 'lava', steps: m, offT: R.offT }); return; }
+        c.lavaT = (c.lavaT || 0) + dt;
+        if (c.lavaT >= (L.tickS || 0.1)) { c.lavaT = 0; _hqRideComboEmit(R, true); }
+    }
     function _hqRideComboAdd(R, label, pts) {
         if (!R.combo) R.combo = { tricks: [], pts: 0 };
         R.combo.tricks.push(label); R.combo.pts += pts;
-        _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) });
+        _hqRideComboEmit(R);
     }
     function _hqRideComboBank(R) {
         if (!R.combo || !R.combo.tricks.length) { R.combo = null; return; }
-        var score = Math.round(R.combo.pts * R.combo.tricks.length), text = R.combo.tricks.join(' + ');
+        var score = _hqRideComboScore(R), text = R.combo.tricks.join(' + '), mult = _hqRideComboMult(R);
         R.combo = null;
-        _hqRideEmit({ kind: 'bank', score: score, text: text, count: text.split(' + ').length });
+        _hqRideEmit({ kind: 'bank', score: score, text: text, count: text.split(' + ').length, mult: mult, offT: R.offT || 0 });
     }
     /* THE BAIL (rev 3): ONLY a failed trick reaches here — a rotation still turning at the
        touchdown, a spin landed off-axis, the balance lost on a rail. Every rotation is RESET
@@ -88553,7 +88580,7 @@ const ThreeRenderer = (function () {
        and the get-up clip play over bailMs (the clip picker reads _hqRideBailPhase). */
     function _hqRideBail(R, pl, why) {
         var S = _hqSkateRules();
-        var lost = R.combo ? Math.round(R.combo.pts * R.combo.tricks.length) : 0;
+        var lost = _hqRideComboScore(R);
         R.combo = null; R.trick = null; R.queue = []; R.spinAcc = 0; R.grab = false; R.grabDone = false; R.holdOn = false;
         R.flip = 0; R.roll = 0; R.deckRoll = 0; R.deckSpin = 0; R.stance = 0; R.lean = 0;
         R.crouch = 0; R.crouchOn = false; R.crouchFullT = 0; R.squash = 0; R.grabTuck = 0; R.deckTuck = 0; if (R.stick) { R.stick.dx = R.stick.dy = 0; }
@@ -88615,7 +88642,7 @@ const ThreeRenderer = (function () {
     /* a finished rotation lands on the line (the trick tick and the late-landing grace share it) */
     function _hqRideTrickDone(R, TR, tk) {
         var T = TR[tk.id], label = T.label;
-        if (tk.id === 'spin') { var halfTurns = Math.round(Math.abs(R.spinAcc) / Math.PI); label = (halfTurns * 180) + ''; if (R.combo && R.combo.tricks.length && /^\d+$/.test(R.combo.tricks[R.combo.tricks.length - 1])) { R.combo.pts += T.pts; R.combo.tricks[R.combo.tricks.length - 1] = label; _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) }); label = null; } }
+        if (tk.id === 'spin') { var halfTurns = Math.round(Math.abs(R.spinAcc) / Math.PI); label = (halfTurns * 180) + ''; if (R.combo && R.combo.tricks.length && /^\d+$/.test(R.combo.tricks[R.combo.tricks.length - 1])) { R.combo.pts += T.pts; R.combo.tricks[R.combo.tricks.length - 1] = label; _hqRideComboEmit(R); label = null; } }
         if (tk.id === 'kickflip' || tk.id === 'heelflip' || tk.id === 'varial' || tk.id === 'varialheel') { R.deckRoll = 0; R.deckSpin = 0; }
         if (tk.id === 'frontflip' || tk.id === 'backflip') R.flip = 0;
         if (tk.id === 'roll') R.roll = 0;
@@ -88679,7 +88706,7 @@ const ThreeRenderer = (function () {
     function _hqRideComboLead(R, label, pts) {
         if (!R.combo) R.combo = { tricks: [], pts: 0 };
         R.combo.tricks.unshift(label); R.combo.pts += pts;
-        _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) });
+        _hqRideComboEmit(R);
     }
     /* the camera's kick UP on a launch (the landing dip's mirror: up at once, eased home over 320 ms) */
     function _hqRideCamKick(k) {
@@ -88912,12 +88939,13 @@ const ThreeRenderer = (function () {
         }
         if (R.deckAway > 0) R.deckAway = Math.max(0, R.deckAway - dt);
         var noCtl = R.bailT > 0;
+        if (!R.grind && !pl.air) R.offT = 0;   // THE FLOOR IS LAVA: the wheels are on the ground, the clock is zero
         /* ── THE GRIND ── */
         if (R.grind) {
             var g = R.grind, L = _hqRailLen(g.rail);
             var railDir = _hqRailAt(g.rail, g.s);
             if (_hqPortalSweep(dt, { x: railDir.tx * g.dir * R.v, y: 0, z: railDir.tz * g.dir * R.v })) return;
-            g.t += dt; g.pts += (TR.grind.perSec || 0) * dt;
+            g.t += dt; g.pts += (TR.grind.perSec || 0) * dt; _hqRideLava(R, dt);
             R.v *= Math.pow(S.grindFriction, dt * 60);
             /* THE STAIRS PACK (2026-10-05, mondo: "I should be able to grind down stairs too, especially ones with railing like the escalator"):
                a sloped rail (a flight's railing, an escalator's handrail, a railing down a slope) pulls the rider down it — faster going down,
@@ -88935,7 +88963,7 @@ const ThreeRenderer = (function () {
             if (g.s < 0 || g.s > L || R.v < S.grindMinV * 0.5 || edge) {
                 /* the end of the run, too slow, or an ollie off */
                 var pts = Math.round(g.pts);
-                if (R.combo && R.combo.tricks.length) { R.combo.pts += g.pts - (TR.grind.pts || 0); _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) }); }
+                if (R.combo && R.combo.tricks.length) { R.combo.pts += g.pts - (TR.grind.pts || 0); _hqRideComboEmit(R); }
                 var onRun = !edge && g.s >= 0 && g.s <= L;   // too slow, still ON the run: the hop goes sideways (THE WAY OUT OF A COLLIDER)
                 g.s = Math.max(0, Math.min(L, g.s));
                 var pe = _hqRailAt(g.rail, g.s); pl.x = pe.x; pl.z = pe.z; pl.y = pe.y + 0.02;
@@ -89022,7 +89050,7 @@ const ThreeRenderer = (function () {
             R.keyLatch.left = !!k.left; R.keyLatch.right = !!k.right; R.keyLatch.up = !!k.up; R.keyLatch.down = !!k.down; R.keyLatch.a = !!k.a; R.keyLatch.d = !!k.d; R.keyLatch.w = !!k.w; R.keyLatch.shift = !!k.shift;
         } else {
             /* ── IN THE AIR: the tricks ── */
-            R.airT += dt;
+            R.airT += dt; if (!noCtl) _hqRideLava(R, dt);
             R.crouchOn = false; R.crouch = 0;
             if (pl.y > R.airApex) R.airApex = pl.y;
             /* THE LIP OLLIE (rev 8): SPACE inside lipOllieS of a launch adds a pop on top of it (THPS's ollie off the lip) */
@@ -101695,7 +101723,7 @@ const ThreeRenderer = (function () {
         flick: function (dx, dy, btn) { return (_hq && _hq.ride) ? _hqRideFlick(_hq.ride, dx, dy, btn) : null; },   // rev 4: THE STICK for a probe
         skating: function () { return !!(_hq && _hq.ride && _hq.ride.on); },
         skateIssued: function (on) { if (_hq && _hq.ride) { _hq.ride.issued = !!on && !_hqSkateOff(); if (!on) _hqRideToggle(false, true); } return !!(_hq && _hq.ride && _hq.ride.issued); },
-        ride: function () { if (!_hq || !_hq.ride) return null; var R = _hq.ride; return { on: R.on, issued: R.issued, v: R.v, hd: R.hd, air: !!(_hq.player && _hq.player.air), grind: R.grind ? { s: R.grind.s, dir: R.grind.dir, t: R.grind.t } : null, trick: R.trick ? R.trick.id : null, combo: R.combo ? { text: R.combo.tricks.join(' + '), pts: R.combo.pts, mult: R.combo.tricks.length } : null, bail: R.bailT > 0 }; },
+        ride: function () { if (!_hq || !_hq.ride) return null; var R = _hq.ride; return { on: R.on, issued: R.issued, v: R.v, hd: R.hd, air: !!(_hq.player && _hq.player.air), grind: R.grind ? { s: R.grind.s, dir: R.grind.dir, t: R.grind.t } : null, trick: R.trick ? R.trick.id : null, combo: R.combo ? { text: R.combo.tricks.join(' + '), pts: R.combo.pts, mult: _hqRideComboMult(R), score: _hqRideComboScore(R) } : null, offT: R.offT || 0, bail: R.bailT > 0 }; },
         rails: function () { return _hq ? (_hq.rails || []).slice() : []; },
         ramps: function () { return _hq ? (_hq.ramps || []).slice() : []; },
         /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the room's lines and the walker on one */
