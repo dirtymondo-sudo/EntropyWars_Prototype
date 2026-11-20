@@ -14038,3 +14038,18 @@ the Cavern, the old Inner Sun to Hollow Earth); bake-cavern.js keeps its row wit
 longer checks its ways. Re-pointed: the zone list, the stage, the secret-door list, the site entry, the NPC rows (one table a room), the flora
 (Hollow Earth grows, the Cavern does not), ZONE_LOOKS. World places: the Cavern -8..-3 x 7..9, Hollow Earth -8..-3 x 10..13 (`room.world`);
 `node bake-map.js` for both.
+**THE ROPE LADDER, THE STALAGMITES, THE SUN, THE BURIED LADDERS (2026-11-20, mondo: "let's see the inner sun. you can't see how these other
+underground threads are doing stalagmites and just do that?? you can't make a rope ladder with some rope texture and geometry?").**
+- `ropeladder`, a new climb look (data.js HQ_CLIMB_LOOKS; three-renderer.js `_hqBuildClimbs` + `_hqRopeLadderMat`): two side ropes wrapped in the
+  game's rope sheet (rope.png, the torches' lashing; its UVs laid so the twist runs ALONG the rope), wooden rungs every 0.32 m lashed to both ropes,
+  an iron spike back to the lip at the head of each; climbed like a ladder (its clip; speed 0.9, HQ_CLIMB_DEFAULT.slow). A design file picks it:
+  `room.ladderLook` (the Cavern and Hollow Earth: all 56 ladders).
+- THE BURIED LADDERS: with slope cells the ground between two squares at different levels is not a vertical wall: the mesh slopes over ~1 m, so a
+  climb 0.3 m off the line stood mostly inside the rock (only its top third showed). bake-ug.js stands every ladder 1.05 m off the line on the low side;
+  the check (in node): `hqTerrainHeight(info, c.x + sin(face) * 0.08, c.z - cos(face) * 0.08) > c.y0 + 1` = buried. The Long Tunnel, the West Tunnel and the
+  Tunnel-Way had all theirs buried (their threads were told 11-20).
+- THE STALAGMITES: the Tunnel-Way's recipe (a tall cone to a needle point in `hz_stone_07`, smaller points round its foot, its stalactite nearly
+  meeting it, a `sarsen` inside as its body): two big ones in each Cavern chamber, a small one in a junction corner. bake-ug.js THE WALK CHECK
+  refuses any dressing that cuts a square off the walk (it caught Hollow Earth's crystal scatter; those crystals are walked through now).
+- THE INNER SUN: 18 m across, 34 m up on its column; the jungle 6 to 11 m (was 9 to 17) and only low palms (3.5 to 6 m) on the Sun's three plots
+  (`gen.zones`), so it stands over the trees.
