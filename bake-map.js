@@ -162,6 +162,7 @@ function buildTable(S, rasters) {
         for (const r of z.rooms) {
             if (H.retired && H.retired[r.room]) continue;   // a room a zone thread retired (DOOR_HQ.retired) leaves the map by itself: no edit here
             const room = H.rooms[r.room]; if (!room) { console.warn('no room', r.room); continue; }
+            if (room.plots && room.plots.districts) Object.keys(room.plots.districts).forEach(k => { if (!dn[k]) dn[k] = String(room.plots.districts[k]); });   // A ROOM MAY NAME ITS OWN DISTRICTS (2026-11-20, Katana Island: a room of the Beach's zone whose districts are not in the Beach's layout.json): `plots.districts = { letter: name }`
             const rs = rasters[r.room] || null;
             const row = { room: r.room, layer: r.layer, zx: r.zx, zy: r.zy };
             if (r.layer !== 'off') { row.wx = r.wx; row.wy = r.wy; }

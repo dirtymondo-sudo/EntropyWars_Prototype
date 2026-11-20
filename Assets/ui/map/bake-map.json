@@ -628,5 +628,15 @@
   "v": "8abc5126e3",
   "bytes": 2640,
   "s": "1.2"
+ },
+ "site_prebuilt_katana_island": {
+  "id": "site_prebuilt_katana_island",
+  "nx": 108,
+  "nz": 108,
+  "h0": -0.03,
+  "hs": 0.25,
+  "v": "b955128744",
+  "bytes": 4243,
+  "s": "0.4"
  }
 }
