@@ -69,7 +69,7 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 14 | **The Internet** | The Internet, one room | Not started |
 | 15 | **The Astral Realm** | The Astral Realm, one room | Not started |
 | 16 | **The Deep** | Atlantis + The Trench, The Sea Floor | Not started |
-| 17 | **The Estate** | The Estate (Corn Fields, Lake, Ranch), The Haunted House | Not started |
+| 17 | **The Estate** | The Estate (Corn Fields, Lake, Ranch), The Haunted House | **HEIGHT PLAN DRAFTED 11-20, waits mondo's OK:** `docs/plans/world-polish/plans/estate.js` (+ `estate.png`, `-corn`, `-lake`, `-ranch`; passes `draw-plan.js`). The corn stays level on purpose, the Farm Track winds and crosses County Lane; the Lake gets a West Bank and a Bluff, the Ranch a hollow, a rise, the Draw with a creek cut and a Ridge (8 new plots inside the same 5 x 18 box). County Lane's plots and the Haunted House's room are not touched. Nothing built. |
 | 18 | **Outer Space** | Outer Space, one room | THE FIX done 11-20 (flight, distances, seams, sky); the dressing not started |
 | 20 | **The Bayside Mall** (in Disaster City, Bayside district) | the mall building on the city's Bayside + its inside room | **Not started. Waits for the One Beach thread** (mondo 11-20: "Id probably wait for the beach thread to be finished since it is supposed to be a bayside mall"). |
 | 19 | **The Beach** | The Beach, Pirates' Cove, The Frozen Sea, The Bermuda Triangle (NOT the Volcano Island: thread 21) | **Another thread has it** ("One Beach": Disaster City's Bayside beach and the Beach zone made one). No thread of this plan starts here until that one reports. |
@@ -363,7 +363,7 @@ they are measurements, not the job.
   - **The North Pole village:** levels (the workshop up, the square down, a sledding hill behind), lanes between the houses, its solid half opened.
 - **Level of detail:** this is his example of what every zone should reach. "That is the level of detail we are going for."
 
-### Thread 17: THE ESTATE (not started)
+### Thread 17: THE ESTATE (the height plan is drafted, 11-20: `plans/estate.js`; waits mondo's OK; nothing built)
 - **Zone:** The Estate. Districts: The Corn Fields (C), The Lake (L), The Ranch (R), The Haunted House (H).
 - **Rooms:** `site_prebuilt_skinwalker_ow_lake` (47 plots: the Ranch 26, the Corn Fields 12, the Lake 9, County Lane through them),
   `site_prebuilt_skinwalker_ow_house` (9).
