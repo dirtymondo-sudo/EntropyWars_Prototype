@@ -10905,10 +10905,11 @@ stood. The plan changes first, the room second: the room reads the plan's square
   the room's ice sheets): foot landing 13,17 off the Traverse (level 11) > A west along the face (row 17, to level 19) > landing 4,16-17 >
   B east, one square deeper (row 16, to 25) > landing 11,15-16 > C west, deeper again (row 15, to 31) > the top step 5,14. It stands WEST
   of the planned Traverse's ramp at 14..15,18 (the plan tool refuses a ramp beside a stair). THE WALK ON TOP, the plan's lane, two squares
-  wide at 54.25 m right across the zone, snow-white on the blue Wall, orange marker wands every fourth square, a cairn at each lookout.
+  wide at 54.25 m right across the zone (it reads as a snow trough along the crest; the low parapet is the crest itself), drawn bamboo
+  wands with orange flags every fourth square, a cairn at each lookout. From its east end (66,16) the whole zone is in view: station, crevasse, sea.
   THE ICE ARCH over the Gap (the Gap is three squares now, 30..32): a `bridge` row `ant:arch`, 2.4 m of ice, `plain` (no piers in the road
   below), drawn haunches under both ends and a rope on stakes along each edge. THE ICEFALL at the Wall's east foot (65..69 x 18..20, level
-  13): five tumbled blocks drawn, three blocks of ground up from the snow at 64,21-22 (a jump each, about 0.96 m), and a fixed rope
+  13): `ice_block` models 1.4 to 7.5 m tumbled on and round it (drawn boxes read as grey concrete: replaced), three blocks of ground up from the snow at 64,21-22 (a jump each, about 0.96 m), and a fixed rope
   (`climb`, look `rope`, 22.75 to 54.25 m) from the heap to 66,17 on the walk. THE COVE LANDING: see below.
 - **FOUND AND FIXED: PIRATES' COVE'S BOAT LANDED ON A CUT-OFF FLOE.** `cove_antarctica`'s end (x 92.75, z 110.25 = square 62,67) stood in
   the sea next to a floe the shelf did not reach: the game's own solver (`hqTerrainReach` from the door's landing) reached 8 nodes. The
@@ -10919,7 +10920,7 @@ stood. The plan changes first, the room second: the room reads the plan's square
 - **NOT DONE (waits mondo's word on the pilot):** the east stair (60,16-18) and the north stair down to the Hull (38,11-13); the rest of the
   plan (the Traverse's new line, the trails, the landmarks of the other districts, the Snow Bridge, the berg); the dressing passes. THE LISTS
   (section 1b of the plan) were searched for snow / ice / rope / marker keys only (`ice_block`, `snow_heap`, `cairn`, `ice_axe`,
-  `rope_coils`, `line_marker`); the full read comes before the dressing passes.
+  `rope_coils`; NOT `line_marker`: it is a sports-field line painting cart); the full read comes before the dressing passes.
 
 ## THE CAVERN, THE ZONE KIT — for the H and A district threads (2026-11-16, written by the pilot, district K)
 
