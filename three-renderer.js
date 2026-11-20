@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-20 key-by-read';
+    var _EW_TR_STAMP = '11-20 slow-firsts';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -48056,6 +48056,26 @@ const ThreeRenderer = (function () {
        three's caches — the newest 384 builds, 256 pipelines, 512 programs — and one with the same key is taken back free.
        (3) The F3 counts: node builds and new pipelines (a steady frame shows 0 of both). Off: window.EW_NO_SHADER_KEEP or
        ?ew_keep=0 (reload). */
+    /* THE SLOW FIRSTS (2026-11-20, lens; mondo: "first fight stutter", and his combo profile's longest frames: ONE sheet upload that
+       held the game 211 ms in `copyExternalImageToTexture`, shader builds of 100-150 ms, a 77 ms wait in the fight's batch).
+       Every sheet upload of 12 ms+ and every shader build of 20 ms+ is kept with what it was (the sheet's name / file / size /
+       kind of picture; the look and what it is on) and whether it fell in a fight or the walk; the session's 16 worst print
+       in the lens as "Slow first-time work". The list names what the first fight should have ready before it starts. */
+    var _ewSlow = [];
+    function _ewSlowNote(ms, kind, what) {
+        var e = { ms: ms, k: kind, w: what, f: active ? 'fight' : (_hq ? 'walk' : 'menu'), at: new Date().toISOString().slice(11, 19) };
+        if (_ewSlow.length < 16) _ewSlow.push(e);
+        else { var lo = 0; for (var i = 1; i < _ewSlow.length; i++) if (_ewSlow[i].ms < _ewSlow[lo].ms) lo = i; if (_ewSlow[lo].ms < ms) _ewSlow[lo] = e; else return; }
+    }
+    function _ewSlowTex(tx) {
+        try {
+            if (!tx) return '?';
+            var im = tx.image, src = '';
+            if (im && typeof im.src === 'string') src = im.src.slice(0, 5) === 'data:' ? 'data-url' : im.src.split('?')[0].split('/').slice(-2).join('/');
+            var kindI = !im ? 'no picture' : (typeof HTMLCanvasElement !== 'undefined' && im instanceof HTMLCanvasElement) ? 'canvas' : (typeof ImageBitmap !== 'undefined' && im instanceof ImageBitmap) ? 'bitmap' : (typeof HTMLImageElement !== 'undefined' && im instanceof HTMLImageElement) ? 'img' : (typeof HTMLVideoElement !== 'undefined' && im instanceof HTMLVideoElement) ? 'video' : (im.data ? 'data' : 'other');
+            return (tx.name ? '"' + String(tx.name).slice(0, 28) + '" ' : '') + (src ? src.slice(-44) + ' ' : '') + (im && im.width ? im.width + '×' + im.height + ' ' : '') + kindI + (tx.isCompressedTexture ? ' compressed' : '') + (tx.generateMipmaps ? ' +mips' : '');
+        } catch (e) { return '?'; }
+    }
     var _ewKeep = { builds: 0, pipes: 0, reused: 0, inst: 0, kept: { b: [], p: [], g: [] }, at: 0, b0: 0, p0: 0, rateB: 0, rateP: 0 };
     /* (11-20, mondo's battle F3s: "kept 640/384/768", all three lists at their cap in a city fight, with 7 shader builds a second: a
        build put aside was thrown out and made again. His 2nd and 3rd fights of a session ran smooth, the 1st did not: the looks are
@@ -48074,6 +48094,15 @@ const ThreeRenderer = (function () {
         r._ew_keep = true;
         var zero = function () { return 0; };
         var dbg = r.debug, N = r._nodes, P = r._pipelines, B = r.backend, off = _ewKeepOff();
+        if (N && typeof N.getForRender === 'function' && !N._ew_slowT) {   // THE SLOW FIRSTS: a shader build's own time
+            N._ew_slowT = true;
+            var gfrS = N.getForRender;
+            N.getForRender = function () {
+                var b0 = _ewKeep.builds, t0b = performance.now(), out = gfrS.apply(this, arguments);
+                if (_ewKeep.builds !== b0) { var db = performance.now() - t0b; if (db >= 20) _ewSlowNote(db, 'build', (_ewKeep.last && _ewKeep.last.length) ? _ewKeep.last[_ewKeep.last.length - 1] : '?'); }
+                return out;
+            };
+        }
         if (dbg) {
             var nb = dbg.onNodeBuilderCreated || null;
             dbg.onNodeBuilderCreated = function (b, ro) {
@@ -49711,7 +49740,12 @@ const ThreeRenderer = (function () {
         };
         ['updateTexture', 'generateMipmaps'].forEach(function (k) {   // the sheet uploads a refresh causes (THE REFRESH BY OBJECT)
             var f = B[k]; if (typeof f !== 'function') return;
-            B[k] = function () { _ewBun.uplN = (_ewBun.uplN | 0) + 1; return f.apply(this, arguments); };
+            B[k] = function (tx) {
+                _ewBun.uplN = (_ewBun.uplN | 0) + 1;
+                var t0u = performance.now();
+                try { return f.apply(this, arguments); }
+                finally { var du = performance.now() - t0u; if (du >= 12) _ewSlowNote(du, k === 'generateMipmaps' ? 'mipmaps' : 'upload', _ewSlowTex(tx)); }
+            };
         });
         /* one object per set of shared buffers among a group's own-node objects: what THE HELD KEEP THE CAMERA must refresh for a
            quiet group (rpShared over all the held objects skips every one after the first of each set anyway) */
@@ -55337,6 +55371,7 @@ const ThreeRenderer = (function () {
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
         try { var hl = _hq && _hq.heroLit, hs = (typeof _heroStat !== 'undefined') ? _heroStat : null; if (hl && hl.isLight && hs) L.push('Hero lamp: ' + (hs.why || 'drawn') + ' · frames held ' + hs.held + ' / drawn ' + hs.drawn + ' · in reach ' + hs.inReach + ' of ' + hs.casters + ' casters · moving ' + hs.moving + ' · sides drawn ' + hs.sidesDrawn + ' / skipped ' + hs.sidesSkipped + ' (session)' + _lensLampWhere(hl)); } catch (eH) {}   // THE SHADOW SPLIT
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
+        if (_ewSlow.length) L.push('Slow first-time work (session\'s worst): ' + _ewSlow.slice().sort(function (x, y) { return y.ms - x.ms; }).map(function (e) { return Math.round(e.ms) + ' ms ' + e.k + ' · ' + e.w + ' · ' + e.f + ' ' + e.at; }).join(' | '));
         if (_ewKeep.last && _ewKeep.last.length) L.push('Last shader builds (newest last): ' + _ewKeep.last.join(' | '));
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
         if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }
