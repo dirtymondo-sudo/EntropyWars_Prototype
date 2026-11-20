@@ -8,7 +8,9 @@
    - THE LAKE lies low in a bowl: a high WEST BANK and a BLUFF (2 new plots) over the water, the shore walk west, the boathouse way east.
    - THE RANCH becomes ranch country: the barn in a HOLLOW (0), the yard and paddock level (1), the south beach where the walk dips to the water (0), the farmhouse on a low RISE (2), the
      DRAW with the creek cut (3), the hay field (3), and a RIDGE with the fence line behind it all (4 to 6, 4 new plots).
-   The Haunted House's room is a model and is left as it is: no plan.
+   The Haunted House's room is a model and is left as it is: no plan. THE WAY TO IT IS NEW (mondo 11-20: "Yes this is a big priority"):
+   the House Trail leaves the West Bank by a third way out; its own room and plan are plans/estate-house-trail.js.
+   mondo 11-20 on the 8 new plots: "Yes that's fine".
    Levels: 0 = the lane and the lake shore today. One level = 1.75 m. */
 'use strict';
 const corn = 'a corn field: level on purpose', route = 'the route kit\'s (County Lane, R7 / the Ranch Road): its squares stay as they are';
@@ -113,7 +115,8 @@ module.exports = {
         ['thin', [[18, 189, 6], [18, 194, 5], [22, 194, 5], [22, 200, 3], [23, 200, 3]], { cont: true }],
         ['label', 17, 163, 'THE SADDLE', 'note'],
     ],
-    doors: [[6, 0, 'N', 'The Woods (the Fence Line)', 1], [59, 186, 'E', 'the Ranch Road', 2]],
+    /* the third way out is NEW (mondo 11-20, a walked way to the Haunted House: "Yes this is a big priority"): plans/estate-house-trail.js */
+    doors: [[6, 0, 'N', 'The Woods (the Fence Line)', 1], [59, 186, 'E', 'the Ranch Road', 2], [12, 141, 'W', 'the House Trail (NEW: to the Haunted House)', 1]],
     landmarks: [
         { name: 'The Scarecrow', at: [18, 14], tall: 2 }, { name: 'The Silo', at: [22, 49], tall: 5 }, { name: 'The Well', at: [2, 65], tall: 1 },
         { name: 'The Boathouse', at: [56, 126], tall: 3 }, { name: 'The Dock', at: [33, 137], tall: 1 },
