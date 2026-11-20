@@ -1,3 +1,8 @@
+/* ONE BEACH (2026-11-20, mondo: "One beach."): THIS FILE'S BEACH STANDS IN DISASTER CITY ONLY. `docs/disaster-city/districts/W.js` runs it on the city's own sand
+   (rows 24..71); `node bake-beach.js` still runs it too, so no other district's throws move, but leaves every row, prop and person it makes OUT of the sea room
+   (bake-beach.js SHORE_OWN), whose Shore squares are sea now. The rows south of 71 (the Dunes, the Sandbar, the south camp, the chest) are set by hand on
+   Bayside's sand (`docs/disaster-city/districts/B.js` beach(), its last block); the North Headland's (rows under 24) stand nowhere. After an edit here: `node
+   bake-disaster-city.js` (the beach) and `node bake-beach.js` (nothing of it shows there). Notes: docs/notes/areas-complexes.md "ONE BEACH". */
 /* THE BEACH · THE SHORE (district S, 14 plots: the west coast off Disaster City's Bayside) — the district file (2026-11-16).
    Part of `node bake-beach.js` (its one hook). Notes: docs/notes/areas-complexes.md "THE BEACH ON PLOTS" + "THE BEACH, THE DISTRICT FILES".
 

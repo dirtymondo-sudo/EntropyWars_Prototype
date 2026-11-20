@@ -1198,7 +1198,7 @@ function interiors(ctx, byId, push) {
    in to the canal's mouth and the grill deck. MOLE = the breakwater: planks from the boardwalk to square x1, a round head (hx, hy, radius hr m). ── */
 const COAST = {
     shore: [[54, 166.0], [57, 166.8], [61, 167.6], [66, 167.6], [71, 166.6], [76, 165.4], [82, 165.0], [88, 166.2], [93, 167.4], [96.5, 168.2]],
-    bay: [[98.1, 155.4], [102, 155.3], [106, 155.6], [110, 156.4], [116, 158.2], [121, 158.0], [126, 156.2], [131, 154.2], [136, 153.2]],
+    bay: [[98.1, 155.4], [102, 155.3], [106, 155.6], [110, 156.6], [116, 159.4], [121, 159.0], [126, 156.4], [131, 154.2], [136, 153.2]],
 };
 const MOLE = { x1: 166, hx: 168, hy: 97, hr: 10.5 };
 function waterAt(pts, cy) {   // the waterline's column on row cy (a cubic through the points, each point's slope from its two neighbours)
@@ -1335,6 +1335,24 @@ function beach(ctx, push, ghost) {
     /* the grill: the BurgerPiz at its own size on the deck, its long windowed front to the beach */
     props.push({ key: 'city_burgerpiz', x: gx(152), z: gx(140.5), face: 180 });
     skatePark(ctx, push);
+    /* ONE BEACH (2026-11-20, mondo: "combine the best parts of them"): WHAT THE BEACH ZONE'S SHORE HAD AND THE CITY'S BEACH DID NOT. The Shore's rows south
+       of the Lifeguard Hut (docs/areas/beach/districts/S.js rows 72+: the Dunes, the Sandbar, the fishermen's camp, the chest by the wrecked boat) had
+       no place in the city (districts/W.js left them out) and stood only in the sea room, which has no shore now. They stand on Bayside's sand, set by hand:
+         THE DUNE: a ridge of sand on the wide part of the beach (a `hill` over the sand), dry scrub on it, a bench and a brass telescope on its crest (the
+           Shore's "high bench and its glass": the one height on this beach, and it looks out over both bays to the lighthouse);
+         THE SANDBAR: a bar awash out in the bay, 25 m off the dune (swim or sail to it): the low-water life and the starfish who lives there;
+         THE FISHERMEN'S CAMP: under the mole, beside the hauled-up boat that already lay there;
+         THE CHEST: half dug out of the dune's seaward foot, beside a wrecked rowboat. */
+    { const sq = (cx, cy, key, o) => props.push(Object.assign({ key, x: gx(cx), z: gx(cy) }, o || {}));
+      lateRows.push({ k: 'hill', id: 'dc:beach:dune', x: gx(154.6), z: gx(116), r: 8.5, rz: 15, h: 1.9 }, { k: 'hill', id: 'dc:beach:dune2', x: gx(153.6), z: gx(121.2), r: 5.5, rz: 7, h: 1.1 });
+      sq(154.6, 115.4, 'park_bench', { face: 90 }); sq(154.9, 116.9, 'brass_telescope', { face: 90 }); sq(153.4, 113.2, 'fallen_log', { face: 30 });
+      [[153.2, 112], [155.8, 113.6], [153.3, 117.8], [155.6, 119.4], [153.9, 121.6], [152.6, 120.2], [156.2, 116.2]].forEach((q, i) => sq(q[0], q[1], 'psxg_dead_bush_' + (1 + i % 2), { face: i * 67 % 360 }));
+      ctx.npcSpots.push({ x: gx(154.2), z: gx(116.2), face: 90, race: 'homosapien' });
+      lateRows.push({ k: 'plateau', id: 'dc:beach:sandbar', x: gx(165), z: gx(114), r: 17, rz: 9, rot: 20, h: -1.05, edge: 5, blend: 'ground', absY: true });
+      sq(164.2, 113.6, 'ocean_starfish', { face: 40 }); sq(166.6, 114.6, 'ocean_conch', { face: 200 }); sq(165.6, 113.3, 'ocean_seal_resting', { face: 250 }); sq(163.4, 114.4, 'ocean_crab', { face: 120 }); sq(167.3, 113.9, 'ocean_sand_dollar_3');
+      ctx.npcSpots.push({ x: gx(165), z: gx(114.1), face: 270, race: 'starfish' });
+      sq(152.6, 102.6, 'camping_tent', { face: 60 }); sq(153.7, 104.2, 'meshy_campfire_ring'); sq(154.2, 105.2, 'fallen_log', { face: 100 }); sq(152.2, 100.9, 'lobster_traps', { face: 20 }); sq(153.1, 100.5, 'lobster_traps', { face: 75 }); sq(152.1, 104.4, 'wooden_bucket');
+      sq(157.6, 118.6, 'sea_chest', { face: 140, y: -0.25 }); sq(157.9, 120.6, 'meshy_rowboat', { face: 200 }); sq(157.2, 119.6, 'psx_glass_bottle_1'); sq(158.2, 117.9, 'ocean_conch'); }
 }
 /* ── THE SKATE PARK (2026-11-16, mondo: "yeah add a skatepark", on the map pass audit: the plot-built world had 5 skate pieces in all; the
    new units thread's plan puts the Skater's home here, a beach skate park beside the boardwalk). On the sand east of the boardwalk, squares

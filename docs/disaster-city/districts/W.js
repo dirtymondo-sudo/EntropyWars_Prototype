@@ -36,6 +36,8 @@ const DICE = { build: (83 * 7919 + 5 * 104729) >>> 0, place: 345, dress: 3887440
 const U = n => 'urban:' + n, WD = U('WoodGeneric1b'), WD2 = U('WoodGeneric1a'), SHG = U('WoodGeneric2a'), FLR = U('WoodFlooring1d'), GLS = U('GlassWindowTall1a'), COR = U('MetalCorrugated1a'), BRK = U('BrickMasonry1a'), SHUT = U('GlassWindowResidentialShutter1');
 const PAINT = 2.3, CORR = U('MetalCorrugatedPainted1a'), ROT = { S: 0, W: 90, N: 180, E: 270 };
 const OWN = { arch: [], props: new Set() };
+const MOORED = [];   // ONE BEACH: ships drawn at their berth off this beach (the Flying Dutchman)
+const HARBOUR = { x: 358.75, z: -147, face: 270 };   // ONE BEACH: where the city's `harbour` door stands, the Long Pier's far end (apply() sets it; bake-disaster-city.js writes the door)
 
 function sheet() {   // bake-beach.js sheet(), word for word
     const P = [];
@@ -106,6 +108,25 @@ function apply(ctx) {
     ['build', 'place', 'dress'].forEach(stage => { if (typeof SHORE[stage] !== 'function') return; seed = DICE[stage]; SHORE[stage](sctx); });
     /* the Boardwalk spur's boards (the Shore's squares 0-7 x 40-42): planks on the sand, as in the sea room */
     for (let sy = 40; sy <= 42; sy++) for (let sx = 0; sx < 8; sx++) ctx.paintCell(146 + sx, sy - SY0, 'wood_planks');
+    /* ONE BEACH (2026-11-20, mondo: "I can't get to the other beach from the beach in disaster city ... One beach"): THE LONG PIER'S CITY END. The pier
+       that runs out to the Quay and the Flying Dutchman starts HERE, on the Shore's own sand at the Shore's own squares (rows 53-54, as the Beach's plan
+       draws it), and runs out over the water to square 27. Its far end is the way on (door `harbour`, way `open`: you keep walking and the pier goes on in
+       the sea room, `site_prebuilt_bermuda_beach`, door `quay`). Bayside's pier look (districts/B.js B.pier: lamps down both sides, a pile every square). */
+    { const z = gz(54), x0 = gx(16.5), x1 = gx(30), FAR = 27 * C, n3 = (k, v) => typeof v === 'number' ? Math.round(v * 1000) / 1000 : (k === 'key' && v === 'wood_planks') ? WD : v;   // (the Shore's own wood sheet: a `shore:` row skips the city's decay pass, which rules the plain plank sheet out)
+      /* the pier you walk: to the room's east line (square 30) */
+      ctx.lateRows.push({ k: 'deck', id: 'shore:longpier', x0, z0: z, x1, z1: z, w: 7, y: 0, absY: true }); count.rows++;
+      arch({ k: 'arch', id: 'bch:longpier:look', x: x0, z, rot: 0, parts: JSON.parse(JSON.stringify(BAYSIDE.B.pier(x1 - x0, 7), n3)) });
+      look('longpier-sign', gx(16.3), z, 90, a => { for (const sx of [-3.3, 3.3]) a.box(sx, 0, 0, 0.18, 3.95, 0.18, WD, 0x4a3a2c);
+          a.box(0, 3.0, 0, 6.9, 0.95, 0.1, null, 0x24344e);
+          a.sign('THE LONG PIER', 0, 3.07, 0.07, 6.3, 0.8, '#ffffff', '#24344e', 'way'); a.sign('THE BEACH', 0, 3.07, -0.07, 6.3, 0.8, '#ffffff', '#24344e', 'way', { ry: 180 }); });
+      /* WHAT YOU SEE FROM THE BEACH: past the room's line the pier is DRAWN on to square 57, where it ends in the sea room, and THE FLYING DUTCHMAN lies at
+         her own berth alongside it (`moored`, bake-disaster-city.js writes `terrain.moored`; three-renderer.js _hqBuildMoored draws the Dutchman map's own
+         ship): the same squares as in the sea room, so the ship you see from the sand is where the ship is when you get there. Scenery: nobody walks it. */
+      look('longpier-far', x1, z, 0, a => { a.box(FAR / 2, -0.16, 0, FAR, 0.16, 7, FLR, 0xd8d0c4, { uv: [3.5, 3.5] });
+          for (const sg of [-1, 1]) a.box(FAR / 2, -0.75, sg * 3.45, FAR, 0.6, 0.14, WD, 0x4a3a2c);
+          a.P.push(...JSON.parse(JSON.stringify(BAYSIDE.B.pier(FAR, 7), n3))); });
+      HARBOUR.x = r2(gx(28.5)); HARBOUR.z = z;
+      MOORED.push({ kind: 'galleon', room: 'site_prebuilt_revenge_deck', x: gx(52), z: gz(63) }); }
     console.warn('[the shore]', JSON.stringify(count));
 }
 
@@ -115,4 +136,4 @@ function last(ctx) {
     OWN.arch.forEach(f => { f.y = Math.round(((typeof f.y === 'number' ? f.y : 0) - ctx.at(f.x + 0.01, f.z + 0.01)) * 1000) / 1000; if (Math.abs(f.y) < 0.002) delete f.y; });
     OWN.props.forEach(q => { q.y = Math.round((q.y - ctx.at(q.x, q.z)) * 1000) / 1000; });
 }
-module.exports = { apply, last };
+module.exports = { apply, last, harbour: HARBOUR, moored: MOORED };

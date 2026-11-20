@@ -12765,6 +12765,54 @@ joined only by a door on the boardwalk (`harbour` -> `quay`). On the One World m
 - **KNOWN AND LEFT:** where the Cove's round cut meets the Shore's first circles the two banks leave a short bar under the water off the sand's north point (two
   squares awash); it reads as a point of sand. The map picture of the city was baked again (`bake-map.js`).
 
+<<<<<<< HEAD
+**PART 2 (the second PR, the same day): ONE BEACH. The sea room has no shore; you walk from the city's beach out the Long Pier into the harbour.**
+- **WHAT EACH BEACH HAD, AND WHERE IT WENT** (mondo: "Don't get rid of the other one, combine the best parts of them"):
+
+  | Piece | Was in | Now |
+  |---|---|---|
+  | The Shore's huts, snow cone stand, Lifeguard Hut, court, Boardwalk spur + gate, Tide Pools, Palms, wild beach + camp, 9 people (`S.js` rows 24..71) | both rooms (twice) | Disaster City only (`W.js`, as since 11-16); the sea room's copy is gone |
+  | The Shore's Dunes (the high bench and its glass, dry scrub), the Sandbar (its low-water life, the starfish), the fishermen's camp, the chest by the wrecked boat (`S.js` rows 72+) | the sea room only | Bayside's sand, set by hand (`B.js` beach(), its last block): a dune with the bench and the telescope on its crest, a sandbar awash out in the bay, the camp under the mole, the chest at the dune's foot |
+  | The Shore's North Headland (rows under 24: two boats, a bench, a pirate) | the sea room only | NOWHERE (the Hills' Cove stands on that ground in the city). The one thing dropped |
+  | The Harbour, whole (`H.js`: the Quay and its shed, the wharf, the gantry, the slipway, the Breakwater and its light, the Long Pier, the skiff jetty, the Flying Dutchman, 11 people) | the sea room | the sea room, untouched, now reached ON FOOT: the Long Pier starts on the city's sand |
+  | The near Ocean (the whale, the islet, the buoys) | the sea room | the sea room, untouched |
+  | Bayside's own beach (the pleasure pier and pavilion, the lifeguard station and towers, the yachts, the marina arm, the skate park, the grill deck, the canal's mouth) | the city | the city, on a wider curved beach (part 1) |
+  | The Coast Road's spit and door | the sea room's south shore | the road leaves Disaster City's PORT (below) |
+
+- **THE LONG PIER IS THE WAY** (no door on the boardwalk any more). In the city (`W.js`, the Shore's own squares 53-54, as the Beach's plan always drew it): a pier off
+  the Shore's sand, under a sign (THE LONG PIER), out to the room's east line (square 30); door `harbour` stands across it at square 28.5, way `open`: you keep
+  walking. In the sea room (`bake-beach.js`): door `quay` is a free `open` door across the same pier at square 27.5, by the north arm's corner, so you arrive
+  where the city's pier left you. The two rooms' squares overlap by three: that is the seam. The city's old `harbour` door (plot "Boardwalk exit") is gone;
+  `JOIN.harbour` is still worked out but not written.
+- **YOU SEE WHERE IT LEADS:** past the city room's east line the pier is DRAWN on to square 57 (`shore:longpier-far:look`) and THE FLYING DUTCHMAN lies at her own
+  berth beside it: the city's terrain has `moored` now (`W.js` `moored` -> `bake-disaster-city.js` -> three-renderer.js `_hqBuildMoored`, unchanged), at the same
+  squares as in the sea room. Scenery only (she stands past the field).
+- **THE SEA ROOM IS "THE HARBOUR"** (`site_prebuilt_bermuda_beach`, same id, same place 12,2, same size; label, sub, parti). `bake-beach.js`: the home bake still
+  runs `S.js` (so no throw of H, O or T moves and the Triangle, the Volcano Island, Pirates' Cove and the Frozen Sea bake byte for byte as before: checked by the
+  diff), but `SHORE_OWN` remembers every row, prop and person S.js makes and the hand-out leaves them out (38 rows, 10 looks, 282 props, 12 people); 1,343 squares
+  of the Shore's plots go back to the sea (all but the Harbour's own: the piers, the quay, the foreshore under its landing); the Shore's plot names are off the map.
+  The spawn is on the pier at the door. THE SPIT IS GONE (it hung from the South Dunes).
+- **THE COAST ROAD LEAVES THE PORT.** R10's north end was the spit. Now: the city's door `ow_h_15_12` (`Q.js`, the port quay's south end, way `open`) and
+  `docs/areas/routes/R10.json` `ends` name the city; `node bake-route.js R10` rewrote the road's north door (nothing else of the route). A concrete causeway is
+  drawn on south from the quay's end across the bay's mouth (`dc:coastroad:arch`). Link `babel_beach` (the brick boat from Babel) lands at the Quay's south
+  side (was the spit): data.js `DOOR_HQ.links`, by hand.
+- **FOR THE BAYSIDE MALL THREAD (world polish thread 20), as asked:** the mall was not touched. Building `P10-10-B1`, its arch, the Cordon plaza and the pleasure
+  pier on its axis (rows 125-126 in Bayside's frame) stand as before. In front of it now: the boardwalk, the sea wall with its rail and the ramp at row 130, then
+  sand from square 146 to the waterline at about square 156 (it was 153), the pier's root at square 146, the bait hut's deck at 152-154. Nothing new stands on
+  the mall's axis or between the mall and the pier. The new things on Bayside's sand are north of row 122 (the dune, the chest) and at rows 99-105 (the camp).
+  Bayside's beach is yours to build to: `COAST.bay` in `B.js` is the waterline, move its points if the mall grows east.
+- **SEEN ON SCREEN (the real game, `playtest_city.js`):** from the city's sand, the Long Pier under its sign with the Flying Dutchman lying at its far end;
+  the walk east along it changes room at 362 m and lands on the harbour's pier at square 27.8, beside the north arm, the ship and the breakwater light ahead
+  (`"walk"` view); the walk back west from there changes room to the city; the dune with its bench and telescope, the sandbar out in the bay, the chest; the
+  causeway at the port's south end; walking north out of the Coast Road's room changes room to the city.
+- **NOT SEEN:** where the walker stands in the city after coming up the Coast Road, and the walk SOUTH from the port into the Coast Road's room: the cloud
+  browser was killed for memory each time it held the city and a second room (four tries). The door is the same kind as the pier's (a free `open` door, the
+  room changing 4 m past it), and it stands 6.5 m inside the ghost wall on the city's south line so the wall is not in the way. Also not seen: the harbour
+  room looking back west from the pier (water, then the drawn city front at the room's west line, 95 m off: the beach itself is not drawn there), the fishermen's
+  camp under the mole, the Shore's far-off pieces by night. A real machine should walk both seams once.
+- **KNOWN AND LEFT:** in the harbour room the pier's first nine squares lie behind the door and end in open water where the sand was. Seen from the city the
+  Dutchman stands past the room's line: nobody can swim to her from the city's side (the sea stops at the line as it always did).
+=======
 ## KATANA ISLAND, THE PLAN (2026-11-20, world polish thread 21; A PROPOSAL WITH MONDO, NOTHING BUILT)
 
 mondo 11-20: "we are getting rid of Mt Shasta. Instead volcano island is gonna be remade to Katana Island, which will be like feudal Japan ... with Katana
@@ -12829,3 +12877,4 @@ box at world 22,-19, written by `bake-beach.js`: `OW_ROOMS[2]` + `growVolcano`, 
   5. Insides: a low table set, a futon, a wooden bath tub, a hearth sunk in the floor, a folding screen in the Japanese style, sake barrels, tea set, bowls of
      food (noodles, rice, sushi), a festival stall, a wooden junk or fishing boat in the Japanese style.
   6. Jungle and volcano: living dinosaurs as scenery (more than the one race), eggs, a nest, volcanic rocks, a monkey, a crane.
+>>>>>>> a11c4f587c9fdd82e36724ebc2ef5f046ebc0e77

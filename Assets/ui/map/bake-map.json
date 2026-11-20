@@ -33,11 +33,11 @@
   "id": "site_prebuilt_bermuda_beach",
   "nx": 96,
   "nz": 120,
-  "h0": -0.05,
+  "h0": -0.04,
   "hs": 0.25,
-  "v": "f3c40aeae1",
-  "bytes": 1120,
-  "s": "5.0"
+  "v": "f204a9fda3",
+  "bytes": 464,
+  "s": "1.3"
  },
  "site_prebuilt_area51_desert": {
   "id": "site_prebuilt_area51_desert",
@@ -73,11 +73,11 @@
   "id": "site_prebuilt_downtown_streets",
   "nx": 208,
   "nz": 216,
-  "h0": -1.49,
+  "h0": -1.5,
   "hs": 0.26,
-  "v": "1e73c7f77b",
-  "bytes": 11861,
-  "s": "34.6"
+  "v": "834a0798cf",
+  "bytes": 11956,
+  "s": "37.5"
  },
  "site_prebuilt_vatican_under": {
   "id": "site_prebuilt_vatican_under",

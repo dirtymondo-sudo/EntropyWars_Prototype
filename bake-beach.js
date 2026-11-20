@@ -71,7 +71,13 @@ const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/areas/beach/distric
 const DICE = { place: { S: 345, H: 2218172307, O: 900049978, T: 3230394567 }, dress: { S: 388744000, H: 3707165646, O: 2468876930, T: 122951486 } };
 const LIGHT = [65, 101];                                    // the Lighthouse Rock's two squares each way (the Triangle's west point; the tape lies there)
 const ctx = { LAYOUT, PLAN, C, N, W, H, gx, gz, mx, mz, r2, rnd, cell, setRect, plot, Pxy, inb, count, errs, taken, props, npc, LIGHT };
-const runStage = stage => DISTRICTS.forEach(m => { if (typeof m[stage] !== 'function') return; const s = (DICE[stage] || {})[m._d]; seed = s != null ? s : (m._d.charCodeAt(0) * 7919 + stage.length * 104729) >>> 0; if (process.env.BEACH_DICE) console.log('dice', stage, m._d, seed); m[stage](ctx); });
+/* ONE BEACH (2026-11-20, mondo: "Did you make 2 beaches in the game? ... One beach."): THE SHORE STANDS IN DISASTER CITY ONLY (docs/disaster-city/districts/W.js runs
+   S.js on the city's own sand). The home bake below still runs S.js, so not one throw of the other districts moves and the far rooms bake as before, but
+   every row, prop and person S.js makes is remembered here (SHORE_OWN) and left out of the Beach's room when the plots are handed out (THE ONE WORLD MOVE). */
+const SHORE_OWN = new Set();
+const runStage = stage => DISTRICTS.forEach(m => { if (typeof m[stage] !== 'function') return; const s = (DICE[stage] || {})[m._d]; seed = s != null ? s : (m._d.charCodeAt(0) * 7919 + stage.length * 104729) >>> 0; if (process.env.BEACH_DICE) console.log('dice', stage, m._d, seed);
+    const n0 = [F.length, ARCH.length, props.length, npc.length]; m[stage](ctx);
+    if (m._d === 'S') [F, ARCH, props, npc].forEach((list, i) => { for (let k = n0[i]; k < list.length; k++) SHORE_OWN.add(list[k]); }); });
 runStage('tailor');
 for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (cell[y][x] === 'B') throw new Error('a plan building nobody builds at ' + x + ',' + y); if (cell[y][x] === 'T') cell[y][x] = 't'; }   // t = sand under a palm grove
 /* planks: over water they are a PIER ('J', a hard deck); on sand they are boards laid on the beach ('j', the Boardwalk) */
@@ -170,8 +176,12 @@ const native = (race, sx, sy, face, say) => { spot(sx, sy, race, null); const n 
 
 /* ── THE WAYS ── */
 const OY = 36;   // the Shore and the Harbour keep plan 2's squares, three plots further south
-doors.push({ id: 'quay', wall: 'w', z: gz(OY + 5.5), leaf: null, label: 'DISASTER CITY · BAYSIDE', sub: 'THE BOARDWALK · BACK INTO THE CITY', action: { room: 'site_prebuilt_downtown_streets', at: 'harbour' },
-    desc: 'The boards run back to the sea wall and the sea wall runs back to the city.' });   // the city's door `harbour` (and the old streets') leads to door `quay`: the old Harbour's id, kept
+/* ONE BEACH (2026-11-20): the way to the city is THE LONG PIER itself, walked (way `open`, no door leaf). The pier's first squares off the sand (18..30)
+   are in Disaster City's room (districts/W.js, the same squares); here it is walked from square 27, where the door stands across it, by the north arm's
+   corner: you arrive where the city's pier left you. Was a door on the Boardwalk at square row 41, three plots of sand from the pier. */
+const PIER_Z = 54, PIER_W = 27;   // the Long Pier's middle line (its squares are rows 53 and 54); the square its walked part starts on in this room (the city's room ends on square 30: the two overlap by three squares, the door stands in them)
+doors.push({ id: 'quay', wall: 'free', x: gx(PIER_W + 0.5), z: gz(PIER_Z), face: 90, leaf: null, way: 'open', passage: { len: 10, deep: 4, w: 7 }, label: 'DISASTER CITY · THE BEACH', sub: 'THE LONG PIER · BACK TO THE SAND', action: { room: 'site_prebuilt_downtown_streets', at: 'harbour' },
+    desc: 'The pier runs back over the water to the beach: the huts, the palms, and the city behind them.' });   // the city's door `harbour` (and the old streets') leads to door `quay`: the old Harbour's id, kept
 const GANG = { x: gx(52), z: gz(55), face: 0 };                                                  // the gangway on the pier's south edge, at her waist (link `beach_dutchman`)
 const MAEL = { x: gx(150), z: gz(42), face: 180 };                                           // the Maelstrom's mouth (link `bermuda_abyss`)
 const POOL = { x: mx(134), z: mz(97), face: 0 };                                             // the tide pool by the Lagoon: Room 8's weir (link `weir_bermuda`)
@@ -189,7 +199,7 @@ runStage('build');   // the huts and the lifeguard hut (S), the Quay shed (H), t
    plaster at gain 2.3, the pack's dark glass lit a little, white fins and slabs), the district's name in its own neon face on the tallest. One
    arch row (about ten meshes). Its foot is typed 3 m under level 0 so no block floats wherever the land stands. ── */
 { const PL1 = U('PlasterWallPainted1a'), GSQ = U('GlassWindowSquare1a'), CONC = U('ConcreteStriped2c'), WHITE = 0xffffff, GLASS = 0xb4e4ff;
-  const X0 = gx(0), Z0 = gz(14), Z1 = gz(106), ZD = gz(OY + 5.5), a = sheet(), B = (x, y, z, w, h, d, key, tint, o) => a.box(x, y, z, w, h, d, key, tint, o);
+  const X0 = gx(0), Z0 = gz(14), Z1 = gz(106), ZD = gz(PIER_Z), a = sheet(), B = (x, y, z, w, h, d, key, tint, o) => a.box(x, y, z, w, h, d, key, tint, o);
   /* the row's frame: rot 270 = its +z looks EAST (to the beach), its +x runs NORTH; a spot's world z is -x here */
   const along = wz => -(wz - (Z0 + Z1) / 2), LEN = Z1 - Z0, xd = along(ZD);
   for (const sg of [-1, 1]) { const x0 = sg < 0 ? -LEN / 2 : xd + 4.2, x1 = sg < 0 ? xd - 4.2 : LEN / 2;           // the sea wall, open 8.4 m at the city door
@@ -256,8 +266,8 @@ Object.assign(count, { features: F.length + ARCH.length, props: props.length, do
    The Round Voyage's boats join them (data.js DOOR_HQ.links, way `boat`). Notes: areas-complexes.md "ONE WORLD, THE COAST + THE ISLANDS". ── */
 const NEWP = { level: 2, d: 'O', name: null };
 const OW_ROOMS = [
-    { id: ROOM, part: 'beach', label: 'THE BEACH', sub: 'THE SHORE · THE HARBOUR · THE OCEAN', wx: 12, wy: 2, cols: 8, rows: 10, dx: 0, dy: 0, has: p => p.x < 8 && p.d !== 'T',
-      parti: 'The near coast on 80 plots, most of them water: a shore of sand off the city, a harbour with the Dutchman at the pier head, the ocean you sail, and a spit of sand south to the Coast Road.' },
+    { id: ROOM, part: 'beach', label: 'THE HARBOUR', sub: 'THE LONG PIER · THE QUAY · THE FLYING DUTCHMAN · THE OCEAN', wx: 12, wy: 2, cols: 8, rows: 10, dx: 0, dy: 0, has: p => p.x < 8 && p.d !== 'T',
+      parti: 'The water off Disaster City\'s beach, on 80 plots: the Long Pier out from the sand to a harbour with the Dutchman at the pier head, and the ocean you sail. The beach itself is the city\'s.' },
     { id: 'site_prebuilt_bermuda_ow_triangle', part: 'ow_triangle', label: 'THE BERMUDA TRIANGLE', sub: 'THE LIGHTHOUSE ROCK · THE CAY · THE MAELSTROM', wx: 32, wy: 0, cols: 9, rows: 7, dx: 5, dy: 3, has: p => p.x >= 5 && p.y >= 3 && (p.x >= 8 || p.d === 'T'),
       parti: 'A right triangle of sea far out by the Ice Wall: a lighthouse, an island and a hole at its corners. You only come here on purpose.' },
     { id: 'site_prebuilt_bermuda_ow_volcano', part: 'ow_volcano', label: 'THE VOLCANO ISLAND', sub: 'THE VOLCANO · THE VILLAGE · THE JUNGLE · THE DINOSAUR PARK', wx: 22, wy: -19, cols: 6, rows: 6, dx: 8, dy: 0, has: p => p.x >= 8 && p.y <= 2,
@@ -282,31 +292,33 @@ const shiftTo = (o, R) => { const q = JSON.parse(JSON.stringify(o)); ['x', 'x0',
 const DROPPED = [], TRI_ROOM = () => OW_ROOMS[1];
 const LOST = [];   // props on a plot no room takes: each is set down again in the nearest room's open sea (below), never lost
 const handOut = (list, field, what) => list.forEach(o => { const pt = ptOf(o), R = pt ? roomAt(pt[0], pt[1]) : null; if (!R && field === 'props') { LOST.push({ o, R: TRI_ROOM(), q: homeSq(pt[0], pt[1]) }); return; } if (!R) { DROPPED.push(what + ' ' + (o.key || o.k || o.race || o.id || '') + ' at ' + (pt ? homeSq(pt[0], pt[1]).join(',') : '?')); return; } R[field].push(shiftTo(o, R)); });
-handOut(F, 'F', 'feature'); handOut(ARCH, 'ARCH', 'look'); handOut(props, 'props', 'prop'); handOut(npc, 'npc', 'native');
+const notShore = o => !SHORE_OWN.has(o);   // ONE BEACH: the Shore's own things stand in Disaster City (see SHORE_OWN)
+console.log('ONE BEACH: the Shore\'s own rows stay out of the sea room: ' + JSON.stringify({ features: F.filter(o => !notShore(o)).length, looks: ARCH.filter(o => !notShore(o)).length, props: props.filter(o => !notShore(o)).length, people: npc.filter(o => !notShore(o)).length }));
+handOut(F.filter(notShore), 'F', 'feature'); handOut(ARCH.filter(notShore), 'ARCH', 'look'); handOut(props.filter(notShore), 'props', 'prop'); handOut(npc.filter(notShore), 'npc', 'native');
 AIR.forEach(z => { const R = roomAt((z.x0 + z.x1) / 2, (z.z0 + z.z1) / 2); if (!R) { DROPPED.push('air ' + z.kind); return; } R.AIR.push(shiftTo(z, R)); });
 const BEACH_R = OW_ROOMS[0], TRI_R = OW_ROOMS[1], VOL_R = OW_ROOMS[2];
 doors.forEach(d => BEACH_R.doors.push(shiftTo(d, BEACH_R)));
 BEACH_R.moored.push(shiftTo({ kind: 'galleon', room: SHIP_ROOM, x: SHIP_AT.x, z: SHIP_AT.z }, BEACH_R));
 FLATS.forEach(f => { const R = roomOf[Math.floor((f[0] + f[2]) / 2 / N) + ':' + Math.floor((f[1] + f[3]) / 2 / N)]; if (R) R.FL.push([f[0] - R.dx * N, f[1] - R.dy * N, f[2] - R.dx * N, f[3] - R.dy * N]); });
 const pidOf = (c, r) => 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0');   // a plot's id in its room (map.js _zmPlots reads it)
-PLAN.plots.filter(p => p.name).forEach(p => { const R = roomOf[p.x + ':' + p.y]; if (R) R.names.push([pidOf(p.x - R.dx, p.y - R.dy), p.name, p.d, p.level]); else DROPPED.push('plot name ' + p.id + ' ' + p.name); });
+PLAN.plots.filter(p => p.name && p.d !== 'S').forEach(p => { const R = roomOf[p.x + ':' + p.y]; if (R) R.names.push([pidOf(p.x - R.dx, p.y - R.dy), p.name, p.d, p.level]); else DROPPED.push('plot name ' + p.id + ' ' + p.name); });
 const placeOf = (R, o) => { const q = shiftTo(o, R); return Object.assign({}, o, { x: q.x, z: q.z }); };
 const MAEL_W = placeOf(TRI_R, MAEL), POOL_W = placeOf(TRI_R, POOL), BAY_W = placeOf(TRI_R, BAY), GANG_W = placeOf(BEACH_R, GANG);
 const TAPE_W = { x: r2(gx(LIGHT[0] + 1) + TRI_R.ox), z: r2(gz(LIGHT[1] + 1) + 1.2 + TRI_R.oz) };
 if (roomAt(MAEL.x, MAEL.z) !== TRI_R || roomAt(POOL.x, POOL.z) !== TRI_R || roomAt(BAY.x, BAY.z) !== TRI_R || roomAt(GANG.x, GANG.z) !== BEACH_R) throw new Error('a link\'s place is not in the room it should move with');
 TRI_R.triangle = LAYOUT.triangle.map(q => [r2(gx(q[0]) + TRI_R.ox), r2(gz(q[1]) + TRI_R.oz)]);
 
-/* THE SPIT + THE COAST ROAD'S DOOR (R10, docs/areas/routes/R10.json): a bar of sand from the South Dunes through the headland's foot out past the islet to the
-   room's south line, where the Coast Road comes in (world plot line x 16 = the room's middle, `ow_h_15_12`) */
-{ const R = BEACH_R, mid = Math.round(R.W / 2), PTS = [[1, 100], [6, 104], [14, 109], [28, 115], [mid - 2, 116], [mid, R.H - 1]];
-  const near = (x, y) => { for (let i = 1; i < PTS.length; i++) { const [ax, ay] = PTS[i - 1], [bx, by] = PTS[i], vx = bx - ax, vy = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy))), dx = x - ax - t * vx, dy = y - ay - t * vy; if (dx * dx + dy * dy <= 5.3) return true; } return false; };
-  R.spit = []; for (let y = 96; y < R.H; y++) for (let x = 0; x < R.W; x++) if ((R.cell[y][x] === 'w' || (R.cell[y][x] === 'r' && x < 8)) && near(x, y)) { R.cell[y][x] = 'd'; R.spit.push([x, y]); }
-  for (let y = R.H - 3; y < R.H; y++) for (let x = mid - 2; x < mid + 2; x++) if (R.cell[y][x] === 'w') { R.cell[y][x] = 'd'; R.spit.push([x, y]); }
-  const wet = new Set(R.spit.map(q => q[0] + ':' + q[1]));
-  R.props = R.props.filter(p => { const q = [Math.floor((p.x + R.HW) / C), Math.floor((p.z + R.HD) / C)]; if (wet.has(q[0] + ':' + q[1]) && (p.y != null && p.y < 0.2)) { LOST.push({ o: p, R, q, local: true }); return false; } return true; });
-  R.doors.push({ id: 'ow_h_15_12', way: 'open', label: 'THE COAST ROAD', sub: 'SOUTH ALONG THE SEA · TO GIZA', action: { room: 'site_ow_r10', at: 'ow_h_15_12' },
-      desc: 'The sand runs out to a road, and the road runs south along the sea to the pyramids.', wall: 's', x: r2(R.gx(mid)), passage: { w: 11 } });
-  R.ways = [{ side: 's', at: r2(R.gx(mid)) }]; R.reach = [[mid, R.H - 1, 'the Coast Road door at the spit\'s end']]; }
+/* ONE BEACH (2026-11-20): THE SHORE'S SAND IS NOT IN THIS ROOM. Every square of a Shore plot goes back to the sea (the sand, the dunes, the headlands' rock,
+   the boards on the beach), but for the Harbour's own (the piers, the quay, the little foreshore under the quay's landing and slipway: squares 20+ of rows
+   36..48). THE LONG PIER is walked from square 27 (the door from the city). THE SPIT AND THE COAST ROAD'S
+   DOOR ARE GONE with the sand they hung from (was: a bar from the South Dunes to the south line, door `ow_h_15_12`): the Coast Road leaves Disaster City's
+   port now (docs/areas/routes/R10.json `ends`, the city's door of the same id in districts/Q.js). */
+{ const R = BEACH_R; let n = 0;
+  for (let y = 0; y < R.H; y++) for (let x = 0; x < R.W; x++) { const p = R.mine(x, y), ch = R.cell[y][x]; if (!p || p.d !== 'S' || 'wJoX'.includes(ch)) continue;
+      if (x >= 20 && y >= 36 && y < 49 && ch !== 'r') continue; R.cell[y][x] = 'w'; n++; }
+  /* (the pier's squares 18..26, behind the door, stay as the Harbour dresses them: seen from the quay the pier runs back toward the city and stops where the sand was) */
+  console.log('ONE BEACH: ' + n + ' squares of the Shore back to the sea; the Long Pier is walked from square ' + PIER_W);
+  R.ways = []; R.reach = [[36, PIER_Z - 1, 'the Long Pier'], [PIER_END - 2, PIER_Z - 1, 'the pier alongside the Dutchman'], [28, OY + 6, 'the Quay'], [29, 62, 'the skiff jetty']]; }
 /* ── THE GROWN ISLAND (mondo 11-16 on map v5: "grow Volcano Island (6x6 jungle + dinosaur park)"; new plots, the names are ideas): south and
    east of the old island's black ground the sea gives way to new land: a sand shore, a JUNGLE (palms, banana plants, tropical bushes, ferns)
    and, in its middle, a fenced DINOSAUR PARK (a paddock of bare earth, a gate with a sign, a timber lookout, the keeper's thatched hut, a dig
@@ -462,7 +474,7 @@ function bakeRoom(R) {
         R.reach.forEach(q => { if (!seen[q[1] * Wr + q[0]]) throw new Error(R.id + ': not reached on foot: ' + q[2]); }); }
     else if (process.env.BEACH_DUMP) console.log(R.id + '\n' + cl.map((r, y) => r.map((ch, x) => h[y * Wr + x] < -1.15 ? ' ' : ch).join('')).join('\n'));
 }
-BEACH_R.from = SP;
+BEACH_R.from = [PIER_W + 1, PIER_Z - 1];   // ONE BEACH: the walk starts on the Long Pier, at the door from the city
 OW_ROOMS.forEach(bakeRoom);
 /* the props the move put out of the water (or onto no plot): each goes to the nearest square of open sea, at least 2.5 m deep, in its room */
 LOST.forEach(({ o, R, q, local }) => { const lx = local ? q[0] : Math.max(0, Math.min(R.W - 1, q[0] - R.dx * N)), ly = local ? q[1] : Math.max(0, Math.min(R.H - 1, q[1] - R.dy * N));
@@ -472,7 +484,7 @@ LOST.forEach(({ o, R, q, local }) => { const lx = local ? q[0] : Math.max(0, Mat
     console.log('set down again: ' + o.key + ' (home ' + q.join(',') + ') in ' + R.id + ' at ' + best.join(',')); });
 /* each room's spawn: the beach's at the city door as before; the islands' on the dry square nearest their landing place */
 const dryNear = (R, sx, sy) => { let best = null, bd = 1e9; for (let y = 0; y < R.H; y++) for (let x = 0; x < R.W; x++) { const k = y * R.W + x; if (R.hc[k] < 0.25 || !'dtbcgki'.includes(R.cell[y][x])) continue; const d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = [x, y]; } } if (!best) throw new Error(R.id + ': no dry square'); return best; };
-BEACH_R.sp = SP;
+BEACH_R.sp = [PIER_W + 1, PIER_Z - 1];
 TRI_R.sp = dryNear(TRI_R, Math.floor((BAY.x + HW) / C) - TRI_R.dx * N, Math.floor((BAY.z + HD) / C) - TRI_R.dy * N + 2);
 VOL_R.sp = dryNear(VOL_R, 6, 18);
 COVE_R.sp = dryNear(COVE_R, 18, 8); FROZ_R.sp = dryNear(FROZ_R, 6, 21);
