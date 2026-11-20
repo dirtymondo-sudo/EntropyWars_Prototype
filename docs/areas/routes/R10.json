@@ -1,5 +1,5 @@
 {
-  "about": "THE COAST ROAD (route R10, One World phase 4.3, 2026-11-17): a dirt road down the east coast from the Beach's south shore to Giza's north side, 38 plots, the sea on its east side the whole way (sand, grass, dry scrub, badlands, desert). ONE ROOM `site_ow_r10` (3 x 17) since ONE WORLD PHASE 5 (2026-11-17, mondo: smaller than Disaster City = one room, never ask); it was two (`site_ow_r10_0_25`, `site_ow_r10_26_37`, both retired into it) with a loading card on the line y = 23. The north end comes up onto the Beach's south spit (bake-beach.js THE ONE WORLD MOVE lays the spit); the south end goes in at Giza's north-east plot, west of the pyramid that stands on the line x = 16. Places (ow-places.js, ideas): the design page gives \"cliff tunnel, surf coves, a lookout over the sea\": the surf racks, the drying nets and the lookout stand on the sand plots, the rest are the kit's pick by ground kind. Bake: node bake-beach.js, node bake-desert.js, then node bake-route.js R10.",
+  "about": "THE COAST ROAD (route R10, One World phase 4.3, 2026-11-17): a dirt road down the east coast from the Beach's south shore to Giza's north side, 38 plots, the sea on its east side the whole way (sand, grass, dry scrub, badlands, desert). ONE ROOM `site_ow_r10` (3 x 17) since ONE WORLD PHASE 5 (2026-11-17, mondo: smaller than Disaster City = one room, never ask); it was two (`site_ow_r10_0_25`, `site_ow_r10_26_37`, both retired into it) with a loading card on the line y = 23. The north end comes up onto the Beach's south spit (bake-beach.js THE ONE WORLD MOVE lays the spit); the south end goes in at Giza's north-east plot, west of the pyramid that stands on the line x = 16. Places (ow-places.js, ideas): the design page gives \"cliff tunnel, surf coves, a lookout over the sea\": the surf racks, the drying nets and the lookout stand on the sand plots, the rest are the kit's pick by ground kind. Bake: node bake-beach.js, node bake-desert.js, then node bake-route.js R10. ONE BEACH (2026-11-20): the north end is Disaster City's port quay now (the city's door `ow_h_15_12`, docs/disaster-city/districts/Q.js); the Beach's sea room has no shore and no spit any more.",
   "hub": "beach",
   "site": "prebuilt_bermuda",
   "label": "THE COAST ROAD",
@@ -40,16 +40,16 @@
   ],
   "ends": {
     "ow_h_16_12": {
-      "room": "site_prebuilt_bermuda_beach",
-      "label": "THE BEACH",
-      "sub": "THE COAST ROAD · NORTH ONTO THE SPIT",
-      "desc": "The road runs out onto a spit of sand, and the beach and the harbour are across the water."
+      "room": "site_prebuilt_downtown_streets",
+      "label": "DISASTER CITY",
+      "sub": "THE COAST ROAD · NORTH TO THE PORT",
+      "desc": "The road runs up the coast to the city's port: cranes, containers, and the beach beyond them."
     },
     "ow_h_15_12": {
-      "room": "site_prebuilt_bermuda_beach",
-      "label": "THE BEACH",
-      "sub": "THE COAST ROAD · NORTH ONTO THE SPIT",
-      "desc": "The road runs out onto a spit of sand, and the beach and the harbour are across the water."
+      "room": "site_prebuilt_downtown_streets",
+      "label": "DISASTER CITY",
+      "sub": "THE COAST ROAD · NORTH TO THE PORT",
+      "desc": "The road runs up the coast to the city's port: cranes, containers, and the beach beyond them."
     },
     "ow_h_15_29": {
       "room": "site_prebuilt_area51_ow_giza",
