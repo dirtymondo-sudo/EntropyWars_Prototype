@@ -71,7 +71,12 @@ function climbRow(lo, hi, look, why) {
 (PLAN.stairs || []).forEach(s => { const a = s[0], b = s[1], lo = LV[a[1]][a[0]] < LV[b[1]][b[0]] ? a : b, hi = lo === a ? b : a; climbRow(lo, hi, 'ladder', 'ladder ' + JSON.stringify(s)); });
 count.ladders = climbs.length;
 const FALLAT = new Set((PLAN.branches || []).filter(b => b.kind === 'drop' && /WATERFALL/.test(b.to)).map(b => b.at.join(',')));
-(PLAN.found || []).forEach(f => { if (LADDER.has(pairKey(f.from, f.to))) return; climbRow(f.from, f.to, FALLAT.has(f.to.join(',')) ? 'pipe' : 'chain', 'found way ' + f.name); });
+/* a found climb beside a FALL stands on the arm's other square ("up the wet rock beside the fall"): the fall's splash pool sinks the ground under
+   the fall's own squares and buried the pipe's foot in the face (thread 9's check, 11-20) */
+(PLAN.found || []).forEach(f => { if (LADDER.has(pairKey(f.from, f.to))) return; let lo = f.from, hi = f.to; const wet = FALLAT.has(hi.join(','));
+    if (wet) { const dx = hi[0] - lo[0], dy = hi[1] - lo[1]; for (const s of [1, -1]) { const L2 = [lo[0] + (dx ? 0 : s), lo[1] + (dx ? s : 0)], H2 = [hi[0] + (dx ? 0 : s), hi[1] + (dx ? s : 0)];
+        if (open(L2[0], L2[1]) && open(H2[0], H2[1]) && LV[L2[1]][L2[0]] === LV[lo[1]][lo[0]] && LV[H2[1]][H2[0]] === LV[hi[1]][hi[0]]) { lo = L2; hi = H2; break; } } }
+    climbRow(lo, hi, wet ? 'pipe' : 'chain', 'found way ' + f.name); });
 count.foundClimbs = climbs.length - count.ladders;
 
 /* ── THE ROOF: a square's roof is CEIL over the highest open square two steps away or nearer ── */
