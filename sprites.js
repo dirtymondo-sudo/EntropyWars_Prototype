@@ -1116,23 +1116,10 @@ const RACE_SPRITE_ANIMATIONS = {
    attacks or casts, or is hit, then it goes back to idle. Each sheet is ONE horizontal strip of `frames` square frames
    (Sprite AI's export, 8 x 128 px). A race or gender without a row keeps its face portrait. Off: EW_DISABLE_PANEL_ANIMS. */
 const _PA = 'https://cdn.entropywars.net/Assets/characters/races';
-const RACE_PANEL_ANIMS = {
-  'catgirl': {
-    female: {
-      /* step 3 (11-20): the clips that tell the player something in the menu. `attack` = the Attack row's stance + her own
-         swing; wounded = her idle at 30 % HP or less; guard / cast = the Guard and Abilities rows; brace = under a damage
-         forecast. walk + hurt (replays of the board) are dropped; their sheets stay on R2 (panel_walk / panel_hurt). */
-      idle:    `${_PA}/catgirl/female/panel_idle.png`,
-      attack:  `${_PA}/catgirl/female/panel_attack.png`,
-      wounded: `${_PA}/catgirl/female/panel_wounded.png`,
-      guard:   `${_PA}/catgirl/female/panel_guard.png`,
-      cast:    `${_PA}/catgirl/female/panel_cast.png`,
-      brace:   `${_PA}/catgirl/female/panel_brace.png`,
-      hold: { wounded: 1, guard: 1, cast: 1, brace: 1 },   // these sheets go from the stand INTO the pose: played once, the last frame stays
-      frames: 8, fps: 8,
-    },
-  },
-};
+/* EMPTY since 2026-11-20 (mondo, after the catgirl pilot: "not really feeling them ... put catgirl's portrait to the way it
+   was (no animation)"): no race is listed, so every unit shows its face portrait again. The player (hud.js PanelAnim) stays
+   for a later try; the catgirl's eight test sheets stay on R2 (Assets/characters/races/catgirl/female/panel_*.png). */
+const RACE_PANEL_ANIMS = {};
 function getRacePanelAnims(unit) {
   if (!unit || !unit.race || (typeof window !== 'undefined' && window.EW_DISABLE_PANEL_ANIMS)) return null;
   const set = RACE_PANEL_ANIMS[unit.race];
