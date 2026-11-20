@@ -232,7 +232,7 @@ function gridOverlay(minor = 'rgba(255,255,255,.07)', major = 'rgba(255,255,255,
   s += `</g>`;
   return s;
 }
-const ZNAME = { np: 'NORTH POLE', mtn: 'THE MOUNTAINS', hills: 'THE HOLLYWOOD HILLS', city: 'DISASTER CITY', vat: 'THE VATICAN', col: 'THE COLOSSEUM', cam: 'CAME A LOT KINGDOM', woods: 'THE WOODS', estate: 'THE ESTATE', desert: 'THE DESERT', beach: 'THE BEACH', ley: 'LEYLINES', ant: 'ANTARCTICA' };
+const ZNAME = { np: 'NORTH POLE', mtn: 'THE MOUNTAINS', hills: 'DISASTER HILLS', city: 'DISASTER CITY', vat: 'THE VATICAN', col: 'THE COLOSSEUM', cam: 'CAME A LOT KINGDOM', woods: 'THE WOODS', estate: 'THE ESTATE', desert: 'THE DESERT', beach: 'THE BEACH', ley: 'LEYLINES', ant: 'ANTARCTICA' };
 function plen(pts) { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
 function rect(z, fill, stroke, extra = '') {
   if (z.cells) return `<path shape-rendering="crispEdges" d="${cellsPath(z.cells)}" fill="${fill}"/><path d="${cellsOutline(z.cells)}" fill="none" stroke="${stroke}" ${extra}/>`;
@@ -463,7 +463,7 @@ function roadLines(scale = 1) { let s = '';
 function zoneTrails() { let s = ''; for (const pts of TRAILPTS) { const d = 'M' + pts.map(([x, y]) => P(x + .5, y + .5).join(',')).join('L'); s += `<path d="${d}" fill="none" stroke="#f6e7b0" stroke-width="1.3" stroke-dasharray="1.5 2.5"/>`; } return s; }
 function compass() { return `<g transform="translate(${W - 50},${H - 60})"><circle r="24" fill="#0b0f16" stroke="#fff"/><path d="M0,-18L5,0L0,18L-5,0Z" fill="#fff"/><text y="-28" text-anchor="middle" font-size="10" class="lbl" fill="#fff">N</text></g>`; }
 function scaleBar() { return `<g transform="translate(30,${H - 30})"><rect width="${10 * S}" height="5" fill="#fff"/><text y="-6" font-size="9" fill="#fff" class="dl">10 PLOTS · 120 SQUARES · 420 M</text></g>`; }
-const BIG = [['THE MOUNTAINS', -11, -13.2], ['NORTH POLE', 2, -23.2], ['THE HOLLYWOOD HILLS', 6.5, -1.5], ['DISASTER CITY', 6, 4.8], ['THE VATICAN', -9, -2.6], ['THE COLOSSEUM', -9.5, -10.6], ['CAME A LOT KINGDOM', -24, 4.9], ['THE WOODS', -11, 8.9], ['THE ESTATE', -12, 21.9], ['THE DESERT', 7.5, 29.6], ['THE BEACH', 16, 1.2], ['LEYLINES', 27.5, 37.9], ['ANTARCTICA', 3, 52.9], ['STONEHENGE', -27.4, -10.1]];
+const BIG = [['THE MOUNTAINS', -11, -13.2], ['NORTH POLE', 2, -23.2], ['DISASTER HILLS', 6.5, -1.5], ['DISASTER CITY', 6, 4.8], ['THE VATICAN', -9, -2.6], ['THE COLOSSEUM', -9.5, -10.6], ['CAME A LOT KINGDOM', -24, 4.9], ['THE WOODS', -11, 8.9], ['THE ESTATE', -12, 21.9], ['THE DESERT', 7.5, 29.6], ['THE BEACH', 16, 1.2], ['LEYLINES', 27.5, 37.9], ['ANTARCTICA', 3, 52.9], ['STONEHENGE', -27.4, -10.1]];
 { const gone = new Set(['Snowy Pass', 'Ski Lodge', 'Olympus', 'Shasta', 'Fairy Forest', 'the Castle', 'Snowy Pines', 'the Village', 'Corn', 'Haunted House', 'Ranch', 'Göbekli Tepe', 'Bug Colony', 'Babel', 'Technoticlan']);
   for (let i = DIST.length - 1; i >= 0; i--) if (gone.has(DIST[i][0])) DIST.splice(i, 1);
   for (const id in DNAME) { const z = ZB(id); if (z.plots) { const m = z.plots[Math.floor(z.plots.length / 2)]; DIST.push([DNAME[id], m[1] + .5, m[2] + 1.6, true]); continue; } DIST.push([DNAME[id], z.x + z.w / 2, z.y + z.h + .9, true]); }
