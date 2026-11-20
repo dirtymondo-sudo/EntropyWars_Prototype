@@ -1203,7 +1203,9 @@ function interiors(ctx, byId, push) {
    surf, out again to the mole's head. Bayside's bay: tight against the mole (the yachts need their water), widest off the lifeguard station,
    in to the canal's mouth and the grill deck. MOLE = the breakwater: planks from the boardwalk to square x1, a round head (hx, hy, radius hr m). ── */
 const COAST = {
-    shore: [[56.3, 162.4], [57.6, 164.6], [59.6, 166.4], [62.5, 167.5], [66, 167.6], [71, 166.6], [76, 165.4], [82, 165.0], [88, 166.2], [93, 167.4], [96.5, 168.2]],
+    /* (the first point lies ON the Cove's own waterline, a circle of 32 m round (310, -94) here, 20 degrees west of its south point, and the curve leaves it
+       along the circle's own tangent, so the Cove's arc and the Shore's sweep are one line with no corner: mondo 11-20, "that slight bend still looks stupid") */
+    shore: [[53.74, 157.46], [54.6, 159.7], [55.8, 162.0], [57.4, 164.3], [59.6, 166.3], [62.5, 167.5], [66, 167.6], [71, 166.6], [76, 165.4], [82, 165.0], [88, 166.2], [93, 167.4], [96.5, 168.2]],
     bay: [[98.1, 155.4], [102, 155.3], [106, 155.6], [110, 156.6], [116, 159.4], [121, 159.0], [126, 156.4], [131, 154.2], [136, 153.2]],
 };
 const MOLE = { x1: 166, hx: 168, hy: 97, hr: 10.5 };

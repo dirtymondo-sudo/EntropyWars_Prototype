@@ -74746,7 +74746,11 @@ const ThreeRenderer = (function () {
             zi.room = Object.assign({}, info.room || room, { terrain: Object.assign({}, room.terrain, { floorTint: z.floorTint || null, cliffTint: z.cliffTint || null, pathTint: z.pathTint || null, cliffZoom: z.cliffZoom }) });
             var slot = new Uint8Array(info.paint.pal.length + 1);
             for (var v = 1; v <= info.paint.pal.length; v++) slot[v] = zp.indexOf(String(info.paint.pal[v - 1])) + 1;
-            out.push({ x0: +z.x0, z0: +z.z0, x1: +z.x1, z1: +z.z1, out: Array.isArray(z.out) ? z.out : null, slot: slot, mat: _hqTerrainMat(zi, (z.floorColor != null) ? Object.assign({}, S, { floorColor: z.floorColor }) : S) });   // (the room's own floorColor unless the zone names one: one light on one ground, so a road that runs on from the room into the zone keeps its tone)
+            var zmat = _hqTerrainMat(zi, (z.floorColor != null) ? Object.assign({}, S, { floorColor: z.floorColor }) : S);
+            /* ONE SAND (2026-11-20, mondo: a colour seam where the city's beach met the Hills' cove): `calmShade: true` = this zone is LIT the calm way (plain
+               white, no lift, no shine) whatever its sheets are, so a painted sheet in it matches the same sheet in a calm zone beside it */
+            if (z.calmShade && !zmat._ew_calm) { zmat.color.setHex(_CALM.floor); zmat.emissive.setHex(0x000000); zmat.specular.setHex(0x050505); zmat.shininess = 2; }
+            out.push({ x0: +z.x0, z0: +z.z0, x1: +z.x1, z1: +z.z1, out: Array.isArray(z.out) ? z.out : null, slot: slot, mat: zmat });   // (the room's own floorColor unless the zone names one: one light on one ground, so a road that runs on from the room into the zone keeps its tone)
         });
         return out.length ? out : null;
     }

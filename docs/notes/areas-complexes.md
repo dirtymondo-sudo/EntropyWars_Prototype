@@ -12831,6 +12831,22 @@ That is not a bayside view. It's called bayside mall." and "the other part I cir
   now starts at the Cove's own south rim (row 56.3, square 162.4) and turns out of it, so the shore runs in one sweep from the Cove round into the bay.
   `coastCut` keeps a cap by the circle's FAR side now (where the coast turns, a circle's middle lies nearer the line than its sample does) and steps 1.75 m
   where the curve is steep. The Shore's sand is narrower on its first twelve rows: `W.js` pulls a thing lying there back inside the new waterline.
+- **THE COVE, AGAIN (the fourth PR, 11-20; mondo: "that slight bend still looks fucking stupid" and "there is a very clear and obvious seam going down the sand
+  in the cove because it's 2 different colors"):** (1) THE BEND: the Shore's curve started 7 m off the Cove's waterline at another heading, so the two met in
+  a corner. `COAST.shore`'s first point now lies ON the Cove's waterline (a circle of 32 m round the Cove's middle), 20 degrees west of its south point, and
+  the curve leaves along that circle's own tangent: one line, seen from above. ANY curve that meets a round cut must start on its waterline and on its tangent.
+  (2) ONE SAND (three tries; the third is live): the Cove lies in the Hills' rows, which are a GROUND ZONE (`terrain.zones`) whose floor sheet (dry grass) is
+  CALM, and a calm ground is lit plain white (`_CALM.floor`), while the city's ground is multiplied by the city shell's grey floor colour (0xa8a8a4) and
+  lifted a little. So the same `desert` sheet was a third darker south of the room's old north line. TRY 1, a zone of the city's look over the Cove's strip:
+  the line moved to the strip's west edge, down the cliff (mondo: "you're still leaving these seams on the mountain/cliff and the sand ... at least blend
+  it"). TRY 2, every sand square cut out of the Hills' zone (`zone.out`): no straight line, but a blocky stepped edge where sand met rock (two materials
+  cannot blend a painted edge). LIVE: THE BEACH'S SAND IS LIT AS THE HILLS' SAND IS. `bake-disaster-city.js` writes `BEACH_ZONE` first in `terrain.zones`:
+  the strip east of the plots, the city's own sheets and its first eight painted sheets, `calmShade: true` (three-renderer.js `_hqGroundZones`: that zone's
+  material gets the calm light, white, no lift, no shine), and `out` = every run of squares of the strip that is NOT sand (157 runs: the boardwalk, the
+  mole, the skate pad, the grill deck, the port's quay), which the city's ground draws as before. The two lights meet only where sand meets boards or
+  concrete. The Hills' zone and N.js are as they were. SIDE EFFECT: all of the beach's sand is paler than it was (the Cove's tone). THE RULE: a painted
+  sheet matches across a zone line only if both sides are lit the same way; moving the line never removes a seam, and a zone edge through one painted
+  sheet always shows.
 - **NOT TOUCHED:** Entertainment's own buildings behind the Shore (they stand a storey up on the sea wall, north of the mole); the mall; everything west of
   the coast road. FOR THE MALL THREAD: the mall's east front now faces road, boardwalk, sand, pier, water with nothing between; the strip's squares 141..143
   are open planks you may build a forecourt on, but mondo's word is that nothing tall goes there.
@@ -12907,7 +12923,7 @@ mondo 11-20, on the plan: "That is okay"; "just use the trees we already have an
 can reuse, use a sword to stand in for the katana, try to make the roofs yourself with math but ill probably make meshy models later, and use knight armor to
 stand in for the katana armor".
 
-- **THE TOOL:** `node bake-katana.js` writes ONE room, `site_prebuilt_katana_island` (9 x 9 plots, the island one plot in from every side), between the
+- **THE TOOL:** `node bake-katana.js` writes ONE room, `site_prebuilt_bermuda_katana` (9 x 9 plots, the island one plot in from every side), between the
   KATANA-BEGIN / KATANA-END markers of data.js, from `docs/areas/katana/layout.js` (the plan's numbers, moved there; the plan pictures still read them) and
   `docs/areas/katana/districts/<letter>.js` (`build(ctx)`; the hooks are listed in the tool's header). It stops on a taken square, a prop in the water, or a
   place the district's `reach` names that the walk from the pier cannot get to.
@@ -12929,7 +12945,7 @@ stand in for the katana armor".
   West Steps (1 to 4) as real flights, two flights up the Lantern Head, THE GREAT GATE in the water (drawn: red posts, side legs, a top beam curved in nine
   pieces), 86 props from the catalogue (stone lanterns, market stalls, a taiko drum, a bell, boats afloat and on the sand, drying fish, nets, barrels,
   baskets, bollards, gulls, crabs), five people (chef, farmer, samurai slug, ninja, monk).
-- **THE RESIDENTS (fixed 11-20, from mondo's relationship web export of 11-20, the place "Katana Bay": "Japan Parody. Their flag is a red square and white background."):** ninja, swordfighter, ki fighter, samurai slug, karate frog, monk, shogun, spy, vtuber, catgirl, dragon, farmer, fairy. data.js `HQ_AREA_ENCOUNTERS.site_prebuilt_katana_island` (hand row, every weight 8: he gave none) + the eight placed people in B.js. His web also has a FACTION "Katana Empire": spy, ninja, samurai slug, shogun, monk (not used yet; the castle's people). The dinosaurs are not on this list: the jungle needs its own cap when it is built. THE FLAG (a red square on white) is not made yet.
+- **THE RESIDENTS (fixed 11-20, from mondo's relationship web export of 11-20, the place "Katana Bay": "Japan Parody. Their flag is a red square and white background."):** ninja, swordfighter, ki fighter, samurai slug, karate frog, monk, shogun, spy, vtuber, catgirl, dragon, farmer, fairy. data.js `HQ_AREA_ENCOUNTERS.site_prebuilt_bermuda_katana` (hand row, every weight 8: he gave none) + the eight placed people in B.js. His web also has a FACTION "Katana Empire": spy, ninja, samurai slug, shogun, monk (not used yet; the castle's people). The dinosaurs are not on this list: the jungle needs its own cap when it is built. THE FLAG (a red square on white) is not made yet.
 - **Was, before that fix:** the zone's wandering residents walk the quay (a bigfoot, a jellyfish were seen): the room is in the Beach's zone, so it gets that zone's people. Katana Island needs its own resident list (npc-system.md) before the swap.
 - **KNOWN AND LEFT FOR THE NEXT PASSES:** the insides are bare rooms with a few things (pass 2); the Net Loft and the Inn are one storey inside; the ledges
   from the City do not exist until the City's ground is laid; the retaining walls round the Waterfront are the room's rock sheet; the far volcano reads dark;
@@ -12962,6 +12978,69 @@ mondo 11-20 on plan 3: "Yes the map layout looks much better ... Go ahead and bu
   dirt, and adds room-wide scatter (fallen logs, stumps, dead bushes, snags). Past the room's line: `terrain.edges.deep: true` (three-renderer.js `_hqEdgeLandFn`'s
   planting: the forest stays thick to the end of the planting, not thinned after 22 m). Seen in the probe from the Dead End and Deep woods, west. OPEN: the land
   past the line wears the map's bright forest green, lighter than the room's floor; the draw cost with the deeper wood is not measured.
+
+## KATANA ISLAND, THE REST: ALL SIX DISTRICTS, PASS 1 (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20, on the pilot: "Okay the pilot looks decent, continue the rest".
+
+- **THE GROUND IS TERRACES NOW** (`bake-katana.js`): every plot outside the volcano is level ground at its own level with a rock face where it meets another level, so
+  every such face is a drop you walk off (the plan's 13 ledges are places on those faces, not separate pieces). The volcano's five plots stay rolling ground under one
+  cone. THE CONE WAS RAISED: the rim is 45.5 m (26 levels; the plan said 18 = 31.5 m, which read too low from the bay), the lava inside at 40 m, 3 m of fall a square.
+- **THE WAYS' STAIRS ARE LAID BY THE TOOL:** wherever a way of `layout.js` steps from one height to another, a real flight stands on the LOW side, as wide as the way,
+  about 2.4 m of rise a square (22 flights today; stone in the City, timber rows elsewhere). A way with no room for its flight before a turn stops the bake.
+- **THE TOOL'S CHECKS** (the bake stops on any): a building on a way, on sand or in water (`onSand: true` lets a beach hut through); two things on one square; a prop in
+  the water; a place a district's `reach` names that the walk from the pier cannot get to (39 named places today, every district's).
+- **HELPERS EVERY DISTRICT FILE USES:** `ctx.house` (plaster, frame, paper screens, the curved roof), `ctx.tiers` (a tower of roofs: the pagoda, the keep), `ctx.thatch`
+  (a thatched hut), `ctx.open` / `ctx.sow` (open earth; a dice-sown box), `ctx.pier`, `ctx.stairs`, `ctx.look`, `ctx.onWay`.
+- **THE CITY (`districts/C.js`, 19 buildings):** the Merchants' Town (bath house, tea shop, sake brewery, lantern maker, noodle shop), the Temple Quarter (the five-roofed
+  red PAGODA, the temple hall, the monks' house, bell, gong, braziers), the High Town (theatre, tea house, two town houses), the Samurai Quarter (dojo, two samurai
+  houses, armoury), the Castle (the KEEP on a stone foot, four roofs high; the guard house; the open yard; a white wall with a tiled cap on the terrace's edges; the East
+  Gate and the Main Gate), the Castle Garden (pond, pavilion, bridge), three red gates on the shrine stair. Stand-ins as he said: `sword`, `decor_armour_stand_post`.
+- **THE VILLAGE (`L.js`, 9 buildings):** four flooded paddies with rice rows and scarecrows, the Shore Hamlet's fishermen's houses, the village (farm houses, the store,
+  the headman's house, the well, the square), the Terraces (an upper field one level up with its own stair).
+- **THE WOODS (`W.js`, 5 buildings, 160 trees):** the Cherry Wood (cherries, the viewing pavilion), the Bamboo Wood (tall birches and pines: NO BAMBOO MODEL YET), the
+  Old Wood (the hidden shrine and its gate on a rise), the Hot Spring (two spring pools in rocks, the bath house, maples).
+- **THE JUNGLE (`J.js`):** WHAT CAME OVER FROM THE VOLCANO ISLAND: the fenced Dinosaur Park (the paddock 7 x 7, gate, sign, lookout, keeper's hut, the dig with the
+  skeleton and two tents, four dinosaurs) and the TRIBE'S CAMP in the Jungle north (two walk-in thatch huts, the idol shrine with altar and braziers, totems, torches).
+  Palms, banana plants, bushes, ferns; canoes on the East Shore.
+- **THE VOLCANO (`V.js`):** lava in the crater and in four pools on the Lava Field, black rocks and burnt snags, a red gate at the rim where the Mountain Road ends, a
+  watch fire on the Black Cape, a dragon at the rim (his Katana Bay list).
+- **THE PEOPLE:** `HQ_AREA_ENCOUNTERS.site_prebuilt_bermuda_katana` has `spots: false`, so the people a district places keep their race (the park's dinosaurs, the dragon).
+- **NOT DONE YET:** THE SWAP (the room is still at its pilot's place on the map with no boat; the Volcano Island still stands); insides are bare rooms with a few things;
+  no bamboo, no real torii / statues (NEEDS A MODEL); the waterfall from the Hot Spring to the Paddies; night look; frame rate (one room, 41 buildings, 229 trees, 409
+  props: to be measured on a real machine); the flag.
 - **THE LAND PAST THE LINE WEARS THE ROOM'S TONE (11-20, mondo: "fix the ground being green past the edge, it doesn't match").** `terrain.edges.tint: [r, g, b]`
   multiplies the edge land's colour (three-renderer.js `_hqBuildEdgeLand` `colOf`; only a room that sets it changes). The Clearing's room: `[0.5, 0.5, 0.52]`
   (bake-woods.js, designed rooms). Seen in the probe at Deep woods, west.
+
+## KATANA ISLAND, THE SWAP (2026-11-20, world polish thread 21; seen on screen)
+
+- **THE ROOM IS `site_prebuilt_bermuda_katana` NOW** (was `site_prebuilt_katana_island` during the pilot): a link's end finds its room as site + part (`hqComplexRoomId`),
+  so the room's id has to be `site_prebuilt_bermuda_` + its part `katana`. It stands at 21,-20 on the world's plot grid (9 x 9), where the Volcano Island stood.
+- **THE VOLCANO ISLAND IS RETIRED** (`DOOR_HQ.retired`: `site_prebuilt_bermuda_ow_volcano` -> the new room): its room stays in the data, door-less, and `bake-beach.js`
+  still writes it (NOT ONE LINE of that tool, the Beach's layout or `O.js` was edited). A save made there wakes on Katana Island. The map drops it by itself.
+- **THE BOATS** (data.js `DOOR_HQ.links`, by hand): `beach_volcano` end b = the tip of the bay's pier (-84, 87.5, face 0: the skiff's jetty runs out toward the Great
+  Gate); `volcano_frozen` end a = the East Shore's sand (145.25, -43.75, face 270). The link ids keep their old names. LEARNT: a boat link draws its own small jetty and
+  boat from its point out along `face` (0 = south, 270 = east in the room's frame); put the point at the water's edge.
+- **THE PLOT SHEET:** `docs/plans/one-world/after-v13.js` row 5 writes the island's 9 x 9 box into `plots.json` (all of it was sea). `terrain.edges.world` is on.
+- **THE CHECK (the plan's section A), answered for this room:** (1) from the pier you see the keep, the pagoda and, past them, the cone; the land climbs away from the
+  bay everywhere. (2) Levels: the Bay 0 to 2 (the head 3), the City 3 to 8, the Village 1 to 6, the Woods 7 to 10, the Jungle 1 to 6, the Volcano to 26. (3) The
+  Mountain Road is 3 squares, no leg over 8, turns from plot to plot east, north, west, north, east, north, east; every terrace's face beside it is a drop back down.
+  (4) Seven thin trails, each to a place (the crater's east rim, the East Shore, the castle's postern, the hidden shrine and the cape, the hot spring, the lantern
+  tower, the fishing beach). (5) Shaped inside: the head, the Old Wood's rise, the Terraces' upper field, the cone, the paddock, the pools; MOST PLOTS ARE LEVEL
+  TERRACES, which is under the plan's "half of the plots shaped inside": the next pass's job. (6) Level on purpose: listed in each district file's header. (7) It
+  is a harbour, a castle town, paddies, woods, a jungle and a volcano: not one formula. (8) Every building's inside is its own squares; NOT YET FURNISHED.
+
+## THE KATANA EMPIRE'S ISLANDS: THE VOLCANO ISLAND STAYS (2026-11-20, world polish thread 21; replaces "THE SWAP" above)
+
+mondo 11-20, minutes after the swap merged (it was never uploaded): **"Actually let's keep volcano island as a part of the empire, like how Japan is made up of
+multiple islands."**
+
+- **THE VOLCANO ISLAND IS NOT RETIRED.** `site_prebuilt_bermuda_ow_volcano` is out of `DOOR_HQ.retired`; it stands at 22,-19 as before, written by `bake-beach.js` as
+  before (never edited), with its volcano, its tribe's village, its jungle and its Dinosaur Park.
+- **KATANA ISLAND** (`site_prebuilt_bermuda_katana`) stands just SOUTH of it: 9 x 9 at 21,-13 (`after-v13.js` row 5 adds it to `plots.json` as a new island `katana`).
+- **THE BOATS:** the Harbour's skiff jetty -> Katana Bay's pier (`beach_volcano`, its name kept) · Katana Island's East Shore -> the Volcano Island's Landing (NEW:
+  `katana_volcano`; a way he did not word himself, it follows from two islands) · the Volcano Island's east shore -> the Frozen Sea (`volcano_frozen`, as it was).
+- **The tribe's camp is OUT of Katana Island's jungle** (it was only carried over so nothing would be lost; the tribe keeps its own island). Katana Island keeps its
+  own Dinosaur Park (his "there can still be dinosaurs") and its own volcano.
+- Everything else of "THE SWAP" holds: the room's id, the links' learnt rule, THE CHECK.

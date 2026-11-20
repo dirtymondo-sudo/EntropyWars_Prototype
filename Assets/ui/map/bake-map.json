@@ -75,9 +75,9 @@
   "nz": 216,
   "h0": -1.5,
   "hs": 0.26,
-  "v": "8ed9c6a28f",
-  "bytes": 11922,
-  "s": "37.2"
+  "v": "674f1e243a",
+  "bytes": 11894,
+  "s": "39.6"
  },
  "site_prebuilt_vatican_under": {
   "id": "site_prebuilt_vatican_under",
@@ -417,7 +417,7 @@
   "hs": 0.25,
   "v": "62b14e4b53",
   "bytes": 1254,
-  "s": "1.8"
+  "s": "0.7"
  },
  "site_prebuilt_bermuda_ow_triangle": {
   "id": "site_prebuilt_bermuda_ow_triangle",
@@ -629,14 +629,14 @@
   "bytes": 2640,
   "s": "1.2"
  },
- "site_prebuilt_katana_island": {
-  "id": "site_prebuilt_katana_island",
+ "site_prebuilt_bermuda_katana": {
+  "id": "site_prebuilt_bermuda_katana",
   "nx": 108,
   "nz": 108,
-  "h0": -0.03,
+  "h0": -0.04,
   "hs": 0.25,
-  "v": "b955128744",
-  "bytes": 4243,
-  "s": "0.3"
+  "v": "28f828fe97",
+  "bytes": 2578,
+  "s": "7.3"
  }
 }

@@ -52,6 +52,8 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
 - **World vision (11-15).** The world is a parody of the real world; each area is the ULTIMATE form of its idea. DOOR HQ
   is the subconscious. Every area is plot-built (12x12 plots, districts) like Disaster City; only DOOR HQ stays handmade.
   Cyberpunk City is a future reskin of the WHOLE Disaster City, not a district. The Desert = Western Town + Giza + Area 51.
+- **THE KATANA EMPIRE IS MORE THAN ONE ISLAND (11-20, his newest word on the island):** "let's keep volcano island as a part of the empire, like how Japan is made up of
+  multiple islands". The Volcano Island stays as it is; Katana Island is a NEW island just south of it (`bake-katana.js`), joined to it by a boat.
 - **MOUNT SHASTA GOES, KATANA ISLAND COMES (11-20).** mondo: "we are getting rid of Mt Shasta. Instead volcano island is gonna be remade to Katana
   Island, which will be like feudal Japan. Still with volcano/mountain, but it might have to be a little bigger"; "Katana Bay" is one of its
   districts; it keeps dinosaurs, a jungle and a (Japanese) village, has cherry blossoms, and is "basically a love letter to anime and Japan", on 25 to 30
