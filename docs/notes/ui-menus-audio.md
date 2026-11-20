@@ -2931,3 +2931,11 @@ closeup face portrait you would use these". Catgirl (female) only, a test of Spr
   asset_type }` (free) -> id; `POST /api/animations` `{ source_generation_id, preset: Idle|Walk|Run|Jump|Attack|Hurt|Death|Custom,
   frame_count }` (14 tokens for 8 frames) -> poll `GET /api/sprites/<id>` until `completed` -> `GET /api/sprites/<id>/download`.
   Source must be a still 32-256 px. Reach it at `sprite-ai.art` (the `www.` host is not allowed from the cloud container).
+
+## THE CORNER SHOWS THE DISTRICT (2026-11-20, mondo 11-19)
+mondo: the top-left box said "D.O.O.R. HEADQUARTERS · NINE DISTRICTS · 144 PLOTS" in Disaster City and never the district.
+map.js `_hqStripSub`: "D.O.O.R. HEADQUARTERS · ROOM n · sub" ONLY in an HQ room (no `room.site`). In a plot-built zone room
+(HQ_ZONE_MAP) the sub-line is the DISTRICT under your feet (`_hqDistrictTag`, `#hqDistrictTag`, a 4-a-second one-cell look-up
+of the plot grid from `ThreeRenderer.hq.pos()`; roads between plots keep the last district); elsewhere `room.sub`, dropped when
+it is a count ("DISTRICTS" / "PLOTS"). The clock's " · " only shows when something stands before it. The pause title also
+drops "D.O.O.R. HEADQUARTERS" outside HQ. Never put zone counts back on the player's HUD.
