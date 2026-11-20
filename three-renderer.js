@@ -3017,7 +3017,10 @@ const ThreeRenderer = (function () {
        entire game, all rooms, exploration and battle and the main menu") ══ two more shared plain objects in the same patched chunks:
        uEwAir = { x, y: the sun's heading over the ground (world x / z, unit), z: how warm the fog turns toward it (0 = the fog's own
        colour everywhere), w: the mist's clock }; uEwAir2 = { x: 2π / the mist's patch size (world units), y: how deep the ground
-       mist drifts (0 = the flat sheet) }. Rules + writers: EW_AIR and _hqFogHold. */
+       mist drifts (0 = the flat sheet), z: 1 / the height the far fog thins over, w: the line (view-ray altitude; z = 0: the stock fog) }.
+       THE AIR THINS UPWARD (mondo 11-20, the Hollywood Hills at night: a fully fogged mountain stood as a flat cut-out on a clear sky):
+       the distance fog on a thing is thinned by how high over the horizon line it is SEEN, by the very curve the sky's haze uses, so a
+       far ridge and the sky behind it carry the same share at every height. Rules + writers: EW_AIR and _ewAirHold. */
     var _EW_AIR = { x: 1, y: 0, z: 0, w: 0 }, _EW_AIR2 = { x: 0.001, y: 0, z: 0, w: 0 };
     var _ewHFogPatched = false;
     function _ewHeightFogPatch() {
@@ -3034,6 +3037,7 @@ const ThreeRenderer = (function () {
                 SC.fog_pars_fragment = SC.fog_pars_fragment.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tvarying vec2 vEwFogXZ;\n\tuniform vec4 uEwHFog;\n\tuniform vec4 uEwBFog;\n\tuniform vec4 uEwBFog2;\n\tuniform vec4 uEwBFog3;\n\tuniform vec4 uEwAir;\n\tuniform vec4 uEwAir2;');
                 SC.fog_fragment = SC.fog_fragment.replace('gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
                     'float ewHf = uEwHFog.z * exp( - max( 0.0, vEwFogY - uEwHFog.x ) * uEwHFog.y ) * ( 1.0 - exp( - uEwHFog.w * ' + FD + ' ) );\n' +
+                    '\tfogFactor *= exp( - max( ( vEwFogY - cameraPosition.y ) / max( length( vec3( vEwFogXZ - cameraPosition.xz, vEwFogY - cameraPosition.y ) ), 0.0001 ) - uEwAir2.w, 0.0 ) * uEwAir2.z );\n' +
                     '\tewHf *= clamp( 1.0 + uEwAir2.y * ( 0.6 * sin( vEwFogXZ.x * uEwAir2.x + uEwAir.w ) * sin( vEwFogXZ.y * uEwAir2.x * 1.31 - uEwAir.w * 0.73 ) + 0.4 * sin( ( vEwFogXZ.x + vEwFogXZ.y ) * uEwAir2.x * 0.37 + uEwAir.w * 0.41 ) ), 0.0, 1.3 );\n' +
                     '\tvec2 ewAv = vEwFogXZ - cameraPosition.xz;\n\tfloat ewAs = max( dot( ewAv, uEwAir.xy ) / max( length( ewAv ), 0.0001 ), 0.0 );\n\tewAs = ewAs * ewAs * ewAs * uEwAir.z;\n' +
                     '\tvec3 ewFc = mix( fogColor, fogColor * vec3( 1.30, 1.05, 0.76 ) + vec3( 0.06, 0.025, 0.0 ), ewAs );\n' +
@@ -48821,6 +48825,7 @@ const ThreeRenderer = (function () {
                     var mw = T.sin(pw.x.mul(A2.x).add(A.w)).mul(T.sin(pw.z.mul(A2.x).mul(1.31).sub(A.w.mul(0.73)))).mul(0.6).add(T.sin(pw.x.add(pw.z).mul(A2.x).mul(0.37).add(A.w.mul(0.41))).mul(0.4));
                     hf = hf.mul(T.clamp(mw.mul(A2.y).add(1), 0, 1.3));
                 }
+                if (A2) base = base.mul(T.exp(T.max(T.normalize(pw.sub(T.cameraPosition)).y.sub(A2.w), 0).mul(A2.z).negate()));   // the air thins upward (the GLSL patch's twin)
                 var camF = T.clamp(T.float(1).sub(base.oneMinus().mul(hf.oneMinus())), 0, 1);
                 var fcol = col;
                 if (A) {
@@ -48904,7 +48909,7 @@ const ThreeRenderer = (function () {
     function _ewNodeTick() {
         var U = _ewNodeU; if (!U) return;
         U.hfog.value.set(_EW_HFOG.x, _EW_HFOG.y, _EW_HFOG.z, _EW_HFOG.w);
-        if (U.air) { U.air.value.set(_EW_AIR.x, _EW_AIR.y, _EW_AIR.z, _EW_AIR.w); U.air2.value.set(_EW_AIR2.x, _EW_AIR2.y, 0, 0); }   // THE ONE AIR
+        if (U.air) { U.air.value.set(_EW_AIR.x, _EW_AIR.y, _EW_AIR.z, _EW_AIR.w); U.air2.value.set(_EW_AIR2.x, _EW_AIR2.y, _EW_AIR2.z, _EW_AIR2.w); }   // THE ONE AIR
         if (U.bfog) { U.bfog.value.set(_EW_BFOG.x, _EW_BFOG.y, _EW_BFOG.z, _EW_BFOG.w); U.bfog2.value.set(_EW_BFOG2.x, _EW_BFOG2.y, _EW_BFOG2.z, _EW_BFOG2.w); U.bfog3.value.set(_EW_BFOG3.x, _EW_BFOG3.y, _EW_BFOG3.z, _EW_BFOG3.w); }
         U.ao.value.set(_HQ_AO.x, _HQ_AO.y, _HQ_AO.z, _HQ_AO.w);
         U.ao2.value.set(_HQ_AO2.x, _HQ_AO2.y, _HQ_AO2.z, _HQ_AO2.w);
@@ -101106,7 +101111,7 @@ const ThreeRenderer = (function () {
        colour the far ground fades to, and both turn warm toward a low sun (`warmDay` / `warmDusk`). The ground mist drifts
        (`mistMove`, patches `mistSize` m wide). Under water the water's own look is kept. A fight is drawn inside the same
        hold (_ewAirFightHold): no fog of its own. Off: window.EW_NO_ONE_AIR (the rooms' own fog, as before). */
-    var EW_AIR = { rho: 0.0045, base: 0.0022, farM: 420, hazeH: 0.075, mist: 0.42, mistH: 2.6, mistMove: 0.32, mistSize: 14, mistSpeed: 0.22, warmDay: 0.2, warmDusk: 0.75 };
+    var EW_AIR = { rho: 0.0045, base: 0.0022, farM: 420, hazeH: 0.16, mist: 0.42, mistH: 2.6, mistMove: 0.32, mistSize: 14, mistSpeed: 0.22, warmDay: 0.2, warmDusk: 0.75 };
     function _ewAirOff() { return typeof window !== 'undefined' && !!window.EW_NO_ONE_AIR; }
     /* the air's density per scene unit for a place drawn at U units a metre */
     function _ewAirDen(U, on, m) { return (EW_AIR.base + (on ? EW_AIR.rho * m : 0)) / (U || 73); }   // Scene Fog on only ever ADDS to the clear day's haze
@@ -101149,7 +101154,7 @@ const ThreeRenderer = (function () {
         var s = { f: null, d: 0, n: 0, fa: 0, hz: _EW_HFOG.z, amt: _envUni ? _envUni.uFogAmount.value : null, top: _envUni ? _envUni.uFogTop.value : null,
                   col: _envUni ? _envUni.uFogColor.value.clone() : null, band: _envUni ? _envUni.uFogBand.value : null, hy: _EW_HFOG.y, hw: _EW_HFOG.w,
                   fc: null, sil: (_envUni && _envUni.uPaintSilFog) ? _envUni.uPaintSilFog.value.clone() : null,
-                  air: (_envUni && _envUni.uAir) ? _envUni.uAir.value.clone() : null, ax: _EW_AIR.x, ay: _EW_AIR.y, az: _EW_AIR.z, a2y: _EW_AIR2.y, bf: _EW_BFOG2.x };
+                  air: (_envUni && _envUni.uAir) ? _envUni.uAir.value.clone() : null, ax: _EW_AIR.x, ay: _EW_AIR.y, az: _EW_AIR.z, a2y: _EW_AIR2.y, a2z: _EW_AIR2.z, a2w: _EW_AIR2.w, bf: _EW_BFOG2.x };
         if (o.wet) return s;   // under water: the water's look, untouched
         _EW_BFOG2.x = 0;
         if (pf != null && f && f.color) { s.fc = f.color.getHex(); f.color.setHex(pf); }
@@ -101164,7 +101169,7 @@ const ThreeRenderer = (function () {
             _EW_HFOG.z = Math.min(1, EW_AIR.mist * m) * keep; _EW_HFOG.y = 1 / (EW_AIR.mistH * U * climb);
             _EW_HFOG.w = Math.max((f && f.isFogExp2) ? f.density * 4 : 0, 0.012 / U);
         } else _EW_HFOG.z = 0;
-        _EW_AIR2.x = 6.2832 / (EW_AIR.mistSize * U); _EW_AIR2.y = EW_AIR.mistMove; _EW_AIR.w = (performance.now() / 1000 * EW_AIR.mistSpeed) % 6283.2;
+        _EW_AIR2.x = 6.2832 / (EW_AIR.mistSize * U); _EW_AIR2.y = EW_AIR.mistMove; _EW_AIR2.z = 1 / (EW_AIR.hazeH * climb); _EW_AIR2.w = on ? Math.max(-0.05, sh.lift) : 0; _EW_AIR.w = (performance.now() / 1000 * EW_AIR.mistSpeed) % 6283.2;
         /* warm toward the sun: the clock's sun, while it is up; never over the player's own colour */
         var warm = 0, sv = o.sun;
         if (sv && pf == null) {
@@ -101227,7 +101232,7 @@ const ThreeRenderer = (function () {
         if (f) { if (f.isFogExp2) f.density = s.d; else { f.near = s.n; f.far = s.fa; } if (s.fc != null) f.color.setHex(s.fc); }
         if (_envUni && s.sil && _envUni.uPaintSilFog) _envUni.uPaintSilFog.value.copy(s.sil);
         _EW_HFOG.z = s.hz; if (s.hy != null) _EW_HFOG.y = s.hy; if (s.hw != null) _EW_HFOG.w = s.hw;
-        if (s.ax != null) { _EW_AIR.x = s.ax; _EW_AIR.y = s.ay; _EW_AIR.z = s.az; _EW_AIR2.y = s.a2y; }
+        if (s.ax != null) { _EW_AIR.x = s.ax; _EW_AIR.y = s.ay; _EW_AIR.z = s.az; _EW_AIR2.y = s.a2y; _EW_AIR2.z = s.a2z || 0; _EW_AIR2.w = s.a2w || 0; }
         if (s.bf != null) _EW_BFOG2.x = s.bf;
         if (_envUni && s.air && _envUni.uAir) _envUni.uAir.value.copy(s.air);
         if (_envUni && s.amt != null) _envUni.uFogAmount.value = s.amt;
