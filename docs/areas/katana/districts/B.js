@@ -79,8 +79,8 @@ module.exports = {
         ctx.put(E, 'wooden_barrel', -4, -3, {}); ctx.put(E, 'wooden_barrel', -2.8, -3.2, {}); ctx.put(E, 'psx_wooden_crate_1', 3, -3, {});
         ctx.put(Fb, 'psx_coffee_table_1', -3, -2, {}); ctx.put(Fb, 'psx_coffee_table_1', 3, -2, {}); ctx.put(Fb, 'stock_pots', 4, -5, {}); ctx.put(Fb, 'privacy_screen', -4, -5, { face: 0 });
         ctx.put(Hh, 'psx_old_mattress_mp_1', -2, -1.5, {}); ctx.put(Hh, 'fishing_rod', 3, -2, {});
-        /* ── people (units the game has; none on a way) ── */
-        [['chef', 20, 53, 180], ['farmer', 15, 54, 90], ['samurai slug', 14, 59, 0], ['ninja', 33, 66, 270], ['monk', 8, 73, 90]].forEach(q => { ctx.take(q[1], q[2]); ctx.npc.push({ x: ctx.mx(q[1]), z: ctx.mz(q[2]), face: q[3], race: q[0] }); });
+        /* ── people: only races mondo's relationship web (2026-11-20) puts in Katana Bay; none on a way ── */
+        [['swordfighter', 20, 53, 180], ['farmer', 15, 54, 90], ['samurai slug', 14, 59, 0], ['ninja', 33, 66, 270], ['monk', 8, 73, 90], ['karate frog', 30, 77, 0], ['ki fighter', 13, 57, 90], ['shogun', 16, 52, 180]].forEach(q => { ctx.take(q[1], q[2]); ctx.npc.push({ x: ctx.mx(q[1]), z: ctx.mz(q[2]), face: q[3], race: q[0] }); });
         void C; void gx; void gz; void T; void FLR;
     },
 };
