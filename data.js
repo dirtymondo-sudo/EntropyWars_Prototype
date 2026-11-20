@@ -91059,6 +91059,8 @@ function hqTerrainCompile(room, roomId) {
     /* THE SHAPES (E1): a prefab's props stand like the scatter (the renderer places info.scatter with the room's props), its paint
        joins the room's marks, and every textured building is handed to the renderer with the ground it stands on */
     X.props.forEach(p => { if (p && p.key) info.scatter.push(Object.assign({}, p)); });
+    /* THE FLORA (2026-11-20): the room's trees take their climate's kinds (ZONE_FLORA: the zone, the map's ground, the sheet under the trunk) */
+    try { if (typeof zoneFloraTrees === 'function') info.floraTrees = zoneFloraTrees(roomId, info); } catch (e) { if (typeof console !== 'undefined') console.warn('[FLORA] the trees', e); }
     info.marksX = boards.length ? (X.marks || []).concat(hqTerrainBoardMarks(boards)) : X.marks;   // THE BOARD: its squares join the paint
     /* THE ARCHITECTURE: each row with the ground under its origin. A ROOF IS NOT GROUND (2026-11-13): an origin over a building plateau
        (a roof-walk building, `bld`) takes the ground that building stands on, never its 7 m roof (fronts stood one storey up) */
@@ -99850,6 +99852,283 @@ function hqRuleKeyOf(k) { const S = (typeof CALM_TERRAIN !== 'undefined' && CALM
     try { if (typeof TERRAIN_SPRITES === 'undefined' || !TERRAIN_SPRITES) return; Object.keys(CALM_TERRAIN.sheets).forEach(k => { if (!TERRAIN_SPRITES[k]) TERRAIN_SPRITES[k] = [calmSheetUrl(k)]; }); } catch (e) {}
 })();
 if (typeof window !== 'undefined') { window.CALM_TERRAIN = CALM_TERRAIN; window.hqRuleKeyOf = hqRuleKeyOf; window.calmSheetUrl = calmSheetUrl; }
+/* ══ THE FLORA (2026-11-20, mondo: "Uploaded some Zips of assets packs to the inbox, use them throughout the game. We need to do a foliage pass on
+   every single zone, and it needs to be accurate to that zone's climate in the game world/on the map ... add them in a way that future changes to
+   the map preserve their foliage from your decisions in this thread") ════════════════════════════════════════════════════════════════════════════
+   THE PACKS (bake-foliage.py, R2 Assets/world/packs/afgameassets_retro_foliage/ + .../handpainted_flowers/):
+     the Retro Foliage kit (AFGameAssets): birch / oak / fir / willow, each in three seasons (`rf_<tree>_<n>[_<season>]` = HQ_TREE_KINDS rows below),
+     dead wood, rocks, 11 flower patches, 11 plants, 6 grass tufts · the hand-painted flowers (`hp_*`, eight plants). Every piece is a catalogue row.
+   THE RULE, NOT ROWS: nothing here is written into a room. A room's foliage is WORKED OUT when the room is built, from three things the map already
+   says: (1) the room's zone (ZONE_FLORA.zones), (2) the One World map's ground under each spot (hqOwGround: forest, meadow, marsh, tundra, desert...),
+   (3) the ground sheet painted under each plant (grass, forest floor, sand, snow). So a zone that is re-laid, grown, moved on the map or rebaked by
+   its tool keeps its climate's plants with no file touched, and a district thread planting its usual `tree` rows comes out in the climate's trees.
+     THE TREES (zoneFloraTrees, run by hqTerrainCompile): a tree of a plain kind (birch / oak / spruce / pine / bare / snow pine) may become its
+       climate's kit tree: autumn oaks on the Estate, bare oaks and dead firs in the Woods, snow firs on snow, a willow where it stands by water.
+       The place and the seed decide, never chance, so both players online see the same wood. Named trees (palm, cherry, saguaro, fae, chess) never change.
+     THE FLORA FIELD (three-renderer.js _hqFloraTick): the small plants (flowers, ferns, tufts, reeds) grow round the walker as one merged mesh a
+       cell, picked per spot from the climate's layers for the ground class under it. No prop rows, no blockers, nothing a fight reads.
+   Off switches: window.EW_NO_FLORA (all of it), window.EW_NO_FLORA_TREES (the trees keep their own kinds), window.EW_NO_FLORA_FIELD (no small plants).
+   Notes: docs/notes/flora.md (every zone's climate and why; how to change one). */
+(function floraPackRows() {
+    const RF = 'world/packs/afgameassets_retro_foliage/', HP = 'world/packs/handpainted_flowers/', G1 = 'Retro Foliage kit · AFGameAssets', G2 = 'Hand-painted flowers';
+    const TREES = { birch: [4, { '': 'summer', _autumn: 'autumn', _winter: 'winter, bare' }], oak: [4, { '': 'summer', _autumn: 'autumn', _winter: 'winter, bare' }],
+                    fir: [4, { '': 'green', _winter: 'under snow', _dead: 'dead, brown' }], willow: [3, { '': 'green', _yellow: 'yellow', _blue: 'blue' }] };
+    Object.keys(TREES).forEach(t => { for (let i = 1; i <= TREES[t][0]; i++) Object.keys(TREES[t][1]).forEach(s => {
+        const k = 'rf_' + t + '_' + i + s; HQ_TREE_KINDS[k] = { model: 'asset:' + RF + k + '.glb', name: 'kit ' + t + ' ' + i + ', ' + TREES[t][1][s] };
+        if (t === 'fir' && (i === 1 || i === 3)) HQ_TREE_KINDS[k].tall = true;
+    }); });
+    const C = {}, row = (k, o) => { C[k] = Object.assign({ file: (k.indexOf('hp_') === 0 ? HP : RF) + k + '.glb', base: 'asset', group: k.indexOf('hp_') === 0 ? G2 : G1 }, o); };
+    /* the small plants: walk-through (the flora field grows the same pieces by itself; a row is for a spot placed by hand) */
+    [0.42, 0.3, 0.46, 0.43, 0.49, 0.1, 0.1, 0.1, 0.46, 0.3, 0.3].forEach((h, i) => row('rf_flower_' + (i + 1), { h, foot: 0 }));
+    [0.49, 0.11, 0.14, 1.24, 0.62, 0.57, 0.63, 0.21, 0.37, 0.18, 1.86].forEach((h, i) => row('rf_plant_' + (i + 1), { h, foot: (i === 3 || i === 10) ? 0.5 : 0, block: (i === 3 || i === 10) || undefined }));
+    [0.14, 0.14, 0.51, 0.64, 0.9, 0.71].forEach((h, i) => ['', '_dry', '_frost', '_dark'].forEach(s => row('rf_grass_' + (i + 1) + s, (i < 2) ? { span: 1.15, foot: 0 } : { h, foot: 0 })));
+    Object.entries({ hp_bluebell: 0.55, hp_daisy_bunch: 0.42, hp_daisy: 0.42, hp_flameflower: 0.6, hp_orange_flower: 0.5, hp_purple_flower: 0.65, hp_violet: 0.5, hp_sunflower: 1.3 }).forEach(([k, h]) => row(k, { h, foot: 0 }));
+    /* the dead wood and the rocks: solid (a stump is climbed round, a fallen trunk blocks its length) */
+    row('rf_stump', { h: 0.82, foot: 0.3, block: true }); row('rf_oak_stump', { h: 0.93, foot: 0.5, block: true }); row('rf_pine_stump', { h: 1.54, foot: 0.2, block: true }); row('rf_birch_dead_2', { h: 0.96, foot: 0.2, block: true });
+    row('rf_birch_dead_1', { span: 6.5, foot: 0.5, rect: { hw: 3.2, hd: 0.5 }, block: true }); row('rf_birch_dead_3', { span: 6.1, foot: 0.4, rect: { hw: 3.0, hd: 0.4 }, block: true });
+    row('rf_oak_fallen_1', { span: 9.0, foot: 0.8, rect: { hw: 4.4, hd: 0.9 }, block: true }); row('rf_oak_fallen_2', { span: 5.4, foot: 0.7, rect: { hw: 2.6, hd: 0.8 }, block: true });
+    row('rf_pine_fallen_1', { span: 11.2, foot: 0.4, rect: { hw: 5.5, hd: 0.4 }, block: true }); row('rf_pine_fallen_2', { span: 4.2, foot: 0.4, rect: { hw: 2.0, hd: 0.4 }, block: true });
+    row('rf_pine_fallen_3', { span: 11.3, foot: 0.4, rect: { hw: 5.5, hd: 0.4 }, block: true }); row('rf_pine_fallen_4', { span: 4.3, foot: 0.3, rect: { hw: 2.0, hd: 0.3 }, block: true });
+    row('rf_pine_fallen_5', { span: 6.1, foot: 0.3, rect: { hw: 3.0, hd: 0.3 }, block: true });
+    row('rf_willow_dead_1', { span: 9.1, foot: 0.9, block: true }); row('rf_willow_dead_2', { h: 2.44, foot: 0.7, block: true });
+    row('rf_rock_1', { h: 1.41, foot: 0.6, block: true }); row('rf_rock_2', { h: 1.66, foot: 0.8, block: true }); row('rf_rock_3', { span: 3.5, foot: 1.5, block: true }); row('rf_rock_4', { span: 3.3, foot: 1.4, block: true });
+    Object.keys(C).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, C[k]); });
+    if (typeof window !== 'undefined') window.HQ_CATALOGUE_FLORA = C;
+})();
+var ZONE_FLORA = (function () {
+    const n = (t, s, c) => { const o = []; for (let i = 1; i <= c; i++) o.push('rf_' + t + '_' + i + (s || '')); return o; };
+    const W = (list, w) => list.map(k => [k, w]);                      // every name of a list at one weight
+    /* ── the plant lists (names = the meshes of the field file) ── */
+    const GRASS = (s, tall) => [['rf_grass_1' + s, 3], ['rf_grass_2' + s, 3], ['rf_grass_3' + s, 3], ['rf_grass_4' + s, 2], ['rf_grass_5' + s, tall || 0.6], ['rf_grass_6' + s, tall || 0.6]];
+    const M = {
+        grass: GRASS(''), dry: GRASS('_dry'), frost: GRASS('_frost'), dark: GRASS('_dark'), tall: GRASS('', 4), dune: [['rf_grass_5_dry', 3], ['rf_grass_6_dry', 3], ['rf_grass_3_dry', 1]],
+        fern: [['rf_plant_7', 5], ['rf_plant_3', 2], ['rf_plant_1', 0.7], ['rf_plant_10', 1]],
+        bush: [['rf_plant_4', 1]],
+        reed: [['rf_grass_5', 4], ['rf_grass_6', 4], ['rf_plant_5', 2], ['rf_plant_6', 1.5]],                                             // rushes at the water's edge, a few cattails
+        sage: [['rf_plant_9', 3], ['rf_plant_8', 3]],
+        meadow: [['hp_daisy', 3], ['hp_daisy_bunch', 3], ['rf_flower_7', 2], ['rf_flower_6', 2], ['rf_flower_2', 2], ['rf_flower_4', 2], ['hp_bluebell', 1], ['rf_flower_1', 1], ['rf_flower_10', 1]],
+        wood: [['rf_flower_7', 3], ['rf_flower_6', 3], ['hp_bluebell', 3], ['rf_flower_2', 2], ['hp_daisy', 1]],                                   // a wood's floor: white and blue, in carpets
+        farm: [['hp_sunflower', 3], ['rf_flower_10', 3], ['hp_daisy', 2], ['rf_flower_4', 2], ['hp_bluebell', 2]],                              // sunflowers, poppies, cornflowers
+        alpine: [['rf_flower_6', 3], ['rf_flower_7', 3], ['rf_flower_8', 3], ['rf_flower_2', 2], ['rf_flower_11', 1]],                           // low carpets: blue, white, lilac
+        fairy: [['hp_bluebell', 3], ['hp_violet', 3], ['hp_purple_flower', 3], ['rf_flower_8', 3], ['rf_flower_6', 3], ['rf_flower_1', 2], ['rf_flower_9', 2], ['rf_flower_11', 2], ['hp_flameflower', 1]],
+        horror: [['rf_flower_5', 4], ['rf_plant_8', 2], ['rf_plant_6', 2], ['rf_flower_7', 1]],                                                     // black blooms, grey weeds, a few white
+        autumn: [['rf_plant_2', 3], ['hp_orange_flower', 2], ['hp_flameflower', 2], ['rf_flower_4', 2], ['hp_sunflower', 1], ['rf_flower_9', 1]],
+        poppy: [['hp_orange_flower', 5], ['rf_flower_4', 2], ['hp_purple_flower', 2]],                                                             // the golden poppy and lupin of a dry coast hill
+        tropic: [['hp_flameflower', 3], ['hp_violet', 3], ['hp_orange_flower', 2], ['hp_purple_flower', 2], ['rf_flower_1', 2], ['rf_flower_9', 2]],
+        desert: [['rf_plant_8', 4], ['rf_plant_9', 3], ['rf_flower_4', 1], ['hp_orange_flower', 0.5]],
+        med: [['hp_purple_flower', 3], ['hp_daisy', 3], ['rf_flower_10', 2], ['rf_flower_8', 2], ['rf_flower_7', 1]],                             // lavender, daisies, poppies
+        japan: [['rf_flower_1', 3], ['hp_violet', 2], ['rf_flower_7', 2], ['hp_purple_flower', 2], ['rf_flower_11', 1]],                         // pink cosmos, iris, white
+        lawn: [['hp_daisy', 3], ['rf_flower_7', 2], ['hp_daisy_bunch', 1]],
+    };
+    /* ── the tree lists: '=' keeps the tree as it was planted ── */
+    const keep = (w) => [['=', w]];
+    const T = {
+        temperate: { birch: keep(5).concat(W(n('birch', '', 4), 1)), oak: keep(4).concat(W(n('oak', '', 4), 1)), spruce: keep(5).concat([['rf_fir_2', 1], ['rf_fir_4', 1]]), pine: keep(5).concat([['rf_fir_1', 1], ['rf_fir_3', 1]]),
+                     bare: keep(4).concat([['rf_oak_3_winter', 1], ['rf_birch_3_winter', 1]]), water: keep(2).concat(W(n('willow', '', 3), 2)) },
+        open: { birch: keep(3).concat(W(n('birch', '', 4), 1)), oak: keep(2).concat(W(n('oak', '', 4), 1)), water: keep(1).concat(W(n('willow', '', 3), 2)) },
+        winter: { birch: W(n('birch', '_winter', 4), 1), oak: W(n('oak', '_winter', 4), 1), spruce: keep(2).concat(W(n('fir', '_winter', 4), 1)), pine: keep(2).concat(W(n('fir', '_winter', 4), 1)),
+                  snowpine: keep(6).concat(W(n('fir', '_winter', 4), 1)).concat([['rf_birch_4_winter', 0.5], ['rf_birch_2_winter', 0.5]]), bare: keep(2).concat(W(n('oak', '_winter', 4), 0.5)) },
+        autumn: { birch: keep(1).concat(W(n('birch', '_autumn', 4), 1.5)), oak: keep(1).concat(W(n('oak', '_autumn', 4), 1.5)), spruce: keep(5).concat([['rf_fir_2', 1]]), pine: keep(5).concat([['rf_fir_4', 1]]),
+                  bare: keep(3).concat([['rf_oak_3_winter', 1], ['rf_birch_3_winter', 1], ['rf_oak_4_winter', 1]]), water: keep(1).concat(W(n('willow', '_yellow', 3), 2)) },
+        horror: { birch: keep(3).concat(W(n('birch', '_winter', 4), 0.5)), oak: keep(3).concat(W(n('oak', '_winter', 4), 0.6)), spruce: keep(4).concat(W(n('fir', '_dead', 4), 0.4)).concat([['rf_fir_2', 1]]),
+                  pine: keep(4).concat(W(n('fir', '_dead', 4), 0.4)).concat([['rf_fir_1', 1]]), bare: keep(3).concat(W(n('oak', '_winter', 4), 0.5)).concat(W(n('fir', '_dead', 4), 0.4)) },
+        redwood: { birch: keep(3).concat([['rf_fir_1', 1], ['rf_fir_3', 1]]), oak: keep(4).concat([['rf_fir_1', 1], ['rf_fir_3', 1]]), spruce: keep(3).concat(W(n('fir', '', 4), 0.6)), pine: keep(3).concat(W(n('fir', '', 4), 0.6)),
+                   bare: keep(3).concat(W(n('fir', '_dead', 4), 0.5)) },
+        fairy: { birch: keep(4).concat(W(n('birch', '', 4), 0.5)), oak: keep(3).concat(W(n('oak', '', 4), 0.4)).concat(W(n('willow', '_blue', 3), 0.5)), water: W(n('willow', '_blue', 3), 1) },
+        hills: { oak: keep(2).concat([['rf_oak_4', 2], ['rf_oak_1', 1], ['rf_oak_3', 1]]), bare: keep(3).concat([['rf_oak_4_winter', 1]]) },     // the live oaks of a dry coast hill
+        med: { oak: keep(1).concat([['rf_oak_4', 1]]) },
+        japan: { water: keep(1).concat(W(n('willow', '', 3), 1)) },
+        hollow: { oak: keep(2).concat(W(n('willow', '_blue', 3), 0.6)), water: W(n('willow', '_blue', 3), 1) },
+    };
+    T.temperate.snow = T.winter; T.open.snow = T.winter; T.autumn.snow = T.winter; T.horror.snow = T.winter; T.redwood.snow = T.winter; T.hills.snow = T.winter;
+    /* ── a layer: [list, plants a square metre, clump 0..1 (0 = even, 1 = only in drifts), 'g' = a grass layer (left out where the room grows the blade grass)] ── */
+    const L = (mix, per, clump, g) => ({ mix: M[mix], n: per, clump: clump || 0, g: g === 'g' });
+    return {
+        field: 'asset:world/nature/flora/ew_flora_field.glb',
+        /* the field's reach round the walker (m), a cell's side, the candidate spots' spacing; `low` = the low grass setting / a weak machine */
+        reach: 46, cellM: 14, step: 1.4, low: { reach: 30, thin: 0.6 }, buildMs: 2.5, fillMs: 7,
+        /* THE ONE KNOB: every layer's count times this (the whole world's ground cover thicker or thinner; the grass tufts take `lushG`) */
+        lush: 2.2, lushG: 1.2,
+        /* a plant's size against its file: [from, to] (default below) */
+        size: { '*': [1.0, 1.5], hp_bluebell: [0.6, 0.9], hp_daisy_bunch: [0.6, 0.9], hp_daisy: [0.6, 0.9], hp_flameflower: [0.6, 0.85], hp_orange_flower: [0.55, 0.8], hp_purple_flower: [0.6, 0.85], hp_violet: [0.6, 0.9],
+                hp_sunflower: [1.3, 1.9], rf_plant_4: [0.6, 1.0], rf_plant_5: [1.3, 2.0], rf_plant_6: [1.2, 1.9], rf_plant_7: [0.9, 1.5], rf_plant_1: [0.8, 1.3] },
+        /* the ground class of a sheet (a sheet with no row grows nothing: paving, road, ice, cave floor; `rock` only where a climate names it, and never on a steep face) */
+        sheets: { grass: 'lawn', grass_2: 'lawn', grass_3: 'lawn', grass_4: 'lawn', calm_grass: 'lawn', grass_rocky: 'rough', grass_dark_fantasy: 'floor', purple_grass: 'floor',
+                  dirt_2: 'dirt', dirt: 'dirt', calm_dirt: 'dirt', dirt_4: 'dry', wasteland: 'dry', desert: 'sand', ice: 'snow', calm_snow: 'snow', rocks_5: 'rock' },
+        /* the kit tree a plain kind may become is picked by its class */
+        classes: { tree: 'birch', tree_4: 'birch', tree_53: 'birch', tree_54: 'birch', tree_3: 'oak', tree_52: 'oak', tree_2: 'spruce', tree_55: 'spruce', pine: 'pine', tree_56: 'pine', tree_5: 'bare', tree_6: 'bare',
+                   xmas_snow_pine: 'snowpine', xmas_snow_pine_2: 'snowpine', xmas_snow_pine_3: 'snowpine', xmas_pine: 'snowpine', xmas_pine_2: 'snowpine', xmas_pine_3: 'snowpine' },
+        /* a kit tree's height against the tree it replaces (a fir stands taller, a willow lower and wide) */
+        treeH: { rf_fir: 1.25, rf_willow: 0.8, rf_oak: 1.05, rf_birch: 1.0 },
+        /* THE MASS (a room's thicket, thousands of trunks the walker never enters): only its front rows change, and only to the kit's light trees */
+        mass: { front: 3.5, share: 0.45, deep: 0.06, light: { rf_birch_1: 1, rf_birch_2: 1, rf_birch_4: 1, rf_oak_4: 1, rf_fir_4: 1, rf_birch_1_autumn: 1, rf_birch_2_autumn: 1, rf_birch_4_autumn: 1, rf_oak_4_autumn: 1,
+                rf_birch_1_winter: 1, rf_birch_2_winter: 1, rf_birch_4_winter: 1, rf_oak_4_winter: 1, rf_fir_4_winter: 1, rf_fir_4_dead: 1 } },
+        water: 5,   // a tree this near open water (m) takes its climate's `water` list (the willows)
+        /* ── THE CLIMATES: per ground class, the layers that grow there · `trees` = the tree lists · `like` = the rest as that climate ── */
+        climates: {
+            forest:   { name: 'temperate forest', trees: T.temperate,
+                        lawn: [L('grass', 0.07, 0.3, 'g'), L('fern', 0.03, 0.6), L('wood', 0.022, 0.85), L('bush', 0.003, 0.5)], rough: [L('grass', 0.05, 0.3, 'g'), L('fern', 0.02, 0.6)],
+                        floor: [L('dark', 0.05, 0.3, 'g'), L('fern', 0.05, 0.5), L('wood', 0.012, 0.9)], dirt: [L('fern', 0.012, 0.8)], wet: [L('reed', 0.22, 0.2)], snow: [L('frost', 0.02, 0.6)] },
+            wood:     { name: 'open woodland', like: 'forest', trees: T.open, lawn: [L('grass', 0.08, 0.3, 'g'), L('fern', 0.018, 0.7), L('meadow', 0.035, 0.75), L('bush', 0.004, 0.5)] },
+            meadow:   { name: 'meadow', trees: T.open, lawn: [L('grass', 0.09, 0.25, 'g'), L('meadow', 0.07, 0.6), L('bush', 0.002, 0.5)], rough: [L('grass', 0.06, 0.3, 'g'), L('meadow', 0.03, 0.7)],
+                        floor: [L('dark', 0.05, 0.3, 'g'), L('fern', 0.03, 0.6)], dirt: [L('dry', 0.012, 0.8)], wet: [L('reed', 0.22, 0.2)], snow: [L('frost', 0.02, 0.6)] },
+            grass:    { name: 'grassland', like: 'meadow', lawn: [L('grass', 0.1, 0.25, 'g'), L('meadow', 0.03, 0.75)] },
+            farm:     { name: 'farmland', like: 'meadow', lawn: [L('grass', 0.07, 0.3, 'g'), L('farm', 0.045, 0.7)], rough: [L('dry', 0.05, 0.3, 'g'), L('farm', 0.02, 0.8)], dry: [L('dry', 0.03, 0.5, 'g')] },
+            marsh:    { name: 'marsh', like: 'meadow', lawn: [L('tall', 0.11, 0.2, 'g'), L('reed', 0.04, 0.6), L('meadow', 0.02, 0.8)], wet: [L('reed', 0.35, 0.1)] },
+            foothill: { name: 'foothills', trees: T.temperate, lawn: [L('grass', 0.07, 0.3, 'g'), L('alpine', 0.03, 0.75), L('bush', 0.003, 0.5)], rough: [L('grass', 0.05, 0.4, 'g'), L('alpine', 0.02, 0.8), L('sage', 0.006, 0.6)],
+                        floor: [L('dark', 0.04, 0.3, 'g'), L('fern', 0.03, 0.6)], dirt: [L('dry', 0.012, 0.8)], wet: [L('reed', 0.2, 0.2)], snow: [L('frost', 0.02, 0.6)] },
+            alpine:   { name: 'alpine', trees: T.temperate, lawn: [L('grass', 0.05, 0.4, 'g'), L('alpine', 0.055, 0.65)], rough: [L('grass', 0.04, 0.4, 'g'), L('alpine', 0.04, 0.7)], dirt: [L('alpine', 0.01, 0.85)],
+                        snow: [L('frost', 0.018, 0.65)], wet: [L('reed', 0.12, 0.3)], rock: [L('alpine', 0.012, 0.85), L('dry', 0.012, 0.8)] },
+            snow:     { name: 'snow country', trees: T.winter, snow: [L('frost', 0.02, 0.65), L('sage', 0.003, 0.7)], lawn: [L('frost', 0.05, 0.4, 'g'), L('alpine', 0.02, 0.8)], rough: [L('frost', 0.04, 0.4, 'g')], dirt: [L('frost', 0.01, 0.8)] },
+            scrub:    { name: 'scrub', lawn: [L('dry', 0.07, 0.3, 'g'), L('sage', 0.02, 0.6), L('desert', 0.01, 0.8)], rough: [L('dry', 0.06, 0.3, 'g'), L('sage', 0.025, 0.6), L('desert', 0.008, 0.8)],
+                        dry: [L('dry', 0.03, 0.5), L('sage', 0.012, 0.7)], sand: [L('dune', 0.012, 0.7), L('sage', 0.005, 0.7)], dirt: [L('dry', 0.015, 0.7)], wet: [L('reed', 0.2, 0.2)], rock: [L('sage', 0.006, 0.8)] },
+            badlands: { name: 'badlands', like: 'scrub', lawn: [L('dry', 0.04, 0.5, 'g'), L('sage', 0.012, 0.7)], rough: [L('dry', 0.035, 0.5, 'g'), L('sage', 0.012, 0.7)] },
+            desert:   { name: 'desert', sand: [L('dune', 0.006, 0.8), L('desert', 0.004, 0.8)], dry: [L('dry', 0.014, 0.7), L('desert', 0.007, 0.75)], dirt: [L('dry', 0.008, 0.8)],
+                        lawn: [L('dry', 0.05, 0.4, 'g'), L('sage', 0.015, 0.7)], rough: [L('dry', 0.04, 0.4, 'g'), L('sage', 0.015, 0.7)], wet: [L('reed', 0.3, 0.1)] },
+            shore:    { name: 'shore', sand: [L('dune', 0.01, 0.8)], lawn: [L('grass', 0.07, 0.3, 'g'), L('meadow', 0.02, 0.8)], rough: [L('dry', 0.05, 0.4, 'g')], dry: [L('dune', 0.02, 0.7)] },
+            tropical: { name: 'tropical island', lawn: [L('grass', 0.08, 0.25, 'g'), L('fern', 0.05, 0.45), L('tropic', 0.035, 0.65), L('bush', 0.006, 0.4)], floor: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.07, 0.4), L('tropic', 0.02, 0.8)],
+                        rough: [L('grass', 0.05, 0.3, 'g'), L('fern', 0.03, 0.5)], dirt: [L('fern', 0.02, 0.7)], sand: [L('dune', 0.008, 0.85)], wet: [L('reed', 0.2, 0.2)] },
+            japan:    { name: 'Katana Island', trees: T.japan, lawn: [L('grass', 0.08, 0.3, 'g'), L('japan', 0.04, 0.7), L('fern', 0.02, 0.6)], floor: [L('dark', 0.05, 0.3, 'g'), L('fern', 0.05, 0.5), L('japan', 0.015, 0.85)],
+                        dirt: [L('fern', 0.012, 0.8)], sand: [L('dune', 0.008, 0.85)], wet: [L('reed', 0.2, 0.2)] },
+            horror:   { name: 'the horror wood', trees: T.horror, lawn: [L('dark', 0.07, 0.3, 'g'), L('fern', 0.035, 0.55), L('horror', 0.02, 0.8)], floor: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.04, 0.5), L('horror', 0.02, 0.8)],
+                        rough: [L('dark', 0.05, 0.3, 'g'), L('horror', 0.012, 0.8)], dirt: [L('horror', 0.008, 0.85)], wet: [L('reed', 0.18, 0.2)], snow: [L('frost', 0.02, 0.6)] },
+            redwood:  { name: 'the redwoods', like: 'horror', trees: T.redwood, lawn: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.09, 0.35), L('wood', 0.01, 0.9)], floor: [L('dark', 0.05, 0.3, 'g'), L('fern', 0.1, 0.3), L('wood', 0.008, 0.9)],
+                        dirt: [L('fern', 0.03, 0.6)] },
+            fairy:    { name: 'the fairy wood', trees: T.fairy, lawn: [L('grass', 0.07, 0.3, 'g'), L('fairy', 0.11, 0.5), L('fern', 0.025, 0.6)], floor: [L('grass', 0.06, 0.3, 'g'), L('fairy', 0.09, 0.5), L('fern', 0.03, 0.6)],
+                        dirt: [L('fairy', 0.02, 0.8)], wet: [L('reed', 0.2, 0.2)], snow: [L('frost', 0.02, 0.6)] },
+            autumn:   { name: 'autumn country', trees: T.autumn, lawn: [L('dry', 0.08, 0.3, 'g'), L('autumn', 0.035, 0.7), L('bush', 0.002, 0.5)], rough: [L('dry', 0.06, 0.3, 'g'), L('autumn', 0.02, 0.8)],
+                        floor: [L('dry', 0.05, 0.3, 'g'), L('autumn', 0.03, 0.7), L('fern', 0.015, 0.7)], dirt: [L('dry', 0.012, 0.8)], dry: [L('dry', 0.03, 0.5)], wet: [L('reed', 0.3, 0.1)] },
+            city:     { name: 'city lawns', lawn: [L('grass', 0.035, 0.5, 'g'), L('lawn', 0.03, 0.85)], sand: [L('dune', 0.008, 0.85)], dirt: [L('dry', 0.01, 0.8)] },
+            hills:    { name: 'dry coast hills', trees: T.hills, lawn: [L('dry', 0.08, 0.3, 'g'), L('poppy', 0.04, 0.7), L('sage', 0.012, 0.7)], rough: [L('dry', 0.07, 0.3, 'g'), L('poppy', 0.03, 0.75), L('sage', 0.015, 0.7)],
+                        dirt: [L('dry', 0.02, 0.7), L('sage', 0.006, 0.8)], dry: [L('dry', 0.03, 0.6), L('sage', 0.01, 0.7)], sand: [L('dune', 0.008, 0.85)],
+                        rock: [L('dry', 0.03, 0.6), L('sage', 0.012, 0.7), L('poppy', 0.01, 0.85)] },
+            med:      { name: 'Mediterranean garden', trees: T.med, lawn: [L('grass', 0.05, 0.4, 'g'), L('med', 0.04, 0.7)], dirt: [L('med', 0.008, 0.85)], rough: [L('dry', 0.05, 0.4, 'g'), L('med', 0.02, 0.8)] },
+            hollow:   { name: 'the inner-sun country', trees: T.hollow, floor: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.08, 0.4), L('tropic', 0.02, 0.8), L('fairy', 0.015, 0.85)], lawn: [L('grass', 0.07, 0.3, 'g'), L('fern', 0.06, 0.4), L('tropic', 0.03, 0.7)],
+                        dirt: [L('fern', 0.02, 0.7)], wet: [L('reed', 0.2, 0.2)] },
+        },
+        /* ── THE MAP: the One World ground letter under a spot (HQ_ZONE_MAP.world.key) → its climate. Sea, ice, salt flat, the Ice Wall: nothing grows ── */
+        ground: { f: 'forest', w: 'wood', m: 'meadow', g: 'grass', a: 'farm', M: 'marsh', F: 'foothill', A: 'alpine', R: 'alpine', c: 'foothill', T: 'snow', P: 'snow',
+                  s: 'scrub', b: 'badlands', d: 'desert', D: 'desert', n: 'shore' },
+        /* ── THE ZONES: `c` = one climate for the whole room · `map` = the map's ground decides, spot by spot (`as` = this zone's own name for a map
+              climate, '*' = for every one; `c` beside `map` = where the map has no ground: sea, off the sheet) · `districts` = a district letter of
+              the room's plots (HQ_ZONE_MAP) → its climate · `none` = nothing grows, on purpose ── */
+        zones: {
+            /* DISASTER CITY: a warm coast city. Mown lawns with daisies in the parks and yards; the Hollywood Hills are dry: gold grass, poppies, live oaks */
+            city:      { rooms: ['site_prebuilt_downtown_streets'], c: 'city', districts: { N: 'hills' } },
+            /* THE WOODS: Blair Witch, Silent Hill. Dark grass, ferns, black blooms; bare oaks and dead firs among the green. The Redwood Trail is fern country under tall firs */
+            woods:     { rooms: ['site_prebuilt_fairy_forest_ow_clearing', 'site_prebuilt_fairy_forest_ow_ritual', 'site_ow_l4'], c: 'horror' },
+            redwood:   { rooms: ['site_prebuilt_fairy_forest_ow_redwood', 'site_ow_l3'], c: 'redwood' },
+            /* CAMELOT: the Forest and the roads to it follow the map (temperate forest); the castle and village are a meadow country; the Snowy Pines are winter;
+               the Fairy Forest and the Looking-Glass Garden are in full bloom, with blue willows */
+            camelot:   { rooms: ['site_prebuilt_camelot_ow_forest', 'site_ow_r4', 'site_ow_r12'], map: true, c: 'forest' },
+            village:   { rooms: ['site_prebuilt_camelot_kingdom'], c: 'meadow' },
+            pines:     { rooms: ['site_prebuilt_camelot_ow_pines', 'site_ow_l6'], c: 'snow' },
+            fairy:     { rooms: ['site_prebuilt_camelot_ow_fairy', 'site_prebuilt_camelot_ow_garden'], c: 'fairy' },
+            /* THE ESTATE: harvest time. Corn, pumpkins, a haunted house: autumn oaks and birches, gold grass, yellow willows and reeds on the lake */
+            estate:    { rooms: ['site_prebuilt_skinwalker_ow_lake', 'site_prebuilt_skinwalker_ow_house'], c: 'autumn' },
+            /* THE MOUNTAINS: the map decides (peaks and tundra = snow country, alpine meadows under them, forest at the foot); the North Pole is winter */
+            mountains: { rooms: ['site_prebuilt_shasta_ow_lodge', 'site_prebuilt_shasta_ow_olympus', 'site_prebuilt_shasta_ow_shasta', 'site_ow_r3', 'site_ow_r5'], map: true, c: 'snow' },
+            northpole: { rooms: ['site_prebuilt_northpole_plots'], c: 'snow' },
+            /* THE DESERT and its highway: the map decides (desert, dunes, badlands, scrub). Reeds only where there is water (Giza's river) */
+            desert:    { rooms: ['site_prebuilt_area51_ow_circus', 'site_prebuilt_area51_ow_town', 'site_prebuilt_area51_desert', 'site_prebuilt_area51_ow_giza', 'site_ow_dh1', 'site_ow_dh2', 'site_ow_dh3', 'site_ow_dh4',
+                                'site_ow_r9', 'site_ow_r11', 'site_ow_r8'], map: true, c: 'desert' },
+            /* THE BEACH: tropical islands (the Harbour, the Triangle's islets, the Volcano Island, the Cove); the coast road follows the map */
+            beach:     { rooms: ['site_prebuilt_bermuda_beach', 'site_prebuilt_bermuda_ow_triangle', 'site_prebuilt_bermuda_ow_volcano', 'site_prebuilt_bermuda_ow_cove', 'site_prebuilt_bermuda_island'], c: 'tropical' },
+            coast:     { rooms: ['site_ow_r10'], map: true, c: 'shore' },
+            katana:    { rooms: ['site_prebuilt_katana_island'], c: 'japan' },
+            /* LEYLINES: the map decides (farmland, scrub, grass); Stonehenge stands in an English meadow */
+            ley:       { rooms: ['site_prebuilt_gobekli_ow_line', 'site_prebuilt_gobekli_ow_babel', 'site_prebuilt_gobekli_ow_bugs'], map: true, c: 'scrub' },
+            henge:     { rooms: ['site_prebuilt_gobekli_ow_henge'], c: 'meadow' },
+            /* THE VATICAN: a Mediterranean garden (lavender, daisies, poppies under stone pines); the road from the city follows the map */
+            vatican:   { rooms: ['site_prebuilt_vatican_plots'], c: 'med' },
+            routes:    { rooms: ['site_ow_r1', 'site_ow_r6'], map: true, c: 'wood' },
+            /* THE CAVERN: only where the inner sun's country is painted (dark grass, dirt): ferns, strange blooms, blue willows */
+            cavern:    { rooms: ['site_prebuilt_hollow_earth_cavern', 'site_prebuilt_hollow_earth_ow_agartha', 'site_prebuilt_hollow_earth_ow_west', 'site_prebuilt_hollow_earth_ow_long', 'site_prebuilt_hollow_earth_ow_tunnelway',
+                                'site_prebuilt_hollow_earth_innersun'], c: 'hollow' },
+            /* NOTHING GROWS, on purpose: ice, the sea floor (kelp and coral are placed by hand), stone underground, space, cloud, fire, the dream, cyberspace */
+            none:      { rooms: ['site_prebuilt_antarctica_plots', 'site_prebuilt_bermuda_ow_frozen', 'site_prebuilt_atlantis_deep', 'site_prebuilt_atlantis_ow_floor', 'site_prebuilt_downtown_underworld', 'site_prebuilt_dumb_base',
+                                'site_prebuilt_hell_plots', 'site_prebuilt_heaven_plots', 'site_prebuilt_vatican_under', 'site_prebuilt_moon_plots', 'site_prebuilt_lookingglass_realm', 'site_prebuilt_internet_web'], none: true },
+        },
+    };
+})();
+/* a room's rule ({ c, map, as, districts } of its zone), or null (no rule: nothing changes, nothing grows) */
+var _zfRooms = null;
+function zoneFloraRule(roomId) {
+    if (!_zfRooms) { _zfRooms = {}; Object.keys(ZONE_FLORA.zones).forEach(z => { const Z = ZONE_FLORA.zones[z]; (Z.rooms || []).forEach(r => { _zfRooms[r] = Z; }); }); }
+    if (typeof window !== 'undefined' && window.EW_NO_FLORA) return null;
+    const Z = _zfRooms[roomId]; return (Z && !Z.none) ? Z : null;
+}
+/* a climate by name, its `like` parent's rows under its own (made once) */
+function zoneFloraClimateOf(name) {
+    const C = ZONE_FLORA.climates[name]; if (!C) return null;
+    if (C.like && !C._full) { const P = zoneFloraClimateOf(C.like) || {}; Object.keys(P).forEach(k => { if (C[k] === undefined && k !== '_full' && k !== 'like') C[k] = P[k]; }); }
+    C._full = true; C.id = name; return C;
+}
+/* the district letter of a spot, where the map lists the room's plots by district (Disaster City) */
+var _zfPlots = {};
+function zoneFloraDistrict(roomId, x, z) {
+    let R = _zfPlots[roomId];
+    if (R === undefined) {
+        R = null;
+        try { Object.keys(HQ_ZONE_MAP.zones).forEach(zid => (HQ_ZONE_MAP.zones[zid].rooms || []).forEach(r => { if (r.room === roomId && Array.isArray(r.plots) && r.plots.length) { R = { ox: r.ox, oz: r.oz, m: HQ_ZONE_MAP.plot || 42, at: {} }; r.plots.forEach(p => { R.at[p[3] + ',' + p[4]] = p[2]; }); } })); } catch (e) { R = null; }
+        _zfPlots[roomId] = R;
+    }
+    return R ? (R.at[Math.floor((x - R.ox) / R.m) + ',' + Math.floor((z - R.oz) / R.m)] || null) : null;
+}
+/* THE CLIMATE OF A SPOT: the room's zone, its district, the map's ground under it */
+function zoneFloraAt(roomId, x, z) {
+    const Z = zoneFloraRule(roomId); if (!Z) return null;
+    let name = Z.c || null;
+    if (Z.map) { let g = null; try { const p = hqOwPlotOf(roomId, x, z); if (p) g = ZONE_FLORA.ground[hqOwGround(p[0], p[1]).c] || null; } catch (e) { g = null; }
+        if (g) name = (Z.as && Z.as[g] !== undefined) ? Z.as[g] : ((Z.as && Z.as['*'] !== undefined) ? Z.as['*'] : g); }
+    if (Z.districts) { const d = zoneFloraDistrict(roomId, x, z); if (d && Z.districts[d] !== undefined) name = Z.districts[d]; }
+    return name ? zoneFloraClimateOf(name) : null;
+}
+/* the ground class under a spot of a compiled room ('lawn', 'floor', 'sand', 'snow'... or null) */
+function zoneFloraGround(info, x, z) {
+    const ni = Math.round((x - info.x0) / info.res), nj = Math.round((z - info.z0) / info.res); if (ni < 0 || nj < 0 || ni >= info.nx || nj >= info.nz) return null;
+    const PT = info.paint, v = PT ? PT.P[nj * info.nx + ni] : 0, sheet = v ? PT.pal[v - 1] : info.floor;
+    return zoneFloraSheet(sheet);
+}
+var _zfSheet = {};
+function zoneFloraSheet(sheet) {
+    let c = _zfSheet[sheet]; if (c !== undefined) return c;
+    const S = ZONE_FLORA.sheets; let k = String(sheet || '');
+    const m = /^zl_.*__(.+)$/.exec(k); if (m) k = m[1];                 // a zone look's twin plays as the key it was made for
+    c = S[k] || S[(typeof hqRuleKeyOf === 'function') ? hqRuleKeyOf(k) : k] || null;
+    return (_zfSheet[sheet] = c);
+}
+function _zfHash(x, z, salt) { let h = (Math.imul(Math.round(x * 100) | 0, 73856093) ^ Math.imul(Math.round(z * 100) | 0, 19349663) ^ Math.imul(salt | 0, 83492791)) >>> 0; h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0; h = Math.imul(h ^ (h >>> 13), 3266489917) >>> 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+/* THE TREES: every tree of a compiled room (its rows, its groves, its thicket) takes its climate's kind. Run once by hqTerrainCompile; seeded by the
+   tree's own place, so it is the same on every visit and for both players online, and a tree that keeps its kind is exactly as it was */
+function zoneFloraTrees(roomId, info) {
+    if (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_TREES)) return 0;
+    const Z = zoneFloraRule(roomId); if (!Z || !info) return 0;
+    const F = ZONE_FLORA, seed = (typeof hqHash === 'function') ? hqHash('flora|' + roomId) : 7;
+    let n = 0;
+    const one = (t, mass) => {
+        const cls = F.classes[t.kind]; if (!cls) return;
+        const C = zoneFloraAt(roomId, t.x, t.z), TR = C && C.trees; if (!TR) return;
+        let list = null;
+        if (!mass && TR.water && cls !== 'snowpine' && typeof hqTerrainFluidAt === 'function') { for (let a = 0; a < 8 && !list; a++) { const an = a * Math.PI / 4; if (hqTerrainFluidAt(info, t.x + Math.cos(an) * F.water, t.z + Math.sin(an) * F.water)) list = TR.water; } }
+        if (!list && TR.snow && TR.snow[cls] && zoneFloraGround(info, t.x, t.z) === 'snow') list = TR.snow[cls];
+        if (!list) list = TR[cls];
+        if (!list) return;
+        let keepW = 0, tot = 0; const opts = [];
+        for (const q of list) { if (q[0] === '=') { keepW += q[1]; continue; } if (mass && !F.mass.light[q[0]]) continue; if (!HQ_TREE_KINDS[q[0]]) continue; opts.push(q); tot += q[1]; }
+        if (!opts.length) return;
+        if (mass) { const share = (t.d != null && t.d > -F.mass.front) ? F.mass.share : F.mass.deep, full = tot / Math.max(1e-6, tot + keepW); if (_zfHash(t.x, t.z, seed + 3) >= share * (keepW > 0 ? Math.min(1, full * 2) : 1)) return; }
+        else if (_zfHash(t.x, t.z, seed + 1) < keepW / (keepW + tot)) return;
+        let r = _zfHash(t.x, t.z, seed + 2) * tot, pick = opts[opts.length - 1][0];
+        for (const q of opts) { r -= q[1]; if (r <= 0) { pick = q[0]; break; } }
+        const f = F.treeH[pick.split('_').slice(0, 2).join('_')] || 1;
+        t.kind0 = t.kind; t.kind = pick; if (t.h) t.h = Math.round(t.h * f * 100) / 100; n++;
+    };
+    (info.trees || []).forEach(t => one(t, false));
+    (info.thicket || []).forEach(t => one(t, true));
+    return n;
+}
+if (typeof window !== 'undefined') Object.assign(window, { ZONE_FLORA, zoneFloraRule, zoneFloraAt, zoneFloraGround, zoneFloraSheet, zoneFloraTrees, zoneFloraClimateOf });
 /* ══ THE ZONE LOOKS (2026-11-18, mondo: "I added an SBS horror texture pack in the inbox. Its basically just more textured and weathered
    textures. Can you use this horror pack and the urban decay texture pack to improve the aesthetics of the game, zone by zone. I especially
    want the "calm" textures replaced, those textures were only meant to be used on the ground, and even then i am okay with you not using them
@@ -104589,6 +104868,8 @@ const EW_CREDITS = {
             { role: 'LowPoly nature models (the foliage)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
             { role: 'Retro Tree Pack', by: 'Pizza Doggy', license: 'Pizza Doggy licence (free for games, not CC0)', source: 'https://pizzadoggy.itch.io/retro-tree-pack' },
             { role: 'PSX Mega Pack', by: 'Pizza Doggy', what: 'Game Assets by Pizza Doggy', license: 'Pizza Doggy licence (free for games, not CC0)', source: 'https://pizzadoggy.itch.io/psx-mega-pack' },
+            { role: 'Retro Foliage: Pixel Art Nature Kit', by: 'AFGameAssets', license: 'bought licence (use in a game, never as standalone files)' },
+            { role: 'Hand-painted flower assets', by: 'author not recorded', license: 'see docs/notes/flora.md' },
             { role: 'Metro PSX', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/metro' },
             { role: 'Halloween pack', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/halloween' },
             { role: 'Christmas pack', by: 'Elbolilloduro', source: 'https://elbolilloduro.itch.io/christmas' },
