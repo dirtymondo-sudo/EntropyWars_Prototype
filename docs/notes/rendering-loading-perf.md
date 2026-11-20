@@ -3513,3 +3513,19 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   timer. So a combo still BUILDS SHADERS mid-fight, ~50-270 ms each. Which looks is not known: the lens now lists "Last shader
   builds (newest last): <material type, name, node kind, fade-clone / shadow / see-through> on <skinned / batch / sprite + name>
   (pane / side)", the last 12 (`_ewKeep.last`, filled in `debug.onNodeBuilderCreated`). `_EW_TR_STAMP` = "11-20 builds-named".
+- THE COMBO, AFTER THE LAMPS (11-20, his 02:48 battle F3 on "renderer code 11-20 builds-named"): **37.0 FPS, CPU 22.1 ms** in a
+  combo (3.6-4.7 FPS before), 7.9 re-records/s (was 2,300-4,500). What is left in a combo:
+  (1) slow frames of 240-520 ms, each "1-3 shader builds · 1-12 new pipelines", all in "scene: classic draws". THE BUILDS' NAMES:
+  "MeshBasicMaterial see-through on skinned mpfb_male (side)", "MeshLambertMaterial see-through on skinned
+  EWCreator_wear_feet_bs", "MeshPhysicalMaterial see-through on skinned EWCreator_hair_hair", "… fade-clone see-through on Root /
+  Glass_Cap", "node:fxop see-through on batch fxBatch / fxGlobs". So: a UNIT GHOSTED in a shot (`_occSetUnitGhost` sets
+  `transparent = true` on the unit's own materials: a new material key = a new node build + pipeline per body material, 150-300
+  ms each for a creator body), a wall's first fade clone, and a spell's see-through batches. NOT known: whether the time is
+  three's node build (CPU) or Firefox compiling the pipeline at `createRenderPipeline`; a Firefox profile of two combos says
+  which. Then: node build = pre-build the see-through twin of each body material when the unit joins the fight (the kept builds
+  hand it back); pipeline = make it off the frame (THE LATE LOOK) and keep the solid look until it is ready.
+  (2) "Bundle spikes: 820 re-recorded (values 820): room hq_ceil" several checks in a row: the canopy / fade stepping the
+  opacity of 820 one-piece ceiling groups each frame = 820 value re-records a frame while it fades (5-6 ms check + their
+  replays); a fade's opacity should not need a re-record (a demoted group lets three refresh values itself).
+  (3) "Pick (raycasts) 370/s · 42.9 ms/s" in the combo (36-81/s before).
+  The walk in the same session: 52.8 FPS, CPU 14.6 ms.
