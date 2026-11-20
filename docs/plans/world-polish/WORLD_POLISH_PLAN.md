@@ -70,7 +70,7 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 15 | **The Astral Realm** | The Astral Realm, one room | Not started |
 | 16 | **The Deep** | Atlantis + The Trench, The Sea Floor | Not started |
 | 17 | **The Estate** | The Estate (Corn Fields, Lake, Ranch), The Haunted House | Not started |
-| 18 | **Outer Space** | Outer Space, one room | Not started |
+| 18 | **Outer Space** | Outer Space, one room | THE FIX done 11-20 (flight, distances, seams, sky); the dressing not started |
 | 20 | **The Bayside Mall** (in Disaster City, Bayside district) | the mall building on the city's Bayside + its inside room | **Not started. Waits for the One Beach thread** (mondo 11-20: "Id probably wait for the beach thread to be finished since it is supposed to be a bayside mall"). |
 | 19 | **The Beach** | The Beach, Pirates' Cove, The Frozen Sea, The Bermuda Triangle (NOT the Volcano Island: thread 21) | **Another thread has it** ("One Beach": Disaster City's Bayside beach and the Beach zone made one). No thread of this plan starts here until that one reports. |
 | none | The highways and the routes | every `site_ow_*` room | **Not in this plan.** Its own thread (mondo 11-20). |
@@ -456,7 +456,11 @@ they are measurements, not the job.
 - **To reach the standard:** it has the land. 20 of 31 plots are bare, so there is nothing to steer by: ruins, kelp, wrecks, landmarks;
   ledges down the Trench wall a board fits on; ways that wind between the rings with side ways into ruins.
 
-### Thread 18: OUTER SPACE (not started)
+### Thread 18: OUTER SPACE (THE FIX DONE 11-20, the dressing not started)
+- **THE FIX (11-20, mondo's order came first: "FIX WHAT IS BROKEN before any dressing"):** the flight (the ship flies where the camera looks,
+  the eye fixed to the hull), the worlds 3 to 12 km apart with a speed rule, rocks and dust on the way, the seams (the turn, the jump, the
+  core), one sky that turns with the worlds, no air in space. Notes: areas-complexes.md "OUTER SPACE, THE FIX". The lines below are the
+  dressing, still to do.
 - **Rooms:** `site_prebuilt_moon_plots` (95 real plots; one room you fly through). **Tool:** `bake-space.js`, `docs/areas/space/districts/`.
 - **It is NOT:** the Spaceship (handmade).
 - **The base today:** strong on the Crater, the Canyon and the Drop; the Mare and Cydonia are flat.
