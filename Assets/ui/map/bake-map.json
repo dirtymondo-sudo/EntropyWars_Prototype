@@ -371,13 +371,13 @@
  },
  "site_prebuilt_hollow_earth_ow_tunnelway": {
   "id": "site_prebuilt_hollow_earth_ow_tunnelway",
-  "nx": 120,
-  "nz": 168,
-  "h0": 0,
+  "nx": 60,
+  "nz": 60,
+  "h0": -0.02,
   "hs": 0.25,
-  "v": "45aa3d9001",
-  "bytes": 563,
-  "s": "8.5"
+  "v": "913435a62b",
+  "bytes": 1205,
+  "s": "2.2"
  },
  "site_prebuilt_hollow_earth_ow_agartha": {
   "id": "site_prebuilt_hollow_earth_ow_agartha",
@@ -648,5 +648,15 @@
   "v": "0252371b3a",
   "bytes": 1366,
   "s": "1.2"
+ },
+ "site_prebuilt_hollow_earth_ug_long": {
+  "id": "site_prebuilt_hollow_earth_ug_long",
+  "nx": 36,
+  "nz": 60,
+  "h0": 0,
+  "hs": 0.25,
+  "v": "a00d458464",
+  "bytes": 672,
+  "s": "1.3"
  }
 }
