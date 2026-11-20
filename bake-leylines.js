@@ -595,7 +595,7 @@ const WANT = [
     ["prebuilt_babel: { room: '" + PLACES.bay11.room + "', door: { id: 'bay11', " + fx(PLACES.bay11) + " } }", 'siteRooms.entry.prebuilt_babel'],
     ["prebuilt_technoticlan: { room: '" + PLACES.bay2012.room + "', door: { id: 'bay2012', " + fx(PLACES.bay2012) + " } }", 'siteRooms.entry.prebuilt_technoticlan'],
     ["a: { site: 'prebuilt_gobekli', part: '" + PLACES.giza.part + "', " + fx(PLACES.giza) + ",", 'link gobekli_giza (a)'],
-    ["a: { site: 'prebuilt_gobekli', part: '" + PLACES.xibalba.part + "', " + fx(PLACES.xibalba) + ",", 'link technoticlan_agartha (a)'],
+    /* link technoticlan_agartha (Xibalba, the tunnel under the ball court to Agartha) CUT 2026-11-20 (mondo; world polish thread 9) */
 ];
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const flat = src.replace(/ +/g, ' '), missing = WANT.filter(w => flat.indexOf(w[0]) < 0);

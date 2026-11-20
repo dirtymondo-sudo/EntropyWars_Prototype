@@ -33637,14 +33637,8 @@ const DOOR_HQ = {
           why: 'Lemuria is under the mountain, the ranger says, and will not say where the adit is; it is behind the boulders on the west side, under the falls, where the creek goes in and does not come out', note: 'the creek goes in', draft: true },
         /* AREA CONTENT D3 (2026-09-19): THE INNER EARTH — two more DRAUGHTS into the crystal city (the earned exits R4 asks for; the plain doors THE AREAS pruned stay pruned):
            THE POLAR OPENING (the admiral's tunnel from the station's west wall) and XIBALBA (the tunnel under the ball court's west wall) */
-        { id: 'antarctica_polar', route: 'hollow', leaf: 'leaf_bulkhead', secret: true,
-          a: { site: 'prebuilt_antarctica', part: 'plots', wall: 'w', z: 17.5, sub: 'THE POLAR OPENING · THE ADMIRAL’S TUNNEL' },
-          b: { site: 'prebuilt_hollow_earth', part: 'ow_agartha', wall: 'w', z: 26.25, sub: 'THE POLE · THE ADMIRAL’S TUNNEL UP TO THE ICE' },
-          why: 'the admiral flew in over the pole in 1947 and came back with a story about a green country under the ice; the story was classified, the tunnel was not, and it starts behind the fuel drums on the station\'s west side', note: 'the admiral\'s story', draft: true },
-        { id: 'technoticlan_agartha', route: 'hollow', leaf: 'leaf_portcullis', secret: true,
-          a: { site: 'prebuilt_gobekli', part: 'ow_babel', wall: 'free', x: -96.25, z: 78.75, face: 270, sub: 'XIBALBA · THE TUNNEL UNDER THE BALL COURT' },   // LEYLINES ON PLOTS (2026-11-16): the ball court's west end, on the island (THE ONE WORLD MOVE 2026-11-17: in Babel + Technoticlan's room)
-          b: { site: 'prebuilt_hollow_earth', part: 'ow_agartha', wall: 'free', x: -43.75, z: 40.25, face: 0, passage: { len: 3, deep: 1.2 }, sub: 'THE TEMPLE CITY · THE TUNNEL UP TO THE BALL COURT' },
-          why: 'the losing side of the ball game went down; the tunnel they went down is under the court\'s west wall and comes out in the crystal city, which is where every road under the earth comes out', note: 'the losing side went down', draft: true },
+        /* CUT 2026-11-20 (mondo: "are there other ways to get to antarctica or tecnoticlan? if so then cut them"; world polish thread 9, Agartha): link `antarctica_polar`, Agartha's way to Antarctica; the new underground layout has no such way, and the place has others. */
+        /* CUT 2026-11-20 (mondo: "are there other ways to get to antarctica or tecnoticlan? if so then cut them"; world polish thread 9, Agartha): link `technoticlan_agartha`, Agartha's way to Technoticlan; the new underground layout has no such way, and the place has others. */
         /* AREA CONTENT D3 (2026-09-19, the sixth delivery): THE ADMIRAL'S OTHER END — the polar opening the admiral flew THROUGH comes out under the inner sun (the
            inner sun's earned exit; the station's east wall — its west wall carries the tunnel to the crystal city). The pruned plain door hollow_hell stays pruned; a draught wears a new id. */
         { id: 'hollow_byrd', route: 'hollow', leaf: 'leaf_bulkhead', secret: true,
