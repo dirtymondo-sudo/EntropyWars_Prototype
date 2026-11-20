@@ -73,11 +73,11 @@
   "id": "site_prebuilt_downtown_streets",
   "nx": 208,
   "nz": 216,
-  "h0": -1.46,
+  "h0": -1.49,
   "hs": 0.26,
-  "v": "dd970e2629",
-  "bytes": 11784,
-  "s": "42.4"
+  "v": "1e73c7f77b",
+  "bytes": 11861,
+  "s": "34.6"
  },
  "site_prebuilt_vatican_under": {
   "id": "site_prebuilt_vatican_under",

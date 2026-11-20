@@ -85,9 +85,13 @@ function apply(ctx) {
     const look = (id, x, z, rot, fn) => { const a = sheet(); fn(a); arch({ k: 'arch', id: 'bch:' + id + ':look', x: r2(x), z: r2(z), rot: rot || 0, parts: a.P }); };
     const P = (key, sx, sy, o) => keepProp(Object.assign({ key, x: mx(sx), z: mz(sy) }, o || {}));
     const dec = (key, sx, sy, o) => keepProp(Object.assign({ key, x: r2(mx(sx) + (rnd() - 0.5) * 1.6), z: r2(mz(sy) + (rnd() - 0.5) * 1.6), face: Math.round(rnd() * 360) }, o || {}));
-    const afloat = (key, sx, sy, o) => keepProp(Object.assign({ key, x: mx(sx), z: mz(sy), y: 0.32 }, o || {}));   // (a `float` prop's y is over the sea itself)
-    const swimmer = (key, sx, sy, o) => keepProp(Object.assign({ key, x: mx(sx), z: mz(sy), y: -0.7, hover: 0.4 }, o || {}));
-    const under = (key, sx, sy, y, o) => keepProp(Object.assign({ key, x: r2(mx(sx) + (rnd() - 0.5) * 2), z: r2(mz(sy) + (rnd() - 0.5) * 2), y, hover: 0, face: Math.round(rnd() * 360) }, o || {}));
+    /* ONE BEACH (2026-11-20): the waterline is a curve now (districts/B.js COAST.shore; this file's z is the room's own, B.js' rows are 48 further on).
+       A thing S.js sets afloat or swimming on a square the sand now covers is moved straight out to sea, past the waterline. */
+    const BAYSIDE = require('./B.js'), seaX = z => r2(-252 + 3.5 * BAYSIDE.waterAt(BAYSIDE.COAST.shore, (z + 252) / 3.5 + 48));
+    const wet = (x, z, by) => Math.max(x, r2(seaX(z) + by));
+    const afloat = (key, sx, sy, o) => keepProp(Object.assign({ key, x: wet(mx(sx), mz(sy), 2.5), z: mz(sy), y: 0.32 }, o || {}));   // (a `float` prop's y is over the sea itself)
+    const swimmer = (key, sx, sy, o) => keepProp(Object.assign({ key, x: wet(mx(sx), mz(sy), 7), z: mz(sy), y: -0.7, hover: 0.4 }, o || {}));
+    const under = (key, sx, sy, y, o) => { const x = r2(mx(sx) + (rnd() - 0.5) * 2), z = r2(mz(sy) + (rnd() - 0.5) * 2); return keepProp(Object.assign({ key, x: wet(x, z, 9), z, y, hover: 0, face: Math.round(rnd() * 360) }, o || {})); };
     const palm = (sx, sy, h) => feat({ k: 'tree', x: r2(mx(sx) + (rnd() - 0.5)), z: r2(mz(sy) + (rnd() - 0.5)), kind: 'palm', h: h || r2(3.6 + rnd() * 1.4), r: 0.6 });
     const native = (race, sx, sy, face, say) => { if (!inZ(mz(sy))) { count.left++; return; } const n = { x: mx(sx), z: mz(sy), face: face || 0, race }; if (say) n.say = say; ctx.npcSpots.push(n); count.people++; };
     /* the mermaid keeps her own line: read from the old sea room's literal, as bake-beach.js reads it */

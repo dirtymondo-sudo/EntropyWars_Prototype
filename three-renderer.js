@@ -91048,6 +91048,8 @@ const ThreeRenderer = (function () {
             _hqDecorWear('lighthouse', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
+        /* THE TALL LIGHTHOUSE (2026-11-20, ONE BEACH; mondo: "the lighthouse is too small"): the same light, 30 m (data.js catalogue `lighthouse_tall`) */
+        lighthouse_tall: function (U) { return _hqProcBuilders.lighthouse(U * 30 / 11); },
         /* a channel buoy: a red can on a float, a lamp on top */
         sea_buoy: function (U) {
             var g = new THREE.Group();
