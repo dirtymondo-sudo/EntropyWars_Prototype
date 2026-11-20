@@ -100001,6 +100001,11 @@ var ZONE_FLORA = (function () {
         /* ── THE MAP: the One World ground letter under a spot (HQ_ZONE_MAP.world.key) → its climate. Sea, ice, salt flat, the Ice Wall: nothing grows ── */
         ground: { f: 'forest', w: 'wood', m: 'meadow', g: 'grass', a: 'farm', M: 'marsh', F: 'foothill', A: 'alpine', R: 'alpine', c: 'foothill', T: 'snow', P: 'snow',
                   s: 'scrub', b: 'badlands', d: 'desert', D: 'desert', n: 'shore' },
+        /* ── A ROOM WITH NO ROW BELOW takes the row of the zone it belongs to ON THE MAP (HQ_ZONE_MAP.zones, which `node bake-map.js` rewrites whenever a zone is
+              re-laid): map zone → zone row. So a room that is renamed, split or added (11-20, the day this was written: Katana Island and the Mountains both
+              changed their room ids) keeps its zone's climate with nothing edited here. Only a room ON THE SURFACE falls back (a row with `under` also underground) ── */
+        mapZones: { city: 'city', mountains: 'mountains', woods: 'woods', kingdom: 'camelot', ranch: 'estate', desert: 'desert', beach: 'beach', ley: 'ley', divine: 'divine', cavern: 'cavern',
+                    antarctica: 'none', underworld: 'none', dumb: 'none', deep: 'none', space: 'none', astral: 'none', internet: 'none' },
         /* ── THE ZONES: `c` = one climate for the whole room · `map` = the map's ground decides, spot by spot (`as` = this zone's own name for a map
               climate, '*' = for every one; `c` beside `map` = where the map has no ground: sea, off the sheet) · `districts` = a district letter of
               the room's plots (HQ_ZONE_MAP) → its climate · `none` = nothing grows, on purpose ── */
@@ -100019,7 +100024,7 @@ var ZONE_FLORA = (function () {
             /* THE ESTATE: harvest time. Corn, pumpkins, a haunted house: autumn oaks and birches, gold grass, yellow willows and reeds on the lake */
             estate:    { rooms: ['site_prebuilt_skinwalker_ow_lake', 'site_prebuilt_skinwalker_ow_house'], c: 'autumn' },
             /* THE MOUNTAINS: the map decides (peaks and tundra = snow country, alpine meadows under them, forest at the foot); the North Pole is winter */
-            mountains: { rooms: ['site_prebuilt_shasta_ow_lodge', 'site_prebuilt_shasta_ow_olympus', 'site_prebuilt_shasta_ow_shasta', 'site_ow_r3', 'site_ow_r5'], map: true, c: 'snow' },
+            mountains: { rooms: ['site_prebuilt_shasta_ow_lodge', 'site_prebuilt_shasta_ow_shasta', 'site_ow_r3', 'site_ow_r5'], map: true, c: 'snow' },
             northpole: { rooms: ['site_prebuilt_northpole_plots'], c: 'snow' },
             /* THE DESERT and its highway: the map decides (desert, dunes, badlands, scrub). Reeds only where there is water (Giza's river) */
             desert:    { rooms: ['site_prebuilt_area51_ow_circus', 'site_prebuilt_area51_ow_town', 'site_prebuilt_area51_desert', 'site_prebuilt_area51_ow_giza', 'site_ow_dh1', 'site_ow_dh2', 'site_ow_dh3', 'site_ow_dh4',
@@ -100027,16 +100032,18 @@ var ZONE_FLORA = (function () {
             /* THE BEACH: tropical islands (the Harbour, the Triangle's islets, the Volcano Island, the Cove); the coast road follows the map */
             beach:     { rooms: ['site_prebuilt_bermuda_beach', 'site_prebuilt_bermuda_ow_triangle', 'site_prebuilt_bermuda_ow_volcano', 'site_prebuilt_bermuda_ow_cove', 'site_prebuilt_bermuda_island'], c: 'tropical' },
             coast:     { rooms: ['site_ow_r10'], map: true, c: 'shore' },
-            katana:    { rooms: ['site_prebuilt_katana_island'], c: 'japan' },
+            katana:    { rooms: ['site_prebuilt_bermuda_katana', 'site_prebuilt_katana_island'], c: 'japan' },
             /* LEYLINES: the map decides (farmland, scrub, grass); Stonehenge stands in an English meadow */
             ley:       { rooms: ['site_prebuilt_gobekli_ow_line', 'site_prebuilt_gobekli_ow_babel', 'site_prebuilt_gobekli_ow_bugs'], map: true, c: 'scrub' },
             henge:     { rooms: ['site_prebuilt_gobekli_ow_henge'], c: 'meadow' },
             /* THE VATICAN: a Mediterranean garden (lavender, daisies, poppies under stone pines); the road from the city follows the map */
             vatican:   { rooms: ['site_prebuilt_vatican_plots'], c: 'med' },
             routes:    { rooms: ['site_ow_r1', 'site_ow_r6'], map: true, c: 'wood' },
+            /* the Afterlife's zone on the map with no row of its own above (a new surface room there): the map decides, and off the map nothing grows */
+            divine:    { rooms: [], map: true },
             /* THE CAVERN: only where the inner sun's country is painted (dark grass, dirt): ferns, strange blooms, blue willows */
             cavern:    { rooms: ['site_prebuilt_hollow_earth_cavern', 'site_prebuilt_hollow_earth_ow_agartha', 'site_prebuilt_hollow_earth_ow_west', 'site_prebuilt_hollow_earth_ow_long', 'site_prebuilt_hollow_earth_ow_tunnelway',
-                                'site_prebuilt_hollow_earth_innersun'], c: 'hollow' },
+                                'site_prebuilt_hollow_earth_innersun'], c: 'hollow', under: true },
             /* NOTHING GROWS, on purpose: ice, the sea floor (kelp and coral are placed by hand), stone underground, space, cloud, fire, the dream, cyberspace */
             none:      { rooms: ['site_prebuilt_antarctica_plots', 'site_prebuilt_bermuda_ow_frozen', 'site_prebuilt_atlantis_deep', 'site_prebuilt_atlantis_ow_floor', 'site_prebuilt_downtown_underworld', 'site_prebuilt_dumb_base',
                                 'site_prebuilt_hell_plots', 'site_prebuilt_heaven_plots', 'site_prebuilt_vatican_under', 'site_prebuilt_moon_plots', 'site_prebuilt_lookingglass_realm', 'site_prebuilt_internet_web'], none: true },
@@ -100048,7 +100055,15 @@ var _zfRooms = null;
 function zoneFloraRule(roomId) {
     if (!_zfRooms) { _zfRooms = {}; Object.keys(ZONE_FLORA.zones).forEach(z => { const Z = ZONE_FLORA.zones[z]; (Z.rooms || []).forEach(r => { _zfRooms[r] = Z; }); }); }
     if (typeof window !== 'undefined' && window.EW_NO_FLORA) return null;
-    const Z = _zfRooms[roomId]; return (Z && !Z.none) ? Z : null;
+    let Z = _zfRooms[roomId];
+    if (Z === undefined) {   // no row of its own: the row of its zone on the map
+        Z = null;
+        try { const R = (typeof hqOwRoom === 'function') ? hqOwRoom(roomId) : null;
+            Object.keys(HQ_ZONE_MAP.zones).forEach(zid => { if (Z) return; if (!(HQ_ZONE_MAP.zones[zid].rooms || []).some(r => r.room === roomId)) return;
+                const row = ZONE_FLORA.zones[ZONE_FLORA.mapZones[zid]]; if (row && (row.none || (R && R.layer === 'surface') || row.under)) Z = row; }); } catch (e) { Z = null; }
+        _zfRooms[roomId] = Z;
+    }
+    return (Z && !Z.none) ? Z : null;
 }
 /* a climate by name, its `like` parent's rows under its own (made once) */
 function zoneFloraClimateOf(name) {
@@ -100071,7 +100086,7 @@ function zoneFloraDistrict(roomId, x, z) {
 function zoneFloraAt(roomId, x, z) {
     const Z = zoneFloraRule(roomId); if (!Z) return null;
     let name = Z.c || null;
-    if (Z.map) { let g = null; try { const p = hqOwPlotOf(roomId, x, z); if (p) g = ZONE_FLORA.ground[hqOwGround(p[0], p[1]).c] || null; } catch (e) { g = null; }
+    if (Z.map) { let g = null; try { const R = hqOwRoom(roomId), p = (R && R.layer === 'surface') ? hqOwPlotOf(roomId, x, z) : null; if (p) g = ZONE_FLORA.ground[hqOwGround(p[0], p[1]).c] || null; } catch (e) { g = null; }
         if (g) name = (Z.as && Z.as[g] !== undefined) ? Z.as[g] : ((Z.as && Z.as['*'] !== undefined) ? Z.as['*'] : g); }
     if (Z.districts) { const d = zoneFloraDistrict(roomId, x, z); if (d && Z.districts[d] !== undefined) name = Z.districts[d]; }
     return name ? zoneFloraClimateOf(name) : null;

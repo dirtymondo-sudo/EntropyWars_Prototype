@@ -23,8 +23,12 @@ So a zone that is re-laid, grown, split into more rooms, moved on the map or reb
 and no bake tool, district file or layout was edited for this pass. A district thread that plants its usual `tree` rows and
 paints its usual sheets comes out in the climate's trees and flowers by itself. The same idea as `ZONE_LOOKS`.
 
-- **A new room** of a zone: add its id to the zone's `rooms` list in `ZONE_FLORA.zones`. That is the whole job.
-- **A room with no row** grows nothing and its trees are untouched (every indoor room, the hub, the old handmade sites).
+- **A new, renamed or split room** of a zone needs NOTHING: a room with no row of its own takes the row of the zone it belongs to
+  on the map (`HQ_ZONE_MAP.zones`, rewritten by `node bake-map.js`; `ZONE_FLORA.mapZones` = map zone -> zone row). This was
+  needed the same day: while this pass was being built, Katana Island and the Mountains both changed their room ids on main.
+  Give a room its own row only when it differs from its zone (the Fairy Forest, the Snowy Pines, the Redwood Trail, Stonehenge).
+- **A room that is in no zone of the map** grows nothing and its trees are untouched (every indoor room, the hub, the old handmade sites).
+- Only a SURFACE room falls back to its zone (the Cavern's row also underground): a new cellar under the Beach grows nothing.
 - **A sheet with no row** in `ZONE_FLORA.sheets` grows nothing (paving, road, cave floor, cloud, metal).
 
 ## 2. The two halves
@@ -143,17 +147,18 @@ A layer = a plant list, plants a square metre, how clumped (0 even, 1 only in dr
 | `pines` | the Snowy Pines, link L6 | `snow` | winter |
 | `fairy` | the Fairy Forest, the Looking-Glass Garden | `fairy` | always in bloom; blue willows |
 | `estate` | the Lake + Corn Fields room, the Haunted House room | `autumn` | harvest: corn, pumpkins, a haunted house |
-| `mountains` | Lodge, Olympus, Shasta rooms, routes R3, R5 | the map (peak / tundra = `snow`, alpine, rock, forest), else `snow` | the map's own height bands; a tree on painted snow is a winter tree |
+| `mountains` | the mountain's rooms (Lodge + Olympus, Shasta), routes R3, R5 | the map (peak / tundra = `snow`, alpine, rock, forest), else `snow` | the map's own height bands; a tree on painted snow is a winter tree |
 | `northpole` | the North Pole village | `snow` | winter |
 | `desert` | Circus, Western Town, Area 51, Giza, DH1-4, R8, R9, R11 | the map (desert, dunes, badlands, scrub), else `desert` | reeds only where there is water (Giza) |
 | `beach` | the Harbour, the Triangle, the Volcano Island, the Cove, the old island | `tropical` | tropical islands |
 | `coast` | route R10 | the map (sand, badlands, desert), else `shore` | the coast road |
-| `katana` | Katana Island | `japan` | "love letter to anime and Japan" |
+| `katana` | Katana Island (`site_prebuilt_bermuda_katana`) | `japan` | "love letter to anime and Japan" |
 | `ley` | the Line, Babel, Bug Colony | the map (farm, scrub, grass), else `scrub` | dry farmland of the Fertile Crescent |
 | `henge` | Stonehenge | `meadow` | an English meadow |
 | `vatican` | the Vatican | `med` | a Mediterranean garden |
 | `routes` | R1, R6 | the map (forest, wood, meadow, foothill, snow), else `wood` | the roads between the zones |
 | `cavern` | the Cavern's five rooms, the inner sun | `hollow` | plants only where the inner sun's country is painted |
+| `divine` | (no room today) a new surface room of the Afterlife's zone | the map, else nothing | the fallback row of the map zone `divine` |
 | `none` | Antarctica, the Frozen Sea, the Deep, the Sewers, the D.U.M.B., Hell, Heaven, the Catacombs, space, the Astral Realm, the Internet | nothing | ice, sea floor, stone, space, cloud, fire, dream, cyberspace: listed so it is a decision, not a gap |
 
 The map's ground letter -> climate is `ZONE_FLORA.ground` (f forest, w wood, m meadow, g grass, a farm, M marsh, F foothill,
