@@ -17,7 +17,7 @@ exports.pieces = ctx => {
 };
 exports.dress = ctx => {
     const { P, dec, native, sayOf } = ctx;
-    [5, 17, 26, 35, 44, 52, 66].forEach(x => P('flood_mast', x, 19));
+    [5, 17, 26, 35, 44, 52, 62].forEach(x => P('flood_mast', x, 19));   // (11-20, thread 13: the east one moved off the icefall's heap, 66 -> 62)
     P('timber_lookout', 40, 22); P('item_flat_earth', 42, 22, { h: 1.2 }); dec('psx_supply_crate_1', 41, 23); dec('item_binoculars', 39, 22); P('trail_sign', 33, 22); P('signpost', 28, 22);
     P('canvas_tent', 20, 22); dec('campfire', 21, 23); dec('psx_metal_barrel_mp_2', 19, 23);
     [[4, 22], [12, 19], [24, 19], [49, 19], [58, 19], [61, 22], [68, 19]].forEach(q => dec('icicles', q[0], q[1]));

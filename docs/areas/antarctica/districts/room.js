@@ -79,24 +79,27 @@ exports.pieces = ctx => {
             /* a rope on stakes along both edges of the deck */
             [-3.35, 3.35].forEach(z => { for (let x = -span / 2; x <= span / 2 + 0.01; x += span / 3) a.cyl(x, 0, z, 0.05, 1.15, WD2, 0x5a4630); a.box(0, 1.0, z, span, 0.04, 0.04, WD2, 0xd08030); });
         }, TOP); }
-    /* THE ICEFALL: big blocks tumbled against the face, the heap's own squares and the chain */
-    look('icefall', gc(67), gx(18) + 2, 0, a => {
-        [[-5, 0.5, 4.2, 6.5, 3.2, 12], [2.6, 0, 3.4, 5.2, 2.8, -20], [6.5, 2.2, 3.8, 9, 3.4, 28], [-1.2, 4.6, 2.6, 3.8, 2.2, 8], [9.2, 5.2, 2.2, 3.4, 2.2, -14]].forEach(([x, z, w, h, d, ry], i) =>
-            a.box(x, -0.6, z, w, h, d, ICE, i % 2 ? PALE : BLUE, { ry }));
-    }, 13 * LV);
+    /* THE WALK'S MARKER WANDS (the traverse's own, up top): a bamboo wand with an orange flag on every fourth square of the walk's south edge,
+       one drawn row a plot (a row's parts stay near its middle), standing at the walk's height */
+    const wands = {};
+    let k = 0;
+    for (let x = 0; x < W; x++) for (let y = 13; y <= 16; y++) { const o = OVR.get(y * W + x); if (cell[y][x] !== 'T' || !o || o[0] !== TOP || cell[y + 1][x] === 'T') continue;
+        if (k++ % 4) continue; const px = Math.floor(x / 12); (wands[px] = wands[px] || []).push([gc(x), r2(gx(y + 1) - 0.6)]); }
+    Object.keys(wands).forEach(px => { const cx = gc(+px * 12 + 6), cz = gx(15);
+        look('wands' + px, cx, cz, 0, a => wands[px].forEach(([x, z], i) => { const lx = r2(x - cx), lz = r2(z - cz);
+            a.cyl(lx, 0, lz, 0.03, 2.1, WD2, 0xc8b070); a.box(lx + 0.24, 1.72, lz, 0.46, 0.32, 0.02, 'marble_light', i % 2 ? 0xff7a1a : 0xff4a1a, { gain: 1.6 }); }), TOP); });
 };
 
 exports.dress = ctx => {
-    const { props, gc, gx, r2, cell, W, OVR, dec } = ctx;
-    const TOP = TOP_LV * LV;
-    /* THE WALK'S MARKER WANDS: a bamboo wand with an orange flag every few squares along the walk's south edge (the traverse's wands, up top) */
-    let k = 0;
-    for (let x = 0; x < W; x++) for (let y = 13; y <= 16; y++) { if (cell[y][x] !== 'T' || !(OVR.get(y * W + x) || [])[0] || OVR.get(y * W + x)[0] !== TOP) continue;
-        if (cell[y + 1][x] === 'T' || (k++ % 4)) continue;
-        props.push({ key: 'line_marker', x: gc(x), z: r2(gx(y + 1) - 0.5), y: TOP, face: 0 }); }
+    const { props, gc, r2, cell } = ctx;
+    const TOP = TOP_LV * LV, HEAP = 13 * LV;
+    /* THE ICEFALL: blocks of the Wall that came down (`ice_block`), heaped against its foot (the heap's squares are the plan's level 13) and spilled round it */
+    [[65, 18, 6.5, 20], [67, 18, 7.5, 200], [69, 18, 5.5, 75], [68, 19, 3.2, 140], [69, 20, 3.8, 35]].forEach(([x, y, h, f]) => props.push({ key: 'ice_block', x: r2(gc(x) + 0.3), z: r2(gc(y) - 0.4), y: HEAP, h, face: f }));
+    [[63, 19, 2.6, 50], [70, 21, 3.4, 260], [65, 23, 1.8, 110], [62, 20, 1.4, 10]].forEach(([x, y, h, f]) => props.push({ key: 'ice_block', x: gc(x), z: gc(y), h, face: f }));
+    props.push({ key: 'snow_heap', x: gc(67), z: gc(21), face: 30 });
     /* the lookouts the plan names on the walk: a cairn at each */
     (PLAN.lookouts || []).forEach(l => { const [x, y] = l.at; if (cell[y] && cell[y][x] === 'T') props.push({ key: 'cairn', x: r2(gc(x) + 1.1), z: r2(gc(y) - 1.1), y: TOP, face: 20 }); });
-    /* the stair's foot and top: a cairn and the coil of the fixed line; the icefall's tools */
+    /* the stair's foot: the coil of the fixed line; the icefall's tools at the rope's foot */
     props.push({ key: 'rope_coils', x: gc(13) + 0.8, z: gc(18), face: 30 });
-    props.push({ key: 'ice_axe', x: gc(65), z: gc(18) + 0.9, y: 13 * LV, face: 70 }, { key: 'rope_coils', x: gc(66) + 1, z: gc(19), y: 13 * LV, face: 200 });
+    props.push({ key: 'ice_axe', x: gc(65), z: gc(18) + 0.9, y: HEAP, face: 70 }, { key: 'rope_coils', x: r2(gc(66) + 1), z: gc(19), y: HEAP, face: 200 });
 };
