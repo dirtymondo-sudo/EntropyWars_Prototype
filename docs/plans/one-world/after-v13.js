@@ -61,5 +61,11 @@ let t = fs.readFileSync(FILE, 'utf8');
   t = t.slice(0, i) + '    ' + JSON.stringify(head).slice(0, -1) + ',\n      "plots": [\n' + d.plots.map(q => '        ' + JSON.stringify(q)).join(',\n') + t.slice(j); });
 { const m = /("rows": \[\n)([\s\S]*?)(\n\s*\]\})/.exec(t.slice(t.indexOf('"ground"'))); if (!m) throw new Error('no ground rows'); const lead = /^\s*/.exec(m[2])[0];
   t = t.replace(m[0], m[1] + G.rows.map(r => lead + JSON.stringify(r)).join(',\n') + m[3]); }
+/* 5. KATANA ISLAND (2026-11-20, world polish thread 21; mondo: "let's keep volcano island as a part of the empire, like how Japan is made up of multiple islands"):
+      a NEW island, 9 x 9 at 21,-13, just south of the Volcano Island (which keeps its 6 x 6 at 22,-19). 29 of its plots are land (docs/areas/katana/layout.js),
+      the rest its own sea. All of it was sea: no ground letter changes. */
+if (t.indexOf('{"id":"katana"') < 0) { const i = t.indexOf('    {"id":"volcano"'), j = t.indexOf('\n      ]}', i); if (i < 0 || j < 0) throw new Error('no island block');
+  const pl = []; for (let y = -13; y <= -5; y++) for (let x = 21; x <= 29; x++) pl.push([x, y]);
+  t = t.slice(0, j + 9) + ',\n    {"id":"katana","name":"KATANA ISLAND","state":"built","x":21,"y":-13,"w":9,"h":9,"count":81,"note":"29 land plots, six districts; room site_prebuilt_bermuda_katana (bake-katana.js); with the Volcano Island north of it, the Katana Empire\u2019s islands",\n      "plots": [\n' + pl.map(q => '        ' + JSON.stringify(q)).join(',\n') + '\n      ]}' + t.slice(j + 9); }
 JSON.parse(t); fs.writeFileSync(FILE, t);
 [d, dW, dF, dC].concat(MTN).forEach(d => console.log('plots.json: ' + d.name + ' ' + d.count + ' plots, ' + d.w + ' x ' + d.h + ' at ' + d.x + ',' + d.y)); console.log(n + ' ground letters changed to T');

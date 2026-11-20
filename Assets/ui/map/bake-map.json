@@ -417,7 +417,7 @@
   "hs": 0.25,
   "v": "62b14e4b53",
   "bytes": 1254,
-  "s": "1.8"
+  "s": "0.7"
  },
  "site_prebuilt_bermuda_ow_triangle": {
   "id": "site_prebuilt_bermuda_ow_triangle",
@@ -597,7 +597,7 @@
   "hs": 0.25,
   "v": "55df1b3918",
   "bytes": 1898,
-  "s": "0.4"
+  "s": "0.3"
  },
  "site_ow_r5": {
   "id": "site_ow_r5",
@@ -617,7 +617,7 @@
   "hs": 0.59,
   "v": "391a8087c8",
   "bytes": 12230,
-  "s": "5.0"
+  "s": "4.9"
  },
  "site_ow_r10": {
   "id": "site_ow_r10",
@@ -629,14 +629,14 @@
   "bytes": 2640,
   "s": "1.2"
  },
- "site_prebuilt_katana_island": {
-  "id": "site_prebuilt_katana_island",
+ "site_prebuilt_bermuda_katana": {
+  "id": "site_prebuilt_bermuda_katana",
   "nx": 108,
   "nz": 108,
-  "h0": -0.03,
+  "h0": -0.04,
   "hs": 0.25,
-  "v": "173f190727",
-  "bytes": 2581,
-  "s": "0.6"
+  "v": "2c1d1cb39a",
+  "bytes": 2580,
+  "s": "6.5"
  }
 }
