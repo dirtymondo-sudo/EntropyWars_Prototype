@@ -66,9 +66,9 @@ module.exports = {
           R.box(5, 5, TH, 7.3, 0.25, 7.3, CONC, 0x9a9ea4, { gain: 1.6 }); R.box(5, 5, TH + 0.25, 1.0, 0.5, 1.0, null, DARK); R.box(5, 5, TH + 0.75, 0.5, 0.35, 0.5, null, RED, { glow: 1 });
           /* the floor: a hazard square round the tower's foot, the four ways */
           for (const [du, dv, w, d] of [[0, -1.5, 10.9, 0.3], [0, 1.5, 10.9, 0.3], [-1.5, 0, 0.3, 10.9], [1.5, 0, 0.3, 10.9]]) line(R, 5 + du, 5 + dv, w, d);
-          floorWords(R, 'RESEARCH', 1.7, 5, 5.2, 1.1, 270); floorWords(R, 'COMMAND', 8.3, 5, 4.8, 1.1, 90); floorWords(R, 'LEVEL P3', 5, 8.4, 5.2, 1.1, 180); floorWords(R, 'LEVEL -6', 5, 1.6, 5.2, 1.1, 0);
+          floorWords(R, 'RESEARCH', 1.7, 5, 5.2, 1.1, 270); floorWords(R, 'COMMAND', 8.3, 5, 4.8, 1.1, 90); floorWords(R, 'LEVEL P3', 3, 8.4, 4.0, 1.0, 180); floorWords(R, 'LEVEL -6', 5, 1.6, 5.2, 1.1, 0);
           /* the four portals (each spoke's own roof is lower: the tool hangs the wall over them) */
-          portal(R, 'u', 0, 3.5, 6.5, 4.4, 'CORRIDOR 5', 1); portal(R, 'u', 10, 3.5, 6.5, 4.4, 'STAIR · P3', -1); portal(R, 'v', 0, 3.5, 6.5, 3.2, null, 1); portal(R, 'v', 10, 3.5, 6.5, 3.2, null, -1); R.sign('RESEARCH', 1.08, 5, 5.0, 4.6, 0.8, -90, INK, '', 'stencil', 0.35); R.sign('COMMAND', 8.92, 5, 5.0, 4.4, 0.8, 90, INK, '', 'stencil', 0.35);
+          portal(R, 'u', 0, 3.5, 6.5, 4.4, 'CORRIDOR 5', 1); portal(R, 'u', 10, 2, 4, 4.4, 'STAIR · P3', -1); portal(R, 'v', 0, 3.5, 6.5, 3.2, null, 1); portal(R, 'v', 10, 3.5, 6.5, 3.2, null, -1); R.sign('RESEARCH', 1.08, 5, 5.0, 4.6, 0.8, -90, INK, '', 'stencil', 0.35); R.sign('COMMAND', 8.92, 5, 5.0, 4.4, 0.8, 90, INK, '', 'stencil', 0.35);
           /* the galleries: a steel deck 3.5 m up along the west and the east wall, a stair up each from the south */
           for (const [u0, u1, ug, su] of [[0, 1, 1, 0.5], [9, 10, 9, 9.5]]) { R.deck(u0, 0, u1, 7, 3.5, GRILL); R.guard('v', ug, 0, 7, 3.5, HAZ); R.stair(su, 10, su, 7, 1, 0, 3.5, 'steel'); R.guard('u', 7, u0, u1, 3.5, HAZ);
               for (let v = 0.5; v < 7; v += 2) R.box(ug === 1 ? 0.92 : 9.08, v, 0, 0.16, 3.5, 0.16, null, DARK); }
@@ -142,14 +142,23 @@ module.exports = {
           for (const [u, v] of [[0.14, 1.5], [0.14, 7], [7.86, 2], [7.86, 6], [3, 7.86], [5.5, 7.86]]) wallLamp(R, u, v, 3.6, 0xffb060);
           R.done(); }
 
-        /* ══ THE STAIR (P03-04): the level numbers down the hall's walls, lamps that follow the flight, the two side rooms' doors ══ */
-        { const R = ctx.room('P03-04', 3, 0, 6, 12, 'stair'), wl = Object.assign({}, WL, { h: 4.0 });
-          /* the flight comes down from the south line (v 12, 14 m) to v 6 (0 m): a number every 3.5 m of height */
-          [['2', 11.0], ['3', 9.9], ['4', 8.8], ['5', 7.7], ['6', 6.6]].map(q => [q[0], q[1], r2(14 * (q[1] - 6) / 6)]).forEach(q => { R.sign(q[0], 0.08, q[1], q[2] + 1.8, 2.0, 2.6, -90, INK, '', 'stencil', 0.4); R.sign(q[0], 5.92, q[1], q[2] + 1.8, 2.0, 2.6, 90, INK, '', 'stencil', 0.4);
-              for (const u of [0.1, 5.9]) R.box(u, q[1] - 0.45, q[2] + 0.4, 0.1, 5.0, 0.22, null, 0xdfe8ff, { glow: 1 }); wallLamp(R, 0.16, q[1] + 0.6, q[2] + 2.6); wallLamp(R, 5.84, q[1] + 0.6, q[2] + 2.6); });
-          R.sign('SUB-LEVEL 7', 3, 0.3, 5.6, 6.0, 1.0, 0, INK, '', 'stencil', 0.35); floorWords(R, '7', 3, 3.6, 3.4, 4.4, 180);
-          for (const u of [1.02, 4.98]) R.box(u, 2.9, 0.012, 0.16, 0.012, 20, null, HAZ);
-          R.wall('v', 0, 2, 6, Object.assign({ doors: [[4, 'leaf_security']] }, wl)); R.wall('v', 6, 2, 6, Object.assign({ doors: [[4, 'leaf_security']] }, wl));
+        /* ══ THE STAIR (P03-04), REBUILT (world polish thread 8, 2026-11-20, mondo: "do sub level 7 too"): the straight 14 m flight is THREE
+           FLIGHTS that switch back down the hall, lanes A (u 0..1), B (u 2..3), C (u 4..5): the top landing (14, v 11) · C down north to the north
+           landing (9.33, v 0..1) · B down south to the south landing (4.67, v 10) · A down north to the foot (0, v 0..3) and the hub's new port.
+           The north landing's west edge and the top landing's north edge are open: LEDGES, a drop to the floor below (the way down in a hurry).
+           The guard room is off the foot; the store is off the north landing now, halfway down. ══ */
+        { const R = ctx.room('P03-04', 3, 0, 6, 12, 'stair'), H1 = 14, H2 = 9.33, H3 = 4.67;
+          const lift = (u0, v0, u1, v1, h, e) => { e = e || {}; const x0 = R.X(u0) - (e.w || 0), x1 = R.X(u1) + (e.e || 0), z0 = R.Z(v0) - (e.n || 0), z1 = R.Z(v1) + (e.s || 0);
+              ctx.feat({ k: 'plateau', x: r2((x0 + x1) / 2), z: r2((z0 + z1) / 2), w: r2(x1 - x0), d: r2(z1 - z0), h, edge: 0.05 }); };
+          lift(2, 11, 6, 12, H1, { s: 0.5 }); lift(2, 0, 6, 2, H2); lift(0, 10, 4, 11, H3); lift(6, 2, 8, 6, H2, { w: 0.3 });   // the landings; the store at the north landing's height
+          R.stair(5, 2, 5, 11, 2, H2, H1, 'concrete'); R.stair(3, 10, 3, 2, 2, H3, H2, 'concrete'); R.stair(1, 4, 1, 10, 2, 0, H3, 'concrete');
+          R.guard('u', 11, 4, 6, H1, HAZ); R.guard('v', 2, 10, 11, H3, HAZ); R.guard('u', 2, 2, 4, H2, HAZ);   /* (open: the top landing's north edge over B, the north landing's west edge over the foot) */
+          /* the numbers: a big one at each landing, so you know how deep you are */
+          R.sign('P3', 5.92, 11.5, H1 + 1.8, 1.6, 1.6, 90, INK, '', 'stencil', 0.4); R.sign('5', 5.92, 0.7, H2 + 1.8, 1.4, 1.8, 90, INK, '', 'stencil', 0.4); R.sign('6', 0.08, 10.5, H3 + 1.8, 1.4, 1.8, -90, INK, '', 'stencil', 0.4);
+          R.sign('SUB-LEVEL 7', 1, 0.06, 4.2, 4.6, 0.8, 0, INK, '', 'stencil', 0.35); floorWords(R, '7', 1, 2.2, 2.6, 3.4, 180);
+          for (const q of [[5.84, 1.0, H2], [0.16, 10.5, H3], [5.84, 11.5, H1], [0.16, 2.0, 0]]) wallLamp(R, q[0], q[1], q[2] + 2.6);
+          for (const q of [[0.1, 7, 0], [5.9, 6, H2 - 1]]) R.box(q[0], q[1], q[2] + 0.6, 0.1, 5.0, 0.22, null, 0xdfe8ff, { glow: 1 });
+          R.wall('v', 0, 2, 4, Object.assign({}, WL, { h: 4.0, doors: [[3.5, 'leaf_security']] })); R.wall('v', 6, 2, 6, Object.assign({}, WL, { y0: H2, h: 4.0, doors: [[2.5, 'leaf_security']] }));
           R.done(); }
     },
     /* PASS 2, THE INSIDES + THE DRESSING: what stands in every room (the FITS list in the notes; packs first, the heavy Meshy pieces once). */
@@ -164,7 +173,7 @@ module.exports = {
           R.B('tanker_desk', 1, 0, 180); R.dec('computer_chair_grey', 1.5, 0.35, 0); R.dec('psx_pc_monitor_mp_1', 1.3, 0.75, 180, { y: 0.78 }); R.dec('psx_pc_keyboard_mp_1', 1.6, 0.9, 180, { y: 0.78 }); R.dec('clipboard_flat', 1.85, 0.7, 30, { y: 0.78 }); R.hung('key_rack', 2.5, 0.06, 0, 1.5); R.hung('punch_clock', 3.4, 0.06, 0, 1.4); R.hung('wall_clock', 1.5, 0.06, 0, 3.0);
           R.dec('vending_machine', 8.5, 0.22, 0); R.keep(8, 0); R.B('metro_bin', 7, 0, 0); for (const u of [6.2, 6.8, 7.4]) R.dec('molded_chair', u, 1.4, 180, nb); R.hung('notice_board', 6.6, 0.06, 0, 1.6); R.dec('meshy_water_cooler', 8.7, 1.5, 270, nb);
           /* the south side: the board that watches the chambers, a barricade by the stair's portal */
-          R.dec('retro_control_panel', 2.5, 9.78, 180); R.keep(2, 9); R.dec('monitor_stack', 3.5, 9.78, 180); R.keep(3, 9); R.hung('gauge_board', 1.5, 9.94, 180, 1.9); R.dec('computer_chair_grey', 2.6, 8.4, 20, nb);
+          R.dec('retro_control_panel', 5.5, 9.78, 180); R.keep(5, 9); R.dec('monitor_stack', 6.5, 9.78, 180); R.keep(6, 9); R.hung('gauge_board', 1.5, 9.94, 180, 1.9); R.dec('computer_chair_grey', 2.6, 8.4, 20, nb);
           R.B('item_police_barricade', 7, 9, 0); R.B('traffic_barrel', 8, 9, 0); R.dec('traffic_cone', 6.6, 8.5, 0, nb);
           /* on the galleries: a camera on the tower, a chair for whoever watches it */
           R.dec('film_camera', 0.5, 3.5, 90, { y: UP, noBlock: true }); R.dec('molded_chair', 0.5, 1.5, 90, { y: UP, noBlock: true }); R.dec('studio_camera', 9.5, 2.5, 270, { y: UP, noBlock: true }); R.dec('molded_chair', 9.5, 5.5, 270, { y: UP, noBlock: true }); R.dec('clipboard_flat', 9.4, 5.9, 0, { y: UP + 0.02, noBlock: true });
@@ -210,9 +219,9 @@ module.exports = {
         { const R = ctx.room('P03-04', 3, 0, 6, 12, 'stair2');
           R.B('tanker_desk', -2, 2, 0); R.dec('computer_chair_grey', -1.5, 3.3, 180, nb); R.dec('psx_pc_monitor_mp_1', -1.4, 2.6, 0, { y: 0.78 }); R.hung('key_rack', -1, 2.06, 0, 1.5); R.dec('office_locker', -1.78, 5.5, 90); R.keep(-2, 5); R.dec('office_locker', -1.78, 4.5, 90); R.keep(-2, 4); R.hung('punch_clock', -0.06, 2.6, 270, 1.4);
           R.B('wrapped_pallet', 7, 2, 0); R.dec('metal_shelving', 7.5, 5.78, 180); R.keep(7, 5); R.dec('hand_truck', 6.6, 3.6, 120, nb); R.dec('psx_supply_crate_1', 7.5, 3.4, 10, nb); R.dec('psx_supply_crate_1', 6.5, 5.2, 60, nb);
-          R.label('GUARD', -0.18, 4, 90, 1.0); R.label('STORE', 6.18, 4, -90, 1.0); R.hung('exit_sign', 3, 0.3, 0, 4.4);
-          R.B('item_police_barricade', 0, 9, 0); R.B('item_police_barricade', 5, 9, 0); R.B('traffic_barrel', 0, 7, 0); R.B('traffic_barrel', 5, 7, 0);
-          R.who('android', 4.5, 2.5, 180); R.done(); }
+          R.label('GUARD', 0.06, 3.5, -90, 1.0); R.sign('STORE', 5.94, 2.5, 9.33 + 2.42, 1.0, 0.24, 90, '#f0f0f0', '#23262b'); R.hung('exit_sign', 1, 0.3, 0, 3.4);
+          R.B('item_police_barricade', 1, 3, 0); R.dec('traffic_barrel', 0.4, 2.4);
+          R.who('android', -1.5, 3.5, 90); R.done(); }
         air(ctx);
     },
 };
@@ -268,9 +277,9 @@ function air(ctx) {
       R.done(); }
     /* ── THE STAIR: a pool of light at the foot, chevrons where the flight lands ── */
     { const R = ctx.room('P03-04', 3, 0, 6, 12, 'stair3');
-      R.bulb(3, 5, 5.5);
-      for (let i = 0; i < 6; i++) R.box(1.6 + i * 0.56, 5.8, 0.013, 0.9, 0.012, 0.3, null, i % 2 ? DARK : HAZ, { ry: 30 });
-      for (const q of [[1, 1.5], [5, 1.5], [3, 3.2]]) dome(R, q[0], q[1], 21, 15.2);
-      ctx.grime('grime', 'P03-04', 6, 5, 1.6); ctx.grime('oil', 'P03-04', 4, 2, 1.0);
+      R.bulb(1, 2, 4.2);
+      for (let i = 0; i < 4; i++) R.box(0.3 + i * 0.5, 3.8, 0.013, 0.8, 0.012, 0.3, null, i % 2 ? DARK : HAZ, { ry: 30 });
+      for (const q of [[1, 1.5, 15.2], [4, 1.0, 8.5], [3, 6, 7.0], [1, 7, 13.0]]) dome(R, q[0], q[1], 21, q[2]);
+      ctx.grime('grime', 'P03-04', 3, 2, 1.4); ctx.grime('oil', 'P03-04', 4, 3, 1.0);
       R.done(); }
 }

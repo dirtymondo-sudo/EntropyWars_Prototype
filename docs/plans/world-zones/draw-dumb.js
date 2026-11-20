@@ -59,8 +59,8 @@ plot(5, 5, 'P', 6, 10.5, 'The Motor Pool', 'the motor pool on its lower deck, a 
 plot(6, 5, 'P', 6, 10.5, 'The East Gantry', 'the tunnel\'s east end: a bridge over the ring, a stair down; on to the Sewers\' Gantry Tunnel', 'Level P3: THE EAST GANTRY · the tunnel east (the old link dumb_cern, now a walk)', [[0, 2, 8, 6, 'o'], [0, 3, 8, 4, 'j'], [4, 0, 8, 12, 'r']]);
 
 /* ── S: SUB-LEVEL 7 (level 0). ── */
-plot(3, 4, 'S', 0, 5.25, 'The Stair', 'the stair down from Level P3: six floors of it, 14 m; two dead-end side rooms', 'Sub-Level 7: room B (the stair up to the motor pool) · side rooms', [[3, 0, 9, 12, 'f'], [1, 2, 3, 6, 'f'], [9, 2, 11, 6, 'f']]);
-plot(3, 3, 'S', 0, 12.25, 'The Hub', 'LANDMARK: THE TOWER, which has no stair; every department is off this hub', 'Sub-Level 7: THE HUB · THE TOWER', [[1, 1, 11, 11, 'f'], [5, 0, 8, 1, 'o'], [5, 11, 8, 12, 'o'], [0, 5, 1, 8, 'o'], [11, 5, 12, 8, 'o']]);
+plot(3, 4, 'S', 0, 21, 'The Stair', 'the stair down from Level P3, 14 m, as three flights that switch back down the hall (world polish thread 8): landings at 9.33 and 4.67, two of their edges ledges; the guard room at the foot, the store halfway down', 'Sub-Level 7: room B (the stair up to the motor pool) · side rooms', [[3, 0, 9, 12, 'f'], [1, 2, 3, 6, 'f'], [9, 2, 11, 6, 'f']]);
+plot(3, 3, 'S', 0, 12.25, 'The Hub', 'LANDMARK: THE TOWER, which has no stair; every department is off this hub', 'Sub-Level 7: THE HUB · THE TOWER', [[1, 1, 11, 11, 'f'], [5, 0, 8, 1, 'o'], [3, 11, 5, 12, 'o'], [0, 5, 1, 8, 'o'], [11, 5, 12, 8, 'o']]);
 plot(2, 3, 'S', 0, 7, 'Chambers 01 + 03', 'the west spoke: 01 THE DROP (a tier up a stair, and the edge) north of it, 03 THE PIT south of it; the stair up to Research', 'Sub-Level 7: 01 THE DROP · 03 THE PIT · the west spoke', [[0, 5, 12, 8, 'o'], [1, 1, 11, 5, 'f'], [1, 8, 11, 11, 'f']]);
 plot(4, 3, 'S', 0, 7, 'Chambers 02 + 04', 'the east spoke: 02 THE CATWALK (two towers and the plank) north of it, 04 OBSERVATION (the deck behind round windows) south of it; the Vault Gantry\'s stair', 'Sub-Level 7: 02 THE CATWALK · 04 OBSERVATION · the east spoke', [[0, 5, 12, 8, 'o'], [1, 1, 11, 5, 'f'], [1, 8, 11, 11, 'f']]);
 plot(3, 2, 'S', 0, 5.25, 'Corridor Five', 'five was always the corridor: the north spoke, the Healing Zone, stairs up to the Range and the Comms Room', 'Sub-Level 7: the north spoke ("Five is the corridor") · the Healing Zone', [[3, 0, 9, 12, 'f'], [0, 5, 3, 8, 'o'], [9, 5, 12, 8, 'o']]);
@@ -99,7 +99,6 @@ set(0, 5 * N + 2, 4, 5 * N + 6, 'o'); set(0, 5 * N + 3, 4, 5 * N + 4, 'j');
 
 /* ── the openings: where two plots of different levels meet (the port = the three middle squares on that side) ── */
 const OPENINGS = [
-    { a: 'P03-05', b: 'P03-04', kind: 'stair', wide: 3, name: 'the stair down: six floors' },
     { a: 'P02-03', b: 'P01-03', kind: 'stair', wide: 3, name: 'the stair up to Research' },
     { a: 'P04-03', b: 'P05-03', kind: 'stair', wide: 3, name: 'the Vault Gantry\'s stair' },
     { a: 'P03-02', b: 'P02-02', kind: 'stair', wide: 1, name: 'the stair up to the Range' },
