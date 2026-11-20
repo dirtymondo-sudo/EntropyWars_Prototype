@@ -29,7 +29,9 @@
      dead end where something is kept (a cell, chains, what is left in it). */
 'use strict';
 const CITY = [2, 2, 14, 9], LEVEL_M = 1.75;
-const MARBLE = 'hz_wall_01', CRYSTAL = 'hz_misc_05', WHITE = 0xf2efe6, STONE = 0xe2ddd0, GLOW = 0xbff4ff;
+/* CRYSTAL = no sheet: a lit crystal part is a light and keeps its own colour (the arch rule's exception for lit parts); every sheet tried
+   (crystal = calm, hz_misc_05 = brown rock, seen 11-20) took the glow away */
+const MARBLE = 'hz_wall_01', CRYSTAL = null, WHITE = 0xf2efe6, STONE = 0xe2ddd0, GLOW = 0xbff4ff;
 const PILOT_X = 24;   // squares x < 24: the pilot's third
 const SPIRE = [42, 6];   // the island's corner square (41..42 x 5..6): the Spire stands on the line between them
 const TERR = [[26, 38, 33, 45], [38, 38, 45, 45], [34, 39, 37, 44]];   // the Plaza, the Inner Gate, the stair between
@@ -212,21 +214,24 @@ module.exports = {
         /* the bridges' ends: a crystal post either side of each (THE CRYSTAL BRIDGES are the plan's `bridges`, written by the tool) */
         (ctx.PLAN.bridges || []).forEach(([p0, p1], i) => { const dx = Math.sign(p1[0] - p0[0]), dy = Math.sign(p1[1] - p0[1]), ox = dy ? 1.55 : 0, oz = dx ? 1.55 : 0;
             const cx = gx(p0[0]) + C / 2 + dx * (C / 2), cz = gz(p0[1]) + C / 2 + dy * (C / 2);
-            look('bridgeposts:' + i, cx, cz, 0, FS, a => { [-1, 1].forEach(s => { a.box(s * ox, 0, s * oz, 0.4, 1.1, 0.4, MARBLE, WHITE); a.cone(s * ox, 1.1, s * oz, 0.22, 0.03, 0.8, CRYSTAL, 0xd8fbff, { glow: 1.4 }); }); }); });
+            look('bridgeposts:' + i, cx, cz, 0, FS, a => { [-1, 1].forEach(s => { a.box(s * ox, 0, s * oz, 0.4, 1.1, 0.4, MARBLE, WHITE); a.cone(s * ox, 1.1, s * oz, 0.22, 0.03, 0.8, CRYSTAL, 0xd8fbff, { glow: 1.4 }); }); });
+            /* the CRYSTAL KEEL: a lit crystal beam under the deck, from ring to island */
+            const mx = (gcx(p0[0]) + gcx(p1[0])) / 2, mz = (gcz(p0[1]) + gcz(p1[1])) / 2, len = (Math.abs(p1[0] - p0[0]) + Math.abs(p1[1] - p0[1])) * C;
+            look('bridgekeel:' + i, mx, mz, dx ? 0 : 90, FS, a => { a.box(0, -1.1, 0, len, 0.75, 1.2, CRYSTAL, 0xbfeaff, { glow: 1.2 }); a.box(0, -1.6, 0, len - 1.2, 0.5, 0.6, CRYSTAL, 0x9fdcf8, { glow: 0.9 }); }); });
         /* the ring: columns at its corners, lanterns */
         [[38, 2], [45, 2], [38, 9], [45, 9]].forEach(([x, y]) => P('greek_column', x, y, { h: 6.5 }));
         /* THE TEMPLE (27..32 x 2..5, door south onto its court) */
         const temple = building('temple', [27, 2, 32, 5], 'S', 7, { leaf: 'leaf_frosted', leafDouble: true, floorIn: 'hz_stone_12' }, (a, fw, fd, door) => {
             a.box(0, -0.05, 0, fw + 0.8, 0.4, fd + 0.8, MARBLE, STONE);
             a.shell(fw, 7, fd, MARBLE, WHITE, door, 3.5);
-            [-1, 1].forEach(sg => { for (let k = 0; k < 3; k++) { const lx = sg * (2.4 + k * 2.9); if (Math.abs(lx) > fw / 2 - 0.3) continue; a.box(lx, 0.35, fd / 2 + 0.25, 0.8, 6.65, 0.5, MARBLE, STONE); } });
+            [-1, 1].forEach(sg => { for (let k = 0; k < 3; k++) { const lx = door.lx + sg * (2.6 + k * 2.9); if (Math.abs(lx) > fw / 2 - 0.3) continue; a.box(lx, 0.35, fd / 2 + 0.25, 0.8, 6.65, 0.5, MARBLE, STONE); } });
             a.box(0, 7.0, 0, fw + 1.0, 0.5, fd + 1.0, MARBLE, STONE);
             /* a stepped crown, the temple's crystal on the top */
             [0, 1, 2].forEach(k => a.box(0, 7.5 + k * 0.6, 0, fw - 2 - k * 3.2, 0.6, fd - 2 - k * 3.2, MARBLE, k % 2 ? STONE : WHITE));
             a.P.push({ s: 'cyl', p: [0, 9.3, 0], r: 0.9, r2: 0.05, h: 2.6, seg: 6, key: CRYSTAL, tint: 0xd8fbff, glow: 1.5 });
             a.box(0, 6.2, fd / 2 + 0.08, fw - 1.6, 0.26, 0.08, CRYSTAL, GLOW, { glow: 1.2 });
             a.box(door.lx, 0, fd / 2 + 0.55, 5.2, 0.18, 1.1, MARBLE, STONE);
-            a.sign('THE TEMPLE', door.lx, 3.35, fd / 2 + 0.09, 4.4, 0.75, '#e8fbff', '#22323c', 'cinzel');
+            a.sign('THE TEMPLE', door.lx, 3.35, fd / 2 + 0.52, 3.6, 0.7, '#e8fbff', '#22323c', 'cinzel');
         });
         put(temple, 'god_statue', 0, -temple.fd / 2 + 1.4, { face: 180, h: 4.2 }); put(temple, 'stone_altar', 0, -1.0, { face: 180 }); put(temple, 'candleRing', 0, 1.2, {});
         put(temple, 'brazier', -temple.fw / 2 + 1.4, -1.5, {}); put(temple, 'brazier', temple.fw / 2 - 1.4, -1.5, {});
