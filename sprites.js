@@ -1135,14 +1135,17 @@ function getRacePanelAnims(unit) {
 const STATUS_FX_BASE = 'https://cdn.entropywars.net/Assets/ui/status_fx';
 const STATUS_FX_FRAMES = 8;
 const STATUS_PORTRAIT_FX = {
-  burn: 'burn', poison: 'poison', bleed: 'bleed', grievous: 'bleed', goo: 'goo', haunted: 'haunted', possessed: 'possessed',
-  corroded: 'corroded2' /* fire + poison: Corroded IS Burn and Poison (data.js countsAs); the first sheet was rusty metal */, radioactive: 'radioactive', feared: 'feared', infected: 'infected', soulBound: 'soulbound', root: 'root',
-  tethered: 'tethered', coiled: 'coiled', silence: 'silence', stun: 'stun', sleep: 'sleep', stagger: 'stagger', marked: 'marked',
-  jammed: 'jammed', drowning: 'drowning', bends: 'drowning', submerged: 'drowning', wet: 'wet', slow: 'slow', charm: 'charm',
-  frozen: 'frozen', blind: 'blind', hexed: 'hexed', statDown: 'statdown', statUp: 'statup', broken: 'broken',
-  stoneform: 'stoneform', blessed: 'blessed', sparkling: 'sparkle', pixieDust: 'sparkle', levitating: 'levitating',
+  burn: 'burn', poison: 'poison', bleed: 'bleed', grievous: 'grievous', goo: 'goo', haunted: 'haunted2', possessed: 'possessed2',
+  corroded: 'corroded2' /* fire + poison: Corroded IS Burn and Poison (data.js countsAs); the first sheet (corroded.png, rusty metal) is KEPT for a later rules change */,
+  radioactive: 'radioactive', feared: 'feared2', infected: 'infected2', soulBound: 'soulbound', root: 'root',
+  tethered: 'tethered', coiled: 'coiled', silence: 'silence', stun: 'stun', sleep: 'sleep', stagger: 'stagger2', marked: 'marked',
+  jammed: 'jammed', drowning: 'drowning', bends: 'bends', submerged: 'submerged', wet: 'wet', slow: 'slow', charm: 'charm',
+  frozen: 'frozen', blind: 'blind2', hexed: 'hexed', broken: 'broken2',
+  stoneform: 'stoneform', blessed: 'blessed', sparkling: 'sparkle', levitating: 'levitating',
   quickened: 'quickened', momentum: 'quickened', protect: 'shield', spawnGuard: 'shield', guarding: 'shield', shield: 'shield',
-  regen: 'regen', guardRegen: 'regen', overclock: 'overclock', invisible: 'invisible', shadowRealm: 'shadow',
+  regen: 'regen', guardRegen: 'regen', invisible: 'invisible', shadowRealm: 'shadow',
+  /* no frame (11-20, the rules check): statUp, statDown, pixieDust, overclock are stat-change carriers, not status effects
+     (the RULE over STATUS_LIBRARY_DESCS); their sheets statup / statdown / overclock stay on R2. */
 };
 /* the sheets a unit wears now, in the order its statuses read (no sheet twice); a live shield counts as 'shield' */
 function getUnitStatusFx(unit) {
