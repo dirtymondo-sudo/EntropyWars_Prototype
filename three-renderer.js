@@ -72416,7 +72416,8 @@ const ThreeRenderer = (function () {
     function _spEmit(A, fnW, fnWN, role, texK, U, B) {
         var nT = A.M.length, own = A.own && A.UV && A.UV.length;
         for (var t = 0; t < nT; t++) {
-            var rk = role(A, t), bk = B[rk] || (B[rk] = { P: [], N: [], UV: [] }), o = t * 9, q, tK = (typeof texK === 'function') ? texK(rk) : texK;   // texK: per metre, or per bucket (a stair side's zoom)
+            var rk = role(A, t); if (rk == null) continue;   // (a role of null = the triangle is left out: THE BURIED KERB)
+            var bk = B[rk] || (B[rk] = { P: [], N: [], UV: [] }), o = t * 9, q, tK = (typeof texK === 'function') ? texK(rk) : texK;   // texK: per metre, or per bucket (a stair side's zoom)
             var fx = A.N[o] + A.N[o + 3] + A.N[o + 6], fy = A.N[o + 1] + A.N[o + 4] + A.N[o + 7], fz = A.N[o + 2] + A.N[o + 5] + A.N[o + 8];
             var ax = Math.abs(fx), ay = Math.abs(fy), az = Math.abs(fz);
             for (q = 0; q < 3; q++) {
@@ -72522,7 +72523,13 @@ const ThreeRenderer = (function () {
                         if (arc) { var a = at(lz).a, tx = sg * Math.cos(a), tz = sg * Math.sin(a); return [tz * x + tx * z, y, -tx * x + tz * z]; }
                         return [uz * x + ux * z, y, -ux * x + uz * z];
                     };
-                    _spEmit(fit.A, P, Nf, function (A, t) { return ((_spIsGlass(A.mats[A.M[t]]) || (glassy && _spPane(A, t))) ? 'glass' : 'body') + ck; }, texK, U, B);
+                    /* THE BURIED KERB (2026-11-20, mondo: "found another spot with flickering", a pale strip trading pixels with the ground at a wall's
+                       foot in Disaster City). The pack's railings stand on a piece of the pack's own floor (`guard` = "on a kerb": a slab 1.15 m wide,
+                       0.25 m deep) and the box that cuts a model out takes that slab along. Its top lies in the ground's plane (the 4 mm every pack
+                       piece is lifted), untextured pale steel: with the ground slab under it lifted by THE ZSEP the two traded pixels. Nothing of a
+                       railing at or under its own foot is drawn: the slab's top, its sides in the ground, its underside. */
+                    _spEmit(fit.A, P, Nf, function (A, t) { var o9 = t * 9; if (A.P[o9 + 1] <= 0.005 && A.P[o9 + 4] <= 0.005 && A.P[o9 + 7] <= 0.005) return null;
+                        return ((_spIsGlass(A.mats[A.M[t]]) || (glassy && _spPane(A, t))) ? 'glass' : 'body') + ck; }, texK, U, B);
                 });
                 _spFlush(B, G, function (rk) {
                     if (rk.indexOf('glass') === 0) return mats.glass || (mats.glass = _spGlass());

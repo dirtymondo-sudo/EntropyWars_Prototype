@@ -3140,6 +3140,17 @@ City: 5,666 pairs, 4,732 faces lifted on 979 pieces, ~4.3 s sliced on the cloud'
 recipe: walk `dev.hqScene()` skipping `_ew_bRec`-merged originals' copies (`_ew_hqBatch`) and hidden instance sources.
 The Bayside sea-wall ground in his second picture showed no overlapping surfaces in a sweep with decals and cut-outs included; if it still
 flickers, suspect shadow acne at a low sun (HQ_LIGHT_RULES.shadows.normalBias 2.4 vs a ~3-6 cm shadow texel).
+- THE BURIED KERB (11-20, mondo: "found another spot with flickering", a pale torn strip on the ground at a wall's foot by a ladder,
+  Disaster City). Cause: the pack's railings are cut out of the pack with a piece of its floor under them (`guard`, "on a kerb" = a slab
+  1.15 m wide, 0.25 m deep; data.js railings `box` y from -0.05 / -0.45 / -0.86). The slab's top lay in the ground's plane (4 mm up),
+  untextured pale steel (`_spSheet(null)` #8d939a), under EVERY guard rail (bake-disaster-city.js ways, L.js, N.js, bake-route.js): 1,028
+  half-metre cells in the city. THE ZSEP never saw it (railings land later, in the plots' `hq_chunk` groups, not in the merge's
+  candidates) and the ground slab it lifts 1.2 cm then cut through it. Fix: `_spBuildRailings` leaves out every triangle at or under the
+  railing's own foot (all three corners y <= 5 mm; `_spEmit` skips a role of null). Proof at x 126 z -220 (plot ground y 12.25): 9.9 m2 of
+  slab before, 0 after. THE SWEEP that found it (scratch, not in the repo; rebuild it like this): walk `dev.hqScene()` skipping `_ew_bRec` and
+  `_ew_instHidden`, take each up-facing triangle, sample it on a 0.5 m grid IN 48 m STRIPS of x (one pass over the whole city = 16 M
+  samples and the page dies), sort by cell + height, report pairs within 4 mm grouped by the two materials. Still on its list, not looked
+  at: the city's edge land sheet on the road (`hq_edge_land`, z 254), instanced prop bases on the road (barrels, bins, containers on containers).
 
 ## THE NEW BODY SPLIT (2026-11-19, spikes thread)
 mondo's 14:53 F3 had one 116 ms frame with "residents: new body 51 ms" (one body a frame since PR #2137, bakes kept per key since #2156),
