@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 1036 |
+| Asset pack | yes | 1040 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -3518,6 +3518,9 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 
 | tree key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
+| cherry | `Assets/world/nature/retrotreepack/GLB/tree_rt_4_full#ff8fbe.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| cherry_2 | `Assets/world/nature/retrotreepack/GLB/tree_rt_2_1_full#ffb7d5.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| cherry_3 | `Assets/world/nature/retrotreepack/GLB/tree_rt_2_full#ff9cc6.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | chess_bishop | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_bishop` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_bishop_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_bishop_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_king | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_king` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
@@ -3536,6 +3539,7 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | fae_bloom_tree_violet | `Assets/world/nature/OBJ/asset:world/props/meshy/ew_plant_healflower.glb#b890ff.obj` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
 | fae_cap | `Assets/world/props/meshy/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fae_cap_2 | `Assets/world/props/meshy/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| maple | `Assets/world/nature/retrotreepack/GLB/tree_rt_4_full#d8431f.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | palm | `Assets/world/hq/models/Meshy_AI_palm_tree_0910054114_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | pine | `Assets/world/nature/retrotreepack/GLB/tree_rt_1_full.glb` | Built by Claude in code (a bake tool writes the file) | THE PAINTED TREES: trunk, boughs, leaf puffs and the leaf pictures built by bake-trees.py; only the bark picture is the Retro Tree Pack's (Pizza Doggy licence) |
 | pine_2 | `Assets/world/nature/retrotreepack/GLB/small_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
