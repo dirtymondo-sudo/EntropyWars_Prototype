@@ -10,7 +10,7 @@ const DARK = 0x3a2a1e, PLASTER = 0xf0ebe0, RED = 0xc23a22, STONE = 0x8d8a84, STR
 module.exports = {
     from: [17, 58],   // the pier's head on the Landing Square: where the boat sets you down
     reach: [[13, 51, 'the Harbour Office'], [20, 52, 'the Fish Market'], [8, 63, 'the Shipwright’s Shed'], [6, 68, 'the Net Loft'], [29, 63, 'the Rice Store'], [28, 65, 'the Harbour Inn'],
-        [30, 75, 'the Fishermen’s Hut'], [6, 79, 'the Lantern Tower'], [30, 80, 'the Fishing Beach'], [9, 79, 'the small beach'], [17, 66, 'the pier’s end'], [27, 52, 'the Harbour Gate stair’s head'], [8, 55, 'the West Steps’ head']],
+        [30, 75, 'the Fishermen’s Hut'], [3, 79, 'the Lantern Tower'], [30, 80, 'the Fishing Beach'], [9, 79, 'the small beach'], [17, 66, 'the pier’s end'], [27, 52, 'the Harbour Gate stair’s head'], [8, 55, 'the West Steps’ head']],
     build(ctx) {
         const { C, r2, rnd, gx, gz, WD, WD2, SHG, FLR, PLS, TILE } = ctx;
         /* ── THE GROUND ── */
@@ -42,9 +42,9 @@ module.exports = {
         const Fb = ctx.building('inn', [27, 66, 31, 70, 'N'], 5.6, { leafDouble: true }, (a, w, d, door) => { house(a, w, 5.6, d, door, { roof: { top: 'gable', over: 1.5 } });
             a.box(0, 2.8, d / 2 + 0.07, w + 0.24, 0.22, 0.1, WD2, DARK);                                                                                   // the upper floor's beam
             a.roof('shed', 0, 2.75, d / 2 + 0.8, w * 0.6, 0.5, 1.5, TILE, 0x5a6676, { ry: 180 }); for (const sx of [-1, 1]) a.cyl(sx * w * 0.28, 0, d / 2 + 1.45, 0.1, 2.75, WD2, DARK, { seg: 8 }); });   // a porch roof over the door on two posts
-        const Hh = ctx.building('hut', [31, 74, 34, 76, 'W'], 2.6, {}, (a, w, d, door) => { a.shell(w, 2.6, d, WD, 0x9a7a52, door, [1.75, 1.75]); a.frame(door, d, WD2, DARK);
+        const Hh = ctx.building('hut', [31, 74, 34, 76, 'W'], 2.6, { onSand: true }, (a, w, d, door) => { a.shell(w, 2.6, d, WD, 0x9a7a52, door, [1.75, 1.75]); a.frame(door, d, WD2, DARK);
             a.roof('gable', 0, 2.6, 0, w + 1.6, 2.0, d + 1.6, SHG, STRAW, { gain: 1.7, uv: [1.2, 1.2] }); a.box(0, 2.44, 0, w + 1.7, 0.16, d + 1.7, SHG, 0xb89448, { top: false, roof: true, gain: 1.6 }); });   // thatch
-        const T = ctx.building('lantern', [4, 79, 6, 81, 'E'], 7.5, {}, (a, w, d, door) => { a.shell(w, 5.2, d, PLS, STONE, door, [1.75, 1.75], 1.6); a.frame(door, d, WD2, DARK);
+        const T = ctx.building('lantern', [4, 79, 6, 81, 'W'], 7.5, {}, (a, w, d, door) => { a.shell(w, 5.2, d, PLS, STONE, door, [1.75, 1.75], 1.6); a.frame(door, d, WD2, DARK);
             a.box(0, 0, 0, w + 0.8, 1.4, d + 0.8, PLS, 0x77746e, { top: true, uv: [1.75, 1.75], faces: 'blr' });                                          // the stone foot (open at the door's side)
             a.jroof(5.2, w, d, { top: 'hip', over: 0.9, skirt: 0.5, rise: 0.35 });                                                                         // a skirt roof under the fire room
             a.box(0, 5.75, 0, w * 0.62, 1.5, d * 0.62, PLS, 0xffd27a, { glow: 1.1 }); for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.cyl(sx * w * 0.33, 5.7, sz * d * 0.33, 0.1, 1.6, WD2, DARK, { seg: 6 });   // the fire room: a lit box between four posts

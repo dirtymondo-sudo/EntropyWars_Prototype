@@ -12978,6 +12978,37 @@ mondo 11-20 on plan 3: "Yes the map layout looks much better ... Go ahead and bu
   dirt, and adds room-wide scatter (fallen logs, stumps, dead bushes, snags). Past the room's line: `terrain.edges.deep: true` (three-renderer.js `_hqEdgeLandFn`'s
   planting: the forest stays thick to the end of the planting, not thinned after 22 m). Seen in the probe from the Dead End and Deep woods, west. OPEN: the land
   past the line wears the map's bright forest green, lighter than the room's floor; the draw cost with the deeper wood is not measured.
+
+## KATANA ISLAND, THE REST: ALL SIX DISTRICTS, PASS 1 (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20, on the pilot: "Okay the pilot looks decent, continue the rest".
+
+- **THE GROUND IS TERRACES NOW** (`bake-katana.js`): every plot outside the volcano is level ground at its own level with a rock face where it meets another level, so
+  every such face is a drop you walk off (the plan's 13 ledges are places on those faces, not separate pieces). The volcano's five plots stay rolling ground under one
+  cone. THE CONE WAS RAISED: the rim is 45.5 m (26 levels; the plan said 18 = 31.5 m, which read too low from the bay), the lava inside at 40 m, 3 m of fall a square.
+- **THE WAYS' STAIRS ARE LAID BY THE TOOL:** wherever a way of `layout.js` steps from one height to another, a real flight stands on the LOW side, as wide as the way,
+  about 2.4 m of rise a square (22 flights today; stone in the City, timber rows elsewhere). A way with no room for its flight before a turn stops the bake.
+- **THE TOOL'S CHECKS** (the bake stops on any): a building on a way, on sand or in water (`onSand: true` lets a beach hut through); two things on one square; a prop in
+  the water; a place a district's `reach` names that the walk from the pier cannot get to (39 named places today, every district's).
+- **HELPERS EVERY DISTRICT FILE USES:** `ctx.house` (plaster, frame, paper screens, the curved roof), `ctx.tiers` (a tower of roofs: the pagoda, the keep), `ctx.thatch`
+  (a thatched hut), `ctx.open` / `ctx.sow` (open earth; a dice-sown box), `ctx.pier`, `ctx.stairs`, `ctx.look`, `ctx.onWay`.
+- **THE CITY (`districts/C.js`, 19 buildings):** the Merchants' Town (bath house, tea shop, sake brewery, lantern maker, noodle shop), the Temple Quarter (the five-roofed
+  red PAGODA, the temple hall, the monks' house, bell, gong, braziers), the High Town (theatre, tea house, two town houses), the Samurai Quarter (dojo, two samurai
+  houses, armoury), the Castle (the KEEP on a stone foot, four roofs high; the guard house; the open yard; a white wall with a tiled cap on the terrace's edges; the East
+  Gate and the Main Gate), the Castle Garden (pond, pavilion, bridge), three red gates on the shrine stair. Stand-ins as he said: `sword`, `decor_armour_stand_post`.
+- **THE VILLAGE (`L.js`, 9 buildings):** four flooded paddies with rice rows and scarecrows, the Shore Hamlet's fishermen's houses, the village (farm houses, the store,
+  the headman's house, the well, the square), the Terraces (an upper field one level up with its own stair).
+- **THE WOODS (`W.js`, 5 buildings, 160 trees):** the Cherry Wood (cherries, the viewing pavilion), the Bamboo Wood (tall birches and pines: NO BAMBOO MODEL YET), the
+  Old Wood (the hidden shrine and its gate on a rise), the Hot Spring (two spring pools in rocks, the bath house, maples).
+- **THE JUNGLE (`J.js`):** WHAT CAME OVER FROM THE VOLCANO ISLAND: the fenced Dinosaur Park (the paddock 7 x 7, gate, sign, lookout, keeper's hut, the dig with the
+  skeleton and two tents, four dinosaurs) and the TRIBE'S CAMP in the Jungle north (two walk-in thatch huts, the idol shrine with altar and braziers, totems, torches).
+  Palms, banana plants, bushes, ferns; canoes on the East Shore.
+- **THE VOLCANO (`V.js`):** lava in the crater and in four pools on the Lava Field, black rocks and burnt snags, a red gate at the rim where the Mountain Road ends, a
+  watch fire on the Black Cape, a dragon at the rim (his Katana Bay list).
+- **THE PEOPLE:** `HQ_AREA_ENCOUNTERS.site_prebuilt_katana_island` has `spots: false`, so the people a district places keep their race (the park's dinosaurs, the dragon).
+- **NOT DONE YET:** THE SWAP (the room is still at its pilot's place on the map with no boat; the Volcano Island still stands); insides are bare rooms with a few things;
+  no bamboo, no real torii / statues (NEEDS A MODEL); the waterfall from the Hot Spring to the Paddies; night look; frame rate (one room, 41 buildings, 229 trees, 409
+  props: to be measured on a real machine); the flag.
 - **THE LAND PAST THE LINE WEARS THE ROOM'S TONE (11-20, mondo: "fix the ground being green past the edge, it doesn't match").** `terrain.edges.tint: [r, g, b]`
   multiplies the edge land's colour (three-renderer.js `_hqBuildEdgeLand` `colOf`; only a room that sets it changes). The Clearing's room: `[0.5, 0.5, 0.52]`
   (bake-woods.js, designed rooms). Seen in the probe at Deep woods, west.

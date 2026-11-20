@@ -34,17 +34,20 @@ for (let y = 0; y < H; y++) { kind.push([]); paintKey.push([]); for (let x = 0; 
 const iK = (ix, iy) => (ix < 0 || iy < 0 || ix >= I.W || iy >= I.H) ? 'sea' : I.KIND[iy][ix];
 /* the blended level of an island square: the plots' levels, plot middle to plot middle; a plot that is sea counts as its land neighbours */
 function blend(ix, iy) { const fx = (ix + 0.5) / N - 0.5, fy = (iy + 0.5) / N - 0.5, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0, sm = t => t * t * (3 - 2 * t); let a = 0, n = 0;
-    [[0, 0, (1 - sm(tx)) * (1 - sm(ty))], [1, 0, sm(tx) * (1 - sm(ty))], [0, 1, (1 - sm(tx)) * sm(ty)], [1, 1, sm(tx) * sm(ty)]].forEach(([dx, dy, wt]) => { const p = I.plot[(x0 + dx) + ':' + (y0 + dy)]; if (p && p.d !== 'B' && wt > 0) { a += p.level * wt; n += wt; } });
+    [[0, 0, (1 - sm(tx)) * (1 - sm(ty))], [1, 0, sm(tx) * (1 - sm(ty))], [0, 1, (1 - sm(tx)) * sm(ty)], [1, 1, sm(tx) * sm(ty)]].forEach(([dx, dy, wt]) => { const p = I.plot[(x0 + dx) + ':' + (y0 + dy)]; if (p && p.d === 'V' && wt > 0) { a += p.level * wt; n += wt; } });
     const own = I.plotAt(ix, iy); return n > 0 ? a / n : own.level; }
 const CRATER = [41.5, 17.5];
 for (let iy = 0; iy < I.H; iy++) for (let ix = 0; ix < I.W; ix++) { const k = iK(ix, iy), p = I.plotAt(ix, iy), X = ix + OFF, Y = iy + OFF, o = Y * W + X; if (k === 'sea' || !p) continue;
     if (p.d === 'B') { kind[Y][X] = k === 'sand' ? 's' : 'q'; hgt[o] = k === 'sand' ? 0.4 : p.level * LV; hard[o] = k === 'sand' ? 0 : 1; continue; }
+    /* THE TERRACES (the build after the pilot): every plot outside the volcano is level ground at its own level, with a rock face where it meets another
+       level (any such face is a drop you walk off). The volcano's five plots stay rolling ground: the plots' levels blended, the cone on top. */
+    if (p.d !== 'V') { const sand = k === 'sand'; kind[Y][X] = sand ? 's' : 'g'; hgt[o] = sand ? 0.4 : p.level * LV; hard[o] = sand ? 0 : 1; continue; }
     let h = blend(ix, iy) * LV, kk = 'g'; const r = Math.hypot(ix + 0.5 - CRATER[0], iy + 0.5 - CRATER[1]);
-    if (p.d === 'V' || r < 15) { const cone = r < 2.6 ? 26.5 : r < 4 ? 31.5 : 31.5 - (r - 4) * 2.05; if (cone > h) { h = cone; kk = r < 2.6 ? 'l' : 'v'; } else if (p.d === 'V') kk = 'v'; }
+    if (p.d === 'V' || r < 15) { const cone = r < 2.6 ? 40 : r < 4 ? 45.5 : 45.5 - (r - 4) * 3.0;   /* THE CONE: the rim 45.5 m (26 levels: raised 11-20 from the plan's 18, it read too low from the bay), the lava inside 40 m, 3 m of fall a square */ if (cone > h || r < 4) { h = cone; kk = r < 2.6 ? 'l' : 'v'; } else if (p.d === 'V') kk = 'v'; }
     if (k === 'sand') { kk = 's'; h = 0.4; }
     kind[Y][X] = kk; hgt[o] = h; }
 /* the ways outside the bay: dirt, for now (each district lays its own when it is built) */
-I.WAYS.forEach(w => I.waySquares(w).forEach(q => { const p = I.plotAt(q[0], q[1]); if (p && p.d !== 'B' && iK(q[0], q[1]) !== 'sea') paintKey[q[1] + OFF][q[0] + OFF] = 'dirt'; }));
+I.WAYS.forEach(w => I.waySquares(w).forEach(q => { const p = I.plotAt(q[0], q[1]); if (p && p.d !== 'B' && iK(q[0], q[1]) !== 'sea') paintKey[q[1] + OFF][q[0] + OFF] = p.d === 'C' ? 'cobblestone' : p.d === 'V' ? 'scorched' : 'dirt'; }));
 
 /* ── the lists the room is written from ── */
 const F = [], ARCH = [], props = [], npc = [], taken = new Set(), errs = [], count = {};
@@ -96,7 +99,7 @@ const ctx = { C, LV, N, r2, rnd, gx, gz, mx, mz, I, U, WD, WD2, SHG, FLR, PLS, T
     /* a stair: island squares x0..x1, y0..y1 inclusive, climbing `dir` ('N' 'S' 'E' 'W') from level a to level b (levels, or metres with m: true). The squares under it are set to the low level. */
     stairs(id, x0, y0, x1, y1, dir, a, b, o) { o = o || {}; const lo = o.m ? a : a * LV, hi = o.m ? b : b * LV, ew = dir === 'E' || dir === 'W', cxm = (gx(x0) + gx(x1 + 1)) / 2, czm = (gz(y0) + gz(y1 + 1)) / 2;
         const e0 = dir === 'E' ? gx(x0) : dir === 'W' ? gx(x1 + 1) : dir === 'S' ? gz(y0) : gz(y1 + 1), e1 = dir === 'E' ? gx(x1 + 1) : dir === 'W' ? gx(x0) : dir === 'S' ? gz(y1 + 1) : gz(y0);
-        ctx.set(x0, y0, x1, y1, 'q', lo, { m: true });
+        ctx.set(x0, y0, x1, y1, o.kind || 'q', lo, { m: true, paint: o.paint });
         F.push({ k: 'ramp', id: 'kat:stair:' + id, absY: true, x0: r2(ew ? e0 : cxm), z0: r2(ew ? czm : e0), x1: r2(ew ? e1 : cxm), z1: r2(ew ? czm : e1), w: r2((ew ? y1 - y0 + 1 : x1 - x0 + 1) * C), h0: r2(lo), h1: r2(hi), stairs: true, model: o.model || 'stone', edge: 0.01 });
         for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) taken.add(x + ':' + y); },
     /* a timber pier over the water: island squares inclusive, its deck at the quay's level on piles (the water under it stays water) */
@@ -121,15 +124,57 @@ const ctx = { C, LV, N, r2, rnd, gx, gz, mx, mz, I, U, WD, WD2, SHG, FLR, PLS, T
     afloat(key, fx, fy, o) { props.push(Object.assign({ key, x: gx(fx), z: gz(fy), y: 0.32 }, o || {})); },
     tree(kindName, ix, iy, h, o) { if (taken.has(ix + ':' + iy)) return false; const k = kind[iy + OFF][ix + OFF]; if (k !== 'g' && k !== 's') return false; taken.add(ix + ':' + iy); F.push(Object.assign({ k: 'tree', x: r2(mx(ix) + (rnd() - 0.5)), z: r2(mz(iy) + (rnd() - 0.5)), kind: kindName, h: r2(h), r: 0.6 }, o || {})); return true; },
     free: (ix, iy) => !taken.has(ix + ':' + iy), take: (ix, iy) => taken.add(ix + ':' + iy), feat: row => F.push(row) };
+/* THE HOUSE every district builds with: plaster over a dark timber frame, paper screens on the front, the curved roof. o: wall, wallTint, plain (no frame, no
+   screens), roof (jroof's options). Returns the ridge's height. mondo will likely make Meshy roofs later: this is the one place to swap. */
+const DARK = 0x3a2a1e, PLASTER = 0xf0ebe0;
+ctx.DARK = DARK; ctx.PLASTER = PLASTER;
+ctx.house = (a, w, h, d, door, o) => { o = o || {};
+    a.shell(w, h, d, o.wall || PLS, o.wallTint != null ? o.wallTint : PLASTER, door, [1.75, 1.75], o.plain && o.wall ? 1.2 : 2.1); if (!o.plain) a.timber(w, h, d, DARK); a.frame(door, d, WD2, DARK);
+    if (!o.plain) { const n = Math.round(w / 1.75), bw = w / n; for (let i = 0; i < n; i++) { const lx = -w / 2 + (i + 0.5) * bw; if (Math.abs(lx - door.lx) < bw * 0.6) continue; a.P.push({ s: 'quad', p: [r2(lx), 0.95, r2(d / 2 + 0.075)], size: [r2(bw - 0.5), 1.25], key: PLS, tint: 0xfff6dc, glow: 0.3, gain: 2.4 });
+        a.box(lx, 0.95, d / 2 + 0.08, 0.05, 1.25, 0.03, WD2, DARK); a.box(lx, 1.55, d / 2 + 0.08, bw - 0.5, 0.05, 0.03, WD2, DARK); } }
+    if (o.storeys > 1) for (let k = 1; k < o.storeys; k++) a.box(0, h * k / o.storeys, d / 2 + 0.07, w + 0.24, 0.22, 0.1, WD2, DARK);
+    return o.noRoof ? h : a.jroof(h, w, d, o.roof || {}); };
+/* A TOWER OF ROOFS (a pagoda, a castle keep): `tiers` storeys, each a plaster box a little smaller than the one under it with its own skirt roof, the top one
+   a full roof. w x d = the foot, h0 = the first storey's height, hs = each further storey's. Parts frame as a building's. Returns the top. */
+ctx.tiers = (a, w, d, tiers, h0, hs, o) => { o = o || {}; let y = 0, ww = w, dd = d;
+    for (let k = 0; k < tiers; k++) { const hh = k === 0 ? h0 : hs, last = k === tiers - 1;
+        if (k > 0) { a.box(0, y, 0, ww, hh, dd, PLS, o.wallTint != null ? o.wallTint : PLASTER, { top: false, uv: [1.75, 1.75], gain: 2.1 }); for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * ww / 2, y, sz * dd / 2, 0.2, hh, 0.2, WD2, o.post != null ? o.post : DARK); }
+        y += hh; const sub = sheet(); const top = sub.jroof(0, ww, dd, last ? Object.assign({ top: o.top || 'gable', over: o.over || 1.2 }, o.roof || {}) : Object.assign({ top: 'hip', skirt: 0.75, rise: 0.45, over: o.over || 1.6 }, o.roof || {}));
+        sub.P.forEach(q => { q.p = [q.p[0], r2(q.p[1] + y), q.p[2]]; a.P.push(q); }); if (last) return y + top; ww *= o.shrink || 0.78; dd *= o.shrink || 0.78; }
+    return y; };
 /* the ways' squares are kept clear of trees and blockers */
 const WAYSQ = new Set(); I.WAYS.forEach(w => I.waySquares(w).forEach(q => WAYSQ.add(q[0] + ':' + q[1])));
 
 /* ── the districts ── */
-const DIST = {}; ['B'].forEach(d => { DIST[d] = require('./docs/areas/katana/districts/' + d + '.js'); });
+const DIST = {}; ['B', 'C', 'L', 'W', 'J', 'V'].forEach(d => { const f = path.join(REPO, 'docs/areas/katana/districts', d + '.js'); if (fs.existsSync(f)) DIST[d] = require(f); });
+ctx.WAYSQ = WAYSQ; ctx.onWay = (ix, iy) => WAYSQ.has(ix + ':' + iy);
+/* helpers every district uses: `open(ix, iy)` = level earth nobody stands on and no way crosses; `sow(x0, y0, x1, y1, chance, fn)` = fn(ix, iy, v) on
+   each open square of a box that the dice pick (one stream, in reading order); `B2(id, q, ...)` = a building only on open earth (else the bake stops) */
+ctx.open = (ix, iy) => ix >= 0 && iy >= 0 && ix < I.W && iy < I.H && kind[iy + OFF][ix + OFF] === 'g' && !taken.has(ix + ':' + iy) && !WAYSQ.has(ix + ':' + iy);
+ctx.sow = (x0, y0, x1, y1, chance, fn) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const v = rnd(); if (v < chance && ctx.open(x, y)) fn(x, y, v / chance); } };
+ctx.thatch = (a, w, h, d, door, tint) => { a.shell(w, h, d, WD, tint != null ? tint : 0x9a7a52, door, [1.75, 1.75]); a.frame(door, d, WD2, DARK);
+    a.roof('gable', 0, h, 0, w + 1.6, Math.max(1.6, d * 0.42), d + 1.6, SHG, 0xd2b060, { gain: 1.7, uv: [1.2, 1.2] }); a.box(0, h - 0.16, 0, w + 1.7, 0.16, d + 1.7, SHG, 0xb89448, { top: false, roof: true, gain: 1.6 }); };
+const building0 = ctx.building; ctx.building = (id, q, h, o, parts) => { for (let y = q[1]; y < q[3]; y++) for (let x = q[0]; x < q[2]; x++) { if (kind[y + OFF][x + OFF] === 'w' || (kind[y + OFF][x + OFF] === 's' && !(o && o.onSand))) errs.push(id + ': not on firm ground at ' + x + ',' + y); if (WAYSQ.has(x + ':' + y)) errs.push(id + ': stands on a way at ' + x + ',' + y); } if (o && o.onSand) { o = Object.assign({}, o); delete o.onSand; } return building0(id, q, h, o, parts); };
 Object.keys(DIST).forEach(d => DIST[d].build(ctx));
 
+/* ── THE WAYS' STAIRS: wherever a way (layout.js) steps from one height to another, a real flight stands on the LOW side, as wide as the way, long enough
+   for the rise (about 2.4 m of rise a square), unless a district already laid one there. A way too short before a turn for its flight stops the bake. ── */
+{ const under = (ix, iy) => { const px = mx(ix), pz = mz(iy); return F.some(f => (f.k === 'ramp' || f.k === 'deck') && (f.z0 === f.z1 ? (px > Math.min(f.x0, f.x1) && px < Math.max(f.x0, f.x1) && Math.abs(pz - f.z0) < f.w / 2) : (pz > Math.min(f.z0, f.z1) && pz < Math.max(f.z0, f.z1) && Math.abs(px - f.x0) < f.w / 2))); };
+  const H = (ix, iy) => hgt[(iy + OFF) * W + ix + OFF], dirOf = (dx, dy) => dx > 0 ? 'E' : dx < 0 ? 'W' : dy > 0 ? 'S' : 'N'; let made = 0;
+  I.WAYS.forEach((w, wi) => { const pts = w[2], wd = w[1], lo = -Math.floor((wd - 1) / 2), hi = Math.ceil((wd - 1) / 2), line = [];
+      for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], sx = Math.sign(b[0] - a[0]), sy = Math.sign(b[1] - a[1]); let x = a[0], y = a[1]; if (i === 1) line.push([x, y]); while (x !== b[0] || y !== b[1]) { x += sx; y += sy; line.push([x, y]); } }
+      for (let i = 0; i + 1 < line.length; i++) { const a = line[i], b = line[i + 1], ha = H(a[0], a[1]), hb = H(b[0], b[1]), dh = Math.abs(ha - hb); if (dh <= 0.6) continue;
+          const pa = I.plotAt(a[0], a[1]), pb = I.plotAt(b[0], b[1]); if (!pa || !pb || (pa.d === 'V' && pb.d === 'V')) continue; if (under(a[0], a[1]) || under(b[0], b[1])) continue;
+          const up = hb > ha, low = up ? a : b, step = up ? [a[0] - b[0], a[1] - b[1]] : [b[0] - a[0], b[1] - a[1]], hLow = Math.min(ha, hb), hHigh = Math.max(ha, hb);   // `step` = one square further into the low side
+          let n = Math.max(1, Math.ceil(dh / 2.4)), got = 1; while (got < n) { const q = [low[0] + step[0] * got, low[1] + step[1] * got], j = up ? i - got : i + 1 + got, on = line[j] && line[j][0] === q[0] && line[j][1] === q[1]; if (!on || Math.abs(H(q[0], q[1]) - hLow) > 0.05 || under(q[0], q[1])) break; got++; }
+          if (dh / (got * C) > 1.01) { errs.push(w[0] + ': no room for a flight of ' + r2(dh) + ' m at ' + a + ' -> ' + b + ' (' + got + ' of ' + n + ' squares)'); continue; }
+          const far = [low[0] + step[0] * (got - 1), low[1] + step[1] * (got - 1)], ew = step[0] !== 0, x0 = Math.min(low[0], far[0]) + (ew ? 0 : lo), x1 = Math.max(low[0], far[0]) + (ew ? 0 : hi), y0 = Math.min(low[1], far[1]) + (ew ? lo : 0), y1 = Math.max(low[1], far[1]) + (ew ? hi : 0);
+          const plow = I.plotAt(low[0], low[1]), city = plow.d === 'C' || plow.d === 'B';
+          ctx.stairs('way' + wi + '_' + i, x0, y0, x1, y1, dirOf(-step[0], -step[1]), hLow, hHigh, { m: true, kind: kind[low[1] + OFF][low[0] + OFF] === 's' ? 'g' : kind[low[1] + OFF][low[0] + OFF], paint: city ? 'cobblestone' : 'dirt', model: city ? 'stone' : 'timber' }); made++; } });
+  count.wayStairs = made; }
+
 /* ── the backdrop: the districts not built yet wear a few trees, so the bay is not seen against bare hills (each is replaced when its district is built) ── */
-{ const NOT_BUILT = { W: 1, J: 1, L: 1, C: 1, V: 1 }; let cherry = 0, palm = 0, pine = 0;
+{ const NOT_BUILT = {}; ['W', 'J', 'L', 'C', 'V'].forEach(d => { if (!DIST[d]) NOT_BUILT[d] = 1; }); let cherry = 0, palm = 0, pine = 0;
   for (let iy = 0; iy < I.H; iy++) for (let ix = 0; ix < I.W; ix++) { const p = I.plotAt(ix, iy); if (!p || !NOT_BUILT[p.d] || WAYSQ.has(ix + ':' + iy)) { if (p && NOT_BUILT[p.d]) rnd(); continue; } const v = rnd(), nm = p.name;
       if (p.d === 'W' && nm !== 'The Bamboo Wood' && v < 0.2) { if (ctx.tree(['cherry', 'cherry_2', 'cherry_3'][Math.floor(rnd() * 3)], ix, iy, 5.5 + rnd() * 2.5)) cherry++; }
       else if (p.d === 'W' && v < 0.16) { if (ctx.tree('tree_55', ix, iy, 6 + rnd() * 3)) pine++; }
@@ -168,7 +213,8 @@ if (PAL.length > 8) throw new Error('more than 8 paint sheets: ' + PAL.join(' ')
   while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of N8.slice(0, 4)) { const X = x + dx, Y = y + dy; if (!inr(X, Y) || seen[Y * W + X]) continue; const a = y * W + x, b = Y * W + X; if (hgt[b] <= -1.15 && !ramp.has(b)) continue;
       const A2 = hOf(a), B2 = hOf(b), sfb = !hard[a] && !hard[b], gap = Math.min(Math.abs(A2[0] - B2[0]), Math.abs(A2[0] - B2[1]), Math.abs(A2[1] - B2[0]), Math.abs(A2[1] - B2[1]));
       if (sfb ? Math.abs(hgt[a] - hgt[b]) / C > 1.0 : gap > 0.62) continue; seen[b] = 1; st.push([X, Y]); } }
-  (DIST.B.reach || []).forEach(q => { if (!seen[(q[1] + OFF) * W + q[0] + OFF]) errs.push('not reached on foot from the pier: ' + q[2] + ' (' + q[0] + ',' + q[1] + ')'); });
+  Object.keys(DIST).forEach(d => (DIST[d].reach || []).forEach(q => { if (!seen[(q[1] + OFF) * W + q[0] + OFF]) errs.push('not reached on foot from the pier: ' + q[2] + ' (' + q[0] + ',' + q[1] + ')'); }));
+  ([]).forEach(q => { if (!seen[(q[1] + OFF) * W + q[0] + OFF]) errs.push('not reached on foot from the pier: ' + q[2] + ' (' + q[0] + ',' + q[1] + ')'); });
   if (process.env.KATANA_DUMP) console.log(kind.map((r, y) => r.map((ch, x) => seen[y * W + x] ? '.' : ch === 'w' ? ' ' : ch).join('')).join('\n')); }
 if (errs.length) { console.log(errs.join('\n')); if (!DRY) throw new Error(errs.length + ' problems'); }
 
