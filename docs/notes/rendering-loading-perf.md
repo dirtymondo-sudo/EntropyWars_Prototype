@@ -3556,3 +3556,17 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   (tree "other" = a fade's material swap or a ceiling shown / hidden: each start and end of a ceiling's fade re-records its group,
   820 at once when the camera cuts); hud.js `EntropyTrace` draw 2 % (reads `clientWidth` every frame); RULE for the HUD: never
   `drawImage` a WebGL canvas per frame on Firefox.
+- THE PORTRAIT WITHOUT THE WAIT (11-20, mondo: "do the proper fix. I don't understand how adding a little portrait slows the game
+  down so much ... why is adding 1 more unit making the game slow down?"). It was never the extra body (128 × 128, one small
+  render): it was `drawImage(WebGL canvas)` onto the HUD's 2D canvas, a synchronous read-back in Firefox that holds the main
+  thread until the GPU process answers, behind the fight's WebGPU frame. `_ptLiveTick` now reads back WITHOUT waiting, on WebGL 2:
+  `_ptReadAsk` (after `_ptRender`: `readPixels` into a PIXEL_PACK_BUFFER + `fenceSync`, flush), `_ptReadTake` (every tick:
+  `clientWaitSync(…, 0, 0)`; once passed `getBufferSubData`, rows turned upright, colours un-premultiplied, `putImageData` into
+  the sub's own small 2D canvas, then `drawImage` 2D → 2D onto each HUD canvas), `_ptReadFree` (in `_ptDrop`). One read on its
+  way per portrait; the picture is a frame behind its body. Full PT_LIVE_FPS again (the step-down of THE PORTRAITS STEP ASIDE
+  only applies to the old copy path: no WebGL 2, or `window.EW_PT_LIVE_COPY = true`). `_EW_TR_STAMP` = "11-20 portraits-no-wait".
+  Proof (cloud probe, `site_ow_r1`, Agent Locke's cast portrait attached to a test canvas; note playtest_city.js sets
+  `EW_DISABLE_CAST`, the eval must clear it): the new path's picture and the old copy's are the same portrait, upright, same
+  colours (opaque pixels 7,710 vs 7,818, top / bottom 2,666 / 5,044 vs 2,675 / 5,143, mean colour 138,128,129 vs 138,127,128;
+  the difference is the animation between the two shots). The stall itself only shows on Firefox with WebGPU busy: his next
+  profile should have no `PWebGL::Msg_ReadPixels` under `_ptLiveTick`.
