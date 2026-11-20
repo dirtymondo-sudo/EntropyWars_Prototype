@@ -70,7 +70,7 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 15 | **The Astral Realm** | The Astral Realm, one room | Not started |
 | 16 | **The Deep** | Atlantis + The Trench, The Sea Floor | Not started |
 | 17 | **The Estate** | The Estate (Corn Fields, Lake, Ranch), The Haunted House | Not started |
-| 18 | **Outer Space** | Outer Space, one room | THE FIX done 11-20 (flight, distances, seams, sky); the dressing not started |
+| 18 | **Outer Space** | Outer Space, one room | THE FIX + THE SPECTACLE done 11-20 (flight, distances, seams, sky; the launch, engines, painted Earth, traffic, comet, sound); the ground dressing not started |
 | 20 | **The Bayside Mall** (in Disaster City, Bayside district) | the mall building on the city's Bayside + its inside room | **Not started. Waits for the One Beach thread** (mondo 11-20: "Id probably wait for the beach thread to be finished since it is supposed to be a bayside mall"). |
 | 19 | **The Beach** | The Beach, Pirates' Cove, The Frozen Sea, The Bermuda Triangle (NOT the Volcano Island: thread 21) | **Another thread has it** ("One Beach": Disaster City's Bayside beach and the Beach zone made one). No thread of this plan starts here until that one reports. |
 | none | The highways and the routes | every `site_ow_*` room | **Not in this plan.** Its own thread (mondo 11-20). |
