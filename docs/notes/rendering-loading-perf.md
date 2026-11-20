@@ -3584,3 +3584,23 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   one buffer). The lever: fewer objects refreshed a frame in a fight (the 1,400 one-piece "may fade" groups, the demoted ones),
   not a cheaper write. `PWebGL::Msg_ReadPixels` (the old portrait copy) is 0.8 % of that thread: cheap for the card, the cost
   was the main thread waiting for it.
+- THE PORTRAIT'S OWN CANVAS (11-20, his sixth Firefox profile + 03:52 battle F3, the first on "portraits-no-wait"): THE PORTRAIT
+  WITHOUT THE WAIT DID NOT WORK. 16.3 % of the main thread was still blocked, now in `WebGL2RenderingContext.getBufferSubData`
+  (`PWebGL::Msg_GetBufferSubData`) under `_ptReadTake`. LESSON: on Firefox EVERY WebGL call that must answer (readPixels,
+  getBufferSubData, drawImage / toDataURL of a WebGL canvas) is a synchronous round trip to the GPU process's canvas thread,
+  which is the thread drawing the game's WebGPU frame; a pack buffer + fence does not make it asynchronous there. The only
+  read-back that does not wait is none.
+  So: a live portrait draws into a small WebGL canvas of its OWN (`_ptOwnMake`: its own WebGLRenderer, the studio's scene and
+  camera, `_ptRender(S, false, dt, own.r)`), and that canvas is what the HUD shows: `_ptOwnMount` puts it right after the HUD's
+  own canvas (hud.js LiveFace: a canvas in a foreignObject; same `width:100%;height:100%` box, class `ew-live-own`), hides the
+  HUD's while it stands there and gives it back when the place goes. The biggest of a portrait's HUD places gets it; its other
+  places take a copy once a second (the one waiting call left, 1 a second in place of 24). `_ptOwnFree` in `_ptDrop`. The
+  pack-buffer code is gone. Old copy (stepped down when slow): `window.EW_PT_LIVE_COPY`. `_EW_TR_STAMP` = "11-20
+  portrait-own-canvas". Cost: one more WebGL context a live portrait (2 at most) and its model's GPU data a second time.
+  Probe (cloud, two HUD-like round slots, Agent Locke): the own canvas sits in the bigger slot with the HUD canvas hidden, the
+  small slot shows the copy (7,777 opaque pixels), and when the big slot is removed the canvas moves to the other one. Picture
+  `shots/portrait_own_canvas.png`.
+  Same F3 (10.9 FPS, CPU 60.7 ms in a combo): besides the portrait wait, "scene: classic draws 36.7 ms" with 7 shader builds
+  and 7 pipelines a second, named: spell effects ("MeshBasicMaterial / SpriteMaterial see-through on ew scene", "node:fxop
+  see-through on batch fxBatch / fxGlobs", "ew_node_prog") and "kept 640/384/768" = all three keep lists AT THEIR CAP, so a
+  build put aside is thrown out and made again. Next: raise `_EW_KEEP_CAP`, and pre-build a spell's looks when it is equipped.
