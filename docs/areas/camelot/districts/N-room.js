@@ -130,7 +130,7 @@ function room(k) {
     A('ice_axe', 31.4, 61.5); A('snow_heap', 26.4, 64.4); A('snow_heap', 33.5, 67.6); A('fallen_log', 31.6, 59.4, { face: 100 });
     A('lantern_post', 26.5, 64.7, { face: 0 }); A('lantern_post', 33.3, 67.3, { face: 180 });
     /* the gully head: the yeti's ground (bones, a fire), log seats at the edge */
-    P('skull_pile', 34, 49); A('femur', 32.6, 50.4); A('campfire', 33.2, 55.4); A('fallen_log', 28.6, 49.6, { face: 0 }); A('meshy_stump', 34.4, 53.5); A('psxg_rock_1', 30.4, 52.6); A('psxg_dead_tree_2', 28.5, 54.5); A('hw_stone_2', 32.5, 51.4);
+    P('skull_pile', 34, 49); A('femur', 32.6, 50.4); A('campfire', 33.2, 55.4); A('fallen_log', 28.6, 49.6, { face: 0 }); A('meshy_stump', 34.4, 53.5); A('psxg_rock_1', 30.4, 52.6); A('psxg_dead_tree_2', 28.5, 54.5); A('psxg_rock_2', 32.5, 51.4);
     /* the drift bank + the drift field: deer and a fox in the open, sleds on the bank, snowmen */
     A('deer', 16, 16, { face: 140 }); A('deer', 19.4, 19.6, { face: 250 }); A('fox', 20.5, 15, { face: 20 }); A('rabbit', 15, 20.5); A('xmas_snowman', 21.4, 21.4, { face: 200 }); A('snow_sled', 20.4, 31, { face: 60 }); A('snow_sled', 12.6, 30.2, { face: 300 });
     [[14.5, 26], [19.6, 28.5], [13.4, 35.5], [20.4, 38.4], [14.4, 14.4], [21.6, 14.5]].forEach(q => A('snow_heap', q[0], q[1]));
@@ -148,7 +148,7 @@ function room(k) {
     [[6, 41, 0], [18, 18, 1], [31, 53, 2]].forEach(([cx, cy, i]) => { k.feat({ k: 'hill', id: 'cam:n:swell' + i + 'a', x: mx(cx - 1.6), z: mz(cy - 1.2), r: 7, rz: 4.5, rot: 30 + i * 50, h: 0.45 }); k.feat({ k: 'hill', id: 'cam:n:swell' + i + 'b', x: mx(cx + 2.2), z: mz(cy + 2), r: 6, rz: 3.6, rot: 120 + i * 40, h: 0.4 }); });
     [[2.3, 40.5], [9.7, 39.4], [4.4, 37.3], [14.3, 17.5], [21.7, 18.6], [17.5, 21.7], [27.3, 52.5], [34.7, 51.4], [30.4, 49.3], [31.5, 56.7]].forEach((q, i) => A(i % 3 === 0 ? 'meshy_stump' : i % 3 === 1 ? 'snow_heap' : 'psxg_dead_bush_1', q[0], q[1], { face: i * 67 % 360 }));
     /* the drift field: dark brush and rock in the white (cover on a board), frozen puddles on all three */
-    A('psxg_dead_bush_2', 16.4, 15.6); A('psxg_dead_bush_1', 19.6, 17.4); A('psxg_rock_1', 15.5, 19.4); A('meshy_fallen_log', 19.3, 20.4, { face: 110 }); A('hw_stone_3', 20.5, 16.4); A('psxg_dead_tree_1', 14.6, 21.4);
+    A('psxg_dead_bush_2', 16.4, 15.6); A('psxg_dead_bush_1', 19.6, 17.4); A('psxg_rock_1', 15.5, 19.4); A('meshy_fallen_log', 19.3, 20.4, { face: 110 }); A('psxg_rock_2', 20.5, 16.4); A('psxg_dead_tree_1', 14.6, 21.4);
     k.feat({ k: 'arch', id: 'cam:n:puddles', x: 0, z: 0, rot: 0, y: 0, parts: [[17.6, 17.2, 3.4, 2.2, 20], [20.2, 19.4, 2.2, 1.5, 100], [6.4, 39.2, 2.6, 1.8, 60], [30.2, 54.4, 2.8, 1.9, 140]].map(q => ({ s: 'dome', p: [r2(mx(q[0])), 0.42, r2(mz(q[1]))], r: q[2], h: 0.06, rz: q[3], seg: 14, rings: 2, ry: q[4], key: 'calm_ice', tint: 0x86c8f2, glow: 0.35 })) });
     road();                                          // the packed road over every trail it crosses
 
