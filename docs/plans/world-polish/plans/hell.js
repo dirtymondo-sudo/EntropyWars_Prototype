@@ -1,5 +1,5 @@
 /* THREAD 11, HEAVEN + HELL + VATICAN: HELL'S PLAN, laid OVER THE ROOM AS IT STANDS (`underlay`). A LIGHT AND LANDMARK PLAN.
-   APPROVED by mondo 2026-11-20 ("looks good"). Nothing is built from it yet. DATA ONLY (the format: plans/README.md).
+   APPROVED by mondo 2026-11-20 ("looks good"). BUILT so far (thread 11, 11-20): the Rim + the Descent (districts R.js, D.js; notes areas-complexes.md "HELL, THE LIGHT PASS"). DATA ONLY (the format: plans/README.md).
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/hell.js
    HELL HAS THE BEST SHAPE IN THE WORLD AND YOU CANNOT READ IT: black on black (the screenshot audit, 11-20). IT NEEDS LIGHT, NOT
    HEIGHT. So this plan moves NO ground and lays NO new way: the grey squares are the pit as it stands (the rim 8, the terrace 5, the
