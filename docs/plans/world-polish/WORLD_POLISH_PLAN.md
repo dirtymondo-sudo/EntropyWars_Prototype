@@ -25,6 +25,25 @@ city) and thread 3 (Came A Lot's woods, The Snowy Pines as its pilot); they are 
 5. Before its last PR: `node docs/plans/world-polish/audit.js` (5 minutes; commit the three tables), set its row in section 5 to DONE with one line
    on what was built and what was left on purpose, and free its rows on the board.
 
+**HOW THE WORLD IS BUILT (the rules a thread must know BEFORE it designs; this plan left them out until 11-20 and its first pilot failed for it):**
+- **A ZONE is made of DISTRICTS; a district is made of PLOTS** (one plot = 12 x 12 squares = 42 m). A plot has a NAME, which never changes, and
+  an id `Pcc-rr`, which is only its column and row in the room it stands in today.
+- **A ROOM is not a zone.** One World (mondo's map v13) stood every plot at a world place and cut the zones into rooms by THE ROOM-SPLITTING RULE:
+  a district is never cut; what touches on the map shares a room (join first); two zones never share one; a room is at most 12 x 12 plots,
+  30 plots, 12 plots in one straight open row, 2,500 draw calls / 12 M triangles, 1.4 GB. `ROOM_LAYOUTS.md` here = every room as it stands.
+- **THE HOME FRAME.** A district file still writes in its zone's OLD plan squares. The zone's tool then moves the result PLOT BY PLOT to the
+  room: each piece goes with the plot its middle stands on, nothing is turned. A piece that lies across two plots that no longer stand
+  together is a STRAY and gets cut. So: design inside one plot, or check in `ROOM_LAYOUTS.md` that the plots still touch the same way.
+- **PLOT SIDES.** Two plots that touch get a walk opening (a seam: walk / road / close); a side with no plot and no door past it CLOSES, and
+  the tool fills a lane that ran to it back in (trees, hedge). A new way that crosses a plot side needs that side to be open in the tool.
+- **THE LAND PAST A ROOM'S LINE** (`terrain.edges: { world: true }`) is drawn from the ground kind of the world plots beside it
+  (`docs/plans/one-world/plots.json`, written by `gen.js --plots`, never by hand). A snow room beside grass plots lies in green lawn.
+- **GROWING A ROOM** = more plots: new rows in plots.json (gen.js), the zone's layout and tool, the room's `world` place, no clash with a
+  neighbour (`node bake-map.js --table` refuses a clash), seam doors and routes that end on it re-pointed, the map picture redone.
+- THE RULES IN FULL (read the ones your change touches): `docs/notes/areas-complexes.md` "ONE WORLD, THE ZONE MOVES" (THE PLOT LIST, WHERE A
+  ROOM STANDS, THE ROOM-SPLITTING RULE, THE HORIZON READS THE MAP, HOW A ZONE MOVES) and your zone's "… THE DISTRICT FILES" section;
+  `docs/plans/one-world/README.md` + `BUILD_PLAN.md` ("Rules every thread follows").
+
 **mondo's rulings so far (they bind every thread of this plan):**
 - **Height has to give you something to do** (11-20: "This pass is not meant to just raise things for the sake of raising them. A pyramid is
   already raised anyway, it's literally a tall monument. why do you want to make it taller?"). Build a climb, a view, a drop, a second way, a
