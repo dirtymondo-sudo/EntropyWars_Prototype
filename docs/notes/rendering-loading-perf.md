@@ -3432,6 +3432,23 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   SwiftShader WebGPU loses the device in the city: "createBuffer ... too large"); a VS-CPU arena match on the classic renderer
   ran 9 rounds with spells and no page error. Note for the lens: in a fight `_ewBunWalk` does not count shown / hidden pieces, so
   a visibility flip reads as "tree ... other".
+- THE LAMPS PER CAMERA (11-20, mondo: "still huge slowdown for combo attack"; his second battle F3: 3.6 FPS, CPU 243 ms, "2609.5
+  re-records/s (lamps 2609.5)", "Bundle spikes: 2312 walked · 2312 re-recorded · LAMPS MOVED" on every check, "pane: classic
+  draws 773"). A combo's shot splits the screen (ThreeSplitscreen panes): two cameras render the fight's room in one frame, each
+  with its own lit lamps (the rig lights what stands near its camera). `_ewBunTick` kept ONE lamp list (`r._ew_lights`, noted at
+  the last render's first draw) and one stamp per group (`st.G`), so before each pane's render it compared against the OTHER
+  pane's lamps and re-recorded all 2,312 groups, twice a frame. Now the draw hook also notes the list on the camera
+  (`cam._ew_bunL`), the tick reads this camera's list, `lampMoved` is per camera (`_ewBun.lampGc`) and a group's stamp is per
+  camera (`st.Gc[cam.id]`, swapped into `st.G` for the group's check; a camera first seen for a group starts from what it sees:
+  its recording is fresh). One camera = as before. Old rule: `window.EW_BUN_LAMPS_ONE`. NOT measured on WebGPU. Left: the first
+  split-screen shot of a fight still records every group once for each pane camera ("pane: classic draws 773 ms" once).
+  THE GHOSTS KEPT (above) was a guess from the first battle F3 ("tree"); this one is named by the lens.
+- OPEN (11-20 02:00, "The cars and the roads are glitching again"): NOT fixed by #2199 after all. Pattern across his F3s: the two
+  sessions with the glitch (21:37, 02:00) both WALKED from the HQ into the city (dips at HQ squares first, "one rig: N scene
+  moves"); the sessions without it loaded the city directly. So it is a crossing / stage thing on WebGPU, present since before
+  21:37 11-19 (candidates by date: THE MAPS ON THE OBJECTS 20:01 + 20:39, THE HELD BOOK, THE BARE BONES, THE LIST KEPT, THE
+  SHADOW KEY KEPT). What glitches is what the shell draws OUTSIDE its recording (cars `_ew_hqCar`, signals, road marks). The
+  address-bar switch `?ew_weakmaps=1` loads with three's own WeakMaps (the maps off) to split "the maps" from the rest.
 
 ## THE ONE AIR (2026-11-20, mondo: "it's just a hard cutoff from the horizon to the sky" + "one consistent fog system for the entire game, all rooms, exploration and battle and the main menu ... not per room")
 - **Why the line was there:** the sky dome's fog band was written to END at the horizon (`uFogTop`), the ground fogged by camera
