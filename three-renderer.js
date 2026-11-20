@@ -9822,6 +9822,28 @@ const ThreeRenderer = (function () {
         _torchFlameTexObj = new THREE.CanvasTexture(c);
         return _torchFlameTexObj;
     }
+    /* THE COLOURED FLAMES (2026-11-20, thread 11, Hell's light plan: the Alcove's blue flame, the Plinth's white fire, the platforms' red / amber /
+       green beacons): the same flame drawn in one hue (a hex), white at the core, the hue in the body, darker at the edge. One canvas a hue. */
+    var _torchFlameHue = {};
+    function _getTorchFlameTexHue(hex) {
+        if (hex == null) return _getTorchFlameTex();
+        var k = String(hex); if (_torchFlameHue[k]) return _torchFlameHue[k];
+        var c0 = new THREE.Color(hex), W = new THREE.Color(0xffffff);
+        var rgba = function (c, a) { return 'rgba(' + Math.round(c.r * 255) + ',' + Math.round(c.g * 255) + ',' + Math.round(c.b * 255) + ',' + a + ')'; };
+        var core = c0.clone().lerp(W, 0.82), body = c0.clone().lerp(W, 0.35), edge = c0.clone().multiplyScalar(0.6);
+        var c = document.createElement('canvas'); c.width = 64; c.height = 96;
+        var ctx = c.getContext('2d');
+        var g1 = ctx.createRadialGradient(32, 62, 3, 32, 60, 30);
+        g1.addColorStop(0.00, rgba(core, 0.95)); g1.addColorStop(0.30, rgba(body, 0.90)); g1.addColorStop(0.65, rgba(c0, 0.50)); g1.addColorStop(1.00, rgba(edge, 0));
+        ctx.fillStyle = g1; ctx.fillRect(0, 0, 64, 96);
+        var g2 = ctx.createRadialGradient(32, 34, 2, 32, 36, 20);
+        g2.addColorStop(0.00, rgba(body, 0.85)); g2.addColorStop(0.45, rgba(c0, 0.55)); g2.addColorStop(1.00, rgba(edge, 0));
+        ctx.fillStyle = g2; ctx.fillRect(0, 0, 64, 96);
+        var g3 = ctx.createRadialGradient(32, 66, 1, 32, 66, 10);
+        g3.addColorStop(0, 'rgba(255,255,255,0.95)'); g3.addColorStop(1, rgba(core, 0));
+        ctx.fillStyle = g3; ctx.fillRect(0, 0, 64, 96);
+        return (_torchFlameHue[k] = new THREE.CanvasTexture(c));
+    }
 
     /* Live flame/light entries animated every frame by _updateTorchFlames().
        Self-cleaning: entries whose root group has been removed from the scene
@@ -9885,7 +9907,7 @@ const ThreeRenderer = (function () {
            without billboarding; _updateTorchFlames flutters the group) */
         var flameW = ts * 0.30 * s, flameH = ts * 0.44 * s;
         var flameMat = new THREE.MeshBasicMaterial({
-            map: _getTorchFlameTex(), transparent: true, depthWrite: false, fog: false,
+            map: _getTorchFlameTexHue(opts.flame), transparent: true, depthWrite: false, fog: false,   // opts.flame: THE COLOURED FLAMES
             blending: THREE.AdditiveBlending, side: THREE.DoubleSide
         });
         var flame = new THREE.Group();
@@ -9902,7 +9924,8 @@ const ThreeRenderer = (function () {
 
         /* soft camera-facing halo around the flame */
         if (!opts.noGlow && typeof _hzGlowCore === 'function') {
-            var glow = _hzGlowCore(ts * 0.16 * s, 0xffc06a, 0xff8a30);
+            var fc0 = (opts.flame != null) ? new THREE.Color(opts.flame) : null;
+            var glow = fc0 ? _hzGlowCore(ts * 0.16 * s, fc0.clone().lerp(new THREE.Color(0xffffff), 0.45).getHex(), fc0.getHex()) : _hzGlowCore(ts * 0.16 * s, 0xffc06a, 0xff8a30);
             glow.position.y = flameY + flameH * 0.42;
             g.add(glow);
         }
@@ -81231,15 +81254,17 @@ const ThreeRenderer = (function () {
            ray-marched volume) scaled to the row's `w` x `h` metres (1.3 x 1.5 when none). The catalogue's `light` + `glow` carry its light. */
         hearth_fire: function (U, p) {
             var g = new THREE.Group(), w = (p && +p.w > 0) ? +p.w : 1.3, h = (p && +p.h > 0) ? +p.h : 1.5;
-            var logM = _hqMat(null, 1, 1, { color: 0x2a1c14 }), emb = _hqMat(null, 1, 1, { color: 0xff7a20, emissive: 0xff5a10 });
+            var hfl0 = _hqFlameOf(p), embC = hfl0 != null ? new THREE.Color(hfl0) : null;
+            var logM = _hqMat(null, 1, 1, { color: 0x2a1c14 }), emb = _hqMat(null, 1, 1, embC ? { color: embC.getHex(), emissive: embC.clone().multiplyScalar(0.8).getHex() } : { color: 0xff7a20, emissive: 0xff5a10 });
             for (var i = 0; i < 3; i++) { var lg = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.1 * U, w * 0.8 * U, 7), logM); lg.rotation.z = Math.PI / 2; lg.rotation.y = (i - 1) * 0.5; lg.position.set(0, (0.1 + (i === 1 ? 0.14 : 0)) * U, (i - 1) * 0.16 * U); g.add(lg); }
             var bed = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.36 * U, w * 0.4 * U, 0.05 * U, 10), emb); bed.position.y = 0.03 * U; g.add(bed);
             /* the flame: the board torch's own (three of them across the logs, the middle one the tallest), flickering as it does everywhere.
                NOT YET the burning tile's ray-marched volume mondo asked for: ThreeVFXEffects.buildFlameVolume is exported for it, but placed
                here it drew nothing in three tries (uVig set, its clock run from its own draw call); to do, with the battle's scene set-up. */
             try {
+                var hfl = _hqFlameOf(p);   // THE COLOURED FLAMES (2026-11-20): a hearth / a beacon in one hue
                 [[0, 1.0], [-0.32, 0.72], [0.3, 0.8]].forEach(function (q, i) {
-                    var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true });
+                    var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true, flame: hfl });
                     parts.model.children.forEach(function (c) { if (c !== parts.flame) c.visible = false; });
                     var k = h / (0.44 * HQ_TILE_M) * q[1]; parts.model.scale.set(k * (w / 1.3), k, k * (w / 1.3));   // (the torch's flame is 0.44 of a square tall)
                     parts.model.position.set(q[0] * w * U, 0.16 * U - (parts.flameY || 0) * k, (i - 1) * 0.08 * U); g.add(parts.model);
@@ -81264,14 +81289,18 @@ const ThreeRenderer = (function () {
         /* the stake torch is the board's floor torch at the board's own size (THE SAME TORCH EVERYWHERE, 2026-09-15) */
         /* THE TIKI TORCH (2026-11-16, mondo: "the tiki torches need to be variants of the torches already in the game, just longer"): the
            floor torch itself (its stand, its bowl, its own flame and flicker), half as tall again */
-        tiki_torch: function (U) {
-            var g = new THREE.Group(), t = _hqProcBuilders.cave_torch(U);
+        tiki_torch: function (U, p) {
+            var g = new THREE.Group(), t = _hqProcBuilders.cave_torch(U, p);
             t.scale.set(1, 1.5, 1); g.add(t);
             return g;
         },
-        cave_torch: function (U) {
+        /* THE LIGHT ON ITS OWN (2026-11-20, thread 11, Hell's light plan): no body, only the catalogue's / the row's `glow` and `light`: the
+           lava's glow on the rock, the Plinth's white fire, a beacon's light hung over its fire. A row's `light` / `glow` objects override the
+           catalogue's (colour, intensity, dist, y / size). */
+        glow_light: function () { return new THREE.Group(); },
+        cave_torch: function (U, p) {
             var g = new THREE.Group();
-            var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true });
+            var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true, flame: _hqFlameOf(p) });   // THE COLOURED FLAMES: catalogue / row `flame`
             g.add(parts.model);
             _hqDecorWear('cave_torch', U, g, { into: parts.model, hide: parts.model.children.slice(0, parts.model.children.indexOf(parts.flame)), fit: 'height' });   // THE MESHY DECOR (2026-11-03): the flame stays
             var entry = { root: g, flame: parts.flame, mat: parts.flameMat, light: null, seed: ((_hqProcSeed++) * 27) % 100 };
@@ -82264,6 +82293,12 @@ const ThreeRenderer = (function () {
         ew_rubiks_cube: function (U, p) { return _ewCubeProp(U, true, p); },
         ew_cube_piece: function (U, p) { return _ewCubeProp(U, false, p); },
     });
+    /* THE COLOURED FLAMES (2026-11-20): a torch / hearth row's flame hue: the row's `flame`, else its catalogue row's (null = the warm flame) */
+    function _hqFlameOf(p) {
+        if (!p) return null; if (p.flame != null) return p.flame;
+        var D = _hqData(), c = D && D.catalogue && p.key ? D.catalogue[p.key] : null;
+        return (c && c.flame != null) ? c.flame : null;
+    }
     function _hqProcProp(name, p) {
         var b = _hqProcBuilders[name];
         if (!b) return null;
@@ -84280,6 +84315,8 @@ const ThreeRenderer = (function () {
                 if (onCeil && !flip) grp.position.y = y * U - (cat.h || 0.1) * U;
                 if (flip) grp.position.y = y * U;
                 grp.add(pg);
+                /* THE ROW'S OWN LIGHT (2026-11-20, thread 11): a proc row's `light` / `glow` objects override the catalogue's (a colour, a reach) */
+                if ((p.light && typeof p.light === 'object') || (p.glow && typeof p.glow === 'object')) { cat = Object.assign({}, cat); if (p.light && typeof p.light === 'object') cat.light = Object.assign({}, cat.light || {}, p.light); if (p.glow && typeof p.glow === 'object') cat.glow = Object.assign({ y: 0, size: 1 }, cat.glow || {}, p.glow); }
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); if (cat.light && cat.light.night) { pgl._ew_glowC = pgl.material.color.clone(); _hq.clockLamps.push(pgl); } }   // THE WORLD CLOCK: a night lamp's head dims by day
                 /* Phase 8 (2026-09-14): a proc may carry a POINT LIGHT (catalogue `light`: colour / intensity / dist / y) — the torches, the bulbs, the orb; capped at HQ_PROP_LIGHT_MAX per room */
                 if (cat.light && !p.noLight && _hq.propLights < HQ_PROP_LIGHT_MAX && (!litRows || litRows.has(p))) {   // THE CEILING LAMPS FIRST
@@ -84380,7 +84417,7 @@ const ThreeRenderer = (function () {
         (function () {
             var left = HQ_PROP_LIGHT_MAX - (_hq.propLights || 0), cands = [];
             rows.forEach(function (p, i) {
-                var c = p && D.catalogue[p.key]; if (!c || !c.proc || !c.light) return;
+                var c = p && D.catalogue[p.key]; if (!c || !c.proc || !(c.light || (p.light && typeof p.light === 'object')) || p.noLight) return;   // (2026-11-20: a `noLight` row never takes a slot it will not use)
                 cands.push({ p: p, i: i, s: (c.ceil || p.ceil) ? 1 : 0 });
             });
             if (cands.length <= left) return;
@@ -94227,6 +94264,13 @@ const ThreeRenderer = (function () {
        key shadowed by the trees) the ground lit at ~0.18. At night the hemisphere's colour now leans `amount` of the way to a soft
        moonlight (HQ_LIGHT_RULES.nightFill.color) — still blue, still night, but the ground, the trunks and the walker read. Every
        outdoor rig reads it: the walk (_hqEnter, the clock, the stage's blend) and the fight (_fieldGroundDress, the cycle's rows). */
+    /* THE LIGHT FROM BELOW (2026-11-20, thread 11, Hell's light plan: "the bowl is lit orange from below by the lava"): an open room's
+       hemisphere lights every face that looks down or sideways in `shell.sky.ground` (Hell: the lava's orange on every rock wall); none = the
+       old dark earth 0x2a2620 */
+    function _hqOpenHemiG(room) {
+        var g = room && room.shell && room.shell.sky && room.shell.sky.ground;
+        return (g != null) ? new THREE.Color(g).getHex() : 0x2a2620;
+    }
     function _hqSkyHemiC(skyC, night) {
         var NF = _hqLightRules().nightFill || {}, n = Math.max(0, Math.min(1, +night || 0));
         var c = new THREE.Color(skyC).lerp(new THREE.Color(0xffffff), 0.22 + 0.23 * (1 - n));
@@ -97370,14 +97414,14 @@ const ThreeRenderer = (function () {
             var lampMax = (typeof HQ_PROP_LIGHT_MAX !== 'undefined') ? HQ_PROP_LIGHT_MAX : 10;
             if (open) {
                 var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0, LRo = _hqOpenLR(room);   // THE WHITE DAYLIGHT
-                field.hemi = { sky: _hqSkyHemiC(skyC, nightO).getHex(), ground: 0x2a2620, intensity: nightO ? LRo.nightHemi : LRo.dayHemi };
+                field.hemi = { sky: _hqSkyHemiC(skyC, nightO).getHex(), ground: _hqOpenHemiG(room), intensity: nightO ? LRo.nightHemi : LRo.dayHemi };
                 field.sun = { color: nightO ? 0xaabfe0 : 0xfff1d6, intensity: nightO ? LRo.nightSun : LRo.daySun, dir: [0.45, 1, 0.3] };
                 /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): a fight starts at the hour the room was at — a clocked room's rig is the
                    held hour's (the sun or the moon as the key, the hemisphere between the day and night rows); a locked room keeps its own */
                 var CV = null; try { CV = _hqClockVals(room, R.roomId, _hqClockHourNow()); } catch (e) { CV = null; }
                 if (CV && !CV.locked) {
                     var kd = CV.keyDir.clone().transformDirection(M);
-                    field.hemi = { sky: CV.hemiC.getHex(), ground: 0x2a2620, intensity: CV.hemiI };
+                    field.hemi = { sky: CV.hemiC.getHex(), ground: _hqOpenHemiG(room), intensity: CV.hemiI };
                     field.sun = { color: CV.keyC.getHex(), intensity: CV.keyI, dir: [kd.x, kd.y, kd.z] };
                     nightO = CV.night > 0.5 ? 1 : 0;
                 }
@@ -99787,7 +99831,7 @@ const ThreeRenderer = (function () {
         try { _hqLightArm(toRoom); } catch (e) {}   // the key's direction (the blend below owns its strength and colour)
         var LR = _hqLightRules();
         if (toOpen) {
-            if (H.hemiLight) H.hemiLight.groundColor.setHex(0x2a2620);
+            if (H.hemiLight) H.hemiLight.groundColor.setHex(_hqOpenHemiG(toRoom));
             if (H.fillLight) { H.fillLight.color.set(LR.fillColor); H.fillLight.intensity = LR.fill; }
         } else {
             var iv = _hqIndoorLightVals(toRoom);
@@ -102398,7 +102442,7 @@ const ThreeRenderer = (function () {
             /* THE KEY LIGHT (2026-09-20): the numbers are HQ_LIGHT_RULES.open — a night room keeps a real MOON key
                (the user: "I have to turn the brightness all the way up in some places that are dark") */
             var LRo = _hqOpenLR(room);   // THE WHITE DAYLIGHT: a white-floored room's sky light × HQ_LIGHT_RULES.whiteDay
-            _hq.hemiLight = new THREE.HemisphereLight(_hqSkyHemiC(skyC, nightO), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi); sc.add(_hq.hemiLight);   // (THE STAGE blends it at a crossing)
+            _hq.hemiLight = new THREE.HemisphereLight(_hqSkyHemiC(skyC, nightO), _hqOpenHemiG(room), nightO ? LRo.nightHemi : LRo.dayHemi); sc.add(_hq.hemiLight);   // (THE STAGE blends it at a crossing)
             var sun = new THREE.DirectionalLight(nightO ? 0xaabfe0 : 0xfff1d6, nightO ? LRo.nightSun : LRo.daySun); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun); _hq.keyLight = sun;
             var ofill = new THREE.DirectionalLight(_hqLightRules().fillColor, _hqLightRules().fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(ofill); _hq.fillLight = ofill;   // the cool fill from behind: no black side on a face
             _hqOpenRoomLamps(room, sc);   // the lamp masts (a stage neighbour hangs them in its part)

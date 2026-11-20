@@ -32,7 +32,11 @@ const CLEARING_NEW = [['The North Rise', -15, 0], ['The Climb', -13, 0], ['The B
 const grow = (id, list) => { const d = P.districts.find(q => q.id === id); if (!d) throw new Error('no ' + id);
     list.forEach(([n, x, y]) => { const q = d.plots.find(p => p.x === x && p.y === y); if (q) { if (q.was) throw new Error('an old plot stands on ' + x + ',' + y); q.n = n; } else d.plots.push({ n, x, y }); });
     d.x = Math.min(...d.plots.map(p => p.x)); d.y = Math.min(...d.plots.map(p => p.y)); d.w = Math.max(...d.plots.map(p => p.x)) - d.x + 1; d.h = Math.max(...d.plots.map(p => p.y)) - d.y + 1; d.count = d.plots.length; d.shape = 'band'; return d; };
-const d = grow('camN', PINES_NEW), dW = grow('camW', FOREST_NEW), dF = grow('camF', FAIRY_NEW), dC = grow('woods', CLEARING_NEW);
+/* 7. THE ESTATE'S LAKE GROWS WEST (world polish thread 17, mondo's OK on docs/plans/world-polish/plans/estate.js, 11-20): the pilot's two new plots, the
+      West Bank over the water and the Bluff south of it (bake-estate.js THE ROOM DESIGN lays them). Their ground: open woodland (the House Trail's woods
+      start west of them) and bare rock (the Bluff), so the land past the room's line reads as what stands there. */
+const LAKE_NEW = [['The West Bank', -13, 16], ['The Bluff', -13, 17]];
+const d = grow('camN', PINES_NEW), dW = grow('camW', FOREST_NEW), dF = grow('camF', FAIRY_NEW), dC = grow('woods', CLEARING_NEW), dE = grow('estate', LAKE_NEW);
 /* the ground */
 const own = {}; const key = (x, y) => x + ',' + y;
 P.districts.forEach(q => q.plots.forEach(p => { own[key(p.x, p.y)] = q.id; }));
@@ -41,6 +45,7 @@ const G = P.ground; let n = 0;
 const set = (x, y, c) => { const r = y - G.y0, i = x - G.x0; if (r < 0 || r >= G.rows.length || i < 0 || i >= G.rows[r].length) return; if (G.rows[r][i] === '~' || G.rows[r][i] === '#') return; if (G.rows[r][i] !== c) { G.rows[r] = G.rows[r].slice(0, i) + c + G.rows[r].slice(i + 1); n++; } };
 /* the kingdom's north row: the village's north plots carry the Pines' snow down to the moat (the home frame's squares y 12..17), so from the Pines the land south is snow first */
 for (let x = -29; x <= -24; x++) set(x, -3, 'T');
+set(-13, 16, 'w'); set(-13, 17, 'R');   // 7. the Lake's two new plots
 d.plots.forEach(p => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = p.x + dx, y = p.y + dy, o = own[key(x, y)]; if (!o || o === 'camN') set(x, y, 'T'); } });
 /* 6. THE MOUNTAINS ARE ONE SKI MOUNTAIN (world polish thread 5, mondo's "okay" on the plan, 11-20): the Ski Lodge, the Snowy Pass, Mount Olympus and Mount
       Shasta's plots stand where docs/plans/world-polish/thread5/draw-mountain.js puts them (98 plots; bake-mountains.js builds them). `shasta` is THE LONG
@@ -56,7 +61,7 @@ const MTN = (() => { const ids = { K: 'mtnK', P: 'mtnP', O: 'mtn', D: 'shasta' }
     return out; })();
 /* written the way gen.js writes it: one line a district / a ground row */
 let t = fs.readFileSync(FILE, 'utf8');
-[d, dW, dF, dC].concat(MTN).forEach(d => { const i = t.indexOf('    {"id":"' + d.id + '"'), j = t.indexOf('\n      ]}', i); if (i < 0 || j < 0) throw new Error('no block of ' + d.id);
+[d, dW, dF, dC, dE].concat(MTN).forEach(d => { const i = t.indexOf('    {"id":"' + d.id + '"'), j = t.indexOf('\n      ]}', i); if (i < 0 || j < 0) throw new Error('no block of ' + d.id);
   const head = Object.assign({}, d); delete head.plots;
   t = t.slice(0, i) + '    ' + JSON.stringify(head).slice(0, -1) + ',\n      "plots": [\n' + d.plots.map(q => '        ' + JSON.stringify(q)).join(',\n') + t.slice(j); });
 { const m = /("rows": \[\n)([\s\S]*?)(\n\s*\]\})/.exec(t.slice(t.indexOf('"ground"'))); if (!m) throw new Error('no ground rows'); const lead = /^\s*/.exec(m[2])[0];
@@ -68,4 +73,4 @@ if (t.indexOf('{"id":"katana"') < 0) { const i = t.indexOf('    {"id":"volcano"'
   const pl = []; for (let y = -13; y <= -5; y++) for (let x = 21; x <= 29; x++) pl.push([x, y]);
   t = t.slice(0, j + 9) + ',\n    {"id":"katana","name":"KATANA ISLAND","state":"built","x":21,"y":-13,"w":9,"h":9,"count":81,"note":"29 land plots, six districts; room site_prebuilt_bermuda_katana (bake-katana.js); with the Volcano Island north of it, the Katana Empire\u2019s islands",\n      "plots": [\n' + pl.map(q => '        ' + JSON.stringify(q)).join(',\n') + '\n      ]}' + t.slice(j + 9); }
 JSON.parse(t); fs.writeFileSync(FILE, t);
-[d, dW, dF, dC].concat(MTN).forEach(d => console.log('plots.json: ' + d.name + ' ' + d.count + ' plots, ' + d.w + ' x ' + d.h + ' at ' + d.x + ',' + d.y)); console.log(n + ' ground letters changed to T');
+[d, dW, dF, dC, dE].concat(MTN).forEach(d => console.log('plots.json: ' + d.name + ' ' + d.count + ' plots, ' + d.w + ' x ' + d.h + ' at ' + d.x + ',' + d.y)); console.log(n + ' ground letters changed to T');

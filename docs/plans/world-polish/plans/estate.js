@@ -71,12 +71,13 @@ module.exports = {
         ['thin', [[14, 30, 1], [14, 30, 1]], { to: 'County Lane, out of the crop circle (the short way)' }],
         ['area', 20, 48, 21, 50, 'k', 1], ['set', 22, 49, 'k', 1], ['thin', [[17, 55, 1], [21, 55, 1], [21, 51, 1]], { to: 'the field shed and the silo (a building you walk into)' }], ['label', 20, 47.2, 'FIELD SHED + SILO', 'mark'],
         /* ── THE LAKE (L): the water lies low; the west bank and the bluff stand over it ── */
-        ['area', 24, 120, 59, 124, 'g', 0], ['area', 24, 125, 28, 143, 'g', 0], ['label', 42, 122, 'THE NORTH SHORE · open, level', 'place'],
+        ['area', 24, 120, 59, 125, 'g', 0], ['area', 24, 125, 28, 143, 'g', 0]   /* (the build, 11-20: row 125 is today's shingle above the water, kept open) */, ['label', 42, 122, 'THE NORTH SHORE · open, level', 'place'],
         ['area', 34, 126, 49, 127, 'w', 0], ['area', 29, 128, 54, 144, 'w', 0], ['area', 34, 145, 49, 146, 'w', 0], ['label', 42, 134, 'THE LAKE', 'place'],
         ['area', 29, 137, 37, 138, 'c', 0], ['label', 33, 136.4, 'THE DOCK', 'mark'],
         ['area', 50, 125, 54, 127, 'g', 0], ['area', 55, 125, 58, 128, 'k', 0], ['label', 56.5, 129.6, 'BOATHOUSE', 'mark'],
         ['main', [[30, 120, 0], [30, 124, 0], [27, 124, 0], [27, 130, 0], [25, 130, 0], [25, 136, 0], [19, 136, 1], [19, 141, 1], [16, 141, 1], [16, 148, 2]], { name: 'the Shore Walk: west round the lake, up the bank to the Bluff' }],
         ['area', 13, 139, 18, 143, 'g', 1], ['label', 15.5, 139.6, 'THE WEST BANK', 'place'],
+        ['area', 21, 140, 22, 140, 'g', 1], ['set', 23, 140, 'g', 0],   /* (the build, 11-20: the washed-out bank: a notch in the bank, its roots the found way up) */
         ['area', 14, 147, 21, 154, 'g', 2], ['area', 22, 147, 23, 149, 'g', 2], ['label', 17.5, 150, 'THE BLUFF', 'place'], ['label', 17.5, 151.2, 'over the water · level, a board fits', 'note'],
         ['area', 24, 144, 28, 147, 'g', 1], ['label', 26, 145, 'bench', 'note'],
         ['main', [[21, 151, 2], [27, 151, 1], [27, 148, 1], [33, 148, 1], [33, 152, 1], [40, 152, 0], [40, 158, 1]], { name: 'the Shore Walk: down off the Bluff, along the south shore, to the Ranch Gate' }],
@@ -127,8 +128,8 @@ module.exports = {
         { name: 'the Bluff\'s edge', at: [21, 149], sees: 'The Boathouse', next: 'R' },
         { name: 'the Ridge, by the lone tree', at: [23, 185], sees: 'The Windmill', next: 'L' }],
     found: [
-        { name: 'the washed-out bank (roots)', from: [24, 140], to: [20, 140], kind: 'climb' },
-        { name: 'the roots under the Bluff', from: [24, 146], to: [23, 148], kind: 'climb' },
+        { name: 'the washed-out bank (roots)', from: [23, 140], to: [22, 140], kind: 'climb' },
+        { name: 'the roots under the Bluff', from: [24, 147], to: [23, 147], kind: 'climb' },   /* (the build, 11-20: each climb on its ledge's own face) */
         { name: 'the crates behind the barn', from: [48, 169], to: [47, 169], kind: 'ledge chain' },
         { name: 'the root ladder out of the creek cut', from: [25, 170], to: [26, 170], kind: 'ladder' },
         { name: 'the fallen cottonwood', from: [27, 186], to: [28, 186], kind: 'trunk' },
