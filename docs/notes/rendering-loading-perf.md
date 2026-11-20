@@ -3449,3 +3449,27 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   21:37 11-19 (candidates by date: THE MAPS ON THE OBJECTS 20:01 + 20:39, THE HELD BOOK, THE BARE BONES, THE LIST KEPT, THE
   SHADOW KEY KEPT). What glitches is what the shell draws OUTSIDE its recording (cars `_ew_hqCar`, signals, road marks). The
   address-bar switch `?ew_weakmaps=1` loads with three's own WeakMaps (the maps off) to split "the maps" from the rest.
+
+## THE ONE AIR (2026-11-20, mondo: "it's just a hard cutoff from the horizon to the sky" + "one consistent fog system for the entire game, all rooms, exploration and battle and the main menu ... not per room")
+- **Why the line was there:** the sky dome's fog band was written to END at the horizon (`uFogTop`), the ground fogged by camera
+  distance in a colour the sky above it did not wear, and the far land past a room's edge had its haze painted in at the build.
+- **One row, three-renderer.js `EW_AIR`** (`rho`, `base` per metre, `farM`, `hazeH`, `mist`, `mistH`, `mistMove`, `mistSize`,
+  `mistSpeed`, `warmDay`, `warmDusk`). `_hqFogHold` writes the whole air for every walk frame AND the menu frame, `_hqFogBack` puts
+  the room's values back. A room's own fog numbers are NOT read by the draw any more: `shell.fog.density`, `sky.fog.density / height /
+  amount / top / band`, `shell.heightFog.h / amount`, a menu biome's `fog[1]`. Do not add per-room fog amounts; change `EW_AIR`.
+  A room still owns its fog COLOUR (the clock's hour), its floor height and `shell.heightFog: false` (no mist here).
+- **The levers (the same everywhere):** Scene Fog OFF = the clear day: `base` per metre + the soft band it leaves on the horizon.
+  Scene Fog ON = + `rho` × Fog Density, the ground mist, a fuller band. Fog Horizon = how high the band and the mist climb. MAP LOOKS
+  OFF = the player's fog colour everywhere (as before). Fog on can only ADD to the clear day's haze.
+- **The sky's band:** new dome uniform `uAir` (x = the haze at the line, y = 1 / its height, z = warmth, w = the line). At the line it
+  is `_ewAirFar` = what the air does to a thing `farM` m away, and it thins upward; same formula on the far scenery
+  (`_injectHorizonFog`). In a fight x is negative = a share of the fight's own band (`_ewAirBattle`): the board fog is unchanged,
+  its band only gets the soft top. A fight on a room takes `rho + base` (no room density).
+- **Warm toward the sun + the drifting mist:** two shared objects in the patched fog chunks, `uEwAir` (the sun's heading, warmth,
+  the mist's clock) and `uEwAir2` (patch size, depth). Walk only (the clock's sun); off under the player's own colour.
+- **The far land** (`_hqBuildEdgeLand`): its far sheets take the scene fog now (were `fog: false` with haze baked in the vertex colours).
+- **Fixed on the way:** a day room with no fog colour of its own faded to near black (0x0d0e12): it wears `HQ_WORLD_CLOCK.day.fog`.
+- Every shader piece has its WebGPU twin (the fog node, the dome's node graph, the `hzfog` layer). Under water is untouched.
+- Probe: `ThreeRenderer.hq.dev.air()`. Off (the rooms' own fog as before): `window.EW_NO_ONE_AIR` (set before a room builds).
+- Checked by picture: the Desert walk (off / on / low density, classic + the node renderer), both menus, one fight (Giza). NOT yet
+  looked at: indoor rooms, night and dusk, the other zones, a fight on a room. NOT built: lamps and neon glowing in the fog.
