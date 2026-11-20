@@ -26,6 +26,8 @@
    - THE DOORS: the plan's five ways out, at the plan's squares: N the Catacombs (`ow_v_m7_m4`), E the Sewers' Holding Cells (`ow_v_1_1`), S the
      Cavern (`ow_v_m8_9`: thread 9's new Cavern `site_prebuilt_hollow_earth_ug_cavern`, at its `ug_cavern_tunnelway`), W the Long Tunnel (`ug_tw_long`, new: the Long Tunnel's thread builds its end), and the shaft up into Dead Man's
      Cave (data.js DOOR_HQ.links `tunnelway_cavern`, end b: this tool checks it).
+   - THE SHEETS (mondo 11-20: "don't use the calm textures, use from the urban decay or horror pack"; thread 9's Cavern palette): the rock
+     hz_stone_01, the floor hz_stone_02, the ledge faces hz_stone_10, mud hz_floor_03, tints near white so each sheet's colour shows.
    - WHAT STANDS IN IT: docs/areas/underground/tunnel-way/room.js (`names`, `dress(a)`, `airZones`), in the room's own squares.
    Notes: docs/notes/areas-complexes.md "THE UNDERGROUND, THE TUNNEL-WAY". */
 'use strict';
@@ -119,10 +121,10 @@ const WATER = []; { const used = new Uint8Array(W * H);
 count.pools = WATER.length;
 
 /* ── THE ROCK OVERHEAD: each plot's block from its roof to the top, stalactites hung from it over the open floor ── */
-const ROOF = [], grnd = mkRnd(1307), RTINT = [0x4a443e, 0x433d37, 0x50483f, 0x3c3732];
+const ROOF = [], grnd = mkRnd(1307), RTINT = [0x8a8680, 0x84807a, 0x908c86, 0x7e7a74], STINT = [0xd6d2ca, 0xe4e0d8, 0xf0ece6];   // the horror pack's own colours show (thread 9's palette)
 PL.forEach((p, i) => { const ox = gx(p.bx * N) + N * C / 2, oz = gz(p.by * N) + N * C / 2, parts = [];
     const slab = (x0, y0, x1, y1, h) => { if (x1 < x0 || y1 < y0) return; const w = (x1 - x0 + 1) * C, d = (y1 - y0 + 1) * C;
-        parts.push({ s: 'box', p: [r2(gx(x0) + w / 2 - ox), h, r2(gz(y0) + d / 2 - oz)], size: [r2(w), r2(TOP - h), r2(d)], top: false, under: true, key: 'cave_wall', tint: RTINT[i % RTINT.length], uv: 7 }); };
+        parts.push({ s: 'box', p: [r2(gx(x0) + w / 2 - ox), h, r2(gz(y0) + d / 2 - oz)], size: [r2(w), r2(TOP - h), r2(d)], top: false, under: true, key: 'hz_stone_01', tint: RTINT[i % RTINT.length], uv: 7 }); };
     const X0 = p.bx * N, Y0 = p.by * N, X1 = X0 + N - 1, Y1 = Y0 + N - 1;
     if (!p.hall) slab(X0, Y0, X1, Y1, p.roof);
     else { const [hx0, hy0, hx1, hy1] = p.hall; slab(hx0, hy0, hx1, hy1, p.hallRoof);   // the hall, and the four strips round it at the low roof
@@ -131,7 +133,7 @@ PL.forEach((p, i) => { const ox = gx(p.bx * N) + N * C / 2, oz = gz(p.by * N) + 
     const n = Math.min(p.chamber ? 18 : 8, Math.floor(sq.length / 4));
     for (let k = 0; k < n; k++) { const q = sq[Math.floor(grnd() * sq.length)], top = roofAt(q[0], q[1]), hall = inHall(p, q[0], q[1]), room = top - FL[q[1]][q[0]], len = r2(0.6 + grnd() * Math.min(hall ? 3.6 : 1.4, room - 2.6)), r = r2(0.18 + grnd() * (hall ? 0.5 : 0.28));
         if (len < 0.5) continue;
-        parts.push({ s: 'cyl', p: [r2(gcx(q[0]) - ox + (grnd() - 0.5) * 2.2), r2(top - len), r2(gcz(q[1]) - oz + (grnd() - 0.5) * 2.2)], r: 0.03, r2: r, h: len, seg: 6, key: 'cave_wall', tint: RTINT[Math.floor(grnd() * 4)], uv: 3.5 }); }
+        parts.push({ s: 'cyl', p: [r2(gcx(q[0]) - ox + (grnd() - 0.5) * 2.2), r2(top - len), r2(gcz(q[1]) - oz + (grnd() - 0.5) * 2.2)], r: 0.03, r2: r, h: len, seg: 6, key: 'hz_stone_02', tint: STINT[Math.floor(grnd() * 3)], uv: 3.5 }); }
     ROOF.push({ k: 'arch', id: 'ugt:roof:' + p.bx + '_' + p.by, x: r2(ox), z: r2(oz), y: 0, rot: 0, parts }); });
 
 /* ── THE DOORS (the plan's `doors`; a wall door on the room's wall, the shaft a free spot) ── */
@@ -214,7 +216,7 @@ Lq.push("            kind: 'box', site: '" + SITE + "', part: '" + PART + "',");
 Lq.push("            /* THE ONE WORLD: where this room stands on the world's plot grid (data.js hqOwIndex) */");
 Lq.push("            world: { hub: 'cavern', layer: 'under', wx: " + WORLD.wx + ", wy: " + WORLD.wy + " },");
 Lq.push("            shell: { w: " + (W * C) + ", d: " + (H * C) + ", h: " + r2(TOP + 1) + ", wallH: " + r2(TOP + 1) + ", dadoH: 1.1, open: false,");
-Lq.push("                     floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_2', ceiling: 'cave_wall', floorColor: 0x8a8278, wallColor: 0x5e5850, dadoColor: 0x4a443c, ceilColor: 0x1e1b18,");
+Lq.push("                     floor: 'hz_stone_02', wall: 'hz_stone_01', dado: 'hz_stone_02', trim: 'hz_stone_01', ceiling: 'hz_stone_01', floorColor: 0xd6d2ca, wallColor: 0xd6d2ca, dadoColor: 0xd6d2ca, ceilColor: 0x8a8680,");
 Lq.push("                     pipes: false, strips: false, lights: [], mood: { light: 0xffb060, ambient: " + ROOMDES.ambient + ", hero: false }, plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: " + r2(FL[SP[1]][SP[0]] + 4.2) + " },");
 Lq.push("                     fog: { color: 0x07060a, density: " + ROOMDES.fog + " }, look: HQ_ROOM_LOOKS.cave,");
 Lq.push("                     suns: []" + (AIR.length ? ", atmos: " + J({ kind: 'none', zones: AIR }) : "") + " },");
@@ -222,7 +224,7 @@ Lq.push("            parti: '" + ROOMDES.parti.replace(/'/g, "\\'") + "',");
 Lq.push("            typology: 'grid',");
 Lq.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: 5, nz: 5, names: " + J(names) + " },");
 Lq.push("            terrain: {");
-Lq.push("                res: 0.875, floor: 'cave_floor', cliff: 'rocks_5', path: 'dirt_2', stairs: 'wood',");
+Lq.push("                res: 0.875, floor: 'hz_stone_02', cliff: 'hz_stone_10', path: 'hz_floor_03', stairs: 'wood',");
 Lq.push("                noise: { amp: 0.05, scale: 4 }, crag: false, stalactites: false,");
 Lq.push("                /* THE HEIGHT SHEET: the plan's levels square by square ((level - 114) x 1.75 m); the rock is the sheet, raised to the roofs */");
 Lq.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + slope.toString('base64') + "' } },");
