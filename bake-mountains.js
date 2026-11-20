@@ -333,7 +333,7 @@ const NP = makeRoom({ id: POLE, tag: 'pole', files: ['N'], streams: { N: 16 }, p
 const SKI = { 3: 1, 4: 1, 5: 1 };   // the slopes' columns: one even grade from the Top Station to the Lodge (no flat shelves on a run)
 /* `streams`: the states the room's one stream had at each district's first decor when the districts were split out (11-16): the split changed no number */
 const M = makeRoom({ id: MTN, tag: 'mtn', oneMountain: true, files: ['P', 'K', 'S', 'O'], streams: { P: 72, K: 2855161781, S: 3659870008, O: 2570278025 }, px0: 4, py0: 0, pw: 12, ph: 8, base: 8, seed: 72, rockCap: 26,
-    hubs: { 'P06-02': [6, 3] }, extraPorts: [['P05-00', 'S'], ['P12-03', 'E']],   // …and (THE SWAP, plan 2) the Goat Track walks on east to Bunny Flat: Olympus and Shasta meet there   // the Ridge is climbed from the High Pass (the plan drew it joined to nothing)
+    hubs: { 'P06-02': [6, 3] }, extraPorts: [['P05-00', 'S'], ['P12-03', 'E'], ['P07-03', 'S'], ['P08-03', 'S'], ['P09-03', 'S']],   /* (11-20: the Rental Hut, the Lodge and the Yard open south onto the village's new plots) */   // …and (THE SWAP, plan 2) the Goat Track walks on east to Bunny Flat: Olympus and Shasta meet there   // the Ridge is climbed from the High Pass (the plan drew it joined to nothing)
     carves: [7, 8, 9].map(ly => ['P12-01', 7, ly, 'm']).concat([['P12-01', 7, 10, 'm']], [2, 3, 4, 5, 6].flatMap(lx => [['P12-01', lx, 5, 'm'], ['P12-01', lx, 6, 'm']])),   // THE CLOUD LINE: the stair is two squares wide all the way, and the Colonnade's walk goes on through the cloud to it
     hubs2: 0,   // the Rope Bridge's trails leave from the snow north of the crevasse (never along the slot)
     deadLevel: (i, j) => j >= 4 ? [9, 9, 8, 8][j - 4] : 8, zflat: i => SKI[i] ? 0 : 1 / 3,
@@ -541,7 +541,7 @@ STAND.forEach(S => {
     /* THE PIECES WITH A HEIGHT OF THEIR OWN (a cloud, chimney smoke, a pool, a deck: `y` over the room's floor, written for the home's ground) ride the new
        ground: the difference between the ground under them now and the ground they were written for */
     { const HcH = M.heights(), HcN = R2.heights(), samp = (Hc, Wd, Hd, fx, fy) => { const x = Math.max(0, Math.min(Wd, Math.round(fx))), y = Math.max(0, Math.min(Hd, Math.round(fy))); return Hc[y * (Wd + 1) + x]; }; let n = 0;
-      const lift = q => { if (typeof q.y !== 'number' || q.floor === true || q.x == null) return q; const e = R.plotOfSq(Math.floor((q.x + R.HX) / C), Math.floor((q.z + R.HZ) / C)); if (!e || !e.home) return q;
+      const lift = q => { if (typeof q.y !== 'number' || q.y < 1 || q.x == null) return q;   /* (a prop's `y` from 1 m up is over the ROOM's floor, on the floor of a building too: a shelf's bottle, a thing hung on a wall; under 1 m it is over the ground it stands on and needs nothing) */ const e = R.plotOfSq(Math.floor((q.x + R.HX) / C), Math.floor((q.z + R.HZ) / C)); if (!e || !e.home) return q;
           const ca = Math.round(Math.cos((e.turn || 0) * Math.PI / 180)), sa = Math.round(Math.sin((e.turn || 0) * Math.PI / 180)), ux = q.x - (-R.HX + (e.col + 0.5) * PL), uz = q.z - (-R.HZ + (e.row + 0.5) * PL),
               hx = -M.HW + (e.home.x + 0.5) * PL + ux * ca + uz * sa, hz = -M.HD + (e.home.y + 0.5) * PL - ux * sa + uz * ca;   // the piece's home point (a turned plot: the turn undone)
           const d = samp(HcN, Wn, Dn, (q.x + R.HX) / C, (q.z + R.HZ) / C) - samp(HcH, M.W, M.H, (hx + M.HW) / C, (hz + M.HD) / C); n++; return Object.assign({}, q, { y: r2(q.y + d) }); };

@@ -289,6 +289,56 @@ exports.apply = ctx => {
     pendant(a, -1.75, top, -1.75, 0.6); pendant(a, 1.75, top, 1.75, 0.6); pendant(a, 3.5, top, -4.6, 0.6);
     T.hang('breaker_panel', -w / 2 + 0.36, T.sq(0, 3)[1], 1.25, 90); T.hang('punch_clock', w / 2 - 0.36, T.sq(3, 3)[1], 1.3, 270); T.hang('gauge_board', T.sq(2, 0)[0], zb + 0.06, 1.6, 180); B.put('rotary_phone', T.sq(2, 0)[0] + 0.2, T.sq(2, 0)[1] - 0.3, { y: T.up(0.91) });
     B.put('item_binoculars', T.sq(2, 0)[0] - 0.9, T.sq(2, 0)[1] + 0.25, { y: T.up(0.91) }); B.put('psx_walkie_talkie_1', T.sq(2, 2)[0] + 0.3, T.sq(2, 2)[1], { y: T.up(0.95) }); B.put('psx_bandage_mp_1', T.sq(3, 2)[0] - 1.1, T.sq(3, 2)[1] + 0.9, { y: 0.02 }); B.put('footlocker', T.sq(3, 3)[0] + 0.4, T.sq(3, 3)[1] + 0.9, { face: 270 }); });
+  /* ══ THE BASE VILLAGE + THE MID STATION (2026-11-20, the one ski mountain; mondo: "there still needs to be real architecture and exteriors and interiors").
+     Four new plots: THE SKI PATROL (P07-04), THE VILLAGE STREET (P08-04: THE INN and THE SHOP face each other across the street), THE VILLAGE GREEN (P09-04,
+     level and open on purpose), THE MID STATION (P10-04: the warming room at the top of the Lodge Chair). Each house is the district's log building (`chalet`),
+     walked into; its inside is the same box. ══ */
+  if (R.byId['P07-04']) {
+    const GW = { glow: 0.75, gain: 1.5 }, G = { glow: 0.8 };
+    const house = (name, tint, rh, q) => (a, w, d, dr, ctx2) => { const h = 3.5; chalet(a, w, d, dr, Object.assign({ h, rh: rh || 2.6, tint }, q || {}), ctx2);
+        board(a, name, 0, h + 0.2, d / 2 + 0.12, Math.min(w - 1.2, name.length * 0.44 + 1.0), 0.78, '#f4ecd8', '#2f4a3a', WD2, { roof: true }); a.box(dr.lx + dr.cw / 2 + 0.6, 1.7, d / 2 + 0.2, 0.2, 0.3, 0.2, 'marble_light', 0xffb050, { glow: 1.3 }); };
+    const stove = (a, B, T, i, j) => { const c = T.sq(i, j); a.box(c[0], 0.16, c[1], 1.5, 0.08, 1.5, 'rocks_5', 0x8a8a92, G); T.on('wood_stove', i, j, { face: 180 }); a.cyl(c[0], 3.5, c[1] - 0.2, 0.12, 1.85, 'gunmetal', 0x2c2c30, { seg: 8, roof: true }); B.put('chimney_smoke', c[0], c[1] - 0.2, { y: r2(T.g + 5.4), floor: false }); };
+    /* THE SKI PATROL, 4 x 3 squares, red: two beds for the hurt, the radio desk, the sled and the stretcher by the door, lockers */
+    walkIn('patrol', 'P07-04', [4, 3, 8, 6, 'S'], 3.5, {}, house('SKI PATROL', 0xa83a30, 2.6, { noWin: ['b0', 'b1'] }), (a, B, T) => { const { w, d } = T, zb = -d / 2 + 0.3, top = 3.5 - 0.46;
+        T.on('hospital_bed', 0, 0, { face: 0 }); T.on('hospital_bed', 1, 0, { face: 0 }); stove(a, B, T, 3, 0);
+        { const c = T.sq(2, 0); counter(a, c[0], c[1], 2.6, WD2, { h: 0.82, depth: 1.1 }); T.solid(c[0] - 1.3, c[1], c[0] + 1.3, c[1], 1.1, 0.9); B.put('field_radio', c[0] - 0.5, c[1], { y: T.up(0.91), face: 180 }); B.put('rotary_phone', c[0] + 0.6, c[1], { y: T.up(0.91) }); B.put('psx_chair_mp_3', c[0], c[1] + 1.2, { face: 0 }); }
+        B.put('stretcher', -w / 2 + 1.2, T.sq(0, 2)[1], { face: 0 }); T.hang('fire_extinguisher', w / 2 - 0.36, T.sq(3, 1)[1], 0.95, 270); for (const lz of [T.sq(3, 1)[1], T.sq(3, 2)[1]]) B.put('locker', w / 2 - 0.75, lz, { face: 270 });
+        T.hang('notice_board', -3.5, zb + 0.06, 1.3, 180); T.hang('wall_clock', 1.75, zb + 0.06, 2.4, 180); B.put('psx_bandage_mp_1', T.sq(1, 1)[0], T.sq(1, 1)[1], { y: 0.02 }); B.put('rug_office', 0, 1.5, { y: 0.17 });
+        pendant(a, -3.5, top, 0, 0.6); pendant(a, 3.5, top, 0, 0.6); });
+    put('P07-04', 'snowmobile', 2, 7, { face: 90 }); put('P07-04', 'rescue_sled', 9, 7, { face: 90 }); put('P07-04', 'flag_pole', 9, 4); put('P07-04', 'lantern_post', 3, 7, { face: 180 }); put('P07-04', 'snow_heap', 1, 2, { face: 40 });
+    /* THE VILLAGE STREET: the street runs north to south down the plot's middle (squares 5 and 6, packed snow); THE INN on its west side, THE SHOP on its east */
+    for (let ly = 0; ly < N; ly++) for (const lx of [5, 6]) { const q = S('P08-04', lx, ly); cell[q[1]][q[0]] = 'o'; }
+    walkIn('inn', 'P08-04', [1, 2, 5, 8, 'E'], 3.5, { leafDouble: true }, house('THE INN', 0x8a6444, 3.0, { chimney: 7.0, noWin: ['b4', 'b5'] }), (a, B, T) => { const { w, d } = T, zb = -d / 2 + 0.3, top = 3.5 - 0.46;
+        { const cx = 7.0, zc = zb + 0.6; for (const s of [-1, 1]) a.box(cx + s * 1.3, 0.16, zc, 0.7, 1.7, 1.1, 'rocks_5', STONE, G); a.box(cx, 1.86, zc, 3.3, 0.5, 1.1, 'rocks_5', STONE, G); a.box(cx, 2.36, zb + 0.4, 2.3, top - 2.3, 0.8, 'rocks_5', STONE, G);
+          a.box(cx, 0.16, zb + 0.06, 1.9, 1.7, 0.08, 'rocks_5', 0x2a2422, G); B.put('hearth_fire', cx, zb + 0.85, { w: 1.5, h: 1.2 }); T.solid(cx - 1.7, zc, cx + 1.7, zc, 1.2, 2); }
+        T.on('chesterfield_sofa', 4, 1, { face: 0 }); B.put('wingback_chair', T.sq(5, 1)[0] + 0.6, T.sq(5, 1)[1], { face: 300 }); B.put('fur_rug', 7.0, T.sq(4, 1)[1] - 1.6, { y: 0.17, span: 2.6 });
+        /* the desk by the door, the keys behind it */
+        { const c = T.sq(1, 2); counter(a, c[0], c[1], 3.0, WD2); T.solid(c[0] - 1.5, c[1], c[0] + 1.5, c[1], 1.0, 1.15); B.put('cash_register', c[0] + 0.8, c[1], { y: T.up(1.19), face: 180 }); B.put('table_lamp', c[0] - 0.9, c[1], { y: T.up(1.19) }); T.hang('key_rack', c[0], zb + 0.06, 1.6, 180); }
+        /* the beds along the back and the left wall, a footlocker at each */
+        for (const i of [0, 1, 2]) { T.on('psx_bed_1', i, 0, { face: 0 }); B.put('footlocker', T.sq(i, 0)[0] + 1.2, T.sq(i, 0)[1] + 1.3, { face: 0 }); }
+        for (const [i, j] of [[3, 2]]) { const c = T.sq(i, j); B.put('psx_dinner_table_1', c[0], c[1]); B.put('xmas_cocoa', c[0], c[1], { y: T.up(0.88) }); for (const [dx, dz, f] of [[1.15, 0, 270], [-1.15, 0, 90]]) B.put('psx_chair_mp_3', c[0] + dx, c[1] + dz, { face: f }); }
+        T.hang('painting_landscape', -3.5, zb + 0.06, 1.7, 180); T.hang('wall_clock', 0, d / 2 - 0.36, 2.3, 0); B.put('scarf_rack', w / 2 - 0.9, T.sq(5, 2)[1], { face: 270 }); B.put('rug_office', -1.75, 1.75, { y: 0.17 });
+        for (const sx of [-7, -1.75, 3.5]) pendant(a, sx, top, 1.75, 0.6); });
+    walkIn('shop', 'P08-04', [7, 3, 11, 7, 'W'], 3.5, {}, house('SKI SHOP', 0x4f7a5a, 2.6, { noWin: ['b0', 'b1', 'b2', 'b3'] }), (a, B, T) => { const { w, d } = T, zb = -d / 2 + 0.3, top = 3.5 - 0.46;
+        { const c = T.sq(2, 2); counter(a, c[0] + 1.75, c[1], 5.6, WD2); T.solid(c[0] - 1.05, c[1], c[0] + 4.55, c[1], 1.0, 1.15); B.put('cash_register', c[0] + 3.4, c[1], { y: T.up(1.19), face: 180 }); for (const sx of [0, 0.6, 1.2]) B.put('ski_boots', c[0] + sx, c[1] + 0.05, { y: T.up(1.19), face: 180 }); }
+        for (const y of [1.0, 2.2]) a.box(0, y, zb + 0.14, w - 1.2, 0.1, 0.12, WD2, 0x3a2a20, GW); for (let i = 0; i < 11; i++) B.put('snowboard', r2(-w / 2 + 1.2 + i * 1.1), zb + 0.36, { face: 180 });
+        T.on('ski_rack', 0, 1, { face: 90 }); T.on('ski_rack', 0, 2, { face: 90 }); B.put('sunglasses_spinner', T.sq(1, 3)[0], T.sq(1, 3)[1] - 0.3); B.put('brochure_rack', T.sq(3, 3)[0] + 0.6, T.sq(3, 3)[1], { face: 0 }); B.put('scarf_rack', T.sq(0, 3)[0] - 0.4, T.sq(0, 3)[1], { face: 90 });
+        T.hang('wall_clock', 0, d / 2 - 0.36, 2.3, 0); B.put('rug_office', 0, 2.2, { y: 0.17 }); for (const sx of [-3.5, 3.5]) pendant(a, sx, top, 1.0, 0.7); });
+    for (const [lx, ly] of [[4, 1], [7, 8], [4, 10]]) put('P08-04', 'lantern_post', lx, ly, { face: 180 }); put('P08-04', 'ski_rack', 6, 9, { face: 90 }); put('P08-04', 'park_bench', 7, 1, { face: 270 }); dec('P08-04', 'metal_trash_can', 7, 10); put('P08-04', 'xmas_snowman_2', 2, 0); put('P08-04', 'snow_heap', 9, 9, { face: 120 }); put('P08-04', 'trail_sign', 4, 0, { face: 180 });
+    /* THE VILLAGE GREEN: level and open on purpose. The village tree in the middle, benches and lanterns round it, snowmen, a sled, two tables */
+    put('P09-04', 'xmas_tree_plain', 5, 5, { h: 6.5, floor: true }); for (const [lx, ly, f] of [[5, 3, 0], [5, 8, 180], [3, 5, 90], [8, 5, 270]]) put('P09-04', 'park_bench', lx, ly, { face: f });
+    for (const [lx, ly] of [[2, 2], [9, 2], [2, 9], [9, 9]]) put('P09-04', 'lantern_post', lx, ly, { face: 180 }); put('P09-04', 'xmas_snowman', 7, 8); put('P09-04', 'xmas_snowman_3', 3, 3); put('P09-04', 'picnic_table', 8, 2); put('P09-04', 'picnic_table', 2, 7); dec('P09-04', 'snow_sled', 9, 6); put('P09-04', 'sleigh', 10, 10, { face: 300 }); put('P09-04', 'snow_heap', 0, 0, { face: 10 }); dec('P09-04', 'dog', 6, 7);
+    /* THE MID STATION, 5 x 3 squares in the plot's north-west corner (the lifts dock south and east of it, every run passes clear): the warming room.
+       A stove, benches round it, a table, the lift man's desk with the radio, the map of the mountain, coffee. */
+    walkIn('midstation', 'P10-04', [1, 0, 6, 3, 'S'], 3.5, {}, house('MID STATION', 0x5f7488, 2.6, { noWin: ['b0', 'b4'] }), (a, B, T) => { const { w, d } = T, zb = -d / 2 + 0.3, top = 3.5 - 0.46;
+        stove(a, B, T, 0, 0); T.on('locker_bench', 0, 1, { face: 90 }); T.on('locker_bench', 1, 0, { face: 0 }); B.put('firewood_stack', T.sq(1, 0)[0] + 1.6, zb + 0.5, { face: 180 });
+        { const c = T.sq(4, 0); counter(a, c[0], c[1], 2.6, WD2, { h: 0.82, depth: 1.1 }); T.solid(c[0] - 1.3, c[1], c[0] + 1.3, c[1], 1.1, 0.9); B.put('field_radio', c[0] - 0.5, c[1], { y: T.up(0.91), face: 180 }); B.put('coffee_maker', c[0] + 0.7, c[1], { y: T.up(0.91), face: 180 }); B.put('psx_chair_mp_3', c[0], c[1] + 1.2, { face: 0 }); }
+        T.on('map_table', 2, 1); { const c = T.sq(3, 2); B.put('psx_dinner_table_1', c[0], c[1]); B.put('xmas_cocoa', c[0], c[1], { y: T.up(0.88) }); for (const [dx, f] of [[1.15, 270], [-1.15, 90]]) B.put('psx_chair_mp_3', c[0] + dx, c[1], { face: f }); }
+        T.hang('notice_board', 0, zb + 0.06, 1.3, 180); T.hang('wall_clock', -5.25, zb + 0.06, 2.4, 180); T.hang('fire_extinguisher', w / 2 - 0.36, T.sq(4, 1)[1], 0.95, 270); B.put('brochure_rack', -w / 2 + 0.9, T.sq(0, 2)[1], { face: 90 }); B.put('rug_office', 0, 1.0, { y: 0.17 });
+        for (const sx of [-5.25, 0, 5.25]) pendant(a, sx, top, 0, 0.6); });
+    put('P10-04', 'ski_rack', 7, 1, { face: 180 }); put('P10-04', 'trail_sign', 0, 4, { face: 180 }); put('P10-04', 'lantern_post', 0, 2, { face: 180 }); put('P10-04', 'coin_telescope', 1, 10, { face: 90 }); put('P10-04', 'park_bench', 2, 10, { face: 90 }); put('P10-04', 'snow_heap', 8, 0, { face: 70 });
+  }
+
 };
 
 /* THE AIR (pass 4; the tool's hook `airZones`, district S's, 11-16). A room with zones draws only its zones, so the room's own thin snow (HQ_ATMOS_SITES
