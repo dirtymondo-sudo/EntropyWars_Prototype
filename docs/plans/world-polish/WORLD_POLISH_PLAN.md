@@ -429,6 +429,7 @@ they are measurements, not the job.
   ways are the thin trails. Fill the halls or make them smaller.
 
 ### Thread 7: THE UNDERGROUND WALKS (BUILDING 11-20: the Long Tunnel's labyrinth room is built, `site_prebuilt_hollow_earth_ug_long` by `bake-underground.js long-tunnel`, and waits mondo's look; the West Tunnel is next; notes areas-complexes.md "THE UNDERGROUND, ONE ROOM A DISTRICT")
+- **THE TUNNEL-WAY (11-20): THE PILOT IS BUILT** from `plans/ug-tunnel-way.js`: one 5 x 5 labyrinth room under the old id `site_prebuilt_hollow_earth_ow_tunnelway` (`node bake-ug-tunnelway.js`, design `docs/areas/underground/tunnel-way/room.js`), the whole skeleton + the north third dressed (the Ossuary Gate, the Bone Passage, the Nest, the Shaft, the Old Camp, the squeeze); waits mondo's look. Notes: areas-complexes.md "THE UNDERGROUND, THE TUNNEL-WAY".
 - **Zone:** the walks under the map. They belong to two zones' tools, which is why this thread runs before threads 9 and 10.
 - **Rooms:** `site_prebuilt_hollow_earth_ow_long` (10), `_ow_tunnelway` (34), `_ow_west` (18), Agartha's tunnel in
   `site_prebuilt_hollow_earth_ow_agartha`; the under-city walks (district U, 35 plots) of `site_prebuilt_downtown_underworld`.

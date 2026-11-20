@@ -30,7 +30,12 @@ module.exports = {
         ceil: 3, ceilChamber: 6, tallChambers: { 'Chamber 0,1': 6, 'Chamber 3,2': 3 },   // the Crossroads is the great chamber: its roof stands 21 m over its floor
         spawn: [29, 4], spawnFace: 180,
         mood: { light: 0xffb070, ambient: 0.14, hero: false },
-        pal: ['obsidian', 'dungeon_2', 'dirt_2', 'crystal'],
+        /* THE SHEETS (mondo 11-20: "don't use the calm textures, use from the urban decay or horror pack"): every surface wears a horror-pack sheet
+           (Screaming Brain Studios, `hz_<family>_<nn>`): the rock black and cracked, the floor dark cracked stone, the ledge faces rough brown */
+        tex: { floor: 'hz_stone_02', wall: 'hz_stone_01', dado: 'hz_stone_02', trim: 'hz_stone_01', ceiling: 'hz_stone_01', cliff: 'hz_stone_10', path: 'hz_floor_03',
+               genWall: 'hz_stone_01', roof: 'hz_stone_01', stalactite: 'hz_stone_02' },
+        /* the paint: 1 the hot rock by the Fissure · 2 (spare) · 3 mud (the pits, the camp) · 4 mineral stone (the crystal pockets, the Shelf) */
+        pal: ['hz_stone_10', 'hz_stone_02', 'hz_floor_03', 'hz_stone_06'],
         plotNames: { '2,0': 'The Last Camp', '0,0': 'The Shelf', '0,1': 'The Crossroads', '0,2': 'The Grotto', '3,2': 'The Mouth', '4,2': 'The Oubliette', '5,1': 'The Fissure',
             '1,0': 'The High Gallery', '3,0': 'The Wet Run', '4,0': 'The Long Shelf', '5,0': 'The Hot Gallery', '1,1': 'The Narrows', '2,1': 'The Cliff Gallery', '3,1': 'The Knot',
             '4,1': 'The Falls', '1,2': 'The Low Gallery', '2,2': 'The Dead End', '5,2': 'The Drip' },
@@ -79,9 +84,9 @@ module.exports = {
         const pick = a => a[Math.floor(rnd() * a.length)];
         /* ── THE ROCK KIT: every wall foot of the labyrinth wears boulders (squashed domes half in the wall) and stalagmites (point up),
            in four dark greys (obsidian by the Fissure); one `arch` row a plot. Drawn only: nothing here blocks a walk. ── */
-        const TINT = [0x8e8a80, 0x7a766c, 0x86807a, 0x6e6a62], HOTT = [0xffffff, 0xe0d0d0, 0xd0c0c8];
+        const TINT = [0xffffff, 0xe6e2da, 0xf0ece4, 0xd6d2ca], HOTT = [0xffffff, 0xf0e0dc, 0xe0d4d0];   // near white: the horror sheet's own colour shows
         for (let by = 0; by < ctx.H / ctx.N; by++) for (let bx = 0; bx < ctx.W / ctx.N; bx++) {
-            const hot = HOT.includes(bx + ',' + by), key = hot ? 'obsidian' : 'rocks_5', ox = ctx.gx(bx * ctx.N) + ctx.N * C / 2, oz = ctx.gz(by * ctx.N) + ctx.N * C / 2, parts = [];
+            const hot = HOT.includes(bx + ',' + by), key = hot ? 'hz_stone_10' : 'hz_stone_02', ox = ctx.gx(bx * ctx.N) + ctx.N * C / 2, oz = ctx.gz(by * ctx.N) + ctx.N * C / 2, parts = [];
             for (let y = by * ctx.N; y < (by + 1) * ctx.N; y++) for (let x = bx * ctx.N; x < (bx + 1) * ctx.N; x++) { if (!ctx.open(x, y)) continue;
                 ctx.rockSides(x, y).forEach(s => { if (rnd() > 0.9) return; const v = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] }[s], t = (rnd() - 0.5) * 2.6;
                     const wx = ctx.gcx(x) - ox + v[0] * 1.75 + (v[0] ? 0 : t), wz = ctx.gcz(y) - oz + v[1] * 1.75 + (v[1] ? 0 : t), y0 = ctx.h(x, y), tn = hot ? pick(HOTT) : pick(TINT);
@@ -96,8 +101,8 @@ module.exports = {
         /* ── THE CROSSROADS: THE NEEDLE (the plan's landmark at 6,18), a column of dripstone floor to roof in the great chamber ── */
         { const x = 6, y = 18, top = ctx.ceil(x, y) - ctx.h(x, y), b = ctx.h(x, y); ctx.taken.add(x + ',' + y);
           ctx.feat({ k: 'arch', id: 'ug:cavern:needle', x: ctx.gcx(x), z: ctx.gcz(y), rot: 0, base: b, parts: [
-              { s: 'cyl', p: [0, 0, 0], r: 1.6, r2: 0.45, h: r2(top * 0.6), seg: 9, key: 'rocks_5', tint: 0xbcb6a8, uv: 3 }, { s: 'cyl', p: [0, r2(top * 0.55), 0], r: 0.4, r2: 1.6, h: r2(top * 0.45 + 0.2), seg: 9, key: 'rocks_5', tint: 0xb0aa9c, uv: 3 },
-              { s: 'dome', p: [0, 0, 0], r: 2.4, h: 0.8, seg: 10, rings: 3, key: 'rocks_5', tint: 0x9e9888, uv: 3 }, { s: 'cyl', p: [1.5, 0, 0.9], r: 0.5, r2: 0.04, h: 2.6, seg: 6, key: 'rocks_5', tint: 0xb0aa9c }, { s: 'cyl', p: [-1.2, 0, -1.4], r: 0.4, r2: 0.04, h: 1.9, seg: 6, key: 'rocks_5', tint: 0xbcb6a8 } ] });
+              { s: 'cyl', p: [0, 0, 0], r: 1.6, r2: 0.45, h: r2(top * 0.6), seg: 9, key: 'hz_stone_07', tint: 0xbcb6a8, uv: 3 }, { s: 'cyl', p: [0, r2(top * 0.55), 0], r: 0.4, r2: 1.6, h: r2(top * 0.45 + 0.2), seg: 9, key: 'hz_stone_07', tint: 0xb0aa9c, uv: 3 },
+              { s: 'dome', p: [0, 0, 0], r: 2.4, h: 0.8, seg: 10, rings: 3, key: 'hz_stone_07', tint: 0x9e9888, uv: 3 }, { s: 'cyl', p: [1.5, 0, 0.9], r: 0.5, r2: 0.04, h: 2.6, seg: 6, key: 'hz_stone_07', tint: 0xb0aa9c }, { s: 'cyl', p: [-1.2, 0, -1.4], r: 0.4, r2: 0.04, h: 1.9, seg: 6, key: 'hz_stone_07', tint: 0xbcb6a8 } ] });
           ctx.feat({ k: 'wall', x0: r2(ctx.gcx(x) - 1), z0: ctx.gcz(y), x1: r2(ctx.gcx(x) + 1), z1: ctx.gcz(y), h: 3, t: 2, ghost: true }); }
         PUT('signpost', 4, 15, { face: 135 }); PUT('brazier', 3, 20); PUT('brazier', 9, 15);
         DEC('candleRing', 7, 20); DEC('candleRing', 4, 17); DEC('skull', 7, 20); DEC('cave_stone', 8, 21); DEC('cave_stone', 2, 14);

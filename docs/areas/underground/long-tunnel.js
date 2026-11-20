@@ -26,7 +26,7 @@ module.exports = {
     doors: {
         N: { id: 'ow_h_m15_m8', room: 'site_prebuilt_hollow_earth_ow_agartha', label: 'AGARTHA', sub: 'AGARTHA · THE TUNNEL UP' },
         S: { id: 'ow_h_m15_2', room: 'site_prebuilt_hollow_earth_ow_west', label: 'THE WEST TUNNEL', sub: 'THE WEST TUNNEL · THE TUNNEL DOWN' },
-        E: { id: 'ow_v_m9_5', room: 'site_prebuilt_hollow_earth_ow_tunnelway', label: 'THE TUNNEL-WAY', sub: 'THE TUNNEL-WAY · A SIDE PASSAGE EAST' },
+        E: { id: 'ug_tw_long', room: 'site_prebuilt_hollow_earth_ow_tunnelway', label: 'THE TUNNEL-WAY', sub: 'THE TUNNEL-WAY · EAST, AND UP' },   // the Tunnel-Way's labyrinth (bake-ug-tunnelway.js) keeps the other end
     },
     mood: { light: 0xffb070, ambient: 0.14, hero: false },
     vault: 1.75,
