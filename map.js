@@ -5678,7 +5678,7 @@
             if (i) i.textContent = '× ' + (ev.mult | 0) + (tail ? ' · ' + tail : '');
         }
         function _hqComboCard(ev, cls, tail, ms) {
-            const html = `<div class="hq-trick-head"><b>${(ev.score | 0).toLocaleString()}</b><i>× ${ev.mult | 0}${tail ? ' · ' + tail : ''}</i></div><div class="hq-trick-list">${_hqComboChips(ev.text)}</div>`;
+            const html = `<div class="hq-trick-head col"><b>${(ev.score | 0).toLocaleString()}</b><i>× ${ev.mult | 0}${tail ? ' · ' + tail : ''}</i></div><div class="hq-trick-list">${_hqComboChips(ev.text)}</div>`;
             _hqTrickLine(html, cls, ms);
             const el = _hqEl('hqTrick'); if (el && cls === 'live') { const b = el.querySelector('b'); if (b) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); } }
         }
@@ -5780,7 +5780,7 @@
                     _hqSkateFile({ bail: true });
                     _hqComboLive = false;
                     _hqOllieMeter(0, false, false, true); _hqBalMeter(null);
-                    _hqTrickLine(`<div class="hq-trick-head"><span>BAIL</span><b>${ev.lost ? '−' + (ev.lost | 0).toLocaleString() : ''}</b><i>${ev.why === 'balance' ? 'OFF THE RAIL' : ev.why === 'offaxis' ? 'LANDED SIDEWAYS' : 'STILL TURNING'}</i></div>`, 'bail', 1800);
+                    _hqTrickLine(`<div class="hq-trick-head col"><span>BAIL</span><b>${ev.lost ? '−' + (ev.lost | 0).toLocaleString() : ''}</b><i>${ev.why === 'balance' ? 'OFF THE RAIL' : ev.why === 'offaxis' ? 'LANDED SIDEWAYS' : 'STILL TURNING'}</i></div>`, 'bail', 1800);
                     break;
                 }
                 /* DISASTER CITY (2026-09-17): the traffic and the circuit — three-renderer.js _hqTickTraffic / _hqTickRace */

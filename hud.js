@@ -19130,7 +19130,7 @@ const UIM_SURFACES = [
   { id: 'explore', label: 'Exploration HUD', hint: 'D.O.O.R. HQ and the zones: the strip, prompts, cards, map, bag.', native: true, def: 'theme',
     scope: '#hqPage',
     roles: {
-      panel: '#hqPage .hq-strip-l, #hqPage .hq-prompt, #hqPage .hq-toast, #hqPage .hq-trick, #hqPage .hq-panel-card, #hqPage .hq-map-card, #hqPage .hq-map-key, #hqPage .hq-pause-frame, .hq-dock-tag',
+      panel: '#hqPage .hq-strip-l, #hqPage .hq-prompt, #hqPage .hq-toast, #hqPage .hq-panel-card, #hqPage .hq-map-card, #hqPage .hq-map-key, #hqPage .hq-pause-frame, .hq-dock-tag',
       head: '#hqPage .hq-panel-hd, #hqPage .hq-pause-head, #hqPage .hq-map-bar',
       button: '#hqPage .hq-btn, #hqPage .hq-pause-cmd, #hqPage .hq-loc, #hqPage .hq-map-result',
       buttonSel: '#hqPage .hq-btn:hover:not(:disabled), #hqPage .hq-pause-cmd:hover, #hqPage .hq-pause-cmd.cur, #hqPage .hq-loc.sel, #hqPage .hq-loc:hover, #hqPage .hq-map-result:hover',
