@@ -12559,6 +12559,38 @@ by `_hqSpaceJuiceTick` from `_hqSpaceBodiesTick`: a fixed list of pieces, no sce
   **Not checked:** the sound; the frame rate on a real machine (the post effects slowed the cloud browser badly, but that browser is a
   software renderer); the satellites close up; the short launch's picture.
 
+## OUTER SPACE, THE UFOS — hunters in space, the tractor beam, the crew's fight (2026-11-20, owner, WORLD POLISH thread 18 pass 3)
+mondo 11-20: "put the different UFO models in the game in outer space for encounters, I think each there are races that have a corresponding
+model ... the triangle UFO, the saucer, spaceships, the white pills ... the jellyfish UFO". Asked how a space encounter plays out (every fight
+is laid on the ground; a ship in open space has none), he picked BEAMED DOWN.
+- **THE FLEET** = data.js `HQ_SPACE_UFOS` (his to change): `crafts` rows { id, craft, crew race, n, home, orbitK, v, inc } and the rule numbers
+  (`detectM` 650, `lockSec` 2.5, `huntV` 220, `beamM` 55, `giveUpM` 1700, `huntSec` 25, `coolSec` 30). Today (Claude's pairing, by the usual
+  lore): a saucer of 3 greys round the Moon, a white tic-tac of 2 nordics round the Earth, a saucer of 3 martians round Mars, the "triangle"
+  of 2 reptilians in the rocks (the Meshy file is named Triangle UFO; it reads as a dark disc with teal lights), 2 jellyfish UFOs at Saturn
+  (the race's own body: it is the crew, no craft lands). Looks = three-renderer.js `_HQ_UFO_LOOK` (craft -> catalogue key or race, span, glow);
+  the tic-tac is a white capsule in code (`_hqTicTac`: no model). Not used: the `spaceship` model (it is the player's own ship). Races with no
+  craft yet (mondo offered to make models): annunaki, mantid, watcher, occulus, voidweaver, cosmic wraith.
+- **THE RUN** (`_hqSpaceUfoTick`, from the spectacle tick; a fixed list, RULE #1e): patrol round the home -> LOCK (it sees the flown ship within
+  `detectM`: it stops, flashes red, the red glow over it, the alarm; `lockSec` to run) -> HUNT at `huntV` (the burner outruns it once you are a
+  few hundred metres off a world; near a world the speed cap holds you to its speed) -> it gives up past `giveUpM` or after `huntSec` and goes
+  home; one hunt at a time, `coolSec` between.
+- **THE TRACTOR BEAM** (`_hqShipBeamStart` / `_hqShipBeamStep`, the helm's input is off, E does nothing): the nearest round world, the square
+  under the ship (`_hqShipPadFind`: a free square with a step-off spot, searched outward), a held second, then a 3 to 7 s drag down to it, the
+  craft over the hull, a cone of light between. The camera swings round to the side and from below, both in frame. `_hqShipSetDown({ world,
+  x, z })` then sets the ship down there and steps you off.
+- **THE LANDING** (`_hqSpaceUfoLand`): the craft lands 13 to 24 m off (a piece on the net, bent onto the ball), the camera turns to it, its
+  crew (`_hqSpawnCharacter`, kind npc, one `group`) walks at you and, within 2.6 m or after 7 s, the fight starts through `H.opts.onEncounter`
+  (= map.js `_hqEncounterFire`, `npcStart`, `why: 'ufo'`): the ordinary ground fight, the crew as the enemy team, they act first. Board the
+  ship again and the craft lifts and goes home. All viewer-local; `_hqEncounterFire` refuses any fight from an online seat (RULE #2).
+- **THE SOUND:** audio.js `ewShipCue('alarm')` (a two-tone warble), `'beam'` (a rising whine), `'land'`.
+- **Probe:** `dev.ufos()`, `dev.ufo(i, 'lock' | 'near')`, `window.EW_NO_UFO_HUNT = true` (patrol only). A probe page has no party: the fight
+  still starts (the mode's fallback squad); a chase by `dev.come` on the Moon was refused in the probe for a reason not found (the direct
+  call works; real story walks were not checked).
+- **Driven** (playtest_city.js, llvmpipe): the grey saucer locked, hunted, beamed the ship down onto the Moon, landed, 3 greys walked in and
+  the game went to `battle` (P1 against three greys on the Moon, "OUTER SPACE · THE FIELD"). Pictures of all five crafts. **Not checked:** a
+  fight on Mars, Saturn or the Singularity (the Moon only); escaping on the burner (worked out from the speeds, not flown); the sound; what
+  the battle board looks like near a net's cut seam (fights on a ball were "not checked" since the round worlds: one fight on the Moon ran).
+
 ## ONE WORLD, THE NORTH ROUTES — R1 R2 R3 R4 R5 R12 built and stitched (2026-11-17, BUILD_PLAN phase 4 row 4.1; the owner's north routes thread)
 Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/areas/routes/<ID>.json` (+ a hook `.js` where named). Places are
 `ow-places.js` picks; every new place name is an idea of Claude's (the page's own words kept where it gave them).

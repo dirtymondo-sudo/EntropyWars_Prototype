@@ -397,6 +397,10 @@ seat (`opts.awareOk`, map.js `_hqEncounterFire` / `_hqMugOpen`). Plan: `docs/pla
 - **Probe lessons:** the first run in a new container crashed as the room got ready and its retry was half loaded (no resident bodies); from the second run on
   the city loads in about 250 s. `EW_LIVE_LOG=1` prints every `[HQ] PROBE` line (the PROBES line keeps only 12). A body sent at a raised speed stops short of the walker now.
 
+## THE UFO CREWS (2026-11-20, the Outer Space thread)
+In Outer Space a hunting UFO beams the flown ship down and its crew starts the fight (`npcStart`, `why: 'ufo'`): data.js `HQ_SPACE_UFOS`,
+notes areas-complexes.md "OUTER SPACE, THE UFOS". The crew are runtime NPCs (`hq-ufo-<craft>-<i>-<stamp>`, one `group`), not room spots.
+
 ## NPC HEALTH ON THE WALK (NPC encounters step 5a, 2026-11-18; mondo: "Need to track health outside of battle then, already do for the player and party")
 
 Story walk only (the encounter's own launch and commit). Plan: `docs/plans/npc-encounters/PLAN.md` 4.5, section 0 round 1 answer 11 + round 2 answer 2.

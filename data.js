@@ -86066,6 +86066,24 @@ function hqTreeDead(kind) { const t = HQ_TREE_KINDS[kind]; return !!(t && t.dead
    rooms never placed (the celestial bodies, the moving maps' batch, the far kits). Same file, `base: 'misc'` (Assets/misc/).
    Sizes are the game's own for each (the metres its builders fit it to: 1.75 m a tile), UNMEASURED against the files (the
    sandbox cannot reach the bucket): the inspector's `h` / `span` on a placed prop overrides. */
+/* THE UFOS IN OUTER SPACE (2026-11-20, mondo: "put the different UFO models in the game in outer space for encounters ... the triangle UFO, the
+   saucer, spaceships, the white pills ... the jellyfish UFO"; his pick: BEAMED DOWN). three-renderer.js THE UFOS reads this. Each craft patrols
+   its `home` (a world's id, 'earth' or 'rocks') at `orbitK` x its radius; it sees the flown ship within `detectM`, hunts it at `huntV` m/s after `lockSec` (the
+   burner outruns it once you are a few hundred metres off a world), and within `beamM` drags it down onto the nearest world; `n` of its `crew`
+   race step out and fight. `craft`: 'saucer' (MODEL_LIST saucer_lg), 'triangle' (ufo, the Meshy triangle), 'tictac' (a white capsule drawn in
+   code: no model), 'jellyfish' (the Jellyfish UFO race's own body: it IS the crew, no craft lands). The crew pairings are Claude's pick, by the
+   usual lore; change any row. Races with no craft yet: annunaki, mantid, watcher, occulus, voidweaver, cosmic wraith (a model each, then a row). */
+const HQ_SPACE_UFOS = {
+    detectM: 650, lockSec: 2.5, giveUpM: 1700, huntSec: 25, coolSec: 30, huntV: 220, beamM: 55,   // (lockSec: it stops and flashes red that long first, your time to run)
+    crafts: [
+        { id: 'moon_saucer',   craft: 'saucer',    crew: 'grey',          n: 3, home: 'moon',   orbitK: 2.4, v: 45 },
+        { id: 'earth_tictac',  craft: 'tictac',    crew: 'nordic',        n: 2, home: 'earth',  orbitK: 1.6, v: 70, inc: 1.1 },
+        { id: 'mars_saucer',   craft: 'saucer',    crew: 'martian',       n: 3, home: 'mars',   orbitK: 2.0, v: 45 },
+        { id: 'rocks_triangle', craft: 'triangle', crew: 'reptilian',     n: 2, home: 'rocks',  orbitK: 2.2, v: 55, inc: 0.2 },
+        { id: 'saturn_jelly',  craft: 'jellyfish', crew: 'jellyfish ufo', n: 2, home: 'saturn', orbitK: 1.7, v: 35 }
+    ]
+};
+if (typeof window !== 'undefined') window.HQ_SPACE_UFOS = HQ_SPACE_UFOS;
 const HQ_CATALOGUE_MISC = {
     moon:            { file: 'Meshy_AI_moon_realistic_0727195427_texture.glb',        base: 'misc', h: 3,    foot: 0 },
     earth:           { file: 'Meshy_AI_planet_earth_realist_0727195349_texture.glb',  base: 'misc', h: 3,    foot: 0 },
