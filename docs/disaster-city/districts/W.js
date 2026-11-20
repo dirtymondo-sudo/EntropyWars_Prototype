@@ -64,6 +64,9 @@ function apply(ctx) {
     let seed = 1; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
     const count = { rows: 0, props: 0, people: 0, left: 0 };
     const keepProp = q => { if (!inZ(q.z)) { count.left++; return false; }
+        /* THE COVE'S SHORE (2026-11-20, mondo: "a pointy part in the cove, doesn't look natural"): the sand's north end runs in one sweep from the Cove round to the
+           Shore's bay now, so its first twelve rows are narrower; a thing lying on the sand there is pulled back inside the new waterline */
+        if (q.z < -210 && !(typeof q.y === 'number' && q.hover != null) && q.y !== 0.32) { const row = (q.z + 252) / 3.5, lim = r2(-252 + 3.5 * (146.3 + 1.45 * row)); if (q.x > lim) q.x = lim; }
         if (typeof q.y === 'number' && q.y <= -0.5 && q.hover != null) q.y = r2(q.y + SEA);          // a thing in or on the water: the city's sea stands at -1.45
         if (typeof q.y === 'number' && (q.y >= 1 || q.y <= -0.5)) OWN.props.add(q); ctx.props.push(q); count.props++; return true; };
     const props = { push: (...qs) => { qs.forEach(keepProp); return 0; } };                                // S.js pushes some props itself
