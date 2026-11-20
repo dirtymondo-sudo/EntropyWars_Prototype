@@ -319,9 +319,9 @@ const ROOMS = [
     { key: 'A', room: 'site_prebuilt_hollow_earth_ow_agartha', part: 'ow_agartha', label: 'AGARTHA', sub: 'THE CRYSTAL CITY · UNDER THE LEMURIA ADIT · THE TERRACES · THE SPIRE', group: ['A'], place: placeA, turn: 90, lines: O.agartha.l, spawnAt: ['P04-04', 6, 4],
       parti: 'A city of white terraces under the Lemuria adit steps down round a spire lit from inside to a lake and a plaza; the long tunnel from the Cavern comes in at its upper terrace.', sunsNote: 'the Spire',
       tunnels: seq(-9, -11, y => [-15, y, T_NAME.north]), tunLevel: 4 },
-    { key: 'W', room: 'site_prebuilt_hollow_earth_ow_west', part: 'ow_west', label: 'THE WEST TUNNEL', sub: 'THE CAVERN · WEST UNDER THE ESTATE · THE WELLS · NORTH TO AGARTHA', group: [], lines: [],
-      parti: 'A cave tunnel west from the Cavern under the Estate: the Estate\'s well comes down into it, and at its west end it turns north for Agartha.', sunsNote: 'none',
-      tunnels: seq(-9, -15, x => [x, 11, T_NAME.west]).concat([[-15, 12, T_NAME.west], [-14, 10, T_NAME.wells]], seq(10, 2, y => [-15, y, T_NAME.west])) },
+    /* THE WEST TUNNEL left this tool 2026-11-20 (world polish threads 7 + 9 + 10): a labyrinth room of its own, `site_prebuilt_hollow_earth_ug_west`,
+       written by `node bake-underground.js west-tunnel` from its approved square plan (the Estate's well comes down in it: link `well_skinwalker` end b);
+       the old corridor room `…_ow_west` is retired to it. The Cavern's west door here (KH, -8,11) is a KHOUT row below. */
     /* THE LONG TUNNEL left this tool 2026-11-20 (world polish threads 7 + 9 + 10): it is a labyrinth room of its own now, `site_prebuilt_hollow_earth_ug_long`,
        written by `node bake-underground.js long-tunnel` from its approved square plan; the old corridor room `…_ow_long` is retired to it. Two of its
        ways out are OUTER rows below (the West Tunnel's north, Agartha's south); the third is the Tunnel-Way's own (`ug_tw_long`, bake-ug-tunnelway.js). */
@@ -335,12 +335,13 @@ const ROOMS = [
       tunnels: seq(9, 2, y => [-9, y, T_NAME.way]).concat([[-8, 2, T_NAME.way], [-7, 2, T_NAME.way]], seq(-7, 0, x => [x, 1, T_NAME.cells]), seq(-7, -4, x => [x, -4, T_NAME.bone]), seq(-3, 0, y => [-4, y, T_NAME.bone]), seq(2, 9, y => [-4, y, T_NAME.bone])) },
 ];
 /* where one room meets another: [room key, world plot, side, room key, world plot, side]; the district plot's side is DUG to its open floor */
-const SEAMS = [['KH', [-8, 11], 'W', 'W', [-9, 11], 'E'], ['KH', [-8, 9], 'W', 'T', [-9, 9], 'E'], ['KH', [-4, 10], 'N', 'T', [-4, 9], 'S']];
+const SEAMS = [['KH', [-8, 9], 'W', 'T', [-9, 9], 'E'], ['KH', [-4, 10], 'N', 'T', [-4, 9], 'S']];
+/* a district plot's way into a room another tool writes (2026-11-20): [room key, world plot, side, door id, the room, the door it lands at, label, sub] */
+const KHOUT = [['KH', [-8, 11], 'W', 'ow_v_m8_11', 'site_prebuilt_hollow_earth_ug_west', 'ug_cavern_west', 'THE WEST TUNNEL', 'THE WEST TUNNEL · THE TUNNEL ON']];
 /* where a tunnel leaves for another zone's room (phase 4.4): [room key, world plot, side, seam id, the room past it, its label, the door's sub, leaf] */
 const OUTER = [['T', [0, 1], 'E', 'ow_v_1_1', 'site_prebuilt_downtown_underworld', 'DISASTER CITY · THE SEWERS', 'THE CELLS TUNNEL · INTO THE GUARDROOM', 'leaf_cell'],
     ['T', [-7, -4], 'W', 'ow_v_m7_m4', 'site_prebuilt_vatican_under', 'THE VATICAN · THE CATACOMBS', 'THE BONE PASSAGE · UP INTO THE CATACOMBS', 'leaf_frame_only'],
-    /* THE LONG TUNNEL's room (bake-underground.js, 2026-11-20): the same seam ids as before at the West Tunnel and Agartha */
-    ['W', [-15, 2], 'N', 'ow_h_m15_2', 'site_prebuilt_hollow_earth_ug_long', 'THE LONG TUNNEL', 'THE LONG TUNNEL · THE TUNNEL UP', null],
+    /* THE LONG TUNNEL's room (bake-underground.js, 2026-11-20): the same seam id as before at Agartha (the West Tunnel is bake-underground.js's too) */
     ['A', [-15, -9], 'S', 'ow_h_m15_m8', 'site_prebuilt_hollow_earth_ug_long', 'THE LONG TUNNEL', 'THE LONG TUNNEL · THE TUNNEL DOWN', null]];
 /* a district plot joined to a tunnel plot inside one room: [room key, district plot (world), its side, the tunnel plot] */
 const INNER = [['A', [-16, -11], 'E', [-15, -11]]];
@@ -401,6 +402,7 @@ SEAMS.forEach(S => { const A = RK[S[0]], B = RK[S[3]], ea = A.at(S[1][0], S[1][1
     if (id !== seamId(S[4][0], S[4][1], S[5])) throw new Error('seam ' + id + ' is not one line');
     const oa = ea.district === 'T' ? 6 : A.digIn(S[1][0], S[1][1], S[2]), ob = eb.district === 'T' ? 6 : B.digIn(S[4][0], S[4][1], S[5]);
     EXTRA[A.key].push(seamDoor(A, S[1], S[2], oa, id, B)); EXTRA[B.key].push(seamDoor(B, S[4], S[5], ob, id, A)); SEAMLIST.push(id + ' ' + A.room + ' <-> ' + B.room); });
+KHOUT.forEach(S => { const A = RK[S[0]], d = seamDoor(A, S[1], S[2], A.digIn(S[1][0], S[1][1], S[2]), S[3], { key: 'X', room: S[4], label: S[6] }); d.sub = S[7]; d.action.at = S[5]; EXTRA[A.key].push(d); SEAMLIST.push(S[3] + ' ' + A.room + ' -> ' + S[4]); });
 OUTER.forEach(S => { const A = RK[S[0]]; if (seamId(S[1][0], S[1][1], S[2]) !== S[3]) throw new Error('OUTER ' + S[3] + ': not the seam of ' + S[1] + ' ' + S[2]);
     const d = seamDoor(A, S[1], S[2], 6, S[3], { key: 'X', room: S[4], label: S[5] }); d.sub = S[6]; d.leaf = S[7]; EXTRA[A.key].push(d); SEAMLIST.push(S[3] + ' ' + A.room + ' <-> ' + S[4]); });
 
@@ -416,8 +418,8 @@ function moveWay(w) {
     return { R, wall: 'free', x: q[0], z: q[1], face: { N: 180, S: 0, W: 90, E: 270 }[s], passage: true };   // its side is inside the box now (a tunnel plot widened it): free on the plot's line
 }
 const WAYS = {}; Object.keys(WAY).forEach(k => { WAYS[k] = moveWay(WAY[k]); });
-{ const R = RK.W, e = R.at(-14, 10), sx = e.col * N + 6, sy = e.row * N + 5; if (!R.open(sx, sy)) throw new Error('the wells\' square is not open');
-  WAYS.well_skinwalker = { R, wall: 'free', x: R.M.gcx(sx), z: R.M.gcz(sy), face: 180 }; }
+/* (the Estate's well, link well_skinwalker end b, comes down in the West Tunnel's labyrinth room: bake-underground.js west-tunnel checks it) */
+delete WAYS.well_skinwalker;
 const BAYS = {}; Object.keys(BAY).forEach(k => { BAYS[k] = Object.assign({ id: BAY[k].id }, moveWay(BAY[k])); });
 /* the room doors: `dungeon` (the Oubliette) and `woods` (the Lemuria Stair) move with their plots */
 const RDOORS = {}; ROOMS.forEach(R => { RDOORS[R.key] = []; });
