@@ -8112,6 +8112,15 @@ scientist labs, Lockheed Martin skunkworks, scientific and psychic research, etc
   plain labels mine: MAGNET TEST, CABLE VAULT, MONITORING, COOLING, RAD STORE, LOCKERS, SURVEY, BREAK ROOM, SPARES, PUMPS, WORKSHOP, HELIUM, BACKUP
   CONTROL, FIRST AID). THE DETECTOR HALL is a pit at 5.25 under the ring's catwalk (a stair down, a ladder out, a rail gap = a ledge); the detector
   is `dockring` + two coils + the orb. The beam stays level and straight on purpose (a collider). Level P3, Command and Research are unchanged by it.
+- **THE INTERIORS + POLISH PASS (2026-11-20, mondo: "go ahead and do interiors and polish", then "do sub level 7 too"):** Disposal's line to an
+  incinerator; the vault's hoard; the Great Room's chairs and pictures; the platform's hall (benches, the tube map, the board); the checkpoint's
+  racks; a buffer at the tunnel's west end; signs on the tunnel wall over every way down (THE HANGAR, MOTOR POOL, THE RING); a sign on each side of
+  the Ring (NORTH · CONTROL ROOM etc.); the four corner rooms dressed (the south-east one holds `time_machine`: THE OLD EXPERIMENT, my label);
+  31 more floor decals (49 of the room's 60 used). THE LAST THREE REAL LIGHTS: the Range, the War Room, the Hangar (all ten are used now).
+  FIXED: plates that faced into their walls (a sign on a WEST wall faces east = ry −90; on an EAST wall ry 90).
+  SUB-LEVEL 7's STAIR (S.js, the second side's row taken on his word): three switchback flights in lanes A / B / C (14 → 9.33 → 4.67 → 0), the
+  top landing's north edge and the north landing's west edge open (ledges: a 9.3 m drop), the store off the north landing (halfway down),
+  the guard room off the foot (Disposal's back door walks into it), the hub's south port moved to the foot (x 39..40).
 - **NO `TileGeneric2b` (mondo 11-20: "tilegeneric2b is the one I don't want", the floor that looks like broken tiles):** Research's room floor is
   `urban:TileGeneric1a` now (bake-dumb.js FLOORS). Never give a D.U.M.B. floor that sheet again.
 - **NEEDS A MODEL (found nowhere; shown to mondo 11-20):** a tarp / a tarp-covered aircraft · a black stealth aircraft (flying wing) · a blast
