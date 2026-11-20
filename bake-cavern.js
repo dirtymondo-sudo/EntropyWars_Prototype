@@ -314,7 +314,10 @@ const T_NAME = { west: 'The West Tunnel', wells: 'The Wells Tunnel', long: 'The 
 const seq = (a, b, fx) => { const o = []; if (a <= b) for (let i = a; i <= b; i++) o.push(fx(i)); else for (let i = a; i >= b; i--) o.push(fx(i)); return o; };
 /* each room: its district plots (home ids, placed), its tunnel plots (world x, y, name), what joins */
 const ROOMS = [
-    { key: 'KH', room: ROOM, part: PART, label: 'THE CAVERN', sub: 'THE CROSSROADS · THE MOUTH · HOLLOW EARTH UNDER ITS SUN', group: ['K', 'H'], place: placeKH, turn: 270, lines: LINES.filter(l => O.agartha.l.indexOf(l) < 0), spawnAt: ['P02-01', 5, 4],
+    /* skip: true (2026-11-20, world polish thread 9): the Cavern and Hollow Earth are two rooms of their own now, built from their approved plans by
+       `node bake-ug.js cavern` / `hollow` (site_prebuilt_hollow_earth_ug_cavern / _ug_hollow); this old room is retired to the Cavern (DOOR_HQ.retired).
+       The row stays so the plots, the other rooms' seams and Agartha's moves are still worked out as before; its ways are no longer checked here. */
+    { key: 'KH', skip: true, room: ROOM, part: PART, label: 'THE CAVERN', sub: 'THE CROSSROADS · THE MOUTH · HOLLOW EARTH UNDER ITS SUN', group: ['K', 'H'], place: placeKH, turn: 270, lines: LINES.filter(l => O.agartha.l.indexOf(l) < 0), spawnAt: ['P02-01', 5, 4],
       parti: 'The cave under the crust is a loop over three tiers; its mouth is a ledge over a whole country lit by a sun that never sets.', sunsNote: 'the Inner Sun, the lava lake', tunnels: [] },
     { key: 'A', room: 'site_prebuilt_hollow_earth_ow_agartha', part: 'ow_agartha', label: 'AGARTHA', sub: 'THE CRYSTAL CITY · UNDER THE LEMURIA ADIT · THE TERRACES · THE SPIRE', group: ['A'], place: placeA, turn: 90, lines: O.agartha.l, spawnAt: ['P04-04', 6, 4],
       parti: 'A city of white terraces under the Lemuria adit steps down round a spire lit from inside to a lake and a plaza; the long tunnel from the Cavern comes in at its upper terrace.', sunsNote: 'the Spire',
@@ -335,13 +338,15 @@ const ROOMS = [
       tunnels: seq(9, 2, y => [-9, y, T_NAME.way]).concat([[-8, 2, T_NAME.way], [-7, 2, T_NAME.way]], seq(-7, 0, x => [x, 1, T_NAME.cells]), seq(-7, -4, x => [x, -4, T_NAME.bone]), seq(-3, 0, y => [-4, y, T_NAME.bone]), seq(2, 9, y => [-4, y, T_NAME.bone])) },
 ];
 /* where one room meets another: [room key, world plot, side, room key, world plot, side]; the district plot's side is DUG to its open floor */
-const SEAMS = [['KH', [-8, 11], 'W', 'W', [-9, 11], 'E'], ['KH', [-8, 9], 'W', 'T', [-9, 9], 'E'], ['KH', [-4, 10], 'N', 'T', [-4, 9], 'S']];
+const SEAMS = [['KH', [-8, 9], 'W', 'T', [-9, 9], 'E'], ['KH', [-4, 10], 'N', 'T', [-4, 9], 'S']];   // (both rooms skipped: worked out, not written)
 /* where a tunnel leaves for another zone's room (phase 4.4): [room key, world plot, side, seam id, the room past it, its label, the door's sub, leaf] */
 const OUTER = [['T', [0, 1], 'E', 'ow_v_1_1', 'site_prebuilt_downtown_underworld', 'DISASTER CITY · THE SEWERS', 'THE CELLS TUNNEL · INTO THE GUARDROOM', 'leaf_cell'],
     ['T', [-7, -4], 'W', 'ow_v_m7_m4', 'site_prebuilt_vatican_under', 'THE VATICAN · THE CATACOMBS', 'THE BONE PASSAGE · UP INTO THE CATACOMBS', 'leaf_frame_only'],
     /* THE LONG TUNNEL's room (bake-underground.js, 2026-11-20): the same seam ids as before at the West Tunnel and Agartha */
     ['W', [-15, 2], 'N', 'ow_h_m15_2', 'site_prebuilt_hollow_earth_ug_long', 'THE LONG TUNNEL', 'THE LONG TUNNEL · THE TUNNEL UP', null],
-    ['A', [-15, -9], 'S', 'ow_h_m15_m8', 'site_prebuilt_hollow_earth_ug_long', 'THE LONG TUNNEL', 'THE LONG TUNNEL · THE TUNNEL DOWN', null]];
+    ['A', [-15, -9], 'S', 'ow_h_m15_m8', 'site_prebuilt_hollow_earth_ug_long', 'THE LONG TUNNEL', 'THE LONG TUNNEL · THE TUNNEL DOWN', null],
+    /* THE NEW CAVERN (2026-11-20, bake-ug.js cavern): the West Tunnel's east end, the same seam id; the Cavern's west door (the Crossroads, level 92) is `ow_v_m8_11` */
+    ['W', [-9, 11], 'E', 'ow_v_m8_11', 'site_prebuilt_hollow_earth_ug_cavern', 'THE CAVERN', 'THE CAVERN · THE TUNNEL IN · THE CROSSROADS', null]];
 /* a district plot joined to a tunnel plot inside one room: [room key, district plot (world), its side, the tunnel plot] */
 const INNER = [['A', [-16, -11], 'E', [-15, -11]]];
 const ROT = { 270: ['W', 'N', 'E', 'S'], 90: ['E', 'S', 'W', 'N'] };   // the home N, E, S, W sides after the turn
@@ -434,7 +439,7 @@ const DAIR = [].concat(...Object.keys(DISTRICTS).map(k => typeof DISTRICTS[k].ai
 const L = [HEAD], TOTAL = { props: 0, natives: 0, features: 0 }, strayDrop = [];
 const PARTED_RAMP = (f, R) => f.k === 'ramp' && R.M.strays.length >= 0;
 ROOMS.forEach(R => {
-    if (R.skip) return;   // written by another tool (the row's note)
+    if (R.skip) { TOTAL.props += R.M.props.length; TOTAL.natives += R.M.npc.length; return; }   // written by another tool (the row's note); its pieces are counted, not lost
     const M = R.M, W = M.W, Hh = M.D, cellR = M.cell, open = R.open;
     const tunPlots = M.order.filter(e => e.district === 'T');
     /* the pieces that came with the plots; a ramp whose two ends left each other (the Country's stair up into Agartha) is dropped (the census lists it) */
@@ -495,8 +500,8 @@ if (strays.length) console.log('STRAYS (a piece across two plots that no longer 
 if (strayDrop.length) console.log('DROPPED (an opening between plots that parted):\n  ' + strayDrop.join('\n  '));
 console.log('SEAMS:\n  ' + SEAMLIST.join('\n  '));
 const placeOf = w => "site: '" + SITE + "', part: '" + w.R.part + "', " + place(w) + (w.wall === 'free' && w.R.key !== 'KH' && w.R.key !== 'A' ? '' : '') + ",";
-WANT = Object.keys(WAYS).map(k => [placeOf(WAYS[k]), 'link ' + k, k])
-    .concat(Object.keys(BAYS).map(k => [k + ": { room: '" + BAYS[k].R.room + "', door: { id: '" + BAYS[k].id + "', " + place(BAYS[k]) + " } },", 'DOOR_HQ.siteRooms ' + k, null]));
+WANT = Object.keys(WAYS).filter(k => !WAYS[k].R.skip).map(k => [placeOf(WAYS[k]), 'link ' + k, k])   // (a skipped room's ways are its new tool's to check)
+    .concat(Object.keys(BAYS).filter(k => !BAYS[k].R.skip).map(k => [k + ": { room: '" + BAYS[k].R.room + "', door: { id: '" + BAYS[k].id + "', " + place(BAYS[k]) + " } },", 'DOOR_HQ.siteRooms ' + k, null]));
 
 }
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
