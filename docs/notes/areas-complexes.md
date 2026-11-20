@@ -12722,3 +12722,45 @@ night"); a short Meshy list or stand-ins ("a billboard is just a rectangle"); th
   **the look writes no words and does not touch the districts' signs: never add sign content to it.** Additions live in one row
   a district (`look:add:<d>`). Details: PLAN.md section 12.
 
+
+## ONE BEACH — Disaster City's coast and the Beach's sea room are one place (2026-11-20, the owner's ONE BEACH thread)
+
+mondo 11-20, after playing Disaster City: "Did you make 2 beaches in the game? I can't get to the other beach from the beach in disaster city, at least I don't know
+how. But they are supposed to be the same beach anyway. And the beach itself has a bunch of stuff messed up with it, the shoreline is all messed up and has sharp
+cuts and long thin parts that stick out for no reason. The skate park is all messed up and has rails floating in the above the ground. There are huts not on the
+ground. The lighthouse is too small ... One beach. Don't get rid of the other one, combine the best parts of them."
+
+**THE ANSWER TO HIS QUESTION: yes, there were two.** The city's own beach (`site_prebuilt_downtown_streets`: `districts/B.js` beach(), with the Beach zone's Shore
+run on its north half by `districts/W.js` since 11-16) and the Beach zone's sea room (`site_prebuilt_bermuda_beach`: the Shore AGAIN, the Harbour, the near Ocean),
+joined only by a door on the boardwalk (`harbour` -> `quay`). On the One World map the two rooms lie on top of each other: the city's east strip is world x 12 to
+14.7, the sea room starts at x 12. THE BEACH IS THE CITY'S (his word of 11-16: "the beach is supposed to be a part of the city, like how we connected the hills").
+
+**PART 1 (this PR): the four faults he named, all in the city's room. Seen on screen, before and after.**
+- **THE SHORELINE IS A CURVE** (`B.js` `COAST`, `waterAt`, `coastCut`). What was wrong, found in the baked rows: the sea was cut with RECTANGLE sinks that each
+  carry a 12 m bank on all four sides, so wherever two cuts met, each one's bank stood up between them as a wall of sand running out to sea (two off the mole, one
+  off the grill deck: his "long thin parts"), the waterline was three straight lines with square corners, and off Industrial the last 12 squares were never cut at
+  all (`Q.js` kept an `EAST = 20` of its own when the room grew to 32: a slab of ground 42 m wide stood in the bay). Now: `COAST.shore` and `COAST.bay` are the
+  WATERLINE as [row, column] points, joined by a cubic; `coastCut` lays a round sink every 3.5 m whose rim follows the curve on its landward side (the sea is
+  whatever any of them covers, so no rim can stand up inside the water) and a flat deep band behind each out past the room's edge. Near a line the sea may not
+  cross (`capN`, `capS`: the mole's north side, the grill deck's south side, the Hills' foot) the circles shrink, and their banks with them. Whatever stands IN the
+  water is RAISED again after the cuts (`dc:mole`, `dc:mole:head`, the marina arm, `dc:grill:deck`), so it keeps a clean wall. `Q.js` reads Bayside's `room.east`.
+  **THE RULE FOR ANYONE WHO CUTS SEA: never a banked rectangle beside another cut.**
+- **A RAISED FLAT IS A BLOCK TO THE RESIDENTS** (data.js, THE WALKED PADS: every `plateau` that is not a sink is shut in their walk map) unless its id is in
+  `HQ_CITY_RESIDENTS.walkOn`: `dc:mole` and `dc:grill:deck` are named there now, beside the skate pad.
+- **THE SKATE PARK'S STEEL SITS ON THE PAD.** The tool adds the plot's LEVEL to every drawn (`arch`) row by the strip it stands on, and the pad lies on the Marina
+  plot's strip (a level up, 1.75 m) though the pad is cut to 0: the bowl's coping, the funbox's iron, the bar's posts and the sign all hung 1.75 m in the air. Each
+  row now takes the level back off (`skatePark`: `y = -lv`, as the yachts always did). The `rail` rows were never wrong (a rail lies between its ends' ground).
+- **THE HUTS STAND ON THE SAND.** A drawn row stands at its own `y` from the city's level 0, and Bayside's sand lies at -1.05 under the sea wall: the lifeguard
+  station, the three lifeguard towers and the volleyball net were typed at 0, so their legs ended a metre up. `push(id, x, z, rot, parts, y)` takes the ground's
+  height now and those five rows pass `SHELF`. (The Shore's huts north of the mole were on the ground: their sand is at 0.)
+- **THE LIGHTHOUSE IS 30 m** (was 11): catalogue row `lighthouse_tall` (data.js) + proc `lighthouse_tall` (three-renderer.js: the same builder at 30 / 11, so it
+  wears the same Meshy model; MODEL_LIST.md has no bigger lighthouse). It stands on a head of its own, 21 m across, at the end of the mole (`MOLE`), seen from both
+  bays; the marina arm's small head, where the old light stood, keeps a bench and a coin telescope.
+- **ALSO:** Bayside's sand is wider (the waterline runs from square 155 by the yachts out to 158 off the lifeguard station and in to 153 at the canal's mouth; it
+  was a straight 153), the swim buoys follow the curve, and a thing the Shore sets afloat on a square the sand now covers is moved out past the waterline (`W.js`
+  `wet`).
+- **TOOLS FOR THE NEXT ONE:** the coast as letters, one a square, from the compiled heights (no browser): the thread's `coastmap.js` (a `vm` call of
+  `hqTerrainInfo` + `hqTerrainHeight`, 12 s); read it BEFORE a probe. A probe of the city needs the whole machine: a second node job beside it gets the browser
+  killed for memory (seen twice).
+- **KNOWN AND LEFT:** where the Cove's round cut meets the Shore's first circles the two banks leave a short bar under the water off the sand's north point (two
+  squares awash); it reads as a point of sand. The map picture of the city was baked again (`bake-map.js`).
