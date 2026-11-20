@@ -247,9 +247,15 @@ function townSide(id, horiz, fix, c0, c1, along, gi, out, front) {
         const o = { id: 'town_' + id + '_' + i, x0: p0[0], z0: p0[1], x1: p1[0], z1: p1[1], t: 3.5, top: TOPT, out, key: WALL, towers: [tw(A), tw(B)] }; if (A.corner) o.pull0 = 1.2; if (B.corner) o.pull1 = 1.2;
         raw('...hqCurtainWall(' + J(o) + ')');
         const r0 = A.a + dir * (A.corner ? 5.35 : 3.6) / C, r1 = B.a - dir * (B.corner ? 5.35 : 3.6) / C, ins = -front * 1.6, e0 = pt(r0), e1 = pt(r1);   // the parapet on the walk's inner edge
-        feat({ k: 'rail', x0: r2(e0[0] + (horiz ? 0 : ins)), z0: r2(e0[1] + (horiz ? ins : 0)), x1: r2(e1[0] + (horiz ? 0 : ins)), z1: r2(e1[1] + (horiz ? ins : 0)), y: TOPT, model: 'parapet' }); }
+        /* THE WALL STAIRS (2026-11-20, the world polish plan, thread 4): where a stair's landing meets the walk (`WALL_STAIRS[id]` = [a0, a1] squares along the side) the parapet is open */
+        { const gaps = (WALL_STAIRS[id] || []).filter(q => q[1] > Math.min(r0, r1) && q[0] < Math.max(r0, r1)).sort((p, q) => dir * (p[0] - q[0])), cuts = [r0];
+          gaps.forEach(q => { cuts.push(dir > 0 ? q[0] : q[1], dir > 0 ? q[1] : q[0]); }); cuts.push(r1);
+          for (let ci = 0; ci + 1 < cuts.length; ci += 2) { const c0 = pt(cuts[ci]), c1 = pt(cuts[ci + 1]); if (Math.abs(cuts[ci + 1] - cuts[ci]) < 0.2) continue;
+              feat({ k: 'rail', x0: r2(c0[0] + (horiz ? 0 : ins)), z0: r2(c0[1] + (horiz ? ins : 0)), x1: r2(c1[0] + (horiz ? 0 : ins)), z1: r2(c1[1] + (horiz ? ins : 0)), y: TOPT, model: 'parapet' }); } } }
 }
 const SLATE_T = 'urban:MetalRoofTiles1a';
+/* the stairs from the streets up to the wall walk (district T builds them: T.js THE WALL STAIRS; here only where the parapet opens for each landing) */
+const WALL_STAIRS = { n: [[32, 33]], s: [[38, 39], [48, 49]] };
 townSide('s', true, WY1, WX0, WX1, [30, 41, 45, 57, 67], 1, 1, 1);
 townSide('n', true, WY0, WX0, WX1, [30, 46, 50, 59, 68], 1, -1, -1);
 townSide('w', false, WX0, WY1, WY0, [60, 50, 46, 34], 1, -1, -1);

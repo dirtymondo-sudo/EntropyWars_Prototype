@@ -74,7 +74,7 @@ const ThreeRenderer = (function () {
             'EW_NO_TRUE_DRAPE EW_NO_TWIN_SHARE EW_NO_UNIT_INK EW_NO_UNIT_POP EW_NO_UNIT_RIM EW_NO_VFX_CLEANUP EW_NO_XMAS_PACK EW_NO_ZONE_DECALS EW_NO_ZONE_STEPS ' +
             'EW_OCEAN_STILL EW_OLD_POST EW_PERF_LOW EW_PLATE_ANIM_MS EW_PLATE_DEPTH_ALL EW_PLATE_PILE EW_POP EW_PP_LIB EW_PROC_EYES EW_PROC_ONE_MODEL ' +
             'EW_RAYS_ANY_LIGHT EW_RIG_LIST_EVERY_ADD EW_RIG_NO_PREGROW EW_RIG_WALK_EVERY EW_RIM EW_RISE_MS EW_SC_WARM_IN_PLAY EW_SHADOW_CHUNK_ALL ' +
-            'EW_SHADOW_REACH_LOOSE EW_SHADOW_REACH_OFF EW_SHADOW_KEY_EVERY EW_SHEET_ANY_DENSITY EW_SHEET_REAL_SIZE EW_SIM_NO_RENDER EW_STYLE_MASK_PROPS EW_TERRAIN_ALL_SAMPLES ' +
+            'EW_SHADOW_REACH_LOOSE EW_SHADOW_REACH_OFF EW_SHADOW_KEY_EVERY EW_GEO_KEY_FULL EW_SHEET_ANY_DENSITY EW_SHEET_REAL_SIZE EW_SIM_NO_RENDER EW_STYLE_MASK_PROPS EW_TERRAIN_ALL_SAMPLES ' +
             'EW_TERRAIN_COLORS EW_TEXT_LIB EW_TIMER_WATCH_OFF EW_TURBO_FRAME_MS EW_WALK_KEEP_UNITS EW_WORLD_MODE EW_WORLD_STAB EW_ZSEP_LAST').split(' ');
         for (var i = 0; i < names.length; i++) {
             var k = names[i];
@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-20 keep-more';
+    var _EW_TR_STAMP = '11-20 slow-firsts';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -48139,6 +48139,26 @@ const ThreeRenderer = (function () {
        three's caches — the newest 384 builds, 256 pipelines, 512 programs — and one with the same key is taken back free.
        (3) The F3 counts: node builds and new pipelines (a steady frame shows 0 of both). Off: window.EW_NO_SHADER_KEEP or
        ?ew_keep=0 (reload). */
+    /* THE SLOW FIRSTS (2026-11-20, lens; mondo: "first fight stutter", and his combo profile's longest frames: ONE sheet upload that
+       held the game 211 ms in `copyExternalImageToTexture`, shader builds of 100-150 ms, a 77 ms wait in the fight's batch).
+       Every sheet upload of 12 ms+ and every shader build of 20 ms+ is kept with what it was (the sheet's name / file / size /
+       kind of picture; the look and what it is on) and whether it fell in a fight or the walk; the session's 16 worst print
+       in the lens as "Slow first-time work". The list names what the first fight should have ready before it starts. */
+    var _ewSlow = [];
+    function _ewSlowNote(ms, kind, what) {
+        var e = { ms: ms, k: kind, w: what, f: active ? 'fight' : (_hq ? 'walk' : 'menu'), at: new Date().toISOString().slice(11, 19) };
+        if (_ewSlow.length < 16) _ewSlow.push(e);
+        else { var lo = 0; for (var i = 1; i < _ewSlow.length; i++) if (_ewSlow[i].ms < _ewSlow[lo].ms) lo = i; if (_ewSlow[lo].ms < ms) _ewSlow[lo] = e; else return; }
+    }
+    function _ewSlowTex(tx) {
+        try {
+            if (!tx) return '?';
+            var im = tx.image, src = '';
+            if (im && typeof im.src === 'string') src = im.src.slice(0, 5) === 'data:' ? 'data-url' : im.src.split('?')[0].split('/').slice(-2).join('/');
+            var kindI = !im ? 'no picture' : (typeof HTMLCanvasElement !== 'undefined' && im instanceof HTMLCanvasElement) ? 'canvas' : (typeof ImageBitmap !== 'undefined' && im instanceof ImageBitmap) ? 'bitmap' : (typeof HTMLImageElement !== 'undefined' && im instanceof HTMLImageElement) ? 'img' : (typeof HTMLVideoElement !== 'undefined' && im instanceof HTMLVideoElement) ? 'video' : (im.data ? 'data' : 'other');
+            return (tx.name ? '"' + String(tx.name).slice(0, 28) + '" ' : '') + (src ? src.slice(-44) + ' ' : '') + (im && im.width ? im.width + '×' + im.height + ' ' : '') + kindI + (tx.isCompressedTexture ? ' compressed' : '') + (tx.generateMipmaps ? ' +mips' : '');
+        } catch (e) { return '?'; }
+    }
     var _ewKeep = { builds: 0, pipes: 0, reused: 0, inst: 0, kept: { b: [], p: [], g: [] }, at: 0, b0: 0, p0: 0, rateB: 0, rateP: 0 };
     /* (11-20, mondo's battle F3s: "kept 640/384/768", all three lists at their cap in a city fight, with 7 shader builds a second: a
        build put aside was thrown out and made again. His 2nd and 3rd fights of a session ran smooth, the 1st did not: the looks are
@@ -48157,6 +48177,15 @@ const ThreeRenderer = (function () {
         r._ew_keep = true;
         var zero = function () { return 0; };
         var dbg = r.debug, N = r._nodes, P = r._pipelines, B = r.backend, off = _ewKeepOff();
+        if (N && typeof N.getForRender === 'function' && !N._ew_slowT) {   // THE SLOW FIRSTS: a shader build's own time
+            N._ew_slowT = true;
+            var gfrS = N.getForRender;
+            N.getForRender = function () {
+                var b0 = _ewKeep.builds, t0b = performance.now(), out = gfrS.apply(this, arguments);
+                if (_ewKeep.builds !== b0) { var db = performance.now() - t0b; if (db >= 20) _ewSlowNote(db, 'build', (_ewKeep.last && _ewKeep.last.length) ? _ewKeep.last[_ewKeep.last.length - 1] : '?'); }
+                return out;
+            };
+        }
         if (dbg) {
             var nb = dbg.onNodeBuilderCreated || null;
             dbg.onNodeBuilderCreated = function (b, ro) {
@@ -48745,11 +48774,69 @@ const ThreeRenderer = (function () {
            now kept on the render object with the values the pass copies onto the material (and the geometry, receiveShadow, the
            clipping key) and built again only when one of those differs. Off: window.EW_SHADOW_KEY_EVERY */
         var gkInst = function (ro) {
-            var o = ro.object;
-            if (!_ewInstShareOk(o)) return gk.call(ro);
-            var u = o.uuid;
-            o.uuid = 'ewi:' + o.instanceMatrix.usage + ':' + (o.instanceColor ? 'c' + o.instanceColor.usage : '-');
-            try { return gk.call(ro); } finally { o.uuid = u; }
+            var o = ro.object, was = geoForBuild, rsOff = !geoFull && !!(ro.material && ro.material.isShadowPassMaterial === true && o && o.receiveShadow === true);
+            geoForBuild = true;
+            if (rsOff) o.receiveShadow = false;
+            try {
+                if (!_ewInstShareOk(o)) return gk.call(ro);
+                var u = o.uuid;
+                o.uuid = 'ewi:' + o.instanceMatrix.usage + ':' + (o.instanceColor ? 'c' + o.instanceColor.usage : '-');
+                try { return gk.call(ro); } finally { o.uuid = u; }
+            } finally { geoForBuild = was; if (rsOff) o.receiveShadow = true; }
+        };
+        /* THE KEY BY WHAT IS READ (2026-11-20, mondo: "what are all the shaders? can any of them be dropped?" then "Yes please" to cuts
+           1 and 2). A city walk held 198 shader builds for 82 looks: the SAME look was built again for every different list of
+           attributes a model's file happens to carry (24 builds of the plain shadow shader, 9 of one prop look), because three
+           keys a build by ALL of a geometry's attributes, read or not. A second UV set, vertex colours or tangents that the
+           material never reads change nothing in the shader. For the plain cases the key now holds only the attributes that
+           material can read:
+             the shadow pass   position; the UV sets when the caster cuts out (alphaTest / alphaMap / see-through); the skin's
+                               two when skinned. A caster with its own position or depth node (the wind) keeps the full key.
+             a plain lit / unlit material (Basic, Lambert, Phong, Standard, Physical; no node layer `_ewNode`, no
+                               onBeforeCompile hook)   position, normal; the UV sets when it has any sheet; `color` when it
+                               uses vertex colours; `tangent` when it has a normal map; the skin's two when skinned.
+           Morph targets and the index flag stay as three writes them. Everything else (lines, points, sprites, node materials,
+           hooked or dressed materials) keeps three's full key. Off: window.EW_GEO_KEY_FULL = true (before the first draw). */
+        var ggk = P.getGeometryCacheKey, geoFull = !!window.EW_GEO_KEY_FULL;
+        var geoForBuild = false;   // true while a BUILD's key is being written (getMaterialCacheKey); the pipeline's key asks with it false
+        var _EW_PLAIN_MAT = { MeshBasicMaterial: 1, MeshLambertMaterial: 1, MeshPhongMaterial: 1, MeshStandardMaterial: 1, MeshPhysicalMaterial: 1 };
+        var _EW_TEX_SLOTS = ['map', 'alphaMap', 'aoMap', 'lightMap', 'emissiveMap', 'bumpMap', 'normalMap', 'displacementMap', 'specularMap', 'roughnessMap', 'metalnessMap', 'envMap', 'clearcoatMap', 'clearcoatNormalMap', 'clearcoatRoughnessMap', 'sheenColorMap', 'sheenRoughnessMap', 'transmissionMap', 'thicknessMap', 'iridescenceMap', 'iridescenceThicknessMap', 'anisotropyMap', 'specularIntensityMap', 'specularColorMap', 'gradientMap'];
+        var defOBC = THREE.Material && THREE.Material.prototype.onBeforeCompile;
+        if (typeof ggk === 'function' && !geoFull) P.getGeometryCacheKey = function () {
+            var m = this.material, o = this.object, g = this.geometry;
+            if (!m || !o || !g || o.isMesh !== true) return ggk.call(this);
+            var uvs = false, col = false, tan = false, nor = true;
+            if (m.isShadowPassMaterial === true) {
+                if (m.positionNode || m.depthNode || m.castShadowNode || m.maskNode) return ggk.call(this);
+                nor = false; uvs = m.alphaTest > 0 || !!m.alphaMap || m.transparent === true;
+            } else {
+                if (_EW_PLAIN_MAT[m.type] !== 1 || m._ewNode || m.isNodeMaterial === true || (m.onBeforeCompile && m.onBeforeCompile !== defOBC) || Array.isArray(o.material)) return ggk.call(this);
+                for (var t = 0; t < _EW_TEX_SLOTS.length; t++) if (m[_EW_TEX_SLOTS[t]]) { uvs = true; break; }
+                col = m.vertexColors === true; tan = !!(m.normalMap || m.clearcoatNormalMap || m.anisotropyMap || m.anisotropy > 0);
+            }
+            var at = g.attributes, names = Object.keys(at).sort(), key = '';
+            for (var i = 0; i < names.length; i++) {
+                var nm = names[i];
+                if (!(nm === 'position' || (nor && nm === 'normal') || (uvs && nm.charCodeAt(0) === 117 && nm.charCodeAt(1) === 118) || (col && nm === 'color') || (tan && nm === 'tangent') || (o.isSkinnedMesh === true && (nm === 'skinIndex' || nm === 'skinWeight')))) continue;
+                var a = at[nm];
+                key += nm + ',';
+                if (!geoForBuild) { if (a.data) key += a.data.stride + ','; if (a.offset) key += a.offset + ','; }   // (where it sits in its buffer matters to the pipeline's key, not to the shader's code)
+                if (a.itemSize) key += a.itemSize + ',';
+                if (a.normalized) key += 'n,';
+            }
+            var ma = g.morphAttributes, mn = Object.keys(ma).sort();
+            for (var j = 0; j < mn.length; j++) { var tg = ma[mn[j]]; key += 'morph-' + mn[j] + ','; for (var q = 0; q < tg.length; q++) key += tg[q].id + ','; }
+            if (g.index && !geoForBuild) key += 'index,';   // (indexed or not is the pipeline's and the draw's business, not the shader's)
+            return key;
+        };
+        /* (same cut) the shadow pass draws depth only: whether the caster also RECEIVES shadows forked every shadow build in two
+           (three writes receiveShadow into both halves of the key). For a shadow-pass material both halves read it as off. */
+        var gdk = P.getDynamicCacheKey;
+        if (typeof gdk === 'function' && !geoFull) P.getDynamicCacheKey = function () {
+            var m = this.material, o = this.object;
+            if (!m || m.isShadowPassMaterial !== true || !o || o.receiveShadow !== true) return gdk.call(this);
+            o.receiveShadow = false;
+            try { return gdk.call(this); } finally { o.receiveShadow = true; }
         };
         P.getMaterialCacheKey = function () {
             var m = this.material;
@@ -49745,7 +49832,12 @@ const ThreeRenderer = (function () {
         };
         ['updateTexture', 'generateMipmaps'].forEach(function (k) {   // the sheet uploads a refresh causes (THE REFRESH BY OBJECT)
             var f = B[k]; if (typeof f !== 'function') return;
-            B[k] = function () { _ewBun.uplN = (_ewBun.uplN | 0) + 1; return f.apply(this, arguments); };
+            B[k] = function (tx) {
+                _ewBun.uplN = (_ewBun.uplN | 0) + 1;
+                var t0u = performance.now();
+                try { return f.apply(this, arguments); }
+                finally { var du = performance.now() - t0u; if (du >= 12) _ewSlowNote(du, k === 'generateMipmaps' ? 'mipmaps' : 'upload', _ewSlowTex(tx)); }
+            };
         });
         /* one object per set of shared buffers among a group's own-node objects: what THE HELD KEEP THE CAMERA must refresh for a
            quiet group (rpShared over all the held objects skips every one after the first of each set anyway) */
@@ -55371,6 +55463,7 @@ const ThreeRenderer = (function () {
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
         try { var hl = _hq && _hq.heroLit, hs = (typeof _heroStat !== 'undefined') ? _heroStat : null; if (hl && hl.isLight && hs) L.push('Hero lamp: ' + (hs.why || 'drawn') + ' · frames held ' + hs.held + ' / drawn ' + hs.drawn + ' · in reach ' + hs.inReach + ' of ' + hs.casters + ' casters · moving ' + hs.moving + ' · sides drawn ' + hs.sidesDrawn + ' / skipped ' + hs.sidesSkipped + ' (session)' + _lensLampWhere(hl)); } catch (eH) {}   // THE SHADOW SPLIT
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
+        if (_ewSlow.length) L.push('Slow first-time work (session\'s worst): ' + _ewSlow.slice().sort(function (x, y) { return y.ms - x.ms; }).map(function (e) { return Math.round(e.ms) + ' ms ' + e.k + ' · ' + e.w + ' · ' + e.f + ' ' + e.at; }).join(' | '));
         if (_ewKeep.last && _ewKeep.last.length) L.push('Last shader builds (newest last): ' + _ewKeep.last.join(' | '));
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
         if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }

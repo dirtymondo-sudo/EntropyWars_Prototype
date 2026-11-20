@@ -57,7 +57,7 @@ Verdict words: GOOD = leave; DRESS = shape fine, needs things in it; LIGHT = can
 | Came A Lot | The Snowy Pines | **DONE 11-20 (thread 3)** | WAS: flat snow, a straight path between tree rows; a hard square edge where snow meets grass at the room line. NOW: three plots wide in snow and snow pines, a ridge, a gully, a tarn (`pictures/camelot_ow_pines/proof_three_plots_wide.jpg`, `the-snowy-pines_air_after.jpg`; the `_worst` / `_best` pictures are the OLD room). |
 | Came A Lot | The Looking-Glass Garden | GOOD (a model) | Hedges, giant chess pieces, the chessboard: dense and themed. |
 | Came A Lot | The Castle | blurry | Imposing from afar; the walls are mush up close. |
-| Came A Lot | The Village | TIGHT (a little) | Houses pressed against the castle wall; a narrow passage with graves in it. |
+| Came A Lot | The Village | **DONE 11-20 (thread 4)** | WAS: a narrow passage with graves in it between the Chapel and a house. NOW: an open churchyard; three stairs up to the wall walk (`pictures/camelot_kingdom/proof_village_thread4.jpg`). |
 | Mountains | The North Pole village | GOOD | A cheery dense square; the outskirts are emptier and flat. |
 | Mountains | Mount Shasta | GOOD | The lodge, the meadow, prayer flags; some relief. |
 | Woods | The Redwood Trail | GOOD | Cliffs with snow, a yeti, boulders. |
