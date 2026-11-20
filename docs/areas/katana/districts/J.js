@@ -36,7 +36,7 @@ module.exports = {
         /* ── THE JUNGLE: palms, banana plants and bushes (blockers on whole squares), ferns off the middle; thick, never on a way ── */
         let n = 0;
         [[60, 36, 71, 47, 0.42], [60, 24, 71, 35, 0.3], [72, 24, 83, 35, 0.16], [48, 24, 59, 35, 0.46], [60, 12, 71, 23, 0.3]].forEach(b => ctx.sow(b[0], b[1], b[2], b[3], b[4], (x, y, v) => {
-            if (v < 0.55) { if (ctx.tree('palm', x, y, 4.6 + rnd() * 3)) n++; } else if (v < 0.75) ctx.P(rnd() < 0.5 ? 'banana_plant' : 'tropical_bush', x, y, { face: Math.round(rnd() * 360) }); else ctx.dec('fern', x, y); }));
+            if (v < 0.4) { if (ctx.tree('palm', x, y, 4.6 + rnd() * 3)) n++; } else if (v < 0.55) { if (ctx.tree('fl_jungle_tree', x, y, 10 + rnd() * 4)) n++; } else if (v < 0.75) ctx.P(rnd() < 0.5 ? 'banana_plant' : 'tropical_bush', x, y, { face: Math.round(rnd() * 360) }); else ctx.dec('fern', x, y); }));
         for (let y = 24; y <= 47; y++) for (let x = 60; x <= 83; x++) if (ctx.kindAt(x, y) === 's' && ctx.free(x, y) && !ctx.onWay(x, y) && rnd() < 0.07) { if (ctx.tree('palm', x, y, 4 + rnd() * 2)) n++; }
         [['parrot', 62, 38], ['parrot', 57, 28], ['lizard', 65, 41], ['coconuts', 76, 30], ['coconuts', 78, 26]].forEach(q => ctx.dec(q[0], q[1], q[2]));
         console.log('the Jungle: ' + n + ' palms');
