@@ -31,6 +31,7 @@ city) and thread 3 (Came A Lot's woods, The Snowy Pines as its pilot); they are 
   place that is hard to reach. Never lift a monument, a building or a whole district onto a step. Ask "is it like that in the real place?".
 - **Never say a thing cannot be raised** (11-20: "You are the one that drew them ... It's one z value"). A drawn piece (`arch` row) has one `y`,
   and doors and props already follow the ground. Whether to raise it is a design call, to be argued as one.
+- **FREE TO MOVE, CHANGE AND GROW** (11-20: "you have freedom to move and change and make bigger whatever you need to, that is the whole point of this pass"). Do not stop to ask before growing a room, moving plots or changing a layout or a shared tool: note it on the board and do it.
 - **Level on purpose:** streets you fight and skate on (Main Street), an airfield and its lake bed, a fairground (the Circus), fields, plazas.
 - **THE HIGHWAYS AND ROUTES ARE NOT IN THIS PLAN** (11-20: "I want to make the highway system much better and more accurate, so that would
   require its own thread"). No thread of this plan edits `bake-route.js`, a `site_ow_*` room or the Desert Highway. The audit's numbers for
@@ -52,6 +53,7 @@ Files here:
 - `AUDIT_DATA.md` its tables: every place, every district, the worst plots of each place.
 - `plots.csv` all 1,514 plots, one row each.
 - `need-map.svg` the world drawn plot by plot, green (fine) to red (needs the most).
+- **`ROOM_LAYOUTS.md` HOW EVERY ROOM REALLY STANDS** (its size, its grid of plots, which plot is where, its place in the world; `node docs/plans/world-polish/layouts.js` rewrites it). READ YOUR ROOMS' ENTRIES BEFORE DESIGNING ANYTHING: One World moved many plots, a district file's home squares and a zone's plan sheet are NOT the room (thread 3's first pilot was drawn from the plan sheet and failed for it).
 - `SCREENSHOT_AUDIT.md` what the world LOOKS like, place by place (11-20, part done) + `pictures/` (three a district) + `shoot.js` the tool that takes them.
 
 ## 0. How it was measured, and what it cannot tell
