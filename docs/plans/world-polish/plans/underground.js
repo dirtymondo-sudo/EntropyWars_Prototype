@@ -20,7 +20,7 @@
    So: about 6 to 7 plots deep (roughly 270 m). The Sewers step down a level at a time; the tunnels 1 to 3; the Cavern 3 to 6; Hollow Earth 4 to 10.
    The shafts between districts are 5 to 16 levels, so NO SINGLE CLIMB IS OVER 16 LEVELS (28 m). Every climb (orange) is two-way: you can always
    climb back out from the Inner Sun to the city, and the tool checks it.
-   THIS LAYOUT WAS LAID BY A SEEDED MAZE RULE (the script is in the session, not the repo): it is the SHAPE that is proposed; a district's
+   THIS LAYOUT WAS LAID BY A SEEDED MAZE RULE (docs/plans/world-polish/underground/gen-layout.py; it also writes graph.json): it is the SHAPE that is proposed; a district's
    own thread may redraw its maze as long as its joins and its levels at the joins stay. */
 'use strict';
 const DUMB = 'the D.U.M.B. is thread 8\'s: its own plan; shown as a block with its join to the Sewers (its deeper joins are decided by its own plan)';
