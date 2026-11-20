@@ -77173,6 +77173,7 @@ const ThreeRenderer = (function () {
             add(W.mountain, 0.92, 0.9, 0.88); add(W.forest, 0.62, 0.74, 0.56); add(W.desert, 1, 0.96, 0.86); add(W.coast, 0.8, 0.74, 0.66);
             add(W.scrub || 0, 0.84, 0.8, 0.64); add(W.mesa || 0, 1, 0.96, 0.86); add(W.grass || 0, 0.8, 0.88, 0.62); add(W.snow || 0, 0.97, 0.98, 1);
             if (P.mesa > 0.02) { var mt = Math.min(1, P.mesa * 1.6), band = 0.86 + 0.14 * Math.sin(P.y * 0.55); c = [c[0] * (1 - mt) + 1.0 * band * mt, c[1] * (1 - mt) + 0.6 * band * mt, c[2] * (1 - mt) + 0.42 * band * mt]; }   // the tables: red rock in bands
+            if (Array.isArray(E.tint)) c = [c[0] * E.tint[0], c[1] * E.tint[1], c[2] * E.tint[2]];   // `edges.tint: [r, g, b]` (2026-11-20, The Woods): a room whose floor is darker than the map's green, the land past its line wears the room's tone
             return c;
         };
         var keyOf = function (P, x, z, yTop) {   // yTop = the piece's highest corner (a far piece is up to 60 m long: one that climbs out of the sea is rock, not a slab of beach sand up a cliff)
