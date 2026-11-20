@@ -1119,10 +1119,16 @@ const _PA = 'https://cdn.entropywars.net/Assets/characters/races';
 const RACE_PANEL_ANIMS = {
   'catgirl': {
     female: {
-      idle:   `${_PA}/catgirl/female/panel_idle.png`,
-      walk:   `${_PA}/catgirl/female/panel_walk.png`,
-      attack: `${_PA}/catgirl/female/panel_attack.png`,
-      hurt:   `${_PA}/catgirl/female/panel_hurt.png`,
+      /* step 3 (11-20): the clips that tell the player something in the menu. `attack` = the Attack row's stance + her own
+         swing; wounded = her idle at 30 % HP or less; guard / cast = the Guard and Abilities rows; brace = under a damage
+         forecast. walk + hurt (replays of the board) are dropped; their sheets stay on R2 (panel_walk / panel_hurt). */
+      idle:    `${_PA}/catgirl/female/panel_idle.png`,
+      attack:  `${_PA}/catgirl/female/panel_attack.png`,
+      wounded: `${_PA}/catgirl/female/panel_wounded.png`,
+      guard:   `${_PA}/catgirl/female/panel_guard.png`,
+      cast:    `${_PA}/catgirl/female/panel_cast.png`,
+      brace:   `${_PA}/catgirl/female/panel_brace.png`,
+      hold: { wounded: 1, guard: 1, cast: 1, brace: 1 },   // these sheets go from the stand INTO the pose: played once, the last frame stays
       frames: 8, fps: 8,
     },
   },
