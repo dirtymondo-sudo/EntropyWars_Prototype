@@ -1221,7 +1221,7 @@ lines.push("                /* THE CITY TRAFFIC: the junctions with traffic ligh
 lines.push("                signals: " + J(SIGNALS) + ",");
 lines.push("                busStops: " + J(busStops) + ",");
 lines.push("            },");
-const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face + (o.noEntrance ? ", noEntrance: true" : "") + (o.frame ? ", frame: " + J(o.frame) : "");   // noEntrance: a door a district hung inside its own building (no sprite entrance building)
+const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face + (o.noEntrance ? ", noEntrance: true" : "") + (o.frame ? ", frame: " + J(o.frame) : "") + (o.bare ? ", bare: true" : "") + (o.gate ? ", gate: " + J(o.gate) : "");   // noEntrance: a door a district hung inside its own building (no sprite entrance building)
 lines.push("            doors: [");
 dcCtx.doors.forEach(d => lines.push("                " + J(d) + ",   // (a district's own door: ctx.doors)"));
 /* ONE BEACH (2026-11-20): the way to the harbour is THE LONG PIER, walked (way `open`): the door stands at the pier's far end, out over the water off the

@@ -6927,10 +6927,11 @@
                 }
                 /* the elevator's floor panel (HQ plan 7.1): one line, and there is no 13 */
                 if (Array.isArray(d.floors) && d.floors.length) html += `<p class="hq-panel-note">FLOOR PANEL · ${d.floors.map(f => _hqEsc(f)).join(' · ')}. There is no 13. Room 13 is filed in Bay 1, not on a floor.</p>`;
-                const locked = st === 'clearance';
+                const locked = st === 'clearance' || st === 'sealed';   // (a sealed room door let you through: THE STORY GATES, 2026-11-20)
+                if (st === 'sealed') html += `<p class="hq-panel-note">${_hqEsc((d.gate && d.gate.note) || 'SEALED — this door opens with a story chapter.')}</p>`;
                 html += '<div class="hq-panel-actions">';
                 if (act.fn) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(act.fn)}">ENTER ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button>`;
-                else if (act.room && _hqRoomExists(act.room)) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-room="${_hqEsc(act.room)}" data-at="${_hqEsc(act.at || '')}">${locked ? _hqGateLabel(d, cl, profile) : 'GO THROUGH' + (PL.known ? ' ▸ ' + _hqEsc(PL.label) : '')}</button>`;
+                else if (act.room && _hqRoomExists(act.room)) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-room="${_hqEsc(act.room)}" data-at="${_hqEsc(act.at || '')}">${locked ? (st === 'sealed' ? 'SEALED' : _hqGateLabel(d, cl, profile)) : 'GO THROUGH' + (PL.known ? ' ▸ ' + _hqEsc(PL.label) : '')}</button>`;
                 else if (act.pd) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-pdgo="${_hqEsc(act.pd)}" data-pdroom="${_hqEsc((act.back && act.back.room) || '')}" data-pdat="${_hqEsc((act.back && act.back.at) || '')}">GO THROUGH${PL.known ? ' ▸ ' + _hqEsc(PL.label) : ''}</button>`;   // A DOOR INTO A DUNGEON
                 else if (act.room) html += `<button class="hq-btn hq-btn-primary" disabled>${locked ? _hqGateLabel(d, cl, profile) : 'INTERIOR NOT YET BUILT'}</button>`;
                 [d.alt, d.alt2].forEach(a => {

@@ -83596,7 +83596,7 @@ const ThreeRenderer = (function () {
                between a leaf and its jambs reads as the frame's stop instead
                of a black gap. The leaf hangs IN FRONT of it (its dark backing
                plate, where it has one, behind it). */
-            var surround = secret ? null : _hqDoorSurround(ow, oh, leafCat, wallMat);
+            var surround = (secret || door.bare) ? null : _hqDoorSurround(ow, oh, leafCat, wallMat);
             if (surround) { surround.position.set(0, 0, (-pd / 2 + 0.18) * U); grp.add(surround); }
             var dL = _hqBox(jw + 0.02, S.dadoH, 0.03, dadoMatS); dL.position.set(jL.position.x, (S.dadoH / 2 + 0.04) * U, (pd / 2 + 0.015) * U);
             var dR = _hqBox(jw + 0.02, S.dadoH, 0.03, dadoMatS); dR.position.set(jR.position.x, (S.dadoH / 2 + 0.04) * U, (pd / 2 + 0.015) * U);
@@ -83608,6 +83608,11 @@ const ThreeRenderer = (function () {
             var frameR = _hqBox(0.07, oh + 0.06, 0.09, capM); frameR.position.set((ow / 2 + 0.035) * U, (oh / 2) * U, (pd / 2 - 0.025) * U);
             var frameT = _hqBox(ow + 0.14, 0.07, 0.09, capM); frameT.position.set(0, (oh + 0.035) * U, (pd / 2 - 0.025) * U);
             grp.add(jL, jR, lin, back, dL, dR, cap, sill, frameL, frameR, frameT);
+            /* A BARE DOOR (2026-11-20, the Bayside Mall; mondo: "fix all of those" = the door block standing out of the glass like a kiosk): a door
+               row's `bare: true` hangs only its leaf in a thin frame, in a doorway the room draws itself (a shopfront, a glass wall): no jambs, no
+               lintel, no cap, no sill, no dado bands, no lamp. */
+            var bareDoor = !!door.bare && !secret;
+            if (bareDoor) { jL.visible = jR.visible = lin.visible = dL.visible = dR.visible = cap.visible = sill.visible = false; }
             /* lamp housing + lens + glow */
             var housing = _hqBox(0.46, 0.22, 0.12, housingMat); housing.position.set(0, lampY * U, (pd / 2 + 0.04) * U);
             var lens = new THREE.Mesh(new THREE.BoxGeometry(0.30 * U, 0.12 * U, 0.025 * U), _hqBasic(0x1a1a1a));
@@ -83616,6 +83621,7 @@ const ThreeRenderer = (function () {
             glow.position.set(0, lampY * U, (pd / 2 + 0.22) * U);
             grp.add(housing, lens, glow);
             if (secret) { housing.visible = lens.visible = glow.visible = false; cap.visible = sill.visible = frameL.visible = frameR.visible = frameT.visible = false; }
+            if (bareDoor) { housing.visible = lens.visible = glow.visible = false; }
             /* the leaf: catalogue GLB fitted to the recess, or a procedural elevator */
             var leafGroup = new THREE.Group();
             leafGroup.position.set(0, 0, (-pd / 2 + 0.28) * U);

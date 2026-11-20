@@ -1486,7 +1486,7 @@ function last(ctx) {
    NEVER TOUCHED: the canal, the Juice dome, the coast road, the planks, the boardwalk, the pier, the sand, the waterline. ══ */
 const MALL = require('../mall/box.js');
 const MALL_ROOM = 'site_prebuilt_bayside_mall';
-const mallDoorAt = d => { const x = MALL.X0 + d.u * MALL.C, z = MALL.Z0 + d.v * MALL.C, o = 0.25; return { x: r3m(x + (d.side === 'e' ? o : d.side === 'w' ? -o : 0)), z: r3m(z + (d.side === 's' ? o : d.side === 'n' ? -o : 0)), face: d.out }; };
+const mallDoorAt = d => { const x = MALL.X0 + d.u * MALL.C, z = MALL.Z0 + d.v * MALL.C, o = 0.12; return { x: r3m(x + (d.side === 'e' ? o : d.side === 'w' ? -o : 0)), z: r3m(z + (d.side === 's' ? o : d.side === 'n' ? -o : 0)), face: d.out }; };
 const r3m = v => Math.round(v * 1000) / 1000;
 const MALL_WORDS = {
     sea: 'The sea doors of the mall, under the coral portal. The pier is straight behind you; the fountain is straight ahead.',
@@ -1496,7 +1496,7 @@ const MALL_WORDS = {
     terrace1: 'Glass doors off the terrace into the food court.', terrace2: 'Glass doors off the terrace into the food court.' };
 function mallDoors(ctx) {
     MALL.DOORS.forEach(d => { if (d.id === 'main') return; const a = mallDoorAt(d);
-        ctx.doors.push({ id: 'mall_' + d.id, wall: 'free', x: a.x, z: a.z, face: a.face, noEntrance: true, frame: d.id === 'staff' ? undefined : MALL.FRAME, leaf: d.id === 'staff' ? 'leaf_exit' : null, proc: d.id === 'staff' ? undefined : 'glass_slide', wide: d.id === 'staff' ? undefined : true,
+        ctx.doors.push({ id: 'mall_' + d.id, wall: 'free', x: a.x, z: a.z, face: a.face, noEntrance: true, bare: d.id === 'staff' ? undefined : true, gate: MALL.GATES[d.id], frame: d.id === 'staff' ? undefined : MALL.FRAME, leaf: d.id === 'staff' ? 'leaf_exit' : null, proc: d.id === 'staff' ? undefined : 'glass_slide', wide: d.id === 'staff' ? undefined : true,
             label: 'THE BAYSIDE MALL', sub: d.name + ' · INTO THE MALL', action: { room: MALL_ROOM, at: d.id }, desc: MALL_WORDS[d.id] }); });
 }
 /* the outside's drawn parts, in the building's own frame (the middle of the box, x east, z south: the same frame as the room's) */
@@ -1597,12 +1597,16 @@ function mallShell(ctx) {
     /* the sea front and the quay: short palms in planters either side of the sea doors, benches on the quay, the directory by the main doors */
     [[X1 + 4.4, 17.2 + DZ], [X1 + 4.4, 24.8 + DZ]].forEach(q => props.push({ key: 'planter', x: q[0], z: q[1] }, { key: 'palm_tree', x: q[0], z: q[1], face: 40 }));
     [150.5, 164.5, 178.5].forEach(x => props.push({ key: 'iron_garden_bench', x, z: r3m(Z1 + 1.5), face: 180 }));
+    /* THE SERVICE YARD (pass 4): behind the staff door and the loading bay, round the corner from the view (the north face) */
+    [['dumpster', 196.6, -1.2, 0], ['dumpster', 194.3, -1.2, 0], ['ind_skip_full', 190.5, -3.5, 90], ['wrapped_pallet', 203.0, -1.6, 0], ['wrapped_pallet', 204.6, -1.6, 15],
+     ['pallet_jack', 202.2, 0.6, 200], ['forklift', 199.0, -5.4, 300], ['garbage_bags', 192.6, 1.6, 0], ['hand_cart', 205.4, 1.4, 270]]
+        .forEach(q => props.push({ key: q[0], x: q[1], z: r3m(q[2] + DZ), face: q[3] }));
     props.push({ key: 'stone_urn', x: r3m(X0 - 1.6), z: 16.6 + DZ }, { key: 'stone_urn', x: r3m(X0 - 1.6), z: 25.4 + DZ });
     try { require('../urban-decay.js')({ features: rows, props: [], dOf: () => 'B' }); } catch (e2) { console.warn('[bayside mall] the urban decay pass was not run on its rows:', e2.message); }
     rows.forEach(r => features.push(r));
     console.warn('[bayside mall] the one building stands', JSON.stringify(out));
 }
-const joins = { mall: A(mallDoorAt(MALL.DOORS[0]), { noEntrance: true, frame: MALL.FRAME, sub: 'THE MAIN DOORS · INTO THE MALL' }) };
+const joins = { mall: A(mallDoorAt(MALL.DOORS[0]), { noEntrance: true, bare: true, gate: MALL.GATES.main, frame: MALL.FRAME, sub: 'THE MAIN DOORS · INTO THE MALL' }) };
 const build1 = ctx => { build(ctx); mallDoors(ctx); }, last1 = ctx => { last(ctx); mallShell(ctx); };
 module.exports = { room, tailor, apply, build: build1, last: last1, joins, B, K, T, COAST, MOLE, waterAt };
 
