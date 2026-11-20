@@ -77272,7 +77272,7 @@ const ThreeRenderer = (function () {
                 if (tx > R.x0 - 2 && tx < R.x1 + 2 && tz > R.z0 - 2 && tz < R.z1 + 2) continue;
                 var px = tx + (a - 0.5) * 3.2, pz = tz + (b2 - 0.5) * 3.2, P = F.at(px, pz);
                 if (P.d < 1.8 || P.d > 60) continue;
-                var thin = P.d < 22 ? 1 : P.d < 40 ? 0.5 : 0.28; if (low) thin *= 0.6;
+                var thin = E.deep ? (P.d < 44 ? 1 : 0.6) : P.d < 22 ? 1 : P.d < 40 ? 0.5 : 0.28; if (low) thin *= 0.6;   /* `edges.deep: true` (2026-11-20, The Woods): a room deep in a wood, the trees past its line stay thick to the end of the planting, so no flat land shows between the trunks */
                 if (P.W.forest > 0.5) { if (c2 > thin * P.W.forest) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if ((E[P.side] || {}).bare) continue; if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
                 else if ((P.W.grass || 0) > 0.6 && P.d > 4) { if (c2 > 0.045 * thin) continue; plantTree(kindsG[(d2 * kindsG.length) | 0], hOf(6 + d2 * 5), px, pz, P.y * U); planted++; }   // open green country: a tree here and there

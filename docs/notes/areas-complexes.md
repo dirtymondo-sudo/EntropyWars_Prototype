@@ -12932,3 +12932,9 @@ mondo 11-20 on plan 3: "Yes the map layout looks much better ... Go ahead and bu
   is dirt (no asphalt sheet is in any room's paint palette). No model exists for: twig stick figures, a chain-link gate, a log lip, a burnt shell (the
   Burned House is the cabin's kit with charred boards and no roof). The ward totem and the effigy are Meshy-made, not pack pieces: not used (his word).
   The room's draw cost with 25 plots is not measured yet.
+- **THE WOOD IS DEEP (11-20, mondo at the Dead End: "fill in or block these big empty spaces ... enough to where I can't see through the trees straight into the flat
+  map").** The tree mass was a line of trunks and a band 5.25 m deep with bare lawn behind. A designed room (bake-woods.js `S.design`) now writes `gen.depth` 24.5
+  (seven squares) and `maxTrees` 5400 x plots / 36, mixes dead kinds (`tree_14`, `tree_17`, `tree_33`) into every district's wood, paints a third of the tree squares
+  dirt, and adds room-wide scatter (fallen logs, stumps, dead bushes, snags). Past the room's line: `terrain.edges.deep: true` (three-renderer.js `_hqEdgeLandFn`'s
+  planting: the forest stays thick to the end of the planting, not thinned after 22 m). Seen in the probe from the Dead End and Deep woods, west. OPEN: the land
+  past the line wears the map's bright forest green, lighter than the room's floor; the draw cost with the deeper wood is not measured.
