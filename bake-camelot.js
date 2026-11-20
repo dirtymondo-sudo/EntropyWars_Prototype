@@ -539,8 +539,10 @@ ROOMS_OUT.forEach(o => { const Dz = DESIGNS[o.S.id]; if (!Dz) return; const R = 
         close(x0, y0, x1, y1) { const fl = o.S.id === R_PINES ? 'T' : 't'; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { if (!R.plotOfSq(x, y) || o.stood.has(x + ':' + y)) continue; o.c2[y][x] = fl; o.pnt[y * R.W + x] = WOODP; } },
         gx: R.gx, gz: R.gz, gcx: R.gcx, gcz: R.gcz,
         feat: row => o.extraF.push(row), at: (key, x, z, q) => { o.extraP.push(Object.assign({ key, x: r2(x), z: r2(z) }, q || {})); o.stood.add(o.sqOf(x, z).join(':')); },
+        solid: (x, y) => !o.inR(x, y) || SOLIDC(o.c2[y][x]),
         native: (race, x, z, face, say) => { const n = { x: r2(x), z: r2(z), face: face || 0, race }; if (say) n.say = say; R.npc.push(n); },
         paint(x0, y0, x1, y1, sheet, ok) { let i = PAL.indexOf(sheet); if (i < 0) { PAL.push(sheet); i = PAL.length - 1; } for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (R.plotOfSq(x, y) && (!ok || ok(x, y))) o.pnt[y * R.W + x] = i + 1; },
+        base: fn => { o.baseFn = fn; },   // THE BASE (2026-11-20, mondo: "where are the ridges and hills valleys?"): fn(x, y in squares) -> metres; written as the room's `terrain.slope.cells` (Disaster City's levels: every authored height stands ON it)
         vista: (side, at) => (o.vistas || (o.vistas = [])).push({ side, at: r2(at) }),   // the land past that side stays low and open there (the edge land's `ways`): a view out, no door
         drop(test) { const n = R.features.length; R.features = R.features.filter(f => !test(f)); return n - R.features.length; },
         noTrees: (x0, z0, x1, z1) => o.zonesX.push({ x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), none: true }), air: z => o.airX.push(z) };
@@ -560,7 +562,9 @@ ROOMS_OUT.forEach(o => { const Dz = DESIGNS[o.S.id]; if (!Dz) return; const R = 
       R.props = R.props.filter(p => { if (!home.has(p) || !on(p.x, p.z)) return true; gone++; return false; });
       R.features.forEach(f => { if (f.k !== 'arch' || !Array.isArray(f.parts) || f.rot) return; const n = f.parts.length; f.parts = f.parts.filter(q => !q.p || q.p[1] > 2.2 || !on(f.x + q.p[0], f.z + q.p[2])); gone += n - f.parts.length; });
       R.features = R.features.filter(f => !(f.k === 'arch' && Array.isArray(f.parts) && !f.parts.length));
-      o.cleared = gone; } });
+      o.cleared = gone;
+      /* a piece of the design that ended on a square nobody walks (a way was redrawn and its lantern stayed behind) leaves too, unless it says `wood: 1` */
+      { const n0 = o.extraP.length; o.extraP = o.extraP.filter(p => { if (p.wood) { delete p.wood; return true; } const q = o.sqOf(p.x, p.z); return o.openR(q[0], q[1]); }); o.strayed = n0 - o.extraP.length; } } });
 /* 1. inside each room: two plots that touch now and did not touch that way at home get one crossing */
 ROOMS_OUT.forEach(o => { if (o.S.block || o.design) return; const R = o.R;
     R.order.forEach(A => ['E', 'S'].forEach(sd => { const B = R.at[(A.col + SIDE4[sd][0]) + ',' + (A.row + SIDE4[sd][1])]; if (!B) return;
@@ -696,6 +700,9 @@ ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ;
     M2.push("                noise: { amp: 0, scale: 8 },");
     M2.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */");
     M2.push("                backdrop: false, edges: { world: true, reach: 440, " + (S.snowTrees ? "snowTrees: " + S.snowTrees + ", " : "") + "ways: " + J(o.ways.concat(o.vistas || [])) + " },");
+    if (o.baseFn) { const sl = Buffer.alloc(R.W * R.D * 8); for (let cy = 0; cy < R.D; cy++) for (let cx = 0; cx < R.W; cx++) { const q0 = (cy * R.W + cx) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, kk) => sl.writeInt16LE(Math.round(o.baseFn(cx + q[0], cy + q[1]) * 100), q0 + kk * 2)); }
+        M2.push("                /* THE BASE: every square's four corner heights (the room design's `base`); everything authored stands on it */");
+        M2.push("                slope: { cells: { res: " + C + ", x0: " + R.gx(0) + ", z0: " + R.gz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + sl.toString('base64') + "' } },"); }
     M2.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + R.gcx(0) + ", z0: " + R.gcz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + Buffer.from(o.pnt).toString('base64') + "' },");
     M2.push("                gen: { kind: 'plan', look: 'trees', seed: 64, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: " + GEN.depth + ", maxTrees: " + GEN.maxTrees + ", treeH: [5.5, 8.5], kinds: ['tree', 'tree_2', 'tree_3', 'tree', 'tree_5', 'tree_2'], zones: " + J(zones) + " },");
     M2.push("                features: [");
@@ -717,7 +724,7 @@ ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ;
     M2.push("            spawn: { x: " + sp.x + ", z: " + sp.z + ", face: " + (S.face || 0) + " },");
     M2.push("        },");
     OUTB.push(M2.join('\n'));
-    console.log(S.id + ' ' + JSON.stringify({ plots: S.list.length, box: R.cols + 'x' + R.rows, world: [R.wx, R.wy], joints: o.joints, laid: o.laid, deadEndsBack: o.back, tied: o.tied, spaces: spaces.length, features: rows.length, props: P2.length, doors: o.doorsOut.length, natives: R.npc.length, zones: zones.length, air: air.length, roadCleared: o.cleared })); });
+    console.log(S.id + ' ' + JSON.stringify({ plots: S.list.length, box: R.cols + 'x' + R.rows, world: [R.wx, R.wy], joints: o.joints, laid: o.laid, deadEndsBack: o.back, tied: o.tied, spaces: spaces.length, features: rows.length, props: P2.length, doors: o.doorsOut.length, natives: R.npc.length, zones: zones.length, air: air.length, roadCleared: o.cleared, strayed: o.strayed })); });
 if (CNT.ridge) console.log('the ridge ' + JSON.stringify(CNT.ridge));
 console.log('links ' + JSON.stringify(LINKS_OUT));
 const owBlock = "        /* CAMELOT-KINGDOM-BEGIN — CAME A LOT KINGDOM ON PLOTS, PLAN 3 (2026-11-15) + THE ONE WORLD MOVE (2026-11-17: the castle + the village and the four woods stand at their One World places, five rooms): written by `node bake-camelot.js` from docs/areas/camelot/layout.json + docs/plans/one-world/plots.json. Never hand-edit between the markers; edit the tool, a district file or the layout and rerun. */\n" + OUTB.join('\n') + "\n        /* CAMELOT-KINGDOM-END */\n";
