@@ -13969,7 +13969,7 @@ underground horror like the descent movie"; the square plans approved ("Yes this
   (`docs/plans/world-polish/plans/ug-<name>.js`, read through draw-plan.js's own `build` + `check`; a FAIL stops it) and a room design
   `docs/areas/underground/<name>.js` (id, names, doors, light, paint, `air`, `dress(ctx)`). Ground = `terrain.slope.cells`, every open square flat
   at its level (1.75 m a level; the room's 0 = its lowest square); two squares a level apart = a ledge (`rocks_5` face). The plan's `stairs` =
-  `climb` ladders on the plot line, facing the high side, `y0` / `y1` given. `w` runs = black sumps (`deep_water`, 0.45 m under the rim, never
+  `climb` ladders 1.05 m off the plot line on the low side (0.3 m stood half in the rock: the height base's face slopes over a metre; thread 9 found it, all 34 fixed 11-20), facing the high side, `y0` / `y1` given. `w` runs = black sumps (`deep_water`, 0.45 m under the rim, never
   entered; the stream's line runs square middle to square middle, else the game's square water takes the next square too). A WATERFALL drop
   = one `fall` row on its lip (two squares wide when both lanes drop). The roof: one `arch` row a plot, boxes from each square's roof line (the
   highest floor beside it + 5.25 m; a chamber's middle vaults 1.75 m a square in, up to 3) to the crust, stalactites hung from it. After the
