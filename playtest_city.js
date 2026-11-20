@@ -88,6 +88,19 @@ const run = async () => {
       if (b[0] !== a[0]) { await fast.roomReady(page, { timeout: 240000 }); await page.evaluate(() => { for (const id of ['hqLoad', 'hqPrompt', 'hqStrip', 'hqToast']) { const h = document.getElementById(id); if (h) h.style.display = 'none'; } }); await fast.settle(page, 3000);
         const f1 = path.join(OUT, room + '_' + (v.name || 'v') + '_arrived.png'); await page.screenshot({ path: f1, timeout: 180000 }); const c = await pos(); console.log('ARRIVED ' + c[0] + ' at (' + c[1] + ', ' + c[2] + ')'); lap('walked ' + (v.name || 'v')); if (v.walk.then) continue; break; }   // "then": true = go on with the next views in the room it reached (a chain of seams in one run, 2026-11-17)
       lap('walk ' + (v.name || 'v')); continue; }
+    /* "drive": { "sample": "<js expression>", "every": 400, "steps": [ { "down": ["w"], "up": ["a"], "mouse": [dx, dy], "ms": 2000, "eval": "<js>", "shot": true } ] }
+       on a view (2026-11-20, the Outer Space fix): REAL key presses and mouse moves over time, the sample printed as DRIVE lines
+       (a flight or a walk is motion: a still picture cannot show W going sideways). A step's "shot" takes <room>_<name>_<i>.png. */
+    if (v.drive) { const D = v.drive, nm = v.name || 'v', tD = Date.now(); let mx = 640, my = 400; await page.mouse.move(mx, my);
+      const smp = async (tag) => { if (!D.sample) return; let r = null; try { r = await page.evaluate((js) => { try { return eval(js); } catch (e) { return 'ERR ' + e.message; } }, D.sample); } catch (e) { r = 'gone'; } console.log('DRIVE ' + nm + ' ' + ((Date.now() - tD) / 1000).toFixed(1) + 's ' + tag + ' ' + JSON.stringify(r)); };
+      for (let si = 0; si < (D.steps || []).length; si++) { const s = D.steps[si], tag = 's' + si + (s.note ? '(' + s.note + ')' : '');
+        if (s.eval) await page.evaluate((js) => { try { eval(js); } catch (e) { console.log('[HQ] PROBE drive eval failed ' + e.message); } }, s.eval);
+        for (const k of (s.up || [])) await page.keyboard.up(k); for (const k of (s.down || [])) await page.keyboard.down(k);
+        if (s.mouse) { const n = 8; for (let q = 1; q <= n; q++) await page.mouse.move(mx + s.mouse[0] * q / n, my + s.mouse[1] * q / n); mx += s.mouse[0]; my += s.mouse[1]; }
+        const t1 = Date.now(); await smp(tag); while (Date.now() - t1 < (s.ms || 0)) { await sleep(Math.min(D.every || 400, Math.max(50, (s.ms || 0) - (Date.now() - t1)))); await smp(tag); }
+        if (s.shot) { const fs1 = path.join(OUT, room + '_' + nm + '_' + si + '.png'); await page.screenshot({ path: fs1, timeout: 180000 }); console.log('SHOT', fs1); } }
+      for (const s of (D.steps || [])) for (const k of (s.down || [])) { try { await page.keyboard.up(k); } catch (e) {} }
+      lap('drive ' + nm); continue; }
     const f = path.join(OUT, room + '_' + (v.name || 'v') + '.png'); await page.screenshot({ path: f, timeout: 180000 }); lap('shot ' + (v.name || 'v')); console.log('SHOT', f, 'room=' + await page.evaluate(() => (window._hqCurRoom || (ThreeRenderer.hq.dev.room && ThreeRenderer.hq.dev.room()) || '?')));
   }
   console.log('COUNTERS', JSON.stringify(cnt)); console.log('ERRORS', JSON.stringify(errs.slice(0, 8))); console.log('LOGS', JSON.stringify(logs.slice(0, 30))); console.log('PROBES', JSON.stringify(logs.filter(t => /PROBE|diner/i.test(t)).slice(0, 12)));
