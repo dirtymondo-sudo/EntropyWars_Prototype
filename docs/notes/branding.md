@@ -49,6 +49,20 @@ A district file keeps writing the plain word (`sign('BANK', ...)`). `docs/disast
   Cola and the hill sign from above. Not looked at: each of the other 19 neon signs, the Financial boards.
 - A probe sets the night with a view's `"eval": "window._hqClockHour=function(){return 23;}"` (it takes hold from the second view on).
 
+## Street level + the Western Town (step 4, 11-20)
+- **THE WALL BOARDS + THE POSTERS** (mondo 11-20: "do the street level wall mounted boards"; `billboards.js` second half). Every building of
+  Entertainment and Bayside wears, on each face that looks onto open ground (the spot 5 m out lies in no building's footprint): a lit board
+  on its top storey (two storeys or more: up to two faces; one storey: one board from 2.3 m to just over the eave) and two eye-level
+  POSTERS (2.4 x 1.5 m, 0.9 m over the pavement), one near each end of the wall. One `bbw:<building id>` arch row a building. The city now
+  carries 55 boards and 218 posters. **Not looked at in the game** (mondo: "skip the pictures"): a poster may sit over a side window or a
+  prop against the wall; the hotel's tower is left out. To thin them: `WALLS`, or the poster loop in `apply`.
+- **THE WESTERN TOWN IS NOWHERE** (`docs/areas/desert/districts/W.js`, room `site_prebuilt_area51_ow_town`): every front carries its
+  business's name (The Thirsty Vulture, The Grand Mirage Hotel, First Bank of Nowhere, Slim Pickings Mercantile, Nowhere County Sheriff,
+  Digby & Sons Undertakers, Close Shave / Teeth Pulled, Fool's Gold Assay Office, Hold Your Horses Livery, Iron Will Blacksmith, Western
+  Onion Telegraph Co., The Lost Cause Mine; Rotgut Reserve on the saloon's side wall), and a ranch gate over Main Street's west end reads
+  WELCOME TO THE MIDDLE OF NOWHERE · POP. 51. `western()` takes `o.font` (rye, sancreek, ewert). Seen in the game 11-20 (the gate, the bank,
+  the street). Not built: Doc Sawbones (no doctor's building stands), the motel, Dino-Might Gas, the circus and Giza names (other districts).
+
 ## Where the pass stands
 | Step | State |
 |---|---|
@@ -56,7 +70,7 @@ A district file keeps writing the plain word (`sign('BANK', ...)`). `docs/disast
 | 2. Disaster City's shop signs take their names (all districts but Civic) | BUILT 11-20 |
 | 2b. Civic's shops (Grounds for Appeal, Out By Noon Bail Bonds, Sign Here Notary, Borrowed Time) | waits: `districts/C.js` is the second side's row |
 | 3. Chain marks, neon tube signs on the two night streets (Entertainment, Bayside), lit rooftop billboards | BUILT 11-20 (first pass: 21 neon signs, 14 billboards on 7 roofs) |
-| 4. The Western Town, the ski mountain | not started (the Mountains are held by world polish thread 5) |
+| 4. Street-level boards + posters; the Western Town | BUILT 11-20. The ski mountain: not started (the Mountains are held by world polish thread 5) |
 | 5. Every other zone | not started |
 
 ## The approved names
@@ -78,7 +92,7 @@ Port of Disaster City, D.C. Beach Patrol, Hail Mary Cab Co.
 - Industrial: WAREHOUSE -> Pandora Shipping & Storage · POWER STATION -> Disaster City Light & Power · AEROSPACE LAB / HANGAR -> Icarus Aerospace / Icarus Hangar · WELDING -> Sparks & Sons Welding · FORKLIFT REPAIR -> Uplift Forklift · RAIL SERVICE -> D.C. & Western Railroad · HARDWARE -> Loose Screw Hardware · BOAT REPAIR -> Sunk Cost Marine · CORNER STORE -> Kwik Panic. Not built: Calamity Motors Works, Phoenix Reconstruction + Domino Demolition hoardings.
 - Disaster Hills: Disaster Hills Observatory, Catastrophe Drive, Landslide Realty boards (none built).
 
-**The Western Town** (none built): the town is NOWHERE ("Welcome to the middle of Nowhere · Pop. 51"). The Thirsty Vulture Saloon · The
+**The Western Town** (the town's own fronts built 11-20): the town is NOWHERE ("Welcome to the middle of Nowhere · Pop. 51"). The Thirsty Vulture Saloon · The
 Grand Mirage Hotel · First Bank of Nowhere ("Robbed weekly.") · Slim Pickings Mercantile · Nowhere County Sheriff · Digby & Sons,
 Undertakers ("You stab 'em, we slab 'em.") · Doc Sawbones, M.D. · Close Shave · Fool's Gold Assay Office · Hold Your Horses Livery · Iron
 Will Blacksmith · Western Onion Telegraph Co. · The Lost Cause Mine · Rotgut Reserve / Old Tumbleweed Lager · The Tumbleweed Motel ·
