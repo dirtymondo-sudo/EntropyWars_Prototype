@@ -17,17 +17,31 @@
    - THE COLONNADE (15..19 x 4..7): the way east out of the city into the dark, between columns.
    - THE MAZE UNDER THE SHELF: dark rock, cobwebs, loose rock, bones; a torch at a few bends, most of them dead; the pits the plan names:
      a NEST (17..18 x 2..3), a CRYSTAL POCKET (20..21 x 29..30), a BONE PIT (5..6 x 44..45), an OLD CAMP (17..18 x 44..45) where an
-     expedition stopped and did not leave. */
+     expedition stopped and did not leave.
+   PASS 2 (11-20, mondo: "okay continue"): THE TERRACES and THE SPIRE.
+   - THE TERRACES, the middle shelf: THE PLAZA (chamber 2,3, 125; the board, the old Plaza's fountain and benches) and THE INNER GATE
+     (chamber 3,3, 124; the board, the gate down to the Long Tunnel) joined by A MARBLE STAIR (34..37 x 42..44); a house cut in the west
+     rock (22..25 x 38..41), a house in the east rock (48..51 x 42..44), THE GATEHOUSE (38..41 x 46..47).
+   - THE SPIRE, the lower shelf: THE TEMPLE (27..32 x 2..5, chamber 2,0 at 120) and its court; chamber 3,0 (118) is a ring round a pit of
+     black water 6 levels down, THE SPIRE on an island in the middle (the old room's Spire, grown: 36 m of crystal lit from inside, the
+     city's great light), FOUR CRYSTAL BRIDGES from the ring to the island, a ladder up out of the pit; the Loch Ness Monster in the water.
+   - THE MAZE east of the city: the pits the plan names (a bone pit, a nest, a crystal pocket, a squeeze, a sump of black water) and the
+     dead end where something is kept (a cell, chains, what is left in it). */
 'use strict';
 const CITY = [2, 2, 14, 9], LEVEL_M = 1.75;
 const MARBLE = 'marble_light', WHITE = 0xf2efe6, STONE = 0xe2ddd0, GLOW = 0xbff4ff;
 const PILOT_X = 24;   // squares x < 24: the pilot's third
+const SPIRE = [42, 6];   // the island's corner square (41..42 x 5..6): the Spire stands on the line between them
+const TERR = [[26, 38, 33, 45], [38, 38, 45, 45], [34, 39, 37, 44]];   // the Plaza, the Inner Gate, the stair between
 
 module.exports = {
     parti: 'A city of white marble cut into the rock of the deepest cave there is, lit from inside by its crystals, on three shelves stepping down to its Spire; round it, a dark labyrinth of passages, ladders, cliffs and pits that does not want you to find the way.',
     ambient: 0.14,
     spawn: [3, 3], spawnFace: 180,
-    plotNames: { '0,0': 'The Adit Square', '1,0': 'The Hall of Records', '0,1': 'Under the Drop', '1,1': 'The Upper Maze', '0,2': 'The West Galleries', '1,2': 'The Crystal Pocket', '0,3': 'The Bone Pit', '1,3': 'The Old Camp' },
+    plotNames: { '0,0': 'The Adit Square', '1,0': 'The Hall of Records', '0,1': 'Under the Drop', '1,1': 'The Upper Maze', '0,2': 'The West Galleries', '1,2': 'The Crystal Pocket', '0,3': 'The Bone Pit', '1,3': 'The Old Camp',
+        '2,0': 'The Temple', '3,0': 'The Spire', '4,0': 'The Low Bone Pit', '2,1': 'The Middle Maze', '3,1': 'The Squeeze', '4,1': 'The Low Nest', '2,2': 'The Stair Junction', '3,2': 'The Sump', '4,2': 'The Low Pocket',
+        '2,3': 'The Plaza', '3,3': 'The Inner Gate', '4,3': 'The Kept Room' },
+    bridge: { key: 'crystal', thick: 0.3, rails: true },
 
     plan(ctx) {
         const { headroom, paint, squaresIn, open, T } = ctx;
@@ -35,6 +49,16 @@ module.exports = {
         headroom(CITY[0], CITY[1], CITY[2], CITY[3], 9 * LEVEL_M);
         headroom(15, 3, 19, 8, 4 * LEVEL_M);
         headroom(2, 0, 3, 1, 4.6);
+        headroom(38, 2, 45, 9, 40);             // THE SPIRE's vault
+        headroom(26, 2, 33, 9, 7 * LEVEL_M);    // the Temple's chamber
+        TERR.forEach(r => headroom(r[0], r[1], r[2], r[3], 7 * LEVEL_M));
+        headroom(22, 38, 25, 41, 5.6); headroom(48, 42, 51, 44, 5.6); headroom(38, 46, 41, 47, 5.6);
+        TERR.concat([[26, 2, 33, 9], [38, 2, 45, 9], [36, 3, 37, 4]]).forEach(r => squaresIn(r[0], r[1], r[2], r[3], (x, y) => open(x, y) && T(x, y) !== 'w').forEach(([x, y]) => paint(x, y, 'marble_light')));
+        squaresIn(41, 5, 42, 6, open).forEach(([x, y]) => paint(x, y, 'crystal'));
+        squaresIn(22, 38, 25, 41, open).concat(squaresIn(48, 42, 51, 44, open), squaresIn(38, 46, 41, 47, open), squaresIn(27, 2, 32, 5, open)).forEach(([x, y]) => paint(x, y, 'marble_2'));
+        paint(40, 7, 'rocks_dark_fantasy');
+        [[53, 2, 54, 3], [56, 17, 57, 18], [56, 29, 57, 30], [41, 20, 42, 21], [41, 26, 42, 27], [52, 40, 53, 41]].forEach(r => squaresIn(r[0], r[1], r[2], r[3], open).forEach(([x, y]) => paint(x, y, 'rocks_dark_fantasy')));
+        squaresIn(41, 26, 42, 27, open).forEach(([x, y]) => paint(x, y, 'obsidian'));
         /* THE PAINT: white paving on the shelf, crystal under the Great Crystal's precinct, the adit's dirt, the pits' dark */
         squaresIn(CITY[0], CITY[1], CITY[2], CITY[3], open).forEach(([x, y]) => paint(x, y, 'marble_light'));
         squaresIn(15, 4, 19, 7, open).forEach(([x, y]) => paint(x, y, 'marble_2'));
@@ -45,7 +69,7 @@ module.exports = {
     },
 
     build(ctx) {
-        const { building, look, gx, gz, gcx, gcz, walkOf, taken, put, P, U, counters, OLD, r2 } = ctx;
+        const { building, look, gx, gz, gcx, gcz, walkOf, taken, put, P, dec, U, counters, OLD, r2, C } = ctx;
         const F0 = walkOf(3, 3);
         /* ── THE LEMURIA ADIT: timber sets down the old mine (a cap on two legs every square), the rails, the cart ── */
         const WD = U('WoodGeneric1b'), WD2 = U('WoodGeneric1a');
@@ -116,7 +140,7 @@ module.exports = {
         put(hall, 'brass_telescope', -5.4, 5.0, { face: 150 }); put(hall, 'brass_orrery', 5.4, 5.0, { face: 180 }); put(hall, 'astronomical_clock', 5.6, -5.9, { face: 225 });
         put(hall, 'marble_bust', -2.8, 6.2, { face: 180 }); put(hall, 'marble_bust', 2.8, 6.2, { face: 180 });
         put(hall, 'crystal_chandelier', 0, -1.2, { ceil: true, y: r2(F0 + 6.6) });
-        put(hall, 'crystal_cluster', -5.4, -5.6, { h: 1.4 }); put(hall, 'crystal_cluster', 5.4, 2.2, { h: 1.2, noLight: true });
+        put(hall, 'crystal_cluster', -5.4, -5.6, { h: 1.4, noLight: true }); put(hall, 'crystal_cluster', 5.4, 2.2, { h: 1.2, noLight: true });
 
         /* ── THE HOMES CUT IN THE ROCK: a front of white stone on the rock face, a room you walk into ── */
         const front = (a, fw, fd, door, h) => {
@@ -145,6 +169,71 @@ module.exports = {
         });
         /* ── THE COLONNADE (15..19 x 4..7): columns either side of the way east ── */
         [[16, 4], [19, 4], [16, 7], [19, 7]].forEach(([x, y]) => P('greek_column', x, y, { h: 4.6 }));
+
+        /* ══ PASS 2: THE TERRACES ══ */
+        const FT = walkOf(30, 42), FG = walkOf(42, 42);
+        /* THE MARBLE STAIR between the Plaza (125) and the Inner Gate (124): one flight three squares wide over the plan's ramp squares */
+        ctx.feat({ k: 'ramp', id: 'aga:terrace:stair', absY: true, x0: gx(38), z0: r2(gz(42) + 1.5 * C), x1: gx(36), z1: r2(gz(42) + 1.5 * C), w: 3 * C, h0: FG, h1: FT, stairs: true, built: true, key: 'marble_light', railing: 'glass', edge: 0.15 });
+        /* the houses cut in the rock, the Gatehouse */
+        const hw2 = building('house_tw', [22, 38, 25, 41], 'E', 5.6, {}, (a, fw, fd, door) => front(a, fw, fd, door, 5.6));
+        put(hw2, 'couples_bed', -3.6, -1.2, { face: 90 }); put(hw2, 'dorm_bed', -3.6, 1.4, { face: 90 }); put(hw2, 'trestle_table', 2.4, -1.2, { face: 0 }); put(hw2, 'folding_chair', 2.4, 0.1, { face: 0 });
+        put(hw2, 'fur_rug', 0.2, 0.8, {}); put(hw2, 'crystal_cluster', 4.2, 1.6, { h: 0.8, noLight: true }); put(hw2, 'woven_baskets', 4.4, -1.6, {}); put(hw2, 'kettle', 2.0, -1.2, {});
+        const he2 = building('house_te', [48, 42, 51, 44], 'W', 5.6, {}, (a, fw, fd, door) => front(a, fw, fd, door, 5.6));
+        put(he2, 'dorm_bed', -3.2, -2.4, { face: 90 }); put(he2, 'trestle_table', 2.6, -1.8, { face: 0 }); put(he2, 'rocking_chair', 1.6, 1.4, { face: 200 });
+        put(he2, 'brazier', 3.6, 2.0, {}); put(he2, 'library_shelf', -0.4, -3.2, { face: 180 }); put(he2, 'crystal_cluster', -3.6, 1.8, { h: 0.8, noLight: true });
+        const gate = building('gatehouse', [38, 46, 41, 47], 'N', 5.6, {}, (a, fw, fd, door) => front(a, fw, fd, door, 5.6));
+        put(gate, 'cot', -3.6, -0.6, { face: 90 }); put(gate, 'dojo_weapon_rack', 2.0, -1.2, { face: 180 }); put(gate, 'armour_stand', 4.0, -1.0, { face: 180 }); put(gate, 'trestle_table', -0.4, 0.4, { face: 0 });
+        /* THE INNER GATE: two crystal-capped piers either side of the way down to the Long Tunnel (43..44 x 46..47) */
+        look('innergate', gx(44), gz(46), 0, FG, a => {
+            [-1, 1].forEach(s => { a.box(s * 3.95, 0, 0.3, 1.2, 0.5, 1.2, MARBLE, STONE); a.box(s * 3.95, 0.5, 0.3, 0.9, 4.2, 0.9, MARBLE, WHITE); a.cone(s * 3.95, 4.7, 0.3, 0.55, 0.05, 1.8, 'crystal', 0xd8fbff, { glow: 1.4 }); });
+            a.box(0, 4.7, 0.3, 8.8, 0.5, 0.7, MARBLE, WHITE); a.box(0, 4.8, 0.66, 7.4, 0.14, 0.05, 'crystal', GLOW, { glow: 1.1 });
+            a.sign('THE LONG TUNNEL', 0, 3.75, 0.66, 4.6, 0.6, '#e8fbff', '#22323c', 'cinzel');
+        });
+        /* the Plaza: the old Plaza's fountain in the middle, its benches and garden rings round it */
+        P('fountain', 30, 42, { noLight: true, h: 2.4 });
+        P('iron_garden_bench', 27, 41, { face: 90 }); P('iron_garden_bench', 33, 42, { face: 270 }); dec('garden_ring', 28, 44, {}); dec('garden_ring', 32, 39, {});
+        [[26, 38], [33, 38], [26, 45], [33, 45]].forEach(([x, y]) => P('greek_column', x, y, { h: 5.2 }));
+        P('stone_lantern', 38, 39, {}); P('stone_lantern', 45, 39, {}); P('angel_statue', 45, 42, { face: 270, h: 3.0 });
+        P('torch_white', 42, 45, {}); P('torch_white', 45, 45, { noLight: true });
+
+        /* ══ PASS 2: THE SPIRE ══ */
+        const FS = walkOf(38, 2), FTm = walkOf(29, 7), sx = gx(SPIRE[0]), sz = gz(SPIRE[1]);
+        /* the Spire's foot (a blocker on the island, a step of white marble), the Spire: crystal lit from inside, 36 m, the old room's habit grown */
+        ctx.feat({ k: 'plateau', id: 'aga:spire', x: sx, z: sz, w: 4.6, d: 4.6, h: 0.9, edge: 0.1, key: 'marble_light' });
+        look('spire', sx, sz, 0, FS, a => {
+            a.box(0, 0.9, 0, 5.0, 0.2, 5.0, MARBLE, WHITE);
+            a.P.push({ s: 'cyl', p: [0, 1.0, 0], r: 2.1, r2: 1.5, h: 10, seg: 6, key: 'crystal', tint: 0xe8fbff, glow: 1.3 },
+                     { s: 'cyl', p: [0, 11.0, 0], r: 1.5, r2: 0.12, h: 24, seg: 6, key: 'crystal', tint: 0xf0fdff, glow: 1.7 },
+                     { s: 'cyl', p: [1.7, 1.0, 1.0], r: 0.8, r2: 0.08, h: 9, seg: 5, key: 'crystal', tint: 0xa8e8ff, glow: 0.9 },
+                     { s: 'cyl', p: [-1.6, 1.0, -1.2], r: 0.9, r2: 0.08, h: 12, seg: 5, key: 'crystal', tint: 0xb8f0e8, glow: 0.9 },
+                     { s: 'cyl', p: [-0.9, 1.0, 1.8], r: 0.6, r2: 0.06, h: 6.5, seg: 5, key: 'crystal', tint: 0xc8d8ff, glow: 0.8 },
+                     { s: 'cyl', p: [1.2, 1.0, -1.7], r: 0.55, r2: 0.06, h: 5.5, seg: 5, key: 'crystal', tint: 0xd8f0ff, glow: 0.8 });
+        });
+        /* the bridges' ends: a crystal post either side of each (THE CRYSTAL BRIDGES are the plan's `bridges`, written by the tool) */
+        (ctx.PLAN.bridges || []).forEach(([p0, p1], i) => { const dx = Math.sign(p1[0] - p0[0]), dy = Math.sign(p1[1] - p0[1]), ox = dy ? 1.55 : 0, oz = dx ? 1.55 : 0;
+            const cx = gx(p0[0]) + C / 2 + dx * (C / 2), cz = gz(p0[1]) + C / 2 + dy * (C / 2);
+            look('bridgeposts:' + i, cx, cz, 0, FS, a => { [-1, 1].forEach(s => { a.box(s * ox, 0, s * oz, 0.4, 1.1, 0.4, MARBLE, WHITE); a.cone(s * ox, 1.1, s * oz, 0.22, 0.03, 0.8, 'crystal', 0xd8fbff, { glow: 1.4 }); }); }); });
+        /* the ring: columns at its corners, lanterns */
+        [[38, 2], [45, 2], [38, 9], [45, 9]].forEach(([x, y]) => P('greek_column', x, y, { h: 6.5 }));
+        /* THE TEMPLE (27..32 x 2..5, door south onto its court) */
+        const temple = building('temple', [27, 2, 32, 5], 'S', 7, { leaf: 'leaf_frosted', leafDouble: true, floorIn: 'marble_2' }, (a, fw, fd, door) => {
+            a.box(0, -0.05, 0, fw + 0.8, 0.4, fd + 0.8, MARBLE, STONE);
+            a.shell(fw, 7, fd, MARBLE, WHITE, door, 3.5);
+            [-1, 1].forEach(sg => { for (let k = 0; k < 3; k++) { const lx = sg * (2.4 + k * 2.9); if (Math.abs(lx) > fw / 2 - 0.3) continue; a.box(lx, 0.35, fd / 2 + 0.25, 0.8, 6.65, 0.5, MARBLE, STONE); } });
+            a.box(0, 7.0, 0, fw + 1.0, 0.5, fd + 1.0, MARBLE, STONE);
+            /* a stepped crown, the temple's crystal on the top */
+            [0, 1, 2].forEach(k => a.box(0, 7.5 + k * 0.6, 0, fw - 2 - k * 3.2, 0.6, fd - 2 - k * 3.2, MARBLE, k % 2 ? STONE : WHITE));
+            a.P.push({ s: 'cyl', p: [0, 9.3, 0], r: 0.9, r2: 0.05, h: 2.6, seg: 6, key: 'crystal', tint: 0xd8fbff, glow: 1.5 });
+            a.box(0, 6.2, fd / 2 + 0.08, fw - 1.6, 0.26, 0.08, 'crystal', GLOW, { glow: 1.2 });
+            a.box(door.lx, 0, fd / 2 + 0.55, 5.2, 0.18, 1.1, MARBLE, STONE);
+            a.sign('THE TEMPLE', door.lx, 3.35, fd / 2 + 0.09, 4.4, 0.75, '#e8fbff', '#22323c', 'cinzel');
+        });
+        put(temple, 'god_statue', 0, -temple.fd / 2 + 1.4, { face: 180, h: 4.2 }); put(temple, 'stone_altar', 0, -1.0, { face: 180 }); put(temple, 'candleRing', 0, 1.2, {});
+        put(temple, 'brazier', -temple.fw / 2 + 1.4, -1.5, {}); put(temple, 'brazier', temple.fw / 2 - 1.4, -1.5, {});
+        put(temple, 'crystal_cluster', -temple.fw / 2 + 1.3, -temple.fd / 2 + 1.2, { h: 1.8 }); put(temple, 'crystal_cluster', temple.fw / 2 - 1.3, -temple.fd / 2 + 1.2, { h: 1.6, noLight: true });
+        put(temple, 'tripod_bowl', -2.6, 1.6, {}); put(temple, 'tripod_bowl', 2.6, 1.6, {}); put(temple, 'crystal_chandelier', 0, 0, { ceil: true, y: r2(FTm + 6.6) });
+        /* the Temple's court */
+        P('stone_lantern', 27, 7, {}); P('stone_lantern', 32, 7, {}); P('stone_urn', 26, 9, {}); P('stone_urn', 33, 9, {}); P('iron_garden_bench', 29, 9, { face: 0 });
     },
 
     dress(ctx) {
@@ -158,7 +247,7 @@ module.exports = {
         P('stone_lantern', 13, 8, {}); P('stone_lantern', 11, 8, {});
         P('angel_statue', 9, 6, { face: 270, h: 3.2 });
         dec('meshy_crystal_shards', 2, 9, { h: 1.4 }); dec('meshy_crystal_shards', 14, 9, { h: 1.1 });
-        P('torch_white', 15, 6, {}); P('torch_blue', 18, 5, {});
+        P('torch_white', 15, 6, { noLight: true }); P('torch_blue', 18, 5, { noLight: true });
         P('crystal_cluster', 3, 7, { h: 1.2, noLight: true });
 
         /* THE PITS of the pilot's third */
@@ -177,15 +266,31 @@ module.exports = {
         const ROCKS = ['psxg_rock_1', 'psxg_rock_2', 'psxg_rock_3', 'psxg_rock_4', 'ocean_rock_5', 'cave_stone'];
         const WEBS = ['psx_cobweb_1', 'psx_cobweb_2', 'psx_cobweb_4', 'hw_web_3'];
         const BONES = ['femur', 'ulna', 'skull', 'hw_part_5', 'hw_part_7'];
-        squaresIn(0, 0, PILOT_X - 1, 47, (x, y) => open(x, y) && !wet(x, y) && T(x, y) === 'g' && !inCity(x, y) && !(x >= 15 && x <= 19 && y >= 3 && y <= 8)).forEach(([x, y]) => {
+        const CITYR = [[15, 3, 19, 8], [34, 39, 37, 44], [36, 3, 37, 4], [43, 46, 44, 47]], inR2 = (x, y) => CITYR.some(r => x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]);
+        squaresIn(0, 0, ctx.W - 1, 47, (x, y) => open(x, y) && !wet(x, y) && T(x, y) === 'g' && !inCity(x, y) && !inR2(x, y)).forEach(([x, y]) => {
             if (!free(x, y)) return; const nw = wallsBeside(x, y), r = rnd();
             if (nw >= 2 && r < 0.16) dec(WEBS[Math.floor(rnd() * WEBS.length)], x, y, {});
             else if (nw >= 1 && r < 0.3) dec(ROCKS[Math.floor(rnd() * ROCKS.length)], x, y, { h: r2(0.5 + rnd() * 0.9), noBlock: true });
             else if (r < 0.36) dec(BONES[Math.floor(rnd() * BONES.length)], x, y, {});
         });
         /* THE DARK: one torch a plot of the maze, at a bend; one in four still burns (a room has ten prop lights: HQ_PROP_LIGHT_MAX) */
-        const TORCH = [[6, 17], [17, 17], [5, 30], [17, 29], [6, 41], [18, 41], [16, 13]];
-        TORCH.forEach(([x, y], i) => { if (free(x, y)) P('cave_torch', x, y, i % 4 === 0 ? {} : { noLight: true }); });
+        const TORCH = [[6, 17], [17, 17], [5, 30], [17, 29], [6, 41], [18, 41], [16, 13], [29, 17], [41, 17], [53, 17], [53, 29], [41, 29], [29, 29], [53, 5], [53, 41]];
+        TORCH.forEach(([x, y], i) => { if (free(x, y)) P('cave_torch', x, y, (i === 0 || i === 4 || i === 10) ? {} : { noLight: true }); });
+
+        /* PASS 2, THE PITS east of the city */
+        /* a BONE PIT (53..54 x 2..3, 110) */
+        P('skull_pile', 54, 2, { h: 1.2 }); dec('femur', 53, 2, {}); dec('skull', 54, 3, {}); dec('hw_part_5', 53, 2, {}); dec('ulna', 54, 3, {}); dec('hw_body', 54, 2, {});
+        /* a NEST (56..57 x 17..18): webs over everything, what it brought back */
+        dec('hw_web', 57, 17, {}); dec('hw_web_2', 56, 18, {}); dec('hw_web_3', 57, 18, {}); P('skull_pile', 57, 18, { h: 0.9 }); dec('hw_body_2', 57, 17, { face: 120 }); dec('spider', 56, 18, {}); dec('spider', 57, 17, {});
+        /* a CRYSTAL POCKET (56..57 x 29..30) */
+        P('crystal_cluster', 57, 29, { h: 2.6 }); P('crystal_cluster', 57, 30, { h: 1.4, noLight: true }); dec('meshy_crystal_shards', 56, 30, { h: 1.1 });
+        /* a SQUEEZE that goes nowhere (41..42 x 20..21): loose rock to the roof, a dropped pack */
+        dec('psxg_rock_1', 42, 21, { h: 1.3, noBlock: true }); dec('cave_stone', 41, 21, { h: 1.6, noBlock: true }); dec('backpack', 42, 20, {}); dec('psx_cobweb_2', 41, 21, {});
+        /* a SUMP OF BLACK WATER (41..42 x 26..27): its floor wet and black, what floated in */
+        dec('hw_body', 42, 26, { face: 30 }); dec('rat', 41, 26, {}); dec('rat', 42, 27, {});
+        /* THE KEPT ROOM (the dead end at 52..53 x 40..41): bars across it, chains, what is left of what was kept */
+        dec('cell_bars', 52, 41, { face: 90 }); dec('wall_chains', 52, 40, { face: 90 }); dec('skull', 52, 40, {}); dec('hw_part_3', 53, 40, {}); dec('psx_old_mattress_mp_1', 53, 41, {});
+        dec('candle_ring', 53, 40, {});
     },
 
     people(ctx) {
@@ -196,12 +301,21 @@ module.exports = {
         native('nordic', 12, 8, 160);
         inside(BUILT.hall, 'machine elves', 0, 2.4, 0);
         inside(BUILT.home_w, 'nordic', 1.0, 1.8, 270);
+        /* PASS 2: the Terraces, the Spire */
+        native('nordic', 29, 40, 160); native('nordic', 31, 44, 330); native('crystal guardian', 44, 44, 0); native('golem', 39, 45, 0);
+        native('crystal guardian', 41, 6, 270); native('loch ness monster', 43, 4, 200);
+        inside(BUILT.temple, 'machine elves', 1.4, 2.2, 0); inside(BUILT.house_tw, 'nordic', 1.0, 0.4, 270);
     },
 
     /* THE BIG LIGHTS (four at most in the room): the Great Crystal; the Hall's lit frieze */
     suns(ctx) {
         const { gcx, gcz, gx, gz, walkOf, r2 } = ctx, F0 = walkOf(3, 3);
         return [{ x: gcx(6), y: r2(F0 + 9.5), z: gcz(6), color: 0xa8ecff, intensity: 1.6, dist: 60, decay: 1 },
+                /* THE SPIRE: the city's great light, high in its vault */
+                { x: gx(42), y: r2(walkOf(38, 2) + 22), z: gz(6), color: 0xa8ecff, intensity: 2.0, dist: 110, decay: 1 },
+                /* the Terraces: over the Plaza's fountain and the stair */
+                { x: gx(35), y: r2(walkOf(30, 42) + 8), z: gz(42), color: 0xc8f2ff, intensity: 1.2, dist: 48, decay: 1 },
+                /* the Hall of Records' lit front */
                 { x: gx(12) + 1.75, y: r2(F0 + 6.5), z: gz(8), color: 0xd8f6ff, intensity: 0.9, dist: 26, decay: 1 }];
     },
 };

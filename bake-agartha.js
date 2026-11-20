@@ -152,7 +152,9 @@ for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { if (!open(x, y)) cont
 let TOPR = 0; for (let i = 0; i < W * Hh; i++) TOPR = Math.max(TOPR, ROOFY[i]);
 const CRUST = r2(TOPR + 4), SH = r2(CRUST + 2);
 const slope = Buffer.alloc(W * Hh * 8);
-for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { const o = (y * W + x) * 8, h = open(x, y) ? floorOf(x, y) : CRUST; for (let k = 0; k < 4; k++) slope.writeInt16LE(Math.round(h * 100), o + k * 2); }
+/* a RAMP square (the plan's `ramp`: half a level over the square, uphill `B.RAMP`): its corners slope, 15 cm under the stair row the design lays on it */
+for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { const o = (y * W + x) * 8, rp = B.RAMP[x + ',' + y], h = open(x, y) ? floorOf(x, y) : CRUST;
+    [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]].forEach(([cx, cz], k) => { const v = (rp && open(x, y)) ? r2((Lv(x, y) - ZERO + (cx * rp[0] + cz * rp[1]) * 0.5) * LV - 0.15) : h; slope.writeInt16LE(Math.round(v * 100), o + k * 2); }); }
 
 /* ── THE ROOF: greedy rectangles of open squares under one roof height; each a slab of rock from its roof up to the crust, stalactites under ── */
 const ROCK = [0x5c554d, 0x524c45, 0x645c52, 0x4a453f], grnd = mkRnd(9137);
@@ -175,13 +177,21 @@ const climbAt = (lo, hi, look, id) => { const dx = hi[0] - lo[0], dy = hi[1] - l
 (PLAN.stairs || []).forEach(([a, b], i) => { const la = walkOf(a[0], a[1]), lb = walkOf(b[0], b[1]); if (la === lb) return; climbAt(la < lb ? a : b, la < lb ? b : a, 'ladder', 'aga:ladder:' + i); count.ladders = (count.ladders || 0) + 1; });
 (PLAN.found || []).filter(f => /free climb/.test(f.name)).forEach((f, i) => { climbAt(f.from, f.to, 'rope', 'aga:rope:' + i); count.ropes = (count.ropes || 0) + 1; });
 
-/* ── THE SUMPS: black water over the plan's `w` squares ── */
+/* ── THE SUMPS AND THE LAKE: black water over the plan's `w` squares (greedy rectangles at one level) ── */
 { const used = new Uint8Array(W * Hh);
-  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { if (!wet(x, y) || used[y * W + x]) continue; let w = 1; while (wet(x + w, y) && !used[y * W + x + w]) w++; let h = 1; while (y + h < Hh && wet(x, y + h)) h++;
+  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { if (!wet(x, y) || used[y * W + x]) continue; const lv = Lv(x, y), ok = (X, Y) => wet(X, Y) && !used[Y * W + X] && Lv(X, Y) === lv;
+      let w = 1; while (ok(x + w, y)) w++; let h = 1; rows: while (y + h < Hh) { for (let k = 0; k < w; k++) if (!ok(x + k, y + h)) break rows; h++; }
       for (let j = 0; j < h; j++) for (let k = 0; k < w; k++) used[(y + j) * W + x + k] = 1;
       F.push(h >= w ? { k: 'stream', pts: [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: w * C, y: r2(walkOf(x, y) - 0.4), depth: 2.2, key: 'deep_water' }
                     : { k: 'stream', pts: [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]], w: h * C, y: r2(walkOf(x, y) - 0.4), depth: 2.2, key: 'deep_water' });
       count.sumps = (count.sumps || 0) + 1; } }
+
+/* ── THE BRIDGES (the plan's `bridges`: a deck from one square over to another, walked both ways); the design file's `bridge` = its look ── */
+(PLAN.bridges || []).forEach(([a, b], i) => { const la = walkOf(a[0], a[1]), lb = walkOf(b[0], b[1]); if (la !== lb) throw new Error('a bridge between two levels: ' + a + ' ' + b);
+    const dx = Math.sign(b[0] - a[0]), dy = Math.sign(b[1] - a[1]);
+    const ex = (q, s) => dx ? r2(gcx(q[0]) + s * dx * (C / 2 + 0.4)) : gcx(q[0]), ez = (q, s) => dy ? r2(gcz(q[1]) + s * dy * (C / 2 + 0.4)) : gcz(q[1]);
+    feat(Object.assign({ k: 'bridge', id: 'aga:bridge:' + i, absY: true, x0: ex(a, 1), z0: ez(a, 1), x1: ex(b, -1), z1: ez(b, -1), w: C, y: la, thick: 0.35, rails: true }, DESIGN.bridge || {}));
+    LINKS.push([a, b]); count.bridges = (count.bridges || 0) + 1; });
 
 /* ── THE OPEN GROUND as `space` rows ── */
 const spaces = [];
