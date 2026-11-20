@@ -13776,7 +13776,7 @@ underground horror like the descent movie"; on the plans: "Yes this is good, go 
 waterfall for now" (no underground river: the falls are water running down a cliff, not a river). It is OK that the underground no longer sits
 exactly under the surface: the manholes and stairs still lead to the right places.
 
-- **THE ROOM:** `site_prebuilt_sewers_labyrinth` (part `labyrinth`), 8 x 6 plots (336 x 252 m), levels 144 (the Pumping Station, under the
+- **THE ROOM:** `site_prebuilt_downtown_underworld` since the switch (the pilot was baked as `site_prebuilt_sewers_labyrinth`, now gone), 8 x 6 plots (336 x 252 m), levels 144 (the Pumping Station, under the
   street) down to 118 (the pits of the old mine's bottom level): 45.5 m of rise, every square the plan's (`docs/plans/world-polish/plans/ug-sewers.js`).
 - **THE TOOL:** `bake-labyrinth.js <room design>` (repo tooling, written for any underground district plan; the Sewers' design is the worked
   example). `node bake-labyrinth.js docs/areas/sewers/districts/room.js [--dry-run]`. It builds the plan with draw-plan.js `build`, refuses a plan
@@ -13801,17 +13801,32 @@ exactly under the surface: the manholes and stairs still lead to the right place
 - **THE WAYS OUT (the plan's five):** the Pumping Station's bulkhead (`pump`, up the shaft to the street), the manhole to the Power Station
   (`sewers_power`; the plan's corner square had a passage behind it, so the door stands one square up, in the passage's dead-end wall), the
   Holding Cells' stair (`cells_stair`), the Tunnel-Way (`ow_v_1_1`, the Tunnel-Way's own seam id, the Chimney's west wall, level 123), the D.U.M.B. (`freight_line`, the Freight
-  Line's south wall, level 131). PILOT STAND-INS: the three city doors all lead to the street's `sewer` place, the Tunnel-Way's and the D.U.M.B.'s to
-  their rooms' old seams, one way: the other rooms do not point here until the switch.
+  Line's south wall, level 131). (The pilot's stand-ins, the city doors all leading to the street's `sewer`, went with the switch.)
 - **THE PILOT = THE CULVERTS (W)**, dressed: the kit (cage lamps on the walls every few squares with the brick round them lit, every fourth one dead
   with a rat under it; culvert mouths where a channel starts at a wall, grates where it ends, the weirs and sluices; rubbish, cobwebs and stains in
   the bends) + by hand: the manhole shaft over the bulkhead (ladder, daylight down it), the Pumping Station's pumps, boiler, gauge board and valves,
   the Junction's four mains across its vault (the landmark), the Pump Room, the Cistern's compressor, three real bulbs, two name plates, three
-  residents (two sewer gators, a mole man). The other four districts are the bare skeleton (vaults, grime, ladders, falls, their floors) until
-  mondo has looked.
-- **THE SWITCH (after mondo's word):** retire `site_prebuilt_downtown_underworld` (DOOR_HQ.retired), point the city's ways (`pump`, the manholes,
-  `docks_sewer`, `stadium_sewers`, `well_garden`, `sewers_power`, the cells, `workings_oubliette`, the Freight Line) at the new room's dead ends,
-  dress T, H, O, R from their old district files (W T H O R.js stand in the old home frame: their pieces are carried over by hand, plot by plot).
+  residents (two sewer gators, a mole man).
+- **THE SWITCH (DONE 11-20, on mondo's "okay continue" after the pilot):** the labyrinth took the old room's id, `site_prebuilt_downtown_underworld`
+  (`replaces: 'SEWERS24'` in room.js: the tool deletes the old block and its decal row), so the zone map, the NPC board (HQ_NPC_PLACES: its place
+  names are the plots' names; the Culverts' last plot is THE OUTFALL for the board's `W:Outfall`), the hub and every room that points into the Sewers
+  land in it. `bake-sewers.js` is retired (it exits unless `EW_OLD_SEWERS=1`); layout.json and W T H O R.js stay as the record. THE WAYS IN, each at
+  a dead end of its own district (room.js `doors` = the plan's five, `ways` = the old ones; the tool rewrites a link row's end in data.js in place):
+  the Pumping Station's bulkhead (`pump`, W) · the Power Station's manhole (`sewers_power`, R) · the seventh cell (`cells_dungeon`, H, the plan's
+  Holding Cells door) · the Tunnel-Way (`ow_v_1_1`, O, the Chimney) · the D.U.M.B.'s Freight Line (`freight_line`, T) and its Gantry Tunnel
+  (`ow_v_7_16`, T) · the Sea Floor's pipe (`ow_v_18_5`, O, the Fall Pool where the 42 m fall's water leaves) · the flooded quay (`docks_sewer`, W, the
+  Storm Drain) · the stadium gutter (`stadium_sewers`, W, the East Return) · the draught into the storm drain under the Woods (`sewers_drain`, W, in
+  the Storm Drain's PIT: hard to reach) · the two platforms (`tunnels_works`, T, the Cutting; `tunnels_platform`, T, the Loop Line South) · the
+  Oubliette's portcullis (`workings_oubliette`, O, the Chimney). `well_garden` is not live (its garden end is gone) and stays so. The old walks under
+  the city (U1-U5, U14) are folded into the maze: they are gone. The map: `node bake-map.js site_prebuilt_downtown_underworld`.
+- **THE FOUR DISTRICTS, DRESSED (11-20, from their old files' pieces, set on the new chambers):** the district kit (`a.kit`) everywhere, each in its
+  own light: R green lamps, sludge in its channels and sumps, the Sludge Pit's goo coming up out of the sump, drums, the control panel and a hazmat
+  suit, the Settling Tank's pumps, boiler and generator, the Valve Gallery; T sodium lamps, track in four chambers (`a.rails`: rail_section + two
+  steel rails, buffer stops), the Ghost Station's benches and columns, the Depot's hand car and mine cart (the landmark), the Freight Line's track to the
+  vault door, signals; H cold white lamps, the booking desks, height boards, the Drunk Tank's chain bunk and steel toilet, cell bars, the Property
+  Room; O lanterns and TIMBER SETS on the walls (a post every third square, its cap), the Chimney's head wheel on the plan's landmark square, the
+  Flood's boat, the Pump Ledge's beam pump and anvil, the Sump's hooded statue. Seven real lights in all (six bulbs, one torch). Residents: two
+  sewer gators, a mole man (W), a gator (R), a karate frog (T), a police officer (H), a mole man and a samurai slug (O), plus the NPC board's own.
 - **FITS (the lists read 11-20: MODEL_LIST.md, the catalogue; the old five district files' pieces are the proven set):** cage_lamp, bare_bulb,
   manhole_ladder, light_shaft, culvert_mouth, drain_grate, meshy_round_street_drain, floor_drain, brick_arch, valve_wheel, gate_valve, waste_pipe,
   centrifugal_pump, boiler, air_compressor, gauge_board, pd_lever, psx_pipe_1 (+ _corner, _short, _cross), psx_pipe_valve_holder_large_1/2,
