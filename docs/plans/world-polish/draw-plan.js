@@ -196,7 +196,9 @@ function check(B, opts) { opts = opts || {}; const { plan, W, H, N, T, L, RAMP, 
     /* E 2: every level has a walked way up (checked above) and a FOUND way up (a climb, a ledge chain, a fallen trunk, a ladder) */
     const found = plan.found || []; found.forEach(f => { [f.from, f.to].forEach(q => { if (!isOpen(q[0], q[1])) FAIL.push('found way "' + f.name + '" starts or ends on a closed square ' + q); });
         if (isOpen(f.from[0], f.from[1]) && isOpen(f.to[0], f.to[1]) && L[f.to[1]][f.to[0]] <= L[f.from[1]][f.from[0]]) FAIL.push('found way "' + f.name + '" does not go up'); });
-    DKEYS.filter(big).forEach(d => { const lv = [...new Set(PLOTS.filter(p => p.d === d).map(p => p.level))].sort((a, b) => a - b), miss = [];
+    /* in a MAZE every level is walked by its ladders; the FOUND ways are the cliffs climbed the hard way: one for every 6 plots */
+    if (plan.maze && !plan.schematic && found.length < Math.ceil(PLOTS.length / 6)) NEWR('a maze with too few FOUND ways up: ' + found.length + ' for ' + PLOTS.length + ' plots (one every 6)');
+    if (!plan.maze) DKEYS.filter(big).forEach(d => { const lv = [...new Set(PLOTS.filter(p => p.d === d).map(p => p.level))].sort((a, b) => a - b), miss = [];
         lv.slice(1).forEach(v => { if (!found.some(f => (dOf(f.to) === d || dOf(f.from) === d) && isOpen(f.from[0], f.from[1]) && isOpen(f.to[0], f.to[1]) && L[f.from[1]][f.from[0]] < v && L[f.to[1]][f.to[0]] >= v)) miss.push(v); });
         if (miss.length) NEWR(dname(d) + ': no FOUND way up to level ' + miss.join(', ') + ' (E 2: every level has a way you walk and a way you find)'); });
 

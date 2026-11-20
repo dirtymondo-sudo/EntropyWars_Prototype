@@ -13705,3 +13705,48 @@ the Sink) and one on the east (off the Shoulder 2 -> 1); the plan's ledge edges 
   doors cut a track three squares wide through the house's corn to its open ground (`cut: [5, 6, 7]` on a seam, new in the tool). The house's district
   file is not edited. data.js rows by hand: the day table, `HQ_AREA_MARKERS` (the Fence Gap), `ZONE_FLORA.estate`, `ZONE_LOOKS.estate`. The plan's
   rock steps climb a notch up the top's own face (54,27 -> 54,26). Every door of the three rooms resolves (checked through load-data.js).
+
+## THE UNDERGROUND, ONE DISTRICT A ROOM — the Cavern rebuilt from its plan (2026-11-20, world polish thread 9; tool `bake-ug.js`, design `docs/areas/cavern/districts/K-room.js`)
+
+mondo 11-20: "This is the CAVERN. The UNDERGROUND. With HOLLOW EARTH and a passage to HELL. The most Cavernous cave to ever exist"; "we need
+victory road. labyrinth, height diffs, cliffs, drops waterfalls, underground horror like the descent movie". The plans (`docs/plans/world-polish/
+plans/ug-cavern.js`, `ug-hollow-earth.js`, from `underground.js`) were APPROVED 11-20; this thread builds them, it does not redraw them.
+
+**THE TOOL, `bake-ug.js` (repo-only, root; shared by every underground thread that wants it).** `node bake-ug.js <key>` (a row of its ROOMS
+table: plan, design file, room id, site, part) builds the plan with `draw-plan.js` itself (build + check: a FAIL refuses the bake) and writes
+ONE room between `UG:<key>-BEGIN` / `UG:<key>-END` in data.js (after CAVERN36-END the first time). `--dry-run`; `--check` reads the baked room
+back through load-data.js (`hqTerrainFeet` on every open square against the plan) and prints the plot levels as a grid.
+- THE GROUND = `terrain.slope.cells`, every open square flat at its plan level (y 0 = the room's lowest floor; level L stands at (L - lowest) x 1.75 m),
+  so a step of a level or more between two squares is a LEDGE (a drop). A closed square takes the height of the nearest open one (the rock's foot).
+  `gen: { kind: 'plan', look: 'walls' }`: every square that is not a `space` is the rock to the crust.
+- THE LADDERS = the plan's `stairs` pairs, one `climb` row each (look 'ladder') on the line between the two squares, on the low side, facing the
+  high side, with its own y0 / y1. THE FALLS = a `drop` branch whose words say WATERFALL: a `fall` row down the ledge (two squares wide on a
+  two-wide passage); a CLIFF drop is bare rock. No river (mondo 11-20). THE SUMPS = the plan's `w` squares: deep black water (a `stream` row
+  laid along the axis whose ends are rock, so its round ends never cut the floor beside it).
+- THE ROOF: a rock block from each open square's ceiling to the crust (greedy runs of equal ceilings, one `arch` row a plot): a passage's
+  ceiling is 3 levels over the highest open square within two squares of it (a ladder's head and a ledge's lip stay under it), a chamber's 6
+  levels over its own highest (+ the design's `tallChambers`); stalactites hang under it.
+- THE DOORS: the plan's `doors` by index, named in the design file: `{ link: '<id>', end }` (the tool checks the link row points here and prints
+  the row to write) or a room door `{ id, label, sub, action }`. On the room's edge = a wall door, inside = a free door with a passage.
+- THE DESIGN FILE: `room` (label, sub, parti, spawn, mood, pal, plotNames, lines, ceilings), `doors`, `paint(ctx, x, y)`, `suns(ctx)`,
+  `dress(ctx)`, `people(ctx)`. ctx: lv / h / open / wet / tile / ceil of a square, `P` (a blocker on a square's middle), `dec` (decor off it),
+  `npc`, `feat`, `squares`, `walled`, `rockSides`, `free`, the plan + its build. Arch rows in a design file use `base: 0` and ABSOLUTE part y.
+
+**THE CAVERN (pilot, 2026-11-20): `site_prebuilt_hollow_earth_ug_cavern`**, 6 x 3 plots (72 x 36 squares, 252 x 126 m), levels 105 down to 82
+over the Inner Sun (40 m of rock top to bottom), 23 ladders, 2 waterfalls (9 and 15 levels), 2 cliffs, 5 sumps. `--check`: 968 open squares, 1
+off the plan (the Needle's own square, a blocker on purpose). THE PLACES on the plan's chambers: THE LAST CAMP (2,0 · 105, the way in from the
+Tunnel-Way, the spawn: the explorers' tents, cold fire, ropes, a stretcher), THE SHELF (0,0 · 97, crystals and glowcaps, the cold light), THE
+CROSSROADS (0,1 · 92, the great chamber, roof 21 m up, THE NEEDLE = the plan's landmark, the old signpost, the people; the West Tunnel), THE GROTTO
+(0,2 · 83, the low tier: bats, a fossil, mushrooms), THE MOUTH (3,2 · 88, the way down to Hollow Earth), THE OUBLIETTE (4,2 · 82, the bottom:
+reached only by the 15-level waterfall or the 6-level ladder from the Mouth; stocks, chain bunks, an iron maiden, the dead), THE FISSURE
+(junction 5,1 · 94, hot obsidian rock, braziers, the altar, the crack to Hell). The plan's pits hold bone pits, nests (goo tendrils, webs,
+spiders), crystal pockets, a dead caver's camp, a squeeze, a sump; its two secret dead ends hold a chest each. Four big lights: Hell's red at the
+Fissure, the Crossroads' fire glow, Hollow Earth's sun up through the Mouth, the Shelf's crystal blue.
+**THE PILOT'S JOINS (until the other rooms are built):** `cave_hell` end a = the Fissure (re-pointed; bake-cavern.js no longer writes that way);
+the north door (the Tunnel-Way) and the west door (the West Tunnel) land at the OLD tunnel rooms' Cavern doors (`ow_v_m8_9`, `ow_v_m8_11`); the
+south door (Hollow Earth, 16 levels down) lands in the OLD Cavern + Hollow Earth room at the Polar Opening (`link_hollow_byrd`). The old room
+`site_prebuilt_hollow_earth_cavern` stays live (its old Cavern still reached from the old tunnels) until Hollow Earth is built from its plan;
+then it is retired and the new rooms get their `world` places (none yet: it would overlap the old room on the map).
+**NOT in the plan, so not here:** the D.U.M.B.'s blast door (`cave_dumb`), the Oubliette's portcullis to the Sewers (`workings_oubliette`),
+DOOR HQ's hidden cell door, the cellar well (`well_cellar`): they stay on the old room until the Sewers / D.U.M.B. threads and mondo say where
+they land in the labyrinth.

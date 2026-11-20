@@ -46,8 +46,17 @@ This is a BUILD thread. Its plans (all four have mondo's OK of 11-20):
 Order: Hell first (the smallest job and the worst to look at today), then Heaven, the Catacombs, the Vatican. Follow section 4, "HOW A BUILD THREAD USES A PLAN".
 ```
 
+## 5. Threads 7 + 9 + 10: THE UNDERGROUND (one labyrinth; the square plans have mondo's OK of 11-20; one thread a district, started 11-20)
+
+The layout of the whole underground has mondo's OK for its shape and its depth (6 plots, no climb over 28 m): `plans/underground.js`.
+The square-by-square skeleton of each district is drawn from it: `plans/ug-long-tunnel.js`, `ug-west-tunnel.js`, `ug-tunnel-way.js`,
+`ug-agartha.js`, `ug-cavern.js`, `ug-hollow-earth.js`, `ug-sewers.js` (+ the Catacombs' own `catacombs.js`, thread 11's). One thread a
+district; the tunnels first (they are new rooms), then the Cavern + Hollow Earth, Agartha, the Sewers. A thread sets its district's named
+places on the skeleton's chambers, dresses it as a horror cave (dark, squeezes, bones, a nest, water noise), and keeps the joins and their
+levels.
+
 ## Not planned yet (no thread can start from a plan)
 
-Thread 8 The D.U.M.B. (its own thread holds a plan waiting for mondo), threads 7, 9, 10 (the underground), 14 The Internet, 15 The Astral
+Thread 8 The D.U.M.B. (its own thread holds a plan waiting for mondo), 14 The Internet, 15 The Astral
 Realm, 16 The Deep, 18 Outer Space's dressing, 2 Disaster City (cramped), 20 the Mall's next pass, 19 The Beach (the One Beach thread has it).
 The Woods (thread 6) is being built from its own plan.
