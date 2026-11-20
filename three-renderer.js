@@ -49837,18 +49837,18 @@ const ThreeRenderer = (function () {
                    repeated the bottom ones) — the panes draw the groups the classic way too */
                 /* THE MASK'S OWN BUNDLES (2026-11-14): the static mask pass draws through a camera of its own (three-post.js), so a
                    culled chunk (the camera already dropped it when it is off: visible = false) replays its own mask recording */
-                if (this._ew_maskBun && !this._ew_paneRender && object._ew_ckFar != null && !object._ew_bunFree && !object._ew_bunMiss) { var pbM = this._ew_bunBase; this._ew_bunBase = renderList; var outsM = object._ew_bunOuts, replayM = !!outsM && _ewBunCurrent(this, object, camera); _ewBun.inRec++; try { po.apply(this, arguments); } finally { _ewBun.inRec--; this._ew_bunBase = pbM; } if (replayM) _ewBunOutsDraw(this, object, outsM, camera, renderList, clippingContext); return; }
-                if (this._ew_sideRender || this._ew_paneRender) { object.isBundleGroup = false; try { return po.apply(this, arguments); } finally { object.isBundleGroup = true; } }
+                if (this._ew_maskBun && !this._ew_paneRender && object._ew_ckFar != null && !object._ew_bunFree && !object._ew_bunMiss) { var pbM = this._ew_bunBase; this._ew_bunBase = renderList; var outsM = object._ew_bunOuts, replayM = !!outsM && _ewBunCurrent(this, object, camera); _ewBun.inRec++; try { po.call(this, object, camera, groupOrder, renderList, clippingContext); } finally { _ewBun.inRec--; this._ew_bunBase = pbM; } if (replayM) _ewBunOutsDraw(this, object, outsM, camera, renderList, clippingContext); return; }
+                if (this._ew_sideRender || this._ew_paneRender) { object.isBundleGroup = false; try { return po.call(this, object, camera, groupOrder, renderList, clippingContext); } finally { object.isBundleGroup = true; } }
                 /* THE FIELD BUNDLES: a piece of the battle's room off the main camera is not drawn (a recording is unculled) */
                 if (object._ew_bunSph && camera && camera === _ewBun.cullCam && !_ewBunSeen(object._ew_bunSph, camera)) return;
                 var pbB = this._ew_bunBase; this._ew_bunBase = renderList;
                 var outsB = object._ew_bunOuts, replayB = !!outsB && _ewBunCurrent(this, object, camera);
-                _ewBun.inRec++; try { po.apply(this, arguments); } finally { _ewBun.inRec--; this._ew_bunBase = pbB; }
+                _ewBun.inRec++; try { po.call(this, object, camera, groupOrder, renderList, clippingContext); } finally { _ewBun.inRec--; this._ew_bunBase = pbB; }
                 if (replayB) _ewBunOutsDraw(this, object, outsB, camera, renderList, clippingContext);
                 return;
             }
-            if (_ewBun.inRec > 0 && object.frustumCulled === true) { object.frustumCulled = false; try { return po.apply(this, arguments); } finally { object.frustumCulled = true; } }
-            return po.apply(this, arguments);
+            if (_ewBun.inRec > 0 && object.frustumCulled === true) { object.frustumCulled = false; try { return po.call(this, object, camera, groupOrder, renderList, clippingContext); } finally { object.frustumCulled = true; } }
+            return po.call(this, object, camera, groupOrder, renderList, clippingContext);
         };
         return true;
     }
@@ -49999,7 +49999,7 @@ const ThreeRenderer = (function () {
         var F = null, iter = ch;
         if (ch.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_HELD_EVERY)) {
             F = g._ew_bunF || (g._ew_bunF = { n: -1, hold: -1, k: 0, hh: 17, hc: 0, live: [] });
-            if (F.n !== ch.length || F.hold !== _hqBatchHoldN || g._ew_bunDirty || ++F.k >= 240) {
+            if (F.n !== ch.length || F.hold !== _hqBatchHoldN || g._ew_bunDirty || ++F.k >= 3600) {   // (11-20: was 240; his F3 "Bundle spikes: 12-17 ms check, slowest shell 8-13 ms" every ~15 s with 0 re-recorded = this just-in-case re-lay of 10,000 pieces; every real change already asks for one)
                 F.n = ch.length; F.hold = _hqBatchHoldN; F.k = 0; F.hh = 17; F.hc = 0; F.live.length = 0;
                 for (var fi = 0; fi < ch.length; fi++) { var fc = ch[fi]; if (fc._ew_bRec && fc._ew_bunOut !== true) { F.hh = _ewBunMix(F.hh, fc.id ^ 0x2b1d); F.hc++; } else F.live.push(fc); }
             }
