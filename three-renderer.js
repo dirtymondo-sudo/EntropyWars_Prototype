@@ -67,7 +67,7 @@ const ThreeRenderer = (function () {
             'EW_NO_INST_SHARE EW_NO_KEY_LIGHT EW_NO_KNOCK EW_NO_KTX2 EW_NO_LATE_LOOK EW_NO_LEAVE_SWEEP EW_NO_LIGHT_MATCH EW_NO_LIGHT_RIG EW_NO_LIVE_PORTRAITS ' +
             'EW_NO_LOD EW_NO_LS_OUTLINE_AURA EW_NO_MAP_MOTION EW_NO_MARKS_DEFORM EW_NO_MEM_BUDGET EW_NO_MENU_FADE EW_NO_MENU_SCENE EW_NO_METRO_PACK ' +
             'EW_NO_MODEL_PORTRAITS EW_NO_MODEL_QUEUE EW_NO_MOVING_SHEETS EW_NO_NATURAL_ROCK EW_NO_NEAREST_GRAD_FIX EW_NO_NEAR_FIRST EW_NO_NODE_POST ' +
-            'EW_NO_OCEAN_PACK EW_NO_ONE_WRITE EW_NO_OPT_ASSETS EW_NO_OVERHEAD_FADE EW_NO_PAINTED_SKY EW_NO_PARALLAX EW_NO_PB_VFX EW_NO_PORTALS EW_NO_QUIET_COMPILE ' +
+            'EW_NO_OCEAN_PACK EW_NO_ONE_WRITE EW_NO_OPT_ASSETS EW_NO_OVERHEAD_FADE EW_OCC_NO_KEEP EW_NO_PAINTED_SKY EW_NO_PARALLAX EW_NO_PB_VFX EW_NO_PORTALS EW_NO_QUIET_COMPILE ' +
             'EW_NO_RIDE_ALONG EW_NO_RIG_CARRY EW_NO_RIG_LANE EW_NO_RIOT_VFX EW_NO_RIOT_VFX_C EW_NO_RIOT_VFX_D EW_NO_ROUND EW_NO_SCENE_LOOKS EW_NO_SHADER_CACHE ' +
             'EW_NO_SHADER_KEEP EW_NO_SHEET_WARM EW_NO_SHORE_BLEND EW_NO_SHOVEL_DIG EW_NO_SKIN_PICK EW_NO_SMALL_PROP_CAP EW_NO_SSAO EW_NO_STAGE_STYLE ' +
             'EW_NO_STAIRS_PACK EW_NO_STEEP_CLIFF EW_NO_STOP_MOTION EW_NO_STRADDLE EW_NO_STRATA_MERGE EW_NO_TERRAIN_RISE EW_NO_TITLE_WARM EW_NO_TRAPS_PACK ' +
@@ -28964,14 +28964,62 @@ const ThreeRenderer = (function () {
         c.opacity = (m.opacity != null ? m.opacity : 1);
         c._ew_occClone = true;
         c._ew_occSrc = m;   // ONE SHADOW FOR A FADING TREE: the shadow pass draws the original (_ewGpuCompat)
+        c._ew_occV = m.version;
         return c;
+    }
+    /* THE GHOSTS KEPT (2026-11-20, mondo: "really bad slowdowns and freezes during battle, especially during combos"; his battle F3:
+       2.5 FPS, "770 re-records/s", "scene: classic draws 88 ms", 4 shader builds and 11 new pipelines a second). Every fade of a
+       wall, ceiling or prop (the occlusion fade, the canopy cutaway) CLONED the piece's material and threw the clone away when the
+       piece came back. To the renderer a new material is a new thing to draw: a new render object, new uniform buffers and bind
+       groups, a pipeline lookup, per mesh, per fade; a combo's camera cuts sweep the view across hundreds of pieces again and
+       again, so the same pieces paid it on every cut. The clone now stays with its mesh (`_ew_occKeep`) and the next fade of that
+       piece puts the same one back on: everything the renderer made for it is still there. Made anew only when the piece's own
+       material was replaced or changed (its version). A kept clone is freed when its mesh has left the scene (looked at every
+       10 s) or past OCC_KEEP_MAX of them. Off: window.EW_OCC_NO_KEEP = true. */
+    var _occKept = new Set(), _occKeptAt = 0, OCC_KEEP_MAX = 4000;
+    function _occKeepFree(mesh) {
+        var K = mesh._ew_occKeep; mesh._ew_occKeep = null; _occKept.delete(mesh);
+        if (Array.isArray(K)) { for (var i = 0; i < K.length; i++) if (K[i] && K[i]._ew_occClone) K[i].dispose(); }
+        else if (K && K._ew_occClone) K.dispose();
+    }
+    function _occKeepSweep(nowMs) {
+        if (nowMs - _occKeptAt < 10000) return;
+        _occKeptAt = nowMs;
+        var gone = null, over = _occKept.size - OCC_KEEP_MAX;
+        _occKept.forEach(function (mesh) {
+            var live = false;
+            if (over > 0 && !mesh._ew_occOrig) { over--; }
+            else for (var q = mesh, d = 0; q && d < 64; q = q.parent, d++) if (q.isScene) { live = true; break; }
+            if (!live && !mesh._ew_occOrig) (gone || (gone = [])).push(mesh);
+        });
+        if (gone) for (var i = 0; i < gone.length; i++) _occKeepFree(gone[i]);
+    }
+    /* the values a piece may have changed without a new version (a tint, a glow): the kept clone takes them again */
+    function _occKeepSync(c, m) {
+        c.opacity = (m.opacity != null ? m.opacity : 1);
+        if (c.color && m.color && c.color.isColor && m.color.isColor) c.color.copy(m.color);
+        if (c.emissive && m.emissive && c.emissive.isColor && m.emissive.isColor) c.emissive.copy(m.emissive);
+        if (m.emissiveIntensity != null) c.emissiveIntensity = m.emissiveIntensity;
+    }
+    function _occKeepFits(K, m) {
+        if (!K) return false;
+        if (Array.isArray(m)) { if (!Array.isArray(K) || K.length !== m.length) return false; for (var i = 0; i < m.length; i++) if (!K[i] || !m[i] || K[i]._ew_occSrc !== m[i] || K[i]._ew_occV !== m[i].version) return false; return true; }
+        return !Array.isArray(K) && K._ew_occSrc === m && K._ew_occV === m.version;
     }
     function _occApplyFade(mesh) {
         if (mesh._ew_occOrig || mesh._ew_fogOrig) return;   // already swapped (occlusion or fog fade)
-        mesh._ew_occOrig = mesh.material;
-        mesh.material = Array.isArray(mesh.material)
-            ? mesh.material.map(_occCloneMat)
-            : _occCloneMat(mesh.material);
+        var m = mesh.material, K = mesh._ew_occKeep;
+        mesh._ew_occOrig = m;
+        if (K && !window.EW_OCC_NO_KEEP && _occKeepFits(K, m)) {   // THE GHOSTS KEPT: the same clone as last time
+            if (Array.isArray(K)) { for (var i = 0; i < K.length; i++) _occKeepSync(K[i], m[i]); }
+            else _occKeepSync(K, m);
+            mesh.material = K;
+            return;
+        }
+        if (K) _occKeepFree(mesh);
+        mesh.material = Array.isArray(m)
+            ? m.map(_occCloneMat)
+            : _occCloneMat(m);
     }
     function _occSetOpacity(mesh, op) {
         var m = mesh.material;
@@ -28983,6 +29031,12 @@ const ThreeRenderer = (function () {
         var cur = mesh.material;
         mesh.material = mesh._ew_occOrig;
         mesh._ew_occOrig = null;
+        if (!window.EW_OCC_NO_KEEP && mesh.parent && cur && (Array.isArray(cur) ? (cur.length > 0 && cur[0] && cur[0]._ew_occClone) : cur._ew_occClone)) {   // THE GHOSTS KEPT
+            if (mesh._ew_occKeep && mesh._ew_occKeep !== cur) _occKeepFree(mesh);
+            mesh._ew_occKeep = cur; _occKept.add(mesh);
+            _occKeepSweep(performance.now());
+            return;
+        }
         if (Array.isArray(cur)) { for (var i = 0; i < cur.length; i++) if (cur[i] && cur[i]._ew_occClone) cur[i].dispose(); }
         else if (cur && cur._ew_occClone) cur.dispose();
     }
