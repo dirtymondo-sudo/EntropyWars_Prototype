@@ -93311,7 +93311,7 @@ const ThreeRenderer = (function () {
        Clips: sprites.js HQ_CLIMB_CLIPS baked as hqClimb (ladder) / hqClimbRope (rope, vine, chain) / hqMantle — MAL3's
        Meshy climbs since 2026-10-12, paced to the climb speed, backwards going down, frozen as the hang (_hqTickChars).
        Without lib 4 the old chain plays: the swim stroke pitched nose-up on the line. Beats reach map.js through opts.onClimb ({ kind: 'near' | 'climb', … }). */
-    var HQ_CLIMB_DEFAULT = { reach: 0.6, speed: 1.6, mount: 0.3, hang: 0.34, slow: { rope: 0.8, vine: 0.75, chain: 0.85, wall: 0.7, pipe: 0.9 } };
+    var HQ_CLIMB_DEFAULT = { reach: 0.6, speed: 1.6, mount: 0.3, hang: 0.34, slow: { ropeladder: 0.9, rope: 0.8, vine: 0.75, chain: 0.85, wall: 0.7, pipe: 0.9 } };
     function _hqClimbRules() {
         var R = (typeof HQ_TERRAIN_RULES !== 'undefined') ? HQ_TERRAIN_RULES : ((typeof window !== 'undefined' && window.HQ_TERRAIN_RULES) || {});
         return { reach: (R.climbReach != null) ? R.climbReach : HQ_CLIMB_DEFAULT.reach, speed: (R.climbSpeed != null) ? R.climbSpeed : HQ_CLIMB_DEFAULT.speed, mount: (R.climbMount != null) ? R.climbMount : HQ_CLIMB_DEFAULT.mount, hang: HQ_CLIMB_DEFAULT.hang, slow: HQ_CLIMB_DEFAULT.slow };
@@ -93329,11 +93329,20 @@ const ThreeRenderer = (function () {
             var y1 = (typeof f.y1 === 'number') ? f.y1 : _hqBlockerFloor(hx, hz, 1e6);
             if (y1 == null || !isFinite(y1) || y1 - y0 < 0.9) { console.warn('[HQ] climb', i, 'has no tier at its head (y1', y1, ') — dropped'); return; }
             var look = f.look || 'ladder';
-            out.push({ id: f.id || (look + ':' + i), x: f.x, z: f.z, y0: y0, y1: y1, face: face, look: look, w: f.w || (look === 'ladder' ? 0.6 : look === 'wall' ? 1.2 : 0.35), ux: ux, uz: uz, fx: fx, fz: fz, hx: hx, hz: hz, len: y1 - y0, box: true });
+            out.push({ id: f.id || (look + ':' + i), x: f.x, z: f.z, y0: y0, y1: y1, face: face, look: look, w: f.w || (look === 'ropeladder' ? 0.62 : look === 'ladder' ? 0.6 : look === 'wall' ? 1.2 : 0.35), ux: ux, uz: uz, fx: fx, fz: fz, hx: hx, hz: hz, len: y1 - y0, box: true });
         });
         return out;
     }
     /* the pieces: every look in its own group at the line, local +Z toward the mass, local +X the lateral */
+    /* THE ROPE LADDER's cord: the rope sheet (rope.png, a twisted strip on clear rows) repeated along the rope, cut to its opaque band */
+    var _hqRopeLadderMatObj = null;
+    function _hqRopeLadderMat() {
+        if (_hqRopeLadderMatObj) return _hqRopeLadderMatObj;
+        var url = (typeof ROPE_SPRITE_URL !== 'undefined') ? ROPE_SPRITE_URL : 'https://cdn.entropywars.net/Assets/loose_sprites/rope.png';
+        var t = textureLoader.load(url); t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter;
+        var m = new THREE.MeshLambertMaterial({ map: t, color: 0xffffff, alphaTest: 0.35 }); m.emissive = new THREE.Color(0x140e06);
+        _hqRopeLadderMatObj = m; return m;
+    }
     function _hqBuildClimbs(room) {
         var H = _hq; if (!H) return;
         H.climbs = [];
@@ -93376,6 +93385,23 @@ const ThreeRenderer = (function () {
                 [-cageW / 2, cageW / 2].forEach(function (lx) { var railS = mk(new THREE.BoxGeometry(0.04 * U, 0.04 * U, cageD * U), iron); railS.position.set(lx * U, (top + 1.02) * U, -(cageD / 2 - 0.06) * U); });
                 }
                 for (var by2 = 1.2; by2 < L; by2 += 2.4) { var brk = mk(new THREE.BoxGeometry(0.05 * U, 0.05 * U, 0.22 * U), iron); brk.position.set(0, by2 * U, 0.17 * U); }
+            } else if (c.look === 'ropeladder') {
+                /* THE ROPE LADDER (2026-11-20, mondo: "you can't make a rope ladder with some rope texture and geometry?"): two side ropes wrapped in
+                   the game's rope sheet (rope.png, the torches' lashing: its twist laid to run ALONG the rope), wooden rungs every 0.32 m lashed to
+                   both ropes, an iron spike at the head of each. Climbed like a ladder (its clip and speed: HQ_CLIMB_DEFAULT.slow.ropeladder). */
+                var rlm = _hqRopeLadderMat(), rTop = top + 0.12;
+                [-w / 2, w / 2].forEach(function (lx) {
+                    var rg = new THREE.CylinderGeometry(0.026 * U, 0.026 * U, rTop * U, 7, 1, true), ua = rg.attributes.uv, rep = Math.max(1, Math.round(rTop / 0.16));
+                    for (var ui = 0; ui < ua.count; ui++) { var u0 = ua.getX(ui), v0 = ua.getY(ui); ua.setXY(ui, v0 * rep, 0.3 + u0 * 0.4); }
+                    var side = mk(rg, rlm); side.position.set(lx * U, rTop / 2 * U, 0.06 * U);
+                    var spike = mk(new THREE.BoxGeometry(0.04 * U, 0.04 * U, 1.2 * U), iron); spike.position.set(lx * U, rTop * U, 0.62 * U);   // back to the lip (bake-ug.js stands the ladder 1.05 m off it, past the face's slope)
+                });
+                for (var rry = 0.3; rry < L + 0.05; rry += 0.32) {
+                    var rung2 = mk(new THREE.CylinderGeometry(0.022 * U, 0.022 * U, (w + 0.1) * U, 6), wood); rung2.rotation.z = Math.PI / 2; rung2.position.set(0, rry * U, 0.06 * U);
+                    [-w / 2, w / 2].forEach(function (lx) { var lg = new THREE.CylinderGeometry(0.038 * U, 0.038 * U, 0.08 * U, 7), la = lg.attributes.uv;
+                        for (var li = 0; li < la.count; li++) la.setXY(li, la.getX(li) * 3, 0.3 + la.getY(li) * 0.4);
+                        var lash = mk(lg, rlm); lash.position.set(lx * U, rry * U, 0.06 * U); });
+                }
             } else if (c.look === 'rope') {
                 var rope = mk(new THREE.CylinderGeometry(0.028 * U, 0.028 * U, (top + 0.05) * U, 8), hemp); rope.position.set(0, (top + 0.05) / 2 * U, 0.05 * U);
                 for (var ky = 0.35; ky < L; ky += 0.45) { var knot = mk(new THREE.SphereGeometry(0.06 * U, 8, 6), hemp); knot.position.set(0, ky * U, 0.05 * U); knot.scale.y = 0.7; }
