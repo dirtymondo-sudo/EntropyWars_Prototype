@@ -389,7 +389,7 @@ they are measurements, not the job.
   not. The land rises and falls beside it; the path crosses the Line, leaves it, comes back. Babel and Technoticlan get a base: each at its
   own range (Babel's tower is a monument: it is not lifted; the land round it is shaped). Dressing on the 17 bare plots.
 
-### Thread 13: ANTARCTICA (the height plan is drafted, 11-20: `plans/antarctica.js`, over the room as it stands; APPROVED by mondo 11-20; nothing built)
+### Thread 13: ANTARCTICA (the height plan is drafted, 11-20: `plans/antarctica.js`, over the room as it stands; APPROVED by mondo 11-20; THE PILOT BUILT 11-20: the Ice Wall, waits mondo's look)
 - **Zone:** Antarctica. Districts: The Station (S), The Ice Wall (W), The Crevasse (C), The Shelf Ice (F), The Hull in the Ice (H),
   The Polar Openings (O).
 - **Rooms:** `site_prebuilt_antarctica_plots` (36).
@@ -399,6 +399,10 @@ they are measurements, not the job.
 - **To reach the standard:** it has the height. It lacks orientation and ways: empty one-colour fields with nothing to steer by. Landmarks
   (wrecks, camps, coloured things, blue ice), a winding way with thin trails, the Ice Wall as a wall you climb with stairs cut in it and a
   walk on top, ice bridges over the Crevasse.
+- **Built (11-20, the pilot, the Ice Wall):** the west stair (three flights, 20 squares of steps: the plan's 2-square stair was redrawn
+  square by square), the walk on top, the ice arch over the Gap (grown to 3 squares), the icefall + its rope; the Cove landing joined to the
+  shelf (it was cut off: checked with the game's solver). Room design file `docs/areas/antarctica/districts/room.js` reads the plan itself.
+  Notes: areas-complexes.md "ANTARCTICA, WORLD POLISH THREAD 13". Next on his word: the east and north stairs, then district by district.
 
 ### Thread 8: THE D.U.M.B. (built 11-20; waits mondo's look)
 - **Zone:** The D.U.M.B. Districts: CERN, The Ring (K), Level P3 (P), Sub-Level 7 (S), Research (R, with the White Rooms), Command (C).

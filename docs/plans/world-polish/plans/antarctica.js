@@ -17,6 +17,15 @@
 'use strict';
 const top = [[6, 13], [14, 13], [14, 15], [22, 15], [22, 13], [28, 13]].map(q => [q[0], q[1], 31]);
 const top2 = [[34, 13], [42, 13], [42, 15], [50, 15], [50, 13], [58, 13], [58, 15], [66, 15]].map(q => [q[0], q[1], 31]);
+/* THE WEST STAIR, square by square (the pilot, 11-20): the Wall is 20 levels (35 m) over its foot, and a real flight climbs one level a square,
+   so the stair is THREE FLIGHTS cut in the face, 20 squares of steps (it stands west of the Traverse's ramp at 14..15,18, which no stair may touch):
+   the foot landing (13,17) off the Traverse at today's ground (level 11); flight A west along the face (row 17, x 12 to 5: 12 to 19); a landing
+   (4,17 + 4,16); flight B back east, cut one square deeper (row 16, x 5 to 10: 20 to 25); a landing (11,16 + 11,15); flight C west again, cut
+   deeper still (row 15, x 10 to 5: 26 to 31) to the top step (5,14) on the walk. A square's level is its top step. `e` squares; `stairs` pairs
+   join each step to the next (the bake draws each flight as one stair row). */
+const WS = [[13, 17, 11]].concat([12, 11, 10, 9, 8, 7, 6, 5].map((x, i) => [x, 17, 12 + i]), [[4, 17, 19], [4, 16, 19]],
+    [5, 6, 7, 8, 9, 10].map((x, i) => [x, 16, 20 + i]), [[11, 16, 25], [11, 15, 25]], [10, 9, 8, 7, 6, 5].map((x, i) => [x, 15, 26 + i]), [[5, 14, 31]]);
+const WSPAIRS = WS.slice(1).map((q, i) => [[WS[i][0], WS[i][1]], [q[0], q[1]]]).filter((pr, i) => WS[i + 1][2] !== WS[i][2]);
 module.exports = {
     approved: 'mondo 2026-11-20, shown the four plans and their pictures in chat: "yep looks good"',
     zone: 'Antarctica', thread: 13, room: 'site_prebuilt_antarctica_plots', underlay: { deep: 4 },
@@ -24,7 +33,7 @@ module.exports = {
     build: { frame: 'room', file: 'docs/areas/antarctica/districts/room.js (new: the room design, in the room\'s own frame)' },
     mass: 'the Ice Wall, the crevasse, the open sea (closed)', massHeight: 0,
     tiles: { ' ': ['closed: the Ice Wall, the crevasse, the sea', false, [34, 60, 92], [34, 60, 92]], u: ['snow and ice as they stand today (read from the room)', true, [120, 140, 160], [236, 244, 252]],
-        r: ['THE ICE WALL (35 m sheer)', false, [150, 205, 235], [150, 205, 235]] },
+        r: ['THE ICE WALL (35 m sheer)', false, [150, 205, 235], [150, 205, 235]], e: ['A STAIR CUT IN THE ICE (one level a square; the walk on top is the lane)', true, [140, 90, 170], [235, 190, 255]] },
     grid: { w: 72, h: 72, n: 12 }, start: [40, 67],
     districts: { F: { name: 'The Shelf Ice', color: '#6fb7ff' }, S: { name: 'The Station', color: '#ffb347' }, O: { name: 'The Polar Openings', color: '#ff6b6b' },
         C: { name: 'The Crevasse', color: '#b58cff' }, W: { name: 'The Ice Wall', color: '#ffffff' }, H: { name: 'The Hull in the Ice', color: '#5dff8a' } },
@@ -38,6 +47,9 @@ module.exports = {
     steps: [
         /* ── THE ICE WALL: its body (closed, top 31), the Gap grown to 3 squares, the walk on top ── */
         ['area', 0, 12, 71, 17, 'r', 31], ['area', 30, 12, 32, 17, 'u', 11], ['label', 46, 12.2, 'THE ICE WALL · the walk on top (level 31)', 'mark'], ['label', 31, 15, 'GAP', 'note'],
+        /* the ice arch's abutments (29 and 33) and the icefall's head (66,17) are walked: the arch spans the Gap's three squares, the rope comes up onto 66,17 */
+        ['area', 29, 13, 29, 14, 'd', 31], ['area', 33, 13, 33, 14, 'd', 31], ['set', 66, 17, 'd', 31],
+        ...WS.map(q => ['set', q[0], q[1], 'e', q[2]]), ['label', 8, 18.4, 'WEST STAIR', 'mark'],
         ['lane', top, { to: 'THE WALK ON TOP of the Ice Wall: from the west stair right across to the east stair, over the Gap by an ice arch (lookouts; a north stair goes down to the Hull)' }], ['lane', top2, { cont: true }],
         /* ── THE TRAVERSE (main, 3 squares, flag-lined) ── */
         ['area', 41, 60, 48, 67, 'c', 1], ['label', 44.5, 63, 'THE LANDING', 'place'], ['label', 44.5, 64.2, 'level, a board fits', 'note'],
@@ -72,8 +84,8 @@ module.exports = {
         ['area', 65, 18, 69, 20, 'g', 13], ['label', 67, 21.4, 'THE ICEFALL', 'mark'],
     ],
     /* the stairs cut in the Wall (real stair pieces): west, east, and north down to the Hull; the ice arch over the Gap */
-    stairs: [[[18, 18], [18, 16]], [[60, 18], [60, 16]], [[38, 11], [38, 13]]],
-    bridges: [[[28, 13], [34, 13]], [[28, 14], [34, 14]]],
+    stairs: [...WSPAIRS, [[60, 18], [60, 16]], [[38, 11], [38, 13]]],
+    bridges: [[[29, 13], [33, 13]], [[29, 14], [33, 14]]],
     doors: [[37, 0, 'N', 'the Spaceship (the airlock)', 10], [71, 40, 'E', 'the Cavern (the Polar Opening)', 6]],
     landmarks: [
         { name: 'The Berg', at: [66, 63], tall: 2 }, { name: 'The Radio Mast', at: [38, 41], tall: 12 }, { name: 'The Admiral\'s Tunnel', at: [2, 40], tall: 2 }, { name: 'The Polar Opening\'s steam', at: [69, 40], tall: 4 },
@@ -87,7 +99,7 @@ module.exports = {
         { name: 'the packed drift behind the huts', from: [30, 48], to: [30, 46], kind: 'climb' }, { name: 'the cable ladder up the mast\'s rise', from: [36, 44], to: [40, 39], kind: 'ladder' },
         { name: 'the snow bank under the tunnel', from: [5, 50], to: [3, 40], kind: 'climb' },
         { name: 'the ice screws through the crack', from: [50, 34], to: [50, 27], kind: 'climb' }, { name: 'the ridge\'s broken edge', from: [39, 26], to: [40, 26], kind: 'climb' },
-        { name: 'the icefall\'s blocks', from: [64, 21], to: [66, 20], kind: 'ledge chain' }, { name: 'THE ICEFALL: the found way up the Wall', from: [66, 18], to: [66, 16], kind: 'climb' },
+        { name: 'the icefall\'s blocks', from: [64, 21], to: [66, 20], kind: 'ledge chain' }, { name: 'THE ICEFALL: the found way up the Wall (a fixed rope, 31.5 m)', from: [66, 18], to: [66, 17], kind: 'climb' },
         { name: 'the ladder out of the hull\'s trench', from: [28, 6], to: [28, 7], kind: 'ladder' }, { name: 'the crust of the Drift', from: [36, 9], to: [10, 8], kind: 'climb' }],
     flats: [
         { name: 'The Landing', rect: [41, 60, 48, 67], why: 'the landing off the pier', board: true }, { name: 'The Station Yard', rect: [24, 48, 31, 55], why: 'the yard between the huts and the tanks', board: true },
@@ -100,4 +112,5 @@ module.exports = {
         { name: 'The Ice Core Lab', rect: [14, 38, 16, 40], door: 'S', tall: 2, inside: 'core racks, a drill head, sample freezers (it stands today)' }, { name: 'The Power Hut', rect: [14, 51, 16, 53], door: 'E', tall: 2, inside: 'generators, a fuel line (it stands today)' },
         { name: 'The Balloon Shed', rect: [46, 51, 48, 53], door: 'W', tall: 3, inside: 'a weather balloon bay, gas bottles (it stands today)' }],
     picture: { S: 24 },
+    pictures: [{ suffix: '-icewall', x0: 0, x1: 71, y0: 9, y1: 23, S: 26, title: 'THE ICE WALL (the pilot): the west stair, the walk on top, the arch over the Gap, the icefall' }],
 };
