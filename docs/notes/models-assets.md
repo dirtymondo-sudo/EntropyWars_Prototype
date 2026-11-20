@@ -2232,3 +2232,11 @@ is the Meshy helmet prop with its dome cut away (only the brass collar left; too
 three-renderer.js `_gearBuild` THE BUBBLE HELMET re-centres the collar on the dome centre and adds a real glass sphere (MeshStandardMaterial,
 opacity 0.16, depthWrite off, renderOrder 3), both hung on the Head bone. Sprites (Sprite AI restyle, 128x128): pharaoh_px, pharaoh_f_px,
 deep_sea_diver_f_px; the pharaoh sprites came from model front renders (the background cut ate the white linen).
+
+## THE KATANA + FLORA MESHY BATCH (2026-11-20, plan only so far)
+mondo 11-20 picked the first batch of Meshy pieces from the flora thread's gap list + the Katana Island model list: the top 14
+non-tree pieces (torii, stone lantern, komainu, kitsune, Buddha, temple bell, offering box, red arched bridge, koi, lotus, barrel
+cactus, rice, wheat, sake barrel) + four trees under a one-time exception to his no-Meshy-trees rule (bamboo, giant redwood,
+jungle tree, Joshua tree). The rows, prompts and triangle targets: `docs/plans/meshy-flora-katana/batch1.json`; the flow (concepts
+-> his OK -> low-poly models -> his OK -> wired) and his concept rules: `BATCH1.md` there. To be run on the `r2` cloud
+environment (the Meshy + Cloudflare secrets live there). NOTHING made yet; log what gets made, and what he says, here.
