@@ -13470,3 +13470,18 @@ mondo 11-20: "Okay go ahead and do the next pass" (the one named to him: relief 
   the Rental Hut, the Mid Station and the Top Station, a lifeguard in the Ski Patrol, a nordic at the Inn's desk, a skater behind the Ski Shop's counter;
   a streamer and a yeti on the Village Green. Which unit fits which house is a guess of mine: change any in the `who(...)` row.
 - **NOT DONE:** the North Pole. Not checked: four of the five lifts ridden; the seams; The Long Descent on screen; the snow under the trees after the last bake.
+
+## KATANA ISLAND, THE MODEL PASS (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20 named the new Meshy pieces (`kt_*`, `fl_*`; models-assets.md "THE KATANA + FLORA MESHY BATCH"). What went where:
+
+- **`kt_torii_gate`** in place of every gate drawn in code: THE GREAT GATE in the bay (`h: 13`, standing in the water), the shrine stair's three, the hidden shrine's,
+  the crater rim's. It has no blocker, so a way runs through it.
+- **`kt_stone_lantern`** in place of every `stone_lantern` on the island. **`kt_temple_bell`** for the two `bell_frame`. **`kt_taiko_bridge`** for the garden's footbridge.
+- **`kt_samurai_armour` on `kt_samurai_armour_stand`** (the same spot) for the knight armour stand-in, and **`kt_katana`** for `sword`, in every room (`insides.js` `armour`).
+- **`kt_komainu`** (a pair) and **`kt_stone_buddha`** in the Temple Quarter's court, the Buddha again on the temple hall's dais; **`kt_kitsune_statue`** (a pair) and
+  **`kt_offering_box`** at the hidden shrine, an offering box in the temple court and before every altar; **`kt_sake_barrel`** in the brewery; **`kt_koi`** and
+  **`fl_lotus`** in the Castle Garden's pond, a lotus on the hot spring (typed `y: -0.3`: the model has a stem under its pads).
+- **`fl_bamboo_clump`** is the Bamboo Wood's tree now (tree `h` 5.5 to 7.3: at 9 m its canes read a metre thick); **`fl_jungle_tree`** stands among the Jungle's palms;
+  **`fl_rice_clump`** in place of the grey `hw_crop*` lumps in the Paddies and on the Terraces.
+- **Still drawn in code:** the roofs (`jroof`), the flag, the furniture. **Not used here:** `kt_katana_scabbard`, the cactus, wheat, redwood and Joshua tree.

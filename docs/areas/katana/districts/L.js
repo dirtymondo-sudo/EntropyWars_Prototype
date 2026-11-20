@@ -14,7 +14,7 @@ module.exports = {
         const hut = (id, q, h) => { B[id] = ctx.building(id, q, h || 2.8, {}, (a, w, d, door) => thatch(a, w, h || 2.8, d, door)); };
         /* ── THE PADDIES: four flooded fields between the bank paths, rice in rows ── */
         [[39, 51.5, 6.5], [39.5, 60 - 1.2, 3.2], [46.5, 51.5, 3.6], [46.4, 58.6, 2.6]].forEach(q => { ctx.feat({ k: 'pool', x: ctx.gx(q[0]), z: ctx.gz(q[1]), r: q[2], y: -0.12, depth: 0.35 }); const r = Math.ceil(q[2] / 3.5); for (let y = Math.floor(q[1]) - r; y <= Math.floor(q[1]) + r; y++) for (let x = Math.floor(q[0]) - r; x <= Math.floor(q[0]) + r; x++) if (Math.hypot(x + 0.5 - q[0], y + 0.5 - q[1]) * 3.5 < q[2] + 0.5) ctx.take(x, y); });
-        ctx.sow(36, 48, 47, 59, 0.3, (x, y, v) => ctx.dec(v < 0.5 ? 'hw_crop' : v < 0.8 ? 'hw_crop_2' : 'hw_crop_3', x, y));
+        ctx.sow(36, 48, 47, 59, 0.45, (x, y, v) => ctx.dec('fl_rice_clump', x, y));
         [[42, 55], [45, 49]].forEach(q => { if (ctx.open(q[0], q[1])) ctx.P('hw_scarecrow', q[0], q[1], { face: 200 }); });
         /* ── THE SHORE HAMLET: fishermen's houses on the firm ground behind the sand ── */
         hut('fisher1', [40, 64, 43, 66, 'N']); hut('fisher2', [36, 64, 38, 67, 'E']); hut('fisher3', [40, 60, 42, 61, 'S']);
@@ -26,10 +26,10 @@ module.exports = {
         ctx.set(48, 36, 53, 41, 'g', 6); ctx.stairs('field', 52, 42, 52, 42, 'N', 5, 6, { kind: 'g', paint: 'dirt', model: 'timber' }); ctx.stairs('field2', 57, 41, 57, 41, 'N', 5, 6, { kind: 'g', paint: 'dirt', model: 'timber' });
         ctx.feat({ k: 'pool', x: ctx.gx(50.5), z: ctx.gz(38.5), r: 5.0, y: -0.12, depth: 0.35 }); for (let y = 37; y <= 39; y++) for (let x = 49; x <= 51; x++) ctx.take(x, y);
         hut('farm3', [57, 44, 59, 47, 'W'], 3.0);
-        ctx.sow(48, 36, 59, 47, 0.22, (x, y, v) => ctx.dec(v < 0.6 ? 'hw_crop_2' : 'hw_crop', x, y));
+        ctx.sow(48, 36, 59, 47, 0.22, (x, y, v) => ctx.dec('fl_rice_clump', x, y));
         /* ── props ── */
         const P = (key, x, y, o) => { if (ctx.open(x, y)) ctx.P(key, x, y, o); };
-        P('ancient_well', 54, 54); P('stone_lantern', 52, 53); P('stone_lantern', 56, 55); P('market_stall', 56, 53, { face: 270 }); P('hay_cart', 52, 50 + 3 + 1, { face: 30 }); P('plough', 49, 57 - 5, { face: 80 }); P('wheelbarrow', 57, 51, { face: 10 });
+        P('ancient_well', 54, 54); P('kt_stone_lantern', 52, 53); P('kt_stone_lantern', 56, 55); P('market_stall', 56, 53, { face: 270 }); P('hay_cart', 52, 50 + 3 + 1, { face: 30 }); P('plough', 49, 57 - 5, { face: 80 }); P('wheelbarrow', 57, 51, { face: 10 });
         P('firewood_stack', 51, 55 + 3, { face: 0 }); P('wooden_barrel', 56, 57); P('woven_baskets', 55, 59 - 3); P('hw_scarecrow_2', 58, 40, { face: 180 }); P('lantern_post', 45, 56 + 2); P('lantern_post', 45, 62 - 1);
         P('drying_fish', 44, 64, { face: 0 }); P('drying_fish', 38, 62 - 2 + 1, { face: 90 }); P('meshy_rowboat', 43, 68, { face: 40 }); P('dugout_canoe', 39, 69, { face: 100 }); P('fishing_net_wall', 44, 66, { face: 90 }); P('campfire', 39, 63);
         [[54, 57 - 5], [50, 59 - 1], [47, 60], [36, 59 + 2]].forEach(q => { if (ctx.open(q[0], q[1])) ctx.dec('chicken', q[0], q[1]); }); if (ctx.open(57, 52)) ctx.dec('cow', 57, 52); if (ctx.open(58, 42)) ctx.dec('rooster', 58, 42);
