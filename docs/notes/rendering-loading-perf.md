@@ -3390,3 +3390,14 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   5.8 ms longer than its CPU there (2.3 ms at the 70.9 FPS spot), so at pixel ratio 2.0 the GPU side is likely the limit at this
   corner: Render Scale 75 % is the test. CPU left at this corner: "props: one of a kind" 90 own draws, `_ew_hqSignal` 39,
   `_ew_hqCar` 22, fx 36 (131 props drawn outside their bundle).
+- THE CPU IS THE CAP AT THE BUSY CORNERS (11-20, his 00:34 F3 at Render Scale 75 % = ratio 1.5, squares 49,18: 48.0 FPS, frame
+  20.8 ms, CPU 17.0 ms, 284 draw calls): the lower resolution did not lift it, so there it is the game's JS (17 ms > 16.7), spread
+  thin: bundle replays 4.2 (the ~100 shader "firsts" a frame + the sun shadow inside the first one), matrix walk 2.3, classic
+  draws 1.5 (212 own draws: props one of a kind 92, `_ew_hqSignal` 39, `_ew_hqCar` 28, fx 26), bundle check 1.5, the mask pass 2.1.
+  Cut here: (1) "Bundle spikes: 12-17 ms check, slowest downtown_streets shell 8-13 ms, 0 re-recorded" about every 15 s = THE HELD
+  PIECES ONCE's just-in-case re-lay of the shell's 10,000 pieces every 240 checks; every real change (child count, the batch's
+  hold counter, an add, a mover) already asks for a re-lay, so it is every 3,600 now. (2) the `_projectObject` wrapper (the
+  frame's top own-time function in the fourth profile, 0.64 ms for ~9,000 calls) passed `arguments` through `apply` five times;
+  now a plain call with the named arguments. What would move this corner by milliseconds is structural, not another small cut:
+  the 39 signals and the one-of-a-kind props into recordings (fewer own draws), fewer distinct shaders (each costs a "first" in
+  every render), or the unit mask drawn from a kept list of bodies in place of a walk of the scene.
