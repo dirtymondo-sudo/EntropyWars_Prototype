@@ -64,8 +64,8 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 9 | **The Cavern** | The Cavern, Hollow Earth, Agartha | Not started |
 | 10 | **The Sewers** | The Sewers, one room | Not started |
 | 11 | **Heaven + Hell + Vatican** | Heaven, Hell, The Vatican, The Catacombs | Not started |
-| 12 | **Leylines** | The Line, Babel + Technoticlan, Stonehenge, Bug Colony | Not started |
-| 13 | **Antarctica** | Antarctica, one room | Not started |
+| 12 | **Leylines** | The Line, Babel + Technoticlan, Stonehenge, Bug Colony | **HEIGHT PLAN DRAFTED 11-20 for the Line's room, waits mondo's OK:** `docs/plans/world-polish/plans/leylines-line.js` (+ `leylines-line.png`, `-west`, `-east`; passes `draw-plan.js`). The Line stays dead straight and level; the land rises (to 5) and falls (to -2) beside it, the walk snakes across it five times; 18 new plots inside the same 12 x 3 box. Göbekli Tepe is left as built. **NOT planned yet: Babel + Technoticlan's room** (no base today; its own plan file next). Stonehenge and Bug Colony look good: no plan. Nothing built. |
+| 13 | **Antarctica** | Antarctica, one room | Not started. **No height plan drawn 11-20:** the board shows its tool row and the Station as the second side's since 11-16 (stale, over 3 days): mondo says who takes it. |
 | 14 | **The Internet** | The Internet, one room | Not started |
 | 15 | **The Astral Realm** | The Astral Realm, one room | Not started |
 | 16 | **The Deep** | Atlantis + The Trench, The Sea Floor | Not started |
@@ -375,7 +375,7 @@ they are measurements, not the job.
   Ways wind; thin trails to the Lake, the House, The Woods. The corn fields stay level (fields: level on purpose), but the paths cut in the
   corn wind and branch (the corn is the wall).
 
-### Thread 12: LEYLINES (not started)
+### Thread 12: LEYLINES (the Line's height plan is drafted, 11-20: `plans/leylines-line.js`; waits mondo's OK; Babel + Technoticlan's plan is still to draw; nothing built)
 - **Zone:** Leylines. Districts: The Ley Line (Y), Babel (T), Technoticlan (Z), Stonehenge (S), Göbekli Tepe (G), Bug Colony (B).
 - **Rooms:** `site_prebuilt_gobekli_ow_line` (18), `site_prebuilt_gobekli_ow_babel` (29: Babel + Technoticlan),
   `site_prebuilt_gobekli_ow_henge` (9), `site_prebuilt_gobekli_ow_bugs` (15; written through `bake-route.js L14`: ask on the board first).
