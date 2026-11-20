@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-20 portraits-no-wait';
+    var _EW_TR_STAMP = '11-20 keep-more';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -48057,7 +48057,10 @@ const ThreeRenderer = (function () {
        (3) The F3 counts: node builds and new pipelines (a steady frame shows 0 of both). Off: window.EW_NO_SHADER_KEEP or
        ?ew_keep=0 (reload). */
     var _ewKeep = { builds: 0, pipes: 0, reused: 0, inst: 0, kept: { b: [], p: [], g: [] }, at: 0, b0: 0, p0: 0, rateB: 0, rateP: 0 };
-    var _EW_KEEP_CAP = { b: 640, p: 384, g: 768 };   // 2026-10-12: room for the walk's and the fight's builds together (they now share keys)
+    /* (11-20, mondo's battle F3s: "kept 640/384/768", all three lists at their cap in a city fight, with 7 shader builds a second: a
+       build put aside was thrown out and made again. His 2nd and 3rd fights of a session ran smooth, the 1st did not: the looks are
+       built once and must then STAY. Room for a long session: 1,600 builds, 1,000 pipelines, 2,000 programs.) */
+    var _EW_KEEP_CAP = { b: 1600, p: 1000, g: 2000 };   // 2026-10-12: room for the walk's and the fight's builds together (they now share keys)
     function _ewKeepOff() {
         try { return !!window.EW_NO_SHADER_KEEP || /[?&]ew_keep=0\b/.test(location.search); } catch (e) { return false; }
     }
@@ -68967,7 +68970,7 @@ const ThreeRenderer = (function () {
         }, 30000);
     }
     function _ptDrop(S) {
-        try { if (S && S.rb && _pt && _pt.renderer) _ptReadFree(_pt.renderer.getContext(), S); } catch (e) {}   // THE PORTRAIT WITHOUT THE WAIT: its buffer on the card
+        try { _ptOwnFree(S); } catch (e) {}   // THE PORTRAIT'S OWN CANVAS
         var P = _pt;
         S.dead = true;
         if (S.timer) { clearTimeout(S.timer); S.timer = 0; }
@@ -68988,10 +68991,11 @@ const ThreeRenderer = (function () {
     }
     /* one picture of S through the studio's camera, aimed off the Head bone: the face (a square, straight on, clear
        behind) or the bust (the ID card's upright photo, straight on, on its backdrop). The caller reads the canvas at once. */
-    function _ptRender(S, bust, easeDt) {
-        var P = _pt, r = P.renderer, w = bust ? PT_BUST.w : PT_PX, hgt = bust ? PT_BUST.h : PT_PX;
+    function _ptRender(S, bust, easeDt, own) {
+        var P = _pt, r = own || P.renderer, w = bust ? PT_BUST.w : PT_PX, hgt = bust ? PT_BUST.h : PT_PX;
         for (var k in P.subs) { var o = P.subs[k]; if (o.model) o.model.visible = (o === S); }
-        if (P.w !== w || P.h !== hgt) { r.setSize(w, hgt, false); P.w = w; P.h = hgt; P.cam.aspect = w / hgt; P.cam.updateProjectionMatrix(); }
+        if (own) { if (P.cam.aspect !== 1) { P.cam.aspect = 1; P.cam.updateProjectionMatrix(); P.w = 0; } }   // (THE PORTRAIT'S OWN CANVAS: square; the studio's size is set again at its next photo)
+        else if (P.w !== w || P.h !== hgt) { r.setSize(w, hgt, false); P.w = w; P.h = hgt; P.cam.aspect = w / hgt; P.cam.updateProjectionMatrix(); }
         S.model.updateMatrixWorld(true);
         var hp = _cvHeadPoint(S);
         var hx = hp ? hp.x : 0, hy = hp ? hp.y : S.h * 0.93, hz = hp ? hp.z : 0;
@@ -69168,57 +69172,49 @@ const ThreeRenderer = (function () {
         var own = spec.look ? _ptOwnKey() : null;
         return (own && spec.key.slice(-own.length) === own) ? spec : null;
     }
-    /* THE PORTRAIT WITHOUT THE WAIT: ask (pixels into a pack buffer + a fence), take (a frame later, once the fence is passed), free */
-    function _ptReadAsk(gl, S, w, h) {
+    /* THE PORTRAIT'S OWN CANVAS (2026-11-20, mondo's sixth Firefox profile, on "portraits-no-wait": 16.3 % of the main thread still
+       blocked, now in `WebGL2RenderingContext.getBufferSubData` under the pack-buffer read: EVERY call that has to answer from
+       the WebGL side waits for Firefox's canvas thread, and that thread is the one drawing the fight's WebGPU frame. So no
+       read-back of any kind. A live portrait gets a small WebGL canvas of its own (its own renderer, the studio's scene) and that
+       canvas is what the HUD shows: it is put beside the HUD's own canvas (same box, same styles; the HUD's is hidden while it
+       is there, and comes back with the still when the portrait leaves). Drawing into it and showing it never waits. A
+       portrait shown in a second place copies from it once a second (one short wait a second, not 24).
+       Old copy: window.EW_PT_LIVE_COPY = true. */
+    function _ptOwnMake(S) {
+        if (S.own) return S.own;
+        var r;
+        try { r = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return null; }
+        r.setClearColor(0x000000, 0);
+        if (_EW_CS) r.outputColorSpace = THREE.SRGBColorSpace; else r.outputEncoding = THREE.sRGBEncoding;
+        r.toneMapping = THREE.ACESFilmicToneMapping;
+        r.toneMappingExposure = 1.05;
+        r.setPixelRatio(1);
+        r.setSize(PT_PX, PT_PX, false);
+        var el = r.domElement;
+        el.className = 'ew-live-own';
+        el.style.cssText = 'width:100%;height:100%;display:block;pointer-events:none';
+        var O = S.own = { r: r, el: el, at: null, lost: false, extraAt: 0 };
+        el.addEventListener('webglcontextlost', function (e) { try { e.preventDefault(); } catch (x) {} O.lost = true; });
+        el.addEventListener('webglcontextrestored', function () { O.lost = false; });
+        return O;
+    }
+    /* the HUD canvas this portrait's own canvas stands in for: put there (or moved, or taken away) */
+    function _ptOwnMount(S, cv) {
+        var O = S.own; if (!O) return;
+        if (O.at === cv && (!cv || O.el.parentNode === cv.parentNode)) return;
+        if (O.at) { try { O.at.style.display = O.atDisp || ''; } catch (e) {} O.at = null; }
+        if (O.el.parentNode) { try { O.el.parentNode.removeChild(O.el); } catch (e) {} }
+        if (!cv || !cv.parentNode) return;
         try {
-            var R = S.rb || (S.rb = { buf: null, n: 0, sync: null, w: 0, h: 0, px: null, img: null, cv: null, g: null });
-            if (!R.buf) R.buf = gl.createBuffer();
-            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, R.buf);
-            if (R.n !== w * h * 4) { R.n = w * h * 4; gl.bufferData(gl.PIXEL_PACK_BUFFER, R.n, gl.STREAM_READ); }
-            gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, 0);
-            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
-            R.sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); R.w = w; R.h = h; R.at = performance.now();
-            gl.flush();
-            return !!R.sync;
-        } catch (e) { try { gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null); } catch (x) {} _ptReadFree(gl, S); return false; }
+            cv.parentNode.insertBefore(O.el, cv.nextSibling);
+            O.atDisp = cv.style.display; cv.style.display = 'none'; O.at = cv;
+        } catch (e) { O.at = null; }
     }
-    function _ptReadTake(gl, S) {
-        var R = S.rb, st = gl.clientWaitSync(R.sync, 0, 0);
-        if (st === gl.TIMEOUT_EXPIRED) { if (performance.now() - R.at > 2000) { gl.deleteSync(R.sync); R.sync = null; } return; }   // not yet (2 s: given up, the next one is asked afresh)
-        gl.deleteSync(R.sync); R.sync = null;
-        if (st === gl.WAIT_FAILED) return;
-        var w = R.w, h = R.h, n = w * h * 4;
-        if (!R.px || R.px.length !== n) { R.px = new Uint8Array(n); R.img = null; }
-        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, R.buf);
-        gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, R.px);
-        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
-        if (!R.cv) { R.cv = document.createElement('canvas'); R.g = R.cv.getContext('2d'); }
-        if (R.cv.width !== w || R.cv.height !== h) { R.cv.width = w; R.cv.height = h; R.img = null; }
-        if (!R.img) R.img = R.g.createImageData(w, h);
-        var src = R.px, dst = R.img.data, row = w * 4;
-        for (var y = 0; y < h; y++) {   // the card's rows run bottom-up and its colours are multiplied by their alpha
-            var so = (h - 1 - y) * row, d0 = y * row;
-            for (var x = 0; x < row; x += 4) {
-                var a = src[so + x + 3];
-                if (a === 255) { dst[d0 + x] = src[so + x]; dst[d0 + x + 1] = src[so + x + 1]; dst[d0 + x + 2] = src[so + x + 2]; }
-                else if (a === 0) { dst[d0 + x] = 0; dst[d0 + x + 1] = 0; dst[d0 + x + 2] = 0; }
-                else { var ka = 255 / a, c0 = src[so + x] * ka, c1 = src[so + x + 1] * ka, c2 = src[so + x + 2] * ka; dst[d0 + x] = c0 > 255 ? 255 : c0; dst[d0 + x + 1] = c1 > 255 ? 255 : c1; dst[d0 + x + 2] = c2 > 255 ? 255 : c2; }
-                dst[d0 + x + 3] = a;
-            }
-        }
-        R.g.putImageData(R.img, 0, 0);
-        if (S.cvs) for (var j = 0; j < S.cvs.length; j++) {
-            var cv = S.cvs[j], g = cv._ptG || (cv._ptG = cv.getContext('2d'));
-            g.clearRect(0, 0, cv.width, cv.height);
-            g.drawImage(R.cv, 0, 0, cv.width, cv.height);
-            cv._ptLive = true;
-        }
-    }
-    function _ptReadFree(gl, S) {
-        var R = S && S.rb; if (!R) return;
-        try { if (R.sync && gl) gl.deleteSync(R.sync); } catch (e) {}
-        try { if (R.buf && gl) gl.deleteBuffer(R.buf); } catch (e) {}
-        S.rb = null;
+    function _ptOwnFree(S) {
+        var O = S && S.own; if (!O) return;
+        _ptOwnMount(S, null);
+        try { O.r.dispose(); if (O.r.forceContextLoss) O.r.forceContextLoss(); } catch (e) {}
+        S.own = null;
     }
     function _ptLiveStart() { if (!_ptLiveRaf && typeof requestAnimationFrame === 'function') _ptLiveRaf = requestAnimationFrame(_ptLiveTick); }
     function _ptLiveTick() {
@@ -69234,33 +69230,23 @@ const ThreeRenderer = (function () {
            copied canvas to canvas for the rest. Old rule: window.EW_PT_LIVE_STEADY = true. */
         var now = performance.now(), ptGap = _ptLiveLast ? Math.min(250, now - _ptLiveLast) : 16;
         _ptLiveLast = now; _ptLiveGap += (ptGap - _ptLiveGap) * 0.15;
-        /* THE PORTRAIT WITHOUT THE WAIT (2026-11-20, mondo: "do the proper fix ... why is adding 1 more unit making the game slow down
-           so much?"). It was never the extra body: it was getting its picture onto the HUD. `drawImage(the WebGL canvas)` makes
-           Firefox read the pixels back from the graphics card and holds the game until they arrive, behind the fight's own frame.
-           Now the read-back is asked for and NOT waited on: after the portrait is drawn its pixels are copied into a buffer on the
-           card (a WebGL 2 pixel-pack buffer) with a fence behind it; a frame later, when the fence says the card is done, the
-           buffer is fetched (it is ready: no wait), turned upright and un-premultiplied into a small 2D canvas, and that canvas is
-           drawn onto the HUD canvases (2D to 2D). The portrait runs at its full PT_LIVE_FPS again, one frame behind its body.
-           Without WebGL 2 (or with window.EW_PT_LIVE_COPY = true) the old copy runs, stepped down when the frame is slow. */
-        var gl2 = null;
-        try { gl2 = (!window.EW_PT_LIVE_COPY && P.renderer && P.renderer.getContext) ? P.renderer.getContext() : null; if (gl2 && typeof gl2.fenceSync !== 'function') gl2 = null; } catch (e) { gl2 = null; }
+        var ownOn = !window.EW_PT_LIVE_COPY;
         var ptNeed = 1000 / PT_LIVE_FPS - 2;
-        if (!gl2 && !window.EW_PT_LIVE_STEADY) { if (_ptLiveGap > 45) ptNeed = 1000; else if (_ptLiveGap > 28) ptNeed = 400; }
+        if (!ownOn && !window.EW_PT_LIVE_STEADY) { if (_ptLiveGap > 45) ptNeed = 1000; else if (_ptLiveGap > 28) ptNeed = 400; }   // (the old copy steps aside when the frame is slow)
         var due = now - _ptLiveAt >= ptNeed, any = false;
         if (due) _ptLiveAt = now;
         for (var k in P.subs) {
             var S = P.subs[k];
             if (!S.live) continue;
             if (S.cvs) for (var i = S.cvs.length - 1; i >= 0; i--) if (!S.cvs[i].isConnected) S.cvs.splice(i, 1);
+            if (S.own && S.own.at && (!S.cvs || S.cvs.indexOf(S.own.at) < 0)) _ptOwnMount(S, null);   // its place in the HUD is gone
             if (!S.cvs || !S.cvs.length) {
                 if (!S.idleAt) S.idleAt = now;
                 if (S.shot && now - S.idleAt > PT_LIVE_LINGER) { _ptDrop(S); continue; }
                 any = true; continue;
             }
             S.idleAt = 0; any = true;
-            if (gl2 && S.rb && S.rb.sync && !P.lost) { try { _ptReadTake(gl2, S); } catch (e) { _ptReadFree(gl2, S); } }   // last tick's picture, if the card is done with it
             if (!due || !S.shot || !S.model || P.lost || document.hidden) continue;
-            if (gl2 && S.rb && S.rb.sync) continue;   // still on its way: no second one behind it
             var dt = S.at ? Math.min(0.25, (now - S.at) / 1000) : 1 / PT_LIVE_FPS;
             S.at = now;
             try {
@@ -69268,8 +69254,29 @@ const ThreeRenderer = (function () {
                 S.model.updateMatrixWorld(true);
                 if (S.rig) S.rig.tick();
                 if (S.sway) _swayTick(S.sway, dt, S.def.sway || null);
+                var O = ownOn ? _ptOwnMake(S) : null;
+                if (O && !O.lost) {
+                    /* THE PORTRAIT'S OWN CANVAS: drawn into the canvas the HUD shows; the biggest of its HUD places gets it */
+                    var best = S.cvs[0];
+                    if (S.cvs.length > 1 && !(O.at && S.cvs.indexOf(O.at) >= 0)) { var bw = 0; for (var b = 0; b < S.cvs.length; b++) { var w0 = S.cvs[b].clientWidth | 0; if (w0 > bw) { bw = w0; best = S.cvs[b]; } } }
+                    else if (O.at && S.cvs.indexOf(O.at) >= 0) best = O.at;
+                    _ptRender(S, false, dt, O.r);
+                    _ptOwnMount(S, best);
+                    best._ptLive = true;
+                    if (S.cvs.length > 1 && now - O.extraAt >= 1000) {   // its other places: a copy once a second (the one call here that waits)
+                        O.extraAt = now;
+                        var first = null;
+                        for (var j2 = 0; j2 < S.cvs.length; j2++) {
+                            var c2 = S.cvs[j2]; if (c2 === O.at) continue;
+                            var g2 = c2._ptG || (c2._ptG = c2.getContext('2d'));
+                            g2.clearRect(0, 0, c2.width, c2.height);
+                            g2.drawImage(first || O.el, 0, 0, c2.width, c2.height);
+                            c2._ptLive = true; if (!first) first = c2;
+                        }
+                    }
+                    continue;
+                }
                 _ptRender(S, false, dt);
-                if (gl2 && _ptReadAsk(gl2, S, P.w, P.h)) continue;
                 for (var j = 0; j < S.cvs.length; j++) {
                     var cv = S.cvs[j], g = cv._ptG || (cv._ptG = cv.getContext('2d'));
                     g.clearRect(0, 0, cv.width, cv.height);
@@ -99741,15 +99748,22 @@ const ThreeRenderer = (function () {
        no sheet changes; the ground (the terrain, one bent sheet) never moves, what lies on it does. A face that already has a depth
        offset (a decal) is left alone. Off: window.EW_HQ_NO_ZSEP = true before the room. */
     var HQ_ZSEP = { liftM: 0.012, tolM: 0.003, minAreaM2: 0.01, maxLayers: 4, cellM: 3.5 };
-    function* _hqZSep(cands, U) {
+    /* THE ZSEP, THE REST (2026-11-20, the ground sweep after THE BURIED KERB): two kinds it never read. (1) PAINT ON PAINT: decals (a depth
+       offset) were left out whole, so two that share a plane traded pixels (the stadium's white lines on its mown stripes). `opt.decals` =
+       a second pass over the decals alone, the smaller lifted the same way. (2) Only the shell was read: furniture built in code inside a
+       building (a prop chunk's merge) had its own pairs. Every merge is read now; outside the shell a piece of a loaded MODEL is left
+       alone (`opt.noModels`: its geometry is shared by every copy, and its own faces are its maker's). */
+    function* _hqZSep(cands, U, opt) {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_ZSEP) return;
+        var decals = !!(opt && opt.decals), noModels = !!(opt && opt.noModels);
         var t0 = _alNow(), ZS = HQ_ZSEP, TOL = ZS.tolM * U, MINA = ZS.minAreaM2 * U * U, CELL = ZS.cellM * U, NQ = 120;
         var list = [], gUse = new Map();
         for (var i = 0; i < cands.length; i++) {
             var c = cands[i]; if (c.glow || !c.o || !c.o.isMesh || !c.g || !c.g.attributes || !c.g.attributes.position) continue;
             var ms = Array.isArray(c.m) ? c.m : [c.m], bad = false;
-            for (var mi = 0; mi < ms.length; mi++) { var m = ms[mi]; if (!m || m.polygonOffset || m.depthTest === false || m.colorWrite === false || (m.transparent && m.depthWrite === false)) { bad = true; break; } }
+            for (var mi = 0; mi < ms.length; mi++) { var m = ms[mi]; if (!m || (!!m.polygonOffset !== decals) || m.depthTest === false || m.colorWrite === false || (m.transparent && m.depthWrite === false)) { bad = true; break; } }
             if (bad) continue;
+            if (noModels) { for (var pa = c.o, pn = 0; pa && pn < 10; pa = pa.parent, pn++) if (pa._ew_mm || pa._ew_oneModel || pa._ew_decor) { bad = true; break; } if (bad) continue; }
             list.push(c); gUse.set(c.g, (gUse.get(c.g) || 0) + 1);
         }
         if (!list.length) return;
@@ -99864,7 +99878,9 @@ const ThreeRenderer = (function () {
         root.updateMatrixWorld(true);
         var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), tmp = new THREE.Matrix4(), groups = {}, keys = [], n = 0;
         var U = _hqUnits(), T = (HQ_BATCH.cellM || ((typeof HQ_ENGINE_RULES !== 'undefined') && HQ_ENGINE_RULES.tileM) || 32) * U, sph = new THREE.Vector3(), mk = {};
-        if (_hq && root === _hq.shellGroup) yield* _hqZSep(B.cands, U);   // THE ZSEP: faces sharing a plane, the smaller lifted (once, before the merge reads them)
+        if (_hq && root === _hq.shellGroup) { yield* _hqZSep(B.cands, U); yield* _hqZSep(B.cands, U, { decals: true }); }
+        else if (_hq && !R.field) yield* _hqZSep(B.cands, U, { noModels: true });   // THE ZSEP, THE REST: paint on paint; the other merges (furniture built in code)
+          // THE ZSEP: faces sharing a plane, the smaller lifted (once, before the merge reads them)
         B.vc = !!(((_hq && root === _hq.shellGroup && _hqChunkBig(_hq)) || R.field) && !(typeof window !== 'undefined' && (window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_ONE_PAINT)));   // THE ONE PAINT (+ THE FIELD MERGE: the fight's pieces merge as the walk's did)
         for (var i = 0; i < B.cands.length; i++) {
             var c = B.cands[i];

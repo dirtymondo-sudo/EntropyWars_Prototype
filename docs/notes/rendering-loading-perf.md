@@ -3150,7 +3150,17 @@ flickers, suspect shadow acne at a low sun (HQ_LIGHT_RULES.shadows.normalBias 2.
   slab before, 0 after. THE SWEEP that found it (scratch, not in the repo; rebuild it like this): walk `dev.hqScene()` skipping `_ew_bRec` and
   `_ew_instHidden`, take each up-facing triangle, sample it on a 0.5 m grid IN 48 m STRIPS of x (one pass over the whole city = 16 M
   samples and the page dies), sort by cell + height, report pairs within 4 mm grouped by the two materials. Still on its list, not looked
-  at: the city's edge land sheet on the road (`hq_edge_land`, z 254), instanced prop bases on the road (barrels, bins, containers on containers).
+  at (11-20, then looked at, see the next row).
+- THE ZSEP, THE REST (11-20, mondo: "So why don't you fix the other ones too?"). The sweep again, FRONT faces only (the first list was mostly
+  two-sided undersides: a barrel's bottom, a slab's underside, never seen), each group photographed and named. Real, fixed in `_hqZSep`:
+  (1) PAINT ON PAINT: decals were skipped whole, so the stadium's white lines tore against its mown stripes (both depth-offset, same plane);
+  a second pass `{ decals: true }` reads the decals alone and lifts the smaller. (2) Only the shell's merge was read: furniture built in code
+  in a building's prop chunk (dark slab on dark slab, the stilt house's orange piece) had exact pairs; every merge is read now
+  (`{ noModels: true }` outside the shell: a piece under a loaded model, `_ew_mm` / `_ew_oneModel` / `_ew_decor`, is left alone).
+  After: each pair 1.2 cm apart. Looked at and NOT a flicker (leave them): the edge land on a road sheet at z 254 (9 m under the sea);
+  desk items 0.7 mm over a desk top and the shag rug's two layers 2 mm apart (inside one prop, steady from any distance a player sees them
+  at); blob shadows over each other (no depth write); tree leaves. A probe tip: more than ~4 teleports across the city in one run crashes
+  the cloud browser; three views a run.
 
 ## THE NEW BODY SPLIT (2026-11-19, spikes thread)
 mondo's 14:53 F3 had one 116 ms frame with "residents: new body 51 ms" (one body a frame since PR #2137, bakes kept per key since #2156),
@@ -3584,3 +3594,30 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   one buffer). The lever: fewer objects refreshed a frame in a fight (the 1,400 one-piece "may fade" groups, the demoted ones),
   not a cheaper write. `PWebGL::Msg_ReadPixels` (the old portrait copy) is 0.8 % of that thread: cheap for the card, the cost
   was the main thread waiting for it.
+- THE PORTRAIT'S OWN CANVAS (11-20, his sixth Firefox profile + 03:52 battle F3, the first on "portraits-no-wait"): THE PORTRAIT
+  WITHOUT THE WAIT DID NOT WORK. 16.3 % of the main thread was still blocked, now in `WebGL2RenderingContext.getBufferSubData`
+  (`PWebGL::Msg_GetBufferSubData`) under `_ptReadTake`. LESSON: on Firefox EVERY WebGL call that must answer (readPixels,
+  getBufferSubData, drawImage / toDataURL of a WebGL canvas) is a synchronous round trip to the GPU process's canvas thread,
+  which is the thread drawing the game's WebGPU frame; a pack buffer + fence does not make it asynchronous there. The only
+  read-back that does not wait is none.
+  So: a live portrait draws into a small WebGL canvas of its OWN (`_ptOwnMake`: its own WebGLRenderer, the studio's scene and
+  camera, `_ptRender(S, false, dt, own.r)`), and that canvas is what the HUD shows: `_ptOwnMount` puts it right after the HUD's
+  own canvas (hud.js LiveFace: a canvas in a foreignObject; same `width:100%;height:100%` box, class `ew-live-own`), hides the
+  HUD's while it stands there and gives it back when the place goes. The biggest of a portrait's HUD places gets it; its other
+  places take a copy once a second (the one waiting call left, 1 a second in place of 24). `_ptOwnFree` in `_ptDrop`. The
+  pack-buffer code is gone. Old copy (stepped down when slow): `window.EW_PT_LIVE_COPY`. `_EW_TR_STAMP` = "11-20
+  portrait-own-canvas". Cost: one more WebGL context a live portrait (2 at most) and its model's GPU data a second time.
+  Probe (cloud, two HUD-like round slots, Agent Locke): the own canvas sits in the bigger slot with the HUD canvas hidden, the
+  small slot shows the copy (7,777 opaque pixels), and when the big slot is removed the canvas moves to the other one. Picture
+  `shots/portrait_own_canvas.png`.
+  Same F3 (10.9 FPS, CPU 60.7 ms in a combo): besides the portrait wait, "scene: classic draws 36.7 ms" with 7 shader builds
+  and 7 pipelines a second, named: spell effects ("MeshBasicMaterial / SpriteMaterial see-through on ew scene", "node:fxop
+  see-through on batch fxBatch / fxGlobs", "ew_node_prog") and "kept 640/384/768" = all three keep lists AT THEIR CAP, so a
+  build put aside is thrown out and made again. Next: raise `_EW_KEEP_CAP`, and pre-build a spell's looks when it is equipped.
+- THE FIRST FIGHT PAYS (11-20, mondo after THE PORTRAIT'S OWN CANVAS: "my 2nd and 3rd fights after this one were a lot smoother
+  and the combo attack didn't have a slow down"). So what is left of the combo slowdown is FIRST-TIME work: each look a fight
+  shows for the first time in a session is built once (a spell's effects, a ghosted unit's see-through materials, a wall's first
+  fade, a shot's two pane cameras recording the room), and later fights find it made. `_EW_KEEP_CAP` raised from 640 / 384 /
+  768 to 1,600 / 1,000 / 2,000 (the lists were full in his fights, so kept builds were being thrown out). `_EW_TR_STAMP` =
+  "11-20 keep-more". Next for the first fight: build a unit's spell looks and see-through twins when the fight is set up
+  (behind its start), not at the first cast.
