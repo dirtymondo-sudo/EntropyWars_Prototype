@@ -3611,3 +3611,20 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   768 to 1,600 / 1,000 / 2,000 (the lists were full in his fights, so kept builds were being thrown out). `_EW_TR_STAMP` =
   "11-20 keep-more". Next for the first fight: build a unit's spell looks and see-through twins when the fight is set up
   (behind its start), not at the first cast.
+- THE SHADER COUNT (11-20, mondo: "what are all the shaders? can any of them be dropped?"). A census in a city probe (node
+  renderer on WebGL 2, post on, three views of Disaster City; every render object's node build grouped by identity; recipe:
+  walk the meshes' render objects through the Symbol-keyed Maps of THE REST OF THE MAPS, key by `ro._nodeBuilderState`):
+  **198 distinct shaders for 19,149 render objects**, 82 kinds by what a designer would call a look. By family: Lambert 71
+  (1,450 objects: props, bodies, instanced props), Basic 41 (2,393: glows, marks, see-through effects, unlit pieces), the
+  shadow pass's depth shaders 40 (2,290), Phong 33 (6,099: the buildings and ground), wind 4, terrain 2, fluid 2, sprite 1,
+  points 1, line 1, + the 9 post passes and the unit mask (not counted). The same LOOK appears as several shaders (24 plain
+  shadow shaders, 9 "Lambert, instanced, sheet, two-sided, takes shadow", 6 "Phong, sheet, takes shadow"): they differ only by
+  the geometry's attribute layout (a second UV set, vertex colours, tangents present or not) or by which optional sheet is set.
+  Size: a lit shader is 35-51 KB of code, the terrain's 88 KB, a shadow one 2-4 KB. A fight adds its own (a ghosted unit's
+  see-through twins, each spell's effects).
+  What could go, cheapest first: (1) the shadow pass to ~4 shaders (plain, cut-out, skinned, instanced): it only needs
+  positions (+ UV for a cut-out), so the layout differences are waste: -35, nothing visible. (2) Lambert and Phong made one
+  family: the buildings' Phong shine is the only visible difference: about -30. (3) Flags that fork a look for little: two-sided
+  where the back is never seen, "takes shadow" off on small props, vertex colours carried by models that are white: -20 to -30,
+  each needs a look. (4) Layout forks of the lit shaders (strip unused attributes at load): -10 to -20, nothing visible.
+  Each shader costs a "first" in every render (~20 µs) and a build the first time it is met.
