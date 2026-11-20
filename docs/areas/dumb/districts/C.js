@@ -115,5 +115,14 @@ module.exports = {
           for (const q of [[5.5, 3], [5.5, 7], [9, 5]]) R.lamp(q[0], q[1], 5.1); R.lamp(3, 8.5, -0.2);
           R.who('catgirl', 9.5, 4.5, 270, ctx.sayOf(O.bunker, 'catgirl'));
           R.done(); }
+
+        /* ════ THE INTERIORS + POLISH PASS (2026-11-20): the vault's hoard, the Great Room's chairs and pictures, the War Room's real light, the floors' grime ════ */
+        { const G = ctx.room('P05-03', 0, 0, 12, 12, 'gantry2'), V = { y: -3.5, floor: true };
+          for (const q of [[6.6, 3.2, 40], [7.0, 4.4, 120], [2.4, 7.6, 10], [7.4, 6.4, 70]]) G.dec('money_sacks', q[0], q[1], q[2], V);
+          G.dec('cash_cart', 6.2, 7.6, 200, V); G.dec('jewelry_case', 4.4, 7.7, 0, V); G.dec('lady_justice', 7.6, 8.4, 225, V); G.dec('marble_bust', 1.6, 3.0, 90, V); G.done(); }
+        { const G = ctx.room('P05-04', 0, 0, 12, 12, 'great2');
+          G.dec('wingback_chair', 3.6, 5.6, 90); G.dec('wingback_chair', 3.6, 6.8, 70); G.hung('painting_portrait', 10.95, 5.5, 270, 2.0); G.hung('painting_seascape', 6.0, 0.05, 0, 2.2); G.dec('globe_lamp', 8.4, 3.6); G.done(); }
+        { const W = ctx.room('P05-01', 0, 0, 12, 24, 'war2'); W.bulb(6, 12, 10.6); W.done(); }   // THE WAR ROOM's real light
+        for (const g of [['oil', 'P05-02', 5, 3], ['grime', 'P05-01', 3, 8], ['grime', 'P05-02', 8, 6], ['grime', 'P04-02', 5, 5], ['oil', 'P04-02', 9, 4]]) ctx.grime(g[0], g[1], g[2], g[3], 1.2);
     },
 };

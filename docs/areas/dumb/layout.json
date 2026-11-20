@@ -41,7 +41,7 @@
 {"id":"P00-04","name":"The Ring 9","d":"K","level":6,"h":5.25,"what":"the collider tunnel: the beam pipe on the outer wall, a walk beside it","from":"CERN: THE RING (the loop hall)"},
 {"id":"P01-04","name":"The Vat Hall","d":"R","level":0,"h":8.75,"what":"Clone Research: the vats on the floor of Sub-Level 7's depth, walked on THE GANTRY 3.5 m over them","from":"Clone Research: THE VAT HALL · THE GANTRY"},
 {"id":"P02-04","name":"Disposal","d":"R","level":0,"h":8.75,"what":"Clone Research: the furnace, the chute, BATCH 12, THE OTHER ONE; the Control room up its stair; a back door to the Stair","from":"Clone Research: DISPOSAL · BATCH 12"},
-{"id":"P03-04","name":"The Stair","d":"S","level":0,"h":5.25,"what":"the stair down from Level P3: six floors of it, 14 m; two dead-end side rooms","from":"Sub-Level 7: room B (the stair up to the motor pool) · side rooms"},
+{"id":"P03-04","name":"The Stair","d":"S","level":0,"h":21,"what":"the stair down from Level P3, 14 m, as three flights that switch back down the hall (world polish thread 8): landings at 9.33 and 4.67, two of their edges ledges; the guard room at the foot, the store halfway down","from":"Sub-Level 7: room B (the stair up to the motor pool) · side rooms"},
 {"id":"P04-04","name":"The Pool","d":"C","level":1,"h":5.25,"what":"the Bunker: a heated pool eighty metres under; the cellar with THE SAFE","from":"Bunker: THE POOL · THE CELLAR"},
 {"id":"P05-04","name":"The Great Room","d":"C","level":1,"h":8,"what":"the Bunker: the great room with its false windows, the loft, the panic room, the private lift","from":"Bunker: THE GREAT ROOM · the loft · THE PRIVATE LIFT"},
 {"id":"P06-04","name":"The Ring 10","d":"K","level":6,"h":5.25,"what":"the collider tunnel: the beam pipe on the outer wall, a walk beside it","from":"CERN: THE RING (the loop hall)"},
@@ -61,7 +61,6 @@
 {"id":"P06-06","name":"Service Room 4","d":"K","level":6,"h":5.25,"what":"a dead-end service room off the ring's corner","from":"CERN: service room 4 (a dead end off a corner)"}
 ],
 "openings": [
-{"a":"P03-05","b":"P03-04","kind":"stair","wide":3,"name":"the stair down: six floors"},
 {"a":"P02-03","b":"P01-03","kind":"stair","wide":3,"name":"the stair up to Research"},
 {"a":"P04-03","b":"P05-03","kind":"stair","wide":3,"name":"the Vault Gantry's stair"},
 {"a":"P03-02","b":"P02-02","kind":"stair","wide":1,"name":"the stair up to the Range"},
@@ -128,7 +127,7 @@
 "xfffrrrrxxxxxfffffffffffxffffffffffxxffffffffffxxffffffffffxxffffffffxoxxfffrrrrfffx",
 "xfffrrrrxxxxxfffffffffffxffffffffffxxffffffffffxxffffffffffxxffffffffxoxxfffrrrrfffx",
 "xxxxrrrrxxxxxfffffffffffxffffffffffxxffffffffffxxffffffffffxxxxxxoooxxoxxfffrrrrfffx",
-"xxxxrrrrxxxxxfffffffffffxxxxxxxxxxxxxxxxxoooxxxxxxxxxxxxxxxxxxxxxoooxxoxxxxxrrrrxxxx",
+"xxxxrrrrxxxxxfffffffffffxxxxxxxxxxxxxxxooxxxxxxxxxxxxxxxxxxxxxxxxoooxxoxxxxxrrrrxxxx",
 "xxxxrrrrxxxxxfffxxxxxxxxxxxxxxxxxxxxxxxffffffxxxxxxxxxxxxxxxxxxxxoooxxoxxxxxrrrrxxxx",
 "xxxxrrrrxxxxxfffxxxxxxxxxffffffffffxxxxffffffxxxxffffffffffxxffffffffffxxxxxrrrrxxxx",
 "xxxxrrrrxxxxxffffffffffxxffffffffffxxffffffffffxxffffffffffxxffffffffffxxxxxrrrrxxxx",

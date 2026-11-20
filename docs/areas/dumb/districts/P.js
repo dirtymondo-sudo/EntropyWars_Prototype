@@ -48,6 +48,20 @@ function gantries(ctx) {
         for (const o of [-0.72, 0.72]) G.box(6, 3.5 + o / ctx.C, 3.5, 4 * ctx.C, 0.14, 0.12, 'metal', 0x6a6e74);
         G.label(id === 'P00-05' ? 'THE RING' : 'THE RING', st + 0.5, 0.06, 0, 1.4); G.done(); }
 }
+/* ════ THE INTERIORS + POLISH PASS (2026-11-20): the platform's hall, the checkpoint's racks, the buffer at the tunnel's end, the signs that tell
+   you where the stairs go, the hangar's real light (one of the base's last three), the floors' grime ════ */
+function polishP3(ctx) {
+    ctx.P('metro_bench', 'P03-05', 3, 7, { face: 0 }); ctx.P('metro_bench', 'P03-05', 8, 7, { face: 0 }); ctx.P('metro_bin', 'P03-05', 5, 8); ctx.hang('tube_map', 'P03-05', 4, 8, 's', 1.6);
+    ctx.hang('departures_board', 'P03-05', 7, 8, 's', 2.6); ctx.hang('vending_machine', 'P03-05', 10, 8, 's', 0); ctx.dec('railway_lantern', 'P03-05', 2, 5); ctx.dec('railway_lantern', 'P03-05', 10, 5);
+    ctx.P('rifle_rack', 'P04-05', 8, 9, { face: 180 }); ctx.P('riot_gear_rack', 'P04-05', 7, 9, { face: 180 }); ctx.dec('item_police_barricade', 'P04-05', 3, 8); ctx.hang('key_rack', 'P04-05', 3, 9, 'w', 1.5);
+    ctx.P('buffer_stop', 'P00-05', 0, 3, { face: 90 });
+    const T = ctx.room('P00-05', 0, 0, 84, 12, 'tunnel'), Y = 3.5 + 2.7;   // u = x, v = y − 60; heights over 10.5 (the tunnel's floor is 14)
+    const sg = (w, x, c) => T.sign(w, x, 2.06, Y, Math.max(2.4, w.length * 0.17), 0.45, 0, '#f0f0f0', c || '#5a1410', 'stencil');
+    sg('THE HANGAR · STAIRS DOWN', 13.5); sg('THE HANGAR · STAIRS DOWN', 34.5); sg('CHECKPOINT', 50.5); sg('MOTOR POOL · RAMP DOWN', 61.5); sg('THE RING · STAIR DOWN', 2.5, '#10202c'); sg('THE RING · STAIR DOWN', 80.5, '#10202c'); sg('HANGAR 18', 0.9);
+    T.done();
+    const H = ctx.room('P01-05', 0, 0, 24, 12, 'hangar2'); H.bulb(12, 8.5, 11.2); H.done();
+    for (const g of [['oil', 'P01-05', 6, 8], ['oil', 'P02-05', 3, 9], ['scorch', 'P02-05', 9, 8], ['oil', 'P05-05', 5, 9], ['grime', 'P03-05', 6, 5], ['grime', 'P04-05', 4, 4]]) ctx.grime(g[0], g[1], g[2], g[3], 1.4);
+}
 function motorPool(ctx) {
     deckOver(ctx, 60, 71);
     /* u = x − 60, v = y − 60, heights over the lower deck (10.5) */
@@ -66,7 +80,7 @@ module.exports = {
     looks: { 'P01-05': HANGAR, 'P02-05': HANGAR },
     build(ctx) {
         const { C, r2, gcx, gcz, gx, gz, plot } = ctx, B = plot['P03-05'].base;
-        hangar(ctx); motorPool(ctx); gantries(ctx);
+        hangar(ctx); motorPool(ctx); gantries(ctx); polishP3(ctx);
         /* the platform's edge: a yellow line along the track's south side, from the Ramp to the Freight Lift */
         { const a = ctx.sq('P01-05', 0, 4), b = ctx.sq('P05-05', 11, 4); for (let sx = a[0]; sx <= b[0]; sx += 12) ctx.part({ s: 'box', p: [r2(gx(sx) + 6 * C), r2(B + 0.012), r2(gz(a[1]) + 0.2)], size: [12 * C, 0.01, 0.25], tint: 0xe0b020 }); }
         /* THE 7 DOOR: the wired double door behind the platform, at the head of the stair down */

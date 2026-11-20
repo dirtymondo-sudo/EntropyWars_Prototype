@@ -199,9 +199,9 @@ function research(ctx) {
     R.hung('radiation_sign', 3.95, 22.4, 270, 1.8); R.hung('exit_sign', 8.5, 14.05, 0, 2.6);
     /* the signs */
     const up = (w, u, v, ry, wd) => R.sign(w, u, v, W1 + 2.42, wd || Math.max(0.9, w.length * 0.13), 0.24, ry, '#f0f0f0', '#23262b');   // a door plate on the Wing
-    up('THE WARD', 7.05, 3.4, 90, 1.4); up('TRACES', 7.5, 3.95, 180); up('DOCTOR', 7.5, 10.05, 0); R.sign('THE TANKS', 11, 8.92, 2.6, 2.4, 0.5, 180, '#18302a', '#e8f4ee', 'stencil');
-    up('THE RANGE', 12.95, 3.3, -90, 1.5); R.label('CARDS A', 22.5, 4.05, 0); R.label('CARDS B', 22.5, 7.95, 180); up('PREP', 12.95, 11.3, -90); up('STORE', 16.95, 10.6, -90);
-    R.label('BIO LAB', 5.5, 17.05, 0); R.label('SPECIMENS', 4.05, 14.5, 90, 1.5); R.label('AUTOPSY', 7.05, 21.5, -90, 1.3); R.label('COLD STORE', 4.05, 21.5, -90, 1.6);
+    up('THE WARD', 7.05, 3.4, -90, 1.4); up('TRACES', 7.5, 3.95, 180); up('DOCTOR', 7.5, 10.05, 0); R.sign('THE TANKS', 11, 8.92, 2.6, 2.4, 0.5, 180, '#18302a', '#e8f4ee', 'stencil');
+    up('THE RANGE', 12.95, 3.3, 90, 1.5); R.label('CARDS A', 22.5, 4.05, 0); R.label('CARDS B', 22.5, 7.95, 180); up('PREP', 12.95, 11.3, 90); up('STORE', 16.95, 10.6, 90);
+    R.label('BIO LAB', 5.5, 17.05, 0); R.label('SPECIMENS', 4.05, 14.5, -90, 1.5); R.label('AUTOPSY', 6.95, 21.5, 90, 1.3); R.label('COLD STORE', 4.05, 21.5, -90, 1.6);
     R.sign('THE LABS', 10, 17.05, 3.0, 2.4, 0.5, 0, '#18302a', '#e8f4ee', 'stencil');
     /* the drawn lamps (the base has ten real lights; none of them is Research's) */
     for (const q of [[3.5, 5], [3.5, 8], [10, 3], [8, 5.5], [8, 8.5], [8, 11], [12, 11]]) R.lamp(q[0], q[1], W1 + (q[0] === 8 && q[1] < 10 ? 3.15 : 5.1));
@@ -246,7 +246,7 @@ function research(ctx) {
     V.dec('hazmat_suit', 13.4, 4.4, 90); V.dec('radiation_drum', 13.5, 9.5, 20); V.B('cardboard_boxes', 13, 3, 0); V.dec('stretcher', 16.4, 4.6, 90);
     /* CONTROL's desk */
     V.B('retro_control_panel', 16, 6, 0, { y: GY }); V.dec('monitor_stack', 17.5, 6.25, 0, { y: 1.2 }); V.dec('crt_terminal', 17.6, 6.6, 0, { y: GY + 0.78 }); V.dec('computer_chair_grey', 17.5, 7.4, 180, { y: GY });
-    V.dec('clipboard_flat', 18.4, 8.6, 0, { y: GY }); V.label('CONTROL', 15.05, 8.4, 90);
+    V.dec('clipboard_flat', 18.4, 8.6, 0, { y: GY }); V.label('CONTROL', 14.95, 8.4, 90);
     for (const q of [[3.5, 4], [7, 4], [7, 7.5], [4.5, 8.5], [9.5, 8], [17, 3], [20.5, 3], [17, 8], [21, 8.5]]) V.lamp(q[0], q[1], 8.6);
     V.lamp(17, 8, GY + 4.5);
     V.who('mad scientist', 6.5, 8, 340, ctx.sayOf(O.clonevats, 'mad scientist')); V.who('android', 20.5, 5.5, 270, ctx.sayOf(O.clonevats, 'android'));
@@ -254,11 +254,25 @@ function research(ctx) {
     const cl = O.clonevats.n.find(n => n.clone); if (cl) ctx.npc.push({ x: V.X(16.5), z: V.Z(4.5), face: 90, clone: true, say: cl.say });
 }
 
+/* ════ THE INTERIORS + POLISH PASS (world polish thread 8, 2026-11-20, mondo: "go ahead and do interiors and polish"): Disposal's line to the
+   incinerator, the floors' grime where it belongs (the Labs, the vats, Disposal), the Range's one real light (one of the base's last three). ════ */
+function polishResearch(ctx) {
+    const V = ctx.room('P01-04', 0, 0, 25, 12, 'clone2');   // u = x − 12, v = y − 48
+    V.dec('laundry_cart', 15.5, 4.4, 90); V.dec('hazmat_suit', 13.4, 6.2, 90); V.dec('scba_rack', 13.35, 9.0, 90); V.dec('hw_body', 21.0, 3.0, 90); V.dec('stretcher', 19.5, 3.6, 0);
+    V.dec('psx_metal_barrel_mp_1', 22.4, 9.4, 0); V.dec('psx_metal_barrel_mp_1', 21.8, 10.4, 40); V.dec('wet_floor_sign', 18.8, 6.4, 20); V.dec('floor_drain', 19.5, 5.5);
+    V.box(21.35, 6.5, 0.02, 0.9, 0.04, 1.8, null, 0xff4020, { glow: 1 }); V.sign('INCINERATOR', 22.94, 4.9, 3.7, 2.4, 0.4, 90, '#ff8040', '#1a0c08', 'stencil');
+    for (const q of [[18.5, 1.2], [19.5, 1.2]]) V.dec('iv_stand', q[0], q[1] + 0.4); V.hung('wall_clock', 13.05, 2.5, 90, 2.8);
+    V.done();
+    const R2 = ctx.room('P01-02', 0, 0, 24, 24, 'research2'); R2.bulb(17, 6, 8.5); R2.done();   // THE RANGE's real light
+    for (const g of [['puddle', 'P01-04', 6, 4], ['puddle', 'P01-04', 9, 9], ['oil', 'P01-04', 2, 6], ['grime', 'P01-04', 4, 10], ['blood', 'P02-04', 8, 6], ['scorch', 'P02-04', 9, 6], ['grime', 'P02-04', 3, 9], ['blood', 'P02-04', 5, 2],
+        ['grime', 'P01-03', 8, 6], ['puddle', 'P01-03', 2, 9], ['blood', 'P01-03', 8, 9]]) ctx.grime(g[0], g[1], g[2], g[3], 1.2);
+}
+
 module.exports = {
     look: { wall: U('TileSubway1a'), tint: 0xd0d4d8, gain: 2.2, band: 0x50c0a0, ceil: U('FibreCeilingTile2a'), ceilTint: 0xb8bcc0, light: 0xd8fff0, every: 3 },
     looks: { 'P01-01': WHITE, 'P02-01': WHITE, 'P01-04': CLONE, 'P02-04': CLONE, 'P02-02': { wall: U('MetalPanelPainted1a'), tint: 0xeef0f2, gain: 2.1, band: 0x50c0a0, ceil: U('FibreCeilingTile2a'), ceilTint: 0xc8ccd0, light: 0xf0fff8, every: 3 } },
     build(ctx) {
                 whiteRooms(ctx);
-        research(ctx);
+        research(ctx); polishResearch(ctx);
     },
 };

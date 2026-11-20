@@ -71,23 +71,32 @@ module.exports = {
         /* THE BEAM DUMP: the pile, 3.5 m of it, taped off, past the crossover */
         { const p = plot['P00-03']; ctx.feat({ k: 'plateau', x: r2(gx(1) + C), z: r2(gz(43) + 1.5 * C), w: 7, d: 3 * C, h: r2(p.base + 3.5), edge: 0.15 });
           for (let y = 43; y <= 45; y++) for (let x = 1; x <= 2; x++) ctx.taken.add(x + ':' + y);
-          M.hung('radiation_sign', 2, 37.95 + 0.1, 0, 1.7); M.dec('warning_tape', 2.5, 42.6, 0); M.dec('warning_tape', 1.5, 42.6, 0); M.dec('traffic_barrel', 1.4, 38.6); M.dec('traffic_barrel', 3.4, 38.6); M.sign('BEAM DUMP', 0.06, 40, 2.6, 2.0, 0.4, 90, '#ffd23a', '#2a2410', 'stencil'); }
+          M.hung('radiation_sign', 2, 37.95 + 0.1, 0, 1.7); M.dec('warning_tape', 2.5, 42.6, 0); M.dec('warning_tape', 1.5, 42.6, 0); M.dec('traffic_barrel', 1.4, 38.6); M.dec('traffic_barrel', 3.4, 38.6); M.sign('BEAM DUMP', 0.06, 40, 2.6, 2.0, 0.4, -90, '#ffd23a', '#2a2410', 'stencil'); }
         /* THE ALCOVES (plain labels mine) */
         const lab = (w, x, y, ry) => M.sign(w, x, y, 2.6, Math.max(1.4, w.length * 0.16), 0.36, ry, '#7fd0ff', '#10202c', 'stencil');
         /* N1 MAGNET TEST, across the pipe */ M.dec('psx_magnet_mp_1', 16.5, 1.5, 0); M.dec('chain_hoist', 17.5, 1.6, 0, { y: 4.4 }); M.B('steel_table', 19, 1, 0); M.dec('gauge_board', 15.3, 0.6, 90); M.dec('cable_drum', 19.6, 2.6, 40); lab('MAGNET TEST', 17.5, 0.06, 0);
         /* N2 CABLE VAULT */ for (const x of [27.6, 29.0, 30.4]) M.dec('cable_drum', x, 9.5, 20); M.hung('breaker_panel', 32.95, 9, 270, 1.5); M.dec('utility_box', 31.6, 10.3, 180); lab('CABLE VAULT', 30, 10.94, 180);
         /* N4 MONITORING POST */ M.B('steel_table', 53, 9, 0); M.dec('psx_monitoring_screen_mp_1', 53.5, 9.3, 180, { y: 0.78 }); M.dec('computer_chair_grey', 53.5, 8.4, 0); M.dec('psx_dosimeter_1', 54.3, 9.5, 0, { y: 0.78 }); M.dec('molded_chair', 51.6, 9.6, 60); lab('MONITORING', 54, 10.94, 180);
         /* N5 COOLING, across the pipe */ M.dec('centrifugal_pump', 64.5, 1.4, 90); M.dec('centrifugal_pump', 67.5, 1.4, 270); M.dec('gate_valve', 66, 0.5, 0); M.hung('pipe_run', 66, 0.06, 0, 2.6); lab('COOLING', 66, 0.06, 0);
-        /* W1 RAD STORE, across the pipe */ for (const q of [[0.7, 15.6], [1.6, 15.5], [0.7, 16.5], [1.5, 19.6], [0.8, 19.4]]) M.dec('radiation_drum', q[0], q[1], 30); M.dec('hazmat_suit', 0.6, 18, 90); M.hung('radiation_sign', 0.06, 17.5, 90, 1.7); lab('RAD STORE', 0.06, 16.2, 90);
-        /* W2 LOCKERS */ for (const y of [27, 28, 29]) M.hung('office_locker', 10.95, y + 0.5, 270, 0); M.dec('scba_rack', 10.6, 31, 270); M.dec('metro_bench', 9.4, 29.5, 90); lab('LOCKERS', 10.94, 31.6, -90);
-        /* W4 SURVEY */ M.B('map_table', 9, 53, 90); M.dec('cardboard_boxes', 9.4, 55.6, 20); M.dec('gas_cylinder_rack', 10.6, 51.6, 270); lab('SURVEY', 10.94, 54, -90);
-        /* E1 BREAK ROOM */ M.hung('vending_machine', 73.05, 16, 90, 0); M.dec('molded_chair', 74.4, 18, 270); M.dec('molded_chair', 74.6, 19, 250); M.B('tulip_table', 74, 18, 0); M.hung('water_cooler', 73.05, 19.5, 90, 0); lab('BREAK ROOM', 73.06, 17.5, 90);
-        /* E2 SPARES, across the pipe */ M.B('psx_shelf_mp_3', 82, 27, 270); M.B('psx_shelf_mp_3', 82, 28, 270); M.dec('wrapped_pallet', 81.4, 31.4, 10); M.dec('cardboard_boxes', 82.4, 32.4, 40); lab('SPARES', 83.94, 30, -90);
-        /* E4 PUMPS, across the pipe */ M.dec('centrifugal_pump', 81.5, 51.6, 0); M.dec('centrifugal_pump', 81.5, 55.4, 180); M.dec('valve_wheel', 83.6, 53.5, 270, { y: 1.2 }); lab('PUMPS', 83.94, 52.6, -90);
+        /* W1 RAD STORE, across the pipe */ for (const q of [[0.7, 15.6], [1.6, 15.5], [0.7, 16.5], [1.5, 19.6], [0.8, 19.4]]) M.dec('radiation_drum', q[0], q[1], 30); M.dec('hazmat_suit', 0.6, 18, 90); M.hung('radiation_sign', 0.06, 17.5, 90, 1.7); lab('RAD STORE', 0.06, 16.2, -90);
+        /* W2 LOCKERS */ for (const y of [27, 28, 29]) M.hung('office_locker', 10.95, y + 0.5, 270, 0); M.dec('scba_rack', 10.6, 31, 270); M.dec('metro_bench', 9.4, 29.5, 90); lab('LOCKERS', 10.94, 31.6, 90);
+        /* W4 SURVEY */ M.B('map_table', 9, 53, 90); M.dec('cardboard_boxes', 9.4, 55.6, 20); M.dec('gas_cylinder_rack', 10.6, 51.6, 270); lab('SURVEY', 10.94, 54, 90);
+        /* E1 BREAK ROOM */ M.hung('vending_machine', 73.05, 16, 90, 0); M.dec('molded_chair', 74.4, 18, 270); M.dec('molded_chair', 74.6, 19, 250); M.B('tulip_table', 74, 18, 0); M.hung('water_cooler', 73.05, 19.5, 90, 0); lab('BREAK ROOM', 73.06, 17.5, -90);
+        /* E2 SPARES, across the pipe */ M.B('psx_shelf_mp_3', 82, 27, 270); M.B('psx_shelf_mp_3', 82, 28, 270); M.dec('wrapped_pallet', 81.4, 31.4, 10); M.dec('cardboard_boxes', 82.4, 32.4, 40); lab('SPARES', 83.94, 30, 90);
+        /* E4 PUMPS, across the pipe */ M.dec('centrifugal_pump', 81.5, 51.6, 0); M.dec('centrifugal_pump', 81.5, 55.4, 180); M.dec('valve_wheel', 83.6, 53.5, 270, { y: 1.2 }); lab('PUMPS', 83.94, 52.6, 90);
         /* S1 WORKSHOP */ M.dec('tool_chest', 15.6, 73.4, 0); M.dec('welding_cart', 17.5, 74, 30); M.dec('engine_hoist', 19.4, 74.3, 200); M.B('steel_table', 16, 74, 0); lab('WORKSHOP', 18, 73.06, 0);
         /* S2 HELIUM, across the pipe */ M.dec('gas_cylinder_rack', 28, 82.6, 180); M.dec('gas_cylinder_rack', 31, 82.6, 180); M.dec('iso_tank', 32.4, 81.5, 270); lab('HELIUM', 29.5, 83.94, 180);
         /* S4 BACKUP CONTROL, across the pipe */ M.hung('server_rack', 52.5, 83.95, 180, 0); M.hung('server_rack', 53.5, 83.95, 180, 0); M.B('steel_table', 55, 82, 0); M.dec('crt_terminal', 55.5, 82.4, 180, { y: 0.78 }); lab('BACKUP CONTROL', 54, 83.94, 180);
         /* S5 FIRST AID */ M.B('hospital_bed', 64, 74, 90); M.dec('iv_stand', 65.4, 73.6); M.dec('scba_rack', 67.6, 73.4, 0); M.hung('evac_button', 68.95, 74, 270, 1.3); lab('FIRST AID', 66, 73.06, 0);
+        /* ════ THE INTERIORS + POLISH PASS (2026-11-20): a sign on each side of the ring saying which side it is and what is on it, the four corner
+           rooms dressed (the Old Experiment is the south-east one), grime along the walk ════ */
+        M.sign('THE RING · NORTH · CONTROL ROOM', 24, 7.94, 2.8, 5.4, 0.5, 180, '#7fd0ff', '#10202c', 'stencil'); M.sign('THE RING · SOUTH · BLAST DOOR', 24, 76.06, 2.8, 5.0, 0.5, 0, '#7fd0ff', '#10202c', 'stencil');
+        M.sign('THE RING · EAST · DETECTOR HALL', 76.06, 26, 2.8, 5.4, 0.5, -90, '#7fd0ff', '#10202c', 'stencil'); M.sign('THE RING · WEST · BEAM DUMP', 7.94, 45, 2.8, 5.0, 0.5, 90, '#7fd0ff', '#10202c', 'stencil');
+        M.dec('utility_box', 9.5, 9.5, 45); M.dec('cable_drum', 10.6, 10.4, 20); M.dec('psx_metal_barrel_mp_1', 11.4, 9.6);
+        M.dec('psx_shelf_mp_5', 73.5, 9.5, 315); M.dec('cardboard_boxes', 72.5, 10.6, 30); M.dec('cardboard_boxes', 74.4, 11.4, 80);
+        M.dec('iso_tank', 10, 73, 45); M.dec('centrifugal_pump', 11.4, 72.6, 0);
+        M.B('time_machine', 73, 73, 315); M.dec('meshy_tesla_coil', 74.5, 74.4, 0); M.dec('warning_tape', 72.5, 74.4, 45); M.dec('floor_stain', 73.6, 72.4);
+        for (const g of [[22, 6], [47, 6], [70, 15], [78, 28], [78, 60], [60, 77], [30, 77], [6, 30], [6, 58], [12, 10]]) { const q = { 'P0': 0 }; const px = Math.floor(g[0] / 12), py = Math.floor(g[1] / 12); ctx.grime(g[0] % 3 ? 'grime' : 'oil', 'P0' + px + '-0' + py, g[0] % 12, g[1] % 12, 1.3); }
         M.done();
     },
     dress(ctx) {
