@@ -54,9 +54,8 @@ module.exports = {
             '“Which way is down?” “Out.”',
         ],
     },
-    /* the plan's doors, by index: 0 the Tunnel-Way (N), 1 Hollow Earth (S), 2 the West Tunnel (W), 3 Hell (the Fissure)
-       (THE PILOT: the Tunnel-Way, the West Tunnel and Hollow Earth are still the old rooms until their own threads build them: each door here
-       lands at that old room's door nearest this one; Hell is the link, re-pointed here) */
+    /* the plan's doors, by index: 0 the Tunnel-Way (N; its room is bake-ug-tunnelway.js's, it lands at `ug_cavern_tunnelway`), 1 Hollow Earth (S; its own
+       room, bake-ug.js hollow), 2 the West Tunnel (W; bake-underground.js west-tunnel's room, it lands at `ug_cavern_west`), 3 Hell (the link) */
     doors: {
         0: { id: 'ug_cavern_tunnelway', label: 'THE TUNNEL-WAY', sub: 'THE PASSAGE UP · 12 LEVELS · TOWARD THE WOODS', action: { room: 'site_prebuilt_hollow_earth_ow_tunnelway', at: 'ow_v_m8_9' }, desc: 'The rope the camp came down on, and the passage up past it.' },
         1: { id: 'ug_cavern_hollow', label: 'HOLLOW EARTH', sub: 'THE MOUTH · THE LONG WAY DOWN · 16 LEVELS', action: { room: 'site_prebuilt_hollow_earth_ug_hollow', at: 'ug_hollow_cavern' }, desc: 'The rock opens on warm air and light from below. A long way below.' },

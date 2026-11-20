@@ -13979,3 +13979,24 @@ underground horror like the descent movie"; the square plans approved ("Yes this
   cliff: a faller and his flare, a lure in the sump), the Ledge (a ladder that did not reach), the Black Sump, the Low Gallery (the den:
   `@W:Low Gallery`). THE STORY: the team came down the Estate's well, camped here, went on up into the Long Tunnel and never came out.
 - **LIGHT** four (two torches, the crystals, the flare). Sheets: the horror rock (the tool's defaults). Stains: ZONE_LOOKS.cavern byRoom.
+
+**HOLLOW EARTH + THE OLD ROOM RETIRED (2026-11-20, world polish thread 9; mondo: "its hollow earth its supposed to be like a paradise or oasis
+inside earth, its okay if the water is blue for hollow earth. just do it").** `site_prebuilt_hollow_earth_ug_hollow` = `node bake-ug.js hollow`
+from `plans/ug-hollow-earth.js` + `docs/areas/cavern/districts/H-room.js`: 6 x 4 plots, levels 72 down to 0 (126 m), 33 ladders, 3 blue waterfalls
+(41, 18 and 15 levels), 2 cliffs, 7 pools; `--check` 1,244 open squares, 1 off (the Sun's own column). A PARADISE, not the Cavern: no rock roof
+(`room.roof: false`, open to the crust), the plan's closed squares are a JUNGLE (`room.gen` look 'trees': jungle trees, palms, the blooming tree),
+the bright look (`HQ_ROOM_LOOKS.mountain`), ambient 0.5, the Inner Sun's light + three fills. Ground: the game's pixel grass (`grass` trails,
+`grass_3` flowered meadows in the chambers, `leaves` the jungle floor) because neither the horror nor the urban pack has grass; the Sun's shore
+`hz_stone_13` (sand), cliffs `hz_stone_08` (dark earthy moss; `hz_stone_06` read as pale wallpaper behind the trees). Places: the Landing (3,0 · 72, the spawn, the door up to the Cavern's Mouth), the Crystal Forest
+(0,0), the Mushroom Shelf (1,2), the Giant's Seat (3,2), the Nesting Ground + the hot spring (5,3), the Shore + the Polar Opening (`hollow_byrd`
+end a, 5,0), the Inner Sun on its column (5,1, the plan's landmark). The plan's horror pits are paradise ones here (fossils, nests, crystals,
+Byrd's camp, flowered clefts, spring pools). The site entry `siteRooms.prebuilt_hollow_earth` (`bay`) is the Inner Sun's west rock.
+**THE CAVERN'S OTHER WAYS IN** (`extraDoors` in K-room.js, links re-pointed by `bake-ug.js cavern --fix-links`): the D.U.M.B.'s blast door
+(`cave_dumb` a) in the Dead End's east rock, the Sewers' old portcullis (`workings_oubliette` b) in the Last Camp's west rock, the cellar well
+(`well_cellar` b) a rope down into the Crossroads, DOOR HQ's moving wall (`dungeon`, the Dungeon's `oubliette` door lands there) in the Oubliette.
+The Cavern's falls are `swamp` water (murky, mondo 11-20), Hollow Earth's blue.
+**THE OLD ROOM:** `site_prebuilt_hollow_earth_cavern` is retired to the new Cavern (DOOR_HQ.retired; the old rooms it had swallowed now retire to
+the Cavern, the old Inner Sun to Hollow Earth); bake-cavern.js keeps its row with `skip: true` (Agartha's moves and the seams still need it) and no
+longer checks its ways. Re-pointed: the zone list, the stage, the secret-door list, the site entry, the NPC rows (one table a room), the flora
+(Hollow Earth grows, the Cavern does not), ZONE_LOOKS. World places: the Cavern -8..-3 x 7..9, Hollow Earth -8..-3 x 10..13 (`room.world`);
+`node bake-map.js` for both.

@@ -35,7 +35,7 @@ module.exports = {
         spawn: [41, 3], spawnFace: 180,
         mood: { light: 0xfff0c8, ambient: 0.5, hero: false },
         fallKey: 'water', sumpKey: 'deep_water',
-        tex: { floor: 'grass', wall: 'hz_stone_06', dado: 'hz_stone_06', trim: 'hz_stone_06', ceiling: 'hz_stone_01', cliff: 'hz_stone_06', path: 'grass' },
+        tex: { floor: 'grass', wall: 'hz_stone_08', dado: 'hz_stone_08', trim: 'hz_stone_08', ceiling: 'hz_stone_01', cliff: 'hz_stone_08', path: 'grass' },   // the rock between the trails: dark earthy moss (Stone_06 read as pale wallpaper)
         /* the paint: 1 the flowered meadow (the chambers) · 2 the jungle floor (the pits, the trails' edges) · 3 sand (the Sun's shore) · 4 mineral stone (the crystals) */
         pal: ['grass_3', 'leaves', 'hz_stone_13', 'hz_stone_06'],
         /* THE JUNGLE IS THE WALL: every square that is not a `space` grows jungle trees and palms (the House Trail's dead woods are the pattern) */
