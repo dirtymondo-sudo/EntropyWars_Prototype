@@ -65,7 +65,7 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 10 | **The Sewers** | The Sewers, one room | Not started |
 | 11 | **Heaven + Hell + Vatican** | Heaven, Hell, The Vatican, The Catacombs | Not started |
 | 12 | **Leylines** | The Line, Babel + Technoticlan, Stonehenge, Bug Colony | **HEIGHT PLAN DRAFTED 11-20 for the Line's room, waits mondo's OK:** `docs/plans/world-polish/plans/leylines-line.js` (+ `leylines-line.png`, `-west`, `-east`; passes `draw-plan.js`). The Line stays dead straight and level; the land rises (to 5) and falls (to -2) beside it, the walk snakes across it five times; 18 new plots inside the same 12 x 3 box. Göbekli Tepe is left as built. **mondo 11-20:** the Line is crossed, never walked end to end ("no I do not want it to be a long straight line"); the new plots "Yes that's fine"; the two new buildings are ANCIENT stone ("ancient right? or at least one of the early civilizations"); more ledges on the climbs before he looks ("ok"). **NOT planned yet: Babel + Technoticlan's room** (no base today; its own plan file next). Stonehenge and Bug Colony look good: no plan. Nothing built. |
-| 13 | **Antarctica** | Antarctica, one room | Not started. **No height plan drawn 11-20:** the board shows its tool row and the Station as the second side's since 11-16 (stale, over 3 days): mondo says who takes it. **mondo 11-20: "you can make a plan for antarctica, or just improve upon what's already there"**: an owner-side thread may take it; no plan is drawn yet. |
+| 13 | **Antarctica** | Antarctica, one room | **HEIGHT PLAN DRAFTED 11-20, waits mondo's OK** (mondo 11-20: "you can make a plan for antarctica, or just improve upon what's already there"): `docs/plans/world-polish/plans/antarctica.js` (+ `antarctica.png`; passes `draw-plan.js`, 6 warnings). It is laid OVER THE ROOM AS IT STANDS (`underlay`: today's real ground, read from the room): the Traverse snakes (the Yard, round the mast, the Ice Bridge in the far west, the Wall's foot, the Gap), the Plank and the Snow Bridge are the other two crossings, the Ice Wall gets three stairs, a walk on top and the icefall as the found way up; landmarks in every field. The tool found the Pirates' Cove landing cut off from the rest of the ice today: the plan joins it. Nothing built. |
 | 14 | **The Internet** | The Internet, one room | Not started |
 | 15 | **The Astral Realm** | The Astral Realm, one room | Not started |
 | 16 | **The Deep** | Atlantis + The Trench, The Sea Floor | Not started |
@@ -387,7 +387,7 @@ they are measurements, not the job.
   not. The land rises and falls beside it; the path crosses the Line, leaves it, comes back. Babel and Technoticlan get a base: each at its
   own range (Babel's tower is a monument: it is not lifted; the land round it is shaped). Dressing on the 17 bare plots.
 
-### Thread 13: ANTARCTICA (not started)
+### Thread 13: ANTARCTICA (the height plan is drafted, 11-20: `plans/antarctica.js`, over the room as it stands; waits mondo's OK; nothing built)
 - **Zone:** Antarctica. Districts: The Station (S), The Ice Wall (W), The Crevasse (C), The Shelf Ice (F), The Hull in the Ice (H),
   The Polar Openings (O).
 - **Rooms:** `site_prebuilt_antarctica_plots` (36).
