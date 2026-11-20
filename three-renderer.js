@@ -93394,7 +93394,7 @@ const ThreeRenderer = (function () {
                     var rg = new THREE.CylinderGeometry(0.026 * U, 0.026 * U, rTop * U, 7, 1, true), ua = rg.attributes.uv, rep = Math.max(1, Math.round(rTop / 0.16));
                     for (var ui = 0; ui < ua.count; ui++) { var u0 = ua.getX(ui), v0 = ua.getY(ui); ua.setXY(ui, v0 * rep, 0.3 + u0 * 0.4); }
                     var side = mk(rg, rlm); side.position.set(lx * U, rTop / 2 * U, 0.06 * U);
-                    var spike = mk(new THREE.BoxGeometry(0.04 * U, 0.04 * U, 0.3 * U), iron); spike.position.set(lx * U, rTop * U, 0.18 * U);
+                    var spike = mk(new THREE.BoxGeometry(0.04 * U, 0.04 * U, 1.2 * U), iron); spike.position.set(lx * U, rTop * U, 0.62 * U);   // back to the lip (bake-ug.js stands the ladder 1.05 m off it, past the face's slope)
                 });
                 for (var rry = 0.3; rry < L + 0.05; rry += 0.32) {
                     var rung2 = mk(new THREE.CylinderGeometry(0.022 * U, 0.022 * U, (w + 0.1) * U, 6), wood); rung2.rotation.z = Math.PI / 2; rung2.position.set(0, rry * U, 0.06 * U);

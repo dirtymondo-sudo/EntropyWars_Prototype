@@ -93,7 +93,9 @@ const LADDERS = [];
     if (Math.abs(dx) + Math.abs(dy) !== 1) throw new Error('a ladder between squares that do not touch: ' + a + ' / ' + b);
     const lineX = dx ? gx(Math.max(hi[0], lo[0])) : gcx(lo[0]), lineZ = dy ? gz(Math.max(hi[1], lo[1])) : gcz(lo[1]);
     const face = dy < 0 ? 0 : dy > 0 ? 180 : dx > 0 ? 90 : 270;          // heading toward the high side (the face the ladder leans on)
-    const x = r2(lineX - dx * 0.3), z = r2(lineZ - dy * 0.3);
+    /* 1.05 m out from the line: the ground between two squares slopes over one mesh step (0.875 m) plus its blend, so a ladder nearer the line
+       stands half inside the face (2026-11-20: a rope ladder 0.3 m out showed only its top third); its head search still finds the lip */
+    const x = r2(lineX - dx * 1.05), z = r2(lineZ - dy * 1.05);
     feat({ k: 'climb', id: 'ug:' + KEY + ':ladder' + i, x, z, face, look: (DES.room && DES.room.ladderLook) || 'ladder', y0: hOf(lo[0], lo[1]), y1: hOf(hi[0], hi[1]) });
     LADDERS.push({ hi, lo, levels: Math.abs(la - lb) }); taken.add(lo[0] + ',' + lo[1]); taken.add(hi[0] + ',' + hi[1]); });
 
