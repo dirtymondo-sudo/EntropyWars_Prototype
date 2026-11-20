@@ -13892,6 +13892,9 @@ APPROVED 11-20 ("Yes this is good, go ahead and start individual threads"; "No r
   hz_stone_02, ledge and wall faces hz_stone_10, stalactites + the squeezes' teeth hz_stone_02, the stalagmite hz_stone_07, tints near white. Paint:
   mud hz_floor_03, wet black rock round the sumps hz_misc_05, the Catacombs' cut stone flags hz_floor_12, the Nests' crust hz_misc_06 (hz_misc_15,
   raw red, read as lava). Seen on screen: the Gate, the Nest, the Great Chamber, the Bone Passage.
+- **THE LADDERS OFF THE FACE (2026-11-20, found by thread 9 from the data):** all 49 climbs stood 0.6 m off the line, half inside the rock
+  face (the sheet's face slopes over about 0.9 m into the lower square). Now 1.05 m off the line, on the low side; the tool reads the climbs back
+  through load-data.js after it writes and refuses one whose foot is buried (`hqTerrainHeight` 0.08 m toward the rock > y0 + 1 m). Seen on screen.
 - **LEARNED:** a prop pushed more than ~0.6 m toward a rock square climbs the wall's face (the sheet's face falls in the open square's last lattice
   cell): `atWall` pushes 0.5. The Meshy `femur` stands upright (it reads as a stake): not used. The probe's `face` IS the heading (0 north, 90 east);
   the HUD's `deg` / `r` is the camera's POSITION in polar terms, not its heading. The link `tunnelway_cavern` wears `way: 'well'`, so its foot here is a stone well
