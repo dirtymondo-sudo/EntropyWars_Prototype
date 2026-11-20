@@ -3493,3 +3493,15 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   "Build ?v=<token of the page> · renderer code <stamp>" (`_ewBuildTok`, `_EW_TR_STAMP` at the top of three-renderer.js). RULE:
   bump `_EW_TR_STAMP` in every PR that changes the walk's / the fight's drawing, and read that line in his F3 before
   concluding a fix did or did not work. No judgement on THE LAMPS PER CAMERA is possible from the 02:10 / 02:24 readouts.
+- THE LIST COPIED + THE BUILDS' NAMES (11-20, his 02:37 battle F3, the first on a known build: "Build ?v=…buildline-10 · renderer
+  code 11-20 lamps-why"). THE LAMPS PER CAMERA works: 0 re-records/s in the steady combo frames (was 2,300-4,500), one 4,598
+  re-record frame = the shot's two new pane cameras recording the room once each (a shot's panes are NEW camera objects each
+  time, ids 96246 / 96247). Two false alarms left, named by THE LAMPS' WHY: "LAMPS MOVED [cam 96246, 0 lights: -AmbientLight
+  "ew rig a" … -PointLight "ew rig p"]": the kept list was three's own render-list array, emptied when that camera's list begins
+  again; the unit mask draws with the same camera and no light on its layers, so the reference read empty at the next check.
+  A COPY is kept now. Per-camera stamps are capped (8 a group, 32 lists) since panes keep coming.
+  STILL 4.7 FPS in that F3, and not from re-records: "scene: classic draws 93.3 ms" for 105 meshes, every slow frame "1 shader
+  builds · 1-3 new pipelines" (5 builds and 6 pipelines a second, "Late look … 6 compiling"), one "_popDamageFeedback 254 ms"
+  timer. So a combo still BUILDS SHADERS mid-fight, ~50-270 ms each. Which looks is not known: the lens now lists "Last shader
+  builds (newest last): <material type, name, node kind, fade-clone / shadow / see-through> on <skinned / batch / sprite + name>
+  (pane / side)", the last 12 (`_ewKeep.last`, filled in `debug.onNodeBuilderCreated`). `_EW_TR_STAMP` = "11-20 builds-named".
