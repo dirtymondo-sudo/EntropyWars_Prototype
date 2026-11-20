@@ -12823,10 +12823,14 @@ That is not a bayside view. It's called bayside mall." and "the other part I cir
   other building bakes as before (the plan still lists the two buildings; they are simply never in the room). Their floor squares are boardwalk planks.
   KEPT: the canal and its culvert, the Marina plot's ramp and retaining rail (that plot stands a level up), road signs.
 - **THE PALMS:** Bayside's promenade row of tall palms (7 to 9 m, at square 144) is gone; north of the mole (the Shore's back, under Entertainment's sea
-  wall) it stays. Fourteen short palms (the catalogue's 3.2 m `palm_tree`), each in a low concrete planter, stand on the coast road's middle line, one every
-  three squares, clear of the crossings (`dc:bay-median<row>:arch`). THE TRAPS: the tool's lane pass draws any prop within 3.2 m of a traffic line out to
-  the kerb, and its soil pass removes a Bayside tree that stands on paving (or paints a sand bed under a palm prop): the median's palms are therefore set in
-  `last()`, after every pass. The cars keep 2.5 to 4.5 m off the middle line.
+  wall) it stays. Short palms (the catalogue's 3.2 m `palm_tree`) stand on A RAISED MEDIAN down the coast road's middle
+  line (mondo 11-20, of the first cut, a separate planter under each palm: "the median needs to be connected, like a raised median. Not individual little
+  patches ... Just a normal street median"): one kerbed strip 1.5 m wide and 0.2 m high with sand on top, unbroken from the Marina plot's north end to
+  the cross street by the canal and on south of it, a rounded nose at each end (`dc:bay-median<n>:arch`). It is laid in pieces under a metre long, each at
+  the road's height under it (`ctx.at`), so it follows the road down off the Marina plot. THE TRAPS: the tool's lane pass draws any prop within 3.2 m of
+  a traffic line out to the kerb, and its soil pass removes a Bayside tree that stands on paving (or paints a sand bed under a palm prop): the median and
+  its palms are therefore set in `last()`, after every pass, where `ctx.at` takes the CITY's own squares (Bayside's frame is 48 rows on). The cars keep
+  2.5 to 4.5 m off the middle line.
 - **THE COVE'S POINT:** the sliver of sand between the Cove's round cut and the Shore's first circles (part 1's "known and left" bar) is gone. `COAST.shore`
   now starts at the Cove's own south rim (row 56.3, square 162.4) and turns out of it, so the shore runs in one sweep from the Cove round into the bay.
   `coastCut` keeps a cap by the circle's FAR side now (where the coast turns, a circle's middle lies nearer the line than its sample does) and steps 1.75 m
