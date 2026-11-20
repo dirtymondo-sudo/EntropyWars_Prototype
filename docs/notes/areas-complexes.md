@@ -13120,5 +13120,5 @@ Mount Shasta goes as a name, its plots are swallowed.
   the old lift, its gantries and the old slopes' fences stand where their plots went and are to be rebuilt as the plan's five lifts ("lift should carry you": the
   first one is shown to mondo first; today the old door pair `lift_bottom` / `lift_top` carries you from the Chairlift plot at the base to the Top Station on
   the summit); the base village, the Mid Station, the Ski Patrol, the bath house; ledges and switchbacks on the walking ways; Shasta's volcano dressing (crater,
-  vents, lava) on what are now ski plots; the Olympus retexture look (data.js `ZONE_LOOKS.olympus` names the room that is gone: the retexture thread's row);
+  vents, lava) on what are now ski plots; (FIXED the same day, mondo: "Just add its cream stone texture to this room": `ZONE_LOOKS.zones.mountains.byRoom` gives the mountain's room Olympus's cream stone on walls; there is no retexture thread any more, a zone thread edits its own look rows);
   the North Pole; the seams were not walked in the probe (L6, L3, R5, R3, the Long Descent's two).
