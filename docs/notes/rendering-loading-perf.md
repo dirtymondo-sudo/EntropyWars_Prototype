@@ -3743,4 +3743,10 @@ NOT measured on the phone itself: no WebKit in the cloud container. He did not s
   llvmpipe = every KTX2 sheet as RGBA; a phone's ASTC is about a quarter of that).
 - **STILL OPEN:** (1) the whole library still loads for every fight on a phone; a per-fight load needs a spell -> prop table that does not exist.
   (2) The spells' copy of a prop keeps its normal + metal/roughness sheets (the rooms drop theirs, THE UNDRAWN MAPS). (3) The menu scene stays in
-  memory during the walk. (4) The title's logo video is 18.6 MB. (5) Disaster City on a phone was not measured. Ask him WHERE it dies if it still does.
+  memory during the walk. (4) The title's logo video is 18.6 MB. Ask him WHERE it dies if it still does.
+- **DISASTER CITY DOES NOT FIT A PHONE (measured after the fixes, same profile, room ready in 420 s):** 746 files / 438 MB to enter, JS memory
+  1,416 MB, geometry 846 MB, textures 933 MB (1,365 on the GPU), 5.6 M triangles, 7,283 draw calls, 406 model files held (465 MB against the
+  phone's 320 MB budget, 1 file evicted). An iPhone 13 has 4 GB and Safari ends a tab near 1.5 GB. CONTINUE resumes in the saved room and the
+  menu's arrival warm warms that room, so a save standing in a big outdoor zone ends the tab on Play, whatever the boot does. Nothing in this
+  pass changes that: a phone needs its own tier for the plot-built zones (a smaller built radius, the far LODs only, no whole-room build).
+- Desktop check of ONE COPY ON THE GPU: the foyer on the "Desktop Chrome" profile, HEAD 2a47c0f, no page errors, the picture right.
