@@ -668,5 +668,25 @@
   "v": "cad8aa5034",
   "bytes": 567,
   "s": "0.9"
+ },
+ "site_prebuilt_hollow_earth_ug_cavern": {
+  "id": "site_prebuilt_hollow_earth_ug_cavern",
+  "nx": 72,
+  "nz": 36,
+  "h0": 0.25,
+  "hs": 0.25,
+  "v": "23651655db",
+  "bytes": 717,
+  "s": "1.4"
+ },
+ "site_prebuilt_hollow_earth_ug_hollow": {
+  "id": "site_prebuilt_hollow_earth_ug_hollow",
+  "nx": 72,
+  "nz": 48,
+  "h0": 0.25,
+  "hs": 1.01,
+  "v": "44ef1b7821",
+  "bytes": 1033,
+  "s": "2.0"
  }
 }

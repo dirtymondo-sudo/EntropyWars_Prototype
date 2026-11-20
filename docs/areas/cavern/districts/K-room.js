@@ -24,12 +24,14 @@ const PITS = [[17, 8, 'bones'], [53, 3, 'bones'], [17, 32, 'nest'], [68, 5, 'nes
 const HOT = ['5,0', '5,1', '4,1'];   // the plots by the Fissure: obsidian, the red light
 module.exports = {
     room: {
+        world: { hub: 'cavern', layer: 'under', wx: -8, wy: 7 },   // THE ONE WORLD: where the old Cavern + Hollow Earth room's north half stood
         label: 'THE CAVERN',
         sub: 'THE LAST CAMP · THE CROSSROADS · THE OUBLIETTE · THE FISSURE · THE MOUTH OF HOLLOW EARTH',
         parti: 'A labyrinth of rock 40 metres deep: from the last camp at the top the passages split, climb, drop off cliffs and down waterfalls through six great chambers to the cells at the bottom; the Fissure breathes hot air from Hell, and the Mouth opens on the long way down to Hollow Earth.',
         ceil: 3, ceilChamber: 6, tallChambers: { 'Chamber 0,1': 6, 'Chamber 3,2': 3 },   // the Crossroads is the great chamber: its roof stands 21 m over its floor
         spawn: [29, 4], spawnFace: 180,
         mood: { light: 0xffb070, ambient: 0.14, hero: false },
+        fallKey: 'swamp',   // mondo 11-20: the Cavern's falls murky (Hollow Earth keeps its blue water)
         /* THE SHEETS (mondo 11-20: "don't use the calm textures, use from the urban decay or horror pack"): every surface wears a horror-pack sheet
            (Screaming Brain Studios, `hz_<family>_<nn>`): the rock black and cracked, the floor dark cracked stone, the ledge faces rough brown */
         tex: { floor: 'hz_stone_02', wall: 'hz_stone_01', dado: 'hz_stone_02', trim: 'hz_stone_01', ceiling: 'hz_stone_01', cliff: 'hz_stone_10', path: 'hz_floor_03',
@@ -52,15 +54,22 @@ module.exports = {
             '“Which way is down?” “Out.”',
         ],
     },
-    /* the plan's doors, by index: 0 the Tunnel-Way (N), 1 Hollow Earth (S), 2 the West Tunnel (W), 3 Hell (the Fissure)
-       (THE PILOT: the Tunnel-Way, the West Tunnel and Hollow Earth are still the old rooms until their own threads build them: each door here
-       lands at that old room's door nearest this one; Hell is the link, re-pointed here) */
+    /* the plan's doors, by index: 0 the Tunnel-Way (N; its room is bake-ug-tunnelway.js's, it lands at `ug_cavern_tunnelway`), 1 Hollow Earth (S; its own
+       room, bake-ug.js hollow), 2 the West Tunnel (W; bake-underground.js west-tunnel's room, it lands at `ug_cavern_west`), 3 Hell (the link) */
     doors: {
         0: { id: 'ug_cavern_tunnelway', label: 'THE TUNNEL-WAY', sub: 'THE PASSAGE UP · 12 LEVELS · TOWARD THE WOODS', action: { room: 'site_prebuilt_hollow_earth_ow_tunnelway', at: 'ow_v_m8_9' }, desc: 'The rope the camp came down on, and the passage up past it.' },
-        1: { id: 'ug_cavern_hollow', label: 'HOLLOW EARTH', sub: 'THE MOUTH · THE LONG WAY DOWN · 16 LEVELS', action: { room: 'site_prebuilt_hollow_earth_cavern', at: 'link_hollow_byrd' }, desc: 'The rock opens on warm air and light from below. A long way below.' },
+        1: { id: 'ug_cavern_hollow', label: 'HOLLOW EARTH', sub: 'THE MOUTH · THE LONG WAY DOWN · 16 LEVELS', action: { room: 'site_prebuilt_hollow_earth_ug_hollow', at: 'ug_hollow_cavern' }, desc: 'The rock opens on warm air and light from below. A long way below.' },
         2: { id: 'ug_cavern_west', label: 'THE WEST TUNNEL', sub: 'THE PASSAGE WEST · 6 LEVELS UP · UNDER THE ESTATE', action: { room: 'site_prebuilt_hollow_earth_ug_west', at: 'ug_cavern_west' }, desc: 'A low passage west. The air in it is cold.' },
         3: { link: 'cave_hell', end: 'a' },
     },
+    /* THE WAYS IN THE PLAN HAS NO SPOT FOR (mondo 11-20, "just do it" to the proposal): each stood in the old Cavern room */
+    extraDoors: [
+        { at: [31, 29], side: 'e', link: 'cave_dumb', end: 'a' },                 // THE DEAD END (86): the D.U.M.B.'s blast door, cut square in the rock
+        { at: [26, 4], side: 'w', link: 'workings_oubliette', end: 'b' },          // THE LAST CAMP (105): the Sewers' Old Workings, the old portcullis
+        { at: [8, 16], well: true, face: 0, link: 'well_cellar', end: 'b' },        // THE CROSSROADS (92): the Haunted House's cellar well, a rope down
+        { at: [57, 30], side: 'e', id: 'dungeon', secret: true, label: 'A DRAUGHT', sub: 'THE WALL MOVES', action: { room: 'dungeon', at: 'oubliette' },   // THE OUBLIETTE (82): DOOR HQ's fourth cell
+          desc: 'A draught along the back wall, and the back wall moves. On the other side the building keeps a cell it says is vacant.' },
+    ],
     /* THE PAINT: 0 the cave floor · 1 obsidian (the hot side) · 2 dungeon stone (the Oubliette) · 3 dirt (the pits, the camp) · 4 crystal */
     paint(ctx, x, y) {
         const p = ctx.plotOf(x, y); if (!p) return 0;
