@@ -29,7 +29,7 @@
      dead end where something is kept (a cell, chains, what is left in it). */
 'use strict';
 const CITY = [2, 2, 14, 9], LEVEL_M = 1.75;
-const MARBLE = 'marble_light', WHITE = 0xf2efe6, STONE = 0xe2ddd0, GLOW = 0xbff4ff;
+const MARBLE = 'hz_wall_01', CRYSTAL = 'hz_misc_05', WHITE = 0xf2efe6, STONE = 0xe2ddd0, GLOW = 0xbff4ff;
 const PILOT_X = 24;   // squares x < 24: the pilot's third
 const SPIRE = [42, 6];   // the island's corner square (41..42 x 5..6): the Spire stands on the line between them
 const TERR = [[26, 38, 33, 45], [38, 38, 45, 45], [34, 39, 37, 44]];   // the Plaza, the Inner Gate, the stair between
@@ -41,7 +41,7 @@ module.exports = {
     plotNames: { '0,0': 'The Adit Square', '1,0': 'The Hall of Records', '0,1': 'Under the Drop', '1,1': 'The Upper Maze', '0,2': 'The West Galleries', '1,2': 'The Crystal Pocket', '0,3': 'The Bone Pit', '1,3': 'The Old Camp',
         '2,0': 'The Temple', '3,0': 'The Spire', '4,0': 'The Low Bone Pit', '2,1': 'The Middle Maze', '3,1': 'The Squeeze', '4,1': 'The Low Nest', '2,2': 'The Stair Junction', '3,2': 'The Sump', '4,2': 'The Low Pocket',
         '2,3': 'The Plaza', '3,3': 'The Inner Gate', '4,3': 'The Kept Room' },
-    bridge: { key: 'crystal', thick: 0.3, rails: true },
+    bridge: { key: 'hz_misc_05', thick: 0.3, rails: true },
 
     plan(ctx) {
         const { headroom, paint, squaresIn, open, T } = ctx;
@@ -82,18 +82,18 @@ module.exports = {
         look('gate', gx(3), gz(2), 0, F0, a => {
             [-1, 1].forEach(s => { a.box(s * 2.95, 0, 0.3, 1.1, 0.45, 1.1, MARBLE, STONE); a.box(s * 2.95, 0.45, 0.3, 0.8, 3.15, 0.8, MARBLE, WHITE); a.box(s * 2.95, 3.6, 0.3, 1.1, 0.3, 1.1, MARBLE, STONE); });
             a.box(0, 3.9, 0.3, 7.6, 0.6, 1.0, MARBLE, WHITE);
-            a.box(0, 3.98, 0.82, 6.4, 0.16, 0.06, 'crystal', GLOW, { glow: 1.1 });   // the lit band on the lintel
-            a.cone(0, 4.5, 0.4, 0.45, 0.05, 1.2, 'crystal', 0xd8fbff, { glow: 1.6 });   // the keystone crystal
+            a.box(0, 3.98, 0.82, 6.4, 0.16, 0.06, CRYSTAL, GLOW, { glow: 1.1 });   // the lit band on the lintel
+            a.cone(0, 4.5, 0.4, 0.45, 0.05, 1.2, CRYSTAL, 0xd8fbff, { glow: 1.6 });   // the keystone crystal
         });
         /* ── THE GREAT CRYSTAL (6,6): the great chamber's stalagmite, grown through with crystal; the shelf's light ── */
         const gc6 = [gcx(6), gcz(6)];
         /* the podium the stalagmite rose from (a blocker 1.6 m high: the board's centre), the rock, the crystal grown up through it: upright
            hexagonal prisms, lit from inside (the shelf's big light hangs in it: `suns`) */
-        ctx.feat({ k: 'plateau', id: 'aga:greatcrystal', x: gc6[0], z: gc6[1], w: 3.5, d: 3.5, h: 1.6, edge: 0.1, key: 'marble_light' });   // (a plateau's h is over the ground here: the room's floor is the height sheet)
+        ctx.feat({ k: 'plateau', id: 'aga:greatcrystal', x: gc6[0], z: gc6[1], w: 3.5, d: 3.5, h: 1.6, edge: 0.1, key: MARBLE });   // (a plateau's h is over the ground here: the room's floor is the height sheet)
         look('greatcrystal', gc6[0], gc6[1], 0, F0, a => {
             a.box(0, 1.6, 0, 3.9, 0.18, 3.9, MARBLE, WHITE);   // the podium's cap (the plateau is its block)
-            a.cone(0, 1.75, 0, 1.6, 0.6, 4.2, 'cave_wall', 0x6a625a); a.cone(0.95, 1.75, -0.7, 0.7, 0.12, 2.6, 'cave_wall', 0x5e574f);
-            const prism = (x, z, r, h, y0, tint, glow) => { a.P.push({ s: 'cyl', p: [x, y0, z], r, h, seg: 6, key: 'crystal', tint, glow }, { s: 'cyl', p: [x, r2(y0 + h), z], r, r2: 0.04, h: r2(r * 2.1), seg: 6, key: 'crystal', tint, glow }); };
+            a.cone(0, 1.75, 0, 1.6, 0.6, 4.2, 'hz_stone_02', 0x6a625a); a.cone(0.95, 1.75, -0.7, 0.7, 0.12, 2.6, 'hz_stone_02', 0x5e574f);
+            const prism = (x, z, r, h, y0, tint, glow) => { a.P.push({ s: 'cyl', p: [x, y0, z], r, h, seg: 6, key: CRYSTAL, tint, glow }, { s: 'cyl', p: [x, r2(y0 + h), z], r, r2: 0.04, h: r2(r * 2.1), seg: 6, key: CRYSTAL, tint, glow }); };
             prism(0, 0, 1.15, 8.6, 2.6, 0xd2f6ff, 1.7);
             prism(1.25, 0.55, 0.55, 4.6, 2.2, 0xb8ecff, 1.4);
             prism(-1.05, -0.75, 0.62, 5.8, 2.4, 0xc8e8ff, 1.4);
@@ -109,20 +109,20 @@ module.exports = {
         if (bt) { taken.add('2:9'); counters.push(Object.assign({}, bt, { x: gcx(2), z: gcz(9) })); }
 
         /* ── THE HALL OF RECORDS (10..14 x 2..6, door south): one hall of white marble ── */
-        const hall = building('hall', [10, 2, 14, 6], 'S', 7, { leaf: 'leaf_frosted', leafDouble: true, keyIn: 'marble_light', floorIn: 'marble_2' }, (a, fw, fd, door) => {
+        const hall = building('hall', [10, 2, 14, 6], 'S', 7, { leaf: 'leaf_frosted', leafDouble: true, keyIn: 'hz_wall_01', floorIn: 'hz_stone_12' }, (a, fw, fd, door) => {
             a.box(0, -0.05, 0, fw + 0.8, 0.4, fd + 0.8, MARBLE, STONE);                 // the plinth
             a.shell(fw, 7, fd, MARBLE, WHITE, door, 3.5);
             /* THE FRONT: six pilasters, tall lit crystal windows between them (the records glow through), the door between the middle two */
             [-8.35, -5.6, -3.0, 3.0, 5.6, 8.35].forEach(lx => { a.box(lx, 0.35, fd / 2 + 0.2, 0.8, 6.65, 0.45, MARBLE, STONE); a.box(lx, 0.35, fd / 2 + 0.3, 1.0, 0.5, 0.6, MARBLE, WHITE); a.box(lx, 6.4, fd / 2 + 0.3, 1.0, 0.45, 0.6, MARBLE, WHITE); });
-            [-7.0, -4.3, 4.3, 7.0].forEach(lx => { a.box(lx, 1.2, fd / 2 + 0.06, 1.3, 4.2, 0.08, 'crystal', 0xa8e6ff, { glow: 0.8 }); a.box(lx, 5.55, fd / 2 + 0.12, 1.6, 0.3, 0.2, MARBLE, WHITE); });
+            [-7.0, -4.3, 4.3, 7.0].forEach(lx => { a.box(lx, 1.2, fd / 2 + 0.06, 1.3, 4.2, 0.08, CRYSTAL, 0xa8e6ff, { glow: 0.8 }); a.box(lx, 5.55, fd / 2 + 0.12, 1.6, 0.3, 0.2, MARBLE, WHITE); });
             /* the dome over the crown, the crystal on its top */
             a.P.push({ s: 'dome', p: [0, 9.05, 0], r: 4.2, h: 3.1, seg: 20, key: MARBLE, tint: WHITE });
             a.box(0, 9.05, 0, 9.0, 0.3, 9.0, MARBLE, STONE);
             a.box(0, 7.0, 0, fw + 1.0, 0.55, fd + 1.0, MARBLE, STONE);                  // the cornice
             a.box(0, 7.55, 0, fw - 1.2, 0.9, fd - 1.2, MARBLE, WHITE);                  // the attic
             a.box(0, 8.45, 0, fw - 4.2, 0.6, fd - 4.2, MARBLE, STONE);                  // the crown
-            a.cone(0, 12.0, 0, 0.9, 0.06, 3.0, 'crystal', 0xd8fbff, { glow: 1.4 });      // the crystal on the dome
-            a.box(0, 6.25, fd / 2 + 0.08, fw - 1.6, 0.26, 0.08, 'crystal', GLOW, { glow: 1.2 });   // the lit frieze
+            a.cone(0, 12.0, 0, 0.9, 0.06, 3.0, CRYSTAL, 0xd8fbff, { glow: 1.4 });      // the crystal on the dome
+            a.box(0, 6.25, fd / 2 + 0.08, fw - 1.6, 0.26, 0.08, CRYSTAL, GLOW, { glow: 1.2 });   // the lit frieze
             /* the portico: its roof on the two columns that stand on the forecourt (props), the steps under it */
             a.box(0, 6.55, fd / 2 + 1.75, fw - 0.4, 0.5, 3.5, MARBLE, WHITE);
             a.box(0, 7.05, fd / 2 + 1.75, fw - 0.2, 0.3, 3.7, MARBLE, STONE);
@@ -148,9 +148,9 @@ module.exports = {
             a.box(door.lx, 0, fd / 2 + 0.12, 2.6, 0.3, 0.5, MARBLE, WHITE);                       // the sill step
             [-1, 1].forEach(s => a.box(door.lx + s * 1.25, 0.3, fd / 2 + 0.14, 0.42, 2.7, 0.3, MARBLE, WHITE));   // the door's jambs
             a.box(door.lx, 3.0, fd / 2 + 0.14, 3.2, 0.5, 0.36, MARBLE, WHITE);                    // the lintel
-            a.box(door.lx, 3.56, fd / 2 + 0.2, 0.9, 0.5, 0.14, 'crystal', GLOW, { glow: 1.3 });   // a lit crystal set over the door
+            a.box(door.lx, 3.56, fd / 2 + 0.2, 0.9, 0.5, 0.14, CRYSTAL, GLOW, { glow: 1.3 });   // a lit crystal set over the door
             a.box(0, h - 0.4, fd / 2 + 0.1, fw - 0.6, 0.3, 0.24, MARBLE, WHITE);                  // the carved band under the rock
-            [-1, 1].forEach(s => { const lx = door.lx + s * 3.6; if (Math.abs(lx) < fw / 2 - 0.8) a.box(lx, 1.2, fd / 2 + 0.06, 1.2, 1.1, 0.06, 'crystal', 0x9fdcf0, { glow: 0.6 }); });   // two small lit windows
+            [-1, 1].forEach(s => { const lx = door.lx + s * 3.6; if (Math.abs(lx) < fw / 2 - 0.8) a.box(lx, 1.2, fd / 2 + 0.06, 1.2, 1.1, 0.06, CRYSTAL, 0x9fdcf0, { glow: 0.6 }); });   // two small lit windows
         };
         const west = building('home_w', [0, 4, 1, 7], 'E', 5.6, {}, (a, fw, fd, door) => front(a, fw, fd, door, 5.6));
         put(west, 'couples_bed', -4.2, -1.3, { face: 90 }); put(west, 'trestle_table', 2.2, -1.0, { face: 0 }); put(west, 'folding_chair', 2.2, 0.4, { face: 0 });
@@ -173,7 +173,7 @@ module.exports = {
         /* ══ PASS 2: THE TERRACES ══ */
         const FT = walkOf(30, 42), FG = walkOf(42, 42);
         /* THE MARBLE STAIR between the Plaza (125) and the Inner Gate (124): one flight three squares wide over the plan's ramp squares */
-        ctx.feat({ k: 'ramp', id: 'aga:terrace:stair', absY: true, x0: gx(38), z0: r2(gz(42) + 1.5 * C), x1: gx(36), z1: r2(gz(42) + 1.5 * C), w: 3 * C, h0: FG, h1: FT, stairs: true, built: true, key: 'marble_light', railing: 'glass', edge: 0.15 });
+        ctx.feat({ k: 'ramp', id: 'aga:terrace:stair', absY: true, x0: gx(38), z0: r2(gz(42) + 1.5 * C), x1: gx(36), z1: r2(gz(42) + 1.5 * C), w: 3 * C, h0: FG, h1: FT, stairs: true, built: true, key: MARBLE, railing: 'glass', edge: 0.15 });
         /* the houses cut in the rock, the Gatehouse */
         const hw2 = building('house_tw', [22, 38, 25, 41], 'E', 5.6, {}, (a, fw, fd, door) => front(a, fw, fd, door, 5.6));
         put(hw2, 'couples_bed', -3.6, -1.2, { face: 90 }); put(hw2, 'dorm_bed', -3.6, 1.4, { face: 90 }); put(hw2, 'trestle_table', 2.4, -1.2, { face: 0 }); put(hw2, 'folding_chair', 2.4, 0.1, { face: 0 });
@@ -185,8 +185,8 @@ module.exports = {
         put(gate, 'cot', -3.6, -0.6, { face: 90 }); put(gate, 'dojo_weapon_rack', 2.0, -1.2, { face: 180 }); put(gate, 'armour_stand', 4.0, -1.0, { face: 180 }); put(gate, 'trestle_table', -0.4, 0.4, { face: 0 });
         /* THE INNER GATE: two crystal-capped piers either side of the way down to the Long Tunnel (43..44 x 46..47) */
         look('innergate', gx(44), gz(46), 0, FG, a => {
-            [-1, 1].forEach(s => { a.box(s * 3.95, 0, 0.3, 1.2, 0.5, 1.2, MARBLE, STONE); a.box(s * 3.95, 0.5, 0.3, 0.9, 4.2, 0.9, MARBLE, WHITE); a.cone(s * 3.95, 4.7, 0.3, 0.55, 0.05, 1.8, 'crystal', 0xd8fbff, { glow: 1.4 }); });
-            a.box(0, 4.7, 0.3, 8.8, 0.5, 0.7, MARBLE, WHITE); a.box(0, 4.8, 0.66, 7.4, 0.14, 0.05, 'crystal', GLOW, { glow: 1.1 });
+            [-1, 1].forEach(s => { a.box(s * 3.95, 0, 0.3, 1.2, 0.5, 1.2, MARBLE, STONE); a.box(s * 3.95, 0.5, 0.3, 0.9, 4.2, 0.9, MARBLE, WHITE); a.cone(s * 3.95, 4.7, 0.3, 0.55, 0.05, 1.8, CRYSTAL, 0xd8fbff, { glow: 1.4 }); });
+            a.box(0, 4.7, 0.3, 8.8, 0.5, 0.7, MARBLE, WHITE); a.box(0, 4.8, 0.66, 7.4, 0.14, 0.05, CRYSTAL, GLOW, { glow: 1.1 });
             a.sign('THE LONG TUNNEL', 0, 3.75, 0.66, 4.6, 0.6, '#e8fbff', '#22323c', 'cinzel');
         });
         /* the Plaza: the old Plaza's fountain in the middle, its benches and garden rings round it */
@@ -199,32 +199,32 @@ module.exports = {
         /* ══ PASS 2: THE SPIRE ══ */
         const FS = walkOf(38, 2), FTm = walkOf(29, 7), sx = gx(SPIRE[0]), sz = gz(SPIRE[1]);
         /* the Spire's foot (a blocker on the island, a step of white marble), the Spire: crystal lit from inside, 36 m, the old room's habit grown */
-        ctx.feat({ k: 'plateau', id: 'aga:spire', x: sx, z: sz, w: 4.6, d: 4.6, h: 0.9, edge: 0.1, key: 'marble_light' });
+        ctx.feat({ k: 'plateau', id: 'aga:spire', x: sx, z: sz, w: 4.6, d: 4.6, h: 0.9, edge: 0.1, key: MARBLE });
         look('spire', sx, sz, 0, FS, a => {
             a.box(0, 0.9, 0, 5.0, 0.2, 5.0, MARBLE, WHITE);
-            a.P.push({ s: 'cyl', p: [0, 1.0, 0], r: 2.1, r2: 1.5, h: 10, seg: 6, key: 'crystal', tint: 0xe8fbff, glow: 1.3 },
-                     { s: 'cyl', p: [0, 11.0, 0], r: 1.5, r2: 0.12, h: 24, seg: 6, key: 'crystal', tint: 0xf0fdff, glow: 1.7 },
-                     { s: 'cyl', p: [1.7, 1.0, 1.0], r: 0.8, r2: 0.08, h: 9, seg: 5, key: 'crystal', tint: 0xa8e8ff, glow: 0.9 },
-                     { s: 'cyl', p: [-1.6, 1.0, -1.2], r: 0.9, r2: 0.08, h: 12, seg: 5, key: 'crystal', tint: 0xb8f0e8, glow: 0.9 },
-                     { s: 'cyl', p: [-0.9, 1.0, 1.8], r: 0.6, r2: 0.06, h: 6.5, seg: 5, key: 'crystal', tint: 0xc8d8ff, glow: 0.8 },
-                     { s: 'cyl', p: [1.2, 1.0, -1.7], r: 0.55, r2: 0.06, h: 5.5, seg: 5, key: 'crystal', tint: 0xd8f0ff, glow: 0.8 });
+            a.P.push({ s: 'cyl', p: [0, 1.0, 0], r: 2.1, r2: 1.5, h: 10, seg: 6, key: CRYSTAL, tint: 0xe8fbff, glow: 1.3 },
+                     { s: 'cyl', p: [0, 11.0, 0], r: 1.5, r2: 0.12, h: 24, seg: 6, key: CRYSTAL, tint: 0xf0fdff, glow: 1.7 },
+                     { s: 'cyl', p: [1.7, 1.0, 1.0], r: 0.8, r2: 0.08, h: 9, seg: 5, key: CRYSTAL, tint: 0xa8e8ff, glow: 0.9 },
+                     { s: 'cyl', p: [-1.6, 1.0, -1.2], r: 0.9, r2: 0.08, h: 12, seg: 5, key: CRYSTAL, tint: 0xb8f0e8, glow: 0.9 },
+                     { s: 'cyl', p: [-0.9, 1.0, 1.8], r: 0.6, r2: 0.06, h: 6.5, seg: 5, key: CRYSTAL, tint: 0xc8d8ff, glow: 0.8 },
+                     { s: 'cyl', p: [1.2, 1.0, -1.7], r: 0.55, r2: 0.06, h: 5.5, seg: 5, key: CRYSTAL, tint: 0xd8f0ff, glow: 0.8 });
         });
         /* the bridges' ends: a crystal post either side of each (THE CRYSTAL BRIDGES are the plan's `bridges`, written by the tool) */
         (ctx.PLAN.bridges || []).forEach(([p0, p1], i) => { const dx = Math.sign(p1[0] - p0[0]), dy = Math.sign(p1[1] - p0[1]), ox = dy ? 1.55 : 0, oz = dx ? 1.55 : 0;
             const cx = gx(p0[0]) + C / 2 + dx * (C / 2), cz = gz(p0[1]) + C / 2 + dy * (C / 2);
-            look('bridgeposts:' + i, cx, cz, 0, FS, a => { [-1, 1].forEach(s => { a.box(s * ox, 0, s * oz, 0.4, 1.1, 0.4, MARBLE, WHITE); a.cone(s * ox, 1.1, s * oz, 0.22, 0.03, 0.8, 'crystal', 0xd8fbff, { glow: 1.4 }); }); }); });
+            look('bridgeposts:' + i, cx, cz, 0, FS, a => { [-1, 1].forEach(s => { a.box(s * ox, 0, s * oz, 0.4, 1.1, 0.4, MARBLE, WHITE); a.cone(s * ox, 1.1, s * oz, 0.22, 0.03, 0.8, CRYSTAL, 0xd8fbff, { glow: 1.4 }); }); }); });
         /* the ring: columns at its corners, lanterns */
         [[38, 2], [45, 2], [38, 9], [45, 9]].forEach(([x, y]) => P('greek_column', x, y, { h: 6.5 }));
         /* THE TEMPLE (27..32 x 2..5, door south onto its court) */
-        const temple = building('temple', [27, 2, 32, 5], 'S', 7, { leaf: 'leaf_frosted', leafDouble: true, floorIn: 'marble_2' }, (a, fw, fd, door) => {
+        const temple = building('temple', [27, 2, 32, 5], 'S', 7, { leaf: 'leaf_frosted', leafDouble: true, floorIn: 'hz_stone_12' }, (a, fw, fd, door) => {
             a.box(0, -0.05, 0, fw + 0.8, 0.4, fd + 0.8, MARBLE, STONE);
             a.shell(fw, 7, fd, MARBLE, WHITE, door, 3.5);
             [-1, 1].forEach(sg => { for (let k = 0; k < 3; k++) { const lx = sg * (2.4 + k * 2.9); if (Math.abs(lx) > fw / 2 - 0.3) continue; a.box(lx, 0.35, fd / 2 + 0.25, 0.8, 6.65, 0.5, MARBLE, STONE); } });
             a.box(0, 7.0, 0, fw + 1.0, 0.5, fd + 1.0, MARBLE, STONE);
             /* a stepped crown, the temple's crystal on the top */
             [0, 1, 2].forEach(k => a.box(0, 7.5 + k * 0.6, 0, fw - 2 - k * 3.2, 0.6, fd - 2 - k * 3.2, MARBLE, k % 2 ? STONE : WHITE));
-            a.P.push({ s: 'cyl', p: [0, 9.3, 0], r: 0.9, r2: 0.05, h: 2.6, seg: 6, key: 'crystal', tint: 0xd8fbff, glow: 1.5 });
-            a.box(0, 6.2, fd / 2 + 0.08, fw - 1.6, 0.26, 0.08, 'crystal', GLOW, { glow: 1.2 });
+            a.P.push({ s: 'cyl', p: [0, 9.3, 0], r: 0.9, r2: 0.05, h: 2.6, seg: 6, key: CRYSTAL, tint: 0xd8fbff, glow: 1.5 });
+            a.box(0, 6.2, fd / 2 + 0.08, fw - 1.6, 0.26, 0.08, CRYSTAL, GLOW, { glow: 1.2 });
             a.box(door.lx, 0, fd / 2 + 0.55, 5.2, 0.18, 1.1, MARBLE, STONE);
             a.sign('THE TEMPLE', door.lx, 3.35, fd / 2 + 0.09, 4.4, 0.75, '#e8fbff', '#22323c', 'cinzel');
         });

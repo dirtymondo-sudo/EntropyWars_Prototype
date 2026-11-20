@@ -86,12 +86,12 @@ function building(id, rect, side, h, o, parts) {
     const fw = r2(ew ? wz1 - wz0 : wx1 - wx0), fd = r2(ew ? wx1 - wx0 : wz1 - wz0);
     const cx = r2((wx0 + wx1) / 2), cz = r2((wz0 + wz1) / 2), rot = ROT[side], base = walkOf(sx0, sy0);
     for (let y = sy0; y < sy1; y++) for (let x = sx0; x < sx1; x++) { if (!open(x, y) || walkOf(x, y) !== base) errs.push('building ' + id + ': square ' + x + ',' + y + ' is not open at its floor'); taken.add(x + ':' + y); }
-    const row = Object.assign({ k: 'texbuilding', id: 'aga:' + id, seed: 1, x: cx, z: cz, w: fw, d: fd, rot, storeys: Math.max(1, Math.floor(h / 3.5 + 0.01)), h, skin: false, hollow: true, leaf: 'leaf_frosted_single', leafDouble: false, keyIn: 'marble_light', floorIn: 'marble_light' }, o || {});
+    const row = Object.assign({ k: 'texbuilding', id: 'aga:' + id, seed: 1, x: cx, z: cz, w: fw, d: fd, rot, storeys: Math.max(1, Math.floor(h / 3.5 + 0.01)), h, skin: false, hollow: true, leaf: 'leaf_frosted_single', leafDouble: false, keyIn: 'hz_wall_01', floorIn: 'hz_stone_12' }, o || {});
     feat(row);
     const a = sheet(), door = texbDoor(fw, row.door); parts(a, fw, fd, door);
     /* THE LINING (Katana's insides): the hollow building's own walls draw dark from inside, so a lit lining stands 0.335 m inside them, with a
        lit ceiling under the building's own; `o.lining` = { key, tint, h } */
-    { const L0 = Object.assign({ key: 'marble_light', tint: 0xf0ede4, h: Math.min(h - 0.4, 6.4) }, o && o.lining), e = 0.335, W2 = r2(fw / 2 - e), D2 = r2(fd / 2 - e), Hc = r2(L0.h), lit = { gain: 1.6, glow: 0.2, uv: [1.75, 1.75], kind: 'wall' };
+    { const L0 = Object.assign({ key: 'hz_wall_01', tint: 0xf4f1ea, h: Math.min(h - 0.4, 6.4) }, o && o.lining), e = 0.335, W2 = r2(fw / 2 - e), D2 = r2(fd / 2 - e), Hc = r2(L0.h), lit = { gain: 1.6, glow: 0.2, uv: [1.75, 1.75], kind: 'wall' };
       a.P.push(Object.assign({ s: 'quad', p: [0, 0, -D2], size: [2 * W2, Hc], ry: 0, key: L0.key, tint: L0.tint }, lit), Object.assign({ s: 'quad', p: [0, 0, D2], size: [2 * W2, Hc], ry: 180, key: L0.key, tint: L0.tint, hole: [r2(-door.lx), r2(door.cw + 0.12), 2.25] }, lit),
           Object.assign({ s: 'quad', p: [-W2, 0, 0], size: [2 * D2, Hc], ry: 270, key: L0.key, tint: L0.tint }, lit), Object.assign({ s: 'quad', p: [W2, 0, 0], size: [2 * D2, Hc], ry: 90, key: L0.key, tint: L0.tint }, lit),
           { s: 'box', p: [0, r2(Hc - 0.05), 0], size: [2 * W2, 0.04, 2 * D2], key: L0.key, tint: L0.tint, glow: 0.3, gain: 1.6, under: true, roof: true, top: false, ds: true, uv: [1.75, 1.75] }); }
@@ -157,16 +157,16 @@ for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { const o = (y * W + x)
     [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]].forEach(([cx, cz], k) => { const v = (rp && open(x, y)) ? r2((Lv(x, y) - ZERO + (cx * rp[0] + cz * rp[1]) * 0.5) * LV - 0.15) : h; slope.writeInt16LE(Math.round(v * 100), o + k * 2); }); }
 
 /* ── THE ROOF: greedy rectangles of open squares under one roof height; each a slab of rock from its roof up to the crust, stalactites under ── */
-const ROCK = [0x5c554d, 0x524c45, 0x645c52, 0x4a453f], grnd = mkRnd(9137);
+const ROCK = [0xe4ded4, 0xd8d2c8, 0xece6dc, 0xd0cac0]   /* near white: the sheet's own colour shows */, grnd = mkRnd(9137);
 { const used = new Uint8Array(W * Hh);
   for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { const i = y * W + x; if (!open(x, y) || used[i]) continue; const r = ROOFY[i];
       let w = 1; while (x + w < W && open(x + w, y) && !used[i + w] && ROOFY[i + w] === r) w++;
       let h = 1; rows: while (y + h < Hh) { for (let k = 0; k < w; k++) { const j = (y + h) * W + x + k; if (!open(x + k, y + h) || used[j] || ROOFY[j] !== r) break rows; } h++; }
       for (let j = 0; j < h; j++) for (let k = 0; k < w; k++) used[(y + j) * W + x + k] = 1;
-      const ox = r2(gx(x) + w * C / 2), oz = r2(gz(y) + h * C / 2), parts = [{ s: 'box', p: [0, 0, 0], size: [r2(w * C + 0.02), r2(CRUST + 1 - r), r2(h * C + 0.02)], top: false, under: true, key: 'cave_wall', tint: 0x4a443e, uv: 7 }];
+      const ox = r2(gx(x) + w * C / 2), oz = r2(gz(y) + h * C / 2), parts = [{ s: 'box', p: [0, 0, 0], size: [r2(w * C + 0.02), r2(CRUST + 1 - r), r2(h * C + 0.02)], top: false, under: true, key: 'hz_stone_01', tint: 0xe8e4dc, uv: 7 }];
       const n = Math.min(10, Math.floor(w * h / 3));
       for (let k = 0; k < n; k++) { const len = r2(0.7 + grnd() * Math.min(2.6, Math.max(0.5, r - walkOf(x, y) - 3.2))), rr = r2(0.18 + grnd() * 0.35);
-          parts.push({ s: 'cyl', p: [r2((grnd() - 0.5) * (w * C - 1)), r2(-len), r2((grnd() - 0.5) * (h * C - 1))], r: 0.03, r2: rr, h: len, seg: 6, key: 'cave_wall', tint: ROCK[Math.floor(grnd() * ROCK.length)], uv: 3.5 }); }
+          parts.push({ s: 'cyl', p: [r2((grnd() - 0.5) * (w * C - 1)), r2(-len), r2((grnd() - 0.5) * (h * C - 1))], r: 0.03, r2: rr, h: len, seg: 6, key: 'hz_stone_02', tint: ROCK[Math.floor(grnd() * ROCK.length)], uv: 3.5 }); }
       ARCH.push({ k: 'arch', id: 'aga:roof:' + x + '_' + y, x: ox, z: oz, rot: 0, base: r, parts }); count.roofs = (count.roofs || 0) + 1; } }
 
 /* ── THE LADDERS (the plan's `stairs`: a ladder up the face, both ways) and THE ROPES (the plan's `found` free climbs: an old fixed rope) ── */
@@ -203,9 +203,13 @@ const spaces = [];
       spaces.push({ k: 'space', x: r2(gx(x) + w * C / 2), z: r2(gz(y) + h * C / 2), w: w * C, d: h * C }); } }
 
 /* ── THE PAINT: 0 = the cave floor; the design file's squares (marble, crystal, the adit's dirt) ── */
-const PAL = ['marble_light', 'crystal', 'dirt_2', 'dungeon_2', 'obsidian', 'rocks_dark_fantasy', 'wood_planks', 'marble_2'];
+/* THE UNDERGROUND'S ONE PALETTE (mondo 11-20: "don't use the calm textures, use from the urban decay or horror pack"; "use these textures too to match"):
+   the raw rock is the Cavern's (hz_stone_01 walls + roof, hz_stone_02 floor, hz_stone_10 hot / cliff rock, hz_floor_03 mud, hz_stone_06 mineral);
+   the city's built surfaces keep their own non-calm sheets (hz_wall_01 cream stone for the marble, hz_stone_12 pale grey, hz_misc_05 crystal) */
+const PAL = ['hz_wall_01', 'hz_misc_05', 'hz_floor_03', 'hz_stone_02', 'hz_stone_10', 'hz_stone_06', 'hz_stone_01', 'hz_stone_12'];
+const PAINT_OF = { marble_light: 'hz_wall_01', crystal: 'hz_misc_05', dirt_2: 'hz_floor_03', rocks_dark_fantasy: 'hz_stone_06', obsidian: 'hz_stone_01', marble_2: 'hz_stone_12' };
 const paint = new Uint8Array(W * Hh);
-PAINT.forEach((key, i) => { const v = PAL.indexOf(key); if (v < 0) throw new Error('a paint the palette does not hold: ' + key); paint[i] = v + 1; });
+PAINT.forEach((key0, i) => { const key = PAINT_OF[key0] || key0, v = PAL.indexOf(key); if (v < 0) throw new Error('a paint the palette does not hold: ' + key); paint[i] = v + 1; });
 
 /* ── checks: every prop key and unit exists; nothing stands in the rock; every open square of the plan is walked from the spawn with the
    ladders, the ropes and the drops (the plan tool's own walk, here on the baked floor) ── */
@@ -246,7 +250,7 @@ L.push("            label: 'AGARTHA',");
 L.push("            sub: 'THE CRYSTAL CITY · THE LEMURIA ADIT · THE UPPER SHELF · THE LABYRINTH',");
 L.push("            kind: 'box', site: '" + SITE + "', part: '" + PART + "',");
 L.push("            shell: { w: " + (2 * HX) + ", d: " + (2 * HZ) + ", h: " + SH + ", wallH: " + SH + ", dadoH: 1.1, open: false,");
-L.push("                     floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_2', ceiling: 'cave_wall', floorColor: 0x8a8278, wallColor: 0x6e675e, dadoColor: 0x585048, ceilColor: 0x2a2622,");
+L.push("                     floor: 'hz_stone_02', wall: 'hz_stone_01', dado: 'hz_stone_02', trim: 'hz_stone_01', ceiling: 'hz_stone_01', floorColor: 0x8a8278, wallColor: 0x6e675e, dadoColor: 0x585048, ceilColor: 0x2a2622,");
 L.push("                     pipes: false, strips: false, lights: [], mood: { light: 0xbfe6ff, ambient: " + (DESIGN.ambient != null ? DESIGN.ambient : 0.16) + ", hero: false }, plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: " + r2(walkOf(SP[0], SP[1]) + 4.2) + " },");
 L.push("                     look: HQ_ROOM_LOOKS.cave,");
 L.push("                     /* THE BIG LIGHTS (three-renderer.js _hqBoxRoomLamps): the city's crystals */");
@@ -255,7 +259,7 @@ L.push("            parti: '" + String(DESIGN.parti || '').replace(/'/g, "\\'") 
 L.push("            typology: 'grid',");
 L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + (W / N) + ", nz: " + (Hh / N) + ", names: " + J(B.PLOTS.map(p => ['P0' + p.bx + '-0' + p.by, (DESIGN.plotNames || {})[p.bx + ',' + p.by] || p.name, p.d, p.level - ZERO])) + " },");
 L.push("            terrain: {");
-L.push("                res: 0.875, floor: 'cave_floor', cliff: 'rocks_5', path: 'dirt_2',");
+L.push("                res: 0.875, floor: 'hz_stone_02', cliff: 'hz_stone_01', path: 'hz_floor_03',");
 L.push("                noise: { amp: 0, scale: 5 }, crag: false, stalactites: false, backdrop: false,");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + Hh + ", d: '" + slope.toString('base64') + "' } },");
 L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gcx(0) + ", z0: " + gcz(0) + ", nx: " + W + ", nz: " + Hh + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
