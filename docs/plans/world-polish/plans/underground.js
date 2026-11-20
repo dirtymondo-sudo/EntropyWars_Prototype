@@ -1,5 +1,5 @@
 /* THE WHOLE UNDERGROUND: THE LAYOUT OF EVERY DISTRICT AS ONE LABYRINTH (threads 7, 9, 10). A LAYOUT, plot by plot: not yet square by square.
-   A PROPOSAL: nothing is built from it until mondo says so.
+   APPROVED by mondo 2026-11-20 ("Yes this is good, go ahead and start individual threads"). Nothing is built from it yet.
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/underground.js
    mondo 2026-11-20: "The entire underground needs to be like a labyrinth. Make the layout for the entire underground, all districts",
    and on the tunnels: "Does it have to be so long? 10 rows?". And before: "we need victory road. labyrinth, height diffs, cliffs, drops
@@ -25,9 +25,10 @@
 'use strict';
 const DUMB = 'the D.U.M.B. is thread 8\'s: its own plan; shown as a block with its join to the Sewers (its deeper joins are decided by its own plan)';
 module.exports = {
+    approved: 'mondo 2026-11-20: "Yes this is good, go ahead and start individual threads"',
     zone: 'The Underground (all districts)', thread: '7 + 9 + 10', maze: true,
     schematic: 'A LAYOUT: one plot = 3 x 3 boxes (not battle squares). The number is the LEVEL (1 level = 1.75 m) ABOVE THE INNER SUN: the Sewers under the city are 144 (252 m up), the Inner Sun is 0. ORANGE BAR = a climb, both ways (ladder, stair). WHITE BAR with a tooth = a cliff or a waterfall, DOWN only. Orange dots = the ways in from the surface and from Hell. Each district is entered at its top and goes down as you go in. A PROPOSAL.',
-    title: 'THE WHOLE UNDERGROUND: every district as one labyrinth, 252 m deep, from the Sewers (144) down to the Inner Sun (0) (a proposal)',
+    title: 'THE WHOLE UNDERGROUND: every district as one labyrinth, 252 m deep, from the Sewers (144) down to the Inner Sun (0)',
     noBuildings: 'a layout', mass: 'rock', massHeight: 6,
     tiles: { s: ['The Sewers', true, [30, 70, 50], [170, 235, 190]], c: ['The Catacombs', true, [80, 70, 50], [236, 222, 186]], a: ['Agartha', true, [60, 40, 90], [214, 180, 255]], t: ['The Tunnel-Way', true, [90, 60, 20], [255, 214, 150]], l: ['The Long Tunnel', true, [70, 56, 40], [226, 200, 160]], e: ['The West Tunnel', true, [30, 60, 90], [180, 220, 255]], v: ['The Cavern', true, [90, 40, 24], [255, 190, 160]], h: ['Hollow Earth', true, [90, 80, 10], [255, 240, 150]], d: ['The D.U.M.B. (its own plan)', true, [90,96,104],[150,156,164]] },
     grid: { w: 54, h: 45, n: 3 }, start: [40, 1],

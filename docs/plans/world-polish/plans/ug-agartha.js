@@ -1,16 +1,18 @@
 /* THE UNDERGROUND, AGARTHA, SQUARE BY SQUARE: drawn from the whole-underground layout (plans/underground.js, mondo's OK of its shape 11-20).
-   A PROPOSAL: nothing is built from it until mondo says so. WRITTEN BY docs/plans/world-polish/underground/gen-district.py A: change the
+   APPROVED by mondo 2026-11-20 ("Yes this is good, go ahead and start individual threads"). Nothing is built from it yet. WRITTEN BY docs/plans/world-polish/underground/gen-district.py A: change the
    layout or the script, not this file.
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/ug-agartha.js
    A LABYRINTH (mondo 11-20: "we need victory road. labyrinth, height diffs, cliffs, drops waterfalls, underground horror like the descent movie").
    Every plot is a JUNCTION (4 x 4) or a CHAMBER (8 x 8, a board fits) at its own level. Passages are 2 squares wide and bend at every plot line.
    An ORANGE BAR is a ladder (both ways); the tallest here is 3 levels. A WHITE BAR with a tooth is a CLIFF or a WATERFALL (down only). Most
    junctions have a PIT two levels down with its own ladder, and something in it. Levels are above the Inner Sun (1.75 m each); this district
-   runs from 134 down to 112. It is ROOFED and DARK: the closed squares are rock. */
+   runs from 134 down to 112. It is ROOFED and DARK: the closed squares are rock. No underground river for now (mondo 11-20: "No real underground
+   waterfall for now"): the FALL marks are cliffs with water running down them, not a river. */
 'use strict';
 module.exports = {
+    approved: 'mondo 2026-11-20: "Yes this is good, go ahead and start individual threads"',
     zone: 'The Underground', thread: '7 + 9 + 10', maze: true,
-    title: 'THE UNDERGROUND, AGARTHA: the labyrinth square by square, levels 134 to 112 (a proposal)',
+    title: 'THE UNDERGROUND, AGARTHA: the labyrinth square by square, levels 134 to 112',
     noBuildings: 'a cave: its chambers are the architecture', newRoom: 'a new compact room for this district (the layout replaces the long corridors)',
     build: { frame: 'room', file: 'a new room design for this district, in the room\'s own frame' },
     mass: 'rock', massHeight: 6,
