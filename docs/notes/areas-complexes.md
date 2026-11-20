@@ -13742,6 +13742,47 @@ into, lit by its crystals, with the dark maze round it".
 - **THE READING (step 1b):** `docs/plans/world-polish/thread9-agartha/fits-part1..4.md` (the model list in three parts + the live data).
   NEEDS A MODEL (none in the game): stalactite / stalagmite pieces (code cones today), a creature nest / eggs, a geode, mine timber
   supports (drawn as arch boxes), a white marble balustrade (drawn), a crystal throne, a dead caver in a helmet and harness.
+## THE UNDERGROUND, THE TUNNEL-WAY — world polish threads 7 + 9 + 10, the Tunnel-Way's build thread, THE PILOT (2026-11-20, owner side)
+mondo 11-20: "This should be the most dungeon and labyrinth like ... we need victory road. labyrinth, height diffs, cliffs, drops waterfalls,
+underground horror like the descent movie"; the layout `docs/plans/world-polish/plans/underground.js` and the square plan `plans/ug-tunnel-way.js`
+APPROVED 11-20 ("Yes this is good, go ahead and start individual threads"; "No real underground waterfall for now").
+- **THE ROOM:** `site_prebuilt_hollow_earth_ow_tunnelway`, now ONE COMPACT LABYRINTH, 5 x 5 plots (60 x 60 squares, 210 m), world -8..-4 x 1..5
+  (plot 1,1 = the shaft = world -7,2, under Dead Man's Cave's Tunnel Way). It REPLACES the long corridor room bake-cavern.js wrote under the same id
+  (the old Tunnel-Way Tunnel + the Cells Tunnel + the Bone Passage, 34 plots of corridor). THE ID IS KEPT, so every door, link and zone list that names
+  it lands in the new room with no other file edited: the Catacombs' `ow_v_m7_m4`, the Sewers' guardroom `ow_v_1_1`, the Cavern's `ow_v_m8_9` (thread 9's NEW Cavern room
+  `site_prebuilt_hollow_earth_ug_cavern` comes in at it; this room's south door leads there, at `ug_cavern_tunnelway`), the ladder from Dead Man's Cave (`DOOR_HQ.links` `tunnelway_cavern`, end b re-pointed by hand; the tool checks it). NOT kept: the OLD Cavern room's second door
+  into it, `ow_h_m4_10`, lands at the room's spawn (the layout has one join to the Cavern). NEW: the west door
+  `ug_tw_long` to the Long Tunnel (`site_prebuilt_hollow_earth_ow_long`, the door id its thread gives its end).
+- **THE TOOL:** `node bake-ug-tunnelway.js [--dry-run]` (`UGT_DUMP=1` prints the walked map), between UG-TUNNELWAY-BEGIN / -END in data.js, right after
+  CAVERN36-END. It reads the plan THROUGH `draw-plan.js build` (and refuses a plan that fails its check), so the room is the plan square for square:
+  open squares at `(level - 114) x 1.75 m` on a height sheet (`terrain.slope.cells`; 114 = the lowest pit = the room's 0, the top 130 = 28 m); a closed
+  square is THE ROCK, raised in the sheet to its roof (and 4 m over any floor beside it); THE ROOF = `arch` boxes from 4.2 m over the plot's highest
+  floor up to the room's top, a chamber's hall (the plan's 8 x 8 flat) 7 m; stalactites hung from them. The plan's `stairs` = `climb` rows (a timber
+  ladder; out of a pit a rope); its FOUND ways = a rock chimney (`look: 'wall'`) on the passage's other square beside each ladder, and a free climb up
+  each cliff. `w` = a shallow SUMP (0.55 m under the floor beside it, you step in and out), drips over it (an air zone). The walk check: every floor
+  square is reached from the spawn AND walks back to it (ledges down only, climbs both ways), blockers counted. Checked before the browser through
+  load-data.js: hqTerrainFeet on all 1,380 open squares = the plan's level (worst 5 cm), 49 climbs registered.
+- **TWO TOOLS, ONE JOB:** this tool was written beside thread 9's shared `bake-ug.js` (same day, neither saw the other); they do the same thing
+  (the plan through draw-plan.js, a height sheet, ladders, roofs). The Tunnel-Way can move onto `bake-ug.js` as a ROOMS row + a design file later.
+- **bake-cavern.js:** its ROOMS row `T` is `skip: true` (still worked out for the Cavern's own seam doors, never written), and it no longer checks
+  the link's end b.
+- **WHAT STANDS IN IT:** `docs/areas/underground/tunnel-way/room.js` (`names`, `palette` + `paint`, `dress(a)`, `airZones`, the spawn), in room squares.
+  THE PILOT dresses THE NORTH THIRD (squares y < 24): THE OSSUARY GATE (chamber 2,0, the Catacombs' join: cut-stone floor, skulls packed along the
+  walls, skull heaps, a candle ring, an altar, the district's two warm torches), THE BONE PASSAGE south of it (bones the whole way), THE NEST (chamber
+  1,0: flesh floor, black blobs, goo tendrils, wrapped dead, a dream eye, one red nightmare bloom as its only light, spores), THE WEEPING HALL (0,0:
+  the sump, glowcaps, the SQUEEZE east of it: a boulder and the rock down to stooping height, hung with teeth; THE CRAWL in 3,1/4,1 is the second),
+  THE SHAFT (1,1: the last party's rope and pack, one torch), THE OLD CAMP in its pit (2,1: a sleeping bag with a body in it, a cold fire ring, a
+  radio, a pick, a lit candle that should not be), THE CRYSTAL POCKET (4,1), THE LOW HALL, THE COLD HALL, THE BLACK SUMP. The rest stands as the bare
+  skeleton with one unlit torch a chamber. Lights: the pilot holds every real light. Seen on screen (probe, 11-20): the Gate, the Bone Passage, the
+  Nest, the camp pit, the shaft, the squeeze, the crystal pocket.
+- **LEARNED:** a prop pushed more than ~0.6 m toward a rock square climbs the wall's face (the sheet's face falls in the open square's last lattice
+  cell): `atWall` pushes 0.5. The Meshy `femur` stands upright (it reads as a stake): not used. The probe's `face` is not the picture's heading in
+  this room (the HUD's `deg` is): judge a view by the picture. The link `tunnelway_cavern` wears `way: 'well'`, so its foot here is a stone well
+  ring (the Woods' end shares the look; not changed).
+- **NEXT (after mondo's word on the pilot):** the middle third (the Great Chamber + its stalagmite landmark and lookout, the Long Tunnel's join, the
+  Cells Tunnel to the Sewers, the crystal and squeeze pits) and the south third (the nests and bone pits, the sump of black water, the secret, the way
+  down to the Cavern), then the lights shared out over the whole room.
+
 ## THE UNDERGROUND, ONE DISTRICT A ROOM — the Cavern rebuilt from its plan (2026-11-20, world polish thread 9; tool `bake-ug.js`, design `docs/areas/cavern/districts/K-room.js`)
 
 mondo 11-20: "This is the CAVERN. The UNDERGROUND. With HOLLOW EARTH and a passage to HELL. The most Cavernous cave to ever exist"; "we need
@@ -13786,3 +13827,48 @@ then it is retired and the new rooms get their `world` places (none yet: it woul
 **NOT in the plan, so not here:** the D.U.M.B.'s blast door (`cave_dumb`), the Oubliette's portcullis to the Sewers (`workings_oubliette`),
 DOOR HQ's hidden cell door, the cellar well (`well_cellar`): they stay on the old room until the Sewers / D.U.M.B. threads and mondo say where
 they land in the labyrinth.
+**THE SHEETS (2026-11-20, mondo: "don't use the calm textures, use from the urban decay or horror pack").** The cave keys (`cave_floor`,
+`cave_wall`, `rocks_5`, `obsidian`, `crystal`, `dirt_2`) all wear CALM sheets (data.js CALM_TERRAIN: calm_cavefloor, calm_darkrock, calm_rock ...).
+A design file now names every surface itself (`room.tex` in bake-ug.js: floor, wall, dado, trim, ceiling, cliff, path, genWall, roof,
+stalactite; the defaults are the old calm keys, so a new district must set its own). The Cavern: rock + roof `hz_stone_01` (black, cracked),
+floor `hz_stone_02` (dark cracked; `hz_stone_08` was tried first: too pale and sandy), ledge faces + the hot rock `hz_stone_10`, boulders
+`hz_stone_02`, the Needle `hz_stone_07`, mud in the pits and the camp `hz_floor_03`, mineral stone in the crystal pockets `hz_stone_06`. Rock
+tints are near white so a sheet's own colour shows. The room is in ZONE_LOOKS.cavern for its stains only (byRoom: drips, dirt, grime, a little blood).
+
+## THE UNDERGROUND, ONE ROOM A DISTRICT: THE LONG TUNNEL (2026-11-20, world polish threads 7 + 9 + 10; the thread for the Long + West Tunnels)
+
+mondo 11-20: "This should be the most dungeon and labyrinth like ... we need victory road. labyrinth, height diffs, cliffs, drops waterfalls,
+underground horror like the descent movie"; the square plans approved ("Yes this is good, go ahead and start individual threads").
+- **THE TOOL** `bake-underground.js <design>` (repo root, repo-only): one room a district, from its approved square plan
+  (`docs/plans/world-polish/plans/ug-<name>.js`, read through draw-plan.js's own `build` + `check`; a FAIL stops it) and a room design
+  `docs/areas/underground/<name>.js` (id, names, doors, light, paint, `air`, `dress(ctx)`). Ground = `terrain.slope.cells`, every open square flat
+  at its level (1.75 m a level; the room's 0 = its lowest square); two squares a level apart = a ledge (`rocks_5` face). The plan's `stairs` =
+  `climb` ladders on the plot line, facing the high side, `y0` / `y1` given. `w` runs = black sumps (`deep_water`, 0.45 m under the rim, never
+  entered; the stream's line runs square middle to square middle, else the game's square water takes the next square too). A WATERFALL drop
+  = one `fall` row on its lip (two squares wide when both lanes drop). The roof: one `arch` row a plot, boxes from each square's roof line (the
+  highest floor beside it + 5.25 m; a chamber's middle vaults 1.75 m a square in, up to 3) to the crust, stalactites hung from it. After the
+  write it reloads data.js and reads `hqTerrainFeet` on every open square: a square off its level fails the bake (a waded pool is skipped).
+  A walk check refuses blockers that cut the plan's walk (a squeeze may narrow a passage to one square). Ten lights at most.
+  (Thread 9 wrote a sibling tool the same day, `bake-ug.js`, with the same rules; either serves.)
+- **THE ROOM** `site_prebuilt_hollow_earth_ug_long` (site `prebuilt_hollow_earth`, part `ug_long`): 3 x 5 plots (36 x 60 squares), levels 101
+  to 116 of the underground's layout (26.25 m of relief), world -16..-14 x -8..-4 (under layer). Replaces `site_prebuilt_hollow_earth_ow_long`
+  (the ten-plot corridor, retired to it in `DOOR_HQ.retired`; the zone, clock, flora, look and NPC lists name the new id). `bake-cavern.js`:
+  its ROOMS row L and two SEAMS rows are gone; two OUTER rows send the West Tunnel's north door (`ow_h_m15_2`) and Agartha's south door
+  (`ow_h_m15_m8`) to the new room; its east door `ug_tw_long` pairs with the Tunnel-Way's labyrinth (bake-ug-tunnelway.js, its W door re-pointed here).
+- **THE PLACES** (plot names): the Great Chamber (Agartha's way in, the stalagmite landmark, a torch at the mouth, blocks fallen from the
+  vault, bats), the Bone Pit (skull piles in the pit; at the dead end the first caver, his pack, his notes), the Squeeze (two boulders narrow
+  the way to one square, twice; the pit beside it goes nowhere; the team's camera at the dead end), the Black Pool (a drowned caver, a rope
+  into the sump, an eel), the Crossing (the team's cairn), the East Hall (an older mine from the Tunnel-Way: cart, crates, a torch at the
+  side passage), the Nest (dead brush, black egg sacs, bones, meat, webs, glowcaps; a caver and his radio at the dead end; the antpeople live
+  here: `HQ_NPC_PLACES` `@L:Nest`), the Old Camp (the lost team's last camp: a dying fire, the tent, bags, food, a flare gun; in its pit a
+  stretcher and a grave), the Drip Chamber (rain off its roof, a caver under a skin of flowstone), the Sump Hall (an anglerfish's lure in
+  the black water), the Falls (the rope fixed at the lip), the Black Sump (its pit under wading black water), the Crystal Pocket (the one clean
+  light; a digger at the dead end), the Low Hall (the falls' foot: the one who fell, his flare still burning; the way down to the West
+  Tunnel), the Last Chamber (the crawlers' den: meat floor, skull piles, egg sacs, the antpeople's second place).
+- **LIGHT:** ambient 0.14, six lights: three torches (the mouths), the camp's fire, the crystals, the flare (`light_glow`). Glowcaps glow
+  without a light. Paint: chambers the cave floor, passages `dirt_2`, pits `rubble_3`, the pocket `crystal`, the nest's pit and the den `flesh_2`.
+- **NOT DONE / NEEDS:** no sound (an explored room plays no bed; `ambCavern` plays only in a fight; none may be generated); the waterfall
+  sheet reads bright blue in the dark; the halloween `hw_stone*` are HEADSTONES (not rocks) and `dinosaur_skeleton` stands on a museum
+  plinth: neither is used. NEEDS A MODEL (from the FITS read): a caving helmet with a lamp, a dead caver in caving gear, a fixed rope and a
+  wire ladder, a camcorder and glow sticks, eggs and a nest mound, light loose bones, stalactite / stalagmite models, a boulder choke, a pale
+  blind crawler, hanging bats; claw-mark and spray-arrow decal sheets; a black water look.
