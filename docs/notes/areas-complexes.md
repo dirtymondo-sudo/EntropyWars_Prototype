@@ -8104,6 +8104,14 @@ scientist labs, Lockheed Martin skunkworks, scientific and psychic research, etc
   y 66..71) has the jet, the saucer, the black triangle and a workshop, two stairs down from the platform, a pier out over the floor (its end a
   ledge) and a gap in the rail (a ledge); THE MOTOR POOL (P05-05, level 6) is a lower deck down a car ramp (Room 555's freight lift lands on it).
   The tunnel's squares over both are plateaus back at 14. FOUND: `nacelle` is huge (it stood into the pier); `saucer_big` swallows a camera 8 m off.
+- **THE RING BUILT (2026-11-20, `K.js` build, `P.js` gantries()):** every K plot is level 6 now (10.5 m), two levels under Level P3, so the tram
+  tunnel crosses the ring on two BRIDGES (the gantry plots are level 6 too; their tunnel squares are plateaus at 14, a deck over the ring band,
+  a stair down beside each). THE BEAM PIPE IS SOLID (a ghost wall 1.5 m high on every pipe square): STEEL CROSSOVERS (a stair up, a deck over the
+  pipe at +1.75, a stair down) reach the far side: the Control Room (a step up to 12.25, a window on the ring; its floor overlaps the crossover
+  deck 0.5 m, or the walk check fails at the seam), the Blast Door, the Beam Dump and seven outer alcoves. ONE ALCOVE OFF EACH PLAIN PLOT (14,
+  plain labels mine: MAGNET TEST, CABLE VAULT, MONITORING, COOLING, RAD STORE, LOCKERS, SURVEY, BREAK ROOM, SPARES, PUMPS, WORKSHOP, HELIUM, BACKUP
+  CONTROL, FIRST AID). THE DETECTOR HALL is a pit at 5.25 under the ring's catwalk (a stair down, a ladder out, a rail gap = a ledge); the detector
+  is `dockring` + two coils + the orb. The beam stays level and straight on purpose (a collider). Level P3, Command and Research are unchanged by it.
 - **NO `TileGeneric2b` (mondo 11-20: "tilegeneric2b is the one I don't want", the floor that looks like broken tiles):** Research's room floor is
   `urban:TileGeneric1a` now (bake-dumb.js FLOORS). Never give a D.U.M.B. floor that sheet again.
 - **NEEDS A MODEL (found nowhere; shown to mondo 11-20):** a tarp / a tarp-covered aircraft · a black stealth aircraft (flying wing) · a blast
