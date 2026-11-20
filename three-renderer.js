@@ -34,7 +34,7 @@ const ThreeRenderer = (function () {
             'EW_ANIM_LIB_STANDARD_POSE EW_ANIM_LIB_URLS EW_AO_AT_ZERO EW_ARCH_BARE EW_ASYNC_NODE_BUILD EW_BARE_PANES EW_BATTLE_MW_EVERY_RENDER EW_BOARD_FOG_MS ' +
             'EW_BUN_ADD_ALL EW_BUN_CHECK_EVERY EW_BUN_DRY EW_BUN_FIELD_CHECK_EVERY EW_BUN_FIRSTS_EACH EW_BUN_FULL_REFRESH EW_BUN_HASH_MATRICES EW_BUN_HELD_EVERY ' +
             'EW_BUN_HELD_NO_SHARED EW_BUN_INST_NO_REST EW_BUN_NO_OUT EW_BUN_OUT_HIDE_HASH EW_BUN_OUT_RETURN_ALWAYS EW_BUN_QUIET_LOOP EW_BUN_REST_AT_5 ' +
-            'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_PT_LIVE_STEADY EW_BUN_LAMPS_ONE EW_BUN_TARGETS_EVERY EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
+            'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_PT_LIVE_STEADY EW_PT_LIVE_COPY EW_BUN_LAMPS_ONE EW_BUN_TARGETS_EVERY EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
             'EW_CC_NO_DETAILS EW_CC_NO_HEMS EW_CLOTH_COLLIDE EW_CSS2D_ALWAYS EW_CSS_PLATES EW_CUBE_NO_ANIM EW_CV_LIT_BAKES EW_DEATH_CAM_ALL_UNITS EW_DESK_OFF ' +
             'EW_DIP_OFF EW_DISABLE_3D_UNITS EW_DISABLE_ANIM_LIB EW_DISABLE_BOOT_FIT EW_DISABLE_CANOPY_CUTAWAY EW_DISABLE_CLOTH_COLLIDE EW_DISABLE_COAT_FIT ' +
             'EW_DISABLE_FACE_IDLE EW_DISABLE_GRASS_WIND EW_DISABLE_GRAVESTONES EW_DISABLE_JIGGLE EW_DISABLE_POWER_AURA EW_DISABLE_RIPPLE EW_DISABLE_SHADOW_GATING ' +
@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-20 portraits-aside';
+    var _EW_TR_STAMP = '11-20 portraits-no-wait';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -68967,6 +68967,7 @@ const ThreeRenderer = (function () {
         }, 30000);
     }
     function _ptDrop(S) {
+        try { if (S && S.rb && _pt && _pt.renderer) _ptReadFree(_pt.renderer.getContext(), S); } catch (e) {}   // THE PORTRAIT WITHOUT THE WAIT: its buffer on the card
         var P = _pt;
         S.dead = true;
         if (S.timer) { clearTimeout(S.timer); S.timer = 0; }
@@ -69167,6 +69168,58 @@ const ThreeRenderer = (function () {
         var own = spec.look ? _ptOwnKey() : null;
         return (own && spec.key.slice(-own.length) === own) ? spec : null;
     }
+    /* THE PORTRAIT WITHOUT THE WAIT: ask (pixels into a pack buffer + a fence), take (a frame later, once the fence is passed), free */
+    function _ptReadAsk(gl, S, w, h) {
+        try {
+            var R = S.rb || (S.rb = { buf: null, n: 0, sync: null, w: 0, h: 0, px: null, img: null, cv: null, g: null });
+            if (!R.buf) R.buf = gl.createBuffer();
+            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, R.buf);
+            if (R.n !== w * h * 4) { R.n = w * h * 4; gl.bufferData(gl.PIXEL_PACK_BUFFER, R.n, gl.STREAM_READ); }
+            gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+            R.sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); R.w = w; R.h = h; R.at = performance.now();
+            gl.flush();
+            return !!R.sync;
+        } catch (e) { try { gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null); } catch (x) {} _ptReadFree(gl, S); return false; }
+    }
+    function _ptReadTake(gl, S) {
+        var R = S.rb, st = gl.clientWaitSync(R.sync, 0, 0);
+        if (st === gl.TIMEOUT_EXPIRED) { if (performance.now() - R.at > 2000) { gl.deleteSync(R.sync); R.sync = null; } return; }   // not yet (2 s: given up, the next one is asked afresh)
+        gl.deleteSync(R.sync); R.sync = null;
+        if (st === gl.WAIT_FAILED) return;
+        var w = R.w, h = R.h, n = w * h * 4;
+        if (!R.px || R.px.length !== n) { R.px = new Uint8Array(n); R.img = null; }
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, R.buf);
+        gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, R.px);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+        if (!R.cv) { R.cv = document.createElement('canvas'); R.g = R.cv.getContext('2d'); }
+        if (R.cv.width !== w || R.cv.height !== h) { R.cv.width = w; R.cv.height = h; R.img = null; }
+        if (!R.img) R.img = R.g.createImageData(w, h);
+        var src = R.px, dst = R.img.data, row = w * 4;
+        for (var y = 0; y < h; y++) {   // the card's rows run bottom-up and its colours are multiplied by their alpha
+            var so = (h - 1 - y) * row, d0 = y * row;
+            for (var x = 0; x < row; x += 4) {
+                var a = src[so + x + 3];
+                if (a === 255) { dst[d0 + x] = src[so + x]; dst[d0 + x + 1] = src[so + x + 1]; dst[d0 + x + 2] = src[so + x + 2]; }
+                else if (a === 0) { dst[d0 + x] = 0; dst[d0 + x + 1] = 0; dst[d0 + x + 2] = 0; }
+                else { var ka = 255 / a, c0 = src[so + x] * ka, c1 = src[so + x + 1] * ka, c2 = src[so + x + 2] * ka; dst[d0 + x] = c0 > 255 ? 255 : c0; dst[d0 + x + 1] = c1 > 255 ? 255 : c1; dst[d0 + x + 2] = c2 > 255 ? 255 : c2; }
+                dst[d0 + x + 3] = a;
+            }
+        }
+        R.g.putImageData(R.img, 0, 0);
+        if (S.cvs) for (var j = 0; j < S.cvs.length; j++) {
+            var cv = S.cvs[j], g = cv._ptG || (cv._ptG = cv.getContext('2d'));
+            g.clearRect(0, 0, cv.width, cv.height);
+            g.drawImage(R.cv, 0, 0, cv.width, cv.height);
+            cv._ptLive = true;
+        }
+    }
+    function _ptReadFree(gl, S) {
+        var R = S && S.rb; if (!R) return;
+        try { if (R.sync && gl) gl.deleteSync(R.sync); } catch (e) {}
+        try { if (R.buf && gl) gl.deleteBuffer(R.buf); } catch (e) {}
+        S.rb = null;
+    }
     function _ptLiveStart() { if (!_ptLiveRaf && typeof requestAnimationFrame === 'function') _ptLiveRaf = requestAnimationFrame(_ptLiveTick); }
     function _ptLiveTick() {
         _ptLiveRaf = 0;
@@ -69181,8 +69234,18 @@ const ThreeRenderer = (function () {
            copied canvas to canvas for the rest. Old rule: window.EW_PT_LIVE_STEADY = true. */
         var now = performance.now(), ptGap = _ptLiveLast ? Math.min(250, now - _ptLiveLast) : 16;
         _ptLiveLast = now; _ptLiveGap += (ptGap - _ptLiveGap) * 0.15;
+        /* THE PORTRAIT WITHOUT THE WAIT (2026-11-20, mondo: "do the proper fix ... why is adding 1 more unit making the game slow down
+           so much?"). It was never the extra body: it was getting its picture onto the HUD. `drawImage(the WebGL canvas)` makes
+           Firefox read the pixels back from the graphics card and holds the game until they arrive, behind the fight's own frame.
+           Now the read-back is asked for and NOT waited on: after the portrait is drawn its pixels are copied into a buffer on the
+           card (a WebGL 2 pixel-pack buffer) with a fence behind it; a frame later, when the fence says the card is done, the
+           buffer is fetched (it is ready: no wait), turned upright and un-premultiplied into a small 2D canvas, and that canvas is
+           drawn onto the HUD canvases (2D to 2D). The portrait runs at its full PT_LIVE_FPS again, one frame behind its body.
+           Without WebGL 2 (or with window.EW_PT_LIVE_COPY = true) the old copy runs, stepped down when the frame is slow. */
+        var gl2 = null;
+        try { gl2 = (!window.EW_PT_LIVE_COPY && P.renderer && P.renderer.getContext) ? P.renderer.getContext() : null; if (gl2 && typeof gl2.fenceSync !== 'function') gl2 = null; } catch (e) { gl2 = null; }
         var ptNeed = 1000 / PT_LIVE_FPS - 2;
-        if (!window.EW_PT_LIVE_STEADY) { if (_ptLiveGap > 45) ptNeed = 1000; else if (_ptLiveGap > 28) ptNeed = 400; }
+        if (!gl2 && !window.EW_PT_LIVE_STEADY) { if (_ptLiveGap > 45) ptNeed = 1000; else if (_ptLiveGap > 28) ptNeed = 400; }
         var due = now - _ptLiveAt >= ptNeed, any = false;
         if (due) _ptLiveAt = now;
         for (var k in P.subs) {
@@ -69195,7 +69258,9 @@ const ThreeRenderer = (function () {
                 any = true; continue;
             }
             S.idleAt = 0; any = true;
+            if (gl2 && S.rb && S.rb.sync && !P.lost) { try { _ptReadTake(gl2, S); } catch (e) { _ptReadFree(gl2, S); } }   // last tick's picture, if the card is done with it
             if (!due || !S.shot || !S.model || P.lost || document.hidden) continue;
+            if (gl2 && S.rb && S.rb.sync) continue;   // still on its way: no second one behind it
             var dt = S.at ? Math.min(0.25, (now - S.at) / 1000) : 1 / PT_LIVE_FPS;
             S.at = now;
             try {
@@ -69204,6 +69269,7 @@ const ThreeRenderer = (function () {
                 if (S.rig) S.rig.tick();
                 if (S.sway) _swayTick(S.sway, dt, S.def.sway || null);
                 _ptRender(S, false, dt);
+                if (gl2 && _ptReadAsk(gl2, S, P.w, P.h)) continue;
                 for (var j = 0; j < S.cvs.length; j++) {
                     var cv = S.cvs[j], g = cv._ptG || (cv._ptG = cv.getContext('2d'));
                     g.clearRect(0, 0, cv.width, cv.height);
