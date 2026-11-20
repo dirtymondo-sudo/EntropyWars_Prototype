@@ -7150,6 +7150,27 @@ more column west); z is unchanged.
   the stand, the ford, the oak, the kilns, the brook. The walker was not driven by hand.
 
 
+## THE FAIRY FOREST, 13 PLOTS — the room design (2026-11-20, the owner's WORLD POLISH thread 3, its last district)
+
+The Pines' pattern, third use. `site_prebuilt_camelot_ow_fairy` is 13 plots, a 4 x 4 box at world -23,-1 (was 6, 4 x 3): the six old plots where they
+stood, seven new plots south of them in two rows (`after-v13.js` row 4; north of the walk lies the Old Road, R4: no room to grow there). Every old z in
+the room is 21 m less (one more row south); x is unchanged. The tool rewrote the link `woods_camelot`'s end; `HQ_AREA_MARKERS` was moved by hand.
+
+- **What the move had left**: at home the six plots were a COLUMN, each with its own two squares of the trail. On the One World four of them stand side
+  by side: four parallel dead-end lanes, joined only by the tool's joints. The plan's row ("raise the knolls, a hollow between, root stairs") could not be
+  done on that; the walk had to be drawn again.
+- **THE ROOM DESIGN, `districts/F-room.js`**: THE FAIRY WALK (the four lanes widened to 4, joined by a walk south of them: in at the Pond, down, east
+  through THE GLOW-WORM HOLLOW (a `dip` of 2.6 m, 8 x 8), up to the Spring: a U). THE SOUTH LOOP: THE WISHING POOL (drawn water in a stone ring, the
+  `ancient_well`), under THE ROOT STAIR's knoll (5 m, a stair of roots up its north face to a toadstool ring and a chest), THE HOLLOW OAK (one 15 m
+  tree, lanterns in it), THE LANTERN GLADE (8 x 8). `F.js`: the north knoll 2.1 -> 4.5 m, the crystal knoll 1.7 -> 4.2 m (both lie inside their own
+  plots, so the home frame may raise them); root steps drawn on the way up each. 935 of 1,872 squares walked (50 %); 856 trees in the mass.
+- **Tool**: a new plot of F and the box's empty cells grow the glowing wood's own trees (`FAE`).
+- **What went wrong**: an arch `cyl` part always stands upright (`rx` is not read): a lying root or log is a `box`. A wide camera inside this wood stands
+  under a toadstool's cap (a beige picture): pull it south of the canopy.
+- **Left as it is**: the six old plots' own dressing; the spring's basin (a 0.94 step beside its rock, as before).
+- **Seen**: two probe runs, 15 views, no page error.
+
+
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
 - **THE SHEETS that suit the zone** (keys for `sheet()` parts): `castle_wall` (ctx.WALL: all stone, tint it STONE 0xc4c0b8 / STONE2 0xaeaaa6 /
@@ -11740,7 +11761,7 @@ writes the old single room (the home writer is byte for byte what it was). No di
 | `site_prebuilt_camelot_kingdom` | THE BLOCK: the castle (K) + the village (T), the town wall, the moat and the ring road (the old id, the old frame: every x, z in it is unchanged) | -29..-24 x -3..2 | 6 x 6 | 36 |
 | `site_prebuilt_camelot_ow_pines` | THE SNOWY PINES (N): the sleigh road north, the huts, the frozen pond, the Pass; since 11-20 THREE PLOTS WIDE (the ridge and its lookout, the frozen gully and the log bridge, the drift field, the tarn, the hermit's hollow: "THE SNOWY PINES, THREE PLOTS WIDE") | -27..-24 x -10..-4 | 4 x 7 | 22 (was 2 x 7, 8) |
 | `site_prebuilt_camelot_ow_garden` | THE LOOKING-GLASS GARDEN (L): the lawn, the chessboard, the mirror, the tea party | -33..-30 x -1..1 | 4 x 3 | 6 |
-| `site_prebuilt_camelot_ow_fairy` | THE FAIRY FOREST (F): the knolls, the pond, the ring, the spring | -23..-20 x -1..1 | 4 x 3 | 6 |
+| `site_prebuilt_camelot_ow_fairy` | THE FAIRY FOREST (F): the knolls, the pond, the ring, the spring; since 11-20 13 plots ("THE FAIRY FOREST, 13 PLOTS") | -23..-20 x -1..2 | 4 x 4 | 13 (was 4 x 3, 6) |
 | `site_prebuilt_camelot_ow_forest` | THE FOREST (W) + wild link L7's one plot (`The Forest Trail, the camp`, rule 4); since 11-20 THREE PLOTS WIDE ("THE FOREST, THREE PLOTS WIDE") | -27..-23 x 3..7 | 5 x 5 | 21 (was 4 x 5, 9) |
 | `site_ow_l6` | wild link L6, the Pines' Pass to the Ski Lodge (`bake-route.js L6`, spec `docs/areas/routes/L6.json`) | -25..-23 x -16..-11 | 3 x 6 | 8 |
 

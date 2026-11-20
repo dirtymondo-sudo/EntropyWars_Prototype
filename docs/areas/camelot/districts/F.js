@@ -112,7 +112,7 @@ dec('butterfly', 87, 27, { floor: true, y: 1.2 }); dec('blue_morpho', 93, 26, { 
   dec('fern', 92, 60); dec('fern', 90, 64); dec('fern', 92, 64); }
 many(3, i => put('fae_mushroom', 91 + (i % 2), 54 + i)); dec('fae_toadstool', 90, 54); dec('fae_toadstool', 90, 56); dec('luna_moth', 93, 55, { floor: true, y: 1.3 });
 /* ── THE KNOLL, NORTH (P07-01): one great oak on the crown, stones and glowing caps at its roots ── */
-{ const x = gc(91), z = gc(22), H = 2.1, R = 5.4;
+{ const x = gc(91), z = gc(22), H = 4.5, R = 10;   // (2026-11-20, the world polish plan: a real knoll, was 2.1 m on 5.4; the roots up it are the room design's, F-room.js)
   feat({ k: 'hill', x, z, r: R, h: H }); dec('stump', 90, 21);
   tree('tree_52', 12, 91, 22, 1.1);
   const S = row('knolln', x, z);
@@ -120,7 +120,7 @@ many(3, i => put('fae_mushroom', 91 + (i % 2), 54 + i)); dec('fae_toadstool', 90
       S.rock(dx, hillY(H, R, dx, dz) - 0.25, dz, q[2], q[2] * 0.8 + 0.25, i * 55); });
   [[55, 1.5], [128, 1.7], [196, 1.4], [265, 1.6], [338, 1.5]].forEach((q, i) => { const a = q[0] * Math.PI / 180; at('woods_glowcap', x + Math.cos(a) * q[1], z + Math.sin(a) * q[1], { face: i * 70, noLight: true }); }); }
 /* ── THE KNOLL, SOUTH (P07-06): the crystal knoll: three rock teeth on the crown, crystal spikes growing out of them ── */
-{ const x = gc(91), z = gc(72), H = 1.7, R = 4.8;
+{ const x = gc(91), z = gc(72), H = 4.2, R = 9.5;   // (2026-11-20: a real knoll, was 1.7 m on 4.8)
   feat({ k: 'hill', x, z, r: R, h: H }); dec('fallen_log', 90, 73); dec('rabbit', 91, 71);
   taken.add('91:72'); feat({ k: 'wall', x0: r2(x - 1.2), z0: z, x1: r2(x + 1.2), z1: z, t: 2.4, h: 2, ghost: true, rail: false });
   const S = row('knolls', x, z), y0 = H - 0.6;

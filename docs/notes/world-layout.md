@@ -345,7 +345,7 @@ Room 1954, the looking-glass / dead tree pair, the wells.
 | CAMELOT KINGDOM | `site_prebuilt_camelot_kingdom` | x -29..-24, y -3..2 | 36 | THE SNOWY PINES (a trail gap); THE LOOKING-GLASS GARDEN (a trail gap); THE FAIRY FOREST (a trail gap); THE FOREST (a trail gap); THE OLD ROAD (walk on); THE STONE PATH (a trail gap); + 7 doors to insides / DOOR HQ |
 | THE SNOWY PINES | `site_prebuilt_camelot_ow_pines` | x -27..-24, y -10..-4 (three plots wide since 11-20) | 22 | CAMELOT KINGDOM (a trail gap); THE TRAIL (a trail gap) |
 | THE LOOKING-GLASS GARDEN | `site_prebuilt_camelot_ow_garden` | x -33..-30, y -1..1 | 6 | THE ASTRAL REALM (a door); CAMELOT KINGDOM (a trail gap); THE FROZEN SEA (boat); PIRATES' COVE (boat); + 1 door to insides / DOOR HQ |
-| THE FAIRY FOREST | `site_prebuilt_camelot_ow_fairy` | x -23..-20, y -1..1 | 6 | CAMELOT KINGDOM (a trail gap); THE TRAIL (trail) |
+| THE FAIRY FOREST | `site_prebuilt_camelot_ow_fairy` | x -23..-20, y -1..2 (13 plots since 11-20) | 13 | CAMELOT KINGDOM (a trail gap); THE TRAIL (trail) |
 | THE FOREST | `site_prebuilt_camelot_ow_forest` | x -27..-23, y 3..7 (three plots wide since 11-20) | 21 | THE RITUAL GROUND (a trail gap); CAMELOT KINGDOM (a trail gap) |
 | THE TRAIL · THE PINES TO THE SKI LODGE | `site_ow_l6` | x -25..-23, y -16..-11 | 8 | THE SNOWY PINES (a trail gap); THE SKI LODGE (walk on) |
 | THE STONE PATH | `site_ow_r12` | x -30..-28, y -6..-4 | 8 | STONEHENGE (a trail gap); CAMELOT KINGDOM (a trail gap) |
