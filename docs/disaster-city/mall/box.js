@@ -43,7 +43,7 @@ const T = { CORAL: 0xffa590, MINT: 0xa8ecd6, AQUA: 0x7fdcec, SAND: 0xf8dfae, CRE
 const K = { stucco: 'urban:PlasterWallStucco1a', plaster: 'urban:PlasterWallPainted1a', corr: 'urban:MetalCorrugatedPainted1a', gSq: 'urban:GlassWindowSquare1a', gTall: 'urban:GlassWindowTall1a', gFac: 'urban:GlassWindowFactory1a', marble: 'urban:TileMarble1a', conc: 'urban:ConcreteStriped2c' };
 const r3 = v => Math.round(v * 1000) / 1000;
 /* a mall door's own frame (three-renderer.js: a door row's `frame`): the portal's coral plaster, a cream foot band in the same plaster (a marble sheet key drew black there), white trim */
-const FRAME = { wall: 'urban:PlasterWallPainted1a', wallColor: 0xffb4a2, dadoColor: 0xfff6e2, trim: 'metal', trimColor: 0xffffff };
+const FRAME = { wall: 'urban:PlasterWallPainted1a', wallColor: 0xffd2c6, dadoColor: 0xfff6e2, trim: 'metal', trimColor: 0xffffff };
 const wallM = (tint, key) => ({ key: key || K.stucco, tint, gain: key === K.corr ? 2.0 : 2.3 });
 const glassM = (tint, key, glow) => ({ key: key || K.gFac, tint: tint == null ? T.AQUA : tint, glow: glow == null ? 0.4 : glow, gain: 2.2 });
 const sign = (words, x, y, z, w, h, ry, fg, bg, glow) => { const p = { s: 'quad', p: [r3(x), y, r3(z)], size: [w, h], ry: ry || 0, key: 'txt:' + words + '|' + (fg || '#ffffff') + '|' + (bg || '') + '|' + Math.round(w / h * 100) / 100 + '||deco', uv: 'fit', kind: bg ? 'wall' : 'over' }; if (glow) p.glow = glow; return p; };
@@ -56,7 +56,7 @@ function roofParts(inside) {
         P.push({ s: 'box', p: [x, EAVE + 2.7, z], size: [1.3, 0.9, 1.3], key: K.plaster, tint: T.CREAM, gain: 2.3, roof: true }, { s: 'roof', form: 'pyramid', p: [x, EAVE + 3.6, z], size: [1.3, 0.9, 1.3], key: K.corr, tint: T.TERRA, gain: 2.0, over: 0.3, roof: true }); };
     hip(0, 0, 3, 3); hip(7, 0, 13, 3); hip(17, 0, 20, 3); hip(0, 7, 3, 11); hip(7, 7, 13, 11); hip(17, 7, 20, 11);
     /* the vaults: the long hall (rows 3..7), the west cross hall (squares 3..7), the east cross hall (squares 13..17) */
-    const g = inside ? glassM(0xe6f7ff, K.gSq, 0.9) : glassM(T.SKYGLASS, K.gFac, 0.85), gd = inside ? g : glassM(T.SKYGLASS, K.gSq, 0.85);   // from below the factory sheet reads as grey marble: the room's roof wears the square-pane sheet, pale and lit, on the same shapes
+    const g = inside ? { key: K.gSq, tint: 0xeaf8ff, glow: 0.3, kind: 'clear' } : glassM(T.SKYGLASS, K.gFac, 0.85), gd = inside ? g : glassM(T.SKYGLASS, K.gSq, 0.85);   // from below the factory sheet reads as grey marble: the room's roof is CLEAR glass (three-renderer.js `kind: 'clear'`) with the square-pane sheet's bars, on the same shapes: the sky shows through
     P.push(Object.assign({ s: 'roof', form: 'barrel', p: [0, EAVE, lz(5)], size: [W + 0.1, VAULT - EAVE, 4 * C], seg: 12, ds: true, roof: true }, g));
     [5, 15].forEach(u => P.push(Object.assign({ s: 'roof', form: 'barrel', p: [lx(u), EAVE, 0], size: [D + 0.1, VAULT - EAVE, 4 * C], ry: 90, seg: 12, ds: true, roof: true }, g)));
     /* the vaults' ribs (white, one a square) and the eaves beam either side */

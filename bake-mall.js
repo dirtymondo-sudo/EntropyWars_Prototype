@@ -32,16 +32,18 @@ let wn = 0;
    o: h, y0 (its foot), key / tint / gain, glass, doors [[middle, leaf]], gaps [[from, to]], draw: false, walk: false */
 function wall(axis, at, a, b, o) { o = o || {}; const h = o.h || EAVE, y0 = o.y0 || 0, k = (++wn % 7) * 0.003; a += k; b -= k;   // (two wall rows with the very same ends are ONE wall to the engine)
     const seg = (s0, s1) => { if (s1 - s0 < 0.02) return; const m = (s0 + s1) / 2, L = (s1 - s0) * C, px = axis === 'u' ? X(m) : X(at), pz = axis === 'u' ? Z(at) : Z(m);
-        if (o.draw !== false) { const p = { s: 'box', p: [r2(px), r2(y0), r2(pz)], size: axis === 'u' ? [r2(L), h, TH] : [TH, h, r2(L)], uv: [3.5, 1.75] }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.gain) p.gain = o.gain; if (o.glow) p.glow = o.glow; if (o.glass) { p.kind = 'glass'; p.uv = 7; } P.push(p); }
+        if (o.draw !== false && o.clear) { clearPane(axis, px, pz, s0, s1, y0, h); }
+        else if (o.draw !== false) { const p = { s: 'box', p: [r2(px), r2(y0), r2(pz)], size: axis === 'u' ? [r2(L), h, TH] : [TH, h, r2(L)], uv: [3.5, 1.75] }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.gain) p.gain = o.gain; if (o.glow) p.glow = o.glow; if (o.glass) { p.kind = 'glass'; p.uv = 7; } P.push(p); }
         if (o.walk !== false) { const e = Math.min(0.15, L / 2 - 0.01), row = Object.assign({ k: 'wall' }, axis === 'u' ? { x0: r2(X(s0) + e), z0: r2(pz), x1: r2(X(s1) - e), z1: r2(pz) } : { x0: r2(px), z0: r2(Z(s0) + e), x1: r2(px), z1: r2(Z(s1) - e) }, { t: TH, ghost: true, rail: false });
             row.h = h; row.y = r2(y0 + h); if (y0 > 0) row.y0 = r2(y0); F.push(row); } };
-    const cuts = (o.doors || []).map(d => ({ a: d[0] - DW / 2 / C, b: d[0] + DW / 2 / C, d })).concat((o.gaps || []).map(g => ({ a: g[0], b: g[1] }))).sort((p, q) => p.a - q.a);
+    const cuts = (o.doors || []).map(d => ({ a: d[0] - (d[2] || DW) / 2 / C, b: d[0] + (d[2] || DW) / 2 / C, d })).concat((o.gaps || []).map(g => ({ a: g[0], b: g[1] }))).sort((p, q) => p.a - q.a);
     let cur = a;
     cuts.forEach(c => { seg(cur, c.a); cur = c.b; if (!c.d) return;
         const m = c.d[0], px = axis === 'u' ? X(m) : X(at), pz = axis === 'u' ? Z(at) : Z(m), fr = 0xf4f2ec;
-        if (h > DH + 0.05) { const p = { s: 'box', p: [r2(px), r2(y0 + DH), r2(pz)], size: axis === 'u' ? [DW, r2(h - DH), TH] : [TH, r2(h - DH), DW], uv: [3.5, 1.75], under: true }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.gain) p.gain = o.gain; if (o.glass) { p.kind = 'glass'; p.uv = 7; } P.push(p); }
-        [-1, 1].forEach(sd => P.push({ s: 'box', p: axis === 'u' ? [r2(px + sd * (DW / 2 + 0.06)), r2(y0), r2(pz)] : [r2(px), r2(y0), r2(pz + sd * (DW / 2 + 0.06))], size: axis === 'u' ? [0.12, DH + 0.1, TH + 0.08] : [TH + 0.08, DH + 0.1, 0.12], tint: fr }));
-        P.push({ s: 'box', p: [r2(px), r2(y0 + DH), r2(pz)], size: axis === 'u' ? [DW + 0.24, 0.12, TH + 0.08] : [TH + 0.08, 0.12, DW + 0.24], tint: fr });
+        const dw = c.d[2] || DW, dh = c.d[2] ? 2.6 : DH;
+        if (h > dh + 0.05) { if (o.clear) clearPane(axis, px, pz, m - dw / 2 / C, m + dw / 2 / C, y0 + dh, h - dh); else { const p = { s: 'box', p: [r2(px), r2(y0 + dh), r2(pz)], size: axis === 'u' ? [dw, r2(h - dh), TH] : [TH, r2(h - dh), dw], uv: [3.5, 1.75], under: true }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.gain) p.gain = o.gain; if (o.glass) { p.kind = 'glass'; p.uv = 7; } P.push(p); } }
+        [-1, 1].forEach(sd => P.push({ s: 'box', p: axis === 'u' ? [r2(px + sd * (dw / 2 + 0.06)), r2(y0), r2(pz)] : [r2(px), r2(y0), r2(pz + sd * (dw / 2 + 0.06))], size: axis === 'u' ? [0.12, dh + 0.1, TH + 0.08] : [TH + 0.08, dh + 0.1, 0.12], tint: fr }));
+        P.push({ s: 'box', p: [r2(px), r2(y0 + dh), r2(pz)], size: axis === 'u' ? [dw + 0.24, 0.12, TH + 0.08] : [TH + 0.08, 0.12, dw + 0.24], tint: fr });
         if (c.d[1] && c.d[1] !== 'none') { const r = { x: r2(px), z: r2(pz), rot: axis === 'u' ? 0 : 90, w: DW - 0.2, leaf: c.d[1] }; if (y0 > 0) r.y = r2(y0); inner.push(r); } });
     seg(cur, b); }
 const solid = (u0, v0, u1, v1, h) => F.push({ k: 'plateau', x: r2((X(u0) + X(u1)) / 2), z: r2((Z(v0) + Z(v1)) / 2), w: r2((u1 - u0) * C), d: r2((v1 - v0) * C), h, edge: 0.1 });
@@ -60,7 +62,13 @@ const prop = (key, u, v, face, x) => { const o = Object.assign({ key, x: r2(X(u)
 const up = (key, u, v, face, x) => prop(key, u, v, face, Object.assign({ y: UP }, x || {}));
 const who = (race, u, v, face, y, say) => { const n = { x: r2(X(u)), z: r2(Z(v)), face: face || 0, race }; if (y) n.y = y; if (say) n.say = say; npc.push(n); };
 const stop = (u, v, y) => stops.push([r2(X(u)), r2(Z(v)), y || 0]);
-const SAND = BOX.wallM(T.SAND), CREAM = BOX.wallM(T.CREAM), CORAL = BOX.wallM(T.CORAL, K.plaster), GLS = { glass: true, key: K.gTall, tint: T.SKYGLASS, glow: 0.8, gain: 2.2 };
+const SAND = BOX.wallM(T.SAND), CREAM = BOX.wallM(T.CREAM), CORAL = BOX.wallM(T.CORAL, K.plaster), GLS = { clear: true };
+/* a see-through glass wall (three-renderer.js arch `kind: 'clear'`): the pane, white mullions a half square apart, a transom at 3.3 m and one under the upper floor */
+function clearPane(axis, px, pz, s0, s1, y0, h) { const L = (s1 - s0) * C; if (L < 0.05) return;
+    P.push({ s: 'box', p: [r2(px), r2(y0), r2(pz)], size: axis === 'u' ? [r2(L), h, 0.04] : [0.04, h, r2(L)], tint: 0xcfeeff, kind: 'clear', glow: 0.1 });
+    const bar = (m, y, bh, bl) => P.push({ s: 'box', p: axis === 'u' ? [r2(X(m)), r2(y), r2(pz)] : [r2(px), r2(y), r2(Z(m))], size: axis === 'u' ? [bl, bh, 0.12] : [0.12, bh, bl], tint: 0xf4f4f2 });
+    for (let s = Math.ceil(s0 * 2 - 0.01) / 2; s <= s1 + 0.001; s += 0.5) bar(s, y0, h, 0.1);
+    [3.3, UP - 0.2].forEach(y => { if (y > y0 + 0.2 && y < y0 + h - 0.2) bar((s0 + s1) / 2, y, 0.1, r2(L)); }); }
 
 /* ── THE FIELD: the solid shop blocks (their tops are the upper floor), the stair's landing ── */
 Object.keys(BOX.BLOCKS).forEach(k => { const b = BOX.BLOCKS[k]; if (b.k === 'solid') b.sq.forEach(q => solid(q[0], q[1], q[2], q[3], UP)); });
@@ -88,14 +96,14 @@ deck(14 - E, 2, 16 + E, 3, UP); deck(14 - E, 7, 16 + E, 8, UP);                 
 deck(18 - E, 0, 19 + E, 4, UP);                                                        // over the staff passage
 
 /* ── THE OUTER WALLS (ground to eaves; glass at the halls' ends; the doorways) ── */
-wall('v', 0, 0, 3, CREAM); wall('v', 0, 3, 7, Object.assign({ doors: [[5, 'none']] }, GLS)); wall('v', 0, 7, 11, SAND);                    // west: THE MAIN DOORS
-wall('v', 20, 0, 3, CREAM); wall('v', 20, 3, 7, Object.assign({ doors: [[5, 'none']] }, GLS));                                           // east: THE SEA DOORS
-wall('v', 20, 7, 11, Object.assign({ h: UP }, SAND)); wall('v', 20, 7, 11, Object.assign({ h: EAVE - UP, y0: UP, doors: [[7.5, 'none'], [9.5, 'none']] }, GLS));   // the food court's glass wall: THE TERRACE DOORS
+wall('v', 0, 0, 3, CREAM); wall('v', 0, 3, 7, Object.assign({ doors: [[5, 'none', 2.5]] }, GLS)); wall('v', 0, 7, 11, SAND);                    // west: THE MAIN DOORS
+wall('v', 20, 0, 3, CREAM); wall('v', 20, 3, 7, Object.assign({ doors: [[5, 'none', 2.5]] }, GLS));                                           // east: THE SEA DOORS
+wall('v', 20, 7, 11, Object.assign({ h: UP }, SAND)); wall('v', 20, 7, 11, Object.assign({ h: EAVE - UP, y0: UP, doors: [[7.5, 'none', 2.5], [9.5, 'none', 2.5]] }, GLS));   // the food court's glass wall: THE TERRACE DOORS
 wall('u', 0, 0, 3, CREAM); wall('u', 0, 3, 7, GLS); wall('u', 0, 7, 13, SAND);                                                           // north
 wall('u', 0, 13, 17, Object.assign({ h: UP, doors: [[15, 'none']] }, SAND)); wall('u', 0, 13, 17, Object.assign({ h: EAVE - UP, y0: UP }, GLS));   // the closet door under the east hall's north window
 wall('u', 0, 17, 20, Object.assign({ doors: [[18.5, 'none']] }, CREAM));                                                                 // THE STAFF DOOR
-wall('u', 11, 0, 3, SAND); wall('u', 11, 3, 7, Object.assign({ doors: [[5, 'none']] }, GLS)); wall('u', 11, 7, 13, SAND);               // south: THE WEST CANAL DOORS
-wall('u', 11, 13, 17, Object.assign({ doors: [[15, 'none']] }, GLS)); wall('u', 11, 17, 20, SAND);                                       // THE CANAL DOORS
+wall('u', 11, 0, 3, SAND); wall('u', 11, 3, 7, Object.assign({ doors: [[5, 'none', 2.5]] }, GLS)); wall('u', 11, 7, 13, SAND);               // south: THE WEST CANAL DOORS
+wall('u', 11, 13, 17, Object.assign({ doors: [[15, 'none', 2.5]] }, GLS)); wall('u', 11, 17, 20, SAND);                                       // THE CANAL DOORS
 
 /* ── THE UPPER SHOPS: a set-back row of units on each solid block (thin walls: nobody goes in), the galleries in front of them ── */
 [['north', 3], ['south', 7], ['staff', 3]].forEach(([k, vv]) => { const m = BOX.BLOCKS[k].mass, o = Object.assign({ h: EAVE - UP, y0: UP }, CREAM);
@@ -194,7 +202,7 @@ const DESC = {
     terrace1: 'Glass doors from the food court out onto the terrace: tables, umbrellas, the pier, the beach, the bay.',
     terrace2: 'Glass doors from the food court out onto the terrace: tables, umbrellas, the pier, the beach, the bay.' };
 BOX.DOORS.forEach(d => { const o = IN[d.side];
-    doors.push({ id: d.id, wall: 'free', x: r2(X(d.u + o[0])), z: r2(Z(d.v + o[1])), face: o[2], leaf: d.id === 'staff' ? 'leaf_exit' : 'leaf_glass', noEntrance: true, frame: d.id === 'staff' ? undefined : BOX.FRAME, wide: d.id === 'main' || d.id === 'sea' || undefined,
+    doors.push({ id: d.id, wall: 'free', x: r2(X(d.u + o[0])), z: r2(Z(d.v + o[1])), face: o[2], leaf: d.id === 'staff' ? 'leaf_exit' : null, proc: d.id === 'staff' ? undefined : 'glass_slide', noEntrance: true, frame: d.id === 'staff' ? undefined : BOX.FRAME, wide: d.id === 'staff' ? undefined : true,
         label: 'DISASTER CITY', sub: d.name + ' · OUT TO ' + d.to, action: { room: CITY, at: AT[d.id] || 'mall_' + d.id }, desc: DESC[d.id] }); });
 doors.push({ id: 'closet', wall: 'free', x: r2(X(15)), z: r2(Z(0) + 0.5), face: 180, leaf: 'leaf_closet', noEntrance: true, label: 'SUPPLY CLOSET', sub: 'STAFF ONLY · THE BASEMENT STAIR', action: { room: 'site_prebuilt_downtown_closet', at: 'mall' },
     desc: 'STAFF ONLY, on a door at the north end of the east hall under the big window. The stair behind it goes down further than the mall has floors.' });
@@ -206,9 +214,46 @@ const lines = ['“What happened here?” “Nothing.” “The sign says so.”
 [[2, 2], [2, 8.5], [5, 0.5], [10, 3.5], [10, 6.5], [11.2, 5], [ESC.u1 + 0.4, 5 - 0.27], [ESC.u1 + 0.4, 5 + 0.27], [16.5, 1.5], [18.5, 9], [15, 2.5], [15, 7.5], [3.2, 5], [5, 7.5], [19.5, 3.5], [17.5, 2], [12.5, 1.5], [12.5, 9]].forEach(q => stop(q[0], q[1], UP));
 props.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key); }); npc.forEach(n => { if (RACES.indexOf(n.race) < 0) throw new Error('not a unit: ' + n.race); });
 
+/* ── THE VIEW OUT (2026-11-20, mondo: "Do both of those" = the glass doors + the view out). The room is the building's box and nothing more is
+   walked, but its glass now looks out on the city as it stands round the mall in the city room: the ground bands (the plaza, the yard, the quay
+   and the canal, the sea front, the coast road, the boardwalk, the sand, the sea), the pier, and the city's own drawn buildings and street
+   things within reach, COPIED from `site_prebuilt_downtown_streets` at bake time (moved by the box's middle), so the view is the city's and
+   follows it when the city is baked again (run this tool after the city tool). Nothing of it is walked: the field is the box (`terrain.outer:
+   false`: no outer ground of the field's own, which would stand over a sea drawn lower). ── */
+const VIEW = { rows: [], props: 0 };
+{ const CX = BOX.CX, CZ = BOX.CZ, L = (x, z) => [r2(x - CX), r2(z - CZ)], G = [];
+  /* a flat band in CITY metres: x0..x1, z0..z1, its top at y, a sheet */
+  const band = (x0, z0, x1, z1, y, key, tint, o) => { const c = L((x0 + x1) / 2, (z0 + z1) / 2); G.push(Object.assign({ s: 'box', p: [c[0], r2(y - 0.2), c[1]], size: [r2(x1 - x0), 0.2, r2(z1 - z0)], key, tint: tint == null ? 0xffffff : tint, uv: 3.5 }, o || {})); };
+  const PAVE = 'urban:ConcreteSidewalk1a', PLANK = 'urban:WoodFlooring1a', ROAD = 'urban:RoadGeneric1a', SAND = 'desert', SEA = 'water';
+  /* the city round about, under everything, in three pieces round the canal (one slab over it hid the water) */
+  band(-400, -500, 259, 45.5, -0.03, 'urban:ConcreteSlab2a', 0xc8c4bc); band(-400, 52.5, 259, 600, -0.03, 'urban:ConcreteSlab2a', 0xc8c4bc); band(-400, 45.5, 115.5, 52.5, -0.03, 'urban:ConcreteSlab2a', 0xc8c4bc);
+  band(60, -80, 224, 3.5, 0, PAVE); band(60, 3.5, 136.5, 45.5, 0, PAVE); band(206.5, 3.5, 224, 45.5, 0, PAVE);   // the yard, the plaza, the sea front
+  band(115.5, 42, 224, 45.5, 0, PLANK); band(60, 52.5, 259, 130, 0, PAVE); band(60, 42, 115.5, 52.5, 0, PAVE);  // the quay, south of the canal
+  band(115.5, 45.5, 259, 52.5, -1.2, SEA, 0x4aa8d8, { glow: 0.15 }); G.push({ s: 'box', p: [r2(115.5 - CX + 71.75), -1.2, r2(45.5 - CZ)], size: [143.5, 1.2, 0.3], key: 'urban:ConcreteGeneric1a', tint: 0xb0aca4 }, { s: 'box', p: [r2(115.5 - CX + 71.75), -1.2, r2(52.5 - CZ)], size: [143.5, 1.2, 0.3], key: 'urban:ConcreteGeneric1a', tint: 0xb0aca4 });   // the canal and its walls
+  band(224, -120, 238, 130, 0.01, ROAD, 0x9a9a9a); band(238, -120, 241.5, 130, 0, PAVE); band(241.5, -120, 259, 130, 0.02, PLANK);   // the coast road, the planks, the boardwalk
+  for (let z = -110; z < 125; z += 6) { const c = L(231, z); G.push({ s: 'box', p: [c[0], 0.012, c[1]], size: [0.15, 0.02, 3], tint: 0xffffff, glow: 0.3 }); }   // the road's middle line
+  G.push({ s: 'box', p: [r2(259 - CX), -1.45, 0], size: [0.4, 1.47, 800], key: 'urban:ConcreteGeneric1a', tint: 0xd8d4c8 });            // THE SEA WALL (1.05 m down to the sand)
+  band(259, -400, 296, 500, -1.05, SAND, 0xf8e8c0); band(288, -600, 1400, 700, -1.45, SEA, 0x3f9ccc, { glow: 0.2 });                   // the sand, the sea
+  /* THE PIER on the mall's line (the city's three deck rows), its piles */
+  [[258.7, 17.5, 297.5, 24.5], [297.5, 10.5, 318.5, 31.5], [280, 10.5, 287, 17.5]].forEach(q => band(q[0], q[1], q[2], q[3], 0.25, PLANK, 0xd8b890));
+  for (let x = 262; x < 318; x += 7) [18, 24].forEach(z => { const c = L(x, z); G.push({ s: 'cyl', p: [c[0], -2.5, c[1]], r: 0.22, h: 2.5, seg: 8, key: 'wood', tint: 0x6a4a30 }); });
+  VIEW.rows.push({ k: 'arch', id: 'mall:view:ground', x: 0, z: 0, y: 0, parts: G });
+  /* the city's own drawn things within reach (never an inside: a `:in` row is a walk-in's hall), and its street props */
+  const city = DATA.DOOR_HQ.rooms[CITY], BX = [BOX.X0, BOX.Z0, BOX.X0 + W, BOX.Z0 + D];
+  const dist = (x, z) => Math.hypot(Math.max(BX[0] - x, 0, x - BX[2]), Math.max(BX[1] - z, 0, z - BX[3]));
+  const pt = f => typeof f.x === 'number' ? [f.x, f.z] : typeof f.x0 === 'number' ? [(f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2] : null;
+  const pierLine = (x, z) => x > 255 && x < 330 && z > 0 && z < 42;
+  city.terrain.features.forEach(f => { const q = pt(f); if (!q || /^dc:P10-10-B1/.test(f.id || '') || /:in(:|$)/.test(f.id || '')) return;
+      if (!(dist(q[0], q[1]) < 90 || pierLine(q[0], q[1]))) return;
+      if (f.k === 'arch') { const c = L(f.x, f.z), r = JSON.parse(JSON.stringify(f)); r.x = c[0]; r.z = c[1]; if (typeof r.y !== 'number') r.y = 0; r.id = 'mall:view:' + (f.id || VIEW.rows.length); VIEW.rows.push(r); }
+      else if (f.k === 'texbuilding' && f.skin !== false) { const c = L(f.x, f.z), r = JSON.parse(JSON.stringify(f)); ['hollow', 'door', 'leaf', 'inner', 'keyIn', 'floorIn'].forEach(k => delete r[k]); r.x = c[0]; r.z = c[1]; if (typeof r.y !== 'number') r.y = 0; r.id = 'mall:view:' + (f.id || VIEW.rows.length); VIEW.rows.push(r); } });
+  city.props.forEach(q => { if (q.x >= 259 || dist(q.x, q.z) > 50 || q.floor || (q.y > 0.5 && q.y < 5) || !CAT[q.key]) return;
+      const c = L(q.x, q.z), o = JSON.parse(JSON.stringify(q)); o.x = c[0]; o.z = c[1]; props.push(o); VIEW.props++; }); }
+console.log('THE VIEW OUT', JSON.stringify({ rows: VIEW.rows.length, parts: VIEW.rows.reduce((n, r) => n + (r.parts ? r.parts.length : 0), 0), props: VIEW.props }));
+
 /* ── the room's text ── */
 const SKY = vm.runInContext("JSON.stringify(DOOR_HQ.rooms." + CITY + ".shell.sky)", DATA);
-const rows = F.concat([{ k: 'arch', id: 'mall:in', x: 0, z: 0, y: 0, parts: P }, { k: 'arch', id: 'mall:roof', x: 0, z: 0, y: 0, parts: BOX.roofParts(true) }]);
+const rows = F.concat([{ k: 'arch', id: 'mall:in', x: 0, z: 0, y: 0, parts: P }, { k: 'arch', id: 'mall:roof', x: 0, z: 0, y: 0, parts: BOX.roofParts(true) }], VIEW.rows);
 if (inner.length) rows.push({ k: 'texbuilding', id: 'mall:doors', x: 0, z: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_glass', inner });
 const M = [];
 M.push("        /* BAYSIDE-MALL-BEGIN — THE BAYSIDE MALL, THE INSIDE (2026-11-20): written by `node bake-mall.js` from docs/disaster-city/mall/box.js (the same box the city's tool draws the outside from). Never hand-edit between the markers; edit the tool or the box and rerun. */");
@@ -222,7 +267,7 @@ M.push('        ' + ID + ': {');
  "    plate: { x: " + spawn.x + ", z: 0, y: 3.4 },", "    look: HQ_ROOM_LOOKS.mall,", "},",
  "parti: 'One building, the same box as its outside in Bayside: a long concourse on the pier’s line from the plaza doors to the sea doors, two cross halls to the canal, the atrium under the dome where they meet, two floors of shops, the food court upstairs by the sea.',",
 ].forEach(l => M.push('            ' + l));
-M.push('            terrain: {'); M.push("                res: 0.4375, floor: 'terrazzo', cliff: 'urban:PlasterWallPainted1a', path: 'urban:TileMarble2d',"); M.push('                noise: { amp: 0, scale: 6 },');
+M.push('            terrain: {'); M.push("                res: 0.4375, floor: 'terrazzo', cliff: 'urban:PlasterWallPainted1a', path: 'urban:TileMarble2d',"); M.push('                noise: { amp: 0, scale: 6 }, outer: false,   // no outer ground of the field\'s own: the room draws its own view (THE VIEW OUT)');
 M.push('                features: ['); rows.forEach(f => M.push('                    ' + J(f) + ',')); M.push('                ],');
 M.push('                shops: ['); shops.forEach(s => M.push('                    ' + J(s) + ',')); M.push('                ],'); M.push('            },');
 M.push('            doors: ['); doors.forEach(d => M.push('                ' + J(d) + ',')); M.push('            ],');

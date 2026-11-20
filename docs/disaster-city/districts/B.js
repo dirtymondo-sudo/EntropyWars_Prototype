@@ -1496,7 +1496,7 @@ const MALL_WORDS = {
     terrace1: 'Glass doors off the terrace into the food court.', terrace2: 'Glass doors off the terrace into the food court.' };
 function mallDoors(ctx) {
     MALL.DOORS.forEach(d => { if (d.id === 'main') return; const a = mallDoorAt(d);
-        ctx.doors.push({ id: 'mall_' + d.id, wall: 'free', x: a.x, z: a.z, face: a.face, noEntrance: true, frame: d.id === 'staff' ? undefined : MALL.FRAME, leaf: d.id === 'staff' ? 'leaf_exit' : 'leaf_glass', wide: d.id === 'sea' || undefined,
+        ctx.doors.push({ id: 'mall_' + d.id, wall: 'free', x: a.x, z: a.z, face: a.face, noEntrance: true, frame: d.id === 'staff' ? undefined : MALL.FRAME, leaf: d.id === 'staff' ? 'leaf_exit' : null, proc: d.id === 'staff' ? undefined : 'glass_slide', wide: d.id === 'staff' ? undefined : true,
             label: 'THE BAYSIDE MALL', sub: d.name + ' · INTO THE MALL', action: { room: MALL_ROOM, at: d.id }, desc: MALL_WORDS[d.id] }); });
 }
 /* the outside's drawn parts, in the building's own frame (the middle of the box, x east, z south: the same frame as the room's) */
