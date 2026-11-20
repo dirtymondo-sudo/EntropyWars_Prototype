@@ -1110,6 +1110,29 @@ const RACE_SPRITE_ANIMATIONS = {
   },
 };
 
+/* THE PANEL ANIMATIONS (pilot, mondo 2026-11-20: "having these sprite animations in her unit info panel corresponding to
+   her actions ... instead of her closeup face portrait"): a race listed here shows its whole sprite, animated, in the unit
+   info panel's portrait (hud.js PanelAnim): `idle` loops, and `walk` / `attack` / `hurt` play once when the unit moves,
+   attacks or casts, or is hit, then it goes back to idle. Each sheet is ONE horizontal strip of `frames` square frames
+   (Sprite AI's export, 8 x 128 px). A race or gender without a row keeps its face portrait. Off: EW_DISABLE_PANEL_ANIMS. */
+const _PA = 'https://cdn.entropywars.net/Assets/characters/races';
+const RACE_PANEL_ANIMS = {
+  'catgirl': {
+    female: {
+      idle:   `${_PA}/catgirl/female/panel_idle.png`,
+      walk:   `${_PA}/catgirl/female/panel_walk.png`,
+      attack: `${_PA}/catgirl/female/panel_attack.png`,
+      hurt:   `${_PA}/catgirl/female/panel_hurt.png`,
+      frames: 8, fps: 8,
+    },
+  },
+};
+function getRacePanelAnims(unit) {
+  if (!unit || !unit.race || (typeof window !== 'undefined' && window.EW_DISABLE_PANEL_ANIMS)) return null;
+  const set = RACE_PANEL_ANIMS[unit.race];
+  return (set && set[unit.gender || 'male']) || null;
+}
+
 function getRaceSpriteAnimations(race, gender) {
   const set = RACE_SPRITE_ANIMATIONS[race];
   if (!set) return null;

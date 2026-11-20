@@ -3401,3 +3401,58 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   now a plain call with the named arguments. What would move this corner by milliseconds is structural, not another small cut:
   the 39 signals and the one-of-a-kind props into recordings (fewer own draws), fewer distinct shaders (each costs a "first" in
   every render), or the unit mask drawn from a kept list of bodies in place of a walk of the scene.
+- THE MASK'S LISTS (11-20, mondo picked cut 2 of three: "draw the character outline pass from a kept list of bodies"): the unit
+  mask (THE BOLD UNIT LINE: two renders of the scene a frame, the skinned layer and the still parts that ride a unit) walked the
+  scene for a few dozen pieces ("mask: projection walk 1.0-1.1 ms", "Walk visits: mask 3.4K-5.4K"). three-post.js
+  `_scanPixelMaskTargets` (which already reads every object on an add / every 1.5 s) now writes down what stands on each of the
+  two layers (`sc._ew_pixSkinL`, `sc._ew_pixUnitL`: by the layer bits, a piece under a listed one not listed again), and
+  `_renderPixelMask` hands the list to the renderer for its render (`_ew_maskList`, `_ew_maskListSc`). three-renderer.js
+  `_ewMaskListSetup` (any node renderer, set up after `init()`): for that render the scene's children are not walked; each listed
+  piece whose parents are all shown up to the scene goes to three's own projection with its nearest Group's render order.
+  The Pixelate "models" static pass and every other render are untouched. Off: `window.EW_MASK_LIST_OFF` (live).
+  Proof (city probe, node renderer on WebGL 2, `--post`, ink style on, same frame conditions, the walk then the list): the mask
+  drew the SAME objects in the SAME order (4 of 68 listed bodies in view); projection visits 30,487 → 37 (skinned) and 30,487 → 1
+  (unit parts). On his WebGPU path the walk was already cut to ~4,000 by the mask files; the list makes it a few dozen.
+  PROBE FACTS learned: playtest_city.js sets `EW_HQ_NO_POST` unless `--post` (no mask, no style without it); the ink style's
+  picture is broken on the cloud's WebGL 2 software path (ground missing) with or without this change, so compare DRAWS (wrap
+  `renderer.renderObject` during the render), not pixels; `EW_PROBE_GL=webgpu` + `--gpu=webgpu` runs real WebGPU on SwiftShader
+  (black picture, counts only); a small room for a 40 s probe: `site_ow_r1`.
+- THE GHOSTS KEPT (11-20, mondo: "still really bad slowdowns and freezes during battle, especially during combos (the ones where
+  units have to be standing adjacent)"; his battle F3 in the city's fight room: 2.5 FPS, frame 412 ms, "770.7 re-records/s
+  (tree 770.7)", "scene: classic draws 88.0", 278-820 groups re-recorded in one check, 4.2 shader builds/s, 11.5 new pipelines/s,
+  "fight: may fade (own piece) 1507 (1371 groups)"). Reading: each fade of a piece (`_occApplyFade`: the occlusion fade, the
+  canopy cutaway) cloned its material and `_occRestore` disposed the clone. A new material = a new render object + uniform
+  buffers + bind groups (+ a pipeline lookup) per mesh per fade, and its one-piece bundle re-records (the tree hash holds the
+  material's id). A combo's camera cuts recompute the blockers every frame and sweep hundreds of pieces in and out. At low FPS
+  the fade's step (`rate * dt`, dt capped at 0.05) reaches its end in one frame, so pieces are restored and re-faded even faster:
+  the slower it got, the more it rebuilt. Now the clone stays on its mesh (`_ew_occKeep`, registry `_occKept`) and is put back on
+  at the next fade when the piece's material is the same object at the same version (opacity / colour / emissive copied again);
+  freed when the mesh has left the scene (a look every 10 s) or past 4,000. Off: `window.EW_OCC_NO_KEEP`.
+  The FIRST fade of a piece still pays; the fog fade (`_ew_fogOrig`) still clones each time. NOT measured on WebGPU (the cloud's
+  SwiftShader WebGPU loses the device in the city: "createBuffer ... too large"); a VS-CPU arena match on the classic renderer
+  ran 9 rounds with spells and no page error. Note for the lens: in a fight `_ewBunWalk` does not count shown / hidden pieces, so
+  a visibility flip reads as "tree ... other".
+
+## THE ONE AIR (2026-11-20, mondo: "it's just a hard cutoff from the horizon to the sky" + "one consistent fog system for the entire game, all rooms, exploration and battle and the main menu ... not per room")
+- **Why the line was there:** the sky dome's fog band was written to END at the horizon (`uFogTop`), the ground fogged by camera
+  distance in a colour the sky above it did not wear, and the far land past a room's edge had its haze painted in at the build.
+- **One row, three-renderer.js `EW_AIR`** (`rho`, `base` per metre, `farM`, `hazeH`, `mist`, `mistH`, `mistMove`, `mistSize`,
+  `mistSpeed`, `warmDay`, `warmDusk`). `_hqFogHold` writes the whole air for every walk frame AND the menu frame, `_hqFogBack` puts
+  the room's values back. A room's own fog numbers are NOT read by the draw any more: `shell.fog.density`, `sky.fog.density / height /
+  amount / top / band`, `shell.heightFog.h / amount`, a menu biome's `fog[1]`. Do not add per-room fog amounts; change `EW_AIR`.
+  A room still owns its fog COLOUR (the clock's hour), its floor height and `shell.heightFog: false` (no mist here).
+- **The levers (the same everywhere):** Scene Fog OFF = the clear day: `base` per metre + the soft band it leaves on the horizon.
+  Scene Fog ON = + `rho` × Fog Density, the ground mist, a fuller band. Fog Horizon = how high the band and the mist climb. MAP LOOKS
+  OFF = the player's fog colour everywhere (as before). Fog on can only ADD to the clear day's haze.
+- **The sky's band:** new dome uniform `uAir` (x = the haze at the line, y = 1 / its height, z = warmth, w = the line). At the line it
+  is `_ewAirFar` = what the air does to a thing `farM` m away, and it thins upward; same formula on the far scenery
+  (`_injectHorizonFog`). In a fight x is negative = a share of the fight's own band (`_ewAirBattle`): the board fog is unchanged,
+  its band only gets the soft top. A fight on a room takes `rho + base` (no room density).
+- **Warm toward the sun + the drifting mist:** two shared objects in the patched fog chunks, `uEwAir` (the sun's heading, warmth,
+  the mist's clock) and `uEwAir2` (patch size, depth). Walk only (the clock's sun); off under the player's own colour.
+- **The far land** (`_hqBuildEdgeLand`): its far sheets take the scene fog now (were `fog: false` with haze baked in the vertex colours).
+- **Fixed on the way:** a day room with no fog colour of its own faded to near black (0x0d0e12): it wears `HQ_WORLD_CLOCK.day.fog`.
+- Every shader piece has its WebGPU twin (the fog node, the dome's node graph, the `hzfog` layer). Under water is untouched.
+- Probe: `ThreeRenderer.hq.dev.air()`. Off (the rooms' own fog as before): `window.EW_NO_ONE_AIR` (set before a room builds).
+- Checked by picture: the Desert walk (off / on / low density, classic + the node renderer), both menus, one fight (Giza). NOT yet
+  looked at: indoor rooms, night and dusk, the other zones, a fight on a room. NOT built: lamps and neon glowing in the fog.

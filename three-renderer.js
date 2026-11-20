@@ -57,7 +57,7 @@ const ThreeRenderer = (function () {
             'EW_HQ_PC_SWEEP_ALL EW_HQ_RES_SPAWN_ALL EW_HQ_ROAD_TILES EW_HQ_SEAT_WHOLE EW_HQ_SIZE_EVERY_FRAME EW_HQ_SKATE EW_HQ_SKIN_BOUNDS_EXACT ' +
             'EW_HQ_STACK_NO_SPLIT EW_HQ_STILL_MERGED_EVERY EW_HQ_STILL_NO_HELD_BOOK EW_HQ_NO_COVER EW_GPU_WEAKMAPS EW_HQ_STILL_OFF EW_HQ_STRAIGHT_EDGES EW_HQ_STUCK_FULL_LIST EW_HQ_WALK_GRID_OFF EW_HQ_WATER_STEPS ' +
             'EW_INK_ON_GRASS EW_JUICE EW_KEEP_PBR_MAPS EW_KTX2_LIB EW_KTX2_P EW_LAMP_LIGHT_MAX EW_LIB_BAKE_ONE EW_LIB_BAKE_WHOLE EW_LIGHTS_EVERY_PIXEL EW_LOAD_N8AO ' +
-            'EW_LOD_LAND_RESCAN EW_LS_AURA_TUNE EW_MAP_META EW_MASK_CHUNK_FULL_WALK EW_MASK_FILE_ANY_ADD EW_MASK_FULL_WALK EW_MASK_NO_BUNDLES EW_MEM_MB ' +
+            'EW_LOD_LAND_RESCAN EW_LS_AURA_TUNE EW_MAP_META EW_MASK_CHUNK_FULL_WALK EW_MASK_FILE_ANY_ADD EW_MASK_FULL_WALK EW_MASK_LIST_OFF EW_MASK_NO_BUNDLES EW_MEM_MB ' +
             'EW_MENU_BIOME EW_MENU_CINE_SCALE EW_MENU_NO_POST EW_MM_DROP_ALL_AT_ONCE EW_MM_READ_EVERY_4S EW_MM_WALK_WHOLE EW_MOBILE EW_MODEL_DIFFUSE EW_MOUTH_REST ' +
             'EW_N8AO EW_NO_3D_BATS EW_NO_AIR_DEATH EW_NO_ANIMALS EW_NO_ARM_CLEAR EW_NO_ASSET_MANIFEST EW_NO_ASSET_STORE EW_NO_AUTO_EXPOSURE EW_NO_BATTLE_CYCLE ' +
             'EW_NO_BITMAPS EW_NO_BOARD_FOG EW_NO_BUNDLES EW_NO_BVH EW_NO_CALM_LOOK EW_NO_CAR_PACK EW_NO_CHESS_SET EW_NO_CITY_DOORS EW_NO_CLIFF_CUT ' +
@@ -67,7 +67,7 @@ const ThreeRenderer = (function () {
             'EW_NO_INST_SHARE EW_NO_KEY_LIGHT EW_NO_KNOCK EW_NO_KTX2 EW_NO_LATE_LOOK EW_NO_LEAVE_SWEEP EW_NO_LIGHT_MATCH EW_NO_LIGHT_RIG EW_NO_LIVE_PORTRAITS ' +
             'EW_NO_LOD EW_NO_LS_OUTLINE_AURA EW_NO_MAP_MOTION EW_NO_MARKS_DEFORM EW_NO_MEM_BUDGET EW_NO_MENU_FADE EW_NO_MENU_SCENE EW_NO_METRO_PACK ' +
             'EW_NO_MODEL_PORTRAITS EW_NO_MODEL_QUEUE EW_NO_MOVING_SHEETS EW_NO_NATURAL_ROCK EW_NO_NEAREST_GRAD_FIX EW_NO_NEAR_FIRST EW_NO_NODE_POST ' +
-            'EW_NO_OCEAN_PACK EW_NO_ONE_WRITE EW_NO_OPT_ASSETS EW_NO_OVERHEAD_FADE EW_NO_PAINTED_SKY EW_NO_PARALLAX EW_NO_PB_VFX EW_NO_PORTALS EW_NO_QUIET_COMPILE ' +
+            'EW_NO_OCEAN_PACK EW_NO_ONE_WRITE EW_NO_OPT_ASSETS EW_NO_OVERHEAD_FADE EW_OCC_NO_KEEP EW_NO_PAINTED_SKY EW_NO_PARALLAX EW_NO_PB_VFX EW_NO_PORTALS EW_NO_QUIET_COMPILE ' +
             'EW_NO_RIDE_ALONG EW_NO_RIG_CARRY EW_NO_RIG_LANE EW_NO_RIOT_VFX EW_NO_RIOT_VFX_C EW_NO_RIOT_VFX_D EW_NO_ROUND EW_NO_SCENE_LOOKS EW_NO_SHADER_CACHE ' +
             'EW_NO_SHADER_KEEP EW_NO_SHEET_WARM EW_NO_SHORE_BLEND EW_NO_SHOVEL_DIG EW_NO_SKIN_PICK EW_NO_SMALL_PROP_CAP EW_NO_SSAO EW_NO_STAGE_STYLE ' +
             'EW_NO_STAIRS_PACK EW_NO_STEEP_CLIFF EW_NO_STOP_MOTION EW_NO_STRADDLE EW_NO_STRATA_MERGE EW_NO_TERRAIN_RISE EW_NO_TITLE_WARM EW_NO_TRAPS_PACK ' +
@@ -3013,6 +3013,12 @@ const ThreeRenderer = (function () {
        1 = a straight ramp from the rim to y's length: THE FOG FADE below). Inside the rect the distance is 0: the board and everything
        over it is never fogged. */
     var _EW_BFOG = { x: 0, y: 0, z: 0, w: 0 }, _EW_BFOG2 = { x: 0, y: 0, z: 0, w: 0 }, _EW_BFOG3 = { x: 1, y: 0, z: 0, w: 0 };
+    /* ══ THE ONE AIR (2026-11-20, mondo: "it's just a hard cutoff from the horizon to the sky ... one consistent fog system for the
+       entire game, all rooms, exploration and battle and the main menu") ══ two more shared plain objects in the same patched chunks:
+       uEwAir = { x, y: the sun's heading over the ground (world x / z, unit), z: how warm the fog turns toward it (0 = the fog's own
+       colour everywhere), w: the mist's clock }; uEwAir2 = { x: 2π / the mist's patch size (world units), y: how deep the ground
+       mist drifts (0 = the flat sheet) }. Rules + writers: EW_AIR and _hqFogHold. */
+    var _EW_AIR = { x: 1, y: 0, z: 0, w: 0 }, _EW_AIR2 = { x: 0.001, y: 0, z: 0, w: 0 };
     var _ewHFogPatched = false;
     function _ewHeightFogPatch() {
         if (_ewHFogPatched || typeof THREE === 'undefined' || !THREE.ShaderChunk || !THREE.ShaderLib) return false;
@@ -3025,17 +3031,21 @@ const ThreeRenderer = (function () {
             if (SC.fog_pars_vertex && SC.fog_vertex && SC.fog_pars_fragment && SC.fog_fragment && SC.fog_pars_vertex.indexOf('vEwFogY') < 0) {
                 SC.fog_pars_vertex = SC.fog_pars_vertex.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tvarying vec2 vEwFogXZ;');
                 SC.fog_vertex = SC.fog_vertex.replace(FD + ' = - mvPosition.z;', FD + ' = - mvPosition.z;\n\tvec4 ewFogWp = vec4( position, 1.0 );\n\t#ifdef USE_INSTANCING\n\t\tewFogWp = instanceMatrix * ewFogWp;\n\t#endif\n\tewFogWp = modelMatrix * ewFogWp;\n\tvEwFogY = ewFogWp.y;\n\tvEwFogXZ = ewFogWp.xz;');
-                SC.fog_pars_fragment = SC.fog_pars_fragment.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tvarying vec2 vEwFogXZ;\n\tuniform vec4 uEwHFog;\n\tuniform vec4 uEwBFog;\n\tuniform vec4 uEwBFog2;\n\tuniform vec4 uEwBFog3;');
+                SC.fog_pars_fragment = SC.fog_pars_fragment.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tvarying vec2 vEwFogXZ;\n\tuniform vec4 uEwHFog;\n\tuniform vec4 uEwBFog;\n\tuniform vec4 uEwBFog2;\n\tuniform vec4 uEwBFog3;\n\tuniform vec4 uEwAir;\n\tuniform vec4 uEwAir2;');
                 SC.fog_fragment = SC.fog_fragment.replace('gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
-                    'float ewHf = uEwHFog.z * exp( - max( 0.0, vEwFogY - uEwHFog.x ) * uEwHFog.y ) * ( 1.0 - exp( - uEwHFog.w * ' + FD + ' ) );\n\tfogFactor = clamp( 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - ewHf ), 0.0, 1.0 );\n' +
+                    'float ewHf = uEwHFog.z * exp( - max( 0.0, vEwFogY - uEwHFog.x ) * uEwHFog.y ) * ( 1.0 - exp( - uEwHFog.w * ' + FD + ' ) );\n' +
+                    '\tewHf *= clamp( 1.0 + uEwAir2.y * ( 0.6 * sin( vEwFogXZ.x * uEwAir2.x + uEwAir.w ) * sin( vEwFogXZ.y * uEwAir2.x * 1.31 - uEwAir.w * 0.73 ) + 0.4 * sin( ( vEwFogXZ.x + vEwFogXZ.y ) * uEwAir2.x * 0.37 + uEwAir.w * 0.41 ) ), 0.0, 1.3 );\n' +
+                    '\tvec2 ewAv = vEwFogXZ - cameraPosition.xz;\n\tfloat ewAs = max( dot( ewAv, uEwAir.xy ) / max( length( ewAv ), 0.0001 ), 0.0 );\n\tewAs = ewAs * ewAs * ewAs * uEwAir.z;\n' +
+                    '\tvec3 ewFc = mix( fogColor, fogColor * vec3( 1.30, 1.05, 0.76 ) + vec3( 0.06, 0.025, 0.0 ), ewAs );\n' +
+                    '\tfogFactor = clamp( 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - ewHf ), 0.0, 1.0 );\n' +
                     '\tvec2 ewBq = max( max( uEwBFog.xy - vEwFogXZ, vEwFogXZ - uEwBFog.zw ), 0.0 );\n\tfloat ewBd = length( ewBq );\n\tfloat ewBr = ewBd * uEwBFog2.y;\n' +
                     '\tfloat ewBf = mix( 1.0 - exp( - ewBr * ewBr ), clamp( ewBd * uEwBFog3.y, 0.0, 1.0 ), uEwBFog3.z ) * exp( - max( 0.0, vEwFogY - uEwBFog2.z - ewBd * uEwBFog2.w ) * uEwBFog3.x );\n' +
-                    '\tfogFactor = mix( fogFactor, clamp( ewBf, 0.0, 1.0 ), uEwBFog2.x );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );');
+                    '\tfogFactor = mix( fogFactor, clamp( ewBf, 0.0, 1.0 ), uEwBFog2.x );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, ewFc, fogFactor );');
                 if (SC.fog_pars_fragment.indexOf('vEwFogY') < 0 || SC.fog_vertex.indexOf('vEwFogY') < 0) console.warn('[ThreeRenderer] the height fog patch found no anchor in three.js ' + THREE.REVISION);
             }
             var lib = THREE.ShaderLib;
-            for (var k in lib) if (lib[k] && lib[k].uniforms && lib[k].uniforms.fogColor) { lib[k].uniforms.uEwHFog = { value: _EW_HFOG }; lib[k].uniforms.uEwBFog = { value: _EW_BFOG }; lib[k].uniforms.uEwBFog2 = { value: _EW_BFOG2 }; lib[k].uniforms.uEwBFog3 = { value: _EW_BFOG3 }; }
-            if (THREE.UniformsLib && THREE.UniformsLib.fog) { THREE.UniformsLib.fog.uEwHFog = { value: _EW_HFOG }; THREE.UniformsLib.fog.uEwBFog = { value: _EW_BFOG }; THREE.UniformsLib.fog.uEwBFog2 = { value: _EW_BFOG2 }; THREE.UniformsLib.fog.uEwBFog3 = { value: _EW_BFOG3 }; }
+            for (var k in lib) if (lib[k] && lib[k].uniforms && lib[k].uniforms.fogColor) { lib[k].uniforms.uEwHFog = { value: _EW_HFOG }; lib[k].uniforms.uEwBFog = { value: _EW_BFOG }; lib[k].uniforms.uEwBFog2 = { value: _EW_BFOG2 }; lib[k].uniforms.uEwBFog3 = { value: _EW_BFOG3 }; lib[k].uniforms.uEwAir = { value: _EW_AIR }; lib[k].uniforms.uEwAir2 = { value: _EW_AIR2 }; }
+            if (THREE.UniformsLib && THREE.UniformsLib.fog) { THREE.UniformsLib.fog.uEwHFog = { value: _EW_HFOG }; THREE.UniformsLib.fog.uEwBFog = { value: _EW_BFOG }; THREE.UniformsLib.fog.uEwBFog2 = { value: _EW_BFOG2 }; THREE.UniformsLib.fog.uEwBFog3 = { value: _EW_BFOG3 }; THREE.UniformsLib.fog.uEwAir = { value: _EW_AIR }; THREE.UniformsLib.fog.uEwAir2 = { value: _EW_AIR2 }; }
             return true;
         } catch (e) { console.warn('[ThreeRenderer] the height fog patch failed', e); return false; }
     }
@@ -28964,14 +28974,62 @@ const ThreeRenderer = (function () {
         c.opacity = (m.opacity != null ? m.opacity : 1);
         c._ew_occClone = true;
         c._ew_occSrc = m;   // ONE SHADOW FOR A FADING TREE: the shadow pass draws the original (_ewGpuCompat)
+        c._ew_occV = m.version;
         return c;
+    }
+    /* THE GHOSTS KEPT (2026-11-20, mondo: "really bad slowdowns and freezes during battle, especially during combos"; his battle F3:
+       2.5 FPS, "770 re-records/s", "scene: classic draws 88 ms", 4 shader builds and 11 new pipelines a second). Every fade of a
+       wall, ceiling or prop (the occlusion fade, the canopy cutaway) CLONED the piece's material and threw the clone away when the
+       piece came back. To the renderer a new material is a new thing to draw: a new render object, new uniform buffers and bind
+       groups, a pipeline lookup, per mesh, per fade; a combo's camera cuts sweep the view across hundreds of pieces again and
+       again, so the same pieces paid it on every cut. The clone now stays with its mesh (`_ew_occKeep`) and the next fade of that
+       piece puts the same one back on: everything the renderer made for it is still there. Made anew only when the piece's own
+       material was replaced or changed (its version). A kept clone is freed when its mesh has left the scene (looked at every
+       10 s) or past OCC_KEEP_MAX of them. Off: window.EW_OCC_NO_KEEP = true. */
+    var _occKept = new Set(), _occKeptAt = 0, OCC_KEEP_MAX = 4000;
+    function _occKeepFree(mesh) {
+        var K = mesh._ew_occKeep; mesh._ew_occKeep = null; _occKept.delete(mesh);
+        if (Array.isArray(K)) { for (var i = 0; i < K.length; i++) if (K[i] && K[i]._ew_occClone) K[i].dispose(); }
+        else if (K && K._ew_occClone) K.dispose();
+    }
+    function _occKeepSweep(nowMs) {
+        if (nowMs - _occKeptAt < 10000) return;
+        _occKeptAt = nowMs;
+        var gone = null, over = _occKept.size - OCC_KEEP_MAX;
+        _occKept.forEach(function (mesh) {
+            var live = false;
+            if (over > 0 && !mesh._ew_occOrig) { over--; }
+            else for (var q = mesh, d = 0; q && d < 64; q = q.parent, d++) if (q.isScene) { live = true; break; }
+            if (!live && !mesh._ew_occOrig) (gone || (gone = [])).push(mesh);
+        });
+        if (gone) for (var i = 0; i < gone.length; i++) _occKeepFree(gone[i]);
+    }
+    /* the values a piece may have changed without a new version (a tint, a glow): the kept clone takes them again */
+    function _occKeepSync(c, m) {
+        c.opacity = (m.opacity != null ? m.opacity : 1);
+        if (c.color && m.color && c.color.isColor && m.color.isColor) c.color.copy(m.color);
+        if (c.emissive && m.emissive && c.emissive.isColor && m.emissive.isColor) c.emissive.copy(m.emissive);
+        if (m.emissiveIntensity != null) c.emissiveIntensity = m.emissiveIntensity;
+    }
+    function _occKeepFits(K, m) {
+        if (!K) return false;
+        if (Array.isArray(m)) { if (!Array.isArray(K) || K.length !== m.length) return false; for (var i = 0; i < m.length; i++) if (!K[i] || !m[i] || K[i]._ew_occSrc !== m[i] || K[i]._ew_occV !== m[i].version) return false; return true; }
+        return !Array.isArray(K) && K._ew_occSrc === m && K._ew_occV === m.version;
     }
     function _occApplyFade(mesh) {
         if (mesh._ew_occOrig || mesh._ew_fogOrig) return;   // already swapped (occlusion or fog fade)
-        mesh._ew_occOrig = mesh.material;
-        mesh.material = Array.isArray(mesh.material)
-            ? mesh.material.map(_occCloneMat)
-            : _occCloneMat(mesh.material);
+        var m = mesh.material, K = mesh._ew_occKeep;
+        mesh._ew_occOrig = m;
+        if (K && !window.EW_OCC_NO_KEEP && _occKeepFits(K, m)) {   // THE GHOSTS KEPT: the same clone as last time
+            if (Array.isArray(K)) { for (var i = 0; i < K.length; i++) _occKeepSync(K[i], m[i]); }
+            else _occKeepSync(K, m);
+            mesh.material = K;
+            return;
+        }
+        if (K) _occKeepFree(mesh);
+        mesh.material = Array.isArray(m)
+            ? m.map(_occCloneMat)
+            : _occCloneMat(m);
     }
     function _occSetOpacity(mesh, op) {
         var m = mesh.material;
@@ -28983,6 +29041,12 @@ const ThreeRenderer = (function () {
         var cur = mesh.material;
         mesh.material = mesh._ew_occOrig;
         mesh._ew_occOrig = null;
+        if (!window.EW_OCC_NO_KEEP && mesh.parent && cur && (Array.isArray(cur) ? (cur.length > 0 && cur[0] && cur[0]._ew_occClone) : cur._ew_occClone)) {   // THE GHOSTS KEPT
+            if (mesh._ew_occKeep && mesh._ew_occKeep !== cur) _occKeepFree(mesh);
+            mesh._ew_occKeep = cur; _occKept.add(mesh);
+            _occKeepSweep(performance.now());
+            return;
+        }
         if (Array.isArray(cur)) { for (var i = 0; i < cur.length; i++) if (cur[i] && cur[i]._ew_occClone) cur[i].dispose(); }
         else if (cur && cur._ew_occClone) cur.dispose();
     }
@@ -36405,7 +36469,7 @@ const ThreeRenderer = (function () {
         'uniform float uTime; uniform float uDayNight; uniform float uSkyEvent; uniform float uSkyAmt;',
         'uniform float uZodiac; uniform vec4 uWeather; uniform float uOccult;',
         'uniform vec3 uCenter; uniform float uDiscR; uniform float uWallH; uniform float uTile;',
-        'uniform vec3 uFogColor; uniform float uFogAmount; uniform float uFogTop; uniform float uFogBand;',
+        'uniform vec3 uFogColor; uniform float uFogAmount; uniform float uFogTop; uniform float uFogBand; uniform vec4 uAir;',
         // per-map sky preset (state.mapEnv): palette wash + star/nebula dimmers
         'uniform vec3 uMapTint; uniform float uMapTintAmt; uniform float uMapStars; uniform float uMapNebula;',
         // MOVING MAPS (2026-09-12): the sky streams with the travel, the sun / moon swell on a close pass
@@ -36783,8 +36847,17 @@ const ThreeRenderer = (function () {
         //    board horizon instead of climbing into the sky. Applied to the final
         //    display colour so it matches the colour the distance fog fades the
         //    scenery into. uFogAmount is 0 when the filter is off.
-        '  if(uFogAmount>0.001){ float fb=1.0-smoothstep(uFogTop-uFogBand,uFogTop,el); fb=pow(fb,1.6);\n' +
-        '    col=mix(col,uFogColor,clamp(fb*uFogAmount,0.0,1.0)); }\n' +
+        // THE ONE AIR (2026-11-20): the band used to END at the horizon line, so fogged ground met a clear sky in a hard line.
+        //    uAir = { x: the haze at the line (below 0 = that share of uFogAmount: the battle's band), y: 1 / how high it thins
+        //    (view-ray altitude), z: how warm it turns toward the sun, w: the line (x < 0: over uFogTop) }. Full at and below the
+        //    line, thinning upward like real air: the far ground and the low sky are one haze.
+        '  float fAmt=0.0;\n' +
+        '  if(uFogAmount>0.001){ float fb=1.0-smoothstep(uFogTop-uFogBand,uFogTop,el); fAmt=clamp(pow(fb,1.6)*uFogAmount,0.0,1.0); }\n' +
+        '  float airA=uAir.x<0.0?-uAir.x*uFogAmount:uAir.x; float airL=uAir.x<0.0?uFogTop+uAir.w:uAir.w;\n' +
+        '  if(airA>0.001){ fAmt=1.0-(1.0-fAmt)*(1.0-clamp(airA,0.0,1.0)*exp(-max(el-airL,0.0)*uAir.y)); }\n' +
+        '  if(fAmt>0.001){ vec3 fc=uFogColor; float sl=length(sunDir.xz); float rl=length(rd.xz);\n' +
+        '    if(uAir.z>0.0&&sl>0.001&&rl>0.001){ float sw=max(dot(rd.xz,sunDir.xz)/(sl*rl),0.0); sw=sw*sw*sw*uAir.z; fc=mix(fc,fc*vec3(1.30,1.05,0.76)+vec3(0.06,0.025,0.0),sw); }\n' +
+        '    col=mix(col,fc,clamp(fAmt,0.0,1.0)); }\n' +
         '  gl_FragColor=vec4(col,1.0);\n' +
         '}';
     }
@@ -36809,6 +36882,7 @@ const ThreeRenderer = (function () {
                 uFogAmount: { value: 0.0 },
                 uFogTop: { value: 0.0 },
                 uFogBand: { value: 0.5 },
+                uAir: { value: new THREE.Vector4(0, 13, 0, 0) },   // THE ONE AIR: the haze over the horizon line (see the dome FS)
                 // per-map sky preset (state.mapEnv → _updateEnvironment)
                 uMapTint: { value: new THREE.Vector3(0, 0, 0) },
                 uMapTintAmt: { value: 0.0 },
@@ -38101,19 +38175,23 @@ const ThreeRenderer = (function () {
             shader.uniforms.uHzFogTop   = _envUni.uFogTop;
             shader.uniforms.uHzFogBand  = _envUni.uFogBand;
             shader.uniforms.uHzFogAmt   = _envUni.uFogAmount;
+            shader.uniforms.uHzAir      = _envUni.uAir;   // THE ONE AIR: the same haze over the line as the dome's
             shader.vertexShader = shader.vertexShader
                 .replace('#include <common>', '#include <common>\nvarying vec3 vHzWorldPos;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\n  vHzWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
             shader.fragmentShader = shader.fragmentShader
-                .replace('#include <common>', '#include <common>\nvarying vec3 vHzWorldPos;\nuniform vec3 uHzFogColor;\nuniform float uHzFogTop;\nuniform float uHzFogBand;\nuniform float uHzFogAmt;')
+                .replace('#include <common>', '#include <common>\nvarying vec3 vHzWorldPos;\nuniform vec3 uHzFogColor;\nuniform float uHzFogTop;\nuniform float uHzFogBand;\nuniform float uHzFogAmt;\nuniform vec4 uHzAir;')
                 .replace('#include <dithering_fragment>',
                     '#include <dithering_fragment>\n' +
-                    '  if (uHzFogAmt > 0.001) {\n' +
+                    '  float hzAirA = uHzAir.x < 0.0 ? -uHzAir.x * uHzFogAmt : uHzAir.x;\n' +
+                    '  if (uHzFogAmt > 0.001 || hzAirA > 0.001) {\n' +
                     '    float hzEl = normalize(vHzWorldPos - cameraPosition).y;\n' +
                     // same band shape as the dome: clears at uHzFogTop (the board
                     // horizon), ramps to full over uHzFogBand below it.
                     '    float hzS = smoothstep(uHzFogTop - uHzFogBand, uHzFogTop, hzEl);\n' +
                     '    float hzBand = pow(1.0 - hzS, 1.6) * uHzFogAmt;\n' +
+                    '    float hzAirL = uHzAir.x < 0.0 ? uHzFogTop + uHzAir.w : uHzAir.w;\n' +
+                    '    hzBand = 1.0 - (1.0 - clamp(hzBand, 0.0, 1.0)) * (1.0 - clamp(hzAirA, 0.0, 1.0) * exp(-max(hzEl - hzAirL, 0.0) * uHzAir.y));\n' +
                     '    gl_FragColor.rgb = mix(gl_FragColor.rgb, uHzFogColor, clamp(hzBand, 0.0, 0.95));\n' +
                     '  }');
         };
@@ -38202,6 +38280,7 @@ const ThreeRenderer = (function () {
         } else {
             _envUni.uFogAmount.value = 0.0;
         }
+        _ewAirBattle();   // THE ONE AIR: the band's soft top
     }
 
     function setHorizonFog(enabled, colorHex, thickness, horizon) {
@@ -47613,6 +47692,37 @@ const ThreeRenderer = (function () {
         if (this.old !== null && this.old.delete(o)) had = true;
         return had;
     };
+    /* THE MASK'S LISTS (2026-11-20, mondo's F3s: "mask: projection walk 1.0-1.1 ms", "Walk visits: mask 3.4K-5.4K" a frame to find a
+       few dozen bodies; he picked this cut). The unit mask's renders (three-post.js _renderPixelMask: the skinned layer, then the
+       still parts that ride a unit) hand the renderer the list of pieces on that layer, written down by the mask's own scan.
+       For that render the walk of the scene's children is replaced by the list: a piece is handed to three's own projection
+       (its layers test, its culling, its children) when every parent up to the scene is shown, with the render order of its
+       nearest Group, as the walk would have given it. Any other render is untouched. Off: window.EW_MASK_LIST_OFF. */
+    function _ewMaskListSetup(r) {
+        var po = r && r._projectObject;
+        if (typeof po !== 'function' || r._ewMaskListOn) return;
+        r._ewMaskListOn = true; r._ew_maskList = null; r._ew_maskListSc = null;
+        r._projectObject = function (object, camera, groupOrder, renderList, clippingContext) {
+            var L = this._ew_maskList;
+            if (L !== null && object === this._ew_maskListSc && object.visible !== false) {
+                var cm = camera.layers.mask;
+                for (var i = 0; i < L.length; i++) {
+                    var o = L[i];
+                    if ((o.layers.mask & cm) === 0) continue;
+                    var go = groupOrder, gSet = false, ok = false;
+                    for (var q = o.parent, d = 0; q && d < 64; q = q.parent, d++) {
+                        if (q === object) { ok = true; break; }
+                        if (q.visible === false) break;
+                        if (!gSet && q.isGroup === true) { go = q.renderOrder; gSet = true; }
+                    }
+                    if (ok) this._projectObject(o, camera, go, renderList, clippingContext);
+                }
+                _ewBun.maskListN = L.length;
+                return;
+            }
+            return po.call(this, object, camera, groupOrder, renderList, clippingContext);
+        };
+    }
     function _ewGpuOneWrite(r) {
         var B = r.backend, bu = B && B.isWebGPUBackend && B.bindingUtils;
         if (!bu || bu._ewOneWrite || typeof bu.updateBinding !== 'function' || window.EW_NO_ONE_WRITE) return;
@@ -48677,7 +48787,7 @@ const ThreeRenderer = (function () {
         var V4 = function () { return T.uniform(new THREE.Vector4()).setGroup(T.renderGroup); };
         var F = function (v) { return T.uniform(v).setGroup(T.renderGroup); };
         /* kept across a rebuilt renderer (W4, device lost): the dressed materials, twins and cached Fn graphs read these nodes */
-        if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), bfog: V4(), bfog2: V4(), bfog3: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), triCut: F(0.0005), fflow: F(new THREE.Vector2()), dressed: {} };
+        if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), bfog: V4(), bfog2: V4(), bfog3: V4(), air: V4(), air2: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), triCut: F(0.0005), fflow: F(new THREE.Vector2()), dressed: {} };
         try { _ewPlNodeSetup(r, G); } catch (e) { console.warn('[ThreeRenderer] the round worlds: no node bend', e); }   // THE ROUND WORLDS (2026-11-17)
         _ewNodeTick();
         /* the height fog: the scene's FogExp2 node, with the floor term folded in exactly as the GLSL patch does */
@@ -48704,8 +48814,19 @@ const ThreeRenderer = (function () {
                 var B = _ewNodeU.bfog, B2 = _ewNodeU.bfog2, B3 = _ewNodeU.bfog3, pw = T.positionWorld;
                 var bq = T.max(T.max(B.xy.sub(pw.xz), pw.xz.sub(B.zw)), T.vec2(0, 0)), bd = T.length(bq), br = bd.mul(B2.y);
                 var bf = T.mix(br.mul(br).negate().exp().oneMinus(), T.clamp(bd.mul(B3.y), 0, 1), B3.z).mul(T.max(pw.y.sub(B2.z).sub(bd.mul(B2.w)), 0).mul(B3.x).negate().exp());   // THE FOG FADE: the sharp curve ↔ the straight ramp
+                /* THE ONE AIR: the mist drifts, the fog warms toward the sun (the GLSL patch's twin) */
+                var A = _ewNodeU.air, A2 = _ewNodeU.air2;
+                if (A && A2) {
+                    var mw = T.sin(pw.x.mul(A2.x).add(A.w)).mul(T.sin(pw.z.mul(A2.x).mul(1.31).sub(A.w.mul(0.73)))).mul(0.6).add(T.sin(pw.x.add(pw.z).mul(A2.x).mul(0.37).add(A.w.mul(0.41))).mul(0.4));
+                    hf = hf.mul(T.clamp(mw.mul(A2.y).add(1), 0, 1.3));
+                }
                 var camF = T.clamp(T.float(1).sub(base.oneMinus().mul(hf.oneMinus())), 0, 1);
-                fn = T.fog(col, T.mix(camF, T.clamp(bf, 0, 1), B2.x));
+                var fcol = col;
+                if (A) {
+                    var av = pw.xz.sub(T.cameraPosition.xz), as1 = T.max(T.dot(av, A.xy).div(T.max(T.length(av), 0.0001)), 0), asw = as1.mul(as1).mul(as1).mul(A.z);
+                    fcol = T.mix(T.vec3(col), T.vec3(col).mul(T.vec3(1.30, 1.05, 0.76)).add(T.vec3(0.06, 0.025, 0)), asw);
+                }
+                fn = T.fog(fcol, T.mix(camF, T.clamp(bf, 0, 1), B2.x));
                 fogs.set(f, fn);
             }
             this.get(scene).fogNode = fn;
@@ -48782,6 +48903,7 @@ const ThreeRenderer = (function () {
     function _ewNodeTick() {
         var U = _ewNodeU; if (!U) return;
         U.hfog.value.set(_EW_HFOG.x, _EW_HFOG.y, _EW_HFOG.z, _EW_HFOG.w);
+        if (U.air) { U.air.value.set(_EW_AIR.x, _EW_AIR.y, _EW_AIR.z, _EW_AIR.w); U.air2.value.set(_EW_AIR2.x, _EW_AIR2.y, 0, 0); }   // THE ONE AIR
         if (U.bfog) { U.bfog.value.set(_EW_BFOG.x, _EW_BFOG.y, _EW_BFOG.z, _EW_BFOG.w); U.bfog2.value.set(_EW_BFOG2.x, _EW_BFOG2.y, _EW_BFOG2.z, _EW_BFOG2.w); U.bfog3.value.set(_EW_BFOG3.x, _EW_BFOG3.y, _EW_BFOG3.z, _EW_BFOG3.w); }
         U.ao.value.set(_HQ_AO.x, _HQ_AO.y, _HQ_AO.z, _HQ_AO.w);
         U.ao2.value.set(_HQ_AO2.x, _HQ_AO2.y, _HQ_AO2.z, _HQ_AO2.w);
@@ -49186,14 +49308,16 @@ const ThreeRenderer = (function () {
         var T = _ewNodeU.T, base = nm.setupOutput;
         if (L.k === 'hzfog') {
             if (!_envUni) return;
-            var col = _ewNodeRef(_envUni.uFogColor), top = _ewNodeRef(_envUni.uFogTop), band = _ewNodeRef(_envUni.uFogBand), amt = _ewNodeRef(_envUni.uFogAmount);
+            var col = _ewNodeRef(_envUni.uFogColor), top = _ewNodeRef(_envUni.uFogTop), band = _ewNodeRef(_envUni.uFogBand), amt = _ewNodeRef(_envUni.uFogAmount), air = _ewNodeRef(_envUni.uAir);
             nm.setupOutput = function (builder, out) {
                 var o = base.call(this, builder, out);
                 return T.Fn(function () {
                     var c = T.vec4(o).toVar();
-                    T.If(amt.greaterThan(0.001), function () {
+                    var airA = T.select(air.x.lessThan(0), air.x.negate().mul(amt), air.x), airL = T.select(air.x.lessThan(0), top.add(air.w), air.w);   // THE ONE AIR
+                    T.If(amt.greaterThan(0.001).or(airA.greaterThan(0.001)), function () {
                         var el = T.normalize(T.positionWorld.sub(T.cameraPosition)).y;
-                        var hb = T.pow(T.smoothstep(top.sub(band), top, el).oneMinus(), 1.6).mul(amt);
+                        var hb = T.clamp(T.pow(T.smoothstep(top.sub(band), top, el).oneMinus(), 1.6).mul(amt), 0, 1);
+                        hb = hb.oneMinus().mul(T.clamp(airA, 0, 1).mul(T.exp(T.max(el.sub(airL), 0).mul(air.y).negate())).oneMinus()).oneMinus();
                         c.rgb.assign(T.mix(c.rgb, col, T.clamp(hb, 0, 0.95)));
                     });
                     return c;
@@ -50716,7 +50840,7 @@ const ThreeRenderer = (function () {
         reg(_envDomeFS(), 'sky dome', function (m) {
             var L = envFns(), R = L.R, fbm = L.fbm, h11 = L.h11, h21 = L.h21, h22 = L.h22, s = _ewProgMat(m), PI = Math.PI;
             var Tm = R('uTime', 'float'), night = R('uDayNight', 'float'), Ev = R('uSkyEvent', 'float'), Amt = R('uSkyAmt', 'float'), Wt = R('uWeather', 'vec4'),
-                Oc = R('uOccult', 'float'), FogC = R('uFogColor', 'vec3'), FogA = R('uFogAmount', 'float'), FogT = R('uFogTop', 'float'), FogB = R('uFogBand', 'float'),
+                Oc = R('uOccult', 'float'), FogC = R('uFogColor', 'vec3'), FogA = R('uFogAmount', 'float'), FogT = R('uFogTop', 'float'), FogB = R('uFogBand', 'float'), Air = R('uAir', 'vec4'),
                 MTint = R('uMapTint', 'vec3'), MTintA = R('uMapTintAmt', 'float'), MStars = R('uMapStars', 'float'), MNeb = R('uMapNebula', 'float'),
                 Flow = R('uSkyFlow', 'float'), SunN = R('uSunNear', 'float'), MoonN = R('uMoonNear', 'float'), Yaw = R('uSkyYaw', 'float'), Lift = R('uSkyLift', 'float'),
                 Day = R('uSkyDay', 'float'), Clouds = R('uSkyClouds', 'float'), SunD = R('uSunDir', 'vec3'), MoonD = R('uMoonDir', 'vec3'), Clock = R('uSunClock', 'float'),
@@ -50917,9 +51041,22 @@ const ThreeRenderer = (function () {
                     col.addAssign(V3(1.0, 0.97, 0.88).mul(ss(0.0032, 0.0012, vd).add(T.exp(vd.mul(-380)).mul(0.5)))
                         .add(V3(1.0, 0.93, 0.80).mul(ss(0.0024, 0.0008, jd).mul(0.75).add(T.exp(jd.mul(-450)).mul(0.3)))).mul(bsun));
                 });
+                /* THE ONE AIR: the GLSL dome's twin (the band + the haze thinning up from the line, warm toward the sun) */
+                var fAmt = T.float(0).toVar();
                 T.If(FogA.greaterThan(0.001), function () {
                     var fb = T.pow(one.sub(ss(FogT.sub(FogB), FogT, el)), 1.6);
-                    col.assign(T.mix(col, FogC, T.clamp(fb.mul(FogA), 0, 1)));
+                    fAmt.assign(T.clamp(fb.mul(FogA), 0, 1));
+                });
+                var airA = T.select(Air.x.lessThan(0), Air.x.negate().mul(FogA), Air.x), airL = T.select(Air.x.lessThan(0), FogT.add(Air.w), Air.w);
+                T.If(airA.greaterThan(0.001), function () {
+                    fAmt.assign(one.sub(one.sub(fAmt).mul(one.sub(T.clamp(airA, 0, 1).mul(T.exp(T.max(el.sub(airL), 0).mul(Air.y).negate()))))));
+                });
+                T.If(fAmt.greaterThan(0.001), function () {
+                    var sl = T.length(sunDir.xz), rl = T.length(rd.xz);
+                    var sw = T.max(T.dot(rd.xz, sunDir.xz).div(T.max(sl.mul(rl), 0.000001)), 0);
+                    sw = sw.mul(sw).mul(sw).mul(Air.z);
+                    var fc = T.mix(FogC, FogC.mul(V3(1.30, 1.05, 0.76)).add(V3(0.06, 0.025, 0)), sw);
+                    col.assign(T.mix(col, fc, T.clamp(fAmt, 0, 1)));
                 });
                 return V4(col, 1);
             })();
@@ -51756,6 +51893,7 @@ const ThreeRenderer = (function () {
         };
         r.init().then(function () {
             _ewGpuInfo.ready = true;
+            try { _ewMaskListSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the mask keeps walking the scene', e); }
             try { _ewGpuPropMaps(r, G); } catch (e) { console.warn('[ThreeRenderer] node renderer: the maps stay WeakMaps', e); }
             _ewGpuSafeBuffers(r);
             _ewGpuSafeBindings(r);
@@ -76639,7 +76777,7 @@ const ThreeRenderer = (function () {
             var mk = key + (far ? '|far' : '');
             if (mats[mk]) return mats[mk];
             var tex = key === 'snow' ? null : _hzTex((key === 'rock' || key === 'cliff') ? 'mountain' : key === 'grass' ? 'grass' : 'desert');   // (a sea cliff wears the rock sheet: `cliff.png`, a tan sheet, is banned by the owner's rules and stood as sand-coloured slabs where a range falls into the sea)
-            var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far });
+            var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far || !_ewAirOff() });   // THE ONE AIR: the far land wears the scene's fog like everything else (its haze was painted in at the build, in the build's colour, deaf to the settings and the hour)
             /* THE NATURAL ROCK on the land past the edge (2026-11-15, see _hqTerrainMat): the far mountains and sea cliffs were one small sheet repeated
                up a whole range. The sheet is mixed with itself read 3.7 x larger and its tone drifts over the land (WebGL; the node renderer keeps the plain sheet). */
             if (tex && !(typeof window !== 'undefined' && window.EW_NO_NATURAL_ROCK)) {
@@ -76683,7 +76821,7 @@ const ThreeRenderer = (function () {
                     if (b.map[v] != null) return b.map[v];
                     var vx = xs[v % nx], vz = zs[(v / nx) | 0], p = P[v], c = colOf(p), e = 1.5;
                     if (key === 'snow') c = [0.97, 0.98, 1];
-                    if (far) { var hz0 = 0.5 + 0.3 * Math.min(1, (p.d - HQ_EDGE_NEAR_M) / 300), hzA = hz0 * (1 - 0.55 * Math.min(1, Math.max(0, (p.y - p.eH - 40) / 140))); c = [c[0] * (1 - hzA) + fogC.r * hzA, c[1] * (1 - hzA) + fogC.g * hzA, c[2] * (1 - hzA) + fogC.b * hzA]; }
+                    if (far && _ewAirOff()) { var hz0 = 0.5 + 0.3 * Math.min(1, (p.d - HQ_EDGE_NEAR_M) / 300), hzA = hz0 * (1 - 0.55 * Math.min(1, Math.max(0, (p.y - p.eH - 40) / 140))); c = [c[0] * (1 - hzA) + fogC.r * hzA, c[1] * (1 - hzA) + fogC.g * hzA, c[2] * (1 - hzA) + fogC.b * hzA]; }
                     var nxv = 2 * (p.y - F.at(vx + e, vz).y), nzv = 2 * (p.y - F.at(vx, vz + e).y), nl = Math.hypot(nxv, 2 * e, nzv);   // (one step each way: a third fewer samples)
                     var n = b.pos.length / 3; b.map[v] = n;
                     b.pos.push(vx * U, p.y * U, vz * U); b.col.push(c[0], c[1], c[2]); b.nrm.push(nxv / nl, 2 * e / nl, nzv / nl);
@@ -78247,8 +78385,9 @@ const ThreeRenderer = (function () {
     /* THE FAR FOG for the walk: the room's dry fog (under water the wet one is the water's look), scaled the way _hqFogHold
        scales it at the draw (Scene Fog off = 0, Fog Density = m) */
     function _hqPaintFog(H) {
-        var on = _ewSceneFogOn();
-        return { f: _hqDryFog(H), upm: _hqUnits(), m: on ? _ewFogShape().m : 0 };
+        var on = _ewSceneFogOn(), dry = _hqDryFog(H);
+        if (_ewAirOff() || !dry || !dry.color) return { f: dry, upm: _hqUnits(), m: on ? _ewFogShape().m : 0 };
+        return { f: { isFogExp2: true, color: dry.color, density: _ewAirDen(_hqUnits(), on, on ? _ewFogShape().m : 0) }, upm: _hqUnits(), m: 1 };   // THE ONE AIR
     }
     function _hqTickSky(now, Hx) {
         var H = Hx || _hq, sk = H && H.sky, env = H && ((H.stage && _hqStageSkyEnv(H)) || (H.clock && H.clock.vals && !H.clock.vals.locked && H.clock.vals.env) || H.room.shell.sky || (sk && sk.air && _hqStageAirEnv(H, now)));   // THE STAGE: a crossing's blend; THE WORLD CLOCK: the hour's; THE OPEN-AIR ROOM INDOORS: the room beside you
@@ -88349,8 +88488,26 @@ const ThreeRenderer = (function () {
             air:       { pts: 40,  perM: 60, label: 'BIG AIR' },
             vert:      { pts: 150, label: 'VERT AIR' },
             launch:    { pts: 60,  label: 'AIR' },
+            wallride:  { pts: 120, perSec: 60, label: 'WALLRIDE' },
+            wallplant: { pts: 150, label: 'WALL PLANT' },
         },
         ranks: [[0, 'LANDED'], [400, 'NICE'], [1500, 'SICK'], [5000, 'INSANE'], [15000, 'LEGENDARY']],
+        lava: { perS: 30, ramp: 0.25, multEveryS: 2, tickS: 0.1 },   // THE FLOOR IS LAVA (2026-11-20)
+        /* THE GRINDS + THE BALANCE METER + THE WALLS (2026-11-20): see data.js HQ_SKATE_RULES for the words */
+        balance: { rampPerS: 0.08, rampMax: 2.5, tickS: 0.05 },
+        grindSwitchMs: 350,
+        grinds: {
+            fifty:     { label: '50-50',      pts: 0,   per: 1,   bal: 1,   tuck: 0,     spin: 0 },
+            nose:      { label: 'NOSEGRIND',  pts: 90,  per: 1.5, bal: 1.4, tuck: 0.3,   spin: 0 },
+            five0:     { label: '5-0',        pts: 90,  per: 1.5, bal: 1.4, tuck: -0.3,  spin: 0 },
+            board:     { label: 'BOARDSLIDE', pts: 80,  per: 1.3, bal: 1.2, tuck: 0,     spin: 1.5708 },
+            lip:       { label: 'LIPSLIDE',   pts: 80,  per: 1.3, bal: 1.2, tuck: 0,     spin: -1.5708 },
+            crooked:   { label: 'CROOKED',    pts: 120, per: 1.8, bal: 1.6, tuck: 0.28,  spin: 0.45 },
+            overcrook: { label: 'OVERCROOK',  pts: 120, per: 1.8, bal: 1.6, tuck: 0.28,  spin: -0.45 },
+            smith:     { label: 'SMITH',      pts: 120, per: 1.8, bal: 1.6, tuck: -0.26, spin: 0.4 },
+            feeble:    { label: 'FEEBLE',     pts: 120, per: 1.8, bal: 1.6, tuck: -0.26, spin: -0.4 },
+        },
+        wall: { minV: 5, maxS: 1.6, grav: 0.18, upV: 2.2, fallV: 2.0, jumpV: 5.6, jumpOut: 0.6, jumpPts: 60, plantInto: 0.8, plantV: 5.2, plantKeep: 0.85, max: 3, coolS: 0.4, tall: 0.9, lean: 0.6 },
     };
     var _hqRideMem = { on: false };   // the board through a door
     function _hqSkateRules() {
@@ -88502,16 +88659,107 @@ const ThreeRenderer = (function () {
     }
     function _hqRideKeyEdge(R, k, key) { var down = !!k[key], was = !!R.keyLatch[key]; R.keyLatch[key] = down; return down && !was; }
     /* the combo: add a line, tell the strip */
+    /* THE FLOOR IS LAVA (2026-11-20, mondo: "not touching the ground continues your combo ... the longer you can stay doing tricks in
+       the air or grinding on rails and not touching the ground, it keeps adding to your score"): `R.offT` = the seconds since the wheels
+       left the ground (air + rails, one clock; the ground zeroes it). While a line is open every second off the ground pays
+       `lava.perS` points, faster the longer it runs (× 1 + offT × `lava.ramp`), and every `lava.multEveryS` seconds adds ONE to the
+       line's multiplier. The score is ONE read: pts × (tricks + the lava steps). Table: data.js HQ_SKATE_RULES.lava. */
+    /* ══ THE GRINDS (2026-11-20, mondo: "let's do 3, 4, and 6") ══ a rail is no longer one grind. The grind is picked AT THE LOCK by the
+       arrow held (↑ nosegrind · ↓ 5-0 · ← boardslide · → lipslide; none = 50-50) and CHANGED ON THE RAIL by an arrow's press or a
+       flick of the stick (a mouse button held; the four diagonals = crooked · overcrook · smith · feeble). Each kind has its own
+       points a second (`per`), its own balance (`bal`: harder kinds drift harder) and its own deck pose (`tuck` = the deck's pitch,
+       `spin` = its turn across the rail). A kind pays its chip ONCE per rail (g.used): switching back and forth is free but never
+       farms the multiplier. Table: HQ_SKATE_RULES.grinds / grindSwitchMs. */
+    function _hqRideGrindPlace(rail) { return rail.escalator ? 'ESCALATOR' : rail.stair ? 'HANDRAIL' : rail.gallery ? 'BANISTER' : rail.arc ? 'RING' : rail.bridge ? 'ROPE' : ''; }
+    function _hqRideGrindLabel(S, rail, kind) {
+        var pw = _hqRideGrindPlace(rail), G = (S.grinds && S.grinds[kind]) || null;
+        if (!G || kind === 'fifty') return pw ? pw + ' GRIND' : '50-50 GRIND';
+        return (pw ? pw + ' ' : '') + G.label;
+    }
+    function _hqRideGrindSwitch(R, kind) {
+        var g = R.grind, S = _hqSkateRules(), G = S.grinds && S.grinds[kind];
+        if (!g || !G || R.bailT > 0 || g.kind === kind || g.swT > 0) return null;
+        g.kind = kind; g.swT = (S.grindSwitchMs != null ? S.grindSwitchMs : 350) / 1000;
+        R.bal += (Math.random() - 0.5) * 0.16;   // the change of feet unsettles the board a little
+        if (!g.used[kind]) { g.used[kind] = 1; _hqRideComboAdd(R, G.label, G.pts || 0); }
+        _hqRideEmit({ kind: 'grindswitch', id: kind, label: G.label });
+        return kind;
+    }
+    function _hqRideGrindFlick(R, dx, dy) {
+        var d = _hqRideFlickDir(dx, dy);
+        return _hqRideGrindSwitch(R, { up: 'nose', down: 'five0', left: 'board', right: 'lip', upleft: 'crooked', upright: 'overcrook', downleft: 'smith', downright: 'feeble' }[d]);
+    }
+    /* ══ THE WALLS (2026-11-20) ══ a wall met IN THE AIR at speed is no longer only a stop.
+         · THE WALLRIDE: a glancing wall (taller than `wall.tall` over the feet) turns the roll along it; the rider hangs on it for up to
+           `wall.maxS` (gravity × `wall.grav`), paid by the second; SPACE jumps off it (out and up). It ends when the wall runs out.
+         · THE WALL PLANT: a wall met near square-on (`wall.plantInto`) with SPACE held kicks the rider back off it (the heading
+           mirrored, `wall.plantV` up).
+       Both are off the ground: the line stays open, the off-ground clock runs. `wall.max` wall moves per stretch off the ground
+       (a rail or the ground gives them back), so two close walls are not a ladder. The wall's face is read by a ring of twelve
+       air probes round the body, only on the frame a move in the air was refused. */
+    function _hqRideWallNormal(pl, W) {
+        var sx = 0, sz = 0, n = 0, y = pl.y + (W.tall != null ? W.tall : 0.9), r = 0.5;
+        for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6, dx = Math.sin(a), dz = Math.cos(a); var ok = true; try { ok = _hqAirOK(pl.x + dx * r, pl.z + dz * r, y); } catch (e) { ok = true; } if (!ok) { sx += dx; sz += dz; n++; } }
+        var len = Math.hypot(sx, sz);
+        if (!n || n > 9 || len < 0.5) return null;   // nothing tall there, or boxed in (a corner, a pocket)
+        return { nx: -sx / len, nz: -sz / len };
+    }
+    function _hqRideWallTouch(pl, R, S, k, moved, want) {
+        var W = S.wall, TR = S.tricks; if (!W || !TR.wallride || !TR.wallplant) return false;
+        if (R.wall || R.trick || R.bailT > 0 || (R.wallCool || 0) > 0 || (R.wallN || 0) >= (W.max || 3) || Math.abs(R.v) < W.minV || R.airT < 0.1 || want <= 0.002 || moved > want * 0.9) return false;
+        if (pl.vy < 0 && _hqRideAirLeft(pl) < 0.12) return false;   // about to touch down: a landing, not a wall move
+        var N = _hqRideWallNormal(pl, W); if (!N) return false;
+        var sg = R.v < 0 ? -1 : 1, dx = Math.sin(R.hd) * sg, dz = Math.cos(R.hd) * sg, into = -(dx * N.nx + dz * N.nz);
+        if (into <= 0.12) return false;
+        if (into >= (W.plantInto != null ? W.plantInto : 0.8)) {
+            if (!k.space) return false;
+            var rx = dx + 2 * into * N.nx, rz = dz + 2 * into * N.nz;
+            R.hd = Math.atan2(rx * sg, rz * sg); R.v *= (W.plantKeep != null ? W.plantKeep : 0.85); pl.vy = Math.max(pl.vy, W.plantV); R.holdOn = false; R.vert = null;
+            R.wallN = (R.wallN || 0) + 1; R.wallCool = W.coolS;
+            _hqRideComboAdd(R, TR.wallplant.label, TR.wallplant.pts || 0);
+            _hqRideEmit({ kind: 'wallplant', v: R.v });
+            return true;
+        }
+        var tx = dx + into * N.nx, tz = dz + into * N.nz, tl = Math.hypot(tx, tz); if (tl < 0.01) return false;
+        tx /= tl; tz /= tl;
+        R.hd = Math.atan2(tx * sg, tz * sg); R.v *= Math.max(0.8, tl);
+        R.wall = { nx: N.nx, nz: N.nz, t: 0, side: (tx * N.nz - tz * N.nx) > 0 ? 1 : -1 };
+        pl.vy = Math.max(pl.vy, W.upV); R.holdOn = false; R.vert = null; R.wallN = (R.wallN || 0) + 1;
+        _hqRideComboAdd(R, TR.wallride.label, TR.wallride.pts || 0);
+        _hqRideEmit({ kind: 'wallride', v: R.v });
+        return true;
+    }
+    var HQ_LAVA_DEFAULT = { perS: 30, ramp: 0.25, multEveryS: 2, tickS: 0.1 };
+    function _hqLavaRules() { var R = (typeof HQ_SKATE_RULES !== 'undefined') ? HQ_SKATE_RULES : ((typeof window !== 'undefined' && window.HQ_SKATE_RULES) || null); return (R && R.lava) || HQ_LAVA_DEFAULT; }
+    function _hqRideLavaSteps(R) { var L = _hqLavaRules(); return (L.multEveryS > 0) ? Math.floor((R.offT || 0) / L.multEveryS) : 0; }
+    function _hqRideComboMult(R) { return R.combo ? R.combo.tricks.length + _hqRideLavaSteps(R) : 0; }
+    function _hqRideComboScore(R) { return R.combo ? Math.round(R.combo.pts * _hqRideComboMult(R)) : 0; }
+    function _hqRideComboEmit(R, tick) {
+        if (!R.combo) return;
+        _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: _hqRideComboMult(R), score: _hqRideComboScore(R), offT: R.offT || 0, lava: _hqRideLavaSteps(R), tick: !!tick });
+    }
+    /* one call a frame off the ground (the air branch, the grind branch): the clock, the points, the step, the card's 10 Hz tick */
+    function _hqRideLava(R, dt) {
+        R.offT = (R.offT || 0) + dt;
+        var c = R.combo; if (!c || !c.tricks.length) return;
+        var L = _hqLavaRules();
+        c.pts += (L.perS || 0) * (1 + R.offT * (L.ramp || 0)) * dt;
+        var m = _hqRideLavaSteps(R);
+        if (c.lavaM == null) c.lavaM = m;
+        if (m > c.lavaM) { c.lavaM = m; c.lavaT = 0; _hqRideComboEmit(R); _hqRideEmit({ kind: 'lava', steps: m, offT: R.offT }); return; }
+        c.lavaT = (c.lavaT || 0) + dt;
+        if (c.lavaT >= (L.tickS || 0.1)) { c.lavaT = 0; _hqRideComboEmit(R, true); }
+    }
     function _hqRideComboAdd(R, label, pts) {
         if (!R.combo) R.combo = { tricks: [], pts: 0 };
         R.combo.tricks.push(label); R.combo.pts += pts;
-        _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) });
+        _hqRideComboEmit(R);
     }
     function _hqRideComboBank(R) {
         if (!R.combo || !R.combo.tricks.length) { R.combo = null; return; }
-        var score = Math.round(R.combo.pts * R.combo.tricks.length), text = R.combo.tricks.join(' + ');
+        var score = _hqRideComboScore(R), text = R.combo.tricks.join(' + '), mult = _hqRideComboMult(R);
         R.combo = null;
-        _hqRideEmit({ kind: 'bank', score: score, text: text, count: text.split(' + ').length });
+        _hqRideEmit({ kind: 'bank', score: score, text: text, count: text.split(' + ').length, mult: mult, offT: R.offT || 0 });
     }
     /* THE BAIL (rev 3): ONLY a failed trick reaches here — a rotation still turning at the
        touchdown, a spin landed off-axis, the balance lost on a rail. Every rotation is RESET
@@ -88521,11 +88769,11 @@ const ThreeRenderer = (function () {
        and the get-up clip play over bailMs (the clip picker reads _hqRideBailPhase). */
     function _hqRideBail(R, pl, why) {
         var S = _hqSkateRules();
-        var lost = R.combo ? Math.round(R.combo.pts * R.combo.tricks.length) : 0;
+        var lost = _hqRideComboScore(R);
         R.combo = null; R.trick = null; R.queue = []; R.spinAcc = 0; R.grab = false; R.grabDone = false; R.holdOn = false;
         R.flip = 0; R.roll = 0; R.deckRoll = 0; R.deckSpin = 0; R.stance = 0; R.lean = 0;
         R.crouch = 0; R.crouchOn = false; R.crouchFullT = 0; R.squash = 0; R.grabTuck = 0; R.deckTuck = 0; if (R.stick) { R.stick.dx = R.stick.dy = 0; }
-        R.vert = null; R.launchKind = null; R.lipT = 9;
+        R.vert = null; R.launchKind = null; R.lipT = 9; R.wall = null;
         var csB = R.grind ? _hqRideClearSide(pl, R, R.grind.rail, R.grind.s) : null;   // THE WAY OUT OF A COLLIDER: the fall off a rail goes to its clear side
         if (R.grind) { R.grind = null; pl.air = true; pl.vy = 0.8; pl.jumpT = -1; }
         R.v *= 0.35; if (csB) { R.hd = Math.atan2(csB.nx, csB.nz); R.v = 1.8; }
@@ -88583,7 +88831,7 @@ const ThreeRenderer = (function () {
     /* a finished rotation lands on the line (the trick tick and the late-landing grace share it) */
     function _hqRideTrickDone(R, TR, tk) {
         var T = TR[tk.id], label = T.label;
-        if (tk.id === 'spin') { var halfTurns = Math.round(Math.abs(R.spinAcc) / Math.PI); label = (halfTurns * 180) + ''; if (R.combo && R.combo.tricks.length && /^\d+$/.test(R.combo.tricks[R.combo.tricks.length - 1])) { R.combo.pts += T.pts; R.combo.tricks[R.combo.tricks.length - 1] = label; _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) }); label = null; } }
+        if (tk.id === 'spin') { var halfTurns = Math.round(Math.abs(R.spinAcc) / Math.PI); label = (halfTurns * 180) + ''; if (R.combo && R.combo.tricks.length && /^\d+$/.test(R.combo.tricks[R.combo.tricks.length - 1])) { R.combo.pts += T.pts; R.combo.tricks[R.combo.tricks.length - 1] = label; _hqRideComboEmit(R); label = null; } }
         if (tk.id === 'kickflip' || tk.id === 'heelflip' || tk.id === 'varial' || tk.id === 'varialheel') { R.deckRoll = 0; R.deckSpin = 0; }
         if (tk.id === 'frontflip' || tk.id === 'backflip') R.flip = 0;
         if (tk.id === 'roll') R.roll = 0;
@@ -88647,7 +88895,7 @@ const ThreeRenderer = (function () {
     function _hqRideComboLead(R, label, pts) {
         if (!R.combo) R.combo = { tricks: [], pts: 0 };
         R.combo.tricks.unshift(label); R.combo.pts += pts;
-        _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) });
+        _hqRideComboEmit(R);
     }
     /* the camera's kick UP on a launch (the landing dip's mirror: up at once, eased home over 320 ms) */
     function _hqRideCamKick(k) {
@@ -88679,6 +88927,7 @@ const ThreeRenderer = (function () {
     function _hqRideStartTrick(R, id, dir) {
         var S = _hqSkateRules(), T = S.tricks[id]; if (!T) return null;
         dir = (dir === -1) ? -1 : 1;
+        if (R.wall) return null;   // THE WALLS: on a wall the board is on the wall
         if (R.trick && R.queue.length >= 3) return null;   // three deep is the queue
         var ms = _hqRideFitMs(R, T, _hqRideQueueMs(R));
         if (!ms) { _hqRideEmit({ kind: 'late', id: id, label: T.label }); return null; }
@@ -88724,8 +88973,14 @@ const ThreeRenderer = (function () {
     function _hqRideStickMove(dx, dy) {
         var H = _hq; if (!H || !H.ride || !H.ride.on || !H.ride.stick) return false;
         var R = H.ride, st = R.stick, S = _hqSkateRules();
-        if (!H.player.air || R.bailT > 0 || R.grind) { st.dx = st.dy = 0; return false; }   // on the ground the mouse aims; the travel is thrown away
         var now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+        if (R.grind && R.bailT <= 0) {   // THE GRINDS (2026-11-20): on a rail a flick changes the grind
+            if (st.coolUntil && now < st.coolUntil) { st.dx = st.dy = 0; return true; }
+            st.dx += dx; st.dy += dy;
+            if (Math.hypot(st.dx, st.dy) >= (S.flickPx || 34)) { _hqRideGrindFlick(R, st.dx, st.dy); st.dx = st.dy = 0; st.coolUntil = now + (S.flickCoolMs != null ? S.flickCoolMs : 220); }
+            return true;
+        }
+        if (!H.player.air || R.bailT > 0 || R.grind) { st.dx = st.dy = 0; return false; }   // on the ground the mouse aims; the travel is thrown away
         if (st.coolUntil && now < st.coolUntil) { st.dx = st.dy = 0; return true; }   // rev 4b: ONE trick per flick — the rest of the wrist's travel is thrown away
         st.dx += dx; st.dy += dy;
         var mag = Math.hypot(st.dx, st.dy);
@@ -88880,19 +89135,34 @@ const ThreeRenderer = (function () {
         }
         if (R.deckAway > 0) R.deckAway = Math.max(0, R.deckAway - dt);
         var noCtl = R.bailT > 0;
+        if (!R.grind && !pl.air) { R.offT = 0; R.wallN = 0; R.wall = null; }   // THE FLOOR IS LAVA: the wheels are on the ground, the clock is zero (and the wall moves are given back)
         /* ── THE GRIND ── */
         if (R.grind) {
             var g = R.grind, L = _hqRailLen(g.rail);
             var railDir = _hqRailAt(g.rail, g.s);
             if (_hqPortalSweep(dt, { x: railDir.tx * g.dir * R.v, y: 0, z: railDir.tz * g.dir * R.v })) return;
-            g.t += dt; g.pts += (TR.grind.perSec || 0) * dt;
+            var GK = (S.grinds && S.grinds[g.kind]) || {}, BAL = S.balance || {};
+            g.t += dt; g.pts += (TR.grind.perSec || 0) * (GK.per || 1) * dt; _hqRideLava(R, dt);
+            if (g.swT > 0) g.swT -= dt;
+            if (!noCtl) {   // THE GRINDS: an arrow's press changes the grind (the stick does too — _hqRideStickMove)
+                if (_hqRideKeyEdge(R, k, 'up')) _hqRideGrindSwitch(R, 'nose');
+                if (_hqRideKeyEdge(R, k, 'down')) _hqRideGrindSwitch(R, 'five0');
+                if (_hqRideKeyEdge(R, k, 'left')) _hqRideGrindSwitch(R, 'board');
+                if (_hqRideKeyEdge(R, k, 'right')) _hqRideGrindSwitch(R, 'lip');
+            }
+            R.deckSpin += ((GK.spin || 0) - R.deckSpin) * Math.min(1, dt * 12); R.deckTuck = (R.deckTuck || 0) + ((GK.tuck || 0) - (R.deckTuck || 0)) * Math.min(1, dt * 12);
+            /* THE BALANCE METER (2026-11-20): the rail pushes harder by the grind's kind and by the seconds off the ground (the clock
+               that pays the line also raises the stakes); the meter's beat goes to the HUD every balance.tickS */
+            var hardB = (GK.bal || 1) * Math.min(BAL.rampMax || 2.5, 1 + (R.offT || 0) * (BAL.rampPerS != null ? BAL.rampPerS : 0.08));
+            g.balT = (g.balT || 0) + dt;
+            if (g.balT >= (BAL.tickS || 0.05)) { g.balT = 0; _hqRideEmit({ kind: 'balance', k: R.bal / S.grindBalance, hard: hardB, label: (GK.label || '50-50') }); }
             R.v *= Math.pow(S.grindFriction, dt * 60);
             /* THE STAIRS PACK (2026-10-05, mondo: "I should be able to grind down stairs too, especially ones with railing like the escalator"):
                a sloped rail (a flight's railing, an escalator's handrail, a railing down a slope) pulls the rider down it — faster going down,
                slower going up (a climb that stalls drops off) */
             if (g.rail.y0 != null && g.rail.y1 != null && L > 0.01) { var slp = (g.rail.y1 - g.rail.y0) / L; R.v = Math.max(0, R.v - g.dir * slp * HQ_GRAV * 0.55 * dt); }
             g.s += g.dir * R.v * dt;
-            g.drift += (Math.random() - 0.5) * 3.0 * dt; g.drift = Math.max(-S.grindDrift, Math.min(S.grindDrift, g.drift));
+            g.drift += (Math.random() - 0.5) * 3.0 * hardB * dt; g.drift = Math.max(-S.grindDrift * hardB, Math.min(S.grindDrift * hardB, g.drift));
             R.bal += g.drift * dt + ((k.d ? 1 : 0) - (k.a ? 1 : 0)) * 1.4 * dt;
             R.lean += ((R.bal * 0.9) - R.lean) * Math.min(1, dt * 10);
             var edge = _hqRideKeyEdge(R, k, 'space');
@@ -88903,12 +89173,12 @@ const ThreeRenderer = (function () {
             if (g.s < 0 || g.s > L || R.v < S.grindMinV * 0.5 || edge) {
                 /* the end of the run, too slow, or an ollie off */
                 var pts = Math.round(g.pts);
-                if (R.combo && R.combo.tricks.length) { R.combo.pts += g.pts - (TR.grind.pts || 0); _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) }); }
+                if (R.combo && R.combo.tricks.length) { R.combo.pts += g.pts - (TR.grind.pts || 0); _hqRideComboEmit(R); }
                 var onRun = !edge && g.s >= 0 && g.s <= L;   // too slow, still ON the run: the hop goes sideways (THE WAY OUT OF A COLLIDER)
                 g.s = Math.max(0, Math.min(L, g.s));
                 var pe = _hqRailAt(g.rail, g.s); pl.x = pe.x; pl.z = pe.z; pl.y = pe.y + 0.02;
                 if (onRun) { var csE = _hqRideClearSide(pl, R, g.rail, g.s); if (csE) { R.hd = Math.atan2(csE.nx, csE.nz); R.v = 2.2; R.stance = 0; } }
-                R.grind = null; R.bal = 0;
+                R.grind = null; R.bal = 0; R.deckSpin = 0; R.deckTuck = 0;
                 pl.air = true; pl.vy = edge ? S.ollieV * 0.85 : 2.3; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.jumpFromWalkOff = false; R.holdOn = false;
                 _hqRideEmit({ kind: edge ? 'ollie' : 'hop', pts: pts });
                 return;
@@ -88990,7 +89260,7 @@ const ThreeRenderer = (function () {
             R.keyLatch.left = !!k.left; R.keyLatch.right = !!k.right; R.keyLatch.up = !!k.up; R.keyLatch.down = !!k.down; R.keyLatch.a = !!k.a; R.keyLatch.d = !!k.d; R.keyLatch.w = !!k.w; R.keyLatch.shift = !!k.shift;
         } else {
             /* ── IN THE AIR: the tricks ── */
-            R.airT += dt;
+            R.airT += dt; if (!noCtl) _hqRideLava(R, dt);
             R.crouchOn = false; R.crouch = 0;
             if (pl.y > R.airApex) R.airApex = pl.y;
             /* THE LIP OLLIE (rev 8): SPACE inside lipOllieS of a launch adds a pop on top of it (THPS's ollie off the lip) */
@@ -89017,7 +89287,7 @@ const ThreeRenderer = (function () {
                    the heading turns toward the keys at airTurn, and the speed is nudged by airAccel along
                    the roll (pressing with the roll speeds up, against it slows — a landing pulled onto the
                    rail, a gap made). Never a trick (the arrows are the tricks up here). */
-                var airWant = _hqRideWantHeading(H, k, false), airIn = 0;
+                var airWant = R.wall ? null : _hqRideWantHeading(H, k, false), airIn = 0;
                 if (airWant != null) {
                     var aDelta = _hqRideDelta(R, airWant), aRate = (S.airTurn != null ? S.airTurn : 1.35) * dt;
                     var aApplied = Math.max(-aRate, Math.min(aRate, aDelta));
@@ -89032,6 +89302,21 @@ const ThreeRenderer = (function () {
                 if (_hqRideKeyEdge(R, k, 'down')) _hqRideStartTrick(R, 'backflip');
                 if (_hqRideKeyEdge(R, k, 'shift')) _hqRideStartTrick(R, 'grab');
             } else leanT = 0;
+            /* THE WALLS (2026-11-20): the wallride's frame — the pay, the hang, the lean, the jump off, the end */
+            if (R.wallCool > 0) R.wallCool -= dt;
+            if (R.wall) {
+                var WL = S.wall, wr = R.wall; wr.t += dt;
+                if (R.combo && TR.wallride) R.combo.pts += (TR.wallride.perSec || 0) * dt;
+                pl.vy += HQ_GRAV * dt * (1 - (WL.grav != null ? WL.grav : 0.18)); if (pl.vy < -WL.fallV) pl.vy = -WL.fallV;
+                leanT = wr.side * (WL.lean != null ? WL.lean : 0.6);
+                var wallGone = true; try { wallGone = _hqAirOK(pl.x - wr.nx * 0.6, pl.z - wr.nz * 0.6, pl.y + 0.5); } catch (e) { wallGone = true; }
+                if (!noCtl && k.space && !pl._jumpLatch) {
+                    var sgJ = R.v < 0 ? -1 : 1, jo = (WL.jumpOut != null ? WL.jumpOut : 0.6), jx = Math.sin(R.hd) * sgJ * Math.cos(jo) + wr.nx * Math.sin(jo), jz = Math.cos(R.hd) * sgJ * Math.cos(jo) + wr.nz * Math.sin(jo);
+                    R.hd = Math.atan2(jx * sgJ, jz * sgJ); pl.vy = WL.jumpV; R.wall = null; R.wallCool = WL.coolS;
+                    if (R.combo) R.combo.pts += (WL.jumpPts || 0);
+                    _hqRideEmit({ kind: 'ollie', wall: true, v: R.v });
+                } else if (wallGone || noCtl || wr.t > WL.maxS || Math.abs(R.v) < WL.minV * 0.5) { R.wall = null; R.wallCool = WL.coolS; }
+            }
             pl._jumpLatch = !!k.space;
         }
         /* the active trick turns; done → the line; the queue follows */
@@ -89062,7 +89347,8 @@ const ThreeRenderer = (function () {
             var okx = _hqAirOK(nx, pl.z, pl.y), ax0 = pl.x, az0 = pl.z;
             if (okx) pl.x = nx; if (_hqAirOK(pl.x, nz, pl.y)) pl.z = nz;
             var sgA = R.v < 0 ? -1 : 1, wantA = Math.abs(R.v) * dt;
-            _hqRideSlide(R, S, sgA, wantA, pl.x - ax0, pl.z - az0, false);   // a wall in the air: a stop, never a bail (rev 3)
+            if (noCtl || !_hqRideWallTouch(pl, R, S, k, Math.hypot(pl.x - ax0, pl.z - az0), wantA))   // THE WALLS (2026-11-20): a wallride / a wall plant first
+                _hqRideSlide(R, S, sgA, wantA, pl.x - ax0, pl.z - az0, false);   // a wall in the air: a stop, never a bail (rev 3)
             _hqRideGravity(pl, R, dt, S, false);
         } else if (R.v !== 0) {
             var under = _hqRampUnder(nx, nz), prof = under && under.ramp.prof;
@@ -89173,7 +89459,7 @@ const ThreeRenderer = (function () {
     }
     /* gravity + the landing: a rail under the feet locks (the grind), the ground banks or bails */
     function _hqRideGravity(pl, R, dt, S, bailing) {
-        var TR = S.tricks;
+        var TR = S.tricks, k0 = (_hq && _hq.keys) || {};
         pl.vy -= HQ_GRAV * dt;
         var ny = pl.y + pl.vy * dt;
         if (pl.vy < 0) {
@@ -89185,12 +89471,15 @@ const ThreeRenderer = (function () {
                     var along = (Math.sin(R.hd) * p.tx + Math.cos(R.hd) * p.tz) * (R.v < 0 ? -1 : 1);
                     var dir = (along >= 0) ? 1 : -1, av = Math.abs(R.v);
                     R.v = Math.max(S.grindMinV, Math.abs(along) * av + 0.6 * av * (1 - Math.abs(along)));
-                    R.grind = { rail: snap.rail, s: snap.s, dir: dir, t: 0, drift: 0, pts: TR.grind.pts || 0 };
+                    var gk0 = k0.up ? 'nose' : k0.down ? 'five0' : k0.left ? 'board' : k0.right ? 'lip' : 'fifty'; if (!(S.grinds && S.grinds[gk0])) gk0 = 'fifty';   // THE GRINDS (2026-11-20): the arrow held at the lock picks the grind
+                    var gu0 = {}; gu0[gk0] = 1;
+                    R.grind = { rail: snap.rail, s: snap.s, dir: dir, t: 0, drift: 0, pts: TR.grind.pts || 0, kind: gk0, used: gu0, swT: 0.2, balT: 0 };
+                    R.wall = null; R.wallN = 0;
                     R.bal = 0; R.trick = null; R.queue = []; R.flip = R.roll = R.deckRoll = R.deckSpin = 0; R.grab = false;
                     R.stance = 0; R.spinAcc = 0; R.vert = null; R.launchKind = null; R.lipT = 9;
                     pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.x = p.x; pl.z = p.z; pl.y = p.y + 0.02;
-                    var gl = snap.rail.escalator ? 'ESCALATOR GRIND' : snap.rail.stair ? 'HANDRAIL GRIND' : snap.rail.gallery ? 'BANISTER GRIND' : snap.rail.arc ? 'RING GRIND' : snap.rail.bridge ? 'ROPE GRIND' : '50-50 GRIND';
-                    _hqRideComboAdd(R, gl, TR.grind.pts || 0);
+                    var gl = _hqRideGrindLabel(S, snap.rail, gk0);
+                    _hqRideComboAdd(R, gl, (TR.grind.pts || 0) + ((S.grinds && S.grinds[gk0] && S.grinds[gk0].pts) || 0));
                     _hqRideEmit({ kind: 'grindstart', rail: gl, rope: !!snap.rail.bridge });
                     if (pl.entry) pl.entry._ew_hqLandAt = performance.now();
                     return;
@@ -89347,7 +89636,8 @@ const ThreeRenderer = (function () {
         e.model.scale.y = R.scaleY; e.model.scale.x = e.model.scale.z = 1 + (1 - R.scaleY) * 0.35;
         /* the deck: rides the same spin / flip / roll, plus its own kickflip roll; a grind's sparks */
         var D = R.deck;
-        D.rotation.set(flip + (R.deckTuck || 0), yaw + (R.deckSpin || 0), roll + R.deckRoll);
+        R.wallLean = (R.wallLean || 0) + ((R.wall ? R.lean : 0) - (R.wallLean || 0)) * Math.min(1, dt * 10);   // THE WALLS (2026-11-20): on a wall the deck leans with the body (the wheels on the wall)
+        D.rotation.set(flip + (R.deckTuck || 0), yaw + (R.deckSpin || 0), roll + R.deckRoll + R.wallLean);
         var dv = new THREE.Vector3(0, piv * U, 0).applyEuler(D.rotation);
         D.position.set(-dv.x, piv * U - dv.y, -dv.z);
         /* THE FIT's offset, travel frame → the group's (the deck's own rotation.y = yaw, its +Z the roll) */
@@ -95652,6 +95942,7 @@ const ThreeRenderer = (function () {
                 try { var CVf = _hqClockVals(room, R.roomId, _hqClockHourNow()); if (CVf && !CVf.locked) fogC = CVf.fogC.getHex(); } catch (e) {}   // THE WORLD CLOCK: the hour's fog
                 if (_fieldCycle) fogC = _fieldCycleRigAt(_fieldCycle).fogC.getHex(); }   // THE BATTLE'S DAY AND NIGHT: the round's half
             else if (S.fog && S.fog.color != null) { fogC = S.fog.color; fogD = (S.fog.density > 0 ? S.fog.density : 0.012) / s; }
+            if (!_ewAirOff()) { fogD = (EW_AIR.rho + EW_AIR.base) / s; if (open && fogC === 0x0d0e12 && !S.sky.night && typeof HQ_WORLD_CLOCK !== 'undefined' && HQ_WORLD_CLOCK.day) fogC = HQ_WORLD_CLOCK.day.fog; }   // THE ONE AIR: the fight wears the same air as the walk (no room density)
             if (typeof scene !== 'undefined' && scene) scene.fog = new THREE.FogExp2(fogC, _ewSceneFogOn() ? fogD * _ewFogShape().m : 0);   // THE FOG SETTING: Scene Fog off = density 0 (THE BOARD FOG: the object stays, so the toggle never rebuilds a material); THE ROOM SETTINGS: Fog Density scales it
             if (field) field.fog = { color: fogC, density: fogD };   // the Scene Fog toggle mid-fight puts THIS fog back (ThreePost._applySceneFog)
         } catch (e) {}
@@ -99887,7 +100178,7 @@ const ThreeRenderer = (function () {
                     dusk: C.locked ? 0 : sun.dusk, lamp: C.locked ? 1 : sun.lamp };
         if (C.locked) return out;
         var base = _hqStageSkyValsRaw(room), LRo = _hqOpenLR(room), DL = C.dayLook || {};   // THE WHITE DAYLIGHT
-        var authNight = !!sky.night, fogA = (sky.fog && sky.fog.color != null) ? sky.fog.color : 0x0d0e12;
+        var authNight = !!sky.night, fogA = (sky.fog && sky.fog.color != null) ? sky.fog.color : (authNight ? 0x0d0e12 : CK.day.fog);   // THE ONE AIR: a day room with no colour of its own wears the clock's day haze (was near black)
         var dayFog = new THREE.Color(authNight ? ((DL.fog != null) ? DL.fog : CK.day.fog) : fogA);
         var nightFog = authNight ? new THREE.Color(fogA) : new THREE.Color(fogA).multiplyScalar(CK.night.fogK).add(new THREE.Color(CK.night.fog));
         var dayTint = new THREE.Color(authNight ? ((DL.tint != null) ? DL.tint : CK.day.tint) : ((sky.tint != null) ? sky.tint : CK.day.tint));
@@ -100585,7 +100876,7 @@ const ThreeRenderer = (function () {
                the outer ground's far edge at 54 m is under it); a row without one keeps the thin default */
             var fogD = (S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density / U : 0.00005;
             if (S.sky.fog && S.sky.fog.color != null) sc.fog = new THREE.FogExp2(S.sky.fog.color, fogD);
-            else sc.fog = new THREE.FogExp2(0x0d0e12, fogD);
+            else sc.fog = new THREE.FogExp2((!S.sky.night && typeof HQ_WORLD_CLOCK !== 'undefined' && HQ_WORLD_CLOCK.day) ? HQ_WORLD_CLOCK.day.fog : 0x0d0e12, fogD);   // THE ONE AIR: a day sky's haze, not near black
             _hq.cam.dist = Math.min(_hq.cam.dist, Math.max(2.2, S.d * 0.6));
         } else if (room.kind === 'box') {
             /* a small room: one fluorescent overhead, a warm pool at the desk lamp, dim fill */
@@ -100771,12 +101062,73 @@ const ThreeRenderer = (function () {
     /* Fog Horizon in a room: how many times higher the height fog reaches (the factory spot = 1; the slider's top ≈ 3.5×, its bottom ≈ ½) */
     function _ewFogClimb(lift) { return Math.max(0.25, 1 + (+lift || 0) * 6); }
     var _hqFogPfC = null;
+    /* ══ THE ONE AIR (2026-11-20, mondo: "i just want to be able to change the fog settings and it affect the entire game the same
+       way, not per room ... one consistent fog system for the entire game, all rooms, exploration and battle and the main menu") ══
+       ONE row decides how thick the air is everywhere; a room no longer brings its own fog density, height-fog row or dome band
+       (`shell.fog.density`, `sky.fog.density / height`, `shell.heightFog.h / amount`, `sky.fog.amount / top / band` are not read
+       by the draw any more). What a room still owns is only what it IS: the fog's COLOUR (its sky's, by the world clock's hour),
+       where its floor lies, and "no mist here" (`shell.heightFog: false`). The player's levers move every place alike:
+         Scene Fog OFF  the clear day: only the far haze (`base` per metre) and the soft band it leaves on the sky's horizon line
+         Scene Fog ON   the mood fog on top of it: + `rho` per metre × Fog Density, the ground mist, a fuller band
+         Fog Horizon    how high the band and the mist climb;  MAP LOOKS OFF = the player's fog colour everywhere (as before)
+       The sky's band no longer ends AT the horizon (the hard line): at the line it is what the air does to a thing `farM` metres off (_ewAirFar) and it thins upward (`hazeH`), in the same
+       colour the far ground fades to, and both turn warm toward a low sun (`warmDay` / `warmDusk`). The ground mist drifts
+       (`mistMove`, patches `mistSize` m wide). Under water the water's own look is kept. A fight keeps its board fog; its band
+       gets the same soft top (_ewAirBattle). Off: window.EW_NO_ONE_AIR (the rooms' own fog, as before). */
+    var EW_AIR = { rho: 0.0045, base: 0.0022, farM: 420, hazeH: 0.075, mist: 0.42, mistH: 2.6, mistMove: 0.32, mistSize: 14, mistSpeed: 0.22, warmDay: 0.2, warmDusk: 0.75 };
+    function _ewAirOff() { return typeof window !== 'undefined' && !!window.EW_NO_ONE_AIR; }
+    /* the air's density per scene unit for a place drawn at U units a metre */
+    function _ewAirDen(U, on, m) { return (EW_AIR.base + (on ? EW_AIR.rho * m : 0)) / (U || 73); }   // Scene Fog on only ever ADDS to the clear day's haze
+    /* the sky's haze at the horizon line = what this air does to a thing `farM` metres off (FogExp2's curve): the ground's end and the low sky take the same share */
+    function _ewAirFar(on, m) { var d = _ewAirDen(1, on, m) * EW_AIR.farM; return Math.min(0.97, 1 - Math.exp(-d * d)); }
     function _hqFogHold(H) {
         if (!H || !H.scene) return null;
+        if (_ewAirOff()) return _hqFogHoldRoom(H);
         var bAmt = _bfogWalkTick(H);   // THE BOARD FOG: the fight's board fog easing out over the walk's first moments
+        var on = _ewSceneFogOn(), sh = on ? _ewFogShape() : { m: 0, lift: 0 }, m = sh.m, U = _hqUnits();
+        var pf = null; try { pf = (on && typeof ThreePost !== 'undefined' && ThreePost.getPlayerFogHex) ? ThreePost.getPlayerFogHex() : null; } catch (e) {}   // MAP LOOKS OFF: the player's fog colour
+        var f = H.scene.fog, wet = !!(f && H.seaFx && f === H.seaFx.wetFog);
+        var s = { f: null, d: 0, n: 0, fa: 0, hz: _EW_HFOG.z, amt: _envUni ? _envUni.uFogAmount.value : null, top: _envUni ? _envUni.uFogTop.value : null,
+                  col: _envUni ? _envUni.uFogColor.value.clone() : null, band: _envUni ? _envUni.uFogBand.value : null, hy: _EW_HFOG.y, hw: _EW_HFOG.w,
+                  fc: null, sil: (_envUni && _envUni.uPaintSilFog) ? _envUni.uPaintSilFog.value.clone() : null,
+                  air: (_envUni && _envUni.uAir) ? _envUni.uAir.value.clone() : null, ax: _EW_AIR.x, ay: _EW_AIR.y, az: _EW_AIR.z, a2y: _EW_AIR2.y };
+        if (wet) return s;   // under water: the water's look, untouched
+        if (pf != null && f && f.color) { s.fc = f.color.getHex(); f.color.setHex(pf); }
+        if (f) {
+            s.f = f;
+            if (f.isFogExp2) { s.d = f.density; f.density = _ewAirDen(U, on, m); }
+            else { s.n = f.near; s.fa = f.far; if (m > 0.001) { f.near = f.near / m; f.far = f.far / m; } else { f.near = 1e9; f.far = 2e9; } }
+        }
+        /* the ground mist: one row for every place that has a floor to lie on (the room armed it); Fog Horizon lifts it */
+        var climb = (on && sh.lift) ? _ewFogClimb(sh.lift) : 1;
+        if (on && _EW_HFOG.z > 0.001) {
+            _EW_HFOG.z = Math.min(1, EW_AIR.mist * m); _EW_HFOG.y = 1 / (EW_AIR.mistH * U * climb);
+            _EW_HFOG.w = Math.max((f && f.isFogExp2) ? f.density * 4 : 0, 0.012 / U);
+        } else _EW_HFOG.z = 0;
+        _EW_AIR2.x = 6.2832 / (EW_AIR.mistSize * U); _EW_AIR2.y = EW_AIR.mistMove; _EW_AIR.w = (performance.now() / 1000 * EW_AIR.mistSpeed) % 6283.2;
+        /* warm toward the sun: the clock's sun, while it is up; never over the player's own colour */
+        var warm = 0, CK = H.clock, sv = CK && CK.sunCur;
+        if (sv && pf == null) {
+            var up = Math.max(0, Math.min(1, (sv.y + 0.05) / 0.2)), hl = Math.hypot(sv.x, sv.z);
+            warm = up * (EW_AIR.warmDay + EW_AIR.warmDusk * Math.max(0, Math.min(1, CK.duskCur || 0)));
+            if (hl > 0.001) { _EW_AIR.x = sv.x / hl; _EW_AIR.y = sv.z / hl; } else warm = 0;
+        }
+        _EW_AIR.z = warm;
+        if (_envUni) {
+            _envUni.uFogAmount.value = 0;   // the room's own band is not read: the air's haze below is the band everywhere
+            if (f && f.color) {
+                _envUni.uFogColor.value.set(f.color.r, f.color.g, f.color.b);
+                if (_envUni.uPaintSilFog) { _envUni.uPaintSilFog.value.x = f.color.r; _envUni.uPaintSilFog.value.y = f.color.g; _envUni.uPaintSilFog.value.z = f.color.b; }
+                if (_envUni.uAir) _envUni.uAir.value.set(_ewAirFar(on, m), 1 / (EW_AIR.hazeH * climb), warm, on ? Math.max(-0.05, sh.lift) : 0);
+            } else if (_envUni.uAir) _envUni.uAir.value.x = 0;
+        }
+        if (bAmt > 0 && f) _bfogDome(bAmt, f.color);   // the fight's horizon band eases out with it (_hqFogBack puts the room's back)
+        return s;
+    }
+    /* the rooms' own fog, as it drew before THE ONE AIR (window.EW_NO_ONE_AIR) */
+    function _hqFogHoldRoom(H) {
+        var bAmt = _bfogWalkTick(H);
         var on = _ewSceneFogOn(), sh = on ? _ewFogShape() : { m: 0, lift: 0 };
-        /* MAP LOOKS OFF (2026-10-24, mondo: "going to any new area with different colored fog it takes away my green"): the room's fog,
-           its height fog, the dome's band and the painted sky's far fog all wear the player's fog colour (ThreePost.getPlayerFogHex) */
         var pf = null; try { pf = (on && typeof ThreePost !== 'undefined' && ThreePost.getPlayerFogHex) ? ThreePost.getPlayerFogHex() : null; } catch (e) {}
         if (on && pf == null && Math.abs(sh.m - 1) < 1e-3 && Math.abs(sh.lift) < 1e-4 && !(bAmt > 0)) return null;
         var m = sh.m;
@@ -100796,11 +101148,10 @@ const ThreeRenderer = (function () {
             else { s.n = f.near; s.fa = f.far; if (m > 0.001) { f.near = f.near / m; f.far = f.far / m; } else { f.near = 1e9; f.far = 2e9; } }
         }
         if (!wet) _EW_HFOG.z = Math.min(1, _EW_HFOG.z * m);
-        if (!wet && on && sh.lift) _EW_HFOG.y = _EW_HFOG.y / _ewFogClimb(sh.lift);   // Fog Horizon: the ground mist climbs (or settles)
+        if (!wet && on && sh.lift) _EW_HFOG.y = _EW_HFOG.y / _ewFogClimb(sh.lift);
         if (_envUni) {
             _envUni.uFogAmount.value = Math.min(1, _envUni.uFogAmount.value * m);
             if (on && sh.lift) _envUni.uFogTop.value = Math.max(-0.5, _envUni.uFogTop.value + sh.lift);
-            /* a room with no dome band of its own: a Horizon raised past its factory spot banks the room's fog colour up the sky */
             if (on && sh.lift > 0.001 && f && !wet && f.color) {
                 var want = Math.min(1, sh.lift * 2.2) * Math.min(1, m);
                 if (want > _envUni.uFogAmount.value) {
@@ -100809,7 +101160,7 @@ const ThreeRenderer = (function () {
                 }
             }
         }
-        if (bAmt > 0 && f && !wet) _bfogDome(bAmt, f.color);   // the fight's horizon band eases out with it (_hqFogBack puts the room's back)
+        if (bAmt > 0 && f && !wet) _bfogDome(bAmt, f.color);
         return s;
     }
     function _hqFogBack(s) {
@@ -100817,11 +101168,22 @@ const ThreeRenderer = (function () {
         var f = s.f;
         if (f) { if (f.isFogExp2) f.density = s.d; else { f.near = s.n; f.far = s.fa; } if (s.fc != null) f.color.setHex(s.fc); }
         if (_envUni && s.sil && _envUni.uPaintSilFog) _envUni.uPaintSilFog.value.copy(s.sil);
-        _EW_HFOG.z = s.hz; if (s.hy != null) _EW_HFOG.y = s.hy;
+        _EW_HFOG.z = s.hz; if (s.hy != null) _EW_HFOG.y = s.hy; if (s.hw != null) _EW_HFOG.w = s.hw;
+        if (s.ax != null) { _EW_AIR.x = s.ax; _EW_AIR.y = s.ay; _EW_AIR.z = s.az; _EW_AIR2.y = s.a2y; }
+        if (_envUni && s.air && _envUni.uAir) _envUni.uAir.value.copy(s.air);
         if (_envUni && s.amt != null) _envUni.uFogAmount.value = s.amt;
         if (_envUni && s.top != null) _envUni.uFogTop.value = s.top;
         if (_envUni && s.col) _envUni.uFogColor.value.copy(s.col);
         if (_envUni && s.band != null) _envUni.uFogBand.value = s.band;
+    }
+    /* a fight's sky: the band over the board fog / the mood fog keeps its place and gets THE ONE AIR's soft top (a share of
+       whatever band the frame carries, so the sky shot's thinning and the board fog's easing take it along); no warmth, no drift */
+    function _ewAirBattle() {
+        if (!_envUni || !_envUni.uAir) return;
+        var lift = 0; try { lift = _ewSceneFogOn() ? _ewFogShape().lift : 0; } catch (e) {}
+        if (_ewAirOff()) _envUni.uAir.value.set(0, 13, 0, 0);
+        else _envUni.uAir.value.set(-0.9, 1 / (EW_AIR.hazeH * _ewFogClimb(lift)), 0, 0);
+        _EW_AIR.z = 0; _EW_AIR2.y = 0;
     }
     function _hqDissolveStart(H, o) {
         if (typeof document === 'undefined' || !canvas || !H || !H.scene || !H.camera) return null;
@@ -101663,7 +102025,7 @@ const ThreeRenderer = (function () {
         flick: function (dx, dy, btn) { return (_hq && _hq.ride) ? _hqRideFlick(_hq.ride, dx, dy, btn) : null; },   // rev 4: THE STICK for a probe
         skating: function () { return !!(_hq && _hq.ride && _hq.ride.on); },
         skateIssued: function (on) { if (_hq && _hq.ride) { _hq.ride.issued = !!on && !_hqSkateOff(); if (!on) _hqRideToggle(false, true); } return !!(_hq && _hq.ride && _hq.ride.issued); },
-        ride: function () { if (!_hq || !_hq.ride) return null; var R = _hq.ride; return { on: R.on, issued: R.issued, v: R.v, hd: R.hd, air: !!(_hq.player && _hq.player.air), grind: R.grind ? { s: R.grind.s, dir: R.grind.dir, t: R.grind.t } : null, trick: R.trick ? R.trick.id : null, combo: R.combo ? { text: R.combo.tricks.join(' + '), pts: R.combo.pts, mult: R.combo.tricks.length } : null, bail: R.bailT > 0 }; },
+        ride: function () { if (!_hq || !_hq.ride) return null; var R = _hq.ride; return { on: R.on, issued: R.issued, v: R.v, hd: R.hd, air: !!(_hq.player && _hq.player.air), grind: R.grind ? { s: R.grind.s, dir: R.grind.dir, t: R.grind.t, kind: R.grind.kind, bal: R.bal } : null, wall: R.wall ? { t: R.wall.t, side: R.wall.side } : null, trick: R.trick ? R.trick.id : null, combo: R.combo ? { text: R.combo.tricks.join(' + '), pts: R.combo.pts, mult: _hqRideComboMult(R), score: _hqRideComboScore(R) } : null, offT: R.offT || 0, bail: R.bailT > 0 }; },
         rails: function () { return _hq ? (_hq.rails || []).slice() : []; },
         ramps: function () { return _hq ? (_hq.ramps || []).slice() : []; },
         /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the room's lines and the walker on one */
@@ -101895,6 +102257,8 @@ const ThreeRenderer = (function () {
            the screenshot probe drives the cast placement with these. Not
            used by the game. */
         dev: {
+            /* THE ONE AIR: the rules, and the frame's values as _hqFogHold would write them */
+            air: function () { var H = _hq, h = H ? _hqFogHold(H) : null, f = H && H.scene ? H.scene.fog : null; var o = { rules: EW_AIR, on: _ewSceneFogOn(), shape: _ewFogShape(), fog: f ? { hex: f.color.getHexString(), perMetre: +(f.density * _hqUnits()).toFixed(5) } : null, mist: { z: _EW_HFOG.z, hM: +(1 / (_EW_HFOG.y * _hqUnits())).toFixed(2) }, sun: { x: +_EW_AIR.x.toFixed(2), z: +_EW_AIR.y.toFixed(2), warm: +_EW_AIR.z.toFixed(2) }, dome: (_envUni && _envUni.uAir) ? _envUni.uAir.value.toArray().map(function (v) { return +v.toFixed(3); }) : null, domeC: _envUni ? _envUni.uFogColor.value.toArray().map(function (v) { return +v.toFixed(2); }) : null, band: _envUni ? _envUni.uFogAmount.value : null }; _hqFogBack(h); return o; },
             /* the live scene graph (repo probes: playtest_maps.js PROBE) */
             scene: function () { return scene; },
             hqScene: function () { return _hq ? _hq.scene : null; },   // the walk's own scene (THE SPACESHIP probe, 2026-11-17)
@@ -101929,6 +102293,7 @@ const ThreeRenderer = (function () {
             hqCam: function () { return _hq ? _hq.camera : null; },   // the walk's camera (a probe reads its far plane and where it stands, 2026-11-17)
             /* THE ROUND WORLDS, as a probe reads them (2026-11-17) */
             round: function () { return { live: _ewPl.live, nodes: !!_ewPl.u, ctx: !!_ewPl.ctx, gpu: _ewGpu, anchor: _ewPl.anchor, face: _hq && _hq._plFace, round: _ewPlRound() }; },
+            rideRaw: function () { return _hq ? { R: _hq.ride, pl: _hq.player, cam: _hq.cam, shell: _hq.room.shell, keys: _hq.keys } : null; },   // a probe's handle on the live rider (2026-11-20: the grinds, the walls)
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;
                 o = o || {};
@@ -102113,6 +102478,9 @@ const ThreeRenderer = (function () {
         var sc = M.scene;
         var env = _menuSkyEnv(B);
         var hz = _menuHorizonColor(env, B.night);
+        /* THE ONE AIR: the far ground and the low sky are one haze now, so the haze is the sky's own (the biome's dust / ice
+           glow, dimmed by its night) and no longer has to hide in the dome's dark */
+        if (!_ewAirOff() && env && env.fog && env.fog.color != null) hz = new THREE.Color(env.fog.color).multiplyScalar(1 - 0.5 * Math.max(0, Math.min(1, B.night || 0)));
         sc.background = hz.clone();
         sc.fog = new THREE.FogExp2(hz, B.fog[1]);     // B.fog[0], the pale haze, is history: see _menuHorizonColor
         sc.add(M.doorGroup);
@@ -102390,8 +102758,11 @@ const ThreeRenderer = (function () {
             if (M.beam) M.beam.intensity = 0.9 * fl;
         }
         var noPost = (typeof window !== 'undefined' && window.EW_MENU_NO_POST) || (_lens && !_lens.post);
-        if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(M.scene, M.camera);
-        else renderer.render(M.scene, M.camera);
+        var mfh = _hqFogHold(M);   // THE ONE AIR: the menu wears the game's air (the Scene Fog toggle and the sliders reach it too)
+        try {
+            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(M.scene, M.camera);
+            else renderer.render(M.scene, M.camera);
+        } finally { _hqFogBack(mfh); }
     }
     /* THE GATE (2026-09-20): reveal the scene only when it is COMPLETE — the catalogue leaf hot (the door
        rebuilt with the real GLB), every file the build asked for landed. A leaf that never lands (a 404)

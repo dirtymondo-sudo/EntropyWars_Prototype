@@ -3124,6 +3124,7 @@ function VitalWave({ pct, hp, maxHp, mp, unitKey }) {
 // it with imperative hand controls (aim / rest / strike / wind) so blade
 // hover/click handlers can drive the hands without re-rendering the SVG.
 function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortraitClick, unitKey, burning, poisoned, hpPct, mpPct, low, liveUnit }) {
+  const _hubPa = liveUnit ? _ewPanelAnimsOf(liveUnit) : null;   // THE PANEL ANIMATIONS
   useLiveGen();
   const minRef = useRef(null), hourRef = useRef(null), secRef = useRef(null);
   const ticksRef = useRef(null), chimeARef = useRef(null), chimeBRef = useRef(null);
@@ -3306,7 +3307,10 @@ function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortra
         // invisible hit target so the disc stays clickable even with no art
         // (the flash circles below are pointer-events:none)
         onPortraitClick && h('circle', { cx: 100, cy: 100, r: 56.5, fill: '#000', opacity: 0 }),
-        (portraitUrl && liveUnit && portraitIsFace !== false && _liveKeyOf(liveUnit))
+        /* THE PANEL ANIMATIONS: the acting unit's whole sprite, moving, on the disc (the info card's own PanelAnim) */
+        _hubPa ? h('foreignObject', { x: 44, y: 44, width: 112, height: 112, style: { pointerEvents: 'none' } },
+          h(PanelAnim, { key: 'pa' + liveUnit.id, unit: liveUnit, anims: _hubPa, cls: 'ew-pa-hub' }))
+        : (portraitUrl && liveUnit && portraitIsFace !== false && _liveKeyOf(liveUnit))
           ? h(LiveFace, { unit: liveUnit, liveKey: _liveKeyOf(liveUnit), x: 44, y: 44, size: 112 })
         : portraitUrl && h('image', {
           href: portraitUrl, x: 44, y: 44, width: 112, height: 112,
@@ -4335,6 +4339,72 @@ function _hrlgSide(...kids) {
     segs.map((g, i) => h('div', { key: i, className: g.out ? 'hrlg-side-top' : 'hrlg-side-low' }, g.ids.map(part))));
 }
 
+/* THE PANEL ANIMATIONS (pilot, mondo 2026-11-20: "instead of her closeup face portrait you would use these"): a unit whose
+   race has a row in sprites.js RACE_PANEL_ANIMS shows its whole sprite, animated, in the unit info panel's portrait (the
+   quick card and the one battle panel's unit card). idle loops; walk / attack / hurt play when THIS unit moves, attacks or
+   casts, or is hit (RenderBus unit:moved / unit:animChanged / unit:damaged, the same signals the board's own animations
+   read, so the online guest sees them too), then back to idle. One strip of square frames, stepped by a CSS animation: no
+   timer per frame, no re-render. An enemy's actions show only while the viewer can see it (fog). Viewer-local. */
+const _ewPaLive = {};   // unit id -> { k, until }: the action playing now, so a card rebuilt mid-clip (a hit refreshes it) keeps it
+function PanelAnim({ unit, anims, cls }) {
+  const ref = useRef(null);
+  const uid = unit && unit.id;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !anims) return;
+    const n = anims.frames || 8, idleMs = Math.round(n / (anims.fps || 8) * 1000), actMs = Math.round(n / (anims.actFps || 12) * 1000);
+    ['idle', 'walk', 'attack', 'hurt'].forEach(k => { if (anims[k]) { const im = new Image(); im.src = anims[k]; } });   // no blank frame on the first swap
+    let cur = '', back = 0, until = 0;
+    const play = (k, holdMs) => {
+      if (!anims[k]) return;
+      const now = Date.now();
+      const act = k !== 'idle';
+      if (act && k === cur && now < until && k !== 'walk') return;   // the same action already playing (its flag set + cleared both speak)
+      if (!(k === 'walk' && cur === 'walk' && now < until)) {      // a walk still going keeps its stride, only its end moves
+        el.style.backgroundImage = 'url("' + anims[k] + '")';
+        el.style.animation = 'none'; void el.offsetWidth;
+        el.style.animation = 'ewPaStep ' + (act ? actMs : idleMs) + 'ms steps(' + n + ', jump-none) ' + (act && k !== 'walk' ? '1 forwards' : 'infinite');
+      }
+      cur = k; clearTimeout(back);
+      if (act) { const ms = Math.max(actMs, holdMs || 0); until = now + ms; _ewPaLive[uid] = { k, until }; back = setTimeout(() => play('idle'), ms); }
+    };
+    const has = (set) => !!(set && typeof set.has === 'function' && set.has(uid));
+    const flagged = () => {
+      const S = (typeof state !== 'undefined' && state) ? state : {};
+      return has(S.hitFlashIds) ? 'hurt' : (has(S.attackAnimIds) || has(S.castAnimIds)) ? 'attack' : '';
+    };
+    play('idle');
+    { const lv = _ewPaLive[uid], on = lv && Date.now() < lv.until, f = on ? lv.k : flagged(); if (f) play(f, on ? lv.until - Date.now() : 0); }   // rebuilt mid-action
+    const B = window.RenderBus;
+    if (!B) return () => { clearTimeout(back); };
+    const mine = (ev) => {
+      if (!ev || !ev.unit || ev.unit.id !== uid) return false;
+      try {   // fog: a foe the viewer cannot see does not act in the panel
+        const v = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+        if (typeof sidesAllied === 'function' && !sidesAllied(ev.unit.player, v) && typeof _shouldCameraFollowUnit === 'function' && !_shouldCameraFollowUnit(ev.unit)) return false;
+      } catch (e) {}
+      return true;
+    };
+    const onAnim = (ev) => { if (mine(ev)) { const f = flagged(); if (f) play(f); } };
+    const onHit = (ev) => { if (mine(ev)) play('hurt'); };
+    /* the walk lasts about as long as the board's own walk: the squares moved (the move is over on the board at once) */
+    const onMove = (ev) => {
+      if (!mine(ev) || ((cur === 'hurt' || cur === 'attack') && Date.now() < until)) return;
+      const d = (ev.fromX != null && ev.fromY != null) ? Math.abs(ev.unit.x - ev.fromX) + Math.abs(ev.unit.y - ev.fromY) : 1;
+      play('walk', Math.min(3000, d * 220));
+    };
+    B.on('unit:animChanged', onAnim); B.on('unit:damaged', onHit); B.on('unit:moved', onMove);
+    return () => { clearTimeout(back); B.off('unit:animChanged', onAnim); B.off('unit:damaged', onHit); B.off('unit:moved', onMove); };
+  }, [uid, anims]);
+  return h('div', { className: cls + ' ew-pa' }, h('i', { ref }));
+}
+function _ewPanelAnimsOf(u) {
+  if (!u || typeof getRacePanelAnims !== 'function') return null;
+  let lk = u;
+  try { if (typeof window.ewDrawnUnit === 'function') lk = window.ewDrawnUnit(u) || u; } catch (e) { lk = u; }   // 🤳 THE FILTER: the swapped look
+  return getRacePanelAnims(lk);
+}
+
 /* THE UNIT INFO PANEL (mondo 2026-10-17: "the info panel should be more horizontal than vertical, with the quick actions
    hanging off the bottom right edge of it to make like a sideways L shape. The unit portrait should be bigger"): a clicked
    unit's header is a wide card — a big portrait, the name + vitals, the stats, the element box — laid out by the CSS grid
@@ -4350,10 +4420,12 @@ function _hrlgQuickCard(key, title, qv) {
   if (!qv) return null;
   const qu = ((typeof state !== 'undefined' && state.units) || []).find(x => String(x.id) === side[2]);
   const pd = qu ? _hrlgPortraitData(qu, null) : null;
+  const pa = _ewPanelAnimsOf(qu);   // THE PANEL ANIMATIONS: the whole sprite, moving, in place of the face
   return h('div', { className: 'hrlg-thead qp ' + side[1], 'data-uid': side[2] },
     h('div', { className: 'hrlg-thead hrlg-qp-bg ' + side[1] }),
-    h('div', { className: 'hrlg-qp-port ' + side[1] + (pd && !pd.isFace ? ' sprite' : '') },
-      pd ? h('div', { className: 'hrlg-qp-img', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null),
+    h('div', { className: 'hrlg-qp-port ' + side[1] + (pa ? ' anim' : (pd && !pd.isFace ? ' sprite' : '')) },
+      pa ? h(PanelAnim, { key: 'pa' + qu.id, unit: qu, anims: pa, cls: 'hrlg-qp-img' })
+        : pd ? h('div', { className: 'hrlg-qp-img', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null),
     title && h('div', { className: 'hrlg-view-tab' }, title.node || h('span', { className: 'hrlg-view-tab-text' }, title.text)),
     qv,
     /* the type badges' own spot (UI Maker: under / on the portrait) — the copy in the bars hides then */
@@ -4639,13 +4711,15 @@ function DeckUnitCard({ ukey, actor, terrain, btns }) {
   const qk = (side === 'enemy' ? 'enemy|' : 'ally|') + u.id;
   const qv = self ? null : _hrlgQuickVitals(qk);
   const pd = self ? null : _hrlgPortraitData(u, actor || null);
+  const pa = self ? null : _ewPanelAnimsOf(u);   // THE PANEL ANIMATIONS
   const coord = typeof coordLabel === 'function' ? coordLabel(u.x, u.y) : u.x + ',' + u.y;
   const dist = (!self && actor) ? Math.abs(actor.x - u.x) + Math.abs(actor.y - u.y) : null;
   const where = self ? [coord, terrain ? String(terrain).toUpperCase() : null]
     : [coord, dist == null ? null : dist === 0 ? 'HERE' : dist + ' AWAY'];
   return h('div', { ref, className: 'ewd-ucard ' + side, 'data-uid': String(u.id) },
-    self ? null : h('div', { className: 'ewd-uport ' + side + (pd && !pd.isFace ? ' sprite' : '') },
-      pd ? h('div', { className: 'ewd-uimg', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null),
+    self ? null : h('div', { className: 'ewd-uport ' + side + (pa ? ' anim' : (pd && !pd.isFace ? ' sprite' : '')) },
+      pa ? h(PanelAnim, { key: 'pa' + u.id, unit: u, anims: pa, cls: 'ewd-uimg' })
+        : pd ? h('div', { className: 'ewd-uimg', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null),
     h('div', { className: 'ewd-umain' },
       h('div', { className: 'ewd-uhead' },
         h('span', { className: 'hrlg-name ewd-uname' }, _ewdUnitName(u)),
@@ -14276,6 +14350,11 @@ function _hudHideCss() {
     }
     .hrlg-qp-img { position: absolute; inset: 0; background: center / cover no-repeat; image-rendering: pixelated; border-radius: inherit; pointer-events: none; }
     .hrlg-qp-port.sprite > .hrlg-qp-img { background-size: auto calc(var(--qp-zoom, 1.5) * 100%); background-position: center 14%; }
+    /* THE PANEL ANIMATIONS (PanelAnim): the strip's one frame, as tall as the portrait, standing on its floor */
+    .ew-pa { overflow: hidden; }
+    .ew-pa-hub { position: relative; width: 100%; height: 100%; }
+    .ew-pa > i { position: absolute; left: 50%; bottom: 0; height: 100%; aspect-ratio: 1 / 1; transform: translateX(-50%); background-repeat: no-repeat; background-size: auto 100%; background-position: 0% 0%; image-rendering: pixelated; }
+    @keyframes ewPaStep { from { background-position-x: 0%; } to { background-position-x: 100%; } }
     .hrlg-qp-port::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 18px rgba(0,0,0,0.65); }
     .hrlg-qp-port.enemy::after { box-shadow: inset 0 0 18px rgba(0,0,0,0.65), inset 0 -3px 0 rgba(255,74,86,0.75); }
     .hrlg-qp-port.ally::after { box-shadow: inset 0 0 18px rgba(0,0,0,0.65), inset 0 -3px 0 rgba(46,209,88,0.75); }
@@ -19061,7 +19140,7 @@ const UIM_SURFACES = [
   { id: 'explore', label: 'Exploration HUD', hint: 'D.O.O.R. HQ and the zones: the strip, prompts, cards, map, bag.', native: true, def: 'theme',
     scope: '#hqPage',
     roles: {
-      panel: '#hqPage .hq-strip-l, #hqPage .hq-prompt, #hqPage .hq-toast, #hqPage .hq-trick, #hqPage .hq-panel-card, #hqPage .hq-map-card, #hqPage .hq-map-key, #hqPage .hq-pause-frame, .hq-dock-tag',
+      panel: '#hqPage .hq-strip-l, #hqPage .hq-prompt, #hqPage .hq-toast, #hqPage .hq-panel-card, #hqPage .hq-map-card, #hqPage .hq-map-key, #hqPage .hq-pause-frame, .hq-dock-tag',
       head: '#hqPage .hq-panel-hd, #hqPage .hq-pause-head, #hqPage .hq-map-bar',
       button: '#hqPage .hq-btn, #hqPage .hq-pause-cmd, #hqPage .hq-loc, #hqPage .hq-map-result',
       buttonSel: '#hqPage .hq-btn:hover:not(:disabled), #hqPage .hq-pause-cmd:hover, #hqPage .hq-pause-cmd.cur, #hqPage .hq-loc.sel, #hqPage .hq-loc:hover, #hqPage .hq-map-result:hover',

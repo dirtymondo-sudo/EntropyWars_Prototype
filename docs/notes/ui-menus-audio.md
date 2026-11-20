@@ -2893,3 +2893,31 @@ Mock-ups: /mnt/project-files/dialogue-boxes/ (A faded bar, B portrait, C cinema)
 - Keys: E / ENTER / SPACE / a click finish the typing first (window capture, before the box's own keys); ↑ ↓ ← → move the ▶,
   ENTER answers it, E answers it only once the ▶ was moved (else E keeps its job: BACK OFF on the ladder, close elsewhere);
   1-4 answer straight; ESC + RIGHT CLICK = back (unchanged). Viewer-local, nothing relayed.
+
+## THE PANEL ANIMATIONS (pilot, 2026-11-20)
+mondo 11-20: "pilot having these sprite animations in her unit info panel corresponding to her actions ... instead of her
+closeup face portrait you would use these". Catgirl (female) only, a test of Sprite AI's animation sheets.
+- Table: sprites.js `RACE_PANEL_ANIMS` (+ `getRacePanelAnims(unit)`): per race + gender, `idle` / `walk` / `attack` / `hurt`
+  sheet urls, `frames`, `fps` (idle), optional `actFps` (actions, default 12). A sheet = ONE horizontal strip of square frames
+  (Sprite AI's export: 8 x 128 px = 1024 x 128). R2: `Assets/characters/races/<race>/<gender>/panel_<clip>.png`.
+  A race or gender without a row keeps its face portrait: nothing else changes.
+- Drawn by hud.js `PanelAnim` in BOTH unit info cards: the quick card (`_hrlgQuickCard`, `.hrlg-qp-port.anim`) and the one battle
+  panel's unit card (`DeckUnitCard`, `.ewd-uport.anim`). The wrapper keeps the old image class (`hrlg-qp-img` / `ewd-uimg`) so the
+  UI Maker's inset + clip rules still land; the strip is its `<i>`, one frame as tall as the portrait, stepped by the CSS
+  animation `ewPaStep` (`steps(n, jump-none)`): no per-frame timer, no re-render.
+- What plays: idle loops; `unit:moved` = walk, `unit:animChanged` with the unit in `state.attackAnimIds` / `castAnimIds` =
+  attack, in `state.hitFlashIds` (or `unit:damaged`) = hurt; one pass at `actFps`, then idle. The same signals the board's own
+  animations read, so the online guest gets them (online.js replays triggerAttackAnim / triggerCastAnim). A foe acts in the
+  panel only while the viewer can see it (`_shouldCameraFollowUnit`). Viewer-local, nothing on state, nothing relayed.
+- A hit refreshes the card and rebuilds the portrait (the hurt clip fell straight back to idle in the first probe): `_ewPaLive`
+  remembers the action that is playing per unit id and a fresh mount picks it up.
+- THE HOROLOGE TOO (11-20, second step, mondo: "Yes"): the acting unit's disc (`HorologeHub`, both the Horologe and the one
+  battle panel's left bay) draws the same `PanelAnim` in a `<foreignObject>` (class `ew-pa-hub`) in place of the face / the
+  live face, so her clips play on her own turn. The walk now lasts about as long as the board's walk: 220 ms a square moved
+  (`unit:moved` fromX / fromY), at least one pass, at most 3 s.
+- NOT done yet (pilot): no death clip; the whole body is small in the 63 px card portrait and on the disc.
+  Off: `window.EW_DISABLE_PANEL_ANIMS = true`.
+- Making more: Sprite AI (sprite-ai.art, key in the env's Network secrets): `POST /api/sprites/import` `{ image: <base64>, title,
+  asset_type }` (free) -> id; `POST /api/animations` `{ source_generation_id, preset: Idle|Walk|Run|Jump|Attack|Hurt|Death|Custom,
+  frame_count }` (14 tokens for 8 frames) -> poll `GET /api/sprites/<id>` until `completed` -> `GET /api/sprites/<id>/download`.
+  Source must be a still 32-256 px. Reach it at `sprite-ai.art` (the `www.` host is not allowed from the cloud container).
