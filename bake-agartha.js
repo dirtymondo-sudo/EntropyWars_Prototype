@@ -18,8 +18,10 @@
    the sumps (the plan's `w` squares: black water), the ways out, the paint, the checks.
    WHAT THE DESIGN FILE MAKES: docs/areas/cavern/agartha/room.js (the places, the buildings, the dressing, the light, the people), in the
    room's own frame (squares sx 0..59 west to east, sy 0..47 north to south).
-   THE PILOT (11-20) stands in a NEW room `site_prebuilt_hollow_earth_ug_agartha`, NOT joined to the world (the Katana pattern): the old
-   `site_prebuilt_hollow_earth_ow_agartha` (bake-cavern.js) stays the walked one until mondo says swap. Notes: docs/notes/areas-complexes.md
+   THE ROOM `site_prebuilt_hollow_earth_ug_agartha` IS AGARTHA (SWAPPED IN 2026-11-20, mondo: "obviously we need to put the new Agatha in the
+   game and have something lead to it"): it stands on the old room's world place (-19, -12); the Mountains' Lemuria adit (link shasta_lemuria,
+   end b) lands on its north wall, its south door is the Long Tunnel's seam ow_h_m15_m8; the old `site_prebuilt_hollow_earth_ow_agartha`
+   (bake-cavern.js) is in DOOR_HQ.retired and has no world place. Notes: docs/notes/areas-complexes.md
    "AGARTHA, THE LABYRINTH CITY". */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -29,7 +31,7 @@ const PLAN = require('./docs/plans/world-polish/plans/ug-agartha.js');
 const DESIGN = require('./docs/areas/cavern/agartha/room.js');
 const B = PLANTOOL.build(PLAN); PLANTOOL.check(B, { noRoom: true });
 if (B.FAIL.length) throw new Error('the Agartha plan does not pass draw-plan.js:\n  ' + B.FAIL.join('\n  '));
-const ROOM = 'site_prebuilt_hollow_earth_ug_agartha', SITE = 'prebuilt_hollow_earth', PART = 'ug_agartha';
+const ROOM = 'site_prebuilt_hollow_earth_ug_agartha', SITE = 'prebuilt_hollow_earth', PART = 'ug_agartha', WORLD = { wx: -19, wy: -12 };
 const C = 3.5, LV = 1.75, ZERO = 110, W = B.W, Hh = B.H, N = B.N, HX = W * C / 2, HZ = Hh * C / 2;
 const r2 = v => Math.round(v * 100) / 100, gx = c => r2(-HX + c * C), gz = c => r2(-HZ + c * C), gcx = c => r2(-HX + (c + 0.5) * C), gcz = c => r2(-HZ + (c + 0.5) * C);
 const J = v => JSON.stringify(v).replace(/"([a-zA-Z_][a-zA-Z0-9_]*)":/g, '$1:').replace(/'/g, "\\'").replace(/"/g, "'");
@@ -138,15 +140,17 @@ const ctx = { C, LV, ZERO, W, H: Hh, N, B, PLAN, r2, gx, gz, gcx, gcz, open, wet
 
 /* ── THE WAYS OUT: the plan's `doors` (their squares keep their level). The pilot's room is not joined to the world yet: each door names the
    room it will lead to; the far ends are re-pointed when mondo says swap. ── */
-const DOORS = { 'the Mountains (the Lemuria adit)': { id: 'lemuria_adit', label: 'THE MOUNTAINS', sub: 'THE LEMURIA ADIT · UP THE OLD MINE TO THE HOT SPRINGS', action: { room: 'site_prebuilt_shasta_ow_lodge', at: 'link_shasta_lemuria' } },
-    'The Long Tunnel (8 levels down)': { id: 'ow_h_m15_m8', label: 'THE LONG TUNNEL', sub: 'THE LONG TUNNEL · DOWN TO THE CAVERN', action: { room: 'site_prebuilt_hollow_earth_ow_long', at: 'ow_h_m15_m8' } } };
+const DOORS = { 'the Mountains (the Lemuria adit)': { link: 'shasta_lemuria' },   /* the door is the link's own (data.js DOOR_HQ.links shasta_lemuria, end b: this room's north wall); WANT checks its place */
+    'The Long Tunnel (8 levels down)': { id: 'ow_h_m15_m8', label: 'THE LONG TUNNEL', sub: 'THE LONG TUNNEL · DOWN TO THE CAVERN', action: { room: 'site_prebuilt_hollow_earth_ug_long', at: 'ow_h_m15_m8' } } };   /* the Long Tunnel's labyrinth room (bake-underground.js long-tunnel) */
+const LINKPLACE = {};
 (PLAN.doors || []).forEach(d => { const [x, y, side, where] = d, o = DOORS[where]; if (!o) throw new Error('a door the tool does not know: ' + where);
     const wall = side.toLowerCase(), onWall = (side === 'N' && y === 0) || (side === 'S' && y === Hh - 1) || (side === 'W' && x === 0) || (side === 'E' && x === W - 1);
     if (!onWall) throw new Error('door ' + where + ': its square ' + x + ',' + y + ' is not on the ' + side + ' wall');
     /* a two-square passage: the door stands on the line between the two (the square and its neighbour along the wall) */
     const along = (side === 'N' || side === 'S') ? (open(x + 1, y) ? gx(x + 1) : open(x - 1, y) ? gx(x) : gcx(x)) : (open(x, y + 1) ? gz(y + 1) : open(x, y - 1) ? gz(y) : gcz(y));
-    const row = Object.assign({ id: o.id, wall }, (side === 'N' || side === 'S') ? { x: along } : { z: along }, { way: 'tunnel', leaf: null, label: o.label, sub: o.sub, action: o.action, desc: '' });
-    doors.push(row); taken.add(x + ':' + y); });
+    taken.add(x + ':' + y);
+    if (o.link) { LINKPLACE[o.link] = (side === 'N' || side === 'S') ? "wall: '" + wall + "', x: " + along : "wall: '" + wall + "', z: " + along; return; }
+    doors.push(Object.assign({ id: o.id, wall }, (side === 'N' || side === 'S') ? { x: along } : { z: along }, { way: 'tunnel', leaf: null, label: o.label, sub: o.sub, action: o.action, desc: '' })); });
 
 /* ── THE DESIGN FILE ── */
 ['plan', 'build', 'dress', 'people'].forEach(st => { if (typeof DESIGN[st] === 'function') DESIGN[st](ctx); });
@@ -261,6 +265,8 @@ L.push("        " + ROOM + ": {");
 L.push("            label: 'AGARTHA',");
 L.push("            sub: 'THE CRYSTAL CITY · THE LEMURIA ADIT · THE UPPER SHELF · THE LABYRINTH',");
 L.push("            kind: 'box', site: '" + SITE + "', part: '" + PART + "',");
+L.push("            /* THE ONE WORLD: where this room stands (data.js hqOwIndex): the old Agartha's place, which it replaced 2026-11-20 (the Long Tunnel's north door meets its plot 3,3) */");
+L.push("            world: { hub: 'cavern', layer: 'under', wx: " + WORLD.wx + ", wy: " + WORLD.wy + " },");
 L.push("            shell: { w: " + (2 * HX) + ", d: " + (2 * HZ) + ", h: " + SH + ", wallH: " + SH + ", dadoH: 1.1, open: false,");
 L.push("                     floor: 'hz_stone_02', wall: 'hz_stone_01', dado: 'hz_stone_02', trim: 'hz_stone_01', ceiling: 'hz_stone_01', floorColor: 0x8a8278, wallColor: 0x6e675e, dadoColor: 0x585048, ceilColor: 0x2a2622,");
 L.push("                     pipes: false, strips: false, lights: [], mood: { light: 0xbfe6ff, ambient: " + (DESIGN.ambient != null ? DESIGN.ambient : 0.16) + ", hero: false }, plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: " + r2(walkOf(SP[0], SP[1]) + 4.2) + " },");
@@ -297,8 +303,11 @@ L.push("        },");
 L.push("        /* AGARTHA-UG-END */");
 const block = L.join('\n') + '\n';
 console.log(JSON.stringify(count));
-if (DRY) process.exit(0);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
+/* the rows in data.js that name a place in this room (written by hand there): the tool refuses to bake when one has drifted */
+{ const flat = src.replace(/ +/g, ' '), WANT = Object.keys(LINKPLACE).map(k => ["b: { site: '" + SITE + "', part: '" + PART + "', " + LINKPLACE[k] + ",", 'link ' + k + ' (b)']).concat([["site_prebuilt_hollow_earth_ow_agartha: '" + ROOM + "'", 'DOOR_HQ.retired (the old Agartha)']]);
+  const missing = WANT.filter(w => flat.indexOf(w[0]) < 0); if (missing.length) { console.log('data.js rows to write by hand:'); missing.forEach(w => console.log('  ' + w[1] + ':  ' + w[0])); if (!DRY) throw new Error('data.js does not point at this room yet'); } }
+if (DRY) process.exit(0);
 const END = '        /* AGARTHA-UG-END */\n', b0 = src.indexOf('        /* AGARTHA-UG-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const anchor = '        /* CAVERN36-BEGIN'; const a = src.indexOf(anchor); if (a < 0) throw new Error('anchor not found in data.js: ' + anchor); src = src.slice(0, a) + block + src.slice(a); }   // the first bake: before the Cavern's block
