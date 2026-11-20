@@ -120,8 +120,7 @@ const WAY = {
     cave_dumb: wayAt('P03-00', 6, 2, 'n'),                 // Level −6 > the D.U.M.B.'s Sub-Level 7
     workings_oubliette: wayAt('P05-00', 9, 6, 'e'),        // the Oubliette > the Sewers' Old Workings (their end is on their west wall)
     shasta_lemuria: wayAt('P05-03', 9, 4, 'e'),            // the Lemuria Stair > Mount Shasta
-    technoticlan_agartha: wayAt('P05-04', 9, 6, 'e'),      // the East Gate > Technoticlan's ball court
-    antarctica_polar: wayAt('P05-05', 7, 9, 's'),          // the Admiral's Tunnel > Antarctica
+    /* technoticlan_agartha + antarctica_polar CUT 2026-11-20 (mondo: both places have other ways in; world polish thread 9) */
     hollow_byrd: wayAt('P02-05', 8, 9, 's'),               // the Polar Opening > Antarctica
     well_cellar: wayFree('P02-01', 3, 4, 90),              // the Haunted House's cellar well comes down in the Crossroads
     well_skinwalker: wayFree('P02-02', 4, 4, 180),         // the Estate's well comes down in the Mouth

@@ -264,7 +264,7 @@ console.log(JSON.stringify(count));
 const WANT = [
     ["prebuilt_antarctica: { room: '" + ROOM + "', door: { id: 'bay', wall: 'free', x: " + BAY.x + ", z: " + BAY.z + ", face: " + BAY.face + " } }", 'siteRooms.entry.prebuilt_antarctica'],
     ["a: { site: 'prebuilt_antarctica', part: 'plots', wall: 'n', x: " + COLLAR_X + ",", 'link antarctica_derelict'],
-    ["a: { site: 'prebuilt_antarctica', part: 'plots', wall: 'w', z: " + TUNNEL_Z + ",", 'link antarctica_polar'],
+    /* link antarctica_polar (the Admiral's Tunnel to Agartha) CUT 2026-11-20 (mondo; world polish thread 9): the tunnel's mouth on the west wall stays, a dead end */
     ["b: { site: 'prebuilt_antarctica', part: 'plots', wall: 'e', z: " + OPENING_Z + ",", 'link hollow_byrd'],
     [OLD + ": '" + ROOM + "'", 'DOOR_HQ.retired'],
 ];
