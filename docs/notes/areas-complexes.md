@@ -13716,6 +13716,94 @@ the Sink) and one on the east (off the Shoulder 2 -> 1); the plan's ledge edges 
   file is not edited. data.js rows by hand: the day table, `HQ_AREA_MARKERS` (the Fence Gap), `ZONE_FLORA.estate`, `ZONE_LOOKS.estate`. The plan's
   rock steps climb a notch up the top's own face (54,27 -> 54,26). Every door of the three rooms resolves (checked through load-data.js).
 
+## AGARTHA, THE LABYRINTH CITY (2026-11-20, WORLD POLISH thread 9, the Agartha build; branch `claude/agartha-pilot`)
+
+mondo 11-20: the whole underground is ONE labyrinth ("victory road ... underground horror like the descent movie"), 6 plots deep, no climb over
+16 levels, every climb two-way, no underground river for now. Agartha's approved square plan: `docs/plans/world-polish/plans/ug-agartha.js`
+(5 x 4 plots, levels 134 down to 112; HAND-KEPT now: `gen-district.py` skips it). The brief: "a CITY in a cave: real architecture you walk
+into, lit by its crystals, with the dark maze round it".
+
+- **THE TOOL:** `node bake-agartha.js` (`--dry-run`, `AGARTHA_DUMP=1`) writes the NEW room `site_prebuilt_hollow_earth_ug_agartha` between
+  `AGARTHA-UG-BEGIN / END` in data.js (before the Cavern's block). It reads the plan through `draw-plan.js` `build()` and refuses to bake when
+  the plan fails. Level 110 = y 0; a level = 1.75 m. The floor is the height sheet (`terrain.slope.cells`, four corners a square, each square
+  flat at its level: a ledge is a sheer step); every closed square is ROCK standing to the crust (no gen wall, no tree); THE ROOF = a slab
+  of rock over every open square at the highest floor beside it + the square's headroom (a passage 4.2 m, a chamber 8.75 m, a place's own:
+  `ctx.headroom`), stalactites under it; THE LADDERS = the plan's `stairs` (`climb` rows, look `ladder`); THE ROPES = the plan's `found`
+  free climbs up a cliff (`climb`, look `rope`); the sumps (`w` squares) = black water. Checks: every prop key and unit exists, nothing in
+  the rock, every open square WALKED from the spawn AND climbed back out of (the drops one way, ladders and ropes both), every plot has
+  squares at its plan level (the heights check before any browser run).
+- **THE DESIGN FILE:** `docs/areas/cavern/agartha/room.js` (room frame, squares 0..59 x 0..47): `plan` (headroom, paint), `build`
+  (buildings: hollow `texbuilding` + an `arch` look, the Antarctica / Katana recipe), `dress`, `people`, `suns`. LIGHT: only a PROC prop
+  lights (`crystal_cluster`, `torch_white`, `torch_blue`, `cave_torch`); ten prop lights a room (`HQ_PROP_LIGHT_MAX`): `noLight: true`
+  on the rest; the shell's `suns` (four at most) are the crystals that light a shelf.
+- **THE PILOT (11-20) = THE UPPER SHELF, level 134, + the maze under it (the west two plot columns, squares x 0..23):** the Lemuria adit
+  (2..3 x 0..1, timber sets, rails, a cart; door `lemuria_adit` on the north wall), the Lemurian Gate, THE ADIT SQUARE (the 8 x 8 board,
+  the battle marker of the old room) round THE GREAT CRYSTAL (6,6: the great chamber's stalagmite grown through with crystal, the shelf's
+  big light, four columns round its precinct), THE UPPER TERRACE (the chamber grown east 5 squares in the plan) with THE HALL OF RECORDS
+  (10..14 x 2..6, walk-in: shelves of records, the model of the city, the old terrace's telescope, orrery, lectern), two HOMES CUT IN THE
+  ROCK (0..1 x 4..7 and 9..12 x 10..12, walk-in), THE DROP (a broken balustrade over the 8-level cliff, the old rope), THE COLONNADE east;
+  the pits: a nest, a crystal pocket, a bone pit, an old camp. The rest of the room stands as the plan's bare skeleton (walkable).
+- **NOT JOINED TO THE WORLD YET (the Katana pattern):** the old `site_prebuilt_hollow_earth_ow_agartha` (bake-cavern.js room `A`) stays
+  the walked room. AT THE SWAP: room `A` + its north tunnel plots + the `L`<->`A` seam leave `bake-cavern.js` (note on the board first),
+  this room takes `world:` (Agartha's place), the links `shasta_lemuria` (the adit), `technoticlan_agartha`, `antarctica_polar` and the
+  Long Tunnel seam `ow_h_m15_m8` point here, the old room goes in `DOOR_HQ.retired`, and the room joins `ZONE_LOOKS.zones.cavern.rooms`
+  (the retexture thread's row) + the cavern `ZONE_FLORA`. The underground layout drops Agartha's ways to Technoticlan and Antarctica:
+  ASK mondo before cutting them (never delete content he did not name).
+- **THE READING (step 1b):** `docs/plans/world-polish/thread9-agartha/fits-part1..4.md` (the model list in three parts + the live data).
+  NEEDS A MODEL (none in the game): stalactite / stalagmite pieces (code cones today), a creature nest / eggs, a geode, mine timber
+  supports (drawn as arch boxes), a white marble balustrade (drawn), a crystal throne, a dead caver in a helmet and harness.
+## THE SEWERS' LABYRINTH — the top of the underground, built from the approved plan (2026-11-20, WORLD POLISH THREAD 10, owner side)
+
+mondo 11-20: "The entire underground needs to be like a labyrinth"; "we need victory road. labyrinth, height diffs, cliffs, drops waterfalls,
+underground horror like the descent movie"; on the plans: "Yes this is good, go ahead and start individual threads"; "No real underground
+waterfall for now" (no underground river: the falls are water running down a cliff, not a river). It is OK that the underground no longer sits
+exactly under the surface: the manholes and stairs still lead to the right places.
+
+- **THE ROOM:** `site_prebuilt_sewers_labyrinth` (part `labyrinth`), 8 x 6 plots (336 x 252 m), levels 144 (the Pumping Station, under the
+  street) down to 118 (the pits of the old mine's bottom level): 45.5 m of rise, every square the plan's (`docs/plans/world-polish/plans/ug-sewers.js`).
+- **THE TOOL:** `bake-labyrinth.js <room design>` (repo tooling, written for any underground district plan; the Sewers' design is the worked
+  example). `node bake-labyrinth.js docs/areas/sewers/districts/room.js [--dry-run]`. It builds the plan with draw-plan.js `build`, refuses a plan
+  that fails its own tool, and writes the room between `LABYRINTH-SEWERS-BEGIN / END` (just before the old SEWERS24 block) + its decal row.
+  How each plan row becomes a room row is in the tool's header (spaces, a plateau a run of equal level with ledges where the neighbour is lower,
+  `climb` rows for the ladders and found ways, `fall` rows for the waterfalls, deep sumps, a barrel vault a run of squares under one roof).
+- **THE ROOF RULE:** a square's roof is 5.25 m over the highest open square two steps away or nearer: so the foot of a ladder or a fall opens up
+  into a shaft as tall as the climb, and a brick curtain closes the step between two roof heights. The tallest is the 42 m shaft of the
+  Pumping Station's fall into the mine.
+- **THE WATER RULE (learned on the first bake):** a `stream` carves its bank (0.9 m) and its ends are round (half its width past its points):
+  a channel or splash pool beside a ledge cut the high ground down. Every water row here says `bank: 0` and stands its points half a width inside
+  its squares. After that, every dry square of the room bakes at its planned level (the check: `hqTerrainFeet` on all 2,536 open squares).
+- **AN `arch` ROW'S HEIGHT IS ITS `y` (learned on the first probe):** data.js sets every arch row's base from `y`, else from the ground under the
+  row's middle; a `base` written in the row is thrown away. The tool's rows write `y: 0` and absolute part heights (with `base: 0` the vaults of a
+  plot whose middle is rock were drawn tens of metres off and the room looked open to the black).
+- **THE ROOM DESIGN** (`docs/areas/sewers/districts/room.js`, the room's own frame, plan squares): names the 48 plots and sets the five districts
+  on the plan's branches, each entered at its top: W THE CULVERTS (11 plots, 137-144, the way in from the street), R THE RADIOACTIVE DRAIN (8,
+  130-136, the manhole up to the Power Station's yard), T THE RUNNING TUNNELS (11, 128-137, the D.U.M.B.'s door), H THE HOLDING CELLS (6,
+  127-130, the stair up to the precinct; grown from 2 plots on mondo's OK), O THE OLD WORKINGS (12, 120-126, the flooded mine, the way on to the
+  Tunnel-Way). A district with `channel` carries a waded channel down one square of every passage two squares wide; at a ledge it pours over a
+  weir (a concrete board and a sluice gate) as a small fall. The plan's district file stays untouched (one district S): this file sets them.
+- **THE WAYS OUT (the plan's five):** the Pumping Station's bulkhead (`pump`, up the shaft to the street), the manhole to the Power Station
+  (`sewers_power`; the plan's corner square had a passage behind it, so the door stands one square up, in the passage's dead-end wall), the
+  Holding Cells' stair (`cells_stair`), the Tunnel-Way (`ow_v_1_1`, the Tunnel-Way's own seam id, the Chimney's west wall, level 123), the D.U.M.B. (`freight_line`, the Freight
+  Line's south wall, level 131). PILOT STAND-INS: the three city doors all lead to the street's `sewer` place, the Tunnel-Way's and the D.U.M.B.'s to
+  their rooms' old seams, one way: the other rooms do not point here until the switch.
+- **THE PILOT = THE CULVERTS (W)**, dressed: the kit (cage lamps on the walls every few squares with the brick round them lit, every fourth one dead
+  with a rat under it; culvert mouths where a channel starts at a wall, grates where it ends, the weirs and sluices; rubbish, cobwebs and stains in
+  the bends) + by hand: the manhole shaft over the bulkhead (ladder, daylight down it), the Pumping Station's pumps, boiler, gauge board and valves,
+  the Junction's four mains across its vault (the landmark), the Pump Room, the Cistern's compressor, three real bulbs, two name plates, three
+  residents (two sewer gators, a mole man). The other four districts are the bare skeleton (vaults, grime, ladders, falls, their floors) until
+  mondo has looked.
+- **THE SWITCH (after mondo's word):** retire `site_prebuilt_downtown_underworld` (DOOR_HQ.retired), point the city's ways (`pump`, the manholes,
+  `docks_sewer`, `stadium_sewers`, `well_garden`, `sewers_power`, the cells, `workings_oubliette`, the Freight Line) at the new room's dead ends,
+  dress T, H, O, R from their old district files (W T H O R.js stand in the old home frame: their pieces are carried over by hand, plot by plot).
+- **FITS (the lists read 11-20: MODEL_LIST.md, the catalogue; the old five district files' pieces are the proven set):** cage_lamp, bare_bulb,
+  manhole_ladder, light_shaft, culvert_mouth, drain_grate, meshy_round_street_drain, floor_drain, brick_arch, valve_wheel, gate_valve, waste_pipe,
+  centrifugal_pump, boiler, air_compressor, gauge_board, pd_lever, psx_pipe_1 (+ _corner, _short, _cross), psx_pipe_valve_holder_large_1/2,
+  psx_pipes_holder_1, utility_box, rat, psx_cobweb_1/2, floor_stain, psx_metal_barrel_mp_1/2/3, traffic_barrel, wet_floor_sign, warning_tape,
+  psx_brick_1 (rubble), tire_stack, psx_old_mattress_mp_1, skull, mushroom2, woods_glowcap, railway_lantern, cave_torch; races: sewer gator,
+  mole man. For R: radiation_drum, goo_tendril, the `sludge` liquid; for T: rail_section, buffer_stop, tunnel_signal, hand_car, mine_cart; for
+  H: cell_bars, steel_toilet, cot, booking desk; for O: beam_pump, head_wheel, mine_cart, ore_heap, anvil, skull_pile.
+- **NEEDS A MODEL:** none for the pilot. Later: a sluice gate as a model (drawn from boxes today), a weir board.
+
 ## THE UNDERGROUND, THE TUNNEL-WAY — world polish threads 7 + 9 + 10, the Tunnel-Way's build thread, THE PILOT (2026-11-20, owner side)
 mondo 11-20: "This should be the most dungeon and labyrinth like ... we need victory road. labyrinth, height diffs, cliffs, drops waterfalls,
 underground horror like the descent movie"; the layout `docs/plans/world-polish/plans/underground.js` and the square plan `plans/ug-tunnel-way.js`

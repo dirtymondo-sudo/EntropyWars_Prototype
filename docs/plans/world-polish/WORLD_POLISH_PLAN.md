@@ -451,7 +451,7 @@ they are measurements, not the job.
   downhill and always in sight. Agartha on three shelves joined by stairs and crystal bridges. Winding ways along the ledges, thin trails
   into side caves.
 
-### Thread 10: THE SEWERS (not started; after thread 7, same tool)
+### Thread 10: THE SEWERS (BUILDING 11-20 from the approved `plans/ug-sewers.js`: a NEW room `site_prebuilt_sewers_labyrinth` by `bake-labyrinth.js` + `docs/areas/sewers/districts/room.js`; THE PILOT, the Culverts, is BUILT and waits mondo's look; the old room stays live until then; notes areas-complexes.md "THE SEWERS' LABYRINTH")
 - **Zone:** The Sewers. Districts: The Sewers (W), The Running Tunnels (T), The Holding Cells (H), The Old Workings (O), The Radioactive Drain (R).
 - **Rooms:** `site_prebuilt_downtown_underworld` (65 plots, with thread 7's walks).
 - **It is NOT:** Disaster City above it. Not the Catacombs.
