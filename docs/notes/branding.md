@@ -32,13 +32,30 @@ A district file keeps writing the plain word (`sign('BANK', ...)`). `docs/disast
 - Seen in the game 11-20 (HEAD b983684 + the font fix): CALAMITY MUTUAL on the bank's pediment (two lines), Snake Eyes on the casino's awning, Till Death Wedding Chapel in script, The Daily Disaster on the Press Court board.
 - Signs spelled one letter a quad (the casino's and the cinema's tall letters, the hotel's fin) still spell the plain word.
 
+## The neon, the chain marks, the billboards (step 3, 11-20)
+- **THE NEON.** A `BRAND` row with `{ neon: '#colour' }` makes its sign a lit tube: an eighth field `n` on the key, the part at glow 1, a board
+  under it turned dark. three-renderer.js `_hqArchSignTex` draws a soft halo, a pale core and (a boardless sign) a dark plate with a thin
+  tube frame behind the words only, on a canvas twice as fine. On: every food, club and show sign of Entertainment and Bayside's seafront
+  shops + the hotel. Always lit (no day / night switch, no flicker: nothing runs per frame). A small script sign smears as neon: the
+  chapel's stays paint.
+- **THE CHAIN MARKS.** three-renderer.js `HQ_CHAIN_MARKS`: `bolt` Act of God, `bank` Calamity Mutual, `burst` Kaboom! Cola, `mid` Mid Records
+  (a level meter with every bar in the middle), `flame` Phoenix, `wing` Icarus, `burger` Meltdown, `cup` Jitters, `crate` Pandora. Flat SVG
+  paths in the sign's own letter colour; named as the key's seventh field (`mark:` on a `BRAND` row), like the city seal.
+- **THE BILLBOARDS.** `docs/disaster-city/billboards.js`, run by the city bake: per district (`PER`: E 4 found of 7 wanted, B 1, F 2) the
+  flat-roofed buildings with the most storeys get two lit boards, one at each long edge of the roof reading outward, each an advert
+  (`ADS`: name, line, colours, face, mark). One new arch row a building (`bb:<building id>`); no district file edited. Most Entertainment
+  and Bayside buildings have pitched roofs or domes and take none: more boards need street-side poles or wall-mounted boards (next pass).
+- Seen in the game at night, HEAD 43619a9: Snake Eyes in red neon under the Act of God board, Landslide Realty over Bayside, Kaboom!
+  Cola and the hill sign from above. Not looked at: each of the other 19 neon signs, the Financial boards.
+- A probe sets the night with a view's `"eval": "window._hqClockHour=function(){return 23;}"` (it takes hold from the second view on).
+
 ## Where the pass stands
 | Step | State |
 |---|---|
 | 1. Disaster Hills (district name, map label, the Canyon Trail's way sign) | BUILT 11-20 |
 | 2. Disaster City's shop signs take their names (all districts but Civic) | BUILT 11-20 |
 | 2b. Civic's shops (Grounds for Appeal, Out By Noon Bail Bonds, Sign Here Notary, Borrowed Time) | waits: `districts/C.js` is the second side's row |
-| 3. Chain marks beside the words (`_hqSignMark`), neon tube signs and lit billboards on the two night streets (Entertainment, Bayside) | not started |
+| 3. Chain marks, neon tube signs on the two night streets (Entertainment, Bayside), lit rooftop billboards | BUILT 11-20 (first pass: 21 neon signs, 14 billboards on 7 roofs) |
 | 4. The Western Town, the ski mountain | not started (the Mountains are held by world polish thread 5) |
 | 5. Every other zone | not started |
 

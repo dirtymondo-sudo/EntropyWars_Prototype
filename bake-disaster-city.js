@@ -1207,6 +1207,8 @@ else {   /* THE ROOM PAST THE PLOTS, NORTH: one grid for the whole field's depth
 { const SIGN_FONTS = require(path.join(REPO, 'docs/disaster-city/sign-fonts.js')), cl = v => Math.max(0, Math.min(N * 12 - 1, Math.floor((v + HALF) / C)));
   const dOf = f => { const m = /P\d\d-\d\d/.exec(String(f.id || '')), p = (m && plotOf[m[0]]) || (typeof f.x === 'number' && typeof f.z === 'number' ? plotAtCell(cl(f.x), cl(f.z)) : null); return p ? p.d : ''; };
   const cityRows = features.filter(f => !/^(hills|shore):/.test(String(f.id || '')));   // (the Hills' rows keep the sheets and typefaces they stood in as their own room)
+  /* THE BILLBOARDS (docs/disaster-city/billboards.js, the branding pass 11-20): lit adverts for the city's chains on the nightlife districts' roofs */
+  { const BB = require(path.join(REPO, 'docs/disaster-city/billboards.js')).apply(cityRows, dOf); BB.rows.forEach(r => features.push(r)); count.billboards = BB.boards; if (process.env.SIGNS_DUMP) BB.on.forEach(l => console.log('BILLBOARD ' + l)); }
   const SW = process.env.SIGNS_DUMP ? {} : null, sf = SIGN_FONTS.apply(cityRows, dOf, SW), sp = SIGN_FONTS.apply(props, dOf, SW); count.signFonts = sf.signs + sp.signs;
   if (SW) for (const d of Object.keys(SW).sort()) console.log('SIGNS ' + d + ': ' + Object.keys(SW[d]).sort().map(w => w + ' x' + SW[d][w].length + ' [' + Math.min.apply(null, SW[d][w]) + '..' + Math.max.apply(null, SW[d][w]) + ']').join(' · '));
   /* THE URBAN DECAY PASS: every sheet key the districts wrote, renamed to the pack's sheet (see the file's head); then the check: none of the sheets mondo ruled out is left */

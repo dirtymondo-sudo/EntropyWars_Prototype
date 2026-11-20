@@ -49,7 +49,7 @@ const DISTRICT = {
    The chains stand in several districts (Jitters Coffee, Kwik Panic, Hock & Awe, The Daily Disaster, Loose Screw Hardware, Sunk Cost Marine).
    Wayfinding (EXIT, GATE B, PARKING, room names, warning plates) is never renamed. Mid Records is mondo's own name. The Civic Center's shops
    (COURT CAFE, BAIL BONDS, NOTARY + COPIES, WATCHMAKER) wait: its district file is the second side's row. The full list with the alternates
-   that lost: docs/notes/branding.md. An apostrophe in a name is the curved one (’): the bake writes keys in single quotes. A long name on a board cut for a short word stands on two lines (three-renderer.js THE TWO-LINE FIT). */
+   that lost: docs/notes/branding.md. The chapel's script stays paint on its pink board (seen 11-20: as a small neon it was a smear). An apostrophe in a name is the curved one (’): the bake writes keys in single quotes. A long name on a board cut for a short word stands on two lines (three-renderer.js THE TWO-LINE FIT). */
 const N = (re, words, font, x) => [re, Object.assign({ words, font }, x || {})];
 const BRAND = {
     C: [[/^POLICE$/, { words: 'D.C.P.D.', mark: 'pd', font: 'way' }],
@@ -62,17 +62,17 @@ const BRAND = {
     R: [N(/^BOXING$/, 'GLASS JAW BOXING CLUB', 'staat'), N(/^HOT MEALS$/, 'MERCY KITCHEN', 'staat'), N(/^ENGINES REBUILT$/, 'FENDER BENDER AUTO BODY', 'alfa'),
         N(/^HARDWARE$/, 'LOOSE SCREW HARDWARE', 'alfa'), N(/^PAWN$/, 'HOCK & AWE', 'alfa'), N(/^WE BUY GOLD$/, 'FOOL’S GOLD EXCHANGE', 'playfair'),
         N(/^TOOL AND DIE$/, 'MURPHY’S TOOL & DIE', 'stencil')],
-    E: [N(/^CASINO$/, 'SNAKE EYES', 'fasc'), N(/^FILM STUDIO$/, 'CALAMITY PICTURES', 'limelight'), N(/^CINEMA$/, 'THE AFTERSHOCK', 'limelight'),
-        N(/^RECORDING STUDIO$/, 'MID RECORDS', 'dela'), N(/^CABARET$/, 'THE VELVET ROPE', 'yellow'), N(/^WEDDING CHAPEL$/, 'TILL DEATH WEDDING CHAPEL', 'dafoe'),
-        N(/^COMEDY TONIGHT$/, 'THE PUNCHLINE', 'tilt'), N(/^LIVE MUSIC$/, 'THE FEEDBACK', 'tilt'), N(/^BAR$/, 'CLUB AFTERMATH', 'dafoe'),
-        N(/^ARCADE$/, 'GAME OVER', 'bungee'), N(/^BURGERS$/, 'MELTDOWN BURGER', 'bungee'), N(/^RAMEN$/, 'SLURP CITY RAMEN', 'pacifico'),
-        N(/^NOODLES$/, 'SLURP CITY', 'pacifico'), N(/^KEBAB\b.*$/, 'KEBABYLON  OPEN 24H', 'pacifico'), N(/^TRATTORIA$/, 'MAMMA MAYHEM’S', 'pacifico'),
-        N(/^BAKERY$/, 'UPPER CRUST BAKERY', 'pacifico'), N(/^ROOFTOP GRILL$/, 'SCORCHED EARTH GRILL', 'pacifico'), N(/^DUMPLINGS$/, 'LUCKY DUMPLING', 'pacifico'),
+    E: [N(/^CASINO$/, 'SNAKE EYES', 'fasc', { neon: '#ff3b3b' }), N(/^FILM STUDIO$/, 'CALAMITY PICTURES', 'limelight'), N(/^CINEMA$/, 'THE AFTERSHOCK', 'limelight', { neon: '#ffd21f' }),
+        N(/^RECORDING STUDIO$/, 'MID RECORDS', 'dela', { neon: '#f2f2f2' }), N(/^CABARET$/, 'THE VELVET ROPE', 'yellow', { neon: '#c79bff' }), N(/^WEDDING CHAPEL$/, 'TILL DEATH WEDDING CHAPEL', 'dafoe'),
+        N(/^COMEDY TONIGHT$/, 'THE PUNCHLINE', 'tilt', { neon: '#ffb03a' }), N(/^LIVE MUSIC$/, 'THE FEEDBACK', 'tilt', { neon: '#4fe3ff' }), N(/^BAR$/, 'CLUB AFTERMATH', 'dafoe', { neon: '#ff4fb8' }),
+        N(/^ARCADE$/, 'GAME OVER', 'bungee', { neon: '#4fe3ff' }), N(/^BURGERS$/, 'MELTDOWN BURGER', 'bungee', { neon: '#ffe14a' }), N(/^RAMEN$/, 'SLURP CITY RAMEN', 'pacifico', { neon: '#ff6a3a' }),
+        N(/^NOODLES$/, 'SLURP CITY', 'pacifico', { neon: '#ff6a3a' }), N(/^KEBAB\b.*$/, 'KEBABYLON  OPEN 24H', 'pacifico', { neon: '#7dff9a' }), N(/^TRATTORIA$/, 'MAMMA MAYHEM’S', 'pacifico', { neon: '#ff5a5a' }),
+        N(/^BAKERY$/, 'UPPER CRUST BAKERY', 'pacifico'), N(/^ROOFTOP GRILL$/, 'SCORCHED EARTH GRILL', 'pacifico', { neon: '#ff8a1f' }), N(/^DUMPLINGS$/, 'LUCKY DUMPLING', 'pacifico', { neon: '#ff4040' }),
         N(/^COSTUMES$/, 'CENTRAL MISCASTING', 'limelight'), N(/^MASKS \+ WIGS$/, 'ALTER EGO', 'limelight'), N(/^TAILOR$/, 'A STITCH IN TIME', 'limelight'),
-        N(/^MAGIC \+ JOKES$/, 'SMOKE & MIRRORS', 'limelight'), N(/^PAWN$/, 'HOCK & AWE', 'alfa')],
-    B: [N(/^HOTEL$/, 'THE CALM BEFORE', 'monoton'), N(/^SURF SHOP$/, 'WIPEOUT SURF CO.', 'pacifico'), N(/^ICE CREAM$/, 'BRAIN FREEZE', 'yellow'),
-        N(/^JUICE$/, 'MAIN SQUEEZE', 'pacifico'), N(/^FLOWERS$/, 'PETAL PUSHERS', 'pacifico'), N(/^BAIT$/, 'HOOK, LINE & SINKER', 'righteous'),
-        N(/^BOAT REPAIR$/, 'SUNK COST MARINE', 'righteous'), N(/^CAFE$/, 'JITTERS COFFEE', 'pacifico'),
+        N(/^MAGIC \+ JOKES$/, 'SMOKE & MIRRORS', 'limelight', { neon: '#c79bff' }), N(/^PAWN$/, 'HOCK & AWE', 'alfa', { neon: '#ffd21f' })],
+    B: [N(/^HOTEL$/, 'THE CALM BEFORE', 'monoton', { neon: '#ff4fb8' }), N(/^SURF SHOP$/, 'WIPEOUT SURF CO.', 'pacifico', { neon: '#4fe3ff' }), N(/^ICE CREAM$/, 'BRAIN FREEZE', 'yellow', { neon: '#9ff5ff' }),
+        N(/^JUICE$/, 'MAIN SQUEEZE', 'pacifico', { neon: '#ffb03a' }), N(/^FLOWERS$/, 'PETAL PUSHERS', 'pacifico', { neon: '#ff8ac0' }), N(/^BAIT$/, 'HOOK, LINE & SINKER', 'righteous', { neon: '#ffd21f' }),
+        N(/^BOAT REPAIR$/, 'SUNK COST MARINE', 'righteous'), N(/^CAFE$/, 'JITTERS COFFEE', 'pacifico', { neon: '#ffd9a0' }),
         N(/^LIFEGUARD$/, 'D.C. BEACH PATROL', 'way', { mark: 'seal', board: true })],
     U: [N(/^BOOKS$/, 'DOG-EARED BOOKS', 'grad'), N(/^BIKE REPAIR$/, 'SPOKE TOO SOON', 'grad'), N(/^CAFE$/, 'THE DAILY GRIND', 'grad'),
         N(/^CORNER STORE$/, 'KWIK PANIC', 'archivo'), N(/^LIBRARY$/, 'ASHFALL MEMORIAL LIBRARY', 'fell'), N(/^DORMITORY$/, 'FALLOW HALL', 'fell'),
@@ -106,7 +106,9 @@ function apply(rows, districtOf, words) {
                 const q = v.slice(4).split('|'); while (q.length < 5) q.push('');
                 if (q[4] !== 'v') { if (out.words) { const W = out.words[d || '-'] = out.words[d || '-'] || {}, wk = q[0] + (q[2] ? '' : '  (no board)'); (W[wk] = W[wk] || []).push(+q[3] || 0); }
                     const br = q[6] ? null : brandFor(d, q[0], q[2]);
-                    if (br) { if (br.words) { q[0] = br.words; out.names = (out.names || 0) + 1; } if (br.font) q[5] = br.font; if (br.mark) { while (q.length < 7) q.push(''); q[6] = br.mark; out.marks = (out.marks || 0) + 1; } }
+                    if (br) { if (br.words) { q[0] = br.words; out.names = (out.names || 0) + 1; } if (br.font) q[5] = br.font; if (br.mark) { while (q.length < 7) q.push(''); q[6] = br.mark; out.marks = (out.marks || 0) + 1; }
+                        /* THE NEON (11-20): `neon: '#colour'` on a row = the sign is a lit tube in that colour on a dark plate (an eighth field 'n'; three-renderer.js draws it), full glow */
+                        if (br.neon) { q[1] = br.neon; if (q[2]) q[2] = '#0b0a10';   /* (a neon sign's board is dark: pink tube on a pink board cannot be read) */ while (q.length < 8) q.push(''); q[7] = 'n'; if (k === 'key') o.glow = Math.max(+o.glow || 0, 1); out.neon = (out.neon || 0) + 1; } }
                     if (!q[5]) q[5] = fontFor(d, q[0]); o[k] = 'txt:' + q.join('|'); out.signs++; out.byFont[q[5]] = (out.byFont[q[5]] || 0) + 1; }
             } else if (v && typeof v === 'object') walk(v, d);
         }
