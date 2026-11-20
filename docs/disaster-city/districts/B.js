@@ -817,7 +817,7 @@ B.yacht = (L) => {
    flamingos by the hotel's doors, lobster traps on the boardwalk */
 function miamiStreet(ctx, push, ghost) {
     const { lateRows, features, props, take, free, gc, gx, r3, N, paintCell } = ctx, out = { towers: 0, yachts: 0, palms: 0 };
-    [[114, T.AQUA, T.HOT], [118.5, T.LEMON, T.RED], [135, T.PINK, T.AQUA]].forEach(   /* (THE SKATE PARK, 2026-11-16: the towers at rows 112 and 107 stood on the park's bank and pad; now 114 and 135) */ (t, i) => { const x = gc(150), z = gx(t[0]); push('bay-tower' + (i + 1), x, z, 270, B.tower(t[1], t[2])); ghost(x, z, 3.0, 3.4); out.towers++; });
+    [[114, T.AQUA, T.HOT], [118.5, T.LEMON, T.RED], [135, T.PINK, T.AQUA]].forEach(   /* (THE SKATE PARK, 2026-11-16: the towers at rows 112 and 107 stood on the park's bank and pad; now 114 and 135) */ (t, i) => { const x = gc(150), z = gx(t[0]); push('bay-tower' + (i + 1), x, z, 270, B.tower(t[1], t[2]), SHELF); ghost(x, z, 3.0, 3.4); out.towers++; });   // (on the sand: see the lifeguard station in beach())
     /* the yachts: afloat (the sea's own level, whatever level the plot beside it stands at) */
     const lv = (ctx.lvOf && ctx.plotOf['P11-08']) ? ctx.lvOf(ctx.plotOf['P11-08']) * ctx.LEVELS.M : 0;
     [[157.4, 100.2, 0, 12], [157.4, 103.6, 180, 10], [162.8, 101.5, 0, 13]].forEach((y, i) => { push('bay-yacht' + (i + 1), gx(y[0]), gx(y[1]), y[2], B.yacht(y[3])); lateRows[lateRows.length - 1].y = r3(SEA_Y - lv); out.yachts++; });
@@ -850,7 +850,7 @@ const DESIGN = {
 function apply(ctx) {
     const { features, lateRows, props, bInfo, take, gc, gx, r3, N } = ctx, out = { arch: 0, parts: 0 };
     const byId = {}; features.forEach(f => { if (f.id) byId[f.id] = f; });
-    const push = (id, x, z, rot, parts) => { lateRows.push({ k: 'arch', id: 'dc:' + id + ':arch', x: r3(x), z: r3(z), rot, parts: parts.map(q => round(q, r3)) }); out.arch++; out.parts += parts.length; };
+    const push = (id, x, z, rot, parts, y) => { const row = { k: 'arch', id: 'dc:' + id + ':arch', x: r3(x), z: r3(z), rot, parts: parts.map(q => round(q, r3)) }; if (y) row.y = r3(y);   /* `y` = the ground the row stands on, metres from the city's level 0 (the tool adds the plot's level to it) */ lateRows.push(row); out.arch++; out.parts += parts.length; };
     Object.keys(DESIGN).forEach(id => {
         const d = DESIGN[id], row = byId['dc:' + id], info = bInfo.find(b => b.id === id);
         if (!row || !info) { console.warn('[bayside] no row for', id); return; }
@@ -1192,6 +1192,45 @@ function interiors(ctx, byId, push) {
     console.warn('[bayside interiors]', JSON.stringify(n));
 }
 
+/* ── ONE BEACH, THE SHORELINE (2026-11-20). COAST = the waterline, [square row cy, square column cx] in this file's frame (Entertainment's rows are
+   48..96 here, Bayside's 96..144), joined by a smooth curve (`waterAt`). The Shore's bay: out of the Cove's corner, in past the huts and the
+   surf, out again to the mole's head. Bayside's bay: tight against the mole (the yachts need their water), widest off the lifeguard station,
+   in to the canal's mouth and the grill deck. MOLE = the breakwater: planks from the boardwalk to square x1, a round head (hx, hy, radius hr m). ── */
+const COAST = {
+    shore: [[54, 166.0], [57, 166.8], [61, 167.6], [66, 167.6], [71, 166.6], [76, 165.4], [82, 165.0], [88, 166.2], [93, 167.4], [96.5, 168.2]],
+    bay: [[98.1, 155.4], [102, 155.3], [106, 155.6], [110, 156.4], [116, 158.2], [121, 158.0], [126, 156.2], [131, 154.2], [136, 153.2]],
+};
+const MOLE = { x1: 166, hx: 168, hy: 97, hr: 10.5 };
+function waterAt(pts, cy) {   // the waterline's column on row cy (a cubic through the points, each point's slope from its two neighbours)
+    const n = pts.length; if (cy <= pts[0][0]) return pts[0][1]; if (cy >= pts[n - 1][0]) return pts[n - 1][1];
+    let i = 0; while (i < n - 2 && cy > pts[i + 1][0]) i++;
+    const m = k => { const a = pts[Math.max(0, k - 1)], b = pts[Math.min(n - 1, k + 1)]; return (b[1] - a[1]) / (b[0] - a[0]); };
+    const h = pts[i + 1][0] - pts[i][0], t = (cy - pts[i][0]) / h, t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * pts[i][1] + (t3 - 2 * t2 + t) * h * m(i) + (-2 * t3 + 3 * t2) * pts[i + 1][1] + (t3 - t2) * h * m(i + 1);
+}
+/* the sea along one stretch: a round sink every few metres, its rim on the curve's landward side so the water stands ON the curve (the sea's
+   -1.45 lies 0.442 of the way down a bank that falls 0 -> DEEP); `capN` / `capS` (metres, this file's frame) = lines no sink may cross, so
+   near them the circles shrink (and their banks with them: the sand steepens against a wall, as it does at a real breakwater). Behind each
+   circle a flat deep band runs out past the room's east edge. */
+function coastCut(ctx, pts, o) {
+    const { lateRows, gx, r3 } = ctx, XE = gx(144 + EAST), RMAX = 40, BANK = 16, WATER = 0.442;
+    const rowOf = z => (z + 252) / 3.5, xw = z => gx(waterAt(pts, rowOf(z)));
+    const z0 = gx(pts[0][0]), z1 = gx(pts[pts.length - 1][0]); let n = 0;
+    for (let z = z0; z <= z1 + 0.01;) {
+        let R = RMAX; if (o.capN != null) R = Math.min(R, z - o.capN); if (o.capS != null) R = Math.min(R, o.capS - z);
+        const step = R < 16 ? 1.75 : 3.5;
+        if (R >= 3) {
+            const edge = Math.min(BANK, R * 0.9), sl = (xw(z + 0.5) - xw(z - 0.5)), nl = Math.hypot(1, sl), nx = 1 / nl, nz = -sl / nl;   // the seaward normal
+            const rx = xw(z) - nx * WATER * edge, rz = z - nz * WATER * edge;                                                      // the rim's point
+            lateRows.push({ k: 'plateau', x: r3(rx + nx * R), z: r3(rz + nz * R), r: r3(R), h: DEEP, sink: true, edge: r3(edge), absY: true });
+            const bx = rx + nx * Math.min(R, 33);
+            lateRows.push({ k: 'plateau', x: r3((bx + XE + 20) / 2), z: r3(z), w: r3(XE + 20 - bx), d: r3(step + 1.2), h: DEEP, sink: true, edge: 0.4, absY: true });
+            n++;
+        }
+        z += step;
+    }
+    console.warn('[bayside coast]', n, 'round cuts along', pts.length, 'points');
+}
 function beach(ctx, push, ghost) {
     const { lateRows, props, take, gc, gx, r3, N, paintCell } = ctx;
     const X0 = gx(144), XB = gx(146), XE = gx(144 + EAST), Z0 = gx(8 * N), Z1 = gx(12 * N);     // the city's east edge, the sea wall, the room's east edge; Bayside's north and south
@@ -1214,20 +1253,32 @@ function beach(ctx, push, ghost) {
        lifeguard hut, the court, the palms, the tide pools). Its sand is WIDE (17 squares) and stands at the boardwalk's own level, falling to the
        sea in its last squares; no sea wall drop, so no ramps and no rail on this stretch (the room is 32 squares past the plots for it, was 20). */
     rect(XB, ZNN - 2, XE + 2, Z0, 0, { sink: true, edge: 0.3 });                // the Shore's sand, level with the boardwalk
-    rect(gx(163.1), ZNN - 16, XE + 16, Z0, DEEP, { sink: true, edge: 12 });     // …falling under the water past square 163 (the waterline about square 164.5)
+    /* ONE BEACH, THE SHORELINE IS A CURVE (2026-11-20, mondo: "the shoreline is all messed up and has sharp cuts and long thin parts that stick out
+       for no reason"). What was wrong: the sea was cut with RECTANGLES, each with a 12 m bank on all four sides, so wherever two cuts met the bank
+       of each stood up between them as a wall of sand running out to sea (two off the mole, one off the grill deck), and the waterline was three
+       straight lines with square corners. Now the waterline is ONE CURVE a stretch (COAST: the Shore's bay north of the mole, Bayside's bay
+       south of it), cut by `coastCut` as a run of overlapping ROUND sinks whose rims follow the curve (the sea is whatever any of them covers,
+       so no rim stands up inside the water), with flat deep bands behind them out past the room's edge. What stands in the water is RAISED
+       again after the cuts (the mole, its head, the marina arm, the grill deck), so each keeps a clean wall. */
+    rect(XB, ZN, XE + 20, ZS, SHELF, { sink: true, edge: 0.3 });                // Bayside's sand, a step under the sea wall (as before)
+    coastCut(ctx, COAST.bay, { capN: Z0, capS: Z1 });                           // …its bay (no cut north of the mole, none south of the grill deck)
+    coastCut(ctx, COAST.shore, { capN: ZNN - 16 });                             // the Shore's bay
+    rect(gx(163), ZNN - 16, XE + 16, gx(52), DEEP, { sink: true, edge: 12 });   // the open water north of it, to the Hills' foot. Its west bank and its south bank lie wholly inside the Cove's round cut and the first circles' deep water, so neither stands up as a bar
     /* THE COVE (2026-11-16, mondo: "at the end of the beach/shore, at the north, where it meets the hills, there are hard right angles and straight lines ...
        that would be a good spot to turn into a cove"): the sand's north end was a square corner in the sea on the room's old north line. One ROUND sink
        bites the bay out of that corner, on both sides of the line (districts/N.js `cove` holds its place and size and builds the rest: the crescent of
        sand under the cliff, the rock headland round it). ZNN - 10 = the bay's middle, 10 m north of the line in this file's frame. */
     { const CV = require('./N.js').cove, sinkR = CV.r + CV.bank * 0.442;   // the waterline (-1.45 on a bank that falls 0 -> DEEP over `bank` metres) stands 0.442 of the bank inside the sink's rim
       lateRows.push({ k: 'plateau', x: r3(CV.x), z: r3(ZNN + (CV.z + 252)), r: r3(sinkR), h: DEEP, sink: true, edge: CV.bank, absY: true }); }
-    rect(XB, ZN, XE + 2, ZS, SHELF, { sink: true, edge: 0.3 });
-    rect(XD, ZN, XE + 16, ZS, DEEP, { sink: true, edge: 12 });   // (THE NATURAL EDGES: the 12 m bank on its east side lies past the field, so no sand bar rises along the room's east edge)
-    rect(gx(161), Z0 - 0.4, XE + 2, ZN + 0.4, DEEP, { sink: true, edge: 0.4 });
-    rect(XG, ZS - 0.4, XE + 2, Z1 + 2, DEEP, { sink: true, edge: 0.4 });
-    /* the mole's arm out to the light (the boardwalk's level), its round head */
+    rect(XG, ZS - 0.4, XE + 20, Z1 + 2, DEEP, { sink: true, edge: 0.4 });       // east of the grill deck
+    /* THE MOLE (the boardwalk's level, planks): out from the boardwalk to a ROUND HEAD in the open water, where THE LIGHTHOUSE stands (mondo 11-20:
+       "the lighthouse is too small": the 11 m light stood on the marina arm's 6 m head; the tall one, 30 m, has a head of its own, 21 m across,
+       seen from both bays). The arm south of it is the marina's jetty (the yachts lie along it); its small head keeps a bench and a glass. */
+    rect(XB, Z0, gx(MOLE.x1), ZN, 0, { id: 'dc:mole', edge: 0.4 });
+    lateRows.push({ k: 'plateau', id: 'dc:mole:head', x: gx(MOLE.hx), z: gx(MOLE.hy), r: MOLE.hr, h: 0, edge: 0.4, absY: true });
     rect(gx(159), ZN - 0.5, gx(161), gx(104), 0, { edge: 0.4 });
     lateRows.push({ k: 'plateau', x: gx(160), z: gx(105), r: 6.2, h: 0, edge: 0.4, absY: true });
+    rect(XB, ZS, XG, Z1 + 1.5, 0, { id: 'dc:grill:deck', edge: 0.4 });           // the grill deck (HQ_CITY_RESIDENTS.walkOn names it and the mole: residents walk them)
     /* the ramps down to the sand, off the boardwalk at each way out of the city */
     const RAMPS = [gx(9 * N + 10), gx(10 * N + 10), gx(11 * N + 3.5)];   // (THE SKATE PARK, 2026-11-16: the first one, at row 8N+6, stood where the park's pad is now; the pad meets the boardwalk level and its bank is the way down)   // (the fourth one square south, 2026-11-15: THE CANAL's mouth runs through the sand on squares 133-134, districts/L.js)
     const RAMPS_N = [];   // THE SHORE (2026-11-16): the sand stands at the boardwalk's level here, no ramp (was one at each plot row)
@@ -1241,7 +1292,8 @@ function beach(ctx, push, ghost) {
     push('bay-bait', gx(153), ZP - 7.6, 0, B.bait()); ghost(gx(153), ZP - 7.6, 4.2, 2.6);
     /* the ground sheets: planks (the boardwalk, the grill deck, the mole since THE WIDE BOARDWALK below), sand (the shelf and the bay's floor) */
     for (let cy = 8 * N; cy < 12 * N; cy++) for (let cx = 144; cx < 144 + EAST; cx++) {
-        const mole = (cy < 8 * N + 2 && cx >= 146 && cx < 161) || (cx >= 159 && cx < 161 && cy < 8 * N + 8) || (Math.hypot(cx + 0.5 - 160, cy + 0.5 - (8 * N + 9)) < 2.2);
+        const mole = (cy < 8 * N + 2 && cx >= 146 && cx < MOLE.x1) || (cx >= 159 && cx < 161 && cy < 8 * N + 8) || (Math.hypot(cx + 0.5 - 160, cy + 0.5 - (8 * N + 9)) < 2.2);
+        if (Math.hypot(cx + 0.5 - MOLE.hx, cy + 0.5 - MOLE.hy) * 3.5 < MOLE.hr + 0.6) { paintCell(cx, cy, 'urban:ConcreteStriped2a'); continue; }   // the light's head: concrete
         const deck = cx < 146 || (cy >= 136 && cx < 158);
         paintCell(cx, cy, (mole && cx >= 146) || deck ? 'wood_planks' : 'desert');   // (THE WIDE BOARDWALK: the mole is planks too, was 'urban:ConcreteStriped2a')
     }
@@ -1273,12 +1325,13 @@ function beach(ctx, push, ghost) {
         props.push({ key: 'pool_umbrella', x: q[0], z: q[1] }, { key: 'pool_lounger', x: gc(c[0] + 1), z: q[1], face: 90 }, { key: 'pool_lounger', x: gc(c[0] + 1), z: gc(c[1] + 1), face: 90 }); });
     props.push({ key: 'lifeguard_chair', x: gc(151), z: gc(8 * N + 16), face: 90 }, { key: 'lifeguard_chair', x: gc(150), z: gc(10 * N + 13), face: 90 });
     props.push({ key: 'rowboat', x: r3(gc(151) + 0.4), z: gc(8 * N + 4), face: 70 }, { key: 'rowboat', x: gc(150), z: gc(11 * N + 1), face: 110 });
-    for (let i = 0; i < 5; i++) props.push({ key: 'sea_buoy', x: gx(156), z: gx(8 * N + 5 + i * 7.5) });
-    push('bay-net', gc(148), gx(9 * N + 7), 90, B.net());   // (one square south since THE SKATE PARK: the park's bank lands on squares 111-112)
-    push('bay-lifeguard', gc(148), gx(10 * N + 2), 270, B.lifeguard()); ghost(gc(148), gx(10 * N + 2), 3.4, 3.0);
+    for (let i = 0; i < 5; i++) { const cy = 8 * N + 5 + i * 7.5; props.push({ key: 'sea_buoy', x: gx(waterAt(COAST.bay, cy) + 3.2), z: gx(cy) }); }   // (ONE BEACH: the swim line follows the curved shore, 11 m out)
+    push('bay-net', gc(148), gx(9 * N + 7), 90, B.net(), SHELF);   // (one square south since THE SKATE PARK: the park's bank lands on squares 111-112)
+    push('bay-lifeguard', gc(148), gx(10 * N + 2), 270, B.lifeguard(), SHELF); ghost(gc(148), gx(10 * N + 2), 3.4, 3.0);   // (ONE BEACH, mondo 11-20 "there are huts not on the ground": a drawn row stands at its own `y`, and these were typed at the boardwalk's 0 over sand that lies at -1.05: the stilts ended a metre up in the air)
     /* the light on the mole's head (the Marina lookout's own lighthouse moves out here: its yard square is taken, so the city's is skipped) */
     take(11 * N + 9, 8 * N + 5); take(11 * N + 10, 8 * N + 5); take(11 * N + 9, 8 * N + 6); take(11 * N + 10, 8 * N + 6);
-    props.push({ key: 'lighthouse', x: gx(160), z: gx(105), face: 90 });
+    props.push({ key: 'lighthouse_tall', x: gx(MOLE.hx), z: gx(MOLE.hy), face: 90 });   // ONE BEACH (2026-11-20): the tall light on the mole's own head (data.js catalogue `lighthouse_tall`, 30 m)
+    props.push({ key: 'city_bench', x: gx(160), z: gx(105.6), face: 180 }, { key: 'coin_telescope', x: r3(gx(160) + 2.6), z: gx(105.9), face: 180 });   // the marina arm's head, where the small light stood
     /* the grill: the BurgerPiz at its own size on the deck, its long windowed front to the beach */
     props.push({ key: 'city_burgerpiz', x: gx(152), z: gx(140.5), face: 180 });
     skatePark(ctx, push);
@@ -1299,6 +1352,11 @@ const SKATE = { cx0: 146, cx1: 150, cy0: 99, cy1: 110 };
 function skatePark(ctx, push) {
     const { lateRows, props, gc, gx, r3, paintCell } = ctx, S = SKATE;
     const rail = (x0, z0, x1, z1, h) => lateRows.push({ k: 'rail', id: 'dc:skate:rail', x0: r3(x0), z0: r3(z0), x1: r3(x1), z1: r3(z1), h });
+    /* ONE BEACH (2026-11-20, mondo: "the skate park is all messed up and has rails floating in the above the ground"): the tool lifts every drawn
+       row by the level of the plot whose strip it stands on, and the pad lies on the Marina plot's strip (a level up, 1.75 m) though the pad itself is
+       cut to 0: the coping, the funbox's iron, the bar's posts and the sign all hung 1.75 m over the concrete. Each row takes that level back off
+       (as the yachts do), so the steel sits on the pad. */
+    const lv = (ctx.lvOf && ctx.plotOf['P11-08']) ? ctx.lvOf(ctx.plotOf['P11-08']) * ctx.LEVELS.M : 0, push0 = push; push = (id, x, z, rot, parts) => { push0(id, x, z, rot, parts); if (lv) lateRows[lateRows.length - 1].y = r3(-lv); };
     /* the pad: one flat tier at the boardwalk's level over the sand (absY: sea level, like the rest of the beach), a sharp lip on the sand */
     lateRows.push({ k: 'plateau', id: 'dc:skate:pad', x: r3((gx(S.cx0) + gx(S.cx1 + 1)) / 2), z: r3((gx(S.cy0) + gx(S.cy1 + 1)) / 2), w: r3(gx(S.cx1 + 1) - gx(S.cx0)), d: r3(gx(S.cy1 + 1) - gx(S.cy0)), h: 0, edge: 0.05, absY: true });
     for (let cy = S.cy0; cy <= S.cy1; cy++) for (let cx = S.cx0; cx <= S.cx1; cx++) paintCell(cx, cy, 'urban:ConcreteStriped2a');
@@ -1336,4 +1394,4 @@ function build(ctx) {
     for (let i = features.length - 1; i >= 0; i--) { const f = features[i];
         if ((f.k === 'rail' || f.k === 'wall') && !f.ghost && Math.abs(f.x0 - X0) < 0.5 && Math.abs(f.x1 - X0) < 0.5 && open.some(o => Math.min(f.z0, f.z1) >= o[0] - 0.1 && Math.max(f.z0, f.z1) <= o[1] + 0.1)) features.splice(i, 1); }
 }
-module.exports = { room, tailor, apply, build, B, K, T };
+module.exports = { room, tailor, apply, build, B, K, T, COAST, MOLE, waterAt };

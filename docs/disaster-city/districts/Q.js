@@ -11,7 +11,7 @@
    one square of the water-side column (cx 146); the middle column (cx 145) is the walk, a whole square wide, nothing on it. The small
    pieces are decor, off centre. Every piece is a catalogue prop the city already draws: no new model, no new sheet. */
 'use strict';
-const EAST = 20, DEEP = -3.6;
+const EAST = require('./B.js').room.east, DEEP = -3.6;   // ONE BEACH (2026-11-20): Bayside's own number (was a 20 of its own: the room grew to 32 on 11-16 and the last 12 squares stood uncut, a slab of ground 42 m wide in the bay off Industrial)
 const Q = { x0: 144, x1: 147, y0: 96, y1: 144 };
 const WAYS = [[112, 116], [134, 141]];   // the squares kept clear in front of the two ways out of Industrial (a square more each side)
 const room = { backdropOpen: [[60, 250, 400, 400]] };   // no skyline tower stands in the bay south of the port
@@ -26,8 +26,8 @@ function build(ctx) {
     const XE = gx(144 + EAST), Z0 = gx(Q.y0), Z1 = ctx.HALF;
     const rect = (x0, z0, x1, z1, h, o) => lateRows.push(Object.assign({ k: 'plateau', x: r3((x0 + x1) / 2), z: r3((z0 + z1) / 2), w: r3(x1 - x0), d: r3(z1 - z0), h, absY: true }, o));
     /* the strip is first cut flat to the quay's height (Bayside's own cut ends 2 m south of its last plot: the two overlap), then the water */
-    rect(gx(144) + 0.4, Z0 + 1.5, XE + 2, Z1 + 2, 0, { id: 'dc:quay:flat', sink: true, edge: 0.3 });
-    rect(gx(Q.x1), Z0 + 1.6, XE + 2, Z1 + 2, DEEP, { id: 'dc:quay:water', sink: true, edge: 0.4 });
+    rect(gx(144) + 0.4, Z0 + 1.5, XE + 20, Z1 + 2, 0, { id: 'dc:quay:flat', sink: true, edge: 0.3 });
+    rect(gx(Q.x1), Z0 + 1.6, XE + 20, Z1 + 2, DEEP, { id: 'dc:quay:water', sink: true, edge: 0.4 });
     const clear = cy => !WAYS.some(w => cy >= w[0] && cy < w[1]);
     const n = { containers: 0, cranes: 0, small: 0 };
     const P = (key, x, z, face, o) => props.push(Object.assign({ key, x: r3(x), z: r3(z), face }, o || {}));
