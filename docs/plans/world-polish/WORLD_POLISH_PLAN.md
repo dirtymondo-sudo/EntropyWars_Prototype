@@ -58,7 +58,7 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 4 | **Came A Lot Kingdom, The Village** | the Village, inside the kingdom's main room | **Built 11-20** (three stairs up to the town wall's walk, the churchyard). The town's ground is level. Not on the next list. |
 | 5 | **The Mountains** | The North Pole, The Ski Lodge + The Snowy Pass, Mount Olympus. Mount Shasta's plots are renamed and swallowed by the other districts (mondo 11-20). | Not started. To be ONE real ski mountain: ski from the top of Mount Olympus to the base (mondo 11-20). |
 | 6 | **The Woods** | The Clearing + Dead Man's Cave, The Redwood Trail, The Ritual Ground | **STARTED 11-20** (mondo: "Do thread 6"), in its OWN fresh session. Plan 1 was refused (the main trail ran straight). `thread6/height-plan.png` = a rough plan 2 sketch (the trail snakes through three rows, ledges), NOT approved: the session redraws it properly. Nothing built yet. A HORROR wood: Silent Hill, Blair Witch (mondo 11-20). |
-| 21 | **Katana Island** (today: The Volcano Island) | The Volcano Island, one room, remade as feudal Japan; **Katana Bay** is one of its districts | **Not started. SECOND, right after The Woods** (mondo 11-20). |
+| 21 | **Katana Island** (today: The Volcano Island) | The Volcano Island, one room, remade as feudal Japan; **Katana Bay** is one of its districts | **STARTED 11-20, in its own fresh session. The plan is with mondo (29 plots, six districts, Katana Bay square by square: `thread21/`); nothing built.** |
 | 7 | **The underground walks** | the Cavern's three tunnels, Agartha's tunnel, the Sewers' walks under the city | Not started |
 | 8 | **The D.U.M.B.** | The D.U.M.B., one room | Not started |
 | 9 | **The Cavern** | The Cavern, Hollow Earth, Agartha | Not started |
@@ -113,6 +113,13 @@ After those two, proposed, in this order:
 - The thread then:
   1. `git fetch origin main && git merge origin/main` (CLAUDE.md RULE #1d). Reads this START HERE, section A, its own row in section D,
      `docs/notes/owner-rules.md`, and the board (`docs/notes/claims.md`). Takes its zone's rows on the board in its first PR.
+  1b. **READS THE LISTS IN FULL BEFORE IT PLANS** (mondo 11-16 and 11-20: "Will need [the model list / asset list / prop list] to dress these rooms";
+     owner-rules.md "THE MODEL LIST FIRST"; `docs/plans/DISTRICT_THREAD_BRIEF.md` "Go through ALL the lists"). End to end, in parts, not a grep of three
+     words: `MODEL_LIST.md` (every pack section, section 6 the prop catalogue, 7, 10, 12b, 13 the files on R2 not wired yet), the live catalogue through
+     `load-data.js` (`DOOR_HQ.catalogue`, `.textures`, `.decals`, the tree kinds), the bucket's listing, `ASSET_MANIFEST.json`,
+     `docs/disaster-city/pack-claims.md`, `docs/plans/WISHLIST_MODELS_ADDED.md`. It writes a FITS shortlist (key, pack, size) into its zone's notes and
+     shows mondo a NEEDS A MODEL list in chat with the plan. The plan is drawn from what the game has: a place nothing can dress is asked for first.
+     (Thread 21 did it with six readers at once, one a part: `thread21/FITS_KATANA_ISLAND.md` is the pattern.)
   2. Reads how its rooms really stand: `ROOM_LAYOUTS.md` here, its zone's layout and tool. Looks at its pictures (`pictures/<place>/`), or takes
      them (`node docs/plans/world-polish/shoot.js <its rooms>`).
   3. **Shows mondo THE HEIGHT PLAN IN CHAT before it builds:** the zone's plots as a grid of levels (district by district), the main way drawn
