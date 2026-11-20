@@ -119,7 +119,7 @@ const WAY = {
     /* cave_hell: the Fissure moved to the new Cavern (2026-11-20, world polish thread 9: `node bake-ug.js cavern`, the link's end a is that room's) */
     cave_dumb: wayAt('P03-00', 6, 2, 'n'),                 // Level −6 > the D.U.M.B.'s Sub-Level 7
     workings_oubliette: wayAt('P05-00', 9, 6, 'e'),        // the Oubliette > the Sewers' Old Workings (their end is on their west wall)
-    shasta_lemuria: wayAt('P05-03', 9, 4, 'e'),            // the Lemuria Stair > Mount Shasta
+    /* shasta_lemuria: the Lemuria adit lands in the NEW Agartha since the swap (2026-11-20; bake-agartha.js checks its row) */
     /* technoticlan_agartha + antarctica_polar CUT 2026-11-20 (mondo: both places have other ways in; world polish thread 9) */
     hollow_byrd: wayAt('P02-05', 8, 9, 's'),               // the Polar Opening > Antarctica
     well_cellar: wayFree('P02-01', 3, 4, 90),              // the Haunted House's cellar well comes down in the Crossroads
@@ -486,7 +486,8 @@ ROOMS.forEach(R => {
     const roomDoors = RDOORS[R.key].concat(EXTRA[R.key]);
     TOTAL.props += M.props.length; TOTAL.natives += M.npc.length;
     console.log(R.room + ' ' + JSON.stringify({ world: [M.wx, M.wy], box: [M.cols, M.rows], mask: M.mask.join('/'), plots: M.order.length, features: feats.length, props: allProps.length, natives: M.npc.length, doors: roomDoors.length }));
-    L.push.apply(L, writeRoom({ room: R.room, part: R.part, label: R.label, sub: R.sub, world: { wx: M.wx, wy: M.wy }, w: 2 * M.HX, d: 2 * M.HZ, SH: R.group.length ? SH : r2(Math.max.apply(null, tunPlots.map(tunTop)) + 6),
+    L.push.apply(L, writeRoom({ room: R.room, part: R.part, label: R.label, sub: R.sub, world: R.key === 'A' ? null : { wx: M.wx, wy: M.wy },   /* AGARTHA SWAPPED 2026-11-20 (world polish thread 9): the old room is retired into `site_prebuilt_hollow_earth_ug_agartha` (bake-agartha.js), which stands on its world place */
+        w: 2 * M.HX, d: 2 * M.HZ, SH: R.group.length ? SH : r2(Math.max.apply(null, tunPlots.map(tunTop)) + 6),
         plate: { x: SPMr.x, z: SPMr.z, y: r2(base(spPlot) + 4.2) }, sunsNote: R.sunsNote, suns, air, parti: R.parti, nx: M.cols, nz: M.rows, mask: M.mask.indexOf('.') >= 0 || M.mask.some(r => r.indexOf('.') >= 0) ? M.mask : null,
         names: M.order.map(e => [M.pid(e), e.name, e.district, e.level]), px0: M.gcx(0), pz0: M.gcz(0), W, Hh, paint: paintR, features: feats, doors: roomDoors, counters: cnt, props: allProps, npc: M.npc, lines: R.lines,
         spawn: { x: SPMr.x, z: SPMr.z, face: R.key === 'KH' ? (90 + 270) % 360 : 0 } }));
