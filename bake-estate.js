@@ -225,7 +225,15 @@ const PJ = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plot
 const HOMEP = PLAN.plots.map(p => ({ id: p.id, x: p.x, y: p.y, name: p.name, district: p.d, level: p.level }));
 const MOVER = require('./ow-move.js')({ cols: G, rows: G, cell, fill: 'c', plots: HOMEP, features: F.concat(ARCH), props, npc, doors });
 const v13 = letter => { const d = PJ.districts.find(q => q.today && q.today.room === ROOM && q.today.districts.indexOf(letter) >= 0); if (!d) throw new Error('plots.json has no Estate district ' + letter);
-    return d.plots.map(q => { const p = plot[q.was]; if (!p || p.name !== q.n || p.d !== letter) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
+    return d.plots.map(q => { if (!q.was) { const pp = DESIGN && DESIGN.plotAtWorld(q.x, q.y); if (!pp || pp.name !== q.n || pp.d !== letter) throw new Error('plots.json and the room design (plans/estate.js) disagree on ' + q.n + ' at ' + q.x + ',' + q.y);
+            return { wx: q.x, wy: q.y, name: q.n, district: letter, level: pp.level, isNew: true }; }   /* a plot the plan adds (docs/plans/one-world/after-v13.js row 7): no home square; THE ROOM DESIGN lays it */
+        const p = plot[q.was]; if (!p || p.name !== q.n || p.d !== letter) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
+/* THE ROOM DESIGN (2026-11-20, world polish thread 17, mondo's OK on docs/plans/world-polish/plans/estate.js): the approved height plan, built into
+   squares by the plan tool itself (draw-plan.js `build`), in the joined room's frame; docs/areas/estate/districts/room.js names the districts it
+   lays (`letters`) and dresses the new ground. Laid in each of those districts' stands below (THE ROOM DESIGN, step D). */
+const DESIGN = (() => { const RD = require('./docs/areas/estate/districts/room.js'), B = require('./docs/plans/world-polish/draw-plan.js').build(RD.plan);
+    if (B.FAIL.length) throw new Error('the room design\'s plan fails its own tool: ' + B.FAIL.slice(0, 3).join(' | '));
+    return Object.assign({ B, plotAtWorld: (wx, wy) => B.plotAt[(wx - RD.wx0) + ',' + (wy - RD.wy0)] || null }, RD); })();
 const OWP = require('./ow-places.js');
 const R7 = PJ.routes.find(r => r.id === 'R7'), R7_HERE = [[-13, 5, 'County Lane, the north field'], [-13, 8, 'County Lane, the middle field'], [-13, 10, 'County Lane, the south field']];   // (each field is renamed for the place that stands on it, below)
 R7_HERE.forEach(q => { if (!R7.plots.some(p => p[0] === q[0] && p[1] === q[1])) throw new Error('plots.json: R7 has no plot ' + q[0] + ',' + q[1]); });
@@ -247,7 +255,7 @@ const STAND = [
     /* THE JOINING RULE (2026-11-17, mondo after the test slice): County Lane, the wild link L8 and the Lake are ONE room. The route kit writes it
        (`node bake-route.js R7`, docs/areas/routes/R7.json `join`) and asks this tool for the Lake's plots with `--export ow_lake <file>`: this tool
        stands the district as before and hands it over; it does not write a room for it (`kit: true`). */
-    { id: R_LAKE, part: 'ow_lake', label: 'THE LAKE', sub: 'THE ESTATE · 9 PLOTS', letters: ['L'], world: true, kit: true, list: v13('L'),
+    { id: R_LAKE, part: 'ow_lake', label: 'THE LAKE', sub: 'THE ESTATE · 11 PLOTS', letters: ['L'], world: true, kit: true, list: v13('L'), design: DESIGN.letters.indexOf('L') >= 0,
       parti: 'A lake between its shores, nine plots: the reeds and the north shore where the lane comes in, the boathouse, the dock, the marsh, and open water in the middle.',
       seams: [
           /* the Ranch: its gate stands right south of the lake's south shore (phase 3 moved it there) */
@@ -380,15 +388,85 @@ STAND.forEach(S => {
         const hx = h.x, hz = h.wall === 's' ? HALF - 0.5 : h.z, hp = MOVER.homePlot(hx, hz), e = R.ofHome[hp.id]; if (!e) return;
         if (k === 'bay' && S.bay) { const eb = R.ofHome[S.bay.plot]; PLACES.bay = { room: S.id, part: S.part, wall: 's', x: r2(R.gx(eb.col * N + S.bay.k + 1)) }; return; }
         PLACES[k] = h.wall === 's' ? { room: S.id, part: S.part, wall: 's', x: r2(h.x + e.dx) } : { room: S.id, part: S.part, wall: 'free', x: r2(h.x + e.dx), z: r2(h.z + e.dz), face: h.face }; });
+    /* D. THE ROOM DESIGN (2026-11-20, world polish thread 17; the Woods' step 5d is the pattern): on every plot of a district the plan lays, the plan's
+       squares replace the open ground and its levels are the ground, square by square (ramps one level over two squares, ledges = two open squares a
+       level or more apart, faced with rock). A plot whose level the plan keeps and that is not new keeps today's ground letters where both are open (the
+       shingle, the mud, the boards); a way the plan lays is dirt; the plan's mass is corn. A piece the new ground puts in the corn or on a way steps to the
+       nearest open level square within three squares (else it goes, listed); a tree there goes. Then room.js dresses it and the plan's found climbs are laid. */
+    let DES = null;
+    if (S.design) { const B = DESIGN.B, T = B.T, ox = (R.wx - DESIGN.wx0) * N, oy = (R.wy - DESIGN.wy0) * N, WAYC = 'pPqQdD';
+        const des = (x, y) => inR(x, y) && !!R.plotOfSq(x, y) && !!T[y + oy] && T[y + oy][x + ox] != null && T[y + oy][x + ox] !== '.';
+        const tOf = (x, y) => T[y + oy][x + ox];
+        const LV = [], RP = {}; for (let y = 0; y < Dn; y++) LV.push(new Array(Wn).fill(0));
+        let laid = 0;
+        for (let y = 0; y < Dn; y++) for (let x = 0; x < Wn; x++) { if (!des(x, y)) continue; const e = R.plotOfSq(x, y), pp = DESIGN.plotAtWorld(R.wx + e.col, R.wy + e.row);
+            if (!pp) throw new Error(S.id + ': ' + e.name + ' is not in the plan'); if (pp.name !== e.name && !e.isNew) throw new Error(S.id + ': the plan names ' + e.name + ' "' + pp.name + '"');
+            const keep = !e.isNew && pp.level === e.level, t = tOf(x, y), was = c2[y][x]; let to = was;
+            if (t === ' ' || t === 'r' || t === 'f') to = 'c';
+            else if (t === 'w') { if (was === 'c') to = 'w'; }
+            else if (WAYC.includes(t)) { if (!'jB'.includes(was)) to = 'p'; }
+            else if (t === 'm') { if (!'pjB'.includes(was) && !(keep && was !== 'c' && was !== 'w')) to = 'p'; }   // (soft ground, mud: this tool's `p` paints dirt; its `m` is the marble sheet)
+            else if (!(keep && was !== 'c' && was !== 'w') && !'jBs'.includes(was)) to = 'g';
+            if (to !== was) { c2[y][x] = to; chg.add(x + ':' + y); laid++; }
+            LV[y][x] = B.L[y + oy][x + ox]; const rp = B.RAMP[(x + ox) + ',' + (y + oy)]; if (rp) RP[x + ',' + y] = { d: rp, g: 0.5 }; }
+        R.order.forEach(e => { const pp = DESIGN.plotAtWorld(R.wx + e.col, R.wy + e.row); if (pp) e.level = pp.level; }); R.names = R.order.map(e => [R.pid(e), e.name, e.district, e.level]);
+        const openD = (x, y) => des(x, y) && c2[y][x] !== 'c', rampAt = (x, y) => !!RP[x + ',' + y], onWay = (x, y) => des(x, y) && WAYC.includes(tOf(x, y)) && !'jB'.includes(c2[y][x]);
+        const SMALL = /butterfly|morpho|swallowtail|monarch|moth|^bee$|bumblebee|ladybug|grasshopper|dragonfly|^ant$|frog|rabbit|duck|swan|wild_flowers|^fern$|moss_clump|reeds/;
+        const busy = {}; propsOut.forEach(p => { const q = sqOf(p.x, p.z); busy[q] = (busy[q] || 0) + 1; });
+        const spotNear = (x, y, lv) => { let best = null; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const X = x + dx, Y = y + dy; if (!openD(X, Y) || onWay(X, Y) || rampAt(X, Y) || c2[Y][X] === 'w') continue;
+                if (lv != null && Math.abs(LV[Y][X] - lv) > 0.6) continue; const cost = Math.abs(dx) + Math.abs(dy) + (busy[X + ',' + Y] || 0) * 0.8; if (!best || cost < best[0]) best = [cost, X, Y]; } return best; };
+        let stepped = 0; const gone = [];
+        const shift = p => { const [x, y] = sqOf(p.x, p.z); if (!des(x, y)) return true; const closed = c2[y][x] === 'c', way = onWay(x, y);
+            if (!closed && !way) return true; if (p.key && SMALL.test(p.key) && !closed) return true; if (!closed && p.noBlock) return true;
+            const b = spotNear(x, y, closed ? null : LV[y][x]); if (!b) { gone.push((p.key || 'native:' + p.race) + '@' + (x + ox) + ',' + (y + oy)); return false; }
+            p.x = r2(p.x + (b[1] - x) * C); p.z = r2(p.z + (b[2] - y) * C); busy[b[1] + ',' + b[2]] = (busy[b[1] + ',' + b[2]] || 0) + 1; stepped++; return true; };
+        propsOut = propsOut.filter(shift); R.npc.splice(0, R.npc.length, ...R.npc.filter(shift));
+        for (let i = featsOut.length - 1; i >= 0; i--) { const f = featsOut[i]; if (f.x == null || ['scatter', 'pool', 'deck', 'rail', 'dip'].indexOf(f.k) >= 0) continue; const [x, y] = sqOf(f.x, f.z); if (!des(x, y)) continue;
+            if (f.k === 'tree') { if (c2[y][x] === 'c' || onWay(x, y)) { gone.push('tree ' + f.kind + '@' + (x + ox) + ',' + (y + oy)); featsOut.splice(i, 1); } continue; }
+            if (c2[y][x] === 'c') throw new Error(S.id + ': the plan closes the square under ' + f.k + ' ' + (f.id || '') + ' at ' + (x + ox) + ',' + (y + oy) + ' (move it in its district file)'); }
+        /* THE LEDGES WEAR ROCK: a slab on the face of every drop between two open squares (drawn only: the walker still walks off it), its top a low lip */
+        { const a = sheet(); let n = 0;
+          for (let y = 0; y < Dn; y++) for (let x = 0; x < Wn; x++) { if (!openD(x, y) || rampAt(x, y)) continue;
+              for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!openD(X, Y) || rampAt(X, Y) || c2[Y][X] === 'w') continue; const drop = LV[y][x] - LV[Y][X]; if (drop < 0.6) continue;
+                  a.box(R.gcx(x) + dx * (C / 2 + 0.3), LV[Y][X] * LEVEL - 0.1, R.gcz(y) + dy * (C / 2 + 0.3), dx ? 0.6 : C, drop * LEVEL + 0.22, dx ? C : 0.6, 'rocks_5', 0xa8a294, { uv: [3.5, 3.5] }); n++; } }
+          if (n) featsOut.push({ k: 'arch', id: 'est:' + S.part + ':ledges', x: 0, z: 0, y: 0, parts: a.P }); }
+        /* THE FOUND WAYS of the plan (E 2): a climb up a ledge's own face (roots = a vine; a ladder), from the low square to the high one beside it */
+        const climbs = []; (DESIGN.plan.found || []).forEach(fw => { if (fw.kind !== 'climb' && fw.kind !== 'ladder') return; const fx = fw.from[0] - ox, fy = fw.from[1] - oy, tx = fw.to[0] - ox, ty = fw.to[1] - oy;
+            if (!des(fx, fy) || !des(tx, ty)) return; if (Math.abs(fx - tx) + Math.abs(fy - ty) !== 1) throw new Error(S.id + ': the found way "' + fw.name + '" is not on one ledge\'s face (make its two squares neighbours in the plan)');
+            if (!openD(fx, fy) || !openD(tx, ty) || LV[ty][tx] - LV[fy][fx] < 0.6) throw new Error(S.id + ': the found way "' + fw.name + '" climbs no ledge');
+            const dx = tx - fx, dy = ty - fy; climbs.push(fw.name); featsOut.push({ k: 'climb', id: 'est:' + fw.name.replace(/[^a-z]+/gi, '_').toLowerCase(), x: r2(R.gcx(fx) + dx * (C / 2 - 0.5)), z: r2(R.gcz(fy) + dy * (C / 2 - 0.5)), face:   /* (half a metre out from the face: the ground blends a drop over one 0.875 m step, so the foot must stand below it) */ dx > 0 ? 90 : dx < 0 ? 270 : dy > 0 ? 180 : 0, look: fw.kind === 'ladder' ? 'ladder' : 'vine' }); });
+        /* room.js: what stands on the new ground (room squares) */
+        const n0 = propsOut.length;
+        if (DESIGN.dress) DESIGN.dress({ gx: x => R.gx(x - ox), gz: y => R.gz(y - oy), h: (x, y) => LV[y - oy][x - ox] * LEVEL, feat: f => featsOut.push(f),
+            tree: (x, y, kind, h) => { if (!openD(x - ox, y - oy) || onWay(x - ox, y - oy)) throw new Error('room.js: a tree off open ground at ' + x + ',' + y); featsOut.push({ k: 'tree', x: R.gcx(x - ox), z: R.gcz(y - oy), kind, h, r: 0.8 }); },
+            P: (key, x, y, o) => { if (!CAT[key]) throw new Error('room.js: no ' + key + ' in the catalogue'); let sx = x - ox, sy = y - oy; o = Object.assign({}, o);
+                if (o.pocket) { let best = null; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const X = sx + dx, Y = sy + dy; if (!des(X, Y) || c2[Y][X] !== 'c') continue; let lv = null;
+                        for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (openD(X + ax, Y + ay) && !rampAt(X + ax, Y + ay) && c2[Y + ay][X + ax] !== 'w') lv = LV[Y + ay][X + ax];
+                        if (lv == null) continue; const d = Math.abs(dx) + Math.abs(dy); if (!best || d < best[0]) best = [d, X, Y, lv]; }
+                    if (!best) throw new Error('room.js: no pocket near ' + x + ',' + y); sx = best[1]; sy = best[2]; c2[sy][sx] = 'g'; LV[sy][sx] = best[3]; chg.add(sx + ':' + sy); }
+                if (!openD(sx, sy) || rampAt(sx, sy) || onWay(sx, sy)) throw new Error('room.js: ' + key + ' on a square that is not open, level ground off the ways: ' + x + ',' + y);
+                const px = r2(R.gcx(sx) + (o.dx || 0)), pz = r2(R.gcz(sy) + (o.dz || 0)); delete o.dx; delete o.dz; delete o.pocket; propsOut.push(Object.assign({ key, x: px, z: pz }, o)); } });
+        /* the heights: an open square owns its four corners (flat, or a ramp's slope), so a ledge is a real drop; a square of the mass takes the
+           highest open square beside each corner, else a smooth fall to its neighbours */
+        const hSq = (x, y, sx, sy) => { const rp = RP[x + ',' + y]; return (LV[y][x] + (rp ? rp.g / 2 * (rp.d[0] * sx + rp.d[1] * sy) : 0)) * LEVEL; };
+        const lvOld = R.levels(LEVEL);
+        const cornerH = (X, Y) => { const T4 = [[X - 1, Y - 1, 1, 1], [X, Y - 1, -1, 1], [X - 1, Y, 1, -1], [X, Y, -1, -1]]; let top = null, any = false;
+            T4.forEach(q => { if (des(q[0], q[1])) any = true; if (openD(q[0], q[1]) && c2[q[1]][q[0]] !== 'w') { const h = hSq(q[0], q[1], q[2], q[3]); if (top == null || h > top) top = h; } }); if (!any) return lvOld(R.gx(X), R.gz(Y)); if (top != null) return top;
+            let sw = 0, sh = 0; for (let dy = -5; dy < 5; dy++) for (let dx = -5; dx < 5; dx++) { const x = X + dx, y = Y + dy; if (!openD(x, y)) continue; const d2 = (dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5), w = 1 / (d2 * d2); sw += w; sh += w * LV[y][x] * LEVEL; }
+            return sw ? sh / sw : lvOld(R.gx(X), R.gz(Y)); };
+        const CH = []; for (let Y = 0; Y <= Dn; Y++) { CH.push([]); for (let X = 0; X <= Wn; X++) CH[Y].push(cornerH(X, Y)); }
+        DES = { des, CH, corner: (cx, cy, qx, qy) => (openD(cx, cy) && c2[cy][cx] !== 'w') ? hSq(cx, cy, qx ? 1 : -1, qy ? 1 : -1) : CH[cy + qy][cx + qx] };
+        if (!openR(spSq[0], spSq[1])) { let b = null; for (let y = 0; y < Dn; y++) for (let x = 0; x < Wn; x++) if (openD(x, y) && !rampAt(x, y) && c2[y][x] !== 'w') { const d = Math.abs(x - spSq[0]) + Math.abs(y - spSq[1]); if (!b || d < b[0]) b = [d, x, y]; } spSq = [b[1], b[2]]; }
+        console.log(S.id + ' THE ROOM DESIGN: ' + laid + ' squares laid, ' + stepped + ' piece(s) stepped off, ' + climbs.length + ' found climb(s), ' + (propsOut.length - n0) + ' room.js pieces; gone: ' + (gone.join(' ') || 'none')); }
     /* every plot is reached on foot from the spawn */
     { const seen = new Uint8Array(Wn * Dn), st = [spSq]; seen[spSq[1] * Wn + spSq[0]] = 1; while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (openR(X, Y) && c2[Y][X] !== 'B' && !seen[Y * Wn + X]) { seen[Y * Wn + X] = 1; st.push([X, Y]); } } }
       const cold = R.order.filter(e => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(e.row * N + ly) * Wn + e.col * N + lx]) return false; return true; }).map(e => e.name);
       if (process.env.ESTATE_DUMP) console.log('\n' + S.id + '\n' + c2.map((r, y) => r.map((ch, x) => stood.has(x + ':' + y) && ch !== 'c' ? 'o' : openR(x, y) && ch !== 'B' && !seen[y * Wn + x] ? '!' : ch === 'c' ? ' ' : ch).join('')).join('\n'));
       if (cold.length) throw new Error(S.id + ': plots not reached on foot: ' + cold.join(', ')); }
     /* the levels (the plots that did not move keep the home ground, buildings' flats and all), the open ground, the paint */
-    const dz0 = S.home ? R.order[0].dz : 0, lv = R.levels(LEVEL), hAt = S.home ? (sx, sy) => Hc[(sy - Math.round(dz0 / C)) * (W + 1) + sx] : (sx, sy) => lv(R.gx(sx), R.gz(sy));
+    const dz0 = S.home ? R.order[0].dz : 0, lv = R.levels(LEVEL), hAt = DES ? (sx, sy) => DES.CH[sy][sx] : S.home ? (sx, sy) => Hc[(sy - Math.round(dz0 / C)) * (W + 1) + sx] : (sx, sy) => lv(R.gx(sx), R.gz(sy));
     const slope2 = Buffer.alloc(Wn * Dn * 8);
-    for (let cy = 0; cy < Dn; cy++) for (let cx = 0; cx < Wn; cx++) { const o = (cy * Wn + cx) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope2.writeInt16LE(Math.round(hAt(cx + q[0], cy + q[1]) * 100), o + k * 2)); }
+    for (let cy = 0; cy < Dn; cy++) for (let cx = 0; cx < Wn; cx++) { const o = (cy * Wn + cx) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope2.writeInt16LE(Math.round((DES ? DES.corner(cx, cy, q[0], q[1]) : hAt(cx + q[0], cy + q[1])) * 100), o + k * 2)); }
     const spaces2 = R.spaces(openR), paint2 = new Uint8Array(Wn * Dn);
     for (let y = 0; y < Dn; y++) for (let x = 0; x < Wn; x++) { const ch = c2[y][x], e = R.plotOfSq(x, y), d = e ? e.district : S.letters[0], hy = e && e.home ? y - e.row * N + e.home.y * N : -1;
         paint2[y * Wn + x] = ch === 'p' ? 1 : ch === 'o' ? 2 : ch === 'j' ? ((d === 'R' && hy !== 56) ? 0 : 3) : ch === 'm' ? 4 : ch === 'D' ? (d === 'C' ? 5 : 6) : ch === 'r' ? 8 : ch === 's' ? 5 : (ch === 'B' && d === 'R') ? 1 : (d === 'H' && ch !== 'c') ? 7 : 0; }
@@ -400,7 +478,7 @@ STAND.forEach(S => {
         if (same) { o.x0 = r2(z.x0 + e0.dx); o.x1 = r2(z.x1 + e0.dx); o.z0 = r2(z.z0 + e0.dz); o.z1 = r2(z.z1 + e0.dz); } else { o.x0 = -R.HX; o.x1 = R.HX; o.z0 = -R.HZ; o.z1 = R.HZ; } return o; };
     const air = [].concat(...S.letters.map(k => AIR_HOME[k] || [])).map(boxOf).filter(Boolean);
     const lines = (S.letters.indexOf('C') >= 0 ? O_FIELDS.l : []).concat(S.letters.indexOf('H') >= 0 ? O_GROUNDS.l : []);
-    ROOMS_OUT.push({ S, R, c2, hAt, own: featsOut, feats: spaces2.concat(featsOut), props: propsOut, doors: doorsOut, ways, slope: slope2, paint: paint2, air, lines, sp: { x: R.gcx(spSq[0]), z: R.gcz(spSq[1]), face: spFace },
+    ROOMS_OUT.push({ S, R, c2, hAt, des: !!DES, own: featsOut, feats: spaces2.concat(featsOut), props: propsOut, doors: doorsOut, ways, slope: slope2, paint: paint2, air, lines, sp: { x: R.gcx(spSq[0]), z: R.gcz(spSq[1]), face: spFace },
         count: Object.assign({ plots: S.list.length, box: R.cols + 'x' + R.rows, spaces: spaces2.length, props: propsOut.length, features: featsOut.length, doors: doorsOut.length, natives: R.npc.length }, cnt) });
 });
 if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer stand the same way; each is answered in the notes, "ONE WORLD, THE TEST SLICE"):\n  ' + STRAYS.join('\n  '));
@@ -411,7 +489,8 @@ ROOMS_OUT.forEach(o => console.log(o.S.id + ' ' + JSON.stringify(o.count)));
     const { S, R } = o, hs = []; for (let y = 0; y <= R.D; y++) for (let x = 0; x <= R.W; x++) hs.push(Math.round(o.hAt(x, y) * 100) / 100);
     fs.writeFileSync(process.argv[xi + 2], JSON.stringify({ id: S.id, part: S.part, label: S.label, wx: R.wx, wy: R.wy, cols: R.cols, rows: R.rows, W: R.W, D: R.D, fill: 'c',
         plots: R.order.map(e => ({ col: e.col, row: e.row, name: e.name, district: e.district, level: e.level })), cell: o.c2.map(r => r.join('')), h: hs,
-        floor: 'grass_2', pal: PAL, paint: Array.from(o.paint), features: o.own, props: o.props, npc: R.npc, doors: o.doors, lines: o.lines, air: o.air, grassField: true, sp: o.sp }));
+        floor: 'grass_2', pal: PAL, paint: Array.from(o.paint), ...(o.des ? { cells: o.slope.toString('base64') } : {}),   /* THE ROOM DESIGN: each square's own four corners (cm, int16 x 4, the slope cells' layout), so a ledge is a drop in the kit's room too */
+        features: o.own, props: o.props, npc: R.npc, doors: o.doors, lines: o.lines, air: o.air, grassField: true, sp: o.sp }));
     process.exit(0); } }
 const stripDoor = d => { const o = Object.assign({}, d); delete o.plotCol; delete o.plotRow; delete o.side; delete o.along; return o; };
 /* ── the rooms ── */

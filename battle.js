@@ -1000,11 +1000,16 @@
            swap (sprites.js UFO_FORM_3D / wireUfoForm). No revertAfter: the look stays until the next cast. A race that
            already has its own override row keeps it. Looks only. */
         if (typeof RACE_FAMILIES !== 'undefined' && typeof wireUfoForm === 'function') {
+            /* (2026-11-20, THE ALIEN SHIPS: every alien race with a ship turns into it on a cast of its own form family, sprites.js
+               UFO_FORM_FAMILY: 'ufo' for the grey, the martian, the bligblog; its own family for the seven with no UFO spells) */
+            const _ufoFam = (r) => (typeof ufoFormFamily === 'function') ? ufoFormFamily(r) : 'ufo';
             for (const _ufoRace in RACE_FAMILIES) {
-                if (!(RACE_FAMILIES[_ufoRace] || []).includes('ufo') || UNIT_ANIM_OVERRIDES[_ufoRace]) continue;
+                const _fam = _ufoFam(_ufoRace);
+                if (!(RACE_FAMILIES[_ufoRace] || []).includes(_fam) || UNIT_ANIM_OVERRIDES[_ufoRace]) continue;
+                if (_fam !== 'ufo' && !(typeof UFO_CRAFT_BY_RACE !== 'undefined' && UFO_CRAFT_BY_RACE[_ufoRace])) continue;   // a race's own family turns it only into its own ship
                 if (!wireUfoForm(_ufoRace)) continue;
                 UNIT_ANIM_OVERRIDES[_ufoRace] = {
-                    castSprite: (unit, spell) => (((spell && spell.families) || []).includes('ufo')
+                    castSprite: (unit, spell) => (((spell && spell.families) || []).includes(_ufoFam(unit.race))
                         ? ufoFormLook(unit.race, unit.gender)
                         : (unit._spriteOverride ? ufoFormBaseLook(unit.race, unit.gender) : null)),
                 };
