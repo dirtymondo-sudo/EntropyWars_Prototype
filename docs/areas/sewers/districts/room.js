@@ -27,7 +27,7 @@ module.exports = {
     districts: {
         W: { name: 'The Culverts', floor: 1, chamber: 3, channel: 'water' },
         R: { name: 'The Radioactive Drain', floor: 3, chamber: 3, channel: 'sludge', sump: 'sludge' },
-        T: { name: 'The Running Tunnels', floor: 5, chamber: 5 },
+        T: { name: 'The Running Tunnels', floor: 0, chamber: 0 },   // the room's own concrete, the ballast under the track (mondo 11-20: not the red tile)
         H: { name: 'The Holding Cells', floor: 2, chamber: 2 },
         O: { name: 'The Old Workings', floor: 6, chamber: 6, rock: { wall: 'hz_stone_01', roof: 'hz_stone_01' } },   // cut rock: the Cavern's palette (mondo 11-20, via the Cavern thread: "use these textures too to match")
     },
