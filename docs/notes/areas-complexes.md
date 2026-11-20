@@ -13749,6 +13749,23 @@ into, lit by its crystals, with the dark maze round it".
   Long Tunnel seam `ow_h_m15_m8` point here, the old room goes in `DOOR_HQ.retired`, and the room joins `ZONE_LOOKS.zones.cavern.rooms`
   (the retexture thread's row) + the cavern `ZONE_FLORA`. The underground layout drops Agartha's ways to Technoticlan and Antarctica:
   ASK mondo before cutting them (never delete content he did not name).
+- **PASS 2 (11-20, mondo: "okay continue"): THE TERRACES + THE SPIRE.** The middle shelf: THE PLAZA (chamber 2,3, 125, the board, the old
+  Plaza's fountain) and THE INNER GATE (chamber 3,3, 124, the board; crystal-capped piers over the way down to the Long Tunnel) joined by A
+  MARBLE STAIR (the plan's `ramp` squares 36..37 x 42..44, one built flight three squares wide); a house in the west rock, a house in the east
+  rock, THE GATEHOUSE. The lower shelf: THE TEMPLE (27..32 x 2..5, walk-in: the statue, the altar, braziers) and its court; chamber 3,0 is a
+  RING round a pit of black water 6 levels down, THE SPIRE (36 m of lit crystal) on an island in it, FOUR CRYSTAL BRIDGES (the plan's
+  `bridges`, written by the tool as walkable `bridge` rows), a ladder up out of the pit; the Loch Ness Monster in the water. The east maze:
+  a bone pit, a nest (spiders), a crystal pocket, a squeeze, a sump of black water, THE KEPT ROOM (bars, chains). 13 people.
+- **THE UNDERGROUND'S ONE PALETTE (11-20, mondo through the Cavern thread: "don't use the calm textures"; "use these textures too to
+  match"):** marble_light / crystal / cave_* / rocks_5 / dirt_2 all wear CALM sheets (data.js `CALM_TERRAIN.of`). Agartha's raw rock is the
+  Cavern's set (`hz_stone_01` walls + roof + cliff, `hz_stone_02` floor and stalactites, `hz_floor_03` mud, `hz_stone_06` mineral); its city
+  `hz_wall_01` (cream stone) for the marble, `hz_stone_12` for floors, `hz_misc_05` for the crystal (the tool's `PAINT_OF` maps the design
+  file's old names).
+- **LEARNT (11-20):** a plateau's `h` in a height-sheet room is over the ground; an `arch` row's `base` is absolute. A rock square's face
+  leans about a node (0.875 m) into the open square beside it: a building beside rock keeps its wall 1 m in (the tool does it), a prop 0.9 m
+  off. The sheet BLENDS at shared corners: a deep bed beside a dry square pulls it under the water, so a pool bed is 0.7 m down and waded.
+  A `stream` whose end lies on the line of higher ground is lifted to it: its ends stop 0.4 m short. Water a walker can step into must
+  walk out (the tool's climb-back check counts water as walked).
 - **THE READING (step 1b):** `docs/plans/world-polish/thread9-agartha/fits-part1..4.md` (the model list in three parts + the live data).
   NEEDS A MODEL (none in the game): stalactite / stalagmite pieces (code cones today), a creature nest / eggs, a geode, mine timber
   supports (drawn as arch boxes), a white marble balustrade (drawn), a crystal throne, a dead caver in a helmet and harness.
