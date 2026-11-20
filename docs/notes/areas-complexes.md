@@ -13506,6 +13506,40 @@ mondo 11-20 named the new Meshy pieces (`kt_*`, `fl_*`; models-assets.md "THE KA
   **`fl_rice_clump`** in place of the grey `hw_crop*` lumps in the Paddies and on the Terraces.
 - **Still drawn in code:** the roofs (`jroof`), the flag, the furniture. **Not used here:** `kt_katana_scabbard`, the cactus, wheat, redwood and Joshua tree.
 
+## THE ESTATE, THE ROOM DESIGN (WORLD POLISH THREAD 17) — the pilot: the Lake, the West Bank, the Bluff, the shore walk (2026-11-20)
+mondo's OK of 11-20 on the two height plans (`docs/plans/world-polish/plans/estate.js`, `estate-house-trail.js`: "yep looks good"; the House Trail
+"a big priority"). This thread BUILDS from them; the plans are not redrawn. Board: the five Estate rows, held. FITS shortlist:
+`docs/plans/world-polish/thread17/FITS_ESTATE.md` (three readers, every list end to end).
+- **How the plan reaches the room.** The Estate's room (`site_prebuilt_skinwalker_ow_lake`, 5 x 18 plots at world -14,5) is the route kit's
+  (`node bake-route.js R7`), which takes the Corn Fields, the Lake and the Ranch in from `bake-estate.js --export` (R7.json `join`). So the plan is
+  laid in bake-estate.js, district by district, as THE ROOM DESIGN (step D in each stand): the plan is built into squares by the plan tool itself
+  (`draw-plan.js` `build`, so the room is the plan square for square), offset from the room's box to the district's. `docs/areas/estate/districts/room.js`
+  names the plan, the box's world corner, the districts it lays (`letters`; the pilot: `['L']`) and dresses the new ground in ROOM squares.
+- **The rule a square follows:** the plan's mass = corn; a way = dirt (`p`; boards and buildings kept); water = kept (the pool decides the water);
+  soft ground = dirt (this tool's `m` paints MARBLE, not mud); open ground = grass, but a plot the plan keeps at its level and that is not new keeps
+  today's open letters (the shingle, the boards). Levels: every square of a laid plot stands at the plan's level; a ramp square slopes one level over
+  two squares; an open square owns its four corners, so a ledge is a drop (the export sends `cells`; `bake-route.js` A JOINED DISTRICT'S OWN CORNERS
+  keeps them; the shared corner grid alone would make every ledge a slope). The ground still blends a drop over one 0.875 m step.
+- **Pieces:** a piece the new ground puts in the corn or on a way steps to the nearest open, level, off-way square within three (else it goes, listed
+  by the bake); small life and `noBlock` pieces on a way stay; a tree in the corn or on a way goes. A drawn row (`arch`, `texbuilding`, `wall`) on a
+  closed square STOPS the bake: move it in its district file. Every drop between two open squares wears a `rocks_5` slab (one `arch` row
+  `est:ow_lake:ledges`). Every `found` climb of the plan is a `climb` row (`vine` = roots, `ladder`), half a metre out from the face onto the low
+  square (from the face line its foot stood half way up the blend and the engine dropped it: a climb must rise 0.9 m).
+- **What changed for the pilot:** two new plots (`after-v13.js` row 7: the West Bank -13,16 and the Bluff -13,17; ground `w`, `R`); the South Shore
+  (0 -> 1, the bench over the water with the shore walk on it) and the Lake, east (0 -> 1, the bank with the lane up it) are re-levelled. In L.js
+  (home frame): THE LAKE is the plan's water (the pool 91 x 73.5 m, one square north: `LAKE`), THE PICNIC GROUND moved onto the plan's south beach
+  (`PIC`, 9 squares east, 3 north), THE CAMP off the east bank to the North Shore by the Boathouse (`CAMP`), the playground beside the picnic ground.
+  Plan corrections (the plan changes first, it still passes): row 125 is today's shingle (open), the washed-out bank is a notch (21..23, 140) so its
+  roots climb a real face, the Bluff's roots climb from the bench at 24,147.
+- **Checked before the browser:** every open square of the Lake and the new plots read back through load-data.js against the plan's level (762
+  squares): all at the plan's height but today's own differences (the decks 0.3 m up, the pool banks dipping, the picnic shelter's posts); both
+  climbs registered (1.1 m each). Gone in the bake (listed): two rabbits, a butterfly, a bush, flowers and 11 trees that stood where the plan puts
+  corn or a way. The bake's other rooms unchanged.
+- **NOT built yet:** the West Bank's way west (the plan's door 12,141) ends at a shut farm gate and a board until THE HOUSE TRAIL's room exists;
+  the Bluff's thin trail south (the Ridge) starts at 18,155 and waits for the Ranch's new plots. NEXT (after mondo's word): the Ranch (6 new plots,
+  the hollow, the rise, the Draw + the creek cut, the Ridge), the Corn Fields' Farm Track, then THE HOUSE TRAIL room (13 plots, its gatehouse
+  built from the PSX modular pieces: no walk-in model exists).
+
 ## HELL, THE LIGHT PASS — thread 11 of the world polish, pass 1 = the pilot: the Rim + the Descent (2026-11-20, owner)
 
 The plan is `docs/plans/world-polish/plans/hell.js` (mondo 11-20: "looks good"; "no walk in building for hell"): LIGHT AND LANDMARKS only, no
