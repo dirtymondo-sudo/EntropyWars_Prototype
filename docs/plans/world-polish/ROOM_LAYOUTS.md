@@ -319,13 +319,22 @@ How each room really stands. `#` = a plot (42 m), `.` = no plot. North is up. Un
 `P00-00` The Kelp Forest (S) · `P00-01` The Station (S) · `P01-01` The Spire (S) · `P01-00` The Wreck (S) · `P02-00` The Sea Floor (S) · `P02-01` The Upwelling (S) · `P02-02` The Reef Wall (S) · `P01-02` The Dunes (S) · `P00-02` The Drowned Circle (S)
 
 ## site_prebuilt_bermuda_beach
-336 x 420 m · ? x 10 plots, 20 used · open sky · world 12, 2 (surface)
+336 x 420 m · ? x 10 plots, 10 used · open sky · world 12, 2 (surface)
 
 ```
 
 ```
 
-`P00-01` The North Headland (S) · `P06-02` the whale (O) · `P00-03` The Boardwalk (S) · `P01-03` The Tide Pools (S) · `P02-03` The Quay (H) · `P03-03` The Breakwater (H) · `P00-04` The Beach Huts (S) · `P01-04` The Surf (S) · `P02-04` The Long Pier (H) · `P03-04` The Flying Dutchman (H) · `P00-05` The Palms (S) · `P01-05` The Lifeguard Hut (S) · `P02-05` The Skiff (H) · `P03-05` The Channel (H) · `P00-06` The Dunes (S) · `P01-06` The Sandbar (S) · `P02-06` The Harbour Mouth (H) · `P03-06` The Roads (H) · `P00-08` The South Dunes (S) · `P03-09` islet (no name) (O)
+`P06-02` the whale (O) · `P02-03` The Quay (H) · `P03-03` The Breakwater (H) · `P02-04` The Long Pier (H) · `P03-04` The Flying Dutchman (H) · `P02-05` The Skiff (H) · `P03-05` The Channel (H) · `P02-06` The Harbour Mouth (H) · `P03-06` The Roads (H) · `P03-09` islet (no name) (O)
+
+## site_prebuilt_bermuda_katana
+378 x 378 m · ? x 9 plots, 30 used · open sky · world 21, -13 (surface)
+
+```
+
+```
+
+`P03-01` The Black Cape (V) · `P03-02` The West Flank (V) · `P04-02` The Crater (V) · `P05-02` The East Flank (V) · `P04-03` The Lava Field (V) · `P02-02` The Old Wood (W) · `P02-03` The Bamboo Wood (W) · `P03-03` The Cherry Wood (W) · `P04-04` The Hot Spring (W) · `P01-02` The Palace (C) · `P01-03` The Castle Garden (C) · `P01-04` The Castle (C) · `P01-05` The Samurai Quarter (C) · `P02-04` The High Town (C) · `P03-04` The Temple Quarter (C) · `P03-05` The Merchants’ Town (C) · `P02-05` The Waterfront (B) · `P01-06` The West Quay (B) · `P01-07` The Lantern Head (B) · `P03-06` The East Quay (B) · `P03-07` The Fishing Beach (B) · `P04-05` The Paddies (L) · `P04-06` The Shore Hamlet (L) · `P05-05` The Village (L) · `P05-04` The Terraces (L) · `P06-04` The Jungle (J) · `P06-03` The Dinosaur Park (J) · `P07-03` The East Shore (J) · `P05-03` The Jungle Rise (J) · `P06-02` The Jungle, north (J)
 
 ## site_prebuilt_bermuda_ow_cove
 126 x 126 m · ? x 3 plots, 5 used · open sky · world -30, 31 (surface)
@@ -462,17 +471,17 @@ How each room really stands. `#` = a plot (42 m), `.` = no plot. North is up. Un
 **K** 22 plots · **R** 7 plots · **S** 6 plots · **C** 7 plots · **P** 7 plots (ids: `plots.csv`)
 
 ## site_prebuilt_fairy_forest_ow_clearing
-504 x 210 m · 12 x 5 plots, 19 used · open sky · world -17, 0 (surface)
+504 x 210 m · 12 x 5 plots, 25 used · open sky · world -17, 0 (surface)
 
 ```
-.#.#..#.....
+.####.#.....
 ############
-...#......#.
-...#........
+.####.....#.
+...##.......
 ...#........
 ```
 
-`P03-00` The Stair (C) · `P02-01` The Old Tree (C) · `P03-01` The Crossroads (C) · `P04-01` Deep woods, east (C) · `P01-01` The Trail West (C) · `P00-01` Deep woods, west (C) · `P03-02` The Campfire (C) · `P03-03` Deep woods, south (C) · `P03-04` The Fence Line (C) · `P05-01` The Culvert (M) · `P06-01` The Dry Creek, upper (M) · `P06-00` The Rocks (M) · `P07-01` The Dry Creek, lower (M) · `P08-01` The Hollow (M) · `P09-01` The Gully (M) · `P10-01` The Sewer Mouth (M) · `P10-02` The Tunnel Way (M) · `P11-01` The Storm Drain (M) · `P01-00` The trail, the rest (L)
+`P03-00` The Stair (C) · `P02-01` The Old Tree (C) · `P03-01` The Crossroads (C) · `P04-01` Deep woods, east (C) · `P01-01` The Trail West (C) · `P00-01` Deep woods, west (C) · `P03-02` The Campfire (C) · `P03-03` Deep woods, south (C) · `P03-04` The Fence Line (C) · `P05-01` The Culvert (M) · `P06-01` The Dry Creek, upper (M) · `P06-00` The Rocks (M) · `P07-01` The Dry Creek, lower (M) · `P08-01` The Hollow (M) · `P09-01` The Gully (M) · `P10-01` The Sewer Mouth (M) · `P10-02` The Tunnel Way (M) · `P11-01` The Storm Drain (M) · `P01-00` The trail, the rest (L) · `P02-00` The North Rise (C) · `P04-00` The Climb (C) · `P01-02` The Burned House (C) · `P02-02` The Stick Men (C) · `P04-02` Under the Bluff (C) · `P04-03` The Dead End (C)
 
 ## site_prebuilt_fairy_forest_ow_redwood
 84 x 336 m · 2 x 8 plots, 9 used · open sky · world -17, -9 (surface)
@@ -521,7 +530,7 @@ How each room really stands. `#` = a plot (42 m), `.` = no plot. North is up. Un
 #####..
 ```
 
-`P03-00` The Brick Stacks (T) · `P04-00` The Tower, north-west (T) · `P05-00` The North Stair (T) · `P06-00` The Crane (T) · `P03-01` The Kiln (T) · `P04-01` The Tower (T) · `P05-01` The Tower, east (T) · `P06-01` The Workers' Town (label mine) (T) · `P03-02` The Clay Pits (T) · `P04-02` The Tower, south-west (T) · `P05-02` The South Face (label mine) (T) · `P06-02` The Barn Door (label mine) (T) · `P00-05` The Garden Islets (label mine) (Z) · `P01-05` The Ball Court (Z) · `P02-05` The North Causeway (label mine) (Z) · `P03-05` The Pyramid, north (Z) · `P04-05` The Lake (label mine) (Z) · `P00-06` The Causeway (Z) · `P01-06` The West Gate (label mine) (Z) · `P02-06` The Canal (Z) · `P03-06` The Pyramid (Z) · `P04-06` The Pyramid, east (Z) · `P00-07` The Reeds (label mine) (Z) · `P01-07` The Round Tower (label mine) (Z) · `P02-07` The Portcullis (Z) · `P03-07` The Pyramid, south (Z) · `P04-07` The Lake, south (label mine) (Z) · `P03-03` The trail, the well (R) · `P03-04` The trail, the bee yard (R)
+`P03-00` The Brick Stacks (T) · `P04-00` The Tower, north-west (T) · `P05-00` The North Stair (T) · `P06-00` The Crane (T) · `P03-01` The Kiln (T) · `P04-01` The Tower (T) · `P05-01` The Tower, east (T) · `P06-01` The Workers' Town (label mine) (T) · `P03-02` The Clay Pits (T) · `P04-02` The Tower, south-west (T) · `P05-02` The South Face (label mine) (T) · `P06-02` The Barn Door (label mine) (T) · `P00-05` The Garden Islets (label mine) (Z) · `P01-05` The Ball Court (Z) · `P02-05` The North Causeway (label mine) (Z) · `P03-05` The Pyramid, north (Z) · `P04-05` The Lake (label mine) (Z) · `P00-06` The Causeway (Z) · `P01-06` The West Gate (label mine) (Z) · `P02-06` The Canal (Z) · `P03-06` The Pyramid (Z) · `P04-06` The Pyramid, east (Z) · `P00-07` The Reeds (label mine) (Z) · `P01-07` The Round Tower (label mine) (Z) · `P02-07` The Portcullis (Z) · `P03-07` The Pyramid, south (Z) · `P04-07` The Lake, south (label mine) (Z) · `P03-03` The trail (R) · `P03-04` The trail (R)
 
 ## site_prebuilt_gobekli_ow_bugs
 294 x 210 m · 7 x 5 plots, 15 used · open sky · world 21, 32 (surface)
@@ -548,15 +557,15 @@ How each room really stands. `#` = a plot (42 m), `.` = no plot. North is up. Un
 `P00-00` The Long Barrow (S) · `P01-00` The Bank (S) · `P02-00` The Avenue (S) · `P00-01` The Barrows (S) · `P01-01` The Sarsen Circle (S) · `P02-01` The Ditch (S) · `P00-02` The Plain (S) · `P01-02` The South Gate (label mine) (S) · `P02-02` The Solstice Camp (label mine) (S)
 
 ## site_prebuilt_gobekli_ow_line
-504 x 126 m · 12 x 3 plots, 18 used · open sky · world 19, 29 (surface)
+504 x 126 m · 12 x 3 plots, 28 used · open sky · world 19, 29 (surface)
 
 ```
-###.........
+########....
 ############
-###.........
+########....
 ```
 
-`P00-00` The Dig (G) · `P01-00` The Mound (G) · `P02-00` The Sentinel (G) · `P00-01` The Dig Camp (label mine) (G) · `P01-01` The Four Enclosures (G) · `P02-01` The Cistern (G) · `P00-02` The First Doorway (G) · `P01-02` The T-Pillars (G) · `P02-02` The Dry Slope (label mine) (G) · `P03-01` The West Mouth (Y) · `P04-01` The Niches (Y) · `P05-01` The Forks (Y) · `P06-01` The Great Line (Y) · `P07-01` The Nexus (Y) · `P08-01` The Great Line, east (Y) · `P09-01` The Forks, east (Y) · `P10-01` The Niches, east (Y) · `P11-01` The East Mouth (Y)
+`P00-00` The Dig (G) · `P01-00` The Mound (G) · `P02-00` The Sentinel (G) · `P00-01` The Dig Camp (label mine) (G) · `P01-01` The Four Enclosures (G) · `P02-01` The Cistern (G) · `P00-02` The First Doorway (G) · `P01-02` The T-Pillars (G) · `P02-02` The Dry Slope (label mine) (G) · `P03-01` The West Mouth (Y) · `P04-01` The Niches (Y) · `P05-01` The Forks (Y) · `P06-01` The Great Line (Y) · `P07-01` The Nexus (Y) · `P08-01` The Great Line, east (Y) · `P09-01` The Forks, east (Y) · `P10-01` The Niches, east (Y) · `P11-01` The East Mouth (Y) · `P03-00` The North Bank (Y) · `P04-00` The Terrace (Y) · `P05-00` The North Knoll (Y) · `P06-00` The Lone Stone (Y) · `P07-00` The Rise (Y) · `P03-02` The Dry Field (Y) · `P04-02` The Low Ground (Y) · `P05-02` The South Bank (Y) · `P06-02` The Sink (Y) · `P07-02` The Fork's End (Y)
 
 ## site_prebuilt_heaven_plots
 294 x 336 m · 7 x 8 plots, 26 used · open sky
@@ -734,50 +743,32 @@ How each room really stands. `#` = a plot (42 m), `.` = no plot. North is up. Un
 `P00-00` The Drift (The North Pole village) · `P01-00` The Pole (The North Pole village) · `P02-00` The Workshop (The North Pole village) · `P03-00` The Village, north (The North Pole village) · `P00-01` The Drift, south (The North Pole village) · `P01-01` The Village, west (The North Pole village) · `P02-01` The Village (The North Pole village) · `P03-01` The Village, east (The North Pole village) · `P00-02` The Frozen Lake, north (The North Pole village) · `P01-02` The Frozen Lake, east (The North Pole village) · `P02-02` The Sleigh Road (The North Pole village) · `P03-02` The Sleigh Road, east (The North Pole village) · `P00-03` The Frozen Lake, south (The North Pole village) · `P01-03` The Snowline, west (The North Pole village) · `P02-03` The Snowline (The North Pole village) · `P03-03` The Snowline, east (The North Pole village)
 
 ## site_prebuilt_shasta_ow_lodge
-420 x 378 m · 10 x 9 plots, 29 used · open sky · world -23, -22 (surface)
+546 x 420 m · 13 x 10 plots, 84 used · open sky · world -22, -22 (surface)
 
 ```
-.......###
-#########.
-###.....#.
-###.....#.
-.#......#.
-.#......#.
-.#......#.
-........#.
-.......##.
+......###....
+....#####....
+..########...
+.##########..
+#############
+#############
+##########.##
+#############
+......######.
+...........#.
 ```
 
-`P00-01` The Black Run, top (The Ski Lodge + slopes) · `P01-01` The Top Station (The Ski Lodge + slopes) · `P02-01` The Half-Pipe (The Ski Lodge + slopes) · `P00-02` The Black Run (The Ski Lodge + slopes) · `P01-02` The Big Jump (The Ski Lodge + slopes) · `P02-02` The Slalom (The Ski Lodge + slopes) · `P00-03` The Run-Out (The Ski Lodge + slopes) · `P01-03` The Chairlift (The Ski Lodge + slopes) · `P02-03` The Bunny Slope (The Ski Lodge + slopes) · `P01-04` The Rental Hut (The Ski Lodge + slopes) · `P01-05` The Ski Lodge (The Ski Lodge + slopes) · `P01-06` The Lodge Yard (The Ski Lodge + slopes) · `P03-01` The Traverse, the trapper’s camp (Wild link L9) · `P04-01` The Traverse, the mine cart (Wild link L9) · `P05-01` The Traverse, the snowman (Wild link L9) · `P06-01` The Traverse, the camp (Wild link L9) · `P07-01` The Traverse, the marker stones (Wild link L9) · `P07-08` The Tree Line, west (The Snowy Pass) · `P08-08` The Tree Line (The Snowy Pass) · `P08-07` The Warming Hut (The Snowy Pass) · `P08-06` The Sleigh Bend (The Snowy Pass) · `P08-05` The Frozen Tarn (The Snowy Pass) · `P08-04` The Rope Bridge (The Snowy Pass) · `P08-03` The Pass Gate (The Snowy Pass) · `P08-02` The Switchbacks (The Snowy Pass) · `P08-01` The High Pass (The Snowy Pass) · `P07-00` The Ridge, west (The Snowy Pass) · `P08-00` The Ridge (The Snowy Pass) · `P09-00` The Ridge, east (The Snowy Pass)
-
-## site_prebuilt_shasta_ow_olympus
-420 x 252 m · 10 x 6 plots, 19 used · open sky · world -14, -18 (surface)
-
-```
-..###.....
-..###.....
-...#......
-...#######
-####......
-...#......
-```
-
-`P00-04` The Saddle Path, the carved pole (Wild link L10) · `P01-04` The Saddle Path, the marker stones (Wild link L10) · `P02-00` The Twelve Thrones (Mount Olympus) · `P03-00` The Temple (Mount Olympus) · `P04-00` The Grand Stair (Mount Olympus) · `P02-01` The Stadium (Mount Olympus) · `P03-01` The Colonnade (Mount Olympus) · `P04-01` The Cloud Line (Mount Olympus) · `P03-02` The Sacred Way (Mount Olympus) · `P03-03` The Terraces (Mount Olympus) · `P04-03` The Amphitheatre (Mount Olympus) · `P03-04` The Olive Grove (Mount Olympus) · `P02-04` The Goat Track (Mount Olympus) · `P03-05` The Pilgrim Stair (Mount Olympus) · `P05-03` The Long Descent, the camp (Wild link L11) · `P06-03` The Long Descent, the trapper’s camp (Wild link L11) · `P07-03` The Long Descent, the mine cart (Wild link L11) · `P08-03` The Long Descent, the snowman (Wild link L11) · `P09-03` The Long Descent, the boundary stone (Wild link L11)
+**The Snowy Pass** 17 plots · **Mount Olympus** 28 plots · **The Ski Lodge** 39 plots (ids: `plots.csv`)
 
 ## site_prebuilt_shasta_ow_shasta
-294 x 294 m · 7 x 7 plots, 20 used · open sky · world -4, -21 (surface)
+294 x 84 m · 7 x 2 plots, 13 used · open sky · world -9, -16 (surface)
 
 ```
-....###
-....###
-....###
-....###
-..####.
-.##....
-##.....
+######.
+#######
 ```
 
-`P04-00` Shastina (Mount Shasta) · `P05-00` The Summit (Mount Shasta) · `P06-00` The Glacier (Mount Shasta) · `P04-01` The Red Banks (Mount Shasta) · `P05-01` Helen Lake (Mount Shasta) · `P06-01` The Steam Vents (Mount Shasta) · `P04-02` Avalanche Gulch (Mount Shasta) · `P05-02` The Fork (Mount Shasta) · `P06-02` The Scree (Mount Shasta) · `P04-03` Bunny Flat (Mount Shasta) · `P05-03` Panther Meadows (Mount Shasta) · `P06-03` The Old Lava (Mount Shasta) · `P04-04` The Last Trees (Mount Shasta) · `P05-04` The Spring (Mount Shasta) · `P03-04` The Switchback, upper (Mount Shasta) · `P02-04` The Lookout (Mount Shasta) · `P02-05` The Switchback, lower (Mount Shasta) · `P01-05` The Boulder Field (Mount Shasta) · `P01-06` The Trailhead (Mount Shasta) · `P00-06` The Upper Shelf (Mount Shasta)
+`P00-01` The Long Descent, the camp (The Long Descent) · `P00-00` The Long Descent, the trapper’s camp (The Long Descent) · `P01-00` The Long Descent, the mine cart (The Long Descent) · `P01-01` The Long Descent, the snowman (The Long Descent) · `P02-01` The Long Descent, the boundary stone (The Long Descent) · `P02-00` The Old Lava (The Long Descent) · `P03-00` The Long Descent (The Long Descent) · `P03-01` The Long Descent (The Long Descent) · `P04-01` The Long Descent (The Long Descent) · `P04-00` The Long Descent (The Long Descent) · `P05-00` The Long Descent (The Long Descent) · `P05-01` The Upper Shelf (The Long Descent) · `P06-01` The Trailhead (The Long Descent)
 
 ## site_prebuilt_skinwalker_ow_house
 126 x 252 m · 3 x 6 plots, 9 used · open sky · world -22, 11 (surface)
