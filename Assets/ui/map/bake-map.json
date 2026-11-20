@@ -629,14 +629,14 @@
   "bytes": 2640,
   "s": "1.2"
  },
- "site_prebuilt_katana_island": {
-  "id": "site_prebuilt_katana_island",
+ "site_prebuilt_bermuda_katana": {
+  "id": "site_prebuilt_bermuda_katana",
   "nx": 108,
   "nz": 108,
-  "h0": -0.03,
+  "h0": -0.04,
   "hs": 0.25,
-  "v": "173f190727",
-  "bytes": 2581,
-  "s": "0.6"
+  "v": "5ff9011ef3",
+  "bytes": 2584,
+  "s": "7.5"
  }
 }
