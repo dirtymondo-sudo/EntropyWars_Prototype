@@ -7095,6 +7095,8 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
 
 ## THE SNOWY PINES, THREE PLOTS WIDE — the room design (2026-11-20, the owner's WORLD POLISH thread 3; docs/plans/world-polish/WORLD_POLISH_PLAN.md)
 
+**BELOW THE STANDARD OF 11-20** (mondo: "Disaster City should already be the standard for every room"): this room has set-piece height on level ground (no height base) and wide ways in straight legs. Built as written below; not redone unless he asks. The standard and the state of every thread: `docs/plans/world-polish/WORLD_POLISH_PLAN.md` START HERE. This room is Came A Lot's, NOT The Woods (the zone, `fairy_forest_ow_*`), which was not touched.
+
 mondo 11-20: "you have freedom to move and change and make bigger whatever you need to, that is the whole point of this pass." The first pilot failed on
 the room itself (the plan's 5b): a chain ONE plot wide, a white strip in summer lawn. This pass changed the room, then built on it.
 
@@ -7146,6 +7148,8 @@ the room itself (the plan's 5b): a chain ONE plot wide, a white strip in summer 
 
 ## THE FOREST, THREE PLOTS WIDE — the room design (2026-11-20, the owner's WORLD POLISH thread 3, after the Snowy Pines)
 
+**BELOW THE STANDARD OF 11-20** (mondo: "Disaster City should already be the standard for every room"): this room has set-piece height on level ground (no height base) and wide ways in straight legs. Built as written below; not redone unless he asks. The standard and the state of every thread: `docs/plans/world-polish/WORLD_POLISH_PLAN.md` START HERE. This room is Came A Lot's, NOT The Woods (the zone, `fairy_forest_ow_*`), which was not touched.
+
 The Pines' pattern, second use (read "THE SNOWY PINES, THREE PLOTS WIDE" first). `site_prebuilt_camelot_ow_forest` is 21 plots, a 5 x 5 box at world -27,3
 (was 9 in a T one plot wide, 4 x 5 at -26,3): the eight old plots and the link plot L7 where they stood, twelve new plots beside them
 (`docs/plans/one-world/after-v13.js` row 3; no ground letter changed, its country is forest already). Every old x in the room is 21 m greater now (one
@@ -7173,6 +7177,8 @@ more column west); z is unchanged.
 
 
 ## THE FAIRY FOREST, 13 PLOTS — the room design (2026-11-20, the owner's WORLD POLISH thread 3, its last district)
+
+**BELOW THE STANDARD OF 11-20** (mondo: "Disaster City should already be the standard for every room"): this room has set-piece height on level ground (no height base) and wide ways in straight legs. Built as written below; not redone unless he asks. The standard and the state of every thread: `docs/plans/world-polish/WORLD_POLISH_PLAN.md` START HERE. This room is Came A Lot's, NOT The Woods (the zone, `fairy_forest_ow_*`), which was not touched.
 
 The Pines' pattern, third use. `site_prebuilt_camelot_ow_fairy` is 13 plots, a 4 x 4 box at world -23,-1 (was 6, 4 x 3): the six old plots where they
 stood, seven new plots south of them in two rows (`after-v13.js` row 4; north of the walk lies the Old Road, R4: no room to grow there). Every old z in

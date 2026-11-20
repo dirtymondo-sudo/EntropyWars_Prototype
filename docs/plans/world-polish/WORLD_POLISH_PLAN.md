@@ -1,31 +1,463 @@
-# THE WORLD POLISH PLAN: the audit, the verticality pass, and who does what next
+# THE WORLD POLISH PLAN: every room built to Disaster City's standard
 
-mondo's ask (2026-11-19): "an audit of the world, zone by zone and district by district, to determine which ones are too small or cramped
+Rewritten 2026-11-20 on mondo's order ("fix this stupid ass plan"). The plan before this one never said what the standard is, so its
+threads built wide straight ways on level ground and called it done. This one says it first.
+
+## START HERE (read this screen; it is the whole plan in short)
+
+### 1. THE STANDARD: DISASTER CITY IS THE STANDARD FOR EVERY ROOM
+
+mondo, 2026-11-20: **"Disaster City should already be the standard for every room, that has already been established!"**
+
+His words, with their dates. They are the rule. Nothing below may soften them.
+
+- 2026-11-13, on the city (how its height is built): "more verticality ... Streets that slope, ramps, stairs ... **different districts should
+  have different elevations**, bayside being the lowest (sea level) ... **different elevations within the districts from plot to plot and even
+  within plots.**"
+- 2026-11-15, the world vision (owner-rules.md section 2): every area is plot-built "like Disaster City"; only DOOR HQ stays handmade.
+- 2026-11-15, on The Woods: "make dirt trails like the main roads and smaller dirt paths be like alleyways from disaster city".
+- 2026-11-16, every district: "at least 75% of the detail disaster city has".
+- 2026-11-20: "Im trying to avoid just long straight boring pathways. There should always be branches and different routes you can take that
+  lead to different zones or districts."
+- 2026-11-20, after walking The Woods: "I still feel like they are too flat? **Where are the ridges and hills valleys? Thin trails off the main
+  path? There are still just long straight wide pathways.** ... Disaster city elevation was done by giving different districts different height
+  ranges, and allowing height ranges inside the plots too, so there is a lot of variety and pathways. **The point is to help the player orient
+  themselves in the world. It's hard to do that when everything is just a flat straight path.**"
+
+What that means for a room, in four lines:
+
+1. **A HEIGHT BASE, the way the city has one.** Districts stand at different height ranges. Plots inside a district stand at different levels.
+   The ground inside a plot has relief too. Ridges, hills, valleys. A level floor with a few set pieces on it is NOT the standard.
+2. **THE POINT IS ORIENTATION.** A player can tell where they are, and which way they are going, from the shape of the land and from landmarks.
+3. **WAYS WIND.** A main way is narrow enough to feel like a path through the place. It is never one long straight wide lane.
+4. **THIN TRAILS BRANCH OFF IT** (one or two squares) and each leads somewhere: another district, another zone, a secret.
+
+The numbers for these four lines are in section A below. They are proposals; mondo changes them with one line.
+
+### 2. THE STATE OF EVERY THREAD (2026-11-20)
+
+ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map. The rooms are listed so nobody can mix two places up.
+
+| # | Zone (map name) | Its rooms | State |
+|---|---|---|---|
+| 1 | **The Desert** | Giza, Western Town, Area 51, The Circus | **Built 11-19.** Hills, a gulch, a ridge trail, a peak, as set pieces on level ground. mondo on Giza: "okay looks decent, continue". Not on the next list. |
+| 2 | **Disaster City** (the cramped city) | Disaster City, one room | **Not started.** It is the standard for height. His complaint here is another one: too many buildings, stairs into walls. |
+| 3 | **Came A Lot Kingdom, its three woods** | The Snowy Pines, The Forest, The Fairy Forest | **Built 11-20, differs from the standard:** set-piece height (a ridge, a gully, a bluff, hollows) on level ground, wide ways in straight legs. Not on the next list (mondo 11-20: "id rather you not go over what you already did, start somewhere else"). |
+| 4 | **Came A Lot Kingdom, The Village** | the Village, inside the kingdom's main room | **Built 11-20** (three stairs up to the town wall's walk, the churchyard). The town's ground is level. Not on the next list. |
+| 5 | **The Mountains** | The North Pole, The Ski Lodge + The Snowy Pass, Mount Shasta, Mount Olympus | Not started |
+| 6 | **The Woods** | The Clearing + Dead Man's Cave, The Redwood Trail, The Ritual Ground | **Not started. NEXT.** This is the zone mondo walked and found flat and straight. |
+| 7 | **The underground walks** | the Cavern's three tunnels, Agartha's tunnel, the Sewers' walks under the city | Not started |
+| 8 | **The D.U.M.B.** | The D.U.M.B., one room | Not started |
+| 9 | **The Cavern** | The Cavern, Hollow Earth, Agartha | Not started |
+| 10 | **The Sewers** | The Sewers, one room | Not started |
+| 11 | **Heaven + Hell + Vatican** | Heaven, Hell, The Vatican, The Catacombs | Not started |
+| 12 | **Leylines** | The Line, Babel + Technoticlan, Stonehenge, Bug Colony | Not started |
+| 13 | **Antarctica** | Antarctica, one room | Not started |
+| 14 | **The Internet** | The Internet, one room | Not started |
+| 15 | **The Astral Realm** | The Astral Realm, one room | Not started |
+| 16 | **The Deep** | Atlantis + The Trench, The Sea Floor | Not started |
+| 17 | **The Estate** | The Estate (Corn Fields, Lake, Ranch), The Haunted House | Not started |
+| 18 | **Outer Space** | Outer Space, one room | Not started |
+| 19 | **The Beach** | The Beach, Pirates' Cove, The Frozen Sea, The Bermuda Triangle, The Volcano Island | **Another thread has it** ("One Beach": Disaster City's Bayside beach and the Beach zone made one). No thread of this plan starts here until that one reports. |
+| none | The highways and the routes | every `site_ow_*` room | **Not in this plan.** Its own thread (mondo 11-20). |
+
+**TWO PLACES THAT GET MIXED UP. THEY ARE NOT THE SAME PLACE.**
+- **"Came A Lot's woods" (thread 3)** = three districts INSIDE Came A Lot Kingdom: the Snowy Pines, the Forest, the Fairy Forest. Rooms
+  `site_prebuilt_camelot_ow_pines`, `_ow_forest`, `_ow_fairy`. Tool `bake-camelot.js`.
+- **"The Woods" (thread 6)** = its own zone, the first one out of DOOR HQ: the Clearing, Dead Man's Cave, the Redwood Trail, the Ritual
+  Ground. Rooms `site_prebuilt_fairy_forest_ow_clearing`, `_ow_redwood`, `_ow_ritual`. Tool `bake-woods.js`.
+- The trap: The Woods' room ids say `fairy_forest`. The Fairy Forest itself is Came A Lot's, room `camelot_ow_fairy`. Go by the map name.
+- On 11-20 a thread said "the woods" were done after thread 3. mondo then walked The Woods, which nobody had touched. **Never write "the woods"
+  alone. Write "Came A Lot's three woods" or "The Woods (the zone)".**
+
+### 3. WHAT IS NEXT (a proposal; mondo picks)
+
+mondo 11-20: "id rather you not go over what you already did, start somewhere else." So the list holds only zones nobody has worked on.
+
+1. **Thread 6, The Woods.** First: it is where he stood.
+2. **Thread 5, The Mountains.** Beside The Woods on the map. It has the height already; it lacks winding ways and thin trails.
+3. **Thread 17, The Estate**, then **thread 12, Leylines**, then **thread 13, Antarctica**: the rest of the surface.
+4. **Thread 8, The D.U.M.B.** (the worst-looking zone in the pictures), then the underground: threads 7, 9, 10.
+5. **Thread 11, Heaven + Hell + Vatican**, then threads 14, 15, 16, 18.
+6. **Thread 2, Disaster City (cramped)** shares no tool with any of these. It can run beside them whenever he says.
+
+### 4. HOW A THREAD RUNS
+
+- **ONE THREAD = ONE ZONE = ITS OWN SESSION.** A thread does its one zone and stops. **It never starts another zone itself.** It reports to
+  mondo, and mondo starts the next one. A report says which zone by its map name and lists the rooms it changed.
+- To start one, mondo says: "Do thread N of docs/plans/world-polish/WORLD_POLISH_PLAN.md."
+- The thread then:
+  1. `git fetch origin main && git merge origin/main` (CLAUDE.md RULE #1d). Reads this START HERE, section A, its own row in section D,
+     `docs/notes/owner-rules.md`, and the board (`docs/notes/claims.md`). Takes its zone's rows on the board in its first PR.
+  2. Reads how its rooms really stand: `ROOM_LAYOUTS.md` here, its zone's layout and tool. Looks at its pictures (`pictures/<place>/`), or takes
+     them (`node docs/plans/world-polish/shoot.js <its rooms>`).
+  3. **Shows mondo THE HEIGHT PLAN IN CHAT before it builds:** the zone's plots as a grid of levels (district by district), the main way drawn
+     winding through it, every thin trail and where it leads, the landmarks. He cannot see the repo: the grid and a picture go in the chat itself.
+  4. Builds one district first as the pilot, looks at it in the browser, shows him the pictures, and waits for his word.
+  5. Then district by district: edit the zone's layout / tool / district file, rerun the bake, browser look + proof pictures (RULE #1c),
+     `node bake-map.js <room>`, bump the token, PR, merge, upload (RULE #1).
+  6. Before its last PR: checks its rooms against THE CHECK in section A and writes the answers in its row here. Sets the row's state. Frees
+     its board rows. Reports. Stops.
+
+---
+
+## A. THE STANDARD IN NUMBERS (PROPOSALS: mondo changes any of them with one line)
+
+One level = 1.75 m (one battle block), as in the city.
+
+| What | The number proposed | Where it comes from |
+|---|---|---|
+| **District height ranges** | Each district of a zone gets its own range of levels. Two districts that touch differ by 2 levels (3.5 m) or more at their main crossing, or their ranges do not match. | The city: Civic 10 to 14, Financial 8 to 12, University 6 to 12, Hero Plaza 5 to 9, Entertainment 3 to 7, Southside 3 to 7, Sports + Culture 1 to 4, Bayside 0 to 3, Industrial 0 to 2 (`docs/disaster-city/levels.js`). |
+| **Plot levels inside a district** | 3 or more different levels in a district. Along the main way, never more than 2 plots in a row on one level, unless the place is level on purpose. | The city: most districts span 4 or 5 levels over 16 plots. |
+| **Relief inside a plot** | At least half of a district's plots have ground shaped inside them: a hill, a hollow, a bank, a gully, a shelf (0.5 m to 2 levels). The rest roll gently. | The city's `pieces` (the sunk canal, the amphitheatre, the sunk court) and its stairs and ramps inside plots. |
+| **Grades** | 1 level a plot (6.25 %) is a walk. 2 levels a plot (12.5 %) is a hill. More than that is a step: a stair, a ramp, a switchback or a climb crosses it. | The city's street grades; `bake-woods.js` uses the same. |
+| **A main way** | **3 squares wide** (10.5 m). 4 only for a road that cars use or a street meant for skating and fights. Never 5. | The Woods' main trail is 3 squares since 11-15 ("dirt trails like the main roads"). |
+| **A thin trail** | **1 or 2 squares wide.** | The Woods' paths are 1 square since 11-15 ("smaller dirt paths ... like alleyways from disaster city"). |
+| **Winding** | No way runs straight for more than **8 squares** (28 m). A main way changes direction at least once a plot. | His "long straight boring pathways". |
+| **Branches** | At least **one thin trail off the main way every 2 plots.** Each ends at something: another district, another zone, a secret, a view, a clearing. Never a dead wall. Every district can be crossed by 2 different ways. | His "always be branches and different routes ... that lead to different zones or districts". |
+| **Orientation** | Each district has one landmark seen from its main way, and high ground behind low ground. From any high place you see the next district or a landmark. | "The point is to help the player orient themselves in the world." |
+| **A fight still fits** | One level place a board fits on (8 x 8 squares) every 3 plots along the main way: a clearing, a yard, a ledge. Height in whole levels there, so a field fight reads it as tiers. | The battle grid (`HQ_FIELD_RULES`). |
+
+**THE CHECK (a thread answers these for every room before it says done):**
+1. Stand at each door of the room. Can you tell which way is up, and see a landmark?
+2. Print the plot levels as a grid. Do the districts stand at different ranges? Are there 3 or more levels in each?
+3. Trace the main way. Is any leg longer than 8 squares straight? Is it wider than 3?
+4. Count the thin trails. One every 2 plots? Where does each one lead?
+5. Is at least half of the plots shaped inside?
+6. Is every level place level on purpose, and written down as that?
+
+## B. HOW DISASTER CITY IS REALLY BUILT (checked 2026-11-20; this is the pattern to copy)
+
+- **The numbers are one small file:** `docs/disaster-city/levels.js`. `grid[y][x]` = the level of the plot standing at x, y. 0 = Bayside at
+  the sea, 14 = City Hall (24.5 m). The ground falls east to the sea and south to the desert. So anywhere in the city, downhill is the sea.
+  That is the orientation he means.
+- **Relief inside a plot** is the same file's `pieces`: a `bowl` sinks, a `mound` rises, with sloping sides.
+- **The tool turns the numbers into the room's HEIGHT BASE** (`node bake-disaster-city.js`, THE LEVELS): `terrain.slope.cells`, four corner
+  heights for every square (data.js `hqTerrainSlopeFn`, "THE LEVELS"). Plots are flat near their middle, streets slope between plot middles,
+  a stair or a ramp stands where a walk crosses two levels (100+ flights, about 40 ramps), a retaining wall where nothing crosses.
+- **Everything authored stands ON the base.** Plateaus, ramps, bridges, walls, buildings, drawn rows, lamps and props ride it with no edit in
+  a district file. So a base can be laid under a room that is already dressed.
+- **The ways:** the city's own line for itself is "a city walked as a maze of yards, alleys, doors and roofs between a few plain roads".
+  A few main roads; many thin ways.
+- Notes: `docs/notes/areas-complexes.md` "DISASTER CITY, THE LEVELS" and "DISASTER CITY, THE DISTRICT MOVE".
+
+**WHICH ROOMS HAVE A HEIGHT BASE TODAY** (read from data.js, 11-20; a room with no base holds whatever height it has as terrain rows, set pieces, on a level floor):
+
+| Has a base | Rooms |
+|---|---|
+| Yes, strong | Disaster City (15 levels); Mount Olympus (0 to 60 m), The Ski Lodge + Snowy Pass (46 m), Mount Shasta (36 m); Antarctica (62 m); Hell (28 m); The Deep (28 m), The Sea Floor; The Volcano Island; The Redwood Trail (3.5 to 14 m); The Vatican (13 m); Outer Space |
+| Yes, weak | The Clearing + Dead Man's Cave (0 to 3.5 m over 19 plots); The Ritual Ground (1.75 to 8.75 m); The North Pole (4.9 m); the Lake's room of The Estate (3.5 m); The Haunted House; the Beach's rooms; Leylines' Line (5 m), Stonehenge (2 m), Bug Colony (9 m) |
+| No base (level floor) | Came A Lot's rooms (the kingdom, the Snowy Pines, the Forest, the Fairy Forest, the Garden); The Desert's four rooms; The Sewers; The D.U.M.B.; The Cavern and its tunnels; Heaven; The Catacombs; The Internet; The Astral Realm; Babel + Technoticlan |
+
+**GROUNDWORK THAT IS PARKED, NOT MERGED:** branch `claude/woods-terrain-redo` (one commit, 11-20). It is for Came A Lot's tool, but its ideas
+serve any zone. Do not merge it as it is; a thread may take from it.
+- `bake-camelot.js`: a room design can give its room a height base (`k.base(fn)`), written as `terrain.slope.cells` like the city's.
+- `docs/areas/camelot/districts/room-kit.js`: `levels()` = plot levels with grades and rolling ground; `curve()` = a way that winds, 3, 2
+  or 1 squares wide; `arch()` = drawn rows anchored where they stand, so they do not float or sink on a base.
+
+## C. MONDO'S RULINGS (they bind every thread of this plan)
+
+- **Disaster City is the standard for every room** (11-20; section 1 above).
+- **Height has to give you something to do** (11-20: "This pass is not meant to just raise things for the sake of raising them. A pyramid is
+  already raised anyway, it's literally a tall monument. why do you want to make it taller?"). Build a climb, a view, a drop, a second way, a
+  place that is hard to reach. **Never lift a monument, a building or a whole district onto a step.** Ask "is it like that in the real place?".
+  This does not argue with the standard: the standard shapes the LAND the buildings stand on, the way the city's ground does.
+- **Never say a thing cannot be raised** (11-20: "You are the one that drew them ... It's one z value"). Whether to raise it is a design call.
+- **FREE TO MOVE, CHANGE AND GROW** (11-20: "you have freedom to move and change and make bigger whatever you need to, that is the whole point
+  of this pass"). Do not stop to ask before growing a room, moving plots or changing a layout or a shared tool: note it on the board and do it.
+- **Level on purpose:** streets you fight and skate on (Main Street), an airfield and its lake bed, a fairground (the Circus), fields, plazas.
+  (11-20: "Yes its okay if some areas are still flat".) A thread writes down each place it left level and why.
+- **THE HIGHWAYS AND ROUTES ARE NOT IN THIS PLAN** (11-20: "I want to make the highway system much better and more accurate, so that would
+  require its own thread"). No thread of this plan edits `bake-route.js`, a `site_ow_*` room or the Desert Highway.
+- **No long straight boring ways** (11-20, quoted in section 1). Every walk, trail and tunnel winds, branches and has a second way round.
+- **Growing is approved** (11-20: "Yes that is all good"): the Catacombs to 12 plots, Pirates' Cove to 9, the Sewers' 2-plot districts to 4 to
+  6, the Frozen Sea grown (taken as "grow it": ask again before folding it into the North Pole).
+- **DISASTER CITY FEELS CRAMPED** (11-20: "The city is where I feel cramped, like there are too many buildings and it might help if some
+  districts are made bigger ... There are stairs that lead straight into a wall or collide with a building ... if the city needs to be made
+  bigger that is fine"). That is thread 2.
+- **Do not go over what was already built** (11-20: "id rather you not go over what you already did, start somewhere else"). Threads 1, 3 and
+  4 are not redone unless he asks.
+
+## D. THE THREADS, ONE ZONE EACH
+
+Read your row. "The base today" is what the room's ground is now. "To reach the standard" is the job. The audit's scores are in the appendix;
+they are measurements, not the job.
+
+### Thread 6: THE WOODS (not started; next)
+- **Zone:** The Woods. Districts: The Clearing (C), Dead Man's Cave (M), The Redwood Trail (T), The Ritual Ground (G), and the trail plots (L).
+- **Rooms:** `site_prebuilt_fairy_forest_ow_clearing` (19 plots: the Clearing + Dead Man's Cave), `site_prebuilt_fairy_forest_ow_redwood`
+  (9 plots), `site_prebuilt_fairy_forest_ow_ritual` (18 plots: the Ritual Ground + 9 trail plots).
+- **It is NOT:** Came A Lot's Snowy Pines, Forest or Fairy Forest (thread 3, `camelot_ow_*`). Not the trails `site_ow_l3` / `l4` (the routes' thread).
+- **Tool + files:** `bake-woods.js`, `docs/areas/woods/layout.json`, `districts/C T G M.js`.
+- **The base today:** it HAS one (plot levels from `layout.json`, written as `terrain.slope.cells`). What is really missing:
+  1. **The room mondo walked is one straight row.** The Clearing's room is 12 plots end to end, west to east, with a few plots off it. The
+     main trail runs down that row. A row of plots is a straight path by its layout; no dressing fixes that.
+  2. **That row is nearly level.** Its 12 plots stand at levels 1, 2, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0: 3.5 m over 504 m. The Clearing (0 to 2)
+     and Dead Man's Cave (0 to 1) share one height range, so you cannot tell the two districts apart by the land.
+  3. **Each plot is a flat pad:** level over its middle, one straight grade to the next. No hills, hollows or banks inside plots.
+  4. **The ways:** the main trail is 3 squares and the paths are 1 (good), but they follow the plan's straight joins from plot to plot.
+  5. **The Ritual Ground's 9 trail plots** are a bare straight line (the audit's worst plots in the zone; the pictures say the same).
+- **To reach the standard:**
+  - Give each district its own range. Proposal: the Redwood Trail stays the mountain side (levels 2 to 8, it has it). The Ritual Ground a high
+    bowl round its lake (3 to 6). The Clearing a rolling middle ground (2 to 5), the Old Tree on a rise you see from the Stair. Dead Man's
+    Cave falls away east into its ravine and the Storm Drain (4 down to 0), so walking east is walking down into the creek's valley.
+  - Break the row. Add plots north and south of it (free to grow) so the main trail leaves the line, climbs over a ridge, drops into a
+    valley, and comes back. Loops, not a corridor.
+  - Shape the plots: ridges between plots, hollows, the creek in a real cut with banks, shelves on the Redwood side.
+  - Wind every way (no leg over 8 squares). Thin trails every 2 plots that lead somewhere: to the Estate's fence line, to Came A Lot, to
+    the Redwood Trail's shelf, to the cave, to a hidden glade.
+  - The 9 trail plots: bends, side glades, a second way round.
+  - Falls where the creek crosses a level (the Redwood Trail has 12 water rows and 1 fall).
+- **Leave:** the trees (his "Good, keep them", 11-15). The cabin has no game role yet.
+
+### Thread 5: THE MOUNTAINS (not started)
+- **Zone:** The Mountains. Districts: The North Pole village (N), The Snowy Pass (P), The Ski Lodge (K), Mount Olympus (O), Mount Shasta (S).
+- **Rooms:** `site_prebuilt_northpole_plots` (16), `site_prebuilt_shasta_ow_lodge` (29: the Ski Lodge + the Snowy Pass),
+  `site_prebuilt_shasta_ow_shasta` (20), `site_prebuilt_shasta_ow_olympus` (19).
+- **It is NOT:** the Snowy Pines (Came A Lot's, thread 3). Not the Polar Trail or the trail from the Pines to the Ski Lodge (routes).
+  Not the Hollywood Hills (Disaster City's district N).
+- **Tool + files:** `bake-mountains.js`, `docs/areas/mountains/layout.json`, `districts/N P K O S.js`.
+- **The base today:** strong on the three mountain rooms (36 to 60 m). Weak on the North Pole (4.9 m; 9 of 16 plots dead flat).
+- **To reach the standard:** the mountains have the height and lack the ways. One thin ribbon climbs through solid rock (2.6 to 2.8 squares
+  wide, less than half of each plot walkable). So: thin trails off the main trail that lead somewhere (a ledge with a view, a cave, a short
+  hard way up by a chimney climb, a rope bridge to the next shoulder); a second way up each mountain; a level ledge a board fits on every 3
+  plots; falls (Shasta has 3 pools and no fall). The main trail stays a mountain trail, 3 squares at most. The North Pole: give the village
+  levels (the workshop up, the square down, a sledding hill behind), lanes that wind between the houses, and open its solid half.
+
+### Thread 17: THE ESTATE (not started)
+- **Zone:** The Estate. Districts: The Corn Fields (C), The Lake (L), The Ranch (R), The Haunted House (H).
+- **Rooms:** `site_prebuilt_skinwalker_ow_lake` (47 plots: the Ranch 26, the Corn Fields 12, the Lake 9, County Lane through them),
+  `site_prebuilt_skinwalker_ow_house` (9).
+- **It is NOT:** The Woods' Fence Line (thread 6). County Lane's road itself is the route kit's (`bake-route.js R7`): its squares stay as they are.
+- **Tool + files:** `bake-estate.js`, `docs/areas/estate/layout.json`, `districts/C L H R.js`.
+- **The base today:** weak (3.5 m over 47 plots). The Haunted House scores well and is a model.
+- **To reach the standard:** the Ranch is 26 plots of level ground: give it ranch country (a rise the house stands under, a creek cut, a
+  ridge with the fence line on it, a hollow for the barns) so the Ranch, the Lake's shore and the House each sit at their own height.
+  Ways wind; thin trails to the Lake, the House, The Woods. The corn fields stay level (fields: level on purpose), but the paths cut in the
+  corn wind and branch (the corn is the wall).
+
+### Thread 12: LEYLINES (not started)
+- **Zone:** Leylines. Districts: The Ley Line (Y), Babel (T), Technoticlan (Z), Stonehenge (S), Göbekli Tepe (G), Bug Colony (B).
+- **Rooms:** `site_prebuilt_gobekli_ow_line` (18), `site_prebuilt_gobekli_ow_babel` (29: Babel + Technoticlan),
+  `site_prebuilt_gobekli_ow_henge` (9), `site_prebuilt_gobekli_ow_bugs` (15; written through `bake-route.js L14`: ask on the board first).
+- **It is NOT:** the Desert (thread 1) or Giza.
+- **Tool + files:** `bake-leylines.js`, `docs/areas/leylines/districts/G B S Y T Z.js`.
+- **The base today:** weak on the Line (5 m, all 9 Ley Line plots at 0.1 m of relief). None under Babel + Technoticlan. Stonehenge, Göbekli
+  Tepe and Bug Colony look good in the pictures.
+- **To reach the standard:** the Ley Line is one glowing straight line: the LINE stays straight (it is a ley line), the WALK beside it does
+  not. The land rises and falls beside it; the path crosses the Line, leaves it, comes back. Babel and Technoticlan get a base: each at its
+  own range (Babel's tower is a monument: it is not lifted; the land round it is shaped). Dressing on the 17 bare plots.
+
+### Thread 13: ANTARCTICA (not started)
+- **Zone:** Antarctica. Districts: The Station (S), The Ice Wall (W), The Crevasse (C), The Shelf Ice (F), The Hull in the Ice (H),
+  The Polar Openings (O).
+- **Rooms:** `site_prebuilt_antarctica_plots` (36).
+- **It is NOT:** the Frozen Sea (the Beach's, `bermuda_ow_frozen`). Not the North Pole (the Mountains').
+- **Tool + files:** `bake-antarctica.js`, `docs/plans/world-zones/draw-antarctica.js` (the height sheet is the map), `districts/H W C S O F.js`.
+- **The base today:** strong (62 m). The Station is a model.
+- **To reach the standard:** it has the height. It lacks orientation and ways: empty one-colour fields with nothing to steer by. Landmarks
+  (wrecks, camps, coloured things, blue ice), a winding way with thin trails, the Ice Wall as a wall you climb with stairs cut in it and a
+  walk on top, ice bridges over the Crevasse.
+
+### Thread 8: THE D.U.M.B. (not started; the worst-looking zone in the pictures)
+- **Zone:** The D.U.M.B. Districts: CERN, The Ring (K), Level P3 (P), Sub-Level 7 (S), Research (R, with the White Rooms), Command (C).
+- **Rooms:** `site_prebuilt_dumb_base` (49 plots, all underground).
+- **It is NOT:** Area 51 above it (the Desert), Hangar 18 or the White Rooms of the Desert's insides.
+- **Tool + files:** `bake-dumb.js`, `docs/areas/dumb/layout.json` (written by `docs/plans/world-zones/draw-dumb.js`), `districts/K P S R C.js`.
+- **The base today:** none. One level floor; near-empty halls. Sub-Level 7 is the only district with stairs and levels: copy it.
+- **To reach the standard:** a base is called LEVELS down here, and the name says it: the districts are sub-levels and should stand at
+  different depths, joined by stairs, ramps and lifts, so going deeper is going down. P3 as a ramped two-deck garage. Galleries over the
+  Ring's beamline on two levels. A bridge over a pit in Command. A mezzanine in Research. Corridors turn and branch; side rooms and service
+  ways are the thin trails. Fill the halls or make them smaller.
+
+### Thread 7: THE UNDERGROUND WALKS (not started)
+- **Zone:** the walks under the map. They belong to two zones' tools, which is why this thread runs before threads 9 and 10.
+- **Rooms:** `site_prebuilt_hollow_earth_ow_long` (10), `_ow_tunnelway` (34), `_ow_west` (18), Agartha's tunnel in
+  `site_prebuilt_hollow_earth_ow_agartha`; the under-city walks (district U, 35 plots) of `site_prebuilt_downtown_underworld`.
+- **It is NOT:** the Cavern's caves (thread 9) or the Sewers proper (thread 10).
+- **Tool + files:** `bake-cavern.js`, `bake-sewers.js` (their walk rooms).
+- **The base today:** none. 100 plots of corridor 3 squares wide at 0 m of relief.
+- **To reach the standard:** mondo's own ruling (11-20): a chamber every 3 or 4 plots, on two levels, with one thing in it (an underground
+  river and fall, a rock bridge over a drop, a collapse you climb, a crystal pocket). **Always branches:** side tunnels off the chambers that
+  lead to other districts and zones. The tunnel between chambers bends and climbs or falls; the Long Tunnel runs from Agartha to the Cavern
+  and should go DOWN, so you know which way you are walking. The corridor stays narrow (3). It does not get wider; it gets a shape.
+
+### Thread 9: THE CAVERN (not started; after thread 7, same tool)
+- **Zone:** The Cavern. Districts: The Cavern (K), Hollow Earth (H), Agartha (A).
+- **Rooms:** `site_prebuilt_hollow_earth_cavern` (24), `site_prebuilt_hollow_earth_ow_agartha` (15).
+- **It is NOT:** the tunnels (thread 7). Not the Sewers.
+- **Tool + files:** `bake-cavern.js`, `docs/areas/cavern/layout.json`, `districts/K H A.js`.
+- **The base today:** none. Big caves with level floors (17 of 23 plots dead flat). The Cavern (K) has three tiers as set pieces.
+- **To reach the standard:** the three districts at three depths. Hollow Earth's floor terraced down to the Inner Sun, so the Sun is always
+  downhill and always in sight. Agartha on three shelves joined by stairs and crystal bridges. Winding ways along the ledges, thin trails
+  into side caves.
+
+### Thread 10: THE SEWERS (not started; after thread 7, same tool)
+- **Zone:** The Sewers. Districts: The Sewers (W), The Running Tunnels (T), The Holding Cells (H), The Old Workings (O), The Radioactive Drain (R).
+- **Rooms:** `site_prebuilt_downtown_underworld` (65 plots, with thread 7's walks).
+- **It is NOT:** Disaster City above it. Not the Catacombs.
+- **Tool + files:** `bake-sewers.js`, `docs/areas/sewers/layout.json`, `districts/W T H O R.js`.
+- **The base today:** none as a base; 21 m of span as set pieces (the Old Workings hold 23 m on two plots).
+- **To reach the standard:** water runs downhill: let the whole zone fall one way, so the flow tells you where you are. Each district at
+  its own depth. Weirs and falls on every level change. The 2-plot districts grown to 4 to 6 (approved). It is a maze already; keep the
+  walks narrow, add the side pipes and ledges that lead somewhere.
+
+### Thread 11: HEAVEN + HELL + VATICAN (not started)
+- **Zone:** Heaven + Hell + Vatican. 14 districts.
+- **Rooms:** `site_prebuilt_heaven_plots` (26), `site_prebuilt_hell_plots` (16), `site_prebuilt_vatican_plots` (33),
+  `site_prebuilt_vatican_under` (The Catacombs, 6).
+- **It is NOT:** one room. Four rooms; this thread is big. It may report after each room.
+- **Tool + files:** `bake-afterlife.js`, `docs/plans/world-zones/draw-afterlife.js` (the map), `docs/areas/afterlife/districts/`.
+- **The base today:** Hell strong (28 m, the best shape in the world). The Vatican 13 m. Heaven none. The Catacombs none.
+- **To reach the standard:** Hell has the land and you cannot read it: black on black. It needs LIGHT and landmarks (torches, lava glow,
+  colour), not more height. Heaven needs a base: the Gate low, the Stairway climbing, the City on top, the Rim a real walk round the edge
+  (15 % walkable today). The Catacombs grown to 12 plots (approved) on two levels, with galleries that turn and branch. The Vatican: dress
+  the Square and the Cloister; the Colosseum, the Gardens and the Basilica are done.
+
+### Thread 14: THE INTERNET (not started)
+- **Rooms:** `site_prebuilt_internet_web` (71 tiles over a glowing grid). **Tool:** `bake-internet.js`, `docs/areas/internet/districts/`.
+- **It is NOT:** a city: no buildings, cars or roads (plan 3: cyberspace).
+- **The base today:** none. 56 of 71 plots dead flat, every island at one height.
+- **To reach the standard:** each district's islands at their own height range, stepped inside a district, joined by the moving platforms it
+  already has. Ways between islands branch. The Information Highway may stay straight if it is meant as one (ask in the height plan); the
+  walks off it are not.
+
+### Thread 15: THE ASTRAL REALM (not started)
+- **Rooms:** `site_prebuilt_lookingglass_realm` (45 plots, islands over the void). **Tool:** `bake-astral.js`, `districts/S L N.js`.
+- **It is NOT:** the Looking-Glass Garden. That is Came A Lot's district (`camelot_ow_garden`), left alone as a model.
+- **The base today:** none. Each island at one height.
+- **To reach the standard:** the three districts (the Sea of Possibility, the Library, the Nightmare) at three heights (which is high and which is low goes in the
+  height plan for mondo), islands stepped,
+  bridges that climb and turn, small islands off the way as the thin trails.
+
+### Thread 16: THE DEEP (not started)
+- **Rooms:** `site_prebuilt_atlantis_deep` (31), `site_prebuilt_atlantis_ow_floor` (9). **Tool:** `bake-deep.js`, `districts/C R S T.js`.
+- **It is NOT:** the Beach or its sea. Not the Temple's dry inside.
+- **The base today:** strong (28 m; the Trench drops 27 m).
+- **To reach the standard:** it has the land. 20 of 31 plots are bare, so there is nothing to steer by: ruins, kelp, wrecks, landmarks;
+  ledges down the Trench wall a board fits on; ways that wind between the rings with side ways into ruins.
+
+### Thread 18: OUTER SPACE (not started)
+- **Rooms:** `site_prebuilt_moon_plots` (95 real plots; one room you fly through). **Tool:** `bake-space.js`, `docs/areas/space/districts/`.
+- **It is NOT:** the Spaceship (handmade).
+- **The base today:** strong on the Crater, the Canyon and the Drop; the Mare and Cydonia are flat.
+- **To reach the standard:** crater rims, a rille, a mesa field on the Mare and Cydonia; landmarks (83 of 95 plots are bare); ways that
+  follow the rims and branch into craters.
+
+### Thread 2: DISASTER CITY, THE CRAMPED CITY (not started; can run beside any other)
+- **Rooms:** `site_prebuilt_downtown_streets` (the 144 plots + the Hollywood Hills + the Bayside beach).
+- **It is NOT:** a height job. The city IS the standard for height. Not the beach (the One Beach thread).
+- **Tool + files:** `bake-disaster-city.js`, `docs/disaster-city/` (`city-layout.json`, `levels.js`, `districts/`). The owner side holds the city.
+- **The job** (his words are in section C): STEP 1, a city audit the first audit could not do: every stair, ramp and walkway that ends in a
+  wall or runs into a building; every gap between two buildings under 2 squares; every plot with more buildings than it can hold. A list
+  with pictures, shown to mondo in chat. STEP 2: fix the collisions. STEP 3: thin or spread the worst plots, and grow the districts that
+  need it (42 free plots stand beside the city; growing moves the roads and seams round it, so that plan is shown first).
+
+### Thread 19: THE BEACH (held by the One Beach thread)
+- **Rooms:** `site_prebuilt_bermuda_beach` (20), `_ow_cove` (Pirates' Cove, 5), `_ow_frozen` (The Frozen Sea, 3), `_ow_triangle` (10),
+  `_ow_volcano` (10).
+- **State:** another thread is making Disaster City's Bayside beach and the Beach zone one beach. Nothing here starts until it reports.
+- **Then, to reach the standard:** Pirates' Cove grown to 9 and the Frozen Sea grown (both approved), each with a cove wall, a cliff path, a
+  cave. The Volcano Island and Pirates' Cove look good in the pictures.
+
+### Built already (not on the next list; kept here so the record is true)
+
+**Thread 1, THE DESERT, built 11-19** (PRs 2195, 2197, 2198). Rooms `site_prebuilt_area51_ow_giza`, `_ow_town`, `site_prebuilt_area51_desert`
+(Area 51), `_ow_circus`. Built: Giza's dunes on the Sand Sea, the Canyon Stair to a lookout, the Deep Cut; Western Town's Boot Hill (4.6 m),
+the Gulch and its plank bridge, the Ridge Trail to an outlook; Area 51's Watchers' Peak over the wire and a dune line. Left level on
+purpose: the monuments, Main Street, everything inside the wire, the whole Circus. **How it differs from the standard:** no height base;
+the hills are set pieces on a level desert. Notes: areas-complexes.md "THE DESERT, GIZA", THE VERTICALITY PASS.
+
+**Thread 3, CAME A LOT KINGDOM'S THREE WOODS, built 11-20** (PRs 2229, 2231, 2236). Rooms `site_prebuilt_camelot_ow_pines` (the Snowy Pines,
+22 plots, was 8), `_ow_forest` (the Forest, 21, was 9), `_ow_fairy` (the Fairy Forest, 13, was 6). Built: each room grown to three plots
+wide and designed in its own frame (`docs/areas/camelot/districts/N-room.js`, `W-room.js`, `F-room.js`); the Pine Ridge and its Lookout, the
+Frozen Gully under the Log Bridge, the Forest's Hollow and Bluff, the Fairy Forest's knolls and hollow; snow land round the Pines.
+**How it differs from the standard:** set-piece height on level ground (no height base), and wide ways (the Crown's Road is 5 squares)
+drawn in straight legs. Left on purpose: the Looking-Glass Garden (`_ow_garden`, a model). **This is NOT The Woods (thread 6).**
+
+**Thread 4, CAME A LOT KINGDOM, THE VILLAGE, built 11-20** (PR 2239). Room: inside `site_prebuilt_camelot_kingdom`. Built: three stone stairs
+up to the town wall's walk (seven ways up now), the churchyard opened. Not built, on his ruling against lifting buildings: the church on a
+rise, the market sunk. **How it differs from the standard:** the town stands on level ground. NOT the Castle (the castle thread's).
+
+## E. THE KIT (what to build height and ways from)
+
+All of it exists today. The base: `terrain.slope.cells` (section B). On the base, the terrain rows: `plateau`, `hill`, `ridge`, `dip`
+(ground), `ramp`, `climb`, `spiral`, terrain `stairs` (ways up), `bridge`, `deck` (ways over), `fall`, `stream`, `pool` (water), `wall`,
+`rail` (edges). Rules that hold for every use:
+1. **The base first, the pieces second.** A ridge row on a level floor is a set piece. The same ridge between two plots at two levels is land.
+2. **Every level has two ways up:** one you walk (a ramp, stairs, a switchback) and one you find (a climb, a ledge chain, a fallen trunk).
+   The owner's rule on secrets ("hard to reach vertically") lives here.
+3. **Stairs are real pieces on whole squares** ("no procedural stairs"); walkways are whole cells wide.
+4. **Fights:** where a fight should happen, height in whole 1.75 m levels on a level place a board fits on. Elsewhere the land may roll.
+5. **Skate lines** (hard-ground districts): every ramp and stair keeps 10 m clear before it and 6 m after; a rail down each long stair and
+   along each terrace edge; drops under 1.6 m where a line crosses a level.
+6. **A waterfall needs a reason** (a stream above, a pool below) and a way behind or beside it. Cliffs wear `rocks_5`.
+7. **Seams stay level.** The squares where a way leaves a room keep their height, so the neighbour still matches.
+8. **A view pays for a climb:** each district gets one high place from which you see its landmark and the next district.
+
+## F. WHAT THE PICTURES SAID (the screenshot audit, 2026-11-20; `SCREENSHOT_AUDIT.md` has the detail)
+
+323 of 406 pictures were taken, about 200 looked at; Disaster City, the Sewers and the Moon were NOT photographed. The pictures say many
+places are EMPTY and UNREADABLE: nothing to steer by. That is the standard's second line (orientation). Per thread:
+
+- **Thread 2 (Disaster City):** nothing learned, it was NOT photographed. Its first step is its own pictures (30 views, a few minutes).
+- **Thread 3 (Came A Lot's three woods; the pictures are from BEFORE it was built):** the Forest and the Snowy Pines were flat lawn / flat
+  snow with tree walls and a straight path. The Looking-Glass Garden is a model: left as it is.
+- **LESSONS FROM THREAD 3'S FIRST TRY, FOR EVERY THREAD (11-20; a pilot on the Snowy Pines was built, looked at and THROWN AWAY):**
+  1. The Snowy Pines' room (`site_prebuilt_camelot_ow_pines`) is NOT the plan sheet's 96 x 17 strip. One World re-laid it: its 8 plots stand in a
+     chain ONE PLOT WIDE (2 x 7 box, in the order P04, P03, P05, P02 | P01, P06, P00, P07), each moved on its own. So a ridge, a trail or a gully
+     drawn across plot lines in `districts/N.js` is cut apart, and a side trail that reaches a plot side with no neighbour is filled back with
+     trees by the tool (bake-camelot.js step 6b). **Design every piece INSIDE ONE PLOT**, and print the baked room's heights before a browser run.
+  2. What makes it look poor is the room, not the dressing (N.js already had five dressing passes): a white strip 42 m wide lying in summer
+     green lawn. The edge land is `edges: { world: true }`: it is drawn from the One World plots next to it, which are grass. The fix that would
+     show most is SNOW AND SNOW PINES ON THE LAND BESIDE IT (the One World plot kinds, `docs/plans/one-world/`, a shared file: board note first)
+     and the room 3 plots wide (both built since). Both are layout jobs, not district-file jobs.
+  3. Opening more squares (track to 4, two side trails, wider glades) made it WORSE: with one plot of width there are few pines left and it reads
+     as bare snow. A room one plot wide cannot be fixed inside its plots: grow the room. (The Woods' Clearing room is such a row.)
+  4. Probes: an enemy near the spawn starts a fight and ruins every picture: run with `--flags=EW_HQ_NO_ENCOUNTER` (PLAYTEST_NOTES "A PROBE THAT
+     NEVER GETS READY"). `shoot.js` does not pass it yet.
+- **Thread 4 (the Village):** the houses against the castle wall are the tight spot. The castle's blurry wall picture is the castle thread's.
+- **Thread 6 (The Woods, the zone):** the trail district (the Ritual Ground's link plots) is the long straight road mondo does not want. The
+  Redwood Trail and the Ritual Ground looked good in the pictures; by the standard they are still checked for winding ways and thin trails.
+- **Thread 8 (the D.U.M.B.): the worst-looking zone seen.** CERN, Command, Level P3 and Research are near-empty halls. Fill
+  them (machines, pipes, mezzanines, pits) or make the halls smaller; copy Sub-Level 7, which works.
+- **Thread 11 (Heaven + Hell + Vatican):** HELL NEEDS LIGHT, NOT HEIGHT: its shape is the best in the world and it is black on black. Torches,
+  lava glow on the rock, colour, landmarks. Vatican: dress the Cloister and the Catacombs; the Colosseum and the Gardens are done; the palace's
+  domes stand too close and wear a blurry picture. Heaven: not looked at.
+- **Thread 12 (Leylines):** the Ley Line is the job (flat and bare). Stonehenge, Göbekli Tepe and Bug Colony's flowers are good.
+- **Thread 13 (Antarctica):** it has its height already. The job is the empty one-colour fields of the Ice Wall and the Hull: landmarks, wrecks,
+  camps, coloured things, blue ice.
+- **Thread 19 (the Beach's small places):** the Frozen Sea is the barest small place. Pirates' Cove and Volcano Island are good; check the cone
+  wearing the water picture off Volcano Island.
+- **A new kind of job, in no thread yet: BIG WALLS ARE BLURRY UP CLOSE** (Came A Lot's castle, the Vatican's palace and domes: one stretched
+  stone picture). Ask mondo whether it gets its own thread (a tiling wall picture) or rides with each zone.
+- Not looked at yet, so unchanged: threads 5 (Olympus, the Ski Lodge), 7, 9, 10, 14, 15, 16, 17, 18.
+
+## G. OPEN QUESTIONS FOR MONDO
+
+1. The numbers in section A (main way 3 squares, thin trail 1 or 2, no leg over 8 squares straight, a thin trail every 2 plots, 2 levels
+   between districts): right, or change which?
+2. The order in START HERE section 3: The Woods first, then the Mountains, the Estate, Leylines, Antarctica, the D.U.M.B. and the underground.
+3. The Frozen Sea: grown (assumed) or folded into the North Pole. Asked again when the Beach's thread comes up.
+4. BIG WALLS ARE BLURRY UP CLOSE (section F): their own thread, or with each zone?
+
+---
+
+# APPENDIX: THE AUDIT (2026-11-19; measurements, not the job)
+
+mondo's first ask (2026-11-19): "an audit of the world, zone by zone and district by district, to determine which ones are too small or cramped
 and can be made bigger, or which ones need more work visually ... a verticality pass, where we add hills and ridges and waterfalls and ledges
-and valleys and walls and stairs and ramps and walkways ... which zones and districts + plots need the most love", designed for "third person
-exploration, the square battle grid, skateboarding, and aesthetics".
+and valleys and walls and stairs and ramps and walkways", for "third person exploration, the square battle grid, skateboarding, and aesthetics".
 
-## START HERE (a new thread picks the plan up from this section)
+The numbers below were measured before any thread built anything. They say where the world is tight, flat or bare. They do not say what to
+build: sections A and D do. Rerun: `node docs/plans/world-polish/audit.js` (about 5 minutes).
 
-**Where it stands (last updated 2026-11-20):** the audit is done (sections 0 to 3). The Desert is done (thread 1). The SCREENSHOT AUDIT is part done
-(`SCREENSHOT_AUDIT.md`: 323 of 406 pictures taken, about 200 looked at; Disaster City, the Sewers and the Moon NOT photographed; section 5b says what it changed). **Thread 3 (Came A Lot's woods) is DONE 11-20: the Snowy Pines, the Forest and the Fairy Forest, each grown and designed in its own room frame (proof pictures in `pictures/camelot_ow_pines/`, `camelot_ow_forest/`, `camelot_ow_fairy/`). Thread 4 (the Village) is DONE 11-20 (wall stairs, the churchyard). Next: thread 2 (Disaster City, the cramped
-city), then thread 5 (the Mountains).** The table in section 5 is the list of threads, in order, with what is done.
+**What the audit gets wrong** (learned in thread 1; read a score with this in mind): it counts a drawn mass (a pyramid's footprint) as
+walkable; a town's or an airfield's flat plots score as bad although they are meant; `hqTerrainFeet` answers nothing under a bridge.
+**And it cannot see the standard:** it scores a wide straight way as GOOD (roomy) and a room's relief by its biggest number, so a level row of
+plots with one deep creek cut reads as "has height". Never take a thread's job from a score.
 
-**To start a thread, say:** "Do thread N of docs/plans/world-polish/WORLD_POLISH_PLAN.md." The thread then:
-1. `git fetch origin main && git merge origin/main` (CLAUDE.md RULE #1d), then reads this section, its row in section 5, section 4 for its zone,
-   and mondo's rulings below. Then `docs/notes/owner-rules.md` and the board (`docs/notes/claims.md`): it takes its zone's rows there in its first PR.
-2. LOOKS AT ITS ZONE FIRST: reads its rows in `SCREENSHOT_AUDIT.md` and opens its pictures in `pictures/<place>/`; if the zone was not
-   photographed or not looked at (the list is at the top of that file), it runs `node docs/plans/world-polish/shoot.js <its rooms>` (one zone, a few
-   minutes; never the whole world) and adds its rows to that file in its first PR.
-2b. Reads the worked example before building: `docs/notes/areas-complexes.md` "THE DESERT, GIZA", THE VERTICALITY PASS (what rides the ground, how
-   steep, the traps), and its own zone's notes there.
-3. Does ONE district first as the pilot, looks at it in the browser, shows mondo the pictures, and waits for his word before the zone's other districts.
-4. Per district: edit the zone's district file (or its layout / tool when the ground itself has to change), rerun the zone's bake, print the heights
-   offline, browser look + proof pictures (RULE #1c), `node bake-map.js <room>`, bump the token, PR, merge, upload (RULE #1).
-5. Before its last PR: `node docs/plans/world-polish/audit.js` (5 minutes; commit the three tables), set its row in section 5 to DONE with one line
-   on what was built and what was left on purpose, and free its rows on the board.
-
-**HOW THE WORLD IS BUILT (the rules a thread must know BEFORE it designs; this plan left them out until 11-20 and its first pilot failed for it):**
+**HOW THE WORLD IS BUILT (the rules a thread must know BEFORE it designs):**
 - **A ZONE is made of DISTRICTS; a district is made of PLOTS** (one plot = 12 x 12 squares = 42 m). A plot has a NAME, which never changes, and
   an id `Pcc-rr`, which is only its column and row in the room it stands in today.
 - **A ROOM is not a zone.** One World (mondo's map v13) stood every plot at a world place and cut the zones into rooms by THE ROOM-SPLITTING RULE:
@@ -46,30 +478,7 @@ city), then thread 5 (the Mountains).** The table in section 5 is the list of th
   ROOM STANDS, THE ROOM-SPLITTING RULE, THE HORIZON READS THE MAP, HOW A ZONE MOVES) and your zone's "… THE DISTRICT FILES" section;
   `docs/plans/one-world/README.md` + `BUILD_PLAN.md` ("Rules every thread follows").
 
-**mondo's rulings so far (they bind every thread of this plan):**
-- **Height has to give you something to do** (11-20: "This pass is not meant to just raise things for the sake of raising them. A pyramid is
-  already raised anyway, it's literally a tall monument. why do you want to make it taller?"). Build a climb, a view, a drop, a second way, a
-  place that is hard to reach. Never lift a monument, a building or a whole district onto a step. Ask "is it like that in the real place?".
-- **Never say a thing cannot be raised** (11-20: "You are the one that drew them ... It's one z value"). A drawn piece (`arch` row) has one `y`,
-  and doors and props already follow the ground. Whether to raise it is a design call, to be argued as one.
-- **FREE TO MOVE, CHANGE AND GROW** (11-20: "you have freedom to move and change and make bigger whatever you need to, that is the whole point of this pass"). Do not stop to ask before growing a room, moving plots or changing a layout or a shared tool: note it on the board and do it.
-- **Level on purpose:** streets you fight and skate on (Main Street), an airfield and its lake bed, a fairground (the Circus), fields, plazas.
-- **THE HIGHWAYS AND ROUTES ARE NOT IN THIS PLAN** (11-20: "I want to make the highway system much better and more accurate, so that would
-  require its own thread"). No thread of this plan edits `bake-route.js`, a `site_ow_*` room or the Desert Highway. The audit's numbers for
-  them (section 2, tier 2) are there for that thread to use.
-- **No long straight boring ways** (11-20: "Im trying to avoid just long straight boring pathways. There should always be branches and different
-  routes you can take that lead to different zones or districts"). Every walk, trail and tunnel gets side branches and a second way round; a
-  branch should lead somewhere (another district, another zone, a secret), never to a dead wall.
-- **Flat is fine where it is meant** (11-20: "Yes its okay if some areas are still flat").
-- **Growing is approved** (11-20: "Yes that is all good"): the Catacombs to 12 plots, Pirates' Cove to 9, the Snowy Pines 3 plots wide, the Sewers'
-  2-plot districts to 4 to 6, the Frozen Sea grown (taken as "grow it": he was asked grow or fold and said all good; ask again before folding).
-- **DISASTER CITY FEELS CRAMPED** (11-20: "The city is where I feel cramped, like there are too many buildings and it might help if some districts
-  are made bigger ... There are stairs that lead straight into a wall or collide with a building ... if the city needs to be made bigger that is
-  fine"). The audit scored the city roomiest of all: it measures walkable ground, not how close the buildings stand or what a stair runs into.
-  So the city gets its own look first (thread 2: section 5).
-- Giza's pilot: "okay looks decent, continue" (11-19).
-
-Files here:
+**Files here:**
 - `audit.js` the tool that measured the world (`node docs/plans/world-polish/audit.js`, about 5 minutes). Its header explains every number.
 - `AUDIT_DATA.md` its tables: every place, every district, the worst plots of each place.
 - `plots.csv` all 1,514 plots, one row each.
@@ -77,7 +486,7 @@ Files here:
 - **`ROOM_LAYOUTS.md` HOW EVERY ROOM REALLY STANDS** (its size, its grid of plots, which plot is where, its place in the world; `node docs/plans/world-polish/layouts.js` rewrites it). READ YOUR ROOMS' ENTRIES BEFORE DESIGNING ANYTHING: One World moved many plots, a district file's home squares and a zone's plan sheet are NOT the room (thread 3's first pilot was drawn from the plan sheet and failed for it).
 - `SCREENSHOT_AUDIT.md` what the world LOOKS like, place by place (11-20, part done) + `pictures/` (three a district) + `shoot.js` the tool that takes them.
 
-## 0. How it was measured, and what it cannot tell
+## 0. How it was measured (11-19), and what it cannot tell
 
 Every plot-built room that is not retired (62 rooms) was sampled one point a 3.5 m square, from the real game data, with the same
 ground reads the map uses. For each plot the tool knows: how much of it you can walk, how wide the walkable ways are, whether an
@@ -95,18 +504,18 @@ there). NEED = their sum.
 - **Outer Space** is one room you fly through. 505 of its 600 plots are the empty gaps between worlds and were left out; the other 95 are counted.
 - The Vatican reads 8.8 m of relief on most plots. That number was not checked against the room and is not used below.
 
-## 1. The yardsticks (what "good" means for the four things you named)
+## 1. The yardsticks the audit used (for ways and height, section A is the rule; this table is how the scores were made)
 
 | For | The numbers the game already uses | So a plot should have |
 |---|---|---|
-| Third-person exploration | camera behind the body; a square is 3.5 m | main ways 5+ squares wide (17 m), side trails 3; something to see over or climb to every 2 or 3 plots |
-| The battle grid | the PvP board is 8 x 8; a field fight takes 12 x 12 (6 x 6 at least) and reads up to 3 tiers of 1.75 m (`HQ_FIELD_RULES`) | one 8 x 8 window with 52+ walkable squares on the plot or its neighbour; height built in 1.75 m steps on terraces 6+ squares wide, never as noise |
+| Third-person exploration | camera behind the body; a square is 3.5 m | room for the camera on a way (the audit scored paths under 3 squares as tight); something to see over or climb to every 2 or 3 plots. THE WIDTHS TO BUILD ARE SECTION A: a main way 3 squares, a thin trail 1 or 2 |
+| The battle grid | the PvP board is 8 x 8; a field fight takes 12 x 12 (6 x 6 at least) and reads up to 3 tiers of 1.75 m (`HQ_FIELD_RULES`) | one 8 x 8 window with 52+ walkable squares on the plot or its neighbour; height in whole 1.75 m levels where a fight should happen |
 | Skateboarding | a ramp needs 10 m clear before it and 6 m after (`HQ_TERRAIN_RULES.rampRunUp / rampLanding`); rails are whole squares long, under 0.7 m | long lines of hard ground, banks and stairs with a clear run-up, rails along edges and down stairs, drops you can ollie (under 1.6 m) |
 | Looks | each area is the ULTIMATE form of its idea; nothing bare, nothing repeated | 14+ pieces a plot, a landmark a district, a skyline (high ground behind low ground) |
 
 Today, across the measured world: **48 % of plots are dead flat** (under 0.6 m of relief), and **the whole built world outside
 Disaster City holds 19 hill / ridge rows, 26 waterfalls and 9 climbs**. The Hollywood Hills alone have more height than every
-route and the whole Desert together. So the verticality pass is the biggest single win, and it is mostly terrain rows, which cost no models and almost no memory.
+route and the whole Desert together. So height is the biggest single win. By the standard it starts with a height base under the room (section B), not with terrain rows on a level floor.
 
 ## 2. The ranking: who needs the most love
 
@@ -120,9 +529,9 @@ NEED is 0 to 9 (district average). S / V / A = space / height / dressing, each 0
 | 2 | **The Sewers' under-city walks** (district U) | 35 | the same: 3 wide, 30 of 35 dead flat, 3 pieces a plot | 7.5 |
 | 3 | **Heaven, The Rim** | 6 | 15 % walkable, 2 squares wide, nothing stands on it | 8.3 |
 | 4 | **The D.U.M.B., CERN the Ring** | 22 | 33 % walkable, 21 of 22 dead flat, 19 bare | 7.2 |
-| 5 | **Came A Lot, The Snowy Pines** | 8 | 31 % walkable, paths 2.8 wide, 0 m relief, no board on 7 of 8 | 6.9 |
+| 5 | **Came A Lot, The Snowy Pines** | 8 (22 since thread 3) | 31 % walkable, paths 2.8 wide, 0 m relief, no board on 7 of 8 (measured before thread 3) | 6.9 |
 | 6 | **The Internet, The Information Highway** | 12 | 44 % walkable, flat, 11 of 12 bare | 6.7 |
-| 7 | **Came A Lot, The Forest** | 9 | 31 % walkable, 2.7 wide, all 9 dead flat (well dressed) | 5.6 |
+| 7 | **Came A Lot, The Forest** | 9 (21 since thread 3) | 31 % walkable, 2.7 wide, all 9 dead flat (well dressed; measured before thread 3) | 5.6 |
 | 8 | **Antarctica, The Ice Wall** | 6 | 46 % walkable, 0.8 m relief on a WALL district, 4 pieces a plot | 5.7 |
 | 9 | **The Astral Realm, The Nightmare** | 13 | 3.4 wide, 8 dead flat, 7 bare | 5.3 |
 | 10 | **The Ley Line** | 9 | roomy, but 0.1 m relief on all 9 and 8 pieces a plot | 5.3 |
@@ -134,7 +543,7 @@ Also at 4.2 to 6.1, small: the wild link plots (the Ritual Ground's 9 "L" plots,
 
 ### Tier 2: roomy but flat (the verticality pass proper)
 
-These have space and mostly dressing; they are tables. Cheapest to fix: terrain rows only.
+These have space and mostly dressing; they are tables. The fix is a height base (section B), then the pieces on it.
 
 | Where | Plots | Relief a plot | Dead flat | Note |
 |---|---|---|---|---|
@@ -148,11 +557,11 @@ These have space and mostly dressing; they are tables. Cheapest to fix: terrain 
 | **The Internet** (8 districts) | 59 | 0 to 0.2 m | 48 | islands over a grid, all at one level |
 | **The D.U.M.B. Command, Research** | 14 | 0 m | 11 | |
 | **Heaven: The City, The Cloud Fields** | 8 | 0 m | 7 | |
-| **Disaster City: Financial, Industrial, Civic Center** | 48 | 0 to 0.8 m | 27 | owner side; lowest priority, the city is in good shape (NEED 1.5) |
+| **Disaster City: Financial, Industrial, Civic Center** | 48 | 0 to 0.8 m inside a plot | 27 | the plots are level pads; the city's height is BETWEEN its plots (15 levels), which this column does not show |
 
 ### Tier 3: has height, but cramped
 
-The mountains and woods have the relief already; the walkable part is a thin ribbon through solid mass.
+The mountains and woods measure as having relief; the walkable part is a thin ribbon through solid mass. (For The Woods the number misleads: see thread 6 in section D.)
 
 | Where | Plots | Walkable | Path width | No board fits |
 |---|---|---|---|---|
@@ -194,9 +603,9 @@ on the map nothing is boxed in. Two things do limit growth:
   plots to a heavy room is the expensive way to grow.
 - **Seams.** A room that grows over a route's plots moves the route's seam door.
 
-So grow in this order: **(a) widen the ways inside the plots a place already has** (most "cramped" places are 30 to 50 %
-walkable: the room is there, it is filled with solid mass), **(b) open the solid mass into side places** (a clearing, a ledge, a
-cave mouth), **(c) only then add plots.**
+So grow in this order: **(a) open the solid mass a place already has into thin trails and side places** (a clearing, a ledge, a cave mouth:
+most "cramped" places are 30 to 50 % walkable, the room is there), **(b) add plots where the shape of the room is the problem** (a room one
+plot wide is a corridor; mondo 11-20: free to grow). Never (c): making the main way wider. A wide way is what he does not want.
 
 | Place | Plots | Verdict |
 |---|---|---|
@@ -204,162 +613,11 @@ cave mouth), **(c) only then add plots.**
 | Pirates' Cove | 5 | Too small and bare (7 pieces a plot), 37 % walkable. Grow to 9: a cove wall, a wreck, a cave. 4 free sand plots beside it. |
 | The Catacombs | 6 | Too small for what joins there (the Vatican above, Hell below, a tunnel). Grow to 12: an ossuary, a flooded crypt, a lower gallery. |
 | The Sewers' Holding Cells, Old Workings, Radioactive Drain | 2 each | Districts of 2 plots. Each wants 4 to 6; the Old Workings already have 23 m of height on two plots. |
-| The Looking-Glass Garden, the Fairy Forest | 6 each | Small and 40 to 48 % walkable. Widen first (a); each has 4 to 9 free forest plots if that is not enough. |
+| The Looking-Glass Garden, the Fairy Forest | 6 each | The Garden is left as it is (a model). The Fairy Forest was grown to 13 plots by thread 3. |
 | The Circus | 9 | Small but full (46 pieces a plot). Leave the size; it needs height, not plots. |
 | Stonehenge, the Sea Floor | 9 each | Small, both score well. Leave. |
-| The Snowy Pines | 8 | 84 m wide: one plot of corridor each side of a trail. Widen to 3 plots across (14 free plots beside it). |
-| The Redwood Trail | 9 | The same shape (84 x 336) but it scores well; leave. |
+| The Snowy Pines | 8 | Was one plot of corridor each side of a trail. Grown to 22 plots, three wide, by thread 3. |
+| The Redwood Trail | 9 | A chain one plot wide (84 x 336 m). It scores well, but a chain is a corridor: thread 6 decides whether it grows sideways. |
 | Hell | 16 | Good shape, feels small for Hell. A candidate for a fifth district later; dress it first. |
-| The North Pole village | 16 | Enough plots, half of each is solid. Widen (a). |
-| The Long Tunnel | 10 | 42 m wide, 420 m long, one corridor. See 4.3. |
-
-## 4. The work, zone by zone
-
-### 4.1 The verticality kit (what to build height from)
-
-All of it exists in the terrain rows today: `plateau`, `hill`, `ridge`, `dip` (ground), `ramp`, `climb`, `spiral`, terrain
-`stairs` (ways up), `bridge`, `deck` (ways over), `fall`, `stream`, `pool` (water), `wall`, `rail` (edges), and the height sheet in
-each zone's `layout.json`. Rules that hold for every use:
-1. **Height in 1.75 m steps on terraces 6+ squares wide**, so a fight's field reads it as tiers and a board still fits. No lumpy noise.
-2. **Every level has two ways up**: one you walk (a ramp, stairs, a switchback) and one you find (a climb, a ledge chain, a fallen trunk).
-   The owner's rule on secrets ("hard to reach vertically") lives here.
-3. **Stairs are real pieces on whole squares** ("no procedural stairs"); walkways are whole cells wide.
-4. **Skate lines**: every ramp and stair keeps 10 m clear before it and 6 m after; hard-ground districts get a rail down each long
-   stair and along each terrace edge, and drops under 1.6 m where a line crosses a level.
-5. **A waterfall needs a reason** (a stream above, a pool below) and a way behind or beside it. Cliffs wear `rocks_5`.
-6. **Seams stay level.** The squares where a road leaves a room keep their height, so the neighbour still matches.
-7. **A view pays for a climb**: each district gets one high place from which you see its landmark and the next district.
-
-### 4.2 The Desert (thread 1, DONE) + every route (OUT of this plan: the highway thread's)
-
-| Place | Do |
-|---|---|
-| Giza | a real plateau: the pyramids stand 2 tiers above the causeway, a quarry cut (a dip with ledges), dunes as ridges on the open plots, a wadi |
-| Area 51 | a dry lake bed stays flat on purpose (4 plots); around it a ridge line with the gate in a cut, a bunker hill, berms round the hangars, a watch-tower rise |
-| Western Town | Boot Hill becomes a hill; a mesa behind Main Street with a switchback and a mine mouth; a gulch with a trestle bridge; Main Street itself stays level (skate, fights) |
-| The Circus | a low bowl round the Big Top, a midway on a terrace, a ridge of wagons |
-| The Desert Highway (4 rooms) | cuttings and embankments: the road stays level and skateable, the land rises and drops beside it; mesas, arroyos under culverts, one overlook a leg |
-| The 13 other routes | ONE change in the route kit (`bake-route.js`): each ground kind gets a relief recipe (peak / alpine: switchbacks and ledges; forest: banks and a stream gully; meadow: rolls; marsh: causeway over low water; coast: a cliff on the sea side). The road's own squares stay smooth. Then the Polar Trail and the Pines-to-Lodge trail get real climbs by hand. |
-
-### 4.3 The underground (threads 7 to 10)
-
-| Place | Do |
-|---|---|
-| The Cavern's tunnels + the Sewers' walks (100 plots) | Do NOT dress 100 plots of corridor. Every 3rd or 4th plot becomes a **chamber**: the whole plot opened (a board fits), on two levels, with one thing in it (an underground river and fall, a rock bridge over a drop, a collapsed stretch you climb, a crystal pocket, a flooded dip). Between chambers the corridor widens to 5 squares and slopes: the Long Tunnel runs from Agartha to the Cavern and should go DOWN. About 28 chambers. Approved by mondo 11-20, with BRANCHES: side tunnels off the chambers that lead to other districts and zones, so no walk is one straight pipe. |
-| The D.U.M.B. Ring | open the ring's inside wall into galleries over the beamline (2 levels, grated walkways, stairs every quarter); service bays as side rooms; widen the ring floor to 5 |
-| The D.U.M.B. P3, Command, Research | P3 = a car park: make it a ramped two-deck garage (the best skate spot underground); Command gets a raised bridge over a pit floor; Research a mezzanine |
-| The Catacombs | grow to 12 plots; vaults, a lower gallery by stairs, niches, bone stacks |
-| The Sewers proper | widen the walks to 4 or 5 where two channels meet; more weirs and falls (it has 3) on the level changes it already has (21 m of span) |
-| Hollow Earth, Agartha | terrace the cave floors down to the Inner Sun; Agartha's city on three shelves joined by stairs and crystal bridges |
-| The Cavern (K) | the three tiers exist; widen the ledges between them, add 2 chamber floors a board fits on |
-
-### 4.4 The woods, the mountains, Came A Lot (threads 3 to 6)
-
-| Place | Do |
-|---|---|
-| The Snowy Pines | widen to 3 plots across; a frozen stream in a gully, a pine ridge, drift banks; trails 4 wide with 2 clearings a board fits on |
-| The Forest (Came A Lot) | the Crown's Road to 5 wide; a hollow, a bluff with a hunters' stand, a ford; 3 clearings |
-| The Looking-Glass Garden | a sunken lawn, a raised terrace walk with a balustrade, steps between: a formal garden is the easiest place in the game to do levels well |
-| The Fairy Forest | knolls are in its plot names and it has 1.3 m of relief: raise them to real knolls with a hollow between and root stairs |
-| The Village | the town is flat on a table. Give the wall a walk you can climb to, drop the moat bank, put the market on the low ground and the church on a rise; widen the lanes to 4 (12 plots fit no board today) |
-| Mount Shasta, Mount Olympus, the Snowy Pass | keep the height; widen the trail to 4 to 5 squares, and turn every second switchback into a ledge 8 squares deep. Olympus' temples want forecourts. Add what is missing on a mountain: falls (Shasta has 3 pools and no fall), a rope bridge, a chimney climb as the short way |
-| The Woods (4 districts) | trails to 5 on the main way; open one clearing a district to a full board. Dead Man's Cave and the Redwood Trail already have the height: add 2 or 3 falls where the streams cross a level (the Redwood Trail has 12 water rows and 1 fall) |
-| The North Pole village | open the solid half: a square in the middle a board fits on, a sledding hill behind the workshop, an ice wall with stairs, the lanes to 4 |
-
-### 4.5 The first builds (threads 11 to 18): dressing passes, the shape is right
-
-Each of these needs the five passes the older zones had, not new terrain. In order of how much they give back:
-**Hell** (the height is superb and it is empty: parapets, chains, cages, the queue, embers), **Heaven** (the Rim rebuilt as
-a real walk, the City given levels: stairs of cloud, a gate on a height), **The Deep** (the Rings and the Trench: ruins,
-kelp, wrecks, ledges down the Trench wall a board fits on), **Babel + Technoticlan** (Babel's ramp as a place, not a slope),
-**Antarctica** (the Ice Wall as a WALL you climb with stairs cut in it and a top walk; the Crevasse with ice bridges),
-**The Vatican's Square and Cloister**, **The Internet** (levels: the districts at different heights joined by the moving
-platforms it already has; the Information Highway widened to a board), **The Astral Realm** (the islands at one height
-each: step them, widen the bridges to 3), **Outer Space** (the Mare and Cydonia: crater rims, a rille, a mesa field).
-
-### 4.6 Disaster City (thread 2; mondo 11-20: the city is CRAMPED, see its row in section 5: that comes before these three)
-
-The city is the best-scored place (1.5) and the skate capital (99 % hard ground, 300+ rails). Only three districts are tables:
-**Financial** (plazas on podiums with stairs and rails, a sunken court), **Industrial** (loading docks, a rail cutting, a gantry
-walk), **Civic Center** (a stepped forum). Small, and only on the owner side's say.
-
-## 5. THE THREADS, in order
-
-**How the work is cut:** ONE THREAD = ONE ZONE, because a zone has one bake tool and one layout, and two threads cannot edit the same tool.
-Inside a thread, one district at a time, the worst-scoring first as the pilot. Threads on DIFFERENT zones can run side by side. The order below
-is: the cramped surface first (the places a player walks through most), then the underground (worst scores, most new building), then the
-first builds that are bare, then the small places. NEED = the audit's score (section 2; 9 is worst).
-
-| # | Thread (zone) | Districts, worst first | Tool + files | What it mostly needs | State |
-|---|---|---|---|---|---|
-| 1 | **The Desert** | Giza, Western Town, Area 51, The Circus | `bake-desert.js`, `docs/areas/desert/districts/G W A C.js` | height | **DONE 11-19** (PRs 2195, 2197, 2198). Giza: dunes on the Sand Sea, the Canyon Stair to a lookout, the Deep Cut. Western Town: Boot Hill 4.6 m, the Gulch + its plank bridge, the Ridge Trail to an outlook. Area 51: Watchers' Peak over the wire, a dune line. LEFT LEVEL ON PURPOSE: the monuments, Main Street, everything inside the wire, the whole Circus. |
-| 2 | **Disaster City, the cramped city** | every city district; start with the one mondo names, else the densest (Industrial 82 buildings on 16 plots, Sports + Culture 56, Entertainment, Financial) | the city's own files: `docs/disaster-city/districts/`, `city-layout.json`, `bake-disaster-city.js`; the owner side holds the city | STEP 1, A CITY AUDIT the first audit could not do: every stair, ramp and walkway that ends in a wall or runs into a building; every gap between two buildings under 2 squares; every plot with more buildings than it can hold. A list with pictures, shown to mondo. STEP 2: fix the collisions. STEP 3: thin or spread the worst plots, and GROW the districts that need it (42 free plots stand beside the city; growing moves the roads and seams round it, so the plan for that is shown first). | **NEXT** |
-| 3 | **Came A Lot's woods** | The Snowy Pines (6.9, pilot), The Forest (5.6), The Looking-Glass Garden (4.3), The Fairy Forest (3.2) | `bake-camelot.js`, `docs/areas/camelot/layout.json`, `districts/N W L F.js` | WIDER ways (paths are 2.7 to 3.1 squares; 31 to 48 % walkable), clearings a board fits on, then height (all four are dead flat) | **DONE 11-20** (PRs 2229, 2231 and the Fairy Forest's). The Snowy Pines: 22 plots, three wide, in snow and snow pines (was a chain of 8 in summer lawn); the Sleigh Road in an S, the Pine Ridge + the Lookout, the Frozen Gully under the Log Bridge, three board clearings, the Frozen Tarn, the Hermit's Hollow. The Forest: 21 plots (was a T of 9); the Crown's Road 5 squares with three bends, the Hollow, the Bluff + the Hunters' Stand, the Brook and its fords, the Old Oak. The Fairy Forest: 13 plots (was 6); the Fairy Walk through the Glow-Worm Hollow, the Root Stair's knoll, both old knolls raised, the south loop. HOW: each room is DESIGNED IN ITS OWN FRAME (`districts/N-room.js`, `W-room.js`, `F-room.js`; bake-camelot.js step 0); new plots = `docs/plans/one-world/after-v13.js`. Notes: areas-complexes.md "THE SNOWY PINES, THREE PLOTS WIDE" and the two after it. THE AUDIT'S NEED (rerun 11-20): the Pines 6.9 -> 4.7, the Forest 5.6 -> 5.0, the Fairy Forest 3.2 -> 3.6 (it reads worse there: the seven new plots carry fewer pieces a plot than the six old ones, 29 against 54, and the score is an average; walkable 40 -> 50 %, path width 3.1 -> 4.1). LEFT ON PURPOSE: the Looking-Glass Garden (a model, his word); the old plots' own dressing; the trail L6 north of the Pines (the routes' thread). |
-| 4 | **Came A Lot, The Village** | The Village (4.6; 28 plots, 20 dead flat, no board on 12) | same tool, `districts/T.js` + `T-houses.js` | lanes to 4 squares, the wall walk, the moat bank, a rise for the church. NOT the Castle (K: held by the castle thread) | **DONE 11-20.** Three stone stairs up to the town wall's walk (it was there, reached only by the corner towers: seven ways up now); the churchyard opened (two houses out: the audit's tight spot). FOUND, NOT BUILT: the lanes are already 4+ walkable (cobbles + verge); the church on a rise and the market sunk go against his ruling on lifting buildings; the 12 no-board plots straddle the wall and the moat. Notes: areas-complexes.md "THE VILLAGE, THE WORLD POLISH PASS". |
-| 5 | **The Mountains** | The North Pole village (4.9), The Snowy Pass (3.9), Mount Shasta (2.8), Mount Olympus (2.7) | `bake-mountains.js`, `docs/areas/mountains/layout.json`, `districts/N P S O.js` | WIDER trails (2.6 to 3.1 squares), ledges 8 squares deep at the switchbacks, falls, a rope bridge; the North Pole's solid half opened | open |
-| 6 | **The Woods** | Dead Man's Cave (3.4), The Clearing (2.7), The Redwood Trail (2.3), The Ritual Ground (1.4) + its 9 bare link plots (6.1) | `bake-woods.js`, `docs/areas/woods/layout.json`, `districts/C T G M.js` | main trails to 5 squares, one clearing a district, falls where the streams cross a level | open |
-| 7 | **The underground walks** | The Cavern's three tunnels + Agartha's (8.8 to 9; 65 plots), the Sewers' under-city walks (7.5; 35 plots) | `bake-cavern.js`, `bake-sewers.js` (their walk rooms) | a two-level chamber every 3 or 4 plots, the corridor to 5 squares and sloping. A chamber every 3 or 4 plots (mondo 11-20) AND branches: side tunnels that lead to other districts and zones, never one straight pipe | open |
-| 8 | **The D.U.M.B.** | CERN, The Ring (7.2), Level P3 (5.0), Command (3.7), Research (3.6) | `bake-dumb.js`, `docs/areas/dumb/districts/K P C R.js` | galleries over the beamline, P3 as a ramped two-deck garage, a bridge over Command's pit; dressing (19 of the Ring's 22 plots are bare) | open |
-| 9 | **The Cavern** | Agartha (4.5), Hollow Earth (3.9), The Cavern (2.7) | `bake-cavern.js`, `docs/areas/cavern/districts/A H K.js` | terraced floors down to the Inner Sun, Agartha on three shelves. After thread 7 (same tool) | open |
-| 10 | **The Sewers** | The Radioactive Drain (4.0), The Running Tunnels (3.3), The Sewers (2.9) | `bake-sewers.js`, `docs/areas/sewers/districts/R T W.js` | walks to 4 or 5 where channels meet, more weirs and falls. After thread 7 (same tool) | open |
-| 11 | **Heaven + Hell + Vatican** | Heaven: The Rim (8.3), The Stairway, The City, The Cloud Fields; The Catacombs (5.2); Hell: all four (2.7 to 4.3); The Vatican: The Square (3.5), The Cloister | `bake-afterlife.js`, `docs/plans/world-zones/draw-afterlife.js`, `docs/areas/afterlife/districts/` | DRESSING (first builds). Hell has the best raw height in the game and is empty; Heaven's Rim is 15 % walkable | open |
-| 12 | **Leylines** | The Ley Line (5.3), Babel (3.5), Technoticlan (2.8), Göbekli Tepe (2.2) | `bake-leylines.js`, `docs/areas/leylines/districts/Y T Z G.js` | the land beside the Line rises (the Line's own strip stays level); dressing on Babel + Technoticlan (17 of 27 bare) | open |
-| 13 | **Antarctica** | The Ice Wall (5.7), The Hull in the Ice (4.2), The Shelf Ice (3.7), The Crevasse (3.5) | `bake-antarctica.js`, `docs/areas/antarctica/districts/W H F C.js` | the Ice Wall as a wall you climb; ice bridges; dressing (16 of 36 bare) | open |
-| 14 | **The Internet** | The Information Highway (6.7), then the seven at 4.3 to 4.8 | `bake-internet.js`, `docs/areas/internet/districts/` | levels (56 of 71 plots dead flat), the Highway widened to a board, dressing | open |
-| 15 | **The Astral Realm** | The Nightmare (5.3), The Sea of Possibility (4.6), The Library (3.8) | `bake-astral.js`, `docs/areas/astral/districts/N S L.js` | islands stepped, bridges to 3 squares, dressing | open |
-| 16 | **The Deep** | The Sea Floor (3.3), The Trench (2.8), the Rings (2.7) | `bake-deep.js`, `docs/areas/deep/districts/S T R.js` | DRESSING (20 of 31 bare); ledges down the Trench wall | open |
-| 17 | **The Estate** | The Ranch (2.8), The Corn Fields (2.8) | `bake-estate.js`, `docs/areas/estate/districts/R C.js` | a rise, a creek cut on the Ranch. The corn stays level | open |
-| 18 | **Outer Space** | The Far Side, The Mare, Cydonia, The Rover Bay (4.1 to 4.8) | `bake-space.js`, `docs/areas/space/districts/` | dressing (83 of 95 real plots bare); crater rims, a rille | open |
-| 19 | **The Beach's small places** | The Frozen Sea (5.3), Pirates' Cove (4.4), The Harbour (4.4), The Bermuda Triangle (4.0) | `bake-beach.js`, `docs/areas/beach/districts/` | GROW (approved 11-20): Pirates' Cove to 9, the Frozen Sea. The board lists the Beach's districts under the SECOND side: say so on the board first | open |
-| — | **The highways and the routes** | the Desert Highway's four legs + 13 routes (~320 plots, 0.4 to 0.9 m of relief) | `bake-route.js` | NOT THIS PLAN: its own thread (mondo 11-20) | out |
-
-**Targets** (what a district should reach; a low score that is meant stays low and is written in the row): main ways 5 squares wide; a board
-fits (52 of 64) on at least 2 of every 3 plots; no more than 1 plot in 3 dead flat unless it is meant; 14+ pieces a plot; one high place
-with a view and a reason to go there.
-
-**What the audit gets wrong** (learned in thread 1; read a score with this in mind): it counts a drawn mass (a pyramid's footprint) as
-walkable; a town's or an airfield's flat plots score as bad although they are meant; `hqTerrainFeet` answers nothing under a bridge.
-
-## 5b. What the screenshot audit changed (2026-11-20; `SCREENSHOT_AUDIT.md` has the detail)
-
-The pictures say the biggest problem is EMPTY and UNREADABLE places, not missing height. So, for the threads above:
-
-- **Thread 2 (Disaster City):** nothing learned, it was NOT photographed. Its first step is its own pictures (30 views, a few minutes).
-- **Thread 3 (Came A Lot's woods):** confirmed. The Forest and the Snowy Pines are flat lawn / flat snow with tree walls and a straight path.
-  LEAVE the Looking-Glass Garden as it is (it is a model). Fix the hard square snow / grass edge at the Pines' room line.
-- **THREAD 3, WHAT THE FIRST TRY FOUND (11-20; a pilot on the Snowy Pines was built, looked at and THROWN AWAY, nothing merged):**
-  1. The Snowy Pines' room (`site_prebuilt_camelot_ow_pines`) is NOT the plan sheet's 96 x 17 strip. One World re-laid it: its 8 plots stand in a
-     chain ONE PLOT WIDE (2 x 7 box, in the order P04, P03, P05, P02 | P01, P06, P00, P07), each moved on its own. So a ridge, a trail or a gully
-     drawn across plot lines in `districts/N.js` is cut apart, and a side trail that reaches a plot side with no neighbour is filled back with
-     trees by the tool (bake-camelot.js step 6b). **Design every piece INSIDE ONE PLOT**, and print the baked room's heights before a browser run.
-  2. What makes it look poor is the room, not the dressing (N.js already had five dressing passes): a white strip 42 m wide lying in summer
-     green lawn. The edge land is `edges: { world: true }`: it is drawn from the One World plots next to it, which are grass. The fix that would
-     show most is SNOW AND SNOW PINES ON THE LAND BESIDE IT (the One World plot kinds, `docs/plans/one-world/`, a shared file: board note first)
-     and the room 3 plots wide (approved 11-20). Both are layout jobs, not district-file jobs.
-  3. Opening more squares (track to 4, two side trails, wider glades) made it WORSE: with one plot of width there are few pines left and it reads
-     as bare snow. Do not widen the ways before the room is wider.
-  4. Probes: an enemy near the spawn starts a fight and ruins every picture: run with `--flags=EW_HQ_NO_ENCOUNTER` (PLAYTEST_NOTES "A PROBE THAT
-     NEVER GETS READY"). `shoot.js` does not pass it yet.
-- **Thread 4 (the Village):** the houses against the castle wall are the tight spot. The castle's blurry wall picture is the castle thread's.
-- **Thread 6 (the Woods):** the trail district (the link plots) is the long straight road mondo does not want: bends, branches, side glades first.
-  The Redwood Trail and the Ritual Ground are good.
-- **Thread 8 (the D.U.M.B.): MOVE IT UP, it is the worst-looking zone seen.** CERN, Command, Level P3 and Research are near-empty halls. Fill
-  them (machines, pipes, mezzanines, pits) or make the halls smaller; copy Sub-Level 7, which works. It shares no tool with threads 2 and 3,
-  so it can run beside them.
-- **Thread 11 (Heaven + Hell + Vatican):** HELL NEEDS LIGHT, NOT HEIGHT: its shape is the best in the world and it is black on black. Torches,
-  lava glow on the rock, colour, landmarks. Vatican: dress the Cloister and the Catacombs; the Colosseum and the Gardens are done; the palace's
-  domes stand too close and wear a blurry picture. Heaven: not looked at.
-- **Thread 12 (Leylines):** the Ley Line is the job (flat and bare). Stonehenge, Göbekli Tepe and Bug Colony's flowers are good.
-- **Thread 13 (Antarctica):** it has its height already. The job is the empty one-colour fields of the Ice Wall and the Hull: landmarks, wrecks,
-  camps, coloured things, blue ice. Fewer new ridges than its row says.
-- **Thread 19 (the Beach's small places):** the Frozen Sea is the barest small place. Pirates' Cove and Volcano Island are good; check the cone
-  wearing the water picture off Volcano Island.
-- **A new kind of job, in no thread yet: BIG WALLS ARE BLURRY UP CLOSE** (Came A Lot's castle, the Vatican's palace and domes: one stretched
-  stone picture). Ask mondo whether it gets its own thread (a tiling wall picture) or rides with each zone.
-- Not looked at yet, so unchanged: threads 5 (Olympus, the Ski Lodge), 7, 9, 10, 14, 15, 16, 17, 18.
-
-## 6. Questions for mondo
-
-All answered 2026-11-20 (his words are in START HERE): flat is fine where meant; tunnels get a chamber every 3 or 4 plots and always branches;
-every proposed growth is approved; the city is the place that feels cramped and may grow. One thing to confirm when its thread starts: the
-Frozen Sea, grown (assumed) or folded into the North Pole.
+| The North Pole village | 16 | Enough plots, half of each is solid. Open the solid half (a). |
+| The Long Tunnel | 10 | 42 m wide, 420 m long, one corridor. See thread 7 in section D. |
