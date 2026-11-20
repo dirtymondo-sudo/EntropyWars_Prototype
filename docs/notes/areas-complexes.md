@@ -13837,6 +13837,12 @@ APPROVED 11-20 ("Yes this is good, go ahead and start individual threads"; "No r
   radio, a pick, a lit candle that should not be), THE CRYSTAL POCKET (4,1), THE LOW HALL, THE COLD HALL, THE BLACK SUMP. The rest stands as the bare
   skeleton with one unlit torch a chamber. Lights: the pilot holds every real light. Seen on screen (probe, 11-20): the Gate, the Bone Passage, the
   Nest, the camp pit, the shaft, the squeeze, the crystal pocket.
+- **THE SHEETS (2026-11-20, mondo: "don't use the calm textures, use from the urban decay or horror pack"; relayed by thread 9 with its Cavern palette,
+  "tell the other underground threads to use these textures too to match"):** every key this room had was a CALM sheet (cave_floor, cave_wall, rocks_5,
+  dirt_2, rocks_dark_fantasy, dungeon_2, flesh_2). Now the horror pack, as the new Cavern: rock + roof hz_stone_01 (roof tint 0x8a8680), floor
+  hz_stone_02, ledge and wall faces hz_stone_10, stalactites + the squeezes' teeth hz_stone_02, the stalagmite hz_stone_07, tints near white. Paint:
+  mud hz_floor_03, wet black rock round the sumps hz_misc_05, the Catacombs' cut stone flags hz_floor_12, the Nests' crust hz_misc_06 (hz_misc_15,
+  raw red, read as lava). Seen on screen: the Gate, the Nest, the Great Chamber, the Bone Passage.
 - **LEARNED:** a prop pushed more than ~0.6 m toward a rock square climbs the wall's face (the sheet's face falls in the open square's last lattice
   cell): `atWall` pushes 0.5. The Meshy `femur` stands upright (it reads as a stake): not used. The probe's `face` IS the heading (0 north, 90 east);
   the HUD's `deg` / `r` is the camera's POSITION in polar terms, not its heading. The link `tunnelway_cavern` wears `way: 'well'`, so its foot here is a stone well

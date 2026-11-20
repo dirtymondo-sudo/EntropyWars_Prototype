@@ -19,8 +19,8 @@ const NAMES = {
     '0,3': 'The Bone Pit', '1,3': 'The Larder', '2,3': 'The Black Water', '3,3': 'The Gnawing Pit', '4,3': 'The Stretcher Camp',
     '0,4': 'The Low Nest', '1,4': 'The Long Bend', '2,4': 'The Way Down', '3,4': 'The Deep Nest', '4,4': 'The Dry Bend' };
 /* the ground sheets, all the horror pack (mondo 11-20: "don't use the calm textures, use from the urban decay or horror pack"; the Cavern's palette):
-   1 = mud (hz_floor_03), 2 = wet black rock round the sumps (hz_misc_05), 3 = cut stone flags at the Catacombs' end (hz_floor_12), 4 = raw red (the Nests, hz_misc_15) */
-const PAL = ['hz_floor_03', 'hz_misc_05', 'hz_floor_12', 'hz_misc_15'];
+   1 = mud (hz_floor_03), 2 = wet black rock round the sumps (hz_misc_05), 3 = cut stone flags at the Catacombs' end (hz_floor_12), 4 = the Nests' crust, dark and organic (hz_misc_06; hz_misc_15 read as lava) */
+const PAL = ['hz_floor_03', 'hz_misc_05', 'hz_floor_12', 'hz_misc_06'];
 
 module.exports = {
     parti: 'A labyrinth cut in the rock under Dead Man\'s Cave: low passages that bend at every turn, halls where a fight fits, ladders and ropes where the floor steps, cliffs you only go down, pits with something in them, and the dark. It is entered at its top, from the Catacombs, and goes down as you go in, to the Cavern.',
