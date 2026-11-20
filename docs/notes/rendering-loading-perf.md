@@ -3432,3 +3432,44 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   SwiftShader WebGPU loses the device in the city: "createBuffer ... too large"); a VS-CPU arena match on the classic renderer
   ran 9 rounds with spells and no page error. Note for the lens: in a fight `_ewBunWalk` does not count shown / hidden pieces, so
   a visibility flip reads as "tree ... other".
+- THE LAMPS PER CAMERA (11-20, mondo: "still huge slowdown for combo attack"; his second battle F3: 3.6 FPS, CPU 243 ms, "2609.5
+  re-records/s (lamps 2609.5)", "Bundle spikes: 2312 walked · 2312 re-recorded · LAMPS MOVED" on every check, "pane: classic
+  draws 773"). A combo's shot splits the screen (ThreeSplitscreen panes): two cameras render the fight's room in one frame, each
+  with its own lit lamps (the rig lights what stands near its camera). `_ewBunTick` kept ONE lamp list (`r._ew_lights`, noted at
+  the last render's first draw) and one stamp per group (`st.G`), so before each pane's render it compared against the OTHER
+  pane's lamps and re-recorded all 2,312 groups, twice a frame. Now the draw hook also notes the list on the camera
+  (`cam._ew_bunL`), the tick reads this camera's list, `lampMoved` is per camera (`_ewBun.lampGc`) and a group's stamp is per
+  camera (`st.Gc[cam.id]`, swapped into `st.G` for the group's check; a camera first seen for a group starts from what it sees:
+  its recording is fresh). One camera = as before. Old rule: `window.EW_BUN_LAMPS_ONE`. NOT measured on WebGPU. Left: the first
+  split-screen shot of a fight still records every group once for each pane camera ("pane: classic draws 773 ms" once).
+  THE GHOSTS KEPT (above) was a guess from the first battle F3 ("tree"); this one is named by the lens.
+- OPEN (11-20 02:00, "The cars and the roads are glitching again"): NOT fixed by #2199 after all. Pattern across his F3s: the two
+  sessions with the glitch (21:37, 02:00) both WALKED from the HQ into the city (dips at HQ squares first, "one rig: N scene
+  moves"); the sessions without it loaded the city directly. So it is a crossing / stage thing on WebGPU, present since before
+  21:37 11-19 (candidates by date: THE MAPS ON THE OBJECTS 20:01 + 20:39, THE HELD BOOK, THE BARE BONES, THE LIST KEPT, THE
+  SHADOW KEY KEPT). What glitches is what the shell draws OUTSIDE its recording (cars `_ew_hqCar`, signals, road marks). The
+  address-bar switch `?ew_weakmaps=1` loads with three's own WeakMaps (the maps off) to split "the maps" from the rest.
+
+## THE ONE AIR (2026-11-20, mondo: "it's just a hard cutoff from the horizon to the sky" + "one consistent fog system for the entire game, all rooms, exploration and battle and the main menu ... not per room")
+- **Why the line was there:** the sky dome's fog band was written to END at the horizon (`uFogTop`), the ground fogged by camera
+  distance in a colour the sky above it did not wear, and the far land past a room's edge had its haze painted in at the build.
+- **One row, three-renderer.js `EW_AIR`** (`rho`, `base` per metre, `farM`, `hazeH`, `mist`, `mistH`, `mistMove`, `mistSize`,
+  `mistSpeed`, `warmDay`, `warmDusk`). `_hqFogHold` writes the whole air for every walk frame AND the menu frame, `_hqFogBack` puts
+  the room's values back. A room's own fog numbers are NOT read by the draw any more: `shell.fog.density`, `sky.fog.density / height /
+  amount / top / band`, `shell.heightFog.h / amount`, a menu biome's `fog[1]`. Do not add per-room fog amounts; change `EW_AIR`.
+  A room still owns its fog COLOUR (the clock's hour), its floor height and `shell.heightFog: false` (no mist here).
+- **The levers (the same everywhere):** Scene Fog OFF = the clear day: `base` per metre + the soft band it leaves on the horizon.
+  Scene Fog ON = + `rho` × Fog Density, the ground mist, a fuller band. Fog Horizon = how high the band and the mist climb. MAP LOOKS
+  OFF = the player's fog colour everywhere (as before). Fog on can only ADD to the clear day's haze.
+- **The sky's band:** new dome uniform `uAir` (x = the haze at the line, y = 1 / its height, z = warmth, w = the line). At the line it
+  is `_ewAirFar` = what the air does to a thing `farM` m away, and it thins upward; same formula on the far scenery
+  (`_injectHorizonFog`). In a fight x is negative = a share of the fight's own band (`_ewAirBattle`): the board fog is unchanged,
+  its band only gets the soft top. A fight on a room takes `rho + base` (no room density).
+- **Warm toward the sun + the drifting mist:** two shared objects in the patched fog chunks, `uEwAir` (the sun's heading, warmth,
+  the mist's clock) and `uEwAir2` (patch size, depth). Walk only (the clock's sun); off under the player's own colour.
+- **The far land** (`_hqBuildEdgeLand`): its far sheets take the scene fog now (were `fog: false` with haze baked in the vertex colours).
+- **Fixed on the way:** a day room with no fog colour of its own faded to near black (0x0d0e12): it wears `HQ_WORLD_CLOCK.day.fog`.
+- Every shader piece has its WebGPU twin (the fog node, the dome's node graph, the `hzfog` layer). Under water is untouched.
+- Probe: `ThreeRenderer.hq.dev.air()`. Off (the rooms' own fog as before): `window.EW_NO_ONE_AIR` (set before a room builds).
+- Checked by picture: the Desert walk (off / on / low density, classic + the node renderer), both menus, one fight (Giza). NOT yet
+  looked at: indoor rooms, night and dusk, the other zones, a fight on a room. NOT built: lamps and neon glowing in the fog.

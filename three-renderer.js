@@ -34,7 +34,7 @@ const ThreeRenderer = (function () {
             'EW_ANIM_LIB_STANDARD_POSE EW_ANIM_LIB_URLS EW_AO_AT_ZERO EW_ARCH_BARE EW_ASYNC_NODE_BUILD EW_BARE_PANES EW_BATTLE_MW_EVERY_RENDER EW_BOARD_FOG_MS ' +
             'EW_BUN_ADD_ALL EW_BUN_CHECK_EVERY EW_BUN_DRY EW_BUN_FIELD_CHECK_EVERY EW_BUN_FIRSTS_EACH EW_BUN_FULL_REFRESH EW_BUN_HASH_MATRICES EW_BUN_HELD_EVERY ' +
             'EW_BUN_HELD_NO_SHARED EW_BUN_INST_NO_REST EW_BUN_NO_OUT EW_BUN_OUT_HIDE_HASH EW_BUN_OUT_RETURN_ALWAYS EW_BUN_QUIET_LOOP EW_BUN_REST_AT_5 ' +
-            'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_BUN_TARGETS_EVERY EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
+            'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_BUN_LAMPS_ONE EW_BUN_TARGETS_EVERY EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
             'EW_CC_NO_DETAILS EW_CC_NO_HEMS EW_CLOTH_COLLIDE EW_CSS2D_ALWAYS EW_CSS_PLATES EW_CUBE_NO_ANIM EW_CV_LIT_BAKES EW_DEATH_CAM_ALL_UNITS EW_DESK_OFF ' +
             'EW_DIP_OFF EW_DISABLE_3D_UNITS EW_DISABLE_ANIM_LIB EW_DISABLE_BOOT_FIT EW_DISABLE_CANOPY_CUTAWAY EW_DISABLE_CLOTH_COLLIDE EW_DISABLE_COAT_FIT ' +
             'EW_DISABLE_FACE_IDLE EW_DISABLE_GRASS_WIND EW_DISABLE_GRAVESTONES EW_DISABLE_JIGGLE EW_DISABLE_POWER_AURA EW_DISABLE_RIPPLE EW_DISABLE_SHADOW_GATING ' +
@@ -3013,6 +3013,12 @@ const ThreeRenderer = (function () {
        1 = a straight ramp from the rim to y's length: THE FOG FADE below). Inside the rect the distance is 0: the board and everything
        over it is never fogged. */
     var _EW_BFOG = { x: 0, y: 0, z: 0, w: 0 }, _EW_BFOG2 = { x: 0, y: 0, z: 0, w: 0 }, _EW_BFOG3 = { x: 1, y: 0, z: 0, w: 0 };
+    /* ══ THE ONE AIR (2026-11-20, mondo: "it's just a hard cutoff from the horizon to the sky ... one consistent fog system for the
+       entire game, all rooms, exploration and battle and the main menu") ══ two more shared plain objects in the same patched chunks:
+       uEwAir = { x, y: the sun's heading over the ground (world x / z, unit), z: how warm the fog turns toward it (0 = the fog's own
+       colour everywhere), w: the mist's clock }; uEwAir2 = { x: 2π / the mist's patch size (world units), y: how deep the ground
+       mist drifts (0 = the flat sheet) }. Rules + writers: EW_AIR and _hqFogHold. */
+    var _EW_AIR = { x: 1, y: 0, z: 0, w: 0 }, _EW_AIR2 = { x: 0.001, y: 0, z: 0, w: 0 };
     var _ewHFogPatched = false;
     function _ewHeightFogPatch() {
         if (_ewHFogPatched || typeof THREE === 'undefined' || !THREE.ShaderChunk || !THREE.ShaderLib) return false;
@@ -3025,17 +3031,21 @@ const ThreeRenderer = (function () {
             if (SC.fog_pars_vertex && SC.fog_vertex && SC.fog_pars_fragment && SC.fog_fragment && SC.fog_pars_vertex.indexOf('vEwFogY') < 0) {
                 SC.fog_pars_vertex = SC.fog_pars_vertex.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tvarying vec2 vEwFogXZ;');
                 SC.fog_vertex = SC.fog_vertex.replace(FD + ' = - mvPosition.z;', FD + ' = - mvPosition.z;\n\tvec4 ewFogWp = vec4( position, 1.0 );\n\t#ifdef USE_INSTANCING\n\t\tewFogWp = instanceMatrix * ewFogWp;\n\t#endif\n\tewFogWp = modelMatrix * ewFogWp;\n\tvEwFogY = ewFogWp.y;\n\tvEwFogXZ = ewFogWp.xz;');
-                SC.fog_pars_fragment = SC.fog_pars_fragment.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tvarying vec2 vEwFogXZ;\n\tuniform vec4 uEwHFog;\n\tuniform vec4 uEwBFog;\n\tuniform vec4 uEwBFog2;\n\tuniform vec4 uEwBFog3;');
+                SC.fog_pars_fragment = SC.fog_pars_fragment.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tvarying vec2 vEwFogXZ;\n\tuniform vec4 uEwHFog;\n\tuniform vec4 uEwBFog;\n\tuniform vec4 uEwBFog2;\n\tuniform vec4 uEwBFog3;\n\tuniform vec4 uEwAir;\n\tuniform vec4 uEwAir2;');
                 SC.fog_fragment = SC.fog_fragment.replace('gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
-                    'float ewHf = uEwHFog.z * exp( - max( 0.0, vEwFogY - uEwHFog.x ) * uEwHFog.y ) * ( 1.0 - exp( - uEwHFog.w * ' + FD + ' ) );\n\tfogFactor = clamp( 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - ewHf ), 0.0, 1.0 );\n' +
+                    'float ewHf = uEwHFog.z * exp( - max( 0.0, vEwFogY - uEwHFog.x ) * uEwHFog.y ) * ( 1.0 - exp( - uEwHFog.w * ' + FD + ' ) );\n' +
+                    '\tewHf *= clamp( 1.0 + uEwAir2.y * ( 0.6 * sin( vEwFogXZ.x * uEwAir2.x + uEwAir.w ) * sin( vEwFogXZ.y * uEwAir2.x * 1.31 - uEwAir.w * 0.73 ) + 0.4 * sin( ( vEwFogXZ.x + vEwFogXZ.y ) * uEwAir2.x * 0.37 + uEwAir.w * 0.41 ) ), 0.0, 1.3 );\n' +
+                    '\tvec2 ewAv = vEwFogXZ - cameraPosition.xz;\n\tfloat ewAs = max( dot( ewAv, uEwAir.xy ) / max( length( ewAv ), 0.0001 ), 0.0 );\n\tewAs = ewAs * ewAs * ewAs * uEwAir.z;\n' +
+                    '\tvec3 ewFc = mix( fogColor, fogColor * vec3( 1.30, 1.05, 0.76 ) + vec3( 0.06, 0.025, 0.0 ), ewAs );\n' +
+                    '\tfogFactor = clamp( 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - ewHf ), 0.0, 1.0 );\n' +
                     '\tvec2 ewBq = max( max( uEwBFog.xy - vEwFogXZ, vEwFogXZ - uEwBFog.zw ), 0.0 );\n\tfloat ewBd = length( ewBq );\n\tfloat ewBr = ewBd * uEwBFog2.y;\n' +
                     '\tfloat ewBf = mix( 1.0 - exp( - ewBr * ewBr ), clamp( ewBd * uEwBFog3.y, 0.0, 1.0 ), uEwBFog3.z ) * exp( - max( 0.0, vEwFogY - uEwBFog2.z - ewBd * uEwBFog2.w ) * uEwBFog3.x );\n' +
-                    '\tfogFactor = mix( fogFactor, clamp( ewBf, 0.0, 1.0 ), uEwBFog2.x );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );');
+                    '\tfogFactor = mix( fogFactor, clamp( ewBf, 0.0, 1.0 ), uEwBFog2.x );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, ewFc, fogFactor );');
                 if (SC.fog_pars_fragment.indexOf('vEwFogY') < 0 || SC.fog_vertex.indexOf('vEwFogY') < 0) console.warn('[ThreeRenderer] the height fog patch found no anchor in three.js ' + THREE.REVISION);
             }
             var lib = THREE.ShaderLib;
-            for (var k in lib) if (lib[k] && lib[k].uniforms && lib[k].uniforms.fogColor) { lib[k].uniforms.uEwHFog = { value: _EW_HFOG }; lib[k].uniforms.uEwBFog = { value: _EW_BFOG }; lib[k].uniforms.uEwBFog2 = { value: _EW_BFOG2 }; lib[k].uniforms.uEwBFog3 = { value: _EW_BFOG3 }; }
-            if (THREE.UniformsLib && THREE.UniformsLib.fog) { THREE.UniformsLib.fog.uEwHFog = { value: _EW_HFOG }; THREE.UniformsLib.fog.uEwBFog = { value: _EW_BFOG }; THREE.UniformsLib.fog.uEwBFog2 = { value: _EW_BFOG2 }; THREE.UniformsLib.fog.uEwBFog3 = { value: _EW_BFOG3 }; }
+            for (var k in lib) if (lib[k] && lib[k].uniforms && lib[k].uniforms.fogColor) { lib[k].uniforms.uEwHFog = { value: _EW_HFOG }; lib[k].uniforms.uEwBFog = { value: _EW_BFOG }; lib[k].uniforms.uEwBFog2 = { value: _EW_BFOG2 }; lib[k].uniforms.uEwBFog3 = { value: _EW_BFOG3 }; lib[k].uniforms.uEwAir = { value: _EW_AIR }; lib[k].uniforms.uEwAir2 = { value: _EW_AIR2 }; }
+            if (THREE.UniformsLib && THREE.UniformsLib.fog) { THREE.UniformsLib.fog.uEwHFog = { value: _EW_HFOG }; THREE.UniformsLib.fog.uEwBFog = { value: _EW_BFOG }; THREE.UniformsLib.fog.uEwBFog2 = { value: _EW_BFOG2 }; THREE.UniformsLib.fog.uEwBFog3 = { value: _EW_BFOG3 }; THREE.UniformsLib.fog.uEwAir = { value: _EW_AIR }; THREE.UniformsLib.fog.uEwAir2 = { value: _EW_AIR2 }; }
             return true;
         } catch (e) { console.warn('[ThreeRenderer] the height fog patch failed', e); return false; }
     }
@@ -36459,7 +36469,7 @@ const ThreeRenderer = (function () {
         'uniform float uTime; uniform float uDayNight; uniform float uSkyEvent; uniform float uSkyAmt;',
         'uniform float uZodiac; uniform vec4 uWeather; uniform float uOccult;',
         'uniform vec3 uCenter; uniform float uDiscR; uniform float uWallH; uniform float uTile;',
-        'uniform vec3 uFogColor; uniform float uFogAmount; uniform float uFogTop; uniform float uFogBand;',
+        'uniform vec3 uFogColor; uniform float uFogAmount; uniform float uFogTop; uniform float uFogBand; uniform vec4 uAir;',
         // per-map sky preset (state.mapEnv): palette wash + star/nebula dimmers
         'uniform vec3 uMapTint; uniform float uMapTintAmt; uniform float uMapStars; uniform float uMapNebula;',
         // MOVING MAPS (2026-09-12): the sky streams with the travel, the sun / moon swell on a close pass
@@ -36837,8 +36847,17 @@ const ThreeRenderer = (function () {
         //    board horizon instead of climbing into the sky. Applied to the final
         //    display colour so it matches the colour the distance fog fades the
         //    scenery into. uFogAmount is 0 when the filter is off.
-        '  if(uFogAmount>0.001){ float fb=1.0-smoothstep(uFogTop-uFogBand,uFogTop,el); fb=pow(fb,1.6);\n' +
-        '    col=mix(col,uFogColor,clamp(fb*uFogAmount,0.0,1.0)); }\n' +
+        // THE ONE AIR (2026-11-20): the band used to END at the horizon line, so fogged ground met a clear sky in a hard line.
+        //    uAir = { x: the haze at the line (below 0 = that share of uFogAmount: the battle's band), y: 1 / how high it thins
+        //    (view-ray altitude), z: how warm it turns toward the sun, w: the line (x < 0: over uFogTop) }. Full at and below the
+        //    line, thinning upward like real air: the far ground and the low sky are one haze.
+        '  float fAmt=0.0;\n' +
+        '  if(uFogAmount>0.001){ float fb=1.0-smoothstep(uFogTop-uFogBand,uFogTop,el); fAmt=clamp(pow(fb,1.6)*uFogAmount,0.0,1.0); }\n' +
+        '  float airA=uAir.x<0.0?-uAir.x*uFogAmount:uAir.x; float airL=uAir.x<0.0?uFogTop+uAir.w:uAir.w;\n' +
+        '  if(airA>0.001){ fAmt=1.0-(1.0-fAmt)*(1.0-clamp(airA,0.0,1.0)*exp(-max(el-airL,0.0)*uAir.y)); }\n' +
+        '  if(fAmt>0.001){ vec3 fc=uFogColor; float sl=length(sunDir.xz); float rl=length(rd.xz);\n' +
+        '    if(uAir.z>0.0&&sl>0.001&&rl>0.001){ float sw=max(dot(rd.xz,sunDir.xz)/(sl*rl),0.0); sw=sw*sw*sw*uAir.z; fc=mix(fc,fc*vec3(1.30,1.05,0.76)+vec3(0.06,0.025,0.0),sw); }\n' +
+        '    col=mix(col,fc,clamp(fAmt,0.0,1.0)); }\n' +
         '  gl_FragColor=vec4(col,1.0);\n' +
         '}';
     }
@@ -36863,6 +36882,7 @@ const ThreeRenderer = (function () {
                 uFogAmount: { value: 0.0 },
                 uFogTop: { value: 0.0 },
                 uFogBand: { value: 0.5 },
+                uAir: { value: new THREE.Vector4(0, 13, 0, 0) },   // THE ONE AIR: the haze over the horizon line (see the dome FS)
                 // per-map sky preset (state.mapEnv → _updateEnvironment)
                 uMapTint: { value: new THREE.Vector3(0, 0, 0) },
                 uMapTintAmt: { value: 0.0 },
@@ -38155,19 +38175,23 @@ const ThreeRenderer = (function () {
             shader.uniforms.uHzFogTop   = _envUni.uFogTop;
             shader.uniforms.uHzFogBand  = _envUni.uFogBand;
             shader.uniforms.uHzFogAmt   = _envUni.uFogAmount;
+            shader.uniforms.uHzAir      = _envUni.uAir;   // THE ONE AIR: the same haze over the line as the dome's
             shader.vertexShader = shader.vertexShader
                 .replace('#include <common>', '#include <common>\nvarying vec3 vHzWorldPos;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\n  vHzWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
             shader.fragmentShader = shader.fragmentShader
-                .replace('#include <common>', '#include <common>\nvarying vec3 vHzWorldPos;\nuniform vec3 uHzFogColor;\nuniform float uHzFogTop;\nuniform float uHzFogBand;\nuniform float uHzFogAmt;')
+                .replace('#include <common>', '#include <common>\nvarying vec3 vHzWorldPos;\nuniform vec3 uHzFogColor;\nuniform float uHzFogTop;\nuniform float uHzFogBand;\nuniform float uHzFogAmt;\nuniform vec4 uHzAir;')
                 .replace('#include <dithering_fragment>',
                     '#include <dithering_fragment>\n' +
-                    '  if (uHzFogAmt > 0.001) {\n' +
+                    '  float hzAirA = uHzAir.x < 0.0 ? -uHzAir.x * uHzFogAmt : uHzAir.x;\n' +
+                    '  if (uHzFogAmt > 0.001 || hzAirA > 0.001) {\n' +
                     '    float hzEl = normalize(vHzWorldPos - cameraPosition).y;\n' +
                     // same band shape as the dome: clears at uHzFogTop (the board
                     // horizon), ramps to full over uHzFogBand below it.
                     '    float hzS = smoothstep(uHzFogTop - uHzFogBand, uHzFogTop, hzEl);\n' +
                     '    float hzBand = pow(1.0 - hzS, 1.6) * uHzFogAmt;\n' +
+                    '    float hzAirL = uHzAir.x < 0.0 ? uHzFogTop + uHzAir.w : uHzAir.w;\n' +
+                    '    hzBand = 1.0 - (1.0 - clamp(hzBand, 0.0, 1.0)) * (1.0 - clamp(hzAirA, 0.0, 1.0) * exp(-max(hzEl - hzAirL, 0.0) * uHzAir.y));\n' +
                     '    gl_FragColor.rgb = mix(gl_FragColor.rgb, uHzFogColor, clamp(hzBand, 0.0, 0.95));\n' +
                     '  }');
         };
@@ -38256,6 +38280,7 @@ const ThreeRenderer = (function () {
         } else {
             _envUni.uFogAmount.value = 0.0;
         }
+        _ewAirBattle();   // THE ONE AIR: the band's soft top
     }
 
     function setHorizonFog(enabled, colorHex, thickness, horizon) {
@@ -47538,6 +47563,7 @@ const ThreeRenderer = (function () {
        object + material + pass) is left as it is. Old maps: window.EW_GPU_WEAKMAPS = true before the renderer is made. */
     function _ewGpuPropMaps(r, G) {
         if (typeof window !== 'undefined' && window.EW_GPU_WEAKMAPS) return;
+        try { if (/[?&]ew_weakmaps=1\b/.test(location.search)) { _ewGpuInfo.propMaps = 'off (?ew_weakmaps=1)'; return; } } catch (e) {}   // (11-20) the same switch from the address bar: three's own WeakMaps for this load
         if (typeof Symbol !== 'function' || typeof WeakMap !== 'function') return;
         var put = function (o, k, m) { Object.defineProperty(o, k, { value: m, writable: true, configurable: true, enumerable: false }); };
         var mGet = function (o) {
@@ -48762,7 +48788,7 @@ const ThreeRenderer = (function () {
         var V4 = function () { return T.uniform(new THREE.Vector4()).setGroup(T.renderGroup); };
         var F = function (v) { return T.uniform(v).setGroup(T.renderGroup); };
         /* kept across a rebuilt renderer (W4, device lost): the dressed materials, twins and cached Fn graphs read these nodes */
-        if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), bfog: V4(), bfog2: V4(), bfog3: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), triCut: F(0.0005), fflow: F(new THREE.Vector2()), dressed: {} };
+        if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), bfog: V4(), bfog2: V4(), bfog3: V4(), air: V4(), air2: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), triCut: F(0.0005), fflow: F(new THREE.Vector2()), dressed: {} };
         try { _ewPlNodeSetup(r, G); } catch (e) { console.warn('[ThreeRenderer] the round worlds: no node bend', e); }   // THE ROUND WORLDS (2026-11-17)
         _ewNodeTick();
         /* the height fog: the scene's FogExp2 node, with the floor term folded in exactly as the GLSL patch does */
@@ -48789,8 +48815,19 @@ const ThreeRenderer = (function () {
                 var B = _ewNodeU.bfog, B2 = _ewNodeU.bfog2, B3 = _ewNodeU.bfog3, pw = T.positionWorld;
                 var bq = T.max(T.max(B.xy.sub(pw.xz), pw.xz.sub(B.zw)), T.vec2(0, 0)), bd = T.length(bq), br = bd.mul(B2.y);
                 var bf = T.mix(br.mul(br).negate().exp().oneMinus(), T.clamp(bd.mul(B3.y), 0, 1), B3.z).mul(T.max(pw.y.sub(B2.z).sub(bd.mul(B2.w)), 0).mul(B3.x).negate().exp());   // THE FOG FADE: the sharp curve ↔ the straight ramp
+                /* THE ONE AIR: the mist drifts, the fog warms toward the sun (the GLSL patch's twin) */
+                var A = _ewNodeU.air, A2 = _ewNodeU.air2;
+                if (A && A2) {
+                    var mw = T.sin(pw.x.mul(A2.x).add(A.w)).mul(T.sin(pw.z.mul(A2.x).mul(1.31).sub(A.w.mul(0.73)))).mul(0.6).add(T.sin(pw.x.add(pw.z).mul(A2.x).mul(0.37).add(A.w.mul(0.41))).mul(0.4));
+                    hf = hf.mul(T.clamp(mw.mul(A2.y).add(1), 0, 1.3));
+                }
                 var camF = T.clamp(T.float(1).sub(base.oneMinus().mul(hf.oneMinus())), 0, 1);
-                fn = T.fog(col, T.mix(camF, T.clamp(bf, 0, 1), B2.x));
+                var fcol = col;
+                if (A) {
+                    var av = pw.xz.sub(T.cameraPosition.xz), as1 = T.max(T.dot(av, A.xy).div(T.max(T.length(av), 0.0001)), 0), asw = as1.mul(as1).mul(as1).mul(A.z);
+                    fcol = T.mix(T.vec3(col), T.vec3(col).mul(T.vec3(1.30, 1.05, 0.76)).add(T.vec3(0.06, 0.025, 0)), asw);
+                }
+                fn = T.fog(fcol, T.mix(camF, T.clamp(bf, 0, 1), B2.x));
                 fogs.set(f, fn);
             }
             this.get(scene).fogNode = fn;
@@ -48867,6 +48904,7 @@ const ThreeRenderer = (function () {
     function _ewNodeTick() {
         var U = _ewNodeU; if (!U) return;
         U.hfog.value.set(_EW_HFOG.x, _EW_HFOG.y, _EW_HFOG.z, _EW_HFOG.w);
+        if (U.air) { U.air.value.set(_EW_AIR.x, _EW_AIR.y, _EW_AIR.z, _EW_AIR.w); U.air2.value.set(_EW_AIR2.x, _EW_AIR2.y, 0, 0); }   // THE ONE AIR
         if (U.bfog) { U.bfog.value.set(_EW_BFOG.x, _EW_BFOG.y, _EW_BFOG.z, _EW_BFOG.w); U.bfog2.value.set(_EW_BFOG2.x, _EW_BFOG2.y, _EW_BFOG2.z, _EW_BFOG2.w); U.bfog3.value.set(_EW_BFOG3.x, _EW_BFOG3.y, _EW_BFOG3.z, _EW_BFOG3.w); }
         U.ao.value.set(_HQ_AO.x, _HQ_AO.y, _HQ_AO.z, _HQ_AO.w);
         U.ao2.value.set(_HQ_AO2.x, _HQ_AO2.y, _HQ_AO2.z, _HQ_AO2.w);
@@ -49271,14 +49309,16 @@ const ThreeRenderer = (function () {
         var T = _ewNodeU.T, base = nm.setupOutput;
         if (L.k === 'hzfog') {
             if (!_envUni) return;
-            var col = _ewNodeRef(_envUni.uFogColor), top = _ewNodeRef(_envUni.uFogTop), band = _ewNodeRef(_envUni.uFogBand), amt = _ewNodeRef(_envUni.uFogAmount);
+            var col = _ewNodeRef(_envUni.uFogColor), top = _ewNodeRef(_envUni.uFogTop), band = _ewNodeRef(_envUni.uFogBand), amt = _ewNodeRef(_envUni.uFogAmount), air = _ewNodeRef(_envUni.uAir);
             nm.setupOutput = function (builder, out) {
                 var o = base.call(this, builder, out);
                 return T.Fn(function () {
                     var c = T.vec4(o).toVar();
-                    T.If(amt.greaterThan(0.001), function () {
+                    var airA = T.select(air.x.lessThan(0), air.x.negate().mul(amt), air.x), airL = T.select(air.x.lessThan(0), top.add(air.w), air.w);   // THE ONE AIR
+                    T.If(amt.greaterThan(0.001).or(airA.greaterThan(0.001)), function () {
                         var el = T.normalize(T.positionWorld.sub(T.cameraPosition)).y;
-                        var hb = T.pow(T.smoothstep(top.sub(band), top, el).oneMinus(), 1.6).mul(amt);
+                        var hb = T.clamp(T.pow(T.smoothstep(top.sub(band), top, el).oneMinus(), 1.6).mul(amt), 0, 1);
+                        hb = hb.oneMinus().mul(T.clamp(airA, 0, 1).mul(T.exp(T.max(el.sub(airL), 0).mul(air.y).negate())).oneMinus()).oneMinus();
                         c.rgb.assign(T.mix(c.rgb, col, T.clamp(hb, 0, 0.95)));
                     });
                     return c;
@@ -50161,12 +50201,21 @@ const ThreeRenderer = (function () {
         for (i = _ewBun.marked.length - 1; i >= 0; i--) if (_ewBun.marked[i]._ew_bunT !== FR) { _ewBunRelease(_ewBun.marked[i]); relN++; }
         if (spL) { var tpc = performance.now(); spL.preS = 'start ' + (tpa - t0).toFixed(0) + ', targets ' + (tpb - tpa).toFixed(0) + ' (' + T.length + '), releases ' + (tpc - tpb).toFixed(0) + ' (' + relN + ')'; spL.tpc = tpc; }   // THE SPIKE'S SPLIT, finer (11-19)
         /* what the whole scene shares: the lit lamps (the stage swaps them) and the freed-resource epoch */
-        var LG = 17, ls = r._ew_lights || [];
+        /* THE LAMPS PER CAMERA (2026-11-20, mondo: "still huge slowdown for combo attack"; his battle F3: 3.6 FPS, "2609 re-records/s
+           (lamps 2609.5)", "2312 walked · 2312 re-recorded · LAMPS MOVED" on EVERY check, "pane: classic draws 773"). A combo's shot
+           splits the screen: two cameras render the same room in one frame, each with its own lit lamps (the rig lights what
+           stands near its own camera). The check kept ONE list of lamps (the last render's) and one stamp per group, so before each
+           pane's render it saw the OTHER pane's lamps, called it a change and re-recorded every group of the room, twice a frame.
+           A recording is kept per camera, so the lamps are too: the list is the one THIS camera last drew with, and a group's
+           stamp is kept per camera (a camera a group has not been checked for yet starts from what it sees now: its recording is
+           made fresh under those lamps). One camera (the walk, a fight outside a shot) is as before. Old rule: window.EW_BUN_LAMPS_ONE */
+        var lampsOne = !!window.EW_BUN_LAMPS_ONE, camK = (!lampsOne && cam && cam.id) | 0;
+        var LG = 17, ls = (!lampsOne && cam && cam._ew_bunL) || r._ew_lights || [];
         LG = _ewBunMix(LG, ls.length);
         for (i = 0; i < ls.length; i++) { var l = ls[i]; if (l) { LG = _ewBunMix(LG, l.id); LG = _ewBunMix(LG, l.castShadow ? 1 : 0); } }
         if (sc.fog) LG = _ewBunMix(LG, sc.fog.isFogExp2 ? 2 : 1);
         if (sc.environment) LG = _ewBunMix(LG, sc.environment.id);
-        var lampMoved = LG !== _ewBun.lampG; _ewBun.lampG = LG;
+        var LGc = _ewBun.lampGc || (_ewBun.lampGc = {}), lampMoved = LGc[camK] !== undefined && LG !== LGc[camK]; LGc[camK] = LG; _ewBun.lampG = LG;
         var G = _ewBunMix(LG, _ewBun.epoch);
         var objs = 0, quietN = 0, addNB = _ewAddCount(), addMovedB = addNB !== _ewBun.addN, bunEvery = typeof window !== 'undefined' && !!window.EW_BUN_CHECK_EVERY, addAll = typeof window !== 'undefined' && !!window.EW_BUN_ADD_ALL;
         var BUN_QUIET = 8, BUN_QUIET_LONG = 90;
@@ -50178,6 +50227,7 @@ const ThreeRenderer = (function () {
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
             if (g._ew_ckOut) continue;   // THE CHUNKS: a chunk off the camera is not drawn and not checked; its recording waits for it
+            var gcm = st.Gc || (st.Gc = {}); if (gcm[camK] === undefined) gcm[camK] = G; st.G = gcm[camK];   // THE LAMPS PER CAMERA: this camera's stamp
             if (st.until > now) { if (g.isBundleGroup) _ewBunRelease(g); continue; }
             /* W5a: a group the frame does not draw (hidden, or a parked room under a hidden parent) is neither checked nor
                bundled — the walk over it was the check's whole cost when the HQ sat hidden behind a battle */
@@ -50247,7 +50297,7 @@ const ThreeRenderer = (function () {
                 st.why.lod++; W.lod++;
                 g.version++; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             }
-            g._ew_bunFree = false;
+            g._ew_bunFree = false; gcm[camK] = st.G;
             st.cB = cB0; st.cH = cH0; st.cO = cO0; st.cN = cN0;
             st.quiet = (_ewBun.recs === recs0 && !miss) ? (st.quiet | 0) + 1 : 0;
             if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; W.cold++; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
@@ -50801,7 +50851,7 @@ const ThreeRenderer = (function () {
         reg(_envDomeFS(), 'sky dome', function (m) {
             var L = envFns(), R = L.R, fbm = L.fbm, h11 = L.h11, h21 = L.h21, h22 = L.h22, s = _ewProgMat(m), PI = Math.PI;
             var Tm = R('uTime', 'float'), night = R('uDayNight', 'float'), Ev = R('uSkyEvent', 'float'), Amt = R('uSkyAmt', 'float'), Wt = R('uWeather', 'vec4'),
-                Oc = R('uOccult', 'float'), FogC = R('uFogColor', 'vec3'), FogA = R('uFogAmount', 'float'), FogT = R('uFogTop', 'float'), FogB = R('uFogBand', 'float'),
+                Oc = R('uOccult', 'float'), FogC = R('uFogColor', 'vec3'), FogA = R('uFogAmount', 'float'), FogT = R('uFogTop', 'float'), FogB = R('uFogBand', 'float'), Air = R('uAir', 'vec4'),
                 MTint = R('uMapTint', 'vec3'), MTintA = R('uMapTintAmt', 'float'), MStars = R('uMapStars', 'float'), MNeb = R('uMapNebula', 'float'),
                 Flow = R('uSkyFlow', 'float'), SunN = R('uSunNear', 'float'), MoonN = R('uMoonNear', 'float'), Yaw = R('uSkyYaw', 'float'), Lift = R('uSkyLift', 'float'),
                 Day = R('uSkyDay', 'float'), Clouds = R('uSkyClouds', 'float'), SunD = R('uSunDir', 'vec3'), MoonD = R('uMoonDir', 'vec3'), Clock = R('uSunClock', 'float'),
@@ -51002,9 +51052,22 @@ const ThreeRenderer = (function () {
                     col.addAssign(V3(1.0, 0.97, 0.88).mul(ss(0.0032, 0.0012, vd).add(T.exp(vd.mul(-380)).mul(0.5)))
                         .add(V3(1.0, 0.93, 0.80).mul(ss(0.0024, 0.0008, jd).mul(0.75).add(T.exp(jd.mul(-450)).mul(0.3)))).mul(bsun));
                 });
+                /* THE ONE AIR: the GLSL dome's twin (the band + the haze thinning up from the line, warm toward the sun) */
+                var fAmt = T.float(0).toVar();
                 T.If(FogA.greaterThan(0.001), function () {
                     var fb = T.pow(one.sub(ss(FogT.sub(FogB), FogT, el)), 1.6);
-                    col.assign(T.mix(col, FogC, T.clamp(fb.mul(FogA), 0, 1)));
+                    fAmt.assign(T.clamp(fb.mul(FogA), 0, 1));
+                });
+                var airA = T.select(Air.x.lessThan(0), Air.x.negate().mul(FogA), Air.x), airL = T.select(Air.x.lessThan(0), FogT.add(Air.w), Air.w);
+                T.If(airA.greaterThan(0.001), function () {
+                    fAmt.assign(one.sub(one.sub(fAmt).mul(one.sub(T.clamp(airA, 0, 1).mul(T.exp(T.max(el.sub(airL), 0).mul(Air.y).negate()))))));
+                });
+                T.If(fAmt.greaterThan(0.001), function () {
+                    var sl = T.length(sunDir.xz), rl = T.length(rd.xz);
+                    var sw = T.max(T.dot(rd.xz, sunDir.xz).div(T.max(sl.mul(rl), 0.000001)), 0);
+                    sw = sw.mul(sw).mul(sw).mul(Air.z);
+                    var fc = T.mix(FogC, FogC.mul(V3(1.30, 1.05, 0.76)).add(V3(0.06, 0.025, 0)), sw);
+                    col.assign(T.mix(col, fc, T.clamp(fAmt, 0, 1)));
                 });
                 return V4(col, 1);
             })();
@@ -51798,6 +51861,7 @@ const ThreeRenderer = (function () {
                 r._ew_shadowFrame = false;
                 var ls = lightsNode.getLights(), auto = r.shadowMap.autoUpdate !== false, pulse = !!r.shadowMap.needsUpdate;
                 r._ew_lights = ls;
+                if (cam) cam._ew_bunL = ls;   // THE LAMPS PER CAMERA (the bundle check)
                 for (var i = 0; i < ls.length; i++) {
                     var l = ls[i];
                     if (!l || !l.castShadow || !l.shadow) continue;
@@ -76725,7 +76789,7 @@ const ThreeRenderer = (function () {
             var mk = key + (far ? '|far' : '');
             if (mats[mk]) return mats[mk];
             var tex = key === 'snow' ? null : _hzTex((key === 'rock' || key === 'cliff') ? 'mountain' : key === 'grass' ? 'grass' : 'desert');   // (a sea cliff wears the rock sheet: `cliff.png`, a tan sheet, is banned by the owner's rules and stood as sand-coloured slabs where a range falls into the sea)
-            var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far });
+            var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far || !_ewAirOff() });   // THE ONE AIR: the far land wears the scene's fog like everything else (its haze was painted in at the build, in the build's colour, deaf to the settings and the hour)
             /* THE NATURAL ROCK on the land past the edge (2026-11-15, see _hqTerrainMat): the far mountains and sea cliffs were one small sheet repeated
                up a whole range. The sheet is mixed with itself read 3.7 x larger and its tone drifts over the land (WebGL; the node renderer keeps the plain sheet). */
             if (tex && !(typeof window !== 'undefined' && window.EW_NO_NATURAL_ROCK)) {
@@ -76769,7 +76833,7 @@ const ThreeRenderer = (function () {
                     if (b.map[v] != null) return b.map[v];
                     var vx = xs[v % nx], vz = zs[(v / nx) | 0], p = P[v], c = colOf(p), e = 1.5;
                     if (key === 'snow') c = [0.97, 0.98, 1];
-                    if (far) { var hz0 = 0.5 + 0.3 * Math.min(1, (p.d - HQ_EDGE_NEAR_M) / 300), hzA = hz0 * (1 - 0.55 * Math.min(1, Math.max(0, (p.y - p.eH - 40) / 140))); c = [c[0] * (1 - hzA) + fogC.r * hzA, c[1] * (1 - hzA) + fogC.g * hzA, c[2] * (1 - hzA) + fogC.b * hzA]; }
+                    if (far && _ewAirOff()) { var hz0 = 0.5 + 0.3 * Math.min(1, (p.d - HQ_EDGE_NEAR_M) / 300), hzA = hz0 * (1 - 0.55 * Math.min(1, Math.max(0, (p.y - p.eH - 40) / 140))); c = [c[0] * (1 - hzA) + fogC.r * hzA, c[1] * (1 - hzA) + fogC.g * hzA, c[2] * (1 - hzA) + fogC.b * hzA]; }
                     var nxv = 2 * (p.y - F.at(vx + e, vz).y), nzv = 2 * (p.y - F.at(vx, vz + e).y), nl = Math.hypot(nxv, 2 * e, nzv);   // (one step each way: a third fewer samples)
                     var n = b.pos.length / 3; b.map[v] = n;
                     b.pos.push(vx * U, p.y * U, vz * U); b.col.push(c[0], c[1], c[2]); b.nrm.push(nxv / nl, 2 * e / nl, nzv / nl);
@@ -78333,8 +78397,9 @@ const ThreeRenderer = (function () {
     /* THE FAR FOG for the walk: the room's dry fog (under water the wet one is the water's look), scaled the way _hqFogHold
        scales it at the draw (Scene Fog off = 0, Fog Density = m) */
     function _hqPaintFog(H) {
-        var on = _ewSceneFogOn();
-        return { f: _hqDryFog(H), upm: _hqUnits(), m: on ? _ewFogShape().m : 0 };
+        var on = _ewSceneFogOn(), dry = _hqDryFog(H);
+        if (_ewAirOff() || !dry || !dry.color) return { f: dry, upm: _hqUnits(), m: on ? _ewFogShape().m : 0 };
+        return { f: { isFogExp2: true, color: dry.color, density: _ewAirDen(_hqUnits(), on, on ? _ewFogShape().m : 0) }, upm: _hqUnits(), m: 1 };   // THE ONE AIR
     }
     function _hqTickSky(now, Hx) {
         var H = Hx || _hq, sk = H && H.sky, env = H && ((H.stage && _hqStageSkyEnv(H)) || (H.clock && H.clock.vals && !H.clock.vals.locked && H.clock.vals.env) || H.room.shell.sky || (sk && sk.air && _hqStageAirEnv(H, now)));   // THE STAGE: a crossing's blend; THE WORLD CLOCK: the hour's; THE OPEN-AIR ROOM INDOORS: the room beside you
@@ -95889,6 +95954,7 @@ const ThreeRenderer = (function () {
                 try { var CVf = _hqClockVals(room, R.roomId, _hqClockHourNow()); if (CVf && !CVf.locked) fogC = CVf.fogC.getHex(); } catch (e) {}   // THE WORLD CLOCK: the hour's fog
                 if (_fieldCycle) fogC = _fieldCycleRigAt(_fieldCycle).fogC.getHex(); }   // THE BATTLE'S DAY AND NIGHT: the round's half
             else if (S.fog && S.fog.color != null) { fogC = S.fog.color; fogD = (S.fog.density > 0 ? S.fog.density : 0.012) / s; }
+            if (!_ewAirOff()) { fogD = (EW_AIR.rho + EW_AIR.base) / s; if (open && fogC === 0x0d0e12 && !S.sky.night && typeof HQ_WORLD_CLOCK !== 'undefined' && HQ_WORLD_CLOCK.day) fogC = HQ_WORLD_CLOCK.day.fog; }   // THE ONE AIR: the fight wears the same air as the walk (no room density)
             if (typeof scene !== 'undefined' && scene) scene.fog = new THREE.FogExp2(fogC, _ewSceneFogOn() ? fogD * _ewFogShape().m : 0);   // THE FOG SETTING: Scene Fog off = density 0 (THE BOARD FOG: the object stays, so the toggle never rebuilds a material); THE ROOM SETTINGS: Fog Density scales it
             if (field) field.fog = { color: fogC, density: fogD };   // the Scene Fog toggle mid-fight puts THIS fog back (ThreePost._applySceneFog)
         } catch (e) {}
@@ -100124,7 +100190,7 @@ const ThreeRenderer = (function () {
                     dusk: C.locked ? 0 : sun.dusk, lamp: C.locked ? 1 : sun.lamp };
         if (C.locked) return out;
         var base = _hqStageSkyValsRaw(room), LRo = _hqOpenLR(room), DL = C.dayLook || {};   // THE WHITE DAYLIGHT
-        var authNight = !!sky.night, fogA = (sky.fog && sky.fog.color != null) ? sky.fog.color : 0x0d0e12;
+        var authNight = !!sky.night, fogA = (sky.fog && sky.fog.color != null) ? sky.fog.color : (authNight ? 0x0d0e12 : CK.day.fog);   // THE ONE AIR: a day room with no colour of its own wears the clock's day haze (was near black)
         var dayFog = new THREE.Color(authNight ? ((DL.fog != null) ? DL.fog : CK.day.fog) : fogA);
         var nightFog = authNight ? new THREE.Color(fogA) : new THREE.Color(fogA).multiplyScalar(CK.night.fogK).add(new THREE.Color(CK.night.fog));
         var dayTint = new THREE.Color(authNight ? ((DL.tint != null) ? DL.tint : CK.day.tint) : ((sky.tint != null) ? sky.tint : CK.day.tint));
@@ -100822,7 +100888,7 @@ const ThreeRenderer = (function () {
                the outer ground's far edge at 54 m is under it); a row without one keeps the thin default */
             var fogD = (S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density / U : 0.00005;
             if (S.sky.fog && S.sky.fog.color != null) sc.fog = new THREE.FogExp2(S.sky.fog.color, fogD);
-            else sc.fog = new THREE.FogExp2(0x0d0e12, fogD);
+            else sc.fog = new THREE.FogExp2((!S.sky.night && typeof HQ_WORLD_CLOCK !== 'undefined' && HQ_WORLD_CLOCK.day) ? HQ_WORLD_CLOCK.day.fog : 0x0d0e12, fogD);   // THE ONE AIR: a day sky's haze, not near black
             _hq.cam.dist = Math.min(_hq.cam.dist, Math.max(2.2, S.d * 0.6));
         } else if (room.kind === 'box') {
             /* a small room: one fluorescent overhead, a warm pool at the desk lamp, dim fill */
@@ -101008,12 +101074,73 @@ const ThreeRenderer = (function () {
     /* Fog Horizon in a room: how many times higher the height fog reaches (the factory spot = 1; the slider's top ≈ 3.5×, its bottom ≈ ½) */
     function _ewFogClimb(lift) { return Math.max(0.25, 1 + (+lift || 0) * 6); }
     var _hqFogPfC = null;
+    /* ══ THE ONE AIR (2026-11-20, mondo: "i just want to be able to change the fog settings and it affect the entire game the same
+       way, not per room ... one consistent fog system for the entire game, all rooms, exploration and battle and the main menu") ══
+       ONE row decides how thick the air is everywhere; a room no longer brings its own fog density, height-fog row or dome band
+       (`shell.fog.density`, `sky.fog.density / height`, `shell.heightFog.h / amount`, `sky.fog.amount / top / band` are not read
+       by the draw any more). What a room still owns is only what it IS: the fog's COLOUR (its sky's, by the world clock's hour),
+       where its floor lies, and "no mist here" (`shell.heightFog: false`). The player's levers move every place alike:
+         Scene Fog OFF  the clear day: only the far haze (`base` per metre) and the soft band it leaves on the sky's horizon line
+         Scene Fog ON   the mood fog on top of it: + `rho` per metre × Fog Density, the ground mist, a fuller band
+         Fog Horizon    how high the band and the mist climb;  MAP LOOKS OFF = the player's fog colour everywhere (as before)
+       The sky's band no longer ends AT the horizon (the hard line): at the line it is what the air does to a thing `farM` metres off (_ewAirFar) and it thins upward (`hazeH`), in the same
+       colour the far ground fades to, and both turn warm toward a low sun (`warmDay` / `warmDusk`). The ground mist drifts
+       (`mistMove`, patches `mistSize` m wide). Under water the water's own look is kept. A fight keeps its board fog; its band
+       gets the same soft top (_ewAirBattle). Off: window.EW_NO_ONE_AIR (the rooms' own fog, as before). */
+    var EW_AIR = { rho: 0.0045, base: 0.0022, farM: 420, hazeH: 0.075, mist: 0.42, mistH: 2.6, mistMove: 0.32, mistSize: 14, mistSpeed: 0.22, warmDay: 0.2, warmDusk: 0.75 };
+    function _ewAirOff() { return typeof window !== 'undefined' && !!window.EW_NO_ONE_AIR; }
+    /* the air's density per scene unit for a place drawn at U units a metre */
+    function _ewAirDen(U, on, m) { return (EW_AIR.base + (on ? EW_AIR.rho * m : 0)) / (U || 73); }   // Scene Fog on only ever ADDS to the clear day's haze
+    /* the sky's haze at the horizon line = what this air does to a thing `farM` metres off (FogExp2's curve): the ground's end and the low sky take the same share */
+    function _ewAirFar(on, m) { var d = _ewAirDen(1, on, m) * EW_AIR.farM; return Math.min(0.97, 1 - Math.exp(-d * d)); }
     function _hqFogHold(H) {
         if (!H || !H.scene) return null;
+        if (_ewAirOff()) return _hqFogHoldRoom(H);
         var bAmt = _bfogWalkTick(H);   // THE BOARD FOG: the fight's board fog easing out over the walk's first moments
+        var on = _ewSceneFogOn(), sh = on ? _ewFogShape() : { m: 0, lift: 0 }, m = sh.m, U = _hqUnits();
+        var pf = null; try { pf = (on && typeof ThreePost !== 'undefined' && ThreePost.getPlayerFogHex) ? ThreePost.getPlayerFogHex() : null; } catch (e) {}   // MAP LOOKS OFF: the player's fog colour
+        var f = H.scene.fog, wet = !!(f && H.seaFx && f === H.seaFx.wetFog);
+        var s = { f: null, d: 0, n: 0, fa: 0, hz: _EW_HFOG.z, amt: _envUni ? _envUni.uFogAmount.value : null, top: _envUni ? _envUni.uFogTop.value : null,
+                  col: _envUni ? _envUni.uFogColor.value.clone() : null, band: _envUni ? _envUni.uFogBand.value : null, hy: _EW_HFOG.y, hw: _EW_HFOG.w,
+                  fc: null, sil: (_envUni && _envUni.uPaintSilFog) ? _envUni.uPaintSilFog.value.clone() : null,
+                  air: (_envUni && _envUni.uAir) ? _envUni.uAir.value.clone() : null, ax: _EW_AIR.x, ay: _EW_AIR.y, az: _EW_AIR.z, a2y: _EW_AIR2.y };
+        if (wet) return s;   // under water: the water's look, untouched
+        if (pf != null && f && f.color) { s.fc = f.color.getHex(); f.color.setHex(pf); }
+        if (f) {
+            s.f = f;
+            if (f.isFogExp2) { s.d = f.density; f.density = _ewAirDen(U, on, m); }
+            else { s.n = f.near; s.fa = f.far; if (m > 0.001) { f.near = f.near / m; f.far = f.far / m; } else { f.near = 1e9; f.far = 2e9; } }
+        }
+        /* the ground mist: one row for every place that has a floor to lie on (the room armed it); Fog Horizon lifts it */
+        var climb = (on && sh.lift) ? _ewFogClimb(sh.lift) : 1;
+        if (on && _EW_HFOG.z > 0.001) {
+            _EW_HFOG.z = Math.min(1, EW_AIR.mist * m); _EW_HFOG.y = 1 / (EW_AIR.mistH * U * climb);
+            _EW_HFOG.w = Math.max((f && f.isFogExp2) ? f.density * 4 : 0, 0.012 / U);
+        } else _EW_HFOG.z = 0;
+        _EW_AIR2.x = 6.2832 / (EW_AIR.mistSize * U); _EW_AIR2.y = EW_AIR.mistMove; _EW_AIR.w = (performance.now() / 1000 * EW_AIR.mistSpeed) % 6283.2;
+        /* warm toward the sun: the clock's sun, while it is up; never over the player's own colour */
+        var warm = 0, CK = H.clock, sv = CK && CK.sunCur;
+        if (sv && pf == null) {
+            var up = Math.max(0, Math.min(1, (sv.y + 0.05) / 0.2)), hl = Math.hypot(sv.x, sv.z);
+            warm = up * (EW_AIR.warmDay + EW_AIR.warmDusk * Math.max(0, Math.min(1, CK.duskCur || 0)));
+            if (hl > 0.001) { _EW_AIR.x = sv.x / hl; _EW_AIR.y = sv.z / hl; } else warm = 0;
+        }
+        _EW_AIR.z = warm;
+        if (_envUni) {
+            _envUni.uFogAmount.value = 0;   // the room's own band is not read: the air's haze below is the band everywhere
+            if (f && f.color) {
+                _envUni.uFogColor.value.set(f.color.r, f.color.g, f.color.b);
+                if (_envUni.uPaintSilFog) { _envUni.uPaintSilFog.value.x = f.color.r; _envUni.uPaintSilFog.value.y = f.color.g; _envUni.uPaintSilFog.value.z = f.color.b; }
+                if (_envUni.uAir) _envUni.uAir.value.set(_ewAirFar(on, m), 1 / (EW_AIR.hazeH * climb), warm, on ? Math.max(-0.05, sh.lift) : 0);
+            } else if (_envUni.uAir) _envUni.uAir.value.x = 0;
+        }
+        if (bAmt > 0 && f) _bfogDome(bAmt, f.color);   // the fight's horizon band eases out with it (_hqFogBack puts the room's back)
+        return s;
+    }
+    /* the rooms' own fog, as it drew before THE ONE AIR (window.EW_NO_ONE_AIR) */
+    function _hqFogHoldRoom(H) {
+        var bAmt = _bfogWalkTick(H);
         var on = _ewSceneFogOn(), sh = on ? _ewFogShape() : { m: 0, lift: 0 };
-        /* MAP LOOKS OFF (2026-10-24, mondo: "going to any new area with different colored fog it takes away my green"): the room's fog,
-           its height fog, the dome's band and the painted sky's far fog all wear the player's fog colour (ThreePost.getPlayerFogHex) */
         var pf = null; try { pf = (on && typeof ThreePost !== 'undefined' && ThreePost.getPlayerFogHex) ? ThreePost.getPlayerFogHex() : null; } catch (e) {}
         if (on && pf == null && Math.abs(sh.m - 1) < 1e-3 && Math.abs(sh.lift) < 1e-4 && !(bAmt > 0)) return null;
         var m = sh.m;
@@ -101033,11 +101160,10 @@ const ThreeRenderer = (function () {
             else { s.n = f.near; s.fa = f.far; if (m > 0.001) { f.near = f.near / m; f.far = f.far / m; } else { f.near = 1e9; f.far = 2e9; } }
         }
         if (!wet) _EW_HFOG.z = Math.min(1, _EW_HFOG.z * m);
-        if (!wet && on && sh.lift) _EW_HFOG.y = _EW_HFOG.y / _ewFogClimb(sh.lift);   // Fog Horizon: the ground mist climbs (or settles)
+        if (!wet && on && sh.lift) _EW_HFOG.y = _EW_HFOG.y / _ewFogClimb(sh.lift);
         if (_envUni) {
             _envUni.uFogAmount.value = Math.min(1, _envUni.uFogAmount.value * m);
             if (on && sh.lift) _envUni.uFogTop.value = Math.max(-0.5, _envUni.uFogTop.value + sh.lift);
-            /* a room with no dome band of its own: a Horizon raised past its factory spot banks the room's fog colour up the sky */
             if (on && sh.lift > 0.001 && f && !wet && f.color) {
                 var want = Math.min(1, sh.lift * 2.2) * Math.min(1, m);
                 if (want > _envUni.uFogAmount.value) {
@@ -101046,7 +101172,7 @@ const ThreeRenderer = (function () {
                 }
             }
         }
-        if (bAmt > 0 && f && !wet) _bfogDome(bAmt, f.color);   // the fight's horizon band eases out with it (_hqFogBack puts the room's back)
+        if (bAmt > 0 && f && !wet) _bfogDome(bAmt, f.color);
         return s;
     }
     function _hqFogBack(s) {
@@ -101054,11 +101180,22 @@ const ThreeRenderer = (function () {
         var f = s.f;
         if (f) { if (f.isFogExp2) f.density = s.d; else { f.near = s.n; f.far = s.fa; } if (s.fc != null) f.color.setHex(s.fc); }
         if (_envUni && s.sil && _envUni.uPaintSilFog) _envUni.uPaintSilFog.value.copy(s.sil);
-        _EW_HFOG.z = s.hz; if (s.hy != null) _EW_HFOG.y = s.hy;
+        _EW_HFOG.z = s.hz; if (s.hy != null) _EW_HFOG.y = s.hy; if (s.hw != null) _EW_HFOG.w = s.hw;
+        if (s.ax != null) { _EW_AIR.x = s.ax; _EW_AIR.y = s.ay; _EW_AIR.z = s.az; _EW_AIR2.y = s.a2y; }
+        if (_envUni && s.air && _envUni.uAir) _envUni.uAir.value.copy(s.air);
         if (_envUni && s.amt != null) _envUni.uFogAmount.value = s.amt;
         if (_envUni && s.top != null) _envUni.uFogTop.value = s.top;
         if (_envUni && s.col) _envUni.uFogColor.value.copy(s.col);
         if (_envUni && s.band != null) _envUni.uFogBand.value = s.band;
+    }
+    /* a fight's sky: the band over the board fog / the mood fog keeps its place and gets THE ONE AIR's soft top (a share of
+       whatever band the frame carries, so the sky shot's thinning and the board fog's easing take it along); no warmth, no drift */
+    function _ewAirBattle() {
+        if (!_envUni || !_envUni.uAir) return;
+        var lift = 0; try { lift = _ewSceneFogOn() ? _ewFogShape().lift : 0; } catch (e) {}
+        if (_ewAirOff()) _envUni.uAir.value.set(0, 13, 0, 0);
+        else _envUni.uAir.value.set(-0.9, 1 / (EW_AIR.hazeH * _ewFogClimb(lift)), 0, 0);
+        _EW_AIR.z = 0; _EW_AIR2.y = 0;
     }
     function _hqDissolveStart(H, o) {
         if (typeof document === 'undefined' || !canvas || !H || !H.scene || !H.camera) return null;
@@ -102132,6 +102269,8 @@ const ThreeRenderer = (function () {
            the screenshot probe drives the cast placement with these. Not
            used by the game. */
         dev: {
+            /* THE ONE AIR: the rules, and the frame's values as _hqFogHold would write them */
+            air: function () { var H = _hq, h = H ? _hqFogHold(H) : null, f = H && H.scene ? H.scene.fog : null; var o = { rules: EW_AIR, on: _ewSceneFogOn(), shape: _ewFogShape(), fog: f ? { hex: f.color.getHexString(), perMetre: +(f.density * _hqUnits()).toFixed(5) } : null, mist: { z: _EW_HFOG.z, hM: +(1 / (_EW_HFOG.y * _hqUnits())).toFixed(2) }, sun: { x: +_EW_AIR.x.toFixed(2), z: +_EW_AIR.y.toFixed(2), warm: +_EW_AIR.z.toFixed(2) }, dome: (_envUni && _envUni.uAir) ? _envUni.uAir.value.toArray().map(function (v) { return +v.toFixed(3); }) : null, domeC: _envUni ? _envUni.uFogColor.value.toArray().map(function (v) { return +v.toFixed(2); }) : null, band: _envUni ? _envUni.uFogAmount.value : null }; _hqFogBack(h); return o; },
             /* the live scene graph (repo probes: playtest_maps.js PROBE) */
             scene: function () { return scene; },
             hqScene: function () { return _hq ? _hq.scene : null; },   // the walk's own scene (THE SPACESHIP probe, 2026-11-17)
@@ -102351,6 +102490,9 @@ const ThreeRenderer = (function () {
         var sc = M.scene;
         var env = _menuSkyEnv(B);
         var hz = _menuHorizonColor(env, B.night);
+        /* THE ONE AIR: the far ground and the low sky are one haze now, so the haze is the sky's own (the biome's dust / ice
+           glow, dimmed by its night) and no longer has to hide in the dome's dark */
+        if (!_ewAirOff() && env && env.fog && env.fog.color != null) hz = new THREE.Color(env.fog.color).multiplyScalar(1 - 0.5 * Math.max(0, Math.min(1, B.night || 0)));
         sc.background = hz.clone();
         sc.fog = new THREE.FogExp2(hz, B.fog[1]);     // B.fog[0], the pale haze, is history: see _menuHorizonColor
         sc.add(M.doorGroup);
@@ -102628,8 +102770,11 @@ const ThreeRenderer = (function () {
             if (M.beam) M.beam.intensity = 0.9 * fl;
         }
         var noPost = (typeof window !== 'undefined' && window.EW_MENU_NO_POST) || (_lens && !_lens.post);
-        if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(M.scene, M.camera);
-        else renderer.render(M.scene, M.camera);
+        var mfh = _hqFogHold(M);   // THE ONE AIR: the menu wears the game's air (the Scene Fog toggle and the sliders reach it too)
+        try {
+            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(M.scene, M.camera);
+            else renderer.render(M.scene, M.camera);
+        } finally { _hqFogBack(mfh); }
     }
     /* THE GATE (2026-09-20): reveal the scene only when it is COMPLETE — the catalogue leaf hot (the door
        rebuilt with the real GLB), every file the build asked for landed. A leaf that never lands (a 404)

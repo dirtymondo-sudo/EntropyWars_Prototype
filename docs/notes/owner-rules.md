@@ -67,6 +67,7 @@ then tough shit. The player experience should be the same"): no weak-PC cut may 
 ## 3. Visuals
 
 - Bloom and fog OFF by default. Real lights. No placeholder geometry, no procedural stairs, no grass blades.
+- ONE FOG SYSTEM (mondo 11-20): the fog settings change the whole game the same way. Never give a room, zone or map its own fog amount, density, height or band; the one row is three-renderer.js `EW_AIR` (rendering-loading-perf.md "THE ONE AIR").
   Generated shapes are always textured. PS1-style window UI.
 - **Squares:** one tile per square; battle squares are 3.5 m ("2x everywhere"; 1.75 m is the old tile and the texture
   tile). Heights step one square per block. Textures are sized in metres.
