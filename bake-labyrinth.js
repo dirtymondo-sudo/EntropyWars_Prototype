@@ -165,7 +165,8 @@ rects(open, (x, y, X, Y2) => ROOF[y][x] === ROOF[Y2][X] && LV[y][x] === LV[Y2][X
       const lo = Math.min(ROOF[y][x], ROOF[Y2][X]), hi = Math.max(ROOF[y][x], ROOF[Y2][X]); lines.push({ x, y, dx, lo, hi }); } }
   lines.forEach(l => { const p = plotOf(l.x, l.y), parts = PARTS[p.id], ox = pox(p), oz = poz(p);
       const cx = l.dx ? gx(l.x + 1) - ox : gcx(l.x) - ox, cz = l.dx ? gcz(l.y) - oz : gz(l.y + 1) - oz;
-      parts.push({ s: 'box', p: [r2(cx), r2(l.lo - 3.6), r2(cz)], size: l.dx ? [0.3, r2(l.hi - l.lo + 3.8), C + 0.05] : [C + 0.05, r2(l.hi - l.lo + 3.8), 0.3], key: 'bricks_2', tint: 0x5e584e, uv: 3.5 }); });
+      const floor = Math.max(hAt(l.x, l.y), hAt(l.x + l.dx, l.y + (l.dx ? 0 : 1))), b0 = Math.max(l.lo - 3.6, floor + 3.2);   // (never down into a walker's head room)
+      parts.push({ s: 'box', p: [r2(cx), r2(b0), r2(cz)], size: l.dx ? [0.3, r2(l.hi - b0 + 0.2), C + 0.05] : [C + 0.05, r2(l.hi - b0 + 0.2), 0.3], key: 'bricks_2', tint: 0x5e584e, uv: 3.5 }); });
   count.curtains = lines.length; }
 
 /* ── THE DOORS: one a plan door; a door on the room's edge stands in the wall, else it stands free on its square's side ── */
@@ -263,8 +264,9 @@ A.plate = (x, y, s, t1, t2) => { const VV = { n: [0, -1], s: [0, 1], w: [-1, 0],
 /* the mains: four big pipes across a chamber's vault, on hangers, with a valve gallery under them */
 A.mains = (x0, y0, x1, y1) => { const top = ROOF[y0][x0], z0 = gz(y0), z1 = gz(y1 + 1);
     for (let i = 0; i < 4; i++) { const px = gcx(x0) + 1.2 + i * ((gx(x1 + 1) - gx(x0) - 4.6) / 3), py = top - 3.2 - (i % 2) * 0.6;
-        DRESS.push({ s: 'cyl', p: [r2(px), r2(py), r2((z0 + z1) / 2)], r: 0.55 - (i % 2) * 0.12, h: r2(z1 - z0), rx: 90, key: RUST, tint: [0x5a3622, 0x3e4a3a, 0x6a4a2a, 0x40403a][i], seg: 12 });
-        for (let z = z0 + 2; z < z1 - 1; z += 4.5) A.box(px, py + 0.6, z, 0.08, top - py - 0.6, 0.08, RUST, 0x222222); } };
+        const t = 1.0 - (i % 2) * 0.25; A.box(px, py - t / 2, (z0 + z1) / 2, t, t, z1 - z0, RUST, [0x5a3622, 0x3e4a3a, 0x6a4a2a, 0x40403a][i], { uv: 3.5 });   // (a cylinder part stands upright only: a main is a square duct)
+        for (let z = z0 + 1; z < z1 - 0.5; z += 3.5) A.box(px, py - t / 2, z, t + 0.16, t + 0.16, 0.2, RUST, 0x2a2420);   // its flanges
+        for (let z = z0 + 2; z < z1 - 1; z += 4.5) A.box(px, py, z, 0.08, top - py, 0.08, RUST, 0x222222); } };
 DES.dress(A);
 
 /* ── the walk check: every plot is reached from the spawn (a step of more than a ledge is crossed only by a climb, or down) ── */
