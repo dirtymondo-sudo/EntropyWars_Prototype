@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* THE WORLD AUDIT (2026-11-19, docs/plans/world-polish/PLAN.md; repo-only tooling, changes nothing in the game).
+/* THE WORLD AUDIT (2026-11-19, docs/plans/world-polish/WORLD_POLISH_PLAN.md; repo-only tooling, changes nothing in the game).
    mondo: "an audit of the world, zone by zone and district by district, to determine which ones are too small or cramped ...
    or which ones need more work visually ... a verticality pass". This MEASURES every plot of every plot-built room that is
    not retired, from the real data (load-data.js + data.js hqTerrainFeet / hqTerrainSolidAt / hqTerrainFluidAt, the same
@@ -23,7 +23,7 @@
    THE THREE SCORES, 0 good to 3 bad: SPACE (arena under 52 / 44 / 36), HEIGHT (relief under 2.5 / 1.2 / 0.6 m, and for 3 also no
    ramp, bridge, fall or mound row and under 6 slope pairs), DRESSING (pieces under 24 / 14 / 6; pieces = props + the drawn rows arch, texbuilding and tree). NEED = their sum, 0 to 9.
    A plot more than half water or void scores SPACE and HEIGHT on the land it has. Scores are a first sort, not a verdict: a tunnel
-   is narrow on purpose and a salt flat is flat on purpose; PLAN.md says which low scores are meant. */
+   is narrow on purpose and a salt flat is flat on purpose; WORLD_POLISH_PLAN.md says which low scores are meant. */
 'use strict';
 const fs=require('fs'),path=require('path');const REPO=path.join(__dirname,'..','..','..');
 const S=require(REPO+'/load-data.js').loadGameData();const H=S.DOOR_HQ,ROOMS=H.rooms;const SQ=3.5,PL=42,OUT=__dirname;
@@ -114,7 +114,7 @@ const C=['zone','room','id','name','district','walk','solid','water','void','tig
 const q=s=>/[",]/.test(String(s))?'"'+String(s).replace(/"/g,'""')+'"':String(s);
 fs.writeFileSync(path.join(OUT,'plots.csv'),C.join(',')+'\n'+ALL.map(p=>{const f=p.feats;return [p.zone,p.short,p.id,p.name,p.dn,p.walk,p.solid,p.fluid,p.void,p.tight,p.relief,p.lo,p.hi,p.levels,p.ledge,p.slope,p.flat,p.arena,p.arenaRel,p.hard,p.props,p.dress,p.propKinds,(f.ramp||0)+(f.climb||0)+(f.spiral||0),(f.bridge||0)+(f.deck||0),f.fall||0,(f.stream||0)+(f.pool||0),(f.plateau||0)+(f.hill||0)+(f.ridge||0)+(f.dip||0),(f.rail||0)+p.skateProps,p.S,p.V,p.A,p.need].map(q).join(',');}).join('\n')+'\n');
 /* AUDIT_DATA.md */
-const M=[];M.push('# THE WORLD AUDIT, the numbers ('+new Date().toISOString().slice(0,10)+')','','Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What each column means is in that file\'s header; what to do about it is in `PLAN.md`. Every plot: `plots.csv`. The picture: `need-map.svg`.','',
+const M=[];M.push('# THE WORLD AUDIT, the numbers ('+new Date().toISOString().slice(0,10)+')','','Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What each column means is in that file\'s header; what to do about it is in `WORLD_POLISH_PLAN.md`. Every plot: `plots.csv`. The picture: `need-map.svg`.','',
  '**Scores:** 0 good to 3 bad. S = space (does an 8 x 8 board fit), V = height (is there any), A = dressing (does anything stand there). NEED = S + V + A, 0 to 9.','');
 M.push('## 1. Every place','','| Place | Zone | Plots | Size (m) | Walkable | Path width (squares) | Board fits (of 64) | Plots no board | Relief a plot (m) | Whole span (m) | Dead-flat plots | Pieces a plot | Bare plots | Free plots beside it | NEED |','|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
 const byRoom=group(p=>p.room);const rr=Object.keys(byRoom).map(id=>({id,r:roll(byRoom[id])})).sort((a,b)=>b.r.need-a.r.need);

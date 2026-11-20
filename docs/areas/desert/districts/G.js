@@ -40,7 +40,7 @@
    tents), `oil_lamp`, also `tripod_bowl`, `hand_cart`, `hookah`, `kettle`, `cairn`, `rope_coils`, `backpack`, `cattle_skull`.
    STILL NEEDS A MODEL: a hieroglyph / carved-relief wall sheet (a texture, not a model), papyrus plants, a gold pile (neither was made).
 
-   THE VERTICALITY PASS (11-19, the world polish plan's pilot, docs/plans/world-polish/PLAN.md; the block at the end of ground()):
+   THE VERTICALITY PASS (11-19, the world polish plan's pilot, docs/plans/world-polish/WORLD_POLISH_PLAN.md; the block at the end of ground()):
    - THE SAND SEA is real dunes (three `ridge` crests and two `hill` rows, up to 5 m, all walked; what lay on the sand rides them).
    - THE CANYON STAIR (P11-08): an earth ramp up the dead canyon to a rock bridge at the mesa's shelf (5.25 m), a worn path along the shelf's rim
      (squares x 89 · y 51..55, y 55 · x 85..89, x 85 · y 51..55, the one added square 84,51, then y 50 · x 80..84) to THE LOOKOUT over the Dig.
@@ -241,7 +241,7 @@ exports.ground = ctx => { bind(ctx);
     native('conspiracy theorist', 91, 70, 40, sayOf(O_GIZA, 'conspiracy theorist')); native('mummy', 69, 80, 270); native('djinn', 55, 84, 0);
     /* THE PHARAOH (2026-11-19, the new race: the Pharaoh + Cleopatra, home Giza): one on the Tomb Door path between the braziers, one at the oasis market */
     native('pharaoh', 64, 78, 90); native('pharaoh', 57, 83, 180);
-    /* ════ THE VERTICALITY PASS (2026-11-19, docs/plans/world-polish/PLAN.md wave 1, the pilot; mondo: "go"). Giza measured 0.1 m of relief a
+    /* ════ THE VERTICALITY PASS (2026-11-19, docs/plans/world-polish/WORLD_POLISH_PLAN.md wave 1, the pilot; mondo: "go"). Giza measured 0.1 m of relief a
        plot. The monuments, the causeway, the doors and both road seams keep their level (their rows are drawn at a fixed height); the height goes
        where the ground is free. Every prop stands on the ground under it, so what lay on the sand rides the new ground. ════ */
     /* 1. THE SAND SEA: real dunes. `ridge` rows ADD to the ground (h at the crest, falling to nothing w / 2 away), walked and skated over: none
