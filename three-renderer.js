@@ -76546,7 +76546,9 @@ const ThreeRenderer = (function () {
         fasc:      { f: '"Fascinate"', w: 400, ls: 0.02 },            // the casino
         abril:     { f: '"Abril Fatface"', w: 400, ls: 0.02 },        // department stores, the insurer
         dela:      { f: '"Dela Gothic One"', w: 400, ls: 0.02 },      // Mid Records
-        frak:      { f: '"UnifrakturMaguntia"', w: 400, ls: 0, tc: true }   // the newspaper's masthead
+        frak:      { f: '"UnifrakturMaguntia"', w: 400, ls: 0, tc: true },  // the newspaper's masthead
+        sancreek:  { f: '"Sancreek"', w: 400, ls: 0.02 },              // the Western Town (Nowhere): the saloon, the hotel, the sheriff, the town-limit board
+        ewert:     { f: '"Ewert"', w: 400, ls: 0.02 }                  // the Western Town: the bank
     };
     /* THE CITY MARKS (2026-11-15, mondo: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city
        branding/logo for certain buildings or props or banners"; his OK on the branding sheet): drawn from plain shapes on the sign's own
