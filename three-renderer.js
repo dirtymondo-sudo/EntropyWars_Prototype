@@ -34,7 +34,7 @@ const ThreeRenderer = (function () {
             'EW_ANIM_LIB_STANDARD_POSE EW_ANIM_LIB_URLS EW_AO_AT_ZERO EW_ARCH_BARE EW_ASYNC_NODE_BUILD EW_BARE_PANES EW_BATTLE_MW_EVERY_RENDER EW_BOARD_FOG_MS ' +
             'EW_BUN_ADD_ALL EW_BUN_CHECK_EVERY EW_BUN_DRY EW_BUN_FIELD_CHECK_EVERY EW_BUN_FIRSTS_EACH EW_BUN_FULL_REFRESH EW_BUN_HASH_MATRICES EW_BUN_HELD_EVERY ' +
             'EW_BUN_HELD_NO_SHARED EW_BUN_INST_NO_REST EW_BUN_NO_OUT EW_BUN_OUT_HIDE_HASH EW_BUN_OUT_RETURN_ALWAYS EW_BUN_QUIET_LOOP EW_BUN_REST_AT_5 ' +
-            'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_BUN_TARGETS_EVERY EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
+            'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_BUN_LAMPS_ONE EW_BUN_TARGETS_EVERY EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
             'EW_CC_NO_DETAILS EW_CC_NO_HEMS EW_CLOTH_COLLIDE EW_CSS2D_ALWAYS EW_CSS_PLATES EW_CUBE_NO_ANIM EW_CV_LIT_BAKES EW_DEATH_CAM_ALL_UNITS EW_DESK_OFF ' +
             'EW_DIP_OFF EW_DISABLE_3D_UNITS EW_DISABLE_ANIM_LIB EW_DISABLE_BOOT_FIT EW_DISABLE_CANOPY_CUTAWAY EW_DISABLE_CLOTH_COLLIDE EW_DISABLE_COAT_FIT ' +
             'EW_DISABLE_FACE_IDLE EW_DISABLE_GRASS_WIND EW_DISABLE_GRAVESTONES EW_DISABLE_JIGGLE EW_DISABLE_POWER_AURA EW_DISABLE_RIPPLE EW_DISABLE_SHADOW_GATING ' +
@@ -47563,6 +47563,7 @@ const ThreeRenderer = (function () {
        object + material + pass) is left as it is. Old maps: window.EW_GPU_WEAKMAPS = true before the renderer is made. */
     function _ewGpuPropMaps(r, G) {
         if (typeof window !== 'undefined' && window.EW_GPU_WEAKMAPS) return;
+        try { if (/[?&]ew_weakmaps=1\b/.test(location.search)) { _ewGpuInfo.propMaps = 'off (?ew_weakmaps=1)'; return; } } catch (e) {}   // (11-20) the same switch from the address bar: three's own WeakMaps for this load
         if (typeof Symbol !== 'function' || typeof WeakMap !== 'function') return;
         var put = function (o, k, m) { Object.defineProperty(o, k, { value: m, writable: true, configurable: true, enumerable: false }); };
         var mGet = function (o) {
@@ -50200,12 +50201,21 @@ const ThreeRenderer = (function () {
         for (i = _ewBun.marked.length - 1; i >= 0; i--) if (_ewBun.marked[i]._ew_bunT !== FR) { _ewBunRelease(_ewBun.marked[i]); relN++; }
         if (spL) { var tpc = performance.now(); spL.preS = 'start ' + (tpa - t0).toFixed(0) + ', targets ' + (tpb - tpa).toFixed(0) + ' (' + T.length + '), releases ' + (tpc - tpb).toFixed(0) + ' (' + relN + ')'; spL.tpc = tpc; }   // THE SPIKE'S SPLIT, finer (11-19)
         /* what the whole scene shares: the lit lamps (the stage swaps them) and the freed-resource epoch */
-        var LG = 17, ls = r._ew_lights || [];
+        /* THE LAMPS PER CAMERA (2026-11-20, mondo: "still huge slowdown for combo attack"; his battle F3: 3.6 FPS, "2609 re-records/s
+           (lamps 2609.5)", "2312 walked · 2312 re-recorded · LAMPS MOVED" on EVERY check, "pane: classic draws 773"). A combo's shot
+           splits the screen: two cameras render the same room in one frame, each with its own lit lamps (the rig lights what
+           stands near its own camera). The check kept ONE list of lamps (the last render's) and one stamp per group, so before each
+           pane's render it saw the OTHER pane's lamps, called it a change and re-recorded every group of the room, twice a frame.
+           A recording is kept per camera, so the lamps are too: the list is the one THIS camera last drew with, and a group's
+           stamp is kept per camera (a camera a group has not been checked for yet starts from what it sees now: its recording is
+           made fresh under those lamps). One camera (the walk, a fight outside a shot) is as before. Old rule: window.EW_BUN_LAMPS_ONE */
+        var lampsOne = !!window.EW_BUN_LAMPS_ONE, camK = (!lampsOne && cam && cam.id) | 0;
+        var LG = 17, ls = (!lampsOne && cam && cam._ew_bunL) || r._ew_lights || [];
         LG = _ewBunMix(LG, ls.length);
         for (i = 0; i < ls.length; i++) { var l = ls[i]; if (l) { LG = _ewBunMix(LG, l.id); LG = _ewBunMix(LG, l.castShadow ? 1 : 0); } }
         if (sc.fog) LG = _ewBunMix(LG, sc.fog.isFogExp2 ? 2 : 1);
         if (sc.environment) LG = _ewBunMix(LG, sc.environment.id);
-        var lampMoved = LG !== _ewBun.lampG; _ewBun.lampG = LG;
+        var LGc = _ewBun.lampGc || (_ewBun.lampGc = {}), lampMoved = LGc[camK] !== undefined && LG !== LGc[camK]; LGc[camK] = LG; _ewBun.lampG = LG;
         var G = _ewBunMix(LG, _ewBun.epoch);
         var objs = 0, quietN = 0, addNB = _ewAddCount(), addMovedB = addNB !== _ewBun.addN, bunEvery = typeof window !== 'undefined' && !!window.EW_BUN_CHECK_EVERY, addAll = typeof window !== 'undefined' && !!window.EW_BUN_ADD_ALL;
         var BUN_QUIET = 8, BUN_QUIET_LONG = 90;
@@ -50217,6 +50227,7 @@ const ThreeRenderer = (function () {
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
             if (g._ew_ckOut) continue;   // THE CHUNKS: a chunk off the camera is not drawn and not checked; its recording waits for it
+            var gcm = st.Gc || (st.Gc = {}); if (gcm[camK] === undefined) gcm[camK] = G; st.G = gcm[camK];   // THE LAMPS PER CAMERA: this camera's stamp
             if (st.until > now) { if (g.isBundleGroup) _ewBunRelease(g); continue; }
             /* W5a: a group the frame does not draw (hidden, or a parked room under a hidden parent) is neither checked nor
                bundled — the walk over it was the check's whole cost when the HQ sat hidden behind a battle */
@@ -50286,7 +50297,7 @@ const ThreeRenderer = (function () {
                 st.why.lod++; W.lod++;
                 g.version++; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             }
-            g._ew_bunFree = false;
+            g._ew_bunFree = false; gcm[camK] = st.G;
             st.cB = cB0; st.cH = cH0; st.cO = cO0; st.cN = cN0;
             st.quiet = (_ewBun.recs === recs0 && !miss) ? (st.quiet | 0) + 1 : 0;
             if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; W.cold++; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
@@ -51850,6 +51861,7 @@ const ThreeRenderer = (function () {
                 r._ew_shadowFrame = false;
                 var ls = lightsNode.getLights(), auto = r.shadowMap.autoUpdate !== false, pulse = !!r.shadowMap.needsUpdate;
                 r._ew_lights = ls;
+                if (cam) cam._ew_bunL = ls;   // THE LAMPS PER CAMERA (the bundle check)
                 for (var i = 0; i < ls.length; i++) {
                     var l = ls[i];
                     if (!l || !l.castShadow || !l.shadow) continue;
