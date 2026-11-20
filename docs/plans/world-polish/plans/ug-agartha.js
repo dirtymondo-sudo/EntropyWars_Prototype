@@ -1,6 +1,10 @@
 /* THE UNDERGROUND, AGARTHA, SQUARE BY SQUARE: drawn from the whole-underground layout (plans/underground.js, mondo's OK of its shape 11-20).
-   APPROVED by mondo 2026-11-20 ("Yes this is good, go ahead and start individual threads"). Nothing is built from it yet. WRITTEN BY docs/plans/world-polish/underground/gen-district.py A: change the
-   layout or the script, not this file.
+   APPROVED by mondo 2026-11-20 ("Yes this is good, go ahead and start individual threads"). First WRITTEN BY docs/plans/world-polish/underground/gen-district.py A.
+   HAND-KEPT SINCE 2026-11-20 by thread 9's Agartha build (the script skips this file now): the build changes the plan first, the room
+   second (WORLD_POLISH_PLAN.md section 4). Built by `node bake-agartha.js` (room `site_prebuilt_hollow_earth_ug_agartha`, design
+   docs/areas/cavern/agartha/room.js). THE PILOT (11-20): THE UPPER SHELF, level 134: the Lemuria adit comes in at the north wall
+   (2,0); the great chamber is THE ADIT SQUARE (the board, the Great Crystal on it); the terrace grows east 5 squares (THE UPPER TERRACE,
+   the Hall of Records on it); two homes are cut in the rock round it. The maze, its levels, ladders, cliffs and pits are not changed.
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/ug-agartha.js
    A LABYRINTH (mondo 11-20: "we need victory road. labyrinth, height diffs, cliffs, drops waterfalls, underground horror like the descent movie").
    Every plot is a JUNCTION (4 x 4) or a CHAMBER (8 x 8, a board fits) at its own level. Passages are 2 squares wide and bend at every plot line.
@@ -13,7 +17,7 @@ module.exports = {
     approved: 'mondo 2026-11-20: "Yes this is good, go ahead and start individual threads"',
     zone: 'The Underground', thread: '7 + 9 + 10', maze: true,
     title: 'THE UNDERGROUND, AGARTHA: the labyrinth square by square, levels 134 to 112',
-    noBuildings: 'a cave: its chambers are the architecture', newRoom: 'a new compact room for this district (the layout replaces the long corridors)',
+newRoom: 'a new compact room for this district (the layout replaces the long corridors)',
     build: { frame: 'room', file: 'a new room design for this district, in the room\'s own frame' },
     mass: 'rock', massHeight: 6,
     tiles: { g: ['cave passage (the number is its level)', true, [60, 40, 90], [214, 180, 255]], c: ['a chamber floor', true, [96, 100, 110], [206, 210, 220]] },
@@ -42,6 +46,8 @@ module.exports = {
         [4, 3, 'Agartha 4,3', 'A', null, 122]],
     steps: [
         ['area', 2, 2, 9, 9, 'c', 134],
+        ['area', 10, 2, 14, 9, 'c', 134],   // THE UPPER TERRACE: the great chamber grown east (the Hall of Records + its forecourt)
+        ['area', 2, 0, 3, 1, 'g', 134],     // THE LEMURIA ADIT: the old mine's timbered tunnel to the north wall
         ['area', 4, 16, 7, 19, 'g', 126],
         ['area', 4, 28, 7, 31, 'g', 128],
         ['area', 4, 40, 7, 43, 'g', 128],
@@ -149,6 +155,10 @@ module.exports = {
         ['area', 53, 2, 54, 3, 'g', 110],
         ['area', 56, 17, 57, 18, 'g', 112],
         ['area', 56, 29, 57, 30, 'g', 112],
+        /* THE PILOT'S BUILDINGS (drawn last: the passages above lay over the terrace) */
+        ['area', 10, 2, 14, 6, 'k', 134],   // THE HALL OF RECORDS
+        ['area', 0, 4, 1, 7, 'k', 134],     // a home cut in the west rock (its door east onto the Adit Square)
+        ['area', 9, 10, 12, 12, 'k', 134],  // a home cut in the south rock (its door north onto the terrace)
         ['set', 6, 6, 'k', 134],
         ['label', 6.5, 10.6, "CLIFF", 'mark'],
         ['label', 23.5, 17.6, "CLIFF", 'mark'],
@@ -183,9 +193,9 @@ module.exports = {
         { at: [56, 17], kind: 'dead end', to: 'a pit two levels down with a ladder out: a nest' },
         { at: [56, 29], kind: 'dead end', to: 'a pit two levels down with a ladder out: a crystal pocket' },
         { at: [52, 40], kind: 'dead end', to: 'a dead end: something is kept here (a secret)' }],
-    doors: [[43, 47, 'S', "The Long Tunnel (8 levels down)", 124], [2, 2, 'N', "the Mountains (the Lemuria adit)", 134]],
-    landmarks: [{ name: "The great chamber's stalagmite", at: [6, 6], tall: 2 }],
-    lookouts: [{ name: 'the great chamber\'s edge', at: [2, 2], sees: "The great chamber's stalagmite" }],
+    doors: [[43, 47, 'S', "The Long Tunnel (8 levels down)", 124], [2, 0, 'N', "the Mountains (the Lemuria adit)", 134]],
+    landmarks: [{ name: "The Great Crystal (the great chamber's stalagmite, grown through with crystal)", at: [6, 6], tall: 2 }],
+    lookouts: [{ name: 'the great chamber\'s edge', at: [2, 2], sees: "The Great Crystal (the great chamber's stalagmite, grown through with crystal)" }],
     found: [
         { name: 'a chimney beside the 2-level ladder', from: [16, 12], to: [16, 11], kind: 'climb' },
         { name: 'a chimney beside the 2-level ladder', from: [18, 24], to: [18, 23], kind: 'climb' },
@@ -208,11 +218,15 @@ module.exports = {
         { name: 'a free climb up the cliff', from: [48, 6], to: [47, 6], kind: 'climb' },
         { name: 'a free climb up the cliff', from: [48, 30], to: [47, 30], kind: 'climb' }],
     flats: [
-        { name: "Chamber 0,0", rect: [2, 2, 9, 9], why: 'a chamber: level, a board fits', board: true },
+        { name: "The Adit Square (chamber 0,0)", rect: [2, 2, 9, 9], why: 'the city\'s first square, where the adit comes in: level, a board fits', board: true },
+        { name: "The Upper Terrace", rect: [10, 7, 14, 9], why: 'the Hall of Records\' forecourt, one level with the square' },
         { name: "Chamber 2,0", rect: [26, 2, 33, 9], why: 'a chamber: level, a board fits', board: true },
         { name: "Chamber 2,3", rect: [26, 38, 33, 45], why: 'a chamber: level, a board fits', board: true },
         { name: "Chamber 3,0", rect: [38, 2, 45, 9], why: 'a chamber: level, a board fits', board: true },
         { name: "Chamber 3,3", rect: [38, 38, 45, 45], why: 'a chamber: level, a board fits', board: true }],
-    buildings: [],
+    buildings: [
+        { name: 'The Hall of Records', rect: [10, 2, 14, 6], door: 'S', tall: 4, inside: 'one hall of white marble, its shelves of crystal tablets, lecterns, the brass telescope and orrery the old Upper Terrace had' },
+        { name: 'A home in the west rock', rect: [0, 4, 1, 7], door: 'E', tall: 2, inside: 'a home cut in the rock: a bed, a table, a crystal lamp' },
+        { name: 'A home in the south rock', rect: [9, 10, 12, 12], door: 'N', tall: 2, inside: 'a home cut in the rock: two rooms, a hearth of crystal, beds' }],
     picture: { S: 26 },
 };
