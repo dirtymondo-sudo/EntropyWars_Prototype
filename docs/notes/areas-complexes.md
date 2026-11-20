@@ -12811,6 +12811,29 @@ joined only by a door on the boardwalk (`harbour` -> `quay`). On the One World m
   camp under the mole, the Shore's far-off pieces by night. A real machine should walk both seams once.
 - **KNOWN AND LEFT:** in the harbour room the pier's first nine squares lie behind the door and end in open water where the sand was. Seen from the city the
   Dutchman stands past the room's line: nobody can swim to her from the city's side (the sea stops at the line as it always did).
+
+**PART 3 (the third PR, 11-20): MALL, ROAD, BEACH + the Cove's point.** mondo, with a picture taken from above, two things circled: "this whole strip of
+buildings, I want gone. It's blocking the view from the beach and vice versa, and it makes the beach feel disconnected. I could see some shorter palm trees
+lined up in the median of the road. It's supposed to be mall, then road, then beach, Not a whole row of buildings and tall trees blocking the ocean view.
+That is not a bayside view. It's called bayside mall." and "the other part I circled is a pointy part in the cove, doesn't look natural, please fix".
+- **THE STRIP IS GONE** (`B.js` `last()`, `STRIP` = squares 141..143, rows 96..143 in Bayside's frame, the three squares between the coast road's east
+  pavement and the boardwalk): the loading dock (`P11-09-B1`, a walk-in, with its look and its inside), the East shops (`P11-10-B1` + its second block), the
+  tool's four back-lot buildings there (`dc:in134..137`), the Marina lookout's kiosk (`bay-lookout`), every prop, blocker and fence on those squares: 22
+  rows, 31 props. TAKEN OUT AT THE VERY END, NOT IN THE PLAN: `city-layout.json` and `tailor` are untouched, so not one of the city's dice moves and every
+  other building bakes as before (the plan still lists the two buildings; they are simply never in the room). Their floor squares are boardwalk planks.
+  KEPT: the canal and its culvert, the Marina plot's ramp and retaining rail (that plot stands a level up), road signs.
+- **THE PALMS:** Bayside's promenade row of tall palms (7 to 9 m, at square 144) is gone; north of the mole (the Shore's back, under Entertainment's sea
+  wall) it stays. Fourteen short palms (the catalogue's 3.2 m `palm_tree`), each in a low concrete planter, stand on the coast road's middle line, one every
+  three squares, clear of the crossings (`dc:bay-median<row>:arch`). THE TRAPS: the tool's lane pass draws any prop within 3.2 m of a traffic line out to
+  the kerb, and its soil pass removes a Bayside tree that stands on paving (or paints a sand bed under a palm prop): the median's palms are therefore set in
+  `last()`, after every pass. The cars keep 2.5 to 4.5 m off the middle line.
+- **THE COVE'S POINT:** the sliver of sand between the Cove's round cut and the Shore's first circles (part 1's "known and left" bar) is gone. `COAST.shore`
+  now starts at the Cove's own south rim (row 56.3, square 162.4) and turns out of it, so the shore runs in one sweep from the Cove round into the bay.
+  `coastCut` keeps a cap by the circle's FAR side now (where the coast turns, a circle's middle lies nearer the line than its sample does) and steps 1.75 m
+  where the curve is steep. The Shore's sand is narrower on its first twelve rows: `W.js` pulls a thing lying there back inside the new waterline.
+- **NOT TOUCHED:** Entertainment's own buildings behind the Shore (they stand a storey up on the sea wall, north of the mole); the mall; everything west of
+  the coast road. FOR THE MALL THREAD: the mall's east front now faces road, boardwalk, sand, pier, water with nothing between; the strip's squares 141..143
+  are open planks you may build a forecourt on, but mondo's word is that nothing tall goes there.
 ## KATANA ISLAND, THE PLAN (2026-11-20, world polish thread 21; A PROPOSAL WITH MONDO, NOTHING BUILT)
 
 mondo 11-20: "we are getting rid of Mt Shasta. Instead volcano island is gonna be remade to Katana Island, which will be like feudal Japan ... with Katana

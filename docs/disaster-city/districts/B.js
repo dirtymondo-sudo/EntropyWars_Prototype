@@ -823,7 +823,13 @@ function miamiStreet(ctx, push, ghost) {
     [[157.4, 100.2, 0, 12], [157.4, 103.6, 180, 10], [162.8, 101.5, 0, 13]].forEach((y, i) => { push('bay-yacht' + (i + 1), gx(y[0]), gx(y[1]), y[2], B.yacht(y[3])); lateRows[lateRows.length - 1].y = r3(SEA_Y - lv); out.yachts++; });
     /* tall palms, each in its own sand bed, on the middle of its square (a tree blocks) */
     const palm = (cx, cy, h) => { paintCell(cx, cy, 'desert'); take(cx, cy); features.push({ k: 'tree', x: gc(cx), z: gc(cy), kind: 'palm', h }); out.palms++; };
-    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.key === 'palm_tree' && Math.abs(q.x - (gx(144) + 0.9)) < 0.05) { const cy = Math.round((q.z + ctx.HALF) / ctx.C); props.splice(i, 1); palm(144, cy, r3(7.2 + (cy % 4) * 0.5)); } }   // (the promenade's short palms grow tall)
+    /* MALL, ROAD, BEACH (2026-11-20, mondo, a picture with the strip between the coast road and the beach circled: "this whole strip of buildings, I want gone.
+       It's blocking the view from the beach and vice versa ... I could see some shorter palm trees lined up in the median of the road. It's supposed to be
+       mall, then road, then beach, Not a whole row of buildings and tall trees blocking the ocean view"): along BAYSIDE (rows 96+) the promenade's tall
+       palms are gone; short palms (3.2 to 3.6 m, the tall ones are 7 to 9) stand down the middle line of the coast road, one every three squares, clear of the
+       crossings. North of the mole (Entertainment's rows, the Shore's back under its sea wall) the tall palms stay. */
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.key === 'palm_tree' && Math.abs(q.x - (gx(144) + 0.9)) < 0.05) { const cy = Math.round((q.z + ctx.HALF) / ctx.C); props.splice(i, 1); if (cy < 8 * N) palm(144, cy, r3(7.2 + (cy % 4) * 0.5)); } }   // (the promenade's short palms grow tall, north of the mole only)
+    /* (the median's palms are set in last(): the tool's passes move a prop off a carriageway and take a tree off paving) */
     [[9, 3], [11, 3], [9, 8], [11, 8], [8, 5], [8, 6]].forEach((c, i) => { const cx = 8 * N + c[0], cy = 10 * N + c[1]; if (free(cx, cy, '.')) palm(cx, cy, 7.4 + (i % 3) * 0.6); });   // the palm court at the mall arch
     /* flamingos either side of the hotel's doors, lobster traps where the pier leaves the boardwalk (decor: off the squares' middles) */
     [[96.2, 107.9, 200], [97.0, 108.8, 250], [96.4, 100.3, 300], [97.2, 99.5, 160]].forEach(f => props.push({ key: 'flamingo', x: f[0], z: f[1], face: f[2] }));
@@ -1197,7 +1203,7 @@ function interiors(ctx, byId, push) {
    surf, out again to the mole's head. Bayside's bay: tight against the mole (the yachts need their water), widest off the lifeguard station,
    in to the canal's mouth and the grill deck. MOLE = the breakwater: planks from the boardwalk to square x1, a round head (hx, hy, radius hr m). ── */
 const COAST = {
-    shore: [[54, 166.0], [57, 166.8], [61, 167.6], [66, 167.6], [71, 166.6], [76, 165.4], [82, 165.0], [88, 166.2], [93, 167.4], [96.5, 168.2]],
+    shore: [[56.3, 162.4], [57.6, 164.6], [59.6, 166.4], [62.5, 167.5], [66, 167.6], [71, 166.6], [76, 165.4], [82, 165.0], [88, 166.2], [93, 167.4], [96.5, 168.2]],
     bay: [[98.1, 155.4], [102, 155.3], [106, 155.6], [110, 156.6], [116, 159.4], [121, 159.0], [126, 156.4], [131, 154.2], [136, 153.2]],
 };
 const MOLE = { x1: 166, hx: 168, hy: 97, hr: 10.5 };
@@ -1217,10 +1223,12 @@ function coastCut(ctx, pts, o) {
     const rowOf = z => (z + 252) / 3.5, xw = z => gx(waterAt(pts, rowOf(z)));
     const z0 = gx(pts[0][0]), z1 = gx(pts[pts.length - 1][0]); let n = 0;
     for (let z = z0; z <= z1 + 0.01;) {
-        let R = RMAX; if (o.capN != null) R = Math.min(R, z - o.capN); if (o.capS != null) R = Math.min(R, o.capS - z);
-        const step = R < 16 ? 1.75 : 3.5;
+        const sl = (xw(z + 0.5) - xw(z - 0.5)), nl = Math.hypot(1, sl), nx = 1 / nl, nz = -sl / nl;   // the seaward normal
+        /* (the cap is kept by the circle's FAR side: where the coast turns and the normal leans toward the line, the circle's middle lies nearer to it) */
+        let R = RMAX; if (o.capN != null) R = Math.min(R, (z - o.capN) / (1 + Math.max(0, -nz))); if (o.capS != null) R = Math.min(R, (o.capS - z) / (1 + Math.max(0, nz)));
+        const step = (R < 16 || Math.abs(sl) > 0.6) ? 1.75 : 3.5;
         if (R >= 3) {
-            const edge = Math.min(BANK, R * 0.9), sl = (xw(z + 0.5) - xw(z - 0.5)), nl = Math.hypot(1, sl), nx = 1 / nl, nz = -sl / nl;   // the seaward normal
+            const edge = Math.min(BANK, R * 0.9);
             const rx = xw(z) - nx * WATER * edge, rz = z - nz * WATER * edge;                                                      // the rim's point
             lateRows.push({ k: 'plateau', x: r3(rx + nx * R), z: r3(rz + nz * R), r: r3(R), h: DEEP, sink: true, edge: r3(edge), absY: true });
             const bx = rx + nx * Math.min(R, 33);
@@ -1308,6 +1316,7 @@ function beach(ctx, push, ghost) {
        or square changes. (A tree's soil bed is painted by the tool after this, so the palms keep their sand.) */
     { const open = (cx, cy) => '.P#'.indexOf(ctx.cellAt(cx, cy)) >= 0; let n = 0;   // ('#' = a plot's edge band: ground too, under its fence or hedge)
       for (let cy = 4 * N; cy < 12 * N; cy++) for (let cx = (cy < 4 * N + 40 ? 139 : 140); cx < 144; cx++) if (open(cx, cy)) { paintCell(cx, cy, 'wood_planks'); n++; }
+      for (let cy = 8 * N; cy < 12 * N; cy++) for (let cx = 140; cx < 144; cx++) if ('ID'.indexOf(ctx.cellAt(cx, cy)) >= 0) { paintCell(cx, cy, 'wood_planks'); n++; }   // MALL, ROAD, BEACH (2026-11-20): the strip's buildings are gone (last()), their floors are boardwalk
       console.warn('[bayside boardwalk]', n, 'squares of planks between the coast road and the beach'); }
     /* (THE SHORE: no rail between the boardwalk and the sand on the north stretch: you step off the boards onto the beach anywhere) */
     for (let cy = 4 * N + 2; cy < 8 * N; cy += 3) props.push({ key: 'palm_tree', x: r3(X0 + 0.9), z: gx(cy) });
@@ -1412,4 +1421,32 @@ function build(ctx) {
     for (let i = features.length - 1; i >= 0; i--) { const f = features[i];
         if ((f.k === 'rail' || f.k === 'wall') && !f.ghost && Math.abs(f.x0 - X0) < 0.5 && Math.abs(f.x1 - X0) < 0.5 && open.some(o => Math.min(f.z0, f.z1) >= o[0] - 0.1 && Math.max(f.z0, f.z1) <= o[1] + 0.1)) features.splice(i, 1); }
 }
-module.exports = { room, tailor, apply, build, B, K, T, COAST, MOLE, waterAt };
+/* MALL, ROAD, BEACH (2026-11-20, mondo: "this whole strip of buildings, I want gone"): THE VERY END. Everything that stands between the coast road's east
+   pavement and the boardwalk along Bayside (squares 141..143, rows 96..143 in this file's frame) is taken out of the room after every pass has run: the
+   loading dock (P11-09-B1, its look and its inside), the East shops (P11-10-B1 and its second block), the tool's four back-lot buildings there, the Marina
+   lookout's kiosk, every prop, blocker and fence on those squares. Done here and not in the plan (`tailor`) so not one of the city's dice moves: every
+   other building in Disaster City bakes as before. KEPT: the canal and its culvert, the Marina plot's ramp and its retaining rail (that plot stands a
+   level up), road signs. The mall (P10-10-B1) now looks straight across the road and the boardwalk at the pier and the water. */
+const STRIP = { x0: 141, x1: 144, y0: 96, y1: 144 };
+function last(ctx) {
+    const { features, props, gx, N } = ctx, X0 = gx(STRIP.x0) - 0.05, X1 = gx(STRIP.x1) + 0.3, Z0 = gx(STRIP.y0), Z1 = gx(STRIP.y1), ZM = gx(9 * N);
+    const pt = f => typeof f.x === 'number' ? [f.x, f.z] : typeof f.x0 === 'number' ? [(f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2] : null, inS = q => q && q[0] >= X0 && q[0] < X1 && q[1] >= Z0 && q[1] < Z1;
+    const out = { rows: 0, props: 0 };
+    for (let i = features.length - 1; i >= 0; i--) { const f = features[i], q = pt(f); if (!inS(q)) continue;
+        if (/^dc:canal/.test(f.id || '') || /^dc:skate|^shore:/.test(f.id || '')) continue;
+        if (f.k === 'ramp' || f.k === 'mark' || f.k === 'tree') continue;
+        if ((f.k === 'rail' || (f.k === 'wall' && !f.ghost)) && q[1] < ZM) continue;                 // the Marina plot's retaining rail (rows 96..107)
+        if (f.k === 'plateau' && !f.bld) continue;
+        features.splice(i, 1); out.rows++; }
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.x >= X0 && q.x < gx(STRIP.x1) - 0.3 && q.z >= Z0 && q.z < Z1 && !/^roads_/.test(q.key)) { props.splice(i, 1); out.props++; } }
+    /* THE MEDIAN'S PALMS: one short palm (the catalogue's 3.2 m `palm_tree`) in a low concrete planter every three squares on the coast road's middle
+       line (the cars keep 2.5 to 4.5 m off it), clear of the crossings. Set here, at the very end: earlier, the lane pass would draw them out to the kerb
+       and the soil pass would paint a lane square as a sand bed under each. */
+    { const road = cy => [136, 137, 138, 139].every(cx => ctx.cellAt(cx, cy) === 'R') && ctx.cellAt(135, cy) !== 'R' && ctx.cellAt(140, cy) !== 'R', at = (x, z) => { const pl = ctx.plotOf['P11-' + String(Math.floor((z + ctx.HALF) / ctx.C / N)).padStart(2, '0')]; return (ctx.lvOf && pl) ? ctx.lvOf(pl) * ctx.LEVELS.M : 0; }; let n = 0;   // (the plot's level: the Marina plot's stretch of road stands a level up)
+      for (let cy = 8 * N + 1; cy < 12 * N; cy += 3) if (road(cy) && road(cy - 1) && road(cy + 1)) { const x = gx(138), z = ctx.gc(cy), y = Math.round(at(x, z) * 1000) / 1000;
+          props.push({ key: 'palm_tree', x, z, face: (cy * 53) % 360 });
+          const row = { k: 'arch', id: 'dc:bay-median' + cy + ':arch', x, z, rot: 0, parts: [{ s: 'box', p: [0, 0, 0], size: [1.5, 0.32, 2.8], key: 'urban:ConcreteStriped2a', tint: 0xd8d4c8 }, { s: 'box', p: [0, 0.32, 0], size: [1.2, 0.04, 2.5], key: 'desert', top: true }] }; if (y) row.y = y; features.push(row); n++; }
+      out.median = n; }
+    console.warn('[bayside strip] cleared', JSON.stringify(out));
+}
+module.exports = { room, tailor, apply, build, last, B, K, T, COAST, MOLE, waterAt };
