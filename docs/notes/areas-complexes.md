@@ -10881,6 +10881,46 @@ Copy from `docs/areas/antarctica/districts/S.js`. A helper all six want belongs 
   (7 m), a marble pier (10.5 x 3.5 m), crystal lamp posts (3 m), the Loch Ness Monster's neck rising from the Lake (5 m).
   ALL: a moss / lichen ground sheet; a light shaft that draws.
 
+## ANTARCTICA, WORLD POLISH THREAD 13 — THE ICE WALL, the pilot (2026-11-20, owner side; WORLD_POLISH_PLAN.md thread 13)
+
+Built from mondo's approved height plan `docs/plans/world-polish/plans/antarctica.js` ("yep looks good", 11-20), laid OVER the room as it
+stood. The plan changes first, the room second: the room reads the plan's squares through the plan tool itself.
+- **THE ROOM DESIGN FILE** `docs/areas/antarctica/districts/room.js` (NEW; room frame = the layout's frame, Antarctica is one room): it
+  `require`s `draw-plan.js` and calls `build(plan)` (underlay off) and turns the plan's squares into the room: the lane at level 31 on the
+  Wall's body = the walk on top, the `e` squares = the west stair, the plan's `bridges` at level 31 = the ice arch, the icefall's level-13
+  ground, the found ways' chain and rope, the Cove's cut step. `bake-antarctica.js` runs it first in every stage (`plan / pieces / dress`),
+  with no district of its own. Edit the PLAN, rerun `node bake-antarctica.js`.
+- **THE TOOL LEARNED (bake-antarctica.js):** `ctx.surface(sx, sy, corners | metres, ch)` = a square's OWN four corners [nw, ne, sw, se]
+  written as they are into `terrain.slope.cells` (the sheet holds four corners a square, so a step between neighbours is free); a `T`
+  square = walked ON the mass (open, but the Wall's crest is built round it as Wall, and a crest corner touching it stands a low broken
+  parapet 0.35 to 1.65 m over it); `ctx.link(a, b)` = a walk-check edge the squares do not show (the arch, the rope); the walk check
+  fails the bake when a `T` square is not reached; `look(..., y)` = a drawn piece's base in metres (else the ground at its middle).
+- **THE GRAIN: `terrain.res` 0.875 (was 1.75).** The game's slope test (`hqTerrainSlope`) samples one lattice step either side: at 1.75
+  that step lands ON the square lines, which take the higher side, so a stair one square wide beside a higher square read as a cliff
+  (climbing refused). At 0.875 a square's middle reads its own slope. The Cavern (252 m too) runs 0.875. The bake's own walk check is
+  unchanged (square by square).
+- **A FLIGHT'S FIELD STANDS 15 cm UNDER THE FLIGHT ROW**, so the flight (an exact piece, `info.exact`) is the surface; at the same height
+  the room's ground noise (0.08 m) won and the slope test read the lattice again.
+- **WHAT STANDS (pilot):** THE WEST STAIR, three flights cut in the face (`ant:weststair:A/B/C`, `model: 'stone'` = a precast flight in
+  the room's ice sheets): foot landing 13,17 off the Traverse (level 11) > A west along the face (row 17, to level 19) > landing 4,16-17 >
+  B east, one square deeper (row 16, to 25) > landing 11,15-16 > C west, deeper again (row 15, to 31) > the top step 5,14. It stands WEST
+  of the planned Traverse's ramp at 14..15,18 (the plan tool refuses a ramp beside a stair). THE WALK ON TOP, the plan's lane, two squares
+  wide at 54.25 m right across the zone, snow-white on the blue Wall, orange marker wands every fourth square, a cairn at each lookout.
+  THE ICE ARCH over the Gap (the Gap is three squares now, 30..32): a `bridge` row `ant:arch`, 2.4 m of ice, `plain` (no piers in the road
+  below), drawn haunches under both ends and a rope on stakes along each edge. THE ICEFALL at the Wall's east foot (65..69 x 18..20, level
+  13): five tumbled blocks drawn, three blocks of ground up from the snow at 64,21-22 (a jump each, about 0.96 m), and a fixed rope
+  (`climb`, look `rope`, 22.75 to 54.25 m) from the heap to 66,17 on the walk. THE COVE LANDING: see below.
+- **FOUND AND FIXED: PIRATES' COVE'S BOAT LANDED ON A CUT-OFF FLOE.** `cove_antarctica`'s end (x 92.75, z 110.25 = square 62,67) stood in
+  the sea next to a floe the shelf did not reach: the game's own solver (`hqTerrainReach` from the door's landing) reached 8 nodes. The
+  plan's cut step (61..63 x 65..70) is ice now: from the landing the solver reaches the spawn.
+- **CHECKED HEADLESS (the game's own code through load-data.js):** every lane, stair and arch square stands within 5 cm of the plan's level
+  and is reached from the spawn (`hqTerrainReach`); the heap is reached with the jump rule; `hqTerrainTraps` = 0; the rope reads 22.75 to
+  54.25 m. A one-off script, not a test (CLAUDE.md: no tests).
+- **NOT DONE (waits mondo's word on the pilot):** the east stair (60,16-18) and the north stair down to the Hull (38,11-13); the rest of the
+  plan (the Traverse's new line, the trails, the landmarks of the other districts, the Snow Bridge, the berg); the dressing passes. THE LISTS
+  (section 1b of the plan) were searched for snow / ice / rope / marker keys only (`ice_block`, `snow_heap`, `cairn`, `ice_axe`,
+  `rope_coils`, `line_marker`); the full read comes before the dressing passes.
+
 ## THE CAVERN, THE ZONE KIT — for the H and A district threads (2026-11-16, written by the pilot, district K)
 
 - **THE LIGHT FIRST.** Ambient 0.24; fog 0.007 (you see across a district). The room has TEN prop lights and K's torches hold all
