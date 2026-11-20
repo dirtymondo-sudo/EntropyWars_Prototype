@@ -229,4 +229,5 @@ newRoom: 'a new compact room for this district (the layout replaces the long cor
         { name: 'A home in the west rock', rect: [0, 4, 1, 7], door: 'E', tall: 2, inside: 'a home cut in the rock: a bed, a table, a crystal lamp' },
         { name: 'A home in the south rock', rect: [9, 10, 12, 12], door: 'N', tall: 2, inside: 'a home cut in the rock: two rooms, a hearth of crystal, beds' }],
     picture: { S: 26 },
+    pictures: [{ suffix: 'pilot', x0: 0, x1: 23, y0: 0, y1: 47, S: 30, title: 'AGARTHA, THE PILOT: the Upper Shelf (134) and the maze under it (126 to 132)' }],
 };
