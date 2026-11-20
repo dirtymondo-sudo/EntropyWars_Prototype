@@ -53,7 +53,7 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 2 | **Disaster City** (the cramped city) | Disaster City, one room | **Not started.** It is the standard for height. His complaint here is another one: too many buildings, stairs into walls. |
 | 3 | **Came A Lot Kingdom, its three woods** | The Snowy Pines, The Forest, The Fairy Forest | **Built 11-20, differs from the standard:** set-piece height (a ridge, a gully, a bluff, hollows) on level ground, wide ways in straight legs. Not on the next list (mondo 11-20: "id rather you not go over what you already did, start somewhere else"). |
 | 4 | **Came A Lot Kingdom, The Village** | the Village, inside the kingdom's main room | **Built 11-20** (three stairs up to the town wall's walk, the churchyard). The town's ground is level. Not on the next list. |
-| 5 | **The Mountains** | The North Pole, The Ski Lodge + The Snowy Pass, Mount Olympus. **Mount Shasta is being REMOVED** (mondo 11-20). | Not started |
+| 5 | **The Mountains** | The North Pole, The Ski Lodge + The Snowy Pass, Mount Olympus. Mount Shasta's plots are renamed and swallowed by the other districts (mondo 11-20). | Not started. To be ONE real ski mountain: ski from the top of Mount Olympus to the base (mondo 11-20). |
 | 6 | **The Woods** | The Clearing + Dead Man's Cave, The Redwood Trail, The Ritual Ground | **Not started. NEXT.** This is the zone mondo walked and found flat and straight. A HORROR wood: Silent Hill, Blair Witch (mondo 11-20). |
 | 21 | **Katana Island** (today: The Volcano Island) | The Volcano Island, one room, remade as feudal Japan; **Katana Bay** is one of its districts | **Not started. SECOND, right after The Woods** (mondo 11-20). |
 | 7 | **The underground walks** | the Cavern's three tunnels, Agartha's tunnel, the Sewers' walks under the city | Not started |
@@ -92,7 +92,7 @@ mondo set the first two himself (11-20): "after the woods do Katana Island with 
 
 After those two, proposed, in this order:
 
-- **Thread 5, The Mountains** (without Mount Shasta). It has the height already; it lacks winding ways and thin trails.
+- **Thread 5, The Mountains**, as a real mountain and ski resort (his words are in its row).
 - **Thread 17, The Estate**, then **thread 12, Leylines**, then **thread 13, Antarctica**: the rest of the surface.
 - **Thread 8, The D.U.M.B.** (the worst-looking zone in the pictures), then the underground: threads 7, 9, 10.
 - **Thread 11, Heaven + Hell + Vatican**, then threads 14, 15, 16, 18.
@@ -188,7 +188,9 @@ serve any zone. Do not merge it as it is; a thread may take from it.
 - **The Woods are a horror wood** (11-20: "for the woods, please think like horror game and silent hill and Blair witch").
 - **Mount Shasta goes; the Volcano Island becomes Katana Island** (11-20: "we are getting rid of Mt Shasta. Instead volcano island is gonna be
   remade to Katana Island, which will be like feudal Japan. Still with volcano/mountain, but it might have to be a little bigger, idk. So after
-  the woods do Katana Island with Katana Bay as one of the districts.").
+  the woods do Katana Island with Katana Bay as one of the districts."). Shasta's plots may be renamed and swallowed by the other mountain
+  districts ("you can rename it or whatever so it gets swallowed up by the other districts").
+- **The Mountains are a real ski mountain** (11-20; his words in thread 5's row). **Katana Island is "a love letter to anime and Japan"** (11-20; thread 21's row).
 - **Height has to give you something to do** (11-20: "This pass is not meant to just raise things for the sake of raising them. A pyramid is
   already raised anyway, it's literally a tall monument. why do you want to make it taller?"). Build a climb, a view, a drop, a second way, a
   place that is hard to reach. **Never lift a monument, a building or a whole district onto a step.** Ask "is it like that in the real place?".
@@ -267,33 +269,59 @@ they are measurements, not the job.
     to show him: a castle town on the slope, rice terraces (height that IS the place: stepped fields with paths on the banks), a shrine way
     of gates and stone stairs up the mountain, a bamboo wood with thin trails, the crater on top. The volcano is the landmark you steer by
     from everywhere; downhill is always the bay.
-  - Bigger: 10 plots is small for that. Proposal: about 25 to 30 plots (the sea round it is free). The plot grid goes to him in chat first.
+  - Bigger: 25 to 30 plots (his OK, 11-20; the sea round it is free).
   - Real architecture: a castle keep, gates, a shrine, town houses, a dojo, a bath house, each a walk-in building whose inside matches its
     outside. Open and flat places: the harbour front, the castle yard, the paddies.
   - Residents: the game has a ninja race and a samurai slug race already. Never invent characters or game rules.
   - Models first: search `MODEL_LIST.md` and the pack files for Japan, samurai, shrine, torii, pagoda, bamboo, katana, lantern. What is
     missing goes on a NEEDS A MODEL list for him, never in as a placeholder.
-- **To settle with him in chat before building (he did not name these, so none is deleted unasked):** what happens to the Dinosaur Park,
-  the Jungle and the island village that stand there now; how you reach the island; how much bigger.
+- **mondo's answers (11-20):** "There can still be dinosaurs, there can still be jungle, there can still be a village (Japanese). And then
+  everything else Japanese too. This island is basically a love letter to anime and Japan. Should have cherry blossoms". It needs "a shoreline
+  and a village and woods and a jungle and a volcano and a whole Japanese city". Size: "25 to 30 plots sounds right".
+- **So the districts are** (names plain, his where he gave one): Katana Bay (the shoreline and harbour), the village (Japanese), the woods
+  (cherry blossoms, bamboo), the jungle with the dinosaurs, the volcano, the city (a whole Japanese city: this is where the castle, the
+  streets, the shrine and the walk-in buildings stand). Six districts on 25 to 30 plots: the plot grid goes to him in chat first.
+- **A love letter to anime and Japan:** cherry blossoms everywhere they fit (petals in the air as the district particles), lanterns, gates,
+  festival stalls. References to real anime are a parody question: list ideas for him, never invent characters or use a show's own names.
+- **Still to settle in chat:** how you reach the island (by boat from where).
 
 ### Thread 5: THE MOUNTAINS (not started)
-- **Zone:** The Mountains. Districts: The North Pole village (N), The Snowy Pass (P), The Ski Lodge (K), Mount Olympus (O).
-- **MOUNT SHASTA IS BEING REMOVED (mondo 11-20: "we are getting rid of Mt Shasta").** Its room `site_prebuilt_shasta_ow_shasta` (20 plots: the
-  Summit, the Glacier, Helen Lake, the Steam Vents, Panther Meadows, the switchbacks) gets NO polish work. Removing it is a job of its own
-  (this thread's first step, or its own small thread: his call): the room to `DOOR_HQ.retired`; its seam to Mount Olympus, its end of the
-  River Road and its door down to Agartha each need a new end; its residents need a home; `plots.json` changes through `after-v13.js`; the
-  map picture is redone. The other rooms keep `shasta` in their ids: ids are not names.
-- **Rooms:** `site_prebuilt_northpole_plots` (16), `site_prebuilt_shasta_ow_lodge` (29: the Ski Lodge + the Snowy Pass),
-  `site_prebuilt_shasta_ow_olympus` (19).
+- **mondo 11-20, after his first walk there:** "The ski trails should be all over the mountain. It should be designed like an actual mountain and
+  ski resort, where there are some easy trails at the towards the base and double black diamonds towards the top. I should be able to ski all
+  the way from the top of mt Olympus to the base of the mountain or wherever the ski resort starts at the bottom. That is the level of detail
+  we are going for".
+- **Zone:** The Mountains. Districts: The North Pole village (N), The Snowy Pass (P), The Ski Lodge + slopes (K), Mount Olympus (O).
+- **MOUNT SHASTA GOES AS A NAME, ITS PLOTS STAY** (mondo 11-20: "we are getting rid of Mt Shasta"; "you can rename it or whatever so it gets
+  swallowed up by the other districts"). Its 20 plots (room `site_prebuilt_shasta_ow_shasta`: the Summit, the Glacier, Helen Lake, the Steam
+  Vents, Panther Meadows, the switchbacks) are renamed and become part of Mount Olympus and the ski mountain: more mountain to ski on. No
+  volcano here any more (the world's volcano is Katana Island's). Its ways (to Olympus, the River Road, the door to Agartha) stay as ways.
+  Room ids keep `shasta`: ids are not names.
+- **Rooms today:** `site_prebuilt_shasta_ow_lodge` (29 plots: the Ski Lodge + slopes 12, the Snowy Pass, a link trail),
+  `site_prebuilt_shasta_ow_olympus` (19), `site_prebuilt_shasta_ow_shasta` (20), `site_prebuilt_northpole_plots` (16).
 - **It is NOT:** the Snowy Pines (Came A Lot's, thread 3). Not the Polar Trail or the trail from the Pines to the Ski Lodge (routes).
   Not the Hollywood Hills (Disaster City's district N).
 - **Tool + files:** `bake-mountains.js`, `docs/areas/mountains/layout.json`, `districts/N P K O S.js`.
-- **The base today:** strong on the two mountain rooms (46 and 60 m). Weak on the North Pole (4.9 m; 9 of 16 plots dead flat).
-- **To reach the standard:** the mountains have the height and lack the ways. One thin ribbon climbs through solid rock (2.6 to 2.8 squares
-  wide, less than half of each plot walkable). So: thin trails off the main trail that lead somewhere (a ledge with a view, a cave, a short
-  hard way up by a chimney climb, a rope bridge to the next shoulder); a second way up each mountain; a level ledge a board fits on every 3
-  plots; falls. The main trail stays a mountain trail, 3 squares at most. The North Pole: give the village
-  levels (the workshop up, the square down, a sledding hill behind), lanes that wind between the houses, and open its solid half.
+- **What is there today (checked 11-20):** the resort is 12 plots at one end of one room: five short runs (the Black Run, the Big Jump, the
+  Slalom, the Half-Pipe, the Bunny Slope), one chairlift, the Lodge, the Rental Hut, the Top Station. Mount Olympus is ANOTHER room, joined to
+  it by a link trail (the Saddle Path). You cannot go from Olympus' top to the Lodge in one descent. The runs are ridden on the board: the
+  game has no skis. The mountains have a strong height base (46 to 60 m) but as separate peaks, each with one thin trail up.
+- **To reach his standard:**
+  - **ONE MOUNTAIN.** Re-lay the zone so Olympus' summit is the top and the resort's base is the bottom of one continuous slope, with
+    Shasta's plots as the middle of it. Free to move, change and grow. The room-splitting rule caps a room at 30 plots, so the mountain is
+    several rooms joined by OPEN seams (snow is open ground: you ride off one room's edge into the next, no arch, no card). The thread proves
+    one top-to-bottom ride across the seams before it builds the rest.
+  - **A REAL TRAIL MAP,** shown to him in chat first: named runs marked green, blue, black and double black. Easy and wide near the base,
+    steep, narrow and hard near the top (chutes, cliffs, moguls, trees). Runs fork and merge all over the mountain; cat-tracks cross
+    between them; every run ends at a lift or the base. Trail signs with the marks at every fork (that is the orientation).
+  - **Lifts** that take you back up: several, base to mid-mountain to summit, each with its stations. Never invent how a lift works: if a
+    ride-up needs a new game rule, it goes to him as a question.
+  - **The resort at the base:** the Lodge, rentals, a village street, ski patrol, a car park. Real buildings, insides that match.
+  - **Olympus keeps its temples** at the top (monuments are not lifted; the runs start beside them). The walking trails stay too: thin
+    trails, ledges with views, a second way up on foot.
+  - **Skiing itself:** today you ride the runs on the skateboard. Whether that becomes skis or a snowboard is a question for him and the
+    skate system's notes (`docs/notes/door-gun-skate-vehicles.md`), not something this thread invents.
+  - **The North Pole village:** levels (the workshop up, the square down, a sledding hill behind), lanes between the houses, its solid half opened.
+- **Level of detail:** this is his example of what every zone should reach. "That is the level of detail we are going for."
 
 ### Thread 17: THE ESTATE (not started)
 - **Zone:** The Estate. Districts: The Corn Fields (C), The Lake (L), The Ranch (R), The Haunted House (H).
@@ -531,9 +559,8 @@ places are EMPTY and UNREADABLE: nothing to steer by. That is the standard's sec
 1. The numbers in section A (main way 3 squares, thin trail 1 or 2, no leg over 8 squares straight, a thin trail every 2 plots, 2 levels
    between districts): right, or change which?
 2. The order after The Woods and Katana Island: the Mountains, the Estate, Leylines, Antarctica, the D.U.M.B. and the underground.
-2b. Mount Shasta: only the Mount Shasta district goes (assumed), and the Ski Lodge, the Snowy Pass, Olympus and the North Pole stay? Where do
-   its ways end now (Olympus, the River Road, the door to Agartha)?
-2c. Katana Island: what happens to the Dinosaur Park, the Jungle and the village on the island today? About 25 to 30 plots?
+2b. The Mountains: skis, a snowboard, or the skateboard on snow as today? How do lifts work?
+2c. Katana Island: how do you reach it?
 3. The Frozen Sea: grown (assumed) or folded into the North Pole. Asked again when the Beach's thread comes up.
 4. BIG WALLS ARE BLURRY UP CLOSE (section F): their own thread, or with each zone?
 
