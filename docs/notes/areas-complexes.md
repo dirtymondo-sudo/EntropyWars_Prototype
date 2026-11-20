@@ -13918,7 +13918,7 @@ underground horror like the descent movie"; the square plans approved ("Yes this
   light; a digger at the dead end), the Low Hall (the falls' foot: the one who fell, his flare still burning; the way down to the West
   Tunnel), the Last Chamber (the crawlers' den: meat floor, skull piles, egg sacs, the antpeople's second place).
 - **LIGHT:** ambient 0.14, six lights: three torches (the mouths), the camp's fire, the crystals, the flare (`light_glow`). Glowcaps glow
-  without a light. Paint: chambers the cave floor, passages `dirt_2`, pits `rubble_3`, the pocket `crystal`, the nest's pit and the den `flesh_2`.
+  without a light. THE SHEETS (mondo 11-20: "don't use those calm textures"; the plain keys cave_floor / cave_wall / rocks_5 / dirt_2 / crystal / flesh wear CALM sheets): the horror pack's rock, as the new Cavern's: floor `hz_stone_02`, walls + roof `hz_stone_01` (roof tint 0x8a8680), cliffs + pits + the nest `hz_stone_10`, the crystal pocket `hz_stone_06`, stalagmites `hz_stone_02` / the landmark's tip `hz_stone_07`, tints near white; the tool's `TX` defaults are these (a design's `tex` overrides). `hz_floor_03` (the Cavern's mud) reads as yellow straw in these passages: not used. Stains: ZONE_LOOKS.cavern `byRoom` (drip 0.7, dirt 0.35, grime 0.25, blood 0.14).
 - **NOT DONE / NEEDS:** no sound (an explored room plays no bed; `ambCavern` plays only in a fight; none may be generated); the waterfall
   sheet reads bright blue in the dark; the halloween `hw_stone*` are HEADSTONES (not rocks) and `dinosaur_skeleton` stands on a museum
   plinth: neither is used. NEEDS A MODEL (from the FITS read): a caving helmet with a lamp, a dead caver in caving gear, a fixed rope and a
