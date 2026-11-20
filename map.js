@@ -5669,7 +5669,7 @@
             let word = R[0][1]; R.forEach(r => { if (score >= r[0]) word = r[1]; }); return word;
         }
         /* THE FLOOR IS LAVA (2026-11-20): the seconds off the ground, on the card's head row */
-        function _hqLavaTail(ev) { const t = +ev.offT || 0; return t >= 1 ? 'OFF THE GROUND ' + t.toFixed(1) + ' S' + ((ev.lava | 0) > 0 ? ' · LAVA +' + (ev.lava | 0) : '') : null; }
+        function _hqLavaTail(ev) { const t = +ev.offT || 0; return t >= 1 ? 'OFF THE GROUND ' + t.toFixed(1) + ' S' : null; }
         /* the 10 Hz tick while the clock runs: only the number and the head words change (no rebuild, no pop) */
         function _hqComboTick(ev) {
             const el = _hqEl('hqTrick'); if (!el || !el.classList.contains('live')) { _hqComboCard(ev, 'live', _hqLavaTail(ev), 0); return; }
