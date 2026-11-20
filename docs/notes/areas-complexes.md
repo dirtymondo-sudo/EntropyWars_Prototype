@@ -12829,3 +12829,26 @@ box at world 22,-19, written by `bake-beach.js`: `OW_ROOMS[2]` + `growVolcano`, 
   5. Insides: a low table set, a futon, a wooden bath tub, a hearth sunk in the floor, a folding screen in the Japanese style, sake barrels, tea set, bowls of
      food (noodles, rice, sushi), a festival stall, a wooden junk or fishing boat in the Japanese style.
   6. Jungle and volcano: living dinosaurs as scenery (more than the one race), eggs, a nest, volcanic rocks, a monkey, a crane.
+
+## THE WOODS, THE ROOM DESIGN — the Clearing's room by plan 3 (2026-11-20, world polish thread 6)
+mondo 11-20 on plan 3: "Yes the map layout looks much better ... Go ahead and build with what you have". His rules for it are in owner-rules.md section 3
+(TRAILS ARE LAID ON THE BATTLE GRID, A LEDGE).
+- **THE PLAN IS A SCRIPT:** `docs/plans/world-polish/thread6/plan3.js` holds every square of the room (144 x 60), its level, the ramps and the plots, checks
+  itself (legs of 8 squares or less, no two legs in one line, every way out walked from the Stair with no ledge, no trap) and draws the pictures
+  (`node …/plan3.js` -> plan3.svg, -west, -east). Change the room there, never in data.js.
+- **THE TOOL:** bake-woods.js step 5d THE ROOM DESIGN (a stand entry's `design: { plan, x1, extra, dress }`). The home frame and the district files run as
+  before; then, on the plots the plan covers (the pilot: squares x 0..59), the plan's squares replace the open ground and the heights are written square by
+  square: an open square is level at its own height, a ramp square grades half a level, a tree square blends to the open ground round it. Two open squares at
+  two heights disagree on their shared corners: that step IS the ledge (data.js THE LEVELS: the higher side wins). The plots the plan does not cover keep
+  today's ground exactly (`gndOld`, the room laid without the new plots).
+- **TODAY'S PIECES STAY:** a piece whose square the plan gives back to the trees gets a pocket opened beside the nearest level open square (37 squares);
+  none was lost. A built row (a building, an arch) on a closed square stops the bake. The ranger station, the shelter, the stand and the gate stand where
+  they stood; the plan was drawn round them.
+- **NEW PLOTS** stand in plots.json with no `was` (`after-v13.js` row 5) and reach the tool through `v13new()`; they are district C's (its trees, air, ground).
+  Their pieces are written in the ROOM's frame: `docs/areas/woods/districts/C-room.js` `dress(a)` (`a.P(key, squareX, squareY)` refuses a closed or ramp square).
+- **THE LEDGES WEAR ROCK:** one arch row `woods:ledges`, a `rocks_5` slab on every drop between two open squares (drawn only, so you still walk off).
+- **CHECKED IN THE BROWSER** (`ThreeRenderer.hq.surface` stepped 8 cm at a time): up the Stair's ledge REFUSED, down it PASSED, up the ramp PASSED.
+- **OPEN:** Dead Man's Cave's half of plan 3 (a temporary ramp, `C-room.js` `extra`, joins the Clearing to the Culvert as it stands). The Dead End's road
+  is dirt (no asphalt sheet is in any room's paint palette). No model exists for: twig stick figures, a chain-link gate, a log lip, a burnt shell (the
+  Burned House is the cabin's kit with charred boards and no roof). The ward totem and the effigy are Meshy-made, not pack pieces: not used (his word).
+  The room's draw cost with 25 plots is not measured yet.

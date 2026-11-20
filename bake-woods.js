@@ -348,12 +348,9 @@ const STAND = [
        (Deep woods, east | The Culvert), so they are ONE room, 12 x 5, 18 plots: no loading card between the Stair and the Storm Drain */
     { id: R_CLEAR, part: 'ow_clearing', label: 'THE CLEARING', sub: 'THE WOODS · THE CLEARING · DEAD MAN\u2019S CAVE · 24 PLOTS', letters: ['C', 'M'], list: v13('C').concat(v13('M')), world: true, spawn: 'P02-04',
       /* THE PILOT: the Clearing's half (the room's squares x 0..59) stands by plan 3; Dead Man's Cave stands as it stood until its own build */
-      design: { plan: PLAN3, x1: 59,
-          /* until Dead Man's Cave is built: one ramp from Deep woods, east (level 4) down to the Culvert's crossing as it stands (level 1, squares y 19..21) */
-          extra: o => { for (let y = 18; y <= 21; y++) for (let x = 51; x <= 53; x++) { o.c2[y][x] = 'p'; o.LV[y][x] = 4; }
-              for (let x = 54; x <= 58; x++) { o.c2[18][x] = 'g'; o.LV[18][x] = 4; }   // the glade's south row (the playground stands on it)
-              for (let x = 54; x <= 59; x++) for (let y = 19; y <= 21; y++) { o.c2[y][x] = 'p'; o.LV[y][x] = 4 - (x - 53.5) * 0.5; o.RP[x + ',' + y] = { d: [-1, 0], g: 0.5 }; } } },
-      parti: 'The south of the Woods in one walk, eighteen plots: the Clearing a cross with the Stair at its north end and the fence line south, and east of it the dry creek, followed down between its banks to the sewer mouth and the storm drain.',
+      /* THE PILOT: the Clearing's half (the room's squares x 0..59) stands by plan 3; Dead Man's Cave stands as it stood until its own build */
+      design: Object.assign({ plan: PLAN3, x1: 59 }, require('./docs/areas/woods/districts/C-room.js')),
+      parti: 'The south of the Woods in one walk: the Clearing on rising ground, its trails turning and climbing by ramps from the Stair to the Old Tree on its knoll, with ledges to hop back down; and east of it the dry creek, followed down between its banks to the sewer mouth and the storm drain.',
       seams: {
           'P01-05:S': { room: R_CORN, label: 'THE ESTATE · THE CORN FIELDS', sub: 'THE FENCE LINE · THE GATE', desc: 'A fence, and a gate in it. The corn starts on the other side.', takes: 'estate' },
           /* ONE WORLD, PHASE 3: the Trail West's way north is the wild link L1 (one plot, in this room); past it lies the Old Road (route R4, BUILD_PLAN phase 4.1:
@@ -529,6 +526,18 @@ STAND.forEach(S => {
             let sw = 0, sh = 0; for (let dy = -5; dy < 5; dy++) for (let dx = -5; dx < 5; dx++) { const x = X + dx, y = Y + dy; if (!openD(x, y)) continue; const d2 = (dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5), w = 1 / (d2 * d2); sw += w; sh += w * LV[y][x] * LEVEL; }
             return sw ? sh / sw : gndNew(R.gx(X), R.gz(Y)); };
         const CH = []; for (let Y = 0; Y <= Dn; Y++) { CH.push([]); for (let X = 0; X <= Wn; X++) CH[Y].push(X <= X1 + 1 ? cornerH(X, Y) : 0); }
+        /* THE LEDGES WEAR ROCK: a slab on the face of every drop between two open squares (drawn only: the walker still walks off it), its top a low lip you see from above */
+        { const parts = [], abox = (x, y, z, w, h, d, key, tint, o) => Object.assign({ s: 'box', p: [r2(x), r2(y), r2(z)], size: [r2(w), r2(h), r2(d)], key, tint }, o || {});
+          for (let y = 0; y < Dn; y++) for (let x = 0; x <= X1; x++) { if (!openD(x, y) || RP[x + ',' + y]) continue;
+              for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!openD(X, Y) || RP[X + ',' + Y]) continue; const drop = LV[y][x] - LV[Y][X]; if (drop < 0.6) continue;
+                  const mx = R.gcx(x) + dx * (C / 2 + 0.3), mz = R.gcz(y) + dy * (C / 2 + 0.3);
+                  parts.push(abox(mx, LV[Y][X] * LEVEL - 0.1, mz, dx ? 0.6 : C, drop * LEVEL + 0.22, dx ? C : 0.6, 'rocks_5', 0xbcb9aa, { uv: [3.5, 3.5] })); } }
+          if (parts.length) R.features.push({ k: 'arch', id: 'woods:ledges', x: 0, z: 0, y: 0, parts }); }
+        if (S.design.dress) { const n0 = R.props.length;
+            S.design.dress({ gx: R.gx, gz: R.gz, h: (x, y) => LV[y][x] * LEVEL, feat: f => R.features.push(f), box: (x, y, z, w, h, d, key, tint, o) => Object.assign({ s: 'box', p: [r2(x), r2(y), r2(z)], size: [r2(w), r2(h), r2(d)], key, tint }, o || {}),
+                P: (key, sx, sy, o) => { if (!CAT[key]) throw new Error('C-room.js: no ' + key + ' in the catalogue'); if (!openD(sx, sy) || RP[sx + ',' + sy]) throw new Error('C-room.js: ' + key + ' on a square that is not open, level ground: ' + sx + ',' + sy);
+                    o = Object.assign({}, o); const px = r2(R.gcx(sx) + (o.dx || 0)), pz = r2(R.gcz(sy) + (o.dz || 0)); delete o.dx; delete o.dz; R.props.push(Object.assign({ key, x: px, z: pz }, o)); } });
+            console.log(S.id + ' C-room.js: ' + (R.props.length - n0) + ' pieces'); }
         DES = { des, openD, gndOld, corner: (cx, cy, qx, qy) => openD(cx, cy) ? hAt(cx, cy, qx ? 1 : -1, qy ? 1 : -1) : des(cx, cy) ? CH[cy + qy][cx + qx] : gndOld(R.gx(cx + qx), R.gz(cy + qy)), pockets, gone: gone.map(p => p.key + '@' + sqOf(p.x, p.z).join(',')), LV, RP }; }
     /* the tool's decks (over a run of bridge squares) stop at the room's wall */
     R.features.forEach(f => { if (f.k !== 'deck') return; ['x0', 'x1'].forEach(k => { f[k] = Math.max(-R.HX, Math.min(R.HX, f[k])); }); ['z0', 'z1'].forEach(k => { f[k] = Math.max(-R.HZ, Math.min(R.HZ, f[k])); }); });
