@@ -327,7 +327,9 @@ const ROOMS = [
     /* + THE UNDERGROUND WALKS (2026-11-17, One World phase 4.4): U12, the Cells Tunnel, east from the shaft's foot to the Sewers' Holding Cells; U13,
        the Bone Passage (the map's secret walk), from the Catacombs east and down south across the Cells Tunnel to Hollow Earth's Sunken Garden. They
        touch the Tunnel-Way Tunnel, so they stand in its room (one room: mondo 11-17, "connected/bigger rooms is better") */
-    { key: 'T', room: 'site_prebuilt_hollow_earth_ow_tunnelway', part: 'ow_tunnelway', label: 'THE TUNNEL-WAY TUNNEL', sub: 'FROM LEVEL −6 NORTH · UP INTO DEAD MAN’S CAVE · EAST TO THE CELLS', group: [], lines: [],
+    /* skip: true (2026-11-20, world polish, THE TUNNEL-WAY): the room is written by bake-ug-tunnelway.js now (a compact labyrinth from the approved plan
+       docs/plans/world-polish/plans/ug-tunnel-way.js, under this same id); the row stays so the Cavern's own seam doors into it are still worked out here */
+    { key: 'T', skip: true, room: 'site_prebuilt_hollow_earth_ow_tunnelway', part: 'ow_tunnelway', label: 'THE TUNNEL-WAY TUNNEL', sub: 'FROM LEVEL −6 NORTH · UP INTO DEAD MAN’S CAVE · EAST TO THE CELLS', group: [], lines: [],
       parti: 'A cave tunnel north from the Cavern\'s Level −6 to the shaft under Dead Man\'s Cave\'s Tunnel Way; from the shaft\'s foot a tunnel runs east to the cells under the city, and an older passage lined with bones crosses it, north to the Catacombs and south to Hollow Earth.', sunsNote: 'none',
       tunnels: seq(9, 2, y => [-9, y, T_NAME.way]).concat([[-8, 2, T_NAME.way], [-7, 2, T_NAME.way]], seq(-7, 0, x => [x, 1, T_NAME.cells]), seq(-7, -4, x => [x, -4, T_NAME.bone]), seq(-3, 0, y => [-4, y, T_NAME.bone]), seq(2, 9, y => [-4, y, T_NAME.bone])) },
 ];
@@ -420,8 +422,7 @@ doors.forEach(d => { const w = d.wall === 'free' ? d : { wall: d.wall, at: (d.wa
     const keep = ['id', 'wall', 'x', 'z', 'face'], out = {}; keep.forEach(k => { if (o[k] != null) out[k] = o[k]; }); Object.keys(o).forEach(k => { if (!(k in out)) out[k] = o[k]; });
     RDOORS[m.R.key].push(out); });
 /* THE WAY UP AT THE TUNNEL WAY (new, v13 "tunnel way ↑ Dead Man's Cave"): a ladder at the north end of the Tunnel-Way Tunnel up into the creek's Tunnel Way */
-{ const R = RK.T, e = R.at(-7, 2), sx = e.col * N + 5, sy = e.row * N + 4; if (!R.open(sx, sy)) throw new Error('the Tunnel Way\'s square is not open');
-  WAYS.tunnelway_cavern = { R, wall: 'free', x: R.M.gcx(sx), z: R.M.gcz(sy), face: 180, side: 'b' }; }
+/* (2026-11-20: the ladder's end in the Tunnel-Way is bake-ug-tunnelway.js's now; it checks the link's end b) */
 
 /* ── derive every room, write it ── */
 const DSUNS = [].concat(...Object.keys(DISTRICTS).map(k => typeof DISTRICTS[k].suns === 'function' ? (DISTRICTS[k].suns(CTX[k]) || []).map(s => Object.assign({ d: k }, s)) : []));
@@ -429,6 +430,7 @@ const DAIR = [].concat(...Object.keys(DISTRICTS).map(k => typeof DISTRICTS[k].ai
 const L = [HEAD], TOTAL = { props: 0, natives: 0, features: 0 }, strayDrop = [];
 const PARTED_RAMP = (f, R) => f.k === 'ramp' && R.M.strays.length >= 0;
 ROOMS.forEach(R => {
+    if (R.skip) return;   // written by another tool (the row's note)
     const M = R.M, W = M.W, Hh = M.D, cellR = M.cell, open = R.open;
     const tunPlots = M.order.filter(e => e.district === 'T');
     /* the pieces that came with the plots; a ramp whose two ends left each other (the Country's stair up into Agartha) is dropped (the census lists it) */
