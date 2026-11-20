@@ -2976,6 +2976,16 @@ ones that make sense ... the pixel density might have to be lower. If this 128x1
   corroded `countsAs: ['burn', 'poison']`, "chemical fire"): its sheet is `corroded2.png`, green poison slime outside with
   fire burning inside. The first sheet (`corroded.png`, rusty metal + acid) stays on R2, unused. A sheet redone = a NEW file
   name (these urls carry no `?v=`), then the table row. Before drawing a status, read its STATUS_DEFS row and STATUS_HELP line.
+- KEEP `corroded.png` (mondo 11-20: "hang on to the original corroded you did, I might change the rules later and call
+  fire+poison something else"): the rusty metal + acid sheet is held for a status that is really rust / acid. Never delete it;
+  if fire + poison is renamed, `corroded2.png` follows the new name and `corroded.png` goes back on Corroded.
+- THE CHECK AGAINST THE RULES (11-20, every sheet read against data.js STATUS_LIBRARY_DESCS; listed for mondo, NOT redone yet):
+  wrong picture: `blind` (dark smoke; the rule says vision WHITED out), `broken` (pale shards read as Frozen; it means passives
+  off), `infected` (leafy rot reads as Rooted / Regen; it is the zombie's control), `haunted` (blue-white wisps read as frost /
+  lightning; should be ghosts). Wrong share: `submerged` (a BUFF, hidden under the surface) and `bends` (HP per square moved)
+  wear Drowning's debuff sheet; `grievous` (healing halved, no damage) wears Bleeding's. Weak: `stagger` close to `stun`;
+  `feared` dark on dark; `possessed` a plain purple frame; `statUp` / `statDown` / `pixieDust` / `overclock` are stat-change
+  carriers (the RULE over STATUS_LIBRARY_DESCS says those are not status effects).
 - How they were made (Sprite AI, see THE PANEL ANIMATIONS for the calls): `POST /api/sprites` `{ prompt, asset_type: 'effect',
   width: 64, height: 64, direction: 'none', camera_perspective: 'front' }` (1 token; the reply carries the PNG, also at
   `/api/sprites/<id>/download`), prompt = "a hollow square ring of <what> hugging the four edges ... the whole middle empty
