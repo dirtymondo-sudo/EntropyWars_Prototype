@@ -12827,7 +12827,13 @@ That is not a bayside view. It's called bayside mall." and "the other part I cir
   line (mondo 11-20, of the first cut, a separate planter under each palm: "the median needs to be connected, like a raised median. Not individual little
   patches ... Just a normal street median"): one kerbed strip 1.5 m wide and 0.2 m high with sand on top, unbroken from the Marina plot's north end to
   the cross street by the canal and on south of it, a rounded nose at each end (`dc:bay-median<n>:arch`). It is laid in pieces under a metre long, each at
-  the road's height under it (`ctx.at`), so it follows the road down off the Marina plot. THE TRAPS: the tool's lane pass draws any prop within 3.2 m of
+  the road's height under it (`ctx.at`), so it follows the road down off the Marina plot. IT IS REAL, NOT ONLY DRAWN (mondo 11-20: "if you know how to do something
+  right then do it the first time, otherwise ill be here in 3 months ... telling you to fix the collisions everywhere"): where the road is level the
+  median is a `bridge` row (a slab with an exact flat top the walker steps onto: `hqTerrainFeet` gives 0.20 on it, 0 beside it), and on the hill, where one
+  height cannot follow the road, `ramp` rows a square long raise the field itself (the field's grid is 0.875 m, so there the top is a ridge with a 0.2 m
+  crest under the drawn kerb). It OPENS, two squares wide, where the plan crosses the road on foot (`GAPS`: the Marina plot's walk to the mole, the
+  Service court's, and the mall's own axis from the mall arch to the pier). THE RULE THIS THREAD NOW KEEPS: a thing a player can reach is never only an
+  `arch` row; it gets its ground (`deck`, `bridge`, `plateau`, `ramp`) or a blocker in the same change. THE TRAPS: the tool's lane pass draws any prop within 3.2 m of
   a traffic line out to the kerb, and its soil pass removes a Bayside tree that stands on paving (or paints a sand bed under a palm prop): the median and
   its palms are therefore set in `last()`, after every pass, where `ctx.at` takes the CITY's own squares (Bayside's frame is 48 rows on). The cars keep
   2.5 to 4.5 m off the middle line.
