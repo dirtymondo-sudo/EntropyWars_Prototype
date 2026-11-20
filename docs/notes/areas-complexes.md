@@ -12717,7 +12717,7 @@ joined only by a door on the boardwalk (`harbour` -> `quay`). On the One World m
   cross (`capN`, `capS`: the mole's north side, the grill deck's south side, the Hills' foot) the circles shrink, and their banks with them. Whatever stands IN the
   water is RAISED again after the cuts (`dc:mole`, `dc:mole:head`, the marina arm, `dc:grill:deck`), so it keeps a clean wall. `Q.js` reads Bayside's `room.east`.
   **THE RULE FOR ANYONE WHO CUTS SEA: never a banked rectangle beside another cut.**
-- **A RAISED FLAT IS A BLOCK TO THE RESIDENTS** (data.js `hqResidents`: every `plateau` that is not a sink is shut in their walk map) unless its id is in
+- **A RAISED FLAT IS A BLOCK TO THE RESIDENTS** (data.js, THE WALKED PADS: every `plateau` that is not a sink is shut in their walk map) unless its id is in
   `HQ_CITY_RESIDENTS.walkOn`: `dc:mole` and `dc:grill:deck` are named there now, beside the skate pad.
 - **THE SKATE PARK'S STEEL SITS ON THE PAD.** The tool adds the plot's LEVEL to every drawn (`arch`) row by the strip it stands on, and the pad lies on the Marina
   plot's strip (a level up, 1.75 m) though the pad is cut to 0: the bowl's coping, the funbox's iron, the bar's posts and the sign all hung 1.75 m in the air. Each
