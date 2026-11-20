@@ -1,6 +1,6 @@
 /* THREAD 17, THE ESTATE: THE HOUSE TRAIL, a NEW walked way between the Estate's big room and the Haunted House's room.
    mondo 2026-11-20, asked "do you want a walked way between the two rooms": "Yes this is a big priority". (That is his OK for the new way;
-   the build thread still writes its row in data.js beside DOOR_HQ.cut's rules.) A PROPOSAL for the shape: nothing is built from it yet.
+   the build thread still writes its row in data.js beside DOOR_HQ.cut's rules.) APPROVED by mondo 2026-11-20 ("yep looks good"). Nothing is built from it yet.
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/estate-house-trail.js
    WHERE: a new room of 13 plots on world plots x -20..-14, y 14..16 (all free on the One World map 11-20), between the Estate's new West
    Bank (world -13,16) and the Haunted House's Treehouse (-20,14) and Graveyard (-21,15).
@@ -10,7 +10,8 @@
    Levels: 0 = the lake shore of the Estate's room. The two seams' heights are checked against both rooms by the build thread. */
 'use strict';
 module.exports = {
-    zone: 'The Estate', thread: 17, title: 'THE ESTATE, THE HOUSE TRAIL: the new way from the Lake to the Haunted House (a proposal)',
+    approved: 'mondo 2026-11-20, shown the four plans and their pictures in chat: "yep looks good"',
+    zone: 'The Estate', thread: 17, title: 'THE ESTATE, THE HOUSE TRAIL: the new way from the Lake to the Haunted House',
     newRoom: 'a new room, 7 x 3 plots at world -20,14 (13 plots)', build: { frame: 'room', file: 'a new room design in bake-estate.js\'s frame' },
     mass: 'dead woods and brush (the wall of the place)', massHeight: 3,
     grid: { w: 84, h: 36, n: 12 }, start: [82, 30],
