@@ -77,7 +77,7 @@ function buildWorld() {
 }
 /* the district inks: one hue a letter, kept apart within a zone */
 const INKS = ['#e0b040', '#5fb0e0', '#e06a8a', '#7fd07a', '#c08ae0', '#e08a40', '#50d0c0', '#d0d060', '#a0a0ff', '#ff9a9a', '#9ae0ff', '#e0c0a0', '#b0e050', '#ff80d0'];
-const CITY_DN = { C: 'Civic Center', F: 'Financial', E: 'Entertainment', U: 'University', H: 'Hero Plaza', B: 'Bayside', R: 'Southside', S: 'Sports + Culture', I: 'Industrial', N: 'The Hollywood Hills' };
+const CITY_DN = { C: 'Civic Center', F: 'Financial', E: 'Entertainment', U: 'University', H: 'Hero Plaza', B: 'Bayside', R: 'Southside', S: 'Sports + Culture', I: 'Industrial', N: 'Disaster Hills' };
 
 /* ── THE GROUND KINDS (G of the picture): the paint key's family. map.js draws each in its colour, shaded by height ── */
 const KINDS = ['nothing', 'grass', 'dark grass', 'dirt', 'sand', 'snow', 'rock', 'paved', 'wood', 'ash', 'lava rock', 'cloud', 'red rock', 'crystal', 'gold', 'metal'];

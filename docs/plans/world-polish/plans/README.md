@@ -27,6 +27,8 @@ checked against it on the next run.
 | squares | `p` main way, `q` thin trail, `d` lane, `g` open ground, `c` hard ground, `m` soft ground, `k` building / landmark, `r` rock face, `w` water, `f` fence, blank = the mass. `tiles: { x: [legend name, open?, [r,g,b] low, [r,g,b] high] }` adds one. |
 | `doors: [[x, y, side, where to, level]]` | the ways out of the room. Their squares keep today's height (E 7). |
 | `bridges: [[[x, y], [x, y]]]` | a deck from one square over to another |
+| `stairs: [[[x, y], [x, y]]]` | a STAIR between two squares at any heights (real stair pieces: steeper than a ramp, e.g. cut in an ice wall); walked both ways |
+| `underlay: true` | for a room that already has its height ("improve upon what's already there"): every square starts as it really stands today, read from the room (`u` = today's open ground at its real height; walls and cracks closed; water). The plan lays its ways and places over it. `underlay: { deep: 4 }` = a square this many levels under its plot is a crack, not ground. |
 | `landmarks: [{ name, at, tall }]` | `tall` in levels. One in every district. |
 | `lookouts: [{ name, at, sees: landmark name, next: district }]` | one in every district. The tool draws the sight line over the ground, the mass and the buildings and FAILS it when something stands in the way. |
 | `found: [{ name, from, to, kind }]` | the FOUND ways up (a climb, a ledge chain, a fallen trunk, a ladder): E 2, every level has a way you walk and a way you find |

@@ -8,6 +8,9 @@
    CUT; you always know where you are by where the Line is and whether you stand over it or under it.
    THE WALK never follows the Line: it snakes from side to side, crosses the Line five times (the Nexus ring and three stone slabs
    over the cut), climbs by switchbacks, and has ledges to hop back down. 18 new plots, north and south of the old nine.
+   mondo 11-20, asked whether the Line stays walkable end to end: "no I do not want it to be a long straight line". So you CROSS the
+   Line and never walk along it. On the 18 new plots: "Yes that's fine". On the two new buildings: "that fine, ancient right? or at
+   least one of the early civilizations": both are ANCIENT dry stone, built like Göbekli Tepe's enclosures (no later style).
    GÖBEKLI TEPE looks good in the pictures and is left as built: drawn here only as open ground so the walks join.
    Levels: 0 = the plain and the Line today. One level = 1.75 m. */
 'use strict';
@@ -87,8 +90,8 @@ module.exports = {
         { name: 'The High Stone', rect: [108, 1, 115, 8], why: 'the open top of the highest ground', board: true },
         { name: 'The East Mouth', rect: [136, 13, 143, 20], why: 'the paved mouth where the Line leaves', board: true }],
     buildings: [
-        { name: 'The Rest House (proposed, new)', rect: [45, 13, 47, 15], door: 'W', tall: 2, inside: 'one stone room: benches, a hearth, a table of offerings' },
-        { name: 'The Watch Tower (proposed, new)', rect: [117, 1, 118, 2], door: 'S', tall: 4, inside: 'a round stone tower: a stair inside, the open top is the lookout' }],
+        { name: 'The Rest House (new; ancient stone)', rect: [45, 13, 47, 15], door: 'W', tall: 2, inside: 'one round dry-stone room in the style of Göbekli Tepe\'s enclosures: stone benches, a hearth, an offering table' },
+        { name: 'The Watch Tower (new; ancient stone)', rect: [117, 1, 118, 2], door: 'S', tall: 4, inside: 'a round dry-stone tower of the same early builders: a stair inside, the open top is the lookout' }],
     picture: { S: 13 },
     pictures: [{ suffix: 'west', x0: 34, x1: 97, S: 24, title: 'THE LEY LINE, WEST HALF: the West Mouth, the North Knoll, the slab over the cut, the Sink, the Nexus' },
         { suffix: 'east', x0: 84, x1: 143, S: 24, title: 'THE LEY LINE, EAST HALF: the Nexus, the Shoulder, the Flat, the High Stone, the Hollow, the East Mouth' }],

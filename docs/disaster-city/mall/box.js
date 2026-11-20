@@ -35,6 +35,13 @@ const DOORS = [
     { id: 'terrace1', side: 'e', u: 20,   v: 7.5,  y: UP, out: 90,  name: 'THE TERRACE DOORS', to: 'THE SEA TERRACE' },
     { id: 'terrace2', side: 'e', u: 20,   v: 9.5,  y: UP, out: 90,  name: 'THE TERRACE DOORS', to: 'THE SEA TERRACE' },
 ];
+/* THE STORY GATES (data.js hqDoorGateShut; plan-design.md: the direct way in from the plaza "starts closed", the service way "requires the pass",
+   the way from the boardwalk "also starts closed"). One gate a door, the same both sides. The quest id and its stage ids are PLACEHOLDERS for
+   the Bayside quest, which is not written yet (mondo's to give): until a quest `bayside` is in STORY_QUESTS every gate stands open. When it
+   lands, name its stages `pass` (the service pass in hand) and `encounter` (the shadow beings faced), or change these two words here. */
+const GATE_CORDON = { quest: 'bayside', open: 'encounter', note: 'POLICE CORDON · THE MALL IS CLOSED UNTIL FURTHER NOTICE' };
+const GATE_STAFF = { quest: 'bayside', open: 'pass', note: 'STAFF ONLY · A SERVICE PASS OPENS THIS DOOR' };
+const GATES = { main: GATE_CORDON, sea: GATE_CORDON, canal: GATE_CORDON, canalw: GATE_CORDON, terrace1: GATE_CORDON, terrace2: GATE_CORDON, staff: GATE_STAFF };
 /* THE SEA TERRACE (outside, city metres): a solid deck at the upper floor's height against the east wall, an outside stair on its sea side */
 const TERRACE = { x0: 206.5, x1: 213.5, z0: 24.5, z1: 38.5, y: UP, stair: { x: 215.25, z0: 38.5, z1: 28.6, w: 3.5 }, land: { x0: 213.5, x1: 217, z0: 24.5, z1: 28 } };
 
@@ -70,4 +77,4 @@ function roofParts(inside) {
     P.push(Object.assign({ s: 'roof', form: 'pyramid', p: [lx(COURT.u), VAULT - 0.2, lz(COURT.v)], size: [7, 3, 7], ds: true, roof: true }, gd));
     return P;
 }
-module.exports = { C, X0, Z0, NU, NV, W, D, CX, CZ, UP, EAVE, VAULT, DOME, lx, lz, HALL, ATR, COURT, BLOCKS, DOORS, TERRACE, FRAME, T, K, wallM, glassM, sign, roofParts, r3 };
+module.exports = { C, X0, Z0, NU, NV, W, D, CX, CZ, UP, EAVE, VAULT, DOME, lx, lz, HALL, ATR, COURT, BLOCKS, DOORS, GATES, TERRACE, FRAME, T, K, wallM, glassM, sign, roofParts, r3 };

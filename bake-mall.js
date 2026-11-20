@@ -185,6 +185,30 @@ props.push({ key: 'solo_cup', x: r2(X(17.6)), z: r2(Z(7.6)), y: r2(UP + 0.45) },
 props.push({ key: 'saucer_pendant', x: r2(X(1.5)), z: r2(Z(1.5)), ceil: true, y: EAVE - 0.3 }, { key: 'saucer_pendant', x: r2(X(1.5)), z: r2(Z(9)), ceil: true, y: EAVE - 0.3 }, { key: 'saucer_pendant', x: r2(X(18.5)), z: r2(Z(9)), ceil: true, y: EAVE - 0.3 },
     { key: 'sputnik_lamp', x: r2(X(2)), z: r2(Z(2)), ceil: true, y: UP - 0.35 }, { key: 'sputnik_lamp', x: r2(X(2)), z: r2(Z(8.5)), ceil: true, y: UP - 0.35 });
 
+/* ── THE DRESSING (2026-11-20, pass 4; mondo: "fix all of those" = the door block, the dressing, the quest's gates). MODEL_LIST.md / the catalogue
+   searched first (arcade, shop, store, food, kiosk, mall). Blockers stand centred on whole squares out of the walks, decor against a face, off
+   centre (owner-rules.md "Prop placement"). ── */
+/* THE ARCADE, ground: pinball and the claw against the side walls, the change machine by the door; upstairs THE PRIZE COUNTER */
+prop('pinball_machine', 0.5, 1.5, 90); prop('pinball_machine', 0.5, 2.5, 90); prop('claw_machine', 3.5, 1.5, 270); prop('claw_machine', 3.5, 2.5, 270);
+prop('vending_machine', 3.6, 3.65, 270);
+up('form_counter', 3.4, 0.5, 180); up('plush_prizes', 2.6, 0.45, 180); up('balloons', 3.5, 2.3, 0); up('claw_machine', 0.5, 3.5, 90);
+props.push({ key: 'cash_register', x: r2(X(3.4)), z: r2(Z(0.5)), y: r2(UP + 1.0), face: 180 });
+/* THE DEPARTMENT STORE: shelves down the west wall, the jewellery and the sunglasses by the till, a rope at the door, a trolley; racks upstairs */
+prop('psx_shelf_mp_2', 0.3, 7.5, 90); prop('psx_shelf_mp_5', 0.3, 9.6, 90); prop('jewelry_case', 2.9, 8.4, 0); prop('sunglasses_spinner', 2.1, 7.3, 0);
+prop('rope_stanchion', 3.6, 6.4, 90); prop('rope_stanchion', 3.6, 7.0, 90); prop('shopping_cart', 3.3, 10.4, 200);
+up('costume_rack', 0.6, 6.6, 90); up('costume_rack', 0.6, 10.4, 90); up('scarf_rack', 3.3, 10.5, 0); up('sunglasses_spinner', 3.4, 6.6, 0); up('psx_display_cabinet_mp_2', 2.2, 10.7, 0);
+/* THE HALLS: against the shop faces, never across a walk */
+prop('atm', 9.2, 3.82, 180); prop('drinking_fountain', 11.6, 3.85, 180); prop('newspaper_rack', 8.0, 6.15, 0); prop('brochure_rack', 12.3, 6.15, 0);
+prop('public_phone', 13.9, 1.0, 270, { y: 0 }); prop('metro_vending', 16.1, 9.2, 90); prop('vending_machine', 13.9, 9.6, 270);
+[[6.2, 3.85], [6.2, 6.15], [13.2, 3.85], [16.8, 6.15]].forEach(q => { prop('planter', q[0], q[1]); prop('palm_tree', q[0], q[1], 30); });   // palms only in planters on terrazzo
+/* THE FOOD COURT (on the solid block's top): the counters along the south wall, the sign over them */
+up('popcorn_cart', 17.4, 10.6, 0); up('espresso_machine', 19.5, 10.7, 0, { y: r2(UP + 1.0) }); up('form_counter', 19.5, 10.7, 0); up('cotton_candy_cart', 16.5, 9.4, 90);
+up('now_serving_sign', 18.6, 10.95, 0, { y: r2(UP + 2.4) });
+/* the shop windows: a few things set out in front of the shopfronts, the way a mall spills into its halls */
+prop('sunglasses_spinner', 9.6, 6.2, 0); prop('rope_stanchion', 14.3, 9.8, 0); prop('brochure_rack', 15.75, 2.1, 270);
+/* THE PEOPLE, more of them (owner-rules.md: more in big spaces; a race stands for itself, no new words) */
+who('florida man', 18.8, 7.6, 200, UP); who('skater', 11.0, 5.0, 270, 0); who('lifeguard', 18.6, 5.3, 250, 0); who('zombie', 1.8, 9.4, 120, 0);
+
 /* ── THE PEOPLE (the old hall's four, their words unchanged) ── */
 who('zombie', 18.3, 8.9, 90, UP, ['“Shopping.” “For what?” “Shopping.”', '“Were you here?” “Everyone was here. Nobody was here. Ask the camera.”']);
 who('conspiracy theorist', 1.6, 5.3, 110, 0, ['“Ten feet tall. Nobody filmed it.” “Everyone filmed it.” “Nobody filmed it in FOCUS.”', '“The police said no aliens.” “Right.” “They did not say no ALIENS. They said no aliens. Listen to the emphasis.”']);
@@ -192,7 +216,7 @@ who('mad scientist', 1.9, 1.7, 180, 0, ['“The cabinet at the back is not a cab
 who('zombie', 9.2, 3.5, 200, UP, ['“Browsing.” “For what?” “Browsing.”']);
 
 /* ── THE WAYS OUT: each is the same door as on the outside (box.js DOORS), half a metre inside its wall, facing in ── */
-const IN = { w: [0.5 / C, 0, 90], e: [-0.5 / C, 0, 270], n: [0, 0.5 / C, 180], s: [0, -0.5 / C, 0] }, AT = { main: 'mall' };
+const IN = { w: [0.2 / C, 0, 90], e: [-0.2 / C, 0, 270], n: [0, 0.2 / C, 180], s: [0, -0.2 / C, 0] }, AT = { main: 'mall' };   // (a bare door hangs in the wall's own doorway: 0.2 m in)
 const DESC = {
     main: 'The glass doors onto the plaza. They open for everyone, which is the policy, and closed for the incident, which was not.',
     sea: 'The sea doors. Past them: the front, the road, the boardwalk, and the pier straight out over the water.',
@@ -202,7 +226,7 @@ const DESC = {
     terrace1: 'Glass doors from the food court out onto the terrace: tables, umbrellas, the pier, the beach, the bay.',
     terrace2: 'Glass doors from the food court out onto the terrace: tables, umbrellas, the pier, the beach, the bay.' };
 BOX.DOORS.forEach(d => { const o = IN[d.side];
-    doors.push({ id: d.id, wall: 'free', x: r2(X(d.u + o[0])), z: r2(Z(d.v + o[1])), face: o[2], leaf: d.id === 'staff' ? 'leaf_exit' : null, proc: d.id === 'staff' ? undefined : 'glass_slide', noEntrance: true, frame: d.id === 'staff' ? undefined : BOX.FRAME, wide: d.id === 'staff' ? undefined : true,
+    doors.push({ id: d.id, wall: 'free', x: r2(X(d.u + o[0])), z: r2(Z(d.v + o[1])), face: o[2], leaf: d.id === 'staff' ? 'leaf_exit' : null, proc: d.id === 'staff' ? undefined : 'glass_slide', noEntrance: true, bare: d.id === 'staff' ? undefined : true, gate: BOX.GATES[d.id], frame: d.id === 'staff' ? undefined : BOX.FRAME, wide: d.id === 'staff' ? undefined : true,
         label: 'DISASTER CITY', sub: d.name + ' · OUT TO ' + d.to, action: { room: CITY, at: AT[d.id] || 'mall_' + d.id }, desc: DESC[d.id] }); });
 doors.push({ id: 'closet', wall: 'free', x: r2(X(15)), z: r2(Z(0) + 0.5), face: 180, leaf: 'leaf_closet', noEntrance: true, label: 'SUPPLY CLOSET', sub: 'STAFF ONLY · THE BASEMENT STAIR', action: { room: 'site_prebuilt_downtown_closet', at: 'mall' },
     desc: 'STAFF ONLY, on a door at the north end of the east hall under the big window. The stair behind it goes down further than the mall has floors.' });
