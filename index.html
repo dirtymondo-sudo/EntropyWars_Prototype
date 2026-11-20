@@ -762,8 +762,16 @@
             var gpu = null; try { gpu = navigator.gpu; } catch (e) {}
             var has = !!(gpu && typeof gpu.requestAdapter === 'function');
             var m = pick, why = 'picked ' + pick;
+            /* THE PHONE DRAWS CLASSIC (2026-11-20, mondo's iPhone 13 crashed while loading): WebGPU became the default on
+               11-11 and reaches iPhones through Safari 26, but every phone memory pass (the 512 px sheets, the KTX2 cap, no
+               post chain) was measured on the classic renderer, the one his phone last ran. On a phone in Low mode AUTO
+               means the classic renderer: no probe, no three.webgpu.js download. A picked WebGPU (Settings > Video >
+               Renderer, or ?ew_gpu=webgpu) is still honoured; tablets and desktops are untouched. */
+            var phoneClassic = false;
+            try { phoneClassic = pick === 'auto' && !!window.EW_PERF_LOW && /iPhone|iPod|Android.+Mobile/i.test(navigator.userAgent || ''); } catch (e) {}
             if (pick === 'auto') {
-                if (!has) { m = 'webgl'; why = 'Auto: this browser has no WebGPU'; }
+                if (phoneClassic) { m = 'webgl'; why = 'Auto: a phone in Low mode draws with the classic renderer (pick WebGPU in Settings to try it)'; }
+                else if (!has) { m = 'webgl'; why = 'Auto: this browser has no WebGPU'; }
                 else if (probe.indexOf('no:') === 0) { m = 'webgl'; why = 'Auto: WebGPU did not work here (' + probe.slice(3) + ')'; }
                 else if (probe.indexOf('bad:') === 0) { m = 'webgl'; why = 'Auto: WebGPU would not start here (' + probe.replace(/^bad:\d+:/, '') + ')'; }
                 else { m = 'webgpu'; why = probe === 'ok' ? 'Auto: WebGPU works here' : 'Auto: trying WebGPU'; }
@@ -797,7 +805,7 @@
                 } catch (e) {}
                 location.reload();
             };
-            if (pick === 'auto' && has) {
+            if (pick === 'auto' && has && !phoneClassic) {
                 var done = false;
                 var no = function (r) {
                     if (done) return; done = true;
