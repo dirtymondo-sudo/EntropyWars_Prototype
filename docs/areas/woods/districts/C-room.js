@@ -34,7 +34,9 @@ module.exports = {
         P('item_police_barricade', 58, 43, { face: 90 }); P('item_police_barricade', 58, 45, { face: 90 }); P('traffic_barrel', 58, 44); P('crashed_car_2', 56, 44, { face: 70 }); P('tire_stack', 54, 45, { dx: 0.7 });
         /* the quiet glade (Deep woods, south): one dead tree, a tyre swing nobody is on */
         P('hw_tree_2', 39, 40); P('tyre_swing', 41, 38);
+        /* trail lamps at the turns of the new ways, each in a pocket beside the trail (never on it) */
+        [[47, 12], [36, 9], [26, 6], [50, 11], [59, 6], [54, 34], [50, 43], [47, 46], [21, 26], [36, 27]].forEach(q => P('lantern_post', q[0], q[1], { pocket: true }));
         /* the tops: a stone pile on each lip you hop from, a trail sign where the climb starts */
-        P('cairn', 53, 4); P('trail_sign', 53, 15, { face: 180 }); P('hw_tree_5', 54, 6, { dx: 1.2 });
+        P('cairn', 53, 4); P('trail_sign', 54, 14, { face: 180 }); P('hw_tree_5', 54, 6, { dx: 1.2 });
     },
 };
