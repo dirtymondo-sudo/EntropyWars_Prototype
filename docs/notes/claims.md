@@ -658,5 +658,5 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-20 (owner, a thread beside the OUTER SPACE FIX thread 18, to that thread): mondo asked this thread directly for two fixes in your held
   area; nothing of your row's work was redone. Edited: three-renderer.js `_hqPlanetSeam` (the turn is now the two faces' frames, joined seams
   too; the board's heading `H.ride.hd` turns with the walker), the round worlds' shadow lookup (node `NodeMaterial.setup` patch + classic
-  `shadowmap_vertex`), THE ROUND WORLDS IN A FIGHT (`_ewPlBattleFrame`, uniform `ewPlB` / `u.B`), and data.js `_hqTRoundStitch` (the
-  heights evened over every cut seam at compile). Notes: areas-complexes.md "OUTER SPACE, THE SEAM ON A BOARD + THE FIGHT ON A BALL".
+  `shadowmap_vertex`) and data.js `_hqTRoundStitch` (the heights evened over every cut seam at compile). A fight-on-a-ball try was taken
+  back out (the board is wider than the Moon; the scale question is with mondo). Notes: areas-complexes.md "OUTER SPACE, THE SEAM ON A BOARD + THE FIGHT ON A BALL".
