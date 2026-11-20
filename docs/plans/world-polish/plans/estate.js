@@ -69,6 +69,8 @@ module.exports = {
         ['area', 1, 13, 4, 16, 'g', 1], ['thin', [[3, 12, 1], [3, 12, 1]], { to: 'a secret: the saucer ring (flattened corn, the glow)' }], ['label', 2.5, 14.6, 'saucer ring', 'note'],
         ['thin', [[7, 18, 1], [7, 22, 1], [3, 22, 1], [3, 28, 1], [6, 28, 1], [6, 34, 1], [2, 34, 1], [2, 40, 1], [5, 40, 1], [5, 45, 1]], { to: 'the Farm Track again, through the west corn (the second way round the Circles)' }],
         ['thin', [[14, 30, 1], [14, 30, 1]], { to: 'County Lane, out of the crop circle (the short way)' }],
+        /* (the build, 11-20: today's places in the corn kept as clearings on the west track, so nothing of the Corn Fields is lost) */
+        ['area', 2, 19, 5, 21, 'g', 1], ['area', 3, 25, 6, 31, 'g', 1], ['label', 4.5, 28, 'the camp', 'note'], ['area', 1, 38, 5, 44, 'g', 1], ['label', 3, 41, 'the wagon yard', 'note'], ['area', 16, 18, 19, 19, 'g', 1],
         ['area', 20, 48, 21, 50, 'k', 1], ['set', 22, 49, 'k', 1], ['thin', [[17, 55, 1], [21, 55, 1], [21, 51, 1]], { to: 'the field shed and the silo (a building you walk into)' }], ['label', 20, 47.2, 'FIELD SHED + SILO', 'mark'],
         /* ── THE LAKE (L): the water lies low; the west bank and the bluff stand over it ── */
         ['area', 24, 120, 59, 125, 'g', 0], ['area', 24, 125, 28, 143, 'g', 0]   /* (the build, 11-20: row 125 is today's shingle above the water, kept open) */, ['label', 42, 122, 'THE NORTH SHORE · open, level', 'place'],
@@ -133,7 +135,7 @@ module.exports = {
         { name: 'the crates behind the barn', from: [48, 169], to: [47, 169], kind: 'ledge chain' },
         { name: 'the root ladder out of the creek cut', from: [25, 170], to: [26, 170], kind: 'ladder' },
         { name: 'the fallen cottonwood', from: [27, 186], to: [28, 186], kind: 'trunk' },
-        { name: 'the rock chimney', from: [28, 184], to: [21, 185], kind: 'climb' }],
+        { name: 'the rock chimney', from: [24, 185], to: [23, 185], kind: 'climb' }   /* (the build, 11-20: out of the creek cut, up the Ridge's own face) */],
     flats: [
         { name: 'The Woods Gate\'s yard', rect: [2, 1, 9, 8], why: 'the yard inside the gate, where County Lane starts', board: true },
         { name: 'The Circles', rect: [15, 26, 22, 33], why: 'a crop circle: flattened corn', board: true },

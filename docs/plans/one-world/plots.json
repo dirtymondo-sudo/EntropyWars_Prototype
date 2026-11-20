@@ -60,10 +60,10 @@
       "##~~~~~~~~~~~~~~~~~~~~fffffffffwwSSSSSaaggggsssssssssssssssssggn~~~~~~~~~~~~~~~~~~~~~~~~~~###",
       "##~~~~~~~~~~~~~~~~~~~~fffffffffwwwSSSSaaaagsssbbsssssssssssssssn~~~~~~~~~~~~~~~~~~~~~~~~~~###",
       "##~~~~~~~~~~~~~~~~~~~~~ffffffffwwRSSSSaaaagssbbbbbbbbbbbbssssssn~~~~~~~~~~~~~~~~~~~~~~~~~~###",
-      "##~~~~~~~~~~~nn~~~~~~~~fffffffwwwwSSSaggassssbbbbbbbbbbbbbbbsssn~~~~~~~~~~~~nn~~~~~~~~~~~~###",
-      "###~~~~~~~~~nn~~~~~~~~~~fffffwwwwwwaaaasssssbbbbbbbdddddbbbbbbsn~~~~~~~~~~~~nnn~~~~~~~~~~####",
-      "###~~~~~~~~~n~~~~~~~~~~~fffffwwwwwwaagsssssbbbbbdddddddddbbbbbbn~~~~~~~~~~~~~n~~~~~~~~~~~####",
-      "###~~~~~~~~~~~~~~~~~~~~~~fffwwwwwaaaasssssbbbbddddddddddddbbbbbn~~~~~~~~~~~~~~~~~~~~~~~~~####",
+      "##~~~~~~~~~~~nn~~~~~~~~fffffffwwwFMSSaggassssbbbbbbbbbbbbbbbsssn~~~~~~~~~~~~nn~~~~~~~~~~~~###",
+      "###~~~~~~~~~nn~~~~~~~~~~fffffwwwwFwaaaasssssbbbbbbbdddddbbbbbbsn~~~~~~~~~~~~nnn~~~~~~~~~~####",
+      "###~~~~~~~~~n~~~~~~~~~~~fffffwwwwFFaagsssssbbbbbdddddddddbbbbbbn~~~~~~~~~~~~~n~~~~~~~~~~~####",
+      "###~~~~~~~~~~~~~~~~~~~~~~fffwwwwwFaaasssssbbbbddddddddddddbbbbbn~~~~~~~~~~~~~~~~~~~~~~~~~####",
       "###~~~~~~~~~~~~~~~~~~~~~~fwwwwwwaaaaasssssbbbdddddddddddddddbbbbn~~~~~~~~~~~~~~~~~~~~~~~~####",
       "####~~~~~~~~~~~~~~~~~~~~~~wwwwwaagaassssssbbddddDDDDdddddddddbbbn~~~~~~~~~~~~~~~~~~~~~~~#####",
       "####~~~~~~~~~~~~~~~~~~~~~~~wwwwaaaaaFFssssbbddddDDDDDdddddddddbbn~~~~~~~~~~~~~~~~~~~~~~~#####",
@@ -757,7 +757,7 @@
         {"n":"The Family Plot","x":-22,"y":15,"was":"P01-05"},
         {"n":"The Crypt","x":-22,"y":16,"was":"P00-05"}
       ]},
-    {"id":"estR","hub":"ranch","zone":"The Estate","name":"The Ranch","state":"moves","layer":"surface","x":-12,"y":18,"w":3,"h":5,"shape":"path","count":9,"today":{"room":"site_prebuilt_skinwalker_estate","districts":["R"]},
+    {"id":"estR","hub":"ranch","zone":"The Estate","name":"The Ranch","state":"moves","layer":"surface","x":-13,"y":18,"w":4,"h":5,"shape":"band","count":15,"today":{"room":"site_prebuilt_skinwalker_estate","districts":["R"]},
       "plots": [
         {"n":"The Ranch Gate","x":-11,"y":18,"was":"P03-05"},
         {"n":"The Yard","x":-11,"y":19,"was":"P04-05"},
@@ -767,7 +767,13 @@
         {"n":"The Windmill","x":-10,"y":20,"was":"P04-03"},
         {"n":"The Pasture","x":-11,"y":21,"was":"P03-03"},
         {"n":"The Hay Field","x":-12,"y":21,"was":"P05-03"},
-        {"n":"The Cow Field","x":-11,"y":22,"was":"P05-05"}
+        {"n":"The Cow Field","x":-11,"y":22,"was":"P05-05"},
+        {"n":"The Creek Pool","x":-12,"y":18},
+        {"n":"The Draw","x":-12,"y":20},
+        {"n":"The Saddle","x":-13,"y":18},
+        {"n":"The Ridge, north","x":-13,"y":19},
+        {"n":"The Ridge","x":-13,"y":20},
+        {"n":"The Ridge, south","x":-13,"y":21}
       ]},
     {"id":"mtn","hub":"mountains","zone":"The Mountains","name":"Mount Olympus","state":"relaid 11-20","layer":"surface","x":-14,"y":-20,"w":5,"h":8,"shape":"band","count":28,"today":{"room":"site_prebuilt_shasta_mountains","districts":["Mount Olympus"]},
       "plots": [
