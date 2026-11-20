@@ -314,7 +314,10 @@ const T_NAME = { west: 'The West Tunnel', wells: 'The Wells Tunnel', long: 'The 
 const seq = (a, b, fx) => { const o = []; if (a <= b) for (let i = a; i <= b; i++) o.push(fx(i)); else for (let i = a; i >= b; i--) o.push(fx(i)); return o; };
 /* each room: its district plots (home ids, placed), its tunnel plots (world x, y, name), what joins */
 const ROOMS = [
-    { key: 'KH', room: ROOM, part: PART, label: 'THE CAVERN', sub: 'THE CROSSROADS · THE MOUTH · HOLLOW EARTH UNDER ITS SUN', group: ['K', 'H'], place: placeKH, turn: 270, lines: LINES.filter(l => O.agartha.l.indexOf(l) < 0), spawnAt: ['P02-01', 5, 4],
+    /* skip: true (2026-11-20, world polish thread 9): the Cavern and Hollow Earth are two rooms of their own now, built from their approved plans by
+       `node bake-ug.js cavern` / `hollow` (site_prebuilt_hollow_earth_ug_cavern / _ug_hollow); this old room is retired to the Cavern (DOOR_HQ.retired).
+       The row stays so the plots, the other rooms' seams and Agartha's moves are still worked out as before; its ways are no longer checked here. */
+    { key: 'KH', skip: true, room: ROOM, part: PART, label: 'THE CAVERN', sub: 'THE CROSSROADS · THE MOUTH · HOLLOW EARTH UNDER ITS SUN', group: ['K', 'H'], place: placeKH, turn: 270, lines: LINES.filter(l => O.agartha.l.indexOf(l) < 0), spawnAt: ['P02-01', 5, 4],
       parti: 'The cave under the crust is a loop over three tiers; its mouth is a ledge over a whole country lit by a sun that never sets.', sunsNote: 'the Inner Sun, the lava lake', tunnels: [] },
     { key: 'A', room: 'site_prebuilt_hollow_earth_ow_agartha', part: 'ow_agartha', label: 'AGARTHA', sub: 'THE CRYSTAL CITY · UNDER THE LEMURIA ADIT · THE TERRACES · THE SPIRE', group: ['A'], place: placeA, turn: 90, lines: O.agartha.l, spawnAt: ['P04-04', 6, 4],
       parti: 'A city of white terraces under the Lemuria adit steps down round a spire lit from inside to a lake and a plaza; the long tunnel from the Cavern comes in at its upper terrace.', sunsNote: 'the Spire',
@@ -436,7 +439,7 @@ const DAIR = [].concat(...Object.keys(DISTRICTS).map(k => typeof DISTRICTS[k].ai
 const L = [HEAD], TOTAL = { props: 0, natives: 0, features: 0 }, strayDrop = [];
 const PARTED_RAMP = (f, R) => f.k === 'ramp' && R.M.strays.length >= 0;
 ROOMS.forEach(R => {
-    if (R.skip) return;   // written by another tool (the row's note)
+    if (R.skip) { TOTAL.props += R.M.props.length; TOTAL.natives += R.M.npc.length; return; }   // written by another tool (the row's note); its pieces are counted, not lost
     const M = R.M, W = M.W, Hh = M.D, cellR = M.cell, open = R.open;
     const tunPlots = M.order.filter(e => e.district === 'T');
     /* the pieces that came with the plots; a ramp whose two ends left each other (the Country's stair up into Agartha) is dropped (the census lists it) */
@@ -497,8 +500,8 @@ if (strays.length) console.log('STRAYS (a piece across two plots that no longer 
 if (strayDrop.length) console.log('DROPPED (an opening between plots that parted):\n  ' + strayDrop.join('\n  '));
 console.log('SEAMS:\n  ' + SEAMLIST.join('\n  '));
 const placeOf = w => "site: '" + SITE + "', part: '" + w.R.part + "', " + place(w) + (w.wall === 'free' && w.R.key !== 'KH' && w.R.key !== 'A' ? '' : '') + ",";
-WANT = Object.keys(WAYS).map(k => [placeOf(WAYS[k]), 'link ' + k, k])
-    .concat(Object.keys(BAYS).map(k => [k + ": { room: '" + BAYS[k].R.room + "', door: { id: '" + BAYS[k].id + "', " + place(BAYS[k]) + " } },", 'DOOR_HQ.siteRooms ' + k, null]));
+WANT = Object.keys(WAYS).filter(k => !WAYS[k].R.skip).map(k => [placeOf(WAYS[k]), 'link ' + k, k])   // (a skipped room's ways are its new tool's to check)
+    .concat(Object.keys(BAYS).filter(k => !BAYS[k].R.skip).map(k => [k + ": { room: '" + BAYS[k].R.room + "', door: { id: '" + BAYS[k].id + "', " + place(BAYS[k]) + " } },", 'DOOR_HQ.siteRooms ' + k, null]));
 
 }
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
