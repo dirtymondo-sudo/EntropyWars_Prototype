@@ -13791,3 +13791,10 @@ then it is retired and the new rooms get their `world` places (none yet: it woul
 **NOT in the plan, so not here:** the D.U.M.B.'s blast door (`cave_dumb`), the Oubliette's portcullis to the Sewers (`workings_oubliette`),
 DOOR HQ's hidden cell door, the cellar well (`well_cellar`): they stay on the old room until the Sewers / D.U.M.B. threads and mondo say where
 they land in the labyrinth.
+**THE SHEETS (2026-11-20, mondo: "don't use the calm textures, use from the urban decay or horror pack").** The cave keys (`cave_floor`,
+`cave_wall`, `rocks_5`, `obsidian`, `crystal`, `dirt_2`) all wear CALM sheets (data.js CALM_TERRAIN: calm_cavefloor, calm_darkrock, calm_rock ...).
+A design file now names every surface itself (`room.tex` in bake-ug.js: floor, wall, dado, trim, ceiling, cliff, path, genWall, roof,
+stalactite; the defaults are the old calm keys, so a new district must set its own). The Cavern: rock + roof `hz_stone_01` (black, cracked),
+floor `hz_stone_02` (dark cracked; `hz_stone_08` was tried first: too pale and sandy), ledge faces + the hot rock `hz_stone_10`, boulders
+`hz_stone_02`, the Needle `hz_stone_07`, mud in the pits and the camp `hz_floor_03`, mineral stone in the crystal pockets `hz_stone_06`. Rock
+tints are near white so a sheet's own colour shows. The room is in ZONE_LOOKS.cavern for its stains only (byRoom: drips, dirt, grime, a little blood).
