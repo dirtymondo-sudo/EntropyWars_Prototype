@@ -12825,7 +12825,41 @@ box at world 22,-19, written by `bake-beach.js`: `OW_ROOMS[2]` + `growVolcano`, 
      pagoda tiers, a castle keep's roofs and its stone base, a shoji door leaf; sheets: tatami, shoji paper, clay roof tile, bamboo, castle stone.
   2. Trees and plants: a cherry tree (if the pink leaf sheet is refused), bamboo, a Japanese maple, a bonsai, lotus / lily pads, a rice plant for the paddies.
   3. Shrine and garden: a komainu or fox statue, a Buddha, a shrine bell with its rope, an offering box, an arched red bridge, a koi, a wooden water wheel.
-  4. Samurai things as props: a katana on a stand, a bow, a spear / naginata, a suit of samurai armour on a stand, banners on poles.
+  4. Samurai things as props: a katana on a stand, a suit of samurai armour on a stand, banners on poles. CORRECTED 11-20 (mondo: "I am pretty sure there is a bow
+     and a spear model"): the SPEAR is in the game (`spear`, his upload, placeable); the ARROW is a model (`arrow`); the BOW is not (Robin Hood's longbow is drawn
+     in code; only the creator's worn `Wooden bow` / `Short bow` exist). STAND-INS HE NAMED 11-20: `sword` for the katana, the knight armour for samurai armour.
   5. Insides: a low table set, a futon, a wooden bath tub, a hearth sunk in the floor, a folding screen in the Japanese style, sake barrels, tea set, bowls of
      food (noodles, rice, sushi), a festival stall, a wooden junk or fishing boat in the Japanese style.
   6. Jungle and volcano: living dinosaurs as scenery (more than the one race), eggs, a nest, volcanic rocks, a monkey, a crane.
+
+## KATANA ISLAND, THE PILOT: KATANA BAY, PASS 1 (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20, on the plan: "That is okay"; "just use the trees we already have and make the leaves pink and maybe tweak em a little to make cherry blossom we
+can reuse, use a sword to stand in for the katana, try to make the roofs yourself with math but ill probably make meshy models later, and use knight armor to
+stand in for the katana armor".
+
+- **THE TOOL:** `node bake-katana.js` writes ONE room, `site_prebuilt_katana_island` (9 x 9 plots, the island one plot in from every side), between the
+  KATANA-BEGIN / KATANA-END markers of data.js, from `docs/areas/katana/layout.js` (the plan's numbers, moved there; the plan pictures still read them) and
+  `docs/areas/katana/districts/<letter>.js` (`build(ctx)`; the hooks are listed in the tool's header). It stops on a taken square, a prop in the water, or a
+  place the district's `reach` names that the walk from the pier cannot get to.
+- **THE PILOT ROOM IS NOT JOINED TO THE WORLD.** No door, no link, no map row: you reach it only with a probe. The Volcano Island
+  (`site_prebuilt_bermuda_ow_volcano`) stands untouched and `bake-beach.js` was not edited. WHEN THE ISLAND IS BUILT AND MONDO SAYS SWAP: the boat links' island
+  ends move to the bay's pier, the old room goes to `DOOR_HQ.retired`, `bake-beach.js` loses `OW_ROOMS[2]` + `growVolcano`, the world plots and the map follow.
+- **THE HEIGHTS:** the bay is laid square by square in whole levels (stone quays 1, the head's rock 2 and 3, sand 0.4 m rising from the water). Everywhere
+  else the plots' levels are blended plot middle to plot middle with the volcano's cone on top (31.5 m): the backdrop until each district is built.
+- **THE BLOSSOM TREES (reusable, any room):** tree kinds `cherry`, `cherry_2`, `cherry_3` (tall) and `maple` = the full trees with their leaf picture painted
+  one colour (`HQ_TREE_KINDS` `rt:<file>#rrggbb`; three-renderer.js `_hqBlossomMat`: each leaf pixel keeps its own light and dark, the brightest third runs
+  to white; the bark is untouched; done once when the file lands, so the board, the room, the near setting and the editor all show it).
+- **THE CURVED ROOF, IN CODE** (`sheet().jroof`, bake-katana.js): a wide shallow hip skirt (the deep eaves), a steeper roof standing exactly on the skirt's own
+  slope (so the pitch grows toward the ridge), a ridge beam with end tiles, four lifted corner tips, dark boards under the eaves. `top`: gable (a house, a
+  hall), hip (a store), pyramid (a tower). Only existing part kinds: no renderer change. `timber()` = the dark frame over plaster. mondo will likely make
+  Meshy roofs later: every building calls `house()`, so the swap is one place.
+- **KATANA BAY, WHAT STANDS** (docs/areas/katana/districts/B.js): the Landing Square (10 x 8 squares, level on purpose), the Harbour Office, the Fish Market,
+  the Shipwright's Shed, the Net Loft, the Rice Store, the Harbour Inn, the Fishermen's Hut (thatch), the Lantern Tower on the head (stone, a lit fire room),
+  the pier and three short ones (`deck` rows: they draw as stone jetties with plank tops and mooring posts), the Harbour Gate stair (levels 1 to 3) and the
+  West Steps (1 to 4) as real flights, two flights up the Lantern Head, THE GREAT GATE in the water (drawn: red posts, side legs, a top beam curved in nine
+  pieces), 86 props from the catalogue (stone lanterns, market stalls, a taiko drum, a bell, boats afloat and on the sand, drying fish, nets, barrels,
+  baskets, bollards, gulls, crabs), five people (chef, farmer, samurai slug, ninja, monk).
+- **KNOWN AND LEFT FOR THE NEXT PASSES:** the insides are bare rooms with a few things (pass 2); the Net Loft and the Inn are one storey inside; the ledges
+  from the City do not exist until the City's ground is laid; the retaining walls round the Waterfront are the room's rock sheet; the far volcano reads dark;
+  no night look yet; frame rate not measured (one room of 29 plots: to be measured when more stands). `fish_boxes` is a modern blue crate: not used here.

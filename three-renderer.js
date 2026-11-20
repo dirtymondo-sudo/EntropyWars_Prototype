@@ -8117,7 +8117,7 @@ const ThreeRenderer = (function () {
         if (_foliageIsAsset(name)) return 'https://cdn.entropywars.net/Assets/' + name.slice(6).split('#')[0].split('/').map(encodeURIComponent).join('/');
         if (_foliageIsMisc(name)) return (_R2_MISC || 'https://cdn.entropywars.net/Assets/misc/') + encodeURIComponent(name.slice(5));
         if (_foliageIsKit(name)) { var KB = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.assets && DOOR_HQ.assets.models) || 'https://cdn.entropywars.net/Assets/world/hq/models/'; return KB + encodeURIComponent(name.slice(4)); }
-        return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3) + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj';
+        return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3).split('#')[0] + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj';   // `rt:<file>#rrggbb` = THE BLOSSOM TREES: the same file, its leaves recoloured
     }
     /* THE PALETTE (EDITOR_PLAN E2, 2026-09-29): data.js HQ_TREE_KINDS names the other fourteen OBJs in the folder (tree_7 …
        tree_20) for the editor's TREES tab; a key the board already maps keeps its model */
@@ -8237,6 +8237,10 @@ const ThreeRenderer = (function () {
                         if (glb && _foliageIsAsset(name) && name.indexOf('#') > 0) {   // THE GIANT FLOWERS: this kind's petal colour (the baked root is this name's own; the file's scene keeps its materials)
                             var petal = parseInt(name.split('#')[1], 16);
                             if (isFinite(petal)) root.traverse(function (n) { if (n.isMesh && n.material && !Array.isArray(n.material)) { try { n.material = _hqPetalMat(n.material, petal); } catch (e) {} } });
+                        }
+                        if (glb && name.slice(0, 3) === 'rt:' && name.indexOf('#') > 0) {   // THE BLOSSOM TREES (2026-11-20, Katana Island; mondo: "use the trees we already have and make the leaves pink"): this kind's leaf colour, the bark untouched
+                            var bloom = parseInt(name.split('#')[1], 16);
+                            if (isFinite(bloom)) root.traverse(function (n) { if (n.isMesh && n.material && !Array.isArray(n.material) && _foliageGlbLeaf(n.material)) { try { n.material = _hqBlossomMat(n.material, bloom); } catch (e) {} } });
                         }
                         _normalizeFoliageModel(root);
                         entry.obj = root; entry.loading = false;
@@ -69985,6 +69989,37 @@ const ThreeRenderer = (function () {
        on a canvas when the model lands: the file on R2 is never touched, and it needs no shader (both renderers). A sheet that cannot be
        read (no image yet, a tainted canvas) keeps its own colours. Viewer-local dressing: nothing on `state`, nothing relayed. */
     var _hqPetalCache = {};
+    /* THE BLOSSOM TREES (2026-11-20, Katana Island; mondo: "use the trees we already have and make the leaves pink and maybe tweak em a little to make
+       cherry blossom we can reuse"): a retro-pack tree's LEAF material with its picture painted again in one colour. Every leaf pixel keeps its own
+       light and dark (the picture's shading and its cut-out stay), its hue becomes `color`, and its brightest third runs to near white, the way a
+       blossom does. data.js HQ_TREE_KINDS `rt:<file>#rrggbb` (cherry, cherry_2, maple); one canvas a file and colour, made once when the file lands. */
+    var _hqBlossomCache = {};
+    function _hqBlossomMat(mat, color) {
+        if (!mat || !mat.map || !mat.map.image || typeof document === 'undefined') return mat;
+        var key = mat.uuid + '|' + color, hit = _hqBlossomCache[key]; if (hit) return hit;
+        var out = mat;
+        try {
+            var img = mat.map.image, w = Math.min(1024, img.width || 0), h = Math.min(1024, img.height || 0); if (!(w > 0 && h > 0)) return mat;
+            var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+            var cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, w, h);
+            var id = cx.getImageData(0, 0, w, h), d = id.data, tr = (color >> 16) & 255, tg = (color >> 8) & 255, tb = color & 255, lo = 255, hi = 0, i;
+            for (i = 0; i < d.length; i += 4) { if (d[i + 3] < 8) continue; var l0 = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]; if (l0 < lo) lo = l0; if (l0 > hi) hi = l0; }
+            var span = Math.max(1, hi - lo);
+            for (i = 0; i < d.length; i += 4) {
+                if (d[i + 3] < 8) continue;
+                var t = (0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2] - lo) / span, sh = 0.42 + 0.58 * Math.min(1, t / 0.66), wh = Math.max(0, (t - 0.66) / 0.34) * 0.7;   // dark leaves = the colour in shade; the brightest third runs to white
+                d[i] = Math.min(255, tr * sh + (255 - tr * sh) * wh); d[i + 1] = Math.min(255, tg * sh + (255 - tg * sh) * wh); d[i + 2] = Math.min(255, tb * sh + (255 - tb * sh) * wh);
+            }
+            cx.putImageData(id, 0, 0);
+            var tex = new THREE.CanvasTexture(cv), sm0 = mat.map;
+            tex.flipY = (typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) ? false : sm0.flipY;
+            tex.wrapS = sm0.wrapS; tex.wrapT = sm0.wrapT; tex.encoding = sm0.encoding; tex.magFilter = sm0.magFilter; tex.minFilter = sm0.minFilter; tex.generateMipmaps = sm0.generateMipmaps;
+            tex.offset.copy(sm0.offset); tex.repeat.copy(sm0.repeat); tex.needsUpdate = true;
+            out = mat.clone(); out.map = tex; out._ew_shared = true;
+        } catch (e) { out = mat; }
+        _hqBlossomCache[key] = out;
+        return out;
+    }
     function _hqPetalMat(mat, color) {
         if (!mat || !mat.map || !mat.map.image || typeof document === 'undefined') return mat;
         var key = mat.uuid + '|' + color, hit = _hqPetalCache[key]; if (hit) return hit;
