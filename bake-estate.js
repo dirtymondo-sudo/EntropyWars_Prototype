@@ -226,7 +226,7 @@ const HOMEP = PLAN.plots.map(p => ({ id: p.id, x: p.x, y: p.y, name: p.name, dis
 const MOVER = require('./ow-move.js')({ cols: G, rows: G, cell, fill: 'c', plots: HOMEP, features: F.concat(ARCH), props, npc, doors });
 const v13 = letter => { const d = PJ.districts.find(q => q.today && q.today.room === ROOM && q.today.districts.indexOf(letter) >= 0); if (!d) throw new Error('plots.json has no Estate district ' + letter);
     return d.plots.map(q => { if (!q.was) { const pp = DESIGN && DESIGN.plotAtWorld(q.x, q.y); if (!pp || pp.name !== q.n || pp.d !== letter) throw new Error('plots.json and the room design (plans/estate.js) disagree on ' + q.n + ' at ' + q.x + ',' + q.y);
-            return { wx: q.x, wy: q.y, name: q.n, district: letter, level: pp.level, isNew: true }; }   /* a plot the plan adds (docs/plans/one-world/after-v13.js row 7): no home square; THE ROOM DESIGN lays it */
+            return { wx: q.x, wy: q.y, name: q.n, district: letter, level: pp.level, isNew: true, designNew: true }; }   /* a plot the plan adds (docs/plans/one-world/after-v13.js row 7): no home square; THE ROOM DESIGN lays it */
         const p = plot[q.was]; if (!p || p.name !== q.n || p.d !== letter) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
 /* THE ROOM DESIGN (2026-11-20, world polish thread 17, mondo's OK on docs/plans/world-polish/plans/estate.js): the approved height plan, built into
    squares by the plan tool itself (draw-plan.js `build`), in the joined room's frame; docs/areas/estate/districts/room.js names the districts it
@@ -243,7 +243,7 @@ const R8 = PJ.routes.find(r => r.id === 'R8'), R8_HERE = [[-10, 18, 'Ranch Road,
 R8_HERE.forEach(q => { if (!R8.plots.some(p => p[0] === q[0] && p[1] === q[1])) throw new Error('plots.json: R8 has no plot ' + q[0] + ',' + q[1]); });
 /* the seams: the plot, its side, how many squares along that side from the plot's corner the path crosses (left out: where the plot is open), the room past it */
 const STAND = [
-    { id: R_CORN, part: 'ow_corn', label: 'THE CORN FIELDS', sub: 'THE ESTATE · COUNTY LANE · 12 PLOTS', letters: ['C'], world: true, lane: true, kit: true,   // (2026-11-18, mondo: a zone's districts are ONE place: the Corn Fields, County Lane, the Lake and the Ranch are all the route kit's room now, R7.json `join`)
+    { id: R_CORN, part: 'ow_corn', label: 'THE CORN FIELDS', sub: 'THE ESTATE · COUNTY LANE · 12 PLOTS', letters: ['C'], world: true, lane: true, kit: true, design: DESIGN.letters.indexOf('C') >= 0,   // (2026-11-18, mondo: a zone's districts are ONE place: the Corn Fields, County Lane, the Lake and the Ranch are all the route kit's room now, R7.json `join`)
       list: v13('C').concat(R7_HERE.map(q => ({ wx: q[0], wy: q[1], name: q[2], district: 'C', level: 1 }))),
       parti: 'Corn you cannot see over, two plots wide and six long, the walk south from the Woods Gate to the Hub: tracks cut through it, and County Lane straight down the middle.',
       seams: [
@@ -270,7 +270,7 @@ const STAND = [
           /* THE DRIVE IN: the Iron Gate's north side, where the Woods' wild link L5 comes down from the Ritual Ground (the Woods thread writes the other side) */
           { plot: 'P01-03', side: 'N', id: 'ow_h_m21_11', room: R_RITUAL, spawn: true, label: 'THE WOODS · THE RITUAL GROUND', sub: 'THE TRAIL NORTH · OUT OF THE IRON GATE', desc: 'Past the gate a trail goes off north into the trees.' },
       ] },
-    { id: R_RANCH, part: 'ow_ranch', label: 'THE RANCH', sub: 'THE ESTATE · THE RANCH · 10 PLOTS', letters: ['R'], world: true, fields: true, fieldPlaces: ['bees'], kit: true,
+    { id: R_RANCH, part: 'ow_ranch', label: 'THE RANCH', sub: 'THE ESTATE · THE RANCH · 16 PLOTS', letters: ['R'], world: true, fields: true, fieldPlaces: ['bees'], kit: true, design: DESIGN.letters.indexOf('R') >= 0,
       /* THE STABLE DOOR (Room 512's bay, siteRooms.entry.prebuilt_skinwalker): it stood on the Yard's south wall; the Yard is inside the room now (the Paddock
          stands south of it), so the door goes on the room's own south wall, at the Cow Field's foot, with a track cut up to the field's open ground */
       bay: { plot: 'P05-05', k: 5 },
@@ -282,8 +282,10 @@ const STAND = [
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 180, E: 270, S: 0, W: 90 };   // a free door on that side of a plot: the way its opening faces, INTO the plot (ow-move.js)
 const ROOMS_OUT = [], STRAYS = [], PLACES = {};
+const DRESS = { called: new Set(), placed: new Set() };   // THE ROOM DESIGN: every room.js piece lands in exactly one stand (checked after them all)
 STAND.forEach(S => {
     const R = MOVER.room(S.list), Wn = R.W, Dn = R.D, c2 = R.cell, chg = new Set();
+    R.order.forEach(e => { if (e.isNew && S.list.some(q => q.designNew && q.wx === e.wx && q.wy === e.wy)) e.designNew = true; });   // (a plot the room design adds: no field dressing)
     R.strays.forEach(t => STRAYS.push(S.label + ': ' + t));
     /* THE HOUSES PAST THE CORN (pieces the district files set OUTSIDE the home room, e.g. H.js's two rim houses): they move with the plot they lie
        past. One that now lands inside the new room's box, or on its wall, is a STRAY: it is set past the room's wall on the nearest side of its own plot
@@ -312,7 +314,7 @@ STAND.forEach(S => {
     const cnt = { lane: 0, cut: 0, back: 0, rowsOut: 0, rowsIn: 0 };
     if (S.lane || S.fields) {
         /* THE FIELDS on a route's own plots (County Lane's in the corn, the Ranch Road's by the Ranch): open grass inside a rim of corn */
-        R.order.filter(e => e.isNew).forEach(e => { for (let ly = 1; ly <= 10; ly++) for (let lx = 2; lx <= 10; lx++) set(e.col * N + lx, e.row * N + ly, 'g'); });
+        R.order.filter(e => e.isNew && !e.designNew).forEach(e => { for (let ly = 1; ly <= 10; ly++) for (let lx = 2; lx <= 10; lx++) set(e.col * N + lx, e.row * N + ly, 'g'); });
     }
     if (S.lane) {
         /* THE LANE: four squares of dirt down the line between the two columns, from the north field to the south wall */
@@ -356,7 +358,7 @@ STAND.forEach(S => {
             for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { if (!inR(x + dx, y + dy) || openR(x + dx, y + dy) || (x + y) % 3 === 0) continue; if (!chg.has(x + ':' + y) && !chg.has((x + dx) + ':' + (y + dy))) continue;
                 propsOut.push({ key: 'corn_row', x: r2(R.gcx(x) + dx * 1.42 + (dx ? 0 : (rr() - 0.5) * 0.3)), z: r2(R.gcz(y) + dy * 1.42 + (dy ? 0 : (rr() - 0.5) * 0.3)), face: (dx ? 90 : 0) + (rr() < 0.5 ? 180 : 0), noBlock: true }); cnt.rowsIn++; } } }
     const featsOut = R.features.slice();
-    if (S.lane || S.fields) R.order.filter(e => e.isNew).forEach((e, i) => { const x0 = e.col * N, y0 = e.row * N;
+    if (S.lane || S.fields) R.order.filter(e => e.isNew && !e.designNew).forEach((e, i) => { const x0 = e.col * N, y0 = e.row * N;
         /* the fields' own dressing (the route kit's farmland: sunflowers, wild flowers, a milestone on the lane, a ranch fence with its gap): the tool's, not a district's */
         featsOut.push({ k: 'scatter', key: 'sunflowers', n: 5, seed: 700 + i, x: R.gx(x0 + 6.5), z: R.gz(y0 + 6), r: 13, r0: 0.6 }, { k: 'scatter', key: 'wild_flowers', n: 9, seed: 710 + i, x: R.gx(x0 + 6.5), z: R.gz(y0 + 6), r: 14 });
         featsOut.push({ k: 'rail', x0: R.gx(x0 + 2), z0: R.gz(y0 + 1), x1: R.gx(x0 + 2), z1: R.gz(y0 + 4.5), model: 'ranch' }, { k: 'rail', x0: R.gx(x0 + 2), z0: R.gz(y0 + 7.5), x1: R.gx(x0 + 2), z1: R.gz(y0 + 11), model: 'ranch' });
@@ -395,7 +397,7 @@ STAND.forEach(S => {
        nearest open level square within three squares (else it goes, listed); a tree there goes. Then room.js dresses it and the plan's found climbs are laid. */
     let DES = null;
     if (S.design) { const B = DESIGN.B, T = B.T, ox = (R.wx - DESIGN.wx0) * N, oy = (R.wy - DESIGN.wy0) * N, WAYC = 'pPqQdD';
-        const des = (x, y) => inR(x, y) && !!R.plotOfSq(x, y) && !!T[y + oy] && T[y + oy][x + ox] != null && T[y + oy][x + ox] !== '.';
+        const des = (x, y) => { if (!inR(x, y)) return false; const e = R.plotOfSq(x, y); if (!e || (e.isNew && !e.designNew)) return false; const pp = DESIGN.plotAtWorld(R.wx + e.col, R.wy + e.row); return !!pp && pp.d !== 'N' && !!T[y + oy] && T[y + oy][x + ox] != null && T[y + oy][x + ox] !== '.'; };   // (a route's own field, district N in the plan, is the kit's: not laid)
         const tOf = (x, y) => T[y + oy][x + ox];
         const LV = [], RP = {}; for (let y = 0; y < Dn; y++) LV.push(new Array(Wn).fill(0));
         let laid = 0;
@@ -413,17 +415,35 @@ STAND.forEach(S => {
         const openD = (x, y) => des(x, y) && c2[y][x] !== 'c', rampAt = (x, y) => !!RP[x + ',' + y], onWay = (x, y) => des(x, y) && WAYC.includes(tOf(x, y)) && !'jB'.includes(c2[y][x]);
         const SMALL = /butterfly|morpho|swallowtail|monarch|moth|^bee$|bumblebee|ladybug|grasshopper|dragonfly|^ant$|frog|rabbit|duck|swan|wild_flowers|^fern$|moss_clump|reeds/;
         const busy = {}; propsOut.forEach(p => { const q = sqOf(p.x, p.z); busy[q] = (busy[q] || 0) + 1; });
-        const spotNear = (x, y, lv) => { let best = null; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const X = x + dx, Y = y + dy; if (!openD(X, Y) || onWay(X, Y) || rampAt(X, Y) || c2[Y][X] === 'w') continue;
+        const spotNear = (x, y, lv, rad) => { let best = null; rad = rad || 3; for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) { const X = x + dx, Y = y + dy; if (!openD(X, Y) || onWay(X, Y) || rampAt(X, Y) || c2[Y][X] === 'w') continue;
                 if (lv != null && Math.abs(LV[Y][X] - lv) > 0.6) continue; const cost = Math.abs(dx) + Math.abs(dy) + (busy[X + ',' + Y] || 0) * 0.8; if (!best || cost < best[0]) best = [cost, X, Y]; } return best; };
         let stepped = 0; const gone = [];
-        const shift = p => { const [x, y] = sqOf(p.x, p.z); if (!des(x, y)) return true; const closed = c2[y][x] === 'c', way = onWay(x, y);
-            if (!closed && !way) return true; if (p.key && SMALL.test(p.key) && !closed) return true; if (!closed && p.noBlock) return true;
-            const b = spotNear(x, y, closed ? null : LV[y][x]); if (!b) { gone.push((p.key || 'native:' + p.race) + '@' + (x + ox) + ',' + (y + oy)); return false; }
-            p.x = r2(p.x + (b[1] - x) * C); p.z = r2(p.z + (b[2] - y) * C); busy[b[1] + ',' + b[2]] = (busy[b[1] + ',' + b[2]] || 0) + 1; stepped++; return true; };
-        propsOut = propsOut.filter(shift); R.npc.splice(0, R.npc.length, ...R.npc.filter(shift));
+        /* a pocket: a square of the corn beside open, level ground (not a ramp, not water) opened at that ground's level (the Woods' rule): a place the plan's
+           corn swallowed (a scarecrow's patch, a camp) keeps its pieces where they stood, the corn opened round them from the open ground inward */
+        let pockets = 0; const flatBy = (x, y) => { let lv = null; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (openD(X, Y) && !rampAt(X, Y) && c2[Y][X] !== 'w') lv = LV[Y][X]; } return lv; };
+        const pocketAt = (x, y) => { if (!des(x, y) || c2[y][x] !== 'c') return false; const lv = flatBy(x, y); if (lv == null) return false; c2[y][x] = 'g'; LV[y][x] = lv; chg.add(x + ':' + y); pockets++; return true; };
+        const shift = (p, pass) => { const [x, y] = sqOf(p.x, p.z); if (!des(x, y)) return true; const closed = c2[y][x] === 'c', way = onWay(x, y);
+            if (p.key === 'corn_row') return !closed;   // (a corn row is the corn's own edge: in the corn it is not needed)
+            if (!closed && !way) return true; if (p.key && SMALL.test(p.key) && !closed) return true; if (!closed && (p.noBlock || p.race)) return true;   // (people may stand on a way)
+            const b = spotNear(x, y, closed ? null : LV[y][x], 2); if (b) { p.x = r2(p.x + (b[1] - x) * C); p.z = r2(p.z + (b[2] - y) * C); busy[b[1] + ',' + b[2]] = (busy[b[1] + ',' + b[2]] || 0) + 1; stepped++; return true; }
+            if (closed && pocketAt(x, y)) return true;
+            if (pass < 3) return null;   // (again next pass: a pocket opened beside it may reach it)
+            const b2 = spotNear(x, y, closed ? null : LV[y][x], 4); if (b2) { p.x = r2(p.x + (b2[1] - x) * C); p.z = r2(p.z + (b2[2] - y) * C); stepped++; return true; }
+            gone.push((p.key || 'native:' + p.race) + '@' + (x + ox) + ',' + (y + oy)); return false; };
+        for (let pass = 0; pass < 4; pass++) { const keepP = [], keepN = [];
+            propsOut = propsOut.filter(p => shift(p, pass) !== false); R.npc.splice(0, R.npc.length, ...R.npc.filter(n => shift(n, pass) !== false)); }
+        const buried = [], keptDrawn = [], BUILT_IDS = new Set(Object.keys(BUILT).map(k => 'est:' + k + ':look'));
         for (let i = featsOut.length - 1; i >= 0; i--) { const f = featsOut[i]; if (f.x == null || ['scatter', 'pool', 'deck', 'rail', 'dip'].indexOf(f.k) >= 0) continue; const [x, y] = sqOf(f.x, f.z); if (!des(x, y)) continue;
             if (f.k === 'tree') { if (c2[y][x] === 'c' || onWay(x, y)) { gone.push('tree ' + f.kind + '@' + (x + ox) + ',' + (y + oy)); featsOut.splice(i, 1); } continue; }
-            if (c2[y][x] === 'c') throw new Error(S.id + ': the plan closes the square under ' + f.k + ' ' + (f.id || '') + ' at ' + (x + ox) + ',' + (y + oy) + ' (move it in its district file)'); }
+            if (c2[y][x] !== 'c') continue;
+            /* a small drawn piece (a board, a gate, a post: every part within 4 m of its middle) steps aside whole, like a prop; a big drawn row (a crop row over many
+               squares, the lamps' glow) stays where it is (drawn only, listed); a building on the plan's corn stops the bake */
+            const span = f.k === 'arch' ? Math.max(0, ...(f.parts || []).map(q => Math.hypot(q.p[0], q.p[2]) + Math.max(...(q.size || [q.r || 0]).map(Math.abs)) / 2)) : 99;
+            if (f.k === 'arch' && span < 4) { const b = spotNear(x, y, null, 6); if (b) { f.x = r2(f.x + (b[1] - x) * C); f.z = r2(f.z + (b[2] - y) * C); stepped++; continue; } }
+            if (f.k === 'arch' && span >= 4 && !/texbuilding/.test(f.id || '') && !(BUILT_IDS.has(f.id))) { keptDrawn.push((f.id || f.k) + '@' + (x + ox) + ',' + (y + oy)); continue; }
+            buried.push(f.k + ' ' + (f.id || '') + ' at ' + (x + ox) + ',' + (y + oy)); }
+        if (keptDrawn.length) console.log(S.id + ' THE ROOM DESIGN: big drawn rows left on the corn (drawn only): ' + keptDrawn.join(' '));
+        if (buried.length) throw new Error(S.id + ': the plan closes the square under (move each in its district file, or open it in the plan):\n  ' + buried.join('\n  '));
         /* THE LEDGES WEAR ROCK: a slab on the face of every drop between two open squares (drawn only: the walker still walks off it), its top a low lip */
         { const a = sheet(); let n = 0;
           for (let y = 0; y < Dn; y++) for (let x = 0; x < Wn; x++) { if (!openD(x, y) || rampAt(x, y)) continue;
@@ -438,8 +458,8 @@ STAND.forEach(S => {
         /* room.js: what stands on the new ground (room squares) */
         const n0 = propsOut.length;
         if (DESIGN.dress) DESIGN.dress({ gx: x => R.gx(x - ox), gz: y => R.gz(y - oy), h: (x, y) => LV[y - oy][x - ox] * LEVEL, feat: f => featsOut.push(f),
-            tree: (x, y, kind, h) => { if (!openD(x - ox, y - oy) || onWay(x - ox, y - oy)) throw new Error('room.js: a tree off open ground at ' + x + ',' + y); featsOut.push({ k: 'tree', x: R.gcx(x - ox), z: R.gcz(y - oy), kind, h, r: 0.8 }); },
-            P: (key, x, y, o) => { if (!CAT[key]) throw new Error('room.js: no ' + key + ' in the catalogue'); let sx = x - ox, sy = y - oy; o = Object.assign({}, o);
+            tree: (x, y, kind, h) => { const tag = 'tree:' + kind + '@' + x + ',' + y; DRESS.called.add(tag); if (!des(x - ox, y - oy)) return; DRESS.placed.add(tag); if (!openD(x - ox, y - oy) || onWay(x - ox, y - oy)) throw new Error('room.js: a tree off open ground at ' + x + ',' + y); featsOut.push({ k: 'tree', x: R.gcx(x - ox), z: R.gcz(y - oy), kind, h, r: 0.8 }); },
+            P: (key, x, y, o) => { if (!CAT[key]) throw new Error('room.js: no ' + key + ' in the catalogue'); let sx = x - ox, sy = y - oy; o = Object.assign({}, o); const tag = key + '@' + x + ',' + y; DRESS.called.add(tag); if (!des(sx, sy)) return; DRESS.placed.add(tag);   // (each piece lands in the stand whose squares it is on)
                 if (o.pocket) { let best = null; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const X = sx + dx, Y = sy + dy; if (!des(X, Y) || c2[Y][X] !== 'c') continue; let lv = null;
                         for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (openD(X + ax, Y + ay) && !rampAt(X + ax, Y + ay) && c2[Y + ay][X + ax] !== 'w') lv = LV[Y + ay][X + ax];
                         if (lv == null) continue; const d = Math.abs(dx) + Math.abs(dy); if (!best || d < best[0]) best = [d, X, Y, lv]; }
@@ -457,7 +477,7 @@ STAND.forEach(S => {
         const CH = []; for (let Y = 0; Y <= Dn; Y++) { CH.push([]); for (let X = 0; X <= Wn; X++) CH[Y].push(cornerH(X, Y)); }
         DES = { des, CH, corner: (cx, cy, qx, qy) => (openD(cx, cy) && c2[cy][cx] !== 'w') ? hSq(cx, cy, qx ? 1 : -1, qy ? 1 : -1) : CH[cy + qy][cx + qx] };
         if (!openR(spSq[0], spSq[1])) { let b = null; for (let y = 0; y < Dn; y++) for (let x = 0; x < Wn; x++) if (openD(x, y) && !rampAt(x, y) && c2[y][x] !== 'w') { const d = Math.abs(x - spSq[0]) + Math.abs(y - spSq[1]); if (!b || d < b[0]) b = [d, x, y]; } spSq = [b[1], b[2]]; }
-        console.log(S.id + ' THE ROOM DESIGN: ' + laid + ' squares laid, ' + stepped + ' piece(s) stepped off, ' + climbs.length + ' found climb(s), ' + (propsOut.length - n0) + ' room.js pieces; gone: ' + (gone.join(' ') || 'none')); }
+        console.log(S.id + ' THE ROOM DESIGN: ' + laid + ' squares laid, ' + stepped + ' piece(s) stepped off, ' + climbs.length + ' found climb(s), ' + (propsOut.length - n0) + ' room.js pieces, ' + pockets + ' pocket square(s) opened for pieces; gone: ' + (gone.join(' ') || 'none')); }
     /* every plot is reached on foot from the spawn */
     { const seen = new Uint8Array(Wn * Dn), st = [spSq]; seen[spSq[1] * Wn + spSq[0]] = 1; while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (openR(X, Y) && c2[Y][X] !== 'B' && !seen[Y * Wn + X]) { seen[Y * Wn + X] = 1; st.push([X, Y]); } } }
       const cold = R.order.filter(e => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(e.row * N + ly) * Wn + e.col * N + lx]) return false; return true; }).map(e => e.name);
@@ -481,6 +501,7 @@ STAND.forEach(S => {
     ROOMS_OUT.push({ S, R, c2, hAt, des: !!DES, own: featsOut, feats: spaces2.concat(featsOut), props: propsOut, doors: doorsOut, ways, slope: slope2, paint: paint2, air, lines, sp: { x: R.gcx(spSq[0]), z: R.gcz(spSq[1]), face: spFace },
         count: Object.assign({ plots: S.list.length, box: R.cols + 'x' + R.rows, spaces: spaces2.length, props: propsOut.length, features: featsOut.length, doors: doorsOut.length, natives: R.npc.length }, cnt) });
 });
+{ const lost = [...DRESS.called].filter(t => !DRESS.placed.has(t)); if (lost.length) throw new Error('room.js: pieces on no laid district\'s square: ' + lost.join(' ')); }
 if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer stand the same way; each is answered in the notes, "ONE WORLD, THE TEST SLICE"):\n  ' + STRAYS.join('\n  '));
 ROOMS_OUT.forEach(o => console.log(o.S.id + ' ' + JSON.stringify(o.count)));
 

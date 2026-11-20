@@ -36,7 +36,9 @@ const grow = (id, list) => { const d = P.districts.find(q => q.id === id); if (!
       West Bank over the water and the Bluff south of it (bake-estate.js THE ROOM DESIGN lays them). Their ground: open woodland (the House Trail's woods
       start west of them) and bare rock (the Bluff), so the land past the room's line reads as what stands there. */
 const LAKE_NEW = [['The West Bank', -13, 16], ['The Bluff', -13, 17]];
-const d = grow('camN', PINES_NEW), dW = grow('camW', FOREST_NEW), dF = grow('camF', FAIRY_NEW), dC = grow('woods', CLEARING_NEW), dE = grow('estate', LAKE_NEW);
+/* 9. THE RANCH GROWS WEST (thread 17, the same plan): the Saddle and the Ridge (the high way along the fence line), the Creek Pool and the Draw (the creek cut) */
+const RANCH_NEW = [['The Creek Pool', -12, 18], ['The Draw', -12, 20], ['The Saddle', -13, 18], ['The Ridge, north', -13, 19], ['The Ridge', -13, 20], ['The Ridge, south', -13, 21]];
+const d = grow('camN', PINES_NEW), dW = grow('camW', FOREST_NEW), dF = grow('camF', FAIRY_NEW), dC = grow('woods', CLEARING_NEW), dE = grow('estate', LAKE_NEW), dR = grow('estR', RANCH_NEW);
 /* the ground */
 const own = {}; const key = (x, y) => x + ',' + y;
 P.districts.forEach(q => q.plots.forEach(p => { own[key(p.x, p.y)] = q.id; }));
@@ -46,6 +48,7 @@ const set = (x, y, c) => { const r = y - G.y0, i = x - G.x0; if (r < 0 || r >= G
 /* the kingdom's north row: the village's north plots carry the Pines' snow down to the moat (the home frame's squares y 12..17), so from the Pines the land south is snow first */
 for (let x = -29; x <= -24; x++) set(x, -3, 'T');
 set(-13, 16, 'w'); set(-13, 17, 'R');   // 7. the Lake's two new plots
+for (let y = 18; y <= 21; y++) set(-13, y, 'F'); set(-12, 18, 'M'); set(-12, 20, 'F');   // 9. the Ranch's six
 d.plots.forEach(p => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = p.x + dx, y = p.y + dy, o = own[key(x, y)]; if (!o || o === 'camN') set(x, y, 'T'); } });
 /* 6. THE MOUNTAINS ARE ONE SKI MOUNTAIN (world polish thread 5, mondo's "okay" on the plan, 11-20): the Ski Lodge, the Snowy Pass, Mount Olympus and Mount
       Shasta's plots stand where docs/plans/world-polish/thread5/draw-mountain.js puts them (98 plots; bake-mountains.js builds them). `shasta` is THE LONG
@@ -69,7 +72,7 @@ const LEY_NEW = LEYP.plots.filter(q => q[4] == null && q[0] <= LEY_UPTO).map(q =
 const dL = grow('leyY', LEY_NEW); LEY_NEW.forEach(([, x, y]) => set(x, y, 's'));
 /* written the way gen.js writes it: one line a district / a ground row */
 let t = fs.readFileSync(FILE, 'utf8');
-[d, dW, dF, dC, dE, dL].concat(MTN).forEach(d => { const i = t.indexOf('    {"id":"' + d.id + '"'), j = t.indexOf('\n      ]}', i); if (i < 0 || j < 0) throw new Error('no block of ' + d.id);
+[d, dW, dF, dC, dE, dR, dL].concat(MTN).forEach(d => { const i = t.indexOf('    {"id":"' + d.id + '"'), j = t.indexOf('\n      ]}', i); if (i < 0 || j < 0) throw new Error('no block of ' + d.id);
   const head = Object.assign({}, d); delete head.plots;
   t = t.slice(0, i) + '    ' + JSON.stringify(head).slice(0, -1) + ',\n      "plots": [\n' + d.plots.map(q => '        ' + JSON.stringify(q)).join(',\n') + t.slice(j); });
 { const m = /("rows": \[\n)([\s\S]*?)(\n\s*\]\})/.exec(t.slice(t.indexOf('"ground"'))); if (!m) throw new Error('no ground rows'); const lead = /^\s*/.exec(m[2])[0];
@@ -81,4 +84,4 @@ if (t.indexOf('{"id":"katana"') < 0) { const i = t.indexOf('    {"id":"volcano"'
   const pl = []; for (let y = -13; y <= -5; y++) for (let x = 21; x <= 29; x++) pl.push([x, y]);
   t = t.slice(0, j + 9) + ',\n    {"id":"katana","name":"KATANA ISLAND","state":"built","x":21,"y":-13,"w":9,"h":9,"count":81,"note":"29 land plots, six districts; room site_prebuilt_bermuda_katana (bake-katana.js); with the Volcano Island north of it, the Katana Empire\u2019s islands",\n      "plots": [\n' + pl.map(q => '        ' + JSON.stringify(q)).join(',\n') + '\n      ]}' + t.slice(j + 9); }
 JSON.parse(t); fs.writeFileSync(FILE, t);
-[d, dW, dF, dC, dE, dL].concat(MTN).forEach(d => console.log('plots.json: ' + d.name + ' ' + d.count + ' plots, ' + d.w + ' x ' + d.h + ' at ' + d.x + ',' + d.y)); console.log(n + ' ground letters changed to T');
+[d, dW, dF, dC, dE, dR, dL].concat(MTN).forEach(d => console.log('plots.json: ' + d.name + ' ' + d.count + ' plots, ' + d.w + ' x ' + d.h + ' at ' + d.x + ',' + d.y)); console.log(n + ' ground letters changed to T');
