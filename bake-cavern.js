@@ -116,7 +116,7 @@ const sqr = (id, lx, ly) => [plot[id].sx + lx, plot[id].sy + ly];
 const wayAt = (id, lx, ly, wall) => { const s = sqr(id, lx, ly); return { wall, at: spur(s[0], s[1], wall) }; };
 const wayFree = (id, lx, ly, face) => { const s = sqr(id, lx, ly); if (!open(s[0], s[1])) throw new Error('a well\'s square is not open: ' + id); taken.add(s[0] + ':' + s[1]); return { wall: 'free', x: gcx(s[0]), z: gcz(s[1]), face }; };
 const WAY = {
-    cave_hell: wayAt('P00-00', 7, 3, 'n'),                 // the Fissure > Hell's Pit
+    /* cave_hell: the Fissure moved to the new Cavern (2026-11-20, world polish thread 9: `node bake-ug.js cavern`, the link's end a is that room's) */
     cave_dumb: wayAt('P03-00', 6, 2, 'n'),                 // Level −6 > the D.U.M.B.'s Sub-Level 7
     workings_oubliette: wayAt('P05-00', 9, 6, 'e'),        // the Oubliette > the Sewers' Old Workings (their end is on their west wall)
     shasta_lemuria: wayAt('P05-03', 9, 4, 'e'),            // the Lemuria Stair > Mount Shasta
