@@ -12823,10 +12823,20 @@ That is not a bayside view. It's called bayside mall." and "the other part I cir
   other building bakes as before (the plan still lists the two buildings; they are simply never in the room). Their floor squares are boardwalk planks.
   KEPT: the canal and its culvert, the Marina plot's ramp and retaining rail (that plot stands a level up), road signs.
 - **THE PALMS:** Bayside's promenade row of tall palms (7 to 9 m, at square 144) is gone; north of the mole (the Shore's back, under Entertainment's sea
-  wall) it stays. Fourteen short palms (the catalogue's 3.2 m `palm_tree`), each in a low concrete planter, stand on the coast road's middle line, one every
-  three squares, clear of the crossings (`dc:bay-median<row>:arch`). THE TRAPS: the tool's lane pass draws any prop within 3.2 m of a traffic line out to
-  the kerb, and its soil pass removes a Bayside tree that stands on paving (or paints a sand bed under a palm prop): the median's palms are therefore set in
-  `last()`, after every pass. The cars keep 2.5 to 4.5 m off the middle line.
+  wall) it stays. Short palms (the catalogue's 3.2 m `palm_tree`) stand on A RAISED MEDIAN down the coast road's middle
+  line (mondo 11-20, of the first cut, a separate planter under each palm: "the median needs to be connected, like a raised median. Not individual little
+  patches ... Just a normal street median"): one kerbed strip 1.5 m wide and 0.2 m high with sand on top, unbroken from the Marina plot's north end to
+  the cross street by the canal and on south of it, a rounded nose at each end (`dc:bay-median<n>:arch`). It is laid in pieces under a metre long, each at
+  the road's height under it (`ctx.at`), so it follows the road down off the Marina plot. IT IS REAL, NOT ONLY DRAWN (mondo 11-20: "if you know how to do something
+  right then do it the first time, otherwise ill be here in 3 months ... telling you to fix the collisions everywhere"): where the road is level the
+  median is a `bridge` row (a slab with an exact flat top the walker steps onto: `hqTerrainFeet` gives 0.20 on it, 0 beside it), and on the hill, where one
+  height cannot follow the road, `ramp` rows a square long raise the field itself (the field's grid is 0.875 m, so there the top is a ridge with a 0.2 m
+  crest under the drawn kerb). It OPENS, two squares wide, where the plan crosses the road on foot (`GAPS`: the Marina plot's walk to the mole, the
+  Service court's, and the mall's own axis from the mall arch to the pier). THE RULE THIS THREAD NOW KEEPS: a thing a player can reach is never only an
+  `arch` row; it gets its ground (`deck`, `bridge`, `plateau`, `ramp`) or a blocker in the same change. THE TRAPS: the tool's lane pass draws any prop within 3.2 m of
+  a traffic line out to the kerb, and its soil pass removes a Bayside tree that stands on paving (or paints a sand bed under a palm prop): the median and
+  its palms are therefore set in `last()`, after every pass, where `ctx.at` takes the CITY's own squares (Bayside's frame is 48 rows on). The cars keep
+  2.5 to 4.5 m off the middle line.
 - **THE COVE'S POINT:** the sliver of sand between the Cove's round cut and the Shore's first circles (part 1's "known and left" bar) is gone. `COAST.shore`
   now starts at the Cove's own south rim (row 56.3, square 162.4) and turns out of it, so the shore runs in one sweep from the Cove round into the bay.
   `coastCut` keeps a cap by the circle's FAR side now (where the coast turns, a circle's middle lies nearer the line than its sample does) and steps 1.75 m
@@ -12923,7 +12933,7 @@ mondo 11-20, on the plan: "That is okay"; "just use the trees we already have an
 can reuse, use a sword to stand in for the katana, try to make the roofs yourself with math but ill probably make meshy models later, and use knight armor to
 stand in for the katana armor".
 
-- **THE TOOL:** `node bake-katana.js` writes ONE room, `site_prebuilt_katana_island` (9 x 9 plots, the island one plot in from every side), between the
+- **THE TOOL:** `node bake-katana.js` writes ONE room, `site_prebuilt_bermuda_katana` (9 x 9 plots, the island one plot in from every side), between the
   KATANA-BEGIN / KATANA-END markers of data.js, from `docs/areas/katana/layout.js` (the plan's numbers, moved there; the plan pictures still read them) and
   `docs/areas/katana/districts/<letter>.js` (`build(ctx)`; the hooks are listed in the tool's header). It stops on a taken square, a prop in the water, or a
   place the district's `reach` names that the walk from the pier cannot get to.
@@ -12945,7 +12955,7 @@ stand in for the katana armor".
   West Steps (1 to 4) as real flights, two flights up the Lantern Head, THE GREAT GATE in the water (drawn: red posts, side legs, a top beam curved in nine
   pieces), 86 props from the catalogue (stone lanterns, market stalls, a taiko drum, a bell, boats afloat and on the sand, drying fish, nets, barrels,
   baskets, bollards, gulls, crabs), five people (chef, farmer, samurai slug, ninja, monk).
-- **THE RESIDENTS (fixed 11-20, from mondo's relationship web export of 11-20, the place "Katana Bay": "Japan Parody. Their flag is a red square and white background."):** ninja, swordfighter, ki fighter, samurai slug, karate frog, monk, shogun, spy, vtuber, catgirl, dragon, farmer, fairy. data.js `HQ_AREA_ENCOUNTERS.site_prebuilt_katana_island` (hand row, every weight 8: he gave none) + the eight placed people in B.js. His web also has a FACTION "Katana Empire": spy, ninja, samurai slug, shogun, monk (not used yet; the castle's people). The dinosaurs are not on this list: the jungle needs its own cap when it is built. THE FLAG (a red square on white) is not made yet.
+- **THE RESIDENTS (fixed 11-20, from mondo's relationship web export of 11-20, the place "Katana Bay": "Japan Parody. Their flag is a red square and white background."):** ninja, swordfighter, ki fighter, samurai slug, karate frog, monk, shogun, spy, vtuber, catgirl, dragon, farmer, fairy. data.js `HQ_AREA_ENCOUNTERS.site_prebuilt_bermuda_katana` (hand row, every weight 8: he gave none) + the eight placed people in B.js. His web also has a FACTION "Katana Empire": spy, ninja, samurai slug, shogun, monk (not used yet; the castle's people). The dinosaurs are not on this list: the jungle needs its own cap when it is built. THE FLAG (a red square on white) is not made yet.
 - **Was, before that fix:** the zone's wandering residents walk the quay (a bigfoot, a jellyfish were seen): the room is in the Beach's zone, so it gets that zone's people. Katana Island needs its own resident list (npc-system.md) before the swap.
 - **KNOWN AND LEFT FOR THE NEXT PASSES:** the insides are bare rooms with a few things (pass 2); the Net Loft and the Inn are one storey inside; the ledges
   from the City do not exist until the City's ground is laid; the retaining walls round the Waterfront are the room's rock sheet; the far volcano reads dark;
@@ -13005,10 +13015,140 @@ mondo 11-20, on the pilot: "Okay the pilot looks decent, continue the rest".
   Palms, banana plants, bushes, ferns; canoes on the East Shore.
 - **THE VOLCANO (`V.js`):** lava in the crater and in four pools on the Lava Field, black rocks and burnt snags, a red gate at the rim where the Mountain Road ends, a
   watch fire on the Black Cape, a dragon at the rim (his Katana Bay list).
-- **THE PEOPLE:** `HQ_AREA_ENCOUNTERS.site_prebuilt_katana_island` has `spots: false`, so the people a district places keep their race (the park's dinosaurs, the dragon).
+- **THE PEOPLE:** `HQ_AREA_ENCOUNTERS.site_prebuilt_bermuda_katana` has `spots: false`, so the people a district places keep their race (the park's dinosaurs, the dragon).
 - **NOT DONE YET:** THE SWAP (the room is still at its pilot's place on the map with no boat; the Volcano Island still stands); insides are bare rooms with a few things;
   no bamboo, no real torii / statues (NEEDS A MODEL); the waterfall from the Hot Spring to the Paddies; night look; frame rate (one room, 41 buildings, 229 trees, 409
   props: to be measured on a real machine); the flag.
 - **THE LAND PAST THE LINE WEARS THE ROOM'S TONE (11-20, mondo: "fix the ground being green past the edge, it doesn't match").** `terrain.edges.tint: [r, g, b]`
   multiplies the edge land's colour (three-renderer.js `_hqBuildEdgeLand` `colOf`; only a room that sets it changes). The Clearing's room: `[0.5, 0.5, 0.52]`
   (bake-woods.js, designed rooms). Seen in the probe at Deep woods, west.
+
+## KATANA ISLAND, THE SWAP (2026-11-20, world polish thread 21; seen on screen)
+
+- **THE ROOM IS `site_prebuilt_bermuda_katana` NOW** (was `site_prebuilt_katana_island` during the pilot): a link's end finds its room as site + part (`hqComplexRoomId`),
+  so the room's id has to be `site_prebuilt_bermuda_` + its part `katana`. It stands at 21,-20 on the world's plot grid (9 x 9), where the Volcano Island stood.
+- **THE VOLCANO ISLAND IS RETIRED** (`DOOR_HQ.retired`: `site_prebuilt_bermuda_ow_volcano` -> the new room): its room stays in the data, door-less, and `bake-beach.js`
+  still writes it (NOT ONE LINE of that tool, the Beach's layout or `O.js` was edited). A save made there wakes on Katana Island. The map drops it by itself.
+- **THE BOATS** (data.js `DOOR_HQ.links`, by hand): `beach_volcano` end b = the tip of the bay's pier (-84, 87.5, face 0: the skiff's jetty runs out toward the Great
+  Gate); `volcano_frozen` end a = the East Shore's sand (145.25, -43.75, face 270). The link ids keep their old names. LEARNT: a boat link draws its own small jetty and
+  boat from its point out along `face` (0 = south, 270 = east in the room's frame); put the point at the water's edge.
+- **THE PLOT SHEET:** `docs/plans/one-world/after-v13.js` row 5 writes the island's 9 x 9 box into `plots.json` (all of it was sea). `terrain.edges.world` is on.
+- **THE CHECK (the plan's section A), answered for this room:** (1) from the pier you see the keep, the pagoda and, past them, the cone; the land climbs away from the
+  bay everywhere. (2) Levels: the Bay 0 to 2 (the head 3), the City 3 to 8, the Village 1 to 6, the Woods 7 to 10, the Jungle 1 to 6, the Volcano to 26. (3) The
+  Mountain Road is 3 squares, no leg over 8, turns from plot to plot east, north, west, north, east, north, east; every terrace's face beside it is a drop back down.
+  (4) Seven thin trails, each to a place (the crater's east rim, the East Shore, the castle's postern, the hidden shrine and the cape, the hot spring, the lantern
+  tower, the fishing beach). (5) Shaped inside: the head, the Old Wood's rise, the Terraces' upper field, the cone, the paddock, the pools; MOST PLOTS ARE LEVEL
+  TERRACES, which is under the plan's "half of the plots shaped inside": the next pass's job. (6) Level on purpose: listed in each district file's header. (7) It
+  is a harbour, a castle town, paddies, woods, a jungle and a volcano: not one formula. (8) Every building's inside is its own squares; NOT YET FURNISHED.
+
+## THE KATANA EMPIRE'S ISLANDS: THE VOLCANO ISLAND STAYS (2026-11-20, world polish thread 21; replaces "THE SWAP" above)
+
+mondo 11-20, minutes after the swap merged (it was never uploaded): **"Actually let's keep volcano island as a part of the empire, like how Japan is made up of
+multiple islands."**
+
+- **THE VOLCANO ISLAND IS NOT RETIRED.** `site_prebuilt_bermuda_ow_volcano` is out of `DOOR_HQ.retired`; it stands at 22,-19 as before, written by `bake-beach.js` as
+  before (never edited), with its volcano, its tribe's village, its jungle and its Dinosaur Park.
+- **KATANA ISLAND** (`site_prebuilt_bermuda_katana`) stands just SOUTH of it: 9 x 9 at 21,-13 (`after-v13.js` row 5 adds it to `plots.json` as a new island `katana`).
+- **THE BOATS:** the Harbour's skiff jetty -> Katana Bay's pier (`beach_volcano`, its name kept) · Katana Island's East Shore -> the Volcano Island's Landing (NEW:
+  `katana_volcano`; a way he did not word himself, it follows from two islands) · the Volcano Island's east shore -> the Frozen Sea (`volcano_frozen`, as it was).
+- **The tribe's camp is OUT of Katana Island's jungle** (it was only carried over so nothing would be lost; the tribe keeps its own island). Katana Island keeps its
+  own Dinosaur Park (his "there can still be dinosaurs") and its own volcano.
+- Everything else of "THE SWAP" holds: the room's id, the links' learnt rule, THE CHECK.
+
+## KATANA ISLAND, THE INSIDES (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20: "Okay looks good, go ahead and do those interiors".
+
+- **ONE FILE FURNISHES EVERY BUILDING:** `docs/areas/katana/insides.js`. `ROOM_OF` says which kind of room a building id is; `furnish` draws it into the building's own
+  look row, in the building's frame (x along the front, z from the back wall to the door's wall). `bake-katana.js` calls it from `ctx.building`, so a new building
+  only needs a line in `ROOM_OF`. 39 buildings, 20 kinds of room: home, samurai house, hut, farm, office, market, shipwright, net loft, store, brewery, inn, tea
+  room, shop, kitchen, workshop (the lantern maker's), bath, dojo, armoury, guard house, temple / pagoda / shrine, theatre, keep, tower.
+- **THE SHELL every room gets** (the hollow building's own walls draw dark: the Beach's lesson): a lit lining 0.335 m inside the walls, dark posts and a head rail on
+  it, a lit board ceiling with rafters at `h - 0.6` (3.6 m at most), straw mats with dark borders on the floor.
+- **DRAWN PIECES** (the game has no model): low tables, cushions, bedding, an alcove with a hung scroll, a sunk hearth with the kettle over it, counters, shelves,
+  wooden bath tubs with water, a dais, paper screens, rice bales, a brewing vat, THE FLAG (mondo's web: "a red square and white background": pole, white cloth, red
+  square; in the keep, the dojo and the armoury). **MODELS** through `put`: 34 catalogue keys (weapon racks, training dummies, the taiko drum, armour stands and
+  `sword` as his stand-ins, braziers, the gong, the votive stand, barrels, baskets, nets, the boat on the stocks, the forge and anvil, paper lanterns).
+- **LEARNT, FOR EVERY ZONE:** (1) a prop's `y` of 1 m or more is a height from the ROOM's floor, not a lift over the ground under it (three-renderer.js THE TIER
+  HEIGHT): a lantern hung in a building on a terrace is typed ground + lift (`put` does it). (2) `paper_lantern`, `teapot` and `teacups` are far too big at catalogue
+  size: `h: 0.42`, `span: 0.34`, `h: 0.3`. (3) A ROCK FACE LEANS OUT ABOUT A SQUARE: a building against higher ground gets rock through its back wall. 13 buildings
+  stood so; each moved one square clear, and the tool now stops the bake on it. (4) A box round a building's foot needs `faces: 'blr'` and `top: false`, or it closes
+  the doorway and fills the room (the keep's stone foot did). (5) The probe's view `y` is the FEET: in a room under 3.6 m the picture is taken above the ceiling.
+- **NOT DONE:** one storey a building (the Inn, the Net Loft, the Theatre, the Keep and the Pagoda are tall single rooms); no night look; not walked as a player;
+  the rooms under 3.6 m high were not photographed (same kit, same code path as the six that were).
+
+## KATANA ISLAND, THE PALACE (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20: "Is there a dojo or a palace?" (there was a dojo and a keep, no palace); "Yes and add another plot or two if you need to."
+
+- **A 30th PLOT, `The Palace`** (district C, level 8; island plot 0,1 = squares x 0..11, y 12..23, north of the Castle Garden on the west sea cliff; `layout.js`). The
+  room is at its cap of 30 plots now: a 31st means a second room.
+- **WHAT STANDS** (`districts/C.js` THE PALACE): the AUDIENCE HALL across the north (7 x 4 squares = 24.5 x 14 m, a deep porch on six red posts), the PRIVATE ROOMS
+  (west wing) and the GUEST HOUSE (east wing) round an open court, a gate and a white wall on the south side. THE PALACE WALK (a lane, 2 squares, layout.js) comes up
+  from the Castle Garden; the tool stood its flight at the plot line. The shogun stands in the court.
+- **INSIDE** (`insides.js` kind `audience`): the lord's dais across the back under seven gold panels, two swords on a stand, the court's cushions in two files, flags,
+  armour stands, braziers, paper screens down both sides, weapon racks, a drum and a gong by the door, ten hung lanterns. The wings are a samurai house and a tea room.
+- **LEARNT:** the catalogue's `privacy_screen` is a green hospital curtain; it is out of every room on the island (the drawn paper `screen` instead).
+## THE MOUNTAINS, ONE SKI MOUNTAIN — step 1, the ground and the ride (2026-11-20, world polish thread 5; mondo's "okay" on the plan)
+
+mondo 11-20: "The ski trails should be all over the mountain. It should be designed like an actual mountain and ski resort, where there are some easy trails at the
+towards the base and double black diamonds towards the top. I should be able to ski all the way from the top of mt Olympus to the base of the mountain." And:
+Mount Shasta goes as a name, its plots are swallowed.
+
+- **THE PLAN IS A FILE THAT CHECKS ITSELF:** `docs/plans/world-polish/thread5/draw-mountain.js` (grid c = world x + 22, r = world y + 22; `LV` the levels, `NAME`,
+  `RUNS` with their marks, `LIFTS`, `WAYS`, `TAIL`). `node …/draw-mountain.js` prints the levels, every run's fall and the walking ways, refuses a run that goes
+  uphill or wears the wrong mark, a walking leg over 8 squares, a way along a row or column of plots, and draws `mountain-plan.png`. `bake-mountains.js` READS it
+  (`MP`): change the mountain there, rerun `node docs/plans/one-world/after-v13.js` (it writes the plots' places into plots.json), `node bake-mountains.js`,
+  `node bake-map.js site_prebuilt_shasta_ow_lodge site_prebuilt_shasta_ow_shasta`.
+- **THE ROOMS:** `site_prebuilt_shasta_ow_lodge` = THE SKI MOUNTAIN, ONE room, 84 plots in a 13 x 10 box at world -22,-22 (the Ski Lodge at the west foot, level 0;
+  Mount Olympus's temples on top, level 64 = 112 m). `site_prebuilt_shasta_ow_shasta` = THE LONG DESCENT, 13 plots, the east way down to the Trailhead
+  (the Canyon Trail's seam). `site_prebuilt_shasta_ow_olympus` is GONE (data.js `DOOR_HQ.retired` -> the mountain's room; the Pilgrim Way's door lands on the same
+  seam id). The home frame (the 12 x 8 room the district files were written for) is still built first and never written.
+- **ONE ROOM, OVER THE ROOM-SPLITTING RULE'S 30 PLOTS, ON PURPOSE** (his ruling: free to change shared rules; you see the summit from the Lodge and no run crosses
+  a seam). Measured in the probe (software GPU), the whole mountain in view from the air: 1,286 draw calls, 3.6 M triangles (the rule's ceilings are 2,500 and
+  12 M); memory `misc.mb` 1,900 (over the rule's 1.4 GB: NOT solved, watch it; the old Lodge room was not measured for comparison). If a weak machine cannot
+  hold it, the cut is the plan's pink lines (c 5 and c 8) and needs one more room id.
+- **WHAT THE TOOL DOES NOW (THE ONE WORLD MOVE section):** `planList` stands each home plot at its plan cell with the plan's level and district name (K The Ski
+  Lodge, P The Snowy Pass, O Mount Olympus, The Long Descent); a new plot is open snow; `heightsOf` `smooth` = one even fall from plot middle to plot middle both
+  ways (no shelf under a run); step 1b opens the old rock rims of every non-Olympus home plot (the pistes are open ground); step 5b cuts every run as a groomed
+  lane (`i`: green 7 squares wide, blue 6, black 5, double black 4) and every walking way as packed snow on its square legs; step 5c steps a blocking prop or a
+  tree off a run to the nearest free square of its own plot (169 stepped, none removed); a piece with a height of its own (`y`, not `floor`) rides the new ground.
+  Summer grass and dirt of Shasta's low plots are painted snow; the tree zones are retro pines with one snow pine in six.
+- **THE RIDE, PROVEN (the probe, the board, steered along the plan's line):** the Top Station (y 108) -> The Headwall -> Avalanche Gulch -> the Mid Station ->
+  The Meadows -> The Home Run -> the North Road -> the Rental Hut (y 0): 31.7 s, never stopped. Probe recipe: `hq.skateIssued(true); hq.skate(true)`, the
+  renderer's `render` swapped for a no-op, `dev.press('w', true)`, and every 120 ms `dev.rideRaw().cam.yaw = Math.atan2(dx, -dz)` toward the next point
+  (a view's `face` 0 looks north, 90 east; the board goes where the camera looks).
+- **TRAPS MET:** (1) a route's plot inside your box: the Polar Trail (R5) owns (-13,-21) as well as (-13,-22); `bake-map.js` refused ("two rooms stand on one
+  world plot"). Check a plan's cells against plots.json's routes AND every standing room before baking. (2) K.js and S.js work out heights from the HOME levels
+  for pieces with their own `y` (the lift's cables, the cloud): the tool lifts them by the ground's difference, but a piece that spans a slope (the old lift line)
+  still follows the old grade. (3) A straight line down a row meets the Rope Bridge's crevasse: it stands north of the Mid Station, off every run, on purpose.
+- **NOT DONE (the next steps, one district a PR):** the runs do not READ as runs yet (no tree lines, fences, poles, boards with marks: only the groomed paint);
+  the old lift, its gantries and the old slopes' fences stand where their plots went and are to be rebuilt as the plan's five lifts ("lift should carry you": the
+  first one is shown to mondo first; today the old door pair `lift_bottom` / `lift_top` carries you from the Chairlift plot at the base to the Top Station on
+  the summit); the base village, the Mid Station, the Ski Patrol, the bath house; ledges and switchbacks on the walking ways; Shasta's volcano dressing (crater,
+  vents, lava) on what are now ski plots; (FIXED the same day, mondo: "Just add its cream stone texture to this room": `ZONE_LOOKS.zones.mountains.byRoom` gives the mountain's room Olympus's cream stone on walls; there is no retexture thread any more, a zone thread edits its own look rows);
+  the North Pole; the seams were not walked in the probe (L6, L3, R5, R3, the Long Descent's two).
+
+## KATANA ISLAND, THE RELIEF PASS (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20: "Okay go ahead and do the next pass" (the one named to him: relief inside the plots; most were flat terraces).
+
+- **`ctx.hill(cx, cy, r, h)`** (`bake-katana.js`): a hill, or with a negative h a hollow, of rolling ground laid into a level terrace. Its squares become soft ground
+  (shared corners). It dies away to nothing at its rim AND toward anything it must not lift: a way, a stair, a building, a taken square, water, sand, another plot.
+  So it cannot leave a step beside a path. A district calls it FIRST in its build; a building placed on one later stops the bake.
+- **WHAT WAS SHAPED (16 hills and hollows + two fields):** the Old Wood (a knoll, a hollow), the Bamboo Wood (a rise, a hump), the Cherry Wood (two knolls), the Hot
+  Spring (a rock rise), the Jungle Rise (two hills and a gully), the Jungle (a mound), the Jungle north (a ridge of two heads), the Dinosaur Park (a hump), the Village
+  (a knoll), the Castle Garden (the garden mound), the Terraces (a second upper field with its own stair). With the bay's head, the Old Wood's rise, the paddock, the
+  pools and the cone, 18 of the 30 plots are shaped inside now. LEFT LEVEL ON PURPOSE: the streets and yards of the City, the quays, the Paddies, the Palace's court.
+- **THE WATERFALL:** the Hot Spring's overflow falls 10.5 m from the terrace's south edge into a plunge pool in the Paddies (`W.js` THE FALL: a lip pool, the `fall`
+  row, the pool below). LEARNT: on a terrace's rock face a `fall` needs `y0` / `y1` typed and `out: 5`; left to itself the sheet stopped half way down behind the
+  leaning rock. `hw_crop*` are grey lumps, not rice (NEEDS A MODEL: a rice plant); `hw_scarecrow` is the Halloween one in a black cloak.
+- **NOT DONE:** no new thin trails this pass; night look; frame rate; not walked as a player.
+- **THE POLISH PASS, NOTHING STANDS IN A WAY (11-20, mondo: "do another polish pass. make sure things are placed logically").** (1) bake-woods.js step 5d moves
+  every old piece the plan's trail runs over onto the nearest level open square beside it, else into a pocket (10 pieces; the small life and the gate stay).
+  (2) THE FENCE LINE is its farm yard again: an open level yard (squares 38..46 x 51..57), the trail ends on it, the gate leaves it (the trail had been drawn
+  through the pumpkin patch and the kennel). (3) The way north to Came A Lot from Deep woods, west is a thin trail (its link is one square wide): the wolf's
+  den lies west of it, the hunting stand east. (4) The Campfire's ramp moved off its grill and torch. (5) THE TRAILS STAY CLEAR: `terrain.keepClear`
+  (data.js the scatter rows: one byte a square) keeps every scattered log, stump and bush off a trail square; the tool writes it for a designed room.
+  (6) Ten trail lamps at the turns of the new ways, each in a pocket beside the trail (`C-room.js`, `P(key, x, y, { pocket: true })`). Seen in the probe:
+  the yard, the den, the ranger station, the camp, the Dead End.

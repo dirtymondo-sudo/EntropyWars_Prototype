@@ -74,7 +74,7 @@ const ThreeRenderer = (function () {
             'EW_NO_TRUE_DRAPE EW_NO_TWIN_SHARE EW_NO_UNIT_INK EW_NO_UNIT_POP EW_NO_UNIT_RIM EW_NO_VFX_CLEANUP EW_NO_XMAS_PACK EW_NO_ZONE_DECALS EW_NO_ZONE_STEPS ' +
             'EW_OCEAN_STILL EW_OLD_POST EW_PERF_LOW EW_PLATE_ANIM_MS EW_PLATE_DEPTH_ALL EW_PLATE_PILE EW_POP EW_PP_LIB EW_PROC_EYES EW_PROC_ONE_MODEL ' +
             'EW_RAYS_ANY_LIGHT EW_RIG_LIST_EVERY_ADD EW_RIG_NO_PREGROW EW_RIG_WALK_EVERY EW_RIM EW_RISE_MS EW_SC_WARM_IN_PLAY EW_SHADOW_CHUNK_ALL ' +
-            'EW_SHADOW_REACH_LOOSE EW_SHADOW_REACH_OFF EW_SHADOW_KEY_EVERY EW_GEO_KEY_FULL EW_SHEET_ANY_DENSITY EW_SHEET_REAL_SIZE EW_SIM_NO_RENDER EW_STYLE_MASK_PROPS EW_TERRAIN_ALL_SAMPLES ' +
+            'EW_SHADOW_REACH_LOOSE EW_SHADOW_REACH_OFF EW_SHADOW_KEY_EVERY EW_GEO_KEY_FULL EW_SHEET_ANY_DENSITY EW_SHEET_REAL_SIZE EW_SIM_NO_RENDER EW_STYLE_MASK_PROPS EW_SUN_SMOOTH EW_TERRAIN_ALL_SAMPLES ' +
             'EW_TERRAIN_COLORS EW_TEXT_LIB EW_TIMER_WATCH_OFF EW_TURBO_FRAME_MS EW_WALK_KEEP_UNITS EW_WORLD_MODE EW_WORLD_STAB EW_ZSEP_LAST').split(' ');
         for (var i = 0; i < names.length; i++) {
             var k = names[i];
@@ -37348,7 +37348,7 @@ const ThreeRenderer = (function () {
         bounce: { amount: 0.6, color: 0x8a847a },   // THE BOUNCE (2026-11-09): a closed room's hemisphere ground = its floor's light thrown back up
         open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
         /* THE PREMIUM POLISH (2026-09-21): the shadow map, the key rig per kind, the AO, the height fog, the atmosphere — data.js owns the numbers */
-        shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 1, hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
+        shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 1, sunStep: 0.25, hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
         key: { box: { az: 300, el: 58, color: 0xfff1dc, intensity: 0.34 }, open: { az: 305, el: 52 }, bay: { az: 320, el: 62, color: 0xf2f5ff, intensity: 0.3 }, hall: { az: 330, el: 60, color: 0xfff0d8, intensity: 0.42 } },
         ao: { corner: 0.34, r: 0.55, contact: 0.5, contactR: 1.35, terrain: 0.32, foot: 0.7 },
         heightFog: { on: true, box: { h: 1.7, amount: 0.34 }, open: { h: 3.2, amount: 0.5 }, hall: { h: 2.6, amount: 0.3 } },
@@ -93355,7 +93355,7 @@ const ThreeRenderer = (function () {
         cam.near = 1; cam.far = D + Rf * 2 + top * U;
         cam.updateProjectionMatrix();
         if (!L.target.parent) H.scene.add(L.target);
-        H.shadows = { light: L, everyN: Math.max(1, SH.everyN || 2), frame: 0, Rf: Rf, D: D, hx: hx * U, hz: hz * U, texel: (2 * Rf) / size, dirty: true };
+        H.shadows = { light: L, everyN: Math.max(1, SH.everyN || 2), frame: 0, Rf: Rf, D: D, hx: hx * U, hz: hz * U, texel: (2 * Rf) / size, dirty: true, sunStep: (SH.sunStep != null) ? +SH.sunStep : 0.25 };   // THE STEPPED SUN: sunStep
         renderer.shadowMap.enabled = true;
         _hqShadowFlags(room);
         _hqShadowTick(H, 0);
@@ -93749,20 +93749,47 @@ const ThreeRenderer = (function () {
         try { _hqHeroGate(H, performance.now()); }
         catch (e) { _hqHeroRelease(H.heroLit); if (!H._heroGateWarned) { H._heroGateWarned = true; console.warn('[HQ] the still torch check failed: the torch map redraws every frame', e); } }
     }
+    /* THE STEPPED SUN (2026-11-20, mondo: "My character's shadow looks like it's pulsating or wavy or rippling when I stand
+       still ... it's not just my shadow it's like some other stuff too like textures or other objects or their shadows"). The
+       world clock turns the sun a little EVERY frame (a 24 minute day: about 0.2 degrees a second), and the map's texel grid
+       was pinned to the ROOM's centre: far out in a big room (Disaster City: hundreds of metres) that small turn slid the
+       grid under every shadow by over half a texel a frame, so every shadow edge, and the fine self-shadow on every lit
+       surface, was drawn from a different set of samples each frame. Walking hid it; standing still showed it. Now:
+         - the shadow's direction is HELD and follows the sun in steps of HQ_LIGHT_RULES.shadows.sunStep degrees (0.25:
+           about one small step a second). Between two steps nothing in the map moves at all;
+         - the grid is pinned to where the map last stood (beside the walker), not to the room's centre: a step turns the
+           grid about the walker, so the shadows near him keep their samples and move by a fraction of a texel;
+         - the map stands at the walker along the light too. It stood at the room's centre plane: over ~70 m from it along
+           the sun the walker was outside the map's depth and nothing near him cast a shadow at all.
+       A snap (the room entered, a crossing, a turning plot: SH.snap) takes the sun's direction at once.
+       Off: window.EW_SUN_SMOOTH = true (every frame, the room's centre, as before); sunStep 0 = every frame. */
+    var _shV1 = null, _shV2 = null, _shV3 = null;
     function _hqShadowTick(H, dt) {
         var SH = H.shadows; if (!SH || !renderer || !renderer.shadowMap) return;
         var L = SH.light, pl = H.player, U = _hqUnits();
         var cx = pl ? pl.x * U : 0, cz = pl ? pl.z * U : 0;
         cx = Math.max(-SH.hx, Math.min(SH.hx, cx)); cz = Math.max(-SH.hz, Math.min(SH.hz, cz));
-        var dir = H.keyDir || new THREE.Vector3(0.45, 1, 0.3).normalize();
-        var right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0));
-        if (right.lengthSq() < 1e-6) right.set(1, 0, 0); right.normalize();
-        var up2 = new THREE.Vector3().crossVectors(right, dir).normalize();
-        var c = new THREE.Vector3(cx, 0, cz), t = SH.texel || 1;
-        var pr = Math.round(c.dot(right) / t) * t, pu = Math.round(c.dot(up2) / t) * t;
-        var snapped = right.multiplyScalar(pr).add(up2.multiplyScalar(pu));
-        L.target.position.copy(snapped);
-        L.position.copy(snapped).add(dir.clone().multiplyScalar(SH.D));
+        if (!_shV1) { _shV1 = new THREE.Vector3(); _shV2 = new THREE.Vector3(0, 1, 0); _shV3 = new THREE.Vector3(0.45, 1, 0.3).normalize(); }
+        var live = H.keyDir || _shV3;
+        var old = (typeof window !== 'undefined') && !!window.EW_SUN_SMOOTH;
+        var stepR = (SH.sunStep > 0 && !old) ? SH.sunStep * Math.PI / 180 : 0;
+        var d0 = SH.dir, take = !d0 || SH.snap || !(stepR > 0);
+        if (!take) { var ddx = live.x - d0.x, ddy = live.y - d0.y, ddz = live.z - d0.z; take = !((ddx * ddx + ddy * ddy + ddz * ddz) < stepR * stepR); }   // (a NaN takes)
+        if (take) {
+            var had = !!d0;
+            if (!had) { SH.dir = new THREE.Vector3(); SH.right = new THREE.Vector3(); SH.up = new THREE.Vector3(); SH.anchor = new THREE.Vector3(); }
+            SH.dir.copy(live).normalize();
+            SH.right.crossVectors(SH.dir, _shV2);
+            if (SH.right.lengthSq() < 1e-6) SH.right.set(1, 0, 0); SH.right.normalize();
+            SH.up.crossVectors(SH.right, SH.dir).normalize();
+            if (old) SH.anchor.set(0, 0, 0); else if (had) SH.anchor.copy(L.target.position); else SH.anchor.set(cx, 0, cz);
+            SH.steps = (SH.steps || 0) + 1; SH.snap = false;
+        }
+        var dir = SH.dir, t = SH.texel || 1, A = SH.anchor;
+        var rel = _shV1.set(cx - A.x, -A.y, cz - A.z);
+        var pr = Math.round(rel.dot(SH.right) / t) * t, pu = Math.round(rel.dot(SH.up) / t) * t, pw = old ? 0 : rel.dot(dir);
+        L.target.position.copy(A).addScaledVector(SH.right, pr).addScaledVector(SH.up, pu).addScaledVector(dir, pw);
+        L.position.copy(L.target.position).addScaledVector(dir, SH.D);
         L.target.updateMatrixWorld(true);
         SH.frame++;
         /* a GLB that landed since. THE FRONT DESK (2026-11-18): only what joined the room since is read (was: the whole prop, door
@@ -100495,6 +100522,7 @@ const ThreeRenderer = (function () {
             if (c.isPointLight || c.isSpotLight || spotT.indexOf(c) >= 0) { H.scene.remove(c); Q.extra.add(c); }
         });
         if (H.keyDir) H.keyDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), th);
+        if (H.shadows) H.shadows.snap = true;   // THE STEPPED SUN: the turned direction at once
         st.skyYaw -= rel.rot * Math.PI / 2;
         /* the walker, its body, the camera's state */
         var mp = function (x, z) { return hqStageFromRoom(rel, x, z); };
@@ -100730,7 +100758,7 @@ const ThreeRenderer = (function () {
                     sunCur: old && old.sunCur ? old.sunCur : V.sunDome.clone(), moonCur: old && old.moonCur ? old.moonCur : V.moonDome.clone(), duskCur: old ? (old.duskCur || 0) : V.dusk };
         if (!old && !V.locked) {
             if (H.stage && H.stage.blend && H.stage.blend.air) {   // THE OPEN-AIR ROOM INDOORS: the crossing's blend owns the light; the sun's direction only
-                if (V.keyDir) { H.keyDir = V.keyDir.clone(); if (H.keyLight) H.keyLight.position.copy(H.keyDir).multiplyScalar(1000); if (H.shadows) H.shadows.dirty = true; }
+                if (V.keyDir) { H.keyDir = V.keyDir.clone(); if (H.keyLight) H.keyLight.position.copy(H.keyDir).multiplyScalar(1000); if (H.shadows) { H.shadows.dirty = true; H.shadows.snap = true; } }
             } else _hqClockApply(H, V, true);
         }
         _hqClockLamps(H, true);
@@ -100742,7 +100770,7 @@ const ThreeRenderer = (function () {
         if (H.hemiLight) { H.hemiLight.color.copy(V.hemiC); H.hemiLight.intensity = V.hemiI; }
         if (H.keyLight) { H.keyLight.color.copy(V.keyC); H.keyLight.intensity = V.keyI; }
         if (H.sky) { H.sky.tint.copy(V.tint); H.sky.fogC.copy(V.fogC); H.sky.night = V.night; }
-        if (V.keyDir && (snap || !H.keyDir)) { H.keyDir = V.keyDir.clone(); if (H.keyLight) H.keyLight.position.copy(H.keyDir).multiplyScalar(1000); if (H.shadows) H.shadows.dirty = true; }
+        if (V.keyDir && (snap || !H.keyDir)) { H.keyDir = V.keyDir.clone(); if (H.keyLight) H.keyLight.position.copy(H.keyDir).multiplyScalar(1000); if (H.shadows) { H.shadows.dirty = true; H.shadows.snap = true; } }
         /* the far roster's grade follows the night (a regrade walks the sky's bodies — only when the night has moved) */
         if (H.sky && H.clock && Math.abs(V.night - H.clock.night) > 0.04) { H.clock.night = V.night; try { _gradeHorizonScenery(V.night, 0, 0); } catch (e) {} }
     }
@@ -101171,6 +101199,7 @@ const ThreeRenderer = (function () {
                 if (H.sky && (c === H.sky.group || c === H.sky.landmarks)) { c.rotation.y += d; c.updateMatrixWorld(true); }
             });
             if (H.keyDir) H.keyDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), d);
+            if (H.shadows) H.shadows.snap = true;   // THE STEPPED SUN: the turned direction at once
             st.skyYaw += d;
         }
         if (k >= 1) { H.pd = null; H.pdCur = null; if (M.done) { try { M.done(true); } catch (err) { console.warn('[PD] the move\'s end threw', err); } } }
@@ -102366,7 +102395,7 @@ const ThreeRenderer = (function () {
         polishApply: function () { return _hqPolishApply(); },   // THE POLISH SETTINGS: re-arm what a row changed, in the room you stand in
         reflectors: function () { return (_hq && _hq.reflectors) ? _hq.reflectors.map(function (r) { return { kind: r.kind, n: r.targets.length, y: +r.p0.y.toFixed(2), normal: [+r.n.x.toFixed(2), +r.n.y.toFixed(2), +r.n.z.toFixed(2)], scale: r.scale, drawn: r.drawn || 0 }; }) : []; },
         perf: function () { return _perfRead(); },   // THE READOUT: the same numbers on the walk
-        polish: function () { var H = _hq; if (!H) return null; return { shadows: H.shadows ? { size: H.shadows.light.shadow.mapSize.width, Rf: +(H.shadows.Rf / _hqUnits()).toFixed(1), everyN: H.shadows.everyN } : null, ao: H.ao, heightFog: H.heightFog, atmos: H.atmos ? { kind: H.atmos.kind, n: H.atmos.n } : null, shafts: H.shafts || 0, sways: H.sways.length, kicks: H.kicks.length, seats: H.seats.length, key: H.keyDir ? { x: +H.keyDir.x.toFixed(3), y: +H.keyDir.y.toFixed(3), z: +H.keyDir.z.toFixed(3) } : null }; },
+        polish: function () { var H = _hq; if (!H) return null; return { shadows: H.shadows ? { size: H.shadows.light.shadow.mapSize.width, Rf: +(H.shadows.Rf / _hqUnits()).toFixed(1), everyN: H.shadows.everyN, sunStep: H.shadows.sunStep, sunSteps: H.shadows.steps || 0 } : null, ao: H.ao, heightFog: H.heightFog, atmos: H.atmos ? { kind: H.atmos.kind, n: H.atmos.n } : null, shafts: H.shafts || 0, sways: H.sways.length, kicks: H.kicks.length, seats: H.seats.length, key: H.keyDir ? { x: +H.keyDir.x.toFixed(3), y: +H.keyDir.y.toFixed(3), z: +H.keyDir.z.toFixed(3) } : null }; },
         /* THE ROUNDS (2026-09-19): the walkers on their loops, the nav lattice, the traveller ledger (probes) */
         roamers: function () { return (_hq && _hq.rounds) ? _hq.rounds.map(function (c) { var rd = c.rounds || {}; return { id: c.id, race: c.race, x: +c.x.toFixed(2), z: +c.z.toFixed(2), y: +c.y.toFixed(2), state: rd.state || null, stop: rd.i, stops: (rd.stops || []).map(function (s) { return s.kind + (s.doorId ? ':' + s.doorId : ''); }), moving: !!c.moving, away: !!c.away }; }) : []; },
         nav: function () { var N = _hq && _hq.nav; return N ? { cell: N.cell, nx: N.nx, nz: N.nz, done: N.done, walk: N.walk, ms: N.ms || null } : null; },

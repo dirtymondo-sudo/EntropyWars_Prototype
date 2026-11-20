@@ -3675,3 +3675,39 @@ mondo in the Woods: "the grass loads in late as I get closer to it". The walked 
 to 110 m, each tuft sized by its distance in the shader (nothing appears, nothing is cut off), paid for by culling the cells off camera and by
 dropping the per-cell tuft sort. The whole note: areas-complexes.md "THE GRASS RINGS". For models the same idea is THE LOD LEVELS above; only 13
 model files have lower copies baked so far.
+
+
+## THE STEPPED SUN (2026-11-20, mondo: "My character's shadow looks like it's pulsating or wavy or rippling when I stand still, but it doesn't do that when I am moving ... it's not just my shadow it's like some other stuff too like textures or other objects or their shadows")
+WHAT IT WAS. In a clocked outdoor room the world clock turns the sun (the key light, `H.keyDir`) a little EVERY frame (`_hqClockTick`:
+a 24 minute day, ~0.15-0.3 degrees a second), and `_hqShadowTick` took that direction every frame. The sun's map is snapped to its own
+texel grid "so nothing swims", but that grid was pinned to the ROOM'S CENTRE (`round(c . right / texel)`, `c` measured from 0, 0): when
+the direction turns by an angle a, the grid slides by (distance from the centre x a) at the walker. Disaster City is 728 x 756 m: at
+the spawn (116 m out) one 60 Hz frame of sun slid the grid ~0.25 of a texel under every shadow, at 300 m ~0.6. So every shadow edge, and
+the fine self-shadow on every sunlit surface (what he read as "textures"), was sampled from a different place each frame: a 60 Hz
+crawl on everything the sun lights. A walking camera hides it; a still one shows it.
+THE SAME FUNCTION HELD A SECOND FAULT: the map's target kept only the walker's place ACROSS the light (`right`, `up`); along the light it
+stayed on the plane through the room's centre. The map's depth range is `D` either side of that plane, so a walker more than ~70-150 m
+from the centre ALONG the sun's direction (by the room's `top`) stood outside it and nothing near him cast or took the sun's shadow.
+WHAT IT IS NOW (`_hqShadowTick`, `H.shadows.dir / right / up / anchor`):
+- the shadow's direction is HELD and follows `H.keyDir` in steps of `HQ_LIGHT_RULES.shadows.sunStep` degrees (0.25, about one step
+  a second; 0 = every frame). Between two steps the map's camera does not move at all while he stands, so a still scene draws the same
+  map every frame. The key light's own direction (its shading) is the held one too (a step changes it by under 1 %); the dome's sun
+  disc still glides (`K.sunCur`).
+- the grid is pinned to where the map last stood (`anchor` = the last target, beside the walker), not to 0, 0: a step turns the grid
+  about the walker, so at a step the shadows near him keep their samples and move by a fraction of a texel (his own shadow ~1-2 cm).
+- the target carries the walker's place along the light too (`rel . dir`): the map's depth is centred on him anywhere in the room.
+- a snap takes the direction at once: `H.shadows.snap` (set by `_hqClockApply`'s snap, `_hqClockArm`, a crossing's turn, a turning
+  plot). `H.shadows.dirty` is NOT that flag: a rolling prop sets it every frame.
+Old behaviour, live: `window.EW_SUN_SMOOTH = true`. `ThreeRenderer.hq.dev.polish().shadows` shows `sunStep` and `sunSteps` (steps
+taken). The fight's own sun does not move (the clock is held in a fight). All of the sun's uniforms (`lightShadowMatrix`, the light's
+position and target, bias) are in three's shared render group, so a step reaches every object in the same frame, rested or not (THE
+QUIET REPLAY above).
+MEASURED (llvmpipe probe, `site_ow_l3`, the walker still at z 100, the clock slowed 40x so one probe frame turns the sun as much as
+one 60 Hz frame; HEAD 7308425 + this change): old rule, the map's camera moved on 10 of 10 frames, and 228-539 pixels changed along
+one still shadow edge between two shots a few frames apart; new rule, the camera moved only on the steps (6 in 9.5 s at full clock
+speed) and 0 pixels changed. At full speed over 33 s the shadows had followed the sun. The old rule's near plane also cut the redwoods'
+crowns toward the sun at that spot (holes of light in the trail's shade); with the map centred on the walker the shade is whole.
+Disaster City itself could not be probed (the cloud container ran out of memory three times); the code path is the same.
+IF HE STILL SEES IT: ask where. Indoors there is no clock; the candidates there are the hero lamp's held map (THE STILL TORCH, THE
+MOVING SIDES: `window.EW_HERO_SHADOW_EVERY_FRAME = true`, `EW_HERO_ALL_SIDES`) and the quiet replay's 60-frame turn (`EW_BUN_TURN_20`,
+`EW_BUN_FULL_REFRESH`).

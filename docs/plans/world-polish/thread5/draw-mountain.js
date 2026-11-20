@@ -16,7 +16,7 @@ const X = null;
 const LV = [
 /*        c0  c1  c2  c3  c4  c5  c6  c7  c8  c9 c10 c11 c12 */
 /* r0 */ [ X,  X,  X,  X,  X,  X, 30, 34, 36,  X,  X,  X,  X],
-/* r1 */ [ X,  X,  X,  X, 12, 17, 23, 30, 38, 47,  X,  X,  X],
+/* r1 */ [ X,  X,  X,  X, 12, 17, 23, 30, 38,  X,  X,  X,  X],   // (c9 r1 is the Polar Trail's plot, route R5)
 /* r2 */ [ X,  X,  6,  8, 12, 16, 21, 27, 37, 48,  X,  X,  X],
 /* r3 */ [ X,  4,  6,  9, 14, 19, 25, 33, 42, 52, 62,  X,  X],
 /* r4 */ [ 1,  4,  7, 10, 16, 21, 27, 35, 44, 54, 64, 64, 64],
@@ -30,20 +30,20 @@ const TAIL = [[13, 7, 45], [13, 6, 43], [14, 6, 41], [14, 7, 39], [15, 7, 36], [
 const lvl = {}; LV.forEach((row, r) => row.forEach((v, c) => { if (v != null) lvl[c + ',' + r] = v; })); TAIL.forEach(([c, r, v]) => { lvl[c + ',' + r] = v; });
 const L = (c, r) => lvl[c + ',' + r];
 /* cells of the box that belong to a route (the routes thread's; not edited) */
-const ROUTE = { '9,0': 'R5', '5,8': 'L3', '12,9': 'R3', '-1,6': 'L6' };
+const ROUTE = { '9,0': 'R5', '9,1': 'R5', '5,8': 'L3', '12,9': 'R3', '-1,6': 'L6' };
 /* THE NAMES (plain; a name with * is a plot that stands today and moves here; the rest are new plots) */
 const NAME = {
   '6,0': 'The Ridge, west*', '7,0': 'The Ridge*', '8,0': 'The Ridge, east*',
-  '4,1': 'The Mine Cart*', '5,1': 'The North Lift', '6,1': 'The Snowman*', '7,1': 'The Switchbacks*', '8,1': 'The High Pass*', '9,1': 'The Bowl*',
+  '4,1': 'The Mine Cart*', '5,1': 'The North Lift', '6,1': 'The Snowman*', '7,1': 'The Switchbacks*', '8,1': 'The High Pass*',
   '2,2': 'The Trapper’s Camp*', '3,2': 'The Camp*', '4,2': 'The Marker Stones*', '5,2': 'The North Valley', '6,2': 'The Frozen Tarn*', '7,2': 'The Pass Gate*', '8,2': 'The Cornice*', '9,2': 'The Glacier*',
-  '1,3': 'The North Road', '2,3': 'The Home Run', '3,3': 'Bunny Flat*', '4,3': 'The Meadows*', '5,3': 'The Fork*', '6,3': 'The Boulder Field*', '7,3': 'Avalanche Gulch*', '8,3': 'The Headwall', '9,3': 'The Headwall, top', '10,3': 'THE TOP STATION*',
+  '1,3': 'The North Road', '2,3': 'The Home Run', '3,3': 'Bunny Flat*', '4,3': 'The Meadows*', '5,3': 'The Fork*', '6,3': 'The Rope Bridge*', '7,3': 'Avalanche Gulch*', '8,3': 'The Headwall', '9,3': 'The Bowl*', '10,3': 'THE TOP STATION*',
   '0,4': 'The Rental Hut*', '1,4': 'The Run-Out*', '2,4': 'The Run-Out, upper', '3,4': 'The Big Jump, foot', '4,4': 'The Big Jump*', '5,4': 'The Big Jump, top', '6,4': 'THE MID STATION', '7,4': 'The Black Run*', '8,4': 'The Black Run, top*', '9,4': 'The Spine', '10,4': 'The Twelve Thrones*', '11,4': 'THE TEMPLE*', '12,4': 'The Grand Stair*',
   '0,5': 'THE SKI LODGE*', '1,5': 'The Chairlift*', '2,5': 'The Bunny Slope*', '3,5': 'The Slalom, foot', '4,5': 'The Slalom*', '5,5': 'The Slalom, top', '6,5': 'The Frozen Lake*', '7,5': 'The Red Banks*', '8,5': 'The Scree*', '9,5': 'The Scree, top', '10,5': 'The Stadium*', '11,5': 'The Colonnade*', '12,5': 'The Cloud Line*',
   '0,6': 'The Lodge Yard*', '1,6': 'The Ski Patrol', '2,6': 'The Long Way Home', '3,6': 'The Park, foot', '4,6': 'The Half-Pipe*', '5,6': 'The Park, top', '6,6': 'The Sleigh Bend*', '7,6': 'The Last Trees*', '8,6': 'The Lookout*', '9,6': 'The Chutes', '11,6': 'The Sacred Way*', '12,6': 'The Terraces*',
-  '0,7': 'The Village Street', '1,7': 'The Village Green', '2,7': 'The Sleigh Road', '3,7': 'The Low Woods', '4,7': 'The Spring*', '5,7': 'The Hot Springs*', '6,7': 'The Tree Line Run', '7,7': 'The Warming Hut*', '8,7': 'The South Lift, top', '9,7': 'The Saddle', '10,7': 'The Goat Track*', '11,7': 'The Olive Grove*', '12,7': 'The Amphitheatre*',
+  '0,7': 'The Village Street', '1,7': 'The Village Green', '2,7': 'The Sleigh Road', '3,7': 'The Low Woods', '4,7': 'The Spring*', '5,7': 'The Hot Springs*', '6,7': 'The Tree Line Run', '7,7': 'The Warming Hut*', '8,7': 'The South Lift, top', '9,7': 'The Boulder Field*', '10,7': 'The Goat Track*', '11,7': 'The Olive Grove*', '12,7': 'The Amphitheatre*',
   '6,8': 'The Tree Line, west*', '7,8': 'The Tree Line*', '8,8': 'The Saddle Path*', '9,8': 'The Saddle Path, east*', '10,8': 'The Switchback, lower*', '11,8': 'The Switchback, upper*',
   '11,9': 'The Pilgrim Stair*',
-  '13,7': 'the camp*', '13,6': 'the trapper’s camp*', '14,6': 'the mine cart*', '14,7': 'the snowman*', '15,7': 'the boundary stone*', '15,6': 'The Old Lava*', '16,6': 'The Steam Vents*', '16,7': 'The Long Descent', '17,7': 'The Long Descent', '17,6': 'The Long Descent', '18,6': 'The Long Descent', '18,7': 'The Upper Shelf*', '19,7': 'The Trailhead*' };
+  '13,7': 'the camp*', '13,6': 'the trapper’s camp*', '14,6': 'the mine cart*', '14,7': 'the snowman*', '15,7': 'the boundary stone*', '15,6': 'The Old Lava*', '16,6': 'The Long Descent', '16,7': 'The Long Descent', '17,7': 'The Long Descent', '17,6': 'The Long Descent', '18,6': 'The Long Descent', '18,7': 'The Upper Shelf*', '19,7': 'The Trailhead*' };
 /* the districts on the in-game map: K The Ski Lodge, P The Snowy Pass, O Mount Olympus */
 const DIST = (c, r) => c >= 13 ? 'O' : (r <= 2 || (r === 3 && (c === 6 || c === 7))) && c <= 9 ? (c >= 9 ? 'O' : 'P') : c >= 8 ? 'O' : 'K';
 /* THE RUNS: [name, mark, [[c, r] …]] through plot middles (a fraction moves the line off the middle). g green, b blue, k black, kk double black */
@@ -52,15 +52,15 @@ const RUNS = [
   ['The Spine', 'kk', [[10, 4], [9.4, 4.3], [8.6, 3.75], [8, 4]]],
   ['The Scree', 'kk', [[10, 4.9], [9.3, 5.3], [8.6, 4.8], [8, 5]]],
   ['The Glacier', 'kk', [[10, 2.9], [9.3, 2.2], [9, 2], [8, 2]]],
-  ['Avalanche Gulch', 'k', [[8, 3], [7.5, 3.3], [7, 3], [6.5, 2.7], [6, 3]]],
+  ['Avalanche Gulch', 'k', [[8, 3], [7.5, 3.3], [7, 3], [6.45, 3.7], [6.1, 4.1]]],   // (ends on the Mid Station: the Rope Bridge's crevasse lies north of it, off every run)
   ['The Black Run', 'k', [[8, 4], [7.5, 3.75], [7, 4], [6.5, 4.3], [6.1, 4.1]]],
   ['The Red Banks', 'k', [[8, 5], [7.5, 5.3], [7, 5], [6.5, 4.75], [6, 5]]],
   ['The Traverse', 'k', [[8, 4], [7, 5], [6, 6]]],
   ['The Chutes', 'k', [[9, 5.15], [9.1, 5.7], [8.7, 6.2], [8, 6], [7, 6.3], [6, 6]]],
-  ['The Bowl', 'k', [[9, 2], [9.2, 1.4], [8.6, 0.9], [8, 1], [7, 1.3], [6, 1]]],
+  ['The North Bowl', 'k', [[9, 2], [8.6, 1.6], [8, 1], [7, 1.3], [6, 1]]],
   ['The Cornice', 'k', [[8, 2], [7.5, 1.75], [7, 2], [6.5, 2.3], [6, 2]]],
   ['The Lookout Run', 'k', [[9, 7], [8.5, 6.75], [8, 7], [7, 7.3], [6, 7]]],
-  ['The Meadows', 'b', [[6, 3], [5.5, 3.3], [5, 3], [4.5, 2.75], [4, 3], [3, 3.3]]],
+  ['The Meadows', 'b', [[6, 3.9], [5.45, 3.5], [5, 3], [4.5, 2.75], [4, 3], [3, 3.3]]],
   ['The Big Jump', 'b', [[6, 4], [5.5, 4.3], [5, 4], [4, 3.75], [3, 4]]],
   ['The Crossover', 'b', [[6, 4], [5, 5], [4, 6], [3, 6]]],
   ['The Slalom', 'b', [[6, 5], [5.5, 4.7], [5, 5], [4.5, 5.3], [4, 5], [3.5, 4.75], [3, 5]]],
@@ -138,6 +138,8 @@ cells.forEach(([c, r]) => { if (ROUTE[c + ',' + r]) say('plot on a route cell ' 
 const ROOMS = { BASE: ([c]) => c <= 4, MID: ([c, r]) => c >= 5 && (c <= 7 || (c === 8 && r <= 2)), SUMMIT: ([c, r]) => c >= 8 && c <= 12 && !(c === 8 && r <= 2), 'LONG DESCENT': ([c]) => c >= 13 };
 const roomCount = {}; Object.keys(ROOMS).forEach(k => { roomCount[k] = cells.filter(ROOMS[k]).length; if (roomCount[k] > 30) say('room ' + k + ' holds ' + roomCount[k] + ' plots'); });
 
+module.exports = { LV, TAIL, NAME, DIST, RUNS, WAYS, LIFTS, L, cells, lay, WX0: -22, WY0: -22 };
+if (require.main !== module) return;   // bake-mountains.js reads the plan from here
 /* ── print ── */
 console.log('THE LEVELS (1 level = 1.75 m; . = crag or deep wood; R = a route\'s plot)\n      ' + Array.from({ length: 20 }, (_, c) => ('c' + c).padStart(4)).join(''));
 for (let r = 0; r < 10; r++) console.log(('r' + r).padStart(4) + '  ' + Array.from({ length: 20 }, (_, c) => (ROUTE[c + ',' + r] ? 'R' : L(c, r) == null ? '.' : '' + L(c, r)).padStart(4)).join(''));
@@ -233,7 +235,7 @@ o.push(`<line x1="${px(8)}" y1="${py(0)}" x2="${px(9)}" y2="${py(0)}" stroke="no
   row(ln('#a8712f', 2.4, '6 3'), 'a thin trail, 1 or 2 squares'); })();
 (() => { const lx = px(16.9), ly = py(8.35) + 0; let y = ly + 5 * 19 + 38; })();
 /* THE RIDE: the profile from the Top Station to the Lodge */
-(() => { const line = [[10, 3], [9, 3], [8, 3], [7, 3], [6, 3], [5, 3], [4, 3], [3, 3], [2, 3], [1, 3], [1, 4], [0, 4]], names = ['The Headwall ◆◆', '', 'Avalanche Gulch ◆', '', 'The Meadows ■', '', '', 'The Home Run ●', '', '', '', ''];
+(() => { const line = [[10, 3], [9, 3], [8, 3], [7, 3], [6, 4], [5, 3], [4, 3], [3, 3], [2, 3], [1, 3], [1, 4], [0, 4]], names = ['The Headwall ◆◆', '', 'Avalanche Gulch ◆', '', 'The Meadows ■', '', '', 'The Home Run ●', '', '', '', ''];
   const bx = X0, by = Y0 + ROWS * S + 62, bw = 1030, bh = 215, n = line.length - 1, xx = i => bx + 44 + i * (bw - 70) / n, yy = v => by + bh - 30 - v / 64 * (bh - 62);
   o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="#fff" stroke="#16202a" stroke-width="1.5"/>`);
   o.push(`<text x="${bx}" y="${by - 12}" font-size="16" font-weight="700" fill="#16202a">ONE RIDE, TOP TO BOTTOM: the Top Station beside the temples to the Ski Lodge. ${n * 42} m long, ${64 * 1.75 - 0} m down, never uphill. About 35 seconds on the board.</text>`);
@@ -252,5 +254,5 @@ o.push(`<line x1="${px(8)}" y1="${py(0)}" x2="${px(9)}" y2="${py(0)}" stroke="no
   T('WALKED INTO', 1); T('The Ski Lodge, Rentals, the Ski Patrol, an inn and a shop on the Village Street,'); T('the Mid Station, the Top Station, the Warming Hut, the bath house, the Temple.'); })();
 o.push('</svg>');
 const dir = __dirname; fs.writeFileSync(path.join(dir, 'mountain-plan.svg'), o.join('\n'));
-if (!process.argv.includes('--no-png')) (async () => { const { chromium } = require('playwright'); const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1.5 });
+if (!process.argv.includes('--no-png')) (async () => { const { chromium } = require('playwright'); const b = await chromium.launch(require('fs').existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox', '--headless'] } : {}); const p = await b.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1.5 });
   await p.setContent('<body style="margin:0">' + o.join('\n') + '</body>'); await p.screenshot({ path: path.join(dir, 'mountain-plan.png') }); await b.close(); console.log('\nwrote mountain-plan.svg + mountain-plan.png (' + W + ' x ' + H + ')'); })();

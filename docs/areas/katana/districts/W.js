@@ -8,6 +8,11 @@
 module.exports = {
     reach: [[20, 29, 'the Bamboo Wood'], [29, 26, 'the Cherry Wood'], [15, 17, 'the hidden shrine'], [41, 41, 'the Hot Spring'], [44, 40, 'the spring’s bath house']],
     build(ctx) {
+        /* ── THE RELIEF (the pass after the insides): hills and hollows inside the plots, laid before anything stands ── */
+        ctx.hill(17.5, 18, 2.4, 2.5); ctx.hill(13.5, 22, 2.5, -2.0);                              // the Old Wood: a knoll between the trail's two legs, a hollow in the south-west corner
+        ctx.hill(15, 26, 2.6, 3.0); ctx.hill(22.5, 30.5, 1.7, 2.0);                               // the Bamboo Wood: a rise in the north-west, a hump by the hermit's
+        ctx.hill(24.7, 33.5, 1.9, 2.2); ctx.hill(34.6, 34.2, 1.5, 1.8);                           // the Cherry Wood: two knolls in its corners
+        ctx.hill(37.5, 38, 2.4, 2.6);                                                             // the Hot Spring: a rock rise over the pools
         const { rnd, house, PLS, WD2, DARK } = ctx, RED = 0xc23a22, B = {};
         const P = (key, x, y, o) => { if (ctx.open(x, y)) ctx.P(key, x, y, o); };
         /* ── THE OLD WOOD: a rise in its north-east corner, the hidden shrine under the oldest trees ── */
@@ -24,11 +29,15 @@ module.exports = {
         /* ── THE HOT SPRING: two pools in a court of rocks, the bath house, maples ── */
         ctx.feat({ k: 'pool', x: ctx.gx(38.5), z: ctx.gz(44.5), r: 4.6, y: -0.15, depth: 0.6, key: 'healing_spring' }); ctx.feat({ k: 'pool', x: ctx.gx(44.5), z: ctx.gz(45.5), r: 3.0, y: -0.15, depth: 0.6, key: 'healing_spring' });
         for (let y = 43; y <= 46; y++) for (let x = 37; x <= 39; x++) ctx.take(x, y); for (let y = 44; y <= 46; y++) for (let x = 44; x <= 45; x++) ctx.take(x, y);
+        /* THE FALL (mondo 11-16: a waterfall is at least 7 m and leads somewhere): the spring's overflow runs to the terrace's south edge and falls 10.5 m into the
+           Paddies' big field. A small pool at the lip, the paddy below; the row only draws (the drop is the terrace's own rock face, the plan's ledge 7 to 1). */
+        ctx.feat({ k: 'pool', x: ctx.gx(41.5), z: ctx.gz(47.2), r: 1.5, y: -0.15, depth: 0.5, key: 'healing_spring' }); ctx.take(41, 46); ctx.take(41, 47); ctx.take(40, 47); ctx.take(42, 47);
+        ctx.feat({ k: 'fall', x: ctx.gx(41.5), z: ctx.gz(48), face: 180, w: 3.0, y0: 12.1, y1: 1.65, out: 5, key: 'healing_spring' });
+        ctx.feat({ k: 'pool', x: ctx.gx(41.5), z: ctx.gz(50.6), r: 3.2, y: -0.12, depth: 0.35 }); [[40, 49], [41, 49], [42, 49], [40, 50], [41, 50], [42, 50], [40, 51], [41, 51], [42, 51]].forEach(q => ctx.take(q[0], q[1]));   // the plunge pool, in the Paddies
         B.bath = ctx.building('springbath', [43, 37, 47, 40, 'S'], 3.8, { leafDouble: true }, (a, w, d, door) => house(a, w, 3.8, d, door, { roof: { top: 'gable', over: 1.3 } }));
         [[36, 42], [40, 43], [40, 46], [37, 47], [43, 46 + 1], [46, 44]].forEach((q, i) => P(['lake_rock', 'psxg_rock_1', 'psxg_rock_3'][i % 3], q[0], q[1], { face: Math.round(rnd() * 360) }));
         P('stone_lantern', 42, 43 + 1); P('stone_lantern', 42, 41 - 0); P('wooden_bucket', 40, 44); P('lantern_post', 46, 43 - 2);
-        ctx.put(B.bath, 'hot_tub', -4, -3, {}); ctx.put(B.bath, 'wooden_bucket', 2, -3, {}); ctx.put(B.bath, 'privacy_screen', 4, -2, { face: 90 }); ctx.put(B.shrine, 'votive_stand', 0, -1.5, {}); ctx.put(B.hermit, 'psx_old_mattress_mp_1', 0, -1.5, {}); ctx.put(B.pavilion, 'psx_coffee_table_1', 0, 0, {}); ctx.put(B.pavilion, 'teapot', 0, 0, { y: 0.66 });
-        /* ── THE TREES (thick: these are the woods; never on a way, never where something stands) ── */
+                /* ── THE TREES (thick: these are the woods; never on a way, never where something stands) ── */
         let n = 0;
         ctx.sow(12, 12, 23, 23, 0.5, (x, y, v) => { if (ctx.tree(v < 0.5 ? 'tree_52' : v < 0.8 ? 'tree_56' : 'maple', x, y, 7 + rnd() * 4)) n++; });
         ctx.sow(12, 24, 23, 35, 0.55, (x, y, v) => { if (ctx.tree(v < 0.6 ? 'tree_54' : v < 0.9 ? 'tree_55' : 'cherry_3', x, y, 8 + rnd() * 4)) n++; });
