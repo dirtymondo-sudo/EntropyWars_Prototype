@@ -7,13 +7,17 @@ exploration, the square battle grid, skateboarding, and aesthetics".
 
 ## START HERE (a new thread picks the plan up from this section)
 
-**Where it stands (last updated 2026-11-20):** the audit is done (sections 0 to 3). The Desert is done (thread 1). **Next: thread 2 (Disaster City, the cramped
+**Where it stands (last updated 2026-11-20):** the audit is done (sections 0 to 3). The Desert is done (thread 1). The SCREENSHOT AUDIT is part done
+(`SCREENSHOT_AUDIT.md`: 323 of 406 pictures taken, about 200 looked at; Disaster City, the Sewers and the Moon NOT photographed; section 5b says what it changed). **Next: thread 2 (Disaster City, the cramped
 city) and thread 3 (Came A Lot's woods, The Snowy Pines as its pilot); they are different zones and can run side by side.** The table in section 5 is the list of threads, in order, with what is done.
 
 **To start a thread, say:** "Do thread N of docs/plans/world-polish/WORLD_POLISH_PLAN.md." The thread then:
 1. `git fetch origin main && git merge origin/main` (CLAUDE.md RULE #1d), then reads this section, its row in section 5, section 4 for its zone,
    and mondo's rulings below. Then `docs/notes/owner-rules.md` and the board (`docs/notes/claims.md`): it takes its zone's rows there in its first PR.
-2. Reads the worked example before building: `docs/notes/areas-complexes.md` "THE DESERT, GIZA", THE VERTICALITY PASS (what rides the ground, how
+2. LOOKS AT ITS ZONE FIRST: reads its rows in `SCREENSHOT_AUDIT.md` and opens its pictures in `pictures/<place>/`; if the zone was not
+   photographed or not looked at (the list is at the top of that file), it runs `node docs/plans/world-polish/shoot.js <its rooms>` (one zone, a few
+   minutes; never the whole world) and adds its rows to that file in its first PR.
+2b. Reads the worked example before building: `docs/notes/areas-complexes.md` "THE DESERT, GIZA", THE VERTICALITY PASS (what rides the ground, how
    steep, the traps), and its own zone's notes there.
 3. Does ONE district first as the pilot, looks at it in the browser, shows mondo the pictures, and waits for his word before the zone's other districts.
 4. Per district: edit the zone's district file (or its layout / tool when the ground itself has to change), rerun the zone's bake, print the heights
@@ -48,6 +52,7 @@ Files here:
 - `AUDIT_DATA.md` its tables: every place, every district, the worst plots of each place.
 - `plots.csv` all 1,514 plots, one row each.
 - `need-map.svg` the world drawn plot by plot, green (fine) to red (needs the most).
+- `SCREENSHOT_AUDIT.md` what the world LOOKS like, place by place (11-20, part done) + `pictures/` (three a district) + `shoot.js` the tool that takes them.
 
 ## 0. How it was measured, and what it cannot tell
 
@@ -291,6 +296,31 @@ with a view and a reason to go there.
 
 **What the audit gets wrong** (learned in thread 1; read a score with this in mind): it counts a drawn mass (a pyramid's footprint) as
 walkable; a town's or an airfield's flat plots score as bad although they are meant; `hqTerrainFeet` answers nothing under a bridge.
+
+## 5b. What the screenshot audit changed (2026-11-20; `SCREENSHOT_AUDIT.md` has the detail)
+
+The pictures say the biggest problem is EMPTY and UNREADABLE places, not missing height. So, for the threads above:
+
+- **Thread 2 (Disaster City):** nothing learned, it was NOT photographed. Its first step is its own pictures (30 views, a few minutes).
+- **Thread 3 (Came A Lot's woods):** confirmed. The Forest and the Snowy Pines are flat lawn / flat snow with tree walls and a straight path.
+  LEAVE the Looking-Glass Garden as it is (it is a model). Fix the hard square snow / grass edge at the Pines' room line.
+- **Thread 4 (the Village):** the houses against the castle wall are the tight spot. The castle's blurry wall picture is the castle thread's.
+- **Thread 6 (the Woods):** the trail district (the link plots) is the long straight road mondo does not want: bends, branches, side glades first.
+  The Redwood Trail and the Ritual Ground are good.
+- **Thread 8 (the D.U.M.B.): MOVE IT UP, it is the worst-looking zone seen.** CERN, Command, Level P3 and Research are near-empty halls. Fill
+  them (machines, pipes, mezzanines, pits) or make the halls smaller; copy Sub-Level 7, which works. It shares no tool with threads 2 and 3,
+  so it can run beside them.
+- **Thread 11 (Heaven + Hell + Vatican):** HELL NEEDS LIGHT, NOT HEIGHT: its shape is the best in the world and it is black on black. Torches,
+  lava glow on the rock, colour, landmarks. Vatican: dress the Cloister and the Catacombs; the Colosseum and the Gardens are done; the palace's
+  domes stand too close and wear a blurry picture. Heaven: not looked at.
+- **Thread 12 (Leylines):** the Ley Line is the job (flat and bare). Stonehenge, Göbekli Tepe and Bug Colony's flowers are good.
+- **Thread 13 (Antarctica):** it has its height already. The job is the empty one-colour fields of the Ice Wall and the Hull: landmarks, wrecks,
+  camps, coloured things, blue ice. Fewer new ridges than its row says.
+- **Thread 19 (the Beach's small places):** the Frozen Sea is the barest small place. Pirates' Cove and Volcano Island are good; check the cone
+  wearing the water picture off Volcano Island.
+- **A new kind of job, in no thread yet: BIG WALLS ARE BLURRY UP CLOSE** (Came A Lot's castle, the Vatican's palace and domes: one stretched
+  stone picture). Ask mondo whether it gets its own thread (a tiling wall picture) or rides with each zone.
+- Not looked at yet, so unchanged: threads 5 (Olympus, the Ski Lodge), 7, 9, 10, 14, 15, 16, 17, 18.
 
 ## 6. Questions for mondo
 
