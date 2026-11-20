@@ -11,7 +11,7 @@
 module.exports = {
     plan: require('../../../plans/world-polish/plans/estate.js'),
     wx0: -14, wy0: 5,      // the world plot the plan's square 0,0 stands on (the room's box)
-    letters: ['L'],        // the districts the plan lays (the pilot: the Lake)
+    letters: ['L', 'R', 'C'],   // the districts the plan lays (the pilot was the Lake; mondo 11-20 "go": the Ranch and the Corn Fields)
     /* `dress(a)`: a.P(key, x, y, o) = a piece on an OPEN, level square (o.dx / o.dz = metres off its middle; o.pocket = a square of the
        mass beside open ground, opened for it); a.tree(x, y, kind, h); a.feat(row); a.gx / a.gz = a square line in metres; a.h(x, y) = ground */
     dress(a) { const P = a.P;
