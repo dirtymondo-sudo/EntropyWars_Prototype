@@ -31,8 +31,8 @@ module.exports = {
         spawn: [29, 4], spawnFace: 180,
         mood: { light: 0xffb070, ambient: 0.14, hero: false },
         /* THE SHEETS (mondo 11-20: "don't use the calm textures, use from the urban decay or horror pack"): every surface wears a horror-pack sheet
-           (Screaming Brain Studios, `hz_<family>_<nn>`): the rock black and cracked, the floor mottled earth, the ledge faces rough brown */
-        tex: { floor: 'hz_stone_08', wall: 'hz_stone_01', dado: 'hz_stone_02', trim: 'hz_stone_01', ceiling: 'hz_stone_01', cliff: 'hz_stone_10', path: 'hz_floor_03',
+           (Screaming Brain Studios, `hz_<family>_<nn>`): the rock black and cracked, the floor dark cracked stone, the ledge faces rough brown */
+        tex: { floor: 'hz_stone_02', wall: 'hz_stone_01', dado: 'hz_stone_02', trim: 'hz_stone_01', ceiling: 'hz_stone_01', cliff: 'hz_stone_10', path: 'hz_floor_03',
                genWall: 'hz_stone_01', roof: 'hz_stone_01', stalactite: 'hz_stone_02' },
         /* the paint: 1 the hot rock by the Fissure · 2 (spare) · 3 mud (the pits, the camp) · 4 mineral stone (the crystal pockets, the Shelf) */
         pal: ['hz_stone_10', 'hz_stone_02', 'hz_floor_03', 'hz_stone_06'],
