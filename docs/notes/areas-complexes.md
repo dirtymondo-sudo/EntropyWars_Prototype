@@ -12962,3 +12962,6 @@ mondo 11-20 on plan 3: "Yes the map layout looks much better ... Go ahead and bu
   dirt, and adds room-wide scatter (fallen logs, stumps, dead bushes, snags). Past the room's line: `terrain.edges.deep: true` (three-renderer.js `_hqEdgeLandFn`'s
   planting: the forest stays thick to the end of the planting, not thinned after 22 m). Seen in the probe from the Dead End and Deep woods, west. OPEN: the land
   past the line wears the map's bright forest green, lighter than the room's floor; the draw cost with the deeper wood is not measured.
+- **THE LAND PAST THE LINE WEARS THE ROOM'S TONE (11-20, mondo: "fix the ground being green past the edge, it doesn't match").** `terrain.edges.tint: [r, g, b]`
+  multiplies the edge land's colour (three-renderer.js `_hqBuildEdgeLand` `colOf`; only a room that sets it changes). The Clearing's room: `[0.5, 0.5, 0.52]`
+  (bake-woods.js, designed rooms). Seen in the probe at Deep woods, west.
