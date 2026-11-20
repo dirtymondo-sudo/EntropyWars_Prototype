@@ -40,12 +40,12 @@ const WAYS = [
     ['The Castle Road (the High Town to the castle yard, through the east gate)', 3, [[15, 37], [10, 37], [10, 41], [5, 41]]],
     ['The Shore Road (the Waterfront to the Village to the Jungle)', 2, [[22, 57], [25, 57], [25, 64], [31, 64], [31, 68], [38, 68], [38, 62], [43, 62], [43, 56], [50, 56], [50, 51], [55, 51], [55, 45], [55, 42], [62, 42], [62, 37], [67, 37], [67, 31]]],
     ['The West Steps + the Main Gate (the Waterfront, the Samurai Quarter, the castle’s south gate)', 2, [[13, 55], [8, 55], [8, 51], [4, 51], [4, 46], [5, 46], [5, 41]]],
-    ['The Wild Way (the Dinosaur Park up the volcano’s east flank to the crater)', 1, [[67, 31], [64, 31], [64, 28], [64, 22], [58, 22], [58, 18], [52, 18], [52, 21], [47, 21], [47, 17], [42, 17]]],
+    ['The Wild Way (the Dinosaur Park up the volcano’s east flank to the crater)', 1, [[67, 31], [64, 31], [64, 28], [64, 22], [58, 22], [58, 18], [52, 18], [52, 21], [47, 21], [47, 17], [46, 17]]],
     ['The East Shore trail', 1, [[67, 31], [74, 31], [74, 28], [79, 28]]],
     ['The Postern (the castle garden to the Bamboo Wood)', 1, [[5, 41], [5, 37], [5, 33], [10, 33], [10, 29], [15, 29], [15, 31]]],
     ['The Old Wood trail (the Bamboo Wood, the hidden shrine, the Black Cape)', 1, [[20, 27], [20, 20], [15, 20], [15, 16], [22, 16], [26, 16], [26, 9], [31, 9], [31, 5]]],
     ['The Hot Spring trail (the Cherry Wood, the Lava Field, the Hot Spring, the Terraces)', 1, [[32, 28], [38, 28], [38, 34], [41, 34], [41, 40], [41, 42], [47, 42], [47, 45], [51, 45], [55, 45]]],
-    ['The Lantern Head path', 1, [[9, 60], [9, 66], [8, 66], [8, 72], [8, 75], [3, 75], [3, 79], [6, 79]]],
+    ['The Lantern Head path', 1, [[9, 60], [9, 66], [8, 66], [8, 72], [8, 75], [3, 75], [3, 79]]],
     ['The Fishing Beach path', 1, [[25, 64], [25, 70], [29, 70], [29, 76]]],
 ];
 /* ── THE LEDGES: a drop you walk off and cannot jump back up (the walker's jump tops out at 1.46 m; every ledge is 2 levels = 3.5 m or more).
