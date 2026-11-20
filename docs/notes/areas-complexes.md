@@ -12672,7 +12672,7 @@ is laid on the ground; a ship in open space has none), he picked BEAMED DOWN.
   fight on Mars, Saturn or the Singularity (the Moon only); escaping on the burner (worked out from the speeds, not flown); the sound; what
   the battle board looks like near a net's cut seam (fights on a ball were "not checked" since the round worlds: one fight on the Moon ran).
 
-## OUTER SPACE, THE SEAM ON A BOARD + THE FIGHT ON A BALL (2026-11-20, owner, a thread beside WORLD POLISH thread 18)
+## OUTER SPACE, THE SEAM ON A BOARD + THE FIGHT ON A BALL (2026-11-20, owner; mondo: "This is the thread working on outer space now")
 mondo 11-20, on the Moon on the skateboard: "Im getting stuck and glitching out going back and forth on this seam ... There shouldn't even be
 a visible seam ... The side of the seam the shadow is on also changes when I cross ... a planet in the background disappears and reappears as I
 cross the seam". Then: "got pulled by a ufo and for the battle the map was still flat and separated into pieces and not wrapped around the sphere".
@@ -12701,21 +12701,31 @@ cross the seam". Then: "got pulled by a ufo and for the battle the map was still
   sample it meets on the ball (and to the face sharing its flat line), each tied set takes its mean, the change feathered over three
   samples into each face; void samples are never tied. After: 0 over 0.1 m on all four (worst 5 cm). Its face table must stay the same as
   three-renderer.js `_EW_PL_FACES`.
-- **4. THE FIGHT ON A BALL: TRIED, TAKEN BACK OUT, WAITS ON MONDO.** A fight lays the room round its board in the battle's frame
-  (`_hqBattleRoomMatrix`: m -> (m - T.x0) k, floorY + y k, k = ts / C) and the bend is on for the walk's scene only, so a fight draws the
-  flat nets (six squares a world, apart in the dark: what he saw). A first try (commit f10853d on branch `claude/sleepy-dijkstra-1e8oga`,
-  `_ewPlBattleFrame` + a board-flat blend uniform `ewPlB`) wrote the balls in the battle's frame, anchored at the board's middle, kept the
-  board flat and carried the ground beyond its rim onto the ball. DRIVEN (UFO beam-down on the Moon, free camera pulled back): the fight's
-  board was 84 m, a whole face, and the Moon's radius is 53.5 m, so a flat board stood on the ball like a mushroom cap, wider than the world
-  under it; a 5 x bigger ball for the fight left the stretched face empty between the board's rim and the next faces (a cone onto a bare
-  disc). Bending the board too tilts its rim 45 degrees (a face's edge is 45 degrees from its middle) and the picking, the camera and the
-  units read it flat. THE SCALE IS THE QUESTION (the board against the world's size), asked of mondo 11-20; the fight draws as before.
+- **4. THE FIGHT ON A BALL, THE WALK'S WAY** (three-renderer.js `_ewPlBattleFrame`, called every battle frame from `_renderFrameBody`;
+  mondo 11-20: "The planets are supposed to be walkable ... Why can't you just fix that ... don't tell me we have to do an 8x8 board").
+  A fight lays the room round its board in the battle's frame (`_hqBattleRoomMatrix`: m -> (m - T.x0) k, floorY + y k, k = ts / C) and the
+  bend was on for the walk's scene only: the flat nets, apart in the dark. Now the fight is drawn exactly as the walk is: the rules, the
+  board, the units and the clicks stay flat, only the draw bends, and the world is turned about ONE POINT so the picture round it is the
+  flat board as played, curving away to a horizon. The walk's point is the feet; the fight's is the ground the battle camera looks at (the
+  ray through the screen's middle onto the floor line, kept on the board), so what the camera centres on is exact and the Moon rolls under
+  it as it pans. The balls are written in the battle's frame (g.w = R k - floorY, so the radius reads the height over the floor line).
+  Only a net's ground and what stands on it turns (`ewPlOn.y` classic, `u.F.x` node): the battle's sky and horizon stay. The turn eases
+  over a quarter second (a pan over a seam would swing it by the grid's kink). THE CLICKS: `ThreeCamera.screenToTile / screenToTileAll /
+  screenToUnit` are wrapped (`_ewPlScreenFix`): the flat ground under the cursor is bent, put on the screen, the cursor nudged by the
+  miss, up to six times. Measured: a unit drawn 40 px off its flat place is picked where it is drawn. THE LABELS: the CSS2D pass reads
+  each label's place through the bend (`Vector3.setFromMatrixPosition` wrapped for that pass only). THE BATTLE RADIUS keeps every piece on
+  a round net (its far side is in the picture), and the room's pieces skip the frustum cull. A first try that kept the board flat on the
+  ball (commit f10853d) was a mushroom: the board (84 m, a whole face) is wider than the Moon (R 53.5 m). Probe handles: `hq.dev.plBend`,
+  `plFy`, `plBattle`, `plPick`, `plCanvas`; `EWCine.enter({ script: true, force: true })` + `EWCine.pose` for a far look in a fight.
+  SEEN (UFO beam-down on the Moon, Barbarella's ship): the battle camera on the curving Moon, the whole Moon round from far off with the
+  fight on top. NOT YET: one straight blue streak at the board's height (a battle piece off the nets); the fight's sky is the battle's
+  green, not the walk's black with stars; a unit standing on a square over a cut seam of the flat net is drawn where that face really is.
 - **DRIVEN** (playtest_city.js `"drive"`, llvmpipe, the Moon): the board over the half-turn cut seam (face (0,1) north -> the top cap):
   heading 3.14 -> 0 with the eye, rolled on into the new face, no bounce; over a joined seam a third of the way along (face 1 -> 2): heading
   and eye turned 34 degrees together, rolled on, the dish, the container and the sky did not move on screen. The seam's dark crack and lip
   (seen before the stitch, same spot) gone after it, ahead, over and looking back. Probe tip: the room starts aboard; `hq.dev.ship({ x, y,
   z })` near a beacon's `ball` + `up` x 7, then `hq.disembark()`; `skate` / `skateIssued` / `disembark` are on `ThreeRenderer.hq`, not `.dev`.
-- **NOT DONE / NOT CHECKED:** the fight (above); the sheet's grain still turns at a cut seam (a directional pattern meets itself at 90 / 180
+- **NOT DONE / NOT CHECKED:** the fight's leftovers (above); a fight on Mars, Saturn or the Singularity; the sheet's grain still turns at a cut seam (a directional pattern meets itself at 90 / 180
   degrees); where a cliff crossed a seam on Mars (5 m) the mean leaves a short steep ramp; the shadows' fix was not compared side by side
   (the stitched heights removed the seam's line in the same run); the classic renderer was not run.
 
