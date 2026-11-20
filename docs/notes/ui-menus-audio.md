@@ -2925,7 +2925,17 @@ closeup face portrait you would use these". Catgirl (female) only, a test of Spr
   battle panel's left bay) draws the same `PanelAnim` in a `<foreignObject>` (class `ew-pa-hub`) in place of the face / the
   live face, so her clips play on her own turn. The walk now lasts about as long as the board's walk: 220 ms a square moved
   (`unit:moved` fromX / fromY), at least one pass, at most 3 s.
-- NOT done yet (pilot): no death clip; the whole body is small in the 63 px card portrait and on the disc.
+- THE STANCES (11-20, step 3; mondo: the hurt / walk clips replay the board, "what animations would be useful and actually
+  help communicate information to the player as they are navigating the combat menu?"): the catgirl's table is now `idle`,
+  `attack`, `wounded`, `guard`, `cast`, `brace` (walk + hurt dropped from the table; their sheets stay on R2 and the code
+  still plays them for a race that lists them). What loops between actions is the STANCE: on the disc, the pose for the
+  cursor (`HorologeMenu` `_paStance`: `am` attack / spell first, else a usable root row: Attack = attack, Abilities / Combo /
+  a spell row = cast, Guard = guard); on a unit card, `brace` while the aimed action's damage forecast reaches that unit
+  (`_ewPaBraced`, ui.js getPendingDamagePreview); else `wounded` at 30 % HP or less; else `idle`. `hold: { clip: 1 }` in the
+  table = a sheet that goes from the stand INTO a pose: played once, the last frame stays (Sprite AI always starts from the
+  source pose, so a pose clip cannot loop cleanly). Made with the `Custom` preset + `custom_prompt`; say "big clear change
+  of silhouette" (the first wounded try, "hunched, heavy breathing", looked like the idle; "sinks onto one knee" read).
+- NOT done yet (pilot): no death clip; no head shake on a greyed-out row; no spent pose at 0 AP; the whole body is small in the 63 px card portrait and on the disc.
   Off: `window.EW_DISABLE_PANEL_ANIMS = true`.
 - Making more: Sprite AI (sprite-ai.art, key in the env's Network secrets): `POST /api/sprites/import` `{ image: <base64>, title,
   asset_type }` (free) -> id; `POST /api/animations` `{ source_generation_id, preset: Idle|Walk|Run|Jump|Attack|Hurt|Death|Custom,

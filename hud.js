@@ -3123,7 +3123,7 @@ function VitalWave({ pct, hp, maxHp, mp, unitKey }) {
 // The watch itself. `api` is a plain object the parent owns; the hub fills
 // it with imperative hand controls (aim / rest / strike / wind) so blade
 // hover/click handlers can drive the hands without re-rendering the SVG.
-function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortraitClick, unitKey, burning, poisoned, hpPct, mpPct, low, liveUnit }) {
+function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortraitClick, unitKey, burning, poisoned, hpPct, mpPct, low, liveUnit, stance }) {
   const _hubPa = liveUnit ? _ewPanelAnimsOf(liveUnit) : null;   // THE PANEL ANIMATIONS
   useLiveGen();
   const minRef = useRef(null), hourRef = useRef(null), secRef = useRef(null);
@@ -3309,7 +3309,7 @@ function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortra
         onPortraitClick && h('circle', { cx: 100, cy: 100, r: 56.5, fill: '#000', opacity: 0 }),
         /* THE PANEL ANIMATIONS: the acting unit's whole sprite, moving, on the disc (the info card's own PanelAnim) */
         _hubPa ? h('foreignObject', { x: 44, y: 44, width: 112, height: 112, style: { pointerEvents: 'none' } },
-          h(PanelAnim, { key: 'pa' + liveUnit.id, unit: liveUnit, anims: _hubPa, cls: 'ew-pa-hub' }))
+          h(PanelAnim, { key: 'pa' + liveUnit.id, unit: liveUnit, anims: _hubPa, cls: 'ew-pa-hub', stance: stance || null }))
         : (portraitUrl && liveUnit && portraitIsFace !== false && _liveKeyOf(liveUnit))
           ? h(LiveFace, { unit: liveUnit, liveKey: _liveKeyOf(liveUnit), x: 44, y: 44, size: 112 })
         : portraitUrl && h('image', {
@@ -4346,37 +4346,47 @@ function _hrlgSide(...kids) {
    read, so the online guest sees them too), then back to idle. One strip of square frames, stepped by a CSS animation: no
    timer per frame, no re-render. An enemy's actions show only while the viewer can see it (fog). Viewer-local. */
 const _ewPaLive = {};   // unit id -> { k, until }: the action playing now, so a card rebuilt mid-clip (a hit refreshes it) keeps it
-function PanelAnim({ unit, anims, cls }) {
-  const ref = useRef(null);
+/* THE STANCES (step 3, 11-20): what loops between actions is the STANCE the menu asks for (the highlighted command: attack /
+   cast / guard; a foe under the damage forecast: brace), else the wounded idle at 30 % HP or less, else idle. A clip the
+   race has no sheet for falls through to the next. */
+function PanelAnim({ unit, anims, cls, stance }) {
+  const ref = useRef(null), apiRef = useRef(null), baseRef = useRef('idle');
   const uid = unit && unit.id;
+  const _low = !!(unit && unit.maxHp > 0 && unit.hp / unit.maxHp <= 0.3);
+  const base = (stance && anims && anims[stance]) ? stance : (_low && anims && anims.wounded) ? 'wounded' : 'idle';
+  baseRef.current = base;
+  useEffect(() => { const a = apiRef.current; if (a && !a.busy()) a.base(); }, [base]);
   useEffect(() => {
     const el = ref.current;
     if (!el || !anims) return;
     const n = anims.frames || 8, idleMs = Math.round(n / (anims.fps || 8) * 1000), actMs = Math.round(n / (anims.actFps || 12) * 1000);
-    ['idle', 'walk', 'attack', 'hurt'].forEach(k => { if (anims[k]) { const im = new Image(); im.src = anims[k]; } });   // no blank frame on the first swap
-    let cur = '', back = 0, until = 0;
-    const play = (k, holdMs) => {
+    ['idle', 'walk', 'attack', 'hurt', 'wounded', 'guard', 'cast', 'brace'].forEach(k => { if (anims[k]) { const im = new Image(); im.src = anims[k]; } });   // no blank frame on the first swap
+    let cur = '', curLoop = false, back = 0, until = 0;
+    const play = (k, holdMs, loop) => {
       if (!anims[k]) return;
       const now = Date.now();
-      const act = k !== 'idle';
-      if (act && k === cur && now < until && k !== 'walk') return;   // the same action already playing (its flag set + cleared both speak)
-      if (!(k === 'walk' && cur === 'walk' && now < until)) {      // a walk still going keeps its stride, only its end moves
+      const act = !loop;
+      if (loop && curLoop && k === cur) return;   // the stance already looping
+      if (act && !curLoop && k === cur && now < until && k !== 'walk') return;   // the same action already playing (its flag set + cleared both speak)
+      if (!(act && !curLoop && k === 'walk' && cur === 'walk' && now < until)) {      // a walk still going keeps its stride, only its end moves
         el.style.backgroundImage = 'url("' + anims[k] + '")';
         el.style.animation = 'none'; void el.offsetWidth;
-        el.style.animation = 'ewPaStep ' + (act ? actMs : idleMs) + 'ms steps(' + n + ', jump-none) ' + (act && k !== 'walk' ? '1 forwards' : 'infinite');
+        el.style.animation = 'ewPaStep ' + (act ? actMs : idleMs) + 'ms steps(' + n + ', jump-none) ' + ((act && k !== 'walk') || (loop && anims.hold && anims.hold[k]) ? '1 forwards' : 'infinite');   // a `hold` stance: into the pose once, then it stays
       }
-      cur = k; clearTimeout(back);
-      if (act) { const ms = Math.max(actMs, holdMs || 0); until = now + ms; _ewPaLive[uid] = { k, until }; back = setTimeout(() => play('idle'), ms); }
+      cur = k; curLoop = !!loop; clearTimeout(back);
+      if (act) { const ms = Math.max(actMs, holdMs || 0); until = now + ms; _ewPaLive[uid] = { k, until }; back = setTimeout(playBase, ms); }
     };
+    const playBase = () => play(baseRef.current, 0, true);
+    apiRef.current = { base: playBase, busy: () => !curLoop && Date.now() < until };
     const has = (set) => !!(set && typeof set.has === 'function' && set.has(uid));
     const flagged = () => {
       const S = (typeof state !== 'undefined' && state) ? state : {};
       return has(S.hitFlashIds) ? 'hurt' : (has(S.attackAnimIds) || has(S.castAnimIds)) ? 'attack' : '';
     };
-    play('idle');
+    playBase();
     { const lv = _ewPaLive[uid], on = lv && Date.now() < lv.until, f = on ? lv.k : flagged(); if (f) play(f, on ? lv.until - Date.now() : 0); }   // rebuilt mid-action
     const B = window.RenderBus;
-    if (!B) return () => { clearTimeout(back); };
+    if (!B) return () => { clearTimeout(back); apiRef.current = null; };
     const mine = (ev) => {
       if (!ev || !ev.unit || ev.unit.id !== uid) return false;
       try {   // fog: a foe the viewer cannot see does not act in the panel
@@ -4389,14 +4399,23 @@ function PanelAnim({ unit, anims, cls }) {
     const onHit = (ev) => { if (mine(ev)) play('hurt'); };
     /* the walk lasts about as long as the board's own walk: the squares moved (the move is over on the board at once) */
     const onMove = (ev) => {
-      if (!mine(ev) || ((cur === 'hurt' || cur === 'attack') && Date.now() < until)) return;
+      if (!mine(ev) || (!curLoop && (cur === 'hurt' || cur === 'attack') && Date.now() < until)) return;
       const d = (ev.fromX != null && ev.fromY != null) ? Math.abs(ev.unit.x - ev.fromX) + Math.abs(ev.unit.y - ev.fromY) : 1;
       play('walk', Math.min(3000, d * 220));
     };
     B.on('unit:animChanged', onAnim); B.on('unit:damaged', onHit); B.on('unit:moved', onMove);
-    return () => { clearTimeout(back); B.off('unit:animChanged', onAnim); B.off('unit:damaged', onHit); B.off('unit:moved', onMove); };
+    return () => { clearTimeout(back); apiRef.current = null; B.off('unit:animChanged', onAnim); B.off('unit:damaged', onHit); B.off('unit:moved', onMove); };
   }, [uid, anims]);
   return h('div', { className: cls + ' ew-pa' }, h('i', { ref }));
+}
+/* a unit under the aimed action's damage forecast (ui.js getPendingDamagePreview, every body it reaches) braces */
+function _ewPaBraced(u) {
+  try {
+    const fc = (u && typeof getPendingDamagePreview === 'function') ? getPendingDamagePreview() : null;
+    if (!fc) return false;
+    const e = (fc.all && fc.all.length) ? fc.all.find(x => x.unitId === u.id) : (fc.unitId === u.id ? fc : null);
+    return !!(e && e.dmg > 0);
+  } catch (e) { return false; }
 }
 function _ewPanelAnimsOf(u) {
   if (!u || typeof getRacePanelAnims !== 'function') return null;
@@ -4424,7 +4443,7 @@ function _hrlgQuickCard(key, title, qv) {
   return h('div', { className: 'hrlg-thead qp ' + side[1], 'data-uid': side[2] },
     h('div', { className: 'hrlg-thead hrlg-qp-bg ' + side[1] }),
     h('div', { className: 'hrlg-qp-port ' + side[1] + (pa ? ' anim' : (pd && !pd.isFace ? ' sprite' : '')) },
-      pa ? h(PanelAnim, { key: 'pa' + qu.id, unit: qu, anims: pa, cls: 'hrlg-qp-img' })
+      pa ? h(PanelAnim, { key: 'pa' + qu.id, unit: qu, anims: pa, cls: 'hrlg-qp-img', stance: _ewPaBraced(qu) ? 'brace' : null })
         : pd ? h('div', { className: 'hrlg-qp-img', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null),
     title && h('div', { className: 'hrlg-view-tab' }, title.node || h('span', { className: 'hrlg-view-tab-text' }, title.text)),
     qv,
@@ -4718,7 +4737,7 @@ function DeckUnitCard({ ukey, actor, terrain, btns }) {
     : [coord, dist == null ? null : dist === 0 ? 'HERE' : dist + ' AWAY'];
   return h('div', { ref, className: 'ewd-ucard ' + side, 'data-uid': String(u.id) },
     self ? null : h('div', { className: 'ewd-uport ' + side + (pa ? ' anim' : (pd && !pd.isFace ? ' sprite' : '')) },
-      pa ? h(PanelAnim, { key: 'pa' + u.id, unit: u, anims: pa, cls: 'ewd-uimg' })
+      pa ? h(PanelAnim, { key: 'pa' + u.id, unit: u, anims: pa, cls: 'ewd-uimg', stance: _ewPaBraced(u) ? 'brace' : null })
         : pd ? h('div', { className: 'ewd-uimg', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null),
     h('div', { className: 'ewd-umain' },
       h('div', { className: 'ewd-uhead' },
@@ -4828,6 +4847,12 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     if (selIdx < 0) selIdx = 0;
   }
   const selBlade = blades[selIdx] || null;
+  /* THE STANCES (PanelAnim): the pose the disc holds for what the cursor is on. A sub-menu's mode first (aiming an attack
+     / a spell), else the root row under the cursor when it can be used. */
+  const _paStance = am === 'attack' ? 'attack' : am === 'spell' ? 'cast'
+    : !(selBlade && (selBlade.available || selBlade.check)) ? null
+    : selBlade.spell ? 'cast' : selBlade.id === 'attack' ? 'attack' : selBlade.id === 'guard' ? 'guard'
+    : (selBlade.id === 'abil' || selBlade.id === 'combo') ? 'cast' : null;
   /* THE MANA FORECAST (ui.js getPendingManaPreview): the cursor's spell row tells every MP bar what it costs — set
      during render so the unit info card drawn below reads it on this same pass; cleared when the menu goes */
   window._ewRowMpSpend = (apUnit && selBlade && selBlade.spell && (selBlade.available || selBlade.check)
@@ -5354,7 +5379,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
             portraitUrl: portraitUrl, portraitIsFace: portraitIsFace,
             portraitTitle: 'Center the camera on ' + unitName,
             onPortraitClick: onPortraitClick,
-            unitKey: unitKey, burning: burning, poisoned: poisoned, liveUnit: apUnit,
+            unitKey: unitKey, burning: burning, poisoned: poisoned, liveUnit: apUnit, stance: _paStance,
             hpPct: maxHp > 0 ? (hp / maxHp) * 100 : null, mpPct: maxMp > 0 ? (mp / maxMp) * 100 : null,
             low: maxHp > 0 && hp / maxHp <= 0.3,
           })),
@@ -5534,7 +5559,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
           portraitUrl: portraitUrl, portraitIsFace: portraitIsFace,
           portraitTitle: 'Center the camera on ' + unitName,
           onPortraitClick: onPortraitClick,
-          unitKey: unitKey, burning: burning, poisoned: poisoned, liveUnit: apUnit,
+          unitKey: unitKey, burning: burning, poisoned: poisoned, liveUnit: apUnit, stance: _paStance,
           hpPct: maxHp > 0 ? (hp / maxHp) * 100 : null, mpPct: maxMp > 0 ? (mp / maxMp) * 100 : null,
           low: maxHp > 0 && hp / maxHp <= 0.3,
         }),
