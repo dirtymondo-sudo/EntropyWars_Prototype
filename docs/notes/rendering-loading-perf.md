@@ -3711,3 +3711,42 @@ Disaster City itself could not be probed (the cloud container ran out of memory 
 IF HE STILL SEES IT: ask where. Indoors there is no clock; the candidates there are the hero lamp's held map (THE STILL TORCH, THE
 MOVING SIDES: `window.EW_HERO_SHADOW_EVERY_FRAME = true`, `EW_HERO_ALL_SIDES`) and the quiet replay's 60-frame turn (`EW_BUN_TURN_20`,
 `EW_BUN_FULL_REFRESH`).
+
+## THE PHONE BOOT (2026-11-20, mondo: "The game keeps crashing for me on my phone ... iPhone 13. Probably crashing trying to download a bunch of stuff")
+Measured in Chromium on the "iPhone 13 landscape" profile (EW_MOBILE + EW_PERF_LOW on by themselves), llvmpipe, every file from the CDN.
+NOT measured on the phone itself: no WebKit in the cloud container. He did not say where it dies; the numbers below say the title was enough.
+- **What was found at page load, before the first tap:** 666 files, 656 MB (123 models = 605 MB) on a cold start; the emulated browser died there.
+  With the manifest in time: 693 files, 258 MB, JS memory 811 MB at the title, the tab at 1.3 GB. All of it the SPELL LIBRARY.
+- **Cause 1, the party builder's warm.** party-builder.js mounts at page load under the title (resetGame renders PARTY_BUILDER) and its mount
+  effect called `ThreeVFXEffects.warmSpellLibrary()`: ~190 models (115 spell props asked for in the same 3 seconds, the rest through the
+  one-at-a-time queue). In Low mode that effect now warms nothing; `libWait` still loads the library for a preview that needs it and the battle's
+  loading card loads it as before. Desktop keeps the warm (mondo 10-05, NO STAND-INS).
+- **Cause 2, the manifest race.** `_asManReady` gave up on ASSET_MANIFEST.json after 2.5 s (`AS_MANIFEST_WAIT_MS`) and every model asked for after
+  that was the ORIGINAL file (a Meshy prop: 10-13 MB, four 2048 px PNG sheets) in place of its `.opt.glb` (2 MB, KTX2). A phone still parsing the
+  game's scripts misses 2.5 s easily; the first probe run did. Low mode waits 30 s (`AS_MANIFEST_WAIT_LOW_MS`); a failed fetch still settles at once.
+- **The spell props load three at a time on a phone** (three-vfx-effects.js `_spellLibWarm`, Low mode): same files, same promise, same progress
+  count. A cast that needs a prop the warm has not reached still loads it at once (`_wpnLoad`).
+- **The loose sheets** (three-renderer.js `_lowSheetCap`, Low mode only, off: `EW_NO_LOW_SHEET_CAP`): a picture loaded through `textureLoader.load`
+  is drawn down to 2048 px when it lands, a `_miscTex` sheet to 1024 px. The menu's far pyramid wore a 4096 x 4096 PNG (85 MB of video memory);
+  the menu scene's sheets went 148 MB -> 71 MB. A GLB's own sheets were already capped (512 px, the KTX2 cap); these never were.
+- **ONE COPY ON THE GPU** (three-renderer.js `_hqTex`, EVERY device, off: `EW_NO_SHARED_SHEETS`): a repeat of a building sheet (`name|ru|rv`) was a
+  new Texture holding the first one's image, and three uploads one picture per `source`, so the foyer held one wall sheet eleven times: 55 sheets
+  at 1254 px for a dozen files. A repeat now shares the first one's `source` (what `Texture.clone()` does); repeat / offset stay per texture.
+  Foyer, phone profile: textures on the GPU 196 -> 142, the GPU process 1,329 MB -> 956 MB, the picture the same (proof pictures compared).
+  RULE: a second Texture of a file already loaded takes `.source`, never `.image`.
+- **THE PHONE DRAWS CLASSIC** (index.html THE WEBGPU SWITCH): on a phone (UA iPhone / iPod / Android Mobile) in Low mode AUTO = the classic
+  renderer: no probe, no three.webgpu.js. WebGPU became the default on 11-11 and reaches iPhones through Safari 26; every phone memory pass was
+  measured on the classic renderer, the one his phone last ran (10-27). A picked WebGPU (Settings, `?ew_gpu=webgpu`) is honoured; iPads and
+  desktops are untouched. UNPROVEN that WebGPU was part of his crash: it is the cautious choice until a phone run says otherwise.
+- **After, same profile:** title 539 files / 51 MB (18.6 MB of it the logo video), JS memory 192 MB; menu 71 files / 44 MB; Play into the foyer
+  104 files / 136 MB. The library loaded for a fight rests at about 400 MB of JS memory in this emulation (no compressed-texture support under
+  llvmpipe = every KTX2 sheet as RGBA; a phone's ASTC is about a quarter of that).
+- **STILL OPEN:** (1) the whole library still loads for every fight on a phone; a per-fight load needs a spell -> prop table that does not exist.
+  (2) The spells' copy of a prop keeps its normal + metal/roughness sheets (the rooms drop theirs, THE UNDRAWN MAPS). (3) The menu scene stays in
+  memory during the walk. (4) The title's logo video is 18.6 MB. Ask him WHERE it dies if it still does.
+- **DISASTER CITY DOES NOT FIT A PHONE (measured after the fixes, same profile, room ready in 420 s):** 746 files / 438 MB to enter, JS memory
+  1,416 MB, geometry 846 MB, textures 933 MB (1,365 on the GPU), 5.6 M triangles, 7,283 draw calls, 406 model files held (465 MB against the
+  phone's 320 MB budget, 1 file evicted). An iPhone 13 has 4 GB and Safari ends a tab near 1.5 GB. CONTINUE resumes in the saved room and the
+  menu's arrival warm warms that room, so a save standing in a big outdoor zone ends the tab on Play, whatever the boot does. Nothing in this
+  pass changes that: a phone needs its own tier for the plot-built zones (a smaller built radius, the far LODs only, no whole-room build).
+- Desktop check of ONE COPY ON THE GPU: the foyer on the "Desktop Chrome" profile, HEAD 2a47c0f, no page errors, the picture right.

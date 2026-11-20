@@ -12691,10 +12691,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* the props: every _WPN_MODELS row (catalogue rows included — the door leaves, the pen) */
         try { _doorFxLeafKey(); } catch (e) {}
         if (!_wpnGlbOff()) {
-            Object.keys(_WPN_MODELS).forEach(function (k) {
-                var e = _wpnLoad(k);   // a real request: never the background lane (an earlier bg warm is promoted)
-                if (e) checks.push(function () { return !e.loading; });
-            });
+            var _lowWarm = false; try { _lowWarm = !!window.EW_PERF_LOW; } catch (e) {}
+            if (!_lowWarm) {
+                Object.keys(_WPN_MODELS).forEach(function (k) {
+                    var e = _wpnLoad(k);   // a real request: never the background lane (an earlier bg warm is promoted)
+                    if (e) checks.push(function () { return !e.loading; });
+                });
+            } else {
+                /* THE PHONE BOOT (2026-11-20, mondo's iPhone 13 crashed while loading): asked for all at once, the ~115 prop
+                   files were in the air and being parsed together (each one's download, its four 2048 px sheets transcoded,
+                   then cut to the cap): 800 MB of JS memory at the peak on the phone profile, for a library that rests at a
+                   third of that. In Low mode the props load THREE AT A TIME: the same files, the same promise, the same
+                   progress count, a low peak. A cast that needs a prop before the warm reached it still loads it at once. */
+                var _lwKeys = Object.keys(_WPN_MODELS), _lwAt = 0, _lwLive = 0;
+                var _lwPump = function () {
+                    while (_lwLive < 3 && _lwAt < _lwKeys.length) {
+                        (function (k) {
+                            var e = null; try { e = _wpnLoad(k); } catch (ex) { e = null; }
+                            if (!e || !e.loading) return;
+                            _lwLive++;
+                            var t = setInterval(function () { if (e.loading) return; clearInterval(t); _lwLive--; _lwPump(); }, 50);
+                        })(_lwKeys[_lwAt++]);
+                    }
+                };
+                _lwKeys.forEach(function (k) { checks.push(function () { var e = _wpnCache[k]; return _wpnGlbOff() || (!!e && !e.loading); }); });
+                _lwPump();
+            }
         }
         /* the misc models the spells clone (ThreeRenderer.getMiscModelClone's cache) + the sedan */
         if (TR && typeof TR.warmMiscModels === 'function') {

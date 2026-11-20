@@ -1938,7 +1938,7 @@ const ThreeRenderer = (function () {
          (not uploaded yet, a 404, window.EW_NO_ASSET_MANIFEST) = every file exactly as before.
          window.EW_NO_OPT_ASSETS = the originals even where a sibling is listed. */
     var AS_CAP_BEST = 1536 * 1024 * 1024, AS_CAP_MAX = 4096 * 1024 * 1024, AS_CAP_SHARE = 0.6;
-    var AS_BASE = 'https://cdn.entropywars.net/', AS_MANIFEST_URL = AS_BASE + 'ASSET_MANIFEST.json', AS_MANIFEST_WAIT_MS = 2500;
+    var AS_BASE = 'https://cdn.entropywars.net/', AS_MANIFEST_URL = AS_BASE + 'ASSET_MANIFEST.json', AS_MANIFEST_WAIT_MS = 2500, AS_MANIFEST_WAIT_LOW_MS = 30000;
     var _asQuota = { persisted: false, quota: 0, usage: 0, asked: false }, _asMan = null, _asManP = null, _asManDone = false, _asOptLoads = 0, _asOptFalls = 0;
     /* the cap from the quota: persistent → min(4 GB, 60 % of the quota); else the best-effort 1.5 GB */
     function _asCapFor(q) {
@@ -2002,7 +2002,12 @@ const ThreeRenderer = (function () {
     function _asManReady() {
         if (_asManDone) return Promise.resolve(_asMan);
         var p = _asManLoad();
-        return Promise.race([p, new Promise(function (ok) { setTimeout(function () { ok(_asMan); }, AS_MANIFEST_WAIT_MS); })]);
+        /* THE PHONE BOOT (2026-11-20): without the manifest every model is asked for as its ORIGINAL file (a Meshy prop is
+           10-13 MB with four 2048 px PNG sheets; its optimized copy is 2 MB). A phone that is still parsing the game's
+           scripts misses the 2.5 s easily, and the spell library then weighed 605 MB in place of 265 MB. In Low mode the
+           manifest is waited for much longer (it still never holds a room for good: a failed fetch settles at once). */
+        var wait = AS_MANIFEST_WAIT_MS; try { if (typeof window !== 'undefined' && window.EW_PERF_LOW) wait = AS_MANIFEST_WAIT_LOW_MS; } catch (e) {}
+        return Promise.race([p, new Promise(function (ok) { setTimeout(function () { ok(_asMan); }, wait); })]);
     }
     function _asManEntry(url) { if (!_asMan) return null; var k = _asKey(url); return k != null ? (_asMan.files[k] || null) : null; }
     function _asMeshoptOk() {
@@ -2914,6 +2919,7 @@ const ThreeRenderer = (function () {
         function landed(img) {
             img = _ewWhiteGuard(u, img, tex);   // THE WHITE SHEETS (2026-11-03): a near-white sheet darkened once, before it is drawn
             tex.image = img; tex.needsUpdate = true;
+            try { if (typeof _lowSheetCap === 'function') _lowSheetCap(tex, _LOOSE_TEX_LOW_CAP); } catch (e) {}   // THE PHONE'S LOOSE SHEETS (2026-11-20): Low mode only
             if (onLoad) { try { onLoad(tex); } catch (e) { console.warn('[ThreeRenderer] texture onLoad threw', e); } }
             rec.settle(true);
         }
@@ -39663,9 +39669,35 @@ const ThreeRenderer = (function () {
 
     // Distance-friendly texture (linear + mipmaps + anisotropy) for misc models,
     // so the eye/road textures don't buzz the way NearestFilter would far away.
+    /* THE PHONE'S LOOSE SHEETS (2026-11-20, mondo's iPhone 13 crashed while loading): a prop's own sheet inside a GLB is cut
+       to the phone's cap when the file lands, but a sheet loaded as a loose picture was not: the menu's far pyramid alone
+       wore a 4096 x 4096 PNG, 85 MB of video memory on a phone screen 1,170 px wide. In Low mode a loose sheet wider than
+       `cap` is drawn down once, when it lands (the full-size picture is released). Desktop is untouched. */
+    var _MISC_TEX_LOW_CAP = 1024;     // a prop's or a monument's own sheet (_miscTex)
+    var _LOOSE_TEX_LOW_CAP = 2048;    // every other loose picture (textureLoader.load): only the 4096 px ones are touched
+    function _lowSheetCap(tex, cap) {
+        try {
+            if (typeof window === 'undefined' || !window.EW_PERF_LOW || window.EW_NO_LOW_SHEET_CAP || typeof document === 'undefined') return false;
+            var img = tex && tex.image;
+            if (!img || tex.isCompressedTexture || !(cap > 0)) return false;
+            var w = img.naturalWidth || img.width || 0, h = img.naturalHeight || img.height || 0;
+            if (Math.max(w, h) <= cap) return false;
+            var k = cap / Math.max(w, h), small = document.createElement('canvas');
+            small.width = Math.max(1, Math.round(w * k)); small.height = Math.max(1, Math.round(h * k));
+            var ctx = small.getContext('2d'); if (!ctx) return false;
+            /* a bitmap (THE BITMAPS) was flipped at its decode; a canvas is flipped by the texture's own flipY: turn it back */
+            var isBmp = false; try { isBmp = typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap; } catch (e) {}
+            if (isBmp && tex.flipY !== false) { ctx.translate(0, small.height); ctx.scale(1, -1); }
+            ctx.drawImage(img, 0, 0, small.width, small.height);
+            try { small.complete = true; small.naturalWidth = small.width; small.naturalHeight = small.height; small.src = img.src || tex._ew_src || ''; } catch (e) {}
+            tex.image = small; tex.needsUpdate = true;
+            try { if (typeof img.close === 'function') img.close(); else if ('src' in img) { img.onload = null; img.src = ''; } } catch (e) {}
+            return true;
+        } catch (e) { return false; }
+    }
     function _miscTex(url, onLoad) {
         if (_miscTexCache[url]) { if (onLoad) onLoad(_miscTexCache[url]); return _miscTexCache[url]; }
-        var t = textureLoader.load(url, function (tex) { _objectsLanded = true; if (onLoad) onLoad(tex); });
+        var t = textureLoader.load(url, function (tex) { _objectsLanded = true; _lowSheetCap(tex, _MISC_TEX_LOW_CAP); if (onLoad) onLoad(tex); });
         t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping;
         t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
         t.generateMipmaps = true;
@@ -69741,13 +69773,18 @@ const ThreeRenderer = (function () {
             t = new THREE.Texture();
             t._ew_src = base._ew_src;   // THE ONE PIXEL DENSITY: the same file as its base
             t._ew_alRec = base._ew_alRec; _alJoin(base._ew_alRec);
-            if (base.image) { t.image = base.image; t.needsUpdate = true; }
+            /* ONE COPY ON THE GPU (2026-11-20, the phone's memory): a repeat of a sheet used to be its own texture with its own
+               copy of the picture in video memory (the foyer held one wall sheet eleven times: 55 sheets, 460 MB, for a dozen
+               files). A repeat now shares the first one's `source`, as Texture.clone() does: three uploads the picture once
+               for every texture with the same source and sampling, and the repeat / offset stay each texture's own. */
+            if (base.source && !(typeof window !== 'undefined' && window.EW_NO_SHARED_SHEETS)) t.source = base.source;
+            if (base.image) { if (t.source !== base.source) t.image = base.image; t.needsUpdate = true; }
             else (base._ew_dependants = base._ew_dependants || []).push(t);
         } else {
             t = textureLoader.load(url, function (tx) {
                 if (_hq) _hq.dirty = true;
                 var deps = tx._ew_dependants || []; tx._ew_dependants = null;
-                for (var i = 0; i < deps.length; i++) { deps[i].image = tx.image; deps[i].needsUpdate = true; }
+                for (var i = 0; i < deps.length; i++) { if (deps[i].source !== tx.source) deps[i].image = tx.image; deps[i].needsUpdate = true; }
             });
             _hqTexByUrl[url] = t;
         }

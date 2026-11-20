@@ -4257,6 +4257,11 @@ function PartyBuilder(props) {
     let alive = true;
     const fx = window.ThreeVFXEffects;
     if (!fx || typeof fx.warmSpellLibrary !== 'function') { libOkRef.current = true; setLibProg({ d: 0, t: 0, ok: true }); return undefined; }
+    /* THE PHONE BOOT (2026-11-20, mondo's iPhone 13 crashed while loading): this component mounts at page load, under the
+       title (resetGame renders PARTY_BUILDER), so the warm below pulled the whole spell library (~190 models, ~265 MB, all
+       at once) before the first tap: 1.3 GB in the tab at the title on the phone profile. In Low mode nothing is warmed
+       here: a preview that needs the library asks for it (libWait below) and the battle's loading card loads it. */
+    if (window.EW_PERF_LOW) return undefined;
     fx.warmSpellLibrary((d, t) => { if (alive) setLibProg(prev => (prev.d === d && prev.t === t) ? prev : { d, t, ok: prev.ok }); })
       .then(() => { libOkRef.current = true; if (alive) setLibProg(prev => ({ d: prev.t, t: prev.t, ok: true })); });
     return () => { alive = false; };
