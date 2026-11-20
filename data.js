@@ -65888,7 +65888,7 @@ const DOOR_HQ = {
             sub: 'THE WARD · THE RANGE · PSYCHIC TRAINING · QUIET PLEASE',
             kind: 'box', site: 'prebuilt_dumb', part: 'dreamlab',
             shell: hqBunkerShell({ w: 96, d: 72, h: 4.2, wallH: 4.2, plate: { x: 43.2, z: -6.8, y: 2.8 },
-                                   floor: 'urban:TileGeneric2b', wall: 'urban:TileSubway1a', dado: 'urban:TileSubway1d', floorColor: 0xc0c4c8, wallColor: 0xc8ccd0, dadoColor: 0x9aa0a6,
+                                   floor: 'urban:TileGeneric1a', wall: 'urban:TileSubway1a', dado: 'urban:TileSubway1d', floorColor: 0xc0c4c8, wallColor: 0xc8ccd0, dadoColor: 0x9aa0a6,
                                    mood: { lamp: 0x80ffb0, glow: 0x60ff90, strip: 0xe0ffe8, light: 0xd8f4ff, ambient: 0.44 }, fog: { color: 0x0a1210, density: 0.02 } }),
             terrain: {
                 res: 0.4375,   // THE GRID FIT (2026-10-26): sampled every quarter square, so a tier's edge on a square line never smears into the square beside it
@@ -65897,7 +65897,7 @@ const DOOR_HQ = {
                    step. Off the ward: THE SCREEN'S DAIS up its flight at the end of its corridor (the stacks' screen, a dead
                    end), THE DREAM TOWER's side room (the tape, a dead end), and the service room south (the draught down to
                    the vats). Loops: ward ⇄ hall A ⇄ range ⇄ hall B ⇄ ward; ward ⇄ service room ⇄ hall C ⇄ booth ⇄ hall A ⇄ ward. */
-                floor: 'urban:TileGeneric2b', cliff: 'urban:TileSubway1a', path: 'urban:RubberNonSlip3a',
+                floor: 'urban:TileGeneric1a', cliff: 'urban:TileSubway1a', path: 'urban:RubberNonSlip3a',
                 noise: { amp: 0, scale: 10 }, crag: false,
                 gen: { kind: 'plan', look: 'walls', wallKey: 'urban:TileSubway1a', rim: 0, forceGrow: -0.6 },
                 features: [
