@@ -8047,6 +8047,49 @@ before any district takes them. 3. A walk-through by a player (stairs, the ladde
 - **Never:** another district's squares (the tool prints strays), the ways out (the tool's `WAY`), the layout json by hand (edit
   `docs/plans/world-zones/draw-dumb.js` under the tool row, with a board note).
 
+## THE D.U.M.B., WORLD POLISH (thread 8) — the plan on the squares (2026-11-20, owner side; NOTHING BUILT, waits mondo's OK)
+
+mondo 11-20: "Start a thread for the D.U.M.B.. Inspired by Portal, secret underground military bases, Area 51, secret psychic training, mad
+scientist labs, Lockheed Martin skunkworks, scientific and psychic research, etc." Inspirations for the look and the kind of rooms, nothing copied.
+
+- **THE PLAN** = `docs/plans/world-polish/thread8/draw-plan.js` (run it: it writes `plan-zone.png`, the whole room on its 84 x 84 squares, and
+  `plan-research.png`, district R square by square, and checks itself: no straight run over 8 squares in Research, every Research square and
+  deck reached). It is paper: the game reads none of it. Research is designed in full; the Ring, Level P3 and Command are block plans, each
+  drawn like Research before it is built. Sub-Level 7 stays as built (only its 14 m stair is rebuilt later as flights, landings and ledges).
+- **WHAT STANDS TODAY (checked):** the room is not one level floor: the Ring + Level P3 stand at 14 m, Research + Command at 3.5 m, Sub-Level 7
+  at 0. But every district is ONE level inside, every hall is 35 x 31 m of bare floor, the ring is 4 squares wide with legs of 40 squares.
+- **THE DEPTHS PROPOSED (1 level = 1.75 m):** Level P3 8 (the tram deck) and 6 / 5 under it (the motor pool's lower deck, the Hangar's floor) ·
+  the Ring 6 (level on purpose: a beam is straight), the Control Room 7, the Detector Hall's pit 3, the Beam Dump 5 · Command comes in at 2 and
+  climbs to 6 (the War Room's tiers, the Projection Booth), the shaft under the Vault Gantry -2 · Research 2 (the Labs, the White Rooms), 3 (the
+  Dream Wing), 5 (the Range's gallery), 0 (the vats, Disposal) · Sub-Level 7 0.
+- **THE WAYS:** the spine stays where Sub-Level 7 has it (the Platform, the Stair, the Hub, Corridor Five, Level -6), and three loops go round it:
+  the Ring (3 squares wide, the walk changes side over the beam pipe on a steel crossover every 6 squares), Research (five ways out: the spoke
+  stair, the back stair to Corridor Five, the White Rooms, a service stair west to the Beam Dump, Disposal's back door into the Stair's store
+  room), Command (the spoke stair, the Comms Room's stair, a private way east to the Detector Hall's pit, the Cellar's back door). The two tram
+  Gantries become bridges over the Ring with a stair down.
+- **THE ROOMS FOR HIS THEMES:** test chambers = Sub-Level 7's four, as built · psychic training = Research's Dream Wing (the Ward, the Tanks, the
+  Range with a gallery and a booth, two card rooms) · mad science = the Labs (bio lab, specimens, autopsy theatre behind a window, the Vat Hall
+  walked on a gantry over the vats, Disposal) · the skunkworks = THE HANGAR on Level P3's west half, under Hangar 18's lift (a NEW hall: the
+  motor pool moves to the east half with the freight lift, and the HQ garage's secret ramp would move with it) · the military base = Level P3
+  (checkpoint as a blast baffle, the two-deck motor pool) and Command.
+- **THE LISTS:** read in full by five readers, `docs/plans/world-polish/thread8/FITS_THE_DUMB.md` (120 KB: every fitting key by use, the texture
+  sheets, the decals). The short of it: EVERYTHING THAT FITS HAS A CATALOGUE ROW ALREADY; nothing unwired on R2 fits. The stock nobody has
+  placed in the D.U.M.B.: `ufo` (a black triangle), `saucer_big`, `fighter_jet`, `helicopter`, `space_shuttle`, `aircraft_tug`,
+  `jet_engine_stand`, `rocket_engine`, `nacelle`, `hullplate`, `missile_cart`, `military_jeep`, `military_tank`, `boom_gate`, `chain_fence` ·
+  `fume_hood`, `lab_glassware`, `microscope`, `specimen_shelf`, `meshy_molten_cryo_tube`, `autopsy_table`, `hazmat_suit`, `radiation_drum`,
+  `iso_tank`, `eeg_rack`, `egg_chair`, `time_machine`, `meshy_tesla_coil` · `psx_tunnel_mp_1_*` (round tunnel pieces), `psx_catwalk_1`,
+  `psx_window_2_double`, `psx_bars_metal_1`, `manhole_ladder`, `strobe_lamp`, `cage_lamp`, `high_bay_lamp`, the keycards levels 1 to 4 ·
+  `map_table`, `radio_console`, `mixing_console`, `psx_monitoring_screen_mp_1`, `holo_projector`, `radar_antenna` · `rail_section`,
+  `buffer_stop`, `tunnel_signal`, `signal_gantry`, `metro_car`. Sheets for white rooms: `calm_tiles`, `urban:MetroWhiteTile`,
+  `urban:TileGeneric*`, `urban:MetalPanelPainted*`; steel: `urban:MetalGrating*`, `urban:MetalWarningStripe1/2`.
+  WARNING: `ZONE_LOOKS.zones.dumb` (the retexture thread's row) turns `metal`, `gunmetal`, `rocks_5`, `urban:PlasterWallPainted1a` and
+  `urban:MetalCorrugatedPainted2a` into horror sheets and adds stains at load: a clean white room must wear other keys.
+- **NEEDS A MODEL (found nowhere; shown to mondo 11-20):** a tarp / a tarp-covered aircraft · a black stealth aircraft (flying wing) · a blast
+  door (big, sliding or round with a wheel) · a beam-pipe magnet + a particle detector barrel · a Zener card deck, a Faraday cage, an EEG cap ·
+  a lab animal cage · a curved situation board + a round war-room table · a base tram car (the subway cars stand in) · a freight lift car with a
+  gate · a caged shaft ladder. NO LONGER NEEDED from the 11-16 list (they exist now): the jeep (`military_jeep`), the boom gate (`boom_gate`),
+  the alarm beacon (`strobe_lamp`), the vat (`meshy_molten_cryo_tube`, one model).
+
 ## THE SEWERS ON PLOTS — the dungeon under the city, first build (2026-11-16, second side)
 
 mondo 11-16 on plot plan 3 (`docs/plans/world-zones/sewers_plot_plan_3.png`): "that's good, and can we also work on a way to make waterfalls,
