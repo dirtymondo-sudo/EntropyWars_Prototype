@@ -90,14 +90,14 @@ mondo set the first two himself (11-20): "after the woods do Katana Island with 
 1. **Thread 6, The Woods.** His order. Think horror game, Silent Hill, Blair Witch.
 2. **Thread 21, Katana Island.** His order. The Volcano Island remade as feudal Japan.
 
-After those two, proposed (the numbers below are one later now):
+After those two, proposed, in this order:
 
-2. **Thread 5, The Mountains** (without Mount Shasta). It has the height already; it lacks winding ways and thin trails.
-3. **Thread 17, The Estate**, then **thread 12, Leylines**, then **thread 13, Antarctica**: the rest of the surface.
-4. **Thread 8, The D.U.M.B.** (the worst-looking zone in the pictures), then the underground: threads 7, 9, 10.
-5. **Thread 11, Heaven + Hell + Vatican**, then threads 14, 15, 16, 18.
-6. **Thread 2, Disaster City (cramped)** shares no tool with any of these. It can run beside them whenever he says.
-7. **Thread 20, The Bayside Mall:** its own thread, beside thread 2, not inside it. It starts AFTER the One Beach thread is merged (that
+- **Thread 5, The Mountains** (without Mount Shasta). It has the height already; it lacks winding ways and thin trails.
+- **Thread 17, The Estate**, then **thread 12, Leylines**, then **thread 13, Antarctica**: the rest of the surface.
+- **Thread 8, The D.U.M.B.** (the worst-looking zone in the pictures), then the underground: threads 7, 9, 10.
+- **Thread 11, Heaven + Hell + Vatican**, then threads 14, 15, 16, 18.
+- **Thread 2, Disaster City (cramped)** shares no tool with any of these. It can run beside them whenever he says.
+- **Thread 20, The Bayside Mall:** its own thread, beside thread 2, not inside it. It starts AFTER the One Beach thread is merged (that
    thread is reshaping the ground the mall stands on). It and thread 2 share the city's tool: not both in Bayside at the same time.
 
 ### 4. HOW A THREAD RUNS
