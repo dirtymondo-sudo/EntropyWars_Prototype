@@ -130,6 +130,26 @@ After those two, proposed, in this order:
   6. Before its last PR: checks its rooms against THE CHECK in section A and writes the answers in its row here. Sets the row's state. Frees
      its board rows. Reports. Stops.
 
+**HOW A BUILD THREAD USES A PLAN (11-20; the plans are `docs/plans/world-polish/plans/`, the tool is `docs/plans/world-polish/draw-plan.js`, the format is `plans/README.md`):**
+
+- **It starts from its zone's APPROVED plan**, `plans/<zone>.js` (one file a room, data only: plots with district and level, every way square by
+  square, ramps, ledges, landmarks, lookouts, the places level on purpose, the buildings with an outside and an inside). A plan with no `approved`
+  line is a proposal: the thread shows mondo its picture and its grid of levels in chat (step 3 above) and builds nothing until he says so. Once
+  he does, the thread writes his words and the date in `approved`.
+- **It keeps the plan passing on every change:** `node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/<zone>.js` after each
+  edit, and before each PR. The plan changes FIRST, the room second: what stands in the room is what the plan says, square for square. A FAIL is
+  fixed in the plan or in section A's table at the top of the tool (mondo's numbers, one line each), never worked round. WARNINGS are the variety
+  rule: read them, answer each in the report.
+- **It builds in the room's own frame** (`build: { frame: 'room', file }` in the plan): a way or a piece that crosses a plot line goes in a
+  room-design file, never in a home-frame district file (section F, thread 3's lesson 1).
+- **It prints the baked room's heights before any browser run** (after the bake, through `load-data.js`: `hqTerrainFeet` on the plan's squares,
+  or the tool's own seam check) and compares them with the plan's levels. A room that bakes flat, cut apart or off by a level is fixed there, on
+  paper, before a probe is spent on it.
+- **It runs every probe with `--flags=EW_HQ_NO_ENCOUNTER`** (an enemy near the spawn starts a fight and ruins every picture). `shoot.js` passes
+  it by default; `playtest_city.js` and a thread's own probe take it as an argument. Probes launch through `probe-fast.js` (CLAUDE.md RULE #1c).
+- A thread does not read `MODEL_LIST.md` to redo the height plan: the plan is the ground and the ways. It reads the lists (step 1b) to DRESS it
+  and to pick each building's pieces, and asks for a model where a planned building or landmark has none.
+
 ---
 
 ## A. THE STANDARD IN NUMBERS (PROPOSALS: mondo changes any of them with one line)
@@ -560,7 +580,7 @@ places are EMPTY and UNREADABLE: nothing to steer by. That is the standard's sec
   3. Opening more squares (track to 4, two side trails, wider glades) made it WORSE: with one plot of width there are few pines left and it reads
      as bare snow. A room one plot wide cannot be fixed inside its plots: grow the room. (The Woods' Clearing room is such a row.)
   4. Probes: an enemy near the spawn starts a fight and ruins every picture: run with `--flags=EW_HQ_NO_ENCOUNTER` (PLAYTEST_NOTES "A PROBE THAT
-     NEVER GETS READY"). `shoot.js` does not pass it yet.
+     NEVER GETS READY"). `shoot.js` passes it by default since 11-20.
 - **Thread 4 (the Village):** the houses against the castle wall are the tight spot. The castle's blurry wall picture is the castle thread's.
 - **Thread 6 (The Woods, the zone):** the trail district (the Ritual Ground's link plots) is the long straight road mondo does not want. The
   Redwood Trail and the Ritual Ground looked good in the pictures; by the standard they are still checked for winding ways and thin trails.
