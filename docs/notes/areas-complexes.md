@@ -13138,3 +13138,11 @@ mondo 11-20: "Okay go ahead and do the next pass" (the one named to him: relief 
   row, the pool below). LEARNT: on a terrace's rock face a `fall` needs `y0` / `y1` typed and `out: 5`; left to itself the sheet stopped half way down behind the
   leaning rock. `hw_crop*` are grey lumps, not rice (NEEDS A MODEL: a rice plant); `hw_scarecrow` is the Halloween one in a black cloak.
 - **NOT DONE:** no new thin trails this pass; night look; frame rate; not walked as a player.
+- **THE POLISH PASS, NOTHING STANDS IN A WAY (11-20, mondo: "do another polish pass. make sure things are placed logically").** (1) bake-woods.js step 5d moves
+  every old piece the plan's trail runs over onto the nearest level open square beside it, else into a pocket (10 pieces; the small life and the gate stay).
+  (2) THE FENCE LINE is its farm yard again: an open level yard (squares 38..46 x 51..57), the trail ends on it, the gate leaves it (the trail had been drawn
+  through the pumpkin patch and the kennel). (3) The way north to Came A Lot from Deep woods, west is a thin trail (its link is one square wide): the wolf's
+  den lies west of it, the hunting stand east. (4) The Campfire's ramp moved off its grill and torch. (5) THE TRAILS STAY CLEAR: `terrain.keepClear`
+  (data.js the scatter rows: one byte a square) keeps every scattered log, stump and bush off a trail square; the tool writes it for a designed room.
+  (6) Ten trail lamps at the turns of the new ways, each in a pocket beside the trail (`C-room.js`, `P(key, x, y, { pocket: true })`). Seen in the probe:
+  the yard, the den, the ranger station, the camp, the Dead End.

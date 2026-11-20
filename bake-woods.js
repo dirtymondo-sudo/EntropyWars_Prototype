@@ -508,6 +508,18 @@ STAND.forEach(S => {
             const rp = PLN.RAMP[x + ',' + y]; if (rp) RP[x + ',' + y] = { d: rp, g: 0.5 }; }
         (S.design.extra || (() => 0))({ c2, LV, RP, des });
         /* the pieces that stood on a square the plan gives back to the trees: a square beside open, level ground is opened for them (a pocket off the trail); the rest go */
+        /* NOTHING STANDS IN A WAY (the polish pass, mondo 11-20: "make sure things are placed logically"): a piece of the old layout that the plan's trail now
+           runs over steps off it, onto the nearest level open square beside the trail (within three squares), else into a pocket opened in the trees there.
+           The small life (a butterfly, a bee) and the gate stay */
+        const STAY = /butterfly|morpho|swallowtail|monarch|moth|bee$|bumblebee|ladybug|grasshopper|dragonfly|^ant$|braced_gate/, onWay = (x, y) => des(x, y) && 'pPqQdDc'.indexOf(PLN.T[y][x]) >= 0 || (des(x, y) && c2[y][x] === 'p');
+        let stepped = 0; const busy = {}; R.props.forEach(p => { const q = sqOf(p.x, p.z); busy[q] = (busy[q] || 0) + 1; });
+        R.props.concat(R.npc).forEach(p => { const [x, y] = sqOf(p.x, p.z); if (!onWay(x, y) || (p.key && STAY.test(p.key))) return; let best = null;
+            for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const X = x + dx, Y = y + dy; if (!des(X, Y) || onWay(X, Y) || RP[X + ',' + Y]) continue; const open = c2[Y][X] !== 't';
+                if (!open) { if (Math.abs(dx) + Math.abs(dy) > 2) continue; let lv = null; for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const U = X + ax, V = Y + ay; if (des(U, V) && c2[V][U] !== 't' && !RP[U + ',' + V] && Math.abs(LV[V][U] - LV[y][x]) < 0.6) lv = LV[V][U]; } if (lv == null) continue; }
+                else if (Math.abs(LV[Y][X] - LV[y][x]) > 0.6) continue;
+                const cost = Math.abs(dx) + Math.abs(dy) + (open ? 0 : 1.5) + (busy[X + ',' + Y] || 0) * 0.8; if (!best || cost < best[0]) best = [cost, X, Y, open]; }
+            if (!best) return; const [, X, Y, open] = best; if (!open) { c2[Y][X] = 'g'; LV[Y][X] = LV[y][x]; }
+            p.x = r2(p.x + (X - x) * C); p.z = r2(p.z + (Y - y) * C); busy[X + ',' + Y] = (busy[X + ',' + Y] || 0) + 1; stepped++; });
         const rampAt = (x, y) => !!RP[x + ',' + y], inTrees = p => { const q = sqOf(p.x, p.z); return des(q[0], q[1]) && c2[q[1]][q[0]] === 't'; }, pieces = R.props.filter(inTrees).concat(R.npc.filter(inTrees));
         const flatBy = (x, y) => { let lv = null; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (des(X, Y) && c2[Y][X] !== 't' && !rampAt(X, Y) && (lv == null || LV[Y][X] < lv)) lv = LV[Y][X]; } return lv; };
         let pockets = 0; const openAt = (x, y, lv) => { c2[y][x] = 'g'; LV[y][x] = lv; pockets++; };
@@ -535,10 +547,13 @@ STAND.forEach(S => {
           if (parts.length) R.features.push({ k: 'arch', id: 'woods:ledges', x: 0, z: 0, y: 0, parts }); }
         if (S.design.dress) { const n0 = R.props.length;
             S.design.dress({ gx: R.gx, gz: R.gz, h: (x, y) => LV[y][x] * LEVEL, feat: f => R.features.push(f), box: (x, y, z, w, h, d, key, tint, o) => Object.assign({ s: 'box', p: [r2(x), r2(y), r2(z)], size: [r2(w), r2(h), r2(d)], key, tint }, o || {}),
-                P: (key, sx, sy, o) => { if (!CAT[key]) throw new Error('C-room.js: no ' + key + ' in the catalogue'); if (!openD(sx, sy) || RP[sx + ',' + sy]) throw new Error('C-room.js: ' + key + ' on a square that is not open, level ground: ' + sx + ',' + sy);
-                    o = Object.assign({}, o); const px = r2(R.gcx(sx) + (o.dx || 0)), pz = r2(R.gcz(sy) + (o.dz || 0)); delete o.dx; delete o.dz; R.props.push(Object.assign({ key, x: px, z: pz }, o)); } });
+                P: (key, sx, sy, o) => { if (!CAT[key]) throw new Error('C-room.js: no ' + key + ' in the catalogue'); if (o && o.pocket) { let best = null; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const X = sx + dx, Y = sy + dy; if (!des(X, Y) || c2[Y][X] !== 't') continue; const lv = flatBy(X, Y); if (lv == null) continue; const d = Math.abs(dx) + Math.abs(dy); if (!best || d < best[0]) best = [d, X, Y, lv]; }
+                        if (!best) throw new Error('C-room.js: no pocket near ' + sx + ',' + sy); sx = best[1]; sy = best[2]; c2[sy][sx] = 'g'; LV[sy][sx] = best[3]; }   // `pocket: true`: a square in the trees beside the way, opened for the piece
+                    if (!openD(sx, sy) || RP[sx + ',' + sy]) throw new Error('C-room.js: ' + key + ' on a square that is not open, level ground: ' + sx + ',' + sy);
+                    o = Object.assign({}, o); const px = r2(R.gcx(sx) + (o.dx || 0)), pz = r2(R.gcz(sy) + (o.dz || 0)); delete o.dx; delete o.dz; delete o.pocket; R.props.push(Object.assign({ key, x: px, z: pz }, o)); } });
             console.log(S.id + ' C-room.js: ' + (R.props.length - n0) + ' pieces'); }
-        DES = { des, openD, gndOld, corner: (cx, cy, qx, qy) => openD(cx, cy) ? hAt(cx, cy, qx ? 1 : -1, qy ? 1 : -1) : des(cx, cy) ? CH[cy + qy][cx + qx] : gndOld(R.gx(cx + qx), R.gz(cy + qy)), pockets, gone: gone.map(p => p.key + '@' + sqOf(p.x, p.z).join(',')), LV, RP }; }
+        const keep = new Uint8Array(Wn * Dn); for (let y = 0; y < Dn; y++) for (let x = 0; x < Wn; x++) if (des(x, y) && (c2[y][x] === 'p' || RP[x + ',' + y])) keep[y * Wn + x] = 1;
+        DES = { keep, stepped, des, openD, gndOld, corner: (cx, cy, qx, qy) => openD(cx, cy) ? hAt(cx, cy, qx ? 1 : -1, qy ? 1 : -1) : des(cx, cy) ? CH[cy + qy][cx + qx] : gndOld(R.gx(cx + qx), R.gz(cy + qy)), pockets, gone: gone.map(p => p.key + '@' + sqOf(p.x, p.z).join(',')), LV, RP }; }
     /* the tool's decks (over a run of bridge squares) stop at the room's wall */
     R.features.forEach(f => { if (f.k !== 'deck') return; ['x0', 'x1'].forEach(k => { f[k] = Math.max(-R.HX, Math.min(R.HX, f[k])); }); ['z0', 'z1'].forEach(k => { f[k] = Math.max(-R.HZ, Math.min(R.HZ, f[k])); }); });
     /* 6. nobody is cut off: every open pocket the legs miss gets its own one-square path to the nearest reached square (the home's rule), then every plot must be reached */
@@ -563,7 +578,7 @@ STAND.forEach(S => {
     const dz0 = S.home ? R.order[0].dz : 0, gnd = S.home ? (x, z) => ground(x, z - dz0) : R.levels(LEVEL);
     const slope2 = Buffer.alloc(Wn * Dn * 8);
     for (let cy = 0; cy < Dn; cy++) for (let cx = 0; cx < Wn; cx++) { const o = (cy * Wn + cx) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope2.writeInt16LE(Math.round((DES ? DES.corner(cx, cy, q[0], q[1]) : gnd(R.gx(cx + q[0]), R.gz(cy + q[1]))) * 100), o + k * 2)); }
-    if (DES) { console.log(S.id + ' THE ROOM DESIGN: ' + DES.pockets + ' pocket square(s) opened for pieces, ' + DES.gone.length + ' piece(s) gone: ' + DES.gone.join(' ')); }
+    if (DES) { console.log(S.id + ' THE ROOM DESIGN: ' + DES.stepped + ' piece(s) stepped off a trail, ' + DES.pockets + ' pocket square(s) opened for pieces, ' + DES.gone.length + ' piece(s) gone: ' + DES.gone.join(' ')); }
     const spaces = R.spaces(openR);
     const PAL2 = ['ice', 'rocks_5', 'dirt_2'], paint2 = new Uint8Array(Wn * Dn), G2 = {};
     ORDER.forEach(id => { const k = DISTRICTS[id].ground; if (k && S.letters.indexOf(id) >= 0) { let i = PAL2.indexOf(k); if (i < 0) { PAL2.push(k); i = PAL2.length - 1; } G2[id] = i + 1; } });
@@ -591,7 +606,7 @@ STAND.forEach(S => {
         for (let cy = 0; cy < Dn; cy++) for (let cx = 0; cx < Wn; cx++) { if (c2[cy][cx] !== 't') continue; let h = Math.imul(cx * 73856093 ^ cy * 19349663, 2654435761) >>> 0; h ^= h >>> 15; if ((h % 100) < 34) paint2[cy * Wn + cx] = 3; }
         feats.push({ k: 'scatter', key: 'fallen_log', n: 46, seed: 71, r0: 1.9 }, { k: 'scatter', key: 'stump', n: 60, seed: 72 }, { k: 'scatter', key: 'psxg_dead_bush_1', n: 90, seed: 73 }, { k: 'scatter', key: 'dead_snag', n: 26, seed: 74, r0: 1.9 }); }
     const spM = { x: R.gx(spSq[0]), z: R.gcz(spSq[1]) };
-    ROOMS_OUT.push({ S, R, feats: spaces.concat(feats.map(strip)), doors: doorsOut, ways, slope: slope2, PAL: PAL2, paint: paint2, zonesT, zonesA, spM,
+    ROOMS_OUT.push({ keep: DES ? DES.keep : null, S, R, feats: spaces.concat(feats.map(strip)), doors: doorsOut, ways, slope: slope2, PAL: PAL2, paint: paint2, zonesT, zonesA, spM,
         count: { plots: S.list.length, box: R.cols + 'x' + R.rows, legsBack: reverted, legsKept: kept, legsNew: laid, tied, treesCut: cutTrees, spaces: spaces.length, props: R.props.length, features: feats.length, doors: doorsOut.length, natives: R.npc.length } });
 });
 if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer stand the same way; each is answered in the notes, "ONE WORLD, THE TEST SLICE"):\n  ' + STRAYS.join('\n  '));
@@ -619,6 +634,7 @@ ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ;
     L.push("                noise: { amp: 0.12, scale: 8 },");
     if (S.world) L.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */\n                backdrop: false, edges: { world: true, reach: 440, " + (S.design ? "deep: true, tint: [0.5, 0.5, 0.52], " : "") + "ways: " + J(o.ways) + " },");
     L.push("                slope: { cells: { res: " + C + ", x0: " + R.gx(0) + ", z0: " + R.gz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + o.slope.toString('base64') + "' } },");
+    if (o.keep) L.push("                /* THE TRAILS STAY CLEAR: no scattered piece on a trail square (data.js the scatter rows) */\n                keepClear: { res: " + C + ", x0: " + R.gx(0) + ", z0: " + R.gz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + Buffer.from(o.keep).toString('base64') + "' },");
     L.push("                paint: { pal: " + J(o.PAL) + ", t: 'u8', res: " + C + ", x0: " + R.gcx(0) + ", z0: " + R.gcz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + Buffer.from(o.paint).toString('base64') + "' },");
     L.push("                gen: { kind: 'plan', look: 'trees', seed: 36, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: " + (S.design ? 24.5 : 5.25) + ", maxTrees: " + Math.round((S.design ? 5400 : 2400) * R.cols * R.rows / 36) + ", treeH: [5.5, 8.5], kinds: ['tree_53', 'tree_55', 'tree_52', 'tree_53', 'tree_5', 'tree_55'], zones: " + J(o.zonesT) + " },");
     L.push("                features: [");

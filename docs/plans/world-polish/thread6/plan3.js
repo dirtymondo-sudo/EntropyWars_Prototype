@@ -61,8 +61,8 @@ thin([[37, 5, 2], [35, 5, 2]]); thin([[35, 5, 2], [35, 2, 3], [32, 2, 4]]);
 /* THE RANGER STATION stands where it stood (a walk-in building): its yard is level 3; a shelf west of the knoll is the hop down to it */
 area(17, 16, 23, 21, 'g', 3); area(20, 18, 22, 19, 'k', 3); label(21, 17.4, 'RANGER STATION', 'mark'); area(24, 19, 24, 20, 'g', 4);
 main([[19, 14, 3], [13, 14, 3]]);
-main([[14, 14, 3], [14, 19, 2], [8, 19, 1]]); main([[7, 19, 1], [7, 22, 1]]); main([[8, 19, 1], [4, 19, 1], [4, 14, 1]]);
-label(2.5, 17.3, 'wolf den', 'note'); label(8, 16.6, 'stand', 'note');
+main([[14, 14, 3], [14, 19, 2], [8, 19, 1]]); main([[7, 19, 1], [7, 22, 1]]); thin([[6, 17, 1], [6, 14, 1], [3, 14, 1], [3, 13, 1]]);   /* the way north to Came A Lot is a thin trail (its link is one square wide); the wolf's den lies west of it, off the trail */
+label(3.5, 18.6, 'wolf den', 'note'); label(8, 16.6, 'stand', 'note');
 /* THE TRAIL NORTH (to the Redwood Trail) */
 main([[18, 1, 2], [18, 5, 2], [13, 5, 2], [13, 10, 3], [16, 10, 3], [16, 13, 3]]);
 /* THE BLAIR WITCH LOOP (thin): Trail West -> the Burned House -> the Stick Men -> the Campfire; a fork climbs back to the Old Tree */
@@ -77,10 +77,12 @@ thin([[23, 32, 2], [23, 34, 2], [27, 34, 2]]); label(27, 35, 'stone pile', 'note
 /* the Old Tree's south ledges: knoll -> shelf -> the Stick Men's trail (a loop that returns you to the landmark) */
 area(28, 21, 29, 22, 'g', 4); thin([[28, 23, 3], [28, 24, 3]]); set(28, 25, 'q', 3);
 /* SOUTH: THE CAMPFIRE (2), open and level */
-main([[39, 21, 3], [39, 24, 3], [44, 24, 3], [44, 29, 2]]); area(38, 28, 46, 34, 'g', 2); label(42, 31, 'THE CAMPFIRE', 'place'); label(42, 32.2, 'level, a board fits', 'note');
+main([[39, 21, 3], [39, 24, 3], [45, 24, 2], [45, 27, 2]]); area(38, 28, 46, 34, 'g', 2); label(42, 31, 'THE CAMPFIRE', 'place'); label(42, 32.2, 'level, a board fits', 'note');
 area(38, 26, 40, 27, 'g', 3);
 /* east under the bluff, round by the Dead End, back west: the way UP from the Estate; the ledge by the Campfire is the way DOWN */
-main([[46, 31, 2], [52, 31, 2], [52, 36, 1], [57, 36, 1], [57, 41, 1], [51, 41, 1], [51, 45, 1], [45, 45, 1], [45, 50, 0], [42, 50, 0], [42, 58, 0]]);
+main([[46, 31, 2], [52, 31, 2], [52, 36, 1], [57, 36, 1], [57, 41, 1], [51, 41, 1], [51, 45, 1], [45, 45, 1], [45, 50, 0]]);
+/* THE FENCE LINE (0): the farm yard that stands there is the open place (level, a board fits); the trail ends on it and the gate leaves it */
+area(38, 51, 46, 57, 'g', 0); label(42, 54, 'THE FENCE LINE', 'place'); label(42, 55.2, 'the yard · level', 'note'); main([[42, 57, 0], [42, 58, 0]]);
 area(54, 28, 58, 32, 'g', 2); area(55, 29, 57, 30, 'k', 2); label(56, 28.6, 'pump shed + tank', 'note'); label(56, 31.8, 'rust, chain-link', 'note');
 for (let x = 48; x <= 59; x++) set(x, 24, 'r', 4); label(54, 24.5, 'THE BLUFF (a rock face, 2 levels)', 'note');
 area(53, 43, 59, 45, 'c', 1); label(56, 46.2, 'a road that just ends', 'note');
