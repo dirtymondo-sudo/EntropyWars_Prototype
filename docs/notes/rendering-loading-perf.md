@@ -3570,3 +3570,17 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   colours (opaque pixels 7,710 vs 7,818, top / bottom 2,666 / 5,044 vs 2,675 / 5,143, mean colour 138,128,129 vs 138,127,128;
   the difference is the animation between the two shots). The stall itself only shows on Firefox with WebGPU busy: his next
   profile should have no `PWebGL::Msg_ReadPixels` under `_ptLiveTick`.
+- HIS 03:40 BATTLE F3 + FIFTH PROFILE (11-20): (a) THE BUILD LINE reads "?v=20261120-oneair-02-cors · renderer code 11-20
+  builds-named", the same as his 03:01 F3: that tab never got THE PORTRAITS STEP ASIDE (merged 03:09) nor THE PORTRAIT WITHOUT
+  THE WAIT (03:2x); main's page token is `20261120dist-cors` by now. Either the tab was not hard-reloaded or Render is serving
+  an old page; nothing about the portrait fixes can be read from it. (b) The profile (200 s) holds only the parent process and
+  the GPU process; the game tab's own thread is NOT in it, so no game JS can be read. (c) What the GPU process's CanvasRenderer
+  thread shows (57 % busy; share of its CPU): `__bzero` 12.2 %, `-[AGXBuffer initWithDevice…]` 8.3 %, buffer `dealloc` 3.8 %,
+  `__mmap` 3.9 %, `madvise` / `munmap` ~2.7 %, `copyFromBuffer:…toBuffer:` 1.6 % = about 30 % of that thread CREATING, ZEROING,
+  COPYING FROM AND FREEING small Metal buffers. Reading: every `GPUQueue.writeBuffer` (a uniform group's write) becomes a fresh
+  staging buffer in Firefox's wgpu (allocate, zero, blit, free). The fight refreshes "whole groups 908" objects a frame (the
+  one-piece ceiling / wall groups a fade demoted) on top of the ~200 classic draws, each a write when the camera moves. So the
+  count of uniform writes a frame is a GPU-side cost on Firefox, not only a JS one ("One write" already merges the ranges of
+  one buffer). The lever: fewer objects refreshed a frame in a fight (the 1,400 one-piece "may fade" groups, the demoted ones),
+  not a cheaper write. `PWebGL::Msg_ReadPixels` (the old portrait copy) is 0.8 % of that thread: cheap for the card, the cost
+  was the main thread waiting for it.
