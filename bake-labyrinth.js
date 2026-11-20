@@ -226,9 +226,9 @@ A.culverts = (letter) => { letter = letter || 'W'; const k = { lamps: 0, mouths:
     /* the weirs: a concrete board across the lip, a sluice frame over it */
     WEIRS.forEach(w => { if (!isW(w.x, w.y)) return; const cx = gcx(w.x) + w.dx * (C / 2 - 0.15), cz = gcz(w.y) + w.dy * (C / 2 - 0.15), yf = hAt(w.x, w.y), ns = w.dx === 0, span = w.big ? 2.8 : 2.4;
         A.box(cx, yf - 0.45, cz, ns ? span : 0.3, 0.55, ns ? 0.3 : span, 'urban:ConcreteStriped1e', 0x7a7a72);
-        for (const s of [-1, 1]) A.box(cx + (ns ? s * span / 2 : 0), yf - 0.4, cz + (ns ? 0 : s * span / 2), 0.18, 2.4, 0.18, RUST, 0x4a3020);
-        A.box(cx, yf + 1.95, cz, ns ? span + 0.2 : 0.2, 0.2, ns ? 0.2 : span + 0.2, RUST, 0x4a3020);
-        A.box(cx, yf + 1.2, cz, ns ? span - 0.2 : 0.06, 0.9, ns ? 0.06 : span - 0.2, RUST, 0x5a3a26);   // the gate, wound up
+        for (const s of [-1, 1]) A.box(cx + (ns ? s * span / 2 : 0), yf - 0.4, cz + (ns ? 0 : s * span / 2), 0.12, 2.3, 0.12, null, 0x2c2e30);
+        A.box(cx, yf + 1.85, cz, ns ? span + 0.1 : 0.14, 0.14, ns ? 0.14 : span + 0.1, null, 0x2c2e30);
+        A.box(cx, yf + 1.3, cz, ns ? span - 0.2 : 0.05, 0.45, ns ? 0.05 : span - 0.2, 'urban:MetalCorrugatedPainted2a', 0x4a4a46);   // the gate, wound up
         A.cyl(cx, yf + 2.05, cz, 0.05, 0.5, RUST, 0x2a2a2a);
         k.weirs++; });
     /* lamps: a cage lamp on a wall face every few squares of passage, the brick round it lit (drawn); a dead one has a rat under it */
