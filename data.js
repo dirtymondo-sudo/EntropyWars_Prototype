@@ -97231,6 +97231,9 @@ HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_kingdom = { list: HQ_AREA_ENCOUNTERS.si
 const HQ_NPC_PLACES = {
     /* Disaster City: its people are the residents; of the room's placed spots only the board's races stay */
     site_prebuilt_downtown_streets: ['starfish', 'chef', 'hippie'].map(r => r + ' keep'),
+    /* ── THE BAYSIDE MALL (mondo 11-20: "lets put the influencer, skater, e-girl, Florida man, janitor, cop, etc in the mall") ── */
+    site_prebuilt_bayside_mall: ['influencer stay', 'influencer', 'skater m', 'skater f', 'streamer f stay', 'florida man', 'janitor stay', 'police officer stay',
+        'popstar', 'bunny girl', 'clown m', 'chef stay', 'hacker', 'gangster', 'conspiracy theorist', 'streamer m'],
     /* ── THE WOODS ── */
     site_prebuilt_fairy_forest_ow_redwood: ['bigfoot @T:Old Trees >T', 'cameraman @T:Meadow >T', 'wendigo @T:Falls >T night', 'mothman @T:Shelf >T night'],
     site_prebuilt_fairy_forest_ow_clearing: ['mothman @C:Old Tree >C night', 'werewolf @C:Deep woods >C night', 'cameraman @C:Campfire >C day', 'goatman @C:Stick Men >C night',
