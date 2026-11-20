@@ -13798,3 +13798,41 @@ stalactite; the defaults are the old calm keys, so a new district must set its o
 floor `hz_stone_02` (dark cracked; `hz_stone_08` was tried first: too pale and sandy), ledge faces + the hot rock `hz_stone_10`, boulders
 `hz_stone_02`, the Needle `hz_stone_07`, mud in the pits and the camp `hz_floor_03`, mineral stone in the crystal pockets `hz_stone_06`. Rock
 tints are near white so a sheet's own colour shows. The room is in ZONE_LOOKS.cavern for its stains only (byRoom: drips, dirt, grime, a little blood).
+
+## THE UNDERGROUND, ONE ROOM A DISTRICT: THE LONG TUNNEL (2026-11-20, world polish threads 7 + 9 + 10; the thread for the Long + West Tunnels)
+
+mondo 11-20: "This should be the most dungeon and labyrinth like ... we need victory road. labyrinth, height diffs, cliffs, drops waterfalls,
+underground horror like the descent movie"; the square plans approved ("Yes this is good, go ahead and start individual threads").
+- **THE TOOL** `bake-underground.js <design>` (repo root, repo-only): one room a district, from its approved square plan
+  (`docs/plans/world-polish/plans/ug-<name>.js`, read through draw-plan.js's own `build` + `check`; a FAIL stops it) and a room design
+  `docs/areas/underground/<name>.js` (id, names, doors, light, paint, `air`, `dress(ctx)`). Ground = `terrain.slope.cells`, every open square flat
+  at its level (1.75 m a level; the room's 0 = its lowest square); two squares a level apart = a ledge (`rocks_5` face). The plan's `stairs` =
+  `climb` ladders on the plot line, facing the high side, `y0` / `y1` given. `w` runs = black sumps (`deep_water`, 0.45 m under the rim, never
+  entered; the stream's line runs square middle to square middle, else the game's square water takes the next square too). A WATERFALL drop
+  = one `fall` row on its lip (two squares wide when both lanes drop). The roof: one `arch` row a plot, boxes from each square's roof line (the
+  highest floor beside it + 5.25 m; a chamber's middle vaults 1.75 m a square in, up to 3) to the crust, stalactites hung from it. After the
+  write it reloads data.js and reads `hqTerrainFeet` on every open square: a square off its level fails the bake (a waded pool is skipped).
+  A walk check refuses blockers that cut the plan's walk (a squeeze may narrow a passage to one square). Ten lights at most.
+  (Thread 9 wrote a sibling tool the same day, `bake-ug.js`, with the same rules; either serves.)
+- **THE ROOM** `site_prebuilt_hollow_earth_ug_long` (site `prebuilt_hollow_earth`, part `ug_long`): 3 x 5 plots (36 x 60 squares), levels 101
+  to 116 of the underground's layout (26.25 m of relief), world -16..-14 x -8..-4 (under layer). Replaces `site_prebuilt_hollow_earth_ow_long`
+  (the ten-plot corridor, retired to it in `DOOR_HQ.retired`; the zone, clock, flora, look and NPC lists name the new id). `bake-cavern.js`:
+  its ROOMS row L and two SEAMS rows are gone; two OUTER rows send the West Tunnel's north door (`ow_h_m15_2`) and Agartha's south door
+  (`ow_h_m15_m8`) to the new room; its east door `ug_tw_long` pairs with the Tunnel-Way's labyrinth (bake-ug-tunnelway.js, its W door re-pointed here).
+- **THE PLACES** (plot names): the Great Chamber (Agartha's way in, the stalagmite landmark, a torch at the mouth, blocks fallen from the
+  vault, bats), the Bone Pit (skull piles in the pit; at the dead end the first caver, his pack, his notes), the Squeeze (two boulders narrow
+  the way to one square, twice; the pit beside it goes nowhere; the team's camera at the dead end), the Black Pool (a drowned caver, a rope
+  into the sump, an eel), the Crossing (the team's cairn), the East Hall (an older mine from the Tunnel-Way: cart, crates, a torch at the
+  side passage), the Nest (dead brush, black egg sacs, bones, meat, webs, glowcaps; a caver and his radio at the dead end; the antpeople live
+  here: `HQ_NPC_PLACES` `@L:Nest`), the Old Camp (the lost team's last camp: a dying fire, the tent, bags, food, a flare gun; in its pit a
+  stretcher and a grave), the Drip Chamber (rain off its roof, a caver under a skin of flowstone), the Sump Hall (an anglerfish's lure in
+  the black water), the Falls (the rope fixed at the lip), the Black Sump (its pit under wading black water), the Crystal Pocket (the one clean
+  light; a digger at the dead end), the Low Hall (the falls' foot: the one who fell, his flare still burning; the way down to the West
+  Tunnel), the Last Chamber (the crawlers' den: meat floor, skull piles, egg sacs, the antpeople's second place).
+- **LIGHT:** ambient 0.14, six lights: three torches (the mouths), the camp's fire, the crystals, the flare (`light_glow`). Glowcaps glow
+  without a light. Paint: chambers the cave floor, passages `dirt_2`, pits `rubble_3`, the pocket `crystal`, the nest's pit and the den `flesh_2`.
+- **NOT DONE / NEEDS:** no sound (an explored room plays no bed; `ambCavern` plays only in a fight; none may be generated); the waterfall
+  sheet reads bright blue in the dark; the halloween `hw_stone*` are HEADSTONES (not rocks) and `dinosaur_skeleton` stands on a museum
+  plinth: neither is used. NEEDS A MODEL (from the FITS read): a caving helmet with a lamp, a dead caver in caving gear, a fixed rope and a
+  wire ladder, a camcorder and glow sticks, eggs and a nest mound, light loose bones, stalactite / stalagmite models, a boulder choke, a pale
+  blind crawler, hanging bats; claw-mark and spray-arrow decal sheets; a black water look.

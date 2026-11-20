@@ -648,5 +648,15 @@
   "v": "0252371b3a",
   "bytes": 1366,
   "s": "1.2"
+ },
+ "site_prebuilt_hollow_earth_ug_long": {
+  "id": "site_prebuilt_hollow_earth_ug_long",
+  "nx": 36,
+  "nz": 60,
+  "h0": 0,
+  "hs": 0.25,
+  "v": "a00d458464",
+  "bytes": 672,
+  "s": "1.3"
  }
 }

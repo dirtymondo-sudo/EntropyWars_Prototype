@@ -138,7 +138,7 @@ PL.forEach((p, i) => { const ox = gx(p.bx * N) + N * C / 2, oz = gz(p.by * N) + 
 const DOOR_ROWS = { N: { id: 'ow_v_m7_m4', leaf: 'leaf_frame_only', label: 'THE CATACOMBS', sub: 'THE BONE PASSAGE · UP INTO THE CATACOMBS', room: 'site_prebuilt_vatican_under', desc: 'Bones packed into the walls all the way up. Somebody stacked them.' },
     E: { id: 'ow_v_1_1', leaf: 'leaf_cell', label: 'DISASTER CITY · THE SEWERS', sub: 'THE CELLS TUNNEL · INTO THE GUARDROOM', room: 'site_prebuilt_downtown_underworld', desc: 'A gaol\'s drain, bricked once, broken through from this side.' },
     S: { id: 'ow_v_m8_9', leaf: null, label: 'THE CAVERN', sub: 'THE PASSAGE DOWN · 12 LEVELS · THE LAST CAMP', room: 'site_prebuilt_hollow_earth_ug_cavern', at: 'ug_cavern_tunnelway', desc: 'The rock goes on down. It is warmer that way.' },
-    W: { id: 'ug_tw_long', leaf: null, label: 'THE LONG TUNNEL', sub: 'THE TUNNEL-WAY · WEST, AND DOWN', room: 'site_prebuilt_hollow_earth_ow_long', desc: 'A long way down in the dark, west.' } };
+    W: { id: 'ug_tw_long', leaf: null, label: 'THE LONG TUNNEL', sub: 'THE TUNNEL-WAY · WEST, AND DOWN', room: 'site_prebuilt_hollow_earth_ug_long', desc: 'A long way down in the dark, west.' } };
 const doors = [], DOORSQ = {};
 (PLAN.doors || []).forEach(d => { const [x, y, side, , lv] = d; if (FL[y][x] == null) throw new Error('a door off the floor: ' + d);
     if (Math.abs(FL[y][x] - hOf(lv)) > 0.01) throw new Error('a door off its level: ' + d);
