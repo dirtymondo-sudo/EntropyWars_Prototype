@@ -8094,6 +8094,16 @@ scientist labs, Lockheed Martin skunkworks, scientific and psychic research, etc
   (2) two plateaus that only touch leave a notch: overlap them 0.5 m; (3) a kit wall standing on a raised floor carries `y0` = that floor (its doors
   are drawn at the wall's foot); the plateau's own face closes it below; (4) props on a plateau need no `y` (they stand on the ground); props on a
   deck carry the deck's height.
+- **COMMAND BUILT (2026-11-20, `C.js` build):** the War Room is ONE hall (P05-01 + P05-02, x 61..70, y 15..34): the floor 3.5, the Big Board's walk 5.25
+  (two stairs), galleries at 7.0 on three sides (decks; you walk in under the south one; two rail gaps = ledges), the Projection Booth at 10.5 (plot
+  P04-01 level 6, a new opening stair from the Comms Room) with a balcony whose rail gap drops to the west gallery. The Vault Gantry is a cross of
+  bridges over THE VAULT (a sink to −3.5: a rail gap in, a ladder out). The Great Room's plot is level 1 with the floor lifted to 3.5 round a SUNK
+  LOUNGE and a loft at 7.0; the Pool's plot is level 1 and THE CELLAR is a room UNDER the deck (floor −1.75, the deck carried over it).
+  FOUND: a prop under a deck needs `floor: true` + its `y` (else it may stand on the deck); `round_fridge` reads as a white ball.
+- **LEVEL P3 BUILT (2026-11-20, `P.js` hangar() + motorPool()):** the tram deck stays at 14 m; THE HANGAR (P01-05 + P02-05, level 5, x 13..34,
+  y 66..71) has the jet, the saucer, the black triangle and a workshop, two stairs down from the platform, a pier out over the floor (its end a
+  ledge) and a gap in the rail (a ledge); THE MOTOR POOL (P05-05, level 6) is a lower deck down a car ramp (Room 555's freight lift lands on it).
+  The tunnel's squares over both are plateaus back at 14. FOUND: `nacelle` is huge (it stood into the pier); `saucer_big` swallows a camera 8 m off.
 - **NO `TileGeneric2b` (mondo 11-20: "tilegeneric2b is the one I don't want", the floor that looks like broken tiles):** Research's room floor is
   `urban:TileGeneric1a` now (bake-dumb.js FLOORS). Never give a D.U.M.B. floor that sheet again.
 - **NEEDS A MODEL (found nowhere; shown to mondo 11-20):** a tarp / a tarp-covered aircraft · a black stealth aircraft (flying wing) · a blast
