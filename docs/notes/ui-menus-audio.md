@@ -2935,6 +2935,10 @@ closeup face portrait you would use these". Catgirl (female) only, a test of Spr
   table = a sheet that goes from the stand INTO a pose: played once, the last frame stays (Sprite AI always starts from the
   source pose, so a pose clip cannot loop cleanly). Made with the `Custom` preset + `custom_prompt`; say "big clear change
   of silhouette" (the first wounded try, "hunched, heavy breathing", looked like the idle; "sinks onto one knee" read).
+- **SWITCHED OFF 11-20** (mondo, after seeing steps 1-3: "not really feeling them to be honest, go ahead and put catgirl's
+  portrait to the way it was (no animation)"): `RACE_PANEL_ANIMS` is EMPTY, so every portrait is the face again. The player
+  code stays (a row in the table brings it back); the eight catgirl sheets stay on R2. Do not re-enable for a race without
+  asking him. His next idea for Sprite AI: animated STATUS EFFECTS over the portraits (flames, static, poison).
 - NOT done yet (pilot): no death clip; no head shake on a greyed-out row; no spent pose at 0 AP; the whole body is small in the 63 px card portrait and on the disc.
   Off: `window.EW_DISABLE_PANEL_ANIMS = true`.
 - Making more: Sprite AI (sprite-ai.art, key in the env's Network secrets): `POST /api/sprites/import` `{ image: <base64>, title,
