@@ -314,7 +314,7 @@ if (errs.length) throw new Error('THE LABYRINTH: ' + errs.length + ' problem(s):
 
 /* ── THE PAINT: one sheet a square ── */
 const paint = new Uint8Array(W * H);
-for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!open(x, y)) continue; const d = distOf(x, y); paint[y * W + x] = T[y][x] === 'c' ? d.chamber : d.floor; }
+for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!open(x, y)) continue; const d = distOf(x, y); paint[y * W + x] = 1 + (T[y][x] === 'c' ? d.chamber : d.floor); }   // (a paint value k draws pal[k - 1]; 0 = the room's own floor: a district's `floor` / `chamber` index pal itself)
 
 /* ── WRITE ── */
 const VROWS = PL.map(p => ({ k: 'arch', id: 'lab:' + DES.part + ':' + p.id, x: r2(pox(p)), z: r2(poz(p)), rot: 0, y: 0, parts: PARTS[p.id] }));
