@@ -6965,6 +6965,10 @@
         function _hqMapWhere(n) { return n.where || (n.wild ? 'THE WORLD' : 'THE FACILITY'); }
         /* the GO landing for a node: a site room's egress, else nothing (the room's default spot) */
         function _hqMapAt(id) { const r = DOOR_HQ.rooms[id]; if (r && (r.doors || []).some(d => d.id === 'egress')) return 'egress'; return ''; }
+        /* THE MAP GOES EVERYWHERE WHILE THE GAME IS BEING BUILT (mondo 11-20: "clicking on the map and it's not doing anything. How am
+           I supposed to test the game"): every zone is drawn and every GO works on any save. The charted-only rule below is
+           still here: `window.EW_HQ_MAP_ALL = false` (before the map opens) puts it back, and that is the switch to flip for release. */
+        if (window.EW_HQ_MAP_ALL === undefined) window.EW_HQ_MAP_ALL = true;
         /* FAST TRAVEL (ZONES_PLAN Z3, §10 fork 3's default): GO takes you only to a room you have STOOD IN (charted) — an
            uncharted question mark is walked to, never travelled to */
         function _hqMapCharted(id) {
@@ -7956,7 +7960,11 @@
         }
         /* the zoom decides what is written: a plot's name once it fits its square, a district's once it fits its plots; never cut */
         function _zmDetail(svg) {
-            const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number), rect = svg.getBoundingClientRect();
+            const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number), br = svg.getBoundingClientRect();
+            /* the sheet's LAID-OUT size, not its size on screen this instant: measured while the panel was still opening, the
+               scale came out 25x too big and every "?" and name was drawn that much too large until the next zoom (11-20) */
+            const rect = { width: svg.clientWidth || br.width, height: svg.clientHeight || br.height };
+            if (!svg._zmRO && typeof ResizeObserver === 'function') { try { svg._zmRO = new ResizeObserver(() => { if (svg.isConnected) _zmDetail(svg); }); svg._zmRO.observe(svg); } catch (e) {} }
             if (!rect.width || !rect.height || !(v[2] > 0)) { if ((svg._zmTry = (svg._zmTry || 0) + 1) < 40) requestAnimationFrame(() => { if (svg.isConnected) _zmDetail(svg); }); return; }   // the panel not laid out yet: try again next frame
             const s = Math.max(v[2] / rect.width, v[3] / rect.height);   // user units per screen px
             svg.style.setProperty('--zs', s.toFixed(4));
