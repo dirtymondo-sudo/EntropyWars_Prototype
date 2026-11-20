@@ -85,7 +85,9 @@ const cabin = (a, w, d, dr, q) => {   // (the gable faces the front)
 function heightsOf({ o, W, H, cell, byXY, flats, inR }) {
     const lv = (i, j) => { const p = byXY[Math.max(0, Math.min(o.pw - 1, i)) + ':' + Math.max(0, Math.min(o.ph - 1, j))]; return ((p ? p.level : o.deadLevel(Math.max(0, Math.min(o.pw - 1, i)), Math.max(0, Math.min(o.ph - 1, j)))) - o.base) * LEVEL; };
     const prof = (i, pz) => { const f = o.zflat ? o.zflat(i) : 1 / 3, qz = pz - 0.5, j = Math.max(0, Math.min(o.ph - 2, Math.floor(qz))), v = Math.min(1, Math.max(0, (qz - j - f / 2) / (1 - f))); return lv(i, j) * (1 - v) + lv(i, j + 1) * v; };
-    const base = (cx, cy) => { const px = cx / N - 0.5, i = Math.max(0, Math.min(o.pw - 2, Math.floor(px))), u = Math.min(1, Math.max(0, (px - i - 1 / 6) / (2 / 3))); return prof(i, cy / N) * (1 - u) + prof(i + 1, cy / N) * u; };
+    /* `smooth` (THE ONE MOUNTAIN, 2026-11-20): one even fall from plot middle to plot middle both ways, no shelf at a plot's middle: a ski run never flattens under the board */
+    const base = o.smooth ? (cx, cy) => { const px = cx / N - 0.5, pz = cy / N - 0.5, i = Math.floor(px), j = Math.floor(pz), u = px - i, v = pz - j; return (lv(i, j) * (1 - u) + lv(i + 1, j) * u) * (1 - v) + (lv(i, j + 1) * (1 - u) + lv(i + 1, j + 1) * u) * v; }
+        : (cx, cy) => { const px = cx / N - 0.5, i = Math.max(0, Math.min(o.pw - 2, Math.floor(px))), u = Math.min(1, Math.max(0, (px - i - 1 / 6) / (2 / 3))); return prof(i, cy / N) * (1 - u) + prof(i + 1, cy / N) * u; };
     /* how far a mass square is from the nearest square that is not its own kind (squares; the room's edge is more of the same) */
     const distOf = ch => { const d = new Int16Array(W * H).fill(-1), q = [];
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (cell[y][x] !== ch) { d[y * W + x] = 0; q.push(x, y); }
@@ -214,7 +216,7 @@ function makeRoom(o) {
     /* ── THE HEIGHTS (after every square is final): heightsOf below (one function, so a One World room lays its heights by the same rule) ── */
     const heights = () => heightsOf({ o, W, H, cell, byXY, flats, inR });
     const flat = (id, lx0, ly0, lx1, ly1) => { const a = S(id, lx0, ly0); flats.push([a[0], a[1], a[0] + lx1 - lx0, a[1] + ly1 - ly0, 'S']); };   // level ground (the reservoir, a car park)
-    const R = { o, W, H, HW, HD, gx, gz, mx, mz, cell, plots, byId, F, props, doors, npc, marks, ARCH, count, taken, feat, rnd, open, inR, S, plotAt, carve, run, spur, door, put, dec, tree, native, building, look, flat, heights, bad, flats, anchors, anchor, inDistrict };
+    const R = { sheet, o, W, H, HW, HD, gx, gz, mx, mz, cell, plots, byId, F, props, doors, npc, marks, ARCH, count, taken, feat, rnd, open, inR, S, plotAt, carve, run, spur, door, put, dec, tree, native, building, look, flat, heights, bad, flats, anchors, anchor, inDistrict };
     R.ctx = Object.assign({}, R, { N, C, r2, U, WD, WD2, SHG, FLR, GLS, ROT, DOORWORDS, cabin, say: (old, race) => sayOf(OLD[old], race) });   // what a district file is handed (THE DISTRICT FILES)
     delete R.ctx.inDistrict; delete R.ctx.heights; delete R.ctx.spur; delete R.ctx.door; delete R.ctx.carve; delete R.ctx.run;   // the tool's own: the ways out and the trails
     return R;
@@ -330,7 +332,7 @@ const NP = makeRoom({ id: POLE, tag: 'pole', files: ['N'], streams: { N: 16 }, p
 /* ════════════════════════════════════════════════ THE MOUNTAINS (plan columns 4-15) ════════════════════════════════════════════════ */
 const SKI = { 3: 1, 4: 1, 5: 1 };   // the slopes' columns: one even grade from the Top Station to the Lodge (no flat shelves on a run)
 /* `streams`: the states the room's one stream had at each district's first decor when the districts were split out (11-16): the split changed no number */
-const M = makeRoom({ id: MTN, tag: 'mtn', files: ['P', 'K', 'S', 'O'], streams: { P: 72, K: 2855161781, S: 3659870008, O: 2570278025 }, px0: 4, py0: 0, pw: 12, ph: 8, base: 8, seed: 72, rockCap: 26,
+const M = makeRoom({ id: MTN, tag: 'mtn', oneMountain: true, files: ['P', 'K', 'S', 'O'], streams: { P: 72, K: 2855161781, S: 3659870008, O: 2570278025 }, px0: 4, py0: 0, pw: 12, ph: 8, base: 8, seed: 72, rockCap: 26,
     hubs: { 'P06-02': [6, 3] }, extraPorts: [['P05-00', 'S'], ['P12-03', 'E']],   // …and (THE SWAP, plan 2) the Goat Track walks on east to Bunny Flat: Olympus and Shasta meet there   // the Ridge is climbed from the High Pass (the plan drew it joined to nothing)
     carves: [7, 8, 9].map(ly => ['P12-01', 7, ly, 'm']).concat([['P12-01', 7, 10, 'm']], [2, 3, 4, 5, 6].flatMap(lx => [['P12-01', lx, 5, 'm'], ['P12-01', lx, 6, 'm']])),   // THE CLOUD LINE: the stair is two squares wide all the way, and the Colonnade's walk goes on through the cloud to it
     hubs2: 0,   // the Rope Bridge's trails leave from the snow north of the crevasse (never along the slot)
@@ -364,7 +366,7 @@ const mBlock = finish(M, { label: 'THE MOUNTAINS', sub: 'THE SNOWY PASS · THE S
     parti: 'One range on fifty-six plots, every plot a twelve by twelve board: three trails and three places you end up (the volcano over the Woods, the pass down to the Pole, the temple above the cloud), with a ski lodge where they meet and five runs to ride down.',
     floor: 'grass_2', pal: ['ice', 'rocks_5', 'dirt_2', 'ice_1', 'marble_light', 'igloo', 'wood_planks', 'obsidian'],
     paintOf: (ch, x, y) => { const p = M.plotAt(x, y), oly = p && p.district === 'Mount Olympus';
-        return ch === 's' || ch === 'B' ? 1 : ch === 'k' ? (oly ? 5 : 1) : ch === 'r' ? 2 : (ch === 'p' || ch === 'd') ? 3 : (ch === 'i' || ch === 'x' || ch === 'a') ? 4 : ch === 'm' ? 5 : ch === 'o' ? 6 : (ch === 'j' || ch === 'b') ? ((p && p.id === 'P06-02') || ch === 'b' ? 7 : 6) : ch === 'h' ? 8 : (ch === 't' && p && p.ly === 3 && p.lx < 3) ? 1 : 0; },
+            return ch === 's' || ch === 'B' ? 1 : ch === 'k' ? (oly ? 5 : 1) : ch === 'r' ? 2 : (ch === 'p' || ch === 'd') ? 3 : (ch === 'i' || ch === 'x' || ch === 'a') ? 4 : ch === 'm' ? 5 : ch === 'o' ? 6 : (ch === 'j' || ch === 'b') ? ((p && p.id === 'P06-02') || ch === 'b' ? 7 : 6) : ch === 'h' ? 8 : (ch === 't' && p && p.ly === 3 && p.lx < 3) ? 1 : 0; },
     trees: { snow: { kinds: SNOWPINES, treeH: [5.5, 8] }, pine: { kinds: ['pine', 'pine', 'tree_3', 'tree_2'], treeH: [5.5, 9] } }, treeDefault: 'pine', maxTrees: 2600,
     treeKey: (x, y) => { const p = M.plotAt(x, y); return (p && p.ly === 3 && p.lx < 3) ? 'snow' : 'pine'; },
     edges: { reach: 440, n: { kind: 'mountain' }, w: { kind: 'mountain' }, e: { kind: 'mountain' }, s: { kind: 'forest' } },
@@ -400,41 +402,47 @@ const PJ = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plot
 const hasRoom = id => vm.runInContext('!!DOOR_HQ.rooms.' + id, D);
 const HOMEP = M.plots.map(p => ({ id: p.id, x: p.lx, y: p.ly, name: p.name, district: p.district, level: p.level }));
 const MOVER = require('./ow-move.js')({ cols: M.o.pw, rows: M.o.ph, cell: M.cell, fill: 'r', plots: HOMEP, features: M.F, props: M.props, npc: M.npc, doors: M.doors });
-const v13 = did => { const d = PJ.districts.find(q => q.id === did); if (!d) throw new Error('plots.json has no district ' + did);
-    return d.plots.map(q => { const p = M.byId[q.was]; if (!p || p.name !== q.n) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); return { id: q.was, wx: q.x, wy: q.y }; }); };
-/* a wild link's plots: a level each (graded from one end's plot to the other's) and the place each one carries (by hand, from the snow and rock places) */
-const LINKPLOTS = (lid, label, levels, places) => { const l = PJ.links.find(q => q.id === lid); if (!l || l.plots.length !== levels.length) throw new Error('plots.json link ' + lid + ' has ' + (l ? l.plots.length : 0) + ' plots');
-    return l.plots.map((q, i) => ({ wx: q[0], wy: q[1], level: levels[i], name: label + ', ' + OWP.PLACES[places[i]].name, district: 'Wild link ' + lid, link: lid, place: places[i] })); };
-const L9 = LINKPLOTS('L9', 'The Traverse', [17, 17, 16, 16, 16], ['trapper', 'minecart', 'snowman', 'camp', 'markers']);
-const L10 = LINKPLOTS('L10', 'The Saddle Path', [10, 11], ['totem', 'markers']);
-const L11 = LINKPLOTS('L11', 'The Long Descent', [15, 13, 12, 10, 9], ['camp', 'trapper', 'minecart', 'snowman', 'stone']);
+/* ── THE ONE MOUNTAIN (2026-11-20, world polish thread 5; mondo: "The ski trails should be all over the mountain ... I should be able to ski all the way from
+   the top of mt Olympus to the base"; his "okay" on the plan). Where every plot stands, its level, the runs and the walking ways are THE PLAN:
+   docs/plans/world-polish/thread5/draw-mountain.js (it checks itself and draws mountain-plan.png). The plots of K, P, S and O are stood by its grid, not by
+   plots.json's v13 places (docs/plans/one-world/after-v13.js writes the plan's places into plots.json). Mount Shasta is gone as a name: its plots are the
+   middle and top of the mountain and wear the district of the ground they stand on. Notes: areas-complexes.md "THE MOUNTAINS, ONE SKI MOUNTAIN". ── */
+const MP = require('./docs/plans/world-polish/thread5/draw-mountain.js');
+const DNAME = { K: 'The Ski Lodge', P: 'The Snowy Pass', O: 'Mount Olympus', D: 'The Long Descent' };
+const RENAMED = { 'the cornice': 'Shastina', 'the bowl': 'The Summit', 'the frozen lake': 'Helen Lake', 'the meadows': 'Panther Meadows', 'the hot springs': 'The Steam Vents' };   // the plan's plain name: the plot that moves there
+const PLACE_OF = { '2,2': 'trapper', '3,2': 'camp', '4,1': 'minecart', '6,1': 'snowman', '4,2': 'markers', '8,8': 'totem', '9,8': 'markers', '13,7': 'camp', '13,6': 'trapper', '14,6': 'minecart', '14,7': 'snowman', '15,7': 'stone' };   // the old wild links' places (ow-places.js)
+const homeByName = {}; M.plots.forEach(p => { homeByName[p.name.toLowerCase()] = p; });
+const nice = t => t === t.toUpperCase() ? t.toLowerCase().replace(/(^|[\s-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : t.replace(/^the (camp|trapper|mine|snowman|boundary)/, (m, a) => 'The Long Descent, the ' + a);
+const USED = {};
+/* the old slopes ran north to south; on the mountain the fall line runs east to west: a piste plot of the old resort is TURNED a quarter (its uphill side, north at home,
+   faces east), so its tree lines, poles, gates, kicker and half-pipe lie along its run. The Lodge, the Rental Hut and the Yard are not turned (the Lodge fronts the Yard). */
+const TURNED = { 'P07-00': 1, 'P07-01': 1, 'P07-02': 1, 'P08-00': 1, 'P08-01': 1, 'P08-02': 1, 'P09-00': 1, 'P09-01': 1, 'P09-02': 1 };
+const planList = keep => MP.cells.filter(keep).map(([c, r]) => { const raw = MP.NAME[c + ',' + r], star = /\*$/.test(raw), nm = raw.replace(/\*$/, ''), key = nm.toLowerCase();
+    const base = { wx: MP.WX0 + c, wy: MP.WY0 + r, level: MP.L(c, r), district: DNAME[c >= 13 ? 'D' : MP.DIST(c, r)] };
+    if (PLACE_OF[c + ',' + r]) return Object.assign(base, { name: nice(nm), place: PLACE_OF[c + ',' + r] });
+    if (!star) return Object.assign(base, { name: nice(nm) });
+    const h = homeByName[(RENAMED[key] || nm).toLowerCase()]; if (!h) throw new Error('the plan names a standing plot the layout does not have: ' + raw);
+    if (USED[h.id]) throw new Error('the plan stands ' + h.name + ' twice'); USED[h.id] = 1;
+    return Object.assign(base, { id: h.id, name: RENAMED[key] ? nm : h.name }, TURNED[h.id] ? { turn: 90 } : null); });
 const WOODS_ROOM = hasRoom('site_prebuilt_fairy_forest_ow_redwood') ? 'site_prebuilt_fairy_forest_ow_redwood' : 'site_prebuilt_fairy_forest_plots';   // the Woods thread moves the Snowline (11-17)
 /* THE SEAMS: { at: [world x, y], side } of a plot in this room -> the room past that side (the seam's own id on both doors, rule 6). `ifRoom` = written only
    when that room stands (a neighbour zone's link that is not merged yet). `way`: the route kit's rule by the link plot's ground (rock = an arch, snow = open). */
 const STAND = [
-    { id: R_LODGE, part: 'ow_lodge', files: ['K', 'P'], label: 'THE SKI LODGE · THE SNOWY PASS', sub: 'THE MOUNTAINS · THE SKI LODGE + SLOPES · THE TRAVERSE · THE SNOWY PASS · 29 PLOTS',
-      list: v13('mtnK').concat(L9, v13('mtnP')), spawn: ['P09-03', 5, 6], lines: [],
-      parti: 'The west of the range in one walk, twenty-nine plots: the ski lodge at the foot of its runs, the traverse east along the snow to the high pass, and the Snowy Pass a trail down the range from the ridge to the tree line.',
+    { id: R_LODGE, part: 'ow_lodge', files: ['K', 'P', 'S', 'O'], label: 'THE MOUNTAINS · THE SKI MOUNTAIN', sub: 'THE SKI LODGE · THE SNOWY PASS · MOUNT OLYMPUS · ONE MOUNTAIN, TOP TO BOTTOM',
+      list: planList(([c]) => c <= 12), spawn: ['P09-03', 5, 6], lines: O_OLYMPUS.l.concat(O_SHASTA.l), smooth: true,
+      parti: 'One ski mountain: the temples of Mount Olympus on the summit, double blacks off the top, blacks and blues down the middle, greens to the Ski Lodge and its village at the west foot; the Pass Road snakes across it from the tree line to the ridge.',
       seams: [{ at: [-16, -14], side: 'W', id: 'ow_v_m16_m14', room: 'site_ow_l3', way: 'trail', label: 'THE WOODS · THE REDWOOD TRAIL', sub: 'THE TREE LINE · DOWN INTO THE TREES', desc: 'The trail drops off the snow into the first of the big trees.', ifRoom: 1 },
-              { at: [-15, -14], side: 'E', id: 'ow_v_m14_m14', room: R_OLY, way: 'trail', label: 'MOUNT OLYMPUS · THE SADDLE PATH', sub: 'THE TREE LINE · EAST OVER THE SADDLE', desc: 'A path goes east along the saddle, towards a mountain with something white built on top of it.' },
               { at: [-22, -16], side: 'W', id: 'ow_v_m22_m16', room: 'site_ow_l6', way: 'open', open: 5, label: 'CAME A LOT KINGDOM · THE SNOWY PINES', sub: 'THE LODGE YARD · WEST DOWN THE VALLEY', desc: 'Ski tracks give out at the yard’s end. Past them a trail goes west and down, into pines.', ifRoom: 1 },
-              /* THE POLAR TRAIL (route R5, One World phase 4.1, 2026-11-17): east off the Ridge, east, across the tundra to the North Pole (it replaces the Pass Gate's `pass` doors) */
-              { at: [-14, -22], side: 'E', k: [5, 6], id: 'ow_v_m13_m22', room: 'site_ow_r5', way: 'open', open: 5, label: 'THE POLAR TRAIL', sub: 'THE RIDGE · EAST ACROSS THE TUNDRA', desc: 'Past the end of the ridge the snow flattens out into tundra, and a line of cairns goes east towards the Pole.', ifRoom: 1 }] },
-    { id: R_OLY, part: 'ow_olympus', files: ['O'], label: 'MOUNT OLYMPUS', sub: 'THE MOUNTAINS · THE SADDLE PATH · MOUNT OLYMPUS · THE LONG DESCENT · 19 PLOTS',
-      list: L10.concat(v13('mtn'), L11), spawn: ['P10-02', null, null], lines: O_OLYMPUS.l,
-      parti: 'The temple mountain on twelve plots above the cloud, with the saddle path coming in from the Snowy Pass and the long descent going on east across the snow to Mount Shasta.',
-      seams: [{ at: [-14, -14], side: 'W', id: 'ow_v_m14_m14', room: R_LODGE, way: 'trail', label: 'THE SNOWY PASS · THE TREE LINE', sub: 'THE SADDLE PATH · WEST TO THE PASS', desc: 'The path goes back west along the saddle to the pass.' },
-              { at: [-5, -15], side: 'E', id: 'ow_v_m4_m15', room: R_SHASTA, way: 'open', open: 5, label: 'MOUNT SHASTA · THE UPPER SHELF', sub: 'THE LONG DESCENT · EAST TO THE VOLCANO', desc: 'The snow runs on east and down. The mountain ahead is the one that smokes.' },
-              /* THE PILGRIM WAY (route R3, One World phase 4.1, 2026-11-17): the trail climbs from the south (the Colosseum's ground) to the Pilgrim Stair's east side */
-              { at: [-11, -13], side: 'E', k: [5, 6], id: 'ow_v_m10_m13', room: 'site_ow_r3', way: 'trail', label: 'THE PILGRIM WAY', sub: 'THE PILGRIM STAIR · DOWN THE WAY OF SHRINES', desc: 'A worn path leaves the stair and goes down through the trees, past little shrines.', ifRoom: 1 }] },
-    { id: R_SHASTA, part: 'ow_shasta', files: ['S'], label: 'MOUNT SHASTA', sub: 'THE MOUNTAINS · MOUNT SHASTA · 20 PLOTS',
-      list: v13('shasta'), spawn: ['P13-03', null, null], lines: O_SHASTA.l,
-      parti: 'The volcano on twenty plots: the trail climbs from the trailhead past the lookout and the switchbacks to the meadows, the gulch, the lake and the summit.',
-      seams: [{ at: [-4, -15], side: 'W', id: 'ow_v_m4_m15', room: R_OLY, way: 'open', open: 5, label: 'MOUNT OLYMPUS · THE LONG DESCENT', sub: 'THE UPPER SHELF · WEST ACROSS THE SNOW', desc: 'A line of footprints goes west across the snow, towards a white temple on the next mountain.' },
-              /* THE CANYON TRAIL (route R2, One World phase 4.1, 2026-11-17): the trail comes up from the south into the Trailhead's south side, on squares 2-3,
-                 west of the Woods door `woods` (R2's spec adds the two plots -2,-14 and -3,-14 that reach here, mondo's yes) */
+              { at: [-14, -22], side: 'E', k: [5, 6], id: 'ow_v_m13_m22', room: 'site_ow_r5', way: 'open', open: 5, label: 'THE POLAR TRAIL', sub: 'THE RIDGE · EAST ACROSS THE TUNDRA', desc: 'Past the end of the ridge the snow flattens out into tundra, and a line of cairns goes east towards the Pole.', ifRoom: 1 },
+              { at: [-11, -13], side: 'E', k: [5, 6], id: 'ow_v_m10_m13', room: 'site_ow_r3', way: 'trail', label: 'THE PILGRIM WAY', sub: 'THE PILGRIM STAIR · DOWN THE WAY OF SHRINES', desc: 'A worn path leaves the stair and goes down through the trees, past little shrines.', ifRoom: 1 },
+              { at: [-10, -15], side: 'E', id: 'ow_v_m9_m15', room: R_SHASTA, way: 'open', open: 5, label: 'THE LONG DESCENT', sub: 'THE AMPHITHEATRE · EAST AND DOWN TO THE RIVER ROAD', desc: 'The snow runs on east and down in long bends, towards the low country.' }] },
+    { id: R_SHASTA, part: 'ow_shasta', files: ['S'], label: 'THE MOUNTAINS · THE LONG DESCENT', sub: 'MOUNT OLYMPUS · THE EAST WAY DOWN · 13 PLOTS',
+      list: planList(([c]) => c >= 13), spawn: ['P13-07', null, null], lines: [], smooth: true,
+      parti: 'The east way off the mountain: thirteen plots of snow in long bends from the Amphitheatre down to the Trailhead, where the canyon trail goes on to the low country.',
+      seams: [{ at: [-9, -15], side: 'W', id: 'ow_v_m9_m15', room: R_LODGE, way: 'open', open: 5, label: 'MOUNT OLYMPUS · THE AMPHITHEATRE', sub: 'THE LONG DESCENT · WEST AND UP THE MOUNTAIN', desc: 'The bends climb west towards a white temple on the top of the mountain.' },
               { at: [-3, -15], side: 'S', k: [2, 3], id: 'ow_h_m3_m14', room: 'site_ow_r1', way: 'trail', label: 'THE CANYON TRAIL', sub: 'THE TRAILHEAD · DOWN THE CANYON TO THE HILLS', desc: 'A dry trail goes south down a canyon, towards some hills with very large letters on them.', ifRoom: 1 }] },
 ];
+{ const left = M.plots.filter(p => !USED[p.id]).map(p => p.name); if (left.length) throw new Error('the plan leaves standing plots out: ' + left.join(', ')); }
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, OPP = { N: 'S', S: 'N', W: 'E', E: 'W' }, FACE = { N: 180, E: 270, S: 0, W: 90 };
 const GROUND = PJ.ground, groundAt = (x, y) => { const r = GROUND.rows[y - GROUND.y0]; return r ? r[x - GROUND.x0] : '~'; };
 const FILL_OF = g => (g === 'f' || g === 'w') ? 't' : (g === 'P' || g === 'R' || g === 'A' || g === 'c' || g === 'b') ? 'r' : 'k';   // a box cell nobody walks: the map's own ground there
@@ -450,10 +458,14 @@ STAND.forEach(S => {
     for (let r = 0; r < R.rows; r++) for (let c = 0; c < R.cols; c++) { const e = R.at[c + ',' + r];
         if (!e) { const ch = FILL_OF(groundAt(R.wx + c, R.wy + r)); for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) c2[r * N + ly][c * N + lx] = ch; continue; }
         if (!e.isNew) continue;
+        if (!S.list.find(q => q.wx === e.wx && q.wy === e.wy).place) { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) c2[r * N + ly][c * N + lx] = 's'; continue; }   // a new plot of the plan: open snow, the piste
         for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const dx = lx - 5.5, dy = ly - 5.5, rr = 7.6 + 1.4 * vnoise((R.wx + c) * N + lx, (R.wy + r) * N + ly, 9);
             c2[r * N + ly][c * N + lx] = (lx >= 1 && ly >= 1 && lx <= 10 && ly <= 10 && Math.abs(dx) + Math.abs(dy) <= rr) ? 's' : 'r'; } }
+    /* 1b. THE ONE MOUNTAIN: a plot that was a trail in a rim of rock (the Pass, Shasta, the old slopes' edges) is open snow now: the pistes are wide open ground
+       and a rider is never stopped by the rim of the plot he stood on at home. Olympus keeps its rock and cloud; trees, the crevasse and water stay. */
+    if (S.smooth) R.order.forEach(e => { if (!e.home || e.home.district === 'Mount Olympus') return; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const ch = c2[e.row * N + ly][e.col * N + lx]; if (ch === 'r' || ch === 'k') c2[e.row * N + ly][e.col * N + lx] = 's'; } });
     /* 2. the joints: two plots that touch now and did not stand that way at home get one crossing, a trail from each plot's hub (makeRoom THE PORTS) */
-    const trailOf = e => e.isNew ? 'o' : e.district === 'Mount Olympus' ? 'm' : (e.district === 'Mount Shasta' && e.level <= 11) ? 'p' : 'o';
+    const trailOf = e => e.isNew ? 'o' : e.home.district === 'Mount Olympus' ? 'm' : 'o';
     const carve = (x, y, ch) => { if (inR(x, y) && OPENED[c2[y][x]] && R.plotOfSq(x, y)) c2[y][x] = ch; };
     const run = (x0, y0, x1, y1, ch) => { const vert = x0 === x1, n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let i = 0; i <= n; i++) { const x = n ? Math.round(x0 + (x1 - x0) * i / n) : x0, y = n ? Math.round(y0 + (y1 - y0) * i / n) : y0; carve(x, y, ch); if (vert) carve(x + 1, y, ch); else carve(x, y + 1, ch); } };
     const hubOf = e => { const h = e.home && M.o.hubs && M.o.hubs[e.id]; if (h) return h; let best = null; for (let ly = 1; ly < N - 1; ly++) for (let lx = 1; lx < N - 1; lx++) { if (!openR(e.col * N + lx, e.row * N + ly)) continue; const d = Math.hypot(lx - 5.5, ly - 5.5); if (!best || d < best[0]) best = [d, lx, ly]; } return best ? [best[1], best[2]] : [5, 5]; };
@@ -486,7 +498,7 @@ STAND.forEach(S => {
     const doors = R.doors.map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; if (o.wall !== 'free') ways.push({ side: o.wall, at: o.x != null ? o.x : o.z }); return o; }).concat(seamDoors);
     /* 5. one place on every wild link plot (ow-places.js), on a clear patch of its snowfield beside the trail */
     const placed = [];
-    R.order.filter(e => e.isNew).forEach(e => { const src = S.list.find(q => q.wx === e.wx && q.wy === e.wy), pl = OWP.PLACES[src.place], rr = pl.r; let at = null;
+    R.order.filter(e => e.isNew && S.list.find(q => q.wx === e.wx && q.wy === e.wy).place).forEach(e => { const src = S.list.find(q => q.wx === e.wx && q.wy === e.wy), pl = OWP.PLACES[src.place], rr = pl.r; let at = null;
         const spots = []; for (let ly = 2; ly <= 9; ly++) for (let lx = 2; lx <= 9; lx++) spots.push([lx, ly]); spots.sort((p, q) => Math.hypot(q[0] - 5.5, q[1] - 5.5) - Math.hypot(p[0] - 5.5, p[1] - 5.5) || p[1] - q[1] || p[0] - q[0]);   // off the middle (the trail crosses there) first
         for (const [lx, ly] of spots) { let ok = true; for (let dy = -rr; dy <= rr && ok; dy++) for (let dx = -rr; dx <= rr; dx++) { const x = e.col * N + lx + dx, y = e.row * N + ly + dy; if (!inR(x, y) || c2[y][x] !== 's') { ok = false; break; } } if (ok) { at = [lx, ly]; break; } }
         if (!at) throw new Error(S.id + ': NO PLACE on ' + e.name + ' (no clear ' + (2 * rr + 1) + ' x ' + (2 * rr + 1) + ' patch beside the trail)');
@@ -499,12 +511,94 @@ STAND.forEach(S => {
             if (z.n != null) q.n = Math.max(1, Math.round(z.n * (x1 - x0) * (y1 - y0) / area)); air.push(q); }); });
     const marks = M.marks.map(mk => { const a = mk.x0 != null ? R.toRoom((mk.x0 + mk.x1) / 2, (mk.z0 + mk.z1) / 2) : R.toRoom(mk.x, mk.z); if (!a) return null; const dx = a[0] - (mk.x0 != null ? (mk.x0 + mk.x1) / 2 : mk.x), dz = a[1] - (mk.x0 != null ? (mk.z0 + mk.z1) / 2 : mk.z); return MOVER.shifted(mk, dx, dz); }).filter(Boolean);
     const flats = M.flats.map(f => { const a = toSq(f[0], f[1]); return a ? [a[0], a[1], a[0] + f[2] - f[0], a[1] + f[3] - f[1], f[4]] : null; }).filter(Boolean);
+    /* 5b. THE RUNS AND THE WALKING WAYS OF THE PLAN, cut into the ground: a run is a groomed lane ('i') through whatever rock, drift or wood stands on its line
+       (green 7 squares wide, blue 6, black 5, double black 4); a walking way is packed snow ('o') on its own square legs (3, 2 or 1 wide). A building's squares,
+       paving, water and the crevasse are never cut. */
+    { const c0 = R.wx - MP.WX0, r0 = R.wy - MP.WY0, CUT = { r: 1, k: 1, t: 1, s: 1 }, WIDE = { g: 3.4, b: 2.9, k: 2.4, kk: 1.9 }; let laneSq = 0, waySq = 0;
+      const stamp = (fx, fy, rad, ch, own) => { for (let y = Math.floor(fy - rad); y <= Math.ceil(fy + rad); y++) for (let x = Math.floor(fx - rad); x <= Math.ceil(fx + rad); x++) { if (!inR(x, y) || !R.plotOfSq(x, y)) continue; if (Math.hypot(x + 0.5 - fx, y + 0.5 - fy) > rad) continue; const was = c2[y][x]; if (CUT[was] || (own && was === 'i')) { c2[y][x] = ch; if (ch === 'i') laneSq++; else waySq++; } } };
+      MP.RUNS.forEach(([name, mark, pts]) => { const P = pts.map(([c, r]) => [(c - c0 + 0.5) * N, (r - r0 + 0.5) * N]);
+          const path = []; if (P.length < 3) path.push(...P); else { path.push(P[0]); for (let i = 1; i < P.length - 1; i++) { const a = path[path.length - 1], q = P[i], b = i === P.length - 2 ? P[i + 1] : [(P[i][0] + P[i + 1][0]) / 2, (P[i][1] + P[i + 1][1]) / 2]; for (let t = 1; t <= 24; t++) { const u = t / 24; path.push([(1 - u) * (1 - u) * a[0] + 2 * u * (1 - u) * q[0] + u * u * b[0], (1 - u) * (1 - u) * a[1] + 2 * u * (1 - u) * q[1] + u * u * b[1]]); } } }
+          for (let i = 1; i < path.length; i++) { const a = path[i - 1], b = path[i], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) * 2)); for (let t = 0; t <= n; t++) stamp(a[0] + (b[0] - a[0]) * t / n, a[1] + (b[1] - a[1]) * t / n, WIDE[mark], 'i'); }  (S.runPaths = S.runPaths || []).push({ name, mark, path, wide: WIDE[mark] }); });
+      MP.WAYS.forEach(([name, wide, plots]) => { const pts = MP.lay(plots).map(([x, y]) => [x - c0 * N, y - r0 * N]);
+          for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], n = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]); for (let t = 0; t <= n; t++) { const x = a[0] + Math.sign(b[0] - a[0]) * t, y = a[1] + Math.sign(b[1] - a[1]) * t; for (let k = 0; k < wide; k++) for (let m = 0; m < wide; m++) { const X = x + k - (wide >> 1), Y = y + m - (wide >> 1); if (inR(X, Y) && R.plotOfSq(X, Y) && CUT[c2[Y][X]] && c2[Y][X] !== 's') { c2[Y][X] = 'o'; waySq++; } } } } });
+      /* 5c. NOTHING SOLID STANDS ON A RUN: a blocking prop or a tree whose square a run now crosses steps aside to the nearest square of its own plot that is open,
+         off every run and free (it keeps its place inside the square). Nothing is taken away. */
+      const CATM = vm.runInContext('DOOR_HQ.catalogue', D), busy = new Set(); let stepped = 0;
+      const sqOf = q => [Math.floor((q.x + R.HX) / C), Math.floor((q.z + R.HZ) / C)];
+      R.props.forEach(q => { const a = sqOf(q); busy.add(a[0] + ':' + a[1]); }); R.features.forEach(f => { if (f.k === 'tree') { const a = sqOf(f); busy.add(a[0] + ':' + a[1]); } });
+      const aside = q => { const [sx, sy] = sqOf(q); if (!inR(sx, sy) || c2[sy][sx] !== 'i') return q; const e = R.plotOfSq(sx, sy); let best = null;
+          for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const X = e.col * N + lx, Y = e.row * N + ly, ch = c2[Y][X]; if (ch === 'i' || ch === 'B' || ch === 'o' || MASS[ch] || busy.has(X + ':' + Y)) continue; const d = Math.hypot(X - sx, Y - sy); if (!best || d < best[0]) best = [d, X, Y]; }
+          if (!best) return q; busy.add(best[1] + ':' + best[2]); stepped++; return Object.assign({}, q, { x: r2(q.x + (best[1] - sx) * C), z: r2(q.z + (best[2] - sy) * C) }); };
+      R.props = R.props.map(q => (CATM[q.key] && CATM[q.key].block && q.floor !== true && q.y == null) ? aside(q) : q);
+      R.features = R.features.map(f => f.k === 'tree' ? aside(f) : f);
+      S.cut = { laneSq, waySq, stepped }; }
     const byXY = {}; R.order.forEach(e => { byXY[e.col + ':' + e.row] = e; });
     const kCols = {}; R.order.forEach(e => { if (e.district === 'The Ski Lodge + slopes') kCols[e.col] = 1; });
-    const ho = { pw: R.cols, ph: R.rows, base: M.o.base, seed: M.o.seed, rockCap: M.o.rockCap, deadLevel: (i, j) => nearestLevel(R, i, j), zflat: i => kCols[i] ? 0 : 1 / 3 };
+    const ho = { pw: R.cols, ph: R.rows, base: S.smooth ? Math.min(...R.order.map(e => e.level)) : M.o.base, smooth: !!S.smooth, seed: M.o.seed, rockCap: M.o.rockCap, deadLevel: (i, j) => nearestLevel(R, i, j), zflat: i => kCols[i] ? 0 : 1 / 3 };
     const plots = R.order.map(e => ({ id: R.pid(e), name: e.name, district: e.district, level: e.level, lx: e.col, ly: e.row, e }));
     const R2 = { o: { id: S.id, tag: S.part, files: S.files, pw: R.cols, ph: R.rows, seed: M.o.seed }, W: Wn, H: Dn, gx: R.gx, gz: R.gz, mx: R.gcx, mz: R.gcz, cell: c2, F: R.features.slice(), props: R.props.concat(placed), doors, npc: R.npc, ARCH: [], count: { plots: S.list.length, box: R.cols + 'x' + R.rows, joints }, open: openR,
         plots, bad: [], marks, heights: () => heightsOf({ o: ho, W: Wn, H: Dn, cell: c2, byXY, flats, inR }), inDistrict: (L, fn) => fn(), ctx: null };
+    /* THE PIECES WITH A HEIGHT OF THEIR OWN (a cloud, chimney smoke, a pool, a deck: `y` over the room's floor, written for the home's ground) ride the new
+       ground: the difference between the ground under them now and the ground they were written for */
+    { const HcH = M.heights(), HcN = R2.heights(), samp = (Hc, Wd, Hd, fx, fy) => { const x = Math.max(0, Math.min(Wd, Math.round(fx))), y = Math.max(0, Math.min(Hd, Math.round(fy))); return Hc[y * (Wd + 1) + x]; }; let n = 0;
+      const lift = q => { if (typeof q.y !== 'number' || q.floor === true || q.x == null) return q; const e = R.plotOfSq(Math.floor((q.x + R.HX) / C), Math.floor((q.z + R.HZ) / C)); if (!e || !e.home) return q;
+          const ca = Math.round(Math.cos((e.turn || 0) * Math.PI / 180)), sa = Math.round(Math.sin((e.turn || 0) * Math.PI / 180)), ux = q.x - (-R.HX + (e.col + 0.5) * PL), uz = q.z - (-R.HZ + (e.row + 0.5) * PL),
+              hx = -M.HW + (e.home.x + 0.5) * PL + ux * ca + uz * sa, hz = -M.HD + (e.home.y + 0.5) * PL - ux * sa + uz * ca;   // the piece's home point (a turned plot: the turn undone)
+          const d = samp(HcN, Wn, Dn, (q.x + R.HX) / C, (q.z + R.HZ) / C) - samp(HcH, M.W, M.H, (hx + M.HW) / C, (hz + M.HD) / C); n++; return Object.assign({}, q, { y: r2(q.y + d) }); };
+      R2.props = R2.props.map(lift); R2.F = R2.F.map(f => (f.k === 'pool' || f.k === 'deck') ? lift(f) : f); R2.count.lifted = n; Object.assign(R2.count, S.cut); }
+    /* ══ THE MOUNTAIN'S OWN DRESSING, IN THE ROOM'S FRAME (2026-11-20, world polish thread 5, the base pass) ══
+       What belongs to the mountain as a whole and to no one plot: every run made to READ as a run (a board with its name and mark at its top, marker poles down
+       both edges, a line of pines along both edges where the ground beside it is open snow), and THE LIFTS. Heights are read off the room's own ground. */
+    if (S.smooth && S.runPaths) { const KIT = DISTRICTS.K.kit, Hn = R2.heights(), hAt = (x, z) => { const fx = Math.max(0, Math.min(Wn - 1e-6, (x + R.HX) / C)), fy = Math.max(0, Math.min(Dn - 1e-6, (z + R.HZ) / C)), i = Math.floor(fx), j = Math.floor(fy), u = fx - i, v = fy - j, g = (a, b) => Hn[b * (Wn + 1) + a]; return (g(i, j) * (1 - u) + g(i + 1, j) * u) * (1 - v) + (g(i, j + 1) * (1 - u) + g(i + 1, j + 1) * u) * v; };
+      const mX = sx => r2(-R.HX + sx * C), mZ = sy => r2(-R.HZ + sy * C), ROTOF = (dx, dz) => r2(Math.atan2(-dx, dz) * 180 / Math.PI);   // an arch's `rot` that turns its +z onto (dx, dz)
+      const arch = (id, x, z, rot, fn, hug) => { const a = M.sheet(); fn(a); const row = { k: 'arch', id: S.part + ':' + id, x: r2(x), z: r2(z), rot, parts: a.P }; if (hug) row.hug = true; R2.F.push(row); };
+      const busy = new Set(); R2.props.forEach(q => busy.add(Math.floor((q.x + R.HX) / C) + ':' + Math.floor((q.z + R.HZ) / C))); R2.F.forEach(f => { if (f.k === 'tree' || f.k === 'texbuilding') busy.add(Math.floor((f.x + R.HX) / C) + ':' + Math.floor((f.z + R.HZ) / C)); });
+      const INK = { g: '#208040', b: '#2050c0', k: '#111111', kk: '#111111' }, MARK = { g: '●', b: '■', k: '◆', kk: '◆◆' }, TINT = { g: 0x208040, b: 0x2050c0, k: 0x1a1a1a, kk: 0x1a1a1a }, WD2 = U('WoodGeneric1a'); let nTrees = 0, nPoles = 0, nBoards = 0;
+      const along = (path, step) => { const out = []; let acc = 0, next = step * 0.5; for (let i = 1; i < path.length; i++) { const a = path[i - 1], b = path[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (!L) continue; while (next <= acc + L) { const t = (next - acc) / L; out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, (b[0] - a[0]) / L, (b[1] - a[1]) / L]); next += step; } acc += L; } return out.filter(q => inR(Math.floor(q[0]), Math.floor(q[1])) && R.plotOfSq(Math.floor(q[0]), Math.floor(q[1]))); };
+      const seenTop = {}, LIFTLINES = S.id === R_LODGE ? [[1.3, 5.3, 6, 4.25]].map(([c0, r0, c1, r1]) => [(c0 - (R.wx - MP.WX0) + 0.5) * N, (r0 - (R.wy - MP.WY0) + 0.5) * N, (c1 - (R.wx - MP.WX0) + 0.5) * N, (r1 - (R.wy - MP.WY0) + 0.5) * N]) : [];
+      S.runPaths.forEach((run, ri) => { const { name, mark, path, wide } = run, id = 'run' + ri;
+          /* the board, a few squares down from the run's top, beside its lane (not where another run's board already stands) */
+          { const q = along(path, 4)[1] || along(path, 4)[0]; if (q) { let bx = q[0] - q[3] * (wide + 1.6), by = q[1] + q[2] * (wide + 1.6); const key = Math.round(bx / 4) + ':' + Math.round(by / 4); if (seenTop[key]) { bx = q[0] + q[3] * (wide + 1.6); by = q[1] - q[2] * (wide + 1.6); } seenTop[key] = 1;
+              if (inR(Math.floor(bx), Math.floor(by)) && R.plotOfSq(Math.floor(bx), Math.floor(by)) && c2[Math.floor(by)][Math.floor(bx)] !== 'B') { const words = name.toUpperCase(), wd = Math.min(3.0, words.length * 0.22 + 0.4); busy.add(Math.floor(bx) + ':' + Math.floor(by)); nBoards++;
+                  arch(id + ':board', mX(bx), mZ(by), ROTOF(q[2], q[3]), a => { for (const s of [-1, 1]) { a.box(s * 2.08, 0, 0, 0.16, 2.75, 0.16, WD2, KIT.DARK, { gain: 1.5 }); a.box(s * 2.08, 2.75, 0, 0.24, 0.07, 0.24, 'ice', KIT.SNOW); }
+                      a.box(0, 1.55, 0, 4.2, 0.95, 0.1, WD2, 0x2a3a30, { gain: 1.5 }); a.box(0, 2.5, 0, 4.3, 0.08, 0.2, 'ice', KIT.SNOW);
+                      for (const f of [1, -1]) { const o = f > 0 ? { glow: 0.85 } : { ry: 180, glow: 0.85 }; a.sign(words, f * 0.42, 1.72, f * 0.06, wd, 0.6, '#f4ecd8', '#2f4a3a', KIT.FONT, o); a.sign(MARK[mark], f * -1.6, 1.72, f * 0.06, mark === 'kk' ? 0.9 : 0.6, 0.6, INK[mark], '#f4ecd8', KIT.FONT, o); } }); } } }
+          /* the marker poles: both edges, every four squares; one `hug` row a run (each pole takes the ground under it) */
+          { const pts = along(path, 4); if (pts.length) { const o = pts[0], ox = mX(o[0]), oz = mZ(o[1]); arch(id + ':poles', ox, oz, 0, a => pts.forEach(q => { for (const s of [-1, 1]) { const x = mX(q[0] - s * q[3] * (wide + 0.2)) - ox, z = mZ(q[1] + s * q[2] * (wide + 0.2)) - oz; nPoles++;
+                  a.box(x, 0, z, 0.07, 1.7, 0.07, 'marble_light', 0xe8701c, { gain: 1.5 }); a.box(x, 1.32, z, 0.34, 0.34, 0.05, 'marble_light', TINT[mark], { gain: 1.4 }); a.box(x, 1.56, z, 0.1, 0.1, 0.1, 'marble_light', 0xffb050, { glow: 1.5 }); } }), true); } }
+          /* the tree lines: a pine every three squares along both edges, two squares off the lane, only on open snow that no run, way, building or piece has */
+          along(path, 3).forEach((q, k) => { for (const s of [-1, 1]) { const tx = Math.floor(q[0] - s * q[3] * (wide + 1.8)), ty = Math.floor(q[1] + s * q[2] * (wide + 1.8)); if (!inR(tx, ty) || c2[ty][tx] !== 's' || busy.has(tx + ':' + ty)) continue; const e = R.plotOfSq(tx, ty); if (!e || (e.home && e.home.district === 'Mount Olympus')) continue;
+              if (e.level <= 4) continue;   // the base (the village, the lift's foot, the nursery slope) stays open
+              if (LIFTLINES.some(([ax, ay, bx, by]) => { const L2 = (bx - ax) * (bx - ax) + (by - ay) * (by - ay), t = Math.max(0, Math.min(1, ((tx - ax) * (bx - ax) + (ty - ay) * (by - ay)) / L2)); return Math.hypot(tx - (ax + (bx - ax) * t), ty - (ay + (by - ay) * t)) < 4; })) continue;   // nothing grows under a lift
+              busy.add(tx + ':' + ty); nTrees++; R2.F.push({ k: 'tree', x: R.gcx(tx), z: R.gcz(ty), kind: (k + ri) % 5 === 0 ? SNOWPINES[(k + ri) % SNOWPINES.length] : 'pine', h: r2(5.5 + ((k * 7 + ri * 3) % 5) * 0.6), r: 0.8 }); } }); });
+      /* ── THE LIFTS (mondo 11-20: "yes lift should carry you"). A lift is two CHAIRS that shuttle on two cables side by side, one up while the other comes down:
+         each chair is a `bridge` row with a `mover` (three-renderer.js THE MAIL `_hqBuildMovers`, look 'chair'): you step on at a station, it carries you to the
+         other one, you step off. The cable is one `hug` row from station to station (straight, 8.5 m over the chairs' line); the wheel houses are the Lodge
+         district's own (K.js kit); a pylon stands every 40 m, as tall as the cable is over the ground there. THE FIRST ONE ONLY, for mondo's look: THE LODGE CHAIR. ── */
+      const LIFT = (id, name, A, B, o) => { const c0 = R.wx - MP.WX0, r0 = R.wy - MP.WY0, P = ([c, r]) => [-R.HX + (c - c0 + 0.5) * PL, -R.HZ + (r - r0 + 0.5) * PL], a = P(A), b = P(B), L = Math.hypot(b[0] - a[0], b[1] - a[1]), dx = (b[0] - a[0]) / L, dz = (b[1] - a[1]) / L, HCL = KIT.HC, MT = U('MetalWallRibbed1a');
+          const ya = hAt(a[0], a[1]) + 0.25, yb = hAt(b[0], b[1]) + 0.25, rotDown = ROTOF(-dx, -dz);
+          /* the chairs: 3.5 m square decks, 2.2 m either side of the line */
+          [[-1, 0], [1, 0.5]].forEach(([s, phase]) => { const ox = -dz * s * 2.2, oz = dx * s * 2.2; R2.F.push({ k: 'bridge', id: S.part + ':' + id + ':chair' + (s > 0 ? 'B' : 'A'), w: 3.5, y: 0.28, thick: 0.3, plain: true, rails: false, hide: true,   // (a bridge row's `y` is over the ground under it: the compile adds the snow's height)
+              mover: { to: [r2(b[0] - a[0]), r2(yb - ya), r2(b[1] - a[1])], travel: o.travel, dwell: o.dwell, phase, look: 'chair', hang: HCL },
+              x0: r2(a[0] + ox - dx * 1.75), z0: r2(a[1] + oz - dz * 1.75), x1: r2(a[0] + ox + dx * 1.75), z1: r2(a[1] + oz + dz * 1.75) }); });
+          /* the cables: one straight box a side, station to station; a `hug` row: its two ends take the ground under them */
+          arch(id + ':cable', (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, ROTOF(dx, dz), q => { for (const s of [-1, 1]) q.box(s * 2.2, HCL + 0.4, 0, 0.08, 0.08, L + 8, 'gunmetal', 0x22252a); }, true);
+          /* the wheel houses, 7 m behind each dock */
+          arch(id + ':bottom', a[0] - dx * 7, a[1] - dz * 7, rotDown, q => KIT.wheelhouse(q, MT, 1)); arch(id + ':top', b[0] + dx * 7, b[1] + dz * 7, rotDown, q => KIT.wheelhouse(q, MT, -1));
+          /* the pylons */
+          for (let d = 40; d < L - 25; d += 40) { const x = a[0] + dx * d, z = a[1] + dz * d, gap = (ya + (yb - ya) * d / L) - hAt(x, z), h = HCL + 0.4 + Math.max(0, gap);
+              arch(id + ':pylon' + d, x, z, rotDown, q => { q.box(0, 0, 0, 1.4, 0.45, 1.4, 'urban:ConcreteWoodFormed1a', 0xb0b0b0); q.box(0, 0.45, 0, 0.7, h + 0.3, 0.7, MT, KIT.STEEL); q.box(0, 0.45, 0, 1.0, 1.7, 1.0, 'marble_light', 0xe07a1c, { gain: 2.2 });
+                  q.box(0, h + 0.2, 0, 5.4, 0.4, 0.5, MT, KIT.STEEL); q.box(0, h + 0.6, 0, 5.4, 0.08, 0.56, 'ice', KIT.SNOW); for (const s of [-1, 1]) { q.box(s * 2.2, h - 0.1, 0, 0.16, 0.14, 2.0, MT, 0x3a3e44); for (const k of [-0.8, 0, 0.8]) q.box(s * 2.2, h - 0.22, k, 0.1, 0.28, 0.28, 'gunmetal', 0x22252a); } });
+              R2.F.push({ k: 'wall', x0: r2(x - 0.5), z0: r2(z), x1: r2(x + 0.5), z1: r2(z), t: 1.0, h: 3, ghost: true, rail: false }); }
+          /* a board at each station */
+          [[a, -1, o.up], [b, 1, o.down]].forEach(([p, s, words], i) => arch(id + ':sign' + i, p[0] + dx * s * 3.5 - dz * 5.5, p[1] + dz * s * 3.5 + dx * 5.5, rotDown, q => { for (const t of [-1, 1]) q.box(t * 2.3, 0, 0, 0.16, 3.0, 0.16, WD2, KIT.DARK, { gain: 1.5 }); q.box(0, 1.7, 0, 4.7, 1.2, 0.1, WD2, 0x2a3a30, { gain: 1.5 }); q.box(0, 2.9, 0, 4.8, 0.08, 0.2, 'ice', KIT.SNOW);
+              for (const f of [1, -1]) { const g = f > 0 ? { glow: 0.85 } : { ry: 180, glow: 0.85 }; q.sign(name, 0, 2.3, f * 0.06, Math.min(4.3, name.length * 0.26 + 0.4), 0.5, '#f4ecd8', '#2f4a3a', KIT.FONT, g); q.sign(words, 0, 1.8, f * 0.06, Math.min(4.3, words.length * 0.2 + 0.4), 0.38, '#f4ecd8', '#2f4a3a', KIT.FONT, g); } }));
+          return { L: r2(L), rise: r2(yb - ya) }; };
+      Object.assign(R2.count, { runBoards: nBoards, runPoles: nPoles, runTrees: nTrees });
+      /* nothing grows under a lift: a tree an old plot brought with it leaves the lift's line and its stations (16 m either side) */
+      { const near = f => LIFTLINES.some(([ax, ay, bx, by]) => { const tx = (f.x + R.HX) / C, ty = (f.z + R.HZ) / C, L2 = (bx - ax) * (bx - ax) + (by - ay) * (by - ay), t = Math.max(-0.06, Math.min(1.06, ((tx - ax) * (bx - ax) + (ty - ay) * (by - ay)) / L2)); return Math.hypot(tx - (ax + (bx - ax) * t), ty - (ay + (by - ay) * t)) < 4.6; });
+        const n0 = R2.F.length; R2.F = R2.F.filter(f => !(f.k === 'tree' && near(f))); R2.count.treesOffTheLift = n0 - R2.F.length; }
+      if (S.id === R_LODGE) { const l1 = LIFT('lift1', 'THE LODGE CHAIR', [1.3, 5.3], [6, 4.25], { travel: 34, dwell: 7, up: 'UP TO THE MID STATION', down: 'DOWN TO THE SKI LODGE' }); R2.count.lodgeChair = l1.L + ' m, up ' + l1.rise + ' m'; } }
     R2.plotAt = (sx, sy) => { const e = R.plotOfSq(sx, sy); return e ? (e.home ? M.byId[e.id] : { id: null, district: e.district, lx: -1, ly: -1 }) : null; };
     /* the spawn: a hub square of its plot (the Lodge Yard's own square, as before) */
     const sp = (() => { const e = R.ofHome[S.spawn[0]]; if (S.spawn[1] != null) return [e.col * N + S.spawn[1], e.row * N + S.spawn[2]]; const h = hubOf(e); return [e.col * N + h[0], e.row * N + h[1]]; })();
@@ -524,8 +618,9 @@ const owBlocks = ROOMS_OW.map(o => { const { S, R, R2 } = o, w = 2 * R.HX, d = 2
                "                                    sky: " + SKY_DAY + ",\n                                    look: HQ_ROOM_LOOKS.mountain }))",
         parti: S.parti, floor: 'grass_2', pal: ['ice', 'rocks_5', 'dirt_2', 'ice_1', 'marble_light', 'igloo', 'wood_planks', 'obsidian'],
         paintOf: (ch, x, y) => { const p = R2.plotAt(x, y), oly = p && p.district === 'Mount Olympus';
+            if (S.smooth && !oly) { if (ch === 'g') return 1; if (ch === 'p' || ch === 'd') return 6; }   // THE ONE MOUNTAIN: Shasta's summer meadows and dirt trails lie under snow now
             return ch === 's' || ch === 'B' ? 1 : ch === 'k' ? (oly ? 5 : 1) : ch === 'r' ? 2 : (ch === 'p' || ch === 'd') ? 3 : (ch === 'i' || ch === 'x' || ch === 'a') ? 4 : ch === 'm' ? 5 : ch === 'o' ? 6 : (ch === 'j' || ch === 'b') ? ((p && p.id === 'P06-02') || ch === 'b' ? 7 : 6) : ch === 'h' ? 8 : (ch === 't' && p && p.ly === 3 && p.lx < 3) ? 1 : 0; },
-        trees: { snow: { kinds: SNOWPINES, treeH: [5.5, 8] }, pine: { kinds: ['pine', 'pine', 'tree_3', 'tree_2'], treeH: [5.5, 9] } }, treeDefault: 'pine', maxTrees: Math.round(2600 * R.cols * R.rows / 96),
+        trees: { snow: { kinds: SNOWPINES, treeH: [5.5, 8] }, pine: { kinds: ['pine', 'pine', 'pine', 'pine', 'pine', SNOWPINES[0]], treeH: [5.5, 9] } }   /* (THE ONE MOUNTAIN: no summer leaf trees on a ski mountain; one snow pine in six, they are heavy) */, treeDefault: 'pine', maxTrees: Math.round(2600 * R.cols * R.rows / 96),
         treeKey: (x, y) => { const p = R2.plotAt(x, y); return (p && p.ly === 3 && p.lx < 3) ? 'snow' : 'pine'; },
         edges: { world: true, reach: 440, ways: o.ways }, lines: S.lines, spawn: o.sp, face: 0 }); });
 const block = ["        /* MOUNTAINS-BEGIN — THE MOUNTAINS ON PLOTS (2026-11-15) + THE ONE WORLD MOVE (2026-11-17: the range stands at its One World places as three rooms): written by `node bake-mountains.js` from docs/areas/mountains/layout.json + docs/plans/one-world/plots.json. Never hand-edit between the markers; edit a district file (docs/areas/mountains/districts/), the tool or the layout and rerun. */"]
@@ -533,12 +628,11 @@ const block = ["        /* MOUNTAINS-BEGIN — THE MOUNTAINS ON PLOTS (2026-11-1
 /* the ends this tool owns: the links that lead into the rooms, and the three bay doors of DOOR HQ (each at its plot's new place, in the room that holds it) */
 const A = k => moved(M.anchors[k].x, M.anchors[k].z, k), aH = moved(M.out.heaven, -M.HD + 0.5, 'heaven'), aV = moved(M.out.vatican, M.gz((M.byId['P11-03'].ly + 1) * N) - 0.5, 'vatican');   // (the Pilgrim Stair's south side: at home its door stood on the room's far wall, past four plots of rock)
 const aL = A('lemuria'), aP = A('painting'), aBS = A('bayShasta'), aBO = A('bayOlympus');
-if (aH.e.row !== 0 || aV.e.row !== aV.R.rows - 1) throw new Error('the Grand Stair / the Pilgrim Stair no longer stand on their room\'s north / south wall');
 const LINKS = {
     /* northpole_camelot: gone 2026-11-17 (One World phase 5): the sleigh road jumped from the Pole to Camelot's Snowy Pines; the Polar Trail (R5) and the trail L6 walk it */
     northpole_haunted: ['a', "{ site: 'prebuilt_northpole', part: 'plots', wall: 'free', x: " + NP.anchors.hearth.x + ", z: " + NP.anchors.hearth.z + ", face: " + NP.anchors.hearth.face + " }"],
     shasta_lemuria: ['a', "{ site: 'prebuilt_shasta', part: '" + aL.S.part + "', wall: 'free', x: " + aL.x + ", z: " + aL.z + ", face: " + M.anchors.lemuria.face + ", sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN' }"],
-    heaven_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aH.S.part + "', wall: 'n', x: " + aH.x + ", sub: 'THE GRAND STAIR · UP INTO HEAVEN' }"],
+    heaven_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aH.S.part + "', wall: 'free', x: " + aH.x + ", z: " + r2(aH.z + 1.25) + ", face: 180, sub: 'THE GRAND STAIR · UP INTO HEAVEN' }"],   // (THE ONE MOUNTAIN: the Grand Stair stands inside the room now, crags north of it)
     lodge_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aP.S.part + "', wall: 'free', x: " + aP.x + ", z: " + aP.z + ", face: " + M.anchors.painting.face + " }"],
     /* vatican_olympus: gone 2026-11-17 (One World phase 5): the Pilgrim Way (R3) is the walk down to the Vatican; the Pilgrim Stair's foot on the south wall has no door */
 };

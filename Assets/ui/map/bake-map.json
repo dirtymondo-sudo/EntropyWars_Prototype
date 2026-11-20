@@ -165,9 +165,9 @@
   "nz": 60,
   "h0": -3.5,
   "hs": 0.25,
-  "v": "57df680f2f",
-  "bytes": 2306,
-  "s": "8.9"
+  "v": "eb8ceccfd8",
+  "bytes": 4213,
+  "s": "10.7"
  },
  "site_prebuilt_skinwalker_ow_lake": {
   "id": "site_prebuilt_skinwalker_ow_lake",
@@ -592,12 +592,12 @@
  "site_prebuilt_shasta_ow_shasta": {
   "id": "site_prebuilt_shasta_ow_shasta",
   "nx": 84,
-  "nz": 84,
-  "h0": -0.07,
+  "nz": 24,
+  "h0": -0.04,
   "hs": 0.25,
-  "v": "01e82613fa",
-  "bytes": 6362,
-  "s": "2.9"
+  "v": "89499001ae",
+  "bytes": 2026,
+  "s": "0.4"
  },
  "site_ow_r5": {
   "id": "site_ow_r5",
@@ -611,13 +611,13 @@
  },
  "site_prebuilt_shasta_ow_lodge": {
   "id": "site_prebuilt_shasta_ow_lodge",
-  "nx": 120,
-  "nz": 108,
-  "h0": -0.07,
-  "hs": 0.25,
-  "v": "de32a0afe9",
-  "bytes": 12159,
-  "s": "6.8"
+  "nx": 156,
+  "nz": 120,
+  "h0": -0.09,
+  "hs": 0.59,
+  "v": "c76a92fb32",
+  "bytes": 12689,
+  "s": "6.0"
  },
  "site_ow_r10": {
   "id": "site_ow_r10",
@@ -635,8 +635,8 @@
   "nz": 108,
   "h0": -0.04,
   "hs": 0.25,
-  "v": "28f828fe97",
-  "bytes": 2578,
-  "s": "7.3"
+  "v": "402b9fb86e",
+  "bytes": 2965,
+  "s": "7.9"
  }
 }

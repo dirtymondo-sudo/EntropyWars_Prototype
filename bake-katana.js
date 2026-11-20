@@ -20,6 +20,7 @@
 const fs = require('fs'), path = require('path');
 const REPO = __dirname, DRY = process.argv.includes('--dry-run');
 const I = require('./docs/areas/katana/layout.js');
+const INSIDES = require('./docs/areas/katana/insides.js');
 const ROOM = 'site_prebuilt_bermuda_katana';
 const C = 3.5, N = 12, OFF = 12, COLS = 9, ROWS = 9, W = COLS * N, H = ROWS * N, HW = W * C / 2, HD = H * C / 2, LV = 1.75, SEA_BED = -3.5;
 const r2 = v => Math.round(v * 100) / 100, J = o => JSON.stringify(o);
@@ -152,9 +153,25 @@ ctx.WAYSQ = WAYSQ; ctx.onWay = (ix, iy) => WAYSQ.has(ix + ':' + iy);
    each open square of a box that the dice pick (one stream, in reading order); `B2(id, q, ...)` = a building only on open earth (else the bake stops) */
 ctx.open = (ix, iy) => ix >= 0 && iy >= 0 && ix < I.W && iy < I.H && kind[iy + OFF][ix + OFF] === 'g' && !taken.has(ix + ':' + iy) && !WAYSQ.has(ix + ':' + iy);
 ctx.sow = (x0, y0, x1, y1, chance, fn) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const v = rnd(); if (v < chance && ctx.open(x, y)) fn(x, y, v / chance); } };
+/* THE RELIEF INSIDE A PLOT (the pass after the insides; the plan's section A: "at least half of a district's plots have ground shaped inside them"): a HILL or a HOLLOW
+   of rolling ground laid into a level terrace. ctx.hill(cx, cy, r, h): centre and radius in squares (fractions allowed), h in metres (negative = a hollow). The
+   squares it shapes become soft ground (their corners are shared, so it rolls); it dies away to nothing at its rim AND toward anything it must not lift: a way, a
+   building, a prop's square, water, sand, another plot's ground. So it can never leave a step beside a path or tilt a floor. Call it FIRST in a district's build. */
+ctx.hill = (cx, cy, r, h) => { const x0 = Math.floor(cx - r), x1 = Math.ceil(cx + r), y0 = Math.floor(cy - r), y1 = Math.ceil(cy + r), own = I.plotAt(Math.floor(cx), Math.floor(cy)); if (!own) return 0;
+    const bad = (x, y) => { const p = I.plotAt(x, y); return !p || p !== own || kind[y + OFF][x + OFF] !== 'g' || taken.has(x + ':' + y) || WAYSQ.has(x + ':' + y) || F.some(f => (f.k === 'ramp') && Math.abs(mx(x) - (f.x0 + f.x1) / 2) < Math.abs(f.x1 - f.x0) / 2 + (f.z0 === f.z1 ? 0 : f.w / 2) + 0.1 && Math.abs(mz(y) - (f.z0 + f.z1) / 2) < Math.abs(f.z1 - f.z0) / 2 + (f.z0 === f.z1 ? f.w / 2 : 0) + 0.1); };
+    const B = []; for (let y = y0 - 3; y <= y1 + 3; y++) for (let x = x0 - 3; x <= x1 + 3; x++) if (bad(x, y)) B.push([x, y]); let n = 0;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy); if (d >= r || bad(x, y)) continue; let nb = 9; for (const q of B) nb = Math.min(nb, Math.max(Math.abs(q[0] - x), Math.abs(q[1] - y)));
+        const t = 0.5 + 0.5 * Math.cos(Math.PI * d / r), k = Math.max(0, Math.min(1, (nb - 1) / 2)), o = (y + OFF) * W + x + OFF; hgt[o] = r2(hgt[o] + h * t * k); hard[o] = 0; n++; }
+    count.hills = (count.hills || 0) + 1; return n; };
 ctx.thatch = (a, w, h, d, door, tint) => { a.shell(w, h, d, WD, tint != null ? tint : 0x9a7a52, door, [1.75, 1.75]); a.frame(door, d, WD2, DARK);
     a.roof('gable', 0, h, 0, w + 1.6, Math.max(1.6, d * 0.42), d + 1.6, SHG, 0xd2b060, { gain: 1.7, uv: [1.2, 1.2] }); a.box(0, h - 0.16, 0, w + 1.7, 0.16, d + 1.7, SHG, 0xb89448, { top: false, roof: true, gain: 1.6 }); };
-const building0 = ctx.building; ctx.building = (id, q, h, o, parts) => { for (let y = q[1]; y < q[3]; y++) for (let x = q[0]; x < q[2]; x++) { if (kind[y + OFF][x + OFF] === 'w' || (kind[y + OFF][x + OFF] === 's' && !(o && o.onSand))) errs.push(id + ': not on firm ground at ' + x + ',' + y); if (WAYSQ.has(x + ':' + y)) errs.push(id + ': stands on a way at ' + x + ',' + y); } if (o && o.onSand) { o = Object.assign({}, o); delete o.onSand; } return building0(id, q, h, o, parts); };
+const building0 = ctx.building; ctx.building = (id, q, h, o, parts) => { for (let y = q[1]; y < q[3]; y++) for (let x = q[0]; x < q[2]; x++) { if (kind[y + OFF][x + OFF] === 'w' || (kind[y + OFF][x + OFF] === 's' && !(o && o.onSand))) errs.push(id + ': not on firm ground at ' + x + ',' + y); if (WAYSQ.has(x + ':' + y)) errs.push(id + ': stands on a way at ' + x + ',' + y); if (kind[y + OFF][x + OFF] === 'g' && !hard[(y + OFF) * W + x + OFF]) errs.push(id + ': stands on a hill or hollow at ' + x + ',' + y); } if (o && o.onSand) { o = Object.assign({}, o); delete o.onSand; }
+    /* a building keeps one square clear of any higher ground: a rock face is drawn leaning out about a square, and it came through the back wall (seen 11-20) */
+    { const g = hgt[(q[1] + OFF) * W + q[0] + OFF]; let hit = null; for (let y = q[1] - 1; y <= q[3] && !hit; y++) for (let x = q[0] - 1; x <= q[2]; x++) { const X = x + OFF, Y = y + OFF; if (inr(X, Y) && hgt[Y * W + X] > g + 0.6) { hit = [x, y]; break; } } if (hit) errs.push(id + ': stands against higher ground at ' + hit); }
+    const Bd = building0(id, q, h, o, parts);
+    /* THE INSIDES (docs/areas/katana/insides.js): the room's shell and its things, drawn into the building's own look row; catalogue models through put */
+    if (INSIDES.ROOM_OF[id]) { const a = sheet(); INSIDES.furnish({ a, put: (key, lx, lz, oo) => ctx.put(Bd, key, lx, lz, (oo && oo.y >= 1) ? Object.assign({}, oo, { y: r2(hgt[(q[1] + OFF) * W + q[0] + OFF] + oo.y) }) : oo),   /* a prop's y of 1 m or more is a height from the ROOM's floor (three-renderer.js THE TIER HEIGHT), so a hung lantern's is the building's ground + its lift */ w: Bd.fw, d: Bd.fd, h, door: Bd.door, id, rnd, sheets: { WD, WD2, SHG, FLR, PLS } }); ARCH[ARCH.length - 1].parts.push(...a.P); count.furnished = (count.furnished || 0) + 1; }
+    return Bd; };
 Object.keys(DIST).forEach(d => DIST[d].build(ctx));
 
 /* ── THE WAYS' STAIRS: wherever a way (layout.js) steps from one height to another, a real flight stands on the LOW side, as wide as the way, long enough

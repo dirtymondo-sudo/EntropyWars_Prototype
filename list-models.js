@@ -81,7 +81,7 @@ const SOURCES = [
     { re: /world\/props\/meshy\/(treadmill|welding_cart|photocopier|newspaper_bundles|studio_camera|pallet_jack|hand_truck|mailbox_bank)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md)' },
     { re: /world\/props\/meshy\/(anatomy_skeleton|banker_lamp|brass_orrery|dinosaur_skeleton|espresso_machine|fume_hood|iv_stand|lab_glassware|library_chandelier|library_ladder|meteorite_plinth|microscope|pastry_case|privacy_screen|rope_stanchion|specimen_shelf|therapy_chaise|wheelchair)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy)' },
     { re: /ew_plant_(thornvine|gasplant|healflower|apple)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12)' },
-    { re: /asset:world\/props\/meshy\/saguaro_cactus\.glb/, how: 'MESHY', src: "Meshy AI, made by Claude through the Meshy API for the Desert, mondo's OK 2026-11-15 (the prop `saguaro_cactus` planted as the tree kind `saguaro` on the land past a dry room's line, 2026-11-16)" },
+    { re: /world\/props\/meshy\/saguaro_cactus\.glb/, how: 'MESHY', src: "Meshy AI, made by Claude through the Meshy API for the Desert, mondo's OK 2026-11-15 (the prop `saguaro_cactus` planted as the tree kind `saguaro` on the land past a dry room's line, 2026-11-16)" },
     // the shared animation libraries
     { re: /Assets\/Models\/UAL\d/, how: 'PACK', src: 'Universal Animation Library · Quaternius · CC0' },
     { re: /characters\/animations\/MAL[45]_Sniper/, how: 'MESHY_C', src: "Meshy's animation library pulled through the Meshy API on the male sniper's rig (2026-11-11), packed by Claude (build-mal.py)" },
@@ -102,6 +102,10 @@ const SOURCES = [
     { re: /charactercreation\/mpfb\//, how: 'MH_BLEND', src: 'MakeHuman / MPFB2 base body (CC0), built + rigged by Claude in Blender (bake-mpfb.py / bake-mpfb-classic.py)' },
     { re: /charactercreation\/Meshy_AI_/, how: 'MESHY_C', src: 'Meshy base body, rigged by Claude (character-rig.js bodies)' },
     // packs with a known author (the same rows as data.js EW_CREDITS)
+    // THE FLORA PACKS (2026-11-20, mondo's inbox upload; FBX / .blend -> GLB by bake-foliage.py; docs/notes/flora.md)
+    { re: /Assets\/world\/packs\/afgameassets_retro_foliage\//, how: 'PACK', src: 'Retro Foliage: Pixel Art Nature Kit · AFGameAssets · bought by mondo (in a game yes, never redistributed as standalone source files); the kit\'s meshes and its own season leaf pictures, turned to GLB by bake-foliage.py' },
+    { re: /Assets\/world\/packs\/handpainted_flowers\//, how: 'PACK_ANON', src: "Handpainted flower assets (mondo's 2026-11-20 upload: one .blend + one sheet; no author or licence file in the zip), turned to GLB by bake-foliage.py" },
+    { re: /Assets\/world\/nature\/flora\//, how: 'PACK', src: 'THE FLORA FIELD: every small plant of the Retro Foliage kit (AFGameAssets) and the hand-painted flowers in one file on one sheet (bake-foliage.py); three-renderer.js grows it round the walker by climate (data.js ZONE_FLORA)' },
     { re: /Assets\/foilage\/OBJ\//, how: 'PACK', src: 'LowPoly nature · Quaternius · CC0' },
     { re: /Assets\/foilage\/(FBX|Blends)\//, how: 'PACK', src: 'LowPoly nature · Quaternius · CC0 (the same trees as FBX / .blend; the game loads the OBJ)' },
     { re: /Assets\/foilage\/retrotreepack\/GLB\/[^/]*_full\.glb/, how: 'CODE_FILE', src: 'THE PAINTED TREES: trunk, boughs, leaf puffs and the leaf pictures built by bake-trees.py; only the bark picture is the Retro Tree Pack\'s (Pizza Doggy licence)' },
@@ -361,6 +365,7 @@ function foliageUrl(name) {
     if (name.startsWith('rt:')) return BASES.rt + name.slice(3) + '.glb';
     if (name.startsWith('kit:')) return KIT + name.slice(4);
     if (name.startsWith('misc:')) return BASES.misc + name.slice(5);
+    if (name.startsWith('asset:')) return CDN + 'Assets/' + name.slice(6).split('#')[0];   // any GLB of the bucket planted as a tree (the saguaro, the giant flowers, the Retro Foliage kit)
     if (name.startsWith('xmas:')) return CDN + 'Assets/christmas/models/' + XMAS_FILE + '#' + name.slice(5);
     return FOL_OBJ + name + '.obj';
 }
@@ -371,6 +376,7 @@ for (const k of Object.keys(sb.HQ_TREE_KINDS || {})) {
 }
 const fm = R3.match(/var _FOLIAGE_MODEL_FOR_KEY = \{([\s\S]*?)\};/);
 if (fm) for (const m of fm[1].matchAll(/(\w+):\s*'([^']+)'/g)) add('foliage', m[1], foliageUrl(m[2]));
+if (sb.ZONE_FLORA && sb.ZONE_FLORA.field) add('foliage', 'flora_field', foliageUrl(sb.ZONE_FLORA.field));   // THE FLORA FIELD (data.js ZONE_FLORA)
 
 // 4. the renderer + VFX file tables (spell props, sky / horizon models, animals)
 function block(src, start) {
