@@ -12835,11 +12835,18 @@ That is not a bayside view. It's called bayside mall." and "the other part I cir
   in the cove because it's 2 different colors"):** (1) THE BEND: the Shore's curve started 7 m off the Cove's waterline at another heading, so the two met in
   a corner. `COAST.shore`'s first point now lies ON the Cove's waterline (a circle of 32 m round the Cove's middle), 20 degrees west of its south point, and
   the curve leaves along that circle's own tangent: one line, seen from above. ANY curve that meets a round cut must start on its waterline and on its tangent.
-  (2) ONE SAND: the Cove lies in the Hills' rows, which are a GROUND ZONE (`terrain.zones`), and a zone's whole material follows its FLOOR sheet: the Hills'
-  dry grass has a calm twin, so everything painted in that zone, the `desert` sand too, is shaded the calm way, while the city's ground (asphalt floor) is not.
-  Same sheet, two looks, a line on the room's old north edge. `bake-disaster-city.js` writes a zone of its own for the strip east of the plots (`COVE_ZONE`:
-  the city's floor and path sheets, the Hills' palette for the headland's rock), listed first (a quad takes the first zone it lies in). THE RULE: two
-  stretches of one painted sheet match only if their zones' FLOOR sheets are both calm or both not.
+  (2) ONE SAND (three tries; the third is live): the Cove lies in the Hills' rows, which are a GROUND ZONE (`terrain.zones`) whose floor sheet (dry grass) is
+  CALM, and a calm ground is lit plain white (`_CALM.floor`), while the city's ground is multiplied by the city shell's grey floor colour (0xa8a8a4) and
+  lifted a little. So the same `desert` sheet was a third darker south of the room's old north line. TRY 1, a zone of the city's look over the Cove's strip:
+  the line moved to the strip's west edge, down the cliff (mondo: "you're still leaving these seams on the mountain/cliff and the sand ... at least blend
+  it"). TRY 2, every sand square cut out of the Hills' zone (`zone.out`): no straight line, but a blocky stepped edge where sand met rock (two materials
+  cannot blend a painted edge). LIVE: THE BEACH'S SAND IS LIT AS THE HILLS' SAND IS. `bake-disaster-city.js` writes `BEACH_ZONE` first in `terrain.zones`:
+  the strip east of the plots, the city's own sheets and its first eight painted sheets, `calmShade: true` (three-renderer.js `_hqGroundZones`: that zone's
+  material gets the calm light, white, no lift, no shine), and `out` = every run of squares of the strip that is NOT sand (157 runs: the boardwalk, the
+  mole, the skate pad, the grill deck, the port's quay), which the city's ground draws as before. The two lights meet only where sand meets boards or
+  concrete. The Hills' zone and N.js are as they were. SIDE EFFECT: all of the beach's sand is paler than it was (the Cove's tone). THE RULE: a painted
+  sheet matches across a zone line only if both sides are lit the same way; moving the line never removes a seam, and a zone edge through one painted
+  sheet always shows.
 - **NOT TOUCHED:** Entertainment's own buildings behind the Shore (they stand a storey up on the sea wall, north of the mole); the mall; everything west of
   the coast road. FOR THE MALL THREAD: the mall's east front now faces road, boardwalk, sand, pier, water with nothing between; the strip's squares 141..143
   are open planks you may build a forecourt on, but mondo's word is that nothing tall goes there.

@@ -919,13 +919,18 @@ lines.push("                backdrop: false, edges: " + J(EDGES) + ",");
 const UD = process.env.DC_NO_UD ? null : require(path.join(REPO, 'docs/disaster-city/urban-decay.js'));
 lines.push(UD ? "                floor: '" + UD.GROUND.floor + "', cliff: '" + UD.GROUND.cliff + "', path: '" + UD.GROUND.path + "', floorTint: '#dcdce0',"
               : "                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
-/* ONE SAND (2026-11-20, mondo: "there is a very clear and obvious seam going down the sand in the cove because it's 2 different colors"): the Hills' rows are
-   a ground zone of their own (dry grass floor, so the zone's whole material is shaded the calm way), and the Cove's sand lies in those rows while the
-   Shore's lies in the city's: the same `desert` sheet, two looks, a line on the room's old north edge. The strip east of the plots (the Cove, all sand
-   and rock) is a zone of its OWN, listed first (a quad takes the first zone it lies in): the city's own floor and path sheets, so its material is the
-   city's, with the Hills' palette (the headland's rock). */
-const COVE_ZONE = (ROOM.north && ROOM.zone && ROOM.east && UD) ? { x0: HALF, z0: r3(-HALF - ROOM.north * C), x1: r3(HALF + ROOM.east * C), z1: -HALF, floor: UD.GROUND.floor, cliff: ROOM.zone.cliff, path: UD.GROUND.path, pal: ROOM.zone.pal, floorTint: '#dcdce0' } : null;
-if (ROOM.north && ROOM.zone) lines.push("                zones: " + J((COVE_ZONE ? [COVE_ZONE] : []).concat([Object.assign({ x0: r3(-HALF - ROOM.east * C), z0: r3(-HALF - ROOM.north * C), x1: r3(HALF + ROOM.east * C), z1: -HALF }, ROOM.zone)])) + ",   // THE GROUND ZONES: the Hills' rows wear their own sheets");
+/* ONE SAND (2026-11-20, mondo: "there is a very clear and obvious seam going down the sand in the cove because it's 2 different colors", then, of a first
+   fix that only moved the line: "you're still leaving these seams on the mountain/cliff and the sand ... at least blend it"). WHY THERE WAS A SEAM: the
+   Hills' rows are a ground zone whose floor sheet (dry grass) is CALM, and a calm ground is lit plain white, while the city's ground is multiplied by
+   the city shell's grey floor colour (0xa8a8a4) and lifted a little: the same `desert` sheet was a third darker south of the room's old north line.
+   Moving the zone's edge only moves the line (tried: a line down the cliff; then cut on the sand's own squares: a blocky stepped edge). THE FIX: the
+   BEACH'S SAND IS LIT AS THE HILLS' SAND IS. The strip east of the plots is a zone of its own (BEACH_ZONE, listed first; the city's own sheets and its
+   first eight painted sheets, `calmShade: true` = three-renderer.js _hqGroundZones lights it the calm way), and every square of it that is NOT sand (the
+   boardwalk, the mole, the skate pad, the grill deck, the port's quay) is cut out of it (`out`) and drawn by the city's ground as before. So the two
+   lights meet only where sand meets boards or concrete, never across sand, never across rock. Worked out where the paint is known (below). */
+let BEACH_ZONE = null;
+const zonesLine = () => "                zones: " + J((BEACH_ZONE ? [BEACH_ZONE] : []).concat([Object.assign({ x0: r3(-HALF - ROOM.east * C), z0: r3(-HALF - ROOM.north * C), x1: r3(HALF + ROOM.east * C), z1: -HALF }, ROOM.zone)])) + ",   // THE GROUND ZONES: the Hills' rows wear their own sheets";
+if (ROOM.north && ROOM.zone) lines.push(zonesLine());
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
 DISTRICTS.forEach(m => (m.streets || []).forEach(st => streets.push(st)));   // a district's own streets past the plots (the Hills' roads: districts/N.js): lane lines, kerbs and covers like the city's; laid in last, so no lamp, bus or traffic rule of the plan reads them
@@ -1176,7 +1181,14 @@ count.levels = lvCount;
   /* THE ROOM PAST THE PLOTS, NORTH: its rows' sheets lie ahead of the city's; a sheet the city's eight do not hold joins the palette's end (read only by its ground zone) */
   const palOut = (UD ? UD.pal(PAL) : PAL).slice(), nr = NORTH ? NORTH.rows : 0, paintAll = new Uint8Array(NXP * (144 + nr)); paintAll.set(paint, NXP * nr);
   if (NORTH) NORTH.cells.forEach((c, k) => { if (!c.sheet) return; let i = palOut.indexOf(c.sheet); if (i < 0) { if (palOut.length >= 16) throw new Error('the ground palette is full (16 sheets): ' + c.sheet); palOut.push(c.sheet); i = palOut.length - 1; } paintAll[k] = i + 1; });
-  lines[paintLine] = "                paint: { pal: " + J(palOut) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + r3(gc(0) - nr * C) + ", nx: " + NXP + ", nz: " + (144 + nr) + ", d: '" + Buffer.from(paintAll).toString('base64') + "' },"; }
+  lines[paintLine] = "                paint: { pal: " + J(palOut) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + r3(gc(0) - nr * C) + ", nx: " + NXP + ", nz: " + (144 + nr) + ", d: '" + Buffer.from(paintAll).toString('base64') + "' },";
+  /* ONE SAND: the beach's zone (see BEACH_ZONE): its `out` = every run of squares of the strip that is not sand */
+  if (ROOM.east && ROOM.north && ROOM.zone && UD) { const di = PAL.indexOf('desert') + 1, out = [];
+      for (let cy = 0; cy < 144; cy++) { let run = -1; for (let cx = 144; cx <= NXP; cx++) { const other = cx < NXP && paint[cy * NXP + cx] !== di;
+          if (other && run < 0) run = cx; else if (!other && run >= 0) { out.push([r3(-HALF + run * C), r3(-HALF + cy * C), r3(-HALF + cx * C), r3(-HALF + (cy + 1) * C)]); run = -1; } } }
+      BEACH_ZONE = { x0: HALF, z0: -HALF, x1: r3(HALF + ROOM.east * C), z1: HALF, floor: UD.GROUND.floor, cliff: UD.GROUND.cliff, path: UD.GROUND.path, floorTint: '#dcdce0', pal: palOut.slice(0, 8), calmShade: true, out };
+      const zi = lines.findIndex(l => /^ +zones: /.test(l)); if (zi < 0) throw new Error('ONE SAND: the zones line was not found'); lines[zi] = zonesLine();
+      console.warn('[one sand] the beach strip is a calm-lit zone; ' + out.length + ' runs of boards and concrete stay the city\'s'); } }
 /* ── THE INTERIOR POLISH (docs/disaster-city/interior-polish.js; mondo 11-15: "rugs/carpets flickering ... do another polish pass on disaster
    city"): last of all, over every walk-in building whichever district wrote it: props beside a wall off the roof (`floor: true`), no two drawn
    faces on one plane, rugs onto the floor sheet, props onto the raised floor they stand in. It moves rows, it never drops one. ── */
