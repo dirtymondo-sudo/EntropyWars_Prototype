@@ -76764,7 +76764,11 @@ const ThreeRenderer = (function () {
             var surf = (!b.key && !(b.glow > 0) && b.kind !== 'glass' && b.kind !== 'over' && !(typeof window !== 'undefined' && window.EW_ARCH_BARE)) ? _hqArchSurface(b.tint) : null;
             if (surf) { var st = _hzTex(surf.key); if (st) { o.map = st; } else surf = null; }
             if (b.kind === 'over') { o.transparent = true; o.alphaTest = 0.35; o.polygonOffset = true; o.polygonOffsetFactor = -1; o.polygonOffsetUnits = -1; }
+            /* CLEAR GLASS (2026-11-20, the Bayside Mall: "the view out"): `kind: 'clear'` = a pane you see through (a shop window, a glass roof seen from
+               under it); `glass` stays the opaque window sheet the city's walls wear. A sheet on it draws its mullions at the same see-through. */
+            if (b.kind === 'clear') { o.transparent = true; o.opacity = tex ? 0.42 : 0.2; o.depthWrite = false; o.shininess = 90; o.specular = 0x667788; }
             var m = new THREE.MeshPhongMaterial(o);
+            if (b.kind === 'clear') m.side = THREE.DoubleSide;
             if (b.ds) m.side = THREE.DoubleSide;
             m.color = new THREE.Color(b.tint);
             if (tex && !sign) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
@@ -76785,7 +76789,7 @@ const ThreeRenderer = (function () {
                     for (var i = 0; i < b.pos.length; i += 3) { pos[i] = b.pos[i] * U; pos[i + 1] = b.pos[i + 1] * U + 0.3; pos[i + 2] = b.pos[i + 2] * U; }
                     var g = new THREE.BufferGeometry();
                     g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2)); g.setIndex(b.idx); g.computeVertexNormals();
-                    var m = new THREE.Mesh(g, matOf(b)); m.renderOrder = b.kind === 'over' ? 2 : 1; m.castShadow = false; m._ew_hqTexBuilding = true; m._ew_hqArch = row.id || true; m.name = 'hq_arch';
+                    var m = new THREE.Mesh(g, matOf(b)); m.renderOrder = b.kind === 'clear' ? 3 : b.kind === 'over' ? 2 : 1; m.castShadow = false; m._ew_hqTexBuilding = true; m._ew_hqArch = row.id || true; m.name = 'hq_arch';
                     if (b.roof) { m._ew_hqPart = 'ceil'; m._ew_hqRoof = true; }
                     G.add(m); made++;
                 });
@@ -83629,6 +83633,28 @@ const ThreeRenderer = (function () {
                 motion.pivot.add(slab);
                 var slabDado = _hqBox(ow + 0.02, S.dadoH, 0.03, dadoMatS); slabDado.position.set(slab.position.x, (S.dadoH / 2 + 0.04) * U, 0.065 * U);
                 motion.pivot.add(slabDado);
+            } else if (door.proc === 'glass_slide') {
+                /* THE GLASS DOORS (2026-11-20, the Bayside Mall; mondo: "Do both of those" = the door leaf + the view out): a mall's automatic doors.
+                   Two glass leaves in white aluminium stiles, a push bar across each, parting into the jambs the way the lift's halves do (the same
+                   `elevator` motion and clip planes). The dark back plate is not hung: you see through the glass to whatever is behind the door. */
+                var gfMat = _hqMat('aluminium', 0.9, 2.4, { color: 0xf4f4f2, shininess: 110, specular: 0xb4b8bc });
+                var ggMat = new THREE.MeshPhongMaterial({ color: 0xa6dcec, transparent: true, opacity: 0.3, shininess: 100, specular: 0x99aabb, depthWrite: false, side: THREE.DoubleSide });
+                ggMat.emissive = new THREE.Color(0x0a1418);
+                var gHalf = (ow / 2) - 0.01, gH = oh - 0.03, gSt = 0.075;
+                var gPL = new THREE.Plane(), gPR = new THREE.Plane();
+                var gLeaf = function (sd, plane) {
+                    var g2 = new THREE.Group(), fm = gfMat.clone(), gm = ggMat.clone(); fm.clippingPlanes = [plane]; gm.clippingPlanes = [plane];
+                    var bits = [[gSt, gH, -gHalf / 2 + gSt / 2, gH / 2], [gSt, gH, gHalf / 2 - gSt / 2, gH / 2], [gHalf, 0.1, 0, gH - 0.05], [gHalf, 0.24, 0, 0.12], [gHalf - 2 * gSt, 0.045, 0, 1.02]];
+                    bits.forEach(function (q) { var m2 = _hqBox(q[0], q[1], 0.06, fm); m2.position.set(q[2] * U, q[3] * U, 0); g2.add(m2); });
+                    var pane = _hqBox(gHalf - 2 * gSt + 0.01, gH - 0.34, 0.02, gm); pane.position.set(0, (0.24 + (gH - 0.34) / 2) * U, 0); pane.renderOrder = 3; g2.add(pane);
+                    g2.position.set(sd * (gHalf / 2 + 0.005) * U, 0, 0);
+                    return g2;
+                };
+                var gL = gLeaf(-1, gPL), gR = gLeaf(1, gPR);
+                leafGroup.add(gL, gR);
+                back.visible = false;
+                motion = { mode: 'elevator', parts: [{ m: gL, x0: gL.position.x, dir: -1 }, { m: gR, x0: gR.position.x, dir: 1 }], travel: gHalf * 0.94 * U, ow: ow, cage: [], clips: [{ dir: -1, plane: gPL }, { dir: 1, plane: gPR }] };
+                renderer.localClippingEnabled = true;
             } else if (door.proc === 'elevator') {
                 /* 2026-09-16 (the user: "don't use that metal texture on it"): the
                    leaves were the TRIM sheet tinted grey — a patterned, busy panel.
