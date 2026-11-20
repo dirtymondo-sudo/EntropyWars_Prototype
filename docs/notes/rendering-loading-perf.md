@@ -3473,3 +3473,16 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
 - Probe: `ThreeRenderer.hq.dev.air()`. Off (the rooms' own fog as before): `window.EW_NO_ONE_AIR` (set before a room builds).
 - Checked by picture: the Desert walk (off / on / low density, classic + the node renderer), both menus, one fight (Giza). NOT yet
   looked at: indoor rooms, night and dusk, the other zones, a fight on a room. NOT built: lamps and neon glowing in the fog.
+
+- THE LAMPS' WHY (11-20, his third battle F3, 02:10, a session loaded 3 min after THE LAMPS PER CAMERA merged: STILL "lamps
+  2342.2/s", "2375 walked · 2375 re-recorded · LAMPS MOVED" on the main scene's checks, and "Shader builds 29.4/s"): so the lit set
+  really changes every frame in a combo on ONE camera (the shader builds say three sees it too), or the check's camera has no
+  list of its own. Not known which light. Added: the lamp stamp is by the SET (three sorts lights by id; the order no longer
+  counts), and the lens's spike line now reads "LAMPS MOVED [cam N, n lights: +PointLight "name" in parent +shadow | -… | ~…]"
+  (what joined, left or flipped its shadow flag against this camera's last list; fog and environment too; "(no list of its own)"
+  when the camera never drew). The next battle F3 names the light. The fix is then at that light: into the rig, or held on for
+  the shot.
+- OPEN, his words 02:1x: "And the road is like flickering" (with the cars; the sessions that walked HQ → city). Flicker on a
+  road reads like two surfaces in one plane or shadow acne (THE ZSEP's note on the Bayside ground), or a piece drawn on
+  alternate frames; not told apart yet. Live switches to try while looking at it, one line in the console:
+  `EW_SHADOW_KEY_EVERY = EW_MASK_LIST_OFF = EW_HQ_STILL_NO_HELD_BOOK = EW_BUN_TARGETS_EVERY = EW_OCC_NO_KEEP = EW_BUN_LAMPS_ONE = true`.
