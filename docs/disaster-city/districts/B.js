@@ -1441,14 +1441,25 @@ function last(ctx) {
         if (f.k === 'plateau' && !f.bld) continue;
         features.splice(i, 1); out.rows++; }
     for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.x >= X0 && q.x < gx(STRIP.x1) - 0.3 && q.z >= Z0 && q.z < Z1 && !/^roads_/.test(q.key)) { props.splice(i, 1); out.props++; } }
-    /* THE MEDIAN'S PALMS: one short palm (the catalogue's 3.2 m `palm_tree`) in a low concrete planter every three squares on the coast road's middle
-       line (the cars keep 2.5 to 4.5 m off it), clear of the crossings. Set here, at the very end: earlier, the lane pass would draw them out to the kerb
-       and the soil pass would paint a lane square as a sand bed under each. */
-    { const road = cy => [136, 137, 138, 139].every(cx => ctx.cellAt(cx, cy) === 'R') && ctx.cellAt(135, cy) !== 'R' && ctx.cellAt(140, cy) !== 'R', at = (x, z) => { const pl = ctx.plotOf['P11-' + String(Math.floor((z + ctx.HALF) / ctx.C / N)).padStart(2, '0')]; return (ctx.lvOf && pl) ? ctx.lvOf(pl) * ctx.LEVELS.M : 0; }; let n = 0;   // (the plot's level: the Marina plot's stretch of road stands a level up)
-      for (let cy = 8 * N + 1; cy < 12 * N; cy += 3) if (road(cy) && road(cy - 1) && road(cy + 1)) { const x = gx(138), z = ctx.gc(cy), y = Math.round(at(x, z) * 1000) / 1000;
-          props.push({ key: 'palm_tree', x, z, face: (cy * 53) % 360 });
-          const row = { k: 'arch', id: 'dc:bay-median' + cy + ':arch', x, z, rot: 0, parts: [{ s: 'box', p: [0, 0, 0], size: [1.5, 0.32, 2.8], key: 'urban:ConcreteStriped2a', tint: 0xd8d4c8 }, { s: 'box', p: [0, 0.32, 0], size: [1.2, 0.04, 2.5], key: 'desert', top: true }] }; if (y) row.y = y; features.push(row); n++; }
-      out.median = n; }
+    /* THE MEDIAN (2026-11-20, mondo: "the median needs to be connected, like a raised median. Not individual little patches ... Just a normal street
+       median"): ONE raised kerbed strip down the coast road's middle line, 1.5 m wide and 0.2 m high, sand on top, unbroken from crossing to crossing
+       (it stops only where a cross street or a crossing meets the road), a rounded nose at each end; a short palm (the catalogue's 3.2 m `palm_tree`)
+       every three squares along it. It follows the road's own height (the road falls a storey off the Marina plot): the strip is laid in pieces under a
+       metre long, each at the ground's height under it (`ctx.at`, the city's own squares: this file's are 48 rows on). Set here, at the very end: earlier
+       the lane pass would draw the palms out to the kerb and the soil pass would paint a lane square as a sand bed under each. The cars keep 2.5 to
+       4.5 m off the middle line. Was: fourteen separate planters. */
+    { const road = cy => [136, 137, 138, 139].every(cx => ctx.cellAt(cx, cy) === 'R') && ctx.cellAt(135, cy) !== 'R' && ctx.cellAt(140, cy) !== 'R';
+      const DZ = (ctx.plotOf['P11-08'].wy != null ? (ctx.plotOf['P11-08'].wy - 8) : -4) * 42, at = z => (typeof ctx.at === 'function') ? ctx.at(gx(138), z + DZ) : 0, r3 = ctx.r3, X = gx(138), CON = 'urban:ConcreteStriped2a';
+      const runs = []; let a0 = -1; for (let cy = 8 * N; cy <= 12 * N; cy++) { const ok = cy < 12 * N && road(cy); if (ok && a0 < 0) a0 = cy; else if (!ok && a0 >= 0) { if (cy - a0 >= 2) runs.push([a0, cy]); a0 = -1; } }
+      let n = 0, pieces = 0;
+      runs.forEach((rn, ri) => { const z0 = gx(rn[0]) + 1.2, z1 = gx(rn[1]) - 1.2, L = z1 - z0, k = Math.max(1, Math.round(L / 0.875)), st = L / k, y0 = at(z0), parts = [];
+          for (let i = 0; i < k; i++) { const zc = z0 + (i + 0.5) * st, y = r3(at(zc) - y0), dz = r3(zc - z0);
+              parts.push({ s: 'box', p: [0, y - 0.3, dz], size: [1.5, 0.5, r3(st + 0.02)], key: CON, tint: 0xd8d4c8 }, { s: 'box', p: [0, r3(y + 0.2), dz], size: [1.14, 0.03, r3(st + 0.02)], key: 'desert', top: true }); pieces++; }
+          [[0, 0], [L, at(z1) - y0]].forEach(e => parts.push({ s: 'cyl', p: [0, r3(e[1] - 0.3), r3(e[0])], r: 0.75, h: 0.5, key: CON, tint: 0xd8d4c8, seg: 12 }, { s: 'cyl', p: [0, r3(e[1] + 0.2), r3(e[0])], r: 0.57, h: 0.03, key: 'desert', seg: 12 }));
+          const row = { k: 'arch', id: 'dc:bay-median' + ri + ':arch', x: X, z: r3(z0), rot: 0, parts }; if (Math.abs(y0) > 0.001) row.y = r3(y0); features.push(row);
+          for (let cy = rn[0] + 1; cy < rn[1]; cy += 3) { props.push({ key: 'palm_tree', x: X, z: ctx.gc(cy), face: (cy * 53) % 360 }); n++; } });
+      console.warn('[bayside median] runs ' + JSON.stringify(runs) + ', heights at its ends ' + JSON.stringify(runs.map(rn => [r3(at(gx(rn[0]) + 1.2)), r3(at(gx(rn[1]) - 1.2))])));
+      out.median = n; out.medianPieces = pieces; }
     console.warn('[bayside strip] cleared', JSON.stringify(out));
 }
 module.exports = { room, tailor, apply, build, last, B, K, T, COAST, MOLE, waterAt };
