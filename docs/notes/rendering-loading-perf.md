@@ -3638,3 +3638,21 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   where the back is never seen, "takes shadow" off on small props, vertex colours carried by models that are white: -20 to -30,
   each needs a look. (4) Layout forks of the lit shaders (strip unused attributes at load): -10 to -20, nothing visible.
   Each shader costs a "first" in every render (~20 µs) and a build the first time it is met.
+- THE KEY BY WHAT IS READ (11-20, mondo "Yes please" to cuts 1 + 2 of THE SHADER COUNT). RESULT: 198 → **180** builds in the same
+  census (three runs: 198, then 191 / 195 with the first half of the change, 180 with all of it), the shadow pass 40 → 26. LESS
+  than the ~45 promised: the premise "the forks are unused attributes" was only partly right. What the change does, in
+  `_ewInstShareSetup` (the RenderObject prototype): `getGeometryCacheKey` for a shadow-pass material or a plain Basic / Lambert
+  / Phong / Standard / Physical material (no `_ewNode`, no hook, not a node material, a Mesh) lists only the attributes that
+  material can read (position; normal; the uv sets when it has a sheet or, for a shadow, cuts out; `color` with vertexColors;
+  `tangent` with a normal map; the skin's two); while a BUILD's key is written (`geoForBuild`, set in `gkInst`) it also leaves
+  out where an attribute sits in its buffer (stride / offset) and the index flag (the pipeline's key keeps them);
+  `getDynamicCacheKey` + the material key read receiveShadow as off for a shadow-pass material. Off: `window.EW_GEO_KEY_FULL`
+  before the first draw. `_EW_TR_STAMP` = "11-20 key-by-read". Picture: the same city view as 11-19's, shadows / props /
+  buildings alike; no page error, no "draw failed".
+  WHAT REALLY FORKS A LOOK (measured on the shadow pass: 29 builds, only 11 different shader TEXTS): the skeleton's bone count
+  (8 values: three sizes the bone array by it, so every rig with another count builds every one of its looks again), the render
+  context's id (the same pass into 2 targets = 2 builds each), `side`, cut-out or not, instanced or not. The text-identical
+  builds share one GPU program already; what they cost is the node BUILD the first time and a "first" per render. Next cuts, in
+  order: (a) one bone-array size for all rigs (pad to the largest, or the bone texture) = the biggest fork of the skinned looks;
+  (b) the context id out of the key where the targets have the same formats; (c) `side` out of the build key (it is pipeline
+  state). The Lambert (72) and Basic (36) families were not broken down yet: run tools like the shadow one before cutting.
