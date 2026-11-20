@@ -3401,3 +3401,19 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   now a plain call with the named arguments. What would move this corner by milliseconds is structural, not another small cut:
   the 39 signals and the one-of-a-kind props into recordings (fewer own draws), fewer distinct shaders (each costs a "first" in
   every render), or the unit mask drawn from a kept list of bodies in place of a walk of the scene.
+- THE MASK'S LISTS (11-20, mondo picked cut 2 of three: "draw the character outline pass from a kept list of bodies"): the unit
+  mask (THE BOLD UNIT LINE: two renders of the scene a frame, the skinned layer and the still parts that ride a unit) walked the
+  scene for a few dozen pieces ("mask: projection walk 1.0-1.1 ms", "Walk visits: mask 3.4K-5.4K"). three-post.js
+  `_scanPixelMaskTargets` (which already reads every object on an add / every 1.5 s) now writes down what stands on each of the
+  two layers (`sc._ew_pixSkinL`, `sc._ew_pixUnitL`: by the layer bits, a piece under a listed one not listed again), and
+  `_renderPixelMask` hands the list to the renderer for its render (`_ew_maskList`, `_ew_maskListSc`). three-renderer.js
+  `_ewMaskListSetup` (any node renderer, set up after `init()`): for that render the scene's children are not walked; each listed
+  piece whose parents are all shown up to the scene goes to three's own projection with its nearest Group's render order.
+  The Pixelate "models" static pass and every other render are untouched. Off: `window.EW_MASK_LIST_OFF` (live).
+  Proof (city probe, node renderer on WebGL 2, `--post`, ink style on, same frame conditions, the walk then the list): the mask
+  drew the SAME objects in the SAME order (4 of 68 listed bodies in view); projection visits 30,487 → 37 (skinned) and 30,487 → 1
+  (unit parts). On his WebGPU path the walk was already cut to ~4,000 by the mask files; the list makes it a few dozen.
+  PROBE FACTS learned: playtest_city.js sets `EW_HQ_NO_POST` unless `--post` (no mask, no style without it); the ink style's
+  picture is broken on the cloud's WebGL 2 software path (ground missing) with or without this change, so compare DRAWS (wrap
+  `renderer.renderObject` during the render), not pixels; `EW_PROBE_GL=webgpu` + `--gpu=webgpu` runs real WebGPU on SwiftShader
+  (black picture, counts only); a small room for a 40 s probe: `site_ow_r1`.

@@ -1337,7 +1337,13 @@ const ThreePost = (function () {
         sc = sc || _scene;   // the walk's own scene (renderScene) when the bold unit line asks for its bodies
         if (!sc) return;
         var units = 0;
-        (function walk(n, inUnit) {
+        /* THE MASK'S LISTS (2026-11-20, mondo picked "draw the character outline pass from a kept list of bodies"): what stands on the
+           skinned layer and on the unit layer is written down here (this scan already reads every object), so the mask's two
+           renders can start from these few dozen pieces in place of walking the scene for them (three-renderer.js
+           _ewMaskListSetup). By the layer bits themselves, so a clone that kept its layers is in; a piece under a listed one is
+           reached through it and not listed again. */
+        var LS = [], LU = [], BS = 1 << PIX_LAYER_SKIN, BU = 1 << PIX_LAYER_UNIT;
+        (function walk(n, inUnit, inS, inU) {
             var ch = n.children, i;
             if (n.isBone || n._ew_pixUnit) inUnit = true;
             else if (!n.isScene && ch.length <= 24) {
@@ -1356,9 +1362,12 @@ const ThreePost = (function () {
                 if (!n._ew_pixelTagged) { n._ew_pixelTagged = true; n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC); _pixMkDirty(n); }
                 if (inUnit && !n.isSkinnedMesh) { if (!n._ew_pixUnitTagged) { n._ew_pixUnitTagged = true; n.layers.enable(PIX_LAYER_UNIT); _pixMkDirty(n); } units++; }
             }
-            for (i = 0; i < ch.length; i++) walk(ch[i], inUnit);
-        })(sc, false);
-        sc._ew_pixUnitN = units;
+            var lm = n.layers.mask;
+            if (!inS && (lm & BS) !== 0 && !n.isScene) { LS.push(n); inS = true; }
+            if (!inU && (lm & BU) !== 0 && !n.isScene) { LU.push(n); inU = true; }
+            for (i = 0; i < ch.length; i++) walk(ch[i], inUnit, inS, inU);
+        })(sc, false, false, false);
+        sc._ew_pixUnitN = units; sc._ew_pixSkinL = LS; sc._ew_pixUnitL = LU;
     }
 
     // Renders the mask for this frame. Returns true when tMask is usable.
@@ -1435,7 +1444,9 @@ const ThreePost = (function () {
                     }
                     mc.layers.set(PIX_LAYER_SKIN);
                     sc.overrideMaterial = _maskMatSkin;
-                    _renderer.render(sc, mc);
+                    var listOn = !(typeof window !== 'undefined' && window.EW_MASK_LIST_OFF);
+                    _renderer._ew_maskList = (listOn && sc._ew_pixSkinL) || null; _renderer._ew_maskListSc = sc;   // THE MASK'S LISTS
+                    try { _renderer.render(sc, mc); } finally { _renderer._ew_maskList = null; }
 
                     /* THE MASK'S OWN BUNDLES (2026-11-14, mondo's Disaster City: 1958 of the frame's 3748 draws were this pass — every
                        static model mesh one draw, a side render drawing every bundled group the classic way): on the node renderer
@@ -1460,7 +1471,8 @@ const ThreePost = (function () {
                             mc.layers.set(PIX_LAYER_UNIT);
                             sc.overrideMaterial = _maskMatStatic;
                             _renderer._ew_maskUnit = true;
-                            try { _renderer.render(sc, mc); } finally { _renderer._ew_maskUnit = false; }
+                            _renderer._ew_maskList = (listOn && sc._ew_pixUnitL) || null; _renderer._ew_maskListSc = sc;
+                            try { _renderer.render(sc, mc); } finally { _renderer._ew_maskUnit = false; _renderer._ew_maskList = null; }
                         }
                     } else {
                     mcS.layers.set(PIX_LAYER_STATIC);
