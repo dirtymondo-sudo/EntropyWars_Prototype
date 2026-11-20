@@ -216,7 +216,8 @@ function check(B, opts) { opts = opts || {}; const { plan, W, H, N, T, L, RAMP, 
             PLOTS.forEach(p => { if (!real[p.bx + ',' + p.by] && p.today != null) FAIL.push('the plan says "' + p.name + '" stands today, the room has no plot there: mark it new (today = null) or fix its place'); });
             /* seams stay level (E 7): the baked height today at each way out against the plan's level there */
             try { const info = S.hqTerrainInfo(plan.room), zero = plan.grid.zero || 0;
-                (plan.doors || []).forEach(d => { if (d[4] == null) return; const x = -room.shell.w / 2 + (d[0] - off[0] * N + 0.5) * 3.5, z = -room.shell.d / 2 + (d[1] - off[1] * N + 0.5) * 3.5; if (Math.abs(x) > room.shell.w / 2 || Math.abs(z) > room.shell.d / 2) return;
+                (plan.doors || []).forEach(d => { if (d[4] == null) return; const dp = plotOf(d[0], d[1]); if (dp && dp.today == null) return;   // a way out on a NEW plot has no height today
+                    const x = -room.shell.w / 2 + (d[0] - off[0] * N + 0.5) * 3.5, z = -room.shell.d / 2 + (d[1] - off[1] * N + 0.5) * 3.5; if (Math.abs(x) > room.shell.w / 2 || Math.abs(z) > room.shell.d / 2) return;
                     const y = S.hqTerrainFeet(info, x, z, null); if (y == null || !isFinite(y)) return; const lv = (y - zero) / 1.75;
                     if (Math.abs(lv - d[4]) > 0.5) NEWR('SEAM: the way out to ' + d[3] + ' stands at ' + y.toFixed(2) + ' m today (level ' + lv.toFixed(1) + '), the plan puts it at level ' + d[4] + ': a seam keeps its height (E 7)'); });
             } catch (e) { WARN.push('could not read the room\'s heights (' + String(e.message).slice(0, 80) + ')'); }
