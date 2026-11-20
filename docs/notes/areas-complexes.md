@@ -8094,6 +8094,8 @@ scientist labs, Lockheed Martin skunkworks, scientific and psychic research, etc
   (2) two plateaus that only touch leave a notch: overlap them 0.5 m; (3) a kit wall standing on a raised floor carries `y0` = that floor (its doors
   are drawn at the wall's foot); the plateau's own face closes it below; (4) props on a plateau need no `y` (they stand on the ground); props on a
   deck carry the deck's height.
+- **NO `TileGeneric2b` (mondo 11-20: "tilegeneric2b is the one I don't want", the floor that looks like broken tiles):** Research's room floor is
+  `urban:TileGeneric1a` now (bake-dumb.js FLOORS). Never give a D.U.M.B. floor that sheet again.
 - **NEEDS A MODEL (found nowhere; shown to mondo 11-20):** a tarp / a tarp-covered aircraft · a black stealth aircraft (flying wing) · a blast
   door (big, sliding or round with a wheel) · a beam-pipe magnet + a particle detector barrel · a Zener card deck, a Faraday cage, an EEG cap ·
   a lab animal cage · a curved situation board + a round war-room table · a base tram car (the subway cars stand in) · a freight lift car with a
