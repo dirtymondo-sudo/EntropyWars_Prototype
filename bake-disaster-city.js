@@ -919,7 +919,13 @@ lines.push("                backdrop: false, edges: " + J(EDGES) + ",");
 const UD = process.env.DC_NO_UD ? null : require(path.join(REPO, 'docs/disaster-city/urban-decay.js'));
 lines.push(UD ? "                floor: '" + UD.GROUND.floor + "', cliff: '" + UD.GROUND.cliff + "', path: '" + UD.GROUND.path + "', floorTint: '#dcdce0',"
               : "                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
-if (ROOM.north && ROOM.zone) lines.push("                zones: " + J([Object.assign({ x0: r3(-HALF - ROOM.east * C), z0: r3(-HALF - ROOM.north * C), x1: r3(HALF + ROOM.east * C), z1: -HALF }, ROOM.zone)]) + ",   // THE GROUND ZONES: the Hills' rows wear their own sheets");
+/* ONE SAND (2026-11-20, mondo: "there is a very clear and obvious seam going down the sand in the cove because it's 2 different colors"): the Hills' rows are
+   a ground zone of their own (dry grass floor, so the zone's whole material is shaded the calm way), and the Cove's sand lies in those rows while the
+   Shore's lies in the city's: the same `desert` sheet, two looks, a line on the room's old north edge. The strip east of the plots (the Cove, all sand
+   and rock) is a zone of its OWN, listed first (a quad takes the first zone it lies in): the city's own floor and path sheets, so its material is the
+   city's, with the Hills' palette (the headland's rock). */
+const COVE_ZONE = (ROOM.north && ROOM.zone && ROOM.east && UD) ? { x0: HALF, z0: r3(-HALF - ROOM.north * C), x1: r3(HALF + ROOM.east * C), z1: -HALF, floor: UD.GROUND.floor, cliff: ROOM.zone.cliff, path: UD.GROUND.path, pal: ROOM.zone.pal, floorTint: '#dcdce0' } : null;
+if (ROOM.north && ROOM.zone) lines.push("                zones: " + J((COVE_ZONE ? [COVE_ZONE] : []).concat([Object.assign({ x0: r3(-HALF - ROOM.east * C), z0: r3(-HALF - ROOM.north * C), x1: r3(HALF + ROOM.east * C), z1: -HALF }, ROOM.zone)])) + ",   // THE GROUND ZONES: the Hills' rows wear their own sheets");
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
 DISTRICTS.forEach(m => (m.streets || []).forEach(st => streets.push(st)));   // a district's own streets past the plots (the Hills' roads: districts/N.js): lane lines, kerbs and covers like the city's; laid in last, so no lamp, bus or traffic rule of the plan reads them

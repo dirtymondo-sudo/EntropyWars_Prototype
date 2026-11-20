@@ -12831,6 +12831,15 @@ That is not a bayside view. It's called bayside mall." and "the other part I cir
   now starts at the Cove's own south rim (row 56.3, square 162.4) and turns out of it, so the shore runs in one sweep from the Cove round into the bay.
   `coastCut` keeps a cap by the circle's FAR side now (where the coast turns, a circle's middle lies nearer the line than its sample does) and steps 1.75 m
   where the curve is steep. The Shore's sand is narrower on its first twelve rows: `W.js` pulls a thing lying there back inside the new waterline.
+- **THE COVE, AGAIN (the fourth PR, 11-20; mondo: "that slight bend still looks fucking stupid" and "there is a very clear and obvious seam going down the sand
+  in the cove because it's 2 different colors"):** (1) THE BEND: the Shore's curve started 7 m off the Cove's waterline at another heading, so the two met in
+  a corner. `COAST.shore`'s first point now lies ON the Cove's waterline (a circle of 32 m round the Cove's middle), 20 degrees west of its south point, and
+  the curve leaves along that circle's own tangent: one line, seen from above. ANY curve that meets a round cut must start on its waterline and on its tangent.
+  (2) ONE SAND: the Cove lies in the Hills' rows, which are a GROUND ZONE (`terrain.zones`), and a zone's whole material follows its FLOOR sheet: the Hills'
+  dry grass has a calm twin, so everything painted in that zone, the `desert` sand too, is shaded the calm way, while the city's ground (asphalt floor) is not.
+  Same sheet, two looks, a line on the room's old north edge. `bake-disaster-city.js` writes a zone of its own for the strip east of the plots (`COVE_ZONE`:
+  the city's floor and path sheets, the Hills' palette for the headland's rock), listed first (a quad takes the first zone it lies in). THE RULE: two
+  stretches of one painted sheet match only if their zones' FLOOR sheets are both calm or both not.
 - **NOT TOUCHED:** Entertainment's own buildings behind the Shore (they stand a storey up on the sea wall, north of the mole); the mall; everything west of
   the coast road. FOR THE MALL THREAD: the mall's east front now faces road, boardwalk, sand, pier, water with nothing between; the strip's squares 141..143
   are open planks you may build a forecourt on, but mondo's word is that nothing tall goes there.
