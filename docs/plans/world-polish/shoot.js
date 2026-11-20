@@ -9,11 +9,11 @@
    node docs/plans/world-polish/shoot.js                 every room (about 2 hours; needs `npm start` running, see PLAYTEST_NOTES "THE FAST PROBE")
    node docs/plans/world-polish/shoot.js <room> …        only those rooms
    node docs/plans/world-polish/shoot.js --views-only    print the views, shoot nothing
-   WRITES docs/plans/world-polish/shots/<room>/<district>_<air|worst|best>.jpg (800 x 500) + shots/index.json (every picture: room, district,
+   WRITES docs/plans/world-polish/pictures/<room>/<district>_<air|worst|best>.jpg (800 x 500) + pictures/index.json (every picture: room, district,
    plot, where the walker stood). Runs playtest_city.js one room at a time (never two probes at once). */
 'use strict';
 const fs = require('fs'), path = require('path'), cp = require('child_process');
-const REPO = path.join(__dirname, '..', '..', '..'), OUT = path.join(__dirname, 'shots'), SQ = 3.5, PL = 42;
+const REPO = path.join(__dirname, '..', '..', '..'), OUT = path.join(__dirname, 'pictures'), SQ = 3.5, PL = 42;
 const S = require(path.join(REPO, 'load-data.js')).loadGameData(), H = S.DOOR_HQ, ROOMS = H.rooms, retired = H.retired || {};
 const args = process.argv.slice(2), only = args.filter(a => !a.startsWith('--')), VIEWS_ONLY = args.includes('--views-only');
 /* plots.csv: the audit's row a plot (need, pieces), by room + plot id */
@@ -39,11 +39,12 @@ function viewsOf(id) { const room = ROOMS[id], info = S.hqTerrainInfo(id), P = p
         if (f.k === 'arch' && Array.isArray(f.parts)) f.parts.forEach(q => { const s = q.size, pp = q.p; if (!Array.isArray(s) || !Array.isArray(pp) || s.length < 3 || !(s[1] > 2.2) || s[0] * s[2] < 6) return; const r = Math.max(s[0], s[2]) / 2 + 0.8, cx0 = (f.x || 0) + pp[0], cz0 = (f.z || 0) + pp[2]; MASS.push([cx0 - r, cz0 - r, cx0 + r, cz0 + r]); }); });
     const inMass = (x, z) => MASS.some(b => x > b[0] && x < b[2] && z > b[1] && z < b[3]);
     /* a square you can stand on, the nearest to (x, z): its middle and its height */
-    const stand = (x, z, reach) => { let best = null; const n = Math.ceil((reach || 30) / SQ);
+    const stand = (x, z, reach) => stand0(x, z, reach, true) || stand0(x, z, reach, false);   // a tunnel is all arch: no free spot = drop the mass check
+    const stand0 = (x, z, reach, useMass) => { let best = null; const n = Math.ceil((reach || 30) / SQ);
         for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) { const px = Math.round((x + i * SQ) / SQ) * SQ + SQ / 2 * 0, pz = Math.round((z + j * SQ) / SQ) * SQ, d = Math.hypot(px - x, pz - z); if (best && d >= best.d) continue;
             if (Math.abs(px) > room.shell.w / 2 - 4 || Math.abs(pz) > room.shell.d / 2 - 4) continue;
             let y = null; try { y = S.hqTerrainFeet(info, px, pz, null); } catch (e) {} if (y == null || !isFinite(y)) continue;
-            if (inMass(px, pz) || inMass(px, pz + 7) || inMass(px, pz + 3.5)) continue;
+            if (useMass && (inMass(px, pz) || inMass(px, pz + 7) || inMass(px, pz + 3.5))) continue;
             let bad = false; try { bad = !!(S.hqTerrainSolidAt(info, px, pz, 0.6) || S.hqTerrainWallAt(info, px, pz, 0.6)); const f = S.hqTerrainFluidAt(info, px, pz); if (f && f.y != null && f.y > y + 0.6 && !f.sea) bad = true; } catch (e) {}
             if (!bad) best = { x: +px.toFixed(2), z: +pz.toFixed(2), y: +y.toFixed(2), d }; }
         return best; };
