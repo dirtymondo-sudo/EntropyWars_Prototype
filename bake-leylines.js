@@ -254,7 +254,7 @@ const L16 = PJ.links.find(l => l.id === 'L16'); if (!L16 || L16.plots.length !==
 const WORLD_OF = {}; ORDER.forEach(k => v13(k).forEach(q => { WORLD_OF[q.wx + ',' + q.wy] = plot[q.id]; }));
 /* THE LEY LINE'S ROOM DESIGN (2026-11-20, world polish thread 12, mondo's OK on docs/plans/world-polish/plans/leylines-line.js): the plan's squares and levels
    are laid square by square on the Ley Line's plots (district Y) in the room's own frame; the new plots north and south of the Line stand in plots.json with no
-   `was` (docs/plans/one-world/after-v13.js row 7). What stands on the designed squares: docs/areas/leylines/districts/Y-room.js. THE PILOT (11-20) designs the
+   `was` (docs/plans/one-world/after-v13.js row 8). What stands on the designed squares: docs/areas/leylines/districts/Y-room.js. THE PILOT (11-20) designs the
    west half, room squares x 36..95 (the West Mouth to the Nexus); the east half stands as it stood until mondo has seen the pilot. */
 const LINE_DESIGN = (() => { const DP = require('./docs/plans/world-polish/draw-plan.js'), plan = require('./docs/plans/world-polish/plans/leylines-line.js'), YR = require(path.join(DDIR, 'Y-room.js'));
     return Object.assign({ plan, B: DP.build(plan) }, YR); })();

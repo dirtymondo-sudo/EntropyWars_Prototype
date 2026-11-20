@@ -6790,7 +6790,31 @@ const UFO_SAUCER_3D = Object.assign({}, UFO_FORM_3D, {
   procRig: 'saucerCraft',
   heightRatio: 0.72,  // dome and all it is 0.84 tall to the triangle's 0.61 at the same width: the same scale
 });
-const UFO_CRAFT_BY_RACE = { bligblog: UFO_SHIP_3D, grey: UFO_SAUCER_3D };
+/* THE ALIEN SHIPS ARE THE UFO FORMS (2026-11-20, mondo: "yes make these their combat ships too"; the eleven Meshy ships of PR #2313,
+   R2 Assets/world/props/meshy/ships/, data.js HQ_CATALOGUE_ALL `ship_<race>`; the same ships fly Outer Space, data.js HQ_SPACE_UFOS).
+   Every alien race with a ship turns into it in a fight; the rig (three-renderer.js _PROC_RIGS craft*) turns each file's nose to +Z.
+   heightRatio = the triangle's 0.6 x (the hull's height at 1.9 across + the 0.55 hover) / 1.16, from each file's own size. The grey's old
+   saucer (UFO_SAUCER_3D) and the bligblog's borrowed spaceship (UFO_SHIP_3D) are kept, unused. '#ufoform' keeps the rigged copy apart from
+   the decor's. */
+const _UFO_SHIPS = 'https://cdn.entropywars.net/Assets/world/props/meshy/ships/';
+function _ufoShipForm(file, rig, hr) { return Object.assign({}, UFO_FORM_3D, { model: _UFO_SHIPS + file + '.glb#ufoform', procRig: rig, heightRatio: hr }); }
+const UFO_CRAFT_BY_RACE = {
+  grey:            _ufoShipForm('ship_grey', 'craftRound', 0.67),
+  annunaki:        _ufoShipForm('ship_annunaki', 'craftRound', 1.27),
+  martian:         _ufoShipForm('ship_martian', 'craftNoseZ', 0.82),
+  mantid:          _ufoShipForm('ship_mantid', 'craftNoseZ', 0.58),
+  'cosmic wraith': _ufoShipForm('ship_cosmic_wraith', 'craftNoseZ', 0.40),
+  nordic:          _ufoShipForm('ship_nordic', 'craftNoseX', 0.55),
+  reptilian:       _ufoShipForm('ship_reptilian', 'craftNoseX', 0.46),
+  astronaut:       _ufoShipForm('ship_astronaut', 'craftNoseX', 0.66),
+  bligblog:        _ufoShipForm('ship_bligblog', 'craftBligblog', 0.96),
+  barbarella:      _ufoShipForm('ship_barbarella', 'craftBarbarella', 0.68),
+};
+/* WHICH CAST TURNS A RACE INTO ITS SHIP: a spell of this family (default 'ufo', the grey / martian / bligblog's). The seven races with no
+   UFO spells turn on the family of their own that reads as taking to the ship (Claude's pick 11-20, told to mondo; change any row). */
+const UFO_FORM_FAMILY = { annunaki: 'skygods', nordic: 'galacticfederation', reptilian: 'conspiracyknowledge', astronaut: 'missioncontrol',
+  barbarella: 'spacevixen', mantid: 'fractal', 'cosmic wraith': 'cosmic' };
+function ufoFormFamily(race) { return UFO_FORM_FAMILY[race] || 'ufo'; }
 function ufoFormBaseLook(race, gender) {
   return (typeof getR2RaceSpriteUrl === 'function' && getR2RaceSpriteUrl(race, gender || 'male', 'Freelancer')) || null;
 }

@@ -13506,12 +13506,75 @@ mondo 11-20 named the new Meshy pieces (`kt_*`, `fl_*`; models-assets.md "THE KA
   **`fl_rice_clump`** in place of the grey `hw_crop*` lumps in the Paddies and on the Terraces.
 - **Still drawn in code:** the roofs (`jroof`), the flag, the furniture. **Not used here:** `kt_katana_scabbard`, the cactus, wheat, redwood and Joshua tree.
 
+## THE ESTATE, THE ROOM DESIGN (WORLD POLISH THREAD 17) — the pilot: the Lake, the West Bank, the Bluff, the shore walk (2026-11-20)
+mondo's OK of 11-20 on the two height plans (`docs/plans/world-polish/plans/estate.js`, `estate-house-trail.js`: "yep looks good"; the House Trail
+"a big priority"). This thread BUILDS from them; the plans are not redrawn. Board: the five Estate rows, held. FITS shortlist:
+`docs/plans/world-polish/thread17/FITS_ESTATE.md` (three readers, every list end to end).
+- **How the plan reaches the room.** The Estate's room (`site_prebuilt_skinwalker_ow_lake`, 5 x 18 plots at world -14,5) is the route kit's
+  (`node bake-route.js R7`), which takes the Corn Fields, the Lake and the Ranch in from `bake-estate.js --export` (R7.json `join`). So the plan is
+  laid in bake-estate.js, district by district, as THE ROOM DESIGN (step D in each stand): the plan is built into squares by the plan tool itself
+  (`draw-plan.js` `build`, so the room is the plan square for square), offset from the room's box to the district's. `docs/areas/estate/districts/room.js`
+  names the plan, the box's world corner, the districts it lays (`letters`; the pilot: `['L']`) and dresses the new ground in ROOM squares.
+- **The rule a square follows:** the plan's mass = corn; a way = dirt (`p`; boards and buildings kept); water = kept (the pool decides the water);
+  soft ground = dirt (this tool's `m` paints MARBLE, not mud); open ground = grass, but a plot the plan keeps at its level and that is not new keeps
+  today's open letters (the shingle, the boards). Levels: every square of a laid plot stands at the plan's level; a ramp square slopes one level over
+  two squares; an open square owns its four corners, so a ledge is a drop (the export sends `cells`; `bake-route.js` A JOINED DISTRICT'S OWN CORNERS
+  keeps them; the shared corner grid alone would make every ledge a slope). The ground still blends a drop over one 0.875 m step.
+- **Pieces:** a piece the new ground puts in the corn or on a way steps to the nearest open, level, off-way square within three (else it goes, listed
+  by the bake); small life and `noBlock` pieces on a way stay; a tree in the corn or on a way goes. A drawn row (`arch`, `texbuilding`, `wall`) on a
+  closed square STOPS the bake: move it in its district file. Every drop between two open squares wears a `rocks_5` slab (one `arch` row
+  `est:ow_lake:ledges`). Every `found` climb of the plan is a `climb` row (`vine` = roots, `ladder`), half a metre out from the face onto the low
+  square (from the face line its foot stood half way up the blend and the engine dropped it: a climb must rise 0.9 m).
+- **What changed for the pilot:** two new plots (`after-v13.js` row 7: the West Bank -13,16 and the Bluff -13,17; ground `w`, `R`); the South Shore
+  (0 -> 1, the bench over the water with the shore walk on it) and the Lake, east (0 -> 1, the bank with the lane up it) are re-levelled. In L.js
+  (home frame): THE LAKE is the plan's water (the pool 91 x 73.5 m, one square north: `LAKE`), THE PICNIC GROUND moved onto the plan's south beach
+  (`PIC`, 9 squares east, 3 north), THE CAMP off the east bank to the North Shore by the Boathouse (`CAMP`), the playground beside the picnic ground.
+  Plan corrections (the plan changes first, it still passes): row 125 is today's shingle (open), the washed-out bank is a notch (21..23, 140) so its
+  roots climb a real face, the Bluff's roots climb from the bench at 24,147.
+- **Checked before the browser:** every open square of the Lake and the new plots read back through load-data.js against the plan's level (762
+  squares): all at the plan's height but today's own differences (the decks 0.3 m up, the pool banks dipping, the picnic shelter's posts); both
+  climbs registered (1.1 m each). Gone in the bake (listed): two rabbits, a butterfly, a bush, flowers and 11 trees that stood where the plan puts
+  corn or a way. The bake's other rooms unchanged.
+- **NOT built yet:** the West Bank's way west (the plan's door 12,141) ends at a shut farm gate and a board until THE HOUSE TRAIL's room exists;
+  the Bluff's thin trail south (the Ridge) starts at 18,155 and waits for the Ranch's new plots. NEXT (after mondo's word): the Ranch (6 new plots,
+  the hollow, the rise, the Draw + the creek cut, the Ridge), the Corn Fields' Farm Track, then THE HOUSE TRAIL room (13 plots, its gatehouse
+  built from the PSX modular pieces: no walk-in model exists).
+
+## HELL, THE LIGHT PASS — thread 11 of the world polish, pass 1 = the pilot: the Rim + the Descent (2026-11-20, owner)
+
+The plan is `docs/plans/world-polish/plans/hell.js` (mondo 11-20: "looks good"; "no walk in building for hell"): LIGHT AND LANDMARKS only, no
+ground moves, no new way. It still passes `draw-plan.js` (3 warnings, the plan's own). Files: `districts/R.js`, `districts/D.js`, one line in
+`bake-afterlife.js` (the shell), the catalogue and the renderer.
+
+- **THE TEN LIGHTS.** A room gets ten point lights from its props (three-renderer.js `HQ_PROP_LIGHT_MAX`); only a PROC row with a catalogue
+  `light` takes one (a model row such as `brazier` or `campfire` has its glow and never a light). Hell now spends them on purpose: every torch is
+  `noLight` (flame + halo only) except the rows meant to light. After pass 1: the Warm Wall's braziers, the Fissure (red), the Mouth's landing,
+  the Alcove (blue), the head of the west flight, + the two old torches on the Walkways = 7. Kept for the next passes: the Plinth's white fire,
+  the lava lake's glow, the three beacons (the Walkways' two old torches give theirs up then). A `noLight` row no longer takes a slot when the
+  room has more lamps than slots (`litRows`).
+- **NEW KIT (any room may use it):** `torch_blue`, `torch_red`, `torch_white`, `torch_green` (the game's own floor torch, `cave_torch`, with its
+  flame drawn in one hue: catalogue `flame`, three-renderer.js `_getTorchFlameTexHue`), `hearth_fire_blue`, `hearth_fire_white` (the hearth fire
+  in one hue), `light_glow` (proc `glow_light`: no body, only a point light and, if the row gives one, a glow). A PROC row's own `light` / `glow`
+  objects now override the catalogue's (colour, intensity, dist, y / size), and a row's `flame` overrides the hue.
+- **THE LIGHT FROM BELOW:** an open room's hemisphere lights every face that looks down or sideways in `shell.sky.ground` (none = the old
+  0x2a2620). Hell's is 0xff6a28: the lava's orange on every rock wall. It also rides into a fight on the room's field (`_hqOpenHemiG`).
+- **THE RIM** (cold and dark, torch lines that lead to the Descent): the north line (the Fissure > the lip > the north flight's head), the
+  west line (the Fissure > the west rim > the west flight's head), the south line along the south rim's lip; the Warm Wall's two tall braziers
+  (a brazier on a 2.2 m stone pillar each side of the way up to the Catacombs; the plan calls this place "THE MOUTH", the bay door's ledge on
+  the south rim keeps its own two braziers and statue); the Fissure's two red torches and its red light.
+- **THE DESCENT:** a torch pair at the head and the foot of every flight into the pit (`D.flightTorches`, used by R.js too: the layout's
+  stairs 1-6; stair 0 climbs to the Mouth); the Alcove's ONE BLUE FLAME in a stone basin; the Ash Flats' RING OF COALS (26 glowing lumps round
+  a fire). Six torches of the south line and two flight torches stand on the Bowl's squares (printed by the tool as strays: the rim is one rim).
+- Seen in the browser (11-20, `shots/city/site_prebuilt_hell_plots_*`): the lines read across the pit, the flights read as lit gates, the
+  Alcove is blue from the rim. The walls are warmer but still dark: the next lever is a stronger hemisphere in Hell or a lighter cliff sheet.
+- NEXT (after mondo's word): the Bowl (the Plinth's white fire, the lake's glow, the altar fire), the Walkways (the red / amber / green beacons
+  on tall pillars), then Heaven, the Catacombs, the Vatican.
 ## THE LEY LINE, THE ROOM DESIGN — world polish thread 12, the pilot (2026-11-20, owner side)
 mondo's OK of 11-20 on `docs/plans/world-polish/plans/leylines-line.js` ("yep looks good"; the Line is CROSSED, never walked end to end; "Yes that's fine" to
 18 new plots; new buildings ANCIENT, "or at least one of the early civilizations"). The plan's first edit by the build thread: MORE LEDGES ON THE CLIMBS (his ask
 before he looks): four shelves on the west climbs (off the North Knoll's walk 4 -> 3 -> 1, off its south lip 4 -> 2, off the Nexus's west way 0 -> -2 back into
 the Sink) and one on the east (off the Shoulder 2 -> 1); the plan's ledge edges 9 -> 18, `draw-plan.js` passes.
-- **THE ROOM GROWS** in its own 12 x 3 box: `docs/plans/one-world/after-v13.js` row 7 adds the plan's new plots to district `leyY` (no `was`), ground `s`.
+- **THE ROOM GROWS** in its own 12 x 3 box: `docs/plans/one-world/after-v13.js` row 8 adds the plan's new plots to district `leyY` (no `was`), ground `s`.
   THE PILOT adds the west ten (box x 3..7 = wx 22..26, wy 29 + 31); `LEY_UPTO = 11` adds the east eight. `bake-leylines.js` reads them (`LINE_NEW`); `v13()` keeps
   only the plots with a `was` (the home frame's).
 - **THE ROOM DESIGN** (`bake-leylines.js`, step "THE ROOM DESIGN", `S.design` on the Line's STAND row; the room-frame file is `docs/areas/leylines/districts/Y-room.js`):
