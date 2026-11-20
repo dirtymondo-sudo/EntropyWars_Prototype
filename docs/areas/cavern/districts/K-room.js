@@ -60,7 +60,7 @@ module.exports = {
     doors: {
         0: { id: 'ug_cavern_tunnelway', label: 'THE TUNNEL-WAY', sub: 'THE PASSAGE UP · 12 LEVELS · TOWARD THE WOODS', action: { room: 'site_prebuilt_hollow_earth_ow_tunnelway', at: 'ow_v_m8_9' }, desc: 'The rope the camp came down on, and the passage up past it.' },
         1: { id: 'ug_cavern_hollow', label: 'HOLLOW EARTH', sub: 'THE MOUTH · THE LONG WAY DOWN · 16 LEVELS', action: { room: 'site_prebuilt_hollow_earth_ug_hollow', at: 'ug_hollow_cavern' }, desc: 'The rock opens on warm air and light from below. A long way below.' },
-        2: { id: 'ow_v_m8_11',   /* the old seam's id: the West Tunnel's door (bake-cavern.js OUTER) lands here */ label: 'THE WEST TUNNEL', sub: 'THE PASSAGE WEST · 6 LEVELS UP · UNDER THE ESTATE', action: { room: 'site_prebuilt_hollow_earth_ow_west', at: 'ow_v_m8_11' }, desc: 'A low passage west. The air in it is cold.' },
+        2: { id: 'ug_cavern_west', label: 'THE WEST TUNNEL', sub: 'THE PASSAGE WEST · 6 LEVELS UP · UNDER THE ESTATE', action: { room: 'site_prebuilt_hollow_earth_ug_west', at: 'ug_cavern_west' }, desc: 'A low passage west. The air in it is cold.' },
         3: { link: 'cave_hell', end: 'a' },
     },
     /* THE WAYS IN THE PLAN HAS NO SPOT FOR (mondo 11-20, "just do it" to the proposal): each stood in the old Cavern room */

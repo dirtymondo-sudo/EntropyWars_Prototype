@@ -13838,12 +13838,21 @@ APPROVED 11-20 ("Yes this is good, go ahead and start individual threads"; "No r
   skeleton with one unlit torch a chamber. Lights: the pilot holds every real light. Seen on screen (probe, 11-20): the Gate, the Bone Passage, the
   Nest, the camp pit, the shaft, the squeeze, the crystal pocket.
 - **LEARNED:** a prop pushed more than ~0.6 m toward a rock square climbs the wall's face (the sheet's face falls in the open square's last lattice
-  cell): `atWall` pushes 0.5. The Meshy `femur` stands upright (it reads as a stake): not used. The probe's `face` is not the picture's heading in
-  this room (the HUD's `deg` is): judge a view by the picture. The link `tunnelway_cavern` wears `way: 'well'`, so its foot here is a stone well
+  cell): `atWall` pushes 0.5. The Meshy `femur` stands upright (it reads as a stake): not used. The probe's `face` IS the heading (0 north, 90 east);
+  the HUD's `deg` / `r` is the camera's POSITION in polar terms, not its heading. The link `tunnelway_cavern` wears `way: 'well'`, so its foot here is a stone well
   ring (the Woods' end shares the look; not changed).
-- **NEXT (after mondo's word on the pilot):** the middle third (the Great Chamber + its stalagmite landmark and lookout, the Long Tunnel's join, the
-  Cells Tunnel to the Sewers, the crystal and squeeze pits) and the south third (the nests and bone pits, the sump of black water, the secret, the way
-  down to the Cavern), then the lights shared out over the whole room.
+- **THE MIDDLE AND SOUTH THIRDS (2026-11-20, mondo on the pilot: "okay continue"):** THE GREAT CHAMBER (0,2 · 121: THE STALAGMITE, the plan's
+  landmark, drawn as a cluster of rock cones under a hanging point that nearly meets it, a `sarsen` hidden inside as its body; THE EDGE, the plan's
+  lookout, in its north-west corner; a brazier; the Long Tunnel's door west), THE CRYSTAL BEND (1,2 + the second crystal pocket), THE DEAD SQUEEZE
+  (2,2: its pit roofed down to crawling height), THE LONG DROP (3,2: the 7-level cliff, one who fell at its foot), THE CELLS TUNNEL (4,2 · 124: the
+  gaol's drain broke through, brick, chains, a chain bunk, rats; the Sewers' door east), THE BONE PIT (0,3, a squeeze down to it), THE LARDER (1,3 ·
+  125: meat hooks hung under the roof, the dead, chains), THE BLACK WATER (2,3: a wading strip in its pit beside the ladder's foot; a `deep_water`
+  pit was a trap: a swimmer never climbs), THE GNAWING PIT (3,3, a squeeze east of it), THE STRETCHER CAMP (4,3: the rescue party, one on the
+  stretcher), THE LOW NEST + THE DEEP NEST (the pits off 0,4 and 3,4, the deep one the room's lowest floor, 114), THE SECRET (a `sea_chest` in junction
+  3,4's dead corner), THE WAY DOWN (2,4 · 117: the rope, the axes, the crates, a missing board, warm air coming up; the Cavern's door south).
+  THE LIGHTS: ten real lights, one a place (the Gate, the Nest's bloom, the Shaft, the Old Camp's candle, the two crystal pockets, the Great
+  Chamber's brazier, the Cells Tunnel, the Larder, the Way Down); every other torch and candle `noLight`. Seen on screen: the Great Chamber + the
+  stalagmite, the Larder, the Cells Tunnel, the Way Down, the Deep Nest, the Long Drop. 399 props.
 
 ## THE UNDERGROUND, ONE DISTRICT A ROOM — the Cavern rebuilt from its plan (2026-11-20, world polish thread 9; tool `bake-ug.js`, design `docs/areas/cavern/districts/K-room.js`)
 
@@ -13928,9 +13937,28 @@ underground horror like the descent movie"; the square plans approved ("Yes this
   light; a digger at the dead end), the Low Hall (the falls' foot: the one who fell, his flare still burning; the way down to the West
   Tunnel), the Last Chamber (the crawlers' den: meat floor, skull piles, egg sacs, the antpeople's second place).
 - **LIGHT:** ambient 0.14, six lights: three torches (the mouths), the camp's fire, the crystals, the flare (`light_glow`). Glowcaps glow
-  without a light. Paint: chambers the cave floor, passages `dirt_2`, pits `rubble_3`, the pocket `crystal`, the nest's pit and the den `flesh_2`.
+  without a light. THE SHEETS (mondo 11-20: "don't use those calm textures"; the plain keys cave_floor / cave_wall / rocks_5 / dirt_2 / crystal / flesh wear CALM sheets): the horror pack's rock, as the new Cavern's: floor `hz_stone_02`, walls + roof `hz_stone_01` (roof tint 0x8a8680), cliffs + pits + the nest `hz_stone_10`, the crystal pocket `hz_stone_06`, stalagmites `hz_stone_02` / the landmark's tip `hz_stone_07`, tints near white; the tool's `TX` defaults are these (a design's `tex` overrides). `hz_floor_03` (the Cavern's mud) reads as yellow straw in these passages: not used. Stains: ZONE_LOOKS.cavern `byRoom` (drip 0.7, dirt 0.35, grime 0.25, blood 0.14).
 - **NOT DONE / NEEDS:** no sound (an explored room plays no bed; `ambCavern` plays only in a fight; none may be generated); the waterfall
   sheet reads bright blue in the dark; the halloween `hw_stone*` are HEADSTONES (not rocks) and `dinosaur_skeleton` stands on a museum
   plinth: neither is used. NEEDS A MODEL (from the FITS read): a caving helmet with a lamp, a dead caver in caving gear, a fixed rope and a
   wire ladder, a camcorder and glow sticks, eggs and a nest mound, light loose bones, stalactite / stalagmite models, a boulder choke, a pale
   blind crawler, hanging bats; claw-mark and spray-arrow decal sheets; a black water look.
+
+## THE UNDERGROUND, THE WEST TUNNEL (2026-11-20, the same thread; mondo on the Long Tunnel: "okay looks good contineu")
+- **THE ROOM** `site_prebuilt_hollow_earth_ug_west` (part `ug_west`): 4 x 3 plots (48 x 36 squares), levels 82 to 100 (31.5 m), world -17..-14 x
+  -3..-1 (under the Long Tunnel, one plot west, as the underground's layout lies), written by `node bake-underground.js west-tunnel` from
+  `plans/ug-west-tunnel.js` + `docs/areas/underground/west-tunnel.js`. Replaces `site_prebuilt_hollow_earth_ow_west` (retired to it).
+- **THE WAYS:** north `ow_h_m15_2` to the Long Tunnel's south door; east `ug_cavern_west` to the new Cavern (thread 9's `K-room.js` door 2 now
+  lands here, one line); the OLD Cavern room's west door (`ow_v_m8_11`, bake-cavern.js `KHOUT`) lands here too. THE ESTATE'S WELL: link
+  `well_skinwalker` end b stands in the Well Bottom (free, the plan's way out 2; the tool takes its square and refuses to bake while the
+  data.js row is elsewhere). bake-cavern.js: its ROOMS row W, the KH-W seam and its well code are gone.
+- **THE TOOL** grew: a plan door whose design row is `{ link, end, face }` is a link end in the room (no door row); doors are found by the
+  plan door's index first, then its side.
+- **THE PLACES:** the Upper Chamber (the stalagmite, a torch at the Long Tunnel's mouth, the team's cairn), the Cold Hall (a torch at the
+  Cavern's passage, a dead caver with the rope's end), the Charnel Pit, the Crystal Crack (the crystals' light), the Well Bottom (the
+  well's broken boards, its bucket, the team's rope; the nest beside it, the antpeople's: `@W:Well Bottom`), the First Camp (the team's
+  first night: a cold fire ring, bags, food, notes, a radio; a grave in the pit), the Narrows (boulders on the passages' lanes, a pit
+  that goes nowhere), the Drip Gallery (rain off the roof, the calcified caver), the Drowned Floor (the bottom, under the Ledge's 10-level
+  cliff: a faller and his flare, a lure in the sump), the Ledge (a ladder that did not reach), the Black Sump, the Low Gallery (the den:
+  `@W:Low Gallery`). THE STORY: the team came down the Estate's well, camped here, went on up into the Long Tunnel and never came out.
+- **LIGHT** four (two torches, the crystals, the flare). Sheets: the horror rock (the tool's defaults). Stains: ZONE_LOOKS.cavern byRoom.

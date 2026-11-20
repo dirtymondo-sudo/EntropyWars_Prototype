@@ -25,15 +25,15 @@ module.exports = {
     /* the plan's ways out, by side; ids are the seams the neighbours already carry */
     doors: {
         N: { id: 'ow_h_m15_m8', room: 'site_prebuilt_hollow_earth_ow_agartha', label: 'AGARTHA', sub: 'AGARTHA · THE TUNNEL UP' },
-        S: { id: 'ow_h_m15_2', room: 'site_prebuilt_hollow_earth_ow_west', label: 'THE WEST TUNNEL', sub: 'THE WEST TUNNEL · THE TUNNEL DOWN' },
+        S: { id: 'ow_h_m15_2', room: 'site_prebuilt_hollow_earth_ug_west', label: 'THE WEST TUNNEL', sub: 'THE WEST TUNNEL · THE TUNNEL DOWN' },
         E: { id: 'ug_tw_long', room: 'site_prebuilt_hollow_earth_ow_tunnelway', label: 'THE TUNNEL-WAY', sub: 'THE TUNNEL-WAY · EAST, AND UP' },   // the Tunnel-Way's labyrinth (bake-ug-tunnelway.js) keeps the other end
     },
     mood: { light: 0xffb070, ambient: 0.14, hero: false },
     vault: 1.75,
-    /* the paint: 0 = the room's cave floor (the chambers), then the sheets below */
-    pal: ['dirt_2', 'rubble_3', 'crystal', 'flesh_2'],
+    /* the paint: 0 = the room's floor (hz_stone_02, the chambers), then the sheets below */
+    pal: ['hz_stone_02', 'hz_stone_10', 'hz_stone_06'],   // dark cracked stone, rough red-brown rock, mineral stone: the horror pack's (no calm sheet; the new Cavern's palette; its mud `hz_floor_03` reads as yellow straw here)
     paint(ch, x, y, ctx) {
-        if ((x >= 8 && x <= 9 && y >= 29 && y <= 30) || (x >= 30 && x <= 33 && y >= 51 && y <= 55)) return 4;   // the nest's pit, the den's corner: meat
+        if ((x >= 8 && x <= 9 && y >= 29 && y <= 30) || (x >= 30 && x <= 33 && y >= 51 && y <= 55)) return 2;   // the nest's pit, the den's corner: red-brown (the blood is the zone look's stains)
         if (ch === 'c' || ch === 'k') return 0;
         if (x >= 4 && x <= 6 && y >= 55 && y <= 57) return 3;                 // the crystal pocket
         const pit = ctx.branches.some(b => b.kind === 'dead end' && /pit/.test(b.to) && Math.abs(b.at[0] - x) <= 1 && Math.abs(b.at[1] - y) <= 1);
@@ -53,14 +53,14 @@ module.exports = {
 
         /* ── THE GREAT CHAMBER (116): the way in from Agartha. Agartha's people keep one torch at the mouth; past it, a beast's bones and the dark ── */
         const k = [18, 6], parts = [];
-        parts.push({ s: 'cyl', p: [0, 0, 0], r: 2.1, r2: 0.9, h: 5.5, seg: 9, key: 'rocks_5', tint: 0xcfc8b8, uv: 3.5 });
-        parts.push({ s: 'cyl', p: [0, 5.5, 0], r: 0.9, r2: 0.12, h: 3.6, seg: 8, key: 'rocks_5', tint: 0xd6d2c4, uv: 3.5 });
-        parts.push({ s: 'cyl', p: [1.3, 0, 0.8], r: 0.9, r2: 0.15, h: 2.8, seg: 7, key: 'rocks_5', tint: 0xbcb9aa, uv: 3.5 });
+        parts.push({ s: 'cyl', p: [0, 0, 0], r: 2.1, r2: 0.9, h: 5.5, seg: 9, key: 'hz_stone_02', tint: 0xe4e0d8, uv: 3.5 });
+        parts.push({ s: 'cyl', p: [0, 5.5, 0], r: 0.9, r2: 0.12, h: 3.6, seg: 8, key: 'hz_stone_07', tint: 0xf0ece4, uv: 3.5 });
+        parts.push({ s: 'cyl', p: [1.3, 0, 0.8], r: 0.9, r2: 0.15, h: 2.8, seg: 7, key: 'hz_stone_02', tint: 0xd6d2ca, uv: 3.5 });
         ctx.arch('stalagmite', k[0], k[1], parts); ctx.take(k[0], k[1]);
         /* lesser stalagmites round the chamber (drawn, the Cavern's rock kit) */
-        [[15, 3, 2.2], [20, 8, 1.6], [14, 8, 2.8], [21, 3, 1.2]].forEach((q, i) => { ctx.arch('mite' + i, q[0], q[1], [{ s: 'cyl', p: [0, 0, 0], r: 0.7 + q[2] * 0.12, r2: 0.08, h: q[2], seg: 7, key: 'rocks_5', tint: 0xcfc8b8, uv: 3.5 }]); ctx.take(q[0], q[1]); });
+        [[15, 3, 2.2], [20, 8, 1.6], [14, 8, 2.8], [21, 3, 1.2]].forEach((q, i) => { ctx.arch('mite' + i, q[0], q[1], [{ s: 'cyl', p: [0, 0, 0], r: 0.7 + q[2] * 0.12, r2: 0.08, h: q[2], seg: 7, key: 'hz_stone_02', tint: 0xe4e0d8, uv: 3.5 }]); ctx.take(q[0], q[1]); });
         P('cave_torch', 19, 2);
-        P('asteroid_a', 16, 8, { h: 2.6 }); d('ocean_rock_3', 20, 4, { h: 1.8 });   // blocks fallen from the vault
+        P('ocean_rock_3', 16, 8, { h: 2.6 }); d('ocean_rock_3', 20, 4, { h: 1.8 });   // blocks fallen from the vault
         bones([[16, 7], [17, 8], [15, 6]], 3);
         d('psx_cobweb_1', 17, 2); d('psx_cobweb_2', 14, 5);
         [[16, 4], [19, 5], [20, 7]].forEach((q, i) => d(['bat_black', 'bat_brown', 'bat_grey'][i], q[0], q[1], { y: up(q[0], q[1], 7.5 + i) }));
@@ -90,7 +90,7 @@ module.exports = {
 
         /* ── THE EAST HALL (110): an older mine came through here from the Tunnel-Way; its torch still burns at the side passage ── */
         P('cave_torch', 33, 16); P('mine_cart', 27, 20, { face: 90 }); P('psx_wooden_crate_1', 32, 20); d('psx_wooden_crate_2', 33, 21); d('pickaxe', 26, 19);
-        P('asteroid_a', 28, 15, { h: 2.2 });   // a block fallen from the roof
+        P('ocean_rock_3', 28, 15, { h: 2.2 });   // a block fallen from the roof
         [[30, 16], [31, 18]].forEach((q, i) => d(i ? 'bat_grey' : 'bat_black', q[0], q[1], { y: up(q[0], q[1], 6.8) }));
         rubble(ctx.walls(26, 14, 33, 21), 6);
 
@@ -111,7 +111,7 @@ module.exports = {
 
         /* ── THE DRIP CHAMBER (108): a dead end that rains from its roof; a caver lies under a skin of flowstone ── */
         d('decor_effigy_figure', 30, 30, { jit: 0, face: 80 }); d('moss_clump', 28, 31); d('moss_clump', 32, 28);
-        [[27, 27, 1.8], [32, 32, 2.4], [27, 32, 1.4], [33, 27, 1.1], [31, 26, 2.0]].forEach((q, i) => { ctx.arch('drip' + i, q[0], q[1], [{ s: 'cyl', p: [0, 0, 0], r: 0.5 + q[2] * 0.12, r2: 0.06, h: q[2], seg: 7, key: 'rocks_5', tint: 0xbcb9aa, uv: 3.5 }]); ctx.take(q[0], q[1]); });
+        [[27, 27, 1.8], [32, 32, 2.4], [27, 32, 1.4], [33, 27, 1.1], [31, 26, 2.0]].forEach((q, i) => { ctx.arch('drip' + i, q[0], q[1], [{ s: 'cyl', p: [0, 0, 0], r: 0.5 + q[2] * 0.12, r2: 0.06, h: q[2], seg: 7, key: 'hz_stone_02', tint: 0xd6d2ca, uv: 3.5 }]); ctx.take(q[0], q[1]); });
         rubble(ctx.walls(26, 26, 33, 33), 4);
 
         /* ── THE SUMP HALL (108): a lure glows in the black water ── */
