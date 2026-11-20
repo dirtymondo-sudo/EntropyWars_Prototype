@@ -33,6 +33,7 @@ module.exports = {
         /* the hidden second way: off the top, down through the low woods, in by the Graveyard's back gate */
         ['thin', [[43, 18, 4], [43, 21, 4], [37, 21, 3], [37, 17, 3], [31, 17, 2], [31, 22, 2], [25, 22, 2], [25, 18, 2], [19, 18, 1], [19, 14, 1], [13, 14, 1], [13, 19, 1], [7, 19, 2], [7, 17, 2], [1, 17, 2]], { to: 'the Haunted House by the Graveyard\'s back gate: the hidden second way in' }],
         ['thin', [[31, 11, 3], [31, 16, 2]], { to: 'the Graveyard trail, from the Back Road (a short cut between the two ways)' }],
+        ['area', 54, 27, 54, 30, 'g', 3],   /* (the build, 11-20: the notch the rock steps climb out of, off the switchback) */
         ['thin', [[49, 33, 3], [44, 33, 2], [44, 30, 2]], { to: 'a secret: the old camp in the hollow' }], ['area', 38, 26, 43, 31, 'g', 2], ['label', 40.5, 28.6, 'old camp', 'note'],
     ],
     doors: [[83, 30, 'E', 'The Estate (the Lake\'s West Bank)', 1], [12, 5, 'W', 'the Haunted House (by the Treehouse)', 2], [0, 17, 'W', 'the Haunted House (the Graveyard\'s back gate)', 2]],
@@ -41,7 +42,7 @@ module.exports = {
     found: [
         { name: 'the roots out of the Pond\'s hollow', from: [60, 15], to: [59, 15], kind: 'climb' },
         { name: 'the fallen trunk above the old camp', from: [43, 28], to: [50, 31], kind: 'trunk' },
-        { name: 'the rock steps under the Dead Oak', from: [53, 31], to: [53, 20], kind: 'climb' }],
+        { name: 'the rock steps under the Dead Oak', from: [54, 27], to: [54, 26], kind: 'climb' }   /* (the build, 11-20: a notch up from the switchback to the top's own face) */],
     flats: [
         { name: 'The Fence Gap', rect: [75, 28, 82, 35], why: 'the open ground where the trail leaves the lake', board: true },
         { name: 'The Dead Oak', rect: [49, 13, 56, 20], why: 'the hill\'s open top', board: true },
