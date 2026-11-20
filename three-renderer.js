@@ -44,7 +44,7 @@ const ThreeRenderer = (function () {
             'EW_HERO_RIGID_EVERY_FRAME EW_HERO_SHADOW_EVERY_FRAME EW_HERO_SHADOW_UNSEEN EW_HIT_READ EW_HQ_AREA_OLD_CAP EW_HQ_BACK_NO_HOLD EW_HQ_BACK_OLD ' +
             'EW_HQ_BATCH_CHECK_FAST EW_HQ_BATCH_CHECK_NOCAP EW_HQ_BATCH_CHECK_WHOLE EW_HQ_BATCH_FIRST_SLOW EW_HQ_BATCH_RESCAN_ALWAYS EW_HQ_BATCH_SCAN_WHOLE ' +
             'EW_HQ_BATCH_SLICE_MS EW_HQ_CHAR_MW_ALL EW_HQ_CHUNK_MEASURE_ALL EW_HQ_CHUNK_MW_ALWAYS EW_HQ_CHUNK_POLL_2S EW_HQ_DEBUG EW_HQ_DRAW_DEAD_STRIP ' +
-            'EW_HQ_FINDS_ALL EW_HQ_FLIP_LEAVES EW_HQ_FLOOR_FULL_LIST EW_HQ_GRASS EW_HQ_INST_FULL_SCAN EW_HQ_INST_LEFT_ALL EW_HQ_INST_MW_ALL EW_HQ_INST_RESCAN_COUNT ' +
+            'EW_HQ_FINDS_ALL EW_HQ_FLIP_LEAVES EW_HQ_FLOOR_FULL_LIST EW_HQ_GRASS EW_HQ_GRASS_NO_CULL EW_HQ_GRASS_NO_RINGS EW_HQ_INST_FULL_SCAN EW_HQ_INST_LEFT_ALL EW_HQ_INST_MW_ALL EW_HQ_INST_RESCAN_COUNT ' +
             'EW_HQ_INST_SYNC_EVERY EW_HQ_INST_SYNC_HIDDEN EW_HQ_LADDER_OWN_LIST EW_HQ_LOS_FULL_LIST EW_HQ_MOTTO EW_HQ_MW_EVERY_RENDER EW_HQ_NAV_GRID_OFF ' +
             'EW_HQ_NO_BARE_STACK EW_HQ_NO_BATCH EW_HQ_NO_CANOPY EW_HQ_NO_CHAR_CULL EW_HQ_NO_CHUNK_CULL EW_HQ_NO_CITY_BACKDROP EW_HQ_NO_CITY_MARKS EW_HQ_NO_CLEAR ' +
             'EW_HQ_NO_CLIMB EW_HQ_NO_CROWD_CAP EW_HQ_NO_DISSOLVE EW_HQ_NO_DOOR_CHUNKS EW_HQ_NO_EDGE_LAND EW_HQ_NO_FIELD_DEFORM EW_HQ_NO_FIELD_STRATA ' +
@@ -8959,29 +8959,36 @@ const ThreeRenderer = (function () {
            after (a tile highlight, a ring, a zone, blood, a spell's ground mark) is ever hidden BY a blade — they lie on the grass
            the way they lie on the ground */
         var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, depthWrite: false });
-        var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: G.right || _ggRightU, uGgW: { value: new THREE.Vector2(GGRASS.gust, GGRASS.flutter) } };
+        var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: G.right || _ggRightU, uGgW: { value: new THREE.Vector2(GGRASS.gust, GGRASS.flutter) },
+                  /* THE RINGS (2026-11-20, the walked room's field): a tuft's size by its root's distance from uGgF.xy. uGgF = centre x, z (aGg units), the
+                     field's rise (0-1), aGg -> the mesh's own units; uGgD = grows in over x..y, shrinks out over z..w. The board's field: no fade (1 everywhere). */
+                  uGgF: (G.fade && G.fade.f) || { value: new THREE.Vector4(0, 0, 1, 1) }, uGgD: (G.fade && G.fade.d) || { value: new THREE.Vector4(-2, -1, 1e20, 2e20) } };
         m.onBeforeCompile = function (shader) {
             shader.uniforms.uGgM = _ggMaskU;
-            shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR; shader.uniforms.uGgW = U.uGgW;
+            shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR; shader.uniforms.uGgW = U.uGgW; shader.uniforms.uGgF = U.uGgF; shader.uniforms.uGgD = U.uGgD;
             shader.vertexShader = shader.vertexShader
-                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;\nuniform vec2 uGgW;\nvarying float vGgZ;')
+                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;\nuniform vec2 uGgW;\nuniform vec4 uGgF;\nuniform vec4 uGgD;\nvarying float vGgZ;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvGgZ = -mvPosition.z;')
                 .replace('#include <begin_vertex>', '#include <begin_vertex>\n' +
+                    'float ggD = distance( aGg.xy, uGgF.xy );\n' +
+                    'float ggS = smoothstep( uGgD.x, uGgD.y, ggD ) * ( 1.0 - smoothstep( uGgD.z, uGgD.w, ggD ) ) * uGgF.z;\n' +   // THE RINGS: 0 = the tuft is a point at its root, 1 = it stands whole
+                    'transformed.xz = mix( aGg.xy * uGgF.w, transformed.xz, ggS );\n' +
+                    'transformed.y -= aGg.z * ( 1.0 - 0.10 * aGg.w * aGg.w ) * ( 1.0 - ggS );\n' +
                     'float ggPr = texture2D( uGgPress, aGg.xy * uGgB.xy ).r;\n' +
                     'float ggG = sin( dot( aGg.xy, vec2( 0.0105, 0.0062 ) ) - uGgT * uGgW.x + sin( dot( aGg.xy, vec2( -0.0040, 0.0070 ) ) + uGgT * 0.31 ) * 1.4 ) * 0.5 + 0.5;\n' +
                     'ggG *= ggG;\n' +
                     'float ggF = sin( uGgT * 4.3 + aGg.x * 0.31 + aGg.y * 0.47 ) * uGgW.y;\n' +
-                    'float ggB = ( 0.15 + 0.85 * ggG + ggF ) * uGgB.z * aGg.z * aGg.w * ( 1.0 - ggPr );\n' +
-                    'transformed.x += 0.86 * ggB + uGgR.x * aGgS; transformed.z += 0.50 * ggB + uGgR.y * aGgS;\n' +
-                    'transformed.y -= aGg.z * ggPr * 0.86 + ggB * 0.30 * aGg.w;\n' +
+                    'float ggB = ( 0.15 + 0.85 * ggG + ggF ) * uGgB.z * aGg.z * aGg.w * ( 1.0 - ggPr ) * ggS;\n' +
+                    'transformed.x += 0.86 * ggB + uGgR.x * aGgS * ggS; transformed.z += 0.50 * ggB + uGgR.y * aGgS * ggS;\n' +
+                    'transformed.y -= aGg.z * ggPr * 0.86 * ggS + ggB * 0.30 * aGg.w;\n' +
                     'vColor.rgb *= 1.0 + uGgB.w * ggG * aGg.w * ( 1.0 - ggPr );');
             shader.fragmentShader = shader.fragmentShader
                 .replace('#include <common>', '#include <common>\nuniform vec3 uGgM;\nvarying float vGgZ;')
                 .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );')
                 .replace('#include <dithering_fragment>', '#include <dithering_fragment>\nif ( uGgM.x > 0.5 ) { float ggZ = clamp( log2( 1.0 + max( vGgZ, 0.0 ) ) / 20.0, 0.0, 1.0 ) * 255.0; gl_FragColor = vec4( 0.0, floor( ggZ ) / 255.0, fract( ggZ ), 1.0 ); }');   // THE GRASS TAKES NO INK: the style mask's draw
         };
-        m.customProgramCacheKey = function () { return 'ew_ggrass3'; };
-        _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv, right: G.right || _ggRightU });   // the WebGPU twin: _ewNodeGGrass
+        m.customProgramCacheKey = function () { return 'ew_ggrass4'; };
+        _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv, right: G.right || _ggRightU, fade: G.fade || null });   // the WebGPU twin: _ewNodeGGrass
         return m;
     }
     function _ggBuild(group) {
@@ -9190,25 +9197,66 @@ const ThreeRenderer = (function () {
     }
     /* ══ THE GRASS FIELD IN A WALKED ROOM (2026-11-15, mondo on the Estate: "I want the grass from the battle maps on this grass too") ══
        The same tufts, shader, colours and wind as the board's field (above), grown on a walked room's own ground. A room asks for it with
-       `terrain.grassField: true` (data.js; today the Estate). A whole area is far too many tufts to hold at once, so the field is CELLS of
-       HQ_GRASS.cellM metres built round the walker (nearest first, a few a tick) and dropped behind him. A tuft stands only where the
+       `terrain.grassField: true` (data.js). A whole area is far too many tufts to hold at once, so the field is CELLS of
+       HQ_GRASS.cellM metres built round the walker (nearest first, a few ms a tick) and dropped behind him, in RINGS of less and less detail (below). A tuft stands only where the
        ground is open (the room's mask), wears a grass sheet (the painted sheet there, else the room's floor: GGRASS.sheets), is not
-       water, not a steep face and not inside a building. The tufts write no depth, so the cells are drawn far to near (renderOrder by
-       distance) and each cell sorts its own tufts (_ggFace). Settings > Video > Grass (High / Low / Off) rules it as on the board.
+       water, not a steep face and not inside a building. The tufts write depth here (see R.mat.depthWrite), so nothing is sorted.
+       Settings > Video > Grass (High / Low / Off) rules it as on the board.
        Kill switch: window.EW_NO_HQ_GRASS. No press map (nothing lays the tufts down here yet). */
-    var HQ_GRASS = { cellM: 7, radiusM: 28, perSquare: 9, low: { radiusM: 16, perSquare: 6 }, perTick: 2, tickMs: 100, steep: 0.55, height: 1.43 };   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
+    /* THE RINGS (2026-11-20, mondo in the Woods: "the grass loads in late as I get closer to it. Isn't there some technique to make things render
+       lower resolution in the background"): the field stood only within 28 m of the walker and its cells appeared whole, two a tick, so a hard
+       edge of grass walked ahead of him. Now the field is RINGS, each a level of detail:
+         ring 0  the tufts as they were (seven curved blades), out to rings[0].to metres;
+         ring 1  a quarter of the tufts, five blades each, each blade half as thick again (cells twice the size, so a cell holds the same count);
+         ring 2  a sixteenth, three one-triangle blades, thicker again, out to ~110 m where the room's fog has most of it.
+       NOTHING APPEARS: a tuft's size is read from its root's distance to the walker in the shader (_ggMat uGgF / uGgD, node twin D.fade). A
+       ring's tufts shrink into their roots over its last band metres, and the next ring's have grown to full height (over lead metres) just
+       before that starts, so the rings hand over under each other; the last ring sinks into the ground. A cell is built pad metres before
+       the first of its tufts would show. THE COST IS PAID BY THE CAMERA: a cell is now culled when it is off screen (its own sphere; the
+       field was drawn all round the walker before), no cell sorts its tufts any more (they write depth here, the order never showed: a turn
+       of the head re-sent every cell's index), and the far rings' tufts are 25 and 9 corners against 49.
+       On arriving (and after a jump of 30 m+) the field fills first (fillMs a frame), then RISES out of the ground over riseS.
+       Old field back, live: window.EW_HQ_GRASS_NO_RINGS = true (one ring to old.radiusM, a hard edge). No culling: window.EW_HQ_GRASS_NO_CULL. */
+    var HQ_GRASS = { cellM: 7, perSquare: 9, tickMs: 100, steep: 0.55, height: 1.43,   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
+        /* to = where the ring ends (m from the walker) · band = it shrinks away over its last metres · lead = it grows in over this many metres, done where the ring before
+           starts to shrink · pad = a cell is built this far ahead · cell = cell size × cellM (the tufts stand that much further apart) · tall = height × · blades / pts = which
+           of the fan's seven blades a tuft keeps and which of a blade's seven corners (root L R, two pairs, tip) · spread / thick = how far the blades splay / how thick each is */
+        rings: [{ to: 22, band: 7, pad: 3 },
+                { to: 52, band: 12, lead: 6, pad: 5, cell: 2, tall: 1.06, spread: 1.15, thick: 1.5, blades: [0, 1, 3, 5, 6], pts: [0, 1, 4, 5, 6] },
+                { to: 110, band: 30, lead: 10, pad: 8, cell: 4, tall: 1.14, spread: 1.4, thick: 2.6, blades: [0, 3, 6], pts: [0, 1, 6] }],
+        low: { perSquare: 6, rings: [{ to: 16, band: 5, pad: 3 }, { to: 42, band: 12, lead: 5, pad: 5, cell: 2, tall: 1.08, spread: 1.2, thick: 1.8, blades: [0, 3, 6], pts: [0, 1, 4, 5, 6] }] },
+        old: { radiusM: 28, low: 16 },
+        buildMs: 3, fillMs: 8, riseS: 0.9, riseWaitMs: 2500, jumpM: 30 };
     try { window.EW_HQ_GRASS = HQ_GRASS; } catch (e) {}
     var _hqGG = null;
     function _hqGrassDrop() {
         var S = _hqGG; _hqGG = null; if (!S) return;
-        S.cells.forEach(function (c) { if (c && c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } });
-        try { if (S.mat) S.mat.dispose(); if (S.press) S.press.dispose(); } catch (e) {}
+        S.rings.forEach(function (R) {
+            R.cells.forEach(function (c) { if (c && c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } });
+            try { R.mat.dispose(); } catch (e) {}
+        });
+        try { if (S.press) S.press.dispose(); } catch (e) {}
     }
-    function _hqGrassCell(S, cx, cz) {
-        var info = S.info, U = S.U, C = GGRASS, cm = HQ_GRASS.cellM, ts = 3.5 * U, n = Math.max(2, Math.round(S.N * cm / 3.5)), x0 = cx * cm, z0 = cz * cm;
-        var seed = (((cx + 4096) * 73856093) ^ ((cz + 4096) * 19349663)) & 0x7FFFFFFF | 1;
+    /* a far ring's tuft, cut from the fan: the blades it keeps, the corners a blade keeps, each blade splayed and thickened about its own middle line */
+    function _hqGrassShape(d) {
+        var base = _GG_SHAPES[GGRASS.shape] || _GG_SHAPES.crown;
+        if (!d.blades || !d.pts || GGRASS.shape !== 'fan') return base;
+        var P = [], T = [], sp = d.spread || 1, th = d.thick || 1, np = d.pts.length;
+        d.blades.forEach(function (b) {
+            var o = P.length;
+            d.pts.forEach(function (k) { var p = base.P[b * 7 + k], m = (k < 6) ? base.P[b * 7 + (k ^ 1)] : p, c = (p[0] + m[0]) / 2; P.push([c * sp + (p[0] - c) * th, p[1], p[2]]); });
+            for (var q = 0; q + 3 < np; q += 2) T.push(o + q, o + q + 1, o + q + 3, o + q, o + q + 3, o + q + 2);
+            T.push(o + np - 3, o + np - 2, o + np - 1);
+        });
+        return { P: P, T: T };
+    }
+    function _hqGrassCell(S, R, cx, cz) {
+        var info = S.info, U = S.U, C = GGRASS, cm = R.cellM, ts = 3.5 * U, n = S.n, x0 = cx * cm, z0 = cz * cm, none = { mesh: null, cx: cx, cz: cz };
+        if (x0 + cm < info.x0 || z0 + cm < info.z0 || x0 > info.x0 + (info.nx - 1) * info.res || z0 > info.z0 + (info.nz - 1) * info.res) return none;   // wholly off the room's ground
+        var seed = ((((cx + 4096) * 73856093) ^ ((cz + 4096) * 19349663)) + R.i * 0x2545F491) & 0x7FFFFFFF | 1;
         var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
-        var pos = [], col = [], gg = [], gs = [], roots = [], P = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).P, PT = info.paint, kw = S.windK;
+        var SC = S.scratch, pos = SC.pos, col = SC.col, gg = SC.gg, gs = SC.gs, P = R.shape.P, T = R.shape.T, PL = P.length, TL = T.length, PT = info.paint, kw = S.windK;
+        var v = 0, nB = 0, yLo = Infinity, yHi = -Infinity;
         for (var j = 0; j < n; j++) for (var i = 0; i < n; i++) {
             var xm = x0 + (i + rnd()) / n * cm, zm = z0 + (j + rnd()) / n * cm;
             var r0 = rnd(), r1 = rnd(), r2 = rnd(), r4 = rnd(), r5 = rnd();
@@ -9226,73 +9274,108 @@ const ThreeRenderer = (function () {
             var wx = xm * U, wz = zm * U, gy = hqTerrainHeight(info, xm, zm) * U;
             var clump = _ewValHash(xm / (3.5 * 0.55) + 11.3, zm / (3.5 * 0.55) + 4.7), patch = _ewValHash(xm / (3.5 * C.patchM) + 3.1, zm / (3.5 * C.patchM) + 8.9);
             var pt = Math.min(1, Math.max(0, (patch - 0.3) / 0.4)); pt = pt * pt * (3 - 2 * pt);
-            var h = ts * HQ_GRASS.height * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1));
+            var h = ts * HQ_GRASS.height * R.tall * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1));
             var hw = ts * S.width * 0.5 * (0.8 + 0.4 * r2);
             var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm, jit = 0.97 + 0.06 * r0;
             var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
-            for (var k = 0; k < P.length; k++) {
-                var f = P[k][1], bf = f * f, cr, cg, cb;
-                pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
+            for (var k = 0; k < PL; k++, v++) {
+                var f = P[k][1], bf = f * f, cr, cg, cb, v3 = v * 3, v4 = v * 4;
+                pos[v3] = wx + lx * bf; pos[v3 + 1] = gy + h * f * (1 - 0.10 * bf); pos[v3 + 2] = wz + lz * bf;
                 if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
                 else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
                 if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; }
-                col.push(cr, cg, cb); gg.push(wx * kw, wz * kw, h * f, f); gs.push(P[k][0] * hw);
+                col[v3] = cr; col[v3 + 1] = cg; col[v3 + 2] = cb;
+                gg[v4] = wx * kw; gg[v4 + 1] = wz * kw; gg[v4 + 2] = h * f; gg[v4 + 3] = f; gs[v] = P[k][0] * hw;
             }
-            roots.push(wx, wz);
+            if (gy < yLo) yLo = gy; if (gy > yHi) yHi = gy;
+            nB++;
         }
-        if (!roots.length) return { mesh: null };
-        var geo = new THREE.BufferGeometry(), pa = new Float32Array(pos), nor = new Float32Array(pa.length); for (var q = 1; q < nor.length; q += 3) nor[q] = 1;
-        geo.setAttribute('position', new THREE.BufferAttribute(pa, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-        geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3)); geo.setAttribute('aGg', new THREE.BufferAttribute(new Float32Array(gg), 4)); geo.setAttribute('aGgS', new THREE.BufferAttribute(new Float32Array(gs), 1));
-        var T = (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T, nB = roots.length / 2, ia = new Uint32Array(nB * T.length);
-        for (var t = 0; t < nB; t++) for (var e = 0; e < T.length; e++) ia[t * T.length + e] = t * P.length + T[e];
+        if (!nB) return none;
+        var geo = new THREE.BufferGeometry(), nor = new Float32Array(v * 3); for (var q = 1; q < nor.length; q += 3) nor[q] = 1;
+        geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, v * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(col.slice(0, v * 3), 3)); geo.setAttribute('aGg', new THREE.BufferAttribute(gg.slice(0, v * 4), 4)); geo.setAttribute('aGgS', new THREE.BufferAttribute(gs.slice(0, v), 1));
+        var ia = (v > 65535) ? new Uint32Array(nB * TL) : new Uint16Array(nB * TL);
+        for (var t = 0; t < nB; t++) for (var e = 0; e < TL; e++) ia[t * TL + e] = t * PL + T[e];
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
-        var mesh = new THREE.Mesh(geo, S.mat);
-        mesh.frustumCulled = false; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
+        /* THE CELL'S OWN SPHERE: the shader moves every corner (the face to the eye, the wind), so the sphere is the cell's ground + a tuft's reach, set by hand */
+        geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + cm / 2) * U, (yLo + yHi) / 2, (z0 + cm / 2) * U), Math.hypot(cm * 0.7072 * U, (yHi - yLo) / 2) + (1.7 * R.tall + 1.0 * R.spread) * U);
+        var mesh = new THREE.Mesh(geo, R.mat), noCull = false; try { noCull = !!window.EW_HQ_GRASS_NO_CULL; } catch (e2) {}
+        mesh.frustumCulled = !noCull; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
         S.parent.add(mesh);
-        return { mesh: mesh, roots: new Float32Array(roots), blades: nB, ia: ia, sortDir: null, cx: cx, cz: cz, right: S.right };
+        return { mesh: mesh, blades: nB, tris: nB * TL / 3, cx: cx, cz: cz };
     }
     function _hqGrassTick() {
         var H = _hq, T = H && H.room && H.room.terrain, on = false;
         try { on = !!(H && H.terrain && H.player && T && T.grassField && _ggOn() && !window.EW_NO_HQ_GRASS && typeof hqTerrainHeight === 'function'); } catch (e) { on = false; }
         if (!on) { if (_hqGG) _hqGrassDrop(); return; }
-        var S = _hqGG;
-        if (!S || S.H !== H || S.level !== _ggLevel) {
+        var S = _hqGG, noRings = false, G0 = HQ_GRASS;
+        try { noRings = !!window.EW_HQ_GRASS_NO_RINGS; } catch (e) {}
+        if (!S || S.H !== H || S.level !== _ggLevel || S.noRings !== noRings) {
             _hqGrassDrop();
-            var LOW = (_ggLevel === 'low'), U = _hqUnits(), pr = _ggPressTex(1, 1), boxes = [];
+            var LOW = (_ggLevel === 'low'), U = _hqUnits(), pr = _ggPressTex(1, 1), boxes = [], GL = LOW ? G0.low : G0;
             ((T.features) || []).forEach(function (f) { if (f && (f.k === 'texbuilding' || (f.k === 'plateau' && f.bld && f.w > 0 && f.d > 0))) { var a = (f.rot || 0) * Math.PI / 180; boxes.push([f.x, f.z, f.w / 2 + 0.4, f.d / 2 + 0.4, Math.cos(a), Math.sin(a)]); } });
-            S = _hqGG = { H: H, level: _ggLevel, info: H.terrain, U: U, N: LOW ? HQ_GRASS.low.perSquare : HQ_GRASS.perSquare, R: LOW ? HQ_GRASS.low.radiusM : HQ_GRASS.radiusM,
-                width: (LOW ? GGRASS.low.width : GGRASS.width) * (LOW ? 1 : GGRASS.perTile / HQ_GRASS.perSquare), windK: (CONFIG.tileSize || BASE_TILE) / (3.5 * U),
-                cells: new Map(), pals: {}, boxes: boxes, press: pr.tex, at: 0, parent: (H.propGroup && H.propGroup.parent) || scene };
-            S.right = { value: new THREE.Vector2(1, 0) };   // THE CAMERA THAT DRAWS IT: the room's own (see _ggFace)
-            S.mat = _ggMat({ press: pr.tex, inv: [0, 0], right: S.right });
-            /* THE DEPTH (seen in the browser: dark lines of tuft feet along every cell's edge): the board's field writes no depth and sorts ALL its tufts far to
-               near in one mesh; here each cell sorts only its own, so two cells side by side overlapped wrongly at their shared edge whatever order the
-               cells were drawn in. A walked room's tufts write depth, so the order does not matter (and the walker's shins stand IN the grass). */
-            S.mat.depthWrite = true;
+            var defs = noRings ? [{ to: LOW ? G0.old.low : G0.old.radiusM, band: 0.01, pad: 5 }] : (GL.rings || G0.rings);
+            S = _hqGG = { H: H, level: _ggLevel, noRings: noRings, info: H.terrain, U: U, N: GL.perSquare || G0.perSquare,
+                width: (LOW ? GGRASS.low.width : GGRASS.width) * (LOW ? 1 : GGRASS.perTile / G0.perSquare), windK: (CONFIG.tileSize || BASE_TILE) / (3.5 * U),
+                rings: [], pals: {}, boxes: boxes, press: pr.tex, at: 0, born: performance.now(), t0: 0, busy: true, parent: (H.propGroup && H.propGroup.parent) || scene };
+            S.n = Math.max(2, Math.round(S.N * G0.cellM / 3.5));
+            S.right = { value: new THREE.Vector2(1, 0) };   // THE CAMERA THAT DRAWS IT: the room's own (2026-11-18: the board's camera stands still while you walk, and a front-side tuft turned to it was culled from behind)
+            var kU0 = U * S.windK, maxPL = 0;
+            defs.forEach(function (d, i) {
+                var prev = i ? defs[i - 1] : null, in1 = prev ? prev.to - prev.band : -1, in0 = prev ? in1 - (d.lead || prev.band) : -2;
+                var R = { i: i, cellM: G0.cellM * (d.cell || 1), to: d.to, reach: d.to + (d.pad || 3), in0: Math.max(0, in0), tall: d.tall || 1, spread: d.spread || 1, shape: _hqGrassShape(d), cells: new Map(),
+                          fade: { f: { value: new THREE.Vector4(0, 0, 0, 1 / S.windK) }, d: { value: new THREE.Vector4(prev ? in0 * kU0 : -2, prev ? in1 * kU0 : -1, (d.to - d.band) * kU0, d.to * kU0) } } };
+                R.mat = _ggMat({ press: pr.tex, inv: [0, 0], right: S.right, fade: R.fade });
+                /* THE DEPTH (seen in the browser, 11-15: dark lines of tuft feet along every cell's edge): the board's field writes no depth and sorts ALL its tufts far to
+                   near in one mesh; a cell could sort only its own, so two cells side by side overlapped wrongly at their shared edge. A walked room's tufts write depth:
+                   the order does not matter (so nothing is sorted here at all), and the walker's shins stand IN the grass. */
+                R.mat.depthWrite = true;
+                S.rings.push(R); if (R.shape.P.length > maxPL) maxPL = R.shape.P.length;
+            });
+            var mv = S.n * S.n * maxPL;
+            S.scratch = { pos: new Float32Array(mv * 3), col: new Float32Array(mv * 3), gg: new Float32Array(mv * 4), gs: new Float32Array(mv) };   // one cell is written here, then cut to size
         }
-        var live = []; S.cells.forEach(function (c) { if (c && c.mesh) { _ggFace(c, H.camera); live.push(c); } });
-        var now = performance.now(); if (now - S.at < HQ_GRASS.tickMs) return; S.at = now;
-        var cm = HQ_GRASS.cellM, px = H.player.x, pz = H.player.z, pcx = Math.floor(px / cm), pcz = Math.floor(pz / cm), rc = Math.ceil(S.R / cm), want = [];
-        for (var dz = -rc; dz <= rc; dz++) for (var dx = -rc; dx <= rc; dx++) { var cx = pcx + dx, cz = pcz + dz, d = Math.hypot((cx + 0.5) * cm - px, (cz + 0.5) * cm - pz); if (d > S.R) continue; if (!S.cells.has(cx + ',' + cz)) want.push([d, cx, cz]); }
-        want.sort(function (a, b) { return a[0] - b[0]; });
-        for (var w = 0; w < want.length && w < HQ_GRASS.perTick; w++) { var made = null; try { made = _hqGrassCell(S, want[w][1], want[w][2]); } catch (e) { made = { mesh: null }; if (!S._warned) { S._warned = true; console.warn('[HQ] the grass field', e); } } S.cells.set(want[w][1] + ',' + want[w][2], made); if (made.mesh) live.push(made); }
-        S.cells.forEach(function (c, key) { var q = key.split(','), d = Math.hypot((+q[0] + 0.5) * cm - px, (+q[1] + 0.5) * cm - pz); if (d > S.R + 2 * cm) { if (c && c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } S.cells.delete(key); } });
-        /* far cells first: no tuft writes depth, so a near cell must be drawn over a far one */
-        /* (far = along the camera's own view direction, as each cell sorts its tufts: a distance from the camera's place put a cell behind
-           the eye in front of the one it looks at, and the cells' edges showed as dark lines of tuft feet) */
-        var cam = H.camera || ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null), fx = 0, fz = 0;
-        live = live.filter(function (c) { return c.mesh && c.mesh.parent; });
-        if (cam && live.length) {   // the view direction in the cells' OWN frame (the room's group may be turned or mirrored against the world)
+        /* every frame: the face to the camera that draws the room, and where the walker stands (the rings ride with him) */
+        var cam = H.camera || ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null);
+        if (cam) {   // the camera's right in the cells' OWN frame (the room's group may be turned or mirrored against the world)
             if (!_ggV) { _ggV = new THREE.Vector3(); _ggM = new THREE.Matrix4(); }
-            live[0].mesh.updateWorldMatrix(true, false); _ggM.copy(live[0].mesh.matrixWorld).invert();
-            var ce = cam.matrixWorld.elements; _ggV.set(-ce[8], -ce[9], -ce[10]).transformDirection(_ggM);
-            var fl = Math.hypot(_ggV.x, _ggV.z); if (fl > 1e-4) { fx = _ggV.x / fl; fz = _ggV.z / fl; }
+            S.parent.updateWorldMatrix(true, false); _ggM.copy(S.parent.matrixWorld).invert();
+            var ce = cam.matrixWorld.elements; _ggV.set(ce[0], ce[1], ce[2]).transformDirection(_ggM);
+            var rl = Math.hypot(_ggV.x, _ggV.z) || 1; S.right.value.set(_ggV.x / rl, _ggV.z / rl);
         }
-        live.forEach(function (c) { c._d = (fx || fz) ? ((c.cx + 0.5) * cm * fx + (c.cz + 0.5) * cm * fz) : Math.hypot((c.cx + 0.5) * cm - px, (c.cz + 0.5) * cm - pz); });
-        live.sort(function (a, b) { return b._d - a._d; });
-        for (var o = 0; o < live.length; o++) live[o].mesh.renderOrder = GGRASS.order + o * 0.001;
-        try { window._ewHqGrass = { cells: live.length, tufts: live.reduce(function (s, c) { return s + c.blades; }, 0), level: _ggLevel }; } catch (e) {}
+        var now = performance.now(), px = H.player.x, pz = H.player.z, kU = S.U * S.windK, ri, R;
+        if (S.lx !== undefined && Math.hypot(px - S.lx, pz - S.lz) > G0.jumpM) { S.t0 = 0; S.born = now; S.busy = true; }   // a jump (a door in the room, a fast travel): fill round the new place, then rise
+        S.lx = px; S.lz = pz;
+        var rise = S.t0 ? Math.min(1, (now - S.t0) / Math.max(1, G0.riseS * 1000)) : 0; rise = rise * rise * (3 - 2 * rise);
+        for (ri = 0; ri < S.rings.length; ri++) S.rings[ri].fade.f.value.set(px * kU, pz * kU, rise, 1 / S.windK);
+        if (!S.busy && now - S.at < G0.tickMs) return;
+        S.at = now;
+        /* the cells: its own lists only (never the room's objects). Wanted = within a ring's reach of the walker; the first to build = the first whose tufts would show */
+        var want = [], cells = 0, tufts = 0, tris = 0, per = [];
+        for (ri = 0; ri < S.rings.length; ri++) {
+            R = S.rings[ri]; var cm = R.cellM, x1 = Math.floor((px + R.reach) / cm), z1 = Math.floor((pz + R.reach) / cm), live = 0;
+            for (var cz = Math.floor((pz - R.reach) / cm); cz <= z1; cz++) for (var cx = Math.floor((px - R.reach) / cm); cx <= x1; cx++) {
+                var dn = Math.hypot(Math.max(cx * cm, Math.min(px, cx * cm + cm)) - px, Math.max(cz * cm, Math.min(pz, cz * cm + cm)) - pz);
+                if (dn <= R.reach && !R.cells.has(cx + ',' + cz)) want.push([Math.max(dn, R.in0), R, cx, cz]);
+            }
+            R.cells.forEach(function (c, key) {
+                var d = Math.hypot(Math.max(c.cx * cm, Math.min(px, c.cx * cm + cm)) - px, Math.max(c.cz * cm, Math.min(pz, c.cz * cm + cm)) - pz);
+                if (d > R.reach + cm * 0.5) { if (c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } R.cells.delete(key); }
+                else if (c.mesh) { live++; tufts += c.blades; tris += c.tris; }
+            });
+            per.push(live); cells += live;
+        }
+        want.sort(function (a, b) { return a[0] - b[0]; });
+        var tb = performance.now(), budget = S.t0 ? G0.buildMs : G0.fillMs, w = 0;
+        for (; w < want.length && (w < 1 || performance.now() - tb < budget); w++) {
+            var W = want[w], made = null;
+            try { made = _hqGrassCell(S, W[1], W[2], W[3]); } catch (e) { made = { mesh: null, cx: W[2], cz: W[3] }; if (!S._warned) { S._warned = true; console.warn('[HQ] the grass field', e); } }
+            W[1].cells.set(W[2] + ',' + W[3], made);
+            if (made.mesh) { cells++; per[W[1].i]++; tufts += made.blades; tris += made.tris; }
+        }
+        S.busy = w < want.length;
+        if (!S.t0 && (!S.busy || now - S.born > G0.riseWaitMs)) { S.t0 = now; S.fillMs = Math.round(now - S.born); }
+        try { window._ewHqGrass = { cells: cells, tufts: tufts, tris: tris, rings: per, level: _ggLevel, fillMs: S.fillMs || 0, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w }; } catch (e) {}
     }
     function _buildGrassTuft3D(x, y) {
         if (!GRASS.enabled) return null;
@@ -49296,9 +49379,18 @@ const ThreeRenderer = (function () {
             return g.mul(g);
         };
         var press = function () { return T.texture(D.press, A.xy.mul(T.vec2(D.inv[0], D.inv[1]))).level(0).r; };
+        /* THE RINGS (the walked room's field; the GLSL is ggS in _ggMat): a tuft's size by its root's distance from the walker. The board's field has no D.fade and keeps its nodes */
+        var FD = D.fade ? { f: _ewNodeRef(D.fade.f), d: _ewNodeRef(D.fade.d) } : null;
         nm.positionNode = T.Fn(function () {
             var pr = press().toVar(), g = gust().toVar();
             var f = T.sin(t.mul(4.3).add(A.x.mul(0.31)).add(A.y.mul(0.47))).mul(C.flutter);
+            if (FD) {
+                var dd = T.length(A.xy.sub(FD.f.xy)).toVar();
+                var s = T.smoothstep(FD.d.x, FD.d.y, dd).mul(T.smoothstep(FD.d.z, FD.d.w, dd).oneMinus()).mul(FD.f.z).toVar();
+                var bs = g.mul(0.85).add(0.15).add(f).mul(C.wind).mul(A.z).mul(A.w).mul(pr.oneMinus()).mul(s).toVar();
+                var root = T.vec3(T.mix(A.x.mul(FD.f.w), P.x, s), P.y.sub(A.z.mul(A.w.mul(A.w).mul(0.10).oneMinus()).mul(s.oneMinus())), T.mix(A.y.mul(FD.f.w), P.z, s));
+                return root.add(T.vec3(bs.mul(0.86).add(Rt.x.mul(S).mul(s)), A.z.mul(pr).mul(0.86).mul(s).add(bs.mul(0.30).mul(A.w)).negate(), bs.mul(0.50).add(Rt.y.mul(S).mul(s))));
+            }
             var b = g.mul(0.85).add(0.15).add(f).mul(C.wind).mul(A.z).mul(A.w).mul(pr.oneMinus()).toVar();
             return P.add(T.vec3(b.mul(0.86).add(Rt.x.mul(S)), A.z.mul(pr).mul(0.86).add(b.mul(0.30).mul(A.w)).negate(), b.mul(0.50).add(Rt.y.mul(S))));
         })();

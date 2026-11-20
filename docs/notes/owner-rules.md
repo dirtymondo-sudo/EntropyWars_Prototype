@@ -52,6 +52,13 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
 - **World vision (11-15).** The world is a parody of the real world; each area is the ULTIMATE form of its idea. DOOR HQ
   is the subconscious. Every area is plot-built (12x12 plots, districts) like Disaster City; only DOOR HQ stays handmade.
   Cyberpunk City is a future reskin of the WHOLE Disaster City, not a district. The Desert = Western Town + Giza + Area 51.
+- **MOUNT SHASTA GOES, KATANA ISLAND COMES (11-20).** mondo: "we are getting rid of Mt Shasta. Instead volcano island is gonna be remade to Katana
+  Island, which will be like feudal Japan. Still with volcano/mountain, but it might have to be a little bigger"; "Katana Bay" is one of its
+  districts; it keeps dinosaurs, a jungle and a (Japanese) village, has cherry blossoms, and is "basically a love letter to anime and Japan", on 25 to 30
+  plots. Shasta's plots are renamed and swallowed by the other mountain districts. **The Mountains are one real ski mountain** (11-20: "The ski
+  trails should be all over the mountain ... easy trails ... towards the base and double black diamonds towards the top. I should be able to ski
+  all the way from the top of mt Olympus to the base ... That is the level of detail we are going for"). You ride it on the board ("board on snow for now") and the lifts carry you up. **The Woods are a horror wood** (11-20: "think like horror game and silent hill and Blair witch"). **Every room is built to Disaster
+  City's standard, and the standard is variety, not a formula** (11-20). All three: `docs/plans/world-polish/WORLD_POLISH_PLAN.md` START HERE.
 - **Disaster City** (`site_prebuilt_downtown_streets`, 144 plots + the Hollywood Hills on its north side, one room: "the whole point is to be able
   to look over the city", 11-16): the ocean stays by Bayside + the Beach; the other map
   edges may change. PvP Downtown keeps the old board. Notes: `areas-complexes.md`.

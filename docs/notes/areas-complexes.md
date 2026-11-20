@@ -5679,6 +5679,28 @@ mondo: "the sky is glitching/flickering in the estate. keep improving the visual
   (`_hqGrassTick` passes `H.camera`, also for the cells' far-to-near order) and the walked room has its own right-vector uniform (`S.right`, via
   `_ggMat({ right })` and the node twin's `D.right`), so the board's field and the room's never turn each other. Proof: Redwood Trail
   (`site_ow_l3`) north + south, before / after, /mnt/project-files/grass-two-sides-20261118/.
+- **THE GRASS RINGS (2026-11-20, mondo in the Woods: "the grass loads in late as I get closer to it. Isn't there some technique to make things render
+  lower resolution in the background or something? Can we not do that with like everything, grass blades included? Only if it makes sense"):**
+  the cause: the field stood only within 28 m of the walker and a cell appeared whole, two a tick, so a hard edge of grass walked ahead of him.
+  Now (`HQ_GRASS.rings`, three-renderer.js `_hqGrassTick` / `_hqGrassCell` / `_hqGrassShape`) the field is three rings, each a level of detail:
+  ring 0 = the tufts as they were (seven curved blades, 49 corners) out to 22 m; ring 1 = a quarter of the tufts, five blades, each blade half as
+  thick again (25 corners), to 52 m; ring 2 = a sixteenth, three one-triangle blades (9 corners), to 110 m. A ring's cell is 7 / 14 / 28 m, so every
+  cell holds the same count of tufts. Low = two rings (16 m, 42 m). **Nothing appears:** a tuft's size is read in the shader from its root's distance
+  to the walker (`_ggMat` uniforms `uGgF` = centre + rise, `uGgD` = grow-in and shrink-out distances; node twin `_ewNodeGGrass` `D.fade`): a ring's
+  tufts shrink into their roots over its last `band` metres, the next ring's are at full height just before that starts, the last ring sinks into
+  the ground under the fog. A cell is built `pad` metres before its first tuft would show. On arriving (and after a jump of 30 m+) the field fills
+  first (8 ms a frame), then rises out of the ground over 0.9 s. **What pays for it:** a cell is culled when off camera (its own sphere, set by hand
+  since the shader moves the corners; the field was drawn all round the walker before); no cell sorts its tufts any more (they write depth in a
+  walked room, the order never showed, and every ~10 degrees of camera turn re-sent every cell's index buffer); cells are written into one scratch
+  buffer; 16-bit indices. Ring 0's tufts are the same tufts as before (same seed). The board's field in a battle is untouched (no fade: its
+  uniforms read 1). Measured on the Estate's lawn (cloud browser): 84 cells, 254 K grass triangles held against 200 K before, the frame's total
+  5.39 M against 5.27 M, 1,655 calls against 1,624. Old field back, live: `window.EW_HQ_GRASS_NO_RINGS = true` (one ring to 28 m, a hard edge);
+  no culling: `window.EW_HQ_GRASS_NO_CULL`; `window._ewHqGrass` = cells, tufts, triangles, cells per ring, the first fill's ms.
+  Seen in the cloud browser on the Redwood Trail (`site_ow_l3`), classic renderer and the node renderer on its WebGL 2 backend, High and Low, and
+  through a fight and back (playtest_handover.js). NOT seen: real WebGPU / his Mac, the rings while moving (stills only), a vehicle's speed.
+  NOT done: the land past a room's line (the edge land) grows no tufts, so the field still ends on that line (a still line, not a late one).
+  THE REST OF "EVERYTHING": models already have this (THE LOD LEVELS, rendering-loading-perf.md: `.lod1.glb` / `.lod2.glb` by size on screen), but
+  only 13 model files have the lower copies baked (`npm run optimize -- <dir> --lod`); small props stop at 100 m, the rest at 260 m.
 - **THE CLEAN SKY:** what flickered was the ranch shell's night scenery (`scenery: 'eyes'`: a ringed body, a door frame and an orb, turning) drawn
   as black outlines in the daytime sky since the room rides the clock. The Estate's shell now carries its own `sky` (the ranch's colours and fog,
   `scenery: 'none'`, no landmarks, fewer stars). The ranch shell itself is unchanged (the old Corn Fields board still uses it).
@@ -7073,6 +7095,8 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
 
 ## THE SNOWY PINES, THREE PLOTS WIDE — the room design (2026-11-20, the owner's WORLD POLISH thread 3; docs/plans/world-polish/WORLD_POLISH_PLAN.md)
 
+**BELOW THE STANDARD OF 11-20** (mondo: "Disaster City should already be the standard for every room"): this room has set-piece height on level ground (no height base) and wide ways in straight legs. Built as written below; not redone unless he asks. The standard and the state of every thread: `docs/plans/world-polish/WORLD_POLISH_PLAN.md` START HERE. This room is Came A Lot's, NOT The Woods (the zone, `fairy_forest_ow_*`), which was not touched.
+
 mondo 11-20: "you have freedom to move and change and make bigger whatever you need to, that is the whole point of this pass." The first pilot failed on
 the room itself (the plan's 5b): a chain ONE plot wide, a white strip in summer lawn. This pass changed the room, then built on it.
 
@@ -7124,6 +7148,8 @@ the room itself (the plan's 5b): a chain ONE plot wide, a white strip in summer 
 
 ## THE FOREST, THREE PLOTS WIDE — the room design (2026-11-20, the owner's WORLD POLISH thread 3, after the Snowy Pines)
 
+**BELOW THE STANDARD OF 11-20** (mondo: "Disaster City should already be the standard for every room"): this room has set-piece height on level ground (no height base) and wide ways in straight legs. Built as written below; not redone unless he asks. The standard and the state of every thread: `docs/plans/world-polish/WORLD_POLISH_PLAN.md` START HERE. This room is Came A Lot's, NOT The Woods (the zone, `fairy_forest_ow_*`), which was not touched.
+
 The Pines' pattern, second use (read "THE SNOWY PINES, THREE PLOTS WIDE" first). `site_prebuilt_camelot_ow_forest` is 21 plots, a 5 x 5 box at world -27,3
 (was 9 in a T one plot wide, 4 x 5 at -26,3): the eight old plots and the link plot L7 where they stood, twelve new plots beside them
 (`docs/plans/one-world/after-v13.js` row 3; no ground letter changed, its country is forest already). Every old x in the room is 21 m greater now (one
@@ -7151,6 +7177,8 @@ more column west); z is unchanged.
 
 
 ## THE FAIRY FOREST, 13 PLOTS — the room design (2026-11-20, the owner's WORLD POLISH thread 3, its last district)
+
+**BELOW THE STANDARD OF 11-20** (mondo: "Disaster City should already be the standard for every room"): this room has set-piece height on level ground (no height base) and wide ways in straight legs. Built as written below; not redone unless he asks. The standard and the state of every thread: `docs/plans/world-polish/WORLD_POLISH_PLAN.md` START HERE. This room is Came A Lot's, NOT The Woods (the zone, `fairy_forest_ow_*`), which was not touched.
 
 The Pines' pattern, third use. `site_prebuilt_camelot_ow_fairy` is 13 plots, a 4 x 4 box at world -23,-1 (was 6, 4 x 3): the six old plots where they
 stood, seven new plots south of them in two rows (`after-v13.js` row 4; north of the walk lies the Old Road, R4: no room to grow there). Every old z in

@@ -3668,3 +3668,10 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   (`_nodes.getForRender`, with its look from THE BUILDS' NAMES), each marked fight / walk and the time; the 16 worst of the
   session (`_ewSlow`, `_ewSlowNote`). `_EW_TR_STAMP` = "11-20 slow-firsts". The fix follows that list: a sheet that is an `img`
   = decode it (`image.decode()`) and upload it when the fight is set up; a build = make the look's twin then.
+
+
+## THE GRASS RINGS (2026-11-20): detail by distance for the walked room's grass
+mondo in the Woods: "the grass loads in late as I get closer to it". The walked room's grass field is now three rings of less and less detail out
+to 110 m, each tuft sized by its distance in the shader (nothing appears, nothing is cut off), paid for by culling the cells off camera and by
+dropping the per-cell tuft sort. The whole note: areas-complexes.md "THE GRASS RINGS". For models the same idea is THE LOD LEVELS above; only 13
+model files have lower copies baked so far.
