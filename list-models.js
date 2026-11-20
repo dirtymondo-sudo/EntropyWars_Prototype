@@ -105,6 +105,8 @@ const SOURCES = [
     // THE FLORA PACKS (2026-11-20, mondo's inbox upload; FBX / .blend -> GLB by bake-foliage.py; docs/notes/flora.md)
     { re: /Assets\/world\/packs\/afgameassets_retro_foliage\//, how: 'PACK', src: 'Retro Foliage: Pixel Art Nature Kit · AFGameAssets · bought by mondo (in a game yes, never redistributed as standalone source files); the kit\'s meshes and its own season leaf pictures, turned to GLB by bake-foliage.py' },
     { re: /Assets\/world\/packs\/handpainted_flowers\//, how: 'PACK_ANON', src: "Handpainted flower assets (mondo's 2026-11-20 upload: one .blend + one sheet; no author or licence file in the zip), turned to GLB by bake-foliage.py" },
+    // THE KATANA + FLORA MESHY BATCH 1 (2026-11-20, docs/plans/meshy-flora-katana/BATCH1.md; data.js kt_* / fl_* rows)
+    { re: /Assets\/world\/(props\/meshy\/katana|nature\/flora\/meshy)\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE KATANA + FLORA MESHY BATCH 1, mondo OK on every piece 2026-11-20; originals in project files meshy-flora-katana-b1/)' },
     { re: /Assets\/world\/nature\/flora\//, how: 'PACK', src: 'THE FLORA FIELD: every small plant of the Retro Foliage kit (AFGameAssets) and the hand-painted flowers in one file on one sheet (bake-foliage.py); three-renderer.js grows it round the walker by climate (data.js ZONE_FLORA)' },
     { re: /Assets\/foilage\/OBJ\//, how: 'PACK', src: 'LowPoly nature · Quaternius · CC0' },
     { re: /Assets\/foilage\/(FBX|Blends)\//, how: 'PACK', src: 'LowPoly nature · Quaternius · CC0 (the same trees as FBX / .blend; the game loads the OBJ)' },
