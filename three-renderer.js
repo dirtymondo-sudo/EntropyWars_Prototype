@@ -90509,7 +90509,7 @@ const ThreeRenderer = (function () {
     /* E on a moored vehicle: aboard. E aboard: off. */
     function _hqBoard(id) {
         var H = _hq; if (!H || !H.player) return false;
-        if (H.vehicle && H.vehicle.on) { if (H.vehicle.launch) return false; return (H.vehicle.kind === 'ship' && typeof _ewPlRound === 'function' && _ewPlRound()) ? _hqShipSetDown() : _hqDisembark(); }   // (the flown ship among round worlds sets down on the ball under it, or stays aboard)
+        if (H.vehicle && H.vehicle.on) { if (H.vehicle.launch || H.vehicle.beam) return false; return (H.vehicle.kind === 'ship' && typeof _ewPlRound === 'function' && _ewPlRound()) ? _hqShipSetDown() : _hqDisembark(); }   // (the flown ship among round worlds sets down on the ball under it, or stays aboard)
         var b = id ? _hqVehicleFind(id) : null; if (!b) return false;
         var pl = H.player;
         if (H.ride && H.ride.on) _hqRideToggle(false, true);
@@ -90728,7 +90728,8 @@ const ThreeRenderer = (function () {
         var H = _hq, pl = H.player, U = _hqUnits(), sp = _hqSpace() || {}, c = H.cam;
         V.burnNow = !!(burn && thr > 0);
         var dyw = 0;   // (the launch leaves the heading's error at 0: the bank below reads it)
-        if (V.launch) { V.burnNow = false; _hqShipLaunchStep(dt, V, R, c); }   // THE LAUNCH (2026-11-20): flown for you
+        if (V.beam) { V.burnNow = false; _hqShipBeamStep(dt, V, R, c); if (!_hq.vehicle) return; }   // THE TRACTOR BEAM (2026-11-20, the UFOs): held, then dragged down
+        else if (V.launch) { V.burnNow = false; _hqShipLaunchStep(dt, V, R, c); }   // THE LAUNCH (2026-11-20): flown for you
         else {
         /* the heading and the climb: the camera's */
         if (turn) c.yaw += turn * (R.turn || 1.25) * dt;
@@ -90802,12 +90803,12 @@ const ThreeRenderer = (function () {
        step-off (the hull's x, z read as a place on the flat ground) put the walker on whatever net lay under those numbers, or in the void.
        Now: within `setDown` metres of a ball's ground the ship sets down on the square under it and you step off beside it; anywhere
        else E does nothing (you stay aboard: there is nothing to stand on in open space). */
-    function _hqShipSetDown() {
+    function _hqShipSetDown(force) {   // force = { world, x, z } (THE TRACTOR BEAM: that pad, at any height)
         var H = _hq, V = H && H.vehicle, RW = _ewPlRound(); if (!V || !V.on || !RW || !H.terrain) return false;
-        var R = _hqSeaRules().ship || {}, best = null, bd = 1e9;
-        for (var i = 0; i < RW.length; i++) { var q = RW[i], alt = Math.hypot(V.x - q.c[0], V.y - q.c[1], V.z - q.c[2]) - q.R - (q.top || 0); if (alt < (R.setDown || 45) && alt < bd) { bd = alt; best = q; } }
+        var R = _hqSeaRules().ship || {}, best = force && force.world ? force.world : null, bd = 1e9;
+        if (!best) for (var i = 0; i < RW.length; i++) { var q = RW[i], alt = Math.hypot(V.x - q.c[0], V.y - q.c[1], V.z - q.c[2]) - q.R - (q.top || 0); if (alt < (R.setDown || 45) && alt < bd) { bd = alt; best = q; } }
         if (!best) return false;
-        var T = _ewPlFlat(best, V.x, V.y, V.z), ti = H.terrain, ok = function (x, z) {
+        var T = (force && force.x != null) ? { x: force.x, z: force.z } : _ewPlFlat(best, V.x, V.y, V.z), ti = H.terrain, ok = function (x, z) {
             if (!_ewPlInRect(best, x, z) || (ti.void && hqTerrainVoidAt(ti, x, z))) return false;
             if (hqTerrainWallAt(ti, x, z, 2.2)) return false;
             if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(ti, x, z, 1.5)) return false;
@@ -90832,12 +90833,13 @@ const ThreeRenderer = (function () {
     function _hqShipCam(H, V, dt, U) {
         var c = H.cam, cam = H.camera, R = _hqSeaRules().ship || {}, sp = _hqSpace() || {};
         /* THE LAUNCH's camera: it starts `camA` round to the side, low, close, looking at the hull, and swings round behind to the flying eye */
-        var Lc = V.launch, kL = 1, oa = 0, pAdd = 0, dMul = 1;
+        var Lc = V.launch, kL = 1, oa = 0, pAdd = 0, dMul = 1, Bc = V.beam, bU = null;
+        if (Bc) { var kB = Math.min(1, Bc.t / 1.2), ke = kB * kB * (3 - 2 * kB); oa = 1.25 * ke; pAdd = 0.55 * ke - (c.pitch || 0) * ke; dMul = 1 + 1.6 * ke; kL = 1 - ke; var uS = _hq._spaceUfos && _hq._spaceUfos.list[Bc.u]; if (uS) bU = uS.p; }   // THE TRACTOR BEAM's eye: round to the side, from below, the ship and the craft both in frame
         if (Lc) { var sL = Math.min(1, Lc.t / Lc.dur), sE = Math.max(0, Math.min(1, (sL - 0.08) / 0.85)); kL = sE * sE * (3 - 2 * sE); oa = Lc.camA * (1 - kL); pAdd = (Lc.full ? -0.42 : -0.15) * (1 - kL); dMul = 1 + (Lc.full ? 0.35 : 0.1) * (1 - kL); }
         var cy = c.yaw + oa, cpt = Math.max(-1.3, Math.min(1.3, (c.pitch || 0) + pAdd)), lx = Math.sin(cy) * Math.cos(cpt), ly = Math.sin(cpt), lz = -Math.cos(cy) * Math.cos(cpt);
         var ux = -Math.sin(cy) * Math.sin(cpt), uy = Math.cos(cpt), uz = Math.cos(cy) * Math.sin(cpt);
         var sk = Math.min(1, Math.abs(V.v) / (R.warp || 1300)); c.shipK = (c.shipK == null) ? sk : c.shipK + (sk - c.shipK) * Math.min(1, dt * 3);
-        var dist = (R.camDist || 20) * (1 + 0.3 * c.shipK) * dMul, up = (R.camUp || 3.4) * (Lc ? kL : 1);
+        var dist = (R.camDist || 20) * (1 + 0.3 * c.shipK) * dMul, up = (R.camUp || 3.4) * ((Lc || Bc) ? kL : 1);
         var ex = V.x - lx * dist + ux * up, ey = V.y - ly * dist + uy * up, ez = V.z - lz * dist + uz * up;
         /* THE KICK + THE SHAKE (2026-11-20): the burner's punch (`c.kick`, set by the spectacle tick), a hum at warp, the launch's own rattle */
         c.kick = (c.kick || 0) * Math.exp(-dt * 2.6); var tS = performance.now() / 1000, shk = 0.7 * c.kick + 0.12 * c.shipK * c.shipK + (Lc ? 0.18 * (1 - kL) : 0);
@@ -90847,6 +90849,7 @@ const ThreeRenderer = (function () {
         for (var j = 0; j < PP.length; j++) push(PP[j].x, PP[j].y, PP[j].z, PP[j].r + 3);
         c.ex = ex; c.ey = ey; c.ez = ez; c.lx = ex + lx * 200; c.ly = ey + ly * 200; c.lz = ez + lz * 200; c.init = true; c.f = 1;
         if (Lc) { c.lx = V.x + (c.lx - V.x) * kL; c.ly = V.y + (c.ly - V.y) * kL; c.lz = V.z + (c.lz - V.z) * kL; }   // (the launch looks AT the hull, then along the way)
+        else if (Bc && bU) { var mx2 = (V.x + bU[0]) / 2, my2 = (V.y + bU[1]) / 2, mz2 = (V.z + bU[2]) / 2; c.lx = mx2 + (c.lx - mx2) * kL; c.ly = my2 + (c.ly - my2) * kL; c.lz = mz2 + (c.lz - mz2) * kL; }
         var fov = 52 + 16 * c.shipK + 9 * c.kick, nearW = 110;
         if (H._shipNear0 == null) H._shipNear0 = cam.near;
         if (Math.abs(cam.fov - fov) > 0.05 || cam.near !== nearW) { cam.fov = fov; cam.near = nearW; cam.updateProjectionMatrix(); }   // (near 1.5 m aboard: the far worlds need the depth buffer's steps)
@@ -91314,6 +91317,7 @@ const ThreeRenderer = (function () {
             J.shuttle = { g: sh, mid: mid, ax: ax, side: sideV.add(new THREE.Vector3(0, 0.35, 0)).normalize(), A: a0.distanceTo(b0) * 0.5 - 140, B: 520, w: 6.2832 / 260, a: 1.3, burn: sb };
         }
         H._spaceJuice = J;
+        try { _hqSpaceUfoBuild(sp, SG, U, H, K); } catch (e) { console.warn('[HQ] the UFOs failed', e); }   // THE UFOS (2026-11-20)
     }
     var _sjV = null, _sjV2 = null, _sjV3 = null, _sjM = null, _hqEarthC = null;
     /* THE EARTH'S SHEETS (2026-11-20): drawn once a page, no file. Day (oceans deep to shallow at the coasts, green to desert land, darker high
@@ -91397,6 +91401,7 @@ const ThreeRenderer = (function () {
             var ke = 1 - Math.pow(1 - RG.t, 3), sz = (RG.s0 + (RG.s1 - RG.s0) * ke) * 1; RG.m.scale.set(sz, sz, sz); RG.m.material.opacity = RG.op * (1 - RG.t) * (1 - RG.t); }
         /* the sound */
         try { if (window.ewShipSound) window.ewShipSound({ on: on, thr: EG.k, speed: Math.min(1, spd / (R.warp || 1300)), burn: EG.burnK }); } catch (e) {}
+        try { _hqSpaceUfoTick(H, dt, on, Vs, U, t, cam); } catch (e) { if (!J.ufoWarned) { J.ufoWarned = true; console.warn('[HQ] the UFOs tick', e); } }   // THE UFOS (2026-11-20)
         /* the comet: a long loop through the system; its tails away from the Sun */
         var CMt = J.comet; if (CMt) {
             var ca = t * 6.2832 / 1100 + 2.2, cx = -2500 + Math.cos(ca) * 9500, cz = 3500 + Math.sin(ca) * 7000, cy = 3200 + Math.sin(ca * 1 + 0.8) * 2200;
@@ -91472,6 +91477,204 @@ const ThreeRenderer = (function () {
         c.yaw = Math.PI - V.yaw; c.pitch = Math.max(-0.6, Math.min(0.6, V.climb));
         if (s >= 1) { V.launch = null; V.v = L.exitV; c.pitch = Math.max(-1.0, Math.min(1.0, V.climb)); V.skipBeacon = undefined; }
     }
+    /* ══ THE UFOS (2026-11-20, mondo: "put the different UFO models in the game in outer space for encounters ... the triangle UFO, the saucer,
+       spaceships, the white pills ... the jellyfish UFO"; his pick: BEAMED DOWN). data.js HQ_SPACE_UFOS = the fleet (craft, crew race, home).
+       Each craft patrols its home world. One that sees the flown ship (`detectM`) turns red, sounds the alarm and hunts it; the burner outruns
+       it, and it gives up past `giveUpM` or after `huntSec`. One that gets within `beamM` locks the ship in a TRACTOR BEAM (_hqShipBeam*):
+       a held second, then the ship is dragged down onto the nearest world's ground under it. The craft lands beside you, its crew steps out
+       and walks at you, and the fight is the ordinary ground fight (map.js _hqEncounterFire, `npcStart`, the crew one group). Take off again
+       and the craft lifts and goes back on patrol. Viewer-local; a fixed list of crafts each frame (RULE #1e). ══ */
+    var _HQ_UFO_LOOK = {
+        saucer:    { cat: 'saucer_lg', span: 26, glow: 0x7fffd0 },
+        triangle:  { cat: 'ufo', span: 34, glow: 0xffb070 },
+        tictac:    { code: 'tictac', span: 13, glow: 0xe8f6ff },
+        jellyfish: { race: 'jellyfish ufo', span: 30, glow: 0xd090ff, crewIsCraft: true }
+    };
+    function _hqTicTac(len, U) {   // the white pill: a capsule, plain white, a faint glow (no model: it is a plain shape)
+        var r = len * 0.22, g = new THREE.Group(), mat = new THREE.MeshLambertMaterial({ color: 0xf6f8fa, emissive: 0x4a525c });
+        var cy = new THREE.Mesh(new THREE.CylinderGeometry(r * U, r * U, (len - 2 * r) * U, 28, 1, true), mat); cy.rotation.x = Math.PI / 2; g.add(cy);
+        [-1, 1].forEach(function (s) { var sp = new THREE.Mesh(new THREE.SphereGeometry(r * U, 28, 18), mat); sp.position.z = s * (len / 2 - r) * U; g.add(sp); });
+        g.position.y = r * U; return g;
+    }
+    function _hqUfoModel(lk, U, keepFlat) {   // the craft's look, as a group whose middle is its own middle (a model's base sits on y 0)
+        var g = new THREE.Group();
+        if (lk.code === 'tictac') { var tt = _hqTicTac(lk.span, U); tt.position.y = 0; g.add(tt); if (keepFlat) _ewPlKeepFlat(g); return g; }
+        var url = null;
+        if (lk.cat) { var c = ((_hqData() || {}).catalogue || {})[lk.cat]; if (c) url = _hqModelUrl(c); }
+        else if (lk.race && typeof getRace3DModel === 'function') { var d = getRace3DModel(lk.race, 'male'); url = d && d.model; }
+        if (!url) return g;
+        try { var m = _miscModelInstance(url, true, lk.span * U, { fit: 'span', matPick: typeof _hqPropMatPick === 'function' ? _hqPropMatPick : undefined,
+            onDone: function (gg, sc, bb) { try { gg.traverse(function (n) { n.frustumCulled = false; }); if (keepFlat) _ewPlKeepFlat(gg); } catch (e) {} } });
+            m.position.y = -lk.span * 0.12 * U; g.add(m); } catch (e) { console.warn('[HQ] a UFO model', e); }
+        return g;
+    }
+    function _hqSpaceUfoBuild(sp, SG, U, H, K) {
+        var T = (typeof HQ_SPACE_UFOS !== 'undefined') ? HQ_SPACE_UFOS : ((typeof window !== 'undefined' && window.HQ_SPACE_UFOS) || null); if (!T || !T.crafts) return;
+        var homes = {}; (sp.round || []).forEach(function (r) { homes[r.id] = { c: r.c, R: r.R + (r.top || 0) }; }); (sp.planets || []).forEach(function (p) { homes[p.id] = { c: [p.x, p.y, p.z], R: p.r }; });
+        var F = sp.rocks || { c: [-4900, 2650, 400], r: [750, 260, 1900] }; homes.rocks = { c: F.c, R: 500 };
+        var ADD = THREE.AdditiveBlending, soft = K.glowTex(0.02, true), list = [];
+        var spr = function (col, op) { var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: soft, color: col, transparent: true, opacity: op, depthWrite: false, blending: ADD, fog: false })); return s; };
+        var beamT = K.cv(64, 128, function (c, w, h) { var gr = c.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
+            for (var y = 0; y < h; y += 8) { c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, y, w, 3); } });
+        T.crafts.forEach(function (row, i) {
+            var home = homes[row.home], lk = _HQ_UFO_LOOK[row.craft]; if (!home || !lk) return;
+            var g = new THREE.Group(); g.name = 'ew_ufo_' + row.id; SG.add(g);
+            var body = _hqUfoModel(lk, U, true); g.add(body);
+            var halo = spr(lk.glow, 0.5); halo.scale.set(lk.span * 2.4 * U, lk.span * 2.4 * U, 1); g.add(halo);
+            var mark = spr(0xff2a2a, 0); mark.scale.set(lk.span * 1.6 * U, lk.span * 1.6 * U, 1); g.add(mark);
+            var lights = []; for (var q = 0; q < 6; q++) { var a = q / 6 * Math.PI * 2, L = spr(q % 2 ? 0xffffff : lk.glow, 0.9); L.scale.set(3 * U, 3 * U, 1); L.position.set(Math.cos(a) * lk.span * 0.45 * U, -lk.span * 0.06 * U, Math.sin(a) * lk.span * 0.45 * U); g.add(L); lights.push(L); }
+            var bg = new THREE.CylinderGeometry(1, 1, 1, 24, 1, true); bg.translate(0, -0.5, 0); bg._ew_wuvOwner = true;
+            var beam = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ map: beamT, color: 0x9fffd8, transparent: true, opacity: 0.55, depthWrite: false, blending: ADD, side: THREE.DoubleSide, fog: false }));
+            beam.visible = false; beam.frustumCulled = false; SG.add(beam);
+            var inc = (row.inc != null ? row.inc : 0.3 + (i * 0.37) % 0.9), rr = Math.max(home.R * (row.orbitK || 2.4), home.R + 90);
+            list.push({ row: row, lk: lk, g: g, body: body, halo: halo, mark: mark, lights: lights, beam: beam, home: home, rr: rr, inc: inc, a: i * 1.9, st: 'patrol', t: 0, p: [0, 0, 0] });
+        });
+        H._spaceUfos = { list: list, T: T, cool: 8 };
+        _ewPlKeepFlat(SG);
+    }
+    function _hqUfoPatrolAt(u, out) {
+        var c = u.home.c, ca = Math.cos(u.a), sa = Math.sin(u.a), si = Math.sin(u.inc), co = Math.cos(u.inc);
+        out[0] = c[0] + ca * u.rr; out[1] = c[1] + sa * u.rr * si; out[2] = c[2] + sa * u.rr * co; return out;
+    }
+    var _hqUfoTmp = [0, 0, 0];
+    function _hqSpaceUfoTick(H, dt, flying, Vs, U, t, cam) {
+        var S = H._spaceUfos; if (!S) return; var T = S.T, list = S.list;
+        S.cool = Math.max(0, S.cool - dt);
+        var busy = false; for (var b = 0; b < list.length; b++) if (list[b].st === 'beam' || list[b].st === 'landed') busy = true;
+        var canHunt = flying && Vs && !Vs.launch && !Vs.beam && S.cool <= 0 && !busy && !(typeof window !== 'undefined' && window.EW_NO_UFO_HUNT);
+        for (var i = 0; i < list.length; i++) {
+            var u = list[i], row = u.row, p = u.p, sp0 = (row.v || 45);
+            u.t += dt;
+            if (u.st === 'patrol') {
+                u.a += sp0 / u.rr * dt; _hqUfoPatrolAt(u, p);
+                if (canHunt && Math.hypot(p[0] - Vs.x, p[1] - Vs.y, p[2] - Vs.z) < (row.detectM || T.detectM)) { u.st = 'lock'; u.t = 0; canHunt = false; try { if (window.ewShipCue) window.ewShipCue('alarm'); } catch (e) {} }
+            } else if (u.st === 'lock') {   // it has seen you: it stops, flashes red and sounds the alarm for `lockSec`, then comes (the time to run)
+                if (!flying || !Vs || Vs.launch) { u.st = 'return'; u.t = 0; continue; }
+                if (u.t > (T.lockSec || 2.5)) { u.st = 'hunt'; u.t = 0; }
+            } else if (u.st === 'hunt') {
+                if (!flying || !Vs || Vs.launch) { u.st = 'return'; u.t = 0; continue; }
+                var dx = Vs.x - p[0], dy = Vs.y - p[1], dz = Vs.z - p[2], d = Math.hypot(dx, dy, dz) || 1, hv = (row.huntV || T.huntV) * Math.min(1, 0.3 + u.t * 0.25), st = Math.min(d, hv * dt);
+                p[0] += dx / d * st; p[1] += dy / d * st; p[2] += dz / d * st;
+                if (d < T.beamM) { if (_hqShipBeamStart(Vs, i)) { u.st = 'beam'; u.t = 0; } else { u.st = 'return'; u.t = 0; S.cool = T.coolSec; } }
+                else if (d > T.giveUpM || u.t > T.huntSec) { u.st = 'return'; u.t = 0; S.cool = T.coolSec * 0.5; }
+            } else if (u.st === 'return') {
+                _hqUfoPatrolAt(u, _hqUfoTmp); var rx = _hqUfoTmp[0] - p[0], ry = _hqUfoTmp[1] - p[1], rz = _hqUfoTmp[2] - p[2], rd = Math.hypot(rx, ry, rz) || 1, rs = Math.min(rd, sp0 * 4 * dt);
+                p[0] += rx / rd * rs; p[1] += ry / rd * rs; p[2] += rz / rd * rs; if (rd < 20) u.st = 'patrol';
+            } else if (u.st === 'beam') {
+                var BM = Vs && Vs.beam; if (!BM) { u.st = 'return'; u.t = 0; u.beam.visible = false; }
+                else { var lift = 22 + u.lk.span * 0.5; p[0] += (Vs.x + BM.up[0] * lift - p[0]) * Math.min(1, dt * 4); p[1] += (Vs.y + BM.up[1] * lift - p[1]) * Math.min(1, dt * 4); p[2] += (Vs.z + BM.up[2] * lift - p[2]) * Math.min(1, dt * 4); }
+            } else if (u.st === 'landed') {
+                _hqUfoLandedTick(H, u, dt, flying, Vs);
+            }
+            /* the look */
+            u.g.visible = u.st !== 'landed';
+            u.g.position.set(p[0] * U, p[1] * U, p[2] * U);
+            if (u.lk.code === 'tictac' || u.lk.cat === 'ufo') { var vx = (u.st === 'patrol' ? -Math.sin(u.a) : 0), vz = (u.st === 'patrol' ? Math.cos(u.a) : 0); if (u.st === 'hunt' && Vs) { vx = Vs.x - p[0]; vz = Vs.z - p[2]; } if (vx || vz) u.body.rotation.y += (Math.atan2(vx, vz) - u.body.rotation.y) * Math.min(1, dt * 2); }
+            else u.body.rotation.y += dt * (u.st === 'hunt' ? 2.2 : 0.6);
+            var hunting = u.st === 'hunt' || u.st === 'beam' || u.st === 'lock', dc = cam ? cam.position.distanceTo(u.g.position) / U : 1000, far = Math.max(u.lk.span * 2.4, dc * 0.018);
+            u.halo.scale.set(far * U, far * U, 1); u.halo.material.opacity = hunting ? 0.25 : 0.5;
+            u.mark.visible = hunting; if (hunting) { var mk = Math.max(u.lk.span * 2.2, dc * 0.06); /* (seen from far: 3 degrees of red glow) */ u.mark.scale.set(mk * U, mk * U, 1); u.mark.material.opacity = 0.45 + 0.35 * Math.sin(t * 9); }
+            for (var li = 0; li < u.lights.length; li++) { var on = ((t * (hunting ? 6 : 1.5) + li / u.lights.length) % 1) < 0.5; u.lights[li].visible = on; u.lights[li].material.color.setHex(hunting ? (li % 2 ? 0xff3030 : 0xffffff) : (li % 2 ? 0xffffff : u.lk.glow)); }
+            /* the tractor beam: a cone from the craft down to the hull */
+            var bmOn = u.st === 'beam' && Vs && Vs.beam; u.beam.visible = !!bmOn;
+            if (bmOn) { var bx = Vs.x - p[0], by = Vs.y - p[1], bz = Vs.z - p[2], bl = Math.hypot(bx, by, bz) || 1, wB = Math.min(1, u.t * 2);
+                u.beam.position.set(p[0] * U, p[1] * U, p[2] * U); u.beam.quaternion.setFromUnitVectors(_sjV3 ? _sjV3.set(0, -1, 0) : new THREE.Vector3(0, -1, 0), (_sjV2 || new THREE.Vector3()).set(bx / bl, by / bl, bz / bl));
+                u.beam.scale.set(u.lk.span * 0.25 * U * wB + 0.01, (bl + 6) * U, u.lk.span * 0.25 * U * wB + 0.01); u.beam.material.opacity = 0.35 + 0.15 * Math.sin(t * 13);
+                if (u.beam.geometry.attributes.position.count && !u.beam._wide) { u.beam._wide = true; var bp2 = u.beam.geometry.attributes.position; for (var vi = 0; vi < bp2.count; vi++) { var yy = bp2.getY(vi); if (yy < -0.5) { bp2.setX(vi, bp2.getX(vi) * 1.8); bp2.setZ(vi, bp2.getZ(vi) * 1.8); } else { bp2.setX(vi, bp2.getX(vi) * 0.4); bp2.setZ(vi, bp2.getZ(vi) * 0.4); } } bp2.needsUpdate = true; } }
+        }
+    }
+    /* the pad under the ship on a ball: a free square, a step-off spot beside it (the set down's own test) */
+    function _hqShipPadOk(best, x, z) {
+        var ti = _hq.terrain;
+        if (!_ewPlInRect(best, x, z) || (ti.void && hqTerrainVoidAt(ti, x, z))) return false;
+        if (hqTerrainWallAt(ti, x, z, 2.2)) return false;
+        if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(ti, x, z, 1.5)) return false;
+        return _hqAirClearOfBlockers(x, z, hqTerrainHeight(ti, x, z) + 0.6);
+    }
+    function _hqShipPadFind(best, x0, z0) {
+        for (var r = 0; r <= 42; r += 3.5) { var n = r ? Math.max(6, Math.round(r * 1.6)) : 1;
+            for (var k = 0; k < n; k++) { var a = k / n * Math.PI * 2, x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r;
+                if (!_hqShipPadOk(best, x, z)) continue;
+                var gy = hqTerrainHeight(_hq.terrain, x, z), sp = [[5.5, 0], [-5.5, 0], [0, 6.5], [0, -6.5]];
+                for (var j = 0; j < sp.length; j++) if (_hqShipPadOk(best, x + sp[j][0], z + sp[j][1]) && Math.abs(hqTerrainHeight(_hq.terrain, x + sp[j][0], z + sp[j][1]) - gy) < 2.5) return { x: x, z: z, gy: gy }; } }
+        return null;
+    }
+    /* THE TRACTOR BEAM: the ship is held a second, then dragged down onto the nearest world's ground under it */
+    function _hqShipBeamStart(V, ufoIndex) {
+        var RW = _ewPlRound(); if (!RW || !_hq.terrain) return false;
+        var best = null, bd = 1e9; for (var i = 0; i < RW.length; i++) { var q = RW[i], alt = Math.hypot(V.x - q.c[0], V.y - q.c[1], V.z - q.c[2]) - q.R; if (alt < bd) { bd = alt; best = q; } }
+        if (!best) return false;
+        var F = _ewPlFlat(best, V.x, V.y, V.z), pad = _hqShipPadFind(best, F.x, F.z); if (!pad) return false;
+        var B = _ewPlBend(best, pad.x, pad.gy, pad.z), ux = B[0] - best.c[0], uy = B[1] - best.c[1], uz = B[2] - best.c[2], ul = Math.hypot(ux, uy, uz) || 1;
+        var up = [ux / ul, uy / ul, uz / ul], Pt = [B[0] + up[0] * 1.2, B[1] + up[1] * 1.2, B[2] + up[2] * 1.2], dist = Math.hypot(Pt[0] - V.x, Pt[1] - V.y, Pt[2] - V.z);
+        V.beam = { u: ufoIndex, W: best, pad: pad, up: up, P0: [V.x, V.y, V.z], Pt: Pt, t: 0, hold: 1.1, dur: Math.max(3.2, Math.min(7, 2.8 + dist / 1500)) };
+        V.v = 0; V.vy = 0;
+        if (_hq.cam) _hq.cam.kick = 0.9;
+        try { if (window.ewShipCue) window.ewShipCue('beam'); } catch (e) {}
+        return true;
+    }
+    function _hqShipBeamStep(dt, V, R, c) {
+        var B = V.beam; B.t += dt;
+        var s = Math.max(0, Math.min(1, (B.t - B.hold) / (B.dur - B.hold))), e = s * s * (3 - 2 * s), sh = 0.35 * (1 - s * 0.6), tt = B.t * 29;
+        V.x = B.P0[0] + (B.Pt[0] - B.P0[0]) * e + Math.sin(tt) * sh; V.y = B.P0[1] + (B.Pt[1] - B.P0[1]) * e + Math.sin(tt * 1.3 + 1) * sh; V.z = B.P0[2] + (B.Pt[2] - B.P0[2]) * e + Math.cos(tt * 0.9) * sh;
+        V.v = 0; V.vy = 0; V.climb += (0 - V.climb) * Math.min(1, dt * 2); V.roll = Math.sin(B.t * 2.3) * 0.25;
+        c.kick = Math.max(c.kick || 0, 0.25);
+        if (B.t >= B.dur) {
+            var u = _hq._spaceUfos && _hq._spaceUfos.list[B.u];
+            V.beam = null;
+            var ok = _hqShipSetDown({ world: B.W, x: B.pad.x, z: B.pad.z });
+            if (u) { if (ok) _hqSpaceUfoLand(u, B); else { u.st = 'return'; u.t = 0; } }
+            if (_hq._spaceUfos) _hq._spaceUfos.cool = _hq._spaceUfos.T.coolSec;
+        }
+    }
+    /* THE LANDING: the craft beside you on the ground, its crew out of it */
+    function _hqSpaceUfoLand(u, B) {
+        var H = _hq, pl = H.player, U = _hqUnits(), W = B.W, row = u.row, lk = u.lk, ti = H.terrain;
+        u.st = 'landed'; u.t = 0; u.fired = false; u.crew = []; u.landed = null;
+        /* its spot: 12 to 20 m from the walker, away from the ship */
+        var ax = pl.x - B.pad.x, az = pl.z - B.pad.z, al = Math.hypot(ax, az) || 1, spot = null;
+        for (var r = 13; r <= 24 && !spot; r += 3.5) for (var k = 0; k < 9 && !spot; k++) { var a = Math.atan2(az / al, ax / al) + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.35, x = pl.x + Math.cos(a) * r, z = pl.z + Math.sin(a) * r; if (_hqShipPadOk(W, x, z)) spot = { x: x, z: z }; }
+        if (!spot) spot = { x: pl.x + ax / al * 10, z: pl.z + az / al * 10 };
+        var gy = hqTerrainHeight(ti, spot.x, spot.z);
+        if (!lk.crewIsCraft) {   // the landed craft (drawn on the ball: it is a piece on the net, bent by its middle)
+            var lg = _hqUfoModel(lk, U, false); lg.position.set(spot.x * U, (gy + lk.span * 0.14) * U, spot.z * U); lg.name = 'ew_ufo_landed';
+            (H.propGroup || H.partRoot || H.scene).add(lg); u.landed = lg;
+        }
+        /* the crew */
+        var n = Math.max(1, row.n || 2), stamp = Date.now() % 100000;
+        for (var i = 0; i < n; i++) {
+            var ca = Math.atan2(pl.z - spot.z, pl.x - spot.x) + (i - (n - 1) / 2) * 0.55, cr = lk.crewIsCraft ? 2 + i * 3 : lk.span * 0.32, cx = spot.x + Math.cos(ca) * cr, cz = spot.z + Math.sin(ca) * cr;
+            var hasM = typeof getRace3DModel === 'function' && !!getRace3DModel(row.crew, 'male'), g = hasM ? 'male' : 'female';
+            try { var ch = _hqSpawnCharacter({ id: 'hq-ufo-' + row.id + '-' + i + '-' + stamp, kind: 'npc', race: row.crew, gender: g, x: cx, z: cz, level: 0, face: (Math.atan2(pl.x - cx, pl.z - cz) * 180 / Math.PI), label: row.label || undefined });
+                if (ch) { ch.group = 'ufo-' + row.id + '-' + stamp; if (row.lvl) ch.lvl = row.lvl; u.crew.push(ch); } } catch (e) { console.warn('[HQ] a UFO crew member', e); }
+        }
+        try { if (window.ewShipCue) window.ewShipCue('land'); } catch (e) {}
+        if (H.cam) { H.cam.yaw = Math.atan2(spot.x - pl.x, -(spot.z - pl.z)); H.cam.pitch = -0.08; H.cam.init = false; }   // the eye on the craft and its crew
+        console.log('[HQ] UFO ' + row.id + ' landed: ' + u.crew.length + ' ' + row.crew + ' at ' + spot.x.toFixed(1) + ', ' + spot.z.toFixed(1));
+    }
+    function _hqUfoLandedTick(H, u, dt, flying, Vs) {
+        var pl = H.player; u.t += 0;
+        if (!u.fired && pl && !flying && u.crew.length) {
+            var lead = u.crew[0];
+            if (lead && !lead.away && lead.entry) {
+                var dx = pl.x - lead.x, dz = pl.z - lead.z, d = Math.hypot(dx, dz);
+                for (var i = 0; i < u.crew.length; i++) { var ch = u.crew[i]; if (!ch || ch.away || !ch.entry) continue; var ex = pl.x - ch.x, ez = pl.z - ch.z, ed = Math.hypot(ex, ez) || 1;
+                    if (u.t > 1.2 && ed > 2.2) { _hqLadderMove(ch, ex / ed, ez / ed, Math.min(ed - 2, 2.6 * dt), dt); ch.moving = true; } else ch.moving = false;
+                    ch.targetYaw = Math.atan2(ex, ez); }
+                if ((d < 2.6 || u.t > 7) && H.opts && H.opts.onEncounter) {
+                    u.fired = true; u.crew.forEach(function (c) { if (c) c.moving = false; });
+                    var ev = { gesture: 'attack', npcStart: true, why: 'ufo', target: _hqEncounterTargetOf(lead, d), room: H.opts.room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch };
+                    try { if (!H.opts.onEncounter(ev)) console.log('[HQ] UFO fight refused (the party is down, a panel is up ...)'); } catch (e) { console.warn('[HQ] the UFO fight', e); }
+                }
+            }
+        }
+        /* aboard again: the craft lifts off and goes back on patrol */
+        if (flying && Vs && !Vs.launch) {
+            if (u.landed) { try { if (u.landed.parent) u.landed.parent.remove(u.landed); u.landed.traverse(function (o) { if (o.geometry && o.geometry.dispose) o.geometry.dispose(); }); } catch (e) {} u.landed = null; }
+            u.p[0] = Vs.x + 60; u.p[1] = Vs.y + 120; u.p[2] = Vs.z + 60; u.st = 'return'; u.t = 0;
+            if (H._spaceUfos) H._spaceUfos.cool = H._spaceUfos.T.coolSec;
+        }
+    }
     /* THE BODIES FOLLOW THE ANCHOR (2026-11-17): on a round world the bent ground is drawn turned about the walker's feet
        (out = P + M (bend(p) - A)); the bodies' group takes the same turn, so every ball keeps its ring, its night side and its place
        among the others. Off a ball (aboard, in the void) it is the identity. Then, per world: the night veil clears the ground by
@@ -91534,7 +91737,8 @@ const ThreeRenderer = (function () {
                 for (var cz = p.z0 + stp / 2; cz < p.z0 + 2 * p.L; cz += stp) for (var cx = p.x0 + stp / 2; cx < p.x0 + 3 * p.L; cx += stp) { var hC = hqTerrainHeight(tiC, cx, cz); if (hC < lo && hC > -40) lo = hC; }
                 var cr = p.R + lo - 1.2; w.core.scale.set(cr, cr, cr); w.core.visible = true; }
             if (w.air) w.air.material.opacity = w.lk.airOp * (0.3 + 0.7 * k);
-            if (w.limb) { var Rb = p.R + Math.min(p.top || 0, p.R * 0.03) + (w.lk.hole ? 0.5 : 1), off = Rb + 4 + Math.min(p.R * 0.12, d * d * zq);
+            if (w.limb) { var Rb = p.R + Math.min(p.top || 0, p.R * 0.03) + (w.lk.hole ? 0.5 : 1), off = Rb + 4 + Math.min(p.R * 0.12, d * d * zq), kLm = Math.max(0, Math.min(1, (hgt - p.R * 1.5) / (p.R * 2.5)));   // (2026-11-20: from far only: close by its dark edge drew as rings round the eye)
+                k = Math.min(k, kLm);
                 if (k > 0.01 && d > off + 2) { var inv = _hqSpaceI || (_hqSpaceI = new THREE.Matrix4()), q2 = _hqSpaceQ || (_hqSpaceQ = new THREE.Vector3());
                     q2.copy(cam.position).sub(v).normalize().multiplyScalar(off * U).add(v); inv.copy(SG.matrixWorld).invert(); q2.applyMatrix4(inv); w.limb.position.copy(q2);
                     var dia = 2 * (d - off) * Rb / Math.sqrt(Math.max(1, d * d - Rb * Rb)) * 1.012; w.limb.scale.set(dia * U, dia * U, 1); w.limb.material.opacity = (w.lk.hole ? 1 : w.lk.limb) * k; w.limb.visible = true; }
@@ -103548,6 +103752,10 @@ const ThreeRenderer = (function () {
             shipLaunch: function (full) { var V = _hq && _hq.vehicle, sp = _hqSpace(); if (!V || !V.on || !sp) return null; var b = (sp.beacons || []).filter(function (q) { return q.id === 'orbit'; })[0]; if (!b || !b.ball) return null;
                 V.x = b.ball[0] + b.up[0] * 1.2; V.y = b.ball[1] + b.up[1] * 1.2; V.z = b.ball[2] + b.up[2] * 1.2; V.yaw = Math.atan2(b.up[0], b.up[2]); _hqShipLaunchStart(V, full !== false, b.up); return { x: V.x, y: V.y, z: V.z }; },
             juice: function () { return _hq ? _hq._spaceJuice : null; },
+            /* THE UFOS, for a probe (2026-11-20): the list; ufo(i, 'hunt') puts craft i 300 m before the flown ship, hunting; 'near' within its beam */
+            ufos: function () { var S = _hq && _hq._spaceUfos; return S ? S.list.map(function (u) { return { id: u.row.id, craft: u.row.craft, crew: u.row.crew, st: u.st, p: u.p.map(function (v) { return Math.round(v); }), crewN: (u.crew || []).length, fired: !!u.fired }; }) : null; },
+            ufo: function (i, act) { var S = _hq && _hq._spaceUfos, V = _hq && _hq.vehicle; if (!S || !S.list[i] || !V || !V.on) return null; var u = S.list[i], d = act === 'near' ? 30 : 420, f = [Math.sin(V.yaw), 0, Math.cos(V.yaw)];
+                u.p[0] = V.x + f[0] * d; u.p[1] = V.y + 30; u.p[2] = V.z + f[2] * d; u.st = act === 'near' ? 'hunt' : 'lock'; u.t = 0; S.cool = 0; try { if (window.ewShipCue) window.ewShipCue('alarm'); } catch (e) {} return u.st; },
             hqCam: function () { return _hq ? _hq.camera : null; },   // the walk's camera (a probe reads its far plane and where it stands, 2026-11-17)
             /* THE ROUND WORLDS, as a probe reads them (2026-11-17) */
             round: function () { return { live: _ewPl.live, nodes: !!_ewPl.u, ctx: !!_ewPl.ctx, gpu: _ewGpu, anchor: _ewPl.anchor, face: _hq && _hq._plFace, round: _ewPlRound() }; },

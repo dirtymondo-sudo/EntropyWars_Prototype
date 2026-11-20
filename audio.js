@@ -1600,7 +1600,17 @@
             try {
                 if (!_shipSnd) _shipSndMake();
                 const S = _shipSnd, ctx = S.ctx, t = ctx.currentTime, vol = Math.max(0, Math.min(1, state.sfxVolume ?? 0.9));
-                const L = { ignite: [3.4, 0.9, 90, 1600], lift: [1.8, 0.7, 140, 2200], burn: [1.2, 0.9, 400, 4200] }[kind] || [1, 0.5, 200, 2000];
+                /* THE UFOS (2026-11-20): the alarm (a two-tone warble, a craft has seen you) and the beam (a rising whine) */
+                if (kind === 'alarm' || kind === 'beam') {
+                    const o = ctx.createOscillator(), g2 = ctx.createGain(), dur = kind === 'alarm' ? 1.6 : 3.2; o.type = kind === 'alarm' ? 'square' : 'sawtooth';
+                    if (kind === 'alarm') { for (let i = 0; i < 8; i++) o.frequency.setValueAtTime(i % 2 ? 660 : 880, t + i * 0.2); }
+                    else { o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(900, t + dur * 0.9); }
+                    const lpA = ctx.createBiquadFilter(); lpA.type = 'lowpass'; lpA.frequency.value = kind === 'alarm' ? 2400 : 1800;
+                    g2.gain.setValueAtTime(0.0001, t); g2.gain.exponentialRampToValueAtTime((kind === 'alarm' ? 0.18 : 0.3) * vol, t + 0.05); g2.gain.setValueAtTime((kind === 'alarm' ? 0.18 : 0.3) * vol, t + dur - 0.3); g2.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+                    o.connect(lpA); lpA.connect(g2); g2.connect(ctx.destination); o.start(t); o.stop(t + dur + 0.05);
+                    if (kind === 'alarm') return;
+                }
+                const L = { ignite: [3.4, 0.9, 90, 1600], lift: [1.8, 0.7, 140, 2200], burn: [1.2, 0.9, 400, 4200], beam: [3.2, 0.5, 120, 1200], land: [1.4, 0.6, 1200, 160] }[kind] || [1, 0.5, 200, 2000];
                 const src = ctx.createBufferSource(); src.buffer = S.nb; src.loop = true;
                 const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(L[2], t); f.frequency.exponentialRampToValueAtTime(L[3], t + L[0] * 0.45); f.frequency.exponentialRampToValueAtTime(L[2], t + L[0]);
                 const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(L[1] * vol, t + (kind === 'burn' ? 0.05 : L[0] * 0.35)); g.gain.exponentialRampToValueAtTime(0.0001, t + L[0]);
