@@ -13943,3 +13943,22 @@ underground horror like the descent movie"; the square plans approved ("Yes this
   plinth: neither is used. NEEDS A MODEL (from the FITS read): a caving helmet with a lamp, a dead caver in caving gear, a fixed rope and a
   wire ladder, a camcorder and glow sticks, eggs and a nest mound, light loose bones, stalactite / stalagmite models, a boulder choke, a pale
   blind crawler, hanging bats; claw-mark and spray-arrow decal sheets; a black water look.
+
+## THE UNDERGROUND, THE WEST TUNNEL (2026-11-20, the same thread; mondo on the Long Tunnel: "okay looks good contineu")
+- **THE ROOM** `site_prebuilt_hollow_earth_ug_west` (part `ug_west`): 4 x 3 plots (48 x 36 squares), levels 82 to 100 (31.5 m), world -17..-14 x
+  -3..-1 (under the Long Tunnel, one plot west, as the underground's layout lies), written by `node bake-underground.js west-tunnel` from
+  `plans/ug-west-tunnel.js` + `docs/areas/underground/west-tunnel.js`. Replaces `site_prebuilt_hollow_earth_ow_west` (retired to it).
+- **THE WAYS:** north `ow_h_m15_2` to the Long Tunnel's south door; east `ug_cavern_west` to the new Cavern (thread 9's `K-room.js` door 2 now
+  lands here, one line); the OLD Cavern room's west door (`ow_v_m8_11`, bake-cavern.js `KHOUT`) lands here too. THE ESTATE'S WELL: link
+  `well_skinwalker` end b stands in the Well Bottom (free, the plan's way out 2; the tool takes its square and refuses to bake while the
+  data.js row is elsewhere). bake-cavern.js: its ROOMS row W, the KH-W seam and its well code are gone.
+- **THE TOOL** grew: a plan door whose design row is `{ link, end, face }` is a link end in the room (no door row); doors are found by the
+  plan door's index first, then its side.
+- **THE PLACES:** the Upper Chamber (the stalagmite, a torch at the Long Tunnel's mouth, the team's cairn), the Cold Hall (a torch at the
+  Cavern's passage, a dead caver with the rope's end), the Charnel Pit, the Crystal Crack (the crystals' light), the Well Bottom (the
+  well's broken boards, its bucket, the team's rope; the nest beside it, the antpeople's: `@W:Well Bottom`), the First Camp (the team's
+  first night: a cold fire ring, bags, food, notes, a radio; a grave in the pit), the Narrows (boulders on the passages' lanes, a pit
+  that goes nowhere), the Drip Gallery (rain off the roof, the calcified caver), the Drowned Floor (the bottom, under the Ledge's 10-level
+  cliff: a faller and his flare, a lure in the sump), the Ledge (a ladder that did not reach), the Black Sump, the Low Gallery (the den:
+  `@W:Low Gallery`). THE STORY: the team came down the Estate's well, camped here, went on up into the Long Tunnel and never came out.
+- **LIGHT** four (two torches, the crystals, the flare). Sheets: the horror rock (the tool's defaults). Stains: ZONE_LOOKS.cavern byRoom.
