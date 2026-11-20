@@ -86710,6 +86710,15 @@ const ThreeRenderer = (function () {
         for (var k in rooms) if (rooms[k] === room) return k;
         return fallback || 'central_egress';
     }
+    /* THE NPC PLACES: the nearest square with a floor to (x, z), out to 8 squares (a plot's middle may be a wall, a roof's edge, water); null = none */
+    function _hqPlaceSnap(x, z) {
+        var ok = function (px, pz) { var y = _hqNavQuery(px, pz, null); return y !== null && y !== undefined && isFinite(y); };
+        try {
+            if (ok(x, z)) return { x: x, z: z };
+            for (var d = 1; d <= 8; d++) for (var a = -d; a <= d; a++) for (var b = -d; b <= d; b++) { if (Math.max(Math.abs(a), Math.abs(b)) !== d) continue; var px = x + a * 3.5, pz = z + b * 3.5; if (ok(px, pz)) return { x: px, z: pz }; }
+        } catch (e) {}
+        return null;
+    }
     function _hqCrowdLedger(room, opts) {
         var rid = _hqRoomIdOf(room, opts && opts.room), planned = (room.agents || []).length + (room.npcSpots || []).length;
         try { var pop = (typeof hqRoomPopulation === 'function') ? hqRoomPopulation(rid, opts && opts.profile, { perfLow: !!(typeof window !== 'undefined' && window.EW_PERF_LOW) }) : null; if (pop) planned += pop.n | 0; } catch (e) {}
@@ -86801,6 +86810,10 @@ const ThreeRenderer = (function () {
             var resRaces = _hqResRoom(opts.room) ? _hqResRaces() : null;   // THE RESIDENTS (2026-11-14): a spot's race that lives in the city is the resident, at its spot by its day
             spots.forEach(function (spot, si) {
                 var rh = spot.race;
+                /* THE NPC PLACES (2026-11-20, data.js HQ_NPC_PLACES: mondo's Relationship Web board): a row's hours (the unit is in this room
+                   only then), and a row with no authored square stands on the nearest floor to its plot's middle */
+                if (spot.place && spot.hours && typeof hqPlaceHourOk === 'function' && !hqPlaceHourOk(spot.hours, _hqClockHourNow())) return;
+                var pAt = (spot.place && spot.snap && spot.x != null && spot.deg == null) ? _hqPlaceSnap(spot.x, spot.z || 0) : null, pX = pAt ? pAt.x : spot.x, pZ = pAt ? pAt.z : spot.z;
                 if (gone.indexOf('hq-native-' + si) >= 0) return;
                 if (resRaces && rh && resRaces[rh]) return;   // beaten today — the room is yours
                 /* THE AREA UNITS (2026-10-24, data.js hqSpotRaces): with the room's table on, a placed person off the list stands as a race on it */
@@ -86817,7 +86830,7 @@ const ThreeRenderer = (function () {
                 if (spot.cast && typeof getCastModel === 'function' && getCastModel(spot.cast)) {
                     if (!crowd.take('cast:' + spot.cast)) return;
                     var cdef = getCastModel(spot.cast), cm = (typeof DOOR_CAST !== 'undefined' && DOOR_CAST[spot.cast]) || null;
-                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: (cm && (cm.base || cm.race)) || 'men in black', gender: spot.gender || (cm && cm.gender) || 'male', def: cdef, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0,
+                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: (cm && (cm.base || cm.race)) || 'men in black', gender: spot.gender || (cm && cm.gender) || 'male', def: cdef, deg: spot.deg, r: spot.r, x: pX, z: pZ, level: spot.level || 0, face: spot.face || 0,
                                         line: sayOf(spot), label: (spot.talk && spot.talk.name) || spot.label || (cm && cm.name) || String(spot.cast).toUpperCase(), sub: spot.sub || (cm && cm.title) || null, pose: spot.pose || null, spot: spot, spotIndex: si });
                     return;
                 }
@@ -86832,7 +86845,7 @@ const ThreeRenderer = (function () {
                        own `y` (metres; a box over a tunnel, a gallery: a floor that is a BRIDGE, which a spot with no y never finds: it reads the
                        ground under it) and its `pose` (a sprites.js _CAST_POSES slot: `hqSit` on a throne) ride to the body. A spot with no y still
                        stands on what is under it (the ground, a row of seats). */
-                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, y: (typeof spot.y === 'number') ? spot.y : undefined, pose: spot.pose || null, face: spot.face || 0, line: sayOf(spot), label: (spot.talk && spot.talk.name) || undefined, spot: spot, spotIndex: si });   // THE TALK (2026-10-08): the editor's name
+                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: pX, z: pZ, level: spot.level || 0, y: (typeof spot.y === 'number') ? spot.y : undefined, pose: spot.pose || null, face: spot.face || 0, line: sayOf(spot), label: (spot.talk && spot.talk.name) || undefined, spot: spot, spotIndex: si });   // THE TALK (2026-10-08): the editor's name
                     var oi = owned.indexOf(rh); if (oi >= 0) owned.splice(oi, 1);
                 } else free.push(spot);
             });
@@ -88313,10 +88326,15 @@ const ThreeRenderer = (function () {
         for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)); var t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
         var loop = [];
         if (o.home) loop.push(o.home);
+        /* THE NPC PLACES (2026-11-20): a row's ROUTE (data.js hqPlacesExpand: points in the districts it walks between) is its whole loop */
+        if (o.route && o.route.length) {
+            o.route.forEach(function (q) { var s = _hqPlaceSnap(q[0], q[1]); if (!s) return; var y = _hqNavQuery(s.x, s.z, null); loop.push({ kind: 'cell', x: s.x, z: s.z, y: y, face: Math.floor(rng() * 360) }); });
+            if (loop.length >= 2) pool = [], k = 0;
+        }
         var doors = pool.filter(function (s) { return s.kind === 'door'; }), others = pool.filter(function (s) { return s.kind !== 'door'; });
-        if (doors.length && rng() < R.doorShare) { var exits = doors.filter(function (s) { return s.exit; }); loop.push((exits.length && rng() < 0.7) ? exits[Math.floor(rng() * exits.length)] : doors[Math.floor(rng() * doors.length)]); }
+        if (!(o.route && loop.length >= 2) && doors.length && rng() < R.doorShare) { var exits = doors.filter(function (s) { return s.exit; }); loop.push((exits.length && rng() < 0.7) ? exits[Math.floor(rng() * exits.length)] : doors[Math.floor(rng() * doors.length)]); }
         while (loop.length < k && (others.length || doors.length)) { var src = (others.length && (rng() < 0.75 || !doors.length)) ? others : doors; var pick = src.splice(Math.floor(rng() * src.length), 1)[0]; if (loop.indexOf(pick) < 0) loop.push(pick); }
-        for (var f = 0; f < 3 && loop.length < Math.max(2, k); f++) { var cell = _hqNavRandom(rng); if (cell) loop.push({ kind: 'cell', x: cell.x, z: cell.z, y: cell.y, face: Math.floor(rng() * 360) }); }
+        for (var f = 0; f < 3 && loop.length < Math.max(2, k) && !(o.route && loop.length >= 2); f++) { var cell = _hqNavRandom(rng); if (cell) loop.push({ kind: 'cell', x: cell.x, z: cell.z, y: cell.y, face: Math.floor(rng() * 360) }); }
         if (!loop.length) return null;
         ch.rounds = { stops: loop, i: -1, path: null, pi: 0, state: 'pause', until: performance.now() + (o.arriving ? 0 : _hqRoundsRange(rng, R.pauseMs) * 0.5), rng: rng, stuck: 0, hold: 0, repathed: false, faceYaw: ch.yaw, home: o.home || null, leftBy: null, arriving: !!o.arriving };
         if (o.arriving) { ch.rounds.state = 'pause'; ch.rounds.until = performance.now(); }
@@ -88991,12 +89009,12 @@ const ThreeRenderer = (function () {
             var roams = (typeof hqSpotRoams === 'function') ? hqSpotRoams(roomId, si, ch.spot) : (ch.spot.roam != null ? !!ch.spot.roam : false);
             if (!roams || !_hqDefWalks(ch.def)) return;
             var home = stops.find(function (s) { return s.kind === 'spot' && s.spot === ch.spot; }) || { kind: 'spot', x: ch.x, z: ch.z, y: ch.y, face: ch.spot.face || 0, spot: ch.spot };
-            if (_hqRoundsAssign(ch, { seed: (typeof hqHash === 'function') ? hqHash(roomId + '|' + ch.id) : 5, home: home })) H.rounds.push(ch);
+            if (_hqRoundsAssign(ch, { seed: (typeof hqHash === 'function') ? hqHash(roomId + '|' + ch.id) : 5, home: home, route: ch.spot.place ? ch.spot.route : null })) H.rounds.push(ch);   // (THE NPC PLACES: a board row walks ITS route, not the room's stops)
         });
         /* 2 · THE EXTRAS: the room's population by the tags (data.js hqRoomPopulation) */
         var pop = null;
         try { pop = (typeof hqRoomPopulation === 'function') ? hqRoomPopulation(roomId, prof, { perfLow: !!(typeof window !== 'undefined' && window.EW_PERF_LOW) }) : null; } catch (e) { console.warn('[HQ] population read failed', e); }
-        if (pop && pop.draw && pop.draw.length && stops.length && !resRoom) {
+        if (pop && pop.draw && pop.draw.length && stops.length && !resRoom && !(room && room.placed)) {   // (THE NPC PLACES: a room the board fills draws no random extras)
             var pool = pop.pool.filter(walksRace), used = {};
             var doorStops = stops.filter(function (s) { return s.kind === 'door' && s.rec && !HQ_DOOR_LOCKED[s.rec.state]; });
             _bgLoadDepth++;   // THE BACKGROUND LANE (2026-09-20): the extras' rigs stream three at a time behind the room's own props
