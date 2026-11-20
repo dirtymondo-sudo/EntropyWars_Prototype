@@ -90267,7 +90267,7 @@ const ThreeRenderer = (function () {
         /* (2026-11-20, THE FLIGHT FIX) `v` = the slow speed kept near a world; in the open W builds up to `cruise` and SHIFT to `warp`, both held
            down by how near the nearest world is (`nearK` x the metres to its ground), so the ship slows by itself as it comes in. `follow` =
            how fast the hull swings onto the camera's heading. `camDist` back, `camUp` over: the ship sits a little under the middle. */
-        ship: { v: 60, rev: 12, accel: 0.8, drag: 0.6, turn: 1.25, follow: 4.5, vertV: 26, cruise: 650, warp: 1300, nearK: 0.9, r: 2.2, boardReach: 7.0, seat: { x: 0, y: 0.9, z: 0.6 }, camDist: 20, camUp: 3.4, len: 8.0, beam: 4.0, land: 9, landH: 26, edge: 500, setDown: 45 },
+        ship: { v: 60, rev: 12, accel: 0.8, drag: 0.6, turn: 1.25, follow: 4.5, vertV: 26, cruise: 650, warp: 1300, nearK: 0.9, r: 2.2, boardReach: 7.0, seat: { x: 0, y: 0.9, z: 0.6 }, camDist: 20, camUp: 3.4, nose: Math.PI / 2, len: 8.0, beam: 4.0, land: 9, landH: 26, edge: 500, setDown: 45 },
         keys: { dive: 'c', rise: 'space', board: 'e' },
         labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP' },
     };
@@ -90695,8 +90695,12 @@ const ThreeRenderer = (function () {
         V.roll += (Math.max(-0.7, Math.min(0.7, dyw * 1.5 - turn * 0.18)) - V.roll) * Math.min(1, dt * 4);
         var grp = V.rec.grp;
         grp.position.set(V.x * U, V.y * U, V.z * U);
-        if (grp.rotation.order !== 'YXZ') grp.rotation.order = 'YXZ';
-        grp.rotation.set(V.pitch, V.yaw, V.roll);
+        /* THE NOSE (2026-11-20, mondo: "The ship is literally sideways in your screenshots"): the Meshy spaceship's nose is its own -x, not +z, so
+           the hull flew true and was DRAWN a quarter turn off, nose to the right. The model is turned by `nose`; its climb is then about z and its bank about x. */
+        var nz0 = (R.nose != null) ? R.nose : 0;
+        if (nz0) { if (grp.rotation.order !== 'YZX') grp.rotation.order = 'YZX'; grp.rotation.set(V.roll, V.yaw + nz0, V.pitch); }
+        else { if (grp.rotation.order !== 'YXZ') grp.rotation.order = 'YXZ'; grp.rotation.set(V.pitch, V.yaw, V.roll); }
+
         var st = R.seat || { x: 0, y: 1.6, z: 0 }, cY = Math.cos(V.yaw), sY = Math.sin(V.yaw);
         pl.x = V.x + st.x * cY + st.z * sY; pl.z = V.z - st.x * sY + st.z * cY; pl.y = V.y + st.y;
         pl.visY = pl.y; pl.yaw = pl.targetYaw = V.yaw; pl.moving = false; pl.running = false; pl.air = false; pl.vy = 0;
@@ -90738,7 +90742,7 @@ const ThreeRenderer = (function () {
         for (var j = 0; j < spots.length && !st; j++) { var sx = T.x + spots[j][0], sz = T.z + spots[j][1]; if (ok(sx, sz)) { var sy = _hqSurface(sx, sz, null, true); if (sy !== null && isFinite(sy) && Math.abs(sy - gy) < 2.5) st = { x: sx, z: sz, y: sy }; } }
         if (!st) return false;
         V.x = T.x; V.z = T.z; V.y = gy + 1.2; V.v = 0; V.vy = 0; V.pitch = 0; V.roll = 0; V.climb = 0;
-        var grp = V.rec.grp; grp.position.set(V.x * U, V.y * U, V.z * U); grp.rotation.set(0, V.yaw, 0);
+        var grp = V.rec.grp; grp.position.set(V.x * U, V.y * U, V.z * U); grp.rotation.set(0, V.yaw + ((_hqSeaRules().ship || {}).nose || 0), 0);
         if (pl.entry && pl.entry.group) pl.entry.group.visible = true;
         _hqDisembark();
         pl.x = st.x; pl.z = st.z; pl.y = st.y; pl.visY = st.y; if (pl.entry && pl.entry.group) pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
@@ -90772,7 +90776,7 @@ const ThreeRenderer = (function () {
         V.x = pad.x; V.z = pad.z; V.y = (b.ground || 0) + 1.2; V.v = 0; V.vy = 0; V.pitch = 0; V.roll = 0;
         if (pad.yaw != null) { var dy = pad.yaw - V.yaw; V.yaw = pad.yaw; H.cam.yaw -= dy; }
         V.climb = 0;
-        var U = _hqUnits(), grp = V.rec.grp; grp.position.set(V.x * U, V.y * U, V.z * U); grp.rotation.set(0, V.yaw, 0);
+        var U = _hqUnits(), grp = V.rec.grp; grp.position.set(V.x * U, V.y * U, V.z * U); grp.rotation.set(0, V.yaw + ((_hqSeaRules().ship || {}).nose || 0), 0);
         if (H.player && H.player.entry && H.player.entry.group) H.player.entry.group.visible = true;
         if (b.ball && H.cam) H.cam.init = false;   // THE ROUND WORLDS: down on the ball's flat net, the eye starts again at the feet
         _hqDisembark();
@@ -90788,6 +90792,7 @@ const ThreeRenderer = (function () {
     function _hqSpaceArrive() {
         var H = _hq, sp = _hqSpace(); if (!H || !sp || !sp.launch || H._spaceArrived || !H.player) return;
         H._spaceArrived = true;
+        if (H.vehicle && H.vehicle.on) return;   // (2026-11-20: already aboard: a second board is E, it set the ship down again)
         if (Math.hypot(H.player.x - sp.launch.x, H.player.z - sp.launch.z) > 4) return;
         var B = H.boats || [], best = null;
         for (var i = 0; i < B.length; i++) if (B[i].kind === 'ship' && (!best || Math.hypot(B[i].x - H.player.x, B[i].z - H.player.z) < Math.hypot(best.x - H.player.x, best.z - H.player.z))) best = B[i];
