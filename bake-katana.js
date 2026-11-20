@@ -3,7 +3,7 @@
    "a love letter to anime and Japan"; "a shoreline and a village and woods and a jungle and a volcano and a whole Japanese city"; 25 to 30 plots.
    Writes ONE room into data.js between the KATANA-BEGIN / KATANA-END markers from docs/areas/katana/layout.js (29 plots, six districts, their
    levels, every way as corner squares on the battle grid, the ledges) and the district files docs/areas/katana/districts/<letter>.js.
-   THE PILOT (this first build): the room is `site_prebuilt_katana_island`, NOT joined to the world yet. The Volcano Island
+   THE PILOT (this first build): the room is `site_prebuilt_bermuda_katana`, NOT joined to the world yet. The Volcano Island
    (`site_prebuilt_bermuda_ow_volcano`, bake-beach.js) stands as it was until the whole island is built and mondo says swap. Only KATANA BAY
    (districts/B.js) is built; the other five districts are their shaped ground, their ways painted and a few trees, so the bay has its backdrop.
    THE FRAME: the island's own squares (ix 0..83 east, iy 0..83 south, layout.js) stand one plot in: room square = island square + 12; the room
@@ -20,7 +20,7 @@
 const fs = require('fs'), path = require('path');
 const REPO = __dirname, DRY = process.argv.includes('--dry-run');
 const I = require('./docs/areas/katana/layout.js');
-const ROOM = 'site_prebuilt_katana_island';
+const ROOM = 'site_prebuilt_bermuda_katana';
 const C = 3.5, N = 12, OFF = 12, COLS = 9, ROWS = 9, W = COLS * N, H = ROWS * N, HW = W * C / 2, HD = H * C / 2, LV = 1.75, SEA_BED = -3.5;
 const r2 = v => Math.round(v * 100) / 100, J = o => JSON.stringify(o);
 /* ISLAND squares -> the room's metres */
@@ -221,13 +221,13 @@ if (errs.length) { console.log(errs.join('\n')); if (!DRY) throw new Error(errs.
 /* ── the room ── */
 const SP = { x: mx(DIST.B.from[0]), z: mz(DIST.B.from[1]) }, names = I.PLOTS.map(p => ['P' + String(p[0] + 1).padStart(2, '0') + '-' + String(p[1] + 1).padStart(2, '0'), p[4], p[2], p[3]]);
 const L = [];
-L.push("        /* KATANA-BEGIN — KATANA ISLAND ON PLOTS (2026-11-20, world polish thread 21): written by `node bake-katana.js` from docs/areas/katana/. Never hand-edit between the markers; edit the tool, the layout or a district file and rerun. THE PILOT: Katana Bay is built; the room is not joined to the world yet. */");
+L.push("        /* KATANA-BEGIN — KATANA ISLAND ON PLOTS (2026-11-20, world polish thread 21): written by `node bake-katana.js` from docs/areas/katana/. Never hand-edit between the markers; edit the tool, the layout or a district file and rerun. All six districts stand (pass 1); the boat from the Harbour lands at the bay's pier. */");
 L.push("        " + ROOM + ": {");
 L.push("            label: 'KATANA ISLAND',");
 L.push("            sub: 'KATANA BAY · THE CITY · THE VILLAGE · THE WOODS · THE JUNGLE · THE VOLCANO',");
 L.push("            kind: 'box', site: 'prebuilt_bermuda', part: 'katana',");
-L.push("            /* ON THE MAP (mondo 11-20: \"im not seeing it in the directory/map\"): THE PILOT'S PLACE, open sea just south of the Volcano Island (which still stands at 22,-19). When the island is built and the old one retires, Katana Island moves to 21,-20. */");
-L.push("            world: { hub: 'beach', layer: 'surface', wx: 21, wy: -13, note: 'the pilot: Katana Bay is built, the rest is bare ground' },");
+L.push("            /* THE ONE WORLD: Katana Island stands where the Volcano Island stood, one plot wider on every side (9 x 9 at 21,-20; THE SWAP, 2026-11-20) */");
+L.push("            world: { hub: 'beach', layer: 'surface', wx: 21, wy: -20 },");
 L.push("            shell: hqSeaShell({ w: " + (2 * HW) + ", d: " + (2 * HD) + ", plate: { x: " + SP.x + ", z: " + SP.z + ", y: 4.4 }, sky: Object.assign({}, hqSeaShell().sky, { scenery: 'none', landmarks: [] }) }),");
 L.push("            parti: 'An island of old Japan far out at sea: a harbour town round a bay, a castle city on the slope, a village in its paddies, cherry and bamboo woods, a jungle with dinosaurs, and the volcano over all of it.',");
 L.push("            typology: 'grid',");
@@ -237,7 +237,7 @@ L.push("                res: 1.75, floor: 'desert', cliff: 'rocks_5', path: 'woo
 L.push("                base: 0, noise: { amp: 0.06, scale: 9 }, crag: false,");
 L.push("                sea: { y: 0, key: 'water' },");
 L.push("                outer: { m: 60 },");
-L.push("                backdrop: false, edges: { reach: 300, n: { kind: 'coast' }, e: { kind: 'coast' }, s: { kind: 'coast' }, w: { kind: 'coast' } },");
+L.push("                backdrop: false, edges: { world: true, reach: 440 },");
 L.push("                /* THE HEIGHTS ARE THE MAP: one level = 1.75 m; the bay's quays and piers, the plots' levels and the volcano are all this grid */");
 L.push("                slope: { cells: { res: " + C + ", x0: " + r2(-HW) + ", z0: " + r2(-HD) + ", nx: " + W + ", nz: " + H + ", d: '" + slope.toString('base64') + "' } },");
 L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + r2(-HW + C / 2) + ", z0: " + r2(-HD + C / 2) + ", nx: " + W + ", nz: " + H + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
