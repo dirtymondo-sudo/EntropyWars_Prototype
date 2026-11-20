@@ -144,7 +144,7 @@ module.exports = {
         /* THE GREAT CHAMBER (chamber 0,2, level 121): the district's landmark, THE STALAGMITE (the plan's `k` square, two levels tall: drawn here, no
            model exists), seen from THE EDGE (the plan's lookout, its north-west corner). The Long Tunnel goes west out of it, eleven levels down. An old
            fire somebody keeps alight; the CLIFF from the Crystal Bend drops four levels into its east passage */
-        { const sx = 6, sy = 30, ox = a.gcx(sx), oz = a.gcz(sy), parts = [], tint = [0x6a6258, 0x5e574e, 0x746a5c];
+        { const sx = 6, sy = 30, ox = a.gcx(sx), oz = a.gcz(sy), parts = [], tint = [0xa89a86, 0x988c7a, 0xb4a690];
           parts.push({ s: 'cyl', p: [0, 0, 0], r: 1.25, r2: 0.12, h: 7.4, seg: 9, key: 'rocks_5', tint: tint[0], uv: 2.5 });
           for (const [dx, dz, h, r] of [[1.2, 0.6, 3.6, 0.6], [-1.0, 0.9, 2.6, 0.5], [0.4, -1.2, 4.4, 0.7], [-0.9, -0.7, 1.8, 0.45], [1.5, -0.6, 1.4, 0.35]])
               parts.push({ s: 'cyl', p: [dx, 0, dz], r, r2: 0.06, h, seg: 7, key: 'rocks_5', tint: tint[Math.floor(R() * 3)], uv: 2 });

@@ -13828,12 +13828,21 @@ APPROVED 11-20 ("Yes this is good, go ahead and start individual threads"; "No r
   skeleton with one unlit torch a chamber. Lights: the pilot holds every real light. Seen on screen (probe, 11-20): the Gate, the Bone Passage, the
   Nest, the camp pit, the shaft, the squeeze, the crystal pocket.
 - **LEARNED:** a prop pushed more than ~0.6 m toward a rock square climbs the wall's face (the sheet's face falls in the open square's last lattice
-  cell): `atWall` pushes 0.5. The Meshy `femur` stands upright (it reads as a stake): not used. The probe's `face` is not the picture's heading in
-  this room (the HUD's `deg` is): judge a view by the picture. The link `tunnelway_cavern` wears `way: 'well'`, so its foot here is a stone well
+  cell): `atWall` pushes 0.5. The Meshy `femur` stands upright (it reads as a stake): not used. The probe's `face` IS the heading (0 north, 90 east);
+  the HUD's `deg` / `r` is the camera's POSITION in polar terms, not its heading. The link `tunnelway_cavern` wears `way: 'well'`, so its foot here is a stone well
   ring (the Woods' end shares the look; not changed).
-- **NEXT (after mondo's word on the pilot):** the middle third (the Great Chamber + its stalagmite landmark and lookout, the Long Tunnel's join, the
-  Cells Tunnel to the Sewers, the crystal and squeeze pits) and the south third (the nests and bone pits, the sump of black water, the secret, the way
-  down to the Cavern), then the lights shared out over the whole room.
+- **THE MIDDLE AND SOUTH THIRDS (2026-11-20, mondo on the pilot: "okay continue"):** THE GREAT CHAMBER (0,2 · 121: THE STALAGMITE, the plan's
+  landmark, drawn as a cluster of rock cones under a hanging point that nearly meets it, a `sarsen` hidden inside as its body; THE EDGE, the plan's
+  lookout, in its north-west corner; a brazier; the Long Tunnel's door west), THE CRYSTAL BEND (1,2 + the second crystal pocket), THE DEAD SQUEEZE
+  (2,2: its pit roofed down to crawling height), THE LONG DROP (3,2: the 7-level cliff, one who fell at its foot), THE CELLS TUNNEL (4,2 · 124: the
+  gaol's drain broke through, brick, chains, a chain bunk, rats; the Sewers' door east), THE BONE PIT (0,3, a squeeze down to it), THE LARDER (1,3 ·
+  125: meat hooks hung under the roof, the dead, chains), THE BLACK WATER (2,3: a wading strip in its pit beside the ladder's foot; a `deep_water`
+  pit was a trap: a swimmer never climbs), THE GNAWING PIT (3,3, a squeeze east of it), THE STRETCHER CAMP (4,3: the rescue party, one on the
+  stretcher), THE LOW NEST + THE DEEP NEST (the pits off 0,4 and 3,4, the deep one the room's lowest floor, 114), THE SECRET (a `sea_chest` in junction
+  3,4's dead corner), THE WAY DOWN (2,4 · 117: the rope, the axes, the crates, a missing board, warm air coming up; the Cavern's door south).
+  THE LIGHTS: ten real lights, one a place (the Gate, the Nest's bloom, the Shaft, the Old Camp's candle, the two crystal pockets, the Great
+  Chamber's brazier, the Cells Tunnel, the Larder, the Way Down); every other torch and candle `noLight`. Seen on screen: the Great Chamber + the
+  stalagmite, the Larder, the Cells Tunnel, the Way Down, the Deep Nest, the Long Drop. 399 props.
 
 ## THE UNDERGROUND, ONE DISTRICT A ROOM — the Cavern rebuilt from its plan (2026-11-20, world polish thread 9; tool `bake-ug.js`, design `docs/areas/cavern/districts/K-room.js`)
 
