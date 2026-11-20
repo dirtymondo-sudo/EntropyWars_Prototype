@@ -4,6 +4,8 @@ Started 2026-11-16 on mondo's order (thread "Disaster City NPCs: the spawn syste
 **State (11-16): his answers are in (next section). DELIVERY 1 · THE SET LEVELS is live. Deliveries 2-8 are not built.
 Every number is still a PROPOSAL he has not set: they are rows in data.js `HQ_SPAWN_RULES`.**
 
+**WHERE every unit stands and walks, in every zone, from mondo's Relationship Web board (2026-11-20, a PROPOSAL waiting for his yes, nothing built): `docs/plans/npc-places/PLACES.md`.**
+
 **How NPCs react to you (strikes, talk, fleeing, onlookers, joining fights): `docs/plans/npc-encounters/PLAN.md` (2026-11-17, a plan of proposals on top of this system).**
 
 His brief, in short: no level scaling with the player; many of the same unit (cop b, cop c ...) with schedules; more NPCs (in big outdoor spaces; small indoor rooms stay at few, mondo 11-16);

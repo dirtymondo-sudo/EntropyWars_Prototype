@@ -13539,3 +13539,33 @@ mondo's OK of 11-20 on the two height plans (`docs/plans/world-polish/plans/esta
   the Bluff's thin trail south (the Ridge) starts at 18,155 and waits for the Ranch's new plots. NEXT (after mondo's word): the Ranch (6 new plots,
   the hollow, the rise, the Draw + the creek cut, the Ridge), the Corn Fields' Farm Track, then THE HOUSE TRAIL room (13 plots, its gatehouse
   built from the PSX modular pieces: no walk-in model exists).
+
+## HELL, THE LIGHT PASS — thread 11 of the world polish, pass 1 = the pilot: the Rim + the Descent (2026-11-20, owner)
+
+The plan is `docs/plans/world-polish/plans/hell.js` (mondo 11-20: "looks good"; "no walk in building for hell"): LIGHT AND LANDMARKS only, no
+ground moves, no new way. It still passes `draw-plan.js` (3 warnings, the plan's own). Files: `districts/R.js`, `districts/D.js`, one line in
+`bake-afterlife.js` (the shell), the catalogue and the renderer.
+
+- **THE TEN LIGHTS.** A room gets ten point lights from its props (three-renderer.js `HQ_PROP_LIGHT_MAX`); only a PROC row with a catalogue
+  `light` takes one (a model row such as `brazier` or `campfire` has its glow and never a light). Hell now spends them on purpose: every torch is
+  `noLight` (flame + halo only) except the rows meant to light. After pass 1: the Warm Wall's braziers, the Fissure (red), the Mouth's landing,
+  the Alcove (blue), the head of the west flight, + the two old torches on the Walkways = 7. Kept for the next passes: the Plinth's white fire,
+  the lava lake's glow, the three beacons (the Walkways' two old torches give theirs up then). A `noLight` row no longer takes a slot when the
+  room has more lamps than slots (`litRows`).
+- **NEW KIT (any room may use it):** `torch_blue`, `torch_red`, `torch_white`, `torch_green` (the game's own floor torch, `cave_torch`, with its
+  flame drawn in one hue: catalogue `flame`, three-renderer.js `_getTorchFlameTexHue`), `hearth_fire_blue`, `hearth_fire_white` (the hearth fire
+  in one hue), `light_glow` (proc `glow_light`: no body, only a point light and, if the row gives one, a glow). A PROC row's own `light` / `glow`
+  objects now override the catalogue's (colour, intensity, dist, y / size), and a row's `flame` overrides the hue.
+- **THE LIGHT FROM BELOW:** an open room's hemisphere lights every face that looks down or sideways in `shell.sky.ground` (none = the old
+  0x2a2620). Hell's is 0xff6a28: the lava's orange on every rock wall. It also rides into a fight on the room's field (`_hqOpenHemiG`).
+- **THE RIM** (cold and dark, torch lines that lead to the Descent): the north line (the Fissure > the lip > the north flight's head), the
+  west line (the Fissure > the west rim > the west flight's head), the south line along the south rim's lip; the Warm Wall's two tall braziers
+  (a brazier on a 2.2 m stone pillar each side of the way up to the Catacombs; the plan calls this place "THE MOUTH", the bay door's ledge on
+  the south rim keeps its own two braziers and statue); the Fissure's two red torches and its red light.
+- **THE DESCENT:** a torch pair at the head and the foot of every flight into the pit (`D.flightTorches`, used by R.js too: the layout's
+  stairs 1-6; stair 0 climbs to the Mouth); the Alcove's ONE BLUE FLAME in a stone basin; the Ash Flats' RING OF COALS (26 glowing lumps round
+  a fire). Six torches of the south line and two flight torches stand on the Bowl's squares (printed by the tool as strays: the rim is one rim).
+- Seen in the browser (11-20, `shots/city/site_prebuilt_hell_plots_*`): the lines read across the pit, the flights read as lit gates, the
+  Alcove is blue from the rim. The walls are warmer but still dark: the next lever is a stronger hemisphere in Hell or a lighter cliff sheet.
+- NEXT (after mondo's word): the Bowl (the Plinth's white fire, the lake's glow, the altar fire), the Walkways (the red / amber / green beacons
+  on tall pillars), then Heaven, the Catacombs, the Vatican.
