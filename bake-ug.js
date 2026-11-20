@@ -94,7 +94,7 @@ const LADDERS = [];
     const lineX = dx ? gx(Math.max(hi[0], lo[0])) : gcx(lo[0]), lineZ = dy ? gz(Math.max(hi[1], lo[1])) : gcz(lo[1]);
     const face = dy < 0 ? 0 : dy > 0 ? 180 : dx > 0 ? 90 : 270;          // heading toward the high side (the face the ladder leans on)
     const x = r2(lineX - dx * 0.3), z = r2(lineZ - dy * 0.3);
-    feat({ k: 'climb', id: 'ug:' + KEY + ':ladder' + i, x, z, face, look: 'ladder', y0: hOf(lo[0], lo[1]), y1: hOf(hi[0], hi[1]) });
+    feat({ k: 'climb', id: 'ug:' + KEY + ':ladder' + i, x, z, face, look: (DES.room && DES.room.ladderLook) || 'ladder', y0: hOf(lo[0], lo[1]), y1: hOf(hi[0], hi[1]) });
     LADDERS.push({ hi, lo, levels: Math.abs(la - lb) }); taken.add(lo[0] + ',' + lo[1]); taken.add(hi[0] + ',' + hi[1]); });
 
 /* THE FALLS: a `drop` branch whose words say WATERFALL */
@@ -176,6 +176,17 @@ const ctx = {
 (plan.doors || []).forEach(d => taken.add(d[0] + ',' + d[1])); (DES.extraDoors || []).forEach(e => taken.add(e.at[0] + ',' + e.at[1]));
 ['dress', 'people'].forEach(st => { if (typeof DES[st] === 'function') DES[st](ctx); });
 if (errs.length) throw new Error('misplaced:\n  ' + errs.join('\n  '));
+/* THE WALK CHECK (2026-11-20): with every blocker the design stood (P, npc), every open square the plan reaches on foot is still reached
+   (a step up of more than a ledge is refused, a drop is walked, a ladder is both ways): a stalagmite or a tent never cuts a passage */
+{ const blk = new Set(); props.forEach(p => { if (p.noBlock) return; blk.add(Math.floor((p.x + HX) / C) + ',' + Math.floor((p.z + HZ) / C)); });
+  const LAD = {}; (plan.stairs || []).forEach(([a, b]) => { (LAD[a + ''] = LAD[a + ''] || []).push(b); (LAD[b + ''] = LAD[b + ''] || []).push(a); });
+  const reach = useBlk => { const st = (DES.room && DES.room.spawn) || plan.start, seen = new Set([st + '']), q = [st];
+      for (let i = 0; i < q.length; i++) { const [x, y] = q[i]; const nb = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].concat(LAD[[x, y] + ''] || []);
+          for (const [X, Y] of nb) { const k = X + ',' + Y; if (seen.has(k) || !dry(X, Y) || (useBlk && blk.has(k))) continue; const isLad = (LAD[[x, y] + ''] || []).some(q2 => q2[0] === X && q2[1] === Y);
+              if (!isLad && LV[Y][X] - LV[y][x] > 0.6) continue; seen.add(k); q.push([X, Y]); } } return seen; };
+  const all = reach(false), withB = reach(true), lost = [...all].filter(k => !withB.has(k) && !blk.has(k));
+  if (lost.length) throw new Error('the dressing cuts the walk: ' + lost.length + ' square(s) no longer reached, e.g. ' + lost.slice(0, 8).join(' '));
+  console.log('THE WALK CHECK: ' + all.size + ' squares reached, ' + blk.size + ' blocker squares, nothing cut off'); }
 props.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key); });
 
 /* ── THE DOORS ── */
