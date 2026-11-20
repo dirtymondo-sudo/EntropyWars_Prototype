@@ -57,6 +57,8 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (open(x, y)) { LO = M
 const BASE = LO;                                                         // the room's y 0 is its lowest floor
 const SUMP = 0.9;                                                        // a sump's bed lies this far under its plan level's water line
 const hOf = (x, y) => r2((LV[y][x] - BASE) * LEVEL - (isW(x, y) ? SUMP + 0.6 : 0));   // the floor of a square, in metres
+/* THE SHEETS: a design file names every surface (`room.tex`); the defaults are the old cave keys (they wear the CALM look: a district should name horror / urban sheets, mondo 11-20) */
+const TX = Object.assign({ floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_2', ceiling: 'cave_wall', cliff: 'rocks_5', path: 'dirt_2', genWall: 'cave_wall', roof: 'cave_wall', stalactite: 'cave_wall' }, (DES.room && DES.room.tex) || {});
 const CEIL = (DES.room && DES.room.ceil) || 3, CEIL_CH = (DES.room && DES.room.ceilChamber) || 6;   // in levels over the floor
 const SH = r2((HI - BASE + CEIL_CH + 4) * LEVEL);
 
@@ -130,18 +132,18 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!open(x, y)) conti
     const bonus = (DES.room && DES.room.tallChambers && DES.room.tallChambers[f.name]) || 0;
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (open(x, y)) CEILV[y * W + x] = m + bonus; });
 const rnd = (s => () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; })(0x5eed ^ KEY.length * 7919);
-const ROCK = [0x4e4842, 0x433e39, 0x57504a, 0x3c3834];
+const ROCK = [0xb8b2a8, 0xa49e94, 0xc4beb4, 0x989288];
 { const used = new Uint8Array(W * H), parts = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!open(x, y) || used[y * W + x]) continue; const c = CEILV[y * W + x];
       let w = 1; while (x + w < W && !used[y * W + x + w] && open(x + w, y) && CEILV[y * W + x + w] === c) w++;
       let h = 1; rows: while (y + h < H) { for (let i = 0; i < w; i++) if (used[(y + h) * W + x + i] || !open(x + i, y + h) || CEILV[(y + h) * W + x + i] !== c) break rows; h++; }
       for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used[(y + j) * W + x + i] = 1;
       const y0 = r2((c - BASE) * LEVEL); if (SH - y0 < 0.5) continue;
-      parts.push({ s: 'box', p: [r2(gx(x) + w * C / 2), y0, r2(gz(y) + h * C / 2)], size: [r2(w * C + 0.02), r2(SH - y0 + 0.5), r2(h * C + 0.02)], top: false, under: true, key: 'cave_wall', tint: 0x3a3632, uv: 7 }); }
+      parts.push({ s: 'box', p: [r2(gx(x) + w * C / 2), y0, r2(gz(y) + h * C / 2)], size: [r2(w * C + 0.02), r2(SH - y0 + 0.5), r2(h * C + 0.02)], top: false, under: true, key: TX.roof, tint: 0x8a8680, uv: 7 }); }
   /* stalactites: one in five open squares, longer under a high roof, never over a ladder's head */
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!dry(x, y) || taken.has(x + ',' + y) || rnd() > 0.2) continue; const top = r2((CEILV[y * W + x] - BASE) * LEVEL), room = top - hOf(x, y);
       const len = r2(0.6 + rnd() * Math.min(room - 2.6, chamberAt.has(x + ',' + y) ? 4.5 : 1.6)); if (len < 0.5) continue;
-      parts.push({ s: 'cyl', p: [r2(gcx(x) + (rnd() - 0.5) * 2.2), r2(top - len), r2(gcz(y) + (rnd() - 0.5) * 2.2)], r: 0.03, r2: r2(0.18 + rnd() * 0.35), h: len, seg: 6, key: 'cave_wall', tint: ROCK[Math.floor(rnd() * ROCK.length)], uv: 3.5 }); }
+      parts.push({ s: 'cyl', p: [r2(gcx(x) + (rnd() - 0.5) * 2.2), r2(top - len), r2(gcz(y) + (rnd() - 0.5) * 2.2)], r: 0.03, r2: r2(0.18 + rnd() * 0.35), h: len, seg: 6, key: TX.stalactite, tint: ROCK[Math.floor(rnd() * ROCK.length)], uv: 3.5 }); }
   /* one arch row a plot, so a far plot can be culled */
   const byPlot = {}; parts.forEach(pt => { const sx = Math.floor((pt.p[0] + HX) / C), sy = Math.floor((pt.p[2] + HZ) / C), k = Math.floor(sx / N) + '_' + Math.floor(sy / N); (byPlot[k] = byPlot[k] || []).push(pt); });
   Object.keys(byPlot).forEach(k => { const [bx, by] = k.split('_').map(Number), ox = r2(gx(bx * N) + N * C / 2), oz = r2(gz(by * N) + N * C / 2);
@@ -208,7 +210,7 @@ Lr.push('            sub: ' + J(R.sub) + ',');
 Lr.push("            kind: 'box', site: '" + RM.site + "', part: '" + RM.part + "',");
 if (R.world) Lr.push('            world: ' + J(R.world) + ',');
 Lr.push('            shell: { w: ' + r2(2 * HX) + ', d: ' + r2(2 * HZ) + ', h: ' + SH + ', wallH: ' + SH + ", dadoH: 1.1, open: false,");
-Lr.push("                     floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_2', ceiling: 'cave_wall', floorColor: 0x8a8278, wallColor: 0x5e5850, dadoColor: 0x4a443e, ceilColor: 0x1e1b18,");
+Lr.push('                     floor: ' + J(TX.floor) + ', wall: ' + J(TX.wall) + ', dado: ' + J(TX.dado) + ', trim: ' + J(TX.trim) + ', ceiling: ' + J(TX.ceiling) + ', floorColor: 0x8a8278, wallColor: 0x5e5850, dadoColor: 0x4a443e, ceilColor: 0x1e1b18,');
 Lr.push('                     pipes: false, strips: false, lights: [], mood: ' + J(R.mood || { light: 0xffb070, ambient: 0.16, hero: false }) + ', plate: { x: ' + gcx(sp[0]) + ', z: ' + gcz(sp[1]) + ', y: ' + r2(hOf(sp[0], sp[1]) + 4.2) + ' },');
 Lr.push('                     fog: { color: 0x0a0807, density: 0.007 }, look: HQ_ROOM_LOOKS.cave,');
 Lr.push('                     suns: ' + J(SUNS) + (AIR.length ? ', atmos: ' + J({ kind: 'none', zones: AIR }) : '') + ' },');
@@ -217,13 +219,13 @@ Lr.push("            typology: 'grid',");
 const names = B.PLOTS.map(p => ['P' + String(p.bx).padStart(2, '0') + '-' + String(p.by).padStart(2, '0'), (R.plotNames && R.plotNames[p.bx + ',' + p.by]) || p.name, p.d, p.level]);
 Lr.push('            plots: { cell: ' + C + ', plot: ' + (N * C) + ', nx: ' + (W / N) + ', nz: ' + (H / N) + ', names: ' + J(names) + ' },');
 Lr.push('            terrain: {');
-Lr.push("                res: 0.875, floor: 'cave_floor', cliff: 'rocks_5', path: 'dirt_2', stairs: 'wood',");
+Lr.push('                res: 0.875, floor: ' + J(TX.floor) + ', cliff: ' + J(TX.cliff) + ', path: ' + J(TX.path) + ", stairs: 'wood',");
 Lr.push('                noise: { amp: 0, scale: 5 }, crag: false, stalactites: false,');
 Lr.push('                /* THE GROUND: every square flat at its plan level (four corners a square, cm); a ledge is a real drop */');
 Lr.push('                slope: { cells: { res: ' + C + ', x0: ' + gx(0) + ', z0: ' + gz(0) + ', nx: ' + W + ', nz: ' + H + ", d: '" + slope.toString('base64') + "' } },");
 Lr.push('                paint: { pal: ' + J(PAL) + ", t: 'u8', res: " + C + ', x0: ' + gcx(0) + ', z0: ' + gcz(0) + ', nx: ' + W + ', nz: ' + H + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 Lr.push('                /* every square that is not a `space` is the rock, up to the crust */');
-Lr.push("                gen: { kind: 'plan', look: 'walls', wallKey: 'cave_wall', rim: 0, forceGrow: -0.3 },");
+Lr.push("                gen: { kind: 'plan', look: 'walls', wallKey: " + J(TX.genWall) + ", rim: 0, forceGrow: -0.3 },");
 Lr.push('                features: [');
 FEAT.forEach(f => Lr.push('                    ' + J(f) + ','));
 Lr.push('                ],');
