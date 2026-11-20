@@ -69220,7 +69220,7 @@ const DOOR_HQ = {
                 {"key":"psx_old_mattress_mp_1","x":-31.75,"z":113.5}, {"key":"fishing_rod","x":-31.25,"z":118.5},
             ],
             agents: [],
-            npcSpots: [{"x":-75.25,"z":40.25,"face":180,"race":"chef"},{"x":-92.75,"z":43.75,"face":90,"race":"farmer"},{"x":-96.25,"z":61.25,"face":0,"race":"samurai slug"},{"x":-29.75,"z":85.75,"face":270,"race":"ninja"},{"x":-117.25,"z":110.25,"face":90,"race":"monk"}],
+            npcSpots: [{"x":-75.25,"z":40.25,"face":180,"race":"swordfighter"},{"x":-92.75,"z":43.75,"face":90,"race":"farmer"},{"x":-96.25,"z":61.25,"face":0,"race":"samurai slug"},{"x":-29.75,"z":85.75,"face":270,"race":"ninja"},{"x":-117.25,"z":110.25,"face":90,"race":"monk"},{"x":-40.25,"z":124.25,"face":0,"race":"karate frog"},{"x":-99.75,"z":54.25,"face":90,"race":"ki fighter"},{"x":-89.25,"z":36.75,"face":180,"race":"shogun"}],
             onlineSpots: [],
             lines: [],
             spawn: { x: -85.75, z: 57.75, face: 0 },
@@ -94927,6 +94927,23 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "yeti", w: 17 },
         { race: "deep sea fish", w: 4 },
         { race: "kraken", w: 2 },
+    ] },
+    /* KATANA ISLAND (2026-11-20): THE RESIDENTS OF KATANA BAY, word for word from mondo's relationship web (Entropy Wars Relationship Web, 2026-11-20, the place
+       "Katana Bay": "Japan Parody. Their flag is a red square and white background."). He gave no weights: every race the same. */
+    "site_prebuilt_katana_island": { list: [
+        { race: "ninja", w: 8 },
+        { race: "swordfighter", w: 8 },
+        { race: "ki fighter", w: 8 },
+        { race: "samurai slug", w: 8 },
+        { race: "karate frog", w: 8 },
+        { race: "monk", w: 8 },
+        { race: "shogun", w: 8 },
+        { race: "spy", w: 8 },
+        { race: "vtuber", w: 8 },
+        { race: "catgirl", w: 8 },
+        { race: "dragon", w: 8 },
+        { race: "farmer", w: 8 },
+        { race: "fairy", w: 8 },
     ] },
     "site_prebuilt_bermuda_ow_volcano": { list: [
         { race: "monk", w: 12 },   // 2026-11-19 THE NEW RACES 4: the Volcano Island (Katana Bay in the story plans)
