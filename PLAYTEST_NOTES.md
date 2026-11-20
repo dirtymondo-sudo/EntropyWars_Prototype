@@ -10810,6 +10810,13 @@ waits for a room that is gone: no SHOT lines, no error, it runs until killed (se
 (`keydown` + `keyup`, `key: 'e', code: 'KeyE'`) on `document` and `window`, with `"settle": 3000` (the door audit's subway panel pictures). To
 arrive at a door as the game does: `"keep": true` + `"eval": "ThreeRenderer.hq.goTo('<door id>', true)"`. `--pre=<js>` runs before the room is
 entered (file a value on the active profile with `ProfileSystem.loadProfile / saveProfile` there: `_hqEnter` reads the saved card, not a session value).
+**THE DRIVE (2026-11-20, the Outer Space fix): motion bugs need motion.** A playtest_city.js view takes
+`"drive": { "sample": "<js expression>", "every": 700, "steps": [ { "note": "W", "down": ["w"], "up": [], "mouse": [dx, dy], "ms": 4000, "eval": "<js>", "shot": true } ] }`:
+real key presses (Playwright key names: `w`, `Shift`, `Space`) and mouse moves held over time, the sample printed as `DRIVE <view> <t>s <step> <json>`
+lines, a step's `"shot"` saved as `<room>_<view>_<i>.png`. Game time runs slow in the cloud browser (a 4 s hold is about 1 s of play): read the
+numbers, not the clock. In the space room the Bridge's stick has you ABOARD at the launch spot already: a view's eval must test
+`ThreeRenderer.hq.dev.ship({})` before `hq.board(id)` (a second board is E: it sets the ship down). Flying probe views: `mk3.js` style,
+`dev.ship({ x, y, z, yaw, camYaw, pitch })` with `yaw = PI - camYaw`.
 **THE FAST PROBE (2026-11-16, read this first; it replaces tip 2 and RULE 3 below).** Every harness now launches through
 `probe-fast.js` (`require('./probe-fast.js').launch(chromium, {...})`); a probe you write yourself must do the same. What it does:
 (1) runs Chromium on Mesa llvmpipe under its own Xvfb, 2-4x the frame rate of SwiftShader (`EW_PROBE_GL=swiftshader` = the old
@@ -10821,7 +10828,7 @@ MISMATCH page). In playtest_city.js: NO `--wait=150000` and no `EW_NO_MODEL_QUEU
 (default 240 s), `--sleep=<ms>` adds a fixed pause, `"settle"` on a view is optional (default = 3 drawn frames). The log prints
 `TIME <s>` per step and `[PROBE] room ready in N s`; `ROOM NOT READY` = the pictures may be half loaded. Measured, Disaster City
 (729 files, 5,296 props), three views: ~200 s in all (before: not loaded after 6 min, then 35-45 s a picture); a small room ~55 s.
-Still true: never run two probes at once. `EW_PROBE_DRAW_LOAD=1` draws during the load (to watch the card), `EW_PROBE_NO_HOLD=1`
+Still true: never run two probes at once. THE CITY ROOM (2026-11-20): add `EW_HQ_NO_SURVEY` to `--flags` (map.js's background survey of every room kills the cloud browser 30 to 70 s after the city is ready, whatever the view) and run nothing beside it, not even a `git commit`. `EW_PROBE_DRAW_LOAD=1` draws during the load (to watch the card), `EW_PROBE_NO_HOLD=1`
 takes pictures the old way.
 **Tips learned on the Estate (2026-11-15):** (1) a view on sloped or raised ground needs its own `"y"` (metres over the room's
 level 0): without it the camera stands at y 0, under the ground, and the picture is sky colour below the horizon. (2) Props stream

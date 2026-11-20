@@ -90264,7 +90264,10 @@ const ThreeRenderer = (function () {
         boat: { v: 8.5, rev: 2.0, accel: 1.4, drag: 0.6, turn: 1.15, turnMin: 0.35, draft: 0.55, bob: 0.08, boardReach: 3.6, seat: { x: 0, y: 0.5, z: -0.5 }, camDist: 7.0, len: 4.6, beam: 1.7 },
         sub:  { v: 6.0, rev: 2.5, accel: 1.2, drag: 0.8, turn: 0.95, turnMin: 0.5, vertV: 2.4, r: 1.6, boardReach: 4.0, seat: { x: 0, y: 0.55, z: 0.2 }, camDist: 8.5, len: 6.2 },
         /* THE SPACESHIP YOU FLY (2026-11-17, Outer Space's solar system): no water; the room's box, its ground and the planet balls are the hull's limits */
-        ship: { v: 46, rev: 8, accel: 0.7, drag: 0.5, turn: 1.25, turnMin: 0.55, vertV: 22, boost: 3.4, r: 2.2,   /* (2026-11-17, the worlds far apart: faster, and SHIFT = the burner, `boost` x) */ boardReach: 7.0, seat: { x: 0, y: 0.9, z: 0.6 }, camDist: 18, len: 8.0, beam: 4.0, land: 9, landH: 26 },
+        /* (2026-11-20, THE FLIGHT FIX) `v` = the slow speed kept near a world; in the open W builds up to `cruise` and SHIFT to `warp`, both held
+           down by how near the nearest world is (`nearK` x the metres to its ground), so the ship slows by itself as it comes in. `follow` =
+           how fast the hull swings onto the camera's heading. `camDist` back, `camUp` over: the ship sits a little under the middle. */
+        ship: { v: 60, rev: 12, accel: 0.8, drag: 0.6, turn: 1.25, follow: 4.5, vertV: 26, cruise: 650, warp: 1300, nearK: 0.9, r: 2.2, boardReach: 7.0, seat: { x: 0, y: 0.9, z: 0.6 }, camDist: 20, camUp: 3.4, len: 8.0, beam: 4.0, land: 9, landH: 26, edge: 500, setDown: 45 },
         keys: { dive: 'c', rise: 'space', board: 'e' },
         labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP' },
     };
@@ -90437,7 +90440,7 @@ const ThreeRenderer = (function () {
     /* E on a moored vehicle: aboard. E aboard: off. */
     function _hqBoard(id) {
         var H = _hq; if (!H || !H.player) return false;
-        if (H.vehicle && H.vehicle.on) return _hqDisembark();
+        if (H.vehicle && H.vehicle.on) return (H.vehicle.kind === 'ship' && typeof _ewPlRound === 'function' && _ewPlRound()) ? _hqShipSetDown() : _hqDisembark();   // (the flown ship among round worlds sets down on the ball under it, or stays aboard)
         var b = id ? _hqVehicleFind(id) : null; if (!b) return false;
         var pl = H.player;
         if (H.ride && H.ride.on) _hqRideToggle(false, true);
@@ -90448,8 +90451,12 @@ const ThreeRenderer = (function () {
         if (b.kind === 'ship' && typeof _ewPlAt === 'function') { var pr = _ewPlAt(b.x, b.z);
             if (pr && _ewPlInRect(pr, b.x, b.z)) { var Bp = _ewPlBend(pr, b.x, (b.y || 0), b.z), ux = Bp[0] - pr.c[0], uy = Bp[1] - pr.c[1], uz = Bp[2] - pr.c[2], ul = Math.hypot(ux, uy, uz) || 1, lift = (pr.top || 6) + 12;
                 H.vehicle.x = Bp[0] + ux / ul * lift; H.vehicle.y = Bp[1] + uy / ul * lift; H.vehicle.z = Bp[2] + uz / ul * lift;
+                if (Math.hypot(ux, uz) > 0.25 * ul) H.vehicle.yaw = Math.atan2(ux, uz);   // (2026-11-20) the nose out toward open space, the ball behind it
                 if (H.cam) H.cam.init = false; } }
         H.cam.distSaved = H.cam.dist; H.cam.dist = (_hqSeaRules()[b.kind] || {}).camDist || 7;
+        /* THE FLIGHT FIX (2026-11-20, mondo: "Im pressing w to move forward and its like going sideways"): the eye starts dead behind the hull,
+           level. Before, it kept whatever heading the walk had left it with, and W flew the hull's own heading. */
+        if (b.kind === 'ship') { H.cam.pitchSaved = H.cam.pitch; H.cam.pitch = 0; H.cam.yaw = Math.PI - H.vehicle.yaw; H.vehicle.climb = 0; H.cam.init = false; }
         _hqSeaEmit({ kind: 'board', vehicle: b.kind, label: b.label });
         H.dirty = true;
         return true;
@@ -90459,6 +90466,7 @@ const ThreeRenderer = (function () {
         var pl = H.player, sea = _hqSea(), R = _hqSeaRules();
         V.on = false; V.rec.x = V.x; V.rec.z = V.z; V.rec.y = V.y; V.rec.yaw = V.yaw;
         H.cam.dist = H.cam.distSaved || 3.6;
+        if (V.kind === 'ship') { if (H.cam.pitchSaved != null) { H.cam.pitch = H.cam.pitchSaved; H.cam.pitchSaved = null; } var cmS = H.camera; if (cmS && H._shipNear0 != null) { cmS.near = H._shipNear0; H._shipNear0 = null; cmS.fov = 52; cmS.updateProjectionMatrix(); } }
         /* step off to the side: a wade / the shore when the ground is there, else the water */
         var rxv = Math.cos(V.yaw), rzv = -Math.sin(V.yaw), best = null;
         [[1.9, 0], [-1.9, 0], [0, 3.2], [0, -3.2]].forEach(function (o) {
@@ -90521,12 +90529,12 @@ const ThreeRenderer = (function () {
             turn = ((k.d || k.right) ? 1 : 0) - ((k.a || k.left) ? 1 : 0);
             vert = (k.space ? 1 : 0) - (k.c ? 1 : 0);
         }
+        if (V.kind === 'ship') { _hqTickShip(dt, V, R, thr, turn, vert, !H.paused && !!k.shift); return; }   // (2026-11-20: before the boats' own speed rule, which pulled the ship's speed to `v` every frame)
         var target = thr > 0 ? R.v : (thr < 0 ? -R.rev : 0);
         V.v += (target - V.v) * (1 - Math.exp(-dt * (thr ? R.accel : R.drag)));
         if (Math.abs(V.v) < 0.03 && !thr) V.v = 0;
         var rate = R.turn * ((R.turnMin != null ? R.turnMin : 0.35) + (1 - (R.turnMin != null ? R.turnMin : 0.35)) * Math.min(1, Math.abs(V.v) / R.v));
         if (V.kind === 'sub') rate = R.turn;
-        if (V.kind === 'ship') { _hqTickShip(dt, V, R, thr, turn, vert, !H.paused && !!k.shift); return; }
         var dl = -turn * rate * dt * (V.v < -0.2 ? -1 : 1);
         if (dl) { V.yaw += dl; H.cam.yaw -= dl; }
         var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw);
@@ -90614,6 +90622,8 @@ const ThreeRenderer = (function () {
             if (Math.hypot(x - rw.c[0], y - rw.c[1], z - rw.c[2]) < rw.R + (rw.top || 6) + (R.r || 2.2) + 1) return false;
             if (x > rw.x0 - 6 && x < rw.x0 + 3 * rw.L + 6 && z > rw.z0 - 6 && z < rw.z0 + 2 * rw.L + 6) { if (y < (rw.top || 6) + 16) return false; return true; } }
         if (sp.sun && Math.hypot(x - sp.sun.x, y - sp.sun.y, z - sp.sun.z) < sp.sun.r * 1.3) return false;
+        var RK = H._spaceRocks; if (RK) for (var rk = 0; rk < RK.length; rk++) { var rq2 = RK[rk]; if (Math.abs(x - rq2[0]) < rq2[3] + 4 && Math.hypot(x - rq2[0], y - rq2[1], z - rq2[2]) < rq2[3] + (R.r || 2.2)) return false; }
+        if (BX && RW.length && BX.y0 > 100) return true;   // (2026-11-20: the box of space stands wholly over the room's flat nets: nothing flat is under the hull)
         var probes = [[0, 0], [L, 0], [-L, 0], [0, B], [0, -B]];
         for (var i = 0; i < probes.length; i++) {
             var px = x + fx * probes[i][0] + rx * probes[i][1], pz = z + fz * probes[i][0] + rz * probes[i][1];
@@ -90628,26 +90638,61 @@ const ThreeRenderer = (function () {
         }
         return true;
     }
+    /* THE FLIGHT FIX (2026-11-20). mondo: "Flying the ship is all messed up. Im pressing w to move forward and its like going sideways and
+       the ship is on the edge of the screen". Measured before the fix (playtest_city.js "drive", real keys): the hull kept its own heading
+       and the mouse turned only the eye, so after 300 px of mouse the eye looked 46 degrees off the way W flew; and the eye chased the hull
+       with a lag, so the hull slid off the middle as the speed rose (0.23 of the half screen at 84 m/s, more at the burner's 156).
+       Now THE SHIP FLIES WHERE THE CAMERA LOOKS: the mouse (or the right stick) aims the eye, A / D turn the eye, and the hull swings onto
+       the eye's heading and its climb (`follow`). W is forward along that line, up and down with it; SPACE / C still lift and sink.
+       The eye is fixed to the hull (_hqShipCam), so the ship keeps its place on screen at any speed.
+       THE SPEED: `v` near a world; in the open W runs up to `cruise` and SHIFT to `warp`, both capped by `nearK` x the metres to the
+       nearest world's ground, so a ship coming in slows by itself and never flies through a ball in one frame. */
+    function _hqShipNear(V, sp) {
+        var near = 1e9, RW = sp.round || [], PP = sp.planets || [], i, q;
+        for (i = 0; i < RW.length; i++) { q = RW[i]; near = Math.min(near, Math.hypot(V.x - q.c[0], V.y - q.c[1], V.z - q.c[2]) - q.R - (q.top || 0)); }
+        for (i = 0; i < PP.length; i++) { q = PP[i]; near = Math.min(near, Math.hypot(V.x - q.x, V.y - q.y, V.z - q.z) - q.r); }
+        if (sp.sun) near = Math.min(near, Math.hypot(V.x - sp.sun.x, V.y - sp.sun.y, V.z - sp.sun.z) - sp.sun.r * 1.3);
+        return Math.max(0, near);
+    }
     function _hqTickShip(dt, V, R, thr, turn, vert, burn) {
-        var H = _hq, pl = H.player, U = _hqUnits(), sp = _hqSpace() || {};
-        var bo = burn ? (R.boost || 1) : 1;   // THE BURNER (2026-11-17): SHIFT, the walk's run key, for the long legs between the worlds
-        var target = thr > 0 ? R.v * bo : (thr < 0 ? -R.rev : 0);
-        V.v += (target - V.v) * (1 - Math.exp(-dt * (thr ? R.accel : R.drag)));
+        var H = _hq, pl = H.player, U = _hqUnits(), sp = _hqSpace() || {}, c = H.cam;
+        /* the heading and the climb: the camera's */
+        if (turn) c.yaw += turn * (R.turn || 1.25) * dt;
+        var dyw = (Math.PI - c.yaw) - V.yaw; while (dyw > Math.PI) dyw -= Math.PI * 2; while (dyw < -Math.PI) dyw += Math.PI * 2;
+        var kF = 1 - Math.exp(-dt * (R.follow || 4.5));
+        V.yaw += dyw * kF; if (V.yaw > Math.PI * 2 || V.yaw < -Math.PI * 2) { V.yaw = V.yaw % (Math.PI * 2); }
+        var wantC = Math.max(-1.25, Math.min(1.25, c.pitch || 0)); V.climb = (V.climb || 0) + (wantC - (V.climb || 0)) * kF;
+        /* the speed */
+        var near = _hqShipNear(V, sp); V.near = near;
+        var cap = Math.max(R.v, Math.min(burn ? (R.warp || R.v) : (R.cruise || R.v), near * (R.nearK || 0.9) * (burn ? 1 : 0.5)));
+        var target = thr > 0 ? cap : (thr < 0 ? -R.rev : 0);
+        var rate = thr ? R.accel : R.drag + Math.abs(V.v) / 250;
+        if (V.v > cap) rate = Math.max(rate, 3);   // (too fast for how near a world is: the brakes)
+        V.v += (target - V.v) * (1 - Math.exp(-dt * rate));
         if (Math.abs(V.v) < 0.05 && !thr) V.v = 0;
-        var rate = R.turn * (R.turnMin + (1 - R.turnMin) * Math.min(1, Math.abs(V.v) / R.v));
-        var dl = -turn * rate * dt * (V.v < -0.2 ? -1 : 1);
-        if (dl) { V.yaw += dl; H.cam.yaw -= dl; }
-        var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), nx = V.x + fx * V.v * dt, nz = V.z + fz * V.v * dt;
-        var vt = vert * (R.vertV || 14) * bo;
+        var cpS = Math.cos(V.climb), fx = Math.sin(V.yaw) * cpS, fy = Math.sin(V.climb), fz = Math.cos(V.yaw) * cpS;
+        var vt = vert * (R.vertV || 14);
         V.vy += (vt - V.vy) * (1 - Math.exp(-dt * 2.4));
-        var ny = V.y + V.vy * dt;
-        if (_hqShipHullFree(V, R, V.x, V.z, ny)) V.y = ny; else V.vy = 0;
-        if (_hqShipHullFree(V, R, nx, nz, V.y)) { V.x = nx; V.z = nz; }
-        else if (_hqShipHullFree(V, R, nx, V.z, V.y)) { V.x = nx; V.v *= 0.6; }
-        else if (_hqShipHullFree(V, R, V.x, nz, V.y)) { V.z = nz; V.v *= 0.6; }
-        else V.v *= 0.2;
-        V.pitch += ((-Math.max(-1, Math.min(1, V.vy / (R.vertV || 14)))) * 0.25 - V.pitch) * Math.min(1, dt * 3);
-        V.roll += ((-turn * 0.35 * Math.min(1, Math.abs(V.v) / R.v)) - V.roll) * Math.min(1, dt * 3);
+        var dx = fx * V.v * dt, dyy = (fy * V.v + V.vy) * dt, dz = fz * V.v * dt;
+        /* THE EDGE OF THE BOX is soft: the way out fades over `edge` metres (no wall to hit that nothing is drawn on) */
+        var BX = sp.box, eM = R.edge || 500;
+        if (BX) {
+            if (dx > 0) dx *= Math.max(0, Math.min(1, (BX.x1 - V.x) / eM)); else dx *= Math.max(0, Math.min(1, (V.x - BX.x0) / eM));
+            if (dz > 0) dz *= Math.max(0, Math.min(1, (BX.z1 - V.z) / eM)); else dz *= Math.max(0, Math.min(1, (V.z - BX.z0) / eM));
+            if (dyy > 0) dyy *= Math.max(0, Math.min(1, ((sp.ceil || 1e9) - V.y) / eM)); else dyy *= Math.max(0, Math.min(1, (V.y - BX.y0) / eM));
+        }
+        var nx = V.x + dx, ny = V.y + dyy, nz = V.z + dz;
+        if (_hqShipHullFree(V, R, nx, nz, ny)) { V.x = nx; V.y = ny; V.z = nz; }
+        else {
+            if (_hqShipHullFree(V, R, V.x, V.z, ny)) V.y = ny; else V.vy = 0;
+            if (_hqShipHullFree(V, R, nx, nz, V.y)) { V.x = nx; V.z = nz; V.v *= 0.9; }
+            else if (_hqShipHullFree(V, R, nx, V.z, V.y)) { V.x = nx; V.v *= 0.6; }
+            else if (_hqShipHullFree(V, R, V.x, nz, V.y)) { V.z = nz; V.v *= 0.6; }
+            else V.v *= 0.2;
+        }
+        var lift = Math.max(-1, Math.min(1, V.vy / (R.vertV || 14)));
+        V.pitch += ((-V.climb - lift * 0.18) - V.pitch) * Math.min(1, dt * 5);
+        V.roll += (Math.max(-0.7, Math.min(0.7, dyw * 1.5 - turn * 0.18)) - V.roll) * Math.min(1, dt * 4);
         var grp = V.rec.grp;
         grp.position.set(V.x * U, V.y * U, V.z * U);
         if (grp.rotation.order !== 'YXZ') grp.rotation.order = 'YXZ';
@@ -90655,7 +90700,7 @@ const ThreeRenderer = (function () {
         var st = R.seat || { x: 0, y: 1.6, z: 0 }, cY = Math.cos(V.yaw), sY = Math.sin(V.yaw);
         pl.x = V.x + st.x * cY + st.z * sY; pl.z = V.z - st.x * sY + st.z * cY; pl.y = V.y + st.y;
         pl.visY = pl.y; pl.yaw = pl.targetYaw = V.yaw; pl.moving = false; pl.running = false; pl.air = false; pl.vy = 0;
-        pl.velX = fx * V.v; pl.velZ = fz * V.v; pl.velY = V.vy;
+        pl.velX = fx * V.v; pl.velZ = fz * V.v; pl.velY = fy * V.v + V.vy;
         if (pl.entry && pl.entry.group) { pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U); pl.entry.group.visible = false; }   // the pilot sits inside the hull
         if ((thr !== 0) !== !!V.thr) { V.thr = thr !== 0; _hqSeaEmit({ kind: 'throttle', on: V.thr, vehicle: 'ship' }); }
         /* THE BEACONS: fly into one and the ship sets down on its pad */
@@ -90674,11 +90719,59 @@ const ThreeRenderer = (function () {
             _hqShipLand(b); return;
         }
     }
+    /* E ABOARD, AMONG ROUND WORLDS (2026-11-20): the ship flies in the real space and the walk's ground lies flat somewhere else, so the old
+       step-off (the hull's x, z read as a place on the flat ground) put the walker on whatever net lay under those numbers, or in the void.
+       Now: within `setDown` metres of a ball's ground the ship sets down on the square under it and you step off beside it; anywhere
+       else E does nothing (you stay aboard: there is nothing to stand on in open space). */
+    function _hqShipSetDown() {
+        var H = _hq, V = H && H.vehicle, RW = _ewPlRound(); if (!V || !V.on || !RW || !H.terrain) return false;
+        var R = _hqSeaRules().ship || {}, best = null, bd = 1e9;
+        for (var i = 0; i < RW.length; i++) { var q = RW[i], alt = Math.hypot(V.x - q.c[0], V.y - q.c[1], V.z - q.c[2]) - q.R - (q.top || 0); if (alt < (R.setDown || 45) && alt < bd) { bd = alt; best = q; } }
+        if (!best) return false;
+        var T = _ewPlFlat(best, V.x, V.y, V.z), ti = H.terrain, ok = function (x, z) {
+            if (!_ewPlInRect(best, x, z) || (ti.void && hqTerrainVoidAt(ti, x, z))) return false;
+            if (hqTerrainWallAt(ti, x, z, 2.2)) return false;
+            if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(ti, x, z, 1.5)) return false;
+            return _hqAirClearOfBlockers(x, z, hqTerrainHeight(ti, x, z) + 0.6); };
+        if (!ok(T.x, T.z)) return false;
+        var gy = hqTerrainHeight(ti, T.x, T.z), U = _hqUnits(), pl = H.player, spots = [[5.5, 0], [-5.5, 0], [0, 6.5], [0, -6.5]], st = null;
+        for (var j = 0; j < spots.length && !st; j++) { var sx = T.x + spots[j][0], sz = T.z + spots[j][1]; if (ok(sx, sz)) { var sy = _hqSurface(sx, sz, null, true); if (sy !== null && isFinite(sy) && Math.abs(sy - gy) < 2.5) st = { x: sx, z: sz, y: sy }; } }
+        if (!st) return false;
+        V.x = T.x; V.z = T.z; V.y = gy + 1.2; V.v = 0; V.vy = 0; V.pitch = 0; V.roll = 0; V.climb = 0;
+        var grp = V.rec.grp; grp.position.set(V.x * U, V.y * U, V.z * U); grp.rotation.set(0, V.yaw, 0);
+        if (pl.entry && pl.entry.group) pl.entry.group.visible = true;
+        _hqDisembark();
+        pl.x = st.x; pl.z = st.z; pl.y = st.y; pl.visY = st.y; if (pl.entry && pl.entry.group) pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        H.cam.yaw = Math.atan2(T.x - st.x, -(T.z - st.z)); H.cam.init = false;   // the eye looks back at the ship
+        _hqSeaEmit({ kind: 'land', vehicle: 'ship', label: best.name });
+        return true;
+    }
+    /* THE EYE ABOARD (2026-11-20): fixed to the hull, `camDist` behind it along the line of sight and `camUp` over that line, looking down the
+       line. So the middle of the screen is where the ship is going, the ship sits a little under it, and no speed moves it (the walk's
+       eye eases after its body: at the burner the hull ran 13 m ahead of an eye 18 m back). No boom march: the walk's flat ground is not
+       what the eye flies through; a ball pushes the eye out of itself. The lens opens with the speed. */
+    function _hqShipCam(H, V, dt, U) {
+        var c = H.cam, cam = H.camera, R = _hqSeaRules().ship || {}, sp = _hqSpace() || {};
+        var cy = c.yaw, cpt = c.pitch || 0, lx = Math.sin(cy) * Math.cos(cpt), ly = Math.sin(cpt), lz = -Math.cos(cy) * Math.cos(cpt);
+        var ux = -Math.sin(cy) * Math.sin(cpt), uy = Math.cos(cpt), uz = Math.cos(cy) * Math.sin(cpt);
+        var sk = Math.min(1, Math.abs(V.v) / (R.warp || 1300)); c.shipK = (c.shipK == null) ? sk : c.shipK + (sk - c.shipK) * Math.min(1, dt * 3);
+        var dist = (R.camDist || 20) * (1 + 0.3 * c.shipK), up = R.camUp || 3.4;
+        var ex = V.x - lx * dist + ux * up, ey = V.y - ly * dist + uy * up, ez = V.z - lz * dist + uz * up;
+        var RW = sp.round || [], PP = sp.planets || [], push = function (qx, qy, qz, rr) { var d = Math.hypot(ex - qx, ey - qy, ez - qz); if (d < rr && d > 0.001) { var k = rr / d; ex = qx + (ex - qx) * k; ey = qy + (ey - qy) * k; ez = qz + (ez - qz) * k; } };
+        for (var i = 0; i < RW.length; i++) push(RW[i].c[0], RW[i].c[1], RW[i].c[2], RW[i].R + (RW[i].top || 0) + 3);
+        for (var j = 0; j < PP.length; j++) push(PP[j].x, PP[j].y, PP[j].z, PP[j].r + 3);
+        c.ex = ex; c.ey = ey; c.ez = ez; c.lx = ex + lx * 200; c.ly = ey + ly * 200; c.lz = ez + lz * 200; c.init = true; c.f = 1;
+        var fov = 52 + 16 * c.shipK, nearW = 110;
+        if (H._shipNear0 == null) H._shipNear0 = cam.near;
+        if (Math.abs(cam.fov - fov) > 0.05 || cam.near !== nearW) { cam.fov = fov; cam.near = nearW; cam.updateProjectionMatrix(); }   // (near 1.5 m aboard: the far worlds need the depth buffer's steps)
+        cam.position.set(ex * U, ey * U, ez * U); cam.up.set(0, 1, 0); cam.lookAt(c.lx * U, c.ly * U, c.lz * U);
+    }
     function _hqShipLand(b) {
         var H = _hq, V = H.vehicle; if (!V || !V.on) return;
         var pad = b.pad || b;
         V.x = pad.x; V.z = pad.z; V.y = (b.ground || 0) + 1.2; V.v = 0; V.vy = 0; V.pitch = 0; V.roll = 0;
         if (pad.yaw != null) { var dy = pad.yaw - V.yaw; V.yaw = pad.yaw; H.cam.yaw -= dy; }
+        V.climb = 0;
         var U = _hqUnits(), grp = V.rec.grp; grp.position.set(V.x * U, V.y * U, V.z * U); grp.rotation.set(0, V.yaw, 0);
         if (H.player && H.player.entry && H.player.entry.group) H.player.entry.group.visible = true;
         if (b.ball && H.cam) H.cam.init = false;   // THE ROUND WORLDS: down on the ball's flat net, the eye starts again at the feet
@@ -90764,12 +90857,12 @@ const ThreeRenderer = (function () {
             if (b.land != null) {   // the Earth: green land patches on the blue, white cloud over both
                 var nL = b.r > 150 ? 19 : 7;
                 for (var k = 0; k < nL; k++) { var a = k * 2.1, e = b.r > 150 ? (rnd() * 2.4 - 1.2) : 0.6 + (k % 3) * 0.25, rr = b.r * (b.r > 150 ? 0.1 + rnd() * 0.2 : 0.24 + (k % 2) * 0.12);
-                    var lm = new THREE.Mesh(new THREE.SphereGeometry(rr * U, 20, 12), new THREE.MeshBasicMaterial({ color: b.land })); lm.scale.y = b.r > 150 ? 0.1 : 0.18; lm.scale.x = 0.7 + rnd() * 0.6;
+                    var lm = new THREE.Mesh(new THREE.SphereGeometry(rr * U, 20, 12), new THREE.MeshBasicMaterial({ color: b.land, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -48 })); lm.scale.y = b.r > 150 ? 0.1 : 0.18; lm.scale.x = 0.7 + rnd() * 0.6;
                     var dir = new THREE.Vector3(Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e)).normalize();
                     var lit = 0.25 + 0.75 * Math.max(0, dir.dot(LD)); lm.material.color.multiplyScalar(lit);
                     lm.position.copy(dir.clone().multiplyScalar(b.r * (b.r > 150 ? 0.992 : 0.97) * U)); lm.lookAt(dir.clone().multiplyScalar(b.r * 2 * U)); lm.rotateX(Math.PI / 2); m.add(lm); }
                 if (b.r > 150) for (var kc = 0; kc < 26; kc++) { var ac = rnd() * 6.283, ec = rnd() * 2.6 - 1.3, rc = b.r * (0.06 + rnd() * 0.12);
-                    var cm = new THREE.Mesh(new THREE.SphereGeometry(rc * U, 14, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false })); cm.scale.y = 0.05; cm.scale.x = 1.6 + rnd() * 2.2;
+                    var cm = new THREE.Mesh(new THREE.SphereGeometry(rc * U, 14, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -96 })); cm.scale.y = 0.05; cm.scale.x = 1.6 + rnd() * 2.2;
                     var dc = new THREE.Vector3(Math.cos(ac) * Math.cos(ec), Math.sin(ec), Math.sin(ac) * Math.cos(ec)).normalize();
                     cm.material.color.multiplyScalar(0.3 + 0.7 * Math.max(0, dc.dot(LD)));
                     cm.position.copy(dc.clone().multiplyScalar(b.r * 1.004 * U)); cm.lookAt(dc.clone().multiplyScalar(b.r * 2 * U)); cm.rotateX(Math.PI / 2); m.add(cm); }
@@ -90881,6 +90974,72 @@ const ThreeRenderer = (function () {
             if (nt) { var ns = new THREE.Sprite(new THREE.SpriteMaterial({ map: nt, transparent: true, depthWrite: false })); ns.position.set(at.x, at.y + (p.R * 1.2 + (p.top || 0) + 20) * U, at.z); ns.renderOrder = 6; SG.add(ns); rec.name = ns; }
             worlds.push(rec);
         });
+        /* ══ THE SKY FIX (2026-11-20, mondo: "The sky is all over the place and also broken"). Seen before the fix, from the ship and from
+           three worlds: a green band of haze round a flat horizon that no ball has; the room's sky ring (rocks, an eye, saucers, wire
+           rings, door frames) blown up 56 times and drifting AMONG the worlds, bigger than they are; the dome's stars standing still while
+           the worlds turned about the walker, and jumping when he crossed a seam. Now the room's own dome and sky ring are not drawn here
+           (_hqSpaceBodiesTick), and space has ONE sky that turns as one piece with the worlds:
+           THE STARS (points of light all round the eye, a denser band of them, a few faint clouds), in a group that takes the anchor's
+           turn; THE ROCKS (one field of asteroids on the way to Saturn, real size, the hull stops on them); THE DUST aboard (streaks
+           that run past the hull so the speed can be seen in empty space). */
+        var ST = new THREE.Group(); ST.name = 'ew_space_stars'; ST.matrixAutoUpdate = false; G.add(ST);
+        (function () {
+            var D = 900 * U, N = 2600, geo = new THREE.OctahedronGeometry(1, 0); geo._ew_wuvOwner = true;
+            var mat = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false, fog: false });
+            var im = new THREE.InstancedMesh(geo, mat, N), m4 = new THREE.Matrix4(), col = new THREE.Color(), q = new THREE.Quaternion(), v3 = new THREE.Vector3(), sc3 = new THREE.Vector3();
+            var bandN = new THREE.Vector3(0.35, 0.82, -0.45).normalize(), TINT = [0xffffff, 0xcfe0ff, 0xfff1d0, 0xffd2a8, 0xbcd0ff];
+            for (var i = 0; i < N; i++) {
+                var zc = rnd() * 2 - 1, th = rnd() * 6.283185, rr = Math.sqrt(1 - zc * zc); v3.set(rr * Math.cos(th), zc, rr * Math.sin(th));
+                var inBand = i % 5 < 2;
+                if (inBand) { var off = v3.dot(bandN); v3.addScaledVector(bandN, -off * (0.72 + 0.2 * rnd())).normalize(); }
+                var mag = Math.pow(rnd(), inBand ? 5 : 3.2), ang = 0.0008 + 0.0019 * mag, br = 0.45 + 0.55 * Math.pow(rnd(), 1.5) + 0.3 * mag;
+                sc3.set(D * ang, D * ang, D * ang); v3.multiplyScalar(D); m4.compose(v3, q, sc3); im.setMatrixAt(i, m4);
+                col.setHex(TINT[(rnd() * TINT.length) | 0]).multiplyScalar(Math.min(1, br)); im.setColorAt(i, col);
+            }
+            im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
+            im.frustumCulled = false; im.renderOrder = -50; ST.add(im);
+            var ct = glowTex(0.02, true);
+            if (ct) [[0x23357a, 0.34, 0.0], [0x4a2a72, 0.3, 1.9], [0x1d4c5c, 0.26, 3.6], [0x2a2f78, 0.3, 5.0]].forEach(function (c4) {
+                var a = c4[2], d = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)); d.addScaledVector(bandN, -d.dot(bandN)).normalize();
+                var cs = glow(ct, c4[0], 900 * c4[1] * 2.4, 0.2); cs.material.depthTest = false; cs.material.fog = false; cs.position.copy(d.multiplyScalar(D)); cs.renderOrder = -49; cs.scale.set(D * c4[1] * 2.4, D * c4[1] * 1.3, 1); ST.add(cs); });
+        })();
+        /* THE ROCKS: one field between the inner worlds and Saturn (`sp.rocks`, or this default). Three shapes, their daylight baked like the
+           balls' (so no rock is turned: its lit side faces the Sun), each a real ball for the hull (H._spaceRocks, _hqShipHullFree). */
+        var rocks = [];
+        (function () {
+            var F = sp.rocks || { c: [-4900, 2650, 400], r: [750, 260, 1900], n: 540 }, per = Math.ceil(F.n / 3);
+            for (var gI = 0; gI < 3; gI++) {
+                var g = new THREE.IcosahedronGeometry(1, 2), pa = g.attributes.position, ph = [rnd() * 6, rnd() * 6, rnd() * 6];
+                for (var q = 0; q < pa.count; q++) { var x = pa.getX(q), y = pa.getY(q), z = pa.getZ(q), k = 1 + 0.2 * Math.sin(x * 3.1 + ph[0]) * Math.cos(y * 2.7 + ph[1]) + 0.13 * Math.sin(z * 5.3 + ph[2] + x * 2) + 0.08 * Math.cos(y * 7.9 + z * 3 + ph[0]); pa.setXYZ(q, x * k, y * k * 0.82, z * k); }
+                g = g.toNonIndexed(); g._ew_wuvOwner = true; shade(g, 0.1);
+                var ca = g.attributes.color, tone = [[0.52, 0.5, 0.47], [0.44, 0.4, 0.36], [0.58, 0.55, 0.52]][gI];
+                for (var q2 = 0; q2 < ca.count; q2++) ca.setXYZ(q2, ca.getX(q2) * tone[0], ca.getY(q2) * tone[1], ca.getZ(q2) * tone[2]);
+                var im = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true, fog: false }), per), m4 = new THREE.Matrix4(), qI = new THREE.Quaternion(), p3 = new THREE.Vector3(), s3 = new THREE.Vector3();
+                for (var i = 0; i < per; i++) {
+                    var a = rnd() * 6.283185, e = Math.acos(rnd() * 2 - 1), rad = Math.pow(rnd(), 0.5);
+                    var rx = F.c[0] + Math.sin(e) * Math.cos(a) * rad * F.r[0], ry = F.c[1] + Math.cos(e) * rad * F.r[1], rz = F.c[2] + Math.sin(e) * Math.sin(a) * rad * F.r[2];
+                    var sz = 5 + 60 * Math.pow(rnd(), 3.4);
+                    p3.set(rx * U, ry * U, rz * U); s3.set(sz * U * (0.8 + 0.4 * rnd()), sz * U * (0.75 + 0.3 * rnd()), sz * U * (0.8 + 0.4 * rnd())); m4.compose(p3, qI, s3); im.setMatrixAt(i, m4);
+                    rocks.push([rx, ry, rz, sz * 1.05]);
+                }
+                im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; SG.add(im);
+            }
+        })();
+        /* THE DUST: 260 streaks in a cube round the hull, drawn aboard only (placed every frame, _hqSpaceBodiesTick) */
+        var dustN = 260, dustBase = new Float32Array(dustN * 3), dustGeo = new THREE.BufferGeometry();
+        for (var dq = 0; dq < dustN * 3; dq++) dustBase[dq] = rnd();
+        dustGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(dustN * 6), 3));
+        var dust = new THREE.LineSegments(dustGeo, new THREE.LineBasicMaterial({ color: 0xcfe2ff, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+        dust.frustumCulled = false; dust.visible = false; dust.renderOrder = 5; G.add(dust);
+        /* THE CORE (the walking fix): a plain ball just under each world's lowest ground, in the ground's own tone and pushed back in the
+           depth buffer, so a hair of a gap along a seam shows ground colour and never the black of space (sized in the tick, once the
+           room's heights are there) */
+        var CORE = { moon: 0x77777c, mars: 0x8e5230, saturn: 0xa08652, singularity: 0x08080c };
+        worlds.forEach(function (w) {
+            var cm = new THREE.Mesh(new THREE.SphereGeometry(U, 96, 64), new THREE.MeshBasicMaterial({ color: CORE[w.p.id] != null ? CORE[w.p.id] : 0x666666, fog: false, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 240 }));
+            cm.geometry._ew_wuvOwner = true; cm.position.copy(w.at); cm.visible = false; SG.add(cm); w.core = cm;
+            if (w.veil) { w.veil.material.polygonOffset = true; w.veil.material.polygonOffsetFactor = -2; w.veil.material.polygonOffsetUnits = -96; }   // (the far worlds: the veil clear of the ground by the depth buffer's own steps)
+        });
         /* THE ROUND WORLDS: the balls, rings, flanks and the Sun are drawn where they hang (a ring's far edge can reach over a net's flat place) */
         if (sp.round && sp.round.length) G.children.slice(n0).forEach(_ewPlKeepFlat);
         /* the beacons */
@@ -90893,10 +91052,10 @@ const ThreeRenderer = (function () {
             var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35 * U, 0.35 * U, 14 * U, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd36a, transparent: true, opacity: 0.35, depthWrite: false }));
             beam.position.y = -7 * U; gr.add(beam);
             var tt = null; try { tt = _hzTextTex('beacon|' + b.label, [b.label], { w: 1024, h: 128, color: '#ffd36a', bg: 'rgba(8,6,2,0.72)', border: '#ffd36a' }); } catch (e) { tt = null; }
-            if (tt) { var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tt, transparent: true, depthWrite: false })); spr.scale.set(40 * U, 5 * U, 1); spr.position.y = 12 * U; gr.add(spr); marks.push({ b: b, spr: spr }); }
+            if (tt) { var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tt, transparent: true, depthWrite: false })); spr.scale.set(22 * U, 2.75 * U, 1); spr.position.y = 11 * U; gr.add(spr); marks.push({ b: b, spr: spr }); }   // (2026-11-20: 22 m, was 40: from the pad it filled the screen)
             G.add(gr); rings.push(ring);
         });
-        if (H) { H._spaceRings = rings; H._spaceBodies = SG; H._spaceWorlds = worlds; H._spaceMarks = marks; }
+        if (H) { H._spaceRings = rings; H._spaceBodies = SG; H._spaceWorlds = worlds; H._spaceMarks = marks; H._spaceStars = ST; H._spaceRocks = rocks; H._spaceDust = { mesh: dust, base: dustBase, n: dustN }; }
     }
     /* THE BODIES FOLLOW THE ANCHOR (2026-11-17): on a round world the bent ground is drawn turned about the walker's feet
        (out = P + M (bend(p) - A)); the bodies' group takes the same turn, so every ball keeps its ring, its night side and its place
@@ -90912,26 +91071,57 @@ const ThreeRenderer = (function () {
                   M[2][0], M[2][1], M[2][2], (P[2] - (M[2][0] * A[0] + M[2][1] * A[1] + M[2][2] * A[2])) * U, 0, 0, 0, 1); }
         else m.identity();
         SG.updateMatrixWorld(true);
-        /* a beacon's name shows near it only (40 m of black plate each: from far off they barred a small world like the Moon) */
-        var BM = H._spaceMarks || [], Vs = H.vehicle, pl = H.player, eye = (Vs && Vs.on && Vs.kind === 'ship') ? [Vs.x, Vs.y, Vs.z] : an ? an.A : pl ? [pl.x, pl.y, pl.z] : null;
-        if (eye) for (var bi = 0; bi < BM.length; bi++) { var bb = BM[bi].b, bp = bb.ball || [bb.x, bb.ground || 0, bb.z], bd = Math.hypot(eye[0] - bp[0], eye[1] - bp[1], eye[2] - bp[2]), bo = Math.max(0, Math.min(1, (430 - bd) / 110));
+        var BM = H._spaceMarks || [], Vs = H.vehicle, pl = H.player, flying = !!(Vs && Vs.on && Vs.kind === 'ship'), eye = flying ? [Vs.x, Vs.y, Vs.z] : an ? an.A : pl ? [pl.x, pl.y, pl.z] : null;
+        var cam = H.camera;
+        /* THE SKY FIX (2026-11-20): this room has its own sky. The shared dome (a haze band round a flat horizon) and the sky ring (its
+           bodies blown up among the worlds) are not drawn; the stars ride with the eye and turn with the worlds. */
+        if (H.sky) { if (H.sky.dome && H.sky.dome.visible) H.sky.dome.visible = false; if (H.sky.group && H.sky.group.visible) H.sky.group.visible = false; if (H.sky.landmarks && H.sky.landmarks.visible) H.sky.landmarks.visible = false; }
+        if (H.scene && !(H.scene.background && H.scene.background._ewSpace)) { H.scene.background = new THREE.Color(0x000003); H.scene.background._ewSpace = true; }
+        var ST = H._spaceStars;
+        if (ST && cam) { var sm = ST.matrix, cp = cam.position;
+            if (an) { var Ms = an.M; sm.set(Ms[0][0], Ms[0][1], Ms[0][2], cp.x, Ms[1][0], Ms[1][1], Ms[1][2], cp.y, Ms[2][0], Ms[2][1], Ms[2][2], cp.z, 0, 0, 0, 1); }
+            else sm.set(1, 0, 0, cp.x, 0, 1, 0, cp.y, 0, 0, 1, cp.z, 0, 0, 0, 1);
+            ST.updateMatrixWorld(true); }
+        /* THE DUST aboard: each mote keeps its place in space and is wrapped into the cube round the hull; its tail runs back along the way flown */
+        var DU = H._spaceDust;
+        if (DU && DU.mesh) {
+            var sp0 = flying ? Math.hypot(Vs.v || 0, Vs.vy || 0) : 0, dop = flying ? Math.max(0, Math.min(0.6, (sp0 - 6) / 70)) : 0;
+            DU.mesh.visible = dop > 0.01;
+            if (DU.mesh.visible) { DU.mesh.material.opacity = dop;
+                var S2 = 260, cpt2 = Math.cos(Vs.climb || 0), dfx = Math.sin(Vs.yaw) * cpt2, dfy = Math.sin(Vs.climb || 0), dfz = Math.cos(Vs.yaw) * cpt2, len = Math.max(0.4, Math.min(70, sp0 * 0.04));
+                var pa = DU.mesh.geometry.attributes.position, arr = pa.array, bs = DU.base;
+                for (var di = 0; di < DU.n; di++) {
+                    var wx = bs[di * 3] * S2 - Vs.x, wy = bs[di * 3 + 1] * S2 - Vs.y, wz = bs[di * 3 + 2] * S2 - Vs.z;
+                    wx = wx - Math.floor(wx / S2) * S2 - S2 / 2 + Vs.x; wy = wy - Math.floor(wy / S2) * S2 - S2 / 2 + Vs.y; wz = wz - Math.floor(wz / S2) * S2 - S2 / 2 + Vs.z;
+                    var o = di * 6; arr[o] = wx * U; arr[o + 1] = wy * U; arr[o + 2] = wz * U; arr[o + 3] = (wx - dfx * len) * U; arr[o + 4] = (wy - dfy * len) * U; arr[o + 5] = (wz - dfz * len) * U;
+                }
+                pa.needsUpdate = true; }
+        }
+        /* a beacon's name shows aboard and near it only (on foot a plate hung over the pad; from far off they barred a small world) */
+        if (eye) for (var bi = 0; bi < BM.length; bi++) { var bb = BM[bi].b, bp = bb.ball || [bb.x, bb.ground || 0, bb.z], bd = Math.hypot(eye[0] - bp[0], eye[1] - bp[1], eye[2] - bp[2]), bo = flying ? Math.max(0, Math.min(1, (430 - bd) / 110)) * Math.max(0, Math.min(1, (bd - 24) / 20)) : 0;
             BM[bi].spr.material.opacity = bo; BM[bi].spr.visible = bo > 0.02; }
-        var W = H._spaceWorlds || [], cam = H.camera; if (!cam || !W.length) return;
+        var W = H._spaceWorlds || []; if (!cam || !W.length) return;
+        var zq = U / (Math.max(0.01, cam.near) * 16777216) * 6.5;   // (what the depth buffer can tell apart at d metres = d * d * zq, with room to spare)
         var tNow = performance.now() / 1000;
         var v = _hqSpaceV || (_hqSpaceV = new THREE.Vector3());
         for (var i = 0; i < W.length; i++) { var w = W[i], p = w.p;
             v.copy(w.at).applyMatrix4(SG.matrixWorld); var d = v.distanceTo(cam.position) / U, hgt = d - p.R - (p.top || 0), k = Math.max(0, Math.min(1, (hgt - 25) / Math.max(60, p.R * 0.9)));
             k = k * k * (3 - 2 * k);
-            if (w.veil) { var rr = p.R + Math.min(p.top || 0, p.R * 0.04) + 1.5 + Math.min(p.R * 0.1, d * d / 140000); w.veil.scale.set(rr, rr, rr); w.veil.material.opacity = w.lk.night * k; w.veil.visible = k > 0.01; }
+            if (w.veil) { var rr = p.R + Math.min(p.top || 0, p.R * 0.04) + 1.5 + Math.min(p.R * 0.1, d * d * zq); w.veil.scale.set(rr, rr, rr); w.veil.material.opacity = w.lk.night * k; w.veil.visible = k > 0.01; }
+            /* THE CORE: sized once from the lowest ground of the world's own net (one read of its heights, when the room's ground is there) */
+            if (w.core && !w.coreSet && H.terrain) { w.coreSet = true; var lo = 0, tiC = H.terrain, stp = Math.max(3.5, p.L / 40);
+                for (var cz = p.z0 + stp / 2; cz < p.z0 + 2 * p.L; cz += stp) for (var cx = p.x0 + stp / 2; cx < p.x0 + 3 * p.L; cx += stp) { var hC = hqTerrainHeight(tiC, cx, cz); if (hC < lo && hC > -40) lo = hC; }
+                var cr = p.R + lo - 1.2; w.core.scale.set(cr, cr, cr); w.core.visible = true; }
             if (w.air) w.air.material.opacity = w.lk.airOp * (0.3 + 0.7 * k);
-            if (w.limb) { var Rb = p.R + Math.min(p.top || 0, p.R * 0.03) + (w.lk.hole ? 0.5 : 1), off = Rb + 4 + Math.min(p.R * 0.12, d * d / 140000);
+            if (w.limb) { var Rb = p.R + Math.min(p.top || 0, p.R * 0.03) + (w.lk.hole ? 0.5 : 1), off = Rb + 4 + Math.min(p.R * 0.12, d * d * zq);
                 if (k > 0.01 && d > off + 2) { var inv = _hqSpaceI || (_hqSpaceI = new THREE.Matrix4()), q2 = _hqSpaceQ || (_hqSpaceQ = new THREE.Vector3());
                     q2.copy(cam.position).sub(v).normalize().multiplyScalar(off * U).add(v); inv.copy(SG.matrixWorld).invert(); q2.applyMatrix4(inv); w.limb.position.copy(q2);
                     var dia = 2 * (d - off) * Rb / Math.sqrt(Math.max(1, d * d - Rb * Rb)) * 1.012; w.limb.scale.set(dia * U, dia * U, 1); w.limb.material.opacity = (w.lk.hole ? 1 : w.lk.limb) * k; w.limb.visible = true; }
                 else w.limb.visible = false; }
             if (w.cubeBox) w.cubeBox.rotation.y = tNow * 0.05;
             if (w.disc) w.disc.rotation.z = tNow * 0.03;
-            if (w.name) { var wd = Math.max(46, Math.min(520, d * 0.15)); w.name.scale.set(wd * U, wd / 8 * U, 1); w.name.material.opacity = Math.max(0, Math.min(1, (hgt - p.R * 0.5) / (p.R * 0.6))); w.name.visible = w.name.material.opacity > 0.02; } }
+            /* the world's name: aboard only, a small plate (4.9 degrees wide; it was 8.6, wider than a far world), gone as you come in */
+            if (w.name) { var wd = d * 0.085, nmY = p.R * 1.12 + (p.top || 0) + wd * 0.2; w.name.position.set(w.at.x, w.at.y + nmY * U, w.at.z); w.name.scale.set(wd * U, wd / 8 * U, 1); w.name.material.opacity = flying ? Math.max(0, Math.min(1, (hgt - p.R * 1.5) / (p.R * 2))) : 0; w.name.visible = w.name.material.opacity > 0.02; } }
     }
     /* ══ THE ROUND WORLDS (2026-11-17, mondo's two-maps design doc, "Map A — Spherical planet": six N x N cube-face grids projected
        onto a ball, walked all the way round; his pick "round worlds first"). A round world is laid FLAT in the room like any other
@@ -91016,7 +91206,7 @@ const ThreeRenderer = (function () {
             u.A.value.set(0, 0, 0, 0); u.P.value.set(0, 0, 0, 0); u.M0.value.set(1, 0, 0, 0); u.M1.value.set(0, 1, 0, 0); u.M2.value.set(0, 0, 1, 0);
         }
         /* the flat bounds of a bent piece say nothing about where it is drawn: nothing in the room is left out by the frustum */
-        if (L && H && H.scene && (!H._plCullT || performance.now() - H._plCullT > 500)) { H._plCullT = performance.now(); if (H.sky) { if (H.sky.dome) _ewPlKeepFlat(H.sky.dome); if (H.sky.group) _ewPlKeepFlat(H.sky.group); if (H.sky.landmarks) _ewPlKeepFlat(H.sky.landmarks); }   /* the sky dome (it follows the eye) and the sky's pieces made after its build (16 of 160 on 11-17) stay flat: bent and turned with the ball they drew giant dark panels on the WebGL2 path */ H.scene.traverse(function (o) { if (o.frustumCulled) o.frustumCulled = false; if (o.isMesh && !o._ewPlSeen) { o._ewPlSeen = true; try { _ewPlSplitSeams(o, L, U); } catch (e) { console.warn('[HQ] the round worlds: a seam split failed', e); } } }); }
+        if (L && H && H.scene && (!H._plCullT || performance.now() - H._plCullT > 500)) { H._plCullT = performance.now(); if (H.sky) { if (H.sky.dome) _ewPlKeepFlat(H.sky.dome); if (H.sky.group) _ewPlKeepFlat(H.sky.group); if (H.sky.landmarks) _ewPlKeepFlat(H.sky.landmarks); }   /* the sky dome (it follows the eye) and the sky's pieces made after its build (16 of 160 on 11-17) stay flat: bent and turned with the ball they drew giant dark panels on the WebGL2 path */ /* (2026-11-20, RULE #1e) only what joined the scene since the last pass is read (THE FRONT DESK); the whole room once, when the desk says so */ var plFn = function (o) { if (o.frustumCulled) o.frustumCulled = false; if (o.isMesh && !o._ewPlSeen) { o._ewPlSeen = true; try { _ewPlSplitSeams(o, L, U); } catch (e) { console.warn('[HQ] the round worlds: a seam split failed', e); } } }, plD = _ewDeskTake(H._plDesk || (H._plDesk = _ewDeskQueue())); if (plD.over) H.scene.traverse(plFn); else for (var plI = 0; plI < plD.list.length; plI++) { var plO = plD.list[plI]; if (plO && plO.traverse) plO.traverse(plFn); } }
     }
     /* a piece drawn as it stands whatever net it hangs over (the sky's bodies): its materials skip the bend (set before their first draw) */
     function _ewPlKeepFlat(obj) {
@@ -91121,17 +91311,33 @@ const ThreeRenderer = (function () {
     }
     /* THE SEAM: the walker walked off his face — carried to the true neighbouring face, turned with it (the camera too) */
     function _hqPlanetSeam(H) {
-        var pl = H && H.player; if (!pl || !_ewPlRound() || (H.vehicle && H.vehicle.on)) { if (H) { H._plFace = null; H._plPlanet = null; } return; }
+        var pl = H && H.player; if (!pl || !_ewPlRound() || (H.vehicle && H.vehicle.on)) { if (H) { H._plFace = null; H._plPlanet = null; H._plLX = null; } return; }
         var p = _ewPlAt(pl.x, pl.z);
         if (!p) { H._plFace = null; H._plPlanet = null; return; }
         var kNow = _ewPlInRect(p, pl.x, pl.z) ? _ewPlFaceAt(p, pl.x, pl.z) : -1;
-        if (H._plPlanet !== p || H._plFace == null) { H._plPlanet = p; H._plFace = kNow < 0 ? _ewPlFaceAt(p, pl.x, pl.z) : kNow; return; }
+        /* (2026-11-20) A JUMP IS NOT A WALK: a door, the nav console, a landing or a probe's teleport puts the walker down on another face.
+           The seam read that as "he walked off his face" and carried him again, to a place he never asked for (measured: sent to
+           714, 92 on the Moon, he stood at 882, 118). More than 6 m in one frame is a jump: the face is read afresh where he stands. */
+        var jumped = H._plLX != null && Math.hypot(pl.x - H._plLX, pl.z - H._plLZ) > 6;
+        H._plLX = pl.x; H._plLZ = pl.z;
+        if (H._plPlanet !== p || H._plFace == null || jumped) { H._plPlanet = p; H._plFace = kNow < 0 ? _ewPlFaceAt(p, pl.x, pl.z) : kNow; return; }
         var k0 = H._plFace; if (kNow === k0) return;
         var B = _ewPlBendFace(p, k0, pl.x, 0, pl.z), T0 = _ewPlFlat(p, B[0], B[1], B[2]);
         if (kNow === T0.k && Math.hypot(T0.x - pl.x, T0.z - pl.z) < 0.6) { H._plFace = kNow; return; }   // a seam joined on the flat net: walk on
-        /* the turn: the flat +x at the old place, carried over */
-        var B1 = _ewPlBendFace(p, k0, pl.x + 1, 0, pl.z), T1 = _ewPlFlat(p, B1[0], B1[1], B1[2]);
-        var dlt = Math.atan2(T1.x - T0.x, T1.z - T0.z) - Math.PI / 2, cs = Math.cos(dlt), sn = Math.sin(dlt);
+        /* the turn: a short step ON OUT of the old face, carried over, against the same step on the flat. (2026-11-20, THE WALKING FIX:
+           the step was always +x. Off a face's WEST edge +x points back into the face, so its two ends landed on two different faces
+           and the "turn" was nonsense: 225 degrees where the true one is 0 (worked out for every edge of the Moon: wrong on all four
+           west edges). Measured on the Moon's west edge with W held: the walker was spun, walked back over the next seam and stood
+           where he began, the eye on the other side of him. An invisible wall, and the glitch at the seam.) */
+        var fc0 = p.x0 + (k0 % 3) * p.L, fr0 = p.z0 + ((k0 / 3) | 0) * p.L;
+        var ox = pl.x < fc0 ? -1 : (pl.x >= fc0 + p.L ? 1 : 0), oz = pl.z < fr0 ? -1 : (pl.z >= fr0 + p.L ? 1 : 0);
+        if (ox && oz) { if (Math.abs(pl.x - (ox < 0 ? fc0 : fc0 + p.L)) > Math.abs(pl.z - (oz < 0 ? fr0 : fr0 + p.L))) oz = 0; else ox = 0; }
+        if (!ox && !oz) ox = 1;
+        var T1 = null, stepM = 0.6;
+        for (var tq = 0; tq < 4 && !(T1 && T1.k === T0.k); tq++) { var B1 = _ewPlBendFace(p, k0, pl.x + ox * stepM, 0, pl.z + oz * stepM); T1 = _ewPlFlat(p, B1[0], B1[1], B1[2]); stepM *= 0.4; }
+        var dlt = (T1 && T1.k === T0.k) ? Math.atan2(T1.x - T0.x, T1.z - T0.z) - Math.atan2(ox, oz) : 0, cs = Math.cos(dlt), sn = Math.sin(dlt);
+        /* he lands a hand's width on into the new face (an arrival within a hair of its edge was carried straight back) */
+        T0.x += (ox * cs + oz * sn) * 0.12; T0.z += (-ox * sn + oz * cs) * 0.12;
         var mv = function (x, z) { var dx = x - pl.x, dz = z - pl.z; return [T0.x + dx * cs + dz * sn, T0.z - dx * sn + dz * cs]; };
         var c = H.cam;
         if (c && c.init) { var e = mv(c.ex, c.ez), lk = mv(c.lx, c.lz); c.ex = e[0]; c.ez = e[1]; c.lx = lk[0]; c.lz = lk[1]; }
@@ -91141,7 +91347,7 @@ const ThreeRenderer = (function () {
         pl.x = T0.x; pl.z = T0.z;
         var fy = _hqSurface(pl.x, pl.z, null, true); if (fy != null && isFinite(fy)) { pl.y = fy; pl.visY = fy; }
         var U = _hqUnits(); if (pl.entry && pl.entry.group) pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
-        H._plFace = T0.k; H.dirty = true;
+        H._plFace = T0.k; H._plLX = pl.x; H._plLZ = pl.z; H.dirty = true;
     }
     function _hqTickSpace(dt) {
         var H = _hq; if (!H || !H._spaceRings) return;
@@ -92719,6 +92925,7 @@ const ThreeRenderer = (function () {
         var H = _hq, pl = H.player, cam = H.camera, U = _hqUnits();
         if (!pl) return;
         var c = H.cam;
+        if (H.vehicle && H.vehicle.on && H.vehicle.kind === 'ship' && !H.arrive && !H.focus) { _hqShipCam(H, H.vehicle, dt, U); return; }   // THE EYE ABOARD (2026-11-20)
         var headY = pl.visY + pl.heightM * (pl.sit ? 0.62 : 0.86);   // seated, the head is lower (THE PROP PASS 5.2)
         var lookDir = new THREE.Vector3(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), -Math.cos(c.yaw) * Math.cos(c.pitch));
         /* THE DOOR GUN rev 5: no sights any more — the lens stays at 52 (rev 4 narrowed it on the right button) */
@@ -101683,7 +101890,11 @@ const ThreeRenderer = (function () {
         if (_ewAirOff()) return _hqFogHoldRoom(H);
         var bAmt = _bfogWalkTick(H);   // (the old board fog easing out: 0 under THE ONE AIR)
         var f = H.scene.fog, CK = H.clock;
-        var s = _ewAirHold(f, _hqUnits(), { wet: !!(f && H.seaFx && f === H.seaFx.wetFog), sun: CK && CK.sunCur, dusk: CK ? CK.duskCur : 0 });
+        /* NO AIR IN SPACE (2026-11-20, the Outer Space fix): a room whose sky says `vacuum` has no air at all, at any setting. Not a fog amount
+           of its own (the rule stands: no room brings one): like "no mist here", it is what the place IS. Under the one air's clear-day
+           haze (half gone at 420 m) a world 5 km off cannot be seen, and every ball within reach stood in a green murk. */
+        var vac = !!(H.room && H.room.shell && H.room.shell.sky && H.room.shell.sky.vacuum);
+        var s = _ewAirHold(f, _hqUnits(), { wet: !!(f && H.seaFx && f === H.seaFx.wetFog), sun: CK && CK.sunCur, dusk: CK ? CK.duskCur : 0, keep: vac ? 0 : undefined });
         if (bAmt > 0 && f) _bfogDome(bAmt, f.color);
         return s;
     }
@@ -102634,7 +102845,7 @@ const ThreeRenderer = (function () {
         /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): B in code — on / off / toggle, the state, THE PARK RULE's registers */
         /* THE DEEP (2026-09-18): the swimmer and the helm */
         board: function (id) { return _hqBoard(id); },
-        disembark: function () { return _hqDisembark(); },
+        disembark: function () { var Vd = _hq && _hq.vehicle; return (Vd && Vd.on && Vd.kind === 'ship' && _ewPlRound()) ? _hqShipSetDown() : _hqDisembark(); },   // (2026-11-20: the flown ship among round worlds sets down or stays aboard, as E does)
         vehicle: function () { var V = _hq && _hq.vehicle; if (!V || !V.on) return null; return { kind: V.kind, id: V.rec.id, x: V.x, y: V.y, z: V.z, yaw: V.yaw, v: V.v, vy: V.vy }; },
         vehicles: function () { return _hq ? (_hq.boats || []).map(function (b) { return { id: b.id, kind: b.kind, key: b.key, x: b.x, y: b.y, z: b.z }; }) : []; },
         swimming: function () { var pl = _hq && _hq.player; return !!(pl && pl.swim); },

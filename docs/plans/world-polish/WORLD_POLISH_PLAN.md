@@ -56,7 +56,7 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 2 | **Disaster City** (the cramped city) | Disaster City, one room | **Not started.** It is the standard for height. His complaint here is another one: too many buildings, stairs into walls. |
 | 3 | **Came A Lot Kingdom, its three woods** | The Snowy Pines, The Forest, The Fairy Forest | **Built 11-20, differs from the standard:** set-piece height (a ridge, a gully, a bluff, hollows) on level ground, wide ways in straight legs. Not on the next list (mondo 11-20: "id rather you not go over what you already did, start somewhere else"). |
 | 4 | **Came A Lot Kingdom, The Village** | the Village, inside the kingdom's main room | **Built 11-20** (three stairs up to the town wall's walk, the churchyard). The town's ground is level. Not on the next list. |
-| 5 | **The Mountains** | The North Pole, The Ski Lodge + The Snowy Pass, Mount Olympus. Mount Shasta's plots are renamed and swallowed by the other districts (mondo 11-20). | **STEP 1 BUILT 11-20 (his "okay" on the plan): the ground and the ride.** ONE room, 84 plots, 112 m from the Lodge Yard to Olympus's temples; every run cut as a groomed lane; the board rides Top Station to Lodge in 32 s (proven). **BASE PASS 11-20:** every run has its board, poles and tree lines; THE LODGE CHAIR carries you (two chairs that shuttle, base to Mid Station), shown to mondo before the other four. NOT built: the other four lifts, the base village, the station buildings, ledges on the walking ways, the North Pole. Rooms changed: `site_prebuilt_shasta_ow_lodge` (the mountain), `…_ow_shasta` (The Long Descent); `…_ow_olympus` retired. |
+| 5 | **The Mountains** | The North Pole, The Ski Lodge + The Snowy Pass, Mount Olympus. Mount Shasta's plots are renamed and swallowed by the other districts (mondo 11-20). | **STEP 1 BUILT 11-20 (his "okay" on the plan): the ground and the ride.** ONE room, 84 plots, 112 m from the Lodge Yard to Olympus's temples; every run cut as a groomed lane; the board rides Top Station to Lodge in 32 s (proven). **BASE PASS 11-20:** every run has its board, poles and tree lines; FIVE LIFTS carry you (two chairs that shuttle on each); the floating poles are fixed. NOT built: the base village, the station buildings, ledges on the walking ways, the North Pole. Rooms changed: `site_prebuilt_shasta_ow_lodge` (the mountain), `…_ow_shasta` (The Long Descent); `…_ow_olympus` retired. |
 | 6 | **The Woods** | The Clearing + Dead Man's Cave, The Redwood Trail, The Ritual Ground | **PILOT BUILT 11-20, waits mondo's look.** Plan 3 (`thread6/plan3.js`, the whole room square by square) has his OK ("Yes the map layout looks much better ... Go ahead and build with what you have"). Built: the Clearing's half of its room (15 plots, 6 new), trails on the squares, ramps, ledges with rock faces, the new plots dressed from pack pieces. NOT built yet: Dead Man's Cave's half of plan 3 (a temporary ramp joins the two), the Redwood Trail, the Ritual Ground (each gets its own plan). A HORROR wood: Silent Hill, Blair Witch (mondo 11-20). |
 | 21 | **Katana Island** (today: The Volcano Island) | The Volcano Island, one room, remade as feudal Japan; **Katana Bay** is one of its districts | **BUILT 11-20, pass 1, and in the world:** six districts on 29 plots (`bake-katana.js`, `docs/areas/katana/`), room `site_prebuilt_bermuda_katana`; the Volcano Island STAYS as a second island of the empire (mondo 11-20), Katana Island stands just south of it; the skiff lands at Katana Bay. Open: insides, relief inside plots, the models mondo makes (roofs, torii, bamboo). THE CHECK is answered in areas-complexes.md "KATANA ISLAND, THE SWAP". |
 | 7 | **The underground walks** | the Cavern's three tunnels, Agartha's tunnel, the Sewers' walks under the city | Not started |
@@ -70,7 +70,7 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 15 | **The Astral Realm** | The Astral Realm, one room | Not started |
 | 16 | **The Deep** | Atlantis + The Trench, The Sea Floor | Not started |
 | 17 | **The Estate** | The Estate (Corn Fields, Lake, Ranch), The Haunted House | Not started |
-| 18 | **Outer Space** | Outer Space, one room | Not started |
+| 18 | **Outer Space** | Outer Space, one room | THE FIX done 11-20 (flight, distances, seams, sky); the dressing not started |
 | 20 | **The Bayside Mall** (in Disaster City, Bayside district) | the mall building on the city's Bayside + its inside room | **Not started. Waits for the One Beach thread** (mondo 11-20: "Id probably wait for the beach thread to be finished since it is supposed to be a bayside mall"). |
 | 19 | **The Beach** | The Beach, Pirates' Cove, The Frozen Sea, The Bermuda Triangle (NOT the Volcano Island: thread 21) | **Another thread has it** ("One Beach": Disaster City's Bayside beach and the Beach zone made one). No thread of this plan starts here until that one reports. |
 | none | The highways and the routes | every `site_ow_*` room | **Not in this plan.** Its own thread (mondo 11-20). |
@@ -456,7 +456,11 @@ they are measurements, not the job.
 - **To reach the standard:** it has the land. 20 of 31 plots are bare, so there is nothing to steer by: ruins, kelp, wrecks, landmarks;
   ledges down the Trench wall a board fits on; ways that wind between the rings with side ways into ruins.
 
-### Thread 18: OUTER SPACE (not started)
+### Thread 18: OUTER SPACE (THE FIX DONE 11-20, the dressing not started)
+- **THE FIX (11-20, mondo's order came first: "FIX WHAT IS BROKEN before any dressing"):** the flight (the ship flies where the camera looks,
+  the eye fixed to the hull), the worlds 3 to 12 km apart with a speed rule, rocks and dust on the way, the seams (the turn, the jump, the
+  core), one sky that turns with the worlds, no air in space. Notes: areas-complexes.md "OUTER SPACE, THE FIX". The lines below are the
+  dressing, still to do.
 - **Rooms:** `site_prebuilt_moon_plots` (95 real plots; one room you fly through). **Tool:** `bake-space.js`, `docs/areas/space/districts/`.
 - **It is NOT:** the Spaceship (handmade).
 - **The base today:** strong on the Crater, the Canyon and the Drop; the Mare and Cydonia are flat.
@@ -472,7 +476,7 @@ they are measurements, not the job.
   with pictures, shown to mondo in chat. STEP 2: fix the collisions. STEP 3: thin or spread the worst plots, and grow the districts that
   need it (42 free plots stand beside the city; growing moves the roads and seams round it, so that plan is shown first).
 
-### Thread 20: THE BAYSIDE MALL (PLAN WRITTEN 11-20, waiting for mondo: `docs/plans/mall/MALL_PLAN.md`; not built)
+### Thread 20: THE BAYSIDE MALL (FIRST PASS BUILT 11-20: one building, 70 x 38.5 m, two floors, its own room; notes areas-complexes.md "THE BAYSIDE MALL"; doors' look, the view out and the dressing are next)
 - **The plan in one line (11-20):** one building on its own plot, 35 x 38.5 m, two floors, the same box outside and inside, doors to the plaza, the sea, the canal and the staff yard, a sea terrace over a colonnade. The lines below are the brief it was written from; where they differ (the footprint grows on its own plot, not over more plots), the plan is newer.
 - **Where:** Disaster City, the Bayside district, by the beach. Its own thread. NOT part of thread 2, and not a world zone.
 - **What is there today (checked 11-20):**

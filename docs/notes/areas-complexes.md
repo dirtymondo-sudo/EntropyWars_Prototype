@@ -12406,6 +12406,64 @@ another pass because they do not look good from afar."
 - **Seen on screen:** the berth on the Moon, the Cube from space and from the Hexagon, the hole, all four from 2.4 km with no panel and
   no pilot. **Not checked:** the frame rate on a real machine; the Cube has no part in a fight yet (it is a sight).
 
+## OUTER SPACE, THE FIX — the flight, the distances, the seams, the sky (2026-11-20, owner, WORLD POLISH thread 18)
+mondo 11-20, after flying and walking it: "Flying the ship is all messed up. Im pressing w to move forward and its like going sideways and
+the ship is on the edge of the screen ... The planets are too close together, totally unrealistic ... actually walking on the planets, I can
+see the seam in the ground and its all glitchy when I walk past and there's invisible walls ... The sky is all over the place and also broken."
+Every complaint was DRIVEN before it was fixed (playtest_city.js `"drive"`, real key presses and mouse moves, the numbers below).
+- **1. THE FLIGHT. Measured:** the hull kept its own heading and the mouse turned only the eye. After 300 px of mouse the eye looked 46
+  degrees off the way W flew. The eye chased the hull with the walk's lag, so the hull slid off the middle with speed (0.23 of the half
+  screen at 84 m/s). **Now THE SHIP FLIES WHERE THE CAMERA LOOKS** (three-renderer.js `_hqTickShip`): the mouse (or the touch look) aims
+  the eye, A / D turn the eye, the hull swings onto the eye's heading and climb (`follow`); W is forward along that line, up and down
+  with it; SPACE / C still lift and sink. Boarding puts the eye dead behind the hull, level, the nose out toward open space. THE EYE
+  (`_hqShipCam`) is fixed to the hull, `camDist` back and `camUp` over the line of sight: the ship stands on the screen's middle line, a third of the way
+  down from the middle (measured: x 0.00 at every speed from 0 to 977 m/s, after a mouse turn, a climb and a D turn; y -0.35 at rest,
+  -0.23 at 977 m/s as the lens opens). No boom march aboard; a ball pushes the eye out.
+  THE SPEED: `v` 60 m/s near a world; in the open W runs up to `cruise` 650 and SHIFT to `warp` 1300, both capped by `nearK` x the metres
+  to the nearest world's ground, so a ship coming in slows by itself. The lens opens with the speed. HQ_SEA_DEFAULT.ship holds the numbers.
+  The ship's branch now runs BEFORE the boats' own speed rule in `_hqTickVehicle` (it pulled the speed to `v` every frame).
+  There is no gamepad code in the walk: the touch stick mirrors W / A / S / D / SHIFT into the same keys and the look drag into the same eye.
+- **E ABOARD** (`_hqShipSetDown`): the ship flies in real space and the walk's ground lies flat elsewhere, so the old step-off read the
+  hull's x, z as a place on the flat ground and put the walker on whatever net lay under those numbers (measured: a board toggle in flight
+  dropped him at 742, 126). Now within `setDown` 45 m of a ball's ground the ship sets down on the square under it and you step off
+  beside it (LANDED + the world's name); anywhere else E does nothing. A beacon still lands you on its pad.
+- **2. FAR APART. Measured:** the Earth's ground 334 m from the Moon's (51 degrees wide in its sky), Mars 750 m off (13 degrees), Saturn 15.
+  **Now** (bake-space.js `SYS.box`, `ROUNDC`, the Earth, the Sun): the box of space is 17 x 22 km and 7 km high and stands wholly over the
+  room's flat nets (`y0` 150; the old box held them: a slab of sky the ship could not enter, nothing drawn there). Middles: the Moon
+  (0, 1500, 0), the Earth (2500, 1000, -1100), Mars (-3200, 2300, -3600), Saturn (-8200, 3400, 2600), the Singularity (-4200, 700, 11500),
+  the Sun (26000, 11500, 16000) r 1100. From the Moon: the Earth 2.8 km (12 degrees wide), Mars 4.9 km (2.5), Saturn 8.8 km (rings 6.4),
+  the Singularity 12.3 km. Trips by the speed rule: Moon to Mars 12 s on SHIFT (20 s on W), to Saturn 15 s (25), to the Singularity 17 s (31).
+  The box's edge is soft (the way out fades over `edge` 500 m: no wall). ON THE WAY: THE ROCKS, one field of 540 asteroids between the
+  inner worlds and Saturn (`_hqBuildSpace`, `space.rocks` or its default; real size, the hull stops on them, `H._spaceRocks`); THE DUST,
+  streaks past the hull that grow with the speed. The depth buffer: aboard the near plane is 1.5 m; the night veil and the Earth's land
+  and cloud carry a polygon offset, so a far ball does not flicker.
+- **NO AIR IN SPACE** (`shell.sky.vacuum: true`, read by `_hqFogHold`): under THE ONE AIR (11-20, one fog for the whole game) the clear
+  day's haze takes half of a thing 420 m off, so every ball within reach was a green murk and a world 5 km off could not exist. A vacuum
+  room has no air at any setting. This is not a fog amount of its own (the rule stands); like `heightFog: false` it says what the place
+  is. DECIDED FOR MONDO, said to him in chat. `shell.heightFog: false` too (the floor mist read the flat ground's height).
+- **3. THE SEAMS. Measured + worked out** (a small sim of every edge of every face): (a) THE TURN at a seam was found with a step of +x.
+  Off a face's WEST edge +x points back into the face, the step's two ends landed on two faces, and the turn was nonsense (225 degrees
+  where the true one is 0; wrong on all four west edges). With W held at the Moon's west edge the walker was spun, walked back over the
+  next seam and stood where he began with the eye on his other side: the invisible wall and the glitch. Now the step goes on OUT of the
+  old face (`_hqPlanetSeam`); every turn is a clean 0 / 90 / 180. Driven after: west edge, a cut seam west, a cut seam north, all carry
+  straight on at the same speed, the eye behind. (b) He lands 12 cm on into the new face (a hair from its edge he was carried back).
+  (c) A JUMP IS NOT A WALK: a teleport, a door or a landing onto another face was read as a walk off the face and carried again (sent
+  to 714, 92 he stood at 882, 118); more than 6 m in a frame reads the face afresh. (d) THE CORE: a plain ball just under each world's
+  lowest ground in the ground's tone, pushed back in depth, so a hair of a gap along a seam shows ground colour, never black space.
+  (e) RULE #1e: `_ewPlTick` read the whole scene every 500 ms; it reads the front desk's arrivals now.
+- **4. THE SKY. Seen:** a green haze band round a flat horizon no ball has (the dome's band + the one air); the room's sky ring (rocks, an
+  eye, saucers, wire rings, door frames) scaled 56 times and drifting among the worlds, bigger than they are; the dome's stars standing
+  still while the worlds turned about the walker and jumping at a seam; a 40 m name plate over every pad; a world's name 8.6 degrees wide.
+  **Now** the shared dome, sky group and landmarks are not drawn in this room (`_hqSpaceBodiesTick`), the background is black, and space has
+  one sky that turns as one piece with the worlds: THE STARS (2,600 points round the eye, a denser band, four faint clouds; group
+  `ew_space_stars` takes the anchor's turn). Beacon plates are 22 m and show aboard only; world names 4.9 degrees wide, aboard only.
+- **Probe:** `"drive": { "sample": "<js>", "every": ms, "steps": [{ "down": [...], "up": [...], "mouse": [dx, dy], "ms", "eval", "shot" }] }`
+  on a playtest_city.js view = real keys and mouse over time, the sample printed as DRIVE lines. A view's eval must not call
+  `hq.board()` when already aboard (the Bridge's stick boards you at the launch spot; a second call is E).
+- **NOT DONE / NOT CHECKED:** the frame rate on a real machine; mondo's own browser; the ground's shade still changes at a district's paint
+  line and the sheet's grain turns at a cut seam; the key light on a ball does not follow the real Sun (the night side is the veil
+  only); NPCs over a seam; the classic (WebGL2 fallback) renderer; the dressing of thread 18 (crater rims, rilles, landmarks).
+
 ## ONE WORLD, THE NORTH ROUTES — R1 R2 R3 R4 R5 R12 built and stitched (2026-11-17, BUILD_PLAN phase 4 row 4.1; the owner's north routes thread)
 Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/areas/routes/<ID>.json` (+ a hook `.js` where named). Places are
 `ow-places.js` picks; every new place name is an idea of Claude's (the page's own words kept where it gave them).
@@ -13055,6 +13113,21 @@ multiple islands."**
   own Dinosaur Park (his "there can still be dinosaurs") and its own volcano.
 - Everything else of "THE SWAP" holds: the room's id, the links' learnt rule, THE CHECK.
 
+## THE BAYSIDE MALL (2026-11-20, world polish thread 20; mondo: "the mall needs to be redone, since its outside looks nothing like its inside. It needs to be a real physical building inside disaster city" · "it is supposed to be a bayside mall" · on the plan: "Own room, 2 or 3 plots. 2 floors. Yes. Sure. GO ahead")
+
+- **ONE BUILDING, WRITTEN ONCE.** `docs/disaster-city/mall/box.js` is the mall's numbers: the body (city x 136.5..206.5, z 3.5..42 = 70 x 38.5 m, 20 x 11 squares), the halls, the blocks, the seven doors, the sea terrace, the roof (`roofParts()`: hip roofs, the 14 m glass vault over the three halls, the dome over the atrium). Two tools read it: `districts/B.js` `mallShell()` draws the OUTSIDE in the city room, `bake-mall.js` writes the INSIDE, the room `site_prebuilt_bayside_mall`. The room has the city's compass: a place inside = the city place minus (171.5, 22.75). Change a number in box.js, run both tools.
+- **WHAT IT TOOK:** the old mall's plot P10-10 and the east of the Cordon plaza (the plaza keeps a 10.5 m forecourt west of the main doors; the bandstand moved 15.75 m west onto it; the plaza's barriers, cones and sandbags were squeezed onto the forecourt, nothing dropped). Gone: the two back-lot fillers `dc:in104` and `dc:in105` (his "Yes"), the old 28 m look. Kept and untouched: the canal, the Juice dome, the coast road, the planks, the boardwalk, the pier, the sand, `COAST.bay`.
+- **THE OUTSIDE** (B.js, at the end of `last`, so no dice move): the plan's building row `dc:P10-10-B1` keeps its id and is grown to the box as a SOLID block (nobody walks into the shell); one drawn row `dc:P10-10-B1:arch`; the sea terrace = two solid plateaus at 5.25 m (`dc:mall:terrace`, `:land`, both in `HQ_CITY_RESIDENTS.walkOn`) + a stair ramp + rails + its drawn arcade. The doors: `mall` (the main doors, moved by `joins.mall`) and `mall_sea`, `mall_canal`, `mall_canalw`, `mall_staff`, `mall_terrace1`, `mall_terrace2` (pushed in `build`: the tool writes its doors BEFORE `last`).
+- **THE INSIDE** (`bake-mall.js`, the castle's stacking kit): the ground floor is the field; the shop blocks you do not walk into are solid plateaus 5.25 m high and their TOPS are the upper floor (galleries, the food court); the Arcade, the Department Store and the staff passage are walked on both floors (bridge slabs over them); bridges cross the halls (the west bridge, the store's, the middle bridge at the escalators' head, the ring of four round the atrium). One wide stair (west cross hall), two escalators (long concourse). The tool walks the room after writing it (25 stops on both floors, every door's pad) and refuses to write on a miss.
+- **MOVED IN from the old hall:** the fountain, the clock tower and its tape, the lounges, the lamps, the arcade's cabinets, the food court's tables, the grind ledges, the four natives and their words, the five lines, both tapes, the encounter list, the fight board, the light shafts, the supply closet's door. **Left out, said to mondo:** the fun box and the two quarter pipes (no room in a 7 m hall), the 8.4 m catwalk, about 30 repeated shopfronts. The old room `site_prebuilt_downtown_mall` is in `DOOR_HQ.retired`.
+- **TRAPS LEARNT:**
+  - **A district file's rows and props in `last` are in the district's HOME frame** (Bayside: z + 168; the tool moves them afterwards), but `ctx.doors` and `joins` are true metres. The first bake stood the mall 168 m north. `mallShell` takes `DZ = ctx.gx(10 * N + 6) - 21`.
+  - **A hung wall (`y0`) hangs only if its foot is over the highest ground under the WHOLE piece:** one upper wall across a solid block and the staff passage stood from the ground and shut the passage. Cut such a wall where the ground under it changes.
+  - **Two solid tops that touch only at a corner are not joined.** The upper shops' set-back units had to stop a square short of the atrium so the gallery wraps the corner.
+  - **A door's words must not hold an apostrophe** in `ctx.doors` (the city tool's writer does not escape it: the whole game file fails to parse).
+  - **THE PROBE DIES ON THE BACKGROUND SURVEY, not on the view.** In the cloud browser the city room crashed 30 to 70 s after it was ready, whatever the view, while map.js's survey worker read every room of the game. `--flags=EW_HQ_NO_ENCOUNTER,EW_HQ_NO_SURVEY` and it ran clean every time. Also true: nothing else may run beside it (a `git commit` killed one run).
+- **NOT DONE, NEXT:** (1) a door is still the engine's stock free door, a grey block with a steel leaf: the mall's doors want to be glass, or walked through with no press (`way: 'open'` needs a gap in the shell's ghost wall). (2) The view out: the pier, the beach and the plaza are not drawn beyond the room's glass yet. (3) The glass sheet reads grey from below; a clearer sheet. (4) The dressing: shop windows, counters, the service yard, more people; MODEL_LIST.md first. (5) The Bayside quest's gates. (6) `node bake-map.js site_prebuilt_downtown_streets` (the map picture still shows the old footprint). (7) City draw calls and memory with the new shell were not measured.
+- Pictures: `docs/plans/mall/after/`. The plan: `docs/plans/mall/MALL_PLAN.md` (its one-plot size was replaced by his "2 or 3 plots").
 ## KATANA ISLAND, THE INSIDES (2026-11-20, world polish thread 21; seen on screen)
 
 mondo 11-20: "Okay looks good, go ahead and do those interiors".
@@ -13175,3 +13248,22 @@ mondo 11-20: "Okay go ahead and do the next pass" (the one named to him: relief 
 - **NOT DONE:** the base village (the Ski Patrol, the inn, the shop: new HOME plots for K.js to build on is the way, so its `chalet` and `walkIn` helpers work),
   the Mid Station and Top Station buildings at the lift ends, the other four lifts, ledges on the walking ways, Shasta's volcano dressing, the North Pole.
   Not checked: the seams; The Long Descent on screen; the ride top to bottom again after the trees and boards went in.
+
+## THE MOUNTAINS, THE FLOATING POLES + THE FIVE LIFTS (2026-11-20, world polish thread 5; mondo: "Looks like the poles are floating in the sky")
+
+- **WHAT FLOATED AND WHY (three causes, each seen on screen and gone):** (1) the runs' pole rows were `hug` rows: over a tree square a hugging corner stood
+  far over the snow. The runs' poles now carry their own height over the row's origin, read off the room's heights in the tool, and the row has its own `y`;
+  the old slopes' `hug` rows (K.js `mtn:poles…`, `mtn:lampFlames`) are rewritten the same way in the tool. (2) A place plot (the old wild links' snowfields) kept
+  its RIM OF ROCK on the mountain: a wall of crags across the runs with poles on top. On the ski mountain a place plot is open snow. (3) A pole is only stood
+  on snow (`s`, `i`, `o`), never on a rock, a tree square or a building's squares. Also: EVERY drawn row of the room carries its own `y` off the room's heights
+  (`rowsGrounded`), so a board or a sign beside a run cannot take a wrong ground.
+- **TRAPS:** a drawn row's turn in the renderer is `-rot` (three-renderer.js `_hqArchGeometry`: `rc = cos(-rot)`, `rs = sin(-rot)`): a part at local (lx, lz) stands
+  at `x + lx * rc + lz * rs`, `z - lx * rs + lz * rc`. I first read it as `+rot`, "found" that turned plots' looks stood half a turn wrong and turned them: WRONG,
+  taken out again. ow-move.js turns looks correctly. A probe's camera `y` under the ground shows poles "in the sky" from below: give a view a `y` over the
+  plan's level there (level x 1.75 m, plus a few metres).
+- **THE FIVE LIFTS** (`THE_LIFTS` in bake-mountains.js): the Lodge Chair (202 m, up 41 m), the Summit Chair (143 m, up 53 m, Mid Station to the Top Station), the
+  North Chair (155 m, up 42 m), the South Chair (197 m, up 43 m), the Bunny Tow (71 m, up 9 m). Each line clears the snow all the way (the tool prints
+  `least clear`). The board was ridden top to bottom again with everything in: 34.8 s, no stop.
+- **NOT DONE:** the base village and the station buildings, ledges on the walking ways, Shasta's volcano dressing, P's `wands` and `boards` rows (they lie
+  under the snow where their plots parted: seen in the data, not fixed), the North Pole. Not checked: the four new lifts were seen standing, not ridden;
+  the seams; The Long Descent on screen.

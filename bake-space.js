@@ -298,9 +298,14 @@ function toBall(P0, R) {
    were 150 to 400 m apart, ring to ball). */
 const SYS = { cols: 46, rows: 19, place: { saturn: [1, 1], mars: [26, 1], singularity: [26, 10], moon: [39, 10] },   // (a plot of void round every net: two nets that touch share their edge's ground, drawn as a slab stretched between two balls)
     room: 'site_prebuilt_moon_plots', site: 'prebuilt_moon', VOID: -60, ceil: 900,
-    box: { x0: -1750, x1: 1500, z0: -1350, z1: 1750, y0: -260 } };
+    /* A TRIP BETWEEN WORLDS (2026-11-20, mondo: "The planets are too close together, totally unrealistic ... they are so close together it is
+       stupid"). Measured before: the Earth's ground 334 m from the Moon's (the Earth 51 degrees wide in the Moon's sky), Mars 750 m off and
+       13 degrees wide, Saturn 15 degrees. Now the box of space is 17 x 22 km and 7 km high and stands wholly OVER the room's flat nets
+       (y0 150: the old box held them, a slab of sky the ship could not enter with nothing drawn there). From the Moon: the Earth 2.8 km
+       (12 degrees wide), Mars 4.9 km (2.5), Saturn 8.8 km (its rings 6.4), the Singularity 12.3 km. `fly` = the ship's ceiling. */
+    fly: 7000, box: { x0: -11500, x1: 5500, z0: -7000, z1: 15000, y0: 150 } };
 /* THE ROUND WORLDS: where each round world's ball hangs (metres; out in the open, far from each other) */
-const ROUNDC = { saturn: [-950, 400, 300], mars: [60, 300, -640], singularity: [-150, 120, 1050], moon: [640, 210, 60] };
+const ROUNDC = { saturn: [-8200, 3400, 2600], mars: [-3200, 2300, -3600], singularity: [-4200, 700, 11500], moon: [0, 1500, 0] };   // (2026-11-20: were 0.9 to 1.9 km apart)
 const PL_FACES = [[[-1, 0, 0], [0, 0, 1], [0, -1, 0]], [[0, 0, 1], [1, 0, 0], [0, -1, 0]], [[1, 0, 0], [0, 0, -1], [0, -1, 0]],
     [[0, 0, -1], [-1, 0, 0], [0, -1, 0]], [[0, -1, 0], [1, 0, 0], [0, 0, -1]], [[0, 1, 0], [1, 0, 0], [0, 0, 1]]];
 /* the flat net's (x, y, z) → its point on the ball (= three-renderer.js _ewPlBendFace) */
@@ -360,13 +365,13 @@ const PIECES = PLAN.rooms.map(R => R.flat ? toBall(bakeWorld(Object.assign({}, R
       const cx = r2(-M.HX + 65 * C + mdx), cz = r2(-M.HZ + 30 * C + mdz), gy = r2(M.hC(64, 29));
       SYS.berth = { x: cx, z: cz };
       props.push({ key: 'spaceship_fly', x: cx, z: cz, face: 0 });
-      planets.push({ id: 'earth', name: 'EARTH', x: 929, z: -182, y: -345, r: 290, tex: 'ocean', color: 0x3c78d2, land: 0x4d8a45 });   // (290 m: it was 55 m, smaller than the Moon)
+      planets.push({ id: 'earth', name: 'EARTH', x: 2500, z: -1100, y: 1000, r: 290, tex: 'ocean', color: 0x3c78d2, land: 0x4d8a45 });   // (2026-11-20: 2.8 km from the Moon, was 0.68)   // (290 m: it was 55 m, smaller than the Moon)
       const bc = { id: 'orbit', label: 'THE MOON · THE BERTH', x: cx, z: cz, ground: gy, pad: { x: cx, z: cz, yaw: 0 } };
       const rw = round.find(q => q.id === 'moon'), B = plBend(rw, cx, gy, cz), u = [B[0] - rw.c[0], B[1] - rw.c[1], B[2] - rw.c[2]], ul = Math.hypot(u[0], u[1], u[2]); bc.ball = B.map(r2); bc.up = u.map(v => r2(v / ul));
       beacons.push(bc);
     }
     /* the Sun: far off, a ball of light (never reached) */
-    const SUN = { x: 2760, z: 1725, y: 1210, r: 300, color: 0xffc46a };   // (2026-11-17: far off to the east and high: where the balls' daylight comes from, three-renderer.js _hqBuildSpace)
+    const SUN = { x: 26000, z: 16000, y: 11500, r: 1100, color: 0xffc46a };   // (2026-11-20: 33 km off, the same way as before; 4 degrees wide, was 10)   // (2026-11-17: far off to the east and high: where the balls' daylight comes from, three-renderer.js _hqBuildSpace)
     /* THE BEACONS: one over each district's landing (the collar spots of draw-space.js; the bay doors are not landings) */
     const LANDING = { mare_derelict: 'THE MOON · THE MARE', moon_derelict: 'THE MOON · THE CRATER', farside_derelict: 'THE MOON · THE FAR SIDE', cydonia_derelict: 'MARS · CYDONIA',
         canyon_derelict: 'MARS · THE CANYON', mars_derelict: 'MARS · THE ROVER BAY', hexagon_derelict: 'SATURN · THE HEXAGON', derelict_saturn: 'SATURN · THE RING SHARD',
@@ -399,8 +404,8 @@ const PIECES = PLAN.rooms.map(R => R.flat ? toBall(bakeWorld(Object.assign({}, R
     if (!CAT.spaceship_fly) throw new Error('catalogue: spaceship_fly (the flown ship) is missing');
     const sing = PIECES.find(P => P.R.id === 'singularity'), moon = PIECES.find(P => P.R.id === 'moon');
     const SPM = { x: ways['ship_stick@moon'].x, z: r2(ways['ship_stick@moon'].z + 2) };
-    const sky = Object.assign({}, sing.OLD.shell.sky, { scenery: 'deepspace', tint: 0x101830, tintAmt: 0.25, stars: 2.4, nebula: 1.2, fog: { color: 0x05060c, amount: 0.06, top: 0.02, band: 0.3, density: 0.0004 } });   // (density: was 0.0015, set for worlds 300 m apart; at 2 km Saturn went grey-green)
-    const shell = Object.assign({}, moon.OLD.shell, { w: 2 * BHX, d: 2 * BHZ, h: SYS.ceil, wallH: 9, sky, look: sing.OLD.shell.look, plate: { x: SPM.x, z: SPM.z, y: 4.4 } });
+    const sky = Object.assign({}, sing.OLD.shell.sky, { vacuum: true /* (2026-11-20) no air in space: three-renderer.js _hqFogHold */, scenery: 'deepspace', tint: 0x101830, tintAmt: 0.25, stars: 2.4, nebula: 1.2, fog: { color: 0x000002, amount: 0, top: 0, band: 0.3, density: 0.000008 } });   // (density: was 0.0015, set for worlds 300 m apart; at 2 km Saturn went grey-green)
+    const shell = Object.assign({}, moon.OLD.shell, { w: 2 * BHX, d: 2 * BHZ, h: SYS.ceil, wallH: 9, heightFog: false /* (2026-11-20: the floor mist read the FLAT ground's height, so every ball stood in a green haze, thicker the farther it hung) */, sky, look: sing.OLD.shell.look, plate: { x: SPM.x, z: SPM.z, y: 4.4 } });
     if (AIR.length) shell.atmos = { kind: AIR[0].kind, tier: 'open', zones: AIR };
     /* THE TWO SECRET WAYS that joined two worlds (links cydonia_mare, saturn_singularity until 2026-11-17) have both ends in this room now: a door pair of
        the room's own (a link cannot have both ends in one room). Walking in still takes you to the other end, as before. */
@@ -423,7 +428,7 @@ const PIECES = PLAN.rooms.map(R => R.flat ? toBall(bakeWorld(Object.assign({}, R
     L.push("            typology: 'grid',");
     L.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + SYS.cols + ", nz: " + SYS.rows + ", names: " + J(names) + ", mask: " + J((() => { const m = []; for (let r = 0; r < SYS.rows; r++) { let s = ''; for (let c = 0; c < SYS.cols; c++) s += names.some(n => n[0] === 'P' + String(c).padStart(2, '0') + '-' + String(r).padStart(2, '0')) ? '#' : '.'; m.push(s); } return m; })()) + " },");
     L.push("            /* THE SOLAR SYSTEM: what three-renderer.js THE SPACESHIP draws and flies by (the balls, the Sun, the beacons, the ceiling) */");
-    L.push("            space: " + J({ ceil: SYS.ceil - 10, box: SYS.box, sun: SUN, planets, mesas, round, beacons, berth: SYS.berth, launch: { x: ways['ship_stick@moon'].x, z: ways['ship_stick@moon'].z } }) + ",");
+    L.push("            space: " + J({ ceil: SYS.fly, box: SYS.box, sun: SUN, planets, mesas, round, beacons, berth: SYS.berth, launch: { x: ways['ship_stick@moon'].x, z: ways['ship_stick@moon'].z } }) + ",");
     L.push("            terrain: {");
     L.push("                res: 1.75, tileM: 168, floor: 'moon', cliff: 'moon_3', path: 'moon_2',");   // (res: was 0.875, a quarter of the triangles now; tileM: the ground in 168 m tiles, three-renderer.js _hqTerrainTiles: a tenth of the draws)
     L.push("                noise: { amp: 0.1, scale: 10 }, crag: false, outer: false,");

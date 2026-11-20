@@ -1,6 +1,8 @@
 # THE BAYSIDE MALL, THE PLAN
 
-World polish thread 20. Written 2026-11-20. **A plan only: nothing is built. It waits for mondo's word.**
+World polish thread 20. Written 2026-11-20.
+
+**BUILT 2026-11-20, FIRST PASS (steps 1 to 6).** mondo's word on the questions: "Own room, 2 or 3 plots. 2 floors. Yes. Sure. GO ahead". So the building is BIGGER than this plan drew: 70 x 38.5 m (x 136.5..206.5, z 3.5..42), the old plot plus the east of the Cordon plaza, with a second cross hall and a Department Store. The numbers that are true now are `docs/disaster-city/mall/box.js`; what was built, the traps and what is next are in `docs/notes/areas-complexes.md` "THE BAYSIDE MALL"; pictures in `after/`. The text below is the plan as it was shown to him.
 
 mondo, 2026-11-20:
 - "the mall needs to be redone, since its outside looks nothing like its inside. It needs to be a real physical building inside disaster city"
