@@ -28,6 +28,8 @@ A district file keeps writing the plain word (`sign('BANK', ...)`). `docs/disast
 - `SIGNS_DUMP=1 node bake-disaster-city.js --dry-run` lists every sign's words by district with its board's width / height.
 - New typeface ids (11-20): `tilt` Tilt Neon, `yellow` Yellowtail, `dafoe` Mr Dafoe, `fasc` Fascinate, `abril` Abril Fatface,
   `dela` Dela Gothic One, `frak` UnifrakturMaguntia. The three scripts and the blackletter are drawn in Title Case.
+- A sign drawn before the Google font sheet arrived kept the fallback face for good (`fonts.check` says yes to a family with no rule yet). Since 11-20 a typeface counts only when a loaded face of that family exists, and the sign asks again every 1.5 s (three-renderer.js, same function).
+- Seen in the game 11-20 (HEAD b983684 + the font fix): CALAMITY MUTUAL on the bank's pediment (two lines), Snake Eyes on the casino's awning, Till Death Wedding Chapel in script, The Daily Disaster on the Press Court board.
 - Signs spelled one letter a quad (the casino's and the cinema's tall letters, the hotel's fin) still spell the plain word.
 
 ## Where the pass stands

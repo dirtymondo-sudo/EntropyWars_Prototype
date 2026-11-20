@@ -76748,10 +76748,18 @@ const ThreeRenderer = (function () {
         /* the typeface arrives from the font sheet index.html links; until it has, the sign stands in the old letters and is redrawn once */
         var specs = (F ? [F.w + ' 96px ' + F.f] : []).concat(_HQ_MARK_FONTS[q[6]] || []), ready = !!F;
         try { for (var si = 0; si < specs.length; si++) if (!(document.fonts && document.fonts.check(specs[si], shown + 'DC'))) ready = false; } catch (e) { ready = false; }
+        /* THE FONT SHEET MAY NOT BE IN YET (2026-11-20, seen on the newspaper's board in a probe: its blackletter drawn in a plain sans for good):
+           `fonts.check` answers TRUE for a family the page has no rule for yet (the font sheet still on the wire), so the sign was drawn "in its
+           typeface" with the fallback and never redrawn. The typeface counts as there only when a loaded face of that family exists, and a
+           load that finds no rule yet is asked again (every 1.5 s, twelve times). */
+        if (ready && F) { var fam0 = F.f.replace(/"/g, ''), got = false; try { document.fonts.forEach(function (ff) { if (ff.status === 'loaded' && String(ff.family).replace(/["']/g, '') === fam0) got = true; }); } catch (e) {} if (!got) ready = false; }
         paint(ready);
         if (specs.length && !ready && document.fonts && document.fonts.load) {
-            try { Promise.all(specs.map(function (sp) { return document.fonts.load(sp, shown + 'DC').then(function (ff) { return ff && ff.length; }, function () { return false; }); }))
-                .then(function (ok) { if (F ? ok[0] : ok.some(Boolean)) { paint(!!F); t.needsUpdate = true; } }); } catch (e) {}
+            var ask = function (left) {
+                try { Promise.all(specs.map(function (sp) { return document.fonts.load(sp, shown + 'DC').then(function (ff) { return ff && ff.length; }, function () { return false; }); }))
+                    .then(function (ok) { if (F ? ok[0] : ok.some(Boolean)) { paint(!!F); t.needsUpdate = true; } else if (left > 0) setTimeout(function () { ask(left - 1); }, 1500); }); } catch (e) {}
+            };
+            ask(12);
         }
         return (_hqArchSignCache[key] = t);
     }
@@ -103518,6 +103526,8 @@ const ThreeRenderer = (function () {
             reflectors: function () { return (_hq && _hq.reflectors || []).map(function (r) { return { kind: r.kind, drawn: r.drawn, gain: r.mats[0] ? r.mats[0].uniforms.uGain.value : null }; }); },   // W4: the mirrored draws
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             cityMarks: function (tbl, stop) { if (!_hq || !_hq.roomDef) return false; if (tbl) Object.keys(tbl).forEach(function (k) { HQ_CITY_PROP_MARKS[k] = tbl[k]; }); if (stop) HQ_CITY_STOP_MARK = stop; _hqBuildCityMarks(_hq.roomDef, _hq.terrain, _hq.shellGroup); return (_hq.cityMarks || []).length; },   // THE CITY MARKS: rebuild the street plates (tuning probe)
+            /* a sign's canvas, for a probe (2026-11-20, the branding pass): draw any 'txt:' key without entering a room; the texture's `.image` is the canvas */
+            signTex: function (key) { return _hqArchSignTex(key); },
             /* THE SPACESHIP, for a probe (2026-11-17): set the flown ship's x / y / z / yaw / v (and hold keys: o.keys {w, a, d, space, c}) */
             ship: function (o) {
                 var V = _hq && _hq.vehicle; if (!V || !V.on) return null; o = o || {};
