@@ -96925,7 +96925,7 @@ function hqPlacesExpand() {
                 if (row.race) {
                     const same = (s) => !taken.has(s) && s.race === row.race && (!row.gender || !s.gender || s.gender === row.gender) && (!names || !d || distAt(s) === d);
                     const inPlot = row.plot && names ? pool.find(s => same(s) && byId[pid(s.x, s.z || 0)] && byId[pid(s.x, s.z || 0)][1].toLowerCase().indexOf(row.plot.toLowerCase()) >= 0) : null;
-                    sp = inPlot || (row.plot && names && plotsOf(d, row.plot).length ? null : pool.find(same)) || null;
+                    sp = inPlot || pool.find(same) || null;   // an authored spot of its race in its district wins over the row's plot (the author's square and lines)
                 }
                 rep._t = !!sp;
                 if (sp) { taken.add(sp); rep.took++; sp = Object.assign({}, sp); }

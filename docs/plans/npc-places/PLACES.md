@@ -1,4 +1,37 @@
-# WHERE EVERY UNIT STANDS AND WALKS (2026-11-20, a PROPOSAL for mondo; nothing is built)
+# WHERE EVERY UNIT STANDS AND WALKS (2026-11-20; APPROVED by mondo and BUILT the same day)
+
+## 0. HIS ANSWERS + WHAT WAS BUILT (2026-11-20)
+
+mondo: "Everything else looks good", with these changes and answers:
+- **King Kong** (row 4 is void): "he climbs skyscrapers, he needs to be where the biggest buildings are. and put him on volcano island too."
+  He lives on Financial's roofs and walks Financial + Hero Plaza (the Superhero Tower); a second one stands in the Volcano Island's jungle.
+- **The Holding Cells** (row 65 is void): "Shouldnt it be cops police ... That's like the jail right? not men in black." Police Officers.
+- 5.1 "yes my board plus your suggestions should replace what is in the game today".
+- 5.2 "future is for the cyberpunk city, we haven't made it fully yet so skip": Robot, Mech, Cyborg, Time Cop and Kaiju stand nowhere
+  (the Time Cop of row 14 too: on his board it is only in Future).
+- 5.3 The six units off the board were left off on purpose (no 3D models; the Door Agents are story characters): they stand nowhere.
+- 5.4 Two-zone routes by the clock are fine: "the game shouldn't have to keep track of that at this stage".
+- 5.5 The lodge = the Members club. Row 86 (the Ski Lodge holiday) is void.
+
+**Built:**
+- **Disaster City:** data.js `HQ_CITY_RESIDENTS.list` + `HQ_SPAWN_RULES` `people` rewritten from the board: 173 residents, every one with a home,
+  a work place and a route (`beat` = the districts it walks after its shift). New: `g` on a `people` row (the board's gender), the place
+  `z:<plot id>` (any plot of the room's map, the Hills' `H` plots too), district N (the Disaster Hills, 12 people). Headless: all 173 build a day.
+- **Every other zone:** data.js `HQ_NPC_PLACES` (57 rooms, 433 placements), one text row a unit; `hqPlacesExpand()` replaces each room's placed
+  people at load. A row takes over an authored spot of its race in its district (the square and the lines stay), and more authored people of
+  a race the board has in that district stay too. Routes: three-renderer.js `_hqRoundsAssign` walks a row's own points; `night` / `day` /
+  `h<a>-<b>` rows are in the room only in those hours (read when the room is entered). Rooms on the table draw no random extras and their
+  AREA UNITS table is the rows' races.
+- **Added past the list, one line each:** a Dinosaur in the Volcano Island's own Dinosaur Park; more of the same units in the three thin
+  zones (the Internet 34, the Sewers 15, Antarctica 15) so they are not emptier than before.
+- **Not done:** levels in the zones (still the party-level rule; only the city has set levels), a unit walking the road between two rooms,
+  a row's hours changing while you stand in the room, the Relationship Web's "In the game now" board (rebuild the page to refresh it).
+- **Seen in a browser** (build c29b2b2 + this change): the Ritual Ground, `proof-ritual-ground.png`: the Cult Leader at the camp; the Goatman
+  and the Conspiracy Theorist had walked off their squares along their routes. NOT seen: the five cultists (the probe switches cast models
+  off), the night rows, any other zone, the city (its residents were checked headless only).
+
+The list below is the proposal as he read it.
+
 
 mondo 11-20: "use this as the basis for spawn/encounter locations ... if there is anything I missed to put in specific
 buildings or districts or zones, then make a list of ones you are going to put there so I can approve. Also they should
