@@ -39,9 +39,20 @@ const T = (x, y) => B.T[y][x], Lv = (x, y) => B.L[y][x];
 /* an open square: the plan's walked squares + its water (a sump is a square of black water, not rock) */
 const open = (x, y) => inR(x, y) && (B.isOpen(x, y) || T(x, y) === 'w');
 const wet = (x, y) => inR(x, y) && T(x, y) === 'w';
-/* the floor in metres over the room's y 0: a sump's bed is a level and a half under its water */
-const floorOf = (x, y) => r2((Lv(x, y) - ZERO) * LV - (wet(x, y) ? 2.6 : 0));
-const walkOf = (x, y) => r2((Lv(x, y) - ZERO) * LV);
+/* the floor in metres over the room's y 0: a sump's bed 0.7 m under its level (seen 11-20: the height sheet blends at shared corners, so a
+   deep bed pulled the dry square beside it under the water; and a pit must never trap: its black water is waded, out to its ladder) */
+const floorOf = (x, y) => r2((lvW(x, y) - ZERO) * LV - (wet(x, y) ? 0.7 : 0));
+/* THE POOLS: a run of water with no dry square at its own level beside it (the plan's sumps, a level under their chamber, never walked)
+   is a shallow pool just under the floor beside it, so a walker who steps in walks out; a run with one (the Spire's lake: its ladder's
+   foot) keeps its level */
+const POOL = new Map();
+{ const seen = new Set(), D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { if (!wet(x, y) || seen.has(x + ',' + y)) continue; const comp = [], st = [[x, y]]; seen.add(x + ',' + y);
+      while (st.length) { const [a, b] = st.pop(); comp.push([a, b]); D4.forEach(([dx, dy]) => { const X = a + dx, Y = b + dy; if (wet(X, Y) && !seen.has(X + ',' + Y) && Lv(X, Y) === Lv(a, b)) { seen.add(X + ',' + Y); st.push([X, Y]); } }); }
+      let same = false, hi = -Infinity; comp.forEach(([a, b]) => D4.forEach(([dx, dy]) => { const X = a + dx, Y = b + dy; if (!inR(X, Y) || !B.isOpen(X, Y)) return; if (Lv(X, Y) === Lv(a, b)) same = true; hi = Math.max(hi, Lv(X, Y)); }));
+      if (!same && hi > -Infinity) comp.forEach(([a, b]) => POOL.set(a + ',' + b, hi - 0.3)); } }
+const lvW = (x, y) => POOL.has(x + ',' + y) ? POOL.get(x + ',' + y) : Lv(x, y);
+const walkOf = (x, y) => r2((lvW(x, y) - ZERO) * LV);
 
 /* ── THE HEADROOM a square: the design file names its places (`headroom(x, y)` -> metres or null); a passage 4.2 m, a chamber 8.75 m ── */
 const HEAD = { g: 4.2, c: 8.75, k: 5.6, w: 4.2 };
@@ -179,11 +190,12 @@ const climbAt = (lo, hi, look, id) => { const dx = hi[0] - lo[0], dy = hi[1] - l
 
 /* ── THE SUMPS AND THE LAKE: black water over the plan's `w` squares (greedy rectangles at one level) ── */
 { const used = new Uint8Array(W * Hh);
-  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { if (!wet(x, y) || used[y * W + x]) continue; const lv = Lv(x, y), ok = (X, Y) => wet(X, Y) && !used[Y * W + X] && Lv(X, Y) === lv;
+  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { if (!wet(x, y) || used[y * W + x]) continue; const lv = lvW(x, y), ok = (X, Y) => wet(X, Y) && !used[Y * W + X] && lvW(X, Y) === lv;
       let w = 1; while (ok(x + w, y)) w++; let h = 1; rows: while (y + h < Hh) { for (let k = 0; k < w; k++) if (!ok(x + k, y + h)) break rows; h++; }
       for (let j = 0; j < h; j++) for (let k = 0; k < w; k++) used[(y + j) * W + x + k] = 1;
-      F.push(h >= w ? { k: 'stream', pts: [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: w * C, y: r2(walkOf(x, y) - 0.4), depth: 2.2, key: 'deep_water' }
-                    : { k: 'stream', pts: [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]], w: h * C, y: r2(walkOf(x, y) - 0.4), depth: 2.2, key: 'deep_water' });
+      /* the ends stop 0.4 m short of the rect's edges (seen 11-20: an end ON the line of higher ground lifted the whole surface to it) */
+      F.push(h >= w ? { k: 'stream', pts: [[r2(gx(x) + w * C / 2), r2(gz(y) + 0.4)], [r2(gx(x) + w * C / 2), r2(gz(y + h) - 0.4)]], w: r2(w * C - 0.2), y: r2(walkOf(x, y) - 0.12), depth: 0.6, key: 'deep_water' }
+                    : { k: 'stream', pts: [[r2(gx(x) + 0.4), r2(gz(y) + h * C / 2)], [r2(gx(x + w) - 0.4), r2(gz(y) + h * C / 2)]], w: r2(h * C - 0.2), y: r2(walkOf(x, y) - 0.12), depth: 0.6, key: 'deep_water' });
       count.sumps = (count.sumps || 0) + 1; } }
 
 /* ── THE BRIDGES (the plan's `bridges`: a deck from one square over to another, walked both ways); the design file's `bridge` = its look ── */
@@ -221,15 +233,15 @@ const SP = DESIGN.spawn || PLAN.start;
 { const seen = new Uint8Array(W * Hh), st = [SP], LK = new Map(); LINKS.forEach(([a, b]) => { [[a, b], [b, a]].forEach(([p, q]) => { const k = p[1] * W + p[0]; if (!LK.has(k)) LK.set(k, []); LK.get(k).push(q); }); });
   seen[SP[1] * W + SP[0]] = 1;
   while (st.length) { const [x, y] = st.pop(); (LK.get(y * W + x) || []).forEach(q => { if (!seen[q[1] * W + q[0]]) { seen[q[1] * W + q[0]] = 1; st.push(q); } });
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!open(X, Y) || wet(X, Y) || seen[Y * W + X]) continue; const up = walkOf(X, Y) - walkOf(x, y); if (up > 0.6) continue; seen[Y * W + X] = 1; st.push([X, Y]); } }
-  const cold = []; for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) if (open(x, y) && !wet(x, y) && !seen[y * W + x]) cold.push(x + ',' + y);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!open(X, Y) || seen[Y * W + X]) continue; const up = walkOf(X, Y) - walkOf(x, y); if (up > 0.6) continue; seen[Y * W + X] = 1; st.push([X, Y]); } }
+  const cold = []; for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) if (open(x, y) && !seen[y * W + x]) cold.push(x + ',' + y);
   if (process.env.AGARTHA_DUMP) console.log(B.T.map((r, y) => r.map((ch, x) => open(x, y) && !wet(x, y) && !seen[y * W + x] ? '!' : open(x, y) ? ch : ' ').join('')).join('\n'));
   if (cold.length) throw new Error('squares not walked to from the spawn: ' + cold.slice(0, 30).join(' '));
   /* and back: every square climbs back out to the spawn (the ladders and ropes run both ways; a drop does not) */
   const back = new Uint8Array(W * Hh), st2 = [SP]; back[SP[1] * W + SP[0]] = 1;
   while (st2.length) { const [x, y] = st2.pop(); (LK.get(y * W + x) || []).forEach(q => { if (!back[q[1] * W + q[0]]) { back[q[1] * W + q[0]] = 1; st2.push(q); } });
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!open(X, Y) || wet(X, Y) || back[Y * W + X]) continue; if (walkOf(x, y) - walkOf(X, Y) > 0.6) continue; back[Y * W + X] = 1; st2.push([X, Y]); } }
-  const trap = []; for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) if (open(x, y) && !wet(x, y) && !back[y * W + x]) trap.push(x + ',' + y);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!open(X, Y) || back[Y * W + X]) continue; if (walkOf(x, y) - walkOf(X, Y) > 0.6) continue; back[Y * W + X] = 1; st2.push([X, Y]); } }
+  const trap = []; for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) if (open(x, y) && !back[y * W + x]) trap.push(x + ',' + y);
   if (trap.length) throw new Error('squares you cannot climb back out of: ' + trap.slice(0, 30).join(' '));
   let op = 0; for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) if (open(x, y)) op++;
   Object.assign(count, { openSquares: op }); }
