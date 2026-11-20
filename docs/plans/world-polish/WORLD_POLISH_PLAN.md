@@ -53,8 +53,9 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 2 | **Disaster City** (the cramped city) | Disaster City, one room | **Not started.** It is the standard for height. His complaint here is another one: too many buildings, stairs into walls. |
 | 3 | **Came A Lot Kingdom, its three woods** | The Snowy Pines, The Forest, The Fairy Forest | **Built 11-20, differs from the standard:** set-piece height (a ridge, a gully, a bluff, hollows) on level ground, wide ways in straight legs. Not on the next list (mondo 11-20: "id rather you not go over what you already did, start somewhere else"). |
 | 4 | **Came A Lot Kingdom, The Village** | the Village, inside the kingdom's main room | **Built 11-20** (three stairs up to the town wall's walk, the churchyard). The town's ground is level. Not on the next list. |
-| 5 | **The Mountains** | The North Pole, The Ski Lodge + The Snowy Pass, Mount Shasta, Mount Olympus | Not started |
-| 6 | **The Woods** | The Clearing + Dead Man's Cave, The Redwood Trail, The Ritual Ground | **Not started. NEXT.** This is the zone mondo walked and found flat and straight. |
+| 5 | **The Mountains** | The North Pole, The Ski Lodge + The Snowy Pass, Mount Olympus. **Mount Shasta is being REMOVED** (mondo 11-20). | Not started |
+| 6 | **The Woods** | The Clearing + Dead Man's Cave, The Redwood Trail, The Ritual Ground | **Not started. NEXT.** This is the zone mondo walked and found flat and straight. A HORROR wood: Silent Hill, Blair Witch (mondo 11-20). |
+| 21 | **Katana Island** (today: The Volcano Island) | The Volcano Island, one room, remade as feudal Japan; **Katana Bay** is one of its districts | **Not started. SECOND, right after The Woods** (mondo 11-20). |
 | 7 | **The underground walks** | the Cavern's three tunnels, Agartha's tunnel, the Sewers' walks under the city | Not started |
 | 8 | **The D.U.M.B.** | The D.U.M.B., one room | Not started |
 | 9 | **The Cavern** | The Cavern, Hollow Earth, Agartha | Not started |
@@ -68,7 +69,7 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 17 | **The Estate** | The Estate (Corn Fields, Lake, Ranch), The Haunted House | Not started |
 | 18 | **Outer Space** | Outer Space, one room | Not started |
 | 20 | **The Bayside Mall** (in Disaster City, Bayside district) | the mall building on the city's Bayside + its inside room | **Not started. Waits for the One Beach thread** (mondo 11-20: "Id probably wait for the beach thread to be finished since it is supposed to be a bayside mall"). |
-| 19 | **The Beach** | The Beach, Pirates' Cove, The Frozen Sea, The Bermuda Triangle, The Volcano Island | **Another thread has it** ("One Beach": Disaster City's Bayside beach and the Beach zone made one). No thread of this plan starts here until that one reports. |
+| 19 | **The Beach** | The Beach, Pirates' Cove, The Frozen Sea, The Bermuda Triangle (NOT the Volcano Island: thread 21) | **Another thread has it** ("One Beach": Disaster City's Bayside beach and the Beach zone made one). No thread of this plan starts here until that one reports. |
 | none | The highways and the routes | every `site_ow_*` room | **Not in this plan.** Its own thread (mondo 11-20). |
 
 **TWO PLACES THAT GET MIXED UP. THEY ARE NOT THE SAME PLACE.**
@@ -84,13 +85,19 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 
 mondo 11-20: "id rather you not go over what you already did, start somewhere else." So the list holds only zones nobody has worked on.
 
-1. **Thread 6, The Woods.** First: it is where he stood.
-2. **Thread 5, The Mountains.** Beside The Woods on the map. It has the height already; it lacks winding ways and thin trails.
-3. **Thread 17, The Estate**, then **thread 12, Leylines**, then **thread 13, Antarctica**: the rest of the surface.
-4. **Thread 8, The D.U.M.B.** (the worst-looking zone in the pictures), then the underground: threads 7, 9, 10.
-5. **Thread 11, Heaven + Hell + Vatican**, then threads 14, 15, 16, 18.
-6. **Thread 2, Disaster City (cramped)** shares no tool with any of these. It can run beside them whenever he says.
-7. **Thread 20, The Bayside Mall:** its own thread, beside thread 2, not inside it. It starts AFTER the One Beach thread is merged (that
+mondo set the first two himself (11-20): "after the woods do Katana Island with Katana Bay as one of the districts".
+
+1. **Thread 6, The Woods.** His order. Think horror game, Silent Hill, Blair Witch.
+2. **Thread 21, Katana Island.** His order. The Volcano Island remade as feudal Japan.
+
+After those two, proposed, in this order:
+
+- **Thread 5, The Mountains** (without Mount Shasta). It has the height already; it lacks winding ways and thin trails.
+- **Thread 17, The Estate**, then **thread 12, Leylines**, then **thread 13, Antarctica**: the rest of the surface.
+- **Thread 8, The D.U.M.B.** (the worst-looking zone in the pictures), then the underground: threads 7, 9, 10.
+- **Thread 11, Heaven + Hell + Vatican**, then threads 14, 15, 16, 18.
+- **Thread 2, Disaster City (cramped)** shares no tool with any of these. It can run beside them whenever he says.
+- **Thread 20, The Bayside Mall:** its own thread, beside thread 2, not inside it. It starts AFTER the One Beach thread is merged (that
    thread is reshaping the ground the mall stands on). It and thread 2 share the city's tool: not both in Bayside at the same time.
 
 ### 4. HOW A THREAD RUNS
@@ -161,7 +168,7 @@ One level = 1.75 m (one battle block), as in the city.
 
 | Has a base | Rooms |
 |---|---|
-| Yes, strong | Disaster City (15 levels); Mount Olympus (0 to 60 m), The Ski Lodge + Snowy Pass (46 m), Mount Shasta (36 m); Antarctica (62 m); Hell (28 m); The Deep (28 m), The Sea Floor; The Volcano Island; The Redwood Trail (3.5 to 14 m); The Vatican (13 m); Outer Space |
+| Yes, strong | Disaster City (15 levels); Mount Olympus (0 to 60 m), The Ski Lodge + Snowy Pass (46 m), Mount Shasta (36 m; being removed); Antarctica (62 m); Hell (28 m); The Deep (28 m), The Sea Floor; The Volcano Island; The Redwood Trail (3.5 to 14 m); The Vatican (13 m); Outer Space |
 | Yes, weak | The Clearing + Dead Man's Cave (0 to 3.5 m over 19 plots); The Ritual Ground (1.75 to 8.75 m); The North Pole (4.9 m); the Lake's room of The Estate (3.5 m); The Haunted House; the Beach's rooms; Leylines' Line (5 m), Stonehenge (2 m), Bug Colony (9 m) |
 | No base (level floor) | Came A Lot's rooms (the kingdom, the Snowy Pines, the Forest, the Fairy Forest, the Garden); The Desert's four rooms; The Sewers; The D.U.M.B.; The Cavern and its tunnels; Heaven; The Catacombs; The Internet; The Astral Realm; Babel + Technoticlan |
 
@@ -178,6 +185,10 @@ serve any zone. Do not merge it as it is; a thread may take from it.
   areas, still be flat areas, and there still needs to be real architecture and exteriors and interiors").
 - **The mall is redone as a real building** (11-20: "the mall needs to be redone, since its outside looks nothing like its inside. It needs to be
   a real physical building inside disaster city"; "it is supposed to be a bayside mall"). That is thread 20.
+- **The Woods are a horror wood** (11-20: "for the woods, please think like horror game and silent hill and Blair witch").
+- **Mount Shasta goes; the Volcano Island becomes Katana Island** (11-20: "we are getting rid of Mt Shasta. Instead volcano island is gonna be
+  remade to Katana Island, which will be like feudal Japan. Still with volcano/mountain, but it might have to be a little bigger, idk. So after
+  the woods do Katana Island with Katana Bay as one of the districts.").
 - **Height has to give you something to do** (11-20: "This pass is not meant to just raise things for the sake of raising them. A pyramid is
   already raised anyway, it's literally a tall monument. why do you want to make it taller?"). Build a climb, a view, a drop, a second way, a
   place that is hard to reach. **Never lift a monument, a building or a whole district onto a step.** Ask "is it like that in the real place?".
@@ -228,20 +239,60 @@ they are measurements, not the job.
     the Redwood Trail's shelf, to the cave, to a hidden glade.
   - The 9 trail plots: bends, side glades, a second way round.
   - Falls where the creek crosses a level (the Redwood Trail has 12 water rows and 1 fall).
+- **THE MOOD (mondo 11-20): "think like horror game and silent hill and Blair witch".** This steers every choice above:
+  - Blair Witch: you get LOST on purpose, but fairly. Thin trails that fork and rejoin, a trail that brings you back to a landmark you have
+    seen, stick figures hung in the trees, stone piles, a ruined house at the end of the thinnest trail, a tent site left in a hurry.
+  - Silent Hill: you cannot see far. Ridges and hollows hide what is ahead, the land drops into low ground you do not want to enter, a
+    clearing that is too quiet, rust and chain-link at the Fence Line and the Storm Drain, a road that just ends.
+  - So orientation here comes from a FEW strong landmarks seen in glimpses (the Old Tree, the Stair, the Dead Tree, the lake) and from the
+    fall of the land toward the creek, not from long views. Open places are rare and feel exposed.
+  - Fog: there is ONE fog system for the whole game (owner-rules.md section 3). This thread does NOT give The Woods its own fog. Build the
+    dread from the land, the trees, the light, per-district particles and sound. Thicker air here is his call on the one row.
+  - The zone already had a horror pass (`horror(ctx)` in each district file) and a life pass: read both first, keep what is there.
+  - Models first: search `MODEL_LIST.md` for horror, witch, ritual, grave, corpse, cabin, ruin before placing anything.
 - **Leave:** the trees (his "Good, keep them", 11-15). The cabin has no game role yet.
 
+### Thread 21: KATANA ISLAND (not started; second, right after The Woods)
+- **mondo 11-20:** "volcano island is gonna be remade to Katana Island, which will be like feudal Japan. Still with volcano/mountain, but it might
+  have to be a little bigger, idk. So after the woods do Katana Island with Katana Bay as one of the districts."
+- **What is there today:** The Volcano Island, room `site_prebuilt_bermuda_ow_volcano`, 10 plots far out in the Beach's sea, part of the
+  Beach's district O (The Ocean). Its plots: The Volcano, The Volcano Island, The Landing, The Village, The Jungle (two plots), The Dinosaur
+  Park, The South Shore, the waterspout, an islet. It has a strong height base already (the cone, 16 m).
+- **It is NOT:** the Beach, Pirates' Cove or the Bermuda Triangle (the One Beach thread's). Not Mount Shasta, though it takes Shasta's place
+  as the world's volcano.
+- **Tool + files:** today `bake-beach.js`, `docs/areas/beach/layout.json`, `districts/O.js`. The One Beach thread works in the same tool:
+  this thread says so on the board first and agrees who edits what. Its own layout and district files are allowed (free to change).
+- **To build (the standard, for this place):**
+  - A real island with its own districts, each at its own height. **Katana Bay** (the harbour, at the sea) is his. Above it, as proposals
+    to show him: a castle town on the slope, rice terraces (height that IS the place: stepped fields with paths on the banks), a shrine way
+    of gates and stone stairs up the mountain, a bamboo wood with thin trails, the crater on top. The volcano is the landmark you steer by
+    from everywhere; downhill is always the bay.
+  - Bigger: 10 plots is small for that. Proposal: about 25 to 30 plots (the sea round it is free). The plot grid goes to him in chat first.
+  - Real architecture: a castle keep, gates, a shrine, town houses, a dojo, a bath house, each a walk-in building whose inside matches its
+    outside. Open and flat places: the harbour front, the castle yard, the paddies.
+  - Residents: the game has a ninja race and a samurai slug race already. Never invent characters or game rules.
+  - Models first: search `MODEL_LIST.md` and the pack files for Japan, samurai, shrine, torii, pagoda, bamboo, katana, lantern. What is
+    missing goes on a NEEDS A MODEL list for him, never in as a placeholder.
+- **To settle with him in chat before building (he did not name these, so none is deleted unasked):** what happens to the Dinosaur Park,
+  the Jungle and the island village that stand there now; how you reach the island; how much bigger.
+
 ### Thread 5: THE MOUNTAINS (not started)
-- **Zone:** The Mountains. Districts: The North Pole village (N), The Snowy Pass (P), The Ski Lodge (K), Mount Olympus (O), Mount Shasta (S).
+- **Zone:** The Mountains. Districts: The North Pole village (N), The Snowy Pass (P), The Ski Lodge (K), Mount Olympus (O).
+- **MOUNT SHASTA IS BEING REMOVED (mondo 11-20: "we are getting rid of Mt Shasta").** Its room `site_prebuilt_shasta_ow_shasta` (20 plots: the
+  Summit, the Glacier, Helen Lake, the Steam Vents, Panther Meadows, the switchbacks) gets NO polish work. Removing it is a job of its own
+  (this thread's first step, or its own small thread: his call): the room to `DOOR_HQ.retired`; its seam to Mount Olympus, its end of the
+  River Road and its door down to Agartha each need a new end; its residents need a home; `plots.json` changes through `after-v13.js`; the
+  map picture is redone. The other rooms keep `shasta` in their ids: ids are not names.
 - **Rooms:** `site_prebuilt_northpole_plots` (16), `site_prebuilt_shasta_ow_lodge` (29: the Ski Lodge + the Snowy Pass),
-  `site_prebuilt_shasta_ow_shasta` (20), `site_prebuilt_shasta_ow_olympus` (19).
+  `site_prebuilt_shasta_ow_olympus` (19).
 - **It is NOT:** the Snowy Pines (Came A Lot's, thread 3). Not the Polar Trail or the trail from the Pines to the Ski Lodge (routes).
   Not the Hollywood Hills (Disaster City's district N).
 - **Tool + files:** `bake-mountains.js`, `docs/areas/mountains/layout.json`, `districts/N P K O S.js`.
-- **The base today:** strong on the three mountain rooms (36 to 60 m). Weak on the North Pole (4.9 m; 9 of 16 plots dead flat).
+- **The base today:** strong on the two mountain rooms (46 and 60 m). Weak on the North Pole (4.9 m; 9 of 16 plots dead flat).
 - **To reach the standard:** the mountains have the height and lack the ways. One thin ribbon climbs through solid rock (2.6 to 2.8 squares
   wide, less than half of each plot walkable). So: thin trails off the main trail that lead somewhere (a ledge with a view, a cave, a short
   hard way up by a chimney climb, a rope bridge to the next shoulder); a second way up each mountain; a level ledge a board fits on every 3
-  plots; falls (Shasta has 3 pools and no fall). The main trail stays a mountain trail, 3 squares at most. The North Pole: give the village
+  plots; falls. The main trail stays a mountain trail, 3 squares at most. The North Pole: give the village
   levels (the workshop up, the square down, a sledding hill behind), lanes that wind between the houses, and open its solid half.
 
 ### Thread 17: THE ESTATE (not started)
@@ -395,11 +446,11 @@ they are measurements, not the job.
 - **Tool + files:** `bake-disaster-city.js`, `docs/disaster-city/city-layout.json`, `districts/B.js`. The owner side holds the city.
 
 ### Thread 19: THE BEACH (held by the One Beach thread)
-- **Rooms:** `site_prebuilt_bermuda_beach` (20), `_ow_cove` (Pirates' Cove, 5), `_ow_frozen` (The Frozen Sea, 3), `_ow_triangle` (10),
-  `_ow_volcano` (10).
+- **Rooms:** `site_prebuilt_bermuda_beach` (20), `_ow_cove` (Pirates' Cove, 5), `_ow_frozen` (The Frozen Sea, 3), `_ow_triangle` (10).
+  The Volcano Island (`_ow_volcano`) is thread 21 now: Katana Island.
 - **State:** another thread is making Disaster City's Bayside beach and the Beach zone one beach. Nothing here starts until it reports.
 - **Then, to reach the standard:** Pirates' Cove grown to 9 and the Frozen Sea grown (both approved), each with a cove wall, a cliff path, a
-  cave. The Volcano Island and Pirates' Cove look good in the pictures.
+  cave. Pirates' Cove looks good in the pictures.
 
 ### Built already (not on the next list; kept here so the record is true)
 
@@ -479,7 +530,10 @@ places are EMPTY and UNREADABLE: nothing to steer by. That is the standard's sec
 0. The mall: its own thread 20 after One Beach, as written. Grow its footprint to fit a real mall, or shrink the inside to the plot?
 1. The numbers in section A (main way 3 squares, thin trail 1 or 2, no leg over 8 squares straight, a thin trail every 2 plots, 2 levels
    between districts): right, or change which?
-2. The order in START HERE section 3: The Woods first, then the Mountains, the Estate, Leylines, Antarctica, the D.U.M.B. and the underground.
+2. The order after The Woods and Katana Island: the Mountains, the Estate, Leylines, Antarctica, the D.U.M.B. and the underground.
+2b. Mount Shasta: only the Mount Shasta district goes (assumed), and the Ski Lodge, the Snowy Pass, Olympus and the North Pole stay? Where do
+   its ways end now (Olympus, the River Road, the door to Agartha)?
+2c. Katana Island: what happens to the Dinosaur Park, the Jungle and the village on the island today? About 25 to 30 plots?
 3. The Frozen Sea: grown (assumed) or folded into the North Pole. Asked again when the Beach's thread comes up.
 4. BIG WALLS ARE BLURRY UP CLOSE (section F): their own thread, or with each zone?
 
