@@ -83,5 +83,11 @@ let t = fs.readFileSync(FILE, 'utf8');
 if (t.indexOf('{"id":"katana"') < 0) { const i = t.indexOf('    {"id":"volcano"'), j = t.indexOf('\n      ]}', i); if (i < 0 || j < 0) throw new Error('no island block');
   const pl = []; for (let y = -13; y <= -5; y++) for (let x = 21; x <= 29; x++) pl.push([x, y]);
   t = t.slice(0, j + 9) + ',\n    {"id":"katana","name":"KATANA ISLAND","state":"built","x":21,"y":-13,"w":9,"h":9,"count":81,"note":"29 land plots, six districts; room site_prebuilt_bermuda_katana (bake-katana.js); with the Volcano Island north of it, the Katana Empire\u2019s islands",\n      "plots": [\n' + pl.map(q => '        ' + JSON.stringify(q)).join(',\n') + '\n      ]}' + t.slice(j + 9); }
+/* 10. THE HOUSE TRAIL (world polish thread 17, mondo's OK on docs/plans/world-polish/plans/estate-house-trail.js, 11-20; "a walked way to the Haunted House:
+       Yes this is a big priority"): a NEW district of 13 plots, 7 x 3 at -20,14, between the Lake's West Bank and the Haunted House (free forest before).
+       bake-estate.js builds it as its own room (site_prebuilt_skinwalker_ow_trail). The ground stays forest. */
+if (t.indexOf('{"id":"estT"') < 0) { const TP = require('../world-polish/plans/estate-house-trail.js'), i = t.indexOf('    {"id":"estH"'), j = t.indexOf('\n      ]}', i); if (i < 0 || j < 0) throw new Error('no estH block');
+  const pl = TP.plots.map(q => ({ n: q[2], x: -20 + q[0], y: 14 + q[1] }));
+  t = t.slice(0, j + 9) + ',\n    {"id":"estT","hub":"ranch","zone":"The Estate","name":"The House Trail","state":"new 11-20","layer":"surface","x":-20,"y":14,"w":7,"h":3,"shape":"band","count":' + pl.length + ',"note":"the walked way from the Lake\u2019s West Bank to the Haunted House (world polish thread 17); room site_prebuilt_skinwalker_ow_trail",\n      "plots": [\n' + pl.map(q => '        ' + JSON.stringify(q)).join(',\n') + '\n      ]}' + t.slice(j + 9); }
 JSON.parse(t); fs.writeFileSync(FILE, t);
 [d, dW, dF, dC, dE, dR, dL].concat(MTN).forEach(d => console.log('plots.json: ' + d.name + ' ' + d.count + ' plots, ' + d.w + ' x ' + d.h + ' at ' + d.x + ',' + d.y)); console.log(n + ' ground letters changed to T');
