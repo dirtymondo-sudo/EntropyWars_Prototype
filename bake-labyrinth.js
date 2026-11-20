@@ -262,11 +262,12 @@ A.plate = (x, y, s, t1, t2) => { const VV = { n: [0, -1], s: [0, 1], w: [-1, 0],
     const ry = ({ n: 0, s: 180, w: 270, e: 90 })[s], q = (t, yy, h) => DRESS.push({ s: 'quad', p: [r2(px - v[0] * 0.04), r2(yy), r2(pz - v[1] * 0.04)], size: [2.0, h], ry, key: 'txt:' + t + '|#e8e4d8|#1d3a5a|' + r2(2.0 / h) + '||', uv: 'fit', kind: 'wall' });
     q(t1, yf + 1.92, 0.34); if (t2) q(t2, yf + 1.58, 0.22); };
 /* the mains: four big pipes across a chamber's vault, on hangers, with a valve gallery under them */
-A.mains = (x0, y0, x1, y1) => { const top = ROOF[y0][x0], z0 = gz(y0), z1 = gz(y1 + 1);
-    for (let i = 0; i < 4; i++) { const px = gcx(x0) + 1.2 + i * ((gx(x1 + 1) - gx(x0) - 4.6) / 3), py = top - 3.2 - (i % 2) * 0.6;
-        const t = 1.0 - (i % 2) * 0.25; A.box(px, py - t / 2, (z0 + z1) / 2, t, t, z1 - z0, RUST, [0x5a3622, 0x3e4a3a, 0x6a4a2a, 0x40403a][i], { uv: 3.5 });   // (a cylinder part stands upright only: a main is a square duct)
-        for (let z = z0 + 1; z < z1 - 0.5; z += 3.5) A.box(px, py - t / 2, z, t + 0.16, t + 0.16, 0.2, RUST, 0x2a2420);   // its flanges
-        for (let z = z0 + 2; z < z1 - 1; z += 4.5) A.box(px, py, z, 0.08, top - py, 0.08, RUST, 0x222222); } };
+A.mains = (x0, y0, x1, y1) => { const top = ROOF[y0][x0], xa = gx(x0), xb = gx(x1 + 1), zc = (gz(y0) + gz(y1 + 1)) / 2;
+    /* (a square chamber's vault runs west-east: the mains run along it, under its crown, where the vault is highest) */
+    [-2.6, -0.9, 0.9, 2.6].forEach((off, i) => { const t = 0.9 - (i % 2) * 0.25, py = top - 1.3 - t / 2 - (i % 2) * 0.3, pz = zc + off;
+        A.box((xa + xb) / 2, py - t / 2, pz, xb - xa, t, t, RUST, [0x5a3622, 0x3e4a3a, 0x6a4a2a, 0x40403a][i], { uv: 3.5 });
+        for (let x = xa + 1; x < xb - 0.5; x += 3.5) A.box(x, py - t / 2 - 0.08, pz, 0.2, t + 0.16, t + 0.16, RUST, 0x2a2420);
+        for (let x = xa + 2.5; x < xb - 1; x += 7) A.box(x, py + t / 2, pz, 0.08, top - py, 0.08, RUST, 0x222222); }); };
 DES.dress(A);
 
 /* ── the walk check: every plot is reached from the spawn (a step of more than a ledge is crossed only by a climb, or down) ── */
@@ -286,8 +287,8 @@ const paint = new Uint8Array(W * H);
 for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!open(x, y)) continue; const d = distOf(x, y); paint[y * W + x] = T[y][x] === 'c' ? d.chamber : d.floor; }
 
 /* ── WRITE ── */
-const VROWS = PL.map(p => ({ k: 'arch', id: 'lab:' + DES.part + ':' + p.id, x: r2(pox(p)), z: r2(poz(p)), rot: 0, base: 0, parts: PARTS[p.id] }));
-const ROWS = F.concat(WATER, FALLS, climbs, VROWS, DRESS.length ? [{ k: 'arch', id: 'lab:' + DES.part + ':dress', x: 0, z: 0, rot: 0, base: 0, parts: DRESS }] : []);
+const VROWS = PL.map(p => ({ k: 'arch', id: 'lab:' + DES.part + ':' + p.id, x: r2(pox(p)), z: r2(poz(p)), rot: 0, y: 0, parts: PARTS[p.id] }));
+const ROWS = F.concat(WATER, FALLS, climbs, VROWS, DRESS.length ? [{ k: 'arch', id: 'lab:' + DES.part + ':dress', x: 0, z: 0, rot: 0, y: 0, parts: DRESS }] : []);
 const TOP = Math.max.apply(null, ROOF.map(r => Math.max.apply(null, r))), SH = Math.ceil(TOP + 3), SPY = hAt(SP[0], SP[1]);
 const MK = DES.marker, L = [];
 L.push('        /* ' + MK + '-BEGIN — THE UNDERGROUND LABYRINTH (world polish thread 10, 2026-11-20): written by `node bake-labyrinth.js ' + DESF + '` from ' + 'the approved plan + the room design. Never hand-edit between the markers. */');

@@ -13679,6 +13679,9 @@ exactly under the surface: the manholes and stairs still lead to the right place
 - **THE WATER RULE (learned on the first bake):** a `stream` carves its bank (0.9 m) and its ends are round (half its width past its points):
   a channel or splash pool beside a ledge cut the high ground down. Every water row here says `bank: 0` and stands its points half a width inside
   its squares. After that, every dry square of the room bakes at its planned level (the check: `hqTerrainFeet` on all 2,536 open squares).
+- **AN `arch` ROW'S HEIGHT IS ITS `y` (learned on the first probe):** data.js sets every arch row's base from `y`, else from the ground under the
+  row's middle; a `base` written in the row is thrown away. The tool's rows write `y: 0` and absolute part heights (with `base: 0` the vaults of a
+  plot whose middle is rock were drawn tens of metres off and the room looked open to the black).
 - **THE ROOM DESIGN** (`docs/areas/sewers/districts/room.js`, the room's own frame, plan squares): names the 48 plots and sets the five districts
   on the plan's branches, each entered at its top: W THE CULVERTS (11 plots, 137-144, the way in from the street), R THE RADIOACTIVE DRAIN (8,
   130-136, the manhole up to the Power Station's yard), T THE RUNNING TUNNELS (11, 128-137, the D.U.M.B.'s door), H THE HOLDING CELLS (6,
