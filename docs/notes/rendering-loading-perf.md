@@ -3656,3 +3656,15 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   order: (a) one bone-array size for all rigs (pad to the largest, or the bone texture) = the biggest fork of the skinned looks;
   (b) the context id out of the key where the targets have the same formats; (c) `side` out of the build key (it is pipeline
   state). The Lambert (72) and Basic (36) families were not broken down yet: run tools like the shadow one before cutting.
+- THE SLOW FIRSTS (11-20, mondo picked "first fight stutter"). His sixth profile's longest frames, one by one (tool: group the
+  samples into frames by the animation-loop root, list each long frame's leaf JS + its native leaf): **291 ms = ONE sheet upload,
+  211 ms asleep in `copyExternalImageToTexture`** (`_copyImageToTexture` ← `updateTexture`; which sheet is not in a profile);
+  152 / 117 / 105 ms = shader node builds (`build` / `setup` / `getChildren` / `NodeVar`), several a frame; 113 ms at the fight's
+  start = 77 ms asleep inside `_fieldBatchTick` → `_hqBatchTick` (a synchronous call into the GPU process; which is not known).
+  Over the whole 22 s recording the node builds were 5.4 % (~8 ms a build on average): the stutter is a few very long firsts,
+  not their sum. So the first fight needs NAMES before a warm-up can be aimed. Added to the lens: "Slow first-time work
+  (session's worst)": every sheet upload ≥ 12 ms (`backend.updateTexture` / `generateMipmaps`, timed in `_ewBunSetup`'s hook;
+  the sheet's name, file, size, kind of picture: img / bitmap / canvas / video / data) and every shader build ≥ 20 ms
+  (`_nodes.getForRender`, with its look from THE BUILDS' NAMES), each marked fight / walk and the time; the 16 worst of the
+  session (`_ewSlow`, `_ewSlowNote`). `_EW_TR_STAMP` = "11-20 slow-firsts". The fix follows that list: a sheet that is an `img`
+  = decode it (`image.decode()`) and upload it when the fight is set up; a build = make the look's twin then.
