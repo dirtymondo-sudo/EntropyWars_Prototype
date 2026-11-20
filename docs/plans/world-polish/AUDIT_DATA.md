@@ -1,4 +1,4 @@
-# THE WORLD AUDIT, the numbers (2026-11-19)
+# THE WORLD AUDIT, the numbers (2026-11-20)
 
 Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What each column means is in that file's header; what to do about it is in `WORLD_POLISH_PLAN.md`. Every plot: `plots.csv`. The picture: `need-map.svg`.
 
@@ -11,25 +11,26 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 | THE LONG TUNNEL `hollow_earth_ow_long` | cavern | 10 | 42 x 420 | 29 % | 3.1 | 30 | 10 | 0 | 0 | 10 | 2 | 10 | 20 | **9** |
 | THE TUNNEL-WAY TUNNEL `hollow_earth_ow_tunnelway` | cavern | 34 | 420 x 588 | 30 % | 3.1 | 33 | 34 | 0 | 0 | 34 | 3 | 34 | 57 | **8.8** |
 | THE WEST TUNNEL `hollow_earth_ow_west` | cavern | 18 | 294 x 462 | 30 % | 3.1 | 33 | 18 | 0 | 0 | 18 | 2 | 18 | 31 | **8.8** |
-| THE SNOWY PINES `camelot_ow_pines` | camelot | 8 | 84 x 294 | 31 % | 2.8 | 32 | 7 | 0 | 0 | 8 | 23 | 0 | 14 | **6.9** |
-| THE FOREST `camelot_ow_forest` | camelot | 9 | 168 x 210 | 31 % | 2.7 | 35 | 8 | 0 | 1 | 9 | 37 | 1 | 15 | **5.6** |
 | DISASTER CITY · THE SEWERS `downtown_underworld` | sewers | 65 | 714 x 672 | 37 % | 3.4 | 38 | 31 | 0 | 23 | 41 | 26 | 38 | 72 (+7 sea) | **5.4** |
 | HEAVEN `heaven_plots` | heaven | 26 | 294 x 336 | 51 % | 4.9 | 44 | 10 | 0 | 25 | 15 | 3 | 20 | off the map | **5.4** |
 | THE FROZEN SEA `bermuda_ow_frozen` | beach | 3 | 168 x 84 | 49 % | 4.4 | 53 | 1 | 0.6 | 1 | 1 | 5 | 2 | 6 (+4 sea) | **5.3** |
 | THE D.U.M.B. `dumb_base` | dumb | 49 | 294 x 294 | 50 % | 4.5 | 48 | 18 | 0 | 19 | 41 | 11 | 25 | 21 | **5.2** |
 | THE CATACOMBS `vatican_under` | catacombs | 6 | 126 x 84 | 48 % | 3 | 53 | 1 | 0.9 | 4 | 3 | 6 | 4 | off the map | **5.2** |
 | AGARTHA `hollow_earth_ow_agartha` | cavern | 15 | 210 x 168 | 70 % | 7.5 | 53 | 4 | 0 | 7 | 13 | 8 | 4 | 15 | **5.1** |
+| THE FOREST `camelot_ow_forest` | camelot | 21 | 210 x 210 | 47 % | 4 | 48 | 5 | 0 | 8 | 13 | 17 | 8 | 14 | **5** |
 | THE NORTH POLE `northpole_plots` | mountains | 16 | 168 x 168 | 47 % | 3.1 | 49 | 8 | 0.5 | 3 | 9 | 29 | 1 | off the map | **4.9** |
+| THE SNOWY PINES `camelot_ow_pines` | camelot | 22 | 168 x 294 | 50 % | 3.9 | 49 | 8 | 0.2 | 9 | 13 | 11 | 7 | 14 | **4.7** |
 | THE INTERNET `internet_web` | internet | 71 | 378 x 378 | 64 % | 5.2 | 59 | 11 | 0 | 23 | 56 | 8 | 35 | off the map | **4.6** |
 | THE ASTRAL REALM `lookingglass_realm` | astral | 45 | 420 x 546 | 44 % | 3.4 | 49 | 11 | 0.2 | 36 | 24 | 10 | 11 | off the map | **4.6** |
 | PIRATES' COVE `bermuda_ow_cove` | beach | 5 | 126 x 126 | 37 % | 4.8 | 36 | 2 | 0.8 | 3 | 1 | 7 | 2 | 4 (+4 sea) | **4.4** |
 | THE LOOKING-GLASS GARDEN `camelot_ow_garden` | camelot | 6 | 168 x 126 | 48 % | 2.9 | 45 | 2 | 0 | 0 | 6 | 59 | 0 | 9 | **4.3** |
 | THE DESERT HIGHWAY `site_ow_dh3` | routes | 18 | 294 x 168 | 89 % | 11.5 | 63 | 0 | 0.4 | 1 | 16 | 17 | 0 | 16 | **4** |
 | THE BERMUDA TRIANGLE `bermuda_ow_triangle` | beach | 10 | 378 x 294 | 33 % | 4.9 | 26 | 8 | 0.8 | 5 | 5 | 22 | 1 | 0 (+24 sea) | **4** |
-| CAME A LOT KINGDOM `camelot_kingdom` | camelot | 36 | 252 x 252 | 70 % | 4.7 | 49 | 12 | 0 | 7 | 22 | 23 | 3 | 16 | **4** |
+| CAME A LOT KINGDOM `camelot_kingdom` | camelot | 36 | 252 x 252 | 70 % | 4.7 | 49 | 12 | 0 | 7 | 22 | 23 | 3 | 10 | **4** |
 | THE DESERT HIGHWAY `site_ow_dh2` | routes | 14 | 168 x 210 | 89 % | 11.8 | 63 | 0 | 0.4 | 1 | 13 | 19 | 4 | 13 | **3.9** |
 | THE RITUAL GROUND `fairy_forest_ow_ritual` | woods | 18 | 252 x 378 | 48 % | 3.8 | 53 | 0 | 0.9 | 10 | 4 | 28 | 9 | 23 | **3.8** |
 | LEYLINES · THE LINE `gobekli_ow_line` | leylines | 18 | 504 x 126 | 100 % | 14.6 | 64 | 0 | 0.9 | 7 | 9 | 9 | 6 | 23 | **3.8** |
+| THE FAIRY FOREST `camelot_ow_fairy` | camelot | 13 | 168 x 168 | 50 % | 4.1 | 52 | 3 | 0.3 | 7 | 7 | 29 | 1 | 6 | **3.6** |
 | OUTER SPACE `moon_plots` | space | 95 | 1932 x 798 | 100 % | 88.8 | 64 | 0 | 2.2 | 29 | 9 | 3 | 83 | off the map | **3.6** |
 | THE OLD ROAD `site_ow_r4` | routes | 26 | 462 x 210 | 87 % | 9.9 | 62 | 0 | 0.4 | 1 | 25 | 32 | 4 | 14 | **3.5** |
 | THE BEACH `bermuda_beach` | beach | 20 | 336 x 420 | 54 % | 6.2 | 44 | 6 | 0.6 | 4 | 8 | 26 | 2 | 11 (+12 sea) | **3.5** |
@@ -41,11 +42,10 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 | MOUNT OLYMPUS `shasta_ow_olympus` | olympus | 19 | 420 x 252 | 53 % | 3.5 | 52 | 5 | 2.4 | 28 | 0 | 14 | 9 | 26 | **3.3** |
 | ANTARCTICA `antarctica_plots` | antarctica | 36 | 252 x 252 | 72 % | 6.8 | 55 | 1 | 2.6 | 21 | 0 | 11 | 16 | off the map | **3.2** |
 | AREA 51 `area51_desert` | desert | 16 | 168 x 168 | 94 % | 9.2 | 61 | 0 | 0.1 | 11 | 11 | 25 | 0 | 12 | **3.2** |
-| THE FAIRY FOREST `camelot_ow_fairy` | camelot | 6 | 168 x 126 | 40 % | 3.1 | 42 | 2 | 1.3 | 4 | 3 | 54 | 0 | 4 | **3.2** |
 | THE CLEARING `fairy_forest_ow_clearing` | woods | 19 | 504 x 210 | 48 % | 3.9 | 50 | 6 | 0.9 | 19 | 3 | 30 | 1 | 24 | **3.2** |
 | LEYLINES · BABEL + TECHNOTICLAN `gobekli_ow_babel` | leylines | 29 | 294 x 336 | 100 % | 22 | 64 | 0 | 4.9 | 30 | 5 | 7 | 17 | 22 (+5 sea) | **3.2** |
 | THE DESERT HIGHWAY `site_ow_dh4` | routes | 22 | 252 x 294 | 89 % | 12.6 | 63 | 0 | 0.4 | 1 | 18 | 25 | 0 | 14 | **3.1** |
-| THE STONE PATH `site_ow_r12` | routes | 8 | 126 x 126 | 88 % | 15 | 64 | 0 | 0.5 | 1 | 8 | 33 | 0 | 7 | **3.1** |
+| THE STONE PATH `site_ow_r12` | routes | 8 | 126 x 126 | 88 % | 15 | 64 | 0 | 0.5 | 1 | 8 | 33 | 0 | 5 | **3.1** |
 | THE POLAR TRAIL `site_ow_r5` | routes | 36 | 546 x 294 | 91 % | 20 | 64 | 0 | 0.7 | 1 | 12 | 21 | 0 | 36 | **3.1** |
 | THE BADLANDS HIGHWAY `site_ow_r9` | routes | 18 | 84 x 378 | 88 % | 9.8 | 63 | 0 | 0.5 | 2 | 10 | 24 | 2 | 18 | **3.1** |
 | THE SKI LODGE · THE SNOWY PASS `shasta_ow_lodge` | mountains | 29 | 420 x 378 | 68 % | 5 | 55 | 7 | 1.7 | 20 | 3 | 24 | 6 | 39 | **3** |
@@ -93,10 +93,10 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 | THE VOLCANO ISLAND | The Ocean | 10 | 57 % | 11.5 | 50 | 2 | 1.9 | 16 | 3 | 18 | 27 | 0 | 0 | 18 | 0 | 0 | 2 | 0 % | 26 | 1 | 0.7 | 0.9 | 1 | **2.6** |
 | CAME A LOT KINGDOM | The Castle | 8 | 96 % | 11.8 | 64 | 0 | 7 | 7 | 2 | 18 | 5 | 2 | 0 | 0 | 0 | 2 | 8 | 75 % | 22 | 1 | 0 | 0.6 | 1 | **1.6** |
 | CAME A LOT KINGDOM | The Village | 28 | 63 % | 3.7 | 45 | 12 | 0 | 7 | 20 | 3 | 2 | 5 | 16 | 0 | 2 | 1 | 24 | 25 % | 23 | 2 | 1.6 | 2 | 1.1 | **4.6** |
-| THE FAIRY FOREST | The Fairy Forest | 6 | 40 % | 3.1 | 42 | 2 | 1.3 | 4 | 3 | 1 | 8 | 0 | 1 | 0 | 2 | 2 | 0 | 0 % | 54 | 0 | 1.3 | 1.8 | 0 | **3.2** |
-| THE FOREST | The Forest | 9 | 31 % | 2.7 | 35 | 8 | 0 | 1 | 9 | 0 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 6 % | 37 | 1 | 2.2 | 2.8 | 0.6 | **5.6** |
+| THE FAIRY FOREST | The Fairy Forest | 13 | 50 % | 4.1 | 52 | 3 | 0.3 | 7 | 7 | 2 | 11 | 0 | 1 | 0 | 2 | 4 | 0 | 0 % | 29 | 1 | 0.7 | 1.8 | 1.2 | **3.6** |
+| THE FOREST | The Forest | 21 | 47 % | 4 | 48 | 5 | 0 | 8 | 13 | 1 | 11 | 0 | 0 | 0 | 0 | 10 | 1 | 2 % | 17 | 8 | 1 | 2.2 | 1.8 | **5** |
 | THE LOOKING-GLASS GARDEN | The Looking-Glass Garden | 6 | 48 % | 2.9 | 45 | 2 | 0 | 0 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 79 % | 59 | 0 | 1.2 | 3 | 0.2 | **4.3** |
-| THE SNOWY PINES | The Snowy Pines | 8 | 31 % | 2.8 | 32 | 7 | 0 | 0 | 8 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 % | 23 | 0 | 2.6 | 3 | 1.3 | **6.9** |
+| THE SNOWY PINES | The Snowy Pines | 22 | 50 % | 3.9 | 49 | 8 | 0.2 | 9 | 13 | 2 | 13 | 0 | 1 | 0 | 0 | 20 | 0 | 0 % | 11 | 7 | 1.1 | 1.6 | 2 | **4.7** |
 | THE CATACOMBS | The Catacombs | 6 | 48 % | 3 | 53 | 1 | 0.9 | 4 | 3 | 0 | 9 | 3 | 0 | 0 | 2 | 4 | 0 | 100 % | 6 | 4 | 0.5 | 2 | 2.7 | **5.2** |
 | THE CAVERN | Hollow Earth | 11 | 82 % | 10.3 | 62 | 0 | 0 | 7 | 7 | 5 | 13 | 7 | 1 | 1 | 19 | 5 | 0 | 0 % | 11 | 2 | 0.1 | 2.1 | 1.7 | **3.9** |
 | THE CAVERN | The Cavern | 13 | 54 % | 3.9 | 56 | 2 | 0.9 | 16 | 5 | 2 | 13 | 6 | 2 | 1 | 27 | 17 | 7 | 77 % | 22 | 0 | 0.5 | 1.5 | 0.8 | **2.7** |
@@ -220,10 +220,6 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 
 **THE WEST TUNNEL** (18 of 18): P04-09 The West Tunnel (3/3/3); P06-09 The West Tunnel (3/3/3); P05-09 The West Tunnel (3/3/3); P00-03 The West Tunnel (3/3/3); P00-00 The West Tunnel (3/3/3); P03-09 The West Tunnel (3/3/3); P00-06 The West Tunnel (3/3/3); P00-05 The West Tunnel (3/3/3); P00-04 The West Tunnel (3/3/3); P00-02 The West Tunnel (3/3/3); P00-10 The West Tunnel (3/3/3); P02-09 The West Tunnel (3/3/3); …
 
-**THE SNOWY PINES** (7 of 8): P00-03 The Snowfield, west (3/3/2); P01-02 The Snowy Pines, east (3/3/2); P01-03 The Snowy Pines, west (3/3/2); P00-05 The Sleigh Road (3/3/1); P01-00 Snowy pines, north-east (3/3/1); P00-04 The Snowfield, east (2/3/2); P01-01 Snowy pines, north-west (3/3/0)
-
-**THE FOREST** (4 of 9): P02-02 The Forest Road, east (3/3/1); P00-01 The Forest Road (3/3/1); P03-03 The Forest Trail, the camp (1/3/3); P00-04 The Dead Tree's Hole (3/3/0)
-
 **DISASTER CITY · THE SEWERS** (36 of 65): P05-07 The Loop Culvert (3/3/3); P06-08 The Loop Culvert (3/3/3); P07-08 The Loop Culvert (3/3/3); P04-09 The Workings Culvert (3/3/3); P03-09 The Workings Culvert (3/3/3); P02-09 The Workings Culvert (3/3/3); P16-04 The Outfall Pipe (3/3/3); P08-12 The Gantry Tunnel (3/3/3); P08-13 The Gantry Tunnel (3/3/3); P08-14 The Gantry Tunnel (3/3/3); P07-15 The Gantry Tunnel (3/3/3); P06-15 The Gantry Tunnel (3/3/3); …
 
 **HEAVEN** (12 of 26): P01-03 The Cloud Path, west (3/3/3); P03-01 The City Path, west (3/3/3); P04-01 The City Path, east (3/2/3); P02-03 The Cloud Path, middle (3/2/3); P00-05 The Cloud Bridge (3/2/3); P03-03 The Cloud Path, east (3/2/3); P03-07 The Fall (3/1/3); P02-07 The Long Way (3/0/3); P03-06 The Fall, north (3/0/3); P02-06 The Long Way, north (3/0/3); P05-02 The Cloud Paths (1/2/3); P01-04 The Gate, west (0/3/3)
@@ -236,7 +232,11 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 
 **AGARTHA** (4 of 15): P01-00 The Lake (3/2/3); P04-03 The Lemuria Tunnel (3/2/3); P04-02 The Lemuria Tunnel (3/2/3); P04-01 The Lemuria Tunnel (2/2/3)
 
+**THE FOREST** (7 of 21): P03-01 The Bluff (3/1/3); P00-04 The Badger Wood (2/2/3); P02-00 The Bluff Path (1/3/3); P00-01 The Hollow’s Rim (1/3/3); P04-03 The Forest Trail, the camp (1/3/3); P00-00 The Poachers’ Path (1/3/3); P04-02 Deep forest, south-east (3/3/0)
+
 **THE NORTH POLE** (8 of 16): P02-02 The Sleigh Road (3/2/2); P03-02 The Sleigh Road, east (3/2/2); P01-03 The Snowline, west (2/3/2); P00-00 The Drift (2/3/2); P03-03 The Snowline, east (2/3/2); P02-03 The Snowline (2/3/2); P01-00 The Pole (2/3/1); P00-01 The Drift, south (2/2/2)
+
+**THE SNOWY PINES** (6 of 22): P01-02 The Drift Bank (3/2/3); P01-04 The Snowfield, east (3/3/2); P03-03 The East Branch (2/2/3); P01-03 The Snowfield, west (1/2/3); P02-03 The Snowy Pines, west (1/3/2); P02-02 The Snowy Pines, east (0/3/3)
 
 **THE INTERNET** (11 of 71): P04-03 Bandwidth (3/2/3); P02-04 The Slow Lane (3/2/3); P03-04 The Paywall (3/2/3); P02-08 Page Not Found (2/2/3); P06-08 Lurkers' Corner (2/2/3); P04-02 The On-Ramp (2/2/3); P05-04 Fibre (2/2/3); P06-04 Buffering (2/2/3); P07-04 The Speed Test (2/2/3); P08-04 The Last Mile (2/2/3); P04-05 The Backbone (2/2/3)
 
@@ -255,6 +255,8 @@ Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What ea
 **THE RITUAL GROUND** (8 of 18): P01-07 The trail, the camp (1/3/3); P01-08 The trail, the rest (1/3/3); P05-00 The trail, the rest (1/2/3); P05-01 The trail, the camp (1/2/3); P05-02 The trail, the woodcutter’s stack (1/2/3); P05-03 The trail, the fire watch sign (1/2/3); P04-04 The trail, the camp (1/2/3); P03-04 The trail, the rest (0/3/3)
 
 **LEYLINES · THE LINE** (3 of 18): P06-01 The Great Line (0/3/3); P08-01 The Great Line, east (0/3/3); P09-01 The Forks, east (0/3/3)
+
+**THE FAIRY FOREST** (2 of 13): P03-02 The Mossy Stair (2/3/2); P00-02 The Moth Glade (1/3/3)
 
 **OUTER SPACE** (3 of 95): P39-12 The Bore (0/3/3); P43-13 The Mare, east (0/3/3); P33-17 The Accretion Rim, south-east (0/3/3)
 

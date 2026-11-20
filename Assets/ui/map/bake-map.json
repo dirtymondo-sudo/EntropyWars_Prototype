@@ -202,12 +202,12 @@
  "site_prebuilt_camelot_ow_fairy": {
   "id": "site_prebuilt_camelot_ow_fairy",
   "nx": 48,
-  "nz": 36,
-  "h0": -0.8,
+  "nz": 48,
+  "h0": -2.38,
   "hs": 0.25,
-  "v": "495e80480d",
-  "bytes": 320,
-  "s": "0.6"
+  "v": "b1c384891a",
+  "bytes": 546,
+  "s": "0.3"
  },
  "site_ow_l6": {
   "id": "site_ow_l6",
