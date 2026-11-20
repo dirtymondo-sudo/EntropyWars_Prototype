@@ -98,7 +98,7 @@ tiles=', '.join("%s: ['%s', true, %s, %s]"%(D[k][6],D[k][0].replace("'","\\'"),D
 dists=', '.join("%s: { name: '%s', color: '%s' }"%(k,D[k][0].replace("'","\\'"),D[k][7]) for k in order)+", D: { name: 'The D.U.M.B. (thread 8)', color: '#9aa0a6', skip: DUMB }"
 n=sum(len(dist[k]) for k in order)
 head = '''/* THE WHOLE UNDERGROUND: THE LAYOUT OF EVERY DISTRICT AS ONE LABYRINTH (threads 7, 9, 10). A LAYOUT, plot by plot: not yet square by square.
-   A PROPOSAL: nothing is built from it until mondo says so.
+   APPROVED by mondo 2026-11-20 ("Yes this is good, go ahead and start individual threads"). Nothing is built from it yet.
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/underground.js
    mondo 2026-11-20: "The entire underground needs to be like a labyrinth. Make the layout for the entire underground, all districts",
    and on the tunnels: "Does it have to be so long? 10 rows?". And before: "we need victory road. labyrinth, height diffs, cliffs, drops
@@ -124,9 +124,10 @@ head = '''/* THE WHOLE UNDERGROUND: THE LAYOUT OF EVERY DISTRICT AS ONE LABYRINT
 'use strict';
 const DUMB = 'the D.U.M.B. is thread 8\\'s: its own plan; shown as a block with its join to the Sewers (its deeper joins are decided by its own plan)';
 module.exports = {
+    approved: 'mondo 2026-11-20: "Yes this is good, go ahead and start individual threads"',
     zone: 'The Underground (all districts)', thread: '7 + 9 + 10', maze: true,
     schematic: 'A LAYOUT: one plot = 3 x 3 boxes (not battle squares). The number is the LEVEL (1 level = 1.75 m) ABOVE THE INNER SUN: the Sewers under the city are @TOP@ (@M@ m up), the Inner Sun is 0. ORANGE BAR = a climb, both ways (ladder, stair). WHITE BAR with a tooth = a cliff or a waterfall, DOWN only. Orange dots = the ways in from the surface and from Hell. Each district is entered at its top and goes down as you go in. A PROPOSAL.',
-    title: 'THE WHOLE UNDERGROUND: every district as one labyrinth, @M@ m deep, from the Sewers (@TOP@) down to the Inner Sun (0) (a proposal)',
+    title: 'THE WHOLE UNDERGROUND: every district as one labyrinth, @M@ m deep, from the Sewers (@TOP@) down to the Inner Sun (0)',
     noBuildings: 'a layout', mass: 'rock', massHeight: 6,
     tiles: { %s },
     grid: { w: 54, h: 45, n: 3 }, start: [40, 1],

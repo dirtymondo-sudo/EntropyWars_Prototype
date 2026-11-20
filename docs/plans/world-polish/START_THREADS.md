@@ -46,7 +46,7 @@ This is a BUILD thread. Its plans (all four have mondo's OK of 11-20):
 Order: Hell first (the smallest job and the worst to look at today), then Heaven, the Catacombs, the Vatican. Follow section 4, "HOW A BUILD THREAD USES A PLAN".
 ```
 
-## 5. Threads 7 + 9 + 10: THE UNDERGROUND (one labyrinth; waits mondo's OK on the square plans)
+## 5. Threads 7 + 9 + 10: THE UNDERGROUND (one labyrinth; the square plans have mondo's OK of 11-20; one thread a district, started 11-20)
 
 The layout of the whole underground has mondo's OK for its shape and its depth (6 plots, no climb over 28 m): `plans/underground.js`.
 The square-by-square skeleton of each district is drawn from it: `plans/ug-long-tunnel.js`, `ug-west-tunnel.js`, `ug-tunnel-way.js`,
