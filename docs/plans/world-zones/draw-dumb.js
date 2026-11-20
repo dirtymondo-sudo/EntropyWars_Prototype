@@ -51,7 +51,7 @@ plot(6, 6, 'K', 8, 5.25, ...SVC(4), [[0, 0, 3, 3, 'f']]);
 /* ── P: LEVEL P3. The tunnel: rows 2..5 of every plot of row 5 (2 = the north walk, 3 = the track, 4 and 5 = the platform side). ── */
 const TUN = [[0, 2, 12, 6, 'o'], [0, 3, 12, 4, 'j']];
 plot(0, 5, 'P', 8, 7, 'The West Gantry', 'the tunnel\'s west end, where it crosses the ring; the wired door to Hangar 18\'s floor lift', 'Level P3: THE WEST GANTRY · the tunnel west (links.area51_dumb)', TUN.concat([[4, 0, 8, 12, 'r'], [4, 3, 8, 4, 'j']]));
-plot(1, 5, 'P', 8, 7, 'The Ramp', 'the foot of the ramp down from the garage (P1): a door that is not on a plate', 'Level P3: THE RAMP\'s foot (links.garage_motorpool, secret)', TUN.concat([[2, 6, 10, 10, 'f']]));
+plot(1, 5, 'P', 8, 7, 'The Ramp', 'the bay west of the Bays (the garage\'s secret ramp is cut: mondo 11-20; the Hangar comes here in Level P3\'s pass)', 'Level P3: THE RAMP\'s foot (links.garage_motorpool, cut 11-20)', TUN.concat([[2, 6, 10, 10, 'f']]));
 plot(2, 5, 'P', 8, 7, 'The Bays', 'the motor pool: bays with the black cars, every one signed out', 'Level P3: THE MOTOR POOL · THE BAYS', TUN.concat([[1, 6, 11, 11, 'f']]));
 plot(3, 5, 'P', 8, 7, 'The Platform', 'LANDMARK: the lit tram on its rails at the platform; the wired door with a 7 on it; the base\'s battle marker', 'Level P3: THE HALL · THE PLATFORM · THE TRAM', TUN.concat([[5, 0, 8, 2, 'o'], [1, 6, 11, 9, 'f']]));
 plot(4, 5, 'P', 8, 7, 'The Booth', 'the guard booth on the middle passage', 'Level P3: THE BOOTH', TUN.concat([[3, 6, 9, 10, 'f']]));
@@ -70,11 +70,17 @@ plot(3, 1, 'S', 0, 5.25, 'Level −6', 'rock cut square and a blast door in it: 
 plot(1, 1, 'R', 2, 7, 'The White Rooms, West', 'the Cell Row, the Quiet Room, Intake; the observation floor over the halls', 'Area 51: THE WHITE ROOMS (site_prebuilt_area51_ward), moved in on mondo\'s word 11-16', []);
 plot(2, 1, 'R', 2, 7, 'The White Rooms, East', 'Records, Treatment, the Nurses\' Station, Showers, the Doctor, the Dayroom', 'Area 51: THE WHITE ROOMS', []);
 set(14, 12, 30, 24, 'f');
-plot(1, 2, 'R', 2, 5.25, 'The Ward', 'Dream Research: the cots, the traces, the pods; the dream screen you can walk into', 'Dream Research: THE WARD · the dream screen (links.dumb_astral)', [[1, 2, 11, 11, 'f'], [5, 11, 8, 12, 'o'], [11, 5, 12, 8, 'o'], [9, 0, 10, 2, 'o']]);
-plot(2, 2, 'R', 2, 5.25, 'The Range', 'Dream Research: psychic training, THE OBJECT on its table, the spoons; the booth up its step', 'Dream Research: THE RANGE · THE BOOTH', [[1, 2, 11, 11, 'f'], [0, 5, 1, 8, 'o'], [11, 5, 12, 8, 'o']]);
-plot(1, 3, 'R', 2, 5.25, 'The Service Corridor', 'the back way between the labs: the sleepers are wheeled through it', 'D.U.M.B.: THE SERVICE CORRIDOR (two draughts today)', [[5, 0, 8, 12, 'o'], [8, 5, 12, 8, 'o'], [1, 4, 5, 9, 'f']]);
-plot(1, 4, 'R', 2, 7, 'The Vat Hall', 'Clone Research: rows of vats under THE GANTRY', 'Clone Research: THE VAT HALL · THE GANTRY', [[1, 1, 11, 10, 'f'], [5, 0, 8, 1, 'o'], [11, 5, 12, 8, 'o']]);
-plot(2, 4, 'R', 2, 7, 'Disposal', 'Clone Research: the furnace at the end, the chute, BATCH 12, THE OTHER ONE', 'Clone Research: DISPOSAL · BATCH 12', [[1, 1, 11, 10, 'f'], [0, 5, 1, 8, 'o']]);
+plot(1, 2, 'R', 2, 7, 'The Ward', 'Dream Research, the Dream Wing (a floor at 5.25 m): the sleep lab, Traces, the Doctor, THE TANKS sunk a level; the dream screen you can walk into', 'Dream Research: THE WARD · the dream screen (links.dumb_astral)', []);
+plot(2, 2, 'R', 2, 8.75, 'The Range', 'Dream Research, the Dream Wing: the psychic training hall with THE OBJECT, its gallery a level up; the two card rooms, Prep, the Store', 'Dream Research: THE RANGE · THE BOOTH', []);
+plot(1, 3, 'R', 2, 5.25, 'The Labs', 'the bio lab, Specimens, the autopsy theatre behind its window, the cold store; the gurney ramp up to the Dream Wing', 'D.U.M.B.: THE SERVICE CORRIDOR (two draughts today) · world polish thread 8: the Labs', []);
+plot(1, 4, 'R', 0, 8.75, 'The Vat Hall', 'Clone Research: the vats on the floor of Sub-Level 7\'s depth, walked on THE GANTRY 3.5 m over them', 'Clone Research: THE VAT HALL · THE GANTRY', []);
+plot(2, 4, 'R', 0, 8.75, 'Disposal', 'Clone Research: the furnace, the chute, BATCH 12, THE OTHER ONE; the Control room up its stair; a back door to the Stair', 'Clone Research: DISPOSAL · BATCH 12', []);
+/* RESEARCH ON THE SQUARES (world polish thread 8, 2026-11-20, mondo's OK on the plan: docs/plans/world-polish/thread8/plan-research.png).
+   Every square by hand (global squares, the end inclusive); the levels inside the plots are the district file's (R.js build). */
+[[21, 24, 21, 25], [19, 26, 24, 27], [13, 26, 18, 33], [19, 28, 20, 33], [22, 28, 23, 28], [21, 29, 24, 32], [25, 26, 32, 33], [33, 26, 34, 33], [35, 29, 35, 31],
+ [17, 34, 24, 35], [25, 34, 28, 35], [29, 34, 31, 35],
+ [20, 36, 22, 40], [16, 36, 19, 40], [13, 36, 15, 40], [16, 41, 23, 43], [16, 44, 18, 47], [19, 44, 23, 47], [13, 44, 15, 47],
+ [13, 48, 15, 49], [13, 50, 22, 58], [23, 55, 24, 56], [25, 49, 34, 58], [35, 51, 36, 51]].forEach(q => set(q[0], q[1], q[2] + 1, q[3] + 1, 'f'));
 
 /* ── C: COMMAND (level 2). ── */
 plot(5, 3, 'C', 2, 5.25, 'The Vault Gantry', 'the head of the stair from the hub: the round vault door north, the hotel door of the private lift south; the private stair behind the wall', 'Sub-Level 7: THE VAULT GANTRY (room E) · room F · War Room / Bunker: THE PRIVATE STAIR', [[1, 2, 9, 10, 'f'], [0, 5, 1, 8, 'o'], [5, 0, 8, 2, 'o'], [5, 10, 8, 12, 'o'], [10, 0, 11, 12, 'o']]);
@@ -102,7 +108,6 @@ const WAYS = [
     { id: 'bay', kind: 'entry', site: 'prebuilt_dumb', plot: 'P05-05', to: 'DOOR HQ · Bay 1 (Room 555)', what: 'the freight lift' },
     { id: 'bay_cern', kind: 'entry', site: 'prebuilt_cern', plot: 'P03-06', to: 'DOOR HQ · Bay 1 (Room 999)', what: 'the collider blast door' },
     { id: 'area51_dumb', kind: 'link', plot: 'P00-05', to: 'The Desert · Hangar 18 (the floor lift)', what: 'the tunnel west' },
-    { id: 'garage_motorpool', kind: 'link', plot: 'P01-05', to: 'DOOR HQ · the garage (secret)', what: 'the ramp up' },
     { id: 'cave_dumb', kind: 'link', plot: 'P03-01', to: 'The Cavern · Level −6', what: 'the blast door' },
     { id: 'dumb_astral', kind: 'link', plot: 'P01-02', to: 'The Astral Realm · the Library', what: 'the dream screen' },
     { id: 'yard', kind: 'door', plot: 'P01-01', to: 'The Desert · Area 51 (the yard gate)', what: 'the White Rooms\' gate' },

@@ -102,7 +102,7 @@ function check(B, opts) { opts = opts || {}; const { plan, W, H, N, T, L, RAMP, 
     /* a rule the first plans were not drawn to: on a plan mondo has OK'd (`approved`) it is a NOTE, never a stop */
     const NEWR = s => (plan.approved ? NOTE : FAIL).push(s + (plan.approved ? '  [a newer rule; this plan has mondo\'s OK]' : ''));
     const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], dists = plan.districts || {}, dname = d => (dists[d] && dists[d].name) || d;
-    const big = d => PLOTS.filter(p => p.d === d).length > A.smallDistrict, DKEYS = [...new Set(PLOTS.map(p => p.d))];
+    const big = d => PLOTS.filter(p => p.d === d).length > A.smallDistrict && !(dists[d] && dists[d].skip) /* `skip: 'why'` = plots in the room that are not this plan's (a route's) */, DKEYS = [...new Set(PLOTS.map(p => p.d))];
     /* bridges: a deck from one square over to another, walked both ways */
     const BR = {}, brEnd = {}; (plan.bridges || []).forEach(b => { const a = b[0], c = b[1]; (BR[key(a[0], a[1])] = BR[key(a[0], a[1])] || []).push(c); (BR[key(c[0], c[1])] = BR[key(c[0], c[1])] || []).push(a);
         brEnd[key(a[0], a[1])] = [Math.sign(c[0] - a[0]), Math.sign(c[1] - a[1])]; brEnd[key(c[0], c[1])] = [Math.sign(a[0] - c[0]), Math.sign(a[1] - c[1])]; });
@@ -267,6 +267,7 @@ function draw(B, o) { const { plan, W, H, N, T, L, RAMP, PLOTS, LEDGES, key, til
     const lines = ['Every box is one 3.5 m battle square. The number in a square is its LEVEL (1 level = 1.75 m); lighter = higher. A black triangle = a RAMP square, pointing uphill (one level over two squares).',
         'A WHITE BAR with a tooth = a LEDGE: you hop DOWN across it (the tooth points down) and cannot climb back. That is how the walk works today: no new rule.',
         'Plot lines by district: ' + dl + '. Dashes = a new plot. Orange dots = the ways out of the room; their squares keep today\'s height.' + (plan.approved ? '' : ' A PROPOSAL: nothing is built from it until mondo says so.')];
+    const maxc = Math.floor((WT - PAD * 2) / 6.7), wrapped = []; lines.forEach(t => { let cur = ''; t.split(' ').forEach(wd => { if ((cur + ' ' + wd).length > maxc) { wrapped.push(cur); cur = wd; } else cur = cur ? cur + ' ' + wd : wd; }); wrapped.push(cur); }); lines.length = 0; wrapped.forEach(t => lines.push(t));
     lines.forEach((t, i) => { lg += '<text x="' + PAD + '" y="' + (ly + (row + 1) * 22 + 8 + i * 19) + '" font-size="13" fill="#ddd">' + esc(t) + '</text>'; });
     const HT = ly + (row + 1) * 22 + 8 + lines.length * 19 + 6;
     return { w: WT, h: HT, svg: '<svg xmlns="http://www.w3.org/2000/svg" width="' + WT + '" height="' + HT + '" font-family="Helvetica,Arial,sans-serif"><rect width="100%" height="100%" fill="#16191a"/><text x="' + PAD + '" y="24" font-size="18" font-weight="700" fill="#eee">' + esc(o.title || plan.title || plan.zone) + '</text><text x="' + PAD + '" y="44" font-size="12.5" fill="#bbb">north is up · one plot = ' + N + ' x ' + N + ' squares = ' + N * 3.5 + ' m' + (plan.room ? ' · room ' + esc(plan.room) : '') + '</text>' + s + lg + '</svg>' }; }

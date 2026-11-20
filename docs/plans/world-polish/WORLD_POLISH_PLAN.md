@@ -64,12 +64,12 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 9 | **The Cavern** | The Cavern, Hollow Earth, Agartha | Not started |
 | 10 | **The Sewers** | The Sewers, one room | Not started |
 | 11 | **Heaven + Hell + Vatican** | Heaven, Hell, The Vatican, The Catacombs | Not started |
-| 12 | **Leylines** | The Line, Babel + Technoticlan, Stonehenge, Bug Colony | Not started |
-| 13 | **Antarctica** | Antarctica, one room | Not started |
+| 12 | **Leylines** | The Line, Babel + Technoticlan, Stonehenge, Bug Colony | **HEIGHT PLAN DRAFTED 11-20 for the Line's room, waits mondo's OK:** `docs/plans/world-polish/plans/leylines-line.js` (+ `leylines-line.png`, `-west`, `-east`; passes `draw-plan.js`). The Line stays dead straight and level; the land rises (to 5) and falls (to -2) beside it, the walk snakes across it five times; 18 new plots inside the same 12 x 3 box. Göbekli Tepe is left as built. **NOT planned yet: Babel + Technoticlan's room** (no base today; its own plan file next). Stonehenge and Bug Colony look good: no plan. Nothing built. |
+| 13 | **Antarctica** | Antarctica, one room | Not started. **No height plan drawn 11-20:** the board shows its tool row and the Station as the second side's since 11-16 (stale, over 3 days): mondo says who takes it. |
 | 14 | **The Internet** | The Internet, one room | Not started |
 | 15 | **The Astral Realm** | The Astral Realm, one room | Not started |
 | 16 | **The Deep** | Atlantis + The Trench, The Sea Floor | Not started |
-| 17 | **The Estate** | The Estate (Corn Fields, Lake, Ranch), The Haunted House | Not started |
+| 17 | **The Estate** | The Estate (Corn Fields, Lake, Ranch), The Haunted House | **HEIGHT PLAN DRAFTED 11-20, waits mondo's OK:** `docs/plans/world-polish/plans/estate.js` (+ `estate.png`, `-corn`, `-lake`, `-ranch`; passes `draw-plan.js`). The corn stays level on purpose, the Farm Track winds and crosses County Lane; the Lake gets a West Bank and a Bluff, the Ranch a hollow, a rise, the Draw with a creek cut and a Ridge (8 new plots inside the same 5 x 18 box). County Lane's plots and the Haunted House's room are not touched. Nothing built. |
 | 18 | **Outer Space** | Outer Space, one room | THE FIX + THE SPECTACLE done 11-20 (flight, distances, seams, sky; the launch, engines, painted Earth, traffic, comet, sound); the ground dressing not started |
 | 20 | **The Bayside Mall** (in Disaster City, Bayside district) | the mall building on the city's Bayside + its inside room | **Not started. Waits for the One Beach thread** (mondo 11-20: "Id probably wait for the beach thread to be finished since it is supposed to be a bayside mall"). |
 | 19 | **The Beach** | The Beach, Pirates' Cove, The Frozen Sea, The Bermuda Triangle (NOT the Volcano Island: thread 21) | **Another thread has it** ("One Beach": Disaster City's Bayside beach and the Beach zone made one). No thread of this plan starts here until that one reports. |
@@ -363,7 +363,7 @@ they are measurements, not the job.
   - **The North Pole village:** levels (the workshop up, the square down, a sledding hill behind), lanes between the houses, its solid half opened.
 - **Level of detail:** this is his example of what every zone should reach. "That is the level of detail we are going for."
 
-### Thread 17: THE ESTATE (not started)
+### Thread 17: THE ESTATE (the height plan is drafted, 11-20: `plans/estate.js`; waits mondo's OK; nothing built)
 - **Zone:** The Estate. Districts: The Corn Fields (C), The Lake (L), The Ranch (R), The Haunted House (H).
 - **Rooms:** `site_prebuilt_skinwalker_ow_lake` (47 plots: the Ranch 26, the Corn Fields 12, the Lake 9, County Lane through them),
   `site_prebuilt_skinwalker_ow_house` (9).
@@ -375,7 +375,7 @@ they are measurements, not the job.
   Ways wind; thin trails to the Lake, the House, The Woods. The corn fields stay level (fields: level on purpose), but the paths cut in the
   corn wind and branch (the corn is the wall).
 
-### Thread 12: LEYLINES (not started)
+### Thread 12: LEYLINES (the Line's height plan is drafted, 11-20: `plans/leylines-line.js`; waits mondo's OK; Babel + Technoticlan's plan is still to draw; nothing built)
 - **Zone:** Leylines. Districts: The Ley Line (Y), Babel (T), Technoticlan (Z), Stonehenge (S), Göbekli Tepe (G), Bug Colony (B).
 - **Rooms:** `site_prebuilt_gobekli_ow_line` (18), `site_prebuilt_gobekli_ow_babel` (29: Babel + Technoticlan),
   `site_prebuilt_gobekli_ow_henge` (9), `site_prebuilt_gobekli_ow_bugs` (15; written through `bake-route.js L14`: ask on the board first).

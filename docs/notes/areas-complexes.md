@@ -8084,6 +8084,16 @@ scientist labs, Lockheed Martin skunkworks, scientific and psychic research, etc
   `urban:TileGeneric*`, `urban:MetalPanelPainted*`; steel: `urban:MetalGrating*`, `urban:MetalWarningStripe1/2`.
   WARNING: `ZONE_LOOKS.zones.dumb` (the retexture thread's row) turns `metal`, `gunmetal`, `rocks_5`, `urban:PlasterWallPainted1a` and
   `urban:MetalCorrugatedPainted2a` into horror sheets and adds stains at load: a clean white room must wear other keys.
+- **mondo's OK (11-20):** "Okay that all sounds good ... I don't care about HQ garages secret entrance, you just delete that". So: the plan stands,
+  Research is the pilot, the Ring keeps its 22 plots, and the garage's secret ramp is GONE: `garage_motorpool` is in `DOOR_HQ.cut.links` (never
+  live), the garage drum's west opening and its two jambs are closed, bake-dumb.js no longer holds or checks the way.
+- **THE PILOT, RESEARCH, BUILT (2026-11-20):** the squares are drawn in `docs/plans/world-zones/draw-dumb.js` (a block of hand rects, "RESEARCH ON
+  THE SQUARES"); P01-04 + P02-04 are level 0 now (the vats stand at Sub-Level 7's depth); the rooms, levels, gantry and gallery are `R.js`
+  `research()`: one kit room over the Wing + the Labs (base 3.5), one over Clone Research (base 0). THE RULES IT FOUND: (1) a `sink` plateau
+  blends from height 0 at its edge, so above level 0 never cut down: put the plot at its LOWEST floor and raise the rest with plateaus;
+  (2) two plateaus that only touch leave a notch: overlap them 0.5 m; (3) a kit wall standing on a raised floor carries `y0` = that floor (its doors
+  are drawn at the wall's foot); the plateau's own face closes it below; (4) props on a plateau need no `y` (they stand on the ground); props on a
+  deck carry the deck's height.
 - **NEEDS A MODEL (found nowhere; shown to mondo 11-20):** a tarp / a tarp-covered aircraft · a black stealth aircraft (flying wing) · a blast
   door (big, sliding or round with a wheel) · a beam-pipe magnet + a particle detector barrel · a Zener card deck, a Faraday cage, an EEG cap ·
   a lab animal cage · a curved situation board + a round war-room table · a base tram car (the subway cars stand in) · a freight lift car with a
@@ -13218,6 +13228,12 @@ multiple islands."**
   - **THE GLASS ROOF FROM INSIDE.** Two things made the vault a grey lid: (1) each white rib was a thin `barrel` roof part, and a barrel has two END FANS, so every rib hung a solid half-disc across the hall: ribs take `ends: false`; (2) the factory glass sheet reads as grey marble from below: the room's roof wears the square-pane sheet, pale and lit (`roofParts(true)`), on the same shapes. The dome's drum is a ring (`ri`).
   - The city's map picture was baked again (`bake-map.js`).
   - Still next: the leaf itself (a grey steel door with the stock glyph; glass sliding doors want a new leaf or a walk-through way), the view out, the dressing, the quest's gates, the city's numbers.
+- **PASS 3 (11-20, mondo: "Do both of those" = the door leaf + the view out):**
+  - **THE GLASS DOORS** (three-renderer.js, the door builder, `proc: 'glass_slide'`): two glass leaves in white aluminium stiles with a push bar, parting into the jambs on the lift's own `elevator` motion and clip planes; the dark back plate is not hung, so you see through the doors. A door row: `leaf: null, proc: 'glass_slide', wide: true` (+ the mall's `frame`). Every public mall door wears it on both sides (`bake-mall.js`, B.js `mallDoors`, the city tool's `mall` line); the staff door keeps `leaf_exit`. The room's doorways are 2.5 m wide for them (a wall cut's third field = its width).
+  - **CLEAR GLASS** (three-renderer.js `_hqBuildArchRows`): an arch part with `kind: 'clear'` is see-through (opacity 0.2, 0.42 with a sheet; no depth write; drawn after the rest). `glass` stays the opaque window sheet the city's walls wear. The room's hall ends, the food court's wall and the whole glass roof inside are clear now; the sky shows through the vault and the dome.
+  - **THE VIEW OUT** (`bake-mall.js` THE VIEW OUT): the room has `terrain.outer: false` (the field's own outer ground at 0 would have covered a sea drawn lower) and draws its surroundings as one `mall:view:ground` arch row (the yard, the plaza, the quay and the canal, the sea front, the coast road with its middle line, the planks, the boardwalk, the sea wall, the sand at -1.05, the sea at -1.45, the pier and its piles), plus the city's own drawn rows within 90 m of the box (and on the pier's line) and its street props within 50 m on the land side, COPIED from the city room at bake time and moved by the box's middle. Never a `:in` row (a walk-in's hall). So: **run `bake-mall.js` AFTER `bake-disaster-city.js`**, every time, or the view shows the old city. Beach props are not copied (outside the field a prop stands at the field's height, not the sand's).
+  - **THE NUMBERS** (cloud probe, the mall room): 822 to 835 draw calls (line 2,500), 2.0 to 4.7 M triangles (the copied props), memory 704 MB misc + 210 MB rigs (line 1,400 MB). The room's text is 339 KB.
+  - A ground band laid under the whole view once hid the canal: the base slab is cut round it.
 - Pictures: `docs/plans/mall/after/`. The plan: `docs/plans/mall/MALL_PLAN.md` (its one-plot size was replaced by his "2 or 3 plots").
 ## KATANA ISLAND, THE INSIDES (2026-11-20, world polish thread 21; seen on screen)
 
