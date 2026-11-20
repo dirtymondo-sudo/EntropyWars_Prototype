@@ -3097,6 +3097,7 @@ const ThreeRenderer = (function () {
                 '\treturn c.xyz + dir * max( g.w + w.y, g.w * 0.3 );\n}\n' +
                 'vec3 ewPlBend( vec3 w, vec3 o ) {\n#ifdef EW_PL_NOBEND\n\treturn w;\n#endif\n\tif ( ewPlOn.x < 0.5 || ( ewPlS.w > 0.0 && distance( o, ewPlS.xyz ) < ewPlS.w ) ) return w;\n\tvec3 res = w;\n' +
                 '\tres = ewPlOne( w, o, ewPlG0, ewPlC0, res ); res = ewPlOne( w, o, ewPlG1, ewPlC1, res ); res = ewPlOne( w, o, ewPlG2, ewPlC2, res ); res = ewPlOne( w, o, ewPlG3, ewPlC3, res );\n' +
+                '\tif ( ewPlOn.y > 0.5 && distance( res, w ) < 1e-4 ) return w;\n' +   /* THE FIGHT ON A BALL: only a net's ground and what stands on it turns; the battle's own sky stays */
                 '\tvec3 d = res - ewPlA.xyz;\n\treturn ewPlP.xyz + d + vec3( dot( ewPlM0.xyz, d ), dot( ewPlM1.xyz, d ), dot( ewPlM2.xyz, d ) );\n}\n';
             if (SC.common.indexOf('ewPlBend') < 0) SC.common = SC.common + '\n' + U + '#ifndef EW_PL_FRAG\n' + body + '#endif\n';
             var pv = 'mvPosition = modelViewMatrix * mvPosition;';
@@ -55887,6 +55888,7 @@ const ThreeRenderer = (function () {
     }
     function _renderFrameBody() {
         if (!active || !renderer || !scene) return;
+        try { _ewPlBattleFrame(); } catch (e) { if (!_ewPl.bWarn) { _ewPl.bWarn = true; console.warn('[HQ] the fight on a ball', e); } }   // THE FIGHT ON A BALL
 
         /* §4.7 FPS cap — drift-free accumulator; skipped frames cost one
            comparison. 0 = uncapped (every display refresh, as before). */
@@ -56267,7 +56269,10 @@ const ThreeRenderer = (function () {
         }
         var fresh = sc._ew_mwAt === _css2dTick, au = sc.matrixWorldAutoUpdate;
         if (fresh) sc.matrixWorldAutoUpdate = false;
-        try { css2dRenderer.render(sc, cam); } finally { sc.matrixWorldAutoUpdate = au; _css2dTick++; }
+        /* THE FIGHT ON A BALL: a label stands where its body is drawn (its place read through the bend for this pass) */
+        var plV = (_ewPl.battleOn && !_hq && sc === scene && THREE.Vector3) ? THREE.Vector3.prototype : null, plF = plV ? plV.setFromMatrixPosition : null;
+        if (plF) plV.setFromMatrixPosition = function (m) { plF.call(this, m); var b = _ewPlBendJS(this.x, this.y, this.z); if (b) this.set(b[0], b[1], b[2]); return this; };
+        try { css2dRenderer.render(sc, cam); } finally { if (plF) plV.setFromMatrixPosition = plF; sc.matrixWorldAutoUpdate = au; _css2dTick++; }
     }
 
     var _onMouseMove = null, _onClick = null, _onContextMenu = null, _onWheel = null;
@@ -91970,7 +91975,7 @@ const ThreeRenderer = (function () {
     /* the uniforms (scene units), written every frame of a room with round worlds */
     function _ewPlTick(H) {
         var L = _ewPlRound(), u = _ewPl.u, C = _EW_PLU, U = _hqUnits(), sv = function (o, x, y, z, w) { o.x = x; o.y = y; o.z = z; o.w = w; };
-        C.on.x = L ? 1 : 0;
+        C.on.x = L ? 1 : 0; C.on.y = 0; if (u) u.F.value.set(0, 0, 0, 0);   // the walk turns the whole world about the feet
         for (var i = 0; i < 4; i++) {
             var p = L && L[i];
             if (p) { sv(C.g[i], p.x0 * U, p.z0 * U, p.L * U, p.R * U); sv(C.c[i], p.c[0] * U, p.c[1] * U, p.c[2] * U, 1); if (u) { u.g[i].value.set(p.x0 * U, p.z0 * U, p.L * U, p.R * U); u.c[i].value.set(p.c[0] * U, p.c[1] * U, p.c[2] * U, 1); } }
@@ -92068,13 +92073,14 @@ const ThreeRenderer = (function () {
             var dir = T.normalize(pick(0, k).add(pick(1, k).mul(T.tan(a.mul(PI4)))).add(pick(2, k).mul(T.tan(b.mul(PI4)))));
             res = T.select(inside, c.xyz.add(dir.mul(T.max(g.w.add(w.y), g.w.mul(0.3)))), res);
         }
-        var d = res.sub(u.A.xyz);
-        return T.select(u.S.w.greaterThan(0).and(T.distance(o, u.S.xyz).lessThan(u.S.w)), w, u.P.xyz.add(T.vec3(u.M0.xyz.dot(d), u.M1.xyz.dot(d), u.M2.xyz.dot(d))));
+        var d = res.sub(u.A.xyz), anch = u.P.xyz.add(T.vec3(u.M0.xyz.dot(d), u.M1.xyz.dot(d), u.M2.xyz.dot(d)));
+        var keep = u.S.w.greaterThan(0).and(T.distance(o, u.S.xyz).lessThan(u.S.w)).or(u.F.x.greaterThan(0.5).and(T.distance(res, w).lessThan(0.0001)));   // the flown ship; in a fight, what is on no net
+        return T.select(keep, w, anch);
     }
     function _ewPlNodeSetup(r, G) {
         var T = G && G.TSL; if (!T || _ewPl.u || !G.NodeMaterial) return;
         var V4 = function () { return T.uniform(new THREE.Vector4()).setGroup(T.renderGroup); };
-        _ewPl.u = { g: [V4(), V4(), V4(), V4()], c: [V4(), V4(), V4(), V4()], S: V4(), A: V4(), P: V4(), M0: V4(), M1: V4(), M2: V4() };
+        _ewPl.u = { g: [V4(), V4(), V4(), V4()], c: [V4(), V4(), V4(), V4()], F: V4(), S: V4(), A: V4(), P: V4(), M0: V4(), M1: V4(), M2: V4() };
         var NP = G.NodeMaterial.prototype, sv0 = NP.setupPositionView;
         NP.setupPositionView = function (builder) {
             if (!_ewPl.live || this._ew_noBend || (this.userData && this.userData.ewNoBend)) return sv0.call(this, builder);
@@ -92107,10 +92113,112 @@ const ThreeRenderer = (function () {
         _ewPl.ctx0 = r.contextNode;
         try { _ewPl.ctx = T.context(); _ewPl.ctx.value = r.contextNode.value; } catch (e) { _ewPl.ctx = null; }
     }
+    /* ══ THE FIGHT ON A BALL (2026-11-20, mondo: "got pulled by a ufo and for the battle the map was still flat and separated into pieces
+       and not wrapped around the sphere" ... "The planets are supposed to be walkable ... Why can't you just fix that"). The fight is drawn
+       the way the walk is: the rules, the board, the units, the clicks all stay flat, only the DRAW bends, and the world is turned about one
+       point so that round it the picture is the flat board as played, curving away to a horizon. In the walk that point is the walker's
+       feet; in a fight it is the ground the battle camera looks at (the ray through the screen's middle onto the board's floor line, kept
+       on the board), so whatever the camera shows in the middle is exact and the Moon rolls under the camera as it pans. The world sits in
+       the battle's frame (_hqBattleRoomMatrix: room metre m -> (m - T.x0) k, floorY + y k, k = ts / C): the balls are written in that frame
+       (g.w carries the floor line: rr = R k + (y - floorY)). Only a net's ground and what stands on it turns (ewPlOn.y / u.F.x): the
+       battle's own sky and horizon stay. The turn eases between frames (a pan over a seam between two faces turns the frame by the grid's
+       kink, up to 48 degrees: eased over a quarter second, never a jump). The clicks (ThreeCamera.screenToTile / All / Unit) are aimed
+       through the bend (_ewPlScreenFix: the flat point under the cursor, bent, put on the screen, the cursor nudged by the miss, again);
+       the labels (CSS2D) read their place through the bend. Off: window.EW_NO_ROUND (the flat nets, as before). */
+    function _ewPlBendJS(x, y, z) {
+        var C = _EW_PLU, res = null;
+        for (var i = 0; i < 4; i++) {
+            var g = C.g[i], c = C.c[i]; if (c.w < 0.5) continue;
+            var L = g.z, rx = x - g.x, rz = z - g.y, e = L * 0.001; if (rx < -e || rx > 3 * L + e || rz < -e || rz > 2 * L + e) continue;
+            var col = Math.max(0, Math.min(2, Math.floor(rx / L))), row = Math.max(0, Math.min(1, Math.floor(rz / L))), F = _EW_PL_FACES[row * 3 + col];
+            var a = Math.max(-1.6, Math.min(1.6, (rx - col * L) / L * 2 - 1)), b = Math.max(-1.6, Math.min(1.6, (rz - row * L) / L * 2 - 1)), ta = Math.tan(a * Math.PI / 4), tb = Math.tan(b * Math.PI / 4);
+            var dx = F[0][0] + F[1][0] * ta + F[2][0] * tb, dy = F[0][1] + F[1][1] * ta + F[2][1] * tb, dz = F[0][2] + F[1][2] * ta + F[2][2] * tb, dl = Math.hypot(dx, dy, dz), rr = Math.max(g.w + y, g.w * 0.3);
+            res = [c.x + dx / dl * rr, c.y + dy / dl * rr, c.z + dz / dl * rr];
+        }
+        if (!res) return C.on.y > 0.5 ? [x, y, z] : null;
+        var d0 = res[0] - C.A.x, d1 = res[1] - C.A.y, d2 = res[2] - C.A.z, M = C.M;
+        return [C.P.x + d0 + M[0].x * d0 + M[0].y * d1 + M[0].z * d2, C.P.y + d1 + M[1].x * d0 + M[1].y * d1 + M[1].z * d2, C.P.z + d2 + M[2].x * d0 + M[2].y * d1 + M[2].z * d2];
+    }
+    var _ewPlQa = null, _ewPlQb = null, _ewPlMx = null;
+    function _ewPlBattleFrame() {
+        if (_hq) return;
+        var C = _EW_PLU, u = _ewPl.u, R = null, sv = function (o, x, y, z, w) { o.x = x; o.y = y; o.z = z; o.w = w; };
+        try { R = _hqBattleRoom(); } catch (e) { R = null; }
+        var sp = R && R.room && R.room.space, L = (sp && sp.round && sp.round.length && R.T && !(typeof window !== 'undefined' && window.EW_NO_ROUND)) ? sp.round : null;
+        var was = _ewPl.battleOn; _ewPl.battleOn = !!L;
+        if (!L) { if (was || C.on.x) { C.on.x = 0; C.on.y = 0; if (u) u.F.value.set(0, 0, 0, 0); } _ewPl.bQ = null; return; }
+        _ewPlPickPatch();
+        var T = R.T, ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) || BASE_TILE, k = ts / T.C, fy = _hqBattleRoomFloorY(R, ts);
+        var at = function (x, y, z) { return [(x - T.x0) * k, fy + y * k, (z - T.z0) * k]; };
+        C.on.x = 1; C.on.y = 1; if (u) u.F.value.set(1, 0, 0, 0);
+        for (var i = 0; i < 4; i++) {
+            var p = L[i];
+            if (p) { var cc = at(p.c[0], p.c[1], p.c[2]); sv(C.g[i], (p.x0 - T.x0) * k, (p.z0 - T.z0) * k, p.L * k, p.R * k - fy); sv(C.c[i], cc[0], cc[1], cc[2], 1);
+                if (u) { u.g[i].value.set(C.g[i].x, C.g[i].y, C.g[i].z, C.g[i].w); u.c[i].value.set(cc[0], cc[1], cc[2], 1); } }
+            else { C.c[i].w = 0; if (u) u.c[i].value.w = 0; }
+        }
+        sv(C.S, 0, 0, 0, 0); if (u) u.S.value.set(0, 0, 0, 0);
+        /* the point the camera looks at, on the board's floor line, kept on the board (room metres) */
+        var bw = T.W * T.C, bh = T.H * T.C, fx = T.x0 + bw / 2, fz = T.z0 + bh / 2, cam = null;
+        try { cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; } catch (e) { cam = null; }
+        if (cam) {
+            var dv = _ewPlQb || (_ewPlQb = new THREE.Vector3()); cam.getWorldDirection(dv);
+            if (dv.y < -0.02) { var tt = (fy - cam.position.y) / dv.y; fx = T.x0 + (cam.position.x + dv.x * tt) / k; fz = T.z0 + (cam.position.z + dv.z * tt) / k; }
+            fx = Math.max(T.x0, Math.min(T.x0 + bw, fx)); fz = Math.max(T.z0, Math.min(T.z0 + bh, fz));
+        }
+        var p0 = null;
+        for (var j = 0; j < L.length && !p0; j++) { var q = L[j]; if (_ewPlInRect(q, fx, fz)) p0 = q; }
+        if (!p0) for (var j2 = 0; j2 < L.length && !p0; j2++) { var q2 = L[j2], m2 = q2.L * 0.3; if (fx > q2.x0 - m2 && fx < q2.x0 + 3 * q2.L + m2 && fz > q2.z0 - m2 && fz < q2.z0 + 2 * q2.L + m2) p0 = q2; }
+        var an = p0 ? _ewPlAnchorAt(p0, _ewPlFaceAt(p0, fx, fz), fx, 0, fz) : null;
+        var A = an ? at(an.A[0], an.A[1], an.A[2]) : [0, 0, 0], P = an ? at(fx, 0, fz) : [0, 0, 0], M = an ? an.M : [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+        /* the turn eases (a quarter second): a pan over a seam never swings the world in one frame */
+        if (an) {
+            var Mx = _ewPlMx || (_ewPlMx = new THREE.Matrix4()); Mx.set(M[0][0], M[0][1], M[0][2], 0, M[1][0], M[1][1], M[1][2], 0, M[2][0], M[2][1], M[2][2], 0, 0, 0, 0, 1);
+            var qT = new THREE.Quaternion().setFromRotationMatrix(Mx), now = performance.now();
+            if (!_ewPl.bQ || _ewPl.bKey !== R.roomId + '|' + T.x0 + ',' + T.z0) { _ewPl.bQ = qT.clone(); _ewPl.bKey = R.roomId + '|' + T.x0 + ',' + T.z0; }
+            else { var dtq = Math.min(0.1, Math.max(0, (now - (_ewPl.bT || now)) / 1000)); _ewPl.bQ.slerp(qT, 1 - Math.exp(-dtq / 0.25)); }
+            _ewPl.bT = now; Mx.makeRotationFromQuaternion(_ewPl.bQ); var me = Mx.elements;
+            M = [[me[0], me[4], me[8]], [me[1], me[5], me[9]], [me[2], me[6], me[10]]];
+        }
+        sv(C.A, A[0], A[1], A[2], 1); sv(C.P, P[0], P[1], P[2], 1);
+        for (var mi = 0; mi < 3; mi++) sv(C.M[mi], M[mi][0] - (mi === 0 ? 1 : 0), M[mi][1] - (mi === 1 ? 1 : 0), M[mi][2] - (mi === 2 ? 1 : 0), 0);
+        if (u) {
+            u.A.value.set(A[0], A[1], A[2], 1); u.P.value.set(P[0], P[1], P[2], 1);
+            u.M0.value.set(M[0][0], M[0][1], M[0][2], 0); u.M1.value.set(M[1][0], M[1][1], M[1][2], 0); u.M2.value.set(M[2][0], M[2][1], M[2][2], 0);
+        }
+        _ewPl.bFy = fy;
+    }
+    /* the cursor aimed through the bend: the screen point whose flat ground, bent, lands under the cursor */
+    function _ewPlScreenFix(cx, cy, canvasEl) {
+        if (!_ewPl.battleOn || _hq || !canvasEl) return null;
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (!cam) return null;
+        var rect = canvasEl.getBoundingClientRect(); if (!(rect.width > 0)) return null;
+        var rc = _ewPlQa || (_ewPlQa = new THREE.Raycaster()), nd = new THREE.Vector2(), v = new THREE.Vector3(), fy = _ewPl.bFy || 0;
+        var mx = cx, my = cy, best = null, bestE = Infinity;
+        for (var it = 0; it < 6; it++) {
+            nd.set((mx - rect.left) / rect.width * 2 - 1, -((my - rect.top) / rect.height) * 2 + 1); rc.setFromCamera(nd, cam);
+            var dr = rc.ray.direction, o = rc.ray.origin; if (dr.y > -1e-4) break;
+            var t = (fy - o.y) / dr.y, b = _ewPlBendJS(o.x + dr.x * t, fy, o.z + dr.z * t); if (!b) break;
+            v.set(b[0], b[1], b[2]).project(cam); if (v.z > 1) break;
+            var sx = rect.left + (v.x + 1) / 2 * rect.width, sy = rect.top + (1 - v.y) / 2 * rect.height, ex = sx - cx, ey = sy - cy, err = Math.hypot(ex, ey);
+            if (err < bestE) { bestE = err; best = { x: mx, y: my }; } else break;
+            if (err < 0.5) break;
+            mx -= ex; my -= ey;
+        }
+        return best;
+    }
+    function _ewPlPickPatch() {
+        if (_ewPl.pickPatched || typeof ThreeCamera === 'undefined') return; _ewPl.pickPatched = true;
+        ['screenToTile', 'screenToTileAll', 'screenToUnit'].forEach(function (nm) {
+            var f0 = ThreeCamera[nm]; if (typeof f0 !== 'function') return;
+            ThreeCamera[nm] = function (x, y, cv) { var fx = null; try { fx = _ewPlScreenFix(x, y, cv); } catch (e) { fx = null; } if (fx) { var a = Array.prototype.slice.call(arguments); a[0] = fx.x; a[1] = fx.y; return f0.apply(this, a); } return f0.apply(this, arguments); };
+        });
+    }
     /* per render call of the node renderer: is this the walk's scene of a room with round worlds? */
     function _ewPlRenderSwitch(r, sc) {
         if (!_ewPl.u || !_ewPl.ctx) return;
         var on = !!(_hq && sc === _hq.scene && _ewPlRound());
+        if (!on && !_hq && _ewPl.battleOn && typeof scene !== 'undefined' && sc === scene) on = true;   // THE FIGHT ON A BALL
         if (on !== _ewPl.live) { _ewPl.live = on; r.contextNode = on ? _ewPl.ctx : _ewPl.ctx0; }
     }
     /* THE SEAM: the walker walked off his face — carried to the true neighbouring face, turned with it (the camera too) */
@@ -99569,7 +99677,7 @@ const ThreeRenderer = (function () {
            counter / tree-line piece farther than keepM is not taken, scenery (a lot, a backdrop prism, a tree) past keepFarM;
            a shell part, the field mesh, the outer ground, a plan wall and any merged batch (its box spans the room) always stand */
         var wx0 = R.T.x0 * U, wx1 = (R.T.x0 + R.T.W * C) * U, wz0 = R.T.z0 * U, wz1 = (R.T.z0 + R.T.H * C) * U;   // THE BATTLE RADIUS from the field's rim (§3.7): the frame's own box
-        var _rbox = new THREE.Box3();
+        var _rbox = new THREE.Box3(), roundNets = (room.space && room.space.round && room.space.round.length && !(typeof window !== 'undefined' && window.EW_NO_ROUND)) ? room.space.round : null;
         var farOf = function (c) {
             if (!HR.radius || c._ew_hqPart || c._ew_hqTerrain || c._ew_hqOuter) return 0;
             try { c.updateMatrixWorld(true); _rbox.setFromObject(c); } catch (e) { return 0; }
@@ -99577,6 +99685,8 @@ const ThreeRenderer = (function () {
             if (_rbox.isEmpty()) { bx0 = bx1 = c.position.x; bz0 = bz1 = c.position.z; } else { bx0 = _rbox.min.x; bx1 = _rbox.max.x; bz0 = _rbox.min.z; bz1 = _rbox.max.z; }
             var dx = Math.max(wx0 - bx1, bx0 - wx1, 0), dz = Math.max(wz0 - bz1, bz0 - wz1, 0);
             var d = Math.sqrt(dx * dx + dz * dz) / U, scenery = !!(c._ew_hqLot != null || c._ew_hqBackdrop || c._ew_hqTree);
+            /* THE FIGHT ON A BALL: the far side of the world the fight stands on is in the picture (its flat place is far, it is not) */
+            if (roundNets) { var mxc = (bx0 + bx1) / 2 / U, mzc = (bz0 + bz1) / 2 / U; for (var rn = 0; rn < roundNets.length; rn++) if (_ewPlInRect(roundNets[rn], mxc, mzc)) return 0; }
             return d > (scenery ? HR.keepFarM : HR.keepM) ? (scenery ? 2 : 1) : 0;
         };
         var take = function (src, isProp) {
@@ -99623,7 +99733,9 @@ const ThreeRenderer = (function () {
             for (var ho = 0; ho < heldOut.length; ho++) { try { dispKeep(heldOut[ho]); } catch (e) {} }
             heldOut.length = 0;
         }
+        var roundIn = !!(room.space && room.space.round && room.space.round.length);   // THE FIGHT ON A BALL: a bent piece is drawn far from its flat box
         g.traverse(function (o) {
+            if (roundIn && o.frustumCulled) o.frustumCulled = false;
             if (o.isMesh && !trueGround) { o.castShadow = false; o.receiveShadow = false; }
             if (!o.material) return;
             var ms = Array.isArray(o.material) ? o.material : [o.material];
@@ -103957,6 +104069,7 @@ const ThreeRenderer = (function () {
                 u.p[0] = V.x + f[0] * d; u.p[1] = V.y + 30; u.p[2] = V.z + f[2] * d; u.st = act === 'near' ? 'hunt' : 'lock'; u.t = 0; S.cool = 0; try { if (window.ewShipCue) window.ewShipCue('alarm'); } catch (e) {} return u.st; },
             hqCam: function () { return _hq ? _hq.camera : null; },   // the walk's camera (a probe reads its far plane and where it stands, 2026-11-17)
             /* THE ROUND WORLDS, as a probe reads them (2026-11-17) */
+            plBend: function (x, y, z) { return _ewPlBendJS(x, y, z); }, plFy: function () { return _ewPl.bFy; }, plBattle: function () { return !!_ewPl.battleOn; }, plPick: function (cx, cy) { var h = ThreeCamera.screenToTile(cx, cy, canvas, terrainGroup, objectGroup); return h ? [h.tileX, h.tileY] : null; }, plCanvas: function () { return canvas; },   // THE FIGHT ON A BALL, for a probe
             round: function () { return { live: _ewPl.live, nodes: !!_ewPl.u, ctx: !!_ewPl.ctx, gpu: _ewGpu, anchor: _ewPl.anchor, face: _hq && _hq._plFace, round: _ewPlRound(), U: JSON.parse(JSON.stringify(_EW_PLU)) }; },
             rideRaw: function () { return _hq ? { R: _hq.ride, pl: _hq.player, cam: _hq.cam, shell: _hq.room.shell, keys: _hq.keys } : null; },   // a probe's handle on the live rider (2026-11-20: the grinds, the walls)
             teleport: function (o) {

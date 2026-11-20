@@ -157,7 +157,7 @@
   "hs": 0.25,
   "v": "32e9bab4cf",
   "bytes": 1394,
-  "s": "39.6"
+  "s": "39.0"
  },
  "site_prebuilt_fairy_forest_ow_clearing": {
   "id": "site_prebuilt_fairy_forest_ow_clearing",
@@ -375,9 +375,9 @@
   "nz": 60,
   "h0": -0.02,
   "hs": 0.25,
-  "v": "913435a62b",
-  "bytes": 1205,
-  "s": "2.2"
+  "v": "28d4a737e8",
+  "bytes": 1208,
+  "s": "2.4"
  },
  "site_prebuilt_hollow_earth_ow_agartha": {
   "id": "site_prebuilt_hollow_earth_ow_agartha",
@@ -658,5 +658,15 @@
   "v": "a00d458464",
   "bytes": 672,
   "s": "1.3"
+ },
+ "site_prebuilt_hollow_earth_ug_west": {
+  "id": "site_prebuilt_hollow_earth_ug_west",
+  "nx": 48,
+  "nz": 36,
+  "h0": 0,
+  "hs": 0.25,
+  "v": "cad8aa5034",
+  "bytes": 567,
+  "s": "0.9"
  }
 }
