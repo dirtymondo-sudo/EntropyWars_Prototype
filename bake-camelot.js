@@ -436,8 +436,8 @@ const STAND = [
       parti: 'The hedge garden west of the moat as one walk: in from the west gate across the lawn, the chessboard with a hedge to either side, the mirror, and at the far end the tea party.' },
     { id: R_FAIRY, part: 'ow_fairy', label: 'THE FAIRY FOREST', sub: 'CAME A LOT · THE GLOWING WOODS EAST OF THE MOAT · 6 PLOTS', list: v13('camF'), letters: ['F'], spawn: 'P07-02', face: 90,
       parti: 'The forest that glows, east of the moat, as one walk: out of the east gate past the knoll to the pond, the fairy ring between its two knolls, the woods trail and the spring, where the trail goes on east to the Woods.' },
-    { id: R_FOREST, part: 'ow_forest', label: 'THE FOREST', sub: 'CAME A LOT · THE CROWN’S ROAD SOUTH · 9 PLOTS', list: v13('camW').concat([{ wx: L7.wx, wy: L7.wy, name: 'The Forest Trail', district: 'W', level: 0, isNew: true, link: 'L7' }]), letters: ['W'], spawn: 'P03-07', spawnStep: [0, -1], face: 180,   /* ONE WORLD PHASE 5 (2026-11-17): the plot's hub square holds the Wayside Cross (district W); arriving there (the map's GO, an old save) stood the walker ON the cross, 2.2 m up. One square north, on the Crown's Road */
-      parti: 'The forest south of the moat as one walk: the Crown’s Road down from the drawbridge, the glades, the woodcutter’s hut and the dead tree, and east a trail on through the trees to the Woods’ Ritual Ground.' },
+    { id: R_FOREST, part: 'ow_forest', label: 'THE FOREST', sub: 'CAME A LOT · THE CROWN’S ROAD SOUTH · 21 PLOTS', list: v13('camW').concat([{ wx: L7.wx, wy: L7.wy, name: 'The Forest Trail', district: 'W', level: 0, isNew: true, link: 'L7' }]), letters: ['W'], spawn: 'P03-07', spawnStep: [0, -1], face: 180, gen: { depth: 8.75, maxTrees: 2600 },   /* (2026-11-20, the world polish plan, thread 3) 21 plots, three wide; its ways, clearings and heights = the room design, districts/W-room.js */   /* ONE WORLD PHASE 5 (2026-11-17): the plot's hub square holds the Wayside Cross (district W); arriving there (the map's GO, an old save) stood the walker ON the cross, 2.2 m up. One square north, on the Crown's Road */
+      parti: 'The forest south of the moat, three plots wide: the Crown’s Road down from the drawbridge to the Glade, east under the Bluff and through the charcoal burners to the Woods’ Ritual Ground; west of it a hollow, east a bluff with a hunters’ stand, south a brook to wade and an old oak.' },
 ];
 /* which plots move the same way (one room, one shift): a drawn row is cut only between plots that do not */
 const MOVE_OF = {}, CLASS_HEAD = {};
@@ -470,6 +470,7 @@ const OUT = {
     [R_FAIRY]: [ { plot: 'P07-05', side: 'E', link: 'woods_camelot', end: 'b' } ],
     [R_FOREST]: [ { plot: 'L7', side: 'E', id: 'ow_v_m22_6', way: 'trail', room: R_RITUAL, label: 'THE WOODS · THE RITUAL GROUND', sub: 'THE TRAIL EAST · THE MOUND', desc: 'A trail east through the trees, worn by feet going one way.' } ],
 };
+const GROUND_OF = {}; DISTRICTS.forEach(m => { if (m.ground) GROUND_OF[m._cmFile] = PAL.indexOf(m.ground) + 1; });   // a district's own ground sheet (its file's `ground`), as a paint value
 const ROOMS_OUT = [], STRAYS = SPLIT.map(s => 'a drawn row over several plots, turned: ' + s), LINKS_OUT = {}, CNT = {};
 const roomOf = id => ROOMS_OUT.find(o => o.S.id === id);
 STAND.forEach(S => {
@@ -482,7 +483,7 @@ STAND.forEach(S => {
     const pnt = new Uint8Array(Wn * Dn);
     R.order.forEach(e => { if (!e.home) return; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) pnt[(e.row * N + ly) * Wn + e.col * N + lx] = paint[(e.home.y * N + ly) * W + e.home.x * N + lx]; });
     /* a new plot (L7): the woods' forest, a clearing in its middle for the place */
-    R.order.forEach(e => { if (e.home) return; if (e.district === 'N') { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { c2[e.row * N + ly][e.col * N + lx] = 'T'; pnt[(e.row * N + ly) * Wn + e.col * N + lx] = 1; } return; }   /* a new plot of the Snowy Pines: snow pines on snow, its ways and clearings are the room design's (N-room.js) */
+    R.order.forEach(e => { if (e.home) return; if (!e.link || /^NEW/.test(e.link)) { const fl = e.district === 'N' ? 'T' : 't', pi = e.district === 'N' ? 1 : (GROUND_OF[e.district] || 0); for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { c2[e.row * N + ly][e.col * N + lx] = fl; pnt[(e.row * N + ly) * Wn + e.col * N + lx] = pi; } return; }   /* a new plot of the Snowy Pines: snow pines on snow, its ways and clearings are the room design's (N-room.js) */
         for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) c2[e.row * N + ly][e.col * N + lx] = (lx >= 3 && lx <= 8 && ly >= 3 && ly <= 8 && (lx - 5.5) * (lx - 5.5) + (ly - 5.5) * (ly - 5.5) < 9) ? 'g' : 't'; });
     const sqOf = (x, z) => [Math.floor((x + R.HX) / C + 1e-9), Math.floor((z + R.HZ) / C + 1e-9)];
     const stood = new Set(); R.props.forEach(p => stood.add(sqOf(p.x, p.z).join(':'))); R.npc.forEach(n => stood.add(sqOf(n.x, n.z).join(':')));
@@ -522,13 +523,14 @@ function crossK(oA, A, sd, oB, B, ks, chA, chB) { const o2 = OPP[sd]; apron(oA, 
         them, `i` the trodden road, `s` open snow; `sheet` = another ground sheet than the letter's), close(x0, y0, x1, y1) (back to the wood, unless a piece stands there), gx / gz (a square's edge, m),
         gcx / gcz (its middle), paint(x0, y0, x1, y1, sheet, ok(x, y)) (a ground sheet on squares), feat(row) (a terrain row, room metres), at(key, x, z, o) (a catalogue prop, metres), native(race, x, z, face),
         drop(test(row)) (takes rows the home frame stood here out of the room), noTrees(x0, z0, x1, z1) (metres: the tree mass plants nothing), air(zone), stood(x, y), r2 */
-const DESIGNS = { [R_PINES]: require(path.join(REPO, 'docs/areas/camelot/districts/N-room.js')) };
+const DESIGNS = { [R_PINES]: require(path.join(REPO, 'docs/areas/camelot/districts/N-room.js')), [R_FOREST]: require(path.join(REPO, 'docs/areas/camelot/districts/W-room.js')) };
 const SNOWK = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'];
 ROOMS_OUT.forEach(o => { const Dz = DESIGNS[o.S.id]; if (!Dz) return; const R = o.R; o.design = Dz; o.zonesX = []; o.zonesNew = []; o.airX = []; o.newRoad = new Set(); const home = new Set(R.props);
-    const PNT = { i: 6, s: 1, T: 1, p: 3, g: 0, t: 0 };
+    const WOODP = o.S.id === R_PINES ? 1 : (GROUND_OF[o.S.letters[0]] || 0);   // the wood's own ground, as a paint value (the Pines' snow; a district file's `ground`)
+    const PNT = { i: 6, s: 1, T: 1, p: 3, g: WOODP, t: WOODP };
     const kit = { R, N, C, PL, cols: R.cols, rows: R.rows, r2, ch: (x, y) => o.inR(x, y) ? o.c2[y][x] : null, open: o.openR, plot: (x, y) => R.plotOfSq(x, y), stood: (x, y) => o.stood.has(x + ':' + y),
-        carve(x0, y0, x1, y1, ch, sheet) { let pi = PNT[ch || 's']; if (sheet) { let i = PAL.indexOf(sheet); if (i < 0) { PAL.push(sheet); i = PAL.length - 1; } pi = i + 1; } for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { if (!R.plotOfSq(x, y)) throw new Error(o.S.id + ' design: square ' + x + ',' + y + ' is on no plot'); if (o.c2[y][x] === 'w') continue; if (SOLIDC(o.c2[y][x]) || ch === 'i') { if (ch === 'i' && o.c2[y][x] !== 'i' && o.c2[y][x] !== 'p') o.newRoad.add(x + ':' + y); o.c2[y][x] = ch || 's'; o.pnt[y * R.W + x] = pi; } } },
-        close(x0, y0, x1, y1) { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { if (!R.plotOfSq(x, y) || o.stood.has(x + ':' + y)) continue; o.c2[y][x] = 'T'; o.pnt[y * R.W + x] = 1; } },
+        carve(x0, y0, x1, y1, ch, sheet) { let pi = PNT[ch || 's']; if (sheet) { let i = PAL.indexOf(sheet); if (i < 0) { PAL.push(sheet); i = PAL.length - 1; } pi = i + 1; } for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { if (!R.plotOfSq(x, y)) throw new Error(o.S.id + ' design: square ' + x + ',' + y + ' is on no plot'); if (o.c2[y][x] === 'w') continue; if (SOLIDC(o.c2[y][x]) || ch === 'i' || ch === 'p') { if ((ch === 'i' || ch === 'p') && o.c2[y][x] !== 'i' && o.c2[y][x] !== 'p') o.newRoad.add(x + ':' + y); o.c2[y][x] = ch || 's'; o.pnt[y * R.W + x] = pi; } } },
+        close(x0, y0, x1, y1) { const fl = o.S.id === R_PINES ? 'T' : 't'; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { if (!R.plotOfSq(x, y) || o.stood.has(x + ':' + y)) continue; o.c2[y][x] = fl; o.pnt[y * R.W + x] = WOODP; } },
         gx: R.gx, gz: R.gz, gcx: R.gcx, gcz: R.gcz,
         feat: row => o.extraF.push(row), at: (key, x, z, q) => { o.extraP.push(Object.assign({ key, x: r2(x), z: r2(z) }, q || {})); o.stood.add(o.sqOf(x, z).join(':')); },
         native: (race, x, z, face, say) => { const n = { x: r2(x), z: r2(z), face: face || 0, race }; if (say) n.say = say; R.npc.push(n); },
@@ -541,8 +543,8 @@ ROOMS_OUT.forEach(o => { const Dz = DESIGNS[o.S.id]; if (!Dz) return; const R = 
         o.zonesNew.push({ x0, z0, x1: r2(x0 + PL), z1: r2(z0 + PL), kinds: SNOWK, treeH: [5.5, 8] }); o.airX.push({ x0, z0, x1: r2(x0 + PL), z1: r2(z0 + PL), kind: 'snow', n: 150 }); });
     Dz.room(kit);
     /* a cell of the room's box that is no plot (the box is the plots' bounding box) is the wood too: the wood's ground, and (in the zones below) the wood's trees, not the kingdom's lawn and summer trees */
-    for (let y = 0; y < R.D; y++) for (let x = 0; x < R.W; x++) if (!R.plotOfSq(x, y)) o.pnt[y * R.W + x] = 1;
-    o.zonesNew.push({ x0: -R.HX - 60, z0: -R.HZ - 60, x1: R.HX + 60, z1: R.HZ + 60, kinds: SNOWK, treeH: [5.5, 8] });
+    for (let y = 0; y < R.D; y++) for (let x = 0; x < R.W; x++) if (!R.plotOfSq(x, y)) o.pnt[y * R.W + x] = WOODP;
+    if (o.S.id === R_PINES) o.zonesNew.push({ x0: -R.HX - 60, z0: -R.HZ - 60, x1: R.HX + 60, z1: R.HZ + 60, kinds: SNOWK, treeH: [5.5, 8] });
     /* THE NEW ROAD IS CLEAR: a piece the home frame stood on a verge (a lantern, a drift, a light pool) that the design's road now runs over leaves; a walked-into
        building there stops the tool (move the road) */
     { const on = (x, z) => o.newRoad.has(o.sqOf(x, z).join(':')); let gone = 0;
@@ -584,7 +586,8 @@ Object.keys(OUT).forEach(rid => { const o = roomOf(rid); OUT[rid].forEach(w => {
   Object.keys(HOME_LINKS).forEach(id => { const [side, h] = HOME_LINKS[id], hp = MOVER.homePlot(h.x, h.z), o = ROOMS_OUT.find(q => q.R.ofHome[hp.id]), e = o.R.ofHome[hp.id];
       LINKS_OUT[id] = [side, Object.assign({ part: o.S.part }, h, { x: r2(h.x + e.dx), z: r2(h.z + e.dz) })]; }); }
 /* 4. the doors the rooms carry from home (the mover stood them): the palace's four, the mirror, the dead tree */
-ROOMS_OUT.forEach(o => { o.R.doors.forEach(d => { const q = Object.assign({}, d); delete q.side; delete q.plot;
+ROOMS_OUT.forEach(o => { o.R.doors.forEach(d => { const q = Object.assign({}, d); if (d.plot && d.side) (o.usedSides || (o.usedSides = new Set())).add(d.plot.col + ',' + d.plot.row + ':' + d.side.toUpperCase());   /* (2026-11-20) a wall door carried from home USES its plot's side: step 6b filled the Dead Tree's own path back to the trees (the door stood behind 14 m of forest) */
+    delete q.side; delete q.plot;
     if (q.id === 'deadtree') q.action = RITUAL_STANDS ? { room: R_RITUAL, at: 'lookingglass' } : q.action;   // (until the Woods' move lands, the door keeps the Woods room it had)   // THE DEAD TREE: the Woods' Ritual Ground stands in its own room now (the Woods zone thread, 2026-11-17)
     o.doorsOut.unshift(q); }); });
 /* 5. THE RIDGE + THE PASS (district N's `cam:n:ridge`, stood as said above) */

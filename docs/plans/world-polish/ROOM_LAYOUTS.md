@@ -389,17 +389,17 @@ How each room really stands. `#` = a plot (42 m), `.` = no plot. North is up. Un
 `P00-00` The Knoll, north (F) · `P00-01` The Pond (F) · `P01-01` The Fairy Ring (F) · `P01-02` The Knoll, south (F) · `P02-01` The Woods Trail (F) · `P03-01` The Spring (F)
 
 ## site_prebuilt_camelot_ow_forest
-168 x 210 m · 4 x 5 plots, 9 used · open sky · world -26, 3 (surface)
+210 x 210 m · 5 x 5 plots, 21 used · open sky · world -27, 3 (surface)
 
 ```
-#...
-#...
-####
-#..#
-#...
+###..
+#####
+#####
+#####
+###..
 ```
 
-`P00-00` The Crown's Road (W) · `P00-01` The Forest Road (W) · `P00-02` The Glade, west (W) · `P00-03` The Forest Road, west (W) · `P00-04` The Dead Tree's Hole (W) · `P01-02` The Glade, east (W) · `P02-02` The Forest Road, east (W) · `P03-02` Deep forest, south-east (W) · `P03-03` The Forest Trail, the camp (W)
+`P01-00` The Crown's Road (W) · `P01-01` The Forest Road (W) · `P01-02` The Glade, west (W) · `P01-03` The Forest Road, west (W) · `P01-04` The Dead Tree's Hole (W) · `P02-02` The Glade, east (W) · `P03-02` The Forest Road, east (W) · `P04-02` Deep forest, south-east (W) · `P00-00` The Poachers’ Path (W) · `P02-00` The Bluff Path (W) · `P00-01` The Hollow’s Rim (W) · `P02-01` The Bluff’s Foot (W) · `P03-01` The Bluff (W) · `P04-01` The Hunters’ Stand (W) · `P00-02` The Hollow (W) · `P00-03` The Fern Bank (W) · `P02-03` The Ford (W) · `P03-03` The Charcoal Burners (W) · `P00-04` The Badger Wood (W) · `P02-04` The Old Oak (W) · `P04-03` The Forest Trail, the camp (W)
 
 ## site_prebuilt_camelot_ow_garden
 168 x 126 m · 4 x 3 plots, 6 used · open sky · world -33, -1 (surface)
