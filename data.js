@@ -92848,6 +92848,61 @@ function hqFluidGridDin(g, x, z) {
     if (d > -g.win && d < g.win) return (hqFluidGridCover(g, x, z, g.win) - 0.5) * 2 * g.win;
     return d;
 }
+/* THE ROUND SEAMS STITCHED (2026-11-20, mondo on the Moon: "There shouldn't even be a visible seam"). A round world (room.space.round,
+   three-renderer.js THE ROUND WORLDS) is a flat net of six faces bent onto a ball; over a CUT seam (an edge the flat net does not join)
+   the ground of one face meets another face's edge on the ball. draw-space.js evened the heights on those edges, but the passes after
+   the sampling (the plan's top noise, its walls) move the field again, and one flat line of samples serves two cut seams at once (face
+   (0,0)'s south edge and face (0,1)'s north edge are the same row): measured on the Moon, 55 of 576 seam points stood 0.1 to 0.95 m
+   apart, a step along the seam you could see and ride into. Here every sample on a cut seam is tied to the sample it meets on the ball
+   (and to the face sharing its flat line), each tied set takes its mean, and the change is feathered over three samples into each
+   face. Joined edges ((0,0)-(1,0)-(2,0), (1,0) over (1,1)) are the flat field's own and are left. A void sample (under the lip) is never
+   tied. Runs once, at the room's compile. The faces' frames = three-renderer.js _EW_PL_FACES (keep the two the same). */
+function _hqTRoundStitch(info, room) {
+    const RW = room && room.space && room.space.round; if (!RW || !RW.length || !info || !info.H) return 0;
+    const FA = [[[-1, 0, 0], [0, 0, 1], [0, -1, 0]], [[0, 0, 1], [1, 0, 0], [0, -1, 0]], [[1, 0, 0], [0, 0, -1], [0, -1, 0]],
+                [[0, 0, -1], [-1, 0, 0], [0, -1, 0]], [[0, -1, 0], [1, 0, 0], [0, 0, -1]], [[0, 1, 0], [1, 0, 0], [0, 0, 1]]];
+    const H = info.H, nx = info.nx, nz = info.nz, res = info.res, gx0 = info.x0, gz0 = info.z0;
+    const lip = (info.void && isFinite(+info.void.lip)) ? (info.base || 0) + (+info.void.lip) : -Infinity;
+    const node = (x, z) => { const fi = (x - gx0) / res, fj = (z - gz0) / res, i = Math.round(fi), j = Math.round(fj);
+        if (Math.abs(fi - i) > 0.05 || Math.abs(fj - j) > 0.05 || i < 0 || j < 0 || i >= nx || j >= nz) return -1; return j * nx + i; };
+    const par = new Map(), find = (a) => { let r = a; while (par.get(r) !== r) r = par.get(r); let q = a; while (par.get(q) !== r) { const n = par.get(q); par.set(q, r); q = n; } return r; };
+    const add = (a) => { if (!par.has(a)) par.set(a, a); }, union = (a, b) => { add(a); add(b); const ra = find(a), rb = find(b); if (ra !== rb) par.set(ra, rb); };
+    const joined = (a, b) => (a === 1 && (b === 0 || b === 2 || b === 4)) || (b === 1 && (a === 0 || a === 2 || a === 4));
+    const feather = [];
+    RW.forEach(p => {
+        const L = p.L, n = Math.round(L / res); if (!(n > 2) || Math.abs(n * res - L) > 1e-6) return;
+        const faceAt = (x, z) => (x >= p.x0 && x < p.x0 + 3 * L && z >= p.z0 && z < p.z0 + 2 * L) ? Math.floor((z - p.z0) / L) * 3 + Math.floor((x - p.x0) / L) : -1;
+        const dirOf = (k, x, z) => { const F = FA[k], c = k % 3, r = (k / 3) | 0, a = (x - p.x0 - c * L) / L * 2 - 1, b = (z - p.z0 - r * L) / L * 2 - 1, ta = Math.tan(a * Math.PI / 4), tb = Math.tan(b * Math.PI / 4);
+            return [F[0][0] + F[1][0] * ta + F[2][0] * tb, F[0][1] + F[1][1] * ta + F[2][1] * tb, F[0][2] + F[1][2] * ta + F[2][2] * tb]; };
+        const flatOf = (q) => { let best = -Infinity, k = 0; for (let i = 0; i < 6; i++) { const nn = FA[i][0], d = q[0] * nn[0] + q[1] * nn[1] + q[2] * nn[2]; if (d > best) { best = d; k = i; } }
+            const F = FA[k], dn = q[0] * F[0][0] + q[1] * F[0][1] + q[2] * F[0][2], su = (q[0] * F[1][0] + q[1] * F[1][1] + q[2] * F[1][2]) / dn, sv = (q[0] * F[2][0] + q[1] * F[2][1] + q[2] * F[2][2]) / dn;
+            return { k, x: p.x0 + (k % 3) * L + (Math.atan(su) * 4 / Math.PI + 1) / 2 * L, z: p.z0 + ((k / 3) | 0) * L + (Math.atan(sv) * 4 / Math.PI + 1) / 2 * L }; };
+        for (let k = 0; k < 6; k++) {
+            const fc = p.x0 + (k % 3) * L, fr = p.z0 + ((k / 3) | 0) * L;
+            [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([ox, oz]) => {
+                const ex = ox < 0 ? fc : fc + L, ez = oz < 0 ? fr : fr + L, mx = fc + L / 2 + ox * (L / 2 + res * 0.25), mz = fr + L / 2 + oz * (L / 2 + res * 0.25);
+                if (joined(k, faceAt(mx, mz))) return;
+                for (let t = 0; t <= n; t++) {
+                    const x = ox ? ex : fc + t * res, z = oz ? ez : fr + t * res, a = node(x, z); if (a < 0 || !(H[a] >= lip)) continue;
+                    const T = flatOf(dirOf(k, x + ox * L * 1e-4, z + oz * L * 1e-4)), b = node(T.x, T.z); if (b < 0 || !(H[b] >= lip)) continue;
+                    union(a, b); feather.push([a, k, x, z, ox, oz]);
+                }
+            });
+        }
+    });
+    if (!par.size) return 0;
+    const sum = new Map(), cnt = new Map();
+    par.forEach((v, a) => { const r = find(a); sum.set(r, (sum.get(r) || 0) + H[a]); cnt.set(r, (cnt.get(r) || 0) + 1); });
+    const delta = new Map();
+    par.forEach((v, a) => { const r = find(a), m = sum.get(r) / cnt.get(r); delta.set(a, m - H[a]); });
+    delta.forEach((d, a) => { H[a] += d; });
+    const NF = 3, done = new Set();
+    feather.forEach(([a, k, x, z, ox, oz]) => {
+        const d = delta.get(a); if (!d) return;
+        for (let s = 1; s <= NF; s++) { const q = node(x - ox * s * res, z - oz * s * res); if (q < 0 || par.has(q) || !(H[q] >= lip)) break; const key = q + ':' + k + ':' + ox + ':' + oz; if (done.has(key)) continue; done.add(key); H[q] += d * (1 - s / (NF + 1)); }
+    });
+    return par.size;
+}
 function hqTerrainCompile(room, roomId) {
     const T = room.terrain, S = room.shell || {}, R = hqTerrainRulesFor(room);
     const slopeB = hqTerrainSlopeFn(T);   // G7: the city on the hill
@@ -93264,6 +93319,7 @@ function hqTerrainCompile(room, roomId) {
         try { const pn = doorPads.map(p => [Math.round((p.x - x0) / res), Math.round((p.z - z0) / res)]); info.rescues = _hqTReturnGuarantee(info, pn, null, null, Math.ceil(HQ_TERRAIN_GEN.corridorW / 2 / res), null).rescues; }
         catch (e) { console.warn('[terrain] the return guarantee failed', roomId, e); info.rescues = []; }
     }
+    try { _hqTRoundStitch(info, room); } catch (e) { console.warn('[terrain] the round seams stitch failed', roomId, e); }   // THE ROUND WORLDS: the ground meets itself over every cut seam
     const hAt = (px, pz) => hqTerrainHeight(info, px, pz);
     /* the walls: standing on the ground, their top h above the highest ground under them (or an absolute `y`) */
     walls.forEach(w => {
