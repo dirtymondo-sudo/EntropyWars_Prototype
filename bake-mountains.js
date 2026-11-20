@@ -246,7 +246,8 @@ function finish(R, e) {
     count.zones = zones.length;
     /* the heights, a square's four corners at a time */
     const Hc = R.heights(), slope = Buffer.alloc(W * H * 8);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const q = (y * W + x) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((c, k) => slope.writeInt16LE(Math.round(Hc[(y + c[1]) * (W + 1) + x + c[0]] * 100), q + k * 2)); }
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const q = (y * W + x) * 8; const own = R.squareH && R.squareH[x + ':' + y];   /* (THE ONE MOUNTAIN, the walking ways: a square with its own four corners; where they disagree with the next square's, that step is a bank or a ledge) */
+        [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((c, k) => slope.writeInt16LE(Math.round((own ? own[k] : Hc[(y + c[1]) * (W + 1) + x + c[0]]) * 100), q + k * 2)); }
     const paint = new Uint8Array(W * H); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) paint[y * W + x] = e.paintOf(cell[y][x], x, y);
     /* checks: every key and unit exists; every plot is walked to from the spawn; no walked step is steeper than the walker climbs */
     const CAT = vm.runInContext('DOOR_HQ.catalogue', D), RACES = vm.runInContext('AVAILABLE_RACES', D);
@@ -519,8 +520,13 @@ STAND.forEach(S => {
       MP.RUNS.forEach(([name, mark, pts]) => { const P = pts.map(([c, r]) => [(c - c0 + 0.5) * N, (r - r0 + 0.5) * N]);
           const path = []; if (P.length < 3) path.push(...P); else { path.push(P[0]); for (let i = 1; i < P.length - 1; i++) { const a = path[path.length - 1], q = P[i], b = i === P.length - 2 ? P[i + 1] : [(P[i][0] + P[i + 1][0]) / 2, (P[i][1] + P[i + 1][1]) / 2]; for (let t = 1; t <= 24; t++) { const u = t / 24; path.push([(1 - u) * (1 - u) * a[0] + 2 * u * (1 - u) * q[0] + u * u * b[0], (1 - u) * (1 - u) * a[1] + 2 * u * (1 - u) * q[1] + u * u * b[1]]); } } }
           for (let i = 1; i < path.length; i++) { const a = path[i - 1], b = path[i], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) * 2)); for (let t = 0; t <= n; t++) stamp(a[0] + (b[0] - a[0]) * t / n, a[1] + (b[1] - a[1]) * t / n, WIDE[mark], 'i'); }  (S.runPaths = S.runPaths || []).push({ name, mark, path, wide: WIDE[mark] }); });
-      MP.WAYS.forEach(([name, wide, plots]) => { const pts = MP.lay(plots).map(([x, y]) => [x - c0 * N, y - r0 * N]);
-          for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], n = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]); for (let t = 0; t <= n; t++) { const x = a[0] + Math.sign(b[0] - a[0]) * t, y = a[1] + Math.sign(b[1] - a[1]) * t; for (let k = 0; k < wide; k++) for (let m = 0; m < wide; m++) { const X = x + k - (wide >> 1), Y = y + m - (wide >> 1); if (inR(X, Y) && R.plotOfSq(X, Y) && CUT[c2[Y][X]] && c2[Y][X] !== 's') { c2[Y][X] = 'o'; waySq++; } } } } });
+      /* (the base pass 4, 11-20: a way is packed snow on open snow too, so it reads as a trail across a piste's side; a run's own groomed lane is never cut.
+         Every way square remembers how far along its way it lies: THE BENCHES below are cut from that) */
+      S.wayLines = [];
+      MP.WAYS.forEach(([name, wide, plots]) => { const pts = MP.lay(plots).map(([x, y]) => [x - c0 * N, y - r0 * N]), line = [], member = {};
+          for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], n = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]); for (let t = (i > 1 ? 1 : 0); t <= n; t++) { const x = a[0] + Math.sign(b[0] - a[0]) * t, y = a[1] + Math.sign(b[1] - a[1]) * t, di = line.length; line.push([x, y]);
+              for (let k = 0; k < wide; k++) for (let m = 0; m < wide; m++) { const X = x + k - (wide >> 1), Y = y + m - (wide >> 1); if (!inR(X, Y) || !R.plotOfSq(X, Y)) continue; if (CUT[c2[Y][X]]) { c2[Y][X] = 'o'; waySq++; } if (c2[Y][X] === 'o' && member[X + ':' + Y] == null) member[X + ':' + Y] = di; } } }
+          S.wayLines.push({ name, wide, line, member }); });
       /* 5c. NOTHING SOLID STANDS ON A RUN: a blocking prop or a tree whose square a run now crosses steps aside to the nearest square of its own plot that is open,
          off every run and free (it keeps its place inside the square). Nothing is taken away. */
       const CATM = vm.runInContext('DOOR_HQ.catalogue', D), busy = new Set(); let stepped = 0;
@@ -568,6 +574,38 @@ STAND.forEach(S => {
       R2.F = R2.F.map(f => { if (f.k !== 'arch' || !f.hug || !/^mtn:(poles|lampFlames)/.test(f.id || '')) return f; const rc = Math.cos(-(f.rot || 0) * Math.PI / 180), rs = Math.sin(-(f.rot || 0) * Math.PI / 180), oy = hAt(f.x, f.z);   // (the renderer's own turn: three-renderer.js _hqArchGeometry, `-rot`)
           const parts = f.parts.map(q => { const wx = f.x + q.p[0] * rc + q.p[2] * rs, wz = f.z - q.p[0] * rs + q.p[2] * rc; return Object.assign({}, q, { p: [q.p[0], r2(q.p[1] + hAt(wx, wz) - oy), q.p[2]] }); });
           const o = Object.assign({}, f, { parts, y: r2(oy) }); delete o.hug; return o; });
+      /* ── THE BENCHES AND THE LEDGES (mondo 11-20: a way "needs to snake and zigzag and climb so when you get to the top you can just jump back down, like the
+         routes in Pokemon"; "It's a ledge. You walk off it and fall"). A walking way is CUT INTO THE SLOPE as a bench: across its width it is level, along its
+         length it climbs at the slope's own smoothed grade. So on a steep face its uphill side is a bank and its downhill side a drop you walk off: a ledge,
+         and where a way doubles back above itself you jump from the upper leg down to the lower one. On gentle ground the bench is a few centimetres and reads
+         as a packed trail. A bench fades out over three squares before a run's groomed lane, a building or the room's rock, so a run is never stepped. Olympus's
+         own marble ways and the level base are left. Each bench square carries its own four corners (finish(): `squareH`). ── */
+      R2.squareH = {};
+      { const nat = (cx, cy) => Hn[cy * (Wn + 1) + cx], KEEP = { i: 1, B: 1, m: 1, a: 1, w: 1, b: 1, j: 1, x: 1 }; let benched = 0, ledges = 0; const faces = [];
+        const hard = (x, y) => { if (!inR(x, y)) return true; const e = R.plotOfSq(x, y); if (!e) return true; if (e.home && e.home.district === 'Mount Olympus') return true; if (e.level <= 1) return true; return !!KEEP[c2[y][x]]; };
+        const wq = {}, wOf = (x, y) => { const k = x + ':' + y; if (wq[k] != null) return wq[k]; let d = 4; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (hard(x + dx, y + dy)) d = Math.min(d, Math.max(Math.abs(dx), Math.abs(dy))); return (wq[k] = Math.max(0, Math.min(1, (d - 1) / 3))); };
+        (S.wayLines || []).forEach(way => { const g = way.line.map(([x, y]) => inR(x, y) ? (nat(x, y) + nat(x + 1, y) + nat(x, y + 1) + nat(x + 1, y + 1)) / 4 : null), sm = g.map((v, i) => { let a = 0, n = 0; for (let k = -5; k <= 5; k++) { const q = g[i + k]; if (q != null) { a += q; n++; } } return n ? a / n : 0; });
+            const cs = {}, cw = {}; Object.keys(way.member).forEach(k => { const [x, y] = k.split(':').map(Number), h = sm[way.member[k]], w = wOf(x, y); for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const c = (x + dx) + ':' + (y + dy); (cs[c] = cs[c] || []).push(h); cw[c] = Math.min(cw[c] == null ? 1 : cw[c], w); } });
+            Object.keys(way.member).forEach(k => { const [x, y] = k.split(':').map(Number); if (R2.squareH[k] || hard(x, y)) return;
+                R2.squareH[k] = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([dx, dy]) => { const c = (x + dx) + ':' + (y + dy), b = cs[c].reduce((a, v) => a + v, 0) / cs[c].length, n0 = nat(x + dx, y + dy); return r2(n0 + cw[c] * (b - n0)); }); benched++; }); });
+        /* the faces wear rock: a slab on every step of 0.9 m or more between a bench square and the square beside it (drawn only: you still walk off it) */
+        const corners = (x, y) => R2.squareH[x + ':' + y] || [nat(x, y), nat(x + 1, y), nat(x, y + 1), nat(x + 1, y + 1)];
+        Object.keys(R2.squareH).forEach(k => { const [x, y] = k.split(':').map(Number), A = R2.squareH[k];
+            for (const [dx, dy, ia, ib, ja, jb] of [[1, 0, 1, 3, 0, 2], [-1, 0, 0, 2, 1, 3], [0, 1, 2, 3, 0, 1], [0, -1, 0, 1, 2, 3]]) { const X = x + dx, Y = y + dy; if (!inR(X, Y)) continue; if (R2.squareH[X + ':' + Y] && (dx < 0 || dy < 0)) continue; const Bq = corners(X, Y), mine = (A[ia] + A[ib]) / 2, theirs = (Bq[ja] + Bq[jb]) / 2, drop = Math.abs(mine - theirs); if (drop < 0.9) continue; if (drop >= 1.75 && mine > theirs) ledges++;
+                faces.push({ s: 'box', p: [r2(R.gcx(x) + dx * C / 2), r2(Math.min(mine, theirs) - 0.1), r2(R.gcz(y) + dy * C / 2)], size: [dx ? 0.5 : C, r2(drop + 0.2), dx ? C : 0.5], key: 'rocks_5', tint: 0xc8ccd4, uv: [3.5, 3.5] }); } });
+        if (faces.length) R2.F.push({ k: 'arch', id: S.part + ':ledges', x: 0, z: 0, y: 0, parts: faces });
+        Object.assign(R2.count, { benchSquares: benched, rockFaces: faces.length, ledges }); }
+      /* ── A ROW THAT LIES ACROSS PLOTS WHICH NO LONGER STAND TOGETHER (the Pass's marker wands and boards, Shasta's name boards: one drawn row over many plots,
+         which the mover carried off whole with the plot of its first piece, so the rest lay under the snow far from their own plots). Each part goes back to
+         the plot it stood on at home, at its own height over the ground there. A part whose plot stands in the other room is left out of this one. ── */
+      { const HcH = M.heights(), homeH = (x, z) => { const cx = Math.max(0, Math.min(M.W, Math.round((x + M.HW) / C))), cy = Math.max(0, Math.min(M.H, Math.round((z + M.HD) / C))); return HcH[cy * (M.W + 1) + cx]; }; let rows = 0, moved2 = 0, left = 0;
+        R2.F = R2.F.map(f => { if (f.k !== 'arch' || !/^mtn:/.test(f.id || '') || (f.rot || 0) !== 0 || !Array.isArray(f.parts)) return f; const e = R.plotOfSq(Math.floor((f.x + R.HX) / C), Math.floor((f.z + R.HZ) / C)); if (!e || !e.home || e.turn) return f;
+            const hx = f.x - e.dx, hz = f.z - e.dz, plotOf = q => MOVER.homePlot(hx + q.p[0], hz + q.p[2]); if (!f.parts.some(q => q.p && plotOf(q) && plotOf(q).id !== e.id)) return f;
+            const oy = hAt(f.x, f.z), hy = homeH(hx, hz), parts = []; rows++;
+            f.parts.forEach(q => { if (!q.p) { parts.push(q); return; } const hp = plotOf(q), w = hp && WHERE[hp.id]; if (!w || w.R !== R) { left++; return; } const px = hx + q.p[0], pz = hz + q.p[2], np = w.e.turn ? w.e.map(px, pz) : [px + w.e.dx, pz + w.e.dz]; if (hp.id !== e.id) moved2++;
+                parts.push(Object.assign({}, q, { p: [r2(np[0] - f.x), r2(q.p[1] + hy - homeH(px, pz) + hAt(np[0], np[1]) - oy), r2(np[1] - f.z)] })); });
+            const o = Object.assign({}, f, { parts, y: r2(oy) }); delete o.hug; return o; });
+        Object.assign(R2.count, { splitRows: rows, partsHome: moved2, partsOtherRoom: left }); }
       const seenTop = {}, LIFTLINES = S.id === R_LODGE ? THE_LIFTS.map(l => [l.a[0], l.a[1], l.b[0], l.b[1]]).map(([c0, r0, c1, r1]) => [(c0 - (R.wx - MP.WX0) + 0.5) * N, (r0 - (R.wy - MP.WY0) + 0.5) * N, (c1 - (R.wx - MP.WX0) + 0.5) * N, (r1 - (R.wy - MP.WY0) + 0.5) * N]) : [];
       S.runPaths.forEach((run, ri) => { const { name, mark, path, wide } = run, id = 'run' + ri;
           /* the board, a few squares down from the run's top, beside its lane (not where another run's board already stands) */
@@ -637,7 +675,7 @@ const owBlocks = ROOMS_OW.map(o => { const { S, R, R2 } = o, w = 2 * R.HX, d = 2
                "                                    sky: " + SKY_DAY + ",\n                                    look: HQ_ROOM_LOOKS.mountain }))",
         parti: S.parti, floor: 'grass_2', pal: ['ice', 'rocks_5', 'dirt_2', 'ice_1', 'marble_light', 'igloo', 'wood_planks', 'obsidian'],
         paintOf: (ch, x, y) => { const p = R2.plotAt(x, y), oly = p && p.district === 'Mount Olympus';
-            if (S.smooth && !oly) { if (ch === 'g') return 1; if (ch === 'p' || ch === 'd') return 6; }   // THE ONE MOUNTAIN: Shasta's summer meadows and dirt trails lie under snow now
+            if (S.smooth && !oly) { if (ch === 'g' || ch === 't') return 1;   /* (snow lies under the trees too: the tree squares drew summer grass) */ if (ch === 'p' || ch === 'd') return 6; if (S.id === R_LODGE && (ch === 'h' || ch === 'l')) return 1; }   /* (no volcano on the ski mountain: its lava and volcanic rock lie under snow; the Long Descent keeps its black rocks) */   // THE ONE MOUNTAIN: Shasta's summer meadows and dirt trails lie under snow now
             return ch === 's' || ch === 'B' ? 1 : ch === 'k' ? (oly ? 5 : 1) : ch === 'r' ? 2 : (ch === 'p' || ch === 'd') ? 3 : (ch === 'i' || ch === 'x' || ch === 'a') ? 4 : ch === 'm' ? 5 : ch === 'o' ? 6 : (ch === 'j' || ch === 'b') ? ((p && p.id === 'P06-02') || ch === 'b' ? 7 : 6) : ch === 'h' ? 8 : (ch === 't' && p && p.ly === 3 && p.lx < 3) ? 1 : 0; },
         trees: { snow: { kinds: SNOWPINES, treeH: [5.5, 8] }, pine: { kinds: ['pine', 'pine', 'pine', 'pine', 'pine', SNOWPINES[0]], treeH: [5.5, 9] } }   /* (THE ONE MOUNTAIN: no summer leaf trees on a ski mountain; one snow pine in six, they are heavy) */, treeDefault: 'pine', maxTrees: Math.round(2600 * R.cols * R.rows / 96),
         treeKey: (x, y) => { const p = R2.plotAt(x, y); return (p && p.ly === 3 && p.lx < 3) ? 'snow' : 'pine'; },

@@ -37,6 +37,7 @@
    Squares are S(plotId, lx, ly), 0..11 in a plot, x east, y south. S() throws on a plot that is not this district's. Your own random stream: ctx.rnd.
    A blocker stands centred on a whole 3.5 m square (owner-rules.md); the tool throws on a piece in the rock or on a taken square. */
 'use strict';
+const ONE2 = ctx => !!(ctx.o && ctx.o.oneMountain);   // THE ONE MOUNTAIN (11-20): this district's plots are the middle of the ski mountain; it is no volcano there
 
 /* ══ THE DISTRICT THREAD (2026-11-16, mondo's order: every district prototyped; docs/plans/DISTRICT_THREAD_BRIEF.md). Notes: areas-complexes.md "MOUNT SHASTA, THE DISTRICT THREAD".
    The district's one sign face: `alfa` (a park's routed slab letters, cream on brown). Parts frame of a building: its middle, x along the front, +z out of the front. ══ */
@@ -139,6 +140,7 @@ exports.apply = ctx => {
 };
 
 exports.build = ctx => {
+    const ONE = ONE2(ctx);
     const R = ctx, { put, dec, tree, native, building, look, flat, cabin, say, S, mx, mz, gx, gz, props, feat, cell, N, C, r2, U, WD, WD2, SHG, FLR, GLS, DOORWORDS } = ctx;
   /* ── MOUNT SHASTA ── */
   put('P14-00', 'cave_stone', 5, 5); dec('P14-00', 'cave_stone', 6, 7); put('P14-00', 'signpost', 7, 8, { face: 180 }); { const g0 = gnd(R, 'P14-00', 7, 6), q = S('P14-00', 7, 6), cx = mx(q[0]), cz = mz(q[1]), r2 = ctx.r2; for (const [dx, dz, dy, sp] of [[0, 0, 16, 30], [-11, 2, 15, 20], [11, -2, 15, 20], [0, -1, 20, 16]]) props.push({ key: 'white_cloud', x: r2(cx + dx), z: r2(cz + dz), y: r2(g0 + dy), span: sp, face: 90 }); }   // THE SUMMIT: the crater, the cloud parked over it
@@ -229,7 +231,7 @@ exports.build = ctx => {
     P('P13-00', [['psxg_rock_1', 6, 6, { h: 1.9, face: 40 }], ['psxg_rock_1', 4, 6, { h: 1.5, face: 200 }]]);
     D('P13-00', [['psxg_rock_1', 5, 6], ['psxg_rock_2', 6, 3], ['psxg_rock_3', 7, 5], ['psx_supply_crate_1', 5, 5], ['meshy_rope', 5, 5], ['crow', 4, 5], ['psxg_rock_4', 3, 5], ['psxg_rock_2', 6, 7]]);
     /* THE SUMMIT: the vent in the crater, a telescope on the rim, the survey drum */
-    P('P14-00', [['sea_vent', 7, 6], ['telescope', 9, 5, F(250)]]);
+    P('P14-00', ONE ? [['telescope', 9, 5, F(250)]] : [['sea_vent', 7, 6], ['telescope', 9, 5, F(250)]]);   // (THE ONE MOUNTAIN: no vent in the Bowl; the mountain is no volcano)
     D('P14-00', [['psxg_rock_1', 6, 6], ['psxg_rock_2', 8, 7], ['psxg_rock_3', 7, 7], ['psx_metal_barrel_mp_1', 8, 4], ['psxg_rock_4', 6, 8], ['psxg_rock_2', 9, 8], ['eagle', 6, 6], ['meshy_rope', 8, 4]]);
     native('P14-00', 'nordic', 6, 9, 20);
     /* THE GLACIER: the wanded route across the ice, melt water, moraine stones */
@@ -302,7 +304,7 @@ exports.build = ctx => {
   /* ══ PASS 4 (11-16): ATMOSPHERE. Steam over every vent and the hot pool, lantern posts down the trail (a glow, not a real light: the frame rate), lanterns at the
      dojo's eaves, a brazier at the shrine. The air (particles) is `airZones` below. The room's sky and its day are the tool's. ══ */
   { const r2 = ctx.r2, steam = (id, lx, ly, up, rise) => { const q = S(id, lx, ly); props.push({ key: 'chimney_smoke', x: mx(q[0]), z: mz(q[1]), y: r2(gnd(R, id, lx, ly) + up), rise: rise || 6 }); };
-    steam('P14-00', 7, 6, 2.3, 9); steam('P15-01', 4, 4, 2.3); steam('P15-01', 6, 4, 1.8); steam('P15-01', 3, 7, 2.0); steam('P15-01', 5, 6, 0.4, 4); steam('P15-01', 6, 6, 0.4, 3);
+    if (!ONE) steam('P14-00', 7, 6, 2.3, 9); steam('P15-01', 4, 4, 2.3); steam('P15-01', 6, 4, 1.8); steam('P15-01', 3, 7, 2.0); steam('P15-01', 5, 6, 0.4, 4); steam('P15-01', 6, 6, 0.4, 3);
     /* the lantern post: a timber post, an arm, a caged lantern (the district's own; the village's is candy-striped) */
     /* (the model pass) the `lantern_post` model in place of the drawn posts: it blocks, so each stands on the middle of a whole square that is not a trail square */
     for (const [id, lx, ly, ox] of [['P13-07', 5, 8, -1.3, 0], ['P13-07', 4, 4, 1.2, -1.3], ['P13-07', 8, 2, 1.3, 1.2], ['P13-06', 6, 6, 1.3, 1.3], ['P13-06', 5, 3, -1.3, 1.2], ['P13-05', 5, 6, -1.3, 1.2], ['P13-05', 8, 2, 1.3, -1.2], ['P13-04', 5, 8, 1.3, 1.2], ['P13-04', 6, 4, 1.3, -1.3],
@@ -315,9 +317,9 @@ exports.build = ctx => {
   }
   /* ══ PASS 5 (11-16): POLISH. The place boards (every plot's own name from the plan, routed cream on brown, read from both sides of the trail; ONE look), the last
      pieces at the doors and on the walls. ══ */
-  { const r2 = ctx.r2, L = [['P14-02', 6, 5, 'THE FORK'], ['P13-06', 6, 5, 'THE SWITCHBACK'], ['P13-04', 5, 5, 'THE LAST TREES'], ['P13-03', 5, 4, 'BUNNY FLAT'], ['P14-03', 2, 4, 'PANTHER MEADOWS'], ['P14-04', 3, 4, 'THE SPRING'], ['P14-05', 4, 5, 'THE LOOKOUT'],
-        ['P14-06', 7, 5, 'THE BOULDER FIELD'], ['P14-07', 5, 4, 'THE UPPER SHELF'], ['P15-03', 6, 4, 'THE OLD LAVA'], ['P13-02', 7, 4, 'AVALANCHE GULCH'], ['P15-02', 6, 4, 'THE SCREE'], ['P13-01', 7, 6, 'THE RED BANKS'], ['P14-01', 2, 6, 'HELEN LAKE'],
-        ['P15-01', 2, 6, 'THE STEAM VENTS'], ['P13-00', 7, 5, 'SHASTINA'], ['P14-00', 5, 6, 'THE SUMMIT'], ['P15-00', 5, 7, 'THE GLACIER']];
+  { const r2 = ctx.r2, L = [['P14-02', 6, 5, 'THE FORK'], ['P13-06', 6, 5, 'THE SWITCHBACK'], ['P13-04', 5, 5, 'THE LAST TREES'], ['P13-03', 5, 4, 'BUNNY FLAT'], ['P14-03', 2, 4, ONE ? 'THE MEADOWS' : 'PANTHER MEADOWS'], ['P14-04', 3, 4, 'THE SPRING'], ['P14-05', 4, 5, 'THE LOOKOUT'],
+        ['P14-06', 7, 5, 'THE BOULDER FIELD'], ['P14-07', 5, 4, 'THE UPPER SHELF'], ['P15-03', 6, 4, ONE ? 'THE BLACK ROCKS' : 'THE OLD LAVA'], ['P13-02', 7, 4, 'AVALANCHE GULCH'], ['P15-02', 6, 4, 'THE SCREE'], ['P13-01', 7, 6, 'THE RED BANKS'], ['P14-01', 2, 6, ONE ? 'THE FROZEN LAKE' : 'HELEN LAKE'],
+        ['P15-01', 2, 6, ONE ? 'THE HOT SPRINGS' : 'THE STEAM VENTS'], ['P13-00', 7, 5, ONE ? 'THE CORNICE' : 'SHASTINA'], ['P14-00', 5, 6, ONE ? 'THE BOWL' : 'THE SUMMIT'], ['P15-00', 5, 7, 'THE GLACIER']];
     const o0 = S(L[0][0], L[0][1], L[0][2]), X0 = r2(mx(o0[0]) + 0.9), Z0 = r2(mz(o0[1]) + 1.0), G0 = gnd(R, L[0][0], L[0][1], L[0][2]);
     look('boards', X0, Z0, a => { for (const [id, lx, ly, words] of L) { const q = S(id, lx, ly), x = r2(mx(q[0]) + 0.9 - X0), z = r2(mz(q[1]) + 1.0 - Z0), y = r2(gnd(R, id, lx, ly) - G0), bw = r2(words.length * 0.2 + 0.7);
         for (const s of [-1, 1]) a.box(x + s * (bw / 2 + 0.07), y - 0.3, z, 0.12, 1.95, 0.12, WD2, 0x5a4030, { gain: 1.5 }); a.box(x, y + 1.02, z, bw + 0.1, 0.56, 0.07, WD2, TR, { gain: 1.4 });
@@ -376,6 +378,6 @@ exports.build = ctx => {
 /* THE AIR (pass 4; the tool's hook `airZones`, bake-mountains.js THE AIR BY DISTRICT): thin snow on the three peaks' plots, white motes of steam at the vents, ash over
    the two lava plots, fireflies in Panther Meadows, pale motes at the Spring, pollen in the wood. Squares are the room's (from S()). Kept thin: the frame rate. */
 exports.airZones = ctx => { const { S } = ctx, Z = (id, kind, n, q, id2) => { const a = S(id, 0, 0), b = S(id2 || id, 11, 11); return Object.assign({ x0: a[0], y0: a[1], x1: b[0] + 1, y1: b[1] + 1, kind, n }, q || {}); };
-    return [Z('P13-00', 'snow', 260, { speed: 0.7 }, 'P15-00'), Z('P14-01', 'snow', 70, { speed: 0.6 }), Z('P15-01', 'motes', 70, { color: 0xffffff, speed: 0.5 }), Z('P13-01', 'ash', 40), Z('P15-03', 'ash', 40),
-        Z('P14-03', 'fireflies', 50), Z('P14-04', 'motes', 40, { color: 0xbfe8ff, speed: 0.3 }), Z('P13-03', 'dust', 50, { color: 0xffe8a0 }), Z('P13-04', 'dust', 90, { color: 0xffe8a0 }, 'P13-07'), Z('P14-05', 'dust', 70, { color: 0xffe8a0 }, 'P14-07')];
+    return [Z('P13-00', 'snow', 260, { speed: 0.7 }, 'P15-00'), Z('P14-01', 'snow', 70, { speed: 0.6 }), Z('P15-01', 'motes', 70, { color: 0xffffff, speed: 0.5 }), Z('P13-01', ONE2(ctx) ? 'snow' : 'ash', 40), Z('P15-03', ONE2(ctx) ? 'snow' : 'ash', 40),
+        Z('P14-03', ONE2(ctx) ? 'snow' : 'fireflies', 50), Z('P14-04', 'motes', 40, { color: 0xbfe8ff, speed: 0.3 }), Z('P13-03', 'dust', 50, { color: 0xffe8a0 }), Z('P13-04', 'dust', 90, { color: 0xffe8a0 }, 'P13-07'), Z('P14-05', 'dust', 70, { color: 0xffe8a0 }, 'P14-07')];
 };

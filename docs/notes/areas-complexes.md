@@ -13292,3 +13292,23 @@ mondo 11-20: "Okay go ahead and do the next pass" (the one named to him: relief 
   seen right on screen now).
 - **NOT DONE:** ledges and switchback shaping on the walking ways, Shasta's volcano dressing on ski plots, P's `wands` / `boards` rows under the snow, nobody
   lives or works in the houses (the NPC system's), the North Pole. Not checked: four of the five lifts ridden; the seams; The Long Descent on screen.
+
+## THE MOUNTAINS, THE WALKING WAYS + THE CLEAN-UP (2026-11-20, world polish thread 5; mondo: "Go ahead and do all of that now")
+
+- **THE BENCHES AND THE LEDGES** (bake-mountains.js, the dressing block; finish() `squareH`): every walking way of the plan is packed snow on its square legs (on
+  open snow too; a run's groomed lane is never cut) and is CUT INTO THE SLOPE as a bench: level across its width, climbing along its length at the slope's own
+  grade smoothed over eleven squares. A bench square carries its own four corners; where they disagree with the next square's, that step is a bank (uphill)
+  or a drop you walk off (downhill). 784 bench squares on the mountain, 131 steps of 0.9 m or more wear a rock slab (`ow_lodge:ledges`, drawn only), 27 are
+  ledges of 1.75 m or more (higher than the jump). A bench fades out over three squares before a run's lane, a building, the room's rock, Olympus's own ways
+  and the level base, so no run is stepped: the board still rides top to bottom (32.8 s, ridden after). The Long Descent: 219 bench squares, gentle (1 face).
+  NOT measured in the game: walking up a ledge refused / down passed (The Woods measured the same mechanism: areas-complexes.md "THE WOODS, THE ROOM DESIGN").
+- **A ROW ACROSS PLOTS THAT PARTED** (the Pass's `wands` and `boards`, Shasta's name boards; six rows): each part goes back to the plot it stood on at home, at
+  its own height over the ground there (205 parts; 12 whose plot stands in the other room are left out of this room's row). Seen on screen at the High Pass.
+- **NO VOLCANO** (S.js reads `ctx.o.oneMountain`): no vent and no steam column in the Bowl (the old Summit); the name boards read THE BOWL, THE CORNICE, THE
+  FROZEN LAKE, THE MEADOWS, THE HOT SPRINGS, THE BLACK ROCKS; ash and fireflies in the air are snow; lava and volcanic rock squares are painted snow on the
+  mountain (the Long Descent's Black Rocks keep theirs); the Hot Springs keep their steam, pool and the mine to Agartha. Snow lies under the trees too
+  (tree squares drew summer grass).
+- **THE PEOPLE OF THE HOUSES** (K.js, one unit a house, the game's own units, no lines): a chef behind the Lodge's bar and a hippie by its fire, a mechanic in
+  the Rental Hut, the Mid Station and the Top Station, a lifeguard in the Ski Patrol, a nordic at the Inn's desk, a skater behind the Ski Shop's counter;
+  a streamer and a yeti on the Village Green. Which unit fits which house is a guess of mine: change any in the `who(...)` row.
+- **NOT DONE:** the North Pole. Not checked: four of the five lifts ridden; the seams; The Long Descent on screen; the snow under the trees after the last bake.
