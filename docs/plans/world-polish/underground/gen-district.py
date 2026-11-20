@@ -129,4 +129,6 @@ module.exports = {
 ''' % (D['name'].upper(), K, slug, tallest, max(lvl.values()), min(lvl.values()), D['name'].upper().replace("'", "\\'"), max(lvl.values()), min(lvl.values()), D['lo'], D['hi'], W, H, en[0] + 1, en[1] + 1, K, json.dumps(D['name']), D['color'],
        ',\n        '.join(plots), ',\n        '.join(steps + labels), ', '.join(stairs), ',\n        '.join(branches), ', '.join(doors), lm, bn[0], bn[1], json.dumps('The Inner Sun' if list(big) == G['sun'] else "The great chamber's stalagmite"),
        ',\n        '.join(found), ',\n        '.join(flats), max(12, min(26, 1880 // W)))
-open(os.path.join(HERE, '..', 'plans', 'ug-%s.js' % slug), 'w').write(out); print('ug-%s.js' % slug, len(P), 'plots', len(chamber), 'chambers', npit, 'pits', ndrop, 'drops', len(stairs), 'ladders')
+dst = os.path.join(HERE, '..', 'plans', 'ug-%s.js' % slug)
+if os.path.exists(dst) and 'HAND-KEPT' in open(dst).read(): print('ug-%s.js is HAND-KEPT by its build thread: not rewritten' % slug); sys.exit(0)
+open(dst, 'w').write(out); print('ug-%s.js' % slug, len(P), 'plots', len(chamber), 'chambers', npit, 'pits', ndrop, 'drops', len(stairs), 'ladders')

@@ -13706,6 +13706,42 @@ the Sink) and one on the east (off the Shoulder 2 -> 1); the plan's ledge edges 
   file is not edited. data.js rows by hand: the day table, `HQ_AREA_MARKERS` (the Fence Gap), `ZONE_FLORA.estate`, `ZONE_LOOKS.estate`. The plan's
   rock steps climb a notch up the top's own face (54,27 -> 54,26). Every door of the three rooms resolves (checked through load-data.js).
 
+## AGARTHA, THE LABYRINTH CITY (2026-11-20, WORLD POLISH thread 9, the Agartha build; branch `claude/agartha-pilot`)
+
+mondo 11-20: the whole underground is ONE labyrinth ("victory road ... underground horror like the descent movie"), 6 plots deep, no climb over
+16 levels, every climb two-way, no underground river for now. Agartha's approved square plan: `docs/plans/world-polish/plans/ug-agartha.js`
+(5 x 4 plots, levels 134 down to 112; HAND-KEPT now: `gen-district.py` skips it). The brief: "a CITY in a cave: real architecture you walk
+into, lit by its crystals, with the dark maze round it".
+
+- **THE TOOL:** `node bake-agartha.js` (`--dry-run`, `AGARTHA_DUMP=1`) writes the NEW room `site_prebuilt_hollow_earth_ug_agartha` between
+  `AGARTHA-UG-BEGIN / END` in data.js (before the Cavern's block). It reads the plan through `draw-plan.js` `build()` and refuses to bake when
+  the plan fails. Level 110 = y 0; a level = 1.75 m. The floor is the height sheet (`terrain.slope.cells`, four corners a square, each square
+  flat at its level: a ledge is a sheer step); every closed square is ROCK standing to the crust (no gen wall, no tree); THE ROOF = a slab
+  of rock over every open square at the highest floor beside it + the square's headroom (a passage 4.2 m, a chamber 8.75 m, a place's own:
+  `ctx.headroom`), stalactites under it; THE LADDERS = the plan's `stairs` (`climb` rows, look `ladder`); THE ROPES = the plan's `found`
+  free climbs up a cliff (`climb`, look `rope`); the sumps (`w` squares) = black water. Checks: every prop key and unit exists, nothing in
+  the rock, every open square WALKED from the spawn AND climbed back out of (the drops one way, ladders and ropes both), every plot has
+  squares at its plan level (the heights check before any browser run).
+- **THE DESIGN FILE:** `docs/areas/cavern/agartha/room.js` (room frame, squares 0..59 x 0..47): `plan` (headroom, paint), `build`
+  (buildings: hollow `texbuilding` + an `arch` look, the Antarctica / Katana recipe), `dress`, `people`, `suns`. LIGHT: only a PROC prop
+  lights (`crystal_cluster`, `torch_white`, `torch_blue`, `cave_torch`); ten prop lights a room (`HQ_PROP_LIGHT_MAX`): `noLight: true`
+  on the rest; the shell's `suns` (four at most) are the crystals that light a shelf.
+- **THE PILOT (11-20) = THE UPPER SHELF, level 134, + the maze under it (the west two plot columns, squares x 0..23):** the Lemuria adit
+  (2..3 x 0..1, timber sets, rails, a cart; door `lemuria_adit` on the north wall), the Lemurian Gate, THE ADIT SQUARE (the 8 x 8 board,
+  the battle marker of the old room) round THE GREAT CRYSTAL (6,6: the great chamber's stalagmite grown through with crystal, the shelf's
+  big light, four columns round its precinct), THE UPPER TERRACE (the chamber grown east 5 squares in the plan) with THE HALL OF RECORDS
+  (10..14 x 2..6, walk-in: shelves of records, the model of the city, the old terrace's telescope, orrery, lectern), two HOMES CUT IN THE
+  ROCK (0..1 x 4..7 and 9..12 x 10..12, walk-in), THE DROP (a broken balustrade over the 8-level cliff, the old rope), THE COLONNADE east;
+  the pits: a nest, a crystal pocket, a bone pit, an old camp. The rest of the room stands as the plan's bare skeleton (walkable).
+- **NOT JOINED TO THE WORLD YET (the Katana pattern):** the old `site_prebuilt_hollow_earth_ow_agartha` (bake-cavern.js room `A`) stays
+  the walked room. AT THE SWAP: room `A` + its north tunnel plots + the `L`<->`A` seam leave `bake-cavern.js` (note on the board first),
+  this room takes `world:` (Agartha's place), the links `shasta_lemuria` (the adit), `technoticlan_agartha`, `antarctica_polar` and the
+  Long Tunnel seam `ow_h_m15_m8` point here, the old room goes in `DOOR_HQ.retired`, and the room joins `ZONE_LOOKS.zones.cavern.rooms`
+  (the retexture thread's row) + the cavern `ZONE_FLORA`. The underground layout drops Agartha's ways to Technoticlan and Antarctica:
+  ASK mondo before cutting them (never delete content he did not name).
+- **THE READING (step 1b):** `docs/plans/world-polish/thread9-agartha/fits-part1..4.md` (the model list in three parts + the live data).
+  NEEDS A MODEL (none in the game): stalactite / stalagmite pieces (code cones today), a creature nest / eggs, a geode, mine timber
+  supports (drawn as arch boxes), a white marble balustrade (drawn), a crystal throne, a dead caver in a helmet and harness.
 ## THE SEWERS' LABYRINTH — the top of the underground, built from the approved plan (2026-11-20, WORLD POLISH THREAD 10, owner side)
 
 mondo 11-20: "The entire underground needs to be like a labyrinth"; "we need victory road. labyrinth, height diffs, cliffs, drops waterfalls,
