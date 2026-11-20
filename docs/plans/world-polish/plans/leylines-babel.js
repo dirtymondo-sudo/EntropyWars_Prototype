@@ -1,5 +1,5 @@
 /* THREAD 12, LEYLINES: THE HEIGHT PLAN of BABEL, laid OVER THE ROOM AS IT STANDS (`underlay`), in the room it shares with Technoticlan.
-   A PROPOSAL: nothing is built from it until mondo says so. DATA ONLY (the format: plans/README.md).
+   APPROVED by mondo 2026-11-20 ("The rest looks good"). Nothing is built from it yet. DATA ONLY (the format: plans/README.md).
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/leylines-babel.js
    TODAY: the Tower stands and is climbed already (four flights that spiral: north, east, south, west, to level 16). The LAND round
    it is dead level, and there is nothing to walk into.
@@ -9,12 +9,14 @@
    - EAST: the Crane on its platform (3), the Workers' Town on a level terrace (2) with two houses you walk into, the Barn yard (1).
    - Two thin ways join them round the Tower's foot, north and south; the Tower's own spiral is the third, and its top is the lookout.
    TECHNOTICLAN (the lake city, the south half of the room) IS NOT PLANNED HERE: it is drawn as it stands. It needs its own pass.
+   mondo 11-20 on its causeways: "Tecnoticlan can stay straight bc it's more architecture than dungeon or passageways".
    Levels: 0 = the plain today. One level = 1.75 m. */
 'use strict';
 const Z = 'Technoticlan is not planned yet: drawn as it stands', R = 'the route kit\'s trail: its squares stay as they are', TW = 'the Tower of Babel, as built: a monument is not lifted';
 module.exports = {
+    approved: 'mondo 2026-11-20, shown the plan and its picture in chat: "The rest looks good"',
     zone: 'Leylines', thread: 12, room: 'site_prebuilt_gobekli_ow_babel', underlay: { deep: 6, shift: true },
-    title: 'LEYLINES, BABEL: the land round the Tower, THE HEIGHT PLAN over the room as it stands (a proposal)',
+    title: 'LEYLINES, BABEL: the land round the Tower, THE HEIGHT PLAN over the room as it stands',
     build: { frame: 'room', file: 'docs/areas/leylines/districts/T-room.js (new: the room design, in the room\'s own frame)' },
     mass: 'closed ground', massHeight: 0,
     tiles: { u: ['the ground and the Tower as they stand today (read from the room)', true, [120, 104, 80], [240, 226, 196]] },
