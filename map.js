@@ -5698,6 +5698,20 @@
             clearTimeout(_hqOllieT); _hqOllieT = setTimeout(() => _hqOllieMeter(0, false, false, true), 520);
         }
         let _hqOllieT = null;
+        /* THE BALANCE METER (2026-11-20): the rail's balance under the reticle — the needle (k −1..1; A / D bring it back), red near an
+           end, the grind's name under it. No beat for 600 ms = off the rail: it hides itself. */
+        let _hqBalT = null;
+        function _hqBalMeter(ev) {
+            const el = _hqEl('hqBal'); if (!el) return;
+            clearTimeout(_hqBalT);
+            if (!ev) { el.classList.remove('show', 'warn'); _hqBalT = setTimeout(() => { if (!el.classList.contains('show')) el.style.display = 'none'; }, 220); return; }
+            if (!el.classList.contains('show')) { el.style.display = ''; void el.offsetWidth; el.classList.add('show'); }
+            const k = Math.max(-1, Math.min(1, +ev.k || 0));
+            const n = el.querySelector('i'); if (n) n.style.left = (50 + k * 50).toFixed(1) + '%';
+            el.classList.toggle('warn', Math.abs(k) > 0.65);
+            const lab = el.querySelector('b'), word = String(ev.label || 'GRIND') + ' · A / D'; if (lab && lab.textContent !== word) lab.textContent = word;
+            _hqBalT = setTimeout(() => _hqBalMeter(null), 600);
+        }
         function _hqSkateEvent(ev) {
             if (!ev) return;
             const h = _hqEl('hqHints');
@@ -5710,7 +5724,7 @@
                     break;
                 case 'off':
                     if (h) h.classList.remove('skate');
-                    _hqTrickLine(null); _hqOllieMeter(0, false, false, true);
+                    _hqTrickLine(null); _hqOllieMeter(0, false, false, true); _hqBalMeter(null);
                     _hqFillStrip(_hqProfile());
                     break;
                 case 'charge':
@@ -5740,6 +5754,11 @@
                 case 'rollback': _hqSkateSfx('skateGrind', 0.18); break;
                 case 'hop': break;
                 case 'grindstart': _hqSkateSfx('skateGrind', 0.5); break;
+                /* THE GRINDS + THE BALANCE METER + THE WALLS (2026-11-20) */
+                case 'balance': _hqBalMeter(ev); break;
+                case 'grindswitch': _hqSkateSfx('skateTrick', 0.45); _hqSkateSfx('skateGrind', 0.3); break;
+                case 'wallride': _hqSkateSfx('skateGrind', 0.4); break;
+                case 'wallplant': _hqSkateSfx('skatePop', 0.6); break;
                 case 'grind': _hqSkateSfx('skateGrind', 0.22); break;
                 case 'trick': try { playSfx('uiCursorMove'); } catch (e) {} break;
                 case 'combo': if (ev.tick) _hqComboTick(ev); else _hqComboCard(ev, 'live', _hqLavaTail(ev), 0); _hqComboLive = true; break;
@@ -5760,7 +5779,7 @@
                     _hqSkateSfx('skateBail', 0.6);
                     _hqSkateFile({ bail: true });
                     _hqComboLive = false;
-                    _hqOllieMeter(0, false, false, true);
+                    _hqOllieMeter(0, false, false, true); _hqBalMeter(null);
                     _hqTrickLine(`<div class="hq-trick-head"><span>BAIL</span><b>${ev.lost ? '−' + (ev.lost | 0).toLocaleString() : ''}</b><i>${ev.why === 'balance' ? 'OFF THE RAIL' : ev.why === 'offaxis' ? 'LANDED SIDEWAYS' : 'STILL TURNING'}</i></div>`, 'bail', 1800);
                     break;
                 }
