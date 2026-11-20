@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-20 lamps-why';
+    var _EW_TR_STAMP = '11-20 builds-named';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -48071,6 +48071,17 @@ const ThreeRenderer = (function () {
             var nb = dbg.onNodeBuilderCreated || null;
             dbg.onNodeBuilderCreated = function (b, ro) {
                 _ewKeep.builds++;
+                /* THE BUILDS' NAMES (2026-11-20, lens; mondo's combo F3 on the lamps-why build: 4.7 FPS with 0 re-records, "scene:
+                   classic draws 93 ms" for 105 meshes, every slow frame "1 shader builds · 1-3 new pipelines"): what each new
+                   shader is for, the last 12, so the next F3 names the looks a combo still builds mid-fight */
+                try {
+                    var bo = ro && ro.object, bm = ro && ro.material, bq = bo, bn = '';
+                    for (var bd = 0; bq && bd < 5 && !bn; bd++, bq = bq.parent) bn = bq.name || '';
+                    var bl = _ewKeep.last || (_ewKeep.last = []);
+                    bl.push((bm ? (bm.type + (bm.name ? ' "' + String(bm.name).slice(0, 16) + '"' : '') + (bm._ewNode ? ' node:' + bm._ewNode.k : '') + (bm._ew_occClone ? ' fade-clone' : '') + (bm.isShadowPassMaterial ? ' shadow' : '') + (bm.transparent ? ' see-through' : '')) : '?') +
+                        ' on ' + (bo ? (bo.isSkinnedMesh ? 'skinned ' : bo.isInstancedMesh ? 'batch ' : bo.isSprite ? 'sprite ' : bo.isPoints ? 'points ' : '') + (bn ? String(bn).slice(0, 22) : bo.type) : '?') + (r._ew_paneRender ? ' (pane)' : r._ew_sideRender ? ' (side)' : ''));
+                    if (bl.length > 12) bl.shift();
+                } catch (e) {}
                 if (!off && ro && ro.object && ro.object.isInstancedMesh) b.getUniformBufferLimit = zero;
                 if (nb) nb.apply(this, arguments);
             };
@@ -50224,6 +50235,7 @@ const ThreeRenderer = (function () {
         LG = _ewBunMix(LG, LGs);
         if (sc.fog) LG = _ewBunMix(LG, sc.fog.isFogExp2 ? 2 : 1);
         if (sc.environment) LG = _ewBunMix(LG, sc.environment.id);
+        if (_ewBun.lampGc && _ewBun.lampGc[camK] === undefined && (_ewBun.lampGn = (_ewBun.lampGn | 0) + 1) > 32) { _ewBun.lampGc = null; _ewBun.lampLc = null; _ewBun.lampGn = 0; }
         var LGc = _ewBun.lampGc || (_ewBun.lampGc = {}), lampMoved = LGc[camK] !== undefined && LG !== LGc[camK]; LGc[camK] = LG; _ewBun.lampG = LG;
         /* THE LAMPS' WHY (2026-11-20, lens; mondo's third battle F3 still read "lamps 2342/s · LAMPS MOVED" with the lamps kept per
            camera): what differs from this camera's last list is written into the spike line (a light that joined or left, one
@@ -50251,7 +50263,7 @@ const ThreeRenderer = (function () {
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
             if (g._ew_ckOut) continue;   // THE CHUNKS: a chunk off the camera is not drawn and not checked; its recording waits for it
-            var gcm = st.Gc || (st.Gc = {}); if (gcm[camK] === undefined) gcm[camK] = G; st.G = gcm[camK];   // THE LAMPS PER CAMERA: this camera's stamp
+            var gcm = st.Gc || (st.Gc = {}); if (gcm[camK] === undefined) { if ((st.GcN = (st.GcN | 0) + 1) > 8) { gcm = st.Gc = {}; st.GcN = 1; } gcm[camK] = G; } st.G = gcm[camK];   // (a shot's panes are new cameras each time: the oldest stamps go)   // THE LAMPS PER CAMERA: this camera's stamp
             if (st.until > now) { if (g.isBundleGroup) _ewBunRelease(g); continue; }
             /* W5a: a group the frame does not draw (hidden, or a parked room under a hidden parent) is neither checked nor
                bundled — the walk over it was the check's whole cost when the HQ sat hidden behind a battle */
@@ -51884,8 +51896,13 @@ const ThreeRenderer = (function () {
             if (r._ew_shadowFrame && lightsNode && lightsNode.getLights) {
                 r._ew_shadowFrame = false;
                 var ls = lightsNode.getLights(), auto = r.shadowMap.autoUpdate !== false, pulse = !!r.shadowMap.needsUpdate;
-                r._ew_lights = ls;
-                if (cam) cam._ew_bunL = ls;   // THE LAMPS PER CAMERA (the bundle check)
+                /* (11-20, his lamps-why F3: "LAMPS MOVED [cam 96246, 0 lights: -AmbientLight "ew rig a" … -PointLight "ew rig p"]") the
+                   list three hands over is the render list's OWN array, emptied when that camera's list begins again: the unit
+                   mask draws with the same camera and no light on its layer, so the kept reference read EMPTY at the next
+                   check and every group re-recorded. A copy is kept, not the array. */
+                var lsC = ls.slice();
+                r._ew_lights = lsC;
+                if (cam) cam._ew_bunL = lsC;   // THE LAMPS PER CAMERA (the bundle check)
                 for (var i = 0; i < ls.length; i++) {
                     var l = ls[i];
                     if (!l || !l.castShadow || !l.shadow) continue;
@@ -55254,6 +55271,7 @@ const ThreeRenderer = (function () {
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
         try { var hl = _hq && _hq.heroLit, hs = (typeof _heroStat !== 'undefined') ? _heroStat : null; if (hl && hl.isLight && hs) L.push('Hero lamp: ' + (hs.why || 'drawn') + ' · frames held ' + hs.held + ' / drawn ' + hs.drawn + ' · in reach ' + hs.inReach + ' of ' + hs.casters + ' casters · moving ' + hs.moving + ' · sides drawn ' + hs.sidesDrawn + ' / skipped ' + hs.sidesSkipped + ' (session)' + _lensLampWhere(hl)); } catch (eH) {}   // THE SHADOW SPLIT
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
+        if (_ewKeep.last && _ewKeep.last.length) L.push('Last shader builds (newest last): ' + _ewKeep.last.join(' | '));
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
         if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }
         if (renderer && renderer._ew_late) { var LT = _ewLateStats(); L.push('Late look ' + LT.lateBuilds + ' builds spread (' + LT.buildMs + ' ms) · ' + LT.asyncPipelines + ' pipelines made off the frame' + (LT.compiling ? ' (' + LT.compiling + ' compiling)' : '') + ' · ' + LT.held + ' draws held'); }
