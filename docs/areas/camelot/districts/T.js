@@ -262,13 +262,31 @@ put('hand_cart', 65, 59, { face: 20 }, MK); put('wooden_barrel', 31, 59, {}, MK)
 const lane = (x0, y0, x1, y1, wd) => { const ax = ctx.gx(x0), az = ctx.gx(y0), bx = ctx.gx(x1), bz = ctx.gx(y1), ns = Math.abs(bz - az) > Math.abs(bx - ax);
     S.box((ax + bx) / 2, 0, (az + bz) / 2, ns ? wd : Math.abs(bx - ax) + wd, 0.05, ns ? Math.abs(bz - az) : wd, 'cobblestone', 0xc8c4bc, { sides: false }); };
 /* the back lane between the two south rows (the five houses that turned from the town wall open on it), reached by two cuts from South Street */
-lane(36, 64, 36, 69.5, 1.75); lane(32, 69.5, 36.9, 69.5, 1.75); lane(60, 64, 60, 69.5, 1.75); lane(56, 69.5, 65, 69.5, 1.75);
+lane(36, 64, 36, 69.5, 1.75); lane(35.2, 69.5, 36.9, 69.5, 1.75); lane(60, 64, 60, 69.5, 1.75); lane(56, 69.5, 65, 69.5, 1.75);
 /* the graveyard by the Chapel: the crosses, headstones between them */
 [[24, 66], [24, 68], [24, 70], [30, 66], [31, 68], [30, 70], [31, 71]].forEach(q => dec('cross', q[0], q[1]));
 [[22, 67, 'psxg_tombstone_1'], [23, 69, 'psxg_tombstone_2'], [22, 71, 'psxg_tombstone_3'], [31, 66, 'psxg_tombstone_2'], [31, 70, 'psxg_tombstone_1'], [23, 71, 'hw_grave']].forEach(q => put(q[2], q[0], q[1], { face: 0 }));
 put('hw_coffin', 22, 65, { face: 90 }); put('hw_shovel', 23, 66, { face: 40 }); put('psxg_iron_gate_1', 24, 64, { face: 0 }); dec('crow', 23, 67); dec('crow', 31, 67);   // THE MODEL LIST PASS: a coffin waiting, the sexton's shovel, the gate, crows
 put('armour_stand', 65, 66, { face: 270 }); put('brazier', 65, 68); put('firewood_stack', 65, 67, { face: 90 }); put('plough', 72, 66, { face: 20 }); put('wooden_barrel', 72, 65);   // THE MODEL PASS: the Smithy's wood, a plough in for mending
 put('weeping_angel', 30, 68, { face: 90 }); dec('raven_perch', 23, 70);
+/* THE CHURCHYARD (2026-11-20, the world polish plan, thread 4): the two houses east of the Chapel are gone (the layout's squares 32..34 x 65..67 and
+   70..71): the graves had a passage two squares wide between the Chapel's wall and a house. The yard runs from the Chapel to the back lane now:
+   more graves in rows, two yews, a lantern post at its gate, a flagged path to the stair up the wall. `put` only (no dice of the kingdom's). */
+[[33, 65, 'cross'], [34, 67, 'psxg_tombstone_1'], [33, 68, 'cross'], [34, 70, 'psxg_tombstone_3'], [32, 70, 'cross'], [33, 71, 'psxg_tombstone_2'], [34, 65, 'psxg_tombstone_2']].forEach(q => put(q[2], q[0], q[1], { face: 0 }));
+tree('pine_2', 7.5, 32, 66, 0.7); tree('pine_2', 6.5, 34, 69, 0.7); put('lantern_post', 32, 64, { face: 90 }); put('crow', 33, 67, { y: 0 });
+lane(31.5, 64, 31.5, 72, 1.4);
+/* ── THE WALL STAIRS (2026-11-20, the world polish plan, thread 4): three stone stairs up to the town wall's walk (7 m), each one square wide along the
+   wall's inner face on the strip behind the houses, a landing of one square at its head where the parapet is open (the tool's WALL_STAIRS: the same
+   squares). With the four corner towers the walk is a second way round the town with seven ways up. Rise 7 m on 21.4 m, the castle stairs' pitch.
+   NORTH: from the gap between the houses at squares 39..40, west to its landing at 32. SOUTH-WEST: from the churchyard (32) east to 38.
+   SOUTH-EAST: from the gap east of the Inn (55) west to 48. ── */
+{ const gx = ctx.gx, C = ctx.C, feat = ctx.feat, sq = ctx.sq, TOP = 7, stair = (id, row, foot, head, land) => { const z = r2(gx(row) + C / 2), up = head < foot ? -1 : 1;
+      feat({ k: 'ramp', id: 'cam:wallstair_' + id, x0: gx(foot), z0: z, x1: r2(gx(head) + up * 0.4), z1: z, w: C, h0: 0, h1: TOP, stairs: true, model: 'stone', edge: 0.2, key: 'cobblestone', side: WALL });
+      /* the landing: a deck (a `bridge` row reads edge to edge; a one-square `plateau` is ONE point of the 1.75 m height grid, a pyramid), solid to the ground, 0.3 m into the wall */
+      { const zw = row < 48 ? -0.15 : 0.15; feat({ k: 'bridge', id: 'cam:wallstair_' + id + '_landing', x0: gx(land), z0: r2(z + zw), x1: gx(land + 1), z1: r2(z + zw), w: C + 0.3, y: TOP, thick: TOP + 0.3, plain: true, rails: false, key: WALL }); }
+      for (let x = Math.min(foot, head, land); x < Math.max(foot, head, land + 1); x++) sq(x, row); };
+  stair('n', 22, 39, 33, 32); stair('sw', 72, 32, 38, 38); stair('se', 72, 55, 49, 48);
+ }
 /* the green behind the castle hill: the animals, hay, a water trough */
 put('cow', 63, 31, { face: 60 }); dec('chicken', 62, 30); dec('chicken', 64, 30); dec('chicken', 65, 31); dec('decor_sheep', 61, 31); dec('decor_sheep', 66, 30);
 put('hw_straw', 62, 31, { face: 20 }); put('hw_straw', 64, 31, { face: 100 }); dec('rabbit', 61, 30); dec('rabbit', 63, 30); dec('crow', 65, 30);
@@ -295,8 +313,8 @@ ctx.HOUSES.forEach(h => { if (h.y0 !== 23 || (h.x1 - h.x0) < 3) return; const x 
 [[30, 25], [40, 25], [56, 25], [66, 25], [31, 64], [40, 64], [54, 64], [66, 64], [24, 34], [24, 40], [24, 55], [71, 34], [71, 40], [71, 55]].forEach(q => { const x = gc(q[0]), z = gc(q[1]);
     const f = q[1] < 48 ? 1 : -1; put('lantern_post', q[0], q[1], { face: f > 0 ? 0 : 180 }); S.cyl(gc(q[0]) + f * 0.234, 1.39, gc(q[1]), 0.1, 0.16, null, 0xffd890, { seg: 8, glow: 1 }); });   // the lit glass: the model has no light of its own, so a lit sleeve stands round its glass (1.39 to 1.55 m up, 0.234 m off the row's middle, 0.095 m in radius: measured in the file)   // THE MODEL PASS: the wish list's `lantern_post` (was the hanging lantern on a drawn post and arm)
 /* the kitchen gardens' scarecrow and pumpkins; a dog and a cat in the streets */
-put('beehive', 35, 22); put('beehive', 40, 22); dec('wheelbarrow', 45, 22); put('sunflowers', 55, 22); put('sunflowers', 65, 22);   // THE MODEL PASS
-put('hw_scarecrow', 28, 22, { face: 180 }); dec('hw_pumpkin', 37, 22); dec('hw_pumpkin_2', 52, 22); dec('hw_pumpkin_3', 62, 22); dec('dog', 45, 64); dec('cat', 55, 25);
+put('beehive', 42, 22); put('beehive', 43, 22);   /* (11-20: off the wall stair's squares 32..39) */ dec('wheelbarrow', 45, 22); put('sunflowers', 55, 22); put('sunflowers', 65, 22);   // THE MODEL PASS
+put('hw_scarecrow', 28, 22, { face: 180 }); dec('hw_pumpkin', 41, 22); dec('hw_pumpkin_2', 52, 22); dec('hw_pumpkin_3', 62, 22); dec('dog', 45, 64); dec('cat', 55, 25);
 /* a torch either side of the three halls' doors (outside, on the front wall) */
 [CHAPEL, INN, SMITHY].forEach(B => { for (const s of [-1, 1]) inside(B, 'wall_torch', r3(B.door.lx + s * (B.door.cw / 2 + 0.9)), r3(B.fd / 2 + 0.28), { face: 180, y: 2.1, floor: true }); });
 ctx.arch.push({ k: 'arch', id: 'cam:village:street', x: 0, z: 0, rot: 0, y: 0, parts: S.P }); flushArch();
