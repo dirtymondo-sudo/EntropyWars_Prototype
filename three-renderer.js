@@ -75877,7 +75877,7 @@ const ThreeRenderer = (function () {
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         if (_hqSliceDue()) yield;
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
-        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true, h: q.h, sea: q.sea }; });   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props
+        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true, h: q.h, sea: q.sea, y: q.lift, noSeat: q.noSeat }; });   // THE FLORA's accents (11-20): a lotus rides its pond's surface (`lift`), never seated on the bed   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props
         /* ── THE STALACTITES under a closed ceiling, over the open floor ── */
         /* LEVEL_DESIGN_PLAN (2026-09-30): stalactites hang only in a CAVE (a `cave` floor plan, a LAYOUT in the rock look) or where a room asks
            (`terrain.stalactites: true`) — a basilica, an archive, a sewer, a base, a stair hall has a built ceiling, not rock cones */
@@ -84206,7 +84206,7 @@ const ThreeRenderer = (function () {
             else grp.rotation.y = _hqFaceCentreYaw(p.deg) + (inward ? Math.PI : 0) - _hqRad(p.rot || 0);
             if (flip) grp.rotation.z = Math.PI;
             /* THE TABLETOP SEAT: a raised small prop (a mug, a tray, a lamp, a box on a shelf) is seated on the surface under it once the room has landed */
-            var tabletop = !onWall && !onCeil && !flip && (p.y != null && p.y >= 0.25) && !(cat.foot > 0.35) && !cat.block && !cat.rect && !(cat.ceil) && !mount && !cat.hover && !cat.swim;   // THE OCEAN PACK: a fish in the water is never seated on what is under it   // never a structural piece (a stair tread, a landing, a raised desk on a riser)
+            var tabletop = !onWall && !onCeil && !flip && !p.noSeat && (p.y != null && p.y >= 0.25) && !(cat.foot > 0.35) && !cat.block && !cat.rect && !(cat.ceil) && !mount && !cat.hover && !cat.swim;   // THE OCEAN PACK: a fish in the water is never seated on what is under it   // never a structural piece (a stair tread, a landing, a raised desk on a riser)
             /* THE PROP PASS 5.2 (2026-09-21): a kickable is a BODY — it blocks nothing, the walker knocks it along (data.js hqPropKickable) */
             var kick = !onWall && !onCeil && !flip && !(p.y > 0.5) && (typeof hqPropKickable === 'function') && hqPropKickable(p.key, cat);
             if (cat.proc) {
