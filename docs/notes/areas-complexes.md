@@ -12672,6 +12672,48 @@ is laid on the ground; a ship in open space has none), he picked BEAMED DOWN.
   fight on Mars, Saturn or the Singularity (the Moon only); escaping on the burner (worked out from the speeds, not flown); the sound; what
   the battle board looks like near a net's cut seam (fights on a ball were "not checked" since the round worlds: one fight on the Moon ran).
 
+## OUTER SPACE, THE SEAM ON A BOARD + THE FIGHT ON A BALL (2026-11-20, owner, a thread beside WORLD POLISH thread 18)
+mondo 11-20, on the Moon on the skateboard: "Im getting stuck and glitching out going back and forth on this seam ... There shouldn't even be
+a visible seam ... The side of the seam the shadow is on also changes when I cross ... a planet in the background disappears and reappears as I
+cross the seam". Then: "got pulled by a ufo and for the battle the map was still flat and separated into pieces and not wrapped around the sphere".
+- **1. THE BOARD WAS LEFT BEHIND** (`_hqPlanetSeam`): the seam turned the walker, his move and the eye, but not the board's own heading
+  (`H.ride.hd`; the ride writes `pl.yaw = R.hd + stance` every frame). Four of the Moon's cut seams are a half turn (face 3 N, 3 S, 4 S, 5 N):
+  the board rolled straight back over the seam, was carried, rolled back. Now `R.hd` (and a vert air's `hd0`) turns with him. An ollie over
+  a seam keeps its height (the ground snap was for a walk).
+- **2. THE TURN IS THE FRAMES' OWN.** The picture round the walker is P + M (ball - A), M read on his face. The equal-angle grid kinks at
+  every cube edge (0 at an edge's middle, 18 degrees a third of the way along, 48 near a corner), so: (a) a seam JOINED on the flat net turned
+  nothing and M jumped: everything far off (the ball's limb, the stars, the Earth) swung by up to 48 degrees each crossing, the planet that
+  vanished and came back; (b) a cut seam measured the turn with a 0.6 m step along the old face's grid line, off by the same kink (23 degrees
+  where the true turn was 0; the 11-20 FIX note's "clean 0 / 90 / 180" held only at an edge's middle). Now every seam, joined or cut, turns the
+  walker, the board and the eye by the angle between the two faces' frames at that spot (M' = turn(dlt) M, worked out exactly; checked in node
+  for every edge of the Moon, residual under 0.002). The joins are the net's own (0-1, 1-2, 1-4), not a distance test, so a slow frame's long
+  step over a joined seam is still a walk.
+- **3. THE SHADOWS ON A BALL.** A shadow was CAST from the bent picture but LOOKED UP at each spot's flat place on the net (three's
+  `shadowPositionWorld` = `positionWorld`). Over a cut seam the ground you see is another face, whose flat place lies 100+ m off, outside the
+  sun's shadow box: that side came out wholly lit or wholly dark, a hard line along the seam, swapping sides as he crossed. Now each spot looks
+  its shadow up where it is drawn: node renderer = `builder.context.shadowPositionWorld` set to the bent point (a varying) in a patch of
+  `NodeMaterial.prototype.setup` (`_ewPlNodeSetup`), classic = `shadowmap_vertex` sends `worldPosition` through `ewPlBend`.
+- **3b. THE GROUND MEETS ITSELF** (data.js `_hqTRoundStitch`, run by `hqTerrainCompile` right after the plan pass, so the walk, the drawn
+  ground and everything placed on it read the stitched field). The heights did NOT meet over the cut seams: draw-space.js evens them, but
+  the plan pass after the sampling (its top noise, its walls) moves the field again, and one flat line of samples serves two cut seams at
+  once. Measured (seam points 0.1 m+ apart / worst): the Moon 58 of 576 / 0.95 m, Mars 197 of 1152 / 5.32 m, Saturn 253 of 2304 / 0.45 m,
+  the Singularity 131 of 1152 / 0.36 m: a step along the seam you could see and ride into. Now every sample on a cut seam is tied to the
+  sample it meets on the ball (and to the face sharing its flat line), each tied set takes its mean, the change feathered over three
+  samples into each face; void samples are never tied. After: 0 over 0.1 m on all four (worst 5 cm). Its face table must stay the same as
+  three-renderer.js `_EW_PL_FACES`.
+- **4. THE FIGHT ON A BALL** (`_ewPlBattleFrame`, called every battle frame from `_renderFrameBody`; `_ewPlRenderSwitch` turns the bend on for
+  the battle's `scene` while `_ewPl.battleOn`). A fight lays the room round its board in the battle's frame (`_hqBattleRoomMatrix`: m ->
+  (m - T.x0) k, floorY + y k, k = ts / C) and the bend was on for the walk's scene only: the flat nets, six squares a world, apart in the dark.
+  Now the balls are written in the battle's frame (g.w = R k - floorY, so the radius reads the height over the floor line), the anchor stands
+  at the board's middle, and THE BOARD STAYS FLAT: the 12 x 12 board on a 53 m Moon would drop 4 m at its rim and the picking, the units and the
+  highlights read it flat, so the board is drawn exactly as played and the ground beyond its rim is carried onto the ball over a band of 0.6 of
+  a face (new uniform `ewPlB` / `u.B` = the board's middle, half side, band; 0 on the walk). Only a piece of a net is carried: the battle's own
+  sky, horizon and pieces are left as they are. The room's pieces are kept out of the frustum cull at the battle build (their flat boxes say
+  nothing about where they are drawn). Off: `window.EW_NO_ROUND`.
+- **NOT DONE / NOT CHECKED:** the sheet's grain still turns at a cut seam (a directional pattern meets itself at 90 / 180 degrees); where a
+  cliff crossed a seam on Mars (5 m) the mean leaves a short steep ramp; the battle's horizon ground (the dark sheet under the balls) is the battle's own and was not changed; the stars / Earth / Sun of the walk are not
+  in the fight; the classic renderer was not run; a fight on Mars, Saturn or the Singularity.
+
 ## ONE WORLD, THE NORTH ROUTES — R1 R2 R3 R4 R5 R12 built and stitched (2026-11-17, BUILD_PLAN phase 4 row 4.1; the owner's north routes thread)
 Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/areas/routes/<ID>.json` (+ a hook `.js` where named). Places are
 `ow-places.js` picks; every new place name is an idea of Claude's (the page's own words kept where it gave them).
