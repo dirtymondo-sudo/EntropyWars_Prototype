@@ -3474,8 +3474,15 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   OFF = the player's fog colour everywhere (as before). Fog on can only ADD to the clear day's haze.
 - **The sky's band:** new dome uniform `uAir` (x = the haze at the line, y = 1 / its height, z = warmth, w = the line). At the line it
   is `_ewAirFar` = what the air does to a thing `farM` m away, and it thins upward; same formula on the far scenery
-  (`_injectHorizonFog`). In a fight x is negative = a share of the fight's own band (`_ewAirBattle`): the board fog is unchanged,
-  its band only gets the soft top. A fight on a room takes `rho + base` (no room density).
+  (`_injectHorizonFog`).
+- **THE SAME AIR IN A FIGHT (same day, mondo: "I said to make the exploration and battle fog the same. We are going for a seamless
+  transition, can't have that if the fog changes in between"):** one writer, `_ewAirHold(fog, units a metre, { wet, sun, dusk, keep })`.
+  The walk (`_hqFogHold`), the menu and the battle's draw (`_ewAirFightHold`, round the frame's render) all call it; a fight has NO
+  fog of its own. THE BOARD FOG (11-01) is off under the one air (`_bfogTick` returns at once); it is still there behind
+  `EW_NO_ONE_AIR`. The sky shot thins the air through `keep`. A fight's painted silhouettes: `_ewAirPaintFight`.
+- **THE AIR THINS UPWARD (same day, the Hollywood Hills at night stood as a flat green cut-out on a clear sky):** the distance fog on
+  every fogged material is multiplied by the sky haze's own curve of the view ray's height over the line (`uEwAir2.z / .w`), so a far
+  ridge and the sky behind it carry the same share at every height. `hazeH` 0.16.
 - **Warm toward the sun + the drifting mist:** two shared objects in the patched fog chunks, `uEwAir` (the sun's heading, warmth,
   the mist's clock) and `uEwAir2` (patch size, depth). Walk only (the clock's sun); off under the player's own colour.
 - **The far land** (`_hqBuildEdgeLand`): its far sheets take the scene fog now (were `fog: false` with haze baked in the vertex colours).
@@ -3483,7 +3490,8 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
 - Every shader piece has its WebGPU twin (the fog node, the dome's node graph, the `hzfog` layer). Under water is untouched.
 - Probe: `ThreeRenderer.hq.dev.air()`. Off (the rooms' own fog as before): `window.EW_NO_ONE_AIR` (set before a room builds).
 - Checked by picture: the Desert walk (off / on / low density, classic + the node renderer), both menus, one fight (Giza). NOT yet
-  looked at: indoor rooms, night and dusk, the other zones, a fight on a room. NOT built: lamps and neon glowing in the fog.
+  looked at: indoor rooms, dusk, the other zones, a fight on a room (the hand-over itself). Disaster City at night: looked at 11-20.
+  NOT built: lamps and neon glowing in the fog.
 
 - THE LAMPS' WHY (11-20, his third battle F3, 02:10, a session loaded 3 min after THE LAMPS PER CAMERA merged: STILL "lamps
   2342.2/s", "2375 walked · 2375 re-recorded · LAMPS MOVED" on the main scene's checks, and "Shader builds 29.4/s"): so the lit set
@@ -3504,3 +3512,31 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   "Build ?v=<token of the page> · renderer code <stamp>" (`_ewBuildTok`, `_EW_TR_STAMP` at the top of three-renderer.js). RULE:
   bump `_EW_TR_STAMP` in every PR that changes the walk's / the fight's drawing, and read that line in his F3 before
   concluding a fix did or did not work. No judgement on THE LAMPS PER CAMERA is possible from the 02:10 / 02:24 readouts.
+- THE LIST COPIED + THE BUILDS' NAMES (11-20, his 02:37 battle F3, the first on a known build: "Build ?v=…buildline-10 · renderer
+  code 11-20 lamps-why"). THE LAMPS PER CAMERA works: 0 re-records/s in the steady combo frames (was 2,300-4,500), one 4,598
+  re-record frame = the shot's two new pane cameras recording the room once each (a shot's panes are NEW camera objects each
+  time, ids 96246 / 96247). Two false alarms left, named by THE LAMPS' WHY: "LAMPS MOVED [cam 96246, 0 lights: -AmbientLight
+  "ew rig a" … -PointLight "ew rig p"]": the kept list was three's own render-list array, emptied when that camera's list begins
+  again; the unit mask draws with the same camera and no light on its layers, so the reference read empty at the next check.
+  A COPY is kept now. Per-camera stamps are capped (8 a group, 32 lists) since panes keep coming.
+  STILL 4.7 FPS in that F3, and not from re-records: "scene: classic draws 93.3 ms" for 105 meshes, every slow frame "1 shader
+  builds · 1-3 new pipelines" (5 builds and 6 pipelines a second, "Late look … 6 compiling"), one "_popDamageFeedback 254 ms"
+  timer. So a combo still BUILDS SHADERS mid-fight, ~50-270 ms each. Which looks is not known: the lens now lists "Last shader
+  builds (newest last): <material type, name, node kind, fade-clone / shadow / see-through> on <skinned / batch / sprite + name>
+  (pane / side)", the last 12 (`_ewKeep.last`, filled in `debug.onNodeBuilderCreated`). `_EW_TR_STAMP` = "11-20 builds-named".
+- THE COMBO, AFTER THE LAMPS (11-20, his 02:48 battle F3 on "renderer code 11-20 builds-named"): **37.0 FPS, CPU 22.1 ms** in a
+  combo (3.6-4.7 FPS before), 7.9 re-records/s (was 2,300-4,500). What is left in a combo:
+  (1) slow frames of 240-520 ms, each "1-3 shader builds · 1-12 new pipelines", all in "scene: classic draws". THE BUILDS' NAMES:
+  "MeshBasicMaterial see-through on skinned mpfb_male (side)", "MeshLambertMaterial see-through on skinned
+  EWCreator_wear_feet_bs", "MeshPhysicalMaterial see-through on skinned EWCreator_hair_hair", "… fade-clone see-through on Root /
+  Glass_Cap", "node:fxop see-through on batch fxBatch / fxGlobs". So: a UNIT GHOSTED in a shot (`_occSetUnitGhost` sets
+  `transparent = true` on the unit's own materials: a new material key = a new node build + pipeline per body material, 150-300
+  ms each for a creator body), a wall's first fade clone, and a spell's see-through batches. NOT known: whether the time is
+  three's node build (CPU) or Firefox compiling the pipeline at `createRenderPipeline`; a Firefox profile of two combos says
+  which. Then: node build = pre-build the see-through twin of each body material when the unit joins the fight (the kept builds
+  hand it back); pipeline = make it off the frame (THE LATE LOOK) and keep the solid look until it is ready.
+  (2) "Bundle spikes: 820 re-recorded (values 820): room hq_ceil" several checks in a row: the canopy / fade stepping the
+  opacity of 820 one-piece ceiling groups each frame = 820 value re-records a frame while it fades (5-6 ms check + their
+  replays); a fade's opacity should not need a re-record (a demoted group lets three refresh values itself).
+  (3) "Pick (raycasts) 370/s · 42.9 ms/s" in the combo (36-81/s before).
+  The walk in the same session: 52.8 FPS, CPU 14.6 ms.

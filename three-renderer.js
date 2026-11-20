@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-20 lamps-why';
+    var _EW_TR_STAMP = '11-20 builds-named';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -3024,7 +3024,10 @@ const ThreeRenderer = (function () {
        entire game, all rooms, exploration and battle and the main menu") ══ two more shared plain objects in the same patched chunks:
        uEwAir = { x, y: the sun's heading over the ground (world x / z, unit), z: how warm the fog turns toward it (0 = the fog's own
        colour everywhere), w: the mist's clock }; uEwAir2 = { x: 2π / the mist's patch size (world units), y: how deep the ground
-       mist drifts (0 = the flat sheet) }. Rules + writers: EW_AIR and _hqFogHold. */
+       mist drifts (0 = the flat sheet), z: 1 / the height the far fog thins over, w: the line (view-ray altitude; z = 0: the stock fog) }.
+       THE AIR THINS UPWARD (mondo 11-20, the Hollywood Hills at night: a fully fogged mountain stood as a flat cut-out on a clear sky):
+       the distance fog on a thing is thinned by how high over the horizon line it is SEEN, by the very curve the sky's haze uses, so a
+       far ridge and the sky behind it carry the same share at every height. Rules + writers: EW_AIR and _ewAirHold. */
     var _EW_AIR = { x: 1, y: 0, z: 0, w: 0 }, _EW_AIR2 = { x: 0.001, y: 0, z: 0, w: 0 };
     var _ewHFogPatched = false;
     function _ewHeightFogPatch() {
@@ -3041,6 +3044,7 @@ const ThreeRenderer = (function () {
                 SC.fog_pars_fragment = SC.fog_pars_fragment.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tvarying vec2 vEwFogXZ;\n\tuniform vec4 uEwHFog;\n\tuniform vec4 uEwBFog;\n\tuniform vec4 uEwBFog2;\n\tuniform vec4 uEwBFog3;\n\tuniform vec4 uEwAir;\n\tuniform vec4 uEwAir2;');
                 SC.fog_fragment = SC.fog_fragment.replace('gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
                     'float ewHf = uEwHFog.z * exp( - max( 0.0, vEwFogY - uEwHFog.x ) * uEwHFog.y ) * ( 1.0 - exp( - uEwHFog.w * ' + FD + ' ) );\n' +
+                    '\tfogFactor *= exp( - max( ( vEwFogY - cameraPosition.y ) / max( length( vec3( vEwFogXZ - cameraPosition.xz, vEwFogY - cameraPosition.y ) ), 0.0001 ) - uEwAir2.w, 0.0 ) * uEwAir2.z );\n' +
                     '\tewHf *= clamp( 1.0 + uEwAir2.y * ( 0.6 * sin( vEwFogXZ.x * uEwAir2.x + uEwAir.w ) * sin( vEwFogXZ.y * uEwAir2.x * 1.31 - uEwAir.w * 0.73 ) + 0.4 * sin( ( vEwFogXZ.x + vEwFogXZ.y ) * uEwAir2.x * 0.37 + uEwAir.w * 0.41 ) ), 0.0, 1.3 );\n' +
                     '\tvec2 ewAv = vEwFogXZ - cameraPosition.xz;\n\tfloat ewAs = max( dot( ewAv, uEwAir.xy ) / max( length( ewAv ), 0.0001 ), 0.0 );\n\tewAs = ewAs * ewAs * ewAs * uEwAir.z;\n' +
                     '\tvec3 ewFc = mix( fogColor, fogColor * vec3( 1.30, 1.05, 0.76 ) + vec3( 0.06, 0.025, 0.0 ), ewAs );\n' +
@@ -37305,7 +37309,7 @@ const ThreeRenderer = (function () {
         _envUni.uSkyDay.value = S.mapDay; _envUni.uSkyClouds.value = S.mapClouds;
         _envUni.uSunClock.value = 0; _envUni.uDusk.value = 0;   // THE WORLD CLOCK (Phase 3) is the building's: the battle keeps its fixed sun
         _paintSkyTick((typeof activeGameMode !== 'undefined' && activeGameMode) ? String(activeGameMode) : null, envSnap,
-            { f: (typeof scene !== 'undefined' && scene) ? scene.fog : null, upm: _fieldGroundState ? _fieldGroundState.s : (CONFIG.tileSize || BASE_TILE) / 1.75, m: 1 });   // THE FAR FOG: the fight's own fog (Scene Fog / Fog Density already in it); THE PAINTED SKIES: the board's place
+            _ewAirPaintFight());   // THE FAR FOG: the fight's own fog (Scene Fog / Fog Density already in it); THE PAINTED SKIES: the board's place
         // map fog feeds the same uFog* pipeline as the retro-fog filter (which
         // wins while enabled); scenery haze shares those uniforms and follows
         var fogKey = (me && me.fog) ? (me.fog.color + ',' + me.fog.amount + ',' + me.fog.top + ',' + me.fog.band) : '';
@@ -48071,6 +48075,17 @@ const ThreeRenderer = (function () {
             var nb = dbg.onNodeBuilderCreated || null;
             dbg.onNodeBuilderCreated = function (b, ro) {
                 _ewKeep.builds++;
+                /* THE BUILDS' NAMES (2026-11-20, lens; mondo's combo F3 on the lamps-why build: 4.7 FPS with 0 re-records, "scene:
+                   classic draws 93 ms" for 105 meshes, every slow frame "1 shader builds · 1-3 new pipelines"): what each new
+                   shader is for, the last 12, so the next F3 names the looks a combo still builds mid-fight */
+                try {
+                    var bo = ro && ro.object, bm = ro && ro.material, bq = bo, bn = '';
+                    for (var bd = 0; bq && bd < 5 && !bn; bd++, bq = bq.parent) bn = bq.name || '';
+                    var bl = _ewKeep.last || (_ewKeep.last = []);
+                    bl.push((bm ? (bm.type + (bm.name ? ' "' + String(bm.name).slice(0, 16) + '"' : '') + (bm._ewNode ? ' node:' + bm._ewNode.k : '') + (bm._ew_occClone ? ' fade-clone' : '') + (bm.isShadowPassMaterial ? ' shadow' : '') + (bm.transparent ? ' see-through' : '')) : '?') +
+                        ' on ' + (bo ? (bo.isSkinnedMesh ? 'skinned ' : bo.isInstancedMesh ? 'batch ' : bo.isSprite ? 'sprite ' : bo.isPoints ? 'points ' : '') + (bn ? String(bn).slice(0, 22) : bo.type) : '?') + (r._ew_paneRender ? ' (pane)' : r._ew_sideRender ? ' (side)' : ''));
+                    if (bl.length > 12) bl.shift();
+                } catch (e) {}
                 if (!off && ro && ro.object && ro.object.isInstancedMesh) b.getUniformBufferLimit = zero;
                 if (nb) nb.apply(this, arguments);
             };
@@ -48828,6 +48843,7 @@ const ThreeRenderer = (function () {
                     var mw = T.sin(pw.x.mul(A2.x).add(A.w)).mul(T.sin(pw.z.mul(A2.x).mul(1.31).sub(A.w.mul(0.73)))).mul(0.6).add(T.sin(pw.x.add(pw.z).mul(A2.x).mul(0.37).add(A.w.mul(0.41))).mul(0.4));
                     hf = hf.mul(T.clamp(mw.mul(A2.y).add(1), 0, 1.3));
                 }
+                if (A2) base = base.mul(T.exp(T.max(T.normalize(pw.sub(T.cameraPosition)).y.sub(A2.w), 0).mul(A2.z).negate()));   // the air thins upward (the GLSL patch's twin)
                 var camF = T.clamp(T.float(1).sub(base.oneMinus().mul(hf.oneMinus())), 0, 1);
                 var fcol = col;
                 if (A) {
@@ -48911,7 +48927,7 @@ const ThreeRenderer = (function () {
     function _ewNodeTick() {
         var U = _ewNodeU; if (!U) return;
         U.hfog.value.set(_EW_HFOG.x, _EW_HFOG.y, _EW_HFOG.z, _EW_HFOG.w);
-        if (U.air) { U.air.value.set(_EW_AIR.x, _EW_AIR.y, _EW_AIR.z, _EW_AIR.w); U.air2.value.set(_EW_AIR2.x, _EW_AIR2.y, 0, 0); }   // THE ONE AIR
+        if (U.air) { U.air.value.set(_EW_AIR.x, _EW_AIR.y, _EW_AIR.z, _EW_AIR.w); U.air2.value.set(_EW_AIR2.x, _EW_AIR2.y, _EW_AIR2.z, _EW_AIR2.w); }   // THE ONE AIR
         if (U.bfog) { U.bfog.value.set(_EW_BFOG.x, _EW_BFOG.y, _EW_BFOG.z, _EW_BFOG.w); U.bfog2.value.set(_EW_BFOG2.x, _EW_BFOG2.y, _EW_BFOG2.z, _EW_BFOG2.w); U.bfog3.value.set(_EW_BFOG3.x, _EW_BFOG3.y, _EW_BFOG3.z, _EW_BFOG3.w); }
         U.ao.value.set(_HQ_AO.x, _HQ_AO.y, _HQ_AO.z, _HQ_AO.w);
         U.ao2.value.set(_HQ_AO2.x, _HQ_AO2.y, _HQ_AO2.z, _HQ_AO2.w);
@@ -50224,6 +50240,7 @@ const ThreeRenderer = (function () {
         LG = _ewBunMix(LG, LGs);
         if (sc.fog) LG = _ewBunMix(LG, sc.fog.isFogExp2 ? 2 : 1);
         if (sc.environment) LG = _ewBunMix(LG, sc.environment.id);
+        if (_ewBun.lampGc && _ewBun.lampGc[camK] === undefined && (_ewBun.lampGn = (_ewBun.lampGn | 0) + 1) > 32) { _ewBun.lampGc = null; _ewBun.lampLc = null; _ewBun.lampGn = 0; }
         var LGc = _ewBun.lampGc || (_ewBun.lampGc = {}), lampMoved = LGc[camK] !== undefined && LG !== LGc[camK]; LGc[camK] = LG; _ewBun.lampG = LG;
         /* THE LAMPS' WHY (2026-11-20, lens; mondo's third battle F3 still read "lamps 2342/s · LAMPS MOVED" with the lamps kept per
            camera): what differs from this camera's last list is written into the spike line (a light that joined or left, one
@@ -50251,7 +50268,7 @@ const ThreeRenderer = (function () {
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
             if (g._ew_ckOut) continue;   // THE CHUNKS: a chunk off the camera is not drawn and not checked; its recording waits for it
-            var gcm = st.Gc || (st.Gc = {}); if (gcm[camK] === undefined) gcm[camK] = G; st.G = gcm[camK];   // THE LAMPS PER CAMERA: this camera's stamp
+            var gcm = st.Gc || (st.Gc = {}); if (gcm[camK] === undefined) { if ((st.GcN = (st.GcN | 0) + 1) > 8) { gcm = st.Gc = {}; st.GcN = 1; } gcm[camK] = G; } st.G = gcm[camK];   // (a shot's panes are new cameras each time: the oldest stamps go)   // THE LAMPS PER CAMERA: this camera's stamp
             if (st.until > now) { if (g.isBundleGroup) _ewBunRelease(g); continue; }
             /* W5a: a group the frame does not draw (hidden, or a parked room under a hidden parent) is neither checked nor
                bundled — the walk over it was the check's whole cost when the HQ sat hidden behind a battle */
@@ -51884,8 +51901,13 @@ const ThreeRenderer = (function () {
             if (r._ew_shadowFrame && lightsNode && lightsNode.getLights) {
                 r._ew_shadowFrame = false;
                 var ls = lightsNode.getLights(), auto = r.shadowMap.autoUpdate !== false, pulse = !!r.shadowMap.needsUpdate;
-                r._ew_lights = ls;
-                if (cam) cam._ew_bunL = ls;   // THE LAMPS PER CAMERA (the bundle check)
+                /* (11-20, his lamps-why F3: "LAMPS MOVED [cam 96246, 0 lights: -AmbientLight "ew rig a" … -PointLight "ew rig p"]") the
+                   list three hands over is the render list's OWN array, emptied when that camera's list begins again: the unit
+                   mask draws with the same camera and no light on its layer, so the kept reference read EMPTY at the next
+                   check and every group re-recorded. A copy is kept, not the array. */
+                var lsC = ls.slice();
+                r._ew_lights = lsC;
+                if (cam) cam._ew_bunL = lsC;   // THE LAMPS PER CAMERA (the bundle check)
                 for (var i = 0; i < ls.length; i++) {
                     var l = ls[i];
                     if (!l || !l.castShadow || !l.shadow) continue;
@@ -55254,6 +55276,7 @@ const ThreeRenderer = (function () {
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
         try { var hl = _hq && _hq.heroLit, hs = (typeof _heroStat !== 'undefined') ? _heroStat : null; if (hl && hl.isLight && hs) L.push('Hero lamp: ' + (hs.why || 'drawn') + ' · frames held ' + hs.held + ' / drawn ' + hs.drawn + ' · in reach ' + hs.inReach + ' of ' + hs.casters + ' casters · moving ' + hs.moving + ' · sides drawn ' + hs.sidesDrawn + ' / skipped ' + hs.sidesSkipped + ' (session)' + _lensLampWhere(hl)); } catch (eH) {}   // THE SHADOW SPLIT
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
+        if (_ewKeep.last && _ewKeep.last.length) L.push('Last shader builds (newest last): ' + _ewKeep.last.join(' | '));
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
         if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }
         if (renderer && renderer._ew_late) { var LT = _ewLateStats(); L.push('Late look ' + LT.lateBuilds + ' builds spread (' + LT.buildMs + ' ms) · ' + LT.asyncPipelines + ' pipelines made off the frame' + (LT.compiling ? ' (' + LT.compiling + ' compiling)' : '') + ' · ' + LT.held + ' draws held'); }
@@ -55787,6 +55810,7 @@ const ThreeRenderer = (function () {
                    matrix of the scene again, as the walk's frame did until 11-13. The walk runs once here and the frame's renders
                    skip theirs (a camera still updates itself). Off: window.EW_BATTLE_MW_EVERY_RENDER = true. */
                 var mwB = !!(scene && scene.matrixWorldAutoUpdate === true && !(typeof window !== 'undefined' && window.EW_BATTLE_MW_EVERY_RENDER));
+                var _airF = _ewAirFightHold();   // THE SAME AIR IN A FIGHT: the walk's fog, written for this draw
                 try {
                     if (mwB) { var _mwSp = _lensIn('matrix walk'); try { _hqStillSceneWalk(scene); } finally { _lensOut(_mwSp); } scene.matrixWorldAutoUpdate = false; }
                     if (ThreePost && ThreePost.isReady() && !(_lens && !_lens.post)) {   // THE PERF LENS: post off = the scene straight to the screen
@@ -55794,7 +55818,7 @@ const ThreeRenderer = (function () {
                     } else {
                         renderer.render(scene, cam);
                     }
-                } finally { if (mwB) scene.matrixWorldAutoUpdate = true; }
+                } finally { if (mwB) scene.matrixWorldAutoUpdate = true; _hqFogBack(_airF); }
                 _quietAfter();
 
                 if (css2dRenderer) _css2dRender(scene, cam);
@@ -96104,6 +96128,7 @@ const ThreeRenderer = (function () {
     /* per battle frame (before THE OPEN SKY SHOT, which thins it with the rest of the fog) */
     function _bfogTick() {
         var f = (typeof scene !== 'undefined' && scene) ? scene.fog : null;
+        if (!_ewAirOff()) { _EW_BFOG2.x = 0; return; }   // THE SAME AIR IN A FIGHT: the fight wears the walk's fog, no fog of its own
         if (!active || !f || _bfogOff() || !_ewSceneFogOn() || typeof bw !== 'function' || typeof bh !== 'function') { _EW_BFOG2.x = 0; return; }
         var now = performance.now(), ts = CONFIG.tileSize || BASE_TILE, W = bw() * ts, H = bh() * ts;
         if (!(W > 0 && H > 0)) { _EW_BFOG2.x = 0; return; }
@@ -101120,9 +101145,9 @@ const ThreeRenderer = (function () {
          Fog Horizon    how high the band and the mist climb;  MAP LOOKS OFF = the player's fog colour everywhere (as before)
        The sky's band no longer ends AT the horizon (the hard line): at the line it is what the air does to a thing `farM` metres off (_ewAirFar) and it thins upward (`hazeH`), in the same
        colour the far ground fades to, and both turn warm toward a low sun (`warmDay` / `warmDusk`). The ground mist drifts
-       (`mistMove`, patches `mistSize` m wide). Under water the water's own look is kept. A fight keeps its board fog; its band
-       gets the same soft top (_ewAirBattle). Off: window.EW_NO_ONE_AIR (the rooms' own fog, as before). */
-    var EW_AIR = { rho: 0.0045, base: 0.0022, farM: 420, hazeH: 0.075, mist: 0.42, mistH: 2.6, mistMove: 0.32, mistSize: 14, mistSpeed: 0.22, warmDay: 0.2, warmDusk: 0.75 };
+       (`mistMove`, patches `mistSize` m wide). Under water the water's own look is kept. A fight is drawn inside the same
+       hold (_ewAirFightHold): no fog of its own. Off: window.EW_NO_ONE_AIR (the rooms' own fog, as before). */
+    var EW_AIR = { rho: 0.0045, base: 0.0022, farM: 420, hazeH: 0.16, mist: 0.42, mistH: 2.6, mistMove: 0.32, mistSize: 14, mistSpeed: 0.22, warmDay: 0.2, warmDusk: 0.75 };
     function _ewAirOff() { return typeof window !== 'undefined' && !!window.EW_NO_ONE_AIR; }
     /* the air's density per scene unit for a place drawn at U units a metre */
     function _ewAirDen(U, on, m) { return (EW_AIR.base + (on ? EW_AIR.rho * m : 0)) / (U || 73); }   // Scene Fog on only ever ADDS to the clear day's haze
@@ -101131,45 +101156,72 @@ const ThreeRenderer = (function () {
     function _hqFogHold(H) {
         if (!H || !H.scene) return null;
         if (_ewAirOff()) return _hqFogHoldRoom(H);
-        var bAmt = _bfogWalkTick(H);   // THE BOARD FOG: the fight's board fog easing out over the walk's first moments
-        var on = _ewSceneFogOn(), sh = on ? _ewFogShape() : { m: 0, lift: 0 }, m = sh.m, U = _hqUnits();
+        var bAmt = _bfogWalkTick(H);   // (the old board fog easing out: 0 under THE ONE AIR)
+        var f = H.scene.fog, CK = H.clock;
+        var s = _ewAirHold(f, _hqUnits(), { wet: !!(f && H.seaFx && f === H.seaFx.wetFog), sun: CK && CK.sunCur, dusk: CK ? CK.duskCur : 0 });
+        if (bAmt > 0 && f) _bfogDome(bAmt, f.color);
+        return s;
+    }
+    /* THE SAME AIR IN A FIGHT (2026-11-20, mondo: "I said to make the exploration and battle fog the same. We are going for a seamless
+       transition, can't have that if the fog changes in between"): the battle's frame is drawn inside the very same hold as the walk's
+       (_ewAirHold), at the fight's own scale (units a metre), so the walk's last frame and the fight's first wear one fog. The board
+       fog (2026-11-01: thick from the board's rim, not from the camera) is off under THE ONE AIR: it was the fight's own fog and
+       changed the picture at the hand-over. The sky shot still thins the air while the camera looks up (keep). */
+    var _ewAirSunV = null;
+    /* the far fog on a fight's painted silhouettes: the same air (was the fight's own fog) */
+    function _ewAirPaintFight() {
+        var f = (typeof scene !== 'undefined' && scene) ? scene.fog : null, upm = _fieldGroundState ? _fieldGroundState.s : (CONFIG.tileSize || BASE_TILE) / 1.75;
+        if (_ewAirOff() || !f || !f.color) return { f: f, upm: upm, m: 1 };
+        var on = _ewSceneFogOn();
+        return { f: { isFogExp2: true, color: f.color, density: _ewAirDen(upm, on, on ? _ewFogShape().m : 0) }, upm: upm, m: 1 };
+    }
+    function _ewAirFightHold() {
+        if (_ewAirOff() || typeof scene === 'undefined' || !scene) return null;
+        var st = _fieldGroundState, U = (st && st.s) ? st.s : (CONFIG.tileSize || BASE_TILE) / 1.75;
+        var sun = null, dusk = 0, CK = (st && _hq) ? _hq.clock : null;
+        if (CK && CK.sunCur && st.bfogM) { sun = (_ewAirSunV || (_ewAirSunV = new THREE.Vector3())).copy(CK.sunCur).transformDirection(st.bfogM); dusk = CK.duskCur || 0; }   // the room's sun in the fight's frame
+        return _ewAirHold(scene.fog, U, { sun: sun, dusk: dusk, keep: 1 - Math.max(0, Math.min(1, (_skyOpen && _skyOpen.live) ? _skyOpen.k : 0)) });
+    }
+    /* the one writer: `f` = the scene's fog, U = that scene's units a metre; o = { wet, sun (a direction in that scene), dusk, keep } */
+    function _ewAirHold(f, U, o) {
+        o = o || {};
+        var on = _ewSceneFogOn(), sh = on ? _ewFogShape() : { m: 0, lift: 0 }, m = sh.m, keep = (o.keep != null) ? o.keep : 1;
         var pf = null; try { pf = (on && typeof ThreePost !== 'undefined' && ThreePost.getPlayerFogHex) ? ThreePost.getPlayerFogHex() : null; } catch (e) {}   // MAP LOOKS OFF: the player's fog colour
-        var f = H.scene.fog, wet = !!(f && H.seaFx && f === H.seaFx.wetFog);
         var s = { f: null, d: 0, n: 0, fa: 0, hz: _EW_HFOG.z, amt: _envUni ? _envUni.uFogAmount.value : null, top: _envUni ? _envUni.uFogTop.value : null,
                   col: _envUni ? _envUni.uFogColor.value.clone() : null, band: _envUni ? _envUni.uFogBand.value : null, hy: _EW_HFOG.y, hw: _EW_HFOG.w,
                   fc: null, sil: (_envUni && _envUni.uPaintSilFog) ? _envUni.uPaintSilFog.value.clone() : null,
-                  air: (_envUni && _envUni.uAir) ? _envUni.uAir.value.clone() : null, ax: _EW_AIR.x, ay: _EW_AIR.y, az: _EW_AIR.z, a2y: _EW_AIR2.y };
-        if (wet) return s;   // under water: the water's look, untouched
+                  air: (_envUni && _envUni.uAir) ? _envUni.uAir.value.clone() : null, ax: _EW_AIR.x, ay: _EW_AIR.y, az: _EW_AIR.z, a2y: _EW_AIR2.y, a2z: _EW_AIR2.z, a2w: _EW_AIR2.w, bf: _EW_BFOG2.x };
+        if (o.wet) return s;   // under water: the water's look, untouched
+        _EW_BFOG2.x = 0;
         if (pf != null && f && f.color) { s.fc = f.color.getHex(); f.color.setHex(pf); }
         if (f) {
             s.f = f;
-            if (f.isFogExp2) { s.d = f.density; f.density = _ewAirDen(U, on, m); }
+            if (f.isFogExp2) { s.d = f.density; f.density = _ewAirDen(U, on, m) * keep; }
             else { s.n = f.near; s.fa = f.far; if (m > 0.001) { f.near = f.near / m; f.far = f.far / m; } else { f.near = 1e9; f.far = 2e9; } }
         }
         /* the ground mist: one row for every place that has a floor to lie on (the room armed it); Fog Horizon lifts it */
         var climb = (on && sh.lift) ? _ewFogClimb(sh.lift) : 1;
-        if (on && _EW_HFOG.z > 0.001) {
-            _EW_HFOG.z = Math.min(1, EW_AIR.mist * m); _EW_HFOG.y = 1 / (EW_AIR.mistH * U * climb);
+        if (on && (_EW_HFOG.z > 0.001 || s.hz > 0.001)) {
+            _EW_HFOG.z = Math.min(1, EW_AIR.mist * m) * keep; _EW_HFOG.y = 1 / (EW_AIR.mistH * U * climb);
             _EW_HFOG.w = Math.max((f && f.isFogExp2) ? f.density * 4 : 0, 0.012 / U);
         } else _EW_HFOG.z = 0;
-        _EW_AIR2.x = 6.2832 / (EW_AIR.mistSize * U); _EW_AIR2.y = EW_AIR.mistMove; _EW_AIR.w = (performance.now() / 1000 * EW_AIR.mistSpeed) % 6283.2;
+        _EW_AIR2.x = 6.2832 / (EW_AIR.mistSize * U); _EW_AIR2.y = EW_AIR.mistMove; _EW_AIR2.z = 1 / (EW_AIR.hazeH * climb); _EW_AIR2.w = on ? Math.max(-0.05, sh.lift) : 0; _EW_AIR.w = (performance.now() / 1000 * EW_AIR.mistSpeed) % 6283.2;
         /* warm toward the sun: the clock's sun, while it is up; never over the player's own colour */
-        var warm = 0, CK = H.clock, sv = CK && CK.sunCur;
+        var warm = 0, sv = o.sun;
         if (sv && pf == null) {
             var up = Math.max(0, Math.min(1, (sv.y + 0.05) / 0.2)), hl = Math.hypot(sv.x, sv.z);
-            warm = up * (EW_AIR.warmDay + EW_AIR.warmDusk * Math.max(0, Math.min(1, CK.duskCur || 0)));
+            warm = up * (EW_AIR.warmDay + EW_AIR.warmDusk * Math.max(0, Math.min(1, o.dusk || 0)));
             if (hl > 0.001) { _EW_AIR.x = sv.x / hl; _EW_AIR.y = sv.z / hl; } else warm = 0;
         }
         _EW_AIR.z = warm;
         if (_envUni) {
-            _envUni.uFogAmount.value = 0;   // the room's own band is not read: the air's haze below is the band everywhere
+            _envUni.uFogAmount.value = 0;   // a place's own band is not read: the air's haze below is the band everywhere
             if (f && f.color) {
                 _envUni.uFogColor.value.set(f.color.r, f.color.g, f.color.b);
                 if (_envUni.uPaintSilFog) { _envUni.uPaintSilFog.value.x = f.color.r; _envUni.uPaintSilFog.value.y = f.color.g; _envUni.uPaintSilFog.value.z = f.color.b; }
-                if (_envUni.uAir) _envUni.uAir.value.set(_ewAirFar(on, m), 1 / (EW_AIR.hazeH * climb), warm, on ? Math.max(-0.05, sh.lift) : 0);
+                if (_envUni.uAir) _envUni.uAir.value.set(_ewAirFar(on, m) * keep, 1 / (EW_AIR.hazeH * climb), warm, on ? Math.max(-0.05, sh.lift) : 0);
             } else if (_envUni.uAir) _envUni.uAir.value.x = 0;
         }
-        if (bAmt > 0 && f) _bfogDome(bAmt, f.color);   // the fight's horizon band eases out with it (_hqFogBack puts the room's back)
         return s;
     }
     /* the rooms' own fog, as it drew before THE ONE AIR (window.EW_NO_ONE_AIR) */
@@ -101216,22 +101268,16 @@ const ThreeRenderer = (function () {
         if (f) { if (f.isFogExp2) f.density = s.d; else { f.near = s.n; f.far = s.fa; } if (s.fc != null) f.color.setHex(s.fc); }
         if (_envUni && s.sil && _envUni.uPaintSilFog) _envUni.uPaintSilFog.value.copy(s.sil);
         _EW_HFOG.z = s.hz; if (s.hy != null) _EW_HFOG.y = s.hy; if (s.hw != null) _EW_HFOG.w = s.hw;
-        if (s.ax != null) { _EW_AIR.x = s.ax; _EW_AIR.y = s.ay; _EW_AIR.z = s.az; _EW_AIR2.y = s.a2y; }
+        if (s.ax != null) { _EW_AIR.x = s.ax; _EW_AIR.y = s.ay; _EW_AIR.z = s.az; _EW_AIR2.y = s.a2y; _EW_AIR2.z = s.a2z || 0; _EW_AIR2.w = s.a2w || 0; }
+        if (s.bf != null) _EW_BFOG2.x = s.bf;
         if (_envUni && s.air && _envUni.uAir) _envUni.uAir.value.copy(s.air);
         if (_envUni && s.amt != null) _envUni.uFogAmount.value = s.amt;
         if (_envUni && s.top != null) _envUni.uFogTop.value = s.top;
         if (_envUni && s.col) _envUni.uFogColor.value.copy(s.col);
         if (_envUni && s.band != null) _envUni.uFogBand.value = s.band;
     }
-    /* a fight's sky: the band over the board fog / the mood fog keeps its place and gets THE ONE AIR's soft top (a share of
-       whatever band the frame carries, so the sky shot's thinning and the board fog's easing take it along); no warmth, no drift */
-    function _ewAirBattle() {
-        if (!_envUni || !_envUni.uAir) return;
-        var lift = 0; try { lift = _ewSceneFogOn() ? _ewFogShape().lift : 0; } catch (e) {}
-        if (_ewAirOff()) _envUni.uAir.value.set(0, 13, 0, 0);
-        else _envUni.uAir.value.set(-0.9, 1 / (EW_AIR.hazeH * _ewFogClimb(lift)), 0, 0);
-        _EW_AIR.z = 0; _EW_AIR2.y = 0;
-    }
+    /* outside a hold the dome carries no haze of the air's (a fight and the walk write theirs inside _ewAirHold) */
+    function _ewAirBattle() { if (_envUni && _envUni.uAir) _envUni.uAir.value.set(0, 13, 0, 0); }
     function _hqDissolveStart(H, o) {
         if (typeof document === 'undefined' || !canvas || !H || !H.scene || !H.camera) return null;
         if (typeof window !== 'undefined' && window.EW_HQ_NO_DISSOLVE) return null;
