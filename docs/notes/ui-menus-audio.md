@@ -2972,6 +2972,10 @@ ones that make sense ... the pixel density might have to be lower. If this 128x1
   whole). Several statuses = one pass each in turn (a 1.4 s timer only then). NOT on the small turn-order icons (too small
   to read). The status chips stay the full list. Viewer-local, nothing relayed; a card only shows a unit the viewer sees.
   Off: `window.EW_DISABLE_STATUS_FX = true`.
+- CORRODED = FIRE + POISON (mondo 11-20: "corrosion in the game is fire+poison ... make sure its sprite reflects that"; data.js
+  corroded `countsAs: ['burn', 'poison']`, "chemical fire"): its sheet is `corroded2.png`, green poison slime outside with
+  fire burning inside. The first sheet (`corroded.png`, rusty metal + acid) stays on R2, unused. A sheet redone = a NEW file
+  name (these urls carry no `?v=`), then the table row. Before drawing a status, read its STATUS_DEFS row and STATUS_HELP line.
 - How they were made (Sprite AI, see THE PANEL ANIMATIONS for the calls): `POST /api/sprites` `{ prompt, asset_type: 'effect',
   width: 64, height: 64, direction: 'none', camera_perspective: 'front' }` (1 token; the reply carries the PNG, also at
   `/api/sprites/<id>/download`), prompt = "a hollow square ring of <what> hugging the four edges ... the whole middle empty

@@ -1136,7 +1136,7 @@ const STATUS_FX_BASE = 'https://cdn.entropywars.net/Assets/ui/status_fx';
 const STATUS_FX_FRAMES = 8;
 const STATUS_PORTRAIT_FX = {
   burn: 'burn', poison: 'poison', bleed: 'bleed', grievous: 'bleed', goo: 'goo', haunted: 'haunted', possessed: 'possessed',
-  corroded: 'corroded', radioactive: 'radioactive', feared: 'feared', infected: 'infected', soulBound: 'soulbound', root: 'root',
+  corroded: 'corroded2' /* fire + poison: Corroded IS Burn and Poison (data.js countsAs); the first sheet was rusty metal */, radioactive: 'radioactive', feared: 'feared', infected: 'infected', soulBound: 'soulbound', root: 'root',
   tethered: 'tethered', coiled: 'coiled', silence: 'silence', stun: 'stun', sleep: 'sleep', stagger: 'stagger', marked: 'marked',
   jammed: 'jammed', drowning: 'drowning', bends: 'drowning', submerged: 'drowning', wet: 'wet', slow: 'slow', charm: 'charm',
   frozen: 'frozen', blind: 'blind', hexed: 'hexed', statDown: 'statdown', statUp: 'statup', broken: 'broken',
