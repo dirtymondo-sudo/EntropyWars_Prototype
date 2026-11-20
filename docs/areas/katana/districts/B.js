@@ -50,17 +50,11 @@ module.exports = {
             a.box(0, 5.75, 0, w * 0.62, 1.5, d * 0.62, PLS, 0xffd27a, { glow: 1.1 }); for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.cyl(sx * w * 0.33, 5.7, sz * d * 0.33, 0.1, 1.6, WD2, DARK, { seg: 6 });   // the fire room: a lit box between four posts
             a.jroof(7.3, w * 0.7, d * 0.7, { top: 'pyramid', over: 0.8 }); });
         /* ── THE GREAT GATE in the water: the boat sails through it (drawn: no model in the game yet) ── */
-        ctx.look('greatgate', 18, 78.5, 0, a => { const HP = 11, SP = 6.2;
-            for (const sx of [-1, 1]) { a.cyl(sx * SP, -3, 0, 0.62, HP + 3, PLS, RED, { gain: 2.2, r2: 0.5, seg: 12, uv: [1.2, 1.2] }); a.cyl(sx * SP, -3, 0, 0.8, 3.6, PLS, 0x2a2a2e, { seg: 12 });                      // the two posts, their feet dark where the tide runs
-                for (const sz of [-1, 1]) { a.cyl(sx * SP, -3, sz * 2.4, 0.3, 7.2, PLS, RED, { gain: 2.2, seg: 8 }); a.box(sx * SP, 2.6, sz * 1.2, 0.3, 0.3, 2.4, PLS, RED, { gain: 2.2 }); } }                                          // the four side legs and their ties
-            a.box(0, HP - 2.6, 0, SP * 2 + 2.2, 0.7, 0.6, PLS, RED, { gain: 2.2 }); a.box(0, HP - 1.9, 0, 0.9, 1.5, 0.3, PLS, 0x2a2a2e);                                                                                     // the tie beam and the plate over it
-            /* the top beam, curved with math: nine pieces on y = k x squared, so its ends lift */
-            const n = 9, L = SP * 2 + 5.4; for (let i = 0; i < n; i++) { const x = -L / 2 + (i + 0.5) * L / n, lift = 0.9 * Math.pow(Math.abs(x) / (L / 2), 2.2);
-                a.box(x, HP - 0.5 + lift, 0, L / n + 0.04, 0.75, 0.9, PLS, RED, { gain: 2.2 }); a.box(x, HP + 0.25 + lift, 0, L / n + 0.04, 0.3, 1.5, PLS, 0x2a2a2e, { roof: true }); } }, 0);
+        ctx.at('kt_torii_gate', 18, 78.5, { h: 13, face: 0 });   // THE GREAT GATE: mondo's Meshy torii (11-20), 13 m, its feet on the sea bed so the water runs round its posts (was drawn in code)
         /* ── THE FIRST PROPS (pass 1; every one a model the game already has) ── */
-        ctx.P('stone_lantern', 15, 59); ctx.P('stone_lantern', 19, 59); ctx.P('stone_lantern', 13, 52); ctx.P('stone_lantern', 27, 54, { y: 0 }); ctx.P('stone_lantern', 7, 72);
+        ctx.P('kt_stone_lantern', 15, 59); ctx.P('kt_stone_lantern', 19, 59); ctx.P('kt_stone_lantern', 13, 52); ctx.P('kt_stone_lantern', 27, 54, { y: 0 }); ctx.P('kt_stone_lantern', 7, 72);
         ctx.P('market_stall', 14, 53, { face: 90 }); ctx.P('market_stall', 20, 58, { face: 180 }); ctx.P('market_stall', 14, 58, { face: 90 });
-        ctx.P('taiko_drum', 19, 53); ctx.P('bell_frame', 12, 51, { face: 0 }); ctx.P('lantern_post', 27, 63); ctx.P('lantern_post', 33, 63); ctx.P('lantern_post', 9, 60); ctx.P('lantern_post', 24, 71);
+        ctx.P('taiko_drum', 19, 53); ctx.P('kt_temple_bell', 12, 51, { face: 0 }); ctx.P('lantern_post', 27, 63); ctx.P('lantern_post', 33, 63); ctx.P('lantern_post', 9, 60); ctx.P('lantern_post', 24, 71);
         ctx.P('hand_cart', 33, 61, { face: 200 }); ctx.P('wooden_barrel', 32, 63); ctx.P('wooden_barrel', 33, 64, { y: 0 }); ctx.P('fishing_net_wall', 7, 70, { face: 90 }); ctx.P('ship_anchor', 2, 66, { face: 30 });
         ctx.P('drying_fish', 27, 74, { face: 0 }); ctx.P('drying_fish', 32, 78, { face: 90 }); ctx.P('drying_fish', 34, 79, { face: 0 }); ctx.P('meshy_rowboat', 27, 77, { face: 70 }); ctx.P('meshy_rowboat', 31, 80, { face: 110 });
         ctx.P('firewood_stack', 34, 74, { face: 90 }); ctx.P('campfire', 30, 78);
