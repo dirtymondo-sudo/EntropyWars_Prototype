@@ -13030,3 +13030,17 @@ mondo 11-20, on the pilot: "Okay the pilot looks decent, continue the rest".
   tower, the fishing beach). (5) Shaped inside: the head, the Old Wood's rise, the Terraces' upper field, the cone, the paddock, the pools; MOST PLOTS ARE LEVEL
   TERRACES, which is under the plan's "half of the plots shaped inside": the next pass's job. (6) Level on purpose: listed in each district file's header. (7) It
   is a harbour, a castle town, paddies, woods, a jungle and a volcano: not one formula. (8) Every building's inside is its own squares; NOT YET FURNISHED.
+
+## THE KATANA EMPIRE'S ISLANDS: THE VOLCANO ISLAND STAYS (2026-11-20, world polish thread 21; replaces "THE SWAP" above)
+
+mondo 11-20, minutes after the swap merged (it was never uploaded): **"Actually let's keep volcano island as a part of the empire, like how Japan is made up of
+multiple islands."**
+
+- **THE VOLCANO ISLAND IS NOT RETIRED.** `site_prebuilt_bermuda_ow_volcano` is out of `DOOR_HQ.retired`; it stands at 22,-19 as before, written by `bake-beach.js` as
+  before (never edited), with its volcano, its tribe's village, its jungle and its Dinosaur Park.
+- **KATANA ISLAND** (`site_prebuilt_bermuda_katana`) stands just SOUTH of it: 9 x 9 at 21,-13 (`after-v13.js` row 5 adds it to `plots.json` as a new island `katana`).
+- **THE BOATS:** the Harbour's skiff jetty -> Katana Bay's pier (`beach_volcano`, its name kept) · Katana Island's East Shore -> the Volcano Island's Landing (NEW:
+  `katana_volcano`; a way he did not word himself, it follows from two islands) · the Volcano Island's east shore -> the Frozen Sea (`volcano_frozen`, as it was).
+- **The tribe's camp is OUT of Katana Island's jungle** (it was only carried over so nothing would be lost; the tribe keeps its own island). Katana Island keeps its
+  own Dinosaur Park (his "there can still be dinosaurs") and its own volcano.
+- Everything else of "THE SWAP" holds: the room's id, the links' learnt rule, THE CHECK.
