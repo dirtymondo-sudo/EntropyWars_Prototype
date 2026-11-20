@@ -45,7 +45,7 @@ A district file keeps writing the plain word (`sign('BANK', ...)`). `docs/disast
   flat-roofed buildings with the most storeys get two lit boards, one at each long edge of the roof reading outward, each an advert
   (`ADS`: name, line, colours, face, mark). One new arch row a building (`bb:<building id>`); no district file edited. Most Entertainment
   and Bayside buildings have pitched roofs or domes and take none: more boards need street-side poles or wall-mounted boards (next pass).
-- Seen in the game at night, HEAD 0fa3… + this PR: Snake Eyes in red neon under the Act of God board, Landslide Realty over Bayside, Kaboom!
+- Seen in the game at night, HEAD 43619a9: Snake Eyes in red neon under the Act of God board, Landslide Realty over Bayside, Kaboom!
   Cola and the hill sign from above. Not looked at: each of the other 19 neon signs, the Financial boards.
 - A probe sets the night with a view's `"eval": "window._hqClockHour=function(){return 23;}"` (it takes hold from the second view on).
 
