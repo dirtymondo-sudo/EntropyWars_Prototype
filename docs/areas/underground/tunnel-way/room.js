@@ -18,8 +18,9 @@ const NAMES = {
     '0,2': 'The Great Chamber', '1,2': 'The Crystal Bend', '2,2': 'The Dead Squeeze', '3,2': 'The Long Drop', '4,2': 'The Cells Tunnel',
     '0,3': 'The Bone Pit', '1,3': 'The Larder', '2,3': 'The Black Water', '3,3': 'The Gnawing Pit', '4,3': 'The Stretcher Camp',
     '0,4': 'The Low Nest', '1,4': 'The Long Bend', '2,4': 'The Way Down', '3,4': 'The Deep Nest', '4,4': 'The Dry Bend' };
-/* the ground sheets: 1 = loose dirt, 2 = wet dark rock (round the sumps), 3 = cut stone (the Catacombs' end), 4 = flesh (the Nest) */
-const PAL = ['dirt_2', 'rocks_dark_fantasy', 'dungeon_2', 'flesh_2'];
+/* the ground sheets, all the horror pack (mondo 11-20: "don't use the calm textures, use from the urban decay or horror pack"; the Cavern's palette):
+   1 = mud (hz_floor_03), 2 = wet black rock round the sumps (hz_misc_05), 3 = cut stone flags at the Catacombs' end (hz_floor_12), 4 = raw red (the Nests, hz_misc_15) */
+const PAL = ['hz_floor_03', 'hz_misc_05', 'hz_floor_12', 'hz_misc_15'];
 
 module.exports = {
     parti: 'A labyrinth cut in the rock under Dead Man\'s Cave: low passages that bend at every turn, halls where a fight fits, ladders and ropes where the floor steps, cliffs you only go down, pits with something in them, and the dark. It is entered at its top, from the Catacombs, and goes down as you go in, to the Cavern.',
@@ -57,10 +58,10 @@ module.exports = {
         /* a low slab of rock hung over a passage: the squeeze (drawn only; you stoop under it) */
         const lowRock = (id, x0, y0, x1, y1, over) => { const h = a.floor(x0, y0) + over, w = (x1 - x0 + 1) * a.C, d = (y1 - y0 + 1) * a.C, parts = [];
             /* the rock comes down in lumps: a ceiling 0.9 m over the stoop line, and cones hanging from it to the line itself */
-            parts.push({ s: 'box', p: [0, 0.9, 0], size: [a.r2(w), a.r2(Math.max(2.6, a.roofAt(x0, y0) - h - 0.6)), a.r2(d)], key: 'rocks_5', tint: 0x8a8070, uv: 3.5, top: false, under: true });
+            parts.push({ s: 'box', p: [0, 0.9, 0], size: [a.r2(w), a.r2(Math.max(2.6, a.roofAt(x0, y0) - h - 0.6)), a.r2(d)], key: 'hz_stone_10', tint: 0xd6d2ca, uv: 3.5, top: false, under: true });
             const n = Math.max(6, Math.round(w * d / 3));
             for (let i = 0; i < n; i++) { const len = a.r2(0.5 + R() * 0.45), r = a.r2(0.35 + R() * 0.5);
-                parts.push({ s: 'cyl', p: [a.r2((R() - 0.5) * (w - 0.6)), a.r2(0.92 - len), a.r2((R() - 0.5) * (d - 0.6))], r: a.r2(r * 0.25), r2: r, h: len, seg: 7, key: 'cave_wall', tint: 0x4a443e, uv: 2 }); }
+                parts.push({ s: 'cyl', p: [a.r2((R() - 0.5) * (w - 0.6)), a.r2(0.92 - len), a.r2((R() - 0.5) * (d - 0.6))], r: a.r2(r * 0.25), r2: r, h: len, seg: 7, key: 'hz_stone_02', tint: 0xe4e0d8, uv: 2 }); }
             a.feat({ k: 'arch', id: 'ugt:squeeze:' + id, x: a.r2(a.gx(x0) + w / 2), z: a.r2(a.gz(y0) + d / 2), y: a.r2(h), rot: 0, parts }); };
 
         /* ══ THE PILOT: THE NORTH THIRD ══ */
@@ -144,11 +145,11 @@ module.exports = {
         /* THE GREAT CHAMBER (chamber 0,2, level 121): the district's landmark, THE STALAGMITE (the plan's `k` square, two levels tall: drawn here, no
            model exists), seen from THE EDGE (the plan's lookout, its north-west corner). The Long Tunnel goes west out of it, eleven levels down. An old
            fire somebody keeps alight; the CLIFF from the Crystal Bend drops four levels into its east passage */
-        { const sx = 6, sy = 30, ox = a.gcx(sx), oz = a.gcz(sy), parts = [], tint = [0xa89a86, 0x988c7a, 0xb4a690];
-          parts.push({ s: 'cyl', p: [0, 0, 0], r: 1.25, r2: 0.12, h: 7.4, seg: 9, key: 'rocks_5', tint: tint[0], uv: 2.5 });
+        { const sx = 6, sy = 30, ox = a.gcx(sx), oz = a.gcz(sy), parts = [], tint = [0xf0ece6, 0xe4e0d8, 0xffffff];
+          parts.push({ s: 'cyl', p: [0, 0, 0], r: 1.25, r2: 0.12, h: 7.4, seg: 9, key: 'hz_stone_07', tint: tint[0], uv: 2.5 });
           for (const [dx, dz, h, r] of [[1.2, 0.6, 3.6, 0.6], [-1.0, 0.9, 2.6, 0.5], [0.4, -1.2, 4.4, 0.7], [-0.9, -0.7, 1.8, 0.45], [1.5, -0.6, 1.4, 0.35]])
-              parts.push({ s: 'cyl', p: [dx, 0, dz], r, r2: 0.06, h, seg: 7, key: 'rocks_5', tint: tint[Math.floor(R() * 3)], uv: 2 });
-          parts.push({ s: 'cyl', p: [0, a.roofAt(sx, sy) - a.floor(sx, sy) - 3.2, 0], r: 0.1, r2: 1.1, h: 3.2, seg: 8, key: 'cave_wall', tint: 0x4a443e, uv: 2 });   // its stalactite, nearly meeting it
+              parts.push({ s: 'cyl', p: [dx, 0, dz], r, r2: 0.06, h, seg: 7, key: 'hz_stone_07', tint: tint[Math.floor(R() * 3)], uv: 2 });
+          parts.push({ s: 'cyl', p: [0, a.roofAt(sx, sy) - a.floor(sx, sy) - 3.2, 0], r: 0.1, r2: 1.1, h: 3.2, seg: 8, key: 'hz_stone_02', tint: 0xe4e0d8, uv: 2 });   // its stalactite, nearly meeting it
           a.feat({ k: 'arch', id: 'ugt:stalagmite', x: ox, z: oz, y: a.floor(sx, sy), rot: 0, parts });
           a.P('sarsen', sx, sy, { h: 3.0, face: 20 }); }   // (its body, inside the drawn column: so you walk round it)
         a.P('brazier', 4, 28, { face: 30 }); a.P('firewood_stack', 3, 27, { dx: -0.5, dz: -0.6 });
