@@ -24,7 +24,7 @@
    - THE WATER: a `w` square is a shallow sump in a niche under a weeping wall (no river, mondo 11-20): its floor 0.55 m under the floor
      beside it, a still pool on it, drips over it.
    - THE DOORS: the plan's five ways out, at the plan's squares: N the Catacombs (`ow_v_m7_m4`), E the Sewers' Holding Cells (`ow_v_1_1`), S the
-     Cavern (`ow_h_m4_10`), W the Long Tunnel (`ug_tw_long`, new: the Long Tunnel's thread builds its end), and the shaft up into Dead Man's
+     Cavern (`ow_v_m8_9`: thread 9's new Cavern `site_prebuilt_hollow_earth_ug_cavern`, at its `ug_cavern_tunnelway`), W the Long Tunnel (`ug_tw_long`, new: the Long Tunnel's thread builds its end), and the shaft up into Dead Man's
      Cave (data.js DOOR_HQ.links `tunnelway_cavern`, end b: this tool checks it).
    - WHAT STANDS IN IT: docs/areas/underground/tunnel-way/room.js (`names`, `dress(a)`, `airZones`), in the room's own squares.
    Notes: docs/notes/areas-complexes.md "THE UNDERGROUND, THE TUNNEL-WAY". */
@@ -137,7 +137,7 @@ PL.forEach((p, i) => { const ox = gx(p.bx * N) + N * C / 2, oz = gz(p.by * N) + 
 /* ── THE DOORS (the plan's `doors`; a wall door on the room's wall, the shaft a free spot) ── */
 const DOOR_ROWS = { N: { id: 'ow_v_m7_m4', leaf: 'leaf_frame_only', label: 'THE CATACOMBS', sub: 'THE BONE PASSAGE · UP INTO THE CATACOMBS', room: 'site_prebuilt_vatican_under', desc: 'Bones packed into the walls all the way up. Somebody stacked them.' },
     E: { id: 'ow_v_1_1', leaf: 'leaf_cell', label: 'DISASTER CITY · THE SEWERS', sub: 'THE CELLS TUNNEL · INTO THE GUARDROOM', room: 'site_prebuilt_downtown_underworld', desc: 'A gaol\'s drain, bricked once, broken through from this side.' },
-    S: { id: 'ow_h_m4_10', leaf: null, label: 'THE CAVERN', sub: 'THE TUNNEL-WAY · DOWN TO THE CAVERN', room: 'site_prebuilt_hollow_earth_cavern', desc: 'The rock goes on down. It is warmer that way.' },
+    S: { id: 'ow_v_m8_9', leaf: null, label: 'THE CAVERN', sub: 'THE PASSAGE DOWN · 12 LEVELS · THE LAST CAMP', room: 'site_prebuilt_hollow_earth_ug_cavern', at: 'ug_cavern_tunnelway', desc: 'The rock goes on down. It is warmer that way.' },
     W: { id: 'ug_tw_long', leaf: null, label: 'THE LONG TUNNEL', sub: 'THE TUNNEL-WAY · WEST, AND DOWN', room: 'site_prebuilt_hollow_earth_ow_long', desc: 'A long way down in the dark, west.' } };
 const doors = [], DOORSQ = {};
 (PLAN.doors || []).forEach(d => { const [x, y, side, , lv] = d; if (FL[y][x] == null) throw new Error('a door off the floor: ' + d);
@@ -146,7 +146,7 @@ const doors = [], DOORSQ = {};
     if (!onWall) { DOORSQ.shaft = [x, y]; return; }   // the shaft (the link's end b)
     const R = DOOR_ROWS[side], o = { id: R.id, wall: side.toLowerCase() };
     if (side === 'N' || side === 'S') o.x = gx(x + 1); else o.z = gz(y + 1);   // the middle of the two-square passage
-    Object.assign(o, { way: 'trail', leaf: R.leaf, label: R.label, sub: R.sub, action: { room: R.room, at: R.id }, desc: R.desc }); doors.push(o); DOORSQ[side] = [x, y]; });
+    Object.assign(o, { way: 'trail', leaf: R.leaf, label: R.label, sub: R.sub, action: { room: R.room, at: R.at || R.id }, desc: R.desc }); doors.push(o); DOORSQ[side] = [x, y]; });
 if (!DOORSQ.shaft) throw new Error('the plan has no shaft door');
 const SHAFT = { x: gx(DOORSQ.shaft[0] + 1), z: gcz(DOORSQ.shaft[1]), face: 180 };   // on the junction's north edge, between its two squares, facing in
 

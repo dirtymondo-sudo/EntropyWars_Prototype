@@ -12672,6 +12672,53 @@ is laid on the ground; a ship in open space has none), he picked BEAMED DOWN.
   fight on Mars, Saturn or the Singularity (the Moon only); escaping on the burner (worked out from the speeds, not flown); the sound; what
   the battle board looks like near a net's cut seam (fights on a ball were "not checked" since the round worlds: one fight on the Moon ran).
 
+## OUTER SPACE, THE SEAM ON A BOARD + THE FIGHT ON A BALL (2026-11-20, owner, a thread beside WORLD POLISH thread 18)
+mondo 11-20, on the Moon on the skateboard: "Im getting stuck and glitching out going back and forth on this seam ... There shouldn't even be
+a visible seam ... The side of the seam the shadow is on also changes when I cross ... a planet in the background disappears and reappears as I
+cross the seam". Then: "got pulled by a ufo and for the battle the map was still flat and separated into pieces and not wrapped around the sphere".
+- **1. THE BOARD WAS LEFT BEHIND** (`_hqPlanetSeam`): the seam turned the walker, his move and the eye, but not the board's own heading
+  (`H.ride.hd`; the ride writes `pl.yaw = R.hd + stance` every frame). Four of the Moon's cut seams are a half turn (face 3 N, 3 S, 4 S, 5 N):
+  the board rolled straight back over the seam, was carried, rolled back. Now `R.hd` (and a vert air's `hd0`) turns with him. An ollie over
+  a seam keeps its height (the ground snap was for a walk).
+- **2. THE TURN IS THE FRAMES' OWN.** The picture round the walker is P + M (ball - A), M read on his face. The equal-angle grid kinks at
+  every cube edge (0 at an edge's middle, 18 degrees a third of the way along, 48 near a corner), so: (a) a seam JOINED on the flat net turned
+  nothing and M jumped: everything far off (the ball's limb, the stars, the Earth) swung by up to 48 degrees each crossing, the planet that
+  vanished and came back; (b) a cut seam measured the turn with a 0.6 m step along the old face's grid line, off by the same kink (23 degrees
+  where the true turn was 0; the 11-20 FIX note's "clean 0 / 90 / 180" held only at an edge's middle). Now every seam, joined or cut, turns the
+  walker, the board and the eye by the angle between the two faces' frames at that spot (M' = turn(dlt) M, worked out exactly; checked in node
+  for every edge of the Moon, residual under 0.002). The joins are the net's own (0-1, 1-2, 1-4), not a distance test, so a slow frame's long
+  step over a joined seam is still a walk.
+- **3. THE SHADOWS ON A BALL.** A shadow was CAST from the bent picture but LOOKED UP at each spot's flat place on the net (three's
+  `shadowPositionWorld` = `positionWorld`). Over a cut seam the ground you see is another face, whose flat place lies 100+ m off, outside the
+  sun's shadow box: that side came out wholly lit or wholly dark, a hard line along the seam, swapping sides as he crossed. Now each spot looks
+  its shadow up where it is drawn: node renderer = `builder.context.shadowPositionWorld` set to the bent point (a varying) in a patch of
+  `NodeMaterial.prototype.setup` (`_ewPlNodeSetup`), classic = `shadowmap_vertex` sends `worldPosition` through `ewPlBend`.
+- **3b. THE GROUND MEETS ITSELF** (data.js `_hqTRoundStitch`, run by `hqTerrainCompile` right after the plan pass, so the walk, the drawn
+  ground and everything placed on it read the stitched field). The heights did NOT meet over the cut seams: draw-space.js evens them, but
+  the plan pass after the sampling (its top noise, its walls) moves the field again, and one flat line of samples serves two cut seams at
+  once. Measured (seam points 0.1 m+ apart / worst): the Moon 58 of 576 / 0.95 m, Mars 197 of 1152 / 5.32 m, Saturn 253 of 2304 / 0.45 m,
+  the Singularity 131 of 1152 / 0.36 m: a step along the seam you could see and ride into. Now every sample on a cut seam is tied to the
+  sample it meets on the ball (and to the face sharing its flat line), each tied set takes its mean, the change feathered over three
+  samples into each face; void samples are never tied. After: 0 over 0.1 m on all four (worst 5 cm). Its face table must stay the same as
+  three-renderer.js `_EW_PL_FACES`.
+- **4. THE FIGHT ON A BALL: TRIED, TAKEN BACK OUT, WAITS ON MONDO.** A fight lays the room round its board in the battle's frame
+  (`_hqBattleRoomMatrix`: m -> (m - T.x0) k, floorY + y k, k = ts / C) and the bend is on for the walk's scene only, so a fight draws the
+  flat nets (six squares a world, apart in the dark: what he saw). A first try (commit f10853d on branch `claude/sleepy-dijkstra-1e8oga`,
+  `_ewPlBattleFrame` + a board-flat blend uniform `ewPlB`) wrote the balls in the battle's frame, anchored at the board's middle, kept the
+  board flat and carried the ground beyond its rim onto the ball. DRIVEN (UFO beam-down on the Moon, free camera pulled back): the fight's
+  board was 84 m, a whole face, and the Moon's radius is 53.5 m, so a flat board stood on the ball like a mushroom cap, wider than the world
+  under it; a 5 x bigger ball for the fight left the stretched face empty between the board's rim and the next faces (a cone onto a bare
+  disc). Bending the board too tilts its rim 45 degrees (a face's edge is 45 degrees from its middle) and the picking, the camera and the
+  units read it flat. THE SCALE IS THE QUESTION (the board against the world's size), asked of mondo 11-20; the fight draws as before.
+- **DRIVEN** (playtest_city.js `"drive"`, llvmpipe, the Moon): the board over the half-turn cut seam (face (0,1) north -> the top cap):
+  heading 3.14 -> 0 with the eye, rolled on into the new face, no bounce; over a joined seam a third of the way along (face 1 -> 2): heading
+  and eye turned 34 degrees together, rolled on, the dish, the container and the sky did not move on screen. The seam's dark crack and lip
+  (seen before the stitch, same spot) gone after it, ahead, over and looking back. Probe tip: the room starts aboard; `hq.dev.ship({ x, y,
+  z })` near a beacon's `ball` + `up` x 7, then `hq.disembark()`; `skate` / `skateIssued` / `disembark` are on `ThreeRenderer.hq`, not `.dev`.
+- **NOT DONE / NOT CHECKED:** the fight (above); the sheet's grain still turns at a cut seam (a directional pattern meets itself at 90 / 180
+  degrees); where a cliff crossed a seam on Mars (5 m) the mean leaves a short steep ramp; the shadows' fix was not compared side by side
+  (the stitched heights removed the seam's line in the same run); the classic renderer was not run.
+
 ## ONE WORLD, THE NORTH ROUTES — R1 R2 R3 R4 R5 R12 built and stitched (2026-11-17, BUILD_PLAN phase 4 row 4.1; the owner's north routes thread)
 Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/areas/routes/<ID>.json` (+ a hook `.js` where named). Places are
 `ow-places.js` picks; every new place name is an idea of Claude's (the page's own words kept where it gave them).
@@ -13666,9 +13713,9 @@ APPROVED 11-20 ("Yes this is good, go ahead and start individual threads"; "No r
 - **THE ROOM:** `site_prebuilt_hollow_earth_ow_tunnelway`, now ONE COMPACT LABYRINTH, 5 x 5 plots (60 x 60 squares, 210 m), world -8..-4 x 1..5
   (plot 1,1 = the shaft = world -7,2, under Dead Man's Cave's Tunnel Way). It REPLACES the long corridor room bake-cavern.js wrote under the same id
   (the old Tunnel-Way Tunnel + the Cells Tunnel + the Bone Passage, 34 plots of corridor). THE ID IS KEPT, so every door, link and zone list that names
-  it lands in the new room with no other file edited: the Catacombs' `ow_v_m7_m4`, the Sewers' guardroom `ow_v_1_1`, the Cavern's `ow_h_m4_10`, the
-  ladder from Dead Man's Cave (`DOOR_HQ.links` `tunnelway_cavern`, end b re-pointed by hand; the tool checks it). NOT kept: the Cavern's second door
-  into it, `ow_v_m8_9`, lands at the room's spawn (the layout has one join to the Cavern; the Cavern's thread decides it). NEW: the west door
+  it lands in the new room with no other file edited: the Catacombs' `ow_v_m7_m4`, the Sewers' guardroom `ow_v_1_1`, the Cavern's `ow_v_m8_9` (thread 9's NEW Cavern room
+  `site_prebuilt_hollow_earth_ug_cavern` comes in at it; this room's south door leads there, at `ug_cavern_tunnelway`), the ladder from Dead Man's Cave (`DOOR_HQ.links` `tunnelway_cavern`, end b re-pointed by hand; the tool checks it). NOT kept: the OLD Cavern room's second door
+  into it, `ow_h_m4_10`, lands at the room's spawn (the layout has one join to the Cavern). NEW: the west door
   `ug_tw_long` to the Long Tunnel (`site_prebuilt_hollow_earth_ow_long`, the door id its thread gives its end).
 - **THE TOOL:** `node bake-ug-tunnelway.js [--dry-run]` (`UGT_DUMP=1` prints the walked map), between UG-TUNNELWAY-BEGIN / -END in data.js, right after
   CAVERN36-END. It reads the plan THROUGH `draw-plan.js build` (and refuses a plan that fails its check), so the room is the plan square for square:
@@ -13679,6 +13726,8 @@ APPROVED 11-20 ("Yes this is good, go ahead and start individual threads"; "No r
   each cliff. `w` = a shallow SUMP (0.55 m under the floor beside it, you step in and out), drips over it (an air zone). The walk check: every floor
   square is reached from the spawn AND walks back to it (ledges down only, climbs both ways), blockers counted. Checked before the browser through
   load-data.js: hqTerrainFeet on all 1,380 open squares = the plan's level (worst 5 cm), 49 climbs registered.
+- **TWO TOOLS, ONE JOB:** this tool was written beside thread 9's shared `bake-ug.js` (same day, neither saw the other); they do the same thing
+  (the plan through draw-plan.js, a height sheet, ladders, roofs). The Tunnel-Way can move onto `bake-ug.js` as a ROOMS row + a design file later.
 - **bake-cavern.js:** its ROOMS row `T` is `skip: true` (still worked out for the Cavern's own seam doors, never written), and it no longer checks
   the link's end b.
 - **WHAT STANDS IN IT:** `docs/areas/underground/tunnel-way/room.js` (`names`, `palette` + `paint`, `dress(a)`, `airZones`, the spawn), in room squares.
@@ -13697,3 +13746,48 @@ APPROVED 11-20 ("Yes this is good, go ahead and start individual threads"; "No r
 - **NEXT (after mondo's word on the pilot):** the middle third (the Great Chamber + its stalagmite landmark and lookout, the Long Tunnel's join, the
   Cells Tunnel to the Sewers, the crystal and squeeze pits) and the south third (the nests and bone pits, the sump of black water, the secret, the way
   down to the Cavern), then the lights shared out over the whole room.
+
+## THE UNDERGROUND, ONE DISTRICT A ROOM — the Cavern rebuilt from its plan (2026-11-20, world polish thread 9; tool `bake-ug.js`, design `docs/areas/cavern/districts/K-room.js`)
+
+mondo 11-20: "This is the CAVERN. The UNDERGROUND. With HOLLOW EARTH and a passage to HELL. The most Cavernous cave to ever exist"; "we need
+victory road. labyrinth, height diffs, cliffs, drops waterfalls, underground horror like the descent movie". The plans (`docs/plans/world-polish/
+plans/ug-cavern.js`, `ug-hollow-earth.js`, from `underground.js`) were APPROVED 11-20; this thread builds them, it does not redraw them.
+
+**THE TOOL, `bake-ug.js` (repo-only, root; shared by every underground thread that wants it).** `node bake-ug.js <key>` (a row of its ROOMS
+table: plan, design file, room id, site, part) builds the plan with `draw-plan.js` itself (build + check: a FAIL refuses the bake) and writes
+ONE room between `UG:<key>-BEGIN` / `UG:<key>-END` in data.js (after CAVERN36-END the first time). `--dry-run`; `--check` reads the baked room
+back through load-data.js (`hqTerrainFeet` on every open square against the plan) and prints the plot levels as a grid.
+- THE GROUND = `terrain.slope.cells`, every open square flat at its plan level (y 0 = the room's lowest floor; level L stands at (L - lowest) x 1.75 m),
+  so a step of a level or more between two squares is a LEDGE (a drop). A closed square takes the height of the nearest open one (the rock's foot).
+  `gen: { kind: 'plan', look: 'walls' }`: every square that is not a `space` is the rock to the crust.
+- THE LADDERS = the plan's `stairs` pairs, one `climb` row each (look 'ladder') on the line between the two squares, on the low side, facing the
+  high side, with its own y0 / y1. THE FALLS = a `drop` branch whose words say WATERFALL: a `fall` row down the ledge (two squares wide on a
+  two-wide passage); a CLIFF drop is bare rock. No river (mondo 11-20). THE SUMPS = the plan's `w` squares: deep black water (a `stream` row
+  laid along the axis whose ends are rock, so its round ends never cut the floor beside it).
+- THE ROOF: a rock block from each open square's ceiling to the crust (greedy runs of equal ceilings, one `arch` row a plot): a passage's
+  ceiling is 3 levels over the highest open square within two squares of it (a ladder's head and a ledge's lip stay under it), a chamber's 6
+  levels over its own highest (+ the design's `tallChambers`); stalactites hang under it.
+- THE DOORS: the plan's `doors` by index, named in the design file: `{ link: '<id>', end }` (the tool checks the link row points here and prints
+  the row to write) or a room door `{ id, label, sub, action }`. On the room's edge = a wall door, inside = a free door with a passage.
+- THE DESIGN FILE: `room` (label, sub, parti, spawn, mood, pal, plotNames, lines, ceilings), `doors`, `paint(ctx, x, y)`, `suns(ctx)`,
+  `dress(ctx)`, `people(ctx)`. ctx: lv / h / open / wet / tile / ceil of a square, `P` (a blocker on a square's middle), `dec` (decor off it),
+  `npc`, `feat`, `squares`, `walled`, `rockSides`, `free`, the plan + its build. Arch rows in a design file use `base: 0` and ABSOLUTE part y.
+
+**THE CAVERN (pilot, 2026-11-20): `site_prebuilt_hollow_earth_ug_cavern`**, 6 x 3 plots (72 x 36 squares, 252 x 126 m), levels 105 down to 82
+over the Inner Sun (40 m of rock top to bottom), 23 ladders, 2 waterfalls (9 and 15 levels), 2 cliffs, 5 sumps. `--check`: 968 open squares, 1
+off the plan (the Needle's own square, a blocker on purpose). THE PLACES on the plan's chambers: THE LAST CAMP (2,0 · 105, the way in from the
+Tunnel-Way, the spawn: the explorers' tents, cold fire, ropes, a stretcher), THE SHELF (0,0 · 97, crystals and glowcaps, the cold light), THE
+CROSSROADS (0,1 · 92, the great chamber, roof 21 m up, THE NEEDLE = the plan's landmark, the old signpost, the people; the West Tunnel), THE GROTTO
+(0,2 · 83, the low tier: bats, a fossil, mushrooms), THE MOUTH (3,2 · 88, the way down to Hollow Earth), THE OUBLIETTE (4,2 · 82, the bottom:
+reached only by the 15-level waterfall or the 6-level ladder from the Mouth; stocks, chain bunks, an iron maiden, the dead), THE FISSURE
+(junction 5,1 · 94, hot obsidian rock, braziers, the altar, the crack to Hell). The plan's pits hold bone pits, nests (goo tendrils, webs,
+spiders), crystal pockets, a dead caver's camp, a squeeze, a sump; its two secret dead ends hold a chest each. Four big lights: Hell's red at the
+Fissure, the Crossroads' fire glow, Hollow Earth's sun up through the Mouth, the Shelf's crystal blue.
+**THE PILOT'S JOINS (until the other rooms are built):** `cave_hell` end a = the Fissure (re-pointed; bake-cavern.js no longer writes that way);
+the north door (the Tunnel-Way) and the west door (the West Tunnel) land at the OLD tunnel rooms' Cavern doors (`ow_v_m8_9`, `ow_v_m8_11`); the
+south door (Hollow Earth, 16 levels down) lands in the OLD Cavern + Hollow Earth room at the Polar Opening (`link_hollow_byrd`). The old room
+`site_prebuilt_hollow_earth_cavern` stays live (its old Cavern still reached from the old tunnels) until Hollow Earth is built from its plan;
+then it is retired and the new rooms get their `world` places (none yet: it would overlap the old room on the map).
+**NOT in the plan, so not here:** the D.U.M.B.'s blast door (`cave_dumb`), the Oubliette's portcullis to the Sewers (`workings_oubliette`),
+DOOR HQ's hidden cell door, the cellar well (`well_cellar`): they stay on the old room until the Sewers / D.U.M.B. threads and mondo say where
+they land in the labyrinth.
