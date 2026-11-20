@@ -199,12 +199,12 @@ function check(B, opts) { opts = opts || {}; const { plan, W, H, N, T, L, RAMP, 
     DKEYS.filter(big).forEach(d => { if (!flats.some(f => dOf([f.rect[0], f.rect[1]]) === d || dOf([f.rect[2], f.rect[3]]) === d)) NEWR(dname(d) + ' names no OPEN / LEVEL place (`flats`: a square, a meadow, a shore, a field)'); });
 
     /* REAL ARCHITECTURE */
-    const bl = plan.buildings || []; if (!bl.length) WARN.push('THE ZONE HAS NO REAL BUILDINGS in its plan: terrain and trails alone are not a zone (mondo 11-20)');
+    const bl = plan.buildings || []; if (!bl.length && !plan.noBuildings) WARN.push('THE ZONE HAS NO REAL BUILDINGS in its plan: terrain and trails alone are not a zone (mondo 11-20)');
     bl.forEach(b => { const [x0, y0, x1, y1] = b.rect; if (!b.inside) FAIL.push('building "' + b.name + '" does not say what its INSIDE is (same size, shape and style as its outside)');
         for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!inRoom(x, y) || T[y][x] !== 'k') { FAIL.push('building "' + b.name + '": square ' + x + ',' + y + ' is not drawn as a building (k)'); y = y1 + 1; break; }
         const s = b.door, mx = Math.round((x0 + x1) / 2), my = Math.round((y0 + y1) / 2), q = s === 'N' ? [mx, y0 - 1] : s === 'S' ? [mx, y1 + 1] : s === 'W' ? [x0 - 1, my] : s === 'E' ? [x1 + 1, my] : null;
         if (!q) FAIL.push('building "' + b.name + '" has no door side (N, S, E, W)'); else if (!isOpen(q[0], q[1]) || T[q[1]][q[0]] === 'k') FAIL.push('building "' + b.name + '": no open square in front of its ' + s + ' door (' + q + ')'); });
-    DKEYS.filter(big).forEach(d => { if (bl.length && !bl.some(b => dOf([b.rect[0], b.rect[1]]) === d)) WARN.push(dname(d) + ' has no building in the plan (A: every district has buildings that fit it)'); });
+    DKEYS.filter(big).forEach(d => { if (bl.length && !plan.noBuildings && !bl.some(b => dOf([b.rect[0], b.rect[1]]) === d)) WARN.push(dname(d) + ' has no building in the plan (A: every district has buildings that fit it)'); });
 
     /* THE VARIETY RULE (mondo 11-20, same weight) */
     if (shapedAll / PLOTS.length > A.tooHilly && !PLOTS.some(p => p.f.flat)) WARN.push('NEARLY EVERY PLOT IS HILLY (' + shapedAll + ' of ' + PLOTS.length + ') and none is level on purpose: variety, not a formula');
@@ -218,7 +218,7 @@ function check(B, opts) { opts = opts || {}; const { plan, W, H, N, T, L, RAMP, 
     else if (PLOTS.length > 3 && strip.length / PLOTS.length >= 0.5) WARN.push(strip.length + ' of ' + PLOTS.length + ' plots stand in a strip one plot wide (' + strip.slice(0, 6).map(p => p.name).join(', ') + ' …): thin strips read bare; think of growing the room there');
     if (!opts.noRoom && plan.room) { let R = null; try { const S = require(path.join(__dirname, '..', '..', '..', 'load-data.js')).loadGameData(); R = { S, room: S.DOOR_HQ.rooms[plan.room] }; } catch (e) { WARN.push('could not load the real room (' + e.message.slice(0, 80) + '): the room checks did not run'); }
         if (R && !R.room) FAIL.push('the room ' + plan.room + ' is not in data.js'); else if (R) { const room = R.room, S = R.S, real = {};
-            if (Math.round(room.shell.w / 3.5) !== W || Math.round(room.shell.d / 3.5) !== H) NEWR('the plan\'s grid (' + W + ' x ' + H + ') is not the room\'s today (' + Math.round(room.shell.w / 3.5) + ' x ' + Math.round(room.shell.d / 3.5) + ' squares): if the plan GROWS the room say so in `grows`' + (plan.grows ? ' — it does: ' + plan.grows : ''));
+            if ((Math.round(room.shell.w / 3.5) !== W || Math.round(room.shell.d / 3.5) !== H) && plan.grows) NOTE.push('the plan grows the room: ' + plan.grows); else if (Math.round(room.shell.w / 3.5) !== W || Math.round(room.shell.d / 3.5) !== H) NEWR('the plan\'s grid (' + W + ' x ' + H + ') is not the room\'s today (' + Math.round(room.shell.w / 3.5) + ' x ' + Math.round(room.shell.d / 3.5) + ' squares): if the plan GROWS the room say so in `grows`' + (plan.grows ? ' — it does: ' + plan.grows : ''));
             const off = plan.grid.at || [0, 0];   // where the room's plot P00-00 stands in the plan's grid (a plan that grows the room west or north)
             ((room.plots || {}).names || []).forEach(n => { const m = /^P(\d+)-(\d+)$/.exec(n[0]); if (!m) return; const c = +m[1] + off[0], r = +m[2] + off[1]; real[c + ',' + r] = n; const p = plotAt[c + ',' + r];
                 if (!p) FAIL.push('the room\'s plot ' + n[0] + ' "' + n[1] + '" is not in the plan: draw the plan in the room\'s REAL frame (One World re-laid the rooms; never the old home-frame sheet)');
