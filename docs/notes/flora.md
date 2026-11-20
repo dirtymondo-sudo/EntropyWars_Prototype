@@ -83,6 +83,34 @@ Settings > Video > Grass on low or off, or `EW_PERF_LOW` = reach 30 m and 60 % o
 - **Licence, to settle with mondo:** the kit is a bought store pack (use in a game yes, its files never handed on as a pack).
   The flower zip names no author and no licence: ask him where it came from before the credits say more than "author not recorded".
 
+## 3b. THE MESHY FLORA BATCH in the rule (2026-11-20, second pass)
+
+mondo had the top of this thread's gap list made (models-assets.md "THE KATANA + FLORA MESHY BATCH": his one-time yes to four
+Meshy trees) and handed the names here. What the rule does with them, again with no room, tool or district file edited:
+
+| Piece | Where the rule puts it | How |
+|---|---|---|
+| `fl_bamboo_clump` | Katana Island (`japan`): groves where a pine, spruce or birch stood | tree list; 3.6 tiles at least, trunk blocks 0.6 m |
+| `fl_giant_redwood` | the Redwood Trail (`redwood`): about half of its oaks, some firs | tree list; 11 tiles (19 m) at least, trunk blocks 1.1 m |
+| `fl_jungle_tree` | among the palms of the tropics, Katana and Hollow Earth, NEVER on sand (a beach palm stays a palm) | new class `palm`; one palm in four to six (10,000 triangles each) |
+| `fl_joshua_tree` | dry country (`desert`, `scrub`, `badlands`): among the saguaros and in place of some bare trees | new class `cactus` (`saguaro`); half the height of the tree it replaces |
+| `fl_lotus` | every still fresh-water pond of a green climate, near its bank, 2 to 9 a pond | THE ACCENTS (`ZONE_FLORA.props`, `zoneFloraProps`): floats at the surface, sunk 0.2 m |
+| `fl_barrel_cactus` | dry ground of the desert climates, up to 26 a room | THE ACCENTS; walked through (the catalogue row blocks; the rule's copy does not) |
+
+- **THE ACCENTS** are the rule's only prop rows, and they are made at room build, not written anywhere: seeded by the room id,
+  kept clear of everything that already stands by the compiler's own `freeFor`. Off: `EW_NO_FLORA_PROPS`.
+- A tree's ground can now have its own list (`trees.<ground class>`): `snow` = the winter trees, `sand` = a palm stays a palm.
+- The willow rule reads fresh water only now (no willow on a sea shore), and a palm or cactus is never a willow.
+- **NOT placed by the rule, on purpose:**
+  - `fl_wheat_clump`, `fl_rice_clump`: a field is rows of hundreds of clumps at 2,500 triangles each; the rule cannot afford
+    that and a field's place is a design decision. They are for a holder to plant as a real field (Leylines, the Ranch,
+    Katana's paddies). If mondo wants fields BY THE RULE on the map's farmland, they first need a cheap card version in
+    the flora field file.
+  - Every `kt_*` Katana prop (torii, armour, katana ...): not plants, and Katana Island is the Katana holder's row.
+- Seen in the browser 11-20 (build ebed470 + this pass): bamboo and lotus on Katana, a giant redwood on the trail, a Joshua
+  tree and barrel cacti on the Desert Highway. NOT looked at: the jungle trees (Katana's view missed them, the Volcano
+  Island and the Cavern were not opened).
+
 ## 4. Everything that grows in the game, and where it belongs
 
 | Asset | Source | Belongs in |
