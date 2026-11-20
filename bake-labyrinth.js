@@ -104,7 +104,7 @@ count.plateaus = F.length - count.spaces;
 /* ── THE WATER: the sumps (deep, to near their brim), the channels, the falls ── */
 const WATER = [], FALLS = [], CHAN = new Set();
 rects((x, y) => inb(x, y) && T[y][x] === 'w', (x, y, X, Y2) => LV[y][x] === LV[Y2][X], true).forEach(([x, y, w, h]) => { const l = LV[y][x], horiz = w >= h;
-    WATER.push({ k: 'stream', pts: horiz ? [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]] : [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: r2((horiz ? h : w) * C - 0.3), y: r2(Y(l) + 1.2), depth: 1.2, key: 'deep_water', bank: 0 }); });
+    WATER.push({ k: 'stream', pts: horiz ? [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]] : [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: r2((horiz ? h : w) * C - 0.3), y: r2(Y(l) + 1.2), depth: 1.2, key: (distOf(x, y) || {}).sump || 'deep_water', bank: 0 }); });
 count.sumps = WATER.length;
 /* THE CHANNELS: in a district with `channel`, every passage run two squares wide (one level, one plot) carries the channel down the square on
    its north / west side; it starts at a culvert mouth or a grate and ends at a grate, or pours over a weir where the next square is lower */
@@ -142,18 +142,19 @@ const VAULT = [], DAMP = [0x7c766a, 0x6a6a58, 0x5c6450, 0x74695a, 0x66604f], grn
 const PARTS = {}; PL.forEach(p => { PARTS[p.id] = []; });
 const partsOf = (x, y) => PARTS[plotOf(x, y).id], pox = p => gx(p.sx) + N * C / 2, poz = p => gz(p.sy) + N * C / 2;
 rects(open, (x, y, X, Y2) => ROOF[y][x] === ROOF[Y2][X] && LV[y][x] === LV[Y2][X], true).forEach(([x, y, w, h]) => {
-    const p = plotOf(x, y), parts = PARTS[p.id], ox = pox(p), oz = poz(p), top = ROOF[y][x], yf = hAt(x, y);
+    const p = plotOf(x, y), parts = PARTS[p.id], ox = pox(p), oz = poz(p), top = ROOF[y][x], yf = hAt(x, y), rock = (DES.districts[p.d] || {}).rock;   /* `rock` (a district cut in natural rock: the Cavern's palette, mondo 11-20) */
     const alongX = w >= h, span = (alongX ? h : w) * C + 0.7, len = (alongX ? w : h) * C + 0.1, rise = r2(Math.min(3.5, span / 3)), cx = r2(gx(x) + w * C / 2 - ox), cz = r2(gz(y) + h * C / 2 - oz);
     parts.push({ s: 'box', p: [cx, r2(top + 0.05), cz], size: [r2(w * C + 0.2), 0.2, r2(h * C + 0.2)], sides: false, top: false, under: true, key: 'bricks_2', tint: 0x4a463f });
-    parts.push({ s: 'roof', form: 'barrel', p: [cx, r2(top - rise), cz], size: [r2(len), rise, r2(span)], ry: alongX ? 0 : 90, key: 'bricks_2', tint: DAMP[Math.floor(grnd() * DAMP.length)], ds: true, ends: false, seg: 8 });
+    parts.push({ s: 'roof', form: 'barrel', p: [cx, r2(top - rise), cz], size: [r2(len), rise, r2(span)], ry: alongX ? 0 : 90, key: rock ? rock.roof : 'bricks_2', tint: rock ? 0xe6e2da : DAMP[Math.floor(grnd() * DAMP.length)], ds: true, ends: false, seg: 8 });
     count.vaults = (count.vaults || 0) + 1;
     /* the grime: a slime line at every wall's foot; a rusted main on brackets along a north / west wall of three squares or more, a downpipe at its end */
     const side = (horiz, at, a0, n, out, pipes) => { let run = 0; for (let i = 0; i <= n; i++) { const X = horiz ? a0 + i : at + out, Y2 = horiz ? at + out : a0 + i, wallHere = i < n && !open(X, Y2) && inb(X, Y2) || (i < n && !inb(X, Y2));
             if (wallHere) { run++; continue; } if (!run) continue;
             const s0 = a0 + i - run, L = run * C, mid = (horiz ? gx(s0) - ox : gz(s0) - oz) + L / 2, edge = (horiz ? gz(at + (out > 0 ? 1 : 0)) - oz : gx(at + (out > 0 ? 1 : 0)) - ox), inw = -out;
             const at3 = (off, yy) => horiz ? [r2(mid), r2(yy), r2(edge + inw * off)] : [r2(edge + inw * off), r2(yy), r2(mid)], sz = (t, hh) => horiz ? [r2(L), hh, t] : [t, hh, r2(L)];
-            parts.push({ s: 'box', p: at3(0.05, yf), size: sz(0.08, r2(0.45 + grnd() * 0.5)), key: 'bricks_2', tint: 0x1c2416, top: false });
-            if (pipes && run >= 3) { const yy = r2(yf + 2.3 + grnd() * 0.5);
+            if (rock) parts.push({ s: 'box', p: at3(0.035, yf - 0.2), size: sz(0.06, r2(top - yf + 0.2)), key: rock.wall, tint: 0xe6e2da, top: false, uv: 3.5 });   // the rock face over the brick wall
+            parts.push({ s: 'box', p: at3(0.05, yf), size: sz(0.08, r2(0.45 + grnd() * 0.5)), key: rock ? rock.wall : 'bricks_2', tint: 0x1c2416, top: false });
+            if (pipes && run >= 3 && !rock) { const yy = r2(yf + 2.3 + grnd() * 0.5);
                 parts.push({ s: 'box', p: at3(0.3, yy), size: sz(0.3, 0.3), key: RUST, tint: 0x6a3f24, under: true }, { s: 'box', p: at3(0.24, yy - 0.42), size: sz(0.12, 0.12), key: RUST, tint: 0x2e3a2e, under: true });
                 for (let b = 0.9; b < L; b += 3.5) { const q = horiz ? [r2(mid - L / 2 + b), r2(yy - 0.1), r2(edge + inw * 0.2)] : [r2(edge + inw * 0.2), r2(yy - 0.1), r2(mid - L / 2 + b)]; parts.push({ s: 'box', p: q, size: horiz ? [0.1, 0.5, 0.4] : [0.4, 0.5, 0.1], key: RUST, tint: 0x222222 }); }
                 const e = horiz ? [r2(mid + L / 2 - 0.4), yf, r2(edge + inw * 0.3)] : [r2(edge + inw * 0.3), yf, r2(mid + L / 2 - 0.4)]; parts.push({ s: 'cyl', p: e, r: 0.15, h: r2(yy - yf), key: RUST, tint: 0x5a3622, seg: 8 }); count.pipes = (count.pipes || 0) + 1; }
@@ -171,19 +172,28 @@ rects(open, (x, y, X, Y2) => ROOF[y][x] === ROOF[Y2][X] && LV[y][x] === LV[Y2][X
 
 /* ── THE DOORS: one a plan door; a door on the room's edge stands in the wall, else it stands free on its square's side ── */
 const FACE = { N: 180, S: 0, W: 90, E: 270 }, SIDE = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] };
-const doors = (PLAN.doors || []).map((r, i) => { let [x, y, sd] = r; const o = DES.doors[i]; if (!o) throw new Error('room design: no row for the plan\'s door ' + i + ' (' + r[3] + ')');
-    if (!open(x, y)) throw new Error('door ' + o.id + ': its square is not open ' + x + ',' + y);
-    /* the plan marks a way out at a node's corner; when that side is open ground (a passage runs on), the door stands on the nearest square of
-       the same level with rock on a side (a manhole in a passage's dead end wall), its own side first */
-    if (open(x + SIDE[sd][0], y + SIDE[sd][1])) { let best = null; for (let r = 1; r <= 3 && !best; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const a = x + dx, b = y + dy; if (best || !open(a, b) || LV[b][a] !== LV[y][x] || FEET.has(a + ',' + b)) continue;
-            for (const s2 of [sd, 'N', 'W', 'E', 'S']) if (!open(a + SIDE[s2][0], b + SIDE[s2][1]) && inb(a + SIDE[s2][0], b + SIDE[s2][1])) { best = [a, b, s2]; break; } }
-        if (!best) throw new Error('door ' + o.id + ': no wall near ' + x + ',' + y); console.log('door ' + o.id + ': the plan\'s ' + x + ',' + y + ' ' + sd + ' is open ground; it stands at ' + best.join(' ')); [x, y, sd] = best; }
-    const v = SIDE[sd], X = x + v[0], Y2 = y + v[1];
-    FEET.add(x + ',' + y);
-    const d = Object.assign({ id: o.id, leaf: o.leaf, wide: o.wide !== false, label: o.label, sub: o.sub, action: o.action, desc: o.desc || '' });
-    if (!inb(X, Y2)) { d.wall = sd.toLowerCase(); if (sd === 'N' || sd === 'S') d.x = gcx(x); else d.z = gcz(y); d.y = hAt(x, y); }
-    else { d.wall = 'free'; d.x = sd === 'W' ? gx(x) : sd === 'E' ? gx(x + 1) : gcx(x); d.z = sd === 'N' ? gz(y) : sd === 'S' ? gz(y + 1) : gcz(y); d.face = FACE[sd]; d.passage = { len: 3, deep: 1.2 }; d.y = hAt(x, y); }
-    return d; });
+/* where a way stands: on its square's side `sd` (or the first side that is rock); a side that is open ground moves it to the nearest square of
+   the same level with rock on a side (the plan marks a way out at a node's corner, where a passage may run on) */
+function wayAt(x, y, sd, name) {
+    if (!open(x, y)) throw new Error('way ' + name + ': its square is not open ' + x + ',' + y);
+    if (!sd) sd = ['N', 'W', 'E', 'S'].find(q => !open(x + SIDE[q][0], y + SIDE[q][1]));
+    if (!sd || open(x + SIDE[sd][0], y + SIDE[sd][1])) { let best = null; for (let r = 1; r <= 3 && !best; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const a = x + dx, b = y + dy; if (best || !open(a, b) || LV[b][a] !== LV[y][x] || FEET.has(a + ',' + b)) continue;
+            for (const s2 of [sd, 'N', 'W', 'E', 'S']) if (s2 && !open(a + SIDE[s2][0], b + SIDE[s2][1]) && inb(a + SIDE[s2][0], b + SIDE[s2][1])) { best = [a, b, s2]; break; } }
+        if (!best) throw new Error('way ' + name + ': no wall near ' + x + ',' + y); console.log('way ' + name + ': ' + x + ',' + y + ' ' + sd + ' is open ground; it stands at ' + best.join(' ')); [x, y, sd] = best; }
+    if (FEET.has(x + ',' + y)) throw new Error('way ' + name + ': its square ' + x + ',' + y + ' is a ladder\'s foot or another way\'s');
+    FEET.add(x + ',' + y); const v = SIDE[sd], X = x + v[0], Y2 = y + v[1], e = { sq: [x, y] };
+    if (!inb(X, Y2)) { e.wall = sd.toLowerCase(); if (sd === 'N' || sd === 'S') e.x = gcx(x); else e.z = gcz(y); }
+    else { e.wall = 'free'; e.x = sd === 'W' ? gx(x) : sd === 'E' ? gx(x + 1) : gcx(x); e.z = sd === 'N' ? gz(y) : sd === 'S' ? gz(y + 1) : gcz(y); e.face = FACE[sd]; }
+    e.y = hAt(x, y); return e; }
+/* THE WAYS: the plan's doors (in its order), then the design's own `ways` (the old links, each at a dead end of its district). A row with `link`
+   is the end of a DOOR_HQ.links row (rewritten in data.js below); a row with `id` is one of the room's own doors. */
+const doors = [], LINKENDS = {};
+const way = (o, x, y, sd) => { const e = wayAt(x, y, sd, o.link || o.id);
+    if (o.link) { LINKENDS[o.link] = e; return; }
+    const d = { id: o.id, leaf: o.leaf, wide: o.wide !== false, label: o.label, sub: o.sub, action: o.action, desc: o.desc || '', wall: e.wall };
+    ['x', 'z', 'face'].forEach(k => { if (e[k] != null) d[k] = e[k]; }); if (e.wall === 'free') d.passage = { len: 3, deep: 1.2 }; d.y = e.y; if (o.way) d.way = o.way; if (o.minClearance) d.minClearance = o.minClearance; doors.push(d); };
+(PLAN.doors || []).forEach((r, i) => { const o = DES.doors[i]; if (!o) throw new Error('room design: no row for the plan\'s door ' + i + ' (' + r[3] + ')'); way(o, r[0], r[1], r[2]); });
+(DES.ways || []).forEach(o => way(o, o.sq[0], o.sq[1], o.side));
 
 /* ── THE DRESSING: the design's dress(a) ── */
 const props = [], npc = [], DRESS = [], DECALS = [], taken = new Set(), rnd = mkRnd(4721);
@@ -193,7 +203,7 @@ const A = {
     W, H, N, C, gx, gz, gcx, gcz, r2, open, T, LV, hAt, roof: (x, y) => ROOF[y][x], plotOf, distOf, rnd, CHAN, FEET, PL,
     feat: f => F.push(f),
     /* a blocker on a square's middle (one a square) */
-    P(key, x, y, o) { if (!CAT[key]) { errs.push('not in the catalogue: ' + key); return; } if (!place(key, x, y, 'P')) return; if (CHAN.has(x + ',' + y)) { errs.push(key + ' stands in a channel ' + x + ',' + y); return; }
+    P(key, x, y, o) { if (!CAT[key]) { errs.push('not in the catalogue: ' + key); return; } if (o && o.near) { const q = A.free(x, y); if (!q) { errs.push(key + ': no free square near ' + x + ',' + y); return; } [x, y] = q; o = Object.assign({}, o); delete o.near; } if (!place(key, x, y, 'P')) return; if (CHAN.has(x + ',' + y)) { errs.push(key + ' stands in a channel ' + x + ',' + y); return; }
         if (taken.has(x + ',' + y)) { errs.push(key + ': square ' + x + ',' + y + ' is taken'); return; } taken.add(x + ',' + y); o = Object.assign({}, o);
         const px = r2(gcx(x) + (o.dx || 0)), pz = r2(gcz(y) + (o.dz || 0)); delete o.dx; delete o.dz; props.push(Object.assign({ key, x: px, z: pz }, o)); },
     /* decor off a square's middle (never blocks) */
@@ -202,18 +212,29 @@ const A = {
     /* hung from the vault: `y` = its top */
     ceil(key, x, y, drop, o) { if (!CAT[key]) { errs.push('not in the catalogue: ' + key); return; } if (!open(x, y)) { errs.push('ceil ' + key + ' over a closed square ' + x + ',' + y); return; }
         props.push(Object.assign({ key, x: gcx(x), z: gcz(y), ceil: true, y: r2(ROOF[y][x] - (drop || 2.2)), noBlock: true }, o || {})); },
-    native(race, x, y, face, say) { if (RACES.indexOf(race) < 0) { errs.push('not a unit: ' + race); return; } if (!place(race, x, y, 'native')) return; if (CHAN.has(x + ',' + y)) { errs.push(race + ' stands in a channel ' + x + ',' + y); return; }
+    native(race, x, y, face, say) { if (RACES.indexOf(race) < 0) { errs.push('not a unit: ' + race); return; } { const q = A.free(x, y); if (q) [x, y] = q; } if (!place(race, x, y, 'native')) return; if (CHAN.has(x + ',' + y)) { errs.push(race + ' stands in a channel ' + x + ',' + y); return; }
         if (taken.has(x + ',' + y)) { errs.push(race + ': square taken ' + x + ',' + y); return; } taken.add(x + ',' + y); const n = { x: gcx(x), z: gcz(y), face: face || 0, race }; if (say) n.say = say; npc.push(n); },
     grime(kind, x, y, r) { DECALS.push({ kind, x: r2(gcx(x) + (rnd() - 0.5) * 1.2), z: r2(gcz(y) + (rnd() - 0.5) * 1.2), y: hAt(x, y), r: r || 1.4, rot: Math.round(rnd() * 360) }); },
     /* a drawn part, room coordinates (one `arch` row for the whole dressing) */
     box(x, y, z, w, h, d, key, tint, o) { DRESS.push(Object.assign({ s: 'box', p: [r2(x), r2(y), r2(z)], size: [r2(w), r2(h), r2(d)], key, tint }, o || {})); },
     cyl(x, y, z, r, h, key, tint, o) { DRESS.push(Object.assign({ s: 'cyl', p: [r2(x), r2(y), r2(z)], r, h: r2(h), key, tint, seg: 10 }, o || {})); },
 };
+/* the nearest free square (open, dry, off the channels, the ladders' feet and the ways, not taken, one level) to x, y, within 3 */
+A.free = (x, y) => { const lv = open(x, y) ? LV[y][x] : null; for (let r = 0; r <= 3; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const a = x + dx, b = y + dy;
+        if (open(a, b) && T[b][a] !== 'w' && !CHAN.has(a + ',' + b) && !FEET.has(a + ',' + b) && !taken.has(a + ',' + b) && (lv == null || LV[b][a] === lv)) return [a, b]; } return null; };
+/* a run of track (rail_section a square + two steel rails, 0.14 m: stepped over, grindable), buffer stops at its ends */
+A.rails = (x0, y0, x1, y1, buffers) => { const horiz = y0 === y1, n = horiz ? Math.abs(x1 - x0) + 1 : Math.abs(y1 - y0) + 1, sx = Math.sign(x1 - x0), sy = Math.sign(y1 - y0);
+    for (let i = 0; i < n; i++) { const x = x0 + sx * i, y = y0 + sy * i; if (!open(x, y) || CHAN.has(x + ',' + y)) { errs.push('rails over a closed square / a channel ' + x + ',' + y); return; } taken.add(x + ',' + y); props.push({ key: 'rail_section', x: gcx(x), z: gcz(y), face: horiz ? 90 : 0, noBlock: true }); }
+    const a = horiz ? [gx(Math.min(x0, x1)), gcz(y0)] : [gcx(x0), gz(Math.min(y0, y1))], b = horiz ? [gx(Math.max(x0, x1) + 1), gcz(y0)] : [gcx(x0), gz(Math.max(y0, y1) + 1)];
+    for (const off of [-0.72, 0.72]) F.push(horiz ? { k: 'wall', x0: a[0], z0: r2(a[1] + off), x1: b[0], z1: r2(b[1] + off), h: 0.14, t: 0.12, key: 'metal' } : { k: 'wall', x0: r2(a[0] + off), z0: a[1], x1: r2(b[0] + off), z1: b[1], h: 0.14, t: 0.12, key: 'metal' });
+    if (buffers) [[x0, y0, -sx, -sy], [x1, y1, sx, sy]].forEach(([x, y, dx, dy]) => props.push({ key: 'buffer_stop', x: r2(gcx(x) + dx * 1.2), z: r2(gcz(y) + dy * 1.2), face: horiz ? (dx > 0 ? 90 : 270) : (dy > 0 ? 180 : 0), noBlock: true })); };
 /* a wall face beside an open square: the side (n s w e) that is rock, or null */
 A.wallSide = (x, y) => { for (const [s, v] of [['n', [0, -1]], ['w', [-1, 0]], ['e', [1, 0]], ['s', [0, 1]]]) if (!open(x + v[0], y + v[1])) return s; return null; };
-/* THE CULVERTS KIT (W): every square of a W plot is looked at once, in order: lamps on the walls of the junctions and at the bends, a culvert
-   mouth where a channel starts at a wall, a grate where it ends, a weir board and a sluice over each fall, a rat now and then, rubbish */
-A.culverts = (letter) => { letter = letter || 'W'; const k = { lamps: 0, mouths: 0, grates: 0, weirs: 0 };
+/* THE DISTRICT KIT (the Culverts' first, 11-20; every district since): every square of a district is looked at once, in order: lamps on the
+   walls every few squares (the district's own light), a culvert mouth where a channel starts at a wall, a grate where it ends, a weir board and
+   a sluice over each fall, a rat under a dead lamp, the district's rubbish in the bends; `timber` = a mine's timber sets on the walls */
+A.kit = (letter, st) => { st = Object.assign({ lamp: 0xffc070, lampKey: 'cage_lamp', every: 11, rubbish: ['psx_metal_barrel_mp_2', 'rat', 'psx_cobweb_1', null, 'floor_stain'], timber: false }, st || {});
+    const k = { lamps: 0, mouths: 0, grates: 0, weirs: 0, timber: 0 };
     const isW = (x, y) => open(x, y) && plotOf(x, y).d === letter;
     const DIR = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] }, FACEOF = { n: 180, s: 0, w: 90, e: 270 };
     /* the channels' two ends */
@@ -234,18 +255,23 @@ A.culverts = (letter) => { letter = letter || 'W'; const k = { lamps: 0, mouths:
     /* lamps: a cage lamp on a wall face every few squares of passage, the brick round it lit (drawn); a dead one has a rat under it */
     let n = 0;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!isW(x, y) || FEET.has(x + ',' + y) || T[y][x] === 'w') continue; const s = A.wallSide(x, y); if (!s) continue;
-        if (((x * 7 + y * 13) % 11) !== 0) continue; const v = DIR[s], yf = hAt(x, y), dead = (n++ % 4) === 3;
-        props.push({ key: 'cage_lamp', x: r2(gcx(x) + v[0] * 1.55), z: r2(gcz(y) + v[1] * 1.55), ceil: true, y: r2(yf + 2.7), face: FACEOF[s], noBlock: true }); k.lamps++;
+        if (((x * 7 + y * 13) % st.every) !== 0) continue; const v = DIR[s], yf = hAt(x, y), dead = (n++ % 4) === 3;
+        props.push({ key: st.lampKey, x: r2(gcx(x) + v[0] * 1.55), z: r2(gcz(y) + v[1] * 1.55), ceil: true, y: r2(yf + 2.7), face: FACEOF[s], noBlock: true }); k.lamps++;
         if (dead) { props.push({ key: 'rat', x: r2(gcx(x) + v[0] * 1.1 + (v[0] ? 0 : 0.7)), z: r2(gcz(y) + v[1] * 1.1 + (v[1] ? 0 : 0.7)), face: (x * 67 + y * 131) % 360, noBlock: true }); continue; }
         const wx = gcx(x) + v[0] * 1.72, wz = gcz(y) + v[1] * 1.72, ns = s === 'n' || s === 's';
-        A.box(wx, yf + 2.4, wz, ns ? 0.14 : 0.04, 0.18, ns ? 0.04 : 0.14, null, 0xffc070, { glow: 1 });
+        A.box(wx, yf + 2.4, wz, ns ? 0.14 : 0.04, 0.18, ns ? 0.04 : 0.14, null, st.lamp, { glow: 1 });
         [[1.3, 1.5, 0.2], [2.4, 2.6, 0.1]].forEach(([w2, h2, g], i) => A.box(wx - v[0] * (0.01 + i * 0.005), yf + 2.45 - h2 / 2, wz - v[1] * (0.01 + i * 0.005), ns ? w2 : 0.02, h2, ns ? 0.02 : w2, 'bricks_2', 0xd8c49a, { glow: g, top: false, uv: 3.5 }));
         DRESS.push({ s: 'quad', flat: true, p: [r2(gcx(x) + v[0] * 0.9), r2(yf + 0.04), r2(gcz(y) + v[1] * 0.9)], size: [2.0, 2.0], key: 'urban:ConcreteStriped2c', tint: 0xffd8a0, glow: 0.12 }); }
     /* rubbish, stains and the odd rat in the bends (corners: two walls or more) */
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!isW(x, y) || FEET.has(x + ',' + y) || CHAN.has(x + ',' + y) || T[y][x] !== 'g' || taken.has(x + ',' + y)) continue;
         let walls = 0; D4.forEach(([dx, dy]) => { if (!open(x + dx, y + dy)) walls++; }); if (walls < 2) continue; const r = (x * 31 + y * 17) % 9;
-        if (r === 0) A.dec('psx_metal_barrel_mp_2', x, y); else if (r === 1) A.dec('rat', x, y); else if (r === 2) A.dec('psx_cobweb_1', x, y, { y: hAt(x, y) + 2.6 }); else if (r === 3) A.grime('grime', x, y, 1.6); else if (r === 4) A.dec('floor_stain', x, y); }
-    count.culvertsKit = k; };
+        const pick = st.rubbish[r]; if (r < st.rubbish.length) { if (pick) A.dec(pick, x, y); else A.grime('grime', x, y, 1.6); } }
+    /* THE TIMBER SETS (a mine): a post on a wall face every third square, its cap under the vault's spring */
+    if (st.timber) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!isW(x, y) || T[y][x] !== 'g' || ((x + y) % 3)) continue; const s = A.wallSide(x, y); if (!s) continue;
+        const v = DIR[s], yf = hAt(x, y), ns = s === 'n' || s === 's', px = gcx(x) + v[0] * 1.55, pz = gcz(y) + v[1] * 1.55;
+        A.box(px, yf, pz, 0.3, 2.9, 0.3, 'wood_planks', 0x6a5238); A.box(px - v[0] * 0.2, yf + 2.9, pz - v[1] * 0.2, ns ? 3.4 : 0.6, 0.3, ns ? 0.6 : 3.4, 'wood_planks', 0x5a4430); k.timber++; }
+    count['kit' + letter] = k; };
+A.culverts = () => A.kit('W');
 /* the manhole shaft over a door: a ladder up the rock, a grate high in the vault, daylight down it */
 A.shaft = (x, y) => { const yf = hAt(x, y), top = ROOF[y][x];
     props.push({ key: 'manhole_ladder', x: gcx(x), z: r2(gz(y) + 0.5), face: 180, noBlock: true });
@@ -253,6 +279,10 @@ A.shaft = (x, y) => { const yf = hAt(x, y), top = ROOF[y][x];
     A.cyl(gcx(x), top - 0.3, gz(y) + 0.6, 0.9, 0.25, RUST, 0x2a2a2a);   // the grate's ring
     for (let i = -2; i <= 2; i++) A.box(gcx(x) + i * 0.3, top - 0.05, gz(y) + 0.6, 0.06, 0.06, 1.6, RUST, 0x1a1a1a);
     A.box(gcx(x), top - 0.1, gz(y) + 0.6, 1.4, 0.02, 1.4, null, 0xfff4d8, { glow: 1 }); };
+/* a piece standing on the track (a car on its rails: the square is the rails', taken already) */
+A.on = (key, x, y, o) => { if (!CAT[key]) { errs.push('not in the catalogue: ' + key); return; } if (!open(x, y)) { errs.push(key + ' off the open squares ' + x + ',' + y); return; } props.push(Object.assign({ key, x: gcx(x), z: gcz(y), noBlock: true }, o || {})); };
+/* a torch (a real light: the room has few), on the nearest free square */
+A.torch = (x, y) => { A.P('cave_torch', x, y, { near: true }); count.lights = (count.lights || 0) + 1; };
 /* a real bulb (the room's few real lights), hung over a square */
 A.bulb = (x, y) => { props.push({ key: 'bare_bulb', x: gcx(x), z: gcz(y), ceil: true, y: r2(Math.min(ROOF[y][x] - 1.4, hAt(x, y) + 3.9)), noBlock: true }); count.bulbs = (count.bulbs || 0) + 1; };
 /* a name plate on the wall of a square's side: an enamel plate, two lines (drawn sign) */
@@ -284,7 +314,7 @@ if (errs.length) throw new Error('THE LABYRINTH: ' + errs.length + ' problem(s):
 
 /* ── THE PAINT: one sheet a square ── */
 const paint = new Uint8Array(W * H);
-for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!open(x, y)) continue; const d = distOf(x, y); paint[y * W + x] = T[y][x] === 'c' ? d.chamber : d.floor; }
+for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!open(x, y)) continue; const d = distOf(x, y); paint[y * W + x] = 1 + (T[y][x] === 'c' ? d.chamber : d.floor); }   // (a paint value k draws pal[k - 1]; 0 = the room's own floor: a district's `floor` / `chamber` index pal itself)
 
 /* ── WRITE ── */
 const VROWS = PL.map(p => ({ k: 'arch', id: 'lab:' + DES.part + ':' + p.id, x: r2(pox(p)), z: r2(poz(p)), rot: 0, y: 0, parts: PARTS[p.id] }));
@@ -296,11 +326,12 @@ L.push('        ' + DES.room + ': {');
 L.push("            label: '" + DES.label.replace(/'/g, "\\'") + "',");
 L.push("            sub: '" + DES.sub.replace(/'/g, "\\'") + "',");
 L.push("            kind: 'box', site: '" + DES.site + "', part: '" + DES.part + "',");
+if (DES.world) L.push('            world: ' + J(DES.world) + ',');
 L.push('            shell: hqSewerShell({ w: ' + W * C + ', d: ' + H * C + ', h: ' + SH + ', wallH: ' + SH + ', plate: { x: ' + gcx(SP[0]) + ', z: ' + gcz(SP[1]) + ', y: ' + r2(SPY + 3.2) + ' },');
 L.push('                                  mood: { lamp: 0xbfe8b0, glow: 0x9fd0a0, strip: 0xd8f0c8, light: 0xcfe8c0, ambient: 0.13 }, wallColor: 0x4e4a44, floorColor: 0x6c6e6a }),   // (no fog of its own: THE ONE AIR, mondo 11-20)');
 L.push("            parti: '" + DES.parti.replace(/'/g, "\\'") + "',");
 L.push("            typology: 'grid',");
-L.push('            plots: { cell: ' + C + ', plot: ' + N * C + ', nx: ' + PX + ', nz: ' + PY + ', mask: ' + J(Array.from({ length: PY }, (_, r) => Array.from({ length: PX }, (_, c) => plotAt[c + ',' + r] ? '#' : '.').join(''))) + ', names: ' + J(PL.map(p => [p.id, p.name, p.d, p.level])) + ' },');
+L.push('            plots: { cell: ' + C + ', plot: ' + N * C + ', nx: ' + PX + ', nz: ' + PY + ', mask: ' + J(Array.from({ length: PY }, (_, r) => Array.from({ length: PX }, (_, c) => plotAt[c + ',' + r] ? '#' : '.').join(''))) + ', names: ' + J(PL.map(p => [p.id, p.name, p.d, p.level])) + ', districts: ' + J(Object.fromEntries(Object.keys(DES.districts).map(k => [k, DES.districts[k].name]))) + ' },');
 L.push('            terrain: {');
 L.push("                res: 0.875, floor: '" + DES.pal[0] + "', cliff: 'bricks_2', path: 'urban:RubberNonSlip3a',");
 L.push('                noise: { amp: 0, scale: 5 }, crag: false,');
@@ -334,6 +365,16 @@ const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8')
 const ENDM = '        /* ' + MK + '-END */\n', b0 = src.indexOf('        /* ' + MK + '-BEGIN'), b1 = src.indexOf(ENDM);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + ENDM.length);
 else { const a = src.indexOf('        /* SEWERS24-BEGIN'); if (a < 0) throw new Error('anchor (SEWERS24-BEGIN) not found in data.js'); src = src.slice(0, a) + block + src.slice(a); }
+/* `replaces: '<marker>'`: the room this one takes the place of (same id) is written between that marker's BEGIN / END: it goes, with its decal row */
+if (DES.replaces) { const R0 = src.indexOf('        /* ' + DES.replaces + '-BEGIN'), RE = '        /* ' + DES.replaces + '-END */\n', R1 = src.indexOf(RE);
+    if (R0 >= 0 && R1 > R0) { src = src.slice(0, R0) + src.slice(R1 + RE.length); console.log('removed the old block ' + DES.replaces); }
+    src = src.split('\n').filter(l => l.indexOf(DES.replaces + '-DECALS') < 0).join('\n'); }
+/* the link rows' ends in this room: wall / x / z / face / y rewritten in place (the rest of the row, its plate and its verb, stays) */
+Object.keys(LINKENDS).forEach(id => { const e = LINKENDS[id], a = src.indexOf("{ id: '" + id + "'"); if (a < 0) throw new Error('data.js: no link row ' + id);
+    const tag = "part: '" + DES.part + "', ", k = src.indexOf(tag, a); if (k < 0 || k - a > 1500) throw new Error('data.js: link ' + id + ' has no end in part ' + DES.part);
+    const rest = src.slice(k + tag.length), m = /^wall: '[a-z]+'(, x: -?[\d.]+)?(, z: -?[\d.]+)?(, face: -?\d+)?(, y: -?[\d.]+)?/.exec(rest); if (!m) throw new Error('data.js: link ' + id + ': cannot read its end');
+    const w = "wall: '" + e.wall + "'" + (e.x != null ? ', x: ' + e.x : '') + (e.z != null ? ', z: ' + e.z : '') + (e.face != null ? ', face: ' + e.face : '') + ', y: ' + e.y;
+    src = src.slice(0, k + tag.length) + w + rest.slice(m[0].length); console.log('link ' + id + ': ' + w); });
 { const tag = MK + '-DECALS'; src = src.split('\n').filter(l => l.indexOf(tag) < 0).join('\n');
   const a = src.indexOf('DOOR_HQ.decals = {\n'); if (a < 0) throw new Error('DOOR_HQ.decals not found'); const at = a + 'DOOR_HQ.decals = {\n'.length;
   src = src.slice(0, at) + '    ' + DES.room + ': ' + J(DECALS.slice(0, 60)) + ',   // ' + tag + ': written by bake-labyrinth.js\n' + src.slice(at); }

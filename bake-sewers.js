@@ -27,6 +27,11 @@
    fed by it pours sludge); the way `sewers_power` (the bulkhead door up to the Power station's yard, a link). Two plots of one level
    need no opening row: they share open squares on their line (the Sludge Pit and the Outfall). */
 'use strict';
+/* RETIRED 2026-11-20 (WORLD POLISH THREAD 10, THE SEWERS' LABYRINTH): the Sewers' room is written by `node bake-labyrinth.js
+   docs/areas/sewers/districts/room.js` (the approved plans/ug-sewers.js, square for square); its block in data.js is LABYRINTH-SEWERS and the
+   SEWERS24 block this tool wrote is gone. This tool, layout.json and the five district files stay as the record the labyrinth's dressing was
+   carried over from. It no longer writes. Notes: docs/notes/areas-complexes.md "THE SEWERS' LABYRINTH". */
+if (!process.env.EW_OLD_SEWERS) { console.log('bake-sewers.js is retired: the Sewers are written by `node bake-labyrinth.js docs/areas/sewers/districts/room.js`.'); process.exit(0); }
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const REPO = __dirname, DRY = process.argv.includes('--dry-run');
 const PLAN = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/areas/sewers/layout.json'), 'utf8'));
