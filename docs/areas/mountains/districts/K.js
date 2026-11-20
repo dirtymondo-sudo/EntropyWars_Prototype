@@ -296,6 +296,7 @@ exports.apply = ctx => {
 exports.airZones = ctx => { const a = ctx.S('P07-00', 0, 0), b = ctx.S('P09-03', 11, 11), y = ctx.S('P08-03', 0, 0);
     return [{ x0: a[0], y0: a[1], x1: b[0] + 1, y1: y[1], kind: 'snow', n: 520, wind: 0.6 }, { x0: a[0], y0: y[1], x1: b[0] + 1, y1: b[1] + 1, kind: 'snow', n: 160, wind: 0.3 }, { x0: 0, y0: 0, x1: ctx.W, y1: ctx.H, kind: 'snow', n: 220 }]; };
 
+exports.kit = { get tower() { return tower; }, get wheelhouse() { return wheelhouse; }, get chair() { return chair; }, HC, FONT, DARK, SNOW, STEEL };   // the lift's pieces, for the tool's lifts
 exports.build = ctx => {
     const R = ctx, { put, dec, tree, native, building, look, flat, say, S, mx, mz, gx, gz, props, feat, cell, N, C, r2, U, WD, WD2, SHG, FLR, GLS, DOORWORDS } = ctx;
   /* ── THE SKI LODGE + SLOPES: five runs (the Black Run, the Big Jump, the Slalom, the Half-Pipe, the Bunny Slope), groomed ice you ride down on the board ── */
@@ -310,14 +311,16 @@ exports.build = ctx => {
      over the pipe's first 7 m and sinks over its last, and breaks where the plot's grade does (row 6). */
   { const p = R.byId['P09-00'], HP = 3.3, Z = [0, 2, 6, 9.5, 11.5], Hs = [0, HP, HP, HP, 0];
     for (const xc of [gx(p.lx * N + 2.5), gx(p.lx * N + 9.5)]) for (let i = 0; i < 4; i++) feat({ k: 'ramp', x0: xc, z0: gz(p.ly * N + Z[i]), x1: xc, z1: gz(p.ly * N + Z[i + 1]), w: 17.5, h0: Hs[i], h1: Hs[i + 1], edge: 7 }); }
-  { const p = R.byId['P08-02'], x = gx(p.lx * N + 6);   // THE CHAIRLIFT's line: two pipe rails and two boxes under the chairs
+  if (!R.o.oneMountain) { const p = R.byId['P08-02'], x = gx(p.lx * N + 6);   // THE CHAIRLIFT's line: two pipe rails and two boxes under the chairs
     feat({ k: 'rail', x0: r2(x - 5.25), z0: gz(p.ly * N + 3), x1: r2(x - 5.25), z1: gz(p.ly * N + 8), model: 'pipe', block: false }); feat({ k: 'rail', x0: r2(x + 5.25), z0: gz(p.ly * N + 4), x1: r2(x + 5.25), z1: gz(p.ly * N + 9), model: 'pipe', block: false });
     put('P08-02', 'riser_1', 2, 9, { face: 0 }); put('P08-02', 'riser_1', 9, 2, { face: 0 }); }
   /* THE LIFT (pass 1): the line runs up the middle of the slopes, over the Big Jump, as the plan draws it. Two bullwheels (one above the Lodge, one below the
      Top Station), four gantry towers between them, two cables, a chair every 10.5 m. A leg stands on the middle of a square and stops the walker (a ghost
      wall); everything else is over head height. The cables and the chairs are ONE `hug` row: each corner takes the ground under it, so a cable spans
      straight from tower to tower down the hill and a chair hangs level with it. Nothing moves yet: see the header (a question for mondo). */
-  { const top = S('P08-00', 6, 8), bot = S('P08-03', 6, 0), x = gx(top[0]), M = U('MetalWallRibbed1a'), zT = gz(top[1] + 1), zB = gz(bot[1] + 0.5), TW = [12, 19, 26, 33].map(r => top[1] - 8 + r);
+  /* THE ONE MOUNTAIN (2026-11-20): the old lift ran up the home's middle column; its plots stand apart on the mountain now, so the line is not built here.
+     The mountain's lifts are the tool's (bake-mountains.js THE LIFTS), made of this file's pieces (exports.kit). */
+  if (!R.o.oneMountain) { const top = S('P08-00', 6, 8), bot = S('P08-03', 6, 0), x = gx(top[0]), M = U('MetalWallRibbed1a'), zT = gz(top[1] + 1), zB = gz(bot[1] + 0.5), TW = [12, 19, 26, 33].map(r => top[1] - 8 + r);
     const leg = (sx, sy) => { if (!R.open(sx, sy) || R.taken.has(sx + ':' + sy)) throw new Error('K: a lift leg on a taken square ' + sx + ',' + sy); R.taken.add(sx + ':' + sy); feat({ k: 'wall', x0: r2(mx(sx) - 0.4), z0: mz(sy), x1: r2(mx(sx) + 0.4), z1: mz(sy), t: 0.9, h: 3, ghost: true, rail: false }); };
     TW.forEach((sy, i) => { look('lift' + i, x, mz(sy), a => tower(a, M, i + 1)); leg(top[0] - 3, sy); leg(top[0] + 2, sy); });
     look('liftTop', x, zT, a => wheelhouse(a, M, -1)); leg(top[0] - 2, top[1] + 1); leg(top[0] + 1, top[1] + 1);
@@ -331,7 +334,7 @@ exports.build = ctx => {
     R.taken.add(top[0] + 1 + ':' + top[1]); R.taken.add(bot[0] + 1 + ':' + (bot[1] + 1)); }
   put('P09-02', 'xmas_snowman_2', 1, 6); dec('P09-02', 'traffic_cone', 1, 3); dec('P09-02', 'traffic_cone', 10, 3); dec('P09-02', 'traffic_cone', 10, 8);
   put('P09-03', 'signpost', 4, 4, { face: 180 }); put('P09-03', 'park_bench', 2, 3, { face: 180 }); put('P09-03', 'park_bench', 8, 3, { face: 180 }); put('P09-03', 'xmas_tree_plain', 9, 7, { h: 4.4, floor: true }); put('P09-03', 'sleigh', 2, 8, { face: 90 });
-  put('P07-03', 'ski_rack', 4, 7, { face: 180 }); put('P08-03', 'ticket_booth', 8, 1, { face: 180 }); dec('P08-03', 'rope_stanchion', 9, 1); dec('P08-03', 'rope_stanchion', 9, 0);   // (THE MODEL LIST FIRST, 11-16: the board rack and the lift's ticket booth are the game's own pieces)
+  put('P07-03', 'ski_rack', 4, 7, { face: 180 }); if (!R.o.oneMountain) { put('P08-03', 'ticket_booth', 8, 1, { face: 180 }); dec('P08-03', 'rope_stanchion', 9, 1); dec('P08-03', 'rope_stanchion', 9, 0); }   // (THE MODEL LIST FIRST, 11-16: the board rack and the lift's ticket booth are the game's own pieces)
   put('P07-03', 'xmas_snowman', 2, 9); put('P08-03', 'campfire', 5, 10); put('P08-03', 'park_bench', 3, 10, { face: 0 }); put('P08-03', 'park_bench', 7, 10, { face: 0 }); put('P07-02', 'signpost', 9, 9, { face: 90 });
 
   /* ══ THE DRESSING (pass 3, 11-16): the runs made to read as runs. Tree lines between the three columns, a named board at the top of each run, marker poles
