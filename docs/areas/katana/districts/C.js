@@ -11,6 +11,7 @@ module.exports = {
     reach: [[27, 50, 'the Merchants’ Town'], [31, 51, 'the Bath House'], [28, 45, 'the Temple Quarter'], [32, 43, 'the pagoda'], [21, 38, 'the High Town'], [16, 39, 'the Theatre'],
         [6, 41, 'the castle yard'], [5, 38, 'the keep’s door'], [7, 55, 'the Dojo'], [5, 33, 'the Castle Garden'], [6, 20, 'the palace court'], [6, 18, 'the Audience Hall\u2019s door'], [15, 30, 'the shrine stair’s head']],
     build(ctx) {
+        ctx.hill(2.5, 33, 1.9, 2.2);   // THE RELIEF: the Castle Garden's garden mound
         const { r2, rnd, WD, WD2, PLS, TILE, DARK, PLASTER, house, tiers } = ctx;
         const STONE = 0x8d8a84, RED = 0xc23a22, B = {};
         const bld = (id, q, h, o, ho, extra) => { B[id] = ctx.building(id, q, h, o || {}, (a, w, d, door) => { house(a, w, h, d, door, ho || {}); if (extra) extra(a, w, d, door); }); return B[id]; };

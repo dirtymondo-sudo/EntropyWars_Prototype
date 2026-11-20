@@ -165,9 +165,9 @@
   "nz": 60,
   "h0": -3.5,
   "hs": 0.25,
-  "v": "57df680f2f",
-  "bytes": 2306,
-  "s": "8.9"
+  "v": "eb8ceccfd8",
+  "bytes": 4213,
+  "s": "10.7"
  },
  "site_prebuilt_skinwalker_ow_lake": {
   "id": "site_prebuilt_skinwalker_ow_lake",
@@ -597,7 +597,7 @@
   "hs": 0.25,
   "v": "89499001ae",
   "bytes": 2026,
-  "s": "0.3"
+  "s": "0.4"
  },
  "site_ow_r5": {
   "id": "site_ow_r5",
@@ -617,7 +617,7 @@
   "hs": 0.59,
   "v": "c76a92fb32",
   "bytes": 12689,
-  "s": "5.7"
+  "s": "6.0"
  },
  "site_ow_r10": {
   "id": "site_ow_r10",
@@ -635,8 +635,8 @@
   "nz": 108,
   "h0": -0.04,
   "hs": 0.25,
-  "v": "6bcc0a2bdc",
-  "bytes": 2611,
-  "s": "7.3"
+  "v": "402b9fb86e",
+  "bytes": 2965,
+  "s": "7.9"
  }
 }

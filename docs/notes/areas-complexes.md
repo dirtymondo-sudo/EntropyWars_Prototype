@@ -12827,7 +12827,13 @@ That is not a bayside view. It's called bayside mall." and "the other part I cir
   line (mondo 11-20, of the first cut, a separate planter under each palm: "the median needs to be connected, like a raised median. Not individual little
   patches ... Just a normal street median"): one kerbed strip 1.5 m wide and 0.2 m high with sand on top, unbroken from the Marina plot's north end to
   the cross street by the canal and on south of it, a rounded nose at each end (`dc:bay-median<n>:arch`). It is laid in pieces under a metre long, each at
-  the road's height under it (`ctx.at`), so it follows the road down off the Marina plot. THE TRAPS: the tool's lane pass draws any prop within 3.2 m of
+  the road's height under it (`ctx.at`), so it follows the road down off the Marina plot. IT IS REAL, NOT ONLY DRAWN (mondo 11-20: "if you know how to do something
+  right then do it the first time, otherwise ill be here in 3 months ... telling you to fix the collisions everywhere"): where the road is level the
+  median is a `bridge` row (a slab with an exact flat top the walker steps onto: `hqTerrainFeet` gives 0.20 on it, 0 beside it), and on the hill, where one
+  height cannot follow the road, `ramp` rows a square long raise the field itself (the field's grid is 0.875 m, so there the top is a ridge with a 0.2 m
+  crest under the drawn kerb). It OPENS, two squares wide, where the plan crosses the road on foot (`GAPS`: the Marina plot's walk to the mole, the
+  Service court's, and the mall's own axis from the mall arch to the pier). THE RULE THIS THREAD NOW KEEPS: a thing a player can reach is never only an
+  `arch` row; it gets its ground (`deck`, `bridge`, `plateau`, `ramp`) or a blocker in the same change. THE TRAPS: the tool's lane pass draws any prop within 3.2 m of
   a traffic line out to the kerb, and its soil pass removes a Bayside tree that stands on paving (or paints a sand bed under a palm prop): the median and
   its palms are therefore set in `last()`, after every pass, where `ctx.at` takes the CITY's own squares (Bayside's frame is 48 rows on). The cars keep
   2.5 to 4.5 m off the middle line.
@@ -13123,6 +13129,29 @@ Mount Shasta goes as a name, its plots are swallowed.
   vents, lava) on what are now ski plots; (FIXED the same day, mondo: "Just add its cream stone texture to this room": `ZONE_LOOKS.zones.mountains.byRoom` gives the mountain's room Olympus's cream stone on walls; there is no retexture thread any more, a zone thread edits its own look rows);
   the North Pole; the seams were not walked in the probe (L6, L3, R5, R3, the Long Descent's two).
 
+## KATANA ISLAND, THE RELIEF PASS (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20: "Okay go ahead and do the next pass" (the one named to him: relief inside the plots; most were flat terraces).
+
+- **`ctx.hill(cx, cy, r, h)`** (`bake-katana.js`): a hill, or with a negative h a hollow, of rolling ground laid into a level terrace. Its squares become soft ground
+  (shared corners). It dies away to nothing at its rim AND toward anything it must not lift: a way, a stair, a building, a taken square, water, sand, another plot.
+  So it cannot leave a step beside a path. A district calls it FIRST in its build; a building placed on one later stops the bake.
+- **WHAT WAS SHAPED (16 hills and hollows + two fields):** the Old Wood (a knoll, a hollow), the Bamboo Wood (a rise, a hump), the Cherry Wood (two knolls), the Hot
+  Spring (a rock rise), the Jungle Rise (two hills and a gully), the Jungle (a mound), the Jungle north (a ridge of two heads), the Dinosaur Park (a hump), the Village
+  (a knoll), the Castle Garden (the garden mound), the Terraces (a second upper field with its own stair). With the bay's head, the Old Wood's rise, the paddock, the
+  pools and the cone, 18 of the 30 plots are shaped inside now. LEFT LEVEL ON PURPOSE: the streets and yards of the City, the quays, the Paddies, the Palace's court.
+- **THE WATERFALL:** the Hot Spring's overflow falls 10.5 m from the terrace's south edge into a plunge pool in the Paddies (`W.js` THE FALL: a lip pool, the `fall`
+  row, the pool below). LEARNT: on a terrace's rock face a `fall` needs `y0` / `y1` typed and `out: 5`; left to itself the sheet stopped half way down behind the
+  leaning rock. `hw_crop*` are grey lumps, not rice (NEEDS A MODEL: a rice plant); `hw_scarecrow` is the Halloween one in a black cloak.
+- **NOT DONE:** no new thin trails this pass; night look; frame rate; not walked as a player.
+- **THE POLISH PASS, NOTHING STANDS IN A WAY (11-20, mondo: "do another polish pass. make sure things are placed logically").** (1) bake-woods.js step 5d moves
+  every old piece the plan's trail runs over onto the nearest level open square beside it, else into a pocket (10 pieces; the small life and the gate stay).
+  (2) THE FENCE LINE is its farm yard again: an open level yard (squares 38..46 x 51..57), the trail ends on it, the gate leaves it (the trail had been drawn
+  through the pumpkin patch and the kennel). (3) The way north to Came A Lot from Deep woods, west is a thin trail (its link is one square wide): the wolf's
+  den lies west of it, the hunting stand east. (4) The Campfire's ramp moved off its grill and torch. (5) THE TRAILS STAY CLEAR: `terrain.keepClear`
+  (data.js the scatter rows: one byte a square) keeps every scattered log, stump and bush off a trail square; the tool writes it for a designed room.
+  (6) Ten trail lamps at the turns of the new ways, each in a pocket beside the trail (`C-room.js`, `P(key, x, y, { pocket: true })`). Seen in the probe:
+  the yard, the den, the ranger station, the camp, the Dead End.
 ## THE MOUNTAINS, THE BASE PASS — the runs read as runs, the first lift carries you (2026-11-20, world polish thread 5)
 
 - **THE OLD PISTE PLOTS ARE TURNED A QUARTER** (`TURNED` in bake-mountains.js, the mover's `turn: 90`): the old slopes ran north to south, the mountain's fall line runs

@@ -1443,21 +1443,32 @@ function last(ctx) {
     for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.x >= X0 && q.x < gx(STRIP.x1) - 0.3 && q.z >= Z0 && q.z < Z1 && !/^roads_/.test(q.key)) { props.splice(i, 1); out.props++; } }
     /* THE MEDIAN (2026-11-20, mondo: "the median needs to be connected, like a raised median. Not individual little patches ... Just a normal street
        median"): ONE raised kerbed strip down the coast road's middle line, 1.5 m wide and 0.2 m high, sand on top, unbroken from crossing to crossing
-       (it stops only where a cross street or a crossing meets the road), a rounded nose at each end; a short palm (the catalogue's 3.2 m `palm_tree`)
+       (it stops only where a cross street or a crossing meets the road: GAPS), a rounded nose at each end; a short palm (the catalogue's 3.2 m `palm_tree`)
        every three squares along it. It follows the road's own height (the road falls a storey off the Marina plot): the strip is laid in pieces under a
        metre long, each at the ground's height under it (`ctx.at`, the city's own squares: this file's are 48 rows on). Set here, at the very end: earlier
        the lane pass would draw the palms out to the kerb and the soil pass would paint a lane square as a sand bed under each. The cars keep 2.5 to
        4.5 m off the middle line. Was: fourteen separate planters. */
     { const road = cy => [136, 137, 138, 139].every(cx => ctx.cellAt(cx, cy) === 'R') && ctx.cellAt(135, cy) !== 'R' && ctx.cellAt(140, cy) !== 'R';
       const DZ = (ctx.plotOf['P11-08'].wy != null ? (ctx.plotOf['P11-08'].wy - 8) : -4) * 42, at = z => (typeof ctx.at === 'function') ? ctx.at(gx(138), z + DZ) : 0, r3 = ctx.r3, X = gx(138), CON = 'urban:ConcreteStriped2a';
-      const runs = []; let a0 = -1; for (let cy = 8 * N; cy <= 12 * N; cy++) { const ok = cy < 12 * N && road(cy); if (ok && a0 < 0) a0 = cy; else if (!ok && a0 >= 0) { if (cy - a0 >= 2) runs.push([a0, cy]); a0 = -1; } }
+      /* THE CROSSINGS (mondo 11-20: "might as well fix that now"): the median opens, two squares wide, where the plan crosses the road on foot: the Marina
+         plot's walk out to the mole (rows 101-102), the Service court's (113-114) and the mall's own axis, mall arch to pier (125-126). */
+      const GAPS = [101, 102, 113, 114, 125, 126];
+      const runs = []; let a0 = -1; for (let cy = 8 * N; cy <= 12 * N; cy++) { const ok = cy < 12 * N && road(cy) && GAPS.indexOf(cy) < 0; if (ok && a0 < 0) a0 = cy; else if (!ok && a0 >= 0) { if (cy - a0 >= 2) runs.push([a0, cy]); a0 = -1; } }
       let n = 0, pieces = 0;
       runs.forEach((rn, ri) => { const z0 = gx(rn[0]) + 1.2, z1 = gx(rn[1]) - 1.2, L = z1 - z0, k = Math.max(1, Math.round(L / 0.875)), st = L / k, y0 = at(z0), parts = [];
           for (let i = 0; i < k; i++) { const zc = z0 + (i + 0.5) * st, y = r3(at(zc) - y0), dz = r3(zc - z0);
               parts.push({ s: 'box', p: [0, y - 0.3, dz], size: [1.5, 0.5, r3(st + 0.02)], key: CON, tint: 0xd8d4c8 }, { s: 'box', p: [0, r3(y + 0.2), dz], size: [1.14, 0.03, r3(st + 0.02)], key: 'desert', top: true }); pieces++; }
           [[0, 0], [L, at(z1) - y0]].forEach(e => parts.push({ s: 'cyl', p: [0, r3(e[1] - 0.3), r3(e[0])], r: 0.75, h: 0.5, key: CON, tint: 0xd8d4c8, seg: 12 }, { s: 'cyl', p: [0, r3(e[1] + 0.2), r3(e[0])], r: 0.57, h: 0.03, key: 'desert', seg: 12 }));
           const row = { k: 'arch', id: 'dc:bay-median' + ri + ':arch', x: X, z: r3(z0), rot: 0, parts }; if (Math.abs(y0) > 0.001) row.y = r3(y0); features.push(row);
-          for (let cy = rn[0] + 1; cy < rn[1]; cy += 3) { props.push({ key: 'palm_tree', x: X, z: ctx.gc(cy), face: (cy * 53) % 360 }); n++; } });
+          /* IT IS REAL GROUND (mondo 11-20: "if you know how to do something right then do it the first time, otherwise ill be here in 3 months ... telling you to
+             fix the collisions"): under the drawn kerb the field itself is raised, a `ramp` row a square long each (a ramp is a straight slope between two
+             heights, so it follows the road down the hill exactly), so the walker steps up onto the median and down off it; nothing is only drawn. */
+          /* (where the road is level the median is a `bridge` row: a slab with an exact flat top, kerb to kerb. The field's own grid is 0.875 m, so a raise
+             1.5 m wide comes out as a ridge with a 0.2 m crest; that is used only on the hill, where a bridge, which is one height, cannot follow the road) */
+          { let flat = true; for (let za = z0; za <= z1 + 0.01; za += 0.875) if (Math.abs(at(za) - y0) > 0.004) flat = false;
+            if (flat) features.push({ k: 'bridge', id: 'dc:bay-median' + ri + ':top', x0: X, z0: r3(z0), x1: X, z1: r3(z1), w: 1.5, y: r3(y0 + 0.2), thick: 0.2, rails: false, key: CON, plain: true, absY: true });
+            else for (let za = z0; za < z1 - 0.01; za += 3.5) { const zb = Math.min(z1, za + 3.5); features.push({ k: 'ramp', id: 'dc:bay-median' + ri + ':g', x0: X, z0: r3(za), x1: X, z1: r3(zb), w: 1.5, h0: r3(at(za) + 0.2), h1: r3(at(zb) + 0.2), edge: 0.05, absY: true }); } }
+          for (let cy = rn[0] + 1; cy < rn[1] - 0; cy += 3) { props.push({ key: 'palm_tree', x: X, z: ctx.gc(cy), face: (cy * 53) % 360 }); n++; } });
       console.warn('[bayside median] runs ' + JSON.stringify(runs) + ', heights at its ends ' + JSON.stringify(runs.map(rn => [r3(at(gx(rn[0]) + 1.2)), r3(at(gx(rn[1]) - 1.2))])));
       out.median = n; out.medianPieces = pieces; }
     console.warn('[bayside strip] cleared', JSON.stringify(out));
