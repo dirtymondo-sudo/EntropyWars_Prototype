@@ -9468,7 +9468,9 @@ const ThreeRenderer = (function () {
             var plants = {}, srcMat = null;
             src.traverse(function (m) { var g = m.isMesh && m.geometry; if (!g || !g.index || !g.attributes.position || !g.attributes.uv) return; g.computeBoundingBox(); plants[m.name] = { p: g.attributes.position.array, uv: g.attributes.uv.array, ix: g.index.array, nv: g.attributes.position.count, h: g.boundingBox.max.y }; srcMat = srcMat || m.material; });
             if (!srcMat) { _hqFloraTick._wait = now + 60000; return; }
-            if (!_hqFFMat) { _hqFFMat = _foliageGlbMat(srcMat, null); _hqFFMat._ew_shared = true; _hqFFMat._ew_hzNear = true; }
+            if (!_hqFFMat) { _hqFFMat = _foliageGlbMat(srcMat, null); _hqFFMat._ew_shared = true; _hqFFMat._ew_hzNear = true;
+                /* seen in the browser (11-20, Katana Island): a tree's leaf lift made the pale ferns and tufts glow white against the ground they stand on; a small plant takes the ground's own light */
+                _hqFFMat.color.setRGB(0.88, 0.9, 0.86); _hqFFMat.emissive.copy(_hqFFMat.color).multiplyScalar(0.05); }
             var info = H.terrain, boxes = [], paths = [], wet = false;
             ((T.features) || []).forEach(function (f) {   // the room read ONCE: the buildings' boxes
                 if (f && (f.k === 'texbuilding' || (f.k === 'plateau' && f.bld && f.w > 0 && f.d > 0))) { var a = (f.rot || 0) * Math.PI / 180; boxes.push([f.x, f.z, f.w / 2 + 0.5, f.d / 2 + 0.5, Math.cos(a), Math.sin(a)]); }
