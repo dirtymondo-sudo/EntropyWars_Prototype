@@ -13012,3 +13012,43 @@ mondo 11-20, on the pilot: "Okay the pilot looks decent, continue the rest".
 - **THE LAND PAST THE LINE WEARS THE ROOM'S TONE (11-20, mondo: "fix the ground being green past the edge, it doesn't match").** `terrain.edges.tint: [r, g, b]`
   multiplies the edge land's colour (three-renderer.js `_hqBuildEdgeLand` `colOf`; only a room that sets it changes). The Clearing's room: `[0.5, 0.5, 0.52]`
   (bake-woods.js, designed rooms). Seen in the probe at Deep woods, west.
+
+## THE MOUNTAINS, ONE SKI MOUNTAIN — step 1, the ground and the ride (2026-11-20, world polish thread 5; mondo's "okay" on the plan)
+
+mondo 11-20: "The ski trails should be all over the mountain. It should be designed like an actual mountain and ski resort, where there are some easy trails at the
+towards the base and double black diamonds towards the top. I should be able to ski all the way from the top of mt Olympus to the base of the mountain." And:
+Mount Shasta goes as a name, its plots are swallowed.
+
+- **THE PLAN IS A FILE THAT CHECKS ITSELF:** `docs/plans/world-polish/thread5/draw-mountain.js` (grid c = world x + 22, r = world y + 22; `LV` the levels, `NAME`,
+  `RUNS` with their marks, `LIFTS`, `WAYS`, `TAIL`). `node …/draw-mountain.js` prints the levels, every run's fall and the walking ways, refuses a run that goes
+  uphill or wears the wrong mark, a walking leg over 8 squares, a way along a row or column of plots, and draws `mountain-plan.png`. `bake-mountains.js` READS it
+  (`MP`): change the mountain there, rerun `node docs/plans/one-world/after-v13.js` (it writes the plots' places into plots.json), `node bake-mountains.js`,
+  `node bake-map.js site_prebuilt_shasta_ow_lodge site_prebuilt_shasta_ow_shasta`.
+- **THE ROOMS:** `site_prebuilt_shasta_ow_lodge` = THE SKI MOUNTAIN, ONE room, 84 plots in a 13 x 10 box at world -22,-22 (the Ski Lodge at the west foot, level 0;
+  Mount Olympus's temples on top, level 64 = 112 m). `site_prebuilt_shasta_ow_shasta` = THE LONG DESCENT, 13 plots, the east way down to the Trailhead
+  (the Canyon Trail's seam). `site_prebuilt_shasta_ow_olympus` is GONE (data.js `DOOR_HQ.retired` -> the mountain's room; the Pilgrim Way's door lands on the same
+  seam id). The home frame (the 12 x 8 room the district files were written for) is still built first and never written.
+- **ONE ROOM, OVER THE ROOM-SPLITTING RULE'S 30 PLOTS, ON PURPOSE** (his ruling: free to change shared rules; you see the summit from the Lodge and no run crosses
+  a seam). Measured in the probe (software GPU), the whole mountain in view from the air: 1,286 draw calls, 3.6 M triangles (the rule's ceilings are 2,500 and
+  12 M); memory `misc.mb` 1,900 (over the rule's 1.4 GB: NOT solved, watch it; the old Lodge room was not measured for comparison). If a weak machine cannot
+  hold it, the cut is the plan's pink lines (c 5 and c 8) and needs one more room id.
+- **WHAT THE TOOL DOES NOW (THE ONE WORLD MOVE section):** `planList` stands each home plot at its plan cell with the plan's level and district name (K The Ski
+  Lodge, P The Snowy Pass, O Mount Olympus, The Long Descent); a new plot is open snow; `heightsOf` `smooth` = one even fall from plot middle to plot middle both
+  ways (no shelf under a run); step 1b opens the old rock rims of every non-Olympus home plot (the pistes are open ground); step 5b cuts every run as a groomed
+  lane (`i`: green 7 squares wide, blue 6, black 5, double black 4) and every walking way as packed snow on its square legs; step 5c steps a blocking prop or a
+  tree off a run to the nearest free square of its own plot (169 stepped, none removed); a piece with a height of its own (`y`, not `floor`) rides the new ground.
+  Summer grass and dirt of Shasta's low plots are painted snow; the tree zones are retro pines with one snow pine in six.
+- **THE RIDE, PROVEN (the probe, the board, steered along the plan's line):** the Top Station (y 108) -> The Headwall -> Avalanche Gulch -> the Mid Station ->
+  The Meadows -> The Home Run -> the North Road -> the Rental Hut (y 0): 31.7 s, never stopped. Probe recipe: `hq.skateIssued(true); hq.skate(true)`, the
+  renderer's `render` swapped for a no-op, `dev.press('w', true)`, and every 120 ms `dev.rideRaw().cam.yaw = Math.atan2(dx, -dz)` toward the next point
+  (a view's `face` 0 looks north, 90 east; the board goes where the camera looks).
+- **TRAPS MET:** (1) a route's plot inside your box: the Polar Trail (R5) owns (-13,-21) as well as (-13,-22); `bake-map.js` refused ("two rooms stand on one
+  world plot"). Check a plan's cells against plots.json's routes AND every standing room before baking. (2) K.js and S.js work out heights from the HOME levels
+  for pieces with their own `y` (the lift's cables, the cloud): the tool lifts them by the ground's difference, but a piece that spans a slope (the old lift line)
+  still follows the old grade. (3) A straight line down a row meets the Rope Bridge's crevasse: it stands north of the Mid Station, off every run, on purpose.
+- **NOT DONE (the next steps, one district a PR):** the runs do not READ as runs yet (no tree lines, fences, poles, boards with marks: only the groomed paint);
+  the old lift, its gantries and the old slopes' fences stand where their plots went and are to be rebuilt as the plan's five lifts ("lift should carry you": the
+  first one is shown to mondo first; today the old door pair `lift_bottom` / `lift_top` carries you from the Chairlift plot at the base to the Top Station on
+  the summit); the base village, the Mid Station, the Ski Patrol, the bath house; ledges and switchbacks on the walking ways; Shasta's volcano dressing (crater,
+  vents, lava) on what are now ski plots; the Olympus retexture look (data.js `ZONE_LOOKS.olympus` names the room that is gone: the retexture thread's row);
+  the North Pole; the seams were not walked in the probe (L6, L3, R5, R3, the Long Descent's two).

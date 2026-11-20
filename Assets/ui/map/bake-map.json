@@ -592,12 +592,12 @@
  "site_prebuilt_shasta_ow_shasta": {
   "id": "site_prebuilt_shasta_ow_shasta",
   "nx": 84,
-  "nz": 84,
-  "h0": -0.07,
+  "nz": 24,
+  "h0": -0.04,
   "hs": 0.25,
-  "v": "01e82613fa",
-  "bytes": 6362,
-  "s": "2.9"
+  "v": "55df1b3918",
+  "bytes": 1898,
+  "s": "0.4"
  },
  "site_ow_r5": {
   "id": "site_ow_r5",
@@ -611,13 +611,13 @@
  },
  "site_prebuilt_shasta_ow_lodge": {
   "id": "site_prebuilt_shasta_ow_lodge",
-  "nx": 120,
-  "nz": 108,
-  "h0": -0.07,
-  "hs": 0.25,
-  "v": "de32a0afe9",
-  "bytes": 12159,
-  "s": "6.8"
+  "nx": 156,
+  "nz": 120,
+  "h0": -0.09,
+  "hs": 0.59,
+  "v": "391a8087c8",
+  "bytes": 12230,
+  "s": "5.0"
  },
  "site_ow_r10": {
   "id": "site_ow_r10",
