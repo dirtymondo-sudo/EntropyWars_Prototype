@@ -100740,7 +100740,9 @@ const HQ_LIGHT_RULES = {
        `shell.arrival`). The renderer's HQ_LIGHT_DEFAULT carries the same keys (premium-polish.test.js diffs them). */
     /* 2.1 the room key casts ONE shadow map: on / off, the map size per Settings → Performance tier (three-post.js's
        knob), the depth bias, and how far past the room's box the ortho frustum reaches (m) */
-    shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 1,   /* 2026-09-21: every frame — an every-other-frame depth pass shimmered on every thin edge (door frames, rails) as the walker moved */
+    /* sunStep (2026-11-20, THE STEPPED SUN): the shadow follows the clock's sun in steps of this many degrees and is held between
+       them (0 = every frame: every shadow edge crawls while you stand still) */
+    shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 1, sunStep: 0.25,   /* 2026-09-21: every frame — an every-other-frame depth pass shimmered on every thin edge (door frames, rails) as the walker moved */
         /* 2.2 THE HERO LIGHT (2026-09-21): the FIRST prop point light in a room whose key matches `keys` casts a cube shadow map
            (six faces — one per room, never per lamp); `shell.mood.hero: false` opts a room out; off on the phone / with shadows off */
         hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
