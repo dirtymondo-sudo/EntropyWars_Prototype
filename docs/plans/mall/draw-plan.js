@@ -47,11 +47,11 @@ const LAB = (cx, cy, t, o) => { const ls = [].concat(t); return ls.map((q, i) =>
     const nx = ox + 50 * s, ny = oy + 12 * s;
     b += R(nx, ny, 35 * s, 38.5 * s, C.cream, { sw: 3, s: '#1f8a4c' }) + R(nx + 35 * s, ny + 21 * s, 7 * s, 17.5 * s, C.coral, { s: '#1f8a4c', sw: 2 });
     b += R(nx + 14 * s, ny, 7 * s, 38.5 * s, C.aqua) + R(nx, ny + 14 * s, 35 * s, 7 * s, C.aqua) + CIR(nx + 17.5 * s, ny + 17.5 * s, 7 * s, C.aqua);
-    b += T(nx + 17.5 * s, ny + 5 * s, 'THE ONE BUILDING', { fs: 14, b: true, c: '#1f8a4c' }) + T(nx + 17.5 * s, ny + 5 * s + 16, 'outside = inside', { fs: 12 }) + T(nx + 17.5 * s, ny + 31 * s, '35 x 38.5 m · two floors', { fs: 12 }) + T(nx + 17.5 * s, ny + 31 * s + 16, '1,348 m² a floor · five doors', { fs: 12 });
+    b += T(nx + 17.5 * s, ny + 5 * s, 'THE ONE BUILDING', { fs: 14, b: true, c: '#1f8a4c' }) + T(nx + 17.5 * s, ny + 5 * s + 16, 'outside = inside', { fs: 12 }) + T(nx + 17.5 * s, ny + 31 * s, '35 x 38.5 m · two floors', { fs: 12 }) + T(nx + 17.5 * s, ny + 31 * s + 16, '1,348 m² a floor · four doors', { fs: 12 });
     b += T(ox, oy + 64 * s + 30, 'Today the inside is 3.4 times as long and 2.3 times as wide as the building it is said to be in: 7.8 times the floor.', { a: 'start', fs: 15, b: true });
     b += T(ox, oy + 64 * s + 52, 'Outside: pastel stucco, terracotta roofs, a glass cross vault and a dome, windows on four sides. Inside: a flat grey ceiling, no vault, no dome, eight portholes.', { a: 'start', fs: 13 });
     b += T(ox, oy + 64 * s + 72, 'Outside the door is on the west face. Inside the same door is in the south wall. The green box is the plan: one size for both.', { a: 'start', fs: 13 });
-    fs.writeFileSync(path.join(OUT, '01_mismatch.svg'), svg(96 * s + 80, oy + 64 * s + 95, b, 'THE BAYSIDE MALL · 1 · THE MISMATCH TODAY'));
+    fs.writeFileSync(path.join(OUT, '01_mismatch.svg'), svg(1190, oy + 64 * s + 95, b, 'THE BAYSIDE MALL · 1 · THE MISMATCH TODAY'));
 })();
 
 /* ── 02 · THE SITE ── */
