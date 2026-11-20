@@ -13658,3 +13658,52 @@ the Sink) and one on the east (off the Shoulder 2 -> 1); the plan's ledge edges 
   doors cut a track three squares wide through the house's corn to its open ground (`cut: [5, 6, 7]` on a seam, new in the tool). The house's district
   file is not edited. data.js rows by hand: the day table, `HQ_AREA_MARKERS` (the Fence Gap), `ZONE_FLORA.estate`, `ZONE_LOOKS.estate`. The plan's
   rock steps climb a notch up the top's own face (54,27 -> 54,26). Every door of the three rooms resolves (checked through load-data.js).
+
+## THE SEWERS' LABYRINTH — the top of the underground, built from the approved plan (2026-11-20, WORLD POLISH THREAD 10, owner side)
+
+mondo 11-20: "The entire underground needs to be like a labyrinth"; "we need victory road. labyrinth, height diffs, cliffs, drops waterfalls,
+underground horror like the descent movie"; on the plans: "Yes this is good, go ahead and start individual threads"; "No real underground
+waterfall for now" (no underground river: the falls are water running down a cliff, not a river). It is OK that the underground no longer sits
+exactly under the surface: the manholes and stairs still lead to the right places.
+
+- **THE ROOM:** `site_prebuilt_sewers_labyrinth` (part `labyrinth`), 8 x 6 plots (336 x 252 m), levels 144 (the Pumping Station, under the
+  street) down to 118 (the pits of the old mine's bottom level): 45.5 m of rise, every square the plan's (`docs/plans/world-polish/plans/ug-sewers.js`).
+- **THE TOOL:** `bake-labyrinth.js <room design>` (repo tooling, written for any underground district plan; the Sewers' design is the worked
+  example). `node bake-labyrinth.js docs/areas/sewers/districts/room.js [--dry-run]`. It builds the plan with draw-plan.js `build`, refuses a plan
+  that fails its own tool, and writes the room between `LABYRINTH-SEWERS-BEGIN / END` (just before the old SEWERS24 block) + its decal row.
+  How each plan row becomes a room row is in the tool's header (spaces, a plateau a run of equal level with ledges where the neighbour is lower,
+  `climb` rows for the ladders and found ways, `fall` rows for the waterfalls, deep sumps, a barrel vault a run of squares under one roof).
+- **THE ROOF RULE:** a square's roof is 5.25 m over the highest open square two steps away or nearer: so the foot of a ladder or a fall opens up
+  into a shaft as tall as the climb, and a brick curtain closes the step between two roof heights. The tallest is the 42 m shaft of the
+  Pumping Station's fall into the mine.
+- **THE WATER RULE (learned on the first bake):** a `stream` carves its bank (0.9 m) and its ends are round (half its width past its points):
+  a channel or splash pool beside a ledge cut the high ground down. Every water row here says `bank: 0` and stands its points half a width inside
+  its squares. After that, every dry square of the room bakes at its planned level (the check: `hqTerrainFeet` on all 2,536 open squares).
+- **THE ROOM DESIGN** (`docs/areas/sewers/districts/room.js`, the room's own frame, plan squares): names the 48 plots and sets the five districts
+  on the plan's branches, each entered at its top: W THE CULVERTS (11 plots, 137-144, the way in from the street), R THE RADIOACTIVE DRAIN (8,
+  130-136, the manhole up to the Power Station's yard), T THE RUNNING TUNNELS (11, 128-137, the D.U.M.B.'s door), H THE HOLDING CELLS (6,
+  127-130, the stair up to the precinct; grown from 2 plots on mondo's OK), O THE OLD WORKINGS (12, 120-126, the flooded mine, the way on to the
+  Tunnel-Way). A district with `channel` carries a waded channel down one square of every passage two squares wide; at a ledge it pours over a
+  weir (a concrete board and a sluice gate) as a small fall. The plan's district file stays untouched (one district S): this file sets them.
+- **THE WAYS OUT (the plan's five):** the Pumping Station's bulkhead (`pump`, up the shaft to the street), the manhole to the Power Station
+  (`sewers_power`; the plan's corner square had a passage behind it, so the door stands one square up, in the passage's dead-end wall), the
+  Holding Cells' stair (`cells_stair`), the Tunnel-Way (`ow_tunnelway`, the Chimney's west wall, level 123), the D.U.M.B. (`freight_line`, the Freight
+  Line's south wall, level 131). PILOT STAND-INS: the three city doors all lead to the street's `sewer` place, the Tunnel-Way's and the D.U.M.B.'s to
+  their rooms' old seams, one way: the other rooms do not point here until the switch.
+- **THE PILOT = THE CULVERTS (W)**, dressed: the kit (cage lamps on the walls every few squares with the brick round them lit, every fourth one dead
+  with a rat under it; culvert mouths where a channel starts at a wall, grates where it ends, the weirs and sluices; rubbish, cobwebs and stains in
+  the bends) + by hand: the manhole shaft over the bulkhead (ladder, daylight down it), the Pumping Station's pumps, boiler, gauge board and valves,
+  the Junction's four mains across its vault (the landmark), the Pump Room, the Cistern's compressor, three real bulbs, two name plates, three
+  residents (two sewer gators, a mole man). The other four districts are the bare skeleton (vaults, grime, ladders, falls, their floors) until
+  mondo has looked.
+- **THE SWITCH (after mondo's word):** retire `site_prebuilt_downtown_underworld` (DOOR_HQ.retired), point the city's ways (`pump`, the manholes,
+  `docks_sewer`, `stadium_sewers`, `well_garden`, `sewers_power`, the cells, `workings_oubliette`, the Freight Line) at the new room's dead ends,
+  dress T, H, O, R from their old district files (W T H O R.js stand in the old home frame: their pieces are carried over by hand, plot by plot).
+- **FITS (the lists read 11-20: MODEL_LIST.md, the catalogue; the old five district files' pieces are the proven set):** cage_lamp, bare_bulb,
+  manhole_ladder, light_shaft, culvert_mouth, drain_grate, meshy_round_street_drain, floor_drain, brick_arch, valve_wheel, gate_valve, waste_pipe,
+  centrifugal_pump, boiler, air_compressor, gauge_board, pd_lever, psx_pipe_1 (+ _corner, _short, _cross), psx_pipe_valve_holder_large_1/2,
+  psx_pipes_holder_1, utility_box, rat, psx_cobweb_1/2, floor_stain, psx_metal_barrel_mp_1/2/3, traffic_barrel, wet_floor_sign, warning_tape,
+  psx_brick_1 (rubble), tire_stack, psx_old_mattress_mp_1, skull, mushroom2, woods_glowcap, railway_lantern, cave_torch; races: sewer gator,
+  mole man. For R: radiation_drum, goo_tendril, the `sludge` liquid; for T: rail_section, buffer_stop, tunnel_signal, hand_car, mine_cart; for
+  H: cell_bars, steel_toilet, cot, booking desk; for O: beam_pump, head_wheel, mine_cart, ore_heap, anvil, skull_pile.
+- **NEEDS A MODEL:** none for the pilot. Later: a sluice gate as a model (drawn from boxes today), a weir board.
