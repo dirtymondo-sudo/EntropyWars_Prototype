@@ -428,7 +428,7 @@ they are measurements, not the job.
   lead to other districts and zones. The tunnel between chambers bends and climbs or falls; the Long Tunnel runs from Agartha to the Cavern
   and should go DOWN, so you know which way you are walking. The corridor stays narrow (3). It does not get wider; it gets a shape.
 
-### Thread 9: THE CAVERN (not started; after thread 7, same tool)
+### Thread 9: THE CAVERN (BUILDING 11-20 from the approved `plans/ug-cavern.js` + `ug-hollow-earth.js`: THE PILOT, the Cavern, is BUILT as its own room `site_prebuilt_hollow_earth_ug_cavern` by the new tool `bake-ug.js` and waits mondo's look; Hollow Earth after his word; notes areas-complexes.md "THE UNDERGROUND, ONE DISTRICT A ROOM")
 - **Zone:** The Cavern. Districts: The Cavern (K), Hollow Earth (H), Agartha (A).
 - **Rooms:** `site_prebuilt_hollow_earth_cavern` (24), `site_prebuilt_hollow_earth_ow_agartha` (15).
 - **It is NOT:** the tunnels (thread 7). Not the Sewers.
