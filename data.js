@@ -95188,59 +95188,59 @@ const HQ_CITY_RESIDENTS = {
         'P02-09-B2': [183.75, 148.75], 'P01-11-B2': [141.75, 229.25], 'P00-09-B2': [99.75, 145.25], 'P10-09-B2': [183.75, -19.25], 'P09-09-B1': [145.25, -36.75]
     },                                                    // building id → [x, z]: the square in front of a building without a walk-in door (bake: node scratch, see notes)
     list: [
+        /* THE BOARD (2026-11-20, mondo: "my board plus your suggestions should replace what is in the game today"): the city's people are the
+           units of his Relationship Web board, district by district (docs/plans/npc-places/PLACES.md). The one-of-a-kind and the people with a
+           day of their own stand here; everyone there is several of is a `people` row of HQ_SPAWN_RULES. */
         /* SOUTHSIDE */
         { race: 'priest', gender: 'male', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[22, 5, 'S', 'home'], [6, 20, 'W', 'b:P00-00-B1'], [20, 22, 'O', 'b:P00-01-B1']] },
         { race: 'priest', gender: 'female', home: 'P00-02-B2', homeName: 'Southside apartments', day: [[21, 5, 'S', 'home'], [5, 13, 'W', 'b:P00-00-B1'], [13, 17, 'W', 'b:P00-01-B1'], [17, 21, 'W', 'b:P00-00-B1']] },
-        { race: 'ki fighter', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[21, 4, 'S', 'home'], [5, 12, 'W', 'b:P03-01-B1'], [13, 17, 'W', 'b:P03-00-B1'], [17, 21, 'O', 'p:P01-02']] },
-        { race: 'swordfighter', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[23, 7, 'S', 'home'], [8, 17, 'W', 'b:P03-01-B1'], [18, 23, 'O', 'p:P01-01']] },
-        { race: 'gangster', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[5, 13, 'S', 'home'], [14, 20, 'W', 'b:P02-03-B1'], [21, 5, 'O', 'b:P08-04-B1']] },
-        { race: 'conspiracy theorist', home: 'P02-01-B1', homeName: 'Tenement', day: [[4, 12, 'S', 'home'], [13, 19, 'W', 'b:P00-06-B1'], [19, 23, 'O', 'b:P01-06-B1'], [23, 4, 'P', 'd:R']] },
-        { race: 'cult leader', home: 'P02-01-B1', homeName: 'Tenement', day: [[1, 9, 'S', 'home'], [10, 16, 'W', 'b:P00-01-B1'], [16, 21, 'O', 'p:P01-02'], [21, 1, 'P', 'p:P00-03']] },
-        { race: 'firefighter', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[22, 6, 'S', 'home'], [7, 19, 'W', 'b:P04-00-B1'], [19, 22, 'O', 'b:P03-00-B1']] },
-        /* FINANCIAL */
-        { race: 'halfdemon', home: 'P10-03-B1', homeName: 'Penthouse stair', day: [[6, 14, 'S', 'home'], [15, 18, 'O', 'b:P11-03-B1'], [19, 23, 'O', 'b:P08-01-B1'], [23, 5, 'O', 'b:P08-04-B1']] },
-        { race: 'politician', home: 'P08-00-B1', homeName: 'Luxury hotel', day: [[0, 7, 'S', 'home'], [8, 17, 'W', 'b:P06-00-B1'], [18, 24, 'O', 'b:P08-01-B1']] },
-        { race: 'goblin', home: 'P11-00-B2', homeName: 'Bankers’ terrace', day: [[22, 6, 'S', 'home'], [7, 19, 'W', 'b:P10-00-B1'], [19, 22, 'O', 'b:P11-01-B1']] },
-        { race: 'men in black', home: 'P10-01-B2', homeName: 'Bankers’ terrace', day: [[12, 18, 'S', 'home'], [19, 3, 'W', 'b:P10-02-B1'], [3, 11, 'P', 'd:F']] },
-        { race: 'spy', home: 'P11-02-B2', homeName: 'Bankers’ terrace', day: [[3, 11, 'S', 'home'], [12, 18, 'W', 'b:P10-02-B1'], [19, 23, 'O', 'b:P08-01-B1'], [23, 3, 'O', 'b:P08-04-B1']] },
-        { race: 'general', home: 'P09-03-B2', homeName: 'Bankers’ terrace', day: [[22, 5, 'S', 'home'], [6, 18, 'W', 'b:P06-03-B1'], [19, 22, 'O', 'b:P08-01-B1']] },
-        { race: 'time cop', home: 'P09-03-B2', homeName: 'Bankers’ terrace', day: [[2, 10, 'S', 'home'], [11, 1, 'W', 'b:P07-02-B1']] },
-        { race: 'honda civic', home: 'P08-02-B1', homeName: 'Taxi court', car: true, day: [[23, 7, 'S', 'home'], [7, 23, 'P', 'road:FE']] },
+        { race: 'televangelist', home: 'P00-02-B2', homeName: 'Southside apartments', day: [[0, 7, 'S', 'home'], [8, 14, 'W', 'b:P00-00-B1'], [15, 19, 'O', 'p:P01-02'], [20, 24, 'W', 'p:P10-05']] },   // the Church; his show in Entertainment by night
+        { race: 'ki fighter', gender: 'female', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[21, 4, 'S', 'home'], [5, 12, 'W', 'b:P03-01-B1'], [13, 17, 'W', 'b:P03-00-B1'], [17, 21, 'O', 'p:P01-02']] },   // the Dojo
+        { race: 'swordfighter', gender: 'male', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[23, 7, 'S', 'home'], [8, 17, 'W', 'b:P03-01-B1'], [18, 23, 'O', 'p:P01-01']] },   // the Dojo
+        { race: 'gangster', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[5, 13, 'S', 'home'], [14, 20, 'W', 'b:P02-03-B1'], [21, 5, 'O', 'b:P08-04-B1']] },   // the Pawnshop by day, the Casino's back room by night
+        { race: 'conspiracy theorist', home: 'P02-01-B1', homeName: 'Tenement', day: [[4, 12, 'S', 'home'], [13, 17, 'W', 'p:P06-01'], [18, 23, 'W', 'z:H05-00'], [23, 4, 'P', 'd:R']] },   // the protest on the Civic plaza, the broadcast from the Radio Mast
+        { race: 'cursed tv', home: 'p:P02-03', homeName: 'the Pawnshop court', outdoors: true, day: [[0, 1, 'S', 'home'], [1, 24, 'W', 'p:P02-03']] },
+        /* FINANCIAL · THE MEMBERS CLUB (P08-01, the old Lodge): the Illuminati and the Military Industrial Complex meet there by night */
+        { race: 'politician', gender: 'male', dist: 'C', home: 'P08-00-B1', homeName: 'Luxury hotel', day: [[0, 7, 'S', 'home'], [8, 17, 'W', 'b:P06-00-B1'], [18, 24, 'O', 'b:P08-01-B1']] },
+        { race: 'politician', gender: 'female', dist: 'C', home: 'P08-00-B1', homeName: 'Luxury hotel', day: [[1, 8, 'S', 'home'], [9, 18, 'W', 'b:P06-00-B1'], [19, 1, 'O', 'b:P08-01-B1']] },
+        { race: 'banker', home: 'P11-00-B2', homeName: 'Bankers’ terrace', day: [[23, 6, 'S', 'home'], [7, 17, 'W', 'b:P10-01-B1'], [18, 23, 'O', 'b:P08-01-B1']] },
+        { race: 'tech ceo', home: 'P10-03-B1', homeName: 'Penthouse stair', day: [[1, 8, 'S', 'home'], [9, 13, 'W', 'b:P11-00-B1'], [14, 17, 'W', 'b:P03-09-B1'], [19, 1, 'O', 'b:P08-01-B1']] },   // the Executive court, the Aerospace lab he owns, the club
+        { race: 'halfdemon', gender: 'male', home: 'P10-03-B1', homeName: 'Penthouse stair', day: [[6, 14, 'S', 'home'], [15, 18, 'O', 'p:P11-03'], [19, 5, 'O', 'b:P08-01-B1']] },
+        { race: 'halfdemon', gender: 'female', home: 'P10-03-B1', homeName: 'Penthouse stair', day: [[7, 15, 'S', 'home'], [16, 19, 'O', 'p:P08-03'], [20, 6, 'O', 'b:P08-01-B1']] },
+        { race: 'general', home: 'P09-03-B2', homeName: 'Bankers’ terrace', day: [[22, 5, 'S', 'home'], [6, 17, 'W', 'b:P06-03-B1'], [18, 22, 'O', 'b:P08-01-B1']] },   // the Military offices (Civic), the club
+        { race: 'reptilian', home: 'P09-03-B2', homeName: 'Bankers’ terrace', day: [[23, 6, 'S', 'home'], [8, 16, 'W', 'b:P06-00-B1'], [18, 23, 'O', 'b:P08-01-B1']] },   // City Hall, the club
+        { race: 'mad scientist', gender: 'male', home: 'P08-00-B1', homeName: 'Luxury hotel', day: [[2, 10, 'S', 'home'], [11, 18, 'W', 'b:P06-03-B1'], [19, 1, 'O', 'b:P08-01-B1']] },   // a member who comes in (his lab is the D.U.M.B.'s)
+        { race: 'marksman', gender: 'male', home: 'P10-01-B2', homeName: 'Bankers’ terrace', day: [[8, 16, 'S', 'home'], [17, 7, 'W', 'p:P08-01']] },    // the club's door, the night watch
+        { race: 'marksman', gender: 'female', home: 'P10-01-B2', homeName: 'Bankers’ terrace', day: [[20, 4, 'S', 'home'], [5, 19, 'W', 'p:P08-01']] },   // the day watch
+        { race: 'goblin', home: 'P11-00-B2', homeName: 'Bankers’ terrace', day: [[22, 6, 'S', 'home'], [7, 19, 'W', 'b:P10-00-B1'], [19, 22, 'O', 'p:P11-01']] },   // the Goblin Bank
+        { race: 'spy', home: 'P11-02-B2', homeName: 'Bankers’ terrace', day: [[3, 11, 'S', 'home'], [12, 18, 'W', 'b:P10-02-B1'], [19, 3, 'O', 'p:P10-03']] },   // the Intelligence office; by night under the Tech CEO's penthouse
+        { race: 'men in black', home: 'P10-01-B2', homeName: 'Bankers’ terrace', day: [[12, 18, 'S', 'home'], [19, 3, 'W', 'b:P10-02-B1'], [3, 11, 'P', 'd:FC']] },
+        { race: 'ghost', gender: 'male', v: 'b', dist: 'F', home: 'P08-00-B1', homeName: 'Luxury hotel', noBed: true, day: [[5, 22, 'S', 'home'], [22, 5, 'P', 'b:P08-00-B1']] },   // his board: a Ghost in each hotel, never out of it
+        { race: 'king kong', home: 'p:P11-03', homeName: 'the tallest roofs', outdoors: true, day: [[3, 8, 'S', 'home'], [9, 3, 'P', 'd:FH']] },   /* (mondo 11-20: "he climbs skyscrapers, he needs to be where the biggest buildings are": Financial's towers and the Superhero Tower) */
+        { race: 'honda civic', home: 'P08-02-B1', homeName: 'Taxi court', car: true, day: [[23, 7, 'S', 'home'], [7, 23, 'P', 'road:CFEUHBSIR']] },
         /* UNIVERSITY */
-        { race: 'professor', home: 'P03-04-B1', homeName: 'Faculty homes', day: [[23, 6, 'S', 'home'], [8, 16, 'W', 'b:P01-05-B1'], [16, 22, 'O', 'b:P01-06-B1']] },
-        { race: 'mad scientist', home: 'P03-04-B1', homeName: 'Faculty homes', day: [[8, 15, 'S', 'home'], [16, 7, 'W', 'b:P02-05-B1']] },
-        { race: 'reptilian', home: 'P03-04-B1', homeName: 'Faculty homes', day: [[21, 5, 'S', 'home'], [6, 14, 'W', 'b:P03-06-B1'], [14, 18, 'O', 'b:P02-07-B1'], [18, 21, 'W', 'b:P03-06-B1']] },
-        { race: 'telepath', home: 'P00-04-B1', homeName: 'Dorm', day: [[0, 8, 'S', 'home'], [9, 17, 'W', 'b:P03-05-B1'], [18, 24, 'O', 'b:P00-06-B1']] },
-        { race: 'zombie', home: 'P00-04-B1', homeName: 'Dorm', day: [[8, 18, 'S', 'home'], [19, 7, 'P', 'd:UR']] },
+        { race: 'professor', gender: 'male', home: 'P03-04-B1', homeName: 'Faculty homes', day: [[23, 6, 'S', 'home'], [8, 16, 'W', 'b:P01-05-B1'], [18, 22, 'O', 'b:P08-01-B1']] },   // a member of the club
+        { race: 'professor', gender: 'female', home: 'P03-04-B1', homeName: 'Faculty homes', day: [[22, 5, 'S', 'home'], [7, 15, 'W', 'b:P01-05-B1'], [15, 21, 'O', 'b:P01-06-B1']] },
+        { race: 'mad scientist', gender: 'female', v: 'b', dist: 'U', home: 'P03-04-B1', homeName: 'Faculty homes', day: [[8, 15, 'S', 'home'], [16, 7, 'W', 'b:P02-05-B1']] },
+        { race: 'chess piece', home: 'p:P00-05', homeName: 'the Campus green', outdoors: true, day: [[0, 1, 'S', 'home'], [1, 24, 'W', 'p:P00-05']] },
         /* HERO PLAZA */
-        { race: 'antihero', home: 'P04-06-B1', homeName: 'Apartment stair', day: [[7, 15, 'S', 'home'], [15, 19, 'O', 'b:P04-05-B1'], [20, 6, 'P', 'd:H']] },
+        { race: 'antihero', home: 'P04-06-B1', homeName: 'Apartment stair', day: [[7, 15, 'S', 'home'], [15, 19, 'O', 'b:P04-05-B1'], [20, 6, 'P', 'd:HEF']] },
         { race: 'sidekick', home: 'P07-04-B2', homeName: 'Apartments A', day: [[23, 7, 'S', 'home'], [8, 18, 'W', 'b:P05-04-B1'], [18, 23, 'O', 'b:P06-04-B1']] },
         { race: 'superhero', gender: 'male', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[0, 6, 'S', 'home'], [7, 11, 'W', 'b:P06-05-B1'], [11, 19, 'P', 'p:P05-05'], [19, 24, 'W', 'b:P06-04-B1']] },
-        /* mondo 11-16: "male and female separate and unique": her own day out of the same Tower (a PROPOSAL: she patrols by night) */
-        { race: 'superhero', gender: 'female', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[8, 15, 'S', 'home'], [16, 20, 'W', 'b:P06-05-B1'], [20, 7, 'P', 'd:H']] },
-        { race: 'eagleman', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[21, 4, 'S', 'home'], [5, 20, 'W', 'p:P05-05']] },
-        { race: 'nephilim', home: 'P07-04-B2', homeName: 'Apartments A', day: [[23, 7, 'S', 'home'], [9, 17, 'W', 'b:P06-05-B1'], [17, 22, 'O', 'b:P04-05-B1']] },
+        { race: 'superhero', gender: 'female', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[8, 15, 'S', 'home'], [16, 20, 'W', 'b:P06-05-B1'], [20, 7, 'P', 'd:HCS']] },
+        { race: 'eagleman', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[21, 4, 'S', 'home'], [5, 20, 'P', 'd:HCFS']] },   // his board: Civic, Financial, Hero Plaza, Sports
         { race: 'police officer', beat: 'CFEUHBSI', home: 'P07-04-B2', homeName: 'Apartments A', day: [[8, 15, 'S', 'home'], [16, 24, 'W', 'b:P04-02-B1'], [0, 7, 'P', 'd:CFEUHBSI']] },
         /* ENTERTAINMENT */
-        { race: 'clown', home: 'P10-07-B1', homeName: 'Crew house', day: [[2, 10, 'S', 'home'], [11, 14, 'W', 'b:P09-05-B1'], [14, 18, 'O', 'b:P11-06-B1'], [19, 1, 'W', 'b:P09-05-B1']] },
-        { race: 'mime', home: 'P10-07-B1', homeName: 'Crew house', day: [[1, 9, 'S', 'home'], [10, 17, 'W', 'p:P08-05'], [18, 24, 'W', 'b:P09-05-B1']] },
-        { race: 'ringmaster', home: 'P10-07-B1', homeName: 'Crew house', day: [[3, 11, 'S', 'home'], [12, 18, 'W', 'b:P10-06-B1'], [19, 2, 'W', 'b:P09-06-B1']] },
-        { race: 'bunny girl', home: 'P11-06-B2', homeName: 'Apartments', day: [[5, 13, 'S', 'home'], [14, 18, 'O', 'b:P11-06-B1'], [19, 4, 'W', 'b:P08-04-B1']] },
-        { race: 'popstar', home: 'P08-08-B1', homeName: 'Waterfront hotel', day: [[4, 12, 'S', 'home'], [13, 18, 'W', 'b:P11-04-B1'], [19, 1, 'W', 'b:P10-04-B1'], [1, 4, 'O', 'b:P09-06-B1']] },
+        { race: 'clown', gender: 'male', home: 'P10-07-B1', homeName: 'Crew house', day: [[4, 11, 'S', 'home'], [12, 20, 'W', 'b:P09-05-B1'], [21, 3, 'P', 'd:R']] },   // the Comedy theater; Southside's streets by night
+        { race: 'bunny girl', home: 'P11-06-B2', homeName: 'Apartments', day: [[5, 13, 'S', 'home'], [14, 18, 'O', 'b:P09-06-B1'], [19, 4, 'W', 'b:P08-04-B1']] },
+        { race: 'popstar', dist: 'N', home: 'z:H09-02', homeName: 'the Stilt House', outdoors: true, day: [[4, 12, 'S', 'home'], [13, 18, 'W', 'b:P11-04-B1'], [19, 1, 'W', 'b:P10-04-B1'], [1, 4, 'O', 'z:H09-02']] },   // lives in the Hills, works the Recording studio and the Concert hall
         /* SPORTS + CULTURE */
-        { race: 'quarterback', home: 'P06-09-B2', homeName: 'Sports residence', day: [[23, 6, 'S', 'home'], [7, 13, 'W', 'p:P05-09'], [14, 17, 'W', 'b:P06-10-B1'], [19, 23, 'O', 'p:P08-05']] },
-        { race: 'luchador', home: 'P07-08-B2', homeName: 'Sports residence', day: [[2, 10, 'S', 'home'], [11, 16, 'W', 'b:P06-10-B1'], [17, 1, 'W', 'b:P06-08-B1']] },
-        { race: 'juggernaut', home: 'P07-10-B2', homeName: 'Sports residence', day: [[22, 6, 'S', 'home'], [7, 15, 'W', 'b:P06-10-B1'], [18, 22, 'O', 'b:P06-08-B1']] },
-        { race: 'knight', home: 'P02-09-B2', homeName: 'Industrial house', day: [[22, 6, 'S', 'home'], [8, 18, 'W', 'b:P04-08-B1'], [18, 21, 'O', 'p:P04-09']] },
-        { race: 'king kong', home: 'p:P05-09', homeName: 'the stadium field', outdoors: true, day: [[22, 6, 'S', 'home'], [7, 21, 'P', 'spot:king kong']] },
+        { race: 'quarterback', home: 'P06-09-B2', homeName: 'Sports residence', day: [[23, 6, 'S', 'home'], [7, 13, 'W', 'p:P05-09'], [14, 17, 'W', 'b:P06-10-B1'], [19, 23, 'O', 'p:P07-08']] },
+        { race: 'luchador', home: 'P07-08-B2', homeName: 'Sports residence', day: [[2, 10, 'S', 'home'], [11, 16, 'W', 'b:P06-10-B1'], [17, 1, 'W', 'b:P06-08-B1']] },   // the Wrestling hall
         /* INDUSTRIAL */
-        { race: 'astronaut', home: 'P01-11-B2', homeName: 'Industrial house', day: [[22, 5, 'S', 'home'], [6, 18, 'W', 'b:P03-09-B1'], [18, 21, 'O', 'b:P03-10-B1']] },
-        { race: 'marksman', home: 'P00-09-B2', homeName: 'Industrial house', day: [[23, 6, 'S', 'home'], [7, 19, 'W', 'b:P00-08-B1'], [19, 22, 'O', 'b:P03-11-B1']] },
+        { race: 'astronaut', home: 'P01-11-B2', homeName: 'Industrial house', day: [[22, 5, 'S', 'home'], [6, 14, 'W', 'b:P03-09-B1'], [15, 20, 'W', 'p:P11-05']] },   // the Aerospace lab; the Film studio in the afternoon (his tie: the Cameraman)
         /* BAYSIDE */
-        { race: 'pirate', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[4, 12, 'S', 'home'], [13, 20, 'W', 'b:P09-08-B3'], [20, 3, 'O', 'beach']] },
-        { race: 'chef', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[21, 4, 'S', 'home'], [5, 15, 'W', 'b:P09-09-B1'], [15, 19, 'O', 'p:P08-09']] },
-        { race: 'hippie', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[0, 8, 'S', 'home'], [9, 17, 'W', 'p:P08-09'], [17, 23, 'O', 'beach']] },
-        { race: 'ghost', home: 'P08-08-B1', homeName: 'Waterfront hotel', noBed: true, day: [[5, 22, 'S', 'home'], [22, 5, 'P', 'b:P08-08-B1']] }   /* (mondo 11-17: it haunts the hotel and never leaves it: the two blocks meet, no hour out in the street) */,
+        { race: 'ghost', gender: 'male', home: 'P08-08-B1', homeName: 'Waterfront hotel', noBed: true, day: [[5, 22, 'S', 'home'], [22, 5, 'P', 'b:P08-08-B1']] }   /* (mondo 11-17: it haunts the hotel and never leaves it) */,
     ],
 };
 /* ══ THE NPC SPAWN SYSTEM (2026-11-16, mondo: "NPCs climb with player level. I want to get rid of that ... There should be set
@@ -95271,6 +95271,7 @@ const HQ_SPAWN_RULES = {
                 E: { name: 'Entertainment', base: 15 }, I: { name: 'Industrial', base: 15 }, H: { name: 'Hero Plaza', base: 15 },
                 F: { name: 'Financial', base: 25 }, S: { name: 'Sports + Culture', base: 25 },
                 C: { name: 'Civic Center', base: 35 }, U: { name: 'University', base: 35 }, R: { name: 'Southside', base: 35 },
+                N: { name: 'Disaster Hills', base: 15 },                 // (2026-11-20: the Hills' people; a PROPOSAL like every base)
             },
             /* DELIVERY 2 · THE VARIANTS (mondo: "cop b, cop c, cop d ... some NPCs there will be many of, like cops or chefs"; "chefs anywhere
                there is a restaurant"): MORE of a unit, over HQ_CITY_RESIDENTS.list's one each. One row = `n` more residents of `race`
@@ -95282,108 +95283,121 @@ const HQ_SPAWN_RULES = {
                          'P03-04-B1': 'Faculty homes', 'P00-04-B1': 'Dorm', 'P07-04-B2': 'Apartments A', 'P10-07-B1': 'Crew house', 'P11-06-B2': 'Apartments', 'P06-09-B2': 'Sports residence', 'P07-08-B2': 'Sports residence',
                          'P07-10-B2': 'Sports residence', 'P02-09-B2': 'Industrial house', 'P01-11-B2': 'Industrial house', 'P00-09-B2': 'Industrial house', 'P10-09-B2': 'Staff apartments' },
             people: [
-                /* the police: the desk (Civic Center), Bayside's staging + security, a beat in Hero Plaza */
-                { race: 'police officer', d: 'C', n: 3, beat: 'CFEUHBSI', work: 'b:P04-02-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
+                /* THE BOARD (2026-11-20): `g` = the gender his board names; `beat` = the districts the unit walks after its shift (its ROUTE);
+                   `out` on a row = it lives outdoors on that plot (the Hills). Counts are PROPOSALS. */
+                /* the police: every district but Southside (his board; "a cop works the whole city") */
+                { race: 'police officer', d: 'C', n: 5, beat: 'CFEUHBSI', work: 'b:P04-02-B1', homes: ['P07-04-B2', 'P09-03-B2'] },
                 { race: 'police officer', d: 'B', n: 2, beat: 'CFEUHBSI', work: 'p:P08-11', homes: ['P10-09-B2'] },
-                { race: 'police officer', d: 'H', n: 1, beat: 'CFEUHBSI', work: 'd:H', patrol: true, homes: ['P07-04-B2'] },
-                /* a chef wherever the plan has a kitchen: Community kitchen, Worker cafe, Student cafe, Coffee arcade, Restaurant court, the Food hall */
-                { race: 'chef', d: 'R', n: 1, work: 'p:P00-01', homes: ['P00-02-B2'] },
-                { race: 'chef', d: 'F', n: 1, work: 'p:P09-03', homes: ['P09-03-B2'] },
-                { race: 'chef', d: 'U', n: 1, work: 'b:P00-06-B1', homes: ['P00-04-B1'] },
-                { race: 'chef', d: 'H', n: 1, work: 'b:P04-05-B1', homes: ['P07-04-B2'] },
-                { race: 'chef', d: 'E', n: 1, work: 'p:P08-05', homes: ['P11-06-B2'] },
-                { race: 'chef', d: 'B', n: 1, work: 'b:P09-09-B1', homes: ['P10-09-B2'] },
-                { race: 'firefighter', d: 'C', n: 2, work: 'b:P04-00-B1', homes: ['P00-01-B2', 'P07-04-B2'] },
-                /* THE BAYSIDE LIST (mondo 11-17): the Homosapien is no race any more and lives nowhere; Bayside gets the units whose own rows name it */
-                { race: 'lifeguard', d: 'B', n: 2, h: [7, 11], work: 'beach', homes: ['P10-09-B2'] },
-                { race: 'skater', d: 'B', n: 2, h: [11, 15], work: 'f:dc:skate:pad', homes: ['P10-09-B2'] },
-                { race: 'florida man', d: 'B', n: 1, h: [15], work: 'beach', homes: ['P10-09-B2'] },
-                { race: 'gangster', d: 'R', n: 2, work: 'd:R', homes: ['P02-01-B1', 'P00-02-B2'] },
-                { race: 'zombie', d: 'U', n: 2, work: 'd:U', patrol: true, homes: ['P00-04-B1'] },
-                { race: 'hippie', d: 'B', n: 2, work: 'p:P08-09', homes: ['P10-09-B2'] },
-                /* one more of the uncommon ones, at the place the unit already works */
-                { race: 'conspiracy theorist', d: 'R', n: 1, work: 'd:R', homes: ['P02-01-B1'] },
-                { race: 'politician', d: 'C', n: 1, work: 'b:P06-00-B1', homes: ['P09-03-B2'] },
-                { race: 'goblin', d: 'F', n: 1, work: 'b:P10-00-B1', homes: ['P11-00-B2'] },
-                { race: 'professor', d: 'U', n: 1, work: 'b:P01-05-B1', homes: ['P03-04-B1'] },
-                { race: 'clown', d: 'E', n: 1, work: 'b:P09-05-B1', homes: ['P10-07-B1'] },
-                { race: 'mime', d: 'E', n: 1, work: 'p:P08-05', homes: ['P10-07-B1'] },
-                { race: 'bunny girl', d: 'E', n: 1, work: 'b:P08-04-B1', homes: ['P11-06-B2'] },
-                { race: 'quarterback', d: 'S', n: 1, work: 'p:P05-09', homes: ['P06-09-B2'] },
-                { race: 'luchador', d: 'S', n: 1, work: 'b:P06-08-B1', homes: ['P07-08-B2'] },
-                { race: 'marksman', d: 'I', n: 1, work: 'b:P00-08-B1', homes: ['P00-09-B2'] },
-                { race: 'pirate', d: 'B', n: 1, work: 'beach', homes: ['P10-09-B2'] },
-                /* THE 144 (mondo 11-17: "there should be at least 144 residents if there are 144 plots. like minimum"): every district holds 16 or more.
-                   Cops in every district but Southside, and a cop's `beat` is the whole city but Southside ("a cop works the whole city"). The city's
-                   races that stood nowhere live in the district their own row names. All counts and tiers are PROPOSALS */
-                { race: 'gangster', d: 'R', n: 2, work: 'd:R', homes: ['P00-01-B2', 'P00-02-B2', 'P02-01-B1'] },
-                { race: 'firefighter', d: 'R', n: 1, work: 'b:P04-00-B1', homes: ['P00-01-B2', 'P00-02-B2', 'P02-01-B1'] },
-                { race: 'cursed tv', d: 'R', n: 1, work: 'b:P02-03-B1', homes: ['P00-01-B2', 'P00-02-B2', 'P02-01-B1'] },
-                { race: 'banker', d: 'F', n: 1, work: 'b:P10-00-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
-                { race: 'banker', d: 'F', n: 1, work: 'b:P10-01-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
-                { race: 'tech ceo', d: 'F', n: 1, work: 'b:P11-00-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
-                { race: 'goblin', d: 'F', n: 1, work: 'b:P10-00-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
-                { race: 'politician', d: 'F', n: 1, work: 'b:P08-01-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
-                { race: 'spy', d: 'F', n: 1, work: 'b:P10-02-B1', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
+                { race: 'police officer', d: 'B', n: 1, beat: 'B', work: 'p:P10-09', homes: ['P10-09-B2'] },   // the Mall's Security office
+                { race: 'police officer', d: 'H', n: 3, beat: 'CFEUHBSI', work: 'd:H', patrol: true, homes: ['P07-04-B2'] },
                 { race: 'police officer', d: 'F', n: 2, work: 'd:F', patrol: true, beat: 'CFEUHBSI', homes: ['P11-00-B2', 'P10-01-B2', 'P09-03-B2'] },
-                { race: 'librarian', d: 'U', n: 2, work: 'b:P01-06-B1', homes: ['P03-04-B1', 'P00-04-B1'] },
-                { race: 'professor', d: 'U', n: 1, work: 'b:P01-05-B1', homes: ['P03-04-B1', 'P00-04-B1'] },
-                { race: 'telepath', d: 'U', n: 1, work: 'b:P03-05-B1', homes: ['P03-04-B1', 'P00-04-B1'] },
-                { race: 'zombie', d: 'U', n: 1, work: 'd:U', patrol: true, homes: ['P03-04-B1', 'P00-04-B1'] },
-                { race: 'chef', d: 'U', n: 1, work: 'b:P00-06-B1', homes: ['P03-04-B1', 'P00-04-B1'] },
                 { race: 'police officer', d: 'U', n: 2, work: 'd:U', patrol: true, beat: 'CFEUHBSI', homes: ['P03-04-B1', 'P00-04-B1'] },
-                { race: 'delivery boy', d: 'H', n: 2, work: 'b:P07-07-B1', homes: ['P07-04-B2'] },
-                { race: 'super sentai', d: 'H', n: 1, work: 'b:P06-05-B1', homes: ['P07-04-B2'] },
-                { race: 'ninja', d: 'H', n: 1, work: 'd:H', patrol: true, h: [19], homes: ['P07-04-B2'] },
-                { race: 'chef', d: 'H', n: 1, work: 'b:P04-05-B1', homes: ['P07-04-B2'] },
-                { race: 'police officer', d: 'H', n: 2, work: 'd:H', patrol: true, beat: 'CFEUHBSI', homes: ['P07-04-B2'] },
-                { race: 'magician', d: 'E', n: 2, work: 'b:P09-06-B1', homes: ['P10-07-B1', 'P11-06-B2'] },
-                { race: 'gambler', d: 'E', n: 2, work: 'b:P08-04-B1', homes: ['P10-07-B1', 'P11-06-B2'] },   // 2026-11-19 THE NEW RACES 4: at the casino tables
-                { race: 'hacker', d: 'E', n: 1, work: 'p:P08-06', homes: ['P11-06-B2'] },   // 2026-11-19 THE NEW RACES 4
-                { race: 'influencer', d: 'E', n: 2, work: 'p:P08-06', homes: ['P10-07-B1', 'P11-06-B2'] },
-                { race: 'bunny girl', d: 'E', n: 1, work: 'b:P08-04-B1', homes: ['P10-07-B1', 'P11-06-B2'] },
-                { race: 'clown', d: 'E', n: 1, work: 'b:P09-05-B1', homes: ['P10-07-B1', 'P11-06-B2'] },
-                { race: 'mime', d: 'E', n: 1, work: 'p:P08-05', homes: ['P10-07-B1', 'P11-06-B2'] },
-                { race: 'chef', d: 'E', n: 1, work: 'p:P08-05', homes: ['P10-07-B1', 'P11-06-B2'] },
                 { race: 'police officer', d: 'E', n: 2, work: 'd:E', patrol: true, beat: 'CFEUHBSI', homes: ['P10-07-B1', 'P11-06-B2'] },
-                { race: 'police officer', d: 'C', n: 3, work: 'b:P04-02-B1', beat: 'CFEUHBSI', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
-                { race: 'firefighter', d: 'C', n: 3, work: 'b:P04-00-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
-                { race: 'politician', d: 'C', n: 2, work: 'b:P06-00-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
-                { race: 'time cop', d: 'C', n: 1, work: 'b:P07-02-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
-                { race: 'chef', d: 'C', n: 1, work: 'p:P06-01', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
+                { race: 'police officer', d: 'S', n: 2, work: 'd:S', patrol: true, beat: 'CFEUHBSI', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
+                { race: 'police officer', d: 'I', n: 2, work: 'd:I', patrol: true, beat: 'CFEUHBSI', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
+                { race: 'police officer', d: 'N', n: 1, work: 'z:H07-02', patrol: true, beat: 'E', homes: ['P11-06-B2'] },   // the Canyon Road
+                /* a chef wherever there is a restaurant (his rule of 11-16) */
+                { race: 'chef', d: 'R', n: 1, work: 'p:P00-01', homes: ['P00-02-B2'] },             // Community kitchen
+                { race: 'chef', d: 'F', n: 1, work: 'p:P09-03', homes: ['P09-03-B2'] },             // Worker cafe
+                { race: 'chef', d: 'F', n: 1, work: 'p:P09-01', homes: ['P09-03-B2'] },             // Caterer yard (the club's kitchen)
+                { race: 'chef', d: 'U', n: 1, work: 'b:P00-06-B1', homes: ['P00-04-B1'] },          // Student cafe
+                { race: 'chef', d: 'H', n: 1, work: 'b:P04-05-B1', homes: ['P07-04-B2'] },          // Coffee arcade
+                { race: 'chef', d: 'E', n: 1, work: 'p:P08-05', homes: ['P11-06-B2'] },             // Restaurant court
+                { race: 'chef', d: 'E', n: 1, work: 'p:P09-07', homes: ['P10-07-B1'] },             // Kitchen lane
+                { race: 'chef', d: 'B', n: 2, work: 'b:P09-09-B1', homes: ['P10-09-B2'] },          // Food hall
+                { race: 'chef', d: 'S', n: 1, work: 'p:P05-11', homes: ['P06-09-B2'] },             // Vendor stalls
+                /* Civic Center */
+                { race: 'firefighter', d: 'C', n: 4, work: 'b:P04-00-B1', beat: 'CFEUHBSIR', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },   // the Fire Station; out to whichever district
+                { race: 'firefighter', d: 'N', n: 2, work: 'z:H01-00', beat: 'C', homes: ['P07-04-B2'] },                                        // the Fire Road + the Burn (the Hills' crew)
+                { race: 'hippie', g: 'male', d: 'C', n: 1, work: 'p:P06-01', beat: 'B', homes: ['P10-09-B2'] },      // the protest on the Civic plaza; Bayside after
+                { race: 'hippie', g: 'female', d: 'C', n: 1, work: 'p:P06-01', beat: 'B', homes: ['P10-09-B2'] },
+                { race: 'cameraman', d: 'C', n: 1, work: 'p:P06-01', beat: 'H', homes: ['P07-04-B2'] },             // every Cameraman goes back to the News office (Hero Plaza)
+                { race: 'librarian', d: 'C', n: 1, work: 'p:P05-03', homes: ['P07-04-B2'] },                         // Public library
+                { race: 'janitor', d: 'C', n: 1, work: 'b:P06-00-B1', homes: ['P07-04-B2', 'P00-01-B2'] },           // City Hall
+                /* Financial */
+                { race: 'gambler', d: 'F', n: 1, work: 'b:P10-01-B1', beat: 'E', homes: ['P10-01-B2'] },             // at the Bank (he owes the Banker), then the Casino
+                { race: 'banker', d: 'F', n: 1, work: 'b:P10-00-B1', homes: ['P11-00-B2', 'P10-01-B2'] },
+                { race: 'goblin', d: 'F', n: 2, work: 'b:P10-00-B1', homes: ['P11-00-B2', 'P10-01-B2'] },            // the Goblin Bank
+                { race: 'mechanic', d: 'F', n: 1, work: 'p:P11-02', homes: ['P09-03-B2'] },                          // Service garage
+                { race: 'eagleman', d: 'F', n: 1, work: 'd:F', patrol: true, beat: 'CHS', homes: ['P09-03-B2'] },
+                /* Entertainment */
+                { race: 'gambler', d: 'E', n: 2, work: 'b:P08-04-B1', homes: ['P10-07-B1', 'P11-06-B2'] },           // the Casino's tables
+                { race: 'magician', d: 'E', n: 2, work: 'b:P09-06-B1', homes: ['P10-07-B1', 'P11-06-B2'] },          // the Cabaret
+                { race: 'mime', g: 'female', d: 'E', n: 1, work: 'p:P08-05', beat: 'B', homes: ['P10-07-B1'] },
+                { race: 'bunny girl', d: 'E', n: 1, work: 'b:P08-04-B1', homes: ['P11-06-B2'] },
+                { race: 'skater', g: 'male', d: 'E', n: 1, work: 'p:P08-06', beat: 'B', homes: ['P11-06-B2'] },      // every Skater ends the day at the skate park (Bayside)
+                { race: 'skater', g: 'female', d: 'E', n: 1, work: 'p:P08-07', beat: 'B', homes: ['P11-06-B2'] },
+                { race: 'cameraman', d: 'E', n: 1, work: 'p:P11-05', beat: 'H', homes: ['P10-07-B1'] },              // the Film studio
+                { race: 'streamer', g: 'female', d: 'E', n: 1, work: 'b:P11-06-B1', homes: ['P11-06-B2'] },          // the Arcade
+                { race: 'streamer', g: 'male', d: 'E', n: 1, work: 'b:P11-06-B1', homes: ['P11-06-B2'] },
+                /* University */
+                { race: 'librarian', d: 'U', n: 2, work: 'b:P01-06-B1', homes: ['P03-04-B1', 'P00-04-B1'] },
+                { race: 'skater', g: 'male', d: 'U', n: 1, work: 'p:P00-05', beat: 'B', homes: ['P00-04-B1'] },
+                { race: 'skater', g: 'female', d: 'U', n: 1, work: 'p:P00-07', beat: 'B', homes: ['P00-04-B1'] },
+                { race: 'hippie', g: 'male', d: 'U', n: 2, work: 'p:P00-05', beat: 'C', homes: ['P00-04-B1'] },
+                { race: 'janitor', d: 'U', n: 1, work: 'b:P01-05-B1', homes: ['P00-04-B1'] },
+                { race: 'hacker', d: 'U', n: 2, work: 'p:P00-04', beat: 'E', homes: ['P00-04-B1'] },                 // the Dorm court; the Arcade after
+                { race: 'streamer', g: 'female', d: 'U', n: 1, work: 'p:P00-04', beat: 'E', homes: ['P00-04-B1'] },
+                { race: 'streamer', g: 'male', d: 'U', n: 1, work: 'p:P00-04', beat: 'E', homes: ['P00-04-B1'] },
+                { race: 'professor', g: 'male', d: 'U', n: 1, work: 'b:P01-05-B1', homes: ['P03-04-B1'] },
+                { race: 'professor', g: 'female', d: 'U', n: 1, work: 'b:P02-05-B1', homes: ['P03-04-B1'] },
+                /* Hero Plaza */
+                { race: 'delivery boy', d: 'H', n: 4, work: 'b:P07-07-B1', beat: 'CFEUHBSIR', homes: ['P07-04-B2'] },   // the Delivery yard; EVERY district (mondo's example)
+                { race: 'cameraman', d: 'H', n: 2, work: 'p:P04-04', beat: 'CFEBS', homes: ['P07-04-B2'] },             // the News office
+                /* Bayside */
+                { race: 'lifeguard', g: 'male', d: 'B', n: 1, h: [7], work: 'beach', homes: ['P10-09-B2'] },
+                { race: 'lifeguard', g: 'female', d: 'B', n: 1, h: [11], work: 'beach', homes: ['P10-09-B2'] },
+                { race: 'skater', g: 'male', d: 'B', n: 1, h: [11], work: 'f:dc:skate:pad', homes: ['P10-09-B2'] },
+                { race: 'skater', g: 'female', d: 'B', n: 1, h: [15], work: 'f:dc:skate:pad', homes: ['P10-09-B2'] },
+                { race: 'florida man', d: 'B', n: 1, h: [15], work: 'beach', homes: ['P10-09-B2'] },
+                { race: 'hippie', g: 'male', d: 'B', n: 1, work: 'p:P08-09', homes: ['P10-09-B2'] },
+                { race: 'hippie', g: 'female', d: 'B', n: 1, work: 'beach', homes: ['P10-09-B2'] },
+                { race: 'cameraman', d: 'B', n: 1, work: 'p:P11-08', beat: 'H', homes: ['P10-09-B2'] },
+                { race: 'influencer', d: 'B', n: 2, work: 'p:P10-10', beat: 'B', homes: ['P10-09-B2'] },                // the Mall concourse
+                { race: 'mime', g: 'male', d: 'B', n: 1, work: 'p:P08-09', homes: ['P10-09-B2'] },
+                { race: 'mime', g: 'female', d: 'B', n: 1, work: 'p:P11-11', beat: 'E', homes: ['P10-09-B2'] },
+                /* Southside (no police: his board) */
+                { race: 'gangster', d: 'R', n: 4, work: 'd:R', beat: 'EI', homes: ['P00-01-B2', 'P00-02-B2', 'P02-01-B1'] },   // the Casino's back door and Industrial's Dock edge after dark
+                { race: 'skater', g: 'male', d: 'R', n: 1, work: 'p:P03-03', beat: 'B', homes: ['P00-02-B2'] },
+                { race: 'skater', g: 'female', d: 'R', n: 1, work: 'p:P00-03', beat: 'B', homes: ['P00-02-B2'] },
+                { race: 'gambler', d: 'R', n: 1, work: 'p:P01-02', beat: 'E', homes: ['P02-01-B1'] },
+                { race: 'mechanic', d: 'R', n: 1, work: 'p:P02-02', homes: ['P02-01-B1'] },                                      // Repair shops
+                { race: 'conspiracy theorist', d: 'R', n: 1, work: 'd:R', beat: 'C', homes: ['P02-01-B1'] },
+                /* Sports + Culture */
                 { race: 'referee', d: 'S', n: 2, work: 'p:P04-10', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
                 { race: 'quarterback', d: 'S', n: 2, work: 'p:P05-09', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
                 { race: 'luchador', d: 'S', n: 2, work: 'b:P06-08-B1', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
-                { race: 'chef', d: 'S', n: 1, work: 'p:P05-11', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
-                { race: 'firefighter', d: 'S', n: 1, work: 'd:S', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
-                { race: 'delivery boy', d: 'S', n: 1, work: 'd:S', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
-                { race: 'police officer', d: 'S', n: 2, work: 'd:S', patrol: true, beat: 'CFEUHBSI', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
-                { race: 'marksman', d: 'I', n: 2, work: 'b:P00-08-B1', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
-                { race: 'firefighter', d: 'I', n: 2, work: 'd:I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
-                { race: 'gangster', d: 'I', n: 2, work: 'd:I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
-                { race: 'astronaut', d: 'I', n: 1, work: 'b:P03-09-B1', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
-                { race: 'knight', d: 'I', n: 1, work: 'b:P04-08-B1', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
-                { race: 'chef', d: 'I', n: 1, work: 'd:I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
-                { race: 'delivery boy', d: 'I', n: 1, work: 'b:P01-09-B1', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
-                { race: 'police officer', d: 'I', n: 2, work: 'd:I', patrol: true, beat: 'CFEUHBSI', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
-                /* THE NEW RACES 3 (2026-11-19): the Cameraman shoots Hero Plaza and the Entertainment strip, the Mechanic works the Industrial
-                   yards, the Janitor cleans the University and City Hall, the Trucker hauls through Industrial. Counts are PROPOSALS */
-                { race: 'cameraman', d: 'H', n: 1, work: 'd:H', homes: ['P07-04-B2'] },
-                { race: 'cameraman', d: 'E', n: 1, work: 'p:P08-06', homes: ['P10-07-B1', 'P11-06-B2'] },
-                { race: 'mechanic', d: 'I', n: 2, work: 'd:I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
-                { race: 'janitor', d: 'U', n: 1, work: 'b:P01-05-B1', homes: ['P03-04-B1', 'P00-04-B1'] },
-                { race: 'janitor', d: 'C', n: 1, work: 'b:P06-00-B1', homes: ['P07-04-B2', 'P00-01-B2', 'P09-03-B2'] },
-                { race: 'trucker', d: 'I', n: 1, work: 'd:I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },
+                { race: 'eagleman', d: 'S', n: 1, work: 'd:S', patrol: true, beat: 'CFH', homes: ['P07-10-B2'] },
+                { race: 'gambler', d: 'S', n: 1, work: 'p:P07-10', beat: 'E', homes: ['P07-08-B2'] },                            // the Event square (he bets on the Referee's games)
+                { race: 'cameraman', d: 'S', n: 1, work: 'p:P05-09', beat: 'H', homes: ['P07-08-B2'] },
+                { race: 'influencer', d: 'S', n: 1, work: 'p:P07-10', beat: 'B', homes: ['P07-10-B2'] },
+                { race: 'janitor', d: 'S', n: 1, work: 'p:P05-10', homes: ['P06-09-B2'] },                                       // Locker rooms
+                /* Industrial */
+                { race: 'mechanic', d: 'I', n: 3, work: 'p:P03-08', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },           // Machine shop
+                { race: 'janitor', d: 'I', n: 2, work: 'p:P01-08', homes: ['P02-09-B2'] },
+                { race: 'trucker', d: 'I', n: 3, work: 'b:P00-08-B1', beat: 'I', homes: ['P02-09-B2', 'P01-11-B2', 'P00-09-B2'] },   // the Freight gate
+                { race: 'astronaut', d: 'I', n: 1, work: 'b:P03-09-B1', homes: ['P02-09-B2'] },
+                { race: 'delivery boy', d: 'I', n: 2, work: 'b:P01-09-B1', beat: 'CFEUHBSIR', homes: ['P01-11-B2', 'P00-09-B2'] },   // the Loading office
+                { race: 'firefighter', d: 'I', n: 1, work: 'p:P02-08', beat: 'I', homes: ['P00-09-B2'] },                          // the Power station's watch
+                /* The Disaster Hills (district N: they live out on their plot) */
+                { race: 'skater', g: 'male', d: 'N', n: 1, work: 'z:H04-01', beat: 'B', homes: ['P11-06-B2'] },                  // the Old Quarry
+                { race: 'skater', g: 'female', d: 'N', n: 1, work: 'z:H01-01', beat: 'B', homes: ['P11-06-B2'] },                // the Reservoir
+                { race: 'hippie', g: 'male', d: 'N', n: 1, work: 'z:H06-02', beat: 'B', homes: ['P10-07-B1'] },                             // the Hikers' Lot
+                { race: 'hippie', g: 'female', d: 'N', n: 1, work: 'z:H04-00', beat: 'B', homes: ['P10-07-B1'] },                           // the Lookout Rock
+                { race: 'gambler', d: 'N', n: 1, work: 'z:H04-02', beat: 'E', homes: ['P11-06-B2'] },                            // the Hill House
+                { race: 'cameraman', d: 'N', n: 1, work: 'z:H07-01', beat: 'H', homes: ['P10-07-B1'] },                          // the Sign
+                { race: 'influencer', d: 'N', n: 2, work: 'z:H08-01', beat: 'B', homes: ['P11-06-B2'] },                         // the Sign
             ],
             /* a race's tier in this room (a race not named = defaultTier); `race|gender` names one gender */
             races: {
-                'cameraman': 'common', 'mechanic': 'common', 'janitor': 'common', 'trucker': 'uncommon',   // THE NEW RACES 3 (2026-11-19)
-                'police officer': 'common', 'chef': 'common', 'lifeguard': 'common', 'skater': 'common', 'delivery boy': 'common', 'gangster': 'common', 'zombie': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
-                'priest': 'uncommon', 'conspiracy theorist': 'uncommon', 'goblin': 'uncommon', 'spy': 'uncommon', 'professor': 'uncommon', 'telepath': 'uncommon', 'clown': 'uncommon', 'mime': 'uncommon',
-                'bunny girl': 'uncommon', 'quarterback': 'uncommon', 'luchador': 'uncommon', 'marksman': 'uncommon', 'pirate': 'uncommon', 'politician': 'uncommon', 'florida man': 'uncommon', 'banker': 'uncommon', 'magician': 'uncommon', 'influencer': 'uncommon', 'librarian': 'uncommon', 'referee': 'uncommon',
-                'ki fighter': 'rare', 'swordfighter': 'rare', 'men in black': 'rare', 'halfdemon': 'rare', 'mad scientist': 'rare', 'reptilian': 'rare', 'ringmaster': 'rare', 'juggernaut': 'rare',
-                'knight': 'rare', 'astronaut': 'rare', 'popstar': 'rare', 'eagleman': 'rare', 'nephilim': 'rare', 'time cop': 'rare', 'tech ceo': 'rare', 'ninja': 'rare', 'super sentai': 'rare', 'cursed tv': 'rare',
-                'cult leader': 'veryRare', 'general': 'veryRare', 'ghost': 'veryRare',
+                'cameraman': 'common', 'mechanic': 'common', 'janitor': 'common', 'trucker': 'uncommon',
+                'police officer': 'common', 'chef': 'common', 'lifeguard': 'common', 'skater': 'common', 'delivery boy': 'common', 'gangster': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
+                'gambler': 'common', 'streamer': 'common', 'hacker': 'uncommon',
+                'priest': 'uncommon', 'conspiracy theorist': 'uncommon', 'goblin': 'uncommon', 'spy': 'uncommon', 'professor': 'uncommon', 'clown': 'uncommon', 'mime': 'uncommon', 'televangelist': 'uncommon',
+                'bunny girl': 'uncommon', 'quarterback': 'uncommon', 'luchador': 'uncommon', 'marksman': 'uncommon', 'politician': 'uncommon', 'florida man': 'uncommon', 'banker': 'uncommon', 'magician': 'uncommon', 'influencer': 'uncommon', 'librarian': 'uncommon', 'referee': 'uncommon',
+                'ki fighter': 'rare', 'swordfighter': 'rare', 'men in black': 'rare', 'halfdemon': 'rare', 'mad scientist': 'rare', 'reptilian': 'rare',
+                'astronaut': 'rare', 'popstar': 'rare', 'eagleman': 'rare', 'tech ceo': 'rare', 'cursed tv': 'rare', 'chess piece': 'rare',
+                'general': 'veryRare', 'ghost': 'veryRare',
                 'sidekick': { tier: 'unique', lvl: 45 }, 'antihero': { tier: 'unique', lvl: 48 }, 'superhero': { tier: 'unique', lvl: 50 }, 'king kong': { tier: 'unique', lvl: 50 },
             },
         },
@@ -95429,7 +95443,7 @@ function hqSpawnExpand() {
         for (let i = 0; i < (row.n | 0); i++) {
             const idx = count[row.race] = (count[row.race] || 0) + 1;
             const h = Array.isArray(row.h) ? row.h[i % row.h.length] : R.shifts[k++ % R.shifts.length], home = row.homes[i % row.homes.length];   // (`h`: this row's own shift starts, one a variant; else the next of `shifts`)
-            C.list.push({ race: row.race, v: String.fromCharCode(96 + Math.min(26, idx)), dist: row.d, home, homeName: (R.homeNames && R.homeNames[home]) || home,
+            C.list.push({ race: row.race, gender: row.g || undefined, v: String.fromCharCode(96 + Math.min(26, idx)), dist: row.d, home, homeName: (R.homeNames && R.homeNames[home]) || home,   // (`g`: the gender the board names, 2026-11-20)
                           beat: row.beat || undefined,
                           day: [[H(h + 16), to(h + 24), 'S', 'home'], [H(h), to(h + 9), row.patrol ? 'P' : 'W', row.work], [H(h + 10), to(h + 15), row.beat ? 'P' : 'O', 'd:' + (row.beat || row.d)]] });   // (`beat`: district letters this unit patrols after its shift, in place of time out in its own district: the cops)
             made++;
@@ -96050,11 +96064,18 @@ function hqCityPts(G, cells, from, to) {
     const cum = [0]; for (let p = 1; p < pts.length; p++) cum.push(cum[p - 1] + Math.hypot(pts[p].x - pts[p - 1].x, pts[p].z - pts[p - 1].z));
     return { pts: pts.map(p => ({ x: p.x, z: p.z })), cum, len: cum[cum.length - 1] };
 }
+/* a room's row on the world map (HQ_ZONE_MAP): { room, ox, oz, cols, rows, plots? } or null. ox / oz = the room metres of plot 0,0's corner. */
+function hqZoneMapRoom(roomId) {
+    if (typeof HQ_ZONE_MAP === 'undefined' || !HQ_ZONE_MAP.zones) return null;
+    const C = hqZoneMapRoom._c || (hqZoneMapRoom._c = {});
+    if (!(roomId in C)) { C[roomId] = null; for (const k in HQ_ZONE_MAP.zones) { const r = (HQ_ZONE_MAP.zones[k].rooms || []).find(q => q.room === roomId); if (r) { C[roomId] = r; break; } } }
+    return C[roomId];
+}
 /* a resident's place → what it is in the room: { kind: 'in' | 'inside' | 'area' | 'spot', at: square, x, z, face, cells?, bld?, car? } */
 function hqResidentPlace(G, r, place) {
     const R = HQ_CITY_RESIDENTS, room = DOOR_HQ.rooms[G.roomId] || {}, sq = k => ({ x: G.x0 + (k % G.nx + 0.5) * G.res, z: G.z0 + (Math.floor(k / G.nx) + 0.5) * G.res });
-    if (place === 'home') place = /^p:|^d:|^beach/.test(r.home) ? r.home : 'b:' + r.home;
-    const m = /^(b|p|d|road|spot|f):(.+)$/.exec(place) || (place === 'beach' ? ['', 'beach', ''] : null); if (!m) return null;
+    if (place === 'home') place = /^p:|^d:|^z:|^beach/.test(r.home) ? r.home : 'b:' + r.home;
+    const m = /^(b|p|d|road|spot|f|z):(.+)$/.exec(place) || (place === 'beach' ? ['', 'beach', ''] : null); if (!m) return null;
     const plotSquares = (px, py) => { const out = [], ox = Math.round((-252 - G.x0) / G.res), oz = Math.round((-252 - G.z0) / G.res); for (let j = 0; j < 12; j++) for (let i = 0; i < 12; i++) { const k = (oz + py * 12 + j) * G.nx + ox + px * 12 + i; if (k >= 0 && k < G.N) out.push(k); } return out; };
     const area = (cells, car) => { const c = cells.filter(k => G.comp[k] && G.bid[k] < 0 && (!car || G.walk[k] === 2)); if (!c.length) return null; const at = c[Math.floor(c.length / 2)], p = sq(at); return { kind: 'area', at, x: p.x, z: p.z, cells: c, car: !!car }; };
     if (m[1] === 'b') {
@@ -96089,6 +96110,8 @@ function hqResidentPlace(G, r, place) {
     if (m[1] === 'd' || m[1] === 'road') { let c = []; m[2].split('').forEach(L => { const o = R.districts[L]; if (o) for (let py = 0; py < 4; py++) for (let px = 0; px < 4; px++) c = c.concat(plotSquares(o[0] * 4 + px, o[1] * 4 + py)); }); return area(c, m[1] === 'road'); }
     if (m[1] === 'beach') { const b = R.beach, c = []; for (let k = 0; k < G.N; k++) { const p = sq(k); if (p.x >= b[0] && p.x <= b[2] && p.z >= b[1] && p.z <= b[3]) c.push(k); } return area(c); }
     if (m[1] === 'f') { const f = ((room.terrain && room.terrain.features) || []).find(q => q && q.id === m[2] && q.w && q.d); if (!f) return null; const c = []; for (let k = 0; k < G.N; k++) { const p = sq(k); if (Math.abs(p.x - f.x) <= f.w / 2 && Math.abs(p.z - f.z) <= f.d / 2) c.push(k); } return area(c); }   // 'f:<feature id>': the walked squares of one terrain feature (the skate park's pad)
+    /* 'z:<plot id>' (2026-11-20, the Hills' people): the walked squares of ANY plot of the room's map, the Hills' H plots included (HQ_ZONE_MAP: [id, name, district, col, row]) */
+    if (m[1] === 'z') { const zr = hqZoneMapRoom(G.roomId), pl = zr && (zr.plots || []).find(q => q[0] === m[2]); if (!pl) return null; const x0 = zr.ox + pl[3] * 42, z0 = zr.oz + pl[4] * 42, c = []; for (let k = 0; k < G.N; k++) { const p = sq(k); if (p.x >= x0 && p.x < x0 + 42 && p.z >= z0 && p.z < z0 + 42) c.push(k); } return area(c); }
     if (m[1] === 'spot') { const sp = (room.npcSpots || []).find(s => s && s.race === m[2] && s.x != null); if (!sp) return null; const at = hqCityNearest(G, sp.x, sp.z || 0); return at < 0 ? null : { kind: 'spot', at, x: sp.x, z: sp.z || 0, face: sp.face || 0, spot: sp }; }
     return null;
 }
@@ -97189,6 +97212,233 @@ HQ_AREA_ENCOUNTERS.site_prebuilt_area51_ow_town = { list: HQ_AREA_ENCOUNTERS.sit
 HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_palace = HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_keep;   // CAMELOT CASTLE, ONE STACKED BUILDING (2026-11-15): the castle meets the old Keep's units
 HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_kingdom = { list: HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_ward.list.concat([{ race: 'fairy', w: 3 }, { race: 'unicorn', w: 3 }, { race: 'gnome', w: 3 }, { race: 'mushroom girl', w: 3 }]) };   // THE FAIRY FOLK (mondo 2026-11-16: "add fairy, unicorn, gnome, and mushroom girl to Camelot"): the ward's units + the four, each at the middle weight   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the kingdom meets the ward's own units too
 ['site_prebuilt_camelot_ow_pines', 'site_prebuilt_camelot_ow_garden', 'site_prebuilt_camelot_ow_fairy', 'site_prebuilt_camelot_ow_forest'].forEach(id => { HQ_AREA_ENCOUNTERS[id] = HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_kingdom; });   // THE ONE WORLD MOVE (2026-11-17): the four woods were the kingdom's plots; they meet the kingdom's units as before
+/* ══ THE NPC PLACES (2026-11-20, mondo: "use this [his Relationship Web board] as the basis for spawn/encounter locations ... they should
+   still all have routes they do, even if it's just between 1 or 2 districts"; "my board plus your suggestions should replace what is in the
+   game today") ══ docs/plans/npc-places/PLACES.md is the list he approved. Disaster City's people are HQ_CITY_RESIDENTS + HQ_SPAWN_RULES
+   `people` (they have clocked days). EVERY OTHER ZONE is this one table: room → rows, one row a unit:
+       '<race>[ m|f] [@<district>[:<part of a plot's name>]] [><districts it walks to>] [night|day|h<from>-<to>] [stay] [x<n>]'
+   · `@T` = its home district (the letter of the room's `plots.names`; a word works for a district with a long name: `@Olympus`).
+     `:Old Tree` = the plot it stands on. A room with no plots takes rows with no `@`.
+   · `>C,M` = ITS ROUTE: the districts of this room it walks between (its own district when none is named). `stay` = it never leaves its spot.
+   · `night` = there from 20 to 6 only, `day` = 6 to 20, `h12-16` = those hours (a unit of two zones is in one for some hours and in the
+     other for the rest: mondo, "they don't have to really drive across the zones").
+   · `cast:<id>` in place of a race stands a story character (the five cultists).
+   hqPlacesExpand() (once, at load) REPLACES the room's placed people with these rows: a row takes over an authored spot of its race in its
+   district (the spot's own square, face and lines stay), else it stands on a square another placed person left, else on its plot's
+   middle (the renderer moves it to the nearest floor). Placed people of a race the room has no row for are gone; a spot with a cast, a
+   TALK, a clone or a pose stays as it is. The room's AREA UNITS table becomes the rows' races, and the room draws no random extras.
+   A room not named here is untouched (DOOR HQ, the Mall, the Spaceship, the Frozen Sea, every route but the Desert Highway). */
+const HQ_NPC_PLACES = {
+    /* Disaster City: its people are the residents; of the room's placed spots only the board's races stay */
+    site_prebuilt_downtown_streets: ['starfish', 'chef', 'hippie'].map(r => r + ' keep'),
+    /* ── THE WOODS ── */
+    site_prebuilt_fairy_forest_ow_redwood: ['bigfoot @T:Old Trees >T', 'cameraman @T:Meadow >T', 'wendigo @T:Falls >T night', 'mothman @T:Shelf >T night'],
+    site_prebuilt_fairy_forest_ow_clearing: ['mothman @C:Old Tree >C night', 'werewolf @C:Deep woods >C night', 'cameraman @C:Campfire >C day', 'goatman @C:Stick Men >C night',
+        'skater m @M:Culvert >M,C', 'skater f @M:Storm Drain >M,C', 'wendigo @M:Hollow >M', 'shadow entity @M:Gully >M night'],
+    site_prebuilt_fairy_forest_ow_ritual: ['cult leader @G:Stage stay', 'cast:cult1 @G:Fire stay', 'cast:cult2 @G:Fire stay', 'cast:cult3 @G:Stones stay', 'cast:cult4 @G:Stones stay', 'cast:cult5 @G:Mound stay',
+        'goatman @G:Dead Tree >G', 'shadow entity @G:Owl >G night', 'conspiracy theorist @G:Tents >G',
+        'politician m @G:Stones stay night', 'banker @G:Stones stay night', 'tech ceo @G:Fire stay night'],   // the Members' tunnel from the club opens here
+    /* ── CAME A LOT ── */
+    site_prebuilt_camelot_kingdom: ['king arthur @K:Great Hall >K,T day', 'knight m @K:Barracks >K', 'knight f @K:Bailey >K', 'knight m @T:North Gate stay', 'knight f @T:Drawbridge stay',
+        'wizard m @K:Keep >K,T', 'wizard f @K:Orchard >K,T', 'gnome @T:Market >T x2', 'farmer @T:Smithy >T', 'priest m @T:Chapel >T', 'chef @T:Inn stay'],
+    site_prebuilt_camelot_palace: ['king arthur night', 'knight m', 'knight f', 'wizard m'],
+    site_prebuilt_camelot_ow_pines: ['gnome @N:Hermit >N', 'yeti @N:Wolf Run >N x2', 'krampus @N:High Pines >N'],
+    site_prebuilt_camelot_ow_garden: ['fairy @L:Tea Party >L', 'tree person @L:Hedges stay', 'rabbit @L:Lawn >L', 'mushroom girl @L:Tea Party >L', 'chess piece @L:Chessboard stay x2'],
+    site_prebuilt_camelot_ow_fairy: ['fairy @F:Fairy Ring >F x2', 'mushroom girl @F:Glow-Worm >F', 'rabbit @F:Knoll >F', 'tree person @F:Hollow Oak stay', 'unicorn @F:Wishing Pool >F', 'gnome @F:Root Stair >F', 'robinhood @F:Woods Trail >F h12-16'],
+    site_prebuilt_camelot_ow_forest: ['robinhood @W:Hunters >W h16-12', 'fairy @W:Glade >W', 'tree person @W:Old Oak stay', 'rabbit @W:Fern Bank >W', 'mushroom girl @W:Hollow >W',
+        'dragon @W:Bluff >W', 'knight m @W:Crown >W day', 'knight f @W:Forest Road >W day', 'werewolf @W:Badger >W night'],
+    site_prebuilt_gobekli_ow_henge: ['wizard m @S:Sarsen >S', 'wizard f @S:Avenue >S', 'hippie m @S:Solstice >S', 'hippie f @S:Solstice >S'],
+    /* ── THE MOUNTAINS ── */
+    site_prebuilt_northpole_plots: ['santa clause @Pole:Workshop stay', 'gnome @Pole:Workshop >Pole x3', 'krampus @Pole:Sleigh Road >Pole', 'ice queen @Pole:Frozen Lake >Pole', 'yeti @Pole:Snowline >Pole', 'men in black @Pole:The Pole stay'],
+    site_prebuilt_shasta_ow_lodge: ['yeti @Ski:Black Run >Ski,Pass', 'yeti @Pass:High Pass >Pass x2', 'gnome @Pass:Mine Cart >Pass', 'krampus @Pass:Trapper >Pass night',
+        'chef @Ski:The Ski Lodge stay', 'skater m @Ski:Big Jump >Ski', 'skater f @Ski:Bunny Slope >Ski', 'influencer @Ski:Lodge Yard >Ski',
+        'giant @Olympus:Twelve Thrones >Olympus', 'cyclops @Olympus:Boulder >Olympus', 'minotaur @Olympus:Stadium >Olympus', 'nephilim @Olympus:Temple >Olympus'],
+    site_prebuilt_shasta_ow_shasta: ['dragon @Descent:Old Lava stay', 'hippie m @Descent:camp >Descent', 'hippie f @Descent:camp >Descent', 'shaman m @Descent:Upper Shelf >Descent', 'shaman f @Descent:Trailhead >Descent', 'bigfoot @Descent:Upper Shelf >Descent night'],
+    /* ── THE ESTATE ── */
+    site_prebuilt_skinwalker_ow_lake: ['scarecrow @C:Scarecrow stay', 'scarecrow @C:Rows >C night', 'jack o lantern @C:Tall Corn >C', 'farmer @C:Farm Track >C,R', 'grey @C:Circles >C night x2',
+        'loch ness monster @L:Lake stay', 'cameraman @L:Dock >L day', 'cowboy m @R:Barn >R,C', 'cowboy f @R:Paddock >R', 'farmer @R:Ranch Gate >R'],
+    site_prebuilt_skinwalker_ow_house: ['zombie m @H:Graveyard >H night', 'zombie f @H:Family Plot >H night', 'skeleton @H:Crypt >H night', 'undead @H:Graveyard >H night', 'ghoul @H:Crypt >H night',
+        'vampire m @H:Family Plot >H night', 'vampire f @H:Gazebo >H night', 'priest m @H:Graveyard >H day', 'cameraman @H:Lawn >H day', 'jack o lantern @H:Drive stay'],
+    site_prebuilt_haunted_hall: ['ghost m', 'cursed tv stay'],
+    site_prebuilt_haunted_upstairs: ['ghost f'],
+    site_prebuilt_haunted_nursery: ['haunted doll'],
+    site_prebuilt_haunted_cellar: ['vampire m day', 'vampire f day'],
+    /* ── THE DESERT ── */
+    site_prebuilt_area51_ow_circus: ['ringmaster @C:Big Top stay', 'clown m @C:Midway >C', 'clown f @C:Mirrors >C', 'fortune teller m @C:Lady Who Knows stay', 'fortune teller f @C:Lady Who Knows stay',
+        'magician @C:Wagons >C', 'luchador @C:Animals >C', 'mime m @C:Midway >C', 'mime f @C:Ticket >C', 'bunny girl @C:Big Top stay h10-16'],
+    site_prebuilt_area51_ow_town: ['sheriff @W:Jail >W', 'cowboy m @W:Saloon >W', 'cowboy f @W:Corral >W', 'gambler @W:Saloon stay', 'mechanic @W:Stables stay', 'trucker @W:Trail In >W', 'farmer @W:General Store >W'],
+    site_prebuilt_area51_desert: ['general @A:Tower stay', 'men in black @A:Gate >A x2', 'marksman m @A:Fence >A', 'marksman f @A:Fence, east >A', 'grey @A:Pens >A', 'mad scientist m @A:Hangar 18 >A',
+        'conspiracy theorist @A:Gate stay', 'florida man @A:Ridge >A'],
+    site_prebuilt_area51_hangar: ['grey', 'bligblog stay', 'mad scientist m', 'men in black'],
+    site_prebuilt_area51_ow_giza: ['pharaoh m @G:Khafre >G', 'pharaoh f @G:Menkaure >G', 'anubis @G:Tomb Door stay', 'annunaki @G:Obelisks >G', 'djinn @G:Oasis >G', 'catgirl @G:Sphinx >G',
+        'mummy m @G:Tomb Door >G night', 'mummy f @G:Robbers >G night', 'necromancer m @G:Dig >G', 'necromancer f @G:Causeway >G'],
+    site_prebuilt_giza_pyramid: ['mummy m', 'mummy f', 'anubis stay'],
+    site_ow_dh1: ['trucker @R >R', 'honda civic @R >R', 'sheriff @R >R', 'mechanic @R:water tower stay'],
+    site_ow_dh2: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_dh3: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_dh4: ['trucker @R >R', 'honda civic @R >R'],
+    /* ── LEYLINES ── */
+    site_prebuilt_gobekli_ow_line: ['giant @G:T-Pillars >G,Y', 'watcher @G:Sentinel stay', 'hippie m @Y:Nexus >Y', 'hippie f @Y:Great Line >Y', 'shaman m @Y:Forks >Y', 'cult leader @Y:Nexus stay h0-4'],
+    site_prebuilt_gobekli_ow_babel: ['nephilim @T:Tower >T', 'fallen angel m @T:North Stair >T', 'fallen angel f @T:Tower, east >T', 'golem @T:Barn Door stay', 'necromancer m @T:Kiln >T', 'necromancer f @T:Clay Pits >T',
+        'quetzalcoatl @Z:Pyramid stay', 'shaman m @Z:Ball Court >Z', 'shaman f @Z:Garden >Z', 'dinosaur @Z:Reeds >Z', 'reptilian @Z:Round Tower >Z'],
+    site_prebuilt_gobekli_ow_bugs: ['bee queen @B:Honeycomb stay', 'antperson @B:Anthill >B x2', 'cicada brood @B:Giant Tree >B', 'mantid @B:Bee Yard >B', 'voidweaver @B:Tall Grass >B'],
+    /* ── ANTARCTICA ── */
+    site_prebuilt_antarctica_plots: ['nordic m @H:Hull >H,O', 'nordic f @O:Polar Opening >O,H', 'reptilian @O:East Berm >O', 'men in black @W:Gap >W x3', 'conspiracy theorist @F:Landing >F,W',
+        'yeti @C:Crevasse >C,F x2', 'yeti @F:Floes >F', 'nordic m @H:Dig Camp >H', 'reptilian @O:Fuel Drums >O', 'professor f @S:Huts stay', 'professor f @S:Ice Core >S', 'mechanic @S:Garage stay'],
+    /* ── HEAVEN + HELL + VATICAN ── */
+    site_prebuilt_vatican_plots: ['pope @P:Courtyard >P,B', 'priest m @C:Cloister >C,B', 'priest f @G:Gardens >G,C', 'priest m @B:Nave >B', 'gargoyle m @B:Apse stay', 'gargoyle f @C:Fountain stay',
+        'gladiator m @O:Arena >O', 'gladiator f @O:Gate of Life >O', 'gladiator m @S:Gate stay', 'gladiator f @S:Colonnade stay', 'cyclops @O:Arena >O', 'minotaur @O:Gate of Death >O',
+        'reptilian @P:Archive stay', 'knight m @S:Square >S,B', 'knight f @S:Square, north-east >S'],
+    site_prebuilt_vatican_under: ['skeleton @K:Loculi >K', 'undead @K:Crypt >K', 'vampire m @K:Cistern >K'],
+    site_prebuilt_heaven_plots: ['angel m @A:Gate stay', 'valkraye @T:First Flight >T,A', 'orb of light @F:Sun >F', 'angel f @F:Cloud Fields >F,Y', 'seraphim m @Y:Room 777 stay', 'seraphim f @Y:Towers stay', 'angel m @Y:Towers, east >Y'],
+    site_prebuilt_hell_plots: ['demon m @R:Rim, north >R,D', 'demon f @R:Rim, south >R,D', 'fallen angel m @R:Fissure >R', 'fallen angel f @R:Warm Wall >R', 'undead @D:Descent >D,W', 'ghoul @D:Alcove >D', 'flesheater @D:Ash Flats >D',
+        'succubus m @W:Walkways >W,L', 'succubus f @W:High Platforms >W,L', 'halfdemon m @W:Walkways, east >W', 'halfdemon f @W:Lava Below >W',
+        'overlord @L:Plinth stay', 'demon prince @L:Far Shore >L,W', 'demon princess @L:Lava Lake >L,W', 'necromancer m @L:Bowl >L', 'necromancer f @L:Bowl >L'],
+    /* ── THE SEWERS (mondo 11-20: "Shouldnt it be cops police in the holding cell? That's like the jail right? not men in black") ── */
+    site_prebuilt_downtown_underworld: ['sewer gator @W:Cistern >W,R', 'sewer gator @W:Outfall >W', 'sewer gator @R:Sludge Pit >R', 'karate frog @W:Junction >W,T', 'karate frog @T:Depot >T', 'samurai slug @O:Old Workings >O,T', 'samurai slug @T:Ghost Station >T',
+        'swamp monster @O:Chimney >O,R', 'swamp monster @W:Storm Drain >W', 'mole man @O:Old Workings >O x2', 'police officer @H:Guardroom >H x2', 'police officer @H:Drunk Tank stay'],
+    /* ── THE CAVERN ── */
+    site_prebuilt_hollow_earth_cavern: ['mole man @K:Crossroads >K', 'goblin @K:Crystal Adit >K x2', 'gnome @K:Terrace >K', 'skeleton @K:Oubliette >K', 'flesheater @K:Fissure >K', 'shadow entity @K:Level >K', 'antperson @K:Mouth >K',
+        'mushroom girl @H:Mushroom Shelf >H', 'giant @H:Giant >H', 'dinosaur @H:Nesting Ground >H x2', 'reptilian @H:Polar Opening >H'],
+    site_prebuilt_hollow_earth_ow_agartha: ['crystal guardian @A:Spire stay', 'golem @A:Inner Gate stay'],
+    site_prebuilt_hollow_earth_ow_west: ['antperson @T >T'],
+    site_prebuilt_hollow_earth_ow_long: ['antperson @T >T'],
+    site_prebuilt_hollow_earth_ow_tunnelway: ['antperson @T >T'],
+    /* ── THE D.U.M.B. ── */
+    site_prebuilt_dumb_base: ['general @C:Big Board >C,R', 'politician m @C:Round Table stay', 'marksman m @C:Vault Gantry >C,P', 'marksman f @C:Comms >C,P', 'janitor @C:Great Room >C,P,R,S,K',
+        'mad scientist m @R:Labs >R,S,K', 'grey @R:White Rooms >R,S x2', 'symbiote @R:Vat Hall >R,S', 'telepath m @S:Chambers 01 stay', 'telepath f @S:Chambers 02 stay', 'juggernaut @S:Hub stay', 'shadow entity @S:Level >S,K',
+        'mechanic @P:Motor Pool stay', 'men in black @P:Platform >P,C,R x2', 'hacker @K:Control Room >K,P', 'machine elves @K:Detector Hall stay', 'glitch @K:Beam Dump stay'],
+    /* ── THE DEEP ── */
+    site_prebuilt_atlantis_deep: ['atlantean m @C:Palace >C', 'atlantean f @C:Agora >C', 'jellyfish @C:Temple of the Deep >C,R', 'grey @C:Temple of the Deep >C',
+        'mermaid m @R:Market >R', 'mermaid f @R:Gardens >R', 'starfish @R:Baths >R', 'sharkman @R:North Gate >R,T', 'deep sea fish @T:Dark >T x2', 'deep sea diver @T:Shelf >T', 'kraken @T:Bottom >T'],
+    site_prebuilt_atlantis_ow_floor: ['deep sea fish @S:Reef Wall >S', 'deep sea diver @S:Station >S', 'jellyfish ufo @S:Drowned Circle >S'],
+    site_prebuilt_atlantis_pocket: ['jellyfish', 'grey', 'atlantean m'],
+    /* ── THE BEACH + THE SEA ── */
+    site_prebuilt_bermuda_beach: ['pirate m @H:Flying Dutchman >H', 'pirate f @H:Quay >H', 'deep sea diver @H:Long Pier >H', 'florida man @H:Quay >H', 'sharkman @H:Harbour Mouth >H', 'kraken @H:Roads stay', 'jellyfish @H:Channel >H', 'siren @H:Breakwater stay night'],
+    site_prebuilt_bermuda_ow_triangle: ['pirate m @T:Wreck Islet >T', 'sharkman @T:Reef >T', 'siren @T:Lighthouse Rock stay', 'jellyfish ufo @T:Maelstrom >T', 'jellyfish @T:Lagoon >T'],
+    site_prebuilt_bermuda_ow_volcano: ['king kong @O:The Jungle >O', 'monk @O:Village >O', 'ninja m @O:Landing >O', 'dinosaur @O:Dinosaur Park >O'],   /* (mondo 11-20: "put him on volcano island too") */
+    site_prebuilt_bermuda_ow_cove: ['pirate m @O:Camp >O', 'pirate f @O:Lagoon >O', 'skeleton @O:West Ring stay'],
+    site_prebuilt_bermuda_katana: ['shogun @C:Palace >C', 'spy @C:Palace >C', 'swordfighter m @C:Samurai Quarter >C,B', 'swordfighter f @C:The Castle >C', 'ninja m @C:The Castle >C,W', 'ninja f @W:Old Wood >W,C',
+        'monk @C:Temple Quarter >C,W', 'vtuber @C:Merchants >C', 'catgirl @C:Merchants >C', 'chef @C:Merchants stay', 'chef @B:Waterfront >B', 'hacker @C:High Town stay', 'samurai slug @C:Castle Garden >C,B',
+        'farmer @L:Paddies >L x2', 'karate frog @L:Paddies >L,B', 'ki fighter m @W:Bamboo >W,V', 'ki fighter f @W:Hot Spring >W', 'dragon @V:Crater >V', 'dinosaur @J:Dinosaur Park >J x2'],
+    /* ── THE INTERNET ── */
+    site_prebuilt_internet_web: ['ai @K:Processor stay', 'virus @C:Quarantine >C,F,B,S,M,H,V,D x3', 'virus @M:Spam Folder >M,C,H x2', 'glitch @C:Captcha >C,H,S x2', 'glitch @H:Buffering >H', 'streamer m @V:Ring Light >V,F', 'streamer f @V:Chat Room >V,F', 'vtuber @V:Hologram stay',
+        'influencer @F:Influencer Stage >F,V', 'influencer @F:Unboxing >F x2', 'streamer m @F:Trending >F,V', 'streamer f @F:Going Viral >F,V', 'vtuber @V:Character Select >V', 'conspiracy theorist @B:Flame War >B,F', 'conspiracy theorist @B:General Discussion >B', 'florida man @B:Off-Topic stay', 'hacker @B:Lurkers >B,D,S', 'hacker @D:Hacker Den stay',
+        'men in black @D:Onion Gate >D,B', 'men in black @D:Crawlers >D', 'demon m @D:The Bottom >D,C', 'demon m @D:Black Market stay', 'hacker @S:Login Screen >S,K', 'ghost m @S:Backup Tapes >S,H', 'ghost m @H:Dial-Up >H'],
+    /* ── THE ASTRAL REALM ── */
+    site_prebuilt_lookingglass_realm: ['occulus @S:High Thought >S,L,N', 'occulus @L:Reading >L', 'occulus @N:Stage >N', 'boltzmann brain @S:Open Sea >S,L', 'boltzmann brain @L:Not Yet Written stay', 'orb of light @S:Still Water >S,L', 'orb of light @L:Stacks >L',
+        'machine elves @L:Card Catalogue stay', 'dreameater @N:The Bed >N,S', 'telepath m @S:Thought-Forms >S', 'telepath f @S:Islands >S', 'shadow entity @N:Thing Under >N', 'flesheater @N:Maw >N', 'succubus m @N:Bad Nights >N', 'succubus f @N:Blood >N'],
+    site_prebuilt_lookingglass_waiting: ['ghost m'],
+    /* ── OUTER SPACE (one room, four worlds: no route crosses from one world to the next) ── */
+    site_prebuilt_moon_plots: ['astronaut @M:Lander >M,C', 'astronaut @M:Habitat stay', 'grey @F:Saucer >F,C x2', 'bligblog @F:Dig >F', 'reptilian @F:Bore >F', 'mantid @C:The Crater >C,F',
+        'martian @Y:Face >Y,V x2', 'martian @V:The Canyon >V', 'astronaut @R:Rover Bay >R', 'grey @H >H', 'black goo @H >H', 'nordic m @G >G', 'nordic f @G >G', 'barbarella @G >G',
+        'cosmic wraith @D:The Drop >D', 'cosmic wraith @A >A', 'boltzmann brain @A stay', 'watcher @A stay'],
+};
+function hqPlacesParse(row) {
+    const o = { race: null, gender: null, cast: null, d: null, plot: null, route: null, hours: null, stay: false, keep: false, n: 1 };
+    let s = String(row || '').trim(), m;
+    if ((m = /\s+x(\d+)\s*$/.exec(s))) { o.n = Math.max(1, +m[1]); s = s.slice(0, m.index); }
+    for (;;) {
+        if ((m = /\s+(stay|keep|night|day|h(\d+)-(\d+))\s*$/.exec(s))) {
+            if (m[1] === 'stay') o.stay = true; else if (m[1] === 'keep') o.keep = true; else o.hours = m[1] === 'night' ? [20, 6] : m[1] === 'day' ? [6, 20] : [+m[2], +m[3]];
+            s = s.slice(0, m.index); continue;
+        }
+        break;
+    }
+    if ((m = /\s+>(\S+)\s*$/.exec(s))) { o.route = m[1].split(',').filter(Boolean); s = s.slice(0, m.index); }
+    if ((m = /\s+@([^\s:]+)(?::(.+))?$/.exec(s))) { o.d = m[1]; o.plot = m[2] ? m[2].trim() : null; s = s.slice(0, m.index); }
+    s = s.trim();
+    if ((m = /^cast:(\S+)$/.exec(s))) { o.cast = m[1]; return o; }
+    if ((m = /^(.+)\s+(m|f)$/.exec(s))) { o.gender = m[2] === 'm' ? 'male' : 'female'; s = m[1]; }
+    o.race = s;
+    return o;
+}
+/* is the world clock's hour inside a row's hours ([20, 6] wraps midnight)? No hours = always. */
+function hqPlaceHourOk(hours, hour) {
+    if (!Array.isArray(hours) || hours.length !== 2 || !Number.isFinite(+hour)) return true;
+    const h = ((+hour % 24) + 24) % 24, a = +hours[0], b = +hours[1];
+    return a === b ? true : a < b ? (h >= a && h < b) : (h >= a || h < b);
+}
+function hqPlacesExpand() {
+    if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms || HQ_NPC_PLACES._done) return 0;
+    Object.defineProperty(HQ_NPC_PLACES, '_done', { value: true, enumerable: false });
+    let made = 0; const report = {};
+    Object.keys(HQ_NPC_PLACES).forEach(roomId => {
+        const R = DOOR_HQ.rooms[roomId]; if (!R) return;
+        const rows = HQ_NPC_PLACES[roomId].map(hqPlacesParse), rep = report[roomId] = { rows: 0, took: 0, fresh: 0, gone: 0, miss: [] };
+        const zr = hqZoneMapRoom(roomId), names = (R.plots && R.plots.names) || null, PL = 42;
+        const pid = (x, z) => { if (!zr || !names) return null; const px = Math.floor((x - zr.ox) / PL), pz = Math.floor((z - zr.oz) / PL); return 'P' + String(px).padStart(2, '0') + '-' + String(pz).padStart(2, '0'); };
+        const byId = {}; (names || []).forEach(n => { byId[n[0]] = n; });
+        const distAt = (sp) => { if (!sp || sp.x == null) return null; const n = byId[pid(sp.x, sp.z || 0)]; return n ? n[2] : null; };
+        const dKeys = Array.from(new Set((names || []).map(n => n[2])));
+        const dist = (tok) => { if (!tok) return null; if (dKeys.indexOf(tok) >= 0) return tok; const t = String(tok).toLowerCase(); return dKeys.find(k => k.toLowerCase().indexOf(t) >= 0) || null; };
+        const plotsOf = (d, part) => (names || []).filter(n => n[2] === d && (!part || n[1].toLowerCase().indexOf(part.toLowerCase()) >= 0));
+        const centre = (n) => { const m = /^P(\d\d)-(\d\d)/.exec(n[0]); return m && zr ? [zr.ox + (+m[1] + 0.5) * PL, zr.oz + (+m[2] + 0.5) * PL] : null; };
+        const orig = (R.npcSpots || []).slice();
+        const special = (s) => !s || !s.race || s.cast || s.talk || s.clone || s.pose;
+        const keep = orig.filter(special), pool = orig.filter(s => !special(s)), taken = new Set();
+        const ground = {};   // district → squares a placed person stood on (known floor)
+        pool.forEach(s => { const d = distAt(s); if (d && s.x != null) (ground[d] = ground[d] || []).push([s.x, s.z || 0]); });
+        const rnd = hqLevelRng('places|' + roomId), out = [];
+        const point = (d, part) => {
+            const P = plotsOf(d, part), cand = P.length ? P : plotsOf(d);
+            if (part && P.length) { const c = centre(P[Math.floor(rnd() * P.length)]); if (c) return [c[0] + (rnd() - 0.5) * 14, c[1] + (rnd() - 0.5) * 14]; }
+            const g = ground[d]; if (g && g.length && rnd() < 0.6) { const q = g[Math.floor(rnd() * g.length)]; return [q[0] + (rnd() - 0.5) * 3, q[1] + (rnd() - 0.5) * 3]; }
+            if (!cand.length) return null; const c = centre(cand[Math.floor(rnd() * cand.length)]); return c ? [c[0] + (rnd() - 0.5) * 14, c[1] + (rnd() - 0.5) * 14] : null;
+        };
+        const keepRaces = {};
+        rows.forEach(row => {
+            if (row.keep) { keepRaces[row.race] = 1; return; }
+            if (row.race && typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(row.race) < 0) { rep.miss.push('no race ' + row.race); return; }
+            const d = names ? dist(row.d) : null;
+            if (names && row.d && !d) { rep.miss.push('no district ' + row.d); return; }
+            if (names && d && row.plot && !plotsOf(d, row.plot).length) rep.miss.push('no plot ' + d + ':' + row.plot);
+            for (let i = 0; i < row.n; i++) {
+                rep.rows++;
+                let sp = null;
+                if (row.race) {
+                    const same = (s) => !taken.has(s) && s.race === row.race && (!row.gender || !s.gender || s.gender === row.gender) && (!names || !d || distAt(s) === d);
+                    const inPlot = row.plot && names ? pool.find(s => same(s) && byId[pid(s.x, s.z || 0)] && byId[pid(s.x, s.z || 0)][1].toLowerCase().indexOf(row.plot.toLowerCase()) >= 0) : null;
+                    sp = inPlot || pool.find(same) || null;   // an authored spot of its race in its district wins over the row's plot (the author's square and lines)
+                }
+                rep._t = !!sp;
+                if (sp) { taken.add(sp); rep.took++; sp = Object.assign({}, sp); }
+                else {
+                    rep.fresh++;
+                    if (names && d) { const p = point(d, row.plot); if (!p) { rep.miss.push('no ground ' + row.d); continue; } sp = { x: +p[0].toFixed(2), z: +p[1].toFixed(2), face: Math.floor(rnd() * 360) }; }
+                    else {   // a room with no plots: a square a placed person left, else a ring round the way in
+                        const free = pool.find(s => !taken.has(s) && !rows.some(q => q.race === s.race));
+                        if (free) { taken.add(free); sp = { face: free.face || 0 }; ['x', 'z', 'deg', 'r', 'level', 'y'].forEach(k => { if (free[k] != null) sp[k] = free[k]; }); }
+                        else { const S = R.spawn || {}, k = out.length + 1; sp = (S.x != null && S.deg == null) ? { x: (S.x || 0) + Math.cos(k * 1.9) * (3 + k), z: (S.z || 0) + Math.sin(k * 1.9) * (3 + k), face: Math.floor(rnd() * 360) } : { deg: (S.deg || 0) + 22 * k, r: S.r || 10, level: S.level || 0, face: 0 }; }
+                    }
+                }
+                if (row.cast) { sp.cast = row.cast; delete sp.race; } else { sp.race = row.race; if (row.gender) sp.gender = row.gender; }
+                if (!rep._t) sp.snap = true;   // no authored square: the renderer moves it to the nearest floor
+                sp.place = true; sp.stay = !!row.stay; sp.roam = !row.stay;
+                if (row.hours) sp.hours = row.hours;
+                if (!row.stay && names && d) {
+                    const ds = (row.route && row.route.length ? row.route : [row.d]).map(dist).filter(Boolean), pts = [];
+                    ds.forEach(k => { const n = (k === d && ds.length < 3) ? 2 : 1; for (let q = 0; q < n; q++) { const p = point(k, null); if (p) pts.push([+p[0].toFixed(2), +p[1].toFixed(2)]); } });
+                    if (pts.length) sp.route = pts;
+                }
+                out.push(sp); made++;
+            }
+        });
+        /* a placed person of a race the board has in THAT district stays where it was authored (its square and its lines), over the row's own count:
+           the board says who belongs in a district, the room's author said how many stand there */
+        const boardHas = (s) => rows.some(q => q.race === s.race && (!q.gender || !s.gender || q.gender === s.gender) && (!names || !q.d || dist(q.d) === distAt(s)));
+        const stays = pool.filter(s => !taken.has(s) && (keepRaces[s.race] || boardHas(s)));
+        rep.kept = stays.length;
+        rep.gone = pool.length - taken.size - stays.length;
+        R.npcSpots = keep.concat(stays, out);
+        R.placed = true;
+        const races = Array.from(new Set(out.filter(s => s.race).map(s => s.race).concat(Object.keys(keepRaces))));
+        if (out.length && races.length && typeof HQ_AREA_ENCOUNTERS !== 'undefined') HQ_AREA_ENCOUNTERS[roomId] = Object.assign({}, HQ_AREA_ENCOUNTERS[roomId] || {}, { list: races.map(r => ({ race: r, w: 5 })), spots: false });
+    });
+    hqPlacesExpand.report = report;
+    return made;
+}
+hqPlacesExpand();
 function hqRoomEncTable(roomId, skip) {
     if (skip) return null;   // the game's own people (THE AREA UNITS window's "game default" read)
     const room = (DOOR_HQ.rooms || {})[roomId];
