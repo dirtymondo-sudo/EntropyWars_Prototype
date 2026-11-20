@@ -3463,8 +3463,15 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   OFF = the player's fog colour everywhere (as before). Fog on can only ADD to the clear day's haze.
 - **The sky's band:** new dome uniform `uAir` (x = the haze at the line, y = 1 / its height, z = warmth, w = the line). At the line it
   is `_ewAirFar` = what the air does to a thing `farM` m away, and it thins upward; same formula on the far scenery
-  (`_injectHorizonFog`). In a fight x is negative = a share of the fight's own band (`_ewAirBattle`): the board fog is unchanged,
-  its band only gets the soft top. A fight on a room takes `rho + base` (no room density).
+  (`_injectHorizonFog`).
+- **THE SAME AIR IN A FIGHT (same day, mondo: "I said to make the exploration and battle fog the same. We are going for a seamless
+  transition, can't have that if the fog changes in between"):** one writer, `_ewAirHold(fog, units a metre, { wet, sun, dusk, keep })`.
+  The walk (`_hqFogHold`), the menu and the battle's draw (`_ewAirFightHold`, round the frame's render) all call it; a fight has NO
+  fog of its own. THE BOARD FOG (11-01) is off under the one air (`_bfogTick` returns at once); it is still there behind
+  `EW_NO_ONE_AIR`. The sky shot thins the air through `keep`. A fight's painted silhouettes: `_ewAirPaintFight`.
+- **THE AIR THINS UPWARD (same day, the Hollywood Hills at night stood as a flat green cut-out on a clear sky):** the distance fog on
+  every fogged material is multiplied by the sky haze's own curve of the view ray's height over the line (`uEwAir2.z / .w`), so a far
+  ridge and the sky behind it carry the same share at every height. `hazeH` 0.16.
 - **Warm toward the sun + the drifting mist:** two shared objects in the patched fog chunks, `uEwAir` (the sun's heading, warmth,
   the mist's clock) and `uEwAir2` (patch size, depth). Walk only (the clock's sun); off under the player's own colour.
 - **The far land** (`_hqBuildEdgeLand`): its far sheets take the scene fog now (were `fog: false` with haze baked in the vertex colours).
@@ -3472,7 +3479,8 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
 - Every shader piece has its WebGPU twin (the fog node, the dome's node graph, the `hzfog` layer). Under water is untouched.
 - Probe: `ThreeRenderer.hq.dev.air()`. Off (the rooms' own fog as before): `window.EW_NO_ONE_AIR` (set before a room builds).
 - Checked by picture: the Desert walk (off / on / low density, classic + the node renderer), both menus, one fight (Giza). NOT yet
-  looked at: indoor rooms, night and dusk, the other zones, a fight on a room. NOT built: lamps and neon glowing in the fog.
+  looked at: indoor rooms, dusk, the other zones, a fight on a room (the hand-over itself). Disaster City at night: looked at 11-20.
+  NOT built: lamps and neon glowing in the fog.
 
 - THE LAMPS' WHY (11-20, his third battle F3, 02:10, a session loaded 3 min after THE LAMPS PER CAMERA merged: STILL "lamps
   2342.2/s", "2375 walked · 2375 re-recorded · LAMPS MOVED" on the main scene's checks, and "Shader builds 29.4/s"): so the lit set
