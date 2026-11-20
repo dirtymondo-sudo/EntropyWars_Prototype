@@ -8084,6 +8084,16 @@ scientist labs, Lockheed Martin skunkworks, scientific and psychic research, etc
   `urban:TileGeneric*`, `urban:MetalPanelPainted*`; steel: `urban:MetalGrating*`, `urban:MetalWarningStripe1/2`.
   WARNING: `ZONE_LOOKS.zones.dumb` (the retexture thread's row) turns `metal`, `gunmetal`, `rocks_5`, `urban:PlasterWallPainted1a` and
   `urban:MetalCorrugatedPainted2a` into horror sheets and adds stains at load: a clean white room must wear other keys.
+- **mondo's OK (11-20):** "Okay that all sounds good ... I don't care about HQ garages secret entrance, you just delete that". So: the plan stands,
+  Research is the pilot, the Ring keeps its 22 plots, and the garage's secret ramp is GONE: `garage_motorpool` is in `DOOR_HQ.cut.links` (never
+  live), the garage drum's west opening and its two jambs are closed, bake-dumb.js no longer holds or checks the way.
+- **THE PILOT, RESEARCH, BUILT (2026-11-20):** the squares are drawn in `docs/plans/world-zones/draw-dumb.js` (a block of hand rects, "RESEARCH ON
+  THE SQUARES"); P01-04 + P02-04 are level 0 now (the vats stand at Sub-Level 7's depth); the rooms, levels, gantry and gallery are `R.js`
+  `research()`: one kit room over the Wing + the Labs (base 3.5), one over Clone Research (base 0). THE RULES IT FOUND: (1) a `sink` plateau
+  blends from height 0 at its edge, so above level 0 never cut down: put the plot at its LOWEST floor and raise the rest with plateaus;
+  (2) two plateaus that only touch leave a notch: overlap them 0.5 m; (3) a kit wall standing on a raised floor carries `y0` = that floor (its doors
+  are drawn at the wall's foot); the plateau's own face closes it below; (4) props on a plateau need no `y` (they stand on the ground); props on a
+  deck carry the deck's height.
 - **NEEDS A MODEL (found nowhere; shown to mondo 11-20):** a tarp / a tarp-covered aircraft · a black stealth aircraft (flying wing) · a blast
   door (big, sliding or round with a wheel) · a beam-pipe magnet + a particle detector barrel · a Zener card deck, a Faraday cage, an EEG cap ·
   a lab animal cage · a curved situation board + a round war-room table · a base tram car (the subway cars stand in) · a freight lift car with a
