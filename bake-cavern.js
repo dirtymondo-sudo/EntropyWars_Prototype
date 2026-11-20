@@ -322,8 +322,9 @@ const ROOMS = [
     { key: 'W', room: 'site_prebuilt_hollow_earth_ow_west', part: 'ow_west', label: 'THE WEST TUNNEL', sub: 'THE CAVERN · WEST UNDER THE ESTATE · THE WELLS · NORTH TO AGARTHA', group: [], lines: [],
       parti: 'A cave tunnel west from the Cavern under the Estate: the Estate\'s well comes down into it, and at its west end it turns north for Agartha.', sunsNote: 'none',
       tunnels: seq(-9, -15, x => [x, 11, T_NAME.west]).concat([[-15, 12, T_NAME.west], [-14, 10, T_NAME.wells]], seq(10, 2, y => [-15, y, T_NAME.west])) },
-    { key: 'L', room: 'site_prebuilt_hollow_earth_ow_long', part: 'ow_long', label: 'THE LONG TUNNEL', sub: 'THE CAVE ROAD NORTH · UNDER THE WOODS · TO AGARTHA', group: [], lines: [],
-      parti: 'The long cave road north under the Woods, from the West Tunnel to Agartha.', sunsNote: 'none', tunnels: seq(1, -8, y => [-15, y, T_NAME.long]) },
+    /* THE LONG TUNNEL left this tool 2026-11-20 (world polish threads 7 + 9 + 10): it is a labyrinth room of its own now, `site_prebuilt_hollow_earth_ug_long`,
+       written by `node bake-underground.js long-tunnel` from its approved square plan; the old corridor room `…_ow_long` is retired to it. Its three
+       ways out are OUTER rows below (the West Tunnel's north, Agartha's south, a new side passage off the Tunnel-Way Tunnel). */
     /* + THE UNDERGROUND WALKS (2026-11-17, One World phase 4.4): U12, the Cells Tunnel, east from the shaft's foot to the Sewers' Holding Cells; U13,
        the Bone Passage (the map's secret walk), from the Catacombs east and down south across the Cells Tunnel to Hollow Earth's Sunken Garden. They
        touch the Tunnel-Way Tunnel, so they stand in its room (one room: mondo 11-17, "connected/bigger rooms is better") */
@@ -332,10 +333,15 @@ const ROOMS = [
       tunnels: seq(9, 2, y => [-9, y, T_NAME.way]).concat([[-8, 2, T_NAME.way], [-7, 2, T_NAME.way]], seq(-7, 0, x => [x, 1, T_NAME.cells]), seq(-7, -4, x => [x, -4, T_NAME.bone]), seq(-3, 0, y => [-4, y, T_NAME.bone]), seq(2, 9, y => [-4, y, T_NAME.bone])) },
 ];
 /* where one room meets another: [room key, world plot, side, room key, world plot, side]; the district plot's side is DUG to its open floor */
-const SEAMS = [['KH', [-8, 11], 'W', 'W', [-9, 11], 'E'], ['KH', [-8, 9], 'W', 'T', [-9, 9], 'E'], ['KH', [-4, 10], 'N', 'T', [-4, 9], 'S'], ['W', [-15, 2], 'N', 'L', [-15, 1], 'S'], ['L', [-15, -8], 'N', 'A', [-15, -9], 'S']];
+const SEAMS = [['KH', [-8, 11], 'W', 'W', [-9, 11], 'E'], ['KH', [-8, 9], 'W', 'T', [-9, 9], 'E'], ['KH', [-4, 10], 'N', 'T', [-4, 9], 'S']];
 /* where a tunnel leaves for another zone's room (phase 4.4): [room key, world plot, side, seam id, the room past it, its label, the door's sub, leaf] */
 const OUTER = [['T', [0, 1], 'E', 'ow_v_1_1', 'site_prebuilt_downtown_underworld', 'DISASTER CITY · THE SEWERS', 'THE CELLS TUNNEL · INTO THE GUARDROOM', 'leaf_cell'],
-    ['T', [-7, -4], 'W', 'ow_v_m7_m4', 'site_prebuilt_vatican_under', 'THE VATICAN · THE CATACOMBS', 'THE BONE PASSAGE · UP INTO THE CATACOMBS', 'leaf_frame_only']];
+    ['T', [-7, -4], 'W', 'ow_v_m7_m4', 'site_prebuilt_vatican_under', 'THE VATICAN · THE CATACOMBS', 'THE BONE PASSAGE · UP INTO THE CATACOMBS', 'leaf_frame_only'],
+    /* THE LONG TUNNEL's room (bake-underground.js, 2026-11-20): the same seam ids as before at the West Tunnel and Agartha; the side passage off the
+       Tunnel-Way Tunnel is new (the underground's layout joins the two districts) */
+    ['W', [-15, 2], 'N', 'ow_h_m15_2', 'site_prebuilt_hollow_earth_ug_long', 'THE LONG TUNNEL', 'THE LONG TUNNEL · THE TUNNEL UP', null],
+    ['A', [-15, -9], 'S', 'ow_h_m15_m8', 'site_prebuilt_hollow_earth_ug_long', 'THE LONG TUNNEL', 'THE LONG TUNNEL · THE TUNNEL DOWN', null],
+    ['T', [-9, 5], 'W', 'ow_v_m9_5', 'site_prebuilt_hollow_earth_ug_long', 'THE LONG TUNNEL', 'THE LONG TUNNEL · A SIDE PASSAGE WEST', null]];
 /* a district plot joined to a tunnel plot inside one room: [room key, district plot (world), its side, the tunnel plot] */
 const INNER = [['A', [-16, -11], 'E', [-15, -11]]];
 const ROT = { 270: ['W', 'N', 'E', 'S'], 90: ['E', 'S', 'W', 'N'] };   // the home N, E, S, W sides after the turn
