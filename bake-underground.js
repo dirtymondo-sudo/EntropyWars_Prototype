@@ -80,9 +80,11 @@ const hs = []; for (let y = 0; y < H; y++) { hs.push([]); for (let x = 0; x < W;
 for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (hs[y][x] == null) { let m = Infinity; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (inG(x + i, y + j) && room(x + i, y + j)) m = Math.min(m, yAt(x + i, y + j)); hs[y][x] = isFinite(m) ? m : 0; }
 const slope = Buffer.alloc(W * H * 8); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const v = Math.round(hs[y][x] * 100); for (let k = 0; k < 4; k++) slope.writeInt16LE(v, ((y * W + x) * 4 + k) * 2); }
 
-/* ── THE LADDERS, BUILT ── */
+/* ── THE LADDERS, BUILT. 1.05 m off the plot line on the low side: on the height base the face between two squares is not sheer, it slopes over
+   about a metre, and a ladder 0.3 m off the line stood half in the rock (thread 9 found it, 11-20: every one of 34 buried). y0 / y1 are given ── */
+const LADDER_OFF = 1.05;
 STAIRS.forEach((s, i) => { const lx = s.dx ? gx(Math.max(s.lo[0], s.hi[0])) : gcx(s.lo[0]), lz = s.dy ? gz(Math.max(s.lo[1], s.hi[1])) : gcz(s.lo[1]);
-    F.push({ k: 'climb', id: DES.part + ':ladder:' + i, x: r2(lx - s.dx * 0.3), z: r2(lz - s.dy * 0.3), y0: s.y0, y1: s.y1, face: s.dx > 0 ? 90 : s.dx < 0 ? 270 : s.dy > 0 ? 180 : 0, look: DES.ladderLook || 'ladder' }); });
+    F.push({ k: 'climb', id: DES.part + ':ladder:' + i, x: r2(lx - s.dx * LADDER_OFF), z: r2(lz - s.dy * LADDER_OFF), y0: s.y0, y1: s.y1, face: s.dx > 0 ? 90 : s.dx < 0 ? 270 : s.dy > 0 ? 180 : 0, look: DES.ladderLook || 'ladder' }); });
 
 /* ── THE WATER: every run of `w` squares is a sump (deep, black, never entered), its surface under the floor beside it ── */
 { const used = new Set();
