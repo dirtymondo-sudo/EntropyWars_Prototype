@@ -35,6 +35,8 @@ const A = {
     eye: 1,                // a walker's eye over the ground, in levels (a lookout's sight line)
 };
 
+const DEFAULT_A = Object.assign({}, A);
+
 /* the squares: letter -> [name in the legend, open to walk?, low colour, high colour]. A plan adds or renames with `tiles`. */
 const TILES = {
     ' ': ['the wall of the place (forest, corn, rock, ice: the plan\'s `mass`)', false, [10, 26, 18], [52, 84, 50]],
@@ -54,6 +56,8 @@ const WAYS = { main: { w: A.mainWidth, t: 'p', tr: 'P', keep: 'gckm' }, thin: { 
 
 /* ───────────── BUILD: the plan's rows -> the grid of squares ───────────── */
 function build(plan) {
+    /* a plan may change one of A's numbers for its own room, with the reason (mondo's words): `numbers: { boardEveryPlots: 4, why: '…' }` */
+    Object.keys(DEFAULT_A).forEach(k => { A[k] = DEFAULT_A[k]; }); if (plan.numbers) { if (!plan.numbers.why) throw new Error('`numbers` needs a `why`'); Object.keys(plan.numbers).forEach(k => { if (k !== 'why' && k in A) A[k] = plan.numbers[k]; }); }
     const W = plan.grid.w, H = plan.grid.h, N = plan.grid.n || 12, FAIL = [], NEW = [], WARN = [], NOTE = [];
     const tiles = Object.assign({}, TILES, plan.tiles || {}), OPEN = Object.keys(tiles).filter(k => tiles[k][1]).join('');
     const T = [], L = [], RAMP = {}, LABELS = [], WAYLIST = [];
@@ -154,6 +158,14 @@ function check(B, opts) { opts = opts || {}; const { plan, W, H, N, T, L, RAMP, 
             if (onEdge && !inRoom(x + dx, y + dy) && !doorNear(x, y)) FAIL.push('a way ends on a plot side with no neighbour and no way out there (' + x + ',' + y + ', ' + (w.o.to || w.o.name || w.kind) + '): the tool fills it back with the wall'); }
         if (w.kind !== 'main') { let n = 0; for (const [dx, dy] of D4) if (isOpen(x + dx, y + dy)) n++; if (n < 1) FAIL.push('a thin trail ends at a dead wall: ' + x + ',' + y); } }));
 
+    /* A MAZE (`maze: true`: a labyrinth drawn as `area` pieces, mondo 11-20 on the underground: "labyrinth, height diffs, cliffs, drops"):
+       no narrow passage runs straight over the limit, and its `branches` (every side way, drop and dead end) each say where they lead */
+    if (plan.maze) { const narrow = (x, y, vert) => { let n = 1; const l = L[y][x]; for (const s of [-1, 1]) for (let k = 1; k < 5; k++) { const X = vert ? x + s * k : x, Y = vert ? y : y + s * k; if (isOpen(X, Y) && L[Y][X] === l) n++; else break; } return n <= 3; };
+        const seen = {}; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) for (const vert of [0, 1]) { if (!isOpen(x, y) || !narrow(x, y, vert)) continue; const px = vert ? x : x - 1, py = vert ? y - 1 : y; if (isOpen(px, py) && L[py][px] === L[y][x] && narrow(px, py, vert)) continue;
+            let n = 0, X = x, Y = y; while (isOpen(X, Y) && L[Y][X] === L[y][x] && narrow(X, Y, vert)) { n++; if (vert) Y++; else X++; }
+            if (n > A.leg && !seen[x + ',' + y + vert]) { seen[x + ',' + y + vert] = 1; FAIL.push('a passage runs STRAIGHT for ' + n + ' squares (over ' + A.leg + ') from ' + x + ',' + y + (vert ? ' going south' : ' going east')); } }
+        const br = plan.branches || []; br.forEach(b => { if (!b.to) FAIL.push('a branch that does not say where it leads: ' + JSON.stringify(b).slice(0, 60)); });
+        if (br.length < Math.ceil(PLOTS.length / A.thinEveryPlots)) FAIL.push('a maze with too few branches: ' + br.length + ' for ' + PLOTS.length + ' plots (one every ' + A.thinEveryPlots + ')'); }
     /* THE LEVELS: district ranges, plot levels, relief inside plots */
     const range = {}; DKEYS.forEach(d => { const v = PLOTS.filter(p => p.d === d).map(p => p.level); range[d] = [Math.min(...v), Math.max(...v), new Set(v).size]; });
     DKEYS.filter(big).forEach(d => { if (range[d][2] < A.districtLevels && !(dists[d] && dists[d].flat)) NEWR(dname(d) + ' has ' + range[d][2] + ' plot level(s); A asks ' + A.districtLevels + ' or more (or the district says `flat: \'why\'`)'); });
@@ -226,7 +238,7 @@ function check(B, opts) { opts = opts || {}; const { plan, W, H, N, T, L, RAMP, 
             PLOTS.forEach(p => { if (!real[p.bx + ',' + p.by] && p.today != null) FAIL.push('the plan says "' + p.name + '" stands today, the room has no plot there: mark it new (today = null) or fix its place'); });
             /* seams stay level (E 7): the baked height today at each way out against the plan's level there */
             try { const info = S.hqTerrainInfo(plan.room), zero = plan.grid.zero || 0;
-                (plan.doors || []).forEach(d => { if (d[4] == null) return; const dp = plotOf(d[0], d[1]); if (dp && dp.today == null) return;   // a way out on a NEW plot has no height today
+                (plan.doors || []).forEach(d => { if (d[4] == null) return; const dp = plotOf(d[0], d[1]); if ((dp && dp.today == null) || (d[5] && d[5].moves)) return;   // …or a seam the plan MOVES on purpose: [x, y, side, to, level, { moves: 'why' }] (the other room's thread is told)   // a way out on a NEW plot has no height today
                     const x = -room.shell.w / 2 + (d[0] - off[0] * N + 0.5) * 3.5, z = -room.shell.d / 2 + (d[1] - off[1] * N + 0.5) * 3.5; if (Math.abs(x) > room.shell.w / 2 || Math.abs(z) > room.shell.d / 2) return;
                     const y = S.hqTerrainFeet(info, x, z, null); if (y == null || !isFinite(y)) return; const lv = (y - zero) / 1.75;
                     if (Math.abs(lv - d[4]) > 0.5) NEWR('SEAM: the way out to ' + d[3] + ' stands at ' + y.toFixed(2) + ' m today (level ' + lv.toFixed(1) + '), the plan puts it at level ' + d[4] + ': a seam keeps its height (E 7)'); });

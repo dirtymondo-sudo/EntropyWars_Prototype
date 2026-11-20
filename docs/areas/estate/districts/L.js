@@ -69,8 +69,13 @@
 /* the zone's look rules (areas-complexes.md "THE ESTATE, THE ZONE KIT"): trim, iron, oil-lamp amber, lit and dark glass */
 const TRIM = 0x26222a, IRON = 0x1c1c20, AMBER = 0xff9a30, LAMP = { glow: 0.7 }, LITW = 0xf0c868, DARKW = 0x2a3040, PILE = 0x5a5044, GREY = 0x9a968c;
 /* THE LAKE'S OUTLINE in squares (the pool is an ellipse: middle 54 · 17.5, 14 x 11.7 squares): under 1 = water */
-const E = (x, y) => Math.pow((x + 0.5 - 54) / 14.6, 2) + Math.pow((y + 0.5 - 17.5) / 12.3, 2);
-const MARSH = [[63.5, 27, 2.6, 2.15], [68.5, 32.5, 2.15, 2.15]];   // the Marsh's two pools: middle, half sizes (squares)
+const E = (x, y) => Math.pow((x + 0.5 - 54) / 13.6, 2) + Math.pow((y + 0.5 - 16.5) / 11.1, 2);
+const MARSH = [[63.5, 27, 2.6, 2.15], [68.5, 32.5, 2.15, 2.15]];
+/* WORLD POLISH THREAD 17 (2026-11-20, the Estate's height plan, docs/plans/world-polish/plans/estate.js; bake-estate.js THE ROOM DESIGN lays it over these plots):
+   THE LAKE is the plan's water (the pool 91 x 73.5 m, its middle one square north of where it was); the South Shore is a bench a level over the water
+   with the shore walk on it, so THE PICNIC GROUND moves onto the plan's south beach (PIC: squares east, south) and THE CAMP off the east bank (now the
+   bank and the lane up it) to the North Shore by the Boathouse (CAMP). */
+const LAKE = { x: 54, z: 16.5, r: 45.5, rz: 36.75 }, PIC = [9, -3], CAMP = [-5, -7];   // the Marsh's two pools: middle, half sizes (squares)
 const M = (x, y) => Math.min.apply(null, MARSH.map(q => Math.hypot((x + 0.5 - q[0]) / q[2], (y + 0.5 - q[1]) / q[3])));
 module.exports = {
     /* THE GROUND (pass 1): shingle on the North Shore, mud where the Reeds and the Marsh are, boards under the shelter and at the Boathouse's door.
@@ -163,7 +168,7 @@ module.exports = {
     },
     /* THE PICNIC SHELTER (drawn, the South Shore's landmark): an open timber pavilion over three by three squares, four posts on the corner squares'
        middles, a shingle roof, two plank tables with their benches; the middle aisle stays open north to south. */
-    pieces(ctx) { const { look, feat, gc, r2, taken, WD, WD2, SHG, FLR } = ctx, X = gc(46), Z = gc(32);
+    pieces(ctx) { const { look, feat, gc, r2, taken, WD, WD2, SHG, FLR } = ctx, X = gc(46 + PIC[0]), Z = gc(32 + PIC[1]);
         const blk = (x0, z0, x1, z1, t, h) => feat({ k: 'wall', x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), t: t || 0.3, h: h || 1.1, ghost: true, rail: false });
         look('picnic', X, Z, 0, a => { const POST = 0x7a6a54, ROOF = 0x2c2830;
             for (const sx of [-1, 1]) for (const sz of [-1, 1]) { a.box(sx * 3.5, 0, sz * 3.5, 0.28, 2.7, 0.28, WD2, POST, { gain: 1.4 }); a.box(sx * 3.5, 0, sz * 3.5, 0.5, 0.3, 0.5, 'castle_wall', 0x8a8880);
@@ -173,12 +178,12 @@ module.exports = {
             a.roof('gable', 0, 2.94, 0, 9.4, 1.7, 9.8, SHG, ROOF, { keyEnd: WD, tintEnd: 0x6a5a48 });
             a.box(0, 2.3, 4.75, 0.2, 0.3, 0.2, null, AMBER, LAMP); a.box(0, 2.6, 4.75, 0.28, 0.06, 0.28, null, IRON);                                // a lantern under the south eave
             a.box(0, 3.3, -4.78, 3.5, 0.56, 0.06, WD, 0x3a3a36); a.sign('PICNIC AREA', 0, 3.35, -4.82, 3.3, 0.46, '#e8e0c8', '#3a3a36', 'fell', { ry: 180 }); });   // read from the lake
-        for (const sx of [-1, 1]) { for (const sz of [-1, 1]) { blk(X + sx * 3.5 - 0.2, Z + sz * 3.5, X + sx * 3.5 + 0.2, Z + sz * 3.5, 0.4, 2.6); taken.add((46 + sx) + ':' + (32 + sz)); }
-            ctx.props.push({ key: 'picnic_table', x: r2(X + sx * 3.5), z: Z, face: 90 }); taken.add((46 + sx) + ':32'); }                               // THE MODEL PASS: the tables are models
+        for (const sx of [-1, 1]) { for (const sz of [-1, 1]) { blk(X + sx * 3.5 - 0.2, Z + sz * 3.5, X + sx * 3.5 + 0.2, Z + sz * 3.5, 0.4, 2.6); taken.add((46 + PIC[0] + sx) + ':' + (32 + PIC[1] + sz)); }
+            ctx.props.push({ key: 'picnic_table', x: r2(X + sx * 3.5), z: Z, face: 90 }); taken.add((46 + PIC[0] + sx) + ':' + (32 + PIC[1])); }                               // THE MODEL PASS: the tables are models
         ctx.props.push({ key: 'string_lights', x: X, z: r2(Z - 5.6), face: 0 }); ctx.props.push({ key: 'string_lights', x: X, z: r2(Z + 5.6), face: 0 });
     },
     water(ctx) { const { W, gx, gc, r2, feat, props, taken, sheet, WD2 } = ctx;
-        feat({ k: 'pool', x: gx(54), z: gx(17.5), r: 49, rz: 41, y: -0.3, depth: 1.0, key: 'water', bank: 2.4 });
+        feat({ k: 'pool', x: gx(LAKE.x), z: gx(LAKE.z), r: LAKE.r, rz: LAKE.rz, y: -0.3, depth: 1.0, key: 'water', bank: 2.4 });
         feat({ k: 'deck', x0: gx(36), z0: gx(18), x1: gx(49), z1: gx(18), w: 7, y: 0.3 });                                                          // THE DOCK
         feat({ k: 'deck', x0: gx(49), z0: gx(16), x1: gx(49), z1: gx(20), w: 7, y: 0.3 });                                                          // its head, across the end
         feat({ k: 'deck', x0: r2(gx(67) - 0.9), z0: gc(7), x1: gx(58), z1: gc(7), w: 3.5, y: 0.3 });                                                          // the Boathouse's slip, out over the water
@@ -205,9 +210,9 @@ module.exports = {
         /* THE SHALLOWS (pass 3). No reed, cattail or lily model exists on R2 (the NEEDS A MODEL list): the ocean pack's seaweed stands in the shallows as
            the water plants (it sways; 1.2 to 1.8 m, its top out of the water), two rows round the Reeds' bank, clumps in the Marsh's pools and on the
            south shore. LILY PADS are drawn (Camelot's Fairy Forest way: a notched disc in the leaf sheet on the water), ONE arch row, some in flower. */
-        { const rnd = ctx.rnd, CX = gx(54), CZ = gx(17.5), weed = (x, z) => props.push({ key: 'reeds', x: r2(x), z: r2(z), face: Math.round(rnd() * 360), h: r2(1.6 + rnd() * 0.5), noBlock: true });   // THE MODEL PASS: real reeds (the seaweed stood in)
-          for (let t = 206; t <= 246; t += 2.3) for (const k of [0.96]) { const q = (t + (rnd() - 0.5) * 1.6) * Math.PI / 180, kk = k + (rnd() - 0.5) * 0.02; weed(CX + 49 * kk * Math.cos(q), CZ + 41 * kk * Math.sin(q)); }
-          for (const t of [103, 130, 65]) { const q = t * Math.PI / 180; weed(CX + 49 * 0.965 * Math.cos(q), CZ + 41 * 0.965 * Math.sin(q)); }                       // the south shore's clumps
+        { const rnd = ctx.rnd, CX = gx(LAKE.x), CZ = gx(LAKE.z), weed = (x, z) => props.push({ key: 'reeds', x: r2(x), z: r2(z), face: Math.round(rnd() * 360), h: r2(1.6 + rnd() * 0.5), noBlock: true });   // THE MODEL PASS: real reeds (the seaweed stood in)
+          for (let t = 206; t <= 246; t += 2.3) for (const k of [0.96]) { const q = (t + (rnd() - 0.5) * 1.6) * Math.PI / 180, kk = k + (rnd() - 0.5) * 0.02; weed(CX + LAKE.r * kk * Math.cos(q), CZ + LAKE.rz * kk * Math.sin(q)); }
+          for (const t of [103, 130, 65]) { const q = t * Math.PI / 180; weed(CX + LAKE.r * 0.965 * Math.cos(q), CZ + LAKE.rz * 0.965 * Math.sin(q)); }                       // the south shore's clumps
           for (const m of [[gx(63.5), gx(27), 9, 7.5], [gx(68.5), gx(32.5), 7.5, 7.5]]) for (let t = 20; t < 360; t += 95) { const q = (t + rnd() * 20) * Math.PI / 180; if (Math.abs(m[1] + m[3] * 0.8 * Math.sin(q) - gc(31)) < 2.4) continue; weed(m[0] + m[2] * 0.8 * Math.cos(q), m[1] + m[3] * 0.8 * Math.sin(q)); }
           const L = sheet(), pad = (x, z, y) => { const r = r2(0.3 + rnd() * 0.32); L.P.push({ s: 'cyl', p: [r2(x - OX), y, r2(z - OZ)], r, h: 0.02, seg: 9, arc: 320, a0: Math.round(rnd() * 360), key: 'leaves_3', tint: 0xb8e088, gain: 1.5 });
               if (rnd() < 0.22) { L.P.push({ s: 'cyl', p: [r2(x - OX), y + 0.02, r2(z - OZ)], r: 0.13, h: 0.09, seg: 6, tint: rnd() < 0.5 ? 0xf6f0e0 : 0xf0b8d0, glow: 0.25 }); L.P.push({ s: 'cyl', p: [r2(x - OX), y + 0.1, r2(z - OZ)], r: 0.05, h: 0.05, seg: 5, tint: 0xf0c040, glow: 0.4 }); } };
@@ -225,12 +230,12 @@ rock('lake_rock', 0, 0, 7.5, 20); rock('lake_rock', -3.6, 1.4, 5.0, 140); rock('
         for (const q of [[gx(50) - 0.4, gx(16) + 0.4], [gx(50) - 0.4, gx(18)], [gx(48) + 0.4, gx(20) - 0.4], [gx(58) + 0.4, gc(7) - 1.4], [gx(58) + 0.4, gc(7) + 1.4], [gx(65) + 0.4, gc(17) + 1.4]]) props.push({ key: 'mooring_bollard', x: r2(q[0]), z: r2(q[1]), noBlock: true });
         for (const q of [[52, -33, 40], [59, -31.5, 200], [66, -30.5, 110], [72, -32, 300], [63, -37, 20]]) props.push({ key: 'duck', x: q[0], z: q[1], y: 0.98, face: q[2] });
         props.push({ key: 'swan', x: 58, z: -84, y: 0.96, face: 120, noBlock: true }); props.push({ key: 'swan', x: 60.5, z: -85.5, y: 0.96, face: 150, noBlock: true });
-        props.push({ key: 'heron', x: r2(gx(63.5) + 7.6), z: r2(gx(27) - 2.6), face: 220 }); props.push({ key: 'heron', x: r2(gx(54) + 49 * 1.03 * Math.cos(3.93)), z: r2(gx(17.5) + 41 * 1.03 * Math.sin(3.93)), face: 60 });
+        props.push({ key: 'heron', x: r2(gx(63.5) + 7.6), z: r2(gx(27) - 2.6), face: 220 }); props.push({ key: 'heron', x: r2(gx(LAKE.x) + LAKE.r * 1.03 * Math.cos(3.93)), z: r2(gx(LAKE.z) + LAKE.rz * 1.03 * Math.sin(3.93)), face: 60 });
     },
     dress(ctx) { const { gx, gc, r2, npc, props, P, dec, tree } = ctx;
         P('rowboat', 50, 3, { face: 80 }); dec('fallen_log', 46, 2); dec('fallen_log', 58, 3); dec('meshy_frog', 38, 3); dec('meshy_frog', 39, 8); dec('luna_moth', 37, 5); dec('fallen_log', 37, 10);
         P('cave_torch', 36, 16, { noLight: true }); P('cave_torch', 36, 19, { noLight: true }); P('meshy_rowboat', 66, 10, { face: 300 }); dec('wooden_bucket', 69, 10);   // (the room's ten real lights: L keeps the campfire and the Boathouse's lantern)
-        P('park_bench', 40, 31, { face: 0 }); P('park_bench', 44, 32, { face: 0 }); P('campfire', 42, 33); dec('folding_chair', 41, 34); dec('folding_chair', 43, 34); dec('butterfly', 46, 31);
+        { const q = (x, y) => [x + PIC[0], y + PIC[1]]; P('park_bench', ...q(40, 31), { face: 0 }); P('park_bench', ...q(44, 32), { face: 0 }); P('campfire', ...q(42, 33)); dec('folding_chair', ...q(41, 34)); dec('folding_chair', ...q(43, 34)); dec('butterfly', ...q(46, 31)); }
         dec('meshy_frog', 61, 30); dec('meshy_frog', 66, 29); dec('meshy_frog', 70, 35); dec('meshy_frog', 64, 33); P('dead_snag', 62, 33); P('dead_snag', 70, 28); dec('hawk_moth', 67, 26);
         tree(39, 3, 'tree', 7.5); tree(70, 2, 'tree_2', 8); tree(37, 33, 'tree', 7); tree(49, 35, 'tree_2', 7.5); tree(58, 33, 'tree', 8); tree(70, 14, 'tree_2', 7); tree(70, 21, 'tree', 7.5);
         npc.push({ x: gc(54), z: gc(23), face: 0, race: 'loch ness monster' });                                                    // in the water, south of the rock (mondo's OK 11-15)
@@ -240,13 +245,13 @@ rock('lake_rock', 0, 0, 7.5, 20); rock('lake_rock', -3.6, 1.4, 5.0, 140); rock('
           for (let i = 0; i < 26; i++) { const sx = 47 + Math.floor(rnd() * 16), sy = 2 + Math.floor(rnd() * 4); if (ctx.cell[sy][sx] !== 's') continue; at(['psxg_rock_1', 'psxg_rock_2', 'psxg_rock_3', 'psxg_rock_4', 'psxg_rock_2', 'psxg_rock_3'][Math.floor(rnd() * 6)], gc(sx) + (rnd() - 0.5) * 3, gc(sy) + (rnd() - 0.5) * 3, { noBlock: true }); }
           dec('stump', 55, 2); dec('meshy_fallen_log', 61, 4); P('meshy_rowboat', 56, 4, { face: 200 }); at('iron_garden_bench', gc(53), gc(1) - 1.1, { face: 0 }); at('iron_garden_bench', gc(44), gc(1) - 1.1, { face: 0 });
           /* the Reeds: ferns on the mud behind the water plants, frogs, a heron's worth of quiet */
-          for (let i = 0; i < 14; i++) { const q = (207 + rnd() * 40) * Math.PI / 180, k = 1.04 + rnd() * 0.07; at('fern', gx(54) + 49 * k * Math.cos(q), gx(17.5) + 41 * k * Math.sin(q)); }
+          for (let i = 0; i < 14; i++) { const q = (207 + rnd() * 40) * Math.PI / 180, k = 1.04 + rnd() * 0.07; at('fern', gx(LAKE.x) + LAKE.r * k * Math.cos(q), gx(LAKE.z) + LAKE.rz * k * Math.sin(q)); }
           dec('meshy_frog', 41, 9); dec('meshy_frog', 43, 6); dec('meshy_frog', 40, 11); dec('grasshopper', 40, 5); dec('blue_morpho', 42, 4); dec('rabbit', 40, 2); P('trail_sign', 38, 8, { face: 90 });
           /* the dock: rope, a crate, the traps, a bucket; the slip and the Boathouse's yard */
           at('meshy_rope', gx(42) + 1, gx(18) + 2.6); at('meshy_rope', gx(47), gx(17) + 0.9); at('psx_wooden_crate_4', gx(45), gx(18) + 2.7, { face: 10 }); at('wooden_bucket', gx(49) - 0.6, gx(19) + 1.2); at('lobster_traps', gc(48) + 0.3, gc(19) + 0.9, { face: 30 });
           P('psx_metal_barrel_mp_1', 70, 10); dec('psx_wooden_crate_6', 71, 10); dec('tire_stack', 66, 8); dec('meshy_rope', 67, 9); dec('ship_anchor', 71, 6, { noBlock: true }); at('meshy_rope', gx(60), gc(7) + 1.0); P('signpost', 66, 0, { face: 180 });
           /* the east bank: a camp by the jetty (tent, a cold fire ring, chairs, a cooler), a chair and a bucket on the jetty's end */
-          P('camping_tent', 69, 12, { face: 270 }); at('meshy_campfire_ring', gc(69) + 0.4, gc(13) + 1.0); dec('folding_chair', 68, 14); dec('folding_chair', 70, 14, { }); dec('beach_cooler', 70, 13); dec('railway_lantern', 69, 14);
+          P('camping_tent', 69 + CAMP[0], 12 + CAMP[1], { face: 270 }); at('meshy_campfire_ring', gc(69 + CAMP[0]) + 0.4, gc(13 + CAMP[1]) + 1.0); dec('folding_chair', 68 + CAMP[0], 14 + CAMP[1]); dec('folding_chair', 70 + CAMP[0], 14 + CAMP[1], { }); dec('beach_cooler', 70 + CAMP[0], 13 + CAMP[1]); dec('railway_lantern', 69 + CAMP[0], 14 + CAMP[1]);
           at('folding_chair', gc(66) - 0.5, gc(17) + 0.5, { face: 270 }); at('wooden_bucket', gc(66) + 0.6, gc(17) - 0.9); at('beach_cooler', gc(67), gc(17) + 1.0, { face: 80 });
           /* the Marsh: dead trees and bushes on the mud, ferns, more frogs, a flamingo in the shallows, a signpost where the boardwalk starts */
           P('psxg_dead_tree_1', 61, 32); P('psxg_dead_tree_2', 67, 22); P('hw_tree_4', 60, 34); P('psxg_dead_tree_1', 65, 35); P('hw_tree_3', 71, 34);
@@ -254,8 +259,8 @@ rock('lake_rock', 0, 0, 7.5, 20); rock('lake_rock', -3.6, 1.4, 5.0, 140); rock('
           for (const q of [[60, 28], [61, 24], [67, 24], [65, 31 - 1], [70, 29], [63, 31 + 1], [67, 35], [71, 33]]) dec('fern', q[0], q[1]);
           dec('meshy_frog', 62, 30); dec('meshy_frog', 67, 30); dec('meshy_frog', 71, 35); dec('luna_moth', 64, 24); P('signpost', 59, 32, { face: 270 });
           /* the picnic ground: a bin and its bag, a cooler and cups on the tables, crows on the shelter's ridge, rabbits, butterflies */
-          dec('metal_trash_can', 44, 31); dec('garbage_bag', 44, 31); at('beach_cooler', gc(45) + 1.2, gc(32) - 0.9, { face: 20 });
-          at('crow', gc(46) - 1.5, gc(32), { y: 4.68, face: 100 }); at('crow', gc(46) + 2.2, gc(32), { y: 4.68, face: 250 }); dec('rabbit', 39, 34); dec('rabbit', 55, 34); dec('monarch', 49, 33); dec('swallowtail', 41, 32); dec('bee', 52, 34); dec('ladybug', 46, 34);
+          dec('metal_trash_can', 44 + PIC[0], 31 + PIC[1]); dec('garbage_bag', 44 + PIC[0], 31 + PIC[1]); at('beach_cooler', gc(45 + PIC[0]) + 1.2, gc(32 + PIC[1]) - 0.9, { face: 20 });
+          at('crow', gc(46 + PIC[0]) - 1.5, gc(32 + PIC[1]), { y: 4.68, face: 100 }); at('crow', gc(46 + PIC[0]) + 2.2, gc(32 + PIC[1]), { y: 4.68, face: 250 }); dec('rabbit', 39, 34); dec('rabbit', 55, 34); dec('monarch', 49, 33); dec('swallowtail', 41, 32); dec('bee', 52, 34); dec('ladybug', 46, 34);
           /* THE POLISH (pass 5): the west shore between the dock and the picnic ground (two benches to the water, the Woods' MISSING board by the dock's
              foot, a stump, a boat pulled up), boats tied at the slip's and the jetty's end */
           P('park_bench', 39, 21, { face: 90 }); P('park_bench', 39, 27, { face: 90 }); P('missing_board', 38, 15, { face: 90 }); dec('stump', 38, 23); dec('fern', 39, 25); dec('fern', 38, 20); dec('monarch', 39, 22);
@@ -268,14 +273,14 @@ rock('lake_rock', 0, 0, 7.5, 20); rock('lake_rock', -3.6, 1.4, 5.0, 140); rock('
           for (const q of [[43, 31], [66, 11], [40, 29], [57, 34], [62, 2]]) dec('leafy_bush', q[0], q[1], { noBlock: true });
           for (const q of [[40, 6], [45, 3], [39, 20], [41, 33], [51, 33], [69, 6], [69, 23], [60, 2]]) dec('wild_flowers', q[0], q[1]);
           for (const q of [[61, 29], [65, 30], [70, 29], [67, 35], [62, 33]]) dec('moss_clump', q[0], q[1]);
-          P('bbq_grill', 48, 34, { face: 0 }); dec('backpack', 68, 12); dec('sleeping_bag', 70, 12); dec('kettle', 69, 13);
+          P('bbq_grill', 48 + PIC[0], 34 + PIC[1] - 1, { face: 0 }); dec('backpack', 68 + CAMP[0], 12 + CAMP[1]); dec('sleeping_bag', 70 + CAMP[0], 12 + CAMP[1]); dec('kettle', 69 + CAMP[0], 13 + CAMP[1]);
           at('dragonfly', 30, -100, { y: 0.9 }); at('dragonfly', 36, -106, { y: 0.8 }); at('dragonfly', 104, -42, { y: 0.9 }); at('deer', gc(43), gc(0) + 0.6, { face: 160, noBlock: true });
           /* more trees on the grass (birch, oak, spruce, pine of the tree pack), set back from the path */
           tree(41, 4, 'tree_3', 8.5); tree(44, 3, 'pine', 7); tree(64, 3, 'tree', 7.5); tree(69, 3, 'tree_4', 8.5); tree(69, 20, 'tree_3', 8); tree(69, 25, 'tree_4', 8); tree(39, 13, 'tree_4', 8); tree(39, 24, 'tree_3', 8.5);
           tree(52, 35, 'tree_3', 8); tree(56, 34, 'pine', 7.5); tree(43, 35, 'tree', 7); tree(63, 0, 'pine', 7); }
         /* on the dock's head: a bench looking down the lake, a boat tied up beside it */
         /* THE MODEL LIST FIRST (mondo 11-16): the playground pack's swing, slide and sandbox on the South Shore, the brass telescope on the dock's head */
-        P('play_swing', 50, 32, { face: 0 }); P('play_slide', 53, 32, { face: 90 }); props.push({ key: 'play_sandbox', x: r2(gc(51) + 0.9), z: r2(gc(34) - 0.4), span: 3, face: 10 });
+        P('play_swing', 58, 30, { face: 0 }); P('play_slide', 57, 27, { face: 90 }); props.push({ key: 'play_sandbox', x: r2(gc(60) + 0.9), z: r2(gc(30) - 0.4), span: 3, face: 10 });   // (thread 17: on the plan's south beach)
         P('brass_telescope', 49, 19, { face: 100 });
         P('park_bench', 48, 16, { face: 180 }); props.push({ key: 'rowboat', x: r2(gx(50) + 1.4), z: gc(18), y: 0.95, face: 5 });
     },

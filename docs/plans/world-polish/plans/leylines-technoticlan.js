@@ -1,5 +1,5 @@
 /* THREAD 12, LEYLINES: TECHNOTICLAN'S PLAN, laid OVER THE ROOM AS IT STANDS (`underlay`), in the room it shares with Babel.
-   A PROPOSAL: nothing is built from it until mondo says so. DATA ONLY (the format: plans/README.md).
+   APPROVED by mondo 2026-11-20 ("looks good"). Nothing is built from it yet. DATA ONLY (the format: plans/README.md).
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/leylines-technoticlan.js
    mondo 2026-11-20: "Tecnoticlan can stay straight bc it's more architecture than dungeon or passageways". So THE CAUSEWAYS STAY
    STRAIGHT and the lake city keeps its one water level: its height is its monuments (the Pyramid 12, the Round Tower 4, the
@@ -14,8 +14,9 @@
 const B = 'Babel has its own plan (plans/leylines-babel.js)', R = 'the route kit\'s trail: its squares stay as they are', lake = 'a lake city on one water level: its height is its monuments (architecture; mondo 11-20)';
 const cz = 'a city causeway: straight on purpose (mondo 11-20: "Tecnoticlan can stay straight bc it\'s more architecture")';
 module.exports = {
+    approved: 'mondo 2026-11-20, shown the plan and its picture in chat: "looks good"',
     zone: 'Leylines', thread: 12, room: 'site_prebuilt_gobekli_ow_babel', underlay: { deep: 6 },
-    title: 'LEYLINES, TECHNOTICLAN: the lake city, THE PLAN over the room as it stands (a proposal)',
+    title: 'LEYLINES, TECHNOTICLAN: the lake city, THE PLAN over the room as it stands',
     build: { frame: 'room', file: 'docs/areas/leylines/districts/Z-room.js (new: the room design, in the room\'s own frame)' },
     mass: 'closed', massHeight: 0,
     tiles: { u: ['the city as it stands today (read from the room)', true, [110, 120, 96], [222, 228, 200]] },

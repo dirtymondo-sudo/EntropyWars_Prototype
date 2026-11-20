@@ -1,4 +1,4 @@
-# THE VATICAN: THE DRESSING PLAN (thread 11; a proposal, 2026-11-20)
+# THE VATICAN: THE DRESSING PLAN (thread 11; APPROVED by mondo 2026-11-20: "looks good")
 
 The Vatican is NOT a height job. Its ground is right (13 m, the Observatory's mount, the Colosseum, the Gardens). It is a DRESSING job:
 the first build stands and most of what makes each place read is missing. This list is drawn from each district file's own "NOT YET"

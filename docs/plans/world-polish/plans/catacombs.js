@@ -1,5 +1,5 @@
 /* THREAD 11, HEAVEN + HELL + VATICAN: THE CATACOMBS, THE HEIGHT PLAN. A new design: the room grows from 6 plots to 12, on levels.
-   A PROPOSAL: nothing is built from it until mondo says so. DATA ONLY (the format: plans/README.md).
+   APPROVED by mondo 2026-11-20 ("looks good"). Nothing is built from it yet. DATA ONLY (the format: plans/README.md).
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/catacombs.js
    mondo 11-20 approved growing the Catacombs to 12 plots. TODAY: six rooms on one flat floor (the Crypt 2 up), one brick roof.
    THE IDEA: a dungeon that goes DOWN as you go in. The Crypt under the altar (2) is the top. The old galleries are the upper floor
@@ -10,8 +10,9 @@
    Levels: 0 = the old floor. One level = 1.75 m. It is roofed: the closed squares are rock and bone. */
 'use strict';
 module.exports = {
+    approved: 'mondo 2026-11-20, shown the plan and its picture in chat: "looks good"',
     zone: 'Heaven + Hell + Vatican', thread: 11, room: 'site_prebuilt_vatican_under',
-    title: 'THE CATACOMBS: THE HEIGHT PLAN, 12 plots going down (a proposal)',
+    title: 'THE CATACOMBS: THE HEIGHT PLAN, 12 plots going down',
     grows: 'from 3 x 2 plots to 4 x 3 (12 plots, mondo\'s OK of 11-20): one new column east, one new row south; the two east ways out move to the new east wall',
     build: { frame: 'room', file: 'docs/areas/afterlife/districts/K.js + the map draw-afterlife.js (the room is grown there)' },
     noBuildings: 'the whole room is an inside: its chambers are the architecture',

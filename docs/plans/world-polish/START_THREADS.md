@@ -1,6 +1,6 @@
 # THE BUILD THREADS: what to paste to start each one (2026-11-20)
 
-Every height plan below has mondo's OK unless it says "waits". One thread = one zone = its own fresh session. Paste the block.
+Every plan below has mondo's OK (11-20). One thread = one zone = its own fresh session. Paste the block.
 A build thread follows WORLD_POLISH_PLAN.md section 4, "HOW A BUILD THREAD USES A PLAN": it starts from the approved plan, keeps it
 passing `node docs/plans/world-polish/draw-plan.js <plan>`, builds a pilot first and shows mondo pictures before the rest.
 
@@ -18,7 +18,7 @@ Follow section 4 of the plan, "HOW A BUILD THREAD USES A PLAN". Pilot: the Lake 
 
 ```
 Do thread 12 of docs/plans/world-polish/WORLD_POLISH_PLAN.md: LEYLINES.
-This is a BUILD thread. Its plans (mondo's OK of 11-20 on the first two; the third waits his word, show it to him first):
+This is a BUILD thread. Its plans (all three have mondo's OK of 11-20):
 - docs/plans/world-polish/plans/leylines-line.js (the Ley Line: 18 new plots; the Line is crossed, never walked end to end; more ledges on the climbs before he looks)
 - docs/plans/world-polish/plans/leylines-babel.js (Babel: the land round the Tower; the Tower is not touched)
 - docs/plans/world-polish/plans/leylines-technoticlan.js (Technoticlan: the causeways stay straight; the sunk Ball Court, the Market Hall)
@@ -38,7 +38,7 @@ First check in the game whether the Pirates' Cove landing is really cut off from
 
 ```
 Do thread 11 of docs/plans/world-polish/WORLD_POLISH_PLAN.md: HEAVEN + HELL + VATICAN.
-This is a BUILD thread. Its plans (mondo's OK of 11-20 on Heaven and Hell; the Catacombs and the Vatican's dressing list wait his word, show them first):
+This is a BUILD thread. Its plans (all four have mondo's OK of 11-20):
 - docs/plans/world-polish/plans/hell.js (LIGHT AND LANDMARKS only: no ground moves; no walk-in building, mondo 11-20)
 - docs/plans/world-polish/plans/heaven.js (the straight cloud strips go; the paths wind)
 - docs/plans/world-polish/plans/catacombs.js (grown to 12 plots, going down)

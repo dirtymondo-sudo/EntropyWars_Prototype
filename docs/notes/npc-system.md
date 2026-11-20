@@ -4,6 +4,8 @@ Started 2026-11-16 on mondo's order (thread "Disaster City NPCs: the spawn syste
 **State (11-16): his answers are in (next section). DELIVERY 1 · THE SET LEVELS is live. Deliveries 2-8 are not built.
 Every number is still a PROPOSAL he has not set: they are rows in data.js `HQ_SPAWN_RULES`.**
 
+**WHERE every unit stands and walks, in every zone = mondo's Relationship Web board (2026-11-20, approved and built): `docs/plans/npc-places/PLACES.md`; the section "THE NPC PLACES" at the end of this file.**
+
 **How NPCs react to you (strikes, talk, fleeing, onlookers, joining fights): `docs/plans/npc-encounters/PLAN.md` (2026-11-17, a plan of proposals on top of this system).**
 
 His brief, in short: no level scaling with the player; many of the same unit (cop b, cop c ...) with schedules; more NPCs (in big outdoor spaces; small indoor rooms stay at few, mondo 11-16);
@@ -555,3 +557,19 @@ No rule changed. A battle now has SIDES, not only seats 1 and 2, and every frien
   the grudge list that writes `state.sideTies`, the stray hits, the camera and HUD for a third colour (today an allied side shows in the
   ally colour, a hostile one in the enemy colour). three-vfx-effects.js keeps one plain compare (a VFX ally list), out of this step.
 
+
+## THE NPC PLACES (2026-11-20; mondo: "my board plus your suggestions should replace what is in the game today")
+
+His Relationship Web board decides who stands where. The list he approved, his changes and what is not done: `docs/plans/npc-places/PLACES.md` section 0.
+- **Disaster City** = `HQ_CITY_RESIDENTS.list` (the one-of-a-kind and anyone with a day of its own) + `HQ_SPAWN_RULES...people` (everyone there is several of).
+  A `people` row: `g` = gender; `beat` = the districts it walks after its shift (its route: every Skater ends at Bayside's skate park, every Cameraman at
+  the News office, the Delivery Boys walk all nine districts); a place `z:<plot id>` = the walked squares of any plot of HQ_ZONE_MAP's city room, the Hills'
+  `H..` plots included (data.js `hqZoneMapRoom`). District N = the Disaster Hills (base 15, a PROPOSAL). No cops in Southside. King Kong: Financial + Hero Plaza.
+- **Every other zone** = data.js **`HQ_NPC_PLACES`**: `room: ['<race>[ m|f] [@<district>[:<plot name part>]] [><route districts>] [night|day|h<a>-<b>] [stay] [x<n>]', ...]`
+  (`cast:<id>` stands a story character). `hqPlacesExpand()` runs once at load: it rewrites `room.npcSpots` (spots with a cast, a TALK, a clone or a pose are
+  never touched), sets `room.placed` and writes the room's `HQ_AREA_ENCOUNTERS` row from the rows' races (`spots: false`). `hqPlacesExpand.report` = per room
+  rows / took / fresh / kept / gone / miss (a `miss` = a district or plot name that matched nothing: fix the row).
+  A made spot carries `place: true`, `route: [[x, z], ...]`, `hours`, `snap` (no authored square: three-renderer.js `_hqPlaceSnap` moves it to the nearest floor).
+- **To change who stands where:** edit a row; nothing else. A room not on the table keeps its authored people (DOOR HQ, the Mall, the Spaceship, the Frozen Sea).
+  A zone tool that rewrites a room's `npcSpots` changes nothing the table decides: only the squares and lines of the races the table names there.
+- **A plot's place in a room:** `x = ox + (px + 0.5) * 42`, `z = oz + (pz + 0.5) * 42` with `ox, oz` from HQ_ZONE_MAP's row of the room (`hqZoneMapRoom`).

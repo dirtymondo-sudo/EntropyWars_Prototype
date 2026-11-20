@@ -2,7 +2,9 @@
    PLOTS: The Ice Wall far west / west (P00-01, P01-01) · The Gap (P02-01: the cut, two squares wide) · The Ice Wall (P03-01, the landmark + the watch post)
    · The Ice Wall east / far east (P04-01, P05-01). The wall itself is the tool's (the height sheet). The track along its foot is the plan's.
    STANDS TODAY (first build): the Gap's two gate pylons and board, the watch post, flood masts along the face, a Yeti and a Nordic.
-   NOT YET: the icefall, fallen blocks, ladders and fixed ropes up the face, anything ON the wall, the night look (the masts are the light). */
+   NOT YET: fallen blocks along the face, ladders, the night look (the masts are the light).
+   WORLD POLISH THREAD 13 (2026-11-20): the west stair, the walk ON the Wall, the arch over the Gap and the icefall + its rope are the room
+   design's (`room.js`, read from the height plan), not this file's. */
 'use strict';
 exports.pieces = ctx => {
     const { look, gx, COR } = ctx;
@@ -15,7 +17,7 @@ exports.pieces = ctx => {
 };
 exports.dress = ctx => {
     const { P, dec, native, sayOf } = ctx;
-    [5, 17, 26, 35, 44, 52, 66].forEach(x => P('flood_mast', x, 19));
+    [5, 17, 26, 35, 44, 52, 62].forEach(x => P('flood_mast', x, 19));   // (11-20, thread 13: the east one moved off the icefall's heap, 66 -> 62)
     P('timber_lookout', 40, 22); P('item_flat_earth', 42, 22, { h: 1.2 }); dec('psx_supply_crate_1', 41, 23); dec('item_binoculars', 39, 22); P('trail_sign', 33, 22); P('signpost', 28, 22);
     P('canvas_tent', 20, 22); dec('campfire', 21, 23); dec('psx_metal_barrel_mp_2', 19, 23);
     [[4, 22], [12, 19], [24, 19], [49, 19], [58, 19], [61, 22], [68, 19]].forEach(q => dec('icicles', q[0], q[1]));

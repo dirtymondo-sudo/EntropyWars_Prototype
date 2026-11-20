@@ -232,6 +232,11 @@ for (let y = 0; y <= Dq; y++) for (let x = 0; x <= W; x++) {
 }
 const slope = Buffer.alloc(W * Dq * 8);
 for (let cy = 0; cy < Dq; cy++) for (let cx = 0; cx < W; cx++) { const o = (cy * W + cx) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope.writeInt16LE(Math.round(Hc[(cy + q[1]) * (W + 1) + cx + q[0]] * 100), o + k * 2)); }
+/* A JOINED DISTRICT'S OWN CORNERS (2026-11-20, world polish thread 17, the Estate's room design; opt-in): an export with `cells` (its slope cells, four
+   corners a square) keeps them on its own squares, so a ledge it lays is a drop here too (the shared corner grid above would smooth it into a slope).
+   No other export has `cells`: every other room bakes as before. */
+JOINS.forEach(J => { if (!J.cells) return; const src = Buffer.from(J.cells, 'base64'); if (src.length !== J.W * J.D * 8) { console.error('bake-route: ' + J.part + ' cells are not ' + J.W + ' x ' + J.D); process.exit(1); }
+    for (let y = 0; y < J.D; y++) for (let x = 0; x < J.W; x++) { const X = x + J.FOX, Y = y + J.FOY; if (foreign(X, Y) !== J) continue; src.copy(slope, (Y * W + X) * 8, (y * J.W + x) * 8, (y * J.W + x) * 8 + 8); } });
 const hAt = (sx, sy) => { const x = Math.max(0, Math.min(W - 1, Math.floor(sx))), y = Math.max(0, Math.min(Dq - 1, Math.floor(sy))); return (Hc[y * (W + 1) + x] + Hc[y * (W + 1) + x + 1] + Hc[(y + 1) * (W + 1) + x] + Hc[(y + 1) * (W + 1) + x + 1]) / 4; };
 
 /* ── THE PAINT: the plot's ground sheet, ragged where two kinds meet; the path's sheet over it ── */
