@@ -757,6 +757,22 @@
         {"n":"The Family Plot","x":-22,"y":15,"was":"P01-05"},
         {"n":"The Crypt","x":-22,"y":16,"was":"P00-05"}
       ]},
+    {"id":"estT","hub":"ranch","zone":"The Estate","name":"The House Trail","state":"new 11-20","layer":"surface","x":-20,"y":14,"w":7,"h":3,"shape":"band","count":13,"note":"the walked way from the Lake’s West Bank to the Haunted House (world polish thread 17); room site_prebuilt_skinwalker_ow_trail",
+      "plots": [
+        {"n":"The Fence Gap","x":-14,"y":16},
+        {"n":"The First Bend","x":-15,"y":16},
+        {"n":"The Switchback","x":-16,"y":16},
+        {"n":"The Old Camp","x":-17,"y":16},
+        {"n":"The Pond","x":-15,"y":15},
+        {"n":"The Dead Oak","x":-16,"y":15},
+        {"n":"The Far Side","x":-17,"y":15},
+        {"n":"The Descent","x":-17,"y":14},
+        {"n":"The Back Road","x":-18,"y":14},
+        {"n":"The Back Gate","x":-19,"y":14},
+        {"n":"The Low Woods","x":-18,"y":15},
+        {"n":"The Bottom","x":-19,"y":15},
+        {"n":"The Graveyard Gate","x":-20,"y":15}
+      ]},
     {"id":"estR","hub":"ranch","zone":"The Estate","name":"The Ranch","state":"moves","layer":"surface","x":-13,"y":18,"w":4,"h":5,"shape":"band","count":15,"today":{"room":"site_prebuilt_skinwalker_estate","districts":["R"]},
       "plots": [
         {"n":"The Ranch Gate","x":-11,"y":18,"was":"P03-05"},

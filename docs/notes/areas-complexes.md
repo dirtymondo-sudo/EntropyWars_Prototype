@@ -13637,3 +13637,24 @@ the Sink) and one on the east (off the Shoulder 2 -> 1); the plan's ledge edges 
 - **TO BUILD THE REST:** `LEY_UPTO = 11` in after-v13.js + `node docs/plans/one-world/after-v13.js`; `X1 = 143` in Y-room.js (the east slabs, the Watch Tower,
   the High Stone); `node bake-leylines.js`; `node bake-map.js site_prebuilt_gobekli_ow_line site_prebuilt_gobekli_ow_babel` (Babel's box holds the Line's new
   plots at wx 28..30 as ghost cells). Then Babel + Technoticlan from their own plans.
+- **STEP 2 (11-20, mondo: "go"): THE RANCH AND THE CORN FIELDS** are laid by the same step (`room.js` `letters: ['L', 'R', 'C']`). The Ranch has six new plots
+  (`after-v13.js` row 9: the Creek Pool -12,18, the Draw -12,20, the Saddle and the Ridge north / middle / south -13,18..21; ground `M`, `F`). County Lane's
+  own fields in the corn and the Ranch Road's field are the route kit's: never laid (`des` skips a plot that is a route's field, district `N` in the plan).
+  What the bake learned: a SMALL drawn piece (a board, a gate arch: every part within 4 m) steps aside like a prop (up to 6 squares); a BIG drawn row (the
+  drawn crop rows) on the corn stays (listed); a building on the corn stops the bake. A piece that cannot step aside opens a POCKET (a corn square beside
+  open, level ground, opened at that level; four passes, so a cluster opens from the open ground inward), the Woods' rule: the scarecrow patches, the
+  pumpkin patch, the ranch gate's people keep their places. People may stand on a way. room.js pieces land only in the stand whose squares they are on
+  (checked: none lost). Plan corrections (it still passes): the corn's camp, wagon yard and two patches are clearings on the west track; the rock chimney
+  climbs out of the creek cut up the Ridge's own face (24,185 -> 23,185). Gone: a straw bale, three sheep, a kennel, a few trees.
+- **THE HOUSE TRAIL (11-20) IS BUILT: a new room `site_prebuilt_skinwalker_ow_trail`** (7 x 3 at world -20,14, 13 plots, plots.json district `estT`,
+  `after-v13.js` row 10), written by bake-estate.js like the house's room (not the route kit's). Every square is `estate-house-trail.js`'s (a room made only
+  of new plots: THE ROOM DESIGN now runs BEFORE the seams, so the seams find open ground). The wall is DEAD WOODS (`woods: true` on the stand: the room's
+  `gen` grows the winter oaks and birches and the dead firs). `docs/areas/estate/districts/trail-room.js` dresses it: lamps at the switchbacks, a scarecrow
+  nobody put there, the DEAD OAK (`rf_oak_4_winter`, 15 m) on the bare top with crows and a MISSING board, reeds and a sunk rowboat at the POND, the OLD
+  CAMP (a tent, a cold fire ring, a pack, a sleeping bag, a film camera, a radio), and THE BACK LODGE: a walk-in gatehouse (hollow `texbuilding` + a drawn
+  rubble-stone look, a shingle gable, a chimney, two windows, a drawn loft over the back half with a ladder against it, a stove, a crate, a lamp; NO walk-in
+  model exists: FITS_ESTATE.md NEEDS A MODEL 2). THREE DOORS, one id at both ends: `ow_v_m13_16` (the Fence Gap <-> the Lake's West Bank, where the gate
+  stood), `ow_v_m19_14` (the Back Gate <-> the Treehouse's east side) and `ow_v_m20_15` (the thin path's end <-> the Graveyard's back gate). The two house
+  doors cut a track three squares wide through the house's corn to its open ground (`cut: [5, 6, 7]` on a seam, new in the tool). The house's district
+  file is not edited. data.js rows by hand: the day table, `HQ_AREA_MARKERS` (the Fence Gap), `ZONE_FLORA.estate`, `ZONE_LOOKS.estate`. The plan's
+  rock steps climb a notch up the top's own face (54,27 -> 54,26). Every door of the three rooms resolves (checked through load-data.js).

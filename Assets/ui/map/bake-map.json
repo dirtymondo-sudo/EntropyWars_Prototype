@@ -177,7 +177,7 @@
   "hs": 0.25,
   "v": "8dc9b1c9c8",
   "bytes": 4491,
-  "s": "4.4"
+  "s": "5.7"
  },
  "site_prebuilt_camelot_ow_garden": {
   "id": "site_prebuilt_camelot_ow_garden",
@@ -235,9 +235,9 @@
   "nz": 72,
   "h0": 3.42,
   "hs": 0.25,
-  "v": "2f0117fc24",
-  "bytes": 1212,
-  "s": "3.0"
+  "v": "9df4ee67e0",
+  "bytes": 1206,
+  "s": "1.4"
  },
  "site_prebuilt_gobekli_ow_henge": {
   "id": "site_prebuilt_gobekli_ow_henge",
@@ -638,5 +638,15 @@
   "v": "b0e2fac155",
   "bytes": 2959,
   "s": "9.3"
+ },
+ "site_prebuilt_skinwalker_ow_trail": {
+  "id": "site_prebuilt_skinwalker_ow_trail",
+  "nx": 84,
+  "nz": 36,
+  "h0": -0.08,
+  "hs": 0.25,
+  "v": "0252371b3a",
+  "bytes": 1366,
+  "s": "1.2"
  }
 }
