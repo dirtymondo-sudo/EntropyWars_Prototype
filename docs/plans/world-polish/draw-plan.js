@@ -158,6 +158,14 @@ function check(B, opts) { opts = opts || {}; const { plan, W, H, N, T, L, RAMP, 
             if (onEdge && !inRoom(x + dx, y + dy) && !doorNear(x, y)) FAIL.push('a way ends on a plot side with no neighbour and no way out there (' + x + ',' + y + ', ' + (w.o.to || w.o.name || w.kind) + '): the tool fills it back with the wall'); }
         if (w.kind !== 'main') { let n = 0; for (const [dx, dy] of D4) if (isOpen(x + dx, y + dy)) n++; if (n < 1) FAIL.push('a thin trail ends at a dead wall: ' + x + ',' + y); } }));
 
+    /* A MAZE (`maze: true`: a labyrinth drawn as `area` pieces, mondo 11-20 on the underground: "labyrinth, height diffs, cliffs, drops"):
+       no narrow passage runs straight over the limit, and its `branches` (every side way, drop and dead end) each say where they lead */
+    if (plan.maze) { const narrow = (x, y, vert) => { let n = 1; const l = L[y][x]; for (const s of [-1, 1]) for (let k = 1; k < 5; k++) { const X = vert ? x + s * k : x, Y = vert ? y : y + s * k; if (isOpen(X, Y) && L[Y][X] === l) n++; else break; } return n <= 3; };
+        const seen = {}; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) for (const vert of [0, 1]) { if (!isOpen(x, y) || !narrow(x, y, vert)) continue; const px = vert ? x : x - 1, py = vert ? y - 1 : y; if (isOpen(px, py) && L[py][px] === L[y][x] && narrow(px, py, vert)) continue;
+            let n = 0, X = x, Y = y; while (isOpen(X, Y) && L[Y][X] === L[y][x] && narrow(X, Y, vert)) { n++; if (vert) Y++; else X++; }
+            if (n > A.leg && !seen[x + ',' + y + vert]) { seen[x + ',' + y + vert] = 1; FAIL.push('a passage runs STRAIGHT for ' + n + ' squares (over ' + A.leg + ') from ' + x + ',' + y + (vert ? ' going south' : ' going east')); } }
+        const br = plan.branches || []; br.forEach(b => { if (!b.to) FAIL.push('a branch that does not say where it leads: ' + JSON.stringify(b).slice(0, 60)); });
+        if (br.length < Math.ceil(PLOTS.length / A.thinEveryPlots)) FAIL.push('a maze with too few branches: ' + br.length + ' for ' + PLOTS.length + ' plots (one every ' + A.thinEveryPlots + ')'); }
     /* THE LEVELS: district ranges, plot levels, relief inside plots */
     const range = {}; DKEYS.forEach(d => { const v = PLOTS.filter(p => p.d === d).map(p => p.level); range[d] = [Math.min(...v), Math.max(...v), new Set(v).size]; });
     DKEYS.filter(big).forEach(d => { if (range[d][2] < A.districtLevels && !(dists[d] && dists[d].flat)) NEWR(dname(d) + ' has ' + range[d][2] + ' plot level(s); A asks ' + A.districtLevels + ' or more (or the district says `flat: \'why\'`)'); });
