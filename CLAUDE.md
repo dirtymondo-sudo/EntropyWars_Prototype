@@ -30,6 +30,7 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 | `docs/notes/STATUS_2026-11-16.md` | THE REVIEW DOC for 11-16: what was built that day, where every zone and district stands, what is unverified, known problems, requests waiting for the other account, open questions for mondo. | Coming back after 11-16; before starting any zone or district work. |
 | `docs/notes/world-layout.md` | THE WHOLE WORLD (11-16): every zone, how it is reached, built / old / planned, the door check, how the zones sit, which zone is next. | Before picking or starting a zone; before moving a door between zones. |
 | `docs/notes/npc-system.md` | THE NPC SPAWN SYSTEM (11-16): how NPCs work today vs mondo's order (fixed levels per race, variants, rarity tiers, district caps + refill, zodiac, boss sheet); the proposal + build order. | Before ANY NPC / resident / enemy-level / capture-refill work, in any zone. |
+| `docs/notes/flora.md` | THE FLORA (11-20): every zone's trees and small plants BY CLIMATE, worked out at room build (data.js `ZONE_FLORA`: a rule, no rows); the plant inventory; the Retro Foliage kit + hand-painted flowers. | Before planting in a zone, changing its ground sheets, adding a room to a zone, or moving a room on the map. |
 | `docs/notes/areas-complexes.md` | Explorable areas, complexes, terrain rooms, Area Content Plan D1-D5, population. | Area / complex / site work. |
 | `docs/notes/seamless-field-encounter.md` | Encounter, Phase 9 field stages, Seamless Field deliveries 1-10. | Fights in the explored room. |
 | `docs/notes/story-party-progression.md` | Tutorial, party, bag, levels/XP, intake, debrief, capture. | Story-mode progression. |
@@ -135,6 +136,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
 - `bake-custom-shape.js` (2026-11-11): custom head shapes into mpfb_shapes.glb. Notes: character-creator.md "THE CUSTOM SHAPES".
 - `bake-outfit.py` (2026-11-12): a Meshy T2 a-pose remake of a unit -> its clothes as creator pieces on the MPFB bodies (`ewm_t2<unit>_outfit/_hat.glb`;
   sprites.js RACE_REMADE_LOOKS). Notes: models-assets.md "THE MESHY OUTFITS".
+- `bake-foliage.py` (2026-11-20): `python3 -I bake-foliage.py --retro <kit>/3D\ Models --tex <kit>/Textures --blend <flowerset.blend> --flowertex <dir> --out <dir>` (needs `pip install bpy`) turns the Retro Foliage kit + the hand-painted flowers into `rf_*` / `hp_*` GLBs and the one-sheet `ew_flora_field.glb`. Notes: flora.md.
 - `bake-rig-fix.py` (2026-11-19): `python3 -I bake-rig-fix.py <in.glb> <out.glb> --preset egirl | --set Joint=x,y,z` repairs a Meshy auto-rig's shoulders (joints + collarbone/arm weights). Notes: models-assets.md "THE RIG FIX".
 - `bake-face.py` (2026-11-12): an old Meshy unit's head -> MPFB head shape + face skin (`<race>Face`, `ew_face_<race>`). Notes: character-creator.md "THE UNIT FACES".
 - `bake-beards.py` (2026-11-02): `python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full]` joins a pack beard + moustache
