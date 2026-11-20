@@ -13122,6 +13122,22 @@ Mount Shasta goes as a name, its plots are swallowed.
   the summit); the base village, the Mid Station, the Ski Patrol, the bath house; ledges and switchbacks on the walking ways; Shasta's volcano dressing (crater,
   vents, lava) on what are now ski plots; (FIXED the same day, mondo: "Just add its cream stone texture to this room": `ZONE_LOOKS.zones.mountains.byRoom` gives the mountain's room Olympus's cream stone on walls; there is no retexture thread any more, a zone thread edits its own look rows);
   the North Pole; the seams were not walked in the probe (L6, L3, R5, R3, the Long Descent's two).
+
+## KATANA ISLAND, THE RELIEF PASS (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20: "Okay go ahead and do the next pass" (the one named to him: relief inside the plots; most were flat terraces).
+
+- **`ctx.hill(cx, cy, r, h)`** (`bake-katana.js`): a hill, or with a negative h a hollow, of rolling ground laid into a level terrace. Its squares become soft ground
+  (shared corners). It dies away to nothing at its rim AND toward anything it must not lift: a way, a stair, a building, a taken square, water, sand, another plot.
+  So it cannot leave a step beside a path. A district calls it FIRST in its build; a building placed on one later stops the bake.
+- **WHAT WAS SHAPED (16 hills and hollows + two fields):** the Old Wood (a knoll, a hollow), the Bamboo Wood (a rise, a hump), the Cherry Wood (two knolls), the Hot
+  Spring (a rock rise), the Jungle Rise (two hills and a gully), the Jungle (a mound), the Jungle north (a ridge of two heads), the Dinosaur Park (a hump), the Village
+  (a knoll), the Castle Garden (the garden mound), the Terraces (a second upper field with its own stair). With the bay's head, the Old Wood's rise, the paddock, the
+  pools and the cone, 18 of the 30 plots are shaped inside now. LEFT LEVEL ON PURPOSE: the streets and yards of the City, the quays, the Paddies, the Palace's court.
+- **THE WATERFALL:** the Hot Spring's overflow falls 10.5 m from the terrace's south edge into a plunge pool in the Paddies (`W.js` THE FALL: a lip pool, the `fall`
+  row, the pool below). LEARNT: on a terrace's rock face a `fall` needs `y0` / `y1` typed and `out: 5`; left to itself the sheet stopped half way down behind the
+  leaning rock. `hw_crop*` are grey lumps, not rice (NEEDS A MODEL: a rice plant); `hw_scarecrow` is the Halloween one in a black cloak.
+- **NOT DONE:** no new thin trails this pass; night look; frame rate; not walked as a player.
 - **THE POLISH PASS, NOTHING STANDS IN A WAY (11-20, mondo: "do another polish pass. make sure things are placed logically").** (1) bake-woods.js step 5d moves
   every old piece the plan's trail runs over onto the nearest level open square beside it, else into a pocket (10 pieces; the small life and the gate stay).
   (2) THE FENCE LINE is its farm yard again: an open level yard (squares 38..46 x 51..57), the trail ends on it, the gate leaves it (the trail had been drawn
