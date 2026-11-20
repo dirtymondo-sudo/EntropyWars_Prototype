@@ -3604,3 +3604,10 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   and 7 pipelines a second, named: spell effects ("MeshBasicMaterial / SpriteMaterial see-through on ew scene", "node:fxop
   see-through on batch fxBatch / fxGlobs", "ew_node_prog") and "kept 640/384/768" = all three keep lists AT THEIR CAP, so a
   build put aside is thrown out and made again. Next: raise `_EW_KEEP_CAP`, and pre-build a spell's looks when it is equipped.
+- THE FIRST FIGHT PAYS (11-20, mondo after THE PORTRAIT'S OWN CANVAS: "my 2nd and 3rd fights after this one were a lot smoother
+  and the combo attack didn't have a slow down"). So what is left of the combo slowdown is FIRST-TIME work: each look a fight
+  shows for the first time in a session is built once (a spell's effects, a ghosted unit's see-through materials, a wall's first
+  fade, a shot's two pane cameras recording the room), and later fights find it made. `_EW_KEEP_CAP` raised from 640 / 384 /
+  768 to 1,600 / 1,000 / 2,000 (the lists were full in his fights, so kept builds were being thrown out). `_EW_TR_STAMP` =
+  "11-20 keep-more". Next for the first fight: build a unit's spell looks and see-through twins when the fight is set up
+  (behind its start), not at the first cast.

@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-20 portrait-own-canvas';
+    var _EW_TR_STAMP = '11-20 keep-more';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -48057,7 +48057,10 @@ const ThreeRenderer = (function () {
        (3) The F3 counts: node builds and new pipelines (a steady frame shows 0 of both). Off: window.EW_NO_SHADER_KEEP or
        ?ew_keep=0 (reload). */
     var _ewKeep = { builds: 0, pipes: 0, reused: 0, inst: 0, kept: { b: [], p: [], g: [] }, at: 0, b0: 0, p0: 0, rateB: 0, rateP: 0 };
-    var _EW_KEEP_CAP = { b: 640, p: 384, g: 768 };   // 2026-10-12: room for the walk's and the fight's builds together (they now share keys)
+    /* (11-20, mondo's battle F3s: "kept 640/384/768", all three lists at their cap in a city fight, with 7 shader builds a second: a
+       build put aside was thrown out and made again. His 2nd and 3rd fights of a session ran smooth, the 1st did not: the looks are
+       built once and must then STAY. Room for a long session: 1,600 builds, 1,000 pipelines, 2,000 programs.) */
+    var _EW_KEEP_CAP = { b: 1600, p: 1000, g: 2000 };   // 2026-10-12: room for the walk's and the fight's builds together (they now share keys)
     function _ewKeepOff() {
         try { return !!window.EW_NO_SHADER_KEEP || /[?&]ew_keep=0\b/.test(location.search); } catch (e) { return false; }
     }
