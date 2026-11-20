@@ -434,7 +434,7 @@ const STAND = [
       parti: 'The snowy pines north of the moat, three plots wide: the sleigh road climbs north from the castle’s north gate to the Pass, and beside it a ridge trail to a lookout, a frozen gully under a log bridge, a drift field, a frozen tarn and a hermit’s hollow, each a branch off the road and a way back to it.' },
     { id: R_GARDEN, part: 'ow_garden', label: 'THE LOOKING-GLASS GARDEN', sub: 'CAME A LOT · THE HEDGES WEST OF THE MOAT · 6 PLOTS', list: v13('camL'), letters: ['L'], spawn: 'P00-02', face: 270,
       parti: 'The hedge garden west of the moat as one walk: in from the west gate across the lawn, the chessboard with a hedge to either side, the mirror, and at the far end the tea party.' },
-    { id: R_FAIRY, part: 'ow_fairy', label: 'THE FAIRY FOREST', sub: 'CAME A LOT · THE GLOWING WOODS EAST OF THE MOAT · 6 PLOTS', list: v13('camF'), letters: ['F'], spawn: 'P07-02', face: 90,
+    { id: R_FAIRY, part: 'ow_fairy', label: 'THE FAIRY FOREST', sub: 'CAME A LOT · THE GLOWING WOODS EAST OF THE MOAT · 13 PLOTS', list: v13('camF'), letters: ['F'], spawn: 'P07-02', face: 90, gen: { depth: 8.75, maxTrees: 1800 },   /* (2026-11-20, the world polish plan, thread 3) 13 plots; its ways, clearings and heights = the room design, districts/F-room.js */
       parti: 'The forest that glows, east of the moat, as one walk: out of the east gate past the knoll to the pond, the fairy ring between its two knolls, the woods trail and the spring, where the trail goes on east to the Woods.' },
     { id: R_FOREST, part: 'ow_forest', label: 'THE FOREST', sub: 'CAME A LOT · THE CROWN’S ROAD SOUTH · 21 PLOTS', list: v13('camW').concat([{ wx: L7.wx, wy: L7.wy, name: 'The Forest Trail', district: 'W', level: 0, isNew: true, link: 'L7' }]), letters: ['W'], spawn: 'P03-07', spawnStep: [0, -1], face: 180, gen: { depth: 8.75, maxTrees: 2600 },   /* (2026-11-20, the world polish plan, thread 3) 21 plots, three wide; its ways, clearings and heights = the room design, districts/W-room.js */   /* ONE WORLD PHASE 5 (2026-11-17): the plot's hub square holds the Wayside Cross (district W); arriving there (the map's GO, an old save) stood the walker ON the cross, 2.2 m up. One square north, on the Crown's Road */
       parti: 'The forest south of the moat, three plots wide: the Crown’s Road down from the drawbridge to the Glade, east under the Bluff and through the charcoal burners to the Woods’ Ritual Ground; west of it a hollow, east a bluff with a hunters’ stand, south a brook to wade and an old oak.' },
@@ -523,7 +523,7 @@ function crossK(oA, A, sd, oB, B, ks, chA, chB) { const o2 = OPP[sd]; apron(oA, 
         them, `i` the trodden road, `s` open snow; `sheet` = another ground sheet than the letter's), close(x0, y0, x1, y1) (back to the wood, unless a piece stands there), gx / gz (a square's edge, m),
         gcx / gcz (its middle), paint(x0, y0, x1, y1, sheet, ok(x, y)) (a ground sheet on squares), feat(row) (a terrain row, room metres), at(key, x, z, o) (a catalogue prop, metres), native(race, x, z, face),
         drop(test(row)) (takes rows the home frame stood here out of the room), noTrees(x0, z0, x1, z1) (metres: the tree mass plants nothing), air(zone), stood(x, y), r2 */
-const DESIGNS = { [R_PINES]: require(path.join(REPO, 'docs/areas/camelot/districts/N-room.js')), [R_FOREST]: require(path.join(REPO, 'docs/areas/camelot/districts/W-room.js')) };
+const DESIGNS = { [R_PINES]: require(path.join(REPO, 'docs/areas/camelot/districts/N-room.js')), [R_FOREST]: require(path.join(REPO, 'docs/areas/camelot/districts/W-room.js')), [R_FAIRY]: require(path.join(REPO, 'docs/areas/camelot/districts/F-room.js')) };
 const SNOWK = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'];
 ROOMS_OUT.forEach(o => { const Dz = DESIGNS[o.S.id]; if (!Dz) return; const R = o.R; o.design = Dz; o.zonesX = []; o.zonesNew = []; o.airX = []; o.newRoad = new Set(); const home = new Set(R.props);
     const WOODP = o.S.id === R_PINES ? 1 : (GROUND_OF[o.S.letters[0]] || 0);   // the wood's own ground, as a paint value (the Pines' snow; a district file's `ground`)
@@ -539,12 +539,14 @@ ROOMS_OUT.forEach(o => { const Dz = DESIGNS[o.S.id]; if (!Dz) return; const R = 
         drop(test) { const n = R.features.length; R.features = R.features.filter(f => !test(f)); return n - R.features.length; },
         noTrees: (x0, z0, x1, z1) => o.zonesX.push({ x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), none: true }), air: z => o.airX.push(z) };
     /* a new plot of the Pines: its trees are snow pines, its air is snow (the old plots carry theirs from home, cut to them) */
-    R.order.forEach(e => { if (e.home || e.district !== 'N') return; const x0 = R.gx(e.col * N), z0 = R.gz(e.row * N);
+    R.order.forEach(e => { if (e.home || (e.district !== 'N' && e.district !== 'F')) return; const x0 = R.gx(e.col * N), z0 = R.gz(e.row * N);
+        if (e.district === 'F') { o.zonesNew.push({ x0, z0, x1: r2(x0 + PL), z1: r2(z0 + PL), kinds: FAE }); return; }   // a new plot of the Fairy Forest: the glowing wood's own trees
         o.zonesNew.push({ x0, z0, x1: r2(x0 + PL), z1: r2(z0 + PL), kinds: SNOWK, treeH: [5.5, 8] }); o.airX.push({ x0, z0, x1: r2(x0 + PL), z1: r2(z0 + PL), kind: 'snow', n: 150 }); });
     Dz.room(kit);
     /* a cell of the room's box that is no plot (the box is the plots' bounding box) is the wood too: the wood's ground, and (in the zones below) the wood's trees, not the kingdom's lawn and summer trees */
     for (let y = 0; y < R.D; y++) for (let x = 0; x < R.W; x++) if (!R.plotOfSq(x, y)) o.pnt[y * R.W + x] = WOODP;
     if (o.S.id === R_PINES) o.zonesNew.push({ x0: -R.HX - 60, z0: -R.HZ - 60, x1: R.HX + 60, z1: R.HZ + 60, kinds: SNOWK, treeH: [5.5, 8] });
+    if (o.S.id === R_FAIRY) o.zonesNew.push({ x0: -R.HX - 60, z0: -R.HZ - 60, x1: R.HX + 60, z1: R.HZ + 60, kinds: FAE });
     /* THE NEW ROAD IS CLEAR: a piece the home frame stood on a verge (a lantern, a drift, a light pool) that the design's road now runs over leaves; a walked-into
        building there stops the tool (move the road) */
     { const on = (x, z) => o.newRoad.has(o.sqOf(x, z).join(':')); let gone = 0;

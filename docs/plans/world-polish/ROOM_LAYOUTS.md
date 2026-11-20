@@ -378,15 +378,16 @@ How each room really stands. `#` = a plot (42 m), `.` = no plot. North is up. Un
 `P00-00` The North-West Tower (T) · `P01-00` North Row, west (T) · `P02-00` The North Gate (T) · `P03-00` North Row (T) · `P04-00` North Row, east (T) · `P05-00` The North-East Tower (T) · `P00-01` West Row, north (T) · `P01-01` North Street, west (T) · `P02-01` North Street (T) · `P03-01` North Street, east (T) · `P04-01` The Postern Lane (T) · `P05-01` East Row, north (T) · `P00-02` The West Gate (T) · `P01-02` The Keep (K) · `P02-02` The Orchard (K) · `P03-02` The Great Hall (K) · `P04-02` The Kitchen (K) · `P05-02` The East Gate (T) · `P00-03` West Row (T) · `P01-03` The Stables (K) · `P02-03` The Bailey (K) · `P03-03` The Lists (K) · `P04-03` The Barracks (K) · `P05-03` East Row (T) · `P00-04` West Row, south (T) · `P01-04` The Chapel (T) · `P02-04` The Market (T) · `P03-04` The Inn (T) · `P04-04` The Smithy (T) · `P05-04` East Row, south (T) · `P00-05` The South-West Tower (T) · `P01-05` South Row, west (T) · `P02-05` The Drawbridge (T) · `P03-05` South Row (T) · `P04-05` South Row, east (T) · `P05-05` The South-East Tower (T)
 
 ## site_prebuilt_camelot_ow_fairy
-168 x 126 m · 4 x 3 plots, 6 used · open sky · world -23, -1 (surface)
+168 x 168 m · 4 x 4 plots, 13 used · open sky · world -23, -1 (surface)
 
 ```
 #...
 ####
-.#..
+####
+####
 ```
 
-`P00-00` The Knoll, north (F) · `P00-01` The Pond (F) · `P01-01` The Fairy Ring (F) · `P01-02` The Knoll, south (F) · `P02-01` The Woods Trail (F) · `P03-01` The Spring (F)
+`P00-00` The Knoll, north (F) · `P00-01` The Pond (F) · `P01-01` The Fairy Ring (F) · `P01-02` The Knoll, south (F) · `P02-01` The Woods Trail (F) · `P03-01` The Spring (F) · `P00-02` The Moth Glade (F) · `P02-02` The Glow-Worm Hollow (F) · `P03-02` The Mossy Stair (F) · `P00-03` The Wishing Pool (F) · `P01-03` The Root Stair (F) · `P02-03` The Hollow Oak (F) · `P03-03` The Lantern Glade (F)
 
 ## site_prebuilt_camelot_ow_forest
 210 x 210 m · 5 x 5 plots, 21 used · open sky · world -27, 3 (surface)

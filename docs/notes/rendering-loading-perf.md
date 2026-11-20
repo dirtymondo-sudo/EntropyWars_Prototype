@@ -3150,7 +3150,17 @@ flickers, suspect shadow acne at a low sun (HQ_LIGHT_RULES.shadows.normalBias 2.
   slab before, 0 after. THE SWEEP that found it (scratch, not in the repo; rebuild it like this): walk `dev.hqScene()` skipping `_ew_bRec` and
   `_ew_instHidden`, take each up-facing triangle, sample it on a 0.5 m grid IN 48 m STRIPS of x (one pass over the whole city = 16 M
   samples and the page dies), sort by cell + height, report pairs within 4 mm grouped by the two materials. Still on its list, not looked
-  at: the city's edge land sheet on the road (`hq_edge_land`, z 254), instanced prop bases on the road (barrels, bins, containers on containers).
+  at (11-20, then looked at, see the next row).
+- THE ZSEP, THE REST (11-20, mondo: "So why don't you fix the other ones too?"). The sweep again, FRONT faces only (the first list was mostly
+  two-sided undersides: a barrel's bottom, a slab's underside, never seen), each group photographed and named. Real, fixed in `_hqZSep`:
+  (1) PAINT ON PAINT: decals were skipped whole, so the stadium's white lines tore against its mown stripes (both depth-offset, same plane);
+  a second pass `{ decals: true }` reads the decals alone and lifts the smaller. (2) Only the shell's merge was read: furniture built in code
+  in a building's prop chunk (dark slab on dark slab, the stilt house's orange piece) had exact pairs; every merge is read now
+  (`{ noModels: true }` outside the shell: a piece under a loaded model, `_ew_mm` / `_ew_oneModel` / `_ew_decor`, is left alone).
+  After: each pair 1.2 cm apart. Looked at and NOT a flicker (leave them): the edge land on a road sheet at z 254 (9 m under the sea);
+  desk items 0.7 mm over a desk top and the shag rug's two layers 2 mm apart (inside one prop, steady from any distance a player sees them
+  at); blob shadows over each other (no depth write); tree leaves. A probe tip: more than ~4 teleports across the city in one run crashes
+  the cloud browser; three views a run.
 
 ## THE NEW BODY SPLIT (2026-11-19, spikes thread)
 mondo's 14:53 F3 had one 116 ms frame with "residents: new body 51 ms" (one body a frame since PR #2137, bakes kept per key since #2156),
@@ -3611,3 +3621,20 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   768 to 1,600 / 1,000 / 2,000 (the lists were full in his fights, so kept builds were being thrown out). `_EW_TR_STAMP` =
   "11-20 keep-more". Next for the first fight: build a unit's spell looks and see-through twins when the fight is set up
   (behind its start), not at the first cast.
+- THE SHADER COUNT (11-20, mondo: "what are all the shaders? can any of them be dropped?"). A census in a city probe (node
+  renderer on WebGL 2, post on, three views of Disaster City; every render object's node build grouped by identity; recipe:
+  walk the meshes' render objects through the Symbol-keyed Maps of THE REST OF THE MAPS, key by `ro._nodeBuilderState`):
+  **198 distinct shaders for 19,149 render objects**, 82 kinds by what a designer would call a look. By family: Lambert 71
+  (1,450 objects: props, bodies, instanced props), Basic 41 (2,393: glows, marks, see-through effects, unlit pieces), the
+  shadow pass's depth shaders 40 (2,290), Phong 33 (6,099: the buildings and ground), wind 4, terrain 2, fluid 2, sprite 1,
+  points 1, line 1, + the 9 post passes and the unit mask (not counted). The same LOOK appears as several shaders (24 plain
+  shadow shaders, 9 "Lambert, instanced, sheet, two-sided, takes shadow", 6 "Phong, sheet, takes shadow"): they differ only by
+  the geometry's attribute layout (a second UV set, vertex colours, tangents present or not) or by which optional sheet is set.
+  Size: a lit shader is 35-51 KB of code, the terrain's 88 KB, a shadow one 2-4 KB. A fight adds its own (a ghosted unit's
+  see-through twins, each spell's effects).
+  What could go, cheapest first: (1) the shadow pass to ~4 shaders (plain, cut-out, skinned, instanced): it only needs
+  positions (+ UV for a cut-out), so the layout differences are waste: -35, nothing visible. (2) Lambert and Phong made one
+  family: the buildings' Phong shine is the only visible difference: about -30. (3) Flags that fork a look for little: two-sided
+  where the back is never seen, "takes shadow" off on small props, vertex colours carried by models that are white: -20 to -30,
+  each needs a look. (4) Layout forks of the lit shaders (strip unused attributes at load): -10 to -20, nothing visible.
+  Each shader costs a "first" in every render (~20 µs) and a build the first time it is met.

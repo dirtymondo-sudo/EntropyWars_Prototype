@@ -99748,15 +99748,22 @@ const ThreeRenderer = (function () {
        no sheet changes; the ground (the terrain, one bent sheet) never moves, what lies on it does. A face that already has a depth
        offset (a decal) is left alone. Off: window.EW_HQ_NO_ZSEP = true before the room. */
     var HQ_ZSEP = { liftM: 0.012, tolM: 0.003, minAreaM2: 0.01, maxLayers: 4, cellM: 3.5 };
-    function* _hqZSep(cands, U) {
+    /* THE ZSEP, THE REST (2026-11-20, the ground sweep after THE BURIED KERB): two kinds it never read. (1) PAINT ON PAINT: decals (a depth
+       offset) were left out whole, so two that share a plane traded pixels (the stadium's white lines on its mown stripes). `opt.decals` =
+       a second pass over the decals alone, the smaller lifted the same way. (2) Only the shell was read: furniture built in code inside a
+       building (a prop chunk's merge) had its own pairs. Every merge is read now; outside the shell a piece of a loaded MODEL is left
+       alone (`opt.noModels`: its geometry is shared by every copy, and its own faces are its maker's). */
+    function* _hqZSep(cands, U, opt) {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_ZSEP) return;
+        var decals = !!(opt && opt.decals), noModels = !!(opt && opt.noModels);
         var t0 = _alNow(), ZS = HQ_ZSEP, TOL = ZS.tolM * U, MINA = ZS.minAreaM2 * U * U, CELL = ZS.cellM * U, NQ = 120;
         var list = [], gUse = new Map();
         for (var i = 0; i < cands.length; i++) {
             var c = cands[i]; if (c.glow || !c.o || !c.o.isMesh || !c.g || !c.g.attributes || !c.g.attributes.position) continue;
             var ms = Array.isArray(c.m) ? c.m : [c.m], bad = false;
-            for (var mi = 0; mi < ms.length; mi++) { var m = ms[mi]; if (!m || m.polygonOffset || m.depthTest === false || m.colorWrite === false || (m.transparent && m.depthWrite === false)) { bad = true; break; } }
+            for (var mi = 0; mi < ms.length; mi++) { var m = ms[mi]; if (!m || (!!m.polygonOffset !== decals) || m.depthTest === false || m.colorWrite === false || (m.transparent && m.depthWrite === false)) { bad = true; break; } }
             if (bad) continue;
+            if (noModels) { for (var pa = c.o, pn = 0; pa && pn < 10; pa = pa.parent, pn++) if (pa._ew_mm || pa._ew_oneModel || pa._ew_decor) { bad = true; break; } if (bad) continue; }
             list.push(c); gUse.set(c.g, (gUse.get(c.g) || 0) + 1);
         }
         if (!list.length) return;
@@ -99871,7 +99878,9 @@ const ThreeRenderer = (function () {
         root.updateMatrixWorld(true);
         var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), tmp = new THREE.Matrix4(), groups = {}, keys = [], n = 0;
         var U = _hqUnits(), T = (HQ_BATCH.cellM || ((typeof HQ_ENGINE_RULES !== 'undefined') && HQ_ENGINE_RULES.tileM) || 32) * U, sph = new THREE.Vector3(), mk = {};
-        if (_hq && root === _hq.shellGroup) yield* _hqZSep(B.cands, U);   // THE ZSEP: faces sharing a plane, the smaller lifted (once, before the merge reads them)
+        if (_hq && root === _hq.shellGroup) { yield* _hqZSep(B.cands, U); yield* _hqZSep(B.cands, U, { decals: true }); }
+        else if (_hq && !R.field) yield* _hqZSep(B.cands, U, { noModels: true });   // THE ZSEP, THE REST: paint on paint; the other merges (furniture built in code)
+          // THE ZSEP: faces sharing a plane, the smaller lifted (once, before the merge reads them)
         B.vc = !!(((_hq && root === _hq.shellGroup && _hqChunkBig(_hq)) || R.field) && !(typeof window !== 'undefined' && (window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_ONE_PAINT)));   // THE ONE PAINT (+ THE FIELD MERGE: the fight's pieces merge as the walk's did)
         for (var i = 0; i < B.cands.length; i++) {
             var c = B.cands[i];
