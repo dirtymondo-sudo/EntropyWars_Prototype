@@ -27,8 +27,7 @@ module.exports = {
         B.bath = ctx.building('springbath', [43, 37, 47, 40, 'S'], 3.8, { leafDouble: true }, (a, w, d, door) => house(a, w, 3.8, d, door, { roof: { top: 'gable', over: 1.3 } }));
         [[36, 42], [40, 43], [40, 46], [37, 47], [43, 46 + 1], [46, 44]].forEach((q, i) => P(['lake_rock', 'psxg_rock_1', 'psxg_rock_3'][i % 3], q[0], q[1], { face: Math.round(rnd() * 360) }));
         P('stone_lantern', 42, 43 + 1); P('stone_lantern', 42, 41 - 0); P('wooden_bucket', 40, 44); P('lantern_post', 46, 43 - 2);
-        ctx.put(B.bath, 'hot_tub', -4, -3, {}); ctx.put(B.bath, 'wooden_bucket', 2, -3, {}); ctx.put(B.bath, 'privacy_screen', 4, -2, { face: 90 }); ctx.put(B.shrine, 'votive_stand', 0, -1.5, {}); ctx.put(B.hermit, 'psx_old_mattress_mp_1', 0, -1.5, {}); ctx.put(B.pavilion, 'psx_coffee_table_1', 0, 0, {}); ctx.put(B.pavilion, 'teapot', 0, 0, { y: 0.66 });
-        /* ── THE TREES (thick: these are the woods; never on a way, never where something stands) ── */
+                /* ── THE TREES (thick: these are the woods; never on a way, never where something stands) ── */
         let n = 0;
         ctx.sow(12, 12, 23, 23, 0.5, (x, y, v) => { if (ctx.tree(v < 0.5 ? 'tree_52' : v < 0.8 ? 'tree_56' : 'maple', x, y, 7 + rnd() * 4)) n++; });
         ctx.sow(12, 24, 23, 35, 0.55, (x, y, v) => { if (ctx.tree(v < 0.6 ? 'tree_54' : v < 0.9 ? 'tree_55' : 'cherry_3', x, y, 8 + rnd() * 4)) n++; });
