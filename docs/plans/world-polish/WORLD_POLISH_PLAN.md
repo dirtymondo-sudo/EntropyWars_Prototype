@@ -471,7 +471,8 @@ they are measurements, not the job.
   with pictures, shown to mondo in chat. STEP 2: fix the collisions. STEP 3: thin or spread the worst plots, and grow the districts that
   need it (42 free plots stand beside the city; growing moves the roads and seams round it, so that plan is shown first).
 
-### Thread 20: THE BAYSIDE MALL (not started; AFTER the One Beach thread is merged)
+### Thread 20: THE BAYSIDE MALL (PLAN WRITTEN 11-20, waiting for mondo: `docs/plans/mall/MALL_PLAN.md`; not built)
+- **The plan in one line (11-20):** one building on its own plot, 35 x 38.5 m, two floors, the same box outside and inside, doors to the plaza, the sea, the canal and the staff yard, a sea terrace over a colonnade. The lines below are the brief it was written from; where they differ (the footprint grows on its own plot, not over more plots), the plan is newer.
 - **Where:** Disaster City, the Bayside district, by the beach. Its own thread. NOT part of thread 2, and not a world zone.
 - **What is there today (checked 11-20):**
   - THE OUTSIDE: building `P10-10-B1` "Mall concourse" on Bayside's plot "Mall concourse" (`docs/disaster-city/city-layout.json`), a footprint of
