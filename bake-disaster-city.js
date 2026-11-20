@@ -1009,7 +1009,7 @@ const LOOKS = {
     H: { lamp: '#fff0b8', name: 'HERO PLAZA', bg: '#c22a2a', ink: '#ffffff' },       E: { lamp: '#ff7ad8', name: 'ENTERTAINMENT', bg: '#7a3cc8', ink: '#ffffff' },
     I: { lamp: '#ff9a3c', name: 'INDUSTRIAL', bg: '#e0b020', ink: '#1c1a14' },       S: { lamp: '#f2faff', name: 'SPORTS + CULTURE', bg: '#2a8c4a', ink: '#ffffff' },
     B: { lamp: '#8ce8dc', name: 'BAYSIDE', bg: '#1a8c9c', ink: '#ffffff' },
-    N: { lamp: '#ffd9a0', name: 'THE HOLLYWOOD HILLS', bg: '#6a5a3a', ink: '#ffffff' },   // (2026-11-16, district N: a warm sodium light on the canyon roads; no banner hangs there, its lamps carry no `b`)
+    N: { lamp: '#ffd9a0', name: 'DISASTER HILLS', bg: '#6a5a3a', ink: '#ffffff' },   // (2026-11-16, district N: a warm sodium light on the canyon roads; no banner hangs there, its lamps carry no `b`)
 };
 { const seen = {}; count.banners = 0;
   lamps.forEach(l => { const p = plotAtCell(Math.max(0, Math.min(N * 12 - 1, Math.floor((l.x + HALF) / C))), Math.max(0, Math.min(N * 12 - 1, Math.floor((l.z + HALF) / C))));
@@ -1207,7 +1207,8 @@ else {   /* THE ROOM PAST THE PLOTS, NORTH: one grid for the whole field's depth
 { const SIGN_FONTS = require(path.join(REPO, 'docs/disaster-city/sign-fonts.js')), cl = v => Math.max(0, Math.min(N * 12 - 1, Math.floor((v + HALF) / C)));
   const dOf = f => { const m = /P\d\d-\d\d/.exec(String(f.id || '')), p = (m && plotOf[m[0]]) || (typeof f.x === 'number' && typeof f.z === 'number' ? plotAtCell(cl(f.x), cl(f.z)) : null); return p ? p.d : ''; };
   const cityRows = features.filter(f => !/^(hills|shore):/.test(String(f.id || '')));   // (the Hills' rows keep the sheets and typefaces they stood in as their own room)
-  const sf = SIGN_FONTS.apply(cityRows, dOf), sp = SIGN_FONTS.apply(props, dOf); count.signFonts = sf.signs + sp.signs;
+  const SW = process.env.SIGNS_DUMP ? {} : null, sf = SIGN_FONTS.apply(cityRows, dOf, SW), sp = SIGN_FONTS.apply(props, dOf, SW); count.signFonts = sf.signs + sp.signs;
+  if (SW) for (const d of Object.keys(SW).sort()) console.log('SIGNS ' + d + ': ' + Object.keys(SW[d]).sort().map(w => w + ' x' + SW[d][w].length + ' [' + Math.min.apply(null, SW[d][w]) + '..' + Math.max.apply(null, SW[d][w]) + ']').join(' · '));
   /* THE URBAN DECAY PASS: every sheet key the districts wrote, renamed to the pack's sheet (see the file's head); then the check: none of the sheets mondo ruled out is left */
   if (UD) { count.urbanDecay = UD({ features: cityRows, props, dOf });
     const left = []; features.forEach(f => { ['key', 'keyIn', 'floorIn'].forEach(k => { if (UD.banned.indexOf(f[k]) >= 0) left.push(f[k]); }); (f.parts || []).forEach(p => ['key', 'keyTop', 'keyEnd', 'keyBase'].forEach(k => { if (UD.banned.indexOf(p[k]) >= 0) left.push(p[k]); })); });

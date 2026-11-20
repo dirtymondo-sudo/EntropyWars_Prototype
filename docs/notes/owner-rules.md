@@ -49,6 +49,7 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
   **Men in Slacks** (one: Man in Slacks) and Camelot is **Came A Lot** (Came A Lot Kingdom, Came A Lot Castle, Walls of Came A Lot).
   Display text only: the race id stays `'men in black'` and every room id stays `site_prebuilt_camelot_*`, so saves, plots and
   marker comments (`CAMELOT-KINGDOM-BEGIN`) are unchanged. New player-visible text uses the new names.
+- **THE BRANDING (11-20).** Signs carry real in-universe business names, never a bare BANK or HOTEL: the list he approved is `docs/notes/branding.md`. The Hollywood Hills are **Disaster Hills** on screen; the bank is **Calamity Mutual** ("Too big to fail."); any recording studio or label is **Mid Records**. **No Bangers font** on any sign.
 - **World vision (11-15).** The world is a parody of the real world; each area is the ULTIMATE form of its idea. DOOR HQ
   is the subconscious. Every area is plot-built (12x12 plots, districts) like Disaster City; only DOOR HQ stays handmade.
   Cyberpunk City is a future reskin of the WHOLE Disaster City, not a district. The Desert = Western Town + Giza + Area 51.

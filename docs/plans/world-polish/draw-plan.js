@@ -44,6 +44,7 @@ const TILES = {
     g: ['open ground (a clearing, a field, a yard)', true, [58, 104, 52], [176, 222, 128]],
     c: ['hard ground (paving, concrete)', true, [110, 112, 116], [190, 192, 196]],
     m: ['soft ground (mud, marsh)', true, [74, 64, 50], [74, 64, 50]],
+    u: ['the ground as it stands today (`underlay`: read from the real room; the plan lays its ways over it)', true, [84, 100, 92], [214, 226, 220]],
     k: ['a building / a big landmark', true, [176, 54, 44], [176, 54, 44]],
     r: ['rock face', false, [109, 111, 115], [109, 111, 115]],
     w: ['water', false, [59, 131, 201], [59, 131, 201]],
@@ -62,6 +63,12 @@ function build(plan) {
         if (p.bx < 0 || p.by < 0 || (p.bx + 1) * N > W || (p.by + 1) * N > H) { FAIL.push('a plot outside the grid: ' + p.name); return; }
         for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { T[p.by * N + y][p.bx * N + x] = ' '; L[p.by * N + y][p.bx * N + x] = p.level; } });
     const plotOf = (x, y) => plotAt[Math.floor(x / N) + ',' + Math.floor(y / N)];
+    /* `underlay: true` (a room that already has its height: "improve upon what's already there"): every square starts as it REALLY stands
+       today, read from the room (open ground `u` at its real height to a quarter level; walls, cracks and deep drops stay closed; water = w) */
+    if (plan.underlay && plan.room && !process.argv.includes('--no-room')) { try { const S = require(path.join(__dirname, '..', '..', '..', 'load-data.js')).loadGameData(), room = S.DOOR_HQ.rooms[plan.room], info = S.hqTerrainInfo(plan.room), zero = plan.grid.zero || 0, deep = plan.underlay.deep || 4;
+        PLOTS.forEach(p => { for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const x = p.bx * N + i, y = p.by * N + j, wx = -room.shell.w / 2 + (x + 0.5) * 3.5, wz = -room.shell.d / 2 + (y + 0.5) * 3.5; let h = null, shut = false, wet = false;
+            try { h = S.hqTerrainFeet(info, wx, wz, null); shut = !!(S.hqTerrainSolidAt(info, wx, wz, 0.6) || S.hqTerrainWallAt(info, wx, wz, 0.6)); const f = S.hqTerrainFluidAt(info, wx, wz); wet = !!(f && f.y != null && f.y > h + 0.3); } catch (e) { shut = true; }
+            if (h == null || !isFinite(h) || shut) continue; const lv = Math.round((h - zero) / 1.75 * 4) / 4; if (wet) { T[y][x] = 'w'; L[y][x] = lv; continue; } if (lv < (p.today == null ? p.level : p.today) - deep) continue; T[y][x] = 'u'; L[y][x] = lv; } }); } catch (e) { FAIL.push('underlay: could not read the room (' + String(e.message).slice(0, 80) + ')'); } }
     const inRoom = (x, y) => x >= 0 && y >= 0 && x < W && y < H && T[y][x] !== '.', isOpen = (x, y) => inRoom(x, y) && OPEN.indexOf(T[y][x]) >= 0, key = (x, y) => x + ',' + y;
     function set(x, y, t, l, keep) { if (y < 0 || y >= H || x < 0 || x >= W) return; if (!inRoom(x, y)) { FAIL.push('off the plots: ' + x + ',' + y + ' (' + t + '): a piece reaches a plot side with no neighbour'); return; }
         if (keep && keep.indexOf(T[y][x]) >= 0) { if (l != null && Math.abs(L[y][x] - l) > 0.01 && !RAMP[key(x, y)]) FAIL.push('level clash at ' + x + ',' + y + ': ' + T[y][x] + ' ' + L[y][x] + ' vs ' + t + ' ' + l); return; }
@@ -104,13 +111,13 @@ function check(B, opts) { opts = opts || {}; const { plan, W, H, N, T, L, RAMP, 
     const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], dists = plan.districts || {}, dname = d => (dists[d] && dists[d].name) || d;
     const big = d => PLOTS.filter(p => p.d === d).length > A.smallDistrict && !(dists[d] && dists[d].skip) /* `skip: 'why'` = plots in the room that are not this plan's (a route's) */, DKEYS = [...new Set(PLOTS.map(p => p.d))];
     /* bridges: a deck from one square over to another, walked both ways */
-    const BR = {}, brEnd = {}; (plan.bridges || []).forEach(b => { const a = b[0], c = b[1]; (BR[key(a[0], a[1])] = BR[key(a[0], a[1])] || []).push(c); (BR[key(c[0], c[1])] = BR[key(c[0], c[1])] || []).push(a);
+    const BR = {}, brEnd = {}; (plan.bridges || []).concat(plan.stairs || []).forEach(b => { const a = b[0], c = b[1]; (BR[key(a[0], a[1])] = BR[key(a[0], a[1])] || []).push(c); (BR[key(c[0], c[1])] = BR[key(c[0], c[1])] || []).push(a);
         brEnd[key(a[0], a[1])] = [Math.sign(c[0] - a[0]), Math.sign(c[1] - a[1])]; brEnd[key(c[0], c[1])] = [Math.sign(a[0] - c[0]), Math.sign(a[1] - c[1])]; });
     /* THE LEDGES */
     const LEDGES = B.LEDGES = [];
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!isOpen(x, y)) continue;
         for (const [dx, dy] of D4) { const X = x + dx, Y = y + dy; if (!isOpen(X, Y)) continue; const d = L[y][x] - L[Y][X], e = brEnd[key(x, y)];
-            if (d > A.ledge && !(e && (e[0] ? dx !== 0 : dy !== 0))) { LEDGES.push([x, y, dx, dy, d]); if (RAMP[key(x, y)] || RAMP[key(X, Y)]) FAIL.push('a ramp beside open ground at another height: ' + x + ',' + y + ' / ' + X + ',' + Y); } } }
+            if (d > A.ledge && !(e && (e[0] ? dx !== 0 : dy !== 0))) { LEDGES.push([x, y, dx, dy, d]); if ((RAMP[key(x, y)] || RAMP[key(X, Y)]) && T[y][x] !== 'u' && T[Y][X] !== 'u') FAIL.push('a ramp beside open ground at another height: ' + x + ',' + y + ' / ' + X + ',' + Y); } } }
     /* WALKED: every open square and every way out is reached on foot from the start with no ledge; nothing is a trap */
     function reach(sx, sy, drops) { const seen = new Set([key(sx, sy)]), q = [[sx, sy]];
         for (let i = 0; i < q.length; i++) { const [x, y] = q[i]; (BR[key(x, y)] || []).forEach(br => { if (!seen.has(key(br[0], br[1]))) { seen.add(key(br[0], br[1])); q.push(br); } });
@@ -245,6 +252,7 @@ function draw(B, o) { const { plan, W, H, N, T, L, RAMP, PLOTS, LEDGES, key, til
         s += '<polygon points="' + [[cx + dx * S * 0.42, cy + dy * S * 0.42], [cx + dx * S * 0.1 + dy * S * 0.2, cy + dy * S * 0.1 + dx * S * 0.2], [cx + dx * S * 0.1 - dy * S * 0.2, cy + dy * S * 0.1 - dx * S * 0.2]].map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ') + '" fill="#fff"/>'; });
     (plan.bridges || []).forEach(b => { const ax = Math.min(b[0][0], b[1][0]), ay = Math.min(b[0][1], b[1][1]), bx = Math.max(b[0][0], b[1][0]), by = Math.max(b[0][1], b[1][1]); if (!vis(ax, ay)) return; const v = ax === bx;
         s += '<rect x="' + (px(ax) + (v ? 0 : S)) + '" y="' + (py(ay) + (v ? S : 0)) + '" width="' + (v ? S : (bx - ax - 1) * S) + '" height="' + (v ? (by - ay - 1) * S : S) + '" fill="#b98a52" stroke="#3a2410" stroke-width="1.5"/>'; });
+    (plan.stairs || []).forEach(b => { if (!vis(b[0][0], b[0][1])) return; s += '<line x1="' + (px(b[0][0]) + S / 2) + '" y1="' + (py(b[0][1]) + S / 2) + '" x2="' + (px(b[1][0]) + S / 2) + '" y2="' + (py(b[1][1]) + S / 2) + '" stroke="#ff9a2e" stroke-width="' + Math.max(3, S * 0.5) + '" stroke-dasharray="2 2"/>'; });
     (plan.flats || []).forEach(f => { const r = f.rect; if (!vis(r[0], r[1])) return; s += '<rect x="' + (px(r[0]) + 2) + '" y="' + (py(r[1]) + 2) + '" width="' + ((r[2] - r[0] + 1) * S - 4) + '" height="' + ((r[3] - r[1] + 1) * S - 4) + '" fill="none" stroke="#9be7ff" stroke-width="2" stroke-dasharray="3 4"/>'; });
     PLOTS.forEach(p => { const X = p.bx * N, Y = p.by * N; if (X + N - 1 < x0 || X > x1 || Y > y1 || Y + N - 1 < y0) return; const c = (dists[p.d] && dists[p.d].color) || '#f2c14e';
         s += '<rect x="' + (px(X) + 1) + '" y="' + (py(Y) + 1) + '" width="' + (N * S - 2) + '" height="' + (N * S - 2) + '" fill="none" stroke="' + c + '" stroke-width="2"' + (p.today == null ? ' stroke-dasharray="8 5"' : '') + '/>';
@@ -263,7 +271,7 @@ function draw(B, o) { const { plan, W, H, N, T, L, RAMP, PLOTS, LEDGES, key, til
     const used = new Set(); for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) used.add(T[y][x]);
     const items = Object.keys(tiles).filter(k => tiles[k][0] && used.has(k)).map(k => [fill(k, (lo + hi) / 2 + 1), k === ' ' && plan.mass ? plan.mass : tiles[k][0] + (k === 'p' ? ', ' + A.mainWidth + ' squares wide' : '')]);
     const ly = TOP + ch + 24; let lg = '', lx = PAD, row = 0; const WT = Math.max(cw + PAD * 2, 900);
-    items.concat([['#ffd21f', '★ a landmark'], ['#ff7bf0', '◉ a lookout (dotted: what it sees)'], ['#5dff8a', '- - a FOUND way up (a climb, a trunk, a ladder)'], ['#9be7ff', '┄ level ON PURPOSE (an open place, a fight place)']]).forEach(q => { const wdt = 34 + q[1].length * 7.1; if (lx + wdt > WT - PAD) { lx = PAD; row++; } lg += '<rect x="' + lx + '" y="' + (ly + row * 22 - 11) + '" width="14" height="14" fill="' + q[0] + '" stroke="#000"/><text x="' + (lx + 19) + '" y="' + (ly + row * 22) + '" font-size="12.5" fill="#ddd">' + esc(q[1]) + '</text>'; lx += wdt; });
+    items.concat([['#ffd21f', '★ a landmark'], ['#ff7bf0', '◉ a lookout (dotted: what it sees)'], ['#5dff8a', '- - a FOUND way up (a climb, a trunk, a ladder)'], ['#9be7ff', '┄ level ON PURPOSE (an open place, a fight place)']].concat((plan.stairs || []).length ? [['#ff9a2e', '▒ a STAIR (real stair pieces cut in the face; walked both ways)']] : [])).forEach(q => { const wdt = 34 + q[1].length * 7.1; if (lx + wdt > WT - PAD) { lx = PAD; row++; } lg += '<rect x="' + lx + '" y="' + (ly + row * 22 - 11) + '" width="14" height="14" fill="' + q[0] + '" stroke="#000"/><text x="' + (lx + 19) + '" y="' + (ly + row * 22) + '" font-size="12.5" fill="#ddd">' + esc(q[1]) + '</text>'; lx += wdt; });
     const dl = Object.keys(dists).map(d => d + ' = ' + dists[d].name).join(' · ');
     const lines = ['Every box is one 3.5 m battle square. The number in a square is its LEVEL (1 level = 1.75 m); lighter = higher. A black triangle = a RAMP square, pointing uphill (one level over two squares).',
         'A WHITE BAR with a tooth = a LEDGE: you hop DOWN across it (the tooth points down) and cannot climb back. That is how the walk works today: no new rule.',
