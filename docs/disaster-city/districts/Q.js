@@ -45,6 +45,18 @@ function build(ctx) {
     /* the dockside's small things, off centre along the water's edge */
     [[98, 'cable_drum'], [105, 'traffic_barrel'], [108, 'pallet_jack'], [110, 'cable_drum'], [118, 'traffic_barrel'], [119, 'cable_drum'], [126, 'pallet_jack'], [132, 'traffic_barrel'], [142, 'cable_drum']].forEach((q, i) => {
         if (!clear(q[0])) return; P(q[1], gx(147) - 0.75 - (i % 3) * 0.2, gc(q[0]) + (i % 2 ? 0.6 : -0.5), (i * 70) % 360); n.small++; });
+    /* ONE BEACH (2026-11-20): THE COAST ROAD LEAVES THE PORT. Route R10 came up onto a spit of sand in the Beach's sea room; that room has no shore now
+       (the beach is the city's), so the road's north end is the quay's south end: you walk on south (way `open`, the One World seam `ow_h_15_12`). */
+    ctx.doors.push({ id: 'ow_h_15_12', wall: 'free', x: gc(145), z: r3(ctx.HALF - 6.5), face: 0, leaf: null, way: 'open', passage: { len: 10, deep: 4, w: 10.5 },   /* (the room changes 4 m past the door, 2.5 m short of the ghost wall that shuts the city's old south line) */ action: { room: 'site_ow_r10', at: 'ow_h_15_12' },
+        label: 'THE COAST ROAD', sub: 'THE PORT · THE SOUTH GATE · SOUTH ALONG THE SEA TO GIZA', desc: 'The quay runs out to a road, and the road runs south along the sea to the pyramids.' });
+    P('signpost', gx(146) + 0.6, r3(ctx.HALF - 10), 0);
+    /* …and what you see of it: a concrete CAUSEWAY drawn on south from the quay's end across the bay's mouth (the bay lies south of the port: the
+       world map), kerbs, a pile pair every 10 m. Scenery past the door: the room changes a few steps onto it. */
+    { const CON = 'urban:ConcreteStriped2a', LEN = 110, r = v => Math.round(v * 1000) / 1000;
+      lateRows.push({ k: 'arch', id: 'dc:coastroad:arch', x: gc(145), z: r(ctx.HALF - 0.4), rot: 0, parts: [
+          { s: 'box', p: [0, -0.5, r(LEN / 2)], size: [10.5, 0.5, LEN], key: CON, uv: [3.5, 3.5] },
+          { s: 'box', p: [-5.05, 0, r(LEN / 2)], size: [0.4, 0.45, LEN], key: CON }, { s: 'box', p: [5.05, 0, r(LEN / 2)], size: [0.4, 0.45, LEN], key: CON },
+          { s: 'box', p: [-3.8, -5.2, 5], size: [1.0, 4.8, 1.0], key: CON, tint: 0x9a9a94, n: 11, step: [0, 0, 10] }, { s: 'box', p: [3.8, -5.2, 5], size: [1.0, 4.8, 1.0], key: CON, tint: 0x9a9a94, n: 11, step: [0, 0, 10] }] }); }
     console.warn('[quay]', JSON.stringify(n));
 }
 

@@ -2986,6 +2986,13 @@ ones that make sense ... the pixel density might have to be lower. If this 128x1
   wear Drowning's debuff sheet; `grievous` (healing halved, no damage) wears Bleeding's. Weak: `stagger` close to `stun`;
   `feared` dark on dark; `possessed` a plain purple frame; `statUp` / `statDown` / `pixieDust` / `overclock` are stat-change
   carriers (the RULE over STATUS_LIBRARY_DESCS says those are not status effects).
+- THE CHECK, DONE (11-20, mondo: "that all sounds good except the bends definitely has to do with deep water, but maybe add
+  something else too. Just keep it named corroded for now"): new sheets `blind2` (white fog), `broken2` (dead grey frame, a
+  broken heart), `infected2` (zombie hands), `haunted2` (little ghosts), `stagger2` (a ring of stars), `feared2` (shock lines,
+  eyes in the corners), `possessed2` (puppet strings); own sheets for `submerged` (calm water, reeds), `grievous` (bandages
+  over a wound) and `bends` (deep water + gas bubbles + a pressure gauge in the red). statUp, statDown, pixieDust, overclock
+  have NO frame now (stat-change carriers). The replaced sheets stay on R2 under their old names. 45 statuses on 40 sheets
+  in use. Corroded keeps its name.
 - How they were made (Sprite AI, see THE PANEL ANIMATIONS for the calls): `POST /api/sprites` `{ prompt, asset_type: 'effect',
   width: 64, height: 64, direction: 'none', camera_perspective: 'front' }` (1 token; the reply carries the PNG, also at
   `/api/sprites/<id>/download`), prompt = "a hollow square ring of <what> hugging the four edges ... the whole middle empty

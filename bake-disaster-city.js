@@ -901,6 +901,8 @@ lines.push("            dc144: { cell: " + C + ", plot: " + PL + ", plots: " + N
 lines.push("            terrain: {");
 lines.push("                res: 0.875,");
 if (ROOM.sea) lines.push("                sea: " + J(ROOM.sea) + ",");
+{ const MOORED = [].concat(...DISTRICTS.map(m => m.moored || []));   // ONE BEACH (2026-11-20): a ship drawn at her berth (three-renderer.js _hqBuildMoored): the Flying Dutchman off the Long Pier (districts/W.js)
+  if (MOORED.length) lines.push("                moored: " + J(MOORED) + ","); }
 if (ROOM.east) lines.push("                backdropInset: { w: " + r3(ROOM.east * C) + " }," + (ROOM.backdropOpen.length ? " backdropOpen: " + J(ROOM.backdropOpen) + "," : ""));
 lines.push("                /* THE NATURAL EDGES: no ring of backdrop buildings; the land past each side in place of the concrete outer ground (three-renderer.js _hqBuildEdgeLand) */");
 /* the grown room (Bayside's beach, ROOM.east): the west strip the centred shell adds is under the forest (the land starts behind the ghost wall on
@@ -1204,8 +1206,11 @@ lines.push("            },");
 const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face + (o.noEntrance ? ", noEntrance: true" : "");   // noEntrance: a door a district hung inside its own building (no sprite entrance building)
 lines.push("            doors: [");
 dcCtx.doors.forEach(d => lines.push("                " + J(d) + ",   // (a district's own door: ctx.doors)"));
-lines.push("                { id: 'harbour', " + dj(JOIN.harbour) + ", leaf: null, label: 'THE HARBOUR', sub: 'THE BOARDWALK · OUT ON THE PIER', action: { room: 'site_prebuilt_bermuda_beach', at: 'quay' },");
-lines.push("                  desc: 'The quay stops and the water starts. A pier goes on out into it, with a skiff tied at the end that nobody is minding.' },");
+/* ONE BEACH (2026-11-20): the way to the harbour is THE LONG PIER, walked (way `open`): the door stands at the pier's far end, out over the water off the
+   Shore (districts/W.js `harbour`). Was a door on Bayside's boardwalk (JOIN.harbour, the plot "Boardwalk exit"), a jump to a second beach. */
+{ const HB = (DISTRICTS.map(m => m.harbour).filter(Boolean)[0]) || JOIN.harbour;
+  lines.push("                { id: 'harbour', wall: 'free', x: " + HB.x + ", z: " + HB.z + ", face: " + HB.face + ", leaf: null, way: 'open', passage: { len: 10, deep: 4, w: 7 }, label: 'THE HARBOUR', sub: 'THE LONG PIER · OUT TO THE QUAY AND THE FLYING DUTCHMAN', action: { room: 'site_prebuilt_bermuda_beach', at: 'quay' },");
+  lines.push("                  desc: 'The pier runs on out over the water: a red shed on a stone quay, a lighthouse on a breakwater, and a ship that has been at anchor since the evacuation.' },"); }
 /* a district file may move one of these doors into its own building (`joins = { tower: { x, z, face, sub } }`): Hero Plaza stands THE TOWER at the
    lift bank of its walk-in lobby (mondo 11-13 22:30 "keep the new lobby"), so the plaza doorway is the lobby's own */
 DISTRICTS.forEach(m => Object.keys(m.joins || {}).forEach(k => { if (JOIN[k]) Object.assign(JOIN[k], m.joins[k]); }));

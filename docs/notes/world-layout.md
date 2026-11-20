@@ -34,13 +34,13 @@ as the inside of a plot-built place.
 | Zone | Room(s) today | State | Ways in (from) | Holder |
 |---|---|---|---|---|
 | DOOR HQ | 148 rooms, hub `central_egress` | handmade, stays handmade | | owner |
-| Disaster City | `site_prebuilt_downtown_streets` (144 plots + THE HOLLYWOOD HILLS, 39 plots on its north side, one room since 11-16: you walk or drive up the mountain road or from the boardwalk's north end, no door) + INSIDE lobby, showroom, platform, mall, closet, stadium bowl | PLOTS | HQ garage taxi; Beach quay; Desert highway Exit 1; the Mountains (doors `shasta` + `ridge` on the Hills' west side); Woods storm drain; Sewers (pump court, dock) | owner (Civic Center + frame rate: second) |
+| Disaster City | `site_prebuilt_downtown_streets` (144 plots + THE HOLLYWOOD HILLS, 39 plots on its north side, one room since 11-16: you walk or drive up the mountain road or from the boardwalk's north end, no door) + INSIDE lobby, showroom, platform, mall, closet, stadium bowl | PLOTS | HQ garage taxi; the Harbour (walk on: the Long Pier off the Shore's sand, since ONE BEACH 11-20; was a door on the boardwalk); the Coast Road (walk on, the port's south end); Desert highway Exit 1; the Mountains (doors `shasta` + `ridge` on the Hills' west side); Woods storm drain; Sewers (pump court, dock) | owner (Civic Center + frame rate: second) |
 | The Woods | `site_prebuilt_fairy_forest_plots` (36) | PLOTS | HQ stair (`woodstair`); HQ tunnel; city drain; Sewers drain; Camelot (trail + dead tree); Mountains snowline; Estate gate | owner |
 | Camelot Kingdom | `site_prebuilt_camelot_kingdom` (64) + `site_prebuilt_camelot_palace`; OLD `site_prebuilt_camelot_sky` | PLOTS (sky castle OLD, waits mondo) | Woods (two ways); North Pole sleigh road; Haunted House upstairs (hidden); bay | owner |
 | The Mountains | `site_prebuilt_shasta_mountains` (12 x 8), `site_prebuilt_northpole_plots` (16). (The Hollywood Hills left this zone on 11-16: they are Disaster City's north district; the old room `site_prebuilt_shasta_hills` is retired) | PLOTS | Woods snowline; Disaster City's Hills (doors `hills` + `saddle`, east side of Shasta); Camelot into the North Pole; Vatican cortile + Heaven cloud fields onto Olympus; Agartha (Lemuria stair); the Lodge | second |
 | The Estate | `site_prebuilt_skinwalker_estate` (36) + INSIDE the Haunted House's five floors | PLOTS | Woods gate; the Cavern (two wells); the Lodge; hidden: Camelot, North Pole, Astral attic | second |
 | The Desert | `site_prebuilt_area51_desert` (144) + INSIDE Hangar 18, inside the Great Pyramid (the White Rooms moved to the D.U.M.B. 11-16) | PLOTS | city highway; HQ tunnel (the Circus) + HQ `mandela` mirrors; Leylines robbers' tunnel; D.U.M.B. up through Hangar 18 | second |
-| The Beach | `site_prebuilt_bermuda_beach` (14 x 10, a sea room) + INSIDE the Flying Dutchman's four decks | PLOTS | city quay; HQ pool; the Dutchman; Atlantis whirlpool | second |
+| The Beach = THE HARBOUR since ONE BEACH (11-20: the beach itself is Disaster City's east coast; this room holds no shore) | `site_prebuilt_bermuda_beach` (8 x 10, a sea room: the Long Pier, the Quay, the Dutchman, the near Ocean) + INSIDE the Flying Dutchman's four decks | PLOTS | the city's Long Pier (walk on); HQ pool; the Dutchman; Atlantis whirlpool | second |
 | The Sewers | `site_prebuilt_downtown_underworld` (a maze of 6 x 5 plots since 11-16: 24 + district R, the radioactive drain under the Power station; its own place) | PLOTS (first build 11-16, `bake-sewers.js`) | city pump court, dock, platform; stadium; Woods drain; HQ dungeon cells, garden well, tunnel; the Cavern oubliette (the Strip's and Cyberpunk's gutters dropped) | second (tool), districts free |
 | The Cavern | `site_prebuilt_hollow_earth_cavern` (36 plots, one room since 11-16: the Cavern, Hollow Earth, Agartha; the Crystal City is a district now) | PLOTS (first build 11-16, `bake-cavern.js`) | Sewers old workings (the Oubliette); HQ dungeon (hidden); Estate wells (the Crossroads, the Mouth); Hell fissure; D.U.M.B. Level −6; Mount Shasta (the Lemuria Stair) + the Woods' trail; Technoticlan (the East Gate); Antarctica (two ways); Bay 3 (two doors) | second (tool), K the pilot STOPPED, H + A free |
 | The D.U.M.B. | `site_prebuilt_dumb_base` (49 plots, one room since 11-16: the six old parts, CERN's ring and the White Rooms) | PLOTS (first build + the pilot Sub-Level 7, 11-16, `bake-dumb.js`) | HQ bays Room 555 (the Freight Lift) + Room 999 (the Ring's blast door); Hangar 18's floor lift (the tunnel's west end); HQ garage (the Ramp, secret); the Cavern (Level -6); the Astral Realm (the Ward's dream screen); the Desert's yard gate + storm drain and Hangar 18's white door + vent (the White Rooms) | second |
@@ -304,7 +304,7 @@ Room 1954, the looking-glass / dead tree pair, the wells.
 
 | Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
 |---|---|---|---|---|
-| DISASTER CITY | `site_prebuilt_downtown_streets` | x 0..16, y -3..14 | 183 | THE RIVER ROAD (walk on); THE BEACH (a door); DISASTER CITY (a door); THE RANCH (a door); THE RITUAL GROUND (a door); THE BADLANDS HIGHWAY (road); THE VALLEY ROAD (road); THE CLEARING (gutter); MOUNT OLYMPUS (painting); + 8 doors to insides / DOOR HQ |
+| DISASTER CITY | `site_prebuilt_downtown_streets` | x 0..16, y -3..14 | 183 | THE RIVER ROAD (walk on); THE HARBOUR (walk on, the Long Pier); THE COAST ROAD (walk on); DISASTER CITY (a door); THE RANCH (a door); THE RITUAL GROUND (a door); THE BADLANDS HIGHWAY (road); THE VALLEY ROAD (road); THE CLEARING (gutter); MOUNT OLYMPUS (painting); + 8 doors to insides / DOOR HQ |
 
 **HEAVEN + HELL + VATICAN**
 
@@ -380,12 +380,12 @@ Room 1954, the looking-glass / dead tree pair, the wells.
 
 | Place | Room id | Where it stands (plots: x east, y south) | Plots | Ways out |
 |---|---|---|---|---|
-| THE BEACH | `site_prebuilt_bermuda_beach` | x 12..19, y 2..11 | 80 | DISASTER CITY (a door); THE COAST ROAD (walk on); THE VOLCANO ISLAND (boat); LEYLINES (boat); THE BERMUDA TRIANGLE (boat); + 1 door to insides / DOOR HQ |
+| THE HARBOUR (the Beach's sea room; no shore since 11-20) | `site_prebuilt_bermuda_beach` | x 12..19, y 2..11 | 80 | DISASTER CITY (walk on, the Long Pier); THE VOLCANO ISLAND (boat); LEYLINES (boat); THE BERMUDA TRIANGLE (boat); + 1 door to insides / DOOR HQ |
 | THE BERMUDA TRIANGLE | `site_prebuilt_bermuda_ow_triangle` | x 32..40, y 0..6 | 63 | THE DEEP (whirlpool); THE BEACH (boat); + 2 doors to insides / DOOR HQ |
 | THE VOLCANO ISLAND | `site_prebuilt_bermuda_ow_volcano` | x 22..27, y -19..-14 | 36 | THE BEACH (boat); THE FROZEN SEA (boat) |
 | PIRATES' COVE | `site_prebuilt_bermuda_ow_cove` | x -30..-28, y 31..33 | 9 | THE LOOKING-GLASS GARDEN (boat); ANTARCTICA (boat) |
 | THE FROZEN SEA | `site_prebuilt_bermuda_ow_frozen` | x 0..3, y -30..-29 | 8 | THE VOLCANO ISLAND (boat); THE LOOKING-GLASS GARDEN (boat); THE NORTH POLE (trail) |
-| THE COAST ROAD | `site_ow_r10` | x 15..17, y 12..28 | 38 | THE BEACH (walk on); GIZA (walk on) |
+| THE COAST ROAD | `site_ow_r10` | x 15..17, y 12..28 | 38 | DISASTER CITY (walk on, the port quay's south end; since ONE BEACH 11-20); GIZA (walk on) |
 
 **LEYLINES**
 
