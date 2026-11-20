@@ -3486,3 +3486,10 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   road reads like two surfaces in one plane or shadow acne (THE ZSEP's note on the Bayside ground), or a piece drawn on
   alternate frames; not told apart yet. Live switches to try while looking at it, one line in the console:
   `EW_SHADOW_KEY_EVERY = EW_MASK_LIST_OFF = EW_HQ_STILL_NO_HELD_BOOK = EW_BUN_TARGETS_EVERY = EW_OCC_NO_KEEP = EW_BUN_LAMPS_ONE = true`.
+- THE BUILD LINE (11-20, his 02:24 battle F3, a session loaded 7 min after THE LAMPS' WHY merged: its spike lines read "LAMPS
+  MOVED)" with no "[cam …]", so the browser was still running an OLDER three-renderer.js; the 02:10 F3 very likely ran without
+  THE LAMPS PER CAMERA too). The page comes from Render, which redeploys some minutes after a merge (longer when PRs land back to
+  back), and until the page carries the new `?v=` token the browser keeps the old cached script. The lens's second line is now
+  "Build ?v=<token of the page> · renderer code <stamp>" (`_ewBuildTok`, `_EW_TR_STAMP` at the top of three-renderer.js). RULE:
+  bump `_EW_TR_STAMP` in every PR that changes the walk's / the fight's drawing, and read that line in his F3 before
+  concluding a fix did or did not work. No judgement on THE LAMPS PER CAMERA is possible from the 02:10 / 02:24 readouts.

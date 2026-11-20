@@ -81,6 +81,13 @@ const ThreeRenderer = (function () {
             try { if (k && !(k in window)) Object.defineProperty(window, k, { value: undefined, writable: true, configurable: true, enumerable: false }); } catch (e) {}
         }
     })();
+    /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
+    var _EW_TR_STAMP = '11-20 lamps-why';
+    function _ewBuildTok() {
+        var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
+        for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
+        return t ? '?v=' + t : 'no token';
+    }
     function _ewTmrName(f) { if (!f) return ''; if (f.name) return f.name; var s = String(f).replace(/\s+/g, ' '); return s.length > 70 ? s.slice(0, 70) + '…' : s; }
 
     const ELEV_STEP_RATIO = 1.0; /* 1 game height = 1 full tile (cube voxels). Keep in sync with three-camera.js, ui.js, hud.js, three-vfx.js, map.js editor preview. */
@@ -55214,6 +55221,10 @@ const ThreeRenderer = (function () {
         var c = S.census || {}, L = [];
         var pad = function (s, n) { s = String(s); while (s.length < n) s += ' '; return s; };
         L.push('PERF LENS · ' + S.mode + (S.room ? ' · ' + S.room : '') + ' · ' + new Date().toISOString().slice(0, 19) + 'Z');
+        /* THE BUILD LINE (2026-11-20: three of mondo's battle F3s in a row could not say whether the fix merged minutes before was
+           the code that ran; Render redeploys the page some minutes after a merge and the old token keeps the old cached file):
+           the page's token (which index.html the browser holds) and this file's own stamp (which three-renderer.js ran). */
+        try { L.push('Build ' + _ewBuildTok() + ' · renderer code ' + _EW_TR_STAMP); } catch (e) {}
         if (S.backend) L.push('Renderer ' + S.backend);   // WEBGPU_PLAN W0
         L.push('FPS ' + S.fps.toFixed(1) + '  frame ' + _lensMs(S.frameMs) + '  worst ' + _lensMs(S.worst2s));
         L.push('CPU ' + _lensMs(S.cpuMs) + ' (submit ' + S.submitMs.toFixed(1) + ' · anim ' + S.animMs.toFixed(1) + ')  GPU ' + (S.gpuOk ? _lensMs(S.gpuMs) : (_ewGpu ? 'n/a (no timestamp query' + (/Firefox\//.test(navigator.userAgent || '') ? ' on Firefox' : '') + ')' : 'n/a (no timer query)')));
