@@ -1804,7 +1804,7 @@
            ══════════════════════════════════════════════════ */
         body.ed-on:not(.ed-playing) #hqStrip, body.ed-on:not(.ed-playing) #hqHints, body.ed-on:not(.ed-playing) #hqDock, body.ed-on:not(.ed-playing) #hqPrompt,
         body.ed-on:not(.ed-playing) #hqArrival, body.ed-on:not(.ed-playing) #hqToast, body.ed-on:not(.ed-playing) #hqLoad,
-        body.ed-on:not(.ed-playing) #hqWheel, body.ed-on:not(.ed-playing) #hqTrick, body.ed-on:not(.ed-playing) #hqOllie { display: none !important; }
+        body.ed-on:not(.ed-playing) #hqWheel, body.ed-on:not(.ed-playing) #hqTrick, body.ed-on:not(.ed-playing) #hqOllie, body.ed-on:not(.ed-playing) #hqBal { display: none !important; }
         .ed-root { position: fixed; inset: 0; z-index: 9000; pointer-events: none; font: 12px/1.35 'JetBrains Mono', 'IBM Plex Mono', monospace; color: #dfe6ee; }
         body.ed-playing .ed-root > *:not(.ed-toast):not(.ed-playtag) { display: none !important; }
         .ed-root > * { pointer-events: auto; }

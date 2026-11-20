@@ -113,6 +113,37 @@ aperture's brightness, the hatch's leaf standing open in the floor, the
 fall's speed in a tall room (a cave chamber, the hall), a wall door's drop
 to the floor, and the two colours against each room's own light.
 
+## SKATEBOARDING — THE GRINDS, THE BALANCE METER, THE WALLS — 2026-11-20
+mondo, from the list of ideas after the off-ground clock: "Let's do 3, 4, and 6." All three in three-renderer.js "SKATEBOARDING",
+tables in data.js `HQ_SKATE_RULES` (renderer fallbacks in `HQ_SKATE_DEFAULT`, keep the keys in step).
+- **THE GRINDS** (`grinds`, `grindSwitchMs`): a rail is no longer one grind. `R.grind.kind` is picked AT THE LOCK by the arrow held
+  (↑ `nose` · ↓ `five0` · ← `board` · → `lip`; none = `fifty`, the old labels) and changed ON THE RAIL by an arrow's press
+  (the grind branch) or a flick of the stick with a mouse button held (`_hqRideStickMove` → `_hqRideGrindFlick`; the diagonals =
+  `crooked` · `overcrook` · `smith` · `feeble`). `_hqRideGrindSwitch` is the ONE change. Per kind: `pts` (its chip), `per` (× the
+  grind's points a second), `bal` (× the rail's push), `tuck` / `spin` (the deck's pose, eased into `R.deckTuck` / `R.deckSpin`,
+  zeroed when the grind ends). A kind pays its chip ONCE per rail (`g.used`), so switching back and forth cannot farm the
+  multiplier. Tricks out of a grind were already there (SPACE hops off, then the stick); nothing changed.
+- **THE BALANCE METER** (`balance`): the grind branch sends a `balance` beat `{ k: R.bal / grindBalance, hard, label }` every
+  `tickS`; map.js `_hqBalMeter` draws `#hqBal` (index.html, CSS `.hq-bal` in styles-base.css: the bar, red ends, the needle, the
+  grind's name + "A / D"; `.warn` past 0.65). No beat for 600 ms hides it (no "off" beat exists). The rail pushes harder by the
+  kind and by the off-ground clock: drift × `bal` × min(`rampMax`, 1 + `R.offT` × `rampPerS`).
+- **THE WALLS** (`wall`, `tricks.wallride` / `tricks.wallplant`): a move refused IN THE AIR goes to `_hqRideWallTouch` before the
+  old stop (`_hqRideSlide`). `_hqRideWallNormal` reads the wall's face with twelve `_hqAirOK` probes round the body, `wall.tall`
+  over the feet (a kerb is no wall); it runs only on a refused frame (RULE #1e: no scan). Glancing = THE WALLRIDE (`R.wall =
+  { nx, nz, t, side }`: the heading turns along the wall, gravity × `grav`, paid `perSec`, the body and the deck lean `lean`,
+  no steering, no tricks; SPACE jumps off; ends when the wall runs out, at `maxS`, or too slow). Near square-on with SPACE held =
+  THE WALL PLANT (the heading mirrored, `plantV` up). `wall.max` wall moves per stretch off the ground (`R.wallN`; a rail's lock
+  or the ground zeroes it). Both keep `pl.air`, so the line stays open and the off-ground clock runs.
+New beats: `balance`, `grindswitch`, `wallride`, `wallplant`. `hq.ride()` now carries `grind.kind`, `grind.bal`, `wall`.
+PROBED (HEAD aab65ce + this change, training room, `playtest_city.js`): an arrow's press changed NOSEGRIND to BOARDSLIDE and added
+the chip; the wallride locked on the +z wall (heading turned along it, chip, the clock running, the deck under the feet on the
+wall); the wall plant mirrored the heading and added the chip; the meter drew. NOT SEEN: a real mouse flick on a rail, the feel
+of the numbers, the nose / 5-0 tilt's sign on the deck (small on the picture), any of it in Disaster City.
+PROBE TIPS: `playtest_skate_offline.js` no longer loads (it predates the three.js upgrade): use `playtest_city.js training` with
+`"eval"` views and `ThreeRenderer.hq.dev.rideRaw()` (the live `R`, `pl`, `keys`, `shell`; new this day). The training room plays
+its intro cutscene some seconds in and that pauses the ride: put the view that matters FIRST. The screenshot holds the game loop,
+so a HUD piece that hides on a timer (the meter) is gone on the picture unless the eval holds it.
+
 ## SKATEBOARDING — THE FLOOR IS LAVA (the off-ground clock pays the line) — 2026-11-20
 mondo: "can we make it to where not touching the ground continues your combo/score? Like the floor is lava, the longer you can
 stay doing tricks in the air or grinding on rails and not touching the ground, it keeps adding to your score."

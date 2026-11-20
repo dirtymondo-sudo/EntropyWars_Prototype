@@ -100071,6 +100071,8 @@ const HQ_SKATE_RULES = {
         air:        { pts: 40,  perM: 60, label: 'BIG AIR' },   // rev 8: perM = points per metre of height over the launch point
         vert:       { pts: 150, label: 'VERT AIR' },           // rev 8: an air off a quarter pipe's coping
         launch:     { pts: 60,  label: 'AIR' },                // rev 8: an air off a kicker / a bank's lip
+        wallride:   { pts: 120, perSec: 60, label: 'WALLRIDE' },   // THE WALLS (2026-11-20): the chip + the points a second on the wall
+        wallplant:  { pts: 150, label: 'WALL PLANT' },             // a kick back off a wall met square-on with SPACE held
     },
     labels: { on: 'ON THE BOARD', off: 'ON FOOT', bail: 'BAIL', bank: 'LANDED', perfect: 'PERFECT POP' },
     ranks: [[0, 'LANDED'], [400, 'NICE'], [1500, 'SICK'], [5000, 'INSANE'], [15000, 'LEGENDARY']],   // the word stamped on a banked line, by its score
@@ -100080,7 +100082,32 @@ const HQ_SKATE_RULES = {
        (× 1 + seconds × `ramp`: 30 a second at the start, 105 a second at ten seconds), and every `multEveryS` seconds adds one to
        the line's multiplier. `tickS` = how often the card's number is refreshed. */
     lava: { perS: 30, ramp: 0.25, multEveryS: 2, tickS: 0.1 },
-    controls: ['W push (hold it at speed to cruise)', 'S brake · from a stop skate backwards', 'A / D carve', 'HOLD SPACE to crouch (as long as you like) · RELEASE to pop (the meter is the height · release right as it hits MAX = a PERFECT POP)', 'in the air WASD is AIR CONTROL: A / D steer · W / S the speed', 'OFF THE GROUND: a line stays open until the wheels touch the ground; every second in the air or on a rail adds points, every 2 seconds adds +1 to the multiplier; hop rail to rail', 'THE STICK: hold a mouse button in the air and FLICK — LEFT ← → ↑ ↓ = kickflip · heelflip · front flip · backflip, ↖ ↗ corkscrew, ↙ ↘ varial · RIGHT ← → = 180s, ↑ ↓ = grabs', 'land on a rail = grind (A / D balance)', 'only a trick still turning at the landing bails — walls, props and drops never do', 'B off'],
+    /* THE BALANCE METER (2026-11-20, mondo: "let's do 3, 4, and 6"): the rail's balance is drawn (map.js `#hqBal`: the needle, A / D
+       bring it back, the ends are the fall). The rail pushes harder the longer the off-ground clock has run: × (1 + seconds ×
+       `rampPerS`), capped at `rampMax`; a harder grind multiplies it again (`grinds.<kind>.bal`). `tickS` = the meter's refresh. */
+    balance: { rampPerS: 0.08, rampMax: 2.5, tickS: 0.05 },
+    /* THE GRINDS (2026-11-20): the grind is picked at the lock by the arrow held (none = 50-50) and changed on the rail by an arrow's
+       press or a flick of the stick. `pts` = the chip (once per rail for each kind), `per` = × the grind's points a second, `bal` = ×
+       the rail's push on the balance, `tuck` = the deck's pitch (rad, + = nose down), `spin` = the deck's turn across the rail (rad). */
+    grindSwitchMs: 350,   // ms between two changes of grind
+    grinds: {
+        fifty:     { label: '50-50',      pts: 0,   per: 1,   bal: 1,   tuck: 0,     spin: 0 },        // no arrow
+        nose:      { label: 'NOSEGRIND',  pts: 90,  per: 1.5, bal: 1.4, tuck: 0.3,   spin: 0 },        // ↑
+        five0:     { label: '5-0',        pts: 90,  per: 1.5, bal: 1.4, tuck: -0.3,  spin: 0 },        // ↓
+        board:     { label: 'BOARDSLIDE', pts: 80,  per: 1.3, bal: 1.2, tuck: 0,     spin: 1.5708 },   // ←
+        lip:       { label: 'LIPSLIDE',   pts: 80,  per: 1.3, bal: 1.2, tuck: 0,     spin: -1.5708 },  // →
+        crooked:   { label: 'CROOKED',    pts: 120, per: 1.8, bal: 1.6, tuck: 0.28,  spin: 0.45 },     // flick ↖
+        overcrook: { label: 'OVERCROOK',  pts: 120, per: 1.8, bal: 1.6, tuck: 0.28,  spin: -0.45 },    // flick ↗
+        smith:     { label: 'SMITH',      pts: 120, per: 1.8, bal: 1.6, tuck: -0.26, spin: 0.4 },      // flick ↙
+        feeble:    { label: 'FEEBLE',     pts: 120, per: 1.8, bal: 1.6, tuck: -0.26, spin: -0.4 },     // flick ↘
+    },
+    /* THE WALLS (2026-11-20): a wall met in the air at `minV` m/s or more. Glancing = THE WALLRIDE (up to `maxS` s on the wall, gravity ×
+       `grav`, a start lift `upV`, the fall capped at `fallV`; SPACE jumps off: `jumpV` up, turned `jumpOut` rad away from the wall,
+       `jumpPts` points). Near square-on (the heading's share into the wall ≥ `plantInto`) with SPACE held = THE WALL PLANT (`plantV` up,
+       `plantKeep` of the speed, the heading mirrored). `max` wall moves per stretch off the ground (a rail or the ground gives them
+       back), `coolS` s between two, `tall` = the wall must stand this many metres over the feet, `lean` = the body's lean on the wall. */
+    wall: { minV: 5, maxS: 1.6, grav: 0.18, upV: 2.2, fallV: 2.0, jumpV: 5.6, jumpOut: 0.6, jumpPts: 60, plantInto: 0.8, plantV: 5.2, plantKeep: 0.85, max: 3, coolS: 0.4, tall: 0.9, lean: 0.6 },
+    controls: ['W push (hold it at speed to cruise)', 'S brake · from a stop skate backwards', 'A / D carve', 'HOLD SPACE to crouch (as long as you like) · RELEASE to pop (the meter is the height · release right as it hits MAX = a PERFECT POP)', 'in the air WASD is AIR CONTROL: A / D steer · W / S the speed', 'ON A RAIL: A / D balance (the meter) · the arrow held as you land picks the grind (↑ nosegrind · ↓ 5-0 · ← boardslide · → lipslide) · an arrow or a flick of the stick changes it · SPACE hops off', 'WALLS: jump into a wall at an angle at speed = a WALLRIDE (SPACE jumps off it) · hold SPACE into a wall square-on = a WALL PLANT', 'OFF THE GROUND: a line stays open until the wheels touch the ground; every second in the air or on a rail adds points, every 2 seconds adds +1 to the multiplier; hop rail to rail', 'THE STICK: hold a mouse button in the air and FLICK — LEFT ← → ↑ ↓ = kickflip · heelflip · front flip · backflip, ↖ ↗ corkscrew, ↙ ↘ varial · RIGHT ← → = 180s, ↑ ↓ = grabs', 'land on a rail = grind (A / D balance)', 'only a trick still turning at the landing bails — walls, props and drops never do', 'B off'],
 };
 /* ══ THE PREMIUM POLISH — the room's AIR, the ARRIVAL, the THINGS THAT MOVE (PREMIUM_POLISH_PLAN §3 / §5 / §6, 2026-09-21) ══
    Pure reads the renderer and map.js share. Nothing here touches `state` or the relay (RULE #2 — the building is
