@@ -1560,6 +1560,59 @@
         }
         window.playUnitSwitchChime = playUnitSwitchChime;
 
+        /* THE SHIP'S ENGINE (2026-11-20, the Outer Space spectacle; mondo: "more spectacle, more juice"). Made here, no file: two detuned saws
+           and a sub through a low-pass that opens with the throttle and the speed, a band of noise that roars on the burner. three-renderer.js
+           calls ewShipSound every frame of the space room ({ on, thr 0..1, speed 0..1, burn 0..1 }); a watchdog fades it out if the calls
+           stop (another room). ewShipCue('ignite' | 'lift' | 'burn') = one-shots. The SFX volume rules it. Viewer-local. */
+        let _shipSnd = null;
+        function _shipSndMake() {
+            if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const ctx = _audioCtx, out = ctx.createGain(); out.gain.value = 0; out.connect(ctx.destination);
+            const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220; lp.Q.value = 0.8; lp.connect(out);
+            const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), sub = ctx.createOscillator();
+            o1.type = 'sawtooth'; o2.type = 'sawtooth'; sub.type = 'sine'; o1.frequency.value = 44; o2.frequency.value = 44.7; sub.frequency.value = 29;
+            const gd = ctx.createGain(); gd.gain.value = 0.22; o1.connect(gd); o2.connect(gd); gd.connect(lp);
+            const gs = ctx.createGain(); gs.gain.value = 0.5; sub.connect(gs); gs.connect(out);
+            const nb = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), nd = nb.getChannelData(0); let b0 = 0;
+            for (let i = 0; i < nd.length; i++) { b0 = 0.97 * b0 + 0.03 * (Math.random() * 2 - 1); nd[i] = b0 * 6; }
+            const ns = ctx.createBufferSource(); ns.buffer = nb; ns.loop = true;
+            const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 300; bp.Q.value = 0.5;
+            const gn = ctx.createGain(); gn.gain.value = 0; ns.connect(bp); bp.connect(gn); gn.connect(out);
+            [o1, o2, sub, ns].forEach(n => n.start());
+            _shipSnd = { ctx, out, lp, o1, o2, sub, gn, bp, nb, last: 0 };
+            setInterval(() => { if (_shipSnd && performance.now() - _shipSnd.last > 450) _shipSnd.out.gain.setTargetAtTime(0, ctx.currentTime, 0.15); }, 300);
+        }
+        function ewShipSound(o) {
+            if (!state.audioUnlocked || !o) return;
+            try {
+                if (!_shipSnd) { if (!o.on) return; _shipSndMake(); }
+                const S = _shipSnd, t = S.ctx.currentTime, vol = Math.max(0, Math.min(1, state.sfxVolume ?? 0.9));
+                S.last = performance.now();
+                const thr = +o.thr || 0, sp = +o.speed || 0, bn = +o.burn || 0;
+                S.out.gain.setTargetAtTime(o.on ? vol * 0.3 : 0, t, 0.12);
+                S.o1.frequency.setTargetAtTime(40 + 45 * sp + 22 * bn + 8 * thr, t, 0.2); S.o2.frequency.setTargetAtTime(40.7 + 46 * sp + 23 * bn + 8 * thr, t, 0.2);
+                S.lp.frequency.setTargetAtTime(160 + 700 * thr + 1400 * sp + 1500 * bn, t, 0.15);
+                S.gn.gain.setTargetAtTime(0.04 + 0.22 * thr * thr + 0.5 * bn, t, 0.12); S.bp.frequency.setTargetAtTime(250 + 900 * sp + 600 * bn, t, 0.2);
+            } catch (e) {}
+        }
+        function ewShipCue(kind) {
+            if (!state.audioUnlocked) return;
+            try {
+                if (!_shipSnd) _shipSndMake();
+                const S = _shipSnd, ctx = S.ctx, t = ctx.currentTime, vol = Math.max(0, Math.min(1, state.sfxVolume ?? 0.9));
+                const L = { ignite: [3.4, 0.9, 90, 1600], lift: [1.8, 0.7, 140, 2200], burn: [1.2, 0.9, 400, 4200] }[kind] || [1, 0.5, 200, 2000];
+                const src = ctx.createBufferSource(); src.buffer = S.nb; src.loop = true;
+                const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(L[2], t); f.frequency.exponentialRampToValueAtTime(L[3], t + L[0] * 0.45); f.frequency.exponentialRampToValueAtTime(L[2], t + L[0]);
+                const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(L[1] * vol, t + (kind === 'burn' ? 0.05 : L[0] * 0.35)); g.gain.exponentialRampToValueAtTime(0.0001, t + L[0]);
+                src.connect(f); f.connect(g); g.connect(ctx.destination); src.start(t); src.stop(t + L[0] + 0.05);
+                const bm = ctx.createOscillator(), bg = ctx.createGain(); bm.type = 'sine'; bm.frequency.setValueAtTime(kind === 'burn' ? 70 : 55, t); bm.frequency.exponentialRampToValueAtTime(24, t + 0.9);
+                bg.gain.setValueAtTime(0.0001, t); bg.gain.exponentialRampToValueAtTime(0.8 * vol, t + 0.03); bg.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+                bm.connect(bg); bg.connect(ctx.destination); bm.start(t); bm.stop(t + 1.05);
+            } catch (e) {}
+        }
+        window.ewShipSound = ewShipSound;
+        window.ewShipCue = ewShipCue;
+
         function fadeTrackVolume(track, targetVolume, durationMs, version) {
             if (durationMs <= 0) {
                 try { track.volume = Math.max(0, Math.min(1, targetVolume)); } catch(e) {}

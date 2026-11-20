@@ -12523,6 +12523,42 @@ Every complaint was DRIVEN before it was fixed (playtest_city.js `"drive"`, real
   line and the sheet's grain turns at a cut seam; the key light on a ball does not follow the real Sun (the night side is the veil
   only); NPCs over a seam; the classic (WebGL2 fallback) renderer; the dressing of thread 18 (crater rims, rilles, landmarks).
 
+## OUTER SPACE, THE SPECTACLE — the launch, the engines, the sky, the traffic, the sound (2026-11-20, owner, WORLD POLISH thread 18 pass 2)
+mondo 11-20: "Give it more spectacle, more juice. This needs to be the moment the player realizes 'Holy shit, im in space.' What else can
+you add". Everything below is viewer-local (nothing on `state`, nothing relayed), built once with the room (`_hqSpaceJuiceBuild`) and moved
+by `_hqSpaceJuiceTick` from `_hqSpaceBodiesTick`: a fixed list of pieces, no scene reads (RULE #1e).
+- **THE LAUNCH** (`_hqShipLaunchStart` / `_hqShipLaunchStep`, the camera in `_hqShipCam`): every takeoff from a pad on a ball is flown for
+  you. The FIRST of a visit (the Bridge's stick, `_hqSpaceArrive`) is the long one, 6.2 s: the engines spool and rattle, a ring of dust
+  blows off the pad, the ship lifts nose high, the camera starts 100 degrees round to the side, low and close, looking AT the hull, and
+  swings round behind it while the ship pitches over and THE EARTH rises over the Moon's edge dead ahead; then you have the stick (at
+  120 m/s). Any other takeoff: 2.6 s, a short lift out along the ball's up. E and the mouse do nothing during a launch. The beacon you
+  leave from hides its ring and plate until you are 600 m off (the first cut flew through its own ring). Probe: `dev.shipLaunch(full)`.
+- **THE EARTH, PAINTED** (`_hqEarthSheets`, once a page, no file): 3D value noise on the sphere (no seam at the date line, no pinch at the
+  poles): oceans deep to shallow at the coasts, green to desert land, ice at the poles; a cloud sheet that drifts; the cities' lights,
+  added only on the night side. ~1 s to paint, inside the room's load. AND MOVED (bake-space.js): to (-2589, 628, 616), on the Sun's side
+  of the Moon, still 2.8 km off; from the Moon it shows its day face (88 % lit). Where it was, the launch flew at a dark disc.
+- **THE ENGINES** (group `ew_ship_engines`; nozzles at `ship.engines` or [+-2.15, 0.95, -3.7] in the hull's frame): a hot core and a halo
+  each, two flames that grow with the throttle and go white on the burner, two short exhaust plumes (ribbons). Flames and plumes stop
+  12 m short of the eye (past it they drew as planks across the screen).
+- **THE BURNER KICK:** the moment SHIFT bites: two shockwave rings off the hull, `cam.kick` (a lens punch of 9 degrees and a shake that
+  dies away), the drone's roar. At warp a light hum in the camera, the dust streaks doubled in length (420 motes).
+- **THE LEAN:** the horizon tips with the hull's bank (0.32 of it).
+- **THE SKY:** a Milky Way of 16 soft bands along the stars' band (dust lanes cut in), riding with the stars; the Sun's glare (a six-spike
+  star) and six lens ghosts along the line through the screen's middle, hidden while a world or the Earth stands before the Sun (a ray test
+  against five balls a frame); THE COMET: a head, a coma, a pale dust tail and a straight blue ion tail, both away from the Sun, on an
+  18-minute loop through the system; THE BLACK HOLE'S JETS: two soft streaks along the disc's axis, 9 R long, flickering. Tails and jets
+  are three crossed soft planes (a cone drew as a tube with a rim).
+- **THE TRAFFIC** (pack models, MODEL_LIST `space_station`, `satellite`, `space_shuttle`): the station (110 m) and four satellites on
+  orbits round the Earth with blinking red / green / white lights; the shuttle (laid nose first: the model stands nose up) on a loop
+  between the Moon and the Earth, a white burn at its tail.
+- **THE SOUND** (audio.js `ewShipSound` / `ewShipCue`, made in code, no file): two detuned saws and a sub through a low-pass that opens
+  with the throttle and the speed, a band of noise that roars on the burner; `ignite` / `lift` / `burn` one-shots. SFX volume; a watchdog
+  fades it if the calls stop (another room). NOT HEARD by me: the cloud browser has no sound and never unlocks the audio.
+- **Seen on screen** (playtest_city.js drive, llvmpipe; one run with the post effects on): the spool, the lift, the swing, the Earthrise at
+  the end, the burner's flames and streaks, the painted Earth with the station before it, the comet, the jets, the shuttle, the sun glare.
+  **Not checked:** the sound; the frame rate on a real machine (the post effects slowed the cloud browser badly, but that browser is a
+  software renderer); the satellites close up; the short launch's picture.
+
 ## ONE WORLD, THE NORTH ROUTES — R1 R2 R3 R4 R5 R12 built and stitched (2026-11-17, BUILD_PLAN phase 4 row 4.1; the owner's north routes thread)
 Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/areas/routes/<ID>.json` (+ a hook `.js` where named). Places are
 `ow-places.js` picks; every new place name is an idea of Claude's (the page's own words kept where it gave them).

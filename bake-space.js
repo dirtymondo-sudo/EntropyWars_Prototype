@@ -365,7 +365,7 @@ const PIECES = PLAN.rooms.map(R => R.flat ? toBall(bakeWorld(Object.assign({}, R
       const cx = r2(-M.HX + 65 * C + mdx), cz = r2(-M.HZ + 30 * C + mdz), gy = r2(M.hC(64, 29));
       SYS.berth = { x: cx, z: cz };
       props.push({ key: 'spaceship_fly', x: cx, z: cz, face: 0 });
-      planets.push({ id: 'earth', name: 'EARTH', x: 2500, z: -1100, y: 1000, r: 290, tex: 'ocean', color: 0x3c78d2, land: 0x4d8a45 });   // (2026-11-20: 2.8 km from the Moon, was 0.68)   // (290 m: it was 55 m, smaller than the Moon)
+      planets.push({ id: 'earth', name: 'EARTH', x: -2589, z: 616, y: 628, r: 290, tex: 'ocean', color: 0x3c78d2, land: 0x4d8a45 });   // (2026-11-20: 2.8 km from the Moon, was 0.68; the spectacle pass: on the Sun's side of the Moon, so it shows its day face, 88 % lit, and rises over the Moon's edge as you lift off)   // (290 m: it was 55 m, smaller than the Moon)
       const bc = { id: 'orbit', label: 'THE MOON · THE BERTH', x: cx, z: cz, ground: gy, pad: { x: cx, z: cz, yaw: 0 } };
       const rw = round.find(q => q.id === 'moon'), B = plBend(rw, cx, gy, cz), u = [B[0] - rw.c[0], B[1] - rw.c[1], B[2] - rw.c[2]], ul = Math.hypot(u[0], u[1], u[2]); bc.ball = B.map(r2); bc.up = u.map(v => r2(v / ul));
       beacons.push(bc);
