@@ -77,7 +77,7 @@
   "hs": 0.26,
   "v": "8ed9c6a28f",
   "bytes": 11922,
-  "s": "36.0"
+  "s": "37.2"
  },
  "site_prebuilt_vatican_under": {
   "id": "site_prebuilt_vatican_under",
@@ -628,5 +628,15 @@
   "v": "8abc5126e3",
   "bytes": 2640,
   "s": "1.2"
+ },
+ "site_prebuilt_katana_island": {
+  "id": "site_prebuilt_katana_island",
+  "nx": 108,
+  "nz": 108,
+  "h0": -0.03,
+  "hs": 0.25,
+  "v": "b955128744",
+  "bytes": 4243,
+  "s": "0.3"
  }
 }

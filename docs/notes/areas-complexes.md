@@ -12911,7 +12911,7 @@ stand in for the katana armor".
   KATANA-BEGIN / KATANA-END markers of data.js, from `docs/areas/katana/layout.js` (the plan's numbers, moved there; the plan pictures still read them) and
   `docs/areas/katana/districts/<letter>.js` (`build(ctx)`; the hooks are listed in the tool's header). It stops on a taken square, a prop in the water, or a
   place the district's `reach` names that the walk from the pier cannot get to.
-- **THE PILOT ROOM IS NOT JOINED TO THE WORLD.** No door, no link, no map row: you reach it only with a probe. The Volcano Island
+- **THE PILOT ROOM IS ON THE MAP, NOT YET ON A WAY** (fixed 11-20 after mondo: "im not seeing it in the directory/map"; the first build had no place on the map at all, my miss). `room.world` = the Beach's zone, 21,-13: open sea just SOUTH of the Volcano Island, a pilot's place only (its real place is 21,-20 once the old island retires). Directory: THE BEACH, the island's sheet, a plot, GO. Its districts are named by the room itself (`plots.districts`; bake-map.js reads that now, for any room). No door or boat link yet. Was: The Volcano Island
   (`site_prebuilt_bermuda_ow_volcano`) stands untouched and `bake-beach.js` was not edited. WHEN THE ISLAND IS BUILT AND MONDO SAYS SWAP: the boat links' island
   ends move to the bay's pier, the old room goes to `DOOR_HQ.retired`, `bake-beach.js` loses `OW_ROOMS[2]` + `growVolcano`, the world plots and the map follow.
 - **THE HEIGHTS:** the bay is laid square by square in whole levels (stone quays 1, the head's rock 2 and 3, sand 0.4 m rising from the water). Everywhere
@@ -12929,6 +12929,7 @@ stand in for the katana armor".
   West Steps (1 to 4) as real flights, two flights up the Lantern Head, THE GREAT GATE in the water (drawn: red posts, side legs, a top beam curved in nine
   pieces), 86 props from the catalogue (stone lanterns, market stalls, a taiko drum, a bell, boats afloat and on the sand, drying fish, nets, barrels,
   baskets, bollards, gulls, crabs), five people (chef, farmer, samurai slug, ninja, monk).
+- **SEEN 11-20, NOT MINE TO FIX ALONE:** the zone's wandering residents walk the quay (a bigfoot, a jellyfish were seen): the room is in the Beach's zone, so it gets that zone's people. Katana Island needs its own resident list (npc-system.md) before the swap.
 - **KNOWN AND LEFT FOR THE NEXT PASSES:** the insides are bare rooms with a few things (pass 2); the Net Loft and the Inn are one storey inside; the ledges
   from the City do not exist until the City's ground is laid; the retaining walls round the Waterfront are the room's rock sheet; the far volcano reads dark;
   no night look yet; frame rate not measured (one room of 29 plots: to be measured when more stands). `fish_boxes` is a modern blue crate: not used here.
@@ -12954,3 +12955,9 @@ mondo 11-20 on plan 3: "Yes the map layout looks much better ... Go ahead and bu
   is dirt (no asphalt sheet is in any room's paint palette). No model exists for: twig stick figures, a chain-link gate, a log lip, a burnt shell (the
   Burned House is the cabin's kit with charred boards and no roof). The ward totem and the effigy are Meshy-made, not pack pieces: not used (his word).
   The room's draw cost with 25 plots is not measured yet.
+- **THE WOOD IS DEEP (11-20, mondo at the Dead End: "fill in or block these big empty spaces ... enough to where I can't see through the trees straight into the flat
+  map").** The tree mass was a line of trunks and a band 5.25 m deep with bare lawn behind. A designed room (bake-woods.js `S.design`) now writes `gen.depth` 24.5
+  (seven squares) and `maxTrees` 5400 x plots / 36, mixes dead kinds (`tree_14`, `tree_17`, `tree_33`) into every district's wood, paints a third of the tree squares
+  dirt, and adds room-wide scatter (fallen logs, stumps, dead bushes, snags). Past the room's line: `terrain.edges.deep: true` (three-renderer.js `_hqEdgeLandFn`'s
+  planting: the forest stays thick to the end of the planting, not thinned after 22 m). Seen in the probe from the Dead End and Deep woods, west. OPEN: the land
+  past the line wears the map's bright forest green, lighter than the room's floor; the draw cost with the deeper wood is not measured.
