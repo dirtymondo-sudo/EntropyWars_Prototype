@@ -441,7 +441,7 @@ they are measurements, not the job.
   lead to other districts and zones. The tunnel between chambers bends and climbs or falls; the Long Tunnel runs from Agartha to the Cavern
   and should go DOWN, so you know which way you are walking. The corridor stays narrow (3). It does not get wider; it gets a shape.
 
-### Thread 9: THE CAVERN (BUILT 11-20 from the approved `plans/ug-cavern.js` + `ug-hollow-earth.js`: two rooms, `site_prebuilt_hollow_earth_ug_cavern` and `…_ug_hollow`, by the tool `bake-ug.js`; the old Cavern + Hollow Earth room retired; notes areas-complexes.md "THE UNDERGROUND, ONE DISTRICT A ROOM" + "HOLLOW EARTH + THE OLD ROOM RETIRED")
+### Thread 9: THE CAVERN (DONE 11-20, mondo: "yeah that's good": the Cavern and Hollow Earth BUILT from the approved `plans/ug-cavern.js` + `ug-hollow-earth.js` as two rooms, `site_prebuilt_hollow_earth_ug_cavern` and `…_ug_hollow`, by `bake-ug.js`; the old room retired; the board rows freed; notes areas-complexes.md "THE UNDERGROUND, ONE DISTRICT A ROOM" + "HOLLOW EARTH + THE OLD ROOM RETIRED")
 - **Zone:** The Cavern. Districts: The Cavern (K), Hollow Earth (H), Agartha (A).
 - **Rooms:** `site_prebuilt_hollow_earth_cavern` (24), `site_prebuilt_hollow_earth_ow_agartha` (15).
 - **It is NOT:** the tunnels (thread 7). Not the Sewers.
@@ -450,6 +450,23 @@ they are measurements, not the job.
 - **To reach the standard:** the three districts at three depths. Hollow Earth's floor terraced down to the Inner Sun, so the Sun is always
   downhill and always in sight. Agartha on three shelves joined by stairs and crystal bridges. Winding ways along the ledges, thin trails
   into side caves.
+- **THE CHECK (11-20, both rooms; `draw-plan.js` passes both with no warning, `bake-ug.js --check` matches the baked heights to the plan square for square):**
+  1. Doors: every way in lands on a chamber you can read: the Cavern's Tunnel-Way door at the Last Camp (the top, 105), the West Tunnel's at the
+     Crossroads with the Needle (the plan's landmark) in sight, Hell's at the Fissure (red light), Hollow Earth's at the Mouth (warm light from below);
+     Hollow Earth's one door is the Landing at its top (72), and every way from it goes down toward the Sun.
+  2. Plot levels (over the Inner Sun): the Cavern 97 100 105 102 102 97 / 92 92 101 93 97 94 / 83 86 86 88 82 90 (82 to 105); Hollow Earth
+     57 61 67 72 18 0 / 42 61 61 67 26 0 / 46 46 56 46 36 5 / 41 41 33 28 18 10 (0 to 72). The two ranges never meet; many levels in each.
+  3. No main way (a labyrinth, `maze: true`): passages 2 squares wide, no straight leg over the limit (the tool checks), every climb a two-way ladder
+     (23 in the Cavern, 33 in Hollow Earth, none over 16 levels), the drops are ledges (falls and cliffs: 4 in the Cavern, 5 in Hollow Earth).
+  4. Branches: 12 dead ends in the Cavern and 16 in Hollow Earth, each holding something (pits with their own ladder, two secrets each).
+  5. Shaped inside: most junction plots hold a pit two levels down; every plot stands at its own level.
+  6. Level on purpose: the chambers only (6 in the Cavern, 7 in Hollow Earth, a board fits each); they are the open places.
+  7. Itself: the Cavern is dark rock (horror sheets, torches, bones, murky falls); Hollow Earth is a jungle paradise under the Inner Sun (open sky,
+     meadows, blue water). Not one formula.
+  8. Buildings: none in either (the plan: "a cave: its chambers are the architecture"); the built things are the camp, the cells, the altar, the throne.
+  NOT DONE / OPEN: the Inner Sun's sphere is hidden by the canopy in the tight passages near it (shorter trees there if mondo wants it in sight
+  from more places); the NEEDS A MODEL list for a horror cave is in `underground/FITS_CAVERN.md` (stalagmites as models, eggs, a cocoon, climbing
+  gear, a rope ladder, mine timbers); Agartha is its own thread.
 
 ### Thread 10: THE SEWERS (BUILT 11-20 from the approved `plans/ug-sewers.js`: the labyrinth IS `site_prebuilt_downtown_underworld` now, `bake-labyrinth.js` + `docs/areas/sewers/districts/room.js`; the Culverts pilot, then on mondo's "okay continue" the switch and the other four districts; waits mondo's look; notes areas-complexes.md "THE SEWERS' LABYRINTH")
 - **Zone:** The Sewers. Districts: The Sewers (W), The Running Tunnels (T), The Holding Cells (H), The Old Workings (O), The Radioactive Drain (R).
