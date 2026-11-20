@@ -50212,10 +50212,27 @@ const ThreeRenderer = (function () {
         var lampsOne = !!window.EW_BUN_LAMPS_ONE, camK = (!lampsOne && cam && cam.id) | 0;
         var LG = 17, ls = (!lampsOne && cam && cam._ew_bunL) || r._ew_lights || [];
         LG = _ewBunMix(LG, ls.length);
-        for (i = 0; i < ls.length; i++) { var l = ls[i]; if (l) { LG = _ewBunMix(LG, l.id); LG = _ewBunMix(LG, l.castShadow ? 1 : 0); } }
+        /* (11-20) by the SET, not the order: three sorts the frame's lights by id before it keys a shader, so a list handed over in another order is the same lighting */
+        var LGs = 0; for (i = 0; i < ls.length; i++) { var l = ls[i]; if (l) LGs = (LGs + _ewBunMix(_ewBunMix(17, l.id), l.castShadow ? 1 : 0)) | 0; }
+        LG = _ewBunMix(LG, LGs);
         if (sc.fog) LG = _ewBunMix(LG, sc.fog.isFogExp2 ? 2 : 1);
         if (sc.environment) LG = _ewBunMix(LG, sc.environment.id);
         var LGc = _ewBun.lampGc || (_ewBun.lampGc = {}), lampMoved = LGc[camK] !== undefined && LG !== LGc[camK]; LGc[camK] = LG; _ewBun.lampG = LG;
+        /* THE LAMPS' WHY (2026-11-20, lens; mondo's third battle F3 still read "lamps 2342/s · LAMPS MOVED" with the lamps kept per
+           camera): what differs from this camera's last list is written into the spike line (a light that joined or left, one
+           whose shadow flag flipped, the fog, the environment), so the next F3 names the light. Only on a frame the lamps moved. */
+        var LWc = _ewBun.lampLc || (_ewBun.lampLc = {}), lwNow = null;
+        if (lampMoved || LWc[camK] === undefined) {
+            lwNow = {}; for (i = 0; i < ls.length; i++) { var l2 = ls[i]; if (l2) lwNow[l2.id] = (l2.type || 'Light') + (l2.name ? ' "' + String(l2.name).slice(0, 18) + '"' : '') + (l2.parent ? ' in ' + String(l2.parent.name || l2.parent.type).slice(0, 18) : '') + (l2.castShadow ? ' +shadow' : ''); }
+            lwNow._fog = sc.fog ? (sc.fog.isFogExp2 ? 'fog exp2' : 'fog') : 'no fog'; lwNow._env = sc.environment ? 'env ' + sc.environment.id : 'no env';
+            if (lampMoved) {
+                var lwOld = LWc[camK] || {}, lwD = [], lwK;
+                for (lwK in lwNow) if (lwOld[lwK] !== lwNow[lwK]) lwD.push((lwOld[lwK] === undefined ? '+' : '~') + lwNow[lwK]);
+                for (lwK in lwOld) if (lwNow[lwK] === undefined) lwD.push('-' + lwOld[lwK]);
+                _ewBun.lampWhy = 'cam ' + camK + (cam && cam._ew_bunL ? '' : ' (no list of its own)') + ', ' + ls.length + ' lights: ' + (lwD.length ? lwD.slice(0, 6).join(' | ') : 'same set (order or stamp)');
+            }
+            LWc[camK] = lwNow;
+        }
         var G = _ewBunMix(LG, _ewBun.epoch);
         var objs = 0, quietN = 0, addNB = _ewAddCount(), addMovedB = addNB !== _ewBun.addN, bunEvery = typeof window !== 'undefined' && !!window.EW_BUN_CHECK_EVERY, addAll = typeof window !== 'undefined' && !!window.EW_BUN_ADD_ALL;
         var BUN_QUIET = 8, BUN_QUIET_LONG = 90;
@@ -50314,7 +50331,7 @@ const ThreeRenderer = (function () {
             if (spMs >= 12 || spN >= 300) {   // (12 ms since 11-19: the 6 ms steady ticks pushed his 62-99 ms ones off the list)
                 var spW = []; for (var swk in W) { var swd = (W[swk] | 0) - (spL.w0[swk] | 0); if (swd > 0) spW.push(swk + ' ' + swd); }
                 spL.re.sort(function (a, b) { return b[1] - a[1]; });
-                (_ewBun.spikes || (_ewBun.spikes = [])).push(spMs.toFixed(0) + ' ms check (' + (spL.pre || 0).toFixed(0) + ' before the groups' + (spL.pre >= 5 && spL.preS ? ' [' + spL.preS + ']' : '') + (spL.slow ? '; slowest ' + spL.slow : '') + ') · ' + spL.walked + ' walked · ' + spL.re.length + ' re-recorded (' + spN + ' meshes' + (spW.length ? '; ' + spW.join(', ') : '') + (lampMoved ? '; LAMPS MOVED' : '') + ')' + (spL.re.length ? ': ' + spL.re.slice(0, 3).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : ''));
+                (_ewBun.spikes || (_ewBun.spikes = [])).push(spMs.toFixed(0) + ' ms check (' + (spL.pre || 0).toFixed(0) + ' before the groups' + (spL.pre >= 5 && spL.preS ? ' [' + spL.preS + ']' : '') + (spL.slow ? '; slowest ' + spL.slow : '') + ') · ' + spL.walked + ' walked · ' + spL.re.length + ' re-recorded (' + spN + ' meshes' + (spW.length ? '; ' + spW.join(', ') : '') + (lampMoved ? '; LAMPS MOVED [' + (_ewBun.lampWhy || '?') + ']' : '') + ')' + (spL.re.length ? ': ' + spL.re.slice(0, 3).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : ''));
                 if (_ewBun.spikes.length > 6) _ewBun.spikes.shift();
             }
         }
