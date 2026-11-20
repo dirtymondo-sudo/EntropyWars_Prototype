@@ -8,7 +8,7 @@
    STAND-INS mondo named 11-20: `sword` for the katana, the knight armour for samurai armour; roofs in code. */
 'use strict';
 module.exports = {
-    reach: [[27, 50, 'the Merchants’ Town'], [31, 51, 'the Bath House'], [28, 45, 'the Temple Quarter'], [32, 42, 'the pagoda'], [21, 38, 'the High Town'], [16, 39, 'the Theatre'],
+    reach: [[27, 50, 'the Merchants’ Town'], [31, 51, 'the Bath House'], [28, 45, 'the Temple Quarter'], [32, 43, 'the pagoda'], [21, 38, 'the High Town'], [16, 39, 'the Theatre'],
         [6, 41, 'the castle yard'], [5, 38, 'the keep’s door'], [7, 55, 'the Dojo'], [5, 33, 'the Castle Garden'], [15, 30, 'the shrine stair’s head']],
     build(ctx) {
         const { r2, rnd, WD, WD2, PLS, TILE, DARK, PLASTER, house, tiers } = ctx;
@@ -17,29 +17,29 @@ module.exports = {
         /* ── THE MERCHANTS' TOWN (3) ── */
         bld('bathhouse', [29, 52, 34, 56, 'N'], 4.6, { leafDouble: true }, { roof: { top: 'gable', over: 1.4 } }, (a, w, d) => { a.box(w / 2 - 1.2, 4.6, -d / 2 + 1.2, 0.9, 3.2, 0.9, PLS, 0x77746e, { uv: [1.75, 1.75] }); });   // its chimney
         bld('teashop', [24, 54, 27, 56, 'N'], 3.4, {}, { roof: { top: 'gable' } });
-        bld('brewery', [30, 57, 35, 60, 'N'], 4.4, { leafDouble: true }, { plain: true, roof: { top: 'hip', over: 0.8 } }, (a, w, d) => { a.box(0, 0, 0, w + 0.3, 1.1, d + 0.3, PLS, 0x3c4048, { top: false, uv: [1.75, 1.75] }); });
-        bld('lanternmaker', [24, 48, 26, 51, 'E'], 3.2, {}, { roof: { top: 'gable', over: 0.9 } });
-        bld('noodles', [24, 45, 26, 47, 'E'], 3.2, {}, { roof: { top: 'gable', over: 0.9 } });
+        bld('brewery', [30, 57, 35, 60, 'N'], 4.4, { leafDouble: true }, { plain: true, roof: { top: 'hip', over: 0.8 } }, (a, w, d) => { a.box(0, 0, 0, w + 0.3, 1.1, d + 0.3, PLS, 0x3c4048, { top: false, uv: [1.75, 1.75], faces: 'blr' }); });
+        bld('lanternmaker', [24, 49, 26, 51, 'E'], 3.2, {}, { roof: { top: 'gable', over: 0.9 } });
+        bld('noodles', [34, 52, 36, 54, 'N'], 3.2, {}, { roof: { top: 'gable', over: 0.9 } });
         /* ── THE TEMPLE QUARTER (5): the pagoda is the City's landmark from the bay ── */
-        B.pagoda = ctx.building('pagoda', [31, 39, 34, 42, 'S'], 4.2, {}, (a, w, d, door) => { a.shell(w, 4.2, d, PLS, 0xb23a26, door, [1.75, 1.75], 2.0); a.timber(w, 4.2, d, DARK); a.frame(door, d, WD2, DARK);
+        B.pagoda = ctx.building('pagoda', [31, 40, 34, 43, 'S'], 4.2, {}, (a, w, d, door) => { a.shell(w, 4.2, d, PLS, 0xb23a26, door, [1.75, 1.75], 2.0); a.timber(w, 4.2, d, DARK); a.frame(door, d, WD2, DARK);
             const sub = ctx.sheet(), top = tiers(sub, w, d, 5, 0, 2.6, { wallTint: 0xb23a26, top: 'pyramid', shrink: 0.82, over: 1.5 }); void top;
             /* tiers() draws storey 0 as nothing (h0 0) + its roof at y 0: lift the whole stack onto the first storey's wall head */
             sub.P.forEach(q => { q.p = [q.p[0], r2(q.p[1] + 4.2), q.p[2]]; a.P.push(q); }); });
-        bld('templehall', [29, 36, 35, 38, 'S'], 4.8, { leafDouble: true }, { wallTint: 0xe8dcc0, roof: { top: 'gable', over: 1.6 } });
-        bld('monks', [24, 42, 26, 44, 'E'], 3.0, {}, { roof: { top: 'hip', over: 0.8 } });
+        bld('templehall', [29, 37, 35, 39, 'S'], 4.8, { leafDouble: true }, { wallTint: 0xe8dcc0, roof: { top: 'gable', over: 1.6 } });
+        bld('monks', [29, 40, 31, 42, 'S'], 3.0, {}, { roof: { top: 'hip', over: 0.8 } });
         /* ── THE HIGH TOWN (6) ── */
         bld('theatre', [13, 40, 19, 44, 'N'], 5.4, { leafDouble: true }, { storeys: 2, roof: { top: 'gable', over: 1.5 } });
         bld('teahouse', [19, 45, 23, 47, 'N'], 3.2, {}, { roof: { top: 'gable' } });
-        bld('townhouse1', [12, 45, 15, 47, 'N'], 3.2, {}, { roof: { top: 'gable', over: 0.9 } });
+        bld('townhouse1', [13, 45, 16, 47, 'N'], 3.2, {}, { roof: { top: 'gable', over: 0.9 } });
         bld('townhouse2', [22, 42, 24, 45, 'W'], 3.0, {}, { roof: { top: 'hip', over: 0.6 } });
         /* ── THE SAMURAI QUARTER (4) ── */
         bld('dojo', [1, 53, 7, 58, 'E'], 4.8, { leafDouble: true }, { roof: { top: 'gable', over: 1.5 } });
-        bld('samurai1', [0, 48, 3, 51, 'E'], 3.4, {}, { roof: { top: 'gable' } });
-        bld('samurai2', [6, 48, 9, 50, 'S'], 3.4, {}, { roof: { top: 'gable' } });
-        bld('armoury', [10, 48, 12, 54, 'W'], 3.6, {}, { plain: true, roof: { top: 'hip', over: 0.7 } }, (a, w, d) => { a.box(0, 0, 0, w + 0.3, 1.1, d + 0.3, PLS, 0x3c4048, { top: false, uv: [1.75, 1.75] }); });
+        bld('samurai1', [0, 49, 3, 52, 'E'], 3.4, {}, { roof: { top: 'gable' } });
+        bld('samurai2', [6, 49, 9, 51, 'S'], 3.4, {}, { roof: { top: 'gable' } });
+        bld('armoury', [10, 49, 12, 54, 'W'], 3.6, {}, { plain: true, roof: { top: 'hip', over: 0.7 } }, (a, w, d) => { a.box(0, 0, 0, w + 0.3, 1.1, d + 0.3, PLS, 0x3c4048, { top: false, uv: [1.75, 1.75], faces: 'blr' }); });
         /* ── THE CASTLE (8): the keep on a stone foot, three roofs high; the yard is open ── */
         B.keep = ctx.building('keep', [1, 36, 5, 40, 'E'], 6.0, { leafDouble: true }, (a, w, d, door) => { a.shell(w, 6.0, d, PLS, PLASTER, door, [1.75, 1.75], 2.1); a.frame(door, d, WD2, DARK);
-            a.box(0, 0, 0, w + 1.6, 3.0, d + 1.6, PLS, 0x77746e, { top: true, uv: [1.75, 1.75], faces: 'blr' });                                 // the stone foot, battered out (open on the door's side)
+            a.box(0, 0, 0, w + 1.6, 3.0, d + 1.6, PLS, 0x77746e, { top: false, uv: [1.75, 1.75], faces: 'blr' });                                 // the stone foot, battered out (open on the door's side)
             const sub = ctx.sheet(); tiers(sub, w, d, 4, 0, 3.4, { top: 'gable', shrink: 0.8, over: 1.5 }); sub.P.forEach(q => { q.p = [q.p[0], r2(q.p[1] + 6.0), q.p[2]]; a.P.push(q); }); });
         bld('guardhouse', [7, 43, 11, 46, 'N'], 3.4, {}, { roof: { top: 'gable' } });
         /* the castle's wall: white plaster under a tiled cap along the terrace's east and south edges, open at the two gates (drawn; the terrace's own rock face is the wall you cannot climb) */
@@ -65,12 +65,7 @@ module.exports = {
         /* trees: cherries and pines on the terraces' free ground (earth, never on a street) */
         [[3, 25], [10, 25], [1, 30], [11, 31], [3, 33], [7, 34], [10, 35], [1, 41], [2, 45], [9, 47 - 1], [35, 36], [24, 37], [35, 45], [24, 46], [22, 43], [20, 43], [14, 45 - 6], [35, 53], [35, 58], [28, 59], [1, 59], [9, 58], [11, 59]].forEach((q, i) => { if (!ctx.onWay(q[0], q[1])) ctx.tree(i % 4 === 3 ? 'tree_56' : ['cherry', 'cherry_2', 'cherry_3'][i % 3], q[0], q[1], 5 + rnd() * 2.5); });
         /* ── a first few things inside ── */
-        ctx.put(B.dojo, 'dojo_weapon_rack', -6, -7, { face: 0 }); ctx.put(B.dojo, 'sword', 6, -7, {}); ctx.put(B.dojo, 'wing_chun_dummy', 0, -6, {}); ctx.put(B.dojo, 'taiko_drum', -7, 0, {});
-        ctx.put(B.keep, 'decor_armour_stand_post', -4, -5, {}); ctx.put(B.keep, 'decor_armour_stand_post', 4, -5, {}); ctx.put(B.keep, 'sword', 0, -6, {}); ctx.put(B.keep, 'banner', -5, 0, {}); ctx.put(B.keep, 'privacy_screen', 0, -4, { face: 0 });
-        ctx.put(B.armoury, 'spear', -2, -6, {}); ctx.put(B.armoury, 'spear', 2, -6, {}); ctx.put(B.armoury, 'decor_armour_stand_post', 0, 0, {}); ctx.put(B.bathhouse, 'hot_tub', -4, -3, {}); ctx.put(B.bathhouse, 'hot_tub', 4, -3, {}); ctx.put(B.bathhouse, 'wooden_bucket', 0, -5, {});
-        ctx.put(B.teashop, 'psx_coffee_table_1', 0, -1, {}); ctx.put(B.teashop, 'teapot', 0, -1, { y: 0.66 }); ctx.put(B.teahouse, 'psx_coffee_table_1', -3, -1, {}); ctx.put(B.teahouse, 'teacups', -3, -1, { y: 0.66 }); ctx.put(B.templehall, 'votive_stand', 0, -2, {}); ctx.put(B.templehall, 'gong', -7, -1, { face: 90 });
-        ctx.put(B.theatre, 'taiko_drum', -6, -5, {}); ctx.put(B.theatre, 'privacy_screen', 0, -5.5, { face: 0 }); ctx.put(B.brewery, 'wooden_barrel', -6, -3, {}); ctx.put(B.brewery, 'wooden_barrel', -4.5, -3.4, {}); ctx.put(B.brewery, 'wooden_barrel', 5, -3, {}); ctx.put(B.noodles, 'stock_pots', 0, -2, {});
-        /* ── people (the Katana Empire of mondo's web holds the castle: shogun, samurai slug, ninja, monk, spy; the town: his Katana Bay list) ── */
+                                                /* ── people (the Katana Empire of mondo's web holds the castle: shogun, samurai slug, ninja, monk, spy; the town: his Katana Bay list) ── */
         [['shogun', 8, 41, 90], ['samurai slug', 6, 44, 0], ['samurai slug', 6, 39 + 9, 180], ['ninja', 11, 43, 270], ['monk', 29, 41, 90], ['monk', 30, 39, 180], ['ki fighter', 7, 55, 90], ['swordfighter', 7, 54, 90], ['farmer', 30, 51, 0], ['catgirl', 20, 39, 180], ['vtuber', 16, 39, 0], ['karate frog', 28, 53 + 1, 0]]
             .forEach(q => { if (ctx.onWay(q[1], q[2]) || !ctx.free(q[1], q[2])) return; ctx.take(q[1], q[2]); ctx.npc.push({ x: ctx.mx(q[1]), z: ctx.mz(q[2]), face: q[3], race: q[0] }); });
         void WD; void STONE;

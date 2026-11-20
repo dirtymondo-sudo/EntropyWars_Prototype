@@ -13048,3 +13048,25 @@ multiple islands."**
 - **The tribe's camp is OUT of Katana Island's jungle** (it was only carried over so nothing would be lost; the tribe keeps its own island). Katana Island keeps its
   own Dinosaur Park (his "there can still be dinosaurs") and its own volcano.
 - Everything else of "THE SWAP" holds: the room's id, the links' learnt rule, THE CHECK.
+
+## KATANA ISLAND, THE INSIDES (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20: "Okay looks good, go ahead and do those interiors".
+
+- **ONE FILE FURNISHES EVERY BUILDING:** `docs/areas/katana/insides.js`. `ROOM_OF` says which kind of room a building id is; `furnish` draws it into the building's own
+  look row, in the building's frame (x along the front, z from the back wall to the door's wall). `bake-katana.js` calls it from `ctx.building`, so a new building
+  only needs a line in `ROOM_OF`. 39 buildings, 20 kinds of room: home, samurai house, hut, farm, office, market, shipwright, net loft, store, brewery, inn, tea
+  room, shop, kitchen, workshop (the lantern maker's), bath, dojo, armoury, guard house, temple / pagoda / shrine, theatre, keep, tower.
+- **THE SHELL every room gets** (the hollow building's own walls draw dark: the Beach's lesson): a lit lining 0.335 m inside the walls, dark posts and a head rail on
+  it, a lit board ceiling with rafters at `h - 0.6` (3.6 m at most), straw mats with dark borders on the floor.
+- **DRAWN PIECES** (the game has no model): low tables, cushions, bedding, an alcove with a hung scroll, a sunk hearth with the kettle over it, counters, shelves,
+  wooden bath tubs with water, a dais, paper screens, rice bales, a brewing vat, THE FLAG (mondo's web: "a red square and white background": pole, white cloth, red
+  square; in the keep, the dojo and the armoury). **MODELS** through `put`: 34 catalogue keys (weapon racks, training dummies, the taiko drum, armour stands and
+  `sword` as his stand-ins, braziers, the gong, the votive stand, barrels, baskets, nets, the boat on the stocks, the forge and anvil, paper lanterns).
+- **LEARNT, FOR EVERY ZONE:** (1) a prop's `y` of 1 m or more is a height from the ROOM's floor, not a lift over the ground under it (three-renderer.js THE TIER
+  HEIGHT): a lantern hung in a building on a terrace is typed ground + lift (`put` does it). (2) `paper_lantern`, `teapot` and `teacups` are far too big at catalogue
+  size: `h: 0.42`, `span: 0.34`, `h: 0.3`. (3) A ROCK FACE LEANS OUT ABOUT A SQUARE: a building against higher ground gets rock through its back wall. 13 buildings
+  stood so; each moved one square clear, and the tool now stops the bake on it. (4) A box round a building's foot needs `faces: 'blr'` and `top: false`, or it closes
+  the doorway and fills the room (the keep's stone foot did). (5) The probe's view `y` is the FEET: in a room under 3.6 m the picture is taken above the ceiling.
+- **NOT DONE:** one storey a building (the Inn, the Net Loft, the Theatre, the Keep and the Pagoda are tall single rooms); no night look; not walked as a player;
+  the rooms under 3.6 m high were not photographed (same kit, same code path as the six that were).
