@@ -12423,6 +12423,12 @@ Every complaint was DRIVEN before it was fixed (playtest_city.js `"drive"`, real
   to the nearest world's ground, so a ship coming in slows by itself. The lens opens with the speed. HQ_SEA_DEFAULT.ship holds the numbers.
   The ship's branch now runs BEFORE the boats' own speed rule in `_hqTickVehicle` (it pulled the speed to `v` every frame).
   There is no gamepad code in the walk: the touch stick mirrors W / A / S / D / SHIFT into the same keys and the look drag into the same eye.
+- **THE NOSE (same day, mondo on the first proof: "The ship is literally sideways in your screenshots").** He was right: the first pass
+  measured where the hull went and where it sat on screen, never which way the MODEL pointed. The Meshy spaceship's nose is its own -x,
+  so the hull flew true and was drawn a quarter turn off, nose to the right. `ship.nose` (PI / 2) turns the model; its climb is then
+  about z and its bank about x (Euler order YZX). Seen after: from behind, the engines to the eye, the nose at Saturn; right wing down
+  on a D turn. LESSON: a flight proof needs a picture read for the nose, not only numbers. Also `_hqSpaceArrive` no longer boards a
+  second time when already aboard (a second board is E: it set the ship down).
 - **E ABOARD** (`_hqShipSetDown`): the ship flies in real space and the walk's ground lies flat elsewhere, so the old step-off read the
   hull's x, z as a place on the flat ground and put the walker on whatever net lay under those numbers (measured: a board toggle in flight
   dropped him at 742, 126). Now within `setDown` 45 m of a ball's ground the ship sets down on the square under it and you step off
