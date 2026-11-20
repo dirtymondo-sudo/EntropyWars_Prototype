@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1280 |
+| Meshy AI | no | 1291 |
 | Meshy AI, reworked by Claude | no | 10 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 87 |
@@ -2751,6 +2751,22 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | city_quequis_house | `Assets/world/packs/elbolilloduro/ebd_quequis_city_quequis_house.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
 | city_taco_stand | `Assets/world/packs/elbolilloduro/ebd_tacos_city_taco_stand.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
 | city_vhs_shop | `Assets/world/packs/elbolilloduro/ebd_vhsshop_city_vhs_shop.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+
+### Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) — Meshy AI (11)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| ship_annunaki | `Assets/world/props/meshy/ships/ship_annunaki.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) |
+| ship_astronaut | `Assets/world/props/meshy/ships/ship_astronaut.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) |
+| ship_barbarella | `Assets/world/props/meshy/ships/ship_barbarella.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) |
+| ship_barbarella_ball | `Assets/world/props/meshy/ships/ship_barbarella_ball.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) |
+| ship_bligblog | `Assets/world/props/meshy/ships/ship_bligblog.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) |
+| ship_cosmic_wraith | `Assets/world/props/meshy/ships/ship_cosmic_wraith.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) |
+| ship_grey | `Assets/world/props/meshy/ships/ship_grey.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) |
+| ship_mantid | `Assets/world/props/meshy/ships/ship_mantid.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) |
+| ship_martian | `Assets/world/props/meshy/ships/ship_martian.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) |
+| ship_nordic | `Assets/world/props/meshy/ships/ship_nordic.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) |
+| ship_reptilian | `Assets/world/props/meshy/ships/ship_reptilian.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/) |
 
 ### Farm / zoo animals (mondo's upload) — Asset pack (author not recorded yet) (10)
 

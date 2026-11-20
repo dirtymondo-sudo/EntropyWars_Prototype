@@ -88294,6 +88294,24 @@ const HQ_CATALOGUE_ALL = {
     fl_giant_redwood: { file: 'world/nature/flora/meshy/giant_redwood.glb', base: 'asset', h: 22.0, foot: 2.6, block: true, group: 'Meshy flora · trees' },   // coast redwood; 7.41 x 22.00 x 6.95 m (w x h x d)
     fl_jungle_tree: { file: 'world/nature/flora/meshy/jungle_tree.glb', base: 'asset', h: 14.0, foot: 1.2, block: true, group: 'Meshy flora · trees' },   // buttress roots, hanging vines; 11.79 x 14.00 x 9.14 m (w x h x d)
     fl_joshua_tree: { file: 'world/nature/flora/meshy/joshua_tree.glb', base: 'asset', h: 5.0, foot: 0.4, block: true, group: 'Meshy flora · trees' },   // desert yucca tree; 3.37 x 5.00 x 3.26 m (w x h x d)
+    /* THE ALIEN SHIPS (2026-11-20, mondo: "annunaki, mantid, cosmic wraith, grey, nordic, reptilian, martian, astronaut (shuttle), bligblog,
+       and barbarella all need their own unique spaceship ... make their saucers fit their aesthetic or lore or personality"; his OK on every
+       concept + model, then "add them to the model list"). Same Meshy flow as the Katana batch (nano-banana-pro concept -> image-to-3d
+       meshy-t2.5 smart-topology ~10k tris), base at y 0, centred, metallic 0, an .opt.glb beside each, R2 Assets/world/props/meshy/ships/.
+       grey + reptilian are the redesigned saucer + triangle. Not wired as any race's UFO form yet (sprites.js UFO_CRAFT_BY_RACE is the
+       hook) and not placed anywhere. `span` = a guess at the longest side in metres: scale per use (a battle UFO form is ~1 square).
+       Originals, concepts, prompts (ships.json) + scripts in project files alien-ships/. Notes: models-assets.md "THE ALIEN SHIPS". */
+    ship_annunaki: { file: 'world/props/meshy/ships/ship_annunaki.glb', base: 'asset', span: 14, foot: 0, group: 'Meshy props · Alien ships' },   // the Annunaki god-ship, an upside-down stepped ziggurat hovering point-down (Pyramid Scheme); square, no nose; 0.95 x 0.95 x 0.95 in the file
+    ship_mantid: { file: 'world/props/meshy/ships/ship_mantid.glb', base: 'asset', span: 12, foot: 0, group: 'Meshy props · Alien ships' },   // the Mantid's chitin ship, compound-eye cockpit at +Z, raptorial landing struts under it; 0.29 x 0.29 x 0.95 in the file
+    ship_cosmic_wraith: { file: 'world/props/meshy/ships/ship_cosmic_wraith.glb', base: 'asset', span: 14, foot: 0, group: 'Meshy props · Alien ships' },   // the Cosmic Wraith's cracked obsidian crescent, horns along X, cockpit slit on the middle; 0.95 x 0.11 x 0.82 in the file
+    ship_grey: { file: 'world/props/meshy/ships/ship_grey.glb', base: 'asset', span: 12, foot: 0, group: 'Meshy props · Alien ships' },   // THE NEW GREY SAUCER: the Roswell disc, abduction hatch underneath, three landing legs; round; 0.95 x 0.37 x 0.95 in the file
+    ship_nordic: { file: 'world/props/meshy/ships/ship_nordic.glb', base: 'asset', span: 12, foot: 0, group: 'Meshy props · Alien ships' },   // the Nordic Pleiadian pearl starship, cockpit at -X; 0.95 x 0.26 x 0.73 in the file
+    ship_reptilian: { file: 'world/props/meshy/ships/ship_reptilian.glb', base: 'asset', span: 16, foot: 0, group: 'Meshy props · Alien ships' },   // THE NEW BLACK TRIANGLE: the Reptilian stealth triangle with scale plating, front point at -X, lights under the edges; 0.89 x 0.17 x 0.97 in the file
+    ship_martian: { file: 'world/props/meshy/ships/ship_martian.glb', base: 'asset', span: 12, foot: 0, group: 'Meshy props · Alien ships' },   // the Martian war machine, rust-copper manta with a cobra-neck heat-ray turret, cockpit windows at +Z; 0.57 x 0.52 x 0.96 in the file
+    ship_astronaut: { file: 'world/props/meshy/ships/ship_astronaut.glb', base: 'asset', span: 16, foot: 0, group: 'Meshy props · Alien ships' },   // the Astronaut's shuttle orbiter, no tank or boosters, nose at -X; 0.95 x 0.36 x 0.64 in the file
+    ship_bligblog: { file: 'world/props/meshy/ships/ship_bligblog.glb', base: 'asset', span: 8, foot: 0, group: 'Meshy props · Alien ships' },   // the Bligblog's lopsided patched saucer covered in eye portholes, toy ray gun at -X; the dome is opaque in the file (make it glass in code); 0.95 x 0.65 x 0.85 in the file
+    ship_barbarella: { file: 'world/props/meshy/ships/ship_barbarella.glb', base: 'asset', span: 10, foot: 0, group: 'Meshy props · Alien ships' },   // Barbarella's 60s pop-art ship, nose + bubble dome at -X, the empty ball socket on top of the tail at +X: sit ship_barbarella_ball in it and spin it; 0.96 x 0.39 x 0.43 in the file
+    ship_barbarella_ball: { file: 'world/props/meshy/ships/ship_barbarella_ball.glb', base: 'asset', span: 1.4, foot: 0, group: 'Meshy props · Alien ships' },   // Barbarella's disco mirror ball, its own piece so it can spin in its socket on ship_barbarella; comes out matte grey: give it a mirror material (metalness 1, low roughness) in code; 0.95 x 0.95 x 0.95 in the file
 };
 Object.keys(HQ_CATALOGUE_ALL).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_ALL[k]); });
 /* the Katana + flora batch's four trees as tree kinds (a `tree` row with kind: 'fl_giant_redwood' etc., its own h) */
@@ -92099,6 +92117,7 @@ function hqTerrainCompile(room, roomId) {
     X.props.forEach(p => { if (p && p.key) info.scatter.push(Object.assign({}, p)); });
     /* THE FLORA (2026-11-20): the room's trees take their climate's kinds (ZONE_FLORA: the zone, the map's ground, the sheet under the trunk) */
     try { if (typeof zoneFloraTrees === 'function') info.floraTrees = zoneFloraTrees(roomId, info); } catch (e) { if (typeof console !== 'undefined') console.warn('[FLORA] the trees', e); }
+    try { if (typeof zoneFloraProps === 'function') info.floraProps = zoneFloraProps(roomId, info, freeFor); } catch (e) { if (typeof console !== 'undefined') console.warn('[FLORA] the accents', e); }
     info.marksX = boards.length ? (X.marks || []).concat(hqTerrainBoardMarks(boards)) : X.marks;   // THE BOARD: its squares join the paint
     /* THE ARCHITECTURE: each row with the ground under its origin. A ROOF IS NOT GROUND (2026-11-13): an origin over a building plateau
        (a roof-walk building, `bld`) takes the ground that building stands on, never its 7 m roof (fronts stood one storey up) */
@@ -100970,13 +100989,19 @@ var ZONE_FLORA = (function () {
                   bare: keep(3).concat([['rf_oak_3_winter', 1], ['rf_birch_3_winter', 1], ['rf_oak_4_winter', 1]]), water: keep(1).concat(W(n('willow', '_yellow', 3), 2)) },
         horror: { birch: keep(3).concat(W(n('birch', '_winter', 4), 0.5)), oak: keep(3).concat(W(n('oak', '_winter', 4), 0.6)), spruce: keep(4).concat(W(n('fir', '_dead', 4), 0.4)).concat([['rf_fir_2', 1]]),
                   pine: keep(4).concat(W(n('fir', '_dead', 4), 0.4)).concat([['rf_fir_1', 1]]), bare: keep(3).concat(W(n('oak', '_winter', 4), 0.5)).concat(W(n('fir', '_dead', 4), 0.4)) },
-        redwood: { birch: keep(3).concat([['rf_fir_1', 1], ['rf_fir_3', 1]]), oak: keep(4).concat([['rf_fir_1', 1], ['rf_fir_3', 1]]), spruce: keep(3).concat(W(n('fir', '', 4), 0.6)), pine: keep(3).concat(W(n('fir', '', 4), 0.6)),
+        redwood: { birch: keep(3).concat([['rf_fir_1', 1], ['rf_fir_3', 1], ['fl_giant_redwood', 1]]), oak: keep(2).concat([['rf_fir_1', 1], ['rf_fir_3', 1], ['fl_giant_redwood', 4]]),
+                   spruce: keep(3).concat(W(n('fir', '', 4), 0.6)).concat([['fl_giant_redwood', 1.5]]), pine: keep(3).concat(W(n('fir', '', 4), 0.6)).concat([['fl_giant_redwood', 1.5]]),
                    bare: keep(3).concat(W(n('fir', '_dead', 4), 0.5)) },
         fairy: { birch: keep(4).concat(W(n('birch', '', 4), 0.5)), oak: keep(3).concat(W(n('oak', '', 4), 0.4)).concat(W(n('willow', '_blue', 3), 0.5)), water: W(n('willow', '_blue', 3), 1) },
         hills: { oak: keep(2).concat([['rf_oak_4', 2], ['rf_oak_1', 1], ['rf_oak_3', 1]]), bare: keep(3).concat([['rf_oak_4_winter', 1]]) },     // the live oaks of a dry coast hill
         med: { oak: keep(1).concat([['rf_oak_4', 1]]) },
-        japan: { water: keep(1).concat(W(n('willow', '', 3), 1)) },
-        hollow: { oak: keep(2).concat(W(n('willow', '_blue', 3), 0.6)), water: W(n('willow', '_blue', 3), 1) },
+        /* THE MESHY FLORA BATCH (11-20, mondo's one-time yes to four Meshy trees): bamboo groves for Katana's pines and spruces, a jungle tree among the palms
+           (never on sand: a beach palm stays a palm), Joshua trees among the saguaros and the bare trees of dry country */
+        japan: { water: keep(1).concat(W(n('willow', '', 3), 1)), pine: keep(2).concat([['fl_bamboo_clump', 2]]), spruce: keep(2).concat([['fl_bamboo_clump', 1.5]]), birch: keep(4).concat([['fl_bamboo_clump', 1]]),
+                 palm: keep(3).concat([['fl_jungle_tree', 1]]), sand: { palm: keep(1) } },
+        tropical: { palm: keep(5).concat([['fl_jungle_tree', 1]]), sand: { palm: keep(1) } },   // (a jungle tree is 10,000 triangles: one palm in five or six)
+        hollow: { oak: keep(2).concat(W(n('willow', '_blue', 3), 0.6)).concat([['fl_jungle_tree', 1]]), palm: keep(2).concat([['fl_jungle_tree', 1]]), water: W(n('willow', '_blue', 3), 1) },
+        dry: { cactus: keep(3).concat([['fl_joshua_tree', 2]]), bare: keep(2).concat([['fl_joshua_tree', 2]]) },
     };
     T.temperate.snow = T.winter; T.open.snow = T.winter; T.autumn.snow = T.winter; T.horror.snow = T.winter; T.redwood.snow = T.winter; T.hills.snow = T.winter;
     /* ── a layer: [list, plants a square metre, clump 0..1 (0 = even, 1 = only in drifts), 'g' = a grass layer (left out where the room grows the blade grass)] ── */
@@ -100995,9 +101020,21 @@ var ZONE_FLORA = (function () {
                   dirt_2: 'dirt', dirt: 'dirt', calm_dirt: 'dirt', dirt_4: 'dry', wasteland: 'dry', desert: 'sand', ice: 'snow', calm_snow: 'snow', rocks_5: 'rock' },
         /* the kit tree a plain kind may become is picked by its class */
         classes: { tree: 'birch', tree_4: 'birch', tree_53: 'birch', tree_54: 'birch', tree_3: 'oak', tree_52: 'oak', tree_2: 'spruce', tree_55: 'spruce', pine: 'pine', tree_56: 'pine', tree_5: 'bare', tree_6: 'bare',
-                   xmas_snow_pine: 'snowpine', xmas_snow_pine_2: 'snowpine', xmas_snow_pine_3: 'snowpine', xmas_pine: 'snowpine', xmas_pine_2: 'snowpine', xmas_pine_3: 'snowpine' },
+                   xmas_snow_pine: 'snowpine', xmas_snow_pine_2: 'snowpine', xmas_snow_pine_3: 'snowpine', xmas_pine: 'snowpine', xmas_pine_2: 'snowpine', xmas_pine_3: 'snowpine',
+                   palm: 'palm', saguaro: 'cactus' },   // (only a climate that names `palm` / `cactus` changes one: the tropics, Katana, Hollow Earth, dry country)
         /* a kit tree's height against the tree it replaces (a fir stands taller, a willow lower and wide) */
-        treeH: { rf_fir: 1.25, rf_willow: 0.8, rf_oak: 1.05, rf_birch: 1.0 },
+        treeH: { rf_fir: 1.25, rf_willow: 0.8, rf_oak: 1.05, rf_birch: 1.0, fl_giant: 1.15, fl_jungle: 1.4, fl_bamboo: 0.9, fl_joshua: 0.5 },
+        /* the Meshy trees: the least a tree of that kind stands (tiles of 1.75 m; also its height where the row gave none) and how wide its trunk blocks (m) */
+        treeMin: { fl_giant_redwood: 11, fl_jungle_tree: 6.5, fl_bamboo_clump: 3.6, fl_joshua_tree: 2.6 },
+        treeR: { fl_giant_redwood: 1.1, fl_jungle_tree: 0.9, fl_bamboo_clump: 0.6 },
+        /* THE ACCENTS (11-20, the Meshy flora batch): the few heavy plants the rule stands as props (1,500 to 2,000 triangles each: never a field of them).
+           A lotus floats on a still pond near its bank (never a stream, the sea, lava or sludge), sunk `sink` m (Meshy gave it a stem under the pads); a barrel
+           cactus stands on dry ground and is walked through. `climates` = where, and the share of the tries that take. Seeded by the room: the same for both players */
+        props: [
+            { key: 'fl_lotus', water: true, sink: 0.2, each: 26, least: 2, most: 9, bank: 3.2, apart: 1.5, max: 60,
+              climates: { forest: 1, wood: 1, meadow: 1, grass: 1, farm: 1, marsh: 1, foothill: 0.6, fairy: 1, autumn: 0.7, japan: 1, tropical: 1, hollow: 1, med: 1 } },
+            { key: 'fl_barrel_cactus', on: { sand: 1, dry: 1, rock: 1 }, tries: 1800, apart: 7, max: 26, foot: 0, climates: { desert: 1, badlands: 0.8, scrub: 0.4 } },
+        ],
         /* THE MASS (a room's thicket, thousands of trunks the walker never enters): only its front rows change, and only to the kit's light trees */
         mass: { front: 3.5, share: 0.45, deep: 0.06, light: { rf_birch_1: 1, rf_birch_2: 1, rf_birch_4: 1, rf_oak_4: 1, rf_fir_4: 1, rf_birch_1_autumn: 1, rf_birch_2_autumn: 1, rf_birch_4_autumn: 1, rf_oak_4_autumn: 1,
                 rf_birch_1_winter: 1, rf_birch_2_winter: 1, rf_birch_4_winter: 1, rf_oak_4_winter: 1, rf_fir_4_winter: 1, rf_fir_4_dead: 1 } },
@@ -101018,13 +101055,13 @@ var ZONE_FLORA = (function () {
             alpine:   { name: 'alpine', trees: T.temperate, lawn: [L('grass', 0.05, 0.4, 'g'), L('alpine', 0.055, 0.65)], rough: [L('grass', 0.04, 0.4, 'g'), L('alpine', 0.04, 0.7)], dirt: [L('alpine', 0.01, 0.85)],
                         snow: [L('frost', 0.018, 0.65)], wet: [L('reed', 0.12, 0.3)], rock: [L('alpine', 0.012, 0.85), L('dry', 0.012, 0.8)] },
             snow:     { name: 'snow country', trees: T.winter, snow: [L('frost', 0.02, 0.65), L('sage', 0.003, 0.7)], lawn: [L('frost', 0.05, 0.4, 'g'), L('alpine', 0.02, 0.8)], rough: [L('frost', 0.04, 0.4, 'g')], dirt: [L('frost', 0.01, 0.8)] },
-            scrub:    { name: 'scrub', lawn: [L('dry', 0.07, 0.3, 'g'), L('sage', 0.02, 0.6), L('desert', 0.01, 0.8)], rough: [L('dry', 0.06, 0.3, 'g'), L('sage', 0.025, 0.6), L('desert', 0.008, 0.8)],
+            scrub:    { name: 'scrub', trees: T.dry, lawn: [L('dry', 0.07, 0.3, 'g'), L('sage', 0.02, 0.6), L('desert', 0.01, 0.8)], rough: [L('dry', 0.06, 0.3, 'g'), L('sage', 0.025, 0.6), L('desert', 0.008, 0.8)],
                         dry: [L('dry', 0.03, 0.5), L('sage', 0.012, 0.7)], sand: [L('dune', 0.012, 0.7), L('sage', 0.005, 0.7)], dirt: [L('dry', 0.015, 0.7)], wet: [L('reed', 0.2, 0.2)], rock: [L('sage', 0.006, 0.8)] },
             badlands: { name: 'badlands', like: 'scrub', lawn: [L('dry', 0.04, 0.5, 'g'), L('sage', 0.012, 0.7)], rough: [L('dry', 0.035, 0.5, 'g'), L('sage', 0.012, 0.7)] },
-            desert:   { name: 'desert', sand: [L('dune', 0.006, 0.8), L('desert', 0.004, 0.8)], dry: [L('dry', 0.014, 0.7), L('desert', 0.007, 0.75)], dirt: [L('dry', 0.008, 0.8)],
+            desert:   { name: 'desert', trees: T.dry, sand: [L('dune', 0.006, 0.8), L('desert', 0.004, 0.8)], dry: [L('dry', 0.014, 0.7), L('desert', 0.007, 0.75)], dirt: [L('dry', 0.008, 0.8)],
                         lawn: [L('dry', 0.05, 0.4, 'g'), L('sage', 0.015, 0.7)], rough: [L('dry', 0.04, 0.4, 'g'), L('sage', 0.015, 0.7)], wet: [L('reed', 0.3, 0.1)] },
             shore:    { name: 'shore', sand: [L('dune', 0.01, 0.8)], lawn: [L('grass', 0.07, 0.3, 'g'), L('meadow', 0.02, 0.8)], rough: [L('dry', 0.05, 0.4, 'g')], dry: [L('dune', 0.02, 0.7)] },
-            tropical: { name: 'tropical island', lawn: [L('grass', 0.08, 0.25, 'g'), L('fern', 0.05, 0.45), L('tropic', 0.035, 0.65), L('bush', 0.006, 0.4)], floor: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.07, 0.4), L('tropic', 0.02, 0.8)],
+            tropical: { name: 'tropical island', trees: T.tropical, lawn: [L('grass', 0.08, 0.25, 'g'), L('fern', 0.05, 0.45), L('tropic', 0.035, 0.65), L('bush', 0.006, 0.4)], floor: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.07, 0.4), L('tropic', 0.02, 0.8)],
                         rough: [L('grass', 0.05, 0.3, 'g'), L('fern', 0.03, 0.5)], dirt: [L('fern', 0.02, 0.7)], sand: [L('dune', 0.008, 0.85)], wet: [L('reed', 0.2, 0.2)] },
             japan:    { name: 'Katana Island', trees: T.japan, lawn: [L('grass', 0.08, 0.3, 'g'), L('japan', 0.04, 0.7), L('fern', 0.02, 0.6)], floor: [L('dark', 0.05, 0.3, 'g'), L('fern', 0.05, 0.5), L('japan', 0.015, 0.85)],
                         dirt: [L('fern', 0.012, 0.8)], sand: [L('dune', 0.008, 0.85)], wet: [L('reed', 0.2, 0.2)] },
@@ -101163,8 +101200,8 @@ function zoneFloraTrees(roomId, info) {
         const cls = F.classes[t.kind]; if (!cls) return;
         const C = zoneFloraAt(roomId, t.x, t.z), TR = C && C.trees; if (!TR) return;
         let list = null;
-        if (!mass && TR.water && cls !== 'snowpine' && typeof hqTerrainFluidAt === 'function') { for (let a = 0; a < 8 && !list; a++) { const an = a * Math.PI / 4; if (hqTerrainFluidAt(info, t.x + Math.cos(an) * F.water, t.z + Math.sin(an) * F.water)) list = TR.water; } }
-        if (!list && TR.snow && TR.snow[cls] && zoneFloraGround(info, t.x, t.z) === 'snow') list = TR.snow[cls];
+        if (!mass && TR.water && cls !== 'snowpine' && cls !== 'palm' && cls !== 'cactus' && typeof hqTerrainFluidAt === 'function') { for (let a = 0; a < 8 && !list; a++) { const an = a * Math.PI / 4, fl = hqTerrainFluidAt(info, t.x + Math.cos(an) * F.water, t.z + Math.sin(an) * F.water); if (fl && !fl.sea) list = TR.water; } }   // fresh water only: no willow on a sea shore, and a palm or a cactus is never a willow
+        if (!list) { const g = zoneFloraGround(info, t.x, t.z), G = g ? TR[g] : null; if (G && !Array.isArray(G) && G[cls]) list = G[cls]; }   // the ground under the trunk has its own list (snow = the winter trees, sand = a palm stays a palm)
         if (!list) list = TR[cls];
         if (!list) return;
         let keepW = 0, tot = 0; const opts = [];
@@ -101176,12 +101213,55 @@ function zoneFloraTrees(roomId, info) {
         for (const q of opts) { r -= q[1]; if (r <= 0) { pick = q[0]; break; } }
         const f = F.treeH[pick.split('_').slice(0, 2).join('_')] || 1;
         t.kind0 = t.kind; t.kind = pick; if (t.h) t.h = Math.round(t.h * f * 100) / 100; n++;
+        if (F.treeMin[pick]) t.h = Math.max(t.h || 0, F.treeMin[pick]);
+        if (F.treeR[pick]) t.r = Math.max(t.r || 0, F.treeR[pick]);
     };
     (info.trees || []).forEach(t => one(t, false));
     (info.thicket || []).forEach(t => one(t, true));
     return n;
 }
-if (typeof window !== 'undefined') Object.assign(window, { ZONE_FLORA, zoneFloraRule, zoneFloraAt, zoneFloraGround, zoneFloraSheet, zoneFloraTrees, zoneFloraClimateOf });
+/* THE ACCENTS: the rule's few props (ZONE_FLORA.props) join the room's scatter. Run once by hqTerrainCompile after the trees and the room's own scatter
+   (so they keep clear of everything that already stands: `freeFor` is the compiler's own test) */
+function zoneFloraProps(roomId, info, freeFor) {
+    if (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_PROPS)) return 0;
+    const Z = zoneFloraRule(roomId); if (!Z || !info || !info.scatter || !info.S) return 0;
+    const F = ZONE_FLORA, hw = info.S.w / 2, hd = info.S.d / 2; let n = 0;
+    (F.props || []).forEach(P => {
+        if (!DOOR_HQ.catalogue[P.key]) return;
+        let s = ((typeof hqHash === 'function') ? hqHash('flora-prop|' + roomId + '|' + P.key) : 11) >>> 0, made = 0;
+        const rnd = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+        const mine = [], far = (x, z) => !mine.some(q => Math.hypot(q[0] - x, q[1] - z) < P.apart);
+        const here = (x, z) => { const C = zoneFloraAt(roomId, x, z), w = C ? (P.climates[C.id] || 0) : 0; return w > 0 && rnd() < w; };
+        if (P.water) {
+            (info.fluids || []).forEach(f => {
+                if (made >= P.max || f.kind !== 'pool' || !/water/.test(f.key || 'water')) return;
+                const rx = f.r || 1, rz = f.rz || f.r || 1, R = Math.max(rx, rz), want = Math.max(P.least, Math.min(P.most, Math.round(Math.PI * rx * rz / P.each)));
+                let got = 0;
+                for (let k = 0; k < want * 40 && got < want && made < P.max; k++) {
+                    const x = Math.round((f.x + (rnd() * 2 - 1) * R) * 100) / 100, z = Math.round((f.z + (rnd() * 2 - 1) * R) * 100) / 100, a0 = rnd() * 6.283, face = Math.round(rnd() * 360);
+                    if (Math.abs(x) > hw - 1 || Math.abs(z) > hd - 1 || hqTerrainFluidAt(info, x, z) !== f || !far(x, z)) continue;
+                    let bank = false; for (let a = 0; a < 6 && !bank; a++) { if (!hqTerrainFluidAt(info, x + Math.cos(a0 + a * 1.047) * P.bank, z + Math.sin(a0 + a * 1.047) * P.bank)) bank = true; }
+                    if (!bank || !here(x, z)) continue;
+                    const bed = hqTerrainHeight(info, x, z), Y = f.y - P.sink; if (bed > Y - 0.05) continue;   // water deep enough to hide the stem
+                    let y = Y; if (Y < 1 && Y > -0.5) { y = Y - bed; if (y >= 1 || y <= 0) continue; }   // (a prop's `y`: from the room's floor at 1 m and over or half a metre under it, else a lift over the ground: three-renderer.js THE TIER HEIGHT)
+                    mine.push([x, z]); got++; made++;
+                    info.scatter.push({ key: P.key, x, z, y: bed, face, r: 0.3, foot: 0, lift: Math.round(y * 100) / 100, noSeat: true, flora: true });
+                }
+            });
+        } else {
+            for (let k = 0; k < P.tries && made < P.max; k++) {
+                const x = Math.round((rnd() * 2 - 1) * (hw - 2) * 100) / 100, z = Math.round((rnd() * 2 - 1) * (hd - 2) * 100) / 100, face = Math.round(rnd() * 360);
+                if (!P.on[zoneFloraGround(info, x, z)] || !far(x, z) || !here(x, z)) continue;
+                if (!freeFor(x, z, 0.45, { slope: 0.3, apart: 1.2 })) continue;
+                mine.push([x, z]); made++;
+                info.scatter.push({ key: P.key, x, z, y: hqTerrainHeight(info, x, z), face, r: 0.45, foot: P.foot, flora: true });
+            }
+        }
+        n += made;
+    });
+    return n;
+}
+if (typeof window !== 'undefined') Object.assign(window, { ZONE_FLORA, zoneFloraRule, zoneFloraAt, zoneFloraGround, zoneFloraSheet, zoneFloraTrees, zoneFloraProps, zoneFloraClimateOf });
 /* ══ THE ZONE LOOKS (2026-11-18, mondo: "I added an SBS horror texture pack in the inbox. Its basically just more textured and weathered
    textures. Can you use this horror pack and the urban decay texture pack to improve the aesthetics of the game, zone by zone. I especially
    want the "calm" textures replaced, those textures were only meant to be used on the ground, and even then i am okay with you not using them

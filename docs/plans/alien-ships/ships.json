@@ -1,0 +1,88 @@
+{
+ "style": "single isolated 3D game vehicle, stylized realistic, clean readable shapes for a low-poly model, hand-painted texture look, the whole craft in view, three-quarter view from slightly above, plain flat light grey background, no ground plane, no shadow, no text, no letters, no logos, no people, no glow, no light beams, no exhaust flames, no smoke",
+ "pieces": [
+  {
+   "id": "S1",
+   "key": "ship_annunaki",
+   "race": "annunaki",
+   "tris": 10000,
+   "prompt": "an ancient alien god-ship shaped like an upside-down stepped ziggurat pyramid hovering point-down, made of carved golden sandstone blocks with polished gold capstone at the bottom tip and gold bands on each step, deep lapis-blue stone inlays, a winged sun-disc relief carved on each face, small dark windows along the top step, Sumerian and Mesopotamian temple style"
+  },
+  {
+   "id": "S2",
+   "key": "ship_mantid",
+   "race": "mantid",
+   "tris": 10000,
+   "prompt": "a sleek alien spaceship whose design is inspired by a praying mantis, one solid streamlined vehicle hull, a smooth bright leaf-green chitin fuselage, a wide triangular cockpit nose with two large dark glossy compound-eye windows, two folded spiked forearm-shaped landing struts tucked under the front, swept-back translucent-looking wing-case panels on top, pale orchid-pink petal-shaped tail fins, clearly a machine and a vehicle, not an animal, no legs dangling"
+  },
+  {
+   "id": "S3",
+   "key": "ship_cosmic_wraith",
+   "race": "cosmic wraith",
+   "tris": 10000,
+   "prompt": "a menacing alien spaceship shaped like a thick jagged crescent blade, one solid piece, a broad body in the middle with a narrow black glass cockpit slit, sharp swept-back horn points at both ends, matte black obsidian hull with cracked edges like a dying star, thin dark violet lines inlaid in the cracks, no loose pieces, no floating fragments, no particles, cold and silent"
+  },
+  {
+   "id": "S4",
+   "key": "ship_grey",
+   "race": "grey",
+   "tris": 10000,
+   "prompt": "the classic Roswell flying saucer, a wide thin brushed silver metal disc with a low domed top, a band of small dark oval windows round the dome, fine panel seams and rivets, a round hatch ring under the centre for the abduction beam, three short landing legs folded under the rim, cold clinical government-lab feel"
+  },
+  {
+   "id": "S5",
+   "key": "ship_nordic",
+   "race": "nordic",
+   "tris": 10000,
+   "prompt": "an elegant Pleiadian scout ship in the 1950s contactee style, a bell-shaped craft in three smooth tiers of pearl white ceramic with pale gold trim, a ring of round dark porthole windows round the middle tier, a small dome on top, three white sphere landing pods underneath, serene and graceful and beautiful, angelic",
+   "prompt2": "a sleek elegant Nordic alien starship, a long smooth flattened lens-shaped hull of pearl white and polished pale silver with soft flowing curves like a seashell, a clear-looking dark glass canopy blended into the front, thin pale gold trim lines, two slim curved fins swept back, serene graceful angelic Pleiadian design, beautiful and calm"
+  },
+  {
+   "id": "S6",
+   "key": "ship_reptilian",
+   "race": "reptilian",
+   "tris": 10000,
+   "prompt": "a huge secret black triangle aircraft like a classified military stealth craft, a flat equilateral triangle hull of matte black armour plates with a subtle dark green reptile-scale texture, a round unlit light housing under each of the three corners and one in the centre, faceted stealth edges, a thin dark cockpit slit at the front point, sinister and governmental",
+   "prompt2": "a secret black triangle aircraft, a perfectly symmetrical flat equilateral triangle hull, thick slab with bevelled edges, all three sides equal, matte black armour plating in large clean panels with a subtle dark green reptile-scale texture, a round unlit light housing near each of the three corners underneath, a small dark cockpit bump at the front point, simple clean geometry, seen from above at a high three-quarter angle so the whole triangle shape is clear"
+  },
+  {
+   "id": "S7",
+   "key": "ship_martian",
+   "race": "martian",
+   "tris": 10000,
+   "prompt": "a Martian war machine from 1950s invasion films, a hovering manta-ray shaped hull of oxidized rust-red and copper-green metal with curved wing edges, a long swan-necked heat-ray turret rising from the top ending in a cobra-hood emitter head, two smaller curled side turrets on the wing tips, dark red window slits, menacing retro sci-fi",
+   "prompt2": "a Martian flying saucer from 1950s invasion films, a wide red and rust-copper metal disc with a big clear-looking glass dome on top, a ring of stubby ray-gun cannons round the rim, ribbed retro panels, three short spiked landing legs, dark red windows, menacing retro pulp sci-fi",
+   "concept": "ship_martian_1"
+  },
+  {
+   "id": "S8",
+   "key": "ship_astronaut",
+   "race": "astronaut",
+   "tris": 10000,
+   "prompt": "a space shuttle orbiter on its own, no fuel tank and no boosters, white upper hull, black heat-shield tiles on the belly, nose and wing leading edges, delta wings, a tall vertical tail fin, three rocket engine bells at the back, dark cockpit windows, plain with no flags, no markings and no writing"
+  },
+  {
+   "id": "S9",
+   "key": "ship_bligblog",
+   "race": "bligblog",
+   "tris": 10000,
+   "prompt": "a goofy lopsided homemade alien flying saucer, a lumpy fleshy maroon and plum coloured hull with mismatched bolted-on metal patches, lots of round porthole windows of different sizes all over it that look like eyes, two wobbly antennas with ball tips, a little empty bubble dome cockpit on top slightly off-centre with nobody inside, a toy ray-gun cannon stuck on the front, retro 1950s tin toy look, no pilot, no creature, no figure"
+  },
+  {
+   "id": "S10",
+   "key": "ship_barbarella",
+   "race": "barbarella",
+   "tris": 10000,
+   "prompt": "a glamorous 1960s space-age pop art spaceship, a curvy streamlined teardrop hull of glossy white and polished chrome with candy pink and tangerine orange swirl stripes, a large round bubble canopy cockpit, a faceted disco mirror ball dome on the tail, little chrome fins, groovy psychedelic retro-future style",
+   "prompt2": "a glamorous 1960s space-age pop art spaceship, a curvy streamlined teardrop hull of glossy white and polished chrome with candy pink and tangerine orange swirl stripes, a large round bubble canopy cockpit, a small empty round cradle socket on top of the tail where nothing sits, little chrome fins, groovy psychedelic retro-future style, no mirror ball, no disco ball"
+  },
+  {
+   "id": "S11",
+   "key": "ship_barbarella_ball",
+   "race": "barbarella",
+   "tris": 3000,
+   "prompt": "a single faceted disco mirror ball made of many small square silver mirror tiles, on its own, a perfect sphere, no stand, no chain, no hook",
+   "concept": "ship_barbarella_ball_1"
+  }
+ ]
+}
