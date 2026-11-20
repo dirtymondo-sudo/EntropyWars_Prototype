@@ -29,6 +29,7 @@ module.exports = {
         sub: 'THE LAST CAMP · THE CROSSROADS · THE OUBLIETTE · THE FISSURE · THE MOUTH OF HOLLOW EARTH',
         parti: 'A labyrinth of rock 40 metres deep: from the last camp at the top the passages split, climb, drop off cliffs and down waterfalls through six great chambers to the cells at the bottom; the Fissure breathes hot air from Hell, and the Mouth opens on the long way down to Hollow Earth.',
         ceil: 3, ceilChamber: 6, tallChambers: { 'Chamber 0,1': 6, 'Chamber 3,2': 3 },   // the Crossroads is the great chamber: its roof stands 21 m over its floor
+        ladderLook: 'ropeladder',   // mondo 11-20: rope ladders (two ropes, wooden rungs), the explorers' own
         spawn: [29, 4], spawnFace: 180,
         mood: { light: 0xffb070, ambient: 0.14, hero: false },
         fallKey: 'swamp',   // mondo 11-20: the Cavern's falls murky (Hollow Earth keeps its blue water)
@@ -107,6 +108,26 @@ module.exports = {
                     else { /* a flowstone curtain up the wall, floor to roof (thick rock only) */ parts.push({ s: 'cyl', p: [r2(wx), y0, r2(wz)], r: r2(0.9 + rnd() * 0.5), r2: r2(0.45 + rnd() * 0.3), h: r2(ctx.ceil(x, y) - y0 + 0.2), seg: 7, key, tint: tn, uv: 3.5 }); } }); }
             if (parts.length) ctx.feat({ k: 'arch', id: 'ug:cavern:rock:' + bx + '_' + by, x: r2(ox), z: r2(oz), rot: 0, base: 0, parts });
         }
+        /* ── THE STALAGMITES (mondo 11-20: "you can't see how these other underground threads are doing stalagmites and just do that??"): the
+           Tunnel-Way's recipe (docs/areas/underground/tunnel-way/room.js, THE GREAT CHAMBER): a tall cone to a needle point in light stone, a
+           cluster of smaller points round its foot, its stalactite hanging over it nearly meeting it, and a stone inside it as its body (so you
+           walk round it). Two big ones in each chamber, a small one in a corner of each junction; bake-ug.js THE WALK CHECK keeps every way open. ── */
+        const TONE = [0xf0ece6, 0xe4e0d8, 0xffffff];
+        const stalagmite = (x, y, big) => { if (!ctx.free(x, y)) return false; const b = ctx.h(x, y), roof = ctx.ceil(x, y) - b, H0 = Math.min(roof - 1.2, big ? 5 + rnd() * 2.6 : 2.4 + rnd() * 1.4), R0 = big ? 1.05 + rnd() * 0.3 : 0.6 + rnd() * 0.2, parts = [];
+            if (H0 < 1.8) return false;
+            parts.push({ s: 'cyl', p: [0, 0, 0], r: r2(R0), r2: 0.1, h: r2(H0), seg: 9, key: 'hz_stone_07', tint: TONE[0], uv: 2.5 });
+            const sat = big ? [[1.1, 0.5, 0.48, 0.55], [-0.9, 0.8, 0.36, 0.45], [0.4, -1.1, 0.6, 0.6], [-0.8, -0.7, 0.25, 0.4], [1.3, -0.5, 0.2, 0.32]] : [[0.6, 0.3, 0.45, 0.35], [-0.5, -0.4, 0.3, 0.3]];
+            sat.forEach(([dx, dz, f, r]) => parts.push({ s: 'cyl', p: [dx, 0, dz], r, r2: 0.05, h: r2(H0 * f), seg: 7, key: 'hz_stone_07', tint: TONE[Math.floor(rnd() * 3)], uv: 2 }));
+            const drop = Math.min(roof - H0 - 0.4, big ? 3.2 : 1.8); if (drop > 0.6) parts.push({ s: 'cyl', p: [0, r2(roof - drop), 0], r: 0.1, r2: r2(big ? 1.0 : 0.6), h: r2(drop), seg: 8, key: 'hz_stone_02', tint: 0xe4e0d8, uv: 2 });   // its stalactite
+            ctx.feat({ k: 'arch', id: 'ug:cavern:stalagmite:' + x + '_' + y, x: ctx.gcx(x), z: ctx.gcz(y), rot: 0, base: b, parts });
+            ctx.P('sarsen', x, y, { h: r2(Math.min(2.6, H0 * 0.5)), face: Math.round(rnd() * 360) });   // its body, inside the drawn cone
+            return true; };
+        const CHS = [[26, 2, 33, 9], [2, 2, 9, 9], [2, 14, 9, 21], [2, 26, 9, 33], [38, 26, 45, 33], [50, 26, 57, 33]];
+        CHS.forEach(([x0, y0, x1, y1]) => { const c = ctx.walled(x0, y0, x1, y1, 2).filter(([x, y]) => (x === x0 || x === x1) && (y === y0 || y === y1)); let n = 0;
+            for (const [x, y] of c.sort(() => rnd() - 0.5)) { if (n >= 2) break; if (stalagmite(x, y, true)) n++; } });
+        for (let by = 0; by < 3; by++) for (let bx = 0; bx < 6; bx++) { const x0 = bx * 12 + 4, y0 = by * 12 + 4; if (CHS.some(r => r[0] <= x0 && r[2] >= x0 && r[1] <= y0 && r[3] >= y0)) continue;
+            const c = ctx.walled(x0, y0, x0 + 3, y0 + 3, 2).filter(([x, y]) => (x === x0 || x === x0 + 3) && (y === y0 || y === y0 + 3)).sort(() => rnd() - 0.5);
+            for (const [x, y] of c) if (stalagmite(x, y, false)) break; }
         /* ── THE CROSSROADS: THE NEEDLE (the plan's landmark at 6,18), a column of dripstone floor to roof in the great chamber ── */
         { const x = 6, y = 18, top = ctx.ceil(x, y) - ctx.h(x, y), b = ctx.h(x, y); ctx.taken.add(x + ',' + y);
           ctx.feat({ k: 'arch', id: 'ug:cavern:needle', x: ctx.gcx(x), z: ctx.gcz(y), rot: 0, base: b, parts: [
