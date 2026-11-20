@@ -45,16 +45,18 @@ module.exports = {
         const free = (x, y) => a.open(x, y) && !a.keep(x, y) && !a.blockers().has(x + ',' + y);
         const edges = (x0, y0, x1, y1) => { const o = []; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (free(x, y) && wallOf(x, y)) o.push([x, y]); return o; };
         /* a piece against the wall: pushed most of the way to the rock */
-        const atWall = (key, x, y, o) => { const w = wallOf(x, y) || [0, 0]; return a.P(key, x, y, Object.assign({ dx: a.r2(w[0] * 1.1 + (R() - 0.5) * 0.6), dz: a.r2(w[1] * 1.1 + (R() - 0.5) * 0.6), face: Math.round(R() * 360) }, o)); };
+        const atWall = (key, x, y, o) => { const w = wallOf(x, y) || [0, 0]; return a.P(key, x, y, Object.assign({ dx: a.r2(w[0] * 0.5 + (R() - 0.5) * 0.5 * Math.abs(w[1])), dz: a.r2(w[1] * 0.5 + (R() - 0.5) * 0.5 * Math.abs(w[0])), face: Math.round(R() * 360) }, o)); };
         const loose = (key, x, y, o) => a.P(key, x, y, Object.assign({ dx: a.r2((R() - 0.5) * 2), dz: a.r2((R() - 0.5) * 2), face: Math.round(R() * 360), noBlock: true }, o));
         const scatterWall = (x0, y0, x1, y1, keys, n, o) => { const E = edges(x0, y0, x1, y1); for (let i = 0; i < n && E.length; i++) { const q = E.splice(Math.floor(R() * E.length), 1)[0]; atWall(pick(keys), q[0], q[1], Object.assign({ noBlock: true }, o)); } };
         const torch = (x, y, lit) => atWall('cave_torch', x, y, lit ? {} : { noLight: true });
         /* a low slab of rock hung over a passage: the squeeze (drawn only; you stoop under it) */
-        const lowRock = (id, x0, y0, x1, y1, over) => { const h = a.floor(x0, y0) + over, w = (x1 - x0 + 1) * a.C, d = (y1 - y0 + 1) * a.C;
-            a.feat({ k: 'arch', id: 'ugt:squeeze:' + id, x: a.r2(a.gx(x0) + w / 2), z: a.r2(a.gz(y0) + d / 2), y: a.r2(h), rot: 0,
-                parts: [{ s: 'box', p: [0, 0, 0], size: [a.r2(w + 0.4), 3.2, a.r2(d + 0.4)], key: 'cave_wall', tint: 0x403a34, uv: 3.5, top: false, under: true },
-                        { s: 'cyl', p: [a.r2(-w / 4), -0.7, 0], r: 0.05, r2: 0.35, h: 0.7, seg: 6, key: 'cave_wall', tint: 0x4a443e, uv: 2 },
-                        { s: 'cyl', p: [a.r2(w / 5), -0.5, a.r2(d / 5)], r: 0.04, r2: 0.28, h: 0.5, seg: 6, key: 'cave_wall', tint: 0x4a443e, uv: 2 }] }); };
+        const lowRock = (id, x0, y0, x1, y1, over) => { const h = a.floor(x0, y0) + over, w = (x1 - x0 + 1) * a.C, d = (y1 - y0 + 1) * a.C, parts = [];
+            /* the rock comes down in lumps: a ceiling 0.9 m over the stoop line, and cones hanging from it to the line itself */
+            parts.push({ s: 'box', p: [0, 0.9, 0], size: [a.r2(w), a.r2(Math.max(2.6, a.roofAt(x0, y0) - h - 0.6)), a.r2(d)], key: 'rocks_5', tint: 0x8a8070, uv: 3.5, top: false, under: true });
+            const n = Math.max(6, Math.round(w * d / 3));
+            for (let i = 0; i < n; i++) { const len = a.r2(0.5 + R() * 0.45), r = a.r2(0.35 + R() * 0.5);
+                parts.push({ s: 'cyl', p: [a.r2((R() - 0.5) * (w - 0.6)), a.r2(0.92 - len), a.r2((R() - 0.5) * (d - 0.6))], r: a.r2(r * 0.25), r2: r, h: len, seg: 7, key: 'cave_wall', tint: 0x4a443e, uv: 2 }); }
+            a.feat({ k: 'arch', id: 'ugt:squeeze:' + id, x: a.r2(a.gx(x0) + w / 2), z: a.r2(a.gz(y0) + d / 2), y: a.r2(h), rot: 0, parts }); };
 
         /* ══ THE PILOT: THE NORTH THIRD ══ */
 
@@ -62,24 +64,26 @@ module.exports = {
            heap in each corner, candles left burning by whoever still comes down; two torches, the only warm light in the district */
         torch(26, 3, true); torch(33, 8, true);
         a.P('skull_pile', 26, 5, { dx: -0.8 }); a.P('skull_pile', 33, 2, { dx: 0.8, dz: -0.8 }); a.P('skull_pile', 26, 9, { dx: -0.8, dz: 0.8 });
-        scatterWall(26, 2, 33, 9, ['skull', 'skull', 'femur', 'ulna'], 26);
+        scatterWall(26, 2, 33, 9, ['skull', 'skull', 'hw_part_2', 'skull'], 26);
         a.P('candle_ring', 30, 7); a.P('stone_altar', 32, 5, { face: 270 });
-        loose('skull', 31, 5); loose('femur', 28, 8);
+        loose('skull', 31, 5); loose('hw_part_2', 28, 8);
         a.P('floor_stain', 29, 6, { noBlock: true });
         a.P('rat', 27, 6, { noBlock: true, face: 40 }); a.P('rat', 32, 9, { noBlock: true, face: 200 });
         /* THE BONE PASSAGE (the old passage out of the Catacombs, south to the shaft's crossing): lined with bones the whole way */
-        scatterWall(27, 10, 29, 15, ['skull', 'femur', 'skull', 'ulna'], 14);
+        scatterWall(27, 10, 29, 15, ['skull', 'hw_part_2', 'skull', 'skull'], 14);
         a.P('skull_pile', 28, 13, { dx: -1.2, noBlock: true }); a.P('candleRing', 29, 11, { noBlock: true });
-        scatterWall(28, 16, 31, 19, ['skull', 'femur'], 6);
+        scatterWall(28, 16, 31, 19, ['skull', 'hw_part_2'], 6);
 
         /* THE NEST (chamber 1,0, level 127): something lives here. The floor is skin, the walls are webbed, its kills hang wrapped; one red bloom of
            teeth lights it, and nothing else. Up a ladder from the Ossuary Gate's west passage (or from the Weeping Hall) */
         a.P('nightmare_bloom', 19, 8, { face: 200 });
         a.P('goo_tendril', 14, 2, { dx: -0.6, dz: -0.6 }); a.P('goo_tendril', 21, 9, { dx: 0.6, dz: 0.6 }); a.P('goo_tendril', 14, 9, { dx: -0.5, dz: 0.6 });
-        a.P('meshy_black_blob', 16, 4); a.P('meshy_black_blob', 20, 3, { face: 120 });
+        a.P('meshy_black_blob', 16, 4); a.P('meshy_black_blob', 20, 3, { face: 120 }); a.P('meshy_black_blob', 15, 8, { face: 300, h: 1.4 }); a.P('meshy_black_blob', 18, 2, { face: 30, h: 0.7 });
+        a.P('hw_body_rising', 20, 7, { face: 250 }); loose('hw_body', 15, 5, { face: 20 });
         scatterWall(14, 2, 21, 9, ['hw_web', 'hw_web_2', 'hw_web_3', 'psx_cobweb_1', 'psx_cobweb_2'], 18);
-        for (const [x, y] of [[15, 6], [17, 7], [18, 3], [20, 6], [16, 8], [19, 5]]) loose('chrysalis', x, y, { h: 0.9 });
-        loose('hw_body_2', 17, 5, { face: 70 }); loose('hw_part_3', 20, 8); loose('hw_part_5', 15, 3); loose('femur', 18, 6); loose('skull', 16, 7);
+        for (const [x, y] of [[15, 6], [20, 6], [16, 8]]) loose('chrysalis', x, y, { h: 0.9 });
+        for (const [x, y] of [[17, 7], [18, 3], [19, 5]]) loose(pick(['hw_part', 'hw_part_2', 'hw_part_4', 'skull', 'hw_part_2']), x, y);
+        loose('hw_body_2', 17, 5, { face: 70 }); loose('hw_part_3', 20, 8); loose('hw_part_5', 15, 3); loose('hw_part_2', 18, 6); loose('skull', 16, 7);
         a.P('dream_eye', 21, 2, { dx: 0.6, dz: -0.5 });
         for (let i = 0; i < 4; i++) a.P(pick(['bat_black', 'bat_brown', 'bat_grey']), 15 + i * 2, 3 + (i % 2) * 4, { noBlock: true, y: a.floor(15 + i * 2, 3 + (i % 2) * 4) + 5.2 + R(), face: Math.round(R() * 360) });
         a.P('floor_stain', 18, 7, { noBlock: true }); a.P('floor_stain', 16, 5, { noBlock: true });

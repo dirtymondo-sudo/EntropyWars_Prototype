@@ -17,8 +17,8 @@
    - THE HEIGHT SHEET (`terrain.slope.cells`, one height a square): an open square of the plan stands at its level ((level − 114) x 1.75 m:
      the lowest pit, 114, is the room's 0); a closed square of the plan is the ROCK, raised to its plot's roof (and 4 m over any open floor
      beside it), so the passages are cut in solid rock. Two open squares a level or more apart are a LEDGE / a CLIFF (walked off, down only).
-   - THE ROOF: every plot wears one block of rock from its roof line up to the room's top (drawn only): a junction 4.2 m over the highest floor
-     in it, a chamber 7 m. So a passage is low and a chamber is a hall, and nothing is ever open to the sky.
+   - THE ROOF: every plot wears rock from its roof line up to the room's top (drawn only): 4.2 m over the highest floor in the plot, and
+     a chamber's hall (the plan's 8 x 8 flat) 7 m over its floor. So a passage is low and a chamber is a hall, and nothing is ever open to the sky.
    - THE LADDERS: every `stairs` pair of the plan is a `climb` row (both ways): a timber ladder; out of a pit a rope; the plan's FOUND ways
      ("a chimney beside the ladder") are a rock chimney (`look: 'wall'`) on the passage's other square; a free climb up a cliff the same.
    - THE WATER: a `w` square is a shallow sump in a niche under a weeping wall (no river, mondo 11-20): its floor 0.55 m under the floor
@@ -53,10 +53,16 @@ const count = {};
 /* ── THE PLOTS: their roofs (a chamber is a hall, a junction a low passage) ── */
 const PL = B.PLOTS.map(p => { const o = { bx: p.bx, by: p.by, level: p.level, chamber: !!(p.f && p.f.flat), max: -1e9 };
     for (let y = p.by * N; y < (p.by + 1) * N; y++) for (let x = p.bx * N; x < (p.bx + 1) * N; x++) if (isOpen(x, y) || isWater(x, y)) o.max = Math.max(o.max, L[y][x]);
-    o.roof = r2(hOf(o.max) + (o.chamber ? 7.0 : 4.2)); return o; });
+    o.roof = r2(hOf(o.max) + 4.2);   // the low roof: a passage's, over the whole plot but the hall
+    /* a chamber plot: its hall (the plan's flat rect in it) stands 7 m under its own roof; the rest of the plot keeps the low roof */
+    if (o.chamber) { const f = (PLAN.flats || []).find(q => q.board && q.rect[0] >= p.bx * N && q.rect[2] < (p.bx + 1) * N && q.rect[1] >= p.by * N && q.rect[3] < (p.by + 1) * N);
+        if (!f) throw new Error('a chamber plot with no hall in the plan: ' + p.name); o.hall = f.rect; o.hallRoof = r2(hOf(p.level) + 7.0); }
+    return o; });
 const PLAT = {}; PL.forEach(p => { PLAT[p.bx + ',' + p.by] = p; });
 const plotRec = (x, y) => PLAT[Math.floor(x / N) + ',' + Math.floor(y / N)];
-const TOP = r2(Math.max.apply(null, PL.map(p => p.roof)) + 3);
+const inHall = (p, x, y) => !!p.hall && x >= p.hall[0] && x <= p.hall[2] && y >= p.hall[1] && y <= p.hall[3];
+const roofAt = (x, y) => { const p = plotRec(x, y); return inHall(p, x, y) ? p.hallRoof : p.roof; };
+const TOP = r2(Math.max.apply(null, PL.map(p => Math.max(p.roof, p.hallRoof || 0))) + 3);
 
 /* ── THE FLOOR OF EVERY SQUARE (m) ── */
 const FL = []; for (let y = 0; y < H; y++) { FL.push(new Array(W).fill(null)); for (let x = 0; x < W; x++) if (isOpen(x, y)) FL[y][x] = hOf(L[y][x]); }
@@ -65,7 +71,7 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (isWater(x, y)) { let
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (FL[y + dy] && FL[y + dy][x + dx] != null && isOpen(x + dx, y + dy)) top = Math.max(top, FL[y + dy][x + dx]);
     if (top < -1e8) top = hOf(L[y][x] + 1); FL[y][x] = r2(top - 0.55); }
 /* the rock: up to its plot's roof, and 4 m over any floor beside it */
-const ROCKH = []; for (let y = 0; y < H; y++) { ROCKH.push(new Array(W).fill(null)); for (let x = 0; x < W; x++) { if (FL[y][x] != null) continue; let h = plotRec(x, y).roof + 0.3;
+const ROCKH = []; for (let y = 0; y < H; y++) { ROCKH.push(new Array(W).fill(null)); for (let x = 0; x < W; x++) { if (FL[y][x] != null) continue; let h = roofAt(x, y) + 0.3;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (FL[y + dy] && FL[y + dy][x + dx] != null) h = Math.max(h, FL[y + dy][x + dx] + 4.0);
     ROCKH[y][x] = r2(Math.min(h, TOP)); } }
 const slope = Buffer.alloc(W * H * 8);
@@ -115,12 +121,17 @@ count.pools = WATER.length;
 /* ── THE ROCK OVERHEAD: each plot's block from its roof to the top, stalactites hung from it over the open floor ── */
 const ROOF = [], grnd = mkRnd(1307), RTINT = [0x4a443e, 0x433d37, 0x50483f, 0x3c3732];
 PL.forEach((p, i) => { const ox = gx(p.bx * N) + N * C / 2, oz = gz(p.by * N) + N * C / 2, parts = [];
-    parts.push({ s: 'box', p: [0, p.roof, 0], size: [N * C, r2(TOP - p.roof), N * C], top: false, under: true, key: 'cave_wall', tint: RTINT[i % RTINT.length], uv: 7 });
+    const slab = (x0, y0, x1, y1, h) => { if (x1 < x0 || y1 < y0) return; const w = (x1 - x0 + 1) * C, d = (y1 - y0 + 1) * C;
+        parts.push({ s: 'box', p: [r2(gx(x0) + w / 2 - ox), h, r2(gz(y0) + d / 2 - oz)], size: [r2(w), r2(TOP - h), r2(d)], top: false, under: true, key: 'cave_wall', tint: RTINT[i % RTINT.length], uv: 7 }); };
+    const X0 = p.bx * N, Y0 = p.by * N, X1 = X0 + N - 1, Y1 = Y0 + N - 1;
+    if (!p.hall) slab(X0, Y0, X1, Y1, p.roof);
+    else { const [hx0, hy0, hx1, hy1] = p.hall; slab(hx0, hy0, hx1, hy1, p.hallRoof);   // the hall, and the four strips round it at the low roof
+        slab(X0, Y0, X1, hy0 - 1, p.roof); slab(X0, hy1 + 1, X1, Y1, p.roof); slab(X0, hy0, hx0 - 1, hy1, p.roof); slab(hx1 + 1, hy0, X1, hy1, p.roof); }
     const sq = []; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const x = p.bx * N + lx, y = p.by * N + ly; if (FL[y][x] != null && !isWater(x, y)) sq.push([x, y]); }
     const n = Math.min(p.chamber ? 18 : 8, Math.floor(sq.length / 4));
-    for (let k = 0; k < n; k++) { const q = sq[Math.floor(grnd() * sq.length)], room = p.roof - FL[q[1]][q[0]], len = r2(0.6 + grnd() * Math.min(p.chamber ? 3.6 : 1.4, room - 2.6)), r = r2(0.18 + grnd() * (p.chamber ? 0.5 : 0.28));
+    for (let k = 0; k < n; k++) { const q = sq[Math.floor(grnd() * sq.length)], top = roofAt(q[0], q[1]), hall = inHall(p, q[0], q[1]), room = top - FL[q[1]][q[0]], len = r2(0.6 + grnd() * Math.min(hall ? 3.6 : 1.4, room - 2.6)), r = r2(0.18 + grnd() * (hall ? 0.5 : 0.28));
         if (len < 0.5) continue;
-        parts.push({ s: 'cyl', p: [r2(gcx(q[0]) - ox + (grnd() - 0.5) * 2.2), r2(p.roof - len), r2(gcz(q[1]) - oz + (grnd() - 0.5) * 2.2)], r: 0.03, r2: r, h: len, seg: 6, key: 'cave_wall', tint: RTINT[Math.floor(grnd() * 4)], uv: 3.5 }); }
+        parts.push({ s: 'cyl', p: [r2(gcx(q[0]) - ox + (grnd() - 0.5) * 2.2), r2(top - len), r2(gcz(q[1]) - oz + (grnd() - 0.5) * 2.2)], r: 0.03, r2: r, h: len, seg: 6, key: 'cave_wall', tint: RTINT[Math.floor(grnd() * 4)], uv: 3.5 }); }
     ROOF.push({ k: 'arch', id: 'ugt:roof:' + p.bx + '_' + p.by, x: r2(ox), z: r2(oz), y: 0, rot: 0, parts }); });
 
 /* ── THE DOORS (the plan's `doors`; a wall door on the room's wall, the shaft a free spot) ── */
@@ -143,7 +154,7 @@ const SHAFT = { x: gx(DOORSQ.shaft[0] + 1), z: gcz(DOORSQ.shaft[1]), face: 180 }
 const props = [], feats = [], npc = [], taken = new Map();
 const blocked = new Set(); CL_EDGES.forEach(e => { blocked.add(e[0].join(',')); blocked.add(e[1].join(',')); });
 Object.keys(DOORSQ).forEach(k => { const [x, y] = DOORSQ[k]; for (let dy = -1; dy <= 2; dy++) for (let dx = -1; dx <= 2; dx++) blocked.add((x + dx) + ',' + (y + dy)); });
-const A = { C, N, W, H, LEVEL, r2, gx, gz, gcx, gcz, mkRnd, PLAN, B, PL, plotRec, TOP,
+const A = { C, N, W, H, LEVEL, r2, gx, gz, gcx, gcz, mkRnd, PLAN, B, PL, plotRec, roofAt, TOP,
     open: (x, y) => inB(x, y) && FL[y][x] != null && !isWater(x, y) && T[y][x] !== 'k', water: isWater, floor: (x, y) => inB(x, y) ? FL[y][x] : null, rock: (x, y) => inB(x, y) && FL[y][x] == null,
     level: (x, y) => inB(x, y) ? L[y][x] : null, landmark: (x, y) => inB(x, y) && T[y][x] === 'k', keep: (x, y) => blocked.has(x + ',' + y),
     /* a piece on an open square (blocking ones never on a ladder's squares or a door's, and never two on one square) */
