@@ -304,6 +304,19 @@ The pictures say the biggest problem is EMPTY and UNREADABLE places, not missing
 - **Thread 2 (Disaster City):** nothing learned, it was NOT photographed. Its first step is its own pictures (30 views, a few minutes).
 - **Thread 3 (Came A Lot's woods):** confirmed. The Forest and the Snowy Pines are flat lawn / flat snow with tree walls and a straight path.
   LEAVE the Looking-Glass Garden as it is (it is a model). Fix the hard square snow / grass edge at the Pines' room line.
+- **THREAD 3, WHAT THE FIRST TRY FOUND (11-20; a pilot on the Snowy Pines was built, looked at and THROWN AWAY, nothing merged):**
+  1. The Snowy Pines' room (`site_prebuilt_camelot_ow_pines`) is NOT the plan sheet's 96 x 17 strip. One World re-laid it: its 8 plots stand in a
+     chain ONE PLOT WIDE (2 x 7 box, in the order P04, P03, P05, P02 | P01, P06, P00, P07), each moved on its own. So a ridge, a trail or a gully
+     drawn across plot lines in `districts/N.js` is cut apart, and a side trail that reaches a plot side with no neighbour is filled back with
+     trees by the tool (bake-camelot.js step 6b). **Design every piece INSIDE ONE PLOT**, and print the baked room's heights before a browser run.
+  2. What makes it look poor is the room, not the dressing (N.js already had five dressing passes): a white strip 42 m wide lying in summer
+     green lawn. The edge land is `edges: { world: true }`: it is drawn from the One World plots next to it, which are grass. The fix that would
+     show most is SNOW AND SNOW PINES ON THE LAND BESIDE IT (the One World plot kinds, `docs/plans/one-world/`, a shared file: board note first)
+     and the room 3 plots wide (approved 11-20). Both are layout jobs, not district-file jobs.
+  3. Opening more squares (track to 4, two side trails, wider glades) made it WORSE: with one plot of width there are few pines left and it reads
+     as bare snow. Do not widen the ways before the room is wider.
+  4. Probes: an enemy near the spawn starts a fight and ruins every picture: run with `--flags=EW_HQ_NO_ENCOUNTER` (PLAYTEST_NOTES "A PROBE THAT
+     NEVER GETS READY"). `shoot.js` does not pass it yet.
 - **Thread 4 (the Village):** the houses against the castle wall are the tight spot. The castle's blurry wall picture is the castle thread's.
 - **Thread 6 (the Woods):** the trail district (the link plots) is the long straight road mondo does not want: bends, branches, side glades first.
   The Redwood Trail and the Ritual Ground are good.
