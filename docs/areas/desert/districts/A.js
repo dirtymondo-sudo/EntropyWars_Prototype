@@ -85,7 +85,7 @@
      A lamp on an outside wall needs `floor: true` (without it the hangar's beacons sat on its roof).
    NEEDS A MODEL: nothing is open. (The radar antenna does not turn: a moving effect, not a model.)
 
-   THE VERTICALITY PASS (11-19, docs/plans/world-polish/PLAN.md wave 1): WATCHERS' PEAK = an earth ramp (squares x 10..13 · y 50..51) up the mesa north of
+   THE VERTICALITY PASS (11-19, docs/plans/world-polish/WORLD_POLISH_PLAN.md wave 1): WATCHERS' PEAK = an earth ramp (squares x 10..13 · y 50..51) up the mesa north of
    the fence, its rim's south side (y 52 · x 14..20) an overlook over the wire with a telescope; a line of low dunes east of the camp. Everything
    inside the wire stays level on purpose (an airfield on a lake bed).
 
@@ -413,7 +413,7 @@ exports.ground = ctx => { bind(ctx);
     native('men in black', 15, 85, 0); native('mad scientist', 37, 79, 90);
     native('men in black', 3, 57, 0, sayOf(O_GATE, 'men in black')); native('marksman', 7, 52, 270, sayOf(O_GATE, 'marksman')); native('men in black', 21, 73, 270, sayOf(O_LINE, 'men in black'));
     native('spy', 30, 62, 180); native('bligblog', 38, 82, 0); native('grey', 41, 74, 200);
-    /* ════ THE VERTICALITY PASS (2026-11-19, docs/plans/world-polish/PLAN.md wave 1; the rules: areas-complexes.md "THE DESERT, GIZA", THE
+    /* ════ THE VERTICALITY PASS (2026-11-19, docs/plans/world-polish/WORLD_POLISH_PLAN.md wave 1; the rules: areas-complexes.md "THE DESERT, GIZA", THE
        VERTICALITY PASS). The base is an airfield on a dry lake bed: the runway, the aprons, the lake bed and everything inside the wire stay level
        ON PURPOSE. The height is outside the wire, where the watchers are. ════ */
     /* WATCHERS' PEAK: the mesa north of the fence (the tool's rock: a 5.25 m shelf, a one-square rim round its cap) is climbed now. An earth ramp

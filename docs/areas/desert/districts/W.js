@@ -34,7 +34,7 @@
    - THE TRAIL IN (P08-04): the way in from the Highway's Exit 3 (the county road and the overpass are the tool's).
    - People: sheriff, two cowboys (one says the old flight line's cowboy line), a skeleton on Boot Hill.
 
-   THE VERTICALITY PASS (11-19, docs/plans/world-polish/PLAN.md wave 1; the block at the end of ground()): BOOT HILL is 4.6 m; THE GULCH (a dry
+   THE VERTICALITY PASS (11-19, docs/plans/world-polish/WORLD_POLISH_PLAN.md wave 1; the block at the end of ground()): BOOT HILL is 4.6 m; THE GULCH (a dry
    wash across the south range, -1.75, squares x 57..78 · y 38..41, an earth ramp at each end, the road south over it on a plank bridge);
    THE RIDGE TRAIL (an earth ramp on squares x 76..79 · y 44..45 up to the south-east mesa's shelf, the rim path x 80 · y 41..47, y 41 · x 80..84,
    the added square 84,40, x 85 · y 38..40, to THE OUTLOOK at 85..86,38). Main Street, the fronts and the three road seams did not move.
@@ -437,7 +437,7 @@ exports.ground = ctx => { bind(ctx);
     dec('instrument_guitar_lying', 65, 43);
     dec('cattle_skull', 76, 43); dec('cattle_skull', 80, 39); dec('psx_fish_skeleton_mp_1', 75, 47, { y: 0.02 }); P('dead_snag', 74, 40, {}); P('dead_snag', 79, 42, {});
     dress();
-    /* ════ THE VERTICALITY PASS (2026-11-19, docs/plans/world-polish/PLAN.md wave 1; mondo on Giza's pilot: "looks decent, continue"). The town
+    /* ════ THE VERTICALITY PASS (2026-11-19, docs/plans/world-polish/WORLD_POLISH_PLAN.md wave 1; mondo on Giza's pilot: "looks decent, continue"). The town
        measured 0.1 m of relief a plot. Main Street, the fronts and the three road seams keep their level (a street you fight and skate on); the
        height goes on the open ground round the town. What lay there rides the new ground (areas-complexes.md "THE DESERT, GIZA", THE VERTICALITY PASS). ════ */
     /* 1. BOOT HILL is a hill now: 4.6 m (its row above). */

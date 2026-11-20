@@ -1,6 +1,6 @@
 # THE WORLD AUDIT, the numbers (2026-11-19)
 
-Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What each column means is in that file's header; what to do about it is in `PLAN.md`. Every plot: `plots.csv`. The picture: `need-map.svg`.
+Written by `node docs/plans/world-polish/audit.js`; do not edit by hand. What each column means is in that file's header; what to do about it is in `WORLD_POLISH_PLAN.md`. Every plot: `plots.csv`. The picture: `need-map.svg`.
 
 **Scores:** 0 good to 3 bad. S = space (does an 8 x 8 board fit), V = height (is there any), A = dressing (does anything stand there). NEED = S + V + A, 0 to 9.
 

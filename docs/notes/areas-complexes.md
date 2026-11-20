@@ -5816,17 +5816,16 @@ Pass 1 of 5 (exteriors, interiors, dressing, atmosphere, polish). Only `docs/are
 - **NEEDS A MODEL:** ~~anvil, forge, trough, hay bale, mine cart, pickaxe, wanted poster, tumbleweed, gallows, prospector's tent, telegraph
   pole~~ all placed 11-16 ("THE MODEL PASS" below).
 
-## THE DESERT, AREA 51 + THE CIRCUS — THE VERTICALITY PASS (2026-11-19, the owner's world audit thread; docs/plans/world-polish/PLAN.md wave 1)
+## THE DESERT, AREA 51 + THE CIRCUS — THE VERTICALITY PASS (2026-11-19, the owner's world audit thread; docs/plans/world-polish/WORLD_POLISH_PLAN.md wave 1)
 - **AREA 51** (`districts/A.js`, the block at the end of `ground()`; `node bake-desert.js && node bake-desert-insides.js`, `node bake-map.js site_prebuilt_area51_desert`):
   WATCHERS' PEAK = an earth ramp (squares x 10..13 · y 50..51) up the mesa north of the fence to its 5.25 m shelf; the rim's south side (y 52 · x 14..20) is an
   overlook straight over the wire at Hangar 18, with a telescope and chairs. A line of low dunes (a `ridge`, 2.4 m) east of the watchers' camp, short of the
   east road's seam. **Everything inside the wire stays level on purpose**: an airfield on a dry lake bed (the runway, the aprons, the lake bed, the yards).
   Numbers: The Fence 0.2 -> 2.3 m, The Fence, east 0.1 -> 2.3. Seen through probe-fast.js, 4 views, no page error.
-- **THE CIRCUS was looked at and LEFT AS IT IS.** Nine plots, 46 pieces a plot, and nearly all of it drawn at a fixed height (the Big Top, the stalls, the rides:
-  `arch` rows) on a midway ring of roads with three seams. There is no free ground bigger than 4 x 8 squares, so any rise would bury a drawn piece or tilt
-  a midway. A fairground is level. If it is to get height it needs a rebuild of its drawn pieces to ride the ground (a tool-row job), not a district pass.
+- **THE CIRCUS was looked at and LEFT AS IT IS, on purpose:** a fairground is level (mondo 11-20: the pass is "not meant to just raise things for the
+  sake of raising them"). Nine full plots on a ring of midway roads with three seams; nothing there asks for a climb or a view.
 
-## THE DESERT, WESTERN TOWN — THE VERTICALITY PASS (2026-11-19, the owner's world audit thread; docs/plans/world-polish/PLAN.md wave 1, after Giza's pilot)
+## THE DESERT, WESTERN TOWN — THE VERTICALITY PASS (2026-11-19, the owner's world audit thread; docs/plans/world-polish/WORLD_POLISH_PLAN.md wave 1, after Giza's pilot)
 File `districts/W.js` only (the block at the end of `ground()` + four moved props + Boot Hill's own row); `node bake-desert.js && node bake-desert-insides.js`,
 then `node bake-map.js site_prebuilt_area51_ow_town`. The rules it follows are Giza's ("THE DESERT, GIZA", THE VERTICALITY PASS).
 - **BOOT HILL** is 4.6 m on 14 (was 2.6 on 13); the graves, the rail and the gate ride it.
@@ -8298,7 +8297,7 @@ too short ... you didn't even get the shape right". So:
 - **OPEN:** the model list search for the dressing (rule 0), the inside + the Turning Tomb door (pass 2), the Dig's ramps (pass 3). The tool's
   scatter and the pine mountains on the east and south edges are the tool row's.
 
-**THE VERTICALITY PASS (2026-11-19, the owner's world audit thread; the pilot of `docs/plans/world-polish/PLAN.md` wave 1, on mondo's "go").**
+**THE VERTICALITY PASS (2026-11-19, the owner's world audit thread; the pilot of `docs/plans/world-polish/WORLD_POLISH_PLAN.md` wave 1, on mondo's "go").**
 File `districts/G.js` only (the block at the end of `ground()`); `node bake-desert.js && node bake-desert-insides.js`, then `node bake-map.js site_prebuilt_area51_ow_giza`.
 - **What was built:** the Sand Sea as real dunes (three `ridge` crests + two `hill` rows, to 5 m); THE CANYON STAIR (an earth `ramp` up the dead canyon to a
   rock bridge at the mesa's 5.25 m shelf, a path along the shelf's one-square rim to THE LOOKOUT over the Dig, a chest and an idol left on it); THE DEEP CUT
@@ -8309,9 +8308,9 @@ File `districts/G.js` only (the block at the end of `ground()`); `node bake-dese
 - **What any flat district's pass can copy:**
   1. **A PROP STANDS ON THE GROUND UNDER IT** (three-renderer.js `_hqCaveTop`: the walker's feet at its x, z; its `y` is added on top). Raise the ground and
      everything on it rides up; nothing has to be re-placed. A long model (a wagon, a skeleton) does not tilt: keep crests off them.
-  2. **AN `arch` ROW WITH `y: 0` DOES NOT.** Giza's pyramids, Sphinx floor, hall, kerb and tunnel mouth are parts lists at a fixed height, and its doors sit
-     at their pads. So a monument district keeps its monuments' ground and gets its height BETWEEN them. A district built of props and `texbuilding`
-     rows (Western Town, the Circus) is freer.
+  2. **AN `arch` ROW IS DRAWN AT ITS OWN `y`** (one value a row; doors and props follow the ground by themselves). Giza's monuments were left on
+     their ground as a DESIGN call, not because they cannot move (mondo 11-20: "It's one z value" · "A pyramid is already raised anyway ... why do you
+     want to make it taller?"). A raised piece needs its row's `y` set to the new ground and nothing else.
   3. `ridge` and `hill` ADD to the ground; a `plateau` takes the higher of itself and the ground; a `sink` plateau cuts down; a `ramp` takes the higher,
      so a ramp inside a sink is the way out of it. Rows are read in order: cut first, then the ramps.
   4. **How steep a dune may be:** a ridge's steepest point is about 1.5 x h / (w / 2); keep it under 0.85 (the walker stops at 1). 4.4 m on a 13 m wide
