@@ -12718,14 +12718,23 @@ cross the seam". Then: "got pulled by a ufo and for the battle the map was still
   ball (commit f10853d) was a mushroom: the board (84 m, a whole face) is wider than the Moon (R 53.5 m). Probe handles: `hq.dev.plBend`,
   `plFy`, `plBattle`, `plPick`, `plCanvas`; `EWCine.enter({ script: true, force: true })` + `EWCine.pose` for a far look in a fight.
   SEEN (UFO beam-down on the Moon, Barbarella's ship): the battle camera on the curving Moon, the whole Moon round from far off with the
-  fight on top. NOT YET: one straight blue streak at the board's height (a battle piece off the nets); the fight's sky is the battle's
-  green, not the walk's black with stars; a unit standing on a square over a cut seam of the flat net is drawn where that face really is.
+  fight on top. Open: a unit standing on a square over a cut seam of the flat net is drawn where that face really is.
+- **5. THE FIGHT'S SKY** (`_ewPlBattleSpace`, mondo: "okay fix those"). The walk's space pieces (the bodies' group `ew_space_bodies`: the
+  Earth, the Sun, the comet, the station, the other balls' rings; the stars `ew_space_stars`; the flying-only pieces: the engines, the
+  exhaust ribbons, the burner rings, the sun's glare + ghosts, the speed streaks) go into the fight with the room, usually as the PARKED
+  ROOM's copies (`_hqParkClone`), and nothing moved them there. They are tagged `userData.ewSpace` = 'bodies' / 'stars' / 'fly' at their
+  build (the tag survives the copy) and collected at the fight's build (`_hqBuildRoomInBattle`, `_ewPl.bSpace`). Every fight frame: the
+  bodies take the fight's turn (the walk anchor's matrix written in the battle's frame), the stars ride round the battle camera turned the
+  same way (scaled inside the camera's far plane), the flying-only pieces are hidden, the background is black and the fog is off (restored
+  when a fight in another room starts). THE STREAK was the zodiac wheel's rim (`_zwRimMat`, colour 8090c8, the faint ring under the
+  fight's constellations): a sky's ground hides it, against black space it drew a straight line through the fight, so its rim is hidden in a
+  fight on a round world (the constellations stay). SEEN: black space, the stars and the Milky Way round the Moon, no line.
 - **DRIVEN** (playtest_city.js `"drive"`, llvmpipe, the Moon): the board over the half-turn cut seam (face (0,1) north -> the top cap):
   heading 3.14 -> 0 with the eye, rolled on into the new face, no bounce; over a joined seam a third of the way along (face 1 -> 2): heading
   and eye turned 34 degrees together, rolled on, the dish, the container and the sky did not move on screen. The seam's dark crack and lip
   (seen before the stitch, same spot) gone after it, ahead, over and looking back. Probe tip: the room starts aboard; `hq.dev.ship({ x, y,
   z })` near a beacon's `ball` + `up` x 7, then `hq.disembark()`; `skate` / `skateIssued` / `disembark` are on `ThreeRenderer.hq`, not `.dev`.
-- **NOT DONE / NOT CHECKED:** the fight's leftovers (above); a fight on Mars, Saturn or the Singularity; the sheet's grain still turns at a cut seam (a directional pattern meets itself at 90 / 180
+- **NOT DONE / NOT CHECKED:** a fight on Mars, Saturn or the Singularity; the sheet's grain still turns at a cut seam (a directional pattern meets itself at 90 / 180
   degrees); where a cliff crossed a seam on Mars (5 m) the mean leaves a short steep ramp; the shadows' fix was not compared side by side
   (the stitched heights removed the seam's line in the same run); the classic renderer was not run.
 

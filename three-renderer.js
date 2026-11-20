@@ -91289,6 +91289,7 @@ const ThreeRenderer = (function () {
             if (tt) { var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tt, transparent: true, depthWrite: false })); spr.scale.set(22 * U, 2.75 * U, 1); spr.position.y = 11 * U; gr.add(spr); marks.push({ b: b, spr: spr }); }   // (2026-11-20: 22 m, was 40: from the pad it filled the screen)
             G.add(gr); rings.push(ring);
         });
+        SG.userData.ewSpace = 'bodies'; ST.userData.ewSpace = 'stars'; if (dust) dust.userData.ewSpace = 'fly';   // THE FIGHT'S SKY: the tags survive the parked room's copies
         if (H) { H._spaceRings = rings; H._spaceBodies = SG; H._spaceWorlds = worlds; H._spaceMarks = marks; H._spaceStars = ST; H._spaceRocks = rocks; H._spaceDust = { mesh: dust, base: dustBase, n: dustN }; }
     }
     /* ══ THE SPECTACLE (2026-11-20, mondo: "Give it more spectacle, more juice. This needs to be the moment the player realizes 'Holy shit, im
@@ -91330,7 +91331,7 @@ const ThreeRenderer = (function () {
         };
         /* ── THE ENGINES ── */
         var R = _hqSeaRules().ship || {}, EN = R.engines || [[2.15, 0.95, -3.7], [-2.15, 0.95, -3.7]];
-        var eng = new THREE.Group(); eng.name = 'ew_ship_engines'; eng.visible = false; eng.rotation.order = 'YXZ'; G.add(eng);
+        var eng = new THREE.Group(); eng.name = 'ew_ship_engines'; eng.userData.ewSpace = 'fly'; eng.visible = false; eng.rotation.order = 'YXZ'; G.add(eng);
         var flameT = tailTex(70, 170, 255, true);
         J.eng = { grp: eng, nz: [], k: 0, burnK: 0 };
         EN.forEach(function (e) {
@@ -91348,13 +91349,13 @@ const ThreeRenderer = (function () {
             g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 6), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(N * 6), 3));
             for (var i = 0; i < N - 1; i++) { var a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } g.setIndex(idx);
             var m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, blending: ADD, side: THREE.DoubleSide, fog: false }));
-            m.frustumCulled = false; m.visible = false; G.add(m); z.rib = m;
+            m.frustumCulled = false; m.visible = false; m.userData.ewSpace = 'fly'; G.add(m); z.rib = m;
         });
         /* the burner's shockwave: two rings off the hull */
         var ringT = K.cv(256, 256, function (c, w) { var m = w / 2, gr = c.createRadialGradient(m, m, m * 0.5, m, m, m); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.62, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.74, 'rgba(255,255,255,0.3)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, w); });
         J.rings = [0x9fe0ff, 0xffffff, 0xc8a070].map(function (col) {
             var m = new THREE.Mesh(new THREE.PlaneGeometry(U, U), new THREE.MeshBasicMaterial({ map: ringT, color: col, transparent: true, opacity: 0, depthWrite: false, blending: ADD, side: THREE.DoubleSide, fog: false }));
-            m.geometry._ew_wuvOwner = true; m.visible = false; m.frustumCulled = false; G.add(m); return { m: m, t: -1 };
+            m.geometry._ew_wuvOwner = true; m.visible = false; m.frustumCulled = false; m.userData.ewSpace = 'fly'; G.add(m); return { m: m, t: -1 };
         });
         /* ── THE MILKY WAY: soft bands laid along the stars' own band, facing the eye (in the stars' group: they ride with the eye and turn with the worlds) ── */
         var mwT = K.cv(512, 128, function (c, w, h) {
@@ -91387,9 +91388,9 @@ const ThreeRenderer = (function () {
         var ghostT = K.cv(128, 128, function (c, w) { var m = w / 2; c.beginPath(); for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3; c.lineTo(m + Math.cos(a) * m * 0.92, m + Math.sin(a) * m * 0.92); } c.closePath();
             var gr = c.createRadialGradient(m, m, 0, m, m, m); gr.addColorStop(0, 'rgba(255,255,255,0.25)'); gr.addColorStop(0.8, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0.1)'); c.fillStyle = gr; c.fill(); });
         J.flare = { glare: spr(glareT, 0xfff2dc, 0), ghosts: [] };
-        J.flare.glare.material.depthTest = false; J.flare.glare.renderOrder = 60; J.flare.glare.visible = false; G.add(J.flare.glare);
+        J.flare.glare.material.depthTest = false; J.flare.glare.renderOrder = 60; J.flare.glare.visible = false; J.flare.glare.userData.ewSpace = 'fly'; G.add(J.flare.glare);
         [[-0.25, 0.05, 0x7fd0ff], [-0.55, 0.09, 0xa0ffb0], [-0.85, 0.04, 0xffb070], [-1.25, 0.14, 0x8f9fff], [0.35, 0.03, 0xffe0a0], [-1.7, 0.06, 0xff90c0]].forEach(function (gd) {
-            var s2 = spr(gd[1] > 0.05 ? ghostT : soft, gd[2], 0); s2.material.depthTest = false; s2.renderOrder = 61; s2.visible = false; G.add(s2); J.flare.ghosts.push({ s: s2, f: gd[0], size: gd[1] });
+            var s2 = spr(gd[1] > 0.05 ? ghostT : soft, gd[2], 0); s2.material.depthTest = false; s2.renderOrder = 61; s2.visible = false; s2.userData.ewSpace = 'fly'; G.add(s2); J.flare.ghosts.push({ s: s2, f: gd[0], size: gd[1] });
         });
         /* ── THE COMET: a head, its coma, a pale dust tail and a straight blue ion tail, both away from the Sun ── */
         var cm = new THREE.Group(); cm.name = 'ew_comet'; SG.add(cm);
@@ -92139,14 +92140,50 @@ const ThreeRenderer = (function () {
         var d0 = res[0] - C.A.x, d1 = res[1] - C.A.y, d2 = res[2] - C.A.z, M = C.M;
         return [C.P.x + d0 + M[0].x * d0 + M[0].y * d1 + M[0].z * d2, C.P.y + d1 + M[1].x * d0 + M[1].y * d1 + M[1].z * d2, C.P.z + d2 + M[2].x * d0 + M[2].y * d1 + M[2].z * d2];
     }
-    var _ewPlQa = null, _ewPlQb = null, _ewPlMx = null;
+    var _ewPlQa = null, _ewPlQb = null, _ewPlMx = null, _ewPlM4a = null, _ewPlM4b = null;
+    /* THE FIGHT'S SKY (2026-11-20, mondo: "okay fix those"): the walk's space pieces (the stars, the Earth, the Sun, the comet, the station,
+       the other worlds' balls and rings) hang in the room's terrain group and go into the fight with it, but nothing moved them there: they
+       stood frozen where the walk last put them, under the battle's scale (a long straight streak across the board's height, seen 11-20).
+       Now, every fight frame: the bodies' group takes the fight's turn exactly as the walk's anchor gives it (_hqSpaceBodiesTick's matrix,
+       written in the battle's frame), the stars ride round the battle camera turned the same way, what only flying draws (the engines,
+       the exhaust, the burner rings, the sun's glare and ghosts, the speed streaks) is hidden, and space is black with no air (the
+       battle's green haze was its own sky's). Off with the rest: window.EW_NO_ROUND. */
+    function _ewPlBattleSpace(T, k, fy, A, P, M, cam) {
+        var BS = _ewPl.bSpace, SG = BS && BS.SG, G = SG && SG.parent; if (!G) return;   // (the fight's own copies, collected at its build: _hqBuildRoomInBattle)
+        var r = G, dep = 0; while (r.parent && dep < 16) { r = r.parent; dep++; } if (r !== scene) return;
+        var U = _hqUnits(), s = k / U, inv = _ewPlM4a || (_ewPlM4a = new THREE.Matrix4()), W = _ewPlM4b || (_ewPlM4b = new THREE.Matrix4());
+        G.updateWorldMatrix(true, false); inv.copy(G.matrixWorld).invert();
+        var t0 = [-T.x0 * k - A[0], fy - A[1], -T.z0 * k - A[2]];
+        W.set(s * M[0][0], s * M[0][1], s * M[0][2], P[0] + M[0][0] * t0[0] + M[0][1] * t0[1] + M[0][2] * t0[2],
+              s * M[1][0], s * M[1][1], s * M[1][2], P[1] + M[1][0] * t0[0] + M[1][1] * t0[1] + M[1][2] * t0[2],
+              s * M[2][0], s * M[2][1], s * M[2][2], P[2] + M[2][0] * t0[0] + M[2][1] * t0[1] + M[2][2] * t0[2], 0, 0, 0, 1);
+        SG.matrix.multiplyMatrices(inv, W); SG.updateMatrixWorld(true);
+        var ST = BS.ST;
+        if (ST && cam) {
+            var ss = Math.min(s, (cam.far || 1e5) * 0.85 / (900 * U)), cp = cam.position;
+            W.set(ss * M[0][0], ss * M[0][1], ss * M[0][2], cp.x, ss * M[1][0], ss * M[1][1], ss * M[1][2], cp.y, ss * M[2][0], ss * M[2][1], ss * M[2][2], cp.z, 0, 0, 0, 1);
+            ST.matrix.multiplyMatrices(inv, W); ST.updateMatrixWorld(true); ST.visible = true;
+        }
+        for (var fi = 0; fi < BS.fly.length; fi++) if (BS.fly[fi].visible) BS.fly[fi].visible = false;
+        if (!(scene.background && scene.background._ewSpace)) { _ewPl.bgWas = scene.background; scene.background = new THREE.Color(0x000003); scene.background._ewSpace = true; }
+        if (scene.fog) { _ewPl.fogWas = scene.fog; scene.fog = null; }
+        /* the zodiac wheel's rim (a faint ring under the constellations): a sky's ground hides it; against black space, seen nearly
+           edge-on, it drew a long straight line through the fight (seen 11-20). The constellations stay. */
+        if (typeof _zwRimMat !== 'undefined' && _zwRimMat && _zwRimMat.visible) { _zwRimMat.visible = false; _ewPl.rimHid = true; }
+    }
+    function _ewPlBattleSpaceOff() {
+        if (typeof scene === 'undefined' || !scene) return;
+        if (scene.background && scene.background._ewSpace) { scene.background = _ewPl.bgWas || null; _ewPl.bgWas = null; }
+        if (_ewPl.fogWas && !scene.fog) { scene.fog = _ewPl.fogWas; } _ewPl.fogWas = null;
+        if (_ewPl.rimHid && typeof _zwRimMat !== 'undefined' && _zwRimMat) { _zwRimMat.visible = true; _ewPl.rimHid = false; }
+    }
     function _ewPlBattleFrame() {
         if (_hq) return;
         var C = _EW_PLU, u = _ewPl.u, R = null, sv = function (o, x, y, z, w) { o.x = x; o.y = y; o.z = z; o.w = w; };
         try { R = _hqBattleRoom(); } catch (e) { R = null; }
         var sp = R && R.room && R.room.space, L = (sp && sp.round && sp.round.length && R.T && !(typeof window !== 'undefined' && window.EW_NO_ROUND)) ? sp.round : null;
         var was = _ewPl.battleOn; _ewPl.battleOn = !!L;
-        if (!L) { if (was || C.on.x) { C.on.x = 0; C.on.y = 0; if (u) u.F.value.set(0, 0, 0, 0); } _ewPl.bQ = null; return; }
+        if (!L) { if (was || C.on.x) { C.on.x = 0; C.on.y = 0; if (u) u.F.value.set(0, 0, 0, 0); } if (was) _ewPlBattleSpaceOff(); _ewPl.bQ = null; return; }
         _ewPlPickPatch();
         var T = R.T, ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) || BASE_TILE, k = ts / T.C, fy = _hqBattleRoomFloorY(R, ts);
         var at = function (x, y, z) { return [(x - T.x0) * k, fy + y * k, (z - T.z0) * k]; };
@@ -92187,6 +92224,7 @@ const ThreeRenderer = (function () {
             u.M0.value.set(M[0][0], M[0][1], M[0][2], 0); u.M1.value.set(M[1][0], M[1][1], M[1][2], 0); u.M2.value.set(M[2][0], M[2][1], M[2][2], 0);
         }
         _ewPl.bFy = fy;
+        try { _ewPlBattleSpace(T, k, fy, A, P, M, cam); } catch (e) { if (!_ewPl.bsWarn) { _ewPl.bsWarn = true; console.warn('[HQ] the fight\'s sky', e); } }
     }
     /* the cursor aimed through the bend: the screen point whose flat ground, bent, lands under the cursor */
     function _ewPlScreenFix(cx, cy, canvasEl) {
@@ -99734,8 +99772,10 @@ const ThreeRenderer = (function () {
             heldOut.length = 0;
         }
         var roundIn = !!(room.space && room.space.round && room.space.round.length);   // THE FIGHT ON A BALL: a bent piece is drawn far from its flat box
+        _ewPl.bSpace = roundIn ? { SG: null, ST: null, fly: [] } : null;   // THE FIGHT'S SKY: the space pieces this fight draws (the walk's own, or the parked room's copies)
         g.traverse(function (o) {
             if (roundIn && o.frustumCulled) o.frustumCulled = false;
+            if (roundIn && o.userData && o.userData.ewSpace) { var es = o.userData.ewSpace; if (es === 'bodies') _ewPl.bSpace.SG = o; else if (es === 'stars') _ewPl.bSpace.ST = o; else if (es === 'fly') _ewPl.bSpace.fly.push(o); }
             if (o.isMesh && !trueGround) { o.castShadow = false; o.receiveShadow = false; }
             if (!o.material) return;
             var ms = Array.isArray(o.material) ? o.material : [o.material];
@@ -104069,7 +104109,7 @@ const ThreeRenderer = (function () {
                 u.p[0] = V.x + f[0] * d; u.p[1] = V.y + 30; u.p[2] = V.z + f[2] * d; u.st = act === 'near' ? 'hunt' : 'lock'; u.t = 0; S.cool = 0; try { if (window.ewShipCue) window.ewShipCue('alarm'); } catch (e) {} return u.st; },
             hqCam: function () { return _hq ? _hq.camera : null; },   // the walk's camera (a probe reads its far plane and where it stands, 2026-11-17)
             /* THE ROUND WORLDS, as a probe reads them (2026-11-17) */
-            plBend: function (x, y, z) { return _ewPlBendJS(x, y, z); }, plFy: function () { return _ewPl.bFy; }, plBattle: function () { return !!_ewPl.battleOn; }, plPick: function (cx, cy) { var h = ThreeCamera.screenToTile(cx, cy, canvas, terrainGroup, objectGroup); return h ? [h.tileX, h.tileY] : null; }, plCanvas: function () { return canvas; },   // THE FIGHT ON A BALL, for a probe
+            plBend: function (x, y, z) { return _ewPlBendJS(x, y, z); }, plFy: function () { return _ewPl.bFy; }, plBattle: function () { return !!_ewPl.battleOn; }, plSpace: function () { var B = _ewPl.bSpace, ch = [], r = B && B.SG; while (r && ch.length < 20) { ch.push((r.name || r.type) + (r === scene ? '=SCENE' : '')); r = r.parent; } return B ? { SG: !!B.SG, ST: !!B.ST, fly: B.fly.length, chain: ch } : null; }, plPick: function (cx, cy) { var h = ThreeCamera.screenToTile(cx, cy, canvas, terrainGroup, objectGroup); return h ? [h.tileX, h.tileY] : null; }, plCanvas: function () { return canvas; },   // THE FIGHT ON A BALL, for a probe
             round: function () { return { live: _ewPl.live, nodes: !!_ewPl.u, ctx: !!_ewPl.ctx, gpu: _ewGpu, anchor: _ewPl.anchor, face: _hq && _hq._plFace, round: _ewPlRound(), U: JSON.parse(JSON.stringify(_EW_PLU)) }; },
             rideRaw: function () { return _hq ? { R: _hq.ride, pl: _hq.player, cam: _hq.cam, shell: _hq.room.shell, keys: _hq.keys } : null; },   // a probe's handle on the live rider (2026-11-20: the grinds, the walls)
             teleport: function (o) {
