@@ -428,8 +428,8 @@ they are measurements, not the job.
   Ring's beamline on two levels. A bridge over a pit in Command. A mezzanine in Research. Corridors turn and branch; side rooms and service
   ways are the thin trails. Fill the halls or make them smaller.
 
-### Thread 7: THE UNDERGROUND WALKS (BUILDING 11-20: the Long Tunnel's labyrinth room is built, `site_prebuilt_hollow_earth_ug_long` by `bake-underground.js long-tunnel`, and waits mondo's look; the West Tunnel is next; notes areas-complexes.md "THE UNDERGROUND, ONE ROOM A DISTRICT")
-- **THE TUNNEL-WAY (11-20): THE PILOT IS BUILT** from `plans/ug-tunnel-way.js`: one 5 x 5 labyrinth room under the old id `site_prebuilt_hollow_earth_ow_tunnelway` (`node bake-ug-tunnelway.js`, design `docs/areas/underground/tunnel-way/room.js`), the whole skeleton + the north third dressed (the Ossuary Gate, the Bone Passage, the Nest, the Shaft, the Old Camp, the squeeze); waits mondo's look. Notes: areas-complexes.md "THE UNDERGROUND, THE TUNNEL-WAY".
+### Thread 7: THE UNDERGROUND WALKS (BUILDING 11-20: the Long Tunnel's labyrinth room is built, `site_prebuilt_hollow_earth_ug_long` by `bake-underground.js long-tunnel`, and mondo OK'd it 11-20 ("okay looks good contineu"); THE WEST TUNNEL is built too, `site_prebuilt_hollow_earth_ug_west` by `bake-underground.js west-tunnel`, the Estate's well in its Well Bottom; notes areas-complexes.md "THE UNDERGROUND, ONE ROOM A DISTRICT")
+- **THE TUNNEL-WAY (11-20): BUILT** from `plans/ug-tunnel-way.js`: one 5 x 5 labyrinth room under the old id `site_prebuilt_hollow_earth_ow_tunnelway` (`node bake-ug-tunnelway.js`, design `docs/areas/underground/tunnel-way/room.js`), the north third dressed as the pilot, then (mondo: "okay continue") the middle and south thirds: the Great Chamber and its stalagmite, the Cells Tunnel, the Larder, the bone pits, the nests, the Black Water, the Stretcher Camp, the secret, the Way Down; ten lights shared over the room. The whole district stands; waits mondo's look. Notes: areas-complexes.md "THE UNDERGROUND, THE TUNNEL-WAY".
 - **Zone:** the walks under the map. They belong to two zones' tools, which is why this thread runs before threads 9 and 10.
 - **Rooms:** `site_prebuilt_hollow_earth_ow_long` (10), `_ow_tunnelway` (34), `_ow_west` (18), Agartha's tunnel in
   `site_prebuilt_hollow_earth_ow_agartha`; the under-city walks (district U, 35 plots) of `site_prebuilt_downtown_underworld`.
@@ -451,7 +451,7 @@ they are measurements, not the job.
   downhill and always in sight. Agartha on three shelves joined by stairs and crystal bridges. Winding ways along the ledges, thin trails
   into side caves.
 
-### Thread 10: THE SEWERS (BUILDING 11-20 from the approved `plans/ug-sewers.js`: a NEW room `site_prebuilt_sewers_labyrinth` by `bake-labyrinth.js` + `docs/areas/sewers/districts/room.js`; THE PILOT, the Culverts, is BUILT and waits mondo's look; the old room stays live until then; notes areas-complexes.md "THE SEWERS' LABYRINTH")
+### Thread 10: THE SEWERS (BUILT 11-20 from the approved `plans/ug-sewers.js`: the labyrinth IS `site_prebuilt_downtown_underworld` now, `bake-labyrinth.js` + `docs/areas/sewers/districts/room.js`; the Culverts pilot, then on mondo's "okay continue" the switch and the other four districts; waits mondo's look; notes areas-complexes.md "THE SEWERS' LABYRINTH")
 - **Zone:** The Sewers. Districts: The Sewers (W), The Running Tunnels (T), The Holding Cells (H), The Old Workings (O), The Radioactive Drain (R).
 - **Rooms:** `site_prebuilt_downtown_underworld` (65 plots, with thread 7's walks).
 - **It is NOT:** Disaster City above it. Not the Catacombs.

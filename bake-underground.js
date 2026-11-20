@@ -114,6 +114,7 @@ const spaces = [];
       spaces.push({ k: 'space', x: r2(gx(x) + w * C / 2), z: r2(gz(y) + h * C / 2), w: w * C, d: h * C }); } }
 
 /* ── THE DESIGN dresses the room ── */
+(PLAN.doors || []).forEach((d, i) => { const o = DES.doors[i] || DES.doors[d[2]]; if (o && o.link) taken.add(d[0] + ',' + d[1]); });   /* a well's square stays clear */
 if (typeof DES.dress === 'function') DES.dress(ctx);
 if (typeof DES.people === 'function') DES.people(ctx);
 
@@ -127,7 +128,8 @@ const roofY = []; for (let y = 0; y < H; y++) { roofY.push(new Array(W).fill(nul
     roofY[y][x] = r2(v); } }
 (DES.roofLift || []).forEach(q => { for (let y = q[1]; y <= q[3]; y++) for (let x = q[0]; x <= q[2]; x++) if (roofY[y] && roofY[y][x] != null) roofY[y][x] = r2(roofY[y][x] + q[4]); });
 const TOPY = Math.max.apply(null, [].concat(...roofY).filter(v => v != null)), SH = r2(TOPY + 6);
-const ROCK = DES.rockTints || [0x8a8478, 0x7e786c, 0x948c7e, 0x746e64], grnd = mkRnd(4242 + (DES.seed || 0));
+const TX = Object.assign({ floor: 'hz_stone_02', wall: 'hz_stone_01', dado: 'hz_stone_02', trim: 'hz_stone_01', ceiling: 'hz_stone_01', cliff: 'hz_stone_10', path: 'hz_floor_03', roof: 'hz_stone_01', roofTint: 0x8a8680, drip: 'hz_stone_02' }, DES.tex || {});   /* THE SHEETS: the horror pack's rock, as the new Cavern's (mondo 11-20: "don't use those calm textures"; the plain keys cave_floor / cave_wall / rocks_5 / dirt_2 wear the calm sheets) */
+const ROCK = DES.rockTints || [0xd6d2ca, 0xe4e0d8, 0xf0ece4, 0xffffff], grnd = mkRnd(4242 + (DES.seed || 0));
 const ROOFS = [];
 for (let by = 0; by < H / N; by++) for (let bx = 0; bx < W / N; bx++) {
     const ox = gx(bx * N) + N * C / 2, oz = gz(by * N) + N * C / 2, parts = [], used = new Set();
@@ -135,25 +137,30 @@ for (let by = 0; by < H / N; by++) for (let bx = 0; bx < W / N; bx++) {
         let w = 1; while (lx + w < N && roofY[y][x + w] === v && !used.has((x + w) + ',' + y)) w++;
         let h = 1; rows: while (ly + h < N) { for (let i = 0; i < w; i++) if (roofY[y + h][x + i] !== v || used.has((x + i) + ',' + (y + h))) break rows; h++; }
         for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used.add((x + i) + ',' + (y + j));
-        parts.push({ s: 'box', p: [r2(gx(x) + w * C / 2 - ox), v, r2(gz(y) + h * C / 2 - oz)], size: [w * C, r2(SH - v + 0.5), h * C], top: false, under: true, key: 'cave_wall', tint: 0x9a9488, uv: 7 }); }
+        parts.push({ s: 'box', p: [r2(gx(x) + w * C / 2 - ox), v, r2(gz(y) + h * C / 2 - oz)], size: [w * C, r2(SH - v + 0.5), h * C], top: false, under: true, key: TX.roof, tint: TX.roofTint, uv: 7 }); }
     if (!parts.length) continue;
     /* stalactites: tapered `cyl` parts hung point down from the roof over the floor (never over a ladder) */
     const sq = []; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const x = bx * N + lx, y = by * N + ly; if (room(x, y) && !ladderSq.has(x + ',' + y)) sq.push([x, y]); }
     const nst = Math.min(DES.stalactites != null ? DES.stalactites : 14, Math.floor(sq.length / 3));
     for (let i = 0; i < nst; i++) { const q = sq[Math.floor(grnd() * sq.length)], top = roofY[q[1]][q[0]], fl = yAt(q[0], q[1]), len = r2(Math.min(0.6 + grnd() * 2.4, Math.max(0.4, top - fl - 2.6))), r = r2(0.18 + grnd() * 0.36);
-        parts.push({ s: 'cyl', p: [r2(gcx(q[0]) - ox + (grnd() - 0.5) * 2.4), r2(top - len), r2(gcz(q[1]) - oz + (grnd() - 0.5) * 2.4)], r: 0.03, r2: r, h: len, seg: 6, key: 'cave_wall', tint: ROCK[Math.floor(grnd() * ROCK.length)], uv: 3.5 }); }
+        parts.push({ s: 'cyl', p: [r2(gcx(q[0]) - ox + (grnd() - 0.5) * 2.4), r2(top - len), r2(gcz(q[1]) - oz + (grnd() - 0.5) * 2.4)], r: 0.03, r2: r, h: len, seg: 6, key: TX.drip, tint: ROCK[Math.floor(grnd() * ROCK.length)], uv: 3.5 }); }
     ROOFS.push({ k: 'arch', id: DES.part + ':roof:' + bx + '_' + by, x: r2(ox), z: r2(oz), rot: 0, base: 0, parts });
 }
 
 /* ── THE PAINT: one sheet a square (a district's own: `DES.paint(T char, x, y)` -> index into DES.pal, 0 = the room's floor) ── */
 const paint = new Uint8Array(W * H); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) paint[y * W + x] = room(x, y) && DES.paint ? (DES.paint(T[y][x], x, y, ctx) || 0) : 0;
 
-/* ── THE DOORS: each plan door on the room's wall, between its square and the open square beside it along the wall (a passage is two wide) ── */
-const DOORS = (PLAN.doors || []).map((d, i) => { const [x, y, side] = d, o = DES.doors[side] || DES.doors[i]; if (!o) throw new Error('the design has no door for the plan\'s way out ' + side + ' (' + d[3] + ')');
+/* ── THE DOORS: each plan door on the room's wall, between its square and the open square beside it along the wall (a passage is two wide).
+   A design's door row is found by the plan door's index first, then its side. `{ link: '<id>', end: 'a' | 'b', face }` = a way in the
+   middle of the room (a well coming down): no door row; data.js DOOR_HQ.links holds the place, and the tool refuses to bake while that end
+   does not stand on its square (it prints the row) ── */
+const DOORS = [], WANT = [];
+(PLAN.doors || []).forEach((d, i) => { const [x, y, side] = d, o = DES.doors[i] || DES.doors[side]; if (!o) throw new Error('the design has no door for the plan\'s way out ' + side + ' (' + d[3] + ')');
+    if (o.link) { taken.add(x + ',' + y); WANT.push({ link: o.link, end: o.end || 'b', row: "site: '" + DES.site + "', part: '" + DES.part + "', wall: 'free', x: " + gcx(x) + ", z: " + gcz(y) + ", face: " + (o.face || 0) }); return; }
     const ns = side === 'N' || side === 'S', nb = ns ? [[x + 1, y], [x - 1, y]].find(q => open(q[0], q[1])) : [[x, y + 1], [x, y - 1]].find(q => open(q[0], q[1]));
     const along = ns ? (nb ? gx(Math.max(x, nb[0])) : gcx(x)) : (nb ? gz(Math.max(y, nb[1])) : gcz(y));
     const out = { id: o.id, wall: side.toLowerCase() }; if (ns) out.x = along; else out.z = along;
-    return Object.assign(out, { way: 'trail', leaf: null, label: o.label, sub: o.sub, action: { room: o.room, at: o.at || o.id }, desc: o.desc || '' }); });
+    DOORS.push(Object.assign(out, { way: 'trail', leaf: null, label: o.label, sub: o.sub, action: { room: o.room, at: o.at || o.id }, desc: o.desc || '' })); });
 
 /* ── checks ── */
 const start = PLAN.start, SPM = { x: gcx(start[0]), z: gcz(start[1]) };
@@ -185,7 +192,7 @@ Lr.push("            kind: 'box', site: '" + DES.site + "', part: '" + DES.part 
 Lr.push("            /* THE ONE WORLD: where this room stands on the world's plot grid (data.js hqOwIndex; the underground's layout, docs/plans/world-polish/plans/underground.js) */");
 Lr.push("            world: " + J(DES.world) + ",");
 Lr.push("            shell: { w: " + r2(2 * HX) + ", d: " + r2(2 * HZ) + ", h: " + SH + ", wallH: " + SH + ", dadoH: 1.1, open: false,");
-Lr.push("                     floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_2', ceiling: 'cave_wall', floorColor: 0x8a8278, wallColor: 0x6e675e, dadoColor: 0x585048, ceilColor: 0x2a2622,");
+Lr.push("                     floor: '" + TX.floor + "', wall: '" + TX.wall + "', dado: '" + TX.dado + "', trim: '" + TX.trim + "', ceiling: '" + TX.ceiling + "', floorColor: 0x8a8278, wallColor: 0x6e675e, dadoColor: 0x585048, ceilColor: 0x2a2622,");
 Lr.push("                     pipes: false, strips: false, lights: [], mood: " + J(DES.mood || { light: 0xffc078, ambient: 0.16, hero: false }) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: " + r2(yAt(start[0], start[1]) + 4.2) + " },");
 Lr.push("                     fog: { color: 0x0a0807 }, look: HQ_ROOM_LOOKS.cave,");
 Lr.push("                     suns: " + J(DES.suns || []) + (AIR ? ", atmos: " + J(AIR) : "") + " },");
@@ -193,13 +200,13 @@ Lr.push("            parti: '" + DES.parti.replace(/'/g, "\\'") + "',");
 Lr.push("            typology: 'grid',");
 Lr.push("            plots: { cell: " + C + ", plot: " + (N * C) + ", nx: " + BX + ", nz: " + BY + ", names: " + J(NAMES) + " },");
 Lr.push("            terrain: {");
-Lr.push("                res: 0.875, floor: 'cave_floor', cliff: 'rocks_5', path: 'dirt_2', stairs: 'wood',");
+Lr.push("                res: 0.875, floor: '" + TX.floor + "', cliff: '" + TX.cliff + "', path: '" + TX.path + "', stairs: 'wood',");
 Lr.push("                noise: { amp: 0, scale: 5 }, crag: false, stalactites: false,");
 Lr.push("                /* THE GROUND: every square at its plan level (1.75 m a level, 0 = level " + LO + " of the underground's layout, " + r2((LO) * LV) + " m over the Inner Sun) */");
 Lr.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + slope.toString('base64') + "' } },");
-Lr.push("                paint: { pal: " + J(DES.pal || ['dirt_2']) + ", t: 'u8', res: " + C + ", x0: " + gcx(0) + ", z0: " + gcz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
+Lr.push("                paint: { pal: " + J(DES.pal || [TX.path]) + ", t: 'u8', res: " + C + ", x0: " + gcx(0) + ", z0: " + gcz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 Lr.push("                /* every square that is not a `space` is the rock, up to the crust */");
-Lr.push("                gen: { kind: 'plan', look: 'walls', wallKey: 'cave_wall', rim: 0, forceGrow: -0.3 },");
+Lr.push("                gen: { kind: 'plan', look: 'walls', wallKey: '" + TX.wall + "', rim: 0, forceGrow: -0.3 },");
 Lr.push("                features: [");
 spaces.concat(F, ARCH, ROOFS).forEach(f => Lr.push("                    " + J(f) + ","));
 Lr.push("                ],");
@@ -222,8 +229,10 @@ const BLOCK = Lr.join('\n') + '\n';
 console.log(DES.room + ' ' + JSON.stringify({ squares: [W, H], plots: B.PLOTS.length, levels: [LO, HI], height: ym(HI), crust: SH, spaces: spaces.length, ladders: STAIRS.length, falls: F.filter(f => f.k === 'fall').length, sumps: F.filter(f => f.k === 'stream').length,
     features: spaces.length + F.length + ARCH.length + ROOFS.length, props: props.length, lights: LIT, natives: npc.length, doors: DOORS.map(d => d.id + '>' + d.action.room.replace('site_prebuilt_', '')).join(' '), kb: Math.round(BLOCK.length / 1024) }));
 if (LIT > 10) throw new Error('more than ten lit props (' + LIT + '): the room has ten lights');
-if (DRY) process.exit(0);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
+{ const flat = src.replace(/ +/g, ' '), miss = WANT.filter(w => flat.indexOf(w.row) < 0);
+  if (miss.length) { console.log('data.js DOOR_HQ.links rows to write by hand (the end in this room):'); miss.forEach(w => console.log('  link ' + w.link + ' end ' + w.end + ':  ' + w.row)); if (!DRY) throw new Error('a link does not stand in this room yet (see the rows above)'); } }
+if (DRY) process.exit(0);
 const END = '        /* ' + M + '-END */\n', b0 = src.indexOf('        /* ' + M + '-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + BLOCK + src.slice(b1 + END.length);
 else { const at = src.indexOf('        /* CAVERN36-BEGIN'); if (at < 0) throw new Error('no place for the block (the CAVERN36 marker is gone)'); src = src.slice(0, at) + BLOCK + src.slice(at); }
