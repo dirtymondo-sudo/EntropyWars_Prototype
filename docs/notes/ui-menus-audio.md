@@ -2911,8 +2911,12 @@ closeup face portrait you would use these". Catgirl (female) only, a test of Spr
   panel only while the viewer can see it (`_shouldCameraFollowUnit`). Viewer-local, nothing on state, nothing relayed.
 - A hit refreshes the card and rebuilds the portrait (the hurt clip fell straight back to idle in the first probe): `_ewPaLive`
   remembers the action that is playing per unit id and a fresh mount picks it up.
-- NOT done yet (pilot): the acting unit's own portrait (the Horologe / the panel's left bay) still shows the face; no death
-  clip; the 63 px portrait box makes the whole body small. Off: `window.EW_DISABLE_PANEL_ANIMS = true`.
+- THE HOROLOGE TOO (11-20, second step, mondo: "Yes"): the acting unit's disc (`HorologeHub`, both the Horologe and the one
+  battle panel's left bay) draws the same `PanelAnim` in a `<foreignObject>` (class `ew-pa-hub`) in place of the face / the
+  live face, so her clips play on her own turn. The walk now lasts about as long as the board's walk: 220 ms a square moved
+  (`unit:moved` fromX / fromY), at least one pass, at most 3 s.
+- NOT done yet (pilot): no death clip; the whole body is small in the 63 px card portrait and on the disc.
+  Off: `window.EW_DISABLE_PANEL_ANIMS = true`.
 - Making more: Sprite AI (sprite-ai.art, key in the env's Network secrets): `POST /api/sprites/import` `{ image: <base64>, title,
   asset_type }` (free) -> id; `POST /api/animations` `{ source_generation_id, preset: Idle|Walk|Run|Jump|Attack|Hurt|Death|Custom,
   frame_count }` (14 tokens for 8 frames) -> poll `GET /api/sprites/<id>` until `completed` -> `GET /api/sprites/<id>/download`.

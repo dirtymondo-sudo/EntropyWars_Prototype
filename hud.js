@@ -3124,6 +3124,7 @@ function VitalWave({ pct, hp, maxHp, mp, unitKey }) {
 // it with imperative hand controls (aim / rest / strike / wind) so blade
 // hover/click handlers can drive the hands without re-rendering the SVG.
 function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortraitClick, unitKey, burning, poisoned, hpPct, mpPct, low, liveUnit }) {
+  const _hubPa = liveUnit ? _ewPanelAnimsOf(liveUnit) : null;   // THE PANEL ANIMATIONS
   useLiveGen();
   const minRef = useRef(null), hourRef = useRef(null), secRef = useRef(null);
   const ticksRef = useRef(null), chimeARef = useRef(null), chimeBRef = useRef(null);
@@ -3306,7 +3307,10 @@ function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortra
         // invisible hit target so the disc stays clickable even with no art
         // (the flash circles below are pointer-events:none)
         onPortraitClick && h('circle', { cx: 100, cy: 100, r: 56.5, fill: '#000', opacity: 0 }),
-        (portraitUrl && liveUnit && portraitIsFace !== false && _liveKeyOf(liveUnit))
+        /* THE PANEL ANIMATIONS: the acting unit's whole sprite, moving, on the disc (the info card's own PanelAnim) */
+        _hubPa ? h('foreignObject', { x: 44, y: 44, width: 112, height: 112, style: { pointerEvents: 'none' } },
+          h(PanelAnim, { key: 'pa' + liveUnit.id, unit: liveUnit, anims: _hubPa, cls: 'ew-pa-hub' }))
+        : (portraitUrl && liveUnit && portraitIsFace !== false && _liveKeyOf(liveUnit))
           ? h(LiveFace, { unit: liveUnit, liveKey: _liveKeyOf(liveUnit), x: 44, y: 44, size: 112 })
         : portraitUrl && h('image', {
           href: portraitUrl, x: 44, y: 44, width: 112, height: 112,
@@ -4351,7 +4355,7 @@ function PanelAnim({ unit, anims, cls }) {
     const n = anims.frames || 8, idleMs = Math.round(n / (anims.fps || 8) * 1000), actMs = Math.round(n / (anims.actFps || 12) * 1000);
     ['idle', 'walk', 'attack', 'hurt'].forEach(k => { if (anims[k]) { const im = new Image(); im.src = anims[k]; } });   // no blank frame on the first swap
     let cur = '', back = 0, until = 0;
-    const play = (k) => {
+    const play = (k, holdMs) => {
       if (!anims[k]) return;
       const now = Date.now();
       const act = k !== 'idle';
@@ -4362,7 +4366,7 @@ function PanelAnim({ unit, anims, cls }) {
         el.style.animation = 'ewPaStep ' + (act ? actMs : idleMs) + 'ms steps(' + n + ', jump-none) ' + (act && k !== 'walk' ? '1 forwards' : 'infinite');
       }
       cur = k; clearTimeout(back);
-      if (act) { until = now + actMs; _ewPaLive[uid] = { k, until }; back = setTimeout(() => play('idle'), actMs); }
+      if (act) { const ms = Math.max(actMs, holdMs || 0); until = now + ms; _ewPaLive[uid] = { k, until }; back = setTimeout(() => play('idle'), ms); }
     };
     const has = (set) => !!(set && typeof set.has === 'function' && set.has(uid));
     const flagged = () => {
@@ -4370,7 +4374,7 @@ function PanelAnim({ unit, anims, cls }) {
       return has(S.hitFlashIds) ? 'hurt' : (has(S.attackAnimIds) || has(S.castAnimIds)) ? 'attack' : '';
     };
     play('idle');
-    { const lv = _ewPaLive[uid], f = (lv && Date.now() < lv.until) ? lv.k : flagged(); if (f) play(f); }   // rebuilt mid-action
+    { const lv = _ewPaLive[uid], on = lv && Date.now() < lv.until, f = on ? lv.k : flagged(); if (f) play(f, on ? lv.until - Date.now() : 0); }   // rebuilt mid-action
     const B = window.RenderBus;
     if (!B) return () => { clearTimeout(back); };
     const mine = (ev) => {
@@ -4383,7 +4387,12 @@ function PanelAnim({ unit, anims, cls }) {
     };
     const onAnim = (ev) => { if (mine(ev)) { const f = flagged(); if (f) play(f); } };
     const onHit = (ev) => { if (mine(ev)) play('hurt'); };
-    const onMove = (ev) => { if (mine(ev) && !(cur === 'hurt' || cur === 'attack')) play('walk'); };
+    /* the walk lasts about as long as the board's own walk: the squares moved (the move is over on the board at once) */
+    const onMove = (ev) => {
+      if (!mine(ev) || ((cur === 'hurt' || cur === 'attack') && Date.now() < until)) return;
+      const d = (ev.fromX != null && ev.fromY != null) ? Math.abs(ev.unit.x - ev.fromX) + Math.abs(ev.unit.y - ev.fromY) : 1;
+      play('walk', Math.min(3000, d * 220));
+    };
     B.on('unit:animChanged', onAnim); B.on('unit:damaged', onHit); B.on('unit:moved', onMove);
     return () => { clearTimeout(back); B.off('unit:animChanged', onAnim); B.off('unit:damaged', onHit); B.off('unit:moved', onMove); };
   }, [uid, anims]);
@@ -14343,6 +14352,7 @@ function _hudHideCss() {
     .hrlg-qp-port.sprite > .hrlg-qp-img { background-size: auto calc(var(--qp-zoom, 1.5) * 100%); background-position: center 14%; }
     /* THE PANEL ANIMATIONS (PanelAnim): the strip's one frame, as tall as the portrait, standing on its floor */
     .ew-pa { overflow: hidden; }
+    .ew-pa-hub { position: relative; width: 100%; height: 100%; }
     .ew-pa > i { position: absolute; left: 50%; bottom: 0; height: 100%; aspect-ratio: 1 / 1; transform: translateX(-50%); background-repeat: no-repeat; background-size: auto 100%; background-position: 0% 0%; image-rendering: pixelated; }
     @keyframes ewPaStep { from { background-position-x: 0%; } to { background-position-x: 100%; } }
     .hrlg-qp-port::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 18px rgba(0,0,0,0.65); }
@@ -19130,7 +19140,7 @@ const UIM_SURFACES = [
   { id: 'explore', label: 'Exploration HUD', hint: 'D.O.O.R. HQ and the zones: the strip, prompts, cards, map, bag.', native: true, def: 'theme',
     scope: '#hqPage',
     roles: {
-      panel: '#hqPage .hq-strip-l, #hqPage .hq-prompt, #hqPage .hq-toast, #hqPage .hq-trick, #hqPage .hq-panel-card, #hqPage .hq-map-card, #hqPage .hq-map-key, #hqPage .hq-pause-frame, .hq-dock-tag',
+      panel: '#hqPage .hq-strip-l, #hqPage .hq-prompt, #hqPage .hq-toast, #hqPage .hq-panel-card, #hqPage .hq-map-card, #hqPage .hq-map-key, #hqPage .hq-pause-frame, .hq-dock-tag',
       head: '#hqPage .hq-panel-hd, #hqPage .hq-pause-head, #hqPage .hq-map-bar',
       button: '#hqPage .hq-btn, #hqPage .hq-pause-cmd, #hqPage .hq-loc, #hqPage .hq-map-result',
       buttonSel: '#hqPage .hq-btn:hover:not(:disabled), #hqPage .hq-pause-cmd:hover, #hqPage .hq-pause-cmd.cur, #hqPage .hq-loc.sel, #hqPage .hq-loc:hover, #hqPage .hq-map-result:hover',
