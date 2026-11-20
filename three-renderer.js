@@ -18199,6 +18199,25 @@ const ThreeRenderer = (function () {
             });
         });
     }
+    /* Barbarella's disco ball on her UFO form: a faceted ball in the tail's socket (the file's own measure), every facet a tile of light,
+       turning as it is drawn (no clip needed: it spins whatever the craft does) */
+    function _ufoDiscoBall(root, B) {
+        var N = null; root.traverse(function (n) { if (!N && n.name === 'ewUfoNose') N = n; }); if (!N) return;
+        var src = null; N.traverse(function (n) { if (!src && n.isMesh) src = n; }); if (!src) return;
+        var g = new THREE.IcosahedronGeometry(B.d / 2, 2).toNonIndexed(), cnt = g.attributes.position.count, cl = new Float32Array(cnt * 3), sd = 11, PAL = [[0.95, 0.95, 1], [1, 0.55, 0.9], [0.55, 0.9, 1], [0.8, 0.8, 0.86], [0.62, 0.62, 0.7], [1, 1, 1]];
+        for (var t = 0; t < cnt; t += 3) { sd = (sd * 1103515245 + 12345) & 0x7fffffff; var pc = PAL[sd % PAL.length], br = 0.7 + 0.3 * ((sd >> 8) % 100) / 100; for (var v = 0; v < 3; v++) { cl[(t + v) * 3] = pc[0] * br; cl[(t + v) * 3 + 1] = pc[1] * br; cl[(t + v) * 3 + 2] = pc[2] * br; } }
+        g.setAttribute('color', new THREE.BufferAttribute(cl, 3)); g._ew_wuvOwner = true;
+        var mir = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), ball = new THREE.Mesh(g, mir);
+        ball.name = 'ewUfoDiscoBall'; ball._ew_noTwin = true;
+        /* `at` is measured as Outer Space measures it (_hqUfoModel): from the hull's middle across, from its floor up, plus the socket's `base` */
+        if (!src.geometry.boundingBox) src.geometry.computeBoundingBox();
+        var gb = src.geometry.boundingBox, sc = src.scale.x || 1, gx = (gb.min.x + gb.max.x) / 2, gz = (gb.min.z + gb.max.z) / 2;
+        ball.position.set(src.position.x + (gx + B.at[0]) * sc, src.position.y + (gb.min.y + B.at[1] + B.base) * sc, src.position.z + (gz + B.at[2]) * sc); ball.scale.setScalar(sc);
+        /* the unit's material pass (_unitSwapMat) skips it: the mirror stays unlit so it glitters, as it does in Outer Space. No hook of its
+           own (a unit's model is copied, and a copy drops hooks): it turns with the hull, which spins in every pose */
+        ball.userData.ewKeepMat = true;
+        N.add(ball);
+    }
     function _ufoBuild(root, noseYaw, roll) {
         var src = null;
         root.traverse(function (n) { if (!src && n.isMesh) src = n; });
@@ -18909,6 +18928,14 @@ const ThreeRenderer = (function () {
         /* THE GREY'S SAUCER (2026-10-27, mondo's upload Assets/world/props/meshy/UFO_Low_Poly.fbx: "a saucer for the grey"): round, so no
            nose to turn; its hull spins flat like the triangle's */
         saucerCraft: function (root) { return _ufoBuild(root, 0); },
+        /* THE ALIEN SHIPS AS THE UFO FORM (2026-11-20, mondo: "yes make these their combat ships too"; the eleven Meshy ships of PR #2313,
+           sprites.js UFO_CRAFT_BY_RACE): the same hinges and moves, each file's nose turned to +Z (its catalogue row says where it is);
+           a ship with a nose rolls round it, a round one spins flat. Bligblog's dome is made glass, Barbarella gets her disco ball. */
+        craftNoseX: function (root) { return _ufoBuild(root, Math.PI / 2, true); },   // nose on -X (nordic, reptilian, astronaut)
+        craftNoseZ: function (root) { return _ufoBuild(root, 0, true); },             // nose on +Z (martian, mantid, cosmic wraith)
+        craftRound: function (root) { return _ufoBuild(root, 0); },                   // round / square (grey, annunaki)
+        craftBligblog: function (root) { var r = _ufoBuild(root, Math.PI / 2, true); try { _hqGlassDome(root, _HQ_UFO_LOOK.ship_bligblog.dome); } catch (e) { console.warn('[3D] the bligblog dome', e); } return r; },
+        craftBarbarella: function (root) { var r = _ufoBuild(root, Math.PI / 2, true); try { _ufoDiscoBall(root, _HQ_UFO_LOOK.ship_barbarella.ball); } catch (e) { console.warn('[3D] the disco ball', e); } return r; },
         /* THE UNICORN (above, _uniBuild): the horse + the horn + the angel wing twice; `deps` load first */
         unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); },
         /* 📺 THE CURSED TV (above, _tvBuild): the cart's casters, the wheels, the ears, the remote, THE CHANNELS */
@@ -20553,7 +20580,7 @@ const ThreeRenderer = (function () {
                 return lm;
             };
             m.traverse(function (n) {
-                if (!n.isMesh) return;
+                if (!n.isMesh || (n.userData && n.userData.ewKeepMat)) return;   // (a part that keeps its own look: the UFO form's disco ball)
                 if (n.isSkinnedMesh) hasSkin = true;
                 n.frustumCulled = false;   // animated poses leave the bind-pose bounds
                 n.castShadow = true;

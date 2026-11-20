@@ -2637,6 +2637,25 @@ spinning and stuff for the spells". Looks only, no rule touched.
   look keeps only a part's sheet (else everything draws plain grey). Checked in a VS CPU match after a Probe: the
   dark navy hull with the dome's lit window band, like the file.
 
+- THE ALIEN SHIPS (2026-11-20, mondo: "yes make these their combat ships too"). The eleven Meshy ships (models-assets.md "THE ALIEN
+  SHIPS", R2 Assets/world/props/meshy/ships/, '#ufoform' on the url) are the UFO forms now; the triangle (UFO_FORM_3D) is only the
+  fallback for a race with none. sprites.js UFO_CRAFT_BY_RACE (race: file, rig, heightRatio):
+  grey ship_grey craftRound 0.67 · annunaki ship_annunaki craftRound 1.27 · martian ship_martian craftNoseZ 0.82 · mantid ship_mantid
+  craftNoseZ 0.58 · cosmic wraith ship_cosmic_wraith craftNoseZ 0.40 · nordic ship_nordic craftNoseX 0.55 · reptilian ship_reptilian
+  craftNoseX 0.46 · astronaut ship_astronaut craftNoseX 0.66 · bligblog ship_bligblog craftBligblog 0.96 · barbarella ship_barbarella
+  craftBarbarella 0.68. heightRatio = 0.6 x (the hull's height at 1.9 across + the 0.55 hover) / 1.16, from each file's size. The rigs
+  (three-renderer.js _PROC_RIGS) are _ufoBuild with the file's nose turned to +Z (NoseX: nose on -X, π/2; NoseZ: 0; Round: no roll);
+  craftBligblog makes its dome glass (_hqGlassDome, the space look's `dome`), craftBarbarella adds _ufoDiscoBall: a faceted unlit ball
+  in the tail socket (the space look's `ball`, measured from the hull's middle and floor), flagged userData.ewKeepMat so the unit
+  material pass (_unitSwapMat) leaves it unlit; it turns with the hull (a unit model is copied, a copy drops onBeforeRender).
+  WHICH CAST TURNS IT: sprites.js UFO_FORM_FAMILY / ufoFormFamily(race), default 'ufo' (grey, martian, bligblog). The seven with no
+  UFO spells use a family of their own (Claude's pick, told to mondo, change any row): annunaki skygods, nordic galacticfederation,
+  reptilian conspiracyknowledge, astronaut missioncontrol, barbarella spacevixen, mantid fractal, cosmic wraith cosmic. battle.js wires
+  a race only when its RACE_FAMILIES has that family; a race with its own UNIT_ANIM_OVERRIDES row keeps it (none of the ten has one).
+  The grey's old saucer (UFO_SAUCER_3D) and the bligblog's borrowed spaceship (UFO_SHIP_3D) are kept, unused. Looks only, no rule.
+  Seen 11-20 in a battle probe: all ten fly; the probe = a battle with each race's _spriteOverride set to ufoFormLook (gender from
+  the race: barbarella is female).
+
 ## THE 2026-10-25 BATCH — chef, eagleman, flesheater, mime (mondo's Meshy uploads)
 mondo: "I added these new races and their race sprites, please add them to the game ... Each needs its own race family
 with at least one spell, an entropy ult, and some shared spell families ... Assign them to areas in the map." (A sibling
