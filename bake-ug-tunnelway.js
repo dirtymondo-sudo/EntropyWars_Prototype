@@ -87,8 +87,9 @@ function climb(lo, hi, look, id) {
     const dx = hi[0] - lo[0], dy = hi[1] - lo[1]; if (Math.abs(dx) + Math.abs(dy) !== 1) throw new Error('a climb between squares that do not touch: ' + lo + ' ' + hi);
     if (!(FL[lo[1]][lo[0]] != null && FL[hi[1]][hi[0]] != null)) throw new Error('a climb off the floor: ' + lo + ' ' + hi);
     if (FL[hi[1]][hi[0]] - FL[lo[1]][lo[0]] < 0.9) throw new Error('a climb that does not rise: ' + lo + ' ' + hi);
-    /* on the line between the squares, 0.6 m back into the lower square (past the face's lattice cell: the head is found over the edge) */
-    const ex = gcx(lo[0]) + dx * (C / 2 - 0.6), ez = gcz(lo[1]) + dy * (C / 2 - 0.6);
+    /* 1.05 m off the line between the squares, on the low side: the rock face slopes over about 0.9 m into the lower square (the sheet's lattice
+       cell), so a climb nearer the line stands half inside it (thread 9 found all 49 buried at 0.6 m, 11-20); its head search still finds the lip */
+    const ex = gcx(lo[0]) + dx * (C / 2 - 1.05), ez = gcz(lo[1]) + dy * (C / 2 - 1.05);
     CLIMBS.push({ k: 'climb', id, x: r2(ex), z: r2(ez), face: FACE_OF(dx, dy), look }); CL_EDGES.push([lo, hi]); }
 const higher = (a, b) => FL[a[1]][a[0]] > FL[b[1]][b[0]] ? [b, a] : [a, b];
 (PLAN.stairs || []).forEach((s, i) => { const [lo, hi] = higher(s[0], s[1]); const pit = PITS.has(s[0].join(',')) || PITS.has(s[1].join(','));
@@ -264,3 +265,9 @@ else { const at = src.indexOf('        /* CAVERN36-END */\n'); if (at < 0) throw
     const p = at + '        /* CAVERN36-END */\n'.length; src = src.slice(0, p) + BLOCK + src.slice(p); }
 fs.writeFileSync(file, src);
 console.log('wrote ' + ROOM + ' into data.js');
+/* THE CLIMBS, read back from the room as the game compiles it: none may stand inside the rock face */
+{ const S2 = require('./load-data.js').loadGameData(), info = S2.hqTerrainInfo(ROOM), cl = info.climbs || [];
+  const buried = cl.filter(c => { const r = c.face * Math.PI / 180; return S2.hqTerrainHeight(info, c.x + Math.sin(r) * 0.08, c.z - Math.cos(r) * 0.08) > c.y0 + 1; });
+  if (cl.length !== CLIMBS.length) throw new Error('the game reads ' + cl.length + ' climbs, the tool wrote ' + CLIMBS.length);
+  if (buried.length) throw new Error(buried.length + ' climbs stand inside the rock face: ' + buried.slice(0, 8).map(c => c.id).join(' '));
+  console.log('climbs read back: ' + cl.length + ', none in the rock'); }

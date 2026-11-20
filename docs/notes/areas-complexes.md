@@ -13892,6 +13892,9 @@ APPROVED 11-20 ("Yes this is good, go ahead and start individual threads"; "No r
   hz_stone_02, ledge and wall faces hz_stone_10, stalactites + the squeezes' teeth hz_stone_02, the stalagmite hz_stone_07, tints near white. Paint:
   mud hz_floor_03, wet black rock round the sumps hz_misc_05, the Catacombs' cut stone flags hz_floor_12, the Nests' crust hz_misc_06 (hz_misc_15,
   raw red, read as lava). Seen on screen: the Gate, the Nest, the Great Chamber, the Bone Passage.
+- **THE LADDERS OFF THE FACE (2026-11-20, found by thread 9 from the data):** all 49 climbs stood 0.6 m off the line, half inside the rock
+  face (the sheet's face slopes over about 0.9 m into the lower square). Now 1.05 m off the line, on the low side; the tool reads the climbs back
+  through load-data.js after it writes and refuses one whose foot is buried (`hqTerrainHeight` 0.08 m toward the rock > y0 + 1 m). Seen on screen.
 - **LEARNED:** a prop pushed more than ~0.6 m toward a rock square climbs the wall's face (the sheet's face falls in the open square's last lattice
   cell): `atWall` pushes 0.5. The Meshy `femur` stands upright (it reads as a stake): not used. The probe's `face` IS the heading (0 north, 90 east);
   the HUD's `deg` / `r` is the camera's POSITION in polar terms, not its heading. The link `tunnelway_cavern` wears `way: 'well'`, so its foot here is a stone well
@@ -13969,7 +13972,7 @@ underground horror like the descent movie"; the square plans approved ("Yes this
   (`docs/plans/world-polish/plans/ug-<name>.js`, read through draw-plan.js's own `build` + `check`; a FAIL stops it) and a room design
   `docs/areas/underground/<name>.js` (id, names, doors, light, paint, `air`, `dress(ctx)`). Ground = `terrain.slope.cells`, every open square flat
   at its level (1.75 m a level; the room's 0 = its lowest square); two squares a level apart = a ledge (`rocks_5` face). The plan's `stairs` =
-  `climb` ladders on the plot line, facing the high side, `y0` / `y1` given. `w` runs = black sumps (`deep_water`, 0.45 m under the rim, never
+  `climb` ladders 1.05 m off the plot line on the low side (0.3 m stood half in the rock: the height base's face slopes over a metre; thread 9 found it, all 34 fixed 11-20), facing the high side, `y0` / `y1` given. `w` runs = black sumps (`deep_water`, 0.45 m under the rim, never
   entered; the stream's line runs square middle to square middle, else the game's square water takes the next square too). A WATERFALL drop
   = one `fall` row on its lip (two squares wide when both lanes drop). The roof: one `arch` row a plot, boxes from each square's roof line (the
   highest floor beside it + 5.25 m; a chamber's middle vaults 1.75 m a square in, up to 3) to the crust, stalactites hung from it. After the
@@ -14038,3 +14041,18 @@ the Cavern, the old Inner Sun to Hollow Earth); bake-cavern.js keeps its row wit
 longer checks its ways. Re-pointed: the zone list, the stage, the secret-door list, the site entry, the NPC rows (one table a room), the flora
 (Hollow Earth grows, the Cavern does not), ZONE_LOOKS. World places: the Cavern -8..-3 x 7..9, Hollow Earth -8..-3 x 10..13 (`room.world`);
 `node bake-map.js` for both.
+**THE ROPE LADDER, THE STALAGMITES, THE SUN, THE BURIED LADDERS (2026-11-20, mondo: "let's see the inner sun. you can't see how these other
+underground threads are doing stalagmites and just do that?? you can't make a rope ladder with some rope texture and geometry?").**
+- `ropeladder`, a new climb look (data.js HQ_CLIMB_LOOKS; three-renderer.js `_hqBuildClimbs` + `_hqRopeLadderMat`): two side ropes wrapped in the
+  game's rope sheet (rope.png, the torches' lashing; its UVs laid so the twist runs ALONG the rope), wooden rungs every 0.32 m lashed to both ropes,
+  an iron spike back to the lip at the head of each; climbed like a ladder (its clip; speed 0.9, HQ_CLIMB_DEFAULT.slow). A design file picks it:
+  `room.ladderLook` (the Cavern and Hollow Earth: all 56 ladders).
+- THE BURIED LADDERS: with slope cells the ground between two squares at different levels is not a vertical wall: the mesh slopes over ~1 m, so a
+  climb 0.3 m off the line stood mostly inside the rock (only its top third showed). bake-ug.js stands every ladder 1.05 m off the line on the low side;
+  the check (in node): `hqTerrainHeight(info, c.x + sin(face) * 0.08, c.z - cos(face) * 0.08) > c.y0 + 1` = buried. The Long Tunnel, the West Tunnel and the
+  Tunnel-Way had all theirs buried (their threads were told 11-20).
+- THE STALAGMITES: the Tunnel-Way's recipe (a tall cone to a needle point in `hz_stone_07`, smaller points round its foot, its stalactite nearly
+  meeting it, a `sarsen` inside as its body): two big ones in each Cavern chamber, a small one in a junction corner. bake-ug.js THE WALK CHECK
+  refuses any dressing that cuts a square off the walk (it caught Hollow Earth's crystal scatter; those crystals are walked through now).
+- THE INNER SUN: 18 m across, 34 m up on its column; the jungle 6 to 11 m (was 9 to 17) and only low palms (3.5 to 6 m) on the Sun's three plots
+  (`gen.zones`), so it stands over the trees.

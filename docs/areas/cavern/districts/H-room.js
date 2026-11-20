@@ -32,6 +32,7 @@ module.exports = {
         sub: 'THE LANDING · THE CRYSTAL FOREST · THE GIANT\'S SEAT · THE NESTING GROUND · THE INNER SUN',
         parti: 'A whole country inside the earth, 126 metres from the top terrace to the Sun: jungle terraces and cliffs fall away under a sun that never sets, waterfalls drop through the trees, and at the bottom the Sun stands over a lake shore where the dinosaurs nest.',
         roof: false, look: 'mountain', fogColor: '0xb8c8a0',
+        ladderLook: 'ropeladder',   // mondo 11-20: rope ladders (two ropes, wooden rungs), the explorers' own
         spawn: [41, 3], spawnFace: 180,
         mood: { light: 0xfff0c8, ambient: 0.5, hero: false },
         fallKey: 'water', sumpKey: 'deep_water',
@@ -39,8 +40,10 @@ module.exports = {
         /* the paint: 1 the flowered meadow (the chambers) · 2 the jungle floor (the pits, the trails' edges) · 3 sand (the Sun's shore) · 4 mineral stone (the crystals) */
         pal: ['grass_3', 'leaves', 'hz_stone_13', 'hz_stone_06'],
         /* THE JUNGLE IS THE WALL: every square that is not a `space` grows jungle trees and palms (the House Trail's dead woods are the pattern) */
-        gen: { kind: 'plan', look: 'trees', seed: 31, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 24.5, maxTrees: 3200, treeH: [9, 17],
-               kinds: ['fl_jungle_tree', 'palm', 'fl_jungle_tree', 'tree_52', 'fae_bloom_tree', 'palm'] },
+        gen: { kind: 'plan', look: 'trees', seed: 31, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 24.5, maxTrees: 3200, treeH: [6, 11],   /* (mondo 11-20: "let's see the inner sun": a lower jungle, the Sun seen over it from the terraces) */
+               kinds: ['fl_jungle_tree', 'palm', 'fl_jungle_tree', 'tree_52', 'fae_bloom_tree', 'palm'],
+               /* THE SUN'S CLEARING: the three plots round the Inner Sun (5,0 to 5,2) grow only low palms, so the Sun stands over them in sight */
+               zones: [{ x0: 77, z0: -84, x1: 126, z1: 42, kinds: ['palm'], treeH: [3.5, 6] }] },
         plotNames: { '3,0': 'The Landing', '0,0': 'The Crystal Forest', '1,2': 'The Mushroom Shelf', '3,2': 'The Giant\'s Seat', '5,3': 'The Nesting Ground', '5,0': 'The Shore', '5,1': 'The Inner Sun',
             '4,1': 'The Great Fall', '3,1': 'The High Terrace', '2,0': 'The Upper Terrace', '1,0': 'The Fern Walk', '0,1': 'The Spring Steps', '1,1': 'The Old Trees', '2,1': 'The Vine Walk',
             '0,2': 'The Lower Terrace', '2,2': 'The Garden Steps', '4,2': 'The Long Drop', '5,2': 'The Sun Steps', '0,3': 'The Fossil Beds', '1,3': 'The Low Walk', '2,3': 'The Sunken Garden', '3,3': 'The Reed Walk', '4,3': 'The Warm Walk', '4,0': 'The Deep Steps' },
@@ -71,7 +74,7 @@ module.exports = {
     suns(ctx) {
         const at = (x, y, dy, color, intensity, dist, decay) => ({ x: ctx.gcx(x), y: ctx.r2(ctx.h(x, y) + dy), z: ctx.gcz(y), color, intensity, dist, decay });
         return [
-            at(SUN[0], SUN[1], 28, 0xffe2a8, 2.6, 260, 1),   // THE INNER SUN: it never sets
+            at(SUN[0], SUN[1], 33, 0xffe2a8, 2.6, 260, 1),   // THE INNER SUN: it never sets
             at(18, 14, 26, 0xfff0d0, 1.0, 140, 1.2),          // its light up on the high terraces (the west)
             at(41, 6, 22, 0xfff0d0, 0.9, 120, 1.2),           // and on the Landing
             at(66, 42, 10, 0xffb070, 0.8, 50, 1.4),           // THE HOT SPRING's glow at the Nesting Ground
@@ -85,17 +88,18 @@ module.exports = {
           ctx.feat({ k: 'arch', id: 'ug:hollow:sun', x: ctx.gcx(x), z: ctx.gcz(y), rot: 0, base: b, parts: [
               { s: 'cyl', p: [0, 0, 0], r: 2.4, r2: 0.7, h: 22, seg: 10, key: 'hz_stone_06', tint: 0xe8e0d0, uv: 3 },
               { s: 'dome', p: [0, 0, 0], r: 3.4, h: 1.0, seg: 12, rings: 3, key: 'hz_stone_06', tint: 0xd8d0c0, uv: 3 },
-              { s: 'dome', p: [0, 29, 0], r: 6.5, h: 6.5, seg: 24, rings: 8, tint: 0xffd98a, glow: 0.85, ds: true }, { s: 'dome', p: [0, 29, 0], r: 6.5, h: -6.5, seg: 24, rings: 8, tint: 0xffcf78, glow: 0.85, ds: true } ] });
+              { s: 'cyl', p: [0, 22, 0], r: 0.7, r2: 0.35, h: 6.5, seg: 8, key: 'hz_stone_06', tint: 0xe8e0d0, uv: 3 },
+              { s: 'dome', p: [0, 34, 0], r: 9, h: 9, seg: 28, rings: 10, tint: 0xffd98a, glow: 0.9, ds: true }, { s: 'dome', p: [0, 34, 0], r: 9, h: -9, seg: 28, rings: 10, tint: 0xffcf78, glow: 0.9, ds: true } ] });   // (the Sun: 18 m across, 34 m up, over the trees)
           ctx.feat({ k: 'wall', x0: r2(ctx.gcx(x) - 1), z0: ctx.gcz(y), x1: r2(ctx.gcx(x) + 1), z1: ctx.gcz(y), h: 3, t: 2, ghost: true }); }
         PUT('stone_altar', 66, 20, { face: 0 }); PUT('brazier', 64, 20); PUT('brazier', 68, 20); DEC('hw_candles', 65, 21); DEC('reeds', 69, 17); DEC('reeds', 69, 19);
         /* ── THE SHORE: palms on the sand, a rowboat drawn up, the jetty's posts ── */
-        [[62, 3], [62, 8], [68, 8], [63, 6]].forEach(([x, y], i) => tree(x, y, 'palm', 7 + i));
+        [[62, 3], [62, 8], [68, 8], [63, 6]].forEach(([x, y], i) => tree(x, y, 'palm', 4 + i * 0.6));
         PUT('rowboat', 65, 3, { face: 0 }); DEC('mooring_bollard', 64, 2); DEC('mooring_bollard', 67, 2); DEC('reeds', 63, 2); DEC('ocean_rock_5', 69, 5); DEC('psx_fish_skeleton_mp_1', 66, 5);
         /* ── THE LANDING: the foot of the long way down; a campfire, the signpost, the spring ── */
         PUT('signpost', 43, 4, { face: 180 }); PUT('campfire', 40, 7, { noLight: true }); DEC('firewood_stack', 38, 8); DEC('backpack', 42, 8); DEC('reeds', 45, 5); DEC('reeds', 45, 6);
         [[38, 2], [45, 9], [38, 5]].forEach(([x, y], i) => tree(x, y, i ? 'palm' : 'fl_jungle_tree', 8 + i * 2));
         /* ── THE CRYSTAL FOREST ── */
-        ctx.squares(2, 2, 9, 9).filter(() => rnd() < 0.22).forEach(([x, y]) => { if (ctx.free(x, y)) ctx.P(rnd() < 0.75 ? 'meshy_crystal_shards' : 'crystal_cluster', x, y, { h: r2(2.5 + rnd() * 4.5), face: Math.round(rnd() * 360) }); });
+        ctx.squares(2, 2, 9, 9).filter(() => rnd() < 0.22).forEach(([x, y]) => { if (ctx.free(x, y)) ctx.P(rnd() < 0.75 ? 'meshy_crystal_shards' : 'crystal_cluster', x, y, { h: r2(2.5 + rnd() * 4.5), face: Math.round(rnd() * 360), noBlock: true }); });   // (walked through: a random scatter must never wall a square off, bake-ug.js THE WALK CHECK)
         ctx.squares(2, 2, 9, 9).filter(() => rnd() < 0.3).forEach(([x, y]) => DEC('woods_glowcap', x, y));
         /* ── THE MUSHROOM SHELF: giant caps ── */
         [[14, 26], [21, 26], [14, 33], [21, 33], [16, 29], [19, 31], [15, 31]].forEach(([x, y], i) => tree(x, y, i % 2 ? 'fae_cap_2' : 'fae_cap', 4 + (i % 3) * 2));
