@@ -67,7 +67,7 @@ const ThreeRenderer = (function () {
             'EW_NO_INST_SHARE EW_NO_KEY_LIGHT EW_NO_KNOCK EW_NO_KTX2 EW_NO_LATE_LOOK EW_NO_LEAVE_SWEEP EW_NO_LIGHT_MATCH EW_NO_LIGHT_RIG EW_NO_LIVE_PORTRAITS ' +
             'EW_NO_LOD EW_NO_LS_OUTLINE_AURA EW_NO_MAP_MOTION EW_NO_MARKS_DEFORM EW_NO_MEM_BUDGET EW_NO_MENU_FADE EW_NO_MENU_SCENE EW_NO_METRO_PACK ' +
             'EW_NO_MODEL_PORTRAITS EW_NO_MODEL_QUEUE EW_NO_MOVING_SHEETS EW_NO_NATURAL_ROCK EW_NO_NEAREST_GRAD_FIX EW_NO_NEAR_FIRST EW_NO_NODE_POST ' +
-            'EW_NO_OCEAN_PACK EW_NO_ONE_WRITE EW_NO_OPT_ASSETS EW_NO_OVERHEAD_FADE EW_NO_PAINTED_SKY EW_NO_PARALLAX EW_NO_PB_VFX EW_NO_PORTALS EW_NO_QUIET_COMPILE ' +
+            'EW_NO_OCEAN_PACK EW_NO_ONE_WRITE EW_NO_OPT_ASSETS EW_NO_OVERHEAD_FADE EW_OCC_NO_KEEP EW_NO_PAINTED_SKY EW_NO_PARALLAX EW_NO_PB_VFX EW_NO_PORTALS EW_NO_QUIET_COMPILE ' +
             'EW_NO_RIDE_ALONG EW_NO_RIG_CARRY EW_NO_RIG_LANE EW_NO_RIOT_VFX EW_NO_RIOT_VFX_C EW_NO_RIOT_VFX_D EW_NO_ROUND EW_NO_SCENE_LOOKS EW_NO_SHADER_CACHE ' +
             'EW_NO_SHADER_KEEP EW_NO_SHEET_WARM EW_NO_SHORE_BLEND EW_NO_SHOVEL_DIG EW_NO_SKIN_PICK EW_NO_SMALL_PROP_CAP EW_NO_SSAO EW_NO_STAGE_STYLE ' +
             'EW_NO_STAIRS_PACK EW_NO_STEEP_CLIFF EW_NO_STOP_MOTION EW_NO_STRADDLE EW_NO_STRATA_MERGE EW_NO_TERRAIN_RISE EW_NO_TITLE_WARM EW_NO_TRAPS_PACK ' +
@@ -28974,14 +28974,62 @@ const ThreeRenderer = (function () {
         c.opacity = (m.opacity != null ? m.opacity : 1);
         c._ew_occClone = true;
         c._ew_occSrc = m;   // ONE SHADOW FOR A FADING TREE: the shadow pass draws the original (_ewGpuCompat)
+        c._ew_occV = m.version;
         return c;
+    }
+    /* THE GHOSTS KEPT (2026-11-20, mondo: "really bad slowdowns and freezes during battle, especially during combos"; his battle F3:
+       2.5 FPS, "770 re-records/s", "scene: classic draws 88 ms", 4 shader builds and 11 new pipelines a second). Every fade of a
+       wall, ceiling or prop (the occlusion fade, the canopy cutaway) CLONED the piece's material and threw the clone away when the
+       piece came back. To the renderer a new material is a new thing to draw: a new render object, new uniform buffers and bind
+       groups, a pipeline lookup, per mesh, per fade; a combo's camera cuts sweep the view across hundreds of pieces again and
+       again, so the same pieces paid it on every cut. The clone now stays with its mesh (`_ew_occKeep`) and the next fade of that
+       piece puts the same one back on: everything the renderer made for it is still there. Made anew only when the piece's own
+       material was replaced or changed (its version). A kept clone is freed when its mesh has left the scene (looked at every
+       10 s) or past OCC_KEEP_MAX of them. Off: window.EW_OCC_NO_KEEP = true. */
+    var _occKept = new Set(), _occKeptAt = 0, OCC_KEEP_MAX = 4000;
+    function _occKeepFree(mesh) {
+        var K = mesh._ew_occKeep; mesh._ew_occKeep = null; _occKept.delete(mesh);
+        if (Array.isArray(K)) { for (var i = 0; i < K.length; i++) if (K[i] && K[i]._ew_occClone) K[i].dispose(); }
+        else if (K && K._ew_occClone) K.dispose();
+    }
+    function _occKeepSweep(nowMs) {
+        if (nowMs - _occKeptAt < 10000) return;
+        _occKeptAt = nowMs;
+        var gone = null, over = _occKept.size - OCC_KEEP_MAX;
+        _occKept.forEach(function (mesh) {
+            var live = false;
+            if (over > 0 && !mesh._ew_occOrig) { over--; }
+            else for (var q = mesh, d = 0; q && d < 64; q = q.parent, d++) if (q.isScene) { live = true; break; }
+            if (!live && !mesh._ew_occOrig) (gone || (gone = [])).push(mesh);
+        });
+        if (gone) for (var i = 0; i < gone.length; i++) _occKeepFree(gone[i]);
+    }
+    /* the values a piece may have changed without a new version (a tint, a glow): the kept clone takes them again */
+    function _occKeepSync(c, m) {
+        c.opacity = (m.opacity != null ? m.opacity : 1);
+        if (c.color && m.color && c.color.isColor && m.color.isColor) c.color.copy(m.color);
+        if (c.emissive && m.emissive && c.emissive.isColor && m.emissive.isColor) c.emissive.copy(m.emissive);
+        if (m.emissiveIntensity != null) c.emissiveIntensity = m.emissiveIntensity;
+    }
+    function _occKeepFits(K, m) {
+        if (!K) return false;
+        if (Array.isArray(m)) { if (!Array.isArray(K) || K.length !== m.length) return false; for (var i = 0; i < m.length; i++) if (!K[i] || !m[i] || K[i]._ew_occSrc !== m[i] || K[i]._ew_occV !== m[i].version) return false; return true; }
+        return !Array.isArray(K) && K._ew_occSrc === m && K._ew_occV === m.version;
     }
     function _occApplyFade(mesh) {
         if (mesh._ew_occOrig || mesh._ew_fogOrig) return;   // already swapped (occlusion or fog fade)
-        mesh._ew_occOrig = mesh.material;
-        mesh.material = Array.isArray(mesh.material)
-            ? mesh.material.map(_occCloneMat)
-            : _occCloneMat(mesh.material);
+        var m = mesh.material, K = mesh._ew_occKeep;
+        mesh._ew_occOrig = m;
+        if (K && !window.EW_OCC_NO_KEEP && _occKeepFits(K, m)) {   // THE GHOSTS KEPT: the same clone as last time
+            if (Array.isArray(K)) { for (var i = 0; i < K.length; i++) _occKeepSync(K[i], m[i]); }
+            else _occKeepSync(K, m);
+            mesh.material = K;
+            return;
+        }
+        if (K) _occKeepFree(mesh);
+        mesh.material = Array.isArray(m)
+            ? m.map(_occCloneMat)
+            : _occCloneMat(m);
     }
     function _occSetOpacity(mesh, op) {
         var m = mesh.material;
@@ -28993,6 +29041,12 @@ const ThreeRenderer = (function () {
         var cur = mesh.material;
         mesh.material = mesh._ew_occOrig;
         mesh._ew_occOrig = null;
+        if (!window.EW_OCC_NO_KEEP && mesh.parent && cur && (Array.isArray(cur) ? (cur.length > 0 && cur[0] && cur[0]._ew_occClone) : cur._ew_occClone)) {   // THE GHOSTS KEPT
+            if (mesh._ew_occKeep && mesh._ew_occKeep !== cur) _occKeepFree(mesh);
+            mesh._ew_occKeep = cur; _occKept.add(mesh);
+            _occKeepSweep(performance.now());
+            return;
+        }
         if (Array.isArray(cur)) { for (var i = 0; i < cur.length; i++) if (cur[i] && cur[i]._ew_occClone) cur[i].dispose(); }
         else if (cur && cur._ew_occClone) cur.dispose();
     }
@@ -88434,9 +88488,26 @@ const ThreeRenderer = (function () {
             air:       { pts: 40,  perM: 60, label: 'BIG AIR' },
             vert:      { pts: 150, label: 'VERT AIR' },
             launch:    { pts: 60,  label: 'AIR' },
+            wallride:  { pts: 120, perSec: 60, label: 'WALLRIDE' },
+            wallplant: { pts: 150, label: 'WALL PLANT' },
         },
         ranks: [[0, 'LANDED'], [400, 'NICE'], [1500, 'SICK'], [5000, 'INSANE'], [15000, 'LEGENDARY']],
         lava: { perS: 30, ramp: 0.25, multEveryS: 2, tickS: 0.1 },   // THE FLOOR IS LAVA (2026-11-20)
+        /* THE GRINDS + THE BALANCE METER + THE WALLS (2026-11-20): see data.js HQ_SKATE_RULES for the words */
+        balance: { rampPerS: 0.08, rampMax: 2.5, tickS: 0.05 },
+        grindSwitchMs: 350,
+        grinds: {
+            fifty:     { label: '50-50',      pts: 0,   per: 1,   bal: 1,   tuck: 0,     spin: 0 },
+            nose:      { label: 'NOSEGRIND',  pts: 90,  per: 1.5, bal: 1.4, tuck: 0.3,   spin: 0 },
+            five0:     { label: '5-0',        pts: 90,  per: 1.5, bal: 1.4, tuck: -0.3,  spin: 0 },
+            board:     { label: 'BOARDSLIDE', pts: 80,  per: 1.3, bal: 1.2, tuck: 0,     spin: 1.5708 },
+            lip:       { label: 'LIPSLIDE',   pts: 80,  per: 1.3, bal: 1.2, tuck: 0,     spin: -1.5708 },
+            crooked:   { label: 'CROOKED',    pts: 120, per: 1.8, bal: 1.6, tuck: 0.28,  spin: 0.45 },
+            overcrook: { label: 'OVERCROOK',  pts: 120, per: 1.8, bal: 1.6, tuck: 0.28,  spin: -0.45 },
+            smith:     { label: 'SMITH',      pts: 120, per: 1.8, bal: 1.6, tuck: -0.26, spin: 0.4 },
+            feeble:    { label: 'FEEBLE',     pts: 120, per: 1.8, bal: 1.6, tuck: -0.26, spin: -0.4 },
+        },
+        wall: { minV: 5, maxS: 1.6, grav: 0.18, upV: 2.2, fallV: 2.0, jumpV: 5.6, jumpOut: 0.6, jumpPts: 60, plantInto: 0.8, plantV: 5.2, plantKeep: 0.85, max: 3, coolS: 0.4, tall: 0.9, lean: 0.6 },
     };
     var _hqRideMem = { on: false };   // the board through a door
     function _hqSkateRules() {
@@ -88593,6 +88664,71 @@ const ThreeRenderer = (function () {
        left the ground (air + rails, one clock; the ground zeroes it). While a line is open every second off the ground pays
        `lava.perS` points, faster the longer it runs (× 1 + offT × `lava.ramp`), and every `lava.multEveryS` seconds adds ONE to the
        line's multiplier. The score is ONE read: pts × (tricks + the lava steps). Table: data.js HQ_SKATE_RULES.lava. */
+    /* ══ THE GRINDS (2026-11-20, mondo: "let's do 3, 4, and 6") ══ a rail is no longer one grind. The grind is picked AT THE LOCK by the
+       arrow held (↑ nosegrind · ↓ 5-0 · ← boardslide · → lipslide; none = 50-50) and CHANGED ON THE RAIL by an arrow's press or a
+       flick of the stick (a mouse button held; the four diagonals = crooked · overcrook · smith · feeble). Each kind has its own
+       points a second (`per`), its own balance (`bal`: harder kinds drift harder) and its own deck pose (`tuck` = the deck's pitch,
+       `spin` = its turn across the rail). A kind pays its chip ONCE per rail (g.used): switching back and forth is free but never
+       farms the multiplier. Table: HQ_SKATE_RULES.grinds / grindSwitchMs. */
+    function _hqRideGrindPlace(rail) { return rail.escalator ? 'ESCALATOR' : rail.stair ? 'HANDRAIL' : rail.gallery ? 'BANISTER' : rail.arc ? 'RING' : rail.bridge ? 'ROPE' : ''; }
+    function _hqRideGrindLabel(S, rail, kind) {
+        var pw = _hqRideGrindPlace(rail), G = (S.grinds && S.grinds[kind]) || null;
+        if (!G || kind === 'fifty') return pw ? pw + ' GRIND' : '50-50 GRIND';
+        return (pw ? pw + ' ' : '') + G.label;
+    }
+    function _hqRideGrindSwitch(R, kind) {
+        var g = R.grind, S = _hqSkateRules(), G = S.grinds && S.grinds[kind];
+        if (!g || !G || R.bailT > 0 || g.kind === kind || g.swT > 0) return null;
+        g.kind = kind; g.swT = (S.grindSwitchMs != null ? S.grindSwitchMs : 350) / 1000;
+        R.bal += (Math.random() - 0.5) * 0.16;   // the change of feet unsettles the board a little
+        if (!g.used[kind]) { g.used[kind] = 1; _hqRideComboAdd(R, G.label, G.pts || 0); }
+        _hqRideEmit({ kind: 'grindswitch', id: kind, label: G.label });
+        return kind;
+    }
+    function _hqRideGrindFlick(R, dx, dy) {
+        var d = _hqRideFlickDir(dx, dy);
+        return _hqRideGrindSwitch(R, { up: 'nose', down: 'five0', left: 'board', right: 'lip', upleft: 'crooked', upright: 'overcrook', downleft: 'smith', downright: 'feeble' }[d]);
+    }
+    /* ══ THE WALLS (2026-11-20) ══ a wall met IN THE AIR at speed is no longer only a stop.
+         · THE WALLRIDE: a glancing wall (taller than `wall.tall` over the feet) turns the roll along it; the rider hangs on it for up to
+           `wall.maxS` (gravity × `wall.grav`), paid by the second; SPACE jumps off it (out and up). It ends when the wall runs out.
+         · THE WALL PLANT: a wall met near square-on (`wall.plantInto`) with SPACE held kicks the rider back off it (the heading
+           mirrored, `wall.plantV` up).
+       Both are off the ground: the line stays open, the off-ground clock runs. `wall.max` wall moves per stretch off the ground
+       (a rail or the ground gives them back), so two close walls are not a ladder. The wall's face is read by a ring of twelve
+       air probes round the body, only on the frame a move in the air was refused. */
+    function _hqRideWallNormal(pl, W) {
+        var sx = 0, sz = 0, n = 0, y = pl.y + (W.tall != null ? W.tall : 0.9), r = 0.5;
+        for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6, dx = Math.sin(a), dz = Math.cos(a); var ok = true; try { ok = _hqAirOK(pl.x + dx * r, pl.z + dz * r, y); } catch (e) { ok = true; } if (!ok) { sx += dx; sz += dz; n++; } }
+        var len = Math.hypot(sx, sz);
+        if (!n || n > 9 || len < 0.5) return null;   // nothing tall there, or boxed in (a corner, a pocket)
+        return { nx: -sx / len, nz: -sz / len };
+    }
+    function _hqRideWallTouch(pl, R, S, k, moved, want) {
+        var W = S.wall, TR = S.tricks; if (!W || !TR.wallride || !TR.wallplant) return false;
+        if (R.wall || R.trick || R.bailT > 0 || (R.wallCool || 0) > 0 || (R.wallN || 0) >= (W.max || 3) || Math.abs(R.v) < W.minV || R.airT < 0.1 || want <= 0.002 || moved > want * 0.9) return false;
+        if (pl.vy < 0 && _hqRideAirLeft(pl) < 0.12) return false;   // about to touch down: a landing, not a wall move
+        var N = _hqRideWallNormal(pl, W); if (!N) return false;
+        var sg = R.v < 0 ? -1 : 1, dx = Math.sin(R.hd) * sg, dz = Math.cos(R.hd) * sg, into = -(dx * N.nx + dz * N.nz);
+        if (into <= 0.12) return false;
+        if (into >= (W.plantInto != null ? W.plantInto : 0.8)) {
+            if (!k.space) return false;
+            var rx = dx + 2 * into * N.nx, rz = dz + 2 * into * N.nz;
+            R.hd = Math.atan2(rx * sg, rz * sg); R.v *= (W.plantKeep != null ? W.plantKeep : 0.85); pl.vy = Math.max(pl.vy, W.plantV); R.holdOn = false; R.vert = null;
+            R.wallN = (R.wallN || 0) + 1; R.wallCool = W.coolS;
+            _hqRideComboAdd(R, TR.wallplant.label, TR.wallplant.pts || 0);
+            _hqRideEmit({ kind: 'wallplant', v: R.v });
+            return true;
+        }
+        var tx = dx + into * N.nx, tz = dz + into * N.nz, tl = Math.hypot(tx, tz); if (tl < 0.01) return false;
+        tx /= tl; tz /= tl;
+        R.hd = Math.atan2(tx * sg, tz * sg); R.v *= Math.max(0.8, tl);
+        R.wall = { nx: N.nx, nz: N.nz, t: 0, side: (tx * N.nz - tz * N.nx) > 0 ? 1 : -1 };
+        pl.vy = Math.max(pl.vy, W.upV); R.holdOn = false; R.vert = null; R.wallN = (R.wallN || 0) + 1;
+        _hqRideComboAdd(R, TR.wallride.label, TR.wallride.pts || 0);
+        _hqRideEmit({ kind: 'wallride', v: R.v });
+        return true;
+    }
     var HQ_LAVA_DEFAULT = { perS: 30, ramp: 0.25, multEveryS: 2, tickS: 0.1 };
     function _hqLavaRules() { var R = (typeof HQ_SKATE_RULES !== 'undefined') ? HQ_SKATE_RULES : ((typeof window !== 'undefined' && window.HQ_SKATE_RULES) || null); return (R && R.lava) || HQ_LAVA_DEFAULT; }
     function _hqRideLavaSteps(R) { var L = _hqLavaRules(); return (L.multEveryS > 0) ? Math.floor((R.offT || 0) / L.multEveryS) : 0; }
@@ -88637,7 +88773,7 @@ const ThreeRenderer = (function () {
         R.combo = null; R.trick = null; R.queue = []; R.spinAcc = 0; R.grab = false; R.grabDone = false; R.holdOn = false;
         R.flip = 0; R.roll = 0; R.deckRoll = 0; R.deckSpin = 0; R.stance = 0; R.lean = 0;
         R.crouch = 0; R.crouchOn = false; R.crouchFullT = 0; R.squash = 0; R.grabTuck = 0; R.deckTuck = 0; if (R.stick) { R.stick.dx = R.stick.dy = 0; }
-        R.vert = null; R.launchKind = null; R.lipT = 9;
+        R.vert = null; R.launchKind = null; R.lipT = 9; R.wall = null;
         var csB = R.grind ? _hqRideClearSide(pl, R, R.grind.rail, R.grind.s) : null;   // THE WAY OUT OF A COLLIDER: the fall off a rail goes to its clear side
         if (R.grind) { R.grind = null; pl.air = true; pl.vy = 0.8; pl.jumpT = -1; }
         R.v *= 0.35; if (csB) { R.hd = Math.atan2(csB.nx, csB.nz); R.v = 1.8; }
@@ -88791,6 +88927,7 @@ const ThreeRenderer = (function () {
     function _hqRideStartTrick(R, id, dir) {
         var S = _hqSkateRules(), T = S.tricks[id]; if (!T) return null;
         dir = (dir === -1) ? -1 : 1;
+        if (R.wall) return null;   // THE WALLS: on a wall the board is on the wall
         if (R.trick && R.queue.length >= 3) return null;   // three deep is the queue
         var ms = _hqRideFitMs(R, T, _hqRideQueueMs(R));
         if (!ms) { _hqRideEmit({ kind: 'late', id: id, label: T.label }); return null; }
@@ -88836,8 +88973,14 @@ const ThreeRenderer = (function () {
     function _hqRideStickMove(dx, dy) {
         var H = _hq; if (!H || !H.ride || !H.ride.on || !H.ride.stick) return false;
         var R = H.ride, st = R.stick, S = _hqSkateRules();
-        if (!H.player.air || R.bailT > 0 || R.grind) { st.dx = st.dy = 0; return false; }   // on the ground the mouse aims; the travel is thrown away
         var now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+        if (R.grind && R.bailT <= 0) {   // THE GRINDS (2026-11-20): on a rail a flick changes the grind
+            if (st.coolUntil && now < st.coolUntil) { st.dx = st.dy = 0; return true; }
+            st.dx += dx; st.dy += dy;
+            if (Math.hypot(st.dx, st.dy) >= (S.flickPx || 34)) { _hqRideGrindFlick(R, st.dx, st.dy); st.dx = st.dy = 0; st.coolUntil = now + (S.flickCoolMs != null ? S.flickCoolMs : 220); }
+            return true;
+        }
+        if (!H.player.air || R.bailT > 0 || R.grind) { st.dx = st.dy = 0; return false; }   // on the ground the mouse aims; the travel is thrown away
         if (st.coolUntil && now < st.coolUntil) { st.dx = st.dy = 0; return true; }   // rev 4b: ONE trick per flick — the rest of the wrist's travel is thrown away
         st.dx += dx; st.dy += dy;
         var mag = Math.hypot(st.dx, st.dy);
@@ -88992,20 +89135,34 @@ const ThreeRenderer = (function () {
         }
         if (R.deckAway > 0) R.deckAway = Math.max(0, R.deckAway - dt);
         var noCtl = R.bailT > 0;
-        if (!R.grind && !pl.air) R.offT = 0;   // THE FLOOR IS LAVA: the wheels are on the ground, the clock is zero
+        if (!R.grind && !pl.air) { R.offT = 0; R.wallN = 0; R.wall = null; }   // THE FLOOR IS LAVA: the wheels are on the ground, the clock is zero (and the wall moves are given back)
         /* ── THE GRIND ── */
         if (R.grind) {
             var g = R.grind, L = _hqRailLen(g.rail);
             var railDir = _hqRailAt(g.rail, g.s);
             if (_hqPortalSweep(dt, { x: railDir.tx * g.dir * R.v, y: 0, z: railDir.tz * g.dir * R.v })) return;
-            g.t += dt; g.pts += (TR.grind.perSec || 0) * dt; _hqRideLava(R, dt);
+            var GK = (S.grinds && S.grinds[g.kind]) || {}, BAL = S.balance || {};
+            g.t += dt; g.pts += (TR.grind.perSec || 0) * (GK.per || 1) * dt; _hqRideLava(R, dt);
+            if (g.swT > 0) g.swT -= dt;
+            if (!noCtl) {   // THE GRINDS: an arrow's press changes the grind (the stick does too — _hqRideStickMove)
+                if (_hqRideKeyEdge(R, k, 'up')) _hqRideGrindSwitch(R, 'nose');
+                if (_hqRideKeyEdge(R, k, 'down')) _hqRideGrindSwitch(R, 'five0');
+                if (_hqRideKeyEdge(R, k, 'left')) _hqRideGrindSwitch(R, 'board');
+                if (_hqRideKeyEdge(R, k, 'right')) _hqRideGrindSwitch(R, 'lip');
+            }
+            R.deckSpin += ((GK.spin || 0) - R.deckSpin) * Math.min(1, dt * 12); R.deckTuck = (R.deckTuck || 0) + ((GK.tuck || 0) - (R.deckTuck || 0)) * Math.min(1, dt * 12);
+            /* THE BALANCE METER (2026-11-20): the rail pushes harder by the grind's kind and by the seconds off the ground (the clock
+               that pays the line also raises the stakes); the meter's beat goes to the HUD every balance.tickS */
+            var hardB = (GK.bal || 1) * Math.min(BAL.rampMax || 2.5, 1 + (R.offT || 0) * (BAL.rampPerS != null ? BAL.rampPerS : 0.08));
+            g.balT = (g.balT || 0) + dt;
+            if (g.balT >= (BAL.tickS || 0.05)) { g.balT = 0; _hqRideEmit({ kind: 'balance', k: R.bal / S.grindBalance, hard: hardB, label: (GK.label || '50-50') }); }
             R.v *= Math.pow(S.grindFriction, dt * 60);
             /* THE STAIRS PACK (2026-10-05, mondo: "I should be able to grind down stairs too, especially ones with railing like the escalator"):
                a sloped rail (a flight's railing, an escalator's handrail, a railing down a slope) pulls the rider down it — faster going down,
                slower going up (a climb that stalls drops off) */
             if (g.rail.y0 != null && g.rail.y1 != null && L > 0.01) { var slp = (g.rail.y1 - g.rail.y0) / L; R.v = Math.max(0, R.v - g.dir * slp * HQ_GRAV * 0.55 * dt); }
             g.s += g.dir * R.v * dt;
-            g.drift += (Math.random() - 0.5) * 3.0 * dt; g.drift = Math.max(-S.grindDrift, Math.min(S.grindDrift, g.drift));
+            g.drift += (Math.random() - 0.5) * 3.0 * hardB * dt; g.drift = Math.max(-S.grindDrift * hardB, Math.min(S.grindDrift * hardB, g.drift));
             R.bal += g.drift * dt + ((k.d ? 1 : 0) - (k.a ? 1 : 0)) * 1.4 * dt;
             R.lean += ((R.bal * 0.9) - R.lean) * Math.min(1, dt * 10);
             var edge = _hqRideKeyEdge(R, k, 'space');
@@ -89021,7 +89178,7 @@ const ThreeRenderer = (function () {
                 g.s = Math.max(0, Math.min(L, g.s));
                 var pe = _hqRailAt(g.rail, g.s); pl.x = pe.x; pl.z = pe.z; pl.y = pe.y + 0.02;
                 if (onRun) { var csE = _hqRideClearSide(pl, R, g.rail, g.s); if (csE) { R.hd = Math.atan2(csE.nx, csE.nz); R.v = 2.2; R.stance = 0; } }
-                R.grind = null; R.bal = 0;
+                R.grind = null; R.bal = 0; R.deckSpin = 0; R.deckTuck = 0;
                 pl.air = true; pl.vy = edge ? S.ollieV * 0.85 : 2.3; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.jumpFromWalkOff = false; R.holdOn = false;
                 _hqRideEmit({ kind: edge ? 'ollie' : 'hop', pts: pts });
                 return;
@@ -89130,7 +89287,7 @@ const ThreeRenderer = (function () {
                    the heading turns toward the keys at airTurn, and the speed is nudged by airAccel along
                    the roll (pressing with the roll speeds up, against it slows — a landing pulled onto the
                    rail, a gap made). Never a trick (the arrows are the tricks up here). */
-                var airWant = _hqRideWantHeading(H, k, false), airIn = 0;
+                var airWant = R.wall ? null : _hqRideWantHeading(H, k, false), airIn = 0;
                 if (airWant != null) {
                     var aDelta = _hqRideDelta(R, airWant), aRate = (S.airTurn != null ? S.airTurn : 1.35) * dt;
                     var aApplied = Math.max(-aRate, Math.min(aRate, aDelta));
@@ -89145,6 +89302,21 @@ const ThreeRenderer = (function () {
                 if (_hqRideKeyEdge(R, k, 'down')) _hqRideStartTrick(R, 'backflip');
                 if (_hqRideKeyEdge(R, k, 'shift')) _hqRideStartTrick(R, 'grab');
             } else leanT = 0;
+            /* THE WALLS (2026-11-20): the wallride's frame — the pay, the hang, the lean, the jump off, the end */
+            if (R.wallCool > 0) R.wallCool -= dt;
+            if (R.wall) {
+                var WL = S.wall, wr = R.wall; wr.t += dt;
+                if (R.combo && TR.wallride) R.combo.pts += (TR.wallride.perSec || 0) * dt;
+                pl.vy += HQ_GRAV * dt * (1 - (WL.grav != null ? WL.grav : 0.18)); if (pl.vy < -WL.fallV) pl.vy = -WL.fallV;
+                leanT = wr.side * (WL.lean != null ? WL.lean : 0.6);
+                var wallGone = true; try { wallGone = _hqAirOK(pl.x - wr.nx * 0.6, pl.z - wr.nz * 0.6, pl.y + 0.5); } catch (e) { wallGone = true; }
+                if (!noCtl && k.space && !pl._jumpLatch) {
+                    var sgJ = R.v < 0 ? -1 : 1, jo = (WL.jumpOut != null ? WL.jumpOut : 0.6), jx = Math.sin(R.hd) * sgJ * Math.cos(jo) + wr.nx * Math.sin(jo), jz = Math.cos(R.hd) * sgJ * Math.cos(jo) + wr.nz * Math.sin(jo);
+                    R.hd = Math.atan2(jx * sgJ, jz * sgJ); pl.vy = WL.jumpV; R.wall = null; R.wallCool = WL.coolS;
+                    if (R.combo) R.combo.pts += (WL.jumpPts || 0);
+                    _hqRideEmit({ kind: 'ollie', wall: true, v: R.v });
+                } else if (wallGone || noCtl || wr.t > WL.maxS || Math.abs(R.v) < WL.minV * 0.5) { R.wall = null; R.wallCool = WL.coolS; }
+            }
             pl._jumpLatch = !!k.space;
         }
         /* the active trick turns; done → the line; the queue follows */
@@ -89175,7 +89347,8 @@ const ThreeRenderer = (function () {
             var okx = _hqAirOK(nx, pl.z, pl.y), ax0 = pl.x, az0 = pl.z;
             if (okx) pl.x = nx; if (_hqAirOK(pl.x, nz, pl.y)) pl.z = nz;
             var sgA = R.v < 0 ? -1 : 1, wantA = Math.abs(R.v) * dt;
-            _hqRideSlide(R, S, sgA, wantA, pl.x - ax0, pl.z - az0, false);   // a wall in the air: a stop, never a bail (rev 3)
+            if (noCtl || !_hqRideWallTouch(pl, R, S, k, Math.hypot(pl.x - ax0, pl.z - az0), wantA))   // THE WALLS (2026-11-20): a wallride / a wall plant first
+                _hqRideSlide(R, S, sgA, wantA, pl.x - ax0, pl.z - az0, false);   // a wall in the air: a stop, never a bail (rev 3)
             _hqRideGravity(pl, R, dt, S, false);
         } else if (R.v !== 0) {
             var under = _hqRampUnder(nx, nz), prof = under && under.ramp.prof;
@@ -89286,7 +89459,7 @@ const ThreeRenderer = (function () {
     }
     /* gravity + the landing: a rail under the feet locks (the grind), the ground banks or bails */
     function _hqRideGravity(pl, R, dt, S, bailing) {
-        var TR = S.tricks;
+        var TR = S.tricks, k0 = (_hq && _hq.keys) || {};
         pl.vy -= HQ_GRAV * dt;
         var ny = pl.y + pl.vy * dt;
         if (pl.vy < 0) {
@@ -89298,12 +89471,15 @@ const ThreeRenderer = (function () {
                     var along = (Math.sin(R.hd) * p.tx + Math.cos(R.hd) * p.tz) * (R.v < 0 ? -1 : 1);
                     var dir = (along >= 0) ? 1 : -1, av = Math.abs(R.v);
                     R.v = Math.max(S.grindMinV, Math.abs(along) * av + 0.6 * av * (1 - Math.abs(along)));
-                    R.grind = { rail: snap.rail, s: snap.s, dir: dir, t: 0, drift: 0, pts: TR.grind.pts || 0 };
+                    var gk0 = k0.up ? 'nose' : k0.down ? 'five0' : k0.left ? 'board' : k0.right ? 'lip' : 'fifty'; if (!(S.grinds && S.grinds[gk0])) gk0 = 'fifty';   // THE GRINDS (2026-11-20): the arrow held at the lock picks the grind
+                    var gu0 = {}; gu0[gk0] = 1;
+                    R.grind = { rail: snap.rail, s: snap.s, dir: dir, t: 0, drift: 0, pts: TR.grind.pts || 0, kind: gk0, used: gu0, swT: 0.2, balT: 0 };
+                    R.wall = null; R.wallN = 0;
                     R.bal = 0; R.trick = null; R.queue = []; R.flip = R.roll = R.deckRoll = R.deckSpin = 0; R.grab = false;
                     R.stance = 0; R.spinAcc = 0; R.vert = null; R.launchKind = null; R.lipT = 9;
                     pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.x = p.x; pl.z = p.z; pl.y = p.y + 0.02;
-                    var gl = snap.rail.escalator ? 'ESCALATOR GRIND' : snap.rail.stair ? 'HANDRAIL GRIND' : snap.rail.gallery ? 'BANISTER GRIND' : snap.rail.arc ? 'RING GRIND' : snap.rail.bridge ? 'ROPE GRIND' : '50-50 GRIND';
-                    _hqRideComboAdd(R, gl, TR.grind.pts || 0);
+                    var gl = _hqRideGrindLabel(S, snap.rail, gk0);
+                    _hqRideComboAdd(R, gl, (TR.grind.pts || 0) + ((S.grinds && S.grinds[gk0] && S.grinds[gk0].pts) || 0));
                     _hqRideEmit({ kind: 'grindstart', rail: gl, rope: !!snap.rail.bridge });
                     if (pl.entry) pl.entry._ew_hqLandAt = performance.now();
                     return;
@@ -89460,7 +89636,8 @@ const ThreeRenderer = (function () {
         e.model.scale.y = R.scaleY; e.model.scale.x = e.model.scale.z = 1 + (1 - R.scaleY) * 0.35;
         /* the deck: rides the same spin / flip / roll, plus its own kickflip roll; a grind's sparks */
         var D = R.deck;
-        D.rotation.set(flip + (R.deckTuck || 0), yaw + (R.deckSpin || 0), roll + R.deckRoll);
+        R.wallLean = (R.wallLean || 0) + ((R.wall ? R.lean : 0) - (R.wallLean || 0)) * Math.min(1, dt * 10);   // THE WALLS (2026-11-20): on a wall the deck leans with the body (the wheels on the wall)
+        D.rotation.set(flip + (R.deckTuck || 0), yaw + (R.deckSpin || 0), roll + R.deckRoll + R.wallLean);
         var dv = new THREE.Vector3(0, piv * U, 0).applyEuler(D.rotation);
         D.position.set(-dv.x, piv * U - dv.y, -dv.z);
         /* THE FIT's offset, travel frame → the group's (the deck's own rotation.y = yaw, its +Z the roll) */
@@ -101848,7 +102025,7 @@ const ThreeRenderer = (function () {
         flick: function (dx, dy, btn) { return (_hq && _hq.ride) ? _hqRideFlick(_hq.ride, dx, dy, btn) : null; },   // rev 4: THE STICK for a probe
         skating: function () { return !!(_hq && _hq.ride && _hq.ride.on); },
         skateIssued: function (on) { if (_hq && _hq.ride) { _hq.ride.issued = !!on && !_hqSkateOff(); if (!on) _hqRideToggle(false, true); } return !!(_hq && _hq.ride && _hq.ride.issued); },
-        ride: function () { if (!_hq || !_hq.ride) return null; var R = _hq.ride; return { on: R.on, issued: R.issued, v: R.v, hd: R.hd, air: !!(_hq.player && _hq.player.air), grind: R.grind ? { s: R.grind.s, dir: R.grind.dir, t: R.grind.t } : null, trick: R.trick ? R.trick.id : null, combo: R.combo ? { text: R.combo.tricks.join(' + '), pts: R.combo.pts, mult: _hqRideComboMult(R), score: _hqRideComboScore(R) } : null, offT: R.offT || 0, bail: R.bailT > 0 }; },
+        ride: function () { if (!_hq || !_hq.ride) return null; var R = _hq.ride; return { on: R.on, issued: R.issued, v: R.v, hd: R.hd, air: !!(_hq.player && _hq.player.air), grind: R.grind ? { s: R.grind.s, dir: R.grind.dir, t: R.grind.t, kind: R.grind.kind, bal: R.bal } : null, wall: R.wall ? { t: R.wall.t, side: R.wall.side } : null, trick: R.trick ? R.trick.id : null, combo: R.combo ? { text: R.combo.tricks.join(' + '), pts: R.combo.pts, mult: _hqRideComboMult(R), score: _hqRideComboScore(R) } : null, offT: R.offT || 0, bail: R.bailT > 0 }; },
         rails: function () { return _hq ? (_hq.rails || []).slice() : []; },
         ramps: function () { return _hq ? (_hq.ramps || []).slice() : []; },
         /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the room's lines and the walker on one */
@@ -102116,6 +102293,7 @@ const ThreeRenderer = (function () {
             hqCam: function () { return _hq ? _hq.camera : null; },   // the walk's camera (a probe reads its far plane and where it stands, 2026-11-17)
             /* THE ROUND WORLDS, as a probe reads them (2026-11-17) */
             round: function () { return { live: _ewPl.live, nodes: !!_ewPl.u, ctx: !!_ewPl.ctx, gpu: _ewGpu, anchor: _ewPl.anchor, face: _hq && _hq._plFace, round: _ewPlRound() }; },
+            rideRaw: function () { return _hq ? { R: _hq.ride, pl: _hq.player, cam: _hq.cam, shell: _hq.room.shell, keys: _hq.keys } : null; },   // a probe's handle on the live rider (2026-11-20: the grinds, the walls)
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;
                 o = o || {};
