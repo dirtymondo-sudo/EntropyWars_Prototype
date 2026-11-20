@@ -79482,7 +79482,7 @@ const HQ_DEAD_ENDS = [
     { room: 'site_prebuilt_vatican_plots',           x: -21,    z: -143,    ew: false, kind: 'stone' },   // the Pilgrim Stair behind the cortile
     { room: 'site_prebuilt_shasta_ow_olympus',       x: -70,    z: 122,     ew: false, kind: 'stone' },   // the Pilgrim Stair's foot on Olympus
     { room: 'site_prebuilt_northpole_plots',         x: 45.5,   z: 80,      ew: false, kind: 'snow' },    // the sleigh road south out of the village
-    { room: 'site_prebuilt_camelot_ow_pines',        x: 38,     z: -124.25, ew: true,  kind: 'snow' },    // the Pines' old sleigh road east
+    /* (2026-11-20) the Pines' old sleigh road east is no dead end any more: the room is three plots wide and the Sleigh Road runs through that square (the Hermit's Hollow's plot stands past it) */
 ];
 (function () {
     const r2 = v => Math.round(v * 100) / 100;
@@ -81981,7 +81981,7 @@ const HQ_AREA_MARKERS = {
     site_prebuilt_heaven_gate: { x: 0, z: 0 },   // THE CLOUD FIELDS: the sun (THE NEW HEAVEN, 2026-11-03)
     site_prebuilt_camelot_ward: { x: 8, z: 54 },
     site_prebuilt_camelot_kingdom: { x: -15.75, z: 117.25 },   // THE ONE WORLD MOVE (2026-11-17): the castle + village block, on the Drawbridge plot at the foot of the road up (the old marker stood in the forest, a room of its own now)
-    site_prebuilt_camelot_ow_pines: { x: -22.75, z: 124.25 },   // the Snowy Pines: the sleigh road at the pines' south end
+    site_prebuilt_camelot_ow_pines: { x: -43.75, z: 127.75 },   // the Snowy Pines: the Sleigh Road at the pines' south end, by the Wayside Hut (11-20: the room is three plots wide; the old spot is pines now)
     site_prebuilt_camelot_ow_garden: { x: 61.25, z: -1.75 },   // the Looking-Glass Garden: the Lawn, inside the hedge from the west gate
     site_prebuilt_camelot_ow_fairy: { x: -61.25, z: -1.75 },   // the Fairy Forest: the Pond, inside the trees from the east gate
     site_prebuilt_camelot_ow_forest: { x: -64.75, z: -85.75 },   // the Forest: the Crown's Road at the forest's north end

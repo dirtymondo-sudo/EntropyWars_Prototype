@@ -413,19 +413,19 @@ How each room really stands. `#` = a plot (42 m), `.` = no plot. North is up. Un
 `P03-01` The Lawn (L) · `P02-01` The Chessboard (L) · `P02-00` The Hedges, north (L) · `P01-01` The Mirror (L) · `P02-02` The Hedges, south (L) · `P00-01` The Tea Party (L)
 
 ## site_prebuilt_camelot_ow_pines
-84 x 294 m · 2 x 7 plots, 8 used · open sky · world -26, -10 (surface)
+168 x 294 m · 4 x 7 plots, 22 used · open sky · world -27, -10 (surface)
 
 ```
-.#
-.#
-.#
-##
-#.
-#.
-#.
+.###
+.###
+.###
+####
+###.
+###.
+###.
 ```
 
-`P00-06` The Snowfield (N) · `P00-05` The Sleigh Road (N) · `P00-04` The Snowfield, east (N) · `P00-03` The Snowfield, west (N) · `P01-03` The Snowy Pines, west (N) · `P01-02` The Snowy Pines, east (N) · `P01-01` Snowy pines, north-west (N) · `P01-00` Snowy pines, north-east (N)
+`P01-06` The Snowfield (N) · `P01-05` The Sleigh Road (N) · `P01-04` The Snowfield, east (N) · `P01-03` The Snowfield, west (N) · `P02-03` The Snowy Pines, west (N) · `P02-02` The Snowy Pines, east (N) · `P02-01` Snowy pines, north-west (N) · `P02-00` Snowy pines, north-east (N) · `P00-06` The Lookout (N) · `P02-06` The Gully Mouth (N) · `P00-05` The Pine Ridge (N) · `P02-05` The Log Bridge (N) · `P00-04` The Ridge Foot (N) · `P02-04` The Gully Head (N) · `P00-03` The Wolf Run (N) · `P03-03` The East Branch (N) · `P01-02` The Drift Bank (N) · `P03-02` The Frozen Tarn (N) · `P01-01` The Drift Field (N) · `P03-01` The Tarn Shore (N) · `P01-00` The High Pines (N) · `P03-00` The Hermit’s Hollow (N)
 
 ## site_prebuilt_downtown_underworld
 714 x 672 m · 17 x 16 plots, 65 used · roofed · world 1, 1 (under)
