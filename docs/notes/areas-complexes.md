@@ -13070,3 +13070,16 @@ mondo 11-20: "Okay looks good, go ahead and do those interiors".
   the doorway and fills the room (the keep's stone foot did). (5) The probe's view `y` is the FEET: in a room under 3.6 m the picture is taken above the ceiling.
 - **NOT DONE:** one storey a building (the Inn, the Net Loft, the Theatre, the Keep and the Pagoda are tall single rooms); no night look; not walked as a player;
   the rooms under 3.6 m high were not photographed (same kit, same code path as the six that were).
+
+## KATANA ISLAND, THE PALACE (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20: "Is there a dojo or a palace?" (there was a dojo and a keep, no palace); "Yes and add another plot or two if you need to."
+
+- **A 30th PLOT, `The Palace`** (district C, level 8; island plot 0,1 = squares x 0..11, y 12..23, north of the Castle Garden on the west sea cliff; `layout.js`). The
+  room is at its cap of 30 plots now: a 31st means a second room.
+- **WHAT STANDS** (`districts/C.js` THE PALACE): the AUDIENCE HALL across the north (7 x 4 squares = 24.5 x 14 m, a deep porch on six red posts), the PRIVATE ROOMS
+  (west wing) and the GUEST HOUSE (east wing) round an open court, a gate and a white wall on the south side. THE PALACE WALK (a lane, 2 squares, layout.js) comes up
+  from the Castle Garden; the tool stood its flight at the plot line. The shogun stands in the court.
+- **INSIDE** (`insides.js` kind `audience`): the lord's dais across the back under seven gold panels, two swords on a stand, the court's cushions in two files, flags,
+  armour stands, braziers, paper screens down both sides, weapon racks, a drum and a gong by the door, ten hung lanterns. The wings are a samurai house and a tea room.
+- **LEARNT:** the catalogue's `privacy_screen` is a green hospital curtain; it is out of every room on the island (the drawn paper `screen` instead).

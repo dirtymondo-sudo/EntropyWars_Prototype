@@ -8,7 +8,7 @@ const N = 12, COLS = 7, ROWS = 7, W = COLS * N, H = ROWS * N;
 const PLOTS = [
     [2, 0, 'V', 9, 'The Black Cape'], [2, 1, 'V', 13, 'The West Flank'], [3, 1, 'V', 18, 'The Crater'], [4, 1, 'V', 12, 'The East Flank'], [3, 2, 'V', 13, 'The Lava Field'],
     [1, 1, 'W', 9, 'The Old Wood'], [1, 2, 'W', 8, 'The Bamboo Wood'], [2, 2, 'W', 10, 'The Cherry Wood'], [3, 3, 'W', 7, 'The Hot Spring'],
-    [0, 2, 'C', 7, 'The Castle Garden'], [0, 3, 'C', 8, 'The Castle'], [0, 4, 'C', 4, 'The Samurai Quarter'], [1, 3, 'C', 6, 'The High Town'], [2, 3, 'C', 5, 'The Temple Quarter'], [2, 4, 'C', 3, 'The Merchants’ Town'],
+    [0, 1, 'C', 8, 'The Palace'], [0, 2, 'C', 7, 'The Castle Garden'], [0, 3, 'C', 8, 'The Castle'], [0, 4, 'C', 4, 'The Samurai Quarter'], [1, 3, 'C', 6, 'The High Town'], [2, 3, 'C', 5, 'The Temple Quarter'], [2, 4, 'C', 3, 'The Merchants’ Town'],
     [1, 4, 'B', 1, 'The Waterfront'], [0, 5, 'B', 1, 'The West Quay'], [0, 6, 'B', 2, 'The Lantern Head'], [2, 5, 'B', 1, 'The East Quay'], [2, 6, 'B', 0, 'The Fishing Beach'],
     [3, 4, 'L', 1, 'The Paddies'], [3, 5, 'L', 1, 'The Shore Hamlet'], [4, 4, 'L', 3, 'The Village'], [4, 3, 'L', 5, 'The Terraces'],
     [5, 3, 'J', 3, 'The Jungle'], [5, 2, 'J', 2, 'The Dinosaur Park'], [6, 2, 'J', 1, 'The East Shore'], [4, 2, 'J', 6, 'The Jungle Rise'], [5, 1, 'J', 5, 'The Jungle, north'],
@@ -42,6 +42,7 @@ const WAYS = [
     ['The West Steps + the Main Gate (the Waterfront, the Samurai Quarter, the castle’s south gate)', 2, [[13, 55], [8, 55], [8, 51], [4, 51], [4, 46], [5, 46], [5, 41]]],
     ['The Wild Way (the Dinosaur Park up the volcano’s east flank to the crater)', 1, [[67, 31], [64, 31], [64, 28], [64, 22], [58, 22], [58, 18], [52, 18], [52, 21], [47, 21], [47, 17], [46, 17]]],
     ['The East Shore trail', 1, [[67, 31], [74, 31], [74, 28], [79, 28]]],
+    ['The Palace Walk (the castle garden up to the palace\u2019s gate)', 2, [[10, 29], [10, 24], [6, 24], [6, 21]]],
     ['The Postern (the castle garden to the Bamboo Wood)', 1, [[5, 41], [5, 37], [5, 33], [10, 33], [10, 29], [15, 29], [15, 31]]],
     ['The Old Wood trail (the Bamboo Wood, the hidden shrine, the Black Cape)', 1, [[20, 27], [20, 20], [15, 20], [15, 16], [22, 16], [26, 16], [26, 9], [31, 9], [31, 5]]],
     ['The Hot Spring trail (the Cherry Wood, the Lava Field, the Hot Spring, the Terraces)', 1, [[32, 28], [38, 28], [38, 34], [41, 34], [41, 40], [41, 42], [47, 42], [47, 45], [51, 45], [55, 45]]],
@@ -58,7 +59,7 @@ const LEDGES = [
     [7, 78, 7, 81, 'E', 3, 0],
 ].filter(q => q.length);
 /* landmarks: [square x, y, label] */
-const MARKS = [[4, 38, 'THE CASTLE KEEP'], [30, 42, 'the pagoda'], [17, 78, 'THE GREAT GATE in the water'], [5, 79, 'the lantern tower'], [41, 17, 'THE CRATER'], [41, 43, 'the hot spring'],
+const MARKS = [[4, 38, 'THE CASTLE KEEP'], [6, 16, 'THE PALACE'], [30, 42, 'the pagoda'], [17, 78, 'THE GREAT GATE in the water'], [5, 79, 'the lantern tower'], [41, 17, 'THE CRATER'], [41, 43, 'the hot spring'],
     [66, 28, 'the dinosaur park'], [54, 52, 'the village square'], [15, 34, 'the shrine stair'], [15, 15, 'the hidden shrine'], [31, 4, 'the cape'], [17, 62, 'the pier (the boat lands)']];
 /* the check: every leg on the grid and 8 squares or shorter, every way square on dry ground */
 function check() { const bad = [];
