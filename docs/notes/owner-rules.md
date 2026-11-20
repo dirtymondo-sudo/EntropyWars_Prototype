@@ -98,6 +98,9 @@ then tough shit. The player experience should be the same"): no weak-PC cut may 
   working swinging doors like DOOR HQ. Big windows, but ground floors are not all window. He likes dark glass.
 - Terrain: cliffs `rocks_5` (`cliff.png` is banned), lawns `grass_2`, forest floor `grass_dark_fantasy` / `dirt_2`.
   Most trees are the retro pixel trees. Nexus and spawn zones paint on the ground, never on bridge decks.
+- **No Meshy trees** (10-04: "i dont even want to use that meshy tree anywhere in the game"; trees are the retro / kit trees).
+  ONE EXCEPTION (11-20): he OK'd Meshy for bamboo, the giant redwood, a jungle tree and a Joshua tree in the Katana + flora
+  batch (`docs/plans/meshy-flora-katana/BATCH1.md`). Any other Meshy tree still needs his say-so.
 - **Gore** ("Mortal Kombat"): hits spray blood away from the attacker and stain the floor for the match; crits throw
   chunks; a kill is a gore burst with a pool and a shake. Four shared death clips. Graves survive a respawn.
 - **VFX** follow the Riot VFX style guide: own side cyan-blue, enemy pink-orange. Never hide the caster, target, hit or
