@@ -3150,7 +3150,17 @@ flickers, suspect shadow acne at a low sun (HQ_LIGHT_RULES.shadows.normalBias 2.
   slab before, 0 after. THE SWEEP that found it (scratch, not in the repo; rebuild it like this): walk `dev.hqScene()` skipping `_ew_bRec` and
   `_ew_instHidden`, take each up-facing triangle, sample it on a 0.5 m grid IN 48 m STRIPS of x (one pass over the whole city = 16 M
   samples and the page dies), sort by cell + height, report pairs within 4 mm grouped by the two materials. Still on its list, not looked
-  at: the city's edge land sheet on the road (`hq_edge_land`, z 254), instanced prop bases on the road (barrels, bins, containers on containers).
+  at (11-20, then looked at, see the next row).
+- THE ZSEP, THE REST (11-20, mondo: "So why don't you fix the other ones too?"). The sweep again, FRONT faces only (the first list was mostly
+  two-sided undersides: a barrel's bottom, a slab's underside, never seen), each group photographed and named. Real, fixed in `_hqZSep`:
+  (1) PAINT ON PAINT: decals were skipped whole, so the stadium's white lines tore against its mown stripes (both depth-offset, same plane);
+  a second pass `{ decals: true }` reads the decals alone and lifts the smaller. (2) Only the shell's merge was read: furniture built in code
+  in a building's prop chunk (dark slab on dark slab, the stilt house's orange piece) had exact pairs; every merge is read now
+  (`{ noModels: true }` outside the shell: a piece under a loaded model, `_ew_mm` / `_ew_oneModel` / `_ew_decor`, is left alone).
+  After: each pair 1.2 cm apart. Looked at and NOT a flicker (leave them): the edge land on a road sheet at z 254 (9 m under the sea);
+  desk items 0.7 mm over a desk top and the shag rug's two layers 2 mm apart (inside one prop, steady from any distance a player sees them
+  at); blob shadows over each other (no depth write); tree leaves. A probe tip: more than ~4 teleports across the city in one run crashes
+  the cloud browser; three views a run.
 
 ## THE NEW BODY SPLIT (2026-11-19, spikes thread)
 mondo's 14:53 F3 had one 116 ms frame with "residents: new body 51 ms" (one body a frame since PR #2137, bakes kept per key since #2156),
