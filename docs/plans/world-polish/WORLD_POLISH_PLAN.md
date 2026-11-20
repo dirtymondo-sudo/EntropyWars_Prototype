@@ -45,6 +45,7 @@ city) and thread 3 (Came A Lot's woods, The Snowy Pines as its pilot); they are 
   are made bigger ... There are stairs that lead straight into a wall or collide with a building ... if the city needs to be made bigger that is
   fine"). The audit scored the city roomiest of all: it measures walkable ground, not how close the buildings stand or what a stair runs into.
   So the city gets its own look first (thread 2: section 5).
+- **FREEDOM TO MOVE, CHANGE AND GROW** (11-20, to thread 3: "you have freedom to move and change and make bigger whatever you need to, that is the whole point of this pass"). A thread does not stop to ask before growing a room, moving plots, changing a layout or a shared tool: it puts a note on the board (`docs/notes/claims.md`) and does it. (This lifts step 3's "waits for his word" for a change of that kind; he still sees the proof picture.)
 - Giza's pilot: "okay looks decent, continue" (11-19).
 
 Files here:
