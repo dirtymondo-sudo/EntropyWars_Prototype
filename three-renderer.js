@@ -76727,7 +76727,7 @@ const ThreeRenderer = (function () {
             var bt = new THREE.CanvasTexture(bc); bt.anisotropy = 4;
             return (_hqArchSignCache[key] = bt);
         }
-        var H = 128, W = Math.max(32, Math.min(2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;
+        var H = (q[7] === 'n' && asp <= 8) ? 256 : 128, W = Math.max(32, Math.min(2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;   // (a neon sign is drawn twice as fine: its halo blurs a 128 px line)
         var g = c.getContext('2d'), F = HQ_SIGN_FONTS[q[5]] || null, shown = (F && F.tc) ? _hqSignTitleCase(words) : words;
         var fontOf = function (v, fam) { return (fam ? F.w : 900) + ' ' + v + 'px ' + (fam ? F.f + ', ' : '') + '"Arial Black", "Helvetica Neue", Arial, sans-serif'; };
         /* the words fitted inside the board: 90% of its width and (a typeface of its own only) 80% of its height, measured on the glyphs
@@ -76735,19 +76735,19 @@ const ThreeRenderer = (function () {
         /* THE NEON (2026-11-20, the branding pass: the night streets): an eighth field 'n' = the words are a lit tube in `fg`: a soft halo, a
            near-white core, and (a boardless sign) a dark plate with a thin tube frame behind the words only. The part carries glow 1. */
         var neonS = q[7] === 'n', hot = fg;
-        if (neonS) { var hm = /^#([0-9a-f]{6})$/i.exec(fg); if (hm) { var hv = parseInt(hm[1], 16), mixw = function (c) { return Math.round(c + (255 - c) * 0.68); }; hot = 'rgb(' + mixw((hv >> 16) & 255) + ',' + mixw((hv >> 8) & 255) + ',' + mixw(hv & 255) + ')'; } }
+        if (neonS) { var hm = /^#([0-9a-f]{6})$/i.exec(fg); if (hm) { var hv = parseInt(hm[1], 16), mixw = function (c) { return Math.round(c + (255 - c) * 0.55); }; hot = 'rgb(' + mixw((hv >> 16) & 255) + ',' + mixw((hv >> 8) & 255) + ',' + mixw(hv & 255) + ')'; } }
         var plate = function (x0, x1) {
-            if (!neonS || bg) return; var pad = H * 0.16, px0 = Math.max(0, x0 - pad), pw = Math.min(W, x1 + pad) - px0;
-            g.fillStyle = '#0b0a10'; g.fillRect(px0, 0, pw, H);
+            if (!neonS) return; var pad = H * 0.16, px0 = bg ? 0 : Math.max(0, x0 - pad), pw = bg ? W : Math.min(W, x1 + pad) - px0;
+            if (!bg) { g.fillStyle = '#0b0a10'; g.fillRect(px0, 0, pw, H); }
             g.save(); g.strokeStyle = fg; g.globalAlpha = 0.6; g.lineWidth = Math.max(2, H * 0.03); g.shadowColor = fg; g.shadowBlur = H * 0.08; g.strokeRect(px0 + H * 0.06, H * 0.06, pw - H * 0.12, H * 0.88); g.restore();
         };
         var ink = function (str, x, y, p) {
             if (!neonS) { g.fillStyle = fg; g.fillText(str, x, y); return; }
-            g.save(); g.shadowColor = fg; g.shadowBlur = p * 0.3; g.fillStyle = fg; g.fillText(str, x, y); g.fillText(str, x, y); g.shadowBlur = p * 0.1; g.fillStyle = hot; g.fillText(str, x, y); g.restore(); g.fillStyle = fg;
+            g.save(); g.shadowColor = fg; g.shadowBlur = p * 0.2; g.fillStyle = fg; g.fillText(str, x, y); g.fillText(str, x, y); g.shadowBlur = 0; g.fillStyle = hot; g.fillText(str, x, y); g.restore(); g.fillStyle = fg;
         };
         var paint = function (fam) {
             g.clearRect(0, 0, W, H); if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
-            var px = 96, ls = (fam && F.ls && ('letterSpacing' in g)) ? F.ls : 0, txt = fam ? shown : words;
+            var PB = Math.round(H * 0.75), px = PB, ls = (fam && F.ls && ('letterSpacing' in g)) ? F.ls : 0, txt = fam ? shown : words;
             var mk = _HQ_MARK_FONTS[q[6]] ? q[6] : '', mr = mk ? H * 0.42 : 0, mgap = mk ? H * 0.2 : 0, room = W * 0.9 - (mk ? mr * 2 + mgap : 0);   // THE CITY MARKS: the mark stands left of the words, the pair centred on the board
             g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (px * ls) + 'px';
             var m = g.measureText(txt), tw = m.width || 1, th = ((m.actualBoundingBoxAscent || 0) + (m.actualBoundingBoxDescent || 0)) || px * 0.72;
@@ -76757,7 +76757,7 @@ const ThreeRenderer = (function () {
             var cut = -1, cd = 1e9; for (var ci = 1; ci < txt.length - 1; ci++) if (txt.charAt(ci) === ' ' && Math.abs(ci - txt.length / 2) < cd) { cd = Math.abs(ci - txt.length / 2); cut = ci; }
             if (cut > 0) {
                 var la = txt.slice(0, cut).trim(), lb = txt.slice(cut + 1).trim(), wab = Math.max(g.measureText(la).width, g.measureText(lb).width) || 1;   // (measured at 96 px, as tw / th above)
-                var px2 = Math.max(8, Math.floor(96 * Math.min(1, room / wab, (H * 0.39) / th)));
+                var px2 = Math.max(8, Math.floor(PB * Math.min(1, room / wab, (H * 0.39) / th)));
                 if (la && lb && px2 > px * 1.3) {
                     g.font = fontOf(px2, fam); if ('letterSpacing' in g) g.letterSpacing = (px2 * ls) + 'px';
                     var m2 = g.measureText(txt), u2 = m2.actualBoundingBoxAscent || px2 * 0.72, d2 = m2.actualBoundingBoxDescent || 0;

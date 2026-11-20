@@ -108,7 +108,7 @@ function apply(rows, districtOf, words) {
                     const br = q[6] ? null : brandFor(d, q[0], q[2]);
                     if (br) { if (br.words) { q[0] = br.words; out.names = (out.names || 0) + 1; } if (br.font) q[5] = br.font; if (br.mark) { while (q.length < 7) q.push(''); q[6] = br.mark; out.marks = (out.marks || 0) + 1; }
                         /* THE NEON (11-20): `neon: '#colour'` on a row = the sign is a lit tube in that colour on a dark plate (an eighth field 'n'; three-renderer.js draws it), full glow */
-                        if (br.neon) { q[1] = br.neon; while (q.length < 8) q.push(''); q[7] = 'n'; if (k === 'key') o.glow = Math.max(+o.glow || 0, 1); out.neon = (out.neon || 0) + 1; } }
+                        if (br.neon) { q[1] = br.neon; if (q[2]) q[2] = '#0b0a10';   /* (a neon sign's board is dark: pink tube on a pink board cannot be read) */ while (q.length < 8) q.push(''); q[7] = 'n'; if (k === 'key') o.glow = Math.max(+o.glow || 0, 1); out.neon = (out.neon || 0) + 1; } }
                     if (!q[5]) q[5] = fontFor(d, q[0]); o[k] = 'txt:' + q.join('|'); out.signs++; out.byFont[q[5]] = (out.byFont[q[5]] || 0) + 1; }
             } else if (v && typeof v === 'object') walk(v, d);
         }
