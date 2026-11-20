@@ -19,12 +19,14 @@ His words, with their dates. They are the rule. Nothing below may soften them.
 - 2026-11-16, every district: "at least 75% of the detail disaster city has".
 - 2026-11-20: "Im trying to avoid just long straight boring pathways. There should always be branches and different routes you can take that
   lead to different zones or districts."
+- 2026-11-20, after reading the standard below (EQUAL WEIGHT with every line above): **"please don't just make every area windy plots and stuff.
+  There can still be open areas, still be flat areas, and there still needs to be real architecture and exteriors and interiors."**
 - 2026-11-20, after walking The Woods: "I still feel like they are too flat? **Where are the ridges and hills valleys? Thin trails off the main
   path? There are still just long straight wide pathways.** ... Disaster city elevation was done by giving different districts different height
   ranges, and allowing height ranges inside the plots too, so there is a lot of variety and pathways. **The point is to help the player orient
   themselves in the world. It's hard to do that when everything is just a flat straight path.**"
 
-What that means for a room, in four lines:
+What that means for a room, in six lines:
 
 1. **A HEIGHT BASE, the way the city has one.** Districts stand at different height ranges. Plots inside a district stand at different levels.
    The ground inside a plot has relief too. Ridges, hills, valleys. A level floor with a few set pieces on it is NOT the standard.
@@ -32,7 +34,14 @@ What that means for a room, in four lines:
 3. **WAYS WIND.** A main way is narrow enough to feel like a path through the place. It is never one long straight wide lane.
 4. **THIN TRAILS BRANCH OFF IT** (one or two squares) and each leads somewhere: another district, another zone, a secret.
 
-The numbers for these four lines are in section A below. They are proposals; mondo changes them with one line.
+5. **THE STANDARD IS VARIETY, NOT A FORMULA.** Disaster City has open squares, level streets and big flat places AND height differences AND
+   narrow alleys. Each place gets what fits it: some open, some flat on purpose, some steep, some winding. A thread that makes every plot
+   hilly and every way a wiggle has missed the standard as badly as one that leaves it all flat.
+6. **REAL ARCHITECTURE.** Every zone still needs buildings you see from outside and walk into, with an exterior and an interior that are the
+   same building. Terrain and trails alone are not a zone.
+
+The numbers for lines 1 to 4 are in section A below. They are proposals; mondo changes them with one line. They are for the wild parts of a
+place (trails, hills, tunnels); they do not turn a square, a field or a street into a winding hill.
 
 ### 2. THE STATE OF EVERY THREAD (2026-11-20)
 
@@ -58,6 +67,7 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 16 | **The Deep** | Atlantis + The Trench, The Sea Floor | Not started |
 | 17 | **The Estate** | The Estate (Corn Fields, Lake, Ranch), The Haunted House | Not started |
 | 18 | **Outer Space** | Outer Space, one room | Not started |
+| 20 | **The Bayside Mall** (in Disaster City, Bayside district) | the mall building on the city's Bayside + its inside room | **Not started. Waits for the One Beach thread** (mondo 11-20: "Id probably wait for the beach thread to be finished since it is supposed to be a bayside mall"). |
 | 19 | **The Beach** | The Beach, Pirates' Cove, The Frozen Sea, The Bermuda Triangle, The Volcano Island | **Another thread has it** ("One Beach": Disaster City's Bayside beach and the Beach zone made one). No thread of this plan starts here until that one reports. |
 | none | The highways and the routes | every `site_ow_*` room | **Not in this plan.** Its own thread (mondo 11-20). |
 
@@ -80,6 +90,8 @@ mondo 11-20: "id rather you not go over what you already did, start somewhere el
 4. **Thread 8, The D.U.M.B.** (the worst-looking zone in the pictures), then the underground: threads 7, 9, 10.
 5. **Thread 11, Heaven + Hell + Vatican**, then threads 14, 15, 16, 18.
 6. **Thread 2, Disaster City (cramped)** shares no tool with any of these. It can run beside them whenever he says.
+7. **Thread 20, The Bayside Mall:** its own thread, beside thread 2, not inside it. It starts AFTER the One Beach thread is merged (that
+   thread is reshaping the ground the mall stands on). It and thread 2 share the city's tool: not both in Bayside at the same time.
 
 ### 4. HOW A THREAD RUNS
 
@@ -116,6 +128,8 @@ One level = 1.75 m (one battle block), as in the city.
 | **Winding** | No way runs straight for more than **8 squares** (28 m). A main way changes direction at least once a plot. | His "long straight boring pathways". |
 | **Branches** | At least **one thin trail off the main way every 2 plots.** Each ends at something: another district, another zone, a secret, a view, a clearing. Never a dead wall. Every district can be crossed by 2 different ways. | His "always be branches and different routes ... that lead to different zones or districts". |
 | **Orientation** | Each district has one landmark seen from its main way, and high ground behind low ground. From any high place you see the next district or a landmark. | "The point is to help the player orient themselves in the world." |
+| **Open and flat places** | Every district keeps at least one OPEN place (a square, a meadow, a lake shore, a field, a hall) and may keep whole plots level. A thread names them in its height plan; they are not failures of the check. | His "There can still be open areas, still be flat areas"; the city's plazas, the stadium, the quay. |
+| **Real architecture** | Every district has buildings that fit it: a real outside you can read from far off, a walk-in inside that matches it (same size, same shape, same style), a working door. The 75 % bar. | His "there still needs to be real architecture and exteriors and interiors"; owner-rules.md section 3, Buildings. |
 | **A fight still fits** | One level place a board fits on (8 x 8 squares) every 3 plots along the main way: a clearing, a yard, a ledge. Height in whole levels there, so a field fight reads it as tiers. | The battle grid (`HQ_FIELD_RULES`). |
 
 **THE CHECK (a thread answers these for every room before it says done):**
@@ -124,7 +138,9 @@ One level = 1.75 m (one battle block), as in the city.
 3. Trace the main way. Is any leg longer than 8 squares straight? Is it wider than 3?
 4. Count the thin trails. One every 2 plots? Where does each one lead?
 5. Is at least half of the plots shaped inside?
-6. Is every level place level on purpose, and written down as that?
+6. Is every level place level on purpose, and written down as that? Does each district keep an open place?
+7. Is the place still itself? If every plot is a hill and every way wiggles, it fails: variety, not a formula.
+8. Does every building's inside match its outside (size, shape, style), and can you walk in?
 
 ## B. HOW DISASTER CITY IS REALLY BUILT (checked 2026-11-20; this is the pattern to copy)
 
@@ -158,6 +174,10 @@ serve any zone. Do not merge it as it is; a thread may take from it.
 ## C. MONDO'S RULINGS (they bind every thread of this plan)
 
 - **Disaster City is the standard for every room** (11-20; section 1 above).
+- **Variety, not a formula; and real architecture** (11-20: "please don't just make every area windy plots and stuff. There can still be open
+  areas, still be flat areas, and there still needs to be real architecture and exteriors and interiors").
+- **The mall is redone as a real building** (11-20: "the mall needs to be redone, since its outside looks nothing like its inside. It needs to be
+  a real physical building inside disaster city"; "it is supposed to be a bayside mall"). That is thread 20.
 - **Height has to give you something to do** (11-20: "This pass is not meant to just raise things for the sake of raising them. A pyramid is
   already raised anyway, it's literally a tall monument. why do you want to make it taller?"). Build a climb, a view, a drop, a second way, a
   place that is hard to reach. **Never lift a monument, a building or a whole district onto a step.** Ask "is it like that in the real place?".
@@ -353,6 +373,27 @@ they are measurements, not the job.
   with pictures, shown to mondo in chat. STEP 2: fix the collisions. STEP 3: thin or spread the worst plots, and grow the districts that
   need it (42 free plots stand beside the city; growing moves the roads and seams round it, so that plan is shown first).
 
+### Thread 20: THE BAYSIDE MALL (not started; AFTER the One Beach thread is merged)
+- **Where:** Disaster City, the Bayside district, by the beach. Its own thread. NOT part of thread 2, and not a world zone.
+- **What is there today (checked 11-20):**
+  - THE OUTSIDE: building `P10-10-B1` "Mall concourse" on Bayside's plot "Mall concourse" (`docs/disaster-city/city-layout.json`), a footprint of
+    8 x 8 squares (28 x 28 m). Drawn in `docs/disaster-city/districts/B.js` (`B.mall`): four hip-roofed sand wings round a glass cross vault, a
+    glass dome, a coral portal, Miami colours. The mall arch and the Cordon plaza stand before it; the pier runs on its axis.
+  - THE INSIDE: a separate room, `site_prebuilt_downtown_mall`, built 2026-09-17 for the OLD Downtown and restyled 09-21: one box of 96 x 64 x 12 m,
+    a white 1960s terminal with an atrium, an upper floor of galleries, a food court, an arcade, a clock tower.
+  - THE WAY BETWEEN: a door on the outside building (`bake-disaster-city.js` `JOIN.mall`) that jumps you into that room.
+- **What is wrong:** the inside is more than three times as long and twice as wide as the building it is said to be in, in another shape and
+  another style. Two unrelated places joined by a door. The room is also a leftover of the old Downtown, not of the Bayside plan.
+- **Done means:** ONE building standing in Bayside. Its outside is the size and shape of its inside (grow the footprint over more plots: free
+  to grow). You see the mall from the beach and the avenue and read it as a mall. You walk in through its own doors into the same building:
+  the dome you saw outside is over the atrium inside, the wings are the wings, the floors match the windows. Same materials inside and out.
+- **Keep (never delete what he did not name):** what the old room holds moves into the new building or gets a new home, said in chat first:
+  the food court, the arcade and its time machine (the way to Cyberpunk), the closet door, the tape, the Bayside opening quest's place
+  (the shadow beings INSIDE the mall, `docs/disaster-city/plan-direction.md`). The old room goes to `DOOR_HQ.retired` in the same change.
+- **Order:** after the One Beach thread is merged. That thread was told to leave the mall alone, keep a frontage for it and report where
+  it stands. This thread reads that report first, then shows mondo a plan and a mock-up in chat and waits for his OK before building.
+- **Tool + files:** `bake-disaster-city.js`, `docs/disaster-city/city-layout.json`, `districts/B.js`. The owner side holds the city.
+
 ### Thread 19: THE BEACH (held by the One Beach thread)
 - **Rooms:** `site_prebuilt_bermuda_beach` (20), `_ow_cove` (Pirates' Cove, 5), `_ow_frozen` (The Frozen Sea, 3), `_ow_triangle` (10),
   `_ow_volcano` (10).
@@ -435,6 +476,7 @@ places are EMPTY and UNREADABLE: nothing to steer by. That is the standard's sec
 
 ## G. OPEN QUESTIONS FOR MONDO
 
+0. The mall: its own thread 20 after One Beach, as written. Grow its footprint to fit a real mall, or shrink the inside to the plot?
 1. The numbers in section A (main way 3 squares, thin trail 1 or 2, no leg over 8 squares straight, a thin trail every 2 plots, 2 levels
    between districts): right, or change which?
 2. The order in START HERE section 3: The Woods first, then the Mountains, the Estate, Leylines, Antarctica, the D.U.M.B. and the underground.
