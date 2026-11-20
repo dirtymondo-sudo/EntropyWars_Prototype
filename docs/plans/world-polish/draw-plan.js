@@ -35,6 +35,8 @@ const A = {
     eye: 1,                // a walker's eye over the ground, in levels (a lookout's sight line)
 };
 
+const DEFAULT_A = Object.assign({}, A);
+
 /* the squares: letter -> [name in the legend, open to walk?, low colour, high colour]. A plan adds or renames with `tiles`. */
 const TILES = {
     ' ': ['the wall of the place (forest, corn, rock, ice: the plan\'s `mass`)', false, [10, 26, 18], [52, 84, 50]],
@@ -54,6 +56,8 @@ const WAYS = { main: { w: A.mainWidth, t: 'p', tr: 'P', keep: 'gckm' }, thin: { 
 
 /* ───────────── BUILD: the plan's rows -> the grid of squares ───────────── */
 function build(plan) {
+    /* a plan may change one of A's numbers for its own room, with the reason (mondo's words): `numbers: { boardEveryPlots: 4, why: '…' }` */
+    Object.keys(DEFAULT_A).forEach(k => { A[k] = DEFAULT_A[k]; }); if (plan.numbers) { if (!plan.numbers.why) throw new Error('`numbers` needs a `why`'); Object.keys(plan.numbers).forEach(k => { if (k !== 'why' && k in A) A[k] = plan.numbers[k]; }); }
     const W = plan.grid.w, H = plan.grid.h, N = plan.grid.n || 12, FAIL = [], NEW = [], WARN = [], NOTE = [];
     const tiles = Object.assign({}, TILES, plan.tiles || {}), OPEN = Object.keys(tiles).filter(k => tiles[k][1]).join('');
     const T = [], L = [], RAMP = {}, LABELS = [], WAYLIST = [];
@@ -226,7 +230,7 @@ function check(B, opts) { opts = opts || {}; const { plan, W, H, N, T, L, RAMP, 
             PLOTS.forEach(p => { if (!real[p.bx + ',' + p.by] && p.today != null) FAIL.push('the plan says "' + p.name + '" stands today, the room has no plot there: mark it new (today = null) or fix its place'); });
             /* seams stay level (E 7): the baked height today at each way out against the plan's level there */
             try { const info = S.hqTerrainInfo(plan.room), zero = plan.grid.zero || 0;
-                (plan.doors || []).forEach(d => { if (d[4] == null) return; const dp = plotOf(d[0], d[1]); if (dp && dp.today == null) return;   // a way out on a NEW plot has no height today
+                (plan.doors || []).forEach(d => { if (d[4] == null) return; const dp = plotOf(d[0], d[1]); if ((dp && dp.today == null) || (d[5] && d[5].moves)) return;   // …or a seam the plan MOVES on purpose: [x, y, side, to, level, { moves: 'why' }] (the other room's thread is told)   // a way out on a NEW plot has no height today
                     const x = -room.shell.w / 2 + (d[0] - off[0] * N + 0.5) * 3.5, z = -room.shell.d / 2 + (d[1] - off[1] * N + 0.5) * 3.5; if (Math.abs(x) > room.shell.w / 2 || Math.abs(z) > room.shell.d / 2) return;
                     const y = S.hqTerrainFeet(info, x, z, null); if (y == null || !isFinite(y)) return; const lv = (y - zero) / 1.75;
                     if (Math.abs(lv - d[4]) > 0.5) NEWR('SEAM: the way out to ' + d[3] + ' stands at ' + y.toFixed(2) + ' m today (level ' + lv.toFixed(1) + '), the plan puts it at level ' + d[4] + ': a seam keeps its height (E 7)'); });
