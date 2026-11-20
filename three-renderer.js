@@ -78352,6 +78352,19 @@ const ThreeRenderer = (function () {
             var top = new THREE.MeshLambertMaterial({ map: _hqMailTex() }), side = new THREE.MeshLambertMaterial({ color: 0xe8e2d0 }); top.emissive = new THREE.Color(0x3a3830); top.emissiveMap = top.map; side.emissive = new THREE.Color(0x2a2822);
             var m = new THREE.Mesh(new THREE.BoxGeometry(b.w * U, th * U, L * U), [side, side, top, side, side, side]); m.name = 'hq_mover'; m.castShadow = false; m._ew_bunOut = true;
             var g = new THREE.Group(); g.add(m); m.position.y = -th * U / 2; g.rotation.y = Math.atan2(b.x1 - b.x0, b.z1 - b.z0);
+            if (M.look === 'chair') {
+                /* THE LIFT CHAIR (2026-11-20, the Mountains: mondo "yes lift should carry you"): the same carried slab, drawn as a chairlift's chair you stand in:
+                   a steel deck, a slatted bench and its back across the uphill end, a low rail down both sides, and the hanger up to its grip on the cable
+                   (`hang` metres over the deck; the cable is the room's own row). No envelope, no glow. Local z runs along the line. */
+                var steel = new THREE.MeshLambertMaterial({ color: 0x3a4048 }), wood = new THREE.MeshLambertMaterial({ color: 0x9a7048 }), red = new THREE.MeshLambertMaterial({ color: 0xb03a30 }), hang = (M.hang || 8.5);
+                m.material = [steel, steel, steel, steel, steel, steel];
+                var bx = function (w, h, d, x, y, z, mat) { var q = new THREE.Mesh(new THREE.BoxGeometry(w * U, h * U, d * U), mat); q.position.set(x * U, y * U, z * U); q.castShadow = false; q._ew_bunOut = true; g.add(q); return q; };
+                var hw = b.w / 2, hl = L / 2;
+                bx(b.w - 0.5, 0.08, 0.6, 0, 0.55, -hl + 0.55, wood); bx(b.w - 0.5, 0.7, 0.08, 0, 0.95, -hl + 0.22, wood);                       // the bench and its back
+                [-1, 1].forEach(function (sx) { bx(0.07, 0.07, L - 0.5, sx * (hw - 0.06), 0.95, 0, steel); [-1, 0, 1].forEach(function (k) { bx(0.07, 0.95, 0.07, sx * (hw - 0.06), 0.475, k * (hl - 0.3), steel); });   // the side rails
+                    bx(0.1, hang - 0.3, 0.1, sx * (hw - 0.06), (hang - 0.3) / 2 + 0.3, 0, steel); });                                               // the hanger's two arms
+                bx(b.w, 0.14, 0.14, 0, hang, 0, steel); bx(0.5, 0.5, 0.9, 0, hang + 0.2, 0, red);                                                   // the yoke and the grip on the cable
+            } else
             [-1, 1].forEach(function (sx) { if (typeof _hzGlowSprite === 'function') { var gl = _hzGlowSprite(0.9 * U, 0x7fffd0, 0.7, 0.0, 0.0, 0.0); gl.position.set(sx * (b.w / 2 - 0.3) * U, -(th + 0.25) * U, 0); g.add(gl); } });
             G.add(g);
             list.push({ b: b, g: g, a: { x0: b.x0, z0: b.z0, x1: b.x1, z1: b.z1, y: b.y }, to: M.to, travel: Math.max(2, M.travel || 14), dwell: Math.max(0, (M.dwell != null) ? M.dwell : 5), phase: M.phase || 0, k: 0 });
