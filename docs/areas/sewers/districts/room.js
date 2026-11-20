@@ -46,7 +46,7 @@ module.exports = {
     },
     /* THE WAYS OUT: one row a door of the plan (plans/ug-sewers.js `doors`, in its order); the room's other end of each */
     doors: [
-        { id: 'ow_tunnelway', leaf: 'leaf_portcullis', label: 'THE TUNNEL-WAY', sub: 'THE CHIMNEY · THE OLD ADIT WEST AND DOWN', action: { room: 'site_prebuilt_hollow_earth_ow_tunnelway', at: 'ow_v_1_1' }, desc: 'The old miners\' adit, timbered, going west and down. The draught out of it is warm.' },
+        { id: 'ow_v_1_1', leaf: 'leaf_portcullis', label: 'THE TUNNEL-WAY', sub: 'THE CHIMNEY · THE OLD ADIT WEST AND DOWN', action: { room: 'site_prebuilt_hollow_earth_ow_tunnelway', at: 'ow_v_1_1' }, desc: 'The old miners\' adit, timbered, going west and down. The draught out of it is warm.' },
         { id: 'freight_line', leaf: 'leaf_vault', label: 'THE D.U.M.B.', sub: 'THE FREIGHT LINE · DOWN TO THE EAST GANTRY', action: { room: 'site_prebuilt_dumb_base', at: 'ow_v_7_16' }, desc: 'A vault door in the end wall of the line, the track running on under it. Somebody keeps the hinges oiled.' },
         { id: 'pump', leaf: 'leaf_bulkhead', label: 'DISASTER CITY', sub: 'THE PUMPING STATION · UP TO THE STREET', action: { room: 'site_prebuilt_downtown_streets', at: 'sewer' }, desc: 'A bulkhead door at the foot of the shaft, the ladder going up past it to a grate and daylight. The pumps behind you run all night.' },
         { id: 'sewers_power', leaf: 'leaf_bulkhead', label: 'THE POWER STATION', sub: 'THE MANHOLE · UP TO THE YARD', action: { room: 'site_prebuilt_downtown_streets', at: 'sewer' }, desc: 'A manhole ladder up to the Power Station\'s yard. The pipes beside it are warm, and the water under it glows.' },

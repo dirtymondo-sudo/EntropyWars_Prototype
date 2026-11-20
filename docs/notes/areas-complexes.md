@@ -13737,7 +13737,7 @@ exactly under the surface: the manholes and stairs still lead to the right place
   weir (a concrete board and a sluice gate) as a small fall. The plan's district file stays untouched (one district S): this file sets them.
 - **THE WAYS OUT (the plan's five):** the Pumping Station's bulkhead (`pump`, up the shaft to the street), the manhole to the Power Station
   (`sewers_power`; the plan's corner square had a passage behind it, so the door stands one square up, in the passage's dead-end wall), the
-  Holding Cells' stair (`cells_stair`), the Tunnel-Way (`ow_tunnelway`, the Chimney's west wall, level 123), the D.U.M.B. (`freight_line`, the Freight
+  Holding Cells' stair (`cells_stair`), the Tunnel-Way (`ow_v_1_1`, the Tunnel-Way's own seam id, the Chimney's west wall, level 123), the D.U.M.B. (`freight_line`, the Freight
   Line's south wall, level 131). PILOT STAND-INS: the three city doors all lead to the street's `sewer` place, the Tunnel-Way's and the D.U.M.B.'s to
   their rooms' old seams, one way: the other rooms do not point here until the switch.
 - **THE PILOT = THE CULVERTS (W)**, dressed: the kit (cage lamps on the walls every few squares with the brick round them lit, every fourth one dead
