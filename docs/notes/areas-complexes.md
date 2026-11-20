@@ -12962,7 +12962,6 @@ mondo 11-20 on plan 3: "Yes the map layout looks much better ... Go ahead and bu
   dirt, and adds room-wide scatter (fallen logs, stumps, dead bushes, snags). Past the room's line: `terrain.edges.deep: true` (three-renderer.js `_hqEdgeLandFn`'s
   planting: the forest stays thick to the end of the planting, not thinned after 22 m). Seen in the probe from the Dead End and Deep woods, west. OPEN: the land
   past the line wears the map's bright forest green, lighter than the room's floor; the draw cost with the deeper wood is not measured.
-<<<<<<< HEAD
 
 ## KATANA ISLAND, THE REST: ALL SIX DISTRICTS, PASS 1 (2026-11-20, world polish thread 21; seen on screen)
 
@@ -12994,8 +12993,6 @@ mondo 11-20, on the pilot: "Okay the pilot looks decent, continue the rest".
 - **NOT DONE YET:** THE SWAP (the room is still at its pilot's place on the map with no boat; the Volcano Island still stands); insides are bare rooms with a few things;
   no bamboo, no real torii / statues (NEEDS A MODEL); the waterfall from the Hot Spring to the Paddies; night look; frame rate (one room, 41 buildings, 229 trees, 409
   props: to be measured on a real machine); the flag.
-=======
 - **THE LAND PAST THE LINE WEARS THE ROOM'S TONE (11-20, mondo: "fix the ground being green past the edge, it doesn't match").** `terrain.edges.tint: [r, g, b]`
   multiplies the edge land's colour (three-renderer.js `_hqBuildEdgeLand` `colOf`; only a room that sets it changes). The Clearing's room: `[0.5, 0.5, 0.52]`
   (bake-woods.js, designed rooms). Seen in the probe at Deep woods, west.
->>>>>>> origin/main
