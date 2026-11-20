@@ -51,18 +51,20 @@ main([[41, 0, 2], [41, 3, 2]]);
 main([[45, 9, 2], [45, 14, 3]]); area(39, 10, 41, 12, 'g', 3);
 area(38, 13, 46, 21, 'g', 3); label(42, 17, 'THE CROSSROADS', 'place'); label(42, 18.2, 'signpost · level, a board fits', 'note');
 /* WEST: up the North Rise by a switchback to THE OLD TREE (level 5, the high point of the Clearing) */
-main([[38, 14, 3], [33, 14, 3], [33, 8, 4], [27, 8, 4], [27, 14, 5]]);
+main([[38, 14, 3], [34, 14, 3], [34, 8, 4], [28, 8, 4], [28, 13, 5]]); main([[31, 7, 4], [31, 4, 4], [24, 4, 3], [24, 9, 3], [21, 9, 3], [21, 13, 3]]);
 area(25, 14, 31, 20, 'g', 5); area(28, 17, 29, 18, 'k', 5); label(28.5, 16.2, 'THE OLD TREE', 'mark');
 /* the ledge chain east: Old Tree -> shelf -> the Crossroads (two hops, straight back down) */
 area(32, 17, 32, 18, 'g', 4); thin([[33, 17, 3], [37, 17, 3]]); set(33, 18, 'q', 3);
 /* the thin short cut from the Stair's landing up to the rise */
-thin([[37, 5, 2], [35, 5, 2], [35, 8, 4]].slice(0, 2)); thin([[35, 5, 2], [35, 2, 3], [31, 2, 3], [31, 6, 4]]); set(31, 7, 'q', 4);
+thin([[37, 5, 2], [35, 5, 2]]); thin([[35, 5, 2], [35, 2, 3], [32, 2, 4]]);
 /* down the west side: THE TRAIL WEST (3), DEEP WOODS WEST (1), the two ways out west */
-main([[25, 19, 5], [20, 19, 4], [20, 14, 3], [13, 14, 3]]);
-main([[14, 14, 3], [14, 19, 2], [8, 19, 1]]); main([[7, 19, 1], [7, 22, 1]]); main([[7, 19, 1], [7, 15, 1], [3, 15, 1], [3, 13, 1]]);
-label(5, 17.3, 'wolf den', 'note');
+/* THE RANGER STATION stands where it stood (a walk-in building): its yard is level 3; a shelf west of the knoll is the hop down to it */
+area(17, 16, 23, 21, 'g', 3); area(20, 18, 22, 19, 'k', 3); label(21, 17.4, 'RANGER STATION', 'mark'); area(24, 19, 24, 20, 'g', 4);
+main([[19, 14, 3], [13, 14, 3]]);
+main([[14, 14, 3], [14, 19, 2], [8, 19, 1]]); main([[7, 19, 1], [7, 22, 1]]); main([[8, 19, 1], [4, 19, 1], [4, 14, 1]]);
+label(2.5, 17.3, 'wolf den', 'note'); label(8, 16.6, 'stand', 'note');
 /* THE TRAIL NORTH (to the Redwood Trail) */
-main([[18, 1, 2], [18, 4, 2], [14, 4, 2], [14, 9, 3], [18, 9, 3], [18, 13, 3]]);
+main([[18, 1, 2], [18, 5, 2], [13, 5, 2], [13, 10, 3], [16, 10, 3], [16, 13, 3]]);
 /* THE BLAIR WITCH LOOP (thin): Trail West -> the Burned House -> the Stick Men -> the Campfire; a fork climbs back to the Old Tree */
 thin([[12, 19, 2], [12, 24, 2], [16, 24, 2], [16, 28, 2]]);
 area(13, 29, 19, 34, 'g', 2); area(14, 30, 17, 33, 'k', 2); label(15.5, 31.5, 'THE BURNED HOUSE', 'mark'); label(15.5, 32.8, 'a ruin you walk into', 'note');
@@ -85,7 +87,7 @@ area(53, 43, 59, 45, 'c', 1); label(56, 46.2, 'a road that just ends', 'note');
 area(37, 37, 42, 42, 'g', 1); label(39.5, 39.5, 'the quiet glade', 'note'); area(39, 35, 41, 36, 'g', 1 + 0);
 thin([[43, 42, 1], [43, 45, 1]]);
 /* THE FENCE LINE (0): chain-link across, one gate */
-for (let x = 37; x <= 47; x++) if (x < 41 || x > 43) set(x, 56, 'f', 0); label(42, 56.6, 'gate', 'note'); label(39, 55.4, 'chain-link', 'note');
+label(42, 58.4, 'the gate (stands today)', 'note');
 /* the hollow tree (the door `forest` stays on its square) */
 thin([[47, 20, 3], [49, 20, 3], [49, 23, 3]]); label(51.5, 21.6, 'hollow tree', 'door');
 
@@ -93,7 +95,7 @@ thin([[47, 20, 3], [49, 20, 3], [49, 23, 3]]); label(51.5, 21.6, 'hollow tree', 
 main([[46, 16, 3], [52, 16, 4], [52, 10, 5], [57, 10, 5], [57, 4, 6], [62, 4, 6]]);
 area(62, 2, 69, 9, 'g', 6); area(65, 3, 66, 4, 'k', 6); label(65.5, 5.6, 'THE TOP', 'mark'); label(65.5, 6.8, 'fire lookout · level, a board fits', 'note');
 /* the ledges straight back down from the Top: 6 -> 5 -> 4 */
-area(53, 3, 55, 5, 'g', 6); area(53, 6, 54, 8, 'g', 6); area(55, 12, 56, 13, 'g', 5); area(54, 14, 58, 18, 'g', 4); label(56, 16, 'glade', 'note');
+area(53, 3, 55, 5, 'g', 6); area(53, 6, 54, 8, 'g', 6); area(55, 12, 56, 13, 'g', 5); area(54, 14, 58, 17, 'g', 4); label(56, 16, 'glade', 'note');
 /* ───────────── DEAD MAN'S CAVE (district M): down into the creek's valley ───────────── */
 main([[63, 9, 6], [63, 14, 5], [68, 14, 5], [68, 19, 4], [74, 19, 4], [74, 13, 5], [77, 13, 5], [77, 9, 5]]);
 for (let y = 13; y <= 17; y++) set(71, y, 'w', 4); label(71, 12.6, 'spring', 'note'); label(71, 20.6, 'CULVERT', 'note');
@@ -150,8 +152,8 @@ DOORS.forEach(d => { if (!noDrop.has(key(d[0], d[1]))) ERR.push('the way out to 
 const trap = lost.filter(k => { const [x, y] = k.split(',').map(Number); return !reach(x, y, true).has(key(43, 8)); });
 if (trap.length) ERR.push('a trap (no way back to the Stair): ' + trap.slice(0, 12).join(' '));
 const upOnly = lost.filter(k => trap.indexOf(k) < 0);
-console.log('open squares', openN, '· ledge edges', LEDGES.length, '· squares reached only by a hop down (they walk out again):', upOnly.length, upOnly.slice(0, 30).join(' '));
-if (ERR.length) console.log('PROBLEMS:\n  ' + ERR.join('\n  ')); else console.log('checks: ok (every leg on the grid and 8 squares or less, every way out walked both ways with no ledge, no trap)');
+if (require.main === module) console.log('open squares', openN, '· ledge edges', LEDGES.length, '· squares reached only by a hop down (they walk out again):', upOnly.length, upOnly.slice(0, 30).join(' '));
+if (ERR.length) console.log('PROBLEMS:\n  ' + ERR.join('\n  ')); else if (require.main === module) console.log('checks: ok (every leg on the grid and 8 squares or less, every way out walked both ways with no ledge, no trap)');
 if (process.argv.includes('--ascii')) console.log(T.map((r, y) => r.map((c, x) => c).join('')).join('\n'));
 
 /* ───────────── THE PICTURE ───────────── */
@@ -190,6 +192,9 @@ function draw(file, x0, x1, S, title, y1) { y1 = y1 == null ? H - 1 : y1; const 
     lines.forEach((t, i) => { lg += '<text x="' + PAD + '" y="' + (ly + 52 + i * 19) + '" font-size="13" fill="#ddd">' + esc(t) + '</text>'; });
     fs.writeFileSync(path.join(__dirname, file), '<svg xmlns="http://www.w3.org/2000/svg" width="' + WT + '" height="' + HT + '" font-family="Helvetica,Arial,sans-serif"><rect width="100%" height="100%" fill="#16191a"/><text x="' + PAD + '" y="24" font-size="18" font-weight="700" fill="#eee">' + esc(title) + '</text><text x="' + PAD + '" y="44" font-size="12.5" fill="#bbb">north is up · one plot = 12 x 12 squares = 42 m</text>' + s + lg + '</svg>');
     return [WT, HT]; }
+module.exports = { W, H, N, T, L, RAMP, PLOTS, LEDGES, DOORS, isOpen };
+if (require.main === module) {
 console.log(draw('plan3.svg', 0, 143, 13, 'THE WOODS, the Clearing\'s room, PLAN 3: the whole room, every square (a proposal)'));
 console.log(draw('plan3-west.svg', 0, 71, 26, 'PLAN 3, WEST HALF: The Clearing (the pilot) + the climb to the Top'));
 console.log(draw('plan3-east.svg', 60, 143, 23, 'PLAN 3, EAST HALF: Dead Man\'s Cave, down the creek to the Storm Drain', 35));
+}
