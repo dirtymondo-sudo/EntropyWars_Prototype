@@ -113,6 +113,16 @@ aperture's brightness, the hatch's leaf standing open in the floor, the
 fall's speed in a tall room (a cave chamber, the hall), a wall door's drop
 to the floor, and the two colours against each room's own light.
 
+## SKATEBOARDING — THE SCORE STANDS ALONE (no panel; the number never moves sideways) — 2026-11-20
+mondo: "get rid of the score and stuff showing inside a panel. It should be its own thing and I don't like how that 'off the
+ground' scoots the number to the left." `#hqTrick` has NO plate, frame, glow box or padding any more (styles-base.css "THE SCORE
+STANDS ALONE": one `!important` rule over the base card, `.bank`, `.bail` and the `#hqPage` theme; `.hq-trick` is out of the
+theme's panel group and out of hud.js UI Maker's `panel` selector). The number, its words and the chips float on text shadows.
+The combo's and the bail's head row is `.hq-trick-head.col` (map.js `_hqComboCard`, the bail line): a COLUMN, the number alone
+on the centre line (46 px), "× n · OFF THE GROUND 4.2 S" on a line under it, so words can never push the number. A one-row beat
+(the lap timer) keeps the plain `.hq-trick-head` row. RULE: never put this line back in a panel; never put words beside the number.
+Proof picture taken (training room, HEAD 484f6b9 + this change).
+
 ## SKATEBOARDING — THE GRINDS, THE BALANCE METER, THE WALLS — 2026-11-20
 mondo, from the list of ideas after the off-ground clock: "Let's do 3, 4, and 6." All three in three-renderer.js "SKATEBOARDING",
 tables in data.js `HQ_SKATE_RULES` (renderer fallbacks in `HQ_SKATE_DEFAULT`, keep the keys in step).

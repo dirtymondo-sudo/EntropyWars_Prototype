@@ -4204,6 +4204,17 @@ html.ew-hq-cover #startOverlay > .title-page:not(.active):not(#hqPage) * { anima
 .hq-trick.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 /* THE COMBO CARD (rev 4, 2026-09-19): the score is the headline and pops on every add, the multiplier a badge, the tricks WRAPPING chips (repeats fold to ×n, the oldest to +n MORE) — nothing clips */
 .hq-trick-head { display: flex; align-items: baseline; gap: 14px; white-space: nowrap; }
+/* THE SCORE STANDS ALONE (2026-11-20, mondo: "get rid of the score and stuff showing inside a panel. It should be its own thing and I
+   don't like how that 'off the ground' scoots the number to the left"): no plate, no frame, no glow box behind the line: the number,
+   its words and the chips float over the world on their own shadows. The combo's head is a COLUMN: the number alone on the centre
+   line, the multiplier and the seconds on a line under it, so no words beside the number can ever push it sideways. */
+.hq-trick, .hq-trick.bank, .hq-trick.bail, #hqPage .hq-trick, #hqPage .hq-trick.bank, #hqPage .hq-trick.bail { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+.hq-trick-head.col { flex-direction: column; align-items: center; gap: 0; }
+.hq-trick b, .hq-trick span, #hqPage .hq-trick b { text-shadow: 0 2px 0 #000, 0 0 10px rgba(0,0,0,0.95), 0 0 18px rgba(125,255,176,0.45); }
+.hq-trick-head.col b { font-size: 46px; line-height: 1.05; }
+.hq-trick i { text-shadow: 0 1px 0 #000, 0 0 8px rgba(0,0,0,0.95); }
+.hq-trick-head.col i { font-size: 11px; min-height: 14px; }
+.hq-trick-list em, #hqPage .hq-trick-list em { background: rgba(8,8,12,0.6); text-shadow: 0 1px 0 #000; }
 .hq-trick-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 6px; max-width: 100%; }
 .hq-trick-list em { font-style: normal; font-size: 13px; letter-spacing: 0.14em; color: #d9f5e2; padding: 2px 8px; border: 1px solid rgba(125,255,176,0.3); border-radius: 9px; background: rgba(125,255,176,0.08); white-space: nowrap; }
 .hq-trick-list em u { text-decoration: none; margin-left: 5px; color: #ffd65a; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
@@ -6122,7 +6133,7 @@ html.ew-hq-cover #startOverlay > .title-page:not(.active):not(#hqPage) * { anima
 #hqPage .hq-ollie { border-color: var(--hq-row-edge); background: var(--hq-plate-bg); }
 #hqPage .hq-ollie.max { border-color: var(--hq-sel); }
 #hqPage .hq-trick-list em { color: var(--hq-ink); border-color: var(--hq-row-edge); background: var(--hq-row-bg); }
-#hqPage .hq-prompt, #hqPage .hq-toast, #hqPage .hq-trick {
+#hqPage .hq-prompt, #hqPage .hq-toast {
   border-radius: var(--hq-r); background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame); color: var(--hq-ink);
 }
 #hqPage .hq-prompt { padding: 9px 20px 9px 16px; gap: 12px; }
