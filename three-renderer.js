@@ -76524,7 +76524,6 @@ const ThreeRenderer = (function () {
         cinzel:    { f: '"Cinzel"', w: 700, ls: 0.06 },               // Civic: carved capitals on the institutions
         bebas:     { f: '"Bebas Neue"', w: 400, ls: 0.04 },           // Civic: shop awnings
         archivo:   { f: '"Archivo Black"', w: 400, ls: 0 },           // Hero Plaza: transit-style boards
-        bangers:   { f: '"Bangers"', w: 400, ls: 0.04 },              // Hero Plaza: the hero trade
         playfair:  { f: '"Playfair Display"', w: 900, ls: 0.05 },     // Hero Plaza news office, Financial
         monoton:   { f: '"Monoton"', w: 400, ls: 0 },                 // Bayside: neon
         righteous: { f: '"Righteous"', w: 400, ls: 0.03 },            // Bayside: deco capitals
@@ -76539,7 +76538,15 @@ const ThreeRenderer = (function () {
         dot:       { f: '"DotGothic16"', w: 400, ls: 0.06 },          // the scoreboard
         marc:      { f: '"Marcellus SC"', w: 400, ls: 0.06 },         // the museum and the galleries
         rye:       { f: '"Rye"', w: 400, ls: 0.02 },                  // fight posters
-        xmas:      { f: '"Mountains of Christmas"', w: 700, ls: 0.03 }   // the North Pole village: the Workshop (2026-11-16)
+        xmas:      { f: '"Mountains of Christmas"', w: 700, ls: 0.03 },  // the North Pole village: the Workshop (2026-11-16)
+        /* THE BRANDING PASS (2026-11-20, mondo's OK on the brand book; "No Bangers font": that id is gone, a key that still names it draws in Arial Black) */
+        tilt:      { f: '"Tilt Neon"', w: 400, ls: 0.03 },            // neon tube capitals: clubs, comedy, live music
+        yellow:    { f: '"Yellowtail"', w: 400, ls: 0, tc: true },    // neon script: the cabaret, ice cream
+        dafoe:     { f: '"Mr Dafoe"', w: 400, ls: 0, tc: true },      // neon brush script: night clubs, the chapel
+        fasc:      { f: '"Fascinate"', w: 400, ls: 0.02 },            // the casino
+        abril:     { f: '"Abril Fatface"', w: 400, ls: 0.02 },        // department stores, the insurer
+        dela:      { f: '"Dela Gothic One"', w: 400, ls: 0.02 },      // Mid Records
+        frak:      { f: '"UnifrakturMaguntia"', w: 400, ls: 0, tc: true }   // the newspaper's masthead
     };
     /* THE CITY MARKS (2026-11-15, mondo: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city
        branding/logo for certain buildings or props or banners"; his OK on the branding sheet): drawn from plain shapes on the sign's own
@@ -76671,7 +76678,7 @@ const ThreeRenderer = (function () {
         [-1, 1].forEach(function (sx) { var r = sx > 0 ? -1 : 1, c = sx > 0 ? B.midP : B.midN;   // r: the way the words read along the bus on this side; the shield leads them
             mk(_hqCityShieldTex(), B.shieldS, B.shieldS, c - r * B.shieldOff, sx); mk(ttex, B.textW, B.textH, c + r * B.textOff, sx); });
     }
-    function _hqSignTitleCase(s) { return String(s).toLowerCase().replace(/(^|[^a-z0-9])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
+    function _hqSignTitleCase(s) { return String(s).toLowerCase().replace(/(^|[^a-z0-9'’])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); }); }   // (an apostrophe is inside its word: Mayhem's)
     var _hqArchSignCache = {};
     function _hqArchSignTex(key) {
         if (_hqArchSignCache[key]) return _hqArchSignCache[key];
@@ -76715,6 +76722,21 @@ const ThreeRenderer = (function () {
             g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (px * ls) + 'px';
             var m = g.measureText(txt), tw = m.width || 1, th = ((m.actualBoundingBoxAscent || 0) + (m.actualBoundingBoxDescent || 0)) || px * 0.72;
             px = Math.max(8, Math.floor(px * Math.min(1, room / tw, fam ? (H * 0.8) / th : 1)));
+            /* THE TWO-LINE FIT (2026-11-20, the branding pass: a business name on a board cut for one short word): when one line leaves
+               the letters under a third of the board's height and the words split in two noticeably larger, they stand on two lines */
+            var cut = -1, cd = 1e9; for (var ci = 1; ci < txt.length - 1; ci++) if (txt.charAt(ci) === ' ' && Math.abs(ci - txt.length / 2) < cd) { cd = Math.abs(ci - txt.length / 2); cut = ci; }
+            if (cut > 0) {
+                var la = txt.slice(0, cut).trim(), lb = txt.slice(cut + 1).trim(), wab = Math.max(g.measureText(la).width, g.measureText(lb).width) || 1;   // (measured at 96 px, as tw / th above)
+                var px2 = Math.max(8, Math.floor(96 * Math.min(1, room / wab, (H * 0.39) / th)));
+                if (la && lb && px2 > px * 1.3) {
+                    g.font = fontOf(px2, fam); if ('letterSpacing' in g) g.letterSpacing = (px2 * ls) + 'px';
+                    var m2 = g.measureText(txt), u2 = m2.actualBoundingBoxAscent || px2 * 0.72, d2 = m2.actualBoundingBoxDescent || 0;
+                    var w2 = Math.max(g.measureText(la).width, g.measureText(lb).width) || 1, left2 = (W - (mk ? mr * 2 + mgap : 0) - w2) / 2, cx2 = left2 + (mk ? mr * 2 + mgap : 0) + w2 / 2;
+                    g.fillStyle = fg; g.fillText(la, cx2 + px2 * ls / 2, H * 0.28 + (u2 - d2) / 2); g.fillText(lb, cx2 + px2 * ls / 2, H * 0.72 + (u2 - d2) / 2);
+                    if (mk) _hqSignMark(g, mk, left2 + mr, H / 2, mr, bg);
+                    return;
+                }
+            }
             g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (px * ls) + 'px';
             m = g.measureText(txt); g.fillStyle = fg;
             var up = m.actualBoundingBoxAscent, dn = m.actualBoundingBoxDescent;
@@ -76726,10 +76748,18 @@ const ThreeRenderer = (function () {
         /* the typeface arrives from the font sheet index.html links; until it has, the sign stands in the old letters and is redrawn once */
         var specs = (F ? [F.w + ' 96px ' + F.f] : []).concat(_HQ_MARK_FONTS[q[6]] || []), ready = !!F;
         try { for (var si = 0; si < specs.length; si++) if (!(document.fonts && document.fonts.check(specs[si], shown + 'DC'))) ready = false; } catch (e) { ready = false; }
+        /* THE FONT SHEET MAY NOT BE IN YET (2026-11-20, seen on the newspaper's board in a probe: its blackletter drawn in a plain sans for good):
+           `fonts.check` answers TRUE for a family the page has no rule for yet (the font sheet still on the wire), so the sign was drawn "in its
+           typeface" with the fallback and never redrawn. The typeface counts as there only when a loaded face of that family exists, and a
+           load that finds no rule yet is asked again (every 1.5 s, twelve times). */
+        if (ready && F) { var fam0 = F.f.replace(/"/g, ''), got = false; try { document.fonts.forEach(function (ff) { if (ff.status === 'loaded' && String(ff.family).replace(/["']/g, '') === fam0) got = true; }); } catch (e) {} if (!got) ready = false; }
         paint(ready);
         if (specs.length && !ready && document.fonts && document.fonts.load) {
-            try { Promise.all(specs.map(function (sp) { return document.fonts.load(sp, shown + 'DC').then(function (ff) { return ff && ff.length; }, function () { return false; }); }))
-                .then(function (ok) { if (F ? ok[0] : ok.some(Boolean)) { paint(!!F); t.needsUpdate = true; } }); } catch (e) {}
+            var ask = function (left) {
+                try { Promise.all(specs.map(function (sp) { return document.fonts.load(sp, shown + 'DC').then(function (ff) { return ff && ff.length; }, function () { return false; }); }))
+                    .then(function (ok) { if (F ? ok[0] : ok.some(Boolean)) { paint(!!F); t.needsUpdate = true; } else if (left > 0) setTimeout(function () { ask(left - 1); }, 1500); }); } catch (e) {}
+            };
+            ask(12);
         }
         return (_hqArchSignCache[key] = t);
     }
@@ -103496,6 +103526,8 @@ const ThreeRenderer = (function () {
             reflectors: function () { return (_hq && _hq.reflectors || []).map(function (r) { return { kind: r.kind, drawn: r.drawn, gain: r.mats[0] ? r.mats[0].uniforms.uGain.value : null }; }); },   // W4: the mirrored draws
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             cityMarks: function (tbl, stop) { if (!_hq || !_hq.roomDef) return false; if (tbl) Object.keys(tbl).forEach(function (k) { HQ_CITY_PROP_MARKS[k] = tbl[k]; }); if (stop) HQ_CITY_STOP_MARK = stop; _hqBuildCityMarks(_hq.roomDef, _hq.terrain, _hq.shellGroup); return (_hq.cityMarks || []).length; },   // THE CITY MARKS: rebuild the street plates (tuning probe)
+            /* a sign's canvas, for a probe (2026-11-20, the branding pass): draw any 'txt:' key without entering a room; the texture's `.image` is the canvas */
+            signTex: function (key) { return _hqArchSignTex(key); },
             /* THE SPACESHIP, for a probe (2026-11-17): set the flown ship's x / y / z / yaw / v (and hold keys: o.keys {w, a, d, space, c}) */
             ship: function (o) {
                 var V = _hq && _hq.vehicle; if (!V || !V.on) return null; o = o || {};
@@ -103521,6 +103553,7 @@ const ThreeRenderer = (function () {
                 var p = (o.deg != null) ? _hqPolarW(o.deg, o.r || 0, 0) : new THREE.Vector3((o.x || 0) * U, 0, (o.z || 0) * U);
                 pl.x = p.x / U; pl.z = p.z / U;
                 pl.y = _hqLevelY(S, o.level || 0) + (o.y || 0); pl.visY = pl.y;
+                if (o.ground) { var tgy = _hqTerrainGround(pl.x, pl.z); if (tgy != null) pl.y = pl.visY = tgy + (o.y || 0); }   // "ground": true = stand on the terrain here, `y` metres over it (2026-11-20: a raised city street needs no hand-found y)
                 pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.moving = false;
                 if (o.face != null) { pl.yaw = pl.targetYaw = _hqHeadingYaw(o.face); _hq.cam.yaw = _hqRad(o.face); }
                 if (o.pitch != null) _hq.cam.pitch = o.pitch;

@@ -10817,6 +10817,7 @@ lines, a step's `"shot"` saved as `<room>_<view>_<i>.png`. Game time runs slow i
 numbers, not the clock. In the space room the Bridge's stick has you ABOARD at the launch spot already: a view's eval must test
 `ThreeRenderer.hq.dev.ship({})` before `hq.board(id)` (a second board is E: it sets the ship down). Flying probe views: `mk3.js` style,
 `dev.ship({ x, y, z, yaw, camYaw, pitch })` with `yaw = PI - camYaw`.
+**STAND ON THE GROUND + A SIGN'S CANVAS (2026-11-20, the branding pass):** a playtest_city.js view takes `"ground": true`: the walker stands on the terrain at x, z (`y` = metres over it), so a raised city street needs no hand-found y (y 0 in Disaster City is under the streets: sea and undersides). `face` 0 looks north (-z), 180 south; a positive `pitch` looks up. `ThreeRenderer.hq.dev.signTex('txt:WORDS|fg|bg|aspect||font')` draws any sign without a room (its `.image` is the canvas): ten signs on a blank page take 20 s, a city run takes 8 min. A sign seen in a plain sans in a probe = its font sheet was late (fixed 11-20: the sign waits and redraws).
 **THE FAST PROBE (2026-11-16, read this first; it replaces tip 2 and RULE 3 below).** Every harness now launches through
 `probe-fast.js` (`require('./probe-fast.js').launch(chromium, {...})`); a probe you write yourself must do the same. What it does:
 (1) runs Chromium on Mesa llvmpipe under its own Xvfb, 2-4x the frame rate of SwiftShader (`EW_PROBE_GL=swiftshader` = the old
