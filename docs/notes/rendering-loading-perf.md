@@ -3638,3 +3638,9 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   where the back is never seen, "takes shadow" off on small props, vertex colours carried by models that are white: -20 to -30,
   each needs a look. (4) Layout forks of the lit shaders (strip unused attributes at load): -10 to -20, nothing visible.
   Each shader costs a "first" in every render (~20 µs) and a build the first time it is met.
+
+## THE GRASS RINGS (2026-11-20): detail by distance for the walked room's grass
+mondo in the Woods: "the grass loads in late as I get closer to it". The walked room's grass field is now three rings of less and less detail out
+to 110 m, each tuft sized by its distance in the shader (nothing appears, nothing is cut off), paid for by culling the cells off camera and by
+dropping the per-cell tuft sort. The whole note: areas-complexes.md "THE GRASS RINGS". For models the same idea is THE LOD LEVELS above; only 13
+model files have lower copies baked so far.
