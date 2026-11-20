@@ -100074,7 +100074,13 @@ const HQ_SKATE_RULES = {
     },
     labels: { on: 'ON THE BOARD', off: 'ON FOOT', bail: 'BAIL', bank: 'LANDED', perfect: 'PERFECT POP' },
     ranks: [[0, 'LANDED'], [400, 'NICE'], [1500, 'SICK'], [5000, 'INSANE'], [15000, 'LEGENDARY']],   // the word stamped on a banked line, by its score
-    controls: ['W push (hold it at speed to cruise)', 'S brake · from a stop skate backwards', 'A / D carve', 'HOLD SPACE to crouch (as long as you like) · RELEASE to pop (the meter is the height · release right as it hits MAX = a PERFECT POP)', 'in the air WASD is AIR CONTROL: A / D steer · W / S the speed', 'THE STICK: hold a mouse button in the air and FLICK — LEFT ← → ↑ ↓ = kickflip · heelflip · front flip · backflip, ↖ ↗ corkscrew, ↙ ↘ varial · RIGHT ← → = 180s, ↑ ↓ = grabs', 'land on a rail = grind (A / D balance)', 'only a trick still turning at the landing bails — walls, props and drops never do', 'B off'],
+    /* THE FLOOR IS LAVA (2026-11-20, mondo: "the longer you can stay doing tricks in the air or grinding on rails and not touching the
+       ground, it keeps adding to your score"): one clock runs from the moment the wheels leave the ground (air + rails) and the ground
+       zeroes it. While a line is open, every second off the ground pays `perS` points, faster the longer the clock runs
+       (× 1 + seconds × `ramp`: 30 a second at the start, 105 a second at ten seconds), and every `multEveryS` seconds adds one to
+       the line's multiplier. `tickS` = how often the card's number is refreshed. */
+    lava: { perS: 30, ramp: 0.25, multEveryS: 2, tickS: 0.1 },
+    controls: ['W push (hold it at speed to cruise)', 'S brake · from a stop skate backwards', 'A / D carve', 'HOLD SPACE to crouch (as long as you like) · RELEASE to pop (the meter is the height · release right as it hits MAX = a PERFECT POP)', 'in the air WASD is AIR CONTROL: A / D steer · W / S the speed', 'THE FLOOR IS LAVA: a line stays open until the wheels touch the ground; every second in the air or on a rail adds points, every 2 seconds adds +1 to the multiplier; hop rail to rail', 'THE STICK: hold a mouse button in the air and FLICK — LEFT ← → ↑ ↓ = kickflip · heelflip · front flip · backflip, ↖ ↗ corkscrew, ↙ ↘ varial · RIGHT ← → = 180s, ↑ ↓ = grabs', 'land on a rail = grind (A / D balance)', 'only a trick still turning at the landing bails — walls, props and drops never do', 'B off'],
 };
 /* ══ THE PREMIUM POLISH — the room's AIR, the ARRIVAL, the THINGS THAT MOVE (PREMIUM_POLISH_PLAN §3 / §5 / §6, 2026-09-21) ══
    Pure reads the renderer and map.js share. Nothing here touches `state` or the relay (RULE #2 — the building is

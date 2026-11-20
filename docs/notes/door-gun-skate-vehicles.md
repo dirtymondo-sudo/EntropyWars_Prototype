@@ -113,6 +113,23 @@ aperture's brightness, the hatch's leaf standing open in the floor, the
 fall's speed in a tall room (a cave chamber, the hall), a wall door's drop
 to the floor, and the two colours against each room's own light.
 
+## SKATEBOARDING — THE FLOOR IS LAVA (the off-ground clock pays the line) — 2026-11-20
+mondo: "can we make it to where not touching the ground continues your combo/score? Like the floor is lava, the longer you can
+stay doing tricks in the air or grinding on rails and not touching the ground, it keeps adding to your score."
+three-renderer.js, beside `_hqRideComboAdd`: **`R.offT`** = the seconds since the wheels left the ground, ONE clock for air and
+rails (`_hqRideLava(R, dt)`, called once a frame from the air branch and the grind branch; the step zeroes it when the rider is
+on the ground and not on a rail). While a line is open every second pays `lava.perS` points × (1 + offT × `lava.ramp`) and every
+`lava.multEveryS` seconds adds one to the multiplier. The score is ONE read now: `_hqRideComboScore` = pts ×
+`_hqRideComboMult` (tricks + `_hqRideLavaSteps`); `_hqRideComboEmit(R, tick)` is the ONE `combo` beat (the five inline copies
+are gone). New fields on the beats: `combo` carries `offT`, `lava` (the steps), `tick` (the 10 Hz refresh, `lava.tickS`);
+`bank` carries `mult` + `offT`; a new beat `lava` when the multiplier steps. map.js: `_hqComboTick` rewrites only the number and
+the head words on a tick (no rebuild, no pop); `_hqLavaTail` prints "OFF THE GROUND 4.2 S · LAVA +2" from one second on; the
+banked card adds "6.2 S OFF THE GROUND" from two seconds; the step plays `skateTrick`. Table: data.js `HQ_SKATE_RULES.lava`
+`{ perS: 30, ramp: 0.25, multEveryS: 2, tickS: 0.1 }` (renderer fallback `HQ_LAVA_DEFAULT`). What still ends a line: any clean
+touchdown (banks it), a bail (loses it). A ramp's surface is ground. The clock starts at take-off, so air before the first trick
+counts toward the steps but pays no points until the line opens. `ranks` were NOT retuned: long rail lines now score far higher.
+NOT RUN IN A BROWSER: checked with `node --check` only; the card's head row at a long line and the numbers' feel are unseen.
+
 ## SKATEBOARDING rev 3 — SEAMLESS: ONLY A FAILED TRICK BAILS, THE FITTED STANCE, THE FALL + THE GET-UP (2026-09-17, local delivery)
 The user's brief: "way too easy to fall — running into objects makes me fall;
 riding should be as seamless as walking (Tony Hawk / Jet Set Radio); only fall
