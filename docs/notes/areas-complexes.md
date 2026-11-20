@@ -13122,3 +13122,27 @@ Mount Shasta goes as a name, its plots are swallowed.
   the summit); the base village, the Mid Station, the Ski Patrol, the bath house; ledges and switchbacks on the walking ways; Shasta's volcano dressing (crater,
   vents, lava) on what are now ski plots; (FIXED the same day, mondo: "Just add its cream stone texture to this room": `ZONE_LOOKS.zones.mountains.byRoom` gives the mountain's room Olympus's cream stone on walls; there is no retexture thread any more, a zone thread edits its own look rows);
   the North Pole; the seams were not walked in the probe (L6, L3, R5, R3, the Long Descent's two).
+
+## THE MOUNTAINS, THE BASE PASS — the runs read as runs, the first lift carries you (2026-11-20, world polish thread 5)
+
+- **THE OLD PISTE PLOTS ARE TURNED A QUARTER** (`TURNED` in bake-mountains.js, the mover's `turn: 90`): the old slopes ran north to south, the mountain's fall line runs
+  east to west. The Black Run's three plots, the Big Jump, the Slalom, the Half-Pipe, the Bunny Slope, the Chairlift and the Top Station stand with their uphill
+  side east, so their own tree lines, poles, gates, kicker and half-pipe lie along their runs. The Lodge, the Rental Hut and the Yard are not turned.
+- **THE OLD LIFT IS NOT BUILT** (K.js reads `ctx.o.oneMountain`: no gantries, cable, door pair `lift_bottom` / `lift_top`, ticket booth). K.js exports its lift
+  pieces as `exports.kit` (wheelhouse, tower, chair, HC, the face and colours) for the tool.
+- **THE MOUNTAIN'S OWN DRESSING, IN THE ROOM'S FRAME** (bake-mountains.js, after the heights are known): for every run of the plan a board with its name and mark
+  beside its top (25), marker poles down both edges every four squares (one `hug` row a run, 442 poles), a pine every three squares two squares off both edges
+  where the ground is open snow that no run, way, building or piece has (245; one snow pine in five; none on the base, on Olympus or under a lift).
+- **THE LIFT THAT CARRIES YOU = THE MAIL'S MOVER WITH A NEW LOOK.** A lift is two `bridge` rows with `mover: { to, travel, dwell, phase, look: 'chair', hang }`
+  (three-renderer.js `_hqBuildMovers`: look `'chair'` draws a steel deck, a slatted bench, side rails and a hanger to its grip; no envelope). They shuttle on two
+  cables 4.4 m apart, half a cycle apart: one goes up while the other comes down. Stand on a chair at a station and it carries you; proven in the probe (the
+  walker stood at the Lodge end, was carried from y 6.2 to y 46.8 at the Mid Station and back down). TRAP: a bridge row's `y` is OVER THE GROUND UNDER IT (the
+  compile adds the snow's height): write 0.28, not the absolute height; `to[1]` is the true rise. The slab's top must be within 0.3 m of the walker's feet to
+  pick him up. The cable is ONE box from station to station as a `hug` row (its two ends take the ground, so it is straight and parallel to the chairs' line);
+  a pylon every 40 m is as tall as the cable is over the ground there; the wheel houses are K's.
+- **BUILT: THE LODGE CHAIR only** (202 m, up 40.6 m, 34 s a ride, 7 s at each station), from the Chairlift plot at the base to the Mid Station. The other four
+  lifts of the plan wait for mondo's look at this one (`LIFT(...)` rows in the same place; add each line to `LIFTLINES`).
+- **Olympus's cream stone**: `ZONE_LOOKS.zones.mountains.byRoom` (seen on screen: the Temple wears it).
+- **NOT DONE:** the base village (the Ski Patrol, the inn, the shop: new HOME plots for K.js to build on is the way, so its `chalet` and `walkIn` helpers work),
+  the Mid Station and Top Station buildings at the lift ends, the other four lifts, ledges on the walking ways, Shasta's volcano dressing, the North Pole.
+  Not checked: the seams; The Long Descent on screen; the ride top to bottom again after the trees and boards went in.
