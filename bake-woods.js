@@ -583,6 +583,13 @@ STAND.forEach(S => {
         return own.map(e => Object.assign({}, z, { x0: R.gx(e.col * N), z0: R.gz(e.row * N), x1: R.gx((e.col + 1) * N), z1: R.gz((e.row + 1) * N) }, z.n != null ? { n: Math.max(1, Math.round(z.n / own.length)) } : {})); };
     const zonesOf = hook => [].concat(...ZONE_ORDER.filter(id => S.letters.indexOf(id) >= 0).map(id => [].concat(...(DISTRICTS[id][hook] ? DISTRICTS[id][hook](ctx) : []).map(z => boxOf(z, id)))));
     const zonesT = zonesOf('treeZones'), zonesA = zonesOf('airZones');
+    /* THE WOOD IS DEEP (2026-11-20, mondo at the Dead End: "fill in or block these big empty spaces ... filled with woods and trees and dead trees and branches
+       and dirt ... enough to where I can't see through the trees straight into the flat map"): the mass was a line of trunks and a band 5 m deep, bare lawn
+       behind it. A designed room grows it seven squares deep (the writer's `depth`, `maxTrees`), mixes dead trees into every district's wood, and breaks
+       the floor under the trees with dirt */
+    if (DES) { zonesT.forEach(z => { if (Array.isArray(z.kinds)) z.kinds = z.kinds.concat(['tree_14', 'tree_17', 'tree_33']); });
+        for (let cy = 0; cy < Dn; cy++) for (let cx = 0; cx < Wn; cx++) { if (c2[cy][cx] !== 't') continue; let h = Math.imul(cx * 73856093 ^ cy * 19349663, 2654435761) >>> 0; h ^= h >>> 15; if ((h % 100) < 34) paint2[cy * Wn + cx] = 3; }
+        feats.push({ k: 'scatter', key: 'fallen_log', n: 46, seed: 71, r0: 1.9 }, { k: 'scatter', key: 'stump', n: 60, seed: 72 }, { k: 'scatter', key: 'psxg_dead_bush_1', n: 90, seed: 73 }, { k: 'scatter', key: 'dead_snag', n: 26, seed: 74, r0: 1.9 }); }
     const spM = { x: R.gx(spSq[0]), z: R.gcz(spSq[1]) };
     ROOMS_OUT.push({ S, R, feats: spaces.concat(feats.map(strip)), doors: doorsOut, ways, slope: slope2, PAL: PAL2, paint: paint2, zonesT, zonesA, spM,
         count: { plots: S.list.length, box: R.cols + 'x' + R.rows, legsBack: reverted, legsKept: kept, legsNew: laid, tied, treesCut: cutTrees, spaces: spaces.length, props: R.props.length, features: feats.length, doors: doorsOut.length, natives: R.npc.length } });
@@ -613,7 +620,7 @@ ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ;
     if (S.world) L.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */\n                backdrop: false, edges: { world: true, reach: 440, ways: " + J(o.ways) + " },");
     L.push("                slope: { cells: { res: " + C + ", x0: " + R.gx(0) + ", z0: " + R.gz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + o.slope.toString('base64') + "' } },");
     L.push("                paint: { pal: " + J(o.PAL) + ", t: 'u8', res: " + C + ", x0: " + R.gcx(0) + ", z0: " + R.gcz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + Buffer.from(o.paint).toString('base64') + "' },");
-    L.push("                gen: { kind: 'plan', look: 'trees', seed: 36, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: " + Math.round(2400 * R.cols * R.rows / 36) + ", treeH: [5.5, 8.5], kinds: ['tree_53', 'tree_55', 'tree_52', 'tree_53', 'tree_5', 'tree_55'], zones: " + J(o.zonesT) + " },");
+    L.push("                gen: { kind: 'plan', look: 'trees', seed: 36, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: " + (S.design ? 24.5 : 5.25) + ", maxTrees: " + Math.round((S.design ? 5400 : 2400) * R.cols * R.rows / 36) + ", treeH: [5.5, 8.5], kinds: ['tree_53', 'tree_55', 'tree_52', 'tree_53', 'tree_5', 'tree_55'], zones: " + J(o.zonesT) + " },");
     L.push("                features: [");
     o.feats.forEach(f => L.push("                    " + J(f) + ","));
     L.push("                ],");
