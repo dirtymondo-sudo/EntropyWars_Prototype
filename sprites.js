@@ -1116,27 +1116,43 @@ const RACE_SPRITE_ANIMATIONS = {
    attacks or casts, or is hit, then it goes back to idle. Each sheet is ONE horizontal strip of `frames` square frames
    (Sprite AI's export, 8 x 128 px). A race or gender without a row keeps its face portrait. Off: EW_DISABLE_PANEL_ANIMS. */
 const _PA = 'https://cdn.entropywars.net/Assets/characters/races';
-const RACE_PANEL_ANIMS = {
-  'catgirl': {
-    female: {
-      /* step 3 (11-20): the clips that tell the player something in the menu. `attack` = the Attack row's stance + her own
-         swing; wounded = her idle at 30 % HP or less; guard / cast = the Guard and Abilities rows; brace = under a damage
-         forecast. walk + hurt (replays of the board) are dropped; their sheets stay on R2 (panel_walk / panel_hurt). */
-      idle:    `${_PA}/catgirl/female/panel_idle.png`,
-      attack:  `${_PA}/catgirl/female/panel_attack.png`,
-      wounded: `${_PA}/catgirl/female/panel_wounded.png`,
-      guard:   `${_PA}/catgirl/female/panel_guard.png`,
-      cast:    `${_PA}/catgirl/female/panel_cast.png`,
-      brace:   `${_PA}/catgirl/female/panel_brace.png`,
-      hold: { wounded: 1, guard: 1, cast: 1, brace: 1 },   // these sheets go from the stand INTO the pose: played once, the last frame stays
-      frames: 8, fps: 8,
-    },
-  },
-};
+/* EMPTY since 2026-11-20 (mondo, after the catgirl pilot: "not really feeling them ... put catgirl's portrait to the way it
+   was (no animation)"): no race is listed, so every unit shows its face portrait again. The player (hud.js PanelAnim) stays
+   for a later try; the catgirl's eight test sheets stay on R2 (Assets/characters/races/catgirl/female/panel_*.png). */
+const RACE_PANEL_ANIMS = {};
 function getRacePanelAnims(unit) {
   if (!unit || !unit.race || (typeof window !== 'undefined' && window.EW_DISABLE_PANEL_ANIMS)) return null;
   const set = RACE_PANEL_ANIMS[unit.race];
   return (set && set[unit.gender || 'male']) || null;
+}
+
+/* THE STATUS FRAMES (mondo 2026-11-20: "animated status effects for their portraits (like flames, electricity static, poison,
+   etc) ... every status effect in the game, at least the ones that make sense ... try 64x64"): a unit with a status listed
+   here wears that status's animated border over its portrait (hud.js StatusFx: the unit info cards + the Horologe disc).
+   One sheet serves every unit: 40 strips, 8 frames of 64 x 64 (512 x 64), made with Sprite AI, on R2 at
+   Assets/ui/status_fx/<sheet>.png. status id -> sheet; several statuses may share one. A status without a row shows nothing
+   (markers, forms, one-race gimmicks). Off: window.EW_DISABLE_STATUS_FX = true. Notes: ui-menus-audio.md "THE STATUS FRAMES". */
+const STATUS_FX_BASE = 'https://cdn.entropywars.net/Assets/ui/status_fx';
+const STATUS_FX_FRAMES = 8;
+const STATUS_PORTRAIT_FX = {
+  burn: 'burn', poison: 'poison', bleed: 'bleed', grievous: 'bleed', goo: 'goo', haunted: 'haunted', possessed: 'possessed',
+  corroded: 'corroded2' /* fire + poison: Corroded IS Burn and Poison (data.js countsAs); the first sheet was rusty metal */, radioactive: 'radioactive', feared: 'feared', infected: 'infected', soulBound: 'soulbound', root: 'root',
+  tethered: 'tethered', coiled: 'coiled', silence: 'silence', stun: 'stun', sleep: 'sleep', stagger: 'stagger', marked: 'marked',
+  jammed: 'jammed', drowning: 'drowning', bends: 'drowning', submerged: 'drowning', wet: 'wet', slow: 'slow', charm: 'charm',
+  frozen: 'frozen', blind: 'blind', hexed: 'hexed', statDown: 'statdown', statUp: 'statup', broken: 'broken',
+  stoneform: 'stoneform', blessed: 'blessed', sparkling: 'sparkle', pixieDust: 'sparkle', levitating: 'levitating',
+  quickened: 'quickened', momentum: 'quickened', protect: 'shield', spawnGuard: 'shield', guarding: 'shield', shield: 'shield',
+  regen: 'regen', guardRegen: 'regen', overclock: 'overclock', invisible: 'invisible', shadowRealm: 'shadow',
+};
+/* the sheets a unit wears now, in the order its statuses read (no sheet twice); a live shield counts as 'shield' */
+function getUnitStatusFx(unit) {
+  if (!unit || unit.dead || (typeof window !== 'undefined' && window.EW_DISABLE_STATUS_FX)) return [];
+  const out = [];
+  let keys = [];
+  try { keys = (typeof getActiveStatusKeys === 'function') ? (getActiveStatusKeys(unit) || []) : Object.keys(unit.status || {}).filter(k => unit.status[k] > 0); } catch (e) { keys = []; }
+  for (const k of keys) { const f = STATUS_PORTRAIT_FX[k]; if (f && out.indexOf(f) < 0) out.push(f); }
+  if (unit.shield > 0 && out.indexOf('shield') < 0) out.push('shield');
+  return out;
 }
 
 function getRaceSpriteAnimations(race, gender) {

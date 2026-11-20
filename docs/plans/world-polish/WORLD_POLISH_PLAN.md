@@ -21,6 +21,9 @@ His words, with their dates. They are the rule. Nothing below may soften them.
   lead to different zones or districts."
 - 2026-11-20, after reading the standard below (EQUAL WEIGHT with every line above): **"please don't just make every area windy plots and stuff.
   There can still be open areas, still be flat areas, and there still needs to be real architecture and exteriors and interiors."**
+- 2026-11-20, on a height plan whose main trail still ran straight down a row of plots: **"It's still fucking straight. Its need to snake and
+  zigzag and climb so when you get to the top you can just jump back down, like the routes in Pokemon. You have all of those plots and you
+  still chose to make the brown main trail go completely straight."**
 - 2026-11-20, after walking The Woods: "I still feel like they are too flat? **Where are the ridges and hills valleys? Thin trails off the main
   path? There are still just long straight wide pathways.** ... Disaster city elevation was done by giving different districts different height
   ranges, and allowing height ranges inside the plots too, so there is a lot of variety and pathways. **The point is to help the player orient
@@ -54,8 +57,8 @@ ONE THREAD = ONE ZONE = ITS OWN SESSION. Names are the names on the in-game map.
 | 3 | **Came A Lot Kingdom, its three woods** | The Snowy Pines, The Forest, The Fairy Forest | **Built 11-20, differs from the standard:** set-piece height (a ridge, a gully, a bluff, hollows) on level ground, wide ways in straight legs. Not on the next list (mondo 11-20: "id rather you not go over what you already did, start somewhere else"). |
 | 4 | **Came A Lot Kingdom, The Village** | the Village, inside the kingdom's main room | **Built 11-20** (three stairs up to the town wall's walk, the churchyard). The town's ground is level. Not on the next list. |
 | 5 | **The Mountains** | The North Pole, The Ski Lodge + The Snowy Pass, Mount Olympus. Mount Shasta's plots are renamed and swallowed by the other districts (mondo 11-20). | Not started. To be ONE real ski mountain: ski from the top of Mount Olympus to the base (mondo 11-20). |
-| 6 | **The Woods** | The Clearing + Dead Man's Cave, The Redwood Trail, The Ritual Ground | **Not started. NEXT.** This is the zone mondo walked and found flat and straight. A HORROR wood: Silent Hill, Blair Witch (mondo 11-20). |
-| 21 | **Katana Island** (today: The Volcano Island) | The Volcano Island, one room, remade as feudal Japan; **Katana Bay** is one of its districts | **Not started. SECOND, right after The Woods** (mondo 11-20). |
+| 6 | **The Woods** | The Clearing + Dead Man's Cave, The Redwood Trail, The Ritual Ground | **STARTED 11-20** (mondo: "Do thread 6"), in its OWN fresh session. Plan 1 was refused (the main trail ran straight). `thread6/height-plan.png` = a rough plan 2 sketch (the trail snakes through three rows, ledges), NOT approved: the session redraws it properly. Nothing built yet. A HORROR wood: Silent Hill, Blair Witch (mondo 11-20). |
+| 21 | **Katana Island** (today: The Volcano Island) | The Volcano Island, one room, remade as feudal Japan; **Katana Bay** is one of its districts | **STARTED 11-20, in its own fresh session. The plan is with mondo (29 plots, six districts, Katana Bay square by square: `thread21/`); nothing built.** |
 | 7 | **The underground walks** | the Cavern's three tunnels, Agartha's tunnel, the Sewers' walks under the city | Not started |
 | 8 | **The D.U.M.B.** | The D.U.M.B., one room | Not started |
 | 9 | **The Cavern** | The Cavern, Hollow Earth, Agartha | Not started |
@@ -102,12 +105,21 @@ After those two, proposed, in this order:
 
 ### 4. HOW A THREAD RUNS
 
-- **ONE THREAD = ONE ZONE = ITS OWN SESSION.** A thread does its one zone and stops. **It never starts another zone itself.** It reports to
+- **ONE THREAD = ONE ZONE = ITS OWN FRESH SESSION** (mondo 11-20: "Every message I send you lose context and get stupider, I need your full power
+  and potential in each area of the game"). A session that wrote or edited this plan does NOT build a zone: it starts a new session for it.
+  A thread does its one zone and stops. **It never starts another zone itself.** It reports to
   mondo, and mondo starts the next one. A report says which zone by its map name and lists the rooms it changed.
 - To start one, mondo says: "Do thread N of docs/plans/world-polish/WORLD_POLISH_PLAN.md."
 - The thread then:
   1. `git fetch origin main && git merge origin/main` (CLAUDE.md RULE #1d). Reads this START HERE, section A, its own row in section D,
      `docs/notes/owner-rules.md`, and the board (`docs/notes/claims.md`). Takes its zone's rows on the board in its first PR.
+  1b. **READS THE LISTS IN FULL BEFORE IT PLANS** (mondo 11-16 and 11-20: "Will need [the model list / asset list / prop list] to dress these rooms";
+     owner-rules.md "THE MODEL LIST FIRST"; `docs/plans/DISTRICT_THREAD_BRIEF.md` "Go through ALL the lists"). End to end, in parts, not a grep of three
+     words: `MODEL_LIST.md` (every pack section, section 6 the prop catalogue, 7, 10, 12b, 13 the files on R2 not wired yet), the live catalogue through
+     `load-data.js` (`DOOR_HQ.catalogue`, `.textures`, `.decals`, the tree kinds), the bucket's listing, `ASSET_MANIFEST.json`,
+     `docs/disaster-city/pack-claims.md`, `docs/plans/WISHLIST_MODELS_ADDED.md`. It writes a FITS shortlist (key, pack, size) into its zone's notes and
+     shows mondo a NEEDS A MODEL list in chat with the plan. The plan is drawn from what the game has: a place nothing can dress is asked for first.
+     (Thread 21 did it with six readers at once, one a part: `thread21/FITS_KATANA_ISLAND.md` is the pattern.)
   2. Reads how its rooms really stand: `ROOM_LAYOUTS.md` here, its zone's layout and tool. Looks at its pictures (`pictures/<place>/`), or takes
      them (`node docs/plans/world-polish/shoot.js <its rooms>`).
   3. **Shows mondo THE HEIGHT PLAN IN CHAT before it builds:** the zone's plots as a grid of levels (district by district), the main way drawn
@@ -132,7 +144,8 @@ One level = 1.75 m (one battle block), as in the city.
 | **Grades** | 1 level a plot (6.25 %) is a walk. 2 levels a plot (12.5 %) is a hill. More than that is a step: a stair, a ramp, a switchback or a climb crosses it. | The city's street grades; `bake-woods.js` uses the same. |
 | **A main way** | **3 squares wide** (10.5 m). 4 only for a road that cars use or a street meant for skating and fights. Never 5. | The Woods' main trail is 3 squares since 11-15 ("dirt trails like the main roads"). |
 | **A thin trail** | **1 or 2 squares wide.** | The Woods' paths are 1 square since 11-15 ("smaller dirt paths ... like alleyways from disaster city"). |
-| **Winding** | No way runs straight for more than **8 squares** (28 m). A main way changes direction at least once a plot. | His "long straight boring pathways". |
+| **Winding** | No way runs straight for more than **8 squares** (28 m). A main way changes direction at least once a plot. **The MAIN way itself snakes: it never follows a row or a column of plots. It turns from row to row, climbs by switchbacks, and uses the plots beside it.** A wiggle drawn on a straight row is still a straight trail. | His "long straight boring pathways"; "It's still fucking straight. Its need to snake and zigzag and climb". |
+| **Ledges** | Where a way climbs, **one-way LEDGES** (a drop you jump down and cannot climb) cut across its switchbacks, so from the top you jump straight back down. Each climb has them. | His "so when you get to the top you can just jump back down, like the routes in Pokemon". |
 | **Branches** | At least **one thin trail off the main way every 2 plots.** Each ends at something: another district, another zone, a secret, a view, a clearing. Never a dead wall. Every district can be crossed by 2 different ways. | His "always be branches and different routes ... that lead to different zones or districts". |
 | **Orientation** | Each district has one landmark seen from its main way, and high ground behind low ground. From any high place you see the next district or a landmark. | "The point is to help the player orient themselves in the world." |
 | **Open and flat places** | Every district keeps at least one OPEN place (a square, a meadow, a lake shore, a field, a hall) and may keep whole plots level. A thread names them in its height plan; they are not failures of the check. | His "There can still be open areas, still be flat areas"; the city's plazas, the stadium, the quay. |
@@ -142,7 +155,7 @@ One level = 1.75 m (one battle block), as in the city.
 **THE CHECK (a thread answers these for every room before it says done):**
 1. Stand at each door of the room. Can you tell which way is up, and see a landmark?
 2. Print the plot levels as a grid. Do the districts stand at different ranges? Are there 3 or more levels in each?
-3. Trace the main way. Is any leg longer than 8 squares straight? Is it wider than 3?
+3. Trace the main way. Is any leg longer than 8 squares straight? Is it wider than 3? Does it follow a row or column of plots (fail)? Does each climb have ledges to jump back down?
 4. Count the thin trails. One every 2 plots? Where does each one lead?
 5. Is at least half of the plots shaped inside?
 6. Is every level place level on purpose, and written down as that? Does each district keep an open place?

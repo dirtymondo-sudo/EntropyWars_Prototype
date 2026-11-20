@@ -2935,6 +2935,10 @@ closeup face portrait you would use these". Catgirl (female) only, a test of Spr
   table = a sheet that goes from the stand INTO a pose: played once, the last frame stays (Sprite AI always starts from the
   source pose, so a pose clip cannot loop cleanly). Made with the `Custom` preset + `custom_prompt`; say "big clear change
   of silhouette" (the first wounded try, "hunched, heavy breathing", looked like the idle; "sinks onto one knee" read).
+- **SWITCHED OFF 11-20** (mondo, after seeing steps 1-3: "not really feeling them to be honest, go ahead and put catgirl's
+  portrait to the way it was (no animation)"): `RACE_PANEL_ANIMS` is EMPTY, so every portrait is the face again. The player
+  code stays (a row in the table brings it back); the eight catgirl sheets stay on R2. Do not re-enable for a race without
+  asking him. His next idea for Sprite AI: animated STATUS EFFECTS over the portraits (flames, static, poison).
 - NOT done yet (pilot): no death clip; no head shake on a greyed-out row; no spent pose at 0 AP; the whole body is small in the 63 px card portrait and on the disc.
   Off: `window.EW_DISABLE_PANEL_ANIMS = true`.
 - Making more: Sprite AI (sprite-ai.art, key in the env's Network secrets): `POST /api/sprites/import` `{ image: <base64>, title,
@@ -2949,3 +2953,45 @@ map.js `_hqStripSub`: "D.O.O.R. HEADQUARTERS · ROOM n · sub" ONLY in an HQ roo
 of the plot grid from `ThreeRenderer.hq.pos()`; roads between plots keep the last district); elsewhere `room.sub`, dropped when
 it is a count ("DISTRICTS" / "PLOTS"). The clock's " · " only shows when something stands before it. The pause title also
 drops "D.O.O.R. HEADQUARTERS" outside HQ. Never put zone counts back on the player's HUD.
+
+## THE STATUS FRAMES (2026-11-20)
+mondo 11-20, after the panel-animation pilot was switched off: "Maybe animated status effects for their portraits (like
+flames, electricity static, poison, etc)" then "we need to do it for every status effect in the game then, at least the
+ones that make sense ... the pixel density might have to be lower. If this 128x128 try 64x64".
+- What: a unit with a status wears that status's animated BORDER over its portrait. One sheet serves every unit.
+  40 sheets, each one strip of 8 frames of 64 x 64 (512 x 64), on R2 at `Assets/ui/status_fx/<sheet>.png`.
+- Table: sprites.js `STATUS_PORTRAIT_FX` (status id -> sheet; shared sheets: grievous = bleed; bends, submerged = drowning;
+  pixieDust = sparkle; momentum = quickened; protect, spawnGuard, guarding + a live `unit.shield` = shield; guardRegen = regen;
+  shadowRealm = shadow) + `getUnitStatusFx(unit)` (battle.js getActiveStatusKeys order, no sheet twice).
+  NO frame on purpose: markers (exited, captured, sealed, climbing, bodiless), the forms (wolf, car, mecha, serpent), the
+  pseudo rows (heal, mana, damage, hourglass, scanner) and the one-race gimmicks (debt, shorted, tithe, pickedCard, contract,
+  yellowCard, doxxed, onCamera, viral, encrypted, taunt, voodoo, monster, indomitable, burrowed, discord …). Add a row +
+  a sheet to give one a frame.
+- Drawn by hud.js `StatusFx` (CSS `.ew-sfx`, stepped by `ewPaStep`): the quick card (`_hrlgQuickCard`), the one battle
+  panel's unit card (`DeckUnitCard`) and the Horologe disc (`HorologeHub`, a `<foreignObject>` on the square the disc holds
+  whole). Several statuses = one pass each in turn (a 1.4 s timer only then). NOT on the small turn-order icons (too small
+  to read). The status chips stay the full list. Viewer-local, nothing relayed; a card only shows a unit the viewer sees.
+  Off: `window.EW_DISABLE_STATUS_FX = true`.
+- CORRODED = FIRE + POISON (mondo 11-20: "corrosion in the game is fire+poison ... make sure its sprite reflects that"; data.js
+  corroded `countsAs: ['burn', 'poison']`, "chemical fire"): its sheet is `corroded2.png`, green poison slime outside with
+  fire burning inside. The first sheet (`corroded.png`, rusty metal + acid) stays on R2, unused. A sheet redone = a NEW file
+  name (these urls carry no `?v=`), then the table row. Before drawing a status, read its STATUS_DEFS row and STATUS_HELP line.
+- KEEP `corroded.png` (mondo 11-20: "hang on to the original corroded you did, I might change the rules later and call
+  fire+poison something else"): the rusty metal + acid sheet is held for a status that is really rust / acid. Never delete it;
+  if fire + poison is renamed, `corroded2.png` follows the new name and `corroded.png` goes back on Corroded.
+- THE CHECK AGAINST THE RULES (11-20, every sheet read against data.js STATUS_LIBRARY_DESCS; listed for mondo, NOT redone yet):
+  wrong picture: `blind` (dark smoke; the rule says vision WHITED out), `broken` (pale shards read as Frozen; it means passives
+  off), `infected` (leafy rot reads as Rooted / Regen; it is the zombie's control), `haunted` (blue-white wisps read as frost /
+  lightning; should be ghosts). Wrong share: `submerged` (a BUFF, hidden under the surface) and `bends` (HP per square moved)
+  wear Drowning's debuff sheet; `grievous` (healing halved, no damage) wears Bleeding's. Weak: `stagger` close to `stun`;
+  `feared` dark on dark; `possessed` a plain purple frame; `statUp` / `statDown` / `pixieDust` / `overclock` are stat-change
+  carriers (the RULE over STATUS_LIBRARY_DESCS says those are not status effects).
+- How they were made (Sprite AI, see THE PANEL ANIMATIONS for the calls): `POST /api/sprites` `{ prompt, asset_type: 'effect',
+  width: 64, height: 64, direction: 'none', camera_perspective: 'front' }` (1 token; the reply carries the PNG, also at
+  `/api/sprites/<id>/download`), prompt = "a hollow square ring of <what> hugging the four edges ... the whole middle empty
+  and fully transparent". About one still in five comes back with the middle FILLED (fire always): flood the fill out from
+  the centre locally, `POST /api/sprites/import` the cleaned still (free), then animate that id with the Custom preset
+  ("Seamless looping ... the border keeps exactly its shape, size and position ... the last frame matches the first",
+  `palette_extras: 8`), 14 tokens. Six stills were redone for a weak first try (corroded, drowning, jammed, marked,
+  quickened, radioactive); corroded's acid ran over the face in the animation and its middle was cleared by hand.
+  64 px reads better than 128 px at portrait size (chunkier, matches the face art). Whole set: about 610 tokens.
