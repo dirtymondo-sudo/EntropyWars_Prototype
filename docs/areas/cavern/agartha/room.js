@@ -65,7 +65,7 @@ module.exports = {
         const gc6 = [gcx(6), gcz(6)];
         /* the podium the stalagmite rose from (a blocker 1.6 m high: the board's centre), the rock, the crystal grown up through it: upright
            hexagonal prisms, lit from inside (the shelf's big light hangs in it: `suns`) */
-        ctx.feat({ k: 'plateau', id: 'aga:greatcrystal', x: gc6[0], z: gc6[1], w: 3.5, d: 3.5, h: r2(F0 + 1.6), edge: 0.1 });
+        ctx.feat({ k: 'plateau', id: 'aga:greatcrystal', x: gc6[0], z: gc6[1], w: 3.5, d: 3.5, h: 1.6, edge: 0.1 });   // (a plateau's h is over the ground here: the room's floor is the height sheet)
         look('greatcrystal', gc6[0], gc6[1], 0, F0, a => {
             a.box(0, 0, 0, 3.6, 1.6, 3.6, MARBLE, STONE); a.box(0, 1.6, 0, 3.9, 0.18, 3.9, MARBLE, WHITE);
             a.cone(0, 1.75, 0, 1.6, 0.6, 4.2, 'cave_wall', 0x6a625a); a.cone(0.95, 1.75, -0.7, 0.7, 0.12, 2.6, 'cave_wall', 0x5e574f);

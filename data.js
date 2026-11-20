@@ -40950,7 +40950,7 @@ const DOOR_HQ = {
                     {k:'space',x:-24.5,z:71.75,w:7,d:3.5},
                     {k:'space',x:0,z:80.5,w:7,d:7},
                     {k:'space',x:49,z:80.5,w:7,d:7},
-                    {k:'plateau',id:'aga:greatcrystal',x:-82.25,z:-61.25,w:3.5,d:3.5,h:43.6,edge:0.1},
+                    {k:'plateau',id:'aga:greatcrystal',x:-82.25,z:-61.25,w:3.5,d:3.5,h:1.6,edge:0.1},
                     {k:'texbuilding',id:'aga:hall',seed:1,x:-61.75,z:-67.75,w:16.5,d:16.5,rot:0,storeys:2,h:7,skin:false,hollow:true,leaf:'leaf_frosted',leafDouble:true,keyIn:'marble_light',floorIn:'marble_2'},
                     {k:'texbuilding',id:'aga:home_w',seed:1,x:-101,z:-63,w:12,d:6,rot:270,storeys:1,h:5.6,skin:false,hollow:true,leaf:'leaf_frosted_single',leafDouble:false,keyIn:'marble_light',floorIn:'marble_light'},
                     {k:'texbuilding',id:'aga:home_s',seed:1,x:-66.5,z:-44.25,w:12,d:9.5,rot:180,storeys:1,h:5.6,skin:false,hollow:true,leaf:'leaf_frosted_single',leafDouble:false,keyIn:'marble_light',floorIn:'marble_light'},
