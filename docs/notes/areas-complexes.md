@@ -7071,6 +7071,85 @@ east-west (y 9..10) and the sleigh road north-south (x 47..48) to the way out to
   `marble_light` (lit panes). Unwired R2 files: none worth a row (the hits are other formats of wired files). Keep out: `ocean_rock` (black
   on snow), `xmas_house`, `xmas_road*`, `psx_metal_barrel_*`, `camping_tent`, `crystal_cluster`.
 
+## THE SNOWY PINES, THREE PLOTS WIDE — the room design (2026-11-20, the owner's WORLD POLISH thread 3; docs/plans/world-polish/WORLD_POLISH_PLAN.md)
+
+mondo 11-20: "you have freedom to move and change and make bigger whatever you need to, that is the whole point of this pass." The first pilot failed on
+the room itself (the plan's 5b): a chain ONE plot wide, a white strip in summer lawn. This pass changed the room, then built on it.
+
+- **THE ROOM**: `site_prebuilt_camelot_ow_pines` is 22 plots, a 4 x 7 box at world -27,-10 (was 8 plots, 2 x 7 at -26,-10). The eight old plots stand
+  where they stood; fourteen NEW plots stand beside them (the lower three rows got a west and an east column, the upper three too, the row where the
+  chain steps east got both). A new plot has no home plot: it starts as snow pines on snow, and what is on it is the room design's.
+- **THE ROOM DESIGN, `docs/areas/camelot/districts/N-room.js`** (its header has the plan of the room and every way). bake-camelot.js step 0 of the One
+  World move: `DESIGNS[room].room(kit)` runs on the room AS IT STANDS (squares x 0..47, y 0..83), before anything is joined, and a designed room lays
+  its own ways across its plot lines (the tool's automatic joints skip it). So a ridge, a trail or a gully may cross a plot line: the room frame is not
+  cut by the move. `N.js` (the home frame) is unchanged and still stands the huts, the pond and the old plots' dressing. The kit is listed above the
+  hook in bake-camelot.js (carve, close, paint, feat, at, native, noTrees, air, vista, drop). **Any other wood's room can get a design the same way**
+  (add it to `DESIGNS`): that is how the Forest and the Fairy Forest are to be done.
+- **WHAT WAS BUILT**: THE SLEIGH ROAD in an S (five bends, 4 squares of walking: two packed, a soft shoulder each side). WEST: THE PINE RIDGE (a `ridge`
+  4.5 m, a trail on its crest), THE LOOKOUT on its south head (6 m, a chest, a fire ring; the forest past the south line is cut low there: `vista`), a
+  steep short way up its flank from the road's bend, THE RIDGE FOOT (the woodcutters' landing), THE WOLF RUN (8 x 8). EAST: THE FROZEN GULLY (a `ridge`
+  of -3.2 m, a drawn frozen stream on its floor) walked from mouth to head UNDER THE LOG BRIDGE (a `bridge` row with `absY`, `rails: false` and its own
+  drawn log rails and trestle), the east bank, THE GULLY HEAD (8 x 8). NORTH-WEST: the trail between the drift banks (six low `hill` rows), THE DRIFT
+  FIELD (8 x 8), THE HIGH PINES and its beacon knoll (3.2 m). NORTH-EAST: the east branch, THE FROZEN TARN (drawn ice you walk on, as the pond is),
+  the fishing camp on its shore, THE HERMIT'S HOLLOW (a `dip` of 1.8 m in the far corner, an altar, a chest). Three residents by race: wendigo (the
+  Wolf Run), yeti (the Gully Head), monk (the hollow). 1,602 of 3,168 squares are walked (51 %); 1,168 pines stand in the mass (`gen.depth` 8.75 for
+  this room: 2.5 squares deep behind every way).
+- **SNOW ROUND THE ROOM** (the plan's "hard square snow / grass edge"): (1) `docs/plans/one-world/plots.json` ground letters: the Pines' plots, every
+  free plot within two of them and the kingdom's north row are `T` (tundra, edge kind snow); written by the new `docs/plans/one-world/after-v13.js`
+  (`gen.js --plots` stops on the moved zones, so a change after v13 is a row there), then `node bake-map.js <room>` carries it into data.js
+  `HQ_ZONE_MAP.world`. (2) `terrain.edges.snowTrees: 0.42` (three-renderer.js, the edge land's tree planting): snow land past the line grows snow
+  pines as thick as a wood. (3) A cell of the room's box that is no plot wore the kingdom's lawn and SUMMER trees (the box is the plots' bounding box):
+  a designed room paints those cells its own ground and a catch-all tree zone gives them its own trees.
+- **THE CLEAR ROAD RULE** (bake-camelot.js, after the design runs): a home-frame piece (a lantern, a drift, a light pool: a prop or a drawn part under
+  2.2 m) that stands on a square the design newly made road leaves the room; a walked-into building there stops the tool. 79 pieces left.
+- **What went wrong on the way (do not repeat)**:
+  1. The Yeti's cave stayed with the village's north plots (the kingdom's room). What the move left of it in the Pines was one crag and the cave's GHOST
+     WALL (7 m thick, invisible) on the crossing's south verge. A widened track ran into a wall nobody could see: printing the baked heights showed it
+     (a 3 m step on four squares). `kit.drop()` takes such a leftover out.
+  2. A glade whose rim is the plot's last row touches the next cell of the box. Where that cell is no plot, the tree mass grew the DEFAULT kinds there.
+     Keep one square of pines between a glade and a plot side with nothing past it.
+  3. The tool's `bridge` rails are modern steel: `rails: false` and draw the rail. A prop placed on a bridge's squares rides the DECK (icicles meant
+     to hang under it sat on the planks).
+  4. A `ridge` with a negative h is a V, not a flat floor: an ice sheet drawn at the floor's depth is buried but for a sliver. Draw it 0.25 m higher.
+  5. Four packed-snow squares side by side (the `igloo` sheet) read as a paved square. Side trails wear the soft snow sheet.
+  6. The probe's wide view (`pitch` -0.72, `dist` 90) works from the room's middle; from near a tall ridge it showed only ground.
+  7. `hqTerrainFeet(info, x, z, null)` answers nothing on some squares under and beside a bridge (the audit's known gap): the height print shows `.` there.
+- **Left as it is**: the old plots' own dressing (N.js's five passes); the Pass and the trail L6 north (the routes are their own thread: L6's first plots
+  are forest-green between snow, said on the board); the road's packed sheet (`igloo`).
+- **Seen** (probe-fast.js through playtest_city.js, `--flags=EW_HQ_NO_ENCOUNTER`, three runs, 42 views, no page error): the room from the air, the spawn,
+  the lookout south and east, the ridge trail, the gully from its floor with the bridge over it, the bridge from the road, the three clearings, the tarn,
+  the hollow, the beacon knoll, the crossing. NOT done: the walker was not driven over the bridge or along the gully floor by hand (the ways were
+  checked on the height print: steepest step between two walked squares 0.66).
+
+
+## THE FOREST, THREE PLOTS WIDE — the room design (2026-11-20, the owner's WORLD POLISH thread 3, after the Snowy Pines)
+
+The Pines' pattern, second use (read "THE SNOWY PINES, THREE PLOTS WIDE" first). `site_prebuilt_camelot_ow_forest` is 21 plots, a 5 x 5 box at world -27,3
+(was 9 in a T one plot wide, 4 x 5 at -26,3): the eight old plots and the link plot L7 where they stood, twelve new plots beside them
+(`docs/plans/one-world/after-v13.js` row 3; no ground letter changed, its country is forest already). Every old x in the room is 21 m greater now (one
+more column west); z is unchanged.
+
+- **THE ROOM DESIGN, `docs/areas/camelot/districts/W-room.js`** (its header has the plan). THE CROWN'S ROAD, 5 squares (three of dirt, a grass shoulder
+  each side): south from the cobbled avenue to THE GLADE, east under the Bluff, south through THE CHARCOAL BURNERS, east into L7's camp and out to the
+  Ritual Ground. WEST: the poachers' path, the rim, THE HOLLOW (a `dip` of 3 m, standing stones and a chest on its floor), the fern bank, the badger
+  wood, round to the Dead Tree. EAST: THE BLUFF (a `ridge` of 5 m; its south face bare, the road seen from above) with a crest trail and THE HUNTERS'
+  STAND (drawn) on its east head, a way down each end. SOUTH: THE BROOK (a `ridge` of -0.8 m, drawn water 0.34 m under the banks: waded at three
+  places) from its pool at THE FORD west towards the sea, THE OLD OAK (one `tree` row 17 m tall on a knoll). Three board clearings: the Glade, the
+  Hollow, the Charcoal Burners (two drawn kilns that smoke). 1,422 of 3,024 squares walked (47 %); 1,202 trees in the mass.
+- **Tool changes this needed (bake-camelot.js)**: a new plot's fill and paint go by its district (`T` + snow for N, else `t` + the district file's
+  `ground`); a design's letters `g` / `t` wear the wood's own ground; the clear-road rule counts `p` (dirt) as road too; a wall door carried from home
+  marks its plot side as used (step 4): step 6b had filled THE DEAD TREE's own path back to the trees on main, the door stood behind 14 m of forest.
+- **What went wrong on the way**: (1) `hw_stone_*` are GRAVESTONES and `leafy_bush` is a clipped garden ball: standing stones are `menhir` / `sarsen`, rocks
+  `psxg_rock_*` / `lake_rock`, brush `fern` / `psxg_dead_bush_*` (the Pines' two `hw_stone` were swapped too). (2) The `deep_water` sheet drawn as a brook
+  is a saturated dark-blue ribbon; `water` with a pale tint reads as a stream. (3) A piece drawn at a fixed height on a ridge's END stands in the air:
+  the end cap falls away (print the heights, set the piece's y to the ground there). (4) The old track's verge dressing stood on both sides of every
+  track (rows y - 1 and y + 2): a road widened over a verge loses it (57 pieces here); widen to the side that has less.
+- **Left as it is**: the cobbled avenue on the Crown's Road plot (its dressed verges make it 4 wide already); the old plots' own dressing; L7's camp.
+  NOT DONE: the Dead Tree's door is not in the room's live door list (a list in data.js near `['deadtree']` moves it; as on main): not looked into.
+- **Seen**: two probe runs, 16 views, no page error: the room from the air, the avenue, the road's corner, the hollow, the crest, the road from the bluff,
+  the stand, the ford, the oak, the kilns, the brook. The walker was not driven by hand.
+
+
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
 - **THE SHEETS that suit the zone** (keys for `sheet()` parts): `castle_wall` (ctx.WALL: all stone, tint it STONE 0xc4c0b8 / STONE2 0xaeaaa6 /
@@ -11659,10 +11738,10 @@ writes the old single room (the home writer is byte for byte what it was). No di
 | Room | What | World plots | Box | Plots |
 |---|---|---|---|---|
 | `site_prebuilt_camelot_kingdom` | THE BLOCK: the castle (K) + the village (T), the town wall, the moat and the ring road (the old id, the old frame: every x, z in it is unchanged) | -29..-24 x -3..2 | 6 x 6 | 36 |
-| `site_prebuilt_camelot_ow_pines` | THE SNOWY PINES (N): the sleigh road north, the huts, the frozen pond, the cave, the Pass | -26..-25 x -10..-4 | 2 x 7 | 8 |
+| `site_prebuilt_camelot_ow_pines` | THE SNOWY PINES (N): the sleigh road north, the huts, the frozen pond, the Pass; since 11-20 THREE PLOTS WIDE (the ridge and its lookout, the frozen gully and the log bridge, the drift field, the tarn, the hermit's hollow: "THE SNOWY PINES, THREE PLOTS WIDE") | -27..-24 x -10..-4 | 4 x 7 | 22 (was 2 x 7, 8) |
 | `site_prebuilt_camelot_ow_garden` | THE LOOKING-GLASS GARDEN (L): the lawn, the chessboard, the mirror, the tea party | -33..-30 x -1..1 | 4 x 3 | 6 |
 | `site_prebuilt_camelot_ow_fairy` | THE FAIRY FOREST (F): the knolls, the pond, the ring, the spring | -23..-20 x -1..1 | 4 x 3 | 6 |
-| `site_prebuilt_camelot_ow_forest` | THE FOREST (W) + wild link L7's one plot (`The Forest Trail, the camp`, rule 4) | -26..-23 x 3..7 | 4 x 5 | 9 |
+| `site_prebuilt_camelot_ow_forest` | THE FOREST (W) + wild link L7's one plot (`The Forest Trail, the camp`, rule 4); since 11-20 THREE PLOTS WIDE ("THE FOREST, THREE PLOTS WIDE") | -27..-23 x 3..7 | 5 x 5 | 21 (was 4 x 5, 9) |
 | `site_ow_l6` | wild link L6, the Pines' Pass to the Ski Lodge (`bake-route.js L6`, spec `docs/areas/routes/L6.json`) | -25..-23 x -16..-11 | 3 x 6 | 8 |
 
 - **Why five rooms.** The block is 36 plots, over rule 5's 30: rule 1 wins (the castle stands INSIDE the village; neither district can be cut

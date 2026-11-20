@@ -53,8 +53,8 @@ Verdict words: GOOD = leave; DRESS = shape fine, needs things in it; LIGHT = can
 | Leylines | Stonehenge | GOOD | Stones, ring path, torches. A little flat. |
 | Leylines | Bug Colony | GOOD / DRESS | The giant flowers and the hive tree are great; the rest is flat lawn. |
 | Leylines | Göbekli Tepe | GOOD | The enclosures read well; they stand on flat sand. |
-| Came A Lot | The Forest | FLAT + DRESS | Flat lawn, trees as walls, a big empty clearing, one camp. |
-| Came A Lot | The Snowy Pines | FLAT + DRESS | Flat snow, a straight path between tree rows; a hard square edge where snow meets grass at the room line. |
+| Came A Lot | The Forest | **DONE 11-20 (thread 3)** | WAS: flat lawn, trees as walls, a big empty clearing, one camp. NOW: three plots wide, a hollow, a bluff with a hunters' stand, a brook, an old oak (`pictures/camelot_ow_forest/proof_three_plots_wide.jpg`; `_worst` / `_best` are the OLD room). |
+| Came A Lot | The Snowy Pines | **DONE 11-20 (thread 3)** | WAS: flat snow, a straight path between tree rows; a hard square edge where snow meets grass at the room line. NOW: three plots wide in snow and snow pines, a ridge, a gully, a tarn (`pictures/camelot_ow_pines/proof_three_plots_wide.jpg`, `the-snowy-pines_air_after.jpg`; the `_worst` / `_best` pictures are the OLD room). |
 | Came A Lot | The Looking-Glass Garden | GOOD (a model) | Hedges, giant chess pieces, the chessboard: dense and themed. |
 | Came A Lot | The Castle | blurry | Imposing from afar; the walls are mush up close. |
 | Came A Lot | The Village | TIGHT (a little) | Houses pressed against the castle wall; a narrow passage with graves in it. |

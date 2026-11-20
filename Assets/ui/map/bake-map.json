@@ -191,13 +191,13 @@
  },
  "site_prebuilt_camelot_ow_pines": {
   "id": "site_prebuilt_camelot_ow_pines",
-  "nx": 24,
+  "nx": 48,
   "nz": 84,
-  "h0": 0,
+  "h0": -3.2,
   "hs": 0.25,
-  "v": "507d974e96",
-  "bytes": 254,
-  "s": "0.9"
+  "v": "0c19fc830e",
+  "bytes": 957,
+  "s": "0.8"
  },
  "site_prebuilt_camelot_ow_fairy": {
   "id": "site_prebuilt_camelot_ow_fairy",
@@ -221,13 +221,13 @@
  },
  "site_prebuilt_camelot_ow_forest": {
   "id": "site_prebuilt_camelot_ow_forest",
-  "nx": 48,
+  "nx": 60,
   "nz": 60,
-  "h0": 0,
+  "h0": -2.85,
   "hs": 0.25,
-  "v": "5cb47d5a9b",
-  "bytes": 353,
-  "s": "1.2"
+  "v": "da8d92430e",
+  "bytes": 863,
+  "s": "0.5"
  },
  "site_prebuilt_skinwalker_ow_house": {
   "id": "site_prebuilt_skinwalker_ow_house",

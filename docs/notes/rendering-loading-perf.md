@@ -3580,3 +3580,44 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   colours (opaque pixels 7,710 vs 7,818, top / bottom 2,666 / 5,044 vs 2,675 / 5,143, mean colour 138,128,129 vs 138,127,128;
   the difference is the animation between the two shots). The stall itself only shows on Firefox with WebGPU busy: his next
   profile should have no `PWebGL::Msg_ReadPixels` under `_ptLiveTick`.
+- HIS 03:40 BATTLE F3 + FIFTH PROFILE (11-20): (a) THE BUILD LINE reads "?v=20261120-oneair-02-cors · renderer code 11-20
+  builds-named", the same as his 03:01 F3: that tab never got THE PORTRAITS STEP ASIDE (merged 03:09) nor THE PORTRAIT WITHOUT
+  THE WAIT (03:2x); main's page token is `20261120dist-cors` by now. Either the tab was not hard-reloaded or Render is serving
+  an old page; nothing about the portrait fixes can be read from it. (b) The profile (200 s) holds only the parent process and
+  the GPU process; the game tab's own thread is NOT in it, so no game JS can be read. (c) What the GPU process's CanvasRenderer
+  thread shows (57 % busy; share of its CPU): `__bzero` 12.2 %, `-[AGXBuffer initWithDevice…]` 8.3 %, buffer `dealloc` 3.8 %,
+  `__mmap` 3.9 %, `madvise` / `munmap` ~2.7 %, `copyFromBuffer:…toBuffer:` 1.6 % = about 30 % of that thread CREATING, ZEROING,
+  COPYING FROM AND FREEING small Metal buffers. Reading: every `GPUQueue.writeBuffer` (a uniform group's write) becomes a fresh
+  staging buffer in Firefox's wgpu (allocate, zero, blit, free). The fight refreshes "whole groups 908" objects a frame (the
+  one-piece ceiling / wall groups a fade demoted) on top of the ~200 classic draws, each a write when the camera moves. So the
+  count of uniform writes a frame is a GPU-side cost on Firefox, not only a JS one ("One write" already merges the ranges of
+  one buffer). The lever: fewer objects refreshed a frame in a fight (the 1,400 one-piece "may fade" groups, the demoted ones),
+  not a cheaper write. `PWebGL::Msg_ReadPixels` (the old portrait copy) is 0.8 % of that thread: cheap for the card, the cost
+  was the main thread waiting for it.
+- THE PORTRAIT'S OWN CANVAS (11-20, his sixth Firefox profile + 03:52 battle F3, the first on "portraits-no-wait"): THE PORTRAIT
+  WITHOUT THE WAIT DID NOT WORK. 16.3 % of the main thread was still blocked, now in `WebGL2RenderingContext.getBufferSubData`
+  (`PWebGL::Msg_GetBufferSubData`) under `_ptReadTake`. LESSON: on Firefox EVERY WebGL call that must answer (readPixels,
+  getBufferSubData, drawImage / toDataURL of a WebGL canvas) is a synchronous round trip to the GPU process's canvas thread,
+  which is the thread drawing the game's WebGPU frame; a pack buffer + fence does not make it asynchronous there. The only
+  read-back that does not wait is none.
+  So: a live portrait draws into a small WebGL canvas of its OWN (`_ptOwnMake`: its own WebGLRenderer, the studio's scene and
+  camera, `_ptRender(S, false, dt, own.r)`), and that canvas is what the HUD shows: `_ptOwnMount` puts it right after the HUD's
+  own canvas (hud.js LiveFace: a canvas in a foreignObject; same `width:100%;height:100%` box, class `ew-live-own`), hides the
+  HUD's while it stands there and gives it back when the place goes. The biggest of a portrait's HUD places gets it; its other
+  places take a copy once a second (the one waiting call left, 1 a second in place of 24). `_ptOwnFree` in `_ptDrop`. The
+  pack-buffer code is gone. Old copy (stepped down when slow): `window.EW_PT_LIVE_COPY`. `_EW_TR_STAMP` = "11-20
+  portrait-own-canvas". Cost: one more WebGL context a live portrait (2 at most) and its model's GPU data a second time.
+  Probe (cloud, two HUD-like round slots, Agent Locke): the own canvas sits in the bigger slot with the HUD canvas hidden, the
+  small slot shows the copy (7,777 opaque pixels), and when the big slot is removed the canvas moves to the other one. Picture
+  `shots/portrait_own_canvas.png`.
+  Same F3 (10.9 FPS, CPU 60.7 ms in a combo): besides the portrait wait, "scene: classic draws 36.7 ms" with 7 shader builds
+  and 7 pipelines a second, named: spell effects ("MeshBasicMaterial / SpriteMaterial see-through on ew scene", "node:fxop
+  see-through on batch fxBatch / fxGlobs", "ew_node_prog") and "kept 640/384/768" = all three keep lists AT THEIR CAP, so a
+  build put aside is thrown out and made again. Next: raise `_EW_KEEP_CAP`, and pre-build a spell's looks when it is equipped.
+- THE FIRST FIGHT PAYS (11-20, mondo after THE PORTRAIT'S OWN CANVAS: "my 2nd and 3rd fights after this one were a lot smoother
+  and the combo attack didn't have a slow down"). So what is left of the combo slowdown is FIRST-TIME work: each look a fight
+  shows for the first time in a session is built once (a spell's effects, a ghosted unit's see-through materials, a wall's first
+  fade, a shot's two pane cameras recording the room), and later fights find it made. `_EW_KEEP_CAP` raised from 640 / 384 /
+  768 to 1,600 / 1,000 / 2,000 (the lists were full in his fights, so kept builds were being thrown out). `_EW_TR_STAMP` =
+  "11-20 keep-more". Next for the first fight: build a unit's spell looks and see-through twins when the fight is set up
+  (behind its start), not at the first cast.

@@ -1606,7 +1606,7 @@
                 if (!C || C.locked || state.gameState !== GS.HQ) { el.textContent = ''; return; }
                 const h = _hqClockLoad().h, S = window.hqWorldSun(h), hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
                 const part = S.dusk > 0.5 ? (h < 12 ? 'DAWN' : 'DUSK') : (S.isDay ? 'DAY' : 'NIGHT');
-                el.textContent = ' · ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ' ' + part;
+                el.textContent = (String((el.parentNode && el.parentNode.textContent) || '').replace(el.textContent, '').trim() ? ' · ' : '') + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ' ' + part;
             } catch (e) {}
         }
         try {
@@ -1925,6 +1925,62 @@
                     + `</div>`;
             }).join('');
         }
+        /* THE CORNER'S SUB-LINE (mondo 11-19): "D.O.O.R. HEADQUARTERS" only inside HQ; out in a zone the line is the DISTRICT you
+           stand in (live, as you walk), never the zone's counts ("NINE DISTRICTS · 144 PLOTS" was a builder's note, not the player's) */
+        function _hqStripSub(room) {
+            if (!room.site) return 'D.O.O.R. HEADQUARTERS · ' + ((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + String(room.sub || '').toUpperCase();
+            if (_hqDistrictGrid(_hqCurRoom)) return '';   // a plot-built room: the district tag is the whole line
+            const sub = String(room.sub || '').toUpperCase();
+            return /\bDISTRICTS?\b|\bPLOTS?\b/.test(sub) ? '' : sub;
+        }
+        const _hqDistrictGrids = {};
+        /* a plot-built room's plot grid: { row, at: {"c,r": [district name, plot name]} } (HQ_ZONE_MAP; built once a room) */
+        function _hqDistrictGrid(roomId) {
+            if (!roomId) return null;
+            if (roomId in _hqDistrictGrids) return _hqDistrictGrids[roomId];
+            let out = null;
+            try {
+                if (typeof HQ_ZONE_MAP !== 'undefined' && HQ_ZONE_MAP && HQ_ZONE_MAP.zones) for (const h in HQ_ZONE_MAP.zones) {
+                    const z = HQ_ZONE_MAP.zones[h], row = (z.rooms || []).find(r => r.room === roomId);
+                    if (!row) continue;
+                    const D = z.districts || {}, at = {};
+                    let plots = [];
+                    if (row.plots) plots = row.plots.map(p => ({ name: p[1], d: p[2], c: p[3], r: p[4] }));
+                    else {
+                        const P = (DOOR_HQ.rooms[roomId] || {}).plots;
+                        if (P && P.names) {
+                            const rc = P.names.map(n => { const m = /^P(\d+)-(\d+)$/.exec(n[0]); return m ? [+m[1], +m[2]] : [0, 0]; });
+                            const oc = Math.max(0, Math.max(...rc.map(a => a[0])) - row.cols + 1), or = Math.max(0, Math.max(...rc.map(a => a[1])) - row.rows + 1);
+                            plots = P.names.map((n, i) => ({ name: n[1], d: n[2], c: rc[i][0] - oc, r: rc[i][1] - or }));
+                        }
+                    }
+                    plots.forEach(p => { const dn = D[p.d] ? D[p.d][0] : ''; if (dn) at[p.c + ',' + p.r] = dn; });
+                    if (Object.keys(at).length) out = { row, at, P: HQ_ZONE_MAP.plot || 42 };
+                    break;
+                }
+            } catch (e) { out = null; }
+            _hqDistrictGrids[roomId] = out;
+            return out;
+        }
+        let _hqDistrictLast = null;
+        /* the district under your feet on the corner's sub-line (a 4-a-second look-up of one plot cell: no scene walk) */
+        function _hqDistrictTag(force) {
+            try {
+                const el = _hqEl('hqDistrictTag');
+                if (!el) return;
+                const G = _hqDistrictGrid(_hqCurRoom);
+                let name = '';
+                if (G && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.pos) {
+                    const p = ThreeRenderer.hq.pos();
+                    if (p && isFinite(p.x) && isFinite(p.z)) name = G.at[Math.floor((p.x - G.row.ox) / G.P) + ',' + Math.floor((p.z - G.row.oz) / G.P)] || '';
+                    if (!name && _hqDistrictLast && _hqDistrictLast.room === _hqCurRoom) name = _hqDistrictLast.name;   // a road between plots keeps the last district
+                }
+                if (!force && _hqDistrictLast && _hqDistrictLast.room === _hqCurRoom && _hqDistrictLast.name === name) return;
+                _hqDistrictLast = { room: _hqCurRoom, name };
+                el.textContent = name.toUpperCase();
+            } catch (e) {}
+        }
+        try { setInterval(() => { try { if (state.gameState === GS.HQ) _hqDistrictTag(false); } catch (e) {} }, 250); } catch (e) {}
         function _hqFillStrip(profile) {
             try {
                 /* THE HEALTH DOCK (2026-10-05, the user): the strip is the area (top left) and the hazard pay (top right) only —
@@ -1942,7 +1998,7 @@
                 const rt = _hqEl('hqRoomTitle');
                 if (rt && room) rt.textContent = String(room.label || _hqCurRoom || '').toUpperCase();
                 const rn = _hqEl('hqRoomName');
-                if (rn && room) { rn.innerHTML = _hqEsc('D.O.O.R. HEADQUARTERS · ' + ((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + String(room.sub || '').toUpperCase()) + '<span id="hqClockTag"></span>'; _hqClockTag(); }   // THE WORLD CLOCK (Phase 3): the hour rides the sub-line in a clocked room
+                if (rn && room) { rn.innerHTML = _hqEsc(_hqStripSub(room)) + '<span id="hqDistrictTag"></span><span id="hqClockTag"></span>'; _hqDistrictTag(true); _hqClockTag(); }   // THE WORLD CLOCK (Phase 3): the hour rides the sub-line in a clocked room
                 /* FORM 365 (plan 7.9 / Room 247): the day's three lines, mirrored on the strip */
                 const fp = _hqEl('hqForm365');
                 if (fp) {
@@ -3281,7 +3337,7 @@
             let canon = '';
             try { canon = (typeof window.hqCanonToday === 'function') ? String(window.hqCanonToday() || '') : ''; } catch (e) {}
             const where = room ? (((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + (room.label || '')) : '';
-            return `<div class="hq-pause-title"><img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false"><div><b>PAUSED</b><span>D.O.O.R. HEADQUARTERS${where ? ' · ' + _hqEsc(where) : ''}</span></div></div>`
+            return `<div class="hq-pause-title"><img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false"><div><b>PAUSED</b><span>${(room && room.site) ? _hqEsc(String(where).replace(/^ROOM [^·]*· /, '').toUpperCase()) : 'D.O.O.R. HEADQUARTERS' + (where ? ' · ' + _hqEsc(where) : '')}</span></div></div>`
                 + `<div class="hq-pause-vitals">`
                 + `<span><b>${_hqEsc((profile && profile.username) || 'UNFILED')}</b><i>L${cl.level} · ${_hqEsc(cl.title)}</i></span>`
                 + `<span><b>💰 ${gold.toLocaleString()}</b><i>HAZARD PAY</i></span>`
