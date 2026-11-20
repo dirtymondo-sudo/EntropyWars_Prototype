@@ -1,5 +1,5 @@
 /* THREAD 11, HEAVEN + HELL + VATICAN: HEAVEN'S HEIGHT PLAN, laid OVER THE ROOM AS IT STANDS (`underlay`).
-   A PROPOSAL: nothing is built from it until mondo says so. DATA ONLY (the format: plans/README.md).
+   APPROVED by mondo 2026-11-20 ("looks good"). Nothing is built from it yet. DATA ONLY (the format: plans/README.md).
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/heaven.js
    TODAY Heaven has its climb (the foot of the stair 2, the flights 5, 8, 11, the Gate 14, the Cloud Fields 14, the City 16), but every
    join between its clouds is a straight strip two squares wide: the Cloud Bridge (17 squares), the Cloud Path (24), the City Path
@@ -14,8 +14,9 @@
 'use strict';
 const street = 'the City stands on one cloud: a level street (architecture)', landing = 'the Gate\'s landing: one level cloud';
 module.exports = {
+    approved: 'mondo 2026-11-20, shown the plan and its picture in chat: "looks good"',
     zone: 'Heaven + Hell + Vatican', thread: 11, room: 'site_prebuilt_heaven_plots', underlay: { deep: 30, void: true },
-    title: 'HEAVEN: THE HEIGHT PLAN over the room as it stands (a proposal)',
+    title: 'HEAVEN: THE HEIGHT PLAN over the room as it stands',
     build: { frame: 'room', file: 'docs/areas/afterlife/districts/heaven-room.js (new: the room design, in the room\'s own frame)' },
     mass: 'the void (open sky: the wall of the place)', massHeight: 0,
     tiles: { ' ': ['the void (open sky)', false, [22, 34, 66], [22, 34, 66]], u: ['cloud as it stands today (read from the room)', true, [150, 160, 190], [250, 250, 255]],

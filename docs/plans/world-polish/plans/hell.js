@@ -1,5 +1,5 @@
 /* THREAD 11, HEAVEN + HELL + VATICAN: HELL'S PLAN, laid OVER THE ROOM AS IT STANDS (`underlay`). A LIGHT AND LANDMARK PLAN.
-   A PROPOSAL: nothing is built from it until mondo says so. DATA ONLY (the format: plans/README.md).
+   APPROVED by mondo 2026-11-20 ("looks good"). Nothing is built from it yet. DATA ONLY (the format: plans/README.md).
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/hell.js
    HELL HAS THE BEST SHAPE IN THE WORLD AND YOU CANNOT READ IT: black on black (the screenshot audit, 11-20). IT NEEDS LIGHT, NOT
    HEIGHT. So this plan moves NO ground and lays NO new way: the grey squares are the pit as it stands (the rim 8, the terrace 5, the
@@ -13,8 +13,9 @@
    Each star on the picture is a light or a landmark. Levels are the room's own. */
 'use strict';
 module.exports = {
+    approved: 'mondo 2026-11-20, shown the plan and its picture in chat: "looks good"',
     zone: 'Heaven + Hell + Vatican', thread: 11, room: 'site_prebuilt_hell_plots', underlay: { deep: 30, void: true },
-    title: 'HELL: THE LIGHT AND LANDMARK PLAN over the pit as it stands (a proposal; no ground moves)',
+    title: 'HELL: THE LIGHT AND LANDMARK PLAN over the pit as it stands (no ground moves)',
     build: { frame: 'room', file: 'docs/areas/afterlife/districts/R D L W.js (lights and props only: no ground, no way)' },
     mass: 'lava and the open pit (closed)', massHeight: 0,
     tiles: { ' ': ['lava / the open pit', false, [120, 36, 10], [120, 36, 10]], u: ['the pit as it stands today (read from the room)', true, [48, 40, 44], [176, 150, 140]] },
@@ -48,6 +49,8 @@ module.exports = {
         { name: 'the bowl\'s floor', at: [18, 26], sees: 'The Plinth\'s white fire', next: 'W' }, { name: 'the middle platform', at: [41, 18], sees: 'The Plinth\'s white fire', next: 'L' }],
     flats: [{ name: 'The Bowl\'s floor', rect: [14, 16, 24, 30], why: 'the bowl, as built: the pit\'s open floor' }, { name: 'The north rim', rect: [2, 3, 35, 6], why: 'the rim, as built' },
         { name: 'The Ash Flats', rect: [2, 38, 11, 44], why: 'as built' }, { name: 'The High Platforms', rect: [38, 4, 43, 8], why: 'as built' }],
+    /* mondo 2026-11-20: "no walk in building for hell" */
+    noBuildings: 'mondo 2026-11-20: "no walk in building for hell"',
     buildings: [],
     picture: { S: 30 },
 };
