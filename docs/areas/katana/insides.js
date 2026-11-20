@@ -5,6 +5,7 @@
    (the hollow building's own walls draw dark), dark posts and a head rail on it, a lit board ceiling with rafters under the building's own, and
    straw mats on the floor. Then its own things: drawn where the game has no model (low tables, cushions, bedding, an alcove with a hung scroll, a
    sunk hearth, counters, shelves, wooden tubs, a dais, paper screens), catalogue models where it has one (`put`).
+   LEARNT: the catalogue's `privacy_screen` is a green hospital curtain: never in these rooms (the drawn paper `screen` instead).
    STAND-INS mondo named 11-20: `sword` for a katana, `decor_armour_stand_post` for samurai armour.
    One storey a building for now (the Inn, the Net Loft, the Theatre, the Keep and the Pagoda are tall rooms). */
 'use strict';
@@ -12,6 +13,7 @@ const ROOM_OF = {
     office: 'office', market: 'market', shipwright: 'shipwright', netloft: 'netloft', ricestore: 'store', inn: 'inn', hut: 'hut', lantern: 'tower',
     bathhouse: 'bath', teashop: 'shop', brewery: 'brewery', lanternmaker: 'workshop', noodles: 'kitchen', pagoda: 'pagoda', templehall: 'temple', monks: 'home',
     theatre: 'theatre', teahouse: 'tea', townhouse1: 'home', townhouse2: 'home', dojo: 'dojo', samurai1: 'samurai', samurai2: 'samurai', armoury: 'armoury', keep: 'keep',
+    palacehall: 'audience', palacewest: 'samurai', palaceeast: 'tea',
     guardhouse: 'guard', pavilion: 'tea', fisher1: 'hut', fisher2: 'hut', fisher3: 'hut', farm1: 'farm', farm2: 'farm', farm3: 'farm', store: 'store', headman: 'home',
     hiddenshrine: 'shrine', hermit: 'hut', viewing: 'tea', springbath: 'bath',
 };
@@ -57,7 +59,7 @@ function furnish(K) {
     if (type !== 'shipwright' && type !== 'market' && type !== 'tower' && type !== 'brewery' && type !== 'store') mats(-W2 + 0.2, -D2 + 0.2, W2 - 0.2, D2 - 1.3);
     if (type === 'home' || type === 'samurai') { alcove(farX * (W2 - 1.5), 1.6); hearth(0, 0.2); table(-farX * (W2 - 1.6), zb + 0.9, 1.3, 0.8); seatRing(-farX * (W2 - 1.6), zb + 0.9, 1.3, 0.8);
         futon(farX * (W2 - 0.9), 0.6); if (2 * W2 > 6) futon(farX * (W2 - 2.1), 0.6); shelf(-farX * (W2 - 0.25), 0.4, 1.6, 90, 3); put('woven_baskets', -farX * (W2 - 0.9), zf - 0.8, {}); lamp(0, zb + 1.5);
-        if (type === 'samurai') { put('decor_armour_stand_post', farX * (W2 - 0.7), zb + 0.3, { face: 0 }); put('sword', farX * (W2 - 1.5), zb + 0.45, { y: 0.35 }); put('privacy_screen', farX * (W2 - 3.0), 0.2, { face: 90 }); } }
+        if (type === 'samurai') { put('decor_armour_stand_post', farX * (W2 - 0.7), zb + 0.3, { face: 0 }); put('sword', farX * (W2 - 1.5), zb + 0.45, { y: 0.35 }); screen(farX * (W2 - 3.0), 0.2, 1.8, 90); } }
     else if (type === 'hut' || type === 'farm') { hearth(0, 0); futon(xl + 0.7, zb + 0.6, true); futon(xr - 0.7, zb + 0.6, true); put('stock_pots', -farX * (W2 - 0.8), zf - 0.6, {}); put('woven_baskets', farX * (W2 - 0.8), zf - 0.7, {});
         put(type === 'farm' ? 'wooden_bucket' : 'fishing_rod', farX * (W2 - 0.5), 0, {}); if (2 * W2 > 6) { put('wooden_barrel', xr - 0.3, 0.6, {}); shelf(xl - 0.1, 0.6, 1.4, 90, 2); } }
     else if (type === 'office') { table(0, zb + 1.0, 1.9, 0.9, 0.38); cushion(0, zb + 0.25, 0x2a3a6a); cushion(-0.6, zb + 2.0); cushion(0.6, zb + 2.0); shelf(xl - 0.15, 0, 2.2, 90, 4); shelf(xr + 0.15, -0.6, 1.6, 90, 4); alcove(farX * (W2 - 1.3), 1.4);
@@ -78,7 +80,7 @@ function furnish(K) {
         put('kettle', farX * 0.9, zf - 1.6, { y: 0.2 }); lamp(0, 0.4); }
     else if (type === 'workshop') { table(0, zb + 0.9, 2 * W2 - 1.6, 0.9, 0.7); for (let i = 0; i < 3; i++) put('paper_lantern', -1.4 + i * 1.4, zb + 0.9, { y: 0.92, h: 0.42 }); for (let i = 0; i < 4; i++) put('paper_lantern', -W2 + 1 + i * 1.3, 0.6, { y: r2(Hc - 0.8 - (i % 2) * 0.3), h: 0.42 }); shelf(xl - 0.15, 0.4, 2.0, 90, 4); cushion(0, zb + 1.9); }
     else if (type === 'bath') { tub(-W2 + 2.2, zb + 1.3, 2.6, 1.8); tub(W2 - 2.6, zb + 1.3, 2.6, 1.8); screen(0, zb + 1.3, 2.6, 90); for (const sx of [-1, 1]) { box(sx * (W2 - 1.6), FY, zf - 1.5, 2.2, 0.4, 0.5, WD2, 0x8a6a48); put('wooden_bucket', sx * (W2 - 1.0), 0.3, {}); }
-        shelf(farX * (W2 - 0.1), 0.6, 1.8, 90, 3); put('privacy_screen', -farX * 1.2, zf - 2.2, { face: 0 }); put('brazier', 0, 0.9, {}); lamp(-2, 0.2); lamp(2, 0.2); }
+        shelf(farX * (W2 - 0.1), 0.6, 1.8, 90, 3); screen(-farX * 1.2, zf - 2.2, 1.8, 0); put('brazier', 0, 0.9, {}); lamp(-2, 0.2); lamp(2, 0.2); }
     else if (type === 'dojo') { put('dojo_weapon_rack', xl + 0.2, zb + 0.2, { face: 0 }); put('dojo_weapon_rack', xr - 0.2, zb + 0.2, { face: 0 }); alcove(0, 2.4); put('sword', 0, zb + 0.45, { y: 0.4 }); put('decor_armour_stand_post', -2.2, zb + 0.3, {}); put('decor_armour_stand_post', 2.2, zb + 0.3, {});
         put('wing_chun_dummy', xl + 0.6, 0.8, {}); put('wing_chun_dummy', xl + 0.6, 3.0, {}); put('taiko_drum', xr - 0.6, zf - 1.4, {}); for (let i = 0; i < 5; i++) cushion(xr - 0.5, -3 + i * 1.1, 0x2a2a3a); put('spear', xr - 0.2, -4.2, {}); flag(xl + 0.2, -3.6, 90); lamp(-3, 0); lamp(3, 0); lamp(0, 3); }
     else if (type === 'armoury' || type === 'guard') { put('dojo_weapon_rack', 0, zb + 0.2, { face: 0 }); for (let i = 0; i < 3; i++) { put('spear', xl + 0.2 + i * 0.5, zb + 0.3, {}); put('decor_armour_stand_post', xr - 0.3, zb + 0.4 + i * 1.5, { face: 270 }); }
@@ -87,10 +89,17 @@ function furnish(K) {
         Q(0, 1.2, -D2 + 0.03, Math.min(2.2, dw), 1.9, 0, PLS, 0xd8a83a, { gain: 2.4, glow: 0.35, kind: 'wall' }); box(0, 1.15, -D2 + 0.05, Math.min(2.4, dw + 0.2), 0.08, 0.08, WD2, DARK); box(0, 3.1, -D2 + 0.05, Math.min(2.4, dw + 0.2), 0.08, 0.08, WD2, DARK);   // the gilt panel behind the altar
         if (type !== 'shrine') { put('gong', xl + 0.6, 0.2, { face: 90 }); for (let r = 0; r < (deep ? 3 : 1); r++) for (let i = -2; i <= 2; i++) if (Math.abs(i * 1.1) < W2 - 1.2) cushion(i * 1.1, 0.6 + r * 1.0, 0x8a2a2a); put('item_censer', 0, zb + 2.0, {}); put('prayer_flags', 0, 0, { y: r2(Hc - 1.4), face: 0 }); }
         lamp(-1.6, 0.4); lamp(1.6, 0.4); }
-    else if (type === 'theatre') { dais(0, zb + 1.6, 2 * W2 - 1.2, 3.0, 0.6); screen(0, zb + 0.25, 2 * W2 - 2.0, 0); put('taiko_drum', -W2 + 1.6, zb + 1.2, { y: 0.74 }); put('taiko_drum', W2 - 1.6, zb + 1.2, { y: 0.74 }); put('privacy_screen', 0, zb + 1.0, { y: 0.74, face: 0 });
-        for (let r = 0; r < 3; r++) for (let i = -4; i <= 4; i++) if (Math.abs(i * 1.2) < W2 - 0.8) cushion(i * 1.2, 0.2 + r * 1.2, r % 2 ? 0x2a4a3a : 0x7a2a2a); lamp(-4, -1); lamp(0, -1); lamp(4, -1); }
+    else if (type === 'theatre') { dais(0, zb + 1.6, 2 * W2 - 1.2, 3.0, 0.6); screen(0, zb + 0.25, 2 * W2 - 2.0, 0); put('taiko_drum', -W2 + 1.6, zb + 1.2, { y: 0.74 }); put('taiko_drum', W2 - 1.6, zb + 1.2, { y: 0.74 });         for (let r = 0; r < 3; r++) for (let i = -4; i <= 4; i++) if (Math.abs(i * 1.2) < W2 - 0.8) cushion(i * 1.2, 0.2 + r * 1.2, r % 2 ? 0x2a4a3a : 0x7a2a2a); lamp(-4, -1); lamp(0, -1); lamp(4, -1); }
     else if (type === 'keep') { dais(0, zb + 1.4, 5.0, 2.4, 0.4); cushion(0, zb + 1.2, 0x8a6a1a); screen(0, zb + 0.25, 4.6, 0); put('sword', 0.9, zb + 1.6, { y: 0.6 }); for (const sx of [-1, 1]) { put('decor_armour_stand_post', sx * 3.4, zb + 0.5, {}); flag(sx * (W2 - 0.9), zb + 0.5, 0); put('brazier', sx * 2.9, zb + 2.9, {});
             for (let i = 0; i < 3; i++) cushion(sx * 2.2, zb + 4.2 + i * 1.2, 0x2a2a3a); put('dojo_weapon_rack', sx * (W2 - 0.3), 1.6, { face: sx > 0 ? 270 : 90 }); } table(0, zb + 4.6, 1.8, 1.0); put('teapot', 0, zb + 4.6, { y: 0.54, span: 0.34 }); lamp(-3, 1); lamp(3, 1); lamp(0, 3); }
+    else if (type === 'audience') {   /* THE AUDIENCE HALL: the lord's dais across the back under painted gold screens, the court's cushions in two files down the hall, flags, armour, braziers */
+        dais(0, zb + 1.3, 2 * W2 - 3.0, 2.6, 0.45); for (let i = -3; i <= 3; i++) Q(i * 2.4, 0.6, -D2 + 0.03, 2.2, Hc - 1.2, 0, PLS, i % 2 ? 0xd8a83a : 0xc89a30, { gain: 2.4, glow: 0.35, kind: 'wall' });
+        box(0, 0.55, -D2 + 0.05, 2 * W2 - 1.0, 0.08, 0.08, WD2, DARK); box(0, Hc - 0.62, -D2 + 0.05, 2 * W2 - 1.0, 0.08, 0.08, WD2, DARK);
+        cushion(0, zb + 1.1, 0x8a6a1a); box(0, FY + 0.45, zb + 0.5, 1.6, 0.9, 0.12, WD2, 0x5a3a26); put('sword', 1.0, zb + 1.2, { y: 0.62 }); put('sword', -1.0, zb + 1.2, { y: 0.62 });
+        for (const sx of [-1, 1]) { flag(sx * (W2 - 0.6), zb + 0.5, 0); put('decor_armour_stand_post', sx * 5.2, zb + 0.6, {}); put('brazier', sx * 4.2, zb + 3.4, {}); for (let i = 0; i < 6; i++) cushion(sx * 2.6, zb + 4.6 + i * 1.25, 0x2a2a3a);
+            screen(sx * (W2 - 0.3), 1.5, 4.2, 90); put('dojo_weapon_rack', sx * (W2 - 0.4), zf - 1.6, { face: sx > 0 ? 270 : 90 }); screen(sx * 7.2, zb + 2.4, 1.8, 0); }
+        table(0, zb + 5.6, 2.0, 1.0); put('teapot', 0, zb + 5.6, { y: 0.54, span: 0.34 }); put('taiko_drum', -W2 + 1.0, zf - 0.8, {}); put('gong', W2 - 1.0, zf - 0.8, { face: 270 });
+        for (const x of [-7, -3.5, 0, 3.5, 7]) { lamp(x, 1.5); lamp(x, zb + 3.2); } }
     else if (type === 'tower') { put('brazier', 0, 0, {}); put('firewood_stack', farX * (W2 - 0.9), zb + 0.4, { face: 0 }); put('wooden_bucket', -farX * (W2 - 0.6), zb + 0.5, {}); }
     void rnd; void big; void xl; void xr;
 }

@@ -1,5 +1,5 @@
 /* KATANA ISLAND, district C: THE CITY (world polish thread 21, 2026-11-20). bake-katana.js runs build(ctx). ISLAND squares, x east, y south.
-   Six plots, each a level terrace: the Merchants' Town 3 (x 24..35, y 48..59) · the Samurai Quarter 4 (x 0..11, y 48..59) · the Temple Quarter 5
+   Seven plots (the Palace added 11-20), each a level terrace: the Palace 8 (x 0..11, y 12..23) · the Merchants' Town 3 (x 24..35, y 48..59) · the Samurai Quarter 4 (x 0..11, y 48..59) · the Temple Quarter 5
    (x 24..35, y 36..47) · the High Town 6 (x 12..23, y 36..47) · the Castle Garden 7 (x 0..11, y 24..35) · the Castle 8 (x 0..11, y 36..47).
    The streets are the layout's ways (the Mountain Road 3 squares, the Castle Road, the West Steps + the Main Gate, the Postern); they jog at right
    angles the way a castle town's streets do, and the tool stands a stone flight wherever one changes level. Every building keeps off them.
@@ -9,7 +9,7 @@
 'use strict';
 module.exports = {
     reach: [[27, 50, 'the Merchants’ Town'], [31, 51, 'the Bath House'], [28, 45, 'the Temple Quarter'], [32, 43, 'the pagoda'], [21, 38, 'the High Town'], [16, 39, 'the Theatre'],
-        [6, 41, 'the castle yard'], [5, 38, 'the keep’s door'], [7, 55, 'the Dojo'], [5, 33, 'the Castle Garden'], [15, 30, 'the shrine stair’s head']],
+        [6, 41, 'the castle yard'], [5, 38, 'the keep’s door'], [7, 55, 'the Dojo'], [5, 33, 'the Castle Garden'], [6, 20, 'the palace court'], [6, 18, 'the Audience Hall\u2019s door'], [15, 30, 'the shrine stair’s head']],
     build(ctx) {
         const { r2, rnd, WD, WD2, PLS, TILE, DARK, PLASTER, house, tiers } = ctx;
         const STONE = 0x8d8a84, RED = 0xc23a22, B = {};
@@ -52,6 +52,20 @@ module.exports = {
         gate('east', 12, 37.5, 90, 9.6); gate('main', 5, 47.8, 0, 6.2);
         /* the shrine stair's gates: three red gates over the Mountain Road where it climbs out of the High Town (drawn, like the Great Gate) */
         [34.6, 33.2, 31.8].forEach((y, i) => ctx.look('torii' + i, 15.5, y, 0, a => { for (const sx of [-1, 1]) a.cyl(sx * 4.6, 0, 0, 0.28, 5.6, PLS, RED, { r2: 0.24, seg: 10, gain: 2.2 }); a.box(0, 4.3, 0, 10.4, 0.4, 0.34, PLS, RED, { gain: 2.2 }); a.box(0, 5.2, 0, 11.6, 0.5, 0.5, PLS, RED, { gain: 2.2 }); a.box(0, 5.7, 0, 12.2, 0.22, 0.8, PLS, 0x2a2a2e, { roof: true }); }));
+        /* ── THE PALACE (8; a plot added 11-20 on mondo's "Yes and add another plot or two if you need to", north of the Castle Garden on the sea cliff): the lord's
+           residence, wide and low where the keep is tall. The AUDIENCE HALL across the north (7 x 4 squares) with a deep porch on posts; two wings south of it (the
+           PRIVATE ROOMS west, the GUEST HOUSE east) round an open gravel court; the gate on the south side where the Palace Walk comes up from the garden.
+           LEVEL ON PURPOSE: the court (x 4..8, y 19..22). ── */
+        B.palacehall = ctx.building('palacehall', [3, 14, 10, 18, 'S'], 5.4, { leafDouble: true }, (a, w, d, door) => { house(a, w, 5.4, d, door, { wallTint: 0xf6f1e4, roof: { top: 'gable', over: 2.2, tint: 0x4e5a6c } });
+            for (let i = 0; i < 6; i++) a.cyl(-w / 2 + 1.2 + i * (w - 2.4) / 5, 0, d / 2 + 2.0, 0.17, 5.2, WD2, 0x8a2a1e, { seg: 10 });                      // red posts under the deep front eave
+            a.box(0, 0, d / 2 + 1.1, w + 0.6, 0.3, 2.4, WD2, 0x6a4a30, { uv: [0.9, 0.9], faces: 'flr' }); a.box(0, 4.6, d / 2 + 2.0, w, 0.3, 0.3, WD2, 0x8a2a1e); });   // the porch's boards and its beam
+        bld('palacewest', [1, 19, 3, 22, 'E'], 3.6, {}, { roof: { top: 'gable', over: 1.1, tint: 0x4e5a6c } });
+        bld('palaceeast', [9, 19, 11, 22, 'W'], 3.6, {}, { roof: { top: 'gable', over: 1.1, tint: 0x4e5a6c } });
+        const Pp = (key, x, y, o) => { if (!ctx.onWay(x, y) && ctx.free(x, y)) ctx.P(key, x, y, o); };
+        gate('palace', 7, 23.2, 0, 6.6); wall('p1', 0.6, 23.4, 5.0, 23.4); wall('p2', 9.0, 23.4, 11.4, 23.4);
+        [[4, 19], [8, 19], [4, 22], [8, 22], [5, 23], [8, 23]].forEach(q => Pp('stone_lantern', q[0], q[1])); Pp('brazier', 5, 18); Pp('brazier', 8, 18); Pp('taiko_drum', 4, 20 + 1);
+        [[11, 14], [11, 17], [2, 17], [1, 23], [11, 23 - 0]].forEach((q, i) => { if (!ctx.onWay(q[0], q[1])) ctx.tree(i % 2 ? 'cherry_3' : 'tree_56', q[0], q[1], 6 + rnd() * 2); });
+        [['shogun', 6, 19, 180], ['samurai slug', 5, 22, 180], ['ninja', 8, 21, 270]].forEach(q => { if (ctx.onWay(q[1], q[2]) || !ctx.free(q[1], q[2])) return; ctx.take(q[1], q[2]); ctx.npc.push({ x: ctx.mx(q[1]), z: ctx.mz(q[2]), face: q[3], race: q[0] }); });
         /* ── THE CASTLE GARDEN (7): a pond, a pavilion, cherries ── */
         bld('pavilion', [2, 27, 5, 30, 'S'], 3.0, {}, { roof: { top: 'pyramid', over: 1.2 } });
         ctx.feat({ k: 'pool', x: ctx.gx(8.5), z: ctx.gz(28), r: 5.2, y: -0.2, depth: 0.7 }); for (let y = 26; y <= 29; y++) for (let x = 7; x <= 9; x++) ctx.take(x, y);
