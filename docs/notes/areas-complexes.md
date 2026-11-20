@@ -12764,3 +12764,68 @@ joined only by a door on the boardwalk (`harbour` -> `quay`). On the One World m
   killed for memory (seen twice).
 - **KNOWN AND LEFT:** where the Cove's round cut meets the Shore's first circles the two banks leave a short bar under the water off the sand's north point (two
   squares awash); it reads as a point of sand. The map picture of the city was baked again (`bake-map.js`).
+
+## KATANA ISLAND, THE PLAN (2026-11-20, world polish thread 21; A PROPOSAL WITH MONDO, NOTHING BUILT)
+
+mondo 11-20: "we are getting rid of Mt Shasta. Instead volcano island is gonna be remade to Katana Island, which will be like feudal Japan ... with Katana
+Bay as one of the districts"; "There can still be dinosaurs, there can still be jungle, there can still be a village (Japanese). And then everything else
+Japanese too. This island is basically a love letter to anime and Japan. Should have cherry blossoms"; "a shoreline and a village and woods and a jungle and
+a volcano and a whole Japanese city"; "25 to 30 plots sounds right". Today it is The Volcano Island, `site_prebuilt_bermuda_ow_volcano` (10 plots in a 6 x 6
+box at world 22,-19, written by `bake-beach.js`: `OW_ROOMS[2]` + `growVolcano`, content in the Beach's `districts/O.js`).
+
+- **THE FILES** (all in `docs/plans/world-polish/thread21/`): `island.js` = the plan's numbers (plots, levels, every way as corner squares, the ledges; `node
+  island.js` checks every leg is on the grid, 8 squares or shorter and on dry ground); `draw-island.js` -> `island-plan.svg/.png` (every square of the island);
+  `draw-bay.js` -> `bay-plan.svg/.png` (Katana Bay square by square, the sample district); `FITS_KATANA_ISLAND.md` = the full shortlist.
+- **THE SHAPE:** 29 plots in the island's own 7 x 7 frame, one sea plot round it, so the room's box is 9 x 9 at world 21,-20 (free sea today; the new world
+  plots go through `docs/plans/one-world/after-v13.js`). One room (29 plots is under the 30 cap; its heaviest view has to be measured when it stands).
+- **THE DISTRICTS AND THEIR LEVELS** (1 level = 1.75 m): KATANA BAY 5 plots, 0 to 2 (the Waterfront, the West Quay, the East Quay, the Lantern Head, the
+  Fishing Beach, round an inlet two plots deep the boat sails up) · THE CITY 6 plots, 3 to 8 (the Merchants' Town 3, the Samurai Quarter 4, the Temple
+  Quarter 5, the High Town 6, the Castle Garden 7, the Castle 8) · THE VILLAGE 4 plots, 1 to 5 (the Shore Hamlet 1, the Paddies 1, the Village 3, the
+  Terraces 5) · THE WOODS 4 plots, 7 to 10 (the Hot Spring 7, the Bamboo Wood 8, the Old Wood 9, the Cherry Wood 10) · THE JUNGLE 5 plots, 1 to 6 (the East
+  Shore 1, the Dinosaur Park 2, the Jungle 3, the Jungle north 5, the Jungle Rise 6) · THE VOLCANO 5 plots, 9 to 18 (the Black Cape 9, the East Flank 12, the
+  West Flank 13, the Lava Field 13, the Crater 18 = 31.5 m; the cone is 16 m today). The volcano stands mid-north; downhill is always the bay, south-west.
+- **THE WAYS** (whole squares, straight legs, right-angle turns, no leg over 8 squares): THE MOUNTAIN ROAD, 3 squares, pier to crater, through the plots
+  Waterfront, Merchants' Town, Temple Quarter, High Town, Bamboo Wood, Cherry Wood, West Flank, Crater (it turns east, north, west, north, east, north, east:
+  never three plots in a line). Lanes, 2 squares: the Castle Road (3), the Shore Road (bay, village, jungle), the West Steps + the castle's main gate. Thin
+  trails, 1 square: the Wild Way (the Dinosaur Park up the east flank to the crater: the second way to the top), the East Shore, the Postern, the Old Wood
+  trail to a hidden shrine and the Black Cape, the Hot Spring trail, the Lantern Head path, the Fishing Beach path.
+- **THE LEDGES:** 13, each 2 levels (3.5 m) or more. THE NUMBER: the walker steps up 0.62 m (`HQ_TERRAIN_RULES.climb`) and its jump reaches a top 1.3 m up
+  (`HQ_TERRAIN_RULES.jump`; the apex is 1.46 m), a fall of 40 m is allowed (`dropMax`). So one level (1.75 m) already cannot be jumped; two is the rule here.
+  NOT CHECKED: whether the skateboard's wall plant (data.js `wall`, 11-20) gets a rider up a 3.5 m ledge. Two fall lines from the crater: south (Crater, Lava
+  Field, Hot Spring, Paddies) and south-west (West Flank, Cherry Wood, Temple Quarter, Merchants' Town, East Quay).
+- **LEVEL ON PURPOSE:** the Landing Square (10 x 8 squares), both quays, the Fishing Beach, the Paddies (one flat flooded field), the castle yard, the
+  village square, the Dinosaur Park's paddock.
+- **WHAT STANDS TODAY AND WHERE IT GOES** (nothing deleted without his word): the volcano (kept, bigger), the jungle and the fenced Dinosaur Park with its
+  lookout, keeper's hut, dig and four dinosaurs (kept, moved east), the tribe's village (two walk-in huts, shelters, the idol shrine, totem poles, the garden,
+  the watch fire): ASKED of mondo (move it into the jungle as the tribe's camp, or take it out). The sea's places round the island (the waterspout, the seal
+  rock, the islet) keep their sea.
+- **FITS KATANA ISLAND, the short form** (the full list with keys and sizes: `FITS_KATANA_ISLAND.md`):
+  - Japanese pieces already wired: `stone_lantern`, `paper_lantern`, `meshy_hanging_lantern`, `taiko_drum`, `dojo_weapon_rack`, `wing_chun_dummy`, `gong`,
+    `bell_frame`, `prayer_flags`, `privacy_screen`, `votive_stand`, `teapot`, `teacups`, `kettle`, `item_censer`, `decor_armour_stand_post`, `decor_umbrella_closed`.
+  - Harbour: `fishing_boat`, `dock_boat`, `rowboat`, `meshy_rowboat`, `dugout_canoe`, `raft`, `skiff`, `mooring_piles`, `mooring_bollard`, `rope_coils`,
+    `ship_anchor`, `fish_boxes`, `drying_fish`, `fishing_rod`, `oars`, `fishing_net_wall`, `lobster_traps`, `stilt_hut`, `stilt_house`, `stilt_house_wide`,
+    `lighthouse`, the Ocean pack (fish, crab, lobster, turtle, shells, seaweed, coral, rocks), `psx_wooden_crate_*`, `wooden_barrel`.
+  - Village and farm: `thatched_hut`, `lean_to`, `market_stall`, `hand_cart`, `hay_cart`, `plough`, `wheelbarrow`, `woven_baskets`, `wooden_bucket`,
+    `ancient_well`, `hw_scarecrow`, `hw_farmland` + `hw_crop*`, `chicken`, `rooster`, `duck`, `cow`, `horse`; the smith: `forge`, `anvil`, `bellows`, `grindstone`.
+  - Nature: `willow_tree`, `meshy_pine_with_canopy`, the pine kinds (`pine`, `pine_2`, `tree_pine`, `tree_43..47`), `fae_bloom_tree_pink` (the nearest thing to
+    blossom), `banana_plant`, `tropical_bush`, `fern`, `palm`, `reeds`, `moss_clump`, `lake_rock`, `psxg_rock_1..4`, `stepping_stones`, `cairn`, `burnt_tree`,
+    `rope_bridge`, `footbridge`; animals as scenery: `deer`, `fox`, `heron`, `swan`, `dragonfly`, `firefly`, `meshy_frog`, `hawk`, `parrot`, `lizard`, `river_fish`.
+  - Volcano and hot spring ground: `lava`, `calm_lava_1..4`, `nz_magma`, `obsidian`, `scorched`, `dirt_2`, `rocks_5`, `healing_spring`, `nz_spring`.
+  - Jungle: `dinosaur_skeleton`, `timber_lookout`, `canvas_tent`, `campfire`, the `dinosaur` race (one species), `tiki_torch`.
+  - Buildings are made in code (`texbuilding` + `arch` rows): walls `urban:PlasterWallStucco*` / `calm_plaster_1` over `urban:WoodCladding*` / `WoodBeams*`,
+    floors `wood_planks` / `urban:WoodFlooring*`, thatch = `urban:WoodGeneric2a` tinted, roofs `urban:MetalRoofTiles*`; castle stone `hqCurtainWall` /
+    `hqCastleTower` or the McSteeg pack (`castle_wall`, `castle_gate`, `castle_tower`; 21 more nodes of its GLB have no catalogue row yet).
+  - Insides: `psx_coffee_table_1*` (low tables), `psx_pillow_mp_*`, `psx_old_mattress_mp_1*`, `psx_carpet_mp_1`, wooden shelves and chests, `stock_pots`,
+    `pot_rack`, `cauldron`, `candelabra`, `hot_tub`, `fur_rug`. Units: ninja, shogun, samurai slug, karate frog, ki fighter, monk, swordfighter, kaiju,
+    red demon, farmer, chef, pirate, dinosaur. Creator: `Kimono`, `ewb_gi`, `F ninja`, monk robes, `ewm_katana`, `ewm_strawhat`.
+  - One shortcut: leaf sheets `Assets/world/nature/Textures/Color Variations/Leaves_Pink.png`, `Leaves_Red.png`, `Leaves_Orange.png` are on R2 and unused:
+    with a small code change the leaf trees become cherries and maples (asked of mondo: it is a recolour of pack art, not new art).
+- **NEEDS A MODEL** (nothing in the game, on R2 or in a pack fits; shown to mondo 11-20, never a placeholder):
+  1. Buildings' parts: a torii gate (a big one for the bay, small ones for the shrine stair), a curved tiled roof (upturned eaves) as a roof shape or kit,
+     pagoda tiers, a castle keep's roofs and its stone base, a shoji door leaf; sheets: tatami, shoji paper, clay roof tile, bamboo, castle stone.
+  2. Trees and plants: a cherry tree (if the pink leaf sheet is refused), bamboo, a Japanese maple, a bonsai, lotus / lily pads, a rice plant for the paddies.
+  3. Shrine and garden: a komainu or fox statue, a Buddha, a shrine bell with its rope, an offering box, an arched red bridge, a koi, a wooden water wheel.
+  4. Samurai things as props: a katana on a stand, a bow, a spear / naginata, a suit of samurai armour on a stand, banners on poles.
+  5. Insides: a low table set, a futon, a wooden bath tub, a hearth sunk in the floor, a folding screen in the Japanese style, sake barrels, tea set, bowls of
+     food (noodles, rice, sushi), a festival stall, a wooden junk or fishing boat in the Japanese style.
+  6. Jungle and volcano: living dinosaurs as scenery (more than the one race), eggs, a nest, volcanic rocks, a monkey, a crane.
