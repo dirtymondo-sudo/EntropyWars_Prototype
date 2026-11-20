@@ -2254,3 +2254,28 @@ anywhere: Katana Island's are the Katana holder's (claims.md), other zones' thei
 patches on its sides; Meshy gave the lotus a stem under its pads (sink it into the water). Sizes in the rows are real-world guesses.
 Meshy: 1002 credits before, 447 after (image 9, model 15). Concepts, renders, batch1.json (with the 4 added rows), scripts and Meshy
 task ids: project files `meshy-flora-katana-b1/` (owner account only).
+
+## THE ALIEN SHIPS (2026-11-20, MADE + IN THE CATALOGUE)
+mondo 11-20 (thread "Make unique spaceships for alien races"): "annunaki, mantid, cosmic wraith, grey, nordic, reptilian, martian,
+astronaut (shuttle), bligblog, and barbarella all need their own unique spaceship ... We already have a saucer and a triangle, but i
+think they could both look better. Try to make their saucers fit their aesthetic or lore or personality". Each design comes from the
+race's own spells + finisher (data.js RACE_ABILITIES / FINISHERS), no invented lore:
+- Annunaki: an upside-down stepped ziggurat (Pyramid Scheme, Pyramid Protocol). Mantid: green chitin, compound-eye cockpit, raptorial
+  struts, orchid-pink fins (Orchid Disguise). Cosmic Wraith: cracked obsidian crescent (Heat Death, Black Hole). Grey: THE NEW SAUCER, a
+  Roswell disc with the abduction hatch (Abduction Beam). Nordic: a pearl Pleiadian starship (Federation Beacon; his pick B over a bell
+  ship). Reptilian: THE NEW BLACK TRIANGLE (the old triangle was the Martian's UFO form; the reptilian took the triangle). Martian: a
+  rust-copper manta with a cobra-neck heat ray (Heat Ray, Tripod Sweep, War of the Worlds; his pick A over a domed disc). Astronaut: the
+  shuttle orbiter, no markings. Bligblog: a lopsided patched saucer covered in eye portholes with a toy ray gun (Goop Ray, Zap Zap Zap).
+  Barbarella: a 60s pop-art ship with a bubble dome and an empty socket on the tail for THE BALL, a separate disco mirror ball piece
+  (his ask: "the disco ball can be made separate so it can spin"; Space Disco).
+Made: concepts (nano-banana-pro, 9 credits; mantid, wraith and bligblog redone before he saw them: a loose head, loose shards, a pilot
+in the dome), models image-to-3d meshy-t2.5 smart-topology ~10k tris (15 credits; the reptilian took three tries: a perspective
+concept gave a lopsided wedge twice, a symmetric top-ish concept fixed it). Wired: GLBs (base y 0, centred, metallic 0) + `.opt.glb`
+on R2 `Assets/world/props/meshy/ships/ship_<race>.glb` (+ `ship_barbarella_ball.glb`), ASSET_MANIFEST rows, data.js HQ_CATALOGUE_ALL
+rows `ship_<race>` (group 'Meshy props · Alien ships'; each row's comment says where the nose is: astronaut, nordic, reptilian, bligblog,
+barbarella at -X, mantid + martian at +Z, grey / annunaki / ball round or square), list-models.js SOURCES row, MODEL_LIST.md. Prompts:
+`docs/plans/alien-ships/ships.json` (`prompt2` = the second options; `concept` = the picked image when not the newest).
+NOT done: none is any race's UFO form in battle yet (sprites.js UFO_CRAFT_BY_RACE is the hook: bligblog = UFO_SHIP_3D, grey =
+UFO_SAUCER_3D, the rest the old triangle) and none is placed or flyable; the bligblog dome is opaque (make it glass in code), the ball
+is matte grey (give it a mirror material), the Annunaki model lost some gold/lapis detail from its concept. Meshy: 447 credits before,
+90 after. Concepts, renders and scripts: project files `alien-ships/` (owner account only).
