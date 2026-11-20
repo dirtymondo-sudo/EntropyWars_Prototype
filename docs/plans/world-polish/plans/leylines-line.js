@@ -1,5 +1,5 @@
 /* THREAD 12, LEYLINES: THE HEIGHT PLAN of the Line's room (Göbekli Tepe + the Ley Line), square by square.
-   A PROPOSAL: nothing is built from it until mondo says so. DATA ONLY (the format: plans/README.md).
+   APPROVED by mondo 2026-11-20 ("yep looks good"). Nothing is built from it yet: its build thread starts here. DATA ONLY (the format: plans/README.md).
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/leylines-line.js
    TODAY the Ley Line is nine plots in a chain ONE PLOT WIDE, dead level, with the walk on the Line itself: 380 m straight.
    (A room one plot wide cannot be fixed inside its plots: thread 3's lesson. So the room GROWS, inside its own 12 x 3 box.)
@@ -16,8 +16,9 @@
 'use strict';
 const G = 'Göbekli Tepe looks good in the pictures: left as it stands (its tell is not redrawn here)';
 module.exports = {
+    approved: 'mondo 2026-11-20, shown the four plans and their pictures in chat: "yep looks good"',
     zone: 'Leylines', thread: 12, room: 'site_prebuilt_gobekli_ow_line',
-    title: 'LEYLINES, the Line\'s room: Göbekli Tepe + THE LEY LINE, THE HEIGHT PLAN (a proposal)',
+    title: 'LEYLINES, the Line\'s room: Göbekli Tepe + THE LEY LINE, THE HEIGHT PLAN',
     build: { frame: 'room', file: 'docs/areas/leylines/districts/Y-room.js (new: the room design, in the room\'s own frame)' },
     grows: 'the box stays 12 x 3 plots (no door moves); 18 new plots in its empty cells, north and south of the Ley Line\'s nine',
     mass: 'scrub, boulders and standing stones (the wall of the place)', massHeight: 1,

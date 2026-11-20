@@ -2,7 +2,7 @@
    mondo 2026-11-20: "you can make a plan for antarctica, or just improve upon what's already there". The room has its height (sea 1,
    station 4 to 6, the crevasse field 10, the Ice Wall 35 m sheer, the hull behind it). So this plan IMPROVES WHAT IS THERE: the grey
    squares are today's real ground, read from the room; the plan adds the ways, the stairs, the places and the landmarks.
-   A PROPOSAL: nothing is built from it until mondo says so.
+   APPROVED by mondo 2026-11-20 ("yep looks good"). Nothing is built from it yet: its build thread starts here.
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/antarctica.js
    WHAT IS WRONG TODAY: one walk straight north up one column of plots (the Pier, the Yard, the Huts, the Plank, the Gap, the Hull),
    and empty one-colour fields with nothing to steer by.
@@ -18,8 +18,9 @@
 const top = [[6, 13], [14, 13], [14, 15], [22, 15], [22, 13], [28, 13]].map(q => [q[0], q[1], 31]);
 const top2 = [[34, 13], [42, 13], [42, 15], [50, 15], [50, 13], [58, 13], [58, 15], [66, 15]].map(q => [q[0], q[1], 31]);
 module.exports = {
+    approved: 'mondo 2026-11-20, shown the four plans and their pictures in chat: "yep looks good"',
     zone: 'Antarctica', thread: 13, room: 'site_prebuilt_antarctica_plots', underlay: { deep: 4 },
-    title: 'ANTARCTICA: THE HEIGHT PLAN over the room as it stands (a proposal)',
+    title: 'ANTARCTICA: THE HEIGHT PLAN over the room as it stands',
     build: { frame: 'room', file: 'docs/areas/antarctica/districts/room.js (new: the room design, in the room\'s own frame)' },
     mass: 'the Ice Wall, the crevasse, the open sea (closed)', massHeight: 0,
     tiles: { ' ': ['closed: the Ice Wall, the crevasse, the sea', false, [34, 60, 92], [34, 60, 92]], u: ['snow and ice as they stand today (read from the room)', true, [120, 140, 160], [236, 244, 252]],
