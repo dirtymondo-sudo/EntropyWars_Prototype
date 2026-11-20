@@ -417,7 +417,7 @@
   "hs": 0.25,
   "v": "62b14e4b53",
   "bytes": 1254,
-  "s": "1.8"
+  "s": "0.7"
  },
  "site_prebuilt_bermuda_ow_triangle": {
   "id": "site_prebuilt_bermuda_ow_triangle",
@@ -635,8 +635,8 @@
   "nz": 108,
   "h0": -0.04,
   "hs": 0.25,
-  "v": "5ff9011ef3",
-  "bytes": 2584,
-  "s": "7.5"
+  "v": "28f828fe97",
+  "bytes": 2578,
+  "s": "7.3"
  }
 }
