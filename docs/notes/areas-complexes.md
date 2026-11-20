@@ -13175,3 +13175,22 @@ mondo 11-20: "Okay go ahead and do the next pass" (the one named to him: relief 
 - **NOT DONE:** the base village (the Ski Patrol, the inn, the shop: new HOME plots for K.js to build on is the way, so its `chalet` and `walkIn` helpers work),
   the Mid Station and Top Station buildings at the lift ends, the other four lifts, ledges on the walking ways, Shasta's volcano dressing, the North Pole.
   Not checked: the seams; The Long Descent on screen; the ride top to bottom again after the trees and boards went in.
+
+## THE MOUNTAINS, THE FLOATING POLES + THE FIVE LIFTS (2026-11-20, world polish thread 5; mondo: "Looks like the poles are floating in the sky")
+
+- **WHAT FLOATED AND WHY (three causes, each seen on screen and gone):** (1) the runs' pole rows were `hug` rows: over a tree square a hugging corner stood
+  far over the snow. The runs' poles now carry their own height over the row's origin, read off the room's heights in the tool, and the row has its own `y`;
+  the old slopes' `hug` rows (K.js `mtn:poles…`, `mtn:lampFlames`) are rewritten the same way in the tool. (2) A place plot (the old wild links' snowfields) kept
+  its RIM OF ROCK on the mountain: a wall of crags across the runs with poles on top. On the ski mountain a place plot is open snow. (3) A pole is only stood
+  on snow (`s`, `i`, `o`), never on a rock, a tree square or a building's squares. Also: EVERY drawn row of the room carries its own `y` off the room's heights
+  (`rowsGrounded`), so a board or a sign beside a run cannot take a wrong ground.
+- **TRAPS:** a drawn row's turn in the renderer is `-rot` (three-renderer.js `_hqArchGeometry`: `rc = cos(-rot)`, `rs = sin(-rot)`): a part at local (lx, lz) stands
+  at `x + lx * rc + lz * rs`, `z - lx * rs + lz * rc`. I first read it as `+rot`, "found" that turned plots' looks stood half a turn wrong and turned them: WRONG,
+  taken out again. ow-move.js turns looks correctly. A probe's camera `y` under the ground shows poles "in the sky" from below: give a view a `y` over the
+  plan's level there (level x 1.75 m, plus a few metres).
+- **THE FIVE LIFTS** (`THE_LIFTS` in bake-mountains.js): the Lodge Chair (202 m, up 41 m), the Summit Chair (143 m, up 53 m, Mid Station to the Top Station), the
+  North Chair (155 m, up 42 m), the South Chair (197 m, up 43 m), the Bunny Tow (71 m, up 9 m). Each line clears the snow all the way (the tool prints
+  `least clear`). The board was ridden top to bottom again with everything in: 34.8 s, no stop.
+- **NOT DONE:** the base village and the station buildings, ledges on the walking ways, Shasta's volcano dressing, P's `wands` and `boards` rows (they lie
+  under the snow where their plots parted: seen in the data, not fixed), the North Pole. Not checked: the four new lifts were seen standing, not ridden;
+  the seams; The Long Descent on screen.
