@@ -13775,6 +13775,14 @@ into, lit by its crystals, with the dark maze round it".
   off. The sheet BLENDS at shared corners: a deep bed beside a dry square pulls it under the water, so a pool bed is 0.7 m down and waded.
   A `stream` whose end lies on the line of higher ground is lifted to it: its ends stop 0.4 m short. Water a walker can step into must
   walk out (the tool's climb-back check counts water as walked).
+- **SWAPPED IN 2026-11-20 (mondo: "obviously we need to put the new Agatha in the game and have something lead to it"):** the new room
+  stands on the old one's world place (-19, -12; `world` written by bake-agartha.js); link `shasta_lemuria` end b = its north wall at
+  x -94.5 (the Lemuria adit; bake-agartha.js checks the row); its south door `ow_h_m15_m8` leads to the Long Tunnel's labyrinth room
+  `…_ug_long` (whose door N names it: `docs/areas/underground/long-tunnel.js`); the old `…_ow_agartha` is in `DOOR_HQ.retired` (+ the old
+  crystal city's row re-pointed), bake-cavern.js writes it with no world place and no longer asks for the adit's row; the hub's room
+  list, the clock's `still` list, ZONE_LOOKS (cavern + byRoom) and the residents table name the new room; the map row + picture are
+  baked (bake-map.js reads `hz_wall_01` as paving, `hz_misc_05` as crystal). Links to Antarctica and Technoticlan CUT the same day
+  (world-layout.md "CUT 2026-11-20").
 - **THE READING (step 1b):** `docs/plans/world-polish/thread9-agartha/fits-part1..4.md` (the model list in three parts + the live data).
   NEEDS A MODEL (none in the game): stalactite / stalagmite pieces (code cones today), a creature nest / eggs, a geode, mine timber
   supports (drawn as arch boxes), a white marble balustrade (drawn), a crystal throne, a dead caver in a helmet and harness.

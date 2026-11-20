@@ -82,6 +82,7 @@ const CITY_DN = { C: 'Civic Center', F: 'Financial', E: 'Entertainment', U: 'Uni
 /* ── THE GROUND KINDS (G of the picture): the paint key's family. map.js draws each in its colour, shaded by height ── */
 const KINDS = ['nothing', 'grass', 'dark grass', 'dirt', 'sand', 'snow', 'rock', 'paved', 'wood', 'ash', 'lava rock', 'cloud', 'red rock', 'crystal', 'gold', 'metal'];
 const KIND_RX = [
+    [13, /^hz_misc_05$/], [7, /^hz_wall_01$/],   // the horror pack's crystal cliff + cream stone (Agartha's crystal and its white city, 2026-11-20)
     [14, /gold|gilded/i], [11, /cloud|heaven|holy|halo/i], [5, /snow|ice|frost|glacier|polar|tundra|igloo/i], [10, /lava|magma|ember/i],
     [9, /scorch|ash|burnt|char|obsidian|basalt|soot|wasteland/i], [12, /mars|rust|red_?rock|clay|terracotta|flesh|storm/i], [13, /crystal|astral|void|nebula|cosmic|gem|glow/i],
     [15, /metal|steel|grate|plate|iron|chrome|hull|tech|scifi|sci_fi|panel|holo|alumin/i],
