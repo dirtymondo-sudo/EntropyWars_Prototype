@@ -32,6 +32,8 @@ const DP = require('./docs/plans/world-polish/draw-plan.js');
 
 /* ── THE DISTRICTS this tool writes (one row a room; a thread adds its own) ── */
 const ROOMS = {
+    hollow: { plan: 'docs/plans/world-polish/plans/ug-hollow-earth.js', design: 'docs/areas/cavern/districts/H-room.js',
+              room: 'site_prebuilt_hollow_earth_ug_hollow', site: 'prebuilt_hollow_earth', part: 'ug_hollow' },
     cavern: { plan: 'docs/plans/world-polish/plans/ug-cavern.js', design: 'docs/areas/cavern/districts/K-room.js',
               room: 'site_prebuilt_hollow_earth_ug_cavern', site: 'prebuilt_hollow_earth', part: 'ug_cavern' },
 };
@@ -106,7 +108,7 @@ const FALLS = [];
     const lx = dx ? gx(Math.max(x, x + dx)) : (tw ? r2((gcx(x) + gcx(tw[0])) / 2) : gcx(x)), lz = dy ? gz(Math.max(y, y + dy)) : (tw ? r2((gcz(y) + gcz(tw[1])) / 2) : gcz(y));
     const face = dy > 0 ? 180 : dy < 0 ? 0 : dx > 0 ? 90 : 270;
     FALLS.push({ at: [x, y], down: [x + dx, y + dy], water, x: lx, z: lz, face, w: tw ? 2 * C : C, top: hOf(x, y), foot: hOf(x + dx, y + dy) });
-    if (water) feat({ k: 'fall', x: lx, z: lz, face, w: tw ? 2 * C : C, y0: r2(hOf(x, y) - 0.05), y1: r2(hOf(x + dx, y + dy) - 0.1) }); });
+    if (water) feat({ k: 'fall', key: (DES.room && DES.room.fallKey) || 'water', x: lx, z: lz, face, w: tw ? 2 * C : C, y0: r2(hOf(x, y) - 0.05), y1: r2(hOf(x + dx, y + dy) - 0.1) }); });
 
 /* THE SUMPS: each run of `w` squares, black water at its plan level (a dead end you swim) */
 { const used = new Uint8Array(W * H);
@@ -118,7 +120,7 @@ const FALLS = [];
       /* the stream's round ends reach past its run: lay it along the axis whose ends are rock (never into the floor beside the sump) */
       let endsX = 0, endsY = 0; for (let j = 0; j < h; j++) { if (dry(x - 1, y + j)) endsX++; if (dry(x + w, y + j)) endsX++; } for (let i = 0; i < w; i++) { if (dry(x + i, y - 1)) endsY++; if (dry(x + i, y + h)) endsY++; }
       const horiz = endsX === endsY ? w >= h : endsX < endsY;
-      FEAT.push({ k: 'stream', key: 'deep_water', pts: horiz ? [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]] : [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: (horiz ? h : w) * C, y: top, depth: 1.2, bank: 0 }); } }
+      FEAT.push({ k: 'stream', key: (DES.room && DES.room.sumpKey) || 'deep_water', pts: horiz ? [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]] : [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: (horiz ? h : w) * C, y: top, depth: 1.2, bank: 0 }); } }
 
 /* THE ROOF: each open square's ceiling (levels): CEIL over the highest open square within two squares (a chamber: CEIL_CH over its floor,
    and over the floors it looks down into); one rock block a run of equal ceilings, from the ceiling up to the crust; stalactites */
@@ -133,7 +135,7 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!open(x, y)) conti
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (open(x, y)) CEILV[y * W + x] = m + bonus; });
 const rnd = (s => () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; })(0x5eed ^ KEY.length * 7919);
 const ROCK = [0xb8b2a8, 0xa49e94, 0xc4beb4, 0x989288];
-{ const used = new Uint8Array(W * H), parts = [];
+if (!(DES.room && DES.room.roof === false)) { const used = new Uint8Array(W * H), parts = [];   /* `room.roof: false` = open to the crust (Hollow Earth's sky) */
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!open(x, y) || used[y * W + x]) continue; const c = CEILV[y * W + x];
       let w = 1; while (x + w < W && !used[y * W + x + w] && open(x + w, y) && CEILV[y * W + x + w] === c) w++;
       let h = 1; rows: while (y + h < H) { for (let i = 0; i < w; i++) if (used[(y + h) * W + x + i] || !open(x + i, y + h) || CEILV[(y + h) * W + x + i] !== c) break rows; h++; }
@@ -170,24 +172,41 @@ const ctx = {
     /* which sides of a square are rock */
     rockSides: (x, y) => [[0, -1, 'n'], [0, 1, 's'], [-1, 0, 'w'], [1, 0, 'e']].filter(([dx, dy]) => !open(x + dx, y + dy)).map(q => q[2]),
 };
+/* the door squares are kept clear of props and people (the doors themselves are laid after the dressing) */
+(plan.doors || []).forEach(d => taken.add(d[0] + ',' + d[1])); (DES.extraDoors || []).forEach(e => taken.add(e.at[0] + ',' + e.at[1]));
 ['dress', 'people'].forEach(st => { if (typeof DES[st] === 'function') DES[st](ctx); });
 if (errs.length) throw new Error('misplaced:\n  ' + errs.join('\n  '));
 props.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key); });
 
 /* ── THE DOORS ── */
 const LINKS = vm.runInContext('DOOR_HQ.links', D), doors = [], WANT = [];
-(plan.doors || []).forEach((d, i) => { const [x, y, side] = d, spec = (DES.doors || {})[i]; if (!spec) throw new Error('the design file names no door for plan door ' + i + ' (' + d[3] + ')');
+function addDoor(x, y, side, spec, i) {
     const s = side.toLowerCase(), onWall = (s === 'n' && y === 0) || (s === 's' && y === H - 1) || (s === 'w' && x === 0) || (s === 'e' && x === W - 1);
     /* the door's middle: between this square and its twin across the way (the passages are two wide) */
     const along = (s === 'n' || s === 's') ? (dry(x + 1, y) && LV[y][x + 1] === LV[y][x] ? gx(x + 1) : gcx(x)) : (dry(x, y + 1) && LV[y + 1][x] === LV[y][x] ? gz(y + 1) : gcz(y));
     let place;
     if (onWall) place = { wall: s, [(s === 'n' || s === 's') ? 'x' : 'z']: along };
     else place = { wall: 'free', x: (s === 'n' || s === 's') ? along : gcx(x), z: (s === 'n' || s === 's') ? gcz(y) : along, face: { n: 180, s: 0, w: 90, e: 270 }[s], passage: { len: 3, deep: 1.2 } };
+    if (spec.well) place = { wall: 'free', x: gcx(x), z: gcz(y), face: spec.face || 0 };   // a well or a rope: a free door standing in the open, no passage
+    taken.add(x + ',' + y);
     if (spec.link) { const L = LINKS.find(l => l.id === spec.link); if (!L) throw new Error('no link ' + spec.link);
         const end = spec.end || 'a', e = L[end]; WANT.push({ id: spec.link, end, place, ok: e && e.site === RM.site && e.part === RM.part && e.wall === place.wall && (place.wall === 'free' ? Math.abs(e.x - place.x) < 0.01 && Math.abs(e.z - place.z) < 0.01 : Math.abs((e.x != null ? e.x : e.z) - (place.x != null ? place.x : place.z)) < 0.01) });
         return; }
-    doors.push(Object.assign({ id: spec.id || ('ug_' + KEY + '_' + i) }, place, { way: spec.way || 'trail', leaf: spec.leaf || null, label: spec.label, sub: spec.sub, action: spec.action, desc: spec.desc || '' })); });
-const bad = WANT.filter(w => !w.ok);
+    doors.push(Object.assign({ id: spec.id || ('ug_' + KEY + '_' + i) }, place, spec.secret ? { secret: true } : {}, { way: spec.way || 'trail', leaf: spec.leaf || null, label: spec.label, sub: spec.sub, action: spec.action, desc: spec.desc || '' })); }
+(plan.doors || []).forEach((d, i) => { const spec = (DES.doors || {})[i]; if (!spec) throw new Error('the design file names no door for plan door ' + i + ' (' + d[3] + ')'); addDoor(d[0], d[1], d[2], spec, i); });
+/* THE DESIGN'S OWN WAYS IN (not in the plan: a link or a door that stood in the old room): `extraDoors: [{ at: [x, y], side, link, end | id, label, sub, action, secret, well, face }]` */
+(DES.extraDoors || []).forEach((e, i) => { if (!dry(e.at[0], e.at[1])) throw new Error('an extra door on a square that is not open: ' + e.at); addDoor(e.at[0], e.at[1], e.side || 'n', e, 'x' + i); });
+let bad = WANT.filter(w => !w.ok);
+/* `--fix-links`: point each link end that is off at this room (its own words, sub / verb / leaf, are kept) */
+if (bad.length && process.argv.includes('--fix-links')) { const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
+    bad.forEach(w => { const L = LINKS.find(l => l.id === w.id), old = L[w.end] || {}, keep = {}; Object.keys(old).forEach(k => { if (!['site', 'part', 'room', 'wall', 'x', 'z', 'face', 'passage'].includes(k)) keep[k] = old[k]; });
+        const at = src.indexOf("{ id: '" + w.id + "'"); if (at < 0) throw new Error('link row not found: ' + w.id);
+        const m = new RegExp('\\n(\\s+)' + w.end + ': \\{').exec(src.slice(at)); if (!m) throw new Error('link end not found: ' + w.id + ' ' + w.end);
+        let i0 = at + m.index + m[0].length - 1, depth = 0, i1 = i0; for (; i1 < src.length; i1++) { if (src[i1] === '{') depth++; else if (src[i1] === '}') { depth--; if (!depth) break; } }
+        const row = Object.assign({ site: RM.site, part: RM.part }, w.place, keep);
+        src = src.slice(0, i0) + J(row).replace(/^\{/, '{ ').replace(/\}$/, ' }') + src.slice(i1 + 1);
+        console.log('link re-pointed: ' + w.id + ' ' + w.end); });
+    fs.writeFileSync(file, src); bad = []; }
 if (bad.length) { console.log('data.js DOOR_HQ.links rows to point here (end, then the place):'); bad.forEach(w => console.log('  ' + w.id + ' ' + w.end + ': { site: \'' + RM.site + '\', part: \'' + RM.part + '\', ' + J(w.place).slice(1, -1) + ' }')); if (!DRY) throw new Error('a link does not point at this room yet (see above)'); }
 
 /* ── THE SPAWN and the plate ── */
@@ -212,7 +231,7 @@ if (R.world) Lr.push('            world: ' + J(R.world) + ',');
 Lr.push('            shell: { w: ' + r2(2 * HX) + ', d: ' + r2(2 * HZ) + ', h: ' + SH + ', wallH: ' + SH + ", dadoH: 1.1, open: false,");
 Lr.push('                     floor: ' + J(TX.floor) + ', wall: ' + J(TX.wall) + ', dado: ' + J(TX.dado) + ', trim: ' + J(TX.trim) + ', ceiling: ' + J(TX.ceiling) + ', floorColor: 0x8a8278, wallColor: 0x5e5850, dadoColor: 0x4a443e, ceilColor: 0x1e1b18,');
 Lr.push('                     pipes: false, strips: false, lights: [], mood: ' + J(R.mood || { light: 0xffb070, ambient: 0.16, hero: false }) + ', plate: { x: ' + gcx(sp[0]) + ', z: ' + gcz(sp[1]) + ', y: ' + r2(hOf(sp[0], sp[1]) + 4.2) + ' },');
-Lr.push('                     fog: { color: 0x0a0807, density: 0.007 }, look: HQ_ROOM_LOOKS.cave,');
+Lr.push('                     fog: { color: ' + ((DES.room && DES.room.fogColor) || '0x0a0807') + ', density: 0.007 }, look: HQ_ROOM_LOOKS.' + ((DES.room && DES.room.look) || 'cave') + ',');   // (the one fog amount: only its colour is a room's)
 Lr.push('                     suns: ' + J(SUNS) + (AIR.length ? ', atmos: ' + J({ kind: 'none', zones: AIR }) : '') + ' },');
 Lr.push('            parti: ' + J(R.parti) + ',');
 Lr.push("            typology: 'grid',");
@@ -225,7 +244,7 @@ Lr.push('                /* THE GROUND: every square flat at its plan level (fou
 Lr.push('                slope: { cells: { res: ' + C + ', x0: ' + gx(0) + ', z0: ' + gz(0) + ', nx: ' + W + ', nz: ' + H + ", d: '" + slope.toString('base64') + "' } },");
 Lr.push('                paint: { pal: ' + J(PAL) + ", t: 'u8', res: " + C + ', x0: ' + gcx(0) + ', z0: ' + gcz(0) + ', nx: ' + W + ', nz: ' + H + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 Lr.push('                /* every square that is not a `space` is the rock, up to the crust */');
-Lr.push("                gen: { kind: 'plan', look: 'walls', wallKey: " + J(TX.genWall) + ", rim: 0, forceGrow: -0.3 },");
+Lr.push('                gen: ' + J((DES.room && DES.room.gen) || { kind: 'plan', look: 'walls', wallKey: TX.genWall, rim: 0, forceGrow: -0.3 }) + ',');   // `room.gen`: a design's own wall (a jungle of trees in Hollow Earth)
 Lr.push('                features: [');
 FEAT.forEach(f => Lr.push('                    ' + J(f) + ','));
 Lr.push('                ],');

@@ -580,3 +580,13 @@ City: its own plan thread (started 11-18, session "New Cyberpunk City: the plan"
 Every plot of the 62 plot-built rooms measured for space (path width, does an 8 x 8 board fit), height (relief, ledges, ramps, falls) and dressing:
 `docs/plans/world-polish/WORLD_POLISH_PLAN.md` (START HERE, the ranking, what to grow, the verticality kit, the thread table) + `AUDIT_DATA.md` (the tables) + `need-map.svg`.
 Rerun `node docs/plans/world-polish/audit.js` after a zone's pass: its tables are the before / after. Read it before picking which zone or district to polish.
+
+## CUT 2026-11-20: AGARTHA'S WAYS TO ANTARCTICA AND TECHNOTICLAN (world polish thread 9)
+mondo 11-20: "are there other ways to get to antarctica or tecnoticlan? if so then cut them I guess". The approved underground layout
+(`docs/plans/world-polish/plans/underground.js`) gives Agartha two ways only: the Lemuria adit (the Mountains) and the Long Tunnel.
+Links `antarctica_polar` (the Admiral's Tunnel) and `technoticlan_agartha` (Xibalba, under the ball court) are CUT (their data.js rows
+are a comment now; `bake-antarctica.js`, `bake-leylines.js`, `bake-cavern.js` no longer ask for them). Antarctica keeps four ways in (the
+Spaceship's airlock, Hollow Earth's Polar Opening, the boat from Pirates' Cove, Babel); Babel + Technoticlan keep four (the Ley Line, the
+Bug Colony, Antarctica, the Beach). The Admiral's Tunnel mouth on Antarctica's west wall is a dead end now (the Antarctica thread may dress
+or close it).
+

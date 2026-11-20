@@ -12718,14 +12718,23 @@ cross the seam". Then: "got pulled by a ufo and for the battle the map was still
   ball (commit f10853d) was a mushroom: the board (84 m, a whole face) is wider than the Moon (R 53.5 m). Probe handles: `hq.dev.plBend`,
   `plFy`, `plBattle`, `plPick`, `plCanvas`; `EWCine.enter({ script: true, force: true })` + `EWCine.pose` for a far look in a fight.
   SEEN (UFO beam-down on the Moon, Barbarella's ship): the battle camera on the curving Moon, the whole Moon round from far off with the
-  fight on top. NOT YET: one straight blue streak at the board's height (a battle piece off the nets); the fight's sky is the battle's
-  green, not the walk's black with stars; a unit standing on a square over a cut seam of the flat net is drawn where that face really is.
+  fight on top. Open: a unit standing on a square over a cut seam of the flat net is drawn where that face really is.
+- **5. THE FIGHT'S SKY** (`_ewPlBattleSpace`, mondo: "okay fix those"). The walk's space pieces (the bodies' group `ew_space_bodies`: the
+  Earth, the Sun, the comet, the station, the other balls' rings; the stars `ew_space_stars`; the flying-only pieces: the engines, the
+  exhaust ribbons, the burner rings, the sun's glare + ghosts, the speed streaks) go into the fight with the room, usually as the PARKED
+  ROOM's copies (`_hqParkClone`), and nothing moved them there. They are tagged `userData.ewSpace` = 'bodies' / 'stars' / 'fly' at their
+  build (the tag survives the copy) and collected at the fight's build (`_hqBuildRoomInBattle`, `_ewPl.bSpace`). Every fight frame: the
+  bodies take the fight's turn (the walk anchor's matrix written in the battle's frame), the stars ride round the battle camera turned the
+  same way (scaled inside the camera's far plane), the flying-only pieces are hidden, the background is black and the fog is off (restored
+  when a fight in another room starts). THE STREAK was the zodiac wheel's rim (`_zwRimMat`, colour 8090c8, the faint ring under the
+  fight's constellations): a sky's ground hides it, against black space it drew a straight line through the fight, so its rim is hidden in a
+  fight on a round world (the constellations stay). SEEN: black space, the stars and the Milky Way round the Moon, no line.
 - **DRIVEN** (playtest_city.js `"drive"`, llvmpipe, the Moon): the board over the half-turn cut seam (face (0,1) north -> the top cap):
   heading 3.14 -> 0 with the eye, rolled on into the new face, no bounce; over a joined seam a third of the way along (face 1 -> 2): heading
   and eye turned 34 degrees together, rolled on, the dish, the container and the sky did not move on screen. The seam's dark crack and lip
   (seen before the stitch, same spot) gone after it, ahead, over and looking back. Probe tip: the room starts aboard; `hq.dev.ship({ x, y,
   z })` near a beacon's `ball` + `up` x 7, then `hq.disembark()`; `skate` / `skateIssued` / `disembark` are on `ThreeRenderer.hq`, not `.dev`.
-- **NOT DONE / NOT CHECKED:** the fight's leftovers (above); a fight on Mars, Saturn or the Singularity; the sheet's grain still turns at a cut seam (a directional pattern meets itself at 90 / 180
+- **NOT DONE / NOT CHECKED:** a fight on Mars, Saturn or the Singularity; the sheet's grain still turns at a cut seam (a directional pattern meets itself at 90 / 180
   degrees); where a cliff crossed a seam on Mars (5 m) the mean leaves a short steep ramp; the shadows' fix was not compared side by side
   (the stitched heights removed the seam's line in the same run); the classic renderer was not run.
 
@@ -13994,3 +14003,24 @@ underground horror like the descent movie"; the square plans approved ("Yes this
   cliff: a faller and his flare, a lure in the sump), the Ledge (a ladder that did not reach), the Black Sump, the Low Gallery (the den:
   `@W:Low Gallery`). THE STORY: the team came down the Estate's well, camped here, went on up into the Long Tunnel and never came out.
 - **LIGHT** four (two torches, the crystals, the flare). Sheets: the horror rock (the tool's defaults). Stains: ZONE_LOOKS.cavern byRoom.
+
+**HOLLOW EARTH + THE OLD ROOM RETIRED (2026-11-20, world polish thread 9; mondo: "its hollow earth its supposed to be like a paradise or oasis
+inside earth, its okay if the water is blue for hollow earth. just do it").** `site_prebuilt_hollow_earth_ug_hollow` = `node bake-ug.js hollow`
+from `plans/ug-hollow-earth.js` + `docs/areas/cavern/districts/H-room.js`: 6 x 4 plots, levels 72 down to 0 (126 m), 33 ladders, 3 blue waterfalls
+(41, 18 and 15 levels), 2 cliffs, 7 pools; `--check` 1,244 open squares, 1 off (the Sun's own column). A PARADISE, not the Cavern: no rock roof
+(`room.roof: false`, open to the crust), the plan's closed squares are a JUNGLE (`room.gen` look 'trees': jungle trees, palms, the blooming tree),
+the bright look (`HQ_ROOM_LOOKS.mountain`), ambient 0.5, the Inner Sun's light + three fills. Ground: the game's pixel grass (`grass` trails,
+`grass_3` flowered meadows in the chambers, `leaves` the jungle floor) because neither the horror nor the urban pack has grass; the Sun's shore
+`hz_stone_13` (sand), cliffs `hz_stone_08` (dark earthy moss; `hz_stone_06` read as pale wallpaper behind the trees). Places: the Landing (3,0 · 72, the spawn, the door up to the Cavern's Mouth), the Crystal Forest
+(0,0), the Mushroom Shelf (1,2), the Giant's Seat (3,2), the Nesting Ground + the hot spring (5,3), the Shore + the Polar Opening (`hollow_byrd`
+end a, 5,0), the Inner Sun on its column (5,1, the plan's landmark). The plan's horror pits are paradise ones here (fossils, nests, crystals,
+Byrd's camp, flowered clefts, spring pools). The site entry `siteRooms.prebuilt_hollow_earth` (`bay`) is the Inner Sun's west rock.
+**THE CAVERN'S OTHER WAYS IN** (`extraDoors` in K-room.js, links re-pointed by `bake-ug.js cavern --fix-links`): the D.U.M.B.'s blast door
+(`cave_dumb` a) in the Dead End's east rock, the Sewers' old portcullis (`workings_oubliette` b) in the Last Camp's west rock, the cellar well
+(`well_cellar` b) a rope down into the Crossroads, DOOR HQ's moving wall (`dungeon`, the Dungeon's `oubliette` door lands there) in the Oubliette.
+The Cavern's falls are `swamp` water (murky, mondo 11-20), Hollow Earth's blue.
+**THE OLD ROOM:** `site_prebuilt_hollow_earth_cavern` is retired to the new Cavern (DOOR_HQ.retired; the old rooms it had swallowed now retire to
+the Cavern, the old Inner Sun to Hollow Earth); bake-cavern.js keeps its row with `skip: true` (Agartha's moves and the seams still need it) and no
+longer checks its ways. Re-pointed: the zone list, the stage, the secret-door list, the site entry, the NPC rows (one table a room), the flora
+(Hollow Earth grows, the Cavern does not), ZONE_LOOKS. World places: the Cavern -8..-3 x 7..9, Hollow Earth -8..-3 x 10..13 (`room.world`);
+`node bake-map.js` for both.
