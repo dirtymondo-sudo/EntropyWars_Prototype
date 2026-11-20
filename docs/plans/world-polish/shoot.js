@@ -9,6 +9,7 @@
    node docs/plans/world-polish/shoot.js                 every room (about 2 hours; needs `npm start` running, see PLAYTEST_NOTES "THE FAST PROBE")
    node docs/plans/world-polish/shoot.js <room> …        only those rooms
    node docs/plans/world-polish/shoot.js --views-only    print the views, shoot nothing
+   node docs/plans/world-polish/shoot.js <room> --flags=EW_HQ_NO_ENCOUNTER   the window flags of the probe (this one is the default; `--flags=` = none)
    WRITES docs/plans/world-polish/pictures/<room>/<district>_<air|worst|best>.jpg (800 x 500) + pictures/index.json (every picture: room, district,
    plot, where the walker stood). Runs playtest_city.js one room at a time (never two probes at once). */
 'use strict';
@@ -16,6 +17,9 @@ const fs = require('fs'), path = require('path'), cp = require('child_process');
 const REPO = path.join(__dirname, '..', '..', '..'), OUT = path.join(__dirname, 'pictures'), SQ = 3.5, PL = 42;
 const S = require(path.join(REPO, 'load-data.js')).loadGameData(), H = S.DOOR_HQ, ROOMS = H.rooms, retired = H.retired || {};
 const args = process.argv.slice(2), only = args.filter(a => !a.startsWith('--')), VIEWS_ONLY = args.includes('--views-only');
+/* the window flags every probe runs with: no encounters by default (an enemy near the spawn starts a fight and ruins every picture;
+   PLAYTEST_NOTES "A PROBE THAT NEVER GETS READY"). `--flags=A,B` sets others, `--flags=` passes none. */
+const FLAGS = (() => { const f = args.find(a => a.startsWith('--flags=')); return f == null ? 'EW_HQ_NO_ENCOUNTER' : f.slice(8); })();
 /* plots.csv: the audit's row a plot (need, pieces), by room + plot id */
 const csvRow = l => { const o = []; let c = '', q = false; for (const ch of l) { if (ch === '"') q = !q; else if (ch === ',' && !q) { o.push(c); c = ''; } else c += ch; } o.push(c); return o; };
 const CSV = fs.readFileSync(path.join(__dirname, 'plots.csv'), 'utf8').trim().split('\n').map(csvRow), HD = CSV[0], col = n => HD.indexOf(n);
@@ -69,7 +73,7 @@ let n = 0;
 for (const id of ids) { let V; try { V = viewsOf(id); } catch (e) { console.log('NO VIEWS', id, e.message); continue; }
     if (VIEWS_ONLY) { console.log(id, V.views.length, JSON.stringify(V.views.slice(0, 3))); n += V.views.length; continue; }
     const dir = path.join(OUT, V.short); fs.mkdirSync(dir, { recursive: true }); const t0 = Date.now();
-    const r = cp.spawnSync('node', ['playtest_city.js', id, JSON.stringify(V.views)], { cwd: REPO, encoding: 'utf8', maxBuffer: 1 << 26, timeout: 40 * 60 * 1000 });
+    const r = cp.spawnSync('node', ['playtest_city.js', id, JSON.stringify(V.views)].concat(FLAGS ? ['--flags=' + FLAGS] : []), { cwd: REPO, encoding: 'utf8', maxBuffer: 1 << 26, timeout: 40 * 60 * 1000 });
     const log = (r.stdout || '') + (r.stderr || ''), err = (/ERRORS (\[.*\])/.exec(log) || [])[1] || '?', notReady = /ROOM NOT READY/.test(log);
     let got = 0; V.views.forEach((v, i) => { const png = path.join(REPO, 'shots/city', id + '_' + v.name + '.png'); if (!fs.existsSync(png) || fs.statSync(png).mtimeMs < t0) return;
         cp.spawnSync('convert', [png, '-resize', '800x500', '-quality', '72', path.join(dir, v.name + '.jpg')]); got++; V.meta[i].file = V.short + '/' + v.name + '.jpg'; });
