@@ -9381,6 +9381,131 @@ const ThreeRenderer = (function () {
         if (!S.t0 && (!S.busy || now - S.born > G0.riseWaitMs)) { S.t0 = now; S.fillMs = Math.round(now - S.born); }
         try { window._ewHqGrass = { cells: cells, tufts: tufts, tris: tris, rings: per, level: _ggLevel, fillMs: S.fillMs || 0, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w }; } catch (e) {}
     }
+    /* ──────────────────────────────────────────────────────────────────────
+       THE FLORA FIELD (2026-11-20, mondo: "a foliage pass on every single zone ... accurate to that zone's climate"; data.js ZONE_FLORA).
+       The small plants of a walked room (flowers, ferns, tufts, reeds, low bushes) grow round the walker like the grass field: the
+       ground in CELLS, each cell ONE merged mesh on the field file's one sheet (bake-foliage.py ew_flora_field.glb: every plant of
+       both packs), built when the walker comes near and dropped when he leaves. What grows on a spot is worked out there and then:
+       the room's zone + the map's ground under the spot (zoneFloraAt) give the climate, the painted sheet under it gives the ground
+       class (lawn, forest floor, sand, snow...; water within reach = the climate's `wet` reeds), and the climate's layers for that
+       class are thrown by a seeded hash of the place (so a meadow is the same meadow on every visit and for both players online).
+       Nothing is written in a room, so a room that is re-laid or rebaked keeps its plants. Never on a path, in water, on a steep
+       face or under a building; no blockers, nothing a fight reads. RULE #1e: a tick reads its own cell map only; the room is read
+       once (the paths' and the buildings' boxes). Off: window.EW_NO_FLORA / EW_NO_FLORA_FIELD. Readout: window._ewHqFlora.
+       ────────────────────────────────────────────────────────────────────── */
+    var _hqFF = null, _hqFFMat = null;
+    function _hqFloraDrop() {
+        var S = _hqFF; _hqFF = null; if (!S) return;
+        S.cells.forEach(function (c) { if (c && c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } });
+    }
+    function _hqFloraCell(S, cx, cz) {
+        var F = ZONE_FLORA, info = S.info, U = S.U, cm = F.cellM, x0 = cx * cm, z0 = cz * cm, none = { mesh: null, cx: cx, cz: cz, n: 0, tris: 0 };
+        if (x0 + cm < info.x0 || z0 + cm < info.z0 || x0 > info.x0 + (info.nx - 1) * info.res || z0 > info.z0 + (info.nz - 1) * info.res) return none;   // wholly off the room's ground
+        var seed = ((((cx + 4096) * 73856093) ^ ((cz + 4096) * 19349663)) + S.seed) & 0x7FFFFFFF | 1;
+        var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
+        var step = F.step, n = Math.max(2, Math.round(cm / step)), PT = info.paint, SC = S.scratch, pos = SC.pos, uvs = SC.uv, idx = SC.ix;
+        var near = [], q, b; for (q = 0; q < S.paths.length; q++) { var pp = S.paths[q]; if (pp.x1 > x0 - 1 && pp.x0 < x0 + cm + 1 && pp.z1 > z0 - 1 && pp.z0 < z0 + cm + 1) near.push(pp); }
+        var v = 0, ii = 0, made = 0, yLo = Infinity, yHi = -Infinity, full = false;
+        for (var j = 0; j < n && !full; j++) for (var i = 0; i < n && !full; i++) {
+            var xm = x0 + (i + rnd()) * step, zm = z0 + (j + rnd()) * step;
+            var ni = Math.round((xm - info.x0) / info.res), nj = Math.round((zm - info.z0) / info.res);
+            if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) continue;
+            var nk = nj * info.nx + ni;
+            if (info.mask && !info.mask[nk]) continue;
+            var cls = zoneFloraSheet((PT && PT.P[nk]) ? PT.pal[PT.P[nk] - 1] : info.floor); if (!cls) continue;
+            var pk = Math.floor(xm / 7) + ',' + Math.floor(zm / 7), C = S.clim[pk];   // 7 m blocks from the room's middle: every plot line (the map's, a district's) falls on one
+            if (C === undefined) C = S.clim[pk] = zoneFloraAt(S.rid, xm, zm) || null;
+            if (!C) continue;
+            if (hqTerrainFluidAt(info, xm, zm)) continue;
+            var layers = C[cls];
+            if (C.wet && S.wet && (hqTerrainFluidAt(info, xm + 2.2, zm) || hqTerrainFluidAt(info, xm - 2.2, zm) || hqTerrainFluidAt(info, xm, zm + 2.2) || hqTerrainFluidAt(info, xm, zm - 2.2))) layers = C.wet;
+            if (!layers) continue;
+            if (hqTerrainSlope(info, xm, zm) > 0.55) continue;
+            var inB = false; for (b = 0; b < S.boxes.length; b++) { var B = S.boxes[b], dx = xm - B[0], dz = zm - B[1], lx0 = dx * B[4] + dz * B[5], lz0 = -dx * B[5] + dz * B[4]; if (Math.abs(lx0) < B[2] && Math.abs(lz0) < B[3]) { inB = true; break; } }
+            if (inB) continue;
+            for (q = 0; q < near.length; q++) if (_hqTPolyDist(xm, zm, near[q].pts).d < near[q].w / 2 + 0.25) { inB = true; break; }
+            if (inB) continue;
+            var gy = hqTerrainHeight(info, xm, zm);
+            for (var li = 0; li < layers.length; li++) {
+                var L = layers[li], r0 = rnd(), r1 = rnd(), r2 = rnd(), r3 = rnd();
+                if (L.g && S.grassOn) continue;                    // the room grows the blade grass: no tufts on top of it
+                var p = L.n * step * step * S.thin * (L.g ? (F.lushG || 1) : (F.lush || 1));
+                if (L.clump > 0) { var c0 = 0.62 * L.clump, w = _ewSmoothNoise(xm / 6 + 17.3 * (li + 1), zm / 6 + 5.1 * (li + 1)); p *= Math.max(0, (w - c0) / (1 - c0)) * 2; }
+                if (r0 >= p) continue;
+                if (L._tot === undefined) { L._tot = 0; for (q = 0; q < L.mix.length; q++) L._tot += L.mix[q][1]; }
+                var dr = _ewSmoothNoise(xm / 13 + 31.7 * (li + 1), zm / 13 + 7.9 * (li + 1)) * 3.7 + r1 * 0.3; dr = (dr - Math.floor(dr)) * L._tot;
+                var name = L.mix[L.mix.length - 1][0]; for (q = 0; q < L.mix.length; q++) { dr -= L.mix[q][1]; if (dr <= 0) { name = L.mix[q][0]; break; } }
+                var P = S.plants[name]; if (!P) continue;
+                if (v + P.nv > SC.maxV || ii + P.ix.length > SC.maxI) { full = true; break; }
+                var sz = F.size[name] || F.size['*'], s = sz[0] + (sz[1] - sz[0]) * r2, an = r3 * Math.PI * 2, co = Math.cos(an) * s, si = Math.sin(an) * s;
+                var ox = xm + (li ? (r1 - 0.5) * 0.7 : 0), oz = zm + (li ? (r2 - 0.5) * 0.7 : 0), pa = P.p, ua = P.uv, k, v3, k3;
+                for (k = 0; k < P.nv; k++) { k3 = k * 3; v3 = (v + k) * 3; pos[v3] = (ox + pa[k3] * co + pa[k3 + 2] * si) * U; pos[v3 + 1] = (gy + pa[k3 + 1] * s) * U; pos[v3 + 2] = (oz - pa[k3] * si + pa[k3 + 2] * co) * U; uvs[(v + k) * 2] = ua[k * 2]; uvs[(v + k) * 2 + 1] = ua[k * 2 + 1]; }
+                for (k = 0; k < P.ix.length; k++) idx[ii + k] = P.ix[k] + v;
+                v += P.nv; ii += P.ix.length; made++;
+                if (gy < yLo) yLo = gy; if (gy + P.h * s > yHi) yHi = gy + P.h * s;
+            }
+        }
+        if (!made) return none;
+        var geo = new THREE.BufferGeometry(), nor = new Float32Array(v * 3); for (q = 1; q < nor.length; q += 3) nor[q] = 1;   // a small plant takes the ground's light
+        geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, v * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uvs.slice(0, v * 2), 2));
+        geo.setIndex(new THREE.BufferAttribute((v > 65535) ? idx.slice(0, ii) : new Uint16Array(idx.subarray(0, ii)), 1));
+        geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + cm / 2) * U, (yLo + yHi) / 2 * U, (z0 + cm / 2) * U), Math.hypot(cm * 0.7072 + 1.5, (yHi - yLo) / 2) * U);
+        var mesh = new THREE.Mesh(geo, S.mat); mesh.name = 'ew_hq_flora'; mesh._ew_flora = true; mesh.receiveShadow = true; mesh.castShadow = false;
+        S.parent.add(mesh);
+        return { mesh: mesh, cx: cx, cz: cz, n: made, tris: ii / 3 };
+    }
+    function _hqFloraTick() {
+        var H = _hq, F = (typeof ZONE_FLORA !== 'undefined') ? ZONE_FLORA : null, T = H && H.room && H.room.terrain, rid = null, on = false;
+        try { rid = (H && H.terrain && H.terrain.roomId) || null; on = !!(F && T && H.player && rid && !window.EW_NO_FLORA && !window.EW_NO_FLORA_FIELD && typeof zoneFloraRule === 'function' && zoneFloraRule(rid) && typeof hqTerrainHeight === 'function'); } catch (e) { on = false; }
+        if (!on) { if (_hqFF) _hqFloraDrop(); return; }
+        var S = _hqFF, now = performance.now(), LOW = false;
+        try { LOW = (_ggLevel === 'low' || _ggLevel === 'off') || !!window.EW_PERF_LOW; } catch (e) {}   // Settings > Video > Grass low / off = the thin field
+        if (!S || S.H !== H || S.rid !== rid || S.low !== LOW) {
+            _hqFloraDrop();
+            if (_hqFloraTick._wait && now - _hqFloraTick._wait < 400) return;   // the field file is on its way: ask again in a moment
+            var src = null; try { src = _loadFoliageModel(F.field); } catch (e) { src = null; }
+            if (!src || !src._ew_bbox) { _hqFloraTick._wait = now; return; }
+            var plants = {}, srcMat = null;
+            src.traverse(function (m) { var g = m.isMesh && m.geometry; if (!g || !g.index || !g.attributes.position || !g.attributes.uv) return; g.computeBoundingBox(); plants[m.name] = { p: g.attributes.position.array, uv: g.attributes.uv.array, ix: g.index.array, nv: g.attributes.position.count, h: g.boundingBox.max.y }; srcMat = srcMat || m.material; });
+            if (!srcMat) { _hqFloraTick._wait = now + 60000; return; }
+            if (!_hqFFMat) { _hqFFMat = _foliageGlbMat(srcMat, null); _hqFFMat._ew_shared = true; _hqFFMat._ew_hzNear = true;
+                /* seen in the browser (11-20, Katana Island): a tree's leaf lift made the pale ferns and tufts glow white against the ground they stand on; a small plant takes the ground's own light */
+                _hqFFMat.color.setRGB(0.88, 0.9, 0.86); _hqFFMat.emissive.copy(_hqFFMat.color).multiplyScalar(0.05); }
+            var info = H.terrain, boxes = [], paths = [], wet = false;
+            ((T.features) || []).forEach(function (f) {   // the room read ONCE: the buildings' boxes
+                if (f && (f.k === 'texbuilding' || (f.k === 'plateau' && f.bld && f.w > 0 && f.d > 0))) { var a = (f.rot || 0) * Math.PI / 180; boxes.push([f.x, f.z, f.w / 2 + 0.5, f.d / 2 + 0.5, Math.cos(a), Math.sin(a)]); }
+            });
+            (info.paths || []).forEach(function (p) { if (!p || !p.pts || p.pts.length < 2) return; var a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity, m = (p.w || 2) / 2 + 0.3; p.pts.forEach(function (q) { if (q[0] < a0) a0 = q[0]; if (q[0] > a1) a1 = q[0]; if (q[1] < b0) b0 = q[1]; if (q[1] > b1) b1 = q[1]; }); paths.push({ pts: p.pts, w: p.w || 2, x0: a0 - m, x1: a1 + m, z0: b0 - m, z1: b1 + m }); });
+            wet = !!(info.fluids && info.fluids.length);   // no water in the room = no bank to look for
+            var maxV = 60000;
+            S = _hqFF = { H: H, rid: rid, low: LOW, info: info, U: _hqUnits(), plants: plants, mat: _hqFFMat, cells: new Map(), boxes: boxes, paths: paths, wet: wet, clim: {},
+                seed: ((typeof hqHash === 'function') ? hqHash('flora|' + rid) : 7) & 0x3FFFFFFF, reach: LOW ? F.low.reach : F.reach, thin: LOW ? F.low.thin : 1, grassOn: !!(T.grassField && _ggOn() && !window.EW_NO_HQ_GRASS),
+                at: 0, busy: true, born: now, filled: false, parent: (H.propGroup && H.propGroup.parent) || scene,
+                scratch: { maxV: maxV, maxI: maxV * 4, pos: new Float32Array(maxV * 3), uv: new Float32Array(maxV * 2), ix: new Uint32Array(maxV * 4) } };
+        }
+        if (!S.busy && now - S.at < 120) return;
+        S.at = now;
+        var cm = F.cellM, px = H.player.x, pz = H.player.z, R = S.reach, want = [], cells = 0, n = 0, tris = 0;
+        for (var cz = Math.floor((pz - R) / cm), z1 = Math.floor((pz + R) / cm); cz <= z1; cz++) for (var cx = Math.floor((px - R) / cm), x1 = Math.floor((px + R) / cm); cx <= x1; cx++) {
+            var dn = Math.hypot(Math.max(cx * cm, Math.min(px, cx * cm + cm)) - px, Math.max(cz * cm, Math.min(pz, cz * cm + cm)) - pz);
+            if (dn <= R && !S.cells.has(cx + ',' + cz)) want.push([dn, cx, cz]);
+        }
+        S.cells.forEach(function (c, key) {   // its own cells only (never the room's objects)
+            var d = Math.hypot(Math.max(c.cx * cm, Math.min(px, c.cx * cm + cm)) - px, Math.max(c.cz * cm, Math.min(pz, c.cz * cm + cm)) - pz);
+            if (d > R + cm) { if (c.mesh) { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} } S.cells.delete(key); }
+            else if (c.mesh) { cells++; n += c.n; tris += c.tris; }
+        });
+        want.sort(function (a, b) { return a[0] - b[0]; });
+        var tb = performance.now(), budget = S.filled ? F.buildMs : F.fillMs, w = 0;
+        for (; w < want.length && (w < 1 || performance.now() - tb < budget); w++) {
+            var made = null;
+            try { made = _hqFloraCell(S, want[w][1], want[w][2]); } catch (e) { made = { mesh: null, cx: want[w][1], cz: want[w][2], n: 0, tris: 0 }; if (!S._warned) { S._warned = true; console.warn('[HQ] the flora field', e); } }
+            S.cells.set(want[w][1] + ',' + want[w][2], made);
+            if (made.mesh) { cells++; n += made.n; tris += made.tris; }
+        }
+        S.busy = w < want.length; if (!S.busy) S.filled = true;
+        try { window._ewHqFlora = { room: rid, cells: cells, plants: n, tris: tris, reach: R, low: S.low, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w, kinds: Object.keys(S.plants).length }; } catch (e) {}
+    }
     function _buildGrassTuft3D(x, y) {
         if (!GRASS.enabled) return null;
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -94655,6 +94780,7 @@ const ThreeRenderer = (function () {
         try { _hqTickAware(now); } catch (e) { if (!H._awWarnedTick) { H._awWarnedTick = true; console.warn('[HQ] the awareness tick', e); } }   // THE AWARENESS + THE MARKS (NPC encounters step 2)
         _lt = _lensMark('tick: awareness + marks', _lt);
         try { _hqGrassTick(); } catch (e) { if (!H._ggWarned) { H._ggWarned = true; console.warn('[HQ] the grass field tick', e); } }   // THE GRASS FIELD IN A WALKED ROOM (2026-11-15)
+        try { _hqFloraTick(); } catch (e) { if (!H._ffWarned) { H._ffWarned = true; console.warn('[HQ] the flora field tick', e); } }   // THE FLORA FIELD (2026-11-20): the climate's small plants round the walker
         _lt = _lensMark('tick: grass field', _lt);
         if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
             var _sd = H._sceneDoor, _sn = performance.now();
@@ -102142,6 +102268,7 @@ const ThreeRenderer = (function () {
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
         try { _hqGrassDrop(); } catch (e) {}   // THE GRASS FIELD IN A WALKED ROOM: its cells leave with the room
+        try { _hqFloraDrop(); } catch (e) {}   // THE FLORA FIELD: its cells leave with the room
         if (opts && opts.handover) _lightMatchNote(H); else _lightMatch.walk = 0;   // THE SAME LIGHT COUNT: the count the fight keeps
         var park = _hqParkOk(H, opts), parkSt = null;   // THE PARKED ROOM: the walk is kept whole for the way back
         if (park) { try { parkSt = { hfog: [_EW_HFOG.x, _EW_HFOG.y, _EW_HFOG.z, _EW_HFOG.w], ao: _HQ_AO.w }; } catch (e) { park = false; } }
