@@ -3321,6 +3321,9 @@ function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortra
           style: { imageRendering: 'pixelated' },
         }),
         portraitUrl && h('circle', { cx: 100, cy: 100, r: 56.5, fill: 'url(#hrlgPortraitVig)' }),
+        /* THE STATUS FRAMES: the square the disc holds whole (its corners on the rim) */
+        liveUnit && h('foreignObject', { x: 60, y: 60, width: 80, height: 80, style: { pointerEvents: 'none' } },
+          h(StatusFx, { unit: liveUnit, cls: 'ew-sfx-hub' })),
         burning && h('circle', { cx: 100, cy: 100, r: 56.5, className: 'hrlg-flash hrlg-flash-burn' }),
         poisoned && h('circle', { cx: 100, cy: 100, r: 56.5, className: 'hrlg-flash hrlg-flash-poison' }),
         h('circle', { ref: hitRef, cx: 100, cy: 100, r: 56.5, className: 'hrlg-hitflash' }),
@@ -4408,6 +4411,25 @@ function PanelAnim({ unit, anims, cls, stance }) {
   }, [uid, anims]);
   return h('div', { className: cls + ' ew-pa' }, h('i', { ref }));
 }
+/* THE STATUS FRAMES (mondo 2026-11-20): the animated border of each status a unit carries, over its portrait (sprites.js
+   STATUS_PORTRAIT_FX / getUnitStatusFx). One strip of 8 square frames stepped by the CSS animation ewPaStep; a unit with
+   several statuses shows them in turn, one pass each (a timer only then). Drawn on the unit info cards and the Horologe
+   disc; the status chips stay the full list. Viewer-local, nothing on state; a card only ever shows a unit the viewer sees. */
+function StatusFx({ unit, cls }) {
+  const list = (typeof getUnitStatusFx === 'function') ? getUnitStatusFx(unit) : [];
+  const sig = list.join(',');
+  const [at, setAt] = useState(0);
+  useEffect(() => {
+    setAt(0);
+    if (list.length < 2) return;
+    const t = setInterval(() => setAt(i => i + 1), 1400);
+    return () => clearInterval(t);
+  }, [sig]);
+  if (!list.length) return null;
+  const k = list[at % list.length];
+  return h('div', { className: 'ew-sfx' + (cls ? ' ' + cls : ''), 'data-fx': k },
+    h('i', { key: k, style: { backgroundImage: 'url("' + STATUS_FX_BASE + '/' + k + '.png")' } }));
+}
 /* a unit under the aimed action's damage forecast (ui.js getPendingDamagePreview, every body it reaches) braces */
 function _ewPaBraced(u) {
   try {
@@ -4444,7 +4466,8 @@ function _hrlgQuickCard(key, title, qv) {
     h('div', { className: 'hrlg-thead hrlg-qp-bg ' + side[1] }),
     h('div', { className: 'hrlg-qp-port ' + side[1] + (pa ? ' anim' : (pd && !pd.isFace ? ' sprite' : '')) },
       pa ? h(PanelAnim, { key: 'pa' + qu.id, unit: qu, anims: pa, cls: 'hrlg-qp-img', stance: _ewPaBraced(qu) ? 'brace' : null })
-        : pd ? h('div', { className: 'hrlg-qp-img', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null),
+        : pd ? h('div', { className: 'hrlg-qp-img', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null,
+      qu ? h(StatusFx, { unit: qu }) : null),
     title && h('div', { className: 'hrlg-view-tab' }, title.node || h('span', { className: 'hrlg-view-tab-text' }, title.text)),
     qv,
     /* the type badges' own spot (UI Maker: under / on the portrait) — the copy in the bars hides then */
@@ -4738,7 +4761,8 @@ function DeckUnitCard({ ukey, actor, terrain, btns }) {
   return h('div', { ref, className: 'ewd-ucard ' + side, 'data-uid': String(u.id) },
     self ? null : h('div', { className: 'ewd-uport ' + side + (pa ? ' anim' : (pd && !pd.isFace ? ' sprite' : '')) },
       pa ? h(PanelAnim, { key: 'pa' + u.id, unit: u, anims: pa, cls: 'ewd-uimg', stance: _ewPaBraced(u) ? 'brace' : null })
-        : pd ? h('div', { className: 'ewd-uimg', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null),
+        : pd ? h('div', { className: 'ewd-uimg', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null,
+      h(StatusFx, { unit: u })),
     h('div', { className: 'ewd-umain' },
       h('div', { className: 'ewd-uhead' },
         h('span', { className: 'hrlg-name ewd-uname' }, _ewdUnitName(u)),
@@ -14376,6 +14400,10 @@ function _hudHideCss() {
     .hrlg-qp-img { position: absolute; inset: 0; background: center / cover no-repeat; image-rendering: pixelated; border-radius: inherit; pointer-events: none; }
     .hrlg-qp-port.sprite > .hrlg-qp-img { background-size: auto calc(var(--qp-zoom, 1.5) * 100%); background-position: center 14%; }
     /* THE PANEL ANIMATIONS (PanelAnim): the strip's one frame, as tall as the portrait, standing on its floor */
+    /* THE STATUS FRAMES (StatusFx): the strip's one frame stretched over the portrait box */
+    .ew-sfx { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+    .ew-sfx-hub { position: relative; inset: auto; width: 100%; height: 100%; }
+    .ew-sfx > i { position: absolute; inset: 0; background-repeat: no-repeat; background-size: 800% 100%; background-position: 0% 0%; image-rendering: pixelated; animation: ewPaStep 900ms steps(8, jump-none) infinite; }
     .ew-pa { overflow: hidden; }
     .ew-pa-hub { position: relative; width: 100%; height: 100%; }
     .ew-pa > i { position: absolute; left: 50%; bottom: 0; height: 100%; aspect-ratio: 1 / 1; transform: translateX(-50%); background-repeat: no-repeat; background-size: auto 100%; background-position: 0% 0%; image-rendering: pixelated; }

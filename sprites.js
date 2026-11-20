@@ -1126,6 +1126,35 @@ function getRacePanelAnims(unit) {
   return (set && set[unit.gender || 'male']) || null;
 }
 
+/* THE STATUS FRAMES (mondo 2026-11-20: "animated status effects for their portraits (like flames, electricity static, poison,
+   etc) ... every status effect in the game, at least the ones that make sense ... try 64x64"): a unit with a status listed
+   here wears that status's animated border over its portrait (hud.js StatusFx: the unit info cards + the Horologe disc).
+   One sheet serves every unit: 40 strips, 8 frames of 64 x 64 (512 x 64), made with Sprite AI, on R2 at
+   Assets/ui/status_fx/<sheet>.png. status id -> sheet; several statuses may share one. A status without a row shows nothing
+   (markers, forms, one-race gimmicks). Off: window.EW_DISABLE_STATUS_FX = true. Notes: ui-menus-audio.md "THE STATUS FRAMES". */
+const STATUS_FX_BASE = 'https://cdn.entropywars.net/Assets/ui/status_fx';
+const STATUS_FX_FRAMES = 8;
+const STATUS_PORTRAIT_FX = {
+  burn: 'burn', poison: 'poison', bleed: 'bleed', grievous: 'bleed', goo: 'goo', haunted: 'haunted', possessed: 'possessed',
+  corroded: 'corroded2' /* fire + poison: Corroded IS Burn and Poison (data.js countsAs); the first sheet was rusty metal */, radioactive: 'radioactive', feared: 'feared', infected: 'infected', soulBound: 'soulbound', root: 'root',
+  tethered: 'tethered', coiled: 'coiled', silence: 'silence', stun: 'stun', sleep: 'sleep', stagger: 'stagger', marked: 'marked',
+  jammed: 'jammed', drowning: 'drowning', bends: 'drowning', submerged: 'drowning', wet: 'wet', slow: 'slow', charm: 'charm',
+  frozen: 'frozen', blind: 'blind', hexed: 'hexed', statDown: 'statdown', statUp: 'statup', broken: 'broken',
+  stoneform: 'stoneform', blessed: 'blessed', sparkling: 'sparkle', pixieDust: 'sparkle', levitating: 'levitating',
+  quickened: 'quickened', momentum: 'quickened', protect: 'shield', spawnGuard: 'shield', guarding: 'shield', shield: 'shield',
+  regen: 'regen', guardRegen: 'regen', overclock: 'overclock', invisible: 'invisible', shadowRealm: 'shadow',
+};
+/* the sheets a unit wears now, in the order its statuses read (no sheet twice); a live shield counts as 'shield' */
+function getUnitStatusFx(unit) {
+  if (!unit || unit.dead || (typeof window !== 'undefined' && window.EW_DISABLE_STATUS_FX)) return [];
+  const out = [];
+  let keys = [];
+  try { keys = (typeof getActiveStatusKeys === 'function') ? (getActiveStatusKeys(unit) || []) : Object.keys(unit.status || {}).filter(k => unit.status[k] > 0); } catch (e) { keys = []; }
+  for (const k of keys) { const f = STATUS_PORTRAIT_FX[k]; if (f && out.indexOf(f) < 0) out.push(f); }
+  if (unit.shield > 0 && out.indexOf('shield') < 0) out.push('shield');
+  return out;
+}
+
 function getRaceSpriteAnimations(race, gender) {
   const set = RACE_SPRITE_ANIMATIONS[race];
   if (!set) return null;
