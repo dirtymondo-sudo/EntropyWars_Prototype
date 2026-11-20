@@ -76560,9 +76560,26 @@ const ThreeRenderer = (function () {
     var _HQ_MARK_SHIELD = 'M-78 -92 H78 V10 C78 60 40 88 0 100 C-40 88 -78 60 -78 10 Z';
     var _HQ_MARK_CROSS = 'M-28 -92 H28 L20 -24 L92 -28 V28 L20 24 L28 92 H-28 L-20 24 L-92 28 V-28 L-20 -24 Z';
     var _HQ_MARK_FONTS = { seal: ['600 20px "Oswald"'], shield: ['20px "Archivo Black"'], pd: ['20px "Archivo Black"'], fd: ['20px "Archivo Black"'] };
+    /* THE CHAIN MARKS (2026-11-20, the branding pass; mondo's OK on the brand book): the city's chains' marks, flat shapes in the sign's own
+       letter colour on a 44-unit square ('bg' = a cut in the board's colour). Named as the seventh field of a sign's key, like the city marks.
+       Drawn in code: no image file, nothing generated (owner-rules.md: never an AI-made logo). */
+    var HQ_CHAIN_MARKS = {
+        bolt:   [['M26 2L8 25h11l-4 17 20-25H23z']],                                                                    // Act of God Insurance
+        bank:   [['M4 16L22 5l18 11v3H4z'], ['M8 21h5v13H8z'], ['M19.5 21h5v13h-5z'], ['M31 21h5v13h-5z'], ['M4 36h36v4H4z']],   // Calamity Mutual
+        burst:  [['M22 1l5 11 11-6-4 12 9 4-9 5 4 12-11-6-5 10-5-10-11 6 4-12-9-5 9-4L7 6l11 6z']],                     // Kaboom! Cola
+        mid:    [['M2 22a20 20 0 1 0 40 0a20 20 0 1 0-40 0z'], ['M14 22a8 8 0 1 0 16 0a8 8 0 1 0-16 0z', 'bg'], ['M16 19h2.6v6H16z'], ['M20.7 19h2.6v6h-2.6z'], ['M25.4 19H28v6h-2.6z']],   // Mid Records: every bar in the middle
+        flame:  [['M22 3q9 9 5 17 7-3 7-10 6 8 4 17a16 14 0 01-32 0q-2-9 6-15 0 7 5 9-3-9 5-18z']],                     // Phoenix Reconstruction
+        wing:   [['M2 36q14-2 26-20-4 14-10 20 6-1 12-6-6 12-20 10z'], ['M27 10a7 7 0 1 0 14 0a7 7 0 1 0-14 0z']],       // Icarus Aerospace
+        burger: [['M6 18a16 12 0 0132 0z'], ['M5 21h34v4q-3 0-3 5t-4-5h-8q0 8-4 8t-3-8H5z'], ['M6 33h32v2a5 5 0 01-5 5H11a5 5 0 01-5-5z']],   // Meltdown Burger
+        cup:    [['M8 16h22v10a11 11 0 01-22 0z'], ['M30 18h4a5 5 0 010 10h-4v-3h4a2 2 0 000-4h-4z'], ['M6 38h26v3H6z'], ['M12 4h2v10h-2z'], ['M19 4h2v10h-2z'], ['M26 4h2v10h-2z']],   // Jitters Coffee
+        crate:  [['M5 20h34v20H5z'], ['M3 17L20 5l19 9-2 3-17-7L6 20z'], ['M19 20h6v20h-6z', 'bg']]                      // Pandora Shipping & Storage
+    };
+    Object.keys(HQ_CHAIN_MARKS).forEach(function (k) { _HQ_MARK_FONTS[k] = []; });
     function _hqSignMark(g, id, cx, cy, r, bg) {
         var k = r / 100, P = function (d) { return new Path2D(d); }, NAVY = '#14284a', GOLD = '#e8c860', INK = '#14161a', HAZ = '#f2c230';
         var star = function (x, y, q) { g.beginPath(); for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr = (i % 2) ? q * 0.42 : q; g[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.closePath(); g.fill(); };
+        var CH = HQ_CHAIN_MARKS[id];
+        if (CH) { var ink0 = g.fillStyle; g.save(); g.translate(cx - r, cy - r); g.scale(r / 22, r / 22); for (var ci = 0; ci < CH.length; ci++) { g.fillStyle = CH[ci][1] === 'bg' ? (bg || '#101014') : ink0; g.fill(P(CH[ci][0])); } g.restore(); return; }
         g.save(); g.translate(cx, cy); g.scale(k, k); g.textAlign = 'center'; g.textBaseline = 'alphabetic'; if ('letterSpacing' in g) g.letterSpacing = '0px';
         if (id === 'seal') {
             g.fillStyle = NAVY; g.beginPath(); g.arc(0, 0, 100, 0, Math.PI * 2); g.fill();
@@ -76715,6 +76732,19 @@ const ThreeRenderer = (function () {
         var fontOf = function (v, fam) { return (fam ? F.w : 900) + ' ' + v + 'px ' + (fam ? F.f + ', ' : '') + '"Arial Black", "Helvetica Neue", Arial, sans-serif'; };
         /* the words fitted inside the board: 90% of its width and (a typeface of its own only) 80% of its height, measured on the glyphs
            themselves, so a script's tails and a tall display face never touch the board's edge (mondo: text cut-off is high priority) */
+        /* THE NEON (2026-11-20, the branding pass: the night streets): an eighth field 'n' = the words are a lit tube in `fg`: a soft halo, a
+           near-white core, and (a boardless sign) a dark plate with a thin tube frame behind the words only. The part carries glow 1. */
+        var neonS = q[7] === 'n', hot = fg;
+        if (neonS) { var hm = /^#([0-9a-f]{6})$/i.exec(fg); if (hm) { var hv = parseInt(hm[1], 16), mixw = function (c) { return Math.round(c + (255 - c) * 0.68); }; hot = 'rgb(' + mixw((hv >> 16) & 255) + ',' + mixw((hv >> 8) & 255) + ',' + mixw(hv & 255) + ')'; } }
+        var plate = function (x0, x1) {
+            if (!neonS || bg) return; var pad = H * 0.16, px0 = Math.max(0, x0 - pad), pw = Math.min(W, x1 + pad) - px0;
+            g.fillStyle = '#0b0a10'; g.fillRect(px0, 0, pw, H);
+            g.save(); g.strokeStyle = fg; g.globalAlpha = 0.6; g.lineWidth = Math.max(2, H * 0.03); g.shadowColor = fg; g.shadowBlur = H * 0.08; g.strokeRect(px0 + H * 0.06, H * 0.06, pw - H * 0.12, H * 0.88); g.restore();
+        };
+        var ink = function (str, x, y, p) {
+            if (!neonS) { g.fillStyle = fg; g.fillText(str, x, y); return; }
+            g.save(); g.shadowColor = fg; g.shadowBlur = p * 0.3; g.fillStyle = fg; g.fillText(str, x, y); g.fillText(str, x, y); g.shadowBlur = p * 0.1; g.fillStyle = hot; g.fillText(str, x, y); g.restore(); g.fillStyle = fg;
+        };
         var paint = function (fam) {
             g.clearRect(0, 0, W, H); if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
             var px = 96, ls = (fam && F.ls && ('letterSpacing' in g)) ? F.ls : 0, txt = fam ? shown : words;
@@ -76732,7 +76762,7 @@ const ThreeRenderer = (function () {
                     g.font = fontOf(px2, fam); if ('letterSpacing' in g) g.letterSpacing = (px2 * ls) + 'px';
                     var m2 = g.measureText(txt), u2 = m2.actualBoundingBoxAscent || px2 * 0.72, d2 = m2.actualBoundingBoxDescent || 0;
                     var w2 = Math.max(g.measureText(la).width, g.measureText(lb).width) || 1, left2 = (W - (mk ? mr * 2 + mgap : 0) - w2) / 2, cx2 = left2 + (mk ? mr * 2 + mgap : 0) + w2 / 2;
-                    g.fillStyle = fg; g.fillText(la, cx2 + px2 * ls / 2, H * 0.28 + (u2 - d2) / 2); g.fillText(lb, cx2 + px2 * ls / 2, H * 0.72 + (u2 - d2) / 2);
+                    plate(left2, left2 + (mk ? mr * 2 + mgap : 0) + w2); g.fillStyle = fg; ink(la, cx2 + px2 * ls / 2, H * 0.28 + (u2 - d2) / 2, px2); ink(lb, cx2 + px2 * ls / 2, H * 0.72 + (u2 - d2) / 2, px2);
                     if (mk) _hqSignMark(g, mk, left2 + mr, H / 2, mr, bg);
                     return;
                 }
@@ -76741,7 +76771,7 @@ const ThreeRenderer = (function () {
             m = g.measureText(txt); g.fillStyle = fg;
             var up = m.actualBoundingBoxAscent, dn = m.actualBoundingBoxDescent;
             var tw2 = m.width || 1, left = (W - (mk ? mr * 2 + mgap : 0) - tw2) / 2, tcx = left + (mk ? mr * 2 + mgap : 0) + tw2 / 2;
-            g.fillText(txt, tcx + px * ls / 2, (up > 0 || dn > 0) ? H / 2 + (up - dn) / 2 : H / 2 + px * 0.36);
+            plate(left, left + (mk ? mr * 2 + mgap : 0) + tw2); g.fillStyle = fg; ink(txt, tcx + px * ls / 2, (up > 0 || dn > 0) ? H / 2 + (up - dn) / 2 : H / 2 + px * 0.36, px);
             if (mk) _hqSignMark(g, mk, left + mr, H / 2, mr, bg);
         };
         var t = new THREE.CanvasTexture(c); t.anisotropy = 4;
