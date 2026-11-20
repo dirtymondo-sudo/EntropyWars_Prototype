@@ -12599,6 +12599,17 @@ is laid on the ground; a ship in open space has none), he picked BEAMED DOWN.
   (the race's own body: it is the crew, no craft lands). Looks = three-renderer.js `_HQ_UFO_LOOK` (craft -> catalogue key or race, span, glow);
   the tic-tac is a white capsule in code (`_hqTicTac`: no model). Not used: the `spaceship` model (it is the player's own ship). Races with no
   craft yet (mondo offered to make models): annunaki, mantid, watcher, occulus, voidweaver, cosmic wraith.
+- **THE ALIEN SHIPS IN THE FLEET (same day, mondo's eleven Meshy ships, PR #2313: "Use these. watcher and oculus don't need a spaceship"):**
+  twelve crafts now, each race its own ship (`HQ_SPACE_UFOS.crafts`): the Moon = grey (ship_grey) + Barbarella; the Earth = nordic
+  (ship_nordic) + the white tic-tac (nordic) + astronaut (the shuttle orbiter); Mars = martian + mantid; the rocks = reptilian (the new black
+  triangle) + bligblog; Saturn = annunaki (the ziggurat, 56 m) + the jellyfish UFOs; the Singularity = cosmic wraith. `_HQ_UFO_LOOK` holds
+  each ship's span in flight and landed (18 to 56 m), glow and `nose` (the turn that puts the file's nose at +Z, from its catalogue row:
+  -X = PI / 2, +Z = 0, round = none: it spins). A landed ship stands `0.7 x span` off at least and points its nose at you. BARBARELLA'S
+  BALL: `ship_barbarella_ball` sits in the tail's socket (measured in the file: x 0.399, rim y 0.165, r 0.055; the ball's middle at y 0.19),
+  spins (`_ewSpin`, the tick turns `S.spinners`) and glints (five sparks); its facets are painted silver / pink / cyan / white and unlit
+  (a metal + reflection-map look drew dull grey under the node renderer). BLIGBLOG'S DOME: `_hqGlassDome` cuts the bulge's triangles
+  (y > 0.19 within 0.17 of x -0.05, z 0.13 in the file: 200 of 9,480) into a second, see-through material, once a file. Seen: all twelve
+  in flight, the ball and the dome close up. Not checked: each ship's landing (the landing code is the same as the grey saucer's, driven).
 - **THE RUN** (`_hqSpaceUfoTick`, from the spectacle tick; a fixed list, RULE #1e): patrol round the home -> LOCK (it sees the flown ship within
   `detectM`: it stops, flashes red, the red glow over it, the alarm; `lockSec` to run) -> HUNT at `huntV` (the burner outruns it once you are a
   few hundred metres off a world; near a world the speed cap holds you to its speed) -> it gives up past `giveUpM` or after `huntSec` and goes

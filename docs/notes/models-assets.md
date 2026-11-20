@@ -2275,7 +2275,7 @@ on R2 `Assets/world/props/meshy/ships/ship_<race>.glb` (+ `ship_barbarella_ball.
 rows `ship_<race>` (group 'Meshy props · Alien ships'; each row's comment says where the nose is: astronaut, nordic, reptilian, bligblog,
 barbarella at -X, mantid + martian at +Z, grey / annunaki / ball round or square), list-models.js SOURCES row, MODEL_LIST.md. Prompts:
 `docs/plans/alien-ships/ships.json` (`prompt2` = the second options; `concept` = the picked image when not the newest).
-NOT done: none is any race's UFO form in battle yet (sprites.js UFO_CRAFT_BY_RACE is the hook: bligblog = UFO_SHIP_3D, grey =
+FLOWN (11-20, the Outer Space thread): every ship patrols Outer Space as its race's craft (data.js HQ_SPACE_UFOS; the ball spins in its socket, the bligblog dome is glass; areas-complexes.md "OUTER SPACE, THE UFOS"). NOT done: none is any race's UFO form in battle yet (sprites.js UFO_CRAFT_BY_RACE is the hook: bligblog = UFO_SHIP_3D, grey =
 UFO_SAUCER_3D, the rest the old triangle) and none is placed or flyable; the bligblog dome is opaque (make it glass in code), the ball
 is matte grey (give it a mirror material), the Annunaki model lost some gold/lapis detail from its concept. Meshy: 447 credits before,
 90 after. Concepts, renders and scripts: project files `alien-ships/` (owner account only).

@@ -86531,15 +86531,24 @@ function hqTreeDead(kind) { const t = HQ_TREE_KINDS[kind]; return !!(t && t.dead
    burner outruns it once you are a few hundred metres off a world), and within `beamM` drags it down onto the nearest world; `n` of its `crew`
    race step out and fight. `craft`: 'saucer' (MODEL_LIST saucer_lg), 'triangle' (ufo, the Meshy triangle), 'tictac' (a white capsule drawn in
    code: no model), 'jellyfish' (the Jellyfish UFO race's own body: it IS the crew, no craft lands). The crew pairings are Claude's pick, by the
-   usual lore; change any row. Races with no craft yet: annunaki, mantid, watcher, occulus, voidweaver, cosmic wraith (a model each, then a row). */
+   usual lore; change any row. Since 11-20 every alien race flies its own ship (the rows below); the watcher and the occulus need none (mondo), the voidweaver has none yet. */
 const HQ_SPACE_UFOS = {
     detectM: 650, lockSec: 2.5, giveUpM: 1700, huntSec: 25, coolSec: 30, huntV: 220, beamM: 55,   // (lockSec: it stops and flashes red that long first, your time to run)
+    /* THE ALIEN SHIPS (2026-11-20): each alien race flies its own ship (data.js HQ_CATALOGUE_ALL `ship_<race>`, mondo's PR #2313); the Jellyfish
+       UFO is its own body; the white tic-tac (the "white pills") stays, nordic. The watcher and the occulus have no ship (mondo: they need none). */
     crafts: [
-        { id: 'moon_saucer',   craft: 'saucer',    crew: 'grey',          n: 3, home: 'moon',   orbitK: 2.4, v: 45 },
-        { id: 'earth_tictac',  craft: 'tictac',    crew: 'nordic',        n: 2, home: 'earth',  orbitK: 1.6, v: 70, inc: 1.1 },
-        { id: 'mars_saucer',   craft: 'saucer',    crew: 'martian',       n: 3, home: 'mars',   orbitK: 2.0, v: 45 },
-        { id: 'rocks_triangle', craft: 'triangle', crew: 'reptilian',     n: 2, home: 'rocks',  orbitK: 2.2, v: 55, inc: 0.2 },
-        { id: 'saturn_jelly',  craft: 'jellyfish', crew: 'jellyfish ufo', n: 2, home: 'saturn', orbitK: 1.7, v: 35 }
+        { id: 'moon_grey',        craft: 'ship_grey',          crew: 'grey',          n: 3, home: 'moon',        orbitK: 2.4, v: 45 },
+        { id: 'moon_barbarella',  craft: 'ship_barbarella',    crew: 'barbarella',    n: 1, home: 'moon',        orbitK: 3.4, v: 60, inc: 1.2 },
+        { id: 'earth_nordic',     craft: 'ship_nordic',        crew: 'nordic',        n: 2, home: 'earth',       orbitK: 1.7, v: 60, inc: 0.5 },
+        { id: 'earth_tictac',     craft: 'tictac',             crew: 'nordic',        n: 2, home: 'earth',       orbitK: 1.4, v: 75, inc: 1.1 },
+        { id: 'earth_astronaut',  craft: 'ship_astronaut',     crew: 'astronaut',     n: 2, home: 'earth',       orbitK: 2.2, v: 55, inc: -0.4 },
+        { id: 'mars_martian',     craft: 'ship_martian',       crew: 'martian',       n: 3, home: 'mars',        orbitK: 2.0, v: 45 },
+        { id: 'mars_mantid',      craft: 'ship_mantid',        crew: 'mantid',        n: 2, home: 'mars',        orbitK: 2.8, v: 55, inc: 1.0 },
+        { id: 'rocks_reptilian',  craft: 'ship_reptilian',     crew: 'reptilian',     n: 2, home: 'rocks',       orbitK: 2.2, v: 55, inc: 0.2 },
+        { id: 'rocks_bligblog',   craft: 'ship_bligblog',      crew: 'bligblog',      n: 2, home: 'rocks',       orbitK: 1.6, v: 40, inc: 0.9 },
+        { id: 'saturn_annunaki',  craft: 'ship_annunaki',      crew: 'annunaki',      n: 2, home: 'saturn',      orbitK: 2.1, v: 40, inc: 0.6 },
+        { id: 'saturn_jelly',     craft: 'jellyfish',          crew: 'jellyfish ufo', n: 2, home: 'saturn',      orbitK: 1.7, v: 35 },
+        { id: 'sing_wraith',      craft: 'ship_cosmic_wraith', crew: 'cosmic wraith', n: 2, home: 'singularity', orbitK: 2.6, v: 50, inc: 0.8 }
     ]
 };
 if (typeof window !== 'undefined') window.HQ_SPACE_UFOS = HQ_SPACE_UFOS;

@@ -91514,18 +91514,42 @@ const ThreeRenderer = (function () {
        a held second, then the ship is dragged down onto the nearest world's ground under it. The craft lands beside you, its crew steps out
        and walks at you, and the fight is the ordinary ground fight (map.js _hqEncounterFire, `npcStart`, the crew one group). Take off again
        and the craft lifts and goes back on patrol. Viewer-local; a fixed list of crafts each frame (RULE #1e). ══ */
+    /* a craft's look: `cat` (catalogue key) / `code` / `race` (its body), `span` m in flight and landed, `glow`, `nose` = the turn that puts the
+       file's nose at +Z (null = round: it spins), `ball` (Barbarella's disco ball in its tail socket), `dome` (Bligblog's dome made glass).
+       THE ALIEN SHIPS (2026-11-20, mondo's eleven Meshy ships, PR #2313; models-assets.md "THE ALIEN SHIPS"): each nose from its catalogue row. */
     var _HQ_UFO_LOOK = {
         saucer:    { cat: 'saucer_lg', span: 26, glow: 0x7fffd0 },
-        triangle:  { cat: 'ufo', span: 34, glow: 0xffb070 },
-        tictac:    { code: 'tictac', span: 13, glow: 0xe8f6ff },
-        jellyfish: { race: 'jellyfish ufo', span: 30, glow: 0xd090ff, crewIsCraft: true }
+        triangle:  { cat: 'ufo', span: 34, glow: 0xffb070, nose: 0 },
+        tictac:    { code: 'tictac', span: 13, glow: 0xe8f6ff, nose: 0 },
+        jellyfish: { race: 'jellyfish ufo', span: 30, glow: 0xd090ff, crewIsCraft: true },
+        ship_grey:          { cat: 'ship_grey', span: 24, glow: 0x9fffd0 },
+        ship_nordic:        { cat: 'ship_nordic', span: 30, glow: 0xe8f0ff, nose: Math.PI / 2 },
+        ship_reptilian:     { cat: 'ship_reptilian', span: 44, glow: 0xff7050, nose: Math.PI / 2 },
+        ship_martian:       { cat: 'ship_martian', span: 30, glow: 0xff9040, nose: 0 },
+        ship_annunaki:      { cat: 'ship_annunaki', span: 56, glow: 0xffd070 },
+        ship_mantid:        { cat: 'ship_mantid', span: 26, glow: 0xff9fe0, nose: 0 },
+        ship_cosmic_wraith: { cat: 'ship_cosmic_wraith', span: 48, glow: 0xb070ff, nose: 0 },
+        ship_astronaut:     { cat: 'ship_astronaut', span: 37, glow: 0xffffff, nose: Math.PI / 2 },
+        ship_bligblog:      { cat: 'ship_bligblog', span: 18, glow: 0x9fff60, nose: Math.PI / 2, dome: { c: [-0.05, 0.13], r: 0.17, y: 0.19 } },
+        ship_barbarella:    { cat: 'ship_barbarella', span: 22, glow: 0xff70d0, nose: Math.PI / 2, ball: { at: [0.399, 0.19, 0.0], len: 0.957, base: 0.198, d: 0.134 } }
     };
+    /* Bligblog's dome, glass: the triangles of the bulge are drawn with a second, see-through material (once a file) */
+    function _hqGlassDome(root, D) {
+        var glass = new THREE.MeshLambertMaterial({ color: 0x9fe0ff, emissive: 0x0c2a3a, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide });
+        root.traverse(function (o) { if (!o.isMesh || !o.geometry || !o.geometry.index) return; var g = o.geometry, pa = g.attributes.position, ix = g.index.array;
+            if (!g._ewGlass) { g._ewGlass = true; var keep = [], dome = [];
+                for (var t = 0; t + 2 < ix.length; t += 3) { var all = true; for (var j = 0; j < 3; j++) { var v = ix[t + j], x = pa.getX(v), y = pa.getY(v), z = pa.getZ(v); if (!(y > D.y && Math.hypot(x - D.c[0], z - D.c[1]) < D.r)) { all = false; break; } } (all ? dome : keep).push(ix[t], ix[t + 1], ix[t + 2]); }
+                console.log('[HQ] glass dome: ' + (dome.length / 3) + ' of ' + (ix.length / 3) + ' triangles'); var n = keep.concat(dome); g.setIndex(n.length > 65535 ? new THREE.Uint32BufferAttribute(n, 1) : new THREE.Uint16BufferAttribute(n, 1)); g.clearGroups(); g.addGroup(0, keep.length, 0); if (dome.length) g.addGroup(keep.length, dome.length, 1); g._ewGlassN = dome.length / 3; }
+            if (g._ewGlassN && !Array.isArray(o.material)) o.material = [o.material, glass]; });
+    }
     function _hqTicTac(len, U) {   // the white pill: a capsule, plain white, a faint glow (no model: it is a plain shape)
         var r = len * 0.22, g = new THREE.Group(), mat = new THREE.MeshLambertMaterial({ color: 0xf6f8fa, emissive: 0x4a525c });
         var cy = new THREE.Mesh(new THREE.CylinderGeometry(r * U, r * U, (len - 2 * r) * U, 28, 1, true), mat); cy.rotation.x = Math.PI / 2; g.add(cy);
         [-1, 1].forEach(function (s) { var sp = new THREE.Mesh(new THREE.SphereGeometry(r * U, 28, 18), mat); sp.position.z = s * (len / 2 - r) * U; g.add(sp); });
         g.position.y = r * U; return g;
     }
+    var _hqUfoSoftT = null;
+    function _hqUfoSoft() { if (_hqUfoSoftT) return _hqUfoSoftT; var c = document.createElement('canvas'); c.width = c.height = 64; var g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); _hqUfoSoftT = new THREE.CanvasTexture(c); return _hqUfoSoftT; }
     function _hqUfoModel(lk, U, keepFlat) {   // the craft's look, as a group whose middle is its own middle (a model's base sits on y 0)
         var g = new THREE.Group();
         if (lk.code === 'tictac') { var tt = _hqTicTac(lk.span, U); tt.position.y = 0; g.add(tt); if (keepFlat) _ewPlKeepFlat(g); return g; }
@@ -91534,15 +91558,30 @@ const ThreeRenderer = (function () {
         else if (lk.race && typeof getRace3DModel === 'function') { var d = getRace3DModel(lk.race, 'male'); url = d && d.model; }
         if (!url) return g;
         try { var m = _miscModelInstance(url, true, lk.span * U, { fit: 'span', matPick: typeof _hqPropMatPick === 'function' ? _hqPropMatPick : undefined,
-            onDone: function (gg, sc, bb) { try { gg.traverse(function (n) { n.frustumCulled = false; }); if (keepFlat) _ewPlKeepFlat(gg); } catch (e) {} } });
-            m.position.y = -lk.span * 0.12 * U; g.add(m); } catch (e) { console.warn('[HQ] a UFO model', e); }
+            onDone: function (gg, sc, bb) { try { if (lk.dome) _hqGlassDome(gg, lk.dome); gg.traverse(function (n) { n.frustumCulled = false; }); if (keepFlat) _ewPlKeepFlat(gg); } catch (e) { console.warn('[HQ] a UFO model finish', e); } } });
+            m.position.y = -lk.span * 0.12 * U; if (lk.nose != null) m.rotation.y = lk.nose; g.add(m);
+            if (lk.ball) {   // THE DISCO BALL: in the tail's socket (the file's own measure), mirrored, spinning (the UFO tick turns every `_ewSpin`)
+                var B = lk.ball, kB = lk.span / B.len, bc = ((_hqData() || {}).catalogue || {}).ship_barbarella_ball, bw = new THREE.Group();
+                bw.position.set(B.at[0] * kB * U, (B.at[1] + B.base) * kB * U, B.at[2] * kB * U); bw._ewSpin = 1.6; m.add(bw);
+                if (bc) { var bm = _miscModelInstance(_hqModelUrl(bc), true, B.d * kB * U, { fit: 'span', onDone: function (gb) { try {
+                    /* the mirror: every facet its own tile of light (silver, pink, cyan, white), unlit so it glitters whatever the room's lights
+                       (a reflection map drew dull grey under the node renderer, seen 11-20); the spin and the glints do the rest */
+                    var mir = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), PAL = [[0.95, 0.95, 1], [1, 0.55, 0.9], [0.55, 0.9, 1], [0.8, 0.8, 0.86], [0.62, 0.62, 0.7], [1, 1, 1]], sd = 7;
+                    gb.traverse(function (n) { if (!n.isMesh || !n.geometry) return; var g2 = n.geometry.index ? n.geometry.toNonIndexed() : n.geometry.clone(), cnt = g2.attributes.position.count, cl = new Float32Array(cnt * 3);
+                        for (var tq = 0; tq < cnt; tq += 3) { sd = (sd * 1103515245 + 12345) & 0x7fffffff; var pc = PAL[sd % PAL.length], br = 0.7 + 0.3 * ((sd >> 8) % 100) / 100; for (var vq = 0; vq < 3 && tq + vq < cnt; vq++) { cl[(tq + vq) * 3] = pc[0] * br; cl[(tq + vq) * 3 + 1] = pc[1] * br; cl[(tq + vq) * 3 + 2] = pc[2] * br; } }
+                        g2.setAttribute('color', new THREE.BufferAttribute(cl, 3)); g2._ew_wuvOwner = true; n.geometry = g2; n.material = mir; n.frustumCulled = false; });
+                    if (keepFlat) _ewPlKeepFlat(gb); } catch (e) { console.warn('[HQ] the disco ball', e); } } });
+                    bm.position.y = -B.d * kB * 0.5 * U; bw.add(bm); }
+                var sparks = []; for (var q = 0; q < 5; q++) { var spk = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hqUfoSoft(), color: [0xffffff, 0xff8fe0, 0x8fe0ff][q % 3], transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); spk.scale.set(1.6 * U, 1.6 * U, 1); var aq = q * 1.257; spk.position.set(Math.cos(aq) * B.d * kB * 0.55 * U, (q % 2 ? 0.2 : -0.2) * B.d * kB * U, Math.sin(aq) * B.d * kB * 0.55 * U); bw.add(spk); sparks.push(spk); }
+                bw._ewSparks = sparks; g._ewSpinners = [bw];
+            } } catch (e) { console.warn('[HQ] a UFO model', e); }
         return g;
     }
     function _hqSpaceUfoBuild(sp, SG, U, H, K) {
         var T = (typeof HQ_SPACE_UFOS !== 'undefined') ? HQ_SPACE_UFOS : ((typeof window !== 'undefined' && window.HQ_SPACE_UFOS) || null); if (!T || !T.crafts) return;
         var homes = {}; (sp.round || []).forEach(function (r) { homes[r.id] = { c: r.c, R: r.R + (r.top || 0) }; }); (sp.planets || []).forEach(function (p) { homes[p.id] = { c: [p.x, p.y, p.z], R: p.r }; });
         var F = sp.rocks || { c: [-4900, 2650, 400], r: [750, 260, 1900] }; homes.rocks = { c: F.c, R: 500 };
-        var ADD = THREE.AdditiveBlending, soft = K.glowTex(0.02, true), list = [];
+        var ADD = THREE.AdditiveBlending, soft = K.glowTex(0.02, true), list = [], spinners = [];
         var spr = function (col, op) { var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: soft, color: col, transparent: true, opacity: op, depthWrite: false, blending: ADD, fog: false })); return s; };
         var beamT = K.cv(64, 128, function (c, w, h) { var gr = c.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
             for (var y = 0; y < h; y += 8) { c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, y, w, 3); } });
@@ -91557,9 +91596,10 @@ const ThreeRenderer = (function () {
             var beam = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ map: beamT, color: 0x9fffd8, transparent: true, opacity: 0.55, depthWrite: false, blending: ADD, side: THREE.DoubleSide, fog: false }));
             beam.visible = false; beam.frustumCulled = false; SG.add(beam);
             var inc = (row.inc != null ? row.inc : 0.3 + (i * 0.37) % 0.9), rr = Math.max(home.R * (row.orbitK || 2.4), home.R + 90);
+            (body._ewSpinners || []).forEach(function (sw) { spinners.push(sw); });
             list.push({ row: row, lk: lk, g: g, body: body, halo: halo, mark: mark, lights: lights, beam: beam, home: home, rr: rr, inc: inc, a: i * 1.9, st: 'patrol', t: 0, p: [0, 0, 0] });
         });
-        H._spaceUfos = { list: list, T: T, cool: 8 };
+        H._spaceUfos = { list: list, T: T, cool: 8, spinners: spinners };
         _ewPlKeepFlat(SG);
     }
     function _hqUfoPatrolAt(u, out) {
@@ -91570,6 +91610,7 @@ const ThreeRenderer = (function () {
     function _hqSpaceUfoTick(H, dt, flying, Vs, U, t, cam) {
         var S = H._spaceUfos; if (!S) return; var T = S.T, list = S.list;
         S.cool = Math.max(0, S.cool - dt);
+        var SP = S.spinners || []; for (var si = 0; si < SP.length; si++) { var sw = SP[si]; sw.rotation.y += dt * sw._ewSpin; var sk = sw._ewSparks || []; for (var sj = 0; sj < sk.length; sj++) sk[sj].material.opacity = Math.max(0, Math.sin(t * 7 + sj * 2.1 + si)) * 0.9; }   // (Barbarella's ball)
         var busy = false; for (var b = 0; b < list.length; b++) if (list[b].st === 'beam' || list[b].st === 'landed') busy = true;
         var canHunt = flying && Vs && !Vs.launch && !Vs.beam && S.cool <= 0 && !busy && !(typeof window !== 'undefined' && window.EW_NO_UFO_HUNT);
         for (var i = 0; i < list.length; i++) {
@@ -91599,7 +91640,7 @@ const ThreeRenderer = (function () {
             /* the look */
             u.g.visible = u.st !== 'landed';
             u.g.position.set(p[0] * U, p[1] * U, p[2] * U);
-            if (u.lk.code === 'tictac' || u.lk.cat === 'ufo') { var vx = (u.st === 'patrol' ? -Math.sin(u.a) : 0), vz = (u.st === 'patrol' ? Math.cos(u.a) : 0); if (u.st === 'hunt' && Vs) { vx = Vs.x - p[0]; vz = Vs.z - p[2]; } if (vx || vz) u.body.rotation.y += (Math.atan2(vx, vz) - u.body.rotation.y) * Math.min(1, dt * 2); }
+            if (u.lk.nose != null) { var vx = (u.st === 'patrol' ? -Math.sin(u.a) : 0), vz = (u.st === 'patrol' ? Math.cos(u.a) : 0); if (u.st === 'hunt' && Vs) { vx = Vs.x - p[0]; vz = Vs.z - p[2]; } if (vx || vz) u.body.rotation.y += (Math.atan2(vx, vz) - u.body.rotation.y) * Math.min(1, dt * 2); }
             else u.body.rotation.y += dt * (u.st === 'hunt' ? 2.2 : 0.6);
             var hunting = u.st === 'hunt' || u.st === 'beam' || u.st === 'lock', dc = cam ? cam.position.distanceTo(u.g.position) / U : 1000, far = Math.max(u.lk.span * 2.4, dc * 0.018);
             u.halo.scale.set(far * U, far * U, 1); u.halo.material.opacity = hunting ? 0.25 : 0.5;
@@ -91663,11 +91704,13 @@ const ThreeRenderer = (function () {
         u.st = 'landed'; u.t = 0; u.fired = false; u.crew = []; u.landed = null;
         /* its spot: 12 to 20 m from the walker, away from the ship */
         var ax = pl.x - B.pad.x, az = pl.z - B.pad.z, al = Math.hypot(ax, az) || 1, spot = null;
-        for (var r = 13; r <= 24 && !spot; r += 3.5) for (var k = 0; k < 9 && !spot; k++) { var a = Math.atan2(az / al, ax / al) + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.35, x = pl.x + Math.cos(a) * r, z = pl.z + Math.sin(a) * r; if (_hqShipPadOk(W, x, z)) spot = { x: x, z: z }; }
+        var r0 = Math.max(13, lk.span * 0.7);
+        for (var r = r0; r <= r0 + 14 && !spot; r += 3.5) for (var k = 0; k < 9 && !spot; k++) { var a = Math.atan2(az / al, ax / al) + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.35, x = pl.x + Math.cos(a) * r, z = pl.z + Math.sin(a) * r; if (_hqShipPadOk(W, x, z)) spot = { x: x, z: z }; }
         if (!spot) spot = { x: pl.x + ax / al * 10, z: pl.z + az / al * 10 };
         var gy = hqTerrainHeight(ti, spot.x, spot.z);
         if (!lk.crewIsCraft) {   // the landed craft (drawn on the ball: it is a piece on the net, bent by its middle)
-            var lg = _hqUfoModel(lk, U, false); lg.position.set(spot.x * U, (gy + lk.span * 0.14) * U, spot.z * U); lg.name = 'ew_ufo_landed';
+            var lg = _hqUfoModel(lk, U, false); lg.position.set(spot.x * U, (gy + lk.span * 0.14) * U, spot.z * U); lg.name = 'ew_ufo_landed'; lg.rotation.y = Math.atan2(pl.x - spot.x, pl.z - spot.z);   // (its nose at you)
+            (lg._ewSpinners || []).forEach(function (sw) { if (H._spaceUfos) H._spaceUfos.spinners.push(sw); });
             (H.propGroup || H.partRoot || H.scene).add(lg); u.landed = lg;
         }
         /* the crew */
@@ -91700,6 +91743,7 @@ const ThreeRenderer = (function () {
         }
         /* aboard again: the craft lifts off and goes back on patrol */
         if (flying && Vs && !Vs.launch) {
+            if (u.landed && H._spaceUfos && u.landed._ewSpinners) { var gone = u.landed._ewSpinners; H._spaceUfos.spinners = H._spaceUfos.spinners.filter(function (sw) { return gone.indexOf(sw) < 0; }); }
             if (u.landed) { try { if (u.landed.parent) u.landed.parent.remove(u.landed); u.landed.traverse(function (o) { if (o.geometry && o.geometry.dispose) o.geometry.dispose(); }); } catch (e) {} u.landed = null; }
             u.p[0] = Vs.x + 60; u.p[1] = Vs.y + 120; u.p[2] = Vs.z + 60; u.st = 'return'; u.t = 0;
             if (H._spaceUfos) H._spaceUfos.cool = H._spaceUfos.T.coolSec;
