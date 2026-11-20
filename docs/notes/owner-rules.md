@@ -82,6 +82,12 @@ then tough shit. The player experience should be the same"): no weak-PC cut may 
 - **Smoke is never modelled in 3D** (11-16: "don't 3d model smoke, it looks terrible"). **Torches are variants of the torches already in
   the game** (`cave_torch`, `wall_torch`, the taller `tiki_torch`), never drawn stand-ins. **A model never stands cut off by water or
   ground**: tentacles are the symbiote's black spell tendrils (the catalogue's `goo_tendril`, as in the Sewers' sludge and the Beach's sea), never the Meshy kraken arm models (`tentacle`, `tentacle2`: "messed up").
+- **TRAILS ARE LAID ON THE BATTLE GRID (mondo 11-20).** A trail is whole 3.5 m squares: straight legs along the grid, right-angle turns, whole cells wide ("Those zig zag
+  trails follow the square tile grid of the game/combat? Are you sure?"; "let's not make trails that completely disregard the combat system and movement"). A main trail snakes from row to
+  row of plots and climbs by switchbacks, never straight down a row ("like the routes in Pokemon"). A plan for a room is drawn square by square, never as lines over plot boxes.
+- **A LEDGE (mondo 11-20):** "It's a ledge. You walk off it and fall. It's not that difficult. The ledge should be tall enough that you can't jump up to it from below. That is the
+  whole point. Making a shortcut on the way down so you don't have to go through the windy trail." Plain ground with a drop, no new mechanic: one level (1.75 m) or more, over the
+  walker's jump (1.46 m, three-renderer.js `HQ_JUMP_V`) and step (0.62 m, `HQ_STEP_TOL`). Never a way up. Never ask him how ledges work.
 - **Trees** stand only on grass, dirt, sand or in planters, never on concrete.
 - **Prop placement (all interiors too):** barriers and blockers snap centred on whole 3.5 m squares, and multi-square
   pieces fill whole squares. Walkways are whole cells wide, nothing half across two cells. Cosmetic decor sits OFF

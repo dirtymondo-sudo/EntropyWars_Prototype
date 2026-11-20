@@ -553,7 +553,7 @@
         {"n":"The Floes","x":4,"y":51,"was":"P04-05"},
         {"n":"The Calving Face","x":5,"y":51,"was":"P05-05"}
       ]},
-    {"id":"woods","hub":"woods","zone":"The Woods","name":"The Clearing","state":"moves","layer":"surface","x":-17,"y":0,"w":5,"h":5,"shape":"path","count":9,"today":{"room":"site_prebuilt_fairy_forest_plots","districts":["C"]},
+    {"id":"woods","hub":"woods","zone":"The Woods","name":"The Clearing","state":"moves","layer":"surface","x":-17,"y":0,"w":5,"h":5,"shape":"band","count":15,"today":{"room":"site_prebuilt_fairy_forest_plots","districts":["C"]},
       "plots": [
         {"n":"The Stair","x":-14,"y":0,"was":"P02-04"},
         {"n":"The Old Tree","x":-15,"y":1,"was":"P01-03"},
@@ -563,7 +563,13 @@
         {"n":"Deep woods, west","x":-17,"y":1,"was":"P00-04"},
         {"n":"The Campfire","x":-14,"y":2,"was":"P01-04"},
         {"n":"Deep woods, south","x":-14,"y":3,"was":"P00-05"},
-        {"n":"The Fence Line","x":-14,"y":4,"was":"P01-05"}
+        {"n":"The Fence Line","x":-14,"y":4,"was":"P01-05"},
+        {"n":"The North Rise","x":-15,"y":0},
+        {"n":"The Climb","x":-13,"y":0},
+        {"n":"The Burned House","x":-16,"y":2},
+        {"n":"The Stick Men","x":-15,"y":2},
+        {"n":"Under the Bluff","x":-13,"y":2},
+        {"n":"The Dead End","x":-13,"y":3}
       ]},
     {"id":"woodsT","hub":"woods","zone":"The Woods","name":"The Redwood Trail","state":"moves","layer":"surface","x":-17,"y":-9,"w":2,"h":8,"shape":"path","count":9,"today":{"room":"site_prebuilt_fairy_forest_plots","districts":["T"]},
       "plots": [
