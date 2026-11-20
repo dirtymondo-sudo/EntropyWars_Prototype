@@ -2233,10 +2233,24 @@ three-renderer.js `_gearBuild` THE BUBBLE HELMET re-centres the collar on the do
 opacity 0.16, depthWrite off, renderOrder 3), both hung on the Head bone. Sprites (Sprite AI restyle, 128x128): pharaoh_px, pharaoh_f_px,
 deep_sea_diver_f_px; the pharaoh sprites came from model front renders (the background cut ate the white linen).
 
-## THE KATANA + FLORA MESHY BATCH (2026-11-20, plan only so far)
+## THE KATANA + FLORA MESHY BATCH (2026-11-20, MADE + IN THE CATALOGUE)
 mondo 11-20 picked the first batch of Meshy pieces from the flora thread's gap list + the Katana Island model list: the top 14
 non-tree pieces (torii, stone lantern, komainu, kitsune, Buddha, temple bell, offering box, red arched bridge, koi, lotus, barrel
 cactus, rice, wheat, sake barrel) + four trees under a one-time exception to his no-Meshy-trees rule (bamboo, giant redwood,
 jungle tree, Joshua tree). The rows, prompts and triangle targets: `docs/plans/meshy-flora-katana/batch1.json`; the flow (concepts
 -> his OK -> low-poly models -> his OK -> wired) and his concept rules: `BATCH1.md` there. To be run on the `r2` cloud
 environment (the Meshy + Cloudflare secrets live there). NOTHING made yet; log what gets made, and what he says, here.
+
+MADE 11-20 (thread "Make the Katana Meshy batch"): the 18 concepts; two redone before he saw them (sake barrel bands read as rope,
+wheat came out a tied sheaf). His OK on all but the jungle tree (redone) and his ask to add THE SHOGUN ARMOUR + THE KATANA, made as
+four pieces under his holder rule: `samurai_armour` (hollow o-yoroi, no sword), `samurai_armour_stand` (the empty stand), `katana`
+(bare blade), `katana_scabbard` (empty saya). All 22 modelled (image-to-3D meshy-t2.5 smart-topology at the row's triangles), his OK
+on the renders, then "add them to the model list so I can tell another thread on another computer to use them". Wired: GLBs (base
+y 0, centred, metallic 0) + `.opt.glb` on R2 `Assets/world/props/meshy/katana/` (14 Katana props) and `Assets/world/nature/flora/
+meshy/` (4 plants, 4 trees), ASSET_MANIFEST rows, data.js HQ_CATALOGUE_ALL rows `kt_<key>` / `fl_<key>` (prefixed: `stone_lantern`
+and the creator's `ewm_katana` already exist), the four trees also HQ_TREE_KINDS `fl_bamboo_clump`, `fl_giant_redwood`,
+`fl_jungle_tree`, `fl_joshua_tree` (a `tree` row with that kind + its own h), list-models.js SOURCES row, MODEL_LIST.md. NOT placed
+anywhere: Katana Island's are the Katana holder's (claims.md), other zones' their holders'. Known flaws: the offering box has dark
+patches on its sides; Meshy gave the lotus a stem under its pads (sink it into the water). Sizes in the rows are real-world guesses.
+Meshy: 1002 credits before, 447 after (image 9, model 15). Concepts, renders, batch1.json (with the 4 added rows), scripts and Meshy
+task ids: project files `meshy-flora-katana-b1/` (owner account only).

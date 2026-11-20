@@ -1,42 +1,160 @@
 {
-  "_about": "THE KATANA + FLORA MESHY BATCH 1 (mondo 11-20). Read BATCH1.md first. status: concept -> (mondo OK) -> model -> (mondo OK) -> wired. tris = Meshy target_polycount (triangles, smart-topology).",
-  "style": "single isolated 3D game prop, stylized realistic, clean simple shapes for a low-poly model, hand-painted look, matte, full object in view, three-quarter view from slightly above, plain flat light grey background, no ground plane, no shadow, no text, no people",
-  "pieces": [
-    { "id": "K01", "key": "torii_gate", "tris": 4000, "use": "Katana: the bay's big gate; the same model scaled down for the shrine stair's small ones",
-      "prompt": "a Japanese Shinto torii gate, two thick round vermilion-red pillars on black stone feet, a straight tie beam (nuki) below a black top lintel (kasagi) that curves up at both ends, a small vertical plaque in the middle with no writing, no rope, no paper streamers" },
-    { "id": "K02", "key": "stone_lantern", "tris": 3000, "use": "Katana: shrine paths, the temple, the castle garden, the bath house",
-      "prompt": "a Japanese stone garden lantern (ishi-doro, kasuga style), grey weathered granite, round post on a hexagonal base, open-sided firebox with empty dark openings, a wide hexagonal roof cap with curled corners and a small jewel finial, moss in the cracks, no light, no flame" },
-    { "id": "K03", "key": "komainu", "tris": 6000, "use": "Katana: shrine guardians in pairs (mirror one for the other side)",
-      "prompt": "a Japanese stone komainu lion-dog guardian statue sitting upright on a square stone plinth, curly mane, open mouth, one front paw on a ball, weathered grey stone with a little moss, no paint" },
-    { "id": "K04", "key": "kitsune_statue", "tris": 6000, "use": "Katana: the fox shrine; a pair beside a small torii",
-      "prompt": "a Japanese stone kitsune fox guardian statue sitting upright on a square stone plinth, long bushy tail curled up behind, pointed ears, a small round jewel held in its mouth, weathered grey stone, no cloth bib, no rope" },
-    { "id": "K05", "key": "stone_buddha", "tris": 8000, "use": "Katana: the temple hall, a hillside niche, the Woods-style shrine",
-      "prompt": "a seated stone Buddha statue in meditation, legs crossed, hands resting in the lap, calm face, tight curled hair, sitting on a round lotus-petal stone base, weathered grey-green stone with a little moss" },
-    { "id": "K06", "key": "temple_bell", "tris": 3000, "use": "Katana: the bell for the temple's belfry (the belfry stays code-built)",
-      "prompt": "a large Japanese bronze temple bell (bonsho), tall barrel shape with a rounded top and a dragon-head loop on top, a grid of raised studs on the upper body, two round striking pads, dark green-brown aged bronze, the bell alone, no frame, no rope, no wooden striker" },
-    { "id": "K07", "key": "offering_box", "tris": 1500, "use": "Katana: in front of every shrine and the temple hall",
-      "prompt": "a Japanese shrine offering box (saisen-bako), a wide low wooden chest with a slatted top of angled wooden bars, dark brown wood with black iron corner fittings, a plain front with no writing" },
-    { "id": "K08", "key": "taiko_bridge", "tris": 6000, "use": "Katana: the castle garden pond, the temple stream; walkable (blockers by its own box)",
-      "prompt": "a Japanese arched garden footbridge (taiko-bashi), a high half-moon wooden arch over open space, vermilion-red painted railings with round posts and black post caps on both sides, plain wooden plank deck, stone footings at both ends, about six metres long" },
-    { "id": "K09", "key": "koi", "tris": 1500, "use": "Katana: ponds; swims in code, so a straight body (no bend)",
-      "prompt": "a single Japanese koi carp fish, straight body seen from the side, long flowing fins and tail, white with orange-red and black patches, smooth scales" },
-    { "id": "P01", "key": "lotus", "tris": 1500, "use": "every pond and lake (Estate lake, Camelot moat, Katana ponds, Fairy Forest); the flat lily pads are code cards, this is the flower",
-      "prompt": "a pink lotus flower in full bloom with a yellow centre, sitting on two flat round green lily pads, water plant, the lily pads flat and the flower upright, no water" },
-    { "id": "P02", "key": "barrel_cactus", "tris": 2000, "use": "the Desert, the scrub routes; beside the saguaro and Joshua trees",
-      "prompt": "a round barrel cactus, a fat ribbed green globe about knee high, long curved yellow-red spines along the ribs, a small crown of yellow flowers on top, a little sand mound at the base" },
-    { "id": "P03", "key": "rice_clump", "tris": 2500, "use": "Katana: the paddies (planted in rows in water); the Leylines fields",
-      "prompt": "a single clump of young rice plants, many thin upright bright green blades with a few drooping golden grain heads, the roots gathered in one small tuft, no water, no soil" },
-    { "id": "P04", "key": "wheat_clump", "tris": 2500, "use": "Leylines (the Fertile Crescent), the Ranch; planted in rows as fields",
-      "prompt": "a single clump of ripe golden wheat, a dozen upright stalks with full bearded wheat ears, a few thin leaves, golden yellow, the base gathered in one small tuft, no soil" },
-    { "id": "K10", "key": "sake_barrel", "tris": 2000, "use": "Katana: the brewery, the inn, the temple steps (stacked)",
-      "prompt": "a Japanese sake barrel (komodaru), a round wooden cask wrapped in pale woven straw matting, two dark woven straw bands round it, a plain wooden lid on top, the front matting plain with no writing or label" },
-    { "id": "T01", "key": "bamboo_clump", "tris": 6000, "use": "Katana: groves along the paths, behind the temple and the bath house (mondo 11-20: Meshy trees OK for this batch)",
-      "prompt": "a clump of seven tall green bamboo stalks growing close together, straight jointed segmented stems of different heights, light green with slightly darker nodes, thin branches with narrow green leaves only on the upper half, the bases together in one small clump" },
-    { "id": "T02", "key": "giant_redwood", "tris": 10000, "use": "The Woods: the Redwood Trail (a trunk you walk between; today faked with firs)",
-      "prompt": "a giant coast redwood tree, an enormous straight trunk very wide at the base with flared roots, thick deeply furrowed red-brown fibrous bark, no branches on the lower half, short drooping branches with dark green needle foliage only near the top, very tall" },
-    { "id": "T03", "key": "jungle_tree", "tris": 10000, "use": "Katana's jungle, the Volcano Island, Hollow Earth (today palms + ferns)",
-      "prompt": "a tall tropical rainforest tree, a straight pale grey trunk with big flat buttress roots fanning out at the base, a wide flat umbrella-shaped crown of broad dark green leaves on top, a few thick woody vines hanging straight down from the branches" },
-    { "id": "T04", "key": "joshua_tree", "tris": 6000, "use": "the Desert (Area 51 country), the scrub routes",
-      "prompt": "a Joshua tree, a shaggy grey-brown trunk splitting into a few twisted crooked arms, each arm ending in a round spiky cluster of stiff blue-green dagger leaves, dry dead leaves hanging down the trunk like a skirt, a desert yucca tree" }
-  ]
+ "_about": "THE KATANA + FLORA MESHY BATCH 1 (mondo 11-20). Read BATCH1.md first. status: concept -> (mondo OK) -> model -> (mondo OK) -> wired. tris = Meshy target_polycount (triangles, smart-topology).",
+ "style": "single isolated 3D game prop, stylized realistic, clean simple shapes for a low-poly model, hand-painted look, matte, full object in view, three-quarter view from slightly above, plain flat light grey background, no ground plane, no shadow, no text, no people",
+ "pieces": [
+  {
+   "id": "K01",
+   "key": "torii_gate",
+   "tris": 4000,
+   "use": "Katana: the bay's big gate; the same model scaled down for the shrine stair's small ones",
+   "prompt": "a Japanese Shinto torii gate, two thick round vermilion-red pillars on black stone feet, a straight tie beam (nuki) below a black top lintel (kasagi) that curves up at both ends, a small vertical plaque in the middle with no writing, no rope, no paper streamers"
+  },
+  {
+   "id": "K02",
+   "key": "stone_lantern",
+   "tris": 3000,
+   "use": "Katana: shrine paths, the temple, the castle garden, the bath house",
+   "prompt": "a Japanese stone garden lantern (ishi-doro, kasuga style), grey weathered granite, round post on a hexagonal base, open-sided firebox with empty dark openings, a wide hexagonal roof cap with curled corners and a small jewel finial, moss in the cracks, no light, no flame"
+  },
+  {
+   "id": "K03",
+   "key": "komainu",
+   "tris": 6000,
+   "use": "Katana: shrine guardians in pairs (mirror one for the other side)",
+   "prompt": "a Japanese stone komainu lion-dog guardian statue sitting upright on a square stone plinth, curly mane, open mouth, one front paw on a ball, weathered grey stone with a little moss, no paint"
+  },
+  {
+   "id": "K04",
+   "key": "kitsune_statue",
+   "tris": 6000,
+   "use": "Katana: the fox shrine; a pair beside a small torii",
+   "prompt": "a Japanese stone kitsune fox guardian statue sitting upright on a square stone plinth, long bushy tail curled up behind, pointed ears, a small round jewel held in its mouth, weathered grey stone, no cloth bib, no rope"
+  },
+  {
+   "id": "K05",
+   "key": "stone_buddha",
+   "tris": 8000,
+   "use": "Katana: the temple hall, a hillside niche, the Woods-style shrine",
+   "prompt": "a seated stone Buddha statue in meditation, legs crossed, hands resting in the lap, calm face, tight curled hair, sitting on a round lotus-petal stone base, weathered grey-green stone with a little moss"
+  },
+  {
+   "id": "K06",
+   "key": "temple_bell",
+   "tris": 3000,
+   "use": "Katana: the bell for the temple's belfry (the belfry stays code-built)",
+   "prompt": "a large Japanese bronze temple bell (bonsho), tall barrel shape with a rounded top and a dragon-head loop on top, a grid of raised studs on the upper body, two round striking pads, dark green-brown aged bronze, the bell alone, no frame, no rope, no wooden striker"
+  },
+  {
+   "id": "K07",
+   "key": "offering_box",
+   "tris": 1500,
+   "use": "Katana: in front of every shrine and the temple hall",
+   "prompt": "a Japanese shrine offering box (saisen-bako), a wide low wooden chest with a slatted top of angled wooden bars, dark brown wood with black iron corner fittings, a plain front with no writing"
+  },
+  {
+   "id": "K08",
+   "key": "taiko_bridge",
+   "tris": 6000,
+   "use": "Katana: the castle garden pond, the temple stream; walkable (blockers by its own box)",
+   "prompt": "a Japanese arched garden footbridge (taiko-bashi), a high half-moon wooden arch over open space, vermilion-red painted railings with round posts and black post caps on both sides, plain wooden plank deck, stone footings at both ends, about six metres long"
+  },
+  {
+   "id": "K09",
+   "key": "koi",
+   "tris": 1500,
+   "use": "Katana: ponds; swims in code, so a straight body (no bend)",
+   "prompt": "a single Japanese koi carp fish, straight body seen from the side, long flowing fins and tail, white with orange-red and black patches, smooth scales"
+  },
+  {
+   "id": "P01",
+   "key": "lotus",
+   "tris": 1500,
+   "use": "every pond and lake (Estate lake, Camelot moat, Katana ponds, Fairy Forest); the flat lily pads are code cards, this is the flower",
+   "prompt": "a pink lotus flower in full bloom with a yellow centre, sitting on two flat round green lily pads, water plant, the lily pads flat and the flower upright, no water"
+  },
+  {
+   "id": "P02",
+   "key": "barrel_cactus",
+   "tris": 2000,
+   "use": "the Desert, the scrub routes; beside the saguaro and Joshua trees",
+   "prompt": "a round barrel cactus, a fat ribbed green globe about knee high, long curved yellow-red spines along the ribs, a small crown of yellow flowers on top, a little sand mound at the base"
+  },
+  {
+   "id": "P03",
+   "key": "rice_clump",
+   "tris": 2500,
+   "use": "Katana: the paddies (planted in rows in water); the Leylines fields",
+   "prompt": "a single clump of young rice plants, many thin upright bright green blades with a few drooping golden grain heads, the roots gathered in one small tuft, no water, no soil"
+  },
+  {
+   "id": "P04",
+   "key": "wheat_clump",
+   "tris": 2500,
+   "use": "Leylines (the Fertile Crescent), the Ranch; planted in rows as fields",
+   "prompt": "a single clump of ripe golden wheat growing from the ground, a dozen upright stalks with full bearded wheat ears, a few thin leaves, golden yellow, the stalk bases close together in one small tuft, not tied, no band, no string, not a bundle or sheaf, no soil"
+  },
+  {
+   "id": "K10",
+   "key": "sake_barrel",
+   "tris": 2000,
+   "use": "Katana: the brewery, the inn, the temple steps (stacked)",
+   "prompt": "a Japanese sake barrel (komodaru), a round wooden cask wrapped in pale woven straw matting, two flat smooth dark woven bands painted round it (flat bands, not ropes, no knots, no cords), a plain wooden lid on top, the front matting plain with no writing or label"
+  },
+  {
+   "id": "T01",
+   "key": "bamboo_clump",
+   "tris": 6000,
+   "use": "Katana: groves along the paths, behind the temple and the bath house (mondo 11-20: Meshy trees OK for this batch)",
+   "prompt": "a clump of seven tall green bamboo stalks growing close together, straight jointed segmented stems of different heights, light green with slightly darker nodes, thin branches with narrow green leaves only on the upper half, the bases together in one small clump"
+  },
+  {
+   "id": "T02",
+   "key": "giant_redwood",
+   "tris": 10000,
+   "use": "The Woods: the Redwood Trail (a trunk you walk between; today faked with firs)",
+   "prompt": "a giant coast redwood tree, an enormous straight trunk very wide at the base with flared roots, thick deeply furrowed red-brown fibrous bark, no branches on the lower half, short drooping branches with dark green needle foliage only near the top, very tall"
+  },
+  {
+   "id": "T03",
+   "key": "jungle_tree",
+   "tris": 10000,
+   "use": "Katana's jungle, the Volcano Island, Hollow Earth (today palms + ferns)",
+   "prompt": "a tall tropical rainforest tree, a tall straight dark brown trunk with mossy bark and big flat buttress roots fanning out at the base, a wide spreading crown of many dense clusters of broad glossy dark green leaves, a few thin dark green vines hanging straight down from the branches, no loops, lush and natural"
+  },
+  {
+   "id": "T04",
+   "key": "joshua_tree",
+   "tris": 6000,
+   "use": "the Desert (Area 51 country), the scrub routes",
+   "prompt": "a Joshua tree, a shaggy grey-brown trunk splitting into a few twisted crooked arms, each arm ending in a round spiky cluster of stiff blue-green dagger leaves, dry dead leaves hanging down the trunk like a skirt, a desert yucca tree"
+  },
+  {
+   "id": "K11",
+   "key": "samurai_armour",
+   "tris": 10000,
+   "use": "Katana: the castle keep, the dojo, the shogun's hall; stands on samurai_armour_stand (holder and held are separate pieces)",
+   "prompt": "a full Japanese shogun samurai armour (o-yoroi) displayed as if worn but hollow with no person inside, horned kabuto helmet with a gold crest, a black iron face mask (menpo), lacquered red and black lamellar plates laced with dark blue silk lacing, big square shoulder guards (sode), a skirt of plates, sleeves and shin guards, no sword, no weapon, no stand, standing upright, front view"
+  },
+  {
+   "id": "K12",
+   "key": "samurai_armour_stand",
+   "tris": 2000,
+   "use": "Katana: the empty stand the armour sits on (also usable bare)",
+   "prompt": "an empty Japanese armour display stand (yoroi-bitsu box with a wooden cross-shaped stand on top), a black lacquered wooden storage box as the seat, a tall upright wooden post with a horizontal shoulder bar, plain dark wood, nothing on it, no armour, no writing"
+  },
+  {
+   "id": "K13",
+   "key": "katana",
+   "tris": 1500,
+   "use": "Katana: held prop, sword racks, the shogun's hall; a bare blade (the scabbard is its own piece)",
+   "prompt": "a single Japanese katana sword with the blade drawn, a long slightly curved polished steel blade with a wavy temper line, a round black iron guard (tsuba), a long handle wrapped in black diamond-pattern wrap over white, lying horizontal, side view, no scabbard, no stand"
+  },
+  {
+   "id": "K14",
+   "key": "katana_scabbard",
+   "tris": 800,
+   "use": "Katana: the empty scabbard, for racks and belts beside the bare blade",
+   "prompt": "an empty Japanese katana scabbard (saya), a long slightly curved glossy black lacquered wooden sheath, a small dark metal cap at the tip, a plain collar at the mouth, lying horizontal, side view, no sword in it, no cord, no string"
+  }
+ ]
 }
