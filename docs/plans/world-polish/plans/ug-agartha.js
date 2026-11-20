@@ -5,6 +5,11 @@
    docs/areas/cavern/agartha/room.js). THE PILOT (11-20): THE UPPER SHELF, level 134: the Lemuria adit comes in at the north wall
    (2,0); the great chamber is THE ADIT SQUARE (the board, the Great Crystal on it); the terrace grows east 5 squares (THE UPPER TERRACE,
    the Hall of Records on it); two homes are cut in the rock round it. The maze, its levels, ladders, cliffs and pits are not changed.
+   PASS 2 (11-20, mondo: "okay continue"): THE TERRACES, the middle shelf (chambers 2,3 at 125 and 3,3 at 124): a marble stair between the
+   two squares (34..37 x 42..44, a ramp a level over two squares), a house cut in the west rock, a house in the east rock, the Gatehouse by
+   the way down to the Long Tunnel. THE SPIRE, the lower shelf: the Temple in chamber 2,0 (120; no longer a board); chamber 3,0 (118) is a
+   ring round a pit 6 levels deep, black water in it, the Spire on an island in its middle, four crystal bridges from the ring to the
+   island, a ladder up out of the pit. Every join and its level is unchanged.
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/ug-agartha.js
    A LABYRINTH (mondo 11-20: "we need victory road. labyrinth, height diffs, cliffs, drops waterfalls, underground horror like the descent movie").
    Every plot is a JUNCTION (4 x 4) or a CHAMBER (8 x 8, a board fits) at its own level. Passages are 2 squares wide and bend at every plot line.
@@ -159,6 +164,18 @@ newRoom: 'a new compact room for this district (the layout replaces the long cor
         ['area', 10, 2, 14, 6, 'k', 134],   // THE HALL OF RECORDS
         ['area', 0, 4, 1, 7, 'k', 134],     // a home cut in the west rock (its door east onto the Adit Square)
         ['area', 9, 10, 12, 12, 'k', 134],  // a home cut in the south rock (its door north onto the terrace)
+        /* PASS 2, THE TERRACES (the middle shelf) */
+        ['area', 34, 42, 35, 44, 'c', 125],
+        ['ramp', 36, 42, 124.75, -1, 0], ['ramp', 36, 43, 124.75, -1, 0], ['ramp', 36, 44, 124.75, -1, 0],
+        ['ramp', 37, 42, 124.25, -1, 0], ['ramp', 37, 43, 124.25, -1, 0], ['ramp', 37, 44, 124.25, -1, 0],
+        ['area', 22, 38, 25, 41, 'k', 125],     // a house in the west rock (its door east onto the Plaza)
+        ['area', 48, 42, 51, 44, 'k', 124],     // a house in the east rock (its door west onto the way east)
+        ['area', 38, 46, 41, 47, 'k', 124],     // the Gatehouse (its door north onto the Inner Gate)
+        /* PASS 2, THE SPIRE (the lower shelf) */
+        ['area', 27, 2, 32, 5, 'k', 120],       // the Temple
+        ['area', 40, 4, 43, 7, 'w', 112],       // the pit round the Spire: black water 6 levels down
+        ['area', 41, 5, 42, 6, 'k', 118],       // the Spire's island
+        ['set', 40, 7, 'g', 112],               // the foot of the ladder out of the pit
         ['set', 6, 6, 'k', 134],
         ['label', 6.5, 10.6, "CLIFF", 'mark'],
         ['label', 23.5, 17.6, "CLIFF", 'mark'],
@@ -173,7 +190,8 @@ newRoom: 'a new compact room for this district (the layout replaces the long cor
         ['label', 30, 41.6, "chamber", 'note'],
         ['label', 42, 5.6, "chamber", 'note'],
         ['label', 42, 41.6, "chamber", 'note']],
-    stairs: [[[16, 11], [16, 12]], [[18, 23], [18, 24]], [[11, 30], [12, 30]], [[6, 23], [6, 24]], [[11, 40], [12, 40]], [[23, 43], [24, 43]], [[31, 35], [31, 36]], [[28, 23], [28, 24]], [[28, 11], [28, 12]], [[35, 3], [36, 3]], [[42, 11], [42, 12]], [[35, 39], [36, 39]], [[41, 35], [41, 36]], [[47, 16], [48, 16]], [[47, 40], [48, 40]], [[54, 11], [54, 12]], [[5, 44], [5, 43]], [[17, 3], [17, 4]], [[20, 29], [19, 29]], [[17, 44], [17, 43]], [[41, 20], [41, 19]], [[41, 27], [41, 28]], [[53, 3], [53, 4]], [[56, 17], [55, 17]], [[56, 29], [55, 29]]],
+    bridges: [[[39, 5], [41, 5]], [[44, 6], [42, 6]], [[41, 3], [41, 5]], [[42, 8], [42, 6]]],   // the crystal bridges to the Spire's island
+    stairs: [[[40, 7], [39, 7]], [[16, 11], [16, 12]], [[18, 23], [18, 24]], [[11, 30], [12, 30]], [[6, 23], [6, 24]], [[11, 40], [12, 40]], [[23, 43], [24, 43]], [[31, 35], [31, 36]], [[28, 23], [28, 24]], [[28, 11], [28, 12]], [[35, 3], [36, 3]], [[42, 11], [42, 12]], [[35, 39], [36, 39]], [[41, 35], [41, 36]], [[47, 16], [48, 16]], [[47, 40], [48, 40]], [[54, 11], [54, 12]], [[5, 44], [5, 43]], [[17, 3], [17, 4]], [[20, 29], [19, 29]], [[17, 44], [17, 43]], [[41, 20], [41, 19]], [[41, 27], [41, 28]], [[53, 3], [53, 4]], [[56, 17], [55, 17]], [[56, 29], [55, 29]]],
     branches: [
         { at: [6, 11], kind: 'drop', to: 'the passage below, off a CLIFF, 8 levels straight down (one way)' },
         { at: [23, 18], kind: 'drop', to: 'the passage below, off a CLIFF, 9 levels straight down (one way)' },
@@ -194,7 +212,7 @@ newRoom: 'a new compact room for this district (the layout replaces the long cor
         { at: [56, 29], kind: 'dead end', to: 'a pit two levels down with a ladder out: a crystal pocket' },
         { at: [52, 40], kind: 'dead end', to: 'a dead end: something is kept here (a secret)' }],
     doors: [[43, 47, 'S', "The Long Tunnel (8 levels down)", 124], [2, 0, 'N', "the Mountains (the Lemuria adit)", 134]],
-    landmarks: [{ name: "The Great Crystal (the great chamber's stalagmite, grown through with crystal)", at: [6, 6], tall: 2 }],
+    landmarks: [{ name: 'The Spire', at: [41, 5], tall: 24 }, { name: "The Great Crystal (the great chamber's stalagmite, grown through with crystal)", at: [6, 6], tall: 2 }],
     lookouts: [{ name: 'the great chamber\'s edge', at: [2, 2], sees: "The Great Crystal (the great chamber's stalagmite, grown through with crystal)" }],
     found: [
         { name: 'a chimney beside the 2-level ladder', from: [16, 12], to: [16, 11], kind: 'climb' },
@@ -220,14 +238,18 @@ newRoom: 'a new compact room for this district (the layout replaces the long cor
     flats: [
         { name: "The Adit Square (chamber 0,0)", rect: [2, 2, 9, 9], why: 'the city\'s first square, where the adit comes in: level, a board fits', board: true },
         { name: "The Upper Terrace", rect: [10, 7, 14, 9], why: 'the Hall of Records\' forecourt, one level with the square' },
-        { name: "Chamber 2,0", rect: [26, 2, 33, 9], why: 'a chamber: level, a board fits', board: true },
-        { name: "Chamber 2,3", rect: [26, 38, 33, 45], why: 'a chamber: level, a board fits', board: true },
-        { name: "Chamber 3,0", rect: [38, 2, 45, 9], why: 'a chamber: level, a board fits', board: true },
-        { name: "Chamber 3,3", rect: [38, 38, 45, 45], why: 'a chamber: level, a board fits', board: true }],
+        { name: "The Temple Court (chamber 2,0)", rect: [26, 6, 33, 9], why: 'the Temple\'s court, one level with it' },
+        { name: "The Plaza (chamber 2,3)", rect: [26, 38, 33, 45], why: 'the Terraces\' upper square: level, a board fits', board: true },
+        { name: "The Spire's ring (chamber 3,0)", rect: [38, 2, 39, 9], why: 'the walk round the pit of the Spire, one level all round' },
+        { name: "The Inner Gate (chamber 3,3)", rect: [38, 38, 45, 45], why: 'the Terraces\' lower square by the way down: level, a board fits', board: true }],
     buildings: [
         { name: 'The Hall of Records', rect: [10, 2, 14, 6], door: 'S', tall: 4, inside: 'one hall of white marble, its shelves of crystal tablets, lecterns, the brass telescope and orrery the old Upper Terrace had' },
         { name: 'A home in the west rock', rect: [0, 4, 1, 7], door: 'E', tall: 2, inside: 'a home cut in the rock: a bed, a table, a crystal lamp' },
-        { name: 'A home in the south rock', rect: [9, 10, 12, 12], door: 'N', tall: 2, inside: 'a home cut in the rock: two rooms, a hearth of crystal, beds' }],
+        { name: 'A home in the south rock', rect: [9, 10, 12, 12], door: 'N', tall: 2, inside: 'a home cut in the rock: two rooms, a hearth of crystal, beds' },
+        { name: 'A house in the west rock (the Terraces)', rect: [22, 38, 25, 41], door: 'E', tall: 2, inside: 'a home: beds, a table, a loom' },
+        { name: 'A house in the east rock (the Terraces)', rect: [48, 42, 51, 44], door: 'W', tall: 2, inside: 'a home: beds, a hearth, shelves' },
+        { name: 'The Gatehouse', rect: [38, 46, 41, 47], door: 'N', tall: 2, inside: 'the guards of the Inner Gate: a table, racks, a cot' },
+        { name: 'The Temple', rect: [27, 2, 32, 5], door: 'S', tall: 4, inside: 'one hall: the altar, the statue, braziers, the lit crystals the city prays to' }],
     picture: { S: 26 },
     pictures: [{ suffix: 'pilot', x0: 0, x1: 23, y0: 0, y1: 47, S: 30, title: 'AGARTHA, THE PILOT: the Upper Shelf (134) and the maze under it (126 to 132)' }],
 };

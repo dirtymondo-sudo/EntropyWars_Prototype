@@ -12718,14 +12718,23 @@ cross the seam". Then: "got pulled by a ufo and for the battle the map was still
   ball (commit f10853d) was a mushroom: the board (84 m, a whole face) is wider than the Moon (R 53.5 m). Probe handles: `hq.dev.plBend`,
   `plFy`, `plBattle`, `plPick`, `plCanvas`; `EWCine.enter({ script: true, force: true })` + `EWCine.pose` for a far look in a fight.
   SEEN (UFO beam-down on the Moon, Barbarella's ship): the battle camera on the curving Moon, the whole Moon round from far off with the
-  fight on top. NOT YET: one straight blue streak at the board's height (a battle piece off the nets); the fight's sky is the battle's
-  green, not the walk's black with stars; a unit standing on a square over a cut seam of the flat net is drawn where that face really is.
+  fight on top. Open: a unit standing on a square over a cut seam of the flat net is drawn where that face really is.
+- **5. THE FIGHT'S SKY** (`_ewPlBattleSpace`, mondo: "okay fix those"). The walk's space pieces (the bodies' group `ew_space_bodies`: the
+  Earth, the Sun, the comet, the station, the other balls' rings; the stars `ew_space_stars`; the flying-only pieces: the engines, the
+  exhaust ribbons, the burner rings, the sun's glare + ghosts, the speed streaks) go into the fight with the room, usually as the PARKED
+  ROOM's copies (`_hqParkClone`), and nothing moved them there. They are tagged `userData.ewSpace` = 'bodies' / 'stars' / 'fly' at their
+  build (the tag survives the copy) and collected at the fight's build (`_hqBuildRoomInBattle`, `_ewPl.bSpace`). Every fight frame: the
+  bodies take the fight's turn (the walk anchor's matrix written in the battle's frame), the stars ride round the battle camera turned the
+  same way (scaled inside the camera's far plane), the flying-only pieces are hidden, the background is black and the fog is off (restored
+  when a fight in another room starts). THE STREAK was the zodiac wheel's rim (`_zwRimMat`, colour 8090c8, the faint ring under the
+  fight's constellations): a sky's ground hides it, against black space it drew a straight line through the fight, so its rim is hidden in a
+  fight on a round world (the constellations stay). SEEN: black space, the stars and the Milky Way round the Moon, no line.
 - **DRIVEN** (playtest_city.js `"drive"`, llvmpipe, the Moon): the board over the half-turn cut seam (face (0,1) north -> the top cap):
   heading 3.14 -> 0 with the eye, rolled on into the new face, no bounce; over a joined seam a third of the way along (face 1 -> 2): heading
   and eye turned 34 degrees together, rolled on, the dish, the container and the sky did not move on screen. The seam's dark crack and lip
   (seen before the stitch, same spot) gone after it, ahead, over and looking back. Probe tip: the room starts aboard; `hq.dev.ship({ x, y,
   z })` near a beacon's `ball` + `up` x 7, then `hq.disembark()`; `skate` / `skateIssued` / `disembark` are on `ThreeRenderer.hq`, not `.dev`.
-- **NOT DONE / NOT CHECKED:** the fight's leftovers (above); a fight on Mars, Saturn or the Singularity; the sheet's grain still turns at a cut seam (a directional pattern meets itself at 90 / 180
+- **NOT DONE / NOT CHECKED:** a fight on Mars, Saturn or the Singularity; the sheet's grain still turns at a cut seam (a directional pattern meets itself at 90 / 180
   degrees); where a cliff crossed a seam on Mars (5 m) the mean leaves a short steep ramp; the shadows' fix was not compared side by side
   (the stitched heights removed the seam's line in the same run); the classic renderer was not run.
 
@@ -13749,6 +13758,23 @@ into, lit by its crystals, with the dark maze round it".
   Long Tunnel seam `ow_h_m15_m8` point here, the old room goes in `DOOR_HQ.retired`, and the room joins `ZONE_LOOKS.zones.cavern.rooms`
   (the retexture thread's row) + the cavern `ZONE_FLORA`. The underground layout drops Agartha's ways to Technoticlan and Antarctica:
   ASK mondo before cutting them (never delete content he did not name).
+- **PASS 2 (11-20, mondo: "okay continue"): THE TERRACES + THE SPIRE.** The middle shelf: THE PLAZA (chamber 2,3, 125, the board, the old
+  Plaza's fountain) and THE INNER GATE (chamber 3,3, 124, the board; crystal-capped piers over the way down to the Long Tunnel) joined by A
+  MARBLE STAIR (the plan's `ramp` squares 36..37 x 42..44, one built flight three squares wide); a house in the west rock, a house in the east
+  rock, THE GATEHOUSE. The lower shelf: THE TEMPLE (27..32 x 2..5, walk-in: the statue, the altar, braziers) and its court; chamber 3,0 is a
+  RING round a pit of black water 6 levels down, THE SPIRE (36 m of lit crystal) on an island in it, FOUR CRYSTAL BRIDGES (the plan's
+  `bridges`, written by the tool as walkable `bridge` rows), a ladder up out of the pit; the Loch Ness Monster in the water. The east maze:
+  a bone pit, a nest (spiders), a crystal pocket, a squeeze, a sump of black water, THE KEPT ROOM (bars, chains). 13 people.
+- **THE UNDERGROUND'S ONE PALETTE (11-20, mondo through the Cavern thread: "don't use the calm textures"; "use these textures too to
+  match"):** marble_light / crystal / cave_* / rocks_5 / dirt_2 all wear CALM sheets (data.js `CALM_TERRAIN.of`). Agartha's raw rock is the
+  Cavern's set (`hz_stone_01` walls + roof + cliff, `hz_stone_02` floor and stalactites, `hz_floor_03` mud, `hz_stone_06` mineral); its city
+  `hz_wall_01` (cream stone) for the marble, `hz_stone_12` for floors, `hz_misc_05` for the crystal (the tool's `PAINT_OF` maps the design
+  file's old names).
+- **LEARNT (11-20):** a plateau's `h` in a height-sheet room is over the ground; an `arch` row's `base` is absolute. A rock square's face
+  leans about a node (0.875 m) into the open square beside it: a building beside rock keeps its wall 1 m in (the tool does it), a prop 0.9 m
+  off. The sheet BLENDS at shared corners: a deep bed beside a dry square pulls it under the water, so a pool bed is 0.7 m down and waded.
+  A `stream` whose end lies on the line of higher ground is lifted to it: its ends stop 0.4 m short. Water a walker can step into must
+  walk out (the tool's climb-back check counts water as walked).
 - **THE READING (step 1b):** `docs/plans/world-polish/thread9-agartha/fits-part1..4.md` (the model list in three parts + the live data).
   NEEDS A MODEL (none in the game): stalactite / stalagmite pieces (code cones today), a creature nest / eggs, a geode, mine timber
   supports (drawn as arch boxes), a white marble balustrade (drawn), a crystal throne, a dead caver in a helmet and harness.
@@ -13759,7 +13785,7 @@ underground horror like the descent movie"; on the plans: "Yes this is good, go 
 waterfall for now" (no underground river: the falls are water running down a cliff, not a river). It is OK that the underground no longer sits
 exactly under the surface: the manholes and stairs still lead to the right places.
 
-- **THE ROOM:** `site_prebuilt_sewers_labyrinth` (part `labyrinth`), 8 x 6 plots (336 x 252 m), levels 144 (the Pumping Station, under the
+- **THE ROOM:** `site_prebuilt_downtown_underworld` since the switch (the pilot was baked as `site_prebuilt_sewers_labyrinth`, now gone), 8 x 6 plots (336 x 252 m), levels 144 (the Pumping Station, under the
   street) down to 118 (the pits of the old mine's bottom level): 45.5 m of rise, every square the plan's (`docs/plans/world-polish/plans/ug-sewers.js`).
 - **THE TOOL:** `bake-labyrinth.js <room design>` (repo tooling, written for any underground district plan; the Sewers' design is the worked
   example). `node bake-labyrinth.js docs/areas/sewers/districts/room.js [--dry-run]`. It builds the plan with draw-plan.js `build`, refuses a plan
@@ -13784,17 +13810,32 @@ exactly under the surface: the manholes and stairs still lead to the right place
 - **THE WAYS OUT (the plan's five):** the Pumping Station's bulkhead (`pump`, up the shaft to the street), the manhole to the Power Station
   (`sewers_power`; the plan's corner square had a passage behind it, so the door stands one square up, in the passage's dead-end wall), the
   Holding Cells' stair (`cells_stair`), the Tunnel-Way (`ow_v_1_1`, the Tunnel-Way's own seam id, the Chimney's west wall, level 123), the D.U.M.B. (`freight_line`, the Freight
-  Line's south wall, level 131). PILOT STAND-INS: the three city doors all lead to the street's `sewer` place, the Tunnel-Way's and the D.U.M.B.'s to
-  their rooms' old seams, one way: the other rooms do not point here until the switch.
+  Line's south wall, level 131). (The pilot's stand-ins, the city doors all leading to the street's `sewer`, went with the switch.)
 - **THE PILOT = THE CULVERTS (W)**, dressed: the kit (cage lamps on the walls every few squares with the brick round them lit, every fourth one dead
   with a rat under it; culvert mouths where a channel starts at a wall, grates where it ends, the weirs and sluices; rubbish, cobwebs and stains in
   the bends) + by hand: the manhole shaft over the bulkhead (ladder, daylight down it), the Pumping Station's pumps, boiler, gauge board and valves,
   the Junction's four mains across its vault (the landmark), the Pump Room, the Cistern's compressor, three real bulbs, two name plates, three
-  residents (two sewer gators, a mole man). The other four districts are the bare skeleton (vaults, grime, ladders, falls, their floors) until
-  mondo has looked.
-- **THE SWITCH (after mondo's word):** retire `site_prebuilt_downtown_underworld` (DOOR_HQ.retired), point the city's ways (`pump`, the manholes,
-  `docks_sewer`, `stadium_sewers`, `well_garden`, `sewers_power`, the cells, `workings_oubliette`, the Freight Line) at the new room's dead ends,
-  dress T, H, O, R from their old district files (W T H O R.js stand in the old home frame: their pieces are carried over by hand, plot by plot).
+  residents (two sewer gators, a mole man).
+- **THE SWITCH (DONE 11-20, on mondo's "okay continue" after the pilot):** the labyrinth took the old room's id, `site_prebuilt_downtown_underworld`
+  (`replaces: 'SEWERS24'` in room.js: the tool deletes the old block and its decal row), so the zone map, the NPC board (HQ_NPC_PLACES: its place
+  names are the plots' names; the Culverts' last plot is THE OUTFALL for the board's `W:Outfall`), the hub and every room that points into the Sewers
+  land in it. `bake-sewers.js` is retired (it exits unless `EW_OLD_SEWERS=1`); layout.json and W T H O R.js stay as the record. THE WAYS IN, each at
+  a dead end of its own district (room.js `doors` = the plan's five, `ways` = the old ones; the tool rewrites a link row's end in data.js in place):
+  the Pumping Station's bulkhead (`pump`, W) · the Power Station's manhole (`sewers_power`, R) · the seventh cell (`cells_dungeon`, H, the plan's
+  Holding Cells door) · the Tunnel-Way (`ow_v_1_1`, O, the Chimney) · the D.U.M.B.'s Freight Line (`freight_line`, T) and its Gantry Tunnel
+  (`ow_v_7_16`, T) · the Sea Floor's pipe (`ow_v_18_5`, O, the Fall Pool where the 42 m fall's water leaves) · the flooded quay (`docks_sewer`, W, the
+  Storm Drain) · the stadium gutter (`stadium_sewers`, W, the East Return) · the draught into the storm drain under the Woods (`sewers_drain`, W, in
+  the Storm Drain's PIT: hard to reach) · the two platforms (`tunnels_works`, T, the Cutting; `tunnels_platform`, T, the Loop Line South) · the
+  Oubliette's portcullis (`workings_oubliette`, O, the Chimney). `well_garden` is not live (its garden end is gone) and stays so. The old walks under
+  the city (U1-U5, U14) are folded into the maze: they are gone. The map: `node bake-map.js site_prebuilt_downtown_underworld`.
+- **THE FOUR DISTRICTS, DRESSED (11-20, from their old files' pieces, set on the new chambers):** the district kit (`a.kit`) everywhere, each in its
+  own light: R green lamps, sludge in its channels and sumps, the Sludge Pit's goo coming up out of the sump, drums, the control panel and a hazmat
+  suit, the Settling Tank's pumps, boiler and generator, the Valve Gallery; T sodium lamps, track in four chambers (`a.rails`: rail_section + two
+  steel rails, buffer stops), the Ghost Station's benches and columns, the Depot's hand car and mine cart (the landmark), the Freight Line's track to the
+  vault door, signals; H cold white lamps, the booking desks, height boards, the Drunk Tank's chain bunk and steel toilet, cell bars, the Property
+  Room; O lanterns and TIMBER SETS on the walls (a post every third square, its cap), the Chimney's head wheel on the plan's landmark square, the
+  Flood's boat, the Pump Ledge's beam pump and anvil, the Sump's hooded statue. Seven real lights in all (six bulbs, one torch). Residents: two
+  sewer gators, a mole man (W), a gator (R), a karate frog (T), a police officer (H), a mole man and a samurai slug (O), plus the NPC board's own.
 - **FITS (the lists read 11-20: MODEL_LIST.md, the catalogue; the old five district files' pieces are the proven set):** cage_lamp, bare_bulb,
   manhole_ladder, light_shaft, culvert_mouth, drain_grate, meshy_round_street_drain, floor_drain, brick_arch, valve_wheel, gate_valve, waste_pipe,
   centrifugal_pump, boiler, air_compressor, gauge_board, pd_lever, psx_pipe_1 (+ _corner, _short, _cross), psx_pipe_valve_holder_large_1/2,
@@ -13949,3 +13990,43 @@ underground horror like the descent movie"; the square plans approved ("Yes this
   plinth: neither is used. NEEDS A MODEL (from the FITS read): a caving helmet with a lamp, a dead caver in caving gear, a fixed rope and a
   wire ladder, a camcorder and glow sticks, eggs and a nest mound, light loose bones, stalactite / stalagmite models, a boulder choke, a pale
   blind crawler, hanging bats; claw-mark and spray-arrow decal sheets; a black water look.
+
+## THE UNDERGROUND, THE WEST TUNNEL (2026-11-20, the same thread; mondo on the Long Tunnel: "okay looks good contineu")
+- **THE ROOM** `site_prebuilt_hollow_earth_ug_west` (part `ug_west`): 4 x 3 plots (48 x 36 squares), levels 82 to 100 (31.5 m), world -17..-14 x
+  -3..-1 (under the Long Tunnel, one plot west, as the underground's layout lies), written by `node bake-underground.js west-tunnel` from
+  `plans/ug-west-tunnel.js` + `docs/areas/underground/west-tunnel.js`. Replaces `site_prebuilt_hollow_earth_ow_west` (retired to it).
+- **THE WAYS:** north `ow_h_m15_2` to the Long Tunnel's south door; east `ug_cavern_west` to the new Cavern (thread 9's `K-room.js` door 2 now
+  lands here, one line); the OLD Cavern room's west door (`ow_v_m8_11`, bake-cavern.js `KHOUT`) lands here too. THE ESTATE'S WELL: link
+  `well_skinwalker` end b stands in the Well Bottom (free, the plan's way out 2; the tool takes its square and refuses to bake while the
+  data.js row is elsewhere). bake-cavern.js: its ROOMS row W, the KH-W seam and its well code are gone.
+- **THE TOOL** grew: a plan door whose design row is `{ link, end, face }` is a link end in the room (no door row); doors are found by the
+  plan door's index first, then its side.
+- **THE PLACES:** the Upper Chamber (the stalagmite, a torch at the Long Tunnel's mouth, the team's cairn), the Cold Hall (a torch at the
+  Cavern's passage, a dead caver with the rope's end), the Charnel Pit, the Crystal Crack (the crystals' light), the Well Bottom (the
+  well's broken boards, its bucket, the team's rope; the nest beside it, the antpeople's: `@W:Well Bottom`), the First Camp (the team's
+  first night: a cold fire ring, bags, food, notes, a radio; a grave in the pit), the Narrows (boulders on the passages' lanes, a pit
+  that goes nowhere), the Drip Gallery (rain off the roof, the calcified caver), the Drowned Floor (the bottom, under the Ledge's 10-level
+  cliff: a faller and his flare, a lure in the sump), the Ledge (a ladder that did not reach), the Black Sump, the Low Gallery (the den:
+  `@W:Low Gallery`). THE STORY: the team came down the Estate's well, camped here, went on up into the Long Tunnel and never came out.
+- **LIGHT** four (two torches, the crystals, the flare). Sheets: the horror rock (the tool's defaults). Stains: ZONE_LOOKS.cavern byRoom.
+
+**HOLLOW EARTH + THE OLD ROOM RETIRED (2026-11-20, world polish thread 9; mondo: "its hollow earth its supposed to be like a paradise or oasis
+inside earth, its okay if the water is blue for hollow earth. just do it").** `site_prebuilt_hollow_earth_ug_hollow` = `node bake-ug.js hollow`
+from `plans/ug-hollow-earth.js` + `docs/areas/cavern/districts/H-room.js`: 6 x 4 plots, levels 72 down to 0 (126 m), 33 ladders, 3 blue waterfalls
+(41, 18 and 15 levels), 2 cliffs, 7 pools; `--check` 1,244 open squares, 1 off (the Sun's own column). A PARADISE, not the Cavern: no rock roof
+(`room.roof: false`, open to the crust), the plan's closed squares are a JUNGLE (`room.gen` look 'trees': jungle trees, palms, the blooming tree),
+the bright look (`HQ_ROOM_LOOKS.mountain`), ambient 0.5, the Inner Sun's light + three fills. Ground: the game's pixel grass (`grass` trails,
+`grass_3` flowered meadows in the chambers, `leaves` the jungle floor) because neither the horror nor the urban pack has grass; the Sun's shore
+`hz_stone_13` (sand), cliffs `hz_stone_08` (dark earthy moss; `hz_stone_06` read as pale wallpaper behind the trees). Places: the Landing (3,0 · 72, the spawn, the door up to the Cavern's Mouth), the Crystal Forest
+(0,0), the Mushroom Shelf (1,2), the Giant's Seat (3,2), the Nesting Ground + the hot spring (5,3), the Shore + the Polar Opening (`hollow_byrd`
+end a, 5,0), the Inner Sun on its column (5,1, the plan's landmark). The plan's horror pits are paradise ones here (fossils, nests, crystals,
+Byrd's camp, flowered clefts, spring pools). The site entry `siteRooms.prebuilt_hollow_earth` (`bay`) is the Inner Sun's west rock.
+**THE CAVERN'S OTHER WAYS IN** (`extraDoors` in K-room.js, links re-pointed by `bake-ug.js cavern --fix-links`): the D.U.M.B.'s blast door
+(`cave_dumb` a) in the Dead End's east rock, the Sewers' old portcullis (`workings_oubliette` b) in the Last Camp's west rock, the cellar well
+(`well_cellar` b) a rope down into the Crossroads, DOOR HQ's moving wall (`dungeon`, the Dungeon's `oubliette` door lands there) in the Oubliette.
+The Cavern's falls are `swamp` water (murky, mondo 11-20), Hollow Earth's blue.
+**THE OLD ROOM:** `site_prebuilt_hollow_earth_cavern` is retired to the new Cavern (DOOR_HQ.retired; the old rooms it had swallowed now retire to
+the Cavern, the old Inner Sun to Hollow Earth); bake-cavern.js keeps its row with `skip: true` (Agartha's moves and the seams still need it) and no
+longer checks its ways. Re-pointed: the zone list, the stage, the secret-door list, the site entry, the NPC rows (one table a room), the flora
+(Hollow Earth grows, the Cavern does not), ZONE_LOOKS. World places: the Cavern -8..-3 x 7..9, Hollow Earth -8..-3 x 10..13 (`room.world`);
+`node bake-map.js` for both.

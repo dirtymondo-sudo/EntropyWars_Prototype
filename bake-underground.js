@@ -114,6 +114,7 @@ const spaces = [];
       spaces.push({ k: 'space', x: r2(gx(x) + w * C / 2), z: r2(gz(y) + h * C / 2), w: w * C, d: h * C }); } }
 
 /* ── THE DESIGN dresses the room ── */
+(PLAN.doors || []).forEach((d, i) => { const o = DES.doors[i] || DES.doors[d[2]]; if (o && o.link) taken.add(d[0] + ',' + d[1]); });   /* a well's square stays clear */
 if (typeof DES.dress === 'function') DES.dress(ctx);
 if (typeof DES.people === 'function') DES.people(ctx);
 
@@ -149,12 +150,17 @@ for (let by = 0; by < H / N; by++) for (let bx = 0; bx < W / N; bx++) {
 /* ── THE PAINT: one sheet a square (a district's own: `DES.paint(T char, x, y)` -> index into DES.pal, 0 = the room's floor) ── */
 const paint = new Uint8Array(W * H); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) paint[y * W + x] = room(x, y) && DES.paint ? (DES.paint(T[y][x], x, y, ctx) || 0) : 0;
 
-/* ── THE DOORS: each plan door on the room's wall, between its square and the open square beside it along the wall (a passage is two wide) ── */
-const DOORS = (PLAN.doors || []).map((d, i) => { const [x, y, side] = d, o = DES.doors[side] || DES.doors[i]; if (!o) throw new Error('the design has no door for the plan\'s way out ' + side + ' (' + d[3] + ')');
+/* ── THE DOORS: each plan door on the room's wall, between its square and the open square beside it along the wall (a passage is two wide).
+   A design's door row is found by the plan door's index first, then its side. `{ link: '<id>', end: 'a' | 'b', face }` = a way in the
+   middle of the room (a well coming down): no door row; data.js DOOR_HQ.links holds the place, and the tool refuses to bake while that end
+   does not stand on its square (it prints the row) ── */
+const DOORS = [], WANT = [];
+(PLAN.doors || []).forEach((d, i) => { const [x, y, side] = d, o = DES.doors[i] || DES.doors[side]; if (!o) throw new Error('the design has no door for the plan\'s way out ' + side + ' (' + d[3] + ')');
+    if (o.link) { taken.add(x + ',' + y); WANT.push({ link: o.link, end: o.end || 'b', row: "site: '" + DES.site + "', part: '" + DES.part + "', wall: 'free', x: " + gcx(x) + ", z: " + gcz(y) + ", face: " + (o.face || 0) }); return; }
     const ns = side === 'N' || side === 'S', nb = ns ? [[x + 1, y], [x - 1, y]].find(q => open(q[0], q[1])) : [[x, y + 1], [x, y - 1]].find(q => open(q[0], q[1]));
     const along = ns ? (nb ? gx(Math.max(x, nb[0])) : gcx(x)) : (nb ? gz(Math.max(y, nb[1])) : gcz(y));
     const out = { id: o.id, wall: side.toLowerCase() }; if (ns) out.x = along; else out.z = along;
-    return Object.assign(out, { way: 'trail', leaf: null, label: o.label, sub: o.sub, action: { room: o.room, at: o.at || o.id }, desc: o.desc || '' }); });
+    DOORS.push(Object.assign(out, { way: 'trail', leaf: null, label: o.label, sub: o.sub, action: { room: o.room, at: o.at || o.id }, desc: o.desc || '' })); });
 
 /* ── checks ── */
 const start = PLAN.start, SPM = { x: gcx(start[0]), z: gcz(start[1]) };
@@ -223,8 +229,10 @@ const BLOCK = Lr.join('\n') + '\n';
 console.log(DES.room + ' ' + JSON.stringify({ squares: [W, H], plots: B.PLOTS.length, levels: [LO, HI], height: ym(HI), crust: SH, spaces: spaces.length, ladders: STAIRS.length, falls: F.filter(f => f.k === 'fall').length, sumps: F.filter(f => f.k === 'stream').length,
     features: spaces.length + F.length + ARCH.length + ROOFS.length, props: props.length, lights: LIT, natives: npc.length, doors: DOORS.map(d => d.id + '>' + d.action.room.replace('site_prebuilt_', '')).join(' '), kb: Math.round(BLOCK.length / 1024) }));
 if (LIT > 10) throw new Error('more than ten lit props (' + LIT + '): the room has ten lights');
-if (DRY) process.exit(0);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
+{ const flat = src.replace(/ +/g, ' '), miss = WANT.filter(w => flat.indexOf(w.row) < 0);
+  if (miss.length) { console.log('data.js DOOR_HQ.links rows to write by hand (the end in this room):'); miss.forEach(w => console.log('  link ' + w.link + ' end ' + w.end + ':  ' + w.row)); if (!DRY) throw new Error('a link does not stand in this room yet (see the rows above)'); } }
+if (DRY) process.exit(0);
 const END = '        /* ' + M + '-END */\n', b0 = src.indexOf('        /* ' + M + '-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + BLOCK + src.slice(b1 + END.length);
 else { const at = src.indexOf('        /* CAVERN36-BEGIN'); if (at < 0) throw new Error('no place for the block (the CAVERN36 marker is gone)'); src = src.slice(0, at) + BLOCK + src.slice(at); }
