@@ -67,16 +67,22 @@ Object.keys(BOX.BLOCKS).forEach(k => { const b = BOX.BLOCKS[k]; if (b.k === 'sol
 solid(4, 0, 6, 1, UP);                                                                 // the wide stair's landing, at the north end of the west cross hall
 F.push({ k: 'ramp', x0: r2(X(5)), z0: r2(Z(4)), x1: r2(X(5)), z1: r2(Z(1) - 0.4), w: 5.25, h0: 0, h1: UP, stairs: true, model: 'glass', edge: 0.15 });   // THE WIDE STAIR (10.5 m for 5.25: 1 in 2)
 F.push({ k: 'rail', x0: r2(X(5)), z0: r2(Z(3.9)), x1: r2(X(5)), z1: r2(Z(1.1)), y0: 0.15, y1: r2(UP - 0.2), model: 'pipe', block: false });
-/* THE ESCALATORS: two side by side in the long concourse, up east onto the middle bridge (30 degrees: the run is the rise / tan 30) */
-{ const run = r2(UP / Math.tan(Math.PI / 6)), x0 = r2(X(7.8));
-  [-0.95, 0.95].forEach(dz => F.push({ k: 'ramp', x0, z0: r2(Z(5) + dz), x1: r2(x0 + run + 0.7), z1: r2(Z(5) + dz), w: 1.75, h0: 0, h1: UP, escalator: true, edge: 0 })); }
+/* THE ESCALATORS: two side by side in the long concourse, up east onto the middle bridge (30 degrees: the run is the rise / tan 30).
+   The pack's escalator is the incline PLUS a level landing past either end (three-renderer.js _spEscalatorFit: "the landings past either end of
+   0 … L"): 2.4 m at the foot, 2.8 m at the head, its plate 0.1 m under the floor. So the ramp is the incline alone (never run into the floor
+   it reaches: mondo 11-20, "fix how those escalators are clipping into the floor they are supposed to reach"), the upper floor's slab starts
+   where the head landings END, and the landings themselves are the floor in between: a walked slab that is not drawn (`hide`) lies in them. */
+const ESC = { run: r2(UP / Math.tan(Math.PI / 6)), u0: 6.9, dz: 0.95, w: 1.75, land: 2.82 };
+ESC.x0 = r2(X(ESC.u0)); ESC.x1 = r2(ESC.x0 + ESC.run); ESC.xb = r2(ESC.x1 + ESC.land); ESC.ub = (ESC.xb + W / 2) / C; ESC.u1 = (ESC.x1 + W / 2) / C; ESC.hv = (ESC.dz + ESC.w / 2 + 0.06) / C;
+[-ESC.dz, ESC.dz].forEach(dz => F.push({ k: 'ramp', x0: ESC.x0, z0: r2(Z(5) + dz), x1: ESC.x1, z1: r2(Z(5) + dz), w: ESC.w, h0: 0, h1: UP, escalator: true, edge: 0 }));
+F.push({ k: 'bridge', x0: r2(ESC.x1 - 0.45), z0: r2(Z(5)), x1: r2(ESC.xb + 0.5), z1: r2(Z(5)), w: r2(2 * ESC.hv * C), y: UP, rails: false, plain: true, hide: true });   // the head landings, walked
 
 /* ── THE SLABS (5.25 m) ── */
 deck(0, 0, 4 + E, 4, UP);                                                              // over THE ARCADE
 deck(0, 6, 4, 11, UP);                                                                 // over THE DEPARTMENT STORE
 deck(2.5, 4 - E, 4, 6 + E, UP);                                                        // the west bridge: the arcade's upper room to the store's
 deck(4 - E, 7, 6 + E, 8, UP);                                                          // the store's bridge across the west cross hall
-deck(10.4, 4 - E, 12, 6 + E, UP);                                                      // THE MIDDLE BRIDGE (the escalators' head)
+deck(ESC.ub, 4 - E, 12, 6 + E, UP);                                                      // THE MIDDLE BRIDGE (the escalators' head)
 deck(12, 4 - E, 13, 6 + E, UP); deck(17, 4 - E, 18, 6 + E, UP);                        // THE RING round the atrium: west, east,
 deck(14 - E, 2, 16 + E, 3, UP); deck(14 - E, 7, 16 + E, 8, UP);                        // north, south
 deck(18 - E, 0, 19 + E, 4, UP);                                                        // over the staff passage
@@ -102,18 +108,21 @@ box(2, UP - 0.9, 4, 14, 0.9, 0.5, CORAL); box(2, UP - 0.9, 6, 14, 0.9, 0.5, CORA
 sign('THE ARCADE', 2, UP - 0.78, 4 + 0.08, 7.5, 0.66, 0, '#ffffff', '', 0.7); sign('DEPARTMENT STORE', 2, UP - 0.78, 6 - 0.08, 9.5, 0.66, 180, '#ffffff', '', 0.7);
 
 /* ── THE GUARDS: a glass balustrade on every open edge of the upper floor ── */
-[   /* the north block */ ['u', 4, 6, 10.4], ['v', 13, 3, 4], ['u', 3, 13, 14], ['v', 14, 0, 2], ['v', 6, 1, 4],
-    /* the south block */ ['u', 6, 6, 10.4], ['v', 13, 6, 7], ['u', 7, 13, 14], ['v', 14, 8, 11], ['v', 6, 6, 7], ['v', 6, 8, 11],
+[   /* the north block */ ['u', 4, 6, ESC.ub], ['v', 13, 3, 4], ['u', 3, 13, 14], ['v', 14, 0, 2], ['v', 6, 1, 4],
+    /* the south block */ ['u', 6, 6, ESC.ub], ['v', 13, 6, 7], ['u', 7, 13, 14], ['v', 14, 8, 11], ['v', 6, 6, 7], ['v', 6, 8, 11],
     /* the staff block */ ['v', 16, 0, 2], ['u', 3, 16, 17], ['v', 17, 3, 4], ['u', 4, 18, 19], ['u', 4, 19, 20],
     /* the food court   */ ['u', 6, 18, 20], ['v', 17, 6, 7], ['u', 7, 16, 17], ['v', 16, 8, 11],
     /* the arcade's and the store's upper rooms */ ['v', 4, 1, 4], ['u', 4, 0, 2.5], ['u', 6, 0, 2.5], ['v', 4, 6, 7], ['v', 4, 8, 11],
     /* the bridges' sides */ ['v', 12, 4, 6], ['v', 13, 4, 6], ['v', 17, 4, 6], ['v', 18, 4, 6], ['u', 2, 14, 16], ['u', 3, 14, 16], ['u', 7, 14, 16], ['u', 8, 14, 16], ['v', 2.5, 4, 6], ['v', 4, 4, 6], ['u', 7, 4, 6], ['u', 8, 4, 6],
 ].forEach(g => { if (g[0] === 'v' && g[1] === 12) return guard(g[0], 12.02, g[2], g[3], UP); guard(g[0], g[1], g[2], g[3], UP); });
 
+guard('v', ESC.ub, 4, 5 - ESC.hv, UP); guard('v', ESC.ub, 5 + ESC.hv, 6, UP);                                          // the middle bridge's west edge, open at the escalators' head
+[5 - ESC.hv, 5 + ESC.hv].forEach(v => wall('u', v, ESC.u1 + 0.05, ESC.ub, { h: 1.1, y0: UP, draw: false }));                            // the landings' outer sides (the escalator's own balustrades are the rail you see)
+
 /* ── THE CEILINGS under the hip roofs (the halls are under the glass) ── */
 ceil(0, 0, 3, 3, EAVE); ceil(0, 7, 3, 11, EAVE); ceil(17, 7, 20, 11, EAVE);
 /* and under the slabs (a slab's own underside draws dark) */
-const UC = UP - 0.36; ceil(0, 0, 4, 4, UC); ceil(0, 6, 4, 11, UC); ceil(2.5, 4, 4, 6, UC); ceil(4, 7, 6, 8, UC); ceil(10.4, 4, 13, 6, UC); ceil(17, 4, 18, 6, UC); ceil(14, 2, 16, 3, UC); ceil(14, 7, 16, 8, UC); ceil(18, 0, 19, 4, UC);
+const UC = UP - 0.36; ceil(0, 0, 4, 4, UC); ceil(0, 6, 4, 11, UC); ceil(2.5, 4, 4, 6, UC); ceil(4, 7, 6, 8, UC); ceil(ESC.ub, 4, 13, 6, UC); ceil(17, 4, 18, 6, UC); ceil(14, 2, 16, 3, UC); ceil(14, 7, 16, 8, UC); ceil(18, 0, 19, 4, UC);
 
 /* ── THE ATRIUM: the fountain under the dome, THE CLOCK TOWER beside it (off the pier's line), the palms ── */
 F.push({ k: 'pool', x: r2(X(ATR.u)), z: r2(Z(ATR.v)), r: 2.6, y: 0, depth: 0.4 });
@@ -124,7 +133,7 @@ P.push({ s: 'cyl', p: [r2(X(13.5)), 0, r2(Z(3.5))], r: 1.58, h: 8.5, seg: 16, ke
 /* the grind ledges (the old hall's), either side of the canal hall */
 F.push({ k: 'wall', x0: r2(X(14.35)), z0: r2(Z(8.4)), x1: r2(X(14.35)), z1: r2(Z(10.2)), h: 0.45, t: 0.5, key: 'urban:ConcreteStriped2a' }, { k: 'wall', x0: r2(X(15.65)), z0: r2(Z(8.4)), x1: r2(X(15.65)), z1: r2(Z(10.2)), h: 0.45, t: 0.5, key: 'urban:ConcreteStriped2a' });
 /* the marble runners down the halls */
-F.push({ k: 'path', pts: [[r2(X(0)), r2(Z(5))], [r2(X(7.6)), r2(Z(5))]], w: 3.0 }, { k: 'path', pts: [[r2(X(12.2)), r2(Z(5))], [r2(X(20)), r2(Z(5))]], w: 3.0 }, { k: 'path', pts: [[r2(X(15)), r2(Z(0))], [r2(X(15)), r2(Z(11))]], w: 3.0 }, { k: 'path', pts: [[r2(X(5)), r2(Z(4.2))], [r2(X(5)), r2(Z(11))]], w: 3.0 });
+F.push({ k: 'path', pts: [[r2(X(0)), r2(Z(5))], [r2(X(6.1)), r2(Z(5))]], w: 3.0 }, { k: 'path', pts: [[r2(X(12.2)), r2(Z(5))], [r2(X(20)), r2(Z(5))]], w: 3.0 }, { k: 'path', pts: [[r2(X(15)), r2(Z(0))], [r2(X(15)), r2(Z(11))]], w: 3.0 }, { k: 'path', pts: [[r2(X(5)), r2(Z(4.2))], [r2(X(5)), r2(Z(11))]], w: 3.0 });
 F.push({ k: 'scatter', key: 'park_bench', n: 5, seed: 1 }, { k: 'scatter', key: 'potted_plant', n: 8, seed: 2 }, { k: 'scatter', key: 'mall_bin', n: 5, seed: 3 });
 
 /* ── THE SHOPFRONTS (three-renderer.js _hqBuildShopfronts): ground = the solid blocks' faces; upper = the set-back units' fronts ── */
@@ -185,7 +194,7 @@ const DESC = {
     terrace1: 'Glass doors from the food court out onto the terrace: tables, umbrellas, the pier, the beach, the bay.',
     terrace2: 'Glass doors from the food court out onto the terrace: tables, umbrellas, the pier, the beach, the bay.' };
 BOX.DOORS.forEach(d => { const o = IN[d.side];
-    doors.push({ id: d.id, wall: 'free', x: r2(X(d.u + o[0])), z: r2(Z(d.v + o[1])), face: o[2], leaf: d.id === 'staff' ? 'leaf_exit' : 'leaf_glass', noEntrance: true, wide: d.id === 'main' || d.id === 'sea' || undefined,
+    doors.push({ id: d.id, wall: 'free', x: r2(X(d.u + o[0])), z: r2(Z(d.v + o[1])), face: o[2], leaf: d.id === 'staff' ? 'leaf_exit' : 'leaf_glass', noEntrance: true, frame: d.id === 'staff' ? undefined : BOX.FRAME, wide: d.id === 'main' || d.id === 'sea' || undefined,
         label: 'DISASTER CITY', sub: d.name + ' · OUT TO ' + d.to, action: { room: CITY, at: AT[d.id] || 'mall_' + d.id }, desc: DESC[d.id] }); });
 doors.push({ id: 'closet', wall: 'free', x: r2(X(15)), z: r2(Z(0) + 0.5), face: 180, leaf: 'leaf_closet', noEntrance: true, label: 'SUPPLY CLOSET', sub: 'STAFF ONLY · THE BASEMENT STAIR', action: { room: 'site_prebuilt_downtown_closet', at: 'mall' },
     desc: 'STAFF ONLY, on a door at the north end of the east hall under the big window. The stair behind it goes down further than the mall has floors.' });
@@ -194,12 +203,12 @@ const lines = ['“What happened here?” “Nothing.” “The sign says so.”
     '“Is the escalator working?” “It is stairs now. It was always stairs. It has a motor for company.”', '“Two floors.” “Three, if you count the roof.” “Who counts the roof?” “The tape does.”'];
 /* the walk check's stops: [u, v, floor] */
 [[1.4, 5], [15, 5.95], [2, 2], [2, 8.5], [18.5, 2], [15, 10], [5, 10], [19, 5], [10, 5.6]].forEach(q => stop(q[0], q[1], 0));
-[[2, 2], [2, 8.5], [5, 0.5], [10, 3.5], [10, 6.5], [11.2, 5], [16.5, 1.5], [18.5, 9], [15, 2.5], [15, 7.5], [3.2, 5], [5, 7.5], [19.5, 3.5], [17.5, 2], [12.5, 1.5], [12.5, 9]].forEach(q => stop(q[0], q[1], UP));
+[[2, 2], [2, 8.5], [5, 0.5], [10, 3.5], [10, 6.5], [11.2, 5], [ESC.u1 + 0.4, 5 - 0.27], [ESC.u1 + 0.4, 5 + 0.27], [16.5, 1.5], [18.5, 9], [15, 2.5], [15, 7.5], [3.2, 5], [5, 7.5], [19.5, 3.5], [17.5, 2], [12.5, 1.5], [12.5, 9]].forEach(q => stop(q[0], q[1], UP));
 props.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key); }); npc.forEach(n => { if (RACES.indexOf(n.race) < 0) throw new Error('not a unit: ' + n.race); });
 
 /* ── the room's text ── */
 const SKY = vm.runInContext("JSON.stringify(DOOR_HQ.rooms." + CITY + ".shell.sky)", DATA);
-const rows = F.concat([{ k: 'arch', id: 'mall:in', x: 0, z: 0, y: 0, parts: P }, { k: 'arch', id: 'mall:roof', x: 0, z: 0, y: 0, parts: BOX.roofParts() }]);
+const rows = F.concat([{ k: 'arch', id: 'mall:in', x: 0, z: 0, y: 0, parts: P }, { k: 'arch', id: 'mall:roof', x: 0, z: 0, y: 0, parts: BOX.roofParts(true) }]);
 if (inner.length) rows.push({ k: 'texbuilding', id: 'mall:doors', x: 0, z: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_glass', inner });
 const M = [];
 M.push("        /* BAYSIDE-MALL-BEGIN — THE BAYSIDE MALL, THE INSIDE (2026-11-20): written by `node bake-mall.js` from docs/disaster-city/mall/box.js (the same box the city's tool draws the outside from). Never hand-edit between the markers; edit the tool or the box and rerun. */");

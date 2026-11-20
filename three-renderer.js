@@ -83543,6 +83543,13 @@ const ThreeRenderer = (function () {
             var wallMatS = secret ? _hqMat(S.wall || 'stone', 1.2, 1.4, { color: (S.wallColor != null) ? S.wallColor : 0xffffff }) : wallMat;
             var dadoMatS = secret ? _hqMat(S.dado || 'oxblood', 1.2, 0.5, { shininess: 14, color: (S.dadoColor != null) ? S.dadoColor : 0xffffff }) : dadoMat;
             var capM = secret ? wallMatS : capMat;
+            /* A DOOR'S OWN FRAME (2026-11-20, the Bayside Mall: every door of the mall stood in the room's grey concrete panel, "a back door"): a door row's
+               `frame: { wall, wallColor, dado, dadoColor, trim, trimColor }` dresses its panel (jambs, lintel, dado bands, cap, sill) in its own sheets and
+               tints, so a door set in a drawn portal wears the portal's colours. Any field left out falls back to the room's. */
+            if (!secret && door.frame && typeof door.frame === 'object') { var FR = door.frame;
+                wallMatS = _hqMat(FR.wall || S.wall || 'stone', 1.2, 1.4, { color: (FR.wallColor != null) ? FR.wallColor : 0xffffff });
+                dadoMatS = _hqMat(FR.dado || FR.wall || S.dado || 'oxblood', 1.2, 0.5, { shininess: 14, color: (FR.dadoColor != null) ? FR.dadoColor : ((FR.wallColor != null) ? FR.wallColor : 0xffffff) });
+                capM = _hqMat(FR.trim || S.trim || 'teal', 2, 0.2, { shininess: 45, specular: 0x666666, color: (FR.trimColor != null) ? FR.trimColor : 0xffffff }); }
             /* THE LEAF DECIDES the opening (2026-09-04): its catalogue `wide`
                picks the class, its measured `aspect` sets the opening width
                so the leaf fills the frame edge to edge (single 0.95–1.6 m,
