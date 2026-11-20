@@ -76727,7 +76727,7 @@ const ThreeRenderer = (function () {
             var bt = new THREE.CanvasTexture(bc); bt.anisotropy = 4;
             return (_hqArchSignCache[key] = bt);
         }
-        var H = (q[7] === 'n' && asp <= 8) ? 256 : 128, W = Math.max(32, Math.min(2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;   // (a neon sign is drawn twice as fine: its halo blurs a 128 px line)
+        var H = (q[7] === 'n' && asp <= 16) ? 256 : 128, W = Math.max(32, Math.min(H > 128 ? 4096 : 2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;   // (a neon sign is drawn twice as fine: its halo blurs a 128 px line)
         var g = c.getContext('2d'), F = HQ_SIGN_FONTS[q[5]] || null, shown = (F && F.tc) ? _hqSignTitleCase(words) : words;
         var fontOf = function (v, fam) { return (fam ? F.w : 900) + ' ' + v + 'px ' + (fam ? F.f + ', ' : '') + '"Arial Black", "Helvetica Neue", Arial, sans-serif'; };
         /* the words fitted inside the board: 90% of its width and (a typeface of its own only) 80% of its height, measured on the glyphs

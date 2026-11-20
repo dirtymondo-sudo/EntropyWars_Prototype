@@ -49,7 +49,7 @@ const DISTRICT = {
    The chains stand in several districts (Jitters Coffee, Kwik Panic, Hock & Awe, The Daily Disaster, Loose Screw Hardware, Sunk Cost Marine).
    Wayfinding (EXIT, GATE B, PARKING, room names, warning plates) is never renamed. Mid Records is mondo's own name. The Civic Center's shops
    (COURT CAFE, BAIL BONDS, NOTARY + COPIES, WATCHMAKER) wait: its district file is the second side's row. The full list with the alternates
-   that lost: docs/notes/branding.md. An apostrophe in a name is the curved one (’): the bake writes keys in single quotes. A long name on a board cut for a short word stands on two lines (three-renderer.js THE TWO-LINE FIT). */
+   that lost: docs/notes/branding.md. The chapel's script stays paint on its pink board (seen 11-20: as a small neon it was a smear). An apostrophe in a name is the curved one (’): the bake writes keys in single quotes. A long name on a board cut for a short word stands on two lines (three-renderer.js THE TWO-LINE FIT). */
 const N = (re, words, font, x) => [re, Object.assign({ words, font }, x || {})];
 const BRAND = {
     C: [[/^POLICE$/, { words: 'D.C.P.D.', mark: 'pd', font: 'way' }],
@@ -63,7 +63,7 @@ const BRAND = {
         N(/^HARDWARE$/, 'LOOSE SCREW HARDWARE', 'alfa'), N(/^PAWN$/, 'HOCK & AWE', 'alfa'), N(/^WE BUY GOLD$/, 'FOOL’S GOLD EXCHANGE', 'playfair'),
         N(/^TOOL AND DIE$/, 'MURPHY’S TOOL & DIE', 'stencil')],
     E: [N(/^CASINO$/, 'SNAKE EYES', 'fasc', { neon: '#ff3b3b' }), N(/^FILM STUDIO$/, 'CALAMITY PICTURES', 'limelight'), N(/^CINEMA$/, 'THE AFTERSHOCK', 'limelight', { neon: '#ffd21f' }),
-        N(/^RECORDING STUDIO$/, 'MID RECORDS', 'dela', { neon: '#f2f2f2' }), N(/^CABARET$/, 'THE VELVET ROPE', 'yellow', { neon: '#c79bff' }), N(/^WEDDING CHAPEL$/, 'TILL DEATH WEDDING CHAPEL', 'dafoe', { neon: '#ff8ac0' }),
+        N(/^RECORDING STUDIO$/, 'MID RECORDS', 'dela', { neon: '#f2f2f2' }), N(/^CABARET$/, 'THE VELVET ROPE', 'yellow', { neon: '#c79bff' }), N(/^WEDDING CHAPEL$/, 'TILL DEATH WEDDING CHAPEL', 'dafoe'),
         N(/^COMEDY TONIGHT$/, 'THE PUNCHLINE', 'tilt', { neon: '#ffb03a' }), N(/^LIVE MUSIC$/, 'THE FEEDBACK', 'tilt', { neon: '#4fe3ff' }), N(/^BAR$/, 'CLUB AFTERMATH', 'dafoe', { neon: '#ff4fb8' }),
         N(/^ARCADE$/, 'GAME OVER', 'bungee', { neon: '#4fe3ff' }), N(/^BURGERS$/, 'MELTDOWN BURGER', 'bungee', { neon: '#ffe14a' }), N(/^RAMEN$/, 'SLURP CITY RAMEN', 'pacifico', { neon: '#ff6a3a' }),
         N(/^NOODLES$/, 'SLURP CITY', 'pacifico', { neon: '#ff6a3a' }), N(/^KEBAB\b.*$/, 'KEBABYLON  OPEN 24H', 'pacifico', { neon: '#7dff9a' }), N(/^TRATTORIA$/, 'MAMMA MAYHEM’S', 'pacifico', { neon: '#ff5a5a' }),
