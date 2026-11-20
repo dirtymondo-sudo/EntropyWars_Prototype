@@ -8094,6 +8094,33 @@ scientist labs, Lockheed Martin skunkworks, scientific and psychic research, etc
   (2) two plateaus that only touch leave a notch: overlap them 0.5 m; (3) a kit wall standing on a raised floor carries `y0` = that floor (its doors
   are drawn at the wall's foot); the plateau's own face closes it below; (4) props on a plateau need no `y` (they stand on the ground); props on a
   deck carry the deck's height.
+- **COMMAND BUILT (2026-11-20, `C.js` build):** the War Room is ONE hall (P05-01 + P05-02, x 61..70, y 15..34): the floor 3.5, the Big Board's walk 5.25
+  (two stairs), galleries at 7.0 on three sides (decks; you walk in under the south one; two rail gaps = ledges), the Projection Booth at 10.5 (plot
+  P04-01 level 6, a new opening stair from the Comms Room) with a balcony whose rail gap drops to the west gallery. The Vault Gantry is a cross of
+  bridges over THE VAULT (a sink to −3.5: a rail gap in, a ladder out). The Great Room's plot is level 1 with the floor lifted to 3.5 round a SUNK
+  LOUNGE and a loft at 7.0; the Pool's plot is level 1 and THE CELLAR is a room UNDER the deck (floor −1.75, the deck carried over it).
+  FOUND: a prop under a deck needs `floor: true` + its `y` (else it may stand on the deck); `round_fridge` reads as a white ball.
+- **LEVEL P3 BUILT (2026-11-20, `P.js` hangar() + motorPool()):** the tram deck stays at 14 m; THE HANGAR (P01-05 + P02-05, level 5, x 13..34,
+  y 66..71) has the jet, the saucer, the black triangle and a workshop, two stairs down from the platform, a pier out over the floor (its end a
+  ledge) and a gap in the rail (a ledge); THE MOTOR POOL (P05-05, level 6) is a lower deck down a car ramp (Room 555's freight lift lands on it).
+  The tunnel's squares over both are plateaus back at 14. FOUND: `nacelle` is huge (it stood into the pier); `saucer_big` swallows a camera 8 m off.
+- **THE RING BUILT (2026-11-20, `K.js` build, `P.js` gantries()):** every K plot is level 6 now (10.5 m), two levels under Level P3, so the tram
+  tunnel crosses the ring on two BRIDGES (the gantry plots are level 6 too; their tunnel squares are plateaus at 14, a deck over the ring band,
+  a stair down beside each). THE BEAM PIPE IS SOLID (a ghost wall 1.5 m high on every pipe square): STEEL CROSSOVERS (a stair up, a deck over the
+  pipe at +1.75, a stair down) reach the far side: the Control Room (a step up to 12.25, a window on the ring; its floor overlaps the crossover
+  deck 0.5 m, or the walk check fails at the seam), the Blast Door, the Beam Dump and seven outer alcoves. ONE ALCOVE OFF EACH PLAIN PLOT (14,
+  plain labels mine: MAGNET TEST, CABLE VAULT, MONITORING, COOLING, RAD STORE, LOCKERS, SURVEY, BREAK ROOM, SPARES, PUMPS, WORKSHOP, HELIUM, BACKUP
+  CONTROL, FIRST AID). THE DETECTOR HALL is a pit at 5.25 under the ring's catwalk (a stair down, a ladder out, a rail gap = a ledge); the detector
+  is `dockring` + two coils + the orb. The beam stays level and straight on purpose (a collider). Level P3, Command and Research are unchanged by it.
+- **THE INTERIORS + POLISH PASS (2026-11-20, mondo: "go ahead and do interiors and polish", then "do sub level 7 too"):** Disposal's line to an
+  incinerator; the vault's hoard; the Great Room's chairs and pictures; the platform's hall (benches, the tube map, the board); the checkpoint's
+  racks; a buffer at the tunnel's west end; signs on the tunnel wall over every way down (THE HANGAR, MOTOR POOL, THE RING); a sign on each side of
+  the Ring (NORTH · CONTROL ROOM etc.); the four corner rooms dressed (the south-east one holds `time_machine`: THE OLD EXPERIMENT, my label);
+  31 more floor decals (49 of the room's 60 used). THE LAST THREE REAL LIGHTS: the Range, the War Room, the Hangar (all ten are used now).
+  FIXED: plates that faced into their walls (a sign on a WEST wall faces east = ry −90; on an EAST wall ry 90).
+  SUB-LEVEL 7's STAIR (S.js, the second side's row taken on his word): three switchback flights in lanes A / B / C (14 → 9.33 → 4.67 → 0), the
+  top landing's north edge and the north landing's west edge open (ledges: a 9.3 m drop), the store off the north landing (halfway down),
+  the guard room off the foot (Disposal's back door walks into it), the hub's south port moved to the foot (x 39..40).
 - **NO `TileGeneric2b` (mondo 11-20: "tilegeneric2b is the one I don't want", the floor that looks like broken tiles):** Research's room floor is
   `urban:TileGeneric1a` now (bake-dumb.js FLOORS). Never give a D.U.M.B. floor that sheet again.
 - **NEEDS A MODEL (found nowhere; shown to mondo 11-20):** a tarp / a tarp-covered aircraft · a black stealth aircraft (flying wing) · a blast
@@ -13452,3 +13479,18 @@ mondo 11-20: "Okay go ahead and do the next pass" (the one named to him: relief 
   the Rental Hut, the Mid Station and the Top Station, a lifeguard in the Ski Patrol, a nordic at the Inn's desk, a skater behind the Ski Shop's counter;
   a streamer and a yeti on the Village Green. Which unit fits which house is a guess of mine: change any in the `who(...)` row.
 - **NOT DONE:** the North Pole. Not checked: four of the five lifts ridden; the seams; The Long Descent on screen; the snow under the trees after the last bake.
+
+## KATANA ISLAND, THE MODEL PASS (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20 named the new Meshy pieces (`kt_*`, `fl_*`; models-assets.md "THE KATANA + FLORA MESHY BATCH"). What went where:
+
+- **`kt_torii_gate`** in place of every gate drawn in code: THE GREAT GATE in the bay (`h: 13`, standing in the water), the shrine stair's three, the hidden shrine's,
+  the crater rim's. It has no blocker, so a way runs through it.
+- **`kt_stone_lantern`** in place of every `stone_lantern` on the island. **`kt_temple_bell`** for the two `bell_frame`. **`kt_taiko_bridge`** for the garden's footbridge.
+- **`kt_samurai_armour` on `kt_samurai_armour_stand`** (the same spot) for the knight armour stand-in, and **`kt_katana`** for `sword`, in every room (`insides.js` `armour`).
+- **`kt_komainu`** (a pair) and **`kt_stone_buddha`** in the Temple Quarter's court, the Buddha again on the temple hall's dais; **`kt_kitsune_statue`** (a pair) and
+  **`kt_offering_box`** at the hidden shrine, an offering box in the temple court and before every altar; **`kt_sake_barrel`** in the brewery; **`kt_koi`** and
+  **`fl_lotus`** in the Castle Garden's pond, a lotus on the hot spring (typed `y: -0.3`: the model has a stem under its pads).
+- **`fl_bamboo_clump`** is the Bamboo Wood's tree now (tree `h` 5.5 to 7.3: at 9 m its canes read a metre thick); **`fl_jungle_tree`** stands among the Jungle's palms;
+  **`fl_rice_clump`** in place of the grey `hw_crop*` lumps in the Paddies and on the Terraces.
+- **Still drawn in code:** the roofs (`jroof`), the flag, the furniture. **Not used here:** `kt_katana_scabbard`, the cactus, wheat, redwood and Joshua tree.

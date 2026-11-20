@@ -1,5 +1,5 @@
 /* THREAD 17, THE ESTATE: THE HEIGHT PLAN of its big room (the Corn Fields, County Lane, the Lake, the Ranch), square by square.
-   A PROPOSAL: nothing is built from it until mondo says so. DATA ONLY (the format: plans/README.md).
+   APPROVED by mondo 2026-11-20 ("yep looks good"). Nothing is built from it yet: its build thread starts here. DATA ONLY (the format: plans/README.md).
        node docs/plans/world-polish/draw-plan.js docs/plans/world-polish/plans/estate.js
    THE IDEA. Today the room is level: corn 1, the lane and the lake 0, the ranch 1 (3.5 m over 47 plots).
    - THE CORN FIELDS stay LEVEL ON PURPOSE (fields). The corn is the wall: the Farm Track winds through it and crosses County Lane
@@ -17,7 +17,8 @@ const corn = 'a corn field: level on purpose', route = 'the route kit\'s (County
 const lane = []; for (const y of [72, 73]) for (let x = 10; x <= 13; x++) lane.push(['ramp', x, y, y === 72 ? 0.75 : 0.25, 0, -1, 'P']);
 module.exports = {
     zone: 'The Estate', thread: 17, room: 'site_prebuilt_skinwalker_ow_lake',
-    title: 'THE ESTATE: the Corn Fields, the Lake and the Ranch, THE HEIGHT PLAN (a proposal)',
+    title: 'THE ESTATE: the Corn Fields, the Lake and the Ranch, THE HEIGHT PLAN',
+    approved: 'mondo 2026-11-20, shown the four plans and their pictures in chat: "yep looks good"',
     build: { frame: 'room', file: 'docs/areas/estate/districts/room.js (new: the room design, in the room\'s own frame)' },
     grows: 'the box stays 5 x 18 plots (no door moves); 8 new plots in empty cells of the box, west of the Lake and the Ranch',
     mass: 'corn, brush and fence rows (the wall of the place)', massHeight: 2,

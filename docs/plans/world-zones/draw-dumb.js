@@ -28,39 +28,39 @@ const plot = (x, y, d, level, h, name, what, from, r) => { PLOTS.push({ id: 'P0'
 
 /* ── K: THE RING. An octagon band four squares wide, four squares in from the map's edge; a short 45° cut at each corner. ── */
 { const c = W / 2, T = 27; for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const dx = Math.abs(x + 0.5 - c), dy = Math.abs(y + 0.5 - c), n = Math.max(dx, dy, dx + dy - T); if (n >= 34 && n < 38) cell[y][x] = 'r'; } }
-let ringNo = 0; const RING = (x, y, r) => plot(x, y, 'K', 8, 5.25, 'The Ring ' + (++ringNo), 'the collider tunnel: the beam pipe on the outer wall, a walk beside it', 'CERN: THE RING (the loop hall)', r);
+let ringNo = 0; const RING = (x, y, r) => plot(x, y, 'K', 6, 5.25, 'The Ring ' + (++ringNo), 'the collider tunnel: the beam pipe on the outer wall, a walk beside it', 'CERN: THE RING (the loop hall)', r);
 const SVC = n => ['Service Room ' + n, 'a dead-end service room off the ring\'s corner', 'CERN: service room ' + n + ' (a dead end off a corner)'];
 /* row 0 */
-plot(0, 0, 'K', 8, 5.25, ...SVC(1), [[9, 9, 12, 12, 'f']]);
+plot(0, 0, 'K', 6, 5.25, ...SVC(1), [[9, 9, 12, 12, 'f']]);
 RING(1, 0); RING(2, 0);
-plot(3, 0, 'K', 8, 5.25, 'The Control Room', 'the control room north of the ring, the servers; the Vent: a ladder shaft 14 m down to Level -6', 'CERN: THE CONTROL ROOM · the service bay; Sub-Level 7: THE VENT', [[2, 1, 10, 4, 'f'], [5, 8, 8, 12, 'o'], [8, 8, 11, 10, 'f']]);
+plot(3, 0, 'K', 6, 5.25, 'The Control Room', 'the control room north of the ring, the servers; the Vent: a ladder shaft 14 m down to Level -6', 'CERN: THE CONTROL ROOM · the service bay; Sub-Level 7: THE VENT', [[2, 1, 10, 4, 'f'], [5, 8, 8, 12, 'o'], [8, 8, 11, 10, 'f']]);
 RING(4, 0); RING(5, 0);
-plot(6, 0, 'K', 8, 5.25, ...SVC(2), [[0, 9, 3, 12, 'f']]);
+plot(6, 0, 'K', 6, 5.25, ...SVC(2), [[0, 9, 3, 12, 'f']]);
 /* the ring's west and east sides, rows 1..4 */
 RING(0, 1); RING(6, 1); RING(0, 2); RING(6, 2);
-plot(0, 3, 'K', 8, 8.75, 'The Beam Dump', 'the pile the beam is dumped on, 7 m of it: do not stand there', 'CERN: THE BEAM DUMP', [[1, 2, 4, 10, 'f']]);
-plot(6, 3, 'K', 8, 10.5, 'The Detector Hall', 'LANDMARK: the detector the ring runs through, THE BEAM, the gantry; CERN\'s battle marker', 'CERN: THE DETECTOR HALL · THE BEAM · THE GANTRY', [[1, 1, 4, 11, 'f'], [8, 1, 11, 11, 'f'], [4, 1, 8, 11, 'r']]);
+plot(0, 3, 'K', 6, 8.75, 'The Beam Dump', 'the pile the beam is dumped on, 7 m of it: do not stand there', 'CERN: THE BEAM DUMP', [[1, 2, 4, 10, 'f']]);
+plot(6, 3, 'K', 6, 10.5, 'The Detector Hall', 'LANDMARK: the detector in its pit, 5.25 m under the ring\'s catwalks; CERN\'s battle marker on the rim', 'CERN: THE DETECTOR HALL · THE BEAM · THE GANTRY', [[1, 1, 4, 11, 'f'], [8, 1, 11, 11, 'f'], [4, 1, 8, 11, 'r']]);
 RING(0, 4); RING(6, 4);
 /* row 6 */
-plot(0, 6, 'K', 8, 5.25, ...SVC(3), [[9, 0, 12, 3, 'f']]);
+plot(0, 6, 'K', 6, 5.25, ...SVC(3), [[9, 0, 12, 3, 'f']]);
 RING(1, 6); RING(2, 6);
-plot(3, 6, 'K', 8, 5.25, 'The Blast Door', 'the collider blast door: Room 999\'s way in from the bay; hum audible', 'CERN: the bay door (the collider blast door)', [[5, 8, 8, 12, 'o']]);
+plot(3, 6, 'K', 6, 5.25, 'The Blast Door', 'the collider blast door: Room 999\'s way in from the bay; hum audible', 'CERN: the bay door (the collider blast door)', [[5, 8, 8, 12, 'o']]);
 RING(4, 6); RING(5, 6);
-plot(6, 6, 'K', 8, 5.25, ...SVC(4), [[0, 0, 3, 3, 'f']]);
+plot(6, 6, 'K', 6, 5.25, ...SVC(4), [[0, 0, 3, 3, 'f']]);
 
 /* ── P: LEVEL P3. The tunnel: rows 2..5 of every plot of row 5 (2 = the north walk, 3 = the track, 4 and 5 = the platform side). ── */
 const TUN = [[0, 2, 12, 6, 'o'], [0, 3, 12, 4, 'j']];
-plot(0, 5, 'P', 8, 7, 'The West Gantry', 'the tunnel\'s west end, where it crosses the ring; the wired door to Hangar 18\'s floor lift', 'Level P3: THE WEST GANTRY · the tunnel west (links.area51_dumb)', TUN.concat([[4, 0, 8, 12, 'r'], [4, 3, 8, 4, 'j']]));
-plot(1, 5, 'P', 8, 7, 'The Ramp', 'the bay west of the Bays (the garage\'s secret ramp is cut: mondo 11-20; the Hangar comes here in Level P3\'s pass)', 'Level P3: THE RAMP\'s foot (links.garage_motorpool, cut 11-20)', TUN.concat([[2, 6, 10, 10, 'f']]));
-plot(2, 5, 'P', 8, 7, 'The Bays', 'the motor pool: bays with the black cars, every one signed out', 'Level P3: THE MOTOR POOL · THE BAYS', TUN.concat([[1, 6, 11, 11, 'f']]));
+plot(0, 5, 'P', 6, 10.5, 'The West Gantry', 'the tunnel\'s west end: a bridge over the ring (world polish thread 8: the ring is a level under it), a stair down; the wired door to Hangar 18\'s floor lift', 'Level P3: THE WEST GANTRY · the tunnel west (links.area51_dumb)', TUN.concat([[4, 0, 8, 12, 'r']]));
+plot(1, 5, 'P', 5, 12.25, 'The Hangar, West', 'THE HANGAR (world polish thread 8): its floor three levels under the tram deck; the black craft, the workshop; stairs down from the platform, a pier out over the floor', 'Level P3: THE RAMP\'s foot (links.garage_motorpool, cut 11-20) · world polish thread 8: the Hangar', TUN.concat([[1, 6, 12, 12, 'f']]));
+plot(2, 5, 'P', 5, 12.25, 'The Hangar, East', 'THE HANGAR: the saucer, the triangle, the parts on the bench; the pier\'s end is a ledge to the floor', 'Level P3: THE MOTOR POOL · THE BAYS · world polish thread 8: the Hangar', TUN.concat([[0, 6, 11, 12, 'f']]));
 plot(3, 5, 'P', 8, 7, 'The Platform', 'LANDMARK: the lit tram on its rails at the platform; the wired door with a 7 on it; the base\'s battle marker', 'Level P3: THE HALL · THE PLATFORM · THE TRAM', TUN.concat([[5, 0, 8, 2, 'o'], [1, 6, 11, 9, 'f']]));
 plot(4, 5, 'P', 8, 7, 'The Booth', 'the guard booth on the middle passage', 'Level P3: THE BOOTH', TUN.concat([[3, 6, 9, 10, 'f']]));
-plot(5, 5, 'P', 8, 7, 'The Freight Lift', 'the freight lift\'s landing: Room 555\'s way in from the bay', 'Level P3: the freight lift\'s landing (the bay door)', TUN.concat([[2, 6, 10, 11, 'f']]));
-plot(6, 5, 'P', 8, 7, 'The East Gantry', 'the tunnel\'s east end: the ring is where the tunnel stops being straight', 'Level P3: THE EAST GANTRY · the tunnel east (the old link dumb_cern, now a walk)', [[0, 2, 8, 6, 'o'], [0, 3, 8, 4, 'j'], [4, 0, 8, 12, 'r'], [4, 3, 8, 4, 'j']]);
+plot(5, 5, 'P', 6, 10.5, 'The Motor Pool', 'the motor pool on its lower deck, a level under the tram, down the car ramp; the freight lift\'s landing: Room 555\'s way in from the bay', 'Level P3: the freight lift\'s landing (the bay door) · world polish thread 8: the cars moved here', TUN.concat([[1, 6, 11, 12, 'f']]));
+plot(6, 5, 'P', 6, 10.5, 'The East Gantry', 'the tunnel\'s east end: a bridge over the ring, a stair down; on to the Sewers\' Gantry Tunnel', 'Level P3: THE EAST GANTRY · the tunnel east (the old link dumb_cern, now a walk)', [[0, 2, 8, 6, 'o'], [0, 3, 8, 4, 'j'], [4, 0, 8, 12, 'r']]);
 
 /* ── S: SUB-LEVEL 7 (level 0). ── */
-plot(3, 4, 'S', 0, 5.25, 'The Stair', 'the stair down from Level P3: six floors of it, 14 m; two dead-end side rooms', 'Sub-Level 7: room B (the stair up to the motor pool) · side rooms', [[3, 0, 9, 12, 'f'], [1, 2, 3, 6, 'f'], [9, 2, 11, 6, 'f']]);
-plot(3, 3, 'S', 0, 12.25, 'The Hub', 'LANDMARK: THE TOWER, which has no stair; every department is off this hub', 'Sub-Level 7: THE HUB · THE TOWER', [[1, 1, 11, 11, 'f'], [5, 0, 8, 1, 'o'], [5, 11, 8, 12, 'o'], [0, 5, 1, 8, 'o'], [11, 5, 12, 8, 'o']]);
+plot(3, 4, 'S', 0, 21, 'The Stair', 'the stair down from Level P3, 14 m, as three flights that switch back down the hall (world polish thread 8): landings at 9.33 and 4.67, two of their edges ledges; the guard room at the foot, the store halfway down', 'Sub-Level 7: room B (the stair up to the motor pool) · side rooms', [[3, 0, 9, 12, 'f'], [1, 2, 3, 6, 'f'], [9, 2, 11, 6, 'f']]);
+plot(3, 3, 'S', 0, 12.25, 'The Hub', 'LANDMARK: THE TOWER, which has no stair; every department is off this hub', 'Sub-Level 7: THE HUB · THE TOWER', [[1, 1, 11, 11, 'f'], [5, 0, 8, 1, 'o'], [3, 11, 5, 12, 'o'], [0, 5, 1, 8, 'o'], [11, 5, 12, 8, 'o']]);
 plot(2, 3, 'S', 0, 7, 'Chambers 01 + 03', 'the west spoke: 01 THE DROP (a tier up a stair, and the edge) north of it, 03 THE PIT south of it; the stair up to Research', 'Sub-Level 7: 01 THE DROP · 03 THE PIT · the west spoke', [[0, 5, 12, 8, 'o'], [1, 1, 11, 5, 'f'], [1, 8, 11, 11, 'f']]);
 plot(4, 3, 'S', 0, 7, 'Chambers 02 + 04', 'the east spoke: 02 THE CATWALK (two towers and the plank) north of it, 04 OBSERVATION (the deck behind round windows) south of it; the Vault Gantry\'s stair', 'Sub-Level 7: 02 THE CATWALK · 04 OBSERVATION · the east spoke', [[0, 5, 12, 8, 'o'], [1, 1, 11, 5, 'f'], [1, 8, 11, 11, 'f']]);
 plot(3, 2, 'S', 0, 5.25, 'Corridor Five', 'five was always the corridor: the north spoke, the Healing Zone, stairs up to the Range and the Comms Room', 'Sub-Level 7: the north spoke ("Five is the corridor") · the Healing Zone', [[3, 0, 9, 12, 'f'], [0, 5, 3, 8, 'o'], [9, 5, 12, 8, 'o']]);
@@ -83,25 +83,28 @@ plot(2, 4, 'R', 0, 8.75, 'Disposal', 'Clone Research: the furnace, the chute, BA
  [13, 48, 15, 49], [13, 50, 22, 58], [23, 55, 24, 56], [25, 49, 34, 58], [35, 51, 36, 51]].forEach(q => set(q[0], q[1], q[2] + 1, q[3] + 1, 'f'));
 
 /* ── C: COMMAND (level 2). ── */
-plot(5, 3, 'C', 2, 5.25, 'The Vault Gantry', 'the head of the stair from the hub: the round vault door north, the hotel door of the private lift south; the private stair behind the wall', 'Sub-Level 7: THE VAULT GANTRY (room E) · room F · War Room / Bunker: THE PRIVATE STAIR', [[1, 2, 9, 10, 'f'], [0, 5, 1, 8, 'o'], [5, 0, 8, 2, 'o'], [5, 10, 8, 12, 'o'], [10, 0, 11, 12, 'o']]);
-plot(5, 2, 'C', 2, 9, 'The Round Table', 'the War Room: the pit with the round table, the south gallery and its clocks', 'War Room: THE ROUND TABLE · the south gallery', [[1, 1, 11, 11, 'f'], [5, 11, 8, 12, 'o'], [5, 0, 8, 1, 'o'], [0, 5, 1, 8, 'o'], [10, 11, 11, 12, 'o']]);
-plot(5, 1, 'C', 2, 9, 'The Big Board', 'LANDMARK: THE BIG BOARD on the north gallery. It has always said DEFCON', 'War Room: THE BIG BOARD · the north gallery', [[1, 3, 11, 11, 'f'], [5, 11, 8, 12, 'o'], [0, 5, 1, 8, 'o']]);
-plot(4, 1, 'C', 2, 5.25, 'The Projection Booth', 'it projects the board, onto the board', 'War Room: THE PROJECTION BOOTH', [[2, 3, 11, 10, 'f'], [11, 5, 12, 8, 'o'], [5, 10, 8, 12, 'o']]);
+plot(5, 3, 'C', 2, 5.25, 'The Vault Gantry', 'the head of the stair from the hub: a cross of bridges over THE VAULT, a shaft 7 m down (world polish thread 8); the round vault door north, the hotel door south; the private stair behind the wall', 'Sub-Level 7: THE VAULT GANTRY (room E) · room F · War Room / Bunker: THE PRIVATE STAIR', [[1, 2, 9, 10, 'f'], [0, 5, 1, 8, 'o'], [5, 0, 8, 2, 'o'], [5, 10, 8, 12, 'o'], [10, 0, 11, 12, 'o'], [9, 5, 10, 8, 'f']]);
+plot(5, 2, 'C', 2, 11, 'The Round Table', 'the War Room (one hall with the Big Board): the floor with the round table, the galleries on three sides; you walk in under the south one', 'War Room: THE ROUND TABLE · the south gallery', [[1, 0, 11, 11, 'f'], [5, 11, 8, 12, 'o'], [0, 5, 1, 8, 'o'], [10, 11, 11, 12, 'o']]);
+plot(5, 1, 'C', 2, 11, 'The Big Board', 'LANDMARK: THE BIG BOARD on the north wall over its walk. It has always said DEFCON', 'War Room: THE BIG BOARD · the north gallery', [[1, 3, 11, 12, 'f'], [0, 5, 1, 8, 'o']]);
+plot(4, 1, 'C', 6, 4, 'The Projection Booth', 'it projects the board, onto the board: 10.5 m up, its balcony over the War Room (a ledge down to the west gallery)', 'War Room: THE PROJECTION BOOTH', [[2, 3, 11, 10, 'f'], [11, 5, 12, 8, 'o'], [5, 10, 8, 12, 'o']]);
 plot(4, 2, 'C', 2, 5.25, 'The Comms Room', 'two phones, four lines, one of them answers; the stair down to Corridor Five (label mine)', 'War Room: the phones, the monitors (a new plot)', [[1, 1, 11, 11, 'f'], [5, 0, 8, 1, 'o'], [11, 5, 12, 8, 'o'], [0, 5, 1, 8, 'o']]);
-plot(5, 4, 'C', 2, 5.25, 'The Great Room', 'the Bunker: the great room with its false windows, the loft, the panic room, the private lift', 'Bunker: THE GREAT ROOM · the loft · THE PRIVATE LIFT', [[1, 1, 11, 10, 'f'], [5, 0, 8, 1, 'o'], [10, 0, 11, 1, 'o'], [0, 5, 1, 8, 'o']]);
-plot(4, 4, 'C', 2, 5.25, 'The Pool', 'the Bunker: a heated pool eighty metres under; the cellar with THE SAFE', 'Bunker: THE POOL · THE CELLAR', [[1, 1, 11, 10, 'f'], [3, 4, 8, 8, 'w'], [11, 5, 12, 8, 'o']]);
+plot(5, 4, 'C', 1, 8, 'The Great Room', 'the Bunker: the great room with its false windows, the loft, the panic room, the private lift', 'Bunker: THE GREAT ROOM · the loft · THE PRIVATE LIFT', [[1, 1, 11, 10, 'f'], [5, 0, 8, 1, 'o'], [10, 0, 11, 1, 'o'], [0, 5, 1, 8, 'o']]);
+plot(4, 4, 'C', 1, 5.25, 'The Pool', 'the Bunker: a heated pool eighty metres under; the cellar with THE SAFE', 'Bunker: THE POOL · THE CELLAR', [[1, 1, 11, 10, 'f'], [3, 4, 8, 8, 'w'], [11, 5, 12, 8, 'o']]);
 
+/* THE RING'S ALCOVES (world polish thread 8, 2026-11-20): one off each plain plot, inner side or across the pipe (a steel crossover) */
+[[15, 0, 20, 3], [27, 8, 32, 10], [51, 8, 56, 10], [63, 0, 68, 3], [0, 15, 3, 20], [8, 27, 10, 32], [8, 51, 10, 56], [73, 15, 75, 20], [80, 27, 83, 32], [80, 51, 83, 56],
+ [15, 73, 20, 75], [27, 80, 32, 83], [51, 80, 56, 83], [63, 73, 68, 75]].forEach(q => set(q[0], q[1], q[2] + 1, q[3] + 1, 'f'));
 /* the tunnel's west end runs on to the room's west wall (the Hangar 18 door stands there) */
 set(0, 5 * N + 2, 4, 5 * N + 6, 'o'); set(0, 5 * N + 3, 4, 5 * N + 4, 'j');
 
 /* ── the openings: where two plots of different levels meet (the port = the three middle squares on that side) ── */
 const OPENINGS = [
-    { a: 'P03-05', b: 'P03-04', kind: 'stair', wide: 3, name: 'the stair down: six floors' },
     { a: 'P02-03', b: 'P01-03', kind: 'stair', wide: 3, name: 'the stair up to Research' },
     { a: 'P04-03', b: 'P05-03', kind: 'stair', wide: 3, name: 'the Vault Gantry\'s stair' },
     { a: 'P03-02', b: 'P02-02', kind: 'stair', wide: 1, name: 'the stair up to the Range' },
     { a: 'P03-02', b: 'P04-02', kind: 'stair', wide: 1, name: 'the stair up to the Comms Room' },
     { a: 'P03-00', b: 'P03-01', kind: 'climb', name: 'the Vent: a ladder shaft' },
+    { a: 'P04-02', b: 'P04-01', kind: 'stair', wide: 3, name: 'the stair up to the Projection Booth (world polish thread 8)' },
 ];
 /* ── the ways out (all in the game before the rebuild). sq = the square the way stands on; wall = the room's wall it is reached through, or 'free' + face ── */
 const WAYS = [

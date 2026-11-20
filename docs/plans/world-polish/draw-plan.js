@@ -68,7 +68,7 @@ function build(plan) {
     if (plan.underlay && plan.room && !process.argv.includes('--no-room')) { try { const S = require(path.join(__dirname, '..', '..', '..', 'load-data.js')).loadGameData(), room = S.DOOR_HQ.rooms[plan.room], info = S.hqTerrainInfo(plan.room), zero = plan.grid.zero || 0, deep = plan.underlay.deep || 4;
         PLOTS.forEach(p => { for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const x = p.bx * N + i, y = p.by * N + j, wx = -room.shell.w / 2 + (x + 0.5) * 3.5, wz = -room.shell.d / 2 + (y + 0.5) * 3.5; let h = null, shut = false, wet = false;
             try { h = S.hqTerrainFeet(info, wx, wz, null); shut = !!(S.hqTerrainSolidAt(info, wx, wz, 0.6) || S.hqTerrainWallAt(info, wx, wz, 0.6)); const f = S.hqTerrainFluidAt(info, wx, wz); wet = !!(f && f.y != null && f.y > h + 0.3); } catch (e) { shut = true; }
-            if (h == null || !isFinite(h) || shut) continue; const lv = Math.round((h - zero) / 1.75 * 4) / 4; if (wet) { T[y][x] = 'w'; L[y][x] = lv; continue; } if (lv < (p.today == null ? p.level : p.today) - deep) continue; T[y][x] = 'u'; L[y][x] = lv; } }); } catch (e) { FAIL.push('underlay: could not read the room (' + String(e.message).slice(0, 80) + ')'); } }
+            if (h == null || !isFinite(h) || shut) { if (plan.underlay.void) L[y][x] = -99; continue; }   /* `void: true`: a closed square is open sky, it hides nothing */ let lv = Math.round((h - zero) / 1.75 * 4) / 4; if (wet) { T[y][x] = 'w'; L[y][x] = lv; continue; } if (lv < (p.today == null ? p.level : p.today) - deep) continue; T[y][x] = 'u'; L[y][x] = lv + (plan.underlay.shift && p.today != null ? p.level - p.today : 0); } }); } catch (e) { FAIL.push('underlay: could not read the room (' + String(e.message).slice(0, 80) + ')'); } }
     const inRoom = (x, y) => x >= 0 && y >= 0 && x < W && y < H && T[y][x] !== '.', isOpen = (x, y) => inRoom(x, y) && OPEN.indexOf(T[y][x]) >= 0, key = (x, y) => x + ',' + y;
     function set(x, y, t, l, keep) { if (y < 0 || y >= H || x < 0 || x >= W) return; if (!inRoom(x, y)) { FAIL.push('off the plots: ' + x + ',' + y + ' (' + t + '): a piece reaches a plot side with no neighbour'); return; }
         if (keep && keep.indexOf(T[y][x]) >= 0) { if (l != null && Math.abs(L[y][x] - l) > 0.01 && !RAMP[key(x, y)]) FAIL.push('level clash at ' + x + ',' + y + ': ' + T[y][x] + ' ' + L[y][x] + ' vs ' + t + ' ' + l); return; }
@@ -127,7 +127,10 @@ function check(B, opts) { opts = opts || {}; const { plan, W, H, N, T, L, RAMP, 
     const noDrop = reach(st[0], st[1], false); let openN = 0; const lost = [];
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (isOpen(x, y)) { openN++; if (!noDrop.has(key(x, y))) lost.push(key(x, y)); }
     (plan.doors || []).forEach(d => { if (!isOpen(d[0], d[1])) FAIL.push('the way out to ' + d[3] + ' stands on a closed square ' + d[0] + ',' + d[1]); else if (!noDrop.has(key(d[0], d[1]))) FAIL.push('the way out to ' + d[3] + ' is not reached on foot from the start (a ledge is never the only way)'); });
-    const trap = lost.filter(k => { const [x, y] = k.split(',').map(Number); return !reach(x, y, true).has(key(st[0], st[1])); });
+    const canGet = reach(st[0], st[1], true);
+    B.WAYLIST.filter(w => w.kind === 'main').forEach(w => { const a = w.pts[0]; if (a && isOpen(a[0], a[1]) && !noDrop.has(key(a[0], a[1]))) FAIL.push('a way that cannot be WALKED to from the start (' + (w.o.name || w.o.to || w.kind) + ', from ' + a.slice(0, 2) + '): a ledge or a gap is in between'); });
+    const trap = lost.filter(k => { const [x, y] = k.split(',').map(Number), tp = plotOf(x, y); if (tp && dists[tp.d] && dists[tp.d].skip) return false;   // a skipped district's ground is not this plan's
+        return canGet.has(k) && !reach(x, y, true).has(key(st[0], st[1])); });   // a trap = a square you CAN get to (a hop down) and cannot walk out of; a cloud nobody reaches is scenery
     if (trap.length) FAIL.push('a trap (' + trap.length + ' squares with no way back to the start): ' + trap.slice(0, 12).join(' '));
     B.stats = { open: openN, ledges: LEDGES.length, hopOnly: lost.filter(k => trap.indexOf(k) < 0) };
 
