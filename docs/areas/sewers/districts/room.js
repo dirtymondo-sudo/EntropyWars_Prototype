@@ -29,10 +29,10 @@ module.exports = {
         R: { name: 'The Radioactive Drain', floor: 3, chamber: 3, channel: 'sludge', sump: 'sludge' },
         T: { name: 'The Running Tunnels', floor: 5, chamber: 5 },
         H: { name: 'The Holding Cells', floor: 2, chamber: 2 },
-        O: { name: 'The Old Workings', floor: 6, chamber: 6 },
+        O: { name: 'The Old Workings', floor: 6, chamber: 6, rock: { wall: 'hz_stone_01', roof: 'hz_stone_01' } },   // cut rock: the Cavern's palette (mondo 11-20, via the Cavern thread: "use these textures too to match")
     },
     /* the paint: index 0 = the room's own floor; the districts' `floor` (passages) and `chamber` pick from it */
-    pal: ['urban:ConcreteStriped2c', 'bricks_2', 'urban:TileGeneric4b', 'urban:ConcreteStriped1e', 'wood_planks', 'urban:TileSubway4a', 'dirt_2'],
+    pal: ['urban:ConcreteStriped2c', 'bricks_2', 'urban:TileGeneric4b', 'urban:ConcreteStriped1e', 'wood_planks', 'urban:TileSubway4a', 'hz_stone_02'],   // (6: the mine's cave floor, the Cavern's; never a calm sheet: mondo 11-20)
     plots: {
         '3,0': ['W', 'The Pumping Station'], '4,0': ['W', 'The Pump Room'], '3,1': ['W', 'The Inspection Gallery'], '3,2': ['W', 'The Precinct Drain'],
         '5,0': ['W', 'The Junction'], '5,1': ['W', 'The Culverts'], '4,1': ['W', 'The Cistern'], '6,0': ['W', 'The East Return'], '6,1': ['W', 'The Culverts'],

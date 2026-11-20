@@ -142,18 +142,19 @@ const VAULT = [], DAMP = [0x7c766a, 0x6a6a58, 0x5c6450, 0x74695a, 0x66604f], grn
 const PARTS = {}; PL.forEach(p => { PARTS[p.id] = []; });
 const partsOf = (x, y) => PARTS[plotOf(x, y).id], pox = p => gx(p.sx) + N * C / 2, poz = p => gz(p.sy) + N * C / 2;
 rects(open, (x, y, X, Y2) => ROOF[y][x] === ROOF[Y2][X] && LV[y][x] === LV[Y2][X], true).forEach(([x, y, w, h]) => {
-    const p = plotOf(x, y), parts = PARTS[p.id], ox = pox(p), oz = poz(p), top = ROOF[y][x], yf = hAt(x, y);
+    const p = plotOf(x, y), parts = PARTS[p.id], ox = pox(p), oz = poz(p), top = ROOF[y][x], yf = hAt(x, y), rock = (DES.districts[p.d] || {}).rock;   /* `rock` (a district cut in natural rock: the Cavern's palette, mondo 11-20) */
     const alongX = w >= h, span = (alongX ? h : w) * C + 0.7, len = (alongX ? w : h) * C + 0.1, rise = r2(Math.min(3.5, span / 3)), cx = r2(gx(x) + w * C / 2 - ox), cz = r2(gz(y) + h * C / 2 - oz);
     parts.push({ s: 'box', p: [cx, r2(top + 0.05), cz], size: [r2(w * C + 0.2), 0.2, r2(h * C + 0.2)], sides: false, top: false, under: true, key: 'bricks_2', tint: 0x4a463f });
-    parts.push({ s: 'roof', form: 'barrel', p: [cx, r2(top - rise), cz], size: [r2(len), rise, r2(span)], ry: alongX ? 0 : 90, key: 'bricks_2', tint: DAMP[Math.floor(grnd() * DAMP.length)], ds: true, ends: false, seg: 8 });
+    parts.push({ s: 'roof', form: 'barrel', p: [cx, r2(top - rise), cz], size: [r2(len), rise, r2(span)], ry: alongX ? 0 : 90, key: rock ? rock.roof : 'bricks_2', tint: rock ? 0xe6e2da : DAMP[Math.floor(grnd() * DAMP.length)], ds: true, ends: false, seg: 8 });
     count.vaults = (count.vaults || 0) + 1;
     /* the grime: a slime line at every wall's foot; a rusted main on brackets along a north / west wall of three squares or more, a downpipe at its end */
     const side = (horiz, at, a0, n, out, pipes) => { let run = 0; for (let i = 0; i <= n; i++) { const X = horiz ? a0 + i : at + out, Y2 = horiz ? at + out : a0 + i, wallHere = i < n && !open(X, Y2) && inb(X, Y2) || (i < n && !inb(X, Y2));
             if (wallHere) { run++; continue; } if (!run) continue;
             const s0 = a0 + i - run, L = run * C, mid = (horiz ? gx(s0) - ox : gz(s0) - oz) + L / 2, edge = (horiz ? gz(at + (out > 0 ? 1 : 0)) - oz : gx(at + (out > 0 ? 1 : 0)) - ox), inw = -out;
             const at3 = (off, yy) => horiz ? [r2(mid), r2(yy), r2(edge + inw * off)] : [r2(edge + inw * off), r2(yy), r2(mid)], sz = (t, hh) => horiz ? [r2(L), hh, t] : [t, hh, r2(L)];
-            parts.push({ s: 'box', p: at3(0.05, yf), size: sz(0.08, r2(0.45 + grnd() * 0.5)), key: 'bricks_2', tint: 0x1c2416, top: false });
-            if (pipes && run >= 3) { const yy = r2(yf + 2.3 + grnd() * 0.5);
+            if (rock) parts.push({ s: 'box', p: at3(0.035, yf - 0.2), size: sz(0.06, r2(top - yf + 0.2)), key: rock.wall, tint: 0xe6e2da, top: false, uv: 3.5 });   // the rock face over the brick wall
+            parts.push({ s: 'box', p: at3(0.05, yf), size: sz(0.08, r2(0.45 + grnd() * 0.5)), key: rock ? rock.wall : 'bricks_2', tint: 0x1c2416, top: false });
+            if (pipes && run >= 3 && !rock) { const yy = r2(yf + 2.3 + grnd() * 0.5);
                 parts.push({ s: 'box', p: at3(0.3, yy), size: sz(0.3, 0.3), key: RUST, tint: 0x6a3f24, under: true }, { s: 'box', p: at3(0.24, yy - 0.42), size: sz(0.12, 0.12), key: RUST, tint: 0x2e3a2e, under: true });
                 for (let b = 0.9; b < L; b += 3.5) { const q = horiz ? [r2(mid - L / 2 + b), r2(yy - 0.1), r2(edge + inw * 0.2)] : [r2(edge + inw * 0.2), r2(yy - 0.1), r2(mid - L / 2 + b)]; parts.push({ s: 'box', p: q, size: horiz ? [0.1, 0.5, 0.4] : [0.4, 0.5, 0.1], key: RUST, tint: 0x222222 }); }
                 const e = horiz ? [r2(mid + L / 2 - 0.4), yf, r2(edge + inw * 0.3)] : [r2(edge + inw * 0.3), yf, r2(mid + L / 2 - 0.4)]; parts.push({ s: 'cyl', p: e, r: 0.15, h: r2(yy - yf), key: RUST, tint: 0x5a3622, seg: 8 }); count.pipes = (count.pipes || 0) + 1; }
