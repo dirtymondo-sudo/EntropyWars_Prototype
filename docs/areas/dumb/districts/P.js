@@ -16,7 +16,7 @@ const U = n => 'urban:' + n;
    down (10.5 m), the cars moved there from the Bays. The tunnel's squares over those plots are lifted back to 14 m here (a plateau each).
    Ledges: the gap in the hangar's rail (u 17..18) and the pier's end, both 5.25 m down to the floor. ════ */
 const HANGAR = { wall: U('ConcreteStriped1c'), tint: 0xc4c8cc, gain: 1.9, band: 0xe0b020, ceil: U('ConcreteStriped2e'), ceilTint: 0x8a9096, ceilGain: 1.6, light: 0xeef4ff, every: 2 };
-const deckOver = (ctx, x0, x1) => { const { r2, gx, gz } = ctx, a = gx(x0) - 0.5, b = gx(x1 + 1) + 0.5, z0 = gz(62), z1 = gz(66);
+const deckOver = (ctx, x0, x1, ew, ee) => { const { r2, gx, gz } = ctx, a = gx(x0) - (ew == null ? 0.5 : ew), b = gx(x1 + 1) + (ee == null ? 0.5 : ee), z0 = gz(62), z1 = gz(66);
     ctx.feat({ k: 'plateau', x: r2((a + b) / 2), z: r2((z0 + z1) / 2), w: r2(b - a), d: r2(z1 - z0), h: 14, edge: 0.05 }); };
 function hangar(ctx) {
     deckOver(ctx, 12, 35);
@@ -39,6 +39,15 @@ function hangar(ctx) {
     for (const u of [3, 7, 11, 15, 19, 22]) for (const v of [7.5, 10]) R.dec('high_bay_lamp', u + 0.5, v, 0, { y: 11.2, ceil: true });
     R.done();
 }
+/* THE GANTRIES: the tunnel crosses the ring (10.5) on a bridge at 14, a stair down to the ring beside it; the tunnel's own squares round it lifted */
+function gantries(ctx) {
+    deckOver(ctx, 0, 3, 0.5, 0); deckOver(ctx, 8, 11, 0, 0.5); deckOver(ctx, 72, 75, 0.5, 0); deckOver(ctx, 80, 83, 0, 0.5);
+    for (const [id, st] of [['P00-05', 7], ['P06-05', 4]]) { const G = ctx.room(id, 0, 0, 12, 12, id === 'P00-05' ? 'wgantry' : 'egantry'), GR = 0x3a4048;
+        G.deck(4, 2, 8, 6, 3.5, U('MetalSubwayGrill1a')); G.stair(st + 0.5, 0, st + 0.5, 2, 1, 0, 3.5, 'steel');
+        G.guard('u', 2, st === 7 ? 4 : 5, st === 7 ? 7 : 8, 3.5, GR); G.guard('u', 6, 4, 8, 3.5, GR);
+        for (const o of [-0.72, 0.72]) G.box(6, 3.5 + o / ctx.C, 3.5, 4 * ctx.C, 0.14, 0.12, 'metal', 0x6a6e74);
+        G.label(id === 'P00-05' ? 'THE RING' : 'THE RING', st + 0.5, 0.06, 0, 1.4); G.done(); }
+}
 function motorPool(ctx) {
     deckOver(ctx, 60, 71);
     /* u = x − 60, v = y − 60, heights over the lower deck (10.5) */
@@ -57,7 +66,7 @@ module.exports = {
     looks: { 'P01-05': HANGAR, 'P02-05': HANGAR },
     build(ctx) {
         const { C, r2, gcx, gcz, gx, gz, plot } = ctx, B = plot['P03-05'].base;
-        hangar(ctx); motorPool(ctx);
+        hangar(ctx); motorPool(ctx); gantries(ctx);
         /* the platform's edge: a yellow line along the track's south side, from the Ramp to the Freight Lift */
         { const a = ctx.sq('P01-05', 0, 4), b = ctx.sq('P05-05', 11, 4); for (let sx = a[0]; sx <= b[0]; sx += 12) ctx.part({ s: 'box', p: [r2(gx(sx) + 6 * C), r2(B + 0.012), r2(gz(a[1]) + 0.2)], size: [12 * C, 0.01, 0.25], tint: 0xe0b020 }); }
         /* THE 7 DOOR: the wired double door behind the platform, at the head of the stair down */
