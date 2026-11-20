@@ -74,7 +74,7 @@ const ThreeRenderer = (function () {
             'EW_NO_TRUE_DRAPE EW_NO_TWIN_SHARE EW_NO_UNIT_INK EW_NO_UNIT_POP EW_NO_UNIT_RIM EW_NO_VFX_CLEANUP EW_NO_XMAS_PACK EW_NO_ZONE_DECALS EW_NO_ZONE_STEPS ' +
             'EW_OCEAN_STILL EW_OLD_POST EW_PERF_LOW EW_PLATE_ANIM_MS EW_PLATE_DEPTH_ALL EW_PLATE_PILE EW_POP EW_PP_LIB EW_PROC_EYES EW_PROC_ONE_MODEL ' +
             'EW_RAYS_ANY_LIGHT EW_RIG_LIST_EVERY_ADD EW_RIG_NO_PREGROW EW_RIG_WALK_EVERY EW_RIM EW_RISE_MS EW_SC_WARM_IN_PLAY EW_SHADOW_CHUNK_ALL ' +
-            'EW_SHADOW_REACH_LOOSE EW_SHADOW_REACH_OFF EW_SHADOW_KEY_EVERY EW_SHEET_ANY_DENSITY EW_SHEET_REAL_SIZE EW_SIM_NO_RENDER EW_STYLE_MASK_PROPS EW_TERRAIN_ALL_SAMPLES ' +
+            'EW_SHADOW_REACH_LOOSE EW_SHADOW_REACH_OFF EW_SHADOW_KEY_EVERY EW_GEO_KEY_FULL EW_SHEET_ANY_DENSITY EW_SHEET_REAL_SIZE EW_SIM_NO_RENDER EW_STYLE_MASK_PROPS EW_TERRAIN_ALL_SAMPLES ' +
             'EW_TERRAIN_COLORS EW_TEXT_LIB EW_TIMER_WATCH_OFF EW_TURBO_FRAME_MS EW_WALK_KEEP_UNITS EW_WORLD_MODE EW_WORLD_STAB EW_ZSEP_LAST').split(' ');
         for (var i = 0; i < names.length; i++) {
             var k = names[i];
@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-20 keep-more';
+    var _EW_TR_STAMP = '11-20 key-by-read';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -48662,11 +48662,69 @@ const ThreeRenderer = (function () {
            now kept on the render object with the values the pass copies onto the material (and the geometry, receiveShadow, the
            clipping key) and built again only when one of those differs. Off: window.EW_SHADOW_KEY_EVERY */
         var gkInst = function (ro) {
-            var o = ro.object;
-            if (!_ewInstShareOk(o)) return gk.call(ro);
-            var u = o.uuid;
-            o.uuid = 'ewi:' + o.instanceMatrix.usage + ':' + (o.instanceColor ? 'c' + o.instanceColor.usage : '-');
-            try { return gk.call(ro); } finally { o.uuid = u; }
+            var o = ro.object, was = geoForBuild, rsOff = !geoFull && !!(ro.material && ro.material.isShadowPassMaterial === true && o && o.receiveShadow === true);
+            geoForBuild = true;
+            if (rsOff) o.receiveShadow = false;
+            try {
+                if (!_ewInstShareOk(o)) return gk.call(ro);
+                var u = o.uuid;
+                o.uuid = 'ewi:' + o.instanceMatrix.usage + ':' + (o.instanceColor ? 'c' + o.instanceColor.usage : '-');
+                try { return gk.call(ro); } finally { o.uuid = u; }
+            } finally { geoForBuild = was; if (rsOff) o.receiveShadow = true; }
+        };
+        /* THE KEY BY WHAT IS READ (2026-11-20, mondo: "what are all the shaders? can any of them be dropped?" then "Yes please" to cuts
+           1 and 2). A city walk held 198 shader builds for 82 looks: the SAME look was built again for every different list of
+           attributes a model's file happens to carry (24 builds of the plain shadow shader, 9 of one prop look), because three
+           keys a build by ALL of a geometry's attributes, read or not. A second UV set, vertex colours or tangents that the
+           material never reads change nothing in the shader. For the plain cases the key now holds only the attributes that
+           material can read:
+             the shadow pass   position; the UV sets when the caster cuts out (alphaTest / alphaMap / see-through); the skin's
+                               two when skinned. A caster with its own position or depth node (the wind) keeps the full key.
+             a plain lit / unlit material (Basic, Lambert, Phong, Standard, Physical; no node layer `_ewNode`, no
+                               onBeforeCompile hook)   position, normal; the UV sets when it has any sheet; `color` when it
+                               uses vertex colours; `tangent` when it has a normal map; the skin's two when skinned.
+           Morph targets and the index flag stay as three writes them. Everything else (lines, points, sprites, node materials,
+           hooked or dressed materials) keeps three's full key. Off: window.EW_GEO_KEY_FULL = true (before the first draw). */
+        var ggk = P.getGeometryCacheKey, geoFull = !!window.EW_GEO_KEY_FULL;
+        var geoForBuild = false;   // true while a BUILD's key is being written (getMaterialCacheKey); the pipeline's key asks with it false
+        var _EW_PLAIN_MAT = { MeshBasicMaterial: 1, MeshLambertMaterial: 1, MeshPhongMaterial: 1, MeshStandardMaterial: 1, MeshPhysicalMaterial: 1 };
+        var _EW_TEX_SLOTS = ['map', 'alphaMap', 'aoMap', 'lightMap', 'emissiveMap', 'bumpMap', 'normalMap', 'displacementMap', 'specularMap', 'roughnessMap', 'metalnessMap', 'envMap', 'clearcoatMap', 'clearcoatNormalMap', 'clearcoatRoughnessMap', 'sheenColorMap', 'sheenRoughnessMap', 'transmissionMap', 'thicknessMap', 'iridescenceMap', 'iridescenceThicknessMap', 'anisotropyMap', 'specularIntensityMap', 'specularColorMap', 'gradientMap'];
+        var defOBC = THREE.Material && THREE.Material.prototype.onBeforeCompile;
+        if (typeof ggk === 'function' && !geoFull) P.getGeometryCacheKey = function () {
+            var m = this.material, o = this.object, g = this.geometry;
+            if (!m || !o || !g || o.isMesh !== true) return ggk.call(this);
+            var uvs = false, col = false, tan = false, nor = true;
+            if (m.isShadowPassMaterial === true) {
+                if (m.positionNode || m.depthNode || m.castShadowNode || m.maskNode) return ggk.call(this);
+                nor = false; uvs = m.alphaTest > 0 || !!m.alphaMap || m.transparent === true;
+            } else {
+                if (_EW_PLAIN_MAT[m.type] !== 1 || m._ewNode || m.isNodeMaterial === true || (m.onBeforeCompile && m.onBeforeCompile !== defOBC) || Array.isArray(o.material)) return ggk.call(this);
+                for (var t = 0; t < _EW_TEX_SLOTS.length; t++) if (m[_EW_TEX_SLOTS[t]]) { uvs = true; break; }
+                col = m.vertexColors === true; tan = !!(m.normalMap || m.clearcoatNormalMap || m.anisotropyMap || m.anisotropy > 0);
+            }
+            var at = g.attributes, names = Object.keys(at).sort(), key = '';
+            for (var i = 0; i < names.length; i++) {
+                var nm = names[i];
+                if (!(nm === 'position' || (nor && nm === 'normal') || (uvs && nm.charCodeAt(0) === 117 && nm.charCodeAt(1) === 118) || (col && nm === 'color') || (tan && nm === 'tangent') || (o.isSkinnedMesh === true && (nm === 'skinIndex' || nm === 'skinWeight')))) continue;
+                var a = at[nm];
+                key += nm + ',';
+                if (!geoForBuild) { if (a.data) key += a.data.stride + ','; if (a.offset) key += a.offset + ','; }   // (where it sits in its buffer matters to the pipeline's key, not to the shader's code)
+                if (a.itemSize) key += a.itemSize + ',';
+                if (a.normalized) key += 'n,';
+            }
+            var ma = g.morphAttributes, mn = Object.keys(ma).sort();
+            for (var j = 0; j < mn.length; j++) { var tg = ma[mn[j]]; key += 'morph-' + mn[j] + ','; for (var q = 0; q < tg.length; q++) key += tg[q].id + ','; }
+            if (g.index && !geoForBuild) key += 'index,';   // (indexed or not is the pipeline's and the draw's business, not the shader's)
+            return key;
+        };
+        /* (same cut) the shadow pass draws depth only: whether the caster also RECEIVES shadows forked every shadow build in two
+           (three writes receiveShadow into both halves of the key). For a shadow-pass material both halves read it as off. */
+        var gdk = P.getDynamicCacheKey;
+        if (typeof gdk === 'function' && !geoFull) P.getDynamicCacheKey = function () {
+            var m = this.material, o = this.object;
+            if (!m || m.isShadowPassMaterial !== true || !o || o.receiveShadow !== true) return gdk.call(this);
+            o.receiveShadow = false;
+            try { return gdk.call(this); } finally { o.receiveShadow = true; }
         };
         P.getMaterialCacheKey = function () {
             var m = this.material;
