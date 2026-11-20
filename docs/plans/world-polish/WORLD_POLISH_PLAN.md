@@ -283,7 +283,11 @@ they are measurements, not the job.
   streets, the shrine and the walk-in buildings stand). Six districts on 25 to 30 plots: the plot grid goes to him in chat first.
 - **A love letter to anime and Japan:** cherry blossoms everywhere they fit (petals in the air as the district particles), lanterns, gates,
   festival stalls. References to real anime are a parody question: list ideas for him, never invent characters or use a show's own names.
-- **Still to settle in chat:** how you reach the island (by boat from where).
+- **How you reach it (mondo 11-20: "isn't there only one place you can get a boat, the beach? Or can't you just swim in the ocean?"):** as
+  today. The island is its own room far out at sea. The game's boat (the skiff) is at the Beach's harbour, and the Beach's room has a boat way
+  to the island; a second boat way comes from the Frozen Sea. Inside a sea room you can swim or sail anywhere. So: the boat from the Beach
+  lands at Katana Bay, and round the island you can swim. No new way is added. The One Beach thread is changing the Beach's harbour: this
+  thread checks the boat way still ends at the island after that thread's work.
 
 ### Thread 5: THE MOUNTAINS (not started)
 - **mondo 11-20, after his first walk there:** "The ski trails should be all over the mountain. It should be designed like an actual mountain and
@@ -313,13 +317,13 @@ they are measurements, not the job.
   - **A REAL TRAIL MAP,** shown to him in chat first: named runs marked green, blue, black and double black. Easy and wide near the base,
     steep, narrow and hard near the top (chutes, cliffs, moguls, trees). Runs fork and merge all over the mountain; cat-tracks cross
     between them; every run ends at a lift or the base. Trail signs with the marks at every fork (that is the orientation).
-  - **Lifts** that take you back up: several, base to mid-mountain to summit, each with its stations. Never invent how a lift works: if a
-    ride-up needs a new game rule, it goes to him as a question.
+  - **Lifts carry you up** (mondo 11-20: "yes lift should carry you"): several, base to mid-mountain to summit, each with its stations. You
+    get on at the bottom station and are carried to the top one. How the ride looks and feels is shown to him on the first lift before the rest.
   - **The resort at the base:** the Lodge, rentals, a village street, ski patrol, a car park. Real buildings, insides that match.
   - **Olympus keeps its temples** at the top (monuments are not lifted; the runs start beside them). The walking trails stay too: thin
     trails, ledges with views, a second way up on foot.
-  - **Skiing itself:** today you ride the runs on the skateboard. Whether that becomes skis or a snowboard is a question for him and the
-    skate system's notes (`docs/notes/door-gun-skate-vehicles.md`), not something this thread invents.
+  - **Skiing itself:** the board on snow, as today (mondo 11-20: "board on snow for now"). No skis, no new riding system in this thread.
+    Read the skate system's notes first (`docs/notes/door-gun-skate-vehicles.md`).
   - **The North Pole village:** levels (the workshop up, the square down, a sledding hill behind), lanes between the houses, its solid half opened.
 - **Level of detail:** this is his example of what every zone should reach. "That is the level of detail we are going for."
 
@@ -559,8 +563,6 @@ places are EMPTY and UNREADABLE: nothing to steer by. That is the standard's sec
 1. The numbers in section A (main way 3 squares, thin trail 1 or 2, no leg over 8 squares straight, a thin trail every 2 plots, 2 levels
    between districts): right, or change which?
 2. The order after The Woods and Katana Island: the Mountains, the Estate, Leylines, Antarctica, the D.U.M.B. and the underground.
-2b. The Mountains: skis, a snowboard, or the skateboard on snow as today? How do lifts work?
-2c. Katana Island: how do you reach it?
 3. The Frozen Sea: grown (assumed) or folded into the North Pole. Asked again when the Beach's thread comes up.
 4. BIG WALLS ARE BLURRY UP CLOSE (section F): their own thread, or with each zone?
 
