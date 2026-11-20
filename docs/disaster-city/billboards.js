@@ -42,6 +42,35 @@ function board(c, ads) {
         q(T + leg + Hh * 0.36, W * 0.9, Hh * 0.52, ad[0], ad[4], ad[5]); q(T + leg + Hh * 0.1, W * 0.8, Hh * 0.19, ad[1], 'way', ''); });
     return { k: 'arch', id: 'bb:' + c.id, x: c.x, z: c.z, y: c.y, rot: 0, parts };
 }
+/* THE WALL BOARDS (2026-11-20, second pass: most Entertainment and Bayside buildings have pitched roofs or domes and took no roof board):
+   a lit board flat on an upper-storey wall of every building of two storeys or more in the nightlife districts (WALLS), on each face that
+   looks onto open ground: a face counts as open when the spot 5 m out from its middle lies in no building's footprint. At most two a
+   building, the longer faces first. The board hangs over the top storey (0.5 m over its floor line to 0.4 m under the roof line). */
+const WALLS = { E: 1, B: 1 };
+/* STREET LEVEL (2026-11-20, mondo: "do the street level wall mounted boards"): (1) a one-storey building takes one board too, on its longest
+   open face, from 2.3 m up to a little over its eave; (2) every building of the two districts wears eye-level POSTERS (2.4 x 1.5 m, their
+   foot 0.9 m over the pavement, lit) flat on each open face, one near each end of the wall, where a door or a shop window seldom is. */
+function wallBoards(c, faces, ads) {
+    const parts = [], low = c.st < 2, y0 = low ? 2.3 : (c.st - 1) * STOREY + 0.5, Hh = low ? 2.0 : STOREY - 0.9;
+    faces.forEach((f, i) => { const ad = ads[i], ax = f.ax, W = r2(Math.min(f.len * 0.62, Hh * 2.6)), t = 0.18, e = f.s * (f.half + 0.22);
+        const at = (u, y, off) => ax ? [r2(u), r2(y), r2(e + off)] : [r2(e + off), r2(y), r2(u)];
+        const box3 = (y, len, hh, th, tint, x) => parts.push(Object.assign({ s: 'box', p: at(0, y, 0), size: ax ? [len, hh, th] : [th, hh, len], tint }, x || {}));
+        box3(y0 - 0.1, W + 0.2, Hh + 0.2, t - 0.06, 0x1a1b20); box3(y0, W, Hh, t, hex(ad[3]), { glow: 0.55 });
+        const ry = ax ? (f.s > 0 ? 0 : 180) : (f.s > 0 ? 270 : 90), off = f.s * (t / 2 + 0.02);
+        const q = (y, ww, hh, words, font, mark) => parts.push({ s: 'quad', p: at(0, y, off), size: [r2(ww), r2(hh)], ry, uv: 'fit', kind: 'over', glow: 0.95, tint: 16777215,
+            key: 'txt:' + words + '|' + ad[2] + '||' + r2(ww / hh) + '||' + font + (mark ? '|' + mark : '') });
+        q(y0 + Hh * 0.36, W * 0.9, Hh * 0.52, ad[0], ad[4], ad[5]); q(y0 + Hh * 0.1, W * 0.8, Hh * 0.19, ad[1], 'way', ''); });
+    /* the posters */
+    (c.posters || []).forEach(o => { const f = o.f, ad = o.ad, ax = f.ax, PW = 2.4, PH = 1.5, t = 0.1, e = f.s * (f.half + 0.14), u = o.end * (f.len / 2 - 1.7);
+        const at = (y, off) => ax ? [r2(u), r2(y), r2(e + off)] : [r2(e + off), r2(y), r2(u)];
+        parts.push({ s: 'box', p: at(0.82, 0), size: ax ? [PW + 0.16, PH + 0.16, t - 0.04] : [t - 0.04, PH + 0.16, PW + 0.16], tint: 0x1a1b20 });
+        parts.push({ s: 'box', p: at(0.9, 0), size: ax ? [PW, PH, t] : [t, PH, PW], tint: hex(ad[3]), glow: 0.45 });
+        const ry = ax ? (f.s > 0 ? 0 : 180) : (f.s > 0 ? 270 : 90), off = f.s * (t / 2 + 0.02);
+        const q = (y, ww, hh, words, font, mark) => parts.push({ s: 'quad', p: at(y, off), size: [r2(ww), r2(hh)], ry, uv: 'fit', kind: 'over', glow: 0.85, tint: 16777215,
+            key: 'txt:' + words + '|' + ad[2] + '||' + r2(ww / hh) + '||' + font + (mark ? '|' + mark : '') });
+        q(0.9 + PH * 0.36, PW * 0.9, PH * 0.52, ad[0], ad[4], ad[5]); q(0.9 + PH * 0.1, PW * 0.84, PH * 0.2, ad[1], 'way', ''); });
+    return { k: 'arch', id: 'bbw:' + c.id, x: c.x, z: c.z, y: c.y, rot: 0, parts };
+}
 /* rows = the city's rows (new board rows are pushed onto it and returned in `rows`); districtOf(row) = its district letter */
 function apply(rows, districtOf) {
     const K = { boards: 0, on: [], rows: [] }, by = {}, dress = {};
@@ -58,6 +87,24 @@ function apply(rows, districtOf) {
     let n = 0;
     for (const d of Object.keys(PER)) { const L = (by[d] || []).sort((a, c) => c.st - a.st || String(a.id).localeCompare(String(c.id))).slice(0, PER[d]);
         for (const c of L) { const ads = [ADS[n++ % ADS.length], ADS[n++ % ADS.length]], row = board(c, ads); rows.push(row); K.rows.push(row); K.boards += 2; K.on.push(d + ' ' + c.id + ' x ' + c.x + ' z ' + c.z + ' y ' + c.y + ' top ' + c.T + ' half ' + c.S / 2 + (c.alongX ? ' S: ' + ads[0][0] + ' · N: ' + ads[1][0] : ' E: ' + ads[0][0] + ' · W: ' + ads[1][0])); } }
+    /* the wall boards */
+    const foot = [];   // every building's footprint in world axes: [x0, z0, x1, z1]
+    for (const r of rows) { if ((r.k !== 'texbuilding' && r.k !== 'plateau') || typeof r.x !== 'number' || !r.w || !r.d) continue;
+        const turned = (((+r.rot || 0) % 180) + 180) % 180 === 90, wx = turned ? r.d : r.w, wz = turned ? r.w : r.d; foot.push([r.x - wx / 2, r.z - wz / 2, r.x + wx / 2, r.z + wz / 2, r.id]); }
+    const inside = (x, z, me) => foot.some(f => f[4] !== me && x > f[0] && x < f[2] && z > f[1] && z < f[3]);
+    for (const r of rows.slice()) { if (r.k !== 'texbuilding' || !/^dc:P\d\d-\d\d-B\d$/.test(String(r.id || ''))) continue;
+        const d = districtOf(r); if (!WALLS[d]) continue; const A = dress[r.id]; if (!A || typeof A.y !== 'number') continue;
+        if (A.parts.some(p => p.s === 'box' && p.size && p.p && p.p[1] + p.size[1] > 20)) continue;   // (a dressed tower, e.g. the hotel: its own neon climbs that wall)
+        const turned = (((+r.rot || 0) % 180) + 180) % 180 === 90, wx = turned ? r.d : r.w, wz = turned ? r.w : r.d;
+        const open = [{ ax: true, s: 1, len: wx, half: wz / 2, px: r.x, pz: r.z + wz / 2 + 5, n: 'S' }, { ax: true, s: -1, len: wx, half: wz / 2, px: r.x, pz: r.z - wz / 2 - 5, n: 'N' },
+                      { ax: false, s: 1, len: wz, half: wx / 2, px: r.x + wx / 2 + 5, pz: r.z, n: 'E' }, { ax: false, s: -1, len: wz, half: wx / 2, px: r.x - wx / 2 - 5, pz: r.z, n: 'W' }]
+            .filter(f => f.len >= 9 && !inside(f.px, f.pz, r.id)).sort((a, b) => b.len - a.len);
+        if (!open.length) continue;
+        const st = r.storeys || 1, F = open.slice(0, st < 2 ? 1 : 2), ads = F.map(() => ADS[n++ % ADS.length]);
+        const posters = []; open.forEach(f => [-1, 1].forEach(end => posters.push({ f, end, ad: ADS[n++ % ADS.length] })));
+        const row = wallBoards({ id: r.id, x: r.x, z: r.z, y: A.y, st, posters }, F, ads);
+        rows.push(row); K.rows.push(row); K.boards += F.length; K.posters = (K.posters || 0) + posters.length;
+        K.on.push(d + ' wall ' + r.id + ' x ' + r.x + ' z ' + r.z + ' y ' + A.y + ' st ' + st + ' ' + F.map((f, i) => f.n + ': ' + ads[i][0]).join(' · ') + ' + ' + posters.length + ' posters'); }
     return K;
 }
 module.exports = { apply, ADS, PER };
