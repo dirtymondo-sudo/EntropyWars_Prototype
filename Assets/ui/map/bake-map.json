@@ -253,11 +253,11 @@
   "id": "site_prebuilt_gobekli_ow_line",
   "nx": 144,
   "nz": 36,
-  "h0": -1.13,
+  "h0": -3.55,
   "hs": 0.25,
-  "v": "7173797cde",
-  "bytes": 1626,
-  "s": "1.0"
+  "v": "b6b7647676",
+  "bytes": 2191,
+  "s": "0.7"
  },
  "site_prebuilt_gobekli_ow_bugs": {
   "id": "site_prebuilt_gobekli_ow_bugs",

@@ -13505,3 +13505,31 @@ mondo 11-20 named the new Meshy pieces (`kt_*`, `fl_*`; models-assets.md "THE KA
 - **`fl_bamboo_clump`** is the Bamboo Wood's tree now (tree `h` 5.5 to 7.3: at 9 m its canes read a metre thick); **`fl_jungle_tree`** stands among the Jungle's palms;
   **`fl_rice_clump`** in place of the grey `hw_crop*` lumps in the Paddies and on the Terraces.
 - **Still drawn in code:** the roofs (`jroof`), the flag, the furniture. **Not used here:** `kt_katana_scabbard`, the cactus, wheat, redwood and Joshua tree.
+
+## THE LEY LINE, THE ROOM DESIGN — world polish thread 12, the pilot (2026-11-20, owner side)
+mondo's OK of 11-20 on `docs/plans/world-polish/plans/leylines-line.js` ("yep looks good"; the Line is CROSSED, never walked end to end; "Yes that's fine" to
+18 new plots; new buildings ANCIENT, "or at least one of the early civilizations"). The plan's first edit by the build thread: MORE LEDGES ON THE CLIMBS (his ask
+before he looks): four shelves on the west climbs (off the North Knoll's walk 4 -> 3 -> 1, off its south lip 4 -> 2, off the Nexus's west way 0 -> -2 back into
+the Sink) and one on the east (off the Shoulder 2 -> 1); the plan's ledge edges 9 -> 18, `draw-plan.js` passes.
+- **THE ROOM GROWS** in its own 12 x 3 box: `docs/plans/one-world/after-v13.js` row 7 adds the plan's new plots to district `leyY` (no `was`), ground `s`.
+  THE PILOT adds the west ten (box x 3..7 = wx 22..26, wy 29 + 31); `LEY_UPTO = 11` adds the east eight. `bake-leylines.js` reads them (`LINE_NEW`); `v13()` keeps
+  only the plots with a `was` (the home frame's).
+- **THE ROOM DESIGN** (`bake-leylines.js`, step "THE ROOM DESIGN", `S.design` on the Line's STAND row; the room-frame file is `docs/areas/leylines/districts/Y-room.js`):
+  the plan is built with `draw-plan.js` `build()` and laid square for square on the designed squares (district Y, room x `x0..x1`; the pilot 36..95). An OPEN
+  plan square = a `space`, flat at its level (a ramp square: one level over two squares); two open squares 0.6 levels or more apart = a LEDGE, its face a rock slab
+  (`ley:y:ledges`). A closed square = THE MASS: the `gen: plan` trees (Y-room.js `gen`: low autumn kit oaks, dead trees, Joshua trees, 2.6-4.6 m) + boulders,
+  dry bushes and menhirs on one mass square in five beside the walk. THE LINE'S BED (plan tile `y`, squares y 17..18) = level 0, refused like the mass, no tree
+  (a `none` zone), gold paint + the home frame's glow strip, a stone kerb where level ground meets it. THE SLABS over the cut = `bridge` rows (stone, absY) from
+  bank to bank. Mass corners take the highest open corner they touch (the mass hides each drop's face). Home pieces on the designed squares: the gold forks and
+  the old niches go (`dropHome`), the fork signs, the niche fittings, the West Mouth camp and any menhir / obelisk on opened ground go (`dropProp`), a blocking
+  piece on the walk goes, a person off the open ground steps to the nearest open, level square. The tool's walk check allows a ledge downhill only.
+- **WHAT STANDS (the pilot):** THE REST HOUSE (new, ancient: a dry-stone ring 9.1 m across with its door west on the West Mouth, two T-pillars in the middle,
+  a stone bench round the inside, a hearth, an offering table, a porthole doorway of two slabs and a lintel; terrain `wall` rows, so the inside is the outside's
+  own ring; open to the sky as the enclosures are seen today), the West Mouth's camp and two braziers, the four NICHES re-laid on the cut's banks (alcoves opening
+  onto the niche rows, a sarcophagus, a skull pile, two braziers), a ring of menhirs round the North Knoll and a cairn on its lookout, THE LONE STONE (a 5.6 m
+  sarsen with an offering stone), the Sink's fire ring, THE FORK'S END secret (a golden idol on an altar between two torches), the obelisks at the Nexus.
+- **PILOT ONLY:** the Nexus's south-east corner opens one square east (Y-room.js `extra`) onto the old level plain of the east half, which the plan reaches
+  over the Rise and the Shoulder; the walk over the Rise ends at the plot's east side until the Shoulder is built. Both go with `x1: 143`.
+- **TO BUILD THE REST:** `LEY_UPTO = 11` in after-v13.js + `node docs/plans/one-world/after-v13.js`; `X1 = 143` in Y-room.js (the east slabs, the Watch Tower,
+  the High Stone); `node bake-leylines.js`; `node bake-map.js site_prebuilt_gobekli_ow_line site_prebuilt_gobekli_ow_babel` (Babel's box holds the Line's new
+  plots at wx 28..30 as ghost cells). Then Babel + Technoticlan from their own plans.

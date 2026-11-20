@@ -53,8 +53,14 @@ module.exports = {
         ['main', [[66, 16, 2], [66, 21, 2], [61, 21, 2], [61, 27, 1], [68, 27, 1], [68, 32, 1], [74, 32, 0], [74, 27, -1], [81, 27, -2], [81, 20, 0], [87, 20, 0]], { name: 'the Walk: over the slab, down the switchback into the Sink, up to the Nexus' }],
         ['area', 69, 28, 72, 28, 'g', 1], ['label', 70.5, 29.4, 'ledge', 'note'],
         ['area', 79, 29, 83, 34, 'g', -2], ['label', 81, 31.6, 'THE SINK', 'place'],
+        /* ── MORE LEDGES ON THE CLIMBS (mondo 11-20, with his OK: "more ledges on the climbs before he looks"; the build thread's first edit): each a shelf one
+           or two levels under the way above it, so from a top you hop straight back down a switchback, as on the routes in Pokemon ── */
+        ['area', 53, 5, 56, 5, 'g', 3], ['area', 46, 6, 49, 6, 'g', 1], ['label', 51.5, 5.4, 'ledges', 'note'],   // off the North Knoll's walk: 4 -> 3 onto the shelf, 3 -> 1 off the switchback
+        ['area', 62, 9, 63, 13, 'g', 2], ['label', 62.5, 11, 'ledge', 'note'],                                 // off the knoll's south lip, 4 -> 2, down to the slab's bank
+        ['area', 84, 22, 85, 28, 'g', -2], ['area', 83, 27, 83, 28, 'g', -2], ['label', 85, 24.6, 'ledge', 'note'],   // off the Nexus's west way, 0 -> -2, back into the Sink
         /* ── part 2: the Nexus, north over the Shoulder, back over the Line, the Flat, the South Rise, the Hollow, over the Line, the East Knoll, the East Mouth ── */
         ['main', [[90, 14, 0], [90, 8, 1], [95, 8, 1], [95, 3, 1], [102, 3, 2], [102, 8, 2], [106, 8, 2], [106, 14, 1], [103, 14, 1], [103, 22, 1], [99, 22, 1], [99, 28, 0], [106, 28, 0], [106, 32, 0], [113, 32, 1], [113, 27, 1], [119, 27, 1], [119, 32, 1], [126, 32, -1], [126, 28, -1], [122, 28, -1], [122, 20, 1], [125, 20, 1], [125, 13, 1], [129, 13, 1], [129, 6, 3], [136, 6, 1], [136, 11, 0]], { name: 'the Walk: the Nexus to the East Mouth' }],
+        ['area', 97, 6, 100, 7, 'g', 1], ['label', 98.5, 6.6, 'ledge', 'note'],                               // off the Shoulder's walk, 2 -> 1, back down to the Rise
         ['area', 97, 27, 104, 34, 'g', 0], ['label', 100.5, 31, 'THE FLAT', 'place'], ['label', 100.5, 32.2, 'level, a board fits', 'note'],
         ['area', 128, 29, 131, 34, 'g', -1], ['label', 129.5, 31.6, 'THE HOLLOW', 'place'],
         ['area', 135, 12, 137, 12, 'c', 0],

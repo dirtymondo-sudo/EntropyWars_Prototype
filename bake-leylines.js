@@ -247,13 +247,22 @@ F.forEach(f => { const own = OWNER.get(f); if (!own || f.x != null || !Array.isA
 ORDER.forEach(k => { if (typeof DISTRICTS[k].ways === 'function') DISTRICTS[k].ways(CTX[k]).forEach(d => HOMEDOORS.push(Object.assign({ own: k }, d))); });
 const MOVER = require('./ow-move.js')({ cols: GX, rows: GY, cell, fill: ' ', plots: HOMEP, features: F, props, npc, doors: HOMEDOORS });
 const v13 = letter => { const d = PJ.districts.find(q => q.today && q.today.room === ROOM && q.today.districts.indexOf(letter) >= 0); if (!d) throw new Error('plots.json has no Leylines district ' + letter);
-    return d.plots.map(q => { const p = plot[q.was]; if (!p || p.d !== letter || (p.name !== q.n && letter !== 'B')) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); /* (Bug Colony's names changed with its redesign, 11-17: the layout's win; plots.json keeps the old ones, gen.js reads the retired room) */ return { id: q.was, wx: q.x, wy: q.y }; }); };
+    return d.plots.filter(q => q.was).map(q => { const p = plot[q.was]; if (!p || p.d !== letter || (p.name !== q.n && letter !== 'B')) throw new Error('plots.json and the layout disagree on ' + q.was + ' ' + q.n); /* (Bug Colony's names changed with its redesign, 11-17: the layout's win; plots.json keeps the old ones, gen.js reads the retired room) */ return { id: q.was, wx: q.x, wy: q.y }; }); };
 const R_LINE = 'site_prebuilt_gobekli_ow_line', R_BABEL = 'site_prebuilt_gobekli_ow_babel', R_BUGS = 'site_prebuilt_gobekli_ow_bugs', R_HENGE = 'site_prebuilt_gobekli_ow_henge';
 const L16 = PJ.links.find(l => l.id === 'L16'); if (!L16 || L16.plots.length !== 2) throw new Error('plots.json: L16 is not two plots any more (rule 4: a link of three or more is the route kit\'s)');
 /* every home plot's world place (to draw a cell of a room's box that is another Leylines room's plot) */
 const WORLD_OF = {}; ORDER.forEach(k => v13(k).forEach(q => { WORLD_OF[q.wx + ',' + q.wy] = plot[q.id]; }));
+/* THE LEY LINE'S ROOM DESIGN (2026-11-20, world polish thread 12, mondo's OK on docs/plans/world-polish/plans/leylines-line.js): the plan's squares and levels
+   are laid square by square on the Ley Line's plots (district Y) in the room's own frame; the new plots north and south of the Line stand in plots.json with no
+   `was` (docs/plans/one-world/after-v13.js row 7). What stands on the designed squares: docs/areas/leylines/districts/Y-room.js. THE PILOT (11-20) designs the
+   west half, room squares x 36..95 (the West Mouth to the Nexus); the east half stands as it stood until mondo has seen the pilot. */
+const LINE_DESIGN = (() => { const DP = require('./docs/plans/world-polish/draw-plan.js'), plan = require('./docs/plans/world-polish/plans/leylines-line.js'), YR = require(path.join(DDIR, 'Y-room.js'));
+    return Object.assign({ plan, B: DP.build(plan) }, YR); })();
+const LINE_NEW = PJ.districts.find(q => q.id === 'leyY').plots.filter(q => !q.was).map(q => { const p = LINE_DESIGN.plan.plots.find(o => o[0] === q.x - 19 && o[1] === q.y - 29);
+    if (!p || p[2] !== q.n) throw new Error('plots.json and plans/leylines-line.js disagree on ' + q.n); return { wx: q.x, wy: q.y, name: q.n, district: 'Y', level: p[5], isNew: true }; });
 const STAND = [
-    { id: R_LINE, part: 'ow_line', label: 'LEYLINES · THE LINE', sub: 'GÖBEKLI TEPE · THE LEY LINE · 18 PLOTS', letters: ['G', 'Y'], list: v13('G').concat(v13('Y')), lines: OLD.ley.l.concat(OLD.tell.l),
+    { id: R_LINE, part: 'ow_line', label: 'LEYLINES · THE LINE', sub: 'GÖBEKLI TEPE · THE LEY LINE · ' + (18 + LINE_NEW.length) + ' PLOTS', letters: ['G', 'Y'], list: v13('G').concat(v13('Y')).concat(LINE_NEW), lines: OLD.ley.l.concat(OLD.tell.l),
+      design: LINE_DESIGN,
       parti: 'The oldest temple there is on its tell, and one line of light running dead straight east from it across the plain, with a niche for each of the old places along it.',
       spawn: { home: [3, 42], face: 90 }, giza: { plot: 'P00-01', along: 6 },
       seams: [
@@ -303,7 +312,7 @@ STAND.forEach(S => {
     /* ── THE TRAIL BELOW BABEL (the wild link L16, two plots of farmland: rule 4, the district's tool lays them): a footpath two squares wide that
        wanders a little down the plot's middle from Babel's south foot to Technoticlan's north shore, a place beside it on each plot (ow-places.js:
        the names are ideas of Claude's, plain, no role), a cairn, a trail sign at each end ── */
-    const newPlots = R.order.filter(e => e.isNew);
+    const newPlots = R.order.filter(e => e.isNew && e.link === 'L16');   // (a new plot of a designed room is the design's)
     newPlots.forEach((e, i) => { const x0 = e.col * N, y0 = e.row * N, sg = i % 2 ? 1 : -1;
         for (let ly = 0; ly < N; ly++) { const off = sg * Math.round(1.2 * Math.sin(Math.PI * ly / (N - 1))); for (let lx = 0; lx < N; lx++) c2[y0 + ly][x0 + lx] = (lx === 5 + off || lx === 6 + off) ? 'p' : 'g'; }
         const g = groundAt(e.wx, e.wy), list = OWP.forKind(g), pl = OWP.PLACES[list[(i * 3) % list.length]];
@@ -338,7 +347,68 @@ STAND.forEach(S => {
         paint2[o] = q.home ? paint[(q.home.y * FW_N + j) * FW + q.home.x * FW_N + i] : (q.e && q.e.isNew) ? (c2[q.r * N + (j >> 1)][q.c * N + (i >> 1)] === 'p' ? PAINT.p : 0) : (SCEN[q.g.kit] || 0); } });
     /* ── THE LAKE: Technoticlan's water rows are the mover's (each stays with its plot); nothing to lay again ── */
     /* ── the open ground: every square of the room's own plots (the scenery cells and the drawn cells are ground nobody walks) ── */
-    const spaces2 = R.spaces((x, y) => isPlot(x, y));
+    /* ── THE ROOM DESIGN (S.design, 2026-11-20, world polish thread 12): the plan's squares and levels on the designed squares (S.design.x0..x1, on the
+       district's own plots and its new ones). An OPEN square of the plan is walked: flat at its own level, a ramp square climbing one level over two squares;
+       two open squares a level or more apart are a LEDGE (its face wears rock). Every other designed square is the MASS (scrub, boulders and standing stones:
+       the generator's trees, `gen` below, + the design's stones) or THE LINE'S BED (level 0, refused like the mass, no tree). The slabs over the Line are
+       bridges. A piece of the home frame the walk now runs over leaves (the design file re-stands what it needs). ── */
+    let DES = null;
+    if (S.design) { const Dz = S.design, B = Dz.B, X0 = Dz.x0, X1 = Dz.x1, LEVEL = 1.75, LROWS = Dz.lineRows;
+        if (Wn !== B.W || Dn !== B.H || R.wx !== Dz.wx || R.wy !== Dz.wy) throw new Error(S.id + ': the plan is not this room (' + Wn + ' x ' + Dn + ' at ' + R.wx + ',' + R.wy + ')');
+        (Dz.extra || []).forEach(([x0, y0, x1, y1, t, l]) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { B.T[y][x] = t; B.L[y][x] = l; delete B.RAMP[x + ',' + y]; } });   // the design's own squares on top of the plan
+        const des = (x, y) => { if (!inR(x, y) || x < X0 || x > X1) return false; const e = R.plotOfSq(x, y); return !!e && Dz.letters.indexOf(e.district) >= 0; };
+        const slabAt = (x, y) => Dz.slabs.find(b => LROWS.indexOf(y) >= 0 && x >= b[0] && x <= b[1]) || null;
+        const lineSq = (x, y) => des(x, y) && (B.T[y][x] === 'y' || !!slabAt(x, y));
+        const openD = (x, y) => des(x, y) && !lineSq(x, y) && B.OPEN.indexOf(B.T[y][x]) >= 0;
+        const WAYT = 'pPqQdD', onWay = (x, y) => openD(x, y) && (WAYT.indexOf(B.T[y][x]) >= 0 || !!B.RAMP[x + ',' + y]);
+        const lv = (x, y) => lineSq(x, y) ? 0 : B.L[y][x];
+        const hOpen = (x, y, sx, sy) => { const rp = B.RAMP[x + ',' + y]; return (B.L[y][x] + (rp ? 0.25 * (rp[0] * sx + rp[1] * sy) : 0)) * LEVEL; };
+        /* a mass square's corner: the highest open square's corner it touches (the mass hides the face of a drop), else the open ground round it, weighted */
+        const cornerH = (X, Y) => { const T4 = [[X - 1, Y - 1, 1, 1], [X, Y - 1, -1, 1], [X - 1, Y, 1, -1], [X, Y, -1, -1]]; if (T4.some(q => !des(q[0], q[1]))) return hAt(X, Y);
+            let top = null; T4.forEach(q => { if (openD(q[0], q[1])) { const h = hOpen(q[0], q[1], q[2], q[3]); if (top == null || h > top) top = h; } }); if (top != null) return top;
+            let sw = 0, sh = 0; for (let dy = -5; dy < 5; dy++) for (let dx = -5; dx < 5; dx++) { const x = X + dx, y = Y + dy; if (!openD(x, y)) continue; const d2 = (dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5), w = 1 / (d2 * d2); sw += w; sh += w * B.L[y][x] * LEVEL; }
+            return sw ? sh / sw : R.plotOfSq(Math.min(Wn - 1, X), Math.min(Dn - 1, Y)).level * LEVEL; };
+        const CH = new Float32Array((Wn + 1) * (Dn + 1)); for (let Y = 0; Y <= Dn; Y++) for (let X = 0; X <= Wn; X++) CH[Y * (Wn + 1) + X] = cornerH(X, Y);
+        const corner = (x, y, qx, qy) => openD(x, y) ? hOpen(x, y, qx ? 1 : -1, qy ? 1 : -1) : lineSq(x, y) ? 0 : CH[(y + qy) * (Wn + 1) + x + qx];
+        for (let y = 0; y < Dn; y++) for (let x = 0; x < Wn; x++) { if (!des(x, y)) continue; const o = (y * Wn + x) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope2.writeInt16LE(Math.round(corner(x, y, q[0], q[1]) * 100), o + k * 2));
+            c2[y][x] = lineSq(x, y) ? 'G' : openD(x, y) ? (WAYT.indexOf(B.T[y][x]) >= 0 ? 'p' : B.T[y][x] === 'c' || B.T[y][x] === 'k' ? 'c' : 'g') : ' ';
+            const pv = lineSq(x, y) ? Dz.paint.line : !openD(x, y) ? Dz.paint.mass : Dz.paint[B.T[y][x].toLowerCase()] != null ? Dz.paint[B.T[y][x].toLowerCase()] : Dz.paint.g;
+            for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) paint2[(2 * y + j) * PW + 2 * x + i] = pv; }
+        /* the home frame's pieces on the designed squares: a gold fork or a niche of the home line goes (the plan has no forks; the design lays the niches
+           again on their banks); a blocking piece on the walk or the Line goes; a person on a square nobody walks steps to the nearest open, level square */
+        const sqOfm = (x, z) => [Math.floor((x + R.HX) / C + 1e-9), Math.floor((z + R.HZ) / C + 1e-9)], gone = [];
+        for (let i = featsOut.length - 1; i >= 0; i--) { const f = featsOut[i]; if (f.x == null || f.k === 'scatter') continue; const [x, y] = sqOfm(f.x, f.z); if (!des(x, y)) continue;
+            if (Dz.dropHome(f)) { gone.push(f.id || f.k); featsOut.splice(i, 1); } }
+        for (let i = propsOut.length - 1; i >= 0; i--) { const p = propsOut[i], [x, y] = sqOfm(p.x, p.z); if (!des(x, y)) continue; const c = CAT[p.key];
+            if (lineSq(x, y) || onWay(x, y) && c && c.block || Dz.dropProp(p, openD(x, y))) { gone.push(p.key + '@' + x + ',' + y); propsOut.splice(i, 1); } }
+        let stepped = 0; R.npc.forEach(n => { const [x, y] = sqOfm(n.x, n.z); if (!des(x, y) || openD(x, y) && !onWay(x, y)) return; let best = null;
+            for (let r = 1; r < 8 && !best; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const X = x + dx, Y = y + dy; if (openD(X, Y) && !onWay(X, Y) && (!best || Math.abs(dx) + Math.abs(dy) < best[0])) best = [Math.abs(dx) + Math.abs(dy), X, Y]; }
+            if (!best) throw new Error(S.id + ' design: nowhere to stand ' + n.race + ' near ' + x + ',' + y); n.x = R.gcx(best[1]); n.z = R.gcz(best[2]); stepped++; });
+        /* THE LEDGES WEAR ROCK: a slab on the face of every drop between two open squares (drawn only: the walker still walks off it) */
+        { const parts = [], abox = (x, y, z, w, h, d) => ({ s: 'box', p: [r2(x), r2(y), r2(z)], size: [r2(w), r2(h), r2(d)], key: 'rocks_5', tint: 0xc8b89a, uv: [3.5, 3.5], gain: GAIN });
+          for (let y = 0; y < Dn; y++) for (let x = 0; x < Wn; x++) { if (!openD(x, y) || B.RAMP[x + ',' + y]) continue;
+              for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!openD(X, Y) || B.RAMP[X + ',' + Y]) continue; const drop = B.L[y][x] - B.L[Y][X]; if (drop < 0.6) continue;
+                  parts.push(abox(R.gcx(x) + dx * (C / 2 + 0.25), B.L[Y][X] * LEVEL - 0.1, R.gcz(y) + dy * (C / 2 + 0.25), dx ? 0.5 : C, drop * LEVEL + 0.18, dx ? C : 0.5)); } }
+          if (parts.length) featsOut.push({ k: 'arch', id: 'ley:y:ledges', x: 0, z: 0, y: 0, parts }); Dz.ledgeFaces = parts.length; }
+        /* THE SLABS: a stone bridge over the Line's bed from bank to bank */
+        Dz.slabs.forEach((b, i) => { const xm = (R.gx(b[0]) + R.gx(b[1] + 1)) / 2, z0 = R.gz(LROWS[0]), z1 = R.gz(LROWS[LROWS.length - 1] + 1);
+            featsOut.push({ k: 'bridge', absY: true, id: 'ley:y:slab' + i, x0: r2(xm), z0: r2(z0 - 0.4), x1: r2(xm), z1: r2(z1 + 0.4), w: r2((b[1] - b[0] + 1) * C), y: r2(b[2] * LEVEL), thick: 0.8, rails: false, key: 'rock_wall_1' }); });
+        DES = { des, openD, lineSq, onWay, lv, LEVEL, B, stepped, gone, sqH: (x, y) => { const o = (y * Wn + x) * 8; return (slope2.readInt16LE(o) + slope2.readInt16LE(o + 2) + slope2.readInt16LE(o + 4) + slope2.readInt16LE(o + 6)) / 400; } };
+        /* what stands on the design: Y-room.js `dress(a)`, in room squares */
+        const n0 = propsOut.length, f0 = featsOut.length;
+        Dz.dress({ C, N, r2, gx: R.gx, gz: R.gz, gcx: R.gcx, gcz: R.gcz, sheet, GAIN, STONE, U, LEVEL, open: openD, onWay, line: lineSq, level: (x, y) => lv(x, y), h: (x, y) => lv(x, y) * LEVEL, B,
+            feat: f => featsOut.push(f), look: (id, x, z, rot, fn, y) => { const a = sheet(); fn(a); const row = { k: 'arch', id: 'ley:y:' + id + ':look', x: r2(x), z: r2(z), rot: rot || 0, parts: a.P }; if (y != null) row.y = r2(y); featsOut.push(row); return row; },
+            P: (key, sx, sy, o) => { if (!CAT[key]) throw new Error('Y-room.js: not in the catalogue: ' + key); o = Object.assign({}, o); const inMass = !!o.mass; delete o.mass;
+                if (!des(sx, sy)) throw new Error('Y-room.js: ' + key + ' off the designed squares at ' + sx + ',' + sy);
+                if (inMass ? openD(sx, sy) || lineSq(sx, sy) : !openD(sx, sy) || onWay(sx, sy) && CAT[key].block) throw new Error('Y-room.js: ' + key + (inMass ? ' (mass) on an open square ' : ' not on open ground beside the walk ') + sx + ',' + sy);
+                const px = r2(R.gcx(sx) + (o.dx || 0)), pz = r2(R.gcz(sy) + (o.dz || 0)); delete o.dx; delete o.dz; propsOut.push(Object.assign({ key, x: px, z: pz }, o)); },
+            native: (race, sx, sy, face, say) => { if (RACES.indexOf(race) < 0) throw new Error('not a unit: ' + race); if (!openD(sx, sy) || onWay(sx, sy)) throw new Error('Y-room.js: ' + race + ' not on open ground at ' + sx + ',' + sy); const n = { x: R.gcx(sx), z: R.gcz(sy), face: face || 0, race }; if (say) n.say = say; R.npc.push(n); },
+            sayOf, OLD });
+        console.log(S.id + ' THE ROOM DESIGN: squares ' + X0 + '..' + X1 + ', ' + Dz.ledgeFaces + ' ledge faces, ' + Dz.slabs.length + ' slabs, ' + stepped + ' people stepped, ' + gone.length + ' home pieces gone (' + gone.slice(0, 40).join(' ') + (gone.length > 40 ? ' …' : '') + '), Y-room.js: ' + (propsOut.length - n0) + ' props, ' + (featsOut.length - f0) + ' rows');
+        R.order.forEach(e => { if (e.isNew) return; const p = Dz.plan.plots.find(o => o[0] === e.col && o[1] === e.row); if (p && e.district === 'Y' && e.col * N >= X0 && (e.col + 1) * N - 1 <= X1) e.level = p[5]; });
+        names.forEach(n => { const e = R.order.find(q => R.pid(q) === n[0]); if (e) n[3] = e.level; }); }
+    const walk = (x, y) => isPlot(x, y) && (!DES || !DES.des(x, y) || DES.openD(x, y));
+    const spaces2 = R.spaces(walk);
     /* ── the stoppers: on the scenery side of a plot line, about every second square (pieces of the map's ground kind there), never in front of a seam ── */
     const seamSq = []; S.seams.forEach(sm => { const e = R.ofHome[sm.plot]; if (!e) throw new Error(S.id + ': no plot ' + sm.plot); const ns = sm.side === 'N' || sm.side === 'S', k = sm.along;
         seamSq.push(ns ? [e.col * N + k, e.row * N + (sm.side === 'N' ? -1 : N)] : [e.col * N + (sm.side === 'W' ? -1 : N), e.row * N + k]); });
@@ -371,16 +441,16 @@ STAND.forEach(S => {
     const sqOf = (x, z) => [Math.floor((x + R.HX) / C + 1e-9), Math.floor((z + R.HZ) / C + 1e-9)], stood = new Set();
     propsOut.forEach(p => { const c = CAT[p.key]; if (c && c.block) stood.add(sqOf(p.x, p.z).join(':')); });
     featsOut.forEach(f => { if (f.k === 'tree' || f.k === 'texbuilding') stood.add(sqOf(f.x, f.z).join(':')); }); R.npc.forEach(n => stood.add(sqOf(n.x, n.z).join(':')));
-    const openSq = (x, y) => isPlot(x, y) && c2[y][x] !== 'w' && !stood.has(x + ':' + y);
+    const openSq = (x, y) => walk(x, y) && c2[y][x] !== 'w' && !stood.has(x + ':' + y);
     const near = (x, y) => { for (let r = 0; r < 6; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (openSq(x + i, y + j)) return [x + i, y + j]; throw new Error(S.id + ': no open square near ' + x + ',' + y); };
     let sp;
     if (S.spawn.home) { const p = R.toRoom(cx(S.spawn.home[0]), cz(S.spawn.home[1])); sp = near(...sqOf(p[0], p[1])); }
     else if (S.spawn.seam) { const { d, bq } = seamDoor[S.spawn.seam], v = SIDE4[d.side]; sp = near(bq[0] - v[0] * 2, bq[1] - v[1] * 2); }
     else { const dd = R.doors.find(q => q.id === S.spawn.door); sp = near(...sqOf(dd.x, dd.z + S.spawn.back * C)); }
     /* ── every plot is reached on foot from the spawn (the home rule: no step steeper than the walker climbs; plateaus are their own) ── */
-    { const hC = (x, y) => (hAt(x, y) + hAt(x + 1, y) + hAt(x, y + 1) + hAt(x + 1, y + 1)) / 4, seen = new Uint8Array(Wn * Dn), st = [sp]; seen[sp[1] * Wn + sp[0]] = 1; let steep = 0;
-      while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!isPlot(X, Y) || seen[Y * Wn + X]) continue;
-          if (Math.abs(hC(X, Y) - hC(x, y)) / C > 0.3) { steep++; continue; } seen[Y * Wn + X] = 1; st.push([X, Y]); } }
+    { const hC = (x, y) => DES ? DES.sqH(x, y) : (hAt(x, y) + hAt(x + 1, y) + hAt(x, y + 1) + hAt(x + 1, y + 1)) / 4, seen = new Uint8Array(Wn * Dn), st = [sp]; seen[sp[1] * Wn + sp[0]] = 1; let steep = 0;
+      while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!walk(X, Y) || seen[Y * Wn + X]) continue;
+          if (Math.abs(hC(X, Y) - hC(x, y)) / C > 0.3 && !(DES && hC(X, Y) < hC(x, y))) { steep++; continue; }   /* (a designed room: a ledge is walked off, downhill only) */ seen[Y * Wn + X] = 1; st.push([X, Y]); } }
       const cold = R.order.filter(e => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(e.row * N + ly) * Wn + e.col * N + lx]) return false; return true; }).map(e => e.name);
       if (cold.length) throw new Error(S.id + ': plots not reached on foot: ' + cold.join(', '));
       Object.keys(seamDoor).forEach(id => { const b = seamDoor[id].bq; if (!seen[b[1] * Wn + b[0]]) throw new Error(S.id + ': the seam ' + id + ' is not reached on foot'); });
@@ -388,7 +458,7 @@ STAND.forEach(S => {
     /* the air: a district's box moves with its plots (they moved together) */
     const air = [].concat(...S.letters.map(k => AIR_HOME[k] || [])).map(z => { const p = MOVER.homePlot((z.x0 + z.x1) / 2, (z.z0 + z.z1) / 2), e = p && R.ofHome[p.id]; if (!e) return null;
         return Object.assign({}, z, { x0: r2(z.x0 + e.dx), x1: r2(z.x1 + e.dx), z0: r2(z.z0 + e.dz), z1: r2(z.z1 + e.dz) }); }).filter(Boolean);
-    ROOMS_OUT.push({ S, R, c2, hAt, names, feats: spaces2.concat(featsOut), own: featsOut, props: propsOut, doors: doorsOut, ways, slope: slope2, paint: paint2, air, lines: S.lines, sp: { x: R.gcx(sp[0]), z: R.gcz(sp[1]), face: S.spawn.face },
+    ROOMS_OUT.push({ S, R, c2, hAt, names, DES, feats: spaces2.concat(featsOut), own: featsOut, props: propsOut, doors: doorsOut, ways, slope: slope2, paint: paint2, air, lines: S.lines, sp: { x: R.gcx(sp[0]), z: R.gcz(sp[1]), face: S.spawn.face },
         count: { plots: S.list.length, box: R.cols + 'x' + R.rows, world: [R.wx, R.wy], spaces: spaces2.length, props: propsOut.length, features: featsOut.length, doors: doorsOut.length, natives: R.npc.length, stoppers: stops, steepSteps: S.steep, strays: R.strays.length } });
 });
 if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer stand the same way):\n  ' + STRAYS.join('\n  '));
@@ -434,7 +504,11 @@ const L = [];
 L.push("        /* LEYLINES63-BEGIN — LEYLINES ON PLOTS (2026-11-16) + THE ONE WORLD MOVE (2026-11-17: the six districts stand at their One World places, three rooms here + Bug Colony in the route kit's L14 room): written by `node bake-leylines.js` from docs/areas/leylines/layout.json + districts/*.js + docs/plans/one-world/plots.json. Never hand-edit between the markers; edit the tool, the layout or a district file and rerun. */");
 ROOMS_OUT.forEach(o => { const { S, R } = o; if (S.kit) return;
     const w = 2 * R.HX, d = 2 * R.HZ, atmos = o.air.length ? " atmos: " + J({ kind: 'dust', color: 0xe8d8b8, n: Math.max(20, Math.round(60 * S.list.length / 63)), zones: o.air }) + "," : "";
-    const zones = []; for (let r = 0; r < R.rows; r++) for (let c = 0; c < R.cols; c++) zones.push({ x0: R.gx(c * N), z0: R.gz(r * N), x1: R.gx((c + 1) * N), z1: R.gz((r + 1) * N), none: true });
+    const zones = [], Dz = o.DES && S.design, GEN = Dz ? Dz.gen : { depth: 5.25, maxTrees: 0, treeH: [5.5, 8.5], kinds: ['tree_53'] };
+    /* a designed room: no tree on the Line's bed; the mass of a designed plot grows the design's scrub (Y-room.js `gen`); every other cell nothing (open ground) */
+    if (Dz) zones.push({ x0: R.gx(Dz.x0), z0: R.gz(Dz.lineRows[0]), x1: R.gx(Dz.x1 + 1), z1: R.gz(Dz.lineRows[Dz.lineRows.length - 1] + 1), none: true });
+    for (let r = 0; r < R.rows; r++) for (let c = 0; c < R.cols; c++) { const e = R.at[c + ',' + r], mine = Dz && e && Dz.letters.indexOf(e.district) >= 0 && c * N >= Dz.x0 && (c + 1) * N - 1 <= Dz.x1;
+        zones.push(Object.assign({ x0: R.gx(c * N), z0: R.gz(r * N), x1: R.gx((c + 1) * N), z1: R.gz((r + 1) * N) }, mine ? { kinds: GEN.kinds, treeH: GEN.treeH } : { none: true })); }
     L.push("        " + S.id + ": {");
     L.push("            label: " + J(S.label) + ",");
     L.push("            sub: " + J(S.sub) + ",");
@@ -457,7 +531,7 @@ ROOMS_OUT.forEach(o => { const { S, R } = o; if (S.kit) return;
     L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + (C / 2) + ", x0: " + r2(-R.HX + C / 4) + ", z0: " + r2(-R.HZ + C / 4) + ", nx: " + (2 * R.W) + ", nz: " + (2 * R.D) + ", d: '" + Buffer.from(o.paint).toString('base64') + "' },");
     L.push("                marks: [],");
     L.push("                /* OPEN GROUND ON THE PLOTS: every square of a plot is a `space`; a cell of the box that is no plot of this room is ground nobody walks (no trees grow) */");
-    L.push("                gen: { kind: 'plan', look: 'trees', seed: 7, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: 0, treeH: [5.5, 8.5], kinds: ['tree_53'], zones: " + J(zones) + " },");
+    L.push("                gen: { kind: 'plan', look: 'trees', seed: 7, rim: 0, forceGrow: 0, treeGap: " + (GEN.gap || 2.6) + ", treeIn: 0.9, spacing: 3.5, depth: " + GEN.depth + ", maxTrees: " + GEN.maxTrees + ", treeH: " + J(GEN.treeH) + ", kinds: " + J(GEN.kinds) + ", zones: " + J(zones) + " },");
     L.push("                features: [");
     o.feats.forEach(f => L.push("                    " + J(f) + ","));
     L.push("                ],");

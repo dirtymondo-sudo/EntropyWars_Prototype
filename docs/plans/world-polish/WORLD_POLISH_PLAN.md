@@ -376,7 +376,7 @@ they are measurements, not the job.
   Ways wind; thin trails to the Lake, the House, The Woods. The corn fields stay level (fields: level on purpose), but the paths cut in the
   corn wind and branch (the corn is the wall).
 
-### Thread 12: LEYLINES (the Line's height plan is drafted, 11-20: `plans/leylines-line.js`; APPROVED by mondo 11-20; Babel + Technoticlan's plan is still to draw; nothing built)
+### Thread 12: LEYLINES (BUILDING 11-20: the three plans are APPROVED; THE PILOT, the Ley Line's west half from the West Mouth to the Nexus, is BUILT and waits mondo's look; notes areas-complexes.md "THE LEY LINE, THE ROOM DESIGN")
 - **Zone:** Leylines. Districts: The Ley Line (Y), Babel (T), Technoticlan (Z), Stonehenge (S), Göbekli Tepe (G), Bug Colony (B).
 - **Rooms:** `site_prebuilt_gobekli_ow_line` (18), `site_prebuilt_gobekli_ow_babel` (29: Babel + Technoticlan),
   `site_prebuilt_gobekli_ow_henge` (9), `site_prebuilt_gobekli_ow_bugs` (15; written through `bake-route.js L14`: ask on the board first).

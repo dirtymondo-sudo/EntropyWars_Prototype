@@ -54,9 +54,17 @@ const MTN = (() => { const ids = { K: 'mtnK', P: 'mtnP', O: 'mtn', D: 'shasta' }
         d.x = Math.min(...d.plots.map(p => p.x)); d.y = Math.min(...d.plots.map(p => p.y)); d.w = Math.max(...d.plots.map(p => p.x)) - d.x + 1; d.h = Math.max(...d.plots.map(p => p.y)) - d.y + 1; d.count = d.plots.length; d.shape = 'band'; out.push(d); });
     ['L9', 'L10', 'L11'].forEach(id => { const l = P.links.find(q => q.id === id); if (l) { l.plots = []; l.meets = []; l.note = 'gone into the one ski mountain (11-20)'; } });
     return out; })();
+/* 7. THE LEY LINE GROWS (world polish thread 12, mondo's OK on docs/plans/world-polish/plans/leylines-line.js, 11-20: "Yes that's fine" to the 18 new
+      plots): the Line's room keeps its 12 x 3 box (19..30 x 29..31); new plots stand in its empty cells north and south of the Ley Line's nine (the plan's
+      plots with no level today, box x + 19, y + 29). THE PILOT (11-20) adds the west half's ten (box x 3..7: the West Mouth to the Nexus); the east eight come
+      with the rest of the build (LEY_UPTO = 11). The ground under them is dry scrub (`s`), as the Line's own. bake-leylines.js builds them (district Y, the
+      room design docs/areas/leylines/districts/Y-room.js). */
+const LEY_UPTO = 7, LEYP = require('../world-polish/plans/leylines-line.js');
+const LEY_NEW = LEYP.plots.filter(q => q[4] == null && q[0] <= LEY_UPTO).map(q => [q[2], 19 + q[0], 29 + q[1]]);
+const dL = grow('leyY', LEY_NEW); LEY_NEW.forEach(([, x, y]) => set(x, y, 's'));
 /* written the way gen.js writes it: one line a district / a ground row */
 let t = fs.readFileSync(FILE, 'utf8');
-[d, dW, dF, dC].concat(MTN).forEach(d => { const i = t.indexOf('    {"id":"' + d.id + '"'), j = t.indexOf('\n      ]}', i); if (i < 0 || j < 0) throw new Error('no block of ' + d.id);
+[d, dW, dF, dC, dL].concat(MTN).forEach(d => { const i = t.indexOf('    {"id":"' + d.id + '"'), j = t.indexOf('\n      ]}', i); if (i < 0 || j < 0) throw new Error('no block of ' + d.id);
   const head = Object.assign({}, d); delete head.plots;
   t = t.slice(0, i) + '    ' + JSON.stringify(head).slice(0, -1) + ',\n      "plots": [\n' + d.plots.map(q => '        ' + JSON.stringify(q)).join(',\n') + t.slice(j); });
 { const m = /("rows": \[\n)([\s\S]*?)(\n\s*\]\})/.exec(t.slice(t.indexOf('"ground"'))); if (!m) throw new Error('no ground rows'); const lead = /^\s*/.exec(m[2])[0];
@@ -68,4 +76,4 @@ if (t.indexOf('{"id":"katana"') < 0) { const i = t.indexOf('    {"id":"volcano"'
   const pl = []; for (let y = -13; y <= -5; y++) for (let x = 21; x <= 29; x++) pl.push([x, y]);
   t = t.slice(0, j + 9) + ',\n    {"id":"katana","name":"KATANA ISLAND","state":"built","x":21,"y":-13,"w":9,"h":9,"count":81,"note":"29 land plots, six districts; room site_prebuilt_bermuda_katana (bake-katana.js); with the Volcano Island north of it, the Katana Empire\u2019s islands",\n      "plots": [\n' + pl.map(q => '        ' + JSON.stringify(q)).join(',\n') + '\n      ]}' + t.slice(j + 9); }
 JSON.parse(t); fs.writeFileSync(FILE, t);
-[d, dW, dF, dC].concat(MTN).forEach(d => console.log('plots.json: ' + d.name + ' ' + d.count + ' plots, ' + d.w + ' x ' + d.h + ' at ' + d.x + ',' + d.y)); console.log(n + ' ground letters changed to T');
+[d, dW, dF, dC, dL].concat(MTN).forEach(d => console.log('plots.json: ' + d.name + ' ' + d.count + ' plots, ' + d.w + ' x ' + d.h + ' at ' + d.x + ',' + d.y)); console.log(n + ' ground letters changed to T');

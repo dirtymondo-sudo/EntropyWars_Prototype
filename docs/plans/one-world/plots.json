@@ -71,9 +71,9 @@
       "####~~~~~~~~~~~~~~~~~~~~~~~~~~wwgggggFsssbbbdddDDDDDDDDDDddddddbgn~~~~~~~~~~~~~~~~~~~~~~#####",
       "#####~~~~~~~~~~~~~~nn~~~~~~~~~~wgggggFFssbbbdddDDDDDDDDDDDddddddggnnnn~~~~~~~~~~~~~~~~~######",
       "#####~~~~~~~~~~~~~~nnn~~~~~~~~~wgggggaFssbbbdddDDDDDDDDDDDdddddggggsssnnnnnnnnn~~~~~~~~######",
-      "######~~~~~~~~~~~~~~n~~~~~~~~~~~nggggsssbbbddddDDDDDDDDDDDdddddgggbssssaaaaaaggnn~~~~~#######",
+      "######~~~~~~~~~~~~~~n~~~~~~~~~~~nggggsssbbbddddDDDDDDDDDDDdddddgggbssssssaaaaggnn~~~~~#######",
       "######~~~~~~~~~~~~~~~~nnn~~~~~~~~nnggssFbddddddDDDDDDDDDDDddDDdsggbsssgagaaaaaagn~~~~~#######",
-      "#######~~~~~~~~~nnn~~~nn~~~~~~~~~~~ngssFbddddddDDDDDDDDDDdddDDdsggbsssgagaaaaaaan~~~~########",
+      "#######~~~~~~~~~nnn~~~nn~~~~~~~~~~~ngssFbddddddDDDDDDDDDDdddDDdsggbssssssaaaaaaan~~~~########",
       "#######~~~~~~~~~nnn~~~~~~~~~~~~~~~~~ngsFbddddddDDDDDDDDDDdddDDdsggbsssagaaaaaaaagn~~~########",
       "########~~~~~~~~nnn~~~~~~nn~~~~~~~~~~nsFFddddddDDDDDDDDDDDdddddgggbssssgaagaaaagn~~~#########",
       "########~~~~~~~~~~~~~~~~~n~~~~~~~~~~~~nsbdddddDDDDDDDDDDDDDdddbggMssssssgaaaaaagn~~~#########",
@@ -888,7 +888,7 @@
         {"n":"The T-Pillars","x":20,"y":31,"was":"P01-02"},
         {"n":"The Dry Slope (label mine)","x":21,"y":31,"was":"P02-02"}
       ]},
-    {"id":"leyY","hub":"ley","zone":"Leylines","name":"The Ley Line","state":"moves","layer":"surface","x":22,"y":30,"w":9,"h":1,"shape":"block","count":9,"today":{"room":"site_prebuilt_gobekli_ancient","districts":["Y"],"at":[0,3]},
+    {"id":"leyY","hub":"ley","zone":"Leylines","name":"The Ley Line","state":"moves","layer":"surface","x":22,"y":29,"w":9,"h":3,"shape":"band","count":19,"today":{"room":"site_prebuilt_gobekli_ancient","districts":["Y"],"at":[0,3]},
       "plots": [
         {"n":"The West Mouth","x":22,"y":30,"was":"P00-03"},
         {"n":"The Niches","x":23,"y":30,"was":"P01-03"},
@@ -898,7 +898,17 @@
         {"n":"The Great Line, east","x":27,"y":30,"was":"P05-03"},
         {"n":"The Forks, east","x":28,"y":30,"was":"P06-03"},
         {"n":"The Niches, east","x":29,"y":30,"was":"P07-03"},
-        {"n":"The East Mouth","x":30,"y":30,"was":"P08-03"}
+        {"n":"The East Mouth","x":30,"y":30,"was":"P08-03"},
+        {"n":"The North Bank","x":22,"y":29},
+        {"n":"The Terrace","x":23,"y":29},
+        {"n":"The North Knoll","x":24,"y":29},
+        {"n":"The Lone Stone","x":25,"y":29},
+        {"n":"The Rise","x":26,"y":29},
+        {"n":"The Dry Field","x":22,"y":31},
+        {"n":"The Low Ground","x":23,"y":31},
+        {"n":"The South Bank","x":24,"y":31},
+        {"n":"The Sink","x":25,"y":31},
+        {"n":"The Fork's End","x":26,"y":31}
       ]},
     {"id":"ley2","hub":"ley","zone":"Leylines","name":"Babel","state":"moves","layer":"surface","x":31,"y":29,"w":4,"h":3,"shape":"block","count":12,"today":{"room":"site_prebuilt_gobekli_ancient","districts":["T"],"at":[0,4]},
       "plots": [
