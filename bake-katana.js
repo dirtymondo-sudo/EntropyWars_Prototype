@@ -20,6 +20,7 @@
 const fs = require('fs'), path = require('path');
 const REPO = __dirname, DRY = process.argv.includes('--dry-run');
 const I = require('./docs/areas/katana/layout.js');
+const INSIDES = require('./docs/areas/katana/insides.js');
 const ROOM = 'site_prebuilt_bermuda_katana';
 const C = 3.5, N = 12, OFF = 12, COLS = 9, ROWS = 9, W = COLS * N, H = ROWS * N, HW = W * C / 2, HD = H * C / 2, LV = 1.75, SEA_BED = -3.5;
 const r2 = v => Math.round(v * 100) / 100, J = o => JSON.stringify(o);
@@ -154,7 +155,13 @@ ctx.open = (ix, iy) => ix >= 0 && iy >= 0 && ix < I.W && iy < I.H && kind[iy + O
 ctx.sow = (x0, y0, x1, y1, chance, fn) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const v = rnd(); if (v < chance && ctx.open(x, y)) fn(x, y, v / chance); } };
 ctx.thatch = (a, w, h, d, door, tint) => { a.shell(w, h, d, WD, tint != null ? tint : 0x9a7a52, door, [1.75, 1.75]); a.frame(door, d, WD2, DARK);
     a.roof('gable', 0, h, 0, w + 1.6, Math.max(1.6, d * 0.42), d + 1.6, SHG, 0xd2b060, { gain: 1.7, uv: [1.2, 1.2] }); a.box(0, h - 0.16, 0, w + 1.7, 0.16, d + 1.7, SHG, 0xb89448, { top: false, roof: true, gain: 1.6 }); };
-const building0 = ctx.building; ctx.building = (id, q, h, o, parts) => { for (let y = q[1]; y < q[3]; y++) for (let x = q[0]; x < q[2]; x++) { if (kind[y + OFF][x + OFF] === 'w' || (kind[y + OFF][x + OFF] === 's' && !(o && o.onSand))) errs.push(id + ': not on firm ground at ' + x + ',' + y); if (WAYSQ.has(x + ':' + y)) errs.push(id + ': stands on a way at ' + x + ',' + y); } if (o && o.onSand) { o = Object.assign({}, o); delete o.onSand; } return building0(id, q, h, o, parts); };
+const building0 = ctx.building; ctx.building = (id, q, h, o, parts) => { for (let y = q[1]; y < q[3]; y++) for (let x = q[0]; x < q[2]; x++) { if (kind[y + OFF][x + OFF] === 'w' || (kind[y + OFF][x + OFF] === 's' && !(o && o.onSand))) errs.push(id + ': not on firm ground at ' + x + ',' + y); if (WAYSQ.has(x + ':' + y)) errs.push(id + ': stands on a way at ' + x + ',' + y); } if (o && o.onSand) { o = Object.assign({}, o); delete o.onSand; }
+    /* a building keeps one square clear of any higher ground: a rock face is drawn leaning out about a square, and it came through the back wall (seen 11-20) */
+    { const g = hgt[(q[1] + OFF) * W + q[0] + OFF]; let hit = null; for (let y = q[1] - 1; y <= q[3] && !hit; y++) for (let x = q[0] - 1; x <= q[2]; x++) { const X = x + OFF, Y = y + OFF; if (inr(X, Y) && hgt[Y * W + X] > g + 0.6) { hit = [x, y]; break; } } if (hit) errs.push(id + ': stands against higher ground at ' + hit); }
+    const Bd = building0(id, q, h, o, parts);
+    /* THE INSIDES (docs/areas/katana/insides.js): the room's shell and its things, drawn into the building's own look row; catalogue models through put */
+    if (INSIDES.ROOM_OF[id]) { const a = sheet(); INSIDES.furnish({ a, put: (key, lx, lz, oo) => ctx.put(Bd, key, lx, lz, (oo && oo.y >= 1) ? Object.assign({}, oo, { y: r2(hgt[(q[1] + OFF) * W + q[0] + OFF] + oo.y) }) : oo),   /* a prop's y of 1 m or more is a height from the ROOM's floor (three-renderer.js THE TIER HEIGHT), so a hung lantern's is the building's ground + its lift */ w: Bd.fw, d: Bd.fd, h, door: Bd.door, id, rnd, sheets: { WD, WD2, SHG, FLR, PLS } }); ARCH[ARCH.length - 1].parts.push(...a.P); count.furnished = (count.furnished || 0) + 1; }
+    return Bd; };
 Object.keys(DIST).forEach(d => DIST[d].build(ctx));
 
 /* ── THE WAYS' STAIRS: wherever a way (layout.js) steps from one height to another, a real flight stands on the LOW side, as wide as the way, long enough

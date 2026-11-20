@@ -12823,10 +12823,14 @@ That is not a bayside view. It's called bayside mall." and "the other part I cir
   other building bakes as before (the plan still lists the two buildings; they are simply never in the room). Their floor squares are boardwalk planks.
   KEPT: the canal and its culvert, the Marina plot's ramp and retaining rail (that plot stands a level up), road signs.
 - **THE PALMS:** Bayside's promenade row of tall palms (7 to 9 m, at square 144) is gone; north of the mole (the Shore's back, under Entertainment's sea
-  wall) it stays. Fourteen short palms (the catalogue's 3.2 m `palm_tree`), each in a low concrete planter, stand on the coast road's middle line, one every
-  three squares, clear of the crossings (`dc:bay-median<row>:arch`). THE TRAPS: the tool's lane pass draws any prop within 3.2 m of a traffic line out to
-  the kerb, and its soil pass removes a Bayside tree that stands on paving (or paints a sand bed under a palm prop): the median's palms are therefore set in
-  `last()`, after every pass. The cars keep 2.5 to 4.5 m off the middle line.
+  wall) it stays. Short palms (the catalogue's 3.2 m `palm_tree`) stand on A RAISED MEDIAN down the coast road's middle
+  line (mondo 11-20, of the first cut, a separate planter under each palm: "the median needs to be connected, like a raised median. Not individual little
+  patches ... Just a normal street median"): one kerbed strip 1.5 m wide and 0.2 m high with sand on top, unbroken from the Marina plot's north end to
+  the cross street by the canal and on south of it, a rounded nose at each end (`dc:bay-median<n>:arch`). It is laid in pieces under a metre long, each at
+  the road's height under it (`ctx.at`), so it follows the road down off the Marina plot. THE TRAPS: the tool's lane pass draws any prop within 3.2 m of
+  a traffic line out to the kerb, and its soil pass removes a Bayside tree that stands on paving (or paints a sand bed under a palm prop): the median and
+  its palms are therefore set in `last()`, after every pass, where `ctx.at` takes the CITY's own squares (Bayside's frame is 48 rows on). The cars keep
+  2.5 to 4.5 m off the middle line.
 - **THE COVE'S POINT:** the sliver of sand between the Cove's round cut and the Shore's first circles (part 1's "known and left" bar) is gone. `COAST.shore`
   now starts at the Cove's own south rim (row 56.3, square 162.4) and turns out of it, so the shore runs in one sweep from the Cove round into the bay.
   `coastCut` keeps a cap by the circle's FAR side now (where the coast turns, a circle's middle lies nearer the line than its sample does) and steps 1.75 m
@@ -13044,3 +13048,64 @@ multiple islands."**
 - **The tribe's camp is OUT of Katana Island's jungle** (it was only carried over so nothing would be lost; the tribe keeps its own island). Katana Island keeps its
   own Dinosaur Park (his "there can still be dinosaurs") and its own volcano.
 - Everything else of "THE SWAP" holds: the room's id, the links' learnt rule, THE CHECK.
+
+## KATANA ISLAND, THE INSIDES (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20: "Okay looks good, go ahead and do those interiors".
+
+- **ONE FILE FURNISHES EVERY BUILDING:** `docs/areas/katana/insides.js`. `ROOM_OF` says which kind of room a building id is; `furnish` draws it into the building's own
+  look row, in the building's frame (x along the front, z from the back wall to the door's wall). `bake-katana.js` calls it from `ctx.building`, so a new building
+  only needs a line in `ROOM_OF`. 39 buildings, 20 kinds of room: home, samurai house, hut, farm, office, market, shipwright, net loft, store, brewery, inn, tea
+  room, shop, kitchen, workshop (the lantern maker's), bath, dojo, armoury, guard house, temple / pagoda / shrine, theatre, keep, tower.
+- **THE SHELL every room gets** (the hollow building's own walls draw dark: the Beach's lesson): a lit lining 0.335 m inside the walls, dark posts and a head rail on
+  it, a lit board ceiling with rafters at `h - 0.6` (3.6 m at most), straw mats with dark borders on the floor.
+- **DRAWN PIECES** (the game has no model): low tables, cushions, bedding, an alcove with a hung scroll, a sunk hearth with the kettle over it, counters, shelves,
+  wooden bath tubs with water, a dais, paper screens, rice bales, a brewing vat, THE FLAG (mondo's web: "a red square and white background": pole, white cloth, red
+  square; in the keep, the dojo and the armoury). **MODELS** through `put`: 34 catalogue keys (weapon racks, training dummies, the taiko drum, armour stands and
+  `sword` as his stand-ins, braziers, the gong, the votive stand, barrels, baskets, nets, the boat on the stocks, the forge and anvil, paper lanterns).
+- **LEARNT, FOR EVERY ZONE:** (1) a prop's `y` of 1 m or more is a height from the ROOM's floor, not a lift over the ground under it (three-renderer.js THE TIER
+  HEIGHT): a lantern hung in a building on a terrace is typed ground + lift (`put` does it). (2) `paper_lantern`, `teapot` and `teacups` are far too big at catalogue
+  size: `h: 0.42`, `span: 0.34`, `h: 0.3`. (3) A ROCK FACE LEANS OUT ABOUT A SQUARE: a building against higher ground gets rock through its back wall. 13 buildings
+  stood so; each moved one square clear, and the tool now stops the bake on it. (4) A box round a building's foot needs `faces: 'blr'` and `top: false`, or it closes
+  the doorway and fills the room (the keep's stone foot did). (5) The probe's view `y` is the FEET: in a room under 3.6 m the picture is taken above the ceiling.
+- **NOT DONE:** one storey a building (the Inn, the Net Loft, the Theatre, the Keep and the Pagoda are tall single rooms); no night look; not walked as a player;
+  the rooms under 3.6 m high were not photographed (same kit, same code path as the six that were).
+## THE MOUNTAINS, ONE SKI MOUNTAIN — step 1, the ground and the ride (2026-11-20, world polish thread 5; mondo's "okay" on the plan)
+
+mondo 11-20: "The ski trails should be all over the mountain. It should be designed like an actual mountain and ski resort, where there are some easy trails at the
+towards the base and double black diamonds towards the top. I should be able to ski all the way from the top of mt Olympus to the base of the mountain." And:
+Mount Shasta goes as a name, its plots are swallowed.
+
+- **THE PLAN IS A FILE THAT CHECKS ITSELF:** `docs/plans/world-polish/thread5/draw-mountain.js` (grid c = world x + 22, r = world y + 22; `LV` the levels, `NAME`,
+  `RUNS` with their marks, `LIFTS`, `WAYS`, `TAIL`). `node …/draw-mountain.js` prints the levels, every run's fall and the walking ways, refuses a run that goes
+  uphill or wears the wrong mark, a walking leg over 8 squares, a way along a row or column of plots, and draws `mountain-plan.png`. `bake-mountains.js` READS it
+  (`MP`): change the mountain there, rerun `node docs/plans/one-world/after-v13.js` (it writes the plots' places into plots.json), `node bake-mountains.js`,
+  `node bake-map.js site_prebuilt_shasta_ow_lodge site_prebuilt_shasta_ow_shasta`.
+- **THE ROOMS:** `site_prebuilt_shasta_ow_lodge` = THE SKI MOUNTAIN, ONE room, 84 plots in a 13 x 10 box at world -22,-22 (the Ski Lodge at the west foot, level 0;
+  Mount Olympus's temples on top, level 64 = 112 m). `site_prebuilt_shasta_ow_shasta` = THE LONG DESCENT, 13 plots, the east way down to the Trailhead
+  (the Canyon Trail's seam). `site_prebuilt_shasta_ow_olympus` is GONE (data.js `DOOR_HQ.retired` -> the mountain's room; the Pilgrim Way's door lands on the same
+  seam id). The home frame (the 12 x 8 room the district files were written for) is still built first and never written.
+- **ONE ROOM, OVER THE ROOM-SPLITTING RULE'S 30 PLOTS, ON PURPOSE** (his ruling: free to change shared rules; you see the summit from the Lodge and no run crosses
+  a seam). Measured in the probe (software GPU), the whole mountain in view from the air: 1,286 draw calls, 3.6 M triangles (the rule's ceilings are 2,500 and
+  12 M); memory `misc.mb` 1,900 (over the rule's 1.4 GB: NOT solved, watch it; the old Lodge room was not measured for comparison). If a weak machine cannot
+  hold it, the cut is the plan's pink lines (c 5 and c 8) and needs one more room id.
+- **WHAT THE TOOL DOES NOW (THE ONE WORLD MOVE section):** `planList` stands each home plot at its plan cell with the plan's level and district name (K The Ski
+  Lodge, P The Snowy Pass, O Mount Olympus, The Long Descent); a new plot is open snow; `heightsOf` `smooth` = one even fall from plot middle to plot middle both
+  ways (no shelf under a run); step 1b opens the old rock rims of every non-Olympus home plot (the pistes are open ground); step 5b cuts every run as a groomed
+  lane (`i`: green 7 squares wide, blue 6, black 5, double black 4) and every walking way as packed snow on its square legs; step 5c steps a blocking prop or a
+  tree off a run to the nearest free square of its own plot (169 stepped, none removed); a piece with a height of its own (`y`, not `floor`) rides the new ground.
+  Summer grass and dirt of Shasta's low plots are painted snow; the tree zones are retro pines with one snow pine in six.
+- **THE RIDE, PROVEN (the probe, the board, steered along the plan's line):** the Top Station (y 108) -> The Headwall -> Avalanche Gulch -> the Mid Station ->
+  The Meadows -> The Home Run -> the North Road -> the Rental Hut (y 0): 31.7 s, never stopped. Probe recipe: `hq.skateIssued(true); hq.skate(true)`, the
+  renderer's `render` swapped for a no-op, `dev.press('w', true)`, and every 120 ms `dev.rideRaw().cam.yaw = Math.atan2(dx, -dz)` toward the next point
+  (a view's `face` 0 looks north, 90 east; the board goes where the camera looks).
+- **TRAPS MET:** (1) a route's plot inside your box: the Polar Trail (R5) owns (-13,-21) as well as (-13,-22); `bake-map.js` refused ("two rooms stand on one
+  world plot"). Check a plan's cells against plots.json's routes AND every standing room before baking. (2) K.js and S.js work out heights from the HOME levels
+  for pieces with their own `y` (the lift's cables, the cloud): the tool lifts them by the ground's difference, but a piece that spans a slope (the old lift line)
+  still follows the old grade. (3) A straight line down a row meets the Rope Bridge's crevasse: it stands north of the Mid Station, off every run, on purpose.
+- **NOT DONE (the next steps, one district a PR):** the runs do not READ as runs yet (no tree lines, fences, poles, boards with marks: only the groomed paint);
+  the old lift, its gantries and the old slopes' fences stand where their plots went and are to be rebuilt as the plan's five lifts ("lift should carry you": the
+  first one is shown to mondo first; today the old door pair `lift_bottom` / `lift_top` carries you from the Chairlift plot at the base to the Top Station on
+  the summit); the base village, the Mid Station, the Ski Patrol, the bath house; ledges and switchbacks on the walking ways; Shasta's volcano dressing (crater,
+  vents, lava) on what are now ski plots; the Olympus retexture look (data.js `ZONE_LOOKS.olympus` names the room that is gone: the retexture thread's row);
+  the North Pole; the seams were not walked in the probe (L6, L3, R5, R3, the Long Descent's two).

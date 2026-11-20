@@ -16,9 +16,9 @@ module.exports = {
         /* ── THE SHORE HAMLET: fishermen's houses on the firm ground behind the sand ── */
         hut('fisher1', [40, 64, 43, 66, 'N']); hut('fisher2', [36, 64, 38, 67, 'E']); hut('fisher3', [40, 60, 42, 61, 'S']);
         /* ── THE VILLAGE: farm houses round a square, the store, the headman's house ── */
-        hut('farm1', [48, 53, 50, 56, 'E'], 3.0); hut('farm2', [51, 48, 54, 50, 'S'], 3.0);
+        hut('farm1', [48, 53, 50, 56, 'E'], 3.0); hut('farm2', [51, 49, 54, 51, 'S'], 3.0);
         B.store = ctx.building('store', [52, 55, 55, 57, 'N'], 3.6, {}, (a, w, d, door) => { house(a, w, 3.6, d, door, { plain: true, roof: { top: 'hip', over: 0.7 } }); });
-        B.headman = ctx.building('headman', [48, 48, 50, 50, 'E'], 3.4, {}, (a, w, d, door) => house(a, w, 3.4, d, door, { roof: { top: 'gable', over: 1.0 } }));
+        B.headman = ctx.building('headman', [48, 49, 50, 51, 'E'], 3.4, {}, (a, w, d, door) => house(a, w, 3.4, d, door, { roof: { top: 'gable', over: 1.0 } }));
         /* ── THE TERRACES: a higher field on the north-west (one level up, its own stair), a farm house, tea rows ── */
         ctx.set(48, 36, 53, 41, 'g', 6); ctx.stairs('field', 52, 42, 52, 42, 'N', 5, 6, { kind: 'g', paint: 'dirt', model: 'timber' });
         ctx.feat({ k: 'pool', x: ctx.gx(50.5), z: ctx.gz(38.5), r: 5.0, y: -0.12, depth: 0.35 }); for (let y = 37; y <= 39; y++) for (let x = 49; x <= 51; x++) ctx.take(x, y);
@@ -31,7 +31,6 @@ module.exports = {
         P('drying_fish', 44, 64, { face: 0 }); P('drying_fish', 38, 62 - 2 + 1, { face: 90 }); P('meshy_rowboat', 43, 68, { face: 40 }); P('dugout_canoe', 39, 69, { face: 100 }); P('fishing_net_wall', 44, 66, { face: 90 }); P('campfire', 39, 63);
         [[54, 57 - 5], [50, 59 - 1], [47, 60], [36, 59 + 2]].forEach(q => { if (ctx.open(q[0], q[1])) ctx.dec('chicken', q[0], q[1]); }); if (ctx.open(57, 52)) ctx.dec('cow', 57, 52); if (ctx.open(58, 42)) ctx.dec('rooster', 58, 42);
         [[48, 52 - 1], [59 - 1, 49], [48, 59 - 2], [36, 60], [44, 63 - 3], [59, 37], [54, 36], [48, 47 - 1], [36, 48], [47, 55 - 7]].forEach((q, i) => { if (ctx.open(q[0], q[1])) ctx.tree(i % 3 === 0 ? 'tree_52' : i % 3 === 1 ? 'cherry_2' : 'cherry', q[0], q[1], 5 + rnd() * 2); });
-        ctx.put(B.store, 'wooden_barrel', -3, -2, {}); ctx.put(B.store, 'woven_baskets', 3, -2, {}); ctx.put(B.headman, 'psx_coffee_table_1', 0, -1, {}); ctx.put(B.farm1, 'psx_old_mattress_mp_1', 0, -1.5, {}); ctx.put(B.farm2, 'psx_old_mattress_mp_1', -4, -1, {}); ctx.put(B.farm2, 'stock_pots', 4, -1.2, {});
-        [['farmer', 53, 53, 90], ['farmer', 44 - 2, 57 - 1, 0], ['farmer', 54, 43 + 1, 180], ['fairy', 51, 40 - 4 + 5, 0], ['karate frog', 41, 62 - 2 + 3, 0], ['swordfighter', 57, 56 - 2, 270]].forEach(q => { if (!ctx.open(q[1], q[2])) return; ctx.take(q[1], q[2]); ctx.npc.push({ x: ctx.mx(q[1]), z: ctx.mz(q[2]), face: q[3], race: q[0] }); });
+                [['farmer', 53, 53, 90], ['farmer', 44 - 2, 57 - 1, 0], ['farmer', 54, 43 + 1, 180], ['fairy', 51, 40 - 4 + 5, 0], ['karate frog', 41, 62 - 2 + 3, 0], ['swordfighter', 57, 56 - 2, 270]].forEach(q => { if (!ctx.open(q[1], q[2])) return; ctx.take(q[1], q[2]); ctx.npc.push({ x: ctx.mx(q[1]), z: ctx.mz(q[2]), face: q[3], race: q[0] }); });
     },
 };
