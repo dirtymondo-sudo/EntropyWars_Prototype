@@ -13076,6 +13076,19 @@ mondo 11-20: "Okay looks good, go ahead and do those interiors".
   the doorway and fills the room (the keep's stone foot did). (5) The probe's view `y` is the FEET: in a room under 3.6 m the picture is taken above the ceiling.
 - **NOT DONE:** one storey a building (the Inn, the Net Loft, the Theatre, the Keep and the Pagoda are tall single rooms); no night look; not walked as a player;
   the rooms under 3.6 m high were not photographed (same kit, same code path as the six that were).
+
+## KATANA ISLAND, THE PALACE (2026-11-20, world polish thread 21; seen on screen)
+
+mondo 11-20: "Is there a dojo or a palace?" (there was a dojo and a keep, no palace); "Yes and add another plot or two if you need to."
+
+- **A 30th PLOT, `The Palace`** (district C, level 8; island plot 0,1 = squares x 0..11, y 12..23, north of the Castle Garden on the west sea cliff; `layout.js`). The
+  room is at its cap of 30 plots now: a 31st means a second room.
+- **WHAT STANDS** (`districts/C.js` THE PALACE): the AUDIENCE HALL across the north (7 x 4 squares = 24.5 x 14 m, a deep porch on six red posts), the PRIVATE ROOMS
+  (west wing) and the GUEST HOUSE (east wing) round an open court, a gate and a white wall on the south side. THE PALACE WALK (a lane, 2 squares, layout.js) comes up
+  from the Castle Garden; the tool stood its flight at the plot line. The shogun stands in the court.
+- **INSIDE** (`insides.js` kind `audience`): the lord's dais across the back under seven gold panels, two swords on a stand, the court's cushions in two files, flags,
+  armour stands, braziers, paper screens down both sides, weapon racks, a drum and a gong by the door, ten hung lanterns. The wings are a samurai house and a tea room.
+- **LEARNT:** the catalogue's `privacy_screen` is a green hospital curtain; it is out of every room on the island (the drawn paper `screen` instead).
 ## THE MOUNTAINS, ONE SKI MOUNTAIN — step 1, the ground and the ride (2026-11-20, world polish thread 5; mondo's "okay" on the plan)
 
 mondo 11-20: "The ski trails should be all over the mountain. It should be designed like an actual mountain and ski resort, where there are some easy trails at the
@@ -13113,5 +13126,5 @@ Mount Shasta goes as a name, its plots are swallowed.
   the old lift, its gantries and the old slopes' fences stand where their plots went and are to be rebuilt as the plan's five lifts ("lift should carry you": the
   first one is shown to mondo first; today the old door pair `lift_bottom` / `lift_top` carries you from the Chairlift plot at the base to the Top Station on
   the summit); the base village, the Mid Station, the Ski Patrol, the bath house; ledges and switchbacks on the walking ways; Shasta's volcano dressing (crater,
-  vents, lava) on what are now ski plots; the Olympus retexture look (data.js `ZONE_LOOKS.olympus` names the room that is gone: the retexture thread's row);
+  vents, lava) on what are now ski plots; (FIXED the same day, mondo: "Just add its cream stone texture to this room": `ZONE_LOOKS.zones.mountains.byRoom` gives the mountain's room Olympus's cream stone on walls; there is no retexture thread any more, a zone thread edits its own look rows);
   the North Pole; the seams were not walked in the probe (L6, L3, R5, R3, the Long Descent's two).
