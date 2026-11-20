@@ -2864,6 +2864,16 @@ from the top-left).
 - OPEN (the plan's M4 / M5 + §6): a plot charted when you stand on it + GO to a plot; plot search; mondo's four answers (the defaults used:
   GO to a zone as today; zones as layout 3 places them; a zone shows whole once charted; the underground on its own sheet).
 
+### THE MAP GOES EVERYWHERE (2026-11-20, token 20261120-map-01-cors)
+mondo 11-20: "I'm in the directory clicking on the map and it's not doing anything. How am I supposed to test the game if the fast travel and map isn't even working".
+- Cause: the click code was fine; the map only travels to rooms the save has stood in (ZONES_PLAN Z3), and One World gave most zone rooms new ids, so a
+  save had almost nothing charted: every zone a "?" that a click only selects.
+- Now: map.js sets `window.EW_HQ_MAP_ALL = true` when nobody set it (above `_hqMapCharted`): every zone, room and hidden way is drawn and every GO works
+  on any save. The charted-only rule is unchanged behind it: `window.EW_HQ_MAP_ALL = false` before the map opens. FLIP IT BACK FOR RELEASE.
+- Travel on the ground sheets is still: click a zone (its sheet), click a plot (its card), click the plot again or the card's GO.
+- Also fixed: `_zmDetail` read the sheet's size while the panel was still opening (25x too small), so with the charted rule on the "?" blocks and names
+  were drawn 25x too large until the first zoom. It reads the laid-out size now and reruns on a resize (a ResizeObserver per sheet).
+
 ## THE EYE BY THE PORTRAIT (2026-11-17, NPC encounters step 2)
 The walk's party dock (map.js `_hqFillDock`) draws one eye right of the lead's portrait, inside the portrait's svg (`.hq-dock-eye`, styles-base.css): green and
 slashed = nobody who would act sees you, amber = someone does. `.hq-dock-pp.lead.has-eye .hq-dock-tag` moves the name tag 30 px right when the tag sits beside

@@ -12527,6 +12527,12 @@ areas except disaster city first."
   oxblood, teal, ceiling, concrete, Metro tiles, the H-Wing's yellow wallpaper) stay. Calm plaster -> Wall_03, calm stone -> Stone_11, calm
   carpet -> urban CarpetPlain1c (red), the H-Wing patchwork -> CarpetPlain1d (mustard, the backrooms look), dungeon -> Brick_09/08 + Floor_13,
   calm metal -> Metal_02/05 + Floor_09. No stains: HQ rooms are shell rooms, the stains need terrain rows. Every zone except Disaster City is done.
+- BATCH 6 FIX, HIS PAINTED SHEETS STAY (2026-11-20, mondo in the Main Hall: "why do the walls inside DOOR HQ look like this?"): batch 6
+  mapped `stone`, `drywall` and `carpet`, but in a shell those are NOT calm keys: three-renderer.js `_hqTex` reads `DOOR_HQ.textures` first, so
+  they are his painted hallway stone, office drywall and taupe carpet. The hall's drum wore Horror_Stone_11 (128 px, blotches) in 6 rooms,
+  Wall_03 took the drywall in 41 rooms, CarpetPlain1c the carpet in 13. The three keys are out of the `doorhq` maps and `zoneLookRoom` never
+  swaps a shell key (floor, apron, wall, dado, trim, ceiling, skirt) that `DOOR_HQ.textures` names, in any zone. RULE: before mapping a key in
+  ZONE_LOOKS, check it is not one of the eight painted names (terrazzo, stone, oxblood, teal, ceiling, concrete, drywall, carpet).
 - LESSONS: a stair-built terrain slope draws in `terrain.cliff`, so a cliff sheet shows on steps: pick one that reads as stone blocks. A probe
   needs `--flags=EW_HQ_NO_ENCOUNTER` (a field fight hides the view) and ONE browser at a time (three at once got OOM-killed).
 
