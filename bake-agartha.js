@@ -69,16 +69,32 @@ function sheet() {
 const ROT = { S: 0, W: 90, N: 180, E: 270 };
 function texbDoor(w, door) { const L = Math.max(2, w) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols; let col = Math.floor((cols - 1) / 2); if (door >= 1) col = Math.min(cols - 1, Math.round(door) - 1); return { lx: -L / 2 + (col + 0.5) * cw, cw }; }
 const BUILT = {};
+const HEADROOM = {};   // `x,y` -> metres (the design file's places)
 /* a BUILDING: squares x0..x1 x y0..y1 (the end inclusive, the plan's `buildings` rect), its front on `side`; a hollow `texbuilding` (the walls
    you bump, the doorway, the swinging leaf, the inside's floor and walls) + its look as an `arch` parts list drawn by `parts(a, fw, fd, door)`
    in the building's frame (x along the front, +z out of the front, y up from its floor). */
 function building(id, rect, side, h, o, parts) {
-    const [sx0, sy0, sx1e, sy1e] = rect, sx1 = sx1e + 1, sy1 = sy1e + 1, ew = side === 'E' || side === 'W', fw = (ew ? sy1 - sy0 : sx1 - sx0) * C, fd = (ew ? sx1 - sx0 : sy1 - sy0) * C;
-    const cx = gx((sx0 + sx1) / 2), cz = gz((sy0 + sy1) / 2), rot = ROT[side], base = walkOf(sx0, sy0);
+    const [sx0, sy0, sx1e, sy1e] = rect, sx1 = sx1e + 1, sy1 = sy1e + 1, ew = side === 'E' || side === 'W';
+    /* THE ROCK LEANS IN (seen 11-20, as Katana found): the height sheet's face beside a square of rock leans about a node (0.875 m) into the open
+       square, so a wall on the square line had rock through it and a shelf against it stood on the slope. A side of the rect that touches rock
+       (or the room's edge) keeps its wall INSET 1 m. The front is never rock. */
+    const rockOn = { N: squaresIn(sx0, sy0 - 1, sx1e, sy0 - 1, (x, y) => !open(x, y)).length > 0, S: squaresIn(sx0, sy1, sx1e, sy1, (x, y) => !open(x, y)).length > 0,
+        W: squaresIn(sx0 - 1, sy0, sx0 - 1, sy1e, (x, y) => !open(x, y)).length > 0 || sx0 === 0, E: squaresIn(sx1, sy0, sx1, sy1e, (x, y) => !open(x, y)).length > 0 || sx1 === W };
+    rockOn.N = rockOn.N || sy0 === 0; rockOn.S = rockOn.S || sy1 === Hh;
+    if (rockOn[side]) errs.push('building ' + id + ': its front (' + side + ') is against rock');
+    const IN = 1.0, wx0 = r2(gx(sx0) + (rockOn.W ? IN : 0)), wx1 = r2(gx(sx1) - (rockOn.E ? IN : 0)), wz0 = r2(gz(sy0) + (rockOn.N ? IN : 0)), wz1 = r2(gz(sy1) - (rockOn.S ? IN : 0));
+    const fw = r2(ew ? wz1 - wz0 : wx1 - wx0), fd = r2(ew ? wx1 - wx0 : wz1 - wz0);
+    const cx = r2((wx0 + wx1) / 2), cz = r2((wz0 + wz1) / 2), rot = ROT[side], base = walkOf(sx0, sy0);
     for (let y = sy0; y < sy1; y++) for (let x = sx0; x < sx1; x++) { if (!open(x, y) || walkOf(x, y) !== base) errs.push('building ' + id + ': square ' + x + ',' + y + ' is not open at its floor'); taken.add(x + ':' + y); }
     const row = Object.assign({ k: 'texbuilding', id: 'aga:' + id, seed: 1, x: cx, z: cz, w: fw, d: fd, rot, storeys: Math.max(1, Math.floor(h / 3.5 + 0.01)), h, skin: false, hollow: true, leaf: 'leaf_frosted_single', leafDouble: false, keyIn: 'marble_light', floorIn: 'marble_light' }, o || {});
     feat(row);
     const a = sheet(), door = texbDoor(fw, row.door); parts(a, fw, fd, door);
+    /* THE LINING (Katana's insides): the hollow building's own walls draw dark from inside, so a lit lining stands 0.335 m inside them, with a
+       lit ceiling under the building's own; `o.lining` = { key, tint, h } */
+    { const L0 = Object.assign({ key: 'marble_light', tint: 0xf0ede4, h: Math.min(h - 0.4, 6.4) }, o && o.lining), e = 0.335, W2 = r2(fw / 2 - e), D2 = r2(fd / 2 - e), Hc = r2(L0.h), lit = { gain: 1.6, glow: 0.2, uv: [1.75, 1.75], kind: 'wall' };
+      a.P.push(Object.assign({ s: 'quad', p: [0, 0, -D2], size: [2 * W2, Hc], ry: 0, key: L0.key, tint: L0.tint }, lit), Object.assign({ s: 'quad', p: [0, 0, D2], size: [2 * W2, Hc], ry: 180, key: L0.key, tint: L0.tint, hole: [r2(-door.lx), r2(door.cw + 0.12), 2.25] }, lit),
+          Object.assign({ s: 'quad', p: [-W2, 0, 0], size: [2 * D2, Hc], ry: 270, key: L0.key, tint: L0.tint }, lit), Object.assign({ s: 'quad', p: [W2, 0, 0], size: [2 * D2, Hc], ry: 90, key: L0.key, tint: L0.tint }, lit),
+          { s: 'box', p: [0, r2(Hc - 0.05), 0], size: [2 * W2, 0.04, 2 * D2], key: L0.key, tint: L0.tint, glow: 0.3, gain: 1.6, under: true, roof: true, top: false, ds: true, uv: [1.75, 1.75] }); }
     ARCH.push({ k: 'arch', id: 'aga:' + id + ':look', x: cx, z: cz, rot, base, parts: a.P });
     const t = rot * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
     count.buildings = (count.buildings || 0) + 1;
@@ -104,7 +120,6 @@ const squaresIn = (x0, y0, x1, y1, f) => { const o = []; for (let y = y0; y <= y
 /* walls beside a square (closed neighbours of four) */
 const wallsBeside = (x, y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => !open(x + dx, y + dy)).length;
 const OLD = JSON.parse(vm.runInContext('JSON.stringify((r => r ? { n: r.npcSpots || [], l: r.lines || [], c: r.counters || [] } : { n: [], l: [], c: [] })(DOOR_HQ.rooms.site_prebuilt_hollow_earth_ow_agartha))', D));
-const HEADROOM = {};   // `x,y` -> metres (the design file's places)
 const ctx = { C, LV, ZERO, W, H: Hh, N, B, PLAN, r2, gx, gz, gcx, gcz, open, wet, inR, T, L: Lv, floorOf, walkOf, feat, props, npc, counters, doors, taken, rnd, mkRnd,
     U, sheet, building, put, look, BUILT, P, dec, native, free, squaresIn, wallsBeside, OLD, LINKS, link: (a, b) => LINKS.push([a, b]),
     headroom: (x0, y0, x1, y1, m) => squaresIn(x0, y0, x1, y1).forEach(([x, y]) => { HEADROOM[x + ',' + y] = m; }),

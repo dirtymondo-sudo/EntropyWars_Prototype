@@ -34,7 +34,7 @@ module.exports = {
         /* THE HEADROOM: the city's chamber is tall (9 levels over its paving), the colonnade 4, the adit a mine's */
         headroom(CITY[0], CITY[1], CITY[2], CITY[3], 9 * LEVEL_M);
         headroom(15, 3, 19, 8, 4 * LEVEL_M);
-        headroom(2, 0, 3, 1, 3.6);
+        headroom(2, 0, 3, 1, 4.6);
         /* THE PAINT: white paving on the shelf, crystal under the Great Crystal's precinct, the adit's dirt, the pits' dark */
         squaresIn(CITY[0], CITY[1], CITY[2], CITY[3], open).forEach(([x, y]) => paint(x, y, 'marble_light'));
         squaresIn(15, 4, 19, 7, open).forEach(([x, y]) => paint(x, y, 'marble_2'));
@@ -56,11 +56,10 @@ module.exports = {
         }));
         /* ── THE LEMURIAN GATE: where the mine meets the city ── */
         look('gate', gx(3), gz(2), 0, F0, a => {
-            [-1, 1].forEach(s => { a.box(s * 3.9, 0, 0, 1.1, 0.5, 1.1, MARBLE, STONE); a.box(s * 3.9, 0.5, 0, 0.8, 4.0, 0.8, MARBLE, WHITE); a.box(s * 3.9, 4.5, 0, 1.1, 0.35, 1.1, MARBLE, STONE); });
-            a.box(0, 4.85, 0, 9.0, 0.7, 1.0, MARBLE, WHITE);
-            a.box(0, 5.55, 0, 7.4, 0.4, 0.8, MARBLE, STONE);
-            a.box(0, 4.98, 0.52, 7.6, 0.16, 0.06, 'crystal', GLOW, { glow: 1.1 });   // the lit band under the lintel
-            a.cone(0, 5.95, 0, 0.55, 0.05, 1.5, 'crystal', 0xd8fbff, { glow: 1.6 });   // the keystone crystal
+            [-1, 1].forEach(s => { a.box(s * 2.95, 0, 0.3, 1.1, 0.45, 1.1, MARBLE, STONE); a.box(s * 2.95, 0.45, 0.3, 0.8, 3.15, 0.8, MARBLE, WHITE); a.box(s * 2.95, 3.6, 0.3, 1.1, 0.3, 1.1, MARBLE, STONE); });
+            a.box(0, 3.9, 0.3, 7.6, 0.6, 1.0, MARBLE, WHITE);
+            a.box(0, 3.98, 0.82, 6.4, 0.16, 0.06, 'crystal', GLOW, { glow: 1.1 });   // the lit band on the lintel
+            a.cone(0, 4.5, 0.4, 0.45, 0.05, 1.2, 'crystal', 0xd8fbff, { glow: 1.6 });   // the keystone crystal
         });
         /* ── THE GREAT CRYSTAL (6,6): the great chamber's stalagmite, grown through with crystal; the shelf's light ── */
         const gc6 = [gcx(6), gcz(6)];
@@ -109,15 +108,15 @@ module.exports = {
         [[10, 7], [14, 7]].forEach(([x, y]) => P('greek_column', x, y, { h: 6.55 }));
         /* inside: shelves of records round three walls, the model of the city in the middle, the old terrace's telescope, orrery and lectern */
         const hw = hall.fw / 2, hd = hall.fd / 2;
-        [-6.2, -3.1, 0, 3.1, 6.2].forEach(lx => put(hall, 'library_shelf_full', lx, -hd + 0.7, { face: 0 }));
-        [-4.5, -1.5, 1.5, 4.5].forEach(lz => { put(hall, 'library_shelf_full', -hw + 0.7, lz, { face: 90 }); put(hall, 'library_shelf_full', hw - 0.7, lz, { face: 270 }); });
+        [-6.0, -3.0, 0, 3.0, 6.0].forEach(lx => put(hall, 'library_shelf_full', lx, -hd + 0.9, { face: 180 }));
+        [-4.5, -1.5, 1.5, 4.5].forEach(lz => { put(hall, 'library_shelf_full', -hw + 0.9, lz, { face: 90 }); put(hall, 'library_shelf_full', hw - 0.9, lz, { face: 270 }); });
         put(hall, 'city_scale_model', 0, -1.2, { face: 0 });
         put(hall, 'rug_round', 0, 3.6, {});
-        put(hall, 'lectern', -3.6, 1.6, { face: 0 }); put(hall, 'lectern', 3.6, 1.6, { face: 0 });
-        put(hall, 'brass_telescope', -5.6, 5.4, { face: 30 }); put(hall, 'brass_orrery', 5.6, 5.4, { face: 0 }); put(hall, 'astronomical_clock', 5.8, -6.4, { face: 300 });
-        put(hall, 'marble_bust', -2.6, 6.6, { face: 0 }); put(hall, 'marble_bust', 2.6, 6.6, { face: 0 });
+        put(hall, 'lectern', -3.6, 1.6, { face: 180 }); put(hall, 'lectern', 3.6, 1.6, { face: 180 });
+        put(hall, 'brass_telescope', -5.4, 5.0, { face: 150 }); put(hall, 'brass_orrery', 5.4, 5.0, { face: 180 }); put(hall, 'astronomical_clock', 5.6, -5.9, { face: 225 });
+        put(hall, 'marble_bust', -2.8, 6.2, { face: 180 }); put(hall, 'marble_bust', 2.8, 6.2, { face: 180 });
         put(hall, 'crystal_chandelier', 0, -1.2, { ceil: true, y: r2(F0 + 6.6) });
-        put(hall, 'crystal_cluster', -5.6, -5.8, { h: 1.4 }); put(hall, 'crystal_cluster', 5.6, 2.2, { h: 1.2, noLight: true });
+        put(hall, 'crystal_cluster', -5.4, -5.6, { h: 1.4 }); put(hall, 'crystal_cluster', 5.4, 2.2, { h: 1.2, noLight: true });
 
         /* ── THE HOMES CUT IN THE ROCK: a front of white stone on the rock face, a room you walk into ── */
         const front = (a, fw, fd, door, h) => {
@@ -130,12 +129,12 @@ module.exports = {
             [-1, 1].forEach(s => { const lx = door.lx + s * 3.6; if (Math.abs(lx) < fw / 2 - 0.8) a.box(lx, 1.2, fd / 2 + 0.06, 1.2, 1.1, 0.06, 'crystal', 0x9fdcf0, { glow: 0.6 }); });   // two small lit windows
         };
         const west = building('home_w', [0, 4, 1, 7], 'E', 5.6, {}, (a, fw, fd, door) => front(a, fw, fd, door, 5.6));
-        put(west, 'couples_bed', -4.6, -1.6, { face: 90 }); put(west, 'trestle_table', 2.2, -0.9, { face: 0 }); put(west, 'folding_chair', 2.2, 0.4, { face: 180 });
-        put(west, 'rug_round', -0.8, 0.6, {}); put(west, 'crystal_cluster', 5.6, -2.3, { h: 0.9 }); put(west, 'sea_chest', -5.6, 2.2, { face: 90 }); put(west, 'woven_baskets', 5.4, 2.4, {});
+        put(west, 'couples_bed', -4.2, -1.3, { face: 90 }); put(west, 'trestle_table', 2.2, -1.0, { face: 0 }); put(west, 'folding_chair', 2.2, 0.4, { face: 0 });
+        put(west, 'rug_round', -0.8, 0.6, {}); put(west, 'crystal_cluster', 5.0, -2.0, { h: 0.9 }); put(west, 'sea_chest', -5.0, 1.9, { face: 90 }); put(west, 'woven_baskets', 4.8, 1.9, {});
         const south = building('home_s', [9, 10, 12, 12], 'N', 5.6, {}, (a, fw, fd, door) => front(a, fw, fd, door, 5.6));
-        put(south, 'dorm_bed', -5.4, -3.4, { face: 90 }); put(south, 'dorm_bed', -5.4, -0.8, { face: 90 }); put(south, 'fur_rug', -1.2, -1.6, {});
-        put(south, 'trestle_table', 3.2, -2.6, { face: 0 }); put(south, 'rocking_chair', 3.0, 1.6, { face: 200 }); put(south, 'kettle', 2.4, -2.6, {});
-        put(south, 'brazier', 5.6, 3.3, {}); put(south, 'crystal_cluster', -5.6, 3.6, { h: 0.9, noLight: true }); put(south, 'library_shelf', 0.6, -4.6, { face: 0 });
+        put(south, 'dorm_bed', -4.7, -2.9, { face: 90 }); put(south, 'dorm_bed', -4.7, -0.5, { face: 90 }); put(south, 'fur_rug', -1.2, -1.6, {});
+        put(south, 'trestle_table', 2.8, -2.4, { face: 0 }); put(south, 'rocking_chair', 3.0, 1.6, { face: 200 }); put(south, 'kettle', 2.4, -2.6, {});
+        put(south, 'brazier', 4.8, 2.8, {}); put(south, 'crystal_cluster', -4.9, 3.0, { h: 0.9, noLight: true }); put(south, 'library_shelf', 0.6, -3.8, { face: 180 });
 
         /* ── THE DROP (6..8 x 10..11): a broken balustrade over the cliff, the gap where the rope hangs (6) ── */
         look('drop', gx(7) + 1.75, gz(12) - 0.25, 0, F0, a => {
