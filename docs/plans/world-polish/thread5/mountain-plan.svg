@@ -336,7 +336,8 @@
 <text x="762" y="532.5" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">The Big Jump,</text>
 <text x="762" y="543" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">top</text>
 <text x="771" y="477" font-size="13" font-weight="700" fill="#16202a" stroke="#fff" stroke-width="2.5" paint-order="stroke">47 m</text>
-<text x="848" y="543" font-size="9.4" font-weight="700" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">THE MID STATION</text>
+<text x="848" y="532.5" font-size="9.4" font-weight="700" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">THE MID</text>
+<text x="848" y="543" font-size="9.4" font-weight="700" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">STATION*</text>
 <text x="857" y="477" font-size="13" font-weight="700" fill="#16202a" stroke="#fff" stroke-width="2.5" paint-order="stroke">61 m</text>
 <text x="934" y="543" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">The Black Run*</text>
 <text x="943" y="477" font-size="13" font-weight="700" fill="#16202a" stroke="#fff" stroke-width="2.5" paint-order="stroke">77 m</text>
@@ -384,7 +385,7 @@
 <text x="255" y="649" font-size="13" font-weight="700" fill="#16202a" stroke="#fff" stroke-width="2.5" paint-order="stroke">0 m</text>
 <text x="332" y="715" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">The Lodge Yard*</text>
 <text x="341" y="649" font-size="13" font-weight="700" fill="#16202a" stroke="#fff" stroke-width="2.5" paint-order="stroke">2 m</text>
-<text x="418" y="715" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">The Ski Patrol</text>
+<text x="418" y="715" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">The Ski Patrol*</text>
 <text x="427" y="649" font-size="13" font-weight="700" fill="#16202a" stroke="#fff" stroke-width="2.5" paint-order="stroke">7 m</text>
 <text x="504" y="704.5" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">The Long Way</text>
 <text x="504" y="715" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">Home</text>
@@ -409,10 +410,10 @@
 <text x="1364" y="715" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">The Terraces*</text>
 <text x="255" y="735" font-size="13" font-weight="700" fill="#16202a" stroke="#fff" stroke-width="2.5" paint-order="stroke">0 m</text>
 <text x="332" y="790.5" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">The Village</text>
-<text x="332" y="801" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">Street</text>
+<text x="332" y="801" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">Street*</text>
 <text x="341" y="735" font-size="13" font-weight="700" fill="#16202a" stroke="#fff" stroke-width="2.5" paint-order="stroke">2 m</text>
 <text x="418" y="790.5" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">The Village</text>
-<text x="418" y="801" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">Green</text>
+<text x="418" y="801" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">Green*</text>
 <text x="427" y="735" font-size="13" font-weight="700" fill="#16202a" stroke="#fff" stroke-width="2.5" paint-order="stroke">5 m</text>
 <text x="504" y="801" font-size="9" font-weight="400" text-anchor="end" fill="#22303c" stroke="#fff" stroke-width="2.4" paint-order="stroke">The Sleigh Road</text>
 <text x="513" y="735" font-size="13" font-weight="700" fill="#16202a" stroke="#fff" stroke-width="2.5" paint-order="stroke">11 m</text>

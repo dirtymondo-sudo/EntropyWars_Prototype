@@ -13273,3 +13273,22 @@ mondo 11-20: "Okay go ahead and do the next pass" (the one named to him: relief 
 - **NOT DONE:** the base village and the station buildings, ledges on the walking ways, Shasta's volcano dressing, P's `wands` and `boards` rows (they lie
   under the snow where their plots parted: seen in the data, not fixed), the North Pole. Not checked: the four new lifts were seen standing, not ridden;
   the seams; The Long Descent on screen.
+
+## THE MOUNTAINS, THE BASE VILLAGE + THE MID STATION (2026-11-20, world polish thread 5; mondo: "there still needs to be real architecture and exteriors and interiors")
+
+- **A NEW PLOT THAT NEEDS A BUILDING IS A NEW HOME PLOT.** The mountain's plan cells were open snow with no home plot, and K.js's helpers (`chalet`, `walkIn`,
+  `counter`, `pendant`, the lining) only work on a home plot. So four plots were added to `docs/areas/mountains/layout.json` in the home frame's free row 4,
+  as the Lodge district's: `P07-04` The Ski Patrol, `P08-04` The Village Street, `P09-04` The Village Green, `P10-04` The Mid Station (level 8, open snow,
+  joined to the Rental Hut, the Lodge and the Yard by `extraPorts`). The plan's names for those cells carry a `*` (`draw-mountain.js` NAME), so the tool stands
+  the home plot there. That is the way to add any further building plot to the mountain.
+- **BUILT (K.js, the end of `apply`; all the district's log house, walked into, the inside the same box):** THE SKI PATROL (red, 4 x 3: two beds, the radio
+  desk, a stove, lockers, the stretcher; outside a snowmobile, the rescue sled, the flag); THE INN (6 x 4, front east: a stone hearth with the flame, sofa and
+  chair, the desk and keys, three beds with footlockers, a table) and THE SKI SHOP (4 x 4, front west: the counter, boots, eleven boards on the wall, ski racks)
+  facing each other across THE VILLAGE STREET (packed snow, squares 5 and 6); THE VILLAGE GREEN (level and open on purpose: the village tree, benches, lanterns,
+  snowmen, tables, the sleigh); THE MID STATION (slate blue, 5 x 3 in its plot's north-west corner, clear of the two lifts and every run: a stove, benches,
+  the lift man's desk and radio, coffee, the map table). Seen on screen inside and out (the Ski Patrol, the Inn, the Shop, the Mid Station; the Green from outside).
+- **A PROP'S OWN HEIGHT ON THE MOUNTAIN:** a prop's `y` from 1 m up is over the ROOM's floor, also inside a building (`floor: true`): the tool's rule now lifts
+  every such prop by the ground's difference (it skipped `floor: true` ones, so the Top Station's shelf and wall pieces stood 90 m under its floor since step 1;
+  seen right on screen now).
+- **NOT DONE:** ledges and switchback shaping on the walking ways, Shasta's volcano dressing on ski plots, P's `wands` / `boards` rows under the snow, nobody
+  lives or works in the houses (the NPC system's), the North Pole. Not checked: four of the five lifts ridden; the seams; The Long Descent on screen.
