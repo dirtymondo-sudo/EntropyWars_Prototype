@@ -99888,13 +99888,15 @@ var ZONE_LOOKS = {
            Mount Olympus aged cream stone and gilt, clean (no stains: a god's house). The snow (marble_light, the North Pole's place sheet) stays. */
         mountains: {
             rooms: ['site_prebuilt_shasta_ow_lodge', 'site_prebuilt_shasta_ow_shasta', 'site_prebuilt_northpole_plots'],
+            /* THE ONE MOUNTAIN (2026-11-20): Mount Olympus stands in the mountain's room now, so its cream stone is this room's (mondo: "Just add its cream stone texture to this room"). Walls only: the snow and the cloud are ground sheets and stay */
+            byRoom: { site_prebuilt_shasta_ow_lodge: { wall: { marble_light: 'hz:Wall_01' } } },
             wall: { 'urban:WoodGeneric1a': 'urban:WoodCladding2a', 'urban:WoodGeneric1b': 'urban:WoodCladding1a', 'urban:WoodGeneric2a': 'urban:WoodBeams2a',
                     gunmetal: 'hz:Metal_02', bricks_2: 'urban:BrickClassic1a', gold: 'px:gold', gold_2: 'px:gold', rocks_5: 'hz:Brick_11' },
             ground: { 'urban:WoodGeneric1a': 'urban:WoodFlooring1d', bricks_2: 'hz:Floor_13' },
             decals: { drip: 0.35, dirt: 0.15 },
         },
         olympus: {
-            rooms: ['site_prebuilt_shasta_ow_olympus'],
+            rooms: [],   // (the Olympus room is gone into the mountain's: `mountains.byRoom` carries its stone)
             wall: { marble_light: 'hz:Wall_01', gold: 'px:gold', 'urban:WoodGeneric2a': 'urban:WoodBeams2a' },
             ground: { gold: 'px:gold' },
         },
