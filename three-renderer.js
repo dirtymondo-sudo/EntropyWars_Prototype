@@ -57,7 +57,7 @@ const ThreeRenderer = (function () {
             'EW_HQ_PC_SWEEP_ALL EW_HQ_RES_SPAWN_ALL EW_HQ_ROAD_TILES EW_HQ_SEAT_WHOLE EW_HQ_SIZE_EVERY_FRAME EW_HQ_SKATE EW_HQ_SKIN_BOUNDS_EXACT ' +
             'EW_HQ_STACK_NO_SPLIT EW_HQ_STILL_MERGED_EVERY EW_HQ_STILL_NO_HELD_BOOK EW_HQ_NO_COVER EW_GPU_WEAKMAPS EW_HQ_STILL_OFF EW_HQ_STRAIGHT_EDGES EW_HQ_STUCK_FULL_LIST EW_HQ_WALK_GRID_OFF EW_HQ_WATER_STEPS ' +
             'EW_INK_ON_GRASS EW_JUICE EW_KEEP_PBR_MAPS EW_KTX2_LIB EW_KTX2_P EW_LAMP_LIGHT_MAX EW_LIB_BAKE_ONE EW_LIB_BAKE_WHOLE EW_LIGHTS_EVERY_PIXEL EW_LOAD_N8AO ' +
-            'EW_LOD_LAND_RESCAN EW_LS_AURA_TUNE EW_MAP_META EW_MASK_CHUNK_FULL_WALK EW_MASK_FILE_ANY_ADD EW_MASK_FULL_WALK EW_MASK_NO_BUNDLES EW_MEM_MB ' +
+            'EW_LOD_LAND_RESCAN EW_LS_AURA_TUNE EW_MAP_META EW_MASK_CHUNK_FULL_WALK EW_MASK_FILE_ANY_ADD EW_MASK_FULL_WALK EW_MASK_LIST_OFF EW_MASK_NO_BUNDLES EW_MEM_MB ' +
             'EW_MENU_BIOME EW_MENU_CINE_SCALE EW_MENU_NO_POST EW_MM_DROP_ALL_AT_ONCE EW_MM_READ_EVERY_4S EW_MM_WALK_WHOLE EW_MOBILE EW_MODEL_DIFFUSE EW_MOUTH_REST ' +
             'EW_N8AO EW_NO_3D_BATS EW_NO_AIR_DEATH EW_NO_ANIMALS EW_NO_ARM_CLEAR EW_NO_ASSET_MANIFEST EW_NO_ASSET_STORE EW_NO_AUTO_EXPOSURE EW_NO_BATTLE_CYCLE ' +
             'EW_NO_BITMAPS EW_NO_BOARD_FOG EW_NO_BUNDLES EW_NO_BVH EW_NO_CALM_LOOK EW_NO_CAR_PACK EW_NO_CHESS_SET EW_NO_CITY_DOORS EW_NO_CLIFF_CUT ' +
@@ -47613,6 +47613,37 @@ const ThreeRenderer = (function () {
         if (this.old !== null && this.old.delete(o)) had = true;
         return had;
     };
+    /* THE MASK'S LISTS (2026-11-20, mondo's F3s: "mask: projection walk 1.0-1.1 ms", "Walk visits: mask 3.4K-5.4K" a frame to find a
+       few dozen bodies; he picked this cut). The unit mask's renders (three-post.js _renderPixelMask: the skinned layer, then the
+       still parts that ride a unit) hand the renderer the list of pieces on that layer, written down by the mask's own scan.
+       For that render the walk of the scene's children is replaced by the list: a piece is handed to three's own projection
+       (its layers test, its culling, its children) when every parent up to the scene is shown, with the render order of its
+       nearest Group, as the walk would have given it. Any other render is untouched. Off: window.EW_MASK_LIST_OFF. */
+    function _ewMaskListSetup(r) {
+        var po = r && r._projectObject;
+        if (typeof po !== 'function' || r._ewMaskListOn) return;
+        r._ewMaskListOn = true; r._ew_maskList = null; r._ew_maskListSc = null;
+        r._projectObject = function (object, camera, groupOrder, renderList, clippingContext) {
+            var L = this._ew_maskList;
+            if (L !== null && object === this._ew_maskListSc && object.visible !== false) {
+                var cm = camera.layers.mask;
+                for (var i = 0; i < L.length; i++) {
+                    var o = L[i];
+                    if ((o.layers.mask & cm) === 0) continue;
+                    var go = groupOrder, gSet = false, ok = false;
+                    for (var q = o.parent, d = 0; q && d < 64; q = q.parent, d++) {
+                        if (q === object) { ok = true; break; }
+                        if (q.visible === false) break;
+                        if (!gSet && q.isGroup === true) { go = q.renderOrder; gSet = true; }
+                    }
+                    if (ok) this._projectObject(o, camera, go, renderList, clippingContext);
+                }
+                _ewBun.maskListN = L.length;
+                return;
+            }
+            return po.call(this, object, camera, groupOrder, renderList, clippingContext);
+        };
+    }
     function _ewGpuOneWrite(r) {
         var B = r.backend, bu = B && B.isWebGPUBackend && B.bindingUtils;
         if (!bu || bu._ewOneWrite || typeof bu.updateBinding !== 'function' || window.EW_NO_ONE_WRITE) return;
@@ -51756,6 +51787,7 @@ const ThreeRenderer = (function () {
         };
         r.init().then(function () {
             _ewGpuInfo.ready = true;
+            try { _ewMaskListSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the mask keeps walking the scene', e); }
             try { _ewGpuPropMaps(r, G); } catch (e) { console.warn('[ThreeRenderer] node renderer: the maps stay WeakMaps', e); }
             _ewGpuSafeBuffers(r);
             _ewGpuSafeBindings(r);
