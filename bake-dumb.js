@@ -302,7 +302,7 @@ const spaces = [];
       spaces.push({ k: 'space', x: r2(gx(cx) + w * C / 2), z: r2(gz(cy) + h * C / 2), w: w * C, d: h * C }); } }
 /* ── THE PAINT: one sheet a square (0 = the room's own concrete); a district's ctx.paint() wins ── */
 const FLOORS = { K: { r: U('ConcreteStriped2d'), o: U('ConcreteStriped2d'), f: U('RubberNonSlip5a') }, P: { o: U('ConcreteStriped2d'), j: U('RubberNonSlip5a'), r: U('ConcreteStriped2d'), f: U('TileLinoleum1a') },
-    S: { o: U('TileGeneric1a') }, R: { o: U('RubberNonSlip3a'), f: U('TileGeneric2b') }, C: { o: U('TileGeneric4a'), f: U('TileGeneric4a'), w: U('TileMarble1a') } };
+    S: { o: U('TileGeneric1a') }, R: { o: U('RubberNonSlip3a'), f: U('TileGeneric1a') }, C: { o: U('TileGeneric4a'), f: U('TileGeneric4a'), w: U('TileMarble1a') } };
 /* (the game reads eight sheets a room: these seven + the bunker's marble are the eight; a district's ctx.paint() picks one of them) */
 const PAL = [], palOf = s => { let i = PAL.indexOf(s); if (i < 0) { PAL.push(s); i = PAL.length - 1; } return i + 1; }, paint = new Uint8Array(W * Hh);
 for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x]; if (ch === 'x') continue; const s = PAINT[x + ':' + y] || (FLOORS[distAt(x, y)] || {})[ch]; paint[y * W + x] = s ? palOf(s) : 0; }
