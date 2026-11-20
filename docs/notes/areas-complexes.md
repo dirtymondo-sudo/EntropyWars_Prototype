@@ -7171,6 +7171,33 @@ the room is 21 m less (one more row south); x is unchanged. The tool rewrote the
 - **Seen**: two probe runs, 15 views, no page error.
 
 
+## THE VILLAGE, THE WORLD POLISH PASS — the churchyard + the wall stairs (2026-11-20, the owner's WORLD POLISH thread 4)
+
+The plan's row asked for: lanes to 4 squares, a wall walk you can climb to, the moat bank dropped, the church on a rise and the market on low ground.
+What was found by reading the room before building, and what was done:
+
+- **THE WALL WALK WAS THERE ALREADY** (7 m, all round the town, a parapet on its inner edge; a spiral in each of the four corner towers). What it lacked
+  was a way up anywhere but the corners. **THE WALL STAIRS** (`T.js`): three stone stairs, one square wide, along the wall's inner face on the strip
+  behind the houses (the castle stairs' pitch: 7 m on 21.4 m), a landing of one square at each head. NORTH: from the gap between the houses at squares
+  39..40, west to square 32. SOUTH-WEST: from the churchyard (32) east to 38. SOUTH-EAST: from the gap east of the Inn (55) west to 48. The tool
+  (`bake-camelot.js` `WALL_STAIRS`) opens the parapet at the three landings. With the towers the walk is a second way round the town with seven ways up.
+- **THE CHURCHYARD**: the screenshot audit's one finding ("a narrow passage with graves in it") was the two squares between the Chapel's east wall and a
+  house. The two houses east of the Chapel are gone (`layout.json`: squares 32..34 x 65..67 and 70..71 are grass; 43 houses -> 41) and the yard runs from
+  the Chapel to the back lane: more graves, two yews, a lantern post, a flagged path to the south-west stair.
+- **THE LANES ARE NOT NARROW**: a street is two cobbled squares with a grass verge each side, and the verge is walked (the street plots are 136 to 141 of
+  144 squares walkable). The audit's "path width" counted the wall-and-moat plots, where half the plot is water. Nothing was widened.
+- **NOT DONE, ON HIS RULING** ("never lift a monument, a building or a whole district onto a step"): the church on a rise, the market sunk. A walked-into
+  hall on raised ground would also need its inside lifted piece by piece. The moat bank: left (the moat is the tool's, with the bridges set to it).
+- **THE 12 PLOTS WHERE NO BOARD FITS** are the towers, gates and rows that straddle the wall and the moat: by their nature. Left.
+- **A trap worth knowing**: a `plateau` one square wide is ONE point of the 1.75 m height grid: it reads as a pyramid (7 m at its middle, 0 at its
+  edges). A one-square landing is a `bridge` row (`plain`, `rails: false`, `thick` = its height): a deck reads edge to edge. `hqTerrainFeet` from a
+  height just under a deck's top answers null (inside the block): print heights with the deck's own height as the start.
+- Two houses fewer renumbers the houses after them (`cam:house_<i>`); a house's kind goes by its place and its number's parity (T-houses.js).
+- **Seen**: one probe run, 10 views (`fp: true`), no page error: the churchyard from two sides, the north stair from its foot and from the first steps,
+  its landing, the walk east and the town from it, the two south stairs. NOT done: the walker was not driven up a stair by hand (the three were walked
+  on the height sheet: stair, landing and walk meet at 7.0 m, the parapet is open at each landing).
+
+
 ## CAMELOT, THE ZONE KIT — what every Camelot district thread can use (started 2026-11-16 by the Village pilot; it grows with each pass)
 Read "CAMELOT, THE DISTRICT FILES" first (the rules). This is the kit: what is there, how to call it, what went wrong.
 - **THE SHEETS that suit the zone** (keys for `sheet()` parts): `castle_wall` (ctx.WALL: all stone, tint it STONE 0xc4c0b8 / STONE2 0xaeaaa6 /
