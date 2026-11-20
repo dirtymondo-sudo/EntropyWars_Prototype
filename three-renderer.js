@@ -34,7 +34,7 @@ const ThreeRenderer = (function () {
             'EW_ANIM_LIB_STANDARD_POSE EW_ANIM_LIB_URLS EW_AO_AT_ZERO EW_ARCH_BARE EW_ASYNC_NODE_BUILD EW_BARE_PANES EW_BATTLE_MW_EVERY_RENDER EW_BOARD_FOG_MS ' +
             'EW_BUN_ADD_ALL EW_BUN_CHECK_EVERY EW_BUN_DRY EW_BUN_FIELD_CHECK_EVERY EW_BUN_FIRSTS_EACH EW_BUN_FULL_REFRESH EW_BUN_HASH_MATRICES EW_BUN_HELD_EVERY ' +
             'EW_BUN_HELD_NO_SHARED EW_BUN_INST_NO_REST EW_BUN_NO_OUT EW_BUN_OUT_HIDE_HASH EW_BUN_OUT_RETURN_ALWAYS EW_BUN_QUIET_LOOP EW_BUN_REST_AT_5 ' +
-            'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_BUN_LAMPS_ONE EW_BUN_TARGETS_EVERY EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
+            'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_PT_LIVE_STEADY EW_BUN_LAMPS_ONE EW_BUN_TARGETS_EVERY EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
             'EW_CC_NO_DETAILS EW_CC_NO_HEMS EW_CLOTH_COLLIDE EW_CSS2D_ALWAYS EW_CSS_PLATES EW_CUBE_NO_ANIM EW_CV_LIT_BAKES EW_DEATH_CAM_ALL_UNITS EW_DESK_OFF ' +
             'EW_DIP_OFF EW_DISABLE_3D_UNITS EW_DISABLE_ANIM_LIB EW_DISABLE_BOOT_FIT EW_DISABLE_CANOPY_CUTAWAY EW_DISABLE_CLOTH_COLLIDE EW_DISABLE_COAT_FIT ' +
             'EW_DISABLE_FACE_IDLE EW_DISABLE_GRASS_WIND EW_DISABLE_GRAVESTONES EW_DISABLE_JIGGLE EW_DISABLE_POWER_AURA EW_DISABLE_RIPPLE EW_DISABLE_SHADOW_GATING ' +
@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-20 builds-named';
+    var _EW_TR_STAMP = '11-20 portraits-aside';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -50037,7 +50037,7 @@ const ThreeRenderer = (function () {
        a fight (the tick only knew the walk's scene). Each holder is its own bundle: the occlusion fade swaps one holder's
        materials, so only that holder re-records; a static holder off the main camera is skipped whole (its world sphere) */
     function _ewBunFieldTargets() {
-        var F = _facilityNearGroup, out = [], ch = F.children;
+        var F = _facilityNearGroup, out = _ewBun.ftOut || (_ewBun.ftOut = []), ch = F.children; out.length = 0;   // (11-20: kept and refilled; a new 1,900-entry array a check was where the collector's slices landed, "targets 18-77 ms")
         for (var i = 0; i < ch.length; i++) { var c = ch[i]; if (c && !c.isMesh && !c.isLine && !c.isPoints && !c.isSprite && c.children.length) { out.push(c); if (!c._ew_bunName) { c._ew_bunName = 'room ' + (c.name || 'piece'); c._ew_bunCull = true; } } }
         var I = _fieldInstH && _fieldInstH.inst;
         if (I && I.group && I.group.parent) { out.push(I.group); I.group._ew_bunName = 'room instances'; }
@@ -69135,7 +69135,7 @@ const ThreeRenderer = (function () {
        last canvas left. Settings > Video > Live Portraits (On / Off); window.EW_NO_LIVE_PORTRAITS = true kills it live.
        mondo OK'd the plan + the proof clip 11-12 ("Do B"). Viewer-local: nothing relayed. */
     var PT_LIVE_FPS = 12, PT_LIVE_MAX = 2, PT_LIVE_LINGER = 8000, PT_LIVE_DRIFT = 1.6;
-    var _ptLiveRaf = 0, _ptLiveAt = 0, _ptOwn = { t: 0, key: null };
+    var _ptLiveRaf = 0, _ptLiveAt = 0, _ptLiveLast = 0, _ptLiveGap = 16, _ptOwn = { t: 0, key: null };
     var _ptLiveSet = null;   // Settings > Video > Live Portraits (localStorage ew_livePortraits: 'off' = stills; default on)
     function _ptLiveSetting() {
         if (_ptLiveSet == null) { _ptLiveSet = true; try { if (typeof localStorage !== 'undefined' && localStorage.getItem('ew_livePortraits') === 'off') _ptLiveSet = false; } catch (e) {} }
@@ -69172,7 +69172,18 @@ const ThreeRenderer = (function () {
         _ptLiveRaf = 0;
         var P = _pt;
         if (!P) return;
-        var now = performance.now(), due = now - _ptLiveAt >= 1000 / PT_LIVE_FPS - 2, any = false;
+        /* THE PORTRAITS STEP ASIDE (2026-11-20, mondo's combo Firefox profile: 18.5 % of the main thread BLOCKED inside this tick, in
+           `CanvasRenderingContext2D.drawImage` → `PWebGL::Msg_ReadPixels`): copying the portrait renderer's WebGL canvas onto a
+           HUD canvas is a synchronous read-back through Firefox's GPU process, and it waits behind the game's own frame there,
+           so the slower the fight ran the longer each copy stood (5-7 ms each, up to 24 a second). The live portraits now follow
+           the frame: at the game's full pace PT_LIVE_FPS as before; when this tick's own beat (one a frame) runs over 28 ms they
+           move 2.5 times a second, over 45 ms once a second; and a portrait shown on several canvases is read back ONCE and
+           copied canvas to canvas for the rest. Old rule: window.EW_PT_LIVE_STEADY = true. */
+        var now = performance.now(), ptGap = _ptLiveLast ? Math.min(250, now - _ptLiveLast) : 16;
+        _ptLiveLast = now; _ptLiveGap += (ptGap - _ptLiveGap) * 0.15;
+        var ptNeed = 1000 / PT_LIVE_FPS - 2;
+        if (!window.EW_PT_LIVE_STEADY) { if (_ptLiveGap > 45) ptNeed = 1000; else if (_ptLiveGap > 28) ptNeed = 400; }
+        var due = now - _ptLiveAt >= ptNeed, any = false;
         if (due) _ptLiveAt = now;
         for (var k in P.subs) {
             var S = P.subs[k];
@@ -69196,7 +69207,7 @@ const ThreeRenderer = (function () {
                 for (var j = 0; j < S.cvs.length; j++) {
                     var cv = S.cvs[j], g = cv._ptG || (cv._ptG = cv.getContext('2d'));
                     g.clearRect(0, 0, cv.width, cv.height);
-                    g.drawImage(P.canvas, 0, 0, cv.width, cv.height);
+                    g.drawImage((j > 0 && !window.EW_PT_LIVE_STEADY && S.cvs[0].width >= cv.width) ? S.cvs[0] : P.canvas, 0, 0, cv.width, cv.height);   // (one read-back a portrait)
                     cv._ptLive = true;
                 }
             } catch (e) { if (!S.warned) { S.warned = true; console.warn('[ThreeRenderer] live portrait failed', S.key, e); } }

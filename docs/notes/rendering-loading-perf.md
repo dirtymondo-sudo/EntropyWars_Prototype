@@ -3540,3 +3540,19 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   replays); a fade's opacity should not need a re-record (a demoted group lets three refresh values itself).
   (3) "Pick (raycasts) 370/s · 42.9 ms/s" in the combo (36-81/s before).
   The walk in the same session: 52.8 FPS, CPU 14.6 ms.
+- THE PORTRAITS STEP ASIDE (11-20, his combo Firefox profile, 20:59 local, 132 s; F3 03:01: 17.2 FPS, CPU 51 ms). The profile's
+  first line: **27.6 % of the main thread asleep in `__psynch_cvwait` / `semaphore_timedwait`**, i.e. blocked on Firefox's GPU
+  process: (1) 18.65 % under three-renderer.js `_ptLiveTick` (THE LIVE PORTRAITS, 12 a second for up to 2 bodies):
+  `CanvasRenderingContext2D.drawImage(P.canvas)` of the portrait renderer's WebGL canvas = `PWebGL::Msg_ReadPixels`, a
+  synchronous read-back that waits behind the game's own WebGPU frame, so it costs MOST when the fight is slowest; (2) 5.4 % under
+  three's `_copyImageToTexture` → `GPUQueue.copyExternalImageToTexture` (canvas / image sheets uploaded from classic draws: 3 %
+  re-uploads through `_updateBindings`, 2 % first uploads at `_createBindings`; which sheets is not known yet). No shader-build
+  or pipeline function is near the top in this recording.
+  Fix for (1): the tick measures its own beat (one a frame); over 28 ms the portraits move every 400 ms, over 45 ms once a
+  second, at full pace 12 a second as before; a portrait on several HUD canvases is read back once and copied canvas to canvas.
+  Old rule: `window.EW_PT_LIVE_STEADY`. Also: `_ewBunFieldTargets` refills one kept array ("targets 18-77 ms (1888)" spikes).
+  `_EW_TR_STAMP` = "11-20 portraits-aside".
+  Same F3, not fixed here: "943 re-records/s (tree)", "275-820 re-recorded" per check on `room hq_ceil` one-piece groups
+  (tree "other" = a fade's material swap or a ceiling shown / hidden: each start and end of a ceiling's fade re-records its group,
+  820 at once when the camera cuts); hud.js `EntropyTrace` draw 2 % (reads `clientWidth` every frame); RULE for the HUD: never
+  `drawImage` a WebGL canvas per frame on Firefox.
