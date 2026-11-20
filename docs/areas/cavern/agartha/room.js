@@ -65,16 +65,16 @@ module.exports = {
         const gc6 = [gcx(6), gcz(6)];
         /* the podium the stalagmite rose from (a blocker 1.6 m high: the board's centre), the rock, the crystal grown up through it: upright
            hexagonal prisms, lit from inside (the shelf's big light hangs in it: `suns`) */
-        ctx.feat({ k: 'plateau', id: 'aga:greatcrystal', x: gc6[0], z: gc6[1], w: 3.5, d: 3.5, h: 1.6, edge: 0.1 });   // (a plateau's h is over the ground here: the room's floor is the height sheet)
+        ctx.feat({ k: 'plateau', id: 'aga:greatcrystal', x: gc6[0], z: gc6[1], w: 3.5, d: 3.5, h: 1.6, edge: 0.1, key: 'marble_light' });   // (a plateau's h is over the ground here: the room's floor is the height sheet)
         look('greatcrystal', gc6[0], gc6[1], 0, F0, a => {
-            a.box(0, 0, 0, 3.6, 1.6, 3.6, MARBLE, STONE); a.box(0, 1.6, 0, 3.9, 0.18, 3.9, MARBLE, WHITE);
+            a.box(0, 1.6, 0, 3.9, 0.18, 3.9, MARBLE, WHITE);   // the podium's cap (the plateau is its block)
             a.cone(0, 1.75, 0, 1.6, 0.6, 4.2, 'cave_wall', 0x6a625a); a.cone(0.95, 1.75, -0.7, 0.7, 0.12, 2.6, 'cave_wall', 0x5e574f);
             const prism = (x, z, r, h, y0, tint, glow) => { a.P.push({ s: 'cyl', p: [x, y0, z], r, h, seg: 6, key: 'crystal', tint, glow }, { s: 'cyl', p: [x, r2(y0 + h), z], r, r2: 0.04, h: r2(r * 2.1), seg: 6, key: 'crystal', tint, glow }); };
-            prism(0, 0, 1.15, 8.6, 2.6, 0xd2f6ff, 1.0);
-            prism(1.25, 0.55, 0.55, 4.6, 2.2, 0xb8ecff, 0.8);
-            prism(-1.05, -0.75, 0.62, 5.8, 2.4, 0xc8e8ff, 0.8);
-            prism(0.25, -1.35, 0.42, 3.4, 2.0, 0xa8e4f8, 0.7);
-            prism(-0.55, 1.25, 0.48, 3.9, 2.1, 0xd8f0ff, 0.7);
+            prism(0, 0, 1.15, 8.6, 2.6, 0xd2f6ff, 1.7);
+            prism(1.25, 0.55, 0.55, 4.6, 2.2, 0xb8ecff, 1.4);
+            prism(-1.05, -0.75, 0.62, 5.8, 2.4, 0xc8e8ff, 1.4);
+            prism(0.25, -1.35, 0.42, 3.4, 2.0, 0xa8e4f8, 1.2);
+            prism(-0.55, 1.25, 0.48, 3.9, 2.1, 0xd8f0ff, 1.2);
         });
         taken.add('6:6');
         [[5, 5, 2.2], [7, 7, 1.8], [7, 5, 1.4], [5, 7, 1.6]].forEach(([x, y, h], i) => P('crystal_cluster', x, y, { h, face: 70 * i, noLight: i !== 0 }));
