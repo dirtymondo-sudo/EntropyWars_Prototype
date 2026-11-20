@@ -13122,3 +13122,11 @@ Mount Shasta goes as a name, its plots are swallowed.
   the summit); the base village, the Mid Station, the Ski Patrol, the bath house; ledges and switchbacks on the walking ways; Shasta's volcano dressing (crater,
   vents, lava) on what are now ski plots; (FIXED the same day, mondo: "Just add its cream stone texture to this room": `ZONE_LOOKS.zones.mountains.byRoom` gives the mountain's room Olympus's cream stone on walls; there is no retexture thread any more, a zone thread edits its own look rows);
   the North Pole; the seams were not walked in the probe (L6, L3, R5, R3, the Long Descent's two).
+- **THE POLISH PASS, NOTHING STANDS IN A WAY (11-20, mondo: "do another polish pass. make sure things are placed logically").** (1) bake-woods.js step 5d moves
+  every old piece the plan's trail runs over onto the nearest level open square beside it, else into a pocket (10 pieces; the small life and the gate stay).
+  (2) THE FENCE LINE is its farm yard again: an open level yard (squares 38..46 x 51..57), the trail ends on it, the gate leaves it (the trail had been drawn
+  through the pumpkin patch and the kennel). (3) The way north to Came A Lot from Deep woods, west is a thin trail (its link is one square wide): the wolf's
+  den lies west of it, the hunting stand east. (4) The Campfire's ramp moved off its grill and torch. (5) THE TRAILS STAY CLEAR: `terrain.keepClear`
+  (data.js the scatter rows: one byte a square) keeps every scattered log, stump and bush off a trail square; the tool writes it for a designed room.
+  (6) Ten trail lamps at the turns of the new ways, each in a pocket beside the trail (`C-room.js`, `P(key, x, y, { pocket: true })`). Seen in the probe:
+  the yard, the den, the ranger station, the camp, the Dead End.
