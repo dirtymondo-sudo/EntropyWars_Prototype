@@ -123,7 +123,7 @@ on the ground and not on a rail). While a line is open every second pays `lava.p
 `_hqRideComboMult` (tricks + `_hqRideLavaSteps`); `_hqRideComboEmit(R, tick)` is the ONE `combo` beat (the five inline copies
 are gone). New fields on the beats: `combo` carries `offT`, `lava` (the steps), `tick` (the 10 Hz refresh, `lava.tickS`);
 `bank` carries `mult` + `offT`; a new beat `lava` when the multiplier steps. map.js: `_hqComboTick` rewrites only the number and
-the head words on a tick (no rebuild, no pop); `_hqLavaTail` prints "OFF THE GROUND 4.2 S · LAVA +2" from one second on; the
+the head words on a tick (no rebuild, no pop); `_hqLavaTail` prints "OFF THE GROUND 4.2 S" from one second on (mondo 11-20: the word "lava" is NEVER shown to the player; it is a code name only); the
 banked card adds "6.2 S OFF THE GROUND" from two seconds; the step plays `skateTrick`. Table: data.js `HQ_SKATE_RULES.lava`
 `{ perS: 30, ramp: 0.25, multEveryS: 2, tickS: 0.1 }` (renderer fallback `HQ_LAVA_DEFAULT`). What still ends a line: any clean
 touchdown (banks it), a bail (loses it). A ramp's surface is ground. The clock starts at take-off, so air before the first trick
