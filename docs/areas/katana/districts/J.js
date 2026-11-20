@@ -8,6 +8,11 @@
 module.exports = {
     reach: [[67, 32, 'the Dinosaur Park’s gate'], [68, 27, 'the paddock'], [62, 16 + 2, 'the tribe’s camp'], [76, 28, 'the East Shore'], [56, 22 + 4, 'the Jungle Rise'], [63, 40, 'the Jungle']],
     build(ctx) {
+        /* ── THE RELIEF (the pass after the insides): the jungle rolls ── */
+        ctx.hill(51, 27, 3.0, 3.5); ctx.hill(56, 32, 2.6, 2.5); ctx.hill(53.5, 31, 2.0, -2.0);    // the Jungle Rise: two hills and a gully between them
+        ctx.hill(65.5, 41, 2.2, 2.5);                                                             // the Jungle: a mound
+        ctx.hill(62, 14.5, 2.4, 4.0); ctx.hill(68.5, 18, 2.6, 3.0);                               // the Jungle north: a ridge of two heads
+        ctx.hill(61.5, 33.5, 1.6, 1.8);                                                           // the Dinosaur Park: a hump west of the gate
         const { rnd, r2 } = ctx;
         const P = (key, x, y, o) => { if (ctx.open(x, y)) ctx.P(key, x, y, o); };
         /* ── THE DINOSAUR PARK: the paddock of bare earth x 65..71, y 24..30, its gate on the south side at the way ── */

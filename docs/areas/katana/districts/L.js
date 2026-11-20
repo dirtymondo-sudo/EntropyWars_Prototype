@@ -7,6 +7,9 @@
 module.exports = {
     reach: [[43, 58, 'the Paddies'], [39, 66, 'the Shore Hamlet'], [53, 52, 'the village square'], [55, 44, 'the Terraces'], [51, 40, 'the upper field']],
     build(ctx) {
+        /* ── THE RELIEF (the pass after the insides) ── */
+        ctx.hill(58, 49.5, 1.6, 2.0);                                                             // the Village: a knoll in its north-east corner
+        ctx.set(57, 36, 59, 40, 'g', 6);                                                          // the Terraces: a second upper field on the east (its stair below)
         const { rnd, thatch, house } = ctx, B = {};
         const hut = (id, q, h) => { B[id] = ctx.building(id, q, h || 2.8, {}, (a, w, d, door) => thatch(a, w, h || 2.8, d, door)); };
         /* ── THE PADDIES: four flooded fields between the bank paths, rice in rows ── */
@@ -20,7 +23,7 @@ module.exports = {
         B.store = ctx.building('store', [52, 55, 55, 57, 'N'], 3.6, {}, (a, w, d, door) => { house(a, w, 3.6, d, door, { plain: true, roof: { top: 'hip', over: 0.7 } }); });
         B.headman = ctx.building('headman', [48, 49, 50, 51, 'E'], 3.4, {}, (a, w, d, door) => house(a, w, 3.4, d, door, { roof: { top: 'gable', over: 1.0 } }));
         /* ── THE TERRACES: a higher field on the north-west (one level up, its own stair), a farm house, tea rows ── */
-        ctx.set(48, 36, 53, 41, 'g', 6); ctx.stairs('field', 52, 42, 52, 42, 'N', 5, 6, { kind: 'g', paint: 'dirt', model: 'timber' });
+        ctx.set(48, 36, 53, 41, 'g', 6); ctx.stairs('field', 52, 42, 52, 42, 'N', 5, 6, { kind: 'g', paint: 'dirt', model: 'timber' }); ctx.stairs('field2', 57, 41, 57, 41, 'N', 5, 6, { kind: 'g', paint: 'dirt', model: 'timber' });
         ctx.feat({ k: 'pool', x: ctx.gx(50.5), z: ctx.gz(38.5), r: 5.0, y: -0.12, depth: 0.35 }); for (let y = 37; y <= 39; y++) for (let x = 49; x <= 51; x++) ctx.take(x, y);
         hut('farm3', [57, 44, 59, 47, 'W'], 3.0);
         ctx.sow(48, 36, 59, 47, 0.22, (x, y, v) => ctx.dec(v < 0.6 ? 'hw_crop_2' : 'hw_crop', x, y));
