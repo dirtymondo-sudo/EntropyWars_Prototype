@@ -3417,3 +3417,18 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   picture is broken on the cloud's WebGL 2 software path (ground missing) with or without this change, so compare DRAWS (wrap
   `renderer.renderObject` during the render), not pixels; `EW_PROBE_GL=webgpu` + `--gpu=webgpu` runs real WebGPU on SwiftShader
   (black picture, counts only); a small room for a 40 s probe: `site_ow_r1`.
+- THE GHOSTS KEPT (11-20, mondo: "still really bad slowdowns and freezes during battle, especially during combos (the ones where
+  units have to be standing adjacent)"; his battle F3 in the city's fight room: 2.5 FPS, frame 412 ms, "770.7 re-records/s
+  (tree 770.7)", "scene: classic draws 88.0", 278-820 groups re-recorded in one check, 4.2 shader builds/s, 11.5 new pipelines/s,
+  "fight: may fade (own piece) 1507 (1371 groups)"). Reading: each fade of a piece (`_occApplyFade`: the occlusion fade, the
+  canopy cutaway) cloned its material and `_occRestore` disposed the clone. A new material = a new render object + uniform
+  buffers + bind groups (+ a pipeline lookup) per mesh per fade, and its one-piece bundle re-records (the tree hash holds the
+  material's id). A combo's camera cuts recompute the blockers every frame and sweep hundreds of pieces in and out. At low FPS
+  the fade's step (`rate * dt`, dt capped at 0.05) reaches its end in one frame, so pieces are restored and re-faded even faster:
+  the slower it got, the more it rebuilt. Now the clone stays on its mesh (`_ew_occKeep`, registry `_occKept`) and is put back on
+  at the next fade when the piece's material is the same object at the same version (opacity / colour / emissive copied again);
+  freed when the mesh has left the scene (a look every 10 s) or past 4,000. Off: `window.EW_OCC_NO_KEEP`.
+  The FIRST fade of a piece still pays; the fog fade (`_ew_fogOrig`) still clones each time. NOT measured on WebGPU (the cloud's
+  SwiftShader WebGPU loses the device in the city: "createBuffer ... too large"); a VS-CPU arena match on the classic renderer
+  ran 9 rounds with spells and no page error. Note for the lens: in a fight `_ewBunWalk` does not count shown / hidden pieces, so
+  a visibility flip reads as "tree ... other".
