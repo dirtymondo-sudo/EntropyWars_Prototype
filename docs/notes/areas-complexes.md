@@ -12406,6 +12406,64 @@ another pass because they do not look good from afar."
 - **Seen on screen:** the berth on the Moon, the Cube from space and from the Hexagon, the hole, all four from 2.4 km with no panel and
   no pilot. **Not checked:** the frame rate on a real machine; the Cube has no part in a fight yet (it is a sight).
 
+## OUTER SPACE, THE FIX — the flight, the distances, the seams, the sky (2026-11-20, owner, WORLD POLISH thread 18)
+mondo 11-20, after flying and walking it: "Flying the ship is all messed up. Im pressing w to move forward and its like going sideways and
+the ship is on the edge of the screen ... The planets are too close together, totally unrealistic ... actually walking on the planets, I can
+see the seam in the ground and its all glitchy when I walk past and there's invisible walls ... The sky is all over the place and also broken."
+Every complaint was DRIVEN before it was fixed (playtest_city.js `"drive"`, real key presses and mouse moves, the numbers below).
+- **1. THE FLIGHT. Measured:** the hull kept its own heading and the mouse turned only the eye. After 300 px of mouse the eye looked 46
+  degrees off the way W flew. The eye chased the hull with the walk's lag, so the hull slid off the middle with speed (0.23 of the half
+  screen at 84 m/s). **Now THE SHIP FLIES WHERE THE CAMERA LOOKS** (three-renderer.js `_hqTickShip`): the mouse (or the touch look) aims
+  the eye, A / D turn the eye, the hull swings onto the eye's heading and climb (`follow`); W is forward along that line, up and down
+  with it; SPACE / C still lift and sink. Boarding puts the eye dead behind the hull, level, the nose out toward open space. THE EYE
+  (`_hqShipCam`) is fixed to the hull, `camDist` back and `camUp` over the line of sight: the ship stands on the screen's middle line, a third of the way
+  down from the middle (measured: x 0.00 at every speed from 0 to 977 m/s, after a mouse turn, a climb and a D turn; y -0.35 at rest,
+  -0.23 at 977 m/s as the lens opens). No boom march aboard; a ball pushes the eye out.
+  THE SPEED: `v` 60 m/s near a world; in the open W runs up to `cruise` 650 and SHIFT to `warp` 1300, both capped by `nearK` x the metres
+  to the nearest world's ground, so a ship coming in slows by itself. The lens opens with the speed. HQ_SEA_DEFAULT.ship holds the numbers.
+  The ship's branch now runs BEFORE the boats' own speed rule in `_hqTickVehicle` (it pulled the speed to `v` every frame).
+  There is no gamepad code in the walk: the touch stick mirrors W / A / S / D / SHIFT into the same keys and the look drag into the same eye.
+- **E ABOARD** (`_hqShipSetDown`): the ship flies in real space and the walk's ground lies flat elsewhere, so the old step-off read the
+  hull's x, z as a place on the flat ground and put the walker on whatever net lay under those numbers (measured: a board toggle in flight
+  dropped him at 742, 126). Now within `setDown` 45 m of a ball's ground the ship sets down on the square under it and you step off
+  beside it (LANDED + the world's name); anywhere else E does nothing. A beacon still lands you on its pad.
+- **2. FAR APART. Measured:** the Earth's ground 334 m from the Moon's (51 degrees wide in its sky), Mars 750 m off (13 degrees), Saturn 15.
+  **Now** (bake-space.js `SYS.box`, `ROUNDC`, the Earth, the Sun): the box of space is 17 x 22 km and 7 km high and stands wholly over the
+  room's flat nets (`y0` 150; the old box held them: a slab of sky the ship could not enter, nothing drawn there). Middles: the Moon
+  (0, 1500, 0), the Earth (2500, 1000, -1100), Mars (-3200, 2300, -3600), Saturn (-8200, 3400, 2600), the Singularity (-4200, 700, 11500),
+  the Sun (26000, 11500, 16000) r 1100. From the Moon: the Earth 2.8 km (12 degrees wide), Mars 4.9 km (2.5), Saturn 8.8 km (rings 6.4),
+  the Singularity 12.3 km. Trips by the speed rule: Moon to Mars 12 s on SHIFT (20 s on W), to Saturn 15 s (25), to the Singularity 17 s (31).
+  The box's edge is soft (the way out fades over `edge` 500 m: no wall). ON THE WAY: THE ROCKS, one field of 540 asteroids between the
+  inner worlds and Saturn (`_hqBuildSpace`, `space.rocks` or its default; real size, the hull stops on them, `H._spaceRocks`); THE DUST,
+  streaks past the hull that grow with the speed. The depth buffer: aboard the near plane is 1.5 m; the night veil and the Earth's land
+  and cloud carry a polygon offset, so a far ball does not flicker.
+- **NO AIR IN SPACE** (`shell.sky.vacuum: true`, read by `_hqFogHold`): under THE ONE AIR (11-20, one fog for the whole game) the clear
+  day's haze takes half of a thing 420 m off, so every ball within reach was a green murk and a world 5 km off could not exist. A vacuum
+  room has no air at any setting. This is not a fog amount of its own (the rule stands); like `heightFog: false` it says what the place
+  is. DECIDED FOR MONDO, said to him in chat. `shell.heightFog: false` too (the floor mist read the flat ground's height).
+- **3. THE SEAMS. Measured + worked out** (a small sim of every edge of every face): (a) THE TURN at a seam was found with a step of +x.
+  Off a face's WEST edge +x points back into the face, the step's two ends landed on two faces, and the turn was nonsense (225 degrees
+  where the true one is 0; wrong on all four west edges). With W held at the Moon's west edge the walker was spun, walked back over the
+  next seam and stood where he began with the eye on his other side: the invisible wall and the glitch. Now the step goes on OUT of the
+  old face (`_hqPlanetSeam`); every turn is a clean 0 / 90 / 180. Driven after: west edge, a cut seam west, a cut seam north, all carry
+  straight on at the same speed, the eye behind. (b) He lands 12 cm on into the new face (a hair from its edge he was carried back).
+  (c) A JUMP IS NOT A WALK: a teleport, a door or a landing onto another face was read as a walk off the face and carried again (sent
+  to 714, 92 he stood at 882, 118); more than 6 m in a frame reads the face afresh. (d) THE CORE: a plain ball just under each world's
+  lowest ground in the ground's tone, pushed back in depth, so a hair of a gap along a seam shows ground colour, never black space.
+  (e) RULE #1e: `_ewPlTick` read the whole scene every 500 ms; it reads the front desk's arrivals now.
+- **4. THE SKY. Seen:** a green haze band round a flat horizon no ball has (the dome's band + the one air); the room's sky ring (rocks, an
+  eye, saucers, wire rings, door frames) scaled 56 times and drifting among the worlds, bigger than they are; the dome's stars standing
+  still while the worlds turned about the walker and jumping at a seam; a 40 m name plate over every pad; a world's name 8.6 degrees wide.
+  **Now** the shared dome, sky group and landmarks are not drawn in this room (`_hqSpaceBodiesTick`), the background is black, and space has
+  one sky that turns as one piece with the worlds: THE STARS (2,600 points round the eye, a denser band, four faint clouds; group
+  `ew_space_stars` takes the anchor's turn). Beacon plates are 22 m and show aboard only; world names 4.9 degrees wide, aboard only.
+- **Probe:** `"drive": { "sample": "<js>", "every": ms, "steps": [{ "down": [...], "up": [...], "mouse": [dx, dy], "ms", "eval", "shot" }] }`
+  on a playtest_city.js view = real keys and mouse over time, the sample printed as DRIVE lines. A view's eval must not call
+  `hq.board()` when already aboard (the Bridge's stick boards you at the launch spot; a second call is E).
+- **NOT DONE / NOT CHECKED:** the frame rate on a real machine; mondo's own browser; the ground's shade still changes at a district's paint
+  line and the sheet's grain turns at a cut seam; the key light on a ball does not follow the real Sun (the night side is the veil
+  only); NPCs over a seam; the classic (WebGL2 fallback) renderer; the dressing of thread 18 (crater rims, rilles, landmarks).
+
 ## ONE WORLD, THE NORTH ROUTES — R1 R2 R3 R4 R5 R12 built and stitched (2026-11-17, BUILD_PLAN phase 4 row 4.1; the owner's north routes thread)
 Six routes, 118 plots, SEVEN rooms, all baked by `bake-route.js` from `docs/areas/routes/<ID>.json` (+ a hook `.js` where named). Places are
 `ow-places.js` picks; every new place name is an idea of Claude's (the page's own words kept where it gave them).

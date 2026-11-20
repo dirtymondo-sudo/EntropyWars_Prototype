@@ -10810,6 +10810,13 @@ waits for a room that is gone: no SHOT lines, no error, it runs until killed (se
 (`keydown` + `keyup`, `key: 'e', code: 'KeyE'`) on `document` and `window`, with `"settle": 3000` (the door audit's subway panel pictures). To
 arrive at a door as the game does: `"keep": true` + `"eval": "ThreeRenderer.hq.goTo('<door id>', true)"`. `--pre=<js>` runs before the room is
 entered (file a value on the active profile with `ProfileSystem.loadProfile / saveProfile` there: `_hqEnter` reads the saved card, not a session value).
+**THE DRIVE (2026-11-20, the Outer Space fix): motion bugs need motion.** A playtest_city.js view takes
+`"drive": { "sample": "<js expression>", "every": 700, "steps": [ { "note": "W", "down": ["w"], "up": [], "mouse": [dx, dy], "ms": 4000, "eval": "<js>", "shot": true } ] }`:
+real key presses (Playwright key names: `w`, `Shift`, `Space`) and mouse moves held over time, the sample printed as `DRIVE <view> <t>s <step> <json>`
+lines, a step's `"shot"` saved as `<room>_<view>_<i>.png`. Game time runs slow in the cloud browser (a 4 s hold is about 1 s of play): read the
+numbers, not the clock. In the space room the Bridge's stick has you ABOARD at the launch spot already: a view's eval must test
+`ThreeRenderer.hq.dev.ship({})` before `hq.board(id)` (a second board is E: it sets the ship down). Flying probe views: `mk3.js` style,
+`dev.ship({ x, y, z, yaw, camYaw, pitch })` with `yaw = PI - camYaw`.
 **THE FAST PROBE (2026-11-16, read this first; it replaces tip 2 and RULE 3 below).** Every harness now launches through
 `probe-fast.js` (`require('./probe-fast.js').launch(chromium, {...})`); a probe you write yourself must do the same. What it does:
 (1) runs Chromium on Mesa llvmpipe under its own Xvfb, 2-4x the frame rate of SwiftShader (`EW_PROBE_GL=swiftshader` = the old
