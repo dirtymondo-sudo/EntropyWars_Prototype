@@ -136,3 +136,10 @@ mondo: switching to Factions laid every place out in one huge row along the top.
 organised by (the places when on Factions, the factions when on Places) are not drawn on the board at all (app.js `offK`): not
 fitted, picked, lassoed, and ties to them are not drawn. Units still wear them as coloured dots, the unit and group panels still
 reach them, and Sort into groups no longer lines them up. The views (group web, places-factions-inside, ...) are unchanged.
+
+## The pick list + zooming out (2026-11-21)
+- mondo: typing "fortune teller" in a group's Add a unit found nothing. The browser's own datalist only matched the start of a word
+  (and behaved differently per browser), so a unit with a story name never came up. The three pickers (Add a unit, Add to a place or a
+  faction, an event's Link) now use our own list (app.js `pickList`): every typed word may sit anywhere in the name, the game name, the
+  race key or the cast id; arrows + Enter or a click pick; best matches first, 60 at most.
+- Zoom out and Fit now go down to 0.02 (was 0.15), so the biggest boards fit on the screen whole.
