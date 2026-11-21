@@ -129,6 +129,9 @@ function sanitizeBoard(b) {
     if (!l || !l.id || !o.nodes[l.a] || !o.nodes[l.b] || l.a === l.b || o.nodes[l.a].kind === 'note' || o.nodes[l.b].kind === 'note') return;
     o.links[l.id] = { id: String(l.id), a: l.a, b: l.b, type: TYPE[l.type] ? l.type : 'other', dir: /^(ab|ba|both)$/.test(l.dir) ? l.dir : 'ab', label: String(l.label || '').slice(0, 300), s: clamp(Math.round(num(l.s, 2)), 1, 3), ...(l.secret ? { secret: true } : {}), ...(l.type === 'member' && Number.isFinite(+l.cx) && Number.isFinite(+l.cy) && l.cx !== null && l.cy !== null ? { cx: Math.round(+l.cx), cy: Math.round(+l.cy) } : {}) };
   });
+  if (b.gweb && typeof b.gweb === 'object') { o.gweb = {}; ['place', 'faction'].forEach(k => { const L = b.gweb[k]; if (!L || typeof L !== 'object') return; o.gweb[k] = {}; Object.keys(L).forEach(id => { const q = L[id], nid = remap[id] || id; if (Array.isArray(q) && o.nodes[nid]) o.gweb[k][nid] = [num(q[0], 0), num(q[1], 0)]; }); }); }
+  if (b.events && typeof b.events === 'object') { o.events = {}; Object.values(b.events).forEach(ev => { if (!ev || !ev.id) return; const id = String(ev.id).replace(/[^A-Za-z0-9_\-]/g, '_');
+    o.events[id] = { id, title: String(ev.title || '').slice(0, 120), when: String(ev.when || '').slice(0, 60), t: num(ev.t, 0), text: String(ev.text || '').slice(0, 4000), refs: [...new Set((Array.isArray(ev.refs) ? ev.refs : []).map(r => remap[r] || String(r)).filter(r => o.nodes[r] && o.nodes[r].kind !== 'note'))], col: clamp(Math.round(num(ev.col, 0)), 0, GCOL.length - 1) }; }); }
   try { repairPlaces(o); } catch (e) {}
   return o;
 }
@@ -373,7 +376,7 @@ function bbox(ids) {
   return x0 === Infinity ? null : { x0, y0, x1, y1 };
 }
 function fit(silent) {
-  const r = stage.getBoundingClientRect(), b = bbox(), v = B.view;
+  const r0 = stage.getBoundingClientRect(), b = bbox(), v = B.view, r = { width: r0.width, height: r0.height - tlH() };
   if (!r.width) return;
   if (!b) { v.x = r.width / 2; v.y = r.height / 2; v.k = 1; }
   else { const pad = 40, k = clamp(Math.min((r.width - pad * 2) / (b.x1 - b.x0), (r.height - pad * 2 - 40) / (b.y1 - b.y0)), .15, 1.15); v.k = k; v.x = r.width / 2 - (b.x0 + b.x1) / 2 * k; v.y = r.height / 2 - (b.y0 + b.y1) / 2 * k; }
@@ -384,7 +387,9 @@ function centreOn(id) { const n0 = B.nodes[id]; if (!n0) return; const n = vp(n0
 /* ───────── rendering: board ───────── */
 function renderNodes() {
   let h = '';
-  const fg = sel && sel.kind === 'node' && isGrp(B.nodes[sel.id]) ? sel.id : null, fm = fg ? new Set(membersOf(fg).concat(fg)) : null;
+  if (VIEW && VIEW.kind === 'gweb') gwebCalc(VIEW);
+  const gw = VIEW && VIEW.kind === 'gweb', fg = sel && sel.kind === 'node' && (isGrp(B.nodes[sel.id]) || (gw && VIEW.pos[sel.id])) ? sel.id : null, ev0 = sel && sel.kind === 'event' && B.events && B.events[sel.id];
+  const fm = ev0 ? evLight(ev0) : fg ? (gw ? gwebNear(fg) : new Set(membersOf(fg).concat(fg))) : null;
   const dots = {}; Object.values(B.links).forEach(l => { if (l.type !== 'member') return; const g = B.nodes[l.b]; if (isGrp(g) && (!isOrgGrp(g) || l.secret)) (dots[l.a] = dots[l.a] || []).push({ g, sec: !!l.secret }); });
   Object.values(B.nodes).forEach(n0 => {
     if (VIEW && !VIEW.pos[n0.id]) return;
@@ -414,7 +419,7 @@ function geom(l, i, n) {
   const off = (i - (n - 1) / 2) * 52, mx = (p.x + q.x) / 2 + nx * off, my = (p.y + q.y) / 2 + ny * off;
   const cx = 2 * mx - (p.x + q.x) / 2, cy = 2 * my - (p.y + q.y) / 2;
   const T = TYPE[l.type] || TYPE.other, arrows = !(T.sym && l.dir === 'both') && l.type !== 'member', aA = arrows && (l.dir === 'ba' || l.dir === 'both'), aB = arrows && (l.dir === 'ab' || l.dir === 'both');
-  const sw = l.type === 'member' ? 1.6 : [0, 1.7, 2.7, 4.4][l.s || 2], al = 9 + sw * 1.6;
+  const sw = l.sw || (l.type === 'member' ? 1.6 : [0, 1.7, 2.7, 4.4][l.s || 2]), al = 9 + Math.min(sw, 5) * 1.6;
   const end = (N, arrow) => { let ux = cx - N.x, uy = cy - N.y; const m = Math.hypot(ux, uy) || 1; ux /= m; uy /= m; const r0 = R_NODE + 5; return { tx: N.x + ux * r0, ty: N.y + uy * r0, lx: N.x + ux * (r0 + (arrow ? al * .8 : 0)), ly: N.y + uy * (r0 + (arrow ? al * .8 : 0)), ux, uy }; };
   const ea = end(A, aA), eb = end(Bn, aB);
   const path = 'M' + ea.lx.toFixed(1) + ' ' + ea.ly.toFixed(1) + 'Q' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ' ' + eb.lx.toFixed(1) + ' ' + eb.ly.toFixed(1);
@@ -428,27 +433,31 @@ function hull(P) { const p = P.map(q => ({ x: q.x, y: q.y })).sort((a, b) => a.x
   return lo.slice(0, -1).concat(up.slice(0, -1)); }
 function drawEdges() {
   const groups = {}; G = {};
-  Object.values(B.links).forEach(l => { const k = l.a < l.b ? l.a + '|' + l.b : l.b + '|' + l.a; (groups[k] = groups[k] || []).push(l); });
+  const gw = VIEW && VIEW.kind === 'gweb';
+  Object.values(B.links).concat(gw ? VIEW.bundles : []).forEach(l => { const k = l.a < l.b ? l.a + '|' + l.b : l.b + '|' + l.a; (groups[k] = groups[k] || []).push(l); });
   let svg = '', tags = '';
-  const focus = sel && sel.kind === 'node' ? sel.id : null;
+  const focus = sel && sel.kind === 'node' ? sel.id : null, ev0 = sel && sel.kind === 'event' && B.events && B.events[sel.id], evS = ev0 ? evLight(ev0) : null;
   const HM = homeMap(orgK());
   const CPS = VIEW ? [] : copyList(), own = g => [g].concat(membersOf(g.id).filter(id => HM[id] === g.id || isGrp(B.nodes[id])).map(id => B.nodes[id]).filter(Boolean), CPS.filter(c => c.g.id === g.id).map(c => ({ x: c.x, y: c.y })));
   const depth = g => { let d = 0, p = g; while ((p = parentOf(p)) && d < 20) d++; return d; };
-  if (VIEW) (VIEW.hulls || []).forEach(q => { if (q.pts.length < 2) return; const hp = hull(q.pts).map(p => p.x.toFixed(1) + ' ' + p.y.toFixed(1)); svg += '<path class="hull' + (q.zone ? ' vz' : '') + '" d="M' + hp.join('L') + 'Z" fill="' + q.col + '" stroke="' + q.col + '"/>'; });
+  if (gw && !VIEW.fold) Object.keys(VIEW.pos).map(id => B.nodes[id]).filter(n => isGrp(n) && kidsOf(n.id).length).sort((a, b) => depth(a) - depth(b)).forEach(n => { const pts = [n].concat(descOf(n.id)).filter(g => VIEW.pos[g.id]).map(g => VIEW.pos[g.id]); if (pts.length < 2) return; const hp = hull(pts).map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)); svg += '<path class="hull gw" d="M' + hp.join('L') + 'Z" fill="' + gcol(n) + '" stroke="' + gcol(n) + '"/>'; });
+  else if (VIEW) (VIEW.hulls || []).forEach(q => { if (q.pts.length < 2) return; const hp = hull(q.pts).map(p => p.x.toFixed(1) + ' ' + p.y.toFixed(1)); svg += '<path class="hull' + (q.zone ? ' vz' : '') + '" d="M' + hp.join('L') + 'Z" fill="' + q.col + '" stroke="' + q.col + '"/>'; });
   else Object.values(B.nodes).filter(isOrgGrp).sort((a, b) => depth(a) - depth(b)).forEach(n => { const pts = own(n).concat(...descOf(n.id).filter(isOrgGrp).map(own)); if (pts.length < 2) return; const hp = hull(pts).map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)); svg += '<path class="hull" d="M' + hp.join('L') + 'Z" fill="' + gcol(n) + '" stroke="' + gcol(n) + '"/>'; });
   if (focus) CPS.filter(c => c.u.id === focus || c.g.id === focus).forEach(c => { const u = c.u; svg += '<path class="cpline" d="M' + u.x + ' ' + u.y + 'L' + c.x + ' ' + c.y + '" stroke="' + gcol(c.g) + '"/>'; });
   Object.values(groups).forEach(arr => {
     arr.sort((a, b) => a.id < b.id ? -1 : 1).forEach((l, i) => {
       const away = false;
-      if (VIEW && (!VIEW.pos[l.a] || !VIEW.pos[l.b] || (VIEW.links === 'sel' ? focus !== l.a && focus !== l.b : !VIEW.links.has(l.id)))) return;
+      if (VIEW && (!VIEW.pos[l.a] || !VIEW.pos[l.b] || (!l.bx && (VIEW.links === 'sel' ? focus !== l.a && focus !== l.b : !VIEW.links.has(l.id))))) return;
       if (l.type === 'member' && !VIEW && !away && focus !== l.a && focus !== l.b && !(sel && sel.kind === 'link' && sel.id === l.id)) return;
       const g = geom(l, i, arr.length); if (!g) return; G[l.id] = g;
-      const mem = l.type === 'member', c = mem ? gcol(B.nodes[l.b]) : 'var(--t-' + g.T.id + ')', isSel = sel && sel.kind === 'link' && sel.id === l.id, dim = focus && l.a !== focus && l.b !== focus;
+      const mem = l.type === 'member', c = mem ? gcol(B.nodes[l.b]) : 'var(--t-' + g.T.id + ')', isSel = sel && (sel.kind === 'link' || sel.kind === 'bundle') && sel.id === l.id, dim = (focus && l.a !== focus && l.b !== focus) || (evS && !(evS.has(l.a) && evS.has(l.b)));
+      if (l.bx) { const nb = l.bx.ties.length; svg += '<g class="edge bundle' + (isSel ? ' sel' : '') + '" data-id="' + esc(l.id) + '"' + (dim ? ' opacity=".18"' : '') + '><path class="hit" d="' + g.path + '" stroke-width="' + (g.sw + 14) + '"/>' + (isSel ? '<path class="halo" d="' + g.path + '" stroke-width="' + (g.sw + 9) + '"/>' : '') + '<path class="ln" d="' + g.path + '" stroke="' + c + '" stroke-width="' + g.sw.toFixed(1) + '"' + (g.T.dash ? ' stroke-dasharray="' + g.T.dash + '"' : '') + '/>' + (g.heads ? '<path class="ah" d="' + g.heads + '" fill="' + c + '"/>' : '') + '</g>';
+        if (nb > 1 || isSel || (focus && (l.a === focus || l.b === focus))) tags += '<div class="tag btag' + (isSel ? ' sel' : '') + (dim ? ' dim' : '') + '" data-id="' + esc(l.id) + '" style="left:' + g.m.x.toFixed(1) + 'px;top:' + g.m.y.toFixed(1) + 'px;--c:' + c + '"><b>' + g.T.n + '</b> \u00d7' + nb + '</div>'; return; }
       svg += '<g class="edge' + (isSel ? ' sel' : '') + (l.secret ? ' secret' : '') + '" data-id="' + esc(l.id) + '"' + (dim ? ' opacity=".22"' : '') + '><path class="hit" d="' + g.path + '"/>' +
         (isSel ? '<path class="halo" d="' + g.path + '" stroke-width="' + (g.sw + 9) + '"/>' : '') +
         '<path class="ln" d="' + g.path + '" stroke="' + c + '" stroke-width="' + g.sw + '"' + (l.type === 'member' && l.secret ? ' stroke-dasharray="2 6"' : away ? ' stroke-dasharray="7 6"' : g.T.dash ? ' stroke-dasharray="' + g.T.dash + '"' : '') + '/>' +
         (g.heads ? '<path class="ah" d="' + g.heads + '" fill="' + c + '"/>' : '') + '</g>';
-      if (!mem) tags += '<div class="tag' + (isSel ? ' sel' : '') + (dim ? ' dim' : '') + '" data-id="' + esc(l.id) + '" style="left:' + g.m.x.toFixed(1) + 'px;top:' + g.m.y.toFixed(1) + 'px;max-width:' + Math.round(g.tw) + 'px;--c:' + c + (editing === l.id ? ';visibility:hidden' : '') + '"><b>' + (l.secret ? 'secretly ' : '') + g.T.n + '</b>' + (l.label ? ' ' + esc(l.label) : '') + '</div>';
+      if (!mem) tags += '<div class="tag' + (gw ? ' gwt' : '') + (isSel ? ' sel' : '') + (dim ? ' dim' : '') + '" data-id="' + esc(l.id) + '" style="left:' + g.m.x.toFixed(1) + 'px;top:' + g.m.y.toFixed(1) + 'px;max-width:' + Math.round(g.tw) + 'px;--c:' + c + (editing === l.id ? ';visibility:hidden' : '') + '"><b>' + (l.secret ? 'secretly ' : '') + g.T.n + '</b>' + (l.label ? ' ' + esc(l.label) : '') + '</div>';
     });
   });
   edgesEl.innerHTML = svg + '<path id="temp" d="" />'; tagsEl.innerHTML = tags;
@@ -464,6 +473,7 @@ function renderOverlays() {
   stage.classList.toggle('linkmode', linkMode); stage.classList.toggle('lassomode', groupMode);
   $('btnLink').classList.toggle('on', linkMode);
   $('btnGroup').classList.toggle('on', groupMode);
+  $('btnGweb').classList.toggle('on', !!(VIEW && VIEW.kind === 'gweb')); stage.classList.toggle('gwebmode', !!(VIEW && VIEW.kind === 'gweb'));
   [...$('orgSeg').children].forEach(b => b.classList.toggle('on', b.dataset.org === orgK()));
 }
 function renderLegend() {
@@ -541,7 +551,23 @@ function dirSeg(l) { const a = esc(nm(l.a)), b = esc(nm(l.b)); return '<div clas
 function strengthSeg(l) { return '<div class="seg" role="group" aria-label="Strength">' + [[1, 'weak'], [2, 'firm'], [3, 'unbreakable']].map(s => '<button class="' + ((l.s || 2) === s[0] ? 'on' : '') + '" data-lstr="' + s[0] + '">' + s[1] + '</button>').join('') + '</div>'; }
 function renderInspector() {
   const el = $('inspector'); let h = '<div class="ins"><button class="btn sm closeins" data-act="closeIns" style="align-self:flex-end">Close</button>';
-  if (sel && sel.kind === 'link' && B.links[sel.id]) {
+  const bun = sel && sel.kind === 'bundle' && VIEW && VIEW.bundles && VIEW.bundles.find(q => q.id === sel.id), evS = sel && sel.kind === 'event' && B.events && B.events[sel.id];
+  if (bun) {
+    const o = bun.bx, T = TYPE[bun.type] || TYPE.other, A = esc(nm(bun.a)), Z = esc(nm(bun.b)), arrow = bun.dir === 'both' ? ' \u2194 ' : bun.dir === 'ab' ? ' \u2192 ' : ' \u2190 ';
+    h += '<h2>' + A + arrow + Z + '</h2><p style="margin:-6px 0 0"><span class="badge" style="--c:var(--t-' + T.id + ')">' + T.n + '</span> \u00d7' + o.ties.length + '</p>' +
+      '<div class="prow">' + [bun.a, bun.b].map(id => { const g = B.nodes[id]; return isGrp(g) ? '<button class="gchip sm' + (gkOf(g) === 'faction' ? ' fac' : '') + '" data-node="' + esc(id) + '" style="--gc:' + gcol(g) + '">' + esc(g.name) + '</button>' : '<button class="btn sm" data-node="' + esc(id) + '">' + esc(nm(id)) + '</button>'; }).join('') + '</div>' +
+      '<div><h4>The ties in it</h4><ul class="rel">' + relList(o.ties.filter(id => B.links[id]).map(id => ({ l: B.links[id] }))) + '</ul></div>';
+  } else if (evS) {
+    const ev = evS, rf = evRefs(ev), L = evList(), i = L.indexOf(ev);
+    h += '<h2>Event</h2><label class="field"><span>Title</span><input class="inp" id="evTitle" maxlength="120" value="' + esc(ev.title) + '"></label>' +
+      '<label class="field"><span>When</span><input class="inp" id="evWhen" maxlength="60" value="' + esc(ev.when) + '" placeholder="Year 1999, before the Fall, day 3\u2026"></label>' +
+      '<div><h4>Colour</h4><div class="gsw">' + GCOL.map((c, k) => '<button data-evcol="' + k + '"' + ((ev.col || 0) === k ? ' class="on"' : '') + ' style="--gc:' + c + '" aria-label="Colour ' + (k + 1) + '"></button>').join('') + '</div></div>' +
+      '<label class="field"><span>What happens</span><textarea class="inp" id="evText" style="min-height:90px">' + esc(ev.text) + '</textarea></label>' +
+      '<div><h4>Linked to (' + rf.length + ')</h4>' + (rf.length ? '<div class="prow">' + rf.map(id => { const g = B.nodes[id]; return (isGrp(g) ? '<span class="gchip sm' + (gkOf(g) === 'faction' ? ' fac' : '') + ' evref" style="--gc:' + gcol(g) + '"><button data-node="' + esc(id) + '">' + esc(g.name) + '</button>' : '<span class="evref unit"><button data-node="' + esc(id) + '">' + esc(nm(id)) + '</button>') + '<button class="x" data-evunref="' + esc(id) + '" aria-label="Unlink">\u00d7</button></span>'; }).join('') + '</div>' : '<p class="muted">Nothing yet.</p>') + '</div>' +
+      '<label class="field"><span>Link a faction, place, unit or character</span><input class="inp" id="pickEv" list="dlPickEv" autocomplete="off" placeholder="Type a name: Illuminati, Hell, Pope\u2026"></label><datalist id="dlPickEv">' + evPicks(ev.id).map(v => '<option value="' + esc(v) + '"></option>').join('') + '</datalist>' +
+      '<div class="prow"><button class="btn sm" data-act="evEarlier"' + (i <= 0 ? ' disabled' : '') + '>\u2190 Earlier</button><button class="btn sm" data-act="evLater"' + (i >= L.length - 1 ? ' disabled' : '') + '>Later \u2192</button><button class="btn sm" data-act="evShow"' + (rf.length ? '' : ' disabled') + '>Show on the board</button></div>' +
+      '<div class="prow"><button class="btn" data-act="evNew">+ Event after this</button><button class="btn danger" data-act="delSel">Delete this event</button></div>';
+  } else if (sel && sel.kind === 'link' && B.links[sel.id]) {
     const l = B.links[sel.id];
     h += '<h2>' + sentence(l).replace(/<em>.*$/, '') + '</h2>' +
       '<div><h4>Kind of tie</h4>' + typeChips(l) + '</div>' +
@@ -566,6 +592,7 @@ function renderInspector() {
     h += '<div><h4>Members (' + mem.length + ')</h4>' + (mem.length ? '<ul class="rel gmem">' + mem.map(l => '<li data-node="' + esc(l.a) + '"' + (l.secret ? ' class="sec"' : '') + '><span>' + esc(nm(l.a)) + '</span><button class="gsec' + (l.secret ? ' on' : '') + '" data-gsecret="' + esc(l.id) + '">secret</button><button class="x" data-unlink="' + esc(l.id) + '" aria-label="Take out of the group">×</button></li>').join('') + '</ul>' : '<p class="muted">None yet.</p>') + '</div>';
     h += '<label class="field"><span>Add a unit</span><input class="inp" id="pickUnit" list="dlPickUnit" autocomplete="off" placeholder="Type a name: Librarian, Pope\u2026"></label><datalist id="dlPickUnit">' + unitPicks(n.id).map(v => '<option value="' + esc(v) + '"></option>').join('') + '</datalist>';
     if (ties.length) h += '<div><h4>Ties</h4><ul class="rel">' + relList(ties) + '</ul></div>';
+    { const es = eventsOf(n.id); h += '<div><h4>Timeline' + (es.length ? ' (' + es.length + ')' : '') + '</h4>' + (es.length ? '<ul class="rel">' + es.map(ev => '<li data-ev="' + esc(ev.id) + '"><i style="--c:' + GCOL[ev.col || 0] + '"></i><span>' + (ev.when ? '<b>' + esc(ev.when) + '</b> ' : '') + esc(ev.title || 'Untitled') + '</span></li>').join('') + '</ul>' : '') + '<button class="btn sm" data-act="evNew">+ Event with ' + esc(isGrp(n) ? n.name : info(n).name) + '</button></div>'; }
     h += '<label class="field"><h4 style="margin:0">Notes</h4><textarea class="inp" id="insNote">' + esc(n.note || '') + '</textarea></label>';
     h += '<div class="prow"><button class="btn danger" data-act="delSel">Take off the board</button></div>';
   } else if (sel && sel.kind === 'node' && B.nodes[sel.id]) {
@@ -601,6 +628,7 @@ function renderInspector() {
     h += '</div>';
     if (r) h += '<div><h4>Already in the game’s encounter rules</h4><ul class="rel">' + temperText(r).map(t => '<li class="game">' + esc(t) + '</li>').join('') + '</ul></div>';
     else if (cst && cst.grp === 'cast') h += '<div><h4>Already in the game\u2019s encounter rules</h4><ul class="rel"><li class="game">Story cast have no temper: they cannot be struck on the walk (HQ_NPC_TEMPERS).</li></ul></div>';
+    { const es = eventsOf(n.id); h += '<div><h4>Timeline' + (es.length ? ' (' + es.length + ')' : '') + '</h4>' + (es.length ? '<ul class="rel">' + es.map(ev => '<li data-ev="' + esc(ev.id) + '"><i style="--c:' + GCOL[ev.col || 0] + '"></i><span>' + (ev.when ? '<b>' + esc(ev.when) + '</b> ' : '') + esc(ev.title || 'Untitled') + '</span></li>').join('') + '</ul>' : '') + '<button class="btn sm" data-act="evNew">+ Event with ' + esc(isGrp(n) ? n.name : info(n).name) + '</button></div>'; }
     h += '<div class="prow"><button class="btn" data-act="vFocus">Show connections</button><button class="btn" data-act="vPath">Find the way to…</button></div>';
     h += '<div class="prow"><button class="btn" data-act="tieFrom">Tie to another unit</button><button class="btn danger" data-act="delSel">Take off the board</button></div>';
   } else {
@@ -633,7 +661,7 @@ function updateButtons() { $('btnUndo').disabled = hi <= 0; $('btnRedo').disable
 
 /* panels are not rebuilt while a pointer is down, so a click never loses its target */
 let pressing = false, deferred = false;
-function renderPanels() { if (pressing) { deferred = true; return; } renderRoster(); renderInspector(); renderPop(); }
+function renderPanels() { if (pressing) { deferred = true; return; } renderRoster(); renderInspector(); renderPop(); renderTimeline(); }
 document.addEventListener('pointerdown', () => { pressing = true; }, true);
 const release = () => { pressing = false; if (deferred) { deferred = false; setTimeout(renderPanels, 0); } };
 document.addEventListener('pointerup', release, true); document.addEventListener('pointercancel', release, true);
@@ -690,8 +718,10 @@ function pickChosen(t) {
 function addNote() { const c = viewCentre(), p = freeSpot({ x: c.x - 95, y: c.y - 60 }, takenList().map(t => ({ x: t.x - 95, y: t.y - 60 }))), id = uid('n'); B.nodes[id] = { id, kind: 'note', x: p.x, y: p.y, color: 'y', text: '' }; sel = { kind: 'node', id }; commit(); const t = elById.get(id); if (t) t.querySelector('textarea').focus(); }
 function removeSel() {
   if (!sel) return;
+  if (sel.kind === 'bundle') return;
   if (sel.kind === 'link') delete B.links[sel.id];
-  else { delete B.nodes[sel.id]; Object.values(B.links).forEach(l => { if (l.a === sel.id || l.b === sel.id) delete B.links[l.id]; }); }
+  else if (sel.kind === 'event') { if (B.events) delete B.events[sel.id]; }
+  else { delete B.nodes[sel.id]; Object.values(B.links).forEach(l => { if (l.a === sel.id || l.b === sel.id) delete B.links[l.id]; }); Object.values(B.events || {}).forEach(ev => { ev.refs = ev.refs.filter(r => r !== sel.id); }); }
   sel = null; stopEdit(false); commit();
 }
 function createLink(a, b) {
@@ -726,7 +756,7 @@ $('tagInput').addEventListener('blur', () => { stopEdit(true); });
 function switchBoard(id) { if (!S.boards[id]) return; stopEdit(true); S.active = id; B = S.boards[id]; sel = null; multi.clear(); pendingSrc = null; ensureView(); saveLocal(); renderAll(); }
 function newBoard(name, from) {
   const id = uid('b'), src = from ? JSON.parse(JSON.stringify(from)) : { nodes: {}, links: {}, view: null };
-  S.boards[id] = { id, name, t: Date.now(), nodes: src.nodes, links: src.links, view: src.view }; S.order.push(id); S.active = id; B = S.boards[id]; sel = null;
+  S.boards[id] = { id, name, t: Date.now(), nodes: src.nodes, links: src.links, view: src.view }; if (src.events) S.boards[id].events = src.events; if (src.gweb) S.boards[id].gweb = src.gweb; S.order.push(id); S.active = id; B = S.boards[id]; sel = null;
   ensureView(); commit({ index: true });
 }
 /* THE "IN THE GAME NOW" BOARD (2026-11-18): where the game puts every unit today (build/spawns.js reads data.js). Made once as its own
@@ -969,11 +999,200 @@ function renderViewBar() {
   else if (V.kind === 'path') t = b(nm(V.a)) + ' to ' + b(nm(V.b)) + ': ' + V.d + (V.d === 1 ? ' step' : ' steps') + (V.routes > 1 ? ', ' + V.routes + ' routes' : '') + (V.via ? ' <span class="muted">(through shared groups: no chain of ties joins them)</span>' : '');
   else if (V.kind === 'zones') t = b('Places, factions inside') + ' <span class="muted">' + V.n + ' places · each unit in its first place and first faction</span>';
   else if (V.kind === 'command') t = b('Chain of command') + ' <span class="muted">serves, employs, worships · boss on top · ' + V.n + (V.n === 1 ? ' chart' : ' charts') + '</span>';
+  else if (V.kind === 'gweb') { gwebCalc(V); const nb = V.bundles.reduce((q, x) => q + x.bx.ties.length, 0) + V.links.size;
+    t = b(V.gk === 'faction' ? 'Faction web' : 'Place web') + '<div class="seg">' + [['faction', 'Factions'], ['place', 'Places']].map(k => '<button data-gwk="' + k[0] + '"' + (V.gk === k[0] ? ' class="on"' : '') + '>' + k[1] + '</button>').join('') + '</div>' +
+      '<div class="seg">' + [['all', 'All ties'], ['f', 'Friendly'], ['h', 'Hostile']].map(k => '<button data-gws="' + k[0] + '"' + (V.side === k[0] ? ' class="on"' : '') + '>' + k[1] + '</button>').join('') + '</div>' +
+      (V.nested ? '<button class="btn sm' + (V.fold ? ' on' : '') + '" data-gwt="fold" title="Count the groups inside a group as that group">Fold inside</button>' : '') +
+      '<button class="btn sm' + (V.loners ? ' on' : '') + '" data-gwt="loners" title="Show units in no ' + (V.gk === 'faction' ? 'faction' : 'place') + ' as themselves">Loners</button><button class="btn sm" data-gwt="spread" title="Lay out again: friends together, enemies apart">Spread out</button>' +
+      ' <span class="muted">' + V.nG + (V.nG === 1 ? ' group' : ' groups') + ' \u00b7 ' + nb + ' ties' + (V.hidden ? ' \u00b7 ' + V.hidden + ' with a unit in no ' + (V.gk === 'faction' ? 'faction' : 'place') + ' left out' : '') + '</span>'; }
   else if (V.kind === 'family') t = b('Family trees') + ' <span class="muted">made above, what they made below · family side by side · ' + V.n + (V.n === 1 ? ' tree' : ' trees') + '</span>';
   bar.innerHTML = '<span>' + t + '</span><button class="btn sm pri" data-vact="close">Close view</button>'; bar.hidden = false;
 }
-$('viewbar').addEventListener('click', e => { const h = e.target.closest('[data-hops]'); if (h) return viewFocus(VIEW.id, +h.dataset.hops); const a = e.target.closest('[data-vact]'); if (!a) return;
+$('viewbar').addEventListener('click', e => { const h = e.target.closest('[data-hops]'); if (h) return viewFocus(VIEW.id, +h.dataset.hops);
+  const gb = e.target.closest('[data-gwk], [data-gws], [data-gwt]'); if (gb && VIEW && VIEW.kind === 'gweb') { const V = VIEW;
+    if (gb.dataset.gwt === 'spread') return gwebSpread();
+    if (gb.dataset.gwk) V.gk = gb.dataset.gwk; else if (gb.dataset.gws) V.side = gb.dataset.gws; else V[gb.dataset.gwt] = !V[gb.dataset.gwt];
+    if (sel && sel.kind === 'bundle') sel = null; renderAll(); if (gb.dataset.gwk || gb.dataset.gwt) fit(); return; }
+  const a = e.target.closest('[data-vact]'); if (!a) return;
   if (a.dataset.vact === 'close') closeView(); else if (a.dataset.vact === 'pathFrom') { pathFrom = VIEW.id; toast('Now tap the unit to find the way to'); } });
+
+/* ───────── THE GROUP WEB (2026-11-21, mondo: "see and group the faction relationships without the individual links showing") ─────────
+   A view of the places or the factions only: every tie between their members is summed onto one line a kind between the two groups
+   (rivals x4), a tie straight between two groups is drawn as itself. Its own spots per board and kind (B.gweb), so a layout stays;
+   groups inside a group (the inspector's Inside) sit in its shade and move with it: that is how groups of groups are made. */
+function gwebCalc(V) {
+  const k = V.gk, grps = Object.values(B.nodes).filter(n => isGrp(n) && gkOf(n) === k);
+  const topOf = g => { let p = g, s = 0; while (V.fold && parentOf(p) && s++ < 30) p = parentOf(p); return p; };
+  const shown = new Set(grps.filter(g => !V.fold || !parentOf(g)).map(g => g.id)), ug = {};
+  Object.values(B.links).forEach(l => { if (l.type !== 'member' || l.secret) return; const g = B.nodes[l.b], u = B.nodes[l.a]; if (!isGrp(g) || gkOf(g) !== k || !u || isGrp(u)) return; (ug[l.a] = ug[l.a] || new Set()).add(topOf(g).id); });
+  const ends = id => { const n = B.nodes[id]; if (!n || n.kind === 'note') return []; if (isGrp(n)) return gkOf(n) === k ? [topOf(n).id] : []; if (ug[id]) return [...ug[id]]; return V.loners ? [id] : []; };
+  const bm = {}, real = new Set(), lon = new Set(), inner = {}; let hidden = 0;
+  Object.values(B.links).forEach(l => {
+    if (l.type === 'member' || !B.nodes[l.a] || !B.nodes[l.b]) return;
+    const sd = sideOf(l); if ((V.side === 'f' && sd !== 0) || (V.side === 'h' && sd !== 2)) return;
+    const A = ends(l.a), Z = ends(l.b); if (!A.length || !Z.length) { hidden++; return; }
+    [l.a, l.b].forEach((id, i) => { const e = i ? Z : A; if (e.length === 1 && e[0] === id && !isGrp(B.nodes[id])) lon.add(id); });
+    if (A.length === 1 && Z.length === 1 && A[0] === l.a && Z[0] === l.b) { real.add(l.id); return; }
+    A.forEach(a => Z.forEach(b => {
+      if (a === b) { inner[a] = (inner[a] || 0) + 1; return; }
+      const flip = a > b, x = flip ? b : a, y = flip ? a : b, key = 'bx:' + x + '|' + y + '|' + l.type;
+      const o = bm[key] = bm[key] || { a: x, b: y, type: l.type, ab: 0, ba: 0, both: 0, ties: [] };
+      if (o.ties.includes(l.id)) return; o.ties.push(l.id);
+      if (l.dir === 'both') o.both++; else if ((l.dir === 'ab') !== flip) o.ab++; else o.ba++;
+    }));
+  });
+  const bundles = Object.entries(bm).map(([id, o]) => ({ id, a: o.a, b: o.b, type: o.type, dir: o.both || (o.ab && o.ba) ? 'both' : o.ab ? 'ab' : 'ba', s: 2, sw: Math.min(11, 1.3 + 1.6 * Math.sqrt(o.ties.length)), label: '', bx: o }));
+  const ids = [...shown].concat(V.loners ? [...lon] : []);
+  B.gweb = B.gweb || {}; const st = B.gweb[k] = B.gweb[k] || {}, miss = ids.filter(id => !st[id]);
+  if (miss.length) { const fixed = {}; ids.forEach(id => { if (st[id]) fixed[id] = { x: st[id][0], y: st[id][1] }; }); const p = gwebLayout(ids, bundles, real, fixed, V); miss.forEach(id => { st[id] = [p[id].x, p[id].y]; }); }
+  V.pos = {}; ids.forEach(id => { V.pos[id] = { x: st[id][0], y: st[id][1] }; });
+  V.links = real; V.bundles = bundles; V.hidden = hidden; V.inner = inner; V.nG = shown.size; V.nested = grps.some(g => parentOf(g));
+  return V;
+}
+/* the spread: friends pull together, enemies push apart, a group stays by the group it is inside */
+function gwebLayout(ids, bundles, real, fixed, V) {
+  const n = ids.length, P = {}, W = {}, key = (a, b) => a < b ? a + '|' + b : b + '|' + a, R0 = Math.max(320, n * 70);
+  ids.forEach((id, i) => { const f = fixed[id], a = i / Math.max(1, n) * Math.PI * 2; P[id] = f ? { x: f.x, y: f.y } : { x: Math.round(Math.cos(a) * R0), y: Math.round(Math.sin(a) * R0) }; });
+  const fx = Object.keys(fixed); if (fx.length) { const c = fx.reduce((t, id) => ({ x: t.x + fixed[id].x / fx.length, y: t.y + fixed[id].y / fx.length }), { x: 0, y: 0 }); ids.forEach((id, i) => { if (!fixed[id]) { const a = i * 2.39996; P[id] = { x: Math.round(c.x + Math.cos(a) * R0 * 1.3), y: Math.round(c.y + Math.sin(a) * R0 * 1.3) }; } }); }
+  const add = (a, b, w) => { if (!P[a] || !P[b]) return; W[key(a, b)] = (W[key(a, b)] || 0) + w; };
+  bundles.forEach(q => { const s = sideOf(q); add(q.a, q.b, (s === 0 ? 1 : s === 2 ? -1 : .3) * Math.sqrt(q.bx.ties.length)); });
+  real.forEach(id => { const l = B.links[id], s = sideOf(l); add(l.a, l.b, s === 0 ? 1.5 : s === 2 ? -1.5 : .4); });
+  if (!V.fold) ids.forEach(id => { const p = B.nodes[id] && parentOf(B.nodes[id]); if (p && P[p.id]) add(id, p.id, 3); });
+  /* Fruchterman-Reingold with a pull to the middle: friends attract (d^2 / K), enemies only push within reach */
+  const K = 210; let temp = 420;
+  for (let it = 0; it < 420; it++) {
+    const F = {}; ids.forEach(id => { F[id] = { x: 0, y: 0 }; });
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      const a = ids[i], b = ids[j], A = P[a], Bq = P[b]; let dx = Bq.x - A.x, dy = Bq.y - A.y; const d = Math.max(20, Math.hypot(dx, dy)); dx /= d; dy /= d;
+      const w = W[key(a, b)] || 0; let f = -K * K / d;
+      if (w > 0) f += Math.min(w, 4) * d * d / K * .5; else if (w < 0 && d < K * 3) f += Math.max(w, -4) * K * K / d * .6;
+      F[a].x += dx * f; F[a].y += dy * f; F[b].x -= dx * f; F[b].y -= dy * f;
+    }
+    ids.forEach(id => { if (fixed[id]) return; const f = F[id], p = P[id]; f.x -= p.x * .9; f.y -= p.y * .9; const m = Math.hypot(f.x, f.y) || 1, st = Math.min(m, temp); p.x += f.x / m * st; p.y += f.y / m * st; });
+    temp = Math.max(2, temp * .985);
+  }
+  ids.forEach(id => { P[id].x = Math.round(P[id].x); P[id].y = Math.round(P[id].y); });
+  return P;
+}
+function openGweb() {
+  const v = gwebCalc({ kind: 'gweb', gk: orgK(), side: 'all', fold: false, loners: false, pos: {} });
+  if (!Object.keys(v.pos).length) { toast('No ' + (v.gk === 'faction' ? 'factions' : 'places') + ' on this board yet: + Group makes one'); return false; }
+  return openView(v);
+}
+function gwebSpread() {
+  if (!VIEW || VIEW.kind !== 'gweb') return; const ids = Object.keys(VIEW.pos), p = gwebLayout(ids, VIEW.bundles, VIEW.links, {}, VIEW);
+  const st = B.gweb[VIEW.gk]; ids.forEach(id => { st[id] = [p[id].x, p[id].y]; }); commit(); fit();
+}
+/* who a picked pill or event lights up in the group web */
+function gwebNear(id) { const s = new Set([id]); if (!VIEW || VIEW.kind !== 'gweb') return s; VIEW.bundles.forEach(q => { if (q.a === id) s.add(q.b); if (q.b === id) s.add(q.a); }); VIEW.links.forEach(lid => { const l = B.links[lid]; if (l && l.a === id) s.add(l.b); if (l && l.b === id) s.add(l.a); }); return s; }
+
+/* ───────── THE TIMELINE (2026-11-21, mondo: "place events and link them to factions or groups/places or characters") ─────────
+   Events per board (B.events: title, when (free text: Year 1999, Before the Fall), what happens, colour, refs = node ids on the board).
+   The dock along the bottom shows them in order (t); drag a card sideways to move it in time. Rows: one, or one per faction / place
+   (an event sits in the row of every group it names and the home group of every unit it names). Picking an event lights its units
+   on the board; picking a unit or group lights its events. */
+const tlOpen = () => !!S.ui.tl;
+const evList = () => Object.values(B.events || {}).sort((a, b) => a.t - b.t || a.title.localeCompare(b.title));
+const evRefs = ev => (ev.refs || []).filter(id => B.nodes[id] && B.nodes[id].kind !== 'note');
+const eventsOf = id => evList().filter(ev => evRefs(ev).includes(id));
+function evLight(ev) { const s = new Set(); evRefs(ev).forEach(id => { s.add(id); if (isGrp(B.nodes[id])) membersOf(id).forEach(m => s.add(m)); else groupsOf(id).forEach(g => s.add(g)); }); return s; }
+function newEvent(refs) {
+  B.events = B.events || {}; const L = evList(), after = sel && sel.kind === 'event' && B.events[sel.id], id = uid('e');
+  const t = after ? (() => { const i = L.indexOf(after), nx = L[i + 1]; return nx ? (after.t + nx.t) / 2 : after.t + 1; })() : (L.length ? L[L.length - 1].t + 1 : 0);
+  const r0 = (refs || []).filter(x => B.nodes[x]), g0 = r0.map(x => B.nodes[x]).find(isGrp);
+  B.events[id] = { id, title: 'New event', when: '', t, text: '', refs: r0, col: g0 ? (g0.col || 0) : 5 };
+  S.ui.tl = true; sel = { kind: 'event', id }; commit();
+  $('roster').classList.remove('open'); if (narrow()) $('inspector').classList.add('open');
+  setTimeout(() => { const i = $('evTitle'); if (i) { i.focus(); i.select(); } tlScrollTo(id); }, 0);
+}
+function selectEvent(id) { if (!B.events || !B.events[id]) return; if (!tlOpen()) { S.ui.tl = true; saveLocalSoon(); } select({ kind: 'event', id }); setTimeout(() => tlScrollTo(id), 0); }
+function tlScrollTo(id) { const el = $('tlBody') && $('tlBody').querySelector('[data-ev="' + id + '"]'); if (el) { const b = $('tlBody'), x = el.offsetLeft - b.clientWidth / 2 + el.offsetWidth / 2; b.scrollTo({ left: Math.max(0, x), behavior: 'smooth' }); } }
+function evMove(id, d) { const L = evList(), i = L.findIndex(e => e.id === id), j = i + d; if (i < 0 || j < 0 || j >= L.length) return; const x = L[i]; L.splice(i, 1); L.splice(j, 0, x); L.forEach((e, k) => { e.t = k; }); commit(); setTimeout(() => tlScrollTo(id), 0); }
+function evFit(ev) { const ids = [...evLight(ev)].filter(id => !VIEW || VIEW.pos[id]); if (!ids.length) return toast('Nothing it names is on this view'); const r = stage.getBoundingClientRect(), b = bbox(ids), v = B.view, h = r.height - tlH(); const k = clamp(Math.min((r.width - 80) / (b.x1 - b.x0), (h - 80) / (b.y1 - b.y0)), .15, 1.15); v.k = k; v.x = r.width / 2 - (b.x0 + b.x1) / 2 * k; v.y = h / 2 - (b.y0 + b.y1) / 2 * k; applyView(); }
+const tlH = () => tlOpen() && !$('timeline').hidden ? $('timeline').offsetHeight : 0;
+const TL_W = 188, TL_ROW = 96, TL_LAB = 132;
+function tlRows(L) {
+  const mode = S.ui.tlRows === 'faction' || S.ui.tlRows === 'place' ? S.ui.tlRows : 'one';
+  if (mode === 'one') return { mode, rows: [{ id: '', name: '', ev: L }] };
+  const HM = homeMap(mode), rows = new Map(), none = { id: '_none', name: mode === 'faction' ? 'No faction' : 'No place', ev: [] };
+  L.forEach(ev => { const gs = new Set(); evRefs(ev).forEach(id => { const n = B.nodes[id]; if (isGrp(n)) { if (gkOf(n) === mode) gs.add(id); } else if (HM[id]) gs.add(HM[id]); });
+    if (!gs.size) none.ev.push(ev); gs.forEach(g => { if (!rows.has(g)) rows.set(g, { id: g, name: B.nodes[g].name, g: B.nodes[g], ev: [] }); rows.get(g).ev.push(ev); }); });
+  const out = [...rows.values()]; if (none.ev.length) out.push(none); return { mode, rows: out };
+}
+function renderTimeline() {
+  const el = $('timeline'); stage.classList.toggle('tlopen', tlOpen()); $('btnTl').classList.toggle('on', tlOpen());
+  if (!tlOpen()) { el.hidden = true; return; }
+  const L = evList(), R = tlRows(L), col = {}, sl = sel && sel.kind === 'node' ? sel.id : null, mine = sl ? new Set(eventsOf(sl).map(e => e.id)) : null, sb = $('tlBody'), sx = sb ? sb.scrollLeft : 0, sy = sb ? sb.scrollTop : 0;
+  L.forEach((e, i) => { col[e.id] = i; });
+  let h = '<div class="tlhead"><b>Timeline</b><span class="muted">' + L.length + (L.length === 1 ? ' event' : ' events') + (mine ? ' · ' + mine.size + ' with ' + esc(nm(sl)) : '') + '</span><span class="sp"></span>' +
+    '<div class="seg" id="tlRowsSeg" title="Rows">' + [['one', 'One row'], ['faction', 'By faction'], ['place', 'By place']].map(m => '<button data-tlrows="' + m[0] + '"' + (R.mode === m[0] ? ' class="on"' : '') + '>' + m[1] + '</button>').join('') + '</div>' +
+    '<button class="btn sm pri" data-tl="new">+ Event</button><button class="btn sm" data-tl="close" aria-label="Close timeline">Close</button></div>';
+  const lab = R.mode !== 'one', w = (lab ? TL_LAB : 12) + Math.max(1, L.length) * TL_W + 20, hh = Math.max(1, R.rows.length) * TL_ROW + 8;
+  h += '<div id="tlBody"><div class="tlin" style="width:' + w + 'px;height:' + hh + 'px">';
+  R.rows.forEach((r, ri) => {
+    const y = ri * TL_ROW + 4, xs = r.ev.map(e => (lab ? TL_LAB : 12) + col[e.id] * TL_W);
+    if (xs.length) h += '<div class="tlline" style="top:' + (y + 44) + 'px;left:' + (xs[0] + 10) + 'px;width:' + (xs[xs.length - 1] - xs[0]) + 'px"></div>';
+    if (lab) h += '<div class="tllab' + (r.g && gkOf(r.g) === 'faction' ? ' fac' : '') + (r.g ? '' : ' none') + '" style="top:' + y + 'px;--gc:' + (r.g ? gcol(r.g) : '#7a807a') + '"' + (r.g ? ' data-node="' + esc(r.id) + '"' : '') + '>' + esc(r.name) + '</div>';
+    r.ev.forEach(e => { const rf = evRefs(e), cls = (sel && sel.kind === 'event' && sel.id === e.id ? ' sel' : '') + (mine ? (mine.has(e.id) ? ' hit' : ' dim') : '');
+      h += '<div class="ev' + cls + '" data-ev="' + esc(e.id) + '" style="left:' + ((lab ? TL_LAB : 12) + col[e.id] * TL_W) + 'px;top:' + y + 'px;--gc:' + GCOL[e.col || 0] + '">' + (e.when ? '<small>' + esc(e.when) + '</small>' : '') + '<b>' + esc(e.title || 'Untitled') + '</b>' +
+        (rf.length ? '<span class="evrefs">' + rf.slice(0, 3).map(id => { const n = B.nodes[id]; return isGrp(n) ? '<i class="g' + (gkOf(n) === 'faction' ? ' fac' : '') + '" style="--gc:' + gcol(n) + '">' + esc(n.name) + '</i>' : '<i>' + esc(nm(id)) + '</i>'; }).join('') + (rf.length > 3 ? '<i>+' + (rf.length - 3) + '</i>' : '') + '</span>' : '') + '</div>'; });
+  });
+  if (!L.length) h += '<div class="tlempty muted">No events yet.</div>';
+  h += '</div></div>';
+  el.innerHTML = h; el.hidden = false;
+  const nb = $('tlBody'); nb.scrollLeft = sx; nb.scrollTop = sy; tlPin();
+}
+let tdrag = null;
+$('timeline').addEventListener('click', e => {
+  const b = e.target.closest('[data-tl], [data-tlrows], .tllab[data-node]'); if (!b) return;
+  if (b.dataset.tlrows) { S.ui.tlRows = b.dataset.tlrows; saveLocalSoon(); renderTimeline(); return; }
+  if (b.dataset.node) { select({ kind: 'node', id: b.dataset.node }); if (!VIEW || VIEW.pos[b.dataset.node]) centreOn(b.dataset.node); return; }
+  if (b.dataset.tl === 'new') newEvent(sel && sel.kind === 'node' && B.nodes[sel.id] && B.nodes[sel.id].kind !== 'note' ? [sel.id] : []);
+  else if (b.dataset.tl === 'close') { S.ui.tl = false; saveLocalSoon(); renderTimeline(); }
+});
+$('timeline').addEventListener('pointerdown', e => {
+  const c = e.target.closest('.ev'); if (!c || e.button > 0) return;
+  tdrag = { id: c.dataset.ev, el: c, sx: e.clientX, x0: c.offsetLeft, moved: false, pid: e.pointerId }; try { c.setPointerCapture(e.pointerId); } catch (err) {}
+});
+$('timeline').addEventListener('pointermove', e => {
+  if (!tdrag || tdrag.pid !== e.pointerId) return; const dx = e.clientX - tdrag.sx;
+  if (!tdrag.moved) { if (Math.abs(dx) < 6) return; tdrag.moved = true; tdrag.el.classList.add('drag'); }
+  tdrag.el.style.left = (tdrag.x0 + dx) + 'px';
+});
+function tlEnd(e) {
+  if (!tdrag || tdrag.pid !== e.pointerId) return; const d = tdrag; tdrag = null;
+  if (!d.moved) { selectEvent(d.id); return; }
+  if (e.type === 'pointercancel') { renderTimeline(); return; }
+  const L = evList(), i = L.findIndex(q => q.id === d.id), lab = tlRows(L).mode !== 'one', j = clamp(Math.round((d.el.offsetLeft - (lab ? TL_LAB : 12)) / TL_W), 0, L.length - 1);
+  if (i < 0 || i === j) { renderTimeline(); return; }
+  const x = L[i]; L.splice(i, 1); L.splice(j, 0, x); L.forEach((q, k) => { q.t = k; }); sel = { kind: 'event', id: d.id }; commit();
+}
+$('timeline').addEventListener('scroll', e => { if (e.target.id === 'tlBody') tlPin(); }, true);
+function tlPin() { const b = $('tlBody'); if (b) b.querySelectorAll('.tllab').forEach(l => { l.style.transform = 'translateX(' + b.scrollLeft + 'px)'; }); }
+$('timeline').addEventListener('pointerup', tlEnd); $('timeline').addEventListener('pointercancel', tlEnd);
+$('timeline').addEventListener('wheel', e => { const b = e.target.closest('#tlBody'); if (!b) return; if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && b.scrollHeight <= b.clientHeight + 2) { b.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+$('btnTl').addEventListener('click', () => { S.ui.tl = !tlOpen(); saveLocalSoon(); renderTimeline(); });
+$('btnGweb').addEventListener('click', () => { if (VIEW && VIEW.kind === 'gweb') closeView(); else openGweb(); });
+/* the event picker: anything on the board, any roster unit, any place in the game */
+function evPicks(evId) {
+  PICK = new Map(); const ev = B.events[evId], have = new Set(ev ? ev.refs : []);
+  const add = (v, o) => { if (PICK.has(v)) v += ' (' + (o.id || o.e || '').replace(/^[rs]:/, '') + ')'; if (!PICK.has(v)) PICK.set(v, o); };
+  Object.values(B.nodes).filter(g => isGrp(g) && !have.has(g.id)).map(g => [pathOf(g) + (gkOf(g) === 'faction' ? ' (faction)' : ' (place)'), g.id]).sort((a, b) => a[0].localeCompare(b[0])).forEach(([v, id]) => add(v, { id }));
+  Object.values(B.nodes).filter(n => n.kind !== 'note' && !isGrp(n) && !have.has(n.id)).map(n => { const o = info(n); return [o.name + (n.nick && o.gname && o.gname !== o.name ? ' (' + o.gname + ')' : ''), n.id]; }).sort((a, b) => a[0].localeCompare(b[0])).forEach(([v, id]) => add(v, { id }));
+  ENTS.filter(e => !B.nodes[e.id]).slice().sort((a, b) => a.n.localeCompare(b.n)).forEach(e => add(e.n + ' (from the roster)', { e: e.id }));
+  PL.zones.forEach(z => { const game = (v, src, name, a) => { if (placeOnBoard(src, name)) return; add(v + ' (from the game)', { m: a }); };
+    game(z.n, placeSrc(z), z.n, [z.k, null, null]); z.d.forEach(d => { const s = subOf(z, d); game(z.n + ' › ' + (s ? s.n + ' › ' : '') + d.n, placeSrc(z, d.k), d.n, [z.k, d.k, null]); }); });
+  return [...PICK.keys()];
+}
+function evPickChosen(t) {
+  const p = PICK.get(t.value), ev = sel && sel.kind === 'event' && B.events[sel.id]; if (!p || !ev) return false;
+  let id = p.id;
+  if (!id && p.e) { const e = ENT[p.e], q = freeSpot(viewCentre(), takenList()); id = e.id; B.nodes[id] = e.kind === 'cast' ? { id, kind: 'cast', cast: e.c.id, x: q.x, y: q.y, note: '' } : Object.assign({ id, kind: 'race', race: e.r.k, x: q.x, y: q.y, note: '' }, e.r.v.length > 1 ? { g: e.v.g } : {}); }
+  if (!id && p.m) { id = addFromMap(p.m[0], p.m[1], p.m[2], false); sel = { kind: 'event', id: ev.id }; }
+  if (!id) return true;
+  if (!ev.refs.includes(id)) ev.refs.push(id); commit(); toast(nm(id) + ' is linked to ' + (ev.title || 'the event'));
+  setTimeout(() => { const i = $('pickEv'); if (i) i.focus(); }, 0); return true;
+}
 
 /* ───────── pointer handling on the board ───────── */
 const ptrs = new Map(); let drag = null, pinch = null, raf = 0;
@@ -999,7 +1218,8 @@ stage.addEventListener('pointerdown', e => {
   if (ptrs.size === 2) { const a = [...ptrs.values()]; if (drag && drag.kind === 'node' && drag.moved) commit(); drag = null; clearTemp(); pinch = { d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1, k: B.view.k, cx: (a[0].x + a[1].x) / 2, cy: (a[0].y + a[1].y) / 2 }; return; }
   if (ptrs.size > 2) return;
   const p = toWorld(e.clientX, e.clientY), base = { pid: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false };
-  if (VIEW) { if (nid && e.button === 0 && VIEW.pos[nid]) { const q = VIEW.pos[nid]; drag = Object.assign(base, { kind: 'vnode', nid, px: p.x, py: p.y, x0: q.x, y0: q.y }); } else if (lid && e.button === 0) drag = Object.assign(base, { kind: 'edge', lid, vx: B.view.x, vy: B.view.y }); else drag = Object.assign(base, { kind: 'pan', vx: B.view.x, vy: B.view.y }); return; }
+  if (VIEW && VIEW.kind === 'gweb' && nodeEl && nid && VIEW.pos[nid] && e.button === 0 && (linkMode || e.shiftKey || onHandle)) { drag = Object.assign(base, { kind: 'link', from: nid, tap: linkMode && !onHandle }); return; }
+  if (VIEW) { if (nid && e.button === 0 && VIEW.pos[nid]) { const ids = VIEW.kind === 'gweb' && !VIEW.fold && isGrp(B.nodes[nid]) && !e.altKey ? [nid].concat(descOf(nid).map(k => k.id)).filter(id => VIEW.pos[id]) : [nid]; drag = Object.assign(base, { kind: 'vnode', nid, px: p.x, py: p.y, grp: ids.map(id => ({ id, x: VIEW.pos[id].x, y: VIEW.pos[id].y })) }); } else if (lid && e.button === 0) drag = Object.assign(base, { kind: 'edge', lid, vx: B.view.x, vy: B.view.y }); else drag = Object.assign(base, { kind: 'pan', vx: B.view.x, vy: B.view.y }); return; }
   if (nodeEl && e.button === 0 && (linkMode || e.shiftKey || onHandle)) drag = Object.assign(base, { kind: 'link', from: nid, tap: linkMode && !onHandle });
   else if (nid && e.button === 0) { const n = B.nodes[nid], gset = isGrp(n) && isOrgGrp(n) !== e.altKey ? [n].concat(descOf(nid)) : null, HMd = gset ? homeMap(orgK()) : null, grp = gset ? [...new Set(gset.map(g => g.id).concat(...gset.map(g => Object.values(B.links).filter(l => l.type === 'member' && l.b === g.id && !l.secret && (HMd[l.a] === g.id || !isOrgGrp(g) || isGrp(B.nodes[l.a]))).map(l => l.a))))] : isGrp(n) ? [nid] : e.altKey && n.kind !== 'note' ? groupOf(nid) : multi.has(nid) ? [...multi].filter(id => B.nodes[id]) : [nid]; const gids = gset ? new Set(gset.map(g => g.id)) : null; drag = Object.assign(base, { kind: 'node', nid, px: p.x, py: p.y, grp: grp.filter(id => B.nodes[id]).map(id => ({ id, x: B.nodes[id].x, y: B.nodes[id].y })), cps: gids ? CP.filter(c => gids.has(c.g.id)).map(c => ({ lid: c.l.id, x: c.x, y: c.y })) : [] }); }
   else if (lid && e.button === 0) drag = Object.assign(base, { kind: 'edge', lid, vx: B.view.x, vy: B.view.y });
@@ -1015,7 +1235,7 @@ stage.addEventListener('pointermove', e => {
   if (!drag.moved) { if (Math.hypot(dx, dy) < 5) return; drag.moved = true; if (drag.kind === 'link') stage.classList.add('linking'); if (drag.kind === 'pan' || drag.kind === 'edge') stage.classList.add('panning'); }
   const p = toWorld(e.clientX, e.clientY);
   if (drag.kind === 'pan' || drag.kind === 'edge') { B.view.x = drag.vx + dx; B.view.y = drag.vy + dy; applyView(); }
-  else if (drag.kind === 'vnode') { const q = VIEW && VIEW.pos[drag.nid]; if (!q) return; q.x = Math.round(drag.x0 + p.x - drag.px); q.y = Math.round(drag.y0 + p.y - drag.py); const el = elById.get(drag.nid); if (el) { el.style.left = q.x + 'px'; el.style.top = q.y + 'px'; } if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawEdges(); }); }
+  else if (drag.kind === 'vnode') { if (!VIEW) return; drag.grp.forEach(g => { const q = VIEW.pos[g.id]; if (!q) return; q.x = Math.round(g.x + p.x - drag.px); q.y = Math.round(g.y + p.y - drag.py); if (VIEW.kind === 'gweb' && B.gweb && B.gweb[VIEW.gk]) B.gweb[VIEW.gk][g.id] = [q.x, q.y]; const el = elById.get(g.id); if (el) { el.style.left = q.x + 'px'; el.style.top = q.y + 'px'; } }); if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawEdges(); }); }
   else if (drag.kind === 'node') {
     const mx = p.x - drag.px, my = p.y - drag.py;
     drag.grp.forEach(g => { const n = B.nodes[g.id]; if (!n) return; n.x = Math.round(g.x + mx); n.y = Math.round(g.y + my); const el = elById.get(n.id); if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; if (drag.grp.length > 1) el.classList.add('grab'); } });
@@ -1024,7 +1244,7 @@ stage.addEventListener('pointermove', e => {
   } else if (drag.kind === 'lasso') {
     drag.pts.push(p); $('temp').setAttribute('d', 'M' + drag.pts.map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)).join('L') + 'Z');
   } else if (drag.kind === 'link') {
-    const a = B.nodes[drag.from], hit = nodeAt(p, drag.from), q = hit ? B.nodes[hit] : p;
+    const a = vp(B.nodes[drag.from]), hit = nodeAt(p, drag.from), q = hit ? vp(B.nodes[hit]) : p;
     $('temp').setAttribute('d', 'M' + a.x + ' ' + a.y + 'L' + q.x + ' ' + q.y);
     nodesEl.querySelectorAll('.node.drop').forEach(n => n.classList.remove('drop')); if (hit && elById.get(hit)) elById.get(hit).classList.add('drop');
   }
@@ -1038,13 +1258,14 @@ function endPtr(e) {
   const d = drag; drag = null; clearTemp();
   if (e.type === 'pointercancel') { if (d.kind === 'node' && d.moved) commit(); return; }
   if (d.kind === 'lasso') { if (d.moved && d.pts.length > 2) { setMulti(Object.values(B.nodes).filter(n => inPoly(n.x, n.y, d.pts)).map(n => n.id)); if (sel) select(null); } else if (multi.size) setMulti([]); return; }
-  if (d.kind === 'vnode') { if (!d.moved) tapNode(d.nid); }
+  if (d.kind === 'vnode') { if (!d.moved) tapNode(d.nid); else if (VIEW && VIEW.kind === 'gweb') commit({ light: true }); }
   else if (d.kind === 'node') { if (d.moved) { sel = { kind: 'node', id: d.nid }; commit(); } else tapNode(d.nid); }
   else if (d.kind === 'link') {
     if (d.moved) { const hit = nodeAt(toWorld(e.clientX, e.clientY), d.from); if (hit) createLink(d.from, hit); }
     else if (d.tap) { if (pendingSrc && pendingSrc !== d.from) createLink(pendingSrc, d.from); else { pendingSrc = pendingSrc === d.from ? null : d.from; renderNodes(); if (pendingSrc) toast('Now tap the unit to tie ' + nm(d.from) + ' to'); } }
     else select({ kind: 'node', id: d.from });
   }
+  else if (d.kind === 'edge' && /^bx:/.test(d.lid)) { if (!d.moved) select({ kind: 'bundle', id: d.lid }); }
   else if (d.kind === 'edge') { if (!d.moved) { const now = Date.now(), dbl = lastTap.id === d.lid && now - lastTap.t < 420; lastTap = { id: d.lid, t: now }; select({ kind: 'link', id: d.lid }); if (dbl) startEdit(d.lid); } }
   else if (!d.moved) { if (pendingSrc) { pendingSrc = null; } multi.clear(); if (sel) select(null); else renderNodes(); }
 }
@@ -1095,7 +1316,10 @@ function panelClick(e) {
   if (b.dataset.gk) { B.nodes[sel.id].gk = b.dataset.gk; return commit(); }
   if (b.dataset.gcol) { B.nodes[sel.id].col = +b.dataset.gcol; delete B.nodes[sel.id].hex; return commit(); }
   if (b.dataset.link) { select({ kind: 'link', id: b.dataset.link }); return; }
-  if (b.dataset.node) { select({ kind: 'node', id: b.dataset.node }); centreOn(b.dataset.node); return; }
+  if (b.dataset.evunref) { const ev = sel && B.events && B.events[sel.id]; if (ev) { ev.refs = ev.refs.filter(r => r !== b.dataset.evunref); commit(); } return; }
+  if (b.dataset.evcol) { const ev = sel && B.events && B.events[sel.id]; if (ev) { ev.col = +b.dataset.evcol; commit(); } return; }
+  if (b.dataset.ev) { selectEvent(b.dataset.ev); return; }
+  if (b.dataset.node) { select({ kind: 'node', id: b.dataset.node }); if (!VIEW || VIEW.pos[b.dataset.node]) centreOn(b.dataset.node); return; }
   if (b.dataset.notecol) { B.nodes[sel.id].color = b.dataset.notecol; return commit(); }
   act(b.dataset.act);
 }
@@ -1106,12 +1330,16 @@ $('banner').addEventListener('click', e => { const b = e.target.closest('button'
 $('inspector').addEventListener('input', e => {
   const t = e.target;
   if ((t.id === 'pickGrp' || t.id === 'pickUnit') && PICK.has(t.value)) { pickChosen(t); return; }
+  if (t.id === 'pickEv') { if (PICK.has(t.value)) evPickChosen(t); return; }
+  { const ev = sel && sel.kind === 'event' && B.events && B.events[sel.id]; if (ev && /^ev(Title|When|Text)$/.test(t.id)) { ev[t.id === 'evTitle' ? 'title' : t.id === 'evWhen' ? 'when' : 'text'] = t.value; if (t.id !== 'evText') renderTimeline(); saveLocalSoon(); return; } }
   if (t.id === 'insLabel' && sel && B.links[sel.id]) { B.links[sel.id].label = t.value; drawEdges(); }
   else if (t.id === 'insNote' && sel && B.nodes[sel.id]) B.nodes[sel.id].note = t.value;
 });
 $('inspector').addEventListener('change', e => {
   const t = e.target, n = sel && sel.kind === 'node' && B.nodes[sel.id];
   if (t.id === 'pickGrp' || t.id === 'pickUnit') { if (t.value && !pickChosen(t)) toast('Pick one from the list'); return; }
+  if (t.id === 'pickEv') { if (t.value && !evPickChosen(t)) toast('Pick one from the list'); return; }
+  if (/^ev(Title|When|Text)$/.test(t.id)) { const ev = sel && B.events && B.events[sel.id]; if (ev) { ev.title = ev.title.trim(); ev.when = ev.when.trim(); } commit({ light: true }); renderTimeline(); return; }
   if (t.id === 'insLabel' && sel && B.links[sel.id]) { B.links[sel.id].label = t.value.trim(); return commit({ light: true }); }
   if (t.id === 'insNote') return commit({ light: true });
   if (t.id === 'insSecret') return setLink({ secret: t.checked });
@@ -1174,6 +1402,7 @@ function gameExport(all) {
       d.defenders.forEach(it => s.defendedBy.push(row(it))); d.maybe.forEach(it => s.mightBeDefendedBy.push(row(it))); d.against.forEach(it => s.attackedBy.push(row(it))); d.avoid.forEach(it => s.avoidedBy.push(row(it)));
     });
   });
+  out.events = []; boards.forEach(b => Object.values(b.events || {}).sort((x, y) => x.t - y.t).forEach(ev => out.events.push({ title: ev.title, when: ev.when, what: ev.text, board: b.name, links: ev.refs.filter(id => b.nodes[id]).map(id => isGrp(b.nodes[id]) ? (gkOf(b.nodes[id]) === 'faction' ? 'faction:' : 'place:') + b.nodes[id].name : ref(b, id).key) })));
   /* allied / family components between races, in the shape of HQ_NPC_TEMPERS.groups (race keys, as there) */
   const seen = new Set();
   Object.keys(adj).sort().forEach(k => { if (seen.has(k)) return; const comp = [], st = [k]; while (st.length) { const c = st.pop(); if (seen.has(c)) continue; seen.add(c); comp.push(c); adj[c].forEach(x => st.push(x)); } if (comp.length > 1) out.groups['web_' + comp.sort()[0].replace(/[^a-z0-9]+/g, '_')] = comp; });
@@ -1194,6 +1423,10 @@ function act(a) {
     case 'renameBoard': modal('<h2>Name this board</h2><input class="inp" id="mName" maxlength="80" autofocus value="' + esc(B.name) + '"><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="ok">Save name</button></div>', d => { const ok = () => { const v = $('mName').value.trim(); if (v && v !== B.name) { B.name = v; delete B.sample; commit(); } closeModal(); }; d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'ok') ok(); else if (x === 'cancel') closeModal(); }); $('mName').addEventListener('keydown', e => { if (e.key === 'Enter') ok(); }); $('mName').select(); }); break;
     case 'delBoard': { const n = Object.keys(B.nodes).length; modal('<h2>Delete “' + esc(B.name) + '”?</h2><p>' + (n ? 'Its ' + n + ' pinned items and ' + Object.keys(B.links).length + ' ties go with it. ' : '') + 'Undo brings it back until you close the page.</p><div class="acts"><button class="btn" data-x="cancel" autofocus>Keep it</button><button class="btn pri" data-x="ok">Delete board</button></div>', d => d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'ok') { closeModal(); deleteBoard(B.id); } else if (x === 'cancel') closeModal(); })); break; }
     case 'arrGroups': sortGroups(); break;
+    case 'evNew': newEvent(sel && sel.kind === 'node' && B.nodes[sel.id] ? [sel.id] : sel && sel.kind === 'event' && B.events[sel.id] ? B.events[sel.id].refs.slice() : []); break;
+    case 'evEarlier': if (sel) evMove(sel.id, -1); break; case 'evLater': if (sel) evMove(sel.id, 1); break;
+    case 'evShow': { const ev = sel && B.events && B.events[sel.id]; if (ev) evFit(ev); break; }
+    case 'vGweb': openGweb(); break;
     case 'vFocus': if (sel) viewFocus(sel.id, VIEW && VIEW.kind === 'focus' ? VIEW.hops : 1); break;
     case 'vPath': if (sel) { pathFrom = sel.id; $('inspector').classList.remove('open'); toast('Now tap the unit to find the way to'); } break;
     case 'vZones': viewZones(); break; case 'vCommand': viewTree('command'); break; case 'vFamily': viewTree('family'); break;
@@ -1306,7 +1539,7 @@ $('btnMap').addEventListener('click', openMap);
 /* the world map under a board sorted by places (B.mapK = board pixels a map square) */
 let bgDrawn = false;
 function renderMapBg() {
-  const cv = $('bgMap'), W = PL.world, k = W && orgK() === 'place' && !B.mapHide && B.mapK; if (!cv) return;
+  const cv = $('bgMap'), W = PL.world, k = W && orgK() === 'place' && !B.mapHide && B.mapK && !(VIEW && VIEW.kind === 'gweb'); if (!cv) return;
   cv.hidden = !k; if (!k) return;
   if (!bgDrawn) { const S = 4, x = cv.getContext('2d'); cv.width = W.w * S; cv.height = W.h * S; x.fillStyle = '#dfe4de'; x.fillRect(0, 0, cv.width, cv.height);
     W.g.forEach((row, j) => { for (let i = 0; i < row.length; i++) { x.fillStyle = TERR[W.key[row[i]]] || '#dfe4de'; x.fillRect(i * S, j * S, S, S); } }); bgDrawn = true; }
@@ -1343,6 +1576,8 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'l' || e.key === 'L') $('btnLink').click();
   else if (e.key === 'g' || e.key === 'G') $('btnGroup').click();
   else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); addNote(); }
+  else if (e.key === 't' || e.key === 'T') $('btnTl').click();
+  else if (e.key === 'w' || e.key === 'W') $('btnGweb').click();
   else if (e.key === 'f' || e.key === 'F') fit();
   else if (e.key === '/') { e.preventDefault(); $('roster').classList.add('open'); $('q').focus(); }
   else if (e.key === 'Enter' && sel && sel.kind === 'link') { e.preventDefault(); startEdit(sel.id); }
