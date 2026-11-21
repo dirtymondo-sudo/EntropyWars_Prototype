@@ -285,6 +285,11 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
 }
 
 /* the group web + the timeline (2026-11-21) */
+.pickl { margin-top: -6px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); box-shadow: var(--shadow); max-height: 280px; overflow-y: auto; }
+.pickl[hidden] { display: none; }
+.pickl .po { padding: 6px 10px; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--panel2); }
+.pickl .po.on, .pickl .po:hover { background: var(--accent-soft); }
+.pickl .po.none { color: var(--ink3); cursor: default; }
 .tag.btag { font-size: 12.5px; padding: 2px 8px; font-weight: 600; }
 .tag.btag b { font-size: 10.5px; }
 .hull.gw { opacity: .1; stroke-width: 210; }
