@@ -104,7 +104,7 @@ function num(v, d) { v = +v; return Number.isFinite(v) ? v : d; }
 function sanitizeBoard(b) {
   const o = { id: String(b.id || uid('b')).replace(/[^A-Za-z0-9_\-]/g, '_'), name: String(b.name || 'Board').slice(0, 80), t: num(b.t, 0), nodes: {}, links: {}, view: null };
   if (b.sample) o.sample = true;
-  if (b.view && Number.isFinite(+b.view.k)) o.view = { x: num(b.view.x, 0), y: num(b.view.y, 0), k: clamp(num(b.view.k, 1), .15, 2.5) };
+  if (b.view && Number.isFinite(+b.view.k)) o.view = { x: num(b.view.x, 0), y: num(b.view.y, 0), k: clamp(num(b.view.k, 1), .02, 2.5) };
   const remap = {};
   Object.values(b.nodes || {}).forEach(n => {
     if (!n || !n.id) return;
@@ -371,7 +371,7 @@ function applyView() {
 function toWorld(cx, cy) { const r = stage.getBoundingClientRect(), v = B.view; return { x: (cx - r.left - v.x) / v.k, y: (cy - r.top - v.y) / v.k }; }
 function viewCentre() { const r = stage.getBoundingClientRect(); return toWorld(r.left + r.width / 2, r.top + r.height / 2); }
 function zoomAt(cx, cy, f) {
-  const v = B.view, r = stage.getBoundingClientRect(), k = clamp(v.k * f, .15, 2.5), px = cx - r.left, py = cy - r.top;
+  const v = B.view, r = stage.getBoundingClientRect(), k = clamp(v.k * f, .02, 2.5), px = cx - r.left, py = cy - r.top;
   v.x = px - (px - v.x) * (k / v.k); v.y = py - (py - v.y) * (k / v.k); v.k = k; applyView();
 }
 function bbox(ids) {
@@ -383,7 +383,7 @@ function fit(silent) {
   const r0 = stage.getBoundingClientRect(), b = bbox(), v = B.view, r = { width: r0.width, height: r0.height - tlH() };
   if (!r.width) return;
   if (!b) { v.x = r.width / 2; v.y = r.height / 2; v.k = 1; }
-  else { const pad = 40, k = clamp(Math.min((r.width - pad * 2) / (b.x1 - b.x0), (r.height - pad * 2 - 40) / (b.y1 - b.y0)), .15, 1.15); v.k = k; v.x = r.width / 2 - (b.x0 + b.x1) / 2 * k; v.y = r.height / 2 - (b.y0 + b.y1) / 2 * k; }
+  else { const pad = 40, k = clamp(Math.min((r.width - pad * 2) / (b.x1 - b.x0), (r.height - pad * 2 - 40) / (b.y1 - b.y0)), .02, 1.15); v.k = k; v.x = r.width / 2 - (b.x0 + b.x1) / 2 * k; v.y = r.height / 2 - (b.y0 + b.y1) / 2 * k; }
   if (!silent) applyView();
 }
 function centreOn(id) { const n0 = B.nodes[id]; if (!n0) return; const n = vp(n0); const r = stage.getBoundingClientRect(), v = B.view; v.x = r.width / 2 - n.x * v.k; v.y = r.height / 2 - n.y * v.k; applyView(); }
@@ -569,7 +569,7 @@ function renderInspector() {
       '<div><h4>Colour</h4><div class="gsw">' + GCOL.map((c, k) => '<button data-evcol="' + k + '"' + ((ev.col || 0) === k ? ' class="on"' : '') + ' style="--gc:' + c + '" aria-label="Colour ' + (k + 1) + '"></button>').join('') + '</div></div>' +
       '<label class="field"><span>What happens</span><textarea class="inp" id="evText" style="min-height:90px">' + esc(ev.text) + '</textarea></label>' +
       '<div><h4>Linked to (' + rf.length + ')</h4>' + (rf.length ? '<div class="prow">' + rf.map(id => { const g = B.nodes[id]; return (isGrp(g) ? '<span class="gchip sm' + (gkOf(g) === 'faction' ? ' fac' : '') + ' evref" style="--gc:' + gcol(g) + '"><button data-node="' + esc(id) + '">' + esc(g.name) + '</button>' : '<span class="evref unit"><button data-node="' + esc(id) + '">' + esc(nm(id)) + '</button>') + '<button class="x" data-evunref="' + esc(id) + '" aria-label="Unlink">\u00d7</button></span>'; }).join('') + '</div>' : '<p class="muted">Nothing yet.</p>') + '</div>' +
-      '<label class="field"><span>Link a faction, place, unit or character</span><input class="inp" id="pickEv" list="dlPickEv" autocomplete="off" placeholder="Type a name: Illuminati, Hell, Pope\u2026"></label><datalist id="dlPickEv">' + evPicks(ev.id).map(v => '<option value="' + esc(v) + '"></option>').join('') + '</datalist>' +
+      '<label class="field"><span>Link a faction, place, unit or character</span><input class="inp" id="pickEv" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" placeholder="Type a name: Illuminati, Hell, Pope\u2026"></label>' + (evPicks(ev.id), '') + '<div class="pickl" role="listbox" hidden></div>' +
       '<div class="prow"><button class="btn sm" data-act="evEarlier"' + (i <= 0 ? ' disabled' : '') + '>\u2190 Earlier</button><button class="btn sm" data-act="evLater"' + (i >= L.length - 1 ? ' disabled' : '') + '>Later \u2192</button><button class="btn sm" data-act="evShow"' + (rf.length ? '' : ' disabled') + '>Show on the board</button></div>' +
       '<div class="prow"><button class="btn" data-act="evNew">+ Event after this</button><button class="btn danger" data-act="delSel">Delete this event</button></div>';
   } else if (sel && sel.kind === 'link' && B.links[sel.id]) {
@@ -595,7 +595,7 @@ function renderInspector() {
       h += '<label class="field"><span>Inside</span><select class="sel" id="gParent"><option value="">Nowhere</option>' + opts.map(g => '<option value="' + esc(g.id) + '"' + (par && par.id === g.id ? ' selected' : '') + '>' + esc(g.name) + '</option>').join('') + '</select></label>';
       if (kids.length) h += '<div><h4>Inside it (' + kids.length + ')</h4><div class="prow">' + kids.sort((a, b) => a.name.localeCompare(b.name)).map(g => '<button class="gchip sm' + (gkOf(g) === 'faction' ? ' fac' : '') + '" data-node="' + esc(g.id) + '" style="--gc:' + gcol(g) + '">' + esc(g.name) + '</button>').join('') + '</div></div>'; }
     h += '<div><h4>Members (' + mem.length + ')</h4>' + (mem.length ? '<ul class="rel gmem">' + mem.map(l => '<li data-node="' + esc(l.a) + '"' + (l.secret ? ' class="sec"' : '') + '><span>' + esc(nm(l.a)) + '</span><button class="gsec' + (l.secret ? ' on' : '') + '" data-gsecret="' + esc(l.id) + '">secret</button><button class="x" data-unlink="' + esc(l.id) + '" aria-label="Take out of the group">×</button></li>').join('') + '</ul>' : '<p class="muted">None yet.</p>') + '</div>';
-    h += '<label class="field"><span>Add a unit</span><input class="inp" id="pickUnit" list="dlPickUnit" autocomplete="off" placeholder="Type a name: Librarian, Pope\u2026"></label><datalist id="dlPickUnit">' + unitPicks(n.id).map(v => '<option value="' + esc(v) + '"></option>').join('') + '</datalist>';
+    h += '<label class="field"><span>Add a unit</span><input class="inp" id="pickUnit" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" placeholder="Type a name: Librarian, Pope\u2026"></label>' + (unitPicks(n.id), '') + '<div class="pickl" role="listbox" hidden></div>';
     if (ties.length) h += '<div><h4>Ties</h4><ul class="rel">' + relList(ties) + '</ul></div>';
     { const es = eventsOf(n.id); h += '<div><h4>Timeline' + (es.length ? ' (' + es.length + ')' : '') + '</h4>' + (es.length ? '<ul class="rel">' + es.map(ev => '<li data-ev="' + esc(ev.id) + '"><i style="--c:' + GCOL[ev.col || 0] + '"></i><span>' + (ev.when ? '<b>' + esc(ev.when) + '</b> ' : '') + esc(ev.title || 'Untitled') + '</span></li>').join('') + '</ul>' : '') + '<button class="btn sm" data-act="evNew">+ Event with ' + esc(isGrp(n) ? n.name : info(n).name) + '</button></div>'; }
     h += '<label class="field"><h4 style="margin:0">Notes</h4><textarea class="inp" id="insNote">' + esc(n.note || '') + '</textarea></label>';
@@ -622,7 +622,7 @@ function renderInspector() {
     }
     const gin = Object.values(B.links).filter(l => l.type === 'member' && l.a === n.id && isGrp(B.nodes[l.b])).map(l => B.nodes[l.b]);
     const gsec = new Set(Object.values(B.links).filter(l => l.type === 'member' && l.a === n.id && l.secret).map(l => l.b));
-    h += '<label class="field"><span>Add to a place or a faction</span><input class="inp" id="pickGrp" list="dlPickGrp" autocomplete="off" placeholder="Type a name: Hell, The Bowl, Illuminati\u2026"></label><datalist id="dlPickGrp">' + grpPicks(n.id).map(v => '<option value="' + esc(v) + '"></option>').join('') + '</datalist>';
+    h += '<label class="field"><span>Add to a place or a faction</span><input class="inp" id="pickGrp" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" placeholder="Type a name: Hell, The Bowl, Illuminati\u2026"></label>' + (grpPicks(n.id), '') + '<div class="pickl" role="listbox" hidden></div>';
     if (gin.length) h += '<div><h4>Groups</h4><div class="prow">' + ['place', 'faction'].map(k => gin.filter(g => gkOf(g) === k).map(g => '<button class="gchip sm' + (k === 'faction' ? ' fac' : '') + (gsec.has(g.id) ? ' sec' : '') + '" data-node="' + esc(g.id) + '" style="--gc:' + gcol(g) + '">' + (gsec.has(g.id) ? '<i>secretly</i> ' : '') + esc(g.name) + '</button>').join('')).join('') + '</div></div>';
     h += '<label class="field"><h4 style="margin:0">Wants, fears, motive</h4><textarea class="inp" id="insNote" placeholder="What does ' + name + ' want on this board?">' + esc(n.note || '') + '</textarea></label>';
     h += '<div><h4>Ties on this board</h4>' + (d.all.some(it => it.l.type !== 'member') ? '<ul class="rel">' + relList(d.all.filter(it => it.l.type !== 'member')) + '</ul>' : '<p class="muted">None yet. Drag from the red handle on ' + name + ' to another unit.</p>') + '</div>';
@@ -1111,7 +1111,7 @@ function newEvent(refs) {
 function selectEvent(id) { if (!B.events || !B.events[id]) return; if (!tlOpen()) { S.ui.tl = true; saveLocalSoon(); } select({ kind: 'event', id }); setTimeout(() => tlScrollTo(id), 0); }
 function tlScrollTo(id) { const el = $('tlBody') && $('tlBody').querySelector('[data-ev="' + id + '"]'); if (el) { const b = $('tlBody'), x = el.offsetLeft - b.clientWidth / 2 + el.offsetWidth / 2; b.scrollTo({ left: Math.max(0, x), behavior: 'smooth' }); } }
 function evMove(id, d) { const L = evList(), i = L.findIndex(e => e.id === id), j = i + d; if (i < 0 || j < 0 || j >= L.length) return; const x = L[i]; L.splice(i, 1); L.splice(j, 0, x); L.forEach((e, k) => { e.t = k; }); commit(); setTimeout(() => tlScrollTo(id), 0); }
-function evFit(ev) { const ids = [...evLight(ev)].filter(id => !VIEW || VIEW.pos[id]); if (!ids.length) return toast('Nothing it names is on this view'); const r = stage.getBoundingClientRect(), b = bbox(ids), v = B.view, h = r.height - tlH(); const k = clamp(Math.min((r.width - 80) / (b.x1 - b.x0), (h - 80) / (b.y1 - b.y0)), .15, 1.15); v.k = k; v.x = r.width / 2 - (b.x0 + b.x1) / 2 * k; v.y = h / 2 - (b.y0 + b.y1) / 2 * k; applyView(); }
+function evFit(ev) { const ids = [...evLight(ev)].filter(id => !VIEW || VIEW.pos[id]); if (!ids.length) return toast('Nothing it names is on this view'); const r = stage.getBoundingClientRect(), b = bbox(ids), v = B.view, h = r.height - tlH(); const k = clamp(Math.min((r.width - 80) / (b.x1 - b.x0), (h - 80) / (b.y1 - b.y0)), .02, 1.15); v.k = k; v.x = r.width / 2 - (b.x0 + b.x1) / 2 * k; v.y = h / 2 - (b.y0 + b.y1) / 2 * k; applyView(); }
 const tlH = () => tlOpen() && !$('timeline').hidden ? $('timeline').offsetHeight : 0;
 const TL_W = 188, TL_ROW = 96, TL_LAB = 132;
 function tlRows(L) {
@@ -1332,16 +1332,14 @@ $('linkpop').addEventListener('pointerdown', e => { if (editing) e.preventDefaul
 $('banner').addEventListener('click', e => { const b = e.target.closest('button'); if (b) act(b.dataset.act); });
 $('inspector').addEventListener('input', e => {
   const t = e.target;
-  if ((t.id === 'pickGrp' || t.id === 'pickUnit') && PICK.has(t.value)) { pickChosen(t); return; }
-  if (t.id === 'pickEv') { if (PICK.has(t.value)) evPickChosen(t); return; }
+  if (/^pick(Grp|Unit|Ev)$/.test(t.id)) { pickSel = 0; pickList(t); return; }
   { const ev = sel && sel.kind === 'event' && B.events && B.events[sel.id]; if (ev && /^ev(Title|When|Text)$/.test(t.id)) { ev[t.id === 'evTitle' ? 'title' : t.id === 'evWhen' ? 'when' : 'text'] = t.value; if (t.id !== 'evText') renderTimeline(); saveLocalSoon(); return; } }
   if (t.id === 'insLabel' && sel && B.links[sel.id]) { B.links[sel.id].label = t.value; drawEdges(); }
   else if (t.id === 'insNote' && sel && B.nodes[sel.id]) B.nodes[sel.id].note = t.value;
 });
 $('inspector').addEventListener('change', e => {
   const t = e.target, n = sel && sel.kind === 'node' && B.nodes[sel.id];
-  if (t.id === 'pickGrp' || t.id === 'pickUnit') { if (t.value && !pickChosen(t)) toast('Pick one from the list'); return; }
-  if (t.id === 'pickEv') { if (t.value && !evPickChosen(t)) toast('Pick one from the list'); return; }
+  if (/^pick(Grp|Unit|Ev)$/.test(t.id)) return;
   if (/^ev(Title|When|Text)$/.test(t.id)) { const ev = sel && B.events && B.events[sel.id]; if (ev) { ev.title = ev.title.trim(); ev.when = ev.when.trim(); } commit({ light: true }); renderTimeline(); return; }
   if (t.id === 'insLabel' && sel && B.links[sel.id]) { B.links[sel.id].label = t.value.trim(); return commit({ light: true }); }
   if (t.id === 'insNote') return commit({ light: true });
@@ -1351,6 +1349,32 @@ $('inspector').addEventListener('change', e => {
   if (t.id === 'cNick') { const v = t.value.trim(); if (v && v !== info(Object.assign({}, n, { nick: '' })).gname) n.nick = v; else delete n.nick; } else if (t.id === 'cName') n.name = t.value.trim() || 'Unnamed'; else if (t.id === 'cSub') n.sub = t.value.trim(); else if (t.id === 'cShape') n.shape = t.value; else if (t.id === 'cFaction') n.faction = t.value; else if (t.id === 'cRace') { if (t.value) n.race = t.value; else delete n.race; } else return;
   commit();
 });
+
+/* THE PICK LIST (2026-11-21, mondo: "typing the name of a character to add them to a place/group does not seem to be working"):
+   the browser's own datalist only matches the start of a word, so a unit with a story name ("Madame Zora (Fortune Teller (F))") never
+   came up for "fortune". Our own list: every word typed may sit anywhere in the name, the game name or the race key. */
+const pnorm = t => String(t).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+function pickText(v) { const p = PICK.get(v) || {}, n = p.id && B.nodes[p.id], e = p.e && ENT[p.e]; let x = v;
+  if (n && n.kind !== 'note') { const o = info(n); x += ' ' + (o.gname || '') + ' ' + (n.race || '') + ' ' + (n.cast || ''); }
+  if (e) x += ' ' + e.n + ' ' + (e.r ? e.r.k : e.c ? e.c.id : ''); return pnorm(x); }
+let pickSel = 0;
+function pickList(t) {
+  const box = t.closest('label') && t.closest('label').nextElementSibling; if (!box || !box.classList.contains('pickl')) return;
+  const q = pnorm(t.value), ws = q ? q.split(' ') : [];
+  const hits = [...PICK.keys()].map(v => { const tx = pickText(v), lv = pnorm(v); if (!ws.every(w => tx.includes(w))) return null; return { v, r: !q ? 3 : lv.startsWith(q) ? 0 : ws.every(w => (' ' + tx).includes(' ' + w)) ? 1 : 2 }; }).filter(Boolean)
+    .sort((a, b) => a.r - b.r || a.v.localeCompare(b.v)).slice(0, 60);
+  pickSel = clamp(pickSel, 0, Math.max(0, hits.length - 1));
+  box.innerHTML = hits.length ? hits.map((h, i) => '<div class="po' + (i === pickSel ? ' on' : '') + '" role="option" data-pv="' + esc(h.v) + '">' + esc(h.v) + '</div>').join('') : '<div class="po none">No match</div>';
+  const was = box.hidden; box.hidden = false; if (was) box.scrollIntoView({ block: 'nearest' }); const on = box.querySelector('.po.on'); if (on) on.scrollIntoView({ block: 'nearest' });
+}
+function pickTake(t, v) { t.value = v; const box = t.closest('label').nextElementSibling; if (box) box.hidden = true; if (t.id === 'pickEv') evPickChosen(t); else pickChosen(t); }
+$('inspector').addEventListener('focusin', e => { if (/^pick(Grp|Unit|Ev)$/.test(e.target.id)) { pickSel = 0; pickList(e.target); } });
+$('inspector').addEventListener('focusout', e => { if (/^pick(Grp|Unit|Ev)$/.test(e.target.id)) { const t = e.target; setTimeout(() => { const box = t.closest('label') && t.closest('label').nextElementSibling; if (box && document.activeElement !== t) box.hidden = true; }, 150); } });
+$('inspector').addEventListener('keydown', e => { const t = e.target; if (!/^pick(Grp|Unit|Ev)$/.test(t.id)) return; const box = t.closest('label').nextElementSibling, n = box ? box.querySelectorAll('.po[data-pv]').length : 0;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); pickSel = clamp(pickSel + (e.key === 'ArrowDown' ? 1 : -1), 0, Math.max(0, n - 1)); pickList(t); }
+  else if (e.key === 'Enter') { e.preventDefault(); const on = box && box.querySelector('.po.on[data-pv]'); if (on) pickTake(t, on.dataset.pv); }
+  else if (e.key === 'Escape') { if (box) box.hidden = true; e.stopPropagation(); } });
+$('inspector').addEventListener('mousedown', e => { const o = e.target.closest('.po[data-pv]'); if (!o) return; e.preventDefault(); const box = o.closest('.pickl'), t = box.previousElementSibling.querySelector('input'); pickTake(t, o.dataset.pv); });
 
 /* ───────── menus, modal, bar ───────── */
 function closeMenus() { document.querySelectorAll('.menu').forEach(m => { m.hidden = true; }); }
