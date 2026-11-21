@@ -283,6 +283,44 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
   .closeins { display: inline-flex; }
   #legend { max-width: calc(100% - 70px); }
 }
+
+/* the group web + the timeline (2026-11-21) */
+.tag.btag { font-size: 12.5px; padding: 2px 8px; font-weight: 600; }
+.tag.btag b { font-size: 10.5px; }
+.hull.gw { opacity: .1; stroke-width: 210; }
+#stage.gwebmode .node.gnode .pic.gp { min-width: 140px; height: 64px; border-radius: 32px; padding: 0 24px; font-size: 24px; }
+#stage.gwebmode .node.gnode .pic.gp small { font-size: 14px; }
+#stage.gwebmode .node.gnode .handle { right: -34px; top: -40px; }
+.tag.gwt { max-width: 150px !important; max-height: 3.2em; overflow: hidden; }
+#timeline { left: 0; right: 0; bottom: 0; height: 236px; background: var(--panel); border-top: 1px solid var(--line); box-shadow: 0 -4px 14px rgba(0,0,0,.08); display: flex; flex-direction: column; z-index: 12; }
+#timeline[hidden] { display: none; }
+.tlhead { display: flex; align-items: center; gap: 8px; padding: 6px max(12px, env(safe-area-inset-right, 0px)) 6px max(12px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); font-size: 12.5px; flex-wrap: wrap; }
+.tlhead > b { font: 400 16px var(--font-display); }
+#tlBody { flex: 1 1 0; overflow: auto; position: relative; overscroll-behavior: contain; }
+.tlin { position: relative; }
+.tlline { position: absolute; height: 2px; background: var(--line); }
+.tllab { position: absolute; left: 0; width: 124px; height: 84px; display: flex; align-items: center; padding: 0 10px; font-weight: 700; font-size: 13px; line-height: 1.2; color: #fff; background: var(--gc); border-radius: 0 8px 8px 0; z-index: 3; cursor: pointer; overflow-wrap: anywhere; box-shadow: 4px 0 8px var(--panel); }
+.tllab.fac { background: var(--panel); color: var(--gc); box-shadow: inset 0 0 0 2px var(--gc), 4px 0 8px var(--panel); }
+.tllab.none { cursor: default; background: var(--panel2); color: var(--ink2); }
+.ev { position: absolute; width: 172px; height: 84px; background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--gc); border-radius: 6px; padding: 5px 8px; box-shadow: var(--shadow); cursor: grab; display: flex; flex-direction: column; gap: 2px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.ev small { font: 500 10.5px var(--font-mono); color: var(--gc); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev b { font-size: 12.5px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.evrefs { display: flex; gap: 3px; overflow: hidden; margin-top: auto; }
+.evrefs i { font-style: normal; font-size: 10px; background: var(--panel2); color: var(--ink2); border-radius: 8px; padding: 0 6px; white-space: nowrap; }
+.evrefs i.g { background: var(--gc); color: #fff; }
+.evrefs i.g.fac { background: var(--panel); color: var(--gc); box-shadow: inset 0 0 0 1.5px var(--gc); }
+.ev.sel { outline: 3px solid var(--ink); outline-offset: 1px; }
+.ev.hit { box-shadow: 0 0 0 2px var(--gc), var(--shadow); }
+.ev.dim { opacity: .4; }
+.ev.drag { z-index: 5; cursor: grabbing; opacity: .92; }
+.tlempty { position: absolute; left: 16px; top: 28px; white-space: nowrap; }
+#stage.tlopen #legend, #stage.tlopen #zoomctl { bottom: 248px; }
+#stage.tlopen #toast { bottom: 252px; }
+.evref { display: inline-flex; align-items: center; gap: 2px; }
+.evref button { border: 0; background: transparent; color: inherit; font: inherit; padding: 0; cursor: pointer; }
+.evref.unit { border: 1px solid var(--line); border-radius: 12px; padding: 1px 4px 1px 9px; font-size: 12px; background: var(--card); }
+.evref .x { padding: 0 4px; opacity: .7; }
+@media (max-width: 860px) { #bar > .grp { flex-wrap: wrap; } .tlempty { white-space: normal; right: 16px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -309,9 +347,11 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2.6 2"><path d="M8 2.5c3.6 0 6 1.7 6 4s-2.4 4-6 4-6-1.7-6-4 2.4-4 6-4Z"/><path d="M5 10.2 4 14" stroke-dasharray="none"/></svg><span class="hide-phone">Lasso</span></button>
       <button class="btn" id="btnNote" title="Add a story-idea card (N)"><span class="hide-phone">+</span><span>Note</span></button>
       <div class="seg" id="orgSeg"><button data-org="place">Places</button><button data-org="faction">Factions</button></div>
+      <button class="btn" id="btnGweb" title="Only the places or factions, and the ties between them (W)">Group web</button>
       <button class="btn" id="btnGroupNode"><span class="hide-phone">+</span><span>Group</span></button>
       <button class="btn" id="btnMap" title="Places from the game's map">Map</button>
       <button class="btn" id="btnCustom" title="Add a named character, organisation, boss or place"><span class="hide-phone">+</span><span>Character</span></button>
+      <button class="btn" id="btnTl" title="Timeline of events (T)">Timeline</button>
     </div>
     <div class="grp menuwrap hide-phone">
       <button class="btn" id="btnArrange" aria-haspopup="true">Arrange</button>
@@ -322,6 +362,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
         <button data-act="arrHome">Cluster by home site</button>
         <button data-act="arrTies">Pull tied units together</button>
         <hr>
+        <button data-act="vGweb">View: group web</button>
         <button data-act="vZones">View: places, factions inside</button>
         <button data-act="vCommand">View: chain of command</button>
         <button data-act="vFamily">View: family trees</button>
@@ -377,6 +418,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
         <button class="btn" id="zout" aria-label="Zoom out">&minus;</button>
         <button class="btn" id="zfit" aria-label="Fit board to screen" title="Fit (F)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg></button>
       </div>
+      <div id="timeline" class="overlay" hidden></div>
       <div id="toast" class="overlay" hidden></div>
     </section>
     <aside id="inspector" aria-label="Details"></aside>

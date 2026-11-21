@@ -110,3 +110,29 @@ and the bar's Close (or Escape) brings the board back. Dragging in a view moves 
   "No faction" last; a unit stands in its first place and first faction only. Picking a unit shows its ties.
 - Arrange > **View: chain of command**: serves / worships (actor under target) and employs (employee under employer) as org charts.
 - Arrange > **View: family trees**: created (maker above) and family (side by side) as trees.
+
+## The group web + the timeline (2026-11-21)
+mondo: "a way for me to see and group the faction relationships without the individual links showing ... and some sort of timeline feature
+so I can place events and link them to factions or groups/places or characters".
+- **Group web** (toolbar, or W; also Arrange > View: group web): a view with only the factions (or places: the bar's Factions | Places) on it.
+  Every tie between their members is summed onto ONE line a kind between the two groups (`hates ×2`, thicker the more there are; a tag shows
+  when there are 2 or more, or when one end is picked); a tie straight from group to group (or a unit to a group) counts the same way.
+  Click a line: the panel lists the member ties in it. A unit in two factions counts for both; secret memberships do not count; ties inside
+  one group are left out. Bar: All ties | Friendly | Hostile, **Loners** (units in no group of that kind shown as themselves), **Fold inside**
+  (a group inside another counts as that one), **Spread out** (lays it out again: friends pull together, enemies push apart).
+  **Grouping groups:** set a faction's Inside (its panel) to another faction: in the web it sits in that faction's shade and moves with it.
+  Pills drag; their spots are kept per board and kind (`B.gweb[kind][id] = [x, y]`), apart from the board's own layout. Ties can be drawn
+  between pills here (red handle / Shift-drag), unlike the other views.
+- **Timeline** (toolbar, or T): a dock along the bottom of the board. Events are per board (`B.events[id] = { title, when, t, text, refs, col }`;
+  `when` is free text, Year 0, before the Fall; the ORDER is `t`, set by dragging a card sideways or Earlier / Later in its panel).
+  Rows: One row | By faction | By place (an event sits in the row of every group it names and the home group of every unit it names).
+  The event panel links anything: a faction, place, unit or story character on the board, a roster unit (pinned on the spot) or a place from
+  the game's map (added as on the map). Picking an event lights what it names on the board (members of a named group too) and dims the rest;
+  picking a unit or group lights its events in the dock, and its panel lists them with **+ Event with …**. Export for the game lists them
+  under `events`. A deleted unit leaves the events it was in.
+
+## The other kind stays off the board (2026-11-21)
+mondo: switching to Factions laid every place out in one huge row along the top. Now the groups of the kind the board is NOT
+organised by (the places when on Factions, the factions when on Places) are not drawn on the board at all (app.js `offK`): not
+fitted, picked, lassoed, and ties to them are not drawn. Units still wear them as coloured dots, the unit and group panels still
+reach them, and Sort into groups no longer lines them up. The views (group web, places-factions-inside, ...) are unchanged.
