@@ -197,7 +197,9 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
                     const s = window.GAME.state;
                     return { kind: 'balance', t: window._ewTrainSnapshot(), clock, phase: s.phase, round: s.round,
                              matchNumber: s.matchNumber, winConds: (typeof _balanceStats !== 'undefined' && _balanceStats) ? _balanceStats.winConds : null,
-                             totalMatches: (typeof _balanceStats !== 'undefined' && _balanceStats) ? _balanceStats.totalMatches : null };
+                             totalMatches: (typeof _balanceStats !== 'undefined' && _balanceStats) ? _balanceStats.totalMatches : null,
+                             // the full tables (races / spells / ...), so a run's data leaves the browser without the Export button
+                             stats: (typeof _balanceStats !== 'undefined' && _balanceStats) ? _balanceStats : null };
                 }
                 return { kind: 'train', t: window._ewTrainSnapshot(), clock };
             }, LAB);
