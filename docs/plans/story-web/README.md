@@ -130,3 +130,9 @@ so I can place events and link them to factions or groups/places or characters".
   the game's map (added as on the map). Picking an event lights what it names on the board (members of a named group too) and dims the rest;
   picking a unit or group lights its events in the dock, and its panel lists them with **+ Event with …**. Export for the game lists them
   under `events`. A deleted unit leaves the events it was in.
+
+## The other kind stays off the board (2026-11-21)
+mondo: switching to Factions laid every place out in one huge row along the top. Now the groups of the kind the board is NOT
+organised by (the places when on Factions, the factions when on Places) are not drawn on the board at all (app.js `offK`): not
+fitted, picked, lassoed, and ties to them are not drawn. Units still wear them as coloured dots, the unit and group panels still
+reach them, and Sort into groups no longer lines them up. The views (group web, places-factions-inside, ...) are unchanged.

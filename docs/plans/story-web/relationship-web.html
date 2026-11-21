@@ -475,6 +475,10 @@ const GCOL = ['#c6352b', '#d06a12', '#c79a12', '#46962f', '#0e9393', '#3274c4', 
 const gkOf = n => n && n.gk === 'faction' ? 'faction' : 'place';
 const orgK = () => B.org === 'faction' ? 'faction' : 'place';
 const isOrgGrp = n => isGrp(n) && gkOf(n) === orgK();
+/* THE OTHER KIND IS NOT ON THE BOARD (2026-11-21, mondo: "whenever I switch to factions, it makes a huge long row at the top of all the
+   places ... I have to scroll over all the way"): the groups of the kind the board is not organised by are not drawn, fitted or picked
+   on the board (units still wear them as dots; their panels still reach them). Views place what they show themselves. */
+const offK = n => !VIEW && isGrp(n) && gkOf(n) !== orgK();
 /* a unit's home group of one kind: the first of that kind it joined. Its shaded area holds only its home members; a member
    whose home is elsewhere keeps a dashed line to it instead, so areas never stretch over each other */
 function homeMap(kind) { const h = {}; Object.values(B.links).forEach(l => { if (l.type !== 'member' || l.secret || h[l.a]) return; const g = B.nodes[l.b]; if (isGrp(g) && gkOf(g) === kind && !isGrp(B.nodes[l.a])) h[l.a] = l.b; }); return h; }
@@ -803,7 +807,7 @@ function zoomAt(cx, cy, f) {
 }
 function bbox(ids) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  (ids || (VIEW ? Object.keys(VIEW.pos) : Object.keys(B.nodes))).forEach(id => { const n0 = B.nodes[id]; if (!n0) return; const n = vp(n0); if (n.kind === 'note') { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x + 190); y1 = Math.max(y1, n.y + 130); } else { x0 = Math.min(x0, n.x - 60); y0 = Math.min(y0, n.y - 50); x1 = Math.max(x1, n.x + 60); y1 = Math.max(y1, n.y + 76); } });
+  (ids || (VIEW ? Object.keys(VIEW.pos) : Object.keys(B.nodes))).forEach(id => { const n0 = B.nodes[id]; if (!n0 || offK(n0)) return; const n = vp(n0); if (n.kind === 'note') { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x + 190); y1 = Math.max(y1, n.y + 130); } else { x0 = Math.min(x0, n.x - 60); y0 = Math.min(y0, n.y - 50); x1 = Math.max(x1, n.x + 60); y1 = Math.max(y1, n.y + 76); } });
   return x0 === Infinity ? null : { x0, y0, x1, y1 };
 }
 function fit(silent) {
@@ -823,7 +827,7 @@ function renderNodes() {
   const fm = ev0 ? evLight(ev0) : fg ? (gw ? gwebNear(fg) : new Set(membersOf(fg).concat(fg))) : null;
   const dots = {}; Object.values(B.links).forEach(l => { if (l.type !== 'member') return; const g = B.nodes[l.b]; if (isGrp(g) && (!isOrgGrp(g) || l.secret)) (dots[l.a] = dots[l.a] || []).push({ g, sec: !!l.secret }); });
   Object.values(B.nodes).forEach(n0 => {
-    if (VIEW && !VIEW.pos[n0.id]) return;
+    if ((VIEW && !VIEW.pos[n0.id]) || offK(n0)) return;
     const n = VIEW ? Object.assign({}, n0, vp(n0)) : n0;
     const s = (sel && sel.kind !== 'link' && sel.id === n.id ? ' sel' : '') + (multi.has(n.id) ? ' lasso' : '') + (fm && n.kind !== 'note' && !fm.has(n.id) ? ' dim' : '');
     if (n.kind === 'note') { h += '<div class="note c-' + (n.color || 'y') + s + '" data-id="' + esc(n.id) + '" style="left:' + n.x + 'px;top:' + n.y + 'px"><div class="grip"><span>Idea</span><span>drag</span></div><textarea spellcheck="false" placeholder="Story idea, hook, open question…" aria-label="Story idea">' + esc(n.text) + '</textarea></div>'; return; }
@@ -869,7 +873,7 @@ function drawEdges() {
   let svg = '', tags = '';
   const focus = sel && sel.kind === 'node' ? sel.id : null, ev0 = sel && sel.kind === 'event' && B.events && B.events[sel.id], evS = ev0 ? evLight(ev0) : null;
   const HM = homeMap(orgK());
-  const CPS = VIEW ? [] : copyList(), own = g => [g].concat(membersOf(g.id).filter(id => HM[id] === g.id || isGrp(B.nodes[id])).map(id => B.nodes[id]).filter(Boolean), CPS.filter(c => c.g.id === g.id).map(c => ({ x: c.x, y: c.y })));
+  const CPS = VIEW ? [] : copyList(), own = g => [g].concat(membersOf(g.id).filter(id => HM[id] === g.id || (isGrp(B.nodes[id]) && !offK(B.nodes[id]))).map(id => B.nodes[id]).filter(Boolean), CPS.filter(c => c.g.id === g.id).map(c => ({ x: c.x, y: c.y })));
   const depth = g => { let d = 0, p = g; while ((p = parentOf(p)) && d < 20) d++; return d; };
   if (gw && !VIEW.fold) Object.keys(VIEW.pos).map(id => B.nodes[id]).filter(n => isGrp(n) && kidsOf(n.id).length).sort((a, b) => depth(a) - depth(b)).forEach(n => { const pts = [n].concat(descOf(n.id)).filter(g => VIEW.pos[g.id]).map(g => VIEW.pos[g.id]); if (pts.length < 2) return; const hp = hull(pts).map(q => q.x.toFixed(1) + ' ' + q.y.toFixed(1)); svg += '<path class="hull gw" d="M' + hp.join('L') + 'Z" fill="' + gcol(n) + '" stroke="' + gcol(n) + '"/>'; });
   else if (VIEW) (VIEW.hulls || []).forEach(q => { if (q.pts.length < 2) return; const hp = hull(q.pts).map(p => p.x.toFixed(1) + ' ' + p.y.toFixed(1)); svg += '<path class="hull' + (q.zone ? ' vz' : '') + '" d="M' + hp.join('L') + 'Z" fill="' + q.col + '" stroke="' + q.col + '"/>'; });
@@ -880,6 +884,7 @@ function drawEdges() {
       const away = false;
       if (VIEW && (!VIEW.pos[l.a] || !VIEW.pos[l.b] || (!l.bx && (VIEW.links === 'sel' ? focus !== l.a && focus !== l.b : !VIEW.links.has(l.id))))) return;
       if (l.type === 'member' && !VIEW && !away && focus !== l.a && focus !== l.b && !(sel && sel.kind === 'link' && sel.id === l.id)) return;
+      if (offK(B.nodes[l.a]) || offK(B.nodes[l.b])) return;
       const g = geom(l, i, arr.length); if (!g) return; G[l.id] = g;
       const mem = l.type === 'member', c = mem ? gcol(B.nodes[l.b]) : 'var(--t-' + g.T.id + ')', isSel = sel && (sel.kind === 'link' || sel.kind === 'bundle') && sel.id === l.id, dim = (focus && l.a !== focus && l.b !== focus) || (evS && !(evS.has(l.a) && evS.has(l.b)));
       if (l.bx) { const nb = l.bx.ties.length; svg += '<g class="edge bundle' + (isSel ? ' sel' : '') + '" data-id="' + esc(l.id) + '"' + (dim ? ' opacity=".18"' : '') + '><path class="hit" d="' + g.path + '" stroke-width="' + (g.sw + 14) + '"/>' + (isSel ? '<path class="halo" d="' + g.path + '" stroke-width="' + (g.sw + 9) + '"/>' : '') + '<path class="ln" d="' + g.path + '" stroke="' + c + '" stroke-width="' + g.sw.toFixed(1) + '"' + (g.T.dash ? ' stroke-dasharray="' + g.T.dash + '"' : '') + '/>' + (g.heads ? '<path class="ah" d="' + g.heads + '" fill="' + c + '"/>' : '') + '</g>';
@@ -1272,7 +1277,6 @@ function sortGroups() {
     let x = 0, y = 0, rowH = 0, maxX = x1;
     rest.forEach(c => { if (x > 0 && x + 2 * c.r > RW) { x = 0; y += rowH + 40; rowH = 0; } const cx = x1 + 160 + x + c.r, cy = y0 + y + c.r; x += 2 * c.r + 40; rowH = Math.max(rowH, 2 * c.r); maxX = Math.max(maxX, cx + c.r);
       if (c.g) put(c, cx, cy); else c.m.forEach((e, i) => { const r = 70 * Math.sqrt(i + .35), a = i * 2.39996; B.nodes[e.id].x = Math.round(cx + Math.cos(a) * r); B.nodes[e.id].y = Math.round(cy + Math.sin(a) * r); }); });
-    let px = 0; other.forEach(g => { g.x = Math.round(x0 + px + 70); g.y = Math.round(y0 - 150); px += Math.max(150, g.name.length * 9 + 70) + 24; });
     N.filter(n => n.kind === 'note').forEach((n, i) => { n.x = Math.round(maxX + 60); n.y = Math.round(y0 + i * 180); });
     mapOn = false; B.mapK = K; commit(); fit(); return;
   }
@@ -1285,7 +1289,6 @@ function sortGroups() {
     if (c.g) put(c, cx, cy);
     else c.m.forEach((e, i) => { const r = 70 * Math.sqrt(i + .35), a = i * 2.39996; B.nodes[e.id].x = Math.round(cx + Math.cos(a) * r); B.nodes[e.id].y = Math.round(cy + Math.sin(a) * r); });
   });
-  let px = 0; other.forEach(g => { g.x = Math.round(px + 70); g.y = -150; px += Math.max(150, g.name.length * 9 + 70) + 24; });
   N.filter(n => n.kind === 'note').forEach((n, i) => { n.x = Math.round(maxX + 60); n.y = i * 180; });
   commit(); fit();
 }
@@ -1577,7 +1580,7 @@ let tdrag = null;
 $('timeline').addEventListener('click', e => {
   const b = e.target.closest('[data-tl], [data-tlrows], .tllab[data-node]'); if (!b) return;
   if (b.dataset.tlrows) { S.ui.tlRows = b.dataset.tlrows; saveLocalSoon(); renderTimeline(); return; }
-  if (b.dataset.node) { select({ kind: 'node', id: b.dataset.node }); if (!VIEW || VIEW.pos[b.dataset.node]) centreOn(b.dataset.node); return; }
+  if (b.dataset.node) { select({ kind: 'node', id: b.dataset.node }); if ((!VIEW || VIEW.pos[b.dataset.node]) && !offK(B.nodes[b.dataset.node])) centreOn(b.dataset.node); return; }
   if (b.dataset.tl === 'new') newEvent(sel && sel.kind === 'node' && B.nodes[sel.id] && B.nodes[sel.id].kind !== 'note' ? [sel.id] : []);
   else if (b.dataset.tl === 'close') { S.ui.tl = false; saveLocalSoon(); renderTimeline(); }
 });
@@ -1631,7 +1634,7 @@ const ptrs = new Map(); let drag = null, pinch = null, raf = 0;
 function groupOf(id) { const seen = new Set([id]), q = [id], adj = {}; Object.values(B.links).forEach(l => { if (l.type === 'member') return; (adj[l.a] = adj[l.a] || []).push(l.b); (adj[l.b] = adj[l.b] || []).push(l.a); }); while (q.length) (adj[q.shift()] || []).forEach(o => { if (!seen.has(o) && B.nodes[o]) { seen.add(o); q.push(o); } }); return [...seen]; }
 function inPoly(x, y, P) { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i].y > y) !== (P[j].y > y) && x < (P[j].x - P[i].x) * (y - P[i].y) / (P[j].y - P[i].y) + P[i].x) c = !c; return c; }
 function setMulti(ids) { multi = new Set(ids.filter(id => B.nodes[id])); renderNodes(); }
-function nodeAt(p, not) { let best = null, bd = 46; Object.values(B.nodes).forEach(n0 => { if (n0.kind === 'note' || n0.id === not || (VIEW && !VIEW.pos[n0.id])) return; const n = Object.assign({}, n0, vp(n0)); const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bd) { bd = d; best = n.id; } }); return best; }
+function nodeAt(p, not) { let best = null, bd = 46; Object.values(B.nodes).forEach(n0 => { if (n0.kind === 'note' || n0.id === not || (VIEW && !VIEW.pos[n0.id]) || offK(n0)) return; const n = Object.assign({}, n0, vp(n0)); const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bd) { bd = d; best = n.id; } }); return best; }
 stage.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse' && e.button > 1) return;
   const t = e.target;
@@ -1688,7 +1691,7 @@ function endPtr(e) {
   if (!drag || drag.pid !== e.pointerId) return;
   const d = drag; drag = null; clearTemp();
   if (e.type === 'pointercancel') { if (d.kind === 'node' && d.moved) commit(); return; }
-  if (d.kind === 'lasso') { if (d.moved && d.pts.length > 2) { setMulti(Object.values(B.nodes).filter(n => inPoly(n.x, n.y, d.pts)).map(n => n.id)); if (sel) select(null); } else if (multi.size) setMulti([]); return; }
+  if (d.kind === 'lasso') { if (d.moved && d.pts.length > 2) { setMulti(Object.values(B.nodes).filter(n => !offK(n) && inPoly(n.x, n.y, d.pts)).map(n => n.id)); if (sel) select(null); } else if (multi.size) setMulti([]); return; }
   if (d.kind === 'vnode') { if (!d.moved) tapNode(d.nid); else if (VIEW && VIEW.kind === 'gweb') commit({ light: true }); }
   else if (d.kind === 'node') { if (d.moved) { sel = { kind: 'node', id: d.nid }; commit(); } else tapNode(d.nid); }
   else if (d.kind === 'link') {
@@ -1750,7 +1753,7 @@ function panelClick(e) {
   if (b.dataset.evunref) { const ev = sel && B.events && B.events[sel.id]; if (ev) { ev.refs = ev.refs.filter(r => r !== b.dataset.evunref); commit(); } return; }
   if (b.dataset.evcol) { const ev = sel && B.events && B.events[sel.id]; if (ev) { ev.col = +b.dataset.evcol; commit(); } return; }
   if (b.dataset.ev) { selectEvent(b.dataset.ev); return; }
-  if (b.dataset.node) { select({ kind: 'node', id: b.dataset.node }); if (!VIEW || VIEW.pos[b.dataset.node]) centreOn(b.dataset.node); return; }
+  if (b.dataset.node) { select({ kind: 'node', id: b.dataset.node }); if ((!VIEW || VIEW.pos[b.dataset.node]) && !offK(B.nodes[b.dataset.node])) centreOn(b.dataset.node); return; }
   if (b.dataset.notecol) { B.nodes[sel.id].color = b.dataset.notecol; return commit(); }
   act(b.dataset.act);
 }
