@@ -9048,6 +9048,26 @@ const ThreeRenderer = (function () {
             }
         } catch (e) { frGrass = null; M = 0; }
         if (!frGrass || !fpal) { M = 0; frGrass = null; }
+        /* NO LAWN ON A FLOOR THAT IS NOT GRASS (2026-11-22, mondo: "why the fuck is there grass in the DUMB?"): a board cut from a room keeps
+           the grass tile TYPE as its plain-ground rule wherever the room's sheet has no rule key of its own (bake-arenas.js `floorKey || 'grass_2'`:
+           the D.U.M.B.'s and CERN's concrete), so the field grew a lawn through the concrete. On a room's board a square grows tufts only where
+           the ROOM's ground wears a grass sheet (the painted sheet there, else the room's floor: the walked room's own rule, _hqGrassCell). */
+        var roomBare = null;
+        try {
+            var _gbR = (typeof _hqBattleRoom === 'function') ? _hqBattleRoom() : null;
+            var _gbI = (_gbR && _gbR.roomId && _gbR.T && _gbR.room && _gbR.room.terrain && typeof hqTerrainInfo === 'function') ? hqTerrainInfo(_gbR.roomId) : null;
+            if (_gbI && _gbI.floor && _gbI.nx && _gbI.res) {
+                var _gbT = _gbR.T, _gbBare = {};
+                roomBare = function (sx, sy) {
+                    var rx = (sx + 0.5) * _gbT.C + _gbT.x0, rz = (sy + 0.5) * _gbT.C + _gbT.z0;
+                    var ni = Math.round((rx - _gbI.x0) / _gbI.res), nj = Math.round((rz - _gbI.z0) / _gbI.res), PT = _gbI.paint, sheet = _gbI.floor;
+                    if (PT && ni >= 0 && nj >= 0 && ni < _gbI.nx && nj < _gbI.nz) { var pv = PT.P[nj * _gbI.nx + ni]; if (pv) sheet = PT.pal[pv - 1] || sheet; }
+                    var hit = _gbBare[sheet];
+                    if (hit === undefined) { var rk = (typeof hqRuleKeyOf === 'function') ? hqRuleKeyOf(sheet) : sheet; hit = _gbBare[sheet] = !(_ggPalette(sheet) || _GRASS_TERRAIN_SET[rk] || /grass/i.test(String(sheet)) || /grass/i.test(String(rk))); }
+                    return hit;
+                };
+            }
+        } catch (e) { roomBare = null; }
         var N0 = N;
         /* two passes: the meadow past the board (kept from build to build — it never changes while the room stands, and it is most
            of the tufts), then the board's own squares (rebuilt whenever the ground changes: a dig, a build, a flood) */
@@ -9068,6 +9088,7 @@ const ThreeRenderer = (function () {
             pal = fpal;
             if (!fr) {
             if (!isGrass(tx, ty)) continue;
+            if (roomBare && roomBare(tx, ty)) continue;   // the room's floor here is concrete, tile, rock: no lawn
             pal = _ggPalette(getTerrainAt(tx, ty)); if (!pal) continue;
             /* a square with a thing on it stays bare, except under a tree: the grass runs up to the trunk */
             var ob = (typeof getObjectAt === 'function') ? getObjectAt(tx, ty) : null;
