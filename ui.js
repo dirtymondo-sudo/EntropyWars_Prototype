@@ -3008,6 +3008,11 @@
                   }
                 }
               }
+            } else if (spell.kind === 'dash' && typeof dashOnlyMoves === 'function' && dashOnlyMoves(spell)) {
+              /* THE DASH LANDING (mondo 2026-11-22 playtest L3: Sprint lit enemy squares, then said "Sprint needs an empty
+                 tile"): a dash that only moves lights exactly the squares it lands on (battle.js getSpellRangeTiles, the
+                 same list doSpell takes), blue like a blink's destinations; never a body, a wall or the Cube */
+              for (const t of getSpellRangeTiles(_selectedForHl, spell)) _hlCache.set(posKey(t.x, t.y), 'move');
             } else if (spell.kind === 'escape' && typeof escapeLandingTiles === 'function') {
               /* THE ESCAPE PICK (2026-10-22): the escape's landing tiles, painted like a self blink's destinations */
               _hlCache.set(posKey(_selectedForHl.x, _selectedForHl.y), 'selected');
@@ -3182,9 +3187,19 @@
               const _genEffRange = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(_selectedForHl, spell) : spell.range;
               const _genSkipLOS = spell.ignoresLineOfSight === true || spell.kind === 'teleport' || _skyGrabHl;
               const _genSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
+              /* THE DASH LANDING: a damaging dash lights only squares it can land on (no wall, no Cube): getSpellRangeTiles' list */
+              const _genDashSet = spell.kind === 'dash' ? new Set(getSpellRangeTiles(_selectedForHl, spell).map(t => posKey(t.x, t.y))) : null;
               for (let cy = 0; cy < bh(); cy++) {
                 for (let cx = 0; cx < bw(); cx++) {
                   const d = _rangeD(cx, cy);
+                  if (_genDashSet && !_genDashSet.has(posKey(cx, cy))) continue;
+                  /* THE EMPTY-TILE SUMMON, lit the same way: a summon never lights a body's square (an enemy read as a
+                     red target there, and the click said "pick an empty tile"), a wall or the Cube */
+                  if (spell.kind === 'summonUnit') {
+                    const _sOcc = _liveUnitMap.get(posKey(cx, cy));
+                    if (_sOcc && !_sOcc.dead && !(isEnemyUnit(_sOcc, _selectedForHl) && unitHasStatus(_sOcc, 'invisible'))) continue;
+                    if (!isTerrainPassable(cx, cy) || (typeof isTowerTile === 'function' && isTowerTile(cx, cy))) continue;
+                  }
                   if (d >= minRange && d <= _genEffRange && (_genSkipLOS || !isRangeBlockedByTerrain(_selectedForHl.x, _selectedForHl.y, cx, cy, _genSrcZ))) {
                     if (_fogLimitSpells && d > 0 && !['heal', 'shield', 'buff', 'scan', 'remoteView'].includes(spell.kind) && !isInVision(_selectedForHl, cx, cy)) continue;
                     if (spell.kind === 'barrage') {
