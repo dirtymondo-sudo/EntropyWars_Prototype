@@ -45,6 +45,10 @@ Usage: pip install bpy==5.2.3 scipy pillow
               DROP="x,y,z,r;..." (a stray shell left out by hand, its middle r from a point measured from the eyes; SHELLS=1 lists them)
        batch 1 review of 11-13: NOARMS=1 (torn sleeves / gloves go, the bare arms show), SNUG=1 (baggy trousers drawn in at the waist + hips), HATMIRROR=1|-1 (one half of the hat copied across), NOHANDS=1 (the body's own hands show, Meshy's go), WINGKEEP=1 (a collar fused to the wings), NOHELD=1 (nothing in the
               hands), LOCKREM=0, SHELLS=1 (print the shells)
+       weapons batch of 11-22: SHOWRING=2 (the skin under every cloth edge is shown: no jagged dark band where a cape's collar, a
+              waist or a crop top ends on bare skin; NOT for a loose kimono: the shoulders came through), EDGECLEAN=6 (saw teeth
+              on a cut edge go), HOLEFILL=24 (pin holes in thin cloth closed), EDGERELAX=4 (a cut edge eased; 20 opened holes)
+              SEEDTO=0.9 (a sleeve may start anywhere down to the wrist: bracers cut loose from their sleeve by CUTCOL, the ninja F)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
 import argparse, importlib.util, io, math, os, re, sys
@@ -685,6 +689,44 @@ def fit(name, gender, src, bodies_dir):
             loc, nor, idx, dist = hbvh.find_nearest(v.co)
             if loc is None: continue
             if (v.co - loc).dot(nor) < 0 or dist < E('SCALP', 0.008): v.co = loc + nor * E('SCALP', 0.008)
+    # THE CLEAN EDGE (env EDGECLEAN = rounds, off; HOLEFILL = sides, off; EDGERELAX rounds, 4; 2026-11-22, mondo on the gladiators,
+    # the swordfighter and the ninja: "go ahead and fix those issues"): the skin cut leaves saw teeth along every edge it made (a
+    # cape's collar, a skirt's waist, a neckline) and pin holes in thin cloth. Per kept shell: a TOOTH (a face with two open edges)
+    # goes, EDGECLEAN rounds; an open loop of up to HOLEFILL edges is closed, its new faces painted with their corners' own UVs;
+    # then every open-edge vertex moves halfway to the middle of its two edge neighbours, EDGERELAX rounds. An edge is open only
+    # when no other edge lies on the same two points (a UV seam is not an edge of the cloth)
+    if E('EDGECLEAN', 0) or E('HOLEFILL', 0):
+        nt_ = nh_ = 0
+        for o in keep:
+            bme = bmesh.new(); bme.from_mesh(o.data)
+            def open_(bm_):
+                k_ = lambda e: tuple(sorted((tuple(round(c, 5) for c in e.verts[0].co), tuple(round(c, 5) for c in e.verts[1].co))))
+                cnt_ = {}
+                for e in bm_.edges:
+                    if len(e.link_faces) == 1: cnt_[k_(e)] = cnt_.get(k_(e), 0) + 1
+                return set(e for e in bm_.edges if len(e.link_faces) == 1 and cnt_[k_(e)] == 1)
+            for it_ in range(int(E('EDGECLEAN', 0))):
+                op_ = open_(bme); t_ = [f for f in bme.faces if sum(1 for e in f.edges if e in op_) >= 2]
+                if not t_ or len(t_) > 0.2 * len(bme.faces): break
+                nt_ += len(t_); bmesh.ops.delete(bme, geom=t_, context='FACES')
+            bmesh.ops.delete(bme, geom=[v for v in bme.verts if not v.link_faces], context='VERTS')
+            if E('HOLEFILL', 0):
+                uvl_ = bme.loops.layers.uv.active; old_ = set(bme.faces)
+                r_ = bmesh.ops.holes_fill(bme, edges=list(open_(bme)), sides=int(E('HOLEFILL', 0)))
+                for f in r_['faces']:
+                    for l in f.loops:
+                        src_ = [m for m in l.vert.link_loops if m.face in old_]
+                        if src_ and uvl_: l[uvl_].uv = src_[0][uvl_].uv.copy()
+                nh_ += len(r_['faces'])
+                if r_['faces']: bmesh.ops.triangulate(bme, faces=[f for f in bme.faces if f not in old_])
+            for it_ in range(int(E('EDGERELAX', 4))):
+                op_ = open_(bme); nb_ = {}
+                for e in op_:
+                    nb_.setdefault(e.verts[0], []).append(e.verts[1]); nb_.setdefault(e.verts[1], []).append(e.verts[0])
+                mv_ = {v: v.co * 0.5 + (n_[0].co + n_[1].co) * 0.25 for v, n_ in nb_.items() if len(n_) == 2}
+                for v, c_ in mv_.items(): v.co = c_
+            bme.to_mesh(o.data); bme.free(); o.data.update()
+        print('[bake-outfit] %s: the clean edge: %d teeth gone, %d faces closed holes' % (name, nt_, nh_), flush=True)
     print('[bake-outfit] %s: scale %.3f, head x%.2f, %d shells kept, hats %d, hair shells %d (not exported), dropped %s' % (name, S, hs, len(keep), len(hats), len(wig), dropped), flush=True)
 
     # ---- pose the body into the clothes, hide, weights, un-skin ----
@@ -803,6 +845,23 @@ def fit(name, gender, src, bodies_dir):
                 h_ = bvh.find_nearest(v.co)
                 if h_[0] is None or h_[3] > E('SHNEAR', 0.012): ks.add(v.index)
                 else: ks.discard(v.index)
+    # THE SKIN UNDER EVERY EDGE (env SHOWRING = rings, off; 2026-11-22, the gladiators, the swordfighter M, the ninja F; mondo: "go ahead
+    # and fix those issues"): the same saw teeth as the open collar's, on a bare chest under a cape's collar, a waist over a skirt, a
+    # bare back under a crop top: the hide rays reach past the cloth's edge, a triangle with one hidden corner is not drawn, and the
+    # cloth's dark inside shows as a jagged black band. Anywhere on the body the shown skin grows SHOWRING rings under the cloth's edge,
+    # onto skin that has cloth in front of it along its normal and none behind it (it is under the cloth, not standing through it)
+    if E('SHOWRING', 0):
+        n0_ = len(ks)
+        for _ in range(int(E('SHOWRING', 0))):
+            add_ = set()
+            for e_ in pm.edges:
+                a_, b_ = e_.vertices
+                for i_, j_ in ((a_, b_), (b_, a_)):
+                    if j_ in ks and i_ not in ks and i_ not in add_:
+                        v_ = pm.vertices[i_]
+                        if bvh.ray_cast(v_.co + v_.normal * 0.001, v_.normal, E('RAY_OUT', 0.07))[0] is not None and bvh.ray_cast(v_.co, -v_.normal, E('RAY_IN', 0.05))[0] is None: add_.add(i_)
+            ks |= add_
+        print('[bake-outfit] %s: %d skin vertices shown under the cloth\'s edges' % (name, len(ks) - n0_), flush=True)
     # A FLOATING PIECE OF SKIN (SKINISLE, off; mondo: "Catgirl has a weird piece of floating skin under her crotch"): the skin between her legs
     # is on the hips, not a leg, and no cloth lies under it, so it stayed shown with both thighs hidden round it. A patch of shown
     # skin of fewer than SKINISLE vertices, cut off from the rest by hidden skin, is hidden too
@@ -935,7 +994,7 @@ def fit(name, gender, src, bodies_dir):
             for sd in ('L', 'R'):
                 dl = [on_line(sd, v.co) for v in o.data.vertices]
                 gi = [g.index for g in o.vertex_groups if g.name in ARMN[sd]]
-                seeds = [v.index for v in o.data.vertices if dl[v.index][0] < E('SLEEVESEED', 0.07) and 0.15 < dl[v.index][1] < 0.5 and sum(g.weight for g in v.groups if g.group in gi) > 0.6]
+                seeds = [v.index for v in o.data.vertices if dl[v.index][0] < E('SLEEVESEED', 0.07) and 0.15 < dl[v.index][1] < E('SEEDTO', 0.5) and sum(g.weight for g in v.groups if g.group in gi) > 0.6]
                 seen_ = set(seeds); st_ = list(seeds)
                 while st_:
                     for k_ in adj[st_.pop()]:

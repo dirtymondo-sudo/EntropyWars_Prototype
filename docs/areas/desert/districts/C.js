@@ -479,8 +479,8 @@ exports.ground = ctx => { bind(ctx);
       rail(x0, z0, x1, z0); rail(x1, z0, x1, gx(25)); rail(x1, gx(30), x1, gc(30) - 1.4); rail(x1, gc(33) + 1.4, x1, z1);
       rail(x1, z1, gx(31), z1); rail(gx(26), z1, x0, z1); rail(x0, z1, x0, gx(33)); rail(x0, gx(31), x0, z0);
       const a = sheet(), OX = gx(12), OZ = gx(0), T = [RED, GOLD, BLUE, TEAL];
-      let k = 0; for (let x = 12; x <= 48; x += 6) { flagpole(a, gx(x) - OX + (x === 12 ? e : x === 48 ? -e : 0), e, 7.5, T[k++ % 4]); flagpole(a, gx(x) - OX + (x === 12 ? e : x === 48 ? -e : 0), gx(36) - OZ - e, 7.5, T[k++ % 4]); }
-      for (let y = 6; y <= 24; y += 6) { flagpole(a, e, gx(y) - OZ, 7.5, T[k++ % 4]); flagpole(a, gx(48) - OX - e, gx(y) - OZ, 7.5, T[k++ % 4]); }
+      let k = 0; for (let x = 12; x <= 48; x += 6) { flagpole(a, gx(x === 24 ? 22.4 : x) - OX + (x === 12 ? e : x === 48 ? -e : 0), e, 7.5, T[k++ % 4]);   /* (2026-11-22, THE ROAD FROM THE GATE: the north fence's third pole stood in the middle of the Badlands Highway's gate road; it stands beside it) */ flagpole(a, gx(x) - OX + (x === 12 ? e : x === 48 ? -e : 0), gx(36) - OZ - e, 7.5, T[k++ % 4]); }
+      for (let y = 6; y <= 24; y += 6) { flagpole(a, e, gx(y) - OZ, 7.5, T[k++ % 4]); flagpole(a, gx(48) - OX - e, gx(y === 24 ? 23 : y) - OZ, 7.5, T[k++ % 4]); }   // (the east fence's fourth pole likewise: beside the east gate's road, not on its yellow line)
       arch('flags', OX, OZ, 0, a); }
 
     /* THE BUNTING over the midway and the road in (cords of pennants on poles) */

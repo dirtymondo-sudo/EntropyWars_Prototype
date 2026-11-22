@@ -494,6 +494,25 @@ the Claude Doc "Weapon-holding units: who gets an MPFB version".
   with `cant: -80` and `down` tilted 20 degrees off the fist's axis (`[0, -0.94, 0.34]`) so its head clears his face.
   KNOWN FLAWS of the first pass: gladiator M + F jagged cape / skin edges and a hole in her cape, swordfighter M torn collar + sleeve
   slits, ninja F jagged neckline + shoulder cut-outs, no unit faces yet (bake-face.py), nothing seen in a battle.
+- THE FLAW ROUND (11-22, mondo: "go ahead and fix those issues ... Would blender be easier"): it IS Blender, by script (bake-outfit.py).
+  THE CAUSE of the jagged dark bands was not the cloth's edge: the body's skin is hidden a little past it (the hide rays), and the
+  cloth's dark inside shows through. NEW env `SHOWRING=2` (shown skin grows two rings under every cloth edge, only where cloth is in
+  front and none behind), `EDGECLEAN=6`, `HOLEFILL=24`, `EDGERELAX`. Rebaked: gladiator M (`EYE=0,-0.075,0.352 --headgear`) + F
+  (`--headgear`) with all three: collar, chest, waist clean, the hole in her cape closed. Ninja F with all three: little change.
+  Swordfighter M with `EDGECLEAN HOLEFILL SLEEVESEED=0.15 SLEEVER=0.24`, NO SHOWRING (his shoulders came through the kimono).
+  TRIED AND DROPPED: `EDGERELAX=20` (opened holes), `DROPCOL` / `CUTCOL` of the ninja F's painted skin (her bracers lost their arm
+  and stretched into spikes). STILL OPEN: ninja F a light strip under the top at the back + a spot on the skirt's hip + a bit under
+  the skirt; gladiator F ragged cloth round the knee guards + a hole at the hip; swordfighter M the collar's V.
+  NINJA F REGENERATED (same day): her first T2 run had her skin fused into the top's shell (midriff, arms), which no cut got clean
+  (`CUTCOL` + new `SEEDTO=0.9`, so bracers cut loose from the sleeve still count as sleeve, left see-through bands at the waist and
+  elbows; cause not found). A second T2 run of the same picture (`weapon-hands/units/ninjaf_t2b.glb`, 15 credits) came out with clean
+  shells: baked plain with `EDGECLEAN=6 HOLEFILL=24 SHOWRING=2`. Her look no longer wears `ewm_t2ninjaf_hat` (the hair tie came out
+  as floating bits; the ponytail is pack hair). LESSON: when the skin is fused into a garment's shell, regenerate first.
+  THE OTHER TWO REGENERATED (same day, the coordinator on mondo's "fix those issues"): swordfighter M (`swordfighterm_t2b.glb`, baked
+  `EDGECLEAN=6 HOLEFILL=24 SLEEVESEED=0.15 SLEEVER=0.24`, no SHOWRING: the collar's V is whole with its white undershirt; still a
+  slit at the armpit of the wide sleeve and pointed shoulder tops) and gladiator F (`gladiatorf_t2b.glb`, `--headgear EDGECLEAN=6
+  HOLEFILL=24 SHOWRING=2`: clean greaves and thighs, an open-faced helmet). Ninja F's loose hair strands by the collarbones and neck:
+  `DROP='-0.08,0.23,-0.09,0.13;0.034,0.023,-0.162,0.03'` on the t2b bake.
 
 ---
 
