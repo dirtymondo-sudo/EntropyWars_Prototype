@@ -78199,6 +78199,10 @@ const ThreeRenderer = (function () {
         var groundAt0 = function (cx, cz) {
             var h = hqTerrainHeight(info, cx, cz);
             if (typeof _hqTBaseAt === 'function') { var b = _hqTBaseAt(info, cx, cz); if (h > b) h = b; }   // never a roof or a wall top at the edge: the ground (a sunk bay stays sunk)
+            /* A WALLED PLACE STANDS ON THE PLAIN, NOT IN A PIT (2026-11-22, the Vatican's gates): where a room's own wall is its height sheet (the Vatican: 9 m of
+               wall on its last squares) the land past the line began at the wall's TOP, so the country outside stood level with the battlements and every gate
+               was a V-shaped trench cut down through it. `edges.level: <m>` = the land never starts higher than this (the ground the wall stands on). */
+            if (E.level != null && isFinite(+E.level) && h > +E.level) h = +E.level;
             return h;
         };
         var at = function (x, z, raw) {
@@ -84511,7 +84515,11 @@ const ThreeRenderer = (function () {
         }
         /* THE DARK: cards across the way, deepening to solid at the end (soft-edged in the open, square in a tube) */
         /* THE OPEN SEAM (2026-11-17, One World: data.js DOOR_HQ.ways.open): nothing stands in open country. No dark. */
-        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open' || openLand) ? 0 : 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
+        /* NO BLACK ON A FREE END EITHER (2026-11-22, the otherworld gates: the Pilgrim Stair's foot, the ski mountain's trail down to the tree line): a trail's end
+           that stands INSIDE the room (`wall: 'free'`) kept its black cards, a black box between the trees in open country. In a room with land past its
+           line an unroofed black fade stands none; a cloud road's white stays (it is the cloud). */
+        var openFree = false; try { openFree = !P.roof && P.inside && !P.mouth && P.fade !== 'white' && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room); } catch (eOF) { openFree = false; }
+        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open' || openLand || openFree) ? 0 : 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
         for (var i = 0; i < n; i++) {
             var t = (i + 1) / n, dd = d0 + (L - 0.15 - d0) * t, op = (i === n - 1) ? 1 : Math.min(1, 0.7 * Math.pow(t, 2.2));   // (2026-10-05) a dusk that deepens, the way still seen: only the far end is solid
             var cw = P.roof ? W + 0.04 : W + ((P.spread != null) ? +P.spread : 3.2), ch = P.roof ? H + 0.1 : H + 2.5;
@@ -84624,7 +84632,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(pl.y - _hqPassFloor(p, a.depth)) > 2.5) continue;
             var d0 = P.deep * 0.25, k = (a.depth - d0) / Math.max(0.5, P.deep - d0);
             k = k < 0 ? 0 : k > 1 ? 1 : k; k = k * k * (3 - 2 * k);
-            k *= (P.look === 'open') ? 0 : 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black. THE OPEN SEAM (2026-11-17): open country does not dim at all
+            k *= (P.look === 'open' || P.clear) ? 0 : 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black. THE OPEN SEAM (2026-11-17): open country does not dim at all
             if (k > dark) { dark = k; col = P.fade; }
             if (a.depth >= P.deep) {
                 if (H.passLatch !== p.door.id && !H.paused && H.opts.onEnterDoor && !HQ_DOOR_LOCKED[p.state]) {
@@ -84674,6 +84682,8 @@ const ThreeRenderer = (function () {
            pressed — a record the walker's surface, the boom, the dark and the crossing read (_hq.passages) */
         var PS = _hqPassageSpec(door);
         if (PS) {
+            /* (2026-11-22) a trail through open country stands no black (_hqPassageWay), so the walk along it does not dim the view either */
+            try { if (!PS.roof && !PS.mouth && PS.fade !== 'white' && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room)) PS.clear = true; } catch (eCl) {}
             G.add(grp);
             if (PS.look === 'trail' && box && !box.free && !door.secret) { try { _hqBuildTrailPost(room, door, y0); } catch (e) {} }
             var prec = { door: door, group: grp, lens: null, glow: null, plate: null, plateEl: null, plateChip: null, state: 'open', level: level, Rw: Rw, y0: y0, wide: false, ow: PS.w, oh: PS.h, inward: inward, box: box, leaf: null, way: kind, motion: null, openT: 0,
