@@ -108,7 +108,7 @@ function building(id, rect, side, h, o, parts) {
       a.P.push(Object.assign({ s: 'quad', p: [0, 0, -D2], size: [2 * W2, Hc], ry: 0, key: L0.key, tint: L0.tint }, lit), Object.assign({ s: 'quad', p: [0, 0, D2], size: [2 * W2, Hc], ry: 180, key: L0.key, tint: L0.tint, hole: [r2(-door.lx), r2(door.cw + 0.12), 2.25] }, lit),
           Object.assign({ s: 'quad', p: [-W2, 0, 0], size: [2 * D2, Hc], ry: 270, key: L0.key, tint: L0.tint }, lit), Object.assign({ s: 'quad', p: [W2, 0, 0], size: [2 * D2, Hc], ry: 90, key: L0.key, tint: L0.tint }, lit),
           { s: 'box', p: [0, r2(Hc - 0.05), 0], size: [2 * W2, 0.04, 2 * D2], key: L0.key, tint: L0.tint, glow: 0.3, gain: 1.6, under: true, roof: true, top: false, ds: true, uv: [1.75, 1.75] }); }
-    ARCH.push({ k: 'arch', id: 'aga:' + id + ':look', x: cx, z: cz, rot, base, parts: a.P });
+    ARCH.push({ k: 'arch', id: 'aga:' + id + ':look', x: cx, z: cz, rot, y: base /* `y`, never `base` (2026-11-22): data.js hqTerrainInfo OVERWRITES an arch row's `base` with the ground under its origin, so every roof block stood on its own floor (a wall of rock between two roof rectangles: the way to the Long Tunnel read as plain wall) and the bridge's keels 11 m low */, parts: a.P });
     const t = rot * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
     count.buildings = (count.buildings || 0) + 1;
     return (BUILT[id] = { at: (lx, lz) => [r2(cx + lx * c - lz * s), r2(cz + lx * s + lz * c)], face: f => (((f + rot) % 360) + 360) % 360, fw, fd, door, cx, cz, rot, base, h });
@@ -116,7 +116,7 @@ function building(id, rect, side, h, o, parts) {
 /* a prop in a building's frame */
 const put = (Bd, key, lx, lz, o) => { const p = Bd.at(lx, lz), r = Object.assign({ key, x: p[0], z: p[1] }, o || {}); if (r.face != null) r.face = Bd.face(r.face); props.push(r); return r; };
 /* a drawn piece (an `arch` row on open ground, walked under or round): `base` = its floor in metres */
-function look(id, x, z, rot, base, fn) { const a = sheet(); fn(a); ARCH.push({ k: 'arch', id: 'aga:' + id, x: r2(x), z: r2(z), rot: rot || 0, base: r2(base), parts: a.P }); }
+function look(id, x, z, rot, base, fn) { const a = sheet(); fn(a); ARCH.push({ k: 'arch', id: 'aga:' + id, x: r2(x), z: r2(z), rot: rot || 0, y: r2(base), parts: a.P }); }
 
 function spot(sx, sy, what, shared) { if (!inR(sx, sy)) { errs.push(what + ' is off the map at ' + sx + ',' + sy); return; }
     if (!open(sx, sy)) { errs.push(what + ' stands in the rock at ' + sx + ',' + sy); return; }
@@ -150,7 +150,7 @@ const LINKPLACE = {};
     const along = (side === 'N' || side === 'S') ? (open(x + 1, y) ? gx(x + 1) : open(x - 1, y) ? gx(x) : gcx(x)) : (open(x, y + 1) ? gz(y + 1) : open(x, y - 1) ? gz(y) : gcz(y));
     taken.add(x + ':' + y);
     if (o.link) { LINKPLACE[o.link] = (side === 'N' || side === 'S') ? "wall: '" + wall + "', x: " + along : "wall: '" + wall + "', z: " + along; return; }
-    doors.push(Object.assign({ id: o.id, wall }, (side === 'N' || side === 'S') ? { x: along } : { z: along }, { way: 'tunnel', leaf: null, label: o.label, sub: o.sub, action: o.action, desc: '' })); });
+    doors.push(Object.assign({ id: o.id, wall }, (side === 'N' || side === 'S') ? { x: along } : { z: along }, { way: 'tunnel', passage: { wallColor: 0x1c1a18, floorColor: 0x6a6a6a } /* THE MOUTH IS SEEN (2026-11-22): the tunnel's inside wore the wall's own rock, lit like it, and read as flat wall; its rock is drawn dark */, leaf: null, label: o.label, sub: o.sub, action: o.action, desc: '' })); });
 
 /* ── THE DESIGN FILE ── */
 ['plan', 'build', 'dress', 'people'].forEach(st => { if (typeof DESIGN[st] === 'function') DESIGN[st](ctx); });
@@ -182,7 +182,7 @@ const ROCK = [0xe4ded4, 0xd8d2c8, 0xece6dc, 0xd0cac0]   /* near white: the sheet
       const n = Math.min(10, Math.floor(w * h / 3));
       for (let k = 0; k < n; k++) { const len = r2(0.7 + grnd() * Math.min(2.6, Math.max(0.5, r - walkOf(x, y) - 3.2))), rr = r2(0.18 + grnd() * 0.35);
           parts.push({ s: 'cyl', p: [r2((grnd() - 0.5) * (w * C - 1)), r2(-len), r2((grnd() - 0.5) * (h * C - 1))], r: 0.03, r2: rr, h: len, seg: 6, key: 'hz_stone_02', tint: ROCK[Math.floor(grnd() * ROCK.length)], uv: 3.5 }); }
-      ARCH.push({ k: 'arch', id: 'aga:roof:' + x + '_' + y, x: ox, z: oz, rot: 0, base: r, parts }); count.roofs = (count.roofs || 0) + 1; } }
+      ARCH.push({ k: 'arch', id: 'aga:roof:' + x + '_' + y, x: ox, z: oz, rot: 0, y: r, parts }); count.roofs = (count.roofs || 0) + 1; } }
 
 /* ── THE LADDERS (the plan's `stairs`: a ladder up the face, both ways) and THE ROPES (the plan's `found` free climbs: an old fixed rope) ── */
 const climbAt = (lo, hi, look, id) => { const dx = hi[0] - lo[0], dy = hi[1] - lo[1]; if (Math.abs(dx) + Math.abs(dy) !== 1) throw new Error('a climb between squares that do not touch: ' + lo + ' ' + hi);
