@@ -96001,11 +96001,13 @@ function hqRoomPopulation(roomId, profile, opts) {
         /* THE AREA UNITS (2026-10-24): a city room's table is its people too (the street read none, so Disaster City and The Sewers never changed) */
         const ETc = site ? hqRoomEncTable(roomId, opts.noTable) : null;
         if (ETc) { pool = ETc.list.map(x => x.race); tiers = {}; pool.forEach(r => { tiers[r] = 'native'; }); }
+        else if (site && !opts.noTable && hubId !== 'underworld') { const B = (typeof hqBoardRaces === 'function') ? hqBoardRaces(roomId) : null; if (B) pool = pool.filter(r => B[r]); }   // THE BOARD'S RULE (a city room off the table)
     } else if (site) {
         const res = hqSiteResidents(site);
         pool = res.slice(); tiers = res.tiers || {};
         const ET = hqRoomEncTable(roomId, opts.noTable);   // THE ENCOUNTER TABLE: the room's own people, every one a native
         if (ET) { pool = ET.list.map(x => x.race); tiers = {}; pool.forEach(r => { tiers[r] = 'native'; }); }
+        else if (!opts.noTable) { const B = (typeof hqBoardRaces === 'function') ? hqBoardRaces(roomId) : null; if (B) pool = pool.filter(r => B[r] && tiers[r] === 'native'); }   // THE BOARD'S RULE: the board's races of the rooms next door, and of those the room's own natives
     } else {
         pool = hqRosterRaces(profile);
         pool.forEach(r => { tiers[r] = 'roster'; });
@@ -98034,7 +98036,7 @@ const HQ_AREA_ENCOUNTERS = {
         { race: "mermaid", w: 4 },
         { race: "kraken", w: 2 },
     ] },
-    "site_prebuilt_bermuda_ow_frozen": { list: [
+    "site_prebuilt_bermuda_ow_frozen": { own: true, list: [   // own: a table written for this room by its builder (THE BOARD'S RULE leaves it as it is)
         { race: "yeti", w: 17 },
         { race: "deep sea fish", w: 4 },
         { race: "kraken", w: 2 },
@@ -98200,6 +98202,14 @@ const HQ_NPC_PLACES = {
     site_prebuilt_area51_ow_giza: ['pharaoh m @G:Khafre >G', 'pharaoh f @G:Menkaure >G', 'anubis @G:Tomb Door stay', 'annunaki @G:Obelisks >G', 'djinn @G:Oasis >G', 'catgirl @G:Sphinx >G',
         'mummy m @G:Tomb Door >G night', 'mummy f @G:Robbers >G night', 'necromancer m @G:Dig >G', 'necromancer f @G:Causeway >G'],
     site_prebuilt_giza_pyramid: ['mummy m', 'mummy f', 'anubis stay'],
+    site_ow_r9: ['trucker @R >R', 'honda civic @R >R'],   // THE BADLANDS HIGHWAY (2026-11-22): the same Highway, the leg to Disaster City; the board's Trucker + Honda Civic (CLOCK with the city)
+    /* THE ROADS BETWEEN ZONES (mondo 11-22: "well obviously put the trucker and honda civic on those roads too"): every road a car can drive (bake-route.js look road / highway: the River Road, the Old Road, the Valley Road, the Ranch Road, the Coast Road, the Delta Causeway); the footpaths (look trail) hold nobody */
+    site_ow_r1: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_r4: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_r6: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_r8: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_r10: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_r11: ['trucker @R >R', 'honda civic @R >R'],
     site_ow_dh1: ['trucker @R >R', 'honda civic @R >R', 'sheriff @R >R', 'mechanic @R:water tower stay'],
     site_ow_dh2: ['trucker @R >R', 'honda civic @R >R'],
     site_ow_dh3: ['trucker @R >R', 'honda civic @R >R'],
@@ -98368,6 +98378,41 @@ function hqPlacesExpand() {
     return made;
 }
 hqPlacesExpand();
+/* ══ THE BOARD'S RULE FOR A ROOM OFF THE TABLE (2026-11-22, mondo: "i went across and into the desert and there was a dragon and deep
+   sea fish?? why?") ══ The Badlands Highway was not on HQ_NPC_PLACES, so it still drew four random walkers a day from the old Giza
+   table (its neighbours' and far sites' races at weight 1: a Dragon, a Deep Sea Fish, a Kraken ...), and so did every other room off
+   the table (the roads, the two ships, the attic ...) from the site's wide default pool. Now a room with a site that the board does
+   not fill draws its random extras ONLY from races the board stands in the table rooms its doors lead to (through other rooms off
+   the table, three doors deep), and of those only the room's own natives; a race whose every row there is `stay` is one of a kind in
+   its spot and never walks in. Disaster City's side of the board = its residents (a race with two or more people).
+   A ROAD BETWEEN ZONES (`site_ow_*`) the board has no row for draws nobody: nothing on his board walks a road but the Highway's
+   Trucker and Honda Civic (rows above). A table he makes himself in the AREA UNITS window is his word and is not filtered (only the
+   shipped tables carry `shipped`). null = the rule does not apply (a room on the table, a room with no site, the table missing). */
+(function () { try { Object.keys(HQ_AREA_ENCOUNTERS).forEach(k => { const T = HQ_AREA_ENCOUNTERS[k]; if (T && typeof T === 'object' && !T.own && !HQ_NPC_PLACES[k]) Object.defineProperty(T, 'shipped', { value: true, enumerable: false }); }); } catch (e) {} })();
+function hqBoardRaces(roomId) {
+    if (typeof HQ_NPC_PLACES === 'undefined' || typeof DOOR_HQ === 'undefined') return null;
+    const R = DOOR_HQ.rooms || {}, room = R[roomId];
+    if (!room || room.placed || HQ_NPC_PLACES[roomId]) return null;
+    const C = hqBoardRaces._c || (hqBoardRaces._c = {});
+    if (C[roomId]) return C[roomId];
+    const out = {};
+    if (/^site_ow_/.test(roomId)) return (C[roomId] = out);
+    const cityRoom = (typeof HQ_CITY_RESIDENTS !== 'undefined' && HQ_CITY_RESIDENTS) ? HQ_CITY_RESIDENTS.room : null;
+    const seen = {}; seen[roomId] = 1;
+    let front = [roomId];
+    for (let depth = 0; depth < 3 && front.length; depth++) {
+        const next = [];
+        front.forEach(id => ((R[id] && R[id].doors) || []).forEach(d => {
+            const t = d && d.action && d.action.room; if (!t || seen[t] || !R[t]) return; seen[t] = 1;
+            if (t === cityRoom) { const n = {}; (HQ_CITY_RESIDENTS.list || []).forEach(p => { if (p && p.race) n[p.race] = (n[p.race] || 0) + 1; }); Object.keys(n).forEach(r => { if (n[r] >= 2) out[r] = 1; }); return; }
+            if (HQ_NPC_PLACES[t]) { HQ_NPC_PLACES[t].map(hqPlacesParse).forEach(q => { if (q.race && !q.stay && !q.keep) out[q.race] = 1; }); return; }
+            if (/^site_ow_/.test(t) || !hqRoomSite(t)) return;   // a road or a room of DOOR HQ: the zone ends there
+            next.push(t);
+        }));
+        front = next;
+    }
+    return (C[roomId] = out);
+}
 function hqRoomEncTable(roomId, skip) {
     if (skip) return null;   // the game's own people (THE AREA UNITS window's "game default" read)
     const room = (DOOR_HQ.rooms || {})[roomId];
@@ -98377,9 +98422,11 @@ function hqRoomEncTable(roomId, skip) {
     const ready = (r) => (typeof isRace3DReady !== 'function') || isRace3DReady(r);
     const list = E.list.filter(x => x && x.race && (typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(x.race) >= 0) && ready(x.race))
         .map(x => ({ race: x.race, w: Math.max(0, Number.isFinite(+x.w) ? +x.w : 1) })).filter(x => x.w > 0);
-    if (!list.length) return null;
+    const B = (E === A && A.shipped && typeof hqBoardRaces === 'function') ? hqBoardRaces(roomId) : null;   // THE BOARD'S RULE: a shipped table of a room off the table
+    if (B) { for (let i = list.length - 1; i >= 0; i--) if (!B[list[i].race]) list.splice(i, 1); }
+    if (!list.length) return null;   // (nothing of the shipped table is on the board: the room falls to the rule's own read, the board's natives)
     const span = (v) => (Array.isArray(v) && v.length === 2 && v.every(n => Number.isFinite(+n))) ? [Math.min(+v[0], +v[1]), Math.max(+v[0], +v[1])] : null;
-    return { list, walkers: span(E.walkers), levels: span(E.levels), group: span(E.group), spots: E.spots !== false, from: E === A ? 'area' : 'room' };
+    return { list, walkers: span(E.walkers), levels: span(E.levels), group: span(E.group), spots: E.spots !== false && !B, from: E === A ? 'area' : 'room' };   // (under THE BOARD'S RULE the room's placed people keep their own races)
 }
 /* THE AREA UNITS: who a PLACED person (a PEOPLE spot with a race) stands as while the room has a table — null = its own race.
    A spot whose race is off the list takes the list's races in a seeded order (the day, the room, the spot); the renderer stands
@@ -98394,7 +98441,7 @@ function hqSpotRaces(roomId, si, spot) {
     return out;
 }
 /* THE AREA UNITS: may a walker from another room (a traveller) come in? With a table, only a race on it. */
-function hqRoomTakesRace(roomId, race) { const T = hqRoomEncTable(roomId); return !T || T.list.some(x => x.race === race); }
+function hqRoomTakesRace(roomId, race) { const T = hqRoomEncTable(roomId); if (T) return T.list.some(x => x.race === race); const B = (typeof hqBoardRaces === 'function' && hqRoomSite(roomId)) ? hqBoardRaces(roomId) : null; return !B || !!B[race]; }   // (THE BOARD'S RULE: a room off the table lets in only the board's races of the rooms next door)
 /* THE AREA UNITS window's GAME DEFAULT: the room's own people as the game draws them with no table — each race with its tier
    and its share of the walkers' draw (the population's tier weights, read the way hqRoomPopulation's draw falls through) */
 function hqAreaDefaultUnits(roomId) {
