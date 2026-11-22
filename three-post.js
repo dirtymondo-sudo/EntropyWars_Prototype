@@ -3297,7 +3297,7 @@ const ThreePost = (function () {
         P.U = { cu: cu, ru: ru, ao: aoU, dofH: dofHU, dofV: dofVU, tone: toneU };
         P.cineOn = T.uniform(0); P.retroOn = T.uniform(0);
         // THE ENTROPY STYLE: its own uniforms (written each frame in _ngRender)
-        P.st = { mode: T.uniform(0), inkW: T.uniform(1), unitK: T.uniform(1), grass: T.uniform(0), ink: T.uniform(0.8), bands: T.uniform(0.7), amount: T.uniform(1),
+        P.st = { mode: T.uniform(0), inkW: T.uniform(1), unitK: T.uniform(1), grass: T.uniform(0), ink: T.uniform(0.8), bands: T.uniform(0.7), amount: T.uniform(1), palSh: T.uniform(new THREE.Vector3(0.10, 0.13, 0.26)), palHi: T.uniform(new THREE.Vector3(1.0, 0.93, 0.80)),
             p00: T.uniform(1).onRenderUpdate(function () { return P.cam ? (P.cam.projectionMatrix.elements[0] || 1) : 1; }) };
         P.bS = T.uniform(0); P.bR = T.uniform(0); P.bT = T.uniform(1);
         P.ph = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); P.ph.needsUpdate = true;
@@ -3733,7 +3733,7 @@ const ThreePost = (function () {
         if (_bloomPass && _bloomPass.enabled) { P.bS.value = Math.max(0, _bloomPass.strength); P.bR.value = Math.max(0, Math.min(1, _bloomPass.radius)); P.bT.value = _bloomPass.threshold; }
         P.cineOn.value = (_cinematicPass && _cinematicPass.enabled) ? 1 : 0;
         P.retroOn.value = (_retroPass && _retroPass.enabled) ? 1 : 0;
-        P.st.mode.value = _styleMode(); P.st.inkW.value = _styleInkPx(); var _smt = _styleMaskTex(); P.st.unitK.value = _smt ? _styleUnitK() : 1; P.st.grass.value = (_smt && _styleGrassU()) ? 1 : 0; P.st.ink.value = +_style.ink || 0; P.st.bands.value = +_style.bands || 0; P.st.amount.value = (_style.amount === undefined) ? 1 : +_style.amount;
+        P.st.mode.value = _styleMode(); P.st.inkW.value = _styleInkPx(); var _smt = _styleMaskTex(); P.st.unitK.value = _smt ? _styleUnitK() : 1; P.st.grass.value = (_smt && _styleGrassU()) ? 1 : 0; P.st.ink.value = +_style.ink || 0; P.st.bands.value = +_style.bands || 0; P.st.amount.value = (_style.amount === undefined) ? 1 : +_style.amount; var _spl = _stylePal(); P.st.palSh.value.set(_spl.sh[0], _spl.sh[1], _spl.sh[2]); P.st.palHi.value.set(_spl.hi[0], _spl.hi[1], _spl.hi[2]);
         if (e.raySrc) e.raySrc.autoUpdate = P.cineOn.value > 0.5 && P.U.cu.uRays.value > 0.001;   // THE RAY SOURCE: drawn only while the rays are on
         var mt = P.U.ru.tMask.value; P.maskTex.value = mt || _smt || P.ph;
         var ac = r.autoClear;
@@ -4576,7 +4576,12 @@ const ThreePost = (function () {
        A bright saturated pixel (a spell, a team outline, a zone wash: own cyan-blue / enemy pink-orange) keeps its colour
        and takes no ink. No bloom, no fog, no texture touched; the HUD is DOM and never passes through here. Viewer-local.
        Settings > Video > Entropy Style: Off / Grade / Grade + Ink. Stored ew_style. Off live: window.EW_NO_ENTROPY_STYLE. */
-    var _style = { mode: 'ink', inkWidth: 1.6, ink: 0.8, bands: 0.7, amount: 1, unitBold: 1.9 };   // Medium lines: mondo 11-12 "i like it with the lines on medium"
+    /* THE PALETTES (2026-11-22, mondo, on the six palette mock-ups: "let's just add the vhs tape as an option"): the grade's two
+       colours, the shadows' lean and the lights' lean, are a pick. 0 = Entropy (indigo shadows, warm parchment lights; the default),
+       1 = VHS Tape (violet-magenta shadows, cool cyan lights). Settings > Video > Palette; `_style.palette`. */
+    var _STYLE_PALETTES = [{ sh: [0.10, 0.13, 0.26], hi: [1.0, 0.93, 0.80] }, { sh: [0.20, 0.06, 0.30], hi: [0.82, 1.0, 0.98] }];
+    function _stylePal() { return _STYLE_PALETTES[Math.round(+_style.palette || 0)] || _STYLE_PALETTES[0]; }
+    var _style = { mode: 'ink', inkWidth: 1.6, ink: 0.8, bands: 0.7, amount: 1, unitBold: 1.9, palette: 0 };   // Medium lines: mondo 11-12 "i like it with the lines on medium"
     try {
         var _styleSaved = (typeof localStorage !== 'undefined') ? JSON.parse(localStorage.getItem('ew_style') || 'null') : null;
         if (_styleSaved && typeof _styleSaved === 'object') { for (var _sk in _style) { if (_styleSaved[_sk] !== undefined) _style[_sk] = _styleSaved[_sk]; } }
@@ -4630,9 +4635,10 @@ const ThreePost = (function () {
         if (m > 1 && (!depthTex || !cam)) m = 1;   // no depth to read: the grade alone
         u.uMode.value = m; u.tDepth.value = depthTex || null;
         u.uRes.value.set(Math.max(1, w), Math.max(1, h));
-        u.uInkW.value = _styleInkPx(); var _smt = _styleMaskTex(); u.tMask.value = _smt; u.uUnitK.value = _smt ? _styleUnitK() : 1; u.uGrass.value = (_smt && _styleGrassU()) ? 1 : 0; u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount;
+        u.uInkW.value = _styleInkPx(); var _smt = _styleMaskTex(); u.tMask.value = _smt; u.uUnitK.value = _smt ? _styleUnitK() : 1; u.uGrass.value = (_smt && _styleGrassU()) ? 1 : 0; u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount; _stylePalSync(u);
         if (cam) { u.uNearFar.value.set(cam.near || 0.1, cam.far || 1000); u.uOrtho.value = cam.isOrthographicCamera ? 1 : 0; u.uP00.value = cam.projectionMatrix.elements[0] || 1; }
     }
+    function _stylePalSync(u) { var p = _stylePal(); if (u.uPalSh) u.uPalSh.value.set(p.sh[0], p.sh[1], p.sh[2]); if (u.uPalHi) u.uPalHi.value.set(p.hi[0], p.hi[1], p.hi[2]); }
     function _styleApply() {
         var on = _styleMode() > 0;
         if (_stylePass) _stylePass.enabled = on;
@@ -4648,12 +4654,12 @@ const ThreePost = (function () {
         _style[key] = v;
         if (persist !== false) { try { localStorage.setItem('ew_style', JSON.stringify(_style)); } catch (e) {} }
     }
-    function getStyle() { return { mode: _style.mode, unitBold: (_style.unitBold === undefined) ? 1.9 : +_style.unitBold, inkWidth: _style.inkWidth, ink: _style.ink, bands: _style.bands, amount: _style.amount, live: _styleMode() }; }
+    function getStyle() { return { mode: _style.mode, palette: Math.round(+_style.palette || 0), unitBold: (_style.unitBold === undefined) ? 1.9 : +_style.unitBold, inkWidth: _style.inkWidth, ink: _style.ink, bands: _style.bands, amount: _style.amount, live: _styleMode() }; }
     var _StyleShader = {
         uniforms: {
             'tDiffuse': { value: null }, 'tDepth': { value: null },
             'uRes': { value: new THREE.Vector2(1, 1) }, 'uMode': { value: 0 }, 'uInkW': { value: 1 }, 'tMask': { value: null }, 'uUnitK': { value: 1 }, 'uGrass': { value: 0 }, 'uInk': { value: 0.8 }, 'uBands': { value: 0.7 },
-            'uAmount': { value: 1 }, 'uNearFar': { value: new THREE.Vector2(0.1, 1000) }, 'uOrtho': { value: 0 }, 'uP00': { value: 1 }
+            'uPalSh': { value: new THREE.Vector3(0.10, 0.13, 0.26) }, 'uPalHi': { value: new THREE.Vector3(1.0, 0.93, 0.80) }, 'uAmount': { value: 1 }, 'uNearFar': { value: new THREE.Vector2(0.1, 1000) }, 'uOrtho': { value: 0 }, 'uP00': { value: 1 }
         },
         vertexShader: [
             'varying vec2 vUv;',
@@ -4677,13 +4683,15 @@ const ThreePost = (function () {
             'uniform vec2 uNearFar;',
             'uniform float uOrtho;',
             'uniform float uP00;',
+            'uniform vec3 uPalSh;',
+            'uniform vec3 uPalHi;',
             'varying vec2 vUv;',
             'float sLum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }',
             '// a spell, a team outline, a zone wash: strong + bright colour keeps itself',
             'float sKeep(vec3 c) { float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)); float s = (mx - mn) / max(mx, 0.001); return smoothstep(0.55, 0.85, s) * smoothstep(0.6, 0.9, mx); }',
             'vec3 sGrade(vec3 c) {',
             '  float l = sLum(c);',
-            '  vec3 sh = vec3(0.10, 0.13, 0.26), hi = vec3(1.0, 0.93, 0.80);',
+            '  vec3 sh = uPalSh, hi = uPalHi;',
             '  float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)); float s = (mx - mn) / max(mx, 0.001);',
             '  vec3 g = mix(vec3(l), c, mix(1.22, 0.86, smoothstep(0.25, 0.75, s)));',
             '  g = mix(g, g * hi * 1.03, smoothstep(0.35, 0.95, l) * 0.55);',
@@ -4747,7 +4755,7 @@ const ThreePost = (function () {
         var satOf = function (c) { var mx = T.max(c.r, T.max(c.g, c.b)), mn = T.min(c.r, T.min(c.g, c.b)); return { mx: mx, s: mx.sub(mn).div(T.max(mx, 0.001)) }; };
         var keep = function (c) { var o = satOf(c); return T.smoothstep(0.55, 0.85, o.s).mul(T.smoothstep(0.6, 0.9, o.mx)); };
         var grade = function (c) {
-            var l = lum(c), sh = V3(0.10, 0.13, 0.26), hi = V3(1.0, 0.93, 0.80), o = satOf(c);
+            var l = lum(c), sh = S.palSh, hi = S.palHi, o = satOf(c);
             var g = T.mix(V3(l), c, T.mix(F(1.22), F(0.86), T.smoothstep(0.25, 0.75, o.s)));
             g = T.mix(g, g.mul(hi).mul(1.03), T.smoothstep(0.35, 0.95, l).mul(0.55));
             g = T.mix(g, T.mix(sh, g, 0.72).add(sh.mul(0.10)), F(1).sub(T.smoothstep(0.0, 0.45, l)).mul(0.75));
@@ -4866,7 +4874,7 @@ const ThreePost = (function () {
             u.tDiffuse.value = S.rt.texture; u.tDepth.value = S.rt.depthTexture; u.tMask.value = null; u.uUnitK.value = 1;
             u.uMode.value = mode; u.uRes.value.set(w, h);
             u.uInkW.value = Math.max(0.5, +_style.inkWidth || 1) * Math.max(1, pr * 0.75) * uk;
-            u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount;
+            u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount; _stylePalSync(u);
             u.uNearFar.value.set(cam.near || 0.1, cam.far || 1000); u.uOrtho.value = cam.isOrthographicCamera ? 1 : 0; u.uP00.value = cam.projectionMatrix.elements[0] || 1;
             r.render(S.scene, S.cam);
             r.autoClear = prevAuto;
