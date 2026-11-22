@@ -52806,6 +52806,10 @@ const ThreeRenderer = (function () {
     }
 
     function activate() {
+        var tA = performance.now();
+        try { return _activateBody(); } finally { _dip.actAt = tA; _dip.actMs = Math.round(performance.now() - tA); }   // THE FIGHT'S START IS LOGGED: what laying the fight's scene cost
+    }
+    function _activateBody() {
         if (!initialized) init();
         if (!canvas || !renderer) return;
         _ggFreshAt = performance.now();   // THE GRASS GROWS IN: this fight's first field
@@ -55575,7 +55579,7 @@ const ThreeRenderer = (function () {
            one moment he was reporting was the one the log skipped. Into a fight the log now runs on (the gap that holds the fight's
            lay is its first frame) and the dip is marked FIGHT START. */
         if (rm !== D.room) {
-            if (!rm && D.room && !(typeof window !== 'undefined' && window.EW_DIP_FIGHT_SKIP)) { D.room = rm; D.fightAt = t0; D.fightLay = Math.round(t0 - _ggFreshAt); if (!D.since || t0 - D.since <= 3000) D.since = t0 - 3001; }
+            if (!rm && D.room && !(typeof window !== 'undefined' && window.EW_DIP_FIGHT_SKIP)) { D.room = rm; D.fightAt = t0; if (!D.since || t0 - D.since <= 3000) D.since = t0 - 3001; }
             else { if (D.st) _dipClose(D, now); D.room = rm; D.since = t0; D.ring.length = 0; D.lastT0 = 0; D.prev = null; }   // a new room: its first 3 s are the load
         }
         var R = D.ring; R.push(t0); while (R.length && t0 - R[0] > 1000) R.shift();
@@ -55587,7 +55591,7 @@ const ThreeRenderer = (function () {
             if (st && st.calm && t0 - st.lastAt > 1500) { _dipClose(D, now); st = null; }   // (a run of slow frames with long gaps stays one dip)
             if (st) st.calm = false;
             if (!st) st = D.st = { at: new Date().toISOString().slice(11, 19), t: D.lastT0, lastAt: t0, frames: 0, worst: 0, minFps: 999, js: 0, parts: {}, where: _dipWhere(), c0: P.c, room: (_hq && _hq.opts && _hq.opts.room) || '' };
-            st.lastAt = t0; st.frames++; st.js += P.cpu; if (D.fightAt && t0 - D.fightAt < 6000) { st.fight = true; st.lay = D.fightLay; } else if (_hq && !_hq.ready) st.loadF = (st.loadF | 0) + 1; if (iv > st.worst) st.worst = iv; if (fps < st.minFps) st.minFps = fps;   // (loadF: a frame under the load card)
+            st.lastAt = t0; st.frames++; st.js += P.cpu; if (D.fightAt && t0 - D.fightAt < 6000) { st.fight = true; if (D.actAt && Math.abs(D.actAt - D.fightAt) < 6000) st.lay = D.actMs; } else if (_hq && !_hq.ready) st.loadF = (st.loadF | 0) + 1; if (iv > st.worst) st.worst = iv; if (fps < st.minFps) st.minFps = fps;   // (loadF: a frame under the load card)
             var M = P.parts; if (M) for (var pk in M) st.parts[pk] = (st.parts[pk] || 0) + M[pk];
             var S2 = P.sub; if (S2) for (var sk in S2) st.parts['> ' + sk] = (st.parts['> ' + sk] || 0) + S2[sk];
         } else if (D.st) { D.st.calm = true; if (t0 - D.st.lastAt > 1500) _dipClose(D, now); }
@@ -55604,7 +55608,7 @@ const ThreeRenderer = (function () {
             var tp = (st.top || (function () { var t = []; for (var k in st.parts) t.push([k, st.parts[k]]); t.sort(function (a, b) { return b[1] - a[1]; }); return t.slice(0, 4); })()).map(function (x) { return x[0] + ' ' + Math.round(x[1]); }).join(', ');
             if (open) { var c1 = _dipCounters(); d = { rec: c1.rec - st.c0.rec, ep: c1.ep - st.c0.ep, pb: c1.pb - st.c0.pb, pp: c1.pp - st.c0.pp, fr: c1.fr - st.c0.fr, add: c1.add - st.c0.add, ld: c1.ld - st.c0.ld }; }
             var hap = []; if (d.rec) hap.push(d.rec + ' re-recorded'); if (d.ep) hap.push('epoch moved ' + d.ep); if (d.pb) hap.push(d.pb + ' shader builds'); if (d.pp) hap.push(d.pp + ' new pipelines'); if (d.fr) hap.push(d.fr + ' GPU buffers freed'); if (d.add) hap.push(d.add + ' objects added'); if (d.ld) hap.push(d.ld + ' models loaded');
-            L.push('  ' + st.at + 'Z · ' + ((st.len != null ? st.len : st.lastAt - st.t) / 1000).toFixed(1) + ' s · ' + st.minFps + ' FPS · ' + Math.round(st.worst) + ' ms · ' + st.frames + ' frames, JS ' + Math.round(st.js) + ' ms · at ' + st.where + (st.whereEnd && st.whereEnd !== st.where ? ' → ' + st.whereEnd : '') + (open ? ' (still going)' : '') + (st.fight ? ' · FIGHT START (its first frame began ' + (st.lay | 0) + ' ms after the fight was laid)' : '') + (st.loadF ? ' · LOADING (' + (st.loadF >= st.frames ? 'all' : st.loadF + ' of ' + st.frames) + ' frames under the load card)' : '') + ' · ' + (tp || 'no parts timed') + ' · ' + (hap.length ? hap.join(', ') : 'nothing loaded or rebuilt'));
+            L.push('  ' + st.at + 'Z · ' + ((st.len != null ? st.len : st.lastAt - st.t) / 1000).toFixed(1) + ' s · ' + st.minFps + ' FPS · ' + Math.round(st.worst) + ' ms · ' + st.frames + ' frames, JS ' + Math.round(st.js) + ' ms · at ' + st.where + (st.whereEnd && st.whereEnd !== st.where ? ' → ' + st.whereEnd : '') + (open ? ' (still going)' : '') + (st.fight ? ' · FIGHT START' + (st.lay != null ? ' (its scene was laid in ' + st.lay + ' ms, outside the frames)' : '') : '') + (st.loadF ? ' · LOADING (' + (st.loadF >= st.frames ? 'all' : st.loadF + ' of ' + st.frames) + ' frames under the load card)' : '') + ' · ' + (tp || 'no parts timed') + ' · ' + (hap.length ? hap.join(', ') : 'nothing loaded or rebuilt'));
         });
         return L;
     }

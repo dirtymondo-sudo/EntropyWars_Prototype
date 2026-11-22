@@ -3896,3 +3896,15 @@ the fight is LAID outside it (map.js `_hqEncounterStart` -> three-renderer.js `a
 - Fix: `mesh.raycast = function () {}` on both fields (`ew_grass_field`, the walk's `ew_hq_grass`). No pick wants a tuft.
 - Lesson: a big mesh whose index or positions keep changing must opt out of raycasts (or keep its own cheap test); F3 "Pick ...
   ms/s" over ~100 with a large "plain" count names this.
+
+## THE FIGHT'S START IS LOGGED (2026-11-22, mondo: "Still freezes and drops to 0 when a fight starts"; his "Dips this session" showed nothing after the walk's last dip)
+- The dip log ran in the WALK's frame only (`_hqFrameGuarded`), and leaving the walked room counted as "a new room", whose first 3 s
+  are never logged. So no fight frame, and above all not the switch, was ever in the log; and the lens's "JS" is the render's own, so
+  the fight's lay (`activate`, map.js `_hqEncounterStart`) is in no number.
+- Now `renderFrame` (a fight, no walked room live) runs `_dipBegin` / `_dipEnd` too; into a fight the log runs on (no 3 s skip), the
+  dip is tagged FIGHT START with what `activate` cost ("its scene was laid in N ms, outside the frames"); where = "in a fight".
+  A fight frame is never counted as "under the load card" (it was: `!(_hq && _hq.ready)`). Off: `window.EW_DIP_FIGHT_SKIP`.
+- What his 16:54 F3 says of the switch on his Mac (Fairy Forest clearing): "2486 walked · 2486 re-recorded (3169 meshes)", shader
+  builds 8.9/s, pipelines 6.1/s, worst 1,465 ms, then "awake 574" groups refreshing for seconds. The fight is a SECOND scene of
+  ~3,100 copies with its own camera and lights; every recording, render object and many pipelines are made again. Proposed to him
+  (decision card): the fight keeps drawing the walked room. See project memory perf-fight-start-20261122.
