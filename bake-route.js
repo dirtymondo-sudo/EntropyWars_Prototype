@@ -173,6 +173,7 @@ const LINE = PARTS[0].LINE;
 const cell = []; for (let y = 0; y < Dq; y++) { cell.push(new Array(W).fill(' ')); }   // ' ' scenery, 'v' verge, 'g' walked ground, 'p' the path, 's' shoulder, 'm' median; a joined district's squares: 'f' walked, 'x' not
 const lookSq = []; for (let y = 0; y < Dq; y++) lookSq.push(new Array(W).fill(null));   // the look of the path that lies on a square
 for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) { if (plotOf(x, y) >= 0) cell[y][x] = 'g'; else { const J = foreign(x, y); if (J) cell[y][x] = J.cell[y - J.FOY][x - J.FOX] === J.fill ? 'x' : 'f'; } }
+const noseSq = new Uint8Array(W * Dq);   // the median's squares that are asphalt (THE HIGHWAY NARROWS BEFORE THE GATE)
 const pathPts = [];   // every path's own line, every quarter square: [x, y, dirx, diry, in the room, the part]
 PARTS.forEach(pt => { const LK = LOOKS[pt.look]; let s = 0;
   for (let i = 1; i < pt.LINE.length; i++) {
@@ -188,9 +189,27 @@ PARTS.forEach(pt => { const LK = LOOKS[pt.look]; let s = 0;
       }
       s += len;
   } });
-pathPts.forEach(([px, py, , , , pt]) => { const LK = LOOKS[pt.look]; for (let y = Math.floor(py - LK.hw - 1); y <= Math.ceil(py + LK.hw + 1); y++) for (let x = Math.floor(px - LK.hw - 1); x <= Math.ceil(px + LK.hw + 1); x++) {
+/* THE HIGHWAY NARROWS BEFORE THE GATE (2026-11-22, mondo: "1 road going straight into the middle of 2 roads??? seriously?"): a highway is 24.5 m of asphalt in
+   two carriageways and the road at a district's gate is two lanes: the gate road ran into the highway's median. The spec's
+   `taper: { "<end id>": { len, hold } }` narrows the highway to that end: from `hold + len` squares before the end (default 3 + 10) the median is asphalt,
+   its yellow lines close to a double line, the white edge lines close in from 3.4 to 1 square off the middle, the lane dashes and the rails stop, and the
+   cars' lines move in; the last `hold` squares are a two-lane road (three squares of asphalt, the lines 7 m apart). p[6] = how much of the highway is
+   left at a path point (1 the whole road, 0 the two-lane road). */
+const TAPER = SPEC.taper || null, TAPER_AT = [];
+pathPts.forEach(p => { p[6] = 1; });
+if (TAPER) { const mm = v => (v < 0 ? 'm' + (-v) : '' + v), seen = {};
+  for (let i = 1; i < pathPts.length; i++) { const a = pathPts[i - 1], b = pathPts[i]; if (a[4] === b[4] || a[5] !== b[5]) continue;   // (the ENDS' own reading of the line, below)
+      const inP = a[4] ? a : b, outP = a[4] ? b : a, dx = Math.round(outP[2]) * (a[4] ? 1 : -1), dy = Math.round(outP[3]) * (a[4] ? 1 : -1);
+      const sx = Math.floor(inP[0]), sy = Math.floor(inP[1]), cx = Math.floor(sx / N), cy = Math.floor(sy / N);
+      const id = dx ? 'ow_v_' + mm(BX0 + cx + (dx > 0 ? 1 : 0)) + '_' + mm(BY0 + cy) : 'ow_h_' + mm(BX0 + cx) + '_' + mm(BY0 + cy + (dy > 0 ? 1 : 0));
+      if (seen[id] || !TAPER[id]) continue; seen[id] = 1; TAPER_AT.push({ i, part: a[5], hold: TAPER[id].hold != null ? TAPER[id].hold : 3, len: TAPER[id].len || 10 }); }
+  Object.keys(TAPER).forEach(id => { if (!seen[id]) { console.error('bake-route: taper names ' + id + ', which is no end of this road'); process.exit(1); } });
+  pathPts.forEach((p, j) => { TAPER_AT.forEach(T => { if (p[5] !== T.part) return; const t = Math.abs(j - T.i) * 0.25, f = Math.max(0, Math.min(1, (t - T.hold) / T.len)); if (f < p[6]) p[6] = f; }); }); }
+/* how much of the highway is left at a spot (the nearest point of its line) */
+const taperAt = (x, y) => { if (!TAPER_AT.length) return 1; let bd = 1e9, bf = 1; for (let j = 0; j < pathPts.length; j++) { const p = pathPts[j], d = (p[0] - x) * (p[0] - x) + (p[1] - y) * (p[1] - y); if (d < bd) { bd = d; bf = p[6]; } } return bf; };
+pathPts.forEach(([px, py, , , , pt, tf]) => { const LK = pt.look === 'highway' && tf < 1 ? { hw: 1.5 + 2 * tf, nose: true } : LOOKS[pt.look]; for (let y = Math.floor(py - LK.hw - 1); y <= Math.ceil(py + LK.hw + 1); y++) for (let x = Math.floor(px - LK.hw - 1); x <= Math.ceil(px + LK.hw + 1); x++) {
       if (plotOf(x, y) < 0) continue; const d = Math.hypot(x + 0.5 - px, y + 0.5 - py);
-      if (pt.look === 'highway') { if (d <= 0.5) { cell[y][x] = 'm'; lookSq[y][x] = pt.look; } else if (d <= LK.hw && cell[y][x] !== 'm') { cell[y][x] = 'p'; lookSq[y][x] = pt.look; } else if (d <= LK.hw + 1 && cell[y][x] === 'g') cell[y][x] = 's'; }
+      if (pt.look === 'highway') { if (d <= 0.5 && !LK.nose) { if (!noseSq[y * W + x]) { cell[y][x] = 'm'; lookSq[y][x] = pt.look; } } else if (d <= 0.5) { cell[y][x] = 'p'; lookSq[y][x] = pt.look; noseSq[y * W + x] = 1; } else if (d <= LK.hw && cell[y][x] !== 'm') { cell[y][x] = 'p'; lookSq[y][x] = pt.look; } else if (d <= LK.hw + 1 && cell[y][x] === 'g') cell[y][x] = 's'; }
       else if (d <= LK.hw && (cell[y][x] === 'g' || !lookSq[y][x] || lookSq[y][x] === 'trail')) { cell[y][x] = 'p'; lookSq[y][x] = pt.look; } } });
 /* THE PLAN BY HAND (2026-11-17): the hook file's plan(ctx) may lay more path squares before the verge, the heights and the paint are read (a footpath off the road
    to a side door): ctx.path(sx, sy) makes a square of a route plot path */
@@ -346,10 +365,15 @@ if (LOOK === 'highway') {
             return Math.tan(Math.atan2(d1[0] * d2[1] - d1[1] * d2[0], d1[0] * d2[0] + d1[1] * d2[1]) / 2); } return 0; };
     straight.forEach(([x0, y0, x1, y1]) => { const len = Math.hypot(x1 - x0, y1 - y0), dx = (x1 - x0) / len, dy = (y1 - y0) / len, nx = -dy, ny = dx, at = (t, o) => M(x0 + dx * t + nx * o, y0 + dy * t + ny * o);
         const T0 = bendAt(x0, y0, dx, dy, false), T1 = bendAt(x1, y1, dx, dy, true), a0 = o => o * T0, a1 = o => len - o * T1;
-        [-1, 1].forEach(sd => { line(at(a0(sd * 0.6), sd * 0.6), at(a1(sd * 0.6), sd * 0.6), 0.16, YEL); line(at(a0(sd * 3.4), sd * 3.4), at(a1(sd * 3.4), sd * 3.4), 0.14, WHITE);
-            [1.5, 2.5].forEach(o => { for (let t = Math.max(1, a0(sd * o) + 1); t + 2 <= Math.min(len, a1(sd * o)); t += 4) line(at(t, sd * o), at(t + 2, sd * o), 0.14, WHITE); });
+        /* a line that closes in where the highway narrows: `o` squares off the middle on the whole road, `oe` on the two-lane road, straight between */
+        const fT = t => taperAt(x0 + dx * t, y0 + dy * t), whole = (ta, tb) => fT(ta) >= 1 && fT(tb) >= 1 && fT((ta + tb) / 2) >= 1;
+        const taperLine = (o, oe, w, color) => { const A = a0(o), B = a1(o); if (!TAPER_AT.length) { line(at(A, o), at(B, o), w, color); return; }
+            const st = t => { const f = fT(t); return f >= 1 ? 2 : f <= 0 ? 0 : 1; }, br = [A]; let s0 = st(A); for (let t = A + 0.25; t < B; t += 0.25) { const s1 = st(t); if (s1 !== s0) { br.push(t - 0.125); s0 = s1; } } br.push(B);
+            for (let i = 0; i + 1 < br.length; i++) { const fa = fT(br[i]), fb = fT(br[i + 1]); line(at(br[i], oe + (o - oe) * fa), at(br[i + 1], oe + (o - oe) * fb), w, color); } };
+        [-1, 1].forEach(sd => { taperLine(sd * 0.6, sd * 0.05, 0.16, YEL); taperLine(sd * 3.4, sd * 1.0, 0.14, WHITE);
+            [1.5, 2.5].forEach(o => { for (let t = Math.max(1, a0(sd * o) + 1); t + 2 <= Math.min(len, a1(sd * o)); t += 4) if (whole(t, t + 2)) line(at(t, sd * o), at(t + 2, sd * o), 0.14, WHITE); });
             /* a guard rail along the shoulder, in runs with gaps (you can step off the road) */
-            for (let t = 3; t + 9 <= len; t += 16) { const a = at(t, sd * 4.6), b = at(t + 9, sd * 4.6); feat({ k: 'rail', x0: a[0], z0: a[1], x1: b[0], z1: b[1], model: 'guard' }); } });
+            for (let t = 3; t + 9 <= len; t += 16) { if (!whole(t - 1, t + 10)) continue; const a = at(t, sd * 4.6), b = at(t + 9, sd * 4.6); feat({ k: 'rail', x0: a[0], z0: a[1], x1: b[0], z1: b[1], model: 'guard' }); } });
         const sx = Math.round(x0 + dx * Math.min(6, len / 2) + nx * 5.5), sy = Math.round(y0 + dy * Math.min(6, len / 2) + ny * 5.5); if (walked(sx, sy)) P(pick(['roads_g_sign_003', 'roads_g_sign_000', 'roads_g_sign_005']), sx, sy, { face: Math.round(Math.atan2(dx, -dy) * 180 / Math.PI + 180) }); });
 } else if (LOOK === 'road') {
     straight.forEach(([x0, y0, x1, y1]) => { const len = Math.hypot(x1 - x0, y1 - y0), dx = (x1 - x0) / len, dy = (y1 - y0) / len, nx = -dy, ny = dx;
@@ -391,13 +415,14 @@ const EDGE_ROADS = [];
 let RAISED = null;
 if (SPEC.raised && LOOK === 'highway') { if (JOINS.length) { console.error('bake-route: `raised` and `join` in one room are not built'); process.exit(1); }
     RAISED = require('./ow-raised.js')({ SPEC, ID, C, N, W, Dq, r2, gx, gz, Hc, plotOf, CAT, errs, marks, F, props, clear, feat, TRAFFIC, LINE: PARTS[0].LINE, ASPH, SHOULDER, edgeRoads: EDGE_ROADS,
-        reslope: writeSlope, floorAt: (x, y) => kitOf(kindAt(x, y)).floor, setPaint: (x, y, key) => { if (x >= 0 && y >= 0 && x < W && y < Dq && plotOf(x, y) >= 0) paint[y * W + x] = pal(key); },
+        roadHalf: (x, y) => 1.5 + 2 * taperAt(x, y), reslope: writeSlope, floorAt: (x, y) => kitOf(kindAt(x, y)).floor, setPaint: (x, y, key) => { if (x >= 0 && y >= 0 && x < W && y < Dq && plotOf(x, y) >= 0) paint[y * W + x] = pal(key); },
         laneLine: (o, back) => offLine(back ? carPts.slice().reverse() : carPts, o) }); }
 const CTX = { ID, ROOM, LOOK, C, N, W, D: Dq, BX0, BY0, COLS, ROWS, PLOTS, cell, gx, gz, gcx, gcz, r2, walked, free, nearPath, plotOf, kindAt, groundAt, hAt, feat, props, npc, doors, marks, P, dec, tree, rnd, pick, taken, ENDS, CAT, F, TRAFFIC, clear, LINE: PARTS[0].LINE, SPEC, RAISED, ASPH, setPaint: (x, y, key) => { if (x >= 0 && y >= 0 && x < W && y < Dq && plotOf(x, y) >= 0) paint[y * W + x] = pal(key); } };
 if (HOOK && typeof HOOK.dress === 'function') HOOK.dress(CTX);
 if (SPEC.cars && LOOK === 'highway') { const c = SPEC.cars, pts = carPts;
     /* the polyline offset by `o` squares to the right of its way (a mitred corner), in metres */
-    const off = offLine;
+    const off = TAPER_AT.length ? (L, o) => { const D = []; L.forEach((q, i) => { if (i) { const a = L[i - 1], n = Math.max(1, Math.round(Math.hypot(q[0] - a[0], q[1] - a[1]))); for (let k = 1; k < n; k++) D.push([a[0] + (q[0] - a[0]) * k / n, a[1] + (q[1] - a[1]) * k / n]); } D.push(q); });   // (a point a square, so the line can move in where the highway narrows)
+        const full = offLine(D, o), slim = offLine(D, 0.5); return D.map((q, i) => { const f = taperAt(q[0], q[1]); return [r2(slim[i][0] + (full[i][0] - slim[i][0]) * f), r2(slim[i][1] + (full[i][1] - slim[i][1]) * f)]; }); } : offLine;
     TRAFFIC.push({ pts: off(pts, 2), loop: false, n: c.n || 4, speed: c.speed || 10, lane: 0.01, kinds: c.kinds || ['suv', 'cadillac', 'taxi', 'suv'] });
     TRAFFIC.push({ pts: off(pts.slice().reverse(), 2), loop: false, n: c.n || 4, speed: c.speed || 10, lane: 0.01, kinds: (c.kinds || ['cadillac', 'suv', 'copcar', 'taxi']).slice().reverse() }); }
 if (RAISED) TRAFFIC.forEach(t => { t.deck = true; });   // THE RAISED HIGHWAY: every car line rides the deck where it lies under it

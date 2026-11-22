@@ -4127,6 +4127,8 @@ html.ew-hq-cover #startOverlay > .title-page:not(.active):not(#hqPage) * { anima
 .hq-prompt span { font-size: 9px; letter-spacing: 0.22em; color: #b8a060; }
 .hq-prompt span:empty { display: none; }
 .hq-prompt i { font-style: normal; font-size: 10px; letter-spacing: 0.18em; color: #7fd9dd; }
+.hq-prompt em { font-style: normal; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; color: #ffe08a; }
+.hq-prompt i .hq-mouse { display: inline-block; vertical-align: -3px; margin-right: 2px; }
 @keyframes hqPromptIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .hq-debug { position: absolute; right: 16px; bottom: 14px; font: 10px 'IBM Plex Mono', monospace; color: #7fd9dd; letter-spacing: 0.1em; z-index: 20; pointer-events: none; }
 /* CSS2D nameplates over doors / counters */
@@ -6148,6 +6150,7 @@ html.ew-hq-cover #startOverlay > .title-page:not(.active):not(#hqPage) * { anima
 #hqPage .hq-prompt { padding: 9px 20px 9px 16px; gap: 12px; }
 #hqPage .hq-prompt b { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
 #hqPage .hq-prompt span { color: var(--hq-ink-mute); }
+#hqPage .hq-prompt em { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
 #hqPage .hq-prompt i { color: var(--hq-sel); padding: 3px 9px; border-radius: var(--hq-r-pill); background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); box-shadow: inset 0 1px 0 var(--hq-row-lip); }
 #hqPage .hq-toast { padding: 10px 22px; }
 #hqPage .hq-toast b { color: var(--hq-sel); text-shadow: var(--hq-tshadow); }

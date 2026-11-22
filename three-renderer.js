@@ -75836,7 +75836,7 @@ const ThreeRenderer = (function () {
         F.forEach(function (f) {
             var fam = (f.key === 'water' || f.key === 'deep_water') ? 'water' : f.key, bk = fam + '@' + Math.round(f.y * 100);
             var B = bodies[bk] || (bodies[bk] = { key: fam, y: f.y, fl: [], deep: [] });
-            B.fl.push(f); if (f.key === 'deep_water') B.deep.push(f);
+            B.fl.push(f); if (f.key === 'deep_water' || f.look === 'deep_water') B.deep.push(f);   /* (`look`: drawn dark, walked by its key: data.js A LIQUID'S LOOK IS NOT ITS RULE) */
         });
         Object.keys(bodies).forEach(function (bk) {
             var B = bodies[bk], g0 = B.fl[0].gq, Q = g0.Q, winS = LIQ_SHORE_H * Q, winD = LIQ_DEEP_H * Q;   // the spell water's windows on a board of these squares
@@ -76299,7 +76299,7 @@ const ThreeRenderer = (function () {
                 wg.setIndex(B.p.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.i, 1) : new THREE.Uint16BufferAttribute(B.i, 1));
                 var wm = new THREE.Mesh(wg, fluidMatFor(key)); wm.renderOrder = 2; wm.name = 'hq:water:' + key; wm._ew_hqWater = true; G.add(wm);
             });
-            if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); ['water', 'deep_water'].forEach(function (k) { var lk = _hqWaterLook(info, k); if (lk !== k) fluidMatFor(lk); }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick; a room's own look ticks too)
+            if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); if (f.look === 'deep_water') fluidMatFor('deep_water'); } }); ['water', 'deep_water'].forEach(function (k) { var lk = _hqWaterLook(info, k); if (lk !== k) fluidMatFor(lk); }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick; a room's own look ticks too)
         } catch (e) { console.warn('[HQ] the water failed', e); }
         try { if (_hqFallsBuild(info, G, U, TM)) { (info.falls || []).forEach(function (f) { var k = f.key || 'water'; fluidMatFor(k === 'deep_water' ? 'water' : k); }); } } catch (e) { console.warn('[HQ] the waterfalls failed', e); }   // THE WATERFALLS
         /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
@@ -78201,7 +78201,7 @@ const ThreeRenderer = (function () {
             if (typeof _hqTBaseAt === 'function') { var b = _hqTBaseAt(info, cx, cz); if (h > b) h = b; }   // never a roof or a wall top at the edge: the ground (a sunk bay stays sunk)
             return h;
         };
-        var at = function (x, z) {
+        var at = function (x, z, raw) {
             var cx = Math.max(R.x0, Math.min(R.x1, x)), cz = Math.max(R.z0, Math.min(R.z1, z));
             var ex = Math.abs(x - cx), ez = Math.abs(z - cz), d = Math.hypot(ex, ez), eH = groundAt(cx, cz);
             var liftUp = 0.45 * sm(d / 1.2), liftDn = 0.25 * (1 - sm(d / 0.6));
@@ -78249,11 +78249,20 @@ const ThreeRenderer = (function () {
             /* THE GATE'S LANE IS LEVEL (2026-11-22, THE ROAD OF THE NEXT ROOM RUNS ON): past an open seam the walker goes on 6 m at the gate's own floor
                height and the road past the line lies there, so in the seam's lane the land is the gate's floor (no lift, no ditch, no dune through the
                road) for 10 m, easing back to its own shape by 26 m out and 14 m to each side */
-            if (LANES && d > 0.01) for (var li = 0; li < LANES.length; li++) {
+            if (LANES && d > 0.01 && !raw) for (var li = 0; li < LANES.length; li++) {
                 var ln0 = LANES[li], lhz = (ln0.side === 'n' || ln0.side === 's'), llat = Math.abs((lhz ? x : z) - ln0.at), lout = ln0.side === 'n' ? R.z0 - z : ln0.side === 's' ? z - R.z1 : ln0.side === 'w' ? R.x0 - x : x - R.x1;
-                if (lout < 0 || lout > 26 || llat > ln0.hw + 14) continue;
+                if (lout < 0 || lout > 200 || llat > ln0.hw + 22) continue;
                 var lk = (1 - sm((llat - ln0.hw - 4) / 10)) * (1 - sm((lout - 10) / 16));
-                if (lk > 0) y = y * (1 - lk) + (eH - 0.14) * lk;
+                /* THE ROAD IS GRADED (the same day: the Ranch Road and the Coast Road ran over a low mound 30 m past the line): on from there the lane keeps
+                   only a seventh of the land's rise and fall, easing back to the land's own shape between 70 and 200 m out and over 18 m to each side
+                   (a cutting through a roll of the ground, a low bank over a dip); never over the sea */
+                var lg = 0.85 * (1 - sm((llat - ln0.hw - 4) / 18)) * (1 - sm((lout - 70) / 130)) * (1 - Math.min(1, (W.coast || 0) * 2.5));
+                /* …and it comes DOWN (or up) TO THE LAND, not along a bank: the lane's level runs from the gate's floor to the land's own level 90 m out on
+                   the road's middle line (a room 2 m over the sand past it had its road on a 2 m bank that read as a mound) between 10 and 70 m out */
+                if (ln0.far === undefined) { ln0.far = null; ln0.far = at(lhz ? ln0.at : (ln0.side === 'w' ? R.x0 - 90 : R.x1 + 90), lhz ? (ln0.side === 'n' ? R.z0 - 90 : R.z1 + 90) : ln0.at, true).y; }
+                var lref = eH - 0.14; if (ln0.far != null) lref += (ln0.far - lref) * sm((lout - 10) / 60);
+                if (lg > lk) lk = lg;
+                if (lk > 0) y = y * (1 - lk) + lref * lk;
             }
             return { y: y, W: W, d: d, eH: eH, land: (landK && W.mountain > 0.6) ? landK : null, mesa: mesaT, side: (ez <= 1e-6 || ex > ez) ? kx : kz };
         };
@@ -78290,8 +78299,8 @@ const ThreeRenderer = (function () {
                             if (Math.abs(v1 - v0) > 0.4) return;
                             var off = (v0 + v1) / 2 - at; if (off < A - 0.3 || off > B + 0.3) return;
                             var gap = half - Math.max(u0 * sgn, u1 * sgn), L = Math.abs(u1 - u0);   // how far short of the wall its far end stops
-                            if (gap < 2.5 && L > 14) lines.push({ off: off, color: m.color, w: m.w || 0.16 });
-                            else if (gap < 24 && L >= 2 && L <= 14 && !lines.some(function (q) { return Math.abs(q.off - off) < 0.4; })) lines.push({ off: off, color: m.color, w: m.w || 0.14, on: L, period: 2 * L, start: Math.max(0, L - gap) });
+                            if (gap < 2.5 && L > 8) lines.push({ off: off, color: m.color, w: m.w || 0.16 });
+                            else if (gap < 24 && L >= 2 && L <= 8 && !lines.some(function (q) { return Math.abs(q.off - off) < 0.4; })) lines.push({ off: off, color: m.color, w: m.w || 0.14, on: L, period: 2 * L, start: Math.max(0, L - gap) });
                         });
                         /* a paved road that reaches the wall with no paint lines of its own (a raised highway's lines are its deck's): the plain set, a
                            white line inside each edge, yellow down the middle, a dashed white line between lanes */

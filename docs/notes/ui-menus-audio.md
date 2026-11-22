@@ -3054,3 +3054,12 @@ markers too". His picks on the mock-up: "definitely bottom right, north always u
 - Away: scene, cutscene, panel / pause (`H.paused`), editor, a fight. Off: `window.EW_NO_HQ_MINIMAP = true`.
 - Seen on screen (cloud, WebGL2): the Woods clearing and DOOR HQ's rotunda. NOT seen: blue water, a fightable unit's red dot,
   Disaster City, his Mac, a phone (it may sit over the touch buttons).
+
+## THE SHORT PROMPT: NAME, LEVEL, ACTIONS (2026-11-22, mondo: "way too much info and text, and its missing the most important info. It needs to say their level. Idgaf if they are a native or not, why ... does it say 'the ground is the board' ... '[click]' needs to be the left mouse click button like how the back button in the combat menu has a right mouse click icon")
+- The box near a unit you can fight (map.js `_hqSetPrompt`, the encounter branch) reads: `▸ <name>` · `LV <n>` · (left mouse icon) `ATTACK` · `[E] TALK`
+  (TALK only in talk reach). Gone: "A NATIVE", the board copy, the unit's sub line, "ENGAGE". Never put filler back.
+- The level (`_hqAimLevel`) is the level the unit FIGHTS at: its own set level (`aim.lvl`), else the lead level of data.js
+  `hqEncounterLaunch` (seeded by room + id, so the prompt and the fight agree). Kept per unit + party level, not recomputed each tick.
+- The left mouse icon (`_hqLmbIcon`) is the twin of hud.js `_HrlgRmbIcon` (the combat menu's BACK chip), the left button lit.
+- A phone (`html.ew-hq-touch`) names its own buttons: `[ATTACK]`, `[USE] TALK`. Exploration has no gamepad path, so no pad glyphs.
+- The other prompts (doors, counters, seats, story characters who only talk) are unchanged.
