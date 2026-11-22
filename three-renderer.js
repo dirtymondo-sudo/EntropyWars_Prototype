@@ -91886,8 +91886,9 @@ const ThreeRenderer = (function () {
            `brake` / `coast` / `hand` = m/s2 on the gas, on the brake, off the pedals, on the handbrake; `steer` = the front wheels' angle
            standing still, `steerHi` at top speed (rad), `steerIn` = how fast the wheels turn; `wb` = the wheelbase as a share of the
            car's length; `step` = the highest kerb it climbs, `clear` = what it drives over, `drop` = the biggest drop it rolls off,
-           `wet` = the deepest water; `reach` = how near its side you stand to get in. */
-        car: { v: 21, rev: 7, accel: 8.5, brake: 20, coast: 2.4, hand: 15, steer: 0.62, steerHi: 0.13, steerIn: 5.5, handSteer: 1.7, wb: 0.6, step: 0.34, clear: 0.34, drop: 0.7, wet: 0.45, hill: 0.55, bump: 0.25, lean: 0.035, squat: 0.02, reach: 1.7, exit: 0.75, camDist: 8.0, camUp: 0.9, len: 4.6, beam: 1.9 },
+           `wet` = the deepest water; `reach` = how near its side you stand to get in. THE HILL (11-22): `grade` = the steepest ground it
+           stands on (rise over run), `hill` = how much of a slope's pull it feels, `steerMax` = the wheels' hardest lock (handbrake). */
+        car: { v: 21, rev: 7, accel: 8.5, brake: 20, coast: 2.4, hand: 15, steer: 0.88, steerHi: 0.22, steerIn: 10, steerMax: 1.1, handSteer: 1.7, wb: 0.6, step: 0.34, clear: 0.34, drop: 0.7, grade: 0.9, wet: 0.45, hill: 0.3, bump: 0.25, lean: 0.035, squat: 0.02, reach: 1.7, exit: 0.75, camDist: 8.0, camUp: 0.9, len: 4.6, beam: 1.9 },
         keys: { dive: 'c', rise: 'space', board: 'e' },
         labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP', car: 'THE CAR' },
     };
@@ -92245,21 +92246,45 @@ const ThreeRenderer = (function () {
         rec._pr = P; return P;
     }
     /* how many of the body's points are refused at this place and heading (0 = the car may be there) */
+    /* THE HILL (2026-11-22, mondo: "i cant drive up these roads to the disaster hills ... The skateboard has no problem going up a hill, so
+       why does the car?"): the body's points were held against ONE height, the car's middle, as if the car stood on a level floor. On a road
+       that climbs 0.3 to 0.5 m a metre (the Canyon Road) the nose's points lie 0.6 to 1 m over the middle, more than a kerb (`step`), so the
+       road itself was read as a wall. Now the four WHEELS are asked first and the body is held against the plane they stand on: a slope is
+       ground, whatever its height. What still stops the car: a wheel that would rise more than `step` or fall more than `drop` from where
+       that wheel stands now (a kerb too high, a retaining wall, a ledge), ground steeper than `grade`, and a body point more than `step`
+       over the wheels' plane or with no floor under it (a wall, a building, a bank beside the road). */
+    function _hqCarWheels(V, R, x, z, yaw, y, out) {   // (each wheel is asked from ITS OWN last height, `V.wg`: the floor refuses a spot more than a climb over the asker, and up a hill the front wheels stand that far over the car's middle)
+        var rec = V.rec, wb = Math.max(1.2, rec.hd * 2 * (R.wb || 0.6)), ax = wb / 2, aw = Math.max(0.3, rec.hw - 0.25), fx = Math.sin(yaw), fz = Math.cos(yaw), lx = Math.cos(yaw), lz = -Math.sin(yaw), wg = V.wg;
+        for (var i = 0; i < 4; i++) { var a = i < 2 ? ax : -ax, b = (i & 1) ? -aw : aw, q = _hqSurface(x + fx * a + lx * b, z + fz * a + lz * b, wg ? wg[i] : y); out[i] = (q === null || !isFinite(q)) ? null : q; }
+        out.wb = wb; out.aw = aw; return out;
+    }
+    var _hqCarW = [0, 0, 0, 0];
+    /* how many of the body's points are refused at this place and heading (0 = the car may be there) */
     function _hqCarHits(V, R, x, z, yaw, y, why) {
         var H = _hq, rec = V.rec, P = _hqCarProbes(rec), cy = Math.cos(yaw), sy = Math.sin(yaw), n = 0, sea = _hqSea();
-        var step = R.step != null ? R.step : 0.34, clear = R.clear != null ? R.clear : 0.34, drop = R.drop != null ? R.drop : 0.7, top = y + (rec.hgt || 1.5);
+        var step = R.step != null ? R.step : 0.34, clear = R.clear != null ? R.clear : 0.34, drop = R.drop != null ? R.drop : 0.7, grade = R.grade != null ? R.grade : 0.9;
+        /* the wheels: each on a floor, none up a wall or off a ledge from where it stands now */
+        var W = _hqCarWheels(V, R, x, z, yaw, y, _hqCarW), wg = V.wg;
+        for (var k = 0; k < 4; k++) {
+            if (W[k] === null) { n++; if (why) why.push(['wheel ' + k, 'no floor']); continue; }
+            var from = wg ? wg[k] : y;
+            if (wg && (W[k] - from > step || from - W[k] > drop)) { n++; if (why) why.push(['wheel ' + k, (W[k] > from ? 'step ' : 'drop ') + Math.abs(W[k] - from).toFixed(2)]); }
+        }
+        if (n) return n;
+        var yc = (W[0] + W[1] + W[2] + W[3]) / 4, sp = ((W[0] + W[1]) - (W[2] + W[3])) / 2 / W.wb, sr = ((W[0] + W[2]) - (W[1] + W[3])) / 2 / (W.aw * 2);   // the plane: its middle, its rise a metre ahead, a metre to the left
+        if (Math.abs(sp) > grade || Math.abs(sr) > grade) { if (why) why.push(['plane', 'grade ' + Math.max(Math.abs(sp), Math.abs(sr)).toFixed(2)]); return 4; }
         for (var i = 0; i < P.length; i++) {
-            var px = x + P[i][0] * cy + P[i][1] * sy, pz = z - P[i][0] * sy + P[i][1] * cy;
-            var g = _hqSurface(px, pz, y);   // the walker's whole floor: the ground, a deck, a ramp; a wall or a tall thing = none
-            if (g === null || !isFinite(g) || g - y > step || y - g > drop) { n++; if (why) why.push([i, g === null ? 'no floor' : g - y > step ? 'step ' + (g - y).toFixed(2) : 'drop ' + (y - g).toFixed(2)]); continue; }
+            var px = x + P[i][0] * cy + P[i][1] * sy, pz = z - P[i][0] * sy + P[i][1] * cy, ref = yc + sp * P[i][1] + sr * P[i][0];   // (the body's left is +x here: the wheels' own sides)
+            var g = _hqSurface(px, pz, ref);   // the walker's whole floor: the ground, a deck, a ramp; a wall or a tall thing = none
+            if (g === null || !isFinite(g) || g - ref > step || ref - g > drop) { n++; if (why) why.push([i, g === null ? 'no floor' : g - ref > step ? 'step ' + (g - ref).toFixed(2) : 'drop ' + (ref - g).toFixed(2)]); continue; }
             if (sea && _hqSeaDepthAt(px, pz) > (R.wet != null ? R.wet : 0.45)) { n++; if (why) why.push([i, 'water']); continue; }
-            var hits = _hqBlockersUnder(px, pz), bad = false;
+            var hits = _hqBlockersUnder(px, pz), bad = false, top = ref + (rec.hgt || 1.5);
             for (var j = 0; j < hits.length && !bad; j++) {
                 var b = hits[j]; if (b === rec.blk) continue;
                 if (b.mc) continue;   // (a model's own floors and walls answered above)
                 else if (b.y != null && b.y > top) continue;
-                else if (_hqBlkTop(b) > y + clear) bad = true;
-                if (bad && why) why.push([i, 'blocker ' + ((b.obj && (b.obj.name || b.obj._ew_key)) || (b.mc ? 'mesh' : b.rect ? 'rect' : 'disc')) + ' top ' + (_hqBlkTop(b) - y).toFixed(2)]);
+                else if (_hqBlkTop(b) > ref + clear) bad = true;
+                if (bad && why) why.push([i, 'blocker ' + ((b.obj && (b.obj.name || b.obj._ew_key)) || (b.mc ? 'mesh' : b.rect ? 'rect' : 'disc')) + ' top ' + (_hqBlkTop(b) - ref).toFixed(2)]);
             }
             if (bad) n++;
         }
@@ -92277,12 +92302,12 @@ const ThreeRenderer = (function () {
                 else if (thr > 0) v = (v < -0.05) ? Math.min(0, v + (R.brake || 20) * h) : v + (R.accel || 8.5) * h * Math.max(0, 1 - v / vmax);
                 else if (thr < 0) v = (v > 0.05) ? Math.max(0, v - (R.brake || 20) * h) : Math.max(-(R.rev || 7), v - (R.accel || 8.5) * 0.7 * h);
                 else v -= Math.sign(v) * Math.min(Math.abs(v), ((R.coast || 2.4) + Math.abs(v) * 0.12) * h);
-                v -= Math.sin(V.gy || 0) * 9.8 * (R.hill != null ? R.hill : 0.55) * h * ((thr || Math.abs(v) > 0.4) ? 1 : 0);   // the hill: slower up, faster down (a parked car holds)
+                v -= Math.sin(V.gy || 0) * 9.8 * (R.hill != null ? R.hill : 0.3) * h * ((thr || Math.abs(v) > 0.4) ? 1 : 0);   // the hill: slower up, faster down (a parked car holds)
                 v = Math.max(-(R.rev || 7) * 1.3, Math.min(vmax * 1.15, v));
                 /* the front wheels */
-                var sp = Math.min(1, Math.abs(v) / vmax), lim = (R.steer || 0.62) + ((R.steerHi || 0.13) - (R.steer || 0.62)) * Math.pow(sp, 0.6);
-                if (hand) lim *= (R.handSteer || 1.7);
-                V.steer += (turn * lim - V.steer) * Math.min(1, h * (R.steerIn || 5.5));
+                var sp = Math.min(1, Math.abs(v) / vmax), lim = (R.steer || 0.88) + ((R.steerHi || 0.22) - (R.steer || 0.88)) * Math.pow(sp, 0.6);
+                if (hand) lim = Math.min(R.steerMax || 1.1, lim * (R.handSteer || 1.7));
+                V.steer += (turn * lim - V.steer) * Math.min(1, h * (R.steerIn || 10));
                 /* the turn about the back axle */
                 var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), rx = V.x - fx * wb / 2, rz = V.z - fz * wb / 2;
                 var nyaw = V.yaw - (v / wb) * Math.tan(V.steer) * h;
@@ -92296,14 +92321,15 @@ const ThreeRenderer = (function () {
                     if (_hqCarHits(V, R, sx2, sz2, V.yaw, V.y) === 0) { ok = true; nx = sx2; nz = sz2; nyaw = V.yaw; v *= 0.985; }
                 }
                 if (ok) { V.x = nx; V.z = nz; V.yaw = nyaw; V.v = v; }
-                else { bumped = Math.max(bumped, Math.abs(v)); V.v = -v * (R.bump != null ? R.bump : 0.25); if (Math.abs(V.v) < 0.35) V.v = 0; }
-                /* the four wheels on the ground */
-                fx = Math.sin(V.yaw); fz = Math.cos(V.yaw);
-                var lx = Math.cos(V.yaw), lz = -Math.sin(V.yaw), ax = wb / 2, aw = Math.max(0.3, rec.hw - 0.25);
-                var gq = function (a, b) { var q = _hqSurface(V.x + fx * a + lx * b, V.z + fz * a + lz * b, V.y); return (q === null || !isFinite(q) || Math.abs(q - V.y) > 2.5) ? V.y : q; };
-                var gFL = gq(ax, aw), gFR = gq(ax, -aw), gRL = gq(-ax, aw), gRR = gq(-ax, -aw), gy = (gFL + gFR + gRL + gRR) / 4;
+                else { if (window.EW_HQ_DEBUG) { var wy = []; _hqCarHits(V, R, nx, nz, nyaw, V.y, wy); V.bumpWhy = { x: +nx.toFixed(2), z: +nz.toFixed(2), y: +V.y.toFixed(2), v: +v.toFixed(1), h: +h.toFixed(4), hd: rec.hd, wg: V.wg && V.wg.map(function (q) { return +q.toFixed(2); }), why: wy.slice(0, 6) }; }   // (a probe's read: what stopped the car)
+                  bumped = Math.max(bumped, Math.abs(v)); V.v = -v * (R.bump != null ? R.bump : 0.25); if (Math.abs(V.v) < 0.35) V.v = 0; }
+                /* the four wheels on the ground (THE HILL: the body rides the ground as the board does, no lag behind a climb; a wheel with no
+                   floor keeps its last height) */
+                var Wn = _hqCarWheels(V, R, V.x, V.z, V.yaw, V.y, _hqCarW), aw = Wn.aw; if (!V.wg) V.wg = [V.y, V.y, V.y, V.y];
+                for (var wi = 0; wi < 4; wi++) { var wq = Wn[wi]; V.wg[wi] = (wq === null || Math.abs(wq - V.y) > 2.5) ? (ok ? V.wg[wi] : V.y) : wq; }
+                var gFL = V.wg[0], gFR = V.wg[1], gRL = V.wg[2], gRR = V.wg[3], gy = (gFL + gFR + gRL + gRR) / 4;
                 if (gy < V.y - 0.02) { V.vy = (V.vy || 0) - 9.8 * 1.6 * h; V.y = Math.max(gy, V.y + V.vy * h); if (V.y === gy) V.vy = 0; }
-                else { V.y += (gy - V.y) * Math.min(1, h * 18); V.vy = 0; }
+                else { V.y += (gy - V.y) * Math.min(1, h * 45); V.vy = 0; }
                 V.gy = Math.atan2((gFL + gFR) / 2 - (gRL + gRR) / 2, wb);
                 var acc = (V.v - (V.vPrev != null ? V.vPrev : V.v)) / h; V.vPrev = V.v;
                 var wantP = -V.gy - Math.max(-1, Math.min(1, acc / 20)) * (R.squat != null ? R.squat : 0.02) * 2.2;
@@ -105467,7 +105493,7 @@ const ThreeRenderer = (function () {
         /* THE DEEP (2026-09-18): the swimmer and the helm */
         board: function (id) { return _hqBoard(id); },
         disembark: function () { var Vd = _hq && _hq.vehicle; return (Vd && Vd.on && Vd.kind === 'ship' && _ewPlRound()) ? _hqShipSetDown() : _hqDisembark(); },   // (2026-11-20: the flown ship among round worlds sets down or stays aboard, as E does)
-        vehicle: function () { var V = _hq && _hq.vehicle; if (!V || !V.on) return null; return { kind: V.kind, id: V.rec.id, x: V.x, y: V.y, z: V.z, yaw: V.yaw, v: V.v, vy: V.vy }; },
+        vehicle: function () { var V = _hq && _hq.vehicle; if (!V || !V.on) return null; return { kind: V.kind, id: V.rec.id, x: V.x, y: V.y, z: V.z, yaw: V.yaw, v: V.v, vy: V.vy, bumpWhy: V.bumpWhy }; },
         vehicles: function () { return _hq ? (_hq.boats || []).map(function (b) { return { id: b.id, kind: b.kind, key: b.key, x: b.x, y: b.y, z: b.z }; }) : []; },
         swimming: function () { var pl = _hq && _hq.player; return !!(pl && pl.swim); },
         diving: function () { var pl = _hq && _hq.player; return !!(pl && pl.swim && pl.dive); },
@@ -105742,6 +105768,7 @@ const ThreeRenderer = (function () {
                 var V = _hq && _hq.vehicle; if (!V || !V.on) return null; o = o || {};
                 if (o.x != null) V.launch = null;   // (a probe's placing ends a launch)
                 ['x', 'y', 'z', 'yaw', 'v', 'vy'].forEach(function (k) { if (o[k] != null) V[k] = o[k]; });
+                if (V.kind === 'car' && o.x != null) { V.wg = null; V.vy = 0; if (o.y == null) { var gc = _hqSurface(V.x, V.z, null); if (gc !== null && isFinite(gc)) V.y = gc; } if (o.camYaw == null) { _hq.cam.yaw = Math.PI - V.yaw; _hq.cam.init = false; } }   // THE CAR: a probe stands the driven car on the ground at x, z
                 if (o.camYaw != null) _hq.cam.yaw = o.camYaw;
                 if (o.keys) Object.keys(o.keys).forEach(function (k) { _hq.keys[k] = !!o.keys[k]; });
                 if (o.dist != null) _hq.cam.dist = o.dist; if (o.pitch != null) _hq.cam.pitch = o.pitch;
