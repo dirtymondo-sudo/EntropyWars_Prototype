@@ -9,7 +9,7 @@ const { loadGameData } = require(REPO + '/load-data.js');
 const [stateFile, passArg] = process.argv.slice(2);
 const APPLY = process.argv.includes('--apply');
 const PASS = +passArg;
-const K = 17.3, MIN_GAP = 2.0, MIN_POWER = 15, CAP = 0.25, TAU = +(process.env.TAU || 0.035);
+const K = 17.3, MIN_GAP = +(process.env.MIN_GAP || 2.0), MIN_POWER = 15, CAP = 0.25, TAU = +(process.env.TAU || 0.035);
 const st = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
 const d = loadGameData();
 const W = d.RACE_POWER_WEIGHTS;
@@ -110,7 +110,7 @@ if (APPLY) {
             if (!re.test(head)) { console.log('!! no key', k, p.race); continue; }
             head = head.replace(re, `$1${v}`);
         }
-        const note = `LAB LOOP 11-21 PASS ${PASS}: ${Object.keys(p.after).map(k => `${NAMES[k]} ${p.before[k]}→${p.after[k]}`).join(', ')} (${p.kind === 'halve' ? p.why : (p.obs * 100).toFixed(1) + '% over ' + p.g + ' games'})`;
+        const note = `${process.env.LABEL || "LAB LOOP 11-21"} PASS ${PASS}: ${Object.keys(p.after).map(k => `${NAMES[k]} ${p.before[k]}→${p.after[k]}`).join(', ')} (${p.kind === 'halve' ? p.why : (p.obs * 100).toFixed(1) + '% over ' + p.g + ' games'})`;
         tail = tail.includes('//') ? tail.replace(/\s*$/, '') + '; ' + note : tail.replace(/,?\s*$/, '') + ',   // ' + note;
         if (!/^,/.test(tail)) tail = tail; // keep the row's own comma
         lines[i] = head + tail;

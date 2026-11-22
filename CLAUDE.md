@@ -124,7 +124,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
   Notes: ui-menus-audio.md "pass 32".
 - `bake-arenas.js` (2026-09-30, EDITOR_PLAN E8): picks each site's PvP 8×8 ARENA from its own room and writes data.js
   HQ_ARENA_RULES.picks (`node bake-arenas.js`, a few minutes; `--dry-run`). Rerun after a site room changes. Notes: editor.md "E8".
-- THE BALANCE LAB, headless (2026-11-21): `PW_CHROMIUM=/opt/pw-browsers/chromium node train_headless.js --lab balance --workers 3 --minutes 240 --out shots/bal/pN`,
+- THE BALANCE LAB, headless (2026-11-21): `EW_ALLOW_STALE=1 PW_CHROMIUM=/opt/pw-browsers/chromium node train_headless.js --lab balance --workers 3 --minutes 115 --out shots/bal/pN` (a tracked background task, 2 h cap),
   then `node bal-analyze.js` / `bal-families.js` / `bal-plan.js`. Merge main first (a stale checkout's server answers 503). Notes: docs/notes/balance-loop-20261121.md.
 - `bake-power.js` (2026-10-29): `node bake-power.js <newest balance export> [older exports…] [--fit-stats] [--fit-on=2]` bakes Balance
   Lab data into data.js SPELL_POWER_RULES (SPELLS), POWER_TRAIT_RULES (PASSIVES) and, with --fit-stats, RACE_POWER_WEIGHTS + perPoint

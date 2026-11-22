@@ -1,3 +1,12 @@
+> **THE 11-22 LOOP (mondo: "run a balance pass a couple times"), state = `docs/notes/balance-loop-20261122-state.json`.** Two 115-min labs
+> a pass (a tracked background task; a detached nohup run dies when the idle container suspends), pooled: baseline 1,081 matches,
+> after pass 1 1,192. Stricter bar: `MIN_GAP=3 TAU=0.04 LABEL="LAB LOOP 11-22" node bal-plan.js <state> <pass> --apply` (bal-plan.js reads
+> LABEL + MIN_GAP from env). PASS 1: 16 races (6 up incl. Boltzmann Brain 21%, 10 down incl. Dragon 72%); after it the 16 read 42-58%
+> except Jellyfish UFO 69% and Wendigo 63% (Boltzmann 46%). PASS 2: 29 races (13 up, 16 down), mostly unchanged races now read over
+> ~110 games, plus Jellyfish + Wendigo again; untested. Run labs with `EW_ALLOW_STALE=1`: main moves within 2 hours and a recycled
+> tab would load the STALE CHECKOUT page (fetch + merge main right before each lab). The runner's "done: N matches" line counts only
+> the last tab; bal-analyze.js gives the real count. Spell families (not changed, stats first): Psychic still low (z -3.5 baseline).
+
 > **11-22 REVIEW (mondo's answers):** the RACE STAT changes were judged noise (the baseline was already inside luck: 5.63
 > vs 5.85; ~57 games a race = ±6.6 pts) and every RACE_BASE_STATS row is BACK to its pre-11-21 line. The SPELL FAMILY fixes
 > stay (Sacrifice, Spygear incl. EMP Jammed 2 rounds, Psychic, Dirty Fighting, Fractal); their descriptions were made to match
