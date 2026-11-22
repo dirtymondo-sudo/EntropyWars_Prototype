@@ -73105,12 +73105,20 @@ const ThreeRenderer = (function () {
             var B = _hqBoxWall(room, d.wall, d), ax = -B.nz, az = B.nx;   // along the wall
             var rng = _mulberry32((typeof hqHash === 'function') ? hqHash('trail|' + d.id) : 5);
             var kinds = (room.shell && room.shell.forest && room.shell.forest.kinds) || ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'];
+            /* THE AVENUE GROWS WHAT THE LAND GROWS (2026-11-22): the two rows were always green leaf trees, in the snow past Came A Lot's north gate too.
+               In a room whose land runs on past its line the rows take the land's kind 8 m out: snow = snow pines, rock = pines, sand / dry
+               scrub / table land / shore = no avenue (open country has none); a wood or a green field keeps the leaf trees. */
+            var tall = 1;
+            try { if (typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room) && _hq && _hq.terrain) { var EFa = (_hq.edgeLand && _hq.edgeLand.fn) || _hqEdgeLandFn(room, _hq.terrain), Wa = EFa.at(B.wx - B.nx * 8, B.wz - B.nz * 8).W || {};
+                if ((Wa.snow || 0) > 0.3) { kinds = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3']; tall = 1.5; }
+                else if ((Wa.mountain || 0) > 0.5) { kinds = ['pine', 'pine', 'pine_2']; tall = 1.5; }
+                else if ((Wa.desert || 0) + (Wa.scrub || 0) + (Wa.mesa || 0) + (Wa.coast || 0) > 0.5) return; } } catch (eAv) {}
             for (var dd = 0.8; dd < P.len + 6; dd += 2.1 + rng() * 0.6) [-1, 1].forEach(function (sd) {
                 for (var row = 0; row < 2; row++) {
                     var lat = P.w / 2 + 1.1 + row * 2.0 + rng() * 0.8, dep = dd + (rng() - 0.5) * 0.9;
                     var px = B.wx - B.nx * dep + ax * sd * lat, pz = B.wz - B.nz * dep + az * sd * lat;
                     var gy = _hqTerrainGround(px, pz); if (gy == null) gy = 0;
-                    var fk = kinds[(rng() * kinds.length) | 0], fh = fk === 'tree_4' ? 3.6 + rng() * 1.2 : 2.4 + rng() * 1.1;
+                    var fk = kinds[(rng() * kinds.length) | 0], fh = (fk === 'tree_4' ? 3.6 + rng() * 1.2 : 2.4 + rng() * 1.1) * tall;
                     plantTree(fk, fh, px, pz, gy * _hqUnits());
                 }
             });
@@ -78155,6 +78163,10 @@ const ThreeRenderer = (function () {
             } catch (e) { return null; }
         })();
         var WAYS = (Array.isArray(E.ways) && E.ways.length) ? E.ways : null;   // (2026-11-22: a room with WRITTEN sides may name its ways too; before, only a room that reads the map)
+        /* A FOOTPATH KEEPS ITS WOOD (2026-11-22): THE WAY ON opens the land 20 to 60 m wide round every way out, which made a lawn round a trail that
+           leaves a forest. A way that is a `trail` passage (the door standing at its place) is FOOT: the land's shape still opens (no rock face, no
+           hill across the path), but `W.wood` remembers the forest that stood there from 3.5 m off the path's middle, and the planting grows it. */
+        var WAYFOOT = WAYS ? WAYS.map(function (wy) { try { return (room.doors || []).some(function (d) { return d && d.way === 'trail' && d.wall === wy.side && Math.abs(((wy.side === 'n' || wy.side === 's') ? +d.x : +d.z) - (+wy.at || 0)) < 2; }); } catch (e) { return false; } }) : null;
         /* THE WAY ON (`edges.ways: [{ side, at }]`, the route kit's ends): where a path leaves the room for the next one, the land stays
            low and open for a stretch: no rock face, no tree line across the way you are about to walk (the rock stays rock but lies
            down as a pass floor, `W.way`; forest and table land give way to grass), fading out sideways over ~30 m and outward over ~150 m.
@@ -78176,7 +78188,7 @@ const ThreeRenderer = (function () {
                 }
                 if (lat > 34 || out > 150) continue;
                 var tw = (1 - sm((lat - 10) / 22)) * (1 - sm((out - 70) / 80));
-                if (tw > 0) { W.way = Math.max(W.way || 0, tw); W.grass += (W.forest + W.mesa) * tw; W.forest *= 1 - tw; W.mesa *= 1 - tw; }
+                if (tw > 0) { W.way = Math.max(W.way || 0, tw); if (WAYFOOT && WAYFOOT[wi]) W.wood = Math.max(W.wood || 0, W.forest * tw * sm((lat - 3.5) / 3)); W.grass += (W.forest + W.mesa) * tw; W.forest *= 1 - tw; W.mesa *= 1 - tw; }
             }
             return W;
         };
@@ -78545,6 +78557,43 @@ const ThreeRenderer = (function () {
                 ROADS.push({ side: d.wall, at: at0, w: Math.max(sec.b - sec.a, apron ? apron.b - apron.a : 0), bands: sec.bands, lines: sec.lines, seam: true, apron: apron });
             } catch (e) { console.warn('[HQ] a seam road failed', e); }
         });
+        /* THE PATH RUNS ON TOO (2026-11-22, mondo: "Every single entrance/exit in the game needs to look good and natural"): every trail
+           that leaves the room (a `trail` passage on the room's line, or a free end within 40 m of it) is drawn on over the land past the line
+           like a road of `edges.roads`, in the passage's own floor sheet (else the room's path sheet), one square wide at least, 150 m out. It lies low on the land (no causeway). A place the room already
+           lists in `edges.roads` is left to that row. The passage's own flat strip and the trail's black dusk are not built in such a room (_hqPassageWay). */
+        try {
+            ROADS = ROADS.slice();
+            (room.doors || []).forEach(function (d) {
+                if (!d || d.hidden || d.secret || !d.wall) return;
+                var PS = (typeof _hqPassageSpec === 'function') ? _hqPassageSpec(d) : null;
+                if (!PS || PS.roof || PS.look !== 'trail' || PS.rise) return;   // (an `open` seam's road is THE ROAD OF THE NEXT ROOM's, below)
+                var side = null, at = 0;
+                if (/^[nsew]$/.test(d.wall)) { side = d.wall; at = (side === 'n' || side === 's') ? +d.x : +d.z; }
+                else if (d.wall === 'free') { var f = _hqBoxWall(room, d.wall, d); if (!f) return; var ox = -f.nx, oz = -f.nz, dist;
+                    if (Math.abs(ox) > 0.9) { side = ox > 0 ? 'e' : 'w'; at = f.wz; dist = ox > 0 ? R.x1 - f.wx : f.wx - R.x0; } else if (Math.abs(oz) > 0.9) { side = oz > 0 ? 's' : 'n'; at = f.wx; dist = oz > 0 ? R.z1 - f.wz : f.wz - R.z0; } else return;
+                    if (!(dist >= -1 && dist <= 40)) return; }
+                if (!side || !isFinite(at)) return;
+                var w = Math.max(3.5, +PS.strip || +PS.w || 3.5);
+                if (ROADS.some(function (q) { return q.side === side && Math.abs(+q.at - at) < ((+q.w || 7) + w) / 2 + 1; })) return;
+                /* the path wears the sheet the room painted under its gate (the Kingdom's north gate stands on snow, not on the room's cobbles); a gate on
+                   unpainted ground wears the room's path sheet */
+                var under = null;
+                try { var PT = info && info.paint; if (PT && PT.pal && info.res > 0) { var ix0 = (side === 'w') ? R.x0 + 2.2 : (side === 'e') ? R.x1 - 2.2 : at, iz0 = (side === 'n') ? R.z0 + 2.2 : (side === 's') ? R.z1 - 2.2 : at;
+                    var pi = Math.round((ix0 - info.x0) / info.res), pj = Math.round((iz0 - info.z0) / info.res), pv = (pi >= 0 && pj >= 0 && pi < info.nx && pj < info.nz) ? PT.P[pj * info.nx + pi] : 0; if (pv > 0) under = PT.pal[pv - 1] || null; } } catch (eU) { under = null; }
+                /* …and from 12 m out it wears the sheet the FAR room painted under its own end of the same way (Came A Lot's dirt ring road leaves by the
+                   south gate and comes in on The Forest's cobbles: the cobbles are seen ahead before the crossing), when that room has one and it differs */
+                var far = null;
+                try { var FRm = (d.action && d.action.room && typeof _hqData === 'function') ? ((_hqData() || {}).rooms || {})[d.action.room] : null, FD = FRm && (FRm.doors || []).filter(function (q) { return q && q.id === (d.action.at || d.id); })[0];
+                    if (FD && FRm.terrain && FRm.terrain.paint && FRm.terrain.paint.pal && FRm.shell && typeof hqGridDecode === 'function' && typeof hqGridPaintAt === 'function') {
+                        var fw = FRm.shell.w / 2, fd = FRm.shell.d / 2, fx = (FD.wall === 'w') ? -fw + 1.75 : (FD.wall === 'e') ? fw - 1.75 : +FD.x, fz = (FD.wall === 'n') ? -fd + 1.75 : (FD.wall === 's') ? fd - 1.75 : +FD.z;
+                        var fv = hqGridPaintAt(hqGridDecode(FRm.terrain.paint), fx, fz); if (fv > 0) far = FRm.terrain.paint.pal[fv - 1] || null; } } catch (eF) { far = null; }
+                try { var FPS = FD ? _hqPassageSpec(FD) : null; if (FPS && FPS.floor) far = FPS.floor; } catch (eF2) {}   // (the far end's own floor: the Old Road's asphalt)
+                var green = /grass|leaves|moss|fern|clover|flower/i;   // (a gate that stands on painted green has no path sheet under it: the room's path sheet is the path)
+                if (under && green.test(under)) under = null; if (far && green.test(far)) far = null;
+                var key0 = PS.floor || under || (room.terrain && room.terrain.path) || 'dirt_2';
+                ROADS.push({ side: side, at: at, w: w, len: 150, bands: [{ a: -w / 2, b: w / 2, key: key0, tint: (PS.floorColor != null) ? PS.floorColor : null }], key2: (!PS.floor && far && far !== key0) ? far : null, foot: true, lap: (under !== key0) ? 3.6 : 0, _auto: true });
+            });
+        } catch (eAR) { console.warn('[HQ] the paths past the line failed', eAR); }
         var roadPt = function (q, dd, off) { var a = +q.at + off; return q.side === 'w' ? [R.x0 - dd, a] : q.side === 'e' ? [R.x1 + dd, a] : q.side === 'n' ? [a, R.z0 - dd] : [a, R.z1 + dd]; };
         ROADS.forEach(function (q, qi) {
             try {
@@ -78552,22 +78601,26 @@ const ThreeRenderer = (function () {
                 var fromR = Math.max(0, +q.from || 0);   /* `from` (2026-11-22) = the road begins that far past the line (it comes off a causeway the room draws itself); `lift` = how high it rides over the land (a dirt road lies low: 0.12); `tint` = the colour its sheet draws at */
                 var bands = (q.bands && q.bands.length) ? q.bands : [{ a: -hw, b: hw, key: q.key || 'urban:RoadGeneric1a', tint: q.tint }];
                 var lines = q.lines || ((q.line != null) ? [{ off: 0, color: q.line, w: 0.18 }] : []);
-                var A0 = bands[0].a, B0 = bands[bands.length - 1].b, ys = [], dOf = function (k) { return fromR + (len - fromR) * k / n - ((k || fromR) ? 0 : 0.6); };
-                for (var k = 0; k <= n; k++) { var dd = dOf(k), yk = -1e9; for (var sI = 0; sI <= 4; sI++) { var c0 = roadPt(q, dd, A0 + (B0 - A0) * sI / 4); yk = Math.max(yk, F.at(c0[0], c0[1]).y); } ys.push(yk); }
+                var A0 = bands[0].a, B0 = bands[bands.length - 1].b, ys = [], DS = null, dOf = function (k) { return DS ? DS[k] : fromR + (len - fromR) * k / n - ((k || fromR) ? 0 : 0.6); };
+                /* (a path of THE PATH RUNS ON TOO takes the land mesh's own close rows for its first 15 m: the land steps up half a metre in its first 1.2 m, and a
+                   strip with a row every 5 m lay under it until the second row, a gap of bare land between the gate and the path. `lap`: the room's own path
+                   stops a square short of its line, the strip starts on the room's last square) */
+                if (q._auto) { DS = [-0.6, 0.6, 1.2, 2.5, 4, 6, 8.5, 11.5, 15]; if (q.lap > 0) DS.unshift(-q.lap, -q.lap / 2); while (DS[DS.length - 1] + stepR < len) DS.push(DS[DS.length - 1] + stepR); DS.push(len); n = DS.length - 1; }
+                for (var k = 0; k <= n; k++) { var dd = dOf(k), yk = -1e9; for (var sI = 0; sI <= 4; sI++) { var c0 = roadPt(q, dd, A0 + (B0 - A0) * sI / 4), qc0 = F.at(c0[0], c0[1]); yk = Math.max(yk, (DS && dd <= 0) ? (qc0.eH || 0) : qc0.y); }   /* (a row inside the room's line lies on the room's own ground) */ ys.push(yk); }
                 /* NO ROAD INTO THE SEA: a seam's road ends where the land past the line turns to coast (the rule: never water across a road) */
                 if (q.seam) { for (var kc2 = 1; kc2 <= n; kc2++) { var pc2 = roadPt(q, dOf(kc2), (A0 + B0) / 2), Pc2 = F.at(pc2[0], pc2[1]); if ((Pc2.W.coast || 0) > 0.35) { n = kc2 - 1; break; } } if (n < 2) return; len = len * n / (ys.length - 1); ys.length = n + 1; }
                 for (var sm2 = 0; sm2 < 3; sm2++) for (var k2 = 1; k2 < n; k2++) ys[k2] = Math.max(ys[k2], (ys[k2 - 1] + ys[k2 + 1]) / 2);   // no dip between two crests: the road bridges it on its bank
                 var eH0 = F.at(roadPt(q, 0, (A0 + B0) / 2)[0], roadPt(q, 0, (A0 + B0) / 2)[1]).eH || 0;
                 if (!fromR) ys[0] = Math.max(ys[0], eH0);   // at the line itself: the room's own ground
                 /* a seam's road: level with the gate's floor for 9 m (the walker crosses 6 m out, _hqTickPassages), then onto the land over 26 m */
-                var yAt = function (k) { var d = dOf(k), nat = ys[k] + ((q.lift != null) ? +q.lift : 0.2 + Math.min(0.5, d / 30)); if (!q.seam) return nat; var t = (d - 9) / 26; t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return (eH0 + 0.1) * (1 - t) + nat * t; };
+                var yAt = function (k) { var d = dOf(k), nat = ys[k] + (q.foot ? 0.1 + Math.min(0.08, Math.max(0, d) / 100) : (q.lift != null) ? +q.lift : 0.2 + Math.min(0.5, d / 30)); if (!q.seam) return nat;   /* (a footpath lies on the land: no half-metre causeway) */ var t = (d - 9) / 26; t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return (eH0 + 0.1) * (1 - t) + nat * t; };
                 var mkR = function (P3, I3, UV3, mat) { var g3 = new THREE.BufferGeometry(); g3.setAttribute('position', new THREE.Float32BufferAttribute(P3, 3)); if (UV3) g3.setAttribute('uv', new THREE.Float32BufferAttribute(UV3, 2)); g3.setIndex(I3); g3.computeVertexNormals(); g3.computeBoundingSphere();
                     var m3 = new THREE.Mesh(g3, mat); m3.position.y = 0.2; m3.receiveShadow = false; m3.castShadow = false; m3.renderOrder = 1; m3._ew_hqPart = 'floor'; m3._ew_hqOuter = true; m3._ew_hqEdgeLand = 'road' + qi; return m3; };
                 var gR = new THREE.Group(); gR.name = 'hq_edge_road'; gR._ew_hqEdgeLand = 'road' + qi;
                 /* the bank under both sides */
                 var pos2 = [], idx2 = [];
                 for (var k3 = 0; k3 <= n; k3++) {
-                    var d3 = dOf(k3), y3 = yAt(k3), L3 = roadPt(q, d3, A0), R3 = roadPt(q, d3, B0), L4 = roadPt(q, d3, A0 - 2.2), R4 = roadPt(q, d3, B0 + 2.2), yb = y3 - 3.2;
+                    var d3 = dOf(k3), y3 = yAt(k3), L3 = roadPt(q, d3, A0), R3 = roadPt(q, d3, B0), L4 = roadPt(q, d3, A0 - (q.foot ? 0.9 : 2.2)), R4 = roadPt(q, d3, B0 + (q.foot ? 0.9 : 2.2)), yb = y3 - (q.foot ? 1.6 : 3.2);
                     pos2.push(L3[0] * U, y3 * U, L3[1] * U, L4[0] * U, yb * U, L4[1] * U, R3[0] * U, y3 * U, R3[1] * U, R4[0] * U, yb * U, R4[1] * U);
                     if (k3 > 0) { var b3 = (k3 - 1) * 4; idx2.push(b3, b3 + 1, b3 + 4, b3 + 1, b3 + 5, b3 + 4, b3 + 2, b3 + 6, b3 + 3, b3 + 3, b3 + 6, b3 + 7); }
                 }
@@ -78579,13 +78632,14 @@ const ThreeRenderer = (function () {
                     gR.add(mkR(pa, ix, ua, new THREE.MeshLambertMaterial({ map: _hzTex(ap.key) || null, color: (ap.tint != null) ? ap.tint : 0xffffff, side: THREE.DoubleSide }))); }
                 /* the road: one ribbon a band, each in its own sheet (a road of one sheet is one band) */
                 bands.forEach(function (bd) {
-                    var pos = [], uv = [], idx = [], bw = bd.b - bd.a;
+                    var pos = [], uv = [], idx = [], idxFar = [], bw = bd.b - bd.a;
                     for (var kb = 0; kb <= n; kb++) {
                         var db = dOf(kb), yb2 = yAt(kb), Lb = roadPt(q, db, bd.a), Rb = roadPt(q, db, bd.b);
                         pos.push(Lb[0] * U, yb2 * U, Lb[1] * U, Rb[0] * U, yb2 * U, Rb[1] * U); uv.push(bd.a * U / TM, db * U / TM, bd.b * U / TM, db * U / TM);
-                        if (kb > 0) { var a3 = (kb - 1) * 2; idx.push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2); }
+                        if (kb > 0) { var a3 = (kb - 1) * 2; ((q.key2 && dOf(kb - 1) >= 11) ? idxFar : idx).push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2); }
                     }
                     if (bw > 0.01) gR.add(mkR(pos, idx, uv, new THREE.MeshLambertMaterial({ map: _hzTex(bd.key || 'urban:RoadGeneric1a') || null, color: (bd.tint != null) ? bd.tint : 0xffffff, side: THREE.DoubleSide })));
+                    if (bw > 0.01 && idxFar.length) gR.add(mkR(pos, idxFar, uv, new THREE.MeshLambertMaterial({ map: _hzTex(q.key2) || null, color: 0xffffff, side: THREE.DoubleSide })));   /* (`key2`: a trail wears the far room's sheet from 11 m out) */
                 });
                 /* the paint: a solid line runs the whole way, a dashed one in its own beat */
                 var byCol = {};
@@ -78625,7 +78679,8 @@ const ThreeRenderer = (function () {
                 if (ROADS.length && onEdgeRoad(px, pz)) continue;   // THE ROAD RUNS ON: no tree on it
                 if (roadLanes.length && roadLanes.some(function (L) { var qx = px - L.x, qz = pz - L.z; return (qx * L.dx + qz * L.dz) > -2 && Math.abs(qx * L.dz - qz * L.dx) < L.hw; })) continue;   // THE ROAD RUNS ON (2026-11-22): no tree on a road out's asphalt
                 var thin = E.deep ? (P.d < 44 ? 1 : 0.6) : P.d < 22 ? 1 : P.d < 40 ? 0.5 : 0.28; if (low) thin *= 0.6;   /* `edges.deep: true` (2026-11-20, The Woods): a room deep in a wood, the trees past its line stay thick to the end of the planting, so no flat land shows between the trunks */
-                if (P.W.forest > 0.5) { if (c2 > thin * P.W.forest) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
+                var wf = P.W.forest + (P.W.wood || 0);   /* (A FOOTPATH KEEPS ITS WOOD: the forest THE WAY ON opened beside a trail) */
+                if (wf > 0.5) { if (c2 > thin * Math.min(1, wf)) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if ((E[P.side] || {}).bare) continue; if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
                 else if ((P.W.grass || 0) > 0.6 && P.d > 4) { if (c2 > 0.045 * thin) continue; plantTree(kindsG[(d2 * kindsG.length) | 0], hOf(6 + d2 * 5), px, pz, P.y * U); planted++; }   // open green country: a tree here and there
                 else if ((P.W.snow || 0) > 0.6 && P.d > (E.snowTrees ? 2.2 : 4)) { if (c2 > (+E.snowTrees || 0.03) * thin) continue;   /* `edges.snowTrees: p` (2026-11-20, the Snowy Pines three plots wide): a room in a snow WOOD, its pines run on past its line (p = how many of the lattice points grow one; 0.03 = open tundra) */ plantTree(E.snowTrees ? kindsSW[(d2 * kindsSW.length) | 0] : kindsS[(d2 * kindsS.length) | 0], hOf(5.5 + d2 * 4), px, pz, P.y * U); planted++; }   // tundra: a few snow pines
@@ -84251,11 +84306,12 @@ const ThreeRenderer = (function () {
                 var subs = String(door.sub || door.label || '').split('·'), toName = (subs[subs.length - 1] || '').trim() || String(door.label || 'THE PATH');
                 var hereName = String((ctx.room && ctx.room.label) || '').split('·')[0].trim();
                 var plank = function (text, w, y, back) {
-                    var b = _hqBox(w, 0.38, 0.07, wood); b.position.set((px - (back ? -1 : 1) * (w / 2 - 0.25)) * U, y * U, pz * U); g.add(b);
+                    var bz = pz + (back ? -0.115 : 0.115);   // (2026-11-22) on the post's face: in the post's own plane the post hid the name's first letters
+                    var b = _hqBox(w, 0.38, 0.07, wood); b.position.set((px - (back ? -1 : 1) * (w / 2 - 0.25)) * U, y * U, bz * U); g.add(b);
                     var t = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_trail_' + text, [text], { w: 1024, h: 224, color: '#f4ead0', bg: '#5e4226', border: '#2e1f10', pad: 0.2, weight: 'bold', font: 'Georgia, "Times New Roman", serif' }) : null;
                     if (!t) return;
                     var m = _hqBasic(0xffffff); m.map = t; m.needsUpdate = true;
-                    var f = new THREE.Mesh(new THREE.PlaneGeometry((w - 0.06) * U, 0.34 * U), m); f.position.set(b.position.x, y * U, (pz + (back ? -0.04 : 0.04)) * U); if (back) f.rotation.y = Math.PI; g.add(f);
+                    var f = new THREE.Mesh(new THREE.PlaneGeometry((w - 0.06) * U, 0.34 * U), m); f.position.set(b.position.x, y * U, (bz + (back ? -0.04 : 0.04)) * U); if (back) f.rotation.y = Math.PI; g.add(f);
                 };
                 plank(toName, 2.0, 2.6, false);
                 if (hereName) plank(hereName, 1.7, 2.12, true);
@@ -84564,7 +84620,7 @@ const ThreeRenderer = (function () {
         }
         /* THE DARK: cards across the way, deepening to solid at the end (soft-edged in the open, square in a tube) */
         /* THE OPEN SEAM (2026-11-17, One World: data.js DOOR_HQ.ways.open): nothing stands in open country. No dark. */
-        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open' || openLand) ? 0 : 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
+        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open' || openLand || (look === 'trail' && P.inside && !P.mouth && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room))) ? 0 : 7,   /* (a trail's free end in open land: no dusk either, 2026-11-22) */ d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
         for (var i = 0; i < n; i++) {
             var t = (i + 1) / n, dd = d0 + (L - 0.15 - d0) * t, op = (i === n - 1) ? 1 : Math.min(1, 0.7 * Math.pow(t, 2.2));   // (2026-10-05) a dusk that deepens, the way still seen: only the far end is solid
             var cw = P.roof ? W + 0.04 : W + ((P.spread != null) ? +P.spread : 3.2), ch = P.roof ? H + 0.1 : H + 2.5;
@@ -84677,7 +84733,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(pl.y - _hqPassFloor(p, a.depth)) > 2.5) continue;
             var d0 = P.deep * 0.25, k = (a.depth - d0) / Math.max(0.5, P.deep - d0);
             k = k < 0 ? 0 : k > 1 ? 1 : k; k = k * k * (3 - 2 * k);
-            k *= (P.look === 'open') ? 0 : 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black. THE OPEN SEAM (2026-11-17): open country does not dim at all
+            k *= (P.look === 'open' || P.noDim) ? 0 : 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black. THE OPEN SEAM (2026-11-17): open country does not dim at all
             if (k > dark) { dark = k; col = P.fade; }
             if (a.depth >= P.deep) {
                 if (H.passLatch !== p.door.id && !H.paused && H.opts.onEnterDoor && !HQ_DOOR_LOCKED[p.state]) {
@@ -84728,7 +84784,9 @@ const ThreeRenderer = (function () {
         var PS = _hqPassageSpec(door);
         if (PS) {
             G.add(grp);
-            if (PS.look === 'trail' && box && !box.free && !door.secret) { try { _hqBuildTrailPost(room, door, y0); } catch (e) {} }
+            if (PS.look === 'trail' && box && (!box.free || (typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room))) && !door.secret && PS.post !== false) { try { _hqBuildTrailPost(room, door, y0); } catch (e) {} }   /* (a free end in open land has its signpost too, 2026-11-22; `passage.post: false` = none) */
+            /* NO DUSK IN OPEN COUNTRY (2026-11-22): a trail out of a room whose land runs on past its line (THE NATURAL EDGES) is walked in daylight: the view does not dim on the way to the crossing */
+            try { if (PS.look === 'trail' && !PS.mouth && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room)) PS.noDim = true; } catch (eND) {}
             var prec = { door: door, group: grp, lens: null, glow: null, plate: null, plateEl: null, plateChip: null, state: 'open', level: level, Rw: Rw, y0: y0, wide: false, ow: PS.w, oh: PS.h, inward: inward, box: box, leaf: null, way: kind, motion: null, openT: 0,
                          mouthY: null, wayOpen: true, passage: PS };
             _hq.doors.push(prec);
@@ -84779,26 +84837,36 @@ const ThreeRenderer = (function () {
     function _hqBuildTrailPost(room, door, y0) {
         var U = _hqUnits(), G = _hq.doorGroup, box = _hqBoxWall(room, door.wall, door);
         if (!box || !G) return;
-        var wood = _hqMat(null, 1, 1, { color: 0x5b4632, shininess: 4 }), board = _hqMat(null, 1, 1, { color: 0x7a6044, shininess: 6 });
+        /* A TRAIL'S SIGNPOST IS THE FOOTPATH'S (2026-11-22, mondo: "footpaths get wooden signposts ... signs face the traveller"): the waymark was a
+           1.7 m stick with a hand-sized board, its arrow pointing off the path, reading "?" until the far room had been stood in. It is the same
+           post a footpath road end stands (_hqWayBuilders.road, `foot`): 3 m of timber, a plank over the path's edge that NAMES where the trail
+           goes for the one leaving (always: a signpost is read, not discovered), a smaller plank on its back that names this place for the one
+           arriving. A name is the far room's label: its part after "THE TRAIL ·" for a trail room, else its first part. */
+        var wood = _hqMat('wood', 1, 1, { color: 0x8a6a48, shininess: 3 });
         var grp = new THREE.Group();
         /* the lane's right as you walk out: along the wall, 2.4 m from the door's centre (clear of the 3.4 m pad's walk) */
         var ax = -box.nz, az = box.nx;
         grp.position.set((box.wx + box.nx * 0.6 + ax * 2.4) * U, y0 * U, (box.wz + box.nz * 0.6 + az * 2.4) * U);
         grp.rotation.y = box.yaw;
-        var post = new THREE.Mesh(new THREE.BoxGeometry(0.13 * U, 1.7 * U, 0.13 * U), wood); post.position.y = 0.85 * U; grp.add(post);
-        var sign = new THREE.Mesh(new THREE.BoxGeometry(0.78 * U, 0.2 * U, 0.04 * U), board); sign.position.set(-0.3 * U, 1.42 * U, 0.08 * U); grp.add(sign);
-        var tip = new THREE.Mesh(new THREE.ConeGeometry(0.14 * U, 0.2 * U, 3), board); tip.rotation.z = Math.PI / 2; tip.position.set(-0.78 * U, 1.42 * U, 0.08 * U); grp.add(tip);
+        var toPath = (ax * Math.cos(box.yaw) - az * Math.sin(box.yaw)) > 0 ? -1 : 1;   // the group's own x that points back at the path's middle
+        var post = _hqBox(0.16, 3.0, 0.16, wood); post.position.set(0, 1.5 * U, 0); grp.add(post);
+        var cap = _hqBox(0.24, 0.06, 0.24, wood); cap.position.set(0, 3.03 * U, 0); grp.add(cap);
+        var nameOf = function (label) { var ps = String(label || '').split('·').map(function (t) { return t.trim(); }).filter(Boolean); return (ps.length > 1 && /^THE TRAIL$/i.test(ps[0])) ? ps[1] : (ps[0] || ''); };
+        var toName = nameOf(door.label).toUpperCase() || 'THE TRAIL', hereName = nameOf(room && room.label).toUpperCase();
+        var plank = function (text, w, y, back) {
+            var cx = toPath * (back ? -1 : 1) * (w / 2 - 0.25);
+            var bz = back ? -0.115 : 0.115;   // the plank is nailed on the post's face (in the post's own plane the post hid the name's first letters)
+            var b = _hqBox(w, 0.38, 0.07, wood); b.position.set(cx * U, y * U, bz * U); grp.add(b);
+            var t = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_trail_' + text, [text], { w: 1024, h: 224, color: '#f4ead0', bg: '#5e4226', border: '#2e1f10', pad: 0.2, weight: 'bold', font: 'Georgia, "Times New Roman", serif' }) : null;
+            if (!t) return;
+            var m = _hqBasic(0xffffff); m.map = t; m.needsUpdate = true;
+            var f = new THREE.Mesh(new THREE.PlaneGeometry((w - 0.06) * U, 0.34 * U), m); f.position.set(cx * U, y * U, (bz + (back ? -0.04 : 0.04)) * U); if (back) f.rotation.y = Math.PI; grp.add(f);
+        };
+        plank(toName, 2.0, 2.6, false);
+        if (hereName && hereName !== toName) plank(hereName, 1.7, 2.12, true);
         grp.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
         grp._ew_hqJoined = door.id;
         G.add(grp);
-        if (typeof THREE.CSS2DObject === 'function' && door.label) {
-            var _pf = _hqPlateFor(door);   // the room's name once stood in, else '?'
-            var pm = _hqPlateMake('hq-plate hq-plate-way', { no: _pf.no, label: _pf.label, known: _pf.known }, { tone: 'sign', k: 0.8, op: 0.85, maxW: 0.72, css: { fontSize: '10px', opacity: '0.85' } });
-            /* R6: the GPU plate is painted ON the sign's face (centred on the board); the CSS2D one floats over it */
-            if (pm.gpu) pm.obj.position.set(-0.3 * U, (1.42 - (_pf.no ? 0.075 : 0.045)) * U, (0.08 + 0.025) * U);
-            else pm.obj.position.set(-0.3 * U, 1.72 * U, 0.1 * U);
-            grp.add(pm.obj);
-        }
     }
     function _hqBuildDoors(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
