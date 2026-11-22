@@ -253,7 +253,7 @@
             .pause-card.bp-frame { width: 100vw; height: 100vh; border: none; }
             .bp-frame .hq-pause-main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
             .bp-frame .hq-pause-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; padding: 10px 12px; border-right: none; border-bottom: 1px solid rgba(184,160,96,0.22); }
-            .bp-frame .hq-pause-cmd { flex: 1 1 30%; padding: 8px 10px 7px 18px; }
+            .bp-frame .hq-pause-cmd { flex: 1 1 auto; min-width: 30%; padding: 8px 10px 7px 18px; }
             .bp-frame .hq-pause-cmd b { font-size: 15px; }
             .bp-frame .hq-pause-cmd span, .bp-frame .hq-pause-vitals, .bp-frame .hq-pause-foot { display: none; }
             .bp-frame .hq-pause-cmd.danger { margin-top: 0; }
