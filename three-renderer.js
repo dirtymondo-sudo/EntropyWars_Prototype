@@ -16903,12 +16903,122 @@ const ThreeRenderer = (function () {
                 if (seat && bb && sc) {   // THE GRIP, THE SEAT: the handle's centre (the GLB's coordinates -> the instance's: x/z centred, base on y = 0) onto the seat
                     inner.position.copy(seat.p).sub(_gripCentre(hold, sc, bb).applyQuaternion(seat.q));
                 }
+                if (bb && sc) { holder.userData.sc = sc; holder.userData.bb = bb; holder.userData.tipL = null; }   // THE WEAPON IN THE SPELL: what _heldTipWorld measures the tip off
             } });
         if (hold.turn) inst.rotation.y = hold.turn * Math.PI / 180;   // rev 5: the gun's pre-turn (HQ_PORTAL_RULES.gun.turn) — the barrel to +X (seated too: _gripFrame / _gripCentre turn the handle with it)
         var pit = _heldPitchGroup(seat ? Object.assign({}, hold, { pitch: 0 }) : hold, inst);   // (seated: the hand sets the angle, no pitch)   // rev 6: `pitch` drops the muzzle about the gun's lateral axis (the barrel is +X after the turn)
         inner.add(pit); holder.add(inner); bone.add(holder);
         holder.userData.inst = inst;
+        holder.userData.hold = hold; holder.userData.pit = pit; holder.userData.ts = ts;   // THE WEAPON IN THE SPELL
         return holder;
+    }
+    /* ══ THE WEAPON IN THE SPELL (2026-11-22, mondo: "incorporate them holding and using their weapons in their spells"; sprites.js
+       EW_WEAPONS / EW_SPELL_WEAPON) ══
+       - unitHeldInfo(uid): the weapon a unit's def holds for good (def.hold, the main hand), as it stands now: { key, gun, tip(out) }
+         or null (nothing held, a sprite, the rig not built). tip(out) = the world point the weapon ENDS at: a gun's muzzle (the far
+         end of the barrel, on the barrel's line), a blade's point, a staff's head. Read off the GLB's box and THE GRIP's handle
+         frame (`grip.c` + `barrel` / `down`), or the hold's own `tip` (GLB coordinates) when the box lies.
+       - unitHeldUse(uid, key, ms): the spell being cast is made with weapon `key` (EW_WEAPONS). The hand already holds it: nothing
+         changes. Another weapon: the def's own goes out of sight and `key` sits in the same closed fist for `ms` (each call
+         pushes the hour on), then the def's own comes back (_heldSwapTick, one small map, no scene read: RULE #1e). Returns the
+         same info as unitHeldInfo, for the weapon now in the hand.
+       Looks only, per viewer; the guest gets the same from the cast's spell id in the snapshot (state._castAnimSpell). */
+    var _heldSwaps = new Map();   // unit id -> { root, base, temp, key, until }
+    function _heldPrimary(unitId) {
+        var entry = _getUnitEntry(unitId), rig = _unitModelRigs.get(unitId);
+        var def = entry && entry.modelDef, root = (rig && rig.inner) || (entry && entry.mixer && entry.model) || null;
+        if (!def || !def.hold || !root) return null;
+        var bone = root.getObjectByName(def.hold.bone || 'RightHand'); if (!bone) return null;
+        for (var i = 0; i < bone.children.length; i++) {
+            var k = bone.children[i];
+            if (k.name === 'ew_held_' + def.hold.key && !k.userData._ewSwap) return { def: def, root: root, bone: bone, base: k };
+        }
+        return null;
+    }
+    function _heldTipWorld(holder, out) {
+        var ud = holder.userData, hold = ud.hold, pit = ud.pit;
+        if (!hold || !pit || !ud.bb || !ud.sc) return null;
+        if (!ud.tipL) {
+            var bb = ud.bb, gr = hold.grip || {}, W = (typeof EW_WEAPONS !== 'undefined' && EW_WEAPONS[hold.key]) || {};
+            var c = gr.c || [(bb.min.x + bb.max.x) * 0.5, (bb.min.y + bb.max.y) * 0.5, (bb.min.z + bb.max.z) * 0.5];
+            var P = new THREE.Vector3(c[0], c[1], c[2]);
+            // how far a ray from p along d runs before it leaves the box
+            var reach = function (p, d) { var t = Infinity; ['x', 'y', 'z'].forEach(function (a) { if (Math.abs(d[a]) > 1e-6) { var e = (d[a] > 0 ? bb.max[a] : bb.min[a]); var q = (e - p[a]) / d[a]; if (q >= 0 && q < t) t = q; } }); return isFinite(t) ? t : 0; };
+            if (hold.tip) P.set(hold.tip[0], hold.tip[1], hold.tip[2]);
+            else if ((W.gun || hold.gun) && gr.barrel && gr.down) {
+                var B = new THREE.Vector3(gr.barrel[0], gr.barrel[1], gr.barrel[2]).normalize();
+                var U = new THREE.Vector3(-gr.down[0], -gr.down[1], -gr.down[2]); U.addScaledVector(B, -U.dot(B)).normalize();   // up off the handle, square to the barrel
+                P.addScaledVector(U, reach(P, U) * 0.72);    // up to the barrel's line (it runs under the top of the box)
+                P.addScaledVector(B, reach(P, B));           // and out to its end
+            } else if (gr.down) {
+                var Up = new THREE.Vector3(-gr.down[0], -gr.down[1], -gr.down[2]).normalize();
+                P.addScaledVector(Up, reach(P, Up));         // the far end from the pommel: the point, the head
+            }
+            var hc = { grip: { c: [P.x, P.y, P.z] }, turn: hold.turn };
+            ud.tipL = _gripCentre(hc, ud.sc, bb);
+        }
+        pit.updateWorldMatrix(true, false);
+        return out.copy(ud.tipL).applyMatrix4(pit.matrixWorld);
+    }
+    function _heldInfoOf(holder, sw) {
+        var hold = holder.userData.hold || {}, W = (typeof EW_WEAPONS !== 'undefined' && EW_WEAPONS[hold.key]) || {};
+        return { key: hold.key, gun: !!(W.gun || hold.gun), blade: !!W.blade, holder: holder,
+            tip: function (out) { return _heldTipWorld(holder, out || new THREE.Vector3()); },
+            /* a switched weapon stays `ms` more (a long burst holds it past the cast's own hour) */
+            keep: function (ms) { if (sw) sw.until = Math.max(sw.until, performance.now() + (ms || 400)); } };
+    }
+    function _heldSwapEnd(unitId) {
+        var sw = _heldSwaps.get(unitId); if (!sw) return;
+        _heldSwaps.delete(unitId);
+        try { if (sw.temp.parent) sw.temp.parent.remove(sw.temp); } catch (_e) {}
+        sw.base.visible = true;
+    }
+    function _heldSwapTick() {
+        if (!_heldSwaps.size) return;
+        var now = performance.now();
+        _heldSwaps.forEach(function (sw, id) { if (now >= sw.until || !sw.temp.parent || !sw.base.parent) _heldSwapEnd(id); });
+    }
+    /* the end of the weapon in the fist of the unit acting on a square (a gun's muzzle, a staff's head), or null: no unit there,
+       it is not mid-cast / mid-attack, it holds nothing or a blade (a blade's point swings: its shots keep the square's middle) */
+    function _heldShooterTip(tx, ty) {
+        if (typeof state === 'undefined' || !state || !Array.isArray(state.units) || (typeof window !== 'undefined' && window.EW_NO_HELD_WEAPON_FX)) return null;
+        for (var i = 0; i < state.units.length; i++) {
+            var u = state.units[i];
+            if (!u || u.dead || u.x !== tx || u.y !== ty) continue;
+            if (!((state.castAnimIds && state.castAnimIds.has(u.id)) || (state.attackAnimIds && state.attackAnimIds.has(u.id)))) return null;
+            var en = _getUnitEntry(u.id);
+            if (!en || !en.group || en.group.visible === false) return null;
+            var inf = unitHeldInfo(u.id);
+            if (!inf || !(inf.gun || inf.key === 'item_wizard_staff')) return null;
+            return inf.tip(new THREE.Vector3());
+        }
+        return null;
+    }
+    function unitHeldInfo(unitId) {
+        var P = _heldPrimary(unitId); if (!P) return null;
+        var sw = _heldSwaps.get(unitId);
+        return (sw && sw.temp.parent && sw.base === P.base) ? _heldInfoOf(sw.temp, sw) : _heldInfoOf(P.base);
+    }
+    function unitHeldUse(unitId, key, ms) {
+        var P = _heldPrimary(unitId); if (!P) return null;
+        var W = (typeof EW_WEAPONS !== 'undefined') ? EW_WEAPONS : null, sw = _heldSwaps.get(unitId);
+        if (sw && (sw.base !== P.base || !sw.temp.parent)) { _heldSwapEnd(unitId); sw = null; }
+        if (typeof window !== 'undefined' && window.EW_NO_WEAPON_SWITCH) key = null;
+        if (!key || !W || !W[key]) return sw ? _heldInfoOf(sw.temp, sw) : _heldInfoOf(P.base);
+        if (key === P.def.hold.key) { if (sw) _heldSwapEnd(unitId); return _heldInfoOf(P.base); }
+        if (sw && sw.key !== key) { _heldSwapEnd(unitId); sw = null; }
+        if (!sw) {
+            var hold = Object.assign({ pos: [0, 0, 0], rot: [0, 0, 0] }, W[key], { key: key, bone: P.def.hold.bone || 'RightHand' });
+            var temp = null;
+            try { temp = _unitAttachHeld(P.root, hold, P.base.userData.ts || (CONFIG && CONFIG.tileSize) || BASE_TILE); } catch (_e) { temp = null; }
+            if (!temp) return _heldInfoOf(P.base);
+            temp.userData._ewSwap = true;
+            P.base.visible = false;
+            sw = { base: P.base, temp: temp, key: key, until: 0 };
+            _heldSwaps.set(unitId, sw);
+        }
+        sw.until = Math.max(sw.until, performance.now() + (ms > 0 ? ms : 1600));
+        return _heldInfoOf(sw.temp, sw);
     }
     /* ══ THE PROPS IN THE HAND + THE GEAR ON THE BODY (2026-11-03, docs/notes/character-models-plan.md row 24; mondo: "how do we
        put these models ... in the game for spells (like whip crack)") ══
@@ -34162,6 +34272,12 @@ const ThreeRenderer = (function () {
         var startZ = fromY * ts + ts / 2;
         var endX = toX * ts + ts / 2;
         var endZ = toY * ts + ts / 2;
+        /* THE WEAPON IN THE SPELL (2026-11-22): a shot from a unit that is casting / attacking with a gun or a staff in its fist
+           leaves the weapon's end (the muzzle, the staff's head), not the middle of its square */
+        try {
+            var _wt = _heldShooterTip(Math.round(fromX), Math.round(fromY));
+            if (_wt) { startX = _wt.x; startY = _wt.y; startZ = _wt.z; }
+        } catch (_wte) {}
 
         mesh.position.set(startX, startY, startZ);
         projectileGroup.add(mesh);
@@ -35663,6 +35779,7 @@ const ThreeRenderer = (function () {
             _prevAttackIds = new Set(state.attackAnimIds);
         }
 
+        _heldSwapTick();   // THE WEAPON IN THE SPELL: a switched weapon goes back when its cast is over
         if (state.castAnimIds) {
             for (var uid of state.castAnimIds) {
                 if (!_prevCastIds.has(uid) && !_castTweens.has(uid) && !_spriteAnimTweens.has(uid)) {
@@ -35674,6 +35791,16 @@ const ThreeRenderer = (function () {
                     // Spell category → clip fallback chain (kind tagged by
                     // battle.js triggerCastAnim via classifySpellAnimKind).
                     var _ck = state._castAnimKind ? state._castAnimKind[uid] : null;
+                    /* THE WEAPON IN THE SPELL: the weapon this spell is made with goes in the hand for the cast (the Time Cop's
+                       rifle / taser / plasma gun, the Police Officer's spray) */
+                    try {
+                        var _wsid = state._castAnimSpell && state._castAnimSpell[uid], _wen = _wsid && _getUnitEntry(uid);
+                        if (_wen && _wen.modelDef && _wen.modelDef.hold && typeof ewSpellWeaponKey === 'function') {
+                            var _wu = null; for (var _wi = 0; _wi < state.units.length; _wi++) if (state.units[_wi] && state.units[_wi].id === uid) { _wu = state.units[_wi]; break; }
+                            var _wkey = _wu ? ewSpellWeaponKey(_wsid, _wu.race, _wen.modelDef.hold.key) : null;
+                            if (_wkey) unitHeldUse(uid, _wkey, 2200);
+                        }
+                    } catch (_wse) {}
                     var _castChain = _castChainFor(_ck);   // shared table (the builder preview uses it too)
                     if (_castChain[0] && _castChain[0].indexOf('clip:') === 0) _castClipWarm(uid, _castChain[0]);   // THE LOOK: a raw clip pick bakes on demand
                     if (!_maybeStartModelAnim(uid, _castChain)
@@ -107009,6 +107136,7 @@ const ThreeRenderer = (function () {
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },
         unitBoneWorld: unitBoneWorld,
         unitHoldProp: unitHoldProp,        // THE PROPS IN THE HAND (row 24)
+        unitHeldInfo: unitHeldInfo, unitHeldUse: unitHeldUse,   // THE WEAPON IN THE SPELL (11-22)
         unitPropMetre: unitPropMetre,
         /* where a unit's body stands this frame (world; null while it has no visible entry) — the escape looks
            (three-vfx-effects.js _ESC_LOOKS) hang the web line / the ejection's exhaust on the moving body */
