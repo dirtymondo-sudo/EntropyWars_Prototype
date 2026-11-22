@@ -9847,6 +9847,7 @@
             const fogLimit = skipLOS ? visionGatesLosFree(unit) : visionGatesTargeting(unit);   // VISION (2026-10-09): team sight, fog or no fog
             const _km = _kindMeta(spell);
             const _grReel = isGrappleReel(spell);
+            const _dashK = spell.kind === 'dash', _dashEmpty = _dashK && dashOnlyMoves(spell);
 
             for (let cy = 0; cy < sizeH; cy++) {
                 for (let cx = 0; cx < size; cx++) {
@@ -9877,6 +9878,19 @@
                     if (_needsAbove && _casterStandH <= tz) continue;
                     /* THE GRAPPLE REEL: only tiles the rope really reels to (or a body / wall it lands beside) */
                     if (_grReel && !grappleLandingFor(unit, cx, cy, { viewer: unit.player })) continue;
+                    /* THE DASH LANDING (mondo 2026-11-22 playtest L3: "these types of bugs with selecting a tile for spells are the
+                       most annoying ones"; Sprint listed enemy squares, then said "Sprint needs an empty tile"): a dash's reach
+                       is only the squares doSpell's dash branch lands on: passable, never the Cube, and for a dash that only
+                       moves (Sprint) free of every body the caster's side can SEE (a hidden one stays lit, like the blink's
+                       landing list, so the aim never gives it away; doSpell still refuses it) */
+                    if (_dashK) {
+                        if (cx === unit.x && cy === unit.y) continue;   // a dash goes somewhere (doSpell: "out of dash range")
+                        if (!isTerrainPassable(cx, cy) || (typeof isTowerTile === 'function' && isTowerTile(cx, cy))) continue;
+                        if (_dashEmpty) {
+                            const _occ = unitAt(cx, cy);
+                            if (_occ && !_occ.dead && _occ.id !== unit.id && _isUnitVisibleToViewer(_occ, unit.player)) continue;
+                        }
+                    }
                     tiles.push({ x: cx, y: cy });
                 }
             }
@@ -52858,10 +52872,12 @@
                 if (body && !body.dead) return 'occupied';
             }
             // A dash that only moves (Sprint) runs to an EMPTY tile (doSpell's dash branch).
-            if (dashOnlyMoves(spell)) {
+            if (dashOnlyMoves(spell)) {   // a body the caster's side sees (a hidden one: doSpell refuses, the aim never tells)
                 const body = unitAt(x, y);
-                if (body && !body.dead && body.id !== unit.id) return 'occupied';
+                if (body && !body.dead && body.id !== unit.id && _isUnitVisibleToViewer(body, unit.player)) return 'occupied';
             }
+            /* THE DASH LANDING: a dash never lands on a wall or the Cube (doSpell's dash branch) */
+            if (spell.kind === 'dash' && (!isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y)))) return 'blocked';
             return null;
         }
         /* 🏃 a dash with no damage of its own (Sprint: "runs up to 3 tiles") — it never knocks a body aside, so its
