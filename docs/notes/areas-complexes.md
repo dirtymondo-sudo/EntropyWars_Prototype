@@ -14139,6 +14139,12 @@ and press e ... i can't see the road going out, the road just stops and its all 
     (`f`); `docs/areas/routes/R6.js` plants a tall wood on the road's last four columns of plots (one free square in three off the road:
     the kit's ten trees a plot read as a lawn). Then `node bake-route.js R6`, `node bake-map.js site_ow_r6`. RULE: the two sides of a gate
     show the same country. Walked both ways: city -> site_ow_r6 and site_ow_r6 -> city (the software walker needs `max` 70000 for 6 m).
+  - ROUND 7, NO BLACK AT THE WOODS' EDGE (mondo at the Clearing's Old Road trail: "I dont know why its all black on the edge. Every single
+    entrance/exit in the game needs to look good and natural"): two causes. (1) the Clearing's `edges.tint: [0.5, 0.5, 0.52]` (11-20) drew
+    the land past its line near black since the land wears sheets; gone from the room row and bake-woods.js (deep stays). (2) every `trail`
+    way stood 7 black soft cards across its mouth and a flat pale strip on the path: `_hqPassageWay` `openLand` (unroofed, not inside, no
+    modelled mouth, a room with THE NATURAL EDGES) builds neither; the land's own WAY ON path shows. Walked: the Clearing north -> site_ow_r4.
+    The other zones' gates are four other threads' (11-22); the forest / kingdom thread takes the trail strip, the WAY ON clearing and the dim.
   - THE LANE LINES NEVER DREW: the paint quads wind face down (z runs negative); the paint material is double-sided now.
 - Probe: `node playtest_city.js site_ow_r9 '[{"name":"walk_n","x":-35,"z":-180,"face":0,"ground":true,"walk":{"key":"w","max":40000}}]'` walks
   into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
