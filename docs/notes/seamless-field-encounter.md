@@ -1149,6 +1149,11 @@ we already fixed this????? Or is the fix only in disaster city? it needs to be g
     readable) but its strength is set so the floor under it gets what the walk's floor gets (0.83, was 1.15). The low-ceiling rule
     of 11-15 no longer eases back up to the old strength as the ceiling rises.
   - Off: `window.EW_FIELD_KEY_HIGH = true`, or battleMatch 0. Drawn from the room and the camera, never relayed: host and guest alike.
+  - THE LAMP STANDS OVER THE GROUND IT LIGHTS: the lamp was hung over the point where the camera's ray met the room's LEVEL 0 plane. On
+    raised ground that is nowhere near the board (the Cavern's upper level, 43.75 m up: the lamp read 36 m under the unit and off to
+    the side, so the fight had no Key Light where the walk had 1.1). Outside a low closed room the lamp now stands over the camera's
+    look-at point (ThreeCamera.getFocalWorld) at the room's real ground there (`_roomGroundAt`). NOT confirmed on screen in the Cavern:
+    the probe's fight camera never reached the units there (the lamp's numbers moved to the look-at; the picture stayed off the board).
 - NOT changed, and worth knowing: an outdoor fight's ROUNDS still flip day and night (THE BATTLE'S DAY AND NIGHT, 10-17). A fight struck
   at night is night on round 1 and DAY on round 2. That is the combat rule, not a light bug; asked mondo whether story fights should hold the hour.
 - A fight struck inside the Big Top is seated there (cells 11,12 of the 24 x 24 board); the tent's cloth casts no shadow on the walk

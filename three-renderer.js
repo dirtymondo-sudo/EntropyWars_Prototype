@@ -98590,7 +98590,21 @@ const ThreeRenderer = (function () {
                 kUp += (kWu - kUp) * kEven; kReach += (kRw - kRb) * kEven; kI += ((K.intensity || 0) - kI) * kEven;
             } else { var kSame = kWalk / kFall(kUp, kRb); if (kSame < kI) kI += (kSame - kI) * kEven; }   // a closed room, a cave: the whole board stays readable, its floor lit as the walk's
         }
-        L.position.set(cam.position.x + _fklDir.x * t, fy + kUp * s, cam.position.z + _fklDir.z * t);
+        var kx = cam.position.x + _fklDir.x * t, kz = cam.position.z + _fklDir.z * t, ky = fy;
+        /* THE LAMP STANDS OVER THE GROUND IT LIGHTS (2026-11-22): the floor plane above is the room's level 0. A fight on raised ground
+           (the Cavern's upper level stands 43.75 m over it; a hill, a deck, a plot's plate) had its lamp where the camera's ray met
+           that far plane: 36 m under the board and off to the side in the Cavern, so the fight there was near black where the walk's
+           lamp lit the floor. Outside a low closed room (whose lamp hangs from its own ceiling) the lamp now stands over the camera's
+           own look-at point (ThreeCamera.getFocalWorld), at the room's real ground there (_roomGroundAt). */
+        if (st.keyCeil == null && !(typeof window !== 'undefined' && window.EW_FIELD_KEY_HIGH)) {
+            var kf = null; try { kf = (ThreeCamera.getFocalWorld) ? ThreeCamera.getFocalWorld() : null; } catch (e) { kf = null; }
+            if (kf && isFinite(kf.x) && isFinite(kf.z)) {
+                var kg = -Infinity; try { kg = _roomGroundAt(kf.x, kf.z); } catch (e) { kg = -Infinity; }
+                if (!isFinite(kg) || Math.abs(kg - kf.y) > 3 * s) kg = isFinite(kf.y) ? kf.y : fy;   // (no ground read, or the look-at is on another storey: the look-at's own height)
+                kx = kf.x; kz = kf.z; ky = kg;
+            }
+        }
+        L.position.set(kx, ky + kUp * s, kz);
         var want = kI * _keyLampGain();
         if (!st.keyOpen && st.keyWhite > 0) want *= st.keyWhite;   // THE WHITE ROOMS: a white-floored closed room's Key Light × whiteDay
         if (!st.keyOpen && st.keyRoomK != null) want *= st.keyRoomK;   // THE ROOM'S OWN KEY LIGHT
