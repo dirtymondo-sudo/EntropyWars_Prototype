@@ -14468,8 +14468,12 @@ Atlantis, the Sewers, the D.U.M.B., the six Cavern rooms, the Coast Road (R10) a
   between two roof rectangles stood a wall of rock that you walked through, and one filled the passage to the Long Tunnel. The bridge's keels
   stood 11 m low the same way. All 161 `aga:` rows say `y` now (the tool and data.js): the halls have their roofs overhead. The tunnel's own rock
   is drawn dark (`passage: { wallColor, floorColor }` on the door) so the mouth reads against the wall. Seen: the spawn hall, the great hall,
-  the gate; walked both ways. ANY tool that writes `base` on an arch row has this fault: grep before trusting a roof. NOT CHECKED: bake-cavern.js, bake-sewers.js,
-  bake-ug.js, bake-underground.js and bake-astral.js also write `base` on arch rows (right only where that equals the ground under the row's origin).
+  the gate; walked both ways. ANY tool that writes `base` on an arch row has this fault: grep before trusting a roof.
+  **THE OTHER TOOLS, CHECKED (same day):** measured headlessly (every arch row's written `base` against `hqTerrainInfo(...).arch[i].base`). The Long
+  Tunnel, the West and the Cavern (bake-underground.js / bake-ug.js: roofs written `base: 0` with absolute part heights) had 45 roof rows lifted by
+  the ground under their origin, up to 30 m too high; the Astral Realm's temple and Still Pool kerb stood 1 m low (bake-astral.js `look`). All say
+  `y` now, tools and data.js; seen in the browser. Already right: the Sewers (bake-labyrinth.js writes `y`), the Tunnel-Way (`y`), the Hollow.
+  bake-cavern.js and bake-sewers.js write `base` too but their rooms are retired.
 - **TWO INVISIBLE WALLS, FIXED AND WALKED BOTH WAYS.** (1) The Sewers' Gantry Tunnel (to the D.U.M.B.) and Outfall (to the Sea Floor): bake-labyrinth.js
   stands a `free` way ON the dead end's rock face with `passage: { len: 3, deep: 1.2 }`, so the crossing lay 1.2 m inside the rock: the walker
   stopped at the face. Now `deep: -0.9` (a passage's `deep` may be negative: the crossing is that far in FRONT of the door's line). (2) The Sea

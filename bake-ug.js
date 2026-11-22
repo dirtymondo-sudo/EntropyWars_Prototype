@@ -168,7 +168,7 @@ if (!(DES.room && DES.room.roof === false)) { const used = new Uint8Array(W * H)
   /* one arch row a plot, so a far plot can be culled */
   const byPlot = {}; parts.forEach(pt => { const sx = Math.floor((pt.p[0] + HX) / C), sy = Math.floor((pt.p[2] + HZ) / C), k = Math.floor(sx / N) + '_' + Math.floor(sy / N); (byPlot[k] = byPlot[k] || []).push(pt); });
   Object.keys(byPlot).forEach(k => { const [bx, by] = k.split('_').map(Number), ox = r2(gx(bx * N) + N * C / 2), oz = r2(gz(by * N) + N * C / 2);
-      FEAT.push({ k: 'arch', id: 'ug:' + KEY + ':roof:' + k, x: ox, z: oz, rot: 0, base: 0, parts: byPlot[k].map(pt => Object.assign({}, pt, { p: [r2(pt.p[0] - ox), pt.p[1], r2(pt.p[2] - oz)] })) }); }); }
+      FEAT.push({ k: 'arch', id: 'ug:' + KEY + ':roof:' + k, x: ox, z: oz, rot: 0, y: 0 /* `y`, never `base` (2026-11-22): `base` is overwritten with the ground under the row's origin */, parts: byPlot[k].map(pt => Object.assign({}, pt, { p: [r2(pt.p[0] - ox), pt.p[1], r2(pt.p[2] - oz)] })) }); }); }
 
 /* ── THE DESIGN FILE's ctx ── */
 let CAT = {}, RACES = [], D = null;
