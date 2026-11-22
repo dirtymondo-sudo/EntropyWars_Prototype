@@ -197,9 +197,16 @@ const climbAt = (lo, hi, look, id) => { const dx = hi[0] - lo[0], dy = hi[1] - l
   for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { if (!wet(x, y) || used[y * W + x]) continue; const lv = lvW(x, y), ok = (X, Y) => wet(X, Y) && !used[Y * W + X] && lvW(X, Y) === lv;
       let w = 1; while (ok(x + w, y)) w++; let h = 1; rows: while (y + h < Hh) { for (let k = 0; k < w; k++) if (!ok(x + k, y + h)) break rows; h++; }
       for (let j = 0; j < h; j++) for (let k = 0; k < w; k++) used[(y + j) * W + x + k] = 1;
+      /* THE LAKE IS WADED (2026-11-22, the soft-lock pass; mondo: "no tiny crevices or huge drops where there is no room to get out or move"):
+         the floorOf note above always said a pit's water "is waded, out to its ladder", but the row said `deep_water`, a liquid nobody enters:
+         a walker who stepped off the ring or the Spire's island slid 8 m down the pit's face to the waterline and stood there for good
+         (5 crevices, 3 traps on the bed's dry corners). A run that keeps its level (the Spire's lake, 0.58 m deep, its ladder's foot beside
+         it) is `water`: fallen into, waded round the island to the ladder, climbed out of. The shallow pools under a floor stay black. */
+      const lake = !POOL.has(x + ',' + y) ? 'water' : 'deep_water';
       /* the ends stop 0.4 m short of the rect's edges (seen 11-20: an end ON the line of higher ground lifted the whole surface to it) */
-      F.push(h >= w ? { k: 'stream', pts: [[r2(gx(x) + w * C / 2), r2(gz(y) + 0.4)], [r2(gx(x) + w * C / 2), r2(gz(y + h) - 0.4)]], w: r2(w * C - 0.2), y: r2(walkOf(x, y) - 0.12), depth: 0.6, key: 'deep_water' }
-                    : { k: 'stream', pts: [[r2(gx(x) + 0.4), r2(gz(y) + h * C / 2)], [r2(gx(x + w) - 0.4), r2(gz(y) + h * C / 2)]], w: r2(h * C - 0.2), y: r2(walkOf(x, y) - 0.12), depth: 0.6, key: 'deep_water' });
+      /* (`absY`: the lake's surface is the plan's, 0.58 m over its bed; without it the row's y was read over the ground and stood 2.3 m higher: too deep to wade) */
+      F.push(Object.assign(h >= w ? { k: 'stream', pts: [[r2(gx(x) + w * C / 2), r2(gz(y) + 0.4)], [r2(gx(x) + w * C / 2), r2(gz(y + h) - 0.4)]], w: r2(w * C - 0.2), y: r2(walkOf(x, y) - 0.12), depth: 0.6, key: lake }
+                    : { k: 'stream', pts: [[r2(gx(x) + 0.4), r2(gz(y) + h * C / 2)], [r2(gx(x + w) - 0.4), r2(gz(y) + h * C / 2)]], w: r2(h * C - 0.2), y: r2(walkOf(x, y) - 0.12), depth: 0.6, key: lake }, lake === 'water' ? { absY: true } : null));
       count.sumps = (count.sumps || 0) + 1; } }
 
 /* ── THE BRIDGES (the plan's `bridges`: a deck from one square over to another, walked both ways); the design file's `bridge` = its look ── */
