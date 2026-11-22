@@ -14414,5 +14414,9 @@ the Desert thread, merged the same hour); this is the same thing for a `trail`, 
 - **THE ESTATE'S TWO SHUT GATES** (found by walking): the Lake's farm gate (`districts/room.js`, `timber_gate`: "the trail's end until the House Trail is
   built") and the House Trail's iron leaf at the Back Gate (`trail-room.js`, `hw_gate_leaf`) stood shut across their trails, bodies: neither way could be
   walked. Both stand open now, swung back along the trail's north side (`node bake-estate.js`, `node bake-route.js R7`; a clean rebake moved nothing else).
+- **THE GRAVEYARD'S BACK GATE, THE FENCE'S GAP** (found by walking): the Ranch's gate fence (`districts/R.js`, `rail(36, …)` on the district's west line)
+  stands, in One World, on the HOUSE room's east line (ow-move.js: a fence ON a plot line is the west plot's). Its two-square gap was north of the back
+  gate's three squares (`cut: [5, 6, 7]`), so the walker stopped at the rail 1 m short of the House Trail. The gap is the gate's squares now.
+  LESSON: a fence on a district's line travels with the plot west / north of it; after a zone move, walk every gate.
 - Probe: `playtest_city.js` takes `EW_PROBE_TRIES=1` (no retry of a whole chain after a crash; the cloud browser dies after 3 to 6 room changes: walk
   a gate out and back per run, no more).

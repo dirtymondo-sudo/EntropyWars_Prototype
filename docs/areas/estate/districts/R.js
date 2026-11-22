@@ -262,7 +262,8 @@ module.exports = {
               else feat({ k: 'rail', x0: gc(a[0]), z0: gc(a[1]), x1: gc(b[0]), z1: gc(b[1]), model: 'ranch' }); }); }
         P('horse_brown', 41, 53, { face: 75 }); P('horse_black', 43, 55, { face: 250 }); P('horse', 42, 51, { face: 15 }); dec('wooden_bucket', 40, 56);
         P('cave_torch', 50, 57); P('cave_torch', 59, 57, { noLight: true }); dec('psx_wooden_crate_1', 59, 55); P('psx_metal_barrel_mp_1', 50, 55);
-        P('signpost', 38, 62, { face: 90 }); P('cave_torch', 37, 67, { noLight: true }); rail(36, 60, 36, 63); rail(36, 65, 36, 72);                         // THE RANCH GATE: the rail on the district's line, the gap on the track
+        P('signpost', 38, 62, { face: 90 }); P('cave_torch', 37, 67, { noLight: true }); rail(36, 60, 36, 65); rail(36, 68, 36, 72);   /* (11-22, the zone entrances thread: in One World this fence stands on the House's east line, at the graveyard's back gate; its gap was two squares north of the gate's three, so the gate could not be walked. The gap is the gate's squares now.) */
+                                // THE RANCH GATE: the rail on the district's line, the gap on the track
         props.push({ key: 'trailer_home_4', x: r2(gx(39) + 8.75), z: gx(62), face: 0 }, { key: 'trailer_home_6', x: r2(gx(39) + 8.75), z: gx(70), face: 180 });   // the old Corn Fields' three trailers stand on the ranch now
         for (const y0 of [61, 69]) for (let y = y0; y < y0 + 2; y++) for (let x = 39; x < 44; x++) taken.add(x + ':' + y);
         [[52, 62, 200], [54, 67, 120], [55, 69, 300], [49, 64, 40], [53, 66, 250], [54, 68, 30], [55, 67, 210], [53, 69, 80], [57, 65, 160]].forEach(q => dec('chicken', q[0], q[1], { face: q[2] })); P('campfire', 50, 61, { noLight: true }); dec('cardboard_boxes', 51, 62); dec('anthill', 49, 70); dec('ant', 50, 70);

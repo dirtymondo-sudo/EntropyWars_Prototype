@@ -451,6 +451,9 @@ STAND.forEach(S => {
         let best = [o[0], o[0]], a = o[0]; for (let i = 1; i <= o.length; i++) { if (i === o.length || o[i] !== o[i - 1] + 1) { if (o[i - 1] - a > best[1] - best[0]) best = [a, o[i - 1]]; a = o[i]; } }
         const along = (best[0] + best[1] + 1) / 2, ns = sd === 'N' || sd === 'S', onWall = (sd === 'N' && e.row === 0) || (sd === 'S' && e.row === R.rows - 1) || (sd === 'W' && e.col === 0) || (sd === 'E' && e.col === R.cols - 1);
         const q = border(e, sd, Math.floor(along - 0.01)), d = { wall: onWall ? sd.toLowerCase() : 'free' };
+        /* THE DOOR'S OWN COLUMN IS OPEN (2026-11-22, the zone entrances thread): the two squares behind the door's middle are path. The Redwood Trail's
+           north row was open seven squares wide with ONE closed square behind its middle: the door stood on that square's face and the walker met a tree. */
+        for (let i = 1; i <= 2; i++) lay(q[0] - SIDE4[sd][0] * i, q[1] - SIDE4[sd][1] * i);
         if (onWall) { if (ns) d.x = R.gx(e.col * N + along); else d.z = R.gz(e.row * N + along); }
         else { d.x = ns ? R.gx(e.col * N + along) : R.gcx(q[0]); d.z = ns ? R.gcz(q[1]) : R.gz(e.row * N + along); d.face = FACE[sd]; d.passage = Object.assign({}, MOVER.FREE_PASS); }   // (ow-move.js A FREE SEAM IS CROSSED ON THE PLOT'S OWN SQUARES)
         return d; };
