@@ -33727,8 +33727,8 @@ const DOOR_HQ = {
           b: { room: 'site_ow_r9', wall: 'n', x: -35, w: 14, sub: 'EXIT 1 · NORTH · DISASTER CITY' },   // w 14 (2026-11-22): the road past the gantry is the street's four squares wide at both ends, not a 9 m lane   // THE HIGHWAY (2026-11-16): Exit 1's road, straight under the city's own South Street (the same x both sides)
           why: 'the same road, south; the city stops and the road does not', note: 'south', draft: true },
         { id: 'valley_city', route: 'woods', way: 'road',
-          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -249.4, z: -47.25, face: 90, w: 5, sub: 'THE VALLEY ROAD · WEST · THE WOODS' },   // z -47.25, w 5 (2026-11-22, was z -45.5 at the lane's 9 m): the city's west way out is the University's FOOTPATH (one square, its middle on z -47.25), not a street; the gate stood half over the planters. A road end under 7 m wide is a footpath (three-renderer.js _hqWayBuilders.road `foot`)
-          b: { room: 'site_ow_r6', wall: 'e', z: 21, sub: 'THE CITY LINE · EAST · DISASTER CITY' },
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -249.4, z: -47.25, face: 90, w: 5, sheet: 'dirt_2', tint: 0xa08c78, sub: 'THE VALLEY ROAD · WEST · THE WOODS' },   // z -47.25, w 5 (2026-11-22, was z -45.5 at the lane's 9 m): the city's west way out is the University's FOOTPATH (one square, its middle on z -47.25), not a street; the gate stood half over the planters. A road end under 7 m wide is a footpath (three-renderer.js _hqWayBuilders.road `foot`)
+          b: { room: 'site_ow_r6', wall: 'e', z: 21, w: 5, sheet: 'dirt_2', tint: 0xa08c78, sub: 'THE CITY LINE · EAST · DISASTER CITY' },   // w 5 + the dirt (2026-11-22): the same footpath as the city's end, a wooden signpost, no green gantry and asphalt at the end of a dirt road
           why: 'the valley road runs into the city', note: 'west' },
         /* THE HOLLYWOOD HILLS ARE PART OF DISASTER CITY (2026-11-16, mondo: "make Hollywood hills a part of disaster city"): the links `downtown_mountains` (the mountain road) and
            `downtown_cove` (the boardwalk's north end) are gone: both are ground you walk in the city's own room now (docs/disaster-city/districts/N.js). The Mountains are reached
@@ -83438,6 +83438,7 @@ function hqLinkDoors(roomId) {
             sub: end.sub || (wear.way ? (wear.cat.sub || 'STEP THROUGH') : 'WALK THROUGH'), action: { room: to, at: other.door ? other.door : 'link_' + link.id } };   // the far end lands AT a docked end's own door
         if (wear.way) d.way = wear.way;
         if (end.passage) d.passage = end.passage;   // THE PASSAGES (2026-10-01): an end's own tunnel / stair / trail shape
+        if (end.sheet) d.sheet = end.sheet; if (end.tint != null) d.tint = end.tint;   // A PATH'S OWN GROUND (2026-11-22): the sheet + tint a footpath end's strip wears (the Valley Road's dirt at both its ends)
         if (+end.w > 0) d.w = +end.w;   // THE ROAD (2026-11-22): an end's own street width (three-renderer.js _hqWayBuilders.road reads door.w)
         if (link.secret || end.secret) { d.secret = true; d.leaf = null; d.label = 'A DRAUGHT'; d.sub = 'A DOOR THAT IS NOT ON A PLATE · ' + String(toRoom.label || to).toUpperCase(); }   // THE AREAS (2026-09-18): a DRAUGHT — a link that is a hidden passage at both ends (the renderer hangs a wall slab; the map shows it once both rooms are seen)
         if (end.verb) d.verb = String(end.verb);
