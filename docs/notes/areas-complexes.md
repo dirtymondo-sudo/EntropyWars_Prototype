@@ -14480,6 +14480,14 @@ the Desert thread, merged the same hour); this is the same thing for a `trail`, 
   west gate: two lanes at each gate, as the Desert's highways. The rebake also took in what the map changed since 11-17 (the box's north-west corner
   is the Snowy Pines' snow now, no trees on it; lane lines joined at the bends; the spawn off the road); no prop moved but the taper's own (rails, dashes).
   Walked both gates both ways. Map picture rebaked (`bake-map.js site_ow_r4`).
+- **THE EAST ROW GATE, CAME A LOT'S FIFTH** (same day; mondo: "build a fifth gate and a bridge at some point this old road needs to transition to a dirt
+  road, makes no sense to have a modern road leading to camelot"). The Old Road met the moat and a blank wall 63 m north of the East Gate. bake-camelot.js:
+  `townSide`'s `gi` may be a LIST (the east side: drums `[60, 50, 46, 32, 28]`, gates `[1, 3]`; the second gate's rows are `town_gate_e_row*`), bridge
+  `east_row_bridge` at square 30; layout.json: cobbles from the east street through the gate (the gate's own squares are `c`, not `G`: on `G` = grass the
+  flora grew a bush in the gate), `b` over the moat; the two cottages beside it stand one square clear of the new drums (25-27 -> 24-26, 33-35 -> 34-36).
+  THE PAVEMENT ENDS (bake-route.js): a `taper` row may say `dirt: <squares>` = the last that many squares before that end are the ground kind's own
+  dirt road, no painted lines, the door's `passage.floor` too (`hold` longer than `dirt`). R4: `{ hold: 26, len: 10, dirt: 22 }` at Came A Lot.
+  Walked town -> Old Road -> town through the gate; find-softlocks.js: 0 traps, 0 crevices in both rooms.
 - Probe: `playtest_city.js` takes `EW_PROBE_TRIES=1` (no retry of a whole chain after a crash; the cloud browser dies after 3 to 6 room changes: walk
   a gate out and back per run, no more).
 ## THE COAST + THE UNDERGROUND, WHERE THE ZONES MEET (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural")
