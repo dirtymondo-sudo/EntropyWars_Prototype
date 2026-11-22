@@ -8915,7 +8915,7 @@ const ThreeRenderer = (function () {
         low: { perTile: 7, width: 0.240, fringe: 2 },   // the Low setting: half the tufts, each wider, a narrow meadow
         order: 50, shadow: true, dry: [0.42, 0.38, 0.20], dryShare: 0.10
     };
-    try { window.EW_GGRASS = GGRASS; GGRASS.flush = function () { _ggPalCache = {}; _ggFringe = null; _lastTerrainDecoSerial = ''; }; } catch (e) {}   // flush = retune live: the next frame rebuilds
+    try { window.EW_GGRASS = GGRASS; GGRASS.flush = function () { _ggPalCache = {}; _ggFringe = null; _ggBoard = null; _lastTerrainDecoSerial = ''; }; } catch (e) {}   // flush = retune live: the next frame rebuilds
     /* a tuft's outline (x in half-widths, y in heights) + its 5 triangles, wound to face the camera.
        crown = one thick clump of three points (a tall middle, two splayed sides); tongue = one round pad */
     var _GG_SHAPES = {
@@ -8961,6 +8961,7 @@ const ThreeRenderer = (function () {
         return pal;
     }
     var _ggFringe = null;   // the meadow past the board, kept between builds: { key, pos, col, gg, gs, roots }
+    var _ggBoard = null, _ggBoardHits = 0;   // THE GRASS IS BUILT ONCE A ROOM: the board's own tufts, kept while the ground's signature holds
     var _gg = null;   // the live field: { mesh, press, data, W, H, n, sig, tops }
     /* THE GRASS TAKES NO INK (2026-11-12, mondo: "adding the ink shader makes the grass look kinda weird to me, like it ends up being
        a shadowy blob. Can we exclude grass from the shader"): the Entropy Style's five light bands cut every clump into a lit tip and a
@@ -9026,7 +9027,14 @@ const ThreeRenderer = (function () {
         if (!W || !H) return;
         var C = GGRASS, LOW = (_ggLevel === 'low') ? C.low : null, N = LOW ? LOW.perTile : C.perTile, WID = LOW ? LOW.width : C.width;
         var mon = (typeof _monumentMap === 'function') ? _monumentMap() : null;
-        var pos = [], col = [], gg = [], gs = [], roots = [], GY = new Float64Array(25);
+        /* THE GRASS IS BUILT ONCE A ROOM (2026-11-22, mondo: every fight in the Woods opened on a frozen second; "is it because it's the first
+           fight of the session ... how do we make it never do that"). It was not the first fight: the field is the whole room, and this build
+           grew every tuft of it again at every fight (0.6-0.7 s in one go in the cloud profile, the largest single piece of the freeze). Two
+           changes. The tufts are written straight into typed buffers (no million-entry lists, no small list per corner). And the BOARD's
+           tufts are kept like the meadow's (_ggBoard): the next fight in the same room on the same ground takes them as they are; a dig, a
+           build or a flood changes the ground's signature and grows them again, as before. Off: window.EW_NO_GRASS_KEEP. */
+        var _ggW = function (n) { return { a: new Float32Array(n), n: 0 }; }, _ggNeed = function (o, k) { if (o.n + k > o.a.length) { var b = new Float32Array(Math.max(o.a.length * 2, o.n + k)); b.set(o.a.subarray(0, o.n)); o.a = b; } };
+        var pos = _ggW(1 << 18), col = _ggW(1 << 18), gg = _ggW(1 << 18), gs = _ggW(1 << 16), roots = _ggW(1 << 14), GY = new Float64Array(25), BS = new Float64Array(16), BD = new Uint8Array(16);
         var seed = 1234567;
         var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
         var sampler = (typeof _fieldGroundSampleAt === 'function') ? _fieldGroundSampleAt : null;
@@ -9078,11 +9086,26 @@ const ThreeRenderer = (function () {
            of the tufts), then the board's own squares (rebuilt whenever the ground changes: a dig, a build, a flood) */
         var fkey = M ? ((typeof _hqBattleRoomKey === 'function' ? _hqBattleRoomKey() : '') + '|' + _ggLevel + '|' + ts + '|' + W + 'x' + H + '|' + C.shape + '|' + (typeof _calmOn === 'function' && _calmOn() ? 'c' : 'p')) : '';
         var keep = (M && _ggFringe && _ggFringe.key === fkey) ? _ggFringe : null;
+        /* the board's own tufts, kept: the room, the setting and the ground's signature (each square's sheet, thing and height) */
+        var bkey = '', bkeep = null;
+        try {
+            var _rk = (typeof _hqBattleRoomKey === 'function') ? _hqBattleRoomKey() : '';
+            if (_rk && !(typeof window !== 'undefined' && window.EW_NO_GRASS_KEEP)) {
+                var hsig = 2166136261 >>> 0, _hs = function (v) { v = String(v); for (var hi = 0; hi < v.length; hi++) { hsig ^= v.charCodeAt(hi); hsig = Math.imul(hsig, 16777619) >>> 0; } };
+                for (var sy2 = 0; sy2 < H; sy2++) for (var sx2 = 0; sx2 < W; sx2++) {
+                    var so = (typeof getObjectAt === 'function') ? getObjectAt(sx2, sy2) : null;
+                    _hs(getTerrainAt(sx2, sy2)); _hs(so ? (typeof so === 'string' ? so : 'o') : ''); _hs(Math.round(tileTopY(sx2, sy2) * 100)); if (mon && mon.has(sx2 + ',' + sy2)) _hs('m');
+                }
+                bkey = _rk + '|' + _ggLevel + '|' + ts + '|' + W + 'x' + H + '|' + C.shape + '|' + (typeof _calmOn === 'function' && _calmOn() ? 'c' : 'p') + '|' + M + '|' + hsig;
+                if (_ggBoard && _ggBoard.key === bkey) bkeep = _ggBoard;
+            }
+        } catch (e) { bkey = ''; bkeep = null; }
         for (var pass = 0; pass < 2; pass++) {
         if (pass === 0 && (!M || keep)) continue;
+        if (pass === 1 && bkeep) continue;
         if (pass === 1 && M && !keep) {
-            keep = _ggFringe = { key: fkey, pos: new Float32Array(pos), col: new Float32Array(col), gg: new Float32Array(gg), gs: new Float32Array(gs), roots: new Float32Array(roots) };
-            pos = []; col = []; gg = []; gs = []; roots = [];
+            keep = _ggFringe = { key: fkey, pos: pos.a.slice(0, pos.n), col: col.a.slice(0, col.n), gg: gg.a.slice(0, gg.n), gs: gs.a.slice(0, gs.n), roots: roots.a.slice(0, roots.n) };
+            pos.n = col.n = gg.n = gs.n = roots.n = 0;
         }
         for (var ty = -M; ty < H + M; ty++) for (var tx = -M; tx < W + M; tx++) {
             var fr = (tx < 0 || ty < 0 || tx >= W || ty >= H);
@@ -9143,25 +9166,30 @@ const ThreeRenderer = (function () {
                 var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
                 /* 7 corners, a soft rounded tongue: foot L / R, belly L / R, shoulder L / R, tip. The side offset (aGgS) is laid along
                    the camera's right in the shader, so the tongue always shows its full face */
-                var P = _GG_SHAPES[C.shape] ? _GG_SHAPES[C.shape].P : _GG_SHAPES.crown.P;
-                for (var k = 0; k < P.length; k++) {
+                var P = _GG_SHAPES[C.shape] ? _GG_SHAPES[C.shape].P : _GG_SHAPES.crown.P, PL = P.length, bladed = P[0].length > 2;
+                if (bladed) for (var bq = 0; bq < 8; bq++) { var bh0 = (Math.sin((r1 * 91.7 + bq * 12.93) * 43.1) * 43758.5453) % 1; bh0 = bh0 < 0 ? bh0 + 1 : bh0; BS[bq] = 0.80 + 0.32 * bh0; BD[bq] = (bh0 > 1 - GGRASS.dryShare) ? 1 : 0; }   // _ggBlade, once a blade (not once a corner)
+                _ggNeed(pos, PL * 3); _ggNeed(col, PL * 3); _ggNeed(gg, PL * 4); _ggNeed(gs, PL); _ggNeed(roots, 2);
+                var pA = pos.a, cA = col.a, gA = gg.a, sA = gs.a;
+                for (var k = 0; k < PL; k++) {
                     var f = P[k][1], bf = f * f;
-                    pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
+                    pA[pos.n++] = wx + lx * bf; pA[pos.n++] = gy + h * f * (1 - 0.10 * bf); pA[pos.n++] = wz + lz * bf;
                     var cr, cg, cb;
                     if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
                     else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
-                    if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; }
-                    col.push(cr, cg, cb);
-                    gg.push(wx, wz, h * f, f);
-                    gs.push(P[k][0] * hw);
+                    if (bladed) { var bI = P[k][2] & 7, bDry = BD[bI] ? (0.25 + 0.6 * f) : 0, bM = BS[bI] * (1 - bDry); cr = cr * bM + bDry * GGRASS.dry[0]; cg = cg * bM + bDry * GGRASS.dry[1]; cb = cb * bM + bDry * GGRASS.dry[2]; }
+                    cA[col.n++] = cr; cA[col.n++] = cg; cA[col.n++] = cb;
+                    gA[gg.n++] = wx; gA[gg.n++] = wz; gA[gg.n++] = h * f; gA[gg.n++] = f;
+                    sA[gs.n++] = P[k][0] * hw;
                 }
-                roots.push(wx, wz);
+                roots.a[roots.n++] = wx; roots.a[roots.n++] = wz;
             }
         }
         }
         if (!M) _ggFringe = null;
-        var join = function (a, b) { if (!a) return new Float32Array(b); var o = new Float32Array(a.length + b.length); o.set(a, 0); o.set(b, a.length); return o; };
+        var join = function (a, b) { if (!a) return b; var o = new Float32Array(a.length + b.length); o.set(a, 0); o.set(b, a.length); return o; };
         var K = (M && keep) ? keep : null;
+        if (bkeep) { pos = bkeep.pos; col = bkeep.col; gg = bkeep.gg; gs = bkeep.gs; roots = bkeep.roots; _ggBoardHits++; }
+        else { pos = pos.a.slice(0, pos.n); col = col.a.slice(0, col.n); gg = gg.a.slice(0, gg.n); gs = gs.a.slice(0, gs.n); roots = roots.a.slice(0, roots.n); if (bkey) _ggBoard = { key: bkey, pos: pos, col: col, gg: gg, gs: gs, roots: roots }; }
         pos = join(K && K.pos, pos); col = join(K && K.col, col); gg = join(K && K.gg, gg); gs = join(K && K.gs, gs); roots = join(K && K.roots, roots);
         if (!pos.length) return;
         var geo = new THREE.BufferGeometry();
@@ -9178,7 +9206,7 @@ const ThreeRenderer = (function () {
         var mesh = new THREE.Mesh(geo, _ggMat(G));
         mesh.frustumCulled = false; mesh.name = 'ew_grass_field'; mesh._ew_ggrass = true; mesh.renderOrder = C.order;
         G.mesh = mesh; G.ms = performance.now() - _t0; _gg = G; _ggMaskU.mesh = mesh;
-        try { window._ewGrassField = { tufts: nB, buildMs: Math.round(G.ms), level: _ggLevel }; } catch (e) {}   // read-only: what the last build made
+        try { window._ewGrassField = { tufts: nB, buildMs: Math.round(G.ms), level: _ggLevel, kept: !!bkeep, keptHits: _ggBoardHits }; } catch (e) {}   // read-only: what the last build made
         group.add(mesh);
     }
     /* THE FACE + THE ORDER: the tufts turn to the camera (its right, flat, in the field's frame), and — as they write no depth —
