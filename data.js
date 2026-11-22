@@ -98607,7 +98607,7 @@ const HQ_NPC_PLACES = {
         'gladiator m @O:Arena >O', 'gladiator f @O:Gate of Life >O', 'gladiator m @S:Gate stay', 'gladiator f @S:Colonnade stay', 'cyclops @O:Arena >O', 'minotaur @O:Gate of Death >O',
         'reptilian @P:Archive stay', 'knight m @S:Square >S,B', 'knight f @S:Square, north-east >S'],
     site_prebuilt_vatican_under: ['skeleton @K:Loculi >K', 'undead @K:Crypt >K', 'vampire m @K:Cistern >K'],
-    site_prebuilt_heaven_plots: ['angel m @A:Gate stay', 'valkraye @T:First Flight >T,A', 'orb of light @F:Sun >F', 'angel f @F:Cloud Fields >F,Y', 'seraphim m @Y:Room 777 stay', 'seraphim f @Y:Towers stay', 'angel m @Y:Towers, east >Y'],
+    site_prebuilt_heaven_plots: ['angel m @A:Gate stay', 'valkraye @T:First Flight >T,A', 'orb of light @F:Sun >F', 'angel f @F:Cloud Fields >F,Y', 'seraphim @Y:Room 777 stay', 'seraphim @Y:Towers stay', 'angel m @Y:Towers, east >Y'],
     site_prebuilt_hell_plots: ['demon m @R:Rim, north >R,D', 'demon f @R:Rim, south >R,D', 'fallen angel m @R:Fissure >R', 'fallen angel f @R:Warm Wall >R', 'undead @D:Descent >D,W', 'ghoul @D:Alcove >D', 'flesheater @D:Ash Flats >D',
         'succubus m @W:Walkways >W,L', 'succubus f @W:High Platforms >W,L', 'halfdemon m @W:Walkways, east >W', 'halfdemon f @W:Lava Below >W',
         'overlord @L:Plinth stay', 'demon prince @L:Far Shore >L,W', 'demon princess @L:Lava Lake >L,W', 'necromancer m @L:Bowl >L', 'necromancer f @L:Bowl >L'],
