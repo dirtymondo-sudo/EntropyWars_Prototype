@@ -353,6 +353,7 @@ PLOTS.forEach((p, pi) => {
 
 /* ── THE LOOK'S OWN PIECES (once a part: a room that holds a road and a footpath gets both) ── */
 const M = (x, y) => [r2(-HX + x * C), r2(-HZ + y * C)];
+const MEDIAN = [];   // THE MEDIAN BARRIER's one-square pieces, in squares [x0, y0, x1, y1] (a raised highway only)
 PARTS.forEach(PT => { const LINE = PT.LINE, LOOK = PT.look, PLOTS_PT = PT.plots;
 const straight = [];   // the straight runs of the middle line inside the plot list: [x0, y0, x1, y1] in squares
 for (let i = 1; i < LINE.length; i++) { const [ax, ay] = LINE[i - 1], [bx, by] = LINE[i], len = Math.hypot(bx - ax, by - ay); if (!len) continue; const dx = (bx - ax) / len, dy = (by - ay) / len; let t0 = null;
@@ -374,6 +375,10 @@ if (LOOK === 'highway') {
         const taperLine = (o, oe, w, color) => { const A = a0(o), B = a1(o); if (!TAPER_AT.length) { line(at(A, o), at(B, o), w, color); return; }
             const dT = t => dirtAt(x0 + dx * t, y0 + dy * t), st = t => { if (dT(t)) return 3; const f = fT(t); return f >= 1 ? 2 : f <= 0 ? 0 : 1; }, br = [A]; let s0 = st(A); for (let t = A + 0.25; t < B; t += 0.25) { const s1 = st(t); if (s1 !== s0) { br.push(t - 0.125); s0 = s1; } } br.push(B);
             for (let i = 0; i + 1 < br.length; i++) { if (dT((br[i] + br[i + 1]) / 2)) continue;   /* (no painted line on the dirt) */ const fa = fT(br[i]), fb = fT(br[i + 1]); line(at(br[i], oe + (o - oe) * fa), at(br[i + 1], oe + (o - oe) * fb), w, color); } };
+        /* THE MEDIAN BARRIER (2026-11-22, mondo: "i just want it to be realistic and believable"): a raised highway (the standard) keeps its two
+           carriageways apart on the ground too, as it does on the deck: a concrete barrier down the median wherever the road is whole. Laid after
+           the deck is known (below: MEDIAN), so it stops where the ramps' own barrier starts. */
+        if (SPEC.raised) for (let t = 0.5; t + 1 <= len - 0.5; t += 1) if (whole(t - 0.5, t + 1.5)) MEDIAN.push([x0 + dx * t, y0 + dy * t, x0 + dx * (t + 1), y0 + dy * (t + 1)]);
         [-1, 1].forEach(sd => { taperLine(sd * 0.6, sd * 0.05, 0.16, YEL); taperLine(sd * 3.4, sd * 1.0, 0.14, WHITE);
             [1.5, 2.5].forEach(o => { for (let t = Math.max(1, a0(sd * o) + 1); t + 2 <= Math.min(len, a1(sd * o)); t += 4) if (whole(t, t + 2)) line(at(t, sd * o), at(t + 2, sd * o), 0.14, WHITE); });
             /* a guard rail along the shoulder, in runs with gaps (you can step off the road) */
@@ -424,6 +429,22 @@ if (SPEC.raised && LOOK === 'highway') { if (JOINS.length) { console.error('bake
     RAISED = require('./ow-raised.js')({ SPEC, ID, C, N, W, Dq, r2, gx, gz, Hc, plotOf, CAT, errs, marks, F, props, clear, feat, TRAFFIC, LINE: PARTS[0].LINE, ASPH, SHOULDER, edgeRoads: EDGE_ROADS,
         roadHalf: (x, y) => 1.5 + 2 * taperAt(x, y), reslope: writeSlope, floorAt: (x, y) => kitOf(kindAt(x, y)).floor, setPaint: (x, y, key) => { if (x >= 0 && y >= 0 && x < W && y < Dq && plotOf(x, y) >= 0) paint[y * W + x] = pal(key); },
         laneLine: (o, back) => offT(back ? carPts.slice().reverse() : carPts, o) }); }
+if (RAISED && MEDIAN.length) {   // THE MEDIAN BARRIER: off the deck and its ramps (they carry their own), in runs; sand barrels at each end
+    const R = SPEC.raised, ax = R.axis === 'x', ends = [R.up[0], R.up[1], R.down[0], R.down[1]], lo = Math.min(...ends) + 1, hi = Math.max(...ends) - 1;
+    const keep = MEDIAN.filter(q => { const a = ax ? (q[0] + q[2]) / 2 : (q[1] + q[3]) / 2; return a < lo || a > hi; });
+    const runs = []; keep.forEach(q => { const r = runs[runs.length - 1]; if (r && Math.abs(r[2] - q[0]) < 0.01 && Math.abs(r[3] - q[1]) < 0.01 && Math.abs((r[2] - r[0]) * (q[3] - q[1]) - (r[3] - r[1]) * (q[2] - q[0])) < 0.01 && r[4] < 4) { r[2] = q[2]; r[3] = q[3]; r[4]++; } else runs.push(q.concat([1])); });
+    /* a bend: the two straights' pieces stop short of the corner; a piece joins them (and no barrels there) */
+    const near = (p, q) => p && q && Math.hypot(p[2] - q[0], p[3] - q[1]) < 3.6;
+    for (let i = runs.length - 1; i > 0; i--) { const p = runs[i - 1], q = runs[i]; if (near(p, q) && Math.hypot(p[2] - q[0], p[3] - q[1]) > 0.01) runs.splice(i, 0, [p[2], p[3], q[0], q[1], 1]); }
+    const CONC = 'urban:ConcretePanels1a', CT = 0xcfcbc2; let nm = 0;
+    runs.forEach((r, i) => { const a = M(r[0], r[1]), b = M(r[2], r[3]), L = r2(Math.hypot(b[0] - a[0], b[1] - a[1])), rot = Math.round(Math.atan2(-(b[0] - a[0]), b[1] - a[1]) * 180 / Math.PI);
+        feat({ k: 'arch', id: 'hw:' + ID.toLowerCase() + ':median:' + (nm++), x: r2((a[0] + b[0]) / 2), z: r2((a[1] + b[1]) / 2), rot: (rot + 360) % 360, parts: [
+            { s: 'box', p: [0, 0, 0], size: [0.6, 0.5, r2(L + 0.02)], key: CONC, tint: CT, uv: 3.5, clean: true }, { s: 'box', p: [0, 0.5, 0], size: [0.32, 0.4, r2(L + 0.02)], key: CONC, tint: CT, uv: 3.5, clean: true }] }); });
+    if (CAT.traffic_barrel) runs.forEach((r, i) => { const prev = runs[i - 1], next = runs[i + 1], d = [r[2] - r[0], r[3] - r[1]], l = Math.hypot(d[0], d[1]) || 1, u = [d[0] / l, d[1] / l];
+        const byDeck = (x, y) => { const v = ax ? x : y; return v > lo - 2.5 && v < hi + 2.5; };   // (it runs on as the ramp's own barrier there)
+        if (!near(prev, r) && !byDeck(r[0], r[1])) { const m = M(r[0] - u[0] * 0.35, r[1] - u[1] * 0.35); props.push({ key: 'traffic_barrel', x: m[0], z: m[1], face: 0 }); }
+        if (!near(r, next) && !byDeck(r[2], r[3])) { const m = M(r[2] + u[0] * 0.35, r[3] + u[1] * 0.35); props.push({ key: 'traffic_barrel', x: m[0], z: m[1], face: 90 }); } });
+}
 const CTX = { ID, ROOM, LOOK, C, N, W, D: Dq, BX0, BY0, COLS, ROWS, PLOTS, cell, gx, gz, gcx, gcz, r2, walked, free, nearPath, plotOf, kindAt, groundAt, hAt, feat, props, npc, doors, marks, P, dec, tree, rnd, pick, taken, ENDS, CAT, F, TRAFFIC, clear, LINE: PARTS[0].LINE, SPEC, RAISED, ASPH, setPaint: (x, y, key) => { if (x >= 0 && y >= 0 && x < W && y < Dq && plotOf(x, y) >= 0) paint[y * W + x] = pal(key); } };
 if (HOOK && typeof HOOK.dress === 'function') HOOK.dress(CTX);
 if (SPEC.cars && LOOK === 'highway') { const c = SPEC.cars, pts = carPts;
