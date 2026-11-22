@@ -14204,3 +14204,19 @@ Gantries stand before the exit lane opens (a post stood in the lane). Known and 
   ow-raised.js writes two `terrain.signals` rows (the city's own signal, any terrain room may carry them), one each side of the deck where the ramps' feet meet the
   cross road: a mast for the ramp that comes off and one for the cross road's traffic from outside. A signal row's `back` = metres from its middle to the stop line.
   The Police Officer (x2) joined the Trucker and the Honda Civic on `HQ_NPC_PLACES.site_ow_r9` on his word ("let's add police officers to the highway too").
+
+### THE HIGHWAY STANDARD (2026-11-22, mondo on the finished Badlands Highway: "yep looks good ... This should be the standard for how the rest of the highways get built")
+
+`site_ow_r9` is the model. A highway is built to this list (all of it is in `ow-raised.js`, `bake-route.js` and `docs/areas/routes/south-kit.js`; a new highway = a spec + a hook):
+1. RAISED: `raised` in the spec. Ramps on earth between retaining walls, a deck on round piers with cap beams, concrete barriers on both edges and the middle, expansion
+   joints where the deck sits on the ramps. No gap between asphalt and barrier anywhere (a `ramp` row is 0.2 m wider than its road).
+2. AN EXIT IS A REAL EXIT: `exit: { taper, lane, diverge, slip, cross }`. Taper, exit lane behind a dotted line, painted gore with chevrons, a crash barrel and an EXIT
+   plate at the nose, a one-lane ramp, a stop line and THE CITY'S TRAFFIC LIGHTS (`terrain.signals`) where it meets the cross road. Something stands at an exit (gas, a motel).
+3. THE CROSS ROAD RUNS ON past the room's line (`terrain.edges.roads`), behind barrels when it leads nowhere.
+4. LINES: yellow left edge, white right edge, white dashes between lanes; mitred at every bend (never crossing); asphalt under every line.
+5. LIGHTS = the city's street lamp (`terrain.gen.lamps`, on the parapets). SIGNS = south-kit `gantry` (before an exit lane opens, never a post in a lane).
+6. THE ROADSIDE (south-kit): `poleLine` (the Tacos pack `power_pole` + wires) down one side clear of the walls; `cityBoard` = Disaster City's own adverts only
+   (billboards.js ADS; lift 9 beside a deck); `mileMarker` a plot, counted on from the last highway's number.
+7. WHO IS ON IT: `HQ_NPC_PLACES` rows: Trucker, Honda Civic, Police Officer (his words). Cars: every route `deck: true`, two lines take the exit.
+8. Nothing in a driving lane but cars and paint. Use the game's own models (lamps, signals, poles): never build one from boxes when a model exists.
+After a bake: `node bake-map.js site_ow_<id>` + `--put` the picture, a browser look (aerial, driver's view at the exit, the gore from above, a bend from above).
