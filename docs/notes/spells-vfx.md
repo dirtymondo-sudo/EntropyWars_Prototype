@@ -5415,8 +5415,23 @@ gladiator, pirate (blades); sheriff, marksman, gangster, spy, barbarella, men in
   Not seen: the other 17 holders, the guest's screen, the Meshy default models.
 - PROBE: `/mnt/project-files/weapon-spells/scripts/cast.js` (`RACE='time cop' SPELLS=raceQuickDraw,racePoliceTaser node cast.js`:
   a real VS-CPU board, the remade look on, a paused clock stepped through each cast, a close picture every third step).
-- NOT DONE (next passes): the long guns still play the one-handed quick-draw (no two-hand rifle clip is on a slot: MAL5
-  `Side_Shot` / a Meshy pull, then a `castRifle` slot); the bespoke gun looks outside `_sigGunRig3D` (Fan the Hammer, Slap Leather,
-  Crossfire, Six-Shooter, the Taser's arc, the spray's cloud) still start where they did; the spectral longbow of the arrow spells
-  is still conjured beside Robin Hood's own bow; a thrown shuriken / net does not leave the hand; no second holds (shields, net);
-  the popstar has no singing-into-the-mic clip; the Shogun's War Fan Strike swings the sword arm, not the fan's.
+- PASS 2 (2026-11-22, mondo: "do the next pass"):
+  - THE LONG GUN IN BOTH HANDS: UAL slot `castRifle` (MAL5 `Side_Shot`, lib 8, trim 0.3-3.2, the shot at 1.6 s): brought up in
+    both hands, aimed, fired, lowered. EW_WEAPONS `sniper` + `shotgun` carry `anim: 'castRifle'`; an `anim` that starts with
+    `cast` is a SLOT (weaponSpellAnimKind answers `slot:castRifle/ranged`, so a rig without the slot plays the quick-draw).
+  - THE ARCHER'S OWN BOW (three-vfx-effects.js `_wpnOwnBowAt`): a `bow` race on a look with `ownBow` gets no spectral longbow;
+    `_sigBowShot3D` hides its limb / string / glow, nocks the arrow at the bow hand (ThreeRenderer.unitShotOrigin(uid, 'arrow')),
+    follows the hand through the draw and looses from there. His aimed shots (Headshot, Precision Shot, Kneecap Shot: gun
+    spells for everyone else) are loosed the same way, no conjured rifle (`_fireBoltMapped`).
+  - THE THROWN STAR: `_njShuriken3D` starts each star at the hand that holds `wp_shuriken` and hides the held star for 700 ms
+    (ThreeRenderer.unitHideHeldFor). A `star` holder who throws something else (a knife, a bomb, a smoke pot: kind throw /
+    hurl / pour) has the star out of the hand for the throw (three-renderer.js cast start).
+  - THE STAFF: EW_WEAPON_KIND.staff: skyward / call / ultimate / aoe / earth / nova -> `rally` (the staff raised to the sky);
+    bolts keep the thrust, and leave the staff's head (pass 1 `_heldShooterTip`).
+  - THE PROBE under a paused clock: `page.clock.install` restarts performance.now, the battle camera's smoothing gets a
+    negative step and goes NaN (a sky-only picture). cast.js `camFix` starts the smoothing again. A zoom over ~3 also looks at
+    the sky: film at the default zoom with DSF=3 + CLIP.
+- NOT DONE (next passes): the bespoke gun looks outside `_sigGunRig3D` (Fan the Hammer, Slap Leather, Crossfire, Six-Shooter,
+  the Taser's arc, the spray's cloud) still start where they did; no second holds (the Gladiator's net and shield, the Knight's
+  shield), so Net Toss still makes its net from nothing; the popstar has no singing-into-the-mic clip; the Shogun's War Fan
+  Strike swings the sword arm, not the fan's; the left hand is not IK'd onto the long gun's fore-end (the clip's pose only).

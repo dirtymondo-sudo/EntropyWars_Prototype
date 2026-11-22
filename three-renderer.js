@@ -35841,6 +35841,9 @@ const ThreeRenderer = (function () {
                             var _wu = null; for (var _wi = 0; _wi < state.units.length; _wi++) if (state.units[_wi] && state.units[_wi].id === uid) { _wu = state.units[_wi]; break; }
                             var _wkey = _wu ? ewSpellWeaponKey(_wsid, _wu.race, _wen.modelDef.hold.key) : null;
                             if (_wkey) unitHeldUse(uid, _wkey, 2200);
+                            /* pass 2: the hand that throws something else (a knife, a bomb, a smoke pot) has put its star away for the throw */
+                            else if (_wu && typeof EW_WEAPON_STYLE !== 'undefined' && EW_WEAPON_STYLE[_wu.race] === 'star' && _wsid !== 'nrShuriken'
+                                && typeof _ck === 'string' && /(^|\/)(throw|hurl|pour)$/.test(_ck)) unitHideHeldFor(uid, 1300);
                         }
                     } catch (_wse) {}
                     var _castChain = _castChainFor(_ck);   // shared table (the builder preview uses it too)

@@ -1842,7 +1842,7 @@ const UAL_SLOTS = {
   castShove:      { clip: 'Shield_Push_Left',    lib: 4, ts: 1.3,  trim: [0.4, 2.2],  strikeAt: 1.15, pinXZ: true, defer: true },
   castRally:      { clip: 'Sword_Shout',         lib: 4, ts: 1.45, trim: [0.4, 2.4],  strikeAt: 1.20, pinXZ: true, defer: true },
   castSlash:      { clip: 'Right_Hand_Sword_Slas', lib: 4, ts: 1.1,                 strikeAt: 0.60, pinXZ: true, defer: true },
-  castRifle:      { clip: 'Side_Shot',           lib: 8, ts: 2.6,                   strikeAt: 2.00, pinXZ: true, defer: true },
+  castRifle:      { clip: 'Side_Shot',           lib: 8, ts: 1.9, trim: [0.3, 3.2],  strikeAt: 1.60, pinXZ: true, defer: true },   // THE WEAPON IN THE SPELL pass 2: the long gun brought up in both hands 0.5-1.2, aimed and fired 1.3-2.1, lowered
   castDoubleSlash:{ clip: 'Charged_Slash',       lib: 4, ts: 1.3,  trim: [0.2, 1.95], strikeAt: 0.50, pinXZ: true, defer: true },
   castRoundhouse: { clip: 'Roundhouse_Kick',     lib: 4, ts: 1.25, trim: [0.5, 2.2],  strikeAt: 1.42, pinXZ: true, defer: true },
   castThrust:     { clip: 'Thrust_Slash',        lib: 4, ts: 1.85, trim: [0.2, 2.75], strikeAt: 0.85, travel: true, defer: true },
@@ -6532,7 +6532,10 @@ const EW_WEAPON_KIND = {
   sickle: { ranged: 'slash', byId: { raceThornlash: 'slash', raceVineWhip: 'slash' } },   // the lash is swung off the sickle, not drawn from a holster
   bow: { ranged: 'arrow', reload: 'arrow' },   // every shot is loosed
   gun: { byId: { goNoisyCricket: 'ranged' } },   // the tiny gun is fired (its own look draws it in the hand)
-  baton: {}, star: {}, staff: {}, mic: {},
+  baton: {}, star: {},
+  // pass 2: the staff is raised for what comes from the sky and for the great spells; bolts keep the thrust (the staff arm points it)
+  staff: { skyward: 'rally', call: 'rally', ultimate: 'rally', aoe: 'rally', earth: 'rally', nova: 'rally' },
+  mic: {},
 };
 const _EW_MOVE_KINDS = /^(dash|tackle|leap|leapSlash|leapPunch|flyKick|thrust|upSlash|throw|deploy|plant|consume|stealth)$/;
 /* the weapon key a race holds by default (its look def), or null */
