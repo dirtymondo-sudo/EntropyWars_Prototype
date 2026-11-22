@@ -176,7 +176,11 @@ function finish(R) {
         const wetH = (x, y) => S.wet.indexOf(cell[y][x]) >= 0 ? r2(hh[y][x] + 0.45) : hh[y][x];   // (a pool's squares are part of their cloud: the pool row carves its own basin)
         const fl = (x, y) => y >= S.floatFrom || !!(R.floatSq && R.floatSq(x, y));   // (THE ONE WORLD MOVE: the cloud paths float too)
         rects((x, y) => (S.sky.indexOf(cell[y][x]) < 0) && !stairSq.has(x + ':' + y), (a, b, c, d) => wetH(a, b) === wetH(c, d) && fl(a, b) === fl(c, d)).forEach(q => {
-            T.push(Object.assign({ k: 'plateau', x: gx((q[0] + q[2]) / 2), z: gz((q[1] + q[3]) / 2), w: r2((q[2] - q[0]) * C + 0.1), d: r2((q[3] - q[1]) * C + 0.1), h: wetH(q[0], q[1]), edge: 0.15, top: 'cloud_2' }, fl(q[0], q[1]) ? { float: true, under: 'cloud' } : {})); });
+            /* (+0.3 and a 5 cm edge, 2026-11-22, mondo's no-crevice rule: the field's nodes stand ON the squares' lines since the One World move (7 x 8 plots). With
+               +0.1 and a 15 cm edge a node on a cloud's own line took a quarter of its height: every seam between two runs of cloud was a trench 14 to 20 m
+               deep that nothing climbed out of, and a cloud's side ran down to a ledge over the void. From the two doors the walk reached SIX nodes. Now a
+               cloud holds its squares to their lines at full height: seams are flat, a higher cloud's face is one straight step, the side is sheer.) */
+            T.push(Object.assign({ k: 'plateau', x: gx((q[0] + q[2]) / 2), z: gz((q[1] + q[3]) / 2), w: r2((q[2] - q[0]) * C + 0.3), d: r2((q[3] - q[1]) * C + 0.3), h: wetH(q[0], q[1]), edge: 0.05, top: 'cloud_2' }, fl(q[0], q[1]) ? { float: true, under: 'cloud' } : {})); });
         count.clouds = T.length;
         /* the marble: one drawn sheet a run of `m` / `B` squares, lying on its cloud (few plateaus = few draw calls: a plateau a sheet cost 4,000) */
         R.look('marble', 0, 0, 0, 0, a => rects((x, y) => 'mB'.indexOf(cell[y][x]) >= 0, (p, q2, c, d) => hh[q2][p] === hh[d][c]).forEach(q => a.quad(gx((q[0] + q[2]) / 2), hh[q[1]][q[0]] + 0.05, gz((q[1] + q[3]) / 2), (q[2] - q[0]) * C, (q[3] - q[1]) * C, 'marble_light', 0xffffff, { flat: true, uv: 3.5 })));
@@ -211,19 +215,26 @@ function finish(R) {
         const lake = { k: 'pool', absY: true, x: gx(29), z: gz(28), r: r2(6.5 * C + 0.3), rz: r2(6 * C + 0.3), y: 0, depth: 2, key: 'lava', bank: 0.3 };
         rows.push(sea, lake); T.push(sea, lake);
         const inside = (x, y) => { const px = mx(x), pz = mz(y); return (Math.abs(px - mx(40.5)) < 5 * C + 2.4 && y >= 1 && y <= 46) || (Math.pow((px - lake.x) / (lake.r + 2.2), 2) + Math.pow((pz - lake.z) / (lake.rz + 2.2), 2) <= 1); };
-        rects((x, y) => !isL(x, y) && inside(x, y) && !stairSq.has(x + ':' + y), (a, b, c, d) => hh[b][a] === hh[d][c]).forEach(q => T.push({ k: 'plateau', absY: true, x: gx((q[0] + q[2]) / 2), z: gz((q[1] + q[3]) / 2), w: (q[2] - q[0]) * C, d: (q[3] - q[1]) * C, h: hh[q[1]][q[0]], edge: 0.05 }));
+        /* (+0.2: a plateau holds a node only INSIDE its outline, so a piece of land as wide as its squares lost the nodes on its own edge: every platform
+           stood half a square short all round, and two pieces side by side (the ledge's four runs round the third platform's pillar) had a notch of
+           lava between them. 2026-11-22, mondo's no-crevice rule.) */
+        rects((x, y) => !isL(x, y) && inside(x, y) && !stairSq.has(x + ':' + y), (a, b, c, d) => hh[b][a] === hh[d][c]).forEach(q => T.push({ k: 'plateau', absY: true, x: gx((q[0] + q[2]) / 2), z: gz((q[1] + q[3]) / 2), w: r2((q[2] - q[0]) * C + 0.2), d: r2((q[3] - q[1]) * C + 0.2), h: hh[q[1]][q[0]], edge: 0.05 }));
         let n = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (isL(x, y) && !inside(x, y)) n++; if (n) R._.errs.push('hell: ' + n + ' lava squares lie outside the two lava rows');
     }
     /* THE BRIDGES + THE CLIMBS */
     PLAN.bridges.forEach((b, i) => { const ns = (b.y1 - b.y0) > (b.x1 - b.x0), w = (ns ? b.x1 - b.x0 : b.y1 - b.y0) * C, m = ns ? gx((b.x0 + b.x1) / 2) : gz((b.y0 + b.y1) / 2), a = ns ? gz(b.y0) - 0.5 : gx(b.x0) - 0.5, e = ns ? gz(b.y1) + 0.5 : gx(b.x1) + 0.5;
         T.push({ k: 'bridge', absY: true, id: 'aft:' + PLAN.key + ':bridge' + (i + 1), x0: ns ? m : r2(a), z0: ns ? r2(a) : m, x1: ns ? m : r2(e), z1: ns ? r2(e) : m, w, y: b.y, thick: 0.9, rails: !!b.rails, key: b.key || 'rocks_3' }); });
-    (PLAN.climbs || []).forEach(c => T.push({ k: 'climb', x: r2(mx(c.sx) - (c.face === 90 ? 1.45 : 0)), z: mz(c.sy), face: c.face, look: c.look || 'ladder' }));
+    /* a climb stands on the LOW square `sx, sy`, 0.3 m off the face of the mass beside it; `face` = the way the climber looks (270 = the mass is west,
+       90 = east). Its foot and head are said (y0, y1: the two squares' heights), so the field's blend at the face never decides them. (2026-11-22: Hell's
+       chains said 90 with the pillar on their west, the engine read a rise under 0.9 m and dropped the climb: the Lava Below was never reached.) */
+    (PLAN.climbs || []).forEach(c => { const dx = c.face === 270 ? -1 : c.face === 90 ? 1 : 0, dz = c.face === 0 ? -1 : c.face === 180 ? 1 : 0;
+        T.push({ k: 'climb', x: r2(mx(c.sx) + dx * 1.45), z: r2(mz(c.sy) + dz * 1.45), face: c.face, look: c.look || 'ladder', y0: hh[c.sy][c.sx], y1: hh[c.sy + dz][c.sx + dx] }); });
     /* ── the check: every plot is walked to from the spawn; a step over 1.1 m is a wall; a flight, a bridge and a climb carry the walker ── */
     const hC = (x, y) => hh[y][x], seen = new Uint8Array(W * H), sp = R.spawnSq, st = [sp], link = {};
     const join = (a, b) => { (link[a] = link[a] || []).push(b); (link[b] = link[b] || []).push(a); };
     PLAN.bridges.forEach(b => { const ns = (b.y1 - b.y0) > (b.x1 - b.x0); if (ns) for (let x = b.x0; x < b.x1; x++) join(x + ':' + (b.y0 - 1), x + ':' + b.y1); else for (let y = b.y0; y < b.y1; y++) join((b.x0 - 1) + ':' + y, b.x1 + ':' + y); });
     PLAN.stairs.forEach(s => { const ns = s.dir === 'N' || s.dir === 'S'; if (ns) for (let x = s.x0; x < s.x1; x++) join(x + ':' + (s.y0 - 1), x + ':' + s.y1); else for (let y = s.y0; y < s.y1; y++) join((s.x0 - 1) + ':' + y, s.x1 + ':' + y); });
-    (PLAN.climbs || []).forEach(c => join((c.sx - 1) + ':' + c.sy, c.sx + ':' + c.sy));
+    (PLAN.climbs || []).forEach(c => join((c.sx + (c.face === 270 ? -1 : c.face === 90 ? 1 : 0)) + ':' + (c.sy + (c.face === 0 ? -1 : c.face === 180 ? 1 : 0)), c.sx + ':' + c.sy));
     if (!walk(sp[0], sp[1])) throw new Error(PLAN.key + ': the spawn square ' + sp + ' is not walked');
     seen[sp[1] * W + sp[0]] = 1;
     while (st.length) { const [x, y] = st.pop(), nb = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].filter(q => walk(q[0], q[1]) && !stairSq.has(q[0] + ':' + q[1]) && !stairSq.has(x + ':' + y) && Math.abs(hC(q[0], q[1]) - hC(x, y)) <= 1.1);

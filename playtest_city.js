@@ -107,8 +107,8 @@ const run = async () => {
   await browser.close();
 };
 (async () => {
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= (Number(process.env.EW_PROBE_TRIES) || 3); attempt++) {
     try { await run(); return; }
-    catch (e) { const closed = /has been closed|crashed|Target closed/i.test(String(e && e.message)); console.error('PROBE ' + (closed && attempt < 3 ? 'RETRY ' + attempt : 'FAIL'), String(e && e.message).slice(0, 160)); if (!closed || attempt === 3) process.exit(1); await sleep(3000); }
+    catch (e) { const closed = /has been closed|crashed|Target closed/i.test(String(e && e.message)); console.error('PROBE ' + (closed && attempt < (Number(process.env.EW_PROBE_TRIES) || 3) ? 'RETRY ' + attempt : 'FAIL'), String(e && e.message).slice(0, 160)); if (!closed || attempt >= (Number(process.env.EW_PROBE_TRIES) || 3)) process.exit(1); await sleep(3000); }
   }
 })();

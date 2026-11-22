@@ -121,7 +121,7 @@ Object.keys(DISTRICTS).forEach(k => { const rnd = mkRnd(7919 * k.charCodeAt(0));
             for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const X = p.sx + x, Y = p.sy + y; if (!open(X, Y) || isWalk(X, Y)) continue; if (Math.hypot(gc(X) - q[0], gc(Y) - q[1]) < r - 0.6) { if (taken.has(X + ':' + Y)) errs.push('a pool over a taken square at ' + X + ',' + Y); cell[Y][X] = ch; } }
             POOLS.push({ k: 'pool', x: q[0], z: q[1], r, y: p.base, depth: key === 'lava' ? 0.9 : 0.5, key: key || 'water', bank: 1 }); },
         /* a drawn piece (an `arch` row) standing on a plot: fn(a) draws into a sheet whose frame is the point (lx, ly), y = 0 on the island's top */
-        look: (name, id, lx, ly, rot, fn) => { const q = pt(id, lx, ly), a = sheet(); fn(a); ARCH.push({ k: 'arch', id: 'ast:' + name + ':look', x: q[0], z: q[1], rot: rot || 0, base: plot[id].base, parts: a.P }); },
+        look: (name, id, lx, ly, rot, fn) => { const q = pt(id, lx, ly), a = sheet(); fn(a); ARCH.push({ k: 'arch', id: 'ast:' + name + ':look', x: q[0], z: q[1], rot: rot || 0, y: plot[id].base /* `y`, never `base` (2026-11-22) */, parts: a.P }); },
         /* a balustrade along an island's rim: a rail on every side of a ground or walk square that faces open sky (`skip(lx, ly)` leaves a square out) */
         rimRail: (id, model, skip) => { const p = plot[id]; for (let ly = 1; ly < N - 1; ly++) for (let lx = 1; lx < N - 1; lx++) { const X = p.sx + lx, Y = p.sy + ly; if (!open(X, Y) || (skip && skip(lx, ly))) continue;
             const R = (x0, z0, x1, z1) => feat({ k: 'rail', x0, z0, x1, z1, y: p.base, model: model || 'balusters_b' });

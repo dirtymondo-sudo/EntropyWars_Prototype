@@ -24,6 +24,7 @@ const PLAN = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/areas/dumb/layout.
 const C = 3.5, N = 12, GX = PLAN.cols, GY = PLAN.rows, W = N * GX, Hh = N * GY, HX = W * C / 2, HZ = Hh * C / 2, LEVEL = 1.75, T = 0.3, DW = 1.75, DH = 2.2;
 const ROOM = 'site_prebuilt_dumb_base', PART = 'base';
 let GANTRY_MOUTH = null;
+const LINING_CUTS = [];   // { wall, at, floor }: the walked ways in the room's walls (the lining opens round them)
 const OW = { wx: 0, wy: 11 };   // THE ONE WORLD: the room's north-west plot on the world grid (the East Gantry P06-05 -> 6,16)
 const OLD = { motorpool: 'site_prebuilt_dumb_motorpool', sublevel7: 'site_prebuilt_dumb_sublevel7', dreamlab: 'site_prebuilt_dumb_dreamlab', clonevats: 'site_prebuilt_dumb_clonevats',
     warroom: 'site_prebuilt_dumb_warroom', bunker: 'site_prebuilt_dumb_bunker', ring: 'site_prebuilt_cern_ring', ward: 'site_prebuilt_area51_ward' };
@@ -114,9 +115,11 @@ function mkRoom(tag, u0, v0, NU, NV, B) {
         seg(cur, b); };
     R.pane = (axis, at, a, b, o) => R.wall(axis, at, a, b, Object.assign({ tint: 0xd8ecf2 }, o, { draw: false, glassWalk: true }));
     R.ceil = (ua, va, ub, vb, y, key, tint, x) => { const p = Object.assign({ s: 'box', p: [X((ua + ub) / 2), y, Z((va + vb) / 2)], size: [r2((ub - ua) * C), 0.14, r2((vb - va) * C)], under: true, uv: 3.5 }, x || {}); if (key) p.key = key; if (tint != null) p.tint = tint; return part(p); };
+    /* (`mouths: false`, 2026-11-22: a kit deck is a floor inside drawn walls, its ends meet a wall or a floor that is open already. The engine's bridge
+       mouths opened a round hole in the rock past each end of the Great Room's loft, a pit beside the floor nobody could leave: find-softlocks.js) */
     R.deck = (ua, va, ub, vb, y, key) => { const ew = (ub - ua) >= (vb - va);
-        F.push(ew ? { k: 'bridge', x0: X(ua), z0: Z((va + vb) / 2), x1: X(ub), z1: Z((va + vb) / 2), w: r2((vb - va) * C), y: r2(B + y), key, rails: false, plain: true }
-                  : { k: 'bridge', x0: X((ua + ub) / 2), z0: Z(va), x1: X((ua + ub) / 2), z1: Z(vb), w: r2((ub - ua) * C), y: r2(B + y), key, rails: false, plain: true }); };
+        F.push(ew ? { k: 'bridge', x0: X(ua), z0: Z((va + vb) / 2), x1: X(ub), z1: Z((va + vb) / 2), w: r2((vb - va) * C), y: r2(B + y), key, rails: false, plain: true, mouths: false }
+                  : { k: 'bridge', x0: X((ua + ub) / 2), z0: Z(va), x1: X((ua + ub) / 2), z1: Z(vb), w: r2((ub - ua) * C), y: r2(B + y), key, rails: false, plain: true, mouths: false }); };
     R.guard = (axis, at, a, b, y, tint) => { const m = (a + b) / 2, L = (b - a) * C, px = axis === 'u' ? X(m) : X(at), pz = axis === 'u' ? Z(at) : Z(m), tn = tint != null ? tint : 0x4a4f56;
         for (const yy of [0.55, 1.05]) part({ s: 'box', p: [px, r2(y + yy), pz], size: axis === 'u' ? [r2(L), 0.06, 0.06] : [0.06, 0.06, r2(L)], tint: tn });
         part({ s: 'box', p: axis === 'u' ? [X(a), y, pz] : [px, y, Z(a)], size: [0.07, 1.08, 0.07], tint: tn, n: Math.round((b - a) * 2) + 1, step: axis === 'u' ? [C / 2, 0, 0] : [0, 0, C / 2] });
@@ -193,8 +196,9 @@ OPEN.forEach(o => { for (let m = -1; m <= 1; m++) for (const t of [o.line - 1, o
    Gantry Tunnel (bake-sewers.js WSEAM). ── */
 { const p = plot['P06-05']; for (let y = 62; y <= 65; y++) for (let x = p.sx + 8; x < p.sx + N; x++) if (cell[y][x] === 'x') cell[y][x] = y === 63 ? 'j' : 'o';
   doors.push({ id: 'ow_v_7_16', way: 'trail', wall: 'e', z: gcz(64), leaf: 'leaf_bulkhead', wide: true, label: 'DISASTER CITY · THE SEWERS', sub: 'THE GANTRY TUNNEL · WEST UNDER THE CITY TO THE RUNNING TUNNELS', action: { room: 'site_prebuilt_downtown_underworld', at: 'ow_v_7_16' }, desc: '' });
-  /* THE MOUTH IS SEEN (2026-11-22): the tunnel's mouth read as plain concrete wall that you walked through; a dark mouth in a steel frame with an amber lamp stands on it (look only) */
-  GANTRY_MOUTH = { k: 'arch', id: 'dumb:gantry:mouth', x: 146.6, z: gcz(64), rot: 0, y: 14, parts: [{ s: 'box', p: [0.25, 0, 0], size: [0.2, 3.6, 3.4], tint: 328966 }, { s: 'box', p: [0.1, 0, -1.95], size: [0.5, 3.8, 0.5], key: 'urban:MetalCorrugatedPainted3a', tint: 9212568 }, { s: 'box', p: [0.1, 0, 1.95], size: [0.5, 3.8, 0.5], key: 'urban:MetalCorrugatedPainted3a', tint: 9212568 }, { s: 'box', p: [0.1, 3.6, 0], size: [0.5, 0.5, 4.4], key: 'urban:MetalCorrugatedPainted3a', tint: 9212568 }, { s: 'box', p: [-0.05, 4.2, 0], size: [0.12, 0.12, 0.9], tint: 16756800, glow: 1 }] }; }
+  /* THE MOUTH IS SEEN (2026-11-22): the tunnel's mouth read as plain concrete wall that you walked through; the lining covered the wall's opening (LINING_CUTS, below); a steel frame with an amber lamp stands round the mouth (look only) */
+  LINING_CUTS.push({ wall: 'e', at: gcz(64), floor: 14 });   // the gantry's floor (the plot's base + 3.5)
+  GANTRY_MOUTH = { k: 'arch', id: 'dumb:gantry:mouth', x: 146.6, z: gcz(64), rot: 0, y: 14, parts: [{ s: 'box', p: [0.1, 0, -1.95], size: [0.5, 3.8, 0.5], key: 'urban:MetalCorrugatedPainted3a', tint: 9212568 }, { s: 'box', p: [0.1, 0, 1.95], size: [0.5, 3.8, 0.5], key: 'urban:MetalCorrugatedPainted3a', tint: 9212568 }, { s: 'box', p: [0.1, 3.6, 0], size: [0.5, 0.5, 4.4], key: 'urban:MetalCorrugatedPainted3a', tint: 9212568 }, { s: 'box', p: [-0.05, 4.2, 0], size: [0.12, 0.12, 0.9], tint: 16756800, glow: 1 }] }; }
 
 /* ── THE WAYS OUT (ten, all in the game before the rebuild; plan: layout `ways`). Two bay doors (data.js DOOR_HQ.siteRooms.entry wears them),
    four links (DOOR_HQ.links holds the place; WANT below checks every row), four doors of the White Rooms (their far ends are the Desert's).
@@ -271,7 +275,15 @@ PLAN.plots.forEach(p => { const L = lookOf(p), top = TOPS[p.id], H = r2(top - p.
             if (here) { run++; continue; } if (!run) continue;
             const s0 = i - run, Lm = run * C, mid = (horiz ? gx(p.sx + s0) : gz(p.sy + s0)) + Lm / 2, edge = horiz ? gz(p.sy + at + (out > 0 ? 1 : 0)) : gx(p.sx + at + (out > 0 ? 1 : 0)), inw = -out;
             const at3 = (off, y) => horiz ? [r2(mid), y, r2(edge + inw * off)] : [r2(edge + inw * off), y, r2(mid)], sz = (t, hh) => horiz ? [r2(Lm), hh, t] : [t, hh, r2(Lm)];
-            const lin = { s: 'box', p: at3(0.04, p.base), size: sz(0.06, H), key: L.wall, tint: L.tint, uv: [3.5, 1.75], top: false }; if (L.gain && L.gain !== 1) lin.gain = L.gain; add(lin);
+            const lin = { s: 'box', p: at3(0.04, p.base), size: sz(0.06, H), key: L.wall, tint: L.tint, uv: [3.5, 1.75], top: false }; if (L.gain && L.gain !== 1) lin.gain = L.gain;
+            /* THE LINING OPENS AT A WAY OUT (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural"): the lining ran whole
+               across the Gantry Tunnel's mouth in the room's east wall, 7 cm in front of the wall's own opening, so the tunnel read as plain concrete that
+               you walked through. Where a walked way (`way` on a wall door) stands on this run, the lining is laid in pieces round its opening
+               (2.5 m wide, 4.05 m high over the way's floor). */
+            const cut = !horiz && Math.abs(edge - HX) < 0.01 ? LINING_CUTS.find(q => q.wall === 'e' && q.at > mid - Lm / 2 && q.at < mid + Lm / 2) : null;
+            if (cut) { const lo = mid - Lm / 2, hi = mid + Lm / 2, piece = (z0, z1, y0, y1) => { if (z1 - z0 < 0.05 || y1 - y0 < 0.05) return; const q = Object.assign({}, lin, { p: [lin.p[0], r2(y0), r2((z0 + z1) / 2)], size: [0.06, r2(y1 - y0), r2(z1 - z0)] }); add(q); };
+                piece(lo, cut.at - 1.25, p.base, p.base + H); piece(cut.at + 1.25, hi, p.base, p.base + H); piece(cut.at - 1.25, cut.at + 1.25, p.base, cut.floor); piece(cut.at - 1.25, cut.at + 1.25, cut.floor + 4.05, p.base + H); }
+            else add(lin);
             if (L.band != null) add({ s: 'box', p: at3(0.08, r2(p.base + 1.05)), size: sz(0.03, 0.16), tint: L.band, top: false });
             count.lining = (count.lining || 0) + 1; run = 0; } };
     for (let ly = 0; ly < N; ly++) { face(true, ly, 0, -1); face(true, ly, 0, 1); }

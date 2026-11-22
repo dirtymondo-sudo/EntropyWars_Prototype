@@ -14395,6 +14395,45 @@ is a door without a pad reads as a trap. Each row is a place to LOOK AT, then fi
 Before: every wall of every raised floor, 14 traps, the 35 m strip. Proof: `/mnt/project-files/softlocks/sewers_wall_before_after.jpg`.
 THE REST OF THE WORLD: the list by zone of 11-22 is `/mnt/project-files/softlocks/softlocks_by_zone.md`.
 
+## THE PATH RUNS ON TOO — every trail between zones (2026-11-22, mondo: "Every single entrance/exit in the game needs to look good and natural ... fix these where zones connect")
+The thread for Fairy Forest, Came A Lot Kingdom, The Estate and the Woods' other exits. The engine part is three-renderer.js, GENERIC: every room whose
+land runs on past its line (`_hqEdgeLandOn`: every One World room, the city) gets it. An `open` seam's road is THE ROAD OF THE NEXT ROOM RUNS ON (above,
+the Desert thread, merged the same hour); this is the same thing for a `trail`, drawn by the same road code (`bands`).
+- **THE PATH RUNS ON** (`_hqBuildEdgeLand`, ROADS, `_auto`): every `trail` passage on the room's line (and a free end within 40 m of it) is drawn on over
+  the land past the line by itself, one square (3.5 m) wide at least, 150 m out, 10 cm over the land with a low bank (`foot`). A place the room lists in
+  `edges.roads` (or a seam road) is left to that row. Its rows are the land mesh's own close rows for the first 15 m (`DS`: a row every 5 m lay UNDER
+  the land's half-metre step at the line, a gap of bare ground between gate and path).
+  - ITS SHEET = `passage.floor`, else the sheet the room PAINTED under the gate (`info.paint`, 2.2 m inside the line: the Kingdom's north gate stands
+    on snow, not on the room's cobbles), else the room's `terrain.path`. A green sheet (grass / leaves / moss) under a gate is no path: skipped.
+  - FROM 11 m OUT (`key2`) it wears the FAR room's sheet under its own end of the same way (`action.room` + `action.at`: that door's `passage.floor`,
+    else that room's paint under it), when it differs: Came A Lot's dirt ring road leaves by the south gate and The Forest's cobbles are seen ahead.
+  - `lap`: where the room's own path stops a square short of its line (the paint under the gate is not the path's sheet) the strip starts 3.6 m inside.
+- **NO DUSK IN OPEN COUNTRY**: the Woods' edge thread (round 7, above) took the 7 black cards and the pale slab off a wall trail in such a room; here the
+  free ends lose their cards too, and the view no longer dims on the walk to the crossing (`passage.noDim`, set in `_hqBuildWay`; `_hqTickPassages`).
+  The crossing itself still blinks.
+- **A FOOTPATH KEEPS ITS WOOD** (`_hqEdgeLandFn` worldW, THE WAY ON): the way-on opened the land 20 to 60 m wide round every way out, a lawn round a
+  trail that leaves a forest. For a way whose door is a `trail` the land's SHAPE still opens (no rock face, no hill across the path) but `W.wood`
+  remembers the forest from 3.5 m off the path's middle and the planting grows it (`wf = W.forest + W.wood`). A road's way-on is unchanged.
+- **THE AVENUE GROWS WHAT THE LAND GROWS** (`_hqPlantPassageTrees`): the two rows of trees beside a trail were always green leaf trees, in the snow north
+  of Came A Lot too. The land's kind 8 m out decides: snow (0.3+) = snow pines, rock = pines, sand / scrub / table land / shore = no avenue.
+- **A TRAIL'S SIGNPOST IS THE FOOTPATH'S** (`_hqBuildTrailPost`): was a 1.7 m stick with a hand-sized board, its arrow pointing off the path, reading
+  "?" until the far room had been stood in. Now the post of a footpath road end: 3 m of timber, a plank over the path's edge that NAMES where it goes
+  (always; the far room's label, its part after "THE TRAIL ·" for a trail room, else its first part), a smaller plank on its back naming this place
+  for the one arriving. A free end in open land has one too; `passage.post: false` = none. Both signposts' planks are nailed on the post's FACE
+  (in the post's own plane the post hid the name's first letters).
+- **THE ESTATE'S TWO SHUT GATES** (found by walking): the Lake's farm gate (`districts/room.js`, `timber_gate`: "the trail's end until the House Trail is
+  built") and the House Trail's iron leaf at the Back Gate (`trail-room.js`, `hw_gate_leaf`) stood shut across their trails, bodies: neither way could be
+  walked. Both stand open now, swung back along the trail's north side (`node bake-estate.js`, `node bake-route.js R7`; a clean rebake moved nothing else).
+- **THE GRAVEYARD'S BACK GATE, THE FENCE'S GAP** (found by walking): the Ranch's gate fence (`districts/R.js`, `rail(36, …)` on the district's west line)
+  stands, in One World, on the HOUSE room's east line (ow-move.js: a fence ON a plot line is the west plot's). Its two-square gap was north of the back
+  gate's three squares (`cut: [5, 6, 7]`), so the walker stopped at the rail 1 m short of the House Trail. The gap is the gate's squares now.
+  LESSON: a fence on a district's line travels with the plot west / north of it; after a zone move, walk every gate.
+- **THE OLD ROAD NARROWS TOO** (R4, same day): `taper` (THE HIGHWAY NARROWS BEFORE THE GATE) on both road ends, Came A Lot's East Row and the Vatican's
+  west gate: two lanes at each gate, as the Desert's highways. The rebake also took in what the map changed since 11-17 (the box's north-west corner
+  is the Snowy Pines' snow now, no trees on it; lane lines joined at the bends; the spawn off the road); no prop moved but the taper's own (rails, dashes).
+  Walked both gates both ways. Map picture rebaked (`bake-map.js site_ow_r4`).
+- Probe: `playtest_city.js` takes `EW_PROBE_TRIES=1` (no retry of a whole chain after a crash; the cloud browser dies after 3 to 6 room changes: walk
+  a gate out and back per run, no more).
 ## THE COAST + THE UNDERGROUND, WHERE THE ZONES MEET (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural")
 
 The share of one thread: every way between the Harbour, Katana Island, the Volcano Island, the Triangle, the Cove, the Frozen Sea, the Sea Floor,
@@ -14421,12 +14460,24 @@ Atlantis, the Sewers, the D.U.M.B., the six Cavern rooms, the Coast Road (R10) a
   A terrain flood from each room's spawn reaches every way's landing in all 18 rooms.
 - **THE LESSON:** never edit a served game script (data.js, three-renderer.js…) while a probe is loading: every picture of that run is the red
   CODE MISMATCH page. The city crashes the cloud browser as the second room of a run: stop a walk probe at its WALK line.
-- **A MOUTH THAT READ AS PLAIN WALL:** the D.U.M.B.'s Gantry Tunnel to the Sewers (east wall, z 78.75) was a blank concrete wall you walked
-  through. A look-only arch row stands on it now (`dumb:gantry:mouth`: a steel frame, a dark panel, an amber lamp; bake-dumb.js `GANTRY_MOUTH`,
-  laid into data.js by hand, no rebake). WHY the wall's own cut does not show there was NOT found (the shell wall does cut a passage's opening:
-  `_hqPassageSpec` in the walls' cuts; the Cavern rooms' trail mouths show). **STILL OPEN: Agartha's tunnel down to the Long Tunnel** (south wall,
-  x 49, under the inner gate) is the same plain rock wall that you walk through; an arch row tried there did not draw (`base` and `y` both), so it
-  was taken out again. It is walked both ways.
+- **TWO MOUTHS THAT READ AS PLAIN WALL, AND WHY** (found with a ray shot in the browser: a probe view's `eval`, `THREE.Raycaster` from the
+  walker toward the way, the hits' `_ew_hqArch` id and box printed with `EW_LIVE_LOG=1`). The wall's own cut was there in both rooms; something
+  the room's tool drew stood in front of it.
+  (1) **The D.U.M.B.'s Gantry Tunnel** (east wall, z 78.75): bake-dumb.js lays a concrete LINING along every run of rock, and laid it whole across
+  the mouth, 7 cm in front of the wall. `LINING_CUTS` (a walked way in a room wall): the lining is laid in pieces round the opening. A steel
+  frame with an amber lamp stands round the mouth (`dumb:gantry:mouth`, look only). data.js was edited by hand to match (no rebake).
+  (2) **Agartha, EVERY ROOF BLOCK STOOD ON THE FLOOR.** bake-agartha.js wrote its arch rows with `base: <height>`; data.js `hqTerrainInfo`
+  OVERWRITES an arch row's `base` with the ground under its origin unless the row has a number `y` (bake-dumb.js says so: "`y`, never `base`").
+  So all 139 roof blocks (34 m of stone, sides + underside) stood on their own floors: seen from inside one you see nothing (back faces), but
+  between two roof rectangles stood a wall of rock that you walked through, and one filled the passage to the Long Tunnel. The bridge's keels
+  stood 11 m low the same way. All 161 `aga:` rows say `y` now (the tool and data.js): the halls have their roofs overhead. The tunnel's own rock
+  is drawn dark (`passage: { wallColor, floorColor }` on the door) so the mouth reads against the wall. Seen: the spawn hall, the great hall,
+  the gate; walked both ways. ANY tool that writes `base` on an arch row has this fault: grep before trusting a roof.
+  **THE OTHER TOOLS, CHECKED (same day):** measured headlessly (every arch row's written `base` against `hqTerrainInfo(...).arch[i].base`). The Long
+  Tunnel, the West and the Cavern (bake-underground.js / bake-ug.js: roofs written `base: 0` with absolute part heights) had 45 roof rows lifted by
+  the ground under their origin, up to 30 m too high; the Astral Realm's temple and Still Pool kerb stood 1 m low (bake-astral.js `look`). All say
+  `y` now, tools and data.js; seen in the browser. Already right: the Sewers (bake-labyrinth.js writes `y`), the Tunnel-Way (`y`), the Hollow.
+  bake-cavern.js and bake-sewers.js write `base` too but their rooms are retired.
 - **TWO INVISIBLE WALLS, FIXED AND WALKED BOTH WAYS.** (1) The Sewers' Gantry Tunnel (to the D.U.M.B.) and Outfall (to the Sea Floor): bake-labyrinth.js
   stands a `free` way ON the dead end's rock face with `passage: { len: 3, deep: 1.2 }`, so the crossing lay 1.2 m inside the rock: the walker
   stopped at the face. Now `deep: -0.9` (a passage's `deep` may be negative: the crossing is that far in FRONT of the door's line). (2) The Sea
@@ -14434,8 +14485,7 @@ Atlantis, the Sewers, the D.U.M.B., the six Cavern rooms, the Coast Road (R10) a
   never reached the trail's 10 m; its row says `passage: { deep: -0.6 }` (bake-deep.js). Any other `free` trail on a rock face from that tool
   would have the same fault.
 - **KATANA'S EAST LANDING:** a jungle tree stood on the line from the boat's mooring inland; gone (districts/J.js keeps row 29 east of square 78 clear).
-- **NOT DONE / SEEN:** the D.U.M.B.'s freight-line vault door and blast door to the Cavern were not seen straight on (the probe's camera was
-  pushed into a wall; their prompts work); the Frozen Sea's trail to the North Pole shows the far land as white cliffs with flat green flanks
+- **NOT DONE / SEEN:** the Frozen Sea's trail to the North Pole shows the far land as white cliffs with flat green flanks
   (the edge land's far look, not changed); the Harbour's west side shows a sea wall and pastel houses where the city's coast is sand; the port
   seen from the Coast Road is dim in the air haze. Giza's own ends and the Line's west end are the Desert / Leylines holders' (PR #2418 covers Giza's).
 
@@ -14511,3 +14561,25 @@ still walked, every door reached). What made them, and what binds every room:
   says how it is WALKED, its `look: 'deep_water'` only how it is DRAWN (three-renderer.js `_hqGridWaterBuild`'s dark pass). The Spire's lake is
   `key: 'water', look: 'deep_water'`: the same dark water as before, waded. Never change a liquid's key to change its colour, or its colour to
   change its walk.
+
+### THE SOFT LOCKS, HELL + HEAVEN + THE D.U.M.B. (2026-11-22, the zone thread on mondo's no-crevice order)
+Finder before / after: Hell 2 traps + 10 crevices + 6 slots -> 0 / 0 / 0; the D.U.M.B. 5 traps + 4 crevices -> 0 traps, 2 crevice rows that are the beam pipe's open end
+(a step off the pipe onto open ring floor, walked out of south; a false reading); Heaven 1 + 1 -> 0 / 0, and 0 crevices with `--every-ground`.
+ENGINE (data.js, every terrain room):
+- THE SHEER BANK (`_hqTSheerBank`, asked by `hqTerrainFeet`): a cell with a rise over a jump whose low corner lies in or on the carved bank of lava
+  (`key: 'lava'` only; NOT water: the first cut took deep water too and cut Came A Lot's berms between its wall and moat into 13 traps) is the cliff's face, never ground. Before, the walker stood on the half-metre lip between a terrace and Hell's lake.
+  Cached a cell in `info._bank`; a room with no fluids, or under the sea, never asks.
+- NO MOUTHS: a bridge row with `mouths: false` forces no open ground at its ends (the plan's `case 'bridge'`). bake-dumb.js `R.deck` writes it: a deck that ends
+  against a mass cut a 1.6 m deep slot in it.
+- THE VOID IS NOT A PAD'S APRON (`hPads`): in a room with a `void`, a door pad's blend never lifts ground that is under the void's lip (a pad at a cloud's edge
+  drew a ramp of "ground" out over the sky).
+THE TOOLS:
+- bake-afterlife.js: a plateau inside the lava is cut `+ 0.2` wide; a climb is written 1.45 m out from its square's middle toward the mass, with `y0` / `y1` from the
+  two squares (Hell's chains down to the Lava Below ledge never worked: `face` pointed away from the mass); Heaven's clouds are cut `+ 0.3` wide with `edge: 0.05`
+  (at `+ 0.1` / `0.15` every seam between two clouds was a trench 14-20 m deep: 6 squares reached from the doors, 292 after).
+- draw-afterlife.js (the map): Hell's three one-square slots stand at the second terrace's height; Heaven's ragged cloud squares west of the Terraces stand at the
+  terrace beside them (they were one-square ledges 1.75-3.5 m down, over the sky); the names say "Came A Lot" (the tool would have written "Camelot" back).
+- The D.U.M.B. district files: K (the Detector's pit: the east rail in three, its middle hung, and a second ladder), S (the Stair: the pocket behind the south
+  landing filled, the rails off the flight's top), R (the wing's south tier in three lifts, the gurney ramp's cap kept open), P (the tunnel floor reaches under
+  the tram bridges' ends).
+- find-softlocks.js `--every-ground`: crevices, dips and slots on all ground, not only what the doors reach (Heaven: the flights float and the solver under-reads).
