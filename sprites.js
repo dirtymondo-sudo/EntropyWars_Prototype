@@ -6554,7 +6554,7 @@ function weaponSpellAnimKind(race, spell, kind) {
   if (_EW_MOVE_KINDS.test(kind)) return kind;
   if (style === 'bow' && EW_SPELL_WEAPON[spell.id]) return 'arrow';
   const wk = ewSpellWeaponKey(spell.id, race), W = wk && EW_WEAPONS[wk];
-  if (W) return W.anim || (W.gun ? 'ranged' : kind);
+  if (W) return W.anim ? (W.anim.indexOf('cast') === 0 ? 'slot:' + W.anim + '/ranged' : W.anim) : (W.gun ? 'ranged' : kind);
   let k = T[kind];
   if (typeof k === 'function') k = k(spell);
   return k || kind;

@@ -5366,7 +5366,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             } catch (e) { /* fall through to the generic bolt */ }
         }
         var _gunMuzzlePx = 0;
-        if (_SIG_GUN_FOR[spellId] && !params.hideGunRig) {
+        var _archer = (_SIG_GUN_FOR[spellId] && !params.hideGunRig) ? _wpnOwnBowAt(fromTx, fromTy) : null;   /* THE WEAPON IN THE SPELL pass 2: the archer's aimed shots are loosed from his bow, no rifle beside it */
+        if (_archer) { try { _sigBowShot3D(fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }); } catch (e) {} }
+        if (_SIG_GUN_FOR[spellId] && !params.hideGunRig && !_archer) {
             try { _gunMuzzlePx = _sigGunRig3D(_SIG_GUN_FOR[spellId], fromTx, fromTy, toTx, toTy, Object.assign({ flyMs: params.flyMs }, _SIG_GUN_OPTS[spellId] || {})) || 0; } catch (e) {}
         }
         if (_sigBowShotFor(spellId, params) && !params.hideGunRig) {
@@ -15507,9 +15509,24 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        longbow materializes at the archer's shoulder, nocks the REAL Meshy
        arrow GLB, draws, and looses it into the target where it sticks
        quivering. Procedural arrow fallback while the GLB loads. ─────────── */
+    /* THE WEAPON IN THE SPELL, pass 2 (2026-11-22): the archer who WEARS his bow (a creator look, sprites.js `ownBow`) looses
+       from it: no spectral longbow beside the one in his hand; the arrow is nocked at the bow hand, follows it through the
+       draw and flies from there. Returns the bow hand's world place (a function) or null. Kill switch EW_NO_HELD_WEAPON_FX. */
+    function _wpnOwnBowAt(tx, ty) {
+        if (typeof window !== 'undefined' && window.EW_NO_HELD_WEAPON_FX) return null;
+        var uid = _sigUnitIdAt(tx, ty);
+        if (uid == null || typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.unitShotOrigin !== 'function') return null;
+        try {
+            var u = (typeof unitFromId === 'function') ? unitFromId(uid) : null;
+            if (!u || typeof EW_WEAPON_STYLE === 'undefined' || EW_WEAPON_STYLE[u.race] !== 'bow') return null;
+            if (!ThreeRenderer.unitShotOrigin(uid, 'arrow')) return null;
+            return function () { try { return ThreeRenderer.unitShotOrigin(uid, 'arrow'); } catch (e) { return null; } };
+        } catch (e) { return null; }
+    }
     function _sigBowShot3D(fromTx, fromTy, toTx, toTy, opts) {
         opts = opts || {};
         var scene = _getVFXScene(); if (!scene) return;
+        var _ownBow = _wpnOwnBowAt(fromTx, fromTy);
         var fw = _worldPos(fromTx, fromTy);
         var twp = _worldPos(toTx, toTy);
         var ts = fw.ts;
@@ -15562,6 +15579,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         limbGlow.renderOrder = 159;
         aim.add(limbGlow);
         var glowMat = limbGlow.material;
+        if (_ownBow) {   /* his own bow is in his hand: the ghost bow is not drawn, the shot is laid on the bow hand */
+            limb.visible = false; limbGlow.visible = false; strg.visible = false;
+            for (var _ob = aim.children.length - 1; _ob >= 0; _ob--) if (aim.children[_ob].geometry && aim.children[_ob].geometry.type === 'SphereGeometry') aim.children[_ob].visible = false;
+        }
+        function _ownBowSeat() {
+            var hp = _ownBow && _ownBow(); if (!hp) return;
+            root.position.set(hp.x, hp.y, hp.z);
+            var ay2 = (twp.y + ts * 0.4) - hp.y, dx2 = twp.x - hp.x, dz2 = twp.z - hp.z, dl2 = Math.sqrt(dx2 * dx2 + dz2 * dz2) || 1;
+            aim.rotation.y = Math.atan2(dx2, dz2); aim.rotation.x = -Math.atan2(ay2, dl2);
+            dist = Math.sqrt(dl2 * dl2 + ay2 * ay2);
+        }
+        _ownBowSeat();
 
         /* the arrow: the GLB or nothing (NO STAND-INS, 2026-10-05) */
         var arrowG = new THREE.Group();
@@ -15575,7 +15604,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var flyMs = Math.max(150, Math.min(opts.flyMs || 260, 420));
         var stickMs = 460, fadeMs = 220;
         var total = looseAt + flyMs + stickMs + fadeMs;
-        var nockZ = tipZ + ts * 0.05;
+        var nockZ = _ownBow ? ts * 0.12 : tipZ + ts * 0.05;
         var loosed = false, landed = false;
         var trailAcc = 0, lastEl = 0;
         var arrowWorld = new THREE.Vector3();
@@ -15594,6 +15623,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             glowMat.opacity = (0.22 + 0.10 * Math.sin(el * 0.012)) * f;
 
             if (el < looseAt) {
+                _ownBowSeat();   /* the nocked arrow rides the bow hand through the draw */
+                if (_ownBow) arrowG.scale.setScalar(0.7);   /* on a man's bow, not the giant ghost one */
                 /* nock + draw */
                 var dT = _sigClamp01((el - matMs) / drawMs);
                 var pull = _sigEaseOutCubic(dT) * ts * 0.30;
@@ -15603,7 +15634,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 limbGlow.scale.z = 1.10 * (1 - 0.10 * dT);
             } else if (!landed) {
                 if (!loosed) {
-                    loosed = true;
+                    loosed = true; arrowG.scale.setScalar(1);
                     limb.scale.z = 1; limbGlow.scale.z = 1.10;
                     _sigSparks(fromTx, fromTy, 'steel-spark', 4, { vxy: 60, vz0: 20, vz1: 80, gravity: 200 });
                     if (typeof playSfx === 'function') { try { playSfx('arrowShot'); } catch (e) {} }
@@ -46730,6 +46761,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, caster = _fx5UnitAt(from.x, from.y), C = _njSide(caster);
         var uid = _lgUidAt(tx, ty), h = _lgBodyH(uid, ts);
         var a = _afTo(F, from.x, from.y); a.y += _lgBodyH(caster ? caster.id : null, ts) * 0.62;
+        /* THE WEAPON IN THE SPELL pass 2: the star leaves the hand that held it (the held star is hidden while it flies) */
+        if (caster && typeof ThreeRenderer !== 'undefined' && typeof ThreeRenderer.unitHeldInfo === 'function' && !(typeof window !== 'undefined' && window.EW_NO_HELD_WEAPON_FX)) {
+            try { var _hi = ThreeRenderer.unitHeldInfo(caster.id), _hp = _hi && _hi.key === 'wp_shuriken' ? _sigHandWorld(caster.id) : null;
+                if (_hp) { a.set(_hp.x - F.wp.x, _hp.y - F.wp.y, _hp.z - F.wp.z); if (typeof ThreeRenderer.unitHideHeldFor === 'function') ThreeRenderer.unitHideHeldFor(caster.id, 700); } } catch (e) {}
+        }
         var idx = o.idx | 0, side = (idx % 3) - 1;
         var b = new THREE.Vector3(side * ts * 0.06, h * (0.55 + 0.05 * side), 0);
         var fly = Math.max(140, o.flyMs || 220);
