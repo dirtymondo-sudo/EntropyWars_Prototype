@@ -29,7 +29,7 @@ module.exports = {
         P('hw_tree_3', 44, 9, { pocket: true }); P('hw_tree_4', 33, 7, { pocket: true }); P('meshy_fallen_log', 27, 10, { pocket: true, face: 70 });
         P('lantern_post', 37, 3, { pocket: true }); P('lantern_post', 24, 9, { pocket: true });
         /* ── THE BACK GATE (1,0; level 2): the estate's old back yard and its lodge ── */
-        P('psxg_wall_pillar', 13, 4, { dx: -0.9 }); P('psxg_wall_pillar', 13, 7, { dx: -0.9 }); P('hw_gate_leaf', 13, 5, { dx: -1.2, face: 90 });
+        P('psxg_wall_pillar', 13, 4, { dx: -0.9 }); P('psxg_wall_pillar', 13, 7, { dx: -0.9 }); P('hw_gate_leaf', 13, 5, { dx: 0.75, dz: -1.6, face: 0 });   // (2026-11-22: the leaf stands OPEN along the track's north side; shut across it the gate could not be walked)
         P('cairn', 16, 7); P('stump', 19, 7); P('crow', 14, 2); P('rf_rock_1', 17, 2, { face: 200 });
         { /* THE GATEHOUSE (new): the estate's old back lodge, 10.5 m square, a walk-in: rubble-stone walls, a shingle gable, the door to the yard (south),
              one room below, a loft over the back half (drawn; a ladder to it); a stove, a cot, crates, a lamp */

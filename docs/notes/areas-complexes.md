@@ -14289,3 +14289,34 @@ green liquid, its glitches and puts me back on the ground, the waterfalls look m
   opaque sludge). It stops at the lay line + 0.1 now, inside the bank.
 - **THE SLUDGE'S SURFACE:** `_CALM.liquids.sludge` ripple 0.02 -> 0.05 (the calm liquid's own ripple, same colour, same sheet: nothing
   repainted). Was one flat green.
+
+## THE PATH RUNS ON TOO — every trail and open seam between zones (2026-11-22, mondo: "Every single entrance/exit in the game needs to look good and natural ... fix these where zones connect")
+The thread for Fairy Forest, Came A Lot Kingdom, The Estate and the Woods' other exits. All of it is three-renderer.js, GENERIC: every room whose land
+runs on past its line (`_hqEdgeLandOn`: every One World room, the city) gets it, no room row or bake tool changed.
+- **THE PATH RUNS ON** (`_hqBuildEdgeLand`, ROADS): every `trail` / `open` passage on the room's line (and a free end within 40 m of it) is drawn on over
+  the land past the line like a row of `edges.roads`, by itself. Width = the passage's `strip` / `w` (a trail: one square, 3.5 m, at least); 150 m out
+  for a footpath (under 7 m wide), 300 m for a road. A footpath lies 10 cm over the land with a low bank; a road keeps the causeway. A place the room
+  lists in `edges.roads` is left to that row. Its rows are the land mesh's own close rows for the first 15 m (a row every 5 m lay UNDER the land's
+  half-metre step at the line: a gap of bare ground between gate and path).
+  - ITS SHEET = `passage.floor`, else the sheet the room PAINTED under the gate (`info.paint`, 2.2 m inside the line: the Kingdom's north gate stands
+    on snow, not on the room's cobbles), else the room's `terrain.path`. A green sheet (grass / leaves / moss) under a gate is no path: skipped.
+  - FROM 11 m OUT it wears the FAR room's sheet under its own end of the same way (`action.room` + `action.at`: that door's `passage.floor`, else that
+    room's paint under it), when it differs: Came A Lot's dirt ring road leaves by the south gate and The Forest's cobbles are seen ahead; the
+    Kingdom's east row turns to the Old Road's asphalt.
+  - `lap`: where the room's own path stops a square short of its line (the paint under the gate is not the path's sheet) the strip starts 3.6 m inside.
+  - A highway's seam (20 m+ of asphalt): the two yellow median lines run on (`lines`), the asphalt wears THE ROAD RUNS ON's tint (b4b4b8).
+- **NO DUSK IN OPEN COUNTRY**: the Woods' edge thread (round 7, above) took the 7 black cards and the pale slab off a wall trail in such a room; here the
+  free ends lose their cards too, and the view no longer dims on the walk to the crossing (`passage.noDim`, set in `_hqBuildWay`; `_hqTickPassages`).
+  The crossing itself still blinks.
+- **A FOOTPATH KEEPS ITS WOOD** (`_hqEdgeLandFn` worldW, THE WAY ON): the way-on opened the land 20 to 60 m wide round every way out, a lawn round a
+  trail that leaves a forest. For a way whose door is a `trail` the land's SHAPE still opens (no rock face, no hill across the path) but `W.wood`
+  remembers the forest from 3.5 m off the path's middle and the planting grows it (`wf = W.forest + W.wood`). A road's way-on is unchanged.
+- **THE AVENUE GROWS WHAT THE LAND GROWS** (`_hqPlantPassageTrees`): the two rows of trees beside a trail were always green leaf trees, in the snow north
+  of Came A Lot too. The land's kind 8 m out decides: snow (0.3+) = snow pines, rock = pines, sand / scrub / table land / shore = no avenue.
+- **A TRAIL'S SIGNPOST IS THE FOOTPATH'S** (`_hqBuildTrailPost`): was a 1.7 m stick with a hand-sized board, its arrow pointing off the path, reading
+  "?" until the far room had been stood in. Now the post of a footpath road end: 3 m of timber, a plank over the path's edge that NAMES where it goes
+  (always; the far room's label, its part after "THE TRAIL ·" for a trail room, else its first part), a smaller plank on its back naming this place
+  for the one arriving. A free end in open land has one too; `passage.post: false` = none. Both signposts' planks are nailed on the post's FACE
+  (in the post's own plane the post hid the name's first letters).
+- Probe: `playtest_city.js` takes `EW_PROBE_TRIES=1` (no retry of a whole chain after a crash; the cloud browser dies after 3 to 6 room changes: walk
+  a gate out and back per run, no more).
