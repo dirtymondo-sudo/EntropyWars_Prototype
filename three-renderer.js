@@ -80156,6 +80156,20 @@ const ThreeRenderer = (function () {
             /* the basilica's front under it: a marble block the dome sits on */
             var front = _hqBox(70 * s, 26 * s, 40 * s, _hqMat('marble_light', 8, 3, { color: 0xe8e0d0, shininess: 4 })); front.position.set(0, 13 * s * U, 0); g.add(front);
             g.children[0].position.y = 26 * s * U;
+            /* THE VATICAN FROM THE ROAD (2026-11-22, the otherworld gates: from the Old Road the city was "a plain grey box with a dome on it"): as a far sight of
+               the world (`id: 'ow:…'`) the basilica wears its front (a portico of columns under an entablature and an attic, two lower wings) and stands behind
+               the city's own brick wall, the wall the walker meets at the gate. The cortile's own landmark (no `ow:` id) is as it was. */
+            if (o.id && String(o.id).indexOf('ow:') === 0) {
+                var mar = _hqMat('marble_light', 2, 2, { color: 0xfff8ea, shininess: 6 }), marD = _hqMat('marble_light', 2, 2, { color: 0xd8cfbc, shininess: 4 }), brick = _hqMat('bricks_3', 4, 2, { color: 0xffffff, shininess: 2 });
+                front.material = marD;
+                for (var ci = 0; ci < 8; ci++) { var col = _hqBox(3 * s, 21 * s, 3 * s, mar); col.position.set((-31.5 + ci * 9) * s * U, 10.5 * s * U, 22.5 * s * U); g.add(col); }
+                var ent = _hqBox(74 * s, 3.4 * s, 48 * s, mar); ent.position.set(0, 22.7 * s * U, 1 * s * U); g.add(ent);
+                var attic = _hqBox(52 * s, 5 * s, 36 * s, mar); attic.position.set(0, 27 * s * U, 0); g.add(attic);
+                var steps = _hqBox(78 * s, 2 * s, 8 * s, mar); steps.position.set(0, 1 * s * U, 27 * s * U); g.add(steps);
+                [-1, 1].forEach(function (k) { var wing = _hqBox(46 * s, 15 * s, 30 * s, marD); wing.position.set(k * 58 * s * U, 7.5 * s * U, -2 * s * U); g.add(wing); var cap2 = _hqBox(48 * s, 1.6 * s, 32 * s, mar); cap2.position.set(k * 58 * s * U, 15.8 * s * U, -2 * s * U); g.add(cap2); });
+                var wallB = _hqBox(250 * s, 11 * s, 3 * s, brick); wallB.position.set(0, 5.5 * s * U, 40 * s * U); g.add(wallB);
+                g.children[0].position.y = 29.5 * s * U;
+            }
             return g;
         },
         /* THE CASTLE (mondo 2026-11-03: "castle - im assuming you would make the entire castle using assets from the castle pack?"):
