@@ -4086,8 +4086,18 @@
             if (_clogFolded == null) { try { _clogFolded = localStorage.getItem(CLOG_FOLD_KEY) === '1'; } catch (e) { _clogFolded = false; } }
             return _clogFolded;
         }
-        function _clogAtBottom() { return !_clogBody || _clogBody.scrollHeight - _clogBody.scrollTop - _clogBody.clientHeight < 24; }
-        function _clogToBottom() { if (_clogBody) _clogBody.scrollTop = _clogBody.scrollHeight; _clogUnread = 0; if (_clogNewBtn) _clogNewBtn.classList.remove('on'); }
+        function _clogAtBottom() { return !_clogBody || !!_clogStickAt || _clogBody.scrollHeight - _clogBody.scrollTop - _clogBody.clientHeight < 24; }
+        function _clogToBottom() { _clogStickAt = 0; if (_clogBody) _clogBody.scrollTop = _clogBody.scrollHeight; _clogUnread = 0; if (_clogNewBtn) _clogNewBtn.classList.remove('on'); }
+        /* THE LOG SCROLLS WITH THE FRAME (2026-11-22, mondo: "It dips when taking damage"; a profiled fight: every hit's new
+           line read the log's height right after the HUD was rewritten, so the browser laid the whole page out on the spot,
+           ~30 ms a hit). The scroll to the newest line waits for the next frame, where the page is laid out anyway; until
+           then the log counts as "at the bottom", so the lines of one burst all stick. */
+        let _clogStickAt = 0;
+        function _clogToBottomSoon() {
+            if (_clogStickAt) return;
+            _clogStickAt = 1;
+            requestAnimationFrame(() => { if (_clogStickAt) _clogToBottom(); });
+        }
         function _clogSetFold(on) {
             _clogFolded = !!on;
             try { localStorage.setItem(CLOG_FOLD_KEY, on ? '1' : '0'); } catch (e) {}
@@ -4249,7 +4259,7 @@
             _clogList.insertAdjacentHTML('beforeend', html);
             const extra = _clogList.childElementCount - CLOG_MAX;
             for (let k = 0; k < extra; k++) _clogList.firstElementChild.remove();
-            if (stick) _clogToBottom();
+            if (stick) _clogToBottomSoon();
             else { _clogUnread += added; _clogNewBtn.classList.add('on'); }
         }
         window.renderFloatCombatLog = renderFloatCombatLog;
