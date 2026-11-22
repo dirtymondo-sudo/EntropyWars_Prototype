@@ -533,7 +533,7 @@ const RACE_SPRITE_GENDERS = {
   'gargoyle': 'both',
   'glitch': 'both',
   'mech': 'both',
-  'seraphim': 'both',
+  'seraphim': 'male',   // THE SERAPHIM IS GENDERLESS (mondo 11-22: "it is genderless so it just needs one"): one entry, no ♂/♀; an old save's female reads as the one Seraphim
   'zombie': 'both',
   'shadow entity': 'both',
   'cyborg': 'both',   // the man 2026-11-16 (THE NEW RACES)
@@ -3429,7 +3429,7 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'magic',
       moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
     };
-    // both genders: the 3D-only roster rule (getAvailableGendersForRace) drops a gender with no model
+    // ONE Seraphim (genderless, mondo 11-22: RACE_SPRITE_GENDERS lists one); the `female` key only keeps an old save / an old NPC row drawing the same wheel
     return { male: ring, female: ring };
   })(),
   // Occulus (2026-10-27, mondo's wings upload: "combine them with the eyeball

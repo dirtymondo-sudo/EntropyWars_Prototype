@@ -319,7 +319,9 @@
            team saved before the rule is never touched — the desk flags it and will not deploy the same race twice (THE PICK
            refuses a second one); the forge (Edit) is where it gets fixed. */
         const _sqRaceKey = s => String((s && s.race) || '').toLowerCase();
-        function _sqDups(slots) { return (typeof teamDuplicateRaces === 'function') ? teamDuplicateRaces((slots || []).map(_sqRaceKey)) : []; }
+        /* THE MALE + THE FEMALE ARE TWO UNITS (mondo 11-22, state.js teamUnitKey): the rule counts a unit, not a race */
+        const _sqUnitKey = s => (typeof teamUnitKey === 'function') ? teamUnitKey(s || {}) : _sqRaceKey(s);
+        function _sqDups(slots) { return (typeof teamDuplicateRaces === 'function') ? teamDuplicateRaces((slots || []).map(s => ({ race: _sqRaceKey(s), gender: s && s.gender }))) : []; }
         /* HOMOSAPIEN OUT (mondo, 2026-10-23): a race that left the roster (state.js teamRemovedRaces). The team is kept, flagged,
            and does not cross until the forge swaps it out; a bigger sheet still crosses when THE PICK can leave it on file. */
         /* THE DEMO (2026-11-10, data.js DEMO_RULES): with the Demo switch on, a champ outside the demo roster (or an unlock
@@ -353,7 +355,7 @@
         function _sqTwice(t) {
             const n = t.slots.length;
             if (n <= SQ_DEPLOY) return _sqDups(t.slots);
-            const distinct = new Set(t.slots.map(_sqRaceKey)).size;
+            const distinct = new Set(t.slots.map(_sqUnitKey)).size;
             return distinct < Math.min(SQ_DEPLOY, n) ? _sqDups(t.slots) : [];
         }
         function _sqTwiceText(d) { return 'Same unit twice: ' + d.map(r => _sqRaceLabel({ race: r })).join(', '); }
@@ -361,7 +363,7 @@
         function _sqFirstUnique(t, k) {
             const seen = new Set(), out = [];
             const gone = _sqGone(t.slots);   // HOMOSAPIEN OUT: never a removed unit
-            t.slots.forEach((s, i) => { const r = _sqRaceKey(s); if (out.length < k && !seen.has(r) && gone.indexOf(r) < 0) { seen.add(r); out.push(i); } });
+            t.slots.forEach((s, i) => { const r = _sqRaceKey(s), u = _sqUnitKey(s); if (out.length < k && !seen.has(u) && gone.indexOf(r) < 0) { seen.add(u); out.push(i); } });
             return out;
         }
         function _sqRaceLabel(s) {
@@ -873,11 +875,11 @@
                 if (hint) hint.textContent = _sqRaceLabel({ race: _r }) + ' is out of the game. Pick another unit.';
                 return;
             }
-            else if (_sqPick.chosen.some(j => _sqRaceKey(_sqPick.preset.slots[j]) === _r)) {   // ONE OF EACH: that race already crosses
+            else if (_sqPick.chosen.some(j => _sqUnitKey(_sqPick.preset.slots[j]) === _sqUnitKey(_sqPick.preset.slots[i]))) {   // ONE OF EACH: that unit already crosses (a male and a female are two)
                 try { playSfx('uiError'); } catch (e) {}
                 _sqBump(document.querySelector(`#sqPick .sq-tile[data-sq-tile="${i}"]`), 'sq-shake');
                 const hint = document.querySelector('#sqPick .sq-pick-hint');
-                if (hint) hint.textContent = _sqRaceLabel({ race: _r }) + ' is already crossing. One of each unit.';
+                if (hint) hint.textContent = _sqRaceLabel(_sqPick.preset.slots[i]) + ' is already crossing. One of each unit.';
                 return;
             }
             else if (_sqPick.chosen.length >= SQ_DEPLOY) {
