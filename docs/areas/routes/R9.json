@@ -1,8 +1,8 @@
 {
- "about": "THE BADLANDS HIGHWAY (route R9, One World BUILD_PLAN phase 4.2, 2026-11-17): the city's highway south over the scrub and the badlands to the Circus, the Desert's way in from Disaster City (EXIT 1: the link downtown_desert's Desert end, which stood on the retired Highway's room). The design page: 'the chain gas station, a motel, billboards (Exit 1)'. The old Highway's rest stop (the city chain's gas station), its LAST GAS billboard and its city-limit sign moved here. Its own room: the Circus is a district of another tool and joining it would make 27 plots in one straight row.",
+ "about": "THE BADLANDS HIGHWAY (route R9, One World BUILD_PLAN phase 4.2, 2026-11-17): the city's highway south over the scrub and the badlands to the Circus, the Desert's way in from Disaster City (EXIT 1: the link downtown_desert's Desert end, which stood on the retired Highway's room). The design page: 'the chain gas station, a motel, billboards (Exit 1)'. The old Highway's rest stop (the city chain's gas station), its LAST GAS billboard and its city-limit sign moved here. Its own room: the Circus is a district of another tool and joining it would make 27 plots in one straight row. THE RAISED HIGHWAY (2026-11-22, mondo: 'actual highway architecture, raised off the ground with exits and stuff'): `raised` lifts the road onto ramps and a deck on pillars 7 m up with one exit (ow-raised.js); six plots were added beside it (`add`) so the gas station (west) and the motel (east) stand on ground of their own beside the exit's ramps, and the road under the deck runs on past both walls.",
  "hub": "desert",
  "label": "THE BADLANDS HIGHWAY",
- "sub": "THE DESERT · EXIT 1 · DISASTER CITY TO THE CIRCUS · 18 PLOTS",
+ "sub": "THE DESERT \u00b7 EXIT 1 \u00b7 DISASTER CITY TO THE CIRCUS \u00b7 24 PLOTS",
  "line": [
   [
    6.1667,
@@ -37,7 +37,7 @@
   "ow_h_6_21": {
    "room": "site_prebuilt_area51_ow_circus",
    "label": "THE CIRCUS",
-   "sub": "THE BADLANDS HIGHWAY · ON TO THE BIG TOP",
+   "sub": "THE BADLANDS HIGHWAY \u00b7 ON TO THE BIG TOP",
    "desc": "The highway runs out at a circus fence on the sand."
   }
  },
@@ -45,12 +45,95 @@
   "6,15": false,
   "6,16": false,
   "7,17": false,
-  "7,18": false
+  "7,18": false,
+  "5,15": false,
+  "5,16": false,
+  "5,17": false,
+  "8,16": false,
+  "8,17": false,
+  "8,18": false,
+  "7,15": false,
+  "7,16": false,
+  "6,17": false,
+  "6,18": false,
+  "6,14": false,
+  "7,14": false,
+  "6,19": false,
+  "7,19": false
  },
  "names": {
-  "6,15": "the rest stop",
-  "6,16": "the rest stop, the store",
-  "7,17": "the motel",
-  "7,18": "the motel, the far end"
+  "6,15": "the exit, the ramp down",
+  "6,16": "the exit, under the deck",
+  "7,17": "the exit, under the deck",
+  "7,18": "the exit, the ramp up",
+  "5,15": "the rest stop, the store",
+  "5,16": "the rest stop, the pumps",
+  "5,17": "the county road, west",
+  "8,16": "the county road, east",
+  "8,17": "the motel",
+  "8,18": "the motel, the far end",
+  "6,14": "the ramp up",
+  "7,14": "the ramp up",
+  "6,19": "the ramp down",
+  "7,19": "the ramp down"
+ },
+ "add": [
+  [
+   5,
+   15
+  ],
+  [
+   5,
+   16
+  ],
+  [
+   5,
+   17
+  ],
+  [
+   8,
+   16
+  ],
+  [
+   8,
+   17
+  ],
+  [
+   8,
+   18
+  ]
+ ],
+ "raised": {
+  "h": 7,
+  "up": [
+   21,
+   33
+  ],
+  "down": [
+   87,
+   99
+  ],
+  "exit": {
+   "aux": 6,
+   "slip": 12,
+   "cross": [
+    59,
+    61
+   ]
+  },
+  "flat": [
+   [
+    1,
+    37,
+    19,
+    58
+   ],
+   [
+    29,
+    61,
+    46,
+    82
+   ]
+  ]
  }
 }

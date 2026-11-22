@@ -15,7 +15,7 @@ function gantry(ctx, sx, sy, dir, words, o) {
     for (const s of [-1, 1]) P.push({ s: 'box', p: [ctx.r2(s * w / 2), 0, 0], size: [0.32, 6.4 + bh, 0.32], key: STEEL, tint: 0x70767c });
     P.push({ s: 'box', p: [0, 6.0, 0], size: [ctx.r2(w + 0.3), 0.3, 0.3], key: STEEL, tint: 0x70767c }, { s: 'box', p: [0, 6.3, 0.12], size: [ctx.r2(bw), bh, 0.12], tint: o.bg ? parseInt(o.bg.slice(1), 16) : 0x0b5c3a },
         { s: 'quad', p: [0, 6.4, 0.2], size: [ctx.r2(bw - 0.5), ctx.r2(bh - 0.2)], key: 'txt:' + words + '|' + (o.fg || '#ffffff') + '|' + (o.bg || '#0b5c3a') + '|' + ctx.r2((bw - 0.5) / (bh - 0.2)) + '||' + (o.font || 'way'), uv: 'fit', kind: 'wall', glow: 0.25 });
-    ctx.feat({ k: 'arch', id: 'ow:' + ctx.ID.toLowerCase() + ':sign:' + (nGantry++), x: mx(ctx, sx), z: mz(ctx, sy), rot: FACE[dir], parts: P });
+    ctx.feat(Object.assign({ k: 'arch', id: 'ow:' + ctx.ID.toLowerCase() + ':sign:' + (nGantry++), x: mx(ctx, sx), z: mz(ctx, sy), rot: FACE[dir], parts: P }, o.y != null ? { y: o.y } : null));   // `o.y` (2026-11-22, THE RAISED HIGHWAY): the gantry's foot stands at this height (on a deck), not on the ground
 }
 /* a billboard on two posts beside the road (not over it), facing `face` degrees (0 = its words read from the north... the gantry's FACE table) */
 function billboard(ctx, sx, sy, dir, words, o) { o = o || {}; gantry(ctx, sx, sy, dir, words, Object.assign({ span: 8, bh: 3.0, bg: '#7a1c18', fg: '#f0d890', font: 'rye' }, o)); }
