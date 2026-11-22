@@ -3039,3 +3039,18 @@ the building's nav keeps a scrollbar gutter and no sideways scroll; under 900 / 
 and its `.ms-container` shrank to it. styles-base.css: `#settingsPage > .ms-container { width: min(1180px, 100%) }` (the pause menus' frame width), the
 body `max-width: none; overflow-x: hidden`; `.hq-pause-body[data-view="settings"]` `overflow-x: hidden` too (the theme's pop on a focused / picked
 `.pm-set-btn` scales it past its group, which grew a sideways scrollbar on CONTROLS / WORLD). Looked at 1920, 1280, 860 wide.
+
+## THE EXPLORATION MINIMAP (2026-11-22)
+mondo: "Let's add a minimap to the exploration mode. It should look similar/identical to the one from battle. It should have quest
+markers too". His picks on the mock-up: "definitely bottom right, north always up, grey walls and blue water are fine, yes npcs should show".
+- Where: three-renderer.js THE EXPLORATION MINIMAP (`_hqMmUpdate`, called from `_hqFrame` at its own 50 ms pace); `#ewHqMinimap`
+  (`.ew-mmap.ew-hqmm`, styles-hud.css) inside `#hqPage`, bottom right. Its own element, so the UI Maker's place for the battle
+  minimap (piece `mini`) does not move it; its look (size, colours, grid, frame, round) is the battle minimap's `_mmLook()`.
+- What: 15 squares of 3.5 m around the walker, north (-z) up. Arrow = you; ally colour = a story character (cast); foe colour = a unit
+  you can fight (`hqEncounterCharOk`); white = anyone else; green = a door / way out; gold diamond = the quest (map.js THE QUEST
+  MARKER's target: `hq.questMark` leaves its metres in `_hmm.quest`), pinned to the edge with an arrow when out of range.
+- No room scan (RULE #1e): a square is asked once when it first enters the window (`_hqMmAsk`: `_hqNavQuery` at four points + the
+  terrain's water), at most 1.2 ms a tick, kept for the room, asked again every 20 s; people from `_hq.chars`, doors read once.
+- Away: scene, cutscene, panel / pause (`H.paused`), editor, a fight. Off: `window.EW_NO_HQ_MINIMAP = true`.
+- Seen on screen (cloud, WebGL2): the Woods clearing and DOOR HQ's rotunda. NOT seen: blue water, a fightable unit's red dot,
+  Disaster City, his Mac, a phone (it may sit over the touch buttons).
