@@ -115,9 +115,11 @@ function mkRoom(tag, u0, v0, NU, NV, B) {
         seg(cur, b); };
     R.pane = (axis, at, a, b, o) => R.wall(axis, at, a, b, Object.assign({ tint: 0xd8ecf2 }, o, { draw: false, glassWalk: true }));
     R.ceil = (ua, va, ub, vb, y, key, tint, x) => { const p = Object.assign({ s: 'box', p: [X((ua + ub) / 2), y, Z((va + vb) / 2)], size: [r2((ub - ua) * C), 0.14, r2((vb - va) * C)], under: true, uv: 3.5 }, x || {}); if (key) p.key = key; if (tint != null) p.tint = tint; return part(p); };
+    /* (`mouths: false`, 2026-11-22: a kit deck is a floor inside drawn walls, its ends meet a wall or a floor that is open already. The engine's bridge
+       mouths opened a round hole in the rock past each end of the Great Room's loft, a pit beside the floor nobody could leave: find-softlocks.js) */
     R.deck = (ua, va, ub, vb, y, key) => { const ew = (ub - ua) >= (vb - va);
-        F.push(ew ? { k: 'bridge', x0: X(ua), z0: Z((va + vb) / 2), x1: X(ub), z1: Z((va + vb) / 2), w: r2((vb - va) * C), y: r2(B + y), key, rails: false, plain: true }
-                  : { k: 'bridge', x0: X((ua + ub) / 2), z0: Z(va), x1: X((ua + ub) / 2), z1: Z(vb), w: r2((ub - ua) * C), y: r2(B + y), key, rails: false, plain: true }); };
+        F.push(ew ? { k: 'bridge', x0: X(ua), z0: Z((va + vb) / 2), x1: X(ub), z1: Z((va + vb) / 2), w: r2((vb - va) * C), y: r2(B + y), key, rails: false, plain: true, mouths: false }
+                  : { k: 'bridge', x0: X((ua + ub) / 2), z0: Z(va), x1: X((ua + ub) / 2), z1: Z(vb), w: r2((ub - ua) * C), y: r2(B + y), key, rails: false, plain: true, mouths: false }); };
     R.guard = (axis, at, a, b, y, tint) => { const m = (a + b) / 2, L = (b - a) * C, px = axis === 'u' ? X(m) : X(at), pz = axis === 'u' ? Z(at) : Z(m), tn = tint != null ? tint : 0x4a4f56;
         for (const yy of [0.55, 1.05]) part({ s: 'box', p: [px, r2(y + yy), pz], size: axis === 'u' ? [r2(L), 0.06, 0.06] : [0.06, 0.06, r2(L)], tint: tn });
         part({ s: 'box', p: axis === 'u' ? [X(a), y, pz] : [px, y, Z(a)], size: [0.07, 1.08, 0.07], tint: tn, n: Math.round((b - a) * 2) + 1, step: axis === 'u' ? [C / 2, 0, 0] : [0, 0, C / 2] });

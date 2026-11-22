@@ -47834,7 +47834,7 @@ const ThreeRenderer = (function () {
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost + (_ewGpuInfo.rebuilds ? ' (rebuilt ' + Math.min(3, _ewGpuInfo.rebuilds) + '×)' : '');
         if (_ewBun.marked.length) {
             s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
-            if (_ewBun.rpShow) { var rpS = _ewBun.rpShow; s += ' · refreshed ' + rpS.asked + ' of ' + rpS.all + ' a frame (awake ' + rpS.awake + ', turns ' + rpS.turn + ', woken ' + rpS.wokeN + ', firsts ' + rpS.reps + ', whole groups ' + (rpS.asked - rpS.awake - rpS.turn - rpS.wokeN - rpS.reps) + '; quiet groups ' + rpS.quiet + ')'; }
+            if (_ewBun.rpShow) { var rpS = _ewBun.rpShow; s += ' · refreshed ' + rpS.asked + ' of ' + rpS.all + ' a frame (awake ' + rpS.awake + ', turns ' + rpS.turn + ', woken ' + rpS.wokeN + ', firsts ' + rpS.reps + (rpS.repsSk ? ' (' + rpS.repsSk + ' more left out, their buffers already written)' : '') + ', whole groups ' + (rpS.asked - rpS.awake - rpS.turn - rpS.wokeN - rpS.reps) + '; quiet groups ' + rpS.quiet + ')'; }
             var wr = _ewBun.whyRate, ws = []; if (wr) for (var wk in wr) ws.push(wk + ' ' + wr[wk]);
             if (ws.length) s += ' (' + ws.join(', ') + ')';
             s += ' · check ' + _ewBun.msAvg.toFixed(2) + ' ms/frame (' + (_ewBun.quietN | 0) + ' quiet skipped, ' + (_ewBun.noMShow | 0) + ' still-checked)';
@@ -50245,7 +50245,7 @@ const ThreeRenderer = (function () {
            Off: window.EW_BUN_FULL_REFRESH. Counts: _ewBun.rpAsked / rpAll per frame (the lens's bundles line). */
         ['updateBinding', 'updateBindings', 'createBindings'].forEach(function (k) {
             var f = B[k]; if (typeof f !== 'function') return;
-            B[k] = function (b) { var gn = b && b.groupNode; if (!(gn && gn.shared === true)) _ewBun.upN = (_ewBun.upN | 0) + 1; return f.apply(this, arguments); };   // the frame's shared buffers (camera, lights) are written every frame by whoever comes first: not a sign the object changed
+            B[k] = function (b) { var gn = b && b.groupNode; if (!(gn && gn.shared === true)) _ewBun.upN = (_ewBun.upN | 0) + 1; else _ewBun.upS = (_ewBun.upS | 0) + 1; return f.apply(this, arguments); };   // the frame's shared buffers (camera, lights) are written every frame by whoever comes first: not a sign the object changed
         });
         /* THE LONGER TURN (2026-11-19, mondo's 18:28 F3: 72 turns a frame, ~20 µs each on Firefox): an object still rests after REST quiet
            frames, but a rested one is asked on its turn every TURN = 60 frames (was every 20th); what it would catch is a change that
@@ -50366,12 +50366,42 @@ const ThreeRenderer = (function () {
                Old rule: window.EW_BUN_FIRSTS_EACH */
             var Nn = R._nodes, rid = Nn && Nn.nodeFrame ? Nn.nodeFrame.renderId : NaN, RP = L.reps, nR = 0;
             var skipOk = rid === rid && !(typeof window !== 'undefined' && window.EW_BUN_FIRSTS_EACH) && (RP.length === 0 || !RP[0].getMonitor().needsVelocity(R));
+            /* THE FIRSTS BY BUFFER (2026-11-22, mondo's 18:10 F3 in Disaster City: 36 FPS, "firsts 196" a frame, "replay: the
+               refreshes 8.00" ms): a first of a recorded group gets three's SHARED refresh only (the group is static and current),
+               and all that refresh sends to the GPU is the shared buffers its shader reads (the render's camera, lamps, fog). Those
+               buffers are the same objects for every shader that reads the same set of values (three keeps one per set, per render),
+               so ~200 shaders in view wrote the same few buffers 200 times: every one after the first is told "already written" by
+               three, after ~20 µs of asking. A first whose shared buffers were ALL written in this render by an earlier first (or by
+               THE HELD KEEP THE CAMERA, the same stamp) is now left out; a first always gets its own first look, and one whose
+               shader reads a buffer nobody wrote yet in this render is refreshed as before.
+               Old rule: window.EW_BUN_FIRSTS_BY_SHADER. Check (dev): window.EW_BUN_FIRSTS_AUDIT refreshes the left-out ones anyway
+               and counts the ones that sent anything in _ewBun.fAudBad (must stay 0). Count: _ewBun.rpRepsSk (the lens's bundles line). */
+            var byBuf = skipOk && !(typeof window !== 'undefined' && window.EW_BUN_FIRSTS_BY_SHADER), aud = byBuf && typeof window !== 'undefined' && !!window.EW_BUN_FIRSTS_AUDIT, nSk = 0, sbF, kF, bgF, needF, monF, freshF;
             for (i = 0; i < RP.length; i++) {
-                ro = RP[i];
-                if (skipOk && ro._ew_rpI === true && ro.getMonitor().renderId === rid) continue;
+                ro = RP[i]; monF = ro.getMonitor(); freshF = monF.renderId !== rid;
+                if (skipOk && ro._ew_rpI === true && !freshF) continue;
+                sbF = null;
+                if (byBuf) {
+                    sbF = ro._ew_rqS;
+                    if (sbF === undefined) {   // this object's shared bind groups, found once (as rpShared)
+                        sbF = null; bgF = ro.getBindings();
+                        for (kF = 0; kF < bgF.length; kF++) { var b0F = bgF[kF].bindings && bgF[kF].bindings[0], gnF = b0F && b0F.groupNode; if (gnF && gnF.shared === true) (sbF || (sbF = [])).push(bgF[kF]); }
+                        ro._ew_rqS = sbF;
+                    }
+                    if (sbF && ro._ew_rpI === true) {
+                        needF = false;
+                        for (kF = 0; kF < sbF.length; kF++) if (sbF[kF]._ew_rid !== rid) { needF = true; break; }
+                        if (!needF) {
+                            nSk++;
+                            if (aud) { var uA = (_ewBun.upN | 0) + (_ewBun.upS | 0); rpStep(R, ro); if ((_ewBun.upN | 0) + (_ewBun.upS | 0) !== uA) _ewBun.fAudBad = (_ewBun.fAudBad | 0) + 1; _ewBun.fAudN = (_ewBun.fAudN | 0) + 1; }
+                            continue;
+                        }
+                    }
+                }
                 rpStep(R, ro); ro._ew_rpI = true; nR++;
+                if (sbF && freshF) for (kF = 0; kF < sbF.length; kF++) sbF[kF]._ew_rid = rid;   // (asked while the shader was new to this render: three wrote its shared buffers)
             }
-            asked += nR; _ewBun.rpReps = (_ewBun.rpReps | 0) + nR;
+            asked += nR; _ewBun.rpReps = (_ewBun.rpReps | 0) + nR; _ewBun.rpRepsSk = (_ewBun.rpRepsSk | 0) + nSk;
             /* THE HELD LIST KEPT (2026-11-19): one array per replay depth, refilled (was a new array per group per pass: ~750 a frame) */
             /* THE QUIET GROUP (2026-11-19, mondo's 16:33 F3: "refreshed 188 of 3137 a frame" yet "scene: bundle replays 4.1 ms"): the
                cost left was the bookkeeping, every own-node object of every group read every frame to learn that it rests. A group whose
@@ -50803,6 +50833,14 @@ const ThreeRenderer = (function () {
        of a group keeps each direct child's own value hash; a child whose values changed 3 times within 20 s is drawn outside the
        recording from then on (`_ew_bunOut`, as a mover is). Only once the room is ready (a room still landing moves everything). */
     var _hqBatchHoldN = 0;   // THE HELD PIECES ONCE: bumped each time THE STATIC BATCH takes or hands back a piece
+    /* the lens's name for the top piece whose own tree last moved in a group (THE TREE'S OTHER, NAMED) */
+    function _ewBunTxName(g) {
+        var c = g && g._ew_bunTx; if (!c) return '';
+        var nm = c.name || '', q = c, nMesh = 0, first = '';
+        try { c.traverse(function (o) { if (o.isMesh) { nMesh++; if (!first) first = o.name || (o.geometry && o.geometry.name) || ''; } if (!nm && o.name) nm = o.name; }); } catch (e) {}
+        var ud = c.userData || {}, src = ud.model || ud.src || ud.id || ud.key || '';
+        return '"' + String(nm || c.type).slice(0, 40) + '"' + (src ? ' ' + String(src).slice(0, 40) : '') + (first && first !== nm ? ' / ' + String(first).slice(0, 30) : '') + ' (' + nMesh + ' meshes, ' + (g._ew_bunTxN | 0) + ' times in this group)';
+    }
     function _ewBunWalkTop(g, S) {
         var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
         /* THE HELD PIECES ONCE (2026-11-19, mondo's 13:44 F3: "downtown_streets shell 1.59 ms" a frame for 10 drawn meshes): the shell's
@@ -50829,11 +50867,16 @@ const ThreeRenderer = (function () {
             if (c._ew_bunOut === true && !_ewBunNoOut() && (c.visible !== false || !_ewBunOutHideHash())) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); if (c._ew_bRec) S.cB = (S.cB | 0) + 1; else S.cH = (S.cH | 0) + 1; continue; }   // (a piece the merge holds reads hidden while a frame draws)
             if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); S.cB = (S.cB | 0) + 1; continue; }
-            var v0 = S.hv; S.hv = 0;
+            /* THE TREE'S OTHER, NAMED (2026-11-22, mondo's 18:10 F3: "rooms b|dc:P02-08-B1 (tree 73 [... other 71], rests 15, classic now)"):
+               each top piece's own tree hash is kept, and the last piece whose hash moved is named in the lens line "Re-recorded most" */
+            var v0 = S.hv; S.hv = 0; var h0 = S.hs; S.hs = 17;
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
             else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
             if (c.children.length) _ewBunWalk(c, S);
             var sub = S.hv; S.hv = _ewBunMix(v0, sub);
+            var subH = S.hs; S.hs = _ewBunMix(h0, subH);
+            if (c._ew_bunCs !== undefined && c._ew_bunCs !== subH) { g._ew_bunTx = c; g._ew_bunTxN = (g._ew_bunTxN | 0) + 1; }
+            c._ew_bunCs = subH;
             if (watch) {
                 if (c._ew_bunCv !== undefined && c._ew_bunCv !== sub) {
                     if (now - (c._ew_bunCt || 0) > 20000) { c._ew_bunCt = now; c._ew_bunCn = 1; }
@@ -50881,7 +50924,7 @@ const ThreeRenderer = (function () {
         /* (his profile: the per-refresh timing ran every frame with the lens shut, ~1,600 clock reads a frame): lens frames, or one dip-log frame in 8 */
         _ewBun.rfOn = !!((_lens && _lens.cur) || (_dip.cur && ((_ewBun.frame | 0) & 7) === 0));
         if (_ewBun.rf && _ewBun.rfOn) { if (++_ewBun.rf.f > 300) { _ewBun.rfLast = _ewBun.rf; _ewBun.rf = null; } }   // THE REFRESH BY OBJECT: a rolling window of ~300 frames (the dip log keeps it filled with the lens shut)
-        _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0, quiet: _ewBun.rpQuiet | 0 }; _ewBun.rpQuiet = 0; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
+        _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, repsSk: _ewBun.rpRepsSk | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0, quiet: _ewBun.rpQuiet | 0 }; _ewBun.rpQuiet = 0; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpRepsSk = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
         var tpa = spL ? performance.now() : 0;
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
         var tpb = spL ? performance.now() : 0, relN = 0;
@@ -50994,7 +51037,17 @@ const ThreeRenderer = (function () {
                        while it is released, ~10 ms a frame for 5 s, because 5 pieces started or stopped moving within 2 s. A
                        re-record costs that walk ONCE. So such a group rests only when its list changes on about every third
                        frame (24 times in 2 s); below that it is recorded again each time. The old 5: window.EW_BUN_REST_AT_5. */
-                    else if (st.times.length >= ((walk && g._ew_st && g.children.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_REST_AT_5)) ? 24 : 5)) { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
+                    /* THE SHORT REST (2026-11-22, mondo's 18:10 F3 in Disaster City: two closed rooms "rests 15 / 7, classic now", and
+                       "170 props (outside its bundle)" drawn one by one, ~4 ms of classic draws a frame): a group whose list of
+                       pieces changed 5 times in 2 s was drawn piece by piece for a fixed 5 s, though what changes it is mostly a
+                       short burst (a room coming into range, its pieces settling). The first rest is now 0.7 s; a group that
+                       needs another within 20 s rests twice as long each time, up to the old 5 s (a piece that never stops
+                       changing ends there). The big shell keeps 5 s. Old rule: window.EW_BUN_REST_5S */
+                    else if (st.times.length >= ((walk && g._ew_st && g.children.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_REST_AT_5)) ? 24 : 5)) {
+                        var rsN = (now - (st.restAt || 0) < 20000) ? (st.restN | 0) + 1 : 1; st.restN = rsN; st.restAt = now;
+                        var rsMs = (g.children.length > 1000 || (typeof window !== 'undefined' && window.EW_BUN_REST_5S)) ? 5000 : Math.min(5000, 700 * Math.pow(2, rsN - 1));
+                        st.until = now + rsMs; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue;   // the tree itself churns: classic for a while
+                    }
                 }
                 g.version++; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             } else if (st.G !== G || g._ew_bunFree) {   // the lamps / a freed resource it holds: re-records, and none of it counts as the group churning
@@ -56208,8 +56261,8 @@ const ThreeRenderer = (function () {
             var mwS = _hqStillSplitText(); if (mwS) L.push('Matrix walk by group (ms a frame): ' + mwS);
         } catch (eSp) {}
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
-            var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
-            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + ' · movers kept out ' + (_ewBun.outS | 0));
+            var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup, tx: _ewBunTxName(g) }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
+            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + (x.tx ? ', last piece whose own tree moved: ' + x.tx : '') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + ' · movers kept out ' + (_ewBun.outS | 0));
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept' + (S.still.hid ? ' · ' + S.still.hid + ' hidden people left as they stand' : ''));
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
@@ -73052,12 +73105,20 @@ const ThreeRenderer = (function () {
             var B = _hqBoxWall(room, d.wall, d), ax = -B.nz, az = B.nx;   // along the wall
             var rng = _mulberry32((typeof hqHash === 'function') ? hqHash('trail|' + d.id) : 5);
             var kinds = (room.shell && room.shell.forest && room.shell.forest.kinds) || ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'];
+            /* THE AVENUE GROWS WHAT THE LAND GROWS (2026-11-22): the two rows were always green leaf trees, in the snow past Came A Lot's north gate too.
+               In a room whose land runs on past its line the rows take the land's kind 8 m out: snow = snow pines, rock = pines, sand / dry
+               scrub / table land / shore = no avenue (open country has none); a wood or a green field keeps the leaf trees. */
+            var tall = 1;
+            try { if (typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room) && _hq && _hq.terrain) { var EFa = (_hq.edgeLand && _hq.edgeLand.fn) || _hqEdgeLandFn(room, _hq.terrain), Wa = EFa.at(B.wx - B.nx * 8, B.wz - B.nz * 8).W || {};
+                if ((Wa.snow || 0) > 0.3) { kinds = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3']; tall = 1.5; }
+                else if ((Wa.mountain || 0) > 0.5) { kinds = ['pine', 'pine', 'pine_2']; tall = 1.5; }
+                else if ((Wa.desert || 0) + (Wa.scrub || 0) + (Wa.mesa || 0) + (Wa.coast || 0) > 0.5) return; } } catch (eAv) {}
             for (var dd = 0.8; dd < P.len + 6; dd += 2.1 + rng() * 0.6) [-1, 1].forEach(function (sd) {
                 for (var row = 0; row < 2; row++) {
                     var lat = P.w / 2 + 1.1 + row * 2.0 + rng() * 0.8, dep = dd + (rng() - 0.5) * 0.9;
                     var px = B.wx - B.nx * dep + ax * sd * lat, pz = B.wz - B.nz * dep + az * sd * lat;
                     var gy = _hqTerrainGround(px, pz); if (gy == null) gy = 0;
-                    var fk = kinds[(rng() * kinds.length) | 0], fh = fk === 'tree_4' ? 3.6 + rng() * 1.2 : 2.4 + rng() * 1.1;
+                    var fk = kinds[(rng() * kinds.length) | 0], fh = (fk === 'tree_4' ? 3.6 + rng() * 1.2 : 2.4 + rng() * 1.1) * tall;
                     plantTree(fk, fh, px, pz, gy * _hqUnits());
                 }
             });
@@ -78102,6 +78163,10 @@ const ThreeRenderer = (function () {
             } catch (e) { return null; }
         })();
         var WAYS = (Array.isArray(E.ways) && E.ways.length) ? E.ways : null;   // (2026-11-22: a room with WRITTEN sides may name its ways too; before, only a room that reads the map)
+        /* A FOOTPATH KEEPS ITS WOOD (2026-11-22): THE WAY ON opens the land 20 to 60 m wide round every way out, which made a lawn round a trail that
+           leaves a forest. A way that is a `trail` passage (the door standing at its place) is FOOT: the land's shape still opens (no rock face, no
+           hill across the path), but `W.wood` remembers the forest that stood there from 3.5 m off the path's middle, and the planting grows it. */
+        var WAYFOOT = WAYS ? WAYS.map(function (wy) { try { return (room.doors || []).some(function (d) { return d && d.way === 'trail' && d.wall === wy.side && Math.abs(((wy.side === 'n' || wy.side === 's') ? +d.x : +d.z) - (+wy.at || 0)) < 2; }); } catch (e) { return false; } }) : null;
         /* THE WAY ON (`edges.ways: [{ side, at }]`, the route kit's ends): where a path leaves the room for the next one, the land stays
            low and open for a stretch: no rock face, no tree line across the way you are about to walk (the rock stays rock but lies
            down as a pass floor, `W.way`; forest and table land give way to grass), fading out sideways over ~30 m and outward over ~150 m.
@@ -78123,7 +78188,7 @@ const ThreeRenderer = (function () {
                 }
                 if (lat > 34 || out > 150) continue;
                 var tw = (1 - sm((lat - 10) / 22)) * (1 - sm((out - 70) / 80));
-                if (tw > 0) { W.way = Math.max(W.way || 0, tw); W.grass += (W.forest + W.mesa) * tw; W.forest *= 1 - tw; W.mesa *= 1 - tw; }
+                if (tw > 0) { W.way = Math.max(W.way || 0, tw); if (WAYFOOT && WAYFOOT[wi]) W.wood = Math.max(W.wood || 0, W.forest * tw * sm((lat - 3.5) / 3)); W.grass += (W.forest + W.mesa) * tw; W.forest *= 1 - tw; W.mesa *= 1 - tw; }
             }
             return W;
         };
@@ -78492,6 +78557,43 @@ const ThreeRenderer = (function () {
                 ROADS.push({ side: d.wall, at: at0, w: Math.max(sec.b - sec.a, apron ? apron.b - apron.a : 0), bands: sec.bands, lines: sec.lines, seam: true, apron: apron });
             } catch (e) { console.warn('[HQ] a seam road failed', e); }
         });
+        /* THE PATH RUNS ON TOO (2026-11-22, mondo: "Every single entrance/exit in the game needs to look good and natural"): every trail
+           that leaves the room (a `trail` passage on the room's line, or a free end within 40 m of it) is drawn on over the land past the line
+           like a road of `edges.roads`, in the passage's own floor sheet (else the room's path sheet), one square wide at least, 150 m out. It lies low on the land (no causeway). A place the room already
+           lists in `edges.roads` is left to that row. The passage's own flat strip and the trail's black dusk are not built in such a room (_hqPassageWay). */
+        try {
+            ROADS = ROADS.slice();
+            (room.doors || []).forEach(function (d) {
+                if (!d || d.hidden || d.secret || !d.wall) return;
+                var PS = (typeof _hqPassageSpec === 'function') ? _hqPassageSpec(d) : null;
+                if (!PS || PS.roof || PS.look !== 'trail' || PS.rise) return;   // (an `open` seam's road is THE ROAD OF THE NEXT ROOM's, below)
+                var side = null, at = 0;
+                if (/^[nsew]$/.test(d.wall)) { side = d.wall; at = (side === 'n' || side === 's') ? +d.x : +d.z; }
+                else if (d.wall === 'free') { var f = _hqBoxWall(room, d.wall, d); if (!f) return; var ox = -f.nx, oz = -f.nz, dist;
+                    if (Math.abs(ox) > 0.9) { side = ox > 0 ? 'e' : 'w'; at = f.wz; dist = ox > 0 ? R.x1 - f.wx : f.wx - R.x0; } else if (Math.abs(oz) > 0.9) { side = oz > 0 ? 's' : 'n'; at = f.wx; dist = oz > 0 ? R.z1 - f.wz : f.wz - R.z0; } else return;
+                    if (!(dist >= -1 && dist <= 40)) return; }
+                if (!side || !isFinite(at)) return;
+                var w = Math.max(3.5, +PS.strip || +PS.w || 3.5);
+                if (ROADS.some(function (q) { return q.side === side && Math.abs(+q.at - at) < ((+q.w || 7) + w) / 2 + 1; })) return;
+                /* the path wears the sheet the room painted under its gate (the Kingdom's north gate stands on snow, not on the room's cobbles); a gate on
+                   unpainted ground wears the room's path sheet */
+                var under = null;
+                try { var PT = info && info.paint; if (PT && PT.pal && info.res > 0) { var ix0 = (side === 'w') ? R.x0 + 2.2 : (side === 'e') ? R.x1 - 2.2 : at, iz0 = (side === 'n') ? R.z0 + 2.2 : (side === 's') ? R.z1 - 2.2 : at;
+                    var pi = Math.round((ix0 - info.x0) / info.res), pj = Math.round((iz0 - info.z0) / info.res), pv = (pi >= 0 && pj >= 0 && pi < info.nx && pj < info.nz) ? PT.P[pj * info.nx + pi] : 0; if (pv > 0) under = PT.pal[pv - 1] || null; } } catch (eU) { under = null; }
+                /* …and from 12 m out it wears the sheet the FAR room painted under its own end of the same way (Came A Lot's dirt ring road leaves by the
+                   south gate and comes in on The Forest's cobbles: the cobbles are seen ahead before the crossing), when that room has one and it differs */
+                var far = null;
+                try { var FRm = (d.action && d.action.room && typeof _hqData === 'function') ? ((_hqData() || {}).rooms || {})[d.action.room] : null, FD = FRm && (FRm.doors || []).filter(function (q) { return q && q.id === (d.action.at || d.id); })[0];
+                    if (FD && FRm.terrain && FRm.terrain.paint && FRm.terrain.paint.pal && FRm.shell && typeof hqGridDecode === 'function' && typeof hqGridPaintAt === 'function') {
+                        var fw = FRm.shell.w / 2, fd = FRm.shell.d / 2, fx = (FD.wall === 'w') ? -fw + 1.75 : (FD.wall === 'e') ? fw - 1.75 : +FD.x, fz = (FD.wall === 'n') ? -fd + 1.75 : (FD.wall === 's') ? fd - 1.75 : +FD.z;
+                        var fv = hqGridPaintAt(hqGridDecode(FRm.terrain.paint), fx, fz); if (fv > 0) far = FRm.terrain.paint.pal[fv - 1] || null; } } catch (eF) { far = null; }
+                try { var FPS = FD ? _hqPassageSpec(FD) : null; if (FPS && FPS.floor) far = FPS.floor; } catch (eF2) {}   // (the far end's own floor: the Old Road's asphalt)
+                var green = /grass|leaves|moss|fern|clover|flower/i;   // (a gate that stands on painted green has no path sheet under it: the room's path sheet is the path)
+                if (under && green.test(under)) under = null; if (far && green.test(far)) far = null;
+                var key0 = PS.floor || under || (room.terrain && room.terrain.path) || 'dirt_2';
+                ROADS.push({ side: side, at: at, w: w, len: 150, bands: [{ a: -w / 2, b: w / 2, key: key0, tint: (PS.floorColor != null) ? PS.floorColor : null }], key2: (!PS.floor && far && far !== key0) ? far : null, foot: true, lap: (under !== key0) ? 3.6 : 0, _auto: true });
+            });
+        } catch (eAR) { console.warn('[HQ] the paths past the line failed', eAR); }
         var roadPt = function (q, dd, off) { var a = +q.at + off; return q.side === 'w' ? [R.x0 - dd, a] : q.side === 'e' ? [R.x1 + dd, a] : q.side === 'n' ? [a, R.z0 - dd] : [a, R.z1 + dd]; };
         ROADS.forEach(function (q, qi) {
             try {
@@ -78499,22 +78601,26 @@ const ThreeRenderer = (function () {
                 var fromR = Math.max(0, +q.from || 0);   /* `from` (2026-11-22) = the road begins that far past the line (it comes off a causeway the room draws itself); `lift` = how high it rides over the land (a dirt road lies low: 0.12); `tint` = the colour its sheet draws at */
                 var bands = (q.bands && q.bands.length) ? q.bands : [{ a: -hw, b: hw, key: q.key || 'urban:RoadGeneric1a', tint: q.tint }];
                 var lines = q.lines || ((q.line != null) ? [{ off: 0, color: q.line, w: 0.18 }] : []);
-                var A0 = bands[0].a, B0 = bands[bands.length - 1].b, ys = [], dOf = function (k) { return fromR + (len - fromR) * k / n - ((k || fromR) ? 0 : 0.6); };
-                for (var k = 0; k <= n; k++) { var dd = dOf(k), yk = -1e9; for (var sI = 0; sI <= 4; sI++) { var c0 = roadPt(q, dd, A0 + (B0 - A0) * sI / 4); yk = Math.max(yk, F.at(c0[0], c0[1]).y); } ys.push(yk); }
+                var A0 = bands[0].a, B0 = bands[bands.length - 1].b, ys = [], DS = null, dOf = function (k) { return DS ? DS[k] : fromR + (len - fromR) * k / n - ((k || fromR) ? 0 : 0.6); };
+                /* (a path of THE PATH RUNS ON TOO takes the land mesh's own close rows for its first 15 m: the land steps up half a metre in its first 1.2 m, and a
+                   strip with a row every 5 m lay under it until the second row, a gap of bare land between the gate and the path. `lap`: the room's own path
+                   stops a square short of its line, the strip starts on the room's last square) */
+                if (q._auto) { DS = [-0.6, 0.6, 1.2, 2.5, 4, 6, 8.5, 11.5, 15]; if (q.lap > 0) DS.unshift(-q.lap, -q.lap / 2); while (DS[DS.length - 1] + stepR < len) DS.push(DS[DS.length - 1] + stepR); DS.push(len); n = DS.length - 1; }
+                for (var k = 0; k <= n; k++) { var dd = dOf(k), yk = -1e9; for (var sI = 0; sI <= 4; sI++) { var c0 = roadPt(q, dd, A0 + (B0 - A0) * sI / 4), qc0 = F.at(c0[0], c0[1]); yk = Math.max(yk, (DS && dd <= 0) ? (qc0.eH || 0) : qc0.y); }   /* (a row inside the room's line lies on the room's own ground) */ ys.push(yk); }
                 /* NO ROAD INTO THE SEA: a seam's road ends where the land past the line turns to coast (the rule: never water across a road) */
                 if (q.seam) { for (var kc2 = 1; kc2 <= n; kc2++) { var pc2 = roadPt(q, dOf(kc2), (A0 + B0) / 2), Pc2 = F.at(pc2[0], pc2[1]); if ((Pc2.W.coast || 0) > 0.35) { n = kc2 - 1; break; } } if (n < 2) return; len = len * n / (ys.length - 1); ys.length = n + 1; }
                 for (var sm2 = 0; sm2 < 3; sm2++) for (var k2 = 1; k2 < n; k2++) ys[k2] = Math.max(ys[k2], (ys[k2 - 1] + ys[k2 + 1]) / 2);   // no dip between two crests: the road bridges it on its bank
                 var eH0 = F.at(roadPt(q, 0, (A0 + B0) / 2)[0], roadPt(q, 0, (A0 + B0) / 2)[1]).eH || 0;
                 if (!fromR) ys[0] = Math.max(ys[0], eH0);   // at the line itself: the room's own ground
                 /* a seam's road: level with the gate's floor for 9 m (the walker crosses 6 m out, _hqTickPassages), then onto the land over 26 m */
-                var yAt = function (k) { var d = dOf(k), nat = ys[k] + ((q.lift != null) ? +q.lift : 0.2 + Math.min(0.5, d / 30)); if (!q.seam) return nat; var t = (d - 9) / 26; t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return (eH0 + 0.1) * (1 - t) + nat * t; };
+                var yAt = function (k) { var d = dOf(k), nat = ys[k] + (q.foot ? 0.1 + Math.min(0.08, Math.max(0, d) / 100) : (q.lift != null) ? +q.lift : 0.2 + Math.min(0.5, d / 30)); if (!q.seam) return nat;   /* (a footpath lies on the land: no half-metre causeway) */ var t = (d - 9) / 26; t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return (eH0 + 0.1) * (1 - t) + nat * t; };
                 var mkR = function (P3, I3, UV3, mat) { var g3 = new THREE.BufferGeometry(); g3.setAttribute('position', new THREE.Float32BufferAttribute(P3, 3)); if (UV3) g3.setAttribute('uv', new THREE.Float32BufferAttribute(UV3, 2)); g3.setIndex(I3); g3.computeVertexNormals(); g3.computeBoundingSphere();
                     var m3 = new THREE.Mesh(g3, mat); m3.position.y = 0.2; m3.receiveShadow = false; m3.castShadow = false; m3.renderOrder = 1; m3._ew_hqPart = 'floor'; m3._ew_hqOuter = true; m3._ew_hqEdgeLand = 'road' + qi; return m3; };
                 var gR = new THREE.Group(); gR.name = 'hq_edge_road'; gR._ew_hqEdgeLand = 'road' + qi;
                 /* the bank under both sides */
                 var pos2 = [], idx2 = [];
                 for (var k3 = 0; k3 <= n; k3++) {
-                    var d3 = dOf(k3), y3 = yAt(k3), L3 = roadPt(q, d3, A0), R3 = roadPt(q, d3, B0), L4 = roadPt(q, d3, A0 - 2.2), R4 = roadPt(q, d3, B0 + 2.2), yb = y3 - 3.2;
+                    var d3 = dOf(k3), y3 = yAt(k3), L3 = roadPt(q, d3, A0), R3 = roadPt(q, d3, B0), L4 = roadPt(q, d3, A0 - (q.foot ? 0.9 : 2.2)), R4 = roadPt(q, d3, B0 + (q.foot ? 0.9 : 2.2)), yb = y3 - (q.foot ? 1.6 : 3.2);
                     pos2.push(L3[0] * U, y3 * U, L3[1] * U, L4[0] * U, yb * U, L4[1] * U, R3[0] * U, y3 * U, R3[1] * U, R4[0] * U, yb * U, R4[1] * U);
                     if (k3 > 0) { var b3 = (k3 - 1) * 4; idx2.push(b3, b3 + 1, b3 + 4, b3 + 1, b3 + 5, b3 + 4, b3 + 2, b3 + 6, b3 + 3, b3 + 3, b3 + 6, b3 + 7); }
                 }
@@ -78526,13 +78632,14 @@ const ThreeRenderer = (function () {
                     gR.add(mkR(pa, ix, ua, new THREE.MeshLambertMaterial({ map: _hzTex(ap.key) || null, color: (ap.tint != null) ? ap.tint : 0xffffff, side: THREE.DoubleSide }))); }
                 /* the road: one ribbon a band, each in its own sheet (a road of one sheet is one band) */
                 bands.forEach(function (bd) {
-                    var pos = [], uv = [], idx = [], bw = bd.b - bd.a;
+                    var pos = [], uv = [], idx = [], idxFar = [], bw = bd.b - bd.a;
                     for (var kb = 0; kb <= n; kb++) {
                         var db = dOf(kb), yb2 = yAt(kb), Lb = roadPt(q, db, bd.a), Rb = roadPt(q, db, bd.b);
                         pos.push(Lb[0] * U, yb2 * U, Lb[1] * U, Rb[0] * U, yb2 * U, Rb[1] * U); uv.push(bd.a * U / TM, db * U / TM, bd.b * U / TM, db * U / TM);
-                        if (kb > 0) { var a3 = (kb - 1) * 2; idx.push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2); }
+                        if (kb > 0) { var a3 = (kb - 1) * 2; ((q.key2 && dOf(kb - 1) >= 11) ? idxFar : idx).push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2); }
                     }
                     if (bw > 0.01) gR.add(mkR(pos, idx, uv, new THREE.MeshLambertMaterial({ map: _hzTex(bd.key || 'urban:RoadGeneric1a') || null, color: (bd.tint != null) ? bd.tint : 0xffffff, side: THREE.DoubleSide })));
+                    if (bw > 0.01 && idxFar.length) gR.add(mkR(pos, idxFar, uv, new THREE.MeshLambertMaterial({ map: _hzTex(q.key2) || null, color: 0xffffff, side: THREE.DoubleSide })));   /* (`key2`: a trail wears the far room's sheet from 11 m out) */
                 });
                 /* the paint: a solid line runs the whole way, a dashed one in its own beat */
                 var byCol = {};
@@ -78572,7 +78679,8 @@ const ThreeRenderer = (function () {
                 if (ROADS.length && onEdgeRoad(px, pz)) continue;   // THE ROAD RUNS ON: no tree on it
                 if (roadLanes.length && roadLanes.some(function (L) { var qx = px - L.x, qz = pz - L.z; return (qx * L.dx + qz * L.dz) > -2 && Math.abs(qx * L.dz - qz * L.dx) < L.hw; })) continue;   // THE ROAD RUNS ON (2026-11-22): no tree on a road out's asphalt
                 var thin = E.deep ? (P.d < 44 ? 1 : 0.6) : P.d < 22 ? 1 : P.d < 40 ? 0.5 : 0.28; if (low) thin *= 0.6;   /* `edges.deep: true` (2026-11-20, The Woods): a room deep in a wood, the trees past its line stay thick to the end of the planting, so no flat land shows between the trunks */
-                if (P.W.forest > 0.5) { if (c2 > thin * P.W.forest) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
+                var wf = P.W.forest + (P.W.wood || 0);   /* (A FOOTPATH KEEPS ITS WOOD: the forest THE WAY ON opened beside a trail) */
+                if (wf > 0.5) { if (c2 > thin * Math.min(1, wf)) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if ((E[P.side] || {}).bare) continue; if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
                 else if ((P.W.grass || 0) > 0.6 && P.d > 4) { if (c2 > 0.045 * thin) continue; plantTree(kindsG[(d2 * kindsG.length) | 0], hOf(6 + d2 * 5), px, pz, P.y * U); planted++; }   // open green country: a tree here and there
                 else if ((P.W.snow || 0) > 0.6 && P.d > (E.snowTrees ? 2.2 : 4)) { if (c2 > (+E.snowTrees || 0.03) * thin) continue;   /* `edges.snowTrees: p` (2026-11-20, the Snowy Pines three plots wide): a room in a snow WOOD, its pines run on past its line (p = how many of the lattice points grow one; 0.03 = open tundra) */ plantTree(E.snowTrees ? kindsSW[(d2 * kindsSW.length) | 0] : kindsS[(d2 * kindsS.length) | 0], hOf(5.5 + d2 * 4), px, pz, P.y * U); planted++; }   // tundra: a few snow pines
@@ -84198,11 +84306,12 @@ const ThreeRenderer = (function () {
                 var subs = String(door.sub || door.label || '').split('·'), toName = (subs[subs.length - 1] || '').trim() || String(door.label || 'THE PATH');
                 var hereName = String((ctx.room && ctx.room.label) || '').split('·')[0].trim();
                 var plank = function (text, w, y, back) {
-                    var b = _hqBox(w, 0.38, 0.07, wood); b.position.set((px - (back ? -1 : 1) * (w / 2 - 0.25)) * U, y * U, pz * U); g.add(b);
+                    var bz = pz + (back ? -0.115 : 0.115);   // (2026-11-22) on the post's face: in the post's own plane the post hid the name's first letters
+                    var b = _hqBox(w, 0.38, 0.07, wood); b.position.set((px - (back ? -1 : 1) * (w / 2 - 0.25)) * U, y * U, bz * U); g.add(b);
                     var t = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_trail_' + text, [text], { w: 1024, h: 224, color: '#f4ead0', bg: '#5e4226', border: '#2e1f10', pad: 0.2, weight: 'bold', font: 'Georgia, "Times New Roman", serif' }) : null;
                     if (!t) return;
                     var m = _hqBasic(0xffffff); m.map = t; m.needsUpdate = true;
-                    var f = new THREE.Mesh(new THREE.PlaneGeometry((w - 0.06) * U, 0.34 * U), m); f.position.set(b.position.x, y * U, (pz + (back ? -0.04 : 0.04)) * U); if (back) f.rotation.y = Math.PI; g.add(f);
+                    var f = new THREE.Mesh(new THREE.PlaneGeometry((w - 0.06) * U, 0.34 * U), m); f.position.set(b.position.x, y * U, (bz + (back ? -0.04 : 0.04)) * U); if (back) f.rotation.y = Math.PI; g.add(f);
                 };
                 plank(toName, 2.0, 2.6, false);
                 if (hereName) plank(hereName, 1.7, 2.12, true);
@@ -84511,7 +84620,7 @@ const ThreeRenderer = (function () {
         }
         /* THE DARK: cards across the way, deepening to solid at the end (soft-edged in the open, square in a tube) */
         /* THE OPEN SEAM (2026-11-17, One World: data.js DOOR_HQ.ways.open): nothing stands in open country. No dark. */
-        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open' || openLand) ? 0 : 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
+        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open' || openLand || (look === 'trail' && P.inside && !P.mouth && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room))) ? 0 : 7,   /* (a trail's free end in open land: no dusk either, 2026-11-22) */ d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
         for (var i = 0; i < n; i++) {
             var t = (i + 1) / n, dd = d0 + (L - 0.15 - d0) * t, op = (i === n - 1) ? 1 : Math.min(1, 0.7 * Math.pow(t, 2.2));   // (2026-10-05) a dusk that deepens, the way still seen: only the far end is solid
             var cw = P.roof ? W + 0.04 : W + ((P.spread != null) ? +P.spread : 3.2), ch = P.roof ? H + 0.1 : H + 2.5;
@@ -84624,7 +84733,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(pl.y - _hqPassFloor(p, a.depth)) > 2.5) continue;
             var d0 = P.deep * 0.25, k = (a.depth - d0) / Math.max(0.5, P.deep - d0);
             k = k < 0 ? 0 : k > 1 ? 1 : k; k = k * k * (3 - 2 * k);
-            k *= (P.look === 'open') ? 0 : 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black. THE OPEN SEAM (2026-11-17): open country does not dim at all
+            k *= (P.look === 'open' || P.noDim) ? 0 : 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black. THE OPEN SEAM (2026-11-17): open country does not dim at all
             if (k > dark) { dark = k; col = P.fade; }
             if (a.depth >= P.deep) {
                 if (H.passLatch !== p.door.id && !H.paused && H.opts.onEnterDoor && !HQ_DOOR_LOCKED[p.state]) {
@@ -84675,7 +84784,9 @@ const ThreeRenderer = (function () {
         var PS = _hqPassageSpec(door);
         if (PS) {
             G.add(grp);
-            if (PS.look === 'trail' && box && !box.free && !door.secret) { try { _hqBuildTrailPost(room, door, y0); } catch (e) {} }
+            if (PS.look === 'trail' && box && (!box.free || (typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room))) && !door.secret && PS.post !== false) { try { _hqBuildTrailPost(room, door, y0); } catch (e) {} }   /* (a free end in open land has its signpost too, 2026-11-22; `passage.post: false` = none) */
+            /* NO DUSK IN OPEN COUNTRY (2026-11-22): a trail out of a room whose land runs on past its line (THE NATURAL EDGES) is walked in daylight: the view does not dim on the way to the crossing */
+            try { if (PS.look === 'trail' && !PS.mouth && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room)) PS.noDim = true; } catch (eND) {}
             var prec = { door: door, group: grp, lens: null, glow: null, plate: null, plateEl: null, plateChip: null, state: 'open', level: level, Rw: Rw, y0: y0, wide: false, ow: PS.w, oh: PS.h, inward: inward, box: box, leaf: null, way: kind, motion: null, openT: 0,
                          mouthY: null, wayOpen: true, passage: PS };
             _hq.doors.push(prec);
@@ -84726,26 +84837,36 @@ const ThreeRenderer = (function () {
     function _hqBuildTrailPost(room, door, y0) {
         var U = _hqUnits(), G = _hq.doorGroup, box = _hqBoxWall(room, door.wall, door);
         if (!box || !G) return;
-        var wood = _hqMat(null, 1, 1, { color: 0x5b4632, shininess: 4 }), board = _hqMat(null, 1, 1, { color: 0x7a6044, shininess: 6 });
+        /* A TRAIL'S SIGNPOST IS THE FOOTPATH'S (2026-11-22, mondo: "footpaths get wooden signposts ... signs face the traveller"): the waymark was a
+           1.7 m stick with a hand-sized board, its arrow pointing off the path, reading "?" until the far room had been stood in. It is the same
+           post a footpath road end stands (_hqWayBuilders.road, `foot`): 3 m of timber, a plank over the path's edge that NAMES where the trail
+           goes for the one leaving (always: a signpost is read, not discovered), a smaller plank on its back that names this place for the one
+           arriving. A name is the far room's label: its part after "THE TRAIL ·" for a trail room, else its first part. */
+        var wood = _hqMat('wood', 1, 1, { color: 0x8a6a48, shininess: 3 });
         var grp = new THREE.Group();
         /* the lane's right as you walk out: along the wall, 2.4 m from the door's centre (clear of the 3.4 m pad's walk) */
         var ax = -box.nz, az = box.nx;
         grp.position.set((box.wx + box.nx * 0.6 + ax * 2.4) * U, y0 * U, (box.wz + box.nz * 0.6 + az * 2.4) * U);
         grp.rotation.y = box.yaw;
-        var post = new THREE.Mesh(new THREE.BoxGeometry(0.13 * U, 1.7 * U, 0.13 * U), wood); post.position.y = 0.85 * U; grp.add(post);
-        var sign = new THREE.Mesh(new THREE.BoxGeometry(0.78 * U, 0.2 * U, 0.04 * U), board); sign.position.set(-0.3 * U, 1.42 * U, 0.08 * U); grp.add(sign);
-        var tip = new THREE.Mesh(new THREE.ConeGeometry(0.14 * U, 0.2 * U, 3), board); tip.rotation.z = Math.PI / 2; tip.position.set(-0.78 * U, 1.42 * U, 0.08 * U); grp.add(tip);
+        var toPath = (ax * Math.cos(box.yaw) - az * Math.sin(box.yaw)) > 0 ? -1 : 1;   // the group's own x that points back at the path's middle
+        var post = _hqBox(0.16, 3.0, 0.16, wood); post.position.set(0, 1.5 * U, 0); grp.add(post);
+        var cap = _hqBox(0.24, 0.06, 0.24, wood); cap.position.set(0, 3.03 * U, 0); grp.add(cap);
+        var nameOf = function (label) { var ps = String(label || '').split('·').map(function (t) { return t.trim(); }).filter(Boolean); return (ps.length > 1 && /^THE TRAIL$/i.test(ps[0])) ? ps[1] : (ps[0] || ''); };
+        var toName = nameOf(door.label).toUpperCase() || 'THE TRAIL', hereName = nameOf(room && room.label).toUpperCase();
+        var plank = function (text, w, y, back) {
+            var cx = toPath * (back ? -1 : 1) * (w / 2 - 0.25);
+            var bz = back ? -0.115 : 0.115;   // the plank is nailed on the post's face (in the post's own plane the post hid the name's first letters)
+            var b = _hqBox(w, 0.38, 0.07, wood); b.position.set(cx * U, y * U, bz * U); grp.add(b);
+            var t = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_trail_' + text, [text], { w: 1024, h: 224, color: '#f4ead0', bg: '#5e4226', border: '#2e1f10', pad: 0.2, weight: 'bold', font: 'Georgia, "Times New Roman", serif' }) : null;
+            if (!t) return;
+            var m = _hqBasic(0xffffff); m.map = t; m.needsUpdate = true;
+            var f = new THREE.Mesh(new THREE.PlaneGeometry((w - 0.06) * U, 0.34 * U), m); f.position.set(cx * U, y * U, (bz + (back ? -0.04 : 0.04)) * U); if (back) f.rotation.y = Math.PI; grp.add(f);
+        };
+        plank(toName, 2.0, 2.6, false);
+        if (hereName && hereName !== toName) plank(hereName, 1.7, 2.12, true);
         grp.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
         grp._ew_hqJoined = door.id;
         G.add(grp);
-        if (typeof THREE.CSS2DObject === 'function' && door.label) {
-            var _pf = _hqPlateFor(door);   // the room's name once stood in, else '?'
-            var pm = _hqPlateMake('hq-plate hq-plate-way', { no: _pf.no, label: _pf.label, known: _pf.known }, { tone: 'sign', k: 0.8, op: 0.85, maxW: 0.72, css: { fontSize: '10px', opacity: '0.85' } });
-            /* R6: the GPU plate is painted ON the sign's face (centred on the board); the CSS2D one floats over it */
-            if (pm.gpu) pm.obj.position.set(-0.3 * U, (1.42 - (_pf.no ? 0.075 : 0.045)) * U, (0.08 + 0.025) * U);
-            else pm.obj.position.set(-0.3 * U, 1.72 * U, 0.1 * U);
-            grp.add(pm.obj);
-        }
     }
     function _hqBuildDoors(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
@@ -91758,7 +91879,7 @@ const ThreeRenderer = (function () {
             var rc = (blk && blk.rect) || cat.rect || { hw: 0.95, hd: 2.3 };
             _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: 'car', key: p.key, grp: grp, blk: blk || null, hw: rc.hw, hd: rc.hd, hgt: blk ? Math.max(1.2, _hqBlkTop(blk) - y) : 1.5,
                              x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
-                             label: cat.label ? String(cat.label).toUpperCase() : ((R.labels || {}).car || 'THE CAR'), sub: 'W GAS · S BRAKE / REVERSE · A / D STEER · SPACE HANDBRAKE' });
+                             label: cat.label ? String(cat.label).toUpperCase() : ((R.labels || {}).car || 'THE CAR'), sub: '', verb: 'DRIVE' });   // (mondo 11-22: "its a fucking car, its the same controls every racing game ever, get rid of them": no controls on the box)
             return;
         }
         _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: kind, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
@@ -97737,6 +97858,7 @@ const ThreeRenderer = (function () {
        yet three composed each one's matrix every frame. Inside the frame's one walk, a cell off the camera is not walked (as THE
        STILL WALK leaves an off-camera chunk), and in a drawn cell a batch is walked once when it joins and then only when the
        group or its cell moved, or the batch's own pose changed (ten numbers compared). Off: window.EW_HQ_INST_MW_ALL. */
+    var _hqInstMwEach = false;
     function _hqInstGroupMW(force) {
         var proto = THREE.Object3D.prototype.updateMatrixWorld;
         if (!_hqStWalk || (typeof window !== 'undefined' && window.EW_HQ_INST_MW_ALL)) return proto.call(this, force);
@@ -97756,8 +97878,13 @@ const ThreeRenderer = (function () {
             var p = c.position, q = c.quaternion, sc = c.scale, cs = p.x + p.y * 1.618 + p.z * 2.414 + q._x * 3.3 + q._y * 5.7 + q._z * 7.1 + q._w * 11.3 + sc.x * 13.7 + sc.y * 17.9 + sc.z * 19.3;
             var cAll = all || c._ew_mwStale || cs !== c._ew_mwSum;
             if (cAll) { c._ew_mwSum = cs; c._ew_mwStale = false; c.updateMatrix(); c.matrixWorld.multiplyMatrices(this.matrixWorld, c.matrix); c.matrixWorldNeedsUpdate = false; }
-            var cc = c.children;
-            for (var j = 0, m = cc.length; j < m; j++) {
+            /* THE BATCHES BY TURN (2026-11-22, mondo's 18:10 F3: "Matrix walk by group: hq_instances 1.00" with nothing moving): every
+               batch of every drawn cell had its ten pose numbers read each frame. A cell whose batch count is unchanged now has one
+               batch in eight compared a frame (its turn by its place); a cell that gained or lost a batch, or moved, is read whole
+               that frame as before. Off: window.EW_HQ_INST_MW_EACH */
+            var cc = c.children, m = cc.length, tn = cAll || c._ew_mwN !== m || _hqInstMwEach ? -1 : ((c._ew_mwT = ((c._ew_mwT | 0) + 1) & 7));
+            c._ew_mwN = m;
+            for (var j = tn < 0 ? 0 : tn; j < m; j += tn < 0 ? 1 : 8) {
                 var b = cc[j], bp = b.position, bq = b.quaternion, bs = b.scale, s2 = bp.x + bp.y * 1.618 + bp.z * 2.414 + bq._x * 3.3 + bq._y * 5.7 + bq._z * 7.1 + bq._w * 11.3 + bs.x * 13.7 + bs.y * 17.9 + bs.z * 19.3;
                 if (cAll || b._ew_mwSum !== s2 || b.matrixWorldNeedsUpdate || b.children.length) { b._ew_mwSum = s2; b.updateMatrixWorld(true); }
             }
@@ -97767,7 +97894,7 @@ const ThreeRenderer = (function () {
         try { var CG = _hq && _hq.charGroup; if (CG && !CG._ew_st && CG.updateMatrixWorld !== _hqCharGroupMW && !Object.prototype.hasOwnProperty.call(CG, 'updateMatrixWorld')) CG.updateMatrixWorld = _hqCharGroupMW; } catch (eCG) {}
         var S = _hqStS; S.hid = 0; S.groups = S.out = S.full = S.tops = S.fresh = S.movers = S.swept = 0;
         var t0 = performance.now();
-        _hqStOffC = _hqStillOff(); _hqStMqEvery = typeof window !== 'undefined' && !!window.EW_HQ_STILL_MERGED_EVERY; _hqStNoBook = typeof window !== 'undefined' && !!window.EW_HQ_STILL_NO_HELD_BOOK;   // the walk's flags, read once (not per group: a window lookup is slow on Firefox)
+        _hqStOffC = _hqStillOff(); _hqStMqEvery = typeof window !== 'undefined' && !!window.EW_HQ_STILL_MERGED_EVERY; _hqStNoBook = typeof window !== 'undefined' && !!window.EW_HQ_STILL_NO_HELD_BOOK; _hqInstMwEach = typeof window !== 'undefined' && !!window.EW_HQ_INST_MW_EACH;   // the walk's flags, read once (not per group: a window lookup is slow on Firefox)
         _hqStNow = t0; _hqStWalk = true;
         try {
             /* THE WALK'S SPLIT (lens open only, 2026-11-18): the scene's own step of three's walk, then each top child timed by its
@@ -106874,6 +107001,7 @@ const ThreeRenderer = (function () {
             try { renderer.render(sc, cam); } catch (e) { out.error = String(e && e.message || e); }
             return out;
         },
+        bundleFirsts: function () { return { left: _ewBun.rpShow ? _ewBun.rpShow.repsSk : 0, asked: _ewBun.rpShow ? _ewBun.rpShow.reps : 0, audit: _ewBun.fAudN | 0, auditWrote: _ewBun.fAudBad | 0 }; },   // THE FIRSTS BY BUFFER's counts (dev)
         bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, recorded: st.recN, why: st.why }; }); },
         /* THE SHADER CACHE: the counts; 'clear' forgets every recipe (this session's warm builds stay). .gl = the classic renderer's
            cache (THE TITLE WARM), .late = THE LATE LOOK of the renderer drawing now */
