@@ -422,7 +422,10 @@ STAND.forEach(S => {
         if (sm.post) { const lat = r2((ns ? d.x : d.z) + right * (half + 1.2)); R.props.push({ key: 'signpost', x: ns ? lat : along, z: ns ? along : lat, face: { n: 0, s: 180, e: 90, w: 270 }[d.wall] }); GATE_P++; return; }
         const words = sm.sign, bw = r2(Math.max(3.4, words.length * 0.34 + 1.0)), bh = 1.3, lat = r2((ns ? d.x : d.z) + right * (half + 1.0 + bw / 2)), STEEL = 'urban:MetalWallRibbed1a', P = [];
         for (const q of [-1, 1]) P.push({ s: 'box', p: [r2(q * (bw / 2 - 0.4)), 0, 0], size: [0.14, 4.5, 0.14], key: STEEL, tint: 0x70767c });
-        P.push({ s: 'box', p: [0, 3.1, 0.08], size: [bw, bh, 0.08], tint: 0x0b5c3a }, { s: 'quad', p: [0, 3.18, 0.14], size: [r2(bw - 0.4), r2(bh - 0.16)], key: 'txt:' + words + '|#ffffff|#0b5c3a|' + r2((bw - 0.4) / (bh - 0.16)) + '||way', uv: 'fit', kind: 'wall', glow: 0.25 });
+        /* THE HIGHWAY SIGNS (2026-11-22, mondo: "use highway gothic ... a white border that is inset ... Round the corners"): the board is the guide
+           sign panel (three-renderer.js sign style 'h', font 'hwy'), Title Case, a steel back inside its round corners */
+        const tc = String(words).toLowerCase().replace(/(^|[^a-z0-9'])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+        P.push({ s: 'box', p: [0, 3.17, 0.08], size: [r2(bw - 0.14), r2(bh - 0.14), 0.06], key: STEEL, tint: 0x8a8e94 }, { s: 'quad', p: [0, 3.1, 0.14], size: [bw, bh], key: 'txt:' + tc + '|#ffffff|#0b5c3a|' + r2(bw / bh) + '||hwy||h', uv: 'fit', kind: 'wall', glow: 0.25 });
         R.features.push({ k: 'arch', id: 'des:gate:sign:' + d.id, x: ns ? lat : along, z: ns ? along : lat, rot: { n: 0, s: 180, e: 90, w: 270 }[d.wall], parts: P }); CUT_EXTRA++; });
     if (stubSq.length) { const inStub = (x, z) => stubSq.some(q => Math.abs(x - R.gcx(q[0])) <= C / 2 + 0.2 && Math.abs(z - R.gcz(q[1])) <= C / 2 + 0.2);
         R.props.forEach(q => { if (inStub(q.x, q.z)) console.log('STUB ' + S.label + ': prop ' + q.key + ' at ' + q.x + ', ' + q.z); });
