@@ -123,6 +123,21 @@ on the centre line (46 px), "× n · OFF THE GROUND 4.2 S" on a line under it, s
 (the lap timer) keeps the plain `.hq-trick-head` row. RULE: never put this line back in a panel; never put words beside the number.
 Proof picture taken (training room, HEAD 484f6b9 + this change).
 
+## SKATEBOARDING — THE RAIL ON ITS LINE (grinding in the air beside a rail) — 2026-11-22
+mondo (the Badlands Highway): "these rails that when i grind on them im like a whole foot or two off to the side grinding in the air".
+**Cause**: a pack railing (data.js `HQ_STAIR_PACK.railings`, drawn by three-renderer.js `_spBuildRailings`) was stood with the MIDDLE OF
+ITS BOX on the row's line (`_spSoup` frame `c`), and the box takes in whatever the pack drew beside the rail. The grind (`info.rails`)
+and the walker's wall run on the row's line. Measured in the pack file, the top rail's middle off the line: `guard` 0.553 m (it stands
+at the edge of a 1.19 m kerb; the highway's guard rails), `pipe` 0.181 m (the skate parks' pipe rail), `glass_panels` 0.050, `double`
+0.045, `bars_curb` 0.029, `wall_handrail` 0.025, `handrail` 0.017, `glass` 0.015, the other 20 under 2 mm.
+**Fix**: `_spRailCentre(soup, spec, unit)`, once per railing kind when its piece is cut: the middle of the TOP RAIL (the top 6 % of its
+height) is moved onto the line, so the drawn rail, the grind and the wall are one line for every railing and any railing added later.
+The drawn model moves, never the grind or the wall (rows, walls and the nav stay where they were). Kill-switch for a before picture:
+`window.EW_NO_RAIL_CENTRE`.
+**Audited, already on their line** (drawn and registered from the same numbers): the bridge rails, the ring bridges' arcs, the decks'
+rope rails, the cave bridge rails, the mezzanine / gallery arcs, the escalator handrails, flights' cheeks, the prop rail `railing_1m`.
+Proof: `/mnt/project-files/grind-rails/badlands_guard_rail_before_after.jpg` (the grind line drawn red; HEAD f5a9153 + this change).
+
 ## SKATEBOARDING — THE GRINDS, THE BALANCE METER, THE WALLS — 2026-11-20
 mondo, from the list of ideas after the off-ground clock: "Let's do 3, 4, and 6." All three in three-renderer.js "SKATEBOARDING",
 tables in data.js `HQ_SKATE_RULES` (renderer fallbacks in `HQ_SKATE_DEFAULT`, keep the keys in step).
