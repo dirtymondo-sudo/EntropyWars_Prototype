@@ -14404,4 +14404,25 @@ still walked, every door reached). What made them, and what binds every room:
 - **The castle tool** (`bake-camelot-castle.js`): a parapet is WALKED 2.05 m (the merlons' tops) and drawn 1.15 m (`par()`); the wings' south doorways are walked
   shut (the way out is the leaf half a metre inside; past the doorway is the room's unbuilt strip); the natives' lines are read from the room's own rows in
   data.js now that the old keep and dungeon rooms are deleted (the tool had stopped running).
+- A FINDER LIMIT that rule (2) uncovered: on a coarse grid (1.75 m) a walk-in house's doorway falls between two nodes, so the finder does not read the
+  house's inside (before, it got in by stepping on furniture through the wall, which the walker could do too: that clip is gone). Checked on all 151
+  rooms before and after: no room gained a trap, a crevice or a dip; what the solver no longer reaches is wall lines, parapet tops and such insides.
 - Left: 3 SLOTs in the kingdom room, the back lane one square wide between the town wall's foot and the houses, open at both ends.
+
+**THE UNDERGROUND AFTER (11-22, the five labyrinth rooms: West Tunnel, Long Tunnel, Hollow Earth, the Cavern, Agartha):** all five read
+0 traps, 0 crevices, 0 dips, 0 slots (before: 29 traps, 6 crevices, 21 dips). Three tools, the same three causes, all at a SUMP:
+- **A SUMP'S ROCK SIDES** (bake-underground.js, bake-ug.js): the rock began ON the line of a sump's squares and the square water stops a
+  soft shore (0.4 m) short of its squares' edge, so every rock side of a sump had a dry strip one node wide at the BED: stepped onto off the
+  brim's corner, never left. A sump is its own `space` row now, pulled `SUMP_IN` (0.6 m) back from each side that is all rock: the rock
+  stands out over the bed, straight up out of the water. Any tool that writes `w` squares into a `kind: 'plan'` room needs the same.
+- **A SUMP'S BED AND BRIM** (the same two tools): the bed lay a level or two under the floor, so the brim was a dry face 1 to 2 m deep down
+  to the waterline. The bed lies `SUMP_BED` (1.2 m) under the LOWEST floor beside the sump and the water `SUMP_TOP` (0.3 m) under it: the lip
+  left is under a step. Two sumps on two levels side by side are two sumps, each with its own sheet (one sheet stood 8 m over the lower floor).
+- **THE SPIRE'S LAKE IS WADED** (bake-agartha.js): the tool's own note said the pit's water "is waded, out to its ladder", but the rows said
+  `deep_water` (never entered) and had no `absY` (the surface stood 2.3 m over the plan's). A walker off the ring or the island slid 8 m down
+  the face and stood at the waterline for good. The lake's rows are `key: 'water'`, `absY: true`: fallen into, waded round the island to the
+  ladder at its south-west corner, climbed out of. The shallow pools under a floor stay `deep_water`. Nothing was taken away.
+- **A LIQUID'S LOOK IS NOT ITS RULE** (11-22, mondo: "the color shouldnt change the behavior of the water"): a `pool` / `stream` row's `key`
+  says how it is WALKED, its `look: 'deep_water'` only how it is DRAWN (three-renderer.js `_hqGridWaterBuild`'s dark pass). The Spire's lake is
+  `key: 'water', look: 'deep_water'`: the same dark water as before, waded. Never change a liquid's key to change its colour, or its colour to
+  change its walk.

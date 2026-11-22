@@ -513,6 +513,11 @@ the Claude Doc "Weapon-holding units: who gets an MPFB version".
   slit at the armpit of the wide sleeve and pointed shoulder tops) and gladiator F (`gladiatorf_t2b.glb`, `--headgear EDGECLEAN=6
   HOLEFILL=24 SHOWRING=2`: clean greaves and thighs, an open-faced helmet). Ninja F's loose hair strands by the collarbones and neck:
   `DROP='-0.08,0.23,-0.09,0.13;0.034,0.023,-0.162,0.03'` on the t2b bake.
+  THE ROBE'S ARMPIT (same day, mondo: "the male swordfighter's robe is still fucked up, holes in it from the side around the arm
+  seam"): the holes were the body's bare flank + upper arm seen through the open armpit of the wide sleeve (a kimono's sleeve is its own
+  panel), made wider by the bake cutting the stretched faces at the seam. Bake now `HIDETORSO=1 TORN=9` + the flags above: new env
+  HIDETORSO hides all skin on hips, spine, shoulders, upper arms and thighs, so the opening shows the robe's dark inside; TORN=9 keeps
+  the seam faces. Proof `/mnt/project-files/weapon-hands/swordfighter_robe_closed.jpg`. Still: pointed shoulder tops.
 
 ---
 
