@@ -14124,6 +14124,9 @@ and press e ... i can't see the road going out, the road just stops and its all 
   - ROUND 3, A TRAIL SIGNPOST (mondo: "its not a road ... It just needs a sign or crosspost or something, not a freaking highway exit sign
     to the woods"): a `foot` road end builds no gantry, no green plate and no LEAVING plate: one wooden post beside the path, a plank naming
     where it goes (the last part of the end's `sub`: THE WOODS), a smaller plank on its back naming this room for the one arriving.
+  - ROUND 4, THE PATH OUT IS DIRT (mondo: "if its a dirt road then this path that leads out of it past the edge needs to be dirt, not this
+    tile pavement"): a `foot` end's strip wears the FAR room's path sheet (`DOOR_HQ.rooms[door.action.room].terrain.path`; the Valley Road:
+    dirt_2), this room's only when the far room has none. He keeps the Valley Road a dirt road with cars "for now".
   - THE LANE LINES NEVER DREW: the paint quads wind face down (z runs negative); the paint material is double-sided now.
 - Probe: `node playtest_city.js site_ow_r9 '[{"name":"walk_n","x":-35,"z":-180,"face":0,"ground":true,"walk":{"key":"w","max":40000}}]'` walks
   into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as

@@ -83508,7 +83508,10 @@ const ThreeRenderer = (function () {
                 var a = fieldAt(0, -tOut), b = crest(RAMP); return Math.max(h, a + (b - a) * d / RAMP);
             };
             var asphalt = _hqMat(null, 1, 1, { color: neon ? 0x8a8aa4 : (EF ? 0xb4b4b8 : 0xffffff), shininess: neon ? 24 : 6, specular: 0x151515, emissive: 0x0e0e0e, emissiveIntensity: 1 });
-            var footKey = foot && ctx.room && ctx.room.terrain && ctx.room.terrain.path; if (footKey) asphalt.color.setHex(0xffffff);
+            /* A PATH OUT WEARS THE GROUND OF WHERE IT GOES (2026-11-22, mondo: "if its a dirt road then this path that leads out of it past the edge needs
+               to be dirt, not this tile pavement"): the far room's own path sheet (the Valley Road: dirt_2); this room's path sheet only when the far room has none */
+            var farRoom = null; try { farRoom = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && door.action && door.action.room) ? DOOR_HQ.rooms[door.action.room] : null; } catch (eFR) { farRoom = null; }
+            var footKey = foot && ((farRoom && farRoom.terrain && farRoom.terrain.path) || (ctx.room && ctx.room.terrain && ctx.room.terrain.path)); if (footKey) asphalt.color.setHex(0xffffff);
             var asT = (footKey && texOf(footKey)) || (EF && texOf('urban:RoadGeneric1a')) || texOf('urban:PlasterWallPainted1b'); if (asT) { asphalt.map = asT; asphalt.needsUpdate = true; }   // the pack's asphalt, the city streets' own sheet and tint
             if (EF) { asphalt.polygonOffset = true; asphalt.polygonOffsetFactor = -1; asphalt.polygonOffsetUnits = -1; }
             var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }); paint.polygonOffset = true;   /* (both sides: the paint quads wind face down, so the lane lines never drew, 2026-11-22) */ paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
