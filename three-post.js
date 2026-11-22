@@ -5240,6 +5240,7 @@ const ThreePost = (function () {
         setFieldLight: setFieldLight, getFieldLight: getFieldLight, setWhiteDay: setWhiteDay, getWhiteDay: getWhiteDay,   // THE SEAMLESS FIELD: the room's rig over the battle's
         getExposureContext: getExposureContext,
         getSceneLook: getSceneLook,
+        getGradeNow: function () { try { var u = _cinematicPass && _cinematicPass.material.uniforms; return u ? { gain: u.uGain.value, night: u.uNightGrade.value, on: !!_cinematicPass.enabled, exposure: _renderer ? _renderer.toneMappingExposure : null } : null; } catch (e) { return null; } },   // a probe: the frame pass's gain + night grade as last drawn (the walk beside the fight)
         getPlayerFogHex: _playerFogHex,
         getWornRetroState: getWornRetroState,
         getWornCinematicState: getWornCinematicState,
