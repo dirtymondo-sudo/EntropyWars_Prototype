@@ -4233,6 +4233,23 @@
         }
         /* (mondo 11-17: "Why ... are there 2 panels that say 'the spaceship' ... Remove the clutter, dont need the controls": aboard the flown ship there is
            no prompt and no toast; E still steps off) */
+        /* the left mouse button lit: the twin of hud.js _HrlgRmbIcon (the combat menu's BACK chip) */
+        function _hqLmbIcon() { return '<svg class="hq-mouse" width="11" height="15" viewBox="0 0 12 16" aria-label="left click"><rect x="0.75" y="0.75" width="10.5" height="14.5" rx="5.25" fill="rgba(0,0,0,0.45)" stroke="currentColor" stroke-width="1.1"/><path d="M6,1.2 A4.9,4.9 0 0 0 0.8,6.2 L0.8,7 L6,7 Z" fill="currentColor"/><line x1="1" y1="7" x2="11" y2="7" stroke="currentColor" stroke-width="0.8" opacity="0.7"/></svg>'; }   // (a function, not a const: this block's lets are not yet set when the walk first asks)
+        /* the level the aimed native FIGHTS at: its own set level, else the launch's own draw (data.js hqEncounterLaunch, seeded by room + id,
+           so the prompt and the fight agree). Kept per native + party level: the prompt is set again and again while it is in reach. */
+        var _hqAimLvMemo = null;
+        function _hqAimLevel(aim) {
+            try {
+                if (!aim) return 0;
+                if ((aim.lvl | 0) > 0) return aim.lvl | 0;
+                const pl = _hqPartyLevelNow(), key = _hqCurRoom + '|' + aim.id + '|' + pl + '|' + ((aim.group && aim.group.length) || 0);
+                if (_hqAimLvMemo && _hqAimLvMemo.key === key) return _hqAimLvMemo.lv;
+                const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, aim, _hqEncounterCfgRaw(), { partyLevel: pl }) : null;
+                const lv = (L && L.levels && L.levels[0]) | 0;
+                _hqAimLvMemo = { key, lv };
+                return lv;
+            } catch (e) { return 0; }
+        }
         function _hqSetPrompt(t) {
             const el = _hqEl('hqPrompt');
             if (!el) return;
@@ -4244,7 +4261,11 @@
                 let aim = null;
                 try { if (!ThreeRenderer.hq.portalDrawn()) aim = ThreeRenderer.hq.encounterAim(); } catch (e) { aim = null; }
                 if (aim && (!t || t.id === aim.id)) {
-                    el.innerHTML = `<b>▸ ${_hqEsc(aim.label || aim.race || 'THE NATIVE')}</b><span>${_hqEsc(aim.sub || ('A NATIVE · ' + _hqEncounterBoardCopy()))}</span><i>[CLICK] ATTACK${_hqLadderPeek(aim) === 'fight' ? ' · ENGAGE' : ''}${t ? ' · [E] TALK' : ''}</i>`;
+                    /* THE SHORT PROMPT (mondo 11-22: "way too much info and text ... It needs to say their level ... '[click]' needs to be the left
+                       mouse click button like how the back button in the combat menu has a right mouse click icon"): the name, the level it
+                       fights at, the actions with their inputs. No "A NATIVE", no board copy, no sub line. A phone names its own buttons. */
+                    const lv = _hqAimLevel(aim), touch = document.documentElement.classList.contains('ew-hq-touch');
+                    el.innerHTML = `<b>▸ ${_hqEsc(aim.label || aim.race || 'THE NATIVE')}</b>${lv ? `<em>LV ${lv}</em>` : ''}<i>${touch ? '[ATTACK]' : _hqLmbIcon() + ' ATTACK'}</i>${t ? `<i>${touch ? '[USE]' : '[E]'} TALK</i>` : ''}`;
                     el.style.display = '';
                     return;
                 }
