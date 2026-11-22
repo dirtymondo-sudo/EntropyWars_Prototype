@@ -14398,3 +14398,7 @@ THE REST OF THE WORLD: the list by zone of 11-22 is `/mnt/project-files/softlock
   `deep_water` (never entered) and had no `absY` (the surface stood 2.3 m over the plan's). A walker off the ring or the island slid 8 m down
   the face and stood at the waterline for good. The lake's rows are `key: 'water'`, `absY: true`: fallen into, waded round the island to the
   ladder at its south-west corner, climbed out of. The shallow pools under a floor stay `deep_water`. Nothing was taken away.
+- **A LIQUID'S LOOK IS NOT ITS RULE** (11-22, mondo: "the color shouldnt change the behavior of the water"): a `pool` / `stream` row's `key`
+  says how it is WALKED, its `look: 'deep_water'` only how it is DRAWN (three-renderer.js `_hqGridWaterBuild`'s dark pass). The Spire's lake is
+  `key: 'water', look: 'deep_water'`: the same dark water as before, waded. Never change a liquid's key to change its colour, or its colour to
+  change its walk.
