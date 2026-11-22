@@ -20638,6 +20638,7 @@ const ThreeRenderer = (function () {
                `RACE_MODELS_3D['door agent']`) parents the catalogue GLB to a hand bone of THIS model, so
                it rides the rig cache with the body — the same holder rule as the building's held props */
             if (def.hold) { try { _unitAttachHeld(m, def.hold, ts); } catch (_he) { console.warn('[3D] held prop failed', _he); } }
+            if (def.hold2) { try { _unitAttachHeld(m, def.hold2, ts); } catch (_he2) { console.warn('[3D] second held prop failed', _he2); } }   // THE WEAPONS IN THE HANDS 11-22: the other hand (the Shogun's war fan)
             try { _unitGearSync(unit, inner, ts); } catch (_ge) { console.warn('[3D] gear failed', _ge); }   // THE GEAR ON THE BODY (row 24)
 
             var hasSkin = false;
@@ -68557,6 +68558,7 @@ const ThreeRenderer = (function () {
             /* THE RACE LOOKS (2026-11-01): a def's held prop (the cowboy's revolver, the Door Agent's gun) in the viewer too, at the
                board's gun-to-body ratio (the board's body = ts × UNIT_SPRITE_SIZE_RATIO × heightRatio; here = heightRatio) */
             if (def.hold) { try { _unitAttachHeld(m, def.hold, 1 / UNIT_SPRITE_SIZE_RATIO); } catch (_he) { console.warn('[3D] viewer held prop failed', _he); } }
+            if (def.hold2) { try { _unitAttachHeld(m, def.hold2, 1 / UNIT_SPRITE_SIZE_RATIO); } catch (_he2) { console.warn('[3D] viewer second held prop failed', _he2); } }
             // wrap (frame-loop yaw) → inner (authored yawOffset) → model —
             // same nesting as the board, so the turntable never clobbers a
             // model's authored facing correction.

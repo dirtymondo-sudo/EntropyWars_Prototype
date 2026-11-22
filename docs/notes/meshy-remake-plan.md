@@ -212,6 +212,12 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | superhero (M) | batch 3 of 3, 11-13 | clean | owed | superheroFace | waiting |  |
 | superhero (F) | batch 3 of 3, 11-13 | CAPE: strips by the arms, bits by the hands, a flap mid-stride | owed | superherofFace, soft | waiting | second T2 run, `--longhair SLEEVER=0.07`. Next: creator cape `bcape_hero` and cut the T2 cape |
 | swordfighter (F) | batch 3 of 3, 11-13 | clean | owed | swordfighterFace, soft | waiting | creator katana on her back |
+| swordfighter (M) | weapons batch 2, 11-22 | first pass: torn collar, sleeve slits | owed | stock face | waiting | holds kt_katana |
+| shogun (M) | weapons batch 2, 11-22 | first pass, clean from 4 sides | owed | stock face | waiting | katana + war fan (`hold2`); `EYE=` bake |
+| gladiator (M) | weapons batch 2, 11-22 | first pass: jagged cape + skirt edges | owed | stock face | waiting | wp_gladius; `EYE=` bake |
+| gladiator (F) | weapons batch 2, 11-22 | first pass: hole in the cape, jagged edges | owed | stock face | waiting | wp_gladius |
+| ninja (M) | weapons batch 2, 11-22 | clean after `RAY_IN/RAY_OUT 0.12` | owed | stock face | waiting | wp_shuriken |
+| ninja (F) | weapons batch 2, 11-22 | first pass: jagged neckline, shoulder cut-outs | owed | stock face | waiting | wp_shuriken |
 | symbiote (F) | batch 3 of 3, 11-13 | clean (bare grey body) | owed | symbioteFace (grey skin from her own head) | waiting | no outfit piece: she has no clothes; body skin = her face skin's tone |
 | telepath (M) | batch 3 of 3, 11-13 | clean | owed | telepathFace | waiting | `hair: bald` |
 | telepath (F) | batch 3 of 3, 11-13 | clean | owed | telepathfFace, soft | waiting | CREATOR evening gown (his saved look's): T2 fused gown + arms + chest in one shell twice |

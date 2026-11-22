@@ -484,6 +484,16 @@ the Claude Doc "Weapon-holding units: who gets an MPFB version".
   plasma)? (6) MPFB versions to build: shogun, gladiator M + F, ninja M + F, swordfighter M; then their holds (katana + wp_war_fan,
   wp_gladius, wp_shuriken). (7) two-hand holds (rifle, bow draw, katana stance) + the weapon attack animations = the animation threads.
   (8) making the MPFB look the default for these units waits for his approval.
+- BATCH 2 (11-22, same thread): SIX NEW MPFB LOOKS, first pass, stock faces, non-default (`RACE_REMADE_LOOKS`): swordfighter M, shogun,
+  gladiator M + F, ninja M + F (`ewm_t2<unit>_outfit/_hat`; T2 jobs + originals in project files `weapon-hands/units/`). Bakes: shogun
+  `EYE=0,-0.07,0.336 --headgear` (no eye shells under the helmet), gladiator M `EYE=0,-0.075,0.352 --headgear`, ninja M
+  `RAY_IN=0.12 RAY_OUT=0.12 --headgear` (chest + shoulders came through the suit), the others plain (`--headgear` on gladiator F).
+  Holds: shogun katana + NEW `def.hold2` (the other hand: `wp_war_fan` in LeftHand; three-renderer.js, board + viewer), gladiator
+  `wp_gladius`, ninja `wp_shuriken`, time cop `revolver` (mondo: "his weapon should switch depending which one he is/which spell he
+  uses" = the spell threads), wizard `item_wizard_staff` (mondo: "staff ... we will do the animations later"): upright beside the arm
+  with `cant: -80` and `down` tilted 20 degrees off the fist's axis (`[0, -0.94, 0.34]`) so its head clears his face.
+  KNOWN FLAWS of the first pass: gladiator M + F jagged cape / skin edges and a hole in her cape, swordfighter M torn collar + sleeve
+  slits, ninja F jagged neckline + shoulder cut-outs, no unit faces yet (bake-face.py), nothing seen in a battle.
 
 ---
 
