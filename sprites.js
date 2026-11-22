@@ -1842,6 +1842,7 @@ const UAL_SLOTS = {
   castShove:      { clip: 'Shield_Push_Left',    lib: 4, ts: 1.3,  trim: [0.4, 2.2],  strikeAt: 1.15, pinXZ: true, defer: true },
   castRally:      { clip: 'Sword_Shout',         lib: 4, ts: 1.45, trim: [0.4, 2.4],  strikeAt: 1.20, pinXZ: true, defer: true },
   castSlash:      { clip: 'Right_Hand_Sword_Slas', lib: 4, ts: 1.1,                 strikeAt: 0.60, pinXZ: true, defer: true },
+  castRifle:      { clip: 'Side_Shot',           lib: 8, ts: 2.6,                   strikeAt: 2.00, pinXZ: true, defer: true },
   castDoubleSlash:{ clip: 'Charged_Slash',       lib: 4, ts: 1.3,  trim: [0.2, 1.95], strikeAt: 0.50, pinXZ: true, defer: true },
   castRoundhouse: { clip: 'Roundhouse_Kick',     lib: 4, ts: 1.25, trim: [0.5, 2.2],  strikeAt: 1.42, pinXZ: true, defer: true },
   castThrust:     { clip: 'Thrust_Slash',        lib: 4, ts: 1.85, trim: [0.2, 2.75], strikeAt: 0.85, travel: true, defer: true },
@@ -6475,8 +6476,8 @@ const EW_WEAPONS = {
   revolver:  { h: 0.21, gun: 1, grip: { c: [0.657, -0.215, 0], down: [0.404, -0.915, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
   pistol:    { h: 0.22, gun: 1, grip: { c: [0.6, -0.25, 0], down: [0.15, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
   plasma:    { h: 0.42, gun: 1, grip: { c: [0.7, -0.2, 0], down: [0.1, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
-  shotgun:   { h: 1.0,  gun: 1, grip: { c: [0.45, 0.02, 0], down: [0.45, -0.9, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
-  sniper:    { h: 1.2,  gun: 1, grip: { c: [0.36, -0.15, 0], down: [0.2, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
+  shotgun:   { h: 1.0,  gun: 1, anim: 'castRifle', grip: { c: [0.45, 0.02, 0], down: [0.45, -0.9, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
+  sniper:    { h: 1.2,  gun: 1, anim: 'castRifle', grip: { c: [0.36, -0.15, 0], down: [0.2, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
   wp_taser:  { h: 0.2,  gun: 1, grip: { c: [0.32, -0.08, 0], down: [0.1, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },   // the grip hangs under its back end
   wp_pepper_spray: { h: 0.16, gun: 1, anim: 'lantern', grip: { c: [0, -0.12, 0], down: [0, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },   // the can in the fist, held out
   wp_deneuralizer: { h: 0.2, anim: 'lantern', grip: { c: [-0.2, 0, 0], down: [-1, 0, 0], barrel: [0, 1, 0], depth: 0.25, back: 0.22 } },   // held up at arm's length, the flash at its top
@@ -6548,7 +6549,7 @@ function weaponSpellAnimKind(race, spell, kind) {
   if (_EW_MOVE_KINDS.test(kind)) return kind;
   if (style === 'bow' && EW_SPELL_WEAPON[spell.id]) return 'arrow';
   const wk = ewSpellWeaponKey(spell.id, race), W = wk && EW_WEAPONS[wk];
-  if (W) return W.anim || (W.gun ? 'ranged' : kind);
+  if (W) return W.anim ? (W.anim.indexOf('cast') === 0 ? 'slot:' + W.anim + '/ranged' : W.anim) : (W.gun ? 'ranged' : kind);
   let k = T[kind];
   if (typeof k === 'function') k = k(spell);
   return k || kind;
