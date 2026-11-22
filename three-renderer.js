@@ -84539,7 +84539,7 @@ const ThreeRenderer = (function () {
             }
             G.add(grp);
             if (p.pd) { grp._ew_pd = true; grp._ew_noInstance = true; } _hq.props.push({ key: p.key, grp: grp, row: p });
-            if (cat.vehicle) { grp._ew_noInstance = true; grp._ew_noBatch = true; grp._ew_pd = true; grp._ew_pcNo = true; try { _hqVehicleRegister(p, cat, grp, y); } catch (e) { console.warn('[HQ] vehicle', e); } }   // THE SPACESHIP (2026-11-17): a model vehicle (the flown ship) boards like the proc ones; it moves, so never batched
+            if (cat.vehicle) { grp._ew_noInstance = true; grp._ew_noBatch = true; grp._ew_pd = true; grp._ew_pcNo = true; try { _hqVehicleRegister(p, cat, grp, y, blk); } catch (e) { console.warn('[HQ] vehicle', e); } }   // THE SPACESHIP (2026-11-17): a model vehicle (the flown ship) boards like the proc ones; it moves, so never batched
             try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
         };
         var rows = (room.props || []).concat(_hq.terrainScatter || []);
@@ -87821,9 +87821,16 @@ const ThreeRenderer = (function () {
         var lvl = _hqLevelOf(S, pl.y);   // THE THIRD RING (2026-09-16): 0 / 1 / 2
         var best = null, bestD = 1e9;
         /* THE DEEP (2026-09-18): aboard a vehicle the target IS the vehicle (E disembarks); ashore, a moored one within its boardReach */
-        if (_hq.vehicle && _hq.vehicle.on) { var Vr = _hq.vehicle.rec; return { kind: 'vehicle', id: Vr.id, label: Vr.label, sub: 'ABOARD · E DISEMBARKS', verb: 'DISEMBARK', aboard: true, vehicle: _hq.vehicle.kind }; }
+        if (_hq.vehicle && _hq.vehicle.on) { var Vr = _hq.vehicle.rec; return (_hq.vehicle.kind === 'car') ? { kind: 'vehicle', id: Vr.id + ':in', label: Vr.label, sub: 'AT THE WHEEL · E GETS OUT', verb: 'GET OUT', aboard: true, vehicle: 'car' }   /* (its own id: the prompt redraws when you get in) */ : { kind: 'vehicle', id: Vr.id, label: Vr.label, sub: 'ABOARD · E DISEMBARKS', verb: 'DISEMBARK', aboard: true, vehicle: _hq.vehicle.kind }; }
         (_hq.boats || []).forEach(function (b) {
             var Rb = (_hqSeaRules()[b.kind] || {}), distV = Math.hypot(b.x - pl.x, b.z - pl.z);
+            if (b.kind === 'car') {   // THE CAR: how near its SIDE you stand (a bus is 11 m long), not its middle
+                if (distV > b.hd + 3 || Math.abs(b.y - pl.y) > 1.6) return;
+                var cdx = pl.x - b.x, cdz = pl.z - b.z, ccy = Math.cos(b.yaw), csy = Math.sin(b.yaw), clx = Math.max(0, Math.abs(cdx * ccy - cdz * csy) - b.hw), clz = Math.max(0, Math.abs(cdx * csy + cdz * ccy) - b.hd), cds = Math.hypot(clx, clz);
+                if (cds > (Rb.reach || 1.7)) return;
+                if (cds < bestD) { bestD = cds; best = { kind: 'vehicle', id: b.id, label: b.label, sub: b.sub, verb: 'DRIVE', vehicle: 'car' }; }
+                return;
+            }
             if (distV > (Rb.boardReach || 3.6) || Math.abs(b.y - pl.y) > 3.5) return;
             if (distV < bestD) { bestD = distV; best = { kind: 'vehicle', id: b.id, label: b.label, sub: b.sub, verb: 'BOARD', vehicle: b.kind }; }
         });
@@ -90583,8 +90590,15 @@ const ThreeRenderer = (function () {
            down by how near the nearest world is (`nearK` x the metres to its ground), so the ship slows by itself as it comes in. `follow` =
            how fast the hull swings onto the camera's heading. `camDist` back, `camUp` over: the ship sits a little under the middle. */
         ship: { v: 60, rev: 12, accel: 0.8, drag: 0.6, turn: 1.25, follow: 4.5, vertV: 26, cruise: 650, warp: 1300, nearK: 0.9, r: 2.2, boardReach: 7.0, seat: { x: 0, y: 0.9, z: 0.6 }, camDist: 20, camUp: 3.4, nose: Math.PI / 2, len: 8.0, beam: 4.0, land: 9, landH: 26, edge: 500, setDown: 45 },
+        /* THE CAR (2026-11-22, mondo: "all of the cars have the option for me to press e to use them, but they act like a boat instead of a
+           car ... Simple arcade mechanics, like the skateboarding"): metres and seconds. `v` top speed, `rev` top speed backwards, `accel` /
+           `brake` / `coast` / `hand` = m/s2 on the gas, on the brake, off the pedals, on the handbrake; `steer` = the front wheels' angle
+           standing still, `steerHi` at top speed (rad), `steerIn` = how fast the wheels turn; `wb` = the wheelbase as a share of the
+           car's length; `step` = the highest kerb it climbs, `clear` = what it drives over, `drop` = the biggest drop it rolls off,
+           `wet` = the deepest water; `reach` = how near its side you stand to get in. */
+        car: { v: 21, rev: 7, accel: 8.5, brake: 20, coast: 2.4, hand: 15, steer: 0.62, steerHi: 0.13, steerIn: 5.5, handSteer: 1.7, wb: 0.6, step: 0.34, clear: 0.34, drop: 0.7, wet: 0.45, hill: 0.55, bump: 0.25, lean: 0.035, squat: 0.02, reach: 1.7, exit: 0.75, camDist: 8.0, camUp: 0.9, len: 4.6, beam: 1.9 },
         keys: { dive: 'c', rise: 'space', board: 'e' },
-        labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP' },
+        labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP', car: 'THE CAR' },
     };
     function _hqSeaRules() {
         var DEF = (typeof HQ_SEA_DEFAULT !== 'undefined') ? HQ_SEA_DEFAULT : { boat: {}, sub: {} };   // a sandbox may eval this alone
@@ -90594,7 +90608,7 @@ const ThreeRenderer = (function () {
            boat per frame: 11 MB in 90 s of the city walk). The rules are fixed tables; a new HQ_SEA_RULES object re-merges. */
         var C = _hqSeaRules._c; if (C && C.R === R && C.D === DEF) return C.o;
         var o = Object.assign({}, DEF, R);
-        o.boat = Object.assign({}, DEF.boat, R.boat || {}); o.sub = Object.assign({}, DEF.sub, R.sub || {}); o.ship = Object.assign({}, DEF.ship || {}, R.ship || {});
+        o.boat = Object.assign({}, DEF.boat, R.boat || {}); o.sub = Object.assign({}, DEF.sub, R.sub || {}); o.ship = Object.assign({}, DEF.ship || {}, R.ship || {}); o.car = Object.assign({}, DEF.car || {}, R.car || {});
         o.labels = Object.assign({}, DEF.labels || {}, R.labels || {});
         _hqSeaRules._c = { R: R, D: DEF, o: o };
         return o;
@@ -90744,10 +90758,20 @@ const ThreeRenderer = (function () {
         _hqSeaWayCheck(pl.x, pl.z, pl.y + 0.6);
     }
     /* ── THE VEHICLES ── */
-    function _hqVehicleRegister(p, cat, grp, y) {
+    function _hqVehicleRegister(p, cat, grp, y, blk) {
         if (!_hq) return;
         _hq.boats = _hq.boats || [];
         var U = _hqUnits(), R = _hqSeaRules(), kind = cat.vehicle;
+        /* THE CAR (2026-11-22): `vehicle: true` is a road vehicle (the car pack, the Meshy cars, the buses and trucks). Before, `true` was
+           no kind the helm knew and every parked car took the skiff's rules. A shell with no wheels (`noDrive`) stays a prop. */
+        if (kind === true) {
+            if (cat.noDrive || p.noDrive) return;
+            var rc = (blk && blk.rect) || cat.rect || { hw: 0.95, hd: 2.3 };
+            _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: 'car', key: p.key, grp: grp, blk: blk || null, hw: rc.hw, hd: rc.hd, hgt: blk ? Math.max(1.2, _hqBlkTop(blk) - y) : 1.5,
+                             x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
+                             label: cat.label ? String(cat.label).toUpperCase() : ((R.labels || {}).car || 'THE CAR'), sub: 'W GAS · S BRAKE / REVERSE · A / D STEER · SPACE HANDBRAKE' });
+            return;
+        }
         _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: kind, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
                          label: (R.labels || {})[kind] || p.key.toUpperCase(), sub: kind === 'ship' ? '' : kind === 'sub' ? 'RECORDS’ BATHYSCAPHE · W / S DRIVE · A / D STEER · SPACE UP · C DOWN' : 'THE SEA LENDS IT · W / S SAIL · A / D THE TILLER' });
     }
@@ -90769,6 +90793,10 @@ const ThreeRenderer = (function () {
                 if (Math.hypot(ux, uz) > 0.25 * ul) H.vehicle.yaw = Math.atan2(ux, uz);   // (2026-11-20) the nose out toward open space, the ball behind it
                 if (H.cam) H.cam.init = false; } }
         H.cam.distSaved = H.cam.dist; H.cam.dist = (_hqSeaRules()[b.kind] || {}).camDist || 7;
+        /* THE CAR: its own block is not in its way while it drives (it follows the car and stands again where it is left); the eye starts
+           behind the boot; a long vehicle gets a longer boom */
+        if (b.kind === 'car') { var Vc = H.vehicle; Vc.y = b.y; Vc.steer = 0; Vc.gy = 0; Vc.sub = 0; if (b.grp) b.grp._ew_pdOff = true;
+            H.cam.dist = Math.max(H.cam.dist, b.hd * 2.2 + 2.5); H.cam.yaw = Math.PI - Vc.yaw; if (H.cam.pitch != null && H.cam.pitch > -0.12) { H.cam.pitchSaved = H.cam.pitch; H.cam.pitch = -0.2; } H.cam.init = false; }
         /* THE FLIGHT FIX (2026-11-20, mondo: "Im pressing w to move forward and its like going sideways"): the eye starts dead behind the hull,
            level. Before, it kept whatever heading the walk had left it with, and W flew the hull's own heading. */
         if (b.kind === 'ship') { H.cam.pitchSaved = H.cam.pitch; H.cam.pitch = 0; H.cam.yaw = Math.PI - H.vehicle.yaw; H.vehicle.climb = 0; H.cam.init = false; H.cam.kick = 0;
@@ -90785,17 +90813,28 @@ const ThreeRenderer = (function () {
         if (V.kind === 'ship') { if (H.cam.pitchSaved != null) { H.cam.pitch = H.cam.pitchSaved; H.cam.pitchSaved = null; } var cmS = H.camera; if (cmS && H._shipNear0 != null) { cmS.near = H._shipNear0; H._shipNear0 = null; cmS.fov = 52; cmS.updateProjectionMatrix(); } }
         /* step off to the side: a wade / the shore when the ground is there, else the water */
         var rxv = Math.cos(V.yaw), rzv = -Math.sin(V.yaw), best = null;
-        [[1.9, 0], [-1.9, 0], [0, 3.2], [0, -3.2]].forEach(function (o) {
+        /* THE CAR: out by the driver's door (the left), else the other side, the boot, the bonnet: the first spot that is ground at the
+           car's own level and clear of everything that blocks. The car's block stands again where it is left. */
+        var spots = [[1.9, 0], [-1.9, 0], [0, 3.2], [0, -3.2]], car = V.kind === 'car';
+        if (car) { var RC = R.car || {}, ex = (RC.exit || 0.75), sw = V.rec.hw + ex, sl = V.rec.hd + ex, md = V.rec.hd * 0.5;
+            spots = [[sw, 0.3], [-sw, 0.3], [sw, -md], [-sw, -md], [sw, md], [-sw, md], [0, -sl], [0, sl]];
+            if (H.cam.pitchSaved != null) { H.cam.pitch = H.cam.pitchSaved; H.cam.pitchSaved = null; }
+            var bk = V.rec.blk; if (bk) { var bh = _hqBlkTop(bk) - (bk.y || 0); bk.y = V.y; if (bk.top != null) bk.top = V.y + bh; bk.yaw = V.yaw; }
+            if (V.rec.grp) { V.rec.grp._ew_pdOff = false; V.rec.grp.rotation.set(V.pitch || 0, V.yaw, V.roll || 0); } }
+        spots.forEach(function (o, oi) {
             var px = V.x + rxv * o[0] + Math.sin(V.yaw) * o[1], pz = V.z + rzv * o[0] + Math.cos(V.yaw) * o[1];
-            var fy = _hqSurface(px, pz, null, true);
+            var fy = _hqSurface(px, pz, car ? V.y : null, true);
             if (fy === null || !isFinite(fy)) return;
+            if (car) { if (best || Math.abs(fy - V.y) > 1.0 || !_hqAirClearOfBlockers(px, pz, fy) || (sea && _hqSeaDepthAt(px, pz) > R.exitDepth)) return; best = { x: px, z: pz, y: fy, score: 100 - oi }; return; }
             var dry = sea ? (_hqSeaDepthAt(px, pz) <= R.exitDepth) : true;
             var score = (dry ? 10 : 0) - Math.abs(o[0]) * 0.1;
             if (!best || score > best.score) best = { x: px, z: pz, y: fy, score: score };
         });
         if (best) { pl.x = best.x; pl.z = best.z; pl.y = best.y; }
+        else if (car) { pl.x = V.x; pl.z = V.z; pl.y = V.y + (V.rec.hgt || 1.5); }   // boxed in on every side: out onto the roof
         else { pl.x = V.x + rxv * 1.9; pl.z = V.z + rzv * 1.9; pl.y = (V.kind === 'sub') ? V.y : (sea ? _hqWaterYAt(pl.x, pl.z) - R.surfaceDraft : V.y); }
         pl.visY = pl.y; pl.air = false; pl.vy = 0;
+        if (car) { pl.velX = pl.velZ = pl.velY = 0; pl.yaw = pl.targetYaw = V.yaw; if (pl.entry && pl.entry.group) { pl.entry.group.visible = true; pl.entry.group.position.set(pl.x * _hqUnits(), pl.y * _hqUnits(), pl.z * _hqUnits()); } }
         H.vehicle = null;
         _hqSeaEmit({ kind: 'disembark', vehicle: V.kind });
         _hqSwimCheck(pl);
@@ -90846,6 +90885,7 @@ const ThreeRenderer = (function () {
             vert = (k.space ? 1 : 0) - (k.c ? 1 : 0);
         }
         if (V.kind === 'ship') { _hqTickShip(dt, V, R, thr, turn, vert, !H.paused && !!k.shift); return; }   // (2026-11-20: before the boats' own speed rule, which pulled the ship's speed to `v` every frame)
+        if (V.kind === 'car') { _hqTickCar(dt, V, RS.car || {}, thr, turn, !H.paused && !!k.space); return; }   // THE CAR (2026-11-22)
         var target = thr > 0 ? R.v : (thr < 0 ? -R.rev : 0);
         V.v += (target - V.v) * (1 - Math.exp(-dt * (thr ? R.accel : R.drag)));
         if (Math.abs(V.v) < 0.03 && !thr) V.v = 0;
@@ -90891,6 +90931,108 @@ const ThreeRenderer = (function () {
         pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
         if ((thr !== 0) !== !!V.thr) { V.thr = thr !== 0; _hqSeaEmit({ kind: 'throttle', on: V.thr, vehicle: V.kind }); }
         _hqSeaWayCheck(V.x, V.z, V.y);
+    }
+    /* ══ THE CAR (2026-11-22, mondo: "all of the cars have the option for me to press e to use them, but they act like a boat instead of a
+       car ... Simple arcade mechanics, like the skateboarding ... the player character is hidden when they are driving") ══════════════════
+       Every catalogue prop with `vehicle: true` (the car pack, the Meshy cars, the vans, the buses, the fire truck) is driven by hand.
+       · THE WHEELS: W gas, S brake and then reverse, A / D turn the FRONT wheels (they ease over, and turn less the faster the car goes),
+         SPACE the handbrake (a hard stop that also tightens the turn). The car turns about its BACK axle (the bicycle rule: the turn is
+         speed / wheelbase x tan(wheel angle)), so it cannot turn standing still, swings its nose wide, and steers the other way backing up.
+       · THE GROUND: the four wheels read the ground (_hqSurface, the walker's own floor) and the body sits on them: it pitches up a hill,
+         rolls across a camber, slows uphill and runs on downhill, climbs a kerb up to `step`, rolls off a drop up to `drop` (a retaining wall is a wall: the
+         streets' own slopes are the way between the city's levels).
+       · THE WALLS: a ring of points round the body asks the same floor and the same blockers as the walker and the board (the rider's
+         grid: its cell's blockers, never the room's whole list - RULE #1e). A wall, a building, a lamp, a parked car, a person, a drop
+         too deep or water too deep stops it with a small bounce; a thing lower than `clear` is driven over. A car that starts touching
+         something may only move where it touches no more than it did (out of its parking spot, never deeper in).
+       · THE DRIVER is not drawn (no interior); E gets out by the driver's door, else the first clear side; the car stays where it is
+         left and blocks again there. Viewer-local like every vehicle: nothing on `state`, nothing relayed (RULE #2). */
+    function _hqCarProbes(rec) {
+        if (rec._pr) return rec._pr;
+        var hw = Math.max(0.3, rec.hw - 0.3), hd = Math.max(0.6, rec.hd - 0.3), n = Math.max(2, Math.ceil(hd * 2 / 0.75)), P = [];
+        for (var i = 0; i <= n; i++) { var lz = -hd + (2 * hd) * i / n; P.push([hw, lz], [-hw, lz]); if (i === 0 || i === n) P.push([0, lz]); }
+        rec._pr = P; return P;
+    }
+    /* how many of the body's points are refused at this place and heading (0 = the car may be there) */
+    function _hqCarHits(V, R, x, z, yaw, y, why) {
+        var H = _hq, rec = V.rec, P = _hqCarProbes(rec), cy = Math.cos(yaw), sy = Math.sin(yaw), n = 0, sea = _hqSea();
+        var step = R.step != null ? R.step : 0.34, clear = R.clear != null ? R.clear : 0.34, drop = R.drop != null ? R.drop : 0.7, top = y + (rec.hgt || 1.5);
+        for (var i = 0; i < P.length; i++) {
+            var px = x + P[i][0] * cy + P[i][1] * sy, pz = z - P[i][0] * sy + P[i][1] * cy;
+            var g = _hqSurface(px, pz, y);   // the walker's whole floor: the ground, a deck, a ramp; a wall or a tall thing = none
+            if (g === null || !isFinite(g) || g - y > step || y - g > drop) { n++; if (why) why.push([i, g === null ? 'no floor' : g - y > step ? 'step ' + (g - y).toFixed(2) : 'drop ' + (y - g).toFixed(2)]); continue; }
+            if (sea && _hqSeaDepthAt(px, pz) > (R.wet != null ? R.wet : 0.45)) { n++; if (why) why.push([i, 'water']); continue; }
+            var hits = _hqBlockersUnder(px, pz), bad = false;
+            for (var j = 0; j < hits.length && !bad; j++) {
+                var b = hits[j]; if (b === rec.blk) continue;
+                if (b.mc) continue;   // (a model's own floors and walls answered above)
+                else if (b.y != null && b.y > top) continue;
+                else if (_hqBlkTop(b) > y + clear) bad = true;
+                if (bad && why) why.push([i, 'blocker ' + ((b.obj && (b.obj.name || b.obj._ew_key)) || (b.mc ? 'mesh' : b.rect ? 'rect' : 'disc')) + ' top ' + (_hqBlkTop(b) - y).toFixed(2)]);
+            }
+            if (bad) n++;
+        }
+        return n;
+    }
+    function _hqTickCar(dt, V, R, thr, turn, hand) {
+        var H = _hq, pl = H.player, U = _hqUnits(), rec = V.rec;
+        var vmax = R.v || 21, wb = Math.max(1.2, rec.hd * 2 * (R.wb || 0.6)), steps = Math.max(1, Math.ceil(dt / (1 / 60))), h = dt / steps, bumped = 0, yaw0 = V.yaw;
+        _hqWalkGridOn = true;   // the rider's grid: every ask reads its own cell's blockers (RULE #1e)
+        try {
+            for (var s = 0; s < steps; s++) {
+                /* the pedals */
+                var v = V.v;
+                if (hand) v -= Math.sign(v) * Math.min(Math.abs(v), (R.hand || 15) * h);
+                else if (thr > 0) v = (v < -0.05) ? Math.min(0, v + (R.brake || 20) * h) : v + (R.accel || 8.5) * h * Math.max(0, 1 - v / vmax);
+                else if (thr < 0) v = (v > 0.05) ? Math.max(0, v - (R.brake || 20) * h) : Math.max(-(R.rev || 7), v - (R.accel || 8.5) * 0.7 * h);
+                else v -= Math.sign(v) * Math.min(Math.abs(v), ((R.coast || 2.4) + Math.abs(v) * 0.12) * h);
+                v -= Math.sin(V.gy || 0) * 9.8 * (R.hill != null ? R.hill : 0.55) * h * ((thr || Math.abs(v) > 0.4) ? 1 : 0);   // the hill: slower up, faster down (a parked car holds)
+                v = Math.max(-(R.rev || 7) * 1.3, Math.min(vmax * 1.15, v));
+                /* the front wheels */
+                var sp = Math.min(1, Math.abs(v) / vmax), lim = (R.steer || 0.62) + ((R.steerHi || 0.13) - (R.steer || 0.62)) * Math.pow(sp, 0.6);
+                if (hand) lim *= (R.handSteer || 1.7);
+                V.steer += (turn * lim - V.steer) * Math.min(1, h * (R.steerIn || 5.5));
+                /* the turn about the back axle */
+                var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), rx = V.x - fx * wb / 2, rz = V.z - fz * wb / 2;
+                var nyaw = V.yaw - (v / wb) * Math.tan(V.steer) * h;
+                rx += fx * v * h; rz += fz * v * h;
+                var nx = rx + Math.sin(nyaw) * wb / 2, nz = rz + Math.cos(nyaw) * wb / 2;
+                if (Math.abs(v) < 0.002 && Math.abs(nyaw - V.yaw) < 1e-6) { V.v = v; continue; }
+                var hit = _hqCarHits(V, R, nx, nz, nyaw, V.y), ok = hit === 0;
+                if (!ok) { var cur = _hqCarHits(V, R, V.x, V.z, V.yaw, V.y); ok = cur > 0 && hit <= cur; }   // already touching: out, never deeper in
+                if (!ok) {   // the turn refused: straight on along the old heading (a wall rubbed along)
+                    var sx2 = V.x + fx * v * h, sz2 = V.z + fz * v * h;
+                    if (_hqCarHits(V, R, sx2, sz2, V.yaw, V.y) === 0) { ok = true; nx = sx2; nz = sz2; nyaw = V.yaw; v *= 0.985; }
+                }
+                if (ok) { V.x = nx; V.z = nz; V.yaw = nyaw; V.v = v; }
+                else { bumped = Math.max(bumped, Math.abs(v)); V.v = -v * (R.bump != null ? R.bump : 0.25); if (Math.abs(V.v) < 0.35) V.v = 0; }
+                /* the four wheels on the ground */
+                fx = Math.sin(V.yaw); fz = Math.cos(V.yaw);
+                var lx = Math.cos(V.yaw), lz = -Math.sin(V.yaw), ax = wb / 2, aw = Math.max(0.3, rec.hw - 0.25);
+                var gq = function (a, b) { var q = _hqSurface(V.x + fx * a + lx * b, V.z + fz * a + lz * b, V.y); return (q === null || !isFinite(q) || Math.abs(q - V.y) > 2.5) ? V.y : q; };
+                var gFL = gq(ax, aw), gFR = gq(ax, -aw), gRL = gq(-ax, aw), gRR = gq(-ax, -aw), gy = (gFL + gFR + gRL + gRR) / 4;
+                if (gy < V.y - 0.02) { V.vy = (V.vy || 0) - 9.8 * 1.6 * h; V.y = Math.max(gy, V.y + V.vy * h); if (V.y === gy) V.vy = 0; }
+                else { V.y += (gy - V.y) * Math.min(1, h * 18); V.vy = 0; }
+                V.gy = Math.atan2((gFL + gFR) / 2 - (gRL + gRR) / 2, wb);
+                var acc = (V.v - (V.vPrev != null ? V.vPrev : V.v)) / h; V.vPrev = V.v;
+                var wantP = -V.gy - Math.max(-1, Math.min(1, acc / 20)) * (R.squat != null ? R.squat : 0.02) * 2.2;
+                var wantR = Math.atan2((gFL + gRL) / 2 - (gFR + gRR) / 2, aw * 2) - Math.tan(V.steer) * V.v * Math.abs(V.v) / (vmax * vmax) * (R.lean != null ? R.lean : 0.035) * 6;
+                V.pitch += (wantP - V.pitch) * Math.min(1, h * 9); V.roll += (wantR - V.roll) * Math.min(1, h * 9);
+            }
+        } finally { _hqWalkGridOn = false; }
+        if (V.yaw !== yaw0) H.cam.yaw -= (V.yaw - yaw0);   // the eye follows the turn and keeps the mouse's offset (the rider's rule)
+        var grp = rec.grp;
+        grp.position.set(V.x * U, V.y * U, V.z * U);
+        if (grp.rotation.order !== 'YXZ') grp.rotation.order = 'YXZ';
+        grp.rotation.set(V.pitch, V.yaw, V.roll);
+        rec.x = V.x; rec.z = V.z; rec.y = V.y; rec.yaw = V.yaw;
+        /* the driver: at the car's middle, not drawn (_hqTickCast keeps the body hidden); the eye looks over the roof */
+        pl.x = V.x; pl.z = V.z; pl.y = V.y + (R.camUp || 0);
+        pl.visY = pl.y; pl.yaw = pl.targetYaw = V.yaw; pl.moving = false; pl.running = false; pl.air = false; pl.vy = 0;
+        pl.velX = Math.sin(V.yaw) * V.v; pl.velZ = Math.cos(V.yaw) * V.v; pl.velY = 0; pl.pushX = 0; pl.pushZ = 0;
+        if (pl.entry && pl.entry.group) { pl.entry.group.position.set(pl.x * U, V.y * U, pl.z * U); if (pl.entry.group.visible) pl.entry.group.visible = false; }
+        if (bumped > 2.5) _hqSeaEmit({ kind: 'bump', vehicle: 'car', v: bumped });
+        if ((thr !== 0) !== !!V.thr) { V.thr = thr !== 0; _hqSeaEmit({ kind: 'throttle', on: V.thr, vehicle: 'car' }); }
     }
     /* a whirlpool / an upwelling is entered by being in its mouth (way.w wide, mouthY ± its height) — the swimmer's and the helm's press-in */
     function _hqSeaWayCheck(x, z, y) {
@@ -93943,7 +94085,7 @@ const ThreeRenderer = (function () {
                 ch.held.quaternion.copy(hq).invert();
                 ch.held.scale.setScalar(1 / (hs.x || 1));
             }
-            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3) && !H._scenePlayerOut && !(H.vehicle && H.vehicle.on && H.vehicle.kind === 'ship');   // (aboard the flown ship the pilot is inside the hull: never drawn)   // (a scene took the officer out of the picture: hq.scenePlace show)
+            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3) && !H._scenePlayerOut && !(H.vehicle && H.vehicle.on && (H.vehicle.kind === 'ship' || H.vehicle.kind === 'car'));   // (aboard the flown ship the pilot is inside the hull: never drawn)   // (a scene took the officer out of the picture: hq.scenePlace show)
             var want = 'idle';
             /* a placed cast member holds its building pose (sits, mops,
                kneels…) once the library bake has landed the clip */
@@ -95944,7 +96086,7 @@ const ThreeRenderer = (function () {
         }
         if (_keyFxList.length) { try { _updateKeyFx(); } catch (e) {} }   // scene E's key (keyPickupFx opts.at) lives in the room
         if (H._sceneCastIds) _hqSceneCastApply();
-        if (H.vehicle && H.vehicle.on && H.vehicle.kind === 'ship' && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // (mondo 11-17: "if i am flying the spaceship then we dont need the ... character model standing up and clipping through it": the walker's own tick drew him again every frame after the helm hid him)
+        if (H.vehicle && H.vehicle.on && (H.vehicle.kind === 'ship' || H.vehicle.kind === 'car') && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // (mondo 11-17: "if i am flying the spaceship then we dont need the ... character model standing up and clipping through it": the walker's own tick drew him again every frame after the helm hid him)
         if (H._scenePlayerOut && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // a scene took the officer out of the picture   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         _lt = _lensMark('tick: scene door + key + cast', _lt);
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
@@ -104300,6 +104442,16 @@ const ThreeRenderer = (function () {
                 return true;
             },
             playerGroup: function () { return (_hq && _hq.player && _hq.player.entry) ? _hq.player.entry.group : null; },
+            /* THE CAR (2026-11-22), for a probe: carRun(id) = how many metres the parked car could roll straight ahead / back and what stops it */
+            carRun: function (id) {
+                var b = _hqVehicleFind(id); if (!b || b.kind !== 'car') return null;
+                var R = _hqSeaRules().car || {}, V = { rec: b, x: b.x, z: b.z, y: b.y, yaw: b.yaw }, out = { key: b.key, x: +b.x.toFixed(1), z: +b.z.toFixed(1), y: +b.y.toFixed(2), yaw: +b.yaw.toFixed(2) };
+                [1, -1].forEach(function (dir) { var d = 0, why = [];
+                    for (; d < 60; d += 0.5) { why.length = 0; if (_hqCarHits(V, R, b.x + Math.sin(b.yaw) * dir * (d + 0.5), b.z + Math.cos(b.yaw) * dir * (d + 0.5), b.yaw, b.y, why) > 0) break; }
+                    out[dir > 0 ? 'ahead' : 'back'] = d; out[dir > 0 ? 'aheadWhy' : 'backWhy'] = why.slice(0, 3); });
+                var w0 = []; out.here = _hqCarHits(V, R, b.x, b.z, b.yaw, b.y, w0); out.hereWhy = w0.slice(0, 4);
+                return out;
+            },
             press: function (key, on) { if (!_hq) return false; _hq.keys[key] = !!on; return true; },   /* a probe's write: hold a walker key (a headless window blurs on every evaluate and drops real key events) */
             walk: function () { var H = _hq, pl = H && H.player; return pl ? { paused: !!H.paused, keys: Object.assign({}, H.keys), fp: !!H.fp, x: pl.x, y: pl.y, z: pl.z, air: !!pl.air, vy: pl.vy || 0, fitFail: H.portal && H.portal.fitFail, mvx: pl.mvx || 0, mvz: pl.mvz || 0, velX: pl.velX || 0, velZ: pl.velZ || 0, drawn: !!(H.portal && H.portal.drawn), slot: H.portal && H.portal.slot, camYaw: H.cam.yaw } : null; },   /* a probe's read: the walker's frame (THE CARRY, the keys, the pause) */   /* a probe's read: the walker's group (turn it to photograph the held gun from the front) */
             chars: function () {

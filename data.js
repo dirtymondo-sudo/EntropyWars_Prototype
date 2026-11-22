@@ -32496,7 +32496,7 @@ const DOOR_HQ = {
         car_pack_3:        { pack: 'car03', span: 3.8, foot: 1.0, rect: { hw: 0.9, hd: 1.9 }, block: true, vehicle: true },    // a hatchback
         car_pack_4:        { pack: 'car04', span: 4.8, foot: 1.2, rect: { hw: 1.0, hd: 2.4 }, block: true, vehicle: true },    // a minivan
         car_pack_5:        { pack: 'car05', span: 5.3, foot: 1.3, rect: { hw: 1.0, hd: 2.65 }, block: true, vehicle: true },   // a big saloon (paints: taxi, police)
-        car_pack_6:        { pack: 'car06', span: 4.5, foot: 1.1, rect: { hw: 0.95, hd: 2.25 }, block: true, vehicle: true },  // a rusted shell
+        car_pack_6:        { pack: 'car06', span: 4.5, foot: 1.1, rect: { hw: 0.95, hd: 2.25 }, block: true, vehicle: true, noDrive: true },  // a rusted shell (no wheels: never driven)
         car_pack_7:        { pack: 'car07', span: 4.0, foot: 1.1, rect: { hw: 0.9, hd: 2.0 }, block: true, vehicle: true },    // a 1920s tourer
         car_pack_8:        { pack: 'car08', span: 6.2, foot: 1.6, rect: { hw: 1.15, hd: 3.1 }, block: true, vehicle: true },   // a step van
         car_suv:           { file: 'Meshy_AI_a_black_SUV_0915195508_texture.glb',       base: 'misc', pack: 'suv', span: 4.9, foot: 1.2, rect: { hw: 1.0, hd: 2.45 }, block: true, vehicle: true, turn: 90 },
@@ -104148,8 +104148,10 @@ const HQ_SEA_RULES = {
     surfaceDraft: 1.1, underCap: 1.0, exitDepth: 0.95,
     boat: { v: 8.5, rev: 2.0, accel: 1.4, drag: 0.6, turn: 1.15, turnMin: 0.35, draft: 0.55, bob: 0.08, boardReach: 3.6, seat: { x: 0, y: 0.5, z: -0.5 }, camDist: 7.0, len: 4.6, beam: 1.7 },
     sub:  { v: 6.0, rev: 2.5, accel: 1.2, drag: 0.8, turn: 0.95, turnMin: 0.5, vertV: 2.4, r: 1.6, boardReach: 4.0, seat: { x: 0, y: 0.55, z: 0.2 }, camDist: 8.5, len: 6.2 },
+    /* THE CAR (2026-11-22): every catalogue prop with `vehicle: true` is driven by hand (three-renderer.js "THE CAR"; the keys' meaning is there, keep them in step with HQ_SEA_DEFAULT.car) */
+    car: { v: 21, rev: 7, accel: 8.5, brake: 20, coast: 2.4, hand: 15, steer: 0.62, steerHi: 0.13, steerIn: 5.5, handSteer: 1.7, wb: 0.6, step: 0.34, clear: 0.34, drop: 0.7, wet: 0.45, hill: 0.55, bump: 0.25, lean: 0.035, squat: 0.02, reach: 1.7, exit: 0.75, camDist: 8.0, camUp: 0.9, len: 4.6, beam: 1.9 },
     keys: { dive: 'c', rise: 'space', board: 'e' },
-    labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE' },
+    labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', car: 'THE CAR' },
 };
 if (typeof window !== 'undefined') window.HQ_SEA_RULES = HQ_SEA_RULES;
 /* THE LIGHT RULES (2026-09-20) — the user: "you are just using the night mood too much, it is really aggressive; I have to

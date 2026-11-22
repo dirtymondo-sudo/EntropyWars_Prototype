@@ -822,3 +822,29 @@ is a terrain `rail` row with no model and `h` < 0.7 (the pipe rail: a grind, nev
 squares long: the Skater unit's grind reads these rows + `city_bench` props (new units thread). A rail row is straight between its two ends'
 ground, so a rail over a hump must be cut at the hump's corners. Moved for it: three umbrella sets, the lifeguard chair, the rowboat, the
 first beach ramp (row 8N+6), two Miami lifeguard towers (to rows 114 and 135), the volleyball net (one square south). Seen on screen (llvmpipe).
+
+## THE CAR — every parked car is driven like a car (2026-11-22)
+mondo: "In the city, all of the cars have the option for me to press e to use them, but they act like a boat instead of a car ...
+Simple arcade mechanics, like the skateboarding. Since we dont have a car interior, just make it to where the player character is
+hidden when they are driving".
+CAUSE: since the flown spaceship (11-17) the file-prop placer registers every catalogue `vehicle` with the helm. The cars carry
+`vehicle: true` (the garage booth's count), which was no kind the helm knew, so each took the skiff's rules: a hull that needs water.
+THE FIX (three-renderer.js "THE CAR", after `_hqTickVehicle`): `vehicle: true` registers as kind `car` (`_hqVehicleRegister`, with its
+own block and its rect's half sizes). `_hqTickCar`: W gas, S brake then reverse, A / D turn the front wheels (they ease over and turn
+less with speed), SPACE handbrake; the car turns about its back axle (speed / wheelbase x tan(wheel angle)), 60 Hz sub-steps.
+`_hqCarHits`: a ring of points round the body asks the walker's own floor (`_hqSurface` with the blockers, on the rider's grid: no
+whole-room read, RULE #1e); a wall, a building, a prop taller than `clear`, a person, another car, a kerb over `step`, a drop over
+`drop` (a retaining wall), water over `wet` stop it with a small bounce; a car that starts touching something may only move where it
+touches no more. The four wheels read the ground: the body pitches and rolls with it, slows uphill, runs on downhill. The driver is
+not drawn (`_hqTickCast` + the frame's end, as aboard the ship). E gets out by the driver's door (the left), else the first clear
+side, else the roof; the car's block stands again where it is left. The prompt reads DRIVE / GET OUT; first time a toast with the keys
+(map.js `_hqSeaEvent`). Numbers: data.js `HQ_SEA_RULES.car` over `HQ_SEA_DEFAULT.car` (keep in step). `noDrive: true` on a catalogue
+row = a prop only (car_pack_6, the shell with no wheels). The skiff, the bathyscaphe and the ship are untouched (their kinds are
+strings). Viewer-local, nothing relayed (RULE #2).
+SEEN in the cloud browser (HEAD on ba7c051 + this change): a Disaster City taxi: E in (real key), the officer hidden, 0 to 13 m/s,
+a right turn, stopped by the Hero Plaza pillar with a bounce, reverse with the wheels turned, E out beside the car. `hq.dev.carRun(id)`
+= how far a parked car can roll ahead / back and what stops it (of the city's 95 cars, 77 can move at once; the rest stand inside a
+building's mass, on a deck edge, or against a wall and need to back out).
+NOT SEEN (the cloud browser crashed on three runs): the school bus, the fire truck and the ambulance moving (Meshy files with
+`turn: 90`: if one drives tail first, give its catalogue row the other turn). NOT BUILT: engine sound, turning wheel models (the pack's
+wheels are painted on the body), traffic cars cannot be taken, no damage, cars do not stay moved after leaving the room.
