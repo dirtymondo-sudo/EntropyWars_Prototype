@@ -14395,6 +14395,54 @@ is a door without a pad reads as a trap. Each row is a place to LOOK AT, then fi
 Before: every wall of every raised floor, 14 traps, the 35 m strip. Proof: `/mnt/project-files/softlocks/sewers_wall_before_after.jpg`.
 THE REST OF THE WORLD: the list by zone of 11-22 is `/mnt/project-files/softlocks/softlocks_by_zone.md`.
 
+
+## DISASTER CITY, THE SOFT-LOCK HUNT (2026-11-22, the city's thread of mondo's "no tiny crevices or huge drops where there is no room to get out")
+
+The finder read 32 traps and 2 crevices in `site_prebuilt_downtown_streets`. None was one room's row gone wrong; seven causes made all of them, and each
+is fixed where it is made (the tool, a district file, the walker's rule), so they cannot come back with the next bake. Nothing was deleted.
+
+1. **THE STOOP STANDS AT THE DOOR** (bake-disaster-city.js THE DOOR STOOPS). A walk-in building turned 90 / 270 has its front on (-sin, cos)
+   (data.js hqTexBuildingRows); the stoop code read (+sin, cos). Eight flights were cut at the BACK wall, mirrored along it: trenches up to 10.5 m
+   deep against a blank wall (the Street market's ran 21 m into Hero Plaza's ground, P08-08's 10.5 m, P00-09-B2's and P03-09-B1's in the port).
+   With the sign right, not one real door needs a stoop: the eight rows are gone and the ground they cut is whole.
+2. **THE CLOSING WALLS REACH OVER EVERY ROOF.** The unseen walls on the city's old south and west lines were 8 m high; the south one's top stood
+   0.69 m over Southside's ground, so the walker jumped onto it, walked the whole south line and dropped into the sunk strip behind it (the
+   "90,000 m2 trap at y -9": not the sea, the strip `room.north` adds south of the plots). 60 m now.
+3. **THE TALLER WALL IS THE FACE** (data.js `hqTerrainWallAt`, every room). Two walls within the body's reach answered with whichever was written
+   first: on the side wall a one-storey shop shares with a five-storey block the walker stood on the low top and stepped "through" the tall one
+   into a building with no door (West shops, the Cabaret, the Police desk, the Cinema, the Library yard). The highest top within reach is the wall.
+4. **THE LINTEL IS NO PLACE** (data.js `_hqTNodeFeet`, the trap search only). A doorway's floor and the top of the lintel over it are one node on
+   one layer; a walker on the wall's top took the node first and the search never walked through the door, so every walk-in whose wall tops are
+   reached read as a trap (the Luxury hotel's 726 m2). A FALSE reading: the player always could walk out. The search leaves the upper surface out.
+5. **A CROSSING'S OWN SAY** (levels.js `crossings`). The two bankers' terraces (P10-01-B2, P11-02-B2) have their one real door on the first house,
+   at the plot's west line, where the level crossing's ramp ran along their front 1.3 m over the sill: walked in, never out (these two were hidden
+   behind cause 4 until it was fixed). `{ ramp: 1, stair: false }` = the ramp on the far square, no flight: the door's square is flat again.
+6. **A SQUARE'S FILL IS SQUARE** (the tool's `squareFills`, 507 rows). The districts fill a square under a crate stack, a vat or a counter with an
+   unseen wall of no length and the square's width; the walker read it as a ROUND post, and four of them left a hole at the corner they share,
+   half a metre across and as deep as the stacks (the Rail service's and the Hangar apron's crates, the Water works' vats; two back-lot blocks
+   in Southside the same against the fence). They carry `block: true` (data.js THE BOXES: square ends). A wall with a real length keeps its
+   round ends (a box would reach t / 2 past them).
+7. **THE STRAIGHT RAISE, THE CITY'S GROUND** (the tool's corner heights). An open square ran down to the base of any building it touched. Beside a
+   back-lot building standing on the lower of two plots (base 0 under ground at 12.25: the Office court) the last square was a 74 degree face
+   ending at the wall's foot, 12 m long: mondo's crevice exactly. More than 1.9 m apart the square keeps its own height and the ground stands
+   straight at the wall (42 corners in the city). Aprons up to a level (a door on a sloping street) are as they were.
+
+Three places of their own:
+- **THE HOLDING ANNEX** (districts/C.js `shift: [-1, 0]`): the drawn building stands on squares 2 to 5 of its plot, the plan's walked tier stood
+  on 3 to 6. The roof's west 3.5 m was air over a pit shut in by the cage's unseen walls; its east 3.5 m an unseen ledge past the wall. The tier,
+  its squares, the tool's record (so the fire escape) and the plan's go one square west, under the drawing.
+- **THE CONTAINER COURT** (districts/I.js THE WAY OUT BETWEEN THE TANKS): the two 3.5 m alleys between the propane spheres along the factory's
+  east wall were stepped into off the roof route and never left. Each has the city's own fire escape back up (landing + ladder).
+- **THE WATER WORKS** (districts/I.js): the pipes run to the back wall; the corner behind them and the lockers was a pit.
+
+AFTER: `node find-softlocks.js site_prebuilt_downtown_streets` = 0 traps, 0 crevices, 1 dip (1 m, one node, jumped out of), 33 slots (strips under 1.8 m wide that are walked out of at an end: the next pass). Before: 32 traps, 2 crevices, 5 dips, 38 slots.
+THE TALLER WALL, NARROWED: `hqTerrainWallAt` takes a later wall over the first only when its top is more than a jump (1.3 m) higher; "always the tallest" split a stepped fence on the Ski Mountain into pockets at every joint (crevices 6 -> 12), so the joints stay as written. Merged beside the castle thread's `under` (a wall wholly under the body is the answer only when no other meets the band).
+AFTER THE MERGE WITH THE CASTLE THREAD'S RULE (a landing must hold a body; a hop down only past a wall the jump clears) six more read true, all real:
+- THE DOORWAY IS CLEAR (`doorwayClear`, 9 rows): a thick unseen row reaches half its thickness past each end, so a round desk / a row of pews reached over the square inside the door of the Library, the Science museum, a Faculty home, the Council annex and the Courthouse; in by a hop onto the desk, never out (the lintel at the chest). The tool pulls the row's end back off the door's mat; a row it cannot clear is named in the bake's output (five today, none a trap).
+- THE RAIL RIDES THE BRIDGE (`railOnBridge`, 1): the boardwalk's spear rail crossed the canal's mouth on the ground, a fence across the water that penned the canal's last 16 m; the piece over a `dc:canal:` bridge is laid at the deck's height (`y`).
+WHEN YOU ADD TO THE CITY: a walk-in whose door faces another plot gets its stoop from the tool, never by hand; a fill for a whole square is an
+unseen wall of no length (it becomes a box by itself); anything stood beside a roof-route roof needs a way back up or a closed gap; run the finder.
+
 ## THE PATH RUNS ON TOO — every trail between zones (2026-11-22, mondo: "Every single entrance/exit in the game needs to look good and natural ... fix these where zones connect")
 The thread for Fairy Forest, Came A Lot Kingdom, The Estate and the Woods' other exits. The engine part is three-renderer.js, GENERIC: every room whose
 land runs on past its line (`_hqEdgeLandOn`: every One World room, the city) gets it. An `open` seam's road is THE ROAD OF THE NEXT ROOM RUNS ON (above,
@@ -14432,6 +14480,14 @@ the Desert thread, merged the same hour); this is the same thing for a `trail`, 
   west gate: two lanes at each gate, as the Desert's highways. The rebake also took in what the map changed since 11-17 (the box's north-west corner
   is the Snowy Pines' snow now, no trees on it; lane lines joined at the bends; the spawn off the road); no prop moved but the taper's own (rails, dashes).
   Walked both gates both ways. Map picture rebaked (`bake-map.js site_ow_r4`).
+- **THE EAST ROW GATE, CAME A LOT'S FIFTH** (same day; mondo: "build a fifth gate and a bridge at some point this old road needs to transition to a dirt
+  road, makes no sense to have a modern road leading to camelot"). The Old Road met the moat and a blank wall 63 m north of the East Gate. bake-camelot.js:
+  `townSide`'s `gi` may be a LIST (the east side: drums `[60, 50, 46, 32, 28]`, gates `[1, 3]`; the second gate's rows are `town_gate_e_row*`), bridge
+  `east_row_bridge` at square 30; layout.json: cobbles from the east street through the gate (the gate's own squares are `c`, not `G`: on `G` = grass the
+  flora grew a bush in the gate), `b` over the moat; the two cottages beside it stand one square clear of the new drums (25-27 -> 24-26, 33-35 -> 34-36).
+  THE PAVEMENT ENDS (bake-route.js): a `taper` row may say `dirt: <squares>` = the last that many squares before that end are the ground kind's own
+  dirt road, no painted lines, the door's `passage.floor` too (`hold` longer than `dirt`). R4: `{ hold: 26, len: 10, dirt: 22 }` at Came A Lot.
+  Walked town -> Old Road -> town through the gate; find-softlocks.js: 0 traps, 0 crevices in both rooms.
 - Probe: `playtest_city.js` takes `EW_PROBE_TRIES=1` (no retry of a whole chain after a crash; the cloud browser dies after 3 to 6 room changes: walk
   a gate out and back per run, no more).
 ## THE COAST + THE UNDERGROUND, WHERE THE ZONES MEET (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural")
@@ -14583,3 +14639,23 @@ THE TOOLS:
   landing filled, the rails off the flight's top), R (the wing's south tier in three lifts, the gurney ramp's cap kept open), P (the tunnel floor reaches under
   the tram bridges' ends).
 - find-softlocks.js `--every-ground`: crevices, dips and slots on all ground, not only what the doors reach (Heaven: the flights float and the solver under-reads).
+
+## THE OTHERWORLD + THE MOUNTAINS, WHERE THE ZONES MEET (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural")
+The otherworld gates thread: DOOR HQ, Heaven, Hell, the Vatican, Leylines, Outer Space, the Astral Realm, the Mountains + the north routes, the Internet, Antarctica.
+Every walked gate of those rooms was walked in the browser from both sides. What was wrong and what changed:
+- THE PILGRIM WAY (`site_ow_r3`) led to a retired room (`…_shasta_ow_olympus`): its door and `docs/areas/routes/R3.json` now name `…_shasta_ow_lodge`.
+- NO BLACK BOX ON A FREE TRAIL END: three-renderer.js `_hqPassageWay` `openFree` (a free, unroofed, black-fade end in a room with land past its line gets
+  no dark cards), `_hqBuildWay` sets `PS.clear` on such passages and `_hqTickPassages` does not dim the screen in them.
+- A WALLED PLACE STANDS ON THE PLAIN, NOT IN A PIT: `terrain.edges.level: <y>` = the land past the line never stands higher than y (`_hqEdgeLandFn`).
+  The Vatican (`level: 0`): its country stood as high as its wall tops, so each gate looked out into a green trench.
+- THE VATICAN'S EAST + WEST GATES ARE OPEN SEAMS (`way: 'open'`, `passage: { w: 7 }`; `open: 7` on the seam rows in draw-afterlife.js): they were trails
+  with a 10 m dark walk and no road past them. The Old Road and the River Road now run on past the wall by the engine's own seam road.
+  The two `HQ_DEAD_ENDS` rows for the Vatican's north gate and for the retired Olympus room are gone (the first threw rubble across a live gate).
+- THE RIVER ROAD (R1) tapers to two lanes before the Vatican (`taper` in R1.json) and its road runs on 220 m past the west line (`runOn`).
+- THE LEY LINE'S EAST GATE: the trilithon over it is `noBlock` (`docs/areas/leylines/districts/Y.js`): its uprights stood in the lane.
+- THE GRAND STAIR (link `heaven_olympus`, Heaven <-> the ski mountain): both free cloud ends take `passage: { len: 3, deep: 1.2 }` (a free end with the
+  cloud way's default 9 m depth is never crossed: the walker meets the room's line first). bake-mountains.js writes end b with it.
+- LEFT: R4 (the Old Road) is six lanes at both ends against a 7 m Vatican gate and a 16 m Came A Lot gate; a rebake today also changes its ground paint,
+  trees and spawn (plots.json moved under it), so it was not tapered. From R4's east end the Vatican is the far-sight box with the dome on top.
+- PROBE LESSONS: the software walker covers about 20 m in 70 s, so start a walk probe 5-6 m from the door; `ThreeRenderer.hq.dev.blockersNear(x, z, r)`
+  lists what blocks near a point (key, place, size) when a walk stops short.

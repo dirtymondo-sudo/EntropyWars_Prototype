@@ -25,9 +25,9 @@
   "nz": 72,
   "h0": -0.8,
   "hs": 0.25,
-  "v": "c526d3283e",
-  "bytes": 825,
-  "s": "3.4"
+  "v": "b0701122ed",
+  "bytes": 852,
+  "s": "2.8"
  },
  "site_prebuilt_bermuda_beach": {
   "id": "site_prebuilt_bermuda_beach",
@@ -75,9 +75,9 @@
   "nz": 216,
   "h0": -1.5,
   "hs": 0.26,
-  "v": "1c5012a845",
-  "bytes": 11914,
-  "s": "44.5"
+  "v": "b83c7abd0d",
+  "bytes": 11861,
+  "s": "41.8"
  },
  "site_prebuilt_vatican_under": {
   "id": "site_prebuilt_vatican_under",
@@ -543,10 +543,10 @@
   "id": "site_ow_r1",
   "nx": 96,
   "nz": 144,
-  "h0": -1.03,
+  "h0": -1.12,
   "hs": 0.25,
-  "v": "3b7d9ea8b1",
-  "bytes": 3794,
+  "v": "d17ecf36c0",
+  "bytes": 3914,
   "s": "1.5"
  },
  "site_ow_r2": {
@@ -565,9 +565,9 @@
   "nz": 60,
   "h0": -0.56,
   "hs": 0.25,
-  "v": "69d2d9464a",
-  "bytes": 2094,
-  "s": "0.6"
+  "v": "8559961f12",
+  "bytes": 2090,
+  "s": "0.5"
  },
  "site_ow_r12": {
   "id": "site_ow_r12",

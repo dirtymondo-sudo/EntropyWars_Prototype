@@ -216,6 +216,7 @@ feat({ k: 'bridge', x0: gx(43), z0: gx(78.4), x1: gx(43), z1: gx(74.6), w: 7, y:
 feat({ k: 'bridge', x0: gx(48), z0: gx(16.6), x1: gx(48), z1: gx(20.4), w: 7, y: 0.3, thick: 0.3, key: 'wood', id: 'north_bridge' });
 feat({ k: 'bridge', x0: gx(82.4), z0: gx(48), x1: gx(78.6), z1: gx(48), w: 7, y: 0.3, thick: 0.3, key: 'wood', id: 'east_bridge' });
 feat({ k: 'bridge', x0: gx(13.6), z0: gx(48), x1: gx(17.4), z1: gx(48), w: 7, y: 0.3, thick: 0.3, key: 'wood', id: 'west_bridge' });
+feat({ k: 'bridge', x0: gx(82.4), z0: gx(30), x1: gx(78.6), z1: gx(30), w: 7, y: 0.3, thick: 0.3, key: 'wood', id: 'east_row_bridge' });   // THE EAST ROW GATE's, where the Old Road comes in
 
 /* ── THE TOWN WALL: the castle's own pieces (hqCurtainWall runs split at every drum, four hollow corner towers with a spiral up to the
    walk, solid drums, a deck over each gate), a storey lower than the castle's wall so the castle stands over its town ── */
@@ -237,11 +238,11 @@ function townSide(id, horiz, fix, c0, c1, along, gi, out, front) {
         raw('...hqRoundBlock(' + J({ id: did, x: p[0], z: p[1], r: 3.5, y: TOPT, key: WALL }) + ')');
         raw('...hqCastleCrown(' + J({ id: did + '_crown', x: p[0], z: p[1], r: 3.5, top: TOPT, skip: (horiz ? 'we' : 'ns').split('').map(c => SKIPT[c]), key: WALL }) + ')'); });
     for (let i = 0; i < nodes.length - 1; i++) { const A = nodes[i], B = nodes[i + 1];
-        if (i === gi + 1) {   // THE GATE: the deck that carries the walk over it, its front, a ridge roof, the two drums' cones
+        if ((Array.isArray(gi) ? gi : [gi]).indexOf(i - 1) >= 0) { const gid = id + (i === (Array.isArray(gi) ? gi[0] : gi) + 1 ? '' : '_row');   // THE GATE (a side may have more than one: `gi` a list; the second is `<id>_row`): the deck that carries the walk over it, its front, a ridge roof, the two drums' cones
             const s0 = A.a + dir, s1 = B.a - dir, m = (s0 + s1) / 2, p0 = pt(s0 - dir * 0.5), p1 = pt(s1 + dir * 0.5), mid = pt(m);
-            feat({ k: 'bridge', x0: p0[0], z0: p0[1], x1: p1[0], z1: p1[1], w: 3.5, y: TOPT, thick: 2.2, plain: true, rails: false, key: WALL, id: 'town_gate_' + id });
+            feat({ k: 'bridge', x0: p0[0], z0: p0[1], x1: p1[0], z1: p1[1], w: 3.5, y: TOPT, thick: 2.2, plain: true, rails: false, key: WALL, id: 'town_gate_' + gid });
             const q0 = pt(s0), q1 = pt(s1), fx = horiz ? 0 : front * 1.55, fz = horiz ? front * 1.55 : 0, e = dir * 0.9;
-            feat({ k: 'bridge', x0: r2(q0[0] + (horiz ? e : 0) + fx), z0: r2(q0[1] + (horiz ? 0 : e) + fz), x1: r2(q1[0] - (horiz ? e : 0) + fx), z1: r2(q1[1] - (horiz ? 0 : e) + fz), w: 0.5, y: TOPT + 1.8, thick: 4.0, plain: true, rails: false, key: WALL, id: 'town_gate_' + id + '_front' });
+            feat({ k: 'bridge', x0: r2(q0[0] + (horiz ? e : 0) + fx), z0: r2(q0[1] + (horiz ? 0 : e) + fz), x1: r2(q1[0] - (horiz ? e : 0) + fx), z1: r2(q1[1] - (horiz ? 0 : e) + fz), w: 0.5, y: TOPT + 1.8, thick: 4.0, plain: true, rails: false, key: WALL, id: 'town_gate_' + gid + '_front' });
             townArch.roof('gable', mid[0], TOPT + 4.4, mid[1], 7.4, 2.8, 4.6, SLATE_T, 0xa84a3c, { keyEnd: 'wood_planks', tintEnd: 0xb89468, ry: horiz ? 0 : 90 });
             for (const s of [-1, 1]) townArch.box(mid[0] + (horiz ? s * 3.3 : 0), TOPT + 2.4, mid[1] + (horiz ? 0 : s * 3.3), horiz ? 0.3 : 4.4, 2.0, horiz ? 4.4 : 0.3, 'wood', 0x6a4a30);
             for (const n of [A, B]) { const p = pt(n.a); townArch.cyl(p[0], TOPT + 1.1, p[1], 0.22, 3.0, 'wood', 0x6a4a30, { seg: 8, cap: false, ring: { n: 6, r: 3.0 } }); townArch.cyl(p[0], TOPT + 4.1, p[1], 4.2, 5.4, SLATE_T, 0x5a6c96, { seg: 14, r2: 0, roof: true }); }
@@ -262,7 +263,9 @@ const WALL_STAIRS = { n: [[32, 33]], s: [[38, 39], [48, 49]] };
 townSide('s', true, WY1, WX0, WX1, [30, 41, 45, 57, 67], 1, 1, 1);
 townSide('n', true, WY0, WX0, WX1, [30, 46, 50, 59, 68], 1, -1, -1);
 townSide('w', false, WX0, WY1, WY0, [60, 50, 46, 34], 1, -1, -1);
-townSide('e', false, WX1, WY1, WY0, [60, 50, 46, 34], 1, 1, 1);
+/* THE EAST ROW GATE (2026-11-22, mondo: "build a fifth gate and a bridge"): the Old Road (R4) met the moat and a blank wall 63 m north of the East Gate.
+   A fifth gate stands where the road arrives (between drums at 32 and 28, its middle on the road's own line, square 30), its bridge over the moat below. */
+townSide('e', false, WX1, WY1, WY0, [60, 50, 46, 32, 28], [1, 3], 1, 1);
 Object.keys(TCORN).forEach(k => { const x = gx(TCORN[k][0]), z = gx(TCORN[k][1]);   // the corner towers' cones on posts, a banner
     townArch.cyl(x, TOPT + 1.2, z, 0.24, 3.4, 'wood', 0x6a4a30, { seg: 8, cap: false, ring: { n: 8, r: 4.85, a0: 22.5 } });
     townArch.cyl(x, TOPT + 4.6, z, 6.1, 0.4, 'wood', 0x6a4a30, { seg: 16, roof: true }); townArch.cyl(x, TOPT + 5, z, 6.3, 6.4, SLATE_T, 0xa84a3c, { seg: 16, r2: 0, roof: true });

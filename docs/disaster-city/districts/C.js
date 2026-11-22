@@ -182,7 +182,7 @@ plot(4, 2, () => { const PB = 0xf2eee4;   // DC: pale limestone
         cyl(28, 7.5, 1.8, 0, 9, 'bricks_3', BR, { seg: 12 }); cone(28, 7.5, 2.1, 9, 1.2, ALU, SLATE, { seg: 12 }); box(26.6, 12, 28, 14.5, 0, 0.12, STONE); door(28, 13.25, 'W'); }); });
 
 plot(5, 2, () => { const HG = 0xe8ecf0;
-    B(0, { ghost: [[8, 29, 20, 29, 9.8], [8, 40, 20, 40, 9.8], [8, 29, 8, 40, 9.8], [20, 29, 20, 34, 9.8]], cells: [[5, 7]] }, () => {               // HOLDING ANNEX (a roof-route tier): blind walls, a caged roof yard, the guard tower
+    B(0, { shift: [-1, 0], ghost: [[8, 29, 20, 29, 9.8], [8, 40, 20, 40, 9.8], [8, 29, 8, 40, 9.8], [20, 29, 20, 34, 9.8]], cells: [[5, 7]] }, () => {               // HOLDING ANNEX (a roof-route tier): blind walls, a caged roof yard, the guard tower
         box(7, 28, 21, 42, 0, 7, 'u_ConcreteStriped1a', HG, { top: 0 }); for (let x = 8.2; x < 20; x += 2.2) box(x, 27.9, x + 0.5, 28, 4.3, 5.6, null, DARK);
         box(8, 29, 20, 40, 7.05, 9.8, 'u_MetalTruss4a', 0xc0c4cc, { alpha: 1, top: 0 });
         box(18.2, 25, 21, 28, 0, 10, 'u_ConcreteStriped1a', HG); box(17.5, 24.3, 21.7, 28.7, 10, 12.4, 'u_GlassWindowSquare1a', 0xc8e8f4, { under: 1 }); roof('pyr', 17.1, 23.9, 22.1, 29.1, 12.4, 1.7, ALU, SLATE);
@@ -838,7 +838,20 @@ function apply(ctx) {
             const pb = Bd.i == null ? null : lp.buildings[Bd.i], id = pb ? 'dc:' + pb.id : 'dc:' + lp.id + '-x' + k, row = pb ? features.find(f => f.id === id) : null;
             if (pb && !row) throw new Error('civic: no row for ' + id);
             let D = null;
-            if (row && roofB.has(pb.id)) { row.bld = Object.assign({}, row.bld, { skin: false }); }
+            if (row && roofB.has(pb.id)) { row.bld = Object.assign({}, row.bld, { skin: false });
+                /* spec.shift = [squares east, squares south] (2026-11-22, the soft-lock hunt): the walked tier is moved under the drawn building. The Holding annex
+                   is drawn on squares 2 to 5 of its plot and the plan's tier stood on 3 to 6: the roof's west 3.5 m was air over a pit shut in by the cage's
+                   unseen walls (off the roof, 7 m down, no way out), its east 3.5 m an unseen ledge past the wall. The squares, the tool's own record of
+                   the building (the fire escape stands against it) and the plan's go with it. */
+                if (Bd.shift) { const dx = Bd.shift[0], dy = Bd.shift[1], bi = ctx.bInfo.find(q => q.id === pb.id), gx0 = P.px * N + pb.x, gy0 = P.py * N + pb.y;
+                    const hN = Math.round(row.d / C), wN = Math.round(row.w / C), was = [], now = [];
+                    for (let j = 0; j < hN; j++) for (let i = 0; i < wN; i++) { was.push([gx0 + i, gy0 + j]); now.push([gx0 + i + dx, gy0 + j + dy]); }
+                    const chOf = {}; was.forEach((c, k) => { chOf[now[k]] = ctx.cellAt(c[0], c[1]); });
+                    was.forEach(c => { if ('ID'.indexOf(ctx.cellAt(c[0], c[1])) >= 0 && !now.some(q => q[0] === c[0] && q[1] === c[1])) ctx.setCell(c[0], c[1], '.'); });
+                    now.forEach(c => { if (Math.floor(c[0] / N) === P.px && Math.floor(c[1] / N) === P.py && (c[1] - P.py * N) < pb.y + pb.h + dy) ctx.setCell(c[0], c[1], chOf[c] === 'D' ? 'D' : 'I'); take(c[0], c[1]); });
+                    row.x = r3(row.x + dx * C); row.z = r3(row.z + dy * C); pb.x += dx; pb.y += dy; (pb.doors || []).forEach(d => { d.x += dx; d.y += dy; d.ox += dx; d.oy += dy; });
+                    if (bi) { bi.x = r3(bi.x + dx * C); bi.z = r3(bi.z + dy * C); bi.cx0 += dx; bi.cy0 += dy; } }
+            }
             else if (row) {
                 delete row.key; delete row.style; delete row.hollow; delete row.door; row.skin = false;
                 const S = Bd.solids || [];

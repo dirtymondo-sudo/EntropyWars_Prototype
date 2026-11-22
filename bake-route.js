@@ -202,9 +202,13 @@ if (TAPER) { const mm = v => (v < 0 ? 'm' + (-v) : '' + v), seen = {};
       const inP = a[4] ? a : b, outP = a[4] ? b : a, dx = Math.round(outP[2]) * (a[4] ? 1 : -1), dy = Math.round(outP[3]) * (a[4] ? 1 : -1);
       const sx = Math.floor(inP[0]), sy = Math.floor(inP[1]), cx = Math.floor(sx / N), cy = Math.floor(sy / N);
       const id = dx ? 'ow_v_' + mm(BX0 + cx + (dx > 0 ? 1 : 0)) + '_' + mm(BY0 + cy) : 'ow_h_' + mm(BX0 + cx) + '_' + mm(BY0 + cy + (dy > 0 ? 1 : 0));
-      if (seen[id] || !TAPER[id]) continue; seen[id] = 1; TAPER_AT.push({ i, part: a[5], hold: TAPER[id].hold != null ? TAPER[id].hold : 3, len: TAPER[id].len || 10 }); }
+      if (seen[id] || !TAPER[id]) continue; seen[id] = 1; TAPER_AT.push({ i, part: a[5], hold: TAPER[id].hold != null ? TAPER[id].hold : 3, len: TAPER[id].len || 10, dirt: +TAPER[id].dirt || 0 }); }
   Object.keys(TAPER).forEach(id => { if (!seen[id]) { console.error('bake-route: taper names ' + id + ', which is no end of this road'); process.exit(1); } });
-  pathPts.forEach((p, j) => { TAPER_AT.forEach(T => { if (p[5] !== T.part) return; const t = Math.abs(j - T.i) * 0.25, f = Math.max(0, Math.min(1, (t - T.hold) / T.len)); if (f < p[6]) p[6] = f; }); }); }
+  pathPts.forEach((p, j) => { TAPER_AT.forEach(T => { if (p[5] !== T.part) return; const t = Math.abs(j - T.i) * 0.25, f = Math.max(0, Math.min(1, (t - T.hold) / T.len)); if (f < p[6]) p[6] = f; if (T.dirt && t < T.dirt) p[7] = 1; }); }); }
+/* THE PAVEMENT ENDS (2026-11-22, mondo on the Old Road: "at some point this old road needs to transition to a dirt road, makes no sense to have a modern road
+   leading to camelot"): a taper row may say `dirt: <squares>` = the last that many squares before that end are a dirt road (the ground kind's own path
+   sheet, no painted lines), so `hold` should be longer than `dirt`. p[7] = 1 on a path point of the dirt stretch. */
+const dirtAt = (x, y) => { if (!TAPER_AT.some(T => T.dirt)) return false; let bd = 1e9, bf = 0; for (let j = 0; j < pathPts.length; j++) { const p = pathPts[j], d = (p[0] - x) * (p[0] - x) + (p[1] - y) * (p[1] - y); if (d < bd) { bd = d; bf = p[7] || 0; } } return !!bf; };
 /* how much of the highway is left at a spot (the nearest point of its line) */
 const taperAt = (x, y) => { if (!TAPER_AT.length) return 1; let bd = 1e9, bf = 1; for (let j = 0; j < pathPts.length; j++) { const p = pathPts[j], d = (p[0] - x) * (p[0] - x) + (p[1] - y) * (p[1] - y); if (d < bd) { bd = d; bf = p[6]; } } return bf; };
 pathPts.forEach(([px, py, , , , pt, tf]) => { const LK = pt.look === 'highway' && tf < 1 ? { hw: 1.5 + 2 * tf, nose: true } : LOOKS[pt.look]; for (let y = Math.floor(py - LK.hw - 1); y <= Math.ceil(py + LK.hw + 1); y++) for (let x = Math.floor(px - LK.hw - 1); x <= Math.ceil(px + LK.hw + 1); x++) {
@@ -266,7 +270,7 @@ const FLOOR = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
    another room's), its sheet is painted on for ten squares over that cell's ground and the cell grows no trees, so the way out reads as a road going
    on and not as a road that stops at a tree line. Nobody walks those squares: the room changes on the plot's own last square. */
 const RUNON = {}, BARE = {};
-ENDS.forEach(e => { if (e.onWall || e.look === 'trail' || !e.past) return; const dx = e.side === 'e' ? 1 : e.side === 'w' ? -1 : 0, dy = e.side === 's' ? 1 : e.side === 'n' ? -1 : 0, hw = Math.ceil(LOOKS[e.look].hw), sheet = e.look === 'highway' ? ASPH : kitOf(kindAt(e.sq[0], e.sq[1])).path;
+ENDS.forEach(e => { if (e.onWall || e.look === 'trail' || !e.past) return; const dx = e.side === 'e' ? 1 : e.side === 'w' ? -1 : 0, dy = e.side === 's' ? 1 : e.side === 'n' ? -1 : 0, hw = Math.ceil(LOOKS[e.look].hw), sheet = (e.look === 'highway' && !dirtAt(e.sq[0] + 0.5, e.sq[1] + 0.5)) ? ASPH : kitOf(kindAt(e.sq[0], e.sq[1])).path;
     for (let i = 1; i <= 10; i++) for (let o = -hw; o < hw; o++) { const x = e.sq[0] + dx * i + (dy ? o + (e.sq[0] % N >= N / 2 ? 1 : 0) : 0), y = e.sq[1] + dy * i + (dx ? o + (e.sq[1] % N >= N / 2 ? 1 : 0) : 0); if (x >= 0 && y >= 0 && x < W && y < Dq && !inRoom(x, y)) RUNON[x + ',' + y] = sheet; }
     BARE[(e.past[0] - BX0) + ',' + (e.past[1] - BY0)] = 1; BARE[(e.past[0] - BX0 + (dy ? (e.sq[0] % N >= N / 2 ? 1 : -1) : 0)) + ',' + (e.past[1] - BY0 + (dx ? (e.sq[1] % N >= N / 2 ? 1 : -1) : 0))] = 1; });
 const PAL = [], pal = key => { if (key === FLOOR) return 0; let i = PAL.indexOf(key); if (i < 0) { PAL.push(key); i = PAL.length - 1; } return i + 1; };
@@ -280,7 +284,7 @@ for (let y = 0; y < Dq; y++) for (let x = 0; x < W; x++) {
     const k = kitOf(kindOfCell(cx, cy)), ch = cell[y][x];
     if (RUNON[x + ',' + y]) { paint[y * W + x] = pal(RUNON[x + ',' + y]); continue; }
     { const J = foreign(x, y); if (J) { const pi = J.paint[(y - J.FOY) * J.W + (x - J.FOX)]; paint[y * W + x] = pal(pi ? J.pal[pi - 1] : J.floor); continue; } }
-    paint[y * W + x] = pal(ch === 'p' ? (lookSq[y][x] === 'highway' ? ASPH : kitOf(kindAt(x, y)).path) : (ch === 's' || ch === 'm') ? SHOULDER : k.floor);
+    paint[y * W + x] = pal(ch === 'p' ? ((lookSq[y][x] === 'highway' && !dirtAt(x + 0.5, y + 0.5)) ? ASPH : kitOf(kindAt(x, y)).path) : (ch === 's' || ch === 'm') ? SHOULDER : k.floor);
 }
 
 /* A JOINED DISTRICT PAINTED AT HALF SQUARES (2026-11-17, the Leylines zone thread: Bug Colony's rings and paths are painted at the ground mesh's own
@@ -368,8 +372,8 @@ if (LOOK === 'highway') {
         /* a line that closes in where the highway narrows: `o` squares off the middle on the whole road, `oe` on the two-lane road, straight between */
         const fT = t => taperAt(x0 + dx * t, y0 + dy * t), whole = (ta, tb) => fT(ta) >= 1 && fT(tb) >= 1 && fT((ta + tb) / 2) >= 1;
         const taperLine = (o, oe, w, color) => { const A = a0(o), B = a1(o); if (!TAPER_AT.length) { line(at(A, o), at(B, o), w, color); return; }
-            const st = t => { const f = fT(t); return f >= 1 ? 2 : f <= 0 ? 0 : 1; }, br = [A]; let s0 = st(A); for (let t = A + 0.25; t < B; t += 0.25) { const s1 = st(t); if (s1 !== s0) { br.push(t - 0.125); s0 = s1; } } br.push(B);
-            for (let i = 0; i + 1 < br.length; i++) { const fa = fT(br[i]), fb = fT(br[i + 1]); line(at(br[i], oe + (o - oe) * fa), at(br[i + 1], oe + (o - oe) * fb), w, color); } };
+            const dT = t => dirtAt(x0 + dx * t, y0 + dy * t), st = t => { if (dT(t)) return 3; const f = fT(t); return f >= 1 ? 2 : f <= 0 ? 0 : 1; }, br = [A]; let s0 = st(A); for (let t = A + 0.25; t < B; t += 0.25) { const s1 = st(t); if (s1 !== s0) { br.push(t - 0.125); s0 = s1; } } br.push(B);
+            for (let i = 0; i + 1 < br.length; i++) { if (dT((br[i] + br[i + 1]) / 2)) continue;   /* (no painted line on the dirt) */ const fa = fT(br[i]), fb = fT(br[i + 1]); line(at(br[i], oe + (o - oe) * fa), at(br[i + 1], oe + (o - oe) * fb), w, color); } };
         [-1, 1].forEach(sd => { taperLine(sd * 0.6, sd * 0.05, 0.16, YEL); taperLine(sd * 3.4, sd * 1.0, 0.14, WHITE);
             [1.5, 2.5].forEach(o => { for (let t = Math.max(1, a0(sd * o) + 1); t + 2 <= Math.min(len, a1(sd * o)); t += 4) if (whole(t, t + 2)) line(at(t, sd * o), at(t + 2, sd * o), 0.14, WHITE); });
             /* a guard rail along the shoulder, in runs with gaps (you can step off the road) */
@@ -458,7 +462,7 @@ ENDS.forEach(e => {
     if (isOpen && e.onWall) { const ns = e.side === 'n' || e.side === 's', onPath = c => c === 'p' || c === 'm' || c === 's', at = k => ns ? (cell[e.sq[1]] || [])[k] : (cell[k] || [])[e.sq[0]];
         let a = ns ? e.sq[0] : e.sq[1], b = a; if (onPath(at(a))) { while (onPath(at(a - 1))) a--; while (onPath(at(b + 1))) b++;
             const g0 = ns ? gx(a) : gz(a), g1 = ns ? gx(b + 1) : gz(b + 1), mid = r2((g0 + g1) / 2); if (ns) d.x = mid; else d.z = mid; e.along = mid; d.passage.w = r2(g1 - g0);
-            if (e.look === 'highway') { let p0 = a, p1 = b; while (p0 < p1 && at(p0) === 's') p0++; while (p1 > p0 && at(p1) === 's') p1--; d.passage.floor = ASPH; d.passage.strip = r2((p1 + 1 - p0) * C); } } }
+            if (e.look === 'highway') { let p0 = a, p1 = b; while (p0 < p1 && at(p0) === 's') p0++; while (p1 > p0 && at(p1) === 's') p1--; d.passage.floor = dirtAt(e.sq[0] + 0.5, e.sq[1] + 0.5) ? kitOf(kindAt(e.sq[0], e.sq[1])).path : ASPH; d.passage.strip = r2((p1 + 1 - p0) * C); } } }
     doors.push(d);
     /* THE ROAD RUNS ON PAST ITS END (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural"; the standard of the
        day: a path goes on past the room's line in its own material). The spec's `runOn: { '<end id>': { len, spit } }` = that end's road is drawn on

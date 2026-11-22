@@ -521,6 +521,27 @@ the Claude Doc "Weapon-holding units: who gets an MPFB version".
 - THE WEAPON IN THE SPELL (11-22, thread "Use held weapons in unit spells", pass 1): the holders cast with the weapon (the cast kind by
   what the race holds, the spell's own weapon switched into the fist, shots from the real muzzle). Notes: spells-vfx.md "THE WEAPON IN
   THE SPELL" (what is done, what is next: a two-hand rifle clip, the bespoke gun looks, Robin Hood's bow, thrown stars, second holds).
+- THE WEAPON IN THE BASIC ATTACK (11-22, thread "Use held weapons in basic attacks"; mondo: "They should also use them for their
+  basic attacks"). A `RACE_CREATOR_LOOK_DEFS` row with a `hold` now names the basic attack its weapon makes (`basicAttackKind`), and
+  on the creator-body look that wins over battle.js's race tables (`def.weaponKind`, read first in `basicAttackKindOf`): `slash` (NEW
+  kind, three-renderer.js `_attackChainFor`: castSlash = Right_Hand_Sword_Slas, baked for the swing by `_castClipWarm`) for the
+  swordfighter, shogun, gladiator, knight, king arthur, pirate (was the quick-draw bullet), police officer (the baton; was a bullet),
+  scarecrow; `ranged` for sheriff, marksman, gangster, spy, barbarella, time cop, men in black, cowboy (the quick-draw clip: the gun
+  comes level at the hip on the strike frame); `throw` + `weaponProj: 'proj-shuriken'` for the ninja (the star in the fist flies,
+  `_PROJ_MODELS`, and is out of the hand while it does, `unitHideHeldFor`); `magic` for the wizard and the popstar; robinhood
+  `arrow` + `ownBow` (no spectral bow over the bow he wears; `BASIC_ATTACK_RACE_FIRST` robinhood is `arrow` on every look now).
+  THE WEAPON'S END: ONE way to find it, the spells thread's `unitHeldInfo(uid).tip()` (three-renderer.js THE WEAPON IN THE SPELL);
+  `ThreeAnim.unitShotOrigin(unit, kind)` gives that point (or the bow hand, or, for a gun /
+  thrown thing on a Meshy model, the right hand) and battle.js `playBasicAttackShot` starts the bolt, the flash and the flying round
+  there (`origin` on `fireBoltDirect`, a 9th argument on `ThreeAnim.projectile`; a round that leaves a weapon is 0.45 its old
+  size, it was a metre long on the 3.5 m squares). THE DRAW IN TIME: with no action shot the beat before the shot is shorter than the
+  quick-draw, so the clip starts that much in (`state._attackAnimSkip`, `_maybeStartModelAnim`'s 4th argument) and the gun is level
+  when the round leaves. ONLINE: nothing new is relayed; the guest's replay
+  of `basic-shot` / `strike-leap` runs the same functions and reads its own rig. The Meshy default looks keep their kinds; only their
+  gun shots moved to the right hand. Look probe: project files `weapon-attacks/scripts/attack.js` (the forge viewer held on the
+  strike frame, `EWCharViewer.seekPreview`), battle probe `battle.js` beside it (a real VS-CPU board, the clock frozen on the shot).
+  OPEN: two-hand rifle / bow-draw / staff clips (the long guns fire from the hip one-handed), the second-hand weapons (shield, fan),
+  the time cop's weapon per spell (the spells thread).
 
 ---
 

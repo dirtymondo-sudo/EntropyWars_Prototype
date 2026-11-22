@@ -1097,6 +1097,7 @@
     {
      "id": "ow_v_m6_m4",
      "kind": "seam",
+     "open": 7,
      "wall": "e",
      "sy": 24,
      "room": "site_ow_r1",
@@ -1107,6 +1108,7 @@
     {
      "id": "ow_v_m12_m4",
      "kind": "seam",
+     "open": 7,
      "wall": "w",
      "sy": 25,
      "room": "site_ow_r4",
