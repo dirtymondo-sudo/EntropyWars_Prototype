@@ -1,0 +1,113 @@
+THE SIGN CHECK, written by node bake-disaster-city.js (docs/disaster-city/sign-check.js). MOVED = a sign that sat in or behind a surface, drawn out to its face. LEFT = a sign with something in the way that the check could not clear: its district thread moves it. TWIN = a smaller lettering that lay under a larger one on the same face, taken out.
+{"signs":542,"moved":97,"left":9,"twins":5}
+LEFT "FIRE STATION" on arch:P04-00-B1 at -216.9, 26.1, -230.1: arch:P04-00-B1 box marble_light in the way at 0.02 m, no clear air within 1.6 m
+LEFT "COURTHOUSE" on arch:P07-01-B1 at -114.6, 24.3, -199.4: arch:P07-01-B1 cyl marble_light stands 0.34 m in front of it (not moved: the sign is not in a wall)
+MOVED "POLICE" on arch:P04-02-B1 at -237.9, 24.3, -153.1: arch:P04-02-B1 box marble_light was in the way at 0.02 m: drawn out 1.11 m
+MOVED "FILM STUDIO" on dc:P11-05-B1:arch at 231, 12.3, -204.8: dc:P11-05-B1:arch box was in the way at 0.06 m: drawn out 0.27 m
+TWIN "C" on dc:P11-07-B1:arch at 233, 20.8, -117.2: lay under "N" on the same face: the smaller lettering taken out
+TWIN "I" on dc:P11-07-B1:arch at 233, 19, -117.2: lay under "E" on the same face: the smaller lettering taken out
+TWIN "N" on dc:P11-07-B1:arch at 233, 17.3, -117.2: lay under "E" on the same face: the smaller lettering taken out
+TWIN "E" on dc:P11-07-B1:arch at 233, 15.5, -117.2: lay under "M" on the same face: the smaller lettering taken out
+TWIN "M" on dc:P11-07-B1:arch at 233, 13.8, -117.2: lay under "A" on the same face: the smaller lettering taken out
+MOVED "M" on dc:P11-07-B1:arch at 233, 16.5, -117.2: dc:P11-07-B1:arch box was in the way at 0.02 m: drawn out 0.07 m
+MOVED "N" on dc:E-lane-w:arch at 116.3, 17.7, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "N" on dc:E-lane-w:arch at 116.1, 17.7, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "O" on dc:E-lane-w:arch at 116.3, 17, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "O" on dc:E-lane-w:arch at 116.1, 17, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "O" on dc:E-lane-w:arch at 116.3, 16.3, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "O" on dc:E-lane-w:arch at 116.1, 16.3, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "D" on dc:E-lane-w:arch at 116.3, 15.6, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "D" on dc:E-lane-w:arch at 116.1, 15.6, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "L" on dc:E-lane-w:arch at 116.3, 14.9, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "L" on dc:E-lane-w:arch at 116.1, 14.9, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-w:arch at 116.3, 14.2, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-w:arch at 116.1, 14.2, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "S" on dc:E-lane-w:arch at 116.3, 13.5, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "S" on dc:E-lane-w:arch at 116.1, 13.5, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "R" on dc:E-lane-w:arch at 126.5, 16.3, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "R" on dc:E-lane-w:arch at 126.3, 16.3, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "A" on dc:E-lane-w:arch at 126.5, 15.6, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "A" on dc:E-lane-w:arch at 126.3, 15.6, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "M" on dc:E-lane-w:arch at 126.5, 14.9, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "M" on dc:E-lane-w:arch at 126.3, 14.9, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-w:arch at 126.5, 14.2, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-w:arch at 126.3, 14.2, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "N" on dc:E-lane-w:arch at 126.5, 13.5, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "N" on dc:E-lane-w:arch at 126.3, 13.5, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "S" on dc:E-lane-w:arch at 136.6, 16.3, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "S" on dc:E-lane-w:arch at 136.4, 16.3, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "U" on dc:E-lane-w:arch at 136.6, 15.6, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "U" on dc:E-lane-w:arch at 136.4, 15.6, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "S" on dc:E-lane-w:arch at 136.6, 14.9, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "S" on dc:E-lane-w:arch at 136.4, 14.9, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "H" on dc:E-lane-w:arch at 136.6, 14.2, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "H" on dc:E-lane-w:arch at 136.4, 14.2, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "I" on dc:E-lane-w:arch at 136.6, 13.5, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "I" on dc:E-lane-w:arch at 136.4, 13.5, -150.3: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "T" on dc:E-lane-w:arch at 146.8, 14.9, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "T" on dc:E-lane-w:arch at 146.6, 14.9, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-w:arch at 146.8, 14.2, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-w:arch at 146.6, 14.2, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "A" on dc:E-lane-w:arch at 146.8, 13.5, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "A" on dc:E-lane-w:arch at 146.6, 13.5, -143.7: dc:E-lane-w:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "A" on dc:E-lane-e:arch at 207.3, 15.3, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "A" on dc:E-lane-e:arch at 207.1, 15.3, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "R" on dc:E-lane-e:arch at 207.3, 14.6, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "R" on dc:E-lane-e:arch at 207.1, 14.6, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "C" on dc:E-lane-e:arch at 207.3, 13.9, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "C" on dc:E-lane-e:arch at 207.1, 13.9, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "A" on dc:E-lane-e:arch at 207.3, 13.2, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "A" on dc:E-lane-e:arch at 207.1, 13.2, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "D" on dc:E-lane-e:arch at 207.3, 12.5, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "D" on dc:E-lane-e:arch at 207.1, 12.5, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-e:arch at 207.3, 11.8, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-e:arch at 207.1, 11.8, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "G" on dc:E-lane-e:arch at 219, 14.6, -143.7: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "G" on dc:E-lane-e:arch at 218.9, 14.6, -143.7: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "A" on dc:E-lane-e:arch at 219, 13.9, -143.7: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "A" on dc:E-lane-e:arch at 218.9, 13.9, -143.7: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "M" on dc:E-lane-e:arch at 219, 13.2, -143.7: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "M" on dc:E-lane-e:arch at 218.9, 13.2, -143.7: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-e:arch at 219, 12.5, -143.7: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-e:arch at 218.9, 12.5, -143.7: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "S" on dc:E-lane-e:arch at 219, 11.8, -143.7: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "S" on dc:E-lane-e:arch at 218.9, 11.8, -143.7: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "N" on dc:E-lane-e:arch at 230.8, 16, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "N" on dc:E-lane-e:arch at 230.6, 16, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "O" on dc:E-lane-e:arch at 230.8, 15.3, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "O" on dc:E-lane-e:arch at 230.6, 15.3, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "O" on dc:E-lane-e:arch at 230.8, 14.6, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "O" on dc:E-lane-e:arch at 230.6, 14.6, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "D" on dc:E-lane-e:arch at 230.8, 13.9, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "D" on dc:E-lane-e:arch at 230.6, 13.9, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "L" on dc:E-lane-e:arch at 230.8, 13.2, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "L" on dc:E-lane-e:arch at 230.6, 13.2, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-e:arch at 230.8, 12.5, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "E" on dc:E-lane-e:arch at 230.6, 12.5, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "S" on dc:E-lane-e:arch at 230.8, 11.8, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "S" on dc:E-lane-e:arch at 230.6, 11.8, -150.3: dc:E-lane-e:arch box was in the way at 0.02 m: drawn out 0.19 m
+MOVED "NEWS" on arch:P04-04-B1 at -63.9, 18.8, -77.2: arch:P04-04-B1 box urban:GlassWindowTall1a was in the way at 0.02 m: drawn out 0.11 m
+MOVED "LIBRARY" on dcu:P01-06-B1 at -189.9, 16.8, 6.8: dcu:P01-06-B1 box calm_flagstone was in the way at 0.02 m: drawn out 0.23 m
+MOVED "KEYS" on dcu:P00-07-B1 at -243.7, 14.1, 47.7: dcu:P00-07-B1 quad urban:PlasterWallStucco1a was in the way at 0.06 m: drawn out 0.11 m
+MOVED "SCIENCE MUSEUM" on dcu:P02-07-B1 at -147.9, 15, 73.3: dcu:P02-07-B1 box calm_tiles was in the way at 0.02 m: drawn out 0.35 m
+LEFT "TICKETS" on dcu:P02-07-B1 at -145.2, 14.4, 75.5: dcu:P02-07-B1 box urban:PlasterWallPainted1a in the way at 0.02 m, no clear air within 1.6 m
+MOVED "E" on dc:P10-08-B1:arch at 174.1, 19.3, -74.7: dc:P10-08-B1:arch box was in the way at 0.02 m: drawn out 0.07 m
+MOVED "E" on dc:P10-08-B1:arch at 174.1, 19.3, -73.6: dc:P10-08-B1:arch box was in the way at 0.02 m: drawn out 0.07 m
+MOVED "EXIT" on dc:P10-08-B1:arch at 198, 6.6, -77.1: dc:P10-08-B1:arch box urban:PlasterWallPainted1a was in the way at 0.02 m: drawn out 0.07 m
+MOVED "EXIT" on dc:P10-08-B1:arch at 188, 6.6, -52.4: dc:P10-08-B1:arch box urban:PlasterWallPainted1a was in the way at 0.02 m: drawn out 0.07 m
+MOVED "GRILL  NOODLES  TACOS" on dc:P09-09-B1:arch at 155.6, 4.2, -35.4: dc:P09-09-B1:arch box urban:PlasterWallPainted1a was in the way at 0.02 m: drawn out 0.15 m
+MOVED "COFFEE  JUICE  SWEETS" on dc:P09-09-B1:arch at 138.4, 4.2, -35.4: dc:P09-09-B1:arch box urban:PlasterWallPainted1a was in the way at 0.02 m: drawn out 0.15 m
+MOVED "MAIL" on dc:P10-09-B2:arch at 184.4, 1.8, -17.6: dc:P10-09-B2:arch quad urban:PlasterWallStucco1a was in the way at 0.02 m: drawn out 0.27 m
+MOVED "HARBOUR MASTER" on dc:bay-harbourmaster:arch at 218.8, 3.2, 73.5: dc:bay-harbourmaster:arch quad urban:PlasterWallPainted1a was in the way at 0.06 m: drawn out 0.11 m
+MOVED "WRESTLING TONIGHT" on arch:S:P06-08-B1 at 21, 11, 88.3: arch:S:P06-08-B1 quad gold was in the way at 0.02 m: drawn out 0.07 m
+MOVED "LUCHA LIBRE" on arch:S:P06-08-B1 at 21, 11.8, 88.3: arch:S:P06-08-B1 quad gold was in the way at 0.02 m: drawn out 0.07 m
+MOVED "CITY STADIUM" on arch:S:stadium at -42, 12.5, 132.7: arch:S:stadium box urban:MetalTruss1b was in the way at 0.02 m: drawn out 0.35 m
+MOVED "T" on arch:S:P06-09-B2 at 0.5, 13.2, 144: arch:S:P06-09-B2 box urban:PlasterWallPainted1c was in the way at 0.02 m: drawn out 0.55 m
+MOVED "T" on arch:S:P06-09-B2 at 0, 13.2, 144: arch:S:P06-09-B2 box urban:PlasterWallPainted1c was in the way at 0.02 m: drawn out 0.55 m
+LEFT "HOT FOOD" on arch:S:P05-11-B2 at -31.5, 4.6, 214: arch:S:P05-11-B2 cyl urban:PlasterWallPainted1c in the way at 0.02 m (a copied part: move it in its district file)
+LEFT "DRINKS" on arch:S:P05-11-B2 at -31.5, 4.6, 220: arch:S:P05-11-B2 cyl urban:PlasterWallPainted1c in the way at 0.02 m (a copied part: move it in its district file)
+LEFT "RENTALS" on arch:S:P06-11-B2 at 13.6, 5, 220.1: arch:S:P06-11-B2 cyl urban:PlasterWallPainted1a in the way at 0.02 m (a copied part: move it in its district file)
+LEFT "RENTALS" on arch:S:P06-11-B2 at 7.4, 5, 220.1: arch:S:P06-11-B2 cyl urban:PlasterWallPainted1a in the way at 0.02 m (a copied part: move it in its district file)
+LEFT "RENTALS" on arch:S:P06-11-B2 at 7.4, 5, 213.9: arch:S:P06-11-B2 cyl urban:PlasterWallPainted1a in the way at 0.02 m (a copied part: move it in its district file)
+LEFT "RENTALS" on arch:S:P06-11-B2 at 13.6, 5, 213.9: arch:S:P06-11-B2 cyl urban:PlasterWallPainted1a in the way at 0.02 m (a copied part: move it in its district file)
+MOVED "COAL AND ICE" on dc:P02-01-B1-arch at -133, 12.3, 139.9: dc:P02-01-B1-arch box urban:PlasterWallPainted1a was in the way at 0.02 m: drawn out 0.07 m

@@ -3804,3 +3804,44 @@ His two F3s: "1384 ms upload · 158×168 canvas" (and 557, 272, 77, 53 ms the sa
 - **RULE**: a build key may only drop an attribute when NOTHING in three's build reads it for that object: check
   `hasGeometryAttribute` / `geometry.hasAttribute` in three.webgpu.js (skinning, instancing, batching, morphs) before cutting a key.
 
+
+## THE SHEET WITH NO PICTURE (2026-11-22, mondo: "i went across and the screen was black in the circus")
+- **His crash trail** (WebGPU, Firefox, `site_prebuilt_area51_ow_circus` entered from the Desert): `a draw failed and was skipped
+  (elephant-3d / MeshLambertMaterial: can't access property "complete", image is null)`, the same throw from `Render Pipeline /
+  RenderPipeline` (= the WHOLE frame skipped: black world, HUD fine), `Unsupported texture type with RGBFormat. 1009`, and, when he
+  opened the dev tools (a resize), `Texture with 'depth' label has been destroyed` in Queue::submit.
+- **Cause**: the elephant is an FBX whose sheet (`elephant-3d.png`) is the FBX loader's own fetch, so the model is built while
+  the picture is still on its way. `_hqPropMatPick` sets the sheet's colour space and FLAGGED it for upload (`needsUpdate`) with no
+  picture. three's node renderer reads `image.complete` of a flagged sheet without checking for null and throws, on every frame
+  until the picture lands (WebGL just skips such a sheet). A direct draw is caught by THE DRAW GUARD; a path outside a draw is not.
+- **Fix** (three-renderer.js): (1) `_ewTexSetSRGB` reports "changed" (its callers' cue to flag) only for a sheet that has its
+  picture: the root cause, for all 20-odd callers. (2) `_ewGpuSafeTextures`: three's `Textures.updateTexture` gives a flagged sheet
+  with no picture three's placeholder instead of throwing (gpuStatus: "sheets with no picture N (first: name)", one console line);
+  an 8-bit RGB sheet becomes RGBA (the texture loader marked every JPEG RGB: those drew as the blank placeholder on WebGPU; a data
+  sheet's bytes are widened); a destroyed texture goes with the late frees (the next frame's first render), so a resize can no
+  longer pull a pass's texture from under commands already encoded. (3) THE GROUP GUARD: a throw while a recorded group replays
+  or records skips that group for the frame and re-records it, the frame goes on. Off: `EW_NO_SAFE_TEXTURES`, `EW_NO_GROUP_GUARD`.
+- **Proof** (cloud browser, real WebGPU headful on Xvfb, the circus): a hook on `Texture.needsUpdate` named the flag
+  (`elephant-3d.png` from `_hqPropMatPick` < `_animalBuild`); after the fix it never fires. A sheet flagged with no picture on the
+  elephant: fix off = his line, "skipped draws 12 (first: elephant-3d / MeshLambertMaterial: Cannot read properties of null
+  (reading 'complete'))", the elephant gone; fix on = 0 skipped draws, 0 GPU errors through two window resizes, the elephant drawn.
+  NOT reproduced here: the whole frame going black (the throw reached only the guarded draw in the cloud run) and the destroyed
+  depth texture. Picture: `/mnt/project-files/circus-black-screen-20261122/`.
+- **The probe**: `playtest_city.js` with `headless: false` under `EW_PROBE_GL=webgpu xvfb-run -a … --gpu=webgpu` draws real
+  pictures on WebGPU (about 80 s to the circus being ready, 2.5 min a run).
+- NOT touched: the memory budget (his trail: 1934 of 700 MB in the circus, 980 MB of it worn by things drawn).
+
+## THE OUTLINE'S BOUNDS (2026-11-22, mondo walking Disaster City: 43.6 FPS, "Still frame drops, lets keep trying to get to 60 fps")
+His dip log: one-frame dips of ~60 ms, "tick: characters 22", three in 40 s of walking, and 141 ms of it inside each long dip.
+A profiled walk (cloud, classic renderer): every new townsperson spent ~22 ms in `_hqCharCullSetup` → `box.setFromObject(e.model)` →
+`SkinnedMesh.computeBoundingBox` (every vertex posed through its bones). The body's own meshes got rest-pose bounds on 11-19, but
+the body's OUTLINE copy (`_ew_silhouette`) was skipped by that loop and had none. It now takes its geometry's rest-pose box and
+padded sphere. Profile after: `_hqTickChars` 358 ms → 13 ms over the same walk. Off: `window.EW_HQ_SKIN_BOUNDS_EXACT`.
+- WHERE THE STEADY 43.6 FPS STANDS (his F3): the frame is JS (CPU 18.6 of 23.0 ms) and still follows the replayed meshes
+  (2,285 in view: squares 1,303, instance cells 674, prop plots 207, fences 78; the 11-15 price 12.5 ms + 4.8 µs a mesh gives
+  23.5 ms). 60 FPS wants ~850. The census of pieces alone in their look (cloud, whole city): the "see-through / cut-out" ones are
+  cut-out SIGNS (Phong, alphaTest 0.35, glow on, a canvas of its own 128 px high and 64 to 2048 px wide), ~450 in the city, each
+  with a different picture; same-size groups (128×128 38, 64×128 44, 355×128 32, 840×128 32 ...) could stack (THE SHEET STACK
+  refuses cut-outs and canvases today) for ~200 fewer meshes = ~1 ms. Not done: the stack's shader path cannot be seen in the
+  cloud (WebGPU picture is black, the full city crashed the WebGPU page at "ready").
+- The cloud WebGPU city: crashed ("Target crashed") right after the room was ready, 15 GB machine, no texture shrink.

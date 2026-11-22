@@ -11408,6 +11408,24 @@ between two places that touch is wrong. The rule below is the one every zone thr
 - NOT DONE YET, by design: heights that climb (the map has no height per plot: a climb is hand work in the hook), residents
   on a route (a fight on a trail plot works: "ONE WORLD, THE TEST SLICE"), cars on a highway (`terrain.traffic`, the Desert's way).
 
+### THE BLENDED LAND — no ruler line where two grounds meet past a room (2026-11-22, mondo on the Badlands Highway)
+mondo 11-22: "in the badlands, on the edges the map goes from grass to desert too abruptly in a straight line, that is not realistic at all, please fix".
+Two ruler lines stood on the land past a room (three-renderer.js `_hqEdgeLandFn` / `_hqBuildEdgeLand`), both gone in every room with `terrain.edges`:
+- **The room's own line.** A road room on dry scrub wears `grass_rocky`; the land past it wore the sand sheet (every dry kind did), so the Highway ran as a
+  green strip through sand, cut dead straight on the room's edge (the badlands plots the same: `wasteland` against sand). Now (a) on the One World the land
+  wears THE MAP'S OWN GROUND: `HQ_EDGE_SHEETS` (by the map's kind: `scrub` -> `grass_rocky`, `bad` -> `wasteland`, the route kit's own floors; a kind not
+  named wears the grass or the sand sheet as before), and (b) in any room THE ROOM'S GROUND RUNS ON: the sheet under the edge (its paint, else its floor;
+  open ground only, the `NAT` test: never asphalt or paving) goes on past the line and gives way to the land's own in tongues 2 to 42 m out.
+- **The sheet line.** Every square of land wore ONE sheet, the heavier kind's, so grass met sand along a staircase. Now a square of open ground wears every
+  sheet its corners have a share of (`sheets(P, x, z)`): the first by name laid whole, each next one over it as a see-through layer on the same squares
+  (corner alpha = its share of the sheets laid so far, so the sum is the corner's own mix whichever sheet is first; no shader, so both renderers). The
+  shares are read a little off the point (the line wanders at every distance, only the sheet, never a height), over a 23 m band, and pushed apart by a
+  slow noise per sheet: two grounds meet in patches and tongues. Rock, cliffs, snow and another room's real land (`land`) are drawn as before.
+- No sheet is repainted or rebaked: the game's own ground sheets, mixed. Kill switches: `edges.hard: true` (a room), `window.EW_HQ_HARD_EDGE_SHEETS` (all).
+  `HQ_EDGE_OWN_TINT` = the tint of a room's / the map's own sheet on the land. Cost: one more draw per sheet per piece, only on squares where two sheets meet.
+- Seen (cloud browser, the node renderer's WebGL2): `site_ow_r9` from the air at four places and on foot; pictures `/mnt/project-files/badlands-edges/`.
+  Not seen: real WebGPU on his Mac, the other rooms (same code: a room whose edge ground is open ground now runs it on; the city's asphalt edge does not).
+
 ### ONE WORLD, THE HORIZON READS THE MAP (`terrain.edges.world`, three-renderer.js `_hqEdgeLandFn` / `_hqBuildEdgeLand`)
 - **`edges: { world: true, reach: 440 }`** = the sides are not written, they are read. The room stands on the world grid
   (`hqOwRoom`), and the land at every point past its line is the kind of the WORLD PLOT under that point
@@ -14056,3 +14074,79 @@ underground threads are doing stalagmites and just do that?? you can't make a ro
   refuses any dressing that cuts a square off the walk (it caught Hollow Earth's crystal scatter; those crystals are walked through now).
 - THE INNER SUN: 18 m across, 34 m up on its column; the jungle 6 to 11 m (was 9 to 17) and only low palms (3.5 to 6 m) on the Sun's three plots
   (`gen.zones`), so it stands over the trees.
+
+## THE ROAD OUT IS WALKED (2026-11-22, mondo on the city's road to the Desert)
+mondo: "The signs are facing backwards ... i walk through and it doesnt automatically take me to the desert, i have to walk back a little bit
+and press e ... i can't see the road going out, the road just stops and its all desert".
+- **A FREE END'S `face` IS THE HEADING INTO THE ROOM** (three-renderer.js `_hqBoxWall`: the inward normal). `links.downtown_desert.a` said 180 on
+  the city's south line: the whole road kit stood back to front (gantry plate and LEAVING plate seen from behind, the asphalt strip run north
+  under the city's own street, arrivals landed outside the line). It is 0 now. `valley_city.a` (face 90 on the west line) was right. A new
+  free `road` end: face = the compass heading from the line back into the room.
+- **A ROAD END IS A PASSAGE RECORD** (`_hqBuildWay`, kind `road`): no prompt, never pressed; `_hqTickPassages` changes the room when the walker
+  goes on under the gantry (a free end: 3.2 m past the door's place, 1 m past the gantry; a wall end: 1.2 m past the wall on 3 m of level floor).
+  Both links that wear `road` (downtown_desert, valley_city) and any later one. The arrival stands 1.6 m inside, facing the room.
+- **THE STRIP LIES ON THE LAND PAST THE EDGE** (`_hqWayBuilders.road`): in a room with natural edges (`_hqEdgeLandOn`: the city, every One World
+  room) the asphalt + paint are laid on `_hqEdgeLandFn(...).at`, read at the land mesh's own rows (HQ_EDGE_ROWS, straight between), for 300 m,
+  in the city streets' sheet (`urban:RoadGeneric1a`, tint dcdce0). The first 14 m are one even ramp from the door's floor down to the land (the
+  desert kind's ditch at the line is bridged), a dark bank under its sides; the shoulder posts stand on the land. Rooms with the old outer
+  ground keep the 40 m strip.
+- **A link end may say `w`** (the street's width past the gantry; data.js link door builder copies it to the door row): both downtown_desert
+  ends are 14 (four squares), was the catalogue's 9.
+- Probe: `node playtest_city.js site_ow_r9 '[{"name":"walk_n","x":-35,"z":-180,"face":0,"ground":true,"walk":{"key":"w","max":40000}}]'` walks
+  into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
+  the SECOND room of a run; the WALK line prints before that.
+
+## THE SEAM IS THE ROAD — an open seam on a route room's wall is as wide as the road (2026-11-22, mondo: "it only works when i enter through the median")
+mondo 11-22, the Badlands Highway (`site_ow_r9`) into the Circus: "it only works when i enter through the median in the highway, which doesnt make
+sense since i wouldnt be driving in the middle of the road. Its an invisble wall where the actual road is."
+- THE FAULT: bake-route.js wrote every open seam `pw` wide (16 a highway, 11 a road, 5 a trail) on the path's middle line. A highway is 24.5 m of
+  asphalt + two 3.5 m shoulders, and its middle line is the median, so only the median and half a lane each side crossed; the rest of the road ran
+  into the room's line (three-renderer.js `_hqPassageSurface`: past `w / 2` the passage has sides). Measured before: a walker at x 8.5 and at x -11.5
+  stopped at z 187.6. Every highway end had it (R9, DH1-DH4, R1, R4: 14 ends); road and trail ends were 1.5 / 1 m short each side.
+- THE FIX (bake-route.js THE SEAM IS THE ROAD): an open seam on the room's wall = the path's own squares on the room's last row (asphalt, median,
+  shoulders): its middle is the middle of that run, its `passage.w` the run's width (31.5 or 28 a highway, 14 or 10.5 a road, 7 a trail);
+  `edges.ways` follows. A highway's strip past the line is asphalt as wide as its asphalt (`passage.floor`, `passage.strip`; three-renderer.js
+  `_hqPassageWay` reads `strip`), not a 16 m band of the room's dirt path sheet.
+- WHAT WAS RE-WRITTEN: only the seam rows and `edges.ways` of R9, DH1-DH4, R1, R4, R5, R6, R8, R10, R11, L6, L14. A full rebake of R4, L6 and L14 moves
+  other lines (ground, a spawn), so there only the seam lines were laid in; the spawn / plate a rebake moved were kept as they stood. A FREE seam
+  (R1 into Disaster City, R8's, R11's) is not touched: it is crossed on the plot's own squares.
+- NOT DONE, the districts' own sides: a district's seam (`open: 16` in bake-desert.js, the Circus's 16 m gap in its north fence between the animal pen
+  and the outhouses) is the district's own gate; leaving a district you still walk out through its gate and land on the highway's middle. Widening one
+  means moving what stands beside it: the district file's call.
+- Proof: a walker on the outer lane (x -11.5) crosses and lands in the Circus (`/mnt/project-files/highway-circus-seam/`).
+
+## THE RAISED HIGHWAY — the Badlands Highway on pillars, with an exit (2026-11-22, owner; mondo: "I want actual highway architecture, raised off the ground with exits and stuff. Right now it looks like the road is just painted on the ground")
+
+mondo's OK on the plan + four mock-ups (`/mnt/project-files/badlands-highway/mock_*.png`): "Yeah that looks good, just make sure the exit ramp actually branches off from
+the highway ... make sure the road doesnt abruptly stop at teh edge of the map, need to see the road continue beyond it". The Badlands Highway (`site_ow_r9`) is the
+first; he wants the other highways after he has seen it.
+
+**The tool: `ow-raised.js`** (repo tooling, called by `bake-route.js` for a spec that has `raised`). A route spec says
+`raised: { h, up: [row0, row1], down: [row0, row1], exit: { aux, slip, cross: [row0, row1] }, flat: [[x0, y0, x1, y1], …] }` (rows = squares along the room):
+- `up` / `down` = the two main ramps (real terrain `ramp` features, the full road wide, on earth between retaining walls); between them the DECK, `h` metres up.
+- The deck is a `bridge` row (`hide: true`: walked, not drawn) + `arch` rows that draw it (`hw:<id>:deck`: slab with the road sheet on top, girders, jersey barriers,
+  lane paint; `…:piers` = round piers under cap beams every six squares, a pair each side of the cross road; `…:lights`).
+- `exit` = one exit each way: an extra lane `aux` squares long opens on the deck's outer edge (the deck is that much wider there, no barrier between it and the main
+  lanes: the ramp BRANCHES OFF), then a slip ramp `slip` squares long drops to the `cross` road, which runs under the deck wall to wall. The same again back up on the
+  far side. So four slip ramps a deck.
+- Barriers, retaining walls and piers are ghost `wall` rows on whole squares (the grind rails are those walls' own tops: exact).
+- `flat` = boxes of ground it levels for what stands at the exit (R9: the gas station west, the motel east).
+- It clears the route kit's props, lane marks and guard rails off the raised stretch, and paints the ground under the deck (a dirt track).
+- THE ROAD RUNS ON: for the cross road it pushes two rows into `terrain.edges.roads` (below) and stands traffic barrels at both walls. The cross road leads to no zone:
+  it is a county road that runs out of sight both ways.
+- It returns its numbers (`RAISED` in the hook's ctx: `XC, U0, U1, D0, D1, H, gN, gS, CR, hMain(row), xc, xl(side), E`) so a hook can hang a gantry at deck height.
+
+**The room.** `docs/areas/routes/R9.json` `add` = six more world plots (three west, three east of the exit) so a gas station and a motel fit beside the ramps: 24 plots,
+box 4 x 9. `R9.js` stands the gas station (store, canopy, sign, truck) west and the motel east, both on paved lots that open on the cross road, and the gantries.
+
+**The engine (three-renderer.js).**
+- CARS ON A DECK: a `terrain.traffic` route with `deck: true` rides the top of a `bridge` row where one is over it (`_hqCarGround`); the bake sets it on every route of
+  a raised room. A DRIVEN car (the car driving thread) must do the same: the deck is the bridge layer, not the height field.
+- `terrain.edges.roads: [{ side, at, w, key, len, line }]` (`_hqBuildEdgeLand`): a road that leaves the room across a wall is drawn on over the edge land, on a low
+  bank, with a middle line; the land's trees keep off it. Any room may use it.
+- `arch` parts take `shear: [rise, depth]` (a box whose top follows a slope: the ramp walls and barriers).
+
+**To raise another highway:** add `raised` to its spec (and `add` plots if something should stand at the exit), `node bake-route.js <id>`, `node bake-map.js site_ow_<id>`,
+`--put` the map picture, a browser look.
+
+**Seen, not touched:** in data.js `hqTerrainBridges` the end of one line (`drawW`, `glaze`, `seat`, `front`, `gaps` of a straight bridge) sits behind a `//` comment.
