@@ -14304,3 +14304,50 @@ green liquid, its glitches and puts me back on the ground, the waterfalls look m
   opaque sludge). It stops at the lay line + 0.1 now, inside the bank.
 - **THE SLUDGE'S SURFACE:** `_CALM.liquids.sludge` ripple 0.02 -> 0.05 (the calm liquid's own ripple, same colour, same sheet: nothing
   repainted). Was one flat green.
+
+## THE SOFT-LOCK FINDER + THE STRAIGHT RAISE (2026-11-22, mondo: "fell into this tiny crevice in the sewers")
+
+mondo 11-22 (the Sewers, The Culverts, a raised floor running down into a gap at a wall's foot): "immediately fell into this tiny crevice in the
+sewers. What are these??? get rid of them. they are so easy to fall into and get stuck and soft locked ... whatever building method this is,
+stop ... no tiny crevices or huge drops where there is no room to get out or move. know when to raise the terrain with a gradient on the side
+and when to just raise it straight up. this is a scenario where it needs to be raised straight up because its by a wall and so it makes this
+gap/crevice that the player can fall into. Please fix this everywhere in the game".
+
+**HIS RULE (binds every room and every bake tool):** beside a wall, a mass or an edge the ground is raised STRAIGHT UP (no run of slope, no
+gap). A gradient is only for open ground that leads somewhere walked. Any place the walker can get into has a walked way out.
+
+**WHAT MADE THEM (three shared causes, all in the engine or a tool, none in one room's rows):**
+- **THE STRAIGHT RAISE** (data.js `_hqTGenerate` applyRise): a MASS plan (drawn `space` rows in walls, the city, halls, ley) kept the authored
+  field under its solid. A `plateau` floor that ends at a wall met ground 0 half a node inside the wall, and the field (bilinear) ran down to
+  it: every wall of a raised floor had a sliver of slope at its foot the walker slid into (in the Sewers' top chamber: from 45.5 down to 30.5
+  in the last 30 cm before the wall, measured). Now the solid's first two rings of nodes take the height of the open ground they touch when
+  they lie more than 0.3 m under it. One rule, every mass plan.
+- **THE SHEER EDGE** (data.js `hqTerrainVoidAt`): in a room over the void (the Internet, the Astral Realm, Heaven) the void began where the
+  height fell under the lip, so the upper part of a floating tile's side was "ground": the walker stepped off, slid down to the void's line
+  and stood there. A cell with a corner in the void and a rise over a jump is the tile's side: all void (a fall). A built flight or deck
+  over it stays ground. Flights over the void keep 2.6 m or more of walk (checked on all four void rooms).
+- **NO CORRIDOR THROUGH A DRAWN WALL** (bake-labyrinth.js writes `noRescue: true`): the plan generator's guarantee cuts a corridor to any
+  door its plain walk cannot reach. In the labyrinth (ladders, one-way drops) it cut 24 of them through the brick at ground 0: strips two
+  nodes wide up to 35 m under the floor beside them (one at the Stadium Drain's door). A room whose plan is laid square for square by a tool
+  says `noRescue: true`. THE OTHER TOOLS that write `kind: 'plan', look: 'walls'` (bake-ug.js, bake-underground.js, bake-cavern.js,
+  bake-dumb.js, bake-afterlife.js) still carve: the finder prints `CARVED n` for a room where it happened; read those rooms first.
+- **A SUMP'S BRIM** (bake-labyrinth.js): a floor runs 0.6 m out over a sump's squares and the sump's bed eases down inside the liquid
+  (`bank: 1.3`), so the run down lies in the liquid: no dry lip a metre deep along the brim, no pocket in its corners.
+
+**THE FINDER:** `node find-softlocks.js --all [--jobs 4]` (every terrain room, a table by zone, each room's JSON + `_summary.md` in
+`shots/softlocks/`), `node find-softlocks.js <room id…>` (one room, every row with its x, z, y: the F3 line's numbers),
+`--zone "<ZONE>"`. It walks the room by the walker's own rule (hqTerrainFeet: step 0.62 m, jump 1.3 m, ladders) from the doors' pads:
+- TRAP = ground reached and never left again (an enclosed pit, a drop with no way back). hqTerrainTraps, the room's own grid.
+- CREVICE = a sliver BETWEEN two grid nodes at the foot of a wall / mass / edge, more than a jump under the floor beside it (the grid check
+  cannot see it). DIP = the same, 0.62 to 1.3 m (jumped out of).
+- SLOT = a strip under 1.8 m wide under a face the walker can drop off, a wall or a face on its other side (walked out of at an end, still
+  a tiny crevice).
+Only ground the walker REACHES counts (a roof nobody gets onto is nobody's crevice). Known limits: a room whose ways are floating stairs
+or lifts is under-read (Heaven: 6 nodes reached); a trap in sludge may be hauled out of (hqTerrainHaulOut); a one-way area whose only exit
+is a door without a pad reads as a trap. Each row is a place to LOOK AT, then fix by the rule above.
+
+**WHEN YOU BUILD OR CHANGE A ROOM:** run the finder on it before the PR. A new TRAP or CREVICE is a bug in the change.
+
+**THE SEWERS AFTER (11-22):** 0 traps, 0 crevices, 0 slots; 10 dips of 0.85 m, each one node, at the sumps' wall corners (jumped out of).
+Before: every wall of every raised floor, 14 traps, the 35 m strip. Proof: `/mnt/project-files/softlocks/sewers_wall_before_after.jpg`.
+THE REST OF THE WORLD: the list by zone of 11-22 is `/mnt/project-files/softlocks/softlocks_by_zone.md`.
