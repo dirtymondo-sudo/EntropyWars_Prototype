@@ -59,9 +59,11 @@ module.exports = {
         { const PIT = -5.25;
           ctx.feat({ k: 'plateau', sink: true, x: r2((gx(73) + gx(83)) / 2), z: r2((gz(38) + gz(46)) / 2), w: 10 * C, d: 8 * C, h: 5.25, edge: 0.05 });
           ctx.feat({ k: 'plateau', sink: true, x: r2((gx(80) + gx(83)) / 2), z: r2((gz(37) + gz(47)) / 2), w: 3 * C, d: 10 * C, h: 5.25, edge: 0.05 });
-          M.deck(76, 38, 79, 46, 0, STEEL); M.guard('v', 76, 38, 41, 0, BLUE); M.guard('v', 76, 42, 46, 0, BLUE); M.guard('v', 79, 37, 47, 0, BLUE);   /* the gap at y 41 = A LEDGE into the pit */
+          M.deck(76, 38, 79, 46, 0, STEEL); M.guard('v', 76, 38, 41, 0, BLUE); M.guard('v', 76, 42, 46, 0, BLUE); M.guard('v', 79, 37, 38, 0, BLUE); M.guard('v', 79, 38, 46, 0, BLUE); M.guard('v', 79, 46, 47, 0, BLUE);   /* the gap at y 41 = A LEDGE into the pit. (The east rail in three, 2026-11-22: one rail from 37 to 47 stood on the ring's floor at its two ends, so the engine stood all of it on the ground: a wall down to the pit's floor under the catwalk, and the pit's east half, the Detector's, a place you dropped into from the ring and never left. The piece over the pit hangs at the catwalk now: you walk under it to the stair.) */
           M.stair(73.5, 41, 73.5, 38, 1, PIT, 0, 'steel'); M.guard('u', 38, 74, 76, 0, BLUE); M.guard('u', 46, 73, 74, 0, BLUE); M.guard('u', 46, 75, 76, 0, BLUE);
           ctx.feat({ k: 'climb', x: M.X(74.5), z: r2(M.Z(46) - 0.3), face: 180, look: 'ladder' });
+          /* a second ladder, at the Detector's corner (2026-11-22, every place has a way out): where the ring's floor ends over the pit east of the catwalk's rail */
+          ctx.feat({ k: 'climb', x: r2(M.X(80) + 0.3), z: M.Z(46.5), face: 270, look: 'ladder', y0: r2(plot['P06-03'].base + PIT), y1: plot['P06-03'].base });
           M.dec('dockring', 80.6, 41.9, 90, { y: 5.25, floor: true }); M.dec('meshy_tesla_coil', 81.6, 38.7, 0, { y: 5.25, floor: true }); M.dec('meshy_tesla_coil', 81.6, 45.3, 0, { y: 5.25, floor: true });
           M.dec('floating_orb', 74.6, 43.4, 0, { y: 5.25, floor: true }); M.dec('retro_control_panel', 73.4, 39.6, 90, { y: 5.25, floor: true }); M.dec('gauge_board', 75.6, 45.4, 180, { y: 5.25, floor: true }); M.dec('cable_drum', 75.4, 39.0, 30, { y: 5.25, floor: true });
           M.sign('THE BEAM IS ON', 78, 37.06, 4.4, 6, 0.9, 0, '#7fd0ff', '#10202c', 'stencil', 0.6); M.hung('radiation_sign', 73.05, 37.5, 90, 1.7); M.hung('security_camera', 82.9, 37.2, 225, 4.0);

@@ -41,7 +41,10 @@ function hangar(ctx) {
 }
 /* THE GANTRIES: the tunnel crosses the ring (10.5) on a bridge at 14, a stair down to the ring beside it; the tunnel's own squares round it lifted */
 function gantries(ctx) {
-    deckOver(ctx, 0, 3, 0.5, 0); deckOver(ctx, 8, 11, 0, 0.5); deckOver(ctx, 72, 75, 0.5, 0); deckOver(ctx, 80, 83, 0, 0.5);
+    /* (0.6 m UNDER the bridge's ends, 2026-11-22, mondo's no-crevice rule: the tunnel's floor stopped on the square's line, the bridge 0.12 m short of it, and the
+       field ran down to the ring between them: a gap half a metre wide and 1.6 m deep ACROSS THE TRAM TUNNEL at both ends of both bridges, beside the beam
+       pipe's wall. find-softlocks.js CREVICE.) */
+    deckOver(ctx, 0, 3, 0.5, 0.6); deckOver(ctx, 8, 11, 0.6, 0.5); deckOver(ctx, 72, 75, 0.5, 0.6); deckOver(ctx, 80, 83, 0.6, 0.5);
     for (const [id, st] of [['P00-05', 7], ['P06-05', 4]]) { const G = ctx.room(id, 0, 0, 12, 12, id === 'P00-05' ? 'wgantry' : 'egantry'), GR = 0x3a4048;
         G.deck(4, 2, 8, 6, 3.5, U('MetalSubwayGrill1a')); G.stair(st + 0.5, 0, st + 0.5, 2, 1, 0, 3.5, 'steel');
         G.guard('u', 2, st === 7 ? 4 : 5, st === 7 ? 7 : 8, 3.5, GR); G.guard('u', 6, 4, 8, 3.5, GR);

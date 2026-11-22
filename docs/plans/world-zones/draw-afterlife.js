@@ -79,7 +79,7 @@ V.ways = [
     /* THE ONE WORLD SEAMS (2026-11-17, phase 4.1 the north routes, written here by the 4.4 thread): a door pair with one id at both ends, each
        written only when its route's room stands. The east gate is OPEN now (was the closed Civic Center gate): the River Road crosses the Tiber */
     { id: 'ow_v_m6_m4', kind: 'seam', wall: 'e', sy: 24, room: 'site_ow_r1', name: 'The River Road (route R1): the east gate, over the Tiber to the city', label: 'THE RIVER ROAD', sub: 'THE EAST GATE · OVER THE TIBER TO THE CITY' },
-    { id: 'ow_v_m12_m4', kind: 'seam', wall: 'w', sy: 25, room: 'site_ow_r4', name: 'The Old Road (route R4): the west gate, to Camelot and the Woods', label: 'THE OLD ROAD', sub: 'THE WEST GATE · TO CAMELOT AND THE WOODS' },
+    { id: 'ow_v_m12_m4', kind: 'seam', wall: 'w', sy: 25, room: 'site_ow_r4', name: 'The Old Road (route R4): the west gate, to Came A Lot and the Woods', label: 'THE OLD ROAD', sub: 'THE WEST GATE · TO CAME A LOT AND THE WOODS' },
 ];
 V.plots = [
     [0, 0, 'G', 'The Hedge Maze', 'the hedges "planted as a maze"; where the gardener gets lost', 'Cortile: the hedges (the gardener\'s lines)'],
@@ -204,7 +204,10 @@ L.stair(21, 36, 23, 39, 'S', FLOOR, T2, 's', { model: 'stone', key: 'rocks_3' })
 [[38, 4, 44, 10], [39, 15, 44, 20], [39, 26, 44, 31], [38, 38, 44, 44]].forEach(q => L.rect(q[0], q[1], q[2], q[3], 'r', RIM));
 L.rect(37, 24, 46, 33, 'r', 1.75); L.rect(39, 26, 44, 31, 'r', RIM);                // THE LAVA BELOW: a ledge just over the lava, under the third platform
 [[36, 6, 38, 8], [40, 10, 42, 15], [40, 20, 42, 26], [40, 31, 42, 38], [36, 40, 38, 42]].forEach((q, i) => L.bridges.push({ x0: q[0], y0: q[1], x1: q[2], y1: q[3], y: RIM, key: 'rocks_3', rails: true, name: 'walkway ' + (i + 1) }));
-L.climbs.push({ sx: 44, sy: 28, face: 90, look: 'rope', name: 'the chains down to the ledge' });
+L.climbs.push({ sx: 44, sy: 28, face: 270, look: 'rope', name: 'the chains down to the ledge' });   // (face = the way the climber looks: at the platform's pillar, west. It said 90, the engine dropped the climb and the ledge was never reached: 2026-11-22)
+/* NO TINY CREVICES (2026-11-22, mondo; find-softlocks.js SLOT): a dead-end strip one square wide between the second terrace's face and the lake, and a
+   one-square notch in that face west of the Bowl, stand at the terrace's height now (the terrace runs straight to the lava / straight along) */
+L.set(29, 34, 'p', T2); L.set(30, 34, 'p', T2); L.set(13, 25, 'p', T2);
 L.ways = [
     { id: 'link_cave_hell', kind: 'link', wall: 'w', sy: 6, name: 'The Cavern (the Fissure, the hot gallery)' },
     { id: 'link_vatican_hell', kind: 'link', wall: 'n', sx: 30, name: 'up: the Catacombs (the Warm Wall, the other side)' },
@@ -259,6 +262,9 @@ H.rect(23, 12, 25, 24, 'm', GATE);                                              
 H.rect(2, 13, 12, 23, 'c', GATE + 1.75); H.rect(2, 13, 9, 20, 'c', GATE + 3.5);     // THE TERRACES: two steps of cloud up to the city's level
 H.stair(12, 21, 13, 23, 'W', GATE, GATE + 1.75, 's', { model: 'stone', key: 'marble_light' });
 H.stair(9, 14, 10, 16, 'W', GATE + 1.75, GATE + 3.5, 's', { model: 'stone', key: 'marble_light' });
+/* NO LEDGE TO DROP ON (2026-11-22, mondo's no-crevice rule): the ragged cloud squares west of the Terraces stand at the terrace beside them (they were at the
+   Gate's height, 1.75-3.5 m under it: a one-square ledge over the sky, dropped onto and never left) */
+for (let y = 12; y < 23; y++) if (H.k[y][1] === 'c') H.set(1, y, 'c', H.h[y][2]);
 for (let y = 12; y < 24; y++) for (let x = 36; x < 47; x++) H.set(x, y, '.', 0);    // THE CLOUD PATHS: islands and narrow paths over the sky
 H.rect(36, 17, 48, 19, 'c', GATE); H.ell(41, 14.5, 3.2, 2.2, 'c', GATE); H.ell(41.5, 21.5, 3.4, 2, 'c', GATE); H.rect(40, 13, 42, 23, 'c', GATE); H.rect(36, 14, 39, 15, 'c', GATE); H.rect(36, 21, 39, 22, 'c', GATE);
 /* Y · THE CITY (4 plots, sy 0..11) */
@@ -268,7 +274,7 @@ H.rect(2, 13, 9, 14, 'c', CITY); H.rect(2, 12, 9, 13, 'c', CITY);               
 H.rect(19, 2, 29, 8, 'B', CITY);                                                    // ROOM 777 (walk-in): "no door on the inside"
 H.ways = [
     { id: 'link_observatory_stair', kind: 'link', wall: 's', sx: 7, name: 'down: the Vatican (the Observatory\'s telescope)' },
-    { id: 'link_skycastle_stair', kind: 'link', wall: 'w', sy: 53, name: 'Camelot: the Castle in the Sky (the Sky Bridge)' },
+    { id: 'link_skycastle_stair', kind: 'link', wall: 'w', sy: 53, name: 'Came A Lot: the Castle in the Sky (the Sky Bridge)' },
     { id: 'link_heaven_olympus', kind: 'link', wall: 'e', sy: 18, name: 'The Mountains: Mount Olympus (the Grand Stair, a gate of cloud)' },
     { id: 'bay', kind: 'bay', wall: 'free', sx: 24, sy: 8, face: 180, name: 'DOOR HQ: Heaven\'s bay door (Room 777, "a hotel room door")' },
 ];
@@ -289,7 +295,7 @@ H.plots = [
     [1, 3, 'T', 'The Second Flight', 'the second landing', 'Stairway: FOUR FLOATING FLIGHTS'],
     [2, 3, 'T', 'The Long Way, north', 'the long way round comes in here', 'Stairway: "the long way is on the left"'],
     [3, 3, 'T', 'The Fall, north', 'loose clouds over nothing', 'Stairway: THE FALL'],
-    [0, 4, 'T', 'The Stair in the Sky', 'the foot of the stair (from the telescope); the Sky Bridge to Camelot', 'Stairway: THE STAIR THAT ONLY GOES UP'],
+    [0, 4, 'T', 'The Stair in the Sky', 'the foot of the stair (from the telescope); the Sky Bridge to Came A Lot', 'Stairway: THE STAIR THAT ONLY GOES UP'],
     [1, 4, 'T', 'The First Flight', 'the first landing, the pool that "heals the stairs"', 'Stairway: the pool, the Healing Zone'],
     [2, 4, 'T', 'The Long Way', 'a path of cloud out over the Fall', 'Stairway: the long way'],
     [3, 4, 'T', 'The Fall', '"I fell." "Everyone falls."', 'Stairway: THE FALL'],
