@@ -3035,3 +3035,7 @@ the building's nav keeps a scrollbar gutter and no sideways scroll; under 900 / 
   of the guest's sheet (online.js). Two of the same gender is still refused.
 - THE SERAPHIM IS GENDERLESS (mondo 11-22): sprites.js RACE_SPRITE_GENDERS `seraphim` = one; an old save's female Seraphim reads
   as the one Seraphim (state.js resolveIdentityForBuild), the model def keeps a `female` key only so old rows still draw.
+**THE MAIN MENU'S SETTINGS USE THE SCREEN (same day, mondo: "it is a really narrow column ... I am on a pc"):** `.mm-settings-body` was `max-width: 400px`
+and its `.ms-container` shrank to it. styles-base.css: `#settingsPage > .ms-container { width: min(1180px, 100%) }` (the pause menus' frame width), the
+body `max-width: none; overflow-x: hidden`; `.hq-pause-body[data-view="settings"]` `overflow-x: hidden` too (the theme's pop on a focused / picked
+`.pm-set-btn` scales it past its group, which grew a sideways scrollbar on CONTROLS / WORLD). Looked at 1920, 1280, 860 wide.

@@ -4459,6 +4459,12 @@ html.ew-hq-cover #startOverlay > .title-page:not(.active):not(#hqPage) * { anima
 .hq-pause-foot { display: flex; gap: 22px; justify-content: flex-end; padding: 8px 22px; border-top: 1px solid rgba(184,160,96,0.22); font-size: 8px; letter-spacing: 0.26em; color: #6f6a5c; background: rgba(0,0,0,0.3); }
 /* the settings body lives in here (the main menu's, rerendered in place) */
 .hq-pause-settings.mm-settings-body { max-width: none; padding-top: 0; padding-bottom: 0; overflow: visible; }
+/* THE MAIN MENU'S SETTINGS USE THE SCREEN (mondo 11-22: "it is a really narrow column ... I am on a pc"): the sheet was 400px wide;
+   it is the pause menus' width now (their frame: min(1180px, 100%)), the title bar with it. */
+#settingsPage > .ms-container { width: min(1180px, 100%); padding: 18px 24px 0; box-sizing: border-box; }
+#settingsPage .mm-settings-body { max-width: none; overflow-x: hidden; }
+/* a focused / picked button's theme pop (it scales past its group) never grows a sideways scrollbar on a settings sheet */
+.hq-pause-body[data-view="settings"] { overflow-x: hidden; }
 /* THE PARTY: the roster cards */
 .hq-pp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; margin: 4px 0 8px; }
 .hq-pp-card { position: relative; display: grid; grid-template-columns: 78px 1fr; gap: 12px; align-items: center; padding: 10px 12px 10px 10px; background: linear-gradient(90deg, rgba(184,160,96,0.08), rgba(255,255,255,0.02)); border: 1px solid rgba(184,160,96,0.28); color: #ece7d8; text-align: left; cursor: pointer; font-family: inherit; transition: border-color 0.14s, background 0.14s, transform 0.14s; }
