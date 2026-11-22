@@ -5940,8 +5940,9 @@
                 case 'board': {
                     if (h) h.classList.add('helm');
                     _hqSkateSfx('seaBoard', 0.5);
-                    const k = ev.vehicle === 'sub' ? 'sub' : ev.vehicle === 'ship' ? 'ship' : 'boat';
-                    if (!_hqSeaToasted[k] && k !== 'ship') { _hqSeaToasted[k] = true; _hqToast(k === 'sub' ? '<b>THE BATHYSCAPHE</b><span>SPACE UP · C DOWN · E LEAVES IT</span>' : '<b>THE SKIFF</b><span>E STEPS OFF</span>', 4200); }
+                    const k = ev.vehicle === 'sub' ? 'sub' : ev.vehicle === 'ship' ? 'ship' : ev.vehicle === 'car' ? 'car' : 'boat';
+                    if (k === 'car') { if (!_hqSeaToasted.car) { _hqSeaToasted.car = true; _hqToast('<b>AT THE WHEEL</b><span>W GAS · S BRAKE / REVERSE · A / D STEER · SPACE HANDBRAKE · E GETS OUT</span>', 5200); } }   // THE CAR (2026-11-22)
+                    else if (!_hqSeaToasted[k] && k !== 'ship') { _hqSeaToasted[k] = true; _hqToast(k === 'sub' ? '<b>THE BATHYSCAPHE</b><span>SPACE UP · C DOWN · E LEAVES IT</span>' : '<b>THE SKIFF</b><span>E STEPS OFF</span>', 4200); }
                     _hqFillStrip(_hqProfile());
                     break;
                 }
