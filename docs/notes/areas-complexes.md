@@ -14182,6 +14182,16 @@ own line; the districts' own roads leave their rooms somewhere else).
 - **THE LAST ROW WEARS ITS NEIGHBOUR (`_hqGrassCell`, `_hqFloraCell`):** the ground lattice's outer ring is never painted, so a route whose floor is grass grew a band of grass
   across its own road at the room's line (R9, R8, R10, R11 ends). An unpainted ring node now reads the node one row in, in every room.
 - Checked in the browser, every gate walked both ways (24 walks): the thread's pictures are in `/mnt/project-files/desert-gates/`.
+- **THE HIGHWAY NARROWS BEFORE THE GATE (the same day, mondo on the first pictures: "1 road going straight into the middle of 2 roads??? seriously?"; his pick on the card:
+  "Highway narrows before the gate"):** a highway is two carriageways and a median, a district's gate road is two lanes, so the gate road ran into the median. A route spec
+  (`docs/areas/routes/<id>.json`) may say `taper: { "<end id>": { len, hold } }` (default 10 + 3 squares): from `hold + len` squares before that end the median is asphalt,
+  its yellow lines close to a double line, the white edge lines close in from 3.4 to 1 square off the middle, the lane dashes and guard rails stop and the cars' lines move in;
+  the last `hold` squares are a two-lane road (three squares of asphalt, edge lines 7 m apart), and the seam is as wide as that. bake-route.js `TAPER_AT` / `taperAt` /
+  `taperLine`; ow-raised.js paints a raised highway's ground end only as wide as the road is there (`K.roadHalf`). On: DH1-DH4 both ends, R9's Circus end (`hold 2, len 5`:
+  it has 9 squares of ground after its ramp). `_hqSeamSection` counts a line at the wall as solid from 8 m (was 14: the two-lane stretch is 10.5 m). RULE (my reading of
+  his words): a road that meets another road at a gate has the SAME lanes on both sides; when a highway is raised later its ends keep the taper.
+- **THE ROAD IS GRADED (`_hqEdgeLandFn` LANES):** past the level 10 m the lane's level runs from the gate's floor to the land's own level 90 m out (10 to 70 m), and keeps
+  only a seventh of the land's rise and fall till 70 m, easing out by 200 m and 18 m aside (the Ranch Road and the Coast Road ran over a mound / along a bank). Never over sea.
 
 ## THE SEAM IS THE ROAD — an open seam on a route room's wall is as wide as the road (2026-11-22, mondo: "it only works when i enter through the median")
 mondo 11-22, the Badlands Highway (`site_ow_r9`) into the Circus: "it only works when i enter through the median in the highway, which doesnt make
