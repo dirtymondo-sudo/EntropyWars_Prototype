@@ -17256,6 +17256,12 @@
             if (!state._castAnimKind) state._castAnimKind = {};
             state._castAnimKind[unit.id] = (typeof classifySpellAnimKind === 'function')
                 ? classifySpellAnimKind(spell) : 'magic';
+            /* THE WEAPON IN THE SPELL (2026-11-22): a unit that holds a weapon casts with it (sprites.js weaponSpellAnimKind:
+               the blade's slash, the shot fired, the arrow loosed), and the renderer reads the spell's id to put the weapon
+               the spell is made with in the hand (three-renderer.js unitHeldUse). Both ride the snapshot to the guest. */
+            if (typeof weaponSpellAnimKind === 'function') { try { state._castAnimKind[unit.id] = weaponSpellAnimKind(unit.race, spell, state._castAnimKind[unit.id]); } catch (_wk) {} }
+            if (!state._castAnimSpell) state._castAnimSpell = {};
+            if (spell && spell.id) state._castAnimSpell[unit.id] = spell.id; else delete state._castAnimSpell[unit.id];
             /* Phase 2 `animStrikeMs`: remember the row's explicit strike offset
                for _releaseCastSprite, which only gets the unit (it read a
                free `spell` there and every 3D cast threw — 2026-09-26). */
@@ -75947,7 +75953,8 @@
         function _castClipTravel(unit, spell) {
             if (!unit || !spell || _skipVisuals() || !window.ThreeAnim
                 || typeof window.ThreeAnim.castTravels !== 'function') return null;
-            const kind = (typeof classifySpellAnimKind === 'function') ? classifySpellAnimKind(spell) : null;
+            let kind = (typeof classifySpellAnimKind === 'function') ? classifySpellAnimKind(spell) : null;
+            if (kind && typeof weaponSpellAnimKind === 'function') { try { kind = weaponSpellAnimKind(unit.race, spell, kind); } catch (_wk) {} }   // THE WEAPON IN THE SPELL: the kind triggerCastAnim will play
             const trv = window.ThreeAnim.castTravels(unit, kind);
             if (!trv) return null;
             const strikeMs = (typeof spell.animStrikeMs === 'number' && spell.animStrikeMs >= 0) ? spell.animStrikeMs : window.ThreeAnim.castStrikeMs(unit, kind);

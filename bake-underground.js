@@ -66,7 +66,7 @@ const ctx = {
         props.push(Object.assign({ key, x: gcx(x), z: gcz(y) }, o || {})); },
     dec(key, x, y, o) { if (!room(x, y)) { errs.push(key + ' on a closed square ' + x + ',' + y); return; } const j = (o && o.jit != null) ? o.jit : 1.4; const q = Object.assign({ key, x: r2(gcx(x) + (rnd() - 0.5) * j), z: r2(gcz(y) + (rnd() - 0.5) * j), face: Math.round(rnd() * 360), noBlock: true }, o || {}); delete q.jit; props.push(q); },
     native(race, x, y, face, say) { if (!open(x, y)) { errs.push(race + ' on a closed square ' + x + ',' + y); return; } taken.add(x + ',' + y); const n = { x: gcx(x), z: gcz(y), face: face || 0, race }; if (say) n.say = say; npc.push(n); },
-    arch(id, x, y, parts, o) { ARCH.push(Object.assign({ k: 'arch', id: DES.part + ':' + id, x: gcx(x), z: gcz(y), rot: 0, base: yAt(x, y), parts }, o || {})); },
+    arch(id, x, y, parts, o) { ARCH.push(Object.assign({ k: 'arch', id: DES.part + ':' + id, x: gcx(x), z: gcz(y), rot: 0, y: yAt(x, y), parts }, o || {})); },
     feat(row) { F.push(row); return row; },
     squares(x0, y0, x1, y1) { const o = []; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (open(x, y)) o.push([x, y]); return o; },
     walls(x0, y0, x1, y1) { const o = []; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (open(x, y) && D4.some(([dx, dy]) => !room(x + dx, y + dy))) o.push([x, y]); return o; },
@@ -163,7 +163,7 @@ for (let by = 0; by < H / N; by++) for (let bx = 0; bx < W / N; bx++) {
     const nst = Math.min(DES.stalactites != null ? DES.stalactites : 14, Math.floor(sq.length / 3));
     for (let i = 0; i < nst; i++) { const q = sq[Math.floor(grnd() * sq.length)], top = roofY[q[1]][q[0]], fl = yAt(q[0], q[1]), len = r2(Math.min(0.6 + grnd() * 2.4, Math.max(0.4, top - fl - 2.6))), r = r2(0.18 + grnd() * 0.36);
         parts.push({ s: 'cyl', p: [r2(gcx(q[0]) - ox + (grnd() - 0.5) * 2.4), r2(top - len), r2(gcz(q[1]) - oz + (grnd() - 0.5) * 2.4)], r: 0.03, r2: r, h: len, seg: 6, key: TX.drip, tint: ROCK[Math.floor(grnd() * ROCK.length)], uv: 3.5 }); }
-    ROOFS.push({ k: 'arch', id: DES.part + ':roof:' + bx + '_' + by, x: r2(ox), z: r2(oz), rot: 0, base: 0, parts });
+    ROOFS.push({ k: 'arch', id: DES.part + ':roof:' + bx + '_' + by, x: r2(ox), z: r2(oz), rot: 0, y: 0, parts });   /* `y`, never `base` (2026-11-22): data.js hqTerrainInfo overwrites an arch row's `base` with the ground under its origin (Agartha's roofs stood on the floor; these stood that much too high) */
 }
 
 /* ── THE PAINT: one sheet a square (a district's own: `DES.paint(T char, x, y)` -> index into DES.pal, 0 = the room's floor) ── */

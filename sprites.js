@@ -6454,6 +6454,107 @@ const RACE_CREATOR_LOOK_DEFS = {
   'cowboy': { basicAttackKind: 'ranged', hold: { key: 'revolver', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.21,
     grip: { c: [0.657, -0.215, 0], down: [0.404, -0.915, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },   // THE GRIP, THE SEAT: the revolver GLB's handle (three-renderer.js _gripFrame)
 };
+/* ══ THE WEAPON IN THE SPELL (2026-11-22, mondo: "incorporate them holding and using their weapons in their spells") ══
+   A unit that holds a weapon casts WITH it. Three tables, one reader each, all by race / spell id, so the host and the guest
+   resolve the same thing from what the snapshot already carries (RULE #2: nothing new to relay but state._castAnimSpell):
+   - EW_WEAPONS: a weapon model (data.js catalogue key) -> how a fist holds it (the size + THE GRIP's handle frame, read off the
+     GLB like RACE_CREATOR_LOOK_DEFS above) and what it is: `gun` = it fires from the barrel's end, `blade`, `anim` = the cast
+     kind a spell made with it plays whatever its row said (the nightstick comes down, the flashy thing is held out).
+   - EW_SPELL_WEAPON: the weapon a spell is MADE WITH. A holder whose hand has another weapon switches to it for the cast
+     and back after (three-renderer.js unitHeldUse: the Time Cop's revolver / rifle / taser / plasma gun, the Police Officer's
+     nightstick / taser / spray, mondo: "his weapon should switch depending ... which spell he uses"). 'gun' = any firearm:
+     the one in the hand, else the sidearm (a pistol).
+   - EW_WEAPON_STYLE + EW_WEAPON_KIND: the body language by what the race holds. classifySpellAnimKind names a spell's cast
+     kind for a bare-handed caster (a line of physical damage = the quick draw); weaponSpellAnimKind turns that into the
+     holder's: a swordfighter's Sword Beam is a slash, a blade unit calls a volley with the blade up, a gun spell is fired,
+     an archer looses every shot. A row's own pick (animVerb / animSlot / animClip) and the move kinds are never touched.
+   Readers: battle.js triggerCastAnim (the kind + the spell id), three-renderer.js (the switch, the weapon's tip), three-vfx-
+   effects.js (the shot leaves the weapon in the hand; no second gun, no wand beside the staff). Notes: spells-vfx.md
+   "THE WEAPON IN THE SPELL". */
+const EW_WEAPONS = {
+  revolver:  { h: 0.21, gun: 1, grip: { c: [0.657, -0.215, 0], down: [0.404, -0.915, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
+  pistol:    { h: 0.22, gun: 1, grip: { c: [0.6, -0.25, 0], down: [0.15, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
+  plasma:    { h: 0.42, gun: 1, grip: { c: [0.7, -0.2, 0], down: [0.1, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
+  shotgun:   { h: 1.0,  gun: 1, grip: { c: [0.45, 0.02, 0], down: [0.45, -0.9, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
+  sniper:    { h: 1.2,  gun: 1, grip: { c: [0.36, -0.15, 0], down: [0.2, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },
+  wp_taser:  { h: 0.2,  gun: 1, grip: { c: [0.32, -0.08, 0], down: [0.1, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },   // the grip hangs under its back end
+  wp_pepper_spray: { h: 0.16, gun: 1, anim: 'lantern', grip: { c: [0, -0.12, 0], down: [0, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } },   // the can in the fist, held out
+  wp_deneuralizer: { h: 0.2, anim: 'lantern', grip: { c: [-0.2, 0, 0], down: [-1, 0, 0], barrel: [0, 1, 0], depth: 0.25, back: 0.22 } },   // held up at arm's length, the flash at its top
+  psx_police_baton_mp_1: { h: 0.64, anim: 'smash', grip: { c: [0, 0.015, 0.1], down: [0, 0, 1], barrel: [1, 0, 0], cant: 35, depth: 0.25, back: 0.22 } },
+  kt_katana: { h: 1.0, blade: 1, anim: 'slash', grip: { c: [0.31, -0.013, 0], down: [1, 0, 0], barrel: [0, -1, 0], cant: 35, depth: 0.25, back: 0.22 } },
+};
+const EW_SPELL_WEAPON = {
+  // the six-gun
+  deadEye: 'revolver', ricochet1: 'revolver', raceHighNoon: 'revolver', raceFanTheHammer: 'revolver', raceSlapLeather: 'revolver',
+  sigSixShooter: 'revolver',
+  // the scattergun
+  doubleShot: 'shotgun', riderScatterShot: 'shotgun',
+  // the rifle
+  headshot: 'sniper', precisionShot: 'sniper', kneecapShot: 'sniper', raceQuickDraw: 'sniper', goOneShotOneKill: 'sniper',
+  raceChoppa: 'sniper', railgun: 'sniper',
+  // the sidearm
+  mark1: 'pistol', raceSuppressingFire: 'pistol', raceEmptyTheClip: 'pistol', spyLipstickPistol: 'pistol',
+  // the ray guns
+  raceClassifiedWeapon: 'plasma', raceStunRay: 'plasma', sharedShrinkRay: 'plasma', raceDisintegrator: 'plasma', raceHeatRay: 'plasma',
+  racePlasmaCannon: 'plasma',
+  // the belt
+  racePoliceNightstick: 'psx_police_baton_mp_1', racePoliceTaser: 'wp_taser', raceTaserBolt: 'wp_taser', racePoliceSpray: 'wp_pepper_spray',
+  raceDeneuralizer: 'wp_deneuralizer', goNeuralyzer: 'wp_deneuralizer',
+  raceSyntheticBlade: 'kt_katana',
+  // any firearm: the one in the hand, else the sidearm
+  crossfire: 'gun', raceSuppressiveFire: 'gun', pzJusticeIsServed: 'gun', raceIncendiaryRounds: 'gun', raceExtendedClips: 'gun',
+  raceDriveBy: 'gun',
+};
+const EW_WEAPON_STYLE = {
+  'swordfighter': 'blade', 'shogun': 'blade', 'knight': 'blade', 'king arthur': 'blade', 'gladiator': 'blade', 'pirate': 'blade',
+  'sheriff': 'gun', 'marksman': 'gun', 'gangster': 'gun', 'spy': 'gun', 'barbarella': 'gun', 'men in black': 'gun', 'time cop': 'gun',
+  'cowboy': 'gun', 'police officer': 'baton', 'ninja': 'star', 'robinhood': 'bow', 'wizard': 'staff', 'popstar': 'mic', 'scarecrow': 'sickle',
+};
+const _ewDmgSpell = (sp) => !!(sp && (sp.type === 'damage' || sp.dmg || (Array.isArray(sp.hitDamages) && sp.hitDamages.length)));
+/* style -> { the bare-handed kind: the holder's kind (or a function of the spell) }, then `byId` for the spells the audit read one by one */
+const EW_WEAPON_KIND = {
+  blade: {
+    ranged: 'rally',       // a volley / a cannon called down the blade (Suppressive Fire, Cannonball); the blade's own shots are in byId
+    reload: 'rally', phone: 'rally', arrow: 'rally', call: 'rally', cheer: 'rally', skyward: 'rally',
+    support: (sp) => /^(buff|warCry|deployTurret)$/.test(sp.kind || '') ? 'rally' : null,   // a boast, a banner, an order: the blade up (ropes and marks keep their own)
+    smug: 'guard',         // arms folded would put the blade through the chest: the braced guard
+    magic: 'slash', hurl: 'heavySlash', channel: 'slash', nova: 'heavySlash',
+    aoe: (sp) => _ewDmgSpell(sp) ? 'heavySlash' : 'rally', ultimate: (sp) => _ewDmgSpell(sp) ? 'heavySlash' : 'rally',
+    byId: { swordBeam: 'slash', raceVault: 'heavySlash', nrSwordLunge: 'dash', raceShieldBash: 'push', nrShieldBash: 'push' },
+  },
+  sickle: { ranged: 'slash', byId: { raceThornlash: 'slash', raceVineWhip: 'slash' } },   // the lash is swung off the sickle, not drawn from a holster
+  bow: { ranged: 'arrow', reload: 'arrow' },   // every shot is loosed
+  gun: { byId: { goNoisyCricket: 'ranged' } },   // the tiny gun is fired (its own look draws it in the hand)
+  baton: {}, star: {}, staff: {}, mic: {},
+};
+const _EW_MOVE_KINDS = /^(dash|tackle|leap|leapSlash|leapPunch|flyKick|thrust|upSlash|throw|deploy|plant|consume|stealth)$/;
+/* the weapon key a race holds by default (its look def), or null */
+function ewRaceHeldKey(race) { const d = RACE_CREATOR_LOOK_DEFS[race]; return (d && d.hold && d.hold.key) || null; }
+/* the weapon this spell is made with in THIS unit's hand: an EW_WEAPONS key, or null (the spell names none / it is the archer's) */
+function ewSpellWeaponKey(spellId, race, heldKey) {
+  const w = spellId && EW_SPELL_WEAPON[spellId];
+  if (!w) return null;
+  const style = EW_WEAPON_STYLE[race] || null, held = heldKey || ewRaceHeldKey(race);
+  if (style === 'bow') return null;                       // the archer looses it (weaponSpellAnimKind: 'arrow')
+  if (w === 'gun') return (held && EW_WEAPONS[held] && EW_WEAPONS[held].gun) ? held : 'pistol';
+  return EW_WEAPONS[w] ? w : null;
+}
+function weaponSpellAnimKind(race, spell, kind) {
+  const style = EW_WEAPON_STYLE[race];
+  if (!style || !spell || typeof kind !== 'string' || kind.indexOf('slot:') === 0) return kind;
+  if (typeof spell.animVerb === 'string' && SPELL_ANIM_KINDS.indexOf(spell.animVerb) >= 0) return kind;   // the row's own pick stands
+  const T = EW_WEAPON_KIND[style] || {};
+  if (T.byId && T.byId[spell.id]) return T.byId[spell.id];
+  if (_EW_MOVE_KINDS.test(kind)) return kind;
+  if (style === 'bow' && EW_SPELL_WEAPON[spell.id]) return 'arrow';
+  const wk = ewSpellWeaponKey(spell.id, race), W = wk && EW_WEAPONS[wk];
+  if (W) return W.anim || (W.gun ? 'ranged' : kind);
+  let k = T[kind];
+  if (typeof k === 'function') k = k(spell);
+  return k || kind;
+}
+if (typeof window !== 'undefined') { window.EW_WEAPONS = EW_WEAPONS; window.EW_SPELL_WEAPON = EW_SPELL_WEAPON; window.EW_WEAPON_STYLE = EW_WEAPON_STYLE;
+  window.ewSpellWeaponKey = ewSpellWeaponKey; window.weaponSpellAnimKind = weaponSpellAnimKind; window.ewRaceHeldKey = ewRaceHeldKey; }
 const _ewRaceLookCache = {};
 function getRaceCreatorLook(race, gender) {
   if (typeof window !== 'undefined' && window.EW_DISABLE_RACE_LOOKS) return null;

@@ -11,7 +11,10 @@ module.exports = {
         const { rnd } = ctx;
         const soft = (x, y) => ctx.kindAt(x, y) === 'v' && ctx.free(x, y) && !ctx.onWay(x, y);
         /* lava lying on the Lava Field (the game's lava sheet in shallow pools; they glow at night) */
-        [[40, 28, 3.2], [44, 31, 2.4], [38, 32.5, 2.0], [45, 26.5, 1.8]].forEach(q => { ctx.feat({ k: 'pool', x: ctx.gx(q[0]), z: ctx.gz(q[1]), r: q[2], y: -0.1, depth: 0.3, key: 'lava' }); const r = Math.ceil(q[2] / 3.5); for (let y = Math.floor(q[1]) - r; y <= Math.floor(q[1]) + r; y++) for (let x = Math.floor(q[0]) - r; x <= Math.floor(q[0]) + r; x++) ctx.take(x, y); });
+        /* (11-22, the soft-lock finder: two of the four lay on the cone's foot, where a level pool cuts a bank up to 2.9 m into the slope, a crevice
+           at the lava's edge; a third lay half over the Mountain Road. All four lie on the field's level ground now, clear of the ways.) */
+        [[41, 31, 3.2], [44, 31, 2.4], [43.5, 33.5, 2.0], [46, 29, 1.8]].forEach(q => { for (const d of [[0, 0], [-1, 0], [0, -1], [-1, -1]]) if (ctx.onWay(Math.floor(q[0]) + d[0], Math.floor(q[1]) + d[1])) throw new Error('district V: a lava pool on a way ' + q);
+            ctx.feat({ k: 'pool', x: ctx.gx(q[0]), z: ctx.gz(q[1]), r: q[2], y: -0.1, depth: 0.3, key: 'lava' }); const r = Math.ceil(q[2] / 3.5); for (let y = Math.floor(q[1]) - r; y <= Math.floor(q[1]) + r; y++) for (let x = Math.floor(q[0]) - r; x <= Math.floor(q[0]) + r; x++) ctx.take(x, y); });
         /* black rocks and burnt snags over the cone's lower slopes; nothing on the ways */
         let rocks = 0;
         for (let y = 0; y <= 35; y++) for (let x = 24; x <= 59; x++) { const v = rnd(); if (v > 0.07 || !soft(x, y)) continue; const d = Math.hypot(x - 41.5, y - 17.5); if (d < 5) continue; ctx.take(x, y);

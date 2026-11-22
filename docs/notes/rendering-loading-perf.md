@@ -3908,3 +3908,28 @@ the fight is LAID outside it (map.js `_hqEncounterStart` -> three-renderer.js `a
   builds 8.9/s, pipelines 6.1/s, worst 1,465 ms, then "awake 574" groups refreshing for seconds. The fight is a SECOND scene of
   ~3,100 copies with its own camera and lights; every recording, render object and many pipelines are made again. Proposed to him
   (decision card): the fight keeps drawing the walked room. See project memory perf-fight-start-20261122.
+
+## THE FIRSTS BY BUFFER + THE BATCHES BY TURN (2026-11-22, mondo's 18:10 F3 walking Disaster City downtown: 36 FPS, 105 dips, a 2.7 s dip at 15 FPS)
+- What the readout says: CPU 22.9 of the frame's 27.7 ms, so the walk is JS-bound there now, spread thin: bundle replays 6.2, matrix
+  walk 2.7, classic draws 2.6, bundle check 1.8, projection walk 1.3. No rebuilds (0 re-records/s). "firsts 196" a frame at ~20 µs
+  each was the largest single line ("replay: the refreshes 8.00" ms with the sun shadow's 2 ms inside the first one).
+- THE FIRSTS BY BUFFER (three-renderer.js `rpReplay`): a first of a static recorded group only ever gets three's SHARED refresh, and
+  all that sends is the shared bind groups its shader reads (camera, lamps, fog). three keeps ONE BindGroup object per set of shared
+  uniforms per render context (`_getBindGroup`'s cache), so ~200 shaders rewrote the same few. A first whose shared bind groups all
+  carry this render's stamp (`_ew_rid`, the stamp THE HELD KEEP THE CAMERA already used) is left out. Always asked: a first's own
+  first look, and any first reading a buffer nobody wrote yet in this render. Off: `window.EW_BUN_FIRSTS_BY_SHADER`.
+  Check: `window.EW_BUN_FIRSTS_AUDIT` refreshes the left-out ones anyway and counts those that sent anything
+  (`ThreeRenderer.bundleFirsts()` → `auditWrote`, must be 0). Lens: "firsts N (M more left out, their buffers already written)".
+- THE BATCHES BY TURN (`_hqInstGroupMW`): "Matrix walk by group: hq_instances 1.00". In a drawn cell whose batch count is unchanged,
+  one batch in eight has its pose compared a frame; a cell that gained / lost a batch or moved is read whole. Off: `window.EW_HQ_INST_MW_EACH`.
+- NOT fixed, said to him: the one-frame dips every ~6 s (gap 53-75 ms with the frame's JS at its usual 16-24 ms) are outside our JS
+  (Firefox's collector, see THE MAPS ON THE OBJECTS); the 2.7 s dip had EVERY part of the frame 1.5-2x slower at once, "post: pass
+  begin" included (normally ~0), nothing loaded: the browser / GPU process was busy, no one code path.
+- THE SHORT REST (`_ewBunTick`): the same F3 read "rooms b|dc:P02-08-B1 (tree 73 [... other 71], rests 15, classic now)" + a second
+  room, and "170 props (outside its bundle)": a group whose piece list changed 5 times in 2 s was released (drawn piece by piece)
+  for a fixed 5 s. Now 0.7 s first, doubling for each further rest within 20 s, up to 5 s; a group of 1,000+ children (the shell)
+  keeps 5 s. Off: `window.EW_BUN_REST_5S`. WHAT changes those rooms' trees is not known yet: THE TREE'S OTHER, NAMED keeps each top
+  piece's own tree hash (`_ew_bunCs`, `_ewBunWalkTop`) and the lens line "Re-recorded most" now ends with "last piece whose own
+  tree moved: <name> (N meshes, M times in this group)". Read that in his next F3 and stop the churn at its source.
+- Cloud check: WebGPU on SwiftShader loses its device loading the city today ("Instance dropped in popErrorScope", lands in the
+  lobby), so the counts are the lobby's: firsts 31 -> 19 a frame; audit 24,792 left-out refreshes while the camera turned, 0 wrote.

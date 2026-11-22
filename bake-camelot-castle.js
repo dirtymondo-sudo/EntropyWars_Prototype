@@ -23,8 +23,14 @@ const r2 = v => Math.round(v * 100) / 100;
 const J = v => JSON.stringify(v).replace(/"([a-zA-Z_][a-zA-Z0-9_]*)":/g, '$1:').replace(/'/g, "\\'").replace(/"/g, "'");
 const D = require('./load-data.js').loadGameData();
 const CAT = vm.runInContext('DOOR_HQ.catalogue', D), RACES = vm.runInContext('AVAILABLE_RACES', D);
-const OLDN = JSON.parse(vm.runInContext('JSON.stringify(["keep", "dungeon", "ward"].map(k => DOOR_HQ.rooms["site_prebuilt_camelot_" + k]).map(r => ({ n: r.npcSpots, l: r.lines })))', D));
-const say = (i, race, k) => { const n = OLDN[i].n.filter(n => n.race === race)[k || 0]; return n ? n.say : undefined; };
+/* THE LINES (2026-11-22): the natives' lines and the room's lines came from the three old rooms (keep, dungeon, ward). The keep and the dungeon are deleted
+   now, so once an old room is gone its lines are read from where they live today: this room's own rows in data.js (a native by its race and its spot). */
+const OLDN = JSON.parse(vm.runInContext('JSON.stringify(["keep", "dungeon", "ward"].map(k => DOOR_HQ.rooms["site_prebuilt_camelot_" + k]).map(r => r ? ({ n: r.npcSpots, l: r.lines }) : null))', D));
+const PREV = (() => { const t = fs.readFileSync(path.join(REPO, 'data.js'), 'utf8'), a = t.indexOf('/* CAMELOT-PALACE-BEGIN'), b = t.indexOf('/* CAMELOT-PALACE-END */'); if (a < 0 || b < 0) return null;   // (the rows as WRITTEN: the loaded room's natives are fewer, the game sorts them at load)
+    const blk = t.slice(a, b), row = k => { const m = blk.match(new RegExp('^\\s*' + k + ': (\\[.*\\]),\\s*(?:spawn: .*)?$', 'm')); return m ? vm.runInNewContext('(' + m[1] + ')') : []; };
+    return { n: row('npcSpots'), l: row('lines') }; })();
+const say = (i, race, k) => { if (!OLDN[i]) return undefined; const n = OLDN[i].n.filter(n => n.race === race)[k || 0]; return n ? n.say : undefined; };
+const sayAt = n => { const m = PREV && PREV.n.find(p => p.race === n.race && Math.abs(p.x - n.x) < 0.02 && Math.abs(p.z - n.z) < 0.02 && (p.y || 0) === (n.y || 0)); return m ? m.say : undefined; };
 const U = n => 'urban:' + n, GLS = U('GlassWindowTall1a'), SLATE = U('MetalRoofTiles1a'), WALL = 'castle_wall', PLK = 'wood_planks', WOOD = 'wood';
 
 /* ── THE KIT: one room on its squares ── */
@@ -145,7 +151,7 @@ function guard(axis, at, a, b, y, kind) { const m = (a + b) / 2, L = (b - a) * C
     R.F.push(Object.assign({ k: 'wall' }, axis === 'u' ? { x0: r2(X(a) + 0.15), z0: pz, x1: r2(X(b) - 0.15), z1: pz } : { x0: px, z0: r2(Z(a) + 0.15), x1: px, z1: r2(Z(b) - 0.15) }, { t: T, ghost: true, rail: false, y: r2(y + 1.1), y0: y })); }
 const B = (key, u, v, face, L, x) => (R.lvl = L, 0) || R.B(key, u, v, face, Object.assign(L > 0 ? { y: L } : {}, x || {}));
 const dec = (key, u, v, face, L, x) => { const o = Object.assign({}, x || {}); if (L > 0) o.y = r2(L + (o.y || 0)); else if (!o.y) delete o.y; return R.dec(key, u, v, face, o); };
-const who = (race, u, v, face, L, lines) => { const n = { x: X(u), z: Z(v), face: face || 0, race }; if (L > 0) n.y = L; if (lines) n.say = lines; R.npc.push(n); };
+const who = (race, u, v, face, L, lines) => { const n = { x: X(u), z: Z(v), face: face || 0, race }; if (L > 0) n.y = L; lines = lines || sayAt(n); if (lines) n.say = lines; R.npc.push(n); };
 const both = f => { f(u => u, f0 => f0, u => u); f(u => NU - u, f0 => (360 - f0) % 360, u => NU - 1 - u); };   // (m: a point's mirror, f: a facing's, ms: a square's)
 
 /* ── THE FIELD: stone at floor 0's height wherever no cellar lies under it ── */
@@ -185,11 +191,19 @@ W('u', 12, 8, 22, 0, Object.assign({ h: L0, y0: 0 }, TALLK)); W('u', 12, 8, 22, 
 WW('v', 8, 0, 2, 0, Object.assign({ h: LB, y0: 0 }, TALLK)); WW('v', 8, 10, 12, 0, Object.assign({ h: LB, y0: 0 }, TALLK));
 WW('v', 8, 2, 10, L3, Object.assign({ h: LB - L3 }, TALLK));                                                             // over the wings' roofs the Keep's side walls are outer walls again
 WW('u', 2, 0, 8, 0, Object.assign({ h: L2, y0: 0 }, TALLW)); WW('v', 0, 2, 10, 0, Object.assign({ h: L2, y0: 0 }, TALLW));
-WW('u', 10, 0, 8, 0, Object.assign({ h: L0, y0: 0 }, TALLW)); WW('u', 10, 0, 8, L0, Object.assign({ h: L2 - L0, doors: [[6.5, 'none']] }, TALLW));   // the wings' south walls: the kitchen door, the guard door
+WW('u', 10, 0, 8, 0, Object.assign({ h: L0, y0: 0 }, TALLW)); WW('u', 10, 0, 8, L0, Object.assign({ h: L2 - L0, doors: [[6.5, 'none']], walk: false }, TALLW));   // the wings' south walls: the kitchen door, the guard door
+/* THE DOORWAYS ARE SHUT TO THE WALKER (2026-11-22, THE STRAIGHT RAISE; mondo: "no ... huge drops where there is no room to get out"): the wall is WALKED whole,
+   only its picture has the doorway. The way out is the door's own leaf, half a metre inside the wall. Past the open doorway lay the room's unbuilt strip, 7 m
+   down off the stair head's stone, shut in by the room's edge (find-softlocks.js: a TRAP south of each wing). */
+WW('u', 10, 0, 8, L0, Object.assign({ h: L2 - L0, draw: false }, TALLW));
 /* the parapets: the wings' roof walks, the Battlements (and the merlons on them) */
-const PAR = { h: 1.15, key: WALL };
-WW('u', 2, 0, 8, L2, Object.assign({ tint: STONE }, PAR)); WW('v', 0, 2, 10, L2, Object.assign({ tint: STONE }, PAR)); WW('u', 10, 0, 8, L2, Object.assign({ tint: STONE }, PAR));
-W('u', 0, 8, 22, LB, Object.assign({ tint: PALE }, PAR)); W('u', 12, 8, 22, LB, Object.assign({ tint: PALE }, PAR)); WW('v', 8, 0, 12, LB, Object.assign({ tint: PALE }, PAR));
+/* A PARAPET IS WALKED HIGHER THAN IT IS DRAWN (2026-11-22, THE STRAIGHT RAISE): drawn 1.15 m (the merlons stand on it to 2.05), walked 2.05 m, the merlons' tops.
+   At 1.15 the walker's jump (1.3 m) took it onto the parapet and off the roof: 35 m down outside the Keep, 21 m down off a wing, into the room's unbuilt
+   corners, shut in by the room's edge (find-softlocks.js: a TRAP north of each wing). Nobody leaves a roof walk over its parapet. */
+const PAR = { h: 1.15, key: WALL, walk: false }, PARW = { h: 2.05, draw: false };
+const par = (f, axis, at, a, b, L, tint) => { f(axis, at, a, b, L, Object.assign({ tint }, PAR)); f(axis, at, a, b, L, PARW); };
+par(WW, 'u', 2, 0, 8, L2, STONE); par(WW, 'v', 0, 2, 10, L2, STONE); par(WW, 'u', 10, 0, 8, L2, STONE);
+par(W, 'u', 0, 8, 22, LB, PALE); par(W, 'u', 12, 8, 22, LB, PALE); par(WW, 'v', 8, 0, 12, LB, PALE);
 for (let u = 8.25; u < 22; u += 1) for (const v of [0, 12]) R.P.push({ s: 'box', p: [X(u), LB + 1.15, Z(v)], size: [1.6, 0.9, 0.5], key: WALL, tint: PALE });
 for (let v = 0.25; v < 12; v += 1) for (const u of [8, 22]) R.P.push({ s: 'box', p: [X(u), LB + 1.15, Z(v)], size: [0.5, 0.9, 1.6], key: WALL, tint: PALE });
 both((m) => { for (let u = 0.25; u < 8; u += 1) for (const v of [2, 10]) R.P.push({ s: 'box', p: [X(m(u)), L2 + 1.15, Z(v)], size: [1.6, 0.9, 0.5], key: WALL, tint: STONE }); for (let v = 2.25; v < 10; v += 1) R.P.push({ s: 'box', p: [X(m(0)), L2 + 1.15, Z(v)], size: [0.5, 0.9, 1.6], key: WALL, tint: STONE }); });
@@ -363,7 +377,7 @@ R.doors.push(
       desc: 'A low door at the end of the passage. It lets out in the foot of the castle hill, beside the Grand Stair, which the besiegers should have found suspicious.' });
 R.lvl = L0; R.must.push(R.sq(15, 11), R.sq(14, 11), R.sq(6, 9), R.sq(23, 9)); R.lvl = LU; R.must.push(R.sq(9, 11), R.sq(9, 10));
 R.spawn = { x: X(15), z: Z(11.3), face: 0 };
-R.lines = OLDN[0].l.concat(OLDN[1].l).filter(l => !/moat|Why brick a cave|two|tower top/i.test(l));
+R.lines = (!OLDN[0] || !OLDN[1]) && PREV ? PREV.l : OLDN[0].l.concat(OLDN[1].l).filter(l => !/moat|Why brick a cave|two|tower top/i.test(l));
 R.stops = [[15, 8, L0], [10.5, 3, L0], [19.5, 3, L0], [2.5, 6, L0], [6.5, 3, L0], [6.5, 5.5, L0], [6.5, 8.5, L0], [27.5, 5, L0], [23.5, 3, L0], [23.5, 5.5, L0], [23.5, 8.5, L0], [8.5, 0.5, L0],
     [4, 5, LU], [23, 8.4, LU], [0.5, 9.5, LU], [9.6, 7, LU], [8.5, 5, LU], [15, 5, LU], [10.5, 3, LU], [15, 3, LU], [19.5, 3, LU], [20.5, 7, LU], [10.5, 11, LU], [19.5, 11, LU],
     [12.5, 0.5, L1], [15, 5, L1], [9, 8, L1], [21, 8, L1], [15, 11, L1], [10.5, 3, L1], [19.5, 3, L1], [4, 6, L1], [26, 4, L1],

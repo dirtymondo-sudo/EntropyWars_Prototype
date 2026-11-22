@@ -48,6 +48,7 @@ Usage: pip install bpy==5.2.3 scipy pillow
        weapons batch of 11-22: SHOWRING=2 (the skin under every cloth edge is shown: no jagged dark band where a cape's collar, a
               waist or a crop top ends on bare skin; NOT for a loose kimono: the shoulders came through), EDGECLEAN=6 (saw teeth
               on a cut edge go), HOLEFILL=24 (pin holes in thin cloth closed), EDGERELAX=4 (a cut edge eased; 20 opened holes)
+              HIDETORSO=1 TORN=9 (a kimono: the trunk + upper arms' skin never shows through the open armpit: swordfighter M)
               SEEDTO=0.9 (a sleeve may start anywhere down to the wrist: bracers cut loose from their sleeve by CUTCOL, the ninja F)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
@@ -862,6 +863,16 @@ def fit(name, gender, src, bodies_dir):
                         if bvh.ray_cast(v_.co + v_.normal * 0.001, v_.normal, E('RAY_OUT', 0.07))[0] is not None and bvh.ray_cast(v_.co, -v_.normal, E('RAY_IN', 0.05))[0] is None: add_.add(i_)
             ks |= add_
         print('[bake-outfit] %s: %d skin vertices shown under the cloth\'s edges' % (name, len(ks) - n0_), flush=True)
+    # THE ROBE (env HIDETORSO=1, off; 2026-11-22, the swordfighter M, mondo: "the male swordfighter's robe is still fucked up, holes in it
+    # from the side around the arm seam"): a kimono's wide sleeve is a separate panel from the body panel; with the arm brought down
+    # from the A pose the armpit opens behind the arm and the bare flank + upper arm showed through it as a skin-coloured hole. Under
+    # a robe that covers the whole trunk the trunk's skin is never seen: everything on the hips, spine, shoulders, upper arms and
+    # thighs is hidden, so the opening shows the robe's own dark inside (a fold's shadow). Bake with TORN=9 too (the stretched
+    # faces at the seam stay: cut away, they were the other half of the hole)
+    if E('HIDETORSO', 0):
+        tw_ = sum(wts(body, n) for n in body.vertex_groups.keys() if re.match(r'^(Hips|Spine\d*|(Left|Right)(Shoulder|Arm|UpLeg))$', n))
+        n0_ = len(ks); ks -= set(int(i) for i in np.nonzero(tw_ > 0.5)[0])
+        print('[bake-outfit] %s: %d trunk + upper arm skin vertices hidden under the robe' % (name, n0_ - len(ks)), flush=True)
     # A FLOATING PIECE OF SKIN (SKINISLE, off; mondo: "Catgirl has a weird piece of floating skin under her crotch"): the skin between her legs
     # is on the hips, not a leg, and no cloth lies under it, so it stayed shown with both thighs hidden round it. A patch of shown
     # skin of fewer than SKINISLE vertices, cut off from the rest by hidden skin, is hidden too

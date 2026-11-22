@@ -12004,6 +12004,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_HELD_PROPS[spellId]) return _HELD_PROPS[spellId];
         var u = _heldUnit(uid), R = u && _HELD_BY_RACE[u.race];
         if (!R) return null;
+        /* THE WEAPON IN THE SPELL (2026-11-22): a wizard whose look holds the staff casts with the staff (no wand in the other hand) */
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.unitHeldInfo && ThreeRenderer.unitHeldInfo(uid)) return null; } catch (e) {}
         var d = _spellDefFor(spellId);
         if (!d || (d.tier || 0) >= 4 || d.kind === 'summonUnit') return null;
         return R;
@@ -15176,7 +15178,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var aim = new THREE.Group();
         aim.rotation.order = 'YXZ';
         root.add(aim);
-        var g = _sigBuildGun(kind, ts);
+        /* THE WEAPON IN THE SPELL (2026-11-22, mondo: "holding and using their weapons in their spells"): a shooter whose own
+           look HOLDS a weapon (sprites.js RACE_CREATOR_LOOK_DEFS hold) fires the gun that is in its fist. The renderer puts
+           this spell's gun there if another weapon was (unitHeldUse: the Time Cop's rifle for Long Rifle, his ray gun for
+           Classified Weapon), and the rig builds NO gun of its own: its flash, smoke, shells, laser and tracer leave from the
+           real muzzle (_real.tip), which follows the arm through the cast clip. */
+        var _real = null, _realUid = (opts.sky || opts.modelScale != null || !_SIG_GUN_HAND_LEN[kind]) ? null : _sigUnitIdAt(fromTx, fromTy);
+        if (_realUid != null && typeof ThreeRenderer !== 'undefined' && typeof ThreeRenderer.unitHeldUse === 'function' && !(typeof window !== 'undefined' && window.EW_NO_HELD_WEAPON_FX)) {
+            try { var _ri = ThreeRenderer.unitHeldUse(_realUid, kind, 2600); if (_ri && _ri.key === kind && _sigHandWorld(_realUid)) _real = _ri; } catch (e) { _real = null; }
+        }
+        var g = _real ? (function () { var h = new THREE.Group(), mz = new THREE.Object3D(); h.add(mz);
+                return { group: h, setFade: function () {}, muzzle: mz, drum: null, pump: null, lens: null, pumpBaseZ: 0, steelMat: null, empty: true, real: true }; })()
+            : _sigBuildGun(kind, ts);
         /* The gun sits BY THE CASTER at a fixed size — like a weapon they're
            holding. No distance-based scaling: a gun doesn't grow at long
            range or shrink at close range. History: 1.3× base made barrels
@@ -15188,7 +15201,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            long, well short of its 5+ tile range). The bullet/tracer is
            still what crosses to the target.
            Console-tunable: window.EW_GUN_SCALE = 1.2 */
-        var _gunMuzzleTs = (g.muzzle && g.muzzle.position ? g.muzzle.position.z : ts * 0.9) / ts;
+        var _gunMuzzleTs = _real ? (_SIG_GUN_GLB_LEN[kind] || 1) * 0.55 : (g.muzzle && g.muzzle.position ? g.muzzle.position.z : ts * 0.9) / ts;
         var _gunScaleBase = (typeof window !== 'undefined' && window.EW_GUN_SCALE > 0)
             ? window.EW_GUN_SCALE : 1.6;
         var _gunScale = opts.modelScale != null ? opts.modelScale
@@ -15198,9 +15211,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var _hand0 = _sigHandWorld(_handUid);
         var inHand = !!(_hand0 && _SIG_GUN_HAND_LEN[kind] && opts.modelScale == null);
         if (inHand) _gunScale = _SIG_GUN_HAND_LEN[kind] / (_SIG_GUN_GLB_LEN[kind] || 1);
-        var _gripZ = inHand ? ts * _SIG_GUN_HAND_LEN[kind] * 0.22 : 0;   /* the grip sits behind the gun's middle */
+        var _gripZ = _real ? 0 : inHand ? ts * _SIG_GUN_HAND_LEN[kind] * 0.22 : 0;   /* the grip sits behind the gun's middle (the real gun: the rig IS at its muzzle) */
         var _fxK = inHand ? 0.45 : 1;                                     /* flash / recoil to the gun's size */
-        var _mzZ = inHand ? _gripZ + (g.muzzle ? g.muzzle.position.z : ts) * _gunScale : ts * 1.25;   /* the sniper laser / tracer start */
+        var _mzZ = _real ? 0 : inHand ? _gripZ + (g.muzzle ? g.muzzle.position.z : ts) * _gunScale : ts * 1.25;   /* the sniper laser / tracer start */
+        var _realTip = new THREE.Vector3();
         g.group.scale.setScalar(_gunScale);
         /* px the muzzle tip sits ahead of the caster tile centre, along the
            firing line — the bolt pipeline starts the tracer HERE, so the
@@ -15287,7 +15301,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var swp = _worldPos(toTx, toTy);
             root.position.set(swp.x, swp.y + ts * 2.9, swp.z);
         } else if (inHand) {
-            root.position.copy(_hand0);
+            root.position.copy((_real && _real.tip(_realTip)) || _hand0);
         } else {
             /* Anchor the rig AT the caster (tiny lean toward the target),
                shoulder height — the shot visibly leaves from the shooter. */
@@ -15381,8 +15395,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
             /* THE GUN IN THE HAND: follow the hand bone through the cast clip, still aimed at the target */
             if (inHand) {
-                var hp = _sigHandWorld(_handUid);
+                var hp = (_real && _real.tip(_realTip)) || _sigHandWorld(_handUid);
                 if (hp) { root.position.copy(hp); aimAt(rig.targetTx, rig.targetTy); }
+                if (_real && fadeStart < 0) _real.keep(500);   /* the spell's gun stays in the fist while it fires */
             }
             /* recoil */
             rig.recoil = Math.max(0, rig.recoil - dt * 0.006);

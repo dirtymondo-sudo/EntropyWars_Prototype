@@ -15,6 +15,8 @@
        node find-softlocks.js --all [--jobs 4]         every terrain room (retired ones left out), a table by zone
        node find-softlocks.js --zone "THE DESERT"      the rooms whose label starts with that zone
        --out <dir>   where each room's JSON goes (default shots/softlocks)       --json   print the room's JSON, no table
+       --every-ground   crevices, dips and slots on ALL ground, reached or not (a room whose ways are floating stairs or lifts, which the walk
+                        under-reads: Heaven). Traps still need the walk.
 
    A row's x, z, y are the room's own metres (the F3 line's). Notes: docs/notes/areas-complexes.md "THE SOFT-LOCK FINDER". */
 'use strict';
@@ -25,6 +27,7 @@ const IDS = ARGS.filter((a, i) => !a.startsWith('--') && !['--out', '--jobs', '-
 
 function scan(D, id) {
     return vm.runInContext(`(() => {
+    const EVERY = ${flag('--every-ground')};
     const id = ${JSON.stringify(id)}, room = DOOR_HQ.rooms[id], t0 = Date.now();
     const info = hqTerrainInfo(id); if (!info) return { id, err: 'no terrain' };
     const R = info.rules, res = info.res, nx = info.nx, nz = info.nz, CL = R.climb, JP = (R.jump != null) ? R.jump : R.climb;
@@ -40,6 +43,7 @@ function scan(D, id) {
     const padNodes = (info.pads || []).map(p => [Math.round((p.x - info.x0) / res), Math.round((p.z - info.z0) / res)]);
     let reached = 0;
     try { _hqTReachJump(info, padNodes, null, _hqTClimbLim(info, JP)).forEach((y, k) => { if (k < NN) { G[k] = y; reached++; } }); } catch (e) {}
+    if (EVERY) { reached = 0; for (let k = 0; k < NN; k++) { G[k] = G0[k]; if (G0[k] === G0[k]) reached++; } }   // --every-ground: every piece of ground counts as reached (Heaven: the floating stairs hide most of it from the walk)
     const g = (i, j) => (i < 0 || j < 0 || i >= nx || j >= nz) ? NaN : G[j * nx + i];
     const g0 = (i, j) => (i < 0 || j < 0 || i >= nx || j >= nz) ? NaN : G0[j * nx + i];
     const group = (cells, key) => { const S = new Map(cells.map(c => [c.k, c])), seen = new Set(), out = [];
@@ -98,7 +102,7 @@ if (flag('--child')) {
     if (!ids.length) { console.log('usage: node find-softlocks.js <room id…> | --all [--jobs 4] | --zone "<ZONE>"'); process.exit(1); }
     fs.mkdirSync(OUT, { recursive: true });
     const jobs = Math.max(1, +opt('--jobs', 4)), res = [], queue = ids.slice();
-    const one = id => new Promise(done => { cp.execFile(process.execPath, ['--max-old-space-size=6000', __filename, '--child', id], { maxBuffer: 1 << 28 }, (err, so) => {
+    const one = id => new Promise(done => { cp.execFile(process.execPath, ['--max-old-space-size=6000', __filename, '--child', id].concat(flag('--every-ground') ? ['--every-ground'] : []), { maxBuffer: 1 << 28 }, (err, so) => {
         const m = /@@SOFTLOCK@@(.*)/.exec(so || ''); let r = m ? JSON.parse(m[1]) : { id, err: String(err || 'no answer').slice(0, 300) };
         fs.writeFileSync(path.join(OUT, id + '.json'), JSON.stringify(r, null, 1)); res.push(r);
         if (!flag('--json')) console.log(r.err ? `${id}  FAILED ${r.err}` : line(r) + ((ids.length <= 6) ? '\n' + detail(r, 40) : '')); done(); }); });

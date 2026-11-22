@@ -243,7 +243,7 @@ SUB.forEach(S => { const RA = roomOfPlot(S.a.id), RB = roomOfPlot(S.b.id); if (R
 /* THE OUTFALL (2026-11-17, One World phase 4.4, the walk U14): the Sewers' Outfall Pipe runs out under the sea into the Sea Floor's west side, its
    first row (world 18,5): the door pair `ow_v_18_5` (bake-sewers.js WSEAM). */
 { const R = ROOMS[1], M = R.M; if (M.wx !== 18 || M.wy !== 5) throw new Error('the Outfall: the Sea Floor is not at 18,5');
-  EXTRA[R.room].push({ id: 'ow_v_18_5', way: 'trail', wall: 'w', z: r2(-M.HZ + 6.5 * C), leaf: 'leaf_bulkhead', wide: true, label: 'DISASTER CITY · THE SEWERS', sub: 'THE OUTFALL · THE PIPE BACK UNDER THE CITY', action: { room: 'site_prebuilt_downtown_underworld', at: 'ow_v_18_5' }, desc: 'Everything the city flushes comes out here. The fish have opinions about it.' }); }
+  EXTRA[R.room].push({ id: 'ow_v_18_5', way: 'trail', wall: 'w', z: r2(-M.HZ + 6.5 * C), passage: { deep: -0.6 } /* (2026-11-22) the walker is stopped 0.45 m short of this open sea room's line and never reached the pipe's 10 m: the crossing is 0.6 m before the line */, leaf: 'leaf_bulkhead', wide: true, label: 'DISASTER CITY · THE SEWERS', sub: 'THE OUTFALL · THE PIPE BACK UNDER THE CITY', action: { room: 'site_prebuilt_downtown_underworld', at: 'ow_v_18_5' }, desc: 'Everything the city flushes comes out here. The fish have opinions about it.' }); }
 /* the air by district: a zone moves with the plot under its middle (C's zones stand inside the city, which moved whole) */
 const airOf = R => AIR.map(z => { const mx = (z.x0 + z.x1) / 2, mz = (z.z0 + z.z1) / 2, e = R.M.mapOf(mx, mz); if (!e) return null;
     return Object.assign({}, z, { x0: r2(z.x0 + e.dx), z0: r2(z.z0 + e.dz), x1: r2(z.x1 + e.dx), z1: r2(z.z1 + e.dz) }); }).filter(Boolean);

@@ -515,7 +515,9 @@ exports.build = function (ctx) {
             g: [['bench', 0, 3, 1, 1], ['crates', 0, 2, 1, 1], ['lockers', 8, 3, 1, 1], ['missile', 8, 2, 1, 1], ['missile', 8, 1, 1, 1], ['jet', 2, 1, 5, 3]],
             decor(K) { K.wallProp('chalkboard', 'l', 1.3); K.P('folding_chair', K.lx(0.5), K.lz(0.9), 270); K.P('folding_chair', K.lx(0.5), K.lz(1.7), 270); K.P('traffic_cone', K.lx(1.5), K.lz(0.9), 0); K.P('traffic_cone', K.lx(7.5), K.lz(0.9), 0); K.wallProp('notice_board', 'f', 6.4); } },
         'P01-11-B1': { W: 4, D: 5, keyIn: SUB, floorIn: U('TileGeneric5a'), walls: [],
-            g: [['pipes', 0, 1, 1, 3], ['pump', 1, 1, 1, 3], ['desk', 3, 4, 1, 1], ['lockers', 1, 4, 1, 1], ['barrels', 0, 0, 1, 1]],
+            /* (the soft-lock hunt, 2026-11-22: the pipes run to the back wall. They stopped a square short and the corner behind them and the lockers was a pit:
+               over the desk and the lockers, down into it, 1.4 m of pipe to get back over) */
+            g: [['pipes', 0, 1, 1, 4], ['pump', 1, 1, 1, 3], ['desk', 3, 4, 1, 1], ['lockers', 1, 4, 1, 1], ['barrels', 0, 0, 1, 1]],
             decor(K) { K.wallProp('retro_control_panel', 'r', 2.5); K.wallProp('breaker_panel', 'r', 1.5); K.wallProp('breaker_panel', 'r', 3.4); K.wallProp('notice_board', 'f', 1.6); } },
         'P02-11-B1': { W: 3, D: 5, keyIn: U('ConcreteStriped1a'), floorIn: CSF, walls: [],
             g: [['pipes', 0, 1, 1, 3], ['lockers', 2, 2, 1, 1], ['crates', 0, 0, 1, 1]],
@@ -993,5 +995,12 @@ exports.build = function (ctx) {
      ['P00-11', 4, 5, 'gas_cylinder_rack', 90, -1.2, 0.9], ['P01-08', 9, 1, 'city_bin', 0, 1.1, 1.1]].forEach(q => { st.deco += deco(...q); });
     count2.houston = Object.assign({ rows: hou.rows, blocks: hou.blocks, out: hou.out.join(',') || 'none' }, st);
     lateRows.push(...out);
+    /* THE WAY OUT BETWEEN THE TANKS (2026-11-22, the soft-lock hunt; mondo: "no ... huge drops where there is no room to get out"): the Container court's
+       factory roof is on the roof route and the propane spheres stand along its east wall. The two 3.5 m alleys between them (the wall, a sphere either
+       end, the fence and the next building) were stepped into off the roof, 7 m down, and never left. Each has the city's own fire escape back up now:
+       a steel landing level with the roof and one ladder from the alley's floor (the tool's kit, bake-disaster-city.js THE FLUSH LANDING). */
+    (() => { const b = features.find(f => f.id === 'dc:P00-09-B1'); if (!b || b.k !== 'plateau') return; const E = b.x + b.w / 2;
+        [-3.25, 8.75].forEach(dz => { const zc = r3(b.z + dz); features.push({ k: 'landing', x: r3(E + 0.85), z: zc, w: 1.7, d: 2.6, h: 3.5, back: 270, flush: true }, { k: 'climb', x: r3(E + 1.7), z: r3(zc + 0.6), face: 270, look: 'fireescape' }); });
+        count2.tankEscapes = 2; })();
     console.log('industrial', JSON.stringify(count2));
 };

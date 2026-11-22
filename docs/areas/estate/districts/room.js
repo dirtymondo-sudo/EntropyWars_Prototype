@@ -16,8 +16,9 @@ module.exports = {
        mass beside open ground, opened for it); a.tree(x, y, kind, h); a.feat(row); a.gx / a.gz = a square line in metres; a.h(x, y) = ground */
     dress(a) { const P = a.P;
         /* ── THE WEST BANK (plan 1,11; level 1): the shore walk climbs off the west shore onto it; the trail west leaves by its gate ── */
-        /* the trail's end until the House Trail is built (its own room, plans/estate-house-trail.js): a farm gate, shut, and a board */
-        P('timber_gate', 13, 141, { face: 90 }); P('trail_sign', 14, 139, { face: 90 }); P('lantern_post', 16, 143, { pocket: true });
+        /* the farm gate stands OPEN, swung back along the trail's north side (2026-11-22, the zone entrances thread: it stood shut across the trail,
+           a body, and the way to the House Trail could not be walked; it was "the trail's end until the House Trail is built", which it now is) */
+        P('timber_gate', 13, 141, { face: 0, dx: -1.75, dz: -1.6 }); P('trail_sign', 14, 139, { face: 90 }); P('lantern_post', 16, 143, { pocket: true });
         /* a bench on the bank's lip, looking east over the water; the old willow that leans out over it */
         P('iron_garden_bench', 18, 142, { face: 90, dx: 0.6 }); a.tree(18, 143, 'rf_willow_2', 9);
         P('wild_flowers', 14, 142); P('fern', 17, 142, { dx: 0.8 }); P('psxg_dead_bush_1', 13, 139, { dx: -0.9 });
