@@ -4253,7 +4253,7 @@
         function _hqSetPrompt(t) {
             const el = _hqEl('hqPrompt');
             if (!el) return;
-            if (t && t.aboard && t.vehicle === 'ship') { el.style.display = 'none'; return; }
+            if (t && t.aboard) { el.style.display = 'none'; return; }   // any vehicle (mondo 11-22, the car, then "what about boats?": no box while aboard; E still gets off)
             try { if (t && _pd && ThreeRenderer.hq.pd.wide()) t = null; } catch (e) {}   // THE PLOT DUNGEONS: no prompt over the wide view
             /* THE ENCOUNTER (9.4 rev 17): the gun HOLSTERED and a native in reach + sight — the prompt names the click; drawn, the click is the door gun's */
             let hushed = false; try { hushed = !!(ThreeRenderer.hq.hushed && ThreeRenderer.hq.hushed()); } catch (e) {}   // THE HUSH (2026-10-01): no ATTACK prompt on arrival either
@@ -5799,7 +5799,7 @@
                 case 'on':
                     if (h) h.classList.add('skate');
                     _hqSkateSfx('skatePush', 0.5);
-                    _hqToast('<b>ON THE BOARD</b><span>HOLD A MOUSE BUTTON + FLICK = TRICKS · B OFF</span>', 4200);
+                    _hqToast('<b>ON THE BOARD</b><span>HOLD A MOUSE BUTTON + FLICK = TRICKS</span>', 3000);
                     _hqFillStrip(_hqProfile());
                     break;
                 case 'off':
@@ -5901,7 +5901,7 @@
         function _hqKickEvent(ev) { void ev; }
         function _hqSitEvent(ev) {
             if (!ev) return;
-            if (ev.kind === 'sit') _hqToast('<b>SEATED</b><span>ANY KEY STANDS · E STANDS</span>', 1500);
+            /* (mondo 11-22: no SEATED toast; the prompt says [E] STAND) */
         }
         /* ══ THE ARRIVAL CARD (PREMIUM_POLISH_PLAN §6.3, 2026-09-21) ══
            A room stood in for the FIRST time (hqRoomSee's `first`, rooms the register numbers + every part of a site — data.js
@@ -5940,7 +5940,7 @@
             if (h) { h.classList.toggle('climb', !!ev.on); if (ev.on) h.classList.remove('climbnear'); }
             if (ev.on) {
                 _hqSkateSfx('skatePush', 0.22);
-                if (!_hqClimbToasted) { _hqClimbToasted = true; _hqToast('<b>ON THE ' + String(ev.look || 'ladder').toUpperCase() + '</b><span>SPACE LETS GO</span>', 3200); }
+                /* (mondo 11-22: no "SPACE LETS GO" toast, a ladder needs no manual) */
             } else if (ev.why === 'top') _hqSkateSfx('skateOllie', 0.2);
         }
         let _hqSeaToasted = { swim: false, dive: false, boat: false, sub: false };
@@ -5952,7 +5952,7 @@
                     if (h) h.classList.toggle('swim', !!ev.on);
                     if (ev.on) {
                         _hqSkateSfx(ev.under ? 'seaDive' : 'seaSurface', 0.4);
-                        if (!_hqSeaToasted.swim) { _hqSeaToasted.swim = true; _hqToast(ev.under ? '<b>UNDER THE SEA</b><span>SPACE UP · C DOWN · SHIFT FASTER</span>' : '<b>IN THE WATER</b><span>C DIVE · SHIFT FASTER</span>', 3400); }
+                        if (!_hqSeaToasted.swim) { _hqSeaToasted.swim = true; _hqToast(ev.under ? '<b>UNDER THE SEA</b><span>SPACE UP · C DOWN</span>' : '<b>IN THE WATER</b><span>C DIVES</span>', 3400); }
                     }
                     break;
                 case 'dive':
@@ -5964,8 +5964,8 @@
                     if (h) h.classList.add('helm');
                     _hqSkateSfx('seaBoard', 0.5);
                     const k = ev.vehicle === 'sub' ? 'sub' : ev.vehicle === 'ship' ? 'ship' : ev.vehicle === 'car' ? 'car' : 'boat';
-                    if (k === 'car') { if (!_hqSeaToasted.car) { _hqSeaToasted.car = true; _hqToast('<b>AT THE WHEEL</b><span>W GAS · S BRAKE / REVERSE · A / D STEER · SPACE HANDBRAKE · E GETS OUT</span>', 5200); } }   // THE CAR (2026-11-22)
-                    else if (!_hqSeaToasted[k] && k !== 'ship') { _hqSeaToasted[k] = true; _hqToast(k === 'sub' ? '<b>THE BATHYSCAPHE</b><span>SPACE UP · C DOWN · E LEAVES IT</span>' : '<b>THE SKIFF</b><span>E STEPS OFF</span>', 4200); }
+                    if (k === 'car') { /* THE CAR (2026-11-22): no controls toast (mondo: "same controls every racing game ever, get rid of them") */ }
+                    else if (!_hqSeaToasted[k] && k !== 'ship') { _hqSeaToasted[k] = true; if (k === 'sub') _hqToast('<b>THE BATHYSCAPHE</b><span>SPACE UP · C DOWN</span>', 3000); }   // (mondo 11-22: only the keys no other game has; the skiff says nothing)
                     _hqFillStrip(_hqProfile());
                     break;
                 }
@@ -6018,7 +6018,7 @@
             if (!ev.armed || !ev.target) return;
             if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return;
             if (_hqLadderPeek(ev.target) !== 'fight') return;   // THE STRIKE LADDER: this strike makes it run or Talk, it engages nobody
-            _hqToast(`<b>${_hqGestureLabel(ev.gesture)} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>ENGAGING · ${_hqEncounterBoardCopy()}</span>`, 1600);
+            _hqToast(`<b>${_hqGestureLabel(ev.gesture)} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>ENGAGING</span>`, 1600);
         }
         function _hqEncounterRoomOkNow() { try { return (typeof window.hqEncounterRoomOk === 'function') ? window.hqEncounterRoomOk(_hqCurRoom) : false; } catch (e) { return false; } }
         /* the landing: file the crossing */
@@ -6059,7 +6059,7 @@
             window._hqClosePanel(); _hqInteractHold();
             if (!ev || !ev.target) return;
             try { playSfx('uiButtonConfirm'); } catch (e) {}
-            _hqToast(`<b>${_hqGestureLabel(ev.gesture)} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>ENGAGING · ${_hqEncounterBoardCopy()}</span>`, 1600);
+            _hqToast(`<b>${_hqGestureLabel(ev.gesture)} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>ENGAGING</span>`, 1600);
             _hqEncounterFire(Object.assign(ev, { ladderDone: true }));
         }
         /* its keys (mondo's back keys: ESC and RIGHT CLICK close every box; E leaves what E opened): 1 / E = BACK OFF, 2 = FIGHT */
@@ -6161,13 +6161,13 @@
             /* WHOEVER STARTS THE FIGHT OPENS ROUND 1 (mondo 11-17): an NPC that came for you acts first (battle.js reads the run's `opener`) */
             if (ev.npcStart) {
                 L.opener = 'npc';
-                _hqToast(`<b>${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>${ev.why ? '' : 'STEPS IN · '}ENGAGING · ${_hqEncounterBoardCopy()}</span>`, 1800);   // `why` (step 4): a Brute, a mugger, a Territorial started it itself; none = a Guard stepped in
+                _hqToast(`<b>${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>${ev.why ? '' : 'STEPS IN · '}ENGAGING</span>`, 1800);   // `why` (step 4): a Brute, a mugger, a Territorial started it itself; none = a Guard stepped in
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
             }
             /* THE DOOR STRIKE (DOOR_GUN_PLAN §5.3, Phase 4): the door says who it struck */
             if (ev.door) {
                 const dd = (window.DOOR_GUN_DOORS || {})[ev.door.key] || {};
-                _hqToast(`<b>${_hqEsc((dd.icon || '🚪') + ' ' + String(dd.name || ev.door.key).toUpperCase())} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>THE DOOR STRUCK FIRST · ENGAGING · ${_hqEncounterBoardCopy()}</span>`, 1800);
+                _hqToast(`<b>${_hqEsc((dd.icon || '🚪') + ' ' + String(dd.name || ev.door.key).toUpperCase())} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>THE DOOR STRUCK FIRST · ENGAGING</span>`, 1800);
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
             }
             L.codeRedRun = cr ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
@@ -6535,7 +6535,7 @@
             if (beat.kind === 'deck') {   // SKATEBOARDING (9.8): the board is yours
                 try { playSfx('levelUp'); } catch (e) {}
                 try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.skateIssued) ThreeRenderer.hq.skateIssued(true); } catch (e) {}   // the issue lands at once, not on the next room
-                _hqToast('<b>A SKATEBOARD</b><span>YOURS · PRESS B TO DROP IT · THE RAILS AND THE RAMPS ARE THE POINT</span>', 4200);
+                _hqToast('<b>A SKATEBOARD</b><span>B DROPS IT</span>', 3000);
                 try { _hqFillStrip(_hqProfile()); } catch (e) {}
             } else if (beat.kind === 'tape') {
                 try { playSfx('levelUp'); } catch (e) {}
