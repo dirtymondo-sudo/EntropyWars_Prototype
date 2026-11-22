@@ -597,6 +597,7 @@ if (!document.getElementById('pb-hover-css')) {
     .pb-rhalf.taken { cursor: not-allowed; }
     .pb-rhalf.taken .pb-rtile-art { filter: grayscale(0.9) brightness(0.75); }
     .pb-rhalf-g { position: absolute; right: 4px; top: 2px; font-family: 'DotGothic16', monospace; font-size: 13px; line-height: 1; color: #fff; text-shadow: 0 1px 3px #000, 0 0 2px #000; pointer-events: none; z-index: 2; }
+    .pb-rhalf-g.f { color: #ff5c8a; } .pb-rhalf-g.m { color: #4aa8ff; }   /* mondo 11-22: "the female symbol red/pink and the male one blue" */
     .pb-rtile.pb-rpair .pb-rtile-name, .ms-crt-forge .pb-rtile.pb-rpair .pb-rtile-name { white-space: nowrap; display: block; }
     .pb-rtile.taken { opacity: 0.8; cursor: not-allowed; }
     .pb-rtile.taken .pb-rtile-art { filter: grayscale(0.9) brightness(0.75); }
@@ -4716,7 +4717,7 @@ function PartyBuilder(props) {
             locked ? h('div', { className: 'pb-rtile-lock' }, '🔒') : null,
             taken ? h('div', { className: 'pb-rtile-taken' }, 'ON TEAM') : null,
             !locked ? h('button', { className: 'pb-rtile-star' + (starred ? ' on' : ''), onClick:e=>{e.stopPropagation();toggleFav(entry.race,hf.gender);}, title: starred ? 'Unfavourite' : 'Favourite' }, starred ? '★' : '☆') : null,
-            pair ? h('span', { className: 'pb-rhalf-g', 'aria-hidden': true }, hf.gender === 'female' ? '\u2640' : '\u2642') : null,
+            pair ? h('span', { className: 'pb-rhalf-g ' + (hf.gender === 'female' ? 'f' : 'm'), 'aria-hidden': true }, hf.gender === 'female' ? '\u2640' : '\u2642') : null,
             (!pair || hi === entry.halves.length - 1) ? h('div', { className: 'pb-rtile-types' }, ...(entry.types || []).slice(0, 3).map((t, ti) => h('i', { key: ti, style: { background: getTypeColor(t) }, title: String(t).toUpperCase() }))) : null,
             (!pair || hi === 0) ? pbMasteryChip(entry.race) : null);
           return { he, isActive, taken, hovered, onClick, title, art };
