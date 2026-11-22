@@ -136,6 +136,9 @@ exports.apply = ctx => {
     mk('dojo', 'P14-03', [8, 10, 11, 12, 'N'], 3.5, { leaf: 'leaf_frame_only' }, { rh: 2.6, roof: 'hip', tint: 0x6a3a2c, roofTint: 0x3c4448, inTint: 0xe8d8b8, wide: 2.2, name: 'THE KI DOJO' });
     mk('shrine', 'P14-04', [8, 3, 10, 5, 'W'], 3.5, { leaf: 'leaf_frame_only' }, { rh: 2.2, stone: true, tint: 0xb0b0b8, roofTint: 0x5a4a3a, front: true, inKey: 'rocks_5', inTint: 0xd8d0c0, name: 'SPRING SHRINE' });
     mk('lookout', 'P14-05', [2, 10, 5, 12, 'N'], 3.5, {}, { rh: 2.0, roof: 'hip', tint: 0x8a7a5a, roofTint: 0x4a5a3c, wide: 2.6, name: 'FIRE LOOKOUT' });
+    /* THE SIDE YARD IS LEVEL (11-22, the soft-lock finder): the one square west of the Lookout, between its wall and the trees, lay as a bank
+       3.4 m high running down to the trees' foot: you slid off it into a pocket and never left. It takes the Lookout's own level, straight up by the trees. */
+    { const a = ctx.S('P14-05', 2, 10); ctx.flats.push([a[0] - 1, a[1], a[0], a[1] + 2, 'N', [2.5, 0]]); }
     mk('climbers', 'P14-01', [0, 2, 3, 4, 'S'], 3.5, {}, { rh: 2.4, stone: true, snow: true, tint: 0xa0a0a8, chimney: 3.2, inTint: 0xc8a888, name: "CLIMBERS' HUT" });
 };
 
