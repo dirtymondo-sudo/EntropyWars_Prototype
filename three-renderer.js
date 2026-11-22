@@ -37452,7 +37452,7 @@ const ThreeRenderer = (function () {
         motionBlur: { on: true, fromV: 8, fullV: 16, fallV: 7, max: 0.55, taps: 8 },
         reflect: { on: true, scale: 0.35, everyN: 1, max: 1, puddleGain: 0.62, mirrorGain: 0.9 },
         nightFill: { color: 0xa8bad8, amount: 0.5, moonFloor: 0.75, keyLight: 0.6 },
-        keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7, battleCeilGap: 0.35, walkUp: 2.8 } };
+        keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7, battleCeilGap: 0.35, walkUp: 2.8, battleMatch: 1 } };
     /* THE POLISH SETTINGS (2026-09-21): the player's rows (data.js HQ_POLISH_PREFS, localStorage ew_polish) are read BEFORE
        every EW_* kill-switch — _polishOff(key, flag) = the player turned it off, or the dev flag is set; _polishLevel(key) = a
        level / slider row's number (1 = the shipped count). A row the catalogue does not know reads as ON. */
@@ -98564,25 +98564,58 @@ const ThreeRenderer = (function () {
         var t = (_fklDir.y < -0.05) ? (fy - cam.position.y) / _fklDir.y : 12 * s;
         t = Math.max(0, Math.min(40 * s, t));
         var kUp = K.battleUp || 7, kI = (K.battleIntensity != null) ? K.battleIntensity : (K.intensity || 0);
+        var kDec = (K.decay != null) ? +K.decay : 1, kRb = K.battleReach || 30, kRw = K.reach || 16, kWu = (K.walkUp != null) ? +K.walkUp : 2.8;
+        var kFall = function (h, r) { return Math.pow(Math.max(0.05, 1 - h / r), kDec); };
+        var kWalk = (K.intensity || 0) * kFall(kWu, kRw);   // what the floor under the walk's lamp gets
+        var kEven = (typeof window !== 'undefined' && window.EW_FIELD_KEY_HIGH) ? 0 : ((K.battleMatch != null) ? Math.max(0, Math.min(1, +K.battleMatch)) : 1);
         /* THE FIGHT IS AS BRIGHT AS THE WALK: under a low ceiling the lamp hangs inside the room, its floor lit as the walk's is */
         if (st.keyCeil != null) {
             var kTop = Math.max(1, st.keyCeil - ((K.battleCeilGap != null) ? +K.battleCeilGap : 0.35));
             if (kTop < kUp) {
-                var kDec = (K.decay != null) ? +K.decay : 1, kRb = K.battleReach || 30, kRw = K.reach || 16, kWu = (K.walkUp != null) ? +K.walkUp : 2.8;
-                var kFall = function (h, r) { return Math.pow(Math.max(0.05, 1 - h / r), kDec); };
-                var kWalk = (K.intensity || 0) * kFall(kWu, kRw), kOld = kI * kFall(kUp, kRb);   // what the floor under the lamp gets: on the walk, in a tall room's fight
+                var kOld = kI * kFall(kUp, kRb);   // what the floor under the lamp got in a tall room's fight
                 var kT = (kUp > kWu) ? Math.max(0, Math.min(1, (kTop - kWu) / (kUp - kWu))) : 1;
-                kI = Math.min(kI, (kWalk + (kOld - kWalk) * kT) / kFall(kTop, kRb));
+                kI = Math.min(kI, (kWalk + (kOld - kWalk) * kT * (1 - kEven)) / kFall(kTop, kRb));
                 kUp = kTop;
             }
         }
-        L.position.set(cam.position.x + _fklDir.x * t, fy + kUp * s, cam.position.z + _fklDir.z * t);
+        /* THE FIGHT WEARS THE WALK'S LIGHT, EVERYWHERE (2026-11-22, mondo after a fight in the Circus: "the battle got super bright compared
+           to what exploration was ... is the fix only in disaster city? it needs to be game wide" · "seamless transition between
+           exploration and battle"): the 11-15 fix reached only closed rooms with a ceiling under 7.35 m. Everywhere else (an outdoor
+           room by night, a cave, a terrain room, a tall hall) the fight still hung the lamp at battleIntensity 1.5, 7 m up with a 30 m
+           reach: the floor under it got 1.15 where the walk's lamp (1.0 at the walker's head, 16 m reach) gives its floor 0.83, and it
+           lit the whole board where the walk's lights a pool (measured in the Circus at 23:00: the sand read 120 on the walk, 180 in
+           the fight). Now in EVERY room the fight's lamp gives the floor under it exactly what the walk's gives the walker's floor
+           (HQ_LIGHT_RULES.keyLamp.battleMatch 1; 0 = the old strength). Off: window.EW_FIELD_KEY_HIGH = true. Host and guest alike
+           (it is drawn from the room and the camera, never relayed). */
+        var kReach = kRb;
+        if (kEven > 0) {
+            if (st.keyOpen) {
+                /* under the open sky the lamp is only THE NIGHT FILL over the moon and the sky, so the fight hangs the walk's very lamp:
+                   its height, its reach, its strength, over the square the camera looks at (a pool of light, as round the walker) */
+                kUp += (kWu - kUp) * kEven; kReach += (kRw - kRb) * kEven; kI += ((K.intensity || 0) - kI) * kEven;
+            } else { var kSame = kWalk / kFall(kUp, kRb); if (kSame < kI) kI += (kSame - kI) * kEven; }   // a closed room, a cave: the whole board stays readable, its floor lit as the walk's
+        }
+        var kx = cam.position.x + _fklDir.x * t, kz = cam.position.z + _fklDir.z * t, ky = fy;
+        /* THE LAMP STANDS OVER THE GROUND IT LIGHTS (2026-11-22): the floor plane above is the room's level 0. A fight on raised ground
+           (the Cavern's upper level stands 43.75 m over it; a hill, a deck, a plot's plate) had its lamp where the camera's ray met
+           that far plane: 36 m under the board and off to the side in the Cavern, so the fight there was near black where the walk's
+           lamp lit the floor. Outside a low closed room (whose lamp hangs from its own ceiling) the lamp now stands over the camera's
+           own look-at point (ThreeCamera.getFocalWorld), at the room's real ground there (_roomGroundAt). */
+        if (st.keyCeil == null && !(typeof window !== 'undefined' && window.EW_FIELD_KEY_HIGH)) {
+            var kf = null; try { kf = (ThreeCamera.getFocalWorld) ? ThreeCamera.getFocalWorld() : null; } catch (e) { kf = null; }
+            if (kf && isFinite(kf.x) && isFinite(kf.z)) {
+                var kg = -Infinity; try { kg = _roomGroundAt(kf.x, kf.z); } catch (e) { kg = -Infinity; }
+                if (!isFinite(kg) || Math.abs(kg - kf.y) > 3 * s) kg = isFinite(kf.y) ? kf.y : fy;   // (no ground read, or the look-at is on another storey: the look-at's own height)
+                kx = kf.x; kz = kf.z; ky = kg;
+            }
+        }
+        L.position.set(kx, ky + kUp * s, kz);
         var want = kI * _keyLampGain();
         if (!st.keyOpen && st.keyWhite > 0) want *= st.keyWhite;   // THE WHITE ROOMS: a white-floored closed room's Key Light × whiteDay
         if (!st.keyOpen && st.keyRoomK != null) want *= st.keyRoomK;   // THE ROOM'S OWN KEY LIGHT
         if (st.keyOpen) { var nk = _fieldCycle ? 1 - _fieldCycleRigAt(_fieldCycle).t : st.keyNight; want *= Math.max(0, Math.min(1, nk)) * ((_hqLightRules().nightFill || {}).keyLight || 0); }   // THE NIGHT FILL
         if (L.intensity !== want) L.intensity = want;
-        L.distance = (K.battleReach || 30) * s;
+        L.distance = kReach * s;
     }
     function _fieldGroundTick() {
         _fieldKeyLampTick();   // THE KEY LIGHT (2026-10-24)
@@ -101797,9 +101830,17 @@ const ThreeRenderer = (function () {
     function _hqStackOff() { return _ewGpu !== 'webgpu' || !_hqStk.byImg || !THREE.DataArrayTexture || !_hqStackBackend() || (typeof window !== 'undefined' && (window.EW_HQ_NO_STACK || window.EW_HQ_NO_ONE_PAINT || window.EW_HQ_NO_SHELL_CELLS)); }
     /* the sheet a look could stack (its `map`), or null */
     function _hqStackTex(m) {
-        if (!m || !(m.isMeshPhongMaterial || m.isMeshLambertMaterial) || !_hqBatchVcOk(m) || m.transparent || m.alphaTest > 0 || m._ewNode || m.ewCol === 'on') return null;
+        /* THE SIGNS STACK (2026-11-22, mondo walking Disaster City at 43.6 FPS, "alone: see-through / cut-out 410" of 1,303 square meshes in
+           view; he picked "Keep merging, same look"). The census: those pieces are the city's CUT-OUT SIGNS, each a plate with a picture
+           of its own painted on a canvas (128 px high, 64 to 2048 px wide), so each was alone in its look. A cut-out (alpha test, full
+           opacity, writes depth: the only see-through piece the merge takes) and a canvas picture may now stand in a stack: the layer is
+           filled from the canvas as three uploads it, its alpha rides in the layer's texel and the look's own alpha test cuts it, so
+           same-size signs of a square merge. A canvas painted again later (its version moves) leaves its stack, as any changed sheet.
+           Off: window.EW_HQ_NO_SIGN_STACK before the room. */
+        var cut = !!(m && m.alphaTest > 0 && m.opacity >= 1 && m.depthWrite !== false && m.blending === THREE.NormalBlending), sgn = !(typeof window !== 'undefined' && window.EW_HQ_NO_SIGN_STACK);
+        if (!m || !(m.isMeshPhongMaterial || m.isMeshLambertMaterial) || !_hqBatchVcOk(m) || ((m.transparent || m.alphaTest > 0) && !(cut && sgn)) || m._ewNode || m.ewCol === 'on') return null;
         if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || (m.clippingPlanes && m.clippingPlanes.length)) return null;
-        var t = m.map; if (!t || !t.image || !(t.version > 0) || t.isCanvasTexture || t.isCompressedTexture || t.isVideoTexture || t.isDataTexture || t.isRenderTargetTexture || t.isCubeTexture || (t.channel | 0) !== 0) return null;
+        var t = m.map; if (!t || !t.image || !(t.version > 0) || (t.isCanvasTexture && !sgn) || t.isCompressedTexture || t.isVideoTexture || t.isDataTexture || t.isRenderTargetTexture || t.isCubeTexture || (t.channel | 0) !== 0) return null;
         if (t.format !== THREE.RGBAFormat || t.type !== THREE.UnsignedByteType || (t.mipmaps && t.mipmaps.length)) return null;
         var im = t.image; if (!(im.width > 0 && im.height > 0) || im.complete === false || im.data) return null;
         for (var i = 1; i < _HQ_BATCH_MAPS.length; i++) { var o = m[_HQ_BATCH_MAPS[i]]; if (o && !(_HQ_BATCH_MAPS[i] === 'emissiveMap' && o === t)) return null; }
@@ -101840,6 +101881,8 @@ const ThreeRenderer = (function () {
             try { if (dev.pushErrorScope && dev.popErrorScope) { dev.pushErrorScope('validation'); scoped = true; } } catch (eS) { scoped = false; }
             for (var i = 0; i < L.length; i++) {
                 var t = L[i];
+                /* THE SIGNS STACK: a canvas goes in by three's own upload call (on Firefox as bytes, THE SOFT CANVASES: never the copy that waits) */
+                if (t.image && t.image.tagName === 'CANVAS' && typeof be.textureUtils._copyImageToTexture === 'function') { be.textureUtils._copyImageToTexture(t.image, gt, { size: { width: w, height: h }, format: gt.format }, i, !!t.flipY, !!t.premultiplyAlpha, 0); _hqStk.canvases = (_hqStk.canvases | 0) + 1; continue; }
                 q.copyExternalImageToTexture({ source: t.image, flipY: !!t.flipY }, { texture: gt, mipLevel: 0, origin: { x: 0, y: 0, z: i }, premultipliedAlpha: !!t.premultiplyAlpha }, { width: w, height: h });
             }
             if (arr.generateMipmaps) be.textureUtils._generateMipmaps(gt);
@@ -101850,6 +101893,7 @@ const ThreeRenderer = (function () {
                 try { if (_hq) { _hqBatchDrop(_hq); _hq.batch = null; _hq.batchP = null; } } catch (eB) {}
             }, function () {}); } catch (eP) {} }
             arr._ew_gpu = gt; _hqStk.fills++;
+            var V = arr._ew_vers || (arr._ew_vers = []); arr._ew_cv = false; for (var v = 0; v < L.length; v++) { V[v] = L[v].version; if (L[v].image && L[v].image.tagName === 'CANVAS') arr._ew_cv = true; }   // THE SIGNS STACK: the paint each layer was filled from
             return true;
         } catch (e) {
             if (scoped && !popped) { try { dev.popErrorScope().then(function () {}, function () {}); } catch (eP2) {} }   // never leave the scope open
@@ -101860,7 +101904,10 @@ const ThreeRenderer = (function () {
     function _hqStackWatch() {
         var A = _hqStk.arrays; if (!A.length) return;
         var be = _hqStackBackend(); if (!be) return;
-        for (var i = 0; i < A.length; i++) { var arr = A[i]; if (arr._ew_dead) continue; var td = be.get(arr); if (td && td.texture && td.texture !== arr._ew_gpu) _hqStackFill(arr); }
+        for (var i = 0; i < A.length; i++) { var arr = A[i]; if (arr._ew_dead) continue; var td = be.get(arr); if (td && td.texture && td.texture !== arr._ew_gpu) _hqStackFill(arr); }        /* THE SIGNS STACK: a sign painted again after it joined (a canvas whose version moved) is filled into its layer again. One
+           stack a frame, its own short list of sheets: never a walk of the room. */
+        var n = _hqStk.wi = ((_hqStk.wi | 0) + 1) % A.length, a2 = A[n];
+        if (a2 && !a2._ew_dead && a2._ew_cv && a2._ew_vers && a2._ew_srcs) { for (var j = 0; j < a2._ew_srcs.length; j++) if (a2._ew_srcs[j].version !== a2._ew_vers[j]) { _hqStackFill(a2); _hqStk.repaints = (_hqStk.repaints | 0) + 1; break; } }
     }
     /* before a shell build: every sheet its parts could stack stands in a stack. Always true (the fill is at once). */
     function _hqStackPrep(R, B, now) {
