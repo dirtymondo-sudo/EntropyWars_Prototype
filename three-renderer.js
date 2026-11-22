@@ -83515,7 +83515,10 @@ const ThreeRenderer = (function () {
                 var a = fieldAt(0, -tOut), b = crest(RAMP); return Math.max(h, a + (b - a) * d / RAMP);
             };
             var asphalt = _hqMat(null, 1, 1, { color: neon ? 0x8a8aa4 : (EF ? 0xb4b4b8 : 0xffffff), shininess: neon ? 24 : 6, specular: 0x151515, emissive: 0x0e0e0e, emissiveIntensity: 1 });
-            var footKey = foot && ctx.room && ctx.room.terrain && ctx.room.terrain.path; if (footKey) asphalt.color.setHex(0xffffff);
+            /* A PATH OUT WEARS THE GROUND OF WHERE IT GOES (2026-11-22, mondo: "if its a dirt road then this path that leads out of it past the edge needs
+               to be dirt, not this tile pavement"): the far room's own path sheet (the Valley Road: dirt_2); this room's path sheet only when the far room has none */
+            var farRoom = null; try { farRoom = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && door.action && door.action.room) ? DOOR_HQ.rooms[door.action.room] : null; } catch (eFR) { farRoom = null; }
+            var footKey = foot && ((farRoom && farRoom.terrain && farRoom.terrain.path) || (ctx.room && ctx.room.terrain && ctx.room.terrain.path)); if (footKey) asphalt.color.setHex(0xffffff);
             var asT = (footKey && texOf(footKey)) || (EF && texOf('urban:RoadGeneric1a')) || texOf('urban:PlasterWallPainted1b'); if (asT) { asphalt.map = asT; asphalt.needsUpdate = true; }   // the pack's asphalt, the city streets' own sheet and tint
             if (EF) { asphalt.polygonOffset = true; asphalt.polygonOffsetFactor = -1; asphalt.polygonOffsetUnits = -1; }
             var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }); paint.polygonOffset = true;   /* (both sides: the paint quads wind face down, so the lane lines never drew, 2026-11-22) */ paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
@@ -83558,6 +83561,27 @@ const ThreeRenderer = (function () {
             var sideY = function (lx, lz) { if (!EF) return 0; var d = -lz - tOut; return (d <= 0) ? fieldAt(lx, lz) : landAt(lx, d); };
             /* THE GANTRY over the mouth: two posts on the shoulders, the beam, the green plate */
             var steel = _hqMat(null, 1, 1, { color: 0x4a4e56, shininess: 40 });
+            var lamps = [];
+            /* A TRAIL SIGNPOST (2026-11-22, mondo: "its not a road ... It just needs a sign or crosspost or something, not a freaking highway exit sign to the woods"):
+               a footpath out gets no gantry, no green plate, no LEAVING plate: one wooden post beside the path, a plank that names where the path goes (the
+               last part of the end's `sub`) for the one leaving, a smaller plank on its back that names this place for the one arriving */
+            if (foot) {
+                var wood = _hqMat('wood', 1, 1, { color: 0x8a6a48, shininess: 3 }), px = W / 2 + 0.9, pz = -1.6;
+                var wpost = _hqBox(0.16, 3.0, 0.16, wood); wpost.position.set(px * U, 1.5 * U, pz * U); g.add(wpost);
+                var cap = _hqBox(0.24, 0.06, 0.24, wood); cap.position.set(px * U, 3.03 * U, pz * U); g.add(cap);
+                var subs = String(door.sub || door.label || '').split('·'), toName = (subs[subs.length - 1] || '').trim() || String(door.label || 'THE PATH');
+                var hereName = String((ctx.room && ctx.room.label) || '').split('·')[0].trim();
+                var plank = function (text, w, y, back) {
+                    var b = _hqBox(w, 0.38, 0.07, wood); b.position.set((px - (back ? -1 : 1) * (w / 2 - 0.25)) * U, y * U, pz * U); g.add(b);
+                    var t = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_trail_' + text, [text], { w: 1024, h: 224, color: '#f4ead0', bg: '#5e4226', border: '#2e1f10', pad: 0.2, weight: 'bold', font: 'Georgia, "Times New Roman", serif' }) : null;
+                    if (!t) return;
+                    var m = _hqBasic(0xffffff); m.map = t; m.needsUpdate = true;
+                    var f = new THREE.Mesh(new THREE.PlaneGeometry((w - 0.06) * U, 0.34 * U), m); f.position.set(b.position.x, y * U, (pz + (back ? -0.04 : 0.04)) * U); if (back) f.rotation.y = Math.PI; g.add(f);
+                };
+                plank(toName, 2.0, 2.6, false);
+                if (hereName) plank(hereName, 1.7, 2.12, true);
+            }
+            if (!foot) {
             [-1, 1].forEach(function (sd) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.13 * U, H * U, 8), steel); post.position.set(sd * (W / 2 + 0.7) * U, H / 2 * U, -2.2 * U); g.add(post); });
             var beam = _hqBox(W + 1.6, 0.22, 0.22, steel); beam.position.set(0, (H - 0.11) * U, -2.2 * U); g.add(beam);
             var label = String(door.label || 'THE ROAD'), sub = String(door.sub || '');
@@ -83567,10 +83591,10 @@ const ThreeRenderer = (function () {
             plate.position.set(0, (H - 0.22 - pw * 0.125 - 0.02) * U, -2.2 * U + 0.14 * U); g.add(plate);
             var back = _hqBox(pw, pw * 0.25, 0.08, steel); back.position.set(0, plate.position.y, -2.2 * U - 0.02 * U); g.add(back);
             /* the gantry's two lamps over the plate (they wake on the press-in) */
-            var lamps = [];
             [-0.3, 0.3].forEach(function (f) { var lp = _hzGlowSprite(1.2 * U, 0xfff2c8, 0.16, 0.0, 0.0, 0.0); lp.position.set(f * pw * U, (H - 0.05) * U, -1.9 * U); g.add(lp); lamps.push(lp); });
+            }
             /* THE LEAVING plate on the right shoulder, the pack's speed plate on the left */
-            var lv = (!joinedR && typeof _hzTextTex === 'function') ? _hzTextTex('hq_road_leaving_' + (ctx.room && ctx.room.label || ''), ['LEAVING', String((ctx.room && ctx.room.label) || '').split('·')[0].trim() || 'TOWN'], { w: 512, h: 256, color: '#ffffff', bg: '#1d5a30', border: '#f0f0f0', pad: 0.12, weight: 'bold' }) : null;
+            var lv = (!joinedR && !foot && typeof _hzTextTex === 'function') ? _hzTextTex('hq_road_leaving_' + (ctx.room && ctx.room.label || ''), ['LEAVING', String((ctx.room && ctx.room.label) || '').split('·')[0].trim() || 'TOWN'], { w: 512, h: 256, color: '#ffffff', bg: '#1d5a30', border: '#f0f0f0', pad: 0.12, weight: 'bold' }) : null;
             if (lv) { var lpst = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 2.6 * U, 6), steel); var lvY = sideY(W / 2 + 1.1, -6) * U; lpst.position.set((W / 2 + 1.1) * U, 1.3 * U + lvY, -6 * U); g.add(lpst); var lvM = _hqBasic(0xffffff, { side: THREE.DoubleSide }); lvM.map = lv; var lpl = new THREE.Mesh(new THREE.PlaneGeometry(1.4 * U, 0.7 * U), lvM); lpl.position.set((W / 2 + 1.1) * U, 2.3 * U + lvY, -6 * U); g.add(lpl); }
             var spd = (joinedR || foot) ? null : texOf('urban:SignSpeedUsa045-small');   // (a joined road: no LEAVING plate, no speed sign — you are not leaving)
             if (spd) { var sp = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, 2.6 * U, 6), steel); var spY = sideY(-(W / 2 + 0.9), -9) * U; sp.position.set(-(W / 2 + 0.9) * U, 1.3 * U + spY, -9 * U); g.add(sp); var spm = _hqMat(null, 1, 1, { transparent: true, emissive: 0x202020, emissiveIntensity: 1 }); spm.map = spd; spm.alphaTest = 0.2; spm.needsUpdate = true; var spl = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * U, 0.78 * U), spm); spl.position.set(-(W / 2 + 0.9) * U, 2.35 * U + spY, -9 * U); g.add(spl); }
