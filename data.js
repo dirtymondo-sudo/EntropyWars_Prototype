@@ -69610,7 +69610,7 @@ const DOOR_HQ = {
                 waterLook: { water: 'sewer_water', deep_water: 'sewer_deep' },
                 paint: { pal: ['urban:ConcreteStriped2c','bricks_2','urban:TileGeneric4b','urban:ConcreteStriped1e','wood_planks','urban:TileSubway4a','hz_stone_02'], t: 'u8', res: 3.5, x0: -166.25, z0: -124.25, nx: 96, nz: 72, d: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBwAAAAAAAAAAAAAAAAAAAAAAAAAEBAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAEBAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBwAAAAAAAAAAAAAAAAAAAAcHAgIEBAQEBAQEBAICAAAAAAAAAAAAAAAAAAAEBAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAACAgAAAAAAAAAAAAcHBwcHBwcHAAAAAAcHBwcHBwcHAAAAAAcHBwcHBwcHAgIEBAQEBAQEBAICAAAAAAICAgIAAAAAAAAEBAQEBAQEBAICAgICAgICAgIAAAICAgICAgICAgIAAAAAAAAHBwcHBwcHBwcHAAAAAAcHBwcHBwcHAAAAAAcHBwcHBwcHAAAEBAQEBAQEBAICAAAAAAICAgIAAAAAAAAEBAQEBAQEBAICAgICAgICAgIAAAICAgICAgICAgIAAAAAAAAHBwcHBwcAAAcHBwcHBwcHBwcAAAcHBwcHBwcHBwcAAAAAAAAEBAQEBAQEBAICAgICAgICAgICAgICAAAEBAQEBAQEBAICAAAAAAICAgICAgICAAAAAAICAgIAAAAAAAAAAAcHBwcAAAcHBwcHBwcHBwcAAAcHBwcHBwcHBwcAAAAAAAAEBAQEBAQEBAICAgICAgICAgICAgICAgIEBAQEBAQEBAICAAAAAAICAgICAgICAAAAAAICAgIAAAAAAAAAAAcHAAAAAAAAAAAAAAcHAAAAAAAAAAAAAAAHBwAAAAAAAAAEBAQEBAQEBAAAAAAAAAACAgAAAAICAgIEBAQEBAQEBAICAAAAAAICAAAAAAAAAAAAAAICAAAAAAAAAAAAAAcHAAAAAAAAAAAAAAcHAAAAAAAAAAAAAAAHBwAAAAAAAAAEBAQEBAQEBAAAAAAAAAACAgAAAAAAAAAEBAQEBAQEBAAAAAAAAAICAAAAAAAAAAAAAAICAAAAAAAAAAAAAAcHBwcHAAAAAAAAAAcHBwcAAAAAAAAAAAAAAAAAAAAAAAAAAgICAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAgIAAAAAAAAAAAICAgIAAAAAAAAAAAICAAAAAAAAAAAAAAcHBwcHAAAAAAAAAAcHBwcAAAAAAAAAAAAAAAAAAAAAAAAAAgICAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAgIAAAAAAAAAAAICAgIAAAAAAAAAAAICAAAAAAAAAAAAAAAAAAcHAAAAAAAAAAAABwcAAAAAAAAAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAgIAAAAAAAAAAAICAAAAAAAAAAAAAAAAAAcHAAAAAAAAAAAABwcAAAAAAAAAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAgIAAAAAAAAAAAICAAAAAAAAAAAHBwcHBwcHBwAAAAAAAAAABwcAAAAAAAAAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAgIAAAAAAAAAAAICAAAAAAAAAAAHBwcHBwcHBwAAAAAAAAAABwcAAAAAAAAAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAgIAAAAAAAAAAAICAAAAAAAAAAAHBwcHBwcHBwAAAAAAAAcHBwcHBwcHAAAAAAcHBwcAAAAAAAAAAAICAgIAAAICAgICAgICAgICAgICAAAAAAICAgICAgICAAAAAAICAgIAAAAAAAAAAAICAgIAAAAABwcHBwcHBwcHBwcHAAAAAAcHBwcHBwcHAAAAAAcHBwcHBwAAAAACAgICAgIAAAICAgICAgICAgICAgICAAAAAAICAgICAgICAAAAAAICAgIAAAAAAAACAgICAgIAAAAABwcHBwcHBwcHBwcHBwcHBwcHBwcAAAcHBwcHBwcHBwcHBwAAAAACAgICAgICAgICAAAAAAICAgIAAAICAgICAgICAgIAAAICAgICAgICAgIAAAAAAAACAgICAgIAAAAAAAAHBwcHBwcHBwcHBwcHBwcHBwcAAAcHBwcHBwcHBwcAAAAAAAAAAAICAgICAgICAAAAAAICAgIAAAICAgICAgICAgIAAAICAgICAgICAgIAAAAAAAAAAAICAgIAAAAAAAAHBwcHBwcHBwAAAAAAAAAHBwAAAAAAAAAAAAcHAAAAAAAAAAAAAAICAAAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAgIAAAAAAAAHBwcHBwcHBwAAAAAAAAAHBwAAAAAAAAAAAAcHAAAAAAAAAAAAAAICAAAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAcHAAAAAAAAAAAAAAAAAAAAAAAAAAcHBwcAAAAAAAAAAAICAgIAAAAAAAAAAAICAgIAAAAAAAAAAgICAgIAAAAAAAAAAAICAgIAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAcHAAAAAAAAAAAAAAAAAAAAAAAAAAcHBwcAAAAAAAAAAAICAgIAAAAAAAAAAAICAgIAAAAAAAAAAgICAgIAAAAAAAAAAAICAgIAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAcHAAAAAAAAAAAAAAAAAAAAAAAAAAAABwcAAAAAAAAAAAAAAgIAAAAAAAAAAAEBAAAAAAAAAAAAAQEAAAAAAAAAAAAAAAQEAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAcHAAAAAAAAAAAAAAAAAAAAAAAAAAAABwcAAAAAAAAAAAAAAgIAAAAAAAAAAAEBAAAAAAAAAAAAAQEAAAAAAAAAAAAAAAQEAAAAAAAAAAAAAAAABAQAAAAAAAAHBwcHBwcHBwAAAAAAAAAAAAAAAAAAAAAAAAAABwcAAAAAAAAAAAAAAgIAAAAAAAAAAAEBAAAAAAAAAAABAQEBAQEBAQAAAAAAAAQEAAAAAAAAAAAAAAAABAQAAAAAAAAHBwcHBwcHBwAAAAAAAAAAAAAAAAAAAAAAAAAABwcAAAAAAAAAAAAAAgIAAAAAAAAAAAEBAAAAAAEBAQEBAQEBAQEBAQAAAAAAAAQEAAAAAAAAAAAAAAAABAQAAAAAAAAHBwcHBwcHBwcHBwcHBwcHBwcAAAcHBwcHBwcHBwcAAAAAAAAAAAICAgIAAAAAAAAAAAEBAQEBAQEBAQEBAQEBAQEBAQAAAAAAAAQEBAQAAAAAAAAAAAQEBAQAAAAABwcHBwcHBwcHBwcHBwcHBwcHBwcAAAcHBwcHBwcHBwcAAAAAAAACAgICAgIAAAAAAAAAAAEBAQEBAQEBAAABAQEBAQEBAQEBAAAEBAQEBAQAAAAAAAAAAAQEBAQAAAAABwcHBwcHBwcHBwcHAAAAAAcHBwcHBwcHAAAAAAcHBwcAAAAAAAACAgICAgIAAAAAAAAAAAEBAQEAAAAAAAABAQEBAQEBAQEBAAAEBAQEBAQEBAQEBAQEBAQEBAQAAAAAAAAHBwcHBwcHBwcHAAAAAAcHBwcHBwcHAAAAAAcHBwcAAAAAAAAAAAICAgIAAAAAAAAAAAEBAQEAAAAAAAABAQEBAQEBAQAAAAAAAAQEBAQEBAQEBAQEBAQEBAQAAAAAAAAHBwcHBwcHBwcHAAAAAAAHBwAAAAAAAAAAAAAHBwAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAQEAAAAAAAABAQEBAQEBAQAAAAAAAAAABAQAAAAAAAAAAAAEBAAAAAAAAAAHBwcHBwcHBwAAAAAAAAAHBwAAAAAAAAAAAAAHBwAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAQEAAAAAAAABAQEBAQEBAQAAAAAAAAAABAQAAAAAAAAAAAAEBAAAAAAAAAAAAAAHBwcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAQEBAAAAAAAAAAEBAQEBAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBwcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAQEBAAAAAAAAAAEBAQEBAAAAAAAAAAAABAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEAAAAAAAAAAAAAAAEBAAAAAAAAAAEBAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAEBAAAAAAAAAAAAAAAAwMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEAAAAAAAAAAAAAAAEBAAAAAAAAAAEBAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAEBAAAAAAAAAAAAAAAAwMAAAAAAAAAAAADAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEAAAAAAAABAQEBAQEBAQAAAAAAAAEBAAAAAAAAAAAAAAAABAQAAAAAAAAEBAQEBAQEBAAAAAAAAAAAAwMAAAAAAAAAAAADAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEAAAAAAAABAQEBAQEBAQEBAAAAAAEBAAAAAAAAAAAAAAAABAQAAAAAAAAEBAQEBAQEBAAAAAAAAAMDAwMAAAAAAAAAAAMDAwMDAwMDAAAAAAMDAwMAAAAAAAAAAAEBAQEAAAAAAAABAQEBAQEBAQEBAQEBAQEBAQEAAAAAAAAAAAQEBAQEBAQEAAAEBAQEBAQEBAAAAAAAAAMDAwMAAAAAAAAAAAMDAwMDAwMDAAAAAAMDAwMDAwAAAAAAAAEBAQEAAAAAAAABAQEBAQEBAQEBAQEBAQEBAQEBAQAAAAAEBAQEBAQEBAQEAAAEBAQEBAQEBAAAAAAAAAMDAwMDAwMDAwMDAwMDAwMAAAMDAwMDAwMDAwMDAwAAAAAAAAEBAQEBAQEBAAABAQEBAQEBAQAAAAAAAAEBAQEBAQAAAAAEBAQEBAQAAAQEAAAEBAQEBAQEBAAAAAAAAAMDAwMDAwMDAwMDAwMDAwMAAAMDAwMDAwMDAwMAAAAAAAAAAAEBAQEBAQEBAQEBAQEBAQEBAQAAAAAAAAEBAQEAAAAAAAAAAAQEBAQAAAQEBAQEBAQEBAQEBAAAAAAAAAAAAwMAAAAAAAAAAAAAAwMAAAAAAAAAAAAAAwMAAAAAAAAAAAEBAAAAAAEBAQEBAQEBAQEBAQAAAAAAAAAAAQEAAAAAAAAAAAQEAAAAAAQEBAQEBAQEBAQEBAAAAAAAAAAAAwMAAAAAAAAAAAAAAwMAAAAAAAAAAAAAAwMAAAAAAAAAAAEBAAAAAAAAAAABAQEBAQEBAQAAAAAAAAAAAQEAAAAAAAAAAAQEAAAAAAAAAAAEBAQEBAQEBAAAAAAAAAMDAwMAAAAAAAAAAAAAAwMAAAAAAAAAAAMDAwMAAAAAAAAAAAEBAAAAAAAAAAAAAAEBAQEBAAAAAAAAAAABAQEAAAAAAAAAAAQEAAAAAAAAAAAABAQEBAQEAAAAAAAAAAMDAwMAAAAAAAAAAAAAAwMAAAAAAAAAAAMDAwMAAAAAAAAAAAEBAAAAAAAAAAAAAAEBAQEBAAAAAAAAAAABAQEAAAAAAAAAAAQEAAAAAAAAAAAABAQEBAQEAAAAAAAAAAcHAAAAAAAAAAAAAAAAAwMAAAAAAAAAAAMDAAAAAAAAAAAAAAEBAAAAAAAAAAAAAAEBAAAAAAAAAAAAAAABAQAAAAAAAAAAAAQEAAAAAAAAAAAAAAAAAAQEAAAAAAAAAAcHAAAAAAAAAAAAAAAAAwMAAAAAAAAAAAMDAAAAAAAAAAAAAAEBAAAAAAAAAAAAAAEBAAAAAAAAAAAAAAABAQAAAAAAAAAAAAQEAAAAAAAAAAAAAAAAAAQEAAAAAAAAAAcHAAAAAAAAAAAAAAAAAwMAAAAAAAAAAAMDAAAAAAAAAAAAAAEBAAAAAAAAAAAAAAEBAAAAAAAAAAABAQEBAQEBAQAAAAAAAAQEAAAAAAAAAAAEBAQEBAQEBAAAAAAAAAcHAAAAAAAAAAAAAAAAAwMAAAAAAAAAAAMDAAAAAAAAAAAAAAEBAAAAAAAAAAAAAAEBAAAAAAEBAQEBAQEBAQEBAQAAAAAAAAQEAAAAAAAAAAAEBAQEBAQEBAAAAAAAAAcHBwcAAAcHAwMDAwMDAwMAAAMDAwMDAwMDAwMDAwMDAQEBAQEBAQEAAAAAAAAAAAEBAQEBAQEBAQEBAQEBAQEBAQAAAAAAAAQEBAQAAAAAAAAEBAQEBAQEBAAAAAAHBwcHBwcAAAcHAwMDAwMDAwMAAAMDAwMDAwMDAwMDAwMDAQEBAQEBAQEAAAAAAAAAAAEBAQEBAQEBAAABAQEBAQEBAQEBAAAAAAQEBAQAAAAAAAAEBAQEBAQEBAQEAAAHBwcHBwcHBwcHAAAAAAMDAwMDAwMDAAAAAAMDAwMAAAAAAAAAAAEBAQEBAQEBAQEBAQEBAQEAAAAAAAABAQEBAQEBAQEBAAAAAAQEBAQAAAAAAAAEBAQEBAQEBAQEAAAAAAcHBwcHBwcHAAAAAAMDAwMDAwMDAAAAAAMDAwMAAAAAAAAAAAEBAQEBAQEBAQEBAQEBAQEAAAAAAAABAQEBAQEBAQAAAAAAAAQEBAQAAAAAAAAEBAQEBAQEBAAAAAAAAAAABwcAAAAAAAAAAAAAAAAAAAAAAAAAAAMDAAAAAAAAAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAEBAQEBAQEBAAAAAAAAAAABwcAAAAAAAAAAAAAAAAAAAAAAAAAAAMDAAAAAAAAAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAEBAQEBAQEBAAAAAAAAAAABwcHAAAAAAAAAAAAAAAAAAAAAAAAAAMDAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEAAAAAAAAAAAABwcHAAAAAAAAAAAAAAAAAAAAAAAAAAMDAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEAAAAAAAAAAAAAAcHAAAAAAAAAAAHBwAAAAAAAAAAAAMDAAAAAAAAAAAAAQEAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAAAAcHAAAAAAAAAAAHBwAAAAAAAAAAAAMDAAAAAAAAAAAAAQEAAAAAAAAAAAAAAAABAQAAAAAAAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQAAAAAAAAHBwcHBwcHBwAAAAAHBwcHBwcHBwAAAAAAAAMDAAAAAAAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQAAAAAAAAHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAAAAAMDAAAAAAMDAQEBAQEBAQEBAQAAAAABAQEBAQEBAQAAAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQAAAAAAAAHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAAAAAMDAwMAAAMDAQEBAQEBAQEBAQAAAAABAQEBAQEBAQEBAQEBAQEBAQEAAAAAAAAAAAQEBAQAAAAAAAAAAAQEBAQAAAAABwcHBwcHBwcHBwcHAAAHBwcHBwcHBwAAAAADAwMDAwMAAAMDAAABAQEBAQEBAQEBAAABAQEBAQEBAQEBAQEBAQEBAQEAAAAAAAAEBAQEBAQAAAAAAAAAAAQEBAQAAAAABwcHBwcHBwcHBwcHAAAHBwcHBwcHBwAAAAADAwMDAwMDAwMDAAABAQEBAQEBAQEBAAABAQEBAQEBAQEBAAAAAAEBAQEAAAAAAAAEBAQEBAQEBAQEBAQEBAQEBAQAAAAAAAAHBwcHBwcHBwcHAAAHBwcHBwcHBwAAAAAAAAMDAwMDAwMDAAABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAAAAAEBAQEAAAAAAAAAAAQEBAQEBAQEBAQEBAQEBAQAAAAAAAAHBwcHBwcHBwcHAAAHBwcHBwcHBwAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAAAAAAAAAAHBwcHBwcHBwAAAAAHBwcHBwcHBwAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAAAAAAAAAAAAAAHBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQAAAAAAAAAAAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' },
                 /* every square that is not a `space` is the wall, brick to the roof */
-                gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_2', rim: 0, forceGrow: -0.3 },
+                gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_2', rim: 0, forceGrow: -0.3, noRescue: true },
                 features: [
                     {k:'space',x:-21,z:-108.5,w:7,d:35},
                     {k:'space',x:63,z:-105,w:7,d:42},
@@ -69820,8 +69820,8 @@ const DOOR_HQ = {
                     {k:'space',x:14,z:122.5,w:7,d:7},
                     {k:'plateau',x:-21,z:-122.5,w:7.6,d:7.6,h:43.75,edge:0.15},
                     {k:'plateau',x:63,z:-122.5,w:7.6,d:7.6,h:38.5,edge:0.15},
-                    {k:'plateau',x:-21,z:-104.85,w:28.6,d:28.3,h:45.5,edge:0.15},
-                    {k:'plateau',x:63,z:-104.85,w:28.6,d:28.3,h:40.25,edge:0.15},
+                    {k:'plateau',x:-21,z:-105.15,w:28.6,d:28.9,h:45.5,edge:0.15},
+                    {k:'plateau',x:63,z:-105.15,w:28.6,d:28.9,h:40.25,edge:0.15},
                     {k:'plateau',x:147,z:-115.5,w:7.6,d:7.6,h:29.75,edge:0.15},
                     {k:'plateau',x:-45.5,z:-110.25,w:7.6,d:11.1,h:3.5,edge:0.15},
                     {k:'plateau',x:-38.35,z:-112,w:7.3,d:7.6,h:45.5,edge:0.15},
@@ -69862,7 +69862,7 @@ const DOOR_HQ = {
                     {k:'plateau',x:66.5,z:-63,w:7.6,d:42.6,h:38.5,edge:0.15},
                     {k:'plateau',x:108.5,z:-62.85,w:7.6,d:42.3,h:36.75,edge:0.15},
                     {k:'plateau',x:143.65,z:-70,w:7.3,d:28.6,h:33.25,edge:0.15},
-                    {k:'plateau',x:-152.1,z:-63,w:17.8,d:28.6,h:8.75,edge:0.15},
+                    {k:'plateau',x:-152.4,z:-63,w:18.4,d:28.6,h:8.75,edge:0.15},
                     {k:'plateau',x:-134.75,z:-63,w:4.1,d:28.6,h:8.75,edge:0.15},
                     {k:'plateau',x:21,z:-73.5,w:7.6,d:7.6,h:31.5,edge:0.15},
                     {k:'plateau',x:-108.5,z:-63.15,w:7.6,d:14.3,h:10.5,edge:0.15},
@@ -69904,10 +69904,10 @@ const DOOR_HQ = {
                     {k:'plateau',x:56,z:-24.5,w:7.6,d:35.6,h:17.5,edge:0.15},
                     {k:'plateau',x:101.65,z:-28,w:7.3,d:28.6,h:28,edge:0.15},
                     {k:'plateau',x:150.5,z:-28.15,w:7.6,d:28.3,h:31.5,edge:0.15},
-                    {k:'plateau',x:-152.1,z:-21,w:17.8,d:28.6,h:14,edge:0.15},
+                    {k:'plateau',x:-152.4,z:-21,w:18.4,d:28.6,h:14,edge:0.15},
                     {k:'plateau',x:-134.75,z:-21,w:4.1,d:28.6,h:14,edge:0.15},
                     {k:'plateau',x:50.75,z:-21,w:4.1,d:28.6,h:17.5,edge:0.15},
-                    {k:'plateau',x:68.1,z:-21,w:17.8,d:28.6,h:17.5,edge:0.15},
+                    {k:'plateau',x:68.4,z:-21,w:18.4,d:28.6,h:17.5,edge:0.15},
                     {k:'plateau',x:38.35,z:-26.25,w:7.3,d:11.1,h:33.25,edge:0.15},
                     {k:'plateau',x:45.5,z:-28,w:7.6,d:7.6,h:17.5,edge:0.15},
                     {k:'plateau',x:-129.5,z:-19.25,w:7.6,d:18.1,h:14,edge:0.15},
@@ -69942,7 +69942,7 @@ const DOOR_HQ = {
                     {k:'plateau',x:-105,z:10.5,w:7.6,d:7.6,h:14,edge:0.15},
                     {k:'plateau',x:15.75,z:21,w:18.1,d:28.6,h:31.5,edge:0.15},
                     {k:'plateau',x:33.25,z:21,w:4.1,d:28.6,h:31.5,edge:0.15},
-                    {k:'plateau',x:147,z:21.15,w:28.6,d:28.3,h:24.5,edge:0.15},
+                    {k:'plateau',x:147,z:20.85,w:28.6,d:28.9,h:24.5,edge:0.15},
                     {k:'plateau',x:38.35,z:15.75,w:7.3,d:11.1,h:31.5,edge:0.15},
                     {k:'plateau',x:-150.5,z:21,w:7.6,d:14.6,h:15.75,edge:0.15},
                     {k:'plateau',x:-98,z:17.65,w:28.6,d:7.3,h:17.5,edge:0.15},
@@ -69980,9 +69980,9 @@ const DOOR_HQ = {
                     {k:'plateau',x:101.5,z:56,w:7.6,d:28.6,h:22.75,edge:0.15},
                     {k:'plateau',x:154,z:63,w:7.6,d:42.6,h:22.75,edge:0.15},
                     {k:'plateau',x:54.25,z:63,w:11.1,d:28.6,h:19.25,edge:0.15},
-                    {k:'plateau',x:71.6,z:63,w:10.8,d:28.6,h:19.25,edge:0.15},
+                    {k:'plateau',x:71.9,z:63,w:11.4,d:28.6,h:19.25,edge:0.15},
                     {k:'plateau',x:141.75,z:63,w:18.1,d:28.6,h:22.75,edge:0.15},
-                    {k:'plateau',x:159.1,z:63,w:3.8,d:28.6,h:22.75,edge:0.15},
+                    {k:'plateau',x:159.4,z:63,w:4.4,d:28.6,h:22.75,edge:0.15},
                     {k:'plateau',x:38.35,z:57.75,w:7.3,d:11.1,h:28,edge:0.15},
                     {k:'plateau',x:45.5,z:56,w:7.6,d:7.6,h:19.25,edge:0.15},
                     {k:'plateau',x:-143.5,z:69.85,w:7.6,d:28.3,h:12.25,edge:0.15},
@@ -70016,12 +70016,12 @@ const DOOR_HQ = {
                     {k:'plateau',x:21,z:87.5,w:7.6,d:7.6,h:21,edge:0.15},
                     {k:'plateau',x:59.5,z:98.15,w:7.6,d:28.3,h:21,edge:0.15},
                     {k:'plateau',x:150.5,z:97.85,w:7.6,d:28.3,h:22.75,edge:0.15},
-                    {k:'plateau',x:-152.25,z:104.85,w:18.1,d:28.3,h:8.75,edge:0.15},
+                    {k:'plateau',x:-152.25,z:105.15,w:18.1,d:28.9,h:8.75,edge:0.15},
                     {k:'plateau',x:-134.75,z:105,w:4.1,d:28.6,h:8.75,edge:0.15},
-                    {k:'plateau',x:-105,z:105.15,w:28.6,d:28.3,h:7,edge:0.15},
+                    {k:'plateau',x:-105,z:104.85,w:28.6,d:28.9,h:7,edge:0.15},
                     {k:'plateau',x:-33.25,z:105,w:4.1,d:28.6,h:24.5,edge:0.15},
-                    {k:'plateau',x:-15.75,z:104.85,w:18.1,d:28.3,h:24.5,edge:0.15},
-                    {k:'plateau',x:21,z:105.15,w:28.6,d:28.3,h:22.75,edge:0.15},
+                    {k:'plateau',x:-15.75,z:105.15,w:18.1,d:28.9,h:24.5,edge:0.15},
+                    {k:'plateau',x:21,z:104.85,w:28.6,d:28.9,h:22.75,edge:0.15},
                     {k:'plateau',x:-129.65,z:105,w:7.3,d:21.6,h:8.75,edge:0.15},
                     {k:'plateau',x:-122.5,z:98,w:7.6,d:7.6,h:7,edge:0.15},
                     {k:'plateau',x:-45.5,z:103.25,w:7.6,d:18.1,h:21,edge:0.15},
@@ -70054,18 +70054,18 @@ const DOOR_HQ = {
                     {k:'wall',x0:49,z0:-18.53,x1:77,z1:-18.53,h:0.14,t:0.12,key:'metal'},
                     {k:'wall',x0:49,z0:64.03,x1:77,z1:64.03,h:0.14,t:0.12,key:'metal'},
                     {k:'wall',x0:49,z0:65.47,x1:77,z1:65.47,h:0.14,t:0.12,key:'metal'},
-                    {k:'stream',pts:[[-24.5,-122.5],[-17.5,-122.5]],w:6.7,y:44.95,depth:1.2,key:'deep_water',bank:0},
-                    {k:'stream',pts:[[59.5,-122.5],[66.5,-122.5]],w:6.7,y:39.7,depth:1.2,key:'deep_water',bank:0},
-                    {k:'stream',pts:[[-168,-63],[-161,-63]],w:6.7,y:8.2,depth:1.2,key:'deep_water',bank:0},
-                    {k:'stream',pts:[[-168,-21],[-161,-21]],w:6.7,y:13.45,depth:1.2,key:'deep_water',bank:0},
-                    {k:'stream',pts:[[77,-21],[84,-21]],w:6.7,y:16.95,depth:1.2,key:'deep_water',bank:0},
-                    {k:'stream',pts:[[143.5,3.5],[150.5,3.5]],w:6.7,y:23.95,depth:1.2,key:'sludge',bank:0},
-                    {k:'stream',pts:[[77,63],[84,63]],w:6.7,y:18.7,depth:1.2,key:'deep_water',bank:0},
-                    {k:'stream',pts:[[161,63],[168,63]],w:6.7,y:22.2,depth:1.2,key:'sludge',bank:0},
-                    {k:'stream',pts:[[-108.5,87.5],[-101.5,87.5]],w:6.7,y:6.45,depth:1.2,key:'deep_water',bank:0},
-                    {k:'stream',pts:[[17.5,87.5],[24.5,87.5]],w:6.7,y:22.2,depth:1.2,key:'deep_water',bank:0},
-                    {k:'stream',pts:[[-150.5,122.5],[-143.5,122.5]],w:6.7,y:8.2,depth:1.2,key:'deep_water',bank:0},
-                    {k:'stream',pts:[[-24.5,122.5],[-17.5,122.5]],w:6.7,y:23.95,depth:1.2,key:'deep_water',bank:0},
+                    {k:'stream',pts:[[-24.5,-122.5],[-17.5,-122.5]],w:6.7,y:44.95,depth:1.2,key:'deep_water',bank:1.3},
+                    {k:'stream',pts:[[59.5,-122.5],[66.5,-122.5]],w:6.7,y:39.7,depth:1.2,key:'deep_water',bank:1.3},
+                    {k:'stream',pts:[[-168,-63],[-161,-63]],w:6.7,y:8.2,depth:1.2,key:'deep_water',bank:1.3},
+                    {k:'stream',pts:[[-168,-21],[-161,-21]],w:6.7,y:13.45,depth:1.2,key:'deep_water',bank:1.3},
+                    {k:'stream',pts:[[77,-21],[84,-21]],w:6.7,y:16.95,depth:1.2,key:'deep_water',bank:1.3},
+                    {k:'stream',pts:[[143.5,3.5],[150.5,3.5]],w:6.7,y:23.95,depth:1.2,key:'sludge',bank:1.3},
+                    {k:'stream',pts:[[77,63],[84,63]],w:6.7,y:18.7,depth:1.2,key:'deep_water',bank:1.3},
+                    {k:'stream',pts:[[161,63],[168,63]],w:6.7,y:22.2,depth:1.2,key:'sludge',bank:1.3},
+                    {k:'stream',pts:[[-108.5,87.5],[-101.5,87.5]],w:6.7,y:6.45,depth:1.2,key:'deep_water',bank:1.3},
+                    {k:'stream',pts:[[17.5,87.5],[24.5,87.5]],w:6.7,y:22.2,depth:1.2,key:'deep_water',bank:1.3},
+                    {k:'stream',pts:[[-150.5,122.5],[-143.5,122.5]],w:6.7,y:8.2,depth:1.2,key:'deep_water',bank:1.3},
+                    {k:'stream',pts:[[-24.5,122.5],[-17.5,122.5]],w:6.7,y:23.95,depth:1.2,key:'deep_water',bank:1.3},
                     {k:'stream',pts:[[-5.25,-114.35],[-5.25,-106.15]],w:2.2,y:45.2,depth:0.5,bank:0},
                     {k:'stream',pts:[[130.65,-110.25],[142.35,-110.25]],w:2.2,y:32.95,depth:0.5,bank:0},
                     {k:'stream',pts:[[148.75,-110.85],[148.75,-99.15]],w:2.2,y:32.95,depth:0.5,bank:0},
@@ -92478,6 +92478,28 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             if (gen.kind === 'city') info.H[k] = info.H[k] * (1 - t) + Math.max(info.H[k], _hqTBaseAt(info, px, pz) + wallH * j1 + top) * t;
             else info.H[k] += (wallH * j1 + top) * t;
         });
+        /* THE STRAIGHT RAISE (2026-11-22, mondo: "fell into this tiny crevice in the sewers ... know when to raise the terrain with a gradient on
+           the side and when to just raise it straight up ... its by a wall and so it makes this gap/crevice that the player can fall into"):
+           a MASS plan's solid keeps the authored field, so a raised floor (a `plateau`) that ends at a wall met ground 0 half a node inside the
+           wall, and the field (bilinear) ran DOWN from the floor to it: a sliver of slope along the wall's foot the walker slid into (it goes
+           right up to the mask's line) and could never climb out of. Beside a wall the ground is raised STRAIGHT UP: the solid's first two
+           rings of nodes take the height of the open ground they touch when they lie under it (more than a kerb), so a floor runs level into
+           its wall. A slope is only ever between two pieces of OPEN ground. */
+        if (solidMass) {
+            const NB4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], NB8 = NB4.concat([[1, 1], [1, -1], [-1, 1], [-1, -1]]);
+            let src = mask;   // ring 1 reads the open nodes, ring 2 the nodes ring 1 raised
+            for (let ring = 0; ring < 2; ring++) {
+                const got = new Uint8Array(nx * nz), put = [];
+                for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+                    const k = j * nx + i; if (mask[k] || (ring && src[k])) continue;
+                    let best = -Infinity;
+                    for (const NB of [NB4, NB8]) { for (const n of NB) { const ii = i + n[0], jj = j + n[1]; if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) continue; const kk = jj * nx + ii; if (src[kk] && info.H[kk] > best) best = info.H[kk]; } if (best > -Infinity) break; }
+                    if (best > info.H[k] + 0.3) put.push(k, best);
+                }
+                for (let q = 0; q < put.length; q += 2) { info.H[put[q]] = put[q + 1]; got[put[q]] = 1; }
+                src = got; if (!put.length) break;
+            }
+        }
         info.maskD = D;
     };
     /* THE RETURN GUARANTEE runs on the RISEN field — what the walker meets (a low bank is hopped onto, a cliff is not) — and
@@ -95149,7 +95171,21 @@ function hqTerrainVoidAt(info, x, z) {
     const V = info && info.void; if (!V) return false;
     if (info.holes && hqTerrainHoleAt(info, x, z)) return true;
     if (V.holesOnly) return false;
-    return hqTerrainHeight(info, x, z) < (info.base || 0) + V.lip;
+    const lim = (info.base || 0) + V.lip;
+    if (hqTerrainHeight(info, x, z) < lim) return true;
+    /* THE SHEER EDGE (2026-11-22, mondo: "no tiny crevices or huge drops where there is no room to get out or move"): the void began where the
+       ground's height fell under the lip, but the field runs DOWN from a tile's top to the void's floor over one cell, so the top of that run
+       was still "ground": the walker stepped off a tile, slid down its side to the void's line and stood there, tens of metres under the tile
+       with no way back. A cell with a corner in the void and a rise over a jump is the tile's SIDE: all of it is the void (a fall), never a
+       place. A gentle shore (a rise under a jump) and a built flight or a deck over the cell (the exact surfaces) stay ground. */
+    const fx = (x - info.x0) / info.res, fz = (z - info.z0) / info.res;
+    let i = Math.floor(fx), j = Math.floor(fz);
+    if (i < 0) i = 0; if (j < 0) j = 0; if (i > info.nx - 2) i = info.nx - 2; if (j > info.nz - 2) j = info.nz - 2;
+    const H = info.H, nx = info.nx, a = H[j * nx + i], b = H[j * nx + i + 1], c = H[(j + 1) * nx + i], d = H[(j + 1) * nx + i + 1];
+    const mn = Math.min(a, b, c, d);
+    if (mn >= lim || Math.max(a, b, c, d) - mn <= ((info.rules.jump != null) ? info.rules.jump : info.rules.climb)) return false;
+    if (info.exact && _hqTExactTop(info, x, z, _hqTFieldAt(info, x, z)).e) return false;
+    return true;
 }
 /* the walker's bound: half a metre inside the lattice's metre past the room — or, JUST THE ROOM (info.cut), a body short of the
    ground's own trimmed edge (never a step onto air past the block) */

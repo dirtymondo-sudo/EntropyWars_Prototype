@@ -26,7 +26,10 @@
                                                                   step between two roofs
      a district's `channel`                                       every passage two squares wide carries a waded channel down one of its squares;
                                                                   where it reaches a ledge it pours over a weir as a small fall
-   Notes: docs/notes/areas-complexes.md "THE SEWERS' LABYRINTH". */
+   NO SOFT LOCKS (2026-11-22, mondo: "fell into this tiny crevice in the sewers"): the plan row says `noRescue: true` (the generator cut corridors
+   through the brick at ground 0 to doors its plain walk could not reach), a floor runs out over a sump's brim and the sump's bed eases down inside
+   its liquid. After a bake: `node find-softlocks.js <room>` must print 0 traps and 0 crevices.
+   Notes: docs/notes/areas-complexes.md "THE SEWERS' LABYRINTH" + "THE SOFT-LOCK FINDER + THE STRAIGHT RAISE". */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const REPO = __dirname, ARGS = process.argv.slice(2), DRY = ARGS.includes('--dry-run');
@@ -99,7 +102,10 @@ rects(open, () => true, false).forEach(([x, y, w, h]) => F.push({ k: 'space', x:
 count.spaces = F.length;
 /* ── THE LEVELS ── */
 rects((x, y) => open(x, y) && LV[y][x] > BASE, (x, y, X, Y2) => LV[y][x] === LV[Y2][X], true).forEach(([x, y, w, h]) => { const l = LV[y][x];
-    const side = (xs, ys) => { for (const [a, b] of xs) if (open(a, b) && LV[b][a] < l - 0.01) return 0; return 0.3; };
+    /* A SUMP'S BRIM (2026-11-22, the soft-lock pass): the field runs down from a floor to a lower one over the node either side of their line, and
+       beside a sump that run lay half on the floor: a dry lip a metre deep along the brim and a pocket in its corners (deeper than a jump: a
+       trap). A floor runs 0.6 m out over a sump now, so the whole run down lies under the liquid. Beside lower GROUND the line stays a ledge. */
+    const side = (xs, ys) => { let sump = false; for (const [a, b] of xs) if (open(a, b) && LV[b][a] < l - 0.01) { if (T[b][a] !== 'w') return 0; sump = true; } return sump ? 0.6 : 0.3; };
     const run = (n, f) => { const o = []; for (let i = 0; i < n; i++) o.push(f(i)); return o; };
     const e0 = side(run(h, j => [x - 1, y + j])), e1 = side(run(h, j => [x + w, y + j])), n0 = side(run(w, i => [x + i, y - 1])), n1 = side(run(w, i => [x + i, y + h]));
     const x0 = gx(x) - e0, x1 = gx(x + w) + e1, z0 = gz(y) - n0, z1 = gz(y + h) + n1;
@@ -109,7 +115,7 @@ count.plateaus = F.length - count.spaces;
 /* ── THE WATER: the sumps (deep, to near their brim), the channels, the falls ── */
 const WATER = [], FALLS = [], CHAN = new Set();
 rects((x, y) => inb(x, y) && T[y][x] === 'w', (x, y, X, Y2) => LV[y][x] === LV[Y2][X], true).forEach(([x, y, w, h]) => { const l = LV[y][x], horiz = w >= h;
-    WATER.push({ k: 'stream', pts: horiz ? [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]] : [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: r2((horiz ? h : w) * C - 0.3), y: r2(Y(l) + 1.2), depth: 1.2, key: (distOf(x, y) || {}).sump || 'deep_water', bank: 0 }); });
+    WATER.push({ k: 'stream', pts: horiz ? [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]] : [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: r2((horiz ? h : w) * C - 0.3), y: r2(Y(l) + 1.2), depth: 1.2, key: (distOf(x, y) || {}).sump || 'deep_water', bank: 1.3 }); });   // (`bank`: the bed eases down INSIDE the liquid's squares, so no dry step stands at the brim)
 count.sumps = WATER.length;
 /* THE CHANNELS: in a district with `channel`, every passage run two squares wide (one level, one plot) carries the channel down the square on
    its north / west side; it starts at a culvert mouth or a grate and ends at a grate, or pours over a weir where the next square is lower */
@@ -359,7 +365,7 @@ L.push('                noise: { amp: 0, scale: 5 }, crag: false,');
 L.push("                waterLook: { water: 'sewer_water', deep_water: 'sewer_deep' },");
 L.push("                paint: { pal: " + J(DES.pal) + ", t: 'u8', res: " + C + ', x0: ' + gcx(0) + ', z0: ' + gcz(0) + ', nx: ' + W + ', nz: ' + H + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 L.push('                /* every square that is not a `space` is the wall, brick to the roof */');
-L.push("                gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_2', rim: 0, forceGrow: -0.3 },");
+L.push("                gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_2', rim: 0, forceGrow: -0.3, noRescue: true },");
 L.push('                features: [');
 ROWS.forEach(f => L.push('                    ' + J(f) + ','));
 L.push('                ],');
