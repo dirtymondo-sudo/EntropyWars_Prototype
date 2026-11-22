@@ -4253,7 +4253,7 @@
         function _hqSetPrompt(t) {
             const el = _hqEl('hqPrompt');
             if (!el) return;
-            if (t && t.aboard && t.vehicle === 'ship') { el.style.display = 'none'; return; }
+            if (t && t.aboard && (t.vehicle === 'ship' || t.vehicle === 'car')) { el.style.display = 'none'; return; }   // the car too (mondo 11-22: no controls while driving; E still gets out)
             try { if (t && _pd && ThreeRenderer.hq.pd.wide()) t = null; } catch (e) {}   // THE PLOT DUNGEONS: no prompt over the wide view
             /* THE ENCOUNTER (9.4 rev 17): the gun HOLSTERED and a native in reach + sight — the prompt names the click; drawn, the click is the door gun's */
             let hushed = false; try { hushed = !!(ThreeRenderer.hq.hushed && ThreeRenderer.hq.hushed()); } catch (e) {}   // THE HUSH (2026-10-01): no ATTACK prompt on arrival either
@@ -5964,7 +5964,7 @@
                     if (h) h.classList.add('helm');
                     _hqSkateSfx('seaBoard', 0.5);
                     const k = ev.vehicle === 'sub' ? 'sub' : ev.vehicle === 'ship' ? 'ship' : ev.vehicle === 'car' ? 'car' : 'boat';
-                    if (k === 'car') { if (!_hqSeaToasted.car) { _hqSeaToasted.car = true; _hqToast('<b>AT THE WHEEL</b><span>W GAS · S BRAKE / REVERSE · A / D STEER · SPACE HANDBRAKE · E GETS OUT</span>', 5200); } }   // THE CAR (2026-11-22)
+                    if (k === 'car') { /* THE CAR (2026-11-22): no controls toast (mondo: "same controls every racing game ever, get rid of them") */ }
                     else if (!_hqSeaToasted[k] && k !== 'ship') { _hqSeaToasted[k] = true; _hqToast(k === 'sub' ? '<b>THE BATHYSCAPHE</b><span>SPACE UP · C DOWN · E LEAVES IT</span>' : '<b>THE SKIFF</b><span>E STEPS OFF</span>', 4200); }
                     _hqFillStrip(_hqProfile());
                     break;

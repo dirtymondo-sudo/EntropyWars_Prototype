@@ -91811,7 +91811,7 @@ const ThreeRenderer = (function () {
             var rc = (blk && blk.rect) || cat.rect || { hw: 0.95, hd: 2.3 };
             _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: 'car', key: p.key, grp: grp, blk: blk || null, hw: rc.hw, hd: rc.hd, hgt: blk ? Math.max(1.2, _hqBlkTop(blk) - y) : 1.5,
                              x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
-                             label: cat.label ? String(cat.label).toUpperCase() : ((R.labels || {}).car || 'THE CAR'), sub: 'W GAS · S BRAKE / REVERSE · A / D STEER · SPACE HANDBRAKE' });
+                             label: cat.label ? String(cat.label).toUpperCase() : ((R.labels || {}).car || 'THE CAR'), sub: '', verb: 'DRIVE' });   // (mondo 11-22: "its a fucking car, its the same controls every racing game ever, get rid of them": no controls on the box)
             return;
         }
         _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: kind, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
