@@ -84016,6 +84016,11 @@ const ThreeRenderer = (function () {
         var wallCol = (P.wallColor != null) ? P.wallColor : ((look === 'hall' && S.wallColor != null) ? S.wallColor : 0xffffff);
         var floorKey = P.floor || T.path || T.floor || S.floor || 'dirt_2';
         var wallM = mat(wallKey, wallCol), floorM = mat(floorKey, (P.floorColor != null) ? P.floorColor : 0xffffff);
+        /* NO BLACK AT THE EDGE (2026-11-22, mondo at the Clearing's Old Road trail: "I dont know why its all black on the edge. Every single entrance/exit
+           in the game needs to look good and natural"): a trail's dark cards and its flat floor strip were made for a room with nothing past its wall.
+           In a room whose land runs on past the line (THE NATURAL EDGES, every One World room) the land itself carries the path on (THE WAY ON), so an
+           unroofed way stands no black cards across the trail and lays no pale slab on the path: you see the trail go on between the trees. */
+        var openLand = false; try { openLand = !P.roof && !P.inside && !P.mouth && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room); } catch (eOL) { openLand = false; }
         /* THE FLOOR past the wall (a free end stands on the room's own) */
         if (!P.inside) {
             if (P.rise !== 0) {
@@ -84056,8 +84061,8 @@ const ThreeRenderer = (function () {
                 /* a trail / a cloud road: a strip on the ground the outer ground was carved to (_hqBuildOuterGround) */
                 /* THE SEAM IS THE ROAD (2026-11-22): `strip` = how wide the sheet past the line is when it is not the way's own width (a highway's seam is its
                    asphalt and both shoulders wide; only the asphalt runs on) */
-                var SW = (+P.strip > 0) ? +P.strip : W, SL = L + 5, sg = new THREE.PlaneGeometry(SW * U, SL * U); scaleUV(sg, SW / 1.75, SL / 1.75);
-                var strip = new THREE.Mesh(sg, floorM); strip.rotation.x = -Math.PI / 2; strip.position.set(0, 0.05 * U, -(SL / 2 - 0.4) * U); strip.receiveShadow = true; strip.renderOrder = 1; g.add(strip);
+                if (!openLand) { var SW = (+P.strip > 0) ? +P.strip : W, SL = L + 5, sg = new THREE.PlaneGeometry(SW * U, SL * U); scaleUV(sg, SW / 1.75, SL / 1.75);
+                var strip = new THREE.Mesh(sg, floorM); strip.rotation.x = -Math.PI / 2; strip.position.set(0, 0.05 * U, -(SL / 2 - 0.4) * U); strip.receiveShadow = true; strip.renderOrder = 1; g.add(strip); }
             }
         }
         /* THE MODELLED MOUTH (2026-10-05, mondo: Dead Man's Cave's way in is the Meshy culvert mouth, not a block outcrop):
@@ -84123,7 +84128,7 @@ const ThreeRenderer = (function () {
         }
         /* THE DARK: cards across the way, deepening to solid at the end (soft-edged in the open, square in a tube) */
         /* THE OPEN SEAM (2026-11-17, One World: data.js DOOR_HQ.ways.open): nothing stands in open country. No dark. */
-        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open') ? 0 : 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
+        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open' || openLand) ? 0 : 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
         for (var i = 0; i < n; i++) {
             var t = (i + 1) / n, dd = d0 + (L - 0.15 - d0) * t, op = (i === n - 1) ? 1 : Math.min(1, 0.7 * Math.pow(t, 2.2));   // (2026-10-05) a dusk that deepens, the way still seen: only the far end is solid
             var cw = P.roof ? W + 0.04 : W + ((P.spread != null) ? +P.spread : 3.2), ch = P.roof ? H + 0.1 : H + 2.5;
