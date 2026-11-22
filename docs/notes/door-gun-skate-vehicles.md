@@ -866,6 +866,23 @@ SEEN in the cloud browser (HEAD on ba7c051 + this change): a Disaster City taxi:
 a right turn, stopped by the Hero Plaza pillar with a bounce, reverse with the wheels turned, E out beside the car. `hq.dev.carRun(id)`
 = how far a parked car can roll ahead / back and what stops it (of the city's 95 cars, 77 can move at once; the rest stand inside a
 building's mass, on a deck edge, or against a wall and need to back out).
+THE HILL + THE TIGHTER TURN (2026-11-22, mondo: "need to make the car be able to turn tighter, and i cant drive up these roads to the disaster
+hills. Should feel as fluid as riding the skateboard. The skateboard has no problem going up a hill, so why does the car?").
+CAUSE: `_hqCarHits` held every point of the body against ONE height, the car's middle, as if it stood on a level floor. The Canyon Road
+climbs 0.3 to 0.5 m a metre, so the nose's points (2 m ahead) lay 0.6 to 1 m over the middle: more than `step` (0.34 m, a kerb), and the
+road itself was read as a wall. The board asks only the ground under its own feet, so it never had the problem.
+THE FIX: `_hqCarWheels` asks the four wheels first; the body's points are held against the PLANE the wheels stand on (`ref`), so a slope
+is ground at any height. What stops the car now: a wheel with no floor; a wheel that would rise over `step` or fall over `drop` from where
+THAT wheel stands (`V.wg`, kept each sub-step: a high kerb, a retaining wall, a ledge); a plane steeper than `grade` (0.9); a body point
+over `step` above the plane or with no floor (a wall, a building, a bank beside the road); blockers as before, measured from the plane.
+Each wheel is asked from ITS OWN last height (`_hqSurface`'s curY = `V.wg[i]`): the floor refuses a spot more than a climb (0.62 m) over the asker, and
+up a hill the front wheels stand that far over the car's middle (seen in the probe: `wheel 0 no floor` at 10 m/s on the slope's first metres; `hq.vehicle().bumpWhy` under EW_HQ_DEBUG = what stopped the car).
+SEEN in the cloud browser (HEAD 776d7eb + this change): the taxi up the Canyon Road (x 63, 0.38 m a metre) from 9.7 to 15 m/s with no stop, y 23 to 33 m, and west up the canyon road from the mountain road (x 100 to 88).
+The body rides the ground with no lag (`V.y` follows at 45 a second, was 18: at speed up a hill it sank 0.4 m into the road), `hill`
+0.55 -> 0.3 (a climb costs little speed). THE TURN: `steer` 0.62 -> 0.88 rad standing, `steerHi` 0.13 -> 0.22 at top speed, `steerIn`
+5.5 -> 10 (the wheels come over twice as fast), `steerMax` 1.1 caps the handbrake's lock: the turning circle's radius is about 2.3 m
+crawling (was 3.9), 5.5 m at half speed (was 8.9), 12 m flat out (was 21). A probe stands the driven car anywhere with
+`hq.dev.ship({ x, z, yaw, v })` (it finds the ground itself).
 NOT SEEN (the cloud browser crashed on three runs): the school bus, the fire truck and the ambulance moving (Meshy files with
 `turn: 90`: if one drives tail first, give its catalogue row the other turn). NOT BUILT: engine sound, turning wheel models (the pack's
 wheels are painted on the body), traffic cars cannot be taken, no damage, cars do not stay moved after leaving the room.
