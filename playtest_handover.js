@@ -109,14 +109,15 @@ const run = async () => {
     const self = new Map(), inc = new Map(), dt = profile.timeDeltas || []; let tot = 0;
     profile.samples.forEach((id, i) => { const d = dt[i] || 0; tot += d; const n0 = byId.get(id); self.set(nameOf(n0), (self.get(nameOf(n0)) || 0) + d); const seen = new Set(); for (let q = id; q != null; q = parent.get(q)) { const n = byId.get(q); if (!n.callFrame.url) continue; const k = nameOf(n); if (seen.has(k)) continue; seen.add(k); inc.set(k, (inc.get(k) || 0) + d); } });
     const fmt = (m, n) => [...m.entries()].filter(([k]) => all || !/three\.(core|webgpu|module|min)\.js| :-1$/.test(k)).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => (v / 1000).toFixed(0) + ' ms  ' + k);
-    console.log(label + ' total ' + (tot / 1000).toFixed(0) + ' ms\nSELF\n' + fmt(self, 30).join('\n') + '\nINCLUSIVE\n' + fmt(inc, 50).join('\n'));
+    console.log(label + ' total ' + (tot / 1000).toFixed(0) + ' ms\nSELF\n' + fmt(self, 30).join('\n') + '\nINCLUSIVE\n' + fmt(inc, 50).join('\n') + (all ? '\nOWN CODE, INCLUSIVE\n' + [...inc.entries()].filter(([k]) => !/three\.(core|webgpu|module|min)\.js| :-1$/.test(k)).sort((a, b) => b[1] - a[1]).slice(0, 90).map(([k, v]) => (v / 1000).toFixed(0) + ' ms  ' + k).join('\n') : ''));
   };
   let fcdp = null; if (flag('fprofile', false)) { try { fcdp = await context.newCDPSession(page); await fcdp.send('Profiler.enable'); await fcdp.send('Profiler.setSamplingInterval', { interval: 500 }); await fcdp.send('Profiler.start'); } catch (e) { fcdp = null; } }
   // the strike
   console.log('STRIKE', JSON.stringify(await ev(`(function(){ var g = ThreeRenderer.hq.dev.playerGroup().position; var x = g.x / 73, z = g.z / 73 + 3.5, y = g.y / 73; window._hqEncounterFire({ target: { kind: 'npc', id: 'probe-1', race: '${RACE}', x: x, z: z, y: y }, x: x, z: z, y: y, gesture: 'attack' }); return 1; })()`)));
   let t1 = Date.now();
   while (Date.now() - t1 < 180000) { const s2 = await stat(); if (s2 && s2.phase === 'battle') break; await sleep(1500); }
-  lap('battle phase'); await sleep(Number(flag('fight', 12000)));
+  lap('battle phase'); if (flag('early', false)) { await shot('3_fight_first'); console.log('EARLY', JSON.stringify(await ev(`({ dissolve: !!document.querySelector('.hq-dissolve'), late: (function () { try { return ThreeRenderer.shaderCache().late; } catch (e) { return String(e.message); } })() })`))); }   // --early: a picture the moment the fight's phase begins (is a held snapshot over it?)
+  await sleep(Number(flag('fight', 12000)));
   if (fcdp) { try { const { profile } = await fcdp.send('Profiler.stop'); profPrint(profile, 'FIGHT PROFILE', true); await fcdp.detach(); } catch (e) { console.log('fight profile failed', String(e.message).slice(0, 200)); } }
   /* the fight's camera onto P1's unit (the encounter's seed pose can leave a slow probe's camera short of the board) */
   console.log('FOCUS', JSON.stringify(await ev(`(function(){ try { var u = GAME.state.units.filter(function (x) { return String(x.id).indexOf('1-') === 0; })[0]; _softResetCameraToUnit(u); return u.id + '@' + u.x + ',' + u.y; } catch (e) { return 'ERR ' + e.message; } })()`))); await sleep(Number(flag('focus', 5000)));

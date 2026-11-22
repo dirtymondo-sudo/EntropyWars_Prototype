@@ -48828,6 +48828,7 @@ const ThreeRenderer = (function () {
                     var bl = _ewKeep.last || (_ewKeep.last = []);
                     bl.push((bm ? (bm.type + (bm.name ? ' "' + String(bm.name).slice(0, 16) + '"' : '') + (bm._ewNode ? ' node:' + bm._ewNode.k : '') + (bm._ew_occClone ? ' fade-clone' : '') + (bm.isShadowPassMaterial ? ' shadow' : '') + (bm.transparent ? ' see-through' : '')) : '?') +
                         ' on ' + (bo ? (bo.isSkinnedMesh ? 'skinned ' : bo.isInstancedMesh ? 'batch ' : bo.isSprite ? 'sprite ' : bo.isPoints ? 'points ' : '') + (bn ? String(bn).slice(0, 22) : bo.type) : '?') + (r._ew_paneRender ? ' (pane)' : r._ew_sideRender ? ' (side)' : ''));
+                    if (_dip.t0) (_dip.fb || (_dip.fb = [])).push(bl[bl.length - 1].replace('NodeMaterial "ShadowMaterial" shadow', 'shadow of').replace('Material', ''));   // THE DIP NAMES ITS BUILDS
                     if (bl.length > 12) bl.shift();
                     if (typeof window !== 'undefined' && window.EW_BUILD_COUNT) { var bc = (window.EW_BUILD_COUNT === true) ? (window.EW_BUILD_COUNT = {}) : window.EW_BUILD_COUNT, bk = bl[bl.length - 1]; bc[bk] = (bc[bk] | 0) + 1; if (bc[bk] === 6 && window.EW_BUILD_STACKS) window.EW_BUILD_STACKS.push(bk + ' :: ' + String(new Error().stack).split('\n').slice(2, 16).map(function (x) { return x.trim().replace(/\(http[^)]*\/([^\/)]+)\)/, '($1)'); }).join(' < ')); }   // a probe's tally of what was built, by name
                 } catch (e) {}
@@ -49303,8 +49304,16 @@ const ThreeRenderer = (function () {
         L.spent = 0; L.n = 0; L.sink = [];
         L.scene = tag === 'b' ? scene : (tag === 'w' ? _hq.scene : null);
         L.cam = tag === 'b' ? ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null) : (tag === 'w' ? _hq.camera : null);
+        /* THE FIGHT IN THE WALKED ROOM (2026-11-22, mondo's F3 after it shipped: "Still freezes in during the transition", 61 shader
+           builds and 69 new pipelines in the fight's first frames): such a fight is drawn as the WALK'S scene through the WALK'S camera
+           object, so the match below never held and THE LATE LOOK was off for the whole fight: every new look built in its frame and
+           every pipeline was made in the frame. The scene and camera it really draws with are matched here, and the 600 ms in which
+           everything builds at once is dropped: the room is on screen already, so the fight's own new looks (tiles, units, effects)
+           come in over the next frames in place of one frozen frame. Off: window.EW_FW_LATE_WAIT (the 600 ms, as before). */
+        var fwL = (tag === 'b' && _fw !== null && _fw.on && _fw.HS) ? _fw : null;
+        if (fwL) { L.scene = fwL.HS; var fhc = fwL.H.camera; if (fhc && L.cam && fhc !== L.cam && !!fhc.isPerspectiveCamera === !!L.cam.isPerspectiveCamera) L.cam = fhc; }   // (_fwCamOf's own rule)
         L.rt = (typeof ThreePost !== 'undefined' && ThreePost.warmTarget) ? ThreePost.warmTarget() : null;
-        L.on = !!(r._ew_late && L.scene && L.cam && L.rt) && now - L.t0 > 600;
+        L.on = !!(r._ew_late && L.scene && L.cam && L.rt) && (now - L.t0 > 600 || (fwL !== null && !(typeof window !== 'undefined' && window.EW_FW_LATE_WAIT)));
     }
     function _ewLateSetup(r) {
         if (r._ew_late || _ewLateOff()) return;
@@ -55826,7 +55835,7 @@ const ThreeRenderer = (function () {
         var D = _dip;
         if (_dipOff()) { D.cur = null; D.lastT0 = 0; return; }
         if (!D.hooked && renderer && typeof renderer._renderScene === 'function') { D.hooked = true; try { _lensSpanHook(renderer, true); } catch (e) {} }
-        D.t0 = t0;
+        D.t0 = t0; D.fb = null;
         D.cur = (_lens && _lens.cur) ? null : { parts: null, sub: null, t0: t0 };
     }
     function _dipClose(D, now) {
@@ -55861,11 +55870,11 @@ const ThreeRenderer = (function () {
             if (st && st.calm && t0 - st.lastAt > 1500) { _dipClose(D, now); st = null; }   // (a run of slow frames with long gaps stays one dip)
             if (st) st.calm = false;
             if (!st) st = D.st = { at: new Date().toISOString().slice(11, 19), t: D.lastT0, lastAt: t0, frames: 0, worst: 0, minFps: 999, js: 0, parts: {}, where: _dipWhere(), c0: P.c, room: (_hq && _hq.opts && _hq.opts.room) || '' };
-            st.lastAt = t0; st.frames++; st.js += P.cpu; if (D.fightAt && t0 - D.fightAt < 6000) { st.fight = true; if (D.actAt && Math.abs(D.actAt - D.fightAt) < 6000) st.lay = D.actMs; } else if (_hq && !_hq.ready) st.loadF = (st.loadF | 0) + 1; if (iv > st.worst) st.worst = iv; if (fps < st.minFps) st.minFps = fps;   // (loadF: a frame under the load card)
+            st.lastAt = t0; st.frames++; st.js += P.cpu; if (D.fightAt && t0 - D.fightAt < 6000) { st.fight = true; if (D.actAt && Math.abs(D.actAt - D.fightAt) < 6000) st.lay = D.actMs; } else if (_hq && !_hq.ready) st.loadF = (st.loadF | 0) + 1; if (iv > st.worst) { st.worst = iv; st.wJs = P.cpu; st.wTop = ''; if (P.parts) { var wk = '', wv = 0; for (var wp in P.parts) if (P.parts[wp] > wv) { wv = P.parts[wp]; wk = wp; } if (wk) st.wTop = wk + ' ' + Math.round(wv); } } if (P.bn) { var sbn = st.bn || (st.bn = {}); for (var bi = 0; bi < P.bn.length; bi++) sbn[P.bn[bi]] = (sbn[P.bn[bi]] | 0) + 1; } if (fps < st.minFps) st.minFps = fps;   // (loadF: a frame under the load card)
             var M = P.parts; if (M) for (var pk in M) st.parts[pk] = (st.parts[pk] || 0) + M[pk];
             var S2 = P.sub; if (S2) for (var sk in S2) st.parts['> ' + sk] = (st.parts['> ' + sk] || 0) + S2[sk];
         } else if (D.st) { D.st.calm = true; if (t0 - D.st.lastAt > 1500) _dipClose(D, now); }
-        D.prev = { cpu: now - t0, parts: F ? F.parts : null, sub: F ? F.sub : null, c: _dipCounters() };
+        D.prev = { cpu: now - t0, parts: F ? F.parts : null, sub: F ? F.sub : null, c: _dipCounters(), bn: D.fb };
         D.lastT0 = t0;
     }
     function _dipLines() {
@@ -55878,7 +55887,7 @@ const ThreeRenderer = (function () {
             var tp = (st.top || (function () { var t = []; for (var k in st.parts) t.push([k, st.parts[k]]); t.sort(function (a, b) { return b[1] - a[1]; }); return t.slice(0, 4); })()).map(function (x) { return x[0] + ' ' + Math.round(x[1]); }).join(', ');
             if (open) { var c1 = _dipCounters(); d = { rec: c1.rec - st.c0.rec, ep: c1.ep - st.c0.ep, pb: c1.pb - st.c0.pb, pp: c1.pp - st.c0.pp, fr: c1.fr - st.c0.fr, add: c1.add - st.c0.add, ld: c1.ld - st.c0.ld }; }
             var hap = []; if (d.rec) hap.push(d.rec + ' re-recorded'); if (d.ep) hap.push('epoch moved ' + d.ep); if (d.pb) hap.push(d.pb + ' shader builds'); if (d.pp) hap.push(d.pp + ' new pipelines'); if (d.fr) hap.push(d.fr + ' GPU buffers freed'); if (d.add) hap.push(d.add + ' objects added'); if (d.ld) hap.push(d.ld + ' models loaded');
-            L.push('  ' + st.at + 'Z · ' + ((st.len != null ? st.len : st.lastAt - st.t) / 1000).toFixed(1) + ' s · ' + st.minFps + ' FPS · ' + Math.round(st.worst) + ' ms · ' + st.frames + ' frames, JS ' + Math.round(st.js) + ' ms · at ' + st.where + (st.whereEnd && st.whereEnd !== st.where ? ' → ' + st.whereEnd : '') + (open ? ' (still going)' : '') + (st.fight ? ' · FIGHT START' + (st.lay != null ? ' (its scene was laid in ' + st.lay + ' ms, outside the frames)' : '') : '') + (st.loadF ? ' · LOADING (' + (st.loadF >= st.frames ? 'all' : st.loadF + ' of ' + st.frames) + ' frames under the load card)' : '') + ' · ' + (tp || 'no parts timed') + ' · ' + (hap.length ? hap.join(', ') : 'nothing loaded or rebuilt'));
+            L.push('  ' + st.at + 'Z · ' + ((st.len != null ? st.len : st.lastAt - st.t) / 1000).toFixed(1) + ' s · ' + st.minFps + ' FPS · ' + Math.round(st.worst) + ' ms · ' + st.frames + ' frames, JS ' + Math.round(st.js) + ' ms · at ' + st.where + (st.whereEnd && st.whereEnd !== st.where ? ' → ' + st.whereEnd : '') + (open ? ' (still going)' : '') + (st.fight ? ' · FIGHT START' + (st.lay != null ? ' (its scene was laid in ' + st.lay + ' ms, outside the frames)' : '') : '') + (st.wJs != null ? ' · worst frame: JS ' + Math.round(st.wJs) + ' ms' + (st.wTop ? ' (' + st.wTop + ')' : '') : '') + (st.bn ? ' · built: ' + (function () { var t = []; for (var k in st.bn) t.push([k, st.bn[k]]); t.sort(function (a, b) { return b[1] - a[1]; }); return t.slice(0, st.fight ? 24 : 6).map(function (x) { return (x[1] > 1 ? x[1] + 'x ' : '') + x[0]; }).join(' | ') + (t.length > (st.fight ? 24 : 6) ? ' | +' + (t.length - (st.fight ? 24 : 6)) + ' kinds' : ''); })() : '') + (st.loadF ? ' · LOADING (' + (st.loadF >= st.frames ? 'all' : st.loadF + ' of ' + st.frames) + ' frames under the load card)' : '') + ' · ' + (tp || 'no parts timed') + ' · ' + (hap.length ? hap.join(', ') : 'nothing loaded or rebuilt'));
         });
         return L;
     }
@@ -105509,7 +105518,14 @@ const ThreeRenderer = (function () {
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setMotion) ThreePost.setMotion(0); } catch (e) {}   // THE THIRD PASS 6.4: the blur is the building's
         if (!park) { try { (H.reflectors || []).forEach(function (r) { if (r.rt) r.rt.dispose(); }); } catch (e) {} }   // 5.4: the mirrored targets
         try { if (H.gun && H.gun.wheel) { H.gun.wheel = null; var wEl = document.getElementById('hqWheel'); if (wEl) { wEl.classList.remove('open'); wEl.style.display = 'none'; wEl.innerHTML = ''; } } } catch (e) {}   // THE DOOR WHEEL: never left open over the next screen
-        if (opts && opts.dissolve) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
+        /* NO HELD PICTURE INTO A WALKED-ROOM FIGHT (2026-11-22, mondo's F3 after THE FIGHT IN THE WALKED ROOM: "Still freezes in during the
+           transition"): the dissolve drew the room once more, copied the whole canvas into a 2D one (a read-back on WebGPU) and HELD that
+           still picture over the screen until the fight's first frame, then faded it. It was there to cover the copy flow's freeze; over
+           a fight that draws the same room it IS the freeze. Such a fight gets no dissolve: the room is simply drawn on, the camera
+           starts its move at once. Off: window.EW_FW_DISSOLVE. */
+        var fwGo = false;
+        try { fwGo = !!(park && opts && opts.handover && !_fwOff() && !H.stage && !(typeof window !== 'undefined' && window.EW_FW_DISSOLVE) && (typeof hqFieldGroundOn !== 'function' || hqFieldGroundOn())); if (fwGo) { var fwRm = H.opts && H.opts.room && _hqData().rooms[H.opts.room]; if (!fwRm || (fwRm.space && fwRm.space.round && fwRm.space.round.length) || (fwRm.shell && fwRm.shell.open && fwRm.shell.sky && fwRm.shell.sky.voyage)) fwGo = false; } } catch (eFw) { fwGo = false; }
+        if (opts && opts.dissolve && !fwGo) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
         /* THE LAST PICTURE IS THE MERGED ROOM'S (2026-11-16, mondo: "going into a fight ... frame rate drops to zero"; the cloud
            profile of a strike: _hqLeave -> _hqDissolveStart -> _hqRenderOnce = the longest single step): the dissolve draws the
            room once more for its picture, and it did so AFTER the chunks went home and every merged piece was handed back, so
@@ -106295,6 +106311,7 @@ const ThreeRenderer = (function () {
             /* THE STILL MATRICES: the last scene walk (objects seen, kept, remade, run by their own method) */
             /* THE STILL TORCH: how many walk frames held the hero light's map, and why the last one did or did not */
             dips: function () { try { return _dipLines(); } catch (e) { return ['ERR ' + e.message]; } },
+            fwHolder: function () { return _fw ? _fw.holder : null; },   // the walked room's holder while a fight draws it (a probe's way in)
             fw: function () { var F = _fw, K = { builds: _ewKeep.builds | 0, pipes: _ewKeep.pipes | 0, reused: _ewKeep.reused | 0, recs: (_ewBun && _ewBun.recs) | 0, kept: (_ewBun && _ewBun.fwKept) | 0, why: Object.assign({}, _ewBun.why), lampWhy: _ewBun.lampWhy || null, stale: _ewBun.staleLights | 0, frees: _ewBun.frees | 0, drawErr: _ewGpuInfo.drawErr || null,  spikes: (_ewBun.spikes || []).slice(-3), epoch: _ewBun.epoch, last: (_ewKeep.last || []).slice(-6), rig: _ewRigG ? { grows: _ewRigG.grows, n: _ewRigG.n, p: _ewRigG.k.p.length, d: _ewRigG.k.d.length, ds: _ewRigG.k.ds.length, srcP: _ewRigG.src.p.length } : null }; if (!F) return { on: false, parked: !!_hqParked, stats: _fieldRoomStats, keep: K }; var L = F.H.ckList || [], out = 0; for (var i = 0; i < L.length; i++) if (L[i]._ew_ckOut) out++; return { on: F.on, kids: F.HS.children.map(function (c) { return (c.name || c.type) + (c.visible ? '' : ' (off)') + (c.children.length ? ' [' + c.children.length + ']' : ''); }).slice(0, 40), camAs: !!F.camSave, seeded: F.seeded, sh: !!F.shSave, roots: F.roots.length, big: F.bigN | 0, floors: F.floors.length, props: F.props.length, cuts: F.cuts.length, cutN: F.cutN, hid: F.hid.length, ceil: F.ceil.length, walls: Object.keys(F.walls).join(''), job: F.job ? 'running' : ('done in ' + Math.round(F.jobMs || 0) + ' ms'), chunks: L.length, chunksOut: out, lights: F.lights ? F.lights.length : null, s: F.s, faded: _occFaded.size, keep: K }; },   // THE FIGHT IN THE WALKED ROOM
             still: function () { return _hqStillStats(); }, stillWalk: function (dtMs) { if (!_hq) return null; var t0 = performance.now(); _hqStillSceneWalk(_hq.scene); return { ms: +(performance.now() - t0).toFixed(2), last: _hqStLast }; }, stillWake: function (o) { _hqStillWake(o); },
             heroShadow: function () { var L = _hq && _hq.heroLit; return Object.assign({ light: !!(L && L.isLight), hold: !!(L && L._ew_heroHold) }, _heroStat); },
