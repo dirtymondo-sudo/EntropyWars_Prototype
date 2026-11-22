@@ -45,9 +45,9 @@
   "nz": 48,
   "h0": -2.35,
   "hs": 0.25,
-  "v": "be4ca2c599",
-  "bytes": 819,
-  "s": "0.2"
+  "v": "5639c7fd52",
+  "bytes": 838,
+  "s": "0.5"
  },
  "site_prebuilt_heaven_plots": {
   "id": "site_prebuilt_heaven_plots",
@@ -325,9 +325,9 @@
   "nz": 36,
   "h0": -0.7,
   "hs": 0.25,
-  "v": "da72dbad1b",
-  "bytes": 324,
-  "s": "0.6"
+  "v": "39b3171fb7",
+  "bytes": 340,
+  "s": "0.3"
  },
  "site_prebuilt_area51_ow_town": {
   "id": "site_prebuilt_area51_ow_town",
@@ -335,9 +335,9 @@
   "nz": 48,
   "h0": -1.75,
   "hs": 0.25,
-  "v": "76be1c7221",
-  "bytes": 477,
-  "s": "0.2"
+  "v": "81f0f3c2be",
+  "bytes": 475,
+  "s": "0.5"
  },
  "site_prebuilt_area51_ow_giza": {
   "id": "site_prebuilt_area51_ow_giza",
@@ -345,9 +345,9 @@
   "nz": 48,
   "h0": -3.5,
   "hs": 0.25,
-  "v": "3c9c999464",
-  "bytes": 596,
-  "s": "0.2"
+  "v": "cdaa7d2d63",
+  "bytes": 621,
+  "s": "0.4"
  },
  "site_prebuilt_atlantis_ow_floor": {
   "id": "site_prebuilt_atlantis_ow_floor",
