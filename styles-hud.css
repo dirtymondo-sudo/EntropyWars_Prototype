@@ -187,6 +187,8 @@
         .bp-subtabs { display: flex; gap: 4px; margin: -4px 0 14px; flex-wrap: wrap; }
         .bp-subtab { flex: 1 1 0; min-width: 90px; padding: 8px 10px; font-family: 'Cormorant SC', serif; font-size: 15px; letter-spacing: 0.2em; font-weight: 600; color: #cfc9b8; cursor: pointer;
             background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-bottom: 2px solid rgba(184,160,96,0.28); transition: background 0.14s, border-color 0.14s; }
+        .mm-settings-body .bp-subtabs { margin-top: 0; }   /* THE SETTINGS PAGES (11-22): six tabs; a tab never cuts its word, the row wraps */
+        .mm-settings-body .bp-subtab { flex: 1 1 auto; white-space: nowrap; }
         .bp-subtab:hover { background: rgba(184,160,96,0.12); border-color: rgba(184,160,96,0.5); color: #ece7d8; }
         .bp-subtab.on { background: rgba(184,160,96,0.2); border-color: #d9b45a; color: #f2d98a; }
         .bp-party { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
@@ -234,8 +236,8 @@
         #pauseOverlay .bp-hd b, #pauseOverlay .bp-id b { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
         #pauseOverlay .bp-hd span, #pauseOverlay .bp-sec, #pauseOverlay .bp-id small { color: var(--hq-ink-mute); }
         #pauseOverlay .bp-sec { border-bottom-color: var(--hq-hair); }
-        #pauseOverlay .bp-subtab { border-radius: 999px; background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); color: var(--hq-ink); text-shadow: var(--hq-tshadow); box-shadow: inset 0 1px 0 var(--hq-row-lip), 0 2px 0 rgba(0,0,0,0.4); }
-        #pauseOverlay .bp-subtab:hover, #pauseOverlay .bp-subtab.on { background: var(--hq-row-sel-bg); border-color: var(--hq-sel); color: var(--hq-sel); }
+        #pauseOverlay .bp-subtab, #hqPause .bp-subtab { border-radius: 999px; background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); color: var(--hq-ink); text-shadow: var(--hq-tshadow); box-shadow: inset 0 1px 0 var(--hq-row-lip), 0 2px 0 rgba(0,0,0,0.4); }
+        #pauseOverlay .bp-subtab:hover, #pauseOverlay .bp-subtab.on, #hqPause .bp-subtab:hover, #hqPause .bp-subtab.on { background: var(--hq-row-sel-bg); border-color: var(--hq-sel); color: var(--hq-sel); }
         #pauseOverlay .bp-unit { border-radius: 8px 12px 12px 8px; background: rgba(0,0,0,0.22); border: 1px solid var(--hq-row-edge); border-left: 3px solid var(--hq-sel); box-shadow: inset 0 1px 0 var(--hq-row-lip); }
         #pauseOverlay .bp-unit.off { border-left-color: var(--hq-row-edge); }
         #pauseOverlay .bp-unit.ko { border-left-color: #ff6a6a; }

@@ -32496,7 +32496,7 @@ const DOOR_HQ = {
         car_pack_3:        { pack: 'car03', span: 3.8, foot: 1.0, rect: { hw: 0.9, hd: 1.9 }, block: true, vehicle: true },    // a hatchback
         car_pack_4:        { pack: 'car04', span: 4.8, foot: 1.2, rect: { hw: 1.0, hd: 2.4 }, block: true, vehicle: true },    // a minivan
         car_pack_5:        { pack: 'car05', span: 5.3, foot: 1.3, rect: { hw: 1.0, hd: 2.65 }, block: true, vehicle: true },   // a big saloon (paints: taxi, police)
-        car_pack_6:        { pack: 'car06', span: 4.5, foot: 1.1, rect: { hw: 0.95, hd: 2.25 }, block: true, vehicle: true },  // a rusted shell
+        car_pack_6:        { pack: 'car06', span: 4.5, foot: 1.1, rect: { hw: 0.95, hd: 2.25 }, block: true, vehicle: true, noDrive: true },  // a rusted shell (no wheels: never driven)
         car_pack_7:        { pack: 'car07', span: 4.0, foot: 1.1, rect: { hw: 0.9, hd: 2.0 }, block: true, vehicle: true },    // a 1920s tourer
         car_pack_8:        { pack: 'car08', span: 6.2, foot: 1.6, rect: { hw: 1.15, hd: 3.1 }, block: true, vehicle: true },   // a step van
         car_suv:           { file: 'Meshy_AI_a_black_SUV_0915195508_texture.glb',       base: 'misc', pack: 'suv', span: 4.9, foot: 1.2, rect: { hw: 1.0, hd: 2.45 }, block: true, vehicle: true, turn: 90 },
@@ -32510,7 +32510,7 @@ const DOOR_HQ = {
         fluorescent:       { file: 'Meshy_AI_a_fluorescent_fixture_0903105329_texture.glb',           span: 1.25, foot: 0, ceil: true },
         breaker_panel:     { file: 'Meshy_AI_a_breaker_panel_0903105436_texture.glb',                 h: 0.80, foot: 0, wall: true, mount: 1.25 },
         pipe_run:          { file: 'Meshy_AI_office_pipe_run_0903105348_texture.glb',                 span: 1.0, foot: 0 },
-        railing_1m:        { file: 'Meshy_AI_one_meter_of_railing_0903105339_texture.glb',            span: 1.0, foot: 0, rail: { h: 0.98 } },   // SKATEBOARDING (9.8): a `rail` — the placer registers a grind run along its span at its top
+        railing_1m:        { file: 'Meshy_AI_one_meter_of_railing_0903105339_texture.glb',            span: 1.0, foot: 0, rail: { h: 0.85 } },   // (2026-11-22: 0.98 was 13 cm over the model's top, which stands 0.846 m at a 1 m span)   // SKATEBOARDING (9.8): a `rail` — the placer registers a grind run along its span at its top
         nameplate:         { file: 'Meshy_AI_a_blank_office_nameplate_0903110218_texture.glb',        span: 0.40, foot: 0, wall: true, mount: 1.55 },
         observation_window:{ file: 'Meshy_AI_a_round_observation_window_0903105519_texture.glb',      span: 1.8, foot: 0, wall: true, mount: 1.6 },
         /* ── the janitor's closet kit (Phase 2.7) ── */
@@ -33723,8 +33723,8 @@ const DOOR_HQ = {
         /* downtown_strip — GONE 2026-11-16 (THE OLD SITES RETIRED): the Strip is Entertainment's casino + wedding chapel, inside the city room */
         /* THE DESERT ON PLOTS (2026-11-15): the highway south out of Disaster City (Southside's Street court, the city's own way out) is the Desert's north end, at the City Limit plot */
         { id: 'downtown_desert', route: 'highway', way: 'road',
-          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -105, z: 247.6, face: 180, sub: 'THE HIGHWAY · SOUTH · THE DESERT' },   // the city's own way out (move.js ways P03-03 S, `open`): the road's last squares in Southside's Street court; bake-disaster-city.js prints the place
-          b: { room: 'site_ow_r9', wall: 'n', x: -35, sub: 'EXIT 1 · NORTH · DISASTER CITY' },   // THE HIGHWAY (2026-11-16): Exit 1's road, straight under the city's own South Street (the same x both sides)
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -105, z: 247.6, face: 0, w: 14, sub: 'THE HIGHWAY · SOUTH · THE DESERT' },   // face 0 (2026-11-22, was 180): a free end's `face` is the heading INTO the room; 180 stood the gantry back to front (signs mirrored, the road strip run north under the city's own street)   // the city's own way out (move.js ways P03-03 S, `open`): the road's last squares in Southside's Street court; bake-disaster-city.js prints the place
+          b: { room: 'site_ow_r9', wall: 'n', x: -35, w: 14, sub: 'EXIT 1 · NORTH · DISASTER CITY' },   // w 14 (2026-11-22): the road past the gantry is the street's four squares wide at both ends, not a 9 m lane   // THE HIGHWAY (2026-11-16): Exit 1's road, straight under the city's own South Street (the same x both sides)
           why: 'the same road, south; the city stops and the road does not', note: 'south', draft: true },
         { id: 'valley_city', route: 'woods', way: 'road',
           a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -249.4, z: -45.5, face: 90, sub: 'THE VALLEY ROAD · WEST · THE WOODS' },
@@ -83421,6 +83421,7 @@ function hqLinkDoors(roomId) {
             sub: end.sub || (wear.way ? (wear.cat.sub || 'STEP THROUGH') : 'WALK THROUGH'), action: { room: to, at: other.door ? other.door : 'link_' + link.id } };   // the far end lands AT a docked end's own door
         if (wear.way) d.way = wear.way;
         if (end.passage) d.passage = end.passage;   // THE PASSAGES (2026-10-01): an end's own tunnel / stair / trail shape
+        if (+end.w > 0) d.w = +end.w;   // THE ROAD (2026-11-22): an end's own street width (three-renderer.js _hqWayBuilders.road reads door.w)
         if (link.secret || end.secret) { d.secret = true; d.leaf = null; d.label = 'A DRAUGHT'; d.sub = 'A DOOR THAT IS NOT ON A PLATE · ' + String(toRoom.label || to).toUpperCase(); }   // THE AREAS (2026-09-18): a DRAUGHT — a link that is a hidden passage at both ends (the renderer hangs a wall slab; the map shows it once both rooms are seen)
         if (end.verb) d.verb = String(end.verb);
         if (link.why) d.why = link.why;
@@ -90442,7 +90443,7 @@ const HQ_STAIR_PACK = {
         glass:       { file: 'pack', box: [-169.93, -0.05, -693.76, -166.61, 12.58, -673.43], up: '-z', foot: -673.45,  x: [-169.91, -166.629],  n: 22, r: 0.5706, g: 0.9186, face: 0.0823, floor: 0, band: 0.1, solid: false, look: 'glass', label: 'Glass treads' },
         short_open:  { file: 'pack', box: [-247.31, -0.05, -650.98, -243.89, 4.86, -644.44],   up: '-z', foot: -644.456, x: [-247.286, -243.906], n: 7,  r: 0.6908, g: 0.9167, face: 0.0819, floor: 0, band: 0, solid: false, look: 'wood',  label: 'Short open flight' },
         /* the grating flight with its own handrails (textured: drawn in its own materials) */
-        grate:       { file: 'grate', box: [-0.75, -0.25, 0.15, 0.87, 2.40, 3.23], up: '-z', foot: 3.191, x: [-0.699, 0.818], n: 17, r: 0.1244, g: 0.1689, face: 0.073, floor: -0.174, band: 0.06, solid: false, own: true, look: 'steel', label: 'Steel grating', handrail: 0.95 },
+        grate:       { file: 'grate', box: [-0.75, -0.25, 0.15, 0.87, 2.40, 3.23], up: '-z', foot: 3.191, x: [-0.699, 0.818], n: 17, r: 0.1244, g: 0.1689, face: 0.073, floor: -0.174, band: 0.06, solid: false, own: true, look: 'steel', label: 'Steel grating', handrail: 0.86 },   // (2026-11-22: the handrail measured 0.77-0.91 m over the fitted flight's line; 0.95 rode over it)
         /* the metro kit's flight (rising toward +X; drawn in the kit's own tiles) */
         metro:       { file: 'metro', node: 'Stairs_01', up: '+x', foot: 17.89, x: [73.76, 78.64], n: 41, r: 0.13966, g: 0.2378, face: 0.002, floor: 5.587, band: 0, solid: true, own: true, look: 'stone', label: 'Metro tiles' },
     },
@@ -104562,8 +104563,10 @@ const HQ_SEA_RULES = {
     surfaceDraft: 1.1, underCap: 1.0, exitDepth: 0.95,
     boat: { v: 8.5, rev: 2.0, accel: 1.4, drag: 0.6, turn: 1.15, turnMin: 0.35, draft: 0.55, bob: 0.08, boardReach: 3.6, seat: { x: 0, y: 0.5, z: -0.5 }, camDist: 7.0, len: 4.6, beam: 1.7 },
     sub:  { v: 6.0, rev: 2.5, accel: 1.2, drag: 0.8, turn: 0.95, turnMin: 0.5, vertV: 2.4, r: 1.6, boardReach: 4.0, seat: { x: 0, y: 0.55, z: 0.2 }, camDist: 8.5, len: 6.2 },
+    /* THE CAR (2026-11-22): every catalogue prop with `vehicle: true` is driven by hand (three-renderer.js "THE CAR"; the keys' meaning is there, keep them in step with HQ_SEA_DEFAULT.car) */
+    car: { v: 21, rev: 7, accel: 8.5, brake: 20, coast: 2.4, hand: 15, steer: 0.62, steerHi: 0.13, steerIn: 5.5, handSteer: 1.7, wb: 0.6, step: 0.34, clear: 0.34, drop: 0.7, wet: 0.45, hill: 0.55, bump: 0.25, lean: 0.035, squat: 0.02, reach: 1.7, exit: 0.75, camDist: 8.0, camUp: 0.9, len: 4.6, beam: 1.9 },
     keys: { dive: 'c', rise: 'space', board: 'e' },
-    labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE' },
+    labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', car: 'THE CAR' },
 };
 if (typeof window !== 'undefined') window.HQ_SEA_RULES = HQ_SEA_RULES;
 /* THE LIGHT RULES (2026-09-20) — the user: "you are just using the night mood too much, it is really aggressive; I have to
