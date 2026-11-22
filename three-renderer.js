@@ -83498,7 +83498,7 @@ const ThreeRenderer = (function () {
                 return row[i] * (1 - f) + row[i + 1] * f;
             };
             var crestX = [-W / 2 - 2.5, -W / 2, -W / 4, 0, W / 4, W / 2, W / 2 + 2.5];
-            var crest = function (d) { var m = -Infinity; for (var ci = 0; ci < crestX.length; ci++) { var v = landAt(crestX[ci], d); if (v > m) m = v; } return m + 0.5; };
+            var crest = function (d) { var m = -Infinity; for (var ci = 0; ci < crestX.length; ci++) { var v = landAt(crestX[ci], d); if (v > m) m = v; } return m + (foot ? 0.15 : 0.5); };   // (a footpath lies low on the land: no half-metre hump)
             var gAt = function (lx, lz) {   // the road's own surface
                 if (!EF) return fieldAt(lx, lz);
                 var d = -lz - tOut; if (d <= 0) return fieldAt(lx, lz);
@@ -83509,9 +83509,9 @@ const ThreeRenderer = (function () {
             };
             var asphalt = _hqMat(null, 1, 1, { color: neon ? 0x8a8aa4 : (EF ? 0xb4b4b8 : 0xffffff), shininess: neon ? 24 : 6, specular: 0x151515, emissive: 0x0e0e0e, emissiveIntensity: 1 });
             /* A PATH OUT WEARS THE GROUND OF WHERE IT GOES (2026-11-22, mondo: "if its a dirt road then this path that leads out of it past the edge needs
-               to be dirt, not this tile pavement"): the far room's own path sheet (the Valley Road: dirt_2); this room's path sheet only when the far room has none */
-            var farRoom = null; try { farRoom = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && door.action && door.action.room) ? DOOR_HQ.rooms[door.action.room] : null; } catch (eFR) { farRoom = null; }
-            var footKey = foot && ((farRoom && farRoom.terrain && farRoom.terrain.path) || (ctx.room && ctx.room.terrain && ctx.room.terrain.path)); if (footKey) asphalt.color.setHex(0xffffff);
+               to be dirt, not this tile pavement"): the link end names its sheet and tint (the Valley Road's dirt, dark as that road is drawn in its own room) */
+            var footKey = foot && (door.sheet || (ctx.room && ctx.room.terrain && ctx.room.terrain.path));   // the end's own `sheet` (data.js link end), else this room's path sheet
+            if (footKey) { asphalt.color.setHex(door.tint != null ? door.tint : 0xffffff); asphalt.shininess = 0; asphalt.specular.setHex(0x000000); asphalt.emissive.setHex(0x060606); }   /* (dirt does not shine: mondo 2026-11-22, "why is the dirt shiny??") */
             var asT = (footKey && texOf(footKey)) || (EF && texOf('urban:RoadGeneric1a')) || texOf('urban:PlasterWallPainted1b'); if (asT) { asphalt.map = asT; asphalt.needsUpdate = true; }   // the pack's asphalt, the city streets' own sheet and tint
             if (EF) { asphalt.polygonOffset = true; asphalt.polygonOffsetFactor = -1; asphalt.polygonOffsetUnits = -1; }
             var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }); paint.polygonOffset = true;   /* (both sides: the paint quads wind face down, so the lane lines never drew, 2026-11-22) */ paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
@@ -83594,7 +83594,7 @@ const ThreeRenderer = (function () {
             /* the fog takes the far end: a dark gradient plane across the road's end */
             var fade = new THREE.Mesh(new THREE.PlaneGeometry((W + 2) * U, 6 * U), _hqBasic(0x000000, { transparent: true, opacity: 0.0, depthWrite: false })); fade.rotation.x = -Math.PI / 2; fade.position.set(0, 0.06 * U, -(LEN - 3) * U); if (!joinedR && !EF) g.add(fade);
             var motion = { mode: 'way', ow: W, tick: function (k) { lamps.forEach(function (lp) { lp.material.opacity = 0.16 + 0.5 * k; lp.scale.setScalar((1.2 + 0.8 * k) * U); }); } };
-            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.5, blockers: [], roadLen: LEN };
+            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.5, blockers: [], roadLen: LEN, lineOut: EF ? tOut : null };
         },
         gutter: function (U, ctx) {
             var g = new THREE.Group();
@@ -84071,8 +84071,11 @@ const ThreeRenderer = (function () {
            a little bit and press e, which is really dumb"): a road's end is a passage record like an open seam's: no prompt, and walking on under the
            gantry changes the room (_hqTickPassages). A free end lies on the room's own ground (the crossing 1 m past the gantry); a wall end runs
            3 m past the wall, level with the door's floor (the crossing 1.2 m out). */
+        /* THE CROSSING IS REACHED (2026-11-22, mondo at the Woods exit: "I cant even walk out of this path ... its just an invisible wall"): a walker
+           stops 1 m inside the room's line; the crossing stood 3.2 m past the end, and the Woods end is 2.6 m from its line, so nobody got there.
+           The crossing is never nearer the line than 1.5 m. */
         if (kind === 'road' && box) {
-            rec.passage = box.free ? { inside: true, w: ow, h: oh, len: Math.max(8, built.roadLen || 13), deep: 3.2, rise: 0, look: 'open', fade: 'black', roof: false, land: 1.6 }
+            rec.passage = box.free ? { inside: true, w: ow, h: oh, len: Math.max(8, built.roadLen || 13), deep: (built.lineOut != null) ? Math.min(3.2, Math.max(1.0, built.lineOut - 1.5)) : 3.2, rise: 0, look: 'open', fade: 'black', roof: false, land: 1.6 }
                                    : { inside: false, w: ow, h: oh, len: 3, deep: 1.2, rise: 0, look: 'open', fade: 'black', roof: false, land: 1.6 };
             (_hq.passages = _hq.passages || []).push(rec);
         }
