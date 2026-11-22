@@ -76161,7 +76161,7 @@ const ThreeRenderer = (function () {
         if (_hqSliceDue()) yield;
         if (S.open && room.terrain.edges) { try { _hqBuildEdgeLand(room, info, G, TM, plantTree, fluidMatFor); } catch (e) { console.warn('[HQ] the edge land failed', e); } }   // THE NATURAL EDGES (2026-11-13): mountains / forest / desert / the bay past the room's sides
         if (_hqSliceDue()) yield;
-        if (info.genPlan && info.genPlan.streets) { try { _hqBuildStreetLamps(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the street lamps failed', e); } }
+        if ((info.genPlan && info.genPlan.streets) || (info.lamps && info.lamps.length)) { try { _hqBuildStreetLamps(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the street lamps failed', e); } }
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city') { try { _hqBuildRoadMarkings(room, info, G, TM); } catch (e) { console.warn('[HQ] the road markings failed', e); } }   // THE STREETS IN THE PACK (2026-09-17): the asphalt is the field's floor sheet; the paint, the kerbs, the manholes and the signs stand on it
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0 && typeof window !== 'undefined' && window.EW_HQ_ROAD_TILES) { try { _hqBuildRoadTiles(room, info, G, TM); } catch (e) { console.warn('[HQ] the road tiles failed', e); } }   // the GLB tiles are opt-in since the pack landed (they distorted on every bend)
         if (_hqSliceDue()) yield;
@@ -76555,7 +76555,7 @@ const ThreeRenderer = (function () {
                dome   r, h (none = r) · rz (an oval plan) · arc + a0 (degrees: a half dome, a band shell; give it ds: true) · seg · rings
                roof   form: 'gable' | 'hip' | 'pyramid' | 'shed' | 'barrel', size: [w, h, d] (the ridge along x; a shed's high edge at -z) · over (the eaves' overhang) · keyEnd (the gable wall) · seg
                quad   size: [w, h] (a panel facing +z: a wall, a sign with uv: 'fit', a window) · hole: [x, w, h] (a doorway cut from its foot) · flat: true (size [w, d], lying, facing up: paint, water)
-               poly   pts: [[x, z], ...] (a convex plan), h · keyTop · top: false
+               poly   pts: [[x, z], ...] (a convex plan), h · keyTop · top: false · under: true (the underside)
                archw  size: [w, h, d] (a wall, its front at +z) with a ROUND-HEADED OPENING · hole: [width, the springing's height, centre x] · rise (the head's
                       height: none = half the width, a true half circle) · seg · keyIn / tintIn (the sheet / tint inside the opening) · faces: 'fb' · top: true · ends: true
                       · rim: [width, how far it stands out] (the archivolt: a raised band round the head, on the front; keyRim / tintRim)
@@ -76740,6 +76740,10 @@ const ThreeRenderer = (function () {
                 if (P.top !== false) {
                     var gp = grp(P.keyTop || key, tT), ti = pts.map(function (q) { return put(gp, [q[0], phh, q[1]], [q[0] / mu, q[1] / mv]); });
                     for (var pk = 1; pk < ti.length - 1; pk++) gp.idx.push(ti[0], ti[pk], ti[pk + 1]);
+                }
+                if (P.under) {   // the underside (2026-11-22, the raised highway's widened deck: a slab seen from the ground)
+                    var gu = grp(key), tu = pts.map(function (q) { return put(gu, [q[0], 0, q[1]], [q[0] / mu, q[1] / mv]); });
+                    for (var pu = 1; pu < tu.length - 1; pu++) gu.idx.push(tu[0], tu[pu + 1], tu[pu]);
                 }
             } else if (P.s === 'archw') {
                 /* THE ROUND ARCH (2026-11-18, the Colosseum: "it looks like absolute shit": its arches were boxes): a wall with a round-headed opening
@@ -78533,7 +78537,8 @@ const ThreeRenderer = (function () {
     }
     /* THE STREET LAMPS: on the kerb of every street of the plan, alternating sides every `every` metres, clear of the doors' lanes */
     function _hqBuildStreetLamps(room, info, G, TM, rng) {
-        var U = _hqUnits(), plan = info.genPlan; if (!plan || !plan.streets || typeof _miscModelInstance !== 'function' || typeof _R2_MISC === 'undefined') return;
+        var U = _hqUnits(), plan = (info.genPlan && info.genPlan.streets) ? info.genPlan : ((info.lamps && info.lamps.length) ? { streets: [] } : null);   /* a room with no city plan but lamps of its own (2026-11-22, the raised highway: `terrain.gen.lamps`) wears the same lamp */
+        if (!plan || !plan.streets || typeof _miscModelInstance !== 'function' || typeof _R2_MISC === 'undefined') return;
         var every = (typeof window !== 'undefined' && window.EW_PERF_LOW) ? 26 : 14, cap = 44, made = 0, walk = (plan.walkW || 0), lampH = 3.6 * U;
         var col = 0xffd8a0;
         /* THE LAMPS SHARE THEIR TWO MATERIALS (2026-11-13, Disaster City's 288 lamps): one glass + one post material for every lamp, marked

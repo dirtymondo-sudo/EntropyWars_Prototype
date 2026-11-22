@@ -337,9 +337,17 @@ for (let i = 1; i < LINE.length; i++) { const [ax, ay] = LINE[i - 1], [bx, by] =
         if (ins && t0 == null) t0 = t; if ((!ins || t + 0.5 > len + 0.01) && t0 != null) { const t1 = ins ? t : t - 0.5; if (t1 - t0 >= 2) straight.push([ax + dx * t0, ay + dy * t0, ax + dx * t1, ay + dy * t1]); t0 = null; } } }
 if (LOOK === 'highway') {
     const WHITE = 0xf0f0f0, YEL = 0xe8b830, line = (a, b, w, color) => marks.push({ k: 'line', x0: a[0], z0: a[1], x1: b[0], z1: b[1], w, color });
+    /* THE LINES MEET AT A BEND (2026-11-22, mondo: "the white and yellow road lines cross and overlap each and look ugle at the diagonal parts of the road"):
+       every run's lines ran its whole length, so at a bend the outer ones crossed and the inner ones overshot. A line `o` squares off the middle now starts and
+       ends on the bend's mitre (o x tan of half the turn, along the run), where the next run's line of the same offset starts. */
+    const bendAt = (px, py, dx, dy, end) => { for (let i = 1; i + 1 < LINE.length; i++) { if (Math.hypot(LINE[i][0] - px, LINE[i][1] - py) > 0.6) continue;
+            const a = LINE[i - 1], q = LINE[i], b = LINE[i + 1], l1 = Math.hypot(q[0] - a[0], q[1] - a[1]) || 1, l2 = Math.hypot(b[0] - q[0], b[1] - q[1]) || 1, d1 = [(q[0] - a[0]) / l1, (q[1] - a[1]) / l1], d2 = [(b[0] - q[0]) / l2, (b[1] - q[1]) / l2];
+            if (Math.abs((end ? d1 : d2)[0] * dx + (end ? d1 : d2)[1] * dy) < 0.99) continue;
+            return Math.tan(Math.atan2(d1[0] * d2[1] - d1[1] * d2[0], d1[0] * d2[0] + d1[1] * d2[1]) / 2); } return 0; };
     straight.forEach(([x0, y0, x1, y1]) => { const len = Math.hypot(x1 - x0, y1 - y0), dx = (x1 - x0) / len, dy = (y1 - y0) / len, nx = -dy, ny = dx, at = (t, o) => M(x0 + dx * t + nx * o, y0 + dy * t + ny * o);
-        [-1, 1].forEach(sd => { line(at(0, sd * 0.6), at(len, sd * 0.6), 0.16, YEL); line(at(0, sd * 3.4), at(len, sd * 3.4), 0.14, WHITE);
-            [1.5, 2.5].forEach(o => { for (let t = 1; t + 2 <= len; t += 4) line(at(t, sd * o), at(t + 2, sd * o), 0.14, WHITE); });
+        const T0 = bendAt(x0, y0, dx, dy, false), T1 = bendAt(x1, y1, dx, dy, true), a0 = o => o * T0, a1 = o => len - o * T1;
+        [-1, 1].forEach(sd => { line(at(a0(sd * 0.6), sd * 0.6), at(a1(sd * 0.6), sd * 0.6), 0.16, YEL); line(at(a0(sd * 3.4), sd * 3.4), at(a1(sd * 3.4), sd * 3.4), 0.14, WHITE);
+            [1.5, 2.5].forEach(o => { for (let t = Math.max(1, a0(sd * o) + 1); t + 2 <= Math.min(len, a1(sd * o)); t += 4) line(at(t, sd * o), at(t + 2, sd * o), 0.14, WHITE); });
             /* a guard rail along the shoulder, in runs with gaps (you can step off the road) */
             for (let t = 3; t + 9 <= len; t += 16) { const a = at(t, sd * 4.6), b = at(t + 9, sd * 4.6); feat({ k: 'rail', x0: a[0], z0: a[1], x1: b[0], z1: b[1], model: 'guard' }); } });
         const sx = Math.round(x0 + dx * Math.min(6, len / 2) + nx * 5.5), sy = Math.round(y0 + dy * Math.min(6, len / 2) + ny * 5.5); if (walked(sx, sy)) P(pick(['roads_g_sign_003', 'roads_g_sign_000', 'roads_g_sign_005']), sx, sy, { face: Math.round(Math.atan2(dx, -dy) * 180 / Math.PI + 180) }); });
@@ -565,7 +573,7 @@ L.push("                backdrop: false, edges: { world: true, reach: 440, ways:
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + Dq + ", d: '" + slope.toString('base64') + "' } },");
 L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + (C / PR) + ", x0: " + r2(-HX + C / (2 * PR)) + ", z0: " + r2(-HZ + C / (2 * PR)) + ", nx: " + (W * PR) + ", nz: " + (Dq * PR) + ", d: '" + Buffer.from(paintOut).toString('base64') + "' },");
 L.push("                /* every square that is not a `space` is ground nobody walks: a forest plot grows its trees there, open ground grows nothing */");
-L.push("                gen: { kind: 'plan', look: 'trees', seed: " + (hashStr(ID) % 97) + ", rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: " + (anyMass ? Math.min(2400, 220 * PLOTS.length) : 0) + ", treeH: [5.5, 8.5], kinds: " + J(KIT.forest.treeKinds) + ", zones: " + J(zones) + " },");
+L.push("                gen: { kind: 'plan', look: 'trees', seed: " + (hashStr(ID) % 97) + ", rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: " + (anyMass ? Math.min(2400, 220 * PLOTS.length) : 0) + ", treeH: [5.5, 8.5], kinds: " + J(KIT.forest.treeKinds) + ", zones: " + J(zones) + ((RAISED && RAISED.lamps && RAISED.lamps.length) ? ", lamps: " + J(RAISED.lamps) : "") + " },");
 if (marks.length) L.push("                marks: " + J(marks) + ",");
 if (TRAFFIC.length) L.push("                traffic: " + J(TRAFFIC) + ",");
 L.push("                features: [");
