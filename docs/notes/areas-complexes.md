@@ -14476,6 +14476,10 @@ the Desert thread, merged the same hour); this is the same thing for a `trail`, 
   stands, in One World, on the HOUSE room's east line (ow-move.js: a fence ON a plot line is the west plot's). Its two-square gap was north of the back
   gate's three squares (`cut: [5, 6, 7]`), so the walker stopped at the rail 1 m short of the House Trail. The gap is the gate's squares now.
   LESSON: a fence on a district's line travels with the plot west / north of it; after a zone move, walk every gate.
+- **THE OLD ROAD NARROWS TOO** (R4, same day): `taper` (THE HIGHWAY NARROWS BEFORE THE GATE) on both road ends, Came A Lot's East Row and the Vatican's
+  west gate: two lanes at each gate, as the Desert's highways. The rebake also took in what the map changed since 11-17 (the box's north-west corner
+  is the Snowy Pines' snow now, no trees on it; lane lines joined at the bends; the spawn off the road); no prop moved but the taper's own (rails, dashes).
+  Walked both gates both ways. Map picture rebaked (`bake-map.js site_ow_r4`).
 - Probe: `playtest_city.js` takes `EW_PROBE_TRIES=1` (no retry of a whole chain after a crash; the cloud browser dies after 3 to 6 room changes: walk
   a gate out and back per run, no more).
 ## THE COAST + THE UNDERGROUND, WHERE THE ZONES MEET (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural")
@@ -14504,12 +14508,24 @@ Atlantis, the Sewers, the D.U.M.B., the six Cavern rooms, the Coast Road (R10) a
   A terrain flood from each room's spawn reaches every way's landing in all 18 rooms.
 - **THE LESSON:** never edit a served game script (data.js, three-renderer.js…) while a probe is loading: every picture of that run is the red
   CODE MISMATCH page. The city crashes the cloud browser as the second room of a run: stop a walk probe at its WALK line.
-- **A MOUTH THAT READ AS PLAIN WALL:** the D.U.M.B.'s Gantry Tunnel to the Sewers (east wall, z 78.75) was a blank concrete wall you walked
-  through. A look-only arch row stands on it now (`dumb:gantry:mouth`: a steel frame, a dark panel, an amber lamp; bake-dumb.js `GANTRY_MOUTH`,
-  laid into data.js by hand, no rebake). WHY the wall's own cut does not show there was NOT found (the shell wall does cut a passage's opening:
-  `_hqPassageSpec` in the walls' cuts; the Cavern rooms' trail mouths show). **STILL OPEN: Agartha's tunnel down to the Long Tunnel** (south wall,
-  x 49, under the inner gate) is the same plain rock wall that you walk through; an arch row tried there did not draw (`base` and `y` both), so it
-  was taken out again. It is walked both ways.
+- **TWO MOUTHS THAT READ AS PLAIN WALL, AND WHY** (found with a ray shot in the browser: a probe view's `eval`, `THREE.Raycaster` from the
+  walker toward the way, the hits' `_ew_hqArch` id and box printed with `EW_LIVE_LOG=1`). The wall's own cut was there in both rooms; something
+  the room's tool drew stood in front of it.
+  (1) **The D.U.M.B.'s Gantry Tunnel** (east wall, z 78.75): bake-dumb.js lays a concrete LINING along every run of rock, and laid it whole across
+  the mouth, 7 cm in front of the wall. `LINING_CUTS` (a walked way in a room wall): the lining is laid in pieces round the opening. A steel
+  frame with an amber lamp stands round the mouth (`dumb:gantry:mouth`, look only). data.js was edited by hand to match (no rebake).
+  (2) **Agartha, EVERY ROOF BLOCK STOOD ON THE FLOOR.** bake-agartha.js wrote its arch rows with `base: <height>`; data.js `hqTerrainInfo`
+  OVERWRITES an arch row's `base` with the ground under its origin unless the row has a number `y` (bake-dumb.js says so: "`y`, never `base`").
+  So all 139 roof blocks (34 m of stone, sides + underside) stood on their own floors: seen from inside one you see nothing (back faces), but
+  between two roof rectangles stood a wall of rock that you walked through, and one filled the passage to the Long Tunnel. The bridge's keels
+  stood 11 m low the same way. All 161 `aga:` rows say `y` now (the tool and data.js): the halls have their roofs overhead. The tunnel's own rock
+  is drawn dark (`passage: { wallColor, floorColor }` on the door) so the mouth reads against the wall. Seen: the spawn hall, the great hall,
+  the gate; walked both ways. ANY tool that writes `base` on an arch row has this fault: grep before trusting a roof.
+  **THE OTHER TOOLS, CHECKED (same day):** measured headlessly (every arch row's written `base` against `hqTerrainInfo(...).arch[i].base`). The Long
+  Tunnel, the West and the Cavern (bake-underground.js / bake-ug.js: roofs written `base: 0` with absolute part heights) had 45 roof rows lifted by
+  the ground under their origin, up to 30 m too high; the Astral Realm's temple and Still Pool kerb stood 1 m low (bake-astral.js `look`). All say
+  `y` now, tools and data.js; seen in the browser. Already right: the Sewers (bake-labyrinth.js writes `y`), the Tunnel-Way (`y`), the Hollow.
+  bake-cavern.js and bake-sewers.js write `base` too but their rooms are retired.
 - **TWO INVISIBLE WALLS, FIXED AND WALKED BOTH WAYS.** (1) The Sewers' Gantry Tunnel (to the D.U.M.B.) and Outfall (to the Sea Floor): bake-labyrinth.js
   stands a `free` way ON the dead end's rock face with `passage: { len: 3, deep: 1.2 }`, so the crossing lay 1.2 m inside the rock: the walker
   stopped at the face. Now `deep: -0.9` (a passage's `deep` may be negative: the crossing is that far in FRONT of the door's line). (2) The Sea
@@ -14517,8 +14533,7 @@ Atlantis, the Sewers, the D.U.M.B., the six Cavern rooms, the Coast Road (R10) a
   never reached the trail's 10 m; its row says `passage: { deep: -0.6 }` (bake-deep.js). Any other `free` trail on a rock face from that tool
   would have the same fault.
 - **KATANA'S EAST LANDING:** a jungle tree stood on the line from the boat's mooring inland; gone (districts/J.js keeps row 29 east of square 78 clear).
-- **NOT DONE / SEEN:** the D.U.M.B.'s freight-line vault door and blast door to the Cavern were not seen straight on (the probe's camera was
-  pushed into a wall; their prompts work); the Frozen Sea's trail to the North Pole shows the far land as white cliffs with flat green flanks
+- **NOT DONE / SEEN:** the Frozen Sea's trail to the North Pole shows the far land as white cliffs with flat green flanks
   (the edge land's far look, not changed); the Harbour's west side shows a sea wall and pastel houses where the city's coast is sand; the port
   seen from the Coast Road is dim in the air haze. Giza's own ends and the Line's west end are the Desert / Leylines holders' (PR #2418 covers Giza's).
 
