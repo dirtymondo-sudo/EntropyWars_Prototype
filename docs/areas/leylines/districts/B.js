@@ -26,7 +26,9 @@ const NESTDOOR = ctx => ({ x: ctx.gx(ctx.A.anthill.x - 5), z: ctx.gz(ctx.A.anthi
 exports.build = ctx => {
     const { A, C, feat, look, stair, cx, cz, gx, gz } = ctx, { X, Z } = tree(ctx), r2 = ctx.r2;
     /* THE TRUNK: a column you go round (never climbed but by the root stair) */
-    feat({ k: 'plateau', x: X, z: Z, r: TRUNK, h: 48, edge: 0.05 });
+    /* THE FLARE (11-22, the soft-lock finder): the trunk's ground is 0.9 m wider than its bark at the shelves' height, so no sliver of ground is
+       left between the trunk, a shelf and a stair (four pits you dropped into off a shelf and never left). Straight up, by the wall. */
+    feat({ k: 'plateau', x: X, z: Z, r: TRUNK + 0.9, h: 48, edge: 0.05 });
     /* THE ROOT SHELVES + THE STAIR between them (round the trunk south, west, north, east) */
     SHELVES.forEach((s, i) => feat({ k: 'plateau', x: r2(X + s[0] * SHD), z: r2(Z + s[1] * SHD), r: SHR, h: s[2], edge: 0.05 }));
     for (let i = 0; i < 3; i++) { const a = SHELVES[i], b = SHELVES[i + 1], ax = X + a[0] * SHD, az = Z + a[1] * SHD, bx = X + b[0] * SHD, bz = Z + b[1] * SHD, L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L, e = SHR - 0.8;
@@ -128,7 +130,7 @@ exports.insides = ctx => {
       const at = (sx, sy) => [r2((sx + 0.5 - W / 2) * C), r2((sy + 0.5 - D / 2) * C)];
       CH.forEach(c => { for (let dy = -3; dy <= 3; dy++) for (let dx = -HW[dy + 3]; dx <= HW[dy + 3]; dx++) h[MY + c[2] + dy][MX + c[1] + dx] = 0; });
       [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [1, 3], [1, 4], [2, 5], [2, 6], [3, 5], [4, 6]].forEach(q => carve(h, MX + CH[q[0]][1], MY + CH[q[0]][2], MX + CH[q[1]][1], MY + CH[q[1]][2], 0));
-      for (let x = MX + 10; x < W - 1; x++) h[MY + 4][x] = 0;                                  // the Door chamber's mouth to the east wall
+      for (let x = MX + 10; x < W; x++) h[MY + 4][x] = 0;                                      // the Door chamber's mouth THROUGH the east wall (11-22: the last square was a wax block to the roof, the door's pad stood on top of it: you came in 10 m up, fell in and never got out)
       /* the honey: a hollow in the Honey chamber you wade (drawn honey over it) */
       for (let dy = -1; dy <= 1; dy++) for (let dx = -2; dx <= 2; dx++) h[MY + 8 + dy][MX + dx] = -0.55;
       { const p = at(MX, MY + 8); looks.push({ id: 'hive:honey', x: p[0], z: p[1], parts: [{ s: 'cyl', p: [0, -0.24, 0], r: 8.6, h: 0.06, key: 'desert', tint: HONEY, glow: 0.45, seg: 6 }] }); }
