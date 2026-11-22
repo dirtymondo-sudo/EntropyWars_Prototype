@@ -14184,3 +14184,7 @@ His five points and what answers each:
   ANY bridge row met "a wall in the air" on its first frame and the board stopped. Feet on the top are in the air over it now (as on the ground). Not highway-only.
 
 Gantries stand before the exit lane opens (a post stood in the lane). Known and left: the terrain ramp's asphalt is a shade lighter than the deck's where they meet.
+- THE EXIT'S CROSSINGS HAVE TRAFFIC LIGHTS (mondo, same day: "gonna need a some stop lights at the end of the ext where it meets the road, thats an intersection"):
+  ow-raised.js writes two `terrain.signals` rows (the city's own signal, any terrain room may carry them), one each side of the deck where the ramps' feet meet the
+  cross road: a mast for the ramp that comes off and one for the cross road's traffic from outside. A signal row's `back` = metres from its middle to the stop line.
+  The Police Officer (x2) joined the Trucker and the Honda Civic on `HQ_NPC_PLACES.site_ow_r9` on his word ("let's add police officers to the highway too").

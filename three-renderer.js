@@ -78702,7 +78702,7 @@ const ThreeRenderer = (function () {
        three-faced head: MEASURED in Blender, _HQ_SIGNAL.foot / faces / lensY are metres off the GLB's box middle, the face `own` looks back
        down its own arm, the other two look down the cross street). The file's lenses are painted all lit, so every lens wears a flat disc
        that this code paints bright or dark. The clock: `green` s, `yellow` s, `allRed` s for one street, then the same for the other; `flash`
-       = every face blinks red (the police hold the junction). Cars read `sig.state.ns / .ew` ('g' 'y' 'r' 'f') at their stop lines
+       = every face blinks red (the police hold the junction). A row's `back` = metres from its middle to the stop line (none = `stopBack`; 2026-11-22, a ramp's foot on a narrow cross road). Cars read `sig.state.ns / .ew` ('g' 'y' 'r' 'f') at their stop lines
        (_hqRouteMarks, _hqTickTraffic). THE BUS STOPS (info.busStops, rows { x, z, name, end, signs: [{ x, z, ns }] }): a bus on a `bus`
        route waits `busWait` s where its route passes a stop; each stop's sign poles are the Bus stop pack's `bus_stop_sign`.
        Every junction and stop is one group in the plot chunks' list (not drawn past `farM` or off camera). Off: window.EW_HQ_NO_SIGNALS. */
@@ -78729,7 +78729,7 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), K = _HQ_SIGNAL, disc = new THREE.CircleGeometry(K.lensR * U, 10), sigs = [];
         rows.forEach(function (row, ri) {
             var gy = hqTerrainHeight(info, row.x, row.z), g = _hqSignalChunk(H, G, row.x, gy, row.z, 13, K.farM);
-            var sig = { x: row.x, z: row.z, flash: !!row.flash, off: (row.off != null) ? +row.off : ri * 9, state: { ns: 'r', ew: 'r' }, mats: { ns: [], ew: [] }, glows: [], last: '' };
+            var sig = { x: row.x, z: row.z, back: (row.back != null) ? +row.back : null, flash: !!row.flash, off: (row.off != null) ? +row.off : ri * 9, state: { ns: 'r', ew: 'r' }, mats: { ns: [], ew: [] }, glows: [], last: '' };
             ['ns', 'ew'].forEach(function (ax) { for (var c = 0; c < 3; c++) sig.mats[ax].push(_hqSignalMat(K.dark[c])); });
             String(row.arms || '').split('').forEach(function (a) {
                 var A = K.arm[a]; if (!A) return;
@@ -78813,7 +78813,7 @@ const ThreeRenderer = (function () {
         var axisAt = function (s) { var i = 0; while (i + 2 < cum.length && cum[i + 1] <= s) i++; return Math.abs(pts[i + 1][0] - pts[i][0]) > Math.abs(pts[i + 1][1] - pts[i][1]) ? 'ew' : 'ns'; };
         if (sigs && sigs.length) {
             var st = [];
-            sigs.forEach(function (sg) { hits(sg.x, sg.z, 2).forEach(function (sc) { var s = sc - K.stopBack; if (s < 0) { if (!loop) return; s += L; } st.push({ s: s, sig: sg, axis: axisAt(s) }); }); });
+            sigs.forEach(function (sg) { hits(sg.x, sg.z, 2).forEach(function (sc) { var s = sc - (sg.back != null ? sg.back : K.stopBack); if (s < 0) { if (!loop) return; s += L; } st.push({ s: s, sig: sg, axis: axisAt(s) }); }); });
             if (st.length) out.stops = st;
         }
         if (busStops && busStops.length) {
