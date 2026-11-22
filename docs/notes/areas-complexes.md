@@ -14709,3 +14709,11 @@ try to make them look more realistic." (Same message: River Road and the Old Roa
   `o.exit` names it by hand. The gore plate at a ramp (ow-raised.js) reads EXIT, the number (`raised.exit.no` in the route spec), the arrow.
 - The mile markers keep their plain plate, in the same typeface. THE DESERT'S ROAD SIGNS at its zone exits (bake-desert.js THE SIGN AT THE GATE,
   `des:gate:sign:*`, mondo 11-22 "go ahead and do the rest of the highway too") are the same panel now, no tab. Seen in the game on site_ow_r9 (HEAD c0e8eb9 + this change).
+
+## THE MEDIAN BARRIER ON THE GROUND (2026-11-22)
+mondo 11-22, asked whether to raise legs 2 to 4 of the Desert Highway the whole way: "i just want it to be realistic and believable." Answer given: real
+desert interstates run on the ground and go up only at crossings and interchanges, so the legs stay as they are (ground + flyovers). What made the
+ground stretches less believable than the deck: the two directions had only paint between them. bake-route.js THE MEDIAN BARRIER: a raised highway
+(spec `raised`) lays a concrete barrier (the deck's jersey shape, `clean`) down the median wherever the road is whole (not where it narrows to a gate),
+off the deck and its ramps, joined round the bends, with sand barrels (`traffic_barrel`) where it ends (none beside the ramps: their own barrier runs on).
+R1 + R4 (no `raised`) do not get it.
