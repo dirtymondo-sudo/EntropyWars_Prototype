@@ -581,4 +581,5 @@ His Relationship Web board decides who stands where. The list he approved, his c
   A road between zones (`site_ow_*`) with no rows draws NOBODY. The shipped AREA UNITS tables of off-table rooms are cut to the same races
   (`shipped`, set at load); a table mondo makes in the AREA UNITS window is not cut; a table a builder wrote for one room says `own: true` (the
   Frozen Sea). `hqRoomTakesRace` lets a traveller through a door by the same rule. To put people on a road: give it rows on the table.
+  THE ROADS (mondo 11-22, "well obviously put the trucker and honda civic on those roads too"): the six drivable roads (look road / highway: `site_ow_r1`, `r4`, `r6`, `r8`, `r10`, `r11`) carry a Trucker + a Honda Civic like the Highway; the six footpaths (look trail: `r3`, `r5`, `r12`, `l3`, `l4`, `l6`) hold nobody.
 - **A plot's place in a room:** `x = ox + (px + 0.5) * 42`, `z = oz + (pz + 0.5) * 42` with `ox, oz` from HQ_ZONE_MAP's row of the room (`hqZoneMapRoom`).
