@@ -3826,6 +3826,8 @@
             transition: opacity 0.35s ease 0.5s, visibility 0s linear 0.5s;
         }
         .ew-mmap.round { border-radius: 50%; }
+        /* THE EXPLORATION MINIMAP (2026-11-22, three-renderer.js): the same box in the walk's page, bottom right (mondo's pick) */
+        #hqPage .ew-mmap.ew-hqmm { position: absolute; right: 16px; top: auto; bottom: 34px; z-index: 19; transition: none; }
         .ew-mmap canvas { display: block; width: 100%; height: 100%; }
         .ew-mmap.off { display: none; }
         body.ew-board-busy .ew-mmap.auto-board, body.ew-board-cam .ew-mmap.auto-board,

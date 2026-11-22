@@ -14134,6 +14134,11 @@ and press e ... i can't see the road going out, the road just stops and its all 
       (shininess 0), 0.15 m over the land (no hump). Round 4's "far room's path sheet" is gone. `valley_city` a AND b: `w: 5, sheet: 'dirt_2',
       tint: 0xa08c78` (the colour the Valley Road's dirt draws at in its own room), so the Valley Road's east end is the same footpath with
       a signpost (it ended in a green gantry and lane-painted asphalt).
+  - ROUND 6, THE VALLEY ROAD'S CITY END IS WOODS (mondo: "there should be woods/trees all along that dirt path leading back into the city,
+    since going out of the city its a dirt path leading into the woods"): `after-v13.js` row 10 makes the world plots -4..1 x 3..6 forest
+    (`f`); `docs/areas/routes/R6.js` plants a tall wood on the road's last four columns of plots (one free square in three off the road:
+    the kit's ten trees a plot read as a lawn). Then `node bake-route.js R6`, `node bake-map.js site_ow_r6`. RULE: the two sides of a gate
+    show the same country. Walked both ways: city -> site_ow_r6 and site_ow_r6 -> city (the software walker needs `max` 70000 for 6 m).
   - THE LANE LINES NEVER DREW: the paint quads wind face down (z runs negative); the paint material is double-sided now.
 - Probe: `node playtest_city.js site_ow_r9 '[{"name":"walk_n","x":-35,"z":-180,"face":0,"ground":true,"walk":{"key":"w","max":40000}}]'` walks
   into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
