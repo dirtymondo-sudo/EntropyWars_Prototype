@@ -9,5 +9,6 @@
     "ow_v_17_32": { "room": "site_prebuilt_area51_ow_giza", "label": "GIZA", "sub": "THE CAUSEWAY · WEST TO THE PYRAMIDS", "desc": "The road runs west off the flats onto the sand, and the pyramids stand up over it." },
     "ow_v_19_31": { "room": "site_prebuilt_gobekli_ow_line", "label": "GÖBEKLI TEPE", "sub": "THE CAUSEWAY · EAST TO THE TELL", "desc": "The road climbs off the flats onto the tell's dry slope." }
   },
-  "places": { "18,32": "reedbed" }
+  "places": { "18,32": "reedbed" },
+  "runOn": { "ow_v_17_32": {}, "ow_v_17_31": {} }
 }

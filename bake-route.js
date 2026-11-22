@@ -435,6 +435,16 @@ ENDS.forEach(e => {
             const g0 = ns ? gx(a) : gz(a), g1 = ns ? gx(b + 1) : gz(b + 1), mid = r2((g0 + g1) / 2); if (ns) d.x = mid; else d.z = mid; e.along = mid; d.passage.w = r2(g1 - g0);
             if (e.look === 'highway') { let p0 = a, p1 = b; while (p0 < p1 && at(p0) === 's') p0++; while (p1 > p0 && at(p1) === 's') p1--; d.passage.floor = ASPH; d.passage.strip = r2((p1 + 1 - p0) * C); } } }
     doors.push(d);
+    /* THE ROAD RUNS ON PAST ITS END (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural"; the standard of the
+       day: a path goes on past the room's line in its own material). The spec's `runOn: { '<end id>': { len, spit } }` = that end's road is drawn on
+       over the land past the line (`terrain.edges.roads`, three-renderer.js THE ROAD RUNS ON PAST THE LINE: as wide as the seam, in the road's own sheet,
+       a dirt road low on the land), `len` m out (default: the land's reach). `spit: <m>` = the end leaves across the SEA: a bar of sand carries the road
+       that far (`edges.ways` row `spit`, three-renderer.js A WAY OVER THE WATER), so it never ends in the water. An end on the room's wall only. */
+    if (s && s.passage && d.passage) Object.assign(d.passage, s.passage);   // an end's own `passage` in the spec (the Coast Road's north end: the strip past the line is the port causeway's concrete, as wide as its deck)
+    const ro = (SPEC.runOn || {})[e.id];
+    if (ro && isOpen && e.onWall) { const rw = d.passage.strip || d.passage.w;
+        EDGE_ROADS.push(Object.assign({ side: e.side, at: e.along, w: rw, key: d.passage.floor || 'dirt_2' }, e.look === 'highway' ? {} : { lift: 0.12 }, ro.len ? { len: ro.len } : (ro.spit ? { len: ro.spit - 50 } : {})));
+        if (ro.spit) { e.spit = ro.spit; e.spitW = rw; } }
 });
 
 /* ── THE OPEN GROUND: every walked square, as `space` rows (greedy rectangles) ── */
@@ -569,7 +579,7 @@ L.push("                res: 1.75, floor: " + J(FLOOR) + ", cliff: 'rocks_5', pa
 L.push("                noise: { amp: 0.08, scale: 9 },");
 if (JOINS.some(J => J.grassField) || grounds.some(k => KIT[PJ.ground.key[Object.keys(PJ.ground.key).find(c => PJ.ground.key[c].kind === k)].kit].grass)) L.push("                grassField: true,");
 L.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */");
-L.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(ENDS.filter(e => e.onWall).map(e => ({ side: e.side, at: e.along }))) + (EDGE_ROADS.length ? ", roads: " + J(EDGE_ROADS) : "") + " },");
+L.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(ENDS.filter(e => e.onWall).map(e => Object.assign({ side: e.side, at: e.along }, e.spit ? { spit: e.spit, w: e.spitW } : {}))) + (EDGE_ROADS.length ? ", roads: " + J(EDGE_ROADS) : "") + " },");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + Dq + ", d: '" + slope.toString('base64') + "' } },");
 L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + (C / PR) + ", x0: " + r2(-HX + C / (2 * PR)) + ", z0: " + r2(-HZ + C / (2 * PR)) + ", nx: " + (W * PR) + ", nz: " + (Dq * PR) + ", d: '" + Buffer.from(paintOut).toString('base64') + "' },");
 L.push("                /* every square that is not a `space` is ground nobody walks: a forest plot grows its trees there, open ground grows nothing */");
