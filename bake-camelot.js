@@ -221,10 +221,13 @@ feat({ k: 'bridge', x0: gx(13.6), z0: gx(48), x1: gx(17.4), z1: gx(48), w: 7, y:
    walk, solid drums, a deck over each gate), a storey lower than the castle's wall so the castle stands over its town ── */
 note('THE TOWN WALL: four corner towers, the drums, the four gates');
 const WX0 = 18.5, WX1 = 77.5, WY0 = 21.5, WY1 = 73.5;
+/* THE CORNER TOWERS' CROWN (2026-11-22, THE STRAIGHT RAISE): 1.6 m over the deck, higher than the walker jumps (1.46 m at the apex). At the default 1.2 the
+   walker hopped onto the battlement and dropped outside into the corner of the berm, shut in between the drum and the moat (find-softlocks.js: 6 traps, 8 crevices). */
+const TCROWN = 1.6;
 const TCORN = { sw: [WX0, WY1], se: [WX1, WY1], nw: [WX0, WY0], ne: [WX1, WY0] };
 const TWRT = { sw: { door: [30, 66], joins: [[69, 111], [339, 381]], a0: 75 }, se: { door: [300, 334], joins: [[249, 291], [339, 381]], a0: 346 },
                ne: { door: [210, 244], joins: [[159, 201], [249, 291]], a0: 256 }, nw: { door: [120, 154], joins: [[69, 111], [159, 201]], a0: 166 } };
-Object.keys(TCORN).forEach(k => raw('...hqCastleTower(' + J(Object.assign({ id: 'town_tower_' + k, x: gx(TCORN[k][0]), z: gx(TCORN[k][1]), r: 5.25, top: TOPT, span: 250, key: WALL, floor: 'wood_planks' }, TWRT[k])) + ')'));
+Object.keys(TCORN).forEach(k => raw('...hqCastleTower(' + J(Object.assign({ id: 'town_tower_' + k, x: gx(TCORN[k][0]), z: gx(TCORN[k][1]), r: 5.25, top: TOPT, crown: TCROWN, span: 250, key: WALL, floor: 'wood_planks' }, TWRT[k])) + ')'));
 const SKIPT = { n: [328, 392], e: [58, 122], s: [148, 212], w: [238, 302] };
 const townArch = sheet();
 /* a side: `fix` its line, `along` the drums' places on it (squares), the gate between drums gi and gi + 1; horizontal sides run west → east, vertical ones south → north (the castle's own way round) */

@@ -14182,6 +14182,16 @@ own line; the districts' own roads leave their rooms somewhere else).
 - **THE LAST ROW WEARS ITS NEIGHBOUR (`_hqGrassCell`, `_hqFloraCell`):** the ground lattice's outer ring is never painted, so a route whose floor is grass grew a band of grass
   across its own road at the room's line (R9, R8, R10, R11 ends). An unpainted ring node now reads the node one row in, in every room.
 - Checked in the browser, every gate walked both ways (24 walks): the thread's pictures are in `/mnt/project-files/desert-gates/`.
+- **THE HIGHWAY NARROWS BEFORE THE GATE (the same day, mondo on the first pictures: "1 road going straight into the middle of 2 roads??? seriously?"; his pick on the card:
+  "Highway narrows before the gate"):** a highway is two carriageways and a median, a district's gate road is two lanes, so the gate road ran into the median. A route spec
+  (`docs/areas/routes/<id>.json`) may say `taper: { "<end id>": { len, hold } }` (default 10 + 3 squares): from `hold + len` squares before that end the median is asphalt,
+  its yellow lines close to a double line, the white edge lines close in from 3.4 to 1 square off the middle, the lane dashes and guard rails stop and the cars' lines move in;
+  the last `hold` squares are a two-lane road (three squares of asphalt, edge lines 7 m apart), and the seam is as wide as that. bake-route.js `TAPER_AT` / `taperAt` /
+  `taperLine`; ow-raised.js paints a raised highway's ground end only as wide as the road is there (`K.roadHalf`). On: DH1-DH4 both ends, R9's Circus end (`hold 2, len 5`:
+  it has 9 squares of ground after its ramp). `_hqSeamSection` counts a line at the wall as solid from 8 m (was 14: the two-lane stretch is 10.5 m). RULE (my reading of
+  his words): a road that meets another road at a gate has the SAME lanes on both sides; when a highway is raised later its ends keep the taper.
+- **THE ROAD IS GRADED (`_hqEdgeLandFn` LANES):** past the level 10 m the lane's level runs from the gate's floor to the land's own level 90 m out (10 to 70 m), and keeps
+  only a seventh of the land's rise and fall till 70 m, easing out by 200 m and 18 m aside (the Ranch Road and the Coast Road ran over a mound / along a bank). Never over sea.
 
 ## THE SEAM IS THE ROAD — an open seam on a route room's wall is as wide as the road (2026-11-22, mondo: "it only works when i enter through the median")
 mondo 11-22, the Badlands Highway (`site_ow_r9`) into the Circus: "it only works when i enter through the median in the highway, which doesnt make
@@ -14415,6 +14425,30 @@ All twelve rooms these tools write read 0 traps, 0 crevices after it. What each 
 - **THE TEMPLE** (`clash_temple`, handmade): the wedge of ground between three cliffs (6.5 to 10 m) is a `plateau` at the ledge's height.
 - **LEFT (second priority, each walked or jumped out of):** the Ski Mountain 5 dips (two rows of 1.2 m at z -59.6) + 10 slots, Katana 1 dip + 15
   slots (the terraces' foot strips, one node wide under 5 to 10 m faces, up to 31 m long), the Temple 9 slots, Outer Space 3 dips + 2 slots.
+
+**CAME A LOT AFTER (11-22, the Came A Lot soft-lock thread):** the kingdom room 6 traps + 8 crevices -> 0 + 0; the castle room 7 traps -> 0 (52 / 52 stops
+still walked, every door reached). What made them, and what binds every room:
+- **A CROWN THE JUMP CLEARS IS NO CROWN.** `hqCastleTower`'s battlement stands `crown` (default 1.2 m) over its deck; the walker's jump is 1.3 m in the
+  solver and 1.46 m at the real apex. On the town wall's four corner towers the walker hopped onto the merlons and dropped outside into the corner of the
+  berm, shut in between the drum and the moat. `bake-camelot.js` `TCROWN = 1.6`. A parapet at a drop with no way back stands 1.6 m or more.
+- **A DRUM HALF ON A HILL WEIGHS AS A ROUND BLOCK.** The two drums beside the Grand Stair were `solid` texbuildings (four ghost walls + a roof slab at the
+  lowest ground under them): over the hill's edge the roof slab did not hold and the walker fell through the top into the drum. `districts/K.js` `drum(…, round)`
+  writes `hqRoundBlock(...)` rows with `ghost: true` (walked, unseen: the sheet draws the drum). A `solid` texbuilding stands on LEVEL ground only.
+- **THREE RULES OF THE ENGINE (data.js, every room):**
+  (1) `hqTerrainWallAt`: A WALL UNDER THE BODY NEVER HIDES ONE IN IT. The first wall in reach was the answer; a parapet hung on a roof's edge on the line of
+  the wall under it was never seen (the walker stepped onto the line and off the roof, 21 m off a wing, 35 m off the Keep). A wall wholly under the body's
+  band is the answer only when no other wall in reach meets the band.
+  (2) `hqTerrainFeet`: ON A WALL'S TOP, NEVER IN THE WALL THAT STANDS ON IT. From a stair head just under a lower wall's top the walker was set on that top,
+  inside the storey's wall above it, and walked through (out of the castle by the cellar stairs' heads).
+  (3) `_hqTNodeFeet` (the SOLVER's jump, what `find-softlocks.js` and the rescue read): the jump lands UP ONLY and only where a body fits (`hqTerrainAir`).
+  It took the free query's lowest surface: floors down a sealed shaft through every slab, or the top of the wall under a parapet. Those traps were never reachable.
+- **The castle tool** (`bake-camelot-castle.js`): a parapet is WALKED 2.05 m (the merlons' tops) and drawn 1.15 m (`par()`); the wings' south doorways are walked
+  shut (the way out is the leaf half a metre inside; past the doorway is the room's unbuilt strip); the natives' lines are read from the room's own rows in
+  data.js now that the old keep and dungeon rooms are deleted (the tool had stopped running).
+- A FINDER LIMIT that rule (2) uncovered: on a coarse grid (1.75 m) a walk-in house's doorway falls between two nodes, so the finder does not read the
+  house's inside (before, it got in by stepping on furniture through the wall, which the walker could do too: that clip is gone). Checked on all 151
+  rooms before and after: no room gained a trap, a crevice or a dip; what the solver no longer reaches is wall lines, parapet tops and such insides.
+- Left: 3 SLOTs in the kingdom room, the back lane one square wide between the town wall's foot and the houses, open at both ends.
 
 **THE UNDERGROUND AFTER (11-22, the five labyrinth rooms: West Tunnel, Long Tunnel, Hollow Earth, the Cavern, Agartha):** all five read
 0 traps, 0 crevices, 0 dips, 0 slots (before: 29 traps, 6 crevices, 21 dips). Three tools, the same three causes, all at a SUMP:

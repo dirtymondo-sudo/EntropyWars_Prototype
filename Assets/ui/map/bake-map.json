@@ -117,7 +117,7 @@
   "hs": 0.25,
   "v": "1c0a4bfce0",
   "bytes": 20545,
-  "s": "21.3"
+  "s": "24.1"
  },
  "site_prebuilt_dumb_base": {
   "id": "site_prebuilt_dumb_base",
@@ -465,9 +465,9 @@
   "nz": 48,
   "h0": -0.98,
   "hs": 0.25,
-  "v": "3359a03764",
-  "bytes": 1127,
-  "s": "1.0"
+  "v": "4a1d27e375",
+  "bytes": 1160,
+  "s": "0.6"
  },
  "site_ow_r8": {
   "id": "site_ow_r8",
@@ -485,9 +485,9 @@
   "nz": 108,
   "h0": -0.9,
   "hs": 0.25,
-  "v": "edaae898f7",
-  "bytes": 1774,
-  "s": "1.1"
+  "v": "2acd56d0b0",
+  "bytes": 1773,
+  "s": "1.4"
  },
  "site_ow_r6": {
   "id": "site_ow_r6",
@@ -505,9 +505,9 @@
   "nz": 60,
   "h0": -0.53,
   "hs": 0.25,
-  "v": "d356a18906",
-  "bytes": 730,
-  "s": "0.6"
+  "v": "f2a6d878da",
+  "bytes": 728,
+  "s": "0.4"
  },
  "site_ow_dh3": {
   "id": "site_ow_dh3",
@@ -515,9 +515,9 @@
   "nz": 48,
   "h0": -0.59,
   "hs": 0.25,
-  "v": "a28570f0b4",
-  "bytes": 1053,
-  "s": "1.0"
+  "v": "54a9770c3a",
+  "bytes": 1055,
+  "s": "0.5"
  },
  "site_ow_dh4": {
   "id": "site_ow_dh4",
@@ -525,9 +525,9 @@
   "nz": 84,
   "h0": -0.63,
   "hs": 0.25,
-  "v": "4026491297",
-  "bytes": 1650,
-  "s": "1.1"
+  "v": "665ef4fdf2",
+  "bytes": 1670,
+  "s": "0.7"
  },
  "site_ow_r3": {
   "id": "site_ow_r3",
@@ -617,7 +617,7 @@
   "hs": 0.52,
   "v": "91e2a5aebc",
   "bytes": 13050,
-  "s": "9.8"
+  "s": "10.5"
  },
  "site_ow_r10": {
   "id": "site_ow_r10",
@@ -637,7 +637,7 @@
   "hs": 0.25,
   "v": "20ef1696de",
   "bytes": 2957,
-  "s": "7.3"
+  "s": "8.5"
  },
  "site_prebuilt_skinwalker_ow_trail": {
   "id": "site_prebuilt_skinwalker_ow_trail",
