@@ -301,7 +301,7 @@ put('hitching_rail', 45, 65, { face: 0 }); put('water_trough', 46, 66, { face: 9
 put('brazier', 41, 70); put('brazier', 44, 70); put('signpost', 46, 24); put('signpost', 75, 46); put('signpost', 20, 46); put('signpost', 44, 61, {}, MK);
 [[46, 23], [49, 23], [21, 46], [21, 49], [74, 46], [74, 49]].forEach(q => put('cave_torch', q[0], q[1]));
 native('knight', 41, 71, 90); native('knight', 44, 71, 270);
-put('milestone', 49, 24); put('milestone', 75, 49); put('milestone', 20, 49); put('firewood_stack', 20, 32, { face: 0 }); put('axe_chopping_block', 19, 32); put('firewood_stack', 76, 32, { face: 0 });   // THE MODEL PASS: a milestone inside each gate, the cottagers' wood
+put('milestone', 49, 24); put('milestone', 75, 49); put('milestone', 20, 49); put('firewood_stack', 20, 32, { face: 0 }); put('axe_chopping_block', 19, 32); put('firewood_stack', 74, 37, { face: 0 });   /* (11-22: was 76, 32, where the East Row gate's drum stands now) */   // THE MODEL PASS: a milestone inside each gate, the cottagers' wood
 [[45, 30], [50, 30], [37, 31], [59, 31], [29, 30], [67, 30], [27, 46], [69, 46], [27, 61], [69, 61]].forEach((q, i) => tree(i % 2 ? 'tree_4' : 'tree_2', r2(5 + (i % 3) * 0.5), q[0], q[1], 0.6));
 /* a plank bench on North Street, under the trees */
 [[46, 29], [51, 29]].forEach(q => { const x = gc(q[0]), z = gc(q[1]) + 0.9; S.box(x, 0.42, z, 1.9, 0.07, 0.4, WOODK, SWT, SW); for (const s of [-1, 1]) S.box(x + s * 0.8, 0, z, 0.1, 0.42, 0.36, WOODK, SWT, SW); });
