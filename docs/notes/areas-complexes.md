@@ -14428,6 +14428,10 @@ the Desert thread, merged the same hour); this is the same thing for a `trail`, 
   stands, in One World, on the HOUSE room's east line (ow-move.js: a fence ON a plot line is the west plot's). Its two-square gap was north of the back
   gate's three squares (`cut: [5, 6, 7]`), so the walker stopped at the rail 1 m short of the House Trail. The gap is the gate's squares now.
   LESSON: a fence on a district's line travels with the plot west / north of it; after a zone move, walk every gate.
+- **THE OLD ROAD NARROWS TOO** (R4, same day): `taper` (THE HIGHWAY NARROWS BEFORE THE GATE) on both road ends, Came A Lot's East Row and the Vatican's
+  west gate: two lanes at each gate, as the Desert's highways. The rebake also took in what the map changed since 11-17 (the box's north-west corner
+  is the Snowy Pines' snow now, no trees on it; lane lines joined at the bends; the spawn off the road); no prop moved but the taper's own (rails, dashes).
+  Walked both gates both ways. Map picture rebaked (`bake-map.js site_ow_r4`).
 - Probe: `playtest_city.js` takes `EW_PROBE_TRIES=1` (no retry of a whole chain after a crash; the cloud browser dies after 3 to 6 room changes: walk
   a gate out and back per run, no more).
 ## THE COAST + THE UNDERGROUND, WHERE THE ZONES MEET (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural")
