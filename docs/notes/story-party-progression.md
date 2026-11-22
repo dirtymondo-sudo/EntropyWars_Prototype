@@ -1122,3 +1122,10 @@ His tool for the story cutscenes. Plan + mock-up approved 11-15 (project files `
   LESSON: the cloud's long load card hides every wait a fast machine shows. Look for what stands between the card and the scene.
 - Harness: scratch `menu.js` (project files `cutscene-editor/tools/`): main menu -> Developer -> editor -> PLAY each scene. A cold
   cloud browser needs ~10 min per room load; one browser at a time.
+
+
+## THE STORY PLANNER (2026-11-22)
+mondo: a Chapter/Quest planner with the game map, made easy to fill from the chapter-by-chapter guide. It lives in the Relationship Web
+page (Settings > Developer > Relationship Web > **Story planner**), one plan saved on the game server as `story/plan`. Map + chapter
+beat-chart cards + quests with pins, Beat chart (with what it notices), Spine (bands + the guide's questions). Chapter 1 = ORIENTATION
+from STORY_QUESTS. Planning only: nothing in the game reads the plan. Full notes: docs/plans/story-web/README.md "The Story planner".

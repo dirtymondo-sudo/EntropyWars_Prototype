@@ -147,6 +147,7 @@ function sanitizeState(x) {
   Object.entries(x.deleted || {}).forEach(([k, v]) => { if (!o.boards[k]) o.deleted[k] = num(v, 0); });
   if (!o.order.length) { const m = { id: 'main', name: 'Main board', t: 0, nodes: {}, links: {}, view: null }; o.boards.main = m; o.order.push('main'); }
   o.active = o.boards[x.active] ? x.active : o.order[0];
+  o.story = x.story ? sanitizePlan(x.story) : null;   // THE STORY PLANNER's plan (one for every board)
   return o;
 }
 function loadLocal() {
@@ -158,10 +159,10 @@ function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(S)); local
 function saveLocalSoon() { clearTimeout(localTimer); localTimer = setTimeout(saveLocal, 350); }
 
 /* ───────── cloud (the artifact's db capability, when the page has it) ───────── */
-const cloud = { db: null, state: 'off', dirty: new Set(), dels: new Set(), idx: false, busy: false, timer: 0 };
+const cloud = { db: null, state: 'off', dirty: new Set(), dels: new Set(), idx: false, story: false, busy: false, timer: 0 };
 function setSave() {
   const el = $('saveState'); let cls = 'local', txt = 'Saved on this device', tip = 'Boards are kept in this browser. Use Export, then Save a backup, to keep a copy elsewhere.';
-  const pend = cloud.dirty.size || cloud.dels.size || cloud.idx;
+  const pend = cloud.dirty.size || cloud.dels.size || cloud.idx || cloud.story;
   if (cloud.state === 'loading') { cls = 'busy'; txt = 'Loading saved boards'; tip = ''; }
   else if (cloud.state === 'ok') { if (cloud.busy || pend) { cls = 'busy'; txt = 'Saving'; } else { cls = ''; txt = 'Saved'; } tip = cloud.db && cloud.db.server ? 'Saved on the game server: every computer that opens it from the game sees it.' : 'Saved with this page, and in this browser.'; }
   else if (cloud.state === 'ro') { txt = 'View only: changes stay on this device'; tip = 'You can change this board here, but only the owner can save it to the page.'; }
@@ -200,17 +201,17 @@ async function serverPull(asked) {
   }
   if (!r.ok) throw new Error('load ' + r.status);
   const d = (await r.json()).docs || {};
-  return [d['web/index'] || null, Object.keys(d).filter(k => k.startsWith('boards/')).map(k => d[k])];
+  return [d['web/index'] || null, Object.keys(d).filter(k => k.startsWith('boards/')).map(k => d[k]), d['story/plan'] || null];
 }
 async function serverInit() {
   if (!/^https?:$/.test(location.protocol) || !/\/dev\/relationship-web/.test(location.pathname)) return false;
   cloud.db = serverDb(); cloud.state = 'loading'; setSave();
-  try { const r = await serverPull(); mergeRemote(r[0], r[1]); cloud.state = 'ok'; } catch (e) { cloud.state = 'err'; }
+  try { const r = await serverPull(); mergeRemote(r[0], r[1]); mergeStory(r[2]); cloud.state = 'ok'; } catch (e) { cloud.state = 'err'; }
   setSave(); if (cloud.state === 'ok') flushSoon(50);
   /* the other computer's changes: look again every 10 s and when this tab comes back */
   const again = async () => {
-    const ae = document.activeElement; if (document.hidden || editing || (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) || cloud.busy || drag || pinch || cloud.dirty.size || cloud.dels.size || cloud.idx) return;
-    try { if (!webKey.get()) return; const r = await serverPull(true); if (cloud.busy || drag || pinch || cloud.dirty.size) return; mergeRemote(r[0], r[1]); if (cloud.state === 'err') { cloud.state = 'ok'; setSave(); } } catch (e) {}
+    const ae = document.activeElement; if (document.hidden || editing || (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) || cloud.busy || drag || pinch || cloud.dirty.size || cloud.dels.size || cloud.idx || cloud.story || MV.drag) return;
+    try { if (!webKey.get()) return; const r = await serverPull(true); if (cloud.busy || drag || pinch || cloud.dirty.size || cloud.story) return; mergeRemote(r[0], r[1]); mergeStory(r[2]); if (cloud.state === 'err') { cloud.state = 'ok'; setSave(); } } catch (e) {}
   };
   setInterval(again, 10000); window.addEventListener('focus', again); document.addEventListener('visibilitychange', again);
   return true;
@@ -222,8 +223,9 @@ async function cloudInit() {
   if (!db) return;
   cloud.db = db; cloud.state = 'loading'; setSave();
   try {
-    const res = await withTimeout(Promise.all([db.doc('web/index').get(), db.collection('boards').limit(500).get()]), 12000);
+    const res = await withTimeout(Promise.all([db.doc('web/index').get(), db.collection('boards').limit(500).get(), db.doc('story/plan').get().catch(() => null)]), 12000);
     mergeRemote(res[0] && res[0].exists ? res[0].data() : null, (res[1].docs || []).map(d => d.data()).filter(Boolean));
+    mergeStory(res[2] && res[2].exists ? res[2].data() : null);
     cloud.state = 'ok';
   } catch (e) { cloud.state = 'err'; }
   setSave(); if (cloud.state === 'ok') flushSoon(50);
@@ -253,7 +255,8 @@ async function flush() {
   if (!cloud.db || cloud.busy) return; cloud.busy = true; setSave();
   let cur = null;
   try {
-    while (cloud.dirty.size || cloud.dels.size || cloud.idx) {
+    while (cloud.dirty.size || cloud.dels.size || cloud.idx || cloud.story) {
+      if (cloud.story) { cur = null; cloud.story = false; if (S.story) { try { await cloud.db.doc('story/plan').set(JSON.parse(JSON.stringify(S.story))); } catch (e) { cloud.story = true; throw e; } } }
       for (const id of [...cloud.dirty]) { cur = id; cloud.dirty.delete(id); if (S.boards[id]) await cloud.db.doc('boards/' + id).set(JSON.parse(JSON.stringify(S.boards[id]))); }
       cur = null;
       for (const id of [...cloud.dels]) { cloud.dels.delete(id); if (!S.boards[id]) await cloud.db.doc('boards/' + id).delete(); }
@@ -1610,6 +1613,7 @@ stage.addEventListener('pointerdown', () => { $('roster').classList.remove('open
 $('legend').addEventListener('toggle', () => { S.ui.legend = $('legend').open; saveLocalSoon(); });
 document.addEventListener('keydown', e => {
   if (!$('modal').hidden) { if (e.key === 'Escape') closeModal(); return; }
+  if (ST.open) return;   // THE STORY PLANNER has its own keys
   const typing = /INPUT|TEXTAREA|SELECT/.test((e.target.tagName || ''));
   const mod = e.ctrlKey || e.metaKey;
   if (mod && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
@@ -1628,7 +1632,471 @@ document.addEventListener('keydown', e => {
 });
 window.addEventListener('resize', () => { positionPop(); });
 window.addEventListener('pagehide', saveLocal);
-document.addEventListener('visibilitychange', () => { if (document.hidden) { saveLocal(); if (cloud.db && (cloud.dirty.size || cloud.idx)) { clearTimeout(cloud.timer); flush(); } } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { saveLocal(); if (cloud.db && (cloud.dirty.size || cloud.idx || cloud.story)) { clearTimeout(cloud.timer); flush(); } } });
+
+/* ═════════ THE STORY PLANNER (2026-11-22) ═════════
+   mondo: "add a Chapter/Quest planner, where I can add chapters with multiple quests, and the game map on the screen so I can plan
+   the route the player is meant to take and how the story will play out", then "make the planner easy for me to plan the quests"
+   from the chapter-by-chapter plan (Rogers' Level Up!: the spine, the beat chart, enemies, mechanics, cutscenes).
+   One plan for every board, saved as doc `story/plan` beside the boards (server /api/story-web, the same password).
+   Three tabs: MAP (chapters + quests, the world painted from the game's own ground pictures, the route), BEAT CHART (the plan's
+   table, built from the chapters, with what it notices + the mechanics' intro / repeat / combine grid + the seven questions),
+   SPINE (the one-sheet, the six bands, every chapter's questions). Units are roster ids (r:<race>, s:<cast>), places are map refs
+   ('hq', 'z:<zone>', 'd:<zone>:<district>'), so a plan does not hang on any one board. Nothing in the game reads it yet. */
+const SD = D.story || { rooms: [], quests: [] };
+const ST = { open: false, tab: 'map', sel: null, pick: null, at: 0, mapLayer: 'surface' };
+const STEPS9 = ['1 · The hero wants something', '2 · Something disrupts their life', '3 · The hero tries to fix it', '4 · The attempt fails', '5 · A reversal makes it worse', '6 · A bigger problem', '7 · The final problem, the most at risk', '8 · The hero faces it and wins', '9 · The hero gets what they wanted'];
+const GOALS = [['escape', 'Escape'], ['explore', 'Explore'], ['learn', 'Learn'], ['choice', 'Choice']];
+const BANDS = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6'];
+const MECHS = ['Board fight', 'Tapes', 'Doors', 'Door gun', 'Capture door', 'One-way door', 'Fire + water', 'Liquid flows downhill', 'Skating', 'Driving', 'Flying the ship', 'Moving platforms'];
+const CHCOL = ['#ffd66b', '#ff8a5c', '#7fd98c', '#9fc2ff', '#ff7fbf', '#c8a2ff', '#5fe0d0', '#ffb84d', '#b9f27c', '#f0f0f0', '#ff5a5a', '#8fb0c4'];
+/* the plan's questions (the chapter-by-chapter guide, word for word); `first` = the seven to answer first */
+const SPINE_Q = [
+  { h: 'The one-sheet (Chapter 4)', q: [['os1', 'In one sentence, what is Entropy Wars?', 1], ['os2', 'What are the three or four things a player should tell a friend about it?'], ['os3', 'How long should the full story be: rough hours, or number of chapters? DOOR_STORY plans six bands of two or three chapters each (12 to 18 chapters). Is that still right?'], ['os4', 'Is the public demo PvP only, or PvP plus the first quest?']] },
+  { h: 'The story spine (Chapter 3)', q: [['sp1', 'Who sent the anonymous referral that got you hired, and why? The cast offers Locke, Glass, the Janitor and Dorian as candidates.', 1], ['sp2', 'What does DOOR collect entropy for? One reading of your notes is a thermostat (keep it level, as the Doorman wants). Yes, no, or something else?', 1], ['sp3', 'What is the final choice? Does the player choose open or closed at the end, and does that change the ending?', 1], ['sp4', "Who filed the false reports on your parents' deaths, and did the Doorman sign them?"], ['sp5', 'How do the newer ideas fit the cast-sheet story: August Tomorrow and the Chronocult, Dorian stealing the door gun from the future, the Black Cube and its overload, the Galactic Federation stepping in? Is the Black Cube overload the endgame threat?', 1], ['sp6', "The cast sheet says Elle Vator's faction is Money; project notes later list her as an Opener. Which is right?"], ['sp7', 'Which secrets should the player know before the characters do (suspense), and which should land as surprises?'], ['sp8', "Is Kit the catgirl race's story skin once you meet her, or her own locked unit?"]] },
+  { h: 'The beat chart and the world (Chapter 9)', q: [['lv1', 'After the first quest, which zone is the first real mission? Which zones belong to bands L2 to L4, and which are late game?', 1], ['lv2', 'Are zones locked by rank (story order), or can the player walk anywhere and the story just points the way?'], ['lv3', 'Should the world map show locked zones greyed out, or hide them until they open?'], ['lv4', 'What is the weenie of each zone (the landmark you see from far away)?'], ['lv5', 'Are side quests in scope for the slice, or main line only for now?']] },
+  { h: 'Enemies and bosses (Chapter 11)', q: [['en1', 'Who is the boss of each band? Dorian is surely the last. Who comes before him?'], ['en2', 'Do bosses keep the one-statline rule with no exception?'], ['en3', 'Should zone enemies come straight from the Relationship Web (who lives where), with the factions as squads?'], ['en4', 'Can some fights be won without a kill (talk a unit down, capture it, survive N rounds)?']] },
+  { h: 'Mechanics, hazards, calm spots (Chapter 12)', q: [['me1', 'Which mechanic does each early chapter teach first? For example, is capture taught in chapter 2?'], ['me2', 'Should the skating, driving and ship flying be required by the story somewhere, or stay optional?'], ['me3', 'Which zone hazards matter in battle (ice, fire, deep water, the void), and which are scenery only?']] },
+  { h: 'Cutscenes and the script (Chapter 16)', q: [['cs1', 'How long should a cutscene be at most? Scenes A to F are short. Is that the target?'], ['cs2', 'Should every cutscene be skippable, including the first time?'], ['cs3', 'Is voice acting ever planned, or subtitles only for good?'], ['cs4', 'Will you write every line yourself in the Cutscene Editor, or should I draft scenes (marked as drafts) for you to rewrite?', 1]] },
+];
+const SPINE_BY = {}; SPINE_Q.forEach(g => g.q.forEach(q => { SPINE_BY[q[0]] = q; }));
+const BAND_F = [['trust', 'What DOOR trusts you with'], ['zone', 'Which zone opens'], ['lie', 'The lie you believe'], ['clue', 'The clue about your parents']];
+
+/* ── the plan ── */
+const sStr = (v, n) => String(v == null ? '' : v).slice(0, n);
+const sIds = a => [...new Set((Array.isArray(a) ? a : []).map(x => String(x)).filter(x => ENT[x]))].slice(0, 60);
+const sPt = p => p && Number.isFinite(+p.x) && Number.isFinite(+p.y) ? { x: +(+p.x).toFixed(2), y: +(+p.y).toFixed(2) } : null;
+const sRef = r => typeof r === 'string' && /^(hq|z:[\w-]+|d:[\w-]+:[\w-]+)$/.test(r) ? r : '';
+function sanitizePlan(p) {
+  if (!p || typeof p !== 'object') return null;
+  const o = { v: 1, t: num(p.t, 0), chapters: [], clues: [], ans: {}, bands: {} };
+  (Array.isArray(p.chapters) ? p.chapters : []).slice(0, 60).forEach(c => {
+    if (!c || !c.id) return;
+    const ch = { id: sStr(c.id, 40), name: sStr(c.name, 80), col: clamp(Math.round(num(c.col, 0)), 0, CHCOL.length - 1), band: BANDS.includes(c.band) ? c.band : '', step: clamp(Math.round(num(c.step, 0)), 0, 9),
+      goal: GOALS.some(g => g[0] === c.goal) ? c.goal : '', zone: sRef(c.zone), enemies: sIds(c.enemies), mech: [...new Set((Array.isArray(c.mech) ? c.mech : []).map(m => sStr(m, 40)).filter(Boolean))].slice(0, 20),
+      boss: ENT[c.boss] ? c.boss : '', bossText: sStr(c.bossText, 120), reward: sStr(c.reward, 160), lie: sStr(c.lie, 300), trust: sStr(c.trust, 300), notes: sStr(c.notes, 4000), quests: [] };
+    (Array.isArray(c.quests) ? c.quests : []).slice(0, 60).forEach(q => {
+      if (!q || !q.id) return;
+      ch.quests.push({ id: sStr(q.id, 40), name: sStr(q.name, 100), kind: q.kind === 'side' ? 'side' : 'main', where: sRef(q.where), at: sPt(q.at), ug: !!q.ug, summary: sStr(q.summary, 2000), game: sStr(q.game, 60),
+        steps: (Array.isArray(q.steps) ? q.steps : []).slice(0, 40).map(s => ({ id: sStr(s && s.id || uid('s'), 40), text: sStr(s && s.text, 300), at: sPt(s && s.at) })),
+        cast: sIds(q.cast), scenes: (Array.isArray(q.scenes) ? q.scenes : []).slice(0, 30).map(s => ({ n: sStr(s && s.n, 100), how: s && s.how === 'played' ? 'played' : 'cut' })), reward: sStr(q.reward, 160), notes: sStr(q.notes, 4000) });
+    });
+    o.chapters.push(ch);
+  });
+  const chIds = new Set(o.chapters.map(c => c.id));
+  (Array.isArray(p.clues) ? p.clues : []).slice(0, 200).forEach(c => { if (c && c.id) o.clues.push({ id: sStr(c.id, 40), text: sStr(c.text, 300), plant: chIds.has(c.plant) ? c.plant : '', pay: chIds.has(c.pay) ? c.pay : '' }); });
+  Object.keys(p.ans || {}).forEach(k => { if (SPINE_BY[k] && p.ans[k]) o.ans[k] = sStr(p.ans[k], 4000); });
+  BANDS.forEach(b => { const x = p.bands && p.bands[b]; if (!x) return; const y = {}; BAND_F.forEach(f => { if (x[f[0]]) y[f[0]] = sStr(x[f[0]], 400); }); if (Object.keys(y).length) o.bands[b] = y; });
+  return o;
+}
+/* the first plan: Chapter 1 = the ORIENTATION quest that is in the game (its facts only; everything else is his to fill) */
+function seedPlan() {
+  const p = { v: 1, t: 0, chapters: [], clues: [], ans: {}, bands: {} };
+  SD.quests.forEach((q, i) => {
+    const cast = ['s:player'].concat(q.reward && q.reward.unit === 'catgirl' && ENT['s:kit'] ? ['s:kit'] : [], ENT['s:rhonda'] ? ['s:rhonda'] : [], ENT['r:shadow entity'] ? ['r:shadow entity'] : []);
+    p.chapters.push({ id: 'ch_' + q.id, name: q.title, col: i % CHCOL.length, band: i === 0 ? 'L1' : '', step: 0, goal: '', zone: q.start === 'hq' ? 'hq' : '', enemies: i === 0 && ENT['r:shadow entity'] ? ['r:shadow entity'] : [], mech: i === 0 ? ['Tapes', 'Board fight'] : [], boss: '', bossText: '',
+      reward: q.reward && q.reward.unit === 'catgirl' ? 'Kit (the Catgirl) joins the party' : '', lie: '', trust: '', notes: '',
+      quests: [{ id: 'q_' + q.id, name: q.title, kind: 'main', where: q.start === 'hq' ? 'hq' : '', at: null, ug: false, summary: q.summary, game: q.id, steps: q.steps.map((s, j) => ({ id: 's' + j, text: s, at: null })), cast, scenes: q.scenes.map(s => ({ n: s.n, how: 'cut' })), reward: q.reward && q.reward.unit === 'catgirl' ? 'Kit (the Catgirl) joins the party' : '', notes: '' }] });
+  });
+  return sanitizePlan(p);
+}
+const plan = () => { if (!S.story) S.story = seedPlan(); return S.story; };
+function storySave(light) { const P = plan(); P.t = Date.now(); cloud.story = true; saveLocalSoon(); flushSoon(); if (!light) storyRender(); else storyLight(); }
+function mergeStory(rp) { if (!rp) { if (S.story && S.story.t > 0) cloud.story = true; return; } const L = S.story; if (!L || (num(rp.t, 0) > (L.t || 0))) { S.story = sanitizePlan(rp); saveLocal(); if (ST.open) storyRender(); } else if ((L.t || 0) > num(rp.t, 0)) cloud.story = true; }
+
+/* ── places ── */
+const ZK = Object.fromEntries((PL.zones || []).map(z => [z.k, z]));
+const UG_HUBS = new Set(); { const by = {}; SD.rooms.forEach(r => { (by[r.hub] = by[r.hub] || []).push(r.layer); }); Object.entries(by).forEach(([h, ls]) => { if (ls.every(l => l === 'under')) UG_HUBS.add(h); }); }
+function placeOf(ref) {
+  if (!ref) return null; if (ref === 'hq') return { ref, n: 'DOOR HQ', zk: 'hq', at: null, c: '#ffd66b' };
+  const m = ref.split(':'), z = ZK[m[1]]; if (!z) return null;
+  if (m[0] === 'z') return { ref, n: z.n, zk: z.k, at: z.at || null, c: z.c };
+  const d = z.d.find(q => q.k === m[2]); return d ? { ref, n: d.n + ', ' + z.n, short: d.n, zk: z.k, at: d.at || z.at || null, c: d.c || z.c } : null;
+}
+const PLACES = (() => { const out = [{ ref: 'hq', n: 'DOOR HQ' }]; (PL.zones || []).forEach(z => { out.push({ ref: 'z:' + z.k, n: z.n }); z.d.forEach(d => out.push({ ref: 'd:' + z.k + ':' + d.k, n: d.n + ', ' + z.n })); }); return out; })();
+function nearestPlace(x, y) { let best = null, bd = Infinity; (PL.zones || []).forEach(z => { const t = (at, ref, pen) => { if (!at) return; const dd = Math.hypot(at[0] - x, at[1] - y) + pen; if (dd < bd) { bd = dd; best = ref; } }; t(z.at, 'z:' + z.k, 1.5); z.d.forEach(d => t(d.at, 'd:' + z.k + ':' + d.k, 0)); }); return bd < 9 ? best : null; }
+/* who lives in a zone today (the game's own spawns, the "in the game now" board's data) */
+const ZONE_UNITS = (() => {
+  const sp = D.spawns || { nodes: {}, links: {} }, N = sp.nodes, zOf = id => { let g = N[id], n = 0; while (g && g.parent && n++ < 8) g = N[g.parent]; return g && /^z_/.test(g.id) ? g.id.slice(2) : null; }, out = {};
+  Object.values(sp.links || {}).forEach(l => { if (l.type !== 'member' || !ENT[l.a]) return; const z = zOf(l.b); if (!z) return; (out[z] = out[z] || new Set()).add(l.a); });
+  Object.keys(out).forEach(k => { out[k] = [...out[k]]; }); return out;
+})();
+const zoneOfRef = ref => { const p = placeOf(ref); return p ? p.zk : null; };
+
+/* ── order, the route ── */
+function flatQuests() { const out = []; plan().chapters.forEach((c, ci) => c.quests.forEach((q, qi) => out.push({ c, q, ci, qi, no: (ci + 1) + '.' + (q.kind === 'side' ? String.fromCharCode(97 + c.quests.filter((x, j) => j < qi && x.kind === 'side').length) : (c.quests.filter((x, j) => j < qi && x.kind !== 'side').length + 1)) }))); return out; }
+const qPoint = q => q.at ? [q.at.x, q.at.y] : (placeOf(q.where) || {}).at || null;
+const qUnder = q => q.ug || UG_HUBS.has(zoneOfRef(q.where));
+const findQ = id => { for (const c of plan().chapters) { const q = c.quests.find(x => x.id === id); if (q) return { c, q }; } return null; };
+const findC = id => plan().chapters.find(c => c.id === id);
+const chNo = id => plan().chapters.findIndex(c => c.id === id) + 1;
+/* zones open by chapter N: every zone named by chapters 1..N (the chapter's zone or any of its quests) */
+function openZones(n) { const s = new Set(['hq']); plan().chapters.slice(0, n).forEach(c => { const z = zoneOfRef(c.zone); if (z) s.add(z); c.quests.forEach(q => { const zq = zoneOfRef(q.where); if (zq) s.add(zq); }); }); return s; }
+/* the mechanics: a chapter's NEW ones are those no earlier chapter used; a mechanic used with another old one = combined */
+function mechTable() {
+  const seen = new Set(), rows = {}, order = [];
+  plan().chapters.forEach((c, i) => { const old = c.mech.filter(m => seen.has(m)); c.mech.forEach(m => { if (!rows[m]) { rows[m] = {}; order.push(m); } rows[m][i] = !seen.has(m) ? 'intro' : old.length > 1 ? 'combine' : 'repeat'; }); c.mech.forEach(m => seen.add(m)); });
+  MECHS.forEach(m => { if (!rows[m]) { rows[m] = {}; order.push(m); } });
+  return { rows, order };
+}
+const newMech = i => { const prev = new Set(); plan().chapters.slice(0, i).forEach(c => c.mech.forEach(m => prev.add(m))); return plan().chapters[i].mech.filter(m => !prev.has(m)); };
+function noticed() {
+  const P = plan(), C = P.chapters, out = [], nm = (i) => 'Ch ' + (i + 1);
+  for (let i = 1; i < C.length; i++) if (!newMech(i).length && !newMech(i - 1).length && i - 1 > 0) out.push(nm(i - 1) + ' and ' + nm(i) + ' teach no new mechanic: two chapters in a row with nothing new.');
+  for (let i = 2; i < C.length; i++) if (C[i].goal && C[i].goal === C[i - 1].goal && C[i].goal === C[i - 2].goal) out.push(nm(i - 2) + ', ' + (i) + ' and ' + (i + 1) + ' all have the goal ' + GOALS.find(g => g[0] === C[i].goal)[1] + '.');
+  for (let i = 1; i < C.length; i++) { const a = BANDS.indexOf(C[i - 1].band), b = BANDS.indexOf(C[i].band); if (a >= 0 && b >= 0 && b < a) out.push(nm(i) + ' is in band ' + C[i].band + ', lower than ' + nm(i - 1) + ' (' + C[i - 1].band + ').'); }
+  P.clues.forEach(cl => { const t = cl.text || 'A clue'; if (cl.plant && !cl.pay) out.push('"' + t + '" (planted in ' + nm(chNo(cl.plant) - 1) + ') never pays off yet.'); else if (cl.plant && cl.pay && chNo(cl.pay) <= chNo(cl.plant)) out.push('"' + t + '" pays off in ' + nm(chNo(cl.pay) - 1) + ', before or where it is planted.'); else if (!cl.plant && cl.pay) out.push('"' + t + '" pays off in ' + nm(chNo(cl.pay) - 1) + ' but is never planted.'); });
+  const noBoss = C.filter(c => !c.boss && !c.bossText).length; if (C.length && noBoss) out.push(noBoss === C.length ? 'No chapter has a boss yet.' : noBoss + ' of ' + C.length + ' chapters have no boss yet.');
+  const steps = new Set(C.map(c => c.step).filter(Boolean)), miss = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(s => !steps.has(s)); if (C.length && miss.length) out.push('Story steps with no chapter yet: ' + miss.join(', ') + '.');
+  C.forEach((c, i) => { if (!c.quests.some(q => q.kind === 'main')) out.push(nm(i) + ' has no main quest.'); });
+  return out;
+}
+
+/* ── the map: the world painted once per layer from the game's ground pictures (map.js _zmPaint's look) ── */
+const MAP_PICS = window.EW_MAP_PICS || 'https://cdn.entropywars.net/Assets/ui/map/';
+const SKIND = [null, [92, 142, 70], [64, 108, 62], [138, 112, 78], [206, 186, 132], [222, 230, 240], [132, 128, 120], [132, 134, 142], [146, 108, 72], [74, 66, 64], [98, 58, 48], [236, 236, 246], [176, 94, 62], [124, 104, 186], [212, 178, 84], [112, 122, 134]];
+const STERR = { coast: [36, 74, 146], snow: [222, 230, 240], mountain: [132, 128, 120], grass: [92, 142, 70], forest: [50, 90, 54], scrub: [170, 160, 110], mesa: [176, 120, 80], desert: [206, 186, 132] };
+const MPX = 2, MPP = 12 * MPX; // painted pixels a square, a plot
+const MV = { k: 0, cx: 6, cy: 10, base: {}, pics: {}, drag: null };
+function stPaint(d, nx, nz, S, hs) {
+  const Wd = nx * S, out = new Uint8ClampedArray(Wd * nz * S * 4); let lo = 255, hi = 0;
+  for (let k = 0; k < nx * nz; k++) { if (d[k * 4 + 2] & 64) continue; const h = d[k * 4]; if (h < lo) lo = h; if (h > hi) hi = h; }
+  const span = Math.max(1, hi - lo), H = (i, j) => { if (i < 0 || j < 0 || i >= nx || j >= nz) return null; const k = j * nx + i; return (d[k * 4 + 2] & 64) ? null : d[k * 4] * hs; };
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+    const k = j * nx + i, h8 = d[k * 4], g = d[k * 4 + 1], b = d[k * 4 + 2]; if (b & 64) continue;
+    const h = h8 * hs, t = (h8 - lo) / span, hl = H(i - 1, j), hu = H(i, j - 1), sh = Math.max(-46, Math.min(46, ((hl == null ? 0 : h - hl) + (hu == null ? 0 : h - hu)) * 14)); let c;
+    if (b & 4) c = [44, 86, 158]; else if (b & 32) c = [36, 74, 146]; else if (b & 8) c = [226, 96, 34]; else if (b & 16) c = [118, 186, 52];
+    else { const base = SKIND[g] || SKIND[6], lift = .78 + .42 * t; c = [base[0] * lift + sh, base[1] * lift + sh, base[2] * lift + sh]; if ((b & 128) && g >= 1 && g <= 3) c = [40 + 30 * t + sh * .5, 74 + 34 * t + sh * .5, 44 + 20 * t + sh * .5]; else if (b & 128) c = c.map(v => v * .62); else if (b & 1) c = c.map(v => v * .72); }
+    if ((b & 2) && !(b & 128)) c = [34 + sh * .3, 84 + sh * .3, 40];
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const o = ((j * S + y) * Wd + i * S + x) * 4; out[o] = c[0]; out[o + 1] = c[1]; out[o + 2] = c[2]; out[o + 3] = 255; }
+  }
+  return out;
+}
+function mapBase(layer) {
+  if (MV.base[layer]) return MV.base[layer];
+  const W = PL.world; if (!W) return null;
+  const cv = document.createElement('canvas'); cv.width = W.w * MPP; cv.height = W.h * MPP; const x = cv.getContext('2d');
+  x.fillStyle = '#0a0d10'; x.fillRect(0, 0, cv.width, cv.height);
+  if (layer === 'surface') W.g.forEach((row, j) => { for (let i = 0; i < row.length; i++) { const t = STERR[W.key[row[i]]] || [20, 24, 28]; x.fillStyle = 'rgb(' + t.map(v => v * .55 | 0) + ')'; x.fillRect(i * MPP, j * MPP, MPP, MPP); } });
+  MV.base[layer] = cv;
+  SD.rooms.filter(r => r.layer === layer).forEach(r => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => { try { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const cx = c.getContext('2d', { willReadFrequently: true }); cx.drawImage(im, 0, 0); const px = stPaint(cx.getImageData(0, 0, c.width, c.height).data, c.width, c.height, MPX, r.hs); c.width = im.width * MPX; c.height = im.height * MPX; cx.putImageData(new ImageData(px, c.width, c.height), 0, 0); x.drawImage(c, (r.x - W.x0) * MPP, (r.y - W.y0) * MPP, r.w * MPP, r.h * MPP); storyDrawMap(); } catch (e) {} };
+    im.src = MAP_PICS + r.room + '.png?h=' + r.v;
+  });
+  return cv;
+}
+const mapCv = () => $('stMap');
+function mapFit() { const cv = mapCv(), W = PL.world; if (!cv || !W) return; MV.k = Math.min(cv.clientWidth / 74, cv.clientHeight / 66); MV.cx = 5; MV.cy = 9; }
+const m2s = (px, py) => { const cv = mapCv(); return [cv.clientWidth / 2 + (px - MV.cx) * MV.k, cv.clientHeight / 2 + (py - MV.cy) * MV.k]; };
+const s2m = (sx, sy) => { const cv = mapCv(); return [MV.cx + (sx - cv.clientWidth / 2) / MV.k, MV.cy + (sy - cv.clientHeight / 2) / MV.k]; };
+let mapPins = [];
+function storyDrawMap() {
+  const cv = mapCv(); if (!cv || !ST.open || ST.tab !== 'map') return;
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  if (!MV.k) mapFit();
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.fillStyle = '#05070a'; x.fillRect(0, 0, w, h);
+  const W = PL.world, base = mapBase(ST.mapLayer);
+  if (base && W) { const [ox, oy] = m2s(W.x0, W.y0); x.imageSmoothingEnabled = MV.k < MPP; x.drawImage(base, ox, oy, W.w * MV.k, W.h * MV.k); }
+  const P = plan(), atN = ST.at, open = atN ? openZones(atN) : null;
+  /* the zones not open yet at chapter N: shaded */
+  if (open) SD.rooms.filter(r => r.layer === ST.mapLayer && !open.has(r.hub)).forEach(r => { const [a, b] = m2s(r.x, r.y); x.fillStyle = 'rgba(5,7,10,.66)'; x.fillRect(a, b, r.w * MV.k, r.h * MV.k); });
+  /* names: the zones; the districts when close */
+  x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+  (PL.zones || []).forEach(z => {
+    if (!z.at) return; const ug = UG_HUBS.has(z.k); if ((ST.mapLayer === 'under') !== ug) return;
+    const [X, Y] = m2s(z.at[0], z.at[1]); if (X < -80 || Y < -40 || X > w + 80 || Y > h + 40) return;
+    x.font = '600 13px "Special Elite", "Courier New", monospace'; const s = z.n.toUpperCase(), tw = x.measureText(s).width + 10;
+    const LY = Y - 26; x.fillStyle = 'rgba(0,0,0,.75)'; x.fillRect(X - tw / 2, LY - 9, tw, 18); x.strokeStyle = '#fff'; x.lineWidth = 1; x.strokeRect(X - tw / 2 + .5, LY - 8.5, tw - 1, 17); x.fillStyle = '#fff'; x.fillText(s, X, LY + 4);
+    if (open && !open.has(z.k)) { x.font = '600 10px "IBM Plex Mono", monospace'; x.fillStyle = '#c8c8c8'; x.fillText('NOT OPEN AT CH ' + atN, X, LY - 13); }
+    if (MV.k > 26) z.d.forEach(d => { if (!d.at || (Math.abs(d.at[0] - z.at[0]) < .6 && Math.abs(d.at[1] - z.at[1]) < .6)) return; const [dx, dy] = m2s(d.at[0], d.at[1]); x.font = '500 11px "IBM Plex Sans", system-ui, sans-serif'; const dw = x.measureText(d.n).width + 8; x.fillStyle = 'rgba(0,0,0,.6)'; x.fillRect(dx - dw / 2, dy - 7, dw, 15); x.fillStyle = '#e8e8e8'; x.fillText(d.n, dx, dy + 4); });
+  });
+  /* the route: main quests in story order; a side quest hangs off the main quest before it */
+  const FQ = flatQuests().filter(f => !atN || f.ci < atN), pts = FQ.map(f => ({ f, p: qPoint(f.q) }));
+  const line = (a, b, col, dash, lw) => { x.save(); x.setLineDash(dash); x.lineCap = 'round'; x.strokeStyle = '#000'; x.lineWidth = lw + 4; x.beginPath(); x.moveTo(a[0], a[1]); x.lineTo(b[0], b[1]); x.stroke(); x.strokeStyle = col; x.lineWidth = lw; x.beginPath(); x.moveTo(a[0], a[1]); x.lineTo(b[0], b[1]); x.stroke(); x.setLineDash([]);
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L > 46) { const an = Math.atan2(b[1] - a[1], b[0] - a[0]), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2; x.fillStyle = col; x.strokeStyle = '#000'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(mx + Math.cos(an) * 9, my + Math.sin(an) * 9); x.lineTo(mx + Math.cos(an + 2.5) * 9, my + Math.sin(an + 2.5) * 9); x.lineTo(mx + Math.cos(an - 2.5) * 9, my + Math.sin(an - 2.5) * 9); x.closePath(); x.fill(); x.stroke(); } x.restore(); };
+  const tray = $('stTray'), trayAt = id => { const el = tray && tray.querySelector('[data-tq="' + id + '"]'); if (!el) return null; const r = el.getBoundingClientRect(), c = cv.getBoundingClientRect(); return [r.left - c.left + 14, r.top - c.top + r.height / 2]; };
+  const scr = it => it.p ? m2s(it.p[0], it.p[1]) : trayAt(it.f.q.id);
+  let lastMain = null;
+  pts.forEach(it => {
+    const col = CHCOL[it.f.c.col] || '#fff', here = scr(it);
+    if (it.f.q.kind === 'side') { if (lastMain && here && scr(lastMain)) line(scr(lastMain), here, col, [10, 7], 2.5); return; }
+    if (lastMain && here && scr(lastMain)) line(scr(lastMain), here, col, (qUnder(it.f.q) || qUnder(lastMain.f.q)) ? [2, 6] : [], 4);
+    lastMain = it;
+  });
+  /* the picked quest's steps: small pins joined to it */
+  mapPins = [];
+  const selQ = ST.sel && ST.sel.kind === 'quest' ? findQ(ST.sel.id) : null;
+  if (selQ && !(atN && chNo(selQ.c.id) > atN)) { const qp = qPoint(selQ.q); selQ.q.steps.forEach((s, i) => { if (!s.at) return; const sp = m2s(s.at.x, s.at.y); if (qp) line(m2s(qp[0], qp[1]), sp, '#ffffff', [3, 4], 1.5); x.beginPath(); x.arc(sp[0], sp[1], 9, 0, 7); x.fillStyle = '#ffd66b'; x.fill(); x.lineWidth = 2; x.strokeStyle = '#000'; x.stroke(); x.fillStyle = '#000'; x.font = '600 10px "IBM Plex Mono", monospace'; x.fillText(String(i + 1), sp[0], sp[1] + 3.5); mapPins.push({ kind: 'step', q: selQ.q.id, s: s.id, x: sp[0], y: sp[1], r: 10 }); }); }
+  pts.forEach(it => {
+    if (!it.p) return; const [X, Y] = m2s(it.p[0], it.p[1]); if (X < -30 || Y < -30 || X > w + 30 || Y > h + 30) return;
+    const col = CHCOL[it.f.c.col] || '#fff', on = ST.sel && ((ST.sel.kind === 'quest' && ST.sel.id === it.f.q.id) || (ST.sel.kind === 'chapter' && ST.sel.id === it.f.c.id));
+    x.save(); x.beginPath(); x.arc(X, Y, on ? 18 : 15, 0, 7); x.fillStyle = col; x.fill(); x.lineWidth = 3; x.strokeStyle = '#000'; if (it.f.q.kind === 'side') x.setLineDash([4, 3]); x.stroke(); x.setLineDash([]);
+    x.lineWidth = on ? 3 : 1.5; x.strokeStyle = '#fff'; x.beginPath(); x.arc(X, Y, (on ? 18 : 15) + 2.5, 0, 7); x.stroke();
+    x.fillStyle = '#000'; x.font = '600 11px "IBM Plex Mono", monospace'; x.fillText(it.f.no, X, Y + 4); x.restore();
+    mapPins.push({ kind: 'quest', q: it.f.q.id, x: X, y: Y, r: 17 });
+  });
+  /* the hover card */
+  if (MV.hover) { const f = flatQuests().find(z => z.q.id === MV.hover.q); if (f) { const p = placeOf(f.q.where), t1 = f.no + ' · ' + (f.q.name || 'Untitled quest'), t2 = (p ? p.n : 'No place yet') + (qUnder(f.q) ? ' · underground' : '') + (f.q.kind === 'side' ? ' · side quest' : ''); x.font = '600 12px "IBM Plex Sans", system-ui, sans-serif'; const bw = Math.max(x.measureText(t1).width, x.measureText(t2).width * .95) + 18; const hx = Math.min(MV.hover.x + 22, w - bw - 6), hy = MV.hover.y - 10; x.fillStyle = '#000'; x.fillRect(hx, hy, bw, 40); x.strokeStyle = '#fff'; x.lineWidth = 2; x.strokeRect(hx, hy, bw, 40); x.textAlign = 'left'; x.fillStyle = '#fff'; x.fillText(t1, hx + 9, hy + 16); x.font = '11.5px "IBM Plex Sans", system-ui, sans-serif'; x.fillStyle = '#bbb'; x.fillText(t2, hx + 9, hy + 32); } }
+  if (ST.pick) { x.fillStyle = 'rgba(0,0,0,.8)'; x.fillRect(w / 2 - 170, 52, 340, 30); x.strokeStyle = '#4fd36a'; x.lineWidth = 2; x.strokeRect(w / 2 - 170, 52, 340, 30); x.fillStyle = '#4fd36a'; x.textAlign = 'center'; x.font = '600 13px "IBM Plex Sans", system-ui, sans-serif'; x.fillText('Click the map to place it · Escape to stop', w / 2, 72); }
+}
+function mapHit(sx, sy) { for (let i = mapPins.length - 1; i >= 0; i--) { const p = mapPins[i]; if (Math.hypot(p.x - sx, p.y - sy) <= p.r) return p; } return null; }
+
+/* ── the panels ── */
+const face = id => { const e = ENT[id]; if (!e) return ''; const n = (e.kind === 'cast' && e.c ? e.c.n : e.n); return '<span class="stchip" data-ent="' + esc(id) + '">' + (e.img ? '<img alt="" src="' + e.img + '">' : '<i>' + esc(initials(n)) + '</i>') + esc(n) + '<b data-unent="' + esc(id) + '" title="Remove">×</b></span>'; };
+const entName = id => { const e = ENT[id]; return e ? (e.kind === 'cast' && e.c ? e.c.n : e.n) : ''; };
+const seg = (f, opts, val) => '<div class="stseg" data-seg="' + f + '">' + opts.map(o => '<button data-v="' + esc(o[0]) + '"' + (String(val) === String(o[0]) ? ' class="on"' : '') + '>' + esc(o[1]) + '</button>').join('') + '</div>';
+const fld = (lab, html) => '<div class="stlbl">' + lab + '</div>' + html;
+const pickBox = (id, ph, cur) => (cur ? '<div class="stcur">' + esc(cur) + '</div>' : '') + '<div class="stpick"><input class="stinp" data-pick="' + id + '" placeholder="' + esc(ph) + '" autocomplete="off"><div class="stpl" hidden></div></div>';
+function renderLeft() {
+  const P = plan(); let h = '<h3>CHAPTERS</h3>';
+  P.chapters.forEach((c, ci) => {
+    const col = CHCOL[c.col], z = placeOf(c.zone), on = ST.sel && ST.sel.kind === 'chapter' && ST.sel.id === c.id;
+    h += '<div class="stch' + (on ? ' on' : '') + '" style="--cc:' + col + '" data-ch="' + esc(c.id) + '" draggable="true"><div class="hd"><span class="dot" style="background:' + col + '"></span>Ch ' + (ci + 1) + (c.name ? ' · ' + esc(c.name) : '') + '</div>'
+      + '<div class="sub">' + [c.band, z ? z.n : '', c.quests.length + (c.quests.length === 1 ? ' quest' : ' quests')].filter(Boolean).map(esc).join(' · ') + '</div>';
+    flatQuests().filter(f => f.c === c).forEach(f => { const q = f.q, qon = ST.sel && ST.sel.kind === 'quest' && ST.sel.id === q.id;
+      h += '<div class="stq' + (q.kind === 'side' ? ' side' : '') + (qon ? ' on' : '') + '" data-q="' + esc(q.id) + '" draggable="true"><span class="n" style="background:' + col + '">' + f.no + '</span><span class="t">' + esc(q.name || 'Untitled quest') + '</span><span class="k">' + (q.kind === 'side' ? 'SIDE' : 'MAIN') + (q.game ? ' · GAME' : '') + '</span></div>'; });
+    h += '<button class="stadd" data-addq="' + esc(c.id) + '">+ Quest</button></div>';
+  });
+  h += '<button class="stbtn g" data-act="addCh">+ Chapter</button>';
+  $('stLeft').innerHTML = h;
+}
+function renderTray() {
+  const off = [{ ref: 'hq', n: 'DOOR HQ' }].concat((PL.zones || []).filter(z => !z.at).map(z => ({ ref: 'z:' + z.k, n: z.n })));
+  const FQ = flatQuests().filter(f => !ST.at || f.ci < ST.at);
+  let h = '<div class="tt">OFF THE MAP</div>';
+  off.forEach(o => { const qs = FQ.filter(f => !f.q.at && (f.q.where === o.ref || (f.q.where && f.q.where.startsWith('d:' + o.ref.slice(2) + ':') && !qPoint(f.q)))); h += '<div class="o"><span class="on">' + esc(o.n) + '</span>' + qs.map(f => '<span class="n" data-tq="' + esc(f.q.id) + '" style="background:' + CHCOL[f.c.col] + '">' + f.no + '</span>').join('') + '</div>'; });
+  const none = FQ.filter(f => !f.q.where && !f.q.at); if (none.length) h += '<div class="o"><span class="on" style="color:#ff8a8a">No place yet</span>' + none.map(f => '<span class="n" data-tq="' + esc(f.q.id) + '" style="background:' + CHCOL[f.c.col] + '">' + f.no + '</span>').join('') + '</div>';
+  $('stTray').innerHTML = h;
+}
+function chapterForm(c) {
+  const P = plan(), ci = P.chapters.indexOf(c), z = zoneOfRef(c.zone), lives = (ZONE_UNITS[z] || []).filter(id => !c.enemies.includes(id));
+  const factions = Object.values(B.nodes).filter(n => isGrp(n) && gkOf(n) === 'faction' && membersOf(n.id).some(id => ENT[id]));
+  const nm = newMech(ci), plants = P.clues.filter(k => k.plant === c.id), pays = P.clues.filter(k => k.pay === c.id && k.plant !== c.id);
+  let h = '<div class="sthd"><h3>CHAPTER ' + (ci + 1) + '</h3><span class="sp"></span><button class="stbtn sm" data-act="chUp" title="Earlier">◂</button><button class="stbtn sm" data-act="chDown" title="Later">▸</button></div>';
+  h += fld('Name', '<input class="stinp" data-f="name" value="' + esc(c.name) + '" placeholder="Chapter name">');
+  h += fld('Colour', '<div class="stcols">' + CHCOL.map((k, i) => '<button data-col="' + i + '" style="background:' + k + '"' + (i === c.col ? ' class="on"' : '') + '></button>').join('') + '</div>');
+  h += fld('Band (rank)', seg('band', BANDS.map(b => [b, b]), c.band));
+  h += fld('Story step (the nine steps)', '<select class="stinp" data-f="step"><option value="0">Pick a step…</option>' + STEPS9.map((s, i) => '<option value="' + (i + 1) + '"' + (c.step === i + 1 ? ' selected' : '') + '>' + esc(s) + '</option>').join('') + '</select>');
+  h += fld('Goal of the chapter', seg('goal', GOALS, c.goal));
+  h += fld('Zone it opens', '<div class="strow">' + pickBox('zone', placeOf(c.zone) ? 'Change…' : 'Type a zone or district…', placeOf(c.zone) ? placeOf(c.zone).n : '') + '<button class="stbtn sm" data-act="pickZone">On map</button></div>');
+  h += fld('Enemies', '<div class="stchips">' + c.enemies.map(face).join('') + '</div>' + pickBox('enemy', 'Add a unit…')
+    + (lives.length ? '<div class="stsub">Lives in ' + esc(placeOf('z:' + z) ? placeOf('z:' + z).n : 'this zone') + ' (click to add)</div><div class="stlives">' + lives.slice(0, 40).map(id => '<button data-addenemy="' + esc(id) + '" title="' + esc(entName(id)) + '">' + (ENT[id].img ? '<img alt="" src="' + ENT[id].img + '">' : esc(initials(entName(id)))) + '</button>').join('') + '</div>' : '')
+    + (factions.length ? '<select class="stinp" data-act="squad"><option value="">+ Squad from a faction on this board…</option>' + factions.map(f => '<option value="' + esc(f.id) + '">' + esc(f.name) + ' (' + membersOf(f.id).filter(id => ENT[id]).length + ')</option>').join('') + '</select>' : ''));
+  h += fld('Mechanics used <span class="stmuted">(new ones are found by themselves)</span>', '<div class="stmech">' + [...new Set(MECHS.concat(c.mech))].map(m => '<button data-mech="' + esc(m) + '"' + (c.mech.includes(m) ? ' class="on' + (nm.includes(m) ? ' new' : '') + '"' : '') + '>' + esc(m) + (nm.includes(m) ? ' · NEW' : '') + '</button>').join('') + '</div><input class="stinp" data-act="mechAdd" placeholder="Another mechanic, press Enter">');
+  h += fld('Boss', '<div class="stchips">' + (c.boss ? face(c.boss).replace('data-unent', 'data-unboss') : '') + '</div>' + pickBox('boss', c.boss ? 'Change the boss…' : 'Pick a unit…') + '<input class="stinp" data-f="bossText" value="' + esc(c.bossText) + '" placeholder="or a note: the arena, the twist…">');
+  h += fld('Reward', '<input class="stinp" data-f="reward" value="' + esc(c.reward) + '" placeholder="A unit, a key, a rank…">');
+  h += fld('Clues', plants.map(k => '<div class="stclue"><b class="pl">plant</b><input class="stinp" data-clue="' + esc(k.id) + '" value="' + esc(k.text) + '" placeholder="The clue"><select class="stinp" data-cluepay="' + esc(k.id) + '"><option value="">pays off: not yet</option>' + P.chapters.map((x, i) => x.id === c.id ? '' : '<option value="' + esc(x.id) + '"' + (k.pay === x.id ? ' selected' : '') + '>pays off: Ch ' + (i + 1) + '</option>').join('') + '</select><button class="stx" data-delclue="' + esc(k.id) + '">×</button></div>').join('')
+    + pays.map(k => '<div class="stclue"><b class="py">payoff</b><span>' + esc(k.text || 'A clue') + '</span><span class="stmuted">planted in Ch ' + chNo(k.plant) + '</span></div>').join('') + '<button class="stadd" data-act="addClue">+ Plant a clue here</button>');
+  h += fld('What DOOR trusts you with', '<input class="stinp" data-f="trust" value="' + esc(c.trust) + '">');
+  h += fld('The lie you believe', '<input class="stinp" data-f="lie" value="' + esc(c.lie) + '">');
+  h += fld('Notes', '<textarea class="stinp" data-f="notes" rows="4">' + esc(c.notes) + '</textarea>');
+  h += '<div class="strow" style="margin-top:14px"><button class="stbtn g" data-addq="' + esc(c.id) + '">+ Quest</button><span class="sp"></span><button class="stbtn r" data-act="delCh">Delete chapter</button></div>';
+  return h;
+}
+function questForm(c, q) {
+  const f = flatQuests().find(z => z.q === q), p = placeOf(q.where);
+  let h = '<div class="sthd"><h3>QUEST ' + f.no + '</h3></div>';
+  h += fld('Name', '<input class="stinp" data-qf="name" value="' + esc(q.name) + '" placeholder="Quest name">');
+  h += '<div class="strow" style="margin-top:8px">' + seg('kind', [['main', 'Main'], ['side', 'Side']], q.kind) + (q.game ? '<span class="stmuted">In the game: ' + esc(q.game) + '</span>' : '') + '</div>';
+  h += fld('Chapter', '<select class="stinp" data-act="moveQ">' + plan().chapters.map((x, i) => '<option value="' + esc(x.id) + '"' + (x === c ? ' selected' : '') + '>Ch ' + (i + 1) + (x.name ? ' · ' + esc(x.name) : '') + '</option>').join('') + '</select>');
+  h += fld('Where', '<div class="strow">' + pickBox('where', p ? 'Change…' : 'Type a place…', p ? p.n : '') + '<button class="stbtn sm" data-act="pickQ">On map</button></div>' + (q.at ? '<div class="stsub">Pinned on the map · <button class="stlink" data-act="unpinQ">unpin</button></div>' : '') + '<label class="stcheck"><input type="checkbox" data-act="ug"' + (qUnder(q) ? ' checked' : '') + (UG_HUBS.has(zoneOfRef(q.where)) ? ' disabled' : '') + '> Underground</label>');
+  h += fld('Summary', '<textarea class="stinp" data-qf="summary" rows="3">' + esc(q.summary) + '</textarea>');
+  h += fld('Steps <span class="stmuted">(each can have its own pin)</span>', q.steps.map((s, i) => '<div class="ststep"><b>' + (i + 1) + '</b><input class="stinp" data-step="' + esc(s.id) + '" value="' + esc(s.text) + '"><button class="stbtn sm' + (s.at ? ' on' : '') + '" data-pickstep="' + esc(s.id) + '" title="Place this step on the map">⌖</button><button class="stx" data-delstep="' + esc(s.id) + '">×</button></div>').join('') + '<button class="stadd" data-act="addStep">+ Step</button>');
+  h += fld('Characters', '<div class="stchips">' + q.cast.map(face).join('') + '</div>' + pickBox('cast', 'Add a character or unit…'));
+  h += fld('Cutscenes <span class="stmuted">(a cutscene, or played through)</span>', q.scenes.map((s, i) => '<div class="ststep"><input class="stinp" data-scene="' + i + '" value="' + esc(s.n) + '"><div class="stseg sm" data-scenehow="' + i + '"><button data-v="cut"' + (s.how === 'cut' ? ' class="on"' : '') + '>Cutscene</button><button data-v="played"' + (s.how === 'played' ? ' class="on"' : '') + '>Played</button></div><button class="stx" data-delscene="' + i + '">×</button></div>').join('') + '<button class="stadd" data-act="addScene">+ Scene</button>');
+  h += fld('Reward', '<input class="stinp" data-qf="reward" value="' + esc(q.reward) + '">');
+  h += fld('Notes', '<textarea class="stinp" data-qf="notes" rows="4">' + esc(q.notes) + '</textarea>');
+  h += '<div class="strow" style="margin-top:14px"><button class="stbtn" data-act="selCh">Open chapter</button><span class="sp"></span><button class="stbtn r" data-act="delQ">Delete quest</button></div>';
+  return h;
+}
+function renderRight() {
+  const el = $('stRight'), s = ST.sel; let h = '';
+  if (s && s.kind === 'quest') { const f = findQ(s.id); if (f) h = questForm(f.c, f.q); }
+  else if (s && s.kind === 'chapter') { const c = findC(s.id); if (c) h = chapterForm(c); }
+  if (!h) h = '<h3>THE PLAN</h3><div class="stmuted" style="font-size:13px">' + plan().chapters.length + ' chapters · ' + flatQuests().length + ' quests</div>';
+  const sc = el.scrollTop; el.innerHTML = h; el.scrollTop = sc;
+}
+function renderBeat() {
+  const P = plan(), cells = (v, miss) => v ? v : '<span class="stmiss">' + (miss || 'pick') + '</span>';
+  let h = '<h3>BEAT CHART <span class="stmuted" style="font:12px var(--font-body)">· built from your chapters · click a row to edit it</span></h3><div class="sttbl"><table><tr><th>Chapter</th><th>Band</th><th>Story step</th><th>Goal</th><th>Zone</th><th>Enemies</th><th>New mechanic</th><th>Boss</th><th>Reward</th><th>Clue planted</th><th>Quests</th></tr>';
+  P.chapters.forEach((c, i) => {
+    const z = placeOf(c.zone), nm = newMech(i), cl = P.clues.filter(k => k.plant === c.id).map(k => k.text || 'a clue');
+    h += '<tr data-editch="' + esc(c.id) + '"><td class="ch"><span class="dot" style="background:' + CHCOL[c.col] + '"></span>' + (i + 1) + (c.name ? ' · ' + esc(c.name) : '') + '</td><td>' + cells(c.band) + '</td><td>' + cells(c.step ? esc(STEPS9[c.step - 1]) : '') + '</td><td>' + cells(c.goal ? GOALS.find(g => g[0] === c.goal)[1] : '') + '</td><td>' + cells(z ? esc(z.n) : '') + '</td>'
+      + '<td>' + (c.enemies.length ? c.enemies.map(id => '<span class="stmini">' + (ENT[id].img ? '<img alt="" src="' + ENT[id].img + '">' : '') + esc(entName(id)) + '</span>').join('') : cells('')) + '</td>'
+      + '<td>' + (nm.length ? esc(nm.join(', ')) : '<span class="stmiss">none new</span>') + '</td><td>' + cells(c.boss ? esc(entName(c.boss)) + (c.bossText ? ' · ' + esc(c.bossText) : '') : esc(c.bossText)) + '</td><td>' + cells(esc(c.reward)) + '</td><td>' + (cl.length ? esc(cl.join(' · ')) : '<span class="stmuted">—</span>') + '</td><td>' + c.quests.length + '</td></tr>';
+  });
+  h += '<tr><td colspan="11"><button class="stadd" data-act="addCh">+ Chapter</button></td></tr></table></div>';
+  const N = noticed(); h += '<div class="stflags"><b>THINGS THE CHART NOTICED</b>' + (N.length ? N.map(t => '<div>⚠ ' + esc(t) + '</div>').join('') : '<div>Nothing yet.</div>') + '</div>';
+  const M = mechTable(); h += '<div class="stlbl" style="margin-top:16px">Mechanics: introduce alone, repeat, then combine</div><div class="sttbl"><table class="stgrid"><tr><th>Mechanic</th>' + P.chapters.map((c, i) => '<th>Ch ' + (i + 1) + '</th>').join('') + '</tr>'
+    + M.order.map(m => '<tr><td>' + esc(m) + '</td>' + P.chapters.map((c, i) => { const v = M.rows[m][i]; return '<td class="' + (v || '') + '">' + (v === 'combine' ? 'combined' : v || '') + '</td>'; }).join('') + '</tr>').join('') + '</table></div>';
+  $('stBeatMain').innerHTML = h;
+  let s = '<h3>ANSWER THESE FIRST</h3><div class="stmuted" style="font-size:12px">The seven questions from your plan. Answers save with the plan.</div>';
+  SPINE_Q.forEach(g => g.q.filter(q => q[2]).forEach(q => { s += '<div class="stqa"><div>' + esc(q[1]) + '</div><textarea class="stinp" data-ans="' + q[0] + '" rows="2" placeholder="Type here…">' + esc(P.ans[q[0]] || '') + '</textarea></div>'; }));
+  s += '<div class="stmuted" style="font-size:12px;margin-top:8px">The Spine tab has the rest: the one-sheet, the six bands and every chapter\'s questions.</div>';
+  $('stBeatSide').innerHTML = s;
+}
+function renderSpine() {
+  const P = plan(); let h = '<h3>THE SIX BANDS</h3><div class="sttbl"><table><tr><th>Band</th>' + BAND_F.map(f => '<th>' + esc(f[1]) + '</th>').join('') + '<th>Chapters</th></tr>';
+  BANDS.forEach(b => { const x = P.bands[b] || {}, chs = P.chapters.map((c, i) => c.band === b ? 'Ch ' + (i + 1) : '').filter(Boolean); h += '<tr><td class="ch">' + b + '</td>' + BAND_F.map(f => '<td><textarea class="stinp" rows="2" data-band="' + b + '" data-bf="' + f[0] + '">' + esc(x[f[0]] || '') + '</textarea></td>').join('') + '<td>' + (chs.join(', ') || '<span class="stmuted">none yet</span>') + '</td></tr>'; });
+  h += '</table></div>';
+  SPINE_Q.forEach(g => { h += '<h3 style="margin-top:20px">' + esc(g.h.toUpperCase()) + '</h3>'; g.q.forEach(q => { h += '<div class="stqa"><div>' + (q[2] ? '<b class="stfirst">FIRST</b> ' : '') + esc(q[1]) + '</div><textarea class="stinp" data-ans="' + q[0] + '" rows="2" placeholder="Type here…">' + esc(P.ans[q[0]] || '') + '</textarea></div>'; }); });
+  const el = $('st_spine'), sc = el.scrollTop; el.innerHTML = h; el.scrollTop = sc;
+}
+function storyLight() { if (!ST.open) return; if (ST.tab === 'map') { renderLeft(); renderTray(); storyDrawMap(); } }
+function storyRender() {
+  if (!ST.open) return;
+  $('story').querySelectorAll('[data-sttab]').forEach(b => b.classList.toggle('on', b.dataset.sttab === ST.tab));
+  ['map', 'beat', 'spine'].forEach(t => { $('st_' + t).hidden = ST.tab !== t; });
+  const atSel = $('stAt'); atSel.innerHTML = '<option value="0">All chapters</option>' + plan().chapters.map((c, i) => '<option value="' + (i + 1) + '"' + (ST.at === i + 1 ? ' selected' : '') + '>World at Ch ' + (i + 1) + '</option>').join('');
+  $('stLayer').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.mapLayer));
+  if (ST.tab === 'map') { renderLeft(); renderTray(); renderRight(); requestAnimationFrame(storyDrawMap); }
+  else if (ST.tab === 'beat') renderBeat(); else renderSpine();
+}
+function storyOpen(on) { ST.open = on; $('story').hidden = !on; $('app').hidden = on; S.ui.story = on; if (ST.tab) S.ui.storyTab = ST.tab; saveLocalSoon(); if (on) { plan(); storyRender(); } else renderAll(); }
+
+/* ── editing ── */
+function addChapter() { const P = plan(), c = { id: uid('ch'), name: '', col: P.chapters.length % CHCOL.length, band: '', step: 0, goal: '', zone: '', enemies: [], mech: [], boss: '', bossText: '', reward: '', lie: '', trust: '', notes: '', quests: [] }; P.chapters.push(c); ST.sel = { kind: 'chapter', id: c.id }; if (ST.tab !== 'map') ST.tab = 'map'; storySave(); }
+function addQuest(cid) { const c = findC(cid); if (!c) return; const q = { id: uid('q'), name: '', kind: 'main', where: c.zone || '', at: null, ug: false, summary: '', game: '', steps: [], cast: [], scenes: [], reward: '', notes: '' }; c.quests.push(q); ST.sel = { kind: 'quest', id: q.id }; storySave(); setTimeout(() => { const i = $('stRight').querySelector('[data-qf="name"]'); if (i) i.focus(); }, 0); }
+function curQ() { return ST.sel && ST.sel.kind === 'quest' ? findQ(ST.sel.id) : null; }
+function curC() { return ST.sel && ST.sel.kind === 'chapter' ? findC(ST.sel.id) : null; }
+function confirmBox(text, yes, fn) { modal('<h2>' + esc(text) + '</h2><div class="acts"><button class="btn" data-x="cancel">Keep it</button><button class="btn pri" data-x="ok" style="background:#c6352b;border-color:#c6352b">' + esc(yes) + '</button></div>', d => d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'ok') { closeModal(); fn(); } else if (x === 'cancel') closeModal(); })); }
+function pickOptions(kind) {
+  if (kind === 'zone' || kind === 'where') return PLACES.map(p => ({ v: p.ref, n: p.n }));
+  return ENTS.map(e => ({ v: e.id, n: (e.kind === 'cast' && e.c ? e.c.n : e.n), sub: e.kind === 'cast' ? 'story' : (e.v && e.r.v.length > 1 ? e.v.g : ''), img: e.img }));
+}
+function pickShow(inp) {
+  const box = inp.nextElementSibling, q = pnorm(inp.value), ws = q ? q.split(' ') : [];
+  const hits = pickOptions(inp.dataset.pick).map(o => { const t = pnorm(o.n + ' ' + o.v + ' ' + (o.sub || '')); if (!ws.every(w => t.includes(w))) return null; const nn = pnorm(o.n).replace(/^the /, ''), qq = q.replace(/^the /, ''); return { o, r: !q ? 3 : nn === qq ? 0 : nn.startsWith(qq) ? 1 : 2, z: /^d:/.test(o.v) ? 1 : 0 }; }).filter(Boolean).sort((a, b) => a.r - b.r || a.z - b.z || a.o.n.localeCompare(b.o.n)).slice(0, 50);
+  inp._hits = hits.map(h => h.o); inp._sel = clamp(inp._sel || 0, 0, Math.max(0, hits.length - 1));
+  box.innerHTML = hits.length ? hits.map((h, i) => '<div class="po' + (i === inp._sel ? ' on' : '') + '" data-pv="' + esc(h.o.v) + '">' + (h.o.img ? '<img alt="" src="' + h.o.img + '">' : '') + esc(h.o.n) + (h.o.sub ? ' <i>' + esc(h.o.sub) + '</i>' : '') + '</div>').join('') : '<div class="po none">No match</div>';
+  box.hidden = false;
+}
+function pickTakeSt(inp, v) {
+  const kind = inp.dataset.pick, q = curQ(), c = curC(); inp.value = ''; inp.nextElementSibling.hidden = true;
+  if (kind === 'zone' && c) { c.zone = v; }
+  else if (kind === 'where' && q) { q.q.where = v; q.q.at = null; }
+  else if (kind === 'enemy' && c) { if (!c.enemies.includes(v)) c.enemies.push(v); }
+  else if (kind === 'boss' && c) { c.boss = v; }
+  else if (kind === 'cast' && q) { if (!q.q.cast.includes(v)) q.q.cast.push(v); }
+  storySave();
+}
+function bindStory() {
+  const root = $('story');
+  root.addEventListener('click', e => {
+    const t = e.target, b = t.closest('button, [data-ch], [data-q], [data-tq], [data-editch], .po[data-pv]'); if (!b) return;
+    if (b.matches('.po[data-pv]')) { const inp = b.parentElement.previousElementSibling; pickTakeSt(inp, b.dataset.pv); return; }
+    if (b.dataset.sttab) { ST.tab = b.dataset.sttab; S.ui.storyTab = ST.tab; saveLocalSoon(); storyRender(); return; }
+    if (b.dataset.act === 'back') { storyOpen(false); return; }
+    if (b.closest('#stLayer') && b.dataset.v) { ST.mapLayer = b.dataset.v; storyRender(); return; }
+    if (b.dataset.addq) { addQuest(b.dataset.addq); return; }
+    if (b.dataset.tq) { ST.sel = { kind: 'quest', id: b.dataset.tq }; storyRender(); return; }
+    if (b.dataset.editch) { ST.sel = { kind: 'chapter', id: b.dataset.editch }; ST.tab = 'map'; storyRender(); return; }
+    if (b.dataset.q && !t.closest('button')) { ST.sel = { kind: 'quest', id: b.dataset.q }; const p = qPoint(findQ(b.dataset.q).q); if (p) { MV.cx = p[0]; MV.cy = p[1]; } storyRender(); return; }
+    if (b.dataset.ch && !t.closest('[data-q]') && !t.closest('button')) { ST.sel = { kind: 'chapter', id: b.dataset.ch }; storyRender(); return; }
+    const c = curC(), fq = curQ(), P = plan();
+    const sg = b.closest('[data-seg]'); if (sg && b.dataset.v != null) { const f = sg.dataset.seg, v = b.dataset.v; if (f === 'kind' && fq) fq.q.kind = v; else if (c) c[f] = c[f] === v ? '' : v; storySave(); return; }
+    const sh = b.closest('[data-scenehow]'); if (sh && fq) { fq.q.scenes[+sh.dataset.scenehow].how = b.dataset.v; storySave(); return; }
+    if (b.dataset.col != null && c) { c.col = +b.dataset.col; storySave(); return; }
+    if (b.dataset.mech && c) { const m = b.dataset.mech; c.mech = c.mech.includes(m) ? c.mech.filter(x => x !== m) : c.mech.concat([m]); storySave(); return; }
+    if (b.dataset.addenemy && c) { if (!c.enemies.includes(b.dataset.addenemy)) c.enemies.push(b.dataset.addenemy); storySave(); return; }
+    if (b.dataset.unent) { const id = b.dataset.unent; if (c) c.enemies = c.enemies.filter(x => x !== id); if (fq) fq.q.cast = fq.q.cast.filter(x => x !== id); storySave(); return; }
+    if (b.dataset.unboss && c) { c.boss = ''; storySave(); return; }
+    if (b.dataset.delclue) { P.clues = P.clues.filter(k => k.id !== b.dataset.delclue); storySave(); return; }
+    if (b.dataset.delstep && fq) { fq.q.steps = fq.q.steps.filter(s => s.id !== b.dataset.delstep); storySave(); return; }
+    if (b.dataset.pickstep && fq) { ST.pick = { kind: 'step', q: fq.q.id, s: b.dataset.pickstep }; storyDrawMap(); return; }
+    if (b.dataset.delscene != null && fq) { fq.q.scenes.splice(+b.dataset.delscene, 1); storySave(); return; }
+    switch (b.dataset.act) {
+      case 'addCh': addChapter(); break;
+      case 'addClue': if (c) { P.clues.push({ id: uid('k'), text: '', plant: c.id, pay: '' }); storySave(); } break;
+      case 'addStep': if (fq) { fq.q.steps.push({ id: uid('s'), text: '', at: null }); storySave(); setTimeout(() => { const l = [...$('stRight').querySelectorAll('[data-step]')].pop(); if (l) l.focus(); }, 0); } break;
+      case 'addScene': if (fq) { fq.q.scenes.push({ n: '', how: 'cut' }); storySave(); } break;
+      case 'pickZone': if (c) { ST.pick = { kind: 'zone', c: c.id }; storyDrawMap(); } break;
+      case 'pickQ': if (fq) { ST.pick = { kind: 'quest', q: fq.q.id }; storyDrawMap(); } break;
+      case 'unpinQ': if (fq) { fq.q.at = null; storySave(); } break;
+      case 'selCh': if (fq) { ST.sel = { kind: 'chapter', id: fq.c.id }; storyRender(); } break;
+      case 'chUp': case 'chDown': if (c) { const i = P.chapters.indexOf(c), j = i + (b.dataset.act === 'chUp' ? -1 : 1); if (j >= 0 && j < P.chapters.length) { P.chapters.splice(i, 1); P.chapters.splice(j, 0, c); storySave(); } } break;
+      case 'delCh': if (c) confirmBox('Delete Ch ' + chNo(c.id) + (c.name ? ' · ' + c.name : '') + ' and its ' + c.quests.length + ' quests?', 'Delete chapter', () => { P.chapters = P.chapters.filter(x => x !== c); P.clues.forEach(k => { if (k.plant === c.id) k.plant = ''; if (k.pay === c.id) k.pay = ''; }); ST.sel = null; storySave(); }); break;
+      case 'delQ': if (fq) confirmBox('Delete the quest ' + (fq.q.name || 'Untitled quest') + '?', 'Delete quest', () => { fq.c.quests = fq.c.quests.filter(x => x !== fq.q); ST.sel = { kind: 'chapter', id: fq.c.id }; storySave(); }); break;
+      case 'export': storyExport(); break;
+      case 'mfit': mapFit(); storyDrawMap(); break;
+      case 'min': case 'mout': { const f = b.dataset.act === 'min' ? 1.35 : 1 / 1.35; MV.k = clamp(MV.k * f, 3, 90); storyDrawMap(); } break;
+    }
+  });
+  root.addEventListener('input', e => {
+    const t = e.target, c = curC(), fq = curQ(), P = plan();
+    if (t.dataset.pick) { t._sel = 0; pickShow(t); return; }
+    if (t.dataset.f && c) { c[t.dataset.f] = t.dataset.f === 'step' ? +t.value : t.value; storySave(t.tagName === 'SELECT' ? false : true); return; }
+    if (t.dataset.qf && fq) { fq.q[t.dataset.qf] = t.value; storySave(true); return; }
+    if (t.dataset.step && fq) { const s = fq.q.steps.find(x => x.id === t.dataset.step); if (s) { s.text = t.value; storySave(true); } return; }
+    if (t.dataset.scene != null && fq) { fq.q.scenes[+t.dataset.scene].n = t.value; storySave(true); return; }
+    if (t.dataset.clue) { const k = P.clues.find(x => x.id === t.dataset.clue); if (k) { k.text = t.value; storySave(true); } return; }
+    if (t.dataset.ans) { if (t.value) P.ans[t.dataset.ans] = t.value; else delete P.ans[t.dataset.ans]; root.querySelectorAll('[data-ans="' + t.dataset.ans + '"]').forEach(o => { if (o !== t) o.value = t.value; }); storySave(true); return; }
+    if (t.dataset.band) { const x = P.bands[t.dataset.band] = P.bands[t.dataset.band] || {}; x[t.dataset.bf] = t.value; storySave(true); return; }
+  });
+  root.addEventListener('change', e => {
+    const t = e.target, c = curC(), fq = curQ(), P = plan();
+    if (t.id === 'stAt') { ST.at = +t.value; storyRender(); return; }
+    if (t.dataset.cluepay) { const k = P.clues.find(x => x.id === t.dataset.cluepay); if (k) { k.pay = t.value; storySave(); } return; }
+    if (t.dataset.act === 'squad' && c && t.value) { membersOf(t.value).filter(id => ENT[id]).forEach(id => { if (!c.enemies.includes(id)) c.enemies.push(id); }); storySave(); return; }
+    if (t.dataset.act === 'moveQ' && fq) { const to = findC(t.value); if (to && to !== fq.c) { fq.c.quests = fq.c.quests.filter(x => x !== fq.q); to.quests.push(fq.q); storySave(); } return; }
+    if (t.dataset.act === 'ug' && fq) { fq.q.ug = t.checked; storySave(); return; }
+  });
+  root.addEventListener('keydown', e => {
+    const t = e.target;
+    if (t.dataset.pick) { const n = (t._hits || []).length; if (e.key === 'ArrowDown') { e.preventDefault(); t._sel = Math.min(n - 1, (t._sel || 0) + 1); pickShow(t); } else if (e.key === 'ArrowUp') { e.preventDefault(); t._sel = Math.max(0, (t._sel || 0) - 1); pickShow(t); } else if (e.key === 'Enter' && n) { e.preventDefault(); pickTakeSt(t, t._hits[t._sel || 0].v); } else if (e.key === 'Escape') { t.nextElementSibling.hidden = true; t.blur(); } e.stopPropagation(); return; }
+    if (t.dataset.act === 'mechAdd' && e.key === 'Enter') { const c = curC(), v = t.value.trim(); if (c && v && !c.mech.includes(v)) { c.mech.push(v); storySave(); } t.value = ''; return; }
+  });
+  root.addEventListener('focusin', e => { if (e.target.dataset.pick) { e.target._sel = 0; pickShow(e.target); } });
+  root.addEventListener('focusout', e => { const t = e.target; if (t.dataset.pick) setTimeout(() => { if (document.activeElement !== t && t.nextElementSibling) t.nextElementSibling.hidden = true; }, 160); if (t.dataset.f || t.dataset.qf || t.dataset.step || t.dataset.clue) storyLight(); });
+  /* drag a quest onto another quest or chapter: new order / new chapter; drag a chapter onto another: new order */
+  let dragId = null;
+  $('stLeft').addEventListener('dragstart', e => { const q = e.target.closest('[data-q]'), c = e.target.closest('[data-ch]'); dragId = q ? 'q:' + q.dataset.q : c ? 'c:' + c.dataset.ch : null; if (dragId) e.dataTransfer.setData('text/plain', dragId); e.stopPropagation(); });
+  $('stLeft').addEventListener('dragover', e => { if (dragId) e.preventDefault(); });
+  $('stLeft').addEventListener('drop', e => {
+    e.preventDefault(); if (!dragId) return; const P = plan(), tq = e.target.closest('[data-q]'), tc = e.target.closest('[data-ch]');
+    if (dragId.startsWith('q:')) { const f = findQ(dragId.slice(2)); if (!f || !tc) return; const to = findC(tc.dataset.ch); f.c.quests = f.c.quests.filter(x => x !== f.q); let i = to.quests.length; if (tq && tq.dataset.q !== f.q.id) { const j = to.quests.findIndex(x => x.id === tq.dataset.q); if (j >= 0) i = j; } to.quests.splice(i, 0, f.q); }
+    else if (tc) { const a = findC(dragId.slice(2)), b2 = findC(tc.dataset.ch); if (a && b2 && a !== b2) { P.chapters = P.chapters.filter(x => x !== a); P.chapters.splice(P.chapters.indexOf(b2), 0, a); } }
+    dragId = null; storySave();
+  });
+  /* the map: drag = pan, wheel = zoom, drag a pin = move it, click = pick */
+  const cv = $('stMap'), pos = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  cv.addEventListener('pointerdown', e => { const [sx, sy] = pos(e), hit = ST.pick ? null : mapHit(sx, sy); MV.drag = { sx, sy, cx: MV.cx, cy: MV.cy, hit, moved: false }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => {
+    const [sx, sy] = pos(e), d = MV.drag;
+    if (!d) { const h = mapHit(sx, sy), was = MV.hover; MV.hover = h && h.kind === 'quest' ? h : null; cv.style.cursor = ST.pick ? 'crosshair' : h ? 'pointer' : 'grab'; if ((was && was.q) !== (MV.hover && MV.hover.q) || MV.hover) storyDrawMap(); return; }
+    if (Math.hypot(sx - d.sx, sy - d.sy) > 4) d.moved = true; if (!d.moved) return;
+    if (d.hit) { const [mx, my] = s2m(sx, sy), pt = { x: +mx.toFixed(2), y: +my.toFixed(2) }; if (d.hit.kind === 'quest') { const f = findQ(d.hit.q); if (f) f.q.at = pt; } else { const f = findQ(d.hit.q), s = f && f.q.steps.find(x => x.id === d.hit.s); if (s) s.at = pt; } storyDrawMap(); return; }
+    MV.cx = d.cx - (sx - d.sx) / MV.k; MV.cy = d.cy - (sy - d.sy) / MV.k; storyDrawMap();
+  });
+  cv.addEventListener('pointerup', e => {
+    const d = MV.drag; MV.drag = null; if (!d) return; const [sx, sy] = pos(e), [mx, my] = s2m(sx, sy), pt = { x: +mx.toFixed(2), y: +my.toFixed(2) };
+    if (d.hit && d.moved) { if (d.hit.kind === 'quest') { const f = findQ(d.hit.q); if (f && !f.q.where) f.q.where = nearestPlace(mx, my) || ''; } storySave(); return; }
+    if (d.moved) return;
+    if (ST.pick) { const pk = ST.pick; ST.pick = null; const near = nearestPlace(mx, my);
+      if (pk.kind === 'quest') { const f = findQ(pk.q); if (f) { f.q.at = pt; if (near) f.q.where = near; } }
+      else if (pk.kind === 'step') { const f = findQ(pk.q), s = f && f.q.steps.find(x => x.id === pk.s); if (s) s.at = pt; }
+      else if (pk.kind === 'zone') { const c = findC(pk.c); if (c && near) c.zone = 'z:' + zoneOfRef(near); }
+      storySave(); return; }
+    if (d.hit) { ST.sel = { kind: 'quest', id: d.hit.q }; storyRender(); }
+  });
+  cv.addEventListener('wheel', e => { e.preventDefault(); const [sx, sy] = pos(e), [mx, my] = s2m(sx, sy), f = Math.exp(-e.deltaY * .0015); MV.k = clamp(MV.k * f, 3, 90); const [nx, ny] = s2m(sx, sy); MV.cx += mx - nx; MV.cy += my - ny; storyDrawMap(); }, { passive: false });
+  window.addEventListener('resize', () => { if (ST.open) storyDrawMap(); });
+  document.addEventListener('keydown', e => { if (!ST.open || !$('modal').hidden) return; if (e.key === 'Escape') { if (ST.pick) { ST.pick = null; storyDrawMap(); } else if (!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName || '')) { ST.sel = null; storyRender(); } } }, true);
+}
+function storyExport() {
+  const P = plan(), pl = r => { const p = placeOf(r); return p ? p.n : ''; };
+  const out = { kind: 'entropy-wars-story-plan', v: 1, at: new Date().toISOString(), answers: Object.fromEntries(Object.entries(P.ans).map(([k, v]) => [k, { q: SPINE_BY[k][1], a: v }])), bands: P.bands,
+    chapters: P.chapters.map((c, i) => ({ no: i + 1, id: c.id, name: c.name, band: c.band, step: c.step ? STEPS9[c.step - 1] : '', goal: c.goal, zone: c.zone, zoneName: pl(c.zone), enemies: c.enemies.map(id => ({ id, name: entName(id) })), mechanics: c.mech, newMechanics: newMech(i), boss: c.boss ? { id: c.boss, name: entName(c.boss) } : null, bossNote: c.bossText, reward: c.reward, trust: c.trust, lie: c.lie, notes: c.notes,
+      quests: c.quests.map(q => ({ id: q.game || q.id, title: q.name, kind: q.kind, where: q.where, whereName: pl(q.where), at: q.at, underground: qUnder(q), summary: q.summary, stages: q.steps.map((s, j) => ({ id: 's' + (j + 1), objective: s.text, at: s.at })), cast: q.cast.map(id => ({ id, name: entName(id) })), scenes: q.scenes, reward: q.reward, notes: q.notes })) })),
+    clues: P.clues.map(k => ({ text: k.text, planted: chNo(k.plant) || null, paysOff: chNo(k.pay) || null })) };
+  const txt = JSON.stringify(out, null, 2);
+  modal('<h2>Export the story plan</h2><textarea class="inp code" readonly>' + esc(txt) + '</textarea><div class="acts"><button class="btn" data-x="copy">Copy</button><button class="btn" data-x="save">Save file</button><button class="btn pri" data-x="cancel">Done</button></div>', d => d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'copy') copyText(d.querySelector('textarea')); else if (x === 'save') saveFile('Entropy_Wars_Story_Plan_' + new Date().toISOString().slice(0, 10) + '.json', txt); else if (x === 'cancel') closeModal(); }));
+}
+bindStory();
+$('btnStory').addEventListener('click', () => storyOpen(true));
+window.__ewStory = { ST, MV, plan, storyOpen, storyRender, noticed };
 
 /* ───────── boot ───────── */
 S = loadLocal(); B = S.boards[S.active];
@@ -1636,6 +2104,7 @@ initWhere();
 $('legend').open = S.ui.legend === true && !window.matchMedia('(max-width: 860px)').matches;
 ensureView(); fit(true); pushHist(); renderAll(); setSave();
 requestAnimationFrame(() => { if (!drag) fit(); });
+if (S.ui.story) { ST.tab = /^(map|beat|spine)$/.test(S.ui.storyTab) ? S.ui.storyTab : 'map'; storyOpen(true); }
 cloudInit();
 window.__ewWeb = { get state() { return S; }, gameExport, defence, hooks, cloud };
 })();
