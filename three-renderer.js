@@ -16740,6 +16740,13 @@ const ThreeRenderer = (function () {
         if (V(gr.barrel).applyQuaternion(q).dot(f) < 0) {   // (the mirror hand: the same seat with the barrel forward)
             var flip = new THREE.Quaternion().setFromAxisAngle(Dw, Math.PI); q.premultiply(flip);
         }
+        /* THE CANT (2026-11-22, THE WEAPONS IN THE HANDS): a blade does not stand square across the fist, its handle lies slanted over the
+           palm. `grip.cant` degrees turn the prop about the palm's normal, the end that leaves the fist at the thumb leaning to the knuckles'
+           side (a hanging arm: the point drops toward the ground in front of the feet). Either hand. */
+        if (gr.cant) {
+            var cs = new THREE.Vector3().crossVectors(t, f).dot(Zw) < 0 ? -1 : 1;
+            q.premultiply(new THREE.Quaternion().setFromAxisAngle(Zw, cs * gr.cant * Math.PI / 180));
+        }
         return q;
     }
     /* THE GRIP ON A MESHY HAND (2026-11-02, mondo: the door gun "in the hand's finger grip" like the cowboy's revolver): a Meshy
