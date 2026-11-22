@@ -68444,7 +68444,8 @@ const ThreeRenderer = (function () {
         var def = res.def;
         // the accent stains the summoning circle
         if (opts.accent) { try { v.circleMat.color.set(opts.accent); } catch (_e) {} }
-        if (v.url === def.model && v.model) {              // same character
+        var holdId = ((def.hold && def.hold.key) || '') + '|' + ((def.hold2 && def.hold2.key) || '');   // THE WEAPONS IN THE HANDS 11-22: two looks on one body differ by what they hold (pirate -> sheriff kept the cutlass)
+        if (v.url === def.model && v.model && v.holdId === holdId) {              // same character
             if (v.appearanceRig) {
                 // A slider drag fires many changes per frame; the rig rebuild
                 // (30k-tri body, garment cuts, a 1024² face bake) is heavy, so
@@ -68500,6 +68501,7 @@ const ThreeRenderer = (function () {
         // GLB resolves synchronously below, so the ring never flashes then.
         _cvHostState(host, 'loading');
         v.url = def.model;
+        v.holdId = holdId;
         // fresh mount = fresh framing (straight on — polar 0)
         // THE FACE CAMERA: a body swapped while the creator is on the face stays on the face
         v.yaw = 0; v.polar = v.ccZone === 'face' ? CV_FACE_POLAR : 0; v.polarTo = null; v.zoom = 1; v.lastTouch = 0; v.focusHead = v.ccZone === 'face';
