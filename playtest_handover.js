@@ -164,7 +164,7 @@ const run = async () => {
     const tA = Date.now(); while (Date.now() - tA < 240000) { const st2 = await stat(); if (st2 && st2.phase === 'battle') break; await sleep(500); }
     await sleep(Number(flag('fight', 12000))); await fast.settle(page, 0, 6); await shot('8_fight2');
     console.log('FIGHT2', JSON.stringify(await stat())); try { console.log('FW-FIGHT2', JSON.stringify(await ev(`ThreeRenderer.hq.dev.fw()`)).slice(0, 1200)); } catch (e) {}
-    await ev(`(function(){ GAME.state.units.forEach(function (u) { if (String(u.id).indexOf('2-') === 0) u.hp = 0; }); checkWin(); return 1; })()`); await sleep(6000);
+    await ev(`(function(){ GAME.state.units.forEach(function (u) { if (String(u.id).indexOf('2-') === 0) { u.hp = 0; u.alive = false; u.dead = true; } }); checkWin(); return 1; })()`); await sleep(6000);
     { const tC = Date.now(); while (Date.now() - tC < 120000) { if (await ev(`!!(document.getElementById('encReturnBtn') && document.getElementById('encReturnBtn').offsetParent)`) === true) break; await sleep(300); } await ev(`document.getElementById('encReturnBtn').click(), 1`); }
     const tB = Date.now(); while (Date.now() - tB < 240000) { const b2 = await stat(); if (b2 && b2.hqScene && b2.gate && b2.gate.ready && b2.phase !== 'battle') break; await sleep(1000); }
     await sleep(6000); await fast.settle(page, 0, 6); await shot('9_back2'); console.log('BACK-2ND', JSON.stringify(await stat()));
