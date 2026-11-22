@@ -14057,6 +14057,27 @@ underground threads are doing stalagmites and just do that?? you can't make a ro
 - THE INNER SUN: 18 m across, 34 m up on its column; the jungle 6 to 11 m (was 9 to 17) and only low palms (3.5 to 6 m) on the Sun's three plots
   (`gen.zones`), so it stands over the trees.
 
+## THE ROAD OUT IS WALKED (2026-11-22, mondo on the city's road to the Desert)
+mondo: "The signs are facing backwards ... i walk through and it doesnt automatically take me to the desert, i have to walk back a little bit
+and press e ... i can't see the road going out, the road just stops and its all desert".
+- **A FREE END'S `face` IS THE HEADING INTO THE ROOM** (three-renderer.js `_hqBoxWall`: the inward normal). `links.downtown_desert.a` said 180 on
+  the city's south line: the whole road kit stood back to front (gantry plate and LEAVING plate seen from behind, the asphalt strip run north
+  under the city's own street, arrivals landed outside the line). It is 0 now. `valley_city.a` (face 90 on the west line) was right. A new
+  free `road` end: face = the compass heading from the line back into the room.
+- **A ROAD END IS A PASSAGE RECORD** (`_hqBuildWay`, kind `road`): no prompt, never pressed; `_hqTickPassages` changes the room when the walker
+  goes on under the gantry (a free end: 3.2 m past the door's place, 1 m past the gantry; a wall end: 1.2 m past the wall on 3 m of level floor).
+  Both links that wear `road` (downtown_desert, valley_city) and any later one. The arrival stands 1.6 m inside, facing the room.
+- **THE STRIP LIES ON THE LAND PAST THE EDGE** (`_hqWayBuilders.road`): in a room with natural edges (`_hqEdgeLandOn`: the city, every One World
+  room) the asphalt + paint are laid on `_hqEdgeLandFn(...).at`, read at the land mesh's own rows (HQ_EDGE_ROWS, straight between), for 300 m,
+  in the city streets' sheet (`urban:RoadGeneric1a`, tint dcdce0). The first 14 m are one even ramp from the door's floor down to the land (the
+  desert kind's ditch at the line is bridged), a dark bank under its sides; the shoulder posts stand on the land. Rooms with the old outer
+  ground keep the 40 m strip.
+- **A link end may say `w`** (the street's width past the gantry; data.js link door builder copies it to the door row): both downtown_desert
+  ends are 14 (four squares), was the catalogue's 9.
+- Probe: `node playtest_city.js site_ow_r9 '[{"name":"walk_n","x":-35,"z":-180,"face":0,"ground":true,"walk":{"key":"w","max":40000}}]'` walks
+  into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
+  the SECOND room of a run; the WALK line prints before that.
+
 ## THE SEAM IS THE ROAD — an open seam on a route room's wall is as wide as the road (2026-11-22, mondo: "it only works when i enter through the median")
 mondo 11-22, the Badlands Highway (`site_ow_r9`) into the Circus: "it only works when i enter through the median in the highway, which doesnt make
 sense since i wouldnt be driving in the middle of the road. Its an invisble wall where the actual road is."

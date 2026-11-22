@@ -77796,11 +77796,14 @@ const ThreeRenderer = (function () {
             var hOf = function (m) { return m * U / TM / 1.07; };   // _nrTree: target = TM × h × (0.85 … 1.3)
             var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
             var X0 = R.x0 - 62, X1 = R.x1 + 62, Z0 = R.z0 - 62, Z1 = R.z1 + 62, stp = 4.2;
+            var roadLanes = [];   // every road out's lane past the line (its door's place, the way out, half its width + a tree's reach)
+            (room.doors || []).forEach(function (d) { if (!d || d.way !== 'road' || !d.wall) return; try { var f = _hqBoxWall(room, d.wall, d); if (f) roadLanes.push({ x: f.wx, z: f.wz, dx: -f.nx, dz: -f.nz, hw: ((+d.w || 9) / 2) + 3.5 }); } catch (e) {} });
             for (var tz = Z0; tz < Z1; tz += stp) for (var tx = X0; tx < X1; tx += stp) {
                 var a = r(), b2 = r(), c2 = r(), d2 = r();
                 if (tx > R.x0 - 2 && tx < R.x1 + 2 && tz > R.z0 - 2 && tz < R.z1 + 2) continue;
                 var px = tx + (a - 0.5) * 3.2, pz = tz + (b2 - 0.5) * 3.2, P = F.at(px, pz);
                 if (P.d < 1.8 || P.d > 60) continue;
+                if (roadLanes.length && roadLanes.some(function (L) { var qx = px - L.x, qz = pz - L.z; return (qx * L.dx + qz * L.dz) > -2 && Math.abs(qx * L.dz - qz * L.dx) < L.hw; })) continue;   // THE ROAD RUNS ON (2026-11-22): no tree on a road out's asphalt
                 var thin = E.deep ? (P.d < 44 ? 1 : 0.6) : P.d < 22 ? 1 : P.d < 40 ? 0.5 : 0.28; if (low) thin *= 0.6;   /* `edges.deep: true` (2026-11-20, The Woods): a room deep in a wood, the trees past its line stay thick to the end of the planting, so no flat land shows between the trunks */
                 if (P.W.forest > 0.5) { if (c2 > thin * P.W.forest) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if ((E[P.side] || {}).bare) continue; if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
@@ -83320,27 +83323,70 @@ const ThreeRenderer = (function () {
             var neon = !!(ctx.room && ctx.room.shell && ctx.room.shell.sky && ctx.room.shell.sky.night);
             var grp = ctx.group || null;   // the placed group (position / rotation) — the ground under the strip is sampled in the room's frame
             var texOf = (typeof _hzTex === 'function') ? _hzTex : function () { return null; };   // the stub scene (hq-world.test.js) has no sheet loader
-            var asphalt = _hqMat(null, 1, 1, { color: neon ? 0x8a8aa4 : 0xffffff, shininess: neon ? 24 : 6, specular: 0x151515, emissive: 0x0e0e0e, emissiveIntensity: 1 });
-            var asT = texOf('urban:PlasterWallPainted1b'); if (asT) { asphalt.map = asT; asphalt.needsUpdate = true; }
-            var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false }); paint.polygonOffset = true; paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
             var wx = ctx.wx || 0, wz = ctx.wz || 0, yaw = ctx.yaw || 0, y0 = ctx.y0 || 0, cy = Math.cos(yaw), sy = Math.sin(yaw);
-            var gAt = function (lx, lz) {   // the ground under a local point (metres), relative to the door's own floor
+            /* THE ROAD RUNS ON (2026-11-22, mondo: "i can't see the road going out, the road just stops and its all desert"). In a room whose land
+               past the edge is THE NATURAL EDGES' (_hqEdgeLandOn: the city, every One World room) the strip used to be laid on the FIELD's height: it
+               floated flat over the land, which falls away from the line (the city's south: 4 m down to the sand), and no fog stands at 40 m any more.
+               Now it lies ON that land, read at the land mesh's own rows (HQ_EDGE_ROWS, straight between them, as the mesh is), for 300 m; over the
+               first 14 m it comes down as one even ramp (the land's ditch at the line is bridged), a dark bank under its sides. */
+            var EF = null, tOut = 0;
+            try { if (!joinedR && _hq && _hq.terrain && ctx.room && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(ctx.room)) EF = (_hq.edgeLand && _hq.edgeLand.fn) || _hqEdgeLandFn(ctx.room, _hq.terrain); } catch (eEF) { EF = null; }
+            if (EF) {
+                var odx = -sy, odz = -cy, tx = Infinity, tz = Infinity;   // the way out, in the room's frame (the kit's −Z)
+                if (Math.abs(odx) > 0.01) tx = ((odx > 0 ? EF.R.x1 : EF.R.x0) - wx) / odx;
+                if (Math.abs(odz) > 0.01) tz = ((odz > 0 ? EF.R.z1 : EF.R.z0) - wz) / odz;
+                tOut = Math.max(0, Math.min(tx, tz)); if (!isFinite(tOut)) { EF = null; tOut = 0; }
+            }
+            var EROWS = EF ? HQ_EDGE_ROWS.filter(function (r) { return r <= Math.min(300, EF.reach || 300); }) : null, RAMP = 14;
+            if (EF) LEN = tOut + EROWS[EROWS.length - 1];
+            var fieldAt = function (lx, lz) {   // the ground under a local point (metres), relative to the door's own floor
                 if (typeof _hqTerrainGround !== 'function' || !_hq || !_hq.terrain) return 0;
                 var X = wx + lx * cy + lz * sy, Z = wz - lx * sy + lz * cy, y = _hqTerrainGround(X, Z);
                 return (y == null) ? 0 : (y - y0);
             };
-            /* the strip: rows every 2 m from the wall outward (−Z), each vertex on the ground + 3 cm */
-            var rows = Math.round(LEN / 2), pos = [], uv = [], idx = [];
-            for (var r = 0; r <= rows; r++) {
-                var lz = -r * 2, k = r * 2;
-                [-W / 2, W / 2].forEach(function (lx, i) { var gy = (r === 0 ? 0 : gAt(lx, lz)) + 0.03; pos.push(lx * U, gy * U, lz * U); uv.push(i * W / 1.75, r * 2 / 1.75); });
-                if (r > 0) { var b = (r - 1) * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+            var rowC = {};
+            var landAt = function (lx, d) {   // the land past the line, `d` m out: the mesh's rows, straight between them
+                var k = Math.round(lx * 100), row = rowC[k];
+                if (!row) { row = rowC[k] = EROWS.map(function (r) { var lz = -(tOut + r), q = EF.at(wx + lx * cy + lz * sy, wz - lx * sy + lz * cy); return (q && isFinite(q.y)) ? q.y - y0 : 0; }); }
+                var i = 0; while (i < EROWS.length - 2 && EROWS[i + 1] < d) i++;
+                var f = (d - EROWS[i]) / (EROWS[i + 1] - EROWS[i]); f = f < 0 ? 0 : f > 1 ? 1 : f;
+                return row[i] * (1 - f) + row[i + 1] * f;
+            };
+            var gAt = function (lx, lz) {   // the road's own surface
+                if (!EF) return fieldAt(lx, lz);
+                var d = -lz - tOut; if (d <= 0) return fieldAt(lx, lz);
+                var h = landAt(lx, d); if (d >= RAMP) return h + 0.05;
+                var a = fieldAt(lx, -tOut), b = landAt(lx, RAMP) + 0.05; return Math.max(h + 0.05, a + (b - a) * d / RAMP);
+            };
+            var asphalt = _hqMat(null, 1, 1, { color: neon ? 0x8a8aa4 : (EF ? 0xdcdce0 : 0xffffff), shininess: neon ? 24 : 6, specular: 0x151515, emissive: 0x0e0e0e, emissiveIntensity: 1 });
+            var asT = (EF && texOf('urban:RoadGeneric1a')) || texOf('urban:PlasterWallPainted1b'); if (asT) { asphalt.map = asT; asphalt.needsUpdate = true; }   // the pack's asphalt, the city streets' own sheet and tint
+            if (EF) { asphalt.polygonOffset = true; asphalt.polygonOffsetFactor = -1; asphalt.polygonOffsetUnits = -1; }
+            var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false }); paint.polygonOffset = true; paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
+            /* the strip: rows from the wall outward (−Z), each vertex on the ground + 3 cm (every 2 m; past the line: the land's rows, never over 4 m apart) */
+            var tsL = [], pos = [], uv = [], idx = [], bpos = [], bidx = [];
+            if (!EF) { for (var r0 = 0; r0 <= Math.round(LEN / 2); r0++) tsL.push(r0 * 2); }
+            else {
+                for (var ti = 0; ti < tOut - 0.5; ti += 2) tsL.push(ti);
+                for (var ei = 0; ei < EROWS.length; ei++) {
+                    tsL.push(tOut + EROWS[ei]);
+                    if (ei < EROWS.length - 1) { var gap = EROWS[ei + 1] - EROWS[ei], nSub = Math.ceil(gap / 4); for (var si = 1; si < nSub; si++) tsL.push(tOut + EROWS[ei] + gap * si / nSub); }
+                }
+            }
+            for (var r = 0; r < tsL.length; r++) {
+                var lz = -tsL[r];
+                [-W / 2, W / 2].forEach(function (lx, i) {
+                    var gy = (r === 0 ? 0 : gAt(lx, lz)) + 0.03; pos.push(lx * U, gy * U, lz * U); uv.push(i * W / 1.75, tsL[r] / 1.75);
+                    if (EF) bpos.push(lx * U, gy * U, lz * U, lx * 1.12 * U, (gy - 3) * U, lz * U);
+                });
+                if (r > 0) { var b = (r - 1) * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+                    if (EF && tsL[r - 1] >= tOut - 2.1 && tsL[r - 1] < tOut + RAMP + 4) { var q = (r - 1) * 4; bidx.push(q, q + 4, q + 1, q + 1, q + 4, q + 5, q + 2, q + 3, q + 6, q + 3, q + 7, q + 6); } }   // THE BANK under the ramp's two sides
             }
             var hasBuf = !!(THREE.BufferGeometry && THREE.Float32BufferAttribute);
             var strip;
             if (hasBuf) { var sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); sg.setIndex(idx); sg.computeVertexNormals(); strip = new THREE.Mesh(sg, asphalt); }
             else { strip = new THREE.Mesh(new THREE.PlaneGeometry(W * U, LEN * U), asphalt); strip.rotation.x = -Math.PI / 2; strip.position.set(0, 0.03 * U, -LEN / 2 * U); }
             strip.renderOrder = 1; strip.receiveShadow = true; g.add(strip);
+            if (hasBuf && bidx.length) { var bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(bpos, 3)); bg.setIndex(bidx); bg.computeVertexNormals(); var bankM = _hqMat(null, 1, 1, { color: 0x4a443c, shininess: 2 }); bankM.side = THREE.DoubleSide; var bank = new THREE.Mesh(bg, bankM); bank.receiveShadow = true; g.add(bank); }
             /* the dashes + the edge lines down it */
             var dpos = [], duv = [], didx = [], dn = 0;
             var flat = function (x0, x1, z0, z1) {
@@ -83351,6 +83397,8 @@ const ThreeRenderer = (function () {
             for (var z = -1.2; z > -LEN + 1; z -= 3.2) flat(-0.07, 0.07, z, z - 1.6);
             for (var z2 = -0.4; z2 > -LEN + 1; z2 -= 2) { flat(W / 2 - 0.41, W / 2 - 0.29, z2, z2 - 2); flat(-W / 2 + 0.29, -W / 2 + 0.41, z2, z2 - 2); }
             if (hasBuf) { var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.Float32BufferAttribute(dpos, 3)); dg.setAttribute('uv', new THREE.Float32BufferAttribute(duv, 2)); dg.setIndex(didx); dg.computeVertexNormals(); var dashes = new THREE.Mesh(dg, paint); dashes.renderOrder = 3; g.add(dashes); }
+            /* a shoulder post stands on the land beside the road, not on the door's floor in the air */
+            var sideY = function (lx, lz) { if (!EF) return 0; var d = -lz - tOut; return (d <= 0) ? fieldAt(lx, lz) : landAt(lx, d); };
             /* THE GANTRY over the mouth: two posts on the shoulders, the beam, the green plate */
             var steel = _hqMat(null, 1, 1, { color: 0x4a4e56, shininess: 40 });
             [-1, 1].forEach(function (sd) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.13 * U, H * U, 8), steel); post.position.set(sd * (W / 2 + 0.7) * U, H / 2 * U, -2.2 * U); g.add(post); });
@@ -83366,13 +83414,13 @@ const ThreeRenderer = (function () {
             [-0.3, 0.3].forEach(function (f) { var lp = _hzGlowSprite(1.2 * U, 0xfff2c8, 0.16, 0.0, 0.0, 0.0); lp.position.set(f * pw * U, (H - 0.05) * U, -1.9 * U); g.add(lp); lamps.push(lp); });
             /* THE LEAVING plate on the right shoulder, the pack's speed plate on the left */
             var lv = (!joinedR && typeof _hzTextTex === 'function') ? _hzTextTex('hq_road_leaving_' + (ctx.room && ctx.room.label || ''), ['LEAVING', String((ctx.room && ctx.room.label) || '').split('·')[0].trim() || 'TOWN'], { w: 512, h: 256, color: '#ffffff', bg: '#1d5a30', border: '#f0f0f0', pad: 0.12, weight: 'bold' }) : null;
-            if (lv) { var lpst = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 2.6 * U, 6), steel); lpst.position.set((W / 2 + 1.1) * U, 1.3 * U, -6 * U); g.add(lpst); var lvM = _hqBasic(0xffffff, { side: THREE.DoubleSide }); lvM.map = lv; var lpl = new THREE.Mesh(new THREE.PlaneGeometry(1.4 * U, 0.7 * U), lvM); lpl.position.set((W / 2 + 1.1) * U, 2.3 * U, -6 * U); g.add(lpl); }
+            if (lv) { var lpst = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 2.6 * U, 6), steel); var lvY = sideY(W / 2 + 1.1, -6) * U; lpst.position.set((W / 2 + 1.1) * U, 1.3 * U + lvY, -6 * U); g.add(lpst); var lvM = _hqBasic(0xffffff, { side: THREE.DoubleSide }); lvM.map = lv; var lpl = new THREE.Mesh(new THREE.PlaneGeometry(1.4 * U, 0.7 * U), lvM); lpl.position.set((W / 2 + 1.1) * U, 2.3 * U + lvY, -6 * U); g.add(lpl); }
             var spd = joinedR ? null : texOf('urban:SignSpeedUsa045-small');   // (a joined road: no LEAVING plate, no speed sign — you are not leaving)
-            if (spd) { var sp = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, 2.6 * U, 6), steel); sp.position.set(-(W / 2 + 0.9) * U, 1.3 * U, -9 * U); g.add(sp); var spm = _hqMat(null, 1, 1, { transparent: true, emissive: 0x202020, emissiveIntensity: 1 }); spm.map = spd; spm.alphaTest = 0.2; spm.needsUpdate = true; var spl = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * U, 0.78 * U), spm); spl.position.set(-(W / 2 + 0.9) * U, 2.35 * U, -9 * U); g.add(spl); }
+            if (spd) { var sp = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, 2.6 * U, 6), steel); var spY = sideY(-(W / 2 + 0.9), -9) * U; sp.position.set(-(W / 2 + 0.9) * U, 1.3 * U + spY, -9 * U); g.add(sp); var spm = _hqMat(null, 1, 1, { transparent: true, emissive: 0x202020, emissiveIntensity: 1 }); spm.map = spd; spm.alphaTest = 0.2; spm.needsUpdate = true; var spl = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * U, 0.78 * U), spm); spl.position.set(-(W / 2 + 0.9) * U, 2.35 * U + spY, -9 * U); g.add(spl); }
             /* the fog takes the far end: a dark gradient plane across the road's end */
-            var fade = new THREE.Mesh(new THREE.PlaneGeometry((W + 2) * U, 6 * U), _hqBasic(0x000000, { transparent: true, opacity: 0.0, depthWrite: false })); fade.rotation.x = -Math.PI / 2; fade.position.set(0, 0.06 * U, -(LEN - 3) * U); if (!joinedR) g.add(fade);
+            var fade = new THREE.Mesh(new THREE.PlaneGeometry((W + 2) * U, 6 * U), _hqBasic(0x000000, { transparent: true, opacity: 0.0, depthWrite: false })); fade.rotation.x = -Math.PI / 2; fade.position.set(0, 0.06 * U, -(LEN - 3) * U); if (!joinedR && !EF) g.add(fade);
             var motion = { mode: 'way', ow: W, tick: function (k) { lamps.forEach(function (lp) { lp.material.opacity = 0.16 + 0.5 * k; lp.scale.setScalar((1.2 + 0.8 * k) * U); }); } };
-            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.5, blockers: [] };
+            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.5, blockers: [], roadLen: LEN };
         },
         gutter: function (U, ctx) {
             var g = new THREE.Group();
@@ -83845,6 +83893,15 @@ const ThreeRenderer = (function () {
         });
         var rec = { door: door, group: grp, lens: null, glow: null, plate: plate, plateEl: el, plateChip: chip, plateGpu: pm.gpu, state: 'open', level: level, Rw: Rw, y0: y0, wide: !!door.wide, ow: ow, oh: oh, inward: inward, box: box, leaf: null, way: kind, motion: built.motion || null, openT: 0,
                     mouthY: (built.mouthY != null) ? built.mouthY : null, wayOpen: !!W.open };   // THE DEEP (2026-09-18): a way entered by being IN it (_hqSeaWayCheck) says where its mouth is
+        /* THE ROAD IS WALKED, NEVER PRESSED (2026-11-22, mondo: "i walk through and it doesnt automatically take me to the desert, i have to walk back
+           a little bit and press e, which is really dumb"): a road's end is a passage record like an open seam's: no prompt, and walking on under the
+           gantry changes the room (_hqTickPassages). A free end lies on the room's own ground (the crossing 1 m past the gantry); a wall end runs
+           3 m past the wall, level with the door's floor (the crossing 1.2 m out). */
+        if (kind === 'road' && box) {
+            rec.passage = box.free ? { inside: true, w: ow, h: oh, len: Math.max(8, built.roadLen || 13), deep: 3.2, rise: 0, look: 'open', fade: 'black', roof: false, land: 1.6 }
+                                   : { inside: false, w: ow, h: oh, len: 3, deep: 1.2, rise: 0, look: 'open', fade: 'black', roof: false, land: 1.6 };
+            (_hq.passages = _hq.passages || []).push(rec);
+        }
         _hq.doors.push(rec);
         _hqLampApply(rec, _hqDoorState(door));
     }
