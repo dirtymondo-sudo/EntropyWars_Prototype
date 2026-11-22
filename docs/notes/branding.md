@@ -63,6 +63,39 @@ A district file keeps writing the plain word (`sign('BANK', ...)`). `docs/disast
   WELCOME TO THE MIDDLE OF NOWHERE · POP. 51. `western()` takes `o.font` (rye, sancreek, ewert). Seen in the game 11-20 (the gate, the bank,
   the street). Not built: Doc Sawbones (no doctor's building stands), the motel, Dino-Might Gas, the circus and Giza names (other districts).
 
+## THE SIGNAGE PASS (11-22): a front is the tenant's, an advert hangs on a blank wall, no sign in a wall
+mondo 11-22 (his picture: Bayside's round flower shop wearing Icarus Aerospace, Meltdown Burger and Jitters Coffee): "We added these signs
+for businesses and stuff but they are all messed up. Why does this one building have icarus aerospace, hotdogs, and burgers?? And the
+signs are clipping into stuff. Please fix. The signs should make logical sense. Billboards, street level signs, whatever. You need to think
+like an actual city planner".
+- **WHAT IT WAS.** Step 4 dealt the twelve adverts in turn onto every open wall of Entertainment and Bayside (55 boards, 218 posters), hung
+  on each building's bounding box. So every shop wore up to ten other firms' names, the boards covered the shops' own signs (Upper Crust
+  Bakery, Kebabylon, Mid Records, Game Over, A Stitch in Time, Petal Pushers were under one), and on a round or stepped building the
+  boards stood in the air or inside an awning.
+- **THE PLANNER'S RULES** (`docs/disaster-city/billboards.js`, its head lists them): (1) a face with the building's own sign or doorway
+  takes no advert; (2) an advert hangs only on a blank wall: the wall itself within 30 cm behind every part of it (never glass, a shutter,
+  a door, a sign), 2.5 m of clear air in front, no tree, and at eye level no prop; it slides along the wall to the first clear stretch; (3)
+  one upper board (two storeys or more) and one pair of posters a building at most; (4) a roof board only on a roof edge that looks onto a
+  street within 40 m or onto 16 m of open ground, and never where a parapet or roof hut stands; (5) a chain's own building advertises
+  itself (Snake Eyes, Meltdown Burger, Mid Records, Jitters), a place that sells food takes no other food or drink advert, otherwise the
+  advert whose nearest twin is farthest away. The city now carries 16 boards (6 on roofs, 10 on walls) and 46 posters (23 pairs). More adverts = more blank walls or new
+  roadside structures, never the fronts.
+- **THE SIGN CHECK** (`docs/disaster-city/sign-check.js`, run by the city bake after every district and the billboards, ALL districts): it
+  knows every drawn surface (arch boxes, cylinders, polys, standing quads, skinned buildings) in the renderer's own frames. A sign that sits
+  inside a wall or flush behind a surface is drawn out along its own facing to 1 cm past it (97 signs: COAL AND ICE, The Daily Disaster,
+  Ashfall Memorial Library, Museum of Natural Disasters, Calamity Pictures, the food hall's two menu boards, Calamity Mutual Field, the
+  lantern lane's blade letters, which faced INTO their blades). A surface standing off a sign (a colonnade) is listed, not moved. THE
+  TWINS: a smaller lettering lying under a larger one on the same face is taken out (the cinema's fin was lettered twice: C over N over
+  I). The list is `docs/disaster-city/sign-check.txt`; its LEFT lines are for the district threads (the fire station's sign inside its
+  marble block, the stadium kiosks' HOT FOOD / DRINKS / RENTALS drawn as ring copies inside their drums).
+- **A QUAD'S FACING:** `ry` 0 looks +z, 180 -z, 270 +x, 90 -x (in the row's frame, then the row's `rot`); a quad is one-sided. The lane
+  blades and a Sports blade had the two the wrong way round.
+- A district thread that adds a sign just rebakes: the check runs on it. `SIGNS_DUMP=1 node bake-disaster-city.js --dry-run` prints the
+  `BILLBOARD` and `SIGNCHECK` lines.
+- Probing the city: the whole room no longer fits the cloud browser's memory with its models; `node playtest_city.js <room> <views> --nogltf
+  --flags=EW_HQ_NO_SURVEY,EW_HQ_NO_ENCOUNTER,EW_NO_FLORA,EW_HQ_NO_RESIDENTS,EW_NO_HQ_GRASS,EW_NO_GRASS_FIELD,EW_NO_ANIMALS` is ready in a
+  minute (buildings, signs and code-drawn props; no model files).
+
 ## Where the pass stands
 | Step | State |
 |---|---|
@@ -70,7 +103,7 @@ A district file keeps writing the plain word (`sign('BANK', ...)`). `docs/disast
 | 2. Disaster City's shop signs take their names (all districts but Civic) | BUILT 11-20 |
 | 2b. Civic's shops (Grounds for Appeal, Out By Noon Bail Bonds, Sign Here Notary, Borrowed Time) | waits: `districts/C.js` is the second side's row |
 | 3. Chain marks, neon tube signs on the two night streets (Entertainment, Bayside), lit rooftop billboards | BUILT 11-20 (first pass: 21 neon signs, 14 billboards on 7 roofs) |
-| 4. Street-level boards + posters; the Western Town | BUILT 11-20. The ski mountain: not started (the Mountains are held by world polish thread 5) |
+| 4. Street-level boards + posters; the Western Town | BUILT 11-20; the boards and posters re-laid by THE SIGNAGE PASS 11-22 (blank walls only). The ski mountain: not started (the Mountains are held by world polish thread 5) |
 | 5. Every other zone | not started |
 
 ## The approved names
