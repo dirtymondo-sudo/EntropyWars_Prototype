@@ -55,7 +55,8 @@ const run = async () => {
   if (flag('flags', '')) await page.addInitScript((fl) => { fl.split(',').forEach(k => { if (k) window[k] = true; }); }, String(flag('flags', '')));
   page.on('pageerror', e => errs.push(String(e && e.message || e).slice(0, 240)));
   page.on('console', m => { const t = m.text(); if (process.env.EW_LIVE_LOG && /\[HQ\]/.test(t)) console.log('LIVE', t.slice(0, 200)); if (/\[HQ\]|failed|error|diner|warn/i.test(t) && !/tabletop .* has nothing under it/.test(t)) logs.push(t.slice(0, Number(flag('loglen', 240)))); });
-  await page.goto('http://localhost:3000/?hq&nomenu3d', { waitUntil: 'commit', timeout: 60000 });
+  await page.goto('http://localhost:3000/?hq&nomenu3d' + (flag('gpu', false) ? '&ew_gpu=webgpu' : ''),   // --gpu (with EW_PROBE_GL=webgpu): the node renderer, counts only (the picture is black in the cloud)
+     { waitUntil: 'commit', timeout: 60000 });
   const t0 = Date.now(); let ok = false;
   while (Date.now() - t0 < 120000) { try { const st = await page.evaluate(() => [document.readyState, typeof window._hqEnter, typeof ThreeRenderer !== 'undefined' && !!ThreeRenderer.hq]); if (st[1] === 'function' && st[2]) { ok = true; break; } } catch (e) {} await sleep(800); }
   if (!ok) { console.log('page never ready', errs.slice(0, 5)); await browser.close(); process.exit(1); }
@@ -101,11 +102,23 @@ const run = async () => {
   /* --top: the walk seen from over the walker, as the fight's camera sees its board (the same ground in both pictures) */
   if (flag('top', false)) { await ev(`(function(){ var g = ThreeRenderer.hq.dev.playerGroup().position; ThreeRenderer.hq.dev.teleport({ x: g.x / 73, z: g.z / 73, ground: true, face: 0, fp: false, dist: ${Number(flag('topdist', 16))}, pitch: ${Number(flag('toppitch', -1.1))} }); return 1; })()`); await fast.settle(page, 0, 6); await shot('2b_walk_top'); }
   if (process.env.EW_PROBE_EVAL) console.log('EVAL-WALK', JSON.stringify(await ev(fs.readFileSync(process.env.EW_PROBE_EVAL, 'utf8'))));
+  /* --fprofile: a CPU profile of the fight's first seconds (the strike to the end of --fight), three.js included (2026-11-22, THE FIGHT IN THE WALKED ROOM) */
+  const profPrint = (profile, label, all) => {
+    const byId = new Map(), parent = new Map(); profile.nodes.forEach(n => { byId.set(n.id, n); (n.children || []).forEach(c => parent.set(c, n.id)); });
+    const nameOf = n => (n.callFrame.functionName || '(anon)') + ' ' + (n.callFrame.url || '').split('/').pop().split('?')[0] + ':' + n.callFrame.lineNumber;
+    const self = new Map(), inc = new Map(), dt = profile.timeDeltas || []; let tot = 0;
+    profile.samples.forEach((id, i) => { const d = dt[i] || 0; tot += d; const n0 = byId.get(id); self.set(nameOf(n0), (self.get(nameOf(n0)) || 0) + d); const seen = new Set(); for (let q = id; q != null; q = parent.get(q)) { const n = byId.get(q); if (!n.callFrame.url) continue; const k = nameOf(n); if (seen.has(k)) continue; seen.add(k); inc.set(k, (inc.get(k) || 0) + d); } });
+    const fmt = (m, n) => [...m.entries()].filter(([k]) => all || !/three\.(core|webgpu|module|min)\.js| :-1$/.test(k)).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => (v / 1000).toFixed(0) + ' ms  ' + k);
+    console.log(label + ' total ' + (tot / 1000).toFixed(0) + ' ms\nSELF\n' + fmt(self, 30).join('\n') + '\nINCLUSIVE\n' + fmt(inc, 50).join('\n') + (all ? '\nOWN CODE, INCLUSIVE\n' + [...inc.entries()].filter(([k]) => !/three\.(core|webgpu|module|min)\.js| :-1$/.test(k)).sort((a, b) => b[1] - a[1]).slice(0, 90).map(([k, v]) => (v / 1000).toFixed(0) + ' ms  ' + k).join('\n') : ''));
+  };
+  let fcdp = null; if (flag('fprofile', false)) { try { fcdp = await context.newCDPSession(page); await fcdp.send('Profiler.enable'); await fcdp.send('Profiler.setSamplingInterval', { interval: 500 }); await fcdp.send('Profiler.start'); } catch (e) { fcdp = null; } }
   // the strike
-  console.log('STRIKE', JSON.stringify(await ev(`(function(){ var g = ThreeRenderer.hq.dev.playerGroup().position; var x = g.x / 73, z = g.z / 73 + 3.5, y = 0; window._hqEncounterFire({ target: { kind: 'npc', id: 'probe-1', race: '${RACE}', x: x, z: z, y: y }, x: x, z: z, y: y, gesture: 'attack' }); return 1; })()`)));
+  console.log('STRIKE', JSON.stringify(await ev(`(function(){ var g = ThreeRenderer.hq.dev.playerGroup().position; var x = g.x / 73, z = g.z / 73 + 3.5, y = g.y / 73; window._hqEncounterFire({ target: { kind: 'npc', id: 'probe-1', race: '${RACE}', x: x, z: z, y: y }, x: x, z: z, y: y, gesture: 'attack' }); return 1; })()`)));
   let t1 = Date.now();
   while (Date.now() - t1 < 180000) { const s2 = await stat(); if (s2 && s2.phase === 'battle') break; await sleep(1500); }
-  lap('battle phase'); await sleep(Number(flag('fight', 12000)));
+  lap('battle phase'); if (flag('early', false)) { await shot('3_fight_first'); console.log('EARLY', JSON.stringify(await ev(`({ dissolve: !!document.querySelector('.hq-dissolve'), late: (function () { try { return ThreeRenderer.shaderCache().late; } catch (e) { return String(e.message); } })() })`))); }   // --early: a picture the moment the fight's phase begins (is a held snapshot over it?)
+  await sleep(Number(flag('fight', 12000)));
+  if (fcdp) { try { const { profile } = await fcdp.send('Profiler.stop'); profPrint(profile, 'FIGHT PROFILE', true); await fcdp.detach(); } catch (e) { console.log('fight profile failed', String(e.message).slice(0, 200)); } }
   /* the fight's camera onto P1's unit (the encounter's seed pose can leave a slow probe's camera short of the board) */
   console.log('FOCUS', JSON.stringify(await ev(`(function(){ try { var u = GAME.state.units.filter(function (x) { return String(x.id).indexOf('1-') === 0; })[0]; _softResetCameraToUnit(u); return u.id + '@' + u.x + ',' + u.y; } catch (e) { return 'ERR ' + e.message; } })()`))); await sleep(Number(flag('focus', 5000)));
   console.log('FIGHT', JSON.stringify(await stat()));
@@ -115,6 +128,8 @@ const run = async () => {
     return { lights: L.length, lightList: L.slice(0, 30), exposure: r.toneMappingExposure, toneMapping: r.toneMapping, fog: sc.fog ? [sc.fog.density, sc.fog.color.getHexString()] : null, bg: sc.background && sc.background.getHexString ? sc.background.getHexString() : String(sc.background && sc.background.type), field: (typeof ThreePost !== 'undefined' && ThreePost.getFieldLight) ? ThreePost.getFieldLight() : null }; })()`)));
   if (process.env.EW_PROBE_EVAL) console.log('EVAL-FIGHT', JSON.stringify(await ev(fs.readFileSync(process.env.EW_PROBE_EVAL, 'utf8'))));   // EW_PROBE_EVAL=<file.js>: run in the page on the walk and in the fight (a like-for-like readout)
   await shot('3_fight');
+  /* --flip: the round turns (day <-> night) in the fight, a picture once the light has eased (THE FIGHT IN THE WALKED ROOM, 2026-11-22) */
+  if (flag('flip', false)) { console.log('FLIP', JSON.stringify(await ev(`(function(){ var a = getCurrentCyclePhase(); GAME.state.round = (GAME.state.round | 0) + 1; return a + ' -> ' + getCurrentCyclePhase(); })()`))); await sleep(Number(flag('flip', 1)) > 1 ? Number(flag('flip', 1)) : 9000); await fast.settle(page, 0, 6); await shot('3_fight_flipped'); try { console.log('FW-FLIP', JSON.stringify(await ev(`ThreeRenderer.hq.dev.fw()`)).slice(0, 900)); } catch (e) {} }
   // win
   console.log('WIN', JSON.stringify(await ev(`(function(){ var st = GAME.state; var u = st.units.filter(function (x) { return String(x.id).indexOf('2-') === 0; }); u.forEach(function (x) { x.hp = 0; x.alive = false; x.dead = true; }); try { checkWin(); } catch (e) { return 'ERR ' + e.message; } return u.length; })()`)));
   t1 = Date.now(); let btn = false;
@@ -144,6 +159,17 @@ const run = async () => {
     console.log('PROFILE total ' + (tot / 1000).toFixed(0) + ' ms\nSELF\n' + fmt(self, 25).join('\n') + '\nINCLUSIVE\n' + fmt(inc, 45).join('\n'));
   } catch (e) { console.log('profile failed', String(e.message).slice(0, 200)); } }
   await shot('6_back_later');
+  /* --again: a second fight from where the walker came back, then back again (the walked room is used twice) */
+  if (flag('again', false)) {
+  console.log('STRIKE2', JSON.stringify(await ev(`(function(){ var g = ThreeRenderer.hq.dev.playerGroup().position; var x = g.x / 73, z = g.z / 73 + 3.5, y = g.y / 73; window._hqEncounterFire({ target: { kind: 'npc', id: 'probe-1', race: '${RACE}', x: x, z: z, y: y }, x: x, z: z, y: y, gesture: 'attack' }); return 1; })()`)));
+    const tA = Date.now(); while (Date.now() - tA < 240000) { const st2 = await stat(); if (st2 && st2.phase === 'battle') break; await sleep(500); }
+    await sleep(Number(flag('fight', 12000))); await fast.settle(page, 0, 6); await shot('8_fight2');
+    console.log('FIGHT2', JSON.stringify(await stat())); try { console.log('FW-FIGHT2', JSON.stringify(await ev(`ThreeRenderer.hq.dev.fw()`)).slice(0, 1200)); } catch (e) {}
+    await ev(`(function(){ GAME.state.units.forEach(function (u) { if (String(u.id).indexOf('2-') === 0) { u.hp = 0; u.alive = false; u.dead = true; } }); checkWin(); return 1; })()`); await sleep(6000);
+    { const tC = Date.now(); while (Date.now() - tC < 120000) { if (await ev(`!!(document.getElementById('encReturnBtn') && document.getElementById('encReturnBtn').offsetParent)`) === true) break; await sleep(300); } await ev(`document.getElementById('encReturnBtn').click(), 1`); }
+    const tB = Date.now(); while (Date.now() - tB < 240000) { const b2 = await stat(); if (b2 && b2.hqScene && b2.gate && b2.gate.ready && b2.phase !== 'battle') break; await sleep(1000); }
+    await sleep(6000); await fast.settle(page, 0, 6); await shot('9_back2'); console.log('BACK-2ND', JSON.stringify(await stat()));
+  }
   await ev(`ThreeRenderer.hq.dev.teleport({ x: 113.75, z: 22.75, face: 270, fp: false, dist: 4, pitch: -0.2 }), 1`); await fast.settle(page, 0, 6); await shot('7_back_teleported');
   console.log('HQLOGS', JSON.stringify(logs.filter(l => /\[HQ\]|HQ→battle|parked|resumed/i.test(l)).slice(-40)));
   console.log('ERRORS', JSON.stringify(errs.slice(0, 12)));

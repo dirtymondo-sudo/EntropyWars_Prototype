@@ -1170,3 +1170,51 @@ everything to the cap (measured 0.57 square over the feet, Fairy Forest 12x12, a
 the feet; every vertex is walked out from the unit's spot along the sampler, a bank that comes up through the plane carries that
 vertex with it (never buried), a sheer step ends the walk (a wall never lifts the ring). The reticle + the white tile are 8x8 grids
 again (flat on flat ground). Off a field nothing changed (flat at the unit group). Proof: /mnt/project-files/tile-outline-floor/.
+
+## THE FIGHT IN THE WALKED ROOM (2026-11-22, mondo: "I have literally been saying this for months ... making it a seamless transition")
+
+mondo chose it on the frame dips thread: a fight keeps drawing the EXACT room he walked, nothing is copied, nothing switches.
+Before, a fight was a second scene: `_hqBuildRoomInBattle` cloned ~3,100 pieces of the parked walk into the battle scene, and
+the node renderer prepared all of it again for the new scene, lights and camera (about 6,000 to 7,300 group recordings re-made,
+shader builds, a 1 to 1.5 s freeze on his Mac every fight).
+
+How it works now (three-renderer.js, `_fw*`; search "THE FIGHT IN THE WALKED ROOM"):
+- `_fwCan()` says whether this fight can use the walk's own room (the parked walk of the same room, a field fight). Not for a
+  room with joined neighbours (the DOOR HQ stage), a round world, a vessel under way: those keep the copies. PvP and arena
+  boards are not exploration rooms and never come here.
+- `_fwEnter`: the walk's room groups go under one holder `hq_walked` whose matrix is the board's (`_hqBattleRoomMatrix`), and
+  the holder stays IN THE WALK'S SCENE. The walk's point lights under it get their reach scaled to the fight's units.
+- `_fwWrapRender` / `_fwDraw`: every render of the battle scene (the picture, a shot's panes, the unit mask) is drawn as a
+  render of THE WALK'S SCENE with the battle scene pushed in as one more child for the length of the draw (its parent pointer is
+  never touched, so every world matrix of the fight is what it was), with the WALK'S camera object carrying the fight camera's
+  place and lens (`_fwCamOf`). Same scene, same lights node, same camera object: the renderer finds every recording, draw record
+  and pipeline it made for the walk. The battle scene's own sun / sky / ambient lights rest for the draw (the walk's light both
+  the room and the units); its point lights (spells) join the walk's list through the rig.
+- The round's day and night (mondo's decision: story fights keep flipping): `_fwLights` copies the field light's sun and sky
+  onto the walk's key and hemisphere light, only once the round has turned them; `_fwLightsBack` puts the walk's back.
+- The walk's sun shadow is aimed at the board (`_fwShadowIn` / `_fwSunAim`), its box in the fight's units.
+- Bundles (`_ewBunTick`): the walk's groups stay walk groups (`H = _hq || _fw.H`); a group whose only change is the holder's
+  matrix keeps its recording (`_fwEp`, counted in `fwKept`) and its draw records are refreshed once (`rbOne`, `_ewFwE`).
+- The fight's readers (dig / sink, tall scenery, board fog edge, floor meshes, the wall and tree fade) read the walked room's
+  lists (`_fw.floors / .props / .roots / .box`), never the whole room (RULE #1e).
+- `_fwLeave`: the holder leaves the scene, lights, camera, shadow box and fog go back; the walk resumes on the same objects.
+- Off (the copies, as before): `window.EW_FIGHT_COPIES = true`. The fight in its own scene but no copies: `EW_FW_OWN_SCENE`.
+- Online: nothing to relay. It is a drawing change on each machine; PvP boards do not use it.
+
+### After mondo's F3 on walkedroom-01 ("Still freezes in during the transition", 11-22 20:47Z)
+His F3 (Disaster City, Firefox M1 WebGPU): FIGHT START dip 7.4 s, worst gap 1,777 ms, 63 re-recorded (was 2,486), but
+61 shader builds + 69 new pipelines + a 286 ms lay. Two things the first delivery left in:
+- THE LATE LOOK WAS OFF IN A WALKED-ROOM FIGHT. `_ewLateTick('b')` compared the drawn scene and camera with the BATTLE
+  scene and camera; a walked-room fight draws the walk's scene with the walk's camera object, so nothing matched and every
+  new look was built whole in the frame that first drew it. Now it takes `_fw.HS` and `_fw.H.camera`, and it is on from the
+  fight's first frame (no 600 ms grace: the room's looks are built already, only the fight's own are new). Off: `EW_FW_LATE_WAIT`.
+- NO HELD PICTURE INTO A WALKED-ROOM FIGHT. map.js asks `_hqLeave` for a dissolve (`hold: 3000`): one more render of the
+  walk, a canvas copy to 2D and a still held over the screen until the fight's first frame. It hid the copy scene's build;
+  with the walked room it WAS the visible freeze. `_hqLeave` skips it when the fight will use the walked room (`fwGo`).
+  Stage rooms, round worlds, a vessel and a room still loading keep it. Back on: `EW_FW_DISSOLVE`.
+- THE DIP LOG NAMES ITS BUILDS: a dip line ends " · worst frame: JS X ms (part) · built: 6x <look> | ..." (24 kinds for a
+  FIGHT START dip, 6 otherwise), so his next F3 says which looks are still first-time at a fight's start.
+- Probe: `playtest_handover.js --early` takes `3_fight_first` at the battle phase and prints whether `.hq-dissolve` is up
+  and the late look's state. Cloud proof (classic, the Clearing): `{"dissolve":false,"late":{"on":true}}`, no errors.
+- NOT CUT YET: the lay itself (`activate` ~220 ms, unit load / animation bake the first time a race fights, the React HUD).
+  On Firefox a new pipeline holds the frame even when asked async, so a look nothing drew before still costs once.

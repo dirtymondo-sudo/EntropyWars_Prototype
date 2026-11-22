@@ -14659,3 +14659,15 @@ Every walked gate of those rooms was walked in the browser from both sides. What
   trees and spawn (plots.json moved under it), so it was not tapered. From R4's east end the Vatican is the far-sight box with the dome on top.
 - PROBE LESSONS: the software walker covers about 20 m in 70 s, so start a walk probe 5-6 m from the door; `ThreeRenderer.hq.dev.blockersNear(x, z, r)`
   lists what blocks near a point (key, place, size) when a walk stops short.
+
+### THE OTHERWORLD GATES, ROUND 2 — the portals, boats and screens walked; the Vatican from the road (2026-11-22)
+- WALKED BOTH WAYS IN THE BROWSER, all cross: the Astral Realm's four frames <-> the Waiting Room, the mirror <-> Came A Lot's garden, the dream screens
+  (D.U.M.B. <-> the Astral Realm, the Waiting Room -> the Dream Lab), the login screen (D.U.M.B. <-> the Internet), the boats (Pirates' Cove <-> Antarctica,
+  Antarctica <-> Babel's canal), Antarctica's station -> the ship's airlock, the ship's stick -> Outer Space.
+- A WAY OBJECT (boat, screen, wardrobe…) IS WALKED INTO, NOT PRESSED: E from 1.6 m does nothing by design; the probe is `"walk":{"key":"w"}` from 3 m.
+  A plain door frame takes `"walk":{"key":"e","run":false}` from 1.6 m.
+- NOT A BUG: the Polar Opening (link `hollow_byrd`, Antarctica <-> Hollow Earth) is `secret`: no walk-in until the protractor has measured it. The ship's
+  `collar` has no action (the ship is docked by flying it). Outer Space is one flown room: `dev.teleport` does not move the walker there, so its bores and
+  frames were not walked by the probe.
+- THE VATICAN FROM THE ROAD: `_hqLandmarkBuilders.dome` as a world sight (`id: 'ow:…'`) wears a portico of columns, an entablature, an attic, two wings and
+  the city's brick wall in front; it was one grey block with the dome on it. The cortile's own landmark is unchanged.
