@@ -16782,6 +16782,13 @@ const ThreeRenderer = (function () {
         if (V(gr.barrel).applyQuaternion(q).dot(f) < 0) {   // (the mirror hand: the same seat with the barrel forward)
             var flip = new THREE.Quaternion().setFromAxisAngle(Dw, Math.PI); q.premultiply(flip);
         }
+        /* THE CANT (2026-11-22, THE WEAPONS IN THE HANDS): a blade does not stand square across the fist, its handle lies slanted over the
+           palm. `grip.cant` degrees turn the prop about the palm's normal, the end that leaves the fist at the thumb leaning to the knuckles'
+           side (a hanging arm: the point drops toward the ground in front of the feet). Either hand. */
+        if (gr.cant) {
+            var cs = new THREE.Vector3().crossVectors(t, f).dot(Zw) < 0 ? -1 : 1;
+            q.premultiply(new THREE.Quaternion().setFromAxisAngle(Zw, cs * gr.cant * Math.PI / 180));
+        }
         return q;
     }
     /* THE GRIP ON A MESHY HAND (2026-11-02, mondo: the door gun "in the hand's finger grip" like the cowboy's revolver): a Meshy
@@ -54375,6 +54382,201 @@ const ThreeRenderer = (function () {
         out.sig = sig;
         return out;
     }
+    /* ────────────────────────────────────────────────────────────────────
+     * THE EXPLORATION MINIMAP (2026-11-22, mondo: "Let's add a minimap to the exploration mode. It should look similar/identical
+     * to the one from battle. It should have quest markers too"; his picks on the mock-up: "definitely bottom right, north
+     * always up, grey walls and blue water are fine, yes npcs should show"). #ewHqMinimap (.ew-mmap.ew-hqmm, styles-hud.css)
+     * sits in #hqPage, bottom right: the battle minimap's box, grid, frame and colours (_mmLook: the UI Maker's Minimap look),
+     * HQMM_SPAN squares of 3.5 m around the walker, north (-z) up. You = the arrow; a story character = the ally colour; a unit
+     * you can fight (hqEncounterCharOk) = the foe colour; anyone else white; a door = green; the quest = the gold diamond of
+     * map.js THE QUEST MARKER (hq.questMark leaves its metres here), pinned to the edge with an arrow when out of range.
+     * NO ROOM SCAN (RULE #1e): a square is asked once (_hqNavQuery, four points; the terrain's water) when it first comes
+     * into the window, at most HQMM_ASK_MS a tick, and kept for the room; the people come from the room's own list (_hq.chars),
+     * the doors from its door list, read once. Redrawn at most every 50 ms and only when something on it changed.
+     * Away in a scene, a panel, the pause menu, the editor, a fight. Viewer-local. Off: window.EW_NO_HQ_MINIMAP = true.
+     * ──────────────────────────────────────────────────────────────────── */
+    var HQMM_SQ = 3.5, HQMM_SPAN = 15, HQMM_ASK_MS = 1.2, HQMM_REASK_MS = 20000;
+    var _hmm = { el: null, cv: null, ctx: null, H: null, room: null, cells: new Map(), queue: [], queued: new Set(), ver: 0, sig: '', next: 0, boxKey: '', cw: 0, ch: 0,
+                 doors: [], doorsKey: '', quest: null, questAt: 0, drawnAt: 0, reaskAt: 0 };
+    function _hqMmHide() {
+        if (_hmm.el && !_hmm.el.classList.contains('off')) _hmm.el.classList.add('off');
+        _hmm.sig = '';
+    }
+    function _hqMmEnsure() {
+        if (_hmm.el && _hmm.el.isConnected) return _hmm.el;
+        var page = document.getElementById('hqPage'); if (!page) return null;
+        var el = document.createElement('div');
+        el.id = 'ewHqMinimap';
+        el.className = 'ew-mmap ew-hqmm off';
+        var cv = document.createElement('canvas');
+        el.appendChild(cv);
+        page.appendChild(el);
+        _hmm.el = el; _hmm.cv = cv; _hmm.ctx = cv.getContext('2d'); _hmm.sig = ''; _hmm.boxKey = '';
+        return el;
+    }
+    function _hqMmKey(i, j) { return (i + 32768) * 65536 + (j + 32768); }
+    /* one square, asked once: 2 = water, 1 = wall / building / cliff / outside the room, 0 = open ground */
+    function _hqMmAsk(i, j) {
+        var cx = (i + 0.5) * HQMM_SQ, cz = (j + 0.5) * HQMM_SQ, q = HQMM_SQ / 4, solid = 0;
+        try { if (_hq.terrain && typeof hqTerrainFluidAt === 'function' && hqTerrainFluidAt(_hq.terrain, cx, cz)) return 2; } catch (e) {}
+        for (var s = 0; s < 4; s++) {
+            var x = cx + ((s & 1) ? q : -q), z = cz + ((s & 2) ? q : -q);
+            var y = _hqNavQuery(x, z, null);
+            if (y === null || y === undefined || !isFinite(y)) { solid++; continue; }
+            var yb = null; try { yb = _hqSurface(x, z, null, true); } catch (e2) { yb = null; }
+            if (yb !== null && yb !== undefined && isFinite(yb) && y - yb > 1.2) solid++;   // something over a metre tall stands on the ground here
+        }
+        return solid >= 2 ? 1 : 0;
+    }
+    function _hqMmDoors(H) {
+        var n = H.doors.length, st = H.stage, id;
+        if (st && st.parts) for (id in st.parts) { var P0 = st.parts[id].P; n += 1000 + ((P0 && P0.doors) ? P0.doors.length : 0); }
+        var key = n + '|' + (H.ready ? 1 : 0);
+        if (key === _hmm.doorsKey) return _hmm.doors;
+        var ds = H.doors.slice(), U = _hqUnits(), out = [], v = new THREE.Vector3();
+        if (st && st.parts) for (id in st.parts) { var P = st.parts[id].P; if (P && P.doors) ds = ds.concat(P.doors); }
+        for (var k = 0; k < ds.length; k++) { var d = ds[k]; if (!d || !d.group) continue; d.group.getWorldPosition(v); out.push({ x: v.x / U, z: v.z / U }); }
+        _hmm.doorsKey = key; _hmm.doors = out; _hmm.sig = '';
+        return out;
+    }
+    function _hqMmUpdate(H, now) {
+        if (now < _hmm.next) return;
+        _hmm.next = now + 50;
+        var pl = H.player, body = document.body;
+        if (window.EW_NO_HQ_MINIMAP || !H.ready || !pl || H.paused || (H.opts && H.opts.edit) || !isFinite(pl.x) || !isFinite(pl.z)
+            || body.classList.contains('ew-scene') || (window.EWCine && window.EWCine.on)
+            || (typeof GS !== 'undefined' && typeof state !== 'undefined' && state && state.gameState !== GS.HQ)) { _hqMmHide(); return; }
+        var el = _hqMmEnsure(); if (!el) return;
+        var room = (H.opts && H.opts.room) || null;
+        if (H !== _hmm.H || room !== _hmm.room) { _hmm.H = H; _hmm.room = room; _hmm.cells = new Map(); _hmm.queue = []; _hmm.queued = new Set(); _hmm.doorsKey = ''; _hmm.sig = ''; _hmm.reaskAt = now; }
+        var L = _mmLook(), round = L.shape === 'round';
+        var cls = 'ew-mmap ew-hqmm' + (round ? ' round' : '');
+        if (el.className !== cls) { el.className = cls; _hmm.sig = ''; }
+        var hudK = parseFloat(document.documentElement.style.getPropertyValue('--ew-hud-scale')) || 1;
+        var size = Math.round(Math.max(40, Math.min(640, (+L.size || 180) * Math.max(0.3, Math.min(2, hudK)))));
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        var boxKey = size + '|' + dpr;
+        if (boxKey !== _hmm.boxKey) {
+            el.style.width = size + 'px'; el.style.height = size + 'px';
+            _hmm.cv.width = Math.round(size * dpr); _hmm.cv.height = Math.round(size * dpr);
+            _hmm.cw = size; _hmm.ch = size; _hmm.boxKey = boxKey; _hmm.sig = '';
+        }
+        var cw = _hmm.cw, ch = _hmm.ch, cell = cw / HQMM_SPAN, half = HQMM_SPAN / 2;
+        var px = pl.x / HQMM_SQ, pz = pl.z / HQMM_SQ;
+        var i0 = Math.floor(px - half), i1 = Math.floor(px + half), j0 = Math.floor(pz - half), j1 = Math.floor(pz + half), i, j, key;
+
+        /* the squares in the window nobody asked yet join the queue; every HQMM_REASK_MS the window is asked again (a prop that
+           landed late), the old answers staying on the picture meanwhile */
+        var reask = now - _hmm.reaskAt > HQMM_REASK_MS; if (reask) _hmm.reaskAt = now;
+        for (j = j0; j <= j1; j++) for (i = i0; i <= i1; i++) {
+            key = _hqMmKey(i, j);
+            if ((reask || !_hmm.cells.has(key)) && !_hmm.queued.has(key)) { _hmm.queued.add(key); _hmm.queue.push(i, j); }
+        }
+        if (_hmm.queue.length) {
+            var t0 = performance.now(), Q = _hmm.queue, qi = 0;
+            while (qi < Q.length) {
+                var ai = Q[qi], aj = Q[qi + 1]; qi += 2; key = _hqMmKey(ai, aj); _hmm.queued.delete(key);
+                if (ai < i0 - 2 || ai > i1 + 2 || aj < j0 - 2 || aj > j1 + 2) continue;   // walked away from it before its turn
+                var kind = 0; try { kind = _hqMmAsk(ai, aj); } catch (e) { kind = 0; }
+                if (_hmm.cells.get(key) !== kind) { _hmm.cells.set(key, kind); _hmm.ver++; }
+                if (performance.now() - t0 > HQMM_ASK_MS) break;
+            }
+            Q.splice(0, qi);
+        }
+
+        /* the people in the window, from the room's own list */
+        var icons = [], chars = H.chars, ok = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : null;
+        var sig = boxKey + '|' + (window._ewMapLookV || 0) + '|' + _hmm.ver + '|' + pl.x.toFixed(1) + ',' + pl.z.toFixed(1) + ',' + (+pl.yaw || 0).toFixed(1);
+        for (var c = 0; c < chars.length; c++) {
+            var chr = chars[c]; if (!chr || chr === pl || chr.kind === 'player' || chr.away || !isFinite(chr.x) || !isFinite(chr.z)) continue;
+            var dx = chr.x / HQMM_SQ - px, dz = chr.z / HQMM_SQ - pz;
+            if (Math.abs(dx) > half || Math.abs(dz) > half) continue;
+            var col = (chr.cast || chr.kind === 'cast') ? 1 : (ok && ok(chr)) ? 2 : 0;
+            icons.push(dx, dz, col); sig += '|' + dx.toFixed(1) + ',' + dz.toFixed(1) + col;
+        }
+        var doors = _hqMmDoors(H);
+        var quest = (_hmm.quest && now - _hmm.questAt < 700) ? _hmm.quest : null;
+        if (quest) sig += '|q' + quest.x.toFixed(1) + ',' + quest.z.toFixed(1);
+        if (sig === _hmm.sig) { if (el.classList.contains('off')) el.classList.remove('off'); return; }
+        _hmm.sig = sig; _hmm.drawnAt = now;
+
+        var ctx = _hmm.ctx;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, _hmm.cv.width, _hmm.cv.height);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.save();
+        ctx.beginPath();
+        if (round) ctx.arc(cw / 2, ch / 2, Math.min(cw, ch) / 2, 0, Math.PI * 2); else ctx.rect(0, 0, cw, ch);
+        ctx.clip();
+        if (+L.bgOp > 0) { ctx.fillStyle = _mmRgba(L.bg, L.bgOp); ctx.fillRect(0, 0, cw, ch); }
+        var SX = function (sx) { return cw / 2 + (sx - px) * cell; }, SY = function (sz) { return ch / 2 + (sz - pz) * cell; };
+        /* the ground: walls grey, water blue */
+        for (j = j0; j <= j1; j++) for (i = i0; i <= i1; i++) {
+            var kd = _hmm.cells.get(_hqMmKey(i, j)); if (!kd) continue;
+            ctx.fillStyle = kd === 2 ? 'rgba(90,150,255,0.62)' : 'rgba(255,255,255,0.34)';
+            ctx.fillRect(Math.round(SX(i)), Math.round(SY(j)), Math.ceil(cell), Math.ceil(cell));
+        }
+        /* the grid, the battle minimap's own line */
+        var gw = +L.gridW;
+        if (gw > 0 && +L.gridOp > 0) {
+            ctx.lineWidth = Math.max(1, Math.round(gw * dpr)) / dpr; ctx.strokeStyle = _mmRgba(L.grid, L.gridOp);
+            var sh = (Math.round(gw * dpr) % 2) ? 0.5 / dpr : 0;
+            ctx.beginPath();
+            for (i = i0; i <= i1 + 1; i++) { var gx = Math.round(SX(i) * dpr) / dpr + sh; ctx.moveTo(gx, 0); ctx.lineTo(gx, ch); }
+            for (j = j0; j <= j1 + 1; j++) { var gy = Math.round(SY(j) * dpr) / dpr + sh; ctx.moveTo(0, gy); ctx.lineTo(cw, gy); }
+            ctx.stroke();
+        }
+        /* the doors and the ways out */
+        ctx.fillStyle = '#39ff6a'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+        var dr = cell * 0.36;
+        for (var d = 0; d < doors.length; d++) {
+            var ddx = doors[d].x / HQMM_SQ - px, ddz = doors[d].z / HQMM_SQ - pz;
+            if (Math.abs(ddx) > half + 0.5 || Math.abs(ddz) > half + 0.5) continue;
+            var qx = cw / 2 + ddx * cell, qy = ch / 2 + ddz * cell;
+            ctx.fillRect(qx - dr, qy - dr, dr * 2, dr * 2); ctx.strokeRect(qx - dr, qy - dr, dr * 2, dr * 2);
+        }
+        /* the people */
+        var ir = Math.max(2, cell * 0.5 * (+L.iconSize || 0.62));
+        for (var k = 0; k < icons.length; k += 3) {
+            var kc = icons[k + 2], rr = kc === 2 ? ir : ir * 0.8;
+            ctx.beginPath(); ctx.arc(cw / 2 + icons[k] * cell, ch / 2 + icons[k + 1] * cell, rr, 0, Math.PI * 2);
+            ctx.fillStyle = kc === 1 ? L.ally : kc === 2 ? L.foe : '#e6e6e6'; ctx.fill();
+            ctx.lineWidth = 1; ctx.strokeStyle = '#000'; ctx.stroke();
+        }
+        /* the quest: the gold diamond on its square, or at the edge with an arrow toward it */
+        if (quest) {
+            var gxq = (quest.x / HQMM_SQ - px) * cell, gyq = (quest.z / HQMM_SQ - pz) * cell, lim = cw / 2 - 11, far = false;
+            if (round) { var gd = Math.hypot(gxq, gyq); if (gd > lim) { far = true; gxq *= lim / gd; gyq *= lim / gd; } }
+            else { var gk = Math.max(Math.abs(gxq), Math.abs(gyq)); if (gk > lim) { far = true; gxq *= lim / gk; gyq *= lim / gk; } }
+            var gr = Math.max(5, cell * (far ? 0.42 : 0.5)), gX = cw / 2 + gxq, gY = ch / 2 + gyq;
+            ctx.beginPath(); ctx.arc(gX, gY, gr * 1.8, 0, Math.PI * 2); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,210,74,0.6)'; ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(gX, gY - gr); ctx.lineTo(gX + gr * 0.78, gY); ctx.lineTo(gX, gY + gr); ctx.lineTo(gX - gr * 0.78, gY); ctx.closePath();
+            ctx.fillStyle = '#ffd24a'; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#000'; ctx.stroke();
+            if (far) {
+                var ga = Math.atan2(gyq, gxq);
+                ctx.save(); ctx.translate(gX, gY); ctx.rotate(ga);
+                ctx.beginPath(); ctx.moveTo(gr + 6, 0); ctx.lineTo(gr + 1, -4); ctx.lineTo(gr + 1, 4); ctx.closePath();
+                ctx.fillStyle = '#ffd24a'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#000'; ctx.stroke();
+                ctx.restore();
+            }
+        }
+        /* you: the arrow, the way the body faces (yaw π = north) */
+        var yw = +pl.yaw || 0, ar = Math.max(7, cell * 0.7);
+        ctx.save(); ctx.translate(cw / 2, ch / 2); ctx.rotate(Math.atan2(Math.cos(yw), Math.sin(yw)) + Math.PI / 2);
+        ctx.beginPath(); ctx.moveTo(0, -ar); ctx.lineTo(ar * 0.62, ar * 0.72); ctx.lineTo(0, ar * 0.3); ctx.lineTo(-ar * 0.62, ar * 0.72); ctx.closePath();
+        ctx.fillStyle = L.ally; ctx.fill(); ctx.lineWidth = 1.25; ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.restore();
+        ctx.restore();
+        /* the frame */
+        var fw = +L.frameW;
+        if (fw > 0 && +L.frameOp > 0) {
+            ctx.lineWidth = fw; ctx.strokeStyle = _mmRgba(L.frame, L.frameOp);
+            ctx.beginPath();
+            if (round) ctx.arc(cw / 2, ch / 2, Math.min(cw, ch) / 2 - fw / 2, 0, Math.PI * 2); else ctx.rect(fw / 2, fw / 2, cw - fw, ch - fw);
+            ctx.stroke();
+        }
+        if (el.classList.contains('off')) el.classList.remove('off');
+    }
     function _mmUpdate() {
         var W = (typeof bw === 'function') ? bw() : (state.boardTerrain[0] ? state.boardTerrain[0].length : 0);
         var H = (typeof bh === 'function') ? bh() : state.boardTerrain.length;
@@ -55027,6 +55229,7 @@ const ThreeRenderer = (function () {
                 return;
             }
             /* Mystery Dungeon floors get the vector SCANNER instead. */
+            _hqMmHide();   // THE EXPLORATION MINIMAP leaves for a fight
             if (_mdScannerActive()) { _mmHide(); _drawMdScanner(); return; }
             if (_miniWrap && _miniWrap.classList.contains('md-scanner')) {
                 _miniWrap.classList.remove('md-scanner');
@@ -83541,7 +83744,7 @@ const ThreeRenderer = (function () {
                 return row[i] * (1 - f) + row[i + 1] * f;
             };
             var crestX = [-W / 2 - 2.5, -W / 2, -W / 4, 0, W / 4, W / 2, W / 2 + 2.5];
-            var crest = function (d) { var m = -Infinity; for (var ci = 0; ci < crestX.length; ci++) { var v = landAt(crestX[ci], d); if (v > m) m = v; } return m + 0.5; };
+            var crest = function (d) { var m = -Infinity; for (var ci = 0; ci < crestX.length; ci++) { var v = landAt(crestX[ci], d); if (v > m) m = v; } return m + (foot ? 0.15 : 0.5); };   // (a footpath lies low on the land: no half-metre hump)
             var gAt = function (lx, lz) {   // the road's own surface
                 if (!EF) return fieldAt(lx, lz);
                 var d = -lz - tOut; if (d <= 0) return fieldAt(lx, lz);
@@ -83552,9 +83755,9 @@ const ThreeRenderer = (function () {
             };
             var asphalt = _hqMat(null, 1, 1, { color: neon ? 0x8a8aa4 : (EF ? 0xb4b4b8 : 0xffffff), shininess: neon ? 24 : 6, specular: 0x151515, emissive: 0x0e0e0e, emissiveIntensity: 1 });
             /* A PATH OUT WEARS THE GROUND OF WHERE IT GOES (2026-11-22, mondo: "if its a dirt road then this path that leads out of it past the edge needs
-               to be dirt, not this tile pavement"): the far room's own path sheet (the Valley Road: dirt_2); this room's path sheet only when the far room has none */
-            var farRoom = null; try { farRoom = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && door.action && door.action.room) ? DOOR_HQ.rooms[door.action.room] : null; } catch (eFR) { farRoom = null; }
-            var footKey = foot && ((farRoom && farRoom.terrain && farRoom.terrain.path) || (ctx.room && ctx.room.terrain && ctx.room.terrain.path)); if (footKey) asphalt.color.setHex(0xffffff);
+               to be dirt, not this tile pavement"): the link end names its sheet and tint (the Valley Road's dirt, dark as that road is drawn in its own room) */
+            var footKey = foot && (door.sheet || (ctx.room && ctx.room.terrain && ctx.room.terrain.path));   // the end's own `sheet` (data.js link end), else this room's path sheet
+            if (footKey) { asphalt.color.setHex(door.tint != null ? door.tint : 0xffffff); asphalt.shininess = 0; asphalt.specular.setHex(0x000000); asphalt.emissive.setHex(0x060606); }   /* (dirt does not shine: mondo 2026-11-22, "why is the dirt shiny??") */
             var asT = (footKey && texOf(footKey)) || (EF && texOf('urban:RoadGeneric1a')) || texOf('urban:PlasterWallPainted1b'); if (asT) { asphalt.map = asT; asphalt.needsUpdate = true; }   // the pack's asphalt, the city streets' own sheet and tint
             if (EF) { asphalt.polygonOffset = true; asphalt.polygonOffsetFactor = -1; asphalt.polygonOffsetUnits = -1; }
             var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }); paint.polygonOffset = true;   /* (both sides: the paint quads wind face down, so the lane lines never drew, 2026-11-22) */ paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
@@ -83637,7 +83840,7 @@ const ThreeRenderer = (function () {
             /* the fog takes the far end: a dark gradient plane across the road's end */
             var fade = new THREE.Mesh(new THREE.PlaneGeometry((W + 2) * U, 6 * U), _hqBasic(0x000000, { transparent: true, opacity: 0.0, depthWrite: false })); fade.rotation.x = -Math.PI / 2; fade.position.set(0, 0.06 * U, -(LEN - 3) * U); if (!joinedR && !EF) g.add(fade);
             var motion = { mode: 'way', ow: W, tick: function (k) { lamps.forEach(function (lp) { lp.material.opacity = 0.16 + 0.5 * k; lp.scale.setScalar((1.2 + 0.8 * k) * U); }); } };
-            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.5, blockers: [], roadLen: LEN };
+            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.5, blockers: [], roadLen: LEN, lineOut: EF ? tOut : null };
         },
         gutter: function (U, ctx) {
             var g = new THREE.Group();
@@ -84114,8 +84317,11 @@ const ThreeRenderer = (function () {
            a little bit and press e, which is really dumb"): a road's end is a passage record like an open seam's: no prompt, and walking on under the
            gantry changes the room (_hqTickPassages). A free end lies on the room's own ground (the crossing 1 m past the gantry); a wall end runs
            3 m past the wall, level with the door's floor (the crossing 1.2 m out). */
+        /* THE CROSSING IS REACHED (2026-11-22, mondo at the Woods exit: "I cant even walk out of this path ... its just an invisible wall"): a walker
+           stops 1 m inside the room's line; the crossing stood 3.2 m past the end, and the Woods end is 2.6 m from its line, so nobody got there.
+           The crossing is never nearer the line than 1.5 m. */
         if (kind === 'road' && box) {
-            rec.passage = box.free ? { inside: true, w: ow, h: oh, len: Math.max(8, built.roadLen || 13), deep: 3.2, rise: 0, look: 'open', fade: 'black', roof: false, land: 1.6 }
+            rec.passage = box.free ? { inside: true, w: ow, h: oh, len: Math.max(8, built.roadLen || 13), deep: (built.lineOut != null) ? Math.min(3.2, Math.max(1.0, built.lineOut - 1.5)) : 3.2, rise: 0, look: 'open', fade: 'black', roof: false, land: 1.6 }
                                    : { inside: false, w: ow, h: oh, len: 3, deep: 1.2, rise: 0, look: 'open', fade: 'black', roof: false, land: 1.6 };
             (_hq.passages = _hq.passages || []).push(rec);
         }
@@ -96427,6 +96633,7 @@ const ThreeRenderer = (function () {
         if (!H.paused && H.ready && _hqClockMsLast && typeof window !== 'undefined' && typeof window._hqClockAdvance === 'function') { try { window._hqClockAdvance(Math.min(1, (now - _hqClockMsLast) / 1000)); } catch (e) {} }
         _hqClockMsLast = now;
         H.lastMs = now;
+        try { _hqMmUpdate(H, now); } catch (eMm) {}   // THE EXPLORATION MINIMAP (its own 50 ms pace)
         /* resize to the host */
         var host = H.host;
         /* THE SIZE BY OBSERVER (2026-11-19, mondo's Firefox profile: "get Element.clientWidth 0.67 ms a frame", each read forcing the
@@ -104785,6 +104992,7 @@ const ThreeRenderer = (function () {
             if (!obj) return null;
             var v = new THREE.Vector3(); obj.getWorldPosition(v);
             var pl = _hq.player, dist = Math.hypot(v.x / U - pl.x, v.z / U - pl.z);
+            _hmm.quest = { x: v.x / U, z: v.z / U }; _hmm.questAt = performance.now();   // THE EXPLORATION MINIMAP: the diamond's metres
             v.y += up * U;
             var cam = _hq.camera, e = cam.matrixWorldInverse.elements;
             var front = (e[2] * v.x + e[6] * v.y + e[10] * v.z + e[14]) < 0;   // view-space z: negative = in front

@@ -14127,6 +14127,18 @@ and press e ... i can't see the road going out, the road just stops and its all 
   - ROUND 4, THE PATH OUT IS DIRT (mondo: "if its a dirt road then this path that leads out of it past the edge needs to be dirt, not this
     tile pavement"): a `foot` end's strip wears the FAR room's path sheet (`DOOR_HQ.rooms[door.action.room].terrain.path`; the Valley Road:
     dirt_2), this room's only when the far room has none. He keeps the Valley Road a dirt road with cars "for now".
+  - ROUND 5 (mondo: "I cant even walk out of this path ... its just an invisible wall. and why is the dirt shiny"):
+    - THE CROSSING IS REACHED: a walker stops 1 m inside the room's line; a free end's crossing stood 3.2 m past the end and the Woods end is
+      2.6 m from its line. `deep` = min(3.2, max(1, the end's distance to the line - 1.5)) (the builder returns `lineOut`). Walked: city -> site_ow_r6.
+    - A PATH'S OWN GROUND: a link end may name `sheet` + `tint` (copied to the door); a `foot` strip wears them, with no highlight
+      (shininess 0), 0.15 m over the land (no hump). Round 4's "far room's path sheet" is gone. `valley_city` a AND b: `w: 5, sheet: 'dirt_2',
+      tint: 0xa08c78` (the colour the Valley Road's dirt draws at in its own room), so the Valley Road's east end is the same footpath with
+      a signpost (it ended in a green gantry and lane-painted asphalt).
+  - ROUND 6, THE VALLEY ROAD'S CITY END IS WOODS (mondo: "there should be woods/trees all along that dirt path leading back into the city,
+    since going out of the city its a dirt path leading into the woods"): `after-v13.js` row 10 makes the world plots -4..1 x 3..6 forest
+    (`f`); `docs/areas/routes/R6.js` plants a tall wood on the road's last four columns of plots (one free square in three off the road:
+    the kit's ten trees a plot read as a lawn). Then `node bake-route.js R6`, `node bake-map.js site_ow_r6`. RULE: the two sides of a gate
+    show the same country. Walked both ways: city -> site_ow_r6 and site_ow_r6 -> city (the software walker needs `max` 70000 for 6 m).
   - THE LANE LINES NEVER DREW: the paint quads wind face down (z runs negative); the paint material is double-sided now.
 - Probe: `node playtest_city.js site_ow_r9 '[{"name":"walk_n","x":-35,"z":-180,"face":0,"ground":true,"walk":{"key":"w","max":40000}}]'` walks
   into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
