@@ -77,7 +77,7 @@ const run = async () => {
     return { gate: g ? { ready: g.ready, landed: g.landed, done: g.done, total: g.total } : null, player: pl, chars: (function(){ try { return ThreeRenderer.hq.dev.chars().length; } catch (e) { return -1; } })(), phase: (typeof GAME !== 'undefined' && GAME.state) ? GAME.state.phase : null, hqScene: !!(ThreeRenderer.hq.dev.hqScene && ThreeRenderer.hq.dev.hqScene()), frameErr: window._ewHqFrameErrors || 0 }; })()`);
 
   const diag = () => ev(`(function(){ var sc = ThreeRenderer.hq.dev.hqScene(); if (!sc) return null; var L = [], ck = [0, 0], vis = 0, tot = 0, held = 0; var r = ThreeRenderer.hq.dev.renderer();
-    sc.traverse(function (o) { if (o.isLight) L.push(o.type.replace('Light','') + ':' + (+o.intensity).toFixed(2) + ':' + o.color.getHexString() + (o.visible ? '' : ':HIDDEN') + ':L' + o.layers.mask + (o.parent === sc ? '' : ':nested')); if (o._ew_ckFar != null) { ck[0]++; if (o.visible) ck[1]++; } if (o.isMesh) { tot++; if (o._ew_bRec) held++; } });
+    sc.traverse(function (o) { if (o.isLight) L.push(o.type.replace('Light','') + ':' + (+o.intensity).toFixed(2) + ':' + o.color.getHexString() + (o.groundColor ? '/' + o.groundColor.getHexString() : '') + (o.visible ? '' : ':HIDDEN') + ':L' + o.layers.mask + (o.parent === sc ? '' : ':nested')); if (o._ew_ckFar != null) { ck[0]++; if (o.visible) ck[1]++; } if (o.isMesh) { tot++; if (o._ew_bRec) held++; } });
     var top = sc.children.map(function (c) { return (c.name || c.type) + (c.visible ? '' : '(hidden)') + ':' + c.children.length; }).join(' | ').slice(0, 500);
     return { lights: L.length, lightList: L.slice(0, 14), chunks: ck, meshes: tot, held: held, exposure: r.toneMappingExposure, toneMapping: r.toneMapping, fog: sc.fog ? [sc.fog.density, sc.fog.color.getHexString()] : null, bg: sc.background && sc.background.getHexString ? sc.background.getHexString() : String(sc.background), info: [r.info.render.calls, r.info.render.triangles], shadow: [r.shadowMap.enabled, r.shadowMap.autoUpdate], top: top, cam: (function(){ var c = ThreeRenderer.hq.dev.scene && null; return null; })(), hfog: (typeof _EW_HFOG !== 'undefined') ? [_EW_HFOG.x, _EW_HFOG.y, _EW_HFOG.z, _EW_HFOG.w] : 'n/a', cycle: document.body.dataset.cycle, clear: r.getClearAlpha ? r.getClearAlpha() : null }; })()`);
 
@@ -88,6 +88,7 @@ const run = async () => {
     return { player: pg ? [pg.position.x / 73, pg.position.y / 73, pg.position.z / 73, pg.visible, pg.children.length] : null, camInScene: !!cam, dbg: dbg, overlays: ov, canvases: [].slice.call(document.querySelectorAll('canvas')).map(function (c) { var cs = getComputedStyle(c); return (c.id || c.className) + ' ' + c.width + 'x' + c.height + ' ' + cs.display + ' o' + cs.opacity + ' p:' + (c.parentNode && (c.parentNode.id || c.parentNode.className)); }) }; })()`);
   /* --at=x,z[,y]: stand the walker there first (a fight on a named square, e.g. a trail plot of a route room); --race=<unit>: who is struck (default dinosaur) */
   if (flag('at', false)) { const q = String(flag('at', '')).split(',').map(Number); await ev(`ThreeRenderer.hq.dev.teleport({ x: ${q[0]}, z: ${q[1]}, y: ${q[2] || 0}, face: 180, fp: false, dist: 6, pitch: -0.25 }), 1`); }
+  if (flag('hour', false)) { console.log('HOUR', JSON.stringify(await ev(`(hqClockSet(${Number(flag('hour', 9))}), window._hqClockHour())`))); await sleep(1500); }   // --hour=<0..24>: the exploration clock (a fight at night, at dusk)
   await fast.settle(page, 0, 6);
   console.log('WALK', JSON.stringify(await stat()));
   await shot('1_walk_before');
@@ -97,12 +98,22 @@ const run = async () => {
   console.log('CAM-BEFORE', JSON.stringify(await camd()));
   console.log('DIAG-BEFORE', JSON.stringify(await diag()));
   await shot('2_walk_merged');
+  /* --top: the walk seen from over the walker, as the fight's camera sees its board (the same ground in both pictures) */
+  if (flag('top', false)) { await ev(`(function(){ var g = ThreeRenderer.hq.dev.playerGroup().position; ThreeRenderer.hq.dev.teleport({ x: g.x / 73, z: g.z / 73, ground: true, face: 0, fp: false, dist: ${Number(flag('topdist', 16))}, pitch: ${Number(flag('toppitch', -1.1))} }); return 1; })()`); await fast.settle(page, 0, 6); await shot('2b_walk_top'); }
+  if (process.env.EW_PROBE_EVAL) console.log('EVAL-WALK', JSON.stringify(await ev(fs.readFileSync(process.env.EW_PROBE_EVAL, 'utf8'))));
   // the strike
   console.log('STRIKE', JSON.stringify(await ev(`(function(){ var g = ThreeRenderer.hq.dev.playerGroup().position; var x = g.x / 73, z = g.z / 73 + 3.5, y = 0; window._hqEncounterFire({ target: { kind: 'npc', id: 'probe-1', race: '${RACE}', x: x, z: z, y: y }, x: x, z: z, y: y, gesture: 'attack' }); return 1; })()`)));
   let t1 = Date.now();
   while (Date.now() - t1 < 180000) { const s2 = await stat(); if (s2 && s2.phase === 'battle') break; await sleep(1500); }
   lap('battle phase'); await sleep(Number(flag('fight', 12000)));
+  /* the fight's camera onto P1's unit (the encounter's seed pose can leave a slow probe's camera short of the board) */
+  console.log('FOCUS', JSON.stringify(await ev(`(function(){ try { var u = GAME.state.units.filter(function (x) { return String(x.id).indexOf('1-') === 0; })[0]; _softResetCameraToUnit(u); return u.id + '@' + u.x + ',' + u.y; } catch (e) { return 'ERR ' + e.message; } })()`))); await sleep(Number(flag('focus', 5000)));
   console.log('FIGHT', JSON.stringify(await stat()));
+  /* DIAG-FIGHT (2026-11-22, THE FIGHT WEARS THE WALK'S LIGHT): the battle scene's lights, exposure, fog and sky, to set beside DIAG-BEFORE */
+  console.log('DIAG-FIGHT', JSON.stringify(await ev(`(function(){ var sc = ThreeRenderer.hq.dev.scene(); if (!sc) return null; var L = []; var r = ThreeRenderer.hq.dev.renderer();
+    sc.traverse(function (o) { if (o.isLight && o.intensity > 0) { var v = o.visible; for (var q = o.parent; q; q = q.parent) if (!q.visible) v = false; L.push(o.type.replace('Light','') + ':' + (+o.intensity).toFixed(2) + ':' + o.color.getHexString() + (o.groundColor ? '/' + o.groundColor.getHexString() : '') + (v ? '' : ':HIDDEN') + (o.name ? ':' + o.name : '')); } });
+    return { lights: L.length, lightList: L.slice(0, 30), exposure: r.toneMappingExposure, toneMapping: r.toneMapping, fog: sc.fog ? [sc.fog.density, sc.fog.color.getHexString()] : null, bg: sc.background && sc.background.getHexString ? sc.background.getHexString() : String(sc.background && sc.background.type), field: (typeof ThreePost !== 'undefined' && ThreePost.getFieldLight) ? ThreePost.getFieldLight() : null }; })()`)));
+  if (process.env.EW_PROBE_EVAL) console.log('EVAL-FIGHT', JSON.stringify(await ev(fs.readFileSync(process.env.EW_PROBE_EVAL, 'utf8'))));   // EW_PROBE_EVAL=<file.js>: run in the page on the walk and in the fight (a like-for-like readout)
   await shot('3_fight');
   // win
   console.log('WIN', JSON.stringify(await ev(`(function(){ var st = GAME.state; var u = st.units.filter(function (x) { return String(x.id).indexOf('2-') === 0; }); u.forEach(function (x) { x.hp = 0; x.alive = false; x.dead = true; }); try { checkWin(); } catch (e) { return 'ERR ' + e.message; } return u.length; })()`)));

@@ -114,7 +114,9 @@
    99
   ],
   "exit": {
-   "aux": 6,
+   "taper": 3,
+   "lane": 4,
+   "diverge": 7,
    "slip": 12,
    "cross": [
     59,

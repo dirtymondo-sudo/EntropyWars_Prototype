@@ -3845,3 +3845,21 @@ padded sphere. Profile after: `_hqTickChars` 358 ms → 13 ms over the same walk
   refuses cut-outs and canvases today) for ~200 fewer meshes = ~1 ms. Not done: the stack's shader path cannot be seen in the
   cloud (WebGPU picture is black, the full city crashed the WebGPU page at "ready").
 - The cloud WebGPU city: crashed ("Target crashed") right after the room was ready, 15 GB machine, no texture shrink.
+
+## THE SIGNS STACK (2026-11-22, mondo picked "Keep merging, same look" for the Disaster City walk, 43.6 FPS)
+His F3: "alone: see-through / cut-out 410" of 1,303 square meshes in view. The census (THE OUTLINE'S BOUNDS above) says they are the
+city's CUT-OUT SIGNS: a plate with its own canvas picture (128 px high, 64 to 2048 px wide), alpha test 0.35, full opacity, depth
+written. THE SHEET STACK refused them twice: a see-through look, and a canvas picture.
+- `_hqStackTex` now takes a cut-out (alphaTest > 0, opacity 1, depthWrite, normal blending) and a CanvasTexture. The layer's texel
+  carries the alpha (`_ewNodeStack`: `colorNode = tx`, a vec4) and the stacked look is a clone that keeps `alphaTest`, so the cut is
+  the look's own. Truly see-through pieces (depthWrite off, no alpha test) still stay alone: they sort by their own centre.
+- `_hqStackFill` puts a canvas in by three's own `_copyImageToTexture` (so on Firefox it goes as bytes, THE SOFT CANVASES).
+- A sign painted again after it joined: `_hqStackWatch` looks at ONE stack a frame (its own short list of sheets, never the room)
+  and fills a stack whose canvas version moved (`_hqStk.repaints`).
+- Off: `window.EW_HQ_NO_SIGN_STACK` before the room.
+- Cloud (WebGPU on SwiftShader, counts only, the picture is black, model textures shrunk to 64 px so the page lives): the city
+  lands, 76 stacks / 551 sheets, stacks like "355x128 x12", "840x128 x12", "1405x128 x7", no frame errors. What is left alone at that
+  spot: cut-out 189 (a size with no partner in its square, or truly see-through) and "sign canvas 72". NOT seen: the picture itself
+  on WebGPU, and the count on his Mac. WAITING: his Shift+F3 line "squares, what each mesh is".
+- Next in the same line: signs of ONE height and different widths could share a layer size (pad to the widest, scale the UVs), which
+  would take most of the 189; then "many looks" (163) and the instance cells (808).
