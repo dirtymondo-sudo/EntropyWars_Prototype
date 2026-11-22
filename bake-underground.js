@@ -76,8 +76,16 @@ const ctx = {
 
 /* ── THE GROUND: the height base, four corners a square (cm, int16). A rock square stands at the lowest floor beside it, so the line between it
    and an open square is that square's own height (hqTerrainSlopeFn takes the higher side on a line) ── */
-const hs = []; for (let y = 0; y < H; y++) { hs.push([]); for (let x = 0; x < W; x++) hs[y].push(room(x, y) ? yAt(x, y) : null); }
-for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (hs[y][x] == null) { let m = Infinity; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (inG(x + i, y + j) && room(x + i, y + j)) m = Math.min(m, yAt(x + i, y + j)); hs[y][x] = isFinite(m) ? m : 0; }
+/* A SUMP'S BED AND BRIM (2026-11-22, the soft-lock pass): the bed lay a whole level under the floor and the square water stops a soft shore
+   (0.4 m) short of its squares' edge, so the brim was a dry lip a metre deep the walker slid into. The bed lies SUMP_BED under the LOWEST floor
+   beside the sump (its rim) and the water SUMP_TOP under it: the lip left at the brim is under a step (0.62 m), walked in and out of. */
+const SUMP_BED = 1.2, SUMP_TOP = 0.3, RIM = new Map();
+{ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (T[y][x] !== 'w' || RIM.has(x + ',' + y)) continue; const comp = [[x, y]], seen = new Set([x + ',' + y]); let lo = Infinity;
+      for (let i = 0; i < comp.length; i++) { const [a, b] = comp[i]; for (const [dx, dy] of D4) { const X = a + dx, Y = b + dy; if (!inG(X, Y)) continue; if (open(X, Y)) lo = Math.min(lo, yAt(X, Y)); else if (T[Y][X] === 'w' && L[Y][X] === L[b][a] && !seen.has(X + ',' + Y)) { seen.add(X + ',' + Y); comp.push([X, Y]); } } }   /* (two sumps on two levels side by side are two sumps) */
+      comp.forEach(([a, b]) => RIM.set(a + ',' + b, isFinite(lo) ? lo : r2(yAt(a, b) + LV))); } }
+const bedAt = (x, y) => r2(RIM.get(x + ',' + y) - SUMP_BED);
+const hs = []; for (let y = 0; y < H; y++) { hs.push([]); for (let x = 0; x < W; x++) hs[y].push(open(x, y) ? yAt(x, y) : room(x, y) ? bedAt(x, y) : null); }
+for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (hs[y][x] == null) { let m = Infinity; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (inG(x + i, y + j) && room(x + i, y + j)) m = Math.min(m, hs[y + j][x + i] != null && T[y + j][x + i] === 'w' ? bedAt(x + i, y + j) : yAt(x + i, y + j)); hs[y][x] = isFinite(m) ? m : 0; }
 const slope = Buffer.alloc(W * H * 8); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const v = Math.round(hs[y][x] * 100); for (let k = 0; k < 4; k++) slope.writeInt16LE(v, ((y * W + x) * 4 + k) * 2); }
 
 /* ── THE LADDERS, BUILT. 1.05 m off the plot line on the low side: on the height base the face between two squares is not sheer, it slopes over
@@ -89,15 +97,15 @@ STAIRS.forEach((s, i) => { const lx = s.dx ? gx(Math.max(s.lo[0], s.hi[0])) : gc
 /* ── THE WATER: every run of `w` squares is a sump (deep, black, never entered), its surface under the floor beside it ── */
 { const used = new Set();
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (T[y][x] !== 'w' || used.has(x + ',' + y)) continue;
-      let w = 1; while (inG(x + w, y) && T[y][x + w] === 'w' && !used.has((x + w) + ',' + y)) w++;
-      let h = 1; rows: while (inG(x, y + h)) { for (let i = 0; i < w; i++) if (T[y + h][x + i] !== 'w' || used.has((x + i) + ',' + (y + h))) break rows; h++; }
+      const l0 = L[y][x];   /* (a run is one level: two sumps on two levels side by side each keep their own surface; 11-22: one sheet lay 8 m over the lower one's floor) */
+      let w = 1; while (inG(x + w, y) && T[y][x + w] === 'w' && L[y][x + w] === l0 && !used.has((x + w) + ',' + y)) w++;
+      let h = 1; rows: while (inG(x, y + h)) { for (let i = 0; i < w; i++) if (T[y + h][x + i] !== 'w' || L[y + h][x + i] !== l0 || used.has((x + i) + ',' + (y + h))) break rows; h++; }
       for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used.add((x + i) + ',' + (y + j));
-      let rim = -Infinity; for (let j = -1; j <= h; j++) for (let i = -1; i <= w; i++) if (open(x + i, y + j)) rim = Math.max(rim, yAt(x + i, y + j));
-      const top = r2((isFinite(rim) ? rim : yAt(x, y) + LV) - 0.45);
+      const top = r2(RIM.get(x + ',' + y) - SUMP_TOP);   /* (the rim = the lowest floor beside the sump: THE GROUND, a sump's bed and brim) */
       /* the line from the first square's middle to the last's (the game lays square water along it: hqFluidGrid; an end ON a line takes the next square too) */
       const e = (a, b) => a === b ? [r2(a - 0.5), r2(a + 0.5)] : [a, b];
       const pts = h >= w ? (q => [[r2(gx(x) + w * C / 2), q[0]], [r2(gx(x) + w * C / 2), q[1]]])(e(gcz(y), gcz(y + h - 1))) : (q => [[q[0], r2(gz(y) + h * C / 2)], [q[1], r2(gz(y) + h * C / 2)]])(e(gcx(x), gcx(x + w - 1)));
-      F.push({ k: 'stream', absY: true, pts, w: (h >= w ? w : h) * C, y: top, depth: 1.8, key: 'deep_water', bank: 0.3 }); } }
+      F.push({ k: 'stream', absY: true, pts, w: (h >= w ? w : h) * C, y: top, depth: r2(SUMP_BED - SUMP_TOP), key: 'deep_water', bank: 0.3 }); } }
 /* the falls: a plan branch "over a WATERFALL" at its high square, falling to the square past it */
 (PLAN.branches || []).filter(b => b.kind === 'drop' && /WATERFALL/.test(b.to)).forEach(b => { const [x, y] = b.at;
     const d = D4.find(([dx, dy]) => open(x + dx, y + dy) && L[y + dy][x + dx] < L[y][x] - 1); if (!d) throw new Error('a waterfall with no drop beside it at ' + b.at);
@@ -108,12 +116,21 @@ STAIRS.forEach((s, i) => { const lx = s.dx ? gx(Math.max(s.lo[0], s.hi[0])) : gc
 
 /* ── THE OPEN GROUND: every square that is not rock, as `space` rows (greedy rectangles) ── */
 const spaces = [];
-{ const used = new Uint8Array(W * H);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!room(x, y) || used[y * W + x]) continue;
-      let w = 1; while (x + w < W && !used[y * W + x + w] && room(x + w, y)) w++;
-      let h = 1; rows: while (y + h < H) { for (let i = 0; i < w; i++) if (used[(y + h) * W + x + i] || !room(x + i, y + h)) break rows; h++; }
+/* A SUMP'S ROCK SIDES (2026-11-22, the soft-lock pass; mondo: "no tiny crevices ... it needs to be raised straight up because its by a wall"):
+   the square water stops a soft shore short of its squares' edge and the rock began ON the line, so along every rock side of a sump lay a dry
+   strip one node wide at the sump's BED, a level under the floor: stepped onto off the brim's corner and never left again (10 traps in the West
+   Tunnel, 8 in the Long). A sump is its own `space` row now, pulled SUMP_IN back from every side that is rock: the rock stands that far out
+   over the bed, straight up out of the water, and nothing dry is left beside it. The dry squares are laid first, as before. */
+const SUMP_IN = 0.6;
+{ const used = new Uint8Array(W * H), wetSq = (x, y) => inG(x, y) && T[y][x] === 'w';
+  for (const is of [open, wetSq]) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!is(x, y) || used[y * W + x]) continue;
+      let w = 1; while (x + w < W && !used[y * W + x + w] && is(x + w, y)) w++;
+      let h = 1; rows: while (y + h < H) { for (let i = 0; i < w; i++) if (used[(y + h) * W + x + i] || !is(x + i, y + h)) break rows; h++; }
       for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used[(y + j) * W + x + i] = 1;
-      spaces.push({ k: 'space', x: r2(gx(x) + w * C / 2), z: r2(gz(y) + h * C / 2), w: w * C, d: h * C }); } }
+      let x0 = gx(x), x1 = gx(x + w), z0 = gz(y), z1 = gz(y + h);
+      if (is === wetSq) { const rock = sq => sq.every(([a, b]) => !inG(a, b) || !room(a, b)), col = X => Array.from({ length: h }, (_, j) => [X, y + j]), row = Y => Array.from({ length: w }, (_, i) => [x + i, Y]);
+          if (rock(col(x - 1))) x0 += SUMP_IN; if (rock(col(x + w))) x1 -= SUMP_IN; if (rock(row(y - 1))) z0 += SUMP_IN; if (rock(row(y + h))) z1 -= SUMP_IN; }
+      spaces.push({ k: 'space', x: r2((x0 + x1) / 2), z: r2((z0 + z1) / 2), w: r2(x1 - x0), d: r2(z1 - z0) }); } }
 
 /* ── THE DESIGN dresses the room ── */
 (PLAN.doors || []).forEach((d, i) => { const o = DES.doors[i] || DES.doors[d[2]]; if (o && o.link) taken.add(d[0] + ',' + d[1]); });   /* a well's square stays clear */
