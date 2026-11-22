@@ -21718,7 +21718,10 @@ const ThreeRenderer = (function () {
            combat overrides (sprites.js). Any override the def doesn't map
            falls back to the classic 2D sprite path, exactly as before. */
         if (_m3dDef && unit._spriteOverride) {
-            _m3dDef = (_m3dDef.overrideForms && _m3dDef.overrideForms[unit._spriteOverride]) || null;
+            /* THE WEAPON IN THE SPELL (2026-11-22): a creator-body look that holds a weapon is ONE body (the Time Cop's MPFB look has
+               no sheriff / cop / future bodies to swap between): its cast switches the weapon in its fist (unitHeldUse) and the
+               body stays. Before, an override the creator def did not map dropped the unit to the flat 2D sprite. */
+            _m3dDef = (_m3dDef.overrideForms && _m3dDef.overrideForms[unit._spriteOverride]) || ((_m3dDef.creatorBase && _m3dDef.hold) ? _m3dDef : null);
         }
         var _m3dReady = _m3dDef && _unitModelReady(_m3dDef);
         /* NO STAND-INS (2026-10-05, the user: "i want those completely deleted from the game, never shown again"): a 3D

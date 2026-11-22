@@ -5406,6 +5406,13 @@ gladiator, pirate (blades); sheriff, marksman, gangster, spy, barbarella, men in
   mid-cast / mid-attack with a gun or the staff in its fist starts at the muzzle / the staff's head (`_heldShooterTip`), not the
   square's middle; blades keep the middle (the point swings). (3) the wizard's cast wand (`_HELD_BY_RACE`) is not conjured when
   his look holds the staff. Kill switch `window.EW_NO_HELD_WEAPON_FX`.
+- ONE BODY (three-renderer.js, where `_spriteOverride` picks `overrideForms`): the Time Cop's casts set a look override (sheriff /
+  cop / future cop bodies). His MPFB look has no such bodies, and an override a creator def did not map dropped him to the FLAT 2D
+  SPRITE for the cast. A creator-body def that holds a weapon now keeps its body; the weapon switch is its look switch.
+- SEEN (11-22, HEAD 313f750 + this change, the remade looks on, a real VS-CPU board): Time Cop Long Rifle (the rifle in the fist,
+  shells and the tracer from its muzzle), Taser, Classified Weapon (the ray gun, the flash at its muzzle); Swordfighter Sword Beam
+  (`castSlash` with the katana), Plot Armor (`castGuard`). Proof `/mnt/project-files/weapon-spells/shots/proof_weapon_in_spell.jpg`.
+  Not seen: the other 17 holders, the guest's screen, the Meshy default models.
 - PROBE: `/mnt/project-files/weapon-spells/scripts/cast.js` (`RACE='time cop' SPELLS=raceQuickDraw,racePoliceTaser node cast.js`:
   a real VS-CPU board, the remade look on, a paused clock stepped through each cast, a close picture every third step).
 - NOT DONE (next passes): the long guns still play the one-handed quick-draw (no two-hand rifle clip is on a slot: MAL5
