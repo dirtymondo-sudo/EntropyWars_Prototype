@@ -2913,7 +2913,7 @@ const ThreeRenderer = (function () {
         var tex = new THREE.Texture();
         tex._ew_src = u;   // THE ONE PIXEL DENSITY: _hqOneDensity knows a terrain sheet by where it came from (a bitmap has no src)
         var isJPEG = /\.jpe?g($|\?)/i.test(u) || u.indexOf('data:image/jpeg') === 0;
-        if (THREE.RGBFormat !== undefined) tex.format = isJPEG ? THREE.RGBFormat : THREE.RGBAFormat;
+        if (THREE.RGBFormat !== undefined) tex.format = (isJPEG && !_ewGpu) ? THREE.RGBFormat : THREE.RGBAFormat;   // (11-22) the node renderer has no 8-bit RGB: _ewGpuSafeTextures
         var rec = _alTrack('texture', u);   // THE ASSET LEDGER: a gate waits for this sheet
         tex._ew_alRec = rec;
         function landed(img) {
@@ -3126,14 +3126,19 @@ const ThreeRenderer = (function () {
     var _EW_CS = (typeof THREE !== 'undefined' && THREE.SRGBColorSpace !== undefined);
     function _ewTexIsSRGB(tex) { return !!tex && (_EW_CS ? tex.colorSpace === THREE.SRGBColorSpace : tex.encoding === THREE.sRGBEncoding); }
     /* tags the texture sRGB-encoded (srgb true) or linear (false); returns true when the tag CHANGED (the caller sets needsUpdate) */
+    /* (2026-11-22, the circus's black screen) "changed" is the caller's cue to flag the sheet for upload, so it is only true for a
+       sheet that HAS its picture: the elephant's sheet (the FBX loader's own fetch, still on its way when the animal was built) was
+       flagged with no picture, and the node renderer threw on it every frame. A sheet still loading keeps the new colour space and
+       is flagged by its own loader when the picture lands. */
     function _ewTexSetSRGB(tex, srgb) {
         if (!tex) return false;
+        var has = tex.image != null;
         if (_EW_CS) {
-            if (srgb) { if (tex.colorSpace === THREE.SRGBColorSpace) return false; tex.colorSpace = THREE.SRGBColorSpace; return true; }
-            if (tex.colorSpace !== THREE.SRGBColorSpace) return false; tex.colorSpace = THREE.LinearSRGBColorSpace; return true;
+            if (srgb) { if (tex.colorSpace === THREE.SRGBColorSpace) return false; tex.colorSpace = THREE.SRGBColorSpace; return has; }
+            if (tex.colorSpace !== THREE.SRGBColorSpace) return false; tex.colorSpace = THREE.LinearSRGBColorSpace; return has;
         }
         var enc = srgb ? THREE.sRGBEncoding : THREE.LinearEncoding;
-        if (tex.encoding === enc) return false; tex.encoding = enc; return true;
+        if (tex.encoding === enc) return false; tex.encoding = enc; return has;
     }
     function _ewTexCSKey(tex) { return _EW_CS ? tex.colorSpace : tex.encoding; }
 
@@ -47774,6 +47779,7 @@ const ThreeRenderer = (function () {
             s += ' · check ' + _ewBun.msAvg.toFixed(2) + ' ms/frame (' + (_ewBun.quietN | 0) + ' quiet skipped, ' + (_ewBun.noMShow | 0) + ' still-checked)';
         }
         else if (_ewGpu === 'webgpu' && _ewBunOff()) s += ' · bundles off';
+        if (_ewGpuInfo.noPic) s += ' · sheets with no picture ' + _ewGpuInfo.noPic + ' (first: ' + _ewGpuInfo.noPicFirst + ')';
         if (_ewGpuInfo.drawErrs) s += ' · skipped draws ' + _ewGpuInfo.drawErrs + ' (first: ' + _ewGpuInfo.drawErr + ')';
         if (_ewGpuInfo.errors) s += ' · GPU errors ' + _ewGpuInfo.errors + ' (first: ' + _ewGpuInfo.firstError + ')';
         return s;
@@ -47797,6 +47803,83 @@ const ThreeRenderer = (function () {
             if (d && d.buffer) (r._ew_freeLater || (r._ew_freeLater = [])).push(d.buffer);
             B.delete(attribute);
         };
+    }
+    /* THE SHEET WITH NO PICTURE (2026-11-22, mondo: "i went across and the screen was black in the circus", his crash trail on WebGPU:
+       "a draw failed and was skipped (elephant-3d / MeshLambertMaterial: can't access property "complete", image is null)", then the
+       same throw from "Render Pipeline / RenderPipeline", then "Unsupported texture type with RGBFormat. 1009", then, as the window
+       was resized, "Texture with 'depth' label has been destroyed" in Queue::submit). Three things in three's texture code, each
+       mended where it lives so no caller (a direct draw, a recorded group's replay, a shadow pass, the post chain) can hit it:
+       1. A sheet FLAGGED for upload whose picture is not there (null: a file's own loader still fetching it, a slot the file names
+          with no picture) made three read `image.complete` of null and THROW. The draw guard skips a direct draw, but a recorded
+          group refreshes its objects outside any draw: the throw left the scene pass, the post chain's quad failed with it and the
+          WHOLE frame was skipped on every frame the elephant stood in the room: black. Now such a sheet takes three's own
+          placeholder (what an unflagged sheet gets) and uploads for real when its picture lands and it is flagged again.
+       2. A plain 8-bit RGB sheet (every JPEG through the game's texture loader, and any loader's) has no format on the node renderer
+          ("Unsupported texture type with RGBFormat"): it drew as the blank placeholder. It is RGBA here (a picture uploads the
+          same; a data sheet's bytes are widened once).
+       3. A resize destroyed a pass's textures at once, while commands the frame had already encoded still named them: the whole
+          submit was refused. A destroyed texture now goes with the late frees (the next frame's first render), like the buffers.
+       Off: window.EW_NO_SAFE_TEXTURES (read once, at start). Counts: ThreeRenderer.gpuStatus() "sheets with no picture". */
+    function _ewGpuSafeTextures(r) {
+        if (typeof window !== 'undefined' && window.EW_NO_SAFE_TEXTURES) return;
+        var T = r && r._textures, B = r && r.backend;
+        if (T && !T._ewSafe && typeof T.updateTexture === 'function') {
+            T._ewSafe = true;
+            var ut = T.updateTexture, RGB = THREE.RGBFormat, RGBA = THREE.RGBAFormat, UB = THREE.UnsignedByteType;
+            T.updateTexture = function (texture, options) {
+                if (texture && texture.version > 0 && !texture.isRenderTargetTexture && !texture.isDepthTexture && !texture.isFramebufferTexture &&
+                    texture.isStorageTexture !== true && texture.isExternalTexture !== true) {
+                    var td = this.get(texture);
+                    if (td.initialized === true && td.version === texture.version) return;
+                    var im = texture.image;
+                    if (im == null || im.complete === false) {
+                        var v = texture.version;
+                        if (!(td.initialized === true && td.isDefaultTexture === false)) {   // (a sheet already on the GPU keeps its last picture)
+                            texture.version = 0;
+                            try { ut.call(this, texture, options); } finally { texture.version = v; }
+                        }
+                        td.version = v;   // nothing more until it is flagged again (its picture landing flags it)
+                        _ewGpuInfo.noPic = (_ewGpuInfo.noPic | 0) + 1;
+                        if (!_ewGpuInfo.noPicFirst) {
+                            _ewGpuInfo.noPicFirst = String(texture.name || texture._ew_src || (texture.userData && texture.userData._hwSheet) || ('texture ' + texture.id)).slice(-80);
+                            try { console.warn('[ThreeRenderer] node renderer: a sheet was flagged for upload with no picture (' + _ewGpuInfo.noPicFirst + ') — drawn blank until its picture lands'); } catch (x) {}
+                        }
+                        return;
+                    }
+                    if (texture.format === RGB && texture.type === UB && !texture.isCompressedTexture) {
+                        var d = im.data, n = (im.width | 0) * (im.height | 0);
+                        if (d && d.length === n * 3 && !(im.depth > 1)) {
+                            var o4 = new Uint8Array(n * 4);
+                            for (var i = 0, j = 0; i < n * 3; i += 3, j += 4) { o4[j] = d[i]; o4[j + 1] = d[i + 1]; o4[j + 2] = d[i + 2]; o4[j + 3] = 255; }
+                            im.data = o4; texture.format = RGBA;
+                        } else if (!d) texture.format = RGBA;
+                    }
+                }
+                return ut.apply(this, arguments);
+            };
+        }
+        var tu = B && B.isWebGPUBackend && B.textureUtils;
+        if (tu && !tu._ewLate && typeof tu.destroyTexture === 'function') {
+            tu._ewLate = true;
+            var dt = tu.destroyTexture;
+            var later = function (g) {
+                if (!g || typeof g.destroy !== 'function') return;
+                try {
+                    g.destroy = function () {};   // three's call does nothing; the real one runs with the late frees
+                    if (g.destroy === Object.getPrototypeOf(g).destroy) return;
+                    (r._ew_freeLater || (r._ew_freeLater = [])).push({ destroy: function () { try { delete g.destroy; } catch (e) {} g.destroy(); } });
+                } catch (e) {}
+            };
+            tu.destroyTexture = function (texture, isDefaultTexture) {
+                try {
+                    var td = B.get(texture);
+                    if (td.texture !== undefined && isDefaultTexture !== true && texture.isExternalTexture !== true && td.externalTexture !== true) later(td.texture);
+                    if (td.msaaTexture !== undefined) later(td.msaaTexture);
+                    if (td.msaaTextures !== undefined) for (var i = 0; i < td.msaaTextures.length; i++) later(td.msaaTextures[i]);
+                } catch (e) {}
+                return dt.apply(this, arguments);
+            };
+        }
     }
     /* THE BORROWED COUNT (2026-11-12, mondo's Camelot fight on WebGPU: "Buffer 'bindingBuffer2312' has been destroyed", then
        "a draw failed and was skipped (hq:gaps:floor / MeshBasicMaterial: GPUQueue.writeBuffer: Argument 1 is not an object)" on
@@ -50307,7 +50390,22 @@ const ThreeRenderer = (function () {
         var rb = r._renderBundle;
         if (rb) r._renderBundle = function (bundle) {
             var rgT = (_lens && _lens.cur) ? performance.now() : 0;
-            try { return rbOne.apply(this, arguments); } finally { _lensSub('replay: a group, all of it', rgT); }
+            /* THE GROUP GUARD (2026-11-22, the circus's black screen): a throw while a recorded group replays or records is outside
+               every draw, so it left three's render() mid-frame and nothing reached the canvas. Now that one group sits the frame
+               out (its recording is closed and taken again next frame) and the frame goes on. Off: window.EW_NO_GROUP_GUARD. */
+            var rc0 = this._currentRenderContext;
+            try { return rbOne.apply(this, arguments); }
+            catch (e) {
+                if (typeof window !== 'undefined' && window.EW_NO_GROUP_GUARD) throw e;
+                try {
+                    this._currentRenderBundle = null;
+                    var d0 = rc0 && this.backend.get(rc0);
+                    if (d0 && d0._currentPass) { d0.currentPass = d0._currentPass; d0.currentSets = d0._currentSets; d0._currentPass = null; d0._currentSets = null; }
+                    if (bundle && bundle.bundleGroup) bundle.bundleGroup._ew_bunFree = true;
+                } catch (x) {}
+                _ewGpuDrawErr(e, bundle && bundle.bundleGroup, null);
+            }
+            finally { _lensSub('replay: a group, all of it', rgT); }
         };
         var rbOne = function (bundle) {   // the count three keeps for the bundle, for ThreeRenderer.bundles()
             var out, g0 = bundle.bundleGroup, fast = false, cur = false, bd0 = null;
@@ -52355,6 +52453,7 @@ const ThreeRenderer = (function () {
         r.clear = function () { if (!this.initialized) return; return rawClear.apply(this, arguments); };
         _ewGpuSafeBuffers(r);
         _ewGpuSafeBindings(r);
+        try { _ewGpuSafeTextures(r); } catch (e) {}
         try { _ewGpuNearestGrad(r); } catch (e) {}
         _ewGpuDepthOnlyViews(r);   // THE TEAM OUTLINES: the scene pass's depth-stencil texture, sampled by its depth only
         /* THE SHARED SHADOW DEPTH (W5a, 2026-10-04, mondo: "the transition from exploration to battle is still really laggy"):
@@ -52462,6 +52561,7 @@ const ThreeRenderer = (function () {
             try { _ewGpuPropMaps(r, G); } catch (e) { console.warn('[ThreeRenderer] node renderer: the maps stay WeakMaps', e); }
             _ewGpuSafeBuffers(r);
             _ewGpuSafeBindings(r);
+            try { _ewGpuSafeTextures(r); } catch (e) {}
             try { _ewGpuNearestGrad(r); } catch (e) {}
             _ewGpuOneWrite(r);
             _ewGpuInterleaveFix(r);
@@ -83516,7 +83616,9 @@ const ThreeRenderer = (function () {
                 box(W + 0.2, 0.5, L + 0.4, floorM, 0, -0.25 + 0.015, -(L / 2 + 0.2));
             } else {
                 /* a trail / a cloud road: a strip on the ground the outer ground was carved to (_hqBuildOuterGround) */
-                var SL = L + 5, sg = new THREE.PlaneGeometry(W * U, SL * U); scaleUV(sg, W / 1.75, SL / 1.75);
+                /* THE SEAM IS THE ROAD (2026-11-22): `strip` = how wide the sheet past the line is when it is not the way's own width (a highway's seam is its
+                   asphalt and both shoulders wide; only the asphalt runs on) */
+                var SW = (+P.strip > 0) ? +P.strip : W, SL = L + 5, sg = new THREE.PlaneGeometry(SW * U, SL * U); scaleUV(sg, SW / 1.75, SL / 1.75);
                 var strip = new THREE.Mesh(sg, floorM); strip.rotation.x = -Math.PI / 2; strip.position.set(0, 0.05 * U, -(SL / 2 - 0.4) * U); strip.receiveShadow = true; strip.renderOrder = 1; g.add(strip);
             }
         }

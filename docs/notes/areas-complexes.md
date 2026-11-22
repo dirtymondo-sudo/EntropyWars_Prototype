@@ -14077,3 +14077,22 @@ and press e ... i can't see the road going out, the road just stops and its all 
 - Probe: `node playtest_city.js site_ow_r9 '[{"name":"walk_n","x":-35,"z":-180,"face":0,"ground":true,"walk":{"key":"w","max":40000}}]'` walks
   into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
   the SECOND room of a run; the WALK line prints before that.
+
+## THE SEAM IS THE ROAD — an open seam on a route room's wall is as wide as the road (2026-11-22, mondo: "it only works when i enter through the median")
+mondo 11-22, the Badlands Highway (`site_ow_r9`) into the Circus: "it only works when i enter through the median in the highway, which doesnt make
+sense since i wouldnt be driving in the middle of the road. Its an invisble wall where the actual road is."
+- THE FAULT: bake-route.js wrote every open seam `pw` wide (16 a highway, 11 a road, 5 a trail) on the path's middle line. A highway is 24.5 m of
+  asphalt + two 3.5 m shoulders, and its middle line is the median, so only the median and half a lane each side crossed; the rest of the road ran
+  into the room's line (three-renderer.js `_hqPassageSurface`: past `w / 2` the passage has sides). Measured before: a walker at x 8.5 and at x -11.5
+  stopped at z 187.6. Every highway end had it (R9, DH1-DH4, R1, R4: 14 ends); road and trail ends were 1.5 / 1 m short each side.
+- THE FIX (bake-route.js THE SEAM IS THE ROAD): an open seam on the room's wall = the path's own squares on the room's last row (asphalt, median,
+  shoulders): its middle is the middle of that run, its `passage.w` the run's width (31.5 or 28 a highway, 14 or 10.5 a road, 7 a trail);
+  `edges.ways` follows. A highway's strip past the line is asphalt as wide as its asphalt (`passage.floor`, `passage.strip`; three-renderer.js
+  `_hqPassageWay` reads `strip`), not a 16 m band of the room's dirt path sheet.
+- WHAT WAS RE-WRITTEN: only the seam rows and `edges.ways` of R9, DH1-DH4, R1, R4, R5, R6, R8, R10, R11, L6, L14. A full rebake of R4, L6 and L14 moves
+  other lines (ground, a spawn), so there only the seam lines were laid in; the spawn / plate a rebake moved were kept as they stood. A FREE seam
+  (R1 into Disaster City, R8's, R11's) is not touched: it is crossed on the plot's own squares.
+- NOT DONE, the districts' own sides: a district's seam (`open: 16` in bake-desert.js, the Circus's 16 m gap in its north fence between the animal pen
+  and the outhouses) is the district's own gate; leaving a district you still walk out through its gate and land on the highway's middle. Widening one
+  means moving what stands beside it: the district file's call.
+- Proof: a walker on the outer lane (x -11.5) crosses and lands in the Circus (`/mnt/project-files/highway-circus-seam/`).
