@@ -5369,3 +5369,54 @@ are NOT deleted: mondo's call. Pictures: `docs/plans/vfx-cleanup/img/b11/`.
 - Ascension Day's sigil BEFORE the fix in this thread's own frames (B9a's sheet shows it; after: none).
 
 **The capture runner**: `--fine` + `/fine` (above); recipes for the hand-set boards are in this section.
+
+## THE WEAPON IN THE SPELL (2026-11-22, sprites.js + battle.js + three-renderer.js + three-vfx-effects.js)
+mondo 11-22: "start the threads to incorporate them holding and using their weapons in their spells". Builds on THE WEAPONS IN THE
+HANDS (character-models-plan.md 6e: `RACE_CREATOR_LOOK_DEFS[race].hold`). The 20 holders: swordfighter, shogun, knight, king arthur,
+gladiator, pirate (blades); sheriff, marksman, gangster, spy, barbarella, men in black, time cop, cowboy (guns); police officer
+(nightstick), ninja (star), robinhood (bow), wizard (staff), popstar (mic), scarecrow (sickle). Pass 1, this block:
+- THE AUDIT: every active spell of every holder's pool (about 380 rows) run through `classifySpellAnimKind` and read one by one.
+  Print it again: `load-data.js` + sprites.js in the same vm, `weaponSpellAnimKind(race, SPELL_BY_ID[id], classifySpellAnimKind(...))`.
+- THE BODY (sprites.js `weaponSpellAnimKind`, `EW_WEAPON_STYLE`, `EW_WEAPON_KIND`; battle.js triggerCastAnim + _castClipTravel):
+  the cast kind a bare-handed caster would play is turned into the holder's. BY RACE, not by look: the Meshy default model and the
+  MPFB look play the same clip, and the host and guest agree (the kind rides `state._castAnimKind` as before). Blades: Sword Beam
+  = `slash` (it played the gun quick-draw), Vault = `heavySlash`, Sword Lunge = `dash` (the lunging stab), Shield Bash = `push`
+  (the shield shove), boasts / banners / orders / called volleys (Rally Command, Arrow Rain, Artillery Strike, Cannonball, Yo Ho,
+  Knights of Round) = `rally` (the blade up, Sword_Shout), arms-folded buffs = `guard` (folded arms put the blade through the chest),
+  magic kinds = `slash` / `heavySlash`. Sickle: Thornlash / Vine Whip = `slash`. Bow: every bullet spell = `arrow`. A spell made
+  with a named weapon (below) plays that weapon's kind: a gun `ranged`, the nightstick `smash`, the spray can and the
+  deneuralizer `lantern` (held out at arm's length), the Synthetic Blade `slash`. NEVER touched: a row's own `animVerb` / `animSlot`
+  / `animClip`, and the move kinds (dash, tackle, leaps, thrust, throw, deploy, plant, consume, stealth).
+- THE SWITCH (sprites.js `EW_WEAPONS` + `EW_SPELL_WEAPON` + `ewSpellWeaponKey`; three-renderer.js `unitHeldUse` / `unitHeldInfo`):
+  mondo on the Time Cop: "his weapon should switch depending ... which spell he uses". A spell names the weapon it is made with
+  (Dead Eye / High Noon / Fan the Hammer = revolver; Double Pump / Scatter Shot = shotgun; Long Rifle / Take Aim / Precision Shot /
+  Kneecap Shot / Choppa / Railgun = the rifle; Empty the Clip = pistol; Classified Weapon / Stun Ray / Shrink Ray / Heat Ray /
+  Disintegrator / Plasma Cannon = the ray gun; Nightstick; Taser + Taser Bolt = `wp_taser`; Pepper Spray = `wp_pepper_spray`;
+  Deneuralizer + Neuralyzer = `wp_deneuralizer`; Synthetic Blade = `kt_katana`; `'gun'` = any firearm: the one in the hand, else
+  a pistol). When a unit whose def HOLDS a weapon casts it, the renderer hides the def's own weapon and seats the spell's in the
+  same closed fist (THE GRIP, the handle frames in `EW_WEAPONS`) for the cast, then puts the own one back (`_heldSwapTick`, one
+  small map, no scene read). Fired at cast start from `state._castAnimSpell[unitId]` (NEW, set by triggerCastAnim, rides the
+  snapshot: the guest switches too). A unit with no `hold` (every other race, every Meshy default) is untouched: it keeps THE GUN
+  IN THE HAND's conjured gun. Kill switch `window.EW_NO_WEAPON_SWITCH`.
+- THE SHOT LEAVES THE WEAPON: `unitHeldInfo(uid).tip()` = the world point the held weapon ends at (a gun's muzzle: out along
+  `grip.barrel` to the GLB box's end, 72 % up from the handle to the barrel's line; anything else: the far end from the pommel;
+  `hold.tip` in GLB coordinates overrides). (1) three-vfx-effects.js `_sigGunRig3D` (every `_SIG_GUN_FOR` spell + the Choppa):
+  when the shooter's fist holds that gun the rig builds NO second gun, and its flash, smoke, shells, laser and tracer sit on the
+  real muzzle, following the arm through the clip. (2) three-renderer.js `startProjectileTween`: a plain projectile from a unit
+  mid-cast / mid-attack with a gun or the staff in its fist starts at the muzzle / the staff's head (`_heldShooterTip`), not the
+  square's middle; blades keep the middle (the point swings). (3) the wizard's cast wand (`_HELD_BY_RACE`) is not conjured when
+  his look holds the staff. Kill switch `window.EW_NO_HELD_WEAPON_FX`.
+- ONE BODY (three-renderer.js, where `_spriteOverride` picks `overrideForms`): the Time Cop's casts set a look override (sheriff /
+  cop / future cop bodies). His MPFB look has no such bodies, and an override a creator def did not map dropped him to the FLAT 2D
+  SPRITE for the cast. A creator-body def that holds a weapon now keeps its body; the weapon switch is its look switch.
+- SEEN (11-22, HEAD 313f750 + this change, the remade looks on, a real VS-CPU board): Time Cop Long Rifle (the rifle in the fist,
+  shells and the tracer from its muzzle), Taser, Classified Weapon (the ray gun, the flash at its muzzle); Swordfighter Sword Beam
+  (`castSlash` with the katana), Plot Armor (`castGuard`). Proof `/mnt/project-files/weapon-spells/shots/proof_weapon_in_spell.jpg`.
+  Not seen: the other 17 holders, the guest's screen, the Meshy default models.
+- PROBE: `/mnt/project-files/weapon-spells/scripts/cast.js` (`RACE='time cop' SPELLS=raceQuickDraw,racePoliceTaser node cast.js`:
+  a real VS-CPU board, the remade look on, a paused clock stepped through each cast, a close picture every third step).
+- NOT DONE (next passes): the long guns still play the one-handed quick-draw (no two-hand rifle clip is on a slot: MAL5
+  `Side_Shot` / a Meshy pull, then a `castRifle` slot); the bespoke gun looks outside `_sigGunRig3D` (Fan the Hammer, Slap Leather,
+  Crossfire, Six-Shooter, the Taser's arc, the spray's cloud) still start where they did; the spectral longbow of the arrow spells
+  is still conjured beside Robin Hood's own bow; a thrown shuriken / net does not leave the hand; no second holds (shields, net);
+  the popstar has no singing-into-the-mic clip; the Shogun's War Fan Strike swings the sword arm, not the fan's.

@@ -518,6 +518,9 @@ the Claude Doc "Weapon-holding units: who gets an MPFB version".
   panel), made wider by the bake cutting the stretched faces at the seam. Bake now `HIDETORSO=1 TORN=9` + the flags above: new env
   HIDETORSO hides all skin on hips, spine, shoulders, upper arms and thighs, so the opening shows the robe's dark inside; TORN=9 keeps
   the seam faces. Proof `/mnt/project-files/weapon-hands/swordfighter_robe_closed.jpg`. Still: pointed shoulder tops.
+- THE WEAPON IN THE SPELL (11-22, thread "Use held weapons in unit spells", pass 1): the holders cast with the weapon (the cast kind by
+  what the race holds, the spell's own weapon switched into the fist, shots from the real muzzle). Notes: spells-vfx.md "THE WEAPON IN
+  THE SPELL" (what is done, what is next: a two-hand rifle clip, the bespoke gun looks, Robin Hood's bow, thrown stars, second holds).
 
 ---
 
