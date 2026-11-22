@@ -54,7 +54,25 @@ function places() {
     const name = title(R.label.split(' · ').pop()); name.split(' + ').concat([name]).forEach(n => z.d.forEach(q => { if (!q.at && !q.x && (same(n, q.n) || same(q.n, n) || q.n.startsWith(n + ' +'))) q.at = at.map(v => +v.toFixed(2)); })); });
   const W = M.world; return { zones, world: { x0: W.x0, y0: W.y0, w: W.w, h: W.h, g: W.g, key: Object.fromEntries(Object.entries(W.key).map(([c, v]) => [c, v[2]])) } };
 }
-let rosterObj = JSON.parse(fs.readFileSync(d + '/roster.json', 'utf8')); rosterObj.places = places(); const freshAdded = require('./fresh.js')(rosterObj); if (freshAdded.length) console.log('new from the game:', freshAdded.join(', ')); rosterObj.spawns = require('./spawns.js')(rosterObj);
+/* THE STORY PLANNER (2026-11-22, mondo: "a Chapter/Quest planner ... and the game map on the screen so I can plan the route"):
+   the world's rooms at their places (to paint the map from the game's own ground pictures, Assets/ui/map/<room>.png) and the
+   game's quests (STORY_QUESTS) + cutscene titles, so Chapter 1 starts as the ORIENTATION quest that is in the game */
+function storyData() {
+  const repo = d + '/../../../..', src = fs.readFileSync(repo + '/data.js', 'utf8'), vm = require('vm'), sb = require(repo + '/load-data.js').makeSandbox();
+  vm.runInContext(src + '\n;globalThis.__X = { DOOR_HQ, HQ_ZONE_MAP, STORY_QUESTS, STORY_CUTSCENES };', sb, { filename: 'data.js' });
+  const { DOOR_HQ: H, HQ_ZONE_MAP: M, STORY_QUESTS: Q, STORY_CUTSCENES: C } = sb.__X, rooms = [], f2 = v => +v.toFixed(3);
+  for (const [hub, z] of Object.entries(M.zones)) for (const row of z.rooms) {
+    if (!Number.isFinite(row.wx) || !row.v) continue;
+    const room = H.rooms[row.room] || {}, sh = room.shell || { w: (row.nx || 0) * 3.5, d: (row.nz || 0) * 3.5 }, P = M.plot || 42;
+    rooms.push({ hub, room: row.room, layer: row.layer === 'under' ? 'under' : 'surface', v: row.v, hs: row.hs || 0.25, x: f2(row.wx + (-sh.w / 2 - row.ox) / P), y: f2(row.wy + (-sh.d / 2 - row.oz) / P), w: f2(sh.w / P), h: f2(sh.d / P) });
+  }
+  const sc = id => id && C[id] ? { id, n: C[id].title || id } : null;
+  const quests = Q.map(q => ({ id: q.id, title: q.title, summary: q.summary || '', start: q.start || '',
+    scenes: [q.intro].concat(q.introThen || [], q.stages.map(s => s.scene)).map(sc).filter(Boolean),
+    steps: q.stages.map(s => s.objective), reward: q.reward && q.reward.unit ? q.reward : null }));
+  return { rooms, quests, sq: M.sq, plot: M.plot };
+}
+let rosterObj = JSON.parse(fs.readFileSync(d + '/roster.json', 'utf8')); rosterObj.places = places(); const freshAdded = require('./fresh.js')(rosterObj); if (freshAdded.length) console.log('new from the game:', freshAdded.join(', ')); rosterObj.spawns = require('./spawns.js')(rosterObj); rosterObj.story = storyData();
 const roster = JSON.stringify(rosterObj).replace(/</g, '\\u003c');
 const app = fs.readFileSync(d + '/app.js', 'utf8');
 if (/<\/script/i.test(app)) throw new Error('script close in app');
