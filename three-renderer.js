@@ -9018,6 +9018,7 @@ const ThreeRenderer = (function () {
         var _ggHad = !(_ggJob || (performance.now() - _ggFreshAt) < 4000); _ggJob = null;   // the fight was just laid (or its first field is still growing): grow in slices
         _gg = null; _ggMaskU.mesh = null;
         if (!_ggOn() || typeof getTerrainAt !== 'function') return;
+        try { if (_hqGG && _hqParked && _hqGG.H === _hqParked.H && _fwCan()) return; } catch (eFw) {}   // THE FIGHT IN THE WALKED ROOM: the walk's own grass stands in the fight (never a second field over it)
         /* A ROOM THAT PAINTS ITS OWN SQUARES (2026-11-12, the Training Room: its pad is tile, but the board's squares keep the grass tile
            TYPE as a rule, so the field grew a lawn over the test chamber in battle and the walked room had none): `shell.grassField: false`
            on the battle's room = no grass field on its board. */
@@ -29121,7 +29122,8 @@ const ThreeRenderer = (function () {
     function _occIsContainer(o) {
         return o === terrainGroup || o === objectGroup || o === _terrainDecoGroup || o === wallGroup
             || (_facilityNearGroup !== null && o === _facilityNearGroup)
-            || (_nearOccGroup !== null && o === _nearOccGroup);
+            || (_nearOccGroup !== null && o === _nearOccGroup)
+            || (_fw !== null && o._ew_fwCont === true);   // THE FIGHT IN THE WALKED ROOM: the walk's own piece containers
     }
 
     /* ── THE FADE RULES (mondo, 2026-10-14) ──
@@ -29158,7 +29160,7 @@ const ThreeRenderer = (function () {
     function _occRootOf(obj) {
         var o = obj;
         while (o && o.parent && !_occIsContainer(o.parent)) o = o.parent;
-        return (o && o.parent && _occIsContainer(o.parent)) ? o : null;
+        return (o && o.parent && _occIsContainer(o.parent)) ? (o._ew_fwAs || o) : null;   // (_ew_fwAs: a walked room's wall piece fades with its wall side)
     }
 
     /* Subject descriptor for the occlusion rays: P is the torso point the
@@ -29209,7 +29211,7 @@ const ThreeRenderer = (function () {
            stands on tile (0,0). A room wall is never anyone's footing and
            always rises above every head — it may fade whenever a sight
            line crosses it. */
-        if (root._ew_occWall) return true;
+        if (root._ew_occWall || root._ew_fwTop) return true;   // (a walked room's piece: its place is in the room's frame, not a tile)
         if (root._ew_wallKey != null) {
             /* Authored edge walls: a thin slab standing ON a tile edge is
                never the ground the subject stands on, so it may fade whenever
@@ -29422,6 +29424,7 @@ const ThreeRenderer = (function () {
     }
     function _occCollect(root) {
         var arr = [];
+        if (root._ew_fwList) { for (var wi = 0; wi < root._ew_fwList.length; wi++) root._ew_fwList[wi].traverse(function (o) { if (o.material && (o.isMesh || o.isSprite) && !(o._ew_canopy && _canopyFaded.has(o))) arr.push(o); }); return arr; }   // THE FIGHT IN THE WALKED ROOM: a wall side's pieces
         root.traverse(function (o) {
             if (!o.material) return;
             /* Facility scenery roots (the Training Room walls) carry glow
@@ -29663,7 +29666,7 @@ const ThreeRenderer = (function () {
            camera swung up among the yards sat inside a sail that hid nothing it could ray-test — a rig the eye is within 2 squares of fades */
         if (fieldSet) {
             for (var ei = 0; ei < fieldSet.roots.length; ei++) {
-                var er = fieldSet.roots[ei], ec = er.o.children[0];
+                var er = fieldSet.roots[ei], ec = er.fw ? er.o : er.o.children[0];
                 if (!ec || !ec._ew_occEye || roots.has(er.o)) continue;
                 if (!er.eyeBox) { er.eyeBox = new THREE.Box3(); try { er.o.updateMatrixWorld(true); er.eyeBox.setFromObject(er.o); } catch (e) { er.eyeBox.makeEmpty(); } }
                 if (!er.eyeBox.isEmpty() && er.eyeBox.distanceToPoint(eye) < ts * 2) roots.add(er.o);
@@ -29904,6 +29907,7 @@ const ThreeRenderer = (function () {
                    batch first so the per-tile fade below is actually visible. */
                 if (root._ew_mergedHidden && root._ew_mergeSlices) _mergedCarveTile(root);
                 var meshes = _occCollect(root);
+                if (_fw !== null && (root._ew_fwTop || root._ew_fwList)) meshes = meshes.filter(function (mm) { return !mm._ew_bRec || _fwCut(mm); });   // THE FIGHT IN THE WALKED ROOM: a merged piece leaves its square to fade
                 for (var i = 0; i < meshes.length; i++) _occApplyFade(meshes[i]);
                 _occFaded.set(root, { meshes: meshes, op: 1.0 });
             });
@@ -29914,7 +29918,7 @@ const ThreeRenderer = (function () {
         var done = [];
         _occFaded.forEach(function (rec, root) {
             if (!root.parent) {            // rebuilt/removed out from under us
-                for (var j = 0; j < rec.meshes.length; j++) _occRestore(rec.meshes[j]);
+                for (var j = 0; j < rec.meshes.length; j++) { _occRestore(rec.meshes[j]); if (rec.meshes[j]._ew_fwCutE) _fwUncut(rec.meshes[j]); }
                 done.push(root); return;
             }
             var blocking = want && want.has(root);
@@ -29923,7 +29927,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(rec.op - tgt) < 0.012) rec.op = tgt;
             for (var i = 0; i < rec.meshes.length; i++) _occSetOpacity(rec.meshes[i], rec.op);
             if (!blocking && rec.op >= 0.999) {
-                for (var j2 = 0; j2 < rec.meshes.length; j2++) _occRestore(rec.meshes[j2]);
+                for (var j2 = 0; j2 < rec.meshes.length; j2++) { _occRestore(rec.meshes[j2]); if (rec.meshes[j2]._ew_fwCutE) _fwUncut(rec.meshes[j2]); }   // (a walked room's piece goes back into its merged square)
                 _mergedRestoreTile(root);   // fold carved tiles back into the terrain batch
                 done.push(root);
             }
@@ -38580,6 +38584,7 @@ const ThreeRenderer = (function () {
            uFogAmount is ~0.98) and each one drew as 95% fog colour, on WebGL and WebGPU alike. A group flagged
            _ew_hzNearRoot is near scenery for good: whatever lands in it later is tagged here instead of fogged. */
         (function walk(o, near) {
+            if (o._ew_fwRoot) return;   // THE FIGHT IN THE WALKED ROOM: the walk's own room keeps its looks (and is not read whole)
             if (o._ew_hzNearRoot) near = true;
             if (o.material) _hzFogMaterials(o, near);
             for (var c = 0; c < o.children.length; c++) walk(o.children[c], near);
@@ -47162,6 +47167,7 @@ const ThreeRenderer = (function () {
         var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0) + ',' + _hzTheme + ',' + _hzThemeDensity + ',' + (_hzNear || '') + ',' + (_hzMotion ? 'm:' + (_hzMotion.kind || 'x') + ':' + (_hzMotion.axis || 'x') : '') + ',' + _hqBattleRoomKey();   // THE ROOM ROUND THE FIELD (§10 stage 4): an encounter's room is part of the scenery
         if (_horizonGroup && _horizonKey === key) return;
         _fieldInstDrop();   // THE PERF PASS: the fight's batches go before their room
+        try { _fwLeave(); } catch (eFw) { console.warn('[HQ] the walked room could not go home', eFw); }   // THE FIGHT IN THE WALKED ROOM: the walk's room is never disposed with the scenery
         if (_horizonGroup) { scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _facilityNearGroup = null; _nearOccGroup = null; _occFieldDrop();   // THE BLOCKER SET: the list dies with the group
         _horizonMats.length = 0;
@@ -48344,7 +48350,11 @@ const ThreeRenderer = (function () {
        the scene fails the parent test. The walk every frame again: window.EW_RIG_WALK_EVERY = true. */
     function _ewRigListAll(o, R, out) {
         var ch = o.children;
-        for (var i = 0; i < ch.length; i++) { var c = ch[i]; if (c === R.group) continue; if (c.isLight) out.push(c); if (c.children.length) _ewRigListAll(c, R, out); }
+        for (var i = 0; i < ch.length; i++) {
+            var c = ch[i]; if (c === R.group) continue;
+            if (c._ew_fwRoot) { var fl = (_fw && _fw.holder === c) ? _fw.lights : null; if (fl) { for (var fi = 0; fi < fl.length; fi++) out.push(fl[fi]); continue; } }   // THE FIGHT IN THE WALKED ROOM: the walk's own list of its lights (the room is never read whole)
+            if (c.isLight) out.push(c); if (c.children.length) _ewRigListAll(c, R, out);
+        }
     }
     var _ewRigTmp = null;
     function _ewRigRead(sc, R, mask) {
@@ -50880,6 +50890,10 @@ const ThreeRenderer = (function () {
         _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0, quiet: _ewBun.rpQuiet | 0 }; _ewBun.rpQuiet = 0; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
         var tpa = spL ? performance.now() : 0;
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
+        /* THE FIGHT IN THE WALKED ROOM: the walk's own groups (its shell, chunks, doors, instance cells) are the fight's recordings too,
+           checked by the walk's rules (the held pieces once, the still groups by their own matrix) */
+        var fwT = (field && _fw !== null && _fw.on) ? _ewBunTargets(_fw.H) : null, fwN0 = T.length;
+        if (fwT) { var fwA = _ewBun.fwOut || (_ewBun.fwOut = []); fwA.length = 0; for (i = 0; i < T.length; i++) fwA.push(T[i]); for (i = 0; i < fwT.length; i++) fwA.push(fwT[i]); T = fwA; }
         var tpb = spL ? performance.now() : 0, relN = 0;
         _ewBun.cullCam = field ? (cam || null) : null;
         for (i = 0; i < T.length; i++) T[i]._ew_bunT = FR;
@@ -50948,17 +50962,18 @@ const ThreeRenderer = (function () {
             if ((walk || (field && !fieldEvery)) && g.isBundleGroup && st.quiet >= BUN_QUIET && (!addMovedB || !addAll) && !g._ew_bunMiss && !g._ew_bunFree && !g._ew_bunDirty && st.G === G && ((FR + i) % (st.quiet >= BUN_QUIET_LONG ? 4 : 3)) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
             /* a demoted group is tried as a still recording again (30 s, then twice as long each time, 8 min at most): what made
                it churn may be out of it by now (THE CHANGERS OUT finds the pieces only while the values are hashed) */
-            if (st.dyn && st.dynAt && walk && now - st.dynAt > Math.min(480000, 30000 * Math.pow(2, Math.max(0, (st.dynN | 0) - 1)))) { st.dyn = false; st.dynAt = 0; st.times = []; st.vt = []; }
+            var gW = walk || (fwT !== null && i >= fwN0);   // this group is one of the walk's
+            if (st.dyn && st.dynAt && gW && now - st.dynAt > Math.min(480000, 30000 * Math.pow(2, Math.max(0, (st.dynN | 0) - 1)))) { st.dyn = false; st.dynAt = 0; st.times = []; st.vt = []; }
             /* THE STILL CHECK (2026-11-14, Disaster City: "check 8.85 ms/frame" on mondo's Mac — twelve matrix numbers rounded and
                mixed for each of 6,500 pieces every frame): in a group THE STILL WALK owns, a piece's matrix changes only through that
                walk, and a piece the walk sees move is drawn outside the recording from that frame on (`_ew_bunOut`, THE MOVERS OUT)
                and comes back (a tree change, so a re-record) once it rests. Its pieces' matrices are not hashed then; the group's own
                matrix is. Off: window.EW_BUN_HASH_MATRICES. */
-            var noM = walk && !st.dyn && !!g._ew_st && !_hqStillOff() && !(typeof window !== 'undefined' && window.EW_BUN_HASH_MATRICES);
+            var noM = gW && !st.dyn && !!g._ew_st && !_hqStillOff() && !(typeof window !== 'undefined' && window.EW_BUN_HASH_MATRICES);
             var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, lit: false, noV: !!st.dyn, noM: noM };
             _ewBun.now = now;
             var twk = (_lens && _lens.cur) ? performance.now() : 0;
-            if (walk) _ewBunWalkTop(g, S); else _ewBunWalk(g, S);
+            if (gW) _ewBunWalkTop(g, S); else _ewBunWalk(g, S);
             if (twk) { var twd = performance.now() - twk; st.msA = (st.msA || 0) + twd; st.nA = S.n; if (spL && twd > spL.slowMs) { spL.slowMs = twd; spL.slow = String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, '') + (g._ew_pChunk || g._ew_chunk ? ' ' + (g._ew_pChunk || g._ew_chunk) : '') + ' ' + twd.toFixed(0) + ' ms (' + (S.n | 0) + ' pieces)'; } }   // THE CHECK'S SPLIT (lens): this group's walk; THE SPIKE'S SLOWEST (11-19)
             if (noM) { var ge = g.matrixWorld.elements; for (var gi = 0; gi < 16; gi++) S.hv = _ewBunMix(S.hv, Math.round(ge[gi] * 1000)); _ewBun.noMN = (_ewBun.noMN | 0) + 1; }
             g._ew_bunDirty = false;
@@ -50990,7 +51005,7 @@ const ThreeRenderer = (function () {
                        while it is released, ~10 ms a frame for 5 s, because 5 pieces started or stopped moving within 2 s. A
                        re-record costs that walk ONCE. So such a group rests only when its list changes on about every third
                        frame (24 times in 2 s); below that it is recorded again each time. The old 5: window.EW_BUN_REST_AT_5. */
-                    else if (st.times.length >= ((walk && g._ew_st && g.children.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_REST_AT_5)) ? 24 : 5)) { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
+                    else if (st.times.length >= ((gW && g._ew_st && g.children.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_REST_AT_5)) ? 24 : 5)) { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
                 }
                 g.version++; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             } else if (st.G !== G || g._ew_bunFree) {   // the lamps / a freed resource it holds: re-records, and none of it counts as the group churning
@@ -56696,7 +56711,9 @@ const ThreeRenderer = (function () {
                 var mwB = !!(scene && scene.matrixWorldAutoUpdate === true && !(typeof window !== 'undefined' && window.EW_BATTLE_MW_EVERY_RENDER));
                 var _airF = _ewAirFightHold();   // THE SAME AIR IN A FIGHT: the walk's fog, written for this draw
                 try {
+                    if (_fw !== null) { try { _fwCull(cam); } catch (eFc) {} }   // THE FIGHT IN THE WALKED ROOM: the walk's chunks, culled by the fight's camera
                     if (mwB) { var _mwSp = _lensIn('matrix walk'); try { _hqStillSceneWalk(scene); } finally { _lensOut(_mwSp); } scene.matrixWorldAutoUpdate = false; }
+                    if (_fw !== null) { try { if (!mwB) scene.updateMatrixWorld(); _fwAfterWalk(cam); } catch (eFa) {} }
                     if (ThreePost && ThreePost.isReady() && !(_lens && !_lens.post)) {   // THE PERF LENS: post off = the scene straight to the screen
                         ThreePost.render(cam);
                     } else {
@@ -56735,9 +56752,9 @@ const ThreeRenderer = (function () {
             /* THE FRONT DESK (2026-11-18, the F3 alarm: "_css2dRender 77K objects a read" each second): only the arrivals are
                looked through for a label; the scene is counted again when one arrived (or the desk overflowed) and every 60 s */
             var cD = (sc._ew_c2N === undefined || cNow - (sc._ew_c2DAt || 0) > 500) ? (sc._ew_c2DAt = cNow, _ewDeskTake(sc._ew_c2Q || (sc._ew_c2Q = _ewDeskQueue()))) : null, cHit = false;
-            if (cD && !cD.over) for (var ci = 0; ci < cD.list.length && !cHit; ci++) { var cx = cD.list[ci]; if (_ewDeskUnder(cx, sc)) cx.traverse(function (o) { if (o.isCSS2DObject) cHit = true; }); }
+            if (cD && !cD.over) for (var ci = 0; ci < cD.list.length && !cHit; ci++) { var cx = cD.list[ci]; if (_ewDeskUnder(cx, sc)) _fwSkipWalk(cx, function (o) { if (o.isCSS2DObject) cHit = true; }); }
             if (sc._ew_c2N === undefined || (cD && (cD.over || cHit)) || cNow - sc._ew_c2At > 60000) {
-                var cn = 0, cl = []; sc.traverse(function (o) { if (o.isCSS2DObject) { cn++; cl.push(o); } }); sc._ew_c2L = cl;
+                var cn = 0, cl = []; _fwSkipWalk(sc, function (o) { if (o.isCSS2DObject) { cn++; cl.push(o); } }); sc._ew_c2L = cl;
                 sc._ew_c2Was = sc._ew_c2N; sc._ew_c2N = cn; sc._ew_c2At = cNow;
             }
             if (sc._ew_c2N === 0 && sc._ew_c2Was === 0) { _css2dTick++; return; }
@@ -57397,6 +57414,7 @@ const ThreeRenderer = (function () {
         if (_floatDomOverlay && _floatDomOverlay.parentElement) _floatDomOverlay.parentElement.removeChild(_floatDomOverlay);
         _floatDomOverlay = null;
         _fieldInstDrop();   // THE PERF PASS: the fight's batches go before their room
+        try { _fwLeave(); } catch (eFw) { console.warn('[HQ] the walked room could not go home', eFw); }   // THE FIGHT IN THE WALKED ROOM
         if (_horizonGroup) { if (scene) scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _horizonGroup = null; _horizonMats.length = 0; _horizonKey = ''; _facilityNearGroup = null; _nearOccGroup = null; _occFieldDrop();
         try { _hqHandoverDrop(); } catch (e) {}   // THE HAND-OVER: a stash nobody took   // (THE PARKED ROOM is NOT let go here: map.js puts the board away just before the way back's enter; _hqEnter lets it go when the entry is not the way back into it)
@@ -97190,10 +97208,11 @@ const ThreeRenderer = (function () {
        re-uploaded to the GPU on every frame with nothing moving (81 batches a frame in the HQ lobby, measured; the battle's room
        batches the same way). The cache is now a Float64Array, so a batch uploads only on the frame a copy really moved. */
     function _hqInstSync(H, force) {
-        var I = H.inst; if (!I || (!H.field && _hq !== H)) return;   // H.field: THE PERF PASS's battle record (_fieldInst*)
+        var fwS = !!(_fw && _fw.on && _fw.H === H);   // THE FIGHT IN THE WALKED ROOM: the walk's pass, synced in the walk's own frame while the fight draws it
+        var I = H.inst; if (!I || (!H.field && _hq !== H && !fwS)) return;   // H.field: THE PERF PASS's battle record (_fieldInst*)
         if (!force && I.stamp === _hqInstStamp) return;
         I.stamp = _hqInstStamp;
-        var M = _hqInstM, Z = _hqInstZero.elements, sc = H.scene, ST = _hqInstStamp, rest = !force && !_hqInstSyncEvery(), syncHid = _hqInstSyncHidden();   // (the flag read once a sync, not once a batch: a window lookup is slow on Firefox — his profile, 0.42 ms a frame)
+        var M = _hqInstM, Z = _hqInstZero.elements, sc = fwS ? _fw.holder : H.scene, ST = _hqInstStamp, rest = !force && !_hqInstSyncEvery(), syncHid = _hqInstSyncHidden();   // (the flag read once a sync, not once a batch: a window lookup is slow on Firefox — his profile, 0.42 ms a frame)
         for (var r = 0; r < I.recs.length; r++) {
             var rec = I.recs[r], c = rec.copies, im = rec.im, arr = im.instanceMatrix.array, cache = rec.cache, dirty = false, refit = false;
             /* THE QUIET SYNC (2026-11-15, mondo's F3 in Disaster City: the mask pass's "setup" 6.3 ms = this sync, 12,000 copies each
@@ -97226,13 +97245,15 @@ const ThreeRenderer = (function () {
                     if (par === lp) shw = lv; else { shw = _hqInstShown(par, sc, ST); lp = par; lv = shw; }
                     if (!shw) e = Z;
                     else {
-                        var we = o.matrixWorld.elements;
+                        var wm = fwS ? _fw.W.multiplyMatrices(_fw.inv, o.matrixWorld) : o.matrixWorld, we = wm.elements;
                         /* a copy that left its batch's sphere refits the batch (a seated mug never does; a carried one might) */
                         var dx = we[12] - rec.C.x, dy = we[13] - rec.C.y, dz = we[14] - rec.C.z;
-                        if (refit === false && dx * dx + dy * dy + dz * dz > rec.R * rec.R) refit = true;
-                        M.multiplyMatrices(rec.inv, o.matrixWorld); e = M.elements;
+                        if (refit === false && !fwS && dx * dx + dy * dy + dz * dz > rec.R * rec.R) refit = true;
+                        M.multiplyMatrices(rec.inv, wm); e = M.elements;
                     }
                 }
+                if (fwS && e !== Z) { for (var jf = 0; jf < 16; jf++) if (Math.abs(cache[off + jf] - e[jf]) > 1e-4) { for (var jg = 0; jg < 16; jg++) { cache[off + jg] = e[jg]; arr[off + jg] = e[jg]; } dirty = true; break; } }   // (through the holder and back: the same place to a rounding, never an upload)
+                else
                 for (var j = 0; j < 16; j++) if (cache[off + j] !== e[j]) { for (var j2 = 0; j2 < 16; j2++) { cache[off + j2] = e[j2]; arr[off + j2] = e[j2]; } dirty = true; break; }
             }
             if (refit) { _hqInstFit(rec); rec.fitStamp = _hqInstStamp; rec.qN = 0; r--; continue; }   // the frame moved: rewrite every copy against it (the cache was cleared)
@@ -98461,11 +98482,15 @@ const ThreeRenderer = (function () {
         var elev = (typeof window._getElevationPx === 'function') ? window._getElevationPx : null;
         var heights = (typeof state !== 'undefined' && state.boardHeights) || null;
         if (!elev || !heights || !(W > 0 && H > 0)) return out;
-        var b = new THREE.Box3(), ch = F.children;
-        for (var i = 0; i < ch.length; i++) {
+        var b = new THREE.Box3(), ch = F.children, fwR = (_fw && _fw.on) ? _fw.roots : null, nCh = ch.length, nAll = nCh + (fwR ? fwR.length : 0);
+        if (fwR && _fw.job) out.at = now - 4000;   // (the walked room's pieces are still being measured: read again soon)
+        for (var i = 0; i < nAll; i++) {
+            if (i >= nCh) { var fr = fwR[i - nCh]; if (fr.o._ew_hqWall || fr.box.isEmpty()) continue; b.copy(fr.box); }   // THE FIGHT IN THE WALKED ROOM: the room's own pieces, by the boxes already measured
+            else {
             var c = ch[i];
             if (!c || c.visible === false || /^hq_(wall|ceil)/.test(c.name || '')) continue;
             try { c.updateMatrixWorld(true); b.setFromObject(c); } catch (e) { continue; }
+            }
             if (b.isEmpty()) continue;
             var w = (b.max.x - b.min.x) / ts, d = (b.max.z - b.min.z) / ts;
             if (w < 1 || d < 1 || w > 10 || d > 10) continue;
@@ -98917,7 +98942,7 @@ const ThreeRenderer = (function () {
         var e = BFOG.edgeFallbackTiles * ts;
         if (root) {
             try {
-                var B = (_bfogBox || (_bfogBox = new THREE.Box3())).setFromObject(root);
+                var B = (_fw && _fw.on && !_fw.box.isEmpty()) ? _fw.box : (_bfogBox || (_bfogBox = new THREE.Box3())).setFromObject(root);   // (THE FIGHT IN THE WALKED ROOM: the room's box, kept)
                 if (!B.isEmpty()) e = Math.min(-B.min.x, B.max.x - W, -B.min.z, B.max.z - H);
             } catch (err) {}
         }
@@ -99379,6 +99404,7 @@ const ThreeRenderer = (function () {
             if (o._ew_fieldStrata || o._ew_hqOuter || o._ew_hqGround || o._ew_hqBackdrop) return;
             if (o._ew_hqTerrain || o._ew_hqPart === 'floor' || o._ew_hqMarks) list.push(o);   // + THE CRATER UNDER THE PAINT: the marks on it
         });
+        if (_fw && _fw.floors.length) { for (var fi = 0; fi < _fw.floors.length; fi++) if (_fw.floors[fi].parent) list.push(_fw.floors[fi]); }   // THE FIGHT IN THE WALKED ROOM: the walk's own floors near the board
         return list;
     }
     var _fdM = null, _fdInv = null, _fdV = null;
@@ -99388,6 +99414,7 @@ const ThreeRenderer = (function () {
         m.updateWorldMatrix(true, false);
         var mw = m.matrixWorld;
         if (m._ew_parkClone && !m._ew_parkOwnGeo && m.geometry) { m.geometry = m.geometry.clone(); m._ew_parkOwnGeo = true; }   // THE PARKED ROOM: the walk's floor is not the fight's to dig
+        _fwOwnGeo(m);   // THE FIGHT IN THE WALKED ROOM: the walk's floor is dug on a copy of its geometry (its own back on the way out)
         /* a box room's floor is ONE quad — the first dig subdivides it (≈ four vertices a tile) in the same frame + UVs */
         var geo = m.geometry, prm = geo.parameters;
         if (prm && prm.width > 0 && prm.height > 0 && (prm.widthSegments || 1) < 4 && !m._ew_fieldOrigGeo) {
@@ -99507,6 +99534,7 @@ const ThreeRenderer = (function () {
         if (typeof THREE === 'undefined') return false;
         if (typeof window !== 'undefined' && window.EW_NO_MARKS_DEFORM) { _fieldDeformRestoreMesh(m); return false; }   // the switch: the paint stays flat (the old look)
         var L = m._ew_hqMarks;
+        if (_fw && !m._ew_fieldOrigGeo && m._ew_bRec) _fwCut(m);   // THE FIGHT IN THE WALKED ROOM: out of its merged square first
         if (!m._ew_fieldOrigGeo) { var cut = _fieldMarksCut(m, ts); if (!cut) return false; m._ew_fieldOrigGeo = m.geometry; m.geometry = cut; m._ew_fieldOrig = new Float32Array(cut.attributes.position.array); }
         var geo = m.geometry, pos = geo.attributes.position, Wt = geo._ew_marksW, o = m._ew_fieldOrig; if (!Wt || !o) return false;
         _fmV = _fmV || new THREE.Vector3(); _fdInv = _fdInv || new THREE.Matrix4();
@@ -99572,7 +99600,7 @@ const ThreeRenderer = (function () {
         if (!_facilityNearGroup || typeof THREE === 'undefined') return 0;
         _fdV = _fdV || new THREE.Vector3();
         var G = _fieldGround(), n = 0; if (!G) return 0;
-        _facilityNearGroup.traverse(function (o) {
+        var sinkOne = function (o) {
             if (!o._ew_hqProp) return;
             if (o._ew_sinkBase == null) o._ew_sinkBase = o.position.y;
             if (!plan || !plan.dug.length) { if (o.position.y !== o._ew_sinkBase) o.position.y = o._ew_sinkBase; return; }
@@ -99583,12 +99611,15 @@ const ThreeRenderer = (function () {
             var e = o.parent ? o.parent.matrixWorld.elements : null, sPx = e ? (Math.sqrt(e[4] * e[4] + e[5] * e[5] + e[6] * e[6]) || 1) : 1;
             o.position.y = o._ew_sinkBase + dy / sPx;
             if (dy) n++;
-        });
+        };
+        _facilityNearGroup.traverse(sinkOne);
+        if (_fw && _fw.props.length) { for (var fp = 0; fp < _fw.props.length; fp++) { var fo = _fw.props[fp]; if (!fo.parent) continue; var y0 = fo.position.y; sinkOne(fo); if (fo.position.y !== y0) { if (fo._ew_bRec || fo._ew_instHidden || fo._ew_bAnc) _fwSunk(fo); fo.updateMatrixWorld(true); } } }   // THE FIGHT IN THE WALKED ROOM: the walk's own props near the board
         return n;
     }
     function _fieldDeformRestore() {
         try { _fieldFloorMeshes().forEach(_fieldDeformRestoreMesh); } catch (e) {}
         try { if (_facilityNearGroup) _facilityNearGroup.traverse(function (o) { if (o._ew_hqProp && o._ew_sinkBase != null) o.position.y = o._ew_sinkBase; }); } catch (e) {}
+        try { if (_fw) for (var fp = 0; fp < _fw.props.length; fp++) { var fo = _fw.props[fp]; if (fo._ew_sinkBase != null && fo.position.y !== fo._ew_sinkBase) { fo.position.y = fo._ew_sinkBase; fo.updateMatrixWorld(true); } } } catch (e) {}
         _fieldDeformCache.key = null; _fieldDeformCache.plan = null;
     }
     /* ══ THE EARTHWORK MOUND (2026-10-18, mondo: Rampart "since this isnt the voxel map its kind of weird for it to be a perfect cube
@@ -100763,7 +100794,7 @@ const ThreeRenderer = (function () {
         var now = performance.now();
         if (now - _quiet.at > _quiet.win || !scene || !cam) { _quiet.ms = Math.round(now - _quiet.at); _quiet.state = 3; return; }
         var list = [], props = renderer.properties;
-        scene.traverseVisible(function (o) { if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.material) list.push(o); });
+        _fwSkipWalk(scene, function (o) { if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.material) list.push(o); }, true);
         var progOf = function (m) { var p = m ? props.get(m) : null; return p ? p.currentProgram : null; };
         var fresh = [];
         for (var i = 0; i < list.length; i++) { var ms = Array.isArray(list[i].material) ? list[i].material : [list[i].material]; for (var j = 0; j < ms.length; j++) if (ms[j] && !progOf(ms[j])) { fresh.push(list[i]); break; } }
@@ -100804,6 +100835,306 @@ const ThreeRenderer = (function () {
         try { if (typeof scene !== 'undefined' && scene && st) scene.fog = st.prevFog || null; } catch (e) {}
         _HQ_AO.w = 0;
     }
+    /* ══ THE FIGHT IN THE WALKED ROOM (2026-11-22, mondo: "that is what i have been saying this entire time ... a seamless
+       transition") ══
+       A fight used to be a second scene: the room round the board was COPIED out of the parked walk (about 3,000 pieces in the
+       Fairy Forest clearing, each its own holder, its own recording, its own render objects), so every fight started with a
+       freeze of a second or more and the room was not quite the one just walked (far pieces gone, the grass a new field).
+       Now the fight draws the walk's OWN room: the parked walk's part root (its merged squares, chunks, prop chunks, doors,
+       grass and flora cells) and its instance pass are hung under one holder in the fight's scene, at the room's place round
+       the board (`hq_walked`, flagged `_ew_fwRoot`), and hung back in the walk on the way out. Nothing is copied, cloned,
+       merged again or disposed. What the fight still adds is its own: the board, the units, the previews, its lights, the HUD.
+         · the chunks are culled by the fight's camera with the walk's own spheres (_fwCull); the instance pass is synced in
+           the walk's frame (_hqInstSync with _fw.inv); the frame's one matrix walk is the still walk's;
+         · the wall fade reads the room's own pieces: the top pieces within keepFarM of the board, measured a few a frame
+           (_fwJob), are its roots; a piece the static batch holds is CUT out of its merged mesh for the time it is faded
+           (_fwCut: its triangles collapse in the merged index, the piece draws itself) and put back after; a piece the
+           instance pass holds is handed back by that pass as it always was;
+         · the ceiling fades as before (its pieces cut, their looks cloned for the fight, the walk's own back at the end);
+         · the people of the walk, its markers and its atmosphere pieces are hidden for the fight;
+         · the dig / sink / tall scenery / board fog readers read the walked room's lists (_fw.floors / .props / .roots / .box).
+       Not for: a room with joined neighbours (the stage), a round world, a vessel under way. Those keep the copies.
+       Off: window.EW_FIGHT_COPIES = true (the copies, as before). */
+    var _fw = null;
+    function _fwOff() { return typeof window !== 'undefined' && !!window.EW_FIGHT_COPIES; }
+    /* will this fight draw the parked walk's own room? (asked by the board's builders before the room is hung) */
+    function _fwCan() {
+        try {
+            var P = _hqParked; if (!P || !P.H || !P.H.partRoot || _hqParkOff() || _fwOff() || !_fieldGround()) return false;
+            var R = _hqBattleRoom(); if (!R || P.roomId !== R.roomId || !_hqHandoverRules().handover) return false;
+            var room = R.room; if (P.H.stage) return false;
+            if (room.space && room.space.round && room.space.round.length) return false;
+            if (room.shell && room.shell.open && room.shell.sky && room.shell.sky.voyage) return false;
+            return true;
+        } catch (e) { return false; }
+    }
+    /* a walk of a subtree that never enters the walked room (the fight's own readers: the room is not theirs to read whole) */
+    function _fwSkipWalk(root, fn, visibleOnly) {
+        (function w(o) {
+            if (o._ew_fwRoot || (visibleOnly && o.visible === false)) return;
+            fn(o);
+            var ch = o.children; for (var i = 0; i < ch.length; i++) w(ch[i]);
+        })(root);
+    }
+    /* hang `o` under `to` without Object3D.add (no add event: the front desk, the bundles' add counter and the still walk's
+       fresh lists must not see 60,000 objects arrive) */
+    function _fwMove(o, to, list) {
+        if (!o || !o.parent) return false;
+        var p = o.parent, i = p.children.indexOf(o); if (i < 0) return false;
+        p.children.splice(i, 1); to.children.push(o); o.parent = to;
+        list.push({ o: o, p: p, i: i });
+        return true;
+    }
+    function _fwEnter(P, R, M, ts, HR) {
+        var H = P.H, U = _hqUnits(), C = R.T.C, s = (ts / C) / U, now = performance.now();
+        var holder = new THREE.Group(); holder.name = 'hq_walked'; holder._ew_fwRoot = true; holder._ew_hzNearRoot = true; holder.applyMatrix4(M); holder.updateMatrix();
+        _horizonGroup.add(holder);
+        var F = _fw = { on: true, H: H, P: P, R: R, holder: holder, sky: null, M: M.clone(), inv: M.clone().invert(), s: s, ts: ts, moved: [], hid: [], cuts: [], ceil: [], geos: [], lights: null,
+                        roots: [], floors: [], props: [], walls: {}, box: new THREE.Box3(), job: null, at: now, cutN: 0, rootN: 0, cam: null, frM: new THREE.Matrix4(), fr: new THREE.Frustum(), sph: new THREE.Sphere(), W: new THREE.Matrix4() };
+        _fwMove(H.partRoot, holder, F.moved);
+        if (H.inst && H.inst.group) _fwMove(H.inst.group, holder, F.moved);
+        /* the walk's lights that light the fight: the ones under the room (lit or not as the walk left them) */
+        try { var RL = H.scene && H.scene._ew_rigList; if (RL && RL.list) F.lights = RL.list.slice(); } catch (e) {}
+        try { if (scene) scene._ew_rigList = null; } catch (e) {}   // the fight's light list is read again (the walked room's lights are listed by hand: _ewRigListAll)
+        /* what the fight never showed: the people, the markers, the atmosphere pieces */
+        var hide = function (o) { if (!o || o._ew_bRec || o._ew_bAnc || o.visible === false) return; o.visible = false; F.hid.push(o); };
+        hide(H.charGroup);
+        /* every world matrix under the holder, once (an off-camera chunk keeps its matrices by hand: it is walked here too) */
+        var L = H.ckList || [], offs = [];
+        for (var i = 0; i < L.length; i++) { var g = L[i]; if (g.matrixWorldAutoUpdate === false) { g.matrixWorldAutoUpdate = true; offs.push(g); } }
+        holder.updateMatrixWorld(true);
+        for (i = 0; i < offs.length; i++) offs[i].matrixWorldAutoUpdate = false;
+        /* the room's box round the board (the board fog's edge): the chunks' spheres now, the near pieces as they are measured */
+        var v = new THREE.Vector3();
+        for (i = 0; i < L.length; i++) { var sp = L[i]._ew_ckSph; if (!sp) continue; v.copy(sp.center).applyMatrix4(M); var rr = sp.radius * s; F.box.expandByPoint(v.clone().addScalar(rr)); F.box.expandByPoint(v.clone().addScalar(-rr)); }
+        /* the piece containers: a direct child of one is one piece for the fade */
+        var conts = [], cont = function (g) { if (g) { g._ew_fwCont = true; conts.push(g); } };
+        cont(H.shellGroup); cont(H.doorGroup); cont(H.propGroup);
+        if (H.chunks && H.chunks.cells) for (var k in H.chunks.cells) { var cg = H.chunks.cells[k]; if (!cg._ew_sCell) cont(cg); }
+        if (H.pChunks) for (var pk in H.pChunks) cont(H.pChunks[pk]);
+        else if (H.propGroup) for (i = 0; i < H.propGroup.children.length; i++) if (H.propGroup.children[i]._ew_pChunk) cont(H.propGroup.children[i]);
+        F.job = { conts: conts, ci: 0, pi: 0, R: R, HR: HR, keep: Math.max(HR.keepFarM || 48, HR.keepM || 28) * (ts / C), bw: R.T.W * ts, bh: R.T.H * ts, box: new THREE.Box3(), v: new THREE.Vector3(), key: R.T.W + 'x' + R.T.H + '@' + ts, n: 0, ms: 0 };
+        /* the fade's list: filled by the job */
+        _occField = { group: _facilityNearGroup, roots: F.roots, skipped: 0, mPx: ts / C, blockerPx: ((HR && HR.blockerM > 0) ? HR.blockerM : 2.5) * (ts / C), refreshMs: Infinity, at: now, rays: 0, tests: 0, ms: 0, n: 0, fw: true };
+        try { _fwJob(8); } catch (eJ) { console.warn('[HQ→battle] the walked room\'s pieces could not be read', eJ); }
+        return F;
+    }
+    /* the pieces near the board, a few a frame: the fade's roots, the ceiling, the walls, the floors, the props, the plates */
+    function _fwJob(budgetMs) {
+        var F = _fw, J = F && F.job; if (!J) return;
+        var t0 = performance.now(), M = F.M, s = F.s, v = J.v, b = J.box, keep = J.keep;
+        while (J.ci < J.conts.length) {
+            var g = J.conts[J.ci], ch = g.children;
+            if (J.pi === 0 && g._ew_ckSph && (g._ew_pChunk || g._ew_chunk != null)) {   // a whole chunk past the radius: none of its pieces is read
+                var sp = g._ew_ckSph; v.copy(sp.center).applyMatrix4(M);
+                var dx = Math.max(-v.x, v.x - J.bw, 0), dz = Math.max(-v.z, v.z - J.bh, 0);
+                if (Math.sqrt(dx * dx + dz * dz) - sp.radius * s > keep) { J.ci++; continue; }
+            }
+            for (; J.pi < ch.length; J.pi++) {
+                if ((J.n++ & 15) === 0 && performance.now() - t0 > budgetMs) { J.ms += performance.now() - t0; return; }
+                var c = ch[J.pi];
+                if (!c || c._ew_fwCont || c._ew_hqBatch || c._ew_hqInst || c.isLight || c._ew_sCell || c._ew_pChunk) continue;
+                _fwPiece(F, J, c);
+            }
+            J.ci++; J.pi = 0;
+        }
+        J.ms += performance.now() - t0;
+        F.job = null; F.jobMs = J.ms; F.jobAt = performance.now() - F.at;
+        _occField && (_occField.skipped = F.bigN | 0);
+        console.log('[HQ→battle] the walked room: ' + F.roots.length + ' pieces may fade (' + (F.bigN | 0) + ' big ones never) · ' + F.floors.length + ' floors · ' + F.props.length + ' props · read in ' + J.ms.toFixed(0) + ' ms over ' + Math.round(F.jobAt) + ' ms');
+    }
+    function _fwPiece(F, J, c) {
+        /* the pieces the fight never showed */
+        if (c._ew_hqMarker || c._ew_hqPart === 'fx' || c.isCSS2DObject || c._ew_text) { if (!c._ew_bRec && !c._ew_bAnc && c.visible !== false) { c.visible = false; F.hid.push(c); } return; }
+        var rec0 = c._ew_bRec, b = J.box, v = J.v;
+        /* a merged piece far off: its square's sphere says so without measuring it */
+        if (rec0 && rec0.host && rec0.host._ew_ckSph && !c._ew_hqPart && !c._ew_hqWall) {
+            var hs = rec0.host._ew_ckSph; v.copy(hs.center).applyMatrix4(F.M);
+            var hx = Math.max(-v.x, v.x - J.bw, 0), hz = Math.max(-v.z, v.z - J.bh, 0);
+            if (Math.sqrt(hx * hx + hz * hz) - hs.radius * F.s > J.keep) return;
+        }
+        try { b.setFromObject(c); } catch (e) { b.makeEmpty(); }
+        var part = c._ew_hqPart, always = !!(part || c._ew_hqTerrain || c._ew_hqOuter || c._ew_hqWall);
+        if (b.isEmpty()) { if (!always) { v.setFromMatrixPosition(c.matrixWorld); b.min.copy(v); b.max.copy(v); } }
+        if (!always) {
+            var dx = Math.max(-b.max.x, b.min.x - J.bw, 0), dz = Math.max(-b.max.z, b.min.z - J.bh, 0), d = Math.sqrt(dx * dx + dz * dz);
+            var scenery = !!(c._ew_hqLot != null || c._ew_hqBackdrop || c._ew_hqTree);
+            if (d > (scenery ? (J.HR.keepFarM || 48) : (J.HR.keepM || 28)) * (F.ts / J.R.T.C)) return;
+        }
+        if (!b.isEmpty()) F.box.union(b);
+        /* one read of the piece: is it big (never faded), its floors, its props, its plates */
+        var big = false, plates = null;
+        c.traverse(function (o) {
+            if (o._ew_hqProp) F.props.push(o);
+            if (o.isCSS2DObject || (o.name === 'hq_plate' && o._ew_text)) { (plates || (plates = [])).push(o); return; }
+            if (!o.isMesh) return;
+            if (o.geometry && o.geometry.attributes && o.geometry.attributes.position && !o._ew_fieldStrata && !o._ew_hqOuter && !o._ew_hqGround && !o._ew_hqBackdrop && (o._ew_hqTerrain || o._ew_hqPart === 'floor' || o._ew_hqMarks)) F.floors.push(o);
+            if (big) return;
+            if (o._ew_hqInst || o._ew_hqTerrain || o._ew_hqOuter || o._ew_hqGround || o._ew_hqTexBuilding || o._ew_hqRoadMark || o._ew_hqRoad || o._ew_hqBackdrop) { big = true; return; }
+            var ge = o.geometry, n = ge ? (ge.index ? ge.index.count : (ge.attributes && ge.attributes.position ? ge.attributes.position.count : 0)) : 0;
+            if (n / 3 > OCC_FIELD_TRI_MAX) big = true;
+        });
+        if (plates) for (var pi = 0; pi < plates.length; pi++) { var pl = plates[pi]; if (!pl._ew_bRec && !pl._ew_bAnc && pl.visible !== false && !pl.isCSS2DObject) { pl.visible = false; F.hid.push(pl); } }
+        if (part === 'ceil') { try { _fwCeil(F, c, J.R); } catch (eC) { console.warn('[HQ→battle] the walked ceiling could not be taken for the fade', eC); } return; }
+        if (big) { c.traverse(function (o) { if (o.isMesh) o._ew_occSkip = true; }); F.bigN = (F.bigN | 0) + 1; return; }
+        /* a root of the fade */
+        var rr = { o: c, c: new THREE.Vector3(), r: 0, box: b.clone(), fw: true };
+        if (!b.isEmpty()) { b.getCenter(rr.c); rr.r = b.getSize(v).length() * 0.5; } else c.getWorldPosition(rr.c);
+        c._ew_occNear = true; c._ew_fwTop = true;
+        if (c._ew_hqWall) {
+            var side = c._ew_hqWall, wg = F.walls[side];
+            if (!wg) { wg = F.walls[side] = new THREE.Group(); wg.name = 'hq_wall_' + side; wg._ew_occWall = side; wg._ew_occFadeTarget = 0.04; wg._ew_occNear = true; wg._ew_fwList = []; wg._ew_noBatch = true; if (_facilityNearGroup) _facilityNearGroup.add(wg); }
+            wg._ew_fwList.push(c); c._ew_fwAs = wg;
+        } else {
+            /* THE FADE RULES' box test, from the box just measured (never measured again: the room stands still) */
+            var W = J.R.T.W, Hh = J.R.T.H, ts = F.ts, eps = ts * 0.05, g0 = c._ew_occGrid = { key: J.key, at: 1e15, off: false, top: -Infinity };
+            if (!b.isEmpty()) {
+                var cx = (b.min.x + b.max.x) * 0.5, cz = (b.min.z + b.max.z) * 0.5, span = Math.max(b.max.x - b.min.x, b.max.z - b.min.z), huge = span > Math.max(W, Hh) * ts * 2;
+                g0.off = !huge && (cx < -eps || cz < -eps || cx > W * ts + eps || cz > Hh * ts + eps); g0.top = b.max.y;
+            }
+        }
+        F.roots.push(rr);
+    }
+    /* the ceiling of a walked room: its meshes out of their merged squares, their looks cloned for the fade (the walk's own back at the end) */
+    function _fwCeil(F, c, R) {
+        var ms = []; c.traverse(function (o) { if (o.isMesh && o.material) ms.push(o); });
+        for (var i = 0; i < ms.length; i++) { var o = ms[i]; if (o._ew_bRec) _fwCut(o); F.ceil.push({ o: o, m: o.material, v: o.visible }); }
+        _fieldCeilRegister(c, R, F.ts);
+    }
+    /* CUT: a piece the static batch holds leaves its merged mesh (its triangles collapse there) and draws itself. → true when it does */
+    function _fwCut(o) {
+        var F = _fw, rec = o && o._ew_bRec; if (!F || !rec || !rec.live || o._ew_fwCutE) return false;
+        var E = { o: o, rec: rec, c: null, save: null, out: o._ew_bunOut };
+        if (rec.single) rec.mesh.visible = false;
+        else {
+            var cs = rec.cs, c = null; for (var i = 0; i < cs.length; i++) if (cs[i].o === o) { c = cs[i]; break; }
+            var idx = rec.mesh.geometry && rec.mesh.geometry.index;
+            if (!c || c.i0 === undefined || !(c.iN > 0) || !idx) return false;   // (a joined glow has no range: it stays in its square)
+            var a = idx.array, z = a[c.i0]; E.c = c; E.save = a.slice(c.i0, c.i0 + c.iN);
+            for (var k = c.i0, k1 = c.i0 + c.iN; k < k1; k++) a[k] = z;
+            idx.needsUpdate = true;
+        }
+        var v = o._ew_bv; delete o.visible; o.visible = v; o._ew_bRec = null; _hqBatchHoldN++; _hqBatchParOff(o);
+        o._ew_bunOut = true; o._ew_fwCutE = E;
+        for (var q = o.parent; q; q = q.parent) { if (q._ew_bun || q._ew_st) q._ew_bunDirty = true; if (q._ew_fwRoot) break; }
+        if (rec.host) rec.host._ew_bunDirty = true;
+        F.cuts.push(E); F.cutN++;
+        return true;
+    }
+    /* the piece back in its merged mesh (its batch still stands and it wears its own look again) */
+    function _fwUncut(o) {
+        var E = o && o._ew_fwCutE; if (!E) return;
+        o._ew_fwCutE = null;
+        var F = _fw; if (F) { var ci = F.cuts.indexOf(E); if (ci >= 0) F.cuts.splice(ci, 1); }
+        o._ew_bunOut = E.out;
+        var rec = E.rec;
+        if (!rec.live || !rec.mesh || o._ew_bRec) return;   // the batch was handed back meanwhile: the piece is its own already
+        if (rec.single) rec.mesh.visible = true;
+        else { var idx = rec.mesh.geometry.index; idx.array.set(E.save, E.c.i0); idx.needsUpdate = true; }
+        o._ew_bv = o.visible; o._ew_bRec = rec; _hqBatchHoldN++;
+        Object.defineProperty(o, 'visible', { configurable: true, enumerable: true, get: _hqBatchVisGet, set: _hqBatchVisSet });
+        _hqBatchParOn(o);
+        for (var q = o.parent; q; q = q.parent) { if (q._ew_bun || q._ew_st) q._ew_bunDirty = true; if (q._ew_fwRoot) break; }
+        if (rec.host) rec.host._ew_bunDirty = true;
+    }
+    /* a walked floor about to be dug: out of its merged square, on a copy of its geometry */
+    function _fwOwnGeo(m) {
+        var F = _fw; if (!F || !m || m._ew_fwGeo || m._ew_parkClone || !m.geometry) return;
+        var mine = false; for (var q = m; q; q = q.parent) { if (q === F.holder) { mine = true; break; } }
+        if (!mine) return;
+        if (m._ew_bRec) _fwCut(m);
+        m._ew_fwGeo = m.geometry; F.geos.push({ o: m, g: m.geometry });
+        m.geometry = m.geometry.clone(); m._ew_fieldOrig = null;
+    }
+    /* a walked prop that sank with a dug cell: its merged meshes draw themselves (the merged square holds them where they stood) */
+    function _fwSunk(o) {
+        o.traverse(function (c) { if (c.isMesh && c._ew_bRec) _fwCut(c); });
+    }
+    /* per fight frame, before the frame's matrix walk: which chunks the fight's camera draws (the walk's spheres, the walk's far limits) */
+    function _fwCull(cam) {
+        var F = _fw; if (!F || !F.on || !cam) return;
+        if (F.job) { try { _fwJob(2); } catch (e) { F.job = null; console.warn('[HQ→battle] the walked room\'s pieces could not be read', e); } }
+        var H = F.H, L = H.ckList; if (!L || !L.length) return;
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_CHUNK_CULL) { for (var z = 0; z < L.length; z++) { var gz = L[z]; if (gz._ew_ckOut) { gz._ew_ckOut = false; gz.visible = true; gz.matrixWorldAutoUpdate = true; gz.matrixWorldNeedsUpdate = true; } } return; }
+        cam.updateMatrixWorld();
+        /* the camera in the room's own frame: its place, and its frustum through the holder's matrix */
+        var e = cam.matrixWorld.elements, v = F.sph.center.set(e[12], e[13], e[14]).applyMatrix4(F.inv), cx = v.x, cy = v.y, cz = v.z;
+        F.frM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse).multiply(F.M);
+        F.fr.setFromProjectionMatrix(F.frM, cam.coordinateSystem);
+        var pad = _hqChunkRules().pad * _hqUnits(), S = F.sph, drawn = 0;
+        for (var i = 0; i < L.length; i++) {
+            var g = L[i]; if (!g.parent) continue;
+            var sp = g._ew_ckSph, out = false;
+            if (sp) {
+                var dx = sp.center.x - cx, dy = sp.center.y - cy, dz = sp.center.z - cz;
+                if (Math.sqrt(dx * dx + dy * dy + dz * dz) - sp.radius > g._ew_ckFar) out = true;
+                else { S.center.copy(sp.center); S.radius = sp.radius + pad; out = !F.fr.intersectsSphere(S); }
+            }
+            if (out !== g._ew_ckOut) {
+                g._ew_ckOut = out; g.visible = !out;
+                g.matrixWorldAutoUpdate = !out;
+                if (!out) g.matrixWorldNeedsUpdate = true;   // its matrices are the walk's (or an older fight frame's): made again on this frame's walk
+            }
+            if (!out) drawn++;
+        }
+        F.ckDrawn = drawn;
+    }
+    /* per fight frame, after the matrix walk: the instance pass (in the walk's frame), the grass faces this camera */
+    function _fwAfterWalk(cam) {
+        var F = _fw; if (!F || !F.on) return;
+        var H = F.H;
+        if (H.inst) { _hqInstStamp++; try { _hqInstSync(H); } catch (e) {} }
+        try {
+            var S = _hqGG; if (S && S.H === H && cam && S.parent) {
+                if (!_ggV) { _ggV = new THREE.Vector3(); _ggM = new THREE.Matrix4(); }
+                _ggM.copy(S.parent.matrixWorld).invert();
+                var ce = cam.matrixWorld.elements; _ggV.set(ce[0], ce[1], ce[2]).transformDirection(_ggM);
+                var rl = Math.hypot(_ggV.x, _ggV.z) || 1; S.right.value.set(_ggV.x / rl, _ggV.z / rl);
+            }
+        } catch (e2) {}
+    }
+    /* the walked room goes home: every cut healed, every look and geometry the fight lent given back, every group where it hung */
+    function _fwLeave() {
+        var F = _fw; if (!F || F.leaving) return;
+        F.leaving = true; F.on = false; F.job = null;
+        var H = F.H, i;
+        try { if (_occField && _occField.fw) _occFieldDrop(); } catch (e) {}
+        /* the fades: every faded mesh wears its own look again */
+        try { _occFaded.forEach(function (rec, root) { if (root._ew_fwTop || root._ew_fwList) { for (var j = 0; j < rec.meshes.length; j++) _occRestore(rec.meshes[j]); _occFaded.delete(root); } }); } catch (e) { console.warn('[HQ] the walked room\'s fades could not be undone', e); }
+        /* the ceiling: the walk's looks back, the fight's clones freed */
+        for (i = 0; i < F.ceil.length; i++) {
+            var ce = F.ceil[i], cur = ce.o.material;
+            try { if (cur !== ce.m) { ce.o.material = ce.m; (Array.isArray(cur) ? cur : [cur]).forEach(function (m) { if (m && m.dispose) m.dispose(); }); } ce.o.visible = ce.v; } catch (e) {}
+        }
+        try { if (_fieldGroundState && _fieldGroundState.ceil) _fieldGroundState.ceil = null; } catch (e) {}
+        /* the dug floors and the sunk props */
+        try { _fieldDeformRestore(); } catch (e) {}
+        for (i = 0; i < F.geos.length; i++) { var ge = F.geos[i]; try { var cg = ge.o.geometry; if (cg !== ge.g) { ge.o.geometry = ge.g; if (cg && cg.dispose) cg.dispose(); } ge.o._ew_fwGeo = null; } catch (e) {} }
+        /* the cuts */
+        var cuts = F.cuts.slice(); for (i = 0; i < cuts.length; i++) { try { _fwUncut(cuts[i].o); } catch (e) { console.warn('[HQ] a cut piece could not go back into its merged square', e); } }
+        /* what was hidden */
+        for (i = 0; i < F.hid.length; i++) { try { F.hid[i].visible = true; } catch (e) {} }
+        /* the walls' stand-ins */
+        for (var sd in F.walls) { var wg = F.walls[sd]; (wg._ew_fwList || []).forEach(function (c) { c._ew_fwAs = null; }); wg._ew_fwList = null; if (wg.parent) wg.parent.remove(wg); }
+        for (i = 0; i < F.roots.length; i++) { var ro = F.roots[i].o; ro._ew_fwTop = false; ro._ew_occGrid = null; }
+        /* home, in the order they left (the last out is the first back) */
+        for (i = F.moved.length - 1; i >= 0; i--) {
+            var mv = F.moved[i], o = mv.o, cp = o.parent;
+            try { if (cp) { var ix = cp.children.indexOf(o); if (ix >= 0) cp.children.splice(ix, 1); } mv.p.children.splice(Math.min(mv.i, mv.p.children.length), 0, o); o.parent = mv.p; } catch (e) { console.warn('[HQ] a piece of the walked room could not go home', e); }
+        }
+        _fw = null;
+        if (F.holder.parent) F.holder.parent.remove(F.holder);
+        if (F.sky && F.sky.parent) F.sky.parent.remove(F.sky);
+        try { if (scene) scene._ew_rigList = null; } catch (e) {}
+        /* every world matrix back in the walk's frame, once (the batch's watchdog and the instance pass compare against them) */
+        try {
+            var L = H.ckList || [], offs = [];
+            for (i = 0; i < L.length; i++) { var g = L[i]; if (g.matrixWorldAutoUpdate === false) { g.matrixWorldAutoUpdate = true; offs.push(g); } }
+            for (i = 0; i < F.moved.length; i++) { F.moved[i].o.updateMatrixWorld(true); }
+            for (i = 0; i < offs.length; i++) offs[i].matrixWorldAutoUpdate = false;
+        } catch (e) { console.warn('[HQ] the walked room\'s matrices could not be laid again', e); }
+        console.log('[HQ→battle] the walked room went home (' + F.cutN + ' cuts healed, ' + F.hid.length + ' shown again)');
+    }
     function _hqBuildRoomInBattle(ctx) {
         var R = _hqBattleRoom(); if (!R || !ctx || typeof THREE === 'undefined' || !_horizonGroup) return;
         if (ctx.bw !== R.T.W || ctx.bh !== R.T.H) return;   // the board the battle built is not the room's frame (THE FIELD IS THE ROOM: W × H)
@@ -100830,13 +101161,15 @@ const ThreeRenderer = (function () {
         /* THE HAND-OVER (delivery 4): the walk's own groups, when the walk just left THIS room under true ground — no builder runs */
         var HR = _hqHandoverRules();
         var hand = (trueGround && HR.handover && _hqRoomHandover && _hqRoomHandover.roomId === R.roomId) ? _hqRoomHandover : null;
-        if (!hand && trueGround && HR.handover && _hqParked && _hqParked.roomId === R.roomId && !_hqParkOff()) { try { hand = _hqParkHand(_hqParked); } catch (ePH) { hand = null; console.warn('[HQ→battle] the parked room gave no copies — the room is built for the fight', ePH); } }   // THE PARKED ROOM: copies of what stands near the board
+        var fwP = (!hand && trueGround && _fwCan()) ? _hqParked : null;   // THE FIGHT IN THE WALKED ROOM: the parked walk's own room is hung in the fight (no copies)
+        if (_fw) _fwLeave();
+        if (!hand && !fwP && trueGround && HR.handover && _hqParked && _hqParked.roomId === R.roomId && !_hqParkOff()) { try { hand = _hqParkHand(_hqParked); } catch (ePH) { hand = null; console.warn('[HQ→battle] the parked room gave no copies — the room is built for the fight', ePH); } }   // THE PARKED ROOM: copies of what stands near the board
         if (hand) { if (!hand._park) _hqRoomHandover = null; H.shellGroup = hand.shellGroup; H.doorGroup = hand.doorGroup; H.propGroup = hand.propGroup; H.fxPulse = hand.fxPulse.slice(); }
         else _hqHandoverDrop();
         _hq = H;
         try {
             H.gallery = _hqGalleryFrame(copy);
-            if (hand) { /* the room stands as it was walked */ }
+            if (hand || fwP) { /* the room stands as it was walked */ }
             else {
             if (R.cave) { try { _hqBuildCave(copy); } catch (e) { console.warn('[HQ→battle] cave failed', e); } }
             /* THE SEAMLESS FIELD, delivery 2 (2026-09-22): a TERRAIN room's field — the height field itself, its water, decks, walls,
@@ -100857,8 +101190,9 @@ const ThreeRenderer = (function () {
            ground round the board — the terrain room's height field and its outer ground — kept for the camera's lens floor
            past the board's edge (ThreeRenderer.roomGroundAt). A handed-over room reads its surveyed field (no outer ground). */
         try {
-            var _rgInfo = H.terrain || ((R.terrain && typeof hqTerrainInfo === 'function') ? hqTerrainInfo(R.roomId) : null);
-            _roomGround = (_rgInfo || H.outer) ? { group: null, info: _rgInfo, outer: H.outer || null, T: R.T, floorY: _hqBattleRoomFloorY(R, ts), ts: ts } : null;
+            var _rgH = fwP ? fwP.H : H;   // (THE FIGHT IN THE WALKED ROOM: the walk's own field and outer ground)
+            var _rgInfo = _rgH.terrain || ((R.terrain && typeof hqTerrainInfo === 'function') ? hqTerrainInfo(R.roomId) : null);
+            _roomGround = (_rgInfo || _rgH.outer) ? { group: null, info: _rgInfo, outer: _rgH.outer || null, T: R.T, floorY: _hqBattleRoomFloorY(R, ts), ts: ts } : null;
         } catch (e) { _roomGround = null; }
         /* the breathing glows: the room's list into the battle's (cleared with the scenery) */
         H.fxPulse.forEach(function (p) { if (p && p.mat) _hzGlowPulse.push(p); });
@@ -100957,6 +101291,8 @@ const ThreeRenderer = (function () {
         /* the occlusion fade reads the facility group's direct children as its roots */
         if (_facilityNearGroup) { g.children.slice().forEach(function (c) { g.remove(c); c._ew_occNear = true; _facilityNearGroup.add(c); }); }
         else { _facilityNearGroup = g; g._ew_hzNearRoot = true; _horizonGroup.add(g); }
+        var fwF = null;
+        if (fwP) { try { fwF = _fwEnter(fwP, R, M, ts, HR); (fwP.H.fxPulse || []).forEach(function (p) { if (p && p.mat) _hzGlowPulse.push(p); }); } catch (eFW) { console.error('[HQ→battle] the walked room could not be hung in the fight', eFW); try { _fwLeave(); } catch (e2) {} fwF = null; } }
         if (_roomGround) _roomGround.group = _facilityNearGroup;   // THE ROOM'S GROUND lives as long as the room's group   // _ew_hzNearRoot: the room's late GLBs stay near scenery (_applyHorizonFog)
         if (trueGround) _fieldGroundDress(R, room, M, ts);
         /* THE SKY ONCE (SEAMLESS_FIELD_PLAN §8.1 item 3 / §8.4, 2026-09-22): a field never builds the site's far roster (hqFieldLayout
@@ -100973,7 +101309,8 @@ const ThreeRenderer = (function () {
             /* THE WALK'S OWN SKY (2026-10-25): the handed-over sky and landmarks are the walk's meshes on the walk's materials — they
                keep them (near scenery: no altitude-fog hook, no fog switched off), so they look as they did a moment ago and every
                one of their shaders is the one the walk already built (the hook and the fog flag each made a new program at the cut) */
-            if (hand && hand.sky) { skyH._ew_hzNearRoot = true; if (hand.sky.group) skyH.add(hand.sky.group); if (hand.sky.landmarks) skyH.add(hand.sky.landmarks); }
+            if (fwF) { skyH._ew_hzNearRoot = true; skyH._ew_fwSky = true; var fwS = fwF.H.sky; if (fwS) { if (fwS.group) _fwMove(fwS.group, skyH, fwF.moved); if (fwS.landmarks) _fwMove(fwS.landmarks, skyH, fwF.moved); } skyH.updateMatrixWorld(true); fwF.sky = skyH; }   // THE FIGHT IN THE WALKED ROOM: the walk's own sky, hung back on the way out
+            else if (hand && hand.sky) { skyH._ew_hzNearRoot = true; if (hand.sky.group) skyH.add(hand.sky.group); if (hand.sky.landmarks) skyH.add(hand.sky.landmarks); }
             else if (room.shell && room.shell.open && room.shell.sky && Array.isArray(room.shell.sky.landmarks) && room.shell.sky.landmarks.length) {
                 var Hs = { scene: { add: function (o) { skyH.add(o); } }, sky: {}, fxPulse: [] };
                 try { _hqBuildLandmarks(Hs, room.shell.sky.landmarks, 6000); } catch (e) { console.warn('[HQ→battle] landmarks failed', e); }
@@ -100982,10 +101319,10 @@ const ThreeRenderer = (function () {
             if (skyH.children.length) { skyH.traverse(function (o) { if (o.isMesh || o.isSprite || o.isPoints) { o._ew_occSkip = true; skyN++; } }); _horizonGroup.add(skyH); }
         }
         /* THE BLOCKER SET (step 5): the fade's list — the facility group's direct children, the merged batches out */
-        var occF = trueGround ? _occFieldBuild(_facilityNearGroup, ts / C, HR) : null; if (!trueGround) _occFieldDrop();
-        _fieldRoomStats = { room: R.roomId, kept: kept, culled: dropped, props: culledProps, scenery: culledScenery, keepM: HR.keepM, keepFarM: HR.keepFarM, handover: !!hand, trueGround: trueGround, kind: R.cave ? 'cave' : R.terrain ? 'terrain' : 'box',
+        var occF = fwF ? _occField : trueGround ? _occFieldBuild(_facilityNearGroup, ts / C, HR) : null; if (!trueGround) _occFieldDrop();
+        _fieldRoomStats = { room: R.roomId, kept: kept, culled: dropped, props: culledProps, scenery: culledScenery, keepM: HR.keepM, keepFarM: HR.keepFarM, handover: !!hand, walked: !!fwF, trueGround: trueGround, kind: R.cave ? 'cave' : R.terrain ? 'terrain' : 'box',
                             blockers: occF ? occF.roots.length : null, merged: occF ? occF.skipped : null, sky: skyN };
-        console.log('[HQ→battle] ' + R.roomId + ': kept ' + kept + ' · culled ' + dropped + ' (props ' + culledProps + ' · scenery ' + culledScenery + ') · radius ' + HR.keepM + '/' + HR.keepFarM + ' m · ' + (hand ? (hand._park ? 'parked (' + (hand._park.copied | 0) + ' copies, ' + (hand._park.left | 0) + ' left in the walk)' : 'handed over') : 'rebuilt') + ' · walls ' + Object.keys(walls).join('') + ' · ' + _fieldRoomStats.kind
+        console.log('[HQ→battle] ' + R.roomId + ': kept ' + kept + ' · culled ' + dropped + ' (props ' + culledProps + ' · scenery ' + culledScenery + ') · radius ' + HR.keepM + '/' + HR.keepFarM + ' m · ' + (fwF ? 'THE WALKED ROOM ITSELF (no copies)' : hand ? (hand._park ? 'parked (' + (hand._park.copied | 0) + ' copies, ' + (hand._park.left | 0) + ' left in the walk)' : 'handed over') : 'rebuilt') + ' · walls ' + Object.keys(walls).join('') + ' · ' + _fieldRoomStats.kind
             + (occF ? ' · blockers ' + occF.roots.length + ' (' + occF.skipped + ' merged out)' : '') + (skyN ? ' · sky ' + skyN : ''));
     }
 
@@ -102220,6 +102557,7 @@ const ThreeRenderer = (function () {
         var vo = 0, io = 0;
         cs.forEach(function (c) {
             var g = c.g, n = g.attributes.position.count, M = c.M, flip = M.determinant() < 0;
+            c.i0 = io;   // THE FIGHT IN THE WALKED ROOM: where this piece's triangles lie in the merged index (_fwCut)
             N3.getNormalMatrix(M);
             if (vc) {   // THE ONE PAINT: the piece's own colour on each of its points (times its painted points when its look reads them)
                 var mc = c.m.color, ca = (vcOwn && c.m.vertexColors) ? g.attributes.color : null, cb = vo * vcSz;
@@ -102251,7 +102589,7 @@ const ThreeRenderer = (function () {
             } else {
                 for (var t2 = 0; t2 + 2 < n; t2 += 3) { idx[io++] = t2 + vo; if (flip) { idx[io++] = t2 + 2 + vo; idx[io++] = t2 + 1 + vo; } else { idx[io++] = t2 + 1 + vo; idx[io++] = t2 + 2 + vo; } }
             }
-            vo += n;
+            vo += n; c.iN = io - c.i0;
         });
         names.forEach(function (nm) { if (vc && nm === 'color') return; var a = g0.attributes[nm]; geo.setAttribute(nm, new THREE.BufferAttribute(arrs[nm], a.itemSize, a.normalized)); });
         if (vc) geo.setAttribute('color', new THREE.BufferAttribute(vcArr, vcSz));
@@ -104346,6 +104684,9 @@ const ThreeRenderer = (function () {
     function _hqParkDrop() {
         var P = _hqParked; _hqParked = null; if (!P) return;
         var H = P.H;
+        try { _fwLeave(); } catch (eFw) { console.warn('[HQ] the walked room could not go home', eFw); }   // THE FIGHT IN THE WALKED ROOM
+        try { if (_hqGG && _hqGG.H === H) _hqGrassDrop(); } catch (e) {}
+        try { if (typeof _hqFF !== 'undefined' && _hqFF && _hqFF.H === H) _hqFloraDrop(); } catch (e) {}
         try { _hqChunkHome(H); } catch (e) {}
         try { _hqBatchDropAll(H); } catch (e) {}
         try { _hqLodReset(H); } catch (e) {}
@@ -104381,6 +104722,7 @@ const ThreeRenderer = (function () {
     /* the way back into a parked room: no builder, no merge. → true when the walk is running again */
     function _hqResume(P, opts, room) {
         var H = P.H, U = _hqUnits(), S = room.shell;
+        try { _fwLeave(); } catch (eFw) { console.warn('[HQ] the walked room could not go home', eFw); }   // THE FIGHT IN THE WALKED ROOM: every group hangs in the walk again before it runs
         _hqParked = null;
         _hq = H;
         H.opts = opts; H.host = opts.host; H.profile = opts.profile || null;
@@ -104462,8 +104804,11 @@ const ThreeRenderer = (function () {
     }
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
+        var keepGr = false; try { keepGr = _hqParkOk(H, opts) && !_fwOff() && !H.stage; } catch (eKG) { keepGr = false; }   // THE FIGHT IN THE WALKED ROOM: the parked room keeps its grass and plants (the fight draws them)
+        if (!keepGr) {
         try { _hqGrassDrop(); } catch (e) {}   // THE GRASS FIELD IN A WALKED ROOM: its cells leave with the room
         try { _hqFloraDrop(); } catch (e) {}   // THE FLORA FIELD: its cells leave with the room
+        }
         if (opts && opts.handover) _lightMatchNote(H); else _lightMatch.walk = 0;   // THE SAME LIGHT COUNT: the count the fight keeps
         var park = _hqParkOk(H, opts), parkSt = null;   // THE PARKED ROOM: the walk is kept whole for the way back
         if (park) { try { parkSt = { hfog: [_EW_HFOG.x, _EW_HFOG.y, _EW_HFOG.z, _EW_HFOG.w], ao: _HQ_AO.w }; } catch (e) { park = false; } }
