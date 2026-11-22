@@ -17045,6 +17045,21 @@ const ThreeRenderer = (function () {
         if (!v || !isFinite(v.x + v.y + v.z)) return null;
         return { x: v.x, y: v.y, z: v.z };
     }
+    /* THE BOW SHOT: a body that wears its bow starts the bow clip -> the arrow is in its string hand from the slot's `nockAt`
+       until a little past the strike (three-vfx-effects.js bowNock; the shot effect takes the arrow over when it looses). */
+    function _bowNockStart(uid, chain, tail) {
+        try {
+            var ue = _getUnitEntry(uid), def = ue && (ue.modelDef || ue._ew_def);
+            if (!def || !def.ownBow || !ue.actions || typeof ThreeVFXEffects === 'undefined' || !ThreeVFXEffects.bowNock) return;
+            var list = Array.isArray(chain) ? chain : [chain], slot = null;
+            for (var i = 0; i < list.length; i++) if (ue.actions[list[i]]) { slot = list[i]; break; }
+            var ref = slot && def.libClips && def.libClips[slot];
+            if (!ref || typeof ref.nockAt !== 'number') return;
+            var ts = Math.abs(ue.actions[slot].timeScale) || (def.libTimeScales && def.libTimeScales[slot]) || 1;
+            var strike = _slotStrikeMs(def, slot, ue.actions[slot]);
+            ThreeVFXEffects.bowNock(uid, Math.round(Math.max(0, ref.nockAt - (ref.trim ? ref.trim[0] : 0)) / ts * 1000), (strike > 0 ? strike : 900) + (tail || 0));
+        } catch (_e) {}
+    }
     function unitHideHeldFor(unitId, ms) {
         var P = _heldPrimary(unitId); if (!P || !P.base) return;
         var h = P.base;
@@ -20074,7 +20089,19 @@ const ThreeRenderer = (function () {
             // Times are re-based to 0; strikeAt stays in SOURCE seconds and
             // _unitAnimStrikeMs subtracts the window's start.
             var trim = (ref && typeof ref === 'object' && Array.isArray(ref.trim) && ref.trim.length === 2) ? ref.trim : null;
-            var key = libIdx + ':' + clipName + (pinHips ? ':pin' : (pinXZ ? ':pxz' : '')) + (travel ? (':tr' + ((ref && typeof ref.strikeAt === 'number') ? ref.strikeAt : '')) : '') + (trim ? (':t' + trim[0] + '-' + trim[1]) : '');
+            /* THE BOW SHOT (2026-11-22, mondo: "robin's hood bow and arrow looks messed up. wasnt there already several meshy
+               animations for shooting a bow?"). Two more slot options (sprites.js UAL_SLOTS):
+               `then: { clip, lib, trim }` (or a list) bakes MORE clips on the end of the first as ONE clip (the Meshy bow set
+               is three clips: Archery_Shot_1 takes the arrow and raises the bow, Archery_Shot_3 draws and looses; the slot
+               played only the first, so the archer never drew). `strikeAt` counts on the joined clip, from the first one's start.
+               `turn: degrees` turns the whole body about the up axis as it is baked (the bow clips aim along the body's LEFT,
+               a side-on archer, so the shot left the bow 90 degrees off the target). */
+            var thenList = (ref && typeof ref === 'object' && ref.then) ? (Array.isArray(ref.then) ? ref.then : [ref.then]) : [];
+            var turnDeg = (ref && typeof ref === 'object' && typeof ref.turn === 'number') ? ref.turn : 0;
+            var turnQ = turnDeg ? [0, Math.sin(turnDeg * Math.PI / 360), 0, Math.cos(turnDeg * Math.PI / 360)] : null;
+            var turnC = Math.cos(turnDeg * Math.PI / 180), turnS = Math.sin(turnDeg * Math.PI / 180);
+            var key = libIdx + ':' + clipName + (pinHips ? ':pin' : (pinXZ ? ':pxz' : '')) + (travel ? (':tr' + ((ref && typeof ref.strikeAt === 'number') ? ref.strikeAt : '')) : '') + (trim ? (':t' + trim[0] + '-' + trim[1]) : '')
+                + (turnDeg ? ':y' + turnDeg : '') + thenList.map(function (tn) { return '+' + (tn.lib == null ? libIdx : tn.lib) + ':' + tn.clip + (tn.trim ? ':t' + tn.trim[0] + '-' + tn.trim[1] : ''); }).join('');
             var supSide = _LIB_SUPPORT_HAND[clipName] || null;   // THE SUPPORT HAND (a two-handed clip's off hand re-reaches the gun hand)
             if (bakedByClip[key]) { out[slot] = bakedByClip[key]; return; }
             var ctx = libCtx(libIdx);
@@ -20086,12 +20113,21 @@ const ThreeRenderer = (function () {
             var t0 = trim ? Math.max(0, Math.min(trim[0], srcDur)) : 0;
             var t1 = trim ? Math.max(t0 + 0.05, Math.min(trim[1], srcDur)) : srcDur;
             var dur = t1 - t0;
+            var segs = [{ src: src, setup: setup, clip: srcClip, a: t0, b: t1, at: 0 }];
+            for (var tli = 0; tli < thenList.length; tli++) {
+                var tn = thenList[tli], tctx = tn && libCtx(tn.lib == null ? libIdx : tn.lib), tclip = tctx && tctx.src.clipsByName[tn.clip];
+                if (!tclip || tctx.setup.pairs.length !== setup.pairs.length) { missing.push((tn && tn.clip) + ' (then)'); continue; }
+                var ta = (tn.trim && tn.trim.length === 2) ? Math.max(0, Math.min(tn.trim[0], tclip.duration)) : 0;
+                var tb = (tn.trim && tn.trim.length === 2) ? Math.max(ta + 0.05, Math.min(tn.trim[1], tclip.duration)) : tclip.duration;
+                segs.push({ src: tctx.src, setup: tctx.setup, clip: tclip, a: ta, b: tb, at: dur });
+                dur += tb - ta;
+            }
             var nSamp = Math.max(2, Math.ceil(dur * _ANIMLIB_SAMPLE_HZ) + 1);
             var times = new Float32Array(nSamp);
             var quats = {}, hipsPos = new Float32Array(nSamp * 3);
             var travXZ = travel ? new Float32Array(nSamp * 2) : null;
             setup.pairs.forEach(function (pr) { quats[pr.t] = new Float32Array(nSamp * 4); });
-            var action = src.mixer.clipAction(srcClip);
+            var action = src.mixer.clipAction(srcClip), segAt = 0;
             src.mixer.stopAllAction();
             // Clamp, don't loop: setTime(duration) on a LoopRepeat action
             // wraps back to frame 0, which would bake every clip's final key
@@ -20104,14 +20140,25 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < nSamp; i++) {
                 var t = Math.min(dur * i / (nSamp - 1), dur);
                 times[i] = t;
-                src.mixer.setTime(t0 + t);
+                var segI = 0; while (segI + 1 < segs.length && t >= segs[segI + 1].at) segI++;
+                if (segI !== segAt) {   /* the next clip of a joined slot */
+                    action.stop(); segAt = segI; src = segs[segI].src; setup = segs[segI].setup;
+                    action = src.mixer.clipAction(segs[segI].clip); src.mixer.stopAllAction();
+                    action.setLoop(THREE.LoopOnce, 0); action.clampWhenFinished = true; action.play();
+                }
+                src.mixer.setTime(segs[segI].a + (t - segs[segI].at));
+                if (turnDeg) {   /* the turn eases in over the first 0.3 s and out over the last 0.25 s: the body starts and ends as it stood */
+                    var trK = Math.max(0, Math.min(1, t / 0.3, (dur - t) / 0.25)); trK = trK * trK * (3 - 2 * trK);
+                    var trA = turnDeg * trK * Math.PI / 180;
+                    turnQ = [0, Math.sin(trA / 2), 0, Math.cos(trA / 2)]; turnC = Math.cos(trA); turnS = Math.sin(trA);
+                }
                 src.root.updateMatrixWorld(true);
                 // desired world orientation per bone → local keys (top-down;
                 // ancestors' freshly-written locals accumulate into pwq)
                 for (var pi = 0; pi < setup.pairs.length; pi++) {
                     var pr = setup.pairs[pi];
                     src.bones[pr.s].matrixWorld.decompose(pv, qv, sv);
-                    var wq = _lqMul([qv.x, qv.y, qv.z, qv.w], pr.roff);
+                    var wq = _lqMul(turnQ ? _lqMul(turnQ, [qv.x, qv.y, qv.z, qv.w]) : [qv.x, qv.y, qv.z, qv.w], pr.roff);
                     var pwq = [0, 0, 0, 1];
                     var a = pr.tn.parent >= 0 ? setup.tgt.nodes[pr.tn.parent] : null;
                     var chain = [];
@@ -20141,10 +20188,12 @@ const ThreeRenderer = (function () {
                 } else {
                     src.bones.pelvis.matrixWorld.decompose(pv, qv, sv);
                     var hp = setup.hipsParent;
+                    var hdx = pv.x - setup.srcHipsRestWp[0], hdz = pv.z - setup.srcHipsRestWp[2];
+                    if (turnQ) { var hdx0 = hdx; hdx = hdx0 * turnC + hdz * turnS; hdz = -hdx0 * turnS + hdz * turnC; }
                     var wpt = [
-                        setup.tgtHipsRestWp[0] + (pv.x - setup.srcHipsRestWp[0]) * setup.scaleRatio,
+                        setup.tgtHipsRestWp[0] + hdx * setup.scaleRatio,
                         setup.tgtHipsRestWp[1] + (pv.y - setup.srcHipsRestWp[1]) * setup.scaleRatio,
-                        setup.tgtHipsRestWp[2] + (pv.z - setup.srcHipsRestWp[2]) * setup.scaleRatio];
+                        setup.tgtHipsRestWp[2] + hdz * setup.scaleRatio];
                     if (travXZ) { travXZ[i * 2] = pv.x - setup.srcHipsRestWp[0]; travXZ[i * 2 + 1] = pv.z - setup.srcHipsRestWp[2]; }
                     if (pinXZ) { wpt[0] = setup.tgtHipsRestWp[0]; wpt[2] = setup.tgtHipsRestWp[2]; }
                     var loc = hp
@@ -35808,6 +35857,7 @@ const ThreeRenderer = (function () {
                     if (_ak === 'slash') { try { _castClipWarm(uid, _atkChain[0]); } catch (_we) {} }   // THE WEAPON IN THE BASIC ATTACK: the cut is a late-baked verb, bake it for this swing
                     var _atkModel = _maybeStartModelAnim(uid, _atkChain, 0, (state._attackAnimSkip && state._attackAnimSkip[uid]) || 0);
                     if (_atkModel && _ak === 'dig') _digStart(uid);   // THE SHOVEL DIG
+                    if (_atkModel && _ak === 'arrow') _bowNockStart(uid, _atkChain, 0);   // THE BOW SHOT: the arrow on the string until it flies
                     if (!_atkModel) {
                         var dir = state._attackAnimDir ? state._attackAnimDir[uid] : null;
                         if (dir && !_ewAnimsOff()) {
@@ -35852,6 +35902,7 @@ const ThreeRenderer = (function () {
                     } catch (_wse) {}
                     var _castChain = _castChainFor(_ck);   // shared table (the builder preview uses it too)
                     if (_castChain[0] && _castChain[0].indexOf('clip:') === 0) _castClipWarm(uid, _castChain[0]);   // THE LOOK: a raw clip pick bakes on demand
+                    _bowNockStart(uid, _castChain, 260);   // (the shot effect takes the arrow when it looses)
                     if (!_maybeStartModelAnim(uid, _castChain)
                         && !_maybeStartSpriteAnim(uid, _dmg ? 'attack' : 'spell')) {
                         _castTweens.set(uid, {
