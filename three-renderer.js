@@ -94287,8 +94287,20 @@ const ThreeRenderer = (function () {
         var box = _hqCharBox || (_hqCharBox = new THREE.Box3()), c = new THREE.Vector3(), gp = new THREE.Vector3();
         e.group.updateMatrixWorld(true);
         e.group.traverse(function (n) {
-            if (!n.isSkinnedMesh || n._ew_silhouette || !n.geometry) return;
+            if (!n.isSkinnedMesh || !n.geometry) return;
             var g = n.geometry;
+            /* THE OUTLINE'S BOUNDS TOO (2026-11-22, mondo's dip log walking Disaster City: one-frame dips of ~60 ms, "tick: characters 22";
+               a profiled walk: every new townsperson spent ~22 ms right here, in `box.setFromObject` below -> SkinnedMesh.computeBoundingBox,
+               every vertex posed through its bones). The body's meshes got their rest-pose box on 11-19, but the body's OUTLINE copy
+               (`_ew_silhouette`) was skipped above and had none, so three computed it the slow way. It takes its geometry's rest-pose box
+               and (padded) sphere like the body; its culling flag is left as it was. Off: window.EW_HQ_SKIN_BOUNDS_EXACT. */
+            if (n._ew_silhouette) {
+                if (!(typeof window !== 'undefined' && window.EW_HQ_SKIN_BOUNDS_EXACT)) {
+                    if (!n.boundingBox) { if (!g.boundingBox) g.computeBoundingBox(); if (g.boundingBox) n.boundingBox = g.boundingBox.clone(); }
+                    if (!n.boundingSphere) { if (!g.boundingSphere) g.computeBoundingSphere(); if (g.boundingSphere) { n.boundingSphere = g.boundingSphere.clone(); if (!g._ew_skinPad) n.boundingSphere.radius *= HQ_CHAR_CULL_PAD; } }
+                }
+                return;
+            }
             if (!g._ew_skinPad) { if (!g.boundingSphere) g.computeBoundingSphere(); if (g.boundingSphere) { g.boundingSphere.radius *= HQ_CHAR_CULL_PAD; g._ew_skinPad = true; } }
             /* THE BODY'S OWN BOUNDS (2026-11-19, mondo's dip log: a new body's frame = "mask: projection walk 22 ms" + "tick: characters 11 ms"):
                three culls a skinned mesh by ITS OWN sphere, computed once by posing every vertex through its bones (and the box below the
