@@ -1246,6 +1246,46 @@ else {   /* THE ROOM PAST THE PLOTS, NORTH: one grid for the whole field's depth
    apron's, the Water works' vats; two back-lot blocks in Southside the same, against the fence). `block: true` = data.js THE BOXES: square ends. */
 const squareFills = () => { let n = 0; features.forEach(f => { if (f.k !== 'wall' || !f.ghost || f.block || !(f.t >= 2.9) || f.x0 == null) return; if (Math.hypot(f.x1 - f.x0, f.z1 - f.z0) <= f.t * 0.2) { f.block = true; n++; } }); return n; };
 count.squareFills = squareFills();
+/* THE DOORWAY IS CLEAR (2026-11-22, the soft-lock hunt, after the walker's rule learnt that a body must fit where it lands): a low unseen mass inside a walk-in
+   (a round desk, a row of pews) is a thick wall row, and a thick row reaches half its thickness past each end. Five of them reached over the square just
+   inside their building's door (the Library, the Science museum, a Faculty home, the Council annex, the Courthouse): the walker came in by hopping onto the
+   desk, and on the desk the lintel is at its chest, so it never went out again. The row's end by the door is pulled back until the mat inside the door
+   (the door's width, 1.5 m deep, a body's reach round it) is floor. Nothing is dropped; a row that cannot clear the mat is named. */
+const doorwayClear = () => { let n = 0; const bad = [];
+    features.forEach(b => { if (b.k !== 'texbuilding' || !b.hollow) return;
+        const L = Math.max(2, +b.w || 8) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols;
+        let col = Math.floor((cols - 1) / 2); if (isFinite(+b.door) && +b.door >= 1) col = Math.min(cols - 1, Math.round(+b.door) - 1);
+        const lx = -L / 2 + (col + 0.5) * cw, d = Math.max(2, +b.d || 8), q = (+b.rot || 0) * Math.PI / 180, c = Math.round(Math.cos(q)), sn = Math.round(Math.sin(q));
+        const W = (u, v) => [b.x + u * c - v * sn, b.z + u * sn + v * c], G = 0.45;
+        const p0 = W(lx - cw / 2 - G, d / 2 + 0.2), p1 = W(lx + cw / 2 + G, d / 2 - 1.5 - G);
+        const M = { x0: Math.min(p0[0], p1[0]), x1: Math.max(p0[0], p1[0]), z0: Math.min(p0[1], p1[1]), z1: Math.max(p0[1], p1[1]) };
+        features.forEach(f => { if (f.k !== 'wall' || !f.ghost || f.x0 == null || !(f.t >= 1) || f.id) return; const hh = f.h != null ? f.h : f.y; if (!(hh <= 1.6)) return;
+            const h = f.t / 2, over = () => Math.min(f.x0, f.x1) - h < M.x1 && Math.max(f.x0, f.x1) + h > M.x0 && Math.min(f.z0, f.z1) - h < M.z1 && Math.max(f.z0, f.z1) + h > M.z0;
+            if (!over()) return;
+            const ax = Math.abs(f.x1 - f.x0) >= Math.abs(f.z1 - f.z0) ? 'x' : 'z', a = ax + '0', e = ax + '1', lo = f[a] <= f[e] ? a : e, hi = lo === a ? e : a;
+            const mid = (M[a] + M[e]) / 2, was = [f[lo], f[hi]];
+            if ((f[lo] + f[hi]) / 2 < mid) f[hi] = r3(Math.max(Math.min(f[lo], M[a] - h - 0.02), Math.min(f[hi], M[a] - h - 0.02)));
+            else f[lo] = r3(Math.min(Math.max(f[hi], M[e] + h + 0.02), Math.max(f[lo], M[e] + h + 0.02)));
+            if (f[lo] > f[hi]) { const t = f[lo]; f[lo] = f[hi]; f[hi] = t; }
+            if (over()) { f[lo] = was[0]; f[hi] = was[1]; bad.push(b.id + ' ' + J(f)); } else n++; }); });
+    if (bad.length) console.warn('[doorway clear] ' + bad.length + ' mass(es) still on a door mat:\n  ' + bad.slice(0, 12).join('\n  '));
+    return n; };
+count.doorwayClear = doorwayClear();
+/* THE RAIL RIDES THE BRIDGE (2026-11-22, the soft-lock hunt): the boardwalk's spear rail runs straight over the canal's mouth on the boardwalk's bridge, and a
+   rail row follows the GROUND: over the canal it stood on the bed and hung off the banks' slopes at head height, a fence across the water. The canal's last
+   16 m west of it was a pen (2 m of sheer wall, the steps at the far end beyond the rail). A rail that crosses a canal bridge along its edge is cut in
+   three and the middle piece is laid at the deck's height (`y`), so the wader passes under it. */
+const railOnBridge = () => { let n = 0; const add = [];
+    features.forEach(br => { if (br.k !== 'bridge' || !br.absY || !/^dc:canal:/.test(br.id || '') || br.x0 !== br.x1) return;
+        const bx0 = br.x0 - br.w / 2, bx1 = br.x0 + br.w / 2, bz0 = Math.min(br.z0, br.z1), bz1 = Math.max(br.z0, br.z1);
+        features.forEach(f => { if (f.k !== 'rail' || f.y != null || f.pts || f.arc || f.x0 !== f.x1 || !(f.x0 > bx0 - 0.05 && f.x0 < bx1 + 0.05)) return;
+            const z0 = Math.min(f.z0, f.z1), z1 = Math.max(f.z0, f.z1), a = Math.max(z0, bz0), b = Math.min(z1, bz1); if (!(b - a > 1)) return;
+            const rest = [[z0, a], [b, z1]].filter(g => g[1] - g[0] > 0.3);
+            const mk = (g, y) => { const r = Object.assign({}, f, { z0: r3(g[0]), z1: r3(g[1]) }); if (y != null) r.y = y; return r; };
+            Object.assign(f, mk([a, b], br.y)); rest.forEach(g => add.push(mk(g, null))); n++; }); });
+    add.forEach(r => { delete r.y; features.push(r); });
+    return n; };
+count.railOnBridge = railOnBridge();
 const featLine = lines.length, featN = features.filter(f => f.k !== 'gone').length;
 features.forEach(f => { if (f.k !== 'gone') lines.push("                    " + J(f) + ","); });
 lines.push("                ],");
@@ -1331,7 +1371,7 @@ if (!process.env.DC_NO_EXT) {
 if (DISTRICTS.some(m => typeof m.last === 'function')) { dcRun('last'); clearStations();
     const pNow = lines.slice(propsLine).findIndex(l => l === "            ],");
     lines.splice(propsLine, pNow, ...props.map(f => "                " + J(f) + ","));
-    squareFills();
+    squareFills(); doorwayClear(); railOnBridge();
     lines.splice(featLine, featN, ...features.filter(f => f.k !== 'gone').map(f => "                    " + J(f) + ","));
     block = lines.join('\n') + '\n'; }
 console.log(JSON.stringify(Object.assign({ features: features.length, props: props.length, streets: streets.length, bytes: block.length }, count)));

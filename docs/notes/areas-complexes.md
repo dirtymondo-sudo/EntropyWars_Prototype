@@ -14436,6 +14436,10 @@ Three places of their own:
 - **THE WATER WORKS** (districts/I.js): the pipes run to the back wall; the corner behind them and the lockers was a pit.
 
 AFTER: `node find-softlocks.js site_prebuilt_downtown_streets` = 0 traps, 0 crevices, 1 dip (1 m, one node, jumped out of), 33 slots (strips under 1.8 m wide that are walked out of at an end: the next pass). Before: 32 traps, 2 crevices, 5 dips, 38 slots.
+THE TALLER WALL, NARROWED: `hqTerrainWallAt` takes a later wall over the first only when its top is more than a jump (1.3 m) higher; "always the tallest" split a stepped fence on the Ski Mountain into pockets at every joint (crevices 6 -> 12), so the joints stay as written. Merged beside the castle thread's `under` (a wall wholly under the body is the answer only when no other meets the band).
+AFTER THE MERGE WITH THE CASTLE THREAD'S RULE (a landing must hold a body; a hop down only past a wall the jump clears) six more read true, all real:
+- THE DOORWAY IS CLEAR (`doorwayClear`, 9 rows): a thick unseen row reaches half its thickness past each end, so a round desk / a row of pews reached over the square inside the door of the Library, the Science museum, a Faculty home, the Council annex and the Courthouse; in by a hop onto the desk, never out (the lintel at the chest). The tool pulls the row's end back off the door's mat; a row it cannot clear is named in the bake's output (five today, none a trap).
+- THE RAIL RIDES THE BRIDGE (`railOnBridge`, 1): the boardwalk's spear rail crossed the canal's mouth on the ground, a fence across the water that penned the canal's last 16 m; the piece over a `dc:canal:` bridge is laid at the deck's height (`y`).
 WHEN YOU ADD TO THE CITY: a walk-in whose door faces another plot gets its stoop from the tool, never by hand; a fill for a whole square is an
 unseen wall of no length (it becomes a box by itself); anything stood beside a roof-route roof needs a way back up or a closed gap; run the finder.
 
