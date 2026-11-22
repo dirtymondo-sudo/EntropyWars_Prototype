@@ -105416,6 +105416,8 @@ const ThreeRenderer = (function () {
             /* the live scene graph (repo probes: playtest_maps.js PROBE) */
             scene: function () { return scene; },
             hqScene: function () { return _hq ? _hq.scene : null; },   // the walk's own scene (THE SPACESHIP probe, 2026-11-17)
+            /* what stands in the walker's way near (x, z), metres (2026-11-22, the gate probes: "why does the walk stop here"): the blockers within `r` m */
+            blockersNear: function (x, z, r) { if (!_hq) return []; var U = _hqUnits(), out = []; (_hq.blockers || []).forEach(function (b) { if (!b || !b.obj) return; var bx = b.obj.position.x / U, bz = b.obj.position.z / U, d = Math.hypot(bx - x, bz - z); if (d - (b.rad || 0) > (r || 6)) return; var key = ''; for (var i = 0; i < (_hq.props || []).length; i++) if (_hq.props[i].grp === b.obj) { key = _hq.props[i].key; break; } out.push({ key: key || b.way || b.kind || '', x: +bx.toFixed(2), z: +bz.toFixed(2), rad: b.rad, rect: b.rect || null, y: b.y, top: b.top }); }); return out; },
             /* the WebGL renderer (shader diagnostics from a probe — THE WORLD, 2026-09-13) */
             renderer: function () { return renderer; },
             /* THE STILL MATRICES: the last scene walk (objects seen, kept, remade, run by their own method) */
