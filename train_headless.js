@@ -197,7 +197,9 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
                     const s = window.GAME.state;
                     return { kind: 'balance', t: window._ewTrainSnapshot(), clock, phase: s.phase, round: s.round,
                              matchNumber: s.matchNumber, winConds: (typeof _balanceStats !== 'undefined' && _balanceStats) ? _balanceStats.winConds : null,
-                             totalMatches: (typeof _balanceStats !== 'undefined' && _balanceStats) ? _balanceStats.totalMatches : null };
+                             totalMatches: (typeof _balanceStats !== 'undefined' && _balanceStats) ? _balanceStats.totalMatches : null,
+                             // the full tables (races / spells / ...), so a run's data leaves the browser without the Export button
+                             stats: (typeof _balanceStats !== 'undefined' && _balanceStats) ? _balanceStats : null };
                 }
                 return { kind: 'train', t: window._ewTrainSnapshot(), clock };
             }, LAB);
@@ -208,6 +210,18 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
             return snap;
         } catch (e) {
             console.log(`[w${w.idx}] snapshot failed: ${e.message.split('\n')[0]}`);
+            // a crashed balance-lab tab (11-21): keep what it played under its own file and boot a fresh tab in its place
+            if (LAB === 'balance' && /crash|closed/i.test(e.message) && Date.now() < deadline - 5 * 60000) {
+                w.crashes = (w.crashes || 0) + 1;
+                try { if (w.last) fs.renameSync(path.join(OUT, `worker-${w.idx}.json`), path.join(OUT, `worker-${w.idx}c${w.crashes}.json`)); } catch (e2) {}
+                try { await w.ctx.close(); } catch (e2) {}
+                try {
+                    const nw = await bootWorker(w.idx, w.shardKeys);
+                    Object.assign(w, { ctx: nw.ctx, page: nw.page, errors: nw.errors, startedAt: nw.startedAt, last: null });
+                    console.log(`[w${w.idx}] rebooted after crash ${w.crashes}`);
+                } catch (e2) { console.log(`[w${w.idx}] reboot failed: ${e2.message.split('\n')[0]}`); }
+                return null;
+            }
             return w.last;
         }
     }

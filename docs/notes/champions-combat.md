@@ -6212,3 +6212,10 @@ but overrideForms is keyed by the look's sprite url, built from the OLD `Assets/
 rewrites HONDA_CIVIC_SPRITES / TIME_COP_LOOKS to the new paths. `unit._spriteOverride` (new url) matched no key, so the renderer
 drew the 2D sprite. Fix: `_ewMoveArtTables` also files every overrideForms entry under its moved url. The Time Cop's three looks
 had the same break. Rule: a table keyed by an asset url must be keyed after the move, or under both urls.
+
+## THE BALANCE LOOP 11-21 (mondo: "run the balance lab yourself, a lot ... until all of the champs are close to 50%")
+Six headless labs (7,553 matches) + five passes run by Claude in the cloud container: 118 races' HP + damage stat moved (row
+comments "LAB LOOP 11-21 PASS n"), Sacrifice, Spygear, Psychic, Dirty Fighting, Fractal spell rows, Boltzmann Brain's pool. The
+final lab's race spread is no wider than luck (5.05 pts from 50 on average, luck alone 5.21; races at ≤40 / ≥60 %: 23 → 19).
+How to run it, the method, every pass and every race: docs/notes/balance-loop-20261121.md (tools bal-analyze.js,
+bal-plan.js, bal-families.js; train_headless.js now saves the full tables and survives tab crashes).
