@@ -7164,7 +7164,7 @@
                 e.preventDefault(); e.stopPropagation();
                 const tabs = _PAUSE_SETS.filter(t => !(state.phase === 'editor' && t.id === 'game'));
                 const at = Math.max(0, tabs.findIndex(t => t.id === _pauseSet));
-                _pauseSet = tabs[(at + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length].id;
+                _pauseSet = window._ewSettingsTab = tabs[(at + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length].id;
                 try { playSfx('uiCursorMove'); } catch (err) {}
                 _renderPauseMenu();
                 return;
@@ -7244,12 +7244,22 @@
         let _pauseSet = 'audio';        // the SETTINGS page: audio · video · game · controls
         let _pauseCursor = 0;
         let _pauseLastPlace = null;     // { key, snap }: the page's scroll + folds when the menu last closed (THE MENU KEEPS ITS PLACE)
-        const _PAUSE_SETS = [
+        /* THE SETTINGS PAGES, ONE LIST (mondo 11-22): the battle pause menu, the building's pause menu and the main menu's
+           Settings all read these tabs, draw the strip with _ewSettingsTabsHtml and share the remembered page
+           (window._ewSettingsTab), so the menus cannot drift apart. `battle: false` = a page a running fight does not show
+           (map.js _renderMainMenuSettings fills WORLD + DEVELOPER). */
+        window._ewSettingsTabs = [
             { id: 'audio', label: 'AUDIO' },
             { id: 'video', label: 'VIDEO' },
             { id: 'game', label: 'GAME' },
             { id: 'controls', label: 'CONTROLS' },
+            { id: 'world', label: 'WORLD', battle: false },
+            { id: 'dev', label: 'DEVELOPER', battle: false },
         ];
+        window._ewSettingsTabsHtml = function (tabs, cur, attr) {
+            return `<div class="bp-subtabs" role="tablist">${tabs.map(t => `<button class="bp-subtab${cur === t.id ? ' on' : ''}" role="tab" aria-selected="${cur === t.id}" data-set-tab="${t.id}" ${attr(t.id)}>${t.label}</button>`).join('')}</div>`;
+        };
+        const _PAUSE_SETS = window._ewSettingsTabs.filter(t => t.battle !== false);
         function _pauseCmds() {
             const inEditor = state.phase === 'editor';
             const story = !!window._hqEncounterRun;
@@ -7352,9 +7362,10 @@
             else if (_pauseTab === 'library') body = `<div class="bp-hd"><b>STATUSES</b><span>EVERY EFFECT IN THE GAME · WHAT IT DOES</span></div>` + _buildPauseStatusLibrary();
             else {
                 const tabs = _PAUSE_SETS.filter(t => !(_inEditor && t.id === 'game'));
+                if (tabs.some(t => t.id === window._ewSettingsTab)) _pauseSet = window._ewSettingsTab;   // the page last open in any settings menu
                 if (!tabs.some(t => t.id === _pauseSet)) _pauseSet = tabs[0].id;
                 body = `<div class="bp-hd"><b>SETTINGS</b><span>← → PAGE · SAVED ON THIS DEVICE</span></div>`
-                    + `<div class="bp-subtabs" role="tablist">${tabs.map(t => `<button class="bp-subtab${_pauseSet === t.id ? ' on' : ''}" role="tab" aria-selected="${_pauseSet === t.id}" data-pause-set="${t.id}">${t.label}</button>`).join('')}</div>`
+                    + window._ewSettingsTabsHtml(tabs, _pauseSet, id => `data-pause-set="${id}"`)
                     + `<div class="bp-settings">${_pauseSet === 'audio' ? _buildPauseMusic() : _pauseSet === 'video' ? _buildPauseVideo() : _pauseSet === 'game' ? _buildPauseGame() : _buildPauseControls()}</div>`;
             }
 
@@ -7422,12 +7433,12 @@
             const cmd = e.target.closest && e.target.closest('[data-pause-cmd]');
             if (cmd) { _pauseSelect(cmd.getAttribute('data-pause-cmd')); return; }
             const set = e.target.closest && e.target.closest('[data-pause-set]');
-            if (set) { _pauseSet = set.getAttribute('data-pause-set'); try { playSfx('uiCursorMove'); } catch (err) {} _renderPauseMenu(); _pauseFocusRestore(null); }
+            if (set) { _pauseSet = window._ewSettingsTab = set.getAttribute('data-pause-set'); try { playSfx('uiCursorMove'); } catch (err) {} _renderPauseMenu(); _pauseFocusRestore(null); }
         }
 
         window._setPauseTab = function(tab) {
             if (tab === 'scoreboard') tab = 'match';
-            if (tab === 'audio' || tab === 'video' || tab === 'controls' || tab === 'game') { _pauseSet = tab; tab = 'settings'; }
+            if (tab === 'audio' || tab === 'video' || tab === 'controls' || tab === 'game') { _pauseSet = window._ewSettingsTab = tab; tab = 'settings'; }
             _pauseTab = tab;
             _pauseCursor = Math.max(0, _pauseCmds().findIndex(c => c.id === tab));
             _renderPauseMenu();
