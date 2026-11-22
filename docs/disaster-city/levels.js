@@ -29,6 +29,10 @@ module.exports = {
     ],
     /* the stairs' pack flight per district (data.js HQ_STAIR_KINDS) */
     stairs: { R: 'external', C: 'stone', F: 'stone', U: 'precast', H: 'concrete', E: 'concrete', I: 'steel', S: 'concrete', B: 'external' },
+    /* THE CROSSINGS' OWN SAY (2026-11-22, the soft-lock hunt): `<lower or upper plot id><E|S>` as the tool names the crossing (its stair row's id). The two
+       bankers' terraces (P10-01-B2, P11-02-B2: district F stands their one real door on the first house, at the plot's west line) had the ramp along their
+       front, 1.3 m over the sill at the door, and the flight on the next square: walked in, never out. The ramp lies on the far square now, no flight. */
+    crossings: { 'P09-01E': { ramp: 1, stair: false }, 'P10-02E': { ramp: 1, stair: false } },
     pieces: [
         { plot: 'P00-03', name: 'Canal walk: the sunk canal, banked both sides (a ditch to skate)', k: 'bowl', x0: 1, y0: 1, x1: 5, y1: 11, by: 2, rate: 1 },
         { plot: 'P00-05', name: 'Campus green: the sunk amphitheatre', k: 'bowl', x0: 1, y0: 7, x1: 5, y1: 11, by: 1, rate: 0.5 },

@@ -421,7 +421,11 @@ PLAN.plots.forEach(p => {
             const avail = (side, cols, max) => { let n = 0; while (n < max && cols.every(k => { const c = sq(k, side, n); return walkSq(c) && !occ.has(c[0] + ',' + c[1]); })) n++; return n; };
             /* one level on a walk two squares wide: a stair on one square, a ramp three squares long on the other */
             let cols = run, rampK = null;
-            if (d === 1 && run.length >= 2) { const rk = ((p.x + p.y) % 2) ? run[run.length - 1] : run[0]; if (avail(toLo, [rk], 4) >= 4) { rampK = rk; cols = run.filter(k => k !== rk); } }
+            /* levels.js `crossings` (2026-11-22): a crossing's own say. `{ ramp: i, stair: false }` = the ramp on the run's i-th square and no flight beside it
+               (a walk-in's front door stands on the other square: the ramp and the flight both buried its sill) */
+            const OV = (LEVELS.crossings || {})[p.id + s] || null;
+            if (d === 1 && run.length >= 2) { const rk = (OV && OV.ramp != null) ? run[OV.ramp] : ((p.x + p.y) % 2) ? run[run.length - 1] : run[0]; if (avail(toLo, [rk], 4) >= 4) { rampK = rk; cols = (OV && OV.stair === false) ? [] : run.filter(k => k !== rk); } }
+            if (cols.length) {
             const nLo = Math.min(d, avail(toLo, cols, d + 1)), nHi = Math.min(d - nLo, avail(-toLo, cols, d + 1)), m = nLo + nHi;
             if (!m) { console.warn('THE LEVELS: no room for a stair', p.id, s, q.id); lvCount.closed++; return; }
             const per = d * LVM / m;   // metres a square
@@ -434,6 +438,8 @@ PLAN.plots.forEach(p => {
                 for (let i = 0; i <= nLo; i++) { const c = sq(k, toLo, i); take(c[0], c[1]); }
                 for (let i = 0; i <= nHi; i++) { const c = sq(k, -toLo, i); take(c[0], c[1]); }
             });
+            }
+            const lineM = gx(lineC);
             if (rampK != null) {
                 const rm = gc(rampK), f3 = r3(lineM + toLo * 3 * C);
                 features.push({ k: 'ramp', id: 'dc:ramp:' + p.id + s, absY: true, x0: dx ? f3 : rm, z0: dx ? rm : f3, x1: dx ? lineM : rm, z1: dx ? rm : lineM, w: C, h0: r3(lvOf(loP) * LVM), h1: r3(lvOf(hiP) * LVM), edge: 0.2 });
@@ -808,8 +814,10 @@ for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < NXP; cx++) {
     const ch = cellAt(cx, cy), dd = D[plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))].d];
     paint[cy * NXP + cx] = ch === 'R' ? 0 : (ch === 'P' || ch === 'D') ? 1 : ch === 'I' ? 3 : dd.yard;
 }
-if (ROOM.north) lateRows.push({ k: 'wall', x0: r3(-HALF - 0.4), z0: r3(HALF + 0.4), x1: r3(HALF + ROOM.east * C), z1: r3(HALF + 0.4), h: 8, t: 0.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });   // the south strip the centred shell adds: closed on the city's old edge
-if (ROOM.east) lateRows.push({ k: 'wall', x0: r3(-HALF - 0.4), z0: r3(-HALF - ROOM.north * C), x1: r3(-HALF - 0.4), z1: HALF, h: 8, t: 0.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });   // the west strip the centred shell adds: closed on the city's old edge
+/* THE CLOSING WALLS REACH OVER EVERY ROOF (2026-11-22, the soft-lock hunt): 8 m high, the south one's top stood 0.69 m over Southside's ground (level 4): the walker
+   jumped onto it, walked the city's whole south line on an invisible wall and dropped into the sunk strip behind it, 90,000 m2 with no way back. 60 m: no top to stand on. */
+if (ROOM.north) lateRows.push({ k: 'wall', x0: r3(-HALF - 0.4), z0: r3(HALF + 0.4), x1: r3(HALF + ROOM.east * C), z1: r3(HALF + 0.4), h: 60, t: 0.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });   // the south strip the centred shell adds: closed on the city's old edge
+if (ROOM.east) lateRows.push({ k: 'wall', x0: r3(-HALF - 0.4), z0: r3(-HALF - ROOM.north * C), x1: r3(-HALF - 0.4), z1: HALF, h: 60, t: 0.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });   // the west strip the centred shell adds: closed on the city's old edge
 const b64 = Buffer.from(paint).toString('base64');
 
 /* ── THE STREETS: the plan's road connections, joined into straight runs through the plot centres ── */
@@ -1070,7 +1078,10 @@ const LV = (() => {
     features.forEach(f => {
         if (f.k !== 'texbuilding' || !f.hollow) return;
         const L = Math.max(2, f.w) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols, col = (isFinite(+f.door) && +f.door >= 1) ? Math.min(cols - 1, Math.round(+f.door) - 1) : Math.floor((cols - 1) / 2), lx = -L / 2 + (col + 0.5) * cw;   // data.js hqTexbDoor
-        const q = (f.rot || 0) * Math.PI / 180, c = Math.round(Math.cos(q)), sn = Math.round(Math.sin(q)), wx = f.x + lx * c + (f.d / 2) * sn, wz = f.z - lx * sn + (f.d / 2) * c;   // the doorway's middle on the wall line; (sn, c) points out
+        /* THE STOOP STANDS AT THE DOOR (2026-11-22, the soft-lock hunt): the front of a turned building is local +z, which data.js hqTexBuildingRows turns to
+           (-sin, cos); this read (+sin, cos), so the flight of every walk-in turned 90 / 270 was cut at its BACK wall, mirrored along it: eight trenches up to
+           10.5 m deep against a blank wall (the Street market's ran 21 m into Hero Plaza's ground), each a pit with no way out, and no step at the real door. */
+        const q = (f.rot || 0) * Math.PI / 180, c = Math.round(Math.cos(q)), sn = -Math.round(Math.sin(q)), wx = f.x + lx * c + (f.d / 2) * sn, wz = f.z - lx * sn + (f.d / 2) * c;   // the doorway's middle on the wall line; (sn, c) points out
         const hb = bldBase(f.id, f.x, f.z, 1, 1), cellOf = t => [Math.floor((wx + sn * t + HALF) / C), Math.floor((wz + c * t + HALF) / C)];
         const c0 = cellOf(0.5); if (!inCity(c0[0], c0[1]) || !isNaN(base[K(c0[0], c0[1])])) return;
         const g0 = natural(c0[0], c0[1]); if (Math.abs(g0 - hb) <= 0.3) return;
@@ -1083,6 +1094,7 @@ const LV = (() => {
         const ex = wx + sn * n * C, ez = wz + c * n * C, up = g1 > hb;
         stoops.push({ k: 'ramp', id: 'dc:stoop:' + String(f.id).replace(/^dc:/, ''), absY: true, x0: r3(up ? wx : ex), z0: r3(up ? wz : ez), x1: r3(up ? ex : wx), z1: r3(up ? ez : wz), w: 3.4, h0: r3(Math.min(hb, g1)), h1: r3(Math.max(hb, g1)), stairs: true, model: LEVELS.stairs[plotAtCell(c0[0], c0[1]).d] || 'concrete', edge: 0.01 });
     });
+    let straight = 0;
     const cm = new Int16Array(W * W * 4);
     for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) {
         const k = K(cx, cy), p = plotAtCell(cx, cy), px = p.x * N, py = p.y * N, cut = lvCut.get(cx + ',' + cy);
@@ -1094,7 +1106,13 @@ const LV = (() => {
             else {
                 let bs = 0, bn = 0, road = false;
                 for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 0; dx++) { const x = vx + dx, y = vy + dy; if (x < px || y < py || x >= px + N || y >= py + N) continue; const kk = K(x, y); if (!isNaN(base[kk])) { bs += base[kk]; bn++; } else if (rf[kk]) road = true; }
-                h = bn ? bs / bn : road ? roadM(p, lx, ly) : lvOf(p) * LVM + pieceM(p, lx, ly);
+                /* THE STRAIGHT RAISE (2026-11-22, mondo: "know when to raise the terrain with a gradient on the side and when to just raise it straight up ... by a
+                   wall"): an open square ran down (or up) to the base of a building it touches whatever the difference, so beside a back-lot building standing
+                   on the lower of two plots (base 0 under ground at 12.25, the Office court) the last square was a 74 degree face ending at the wall's foot: slid
+                   down, never climbed. More than a level and a bit apart, the square keeps its own height and the ground stands straight at the wall. */
+                const own = road ? roadM(p, lx, ly) : lvOf(p) * LVM + pieceM(p, lx, ly);
+                h = (bn && Math.abs(bs / bn - own) <= 1.9) ? bs / bn : own;
+                if (bn && h === own && Math.abs(bs / bn - own) > 1.9) straight++;
             }
             cm[k * 4 + ci] = Math.round(h * 100);
         });
@@ -1105,9 +1123,9 @@ const LV = (() => {
         const u = fx - i, v = fz - j, o = (j * W + i) * 4;
         return ((cm[o] * (1 - u) + cm[o + 1] * u) * (1 - v) + (cm[o + 2] * (1 - u) + cm[o + 3] * u) * v) / 100;
     };
-    return { cm, at, flag, baseOf, bldBase, mixed, stoops, f64: Buffer.from(flag).toString('base64'), b64: Buffer.from(cm.buffer, cm.byteOffset, cm.byteLength).toString('base64') };
+    return { straight, cm, at, flag, baseOf, bldBase, mixed, stoops, f64: Buffer.from(flag).toString('base64'), b64: Buffer.from(cm.buffer, cm.byteOffset, cm.byteLength).toString('base64') };
 })();
-features.push(...LV.stoops); lvCount.stoops = LV.stoops.length;
+features.push(...LV.stoops); lvCount.stoops = LV.stoops.length; lvCount.straight = LV.straight;
 /* THE ROOM PAST THE PLOTS, NORTH: the district's own ground on its rows (asked now that the city's north line is known); LV.at reads it north of the line */
 const NORTH = (() => { const m = ROOM.north ? DISTRICTS.find(q => q.room && q.room.north && typeof q.north === 'function') : null; if (!m) return null;
     const g = m.north({ edge: cx => [LV.cm[cx * 4] / 100, LV.cm[cx * 4 + 1] / 100], nx: NXP }), rows = g.rows, cells = [];
@@ -1222,6 +1240,12 @@ else {   /* THE ROOM PAST THE PLOTS, NORTH: one grid for the whole field's depth
   if (UD) { count.urbanDecay = UD({ features: cityRows, props, dOf });
     const left = []; features.forEach(f => { ['key', 'keyIn', 'floorIn'].forEach(k => { if (UD.banned.indexOf(f[k]) >= 0) left.push(f[k]); }); (f.parts || []).forEach(p => ['key', 'keyTop', 'keyEnd', 'keyBase'].forEach(k => { if (UD.banned.indexOf(p[k]) >= 0) left.push(p[k]); })); });
     if (left.length) throw new Error('THE URBAN DECAY PASS: ' + left.length + ' ruled-out sheet(s) left: ' + JSON.stringify(left.slice(0, 6))); } }
+/* A SQUARE'S FILL IS SQUARE (2026-11-22, the soft-lock hunt): the district files fill a square a crate stack, a vat or a counter stands on with an unseen wall of
+   no length and the square's width (`t: 3.5`), and the walker's rule reads a wall of no length as a ROUND post. Four of them on four squares left a hole
+   at the corner they share, half a metre across and as deep as the stacks: stepped into off their tops, never out of (the Rail service's crates, the Hangar
+   apron's, the Water works' vats; two back-lot blocks in Southside the same, against the fence). `block: true` = data.js THE BOXES: square ends. */
+const squareFills = () => { let n = 0; features.forEach(f => { if (f.k !== 'wall' || !f.ghost || f.block || !(f.t >= 2.9) || f.x0 == null) return; if (Math.hypot(f.x1 - f.x0, f.z1 - f.z0) <= f.t * 0.2) { f.block = true; n++; } }); return n; };
+count.squareFills = squareFills();
 const featLine = lines.length, featN = features.filter(f => f.k !== 'gone').length;
 features.forEach(f => { if (f.k !== 'gone') lines.push("                    " + J(f) + ","); });
 lines.push("                ],");
@@ -1307,6 +1331,7 @@ if (!process.env.DC_NO_EXT) {
 if (DISTRICTS.some(m => typeof m.last === 'function')) { dcRun('last'); clearStations();
     const pNow = lines.slice(propsLine).findIndex(l => l === "            ],");
     lines.splice(propsLine, pNow, ...props.map(f => "                " + J(f) + ","));
+    squareFills();
     lines.splice(featLine, featN, ...features.filter(f => f.k !== 'gone').map(f => "                    " + J(f) + ","));
     block = lines.join('\n') + '\n'; }
 console.log(JSON.stringify(Object.assign({ features: features.length, props: props.length, streets: streets.length, bytes: block.length }, count)));

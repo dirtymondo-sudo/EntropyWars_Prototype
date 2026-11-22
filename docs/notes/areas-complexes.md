@@ -14384,3 +14384,47 @@ is a door without a pad reads as a trap. Each row is a place to LOOK AT, then fi
 **THE SEWERS AFTER (11-22):** 0 traps, 0 crevices, 0 slots; 10 dips of 0.85 m, each one node, at the sumps' wall corners (jumped out of).
 Before: every wall of every raised floor, 14 traps, the 35 m strip. Proof: `/mnt/project-files/softlocks/sewers_wall_before_after.jpg`.
 THE REST OF THE WORLD: the list by zone of 11-22 is `/mnt/project-files/softlocks/softlocks_by_zone.md`.
+
+
+## DISASTER CITY, THE SOFT-LOCK HUNT (2026-11-22, the city's thread of mondo's "no tiny crevices or huge drops where there is no room to get out")
+
+The finder read 32 traps and 2 crevices in `site_prebuilt_downtown_streets`. None was one room's row gone wrong; seven causes made all of them, and each
+is fixed where it is made (the tool, a district file, the walker's rule), so they cannot come back with the next bake. Nothing was deleted.
+
+1. **THE STOOP STANDS AT THE DOOR** (bake-disaster-city.js THE DOOR STOOPS). A walk-in building turned 90 / 270 has its front on (-sin, cos)
+   (data.js hqTexBuildingRows); the stoop code read (+sin, cos). Eight flights were cut at the BACK wall, mirrored along it: trenches up to 10.5 m
+   deep against a blank wall (the Street market's ran 21 m into Hero Plaza's ground, P08-08's 10.5 m, P00-09-B2's and P03-09-B1's in the port).
+   With the sign right, not one real door needs a stoop: the eight rows are gone and the ground they cut is whole.
+2. **THE CLOSING WALLS REACH OVER EVERY ROOF.** The unseen walls on the city's old south and west lines were 8 m high; the south one's top stood
+   0.69 m over Southside's ground, so the walker jumped onto it, walked the whole south line and dropped into the sunk strip behind it (the
+   "90,000 m2 trap at y -9": not the sea, the strip `room.north` adds south of the plots). 60 m now.
+3. **THE TALLER WALL IS THE FACE** (data.js `hqTerrainWallAt`, every room). Two walls within the body's reach answered with whichever was written
+   first: on the side wall a one-storey shop shares with a five-storey block the walker stood on the low top and stepped "through" the tall one
+   into a building with no door (West shops, the Cabaret, the Police desk, the Cinema, the Library yard). The highest top within reach is the wall.
+4. **THE LINTEL IS NO PLACE** (data.js `_hqTNodeFeet`, the trap search only). A doorway's floor and the top of the lintel over it are one node on
+   one layer; a walker on the wall's top took the node first and the search never walked through the door, so every walk-in whose wall tops are
+   reached read as a trap (the Luxury hotel's 726 m2). A FALSE reading: the player always could walk out. The search leaves the upper surface out.
+5. **A CROSSING'S OWN SAY** (levels.js `crossings`). The two bankers' terraces (P10-01-B2, P11-02-B2) have their one real door on the first house,
+   at the plot's west line, where the level crossing's ramp ran along their front 1.3 m over the sill: walked in, never out (these two were hidden
+   behind cause 4 until it was fixed). `{ ramp: 1, stair: false }` = the ramp on the far square, no flight: the door's square is flat again.
+6. **A SQUARE'S FILL IS SQUARE** (the tool's `squareFills`, 507 rows). The districts fill a square under a crate stack, a vat or a counter with an
+   unseen wall of no length and the square's width; the walker read it as a ROUND post, and four of them left a hole at the corner they share,
+   half a metre across and as deep as the stacks (the Rail service's and the Hangar apron's crates, the Water works' vats; two back-lot blocks
+   in Southside the same against the fence). They carry `block: true` (data.js THE BOXES: square ends). A wall with a real length keeps its
+   round ends (a box would reach t / 2 past them).
+7. **THE STRAIGHT RAISE, THE CITY'S GROUND** (the tool's corner heights). An open square ran down to the base of any building it touched. Beside a
+   back-lot building standing on the lower of two plots (base 0 under ground at 12.25: the Office court) the last square was a 74 degree face
+   ending at the wall's foot, 12 m long: mondo's crevice exactly. More than 1.9 m apart the square keeps its own height and the ground stands
+   straight at the wall (42 corners in the city). Aprons up to a level (a door on a sloping street) are as they were.
+
+Three places of their own:
+- **THE HOLDING ANNEX** (districts/C.js `shift: [-1, 0]`): the drawn building stands on squares 2 to 5 of its plot, the plan's walked tier stood
+  on 3 to 6. The roof's west 3.5 m was air over a pit shut in by the cage's unseen walls; its east 3.5 m an unseen ledge past the wall. The tier,
+  its squares, the tool's record (so the fire escape) and the plan's go one square west, under the drawing.
+- **THE CONTAINER COURT** (districts/I.js THE WAY OUT BETWEEN THE TANKS): the two 3.5 m alleys between the propane spheres along the factory's
+  east wall were stepped into off the roof route and never left. Each has the city's own fire escape back up (landing + ladder).
+- **THE WATER WORKS** (districts/I.js): the pipes run to the back wall; the corner behind them and the lockers was a pit.
+
+AFTER: `node find-softlocks.js site_prebuilt_downtown_streets` = 0 traps, 0 crevices, 1 dip (1 m, one node, jumped out of), 33 slots (strips under 1.8 m wide that are walked out of at an end: the next pass). Before: 32 traps, 2 crevices, 5 dips, 38 slots.
+WHEN YOU ADD TO THE CITY: a walk-in whose door faces another plot gets its stoop from the tool, never by hand; a fill for a whole square is an
+unseen wall of no length (it becomes a box by itself); anything stood beside a roof-route roof needs a way back up or a closed gap; run the finder.
