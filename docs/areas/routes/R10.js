@@ -17,10 +17,10 @@ module.exports = {
             { s: 'box', p: [-3.8, -5.2, -5], size: [1.0, 4.8, 1.0], key: CON, tint: 0x9a9a94, n: 11, step: [0, 0, -10] }, { s: 'box', p: [3.8, -5.2, -5], size: [1.0, 4.8, 1.0], key: CON, tint: 0x9a9a94, n: 11, step: [0, 0, -10] },
             /* the port: the quay (three squares wide, the causeway's own line) and the yard west of it, one height, a wall down into the water */
             { s: 'box', p: [0, -6, r(-LEN - 110)], size: [10.5, 6, 220], key: CON, uv: [3.5, 3.5] },
-            { s: 'box', p: [-50.25, -6, r(-LEN - 110)], size: [90, 6, 220], key: 'urban:RoadGeneric1a', tint: 0xb4b4b8, uv: [3.5, 3.5] },
+            { s: 'box', p: [-50.25, -6, r(-LEN - 110)], size: [90, 6, 220], key: CON, tint: 0xd8d8d2, uv: [3.5, 3.5] },
             /* two sheds in the yard: corrugated walls, a low gable each */
-            { s: 'box', p: [-52, 0, r(-LEN - 62)], size: [56, 9, 30], key: MET, tint: 0x8a9298 }, { s: 'roof', form: 'gable', size: [57, 4, 31], p: [-52, 9, r(-LEN - 62)], over: 0.5, key: MET, tint: 0x6a7278, keyEnd: MET, roof: true },
-            { s: 'box', p: [-52, 0, r(-LEN - 150)], size: [56, 9, 30], key: MET, tint: 0x9a8a78 }, { s: 'roof', form: 'gable', size: [57, 4, 31], p: [-52, 9, r(-LEN - 150)], over: 0.5, key: MET, tint: 0x7a6a5a, keyEnd: MET, roof: true }];
+            { s: 'box', p: [-52, 0, r(-LEN - 62)], size: [56, 9, 30], key: MET, tint: 0xd6dce0 }, { s: 'roof', form: 'gable', size: [57, 4, 31], p: [-52, 9, r(-LEN - 62)], over: 0.5, key: MET, tint: 0xb4bcc2, keyEnd: MET, roof: true },
+            { s: 'box', p: [-52, 0, r(-LEN - 150)], size: [56, 9, 30], key: MET, tint: 0xe0d2bc }, { s: 'roof', form: 'gable', size: [57, 4, 31], p: [-52, 9, r(-LEN - 150)], over: 0.5, key: MET, tint: 0xc0b09a, keyEnd: MET, roof: true }];
         ctx.feat({ k: 'arch', id: 'ow:r10:port', x: x0, z: z0, rot: 0, y: y0, parts });
         /* the container line on the city side of the quay, the cranes on its water side (Q.js's own places: the west and the east column) */
         for (let i = 0, z = z0 - LEN - 12; i < 13; i++, z -= 14) { const hi = 1 + (i * 7 + 3) % 3; for (let l = 0; l < hi; l++) ctx.props.push({ key: 'ind_container', x: r(x0 - 3.5), z: r(z), face: 0, y: r(y0 + l * 2.15) }); }
