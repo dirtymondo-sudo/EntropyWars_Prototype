@@ -3015,3 +3015,7 @@ setting was removed: Display (fullscreen) + the video groups = VIDEO, CPU Diffic
 Disk + Main Menu Scene = WORLD. Still different on purpose: a fight's VIDEO page adds the battle-only toggles (`opts.battle`), its
 GAME page the speed + auto battle, its AUDIO page the track list. The strip takes the UI Maker's chip role in the building too
 (hud.js hq surface `#hqPage .bp-subtab`). Proof: `/mnt/project-files/pause-menu/settings_tabs_exploration_and_battle.jpg`.
+**THE COMMAND COLUMN NEVER CUTS A WORD (same day):** the pause menus' command column was a fixed 236px (styles-base.css `.hq-pause-main`); the
+pixel theme font clipped SETTINGS / DIRECTORY and the building's column grew a sideways scrollbar. Now `minmax(236px, max-content)`: the column
+grows to its widest command (`b` never wraps), the small line under it wraps inside (`width: 0; min-width: 100%`, so it never widens the column),
+the building's nav keeps a scrollbar gutter and no sideways scroll; under 900 / 760px the row buttons size to their word. Measured at 1280, 1000, 860 wide.

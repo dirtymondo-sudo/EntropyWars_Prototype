@@ -3830,3 +3830,18 @@ His two F3s: "1384 ms upload · 158×168 canvas" (and 557, 272, 77, 53 ms the sa
 - **The probe**: `playtest_city.js` with `headless: false` under `EW_PROBE_GL=webgpu xvfb-run -a … --gpu=webgpu` draws real
   pictures on WebGPU (about 80 s to the circus being ready, 2.5 min a run).
 - NOT touched: the memory budget (his trail: 1934 of 700 MB in the circus, 980 MB of it worn by things drawn).
+
+## THE OUTLINE'S BOUNDS (2026-11-22, mondo walking Disaster City: 43.6 FPS, "Still frame drops, lets keep trying to get to 60 fps")
+His dip log: one-frame dips of ~60 ms, "tick: characters 22", three in 40 s of walking, and 141 ms of it inside each long dip.
+A profiled walk (cloud, classic renderer): every new townsperson spent ~22 ms in `_hqCharCullSetup` → `box.setFromObject(e.model)` →
+`SkinnedMesh.computeBoundingBox` (every vertex posed through its bones). The body's own meshes got rest-pose bounds on 11-19, but
+the body's OUTLINE copy (`_ew_silhouette`) was skipped by that loop and had none. It now takes its geometry's rest-pose box and
+padded sphere. Profile after: `_hqTickChars` 358 ms → 13 ms over the same walk. Off: `window.EW_HQ_SKIN_BOUNDS_EXACT`.
+- WHERE THE STEADY 43.6 FPS STANDS (his F3): the frame is JS (CPU 18.6 of 23.0 ms) and still follows the replayed meshes
+  (2,285 in view: squares 1,303, instance cells 674, prop plots 207, fences 78; the 11-15 price 12.5 ms + 4.8 µs a mesh gives
+  23.5 ms). 60 FPS wants ~850. The census of pieces alone in their look (cloud, whole city): the "see-through / cut-out" ones are
+  cut-out SIGNS (Phong, alphaTest 0.35, glow on, a canvas of its own 128 px high and 64 to 2048 px wide), ~450 in the city, each
+  with a different picture; same-size groups (128×128 38, 64×128 44, 355×128 32, 840×128 32 ...) could stack (THE SHEET STACK
+  refuses cut-outs and canvases today) for ~200 fewer meshes = ~1 ms. Not done: the stack's shader path cannot be seen in the
+  cloud (WebGPU picture is black, the full city crashed the WebGPU page at "ready").
+- The cloud WebGPU city: crashed ("Target crashed") right after the room was ready, 15 GB machine, no texture shrink.
