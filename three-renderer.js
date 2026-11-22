@@ -38818,7 +38818,7 @@ const ThreeRenderer = (function () {
                      THE DULL LIQUIDS (11-12) add [.., highlight colour, highlight width (shininess), ripple depth, sky sheen]: each
                      liquid's highlight is a dim shade of itself (water's is 0xb4c4c8 / 140 / 0.05 / 1) */
                   liquids: { poison: [0x58a02c, 0.9, 0x1a3a0a, 0x1c2a12, 30, 0.016, 0.3], poison_bog: [0x6a7a26, 0.92, 0x141c08, 0x20240f, 30, 0.016, 0.3],
-                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], sludge: [0x4fb80e, 0.94, 0x2c7a06, 0x5aa01c, 26, 0.02, 0.2], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
+                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], sludge: [0x4fb80e, 0.94, 0x2c7a06, 0x5aa01c, 26, 0.05, 0.2], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
                              oil: [0x14120e, 0.96, 0, 0x22252c, 40, 0.012, 0.3], blood: [0x6a1014, 0.95, 0x1a0204, 0x2a1012, 30, 0.014, 0.25] } };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmTable() { return (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN && CALM_TERRAIN.sheets) ? CALM_TERRAIN : null; }
@@ -70740,6 +70740,33 @@ const ThreeRenderer = (function () {
         _hqPetalCache[key] = out;
         return out;
     }
+    /* A COBWEB HANGS, EVERYWHERE (2026-11-22, mondo in the Sewers: "spiderweb decals standing upright"; his rule: fix it in every zone).
+       The PSX pack's cobweb is one flat card hung from its top corner. Many rooms' builds drop it on the floor like rubbish, where it
+       stands up like a sign (39 rows in six rooms on 11-22, and any later build). At the room's build (once a row, never per frame) a
+       `psx_cobweb_*` row with no height of its own, not on a ceiling or a named wall, in a terrain room, is moved to the nearest wall or
+       rock face within 5 m (the ground 2.2 m higher, a wall row, or the room's edge), flat on it, its foot 1.9 m over the ground it was
+       dropped on. The row itself is never changed (a copy is placed); a web with no face near it stays where it was put.
+       Off: window.EW_NO_COBWEB_HANG. */
+    function _hqCobwebHang(p) {
+        try {
+            if (!p || !/^psx_cobweb/.test(p.key || '') || p.ceil || p.wall || p.flip || p.hang === false || (typeof p.y === 'number' && p.y >= 1)) return p;
+            if (typeof window !== 'undefined' && window.EW_NO_COBWEB_HANG) return p;
+            var T = _hq && _hq.terrain; if (!T || typeof hqTerrainHeight !== 'function' || typeof hqTerrainWallAt !== 'function') return p;
+            var x0 = p.x || 0, z0 = p.z || 0, g0 = hqTerrainHeight(T, x0, z0); if (!isFinite(g0)) return p;
+            var S = (_hq.room && _hq.room.shell) || {}, hw = (S.w || 0) / 2, hd = (S.d || 0) / 2, best = null;
+            var solid = function (x, z) { if ((hw && Math.abs(x) > hw) || (hd && Math.abs(z) > hd)) return true; var wl = hqTerrainWallAt(T, x, z, 0); return !!(wl && wl.top >= g0 + 2.2) || hqTerrainHeight(T, x, z) >= g0 + 2.2; };
+            for (var d = 0.25; d <= 5 && !best; d += 0.25) for (var k = 0; k < 8; k++) {
+                var a = k * Math.PI / 4, dx = Math.sin(a), dz = -Math.cos(a), x = x0 + dx * d, z = z0 + dz * d;
+                if (!solid(x, z)) continue;
+                var dd = d; while (dd > d - 0.25 && solid(x0 + dx * (dd - 0.05), z0 + dz * (dd - 0.05))) dd -= 0.05;   // the face, to 5 cm
+                best = { dx: dx, dz: dz, d: dd - 0.08, deg: k * 45 }; break;
+            }
+            if (!best) return p;
+            var q = {}; for (var key in p) q[key] = p[key];
+            q.x = x0 + best.dx * Math.max(0, best.d); q.z = z0 + best.dz * Math.max(0, best.d); q.face = best.deg; var Y = g0 + 1.9; q.y = (Y >= 1 || Y <= -0.5) ? Y : 1;   /* (a `y` of 1 or more, or -0.5 or less, is a height from the room's floor) */ q.noSeat = true; q.noBlock = true;
+            return q;
+        } catch (e) { return p; }
+    }
     function _hqPropMatPick(node, sm) {
         if (!sm) return null;
         var cached = _hqPropMatCache.get(sm.uuid);
@@ -70759,6 +70786,11 @@ const ThreeRenderer = (function () {
         else if (!tex && sm.userData && sm.userData._ewFlat && sm.color) lm.emissive = sm.color.clone().multiplyScalar(0.3);   // THE OCEAN PACK (the on-screen check): the sea life read as black cut-outs in the abyss's dark — their own colour, lit a little from within like the fish schools and the spells' creatures
         if (sm.userData && sm.userData._ewGlow) lm.emissive = sm.userData._ewGlow.clone();   // THE JELLYFISH + THE ANGLERFISH: the lure, the halo, the bioluminescent spots glow in their own colour
         if (sm.userData && sm.userData._ewGlb && lm.transparent) lm.depthWrite = false;   // …and a see-through bell never hides the tentacles inside it
+        /* A COBWEB IS ONLY ITS THREADS (2026-11-22, mondo in the Sewers: "spiderweb decals ... still have a black background"): the pack's web is
+           a card whose sheet is clear but for the threads (black under the clear part). The card wrote depth, so the water, stains and
+           glows behind it were cut out in its whole rectangle; and a pass that draws it unblended showed the black. It writes no depth
+           now and its clear texels are never drawn at all. */
+        if (lm.transparent && tex && /cobweb|spider_?web/i.test((sm.name || '') + ' ' + ((node && node.name) || ''))) { lm.depthWrite = false; lm.alphaTest = 0.02; }
         lm.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: a prop's foot darkens over the floor, its back toward a wall
         lm._ew_shared = true;
         _hqPropMatCache.set(sm.uuid, lm);
@@ -75652,10 +75684,49 @@ const ThreeRenderer = (function () {
         if (THREE.sRGBEncoding !== undefined && 'encoding' in t) t.encoding = THREE.sRGBEncoding; else if (THREE.SRGBColorSpace !== undefined) t.colorSpace = THREE.SRGBColorSpace;
         return (_hqFoamTex = t);
     }
+    /* THE FALL'S OWN SHEET (2026-11-22, mondo in the Sewers: "the waterfalls look messed up like super pixelated or stretched and
+       flickering"). A fall wore the very material of the water above it, and that material draws its picture, caustics and glints by
+       WORLD x, z (so the tiles of a pond run on as one sheet): down a sheer face x, z barely change, so one row of the pattern was pulled
+       the whole height of the fall (bands 5 m tall on the Sewers' 42 m shaft), in blocks a segment high, the glints blinking as bars.
+       A fall now wears a sheet of its own: falling streaks drawn once (soft, mip-mapped), laid by the fall's OWN length and width, in the
+       liquid's colour, lit like the water above it. Lava keeps the old sheet (it creeps and glows by its own rules). */
+    var _HQ_FALL_COL = { water: [0x4d8fae, 0], deep_water: [0x356f94, 0], sewer_water: [0x9a6a30, 0], sewer_deep: [0x7a5022, 0], sludge: [0x5cc418, 0x2c7a06], poison: [0x58a02c, 0x1a3a0a],
+                         poison_bog: [0x6a7a26, 0x141c08], purple_bog: [0x5e3078, 0x1c0c2a], swamp: [0x1d1524, 0x0c0612], oil: [0x14120e, 0], blood: [0x6a1014, 0x1a0204] };
+    var _hqFallBodyTex = null, _hqFallMats = {};
+    function _hqFallBodyTexGet() {
+        if (_hqFallBodyTex) return _hqFallBodyTex;
+        var cv = document.createElement('canvas'); cv.width = 256; cv.height = 512;
+        var c = cv.getContext && cv.getContext('2d'); if (!c) return null;
+        c.fillStyle = 'rgb(205,205,205)'; c.fillRect(0, 0, 256, 512);
+        var seed = 913, rnd = function () { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+        for (var i = 0; i < 260; i++) {
+            var x = Math.floor(rnd() * 256), y = Math.floor(rnd() * 512), len = 90 + Math.floor(rnd() * 330), wd = 3 + Math.floor(rnd() * 14), lt = rnd() < 0.7, al = lt ? 0.10 + rnd() * 0.20 : 0.05 + rnd() * 0.09;
+            var rgb = lt ? '255,255,255,' : '120,120,120,';
+            for (var k = -1; k <= 1; k++) for (var kx = -1; kx <= 1; kx++) {   // (wrapped over every edge: the sheet repeats with no seam)
+                var g = c.createLinearGradient(0, y + k * 512, 0, y + k * 512 + len);
+                g.addColorStop(0, 'rgba(' + rgb + '0)'); g.addColorStop(0.35, 'rgba(' + rgb + al.toFixed(2) + ')'); g.addColorStop(1, 'rgba(' + rgb + '0)');
+                c.fillStyle = g; c.fillRect(x + kx * 256, y + k * 512, wd, len);
+            }
+        }
+        var t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true;
+        if (THREE.sRGBEncoding !== undefined && 'encoding' in t) t.encoding = THREE.sRGBEncoding; else if (THREE.SRGBColorSpace !== undefined) t.colorSpace = THREE.SRGBColorSpace;
+        return (_hqFallBodyTex = t);
+    }
+    function _hqFallMat(look) {
+        if (_hqFallMats[look] !== undefined) return _hqFallMats[look];
+        var row = _HQ_FALL_COL[look], tex = row ? _hqFallBodyTexGet() : null, m = null;
+        if (row && tex) {
+            m = new THREE.MeshLambertMaterial({ map: tex, color: row[0], transparent: true, opacity: 0.93, depthWrite: false, vertexColors: true });
+            if (row[1]) { m.emissive = new THREE.Color(row[1]); m.emissiveMap = tex; }
+            m._ew_shared = true;
+        }
+        return (_hqFallMats[look] = m);
+    }
     function _hqFallsBuild(info, G, U, TM) {
         if (_hq) _hq.falls = null;
         var rows = info && info.falls; if (!rows || !rows.length || window.EW_NO_HQ_FALLS || typeof hqTerrainFluidAt !== 'function') return 0;
-        var list = [], n = 0, SEG = 8;
+        var list = [], n = 0;
         rows.forEach(function (f) {
             if (!isFinite(f.x) || !isFinite(f.z)) return;
             var a = (+f.face || 0) * Math.PI / 180, dx = Math.sin(a), dz = -Math.cos(a), px = -dz, pz = dx, w = (+f.w > 0 ? +f.w : 3.5) * 0.96;
@@ -75665,7 +75736,9 @@ const ThreeRenderer = (function () {
             var y1 = (dn && isFinite(dn.y) && dn.y < y0 - 0.3) ? dn.y : isFinite(f.y1) ? +f.y1 : hqTerrainHeight(info, f.x + dx * 1.75, f.z + dz * 1.75);
             var h = y0 - y1; if (!(h > 0.4)) return;
             var key = f.key || (up && up.key) || 'water'; if (key === 'deep_water') key = 'water';
-            var mat = _liqBlendMat(_hqWaterLook(info, key)); if (!mat) return;
+            var look = _hqWaterLook(info, key), own = (key !== 'lava' && !(typeof window !== 'undefined' && window.EW_HQ_OLD_FALLS)) ? _hqFallMat(look) : null;
+            var mat = own || _liqBlendMat(look); if (!mat) return;
+            var SEG = Math.max(8, Math.min(48, Math.ceil(h / 0.7))), UW = own ? 3.5 : TM;   // (a tall fall keeps its curve + its light: 8 pieces over 42 m drew as 5 m slabs)
             var out = isFinite(f.out) ? +f.out : Math.min(1.5, 0.35 + 0.28 * Math.sqrt(h)), back = 0.9;
             /* the profile: level over the lip (from `back` behind it), then thrown out and down (a body's fall: out by the root of the drop) */
             var prof = [[-back, y0 + 0.02], [0.05, y0 + 0.02]];
@@ -75674,7 +75747,7 @@ const ThreeRenderer = (function () {
             for (i = 0; i < prof.length; i++) {
                 if (i) run += Math.hypot(prof[i][0] - prof[i - 1][0], prof[i][1] - prof[i - 1][1]);
                 var cx = f.x + dx * prof[i][0], cz = f.z + dz * prof[i][0], al = i === 0 ? 0 : 1;
-                for (var sd = -1; sd <= 1; sd += 2) { pos.push((cx + px * sd * w / 2) * U, prof[i][1] * U, (cz + pz * sd * w / 2) * U); uv.push((sd + 1) / 2 * (w / TM), -run / TM); base.push(-run / TM); col.push(1, 1, 1, al); }
+                for (var sd = -1; sd <= 1; sd += 2) { pos.push((cx + px * sd * w / 2) * U, prof[i][1] * U, (cz + pz * sd * w / 2) * U); uv.push((sd + 1) / 2 * (w / UW), -run / (own ? 5 : TM)); base.push(-run / (own ? 5 : TM)); col.push(1, 1, 1, al); }
                 if (i) { var v0 = (i - 1) * 2; idx.push(v0, v0 + 2, v0 + 1, v0 + 1, v0 + 2, v0 + 3, v0, v0 + 1, v0 + 2, v0 + 1, v0 + 3, v0 + 2); }   // (seen from both sides: the shared material draws front faces only)
             }
             var geo = new THREE.BufferGeometry(), nrm = []; for (i = 0; i < pos.length / 3; i++) nrm.push(0, 1, 0);   // lit like the sheet above, never a darker wall
@@ -75770,7 +75843,7 @@ const ThreeRenderer = (function () {
                                    the surface (≤ HQ_FLUID_GRID_RULES.layH), so the fade is the only edge; a wall / a bank higher than that
                                    still stops it */
                                 var th = hqTerrainHeight(info, px, pz);
-                                if (th > yW - GRID_WATER_LAY_LIFT) { y1 = th + GRID_WATER_LAY_LIFT; al *= 1 - _liqEase(layH - 0.1, layH + 0.1, th - yW); }
+                                if (th > yW - GRID_WATER_LAY_LIFT) { y1 = Math.min(th, yW + layH + 0.1) + GRID_WATER_LAY_LIFT; al *= 1 - _liqEase(layH - 0.1, layH + 0.1, th - yW); }   /* (2026-11-22, the Sewers' channels: a point on a bank higher than the sheet may lie on is clear already; it no longer CLIMBS that bank, which pulled the sheet's last strip up a sheer side as a ragged, streaked fringe. It stops just over the lay line, inside the bank) */
                             }
                             if (deepPass && al > 0) al *= _liqEase(0.12, 0.88, cover(B.deep, px, pz, winD));
                         }
@@ -84973,6 +85046,7 @@ const ThreeRenderer = (function () {
         _hq.tabletops = [];
         var litRows = null;   // THE CEILING LAMPS FIRST: the rows that get a prop light when the room asks for more than it has
         var placeOne = function (p) {   // THE TERRAIN ROOM (2026-09-17): the compiler's scatter stands like any floor prop
+            p = _hqCobwebHang(p);   // A COBWEB HANGS (2026-11-22): a web authored on the floor goes up the nearest wall
             var cat = D.catalogue[p.key], Hrec = _hq;   // (the room record this prop stands in — a stage neighbour's own, whatever _hq is when its file lands)
             if (!cat || (!cat.file && !cat.proc && !(cat.pack && _carPackOn()))) return;   // THE CAR PACK: a pack-only row needs the pack
             var level = p.level || 0, y0 = _hqLevelY(S, level);
@@ -94566,7 +94640,7 @@ const ThreeRenderer = (function () {
                    on the last ground it stood on, the void's own return */
                 if (_hq.terrain && typeof hqTerrainFluidAt === 'function' && (bf === null || bf < ny)) {
                     var dw = hqTerrainFluidAt(_hq.terrain, pl.x, pl.z);
-                    if (dw && !dw.sea && ny <= dw.y && (dw.key !== 'water' || dw.y - hqTerrainHeight(_hq.terrain, pl.x, pl.z) > _hq.terrain.rules.wadeMax)) { _hqVoidReturn(pl, pl._landSafe, dw.key === 'lava' ? 0xff7a30 : 0x2a6a8a); return; }
+                    if (dw && !dw.sea && ny <= dw.y && ((typeof hqTerrainWades === 'function' ? !hqTerrainWades(dw.key) : dw.key !== 'water') || (dw.key === 'water' && dw.y - hqTerrainHeight(_hq.terrain, pl.x, pl.z) > _hq.terrain.rules.wadeMax))) {   /* (the sludge is waded at any depth, 2026-11-22) */ _hqVoidReturn(pl, pl._landSafe, dw.key === 'lava' ? 0xff7a30 : 0x2a6a8a); return; }
                 }
                 if (ny <= land) { ny = land; pl.air = false; pl.vy = 0; pl.jumpT = -1; if (pl.entry) pl.entry._ew_hqLandAt = performance.now(); pl.y = ny; if (_hqStuckLanded(pl)) ny = pl.y; }   // (THE WAY OUT OF A COLLIDER: a landing inside a wall's reach)
             }
