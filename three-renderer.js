@@ -88931,7 +88931,7 @@ const ThreeRenderer = (function () {
         var lvl = _hqLevelOf(S, pl.y);   // THE THIRD RING (2026-09-16): 0 / 1 / 2
         var best = null, bestD = 1e9;
         /* THE DEEP (2026-09-18): aboard a vehicle the target IS the vehicle (E disembarks); ashore, a moored one within its boardReach */
-        if (_hq.vehicle && _hq.vehicle.on) { var Vr = _hq.vehicle.rec; return (_hq.vehicle.kind === 'car') ? { kind: 'vehicle', id: Vr.id + ':in', label: Vr.label, sub: 'AT THE WHEEL · E GETS OUT', verb: 'GET OUT', aboard: true, vehicle: 'car' }   /* (its own id: the prompt redraws when you get in) */ : { kind: 'vehicle', id: Vr.id, label: Vr.label, sub: 'ABOARD · E DISEMBARKS', verb: 'DISEMBARK', aboard: true, vehicle: _hq.vehicle.kind }; }
+        if (_hq.vehicle && _hq.vehicle.on) { var Vr = _hq.vehicle.rec; return (_hq.vehicle.kind === 'car') ? { kind: 'vehicle', id: Vr.id + ':in', label: Vr.label, sub: '', verb: 'GET OUT', aboard: true, vehicle: 'car' }   /* (its own id: the prompt redraws when you get in) */ : { kind: 'vehicle', id: Vr.id + ':in', label: Vr.label, sub: '', verb: 'DISEMBARK', aboard: true, vehicle: _hq.vehicle.kind }; }   /* (':in': the box redraws on boarding, so it hides) */
         (_hq.boats || []).forEach(function (b) {
             var Rb = (_hqSeaRules()[b.kind] || {}), distV = Math.hypot(b.x - pl.x, b.z - pl.z);
             if (b.kind === 'car') {   // THE CAR: how near its SIDE you stand (a bus is 11 m long), not its middle
@@ -88985,14 +88985,14 @@ const ThreeRenderer = (function () {
             if (Math.abs(ch.y - pl.y) > 1) return;
             var dist = Math.hypot(ch.x - pl.x, ch.z - pl.z);
             if (dist > (ch.reach || 1.75)) return;
-            if (dist < bestD) { bestD = dist; best = { kind: ch.kind, id: ch.id, label: ch.label, sub: ch.sub || (ch.kind === 'agent' ? 'D.O.O.R. PERSONNEL' : 'ON BREAK'), line: ch.line, race: ch.race, gender: ch.gender, cast: ch.cast, doing: ch.doing, talk: (ch.spot && ch.spot.talk) || null }; }   // THE TALK (2026-10-08): the spot's conversation
+            if (dist < bestD) { bestD = dist; best = { kind: ch.kind, id: ch.id, label: ch.label, sub: ch.sub || '',   /* (mondo 11-22: no filler line under a name) */ line: ch.line, race: ch.race, gender: ch.gender, cast: ch.cast, doing: ch.doing, talk: (ch.spot && ch.spot.talk) || null }; }   // THE TALK (2026-10-08): the spot's conversation
         });
         /* THE PROP PASS 5.2 (2026-09-21): seated, the seat is the target (E stands); else a seat within reach — a door / counter beside it still wins when nearer */
-        if (pl.sit && pl.sit.seat) return { kind: 'seat', id: pl.sit.seat.id, label: pl.sit.seat.label, sub: 'SEATED', verb: 'STAND', sitting: true };
+        if (pl.sit && pl.sit.seat) return { kind: 'seat', id: pl.sit.seat.id, label: pl.sit.seat.label, sub: '', verb: 'STAND', sitting: true };
         if (!(_hq.ride && _hq.ride.on) && !pl.swim && !pl.climb && _hq.seats) _hq.seats.forEach(function (st) {
             var ds = Math.hypot(st.x - pl.x, st.z - pl.z);
             if (ds > 1.7 || Math.abs(st.y - pl.y) > 1.2) return;
-            if (ds + 0.35 < bestD) { bestD = ds + 0.35; best = { kind: 'seat', id: st.id, label: st.label, sub: 'A SEAT', verb: 'SIT' }; }
+            if (ds + 0.35 < bestD) { bestD = ds + 0.35; best = { kind: 'seat', id: st.id, label: st.label, sub: '', verb: 'SIT' }; }
         });
         /* THE FINDS (9.1): within reach on the floor, a shelf or a climbed cell — never a wall two levels up (that is the door gun's) */
         _hq.finds.forEach(function (f) {
@@ -91883,7 +91883,7 @@ const ThreeRenderer = (function () {
             return;
         }
         _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: kind, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
-                         label: (R.labels || {})[kind] || p.key.toUpperCase(), sub: kind === 'ship' ? '' : kind === 'sub' ? 'RECORDS’ BATHYSCAPHE · W / S DRIVE · A / D STEER · SPACE UP · C DOWN' : 'THE SEA LENDS IT · W / S SAIL · A / D THE TILLER' });
+                         label: (R.labels || {})[kind] || p.key.toUpperCase(), sub: '' });   // (mondo 11-22, "what about boats?": no controls on the box)
     }
     function _hqVehicleFind(id) { var B = (_hq && _hq.boats) || []; for (var i = 0; i < B.length; i++) if (B[i].id === id) return B[i]; return null; }
     /* E on a moored vehicle: aboard. E aboard: off. */
