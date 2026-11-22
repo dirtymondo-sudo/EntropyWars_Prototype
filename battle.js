@@ -80308,7 +80308,10 @@
                     const _counterTarget = target;
                     const _counterAttacker = unit;
                     window.setTimeout(() => {
-                        showFloatingTextForUnit(_counterTarget, 'COUNTER!', 'counter', {
+                        /* THE COUNTER'S LABEL (mondo 2026-11-22 playtest: "COUNTER!" popped over the defender, beside the
+                           attacker's own number still on screen, so the swing's damage read as the counter): it now pops
+                           over the unit the riposte HITS, beside the counter's own number. */
+                        showFloatingTextForUnit(_counterAttacker, 'COUNTER!', 'counter', {
                             durationMs: 1000
                         });
                         if (_activeCinematic?.showCounter) _activeCinematic.showCounter();

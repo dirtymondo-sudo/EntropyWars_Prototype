@@ -19,7 +19,9 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
   same change (data.js `DOOR_HQ.retired`) and point saves, map and doors at the new one.
 - **No tests.** No test files, no CI. Proof is a real browser picture of the real game, and every setting is proven on
   screen. Browser runs and screenshots are allowed without asking for anything visual (mondo 11-15); no browser run for
-  non-visual changes, and a full match playtest only when he asks (CLAUDE.md RULE #1c).
+  non-visual changes, and a full match playtest only when he asks (CLAUDE.md RULE #1c). A playtest runs at a computer
+  screen size (1920x1080 or bigger, mondo 11-22: he plays on a computer; text and HUD overlaps seen on a small window do
+  not count).
 - **Never rebake or repaint his textures.** Never use AI-made logos: the official DOOR logo is his files in
   `Assets/ui/brand/door_logo/`.
 - **THE MODEL LIST FIRST (mondo 11-16, after a graveyard was built without the game's own corpses, body parts and coffins: "every thread working
@@ -114,8 +116,11 @@ then tough shit. The player experience should be the same"): no weak-PC cut may 
 - **Status:** lasts until the caster's next turn ends. A killing hit applies no status. 0 HP = down. Charm: can't move but
   acts. Minimized: -2 ATK + 25% dodge. Marked: the next physical hit. Move-spells are blocked while Rooted, Charmed,
   Roped or Frozen. Possessed stays on its own team. Blind cuts own vision only.
-- **Elements:** Frozen never stuns. Ice + heat = water. Water and rain put out fire. Liquid fills AoE squares, runs
+- **Elements:** FROZEN IS A STUN (mondo 11-22: "how are you supposed to move or act if you are frozen?"; this replaces
+  the older "Frozen never stuns"): a frozen unit skips its turn. Ice + heat = water. Water and rain put out fire. Liquid fills AoE squares, runs
   downhill and fills holes. Reactions R1-R16 (`champions-combat.md`).
+- **The honda civic (the Sedan) IS the car** (mondo 11-22): a spell or finisher of his that uses a car uses his own model
+  (Vehicular Manslaughter = his own dash, Hit and Run = his own body), never a second sedan model.
 - **Forced movement** is one shared system (push, pull, knockback, fling, slide, ice, bombs, tornado). Airborne units skip
   traps and bombs. The preview draws the whole chain. A push with no picked direction goes straight away from the caster.
 - **Every lost fight costs money** (11-17: "every loss should lose you money"). Story fights, quest fights too: 8 gold x the strongest
