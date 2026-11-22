@@ -453,7 +453,8 @@ STAND.forEach(S => {
         const q = border(e, sd, Math.floor(along - 0.01)), d = { wall: onWall ? sd.toLowerCase() : 'free' };
         /* THE DOOR'S OWN COLUMN IS OPEN (2026-11-22, the zone entrances thread): the two squares behind the door's middle are path. The Redwood Trail's
            north row was open seven squares wide with ONE closed square behind its middle: the door stood on that square's face and the walker met a tree. */
-        for (let i = 1; i <= 2; i++) lay(q[0] - SIDE4[sd][0] * i, q[1] - SIDE4[sd][1] * i);
+        for (let i = 1; i <= 2; i++) { const x = q[0] - SIDE4[sd][0] * i, y = q[1] - SIDE4[sd][1] * i, own = inR(q[0], q[1]) ? c2[q[1]][q[0]] : 'p';
+            if (inR(x, y) && R.plotOfSq(x, y) && c2[y][x] === 't' && own !== 't' && own !== 'w' && own !== 'b') c2[y][x] = own; else lay(x, y); }   // (the gate square's own ground: snow at a snow gate, not a square of dirt)
         if (onWall) { if (ns) d.x = R.gx(e.col * N + along); else d.z = R.gz(e.row * N + along); }
         else { d.x = ns ? R.gx(e.col * N + along) : R.gcx(q[0]); d.z = ns ? R.gcz(q[1]) : R.gz(e.row * N + along); d.face = FACE[sd]; d.passage = Object.assign({}, MOVER.FREE_PASS); }   // (ow-move.js A FREE SEAM IS CROSSED ON THE PLOT'S OWN SQUARES)
         return d; };
