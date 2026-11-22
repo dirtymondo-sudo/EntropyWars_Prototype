@@ -1,0 +1,290 @@
+{
+ "runs": [
+  {
+   "dir": "/home/user/EntropyWars_Prototype/shots/bal/p0a",
+   "pass": 0
+  },
+  {
+   "dir": "/home/user/EntropyWars_Prototype/shots/bal/p0b",
+   "pass": 0
+  }
+ ],
+ "changes": {
+  "boltzmann brain": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 950,
+     "int": 210
+    },
+    "after": {
+     "hp": 1030,
+     "int": 244
+    },
+    "est": 22.545625937701065,
+    "gap": -0.27454374062298936,
+    "kind": "up"
+   }
+  ],
+  "nordic": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1420,
+     "int": 200
+    },
+    "after": {
+     "hp": 1480,
+     "int": 225
+    },
+    "est": 30.344476737001074,
+    "gap": -0.19655523262998925,
+    "kind": "up"
+   }
+  ],
+  "machine elves": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1050,
+     "int": 183
+    },
+    "after": {
+     "hp": 1100,
+     "int": 205
+    },
+    "est": 30.5064999002713,
+    "gap": -0.194935000997287,
+    "kind": "up"
+   }
+  ],
+  "swamp monster": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1170,
+     "atk": 101,
+     "int": 53
+    },
+    "after": {
+     "hp": 1220,
+     "atk": 108,
+     "int": 66
+    },
+    "est": 33.01947321108864,
+    "gap": -0.16980526788911365,
+    "kind": "up"
+   }
+  ],
+  "antperson": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1650,
+     "atk": 138,
+     "int": 112
+    },
+    "after": {
+     "hp": 1700,
+     "atk": 147,
+     "int": 126
+    },
+    "est": 34.17518114695191,
+    "gap": -0.15824818853048095,
+    "kind": "up"
+   }
+  ],
+  "referee": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1150,
+     "atk": 95
+    },
+    "after": {
+     "hp": 1190,
+     "atk": 111
+    },
+    "est": 37.885265373247364,
+    "gap": -0.12114734626752632,
+    "kind": "up"
+   }
+  ],
+  "marksman": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 392,
+     "atk": 144
+    },
+    "after": {
+     "hp": 360,
+     "atk": 129
+    },
+    "est": 62.20656221965235,
+    "gap": 0.1220656221965235,
+    "kind": "down"
+   }
+  ],
+  "fairy": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1060,
+     "atk": 3,
+     "int": 173
+    },
+    "after": {
+     "hp": 1030,
+     "atk": 2,
+     "int": 161
+    },
+    "est": 62.05166465688128,
+    "gap": 0.12051664656881278,
+    "kind": "down"
+   }
+  ],
+  "wendigo": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1250,
+     "atk": 150,
+     "int": 30
+    },
+    "after": {
+     "hp": 1220,
+     "atk": 142,
+     "int": 23
+    },
+    "est": 61.762895652616066,
+    "gap": 0.11762895652616068,
+    "kind": "down"
+   }
+  ],
+  "karate frog": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1150,
+     "atk": 135,
+     "int": 60
+    },
+    "after": {
+     "hp": 1110,
+     "atk": 125,
+     "int": 53
+    },
+    "est": 62.05706317240467,
+    "gap": 0.1205706317240467,
+    "kind": "down"
+   }
+  ],
+  "firefighter": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1260,
+     "atk": 77,
+     "int": 80
+    },
+    "after": {
+     "hp": 1220,
+     "atk": 68,
+     "int": 71
+    },
+    "est": 63.91456686634076,
+    "gap": 0.1391456686634076,
+    "kind": "down"
+   }
+  ],
+  "deep sea diver": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1100,
+     "atk": 120,
+     "int": 130
+    },
+    "after": {
+     "hp": 1060,
+     "atk": 115,
+     "int": 115
+    },
+    "est": 64.38243750462883,
+    "gap": 0.1438243750462882,
+    "kind": "down"
+   }
+  ],
+  "eagleman": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1040,
+     "atk": 160,
+     "int": 71
+    },
+    "after": {
+     "hp": 1000,
+     "atk": 150,
+     "int": 63
+    },
+    "est": 63.282094909651,
+    "gap": 0.13282094909651,
+    "kind": "down"
+   }
+  ],
+  "clown": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1420,
+     "atk": 194
+    },
+    "after": {
+     "hp": 1370,
+     "atk": 178
+    },
+    "est": 67.31939974142065,
+    "gap": 0.1731939974142066,
+    "kind": "down"
+   }
+  ],
+  "jellyfish ufo": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 1200,
+     "atk": 125,
+     "int": 125
+    },
+    "after": {
+     "hp": 1150,
+     "atk": 119,
+     "int": 106
+    },
+    "est": 68.64788607450829,
+    "gap": 0.1864788607450829,
+    "kind": "down"
+   }
+  ],
+  "dragon": [
+   {
+    "pass": 1,
+    "before": {
+     "hp": 910,
+     "atk": 114,
+     "int": 64
+    },
+    "after": {
+     "hp": 850,
+     "atk": 102,
+     "int": 48
+    },
+    "est": 70.45782529314711,
+    "gap": 0.20457825293147114,
+    "kind": "down"
+   }
+  ]
+ }
+}
