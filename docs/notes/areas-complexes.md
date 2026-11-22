@@ -14173,7 +14173,15 @@ own line; the districts' own roads leave their rooms somewhere else).
   camp to the Tomb Door side), the Coast Road's gate (packed dirt over the dig's footbridge), the Causeway's gate (stone).
 - **A DISTRICT ROAD THAT LEAVES ITS ROOM WHERE NO GATE STANDS** gets an `edges.roads` row from the bake (a run of 1 to 3 road squares on the last row, four rows deep): the
   circus lot's south road, the town's west and south roads, Area 51's north road, Giza's oasis track. They lead to no room.
-- Checked in the browser: see the thread's pictures in `/mnt/project-files/desert-gates/`.
+- **NO TABLE AND NO RANGE ON THE ROAD (`_hqEdgeLandFn` worldW, LANES):** in a seam's lane a mesa lies down as open sand and a range as a pass floor, the land's whole reach,
+  easing back over 22 m aside (the highway rode up a rock table 200 m out of Western Town). The lane is tested at the point itself, not at the wandered spot the kinds are
+  read at. The road stops where the land turns to sea (`W.coast > 0.35`): no road over water.
+- **THE SIGN AT THE GATE (bake-desert.js):** a seam row's `sign: 'WORDS'` = a small green board on two tall posts beside the road two squares inside the line, facing the one who
+  leaves, the place in a few words (GIZA, AREA 51, THE CIRCUS, WESTERN TOWN, DISASTER CITY); `post: true` = the pack's wooden `signpost` (the dirt roads: Ranch Road, Coast
+  Road, Causeway). `signSide: -1` = the traveller's left, `signIn` = squares inside the line.
+- **THE LAST ROW WEARS ITS NEIGHBOUR (`_hqGrassCell`, `_hqFloraCell`):** the ground lattice's outer ring is never painted, so a route whose floor is grass grew a band of grass
+  across its own road at the room's line (R9, R8, R10, R11 ends). An unpainted ring node now reads the node one row in, in every room.
+- Checked in the browser, every gate walked both ways (24 walks): the thread's pictures are in `/mnt/project-files/desert-gates/`.
 
 ## THE SEAM IS THE ROAD — an open seam on a route room's wall is as wide as the road (2026-11-22, mondo: "it only works when i enter through the median")
 mondo 11-22, the Badlands Highway (`site_ow_r9`) into the Circus: "it only works when i enter through the median in the highway, which doesnt make
