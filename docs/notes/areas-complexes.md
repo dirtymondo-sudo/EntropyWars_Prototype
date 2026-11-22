@@ -14106,6 +14106,22 @@ and press e ... i can't see the road going out, the road just stops and its all 
   ground keep the 40 m strip.
 - **A link end may say `w`** (the street's width past the gantry; data.js link door builder copies it to the door row): both downtown_desert
   ends are 14 (four squares), was the catalogue's 9.
+- **ROUND 2 (mondo the same day: "why is there a little river stream that the road dips under? an why are there trees blocking the woods exit ...
+  Make them actually look good and not like buggy messes. Need to make logical sense"):**
+  - THE MOAT: `_hqEdgeLandFn` measured an INSET side's line from the lattice's half (the city: 379.75 for a 378 shell), so the land past the
+    city's south line began 1.35 m past the plots, on the dead strip's sunk floor (-9), and the room's sea showed as a strip of water along the
+    whole south side. An inset side's line is now the shell's half less the inset, 0.15 m inside it: the sand meets the street at its height.
+    Only the city has inset sides.
+  - The ramp down to the land is 40 m (was 14: a 4 m drop read as a slide), its bank 5.5 m deep.
+  - THE WOODS EXIT IS A FOOTPATH: the city has no street on its west line there, `valley_city.a` stood half over the planters of a one-square
+    path. It is on the path's middle (z -47.25) with `w: 5`; a road end under 7 m wide is `foot` in the builder (the room's path sheet, no lane
+    paint, no speed plate, a 3.8 m gantry). Open question for mondo: cut a real street to it.
+  - NO TREE IN A ROAD'S MOUTH: data.js hqTerrainCompile drops `tree` rows within 7 m along / half the width + 2.4 m across a road way's place
+    (the city's west tree line crossed the gate); the edge land plants none on a road's lane.
+  - A CAUSEWAY: after the city's south land became rolling scrub the land (a coarse mesh) came up through the asphalt. Past the line the
+    road's cross-section is level, 0.5 m over the HIGHEST land under it and its shoulders (`crest(d)`, 7 samples across), a bank under both
+    sides all the way out.
+  - THE LANE LINES NEVER DREW: the paint quads wind face down (z runs negative); the paint material is double-sided now.
 - Probe: `node playtest_city.js site_ow_r9 '[{"name":"walk_n","x":-35,"z":-180,"face":0,"ground":true,"walk":{"key":"w","max":40000}}]'` walks
   into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
   the SECOND room of a run; the WALK line prints before that.

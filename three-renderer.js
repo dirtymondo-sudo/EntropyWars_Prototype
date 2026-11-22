@@ -77529,7 +77529,14 @@ const ThreeRenderer = (function () {
     function _hqEdgeLandFn(room, info) {
         var E = room.terrain.edges, hx = info.halfW - 0.5, hz = info.halfD - 0.5;
         var sd = function (k) { return E[k] || { kind: 'forest' }; };
-        var R = { x0: -hx + (+sd('w').inset || 0), x1: hx - (+sd('e').inset || 0), z0: -hz + (+sd('n').inset || 0), z1: hz - (+sd('s').inset || 0) };
+        /* THE LINE OF AN INSET SIDE IS THE SHELL'S (2026-11-22, mondo on the city's road to the Desert: "why is there a little river stream that the road dips
+           under ... Having water run across road does not make any sense"): an inset side's line was measured from the LATTICE's half (info.halfD, which
+           stands a node or two past the shell: the city 379.75 for a 378 shell), so the land began 1.35 m PAST the plots' line, on the dead strip's sunk
+           floor (-9): it started at the bottom of a pit and the room's sea showed as a moat the whole length of the city's south side. The line is
+           the shell's half less the inset, 0.15 m inside it, so the land starts at the street's own height. A side with no inset is unchanged. */
+        var shW = (room.shell && +room.shell.w > 0) ? room.shell.w / 2 : hx + 0.5, shD = (room.shell && +room.shell.d > 0) ? room.shell.d / 2 : hz + 0.5;
+        var insOf = function (k, sh, h) { var v = +sd(k).inset || 0; return v > 0 ? Math.min(h, sh - v - 0.15) : h; };
+        var R = { x0: -insOf('w', shW, hx), x1: insOf('e', shW, hx), z0: -insOf('n', shD, hz), z1: insOf('s', shD, hz) };
         var sm = function (t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
         var seaY = (info.sea && isFinite(+info.sea.y)) ? +info.sea.y : -0.6;
         /* THE EDGES THAT FIT THE MAP (2026-11-16, mondo: "in desert, its surrounded by mountains but that's not what's actually next to it on the map ...
@@ -83453,6 +83460,8 @@ const ThreeRenderer = (function () {
            from the link end) sizes it, else the catalogue's `w`. The far end's gantry reads the same way back. */
         road: function (U, ctx) {
             var g = new THREE.Group(), door = ctx.door || {}, W = door.w || (ctx.cat && ctx.cat.w) || 9, H = (ctx.cat && ctx.cat.h) || 5.2;
+            /* A FOOTPATH OUT (2026-11-22): an end under 7 m wide is a path, not a street: the room's own path sheet, no lane paint, no speed plate, a lower gantry */
+            var foot = W < 7; if (foot) H = Math.min(H, 3.8);
             var LEN = (_hq && _hq.terrain) ? 40 : 13;   // a terrain room's outer ground runs to the fog; a site room's apron ends 16 m out — the road stops on it, never over the void
             var joinedR = (typeof _hqStageJoined === 'function') && _hqStageJoined(ctx.room, door);
             if (joinedR) LEN = 0;   // THE STAGE (OPEN_WORLD_PLAN Phase 1): a joined road runs on into the neighbour's own street — no strip of ours, only the gantry
@@ -83464,7 +83473,7 @@ const ThreeRenderer = (function () {
                past the edge is THE NATURAL EDGES' (_hqEdgeLandOn: the city, every One World room) the strip used to be laid on the FIELD's height: it
                floated flat over the land, which falls away from the line (the city's south: 4 m down to the sand), and no fog stands at 40 m any more.
                Now it lies ON that land, read at the land mesh's own rows (HQ_EDGE_ROWS, straight between them, as the mesh is), for 300 m; over the
-               first 14 m it comes down as one even ramp (the land's ditch at the line is bridged), a dark bank under its sides. */
+               first 40 m it comes down as one even ramp (the land's ditch at the line is bridged); past that it is a level causeway half a metre over the land, a dark bank under its sides. */
             var EF = null, tOut = 0;
             try { if (!joinedR && _hq && _hq.terrain && ctx.room && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(ctx.room)) EF = (_hq.edgeLand && _hq.edgeLand.fn) || _hqEdgeLandFn(ctx.room, _hq.terrain); } catch (eEF) { EF = null; }
             if (EF) {
@@ -83473,7 +83482,7 @@ const ThreeRenderer = (function () {
                 if (Math.abs(odz) > 0.01) tz = ((odz > 0 ? EF.R.z1 : EF.R.z0) - wz) / odz;
                 tOut = Math.max(0, Math.min(tx, tz)); if (!isFinite(tOut)) { EF = null; tOut = 0; }
             }
-            var EROWS = EF ? HQ_EDGE_ROWS.filter(function (r) { return r <= Math.min(300, EF.reach || 300); }) : null, RAMP = 14;
+            var EROWS = EF ? HQ_EDGE_ROWS.filter(function (r) { return r <= Math.min(300, EF.reach || 300); }) : null, RAMP = 40;   // (40 m: the city's south street comes down 4 m to the sand at a road's grade, not a slide's)
             if (EF) LEN = tOut + EROWS[EROWS.length - 1];
             var fieldAt = function (lx, lz) {   // the ground under a local point (metres), relative to the door's own floor
                 if (typeof _hqTerrainGround !== 'function' || !_hq || !_hq.terrain) return 0;
@@ -83488,16 +83497,21 @@ const ThreeRenderer = (function () {
                 var f = (d - EROWS[i]) / (EROWS[i + 1] - EROWS[i]); f = f < 0 ? 0 : f > 1 ? 1 : f;
                 return row[i] * (1 - f) + row[i + 1] * f;
             };
+            var crestX = [-W / 2 - 2.5, -W / 2, -W / 4, 0, W / 4, W / 2, W / 2 + 2.5];
+            var crest = function (d) { var m = -Infinity; for (var ci = 0; ci < crestX.length; ci++) { var v = landAt(crestX[ci], d); if (v > m) m = v; } return m + 0.5; };
             var gAt = function (lx, lz) {   // the road's own surface
                 if (!EF) return fieldAt(lx, lz);
                 var d = -lz - tOut; if (d <= 0) return fieldAt(lx, lz);
-                var h = landAt(lx, d); if (d >= RAMP) return h + 0.05;
-                var a = fieldAt(lx, -tOut), b = landAt(lx, RAMP) + 0.05; return Math.max(h + 0.05, a + (b - a) * d / RAMP);
+                /* A CAUSEWAY (2026-11-22): the road's cross-section is level, half a metre over the HIGHEST land under it and its shoulders (the land
+                   mesh is coarse across the road: laid on the land's own height at its two edges, rolling ground came up through the asphalt) */
+                var h = crest(d); if (d >= RAMP) return h;
+                var a = fieldAt(0, -tOut), b = crest(RAMP); return Math.max(h, a + (b - a) * d / RAMP);
             };
-            var asphalt = _hqMat(null, 1, 1, { color: neon ? 0x8a8aa4 : (EF ? 0xdcdce0 : 0xffffff), shininess: neon ? 24 : 6, specular: 0x151515, emissive: 0x0e0e0e, emissiveIntensity: 1 });
-            var asT = (EF && texOf('urban:RoadGeneric1a')) || texOf('urban:PlasterWallPainted1b'); if (asT) { asphalt.map = asT; asphalt.needsUpdate = true; }   // the pack's asphalt, the city streets' own sheet and tint
+            var asphalt = _hqMat(null, 1, 1, { color: neon ? 0x8a8aa4 : (EF ? 0xb4b4b8 : 0xffffff), shininess: neon ? 24 : 6, specular: 0x151515, emissive: 0x0e0e0e, emissiveIntensity: 1 });
+            var footKey = foot && ctx.room && ctx.room.terrain && ctx.room.terrain.path; if (footKey) asphalt.color.setHex(0xffffff);
+            var asT = (footKey && texOf(footKey)) || (EF && texOf('urban:RoadGeneric1a')) || texOf('urban:PlasterWallPainted1b'); if (asT) { asphalt.map = asT; asphalt.needsUpdate = true; }   // the pack's asphalt, the city streets' own sheet and tint
             if (EF) { asphalt.polygonOffset = true; asphalt.polygonOffsetFactor = -1; asphalt.polygonOffsetUnits = -1; }
-            var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false }); paint.polygonOffset = true; paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
+            var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }); paint.polygonOffset = true;   /* (both sides: the paint quads wind face down, so the lane lines never drew, 2026-11-22) */ paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
             /* the strip: rows from the wall outward (−Z), each vertex on the ground + 3 cm (every 2 m; past the line: the land's rows, never over 4 m apart) */
             var tsL = [], pos = [], uv = [], idx = [], bpos = [], bidx = [];
             if (!EF) { for (var r0 = 0; r0 <= Math.round(LEN / 2); r0++) tsL.push(r0 * 2); }
@@ -83512,10 +83526,10 @@ const ThreeRenderer = (function () {
                 var lz = -tsL[r];
                 [-W / 2, W / 2].forEach(function (lx, i) {
                     var gy = (r === 0 ? 0 : gAt(lx, lz)) + 0.03; pos.push(lx * U, gy * U, lz * U); uv.push(i * W / 1.75, tsL[r] / 1.75);
-                    if (EF) bpos.push(lx * U, gy * U, lz * U, lx * 1.12 * U, (gy - 3) * U, lz * U);
+                    if (EF) bpos.push(lx * U, gy * U, lz * U, lx * 1.3 * U, (gy - 5.5) * U, lz * U);
                 });
                 if (r > 0) { var b = (r - 1) * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
-                    if (EF && tsL[r - 1] >= tOut - 2.1 && tsL[r - 1] < tOut + RAMP + 4) { var q = (r - 1) * 4; bidx.push(q, q + 4, q + 1, q + 1, q + 4, q + 5, q + 2, q + 3, q + 6, q + 3, q + 7, q + 6); } }   // THE BANK under the ramp's two sides
+                    if (EF && tsL[r - 1] >= tOut - 2.1) { var q = (r - 1) * 4; bidx.push(q, q + 4, q + 1, q + 1, q + 4, q + 5, q + 2, q + 3, q + 6, q + 3, q + 7, q + 6); } }   // THE BANK under the road's two sides, all the way
             }
             var hasBuf = !!(THREE.BufferGeometry && THREE.Float32BufferAttribute);
             var strip;
@@ -83530,9 +83544,9 @@ const ThreeRenderer = (function () {
                 pts.forEach(function (p) { dpos.push(p[0] * U, (gAt(p[0], p[1]) + 0.05) * U, p[1] * U); duv.push(0, 0); });
                 didx.push(dn, dn + 2, dn + 1, dn, dn + 3, dn + 2); dn += 4;
             };
-            for (var z = -1.2; z > -LEN + 1; z -= 3.2) flat(-0.07, 0.07, z, z - 1.6);
-            for (var z2 = -0.4; z2 > -LEN + 1; z2 -= 2) { flat(W / 2 - 0.41, W / 2 - 0.29, z2, z2 - 2); flat(-W / 2 + 0.29, -W / 2 + 0.41, z2, z2 - 2); }
-            if (hasBuf) { var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.Float32BufferAttribute(dpos, 3)); dg.setAttribute('uv', new THREE.Float32BufferAttribute(duv, 2)); dg.setIndex(didx); dg.computeVertexNormals(); var dashes = new THREE.Mesh(dg, paint); dashes.renderOrder = 3; g.add(dashes); }
+            if (!foot) for (var z = -1.2; z > -LEN + 1; z -= 3.2) flat(W >= 10 ? -0.11 : -0.07, W >= 10 ? 0.11 : 0.07, z, z - 1.6);
+            if (!foot) for (var z2 = -0.4; z2 > -LEN + 1; z2 -= 2) { flat(W / 2 - 0.41, W / 2 - 0.29, z2, z2 - 2); flat(-W / 2 + 0.29, -W / 2 + 0.41, z2, z2 - 2); }
+            if (hasBuf && dn) { var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.Float32BufferAttribute(dpos, 3)); dg.setAttribute('uv', new THREE.Float32BufferAttribute(duv, 2)); dg.setIndex(didx); dg.computeVertexNormals(); var dashes = new THREE.Mesh(dg, paint); dashes.renderOrder = 3; g.add(dashes); }
             /* a shoulder post stands on the land beside the road, not on the door's floor in the air */
             var sideY = function (lx, lz) { if (!EF) return 0; var d = -lz - tOut; return (d <= 0) ? fieldAt(lx, lz) : landAt(lx, d); };
             /* THE GANTRY over the mouth: two posts on the shoulders, the beam, the green plate */
@@ -83551,7 +83565,7 @@ const ThreeRenderer = (function () {
             /* THE LEAVING plate on the right shoulder, the pack's speed plate on the left */
             var lv = (!joinedR && typeof _hzTextTex === 'function') ? _hzTextTex('hq_road_leaving_' + (ctx.room && ctx.room.label || ''), ['LEAVING', String((ctx.room && ctx.room.label) || '').split('·')[0].trim() || 'TOWN'], { w: 512, h: 256, color: '#ffffff', bg: '#1d5a30', border: '#f0f0f0', pad: 0.12, weight: 'bold' }) : null;
             if (lv) { var lpst = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 2.6 * U, 6), steel); var lvY = sideY(W / 2 + 1.1, -6) * U; lpst.position.set((W / 2 + 1.1) * U, 1.3 * U + lvY, -6 * U); g.add(lpst); var lvM = _hqBasic(0xffffff, { side: THREE.DoubleSide }); lvM.map = lv; var lpl = new THREE.Mesh(new THREE.PlaneGeometry(1.4 * U, 0.7 * U), lvM); lpl.position.set((W / 2 + 1.1) * U, 2.3 * U + lvY, -6 * U); g.add(lpl); }
-            var spd = joinedR ? null : texOf('urban:SignSpeedUsa045-small');   // (a joined road: no LEAVING plate, no speed sign — you are not leaving)
+            var spd = (joinedR || foot) ? null : texOf('urban:SignSpeedUsa045-small');   // (a joined road: no LEAVING plate, no speed sign — you are not leaving)
             if (spd) { var sp = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, 2.6 * U, 6), steel); var spY = sideY(-(W / 2 + 0.9), -9) * U; sp.position.set(-(W / 2 + 0.9) * U, 1.3 * U + spY, -9 * U); g.add(sp); var spm = _hqMat(null, 1, 1, { transparent: true, emissive: 0x202020, emissiveIntensity: 1 }); spm.map = spd; spm.alphaTest = 0.2; spm.needsUpdate = true; var spl = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * U, 0.78 * U), spm); spl.position.set(-(W / 2 + 0.9) * U, 2.35 * U + spY, -9 * U); g.add(spl); }
             /* the fog takes the far end: a dark gradient plane across the road's end */
             var fade = new THREE.Mesh(new THREE.PlaneGeometry((W + 2) * U, 6 * U), _hqBasic(0x000000, { transparent: true, opacity: 0.0, depthWrite: false })); fade.rotation.x = -Math.PI / 2; fade.position.set(0, 0.06 * U, -(LEN - 3) * U); if (!joinedR && !EF) g.add(fade);

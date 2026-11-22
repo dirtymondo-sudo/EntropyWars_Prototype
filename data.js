@@ -33727,7 +33727,7 @@ const DOOR_HQ = {
           b: { room: 'site_ow_r9', wall: 'n', x: -35, w: 14, sub: 'EXIT 1 · NORTH · DISASTER CITY' },   // w 14 (2026-11-22): the road past the gantry is the street's four squares wide at both ends, not a 9 m lane   // THE HIGHWAY (2026-11-16): Exit 1's road, straight under the city's own South Street (the same x both sides)
           why: 'the same road, south; the city stops and the road does not', note: 'south', draft: true },
         { id: 'valley_city', route: 'woods', way: 'road',
-          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -249.4, z: -45.5, face: 90, sub: 'THE VALLEY ROAD · WEST · THE WOODS' },
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -249.4, z: -47.25, face: 90, w: 5, sub: 'THE VALLEY ROAD · WEST · THE WOODS' },   // z -47.25, w 5 (2026-11-22, was z -45.5 at the lane's 9 m): the city's west way out is the University's FOOTPATH (one square, its middle on z -47.25), not a street; the gate stood half over the planters. A road end under 7 m wide is a footpath (three-renderer.js _hqWayBuilders.road `foot`)
           b: { room: 'site_ow_r6', wall: 'e', z: 21, sub: 'THE CITY LINE · EAST · DISASTER CITY' },
           why: 'the valley road runs into the city', note: 'west' },
         /* THE HOLLYWOOD HILLS ARE PART OF DISASTER CITY (2026-11-16, mondo: "make Hollywood hills a part of disaster city"): the links `downtown_mountains` (the mountain road) and
@@ -93541,6 +93541,13 @@ function hqTerrainCompile(room, roomId) {
     const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [], landingRows = [], bridges = [], boards = [], fallRows = [];
     const fluidGrids = new Map(), gridOf = (f) => { if (!fluidGrids.has(f)) fluidGrids.set(f, hqFluidGrid(room, roomId, f)); return fluidGrids.get(f); };   // THE SQUARE WATER
     const fluidY = (f) => (+f.y || 0) - (gridOf(f) ? HQ_FLUID_GRID_RULES.inset : 0);   // THE SUNK SURFACE: the square water's surface, sunk under its drawn height
+    /* THE ROAD OUT (2026-11-22): every road way's mouth (its place, its inward normal, half its width + a trunk): no tree row stands in one */
+    const roadMouths = (room.doors || []).filter(d => d && d.way === 'road' && d.wall).map(d => {
+        const w = +d.w || ((DOOR_HQ.ways || {}).road || {}).w || 9, hw = w / 2 + 2.4;
+        if (d.wall === 'free') { const fr = (+d.face || 0) * Math.PI / 180; return { x: +d.x || 0, z: +d.z || 0, nx: Math.sin(fr), nz: -Math.cos(fr), hw }; }
+        if (d.wall === 'n') return { x: +d.x || 0, z: -S.d / 2, nx: 0, nz: 1, hw }; if (d.wall === 's') return { x: +d.x || 0, z: S.d / 2, nx: 0, nz: -1, hw };
+        if (d.wall === 'e') return { x: S.w / 2, z: +d.z || 0, nx: -1, nz: 0, hw }; if (d.wall === 'w') return { x: -S.w / 2, z: +d.z || 0, nx: 1, nz: 0, hw };
+        return null; }).filter(Boolean);
     F.forEach(f => {
         switch (f.k) {
             case 'hill': case 'dip': case 'ridge': relief.push(f); break;
@@ -93552,7 +93559,8 @@ function hqTerrainCompile(room, roomId) {
             case 'wall': walls.push(f); break;
             case 'rail': rails.push(f); break;
             case 'path': paths.push(f); break;
-            case 'tree': trees.push(Object.assign({ x: f.x, z: f.z, kind: f.kind || 'tree', h: f.h || null, r: f.r || R.treeR, face: isFinite(f.face) ? +f.face : null }, Array.isArray(f.chessPos) ? { chessPos: f.chessPos.slice() } : null)); break;   // THE CHESS POSITIONS: the positions a piece stands in   // face (E6): the editor's R turns a tree
+            case 'tree': if (roadMouths.length && roadMouths.some(m => { const qx = f.x - m.x, qz = f.z - m.z; return Math.abs(qx * m.nx + qz * m.nz) < 7 && Math.abs(qx * m.nz - qz * m.nx) < m.hw; })) break;   // THE ROAD OUT (2026-11-22, mondo: "why are there trees blocking the woods exit"): no tree stands in a road way's mouth
+                trees.push(Object.assign({ x: f.x, z: f.z, kind: f.kind || 'tree', h: f.h || null, r: f.r || R.treeR, face: isFinite(f.face) ? +f.face : null }, Array.isArray(f.chessPos) ? { chessPos: f.chessPos.slice() } : null)); break;   // THE CHESS POSITIONS: the positions a piece stands in   // face (E6): the editor's R turns a tree
             case 'grove': case 'scatter': scatterRows.push(f); break;
             case 'climb': climbRows.push(f); break;
             case 'fall': fallRows.push(f); break;   // THE WATERFALLS (2026-11-16): drawn only (three-renderer.js _hqFallsBuild); the ground and the water are the rows beside it
