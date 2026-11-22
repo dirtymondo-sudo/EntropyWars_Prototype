@@ -40998,10 +40998,10 @@ const DOOR_HQ = {
                     {k:'stream',pts:[[-84,-83.6],[-84,-77.4]],w:6.8,y:41.35,depth:0.6,key:'deep_water'},
                     {k:'stream',pts:[[0,-83.6],[0,-77.4]],w:6.8,y:16.86,depth:0.6,key:'deep_water'},
                     {k:'stream',pts:[[42,-83.6],[42,-77.4]],w:6.8,y:13.36,depth:0.6,key:'deep_water'},
-                    {k:'stream',pts:[[35.4,-68.25],[48.6,-68.25]],w:3.3,y:3.38,depth:0.6,key:'water',absY:true},
-                    {k:'stream',pts:[[36.75,-66.1],[36.75,-59.9]],w:3.3,y:3.38,depth:0.6,key:'water',absY:true},
-                    {k:'stream',pts:[[47.25,-66.1],[47.25,-56.4]],w:3.3,y:3.38,depth:0.6,key:'water',absY:true},
-                    {k:'stream',pts:[[38.9,-57.75],[45.1,-57.75]],w:3.3,y:3.38,depth:0.6,key:'water',absY:true},
+                    {k:'stream',pts:[[35.4,-68.25],[48.6,-68.25]],w:3.3,y:3.38,depth:0.6,key:'water',absY:true,look:'deep_water'},
+                    {k:'stream',pts:[[36.75,-66.1],[36.75,-59.9]],w:3.3,y:3.38,depth:0.6,key:'water',absY:true,look:'deep_water'},
+                    {k:'stream',pts:[[47.25,-66.1],[47.25,-56.4]],w:3.3,y:3.38,depth:0.6,key:'water',absY:true,look:'deep_water'},
+                    {k:'stream',pts:[[38.9,-57.75],[45.1,-57.75]],w:3.3,y:3.38,depth:0.6,key:'water',absY:true,look:'deep_water'},
                     {k:'stream',pts:[[0,77.4],[0,83.6]],w:6.8,y:25.61,depth:0.6,key:'deep_water'},
                     {k:'bridge',id:'aga:bridge:0',absY:true,x0:35.4,z0:-64.75,x1:38.1,z1:-64.75,w:3.5,y:14,thick:0.3,rails:true,key:'hz_misc_05'},
                     {k:'bridge',id:'aga:bridge:1',absY:true,x0:48.6,z0:-61.25,x1:45.9,z1:-61.25,w:3.5,y:14,thick:0.3,rails:true,key:'hz_misc_05'},
@@ -93807,6 +93807,9 @@ function hqTerrainCompile(room, roomId) {
     const F = slopeB ? _hqTSlopeFeatures(F0, slopeB) : F0;
     const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [], landingRows = [], bridges = [], boards = [], fallRows = [];
     const fluidGrids = new Map(), gridOf = (f) => { if (!fluidGrids.has(f)) fluidGrids.set(f, hqFluidGrid(room, roomId, f)); return fluidGrids.get(f); };   // THE SQUARE WATER
+    /* A LIQUID'S LOOK IS NOT ITS RULE (2026-11-22, mondo: "the color shouldnt change the behavior of the water"): a `pool` / `stream` row's `key`
+       says how the liquid is WALKED (water is waded, deep water is never entered); its `look: 'deep_water'` only says how it is DRAWN (the dark
+       sheet). A waded pool of black water = `key: 'water', look: 'deep_water'` (Agartha's lake under the Spire). */
     const fluidY = (f) => (+f.y || 0) - (gridOf(f) ? HQ_FLUID_GRID_RULES.inset : 0);   // THE SUNK SURFACE: the square water's surface, sunk under its drawn height
     /* THE ROAD OUT (2026-11-22): every road way's mouth (its place, its inward normal, half its width + a trunk): no tree row stands in one */
     const roadMouths = (room.doors || []).filter(d => d && d.way === 'road' && d.wall).map(d => {
@@ -93821,8 +93824,8 @@ function hqTerrainCompile(room, roomId) {
             case 'plateau': case 'ramp': case 'spiral': standing.push(f); break;   // THE ROUND PIECES (2026-09-26): a `spiral` is a ramp round a centre
             case 'deck': if (f.over) { bridges.push(f); break; } standing.push(f); decks.push(f); break;   // `over: true` = a bridge (below)
             case 'bridge': bridges.push(f); break;   // THE BRIDGE LAYER (2026-09-19): a deck OVER walked ground — a layer, never a height
-            case 'pool': basins.push(f); fluids.push({ kind: 'pool', x: f.x, z: f.z, r: f.r, rz: f.rz, rot: f.rot, y: fluidY(f), key: f.key || 'water', depth: f.depth || 0.8, bank: f.bank, gq: gridOf(f) }); break;
-            case 'stream': basins.push(f); fluids.push({ kind: 'stream', pts: f.pts, w: f.w, y: fluidY(f), key: f.key || 'water', depth: f.depth || 0.6, bank: f.bank, gq: gridOf(f) }); break;   // `bank`: the carve's (three-renderer.js _hqWaterOwners floods the surface over it)
+            case 'pool': basins.push(f); fluids.push({ kind: 'pool', x: f.x, z: f.z, r: f.r, rz: f.rz, rot: f.rot, y: fluidY(f), key: f.key || 'water', depth: f.depth || 0.8, bank: f.bank, gq: gridOf(f), look: f.look }); break;
+            case 'stream': basins.push(f); fluids.push({ kind: 'stream', pts: f.pts, w: f.w, y: fluidY(f), key: f.key || 'water', depth: f.depth || 0.6, bank: f.bank, gq: gridOf(f), look: f.look }); break;   // `bank`: the carve's (three-renderer.js _hqWaterOwners floods the surface over it)
             case 'wall': walls.push(f); break;
             case 'rail': rails.push(f); break;
             case 'path': paths.push(f); break;

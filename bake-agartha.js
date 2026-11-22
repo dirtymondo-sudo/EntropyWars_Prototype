@@ -206,7 +206,7 @@ const climbAt = (lo, hi, look, id) => { const dx = hi[0] - lo[0], dy = hi[1] - l
       /* the ends stop 0.4 m short of the rect's edges (seen 11-20: an end ON the line of higher ground lifted the whole surface to it) */
       /* (`absY`: the lake's surface is the plan's, 0.58 m over its bed; without it the row's y was read over the ground and stood 2.3 m higher: too deep to wade) */
       F.push(Object.assign(h >= w ? { k: 'stream', pts: [[r2(gx(x) + w * C / 2), r2(gz(y) + 0.4)], [r2(gx(x) + w * C / 2), r2(gz(y + h) - 0.4)]], w: r2(w * C - 0.2), y: r2(walkOf(x, y) - 0.12), depth: 0.6, key: lake }
-                    : { k: 'stream', pts: [[r2(gx(x) + 0.4), r2(gz(y) + h * C / 2)], [r2(gx(x + w) - 0.4), r2(gz(y) + h * C / 2)]], w: r2(h * C - 0.2), y: r2(walkOf(x, y) - 0.12), depth: 0.6, key: lake }, lake === 'water' ? { absY: true } : null));
+                    : { k: 'stream', pts: [[r2(gx(x) + 0.4), r2(gz(y) + h * C / 2)], [r2(gx(x + w) - 0.4), r2(gz(y) + h * C / 2)]], w: r2(h * C - 0.2), y: r2(walkOf(x, y) - 0.12), depth: 0.6, key: lake }, lake === 'water' ? { absY: true, look: 'deep_water' } : null));   /* (`look`: still drawn as black water; the key only says it is waded. mondo 11-22: "the color shouldnt change the behavior of the water") */
       count.sumps = (count.sumps || 0) + 1; } }
 
 /* ── THE BRIDGES (the plan's `bridges`: a deck from one square over to another, walked both ways); the design file's `bridge` = its look ── */
