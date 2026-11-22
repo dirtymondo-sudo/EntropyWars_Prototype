@@ -14274,9 +14274,9 @@ green liquid, its glitches and puts me back on the ground, the waterfalls look m
 - **A COBWEB HANGS, IN EVERY ROOM.** three-renderer.js `_hqCobwebHang(p)`, called first in `placeOne` (the room's build, once a row): a
   `psx_cobweb_*` row with no height of its own (no `y` of 1 or more, not `ceil` / `wall` / `flip`), in a terrain room, is placed flat on the
   nearest wall or rock face within 5 m (eight headings; a face = the ground 2.2 m higher, a wall row that tall, or the room's edge), its foot
-  1.9 m over the ground it was dropped on, no blocker. The row in data.js is never changed. 39 rows in six rooms on 11-22 (Agartha 15, the
-  Tunnel-Way 17, the Long Dark 3, the West 1, the Clearing 1, the Estate's trail 2 are `hw_web`, left: a 3D web of the Halloween pack, not a
-  card). `hang: false` on a row keeps it where it is; off for all: `window.EW_NO_COBWEB_HANG`. Checked in the Tunnel-Way (6 webs moved to
+  1.9 m over the ground it was dropped on, no blocker. The row in data.js is never changed. On 11-22 six rooms held 39 webs on the floor (Agartha 15, the
+  Tunnel-Way 17, the Long Dark 3, the West 1, the Clearing 1, the Estate's trail 2), counting `hw_web*` too: those are the Halloween pack's 3D
+  webs, not cards, and are left as they are. `hang: false` on a row keeps it where it is; off for all: `window.EW_NO_COBWEB_HANG`. Checked in the Tunnel-Way (6 webs moved to
   their walls). A bake need not place cobwebs by hand any more (bake-labyrinth.js still does, into corners).
 - **THE SHEET NO LONGER CLIMBS A SHEER BANK** (`_hqGridWaterBuild`, every room's square water): a point over a bank higher than the lay line
   was clear but stood ON that bank, so the last strip of the sheet was pulled up the channel's side as a ragged streaked fringe (loud on the
