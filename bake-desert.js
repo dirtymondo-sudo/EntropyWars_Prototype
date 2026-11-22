@@ -323,30 +323,30 @@ const STAND = [
     { id: R_CIRC, part: 'ow_circus', letter: 'C', label: 'THE CIRCUS', sub: 'THE DESERT · THE BIG TOP · 9 PLOTS', lines: O_CARN.l,
       parti: 'A circus pitched on the open sand, nine plots: the ticket booth, the Big Top, the wheel, the midway, the fence round all of it, and the road in from the Highway.',
       seams: [
-        { side: 'E', at: [9, 23.04], room: 'site_ow_dh4', open: 16, label: 'THE DESERT HIGHWAY · EAST', sub: 'EXIT 2 · EAST TO GIZA', desc: 'The highway runs east out of the circus lot, then south across the sand to the pyramids.' },
-        { side: 'W', at: [6, 23.04], room: 'site_ow_dh1', open: 16, label: 'THE DESERT HIGHWAY · WEST', sub: 'EXIT 2 · WEST TO WESTERN TOWN', desc: 'The highway runs west past a lone door and a bus stop to the western town.' },
-        { side: 'N', at: [6.96, 21], room: 'site_ow_r9', open: 16, label: 'THE BADLANDS HIGHWAY', sub: 'NORTH TO DISASTER CITY', desc: 'The highway runs north through the badlands, past the last gas and a motel, to the city.' } ] },
+        { side: 'E', at: [9, 23.04], room: 'site_ow_dh4', open: 16, label: 'THE DESERT HIGHWAY · EAST', sub: 'EXIT 2 · EAST TO GIZA', sign: 'GIZA', signSide: -1, road: { sheet: 1, lanes: [23, 24], lines: true, move: [['park_bench', 47.25, 19.25, 47.25, 15.75]] }, desc: 'The highway runs east out of the circus lot, then south across the sand to the pyramids.' },
+        { side: 'W', at: [6, 23.04], room: 'site_ow_dh1', open: 16, label: 'THE DESERT HIGHWAY · WEST', sub: 'EXIT 2 · WEST TO WESTERN TOWN', sign: 'WESTERN TOWN', road: { sheet: 1, lanes: [24, 25], lines: true }, desc: 'The highway runs west past a lone door and a bus stop to the western town.' },
+        { side: 'N', at: [6.96, 21], room: 'site_ow_r9', open: 16, label: 'THE BADLANDS HIGHWAY', sub: 'NORTH TO DISASTER CITY', sign: 'DISASTER CITY', signSide: -1, signIn: 3, road: { sheet: 1, lanes: [11, 12], lines: true, move: [['outhouse', -15.75, -61.25, -12.25, -61.25], ['outhouse', -19.25, -61.25, -15.75, -61.25], ['privacy_screen', -19.25, -50.75, -15.75, -50.75], ['costume_rack', -15.75, -47.25, -12.25, -50.75], ['makeup_vanity', -19.25, -47.25, -15.75, -47.25], ['psx_wooden_crate_2', -22.78, -46.7, -27.6, -45.9]] }, desc: 'The highway runs north through the badlands, past the last gas and a motel, to the city.' } ] },
     { id: R_TOWN, part: 'ow_town', letter: 'W', label: 'WESTERN TOWN', sub: 'THE DESERT · MAIN STREET · 16 PLOTS', lines: [],
       parti: 'A western town of sixteen plots: Main Street, the saloon, the bank, the jail, the church on its rise, Boot Hill, the mine in the rock, the corral and the wagon camp.',
       seams: [
-        { side: 'N', at: [-1.25, 26], room: 'site_ow_dh1', open: 16, label: 'THE DESERT HIGHWAY · NORTH', sub: 'EXIT 3 · EAST TO THE CIRCUS', desc: 'Main Street turns to asphalt at the town line: the highway north, then east to the circus.' },
-        { side: 'N', at: [-3.1, 26], room: 'site_ow_r8', open: 11, label: 'THE RANCH ROAD', sub: 'NORTH TO THE RANCH', desc: 'A dirt road north out of town, past a crop circle and the cattle, to the ranch.' },
-        { side: 'S', at: [-0.4167, 30], room: 'site_ow_dh2', open: 16, label: 'THE DESERT HIGHWAY · SOUTH', sub: 'EXIT 3 · SOUTH TO AREA 51', desc: 'The canyon road meets the highway: south past the trailers to the base.' } ] },
+        { side: 'N', at: [-1.25, 26], room: 'site_ow_dh1', open: 16, label: 'THE DESERT HIGHWAY · NORTH', sub: 'EXIT 3 · EAST TO THE CIRCUS', sign: 'THE CIRCUS', road: { sheet: 2, lanes: [32, 33], move: [['cow', 33.25, -71.75, 36.75, -71.75]] }, desc: 'Main Street turns to asphalt at the town line: the highway north, then east to the circus.' },
+        { side: 'N', at: [-3.1, 26], room: 'site_ow_r8', open: 11, label: 'THE RANCH ROAD', sub: 'NORTH TO THE RANCH', post: true, road: { sheet: 2, lanes: [10, 11], move: [['vulture', -47.25, -71.75, -40.25, -71.75]] }, desc: 'A dirt road north out of town, past a crop circle and the cattle, to the ranch.' },
+        { side: 'S', at: [-0.4167, 30], room: 'site_ow_dh2', open: 16, label: 'THE DESERT HIGHWAY · SOUTH', sub: 'EXIT 3 · SOUTH TO AREA 51', sign: 'AREA 51', road: { sheet: 2, lanes: [42, 43] }, desc: 'The canyon road meets the highway: south past the trailers to the base.' } ] },
     { id: R_A51, part: 'desert', letter: 'A', label: 'AREA 51', sub: 'THE DESERT · THE BASE · 16 PLOTS', lines: O_GATE.l.concat(O_LINE.l),
       parti: 'A fenced base of sixteen plots on the open sand: the gate, the apron, the tower, Runway 33, the crater, Hangar 18 and the yard of the White Rooms.',
       seams: [
-        { side: 'W', at: [2, 34.04], room: 'site_ow_dh2', open: 16, label: 'THE DESERT HIGHWAY · WEST', sub: 'THE BASE ROAD · NORTH TO WESTERN TOWN', desc: 'The base road runs west to the highway, the trailers and the town.' },
-        { side: 'E', at: [6, 33.3], room: 'site_ow_dh3', open: 16, label: 'THE DESERT HIGHWAY · EAST', sub: 'THE BASE ROAD · EAST TO GIZA', desc: 'The base road runs east past a caravan stop to the pyramids.' } ] },
+        { side: 'W', at: [2, 34.04], room: 'site_ow_dh2', open: 16, label: 'THE DESERT HIGHWAY · WEST', sub: 'THE BASE ROAD · NORTH TO WESTERN TOWN', sign: 'WESTERN TOWN', road: { sheet: 1, over: [7], lines: true }, desc: 'The base road runs west to the highway, the trailers and the town.' },
+        { side: 'E', at: [6, 33.3], room: 'site_ow_dh3', open: 16, label: 'THE DESERT HIGHWAY · EAST', sub: 'THE BASE ROAD · EAST TO GIZA', sign: 'GIZA', signSide: -1, road: { sheet: 1, lanes: [4, 5], len: 20, rects: [[7, 5, 27, 5]], lines: true, move: [['crow', 8.81, -64.91, 8.81, -66.9], ['yucca', 71.75, -68.25, 71.75, -72.6], ['agave', -51.44, -64.26, -51.44, -67.9], ['cattle_skull', 18.6, -69.01, 18.6, -72.6], ['vulture', 30.45, -68.41, 30.45, -72.4], ['coyote', 58.44, -68.6, 58.44, -72.6]] }, desc: 'The base road runs east past a caravan stop to the pyramids.' } ] },
     { id: R_GIZA, part: 'ow_giza', letter: 'G', label: 'GIZA', sub: 'THE DESERT · THE PYRAMIDS · 16 PLOTS', lines: O_GIZA.l,
       parti: 'Three pyramids and the Sphinx on sixteen plots of sand: the causeway, the dig, the obelisks, the oasis, the Tomb Door and the Great Pyramid over four plots.',
       seams: [
-        { side: 'N', at: [13.5, 29], room: 'site_ow_dh4', open: 16, label: 'THE DESERT HIGHWAY · NORTH', sub: 'THE GIZA ROAD · NORTH TO THE CIRCUS', desc: 'The causeway turns to road and runs north to the circus.' },
-        { side: 'W', at: [13, 32.04], room: 'site_ow_dh3', open: 16, label: 'THE DESERT HIGHWAY · WEST', sub: 'THE GIZA ROAD · WEST TO AREA 51', desc: 'The road runs west past a caravan stop to the fenced base.' },
+        { side: 'N', at: [13.5, 29], room: 'site_ow_dh4', open: 16, label: 'THE DESERT HIGHWAY · NORTH', sub: 'THE GIZA ROAD · NORTH TO THE CIRCUS', sign: 'THE CIRCUS', signSide: -1, desc: 'The causeway turns to road and runs north to the circus.' },
+        { side: 'W', at: [13, 32.04], room: 'site_ow_dh3', open: 16, label: 'THE DESERT HIGHWAY · WEST', sub: 'THE GIZA ROAD · WEST TO AREA 51', sign: 'AREA 51', road: { sheet: 4, lanes: [37, 38], len: 25, rects: [[24, 35, 24, 36]], move: [['market_stall', -57.75, 47.25, -57.75, 54.25], ['woven_baskets', -51.45, 47.6, -51.45, 54.6], ['market_stall', -43.75, 47.25, -40.25, 54.25], ['psxg_dead_bush_2', -14.96, 51.32, -14.96, 55.3], ['casing_block', -1.4, 49, -1.4, 55.6]] }, desc: 'The road runs west past a caravan stop to the fenced base.' },
         /* THE COAST + THE CAUSEWAY (2026-11-17, One World 4.3, the 4.3 thread's seams, re-written as `seams` rows by the 4.2 thread): R10 the Coast Road
            comes in from the north on Giza's P10-08 (world 15,29), west of the pyramid on the line between 15 and 16; R11 the Delta Causeway from the
            east on P11-11 (world 16,32), on the line between rows 31 and 32. Their side is the route kit's. */
-        { side: 'N', at: [15.5, 29], room: 'site_ow_r10', open: 11, label: 'THE COAST ROAD', sub: 'NORTH ALONG THE SEA · TO THE BEACH', desc: 'A dirt road runs north off the sand, the sea on its right the whole way.' },
-        { side: 'E', at: [17, 32], room: 'site_ow_r11', open: 11, label: 'THE DELTA CAUSEWAY', sub: 'EAST OVER THE REED FLATS · TO GÖBEKLI TEPE', desc: 'A dirt road runs east off the sand over the reed flats.' } ] },
+        { side: 'N', at: [15.5, 29], room: 'site_ow_r10', open: 11, label: 'THE COAST ROAD', sub: 'NORTH ALONG THE SEA · TO THE BEACH', post: true, road: { sheet: 7, lanes: [28, 29], len: 5, move: [['wheelbarrow', 15.4, -70, 12.6, -70], ['hw_shovel', 16.03, -71.08, 12.9, -71.6], ['wooden_bucket', 19.67, -72.2, 22.4, -72.2]] }, desc: 'A dirt road runs north off the sand, the sea on its right the whole way.' },
+        { side: 'E', at: [17, 32], room: 'site_ow_r11', open: 11, label: 'THE DELTA CAUSEWAY', sub: 'EAST OVER THE REED FLATS · TO GÖBEKLI TEPE', post: true, road: { sheet: 4 }, desc: 'A dirt road runs east off the sand over the reed flats.' } ] },
 ];
 const SIDE4 = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, FACE = { N: 180, E: 270, S: 0, W: 90 }, OPP = { N: 'S', S: 'N', E: 'W', W: 'E' };   // a free door's face = the way its opening faces, INTO its plot (ow-move.js)
 const crop = (R, homeSq) => { const out = new Uint8Array(R.W * R.D); for (let y = 0; y < R.D; y++) for (let x = 0; x < R.W; x++) { const e = R.plotOfSq(x, y); if (!e || !e.home) continue; out[y * R.W + x] = homeSq(e.home.x * N + x - e.col * N, e.home.y * N + y - e.row * N); } return out; };
@@ -354,7 +354,7 @@ const deltaAt = (R, x, z) => { const q = R.toRoom(x, z); return q ? [q[0] - x, q
 const shiftLine = (o, d) => Object.assign({}, o, { x0: r2(o.x0 + d[0]), z0: r2(o.z0 + d[1]), x1: r2(o.x1 + d[0]), z1: r2(o.z1 + d[1]) });
 const SCATTER = F.filter(f => f.k === 'scatter' && f.x == null);   // the room-wide rows (the stones, skulls, snags; `off` = Area 51's paved ground): a share a room
 const ROOMS_OUT = [], STRAYS = [];
-let HWY = null, CUT_EXTRA = 0;
+let HWY = null, CUT_EXTRA = 0, GATE_P = 0;
 STAND.forEach(S => {
     const R = MOVER.room(v13(S.letter)); R.strays.forEach(t => STRAYS.push(S.label + ': ' + t));
     const fences = F.filter(FENCE).map(f => { const a = MOVER.anchor(f), d = deltaAt(R, a[0], a[1]); return d ? MOVER.shifted(f, d[0], d[1]) : null; }).filter(Boolean);
@@ -373,6 +373,9 @@ STAND.forEach(S => {
         const d = { id, wall: sd.toLowerCase() }; if (ns) d.x = R.gx(ax * N); else d.z = R.gz(ay * N);
         seamDoors.push(Object.assign(d, { way: 'open', passage: { w: sm.open }, label: sm.label, sub: sm.sub, action: { room: sm.room, at: id }, desc: sm.desc }));
         ways.push({ side: sd.toLowerCase(), at: ns ? d.x : d.z }); });
+    S.seams.forEach((sm, si) => { const d = seamDoors[si], ns = d.wall === 'n' || d.wall === 's', at = ns ? d.x : d.z, n = ns ? R.W : R.D, lanes = [];   // THE ROAD FROM THE GATE (below): the road's squares across the gate; the seam stands on the road's middle and is never narrower than it
+        if (sm.road && sm.road.lanes) { for (let c = sm.road.lanes[0]; c <= sm.road.lanes[1]; c++) lanes.push(c); } else for (let c = 0; c < n; c++) if (Math.abs((ns ? R.gcx(c) : R.gcz(c)) - at) <= sm.open / 2 + 0.01) lanes.push(c);
+        d._lanes = lanes; if (sm.road && lanes.length) { d.passage.w = Math.max(sm.open, r2(lanes.length * C)); const mid = r2(((ns ? R.gcx(lanes[0]) : R.gcz(lanes[0])) + (ns ? R.gcx(lanes[lanes.length - 1]) : R.gcz(lanes[lanes.length - 1]))) / 2); if (ns) d.x = mid; else d.z = mid; ways[si].at = mid; } });
     /* THE ROAD THROUGH THE FENCE (One World phase 5, 2026-11-17): a fence rail a block brought with it (the Circus lot's ranch rail) is cut where a
        road crosses the room's wall, the road's own width; a rail that lies in the road's mouth is dropped. Only `rail` rows: never a building's wall. */
     const cutFences = []; fences.forEach(f => { if (f.k !== 'rail') { cutFences.push(f); return; } let segs = [[f.x0, f.z0, f.x1, f.z1]];
@@ -384,13 +387,64 @@ STAND.forEach(S => {
                 if (lo < at - hw - 0.5) o.push(mk(lo, r2(at - hw))); if (hi > at + hw + 0.5) o.push(mk(r2(at + hw), hi)); return o; }, []); });
         segs.forEach(q => cutFences.push(Object.assign({}, f, { x0: q[0], z0: q[1], x1: q[2], z1: q[3] }))); });
     CUT_EXTRA += cutFences.length - fences.length;
+    /* THE ROAD FROM THE GATE (2026-11-22, mondo: "Every single entrance/exit in the game needs to look good and natural"): One World stood every seam on the
+       route's own line, and no district has a road there: a six-lane highway ran into open sand at the line. A seam row may say
+       `road: { sheet, over, rects, lines }` = the squares across the gate (those whose middle lies in the seam's `open`) are painted `sheet` (a PAL number:
+       1 asphalt, 2 the town's dirt, 4 the causeway's stone, 7 packed dirt) from the wall inward until they meet the district's own painted ground
+       (the first lane to meet it sets the depth, two squares more for the others, so the road butts onto what it meets); `over: [n]` = sheets that
+       count as open ground (Area 51's yard dirt); `rects: [[x0, y0, x1, y1]]` = more squares (a leg round a corner), `lines` = a yellow middle line.
+       The seam is as wide as its road. What already stands on those squares is listed by the tool (STUB lines): it must be empty. The engine draws the
+       far room's road past the line by itself (three-renderer.js THE ROAD OF THE NEXT ROOM RUNS ON). */
+    const pt = crop(R, (x, y) => paint[y * NW + x]), stubSq = [], stubMarks = [], roadsOut = [];
+    /* `road.lanes: [c0, c1]` = the road's own squares across the gate (a road threaded between what stands there; default: every square of the gate);
+       `road.move: [[key, x, z, toX, toZ]]` = a prop that stood on the road, stood beside it (nothing is dropped; a row that finds no prop throws) */
+    S.seams.forEach(sm => ((sm.road && sm.road.move) || []).forEach(m => { const q = R.props.find(o => o.key === m[0] && Math.abs(o.x - m[1]) < 0.06 && Math.abs(o.z - m[2]) < 0.06); if (!q) throw new Error(S.id + ': no ' + m[0] + ' at ' + m[1] + ', ' + m[2] + ' to move off the road'); q.x = m[3]; q.z = m[4]; }));
+    S.seams.forEach((sm, si) => { const d = seamDoors[si], ns = d.wall === 'n' || d.wall === 's', deepN = ns ? R.D : R.W;
+        const cMid = c => ns ? R.gcx(c) : R.gcz(c), lanes = d._lanes; if (!sm.road || !lanes.length) return;
+        const cellOf = (c, k) => { const dp = (d.wall === 'n' || d.wall === 'w') ? k : deepN - 1 - k; return ns ? [c, dp] : [dp, c]; };
+        const open = v => !v || (sm.road.over || []).indexOf(v) >= 0, hit = lanes.map(c => { let k = 0; while (k < 30 && open(pt[cellOf(c, k)[1] * R.W + cellOf(c, k)[0]])) k++; return k; });
+        const minHit = sm.road.len ? sm.road.len : Math.min.apply(null, hit); if (sm.road.len) hit.fill(sm.road.len); if (minHit >= 30) throw new Error(S.id + ': the road from the gate ' + d.id + ' meets no painted ground');
+        if (minHit > 0 || sm.road.over) lanes.forEach((c, i) => { const depth = Math.min(hit[i], minHit + 2); for (let k = 0; k < depth; k++) stubSq.push(cellOf(c, k).concat([sm.road.sheet])); });
+        (sm.road.rects || []).forEach(q => { for (let y = q[1]; y <= q[3]; y++) for (let x = q[0]; x <= q[2]; x++) if (open(pt[y * R.W + x])) stubSq.push([x, y, sm.road.sheet]); });
+        if (sm.road.lines && minHit > 0) { const mid = r2((cMid(lanes[0]) + cMid(lanes[lanes.length - 1])) / 2), a0 = cellOf(0, 0), a1 = cellOf(0, minHit - 1), u0 = ns ? R.gcz(a0[1]) : R.gcx(a0[0]), u1 = ns ? R.gcz(a1[1]) : R.gcx(a1[0]), lo = r2(Math.min(u0, u1) - C / 2), hi = r2(Math.max(u0, u1) + C / 2);
+            [-0.16, 0.16].forEach(o => stubMarks.push(ns ? { k: 'line', x0: r2(mid + o), z0: lo, x1: r2(mid + o), z1: hi, w: 0.14, color: 0xe8b830 } : { k: 'line', x0: lo, z0: r2(mid + o), x1: hi, z1: r2(mid + o), w: 0.14, color: 0xe8b830 })); } });
+    if (process.env.EW_STUBMAP) { const occ = {}; const markSq = (x, z, ch) => { const cx = Math.round((x - R.gcx(0)) / C), cz = Math.round((z - R.gcz(0)) / C); const k = cx + ',' + cz; if (!occ[k] || ch === 'W') occ[k] = ch; };
+        R.props.forEach(q => markSq(q.x, q.z, 'p')); R.features.concat(cutFences).forEach(f => { if (f.x0 != null) { for (let t = 0; t <= 1.001; t += 0.05) markSq(f.x0 + (f.x1 - f.x0) * t, f.z0 + (f.z1 - f.z0) * t, f.k === 'rail' ? 'r' : 'W'); } else if (f.x != null && f.w) { for (let a = -f.w / 2 + 0.5; a < f.w / 2; a += 1.7) for (let b = -(f.d || f.w) / 2 + 0.5; b < (f.d || f.w) / 2; b += 1.7) { const rot = (f.rot || 0) % 180 === 90; markSq(f.x + (rot ? b : a), f.z + (rot ? a : b), f.k === 'plateau' ? 'h' : f.k === 'ramp' ? '/' : 'B'); } } else if (f.x != null) markSq(f.x, f.z, f.k === 'tree' ? 't' : 'f'); });
+        console.log('MAP ' + S.label + ' ' + R.W + 'x' + R.D + ' gates ' + seamDoors.map(d => d.id + ':' + d.wall + ':' + JSON.stringify(d._lanes)).join(' '));
+        for (let y = 0; y < R.D; y++) { let row = ''; for (let x = 0; x < R.W; x++) { const o = occ[x + ',' + y], v = pt[y * R.W + x], st = stubSq.find(q => q[0] === x && q[1] === y); row += o ? (st ? o.toUpperCase() : o) : st ? '#' : v ? String(v) : '.'; } console.log('MAP ' + String(y).padStart(2) + ' ' + row); } }
+    stubSq.forEach(q => { pt[q[1] * R.W + q[0]] = q[2]; });
+    /* THE SIGN AT THE GATE (the rule of 11-22: a road gets a road sign, a path a wooden signpost, and it faces the one who reads it): a seam row's
+       `sign: 'WORDS'` stands a small green board on two tall posts (its foot 3.1 m up, over a fence or a stall) beside its road, two squares inside the line, the place it leads to in a few words, turned to the traveller who is LEAVING;
+       `post: true` stands the wooden signpost there. `signSide: -1` = on the traveller's left (default: the right), `signIn` = squares inside the line. */
+    S.seams.forEach((sm, si) => { if (!sm.sign && !sm.post) return; const d = seamDoors[si], ns = d.wall === 'n' || d.wall === 's', lanes = d._lanes, half = lanes.length * C / 2, sgn = (d.wall === 'n' || d.wall === 'w') ? -1 : 1;
+        const inM = (sm.signIn || 2) * C, edge = d.wall === 'n' ? R.gz(0) : d.wall === 's' ? R.gz(R.D) : d.wall === 'w' ? R.gx(0) : R.gx(R.W), along = r2(edge - sgn * inM);
+        const right = { n: 1, s: -1, e: 1, w: -1 }[d.wall] * (sm.signSide || 1);   // the leaving traveller's right hand, as + / - along the wall's own axis (x for n / s, z for e / w)
+        if (sm.post) { const lat = r2((ns ? d.x : d.z) + right * (half + 1.2)); R.props.push({ key: 'signpost', x: ns ? lat : along, z: ns ? along : lat, face: { n: 0, s: 180, e: 90, w: 270 }[d.wall] }); GATE_P++; return; }
+        const words = sm.sign, bw = r2(Math.max(3.4, words.length * 0.34 + 1.0)), bh = 1.3, lat = r2((ns ? d.x : d.z) + right * (half + 1.0 + bw / 2)), STEEL = 'urban:MetalWallRibbed1a', P = [];
+        for (const q of [-1, 1]) P.push({ s: 'box', p: [r2(q * (bw / 2 - 0.4)), 0, 0], size: [0.14, 4.5, 0.14], key: STEEL, tint: 0x70767c });
+        P.push({ s: 'box', p: [0, 3.1, 0.08], size: [bw, bh, 0.08], tint: 0x0b5c3a }, { s: 'quad', p: [0, 3.18, 0.14], size: [r2(bw - 0.4), r2(bh - 0.16)], key: 'txt:' + words + '|#ffffff|#0b5c3a|' + r2((bw - 0.4) / (bh - 0.16)) + '||way', uv: 'fit', kind: 'wall', glow: 0.25 });
+        R.features.push({ k: 'arch', id: 'des:gate:sign:' + d.id, x: ns ? lat : along, z: ns ? along : lat, rot: { n: 0, s: 180, e: 90, w: 270 }[d.wall], parts: P }); CUT_EXTRA++; });
+    if (stubSq.length) { const inStub = (x, z) => stubSq.some(q => Math.abs(x - R.gcx(q[0])) <= C / 2 + 0.2 && Math.abs(z - R.gcz(q[1])) <= C / 2 + 0.2);
+        R.props.forEach(q => { if (inStub(q.x, q.z)) console.log('STUB ' + S.label + ': prop ' + q.key + ' at ' + q.x + ', ' + q.z); });
+        R.features.concat(cutFences).forEach(f => { const hitF = f.x0 != null ? [0, 0.25, 0.5, 0.75, 1].some(t => inStub(f.x0 + (f.x1 - f.x0) * t, f.z0 + (f.z1 - f.z0) * t)) : (f.x != null && inStub(f.x, f.z)); if (hitF) console.log('STUB ' + S.label + ': feature ' + f.k + ' ' + JSON.stringify(f).slice(0, 160)); }); }
+    /* A ROAD THAT LEAVES THE ROOM RUNS ON (2026-11-22): a district road that crosses the room's line where no gate stands (the circus lot's south road, the
+       town's west road, Area 51's north road, Giza's oasis track) is drawn on over the land past the line (`edges.roads`, three-renderer.js): a run of
+       1 to 3 road squares on the room's last row, the same four rows deep, no seam on it */
+    [['n', 0], ['s', 0], ['w', 0], ['e', 0]].forEach(q => { const side = q[0], ns = side === 'n' || side === 's', n = ns ? R.W : R.D, deepN = ns ? R.D : R.W;
+        const v = (c, k) => { const dp = (side === 'n' || side === 'w') ? k : deepN - 1 - k; return ns ? pt[dp * R.W + c] : pt[c * R.W + dp]; }, isRoad = x => x === 1 || x === 2 || x === 4 || x === 7;
+        for (let c = 0; c < n; c++) { const x0 = v(c, 0); if (!isRoad(x0)) continue; let e = c; while (e + 1 < n && v(e + 1, 0) === x0) e++;
+            const wide = e - c + 1, deepOk = [1, 2, 3].every(k => { for (let i = c; i <= e; i++) if (v(i, k) !== x0) return false; return true; }), sideOk = [1, 2, 3].every(k => (c === 0 || v(c - 1, k) !== x0) && (e === n - 1 || v(e + 1, k) !== x0));
+            const at = r2(((ns ? R.gcx(c) : R.gcz(c)) + (ns ? R.gcx(e) : R.gcz(e))) / 2), onSeam = seamDoors.some(d => d.wall === side && Math.abs((ns ? d.x : d.z) - at) < d.passage.w / 2 + wide * C / 2 + 4);
+            if (wide <= 3 && deepOk && sideOk && !onSeam) roadsOut.push({ side, at, w: wide * C, key: PAL[x0 - 1] });
+            c = e; } });
     /* the spawn: two squares in from the first seam */
     const s0 = S.seams[0], sd = s0.side, ns = sd === 'N' || sd === 'S', qx = Math.min(R.W - 1, Math.floor((s0.at[0] - R.wx) * N)), qy = Math.min(R.D - 1, Math.floor((s0.at[1] - R.wy) * N));
     const spSq = [qx - SIDE4[sd][0] * 2, qy - SIDE4[sd][1] * 2];
+    seamDoors.forEach(d => { delete d._lanes; });
     const doorsOut = R.doors.map(d => { const o = Object.assign({}, d); delete o.side; delete o.plot; return o; }).concat(seamDoors);
     ROOMS_OUT.push({ S, R, world: true, W: R.W, D: R.D, HX: R.HX, HZ: R.HZ, names: R.names, mask: null, cols: R.cols, rows: R.rows,
-        paint: crop(R, (x, y) => paint[y * NW + x]), marks: mk, traffic: [], features: R.features.concat(cutFences, scatter), doors: doorsOut, props: R.props, npc: R.npc, air, lines: S.lines,
-        sp: { x: R.gcx(spSq[0]), z: R.gcz(spSq[1]), face: FACE[sd] }, ways,
+        paint: pt, marks: mk, stubMarks, traffic: [], features: R.features.concat(cutFences, scatter), doors: doorsOut, props: R.props, npc: R.npc, air, lines: S.lines,
+        sp: { x: R.gcx(spSq[0]), z: R.gcz(spSq[1]), face: FACE[sd] }, ways, roads: roadsOut,
         gx0: R.gx(0), gz0: R.gz(0), gcx0: R.gcx(0), gcz0: R.gcz(0) });
 });
 /* THE HIGHWAY, RETIRED (BUILD_PLAN 4.2, 2026-11-17): its 87 plots are still laid out here so the count below holds, but the room is NOT written:
@@ -418,7 +472,7 @@ STAND.forEach(S => {
 if (STRAYS.length) console.log('STRAYS (a piece across two plots that no longer stand the same way):\n  ' + STRAYS.join('\n  '));
 /* every piece of the home room stands in exactly one of the four rooms, or stood on the Highway (retired above; counted so nothing goes missing unseen) */
 { const ALL = ROOMS_OUT.concat([HWY]), n = k => ALL.reduce((s, o) => s + o[k].length, 0), fe = ALL.reduce((s, o) => s + o.features.length, 0) - ALL.length * SCATTER.length - 8, nSeam = STAND.reduce((s, S) => s + S.seams.length, 0);
-  if (n('props') !== props.length) throw new Error('props: ' + n('props') + ' of ' + props.length + ' stand in a room');
+  if (n('props') - GATE_P !== props.length) throw new Error('props: ' + (n('props') - GATE_P) + ' of ' + props.length + ' stand in a room');   // GATE_P = the gates' wooden signposts
   if (n('npc') !== npc.length) throw new Error('natives: ' + n('npc') + ' of ' + npc.length + ' stand in a room');
   if (fe !== F.length - SCATTER.length + CUT_EXTRA) throw new Error('features: ' + fe + ' of ' + (F.length - SCATTER.length + CUT_EXTRA) + ' stand in a room');   // CUT_EXTRA = the rails the roads cut in two
   if (n('doors') - nSeam !== doors.length) throw new Error('doors: ' + (n('doors') - nSeam) + ' of ' + doors.length);
@@ -450,7 +504,7 @@ ROOMS_OUT.forEach(o => { const S = o.S, w = r2(2 * o.HX), d = r2(2 * o.HZ);
     M.push("                noise: { amp: 0.08, scale: 9 },");
     if (o.world) {
         M.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`); the room's saguaros run on past it */");
-        M.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(o.ways) + ", " + EDGE_DRY + " },");
+        M.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(o.ways) + (o.roads && o.roads.length ? ", roads: " + J(o.roads) : "") + ", " + EDGE_DRY + " },");
     } else {
         /* THE EDGES THAT FIT THE MAP (2026-11-16, mondo: "in desert, its surrounded by mountains but that's not what's actually next to it on the map, so it doesn't
            make any sense"): north the city's sand, west the scrub, south sand and far rock tables, east the bay then Leylines' sand. The Highway's room is not on
@@ -459,7 +513,7 @@ ROOMS_OUT.forEach(o => { const S = o.S, w = r2(2 * o.HX), d = r2(2 * o.HZ);
         M.push("                backdrop: false, edges: { reach: 440, n: { kind: 'desert', " + EDGE_DRY + " }, w: { kind: 'scrub' }, s: { kind: 'mesa', " + EDGE_DRY + " }, e: { kind: 'desert', beyond: { kind: 'coast', d: 120, len: 40 }, cap: { kind: 'mesa', at: 's', off: 210, len: 90 }, " + EDGE_DRY + " } },");
     }
     M.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + o.gcx0 + ", z0: " + o.gcz0 + ", nx: " + o.W + ", nz: " + o.D + ", d: '" + Buffer.from(o.paint).toString('base64') + "' },");
-    M.push("                marks: " + J(o.marks) + ",");
+    M.push("                marks: " + J(o.marks.concat(o.stubMarks || [])) + ",");
     if (o.traffic.length) { M.push("                /* THE HIGHWAY'S CARS (the city's own traffic system): in from the west along the eastbound side, south to the end, east to Giza; and back */");
         M.push("                traffic: " + J(o.traffic) + ","); }
     M.push("                features: [");

@@ -9356,7 +9356,10 @@ const ThreeRenderer = (function () {
             if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) continue;
             var nk = nj * info.nx + ni;
             if (info.mask && !info.mask[nk]) continue;
-            var sheet = (PT && PT.P[nk]) ? PT.pal[PT.P[nk] - 1] : info.floor, pal = S.pals[sheet];
+            /* THE LAST ROW WEARS ITS NEIGHBOUR (2026-11-22): the lattice's outer ring is never painted, so a road that reaches the room's line wore the room's
+               bare floor on its last 0.9 m and a band of grass grew across it at every route end: an unpainted ring node reads the node one row in */
+            var pk0 = (PT && !PT.P[nk] && (ni < 2 || nj < 2 || ni >= info.nx - 2 || nj >= info.nz - 2) && info.nx > 5 && info.nz > 5) ? Math.min(info.nz - 3, Math.max(2, nj)) * info.nx + Math.min(info.nx - 3, Math.max(2, ni)) : nk;
+            var sheet = (PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor, pal = S.pals[sheet];
             if (pal === undefined) pal = S.pals[sheet] = _ggPalette(sheet) || null;
             if (!pal) continue;
             var inB = false; for (var b = 0; b < S.boxes.length; b++) { var B = S.boxes[b], dx = xm - B[0], dz = zm - B[1], lx0 = dx * B[4] + dz * B[5], lz0 = -dx * B[5] + dz * B[4]; if (Math.abs(lx0) < B[2] && Math.abs(lz0) < B[3]) { inB = true; break; } }
@@ -9501,7 +9504,8 @@ const ThreeRenderer = (function () {
             if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) continue;
             var nk = nj * info.nx + ni;
             if (info.mask && !info.mask[nk]) continue;
-            var cls = zoneFloraSheet((PT && PT.P[nk]) ? PT.pal[PT.P[nk] - 1] : info.floor); if (!cls) continue;
+            var pk0 = (PT && !PT.P[nk] && (ni < 2 || nj < 2 || ni >= info.nx - 2 || nj >= info.nz - 2) && info.nx > 5 && info.nz > 5) ? Math.min(info.nz - 3, Math.max(2, nj)) * info.nx + Math.min(info.nx - 3, Math.max(2, ni)) : nk;   // THE LAST ROW WEARS ITS NEIGHBOUR (_hqGrassCell)
+            var cls = zoneFloraSheet((PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor); if (!cls) continue;
             var pk = Math.floor(xm / 7) + ',' + Math.floor(zm / 7), C = S.clim[pk];   // 7 m blocks from the room's middle: every plot line (the map's, a district's) falls on one
             if (C === undefined) C = S.clim[pk] = zoneFloraAt(S.rid, xm, zm) || null;
             if (!C) continue;
@@ -52806,6 +52810,10 @@ const ThreeRenderer = (function () {
     }
 
     function activate() {
+        var tA = performance.now();
+        try { return _activateBody(); } finally { _dip.actAt = tA; _dip.actMs = Math.round(performance.now() - tA); }   // THE FIGHT'S START IS LOGGED: what laying the fight's scene cost
+    }
+    function _activateBody() {
         if (!initialized) init();
         if (!canvas || !renderer) return;
         _ggFreshAt = performance.now();   // THE GRASS GROWS IN: this fight's first field
@@ -55544,7 +55552,7 @@ const ThreeRenderer = (function () {
         return { rec: B.recs | 0, ep: B.epoch | 0, pb: K.builds | 0, pp: K.pipes | 0, fr: _dip.freed, add: _ewAddN | 0, ld: _asOptLoads | 0 };
     }
     function _dipWhere() {
-        var H = _hq, pl = H && H.player; if (!pl) return '?';
+        var H = _hq, pl = H && H.player; if (!pl) return H ? '?' : 'in a fight';
         var U = 3.5;
         return Math.round(pl.x / U) + ',' + Math.round(pl.z / U) + (pl.y > 1 ? ' up ' + Math.round(pl.y) + ' m' : '') + (H.vehicle && H.vehicle.on ? ' (aboard)' : '');
     }
@@ -55570,7 +55578,14 @@ const ThreeRenderer = (function () {
         if (_dipOff() || !D.t0) return;
         var now = performance.now(), t0 = D.t0; D.t0 = 0;
         var rm = (_hq && _hq.opts && _hq.opts.room) || '';
-        if (rm !== D.room) { if (D.st) _dipClose(D, now); D.room = rm; D.since = t0; D.ring.length = 0; D.lastT0 = 0; D.prev = null; }   // a new room: its first 3 s are the load
+        /* THE FIGHT'S START IS LOGGED (2026-11-22, mondo: "still freezes and drops to 0 when a fight starts"; his dip list showed nothing after
+           the walk's last dip): leaving the walked room for a fight counted as "a new room", whose first 3 s are never logged, so the
+           one moment he was reporting was the one the log skipped. Into a fight the log now runs on (the gap that holds the fight's
+           lay is its first frame) and the dip is marked FIGHT START. */
+        if (rm !== D.room) {
+            if (!rm && D.room && !(typeof window !== 'undefined' && window.EW_DIP_FIGHT_SKIP)) { D.room = rm; D.fightAt = t0; if (!D.since || t0 - D.since <= 3000) D.since = t0 - 3001; }
+            else { if (D.st) _dipClose(D, now); D.room = rm; D.since = t0; D.ring.length = 0; D.lastT0 = 0; D.prev = null; }   // a new room: its first 3 s are the load
+        }
         var R = D.ring; R.push(t0); while (R.length && t0 - R[0] > 1000) R.shift();
         var iv = D.lastT0 ? t0 - D.lastT0 : 0, P = D.prev;
         if (!D.since) D.since = t0;
@@ -55580,7 +55595,7 @@ const ThreeRenderer = (function () {
             if (st && st.calm && t0 - st.lastAt > 1500) { _dipClose(D, now); st = null; }   // (a run of slow frames with long gaps stays one dip)
             if (st) st.calm = false;
             if (!st) st = D.st = { at: new Date().toISOString().slice(11, 19), t: D.lastT0, lastAt: t0, frames: 0, worst: 0, minFps: 999, js: 0, parts: {}, where: _dipWhere(), c0: P.c, room: (_hq && _hq.opts && _hq.opts.room) || '' };
-            st.lastAt = t0; st.frames++; st.js += P.cpu; if (!(_hq && _hq.ready)) st.loadF = (st.loadF | 0) + 1; if (iv > st.worst) st.worst = iv; if (fps < st.minFps) st.minFps = fps;   // (loadF: a frame under the load card)
+            st.lastAt = t0; st.frames++; st.js += P.cpu; if (D.fightAt && t0 - D.fightAt < 6000) { st.fight = true; if (D.actAt && Math.abs(D.actAt - D.fightAt) < 6000) st.lay = D.actMs; } else if (_hq && !_hq.ready) st.loadF = (st.loadF | 0) + 1; if (iv > st.worst) st.worst = iv; if (fps < st.minFps) st.minFps = fps;   // (loadF: a frame under the load card)
             var M = P.parts; if (M) for (var pk in M) st.parts[pk] = (st.parts[pk] || 0) + M[pk];
             var S2 = P.sub; if (S2) for (var sk in S2) st.parts['> ' + sk] = (st.parts['> ' + sk] || 0) + S2[sk];
         } else if (D.st) { D.st.calm = true; if (t0 - D.st.lastAt > 1500) _dipClose(D, now); }
@@ -55597,7 +55612,7 @@ const ThreeRenderer = (function () {
             var tp = (st.top || (function () { var t = []; for (var k in st.parts) t.push([k, st.parts[k]]); t.sort(function (a, b) { return b[1] - a[1]; }); return t.slice(0, 4); })()).map(function (x) { return x[0] + ' ' + Math.round(x[1]); }).join(', ');
             if (open) { var c1 = _dipCounters(); d = { rec: c1.rec - st.c0.rec, ep: c1.ep - st.c0.ep, pb: c1.pb - st.c0.pb, pp: c1.pp - st.c0.pp, fr: c1.fr - st.c0.fr, add: c1.add - st.c0.add, ld: c1.ld - st.c0.ld }; }
             var hap = []; if (d.rec) hap.push(d.rec + ' re-recorded'); if (d.ep) hap.push('epoch moved ' + d.ep); if (d.pb) hap.push(d.pb + ' shader builds'); if (d.pp) hap.push(d.pp + ' new pipelines'); if (d.fr) hap.push(d.fr + ' GPU buffers freed'); if (d.add) hap.push(d.add + ' objects added'); if (d.ld) hap.push(d.ld + ' models loaded');
-            L.push('  ' + st.at + 'Z · ' + ((st.len != null ? st.len : st.lastAt - st.t) / 1000).toFixed(1) + ' s · ' + st.minFps + ' FPS · ' + Math.round(st.worst) + ' ms · ' + st.frames + ' frames, JS ' + Math.round(st.js) + ' ms · at ' + st.where + (st.whereEnd && st.whereEnd !== st.where ? ' → ' + st.whereEnd : '') + (open ? ' (still going)' : '') + (st.loadF ? ' · LOADING (' + (st.loadF >= st.frames ? 'all' : st.loadF + ' of ' + st.frames) + ' frames under the load card)' : '') + ' · ' + (tp || 'no parts timed') + ' · ' + (hap.length ? hap.join(', ') : 'nothing loaded or rebuilt'));
+            L.push('  ' + st.at + 'Z · ' + ((st.len != null ? st.len : st.lastAt - st.t) / 1000).toFixed(1) + ' s · ' + st.minFps + ' FPS · ' + Math.round(st.worst) + ' ms · ' + st.frames + ' frames, JS ' + Math.round(st.js) + ' ms · at ' + st.where + (st.whereEnd && st.whereEnd !== st.where ? ' → ' + st.whereEnd : '') + (open ? ' (still going)' : '') + (st.fight ? ' · FIGHT START' + (st.lay != null ? ' (its scene was laid in ' + st.lay + ' ms, outside the frames)' : '') : '') + (st.loadF ? ' · LOADING (' + (st.loadF >= st.frames ? 'all' : st.loadF + ' of ' + st.frames) + ' frames under the load card)' : '') + ' · ' + (tp || 'no parts timed') + ' · ' + (hap.length ? hap.join(', ') : 'nothing loaded or rebuilt'));
         });
         return L;
     }
@@ -56339,6 +56354,15 @@ const ThreeRenderer = (function () {
         else setTimeout(_lensBoot, 0);
     }
     function renderFrame() {
+        /* THE FIGHT'S START IS LOGGED: the dip log ran in the walk's frame only, so a fight's dips (and the switch into it) were never in
+           "Dips this session". A fight's frames are logged the same way now. Off: window.EW_DIP_FIGHT_SKIP */
+        if (active && !_hq && renderer && scene && !(typeof window !== 'undefined' && window.EW_DIP_FIGHT_SKIP)) {
+            var t0 = performance.now();
+            if (_lens) _lensBegin(t0);
+            _dipBegin(t0);
+            try { return _renderFrameBody(); }
+            finally { try { _dipEnd(); } catch (eD) { _dip.cur = null; } if (_lens) _lensEnd(); }
+        }
         if (_lens) return _lensRun(_renderFrameBody);
         return _renderFrameBody();
     }
@@ -78103,8 +78127,11 @@ const ThreeRenderer = (function () {
             }
             return W;
         };
+        var LANES = (E.seamRoads !== false && !(typeof window !== 'undefined' && window.EW_HQ_NO_SEAM_ROADS)) ? (room.doors || []).filter(function (d) { return d && d.way === 'open' && /^[nsew]$/.test(d.wall || '') && isFinite((d.wall === 'n' || d.wall === 's') ? +d.x : +d.z); }).map(function (d) { return { side: d.wall, at: (d.wall === 'n' || d.wall === 's') ? +d.x : +d.z, hw: ((d.passage && +d.passage.w) || 6) / 2 }; }) : null;
+        if (LANES && !LANES.length) LANES = null;
         var worldW = function (x, z, dist, wob) {
             var W = { mountain: 0, forest: 0, desert: 0, coast: 0, scrub: 0, mesa: 0, grass: 0, snow: 0 };
+            var x00 = x, z00 = z;   // the point itself (the kinds below are read at a wandered spot; a seam's lane is not)
             if (WANDER && wob) { var k = Math.min(26, (dist || 0) * 0.45); x += wob * k; z += Math.max(-1, Math.min(1, (_hqEdgeSoft(x / 95 + 31.7, z / 95 + 12.2) - 0.5) * 3.2)) * k; }
             var fx = OW.wx + (x + OW.hw) / 42 - 0.5, fy = OW.wy + (z + OW.hd) / 42 - 0.5, ix = Math.floor(fx), iy = Math.floor(fy);
             var u = sm((fx - ix - 0.3) / 0.4), v = sm((fy - iy - 0.3) / 0.4);
@@ -78121,6 +78148,14 @@ const ThreeRenderer = (function () {
                 if (any) W.sh = SH;
             }
             wayOn(W, x, z);   // THE WAY ON (above)
+            /* THE ROAD OF THE NEXT ROOM RUNS ON: no rock table and no range stands on a seam's road, the land's whole reach (the road rode the land up a
+               mesa's face 200 m out): in the road's lane a table lies down as open sand and a range as a pass floor, easing back over 22 m to each side */
+            if (LANES) for (var lj = 0; lj < LANES.length; lj++) {
+                var lq = LANES[lj], lqh = (lq.side === 'n' || lq.side === 's'), lqLat = Math.abs((lqh ? x00 : z00) - lq.at), lqOut = lq.side === 'n' ? R.z0 - z00 : lq.side === 's' ? z00 - R.z1 : lq.side === 'w' ? R.x0 - x00 : x00 - R.x1;
+                if (lqOut < -1 || lqLat > lq.hw + 34) continue;
+                var t2 = 1 - sm((lqLat - lq.hw - 10) / 22);
+                if (t2 > 0) { W.way = Math.max(W.way || 0, t2 * (W.mountain > 0 ? 1 : 0)); W.desert += W.mesa * t2; W.mesa *= 1 - t2; }
+            }
             return W;
         };
         /* a side's kinds at a point along it (x for n / s, z for w / e); `dist` = how far past the room, `wob` = the point's own wander (-1 … 1) */
@@ -78211,11 +78246,65 @@ const ThreeRenderer = (function () {
                 y += W.grass * ((e2 + lift) * (1 - kg) + (e2 * (1 - 0.6 * sm((d - 30) / 160)) + 0.45 + rollG) * kg); }
             if (W.snow > 0) { var kn = sm(d / 14), rollS = 2.4 * _hqEdgeFbm(x / 70 + 9.4, z / 70 + 3.6) * sm(d / 40) + 13 * _hqEdgeFbm(x / 190 + 4.2, z / 190 + 6.1) * sm((d - 90) / 240);
                 y += W.snow * ((e2 + lift) * (1 - kn) + (e2 * (1 - 0.6 * sm((d - 30) / 160)) + 0.45 + rollS) * kn); }
+            /* THE GATE'S LANE IS LEVEL (2026-11-22, THE ROAD OF THE NEXT ROOM RUNS ON): past an open seam the walker goes on 6 m at the gate's own floor
+               height and the road past the line lies there, so in the seam's lane the land is the gate's floor (no lift, no ditch, no dune through the
+               road) for 10 m, easing back to its own shape by 26 m out and 14 m to each side */
+            if (LANES && d > 0.01) for (var li = 0; li < LANES.length; li++) {
+                var ln0 = LANES[li], lhz = (ln0.side === 'n' || ln0.side === 's'), llat = Math.abs((lhz ? x : z) - ln0.at), lout = ln0.side === 'n' ? R.z0 - z : ln0.side === 's' ? z - R.z1 : ln0.side === 'w' ? R.x0 - x : x - R.x1;
+                if (lout < 0 || lout > 26 || llat > ln0.hw + 14) continue;
+                var lk = (1 - sm((llat - ln0.hw - 4) / 10)) * (1 - sm((lout - 10) / 16));
+                if (lk > 0) y = y * (1 - lk) + (eH - 0.14) * lk;
+            }
             return { y: y, W: W, d: d, eH: eH, land: (landK && W.mountain > 0.6) ? landK : null, mesa: mesaT, side: (ez <= 1e-6 || ex > ez) ? kx : kz };
         };
         return { R: R, at: at, sheets: sheets, blend: BLEND, seaY: seaY, reach: +E.reach || 440, world: OW ? { sea: OW.sea } : null };
     }
     /* a room whose land past the edge is THE NATURAL EDGES' (no outer ground of the field's sheet, no sea sheet past the field: the land brings its own) */
+    /* THE ROAD AT A GATE (2026-11-22, THE ROAD OF THE NEXT ROOM RUNS ON): what a room has painted across an open wall seam, read off its own paint sheet
+       on its last row of squares: the run of painted squares the seam stands on (a road: 1 to 14 squares, painted three rows deep), as bands of one sheet
+       each (`a`, `b` = metres off the seam's middle, along the wall), and the room's paint lines that reach the wall there (solid) or beat towards it
+       (dashed). null = no road painted at this gate. Read once a door (cached on the row). */
+    var HQ_SEAM_TINT = {};   // a sheet's tint past the line, where the bare sheet does not match the room's own lit ground (none needed so far: 0xa08c78 on the dirt read far darker than the town's street)
+    var _hqSeamSecMemo = new WeakMap();
+    function _hqSeamSection(room, door) {
+        if (_hqSeamSecMemo.has(door)) return _hqSeamSecMemo.get(door);
+        var out = null;
+        try {
+            var T = room.terrain || {}, p = T.paint, S = room.shell || {};
+            if (p && p.d && p.pal && p.nx > 2 && p.nz > 2) {
+                var bin = atob(p.d), ns = (door.wall === 'n' || door.wall === 's'), N = ns ? p.nx : p.nz, a0 = ns ? p.x0 : p.z0, at = ns ? +door.x : +door.z, res = p.res;
+                var cell = function (c, depth) { if (c < 0 || c >= N) return 0; var i, j; if (ns) { i = c; j = (door.wall === 'n') ? depth : p.nz - 1 - depth; } else { j = c; i = (door.wall === 'w') ? depth : p.nx - 1 - depth; } return bin.charCodeAt(j * p.nx + i) || 0; };
+                var c0 = Math.round((at - a0) / res), cc = null;
+                for (var t = 0; t <= 3 && cc == null; t++) { if (cell(c0 + t, 0)) cc = c0 + t; else if (cell(c0 - t, 0)) cc = c0 - t; }
+                if (cc != null) {
+                    var lo = cc, hi = cc; while (cell(lo - 1, 0) && cc - lo < 16) lo--; while (cell(hi + 1, 0) && hi - cc < 16) hi++;
+                    var deepN = 0; for (var c = lo; c <= hi; c++) if (cell(c, 1) && cell(c, 2)) deepN++;
+                    if (hi - lo + 1 <= 14 && deepN >= (hi - lo + 1) * 0.6) {
+                        var bands = [];
+                        for (var c2 = lo; c2 <= hi; c2++) { var key = p.pal[cell(c2, 0) - 1], x0 = a0 + c2 * res - res / 2 - at, last = bands[bands.length - 1];
+                            if (last && last.key === key) last.b = x0 + res; else bands.push({ a: x0, b: x0 + res, key: key, tint: HQ_SEAM_TINT[key] }); }
+                        var A = bands[0].a, B = bands[bands.length - 1].b, lines = [], half = ns ? (S.d || 0) / 2 : (S.w || 0) / 2, sgn = (door.wall === 'n' || door.wall === 'w') ? -1 : 1;
+                        (T.marks || []).forEach(function (m) {
+                            if (!m || m.k !== 'line') return;
+                            var u0 = ns ? m.z0 : m.x0, u1 = ns ? m.z1 : m.x1, v0 = ns ? m.x0 : m.z0, v1 = ns ? m.x1 : m.z1;
+                            if (Math.abs(v1 - v0) > 0.4) return;
+                            var off = (v0 + v1) / 2 - at; if (off < A - 0.3 || off > B + 0.3) return;
+                            var gap = half - Math.max(u0 * sgn, u1 * sgn), L = Math.abs(u1 - u0);   // how far short of the wall its far end stops
+                            if (gap < 2.5 && L > 14) lines.push({ off: off, color: m.color, w: m.w || 0.16 });
+                            else if (gap < 24 && L >= 2 && L <= 14 && !lines.some(function (q) { return Math.abs(q.off - off) < 0.4; })) lines.push({ off: off, color: m.color, w: m.w || 0.14, on: L, period: 2 * L, start: Math.max(0, L - gap) });
+                        });
+                        /* a paved road that reaches the wall with no paint lines of its own (a raised highway's lines are its deck's): the plain set, a
+                           white line inside each edge, yellow down the middle, a dashed white line between lanes */
+                        if (!lines.length) { var pv = bands.filter(function (o) { return /^urban:Road/.test(o.key || ''); }); if (pv.length) { var pa0 = pv[0].a, pb0 = pv[pv.length - 1].b, pw = pb0 - pa0, mid = (pa0 + pb0) / 2;
+                            if (pw >= 6.5) { lines.push({ off: mid - 0.16, color: 0xe8b830, w: 0.14 }, { off: mid + 0.16, color: 0xe8b830, w: 0.14 }); if (pw >= 10) { lines.push({ off: pa0 + 0.5, color: 0xf0f0f0, w: 0.14 }, { off: pb0 - 0.5, color: 0xf0f0f0, w: 0.14 }); for (var lo2 = 3.5; lo2 < pw / 2 - 2; lo2 += 3.5) lines.push({ off: mid - lo2, color: 0xf0f0f0, w: 0.14, on: 7, period: 14 }, { off: mid + lo2, color: 0xf0f0f0, w: 0.14, on: 7, period: 14 }); } } } }
+                        out = { a: A, b: B, bands: bands, lines: lines };
+                    }
+                }
+            }
+        } catch (e) { out = null; }
+        _hqSeamSecMemo.set(door, out);
+        return out;
+    }
     function _hqEdgeLandOn(room) { return !!(room && room.terrain && room.terrain.edges && room.shell && room.shell.open && !(typeof window !== 'undefined' && window.EW_HQ_NO_EDGE_LAND)); }
     function _hqBuildEdgeLand(room, info, G, TM, plantTree, fluidMatFor) {
         if (!_hqEdgeLandOn(room)) return;
@@ -78371,30 +78460,88 @@ const ThreeRenderer = (function () {
            land's own height under its middle line, level across, on a low bank of earth where the land falls away to one side; `line` = a paint line
            down its middle (0xRRGGBB). Nobody walks it: it is the land's, like the land. No tree of the land stands on it (below). */
         var ROADS = Array.isArray(E.roads) ? E.roads.filter(function (q) { return q && /^[nsew]$/.test(q.side) && isFinite(+q.at); }) : [];
+        /* THE ROAD OF THE NEXT ROOM RUNS ON (2026-11-22, mondo: "Every single entrance/exit in the game needs to look good and natural"): every open seam on
+           a wall (a One World gate: `way: 'open'`) draws the road past its line by itself, no row needed. What lies past the line is THE NEXT ROOM'S ROAD AS
+           THAT ROOM PAINTS IT AT ITS OWN GATE (_hqSeamSection: its sheets square for square across the road, its paint lines, solid and dashed), so asphalt stays
+           asphalt, dirt stays dirt and a median stays a median; where the next room has painted no road at its gate, this room's own road runs on. Level with
+           the gate's floor for the first metres (the walker crosses there), then on the land. A written `edges.roads` row at the same place wins.
+           `edges.seamRoads: false` = none for a room; `EW_HQ_NO_SEAM_ROADS` = none anywhere. */
+        if (E.seamRoads !== false && !(typeof window !== 'undefined' && window.EW_HQ_NO_SEAM_ROADS)) (room.doors || []).forEach(function (d) {
+            try {
+                if (!d || d.way !== 'open' || !/^[nsew]$/.test(d.wall || '')) return;
+                var ns0 = (d.wall === 'n' || d.wall === 's'), at0 = ns0 ? +d.x : +d.z; if (!isFinite(at0)) return;
+                if (ROADS.some(function (q) { return q.side === d.wall && Math.abs(+q.at - at0) < (+q.w || 7) / 2 + 8; })) return;
+                var far = d.action && d.action.room && DOOR_HQ.rooms[d.action.room], fd = far && (far.doors || []).filter(function (o) { return o && o.id === d.action.at; })[0];
+                var sec = (fd && /^[nsew]$/.test(fd.wall || '')) ? _hqSeamSection(far, fd) : null; if (!sec) sec = _hqSeamSection(room, d);
+                if (!sec) return;
+                /* THE ROAD NARROWS, IT DOES NOT STOP: where this room's road at the gate is wider than the next room's (a six-lane highway that comes to a
+                   two-lane gate road), its own surface runs on past the line as an apron that closes in to the narrower road over 45 m */
+                var own = _hqSeamSection(room, d), apron = null;
+                if (own && sec !== own && (own.b - own.a) > (sec.b - sec.a) + 3) { var bk = null, bwid = 0; own.bands.forEach(function (o) { if (o.b - o.a > bwid && /Road|asphalt/i.test(o.key || '')) { bwid = o.b - o.a; bk = o; } }); if (!bk) own.bands.forEach(function (o) { if (o.b - o.a > bwid) { bwid = o.b - o.a; bk = o; } });
+                    var ia = 0, ib = own.bands.length - 1; while (ia < ib && own.bands[ia].key !== bk.key) ia++; while (ib > ia && own.bands[ib].key !== bk.key) ib--;   // the road's own surface, without its dirt shoulders
+                    apron = { a: own.bands[ia].a, b: own.bands[ib].b, key: bk.key, tint: bk.tint, len: 45 }; }
+                ROADS.push({ side: d.wall, at: at0, w: Math.max(sec.b - sec.a, apron ? apron.b - apron.a : 0), bands: sec.bands, lines: sec.lines, seam: true, apron: apron });
+            } catch (e) { console.warn('[HQ] a seam road failed', e); }
+        });
         var roadPt = function (q, dd, off) { var a = +q.at + off; return q.side === 'w' ? [R.x0 - dd, a] : q.side === 'e' ? [R.x1 + dd, a] : q.side === 'n' ? [a, R.z0 - dd] : [a, R.z1 + dd]; };
         ROADS.forEach(function (q, qi) {
             try {
                 var w = +q.w || 7, len = Math.min(+q.len || F.reach, F.reach), stepR = 5, n = Math.max(2, Math.round(len / stepR)), hw = w / 2;
-                var pos = [], uv = [], idx = [], pos2 = [], idx2 = [], pos3 = [], idx3 = [], ys = [];
-                var fromR = Math.max(0, +q.from || 0);   /* `from` (2026-11-22) = the road begins that far past the line (it comes off a causeway the room draws itself) */
-                for (var k = 0; k <= n; k++) { var dd = fromR + (len - fromR) * k / n - ((k || fromR) ? 0 : 0.6), c0 = roadPt(q, dd, 0), l0 = roadPt(q, dd, -hw), r0 = roadPt(q, dd, hw); ys.push(Math.max(F.at(c0[0], c0[1]).y, F.at(l0[0], l0[1]).y, F.at(r0[0], r0[1]).y)); }
+                var fromR = Math.max(0, +q.from || 0);   /* `from` (2026-11-22) = the road begins that far past the line (it comes off a causeway the room draws itself); `lift` = how high it rides over the land (a dirt road lies low: 0.12); `tint` = the colour its sheet draws at */
+                var bands = (q.bands && q.bands.length) ? q.bands : [{ a: -hw, b: hw, key: q.key || 'urban:RoadGeneric1a', tint: q.tint }];
+                var lines = q.lines || ((q.line != null) ? [{ off: 0, color: q.line, w: 0.18 }] : []);
+                var A0 = bands[0].a, B0 = bands[bands.length - 1].b, ys = [], dOf = function (k) { return fromR + (len - fromR) * k / n - ((k || fromR) ? 0 : 0.6); };
+                for (var k = 0; k <= n; k++) { var dd = dOf(k), yk = -1e9; for (var sI = 0; sI <= 4; sI++) { var c0 = roadPt(q, dd, A0 + (B0 - A0) * sI / 4); yk = Math.max(yk, F.at(c0[0], c0[1]).y); } ys.push(yk); }
+                /* NO ROAD INTO THE SEA: a seam's road ends where the land past the line turns to coast (the rule: never water across a road) */
+                if (q.seam) { for (var kc2 = 1; kc2 <= n; kc2++) { var pc2 = roadPt(q, dOf(kc2), (A0 + B0) / 2), Pc2 = F.at(pc2[0], pc2[1]); if ((Pc2.W.coast || 0) > 0.35) { n = kc2 - 1; break; } } if (n < 2) return; len = len * n / (ys.length - 1); ys.length = n + 1; }
                 for (var sm2 = 0; sm2 < 3; sm2++) for (var k2 = 1; k2 < n; k2++) ys[k2] = Math.max(ys[k2], (ys[k2 - 1] + ys[k2 + 1]) / 2);   // no dip between two crests: the road bridges it on its bank
-                if (!fromR) ys[0] = Math.max(ys[0], F.at(roadPt(q, 0, 0)[0], roadPt(q, 0, 0)[1]).eH || 0);   // at the line itself: the room's own ground
-                for (var k3 = 0; k3 <= n; k3++) {
-                    var d3 = fromR + (len - fromR) * k3 / n - ((k3 || fromR) ? 0 : 0.6), L3 = roadPt(q, d3, -hw), R3 = roadPt(q, d3, hw), y3 = ys[k3] + ((q.lift != null) ? +q.lift : 0.2 + Math.min(0.5, d3 / 30));   /* `lift` (2026-11-22) = how high the road rides over the land (a dirt road lies low: 0.12; default = a causeway, 0.2 to 0.7) */
-                    pos.push(L3[0] * U, y3 * U, L3[1] * U, R3[0] * U, y3 * U, R3[1] * U); uv.push(0, d3 * U / TM, w * U / TM, d3 * U / TM);
-                    var L4 = roadPt(q, d3, -hw - 2.2), R4 = roadPt(q, d3, hw + 2.2), yb = y3 - 3.2;
-                    pos2.push(L3[0] * U, y3 * U, L3[1] * U, L4[0] * U, yb * U, L4[1] * U, R3[0] * U, y3 * U, R3[1] * U, R4[0] * U, yb * U, R4[1] * U);
-                    if (q.line != null) { var La = roadPt(q, d3, -0.09), Lb = roadPt(q, d3, 0.09); pos3.push(La[0] * U, (y3 + 0.02) * U, La[1] * U, Lb[0] * U, (y3 + 0.02) * U, Lb[1] * U); }
-                    if (k3 > 0) { var a3 = (k3 - 1) * 2; idx.push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2); idx3.push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2);
-                        var b3 = (k3 - 1) * 4; idx2.push(b3, b3 + 1, b3 + 4, b3 + 1, b3 + 5, b3 + 4, b3 + 2, b3 + 6, b3 + 3, b3 + 3, b3 + 6, b3 + 7); }
-                }
+                var eH0 = F.at(roadPt(q, 0, (A0 + B0) / 2)[0], roadPt(q, 0, (A0 + B0) / 2)[1]).eH || 0;
+                if (!fromR) ys[0] = Math.max(ys[0], eH0);   // at the line itself: the room's own ground
+                /* a seam's road: level with the gate's floor for 9 m (the walker crosses 6 m out, _hqTickPassages), then onto the land over 26 m */
+                var yAt = function (k) { var d = dOf(k), nat = ys[k] + ((q.lift != null) ? +q.lift : 0.2 + Math.min(0.5, d / 30)); if (!q.seam) return nat; var t = (d - 9) / 26; t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return (eH0 + 0.1) * (1 - t) + nat * t; };
                 var mkR = function (P3, I3, UV3, mat) { var g3 = new THREE.BufferGeometry(); g3.setAttribute('position', new THREE.Float32BufferAttribute(P3, 3)); if (UV3) g3.setAttribute('uv', new THREE.Float32BufferAttribute(UV3, 2)); g3.setIndex(I3); g3.computeVertexNormals(); g3.computeBoundingSphere();
                     var m3 = new THREE.Mesh(g3, mat); m3.position.y = 0.2; m3.receiveShadow = false; m3.castShadow = false; m3.renderOrder = 1; m3._ew_hqPart = 'floor'; m3._ew_hqOuter = true; m3._ew_hqEdgeLand = 'road' + qi; return m3; };
                 var gR = new THREE.Group(); gR.name = 'hq_edge_road'; gR._ew_hqEdgeLand = 'road' + qi;
+                /* the bank under both sides */
+                var pos2 = [], idx2 = [];
+                for (var k3 = 0; k3 <= n; k3++) {
+                    var d3 = dOf(k3), y3 = yAt(k3), L3 = roadPt(q, d3, A0), R3 = roadPt(q, d3, B0), L4 = roadPt(q, d3, A0 - 2.2), R4 = roadPt(q, d3, B0 + 2.2), yb = y3 - 3.2;
+                    pos2.push(L3[0] * U, y3 * U, L3[1] * U, L4[0] * U, yb * U, L4[1] * U, R3[0] * U, y3 * U, R3[1] * U, R4[0] * U, yb * U, R4[1] * U);
+                    if (k3 > 0) { var b3 = (k3 - 1) * 4; idx2.push(b3, b3 + 1, b3 + 4, b3 + 1, b3 + 5, b3 + 4, b3 + 2, b3 + 6, b3 + 3, b3 + 3, b3 + 6, b3 + 7); }
+                }
                 gR.add(mkR(pos2, idx2, null, new THREE.MeshLambertMaterial({ color: 0x6e5a44, side: THREE.DoubleSide })));
-                gR.add(mkR(pos, idx, uv, new THREE.MeshLambertMaterial({ map: _hzTex(q.key || 'urban:RoadGeneric1a') || null, color: (q.tint != null) ? q.tint : 0xffffff, side: THREE.DoubleSide })));   /* `tint` (2026-11-22) = the colour the sheet draws at in the room it leaves (a dirt road's own brown) */
-                if (pos3.length) gR.add(mkR(pos3, idx3, null, new THREE.MeshLambertMaterial({ color: q.line, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })));
+                if (q.apron) { var ap = q.apron, pa = [], ua = [], ix = [], an = Math.max(2, Math.round(ap.len / stepR));
+                    for (var ka = 0; ka <= an; ka++) { var da = ap.len * ka / an - (ka ? 0 : 0.6), ta = ka / an, a1 = ap.a + (A0 - ap.a) * ta, b1 = ap.b + (B0 - ap.b) * ta, kf0 = Math.max(0, Math.min(n - 1, Math.floor(da / len * n))), fr0 = Math.max(0, da / len * n - kf0), ya = yAt(kf0) * (1 - fr0) + yAt(kf0 + 1) * fr0 - 0.04, La2 = roadPt(q, da, a1), Ra2 = roadPt(q, da, b1);
+                        pa.push(La2[0] * U, ya * U, La2[1] * U, Ra2[0] * U, ya * U, Ra2[1] * U); ua.push(a1 * U / TM, da * U / TM, b1 * U / TM, da * U / TM);
+                        if (ka > 0) { var aa = (ka - 1) * 2; ix.push(aa, aa + 1, aa + 2, aa + 1, aa + 3, aa + 2); } }
+                    gR.add(mkR(pa, ix, ua, new THREE.MeshLambertMaterial({ map: _hzTex(ap.key) || null, color: (ap.tint != null) ? ap.tint : 0xffffff, side: THREE.DoubleSide }))); }
+                /* the road: one ribbon a band, each in its own sheet (a road of one sheet is one band) */
+                bands.forEach(function (bd) {
+                    var pos = [], uv = [], idx = [], bw = bd.b - bd.a;
+                    for (var kb = 0; kb <= n; kb++) {
+                        var db = dOf(kb), yb2 = yAt(kb), Lb = roadPt(q, db, bd.a), Rb = roadPt(q, db, bd.b);
+                        pos.push(Lb[0] * U, yb2 * U, Lb[1] * U, Rb[0] * U, yb2 * U, Rb[1] * U); uv.push(bd.a * U / TM, db * U / TM, bd.b * U / TM, db * U / TM);
+                        if (kb > 0) { var a3 = (kb - 1) * 2; idx.push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2); }
+                    }
+                    if (bw > 0.01) gR.add(mkR(pos, idx, uv, new THREE.MeshLambertMaterial({ map: _hzTex(bd.key || 'urban:RoadGeneric1a') || null, color: (bd.tint != null) ? bd.tint : 0xffffff, side: THREE.DoubleSide })));
+                });
+                /* the paint: a solid line runs the whole way, a dashed one in its own beat */
+                var byCol = {};
+                lines.forEach(function (ln) {
+                    var o = byCol[ln.color] || (byCol[ln.color] = { pos: [], idx: [] }), lw = (+ln.w || 0.16) / 2, off = +ln.off || 0;
+                    var seg = function (d0, d1) {
+                        var k0 = Math.max(0, Math.min(n, d0 / len * n)), k1 = Math.max(0, Math.min(n, d1 / len * n)), ks = [k0];
+                        for (var kk = Math.floor(k0) + 1; kk < k1; kk++) ks.push(kk); ks.push(k1);
+                        for (var i5 = 0; i5 < ks.length; i5++) {
+                            var kf = ks[i5], ka = Math.min(n - 1, Math.floor(kf)), fr = kf - ka, yy = yAt(ka) * (1 - fr) + yAt(ka + 1) * fr + 0.03, dq = len * kf / n, La = roadPt(q, dq, off - lw), Lb2 = roadPt(q, dq, off + lw), base = o.pos.length / 3;
+                            o.pos.push(La[0] * U, yy * U, La[1] * U, Lb2[0] * U, yy * U, Lb2[1] * U);
+                            if (i5 > 0) o.idx.push(base - 2, base - 1, base, base - 1, base + 1, base);
+                        }
+                    };
+                    if (ln.on > 0 && ln.period > ln.on) { for (var dz = (+ln.start || 0); dz < Math.min(len, 260); dz += ln.period) seg(dz, Math.min(len, dz + ln.on)); }
+                    else seg(0, len);
+                });
+                Object.keys(byCol).forEach(function (ck) { var o = byCol[ck]; if (o.idx.length) gR.add(mkR(o.pos, o.idx, null, new THREE.MeshLambertMaterial({ color: +ck, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }))); });
                 G.add(gR);
             } catch (e) { console.warn('[HQ] an edge road failed', e); }
         });

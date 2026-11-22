@@ -14150,6 +14150,39 @@ and press e ... i can't see the road going out, the road just stops and its all 
   into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
   the SECOND room of a run; the WALK line prints before that.
 
+## THE ROAD OF THE NEXT ROOM RUNS ON — every open seam shows its road past the line; the Desert's eleven gates have a road (2026-11-22, mondo: "Every single entrance/exit in the game needs to look good and natural")
+The Desert thread of that order (the Circus, Western Town, Area 51, Giza, DH1-DH4, R9's south end, R8's and R10's Desert ends, R11's west end). What was wrong at all 24 gate ends:
+a highway stopped dead at the room's line (19 m of strip, buried under the land), and no district had a road to any of its gates (One World stood the seams on the route's
+own line; the districts' own roads leave their rooms somewhere else).
+- **THE ENGINE, EVERY ROOM (three-renderer.js `_hqBuildEdgeLand`, `_hqSeamSection`):** an open seam on a wall (`way: 'open'`, wall n / s / e / w) draws a road past its line by
+  itself, the land's whole reach. WHAT IT DRAWS IS THE NEXT ROOM'S ROAD AS THAT ROOM PAINTS IT AT ITS OWN GATE: `_hqSeamSection(room, door)` reads the room's paint sheet on its
+  last row of squares across the seam (a run of 1 to 14 painted squares, three rows deep) as bands of one sheet each, and the room's `marks` lines that reach the wall (solid) or
+  beat towards it (dashed, in their own beat). So asphalt stays asphalt, a median stays a median, dirt stays dirt, and both sides of a gate agree. Where the next room painted no
+  road at its gate, this room's own road runs on. A paved road with no lines of its own (R9: its lines are its deck's) gets the plain set. Where this room's road is wider than
+  the next one's (six lanes into a two-lane gate road) its own surface runs on as an apron that closes in over 45 m. A written `edges.roads` row at the same place wins.
+  `edges.seamRoads: false` = none for a room; `EW_HQ_NO_SEAM_ROADS` = none anywhere. `HQ_SEAM_TINT` = a sheet's tint past the line (empty: the bare sheets match).
+- **THE GATE'S LANE IS LEVEL (`_hqEdgeLandFn` LANES):** past an open seam the land is the gate's floor (no lift, no ditch) for 10 m, back to its own shape by 26 m; the road
+  lies level with the gate for 9 m (the walker crosses 6 m out), then climbs onto the land.
+- `edges.roads` rows take `bands: [{ a, b, key, tint }]` and `lines: [{ off, color, w, on, period, start }]` now (the old `w / key / line` row is one band and one line).
+- **THE DESERT'S GATES (bake-desert.js THE ROAD FROM THE GATE):** a seam row may say `road: { sheet, lanes, len, over, rects, lines, move }`: the road's squares across the gate
+  are painted from the wall in until they meet the district's own painted ground; `lanes: [c0, c1]` threads it between what stands there (the seam then stands on the road's
+  middle); `move: [[key, x, z, toX, toZ]]` stands a prop that was on the road beside it (nothing is dropped). `EW_STUBMAP=1 node bake-desert.js --dry-run` prints each district's
+  squares with what stands on them (p prop, W wall, r rail, B building, h plateau, # the new road) and a STUB line for anything left on a road. The eleven: the Circus W / E / N
+  (asphalt, two lanes, a yellow line; the backstage things by the north gate stood one square east), Western Town N (Main Street's dirt up to the highway), the Ranch Road's gate
+  (dirt beside Boot Hill's fence), Area 51 W (asphalt to the base road) and E (an asphalt road along the north fence to the guard post), Giza W (stone through the caravan
+  camp to the Tomb Door side), the Coast Road's gate (packed dirt over the dig's footbridge), the Causeway's gate (stone).
+- **A DISTRICT ROAD THAT LEAVES ITS ROOM WHERE NO GATE STANDS** gets an `edges.roads` row from the bake (a run of 1 to 3 road squares on the last row, four rows deep): the
+  circus lot's south road, the town's west and south roads, Area 51's north road, Giza's oasis track. They lead to no room.
+- **NO TABLE AND NO RANGE ON THE ROAD (`_hqEdgeLandFn` worldW, LANES):** in a seam's lane a mesa lies down as open sand and a range as a pass floor, the land's whole reach,
+  easing back over 22 m aside (the highway rode up a rock table 200 m out of Western Town). The lane is tested at the point itself, not at the wandered spot the kinds are
+  read at. The road stops where the land turns to sea (`W.coast > 0.35`): no road over water.
+- **THE SIGN AT THE GATE (bake-desert.js):** a seam row's `sign: 'WORDS'` = a small green board on two tall posts beside the road two squares inside the line, facing the one who
+  leaves, the place in a few words (GIZA, AREA 51, THE CIRCUS, WESTERN TOWN, DISASTER CITY); `post: true` = the pack's wooden `signpost` (the dirt roads: Ranch Road, Coast
+  Road, Causeway). `signSide: -1` = the traveller's left, `signIn` = squares inside the line.
+- **THE LAST ROW WEARS ITS NEIGHBOUR (`_hqGrassCell`, `_hqFloraCell`):** the ground lattice's outer ring is never painted, so a route whose floor is grass grew a band of grass
+  across its own road at the room's line (R9, R8, R10, R11 ends). An unpainted ring node now reads the node one row in, in every room.
+- Checked in the browser, every gate walked both ways (24 walks): the thread's pictures are in `/mnt/project-files/desert-gates/`.
+
 ## THE SEAM IS THE ROAD — an open seam on a route room's wall is as wide as the road (2026-11-22, mondo: "it only works when i enter through the median")
 mondo 11-22, the Badlands Highway (`site_ow_r9`) into the Circus: "it only works when i enter through the median in the highway, which doesnt make
 sense since i wouldnt be driving in the middle of the road. Its an invisble wall where the actual road is."
@@ -14304,3 +14337,50 @@ green liquid, its glitches and puts me back on the ground, the waterfalls look m
   opaque sludge). It stops at the lay line + 0.1 now, inside the bank.
 - **THE SLUDGE'S SURFACE:** `_CALM.liquids.sludge` ripple 0.02 -> 0.05 (the calm liquid's own ripple, same colour, same sheet: nothing
   repainted). Was one flat green.
+
+## THE SOFT-LOCK FINDER + THE STRAIGHT RAISE (2026-11-22, mondo: "fell into this tiny crevice in the sewers")
+
+mondo 11-22 (the Sewers, The Culverts, a raised floor running down into a gap at a wall's foot): "immediately fell into this tiny crevice in the
+sewers. What are these??? get rid of them. they are so easy to fall into and get stuck and soft locked ... whatever building method this is,
+stop ... no tiny crevices or huge drops where there is no room to get out or move. know when to raise the terrain with a gradient on the side
+and when to just raise it straight up. this is a scenario where it needs to be raised straight up because its by a wall and so it makes this
+gap/crevice that the player can fall into. Please fix this everywhere in the game".
+
+**HIS RULE (binds every room and every bake tool):** beside a wall, a mass or an edge the ground is raised STRAIGHT UP (no run of slope, no
+gap). A gradient is only for open ground that leads somewhere walked. Any place the walker can get into has a walked way out.
+
+**WHAT MADE THEM (three shared causes, all in the engine or a tool, none in one room's rows):**
+- **THE STRAIGHT RAISE** (data.js `_hqTGenerate` applyRise): a MASS plan (drawn `space` rows in walls, the city, halls, ley) kept the authored
+  field under its solid. A `plateau` floor that ends at a wall met ground 0 half a node inside the wall, and the field (bilinear) ran down to
+  it: every wall of a raised floor had a sliver of slope at its foot the walker slid into (in the Sewers' top chamber: from 45.5 down to 30.5
+  in the last 30 cm before the wall, measured). Now the solid's first two rings of nodes take the height of the open ground they touch when
+  they lie more than 0.3 m under it. One rule, every mass plan.
+- **THE SHEER EDGE** (data.js `hqTerrainVoidAt`): in a room over the void (the Internet, the Astral Realm, Heaven) the void began where the
+  height fell under the lip, so the upper part of a floating tile's side was "ground": the walker stepped off, slid down to the void's line
+  and stood there. A cell with a corner in the void and a rise over a jump is the tile's side: all void (a fall). A built flight or deck
+  over it stays ground. Flights over the void keep 2.6 m or more of walk (checked on all four void rooms).
+- **NO CORRIDOR THROUGH A DRAWN WALL** (bake-labyrinth.js writes `noRescue: true`): the plan generator's guarantee cuts a corridor to any
+  door its plain walk cannot reach. In the labyrinth (ladders, one-way drops) it cut 24 of them through the brick at ground 0: strips two
+  nodes wide up to 35 m under the floor beside them (one at the Stadium Drain's door). A room whose plan is laid square for square by a tool
+  says `noRescue: true`. THE OTHER TOOLS that write `kind: 'plan', look: 'walls'` (bake-ug.js, bake-underground.js, bake-cavern.js,
+  bake-dumb.js, bake-afterlife.js) still carve: the finder prints `CARVED n` for a room where it happened; read those rooms first.
+- **A SUMP'S BRIM** (bake-labyrinth.js): a floor runs 0.6 m out over a sump's squares and the sump's bed eases down inside the liquid
+  (`bank: 1.3`), so the run down lies in the liquid: no dry lip a metre deep along the brim, no pocket in its corners.
+
+**THE FINDER:** `node find-softlocks.js --all [--jobs 4]` (every terrain room, a table by zone, each room's JSON + `_summary.md` in
+`shots/softlocks/`), `node find-softlocks.js <room id…>` (one room, every row with its x, z, y: the F3 line's numbers),
+`--zone "<ZONE>"`. It walks the room by the walker's own rule (hqTerrainFeet: step 0.62 m, jump 1.3 m, ladders) from the doors' pads:
+- TRAP = ground reached and never left again (an enclosed pit, a drop with no way back). hqTerrainTraps, the room's own grid.
+- CREVICE = a sliver BETWEEN two grid nodes at the foot of a wall / mass / edge, more than a jump under the floor beside it (the grid check
+  cannot see it). DIP = the same, 0.62 to 1.3 m (jumped out of).
+- SLOT = a strip under 1.8 m wide under a face the walker can drop off, a wall or a face on its other side (walked out of at an end, still
+  a tiny crevice).
+Only ground the walker REACHES counts (a roof nobody gets onto is nobody's crevice). Known limits: a room whose ways are floating stairs
+or lifts is under-read (Heaven: 6 nodes reached); a trap in sludge may be hauled out of (hqTerrainHaulOut); a one-way area whose only exit
+is a door without a pad reads as a trap. Each row is a place to LOOK AT, then fix by the rule above.
+
+**WHEN YOU BUILD OR CHANGE A ROOM:** run the finder on it before the PR. A new TRAP or CREVICE is a bug in the change.
+
+**THE SEWERS AFTER (11-22):** 0 traps, 0 crevices, 0 slots; 10 dips of 0.85 m, each one node, at the sumps' wall corners (jumped out of).
+Before: every wall of every raised floor, 14 traps, the 35 m strip. Proof: `/mnt/project-files/softlocks/sewers_wall_before_after.jpg`.
+THE REST OF THE WORLD: the list by zone of 11-22 is `/mnt/project-files/softlocks/softlocks_by_zone.md`.
