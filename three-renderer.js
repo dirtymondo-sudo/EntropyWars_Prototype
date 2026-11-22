@@ -47977,6 +47977,7 @@ const ThreeRenderer = (function () {
         }
         else if (_ewGpu === 'webgpu' && _ewBunOff()) s += ' · bundles off';
         if (_ewGpuInfo.noPic) s += ' · sheets with no picture ' + _ewGpuInfo.noPic + ' (first: ' + _ewGpuInfo.noPicFirst + ')';
+        if (_ewGpuInfo.thrown) s += ' · thrown renders ' + _ewGpuInfo.thrown + ' (' + (_ewGpuInfo.thrownShadow | 0) + ' shadow passes; first: ' + _ewGpuInfo.thrownFirst + ')';
         if (_ewGpuInfo.drawErrs) s += ' · skipped draws ' + _ewGpuInfo.drawErrs + ' (first: ' + _ewGpuInfo.drawErr + ')';
         if (_ewGpuInfo.errors) s += ' · GPU errors ' + _ewGpuInfo.errors + ' (first: ' + _ewGpuInfo.firstError + ')';
         return s;
@@ -52704,7 +52705,29 @@ const ThreeRenderer = (function () {
                     _ewSunStat.seen = sL.length; _ewSunStat.hid = sunHid ? sunHid.length : 0;
                 } catch (eS) { }
             }
+            /* A THROWN DRAW LEAVES NO MARK (2026-11-22): three counts its nested renders (`_callDepth`) and keys every render
+               context by that count, with no try round the draw: one draw that throws (a GPU buffer refused) left the count one
+               too high for good, so every later frame drew into new contexts and prepared every look, pipeline and recording
+               again, each frame, until the page was reloaded. What three holds for the length of a render is put back here. */
+            var tcd = this._callDepth, trc = this._currentRenderContext, tof = this._currentRenderObjectFunction, thf = this._handleObjectFunction,
+                tlc = (this.lighting && this.lighting._cache) ? this.lighting._cache.length : -1, tnf = (this._nodes && this._nodes.nodeFrame) ? this._nodes.nodeFrame.renderId : null;
             try { return rawRender.apply(this, arguments); }
+            catch (eThrown) {
+                try {
+                    if (typeof tcd === 'number') this._callDepth = tcd;
+                    this._currentRenderContext = trc; this._currentRenderObjectFunction = tof; this._handleObjectFunction = thf;
+                    if (tlc >= 0 && this.lighting._cache.length > tlc) this.lighting._cache.length = tlc;
+                    if (tnf !== null) this._nodes.nodeFrame.renderId = tnf;
+                    _ewGpuInfo.thrown = (_ewGpuInfo.thrown | 0) + 1;
+                    if (!_ewGpuInfo.thrownFirst) _ewGpuInfo.thrownFirst = (shadowPass ? 'shadow pass: ' : quad ? 'screen pass: ' : side ? 'side draw: ' : '') + String((eThrown && eThrown.message) || eThrown).slice(0, 120);
+                } catch (eT2) { }
+                /* a shadow's depth pass that throws is swallowed: three sets the scene's override material and its own draw function
+                   round that pass and puts them back after it, with no try. Thrown through, the frame's remaining draws all drew
+                   with the shadow material (a depth shader built for every sprite and prop on screen), every frame it happened.
+                   The map misses what was not drawn yet; the frame goes on. */
+                if (shadowPass) { _ewGpuInfo.thrownShadow = (_ewGpuInfo.thrownShadow | 0) + 1; return; }
+                throw eThrown;
+            }
             finally {
                 if (sunHid) for (var sj = 0; sj < sunHid.length; sj++) sunHid[sj].visible = true;
                 if (sunShown) for (var sk = 0; sk < sunShown.length; sk++) sunShown[sk].visible = false;
@@ -101516,7 +101539,6 @@ const ThreeRenderer = (function () {
         try { return rr.call(r, HS, cam2); }
         finally {
             F.inDraw = false;
-            if (typeof window !== 'undefined' && window.EW_FW_LIGHTLOG && window.EW_FW_LIGHTLOG.length < 40) { try { var lgL = r.lighting.getNode(HS).getLights(); window.EW_FW_LIGHTLOG.push((r._ew_sideRender ? 'side ' : r._ew_paneRender ? 'pane ' : 'main ') + 'cam' + cam2.id + ' m' + cam2.layers.mask + ' sh' + (r.shadowMap.enabled ? 1 : 0) + ' fog' + (HS.fog ? HS.fog.id || 1 : 0) + ' om' + (HS.overrideMaterial ? 1 : 0) + ' calls' + r.info.calls + ' [' + lgL.map(function (l) { return l.id + (l.castShadow ? 's' : ''); }).join(',') + ']'); } catch (eLg) {} }
             var ix = kids.lastIndexOf(sc); if (ix >= 0) kids.splice(ix, 1);
             HS.overrideMaterial = om; HS.matrixWorldAutoUpdate = mw;
             if (fc) { hf.color.copy(fc); if (hf.isFogExp2) hf.density = fd; else { hf.near = fn; hf.far = ff; } }
