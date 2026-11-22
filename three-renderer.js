@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-20 slow-firsts';
+    var _EW_TR_STAMP = '11-22 soft-canvas';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -48384,6 +48384,70 @@ const ThreeRenderer = (function () {
        Every sheet upload of 12 ms+ and every shader build of 20 ms+ is kept with what it was (the sheet's name / file / size /
        kind of picture; the look and what it is on) and whether it fell in a fight or the walk; the session's 16 worst print
        in the lens as "Slow first-time work". The list names what the first fight should have ready before it starts. */
+    /* THE SOFT CANVASES (2026-11-22, mondo in a fight on Firefox / Mac / WebGPU: "It dips when taking damage"; his F3: "1384 ms
+       upload · 158×168 canvas", 557, 272, 77, 53 ms the same, and "timers 63 (slowest 57 ms _popDamageFeedback)"). The 158×168
+       canvas is a unit's NAME PLATE (_pmPaint): every HP change paints it again and hands it to the GPU. Firefox keeps a 2D canvas
+       on the GPU process; three's upload (`copyExternalImageToTexture`) and every `getImageData` (the hit number's tint and side
+       edge, battle.js _hitReadDress3D) then WAIT for that process to read the canvas back, behind the frame it is busy drawing:
+       the game sleeps 50-1400 ms. Two parts: (1) on Firefox a 2D canvas made off the page (a sheet, a plate, a scratch canvas) is
+       asked for as `willReadFrequently`: it lives in the page's own memory and reading it is a copy; (2) such a canvas goes to
+       the GPU as bytes (`getImageData` + `queue.writeTexture`, which never waits), the flip and the alpha done here. The F3 line
+       "Soft canvases" counts them. Off: window.EW_NO_SOFT_CANVAS = true. Any browser: window.EW_SOFT_CANVAS = true or ?ew_softcv=1. */
+    var _ewSoftCv = { on: null, made: 0, n: 0, fb: 0, ms: 0, worst: 0 };
+    function _ewSoftCvOn() {
+        if (_ewSoftCv.on === null) {
+            try { _ewSoftCv.on = !window.EW_NO_SOFT_CANVAS && (!!window.EW_SOFT_CANVAS || /[?&]ew_softcv=1\b/.test(location.search) || /Firefox\//.test(navigator.userAgent || '')); }
+            catch (e) { _ewSoftCv.on = false; }
+        }
+        return _ewSoftCv.on;
+    }
+    (function () {
+        try {
+            if (typeof HTMLCanvasElement === 'undefined' || HTMLCanvasElement.prototype._ew_softGC) return;
+            var gc = HTMLCanvasElement.prototype.getContext;
+            HTMLCanvasElement.prototype._ew_softGC = true;
+            HTMLCanvasElement.prototype.getContext = function (kind, attrs) {
+                if (kind === '2d' && this._ewSoft === undefined) {
+                    if (!this.isConnected && !(attrs && attrs.willReadFrequently === false) && _ewSoftCvOn()) {
+                        var a = {}; if (attrs) for (var k in attrs) a[k] = attrs[k];
+                        a.willReadFrequently = true; this._ewSoft = true; _ewSoftCv.made++;
+                        return gc.call(this, kind, a);
+                    }
+                    this._ewSoft = false;
+                }
+                return gc.apply(this, arguments);
+            };
+        } catch (e) {}
+    })();
+    function _ewSoftCvSetup(r) {
+        var B = r && r.backend, U = B && B.textureUtils;
+        if (!B || !B.isWebGPUBackend || !U || U._ew_softUp || typeof U._copyImageToTexture !== 'function') return;
+        U._ew_softUp = true;
+        var cit = U._copyImageToTexture, row = null;
+        U._ew_softOrig = cit;
+        U._copyImageToTexture = function (image, textureGPU, desc, originDepth, flipY, premultiplyAlpha, mipLevel) {
+            try {
+                if (image && image._ewSoft === true && !window.EW_NO_SOFT_CANVAS && !(mipLevel > 0) && desc && desc.size && /^rgba8unorm/.test(String(desc.format))) {
+                    var w = image.width, h = image.height;
+                    if (w > 0 && h > 0 && w === desc.size.width && h === desc.size.height && w * h <= 4194304) {
+                        var t0 = performance.now(), cx = image.getContext('2d'), id = cx && cx.getImageData(0, 0, w, h), d = id && id.data;
+                        if (d) {
+                            var i, n = d.length;
+                            if (premultiplyAlpha) for (i = 0; i < n; i += 4) { var al = d[i + 3]; if (al < 255) { d[i] = d[i] * al / 255; d[i + 1] = d[i + 1] * al / 255; d[i + 2] = d[i + 2] * al / 255; } }
+                            if (flipY) {
+                                var rb = w * 4; if (!row || row.length < rb) row = new Uint8ClampedArray(rb);
+                                for (var y = 0, y2 = h - 1; y < y2; y++, y2--) { var ta = y * rb, tb = y2 * rb; row.set(d.subarray(ta, ta + rb)); d.copyWithin(ta, tb, tb + rb); d.set(row.subarray(0, rb), tb); }
+                            }
+                            B.device.queue.writeTexture({ texture: textureGPU, mipLevel: 0, origin: { x: 0, y: 0, z: originDepth || 0 } }, d, { offset: 0, bytesPerRow: w * 4, rowsPerImage: h }, { width: w, height: h, depthOrArrayLayers: 1 });
+                            var dt = performance.now() - t0; _ewSoftCv.n++; _ewSoftCv.ms += dt; if (dt > _ewSoftCv.worst) _ewSoftCv.worst = dt;
+                            return;
+                        }
+                    }
+                }
+            } catch (e) { _ewSoftCv.fb++; }
+            return cit.apply(this, arguments);
+        };
+    }
     var _ewSlow = [];
     function _ewSlowNote(ms, kind, what) {
         var e = { ms: ms, k: kind, w: what, f: active ? 'fight' : (_hq ? 'walk' : 'menu'), at: new Date().toISOString().slice(11, 19) };
@@ -48415,6 +48479,7 @@ const ThreeRenderer = (function () {
     function _ewKeepSetup(r) {
         if (r._ew_keep) return;
         r._ew_keep = true;
+        try { _ewSoftCvSetup(r); } catch (e) {}   // THE SOFT CANVASES
         var zero = function () { return 0; };
         var dbg = r.debug, N = r._nodes, P = r._pipelines, B = r.backend, off = _ewKeepOff();
         if (N && typeof N.getForRender === 'function' && !N._ew_slowT) {   // THE SLOW FIRSTS: a shader build's own time
@@ -55704,6 +55769,7 @@ const ThreeRenderer = (function () {
         try { var hl = _hq && _hq.heroLit, hs = (typeof _heroStat !== 'undefined') ? _heroStat : null; if (hl && hl.isLight && hs) L.push('Hero lamp: ' + (hs.why || 'drawn') + ' · frames held ' + hs.held + ' / drawn ' + hs.drawn + ' · in reach ' + hs.inReach + ' of ' + hs.casters + ' casters · moving ' + hs.moving + ' · sides drawn ' + hs.sidesDrawn + ' / skipped ' + hs.sidesSkipped + ' (session)' + _lensLampWhere(hl)); } catch (eH) {}   // THE SHADOW SPLIT
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
         if (_ewSlow.length) L.push('Slow first-time work (session\'s worst): ' + _ewSlow.slice().sort(function (x, y) { return y.ms - x.ms; }).map(function (e) { return Math.round(e.ms) + ' ms ' + e.k + ' · ' + e.w + ' · ' + e.f + ' ' + e.at; }).join(' | '));
+        L.push('Soft canvases ' + (_ewSoftCvOn() ? 'on' : 'off (not Firefox)') + ' · ' + _ewSoftCv.made + ' made · ' + _ewSoftCv.n + ' sent as bytes (' + (_ewSoftCv.n ? (_ewSoftCv.ms / _ewSoftCv.n).toFixed(2) : '0') + ' ms each, worst ' + _ewSoftCv.worst.toFixed(1) + ') · ' + _ewSoftCv.fb + ' fell back');
         if (_ewKeep.last && _ewKeep.last.length) L.push('Last shader builds (newest last): ' + _ewKeep.last.join(' | '));
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
         if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }
@@ -56282,7 +56348,7 @@ const ThreeRenderer = (function () {
             var cD = (sc._ew_c2N === undefined || cNow - (sc._ew_c2DAt || 0) > 500) ? (sc._ew_c2DAt = cNow, _ewDeskTake(sc._ew_c2Q || (sc._ew_c2Q = _ewDeskQueue()))) : null, cHit = false;
             if (cD && !cD.over) for (var ci = 0; ci < cD.list.length && !cHit; ci++) { var cx = cD.list[ci]; if (_ewDeskUnder(cx, sc)) cx.traverse(function (o) { if (o.isCSS2DObject) cHit = true; }); }
             if (sc._ew_c2N === undefined || (cD && (cD.over || cHit)) || cNow - sc._ew_c2At > 60000) {
-                var cn = 0; sc.traverse(function (o) { if (o.isCSS2DObject) cn++; });
+                var cn = 0, cl = []; sc.traverse(function (o) { if (o.isCSS2DObject) { cn++; cl.push(o); } }); sc._ew_c2L = cl;
                 sc._ew_c2Was = sc._ew_c2N; sc._ew_c2N = cn; sc._ew_c2At = cNow;
             }
             if (sc._ew_c2N === 0 && sc._ew_c2Was === 0) { _css2dTick++; return; }
@@ -56293,7 +56359,25 @@ const ThreeRenderer = (function () {
         /* THE FIGHT ON A BALL: a label stands where its body is drawn (its place read through the bend for this pass) */
         var plV = (_ewPl.battleOn && !_hq && sc === scene && THREE.Vector3) ? THREE.Vector3.prototype : null, plF = plV ? plV.setFromMatrixPosition : null;
         if (plF) plV.setFromMatrixPosition = function (m) { plF.call(this, m); var b = _ewPlBendJS(this.x, this.y, this.z); if (b) this.set(b[0], b[1], b[2]); return this; };
-        try { css2dRenderer.render(sc, cam); } finally { if (plF) plV.setFromMatrixPosition = plF; sc.matrixWorldAutoUpdate = au; _css2dTick++; }
+        /* THE LABELS' LIST (2026-11-22, mondo's fight F3: "!! filterAndFlatten < zOrder 83K/s"): CSS2DRenderer walks the whole scene
+           twice a frame to find its labels (its own recursion + the z-order walk). The labels are known from the count above:
+           the renderer is handed a stand-in root holding only the labels that are in the scene and shown (a label under a hidden
+           parent, or out of the scene, is hidden here as the renderer would). Off: window.EW_CSS2D_WALK = true. */
+        var rootC = sc, cL = (!window.EW_CSS2D_ALWAYS && !window.EW_CSS2D_WALK) ? sc._ew_c2L : null;
+        if (cL) {
+            var px = sc._ew_c2P || (sc._ew_c2P = { visible: true, isCSS2DObject: false, children: [], matrixWorldAutoUpdate: false,
+                traverseVisible: function (cb) { for (var ti = 0; ti < this.children.length; ti++) cb(this.children[ti]); } });
+            px.children.length = 0;
+            for (var li = 0; li < cL.length; li++) {
+                var lo = cL[li], lv = true, lq = lo, ld = 0;
+                for (; lq && lq !== sc && ld < 64; lq = lq.parent, ld++) if (lq.visible === false) lv = false;
+                if (lq === sc && lv && sc.visible !== false) px.children.push(lo);
+                else if (lo.element && lo.element.style.display !== 'none') lo.element.style.display = 'none';
+            }
+            if (!fresh && au) sc.updateMatrixWorld();
+            rootC = px;
+        }
+        try { css2dRenderer.render(rootC, cam); } finally { if (plF) plV.setFromMatrixPosition = plF; sc.matrixWorldAutoUpdate = au; _css2dTick++; }
     }
 
     var _onMouseMove = null, _onClick = null, _onContextMenu = null, _onWheel = null;

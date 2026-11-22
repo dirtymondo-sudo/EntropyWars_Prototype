@@ -3757,3 +3757,27 @@ NOT measured on the phone itself: no WebKit in the cloud container. He did not s
   menu's arrival warm warms that room, so a save standing in a big outdoor zone ends the tab on Play, whatever the boot does. Nothing in this
   pass changes that: a phone needs its own tier for the plot-built zones (a smaller built radius, the far LODs only, no whole-room build).
 - Desktop check of ONE COPY ON THE GPU: the foyer on the "Desktop Chrome" profile, HEAD 2a47c0f, no page errors, the picture right.
+
+## THE SOFT CANVASES + THE LOG SCROLLS WITH THE FRAME + THE LABELS' LIST (2026-11-22, mondo in a fight, Firefox / Mac / WebGPU: "Still getting a lot of frame dips in battle ... It dips when taking damage")
+His two F3s: "1384 ms upload · 158×168 canvas" (and 557, 272, 77, 53 ms the same), "timers 63 (slowest 57 ms _popDamageFeedback)",
+"!! filterAndFlatten < zOrder 83K/s". The 1,000 / 2,000 ms "slow frames" with 10-50 ms of JS are the tab in the background
+(the browser runs a hidden page once a second); the dip log leaves them out. A profiled fight in the cloud browser named the rest:
+- THE SOFT CANVASES (three-renderer.js `_ewSoftCv*`). The 158×168 canvas is a unit's NAME PLATE (`_pmPaint`): every HP change
+  paints it again and uploads it (57 uploads in 45 s of a fight). Firefox keeps a 2D canvas on the GPU process, so three's upload
+  (`copyExternalImageToTexture`) and every `getImageData` (the hit number's tint + side edge, battle.js `_hitReadDress3D`) wait for
+  that process to read the canvas back, behind the frame it is drawing. Now: on Firefox every 2D canvas made off the page is asked
+  for as `willReadFrequently` (the `getContext` wrap; it lives in the page's memory), and such a canvas goes to the GPU as bytes
+  (`getImageData` + `queue.writeTexture`, flip + alpha done in JS; `textureUtils._copyImageToTexture` wrap, set up in `_ewKeepSetup`).
+  F3 line "Soft canvases on · N made · N sent as bytes (ms each, worst) · N fell back". Off: `window.EW_NO_SOFT_CANVAS`. Any
+  browser (to test): `window.EW_SOFT_CANVAS` or `?ew_softcv=1`. Cloud check (Chromium, WebGPU on SwiftShader, forced on): 128 plates
+  and sheets sent as bytes, 0.43 ms each, worst 5.2, none fell back. NOT measured on Firefox / Mac: his next F3's "Slow first-time
+  work" must show no canvas upload from the new session; if one still does, the wait is not the canvas read-back.
+- THE LOG SCROLLS WITH THE FRAME (ui.js `_clogToBottomSoon`). Every hit: flashUnit → focusUnitPanel → renderIfDirty → renderTeams →
+  renderFloatCombatLog → `_clogToBottom` read the log's scrollHeight right after the HUD was rewritten = a whole-page layout on
+  the spot, ~30 ms a hit in the cloud browser (427 ms of a 70 s fight). The scroll now waits for the next frame; until then
+  `_clogAtBottom` says yes, so a burst's lines all stick. After: 1 ms.
+- THE LABELS' LIST (`_css2dRender`). CSS2DRenderer walked the scene twice a frame (its recursion + `zOrder` → `filterAndFlatten`) to
+  find the CSS2D labels (the CUBE plates). The count that already ran on arrivals keeps the labels (`sc._ew_c2L`); the renderer is
+  handed a stand-in root with only the ones in the scene and shown. Off: `window.EW_CSS2D_WALK`. F3 after: "Scene walks: none".
+- NOT changed: `ew_grass_field` 359K triangles (one draw, GPU side, a steady cost at 63 FPS, not a dip); the plates still paint
+  on every HP change; `_wmMenuRects` (~4 ms a second of DOM reads). `_EW_TR_STAMP` = "11-22 soft-canvas".
