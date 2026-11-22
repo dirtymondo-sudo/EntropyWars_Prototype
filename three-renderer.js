@@ -76889,6 +76889,133 @@ const ThreeRenderer = (function () {
         batch.flush();
         return n;
     }
+    /* THE CLEAR DOORWAYS (2026-11-22, mondo: "almost every single building door has this horizontal bar in front of it at the bottom, please
+       get rid of that for the door entrances"): a building's look is an `arch` row drawn beside its hollow texbuilding, and many rows ran a wall
+       band, a plinth, a sill, a chair rail or a dado straight across the walk-in doorway (the Industrial homes' brick band, 59 parts in Disaster
+       City, more in Camelot, Katana, the Desert, the Volcano Island). A RULE, not rows: before a row is drawn, every box / standing quad of it that
+       CROSSES a hollow texbuilding's doorway (data.js hqTexbDoor: the same square the walker and the swing leaf use) is cut there, from the ground
+       to the door's head; the part stays on the solid wall either side and over the head. Kept whole: what lies at the floor (a threshold, a
+       skirting: top under 0.2 m), a deck / step / doorstep (under 0.55 m, and deeper than 0.7 m or about the doorway's width), the lintel and all over it, a post (under 1 m wide), lettering, and a part that FILLS
+       the doorway (a door picture, a lit portal: about the doorway's width, foot to head). Nothing is written back: the room's rows are untouched
+       (the editor saves them as they were). window.EW_NO_DOOR_CLEAR = true: the rows as written. */
+    var HQ_DOOR_CLEAR = { cell: 8, inZ: 0.45, outZ: 0.7, minX: 0.2, post: 1.0, floor: 0.2, head: 0.12, deckD: 0.7, deckH: 0.55, keepD: 0.3 };
+    function _hqArchDoorGrid(texb) {
+        if ((typeof window !== 'undefined' && window.EW_NO_DOOR_CLEAR) || typeof hqTexbDoor !== 'function' || !texb || !texb.length) return null;
+        var g = { map: {}, n: 0 }, D2R = Math.PI / 180, K = HQ_DOOR_CLEAR;
+        texb.forEach(function (f) {
+            if (!f || !f.hollow || f.doorsOnly || (typeof hqTexbPack === 'function' && hqTexbPack(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
+            var D = hqTexbDoor(f), d = Math.max(2, +f.d || 8), q = (+f.rot || 0) * D2R, c = Math.cos(q), s = Math.sin(q), zf = d / 2;
+            var door = { x: +f.x || 0, z: +f.z || 0, rot: +f.rot || 0, c: c, s: s, x0: D.lx - D.cw / 2, x1: D.lx + D.cw / 2, z0: zf - K.inZ, z1: zf + K.outZ, cw: D.cw, base: +f.base || 0, H: D.doorH };
+            door.wx = door.x + D.lx * c - zf * s; door.wz = door.z + D.lx * s + zf * c;
+            var k = Math.floor(door.wx / K.cell) + ',' + Math.floor(door.wz / K.cell); (g.map[k] || (g.map[k] = [])).push(door); g.n++;
+        });
+        return g.n ? g : null;
+    }
+    /* one part against one doorway → null (the part as it is) or the pieces that replace it */
+    function _hqArchDoorCut(P, row, door) {
+        var K = HQ_DOOR_CLEAR, D2R = Math.PI / 180, S = P.size || [1, 1, 1], pp = P.p || [0, 0, 0];
+        var rel = (((+row.rot || 0) + (+P.ry || 0) - door.rot) % 360 + 360) % 360, kq = Math.round(rel / 90);
+        if (Math.abs(rel - kq * 90) > 0.5) return null;
+        kq = kq % 4;
+        var isQuad = P.s === 'quad', fit = P.uv === 'fit';
+        if (!isQuad && fit && P.faces === 'f' && P.top === false && !P.under) {   // a decal box (one front face, the sheet once across it): the same face as a quad, so its sheet is not squeezed
+            var a0 = (+P.ry || 0) * D2R, dz = S[2] / 2;
+            P = Object.assign({}, P, { s: 'quad', p: [pp[0] - dz * Math.sin(a0), pp[1], pp[2] + dz * Math.cos(a0)], size: [S[0], S[1]] }); delete P.faces; delete P.top;
+            S = P.size; pp = P.p; isQuad = true;
+        }
+        /* the part's foot centre in the doorway's frame */
+        var rq = (+row.rot || 0) * D2R, rc = Math.cos(rq), rs = Math.sin(rq);
+        var wx = row.x + pp[0] * rc - pp[2] * rs, wz = row.z + pp[0] * rs + pp[2] * rc, ux = wx - door.x, uz = wz - door.z, ox = ux * door.c + uz * door.s, oz = -ux * door.s + uz * door.c;
+        /* the doorway's clear box in the part's frame (a quarter turn apart at most: a box stays a box) */
+        var cs = [1, 0, -1, 0][kq], sn = [0, 1, 0, -1][kq], loc = function (X, Z) { var dx = X - ox, dzz = Z - oz; return [dx * cs + dzz * sn, -dx * sn + dzz * cs]; };
+        var A = loc(door.x0, door.z0), B = loc(door.x1, door.z1), alongX = (kq % 2) === 0;
+        var cx0 = Math.min(A[0], B[0]), cx1 = Math.max(A[0], B[0]), cz0 = Math.min(A[1], B[1]), cz1 = Math.max(A[1], B[1]);
+        var fy = door.base - (+row.base || 0) - pp[1], head = fy + door.H;   // the building's floor and the door's head, in the part's own heights
+        var h = S[1], hw = S[0] / 2, hd = isQuad ? 0 : S[2] / 2;
+        if (h - fy <= K.floor || -fy >= door.H - K.head) return null;   // at the floor, or the lintel and over it
+        var a0b = alongX ? -hw : -hd, a1b = alongX ? hw : hd, v0b = alongX ? -hd : -hw, v1b = alongX ? hd : hw;   // the part along the wall (a) and across it (v)
+        var ca0 = alongX ? cx0 : cz0, ca1 = alongX ? cx1 : cz1, cv0 = alongX ? cz0 : cx0, cv1 = alongX ? cz1 : cx1;
+        var la = Math.max(a0b, ca0), ra = Math.min(a1b, ca1);
+        if (ra - la < K.minX || Math.min(v1b, cv1) - Math.max(v0b, cv0) < (isQuad ? 0 : 0.004)) return null;
+        var wide = a1b - a0b, deep = v1b - v0b;
+        if (wide <= K.post) return null;   // a post, a mullion, a small plate: not a bar
+        if (h - fy <= K.deckH && (deep > K.deckD || wide <= door.cw + 1.5)) return null;   // a deck or a step (deep), a doorstep (about the doorway's width)
+        if (deep <= K.deckD && wide >= door.cw - 0.5 && wide <= door.cw + 1.2 && -fy <= K.floor && h - fy >= door.H - 0.3) return null;   // it fills the doorway: a door
+        if (isQuad) {
+            if (!alongX || P.flat) return null;
+            if (!fit && /^urban:(GlassWindow|DecalWindows)/.test(P.key || '') && h > HQ_TEXB.storey + 1 && pp[1] < 0.6 && P.win !== 'keep' && !P.hole) return null;   // a storeyed window wall (its ground storey is drawn by THE BIG WINDOWS, not by the hole's code)
+            var hx0 = la, hx1 = ra, hh = Math.min(h, head);
+            if (P.hole) {
+                var e0 = P.hole[0] - P.hole[1] / 2, e1 = P.hole[0] + P.hole[1] / 2, eh = Math.min(h, +P.hole[2] || 0);
+                if (e1 < hx0 - 0.01 || e0 > hx1 + 0.01) return null;   // a hole somewhere else on the panel: one hole a panel
+                if (e0 <= hx0 + 0.03 && e1 >= hx1 - 0.03 && eh >= hh - 0.01) return null;   // already open
+                hx0 = Math.min(hx0, e0); hx1 = Math.max(hx1, e1); hh = Math.max(hh, eh);
+            }
+            var Q = Object.assign({}, P, { hole: [Math.round((hx0 + hx1) * 500) / 1000, Math.round((hx1 - hx0) * 1000) / 1000, Math.round(hh * 1000) / 1000] });
+            if (fit) Q.holeFit = true;
+            return [Q];
+        }
+        if (P.shear) return null;
+        /* a box: only what is DRAWN across the doorway counts (a building's body is a box of three blind walls round its front panel: not a bar) */
+        var fc = P.sides === false ? '' : (P.faces || 'fblr'), yLo = Math.max(0, fy + K.floor), yHi = Math.min(h, head - K.head);
+        var fA = alongX ? 'b' : 'l', fB = alongX ? 'f' : 'r';   // the two faces that run along the wall: at v0b and at v1b
+        var hitA = fc.indexOf(fA) >= 0 && v0b >= cv0 && v0b <= cv1 && yHi - yLo > 0.02, hitB = fc.indexOf(fB) >= 0 && v1b >= cv0 && v1b <= cv1 && yHi - yLo > 0.02;
+        var vOver = Math.min(v1b, cv1) - Math.max(v0b, cv0) > 0.004;
+        var hitT = P.top !== false && vOver && h > fy + K.floor && h < head - K.head, hitU = !!P.under && vOver && 0 > fy + K.floor && 0 < head - K.head;
+        if (!hitA && !hitB && !hitT && !hitU) return null;
+        var ang = (+P.ry || 0) * D2R, pc = Math.cos(ang), ps = Math.sin(ang);
+        if (deep > K.deckD) {
+            /* a MASS (a footing block, a body with a face on the front): its face on the doorway becomes a panel with the doorway cut in it */
+            if (!hitA && !hitB) return null;
+            if (!fit && /^urban:(GlassWindow|DecalWindows)/.test(P.key || '') && h > HQ_TEXB.storey + 1 && pp[1] < 0.6 && P.win !== 'keep') return null;
+            var res = [Object.assign({}, P, { faces: fc.replace(hitA ? fA : '~', '').replace(hitB ? fB : '~', '') })], any = false;
+            [[hitA, fA], [hitB, fB]].forEach(function (e) {
+                if (!e[0]) return;
+                var f = e[1], ox2 = f === 'l' ? -hw : f === 'r' ? hw : 0, oz2 = f === 'b' ? -hd : f === 'f' ? hd : 0, turn = f === 'f' ? 0 : f === 'b' ? 180 : f === 'r' ? 270 : 90;
+                var q = Object.assign({}, P, { s: 'quad', p: [pp[0] + ox2 * pc - oz2 * ps, pp[1], pp[2] + ox2 * ps + oz2 * pc], ry: (+P.ry || 0) + turn, size: [(f === 'f' || f === 'b') ? S[0] : S[2], h] });
+                delete q.faces; delete q.top; delete q.under; delete q.sides; delete q.keyTop; delete q.keyUnder;
+                var c2 = _hqArchDoorCut(q, row, door); if (c2) { any = true; c2.forEach(function (x) { res.push(x); }); } else res.push(q);
+            });
+            return any ? res : null;
+        }
+        var out = [];
+        var piece = function (pa0, pa1, pv0, pv1, y0, y1, more) {
+            if (pa1 - pa0 < 0.05 || pv1 - pv0 < 0.004 || y1 - y0 < 0.03) return;
+            var mx = alongX ? (pa0 + pa1) / 2 : (pv0 + pv1) / 2, mz = alongX ? (pv0 + pv1) / 2 : (pa0 + pa1) / 2, sx = alongX ? pa1 - pa0 : pv1 - pv0, sz = alongX ? pv1 - pv0 : pa1 - pa0;
+            out.push(Object.assign({}, P, { p: [pp[0] + mx * pc - mz * ps, pp[1] + y0, pp[2] + mx * ps + mz * pc], size: [sx, y1 - y0, sz] }, more || null));
+        };
+        piece(a0b, la, v0b, v1b, 0, h); piece(ra, a1b, v0b, v1b, 0, h);   // the strip on the wall either side
+        piece(la, ra, v0b, v1b, Math.max(0, head), h, { under: true });    // and over the head
+        return out;
+    }
+    function _hqArchDoorClear(row, grid) {
+        if (!grid || !row || !row.parts || !row.parts.length || typeof row.ground === 'function') return row;
+        var K = HQ_DOOR_CLEAR, D2R = Math.PI / 180, rq = (+row.rot || 0) * D2R, rc = Math.cos(rq), rs = Math.sin(rq), changed = false, out = [];
+        var near = function (P) {
+            var pp = P.p || [0, 0, 0], S = P.size || [1, 1, 1], r = Math.max(+S[0] || 0, P.s === 'quad' ? 0 : (+S[2] || 0)) / 2 + 1.5;
+            var wx = row.x + pp[0] * rc - pp[2] * rs, wz = row.z + pp[0] * rs + pp[2] * rc, list = null;
+            for (var i = Math.floor((wx - r) / K.cell), i1 = Math.floor((wx + r) / K.cell); i <= i1; i++) for (var j = Math.floor((wz - r) / K.cell), j1 = Math.floor((wz + r) / K.cell); j <= j1; j++) {
+                var b = grid.map[i + ',' + j]; if (b) list = list ? list.concat(b) : b;
+            }
+            return list;
+        };
+        row.parts.forEach(function (p0) {
+            if (!p0 || (p0.s !== 'box' && p0.s !== 'quad') || p0.ring || p0.along || p0.flat || p0.inDoor || /^(txt|mark):/.test(p0.key || '')) { out.push(p0); return; }   // (lettering stays whole; `inDoor: true` on a part = leave it)
+            var n = Math.max(1, Math.min(200, Math.round(p0.n || 1))), st = p0.step || [0, 0, 0], q = p0.p || [0, 0, 0], inst = [], hit = false;
+            for (var k = 0; k < n; k++) {
+                var P = n > 1 ? Object.assign({}, p0, { p: [q[0] + st[0] * k, q[1] + st[1] * k, q[2] + st[2] * k], n: 1, step: null }) : p0;
+                var doors = near(P), work = [P];
+                if (doors) doors.forEach(function (door) {
+                    var next = [];
+                    work.forEach(function (w) { var cut = (w.s === 'box' || w.s === 'quad') ? _hqArchDoorCut(w, row, door) : null; if (cut) { hit = true; cut.forEach(function (c) { next.push(c); }); } else next.push(w); });
+                    work = next;
+                });
+                work.forEach(function (w) { inst.push(w); });
+            }
+            if (hit) { changed = true; inst.forEach(function (w) { out.push(w); }); } else out.push(p0);
+        });
+        return changed ? Object.assign({}, row, { parts: out }) : row;
+    }
     /* THE ARCHITECTURE (2026-11-13, mondo on the 144-plot Disaster City: "use different materials/textures and tint them to match your
        vision for the building ... use more complex geometry for some buildings, domes, roof tops, modern architecture, curves"): an
        `arch` row = one building's LOOK as a list of parts, drawn only (the walker reads the texbuilding / wall / plateau rows beside
@@ -77076,9 +77203,9 @@ const ThreeRenderer = (function () {
             } else if (P.s === 'quad') {
                 var qw = S[0] / 2, qh = S[1];
                 if (P.flat) quad(key, [-qw, 0, qh / 2], [qw, 0, qh / 2], [qw, 0, -qh / 2], [-qw, 0, -qh / 2], 2 * qw, qh);
-                else if (P.hole && !fit) {   // a wall with a doorway: the hole [centre x, width, height] from the foot — the wall either side and the head over it
+                else if (P.hole && (!fit || P.holeFit)) {   // a wall with a doorway: the hole [centre x, width, height] from the foot — the wall either side and the head over it
                     var hx0 = Math.max(-qw, P.hole[0] - P.hole[1] / 2), hx1 = Math.min(qw, P.hole[0] + P.hole[1] / 2), hy = Math.min(qh, P.hole[2]);
-                    var gq = grp(key), pv = function (x, y) { return put(gq, [x, y, 0], [(x + qw) / mu, y / mv]); }, rect = function (x0, y0, x1, y1) { if (x1 - x0 < 0.01 || y1 - y0 < 0.01) return; var i0 = pv(x0, y0), i1 = pv(x1, y0), i2 = pv(x1, y1), i3 = pv(x0, y1); gq.idx.push(i0, i1, i2, i0, i2, i3); };
+                    var gq = grp(key), hmu = fit ? 2 * qw : mu, hmv = fit ? qh : mv, pv = function (x, y) { return put(gq, [x, y, 0], [(x + qw) / hmu, y / hmv]); }, rect = function (x0, y0, x1, y1) { if (x1 - x0 < 0.01 || y1 - y0 < 0.01) return; var i0 = pv(x0, y0), i1 = pv(x1, y0), i2 = pv(x1, y1), i3 = pv(x0, y1); gq.idx.push(i0, i1, i2, i0, i2, i3); };
                     rect(-qw, 0, hx0, qh); rect(hx1, 0, qw, qh); rect(hx0, hy, hx1, qh);
                 } else wq(key, [-qw, 0, 0], [qw, 0, 0], [qw, qh, 0], [-qw, qh, 0], 2 * qw, qh);
             } else if (P.s === 'poly') {
@@ -77494,9 +77621,10 @@ const ThreeRenderer = (function () {
             m._ew_hzNear = true;
             return (mats[id] = m);
         };
+        var doorGrid = null; try { doorGrid = _hqArchDoorGrid(info.texb); } catch (e) { console.warn('[HQ] the clear doorways failed', e); }
         info.arch.forEach(function (row) {
             try {
-                var GG = _hqArchGeometry(row, HQ_TEXB.cell);
+                var GG = _hqArchGeometry(_hqArchDoorClear(row, doorGrid), HQ_TEXB.cell);   // THE CLEAR DOORWAYS
                 Object.keys(GG).forEach(function (id) {
                     var b = GG[id]; if (!b.n) return;
                     var pos = new Float32Array(b.pos.length);
