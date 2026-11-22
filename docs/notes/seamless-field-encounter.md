@@ -1200,3 +1200,21 @@ How it works now (three-renderer.js, `_fw*`; search "THE FIGHT IN THE WALKED ROO
 - `_fwLeave`: the holder leaves the scene, lights, camera, shadow box and fog go back; the walk resumes on the same objects.
 - Off (the copies, as before): `window.EW_FIGHT_COPIES = true`. The fight in its own scene but no copies: `EW_FW_OWN_SCENE`.
 - Online: nothing to relay. It is a drawing change on each machine; PvP boards do not use it.
+
+### After mondo's F3 on walkedroom-01 ("Still freezes in during the transition", 11-22 20:47Z)
+His F3 (Disaster City, Firefox M1 WebGPU): FIGHT START dip 7.4 s, worst gap 1,777 ms, 63 re-recorded (was 2,486), but
+61 shader builds + 69 new pipelines + a 286 ms lay. Two things the first delivery left in:
+- THE LATE LOOK WAS OFF IN A WALKED-ROOM FIGHT. `_ewLateTick('b')` compared the drawn scene and camera with the BATTLE
+  scene and camera; a walked-room fight draws the walk's scene with the walk's camera object, so nothing matched and every
+  new look was built whole in the frame that first drew it. Now it takes `_fw.HS` and `_fw.H.camera`, and it is on from the
+  fight's first frame (no 600 ms grace: the room's looks are built already, only the fight's own are new). Off: `EW_FW_LATE_WAIT`.
+- NO HELD PICTURE INTO A WALKED-ROOM FIGHT. map.js asks `_hqLeave` for a dissolve (`hold: 3000`): one more render of the
+  walk, a canvas copy to 2D and a still held over the screen until the fight's first frame. It hid the copy scene's build;
+  with the walked room it WAS the visible freeze. `_hqLeave` skips it when the fight will use the walked room (`fwGo`).
+  Stage rooms, round worlds, a vessel and a room still loading keep it. Back on: `EW_FW_DISSOLVE`.
+- THE DIP LOG NAMES ITS BUILDS: a dip line ends " · worst frame: JS X ms (part) · built: 6x <look> | ..." (24 kinds for a
+  FIGHT START dip, 6 otherwise), so his next F3 says which looks are still first-time at a fight's start.
+- Probe: `playtest_handover.js --early` takes `3_fight_first` at the battle phase and prints whether `.hq-dissolve` is up
+  and the late look's state. Cloud proof (classic, the Clearing): `{"dissolve":false,"late":{"on":true}}`, no errors.
+- NOT CUT YET: the lay itself (`activate` ~220 ms, unit load / animation bake the first time a race fights, the React HUD).
+  On Firefox a new pipeline holds the frame even when asked async, so a look nothing drew before still costs once.
