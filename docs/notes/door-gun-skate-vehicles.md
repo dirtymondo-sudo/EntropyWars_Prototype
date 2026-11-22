@@ -136,6 +136,11 @@ The drawn model moves, never the grind or the wall (rows, walls and the nav stay
 `window.EW_NO_RAIL_CENTRE`.
 **Audited, already on their line** (drawn and registered from the same numbers): the bridge rails, the ring bridges' arcs, the decks'
 rope rails, the cave bridge rails, the mezzanine / gallery arcs, the escalator handrails, flights' cheeks, the prop rail `railing_1m`.
+**THE SECOND PASS, every rail in height too** (mondo: "can you check this for like every rail in the game?"). Measured from the model
+files: all 28 pack railings' `top` = the model's top within 1 cm; the escalator's handrails ±2.74 ft / 3.40 ft over the pitch = the table
+(±2.75 / 3.3 + the 0.1 m it stands sunk); the grating flight's handrails 1.7 cm outside the grind (left) but 0.77-0.91 m over the fitted
+flight's line, the grind was 0.95: `flights.grate.handrail` 0.86; the prop `railing_1m` centred on its line but 0.846 m tall at its 1 m
+span, the grind was 0.98: `rail.h` 0.85 (121 placed). Not seen in a browser (model measurements only).
 Proof: `/mnt/project-files/grind-rails/badlands_guard_rail_before_after.jpg` (the grind line drawn red; HEAD f5a9153 + this change).
 
 ## SKATEBOARDING — THE GRINDS, THE BALANCE METER, THE WALLS — 2026-11-20
