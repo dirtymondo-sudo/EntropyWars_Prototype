@@ -28,8 +28,8 @@ module.exports = { dress(ctx) {
     at(ctx, 'water_trough', 56.9, 44.6, { face: 90 }); at(ctx, 'campfire', 56.6, 41.2, {}); at(ctx, 'wooden_barrel', 54.2, 41.4, {}); at(ctx, 'wooden_bucket', 55.9, 44.5, {});
     /* THE GANTRIES: the exit for both ways, before the exit lane opens; the two that stood on the ground here are on the deck now */
     gantry(ctx, 10, 24, 'S', 'WESTERN TOWN');
-    gantry(ctx, 75.5, 10.5, 'W', 'EXIT · GAS · CARAVAN STOP', { y: R.hMain(75.5) });
-    gantry(ctx, 26.5, 14.5, 'E', 'EXIT · GAS · CARAVAN STOP', { y: R.hMain(26.5) });
+    gantry(ctx, 75.5, 10.5, 'W', 'EXIT · GAS · CARAVAN STOP', { exit: '2A', y: R.hMain(75.5) });
+    gantry(ctx, 26.5, 14.5, 'E', 'EXIT · GAS · CARAVAN STOP', { exit: '2A', y: R.hMain(26.5) });
     gantry(ctx, 45, 10.5, 'W', 'WESTERN TOWN · AREA 51', { y: H });
     gantry(ctx, 57, 14.5, 'E', 'THE CIRCUS', { y: H });
     /* THE ROADSIDE (the highway standard): the telephone line along the north side, clear of the ramps' walls; four of Disaster City's own adverts

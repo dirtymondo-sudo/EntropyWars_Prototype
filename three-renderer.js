@@ -77619,7 +77619,8 @@ const ThreeRenderer = (function () {
         dela:      { f: '"Dela Gothic One"', w: 400, ls: 0.02 },      // Mid Records
         frak:      { f: '"UnifrakturMaguntia"', w: 400, ls: 0, tc: true },  // the newspaper's masthead
         sancreek:  { f: '"Sancreek"', w: 400, ls: 0.02 },              // the Western Town (Nowhere): the saloon, the hotel, the sheriff, the town-limit board
-        ewert:     { f: '"Ewert"', w: 400, ls: 0.02 }                  // the Western Town: the bank
+        ewert:     { f: '"Ewert"', w: 400, ls: 0.02 },                 // the Western Town: the bank
+        hwy:       { f: '"Overpass"', w: 700, ls: 0.02 }               // THE HIGHWAY SIGNS (2026-11-22): Overpass, the open face drawn after Highway Gothic
     };
     /* THE CITY MARKS (2026-11-15, mondo: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city
        branding/logo for certain buildings or props or banners"; his OK on the branding sheet): drawn from plain shapes on the sign's own
@@ -77800,7 +77801,7 @@ const ThreeRenderer = (function () {
             var bt = new THREE.CanvasTexture(bc); bt.anisotropy = 4;
             return (_hqArchSignCache[key] = bt);
         }
-        var H = (q[7] === 'n' && asp <= 16) ? 256 : 128, W = Math.max(32, Math.min(H > 128 ? 4096 : 2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;   // (a neon sign is drawn twice as fine: its halo blurs a 128 px line)
+        var H = (q[7] === 'h') ? Math.min(512, 128 * Math.max(1, words.split(' · ').length)) : (q[7] === 'n' && asp <= 16) ? 256 : 128, W = Math.max(32, Math.min(H > 128 ? 4096 : 2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;   // (a neon sign is drawn twice as fine: its halo blurs a 128 px line)
         var g = c.getContext('2d'), F = HQ_SIGN_FONTS[q[5]] || null, shown = (F && F.tc) ? _hqSignTitleCase(words) : words;
         var fontOf = function (v, fam) { return (fam ? F.w : 900) + ' ' + v + 'px ' + (fam ? F.f + ', ' : '') + '"Arial Black", "Helvetica Neue", Arial, sans-serif'; };
         /* the words fitted inside the board: 90% of its width and (a typeface of its own only) 80% of its height, measured on the glyphs
@@ -77818,7 +77819,33 @@ const ThreeRenderer = (function () {
             if (!neonS) { g.fillStyle = fg; g.fillText(str, x, y); return; }
             g.save(); g.shadowColor = fg; g.shadowBlur = p * 0.2; g.fillStyle = fg; g.fillText(str, x, y); g.fillText(str, x, y); g.shadowBlur = 0; g.fillStyle = hot; g.fillText(str, x, y); g.restore(); g.fillStyle = fg;
         };
+        /* THE HIGHWAY SIGNS (2026-11-22, mondo: "use highway gothic, clearview, or another similar font. Give the signs a white border that is
+           inset so that green still appears as the outside edge of the sign. Round the corners of the sign"): an eighth field 'h' = a guide
+           sign's whole face. The panel is `bg` with round corners (clear outside them: the part's material cuts it), a white line set in
+           from the edge with the same round corners, and the words on one line each (' · ' parts them). A line '->NE' / '->NW' is the
+           slanted exit arrow. Sizes follow a real panel: 0.35 m of margin over and under, 0.9 m a line (the canvas is that panel, any size). */
+        var paintHwy = function (fam) {
+            var L = String(fam ? shown : words).split(' · '), u = H / (0.7 + 0.9 * L.length), rr = function (x, y, w, h, r) {
+                g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.arcTo(x + w, y, x + w, y + r, r); g.lineTo(x + w, y + h - r); g.arcTo(x + w, y + h, x + w - r, y + h, r);
+                g.lineTo(x + r, y + h); g.arcTo(x, y + h, x, y + h - r, r); g.lineTo(x, y + r); g.arcTo(x, y, x + r, y, r); g.closePath(); };
+            g.clearRect(0, 0, W, H); g.fillStyle = bg || '#0b5c3a'; rr(1, 1, W - 2, H - 2, u * 0.2); g.fill();
+            var bi = u * 0.085, bw = Math.max(2, u * 0.055); g.strokeStyle = fg; g.lineWidth = bw; rr(bi, bi, W - 2 * bi, H - 2 * bi, Math.max(2, u * 0.2 - bi * 0.6)); g.stroke();
+            g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+            for (var li = 0; li < L.length; li++) {
+                var cy = (0.35 + 0.9 * (li + 0.5)) * u, str = L[li];
+                if (str.indexOf('->') === 0) {   // the exit arrow: a shaft and a head, turned 45 degrees to the side the ramp leaves on
+                    g.save(); g.translate(W / 2, cy); g.rotate((str === '->NW' ? -1 : 1) * Math.PI / 4); var al = u * 0.36, aw = u * 0.085;
+                    g.beginPath(); g.moveTo(-aw, al); g.lineTo(-aw, -al * 0.25); g.lineTo(-aw * 3.2, -al * 0.25); g.lineTo(0, -al); g.lineTo(aw * 3.2, -al * 0.25); g.lineTo(aw, -al * 0.25); g.lineTo(aw, al); g.closePath(); g.fill(); g.restore();
+                    continue;
+                }
+                var px = Math.round(u * 0.74); g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (fam ? px * F.ls : 0) + 'px';
+                var tw = g.measureText(str).width || 1, room = W - u * 0.8; if (tw > room) { px = Math.max(8, Math.floor(px * room / tw)); g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (fam ? px * F.ls : 0) + 'px'; }
+                var mm = g.measureText('H'), cap = mm.actualBoundingBoxAscent || px * 0.7;
+                g.fillText(str, W / 2, cy + cap / 2);
+            }
+        };
         var paint = function (fam) {
+            if (q[7] === 'h') { paintHwy(fam); return; }
             g.clearRect(0, 0, W, H); if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
             var PB = Math.round(H * 0.75), px = PB, ls = (fam && F.ls && ('letterSpacing' in g)) ? F.ls : 0, txt = fam ? shown : words;
             var mk = _HQ_MARK_FONTS[q[6]] ? q[6] : '', mr = mk ? H * 0.42 : 0, mgap = mk ? H * 0.2 : 0, room = W * 0.9 - (mk ? mr * 2 + mgap : 0);   // THE CITY MARKS: the mark stands left of the words, the pair centred on the board
@@ -77896,6 +77923,7 @@ const ThreeRenderer = (function () {
                decal stay as they are. window.EW_ARCH_BARE = true: the flat colours back. */
             var surf = (!b.key && !(b.glow > 0) && b.kind !== 'glass' && b.kind !== 'over' && !(typeof window !== 'undefined' && window.EW_ARCH_BARE)) ? _hqArchSurface(b.tint) : null;
             if (surf) { var st = _hzTex(surf.key); if (st) { o.map = st; } else surf = null; }
+            if (sign && /\|h$/.test(String(b.key))) o.alphaTest = 0.5;   // THE HIGHWAY SIGNS: the panel's round corners are cut out of its quad
             if (b.kind === 'over') { o.transparent = true; o.alphaTest = 0.35; o.polygonOffset = true; o.polygonOffsetFactor = -1; o.polygonOffsetUnits = -1; }
             /* CLEAR GLASS (2026-11-20, the Bayside Mall: "the view out"): `kind: 'clear'` = a pane you see through (a shop window, a glass roof seen from
                under it); `glass` stays the opaque window sheet the city's walls wear. A sheet on it draws its mullions at the same see-through. */
