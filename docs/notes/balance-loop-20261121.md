@@ -6,6 +6,9 @@
 > ~110 games, plus Jellyfish + Wendigo again; untested. Run labs with `EW_ALLOW_STALE=1`: main moves within 2 hours and a recycled
 > tab would load the STALE CHECKOUT page (fetch + merge main right before each lab). The runner's "done: N matches" line counts only
 > the last tab; bal-analyze.js gives the real count. Spell families (not changed, stats first): Psychic still low (z -3.5 baseline).
+> PASS 3 (mondo "yes one more pass"; 1,278 matches on pass 2, true spread 4.4 -> 3.4 pts): pass 2's big ones landed (Jellyfish UFO
+> 53%, Gladiator 49%, Virus 49%, Delivery Boy 50%); 29 races: 14 up, 10 down, 5 halved for overshoot (Banker, Ghost, Cowboy, Cult Leader,
+> Necromancer). Boltzmann Brain swings (21 -> 46 -> 27% with no change between the last two): its random jump, raised again; untested.
 
 > **11-22 REVIEW (mondo's answers):** the RACE STAT changes were judged noise (the baseline was already inside luck: 5.63
 > vs 5.85; ~57 games a race = ±6.6 pts) and every RACE_BASE_STATS row is BACK to its pre-11-21 line. The SPELL FAMILY fixes
