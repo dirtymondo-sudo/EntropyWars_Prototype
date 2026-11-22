@@ -9199,6 +9199,12 @@ const ThreeRenderer = (function () {
         if (job) { G.fade = { f: { value: new THREE.Vector4(0, 0, 0, 1) }, d: { value: new THREE.Vector4(-2, -1, 1e20, 2e20) } }; G.growT0 = performance.now(); }   // it rises from the ground over a third of a second (never a pop)
         var mesh = new THREE.Mesh(geo, _ggMat(G));
         mesh.frustumCulled = false; mesh.name = 'ew_grass_field'; mesh._ew_ggrass = true; mesh.renderOrder = C.order;
+        /* THE GRASS IS NEVER RAY-TESTED (2026-11-22, mondo's Fairy Forest fight at 6.3 FPS: "Pick (raycasts) 177/s · 881 ms/s", 144 ms of
+           every frame outside the render). A pick or a wall-fade ray that crossed the field's sphere (nearly every one: the field
+           is the board) tested the field's ~73,000 triangles one by one, ~5 ms a ray. The tree that would speed it up is dropped
+           for good the second time the tufts are re-sorted (the index changes when the camera turns), so the fight ran fine until
+           the camera had turned twice. No pick wants a tuft: the ground under it answers. */
+        mesh.raycast = function () {};
         G.mesh = mesh; G.ms = job ? job.ms : (performance.now() - _t0); _gg = G; _ggMaskU.mesh = mesh;
         try { window._ewGrassField = { tufts: nB, buildMs: Math.round(G.ms), level: _ggLevel, frames: job ? job.frames : 0 }; } catch (e) {}   // read-only: what the last build made
         group.add(mesh);
@@ -9387,6 +9393,7 @@ const ThreeRenderer = (function () {
         geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + cm / 2) * U, (yLo + yHi) / 2, (z0 + cm / 2) * U), Math.hypot(cm * 0.7072 * U, (yHi - yLo) / 2) + (1.7 * R.tall + 1.0 * R.spread) * U);
         var mesh = new THREE.Mesh(geo, R.mat), noCull = false; try { noCull = !!window.EW_HQ_GRASS_NO_CULL; } catch (e2) {}
         mesh.frustumCulled = !noCull; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
+        mesh.raycast = function () {};   // THE GRASS IS NEVER RAY-TESTED (the walk's field too)
         S.parent.add(mesh);
         return { mesh: mesh, blades: nB, tris: nB * TL / 3, cx: cx, cz: cz };
     }
