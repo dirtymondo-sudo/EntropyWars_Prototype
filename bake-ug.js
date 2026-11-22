@@ -57,8 +57,17 @@ const dry = (x, y) => inG(x, y) && B.isOpen(x, y);
 let LO = Infinity, HI = -Infinity;
 for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (open(x, y)) { LO = Math.min(LO, LV[y][x] - (isW(x, y) ? 1 : 0)); HI = Math.max(HI, LV[y][x]); }
 const BASE = LO;                                                         // the room's y 0 is its lowest floor
-const SUMP = 0.9;                                                        // a sump's bed lies this far under its plan level's water line
-const hOf = (x, y) => r2((LV[y][x] - BASE) * LEVEL - (isW(x, y) ? SUMP + 0.6 : 0));   // the floor of a square, in metres
+/* A SUMP'S BED AND BRIM (2026-11-22, the soft-lock pass; mondo: "no tiny crevices or huge drops where there is no room to get out"): a sump's
+   bed lay 3.25 m under the floor beside it and its water 2 m under: the square water stops a soft shore (0.4 m) short of its squares' edge, so
+   the brim was a dry face one to two metres deep the walker slid down to the waterline and stood in (a crevice in Hollow Earth, dips everywhere).
+   The bed lies SUMP_BED under the LOWEST floor beside the sump (its rim) and the water SUMP_TOP under it: the lip left at the brim is under a
+   step (0.62 m). A sump with no floor beside it keeps its plan level as its rim. */
+const SUMP_BED = 1.2, SUMP_TOP = 0.3, RIM = new Map();
+{ const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!isW(x, y) || RIM.has(x + ',' + y)) continue; const comp = [[x, y]], seen = new Set([x + ',' + y]); let lo = Infinity;
+      for (let i = 0; i < comp.length; i++) { const [a, b] = comp[i]; for (const [dx, dy] of D4) { const X = a + dx, Y = b + dy; if (dry(X, Y)) lo = Math.min(lo, (LV[Y][X] - BASE) * LEVEL); else if (isW(X, Y) && LV[Y][X] === LV[b][a] && !seen.has(X + ',' + Y)) { seen.add(X + ',' + Y); comp.push([X, Y]); } } }
+      comp.forEach(([a, b]) => RIM.set(a + ',' + b, r2(isFinite(lo) ? lo : (LV[b][a] - BASE) * LEVEL))); } }
+const hOf = (x, y) => isW(x, y) ? r2(RIM.get(x + ',' + y) - SUMP_BED) : r2((LV[y][x] - BASE) * LEVEL);   // the floor of a square, in metres
 /* THE SHEETS: a design file names every surface (`room.tex`); the defaults are the old cave keys (they wear the CALM look: a district should name horror / urban sheets, mondo 11-20) */
 const TX = Object.assign({ floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_2', ceiling: 'cave_wall', cliff: 'rocks_5', path: 'dirt_2', genWall: 'cave_wall', roof: 'cave_wall', stalactite: 'cave_wall' }, (DES.room && DES.room.tex) || {});
 const CEIL = (DES.room && DES.room.ceil) || 3, CEIL_CH = (DES.room && DES.room.ceilChamber) || 6;   // in levels over the floor
@@ -78,13 +87,21 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const o = (y * W + x) 
 /* ── the features the tool owns ── */
 const FEAT = [], props = [], npc = [], counters = [], taken = new Set(), errs = [], decals = [];
 const feat = o => { FEAT.push(o); return o; };
-/* THE OPEN GROUND: every open square as `space` rows (greedy rectangles) */
+/* THE OPEN GROUND: every open square as `space` rows (greedy rectangles).
+   A SUMP'S ROCK SIDES (2026-11-22, the soft-lock pass; mondo: "it needs to be raised straight up because its by a wall"): the rock began ON the
+   line of a sump's squares and the water stops a soft shore short of it, so along every rock side of a sump lay a dry strip one node wide at the
+   sump's bed: stepped onto off the brim's corner, never left again (the traps of Hollow Earth and the Cavern). A sump is its own `space` row,
+   pulled SUMP_IN back from every side that is rock: the rock stands out over the bed, straight up out of the water. The dry squares first. */
+const SUMP_IN = 0.6;
 { const used = new Uint8Array(W * H);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!open(x, y) || used[y * W + x]) continue;
-      let w = 1; while (x + w < W && !used[y * W + x + w] && open(x + w, y)) w++;
-      let h = 1; rows: while (y + h < H) { for (let i = 0; i < w; i++) if (used[(y + h) * W + x + i] || !open(x + i, y + h)) break rows; h++; }
+  for (const is of [dry, isW]) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!is(x, y) || used[y * W + x]) continue;
+      let w = 1; while (x + w < W && !used[y * W + x + w] && is(x + w, y)) w++;
+      let h = 1; rows: while (y + h < H) { for (let i = 0; i < w; i++) if (used[(y + h) * W + x + i] || !is(x + i, y + h)) break rows; h++; }
       for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used[(y + j) * W + x + i] = 1;
-      FEAT.push({ k: 'space', x: r2(gx(x) + w * C / 2), z: r2(gz(y) + h * C / 2), w: w * C, d: h * C }); } }
+      let x0 = gx(x), x1 = gx(x + w), z0 = gz(y), z1 = gz(y + h);
+      if (is === isW) { const rock = sq => sq.every(([a, b]) => !open(a, b)), col = X => Array.from({ length: h }, (_, j) => [X, y + j]), row = Y => Array.from({ length: w }, (_, i) => [x + i, Y]);
+          if (rock(col(x - 1))) x0 += SUMP_IN; if (rock(col(x + w))) x1 -= SUMP_IN; if (rock(row(y - 1))) z0 += SUMP_IN; if (rock(row(y + h))) z1 -= SUMP_IN; }
+      FEAT.push({ k: 'space', x: r2((x0 + x1) / 2), z: r2((z0 + z1) / 2), w: r2(x1 - x0), d: r2(z1 - z0) }); } }
 
 /* THE LADDERS: every `stairs` pair of the plan */
 const LADDERS = [];
@@ -118,11 +135,11 @@ const FALLS = [];
       let w = 1; while (isW(x + w, y) && !used[y * W + x + w] && LV[y][x + w] === LV[y][x]) w++;
       let h = 1; rows: while (y + h < H) { for (let i = 0; i < w; i++) if (!isW(x + i, y + h) || used[(y + h) * W + x + i] || LV[y + h][x + i] !== LV[y][x]) break rows; h++; }
       for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) used[(y + j) * W + x + i] = 1;
-      const top = r2((LV[y][x] - BASE) * LEVEL - 0.3);
+      const top = r2(RIM.get(x + ',' + y) - SUMP_TOP);   /* (the rim: the lowest floor beside the sump) */
       /* the stream's round ends reach past its run: lay it along the axis whose ends are rock (never into the floor beside the sump) */
       let endsX = 0, endsY = 0; for (let j = 0; j < h; j++) { if (dry(x - 1, y + j)) endsX++; if (dry(x + w, y + j)) endsX++; } for (let i = 0; i < w; i++) { if (dry(x + i, y - 1)) endsY++; if (dry(x + i, y + h)) endsY++; }
       const horiz = endsX === endsY ? w >= h : endsX < endsY;
-      FEAT.push({ k: 'stream', key: (DES.room && DES.room.sumpKey) || 'deep_water', pts: horiz ? [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]] : [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: (horiz ? h : w) * C, y: top, depth: 1.2, bank: 0 }); } }
+      FEAT.push({ k: 'stream', key: (DES.room && DES.room.sumpKey) || 'deep_water', pts: horiz ? [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]] : [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: (horiz ? h : w) * C, y: top, depth: r2(SUMP_BED - SUMP_TOP), bank: 0 }); } }
 
 /* THE ROOF: each open square's ceiling (levels): CEIL over the highest open square within two squares (a chamber: CEIL_CH over its floor,
    and over the floors it looks down into); one rock block a run of equal ceilings, from the ceiling up to the crust; stalactites */

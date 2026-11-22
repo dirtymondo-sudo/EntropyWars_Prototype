@@ -120,7 +120,7 @@ function research(ctx) {
     const lift = (u0, v0, u1, v1, h, ext) => { ext = ext || {}; const x0 = R.X(u0) - (ext.w || 0), x1 = R.X(u1) + (ext.e || 0), z0 = R.Z(v0) - (ext.n || 0), z1 = R.Z(v1) + (ext.s || 0);
         ctx.feat({ k: 'plateau', x: ctx.r2((x0 + x1) / 2), z: ctx.r2((z0 + z1) / 2), w: ctx.r2(x1 - x0), d: ctx.r2(z1 - z0), h, edge: 0.05 }); };
     /* the Wing's floor, 5.25 m: four tiers that overlap where they meet (two plateaus that only touch leave a notch) */
-    lift(1, 2, 9, 10, 5.25); lift(7, 2, 13, 4, 5.25, { e: 0.5 }); lift(13, 2, 21, 10, 5.25); lift(5, 10, 20, 12, 5.25, { n: 0.5 });
+    lift(1, 2, 9, 10, 5.25); lift(7, 2, 13, 4, 5.25, { e: 0.5 }); lift(13, 2, 21, 10, 5.25); lift(5, 10, 9, 12, 5.25, { n: 0.5, e: 0.3 }); lift(9, 10, 13, 12, 5.25, { w: 0.3, e: 0.3, n: 1.8 }); lift(13, 10, 20, 12, 5.25, { n: 0.5, w: 0.3 });   /* (the south tier in three, 2026-11-22: between the two tiers above (u 9..13) the gurney ramp's mouth opens a bite of the rock north of this tier, and the bite lay at the lower floor, 1.75 m under the Wing with rock on three sides: find-softlocks.js TRAP. The middle piece reaches 1.8 m north, so the bite is the Wing's own floor.) */
     /* the ways up to it: the ramp from the White Rooms' hospital door, the gurney ramp from the Labs (3 wide), the Tanks' stair, the back stair */
     ctx.feat({ k: 'ramp', x0: R.X(9.5), z0: R.Z(0), x1: R.X(9.5), z1: R.Z(2) + 0.3, w: C, h0: 3.5, h1: 5.25, edge: 0.1 });
     ctx.feat({ k: 'ramp', x0: R.X(9.5), z0: R.Z(14), x1: R.X(9.5), z1: R.Z(12) - 0.3, w: 3 * C, h0: 3.5, h1: 5.25, edge: 0.1 });

@@ -150,9 +150,13 @@ module.exports = {
         { const R = ctx.room('P03-04', 3, 0, 6, 12, 'stair'), H1 = 14, H2 = 9.33, H3 = 4.67;
           const lift = (u0, v0, u1, v1, h, e) => { e = e || {}; const x0 = R.X(u0) - (e.w || 0), x1 = R.X(u1) + (e.e || 0), z0 = R.Z(v0) - (e.n || 0), z1 = R.Z(v1) + (e.s || 0);
               ctx.feat({ k: 'plateau', x: r2((x0 + x1) / 2), z: r2((z0 + z1) / 2), w: r2(x1 - x0), d: r2(z1 - z0), h, edge: 0.05 }); };
-          lift(2, 11, 6, 12, H1, { s: 0.5 }); lift(2, 0, 6, 2, H2); lift(0, 10, 4, 11, H3); lift(6, 2, 8, 6, H2, { w: 0.3 });   // the landings; the store at the north landing's height
+          lift(2, 11, 6, 12, H1, { s: 0.5 }); lift(2, 0, 6, 2, H2); lift(0, 10, 4, 11, H3); lift(0, 10.9, 2, 12, H3, { s: 0.5 }); lift(6, 2, 8, 6, H2, { w: 0.3 });   // the landings; the store at the north landing's height
           R.stair(5, 2, 5, 11, 2, H2, H1, 'concrete'); R.stair(3, 10, 3, 2, 2, H3, H2, 'concrete'); R.stair(1, 4, 1, 10, 2, 0, H3, 'concrete');
-          R.guard('u', 11, 4, 6, H1, HAZ); R.guard('v', 2, 10, 11, H3, HAZ); R.guard('u', 2, 2, 4, H2, HAZ);   /* (open: the top landing's north edge over B, the north landing's west edge over the foot) */
+          /* NO PIT BEHIND THE LANDING (2026-11-22, mondo's no-crevice rule; find-softlocks.js TRAP): the corner south of the south landing (u 0..2, v 11..12) lay at
+             the foot's height, 4.67 m under the landing with walls on three sides: stepped into, never left. It is the landing now (the lift above). The two
+             rails: one lay ACROSS the top of flight C (hopped, never walked) and one cut the south landing in two between the flights. They stand on real
+             edges now: the top landing's west edge over the south landing, and a newel between the two flights' ends. */
+          R.guard('v', 2, 11, 12, H1, HAZ); R.guard('v', 2, 10, 10.35, H3, HAZ); R.guard('u', 2, 2, 4, H2, HAZ);   /* (open: the top landing's north edge over B, the north landing's west edge over the foot) */
           /* the numbers: a big one at each landing, so you know how deep you are */
           R.sign('P3', 5.92, 11.5, H1 + 1.8, 1.6, 1.6, 90, INK, '', 'stencil', 0.4); R.sign('5', 5.92, 0.7, H2 + 1.8, 1.4, 1.8, 90, INK, '', 'stencil', 0.4); R.sign('6', 0.08, 10.5, H3 + 1.8, 1.4, 1.8, -90, INK, '', 'stencil', 0.4);
           R.sign('SUB-LEVEL 7', 1, 0.06, 4.2, 4.6, 0.8, 0, INK, '', 'stencil', 0.35); floorWords(R, '7', 1, 2.2, 2.6, 3.4, 180);
