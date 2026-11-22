@@ -127,6 +127,8 @@ const run = async () => {
     return { lights: L.length, lightList: L.slice(0, 30), exposure: r.toneMappingExposure, toneMapping: r.toneMapping, fog: sc.fog ? [sc.fog.density, sc.fog.color.getHexString()] : null, bg: sc.background && sc.background.getHexString ? sc.background.getHexString() : String(sc.background && sc.background.type), field: (typeof ThreePost !== 'undefined' && ThreePost.getFieldLight) ? ThreePost.getFieldLight() : null }; })()`)));
   if (process.env.EW_PROBE_EVAL) console.log('EVAL-FIGHT', JSON.stringify(await ev(fs.readFileSync(process.env.EW_PROBE_EVAL, 'utf8'))));   // EW_PROBE_EVAL=<file.js>: run in the page on the walk and in the fight (a like-for-like readout)
   await shot('3_fight');
+  /* --flip: the round turns (day <-> night) in the fight, a picture once the light has eased (THE FIGHT IN THE WALKED ROOM, 2026-11-22) */
+  if (flag('flip', false)) { console.log('FLIP', JSON.stringify(await ev(`(function(){ var a = getCurrentCyclePhase(); GAME.state.round = (GAME.state.round | 0) + 1; return a + ' -> ' + getCurrentCyclePhase(); })()`))); await sleep(Number(flag('flip', 1)) > 1 ? Number(flag('flip', 1)) : 9000); await fast.settle(page, 0, 6); await shot('3_fight_flipped'); try { console.log('FW-FLIP', JSON.stringify(await ev(`ThreeRenderer.hq.dev.fw()`)).slice(0, 900)); } catch (e) {} }
   // win
   console.log('WIN', JSON.stringify(await ev(`(function(){ var st = GAME.state; var u = st.units.filter(function (x) { return String(x.id).indexOf('2-') === 0; }); u.forEach(function (x) { x.hp = 0; x.alive = false; x.dead = true; }); try { checkWin(); } catch (e) { return 'ERR ' + e.message; } return u.length; })()`)));
   t1 = Date.now(); let btn = false;
@@ -156,6 +158,17 @@ const run = async () => {
     console.log('PROFILE total ' + (tot / 1000).toFixed(0) + ' ms\nSELF\n' + fmt(self, 25).join('\n') + '\nINCLUSIVE\n' + fmt(inc, 45).join('\n'));
   } catch (e) { console.log('profile failed', String(e.message).slice(0, 200)); } }
   await shot('6_back_later');
+  /* --again: a second fight from where the walker came back, then back again (the walked room is used twice) */
+  if (flag('again', false)) {
+  console.log('STRIKE2', JSON.stringify(await ev(`(function(){ var g = ThreeRenderer.hq.dev.playerGroup().position; var x = g.x / 73, z = g.z / 73 + 3.5, y = g.y / 73; window._hqEncounterFire({ target: { kind: 'npc', id: 'probe-1', race: '${RACE}', x: x, z: z, y: y }, x: x, z: z, y: y, gesture: 'attack' }); return 1; })()`)));
+    const tA = Date.now(); while (Date.now() - tA < 240000) { const st2 = await stat(); if (st2 && st2.phase === 'battle') break; await sleep(500); }
+    await sleep(Number(flag('fight', 12000))); await fast.settle(page, 0, 6); await shot('8_fight2');
+    console.log('FIGHT2', JSON.stringify(await stat())); try { console.log('FW-FIGHT2', JSON.stringify(await ev(`ThreeRenderer.hq.dev.fw()`)).slice(0, 1200)); } catch (e) {}
+    await ev(`(function(){ GAME.state.units.forEach(function (u) { if (String(u.id).indexOf('2-') === 0) u.hp = 0; }); checkWin(); return 1; })()`); await sleep(6000);
+    { const tC = Date.now(); while (Date.now() - tC < 120000) { if (await ev(`!!(document.getElementById('encReturnBtn') && document.getElementById('encReturnBtn').offsetParent)`) === true) break; await sleep(300); } await ev(`document.getElementById('encReturnBtn').click(), 1`); }
+    const tB = Date.now(); while (Date.now() - tB < 240000) { const b2 = await stat(); if (b2 && b2.hqScene && b2.gate && b2.gate.ready && b2.phase !== 'battle') break; await sleep(1000); }
+    await sleep(6000); await fast.settle(page, 0, 6); await shot('9_back2'); console.log('BACK-2ND', JSON.stringify(await stat()));
+  }
   await ev(`ThreeRenderer.hq.dev.teleport({ x: 113.75, z: 22.75, face: 270, fp: false, dist: 4, pitch: -0.2 }), 1`); await fast.settle(page, 0, 6); await shot('7_back_teleported');
   console.log('HQLOGS', JSON.stringify(logs.filter(l => /\[HQ\]|HQ→battle|parked|resumed/i.test(l)).slice(-40)));
   console.log('ERRORS', JSON.stringify(errs.slice(0, 12)));

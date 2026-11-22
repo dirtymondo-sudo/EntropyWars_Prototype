@@ -3933,3 +3933,27 @@ the fight is LAID outside it (map.js `_hqEncounterStart` -> three-renderer.js `a
   tree moved: <name> (N meshes, M times in this group)". Read that in his next F3 and stop the churn at its source.
 - Cloud check: WebGPU on SwiftShader loses its device loading the city today ("Instance dropped in popErrorScope", lands in the
   lobby), so the counts are the lobby's: firsts 31 -> 19 a frame; audit 24,792 left-out refreshes while the camera turned, 0 wrote.
+
+## A THROWN DRAW LEAVES NO MARK (2026-11-22, found while proving THE FIGHT IN THE WALKED ROOM)
+
+Two traps in three's node renderer turned ONE thrown draw into a slow game until the page was reloaded:
+- three counts nested renders (`_callDepth`) and keys every render context by that count, with no try round the draw. One throw
+  left the count one too high for good: every later frame drew into NEW contexts, so every look, pipeline and recording was
+  prepared again EVERY frame (the cloud: fight frames 450 ms, 20 shader builds and 70 re-records a frame). The render wrapper
+  now puts back what three holds for the length of a render (`_callDepth`, the current context and draw functions, the
+  lighting stack, the node frame's render id) when a render throws.
+- three sets the scene's override material and its own draw function round a shadow's depth pass and restores them after it,
+  again with no try. A throw inside that pass went up into the main pass's draw guard, and the rest of the frame drew every
+  sprite and prop WITH THE SHADOW MATERIAL (a depth shader built for each: ~160 builds in a fight's first seconds). A shadow
+  pass that throws is now swallowed (the map misses what was not drawn yet), so three's own restore runs.
+- Both are counted: `ThreeRenderer.gpuStatus()` / F3 "thrown renders N (M shadow passes; first: …)". A number there on his Mac
+  is a bug to chase (what threw), but it no longer costs the frames after it.
+- Why the cloud throws: SwiftShader's WebGPU refuses some buffers ("createBuffer failed, size (…) is too large for the
+  implementation when mappedAtCreation == true"), in the old fight flow too ("skipped draws" in gpuStatus). Cloud only as far
+  as known; his F3 will say.
+
+Probe: `EW_PROBE_GL=webgpu EW_PROBE_EVAL=<file.js> node playtest_handover.js <room> --gpu --post --fight=4000` gives the node
+renderer's counts in the cloud (the picture is black); `--fprofile` = a CPU profile of the fight's first seconds; `--flip` =
+the round turns and a picture after; `--again` = a second fight and the way back again; `--flags=EW_FIGHT_COPIES` = the old
+copy flow as a control. `ThreeRenderer.hq.dev.fw()` = the walked room's state (`keep.kept`, `keep.why`, re-records).
+`window.EW_BUILD_COUNT = true` tallies every shader build by name (`EW_BUILD_STACKS = []` adds where from).
