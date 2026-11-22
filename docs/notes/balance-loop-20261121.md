@@ -1,3 +1,12 @@
+> **11-22 REVIEW (mondo's answers):** the RACE STAT changes were judged noise (the baseline was already inside luck: 5.63
+> vs 5.85; ~57 games a race = ±6.6 pts) and every RACE_BASE_STATS row is BACK to its pre-11-21 line. The SPELL FAMILY fixes
+> stay (Sacrifice, Spygear incl. EMP Jammed 2 rounds, Psychic, Dirty Fighting, Fractal); their descriptions were made to match
+> (EMP "Jams them for 2 rounds", Mind Blank MEDIUM, Migraine HEAVY, Telepathic Link "within 4 tiles"). Boltzmann Brain's
+> four pass-4 pool removals are undone (mondo: "the random jump is surely the cause of its low wr"). train_headless.js got
+> `--recycle N` (default 12): a fresh tab in the same context between matches, the old lab4 harness's way. A race needs
+> ~100+ games a lab before its own read is worth a stat change (the 11-08 loop's floor). The state file and the race table below
+> describe the undone passes: a new loop starts a fresh state file.
+
 # THE BALANCE LOOP, 2026-11-21 (mondo: "run the balance lab yourself, a lot ... until all of the champs are close to 50% ... if you overshoot, revert and do half")
 
 ## How to run it (no browser by hand)

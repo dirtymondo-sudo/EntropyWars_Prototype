@@ -42,6 +42,8 @@
 //        --sync-min M (training: merge the workers every M minutes, default 20)
 //        --ckpt-min M --gate-pairs N (training: checkpoint gates vs the shipped AI; --ckpt-min 0 = off)
 //        --headed (watch one window)  --poll seconds
+//        --recycle N (balance lab: a fresh tab every N matches, default 12, 0 = off; the lab's stats live on in the
+//          worker's IndexedDB, so the count carries over; old tabs die of memory after 10-30 matches otherwise)
 // Env:   PW_CHROMIUM=/path/to/chromium  PORT=3000  LOCAL_ASSETS=a.js,b.js|none
 //
 // Needs `npm install` (playwright is a dependency) and the server; the script
@@ -74,6 +76,7 @@ const RENDER = !!flag('render', false);
 const REAL_CLOCK = !!flag('real-clock', false);
 const HEADED = !!flag('headed', false);
 const POLL_S = Math.max(5, parseFloat(flag('poll', 15)) || 15);
+const RECYCLE = Math.max(0, parseInt(flag('recycle', 12), 10) || 0);
 const SYNC_MIN = Math.max(0, parseFloat(flag('sync-min', 20)) || 0);
 const CKPT_MIN = Math.max(0, parseFloat(flag('ckpt-min', 30)) || 0);
 const GATE_PAIRS = Math.max(1, parseInt(flag('gate-pairs', 8), 10) || 8);
@@ -148,6 +151,10 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
             window.EW_SPSA_NO_AUTO_GATE = true;   // THE CHECKPOINTS: the runner gates the whole run's average, not each worker its own
             if (keys && keys.length) window.EW_TRAIN_KEYS = keys;
         }, { virt: !REAL_CLOCK, noRender: !RENDER, keys: shardKeys, lab: LAB });
+        const { page, errors } = await bootPage(idx, ctx);
+        return { idx, ctx, page, errors, shardKeys, startedAt: Date.now(), last: null, pairsAtSync: 0, bootMatches: 0 };
+    }
+    async function bootPage(idx, ctx) {
         const page = await ctx.newPage();
         const errors = [];
         page.on('pageerror', e => { errors.push(e.message.split('\n')[0]); if (errors.length <= 5) console.log(`[w${idx}] PAGEERR`, errors[errors.length - 1]); });
@@ -159,7 +166,28 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
             if (labMode === 'aistrength' && typeof window._ewSetStrengthBaseline === 'function') window._ewSetStrengthBaseline(baseline);
             window._selectMode(labMode);
         }, { mode: MODE, map: MAP, labMode: LAB_MODE, baseline: BASELINE, weights: startWeights });
-        return { idx, ctx, page, errors, shardKeys, startedAt: Date.now(), last: null, pairsAtSync: 0 };
+        return { page, errors };
+    }
+    // THE RECYCLE (2026-11-22, the lab4 harness's way): between matches, a balance-lab tab that has played RECYCLE
+    // matches is closed and a fresh one opens in the same context, before its memory growth crashes it mid-match
+    async function maybeRecycle(w, snap) {
+        if (LAB !== 'balance' || !RECYCLE || !snap || snap.kind !== 'balance') return;
+        const played = (snap.totalMatches || 0) - (w.bootMatches || 0);
+        if (played < RECYCLE || (snap.phase === 'battle' && played < RECYCLE + 3)) return;
+        if (Date.now() > deadline - 3 * 60000) return;
+        await sleep(1500);   // let the last match's IndexedDB save land
+        try { await w.page.close(); } catch (e) {}
+        try {
+            const np = await bootPage(w.idx, w.ctx);
+            w.page = np.page; w.errors = np.errors;
+            const start = await w.page.evaluate(async () => {
+                for (let i = 0; i < 200 && !(typeof _balanceStats !== 'undefined' && _balanceStats); i++) await new Promise(r => setTimeout(r, 100));
+                return (typeof _balanceStats !== 'undefined' && _balanceStats) ? _balanceStats.totalMatches : 0;
+            });
+            w.bootMatches = start;
+            w.recycles = (w.recycles || 0) + 1;
+            console.log(`[w${w.idx}] recycled at ${snap.totalMatches} matches (fresh tab ${w.recycles}, stats carry on at ${start})`);
+        } catch (e) { console.log(`[w${w.idx}] recycle failed: ${e.message.split('\n')[0]}`); }
     }
 
     // Shard the weight table across workers (training only) — discover the key
@@ -217,7 +245,7 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
                 try { await w.ctx.close(); } catch (e2) {}
                 try {
                     const nw = await bootWorker(w.idx, w.shardKeys);
-                    Object.assign(w, { ctx: nw.ctx, page: nw.page, errors: nw.errors, startedAt: nw.startedAt, last: null });
+                    Object.assign(w, { ctx: nw.ctx, page: nw.page, errors: nw.errors, startedAt: nw.startedAt, last: null, bootMatches: 0 });
                     console.log(`[w${w.idx}] rebooted after crash ${w.crashes}`);
                 } catch (e2) { console.log(`[w${w.idx}] reboot failed: ${e2.message.split('\n')[0]}`); }
                 return null;
@@ -282,7 +310,7 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
     while (Date.now() < deadline) {
         await sleep(Math.min(POLL_S * 1000, Math.max(1000, deadline - Date.now())));
         const lines = [];
-        for (const w of workers) lines.push(statusLine(w, await snapshot(w)));
+        for (const w of workers) { const sn = await snapshot(w); lines.push(statusLine(w, sn)); await maybeRecycle(w, sn); }
         console.log(`── ${fmtMin(Date.now() - t0)} / ${MINUTES}m ──`);
         for (const l of lines) console.log(l);
         if (LAB === 'train' && gate) {
