@@ -576,6 +576,7 @@ L.push("                /* every square that is not a `space` is ground nobody w
 L.push("                gen: { kind: 'plan', look: 'trees', seed: " + (hashStr(ID) % 97) + ", rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: " + (anyMass ? Math.min(2400, 220 * PLOTS.length) : 0) + ", treeH: [5.5, 8.5], kinds: " + J(KIT.forest.treeKinds) + ", zones: " + J(zones) + ((RAISED && RAISED.lamps && RAISED.lamps.length) ? ", lamps: " + J(RAISED.lamps) : "") + " },");
 if (marks.length) L.push("                marks: " + J(marks) + ",");
 if (TRAFFIC.length) L.push("                traffic: " + J(TRAFFIC) + ",");
+if (RAISED && RAISED.signals && RAISED.signals.length) L.push("                signals: " + J(RAISED.signals) + ",");
 L.push("                features: [");
 spaces.concat(F).forEach(f => L.push("                    " + J(f) + ","));
 L.push("                ],");
