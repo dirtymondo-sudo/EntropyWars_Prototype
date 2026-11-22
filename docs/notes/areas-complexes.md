@@ -14139,6 +14139,12 @@ and press e ... i can't see the road going out, the road just stops and its all 
     (`f`); `docs/areas/routes/R6.js` plants a tall wood on the road's last four columns of plots (one free square in three off the road:
     the kit's ten trees a plot read as a lawn). Then `node bake-route.js R6`, `node bake-map.js site_ow_r6`. RULE: the two sides of a gate
     show the same country. Walked both ways: city -> site_ow_r6 and site_ow_r6 -> city (the software walker needs `max` 70000 for 6 m).
+  - ROUND 7, NO BLACK AT THE WOODS' EDGE (mondo at the Clearing's Old Road trail: "I dont know why its all black on the edge. Every single
+    entrance/exit in the game needs to look good and natural"): two causes. (1) the Clearing's `edges.tint: [0.5, 0.5, 0.52]` (11-20) drew
+    the land past its line near black since the land wears sheets; gone from the room row and bake-woods.js (deep stays). (2) every `trail`
+    way stood 7 black soft cards across its mouth and a flat pale strip on the path: `_hqPassageWay` `openLand` (unroofed, not inside, no
+    modelled mouth, a room with THE NATURAL EDGES) builds neither; the land's own WAY ON path shows. Walked: the Clearing north -> site_ow_r4.
+    The other zones' gates are four other threads' (11-22); the forest / kingdom thread takes the trail strip, the WAY ON clearing and the dim.
   - THE LANE LINES NEVER DREW: the paint quads wind face down (z runs negative); the paint material is double-sided now.
 - Probe: `node playtest_city.js site_ow_r9 '[{"name":"walk_n","x":-35,"z":-180,"face":0,"ground":true,"walk":{"key":"w","max":40000}}]'` walks
   into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
@@ -14254,3 +14260,47 @@ box none of whose DRAWN faces is on the doorway (a body's `faces: 'blr'`), `ring
 The room's rows are never written back (the editor saves them as they were). `window.EW_NO_DOOR_CLEAR = true` = the rows as written.
 SO, WHEN YOU WRITE A BUILDING: a band across the front needs no door split any more (I.js `ring` still splits its own; both are fine). Something you
 WANT across a doorway (a curtain, a gate bar) takes `inDoor: true`. Not covered: a cylinder, dome or pack model standing in a doorway.
+## THE SEWERS, POLISH PASS 1 — grates, cobwebs, the sludge waded, the falls' own sheet (2026-11-22)
+
+mondo 11-22: "There are grates standing up right, spiderweb decals standing upright that still have a black background, i cant walk in the
+green liquid, its glitches and puts me back on the ground, the waterfalls look messed up like super pixelated or stretched and flickering."
+
+- **THE GRATES LIE IN THE FLOOR.** `drain_grate`'s file stands on edge (a wall grate, `mount: 0.4`); bake-labyrinth.js stood it in the middle
+  of a channel's last square. New catalogue row `drain_grate_floor` = the SAME file with `lay: true`. The kit (`A.kit`, `grate()`) lays one
+  over each channel's last two metres: `span: 2.2` (the channel's width), `y: 0.24` (a lift over the bed, under 1 = a lift), `noSeat`. 40 rows.
+- **A COBWEB HANGS IN A CORNER.** The pack's web (`psx_cobweb_*`) is one flat card hung from its top corner; `A.dec` dropped it on the floor,
+  where it stood like a sign. In bake-labyrinth.js a cobweb key now spans the corner of two walls at 45 degrees (one wall: flat on it; open
+  floor: moved to the nearest walled square of its level), `y: hAt + 1.9` (a prop `y` of 1 or more is a height from the ROOM'S FLOOR, not a
+  lift: `y: 2` put it on the ground of a 43 m level). three-renderer.js `_hqPropMatPick`: a cobweb's material writes no depth and has
+  `alphaTest 0.02` (it wrote depth, so water / stains behind it were cut out in its whole rectangle; a see-through part that writes depth is
+  also taken into the static batch). NOT SEEN IN THE CLOUD: the black card itself (the cloud probe runs the node renderer on WebGL2, where the
+  web is nearly invisible: its sheet's alpha is under 0.2); the fix is by reading. Other rooms' floor cobwebs (the Cavern, the Woods…) are
+  as they were: their bakes still drop them on the floor.
+- **THE SLUDGE IS WADED.** data.js `hqTerrainWades(key)` = water or sludge; used by hqTerrainFeet, hqTerrainAir, the door-sill rule and
+  three-renderer.js's landing rule (the "put me back on the ground" = `_hqVoidReturn` for any liquid but water). Sludge is waded at ANY depth
+  (the feet ride the wade line, 0.55 m under the sheet). `hqTerrainHaulOut`: a body at the sludge's wade line takes a sump's sheer brim as a
+  step (else a walker in a 1.2 m sump could never leave; water sumps here are `deep_water`, never entered). The Radioactive status is the
+  battle's (TERRAIN_RULES.sludge), unchanged: wading on the walk gives nothing.
+- **THE FALL'S OWN SHEET.** `_hqFallsBuild` drew a fall in the water's own material, whose picture, caustics and glints are laid by WORLD x, z:
+  down a sheer face that is one row of the pattern pulled the whole height, in blocks a segment tall (8 segments on a 42 m shaft), glints
+  blinking as bars. Now `_hqFallMat(look)`: one drawn streak sheet (256 x 512, mip-mapped), laid by the fall's own width and length, tinted
+  per look (`_HQ_FALL_COL`), Lambert, the liquid's glow where it has one; segments = height / 0.7 (8 to 48). Lava keeps the old sheet. Every
+  room's falls change (the row is shared). The old look: `window.EW_HQ_OLD_FALLS = true` before the room.
+- **NOT DONE / SEEN ON THE WALK:** the sludge sheet is one flat bright green with no picture on it and a ragged fringe at a channel's round
+  end (the square-water shore on a 2.2 m channel); a fall still has no mist or sound; the walk was 14 open spots + the named places, not
+  every square.
+
+## THE SEWERS, POLISH PASS 1b — the cobwebs everywhere, the sludge's edge and surface (2026-11-22)
+
+- **A COBWEB HANGS, IN EVERY ROOM.** three-renderer.js `_hqCobwebHang(p)`, called first in `placeOne` (the room's build, once a row): a
+  `psx_cobweb_*` row with no height of its own (no `y` of 1 or more, not `ceil` / `wall` / `flip`), in a terrain room, is placed flat on the
+  nearest wall or rock face within 5 m (eight headings; a face = the ground 2.2 m higher, a wall row that tall, or the room's edge), its foot
+  1.9 m over the ground it was dropped on, no blocker. The row in data.js is never changed. On 11-22 six rooms held 39 webs on the floor (Agartha 15, the
+  Tunnel-Way 17, the Long Dark 3, the West 1, the Clearing 1, the Estate's trail 2), counting `hw_web*` too: those are the Halloween pack's 3D
+  webs, not cards, and are left as they are. `hang: false` on a row keeps it where it is; off for all: `window.EW_NO_COBWEB_HANG`. Checked in the Tunnel-Way (6 webs moved to
+  their walls). A bake need not place cobwebs by hand any more (bake-labyrinth.js still does, into corners).
+- **THE SHEET NO LONGER CLIMBS A SHEER BANK** (`_hqGridWaterBuild`, every room's square water): a point over a bank higher than the lay line
+  was clear but stood ON that bank, so the last strip of the sheet was pulled up the channel's side as a ragged streaked fringe (loud on the
+  opaque sludge). It stops at the lay line + 0.1 now, inside the bank.
+- **THE SLUDGE'S SURFACE:** `_CALM.liquids.sludge` ripple 0.02 -> 0.05 (the calm liquid's own ripple, same colour, same sheet: nothing
+  repainted). Was one flat green.
