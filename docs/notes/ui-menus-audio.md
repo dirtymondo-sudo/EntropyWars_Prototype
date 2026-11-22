@@ -3063,3 +3063,13 @@ markers too". His picks on the mock-up: "definitely bottom right, north always u
 - The left mouse icon (`_hqLmbIcon`) is the twin of hud.js `_HrlgRmbIcon` (the combat menu's BACK chip), the left button lit.
 - A phone (`html.ew-hq-touch`) names its own buttons: `[ATTACK]`, `[USE] TALK`. Exploration has no gamepad path, so no pad glyphs.
 - The other prompts (doors, counters, seats, story characters who only talk) are unchanged.
+
+### THE SHORT PROMPT, pass 2: BOATS + THE REST (2026-11-22, mondo: "what about boats? anything else left that has similar unnecessary overexplanation?")
+- Boats: the skiff / rowboat / bathyscaphe box reads `▸ <boat> [E] BOARD`, no sub line; NO box while aboard any vehicle (map.js `_hqSetPrompt`
+  hides `t.aboard`; the aboard target id is `<id>:in` so the box redraws on boarding). The skiff's toast is gone; the bathyscaphe keeps
+  `SPACE UP · C DOWN` (keys no other game has).
+- Gone: the board copy in every ENGAGING toast ("THE GROUND IS THE BOARD" etc.; `_hqEncounterBoardCopy` is no longer shown anywhere),
+  "D.O.O.R. PERSONNEL" / "ON BREAK" under a person's name (an authored `sub` still shows), "A SEAT" / "SEATED", the SEATED toast, the
+  ladder's "SPACE LETS GO", "SHIFT FASTER" in the swim toasts, the skateboard's flavour line and "B OFF".
+- RULE: a toast or box names only what the player cannot guess (a game-only key, a level). Standard controls and flavour lines stay out.
+- Left as is (game-only mechanics): the door gun / threshold toasts (left / right click, hold F, Q).
