@@ -14704,7 +14704,8 @@ try to make them look more realistic." (Same message: River Road and the Old Roa
   the slanted exit arrow. Font id `hwy` = Overpass 700 (Google Fonts, Open Font License, drawn after Highway Gothic; linked in index.html).
 - THE GANTRY: docs/areas/routes/south-kit.js `gantry` writes it (Title Case, the panel's foot 5.35 m over the road, a steel back inside the round
   corners) and an EXIT tab on the top right. A board with its own `bg` / `font` (the billboards) keeps the old flat board.
-- THE EXIT NUMBERS (south-kit.js `EXITS`, counted out from Disaster City): 1 Disaster City, 1A the Badlands gas + motel, 2 The Circus, 2A the
-  Desert Highway's gas + caravan stop, 3 Western Town, 4 Area 51, 5 Giza. A sign naming one of them wears the tab, a sign naming two wears none,
+- THE EXIT NUMBERS (south-kit.js `EXITS`, counted out from Disaster City; mondo 11-22: "it would be 1a and 1b if youre gonna do it like that, you
+  cant just go 1 and then 1a"): 1A Disaster City, 1B the Badlands gas + motel, 2A The Circus, 2B the Desert Highway's gas + caravan stop, 3 Western Town, 4 Area 51, 5 Giza. A sign naming one of them wears the tab, a sign naming two wears none,
   `o.exit` names it by hand. The gore plate at a ramp (ow-raised.js) reads EXIT, the number (`raised.exit.no` in the route spec), the arrow.
-- The mile markers keep their plain plate, in the same typeface. Seen in the game on site_ow_r9 (HEAD c0e8eb9 + this change).
+- The mile markers keep their plain plate, in the same typeface. THE DESERT'S ROAD SIGNS at its zone exits (bake-desert.js THE SIGN AT THE GATE,
+  `des:gate:sign:*`, mondo 11-22 "go ahead and do the rest of the highway too") are the same panel now, no tab. Seen in the game on site_ow_r9 (HEAD c0e8eb9 + this change).

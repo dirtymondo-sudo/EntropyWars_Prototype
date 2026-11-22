@@ -15,9 +15,10 @@ let nGantry = 0;
    to make them look more realistic"): a green guide sign is one panel drawn by three-renderer.js `_hqArchSignTex` style 'h' (font `hwy` = Overpass,
    the open face drawn after Highway Gothic; round corners; the white line set in from the edge), each ' · ' part on its own line in Title Case, and
    an EXIT tab on its top right corner. THE EXIT NUMBERS, counted out from Disaster City (the old Desert Highway's own boards said 1, 2, 3):
-   1 Disaster City · 1A the Badlands gas + motel · 2 The Circus · 2A the Desert Highway's gas + caravan stop · 3 Western Town · 4 Area 51 · 5 Giza.
+   1A Disaster City · 1B the Badlands gas + motel · 2A The Circus · 2B the Desert Highway's gas + caravan stop · 3 Western Town · 4 Area 51 · 5 Giza
+   (mondo 11-22: "it would be 1a and 1b if youre gonna do it like that, you cant just go 1 and then 1a").
    A sign that names one of them wears its tab; a sign that names two (a pull-through) wears none; `o.exit` names it by hand. */
-const EXITS = { 'DISASTER CITY': '1', 'THE CIRCUS': '2', 'WESTERN TOWN': '3', 'AREA 51': '4', 'GIZA': '5' };
+const EXITS = { 'DISASTER CITY': '1A', 'THE CIRCUS': '2A', 'WESTERN TOWN': '3', 'AREA 51': '4', 'GIZA': '5' };
 const tcase = s => String(s).toLowerCase().replace(/(^|[^a-z0-9'])([a-z])/g, (m, a, b) => a + b.toUpperCase());
 const hwyKey = (lines, w, h) => 'txt:' + lines.join(' · ') + '|#ffffff|#0b5c3a|' + Math.round(w / h * 100) / 100 + '||hwy||h';
 function gantry(ctx, sx, sy, dir, words, o) {
