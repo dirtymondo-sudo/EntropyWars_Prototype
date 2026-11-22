@@ -14164,3 +14164,23 @@ box 4 x 9. `R9.js` stands the gas station (store, canopy, sign, truck) west and 
 `--put` the map picture, a browser look.
 
 **Seen, not touched:** in data.js `hqTerrainBridges` the end of one line (`drawW`, `glaze`, `seat`, `front`, `gaps` of a straight bridge) sits behind a `//` comment.
+
+### THE RAISED HIGHWAY, THE POLISH (2026-11-22, same day; mondo: "this is not up to my standards yet, and we need to get it right so we can make the rest of the highway like it too")
+
+His five points and what answers each:
+- "the white and yellow road lines cross and overlap each and look ugle at the diagonal parts of the road": `bake-route.js` THE LINES MEET AT A BEND. A highway run's
+  lines start and end on the bend's mitre (`bendAt`), for every highway room on its next bake. On a raised room the asphalt also reaches 4.3 squares from the middle line
+  at grade (ow-raised.js), so no edge line lies on a dirt square down a diagonal.
+- "there is the gap between the road and the side barrier that i immediately got stuck in": the terrain `ramp` rows were exactly the road wide, so the field's bank began
+  one grid point INSIDE the barrier (a trench 1.75 m wide). A ramp row is 0.2 m wider than its road now: the bank starts under the retaining wall.
+- "The exit ramp looks stupid, that is not how highways look, the lane lines need to actualy make sense": THE EXIT'S PLAN in ow-raised.js. Spec
+  `exit: { taper, lane, diverge, slip, cross }` (squares): the lane opens on a taper, runs beside the road behind a dotted line, peels away over `diverge` (its two edge
+  lines run out to the ramp, a painted gore with chevrons opens, a wall stands in the gore from its nose behind a yellow crash barrel), then a ONE-lane ramp (7 m between
+  walls) goes down to the cross road, with a stop line at the foot of the two that come off. The widened deck is `poly` slabs; level barriers on any line = `jerseySeg`;
+  level paint on any line = `polyLine`. Arch `poly` parts take `under: true` (the underside).
+- "why would you make new light poles/street lamps": the lights are the city's own lamp now. `terrain.gen.lamps: [{ x, z, nx, nz, y }]` works in ANY room (data.js
+  hqTerrainSurvey, three-renderer.js `_hqBuildStreetLamps`); `y` = the lamp's foot (here: the parapet's top). Never build a lamp from boxes.
+- "riding my skateboard and jumping on the highway completely loses all my momentum": data.js `hqTerrainAir` read a bridge slab's top + 5 cm as its mass, so a jump off
+  ANY bridge row met "a wall in the air" on its first frame and the board stopped. Feet on the top are in the air over it now (as on the ground). Not highway-only.
+
+Gantries stand before the exit lane opens (a post stood in the lane). Known and left: the terrain ramp's asphalt is a shade lighter than the deck's where they meet.
