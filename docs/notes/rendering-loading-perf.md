@@ -1774,6 +1774,13 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   2x) with Ink Lines Thin; Medium (2.4 texels) was clean here but leaves only 0.1 texel of slack, which his GPU may not give. Now every
   depth read is on a texel centre, a whole number of texels out, and a width between two whole steps blends the two tests (GLSL `sEdge`,
   TSL `edgeAt`; 9 depth reads, was 5). Colour reads unchanged. Proof /mnt/project-files/hall-ink-tears/. NOT seen: his Mac.
+- THE PALETTES (11-22, mondo, on six palette mock-ups in /mnt/project-files/shader-polish-20261122/: "let's just add the vhs tape as an
+  option"): the grade's shadow lean + light lean are a pick, `_STYLE_PALETTES` / `_style.palette` (0 Entropy = the default, 1 VHS Tape =
+  violet shadows, cool cyan lights). Settings > Video > Palette; `ThreePost.setStyleParam('palette', n)`. Uniforms `uPalSh` / `uPalHi`
+  (GLSL, written by `_stylePalSync` in `_styleSync` + `styleDraw`) and `P.st.palSh` / `palHi` (TSL). A new palette = one row in the table +
+  one button in ui.js. Seen: Came A Lot on the pmndrs chain, the foyer on the node renderer's WebGL 2 backend. NOT seen: real WebGPU / his
+  Mac, the Settings row itself, the party builder stage. The same sheet's other ideas (ink polish, crease lines, Texture Calm, Palette
+  Lock, hatching, five more palettes) were NOT picked and not built.
 - THE STYLE ON A STAGE (11-12, mondo: "make sure the 2 new shaders (ink and the color grade) are on in the party builder as well.
   The 3d models dont have it"): the party builder / creator / intake / codex stage (three-renderer.js EWCharViewer) is a WebGL
   renderer of its OWN on a see-through canvas, so the board's chain never reached it. `ThreePost.styleDraw(r, scene, cam)` draws its

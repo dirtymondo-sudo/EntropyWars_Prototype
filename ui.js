@@ -8021,6 +8021,7 @@
             let rsOn = -1; rsSteps.forEach((k,i)=>{ if(Math.abs(rsShare-k)<0.011) rsOn=i; });
             // THE ENTROPY STYLE (2026-11-12): the grade + ink pass's two rows
             const esState = (typeof ThreePost !== 'undefined' && ThreePost.getStyle) ? ThreePost.getStyle() : { mode: 'off', inkWidth: 1 };
+            const esPal = Math.round(+esState.palette || 0);   // THE PALETTES (2026-11-22)
             const esMode = esState.mode, esInk = +esState.inkWidth || 1, esUnit = (esState.unitBold === undefined) ? 1.9 : +esState.unitBold;
             const rsSize = (_rsInfo&&_rsInfo.w>0&&_rsInfo.h>0) ? `drawing ${_rsInfo.w} × ${_rsInfo.h}; ` : '';
             /* MAP LOOKS OFF (2026-10-24): every grade setting the player never touched reads OFF on screen (three-post.js _LOOK_CLEAN),
@@ -8261,6 +8262,12 @@
                         <span class="pm-setting-label">Entropy Style</span>
                         <div class="pm-seg-group">
                             ${[['off','Off'],['grade','Grade'],['ink','Grade + Ink']].map(m=>`<button class="pm-seg-btn${esMode===m[0] ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyle)ThreePost.setStyle('${m[0]}');${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px${esMode==='off' ? ';opacity:0.45' : ''}">
+                        <span class="pm-setting-label">Palette</span>
+                        <div class="pm-seg-group">
+                            ${[[0,'Entropy'],[1,'VHS Tape']].map(m=>`<button class="pm-seg-btn${esPal===m[0] ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyleParam)ThreePost.setStyleParam('palette',${m[0]});${RJ}">${m[1]}</button>`).join('')}
                         </div>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px${esMode==='ink' ? '' : ';opacity:0.45'}">
