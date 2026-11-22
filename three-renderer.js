@@ -101792,9 +101792,17 @@ const ThreeRenderer = (function () {
     function _hqStackOff() { return _ewGpu !== 'webgpu' || !_hqStk.byImg || !THREE.DataArrayTexture || !_hqStackBackend() || (typeof window !== 'undefined' && (window.EW_HQ_NO_STACK || window.EW_HQ_NO_ONE_PAINT || window.EW_HQ_NO_SHELL_CELLS)); }
     /* the sheet a look could stack (its `map`), or null */
     function _hqStackTex(m) {
-        if (!m || !(m.isMeshPhongMaterial || m.isMeshLambertMaterial) || !_hqBatchVcOk(m) || m.transparent || m.alphaTest > 0 || m._ewNode || m.ewCol === 'on') return null;
+        /* THE SIGNS STACK (2026-11-22, mondo walking Disaster City at 43.6 FPS, "alone: see-through / cut-out 410" of 1,303 square meshes in
+           view; he picked "Keep merging, same look"). The census: those pieces are the city's CUT-OUT SIGNS, each a plate with a picture
+           of its own painted on a canvas (128 px high, 64 to 2048 px wide), so each was alone in its look. A cut-out (alpha test, full
+           opacity, writes depth: the only see-through piece the merge takes) and a canvas picture may now stand in a stack: the layer is
+           filled from the canvas as three uploads it, its alpha rides in the layer's texel and the look's own alpha test cuts it, so
+           same-size signs of a square merge. A canvas painted again later (its version moves) leaves its stack, as any changed sheet.
+           Off: window.EW_HQ_NO_SIGN_STACK before the room. */
+        var cut = !!(m && m.alphaTest > 0 && m.opacity >= 1 && m.depthWrite !== false && m.blending === THREE.NormalBlending), sgn = !(typeof window !== 'undefined' && window.EW_HQ_NO_SIGN_STACK);
+        if (!m || !(m.isMeshPhongMaterial || m.isMeshLambertMaterial) || !_hqBatchVcOk(m) || ((m.transparent || m.alphaTest > 0) && !(cut && sgn)) || m._ewNode || m.ewCol === 'on') return null;
         if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || (m.clippingPlanes && m.clippingPlanes.length)) return null;
-        var t = m.map; if (!t || !t.image || !(t.version > 0) || t.isCanvasTexture || t.isCompressedTexture || t.isVideoTexture || t.isDataTexture || t.isRenderTargetTexture || t.isCubeTexture || (t.channel | 0) !== 0) return null;
+        var t = m.map; if (!t || !t.image || !(t.version > 0) || (t.isCanvasTexture && !sgn) || t.isCompressedTexture || t.isVideoTexture || t.isDataTexture || t.isRenderTargetTexture || t.isCubeTexture || (t.channel | 0) !== 0) return null;
         if (t.format !== THREE.RGBAFormat || t.type !== THREE.UnsignedByteType || (t.mipmaps && t.mipmaps.length)) return null;
         var im = t.image; if (!(im.width > 0 && im.height > 0) || im.complete === false || im.data) return null;
         for (var i = 1; i < _HQ_BATCH_MAPS.length; i++) { var o = m[_HQ_BATCH_MAPS[i]]; if (o && !(_HQ_BATCH_MAPS[i] === 'emissiveMap' && o === t)) return null; }
@@ -101835,6 +101843,8 @@ const ThreeRenderer = (function () {
             try { if (dev.pushErrorScope && dev.popErrorScope) { dev.pushErrorScope('validation'); scoped = true; } } catch (eS) { scoped = false; }
             for (var i = 0; i < L.length; i++) {
                 var t = L[i];
+                /* THE SIGNS STACK: a canvas goes in by three's own upload call (on Firefox as bytes, THE SOFT CANVASES: never the copy that waits) */
+                if (t.image && t.image.tagName === 'CANVAS' && typeof be.textureUtils._copyImageToTexture === 'function') { be.textureUtils._copyImageToTexture(t.image, gt, { size: { width: w, height: h }, format: gt.format }, i, !!t.flipY, !!t.premultiplyAlpha, 0); _hqStk.canvases = (_hqStk.canvases | 0) + 1; continue; }
                 q.copyExternalImageToTexture({ source: t.image, flipY: !!t.flipY }, { texture: gt, mipLevel: 0, origin: { x: 0, y: 0, z: i }, premultipliedAlpha: !!t.premultiplyAlpha }, { width: w, height: h });
             }
             if (arr.generateMipmaps) be.textureUtils._generateMipmaps(gt);
