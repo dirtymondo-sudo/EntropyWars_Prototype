@@ -51,13 +51,15 @@
   "0,33": false,
   "1,33": false,
   "0,34": false,
-  "1,34": false
+  "1,34": false,
+  "-2,32": false
  },
  "names": {
   "0,33": "the trailers",
   "1,33": "the trailers, the dish",
   "0,34": "the trailers, south",
-  "1,34": "the trailers, the turn-off"
+  "1,34": "the trailers, the turn-off",
+  "-2,32": "the wagon"
  },
  "say": {
   "conspiracy theorist": [
@@ -68,5 +70,20 @@
  "taper": {
   "ow_h_m1_30": {},
   "ow_v_2_34": {}
+ },
+ "raised": {
+  "h": 5.5,
+  "up": [
+   14,
+   23
+  ],
+  "down": [
+   33,
+   42
+  ],
+  "cross": [
+   27,
+   29
+  ]
  }
 }
