@@ -380,7 +380,9 @@ function bbox(ids) {
   return x0 === Infinity ? null : { x0, y0, x1, y1 };
 }
 function fit(silent) {
-  const r0 = stage.getBoundingClientRect(), b = bbox(), v = B.view, r = { width: r0.width, height: r0.height - tlH() };
+  const r0 = stage.getBoundingClientRect(), v = B.view, r = { width: r0.width, height: r0.height - tlH() }; let b = bbox();
+  /* the world map behind a places board is part of what fits on screen (11-22) */
+  const mc = $('bgMap'), W = PL.world; if (b && mc && !mc.hidden && W && B.mapK > 0) b = { x0: Math.min(b.x0, 0), y0: Math.min(b.y0, 0), x1: Math.max(b.x1, W.w * B.mapK), y1: Math.max(b.y1, W.h * B.mapK) };
   if (!r.width) return;
   if (!b) { v.x = r.width / 2; v.y = r.height / 2; v.k = 1; }
   else { const pad = 40, k = clamp(Math.min((r.width - pad * 2) / (b.x1 - b.x0), (r.height - pad * 2 - 40) / (b.y1 - b.y0)), .02, 1.15); v.k = k; v.x = r.width / 2 - (b.x0 + b.x1) / 2 * k; v.y = r.height / 2 - (b.y0 + b.y1) / 2 * k; }
@@ -1457,7 +1459,7 @@ function act(a) {
     case 'vFocus': if (sel) viewFocus(sel.id, VIEW && VIEW.kind === 'focus' ? VIEW.hops : 1); break;
     case 'vPath': if (sel) { pathFrom = sel.id; $('inspector').classList.remove('open'); toast('Now tap the unit to find the way to'); } break;
     case 'vZones': viewZones(); break; case 'vCommand': viewTree('command'); break; case 'vFamily': viewTree('family'); break;
-    case 'arrMap': if (!B.mapK) { toast('Sort into groups by places first: the map comes with it'); break; } if (B.mapHide) delete B.mapHide; else B.mapHide = true; commit(); break;
+    case 'arrMap': mapToggle(); break;
     case 'arrFaction': arrange('faction'); break; case 'arrHome': arrange('home'); break; case 'arrTies': arrange('ties'); break;
     case 'backup': modal('<h2>Save a backup</h2><p>Every board, as one JSON file. Keep it anywhere; load it back from Export, Load a backup.</p><textarea class="inp code" id="mText" readonly></textarea><div class="acts"><button class="btn" data-x="cancel">Close</button><button class="btn" data-x="copy">Copy</button><button class="btn pri" data-x="save">Save file</button></div>', d => { $('mText').value = backupJSON(); d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'cancel') closeModal(); else if (x === 'copy') copyText($('mText')); else if (x === 'save') saveFile('entropy-wars-relationship-web-' + stamp() + '.json', $('mText').value); }); }); break;
     case 'restore': modal('<h2>Load a backup</h2><p>Choose a backup file, or paste its contents below.</p><div class="prow"><button class="btn" data-x="pick">Choose a file…</button><span class="muted" id="mFile"></span></div><textarea class="inp code" id="mText" placeholder="{ &quot;app&quot;: &quot;ew-relationship-web&quot;, … }" style="min-height:140px"></textarea><p class="muted" id="mErr"></p><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn" data-x="replace">Replace all my boards</button><button class="btn pri" data-x="merge">Add as extra boards</button></div>', d => { d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'cancel') closeModal(); else if (x === 'pick') $('fileIn').click(); else if (x === 'merge' || x === 'replace') { const r = importJSON($('mText').value, x === 'replace'); if (r.err) $('mErr').textContent = r.err; else { closeModal(); toast(r.msg); } } }); }); break;
@@ -1535,17 +1537,19 @@ function mapHTML() {
       (d.p.length ? '<div class="pps">' + d.p.map(n => on(placeSrc(z, d.k, n), n) ? '<span class="pp on">' + esc(n) + '</span>' : '<button class="pp" data-padd="' + esc(z.k) + '" data-pd="' + esc(d.k) + '" data-pp="' + esc(n) + '">' + esc(n) + '</button>').join('') + '</div>' : '') + '</div>').join(''); }).join('') + '</div></div>').join('');
 }
 let mapOpen = null;
+/* the Places-from-the-game map: 7 canvas pixels a square (was 5, drawn 465 px wide: "the map is really small", 11-22) */
+const MAP_S = 7;
 function drawWorld(cv) {
-  const W = PL.world; if (!W || !cv) return; const S = 5, x = cv.getContext('2d'); cv.width = W.w * S; cv.height = W.h * S;
+  const W = PL.world; if (!W || !cv) return; const S = MAP_S, x = cv.getContext('2d'); cv.width = W.w * S; cv.height = W.h * S;
   x.fillStyle = '#dfe4de'; x.fillRect(0, 0, cv.width, cv.height);
   W.g.forEach((row, j) => { for (let i = 0; i < row.length; i++) { const t = W.key[row[i]]; x.fillStyle = TERR[t] || '#dfe4de'; x.fillRect(i * S, j * S, S, S); } });
-  x.font = '600 11px system-ui, sans-serif'; x.textAlign = 'center';
+  x.font = '600 13px system-ui, sans-serif'; x.textAlign = 'center';
   const placed = [], hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
   PL.zones.forEach(z => { if (!z.at) return; const px = (z.at[0] - W.x0) * S, py = (z.at[1] - W.y0) * S; x.beginPath(); x.arc(px, py, mapOpen === z.k ? 9 : 6, 0, Math.PI * 2); x.fillStyle = z.c; x.fill(); x.lineWidth = 2; x.strokeStyle = '#1b2421'; x.stroke(); placed.push({ x: px - 7, y: py - 7, w: 14, h: 14 }); });
   PL.zones.forEach(z => { if (!z.at) return; const px = (z.at[0] - W.x0) * S, py = (z.at[1] - W.y0) * S, tw = x.measureText(z.n).width + 8;
-    const tries = [[-tw / 2, 9], [-tw / 2, -24], [10, -7], [-tw - 10, -7], [-tw / 2, 26], [-tw / 2, -41], [10, 10], [-tw - 10, 10], [10, -24], [-tw - 10, -24]].map(o => ({ x: px + o[0], y: py + o[1], w: tw, h: 15 }));
+    const tries = [[-tw / 2, 10], [-tw / 2, -27], [11, -8], [-tw - 11, -8], [-tw / 2, 29], [-tw / 2, -46], [11, 11], [-tw - 11, 11], [11, -27], [-tw - 11, -27]].map(o => ({ x: px + o[0], y: py + o[1], w: tw, h: 17 }));
     const r = tries.find(t => !placed.some(q => hit(t, q))) || tries[0]; placed.push(r);
-    x.fillStyle = mapOpen === z.k ? '#1b2421' : 'rgba(255,255,255,.88)'; x.fillRect(r.x, r.y, r.w, r.h); x.fillStyle = mapOpen === z.k ? '#fff' : '#1b2421'; x.fillText(z.n, r.x + r.w / 2, r.y + 11); });
+    x.fillStyle = mapOpen === z.k ? '#1b2421' : 'rgba(255,255,255,.88)'; x.fillRect(r.x, r.y, r.w, r.h); x.fillStyle = mapOpen === z.k ? '#fff' : '#1b2421'; x.fillText(z.n, r.x + r.w / 2, r.y + 13); });
 }
 function openMap() {
   const off = PL.zones.filter(z => !z.at);
@@ -1553,7 +1557,7 @@ function openMap() {
     d.classList.add('wide'); drawWorld($('worldMap'));
     const redraw = () => { const sc = $('mapList').scrollTop; $('mapList').innerHTML = mapHTML(); $('mapList').scrollTop = sc; drawWorld($('worldMap')); };
     const show = k => { mapOpen = mapOpen === k ? null : k; redraw(); const row = d.querySelector('.pz[data-z="' + k + '"]'); if (row && mapOpen) row.scrollIntoView({ block: 'nearest' }); };
-    $('worldMap').addEventListener('click', e => { const W = PL.world, r = e.target.getBoundingClientRect(), sx = e.target.width / r.width, mx = (e.clientX - r.left) * sx, my = (e.clientY - r.top) * sx; let best = null, bd = 40; PL.zones.forEach(z => { if (!z.at) return; const dd = Math.hypot((z.at[0] - W.x0) * 5 - mx, (z.at[1] - W.y0) * 5 - my); if (dd < bd) { bd = dd; best = z.k; } }); if (best) show(best); });
+    $('worldMap').addEventListener('click', e => { const W = PL.world, r = e.target.getBoundingClientRect(), sx = e.target.width / r.width, mx = (e.clientX - r.left) * sx, my = (e.clientY - r.top) * sx; let best = null, bd = 40; PL.zones.forEach(z => { if (!z.at) return; const dd = Math.hypot((z.at[0] - W.x0) * MAP_S - mx, (z.at[1] - W.y0) * MAP_S - my); if (dd < bd) { bd = dd; best = z.k; } }); if (best) show(best); });
     d.addEventListener('click', e => {
       const o = e.target.closest('[data-zopen]'); if (o) return show(o.dataset.zopen);
       const a = e.target.closest('[data-padd],[data-paddall]'); if (!a) { if (e.target.closest('[data-x]')) closeModal(); return; }
@@ -1563,11 +1567,24 @@ function openMap() {
   });
 }
 $('btnMap').addEventListener('click', openMap);
+/* Show or hide the world map (11-22): hiding hides it; showing brings up whatever it needs: the Places layout, out of the group web,
+   and a sort into groups by places when the board was never laid on the map */
+function mapToggle() {
+  if (!PL.world) return toast('No world map in this build');
+  if (!$('bgMap').hidden) { B.mapHide = true; commit(); return; }
+  delete B.mapHide;
+  if (VIEW && VIEW.kind === 'gweb') closeView();
+  if (orgK() !== 'place') setOrg('place');
+  if (!(B.mapK > 0)) { sortGroups(); if (!(B.mapK > 0)) return toast('Put at least three places from the map on the board'); return; }
+  commit(); fit();
+}
 /* the world map under a board sorted by places (B.mapK = board pixels a map square) */
 let bgDrawn = false;
 function renderMapBg() {
-  const cv = $('bgMap'), W = PL.world, k = W && orgK() === 'place' && !B.mapHide && B.mapK && !(VIEW && VIEW.kind === 'gweb'); if (!cv) return;
-  cv.hidden = !k; if (!k) return;
+  /* 11-22 fix (mondo: "show/hide the world map isn't working; the map is really small"): `k` used to end in the view test, so it was
+     `true`, not the scale, and the map drew 1 board pixel a square (93 px under a 5,000 px board), too small to see shown or hidden */
+  const cv = $('bgMap'), W = PL.world, on = W && orgK() === 'place' && !B.mapHide && B.mapK > 0 && !(VIEW && VIEW.kind === 'gweb'), k = on ? +B.mapK : 0; if (!cv) return;
+  cv.hidden = !on; if (!on) return;
   if (!bgDrawn) { const S = 4, x = cv.getContext('2d'); cv.width = W.w * S; cv.height = W.h * S; x.fillStyle = '#dfe4de'; x.fillRect(0, 0, cv.width, cv.height);
     W.g.forEach((row, j) => { for (let i = 0; i < row.length; i++) { x.fillStyle = TERR[W.key[row[i]]] || '#dfe4de'; x.fillRect(i * S, j * S, S, S); } }); bgDrawn = true; }
   cv.style.width = W.w * k + 'px'; cv.style.height = W.h * k + 'px';

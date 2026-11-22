@@ -49,14 +49,65 @@
  },
  "places": {
   "-2,24": false,
-  "-1,25": false
+  "-1,25": false,
+  "2,24": false,
+  "3,24": false,
+  "2,25": false
  },
  "names": {
   "-2,24": "the Door",
-  "-1,25": "the bus stop"
+  "-1,25": "the bus stop",
+  "2,24": "the gas station, the pumps",
+  "3,24": "the gas station, the store",
+  "2,25": "the caravan stop"
  },
  "taper": {
   "ow_v_6_23": {},
   "ow_h_m2_26": {}
- }
+ },
+ "raised": {
+  "axis": "x",
+  "h": 6,
+  "up": [
+   19,
+   29
+  ],
+  "down": [
+   73,
+   83
+  ],
+  "exit": {
+   "no": "2A",
+   "taper": 3,
+   "lane": 2,
+   "diverge": 7,
+   "slip": 9,
+   "cross": [
+    50,
+    52
+   ]
+  },
+  "flat": [
+   [
+    53,
+    24,
+    70,
+    35
+   ]
+  ]
+ },
+ "add": [
+  [
+   2,
+   24
+  ],
+  [
+   3,
+   24
+  ],
+  [
+   2,
+   25
+  ]
+ ]
 }

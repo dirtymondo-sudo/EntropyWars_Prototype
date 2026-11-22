@@ -77622,7 +77622,8 @@ const ThreeRenderer = (function () {
         dela:      { f: '"Dela Gothic One"', w: 400, ls: 0.02 },      // Mid Records
         frak:      { f: '"UnifrakturMaguntia"', w: 400, ls: 0, tc: true },  // the newspaper's masthead
         sancreek:  { f: '"Sancreek"', w: 400, ls: 0.02 },              // the Western Town (Nowhere): the saloon, the hotel, the sheriff, the town-limit board
-        ewert:     { f: '"Ewert"', w: 400, ls: 0.02 }                  // the Western Town: the bank
+        ewert:     { f: '"Ewert"', w: 400, ls: 0.02 },                 // the Western Town: the bank
+        hwy:       { f: '"Overpass"', w: 700, ls: 0.02 }               // THE HIGHWAY SIGNS (2026-11-22): Overpass, the open face drawn after Highway Gothic
     };
     /* THE CITY MARKS (2026-11-15, mondo: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city
        branding/logo for certain buildings or props or banners"; his OK on the branding sheet): drawn from plain shapes on the sign's own
@@ -77803,7 +77804,7 @@ const ThreeRenderer = (function () {
             var bt = new THREE.CanvasTexture(bc); bt.anisotropy = 4;
             return (_hqArchSignCache[key] = bt);
         }
-        var H = (q[7] === 'n' && asp <= 16) ? 256 : 128, W = Math.max(32, Math.min(H > 128 ? 4096 : 2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;   // (a neon sign is drawn twice as fine: its halo blurs a 128 px line)
+        var H = (q[7] === 'h') ? Math.min(512, 128 * Math.max(1, words.split(' · ').length)) : (q[7] === 'n' && asp <= 16) ? 256 : 128, W = Math.max(32, Math.min(H > 128 ? 4096 : 2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;   // (a neon sign is drawn twice as fine: its halo blurs a 128 px line)
         var g = c.getContext('2d'), F = HQ_SIGN_FONTS[q[5]] || null, shown = (F && F.tc) ? _hqSignTitleCase(words) : words;
         var fontOf = function (v, fam) { return (fam ? F.w : 900) + ' ' + v + 'px ' + (fam ? F.f + ', ' : '') + '"Arial Black", "Helvetica Neue", Arial, sans-serif'; };
         /* the words fitted inside the board: 90% of its width and (a typeface of its own only) 80% of its height, measured on the glyphs
@@ -77821,7 +77822,33 @@ const ThreeRenderer = (function () {
             if (!neonS) { g.fillStyle = fg; g.fillText(str, x, y); return; }
             g.save(); g.shadowColor = fg; g.shadowBlur = p * 0.2; g.fillStyle = fg; g.fillText(str, x, y); g.fillText(str, x, y); g.shadowBlur = 0; g.fillStyle = hot; g.fillText(str, x, y); g.restore(); g.fillStyle = fg;
         };
+        /* THE HIGHWAY SIGNS (2026-11-22, mondo: "use highway gothic, clearview, or another similar font. Give the signs a white border that is
+           inset so that green still appears as the outside edge of the sign. Round the corners of the sign"): an eighth field 'h' = a guide
+           sign's whole face. The panel is `bg` with round corners (clear outside them: the part's material cuts it), a white line set in
+           from the edge with the same round corners, and the words on one line each (' · ' parts them). A line '->NE' / '->NW' is the
+           slanted exit arrow. Sizes follow a real panel: 0.35 m of margin over and under, 0.9 m a line (the canvas is that panel, any size). */
+        var paintHwy = function (fam) {
+            var L = String(fam ? shown : words).split(' · '), u = H / (0.7 + 0.9 * L.length), rr = function (x, y, w, h, r) {
+                g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.arcTo(x + w, y, x + w, y + r, r); g.lineTo(x + w, y + h - r); g.arcTo(x + w, y + h, x + w - r, y + h, r);
+                g.lineTo(x + r, y + h); g.arcTo(x, y + h, x, y + h - r, r); g.lineTo(x, y + r); g.arcTo(x, y, x + r, y, r); g.closePath(); };
+            g.clearRect(0, 0, W, H); g.fillStyle = bg || '#0b5c3a'; rr(1, 1, W - 2, H - 2, u * 0.2); g.fill();
+            var bi = u * 0.085, bw = Math.max(2, u * 0.055); g.strokeStyle = fg; g.lineWidth = bw; rr(bi, bi, W - 2 * bi, H - 2 * bi, Math.max(2, u * 0.2 - bi * 0.6)); g.stroke();
+            g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+            for (var li = 0; li < L.length; li++) {
+                var cy = (0.35 + 0.9 * (li + 0.5)) * u, str = L[li];
+                if (str.indexOf('->') === 0) {   // the exit arrow: a shaft and a head, turned 45 degrees to the side the ramp leaves on
+                    g.save(); g.translate(W / 2, cy); g.rotate((str === '->NW' ? -1 : 1) * Math.PI / 4); var al = u * 0.36, aw = u * 0.085;
+                    g.beginPath(); g.moveTo(-aw, al); g.lineTo(-aw, -al * 0.25); g.lineTo(-aw * 3.2, -al * 0.25); g.lineTo(0, -al); g.lineTo(aw * 3.2, -al * 0.25); g.lineTo(aw, -al * 0.25); g.lineTo(aw, al); g.closePath(); g.fill(); g.restore();
+                    continue;
+                }
+                var px = Math.round(u * 0.74); g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (fam ? px * F.ls : 0) + 'px';
+                var tw = g.measureText(str).width || 1, room = W - u * 0.8; if (tw > room) { px = Math.max(8, Math.floor(px * room / tw)); g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (fam ? px * F.ls : 0) + 'px'; }
+                var mm = g.measureText('H'), cap = mm.actualBoundingBoxAscent || px * 0.7;
+                g.fillText(str, W / 2, cy + cap / 2);
+            }
+        };
         var paint = function (fam) {
+            if (q[7] === 'h') { paintHwy(fam); return; }
             g.clearRect(0, 0, W, H); if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
             var PB = Math.round(H * 0.75), px = PB, ls = (fam && F.ls && ('letterSpacing' in g)) ? F.ls : 0, txt = fam ? shown : words;
             var mk = _HQ_MARK_FONTS[q[6]] ? q[6] : '', mr = mk ? H * 0.42 : 0, mgap = mk ? H * 0.2 : 0, room = W * 0.9 - (mk ? mr * 2 + mgap : 0);   // THE CITY MARKS: the mark stands left of the words, the pair centred on the board
@@ -77899,6 +77926,7 @@ const ThreeRenderer = (function () {
                decal stay as they are. window.EW_ARCH_BARE = true: the flat colours back. */
             var surf = (!b.key && !(b.glow > 0) && b.kind !== 'glass' && b.kind !== 'over' && !(typeof window !== 'undefined' && window.EW_ARCH_BARE)) ? _hqArchSurface(b.tint) : null;
             if (surf) { var st = _hzTex(surf.key); if (st) { o.map = st; } else surf = null; }
+            if (sign && /\|h$/.test(String(b.key))) o.alphaTest = 0.5;   // THE HIGHWAY SIGNS: the panel's round corners are cut out of its quad
             if (b.kind === 'over') { o.transparent = true; o.alphaTest = 0.35; o.polygonOffset = true; o.polygonOffsetFactor = -1; o.polygonOffsetUnits = -1; }
             /* CLEAR GLASS (2026-11-20, the Bayside Mall: "the view out"): `kind: 'clear'` = a pane you see through (a shop window, a glass roof seen from
                under it); `glass` stays the opaque window sheet the city's walls wear. A sheet on it draws its mullions at the same see-through. */
@@ -78832,7 +78860,7 @@ const ThreeRenderer = (function () {
         ROADS.forEach(function (q, qi) {
             try {
                 var w = +q.w || 7, len = Math.min(+q.len || F.reach, F.reach), stepR = 5, n = Math.max(2, Math.round(len / stepR)), hw = w / 2;
-                var fromR = Math.max(0, +q.from || 0);   /* `from` (2026-11-22) = the road begins that far past the line (it comes off a causeway the room draws itself); `lift` = how high it rides over the land (a dirt road lies low: 0.12); `tint` = the colour its sheet draws at */
+                var fromR = +q.from || 0; if (fromR < 0) n = Math.max(2, Math.round((len - fromR) / stepR));   /* `from` (2026-11-22) = the road begins that far past the line (it comes off a causeway the room draws itself); below 0 = that far INSIDE the box (a bent room's own wall stands inside its box there: the land lies between, ow-raised.js a flyover's cross road); `lift` = how high it rides over the land (a dirt road lies low: 0.12); `tint` = the colour its sheet draws at */
                 var bands = (q.bands && q.bands.length) ? q.bands : [{ a: -hw, b: hw, key: q.key || 'urban:RoadGeneric1a', tint: q.tint }];
                 var lines = q.lines || ((q.line != null) ? [{ off: 0, color: q.line, w: 0.18 }] : []);
                 var A0 = bands[0].a, B0 = bands[bands.length - 1].b, ys = [], DS = null, dOf = function (k) { return DS ? DS[k] : fromR + (len - fromR) * k / n - ((k || fromR) ? 0 : 0.6); };
@@ -78840,14 +78868,14 @@ const ThreeRenderer = (function () {
                    strip with a row every 5 m lay under it until the second row, a gap of bare land between the gate and the path. `lap`: the room's own path
                    stops a square short of its line, the strip starts on the room's last square) */
                 if (q._auto) { DS = [-0.6, 0.6, 1.2, 2.5, 4, 6, 8.5, 11.5, 15]; if (q.lap > 0) DS.unshift(-q.lap, -q.lap / 2); while (DS[DS.length - 1] + stepR < len) DS.push(DS[DS.length - 1] + stepR); DS.push(len); n = DS.length - 1; }
-                for (var k = 0; k <= n; k++) { var dd = dOf(k), yk = -1e9; for (var sI = 0; sI <= 4; sI++) { var c0 = roadPt(q, dd, A0 + (B0 - A0) * sI / 4), qc0 = F.at(c0[0], c0[1]); yk = Math.max(yk, (DS && dd <= 0) ? (qc0.eH || 0) : qc0.y); }   /* (a row inside the room's line lies on the room's own ground) */ ys.push(yk); }
+                for (var k = 0; k <= n; k++) { var dd = dOf(k), yk = -1e9; for (var sI = 0; sI <= 4; sI++) { var c0 = roadPt(q, dd, A0 + (B0 - A0) * sI / 4), qc0 = F.at(c0[0], c0[1]); yk = Math.max(yk, (DS && dd <= 0) ? (qc0.eH || 0) : (fromR < 0 && dd < 0) ? Math.max(qc0.y, qc0.eH || 0) : qc0.y); }   /* (a row inside the room's line lies on the room's own ground) */ ys.push(yk); }
                 /* NO ROAD INTO THE SEA: a seam's road ends where the land past the line turns to coast (the rule: never water across a road) */
                 if (q.seam) { for (var kc2 = 1; kc2 <= n; kc2++) { var pc2 = roadPt(q, dOf(kc2), (A0 + B0) / 2), Pc2 = F.at(pc2[0], pc2[1]); if ((Pc2.W.coast || 0) > 0.35) { n = kc2 - 1; break; } } if (n < 2) return; len = len * n / (ys.length - 1); ys.length = n + 1; }
                 for (var sm2 = 0; sm2 < 3; sm2++) for (var k2 = 1; k2 < n; k2++) ys[k2] = Math.max(ys[k2], (ys[k2 - 1] + ys[k2 + 1]) / 2);   // no dip between two crests: the road bridges it on its bank
                 var eH0 = F.at(roadPt(q, 0, (A0 + B0) / 2)[0], roadPt(q, 0, (A0 + B0) / 2)[1]).eH || 0;
                 if (!fromR) ys[0] = Math.max(ys[0], eH0);   // at the line itself: the room's own ground
                 /* a seam's road: level with the gate's floor for 9 m (the walker crosses 6 m out, _hqTickPassages), then onto the land over 26 m */
-                var yAt = function (k) { var d = dOf(k), nat = ys[k] + (q.foot ? 0.1 + Math.min(0.08, Math.max(0, d) / 100) : (q.lift != null) ? +q.lift : 0.2 + Math.min(0.5, d / 30)); if (!q.seam) return nat;   /* (a footpath lies on the land: no half-metre causeway) */ var t = (d - 9) / 26; t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return (eH0 + 0.1) * (1 - t) + nat * t; };
+                var yAt = function (k) { var d = dOf(k), nat = ys[k] + (q.foot ? 0.1 + Math.min(0.08, Math.max(0, d) / 100) : (q.lift != null) ? +q.lift : 0.2 + Math.min(0.5, Math.max(0, d) / 30)); if (!q.seam) return nat;   /* (a footpath lies on the land: no half-metre causeway) */ var t = (d - 9) / 26; t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return (eH0 + 0.1) * (1 - t) + nat * t; };
                 var mkR = function (P3, I3, UV3, mat) { var g3 = new THREE.BufferGeometry(); g3.setAttribute('position', new THREE.Float32BufferAttribute(P3, 3)); if (UV3) g3.setAttribute('uv', new THREE.Float32BufferAttribute(UV3, 2)); g3.setIndex(I3); g3.computeVertexNormals(); g3.computeBoundingSphere();
                     var m3 = new THREE.Mesh(g3, mat); m3.position.y = 0.2; m3.receiveShadow = false; m3.castShadow = false; m3.renderOrder = 1; m3._ew_hqPart = 'floor'; m3._ew_hqOuter = true; m3._ew_hqEdgeLand = 'road' + qi; return m3; };
                 var gR = new THREE.Group(); gR.name = 'hq_edge_road'; gR._ew_hqEdgeLand = 'road' + qi;
@@ -78895,7 +78923,7 @@ const ThreeRenderer = (function () {
                 G.add(gR);
             } catch (e) { console.warn('[HQ] an edge road failed', e); }
         });
-        var onEdgeRoad = function (px, pz) { for (var qi2 = 0; qi2 < ROADS.length; qi2++) { var q2 = ROADS[qi2], ns2 = (q2.side === 'n' || q2.side === 's'); if (Math.abs((ns2 ? px : pz) - (+q2.at)) < (+q2.w || 7) / 2 + 3.5 && (q2.side === 'w' ? px < R.x0 + 2 : q2.side === 'e' ? px > R.x1 - 2 : q2.side === 'n' ? pz < R.z0 + 2 : pz > R.z1 - 2)) return true; } return false; };
+        var onEdgeRoad = function (px, pz) { for (var qi2 = 0; qi2 < ROADS.length; qi2++) { var q2 = ROADS[qi2], ns2 = (q2.side === 'n' || q2.side === 's'); if (Math.abs((ns2 ? px : pz) - (+q2.at)) < (+q2.w || 7) / 2 + 3.5 && (q2.side === 'w' ? px < R.x0 + 2 - Math.min(0, +q2.from || 0) : q2.side === 'e' ? px > R.x1 - 2 + Math.min(0, +q2.from || 0) : q2.side === 'n' ? pz < R.z0 + 2 - Math.min(0, +q2.from || 0) : pz > R.z1 - 2 + Math.min(0, +q2.from || 0))) return true; } return false; };
         /* THE TREES: the forest's tall trees to 60 m (the fog has them by then), thinning; a skirt of pines on the mountains' feet */
         var planted = 0;
         if (typeof plantTree === 'function') {

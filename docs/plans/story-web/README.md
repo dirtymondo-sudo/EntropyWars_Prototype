@@ -143,3 +143,9 @@ reach them, and Sort into groups no longer lines them up. The views (group web, 
   faction, an event's Link) now use our own list (app.js `pickList`): every typed word may sit anywhere in the name, the game name, the
   race key or the cast id; arrows + Enter or a click pick; best matches first, 60 at most.
 - Zoom out and Fit now go down to 0.02 (was 0.15), so the biggest boards fit on the screen whole.
+
+## The world map fix (2026-11-22)
+Arrange > Show or hide the world map: the map behind a Places board drew at 1 board pixel a square (renderMapBg's scale was a
+boolean), so it was a 93 px dot under a 5,000 px board and the toggle seemed dead. It now draws at `B.mapK`, Fit takes the map in,
+and showing it switches to Places / leaves the group web / sorts by places first when the board was never laid on the map. The Map
+dialog's map is drawn at 7 px a square, up to 651 px wide (was 465).
