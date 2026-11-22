@@ -14270,6 +14270,21 @@ Gantries stand before the exit lane opens (a post stood in the lane). Known and 
 8. Nothing in a driving lane but cars and paint. Use the game's own models (lamps, signals, poles): never build one from boxes when a model exists.
 After a bake: `node bake-map.js site_ow_<id>` + `--put` the picture, a browser look (aerial, driver's view at the exit, the gore from above, a bend from above).
 
+## THE CLEAR DOORWAYS (2026-11-22, mondo: "almost every single building door has this horizontal bar in front of it at the bottom, please get rid of that for the door entrances")
+What it was: a walk-in building is a hollow `texbuilding` (walls, doorway, swing leaf) + an `arch` row (its look). Many arch rows ran a wall band, a
+plinth, a sill, a chair rail or a dado straight across the doorway: the Industrial homes' brick band (I.js ROOFS, `bricks_3` 0.45 to 1.0 m), Southside's
+and Financial's plinth strips, the insides' 1.05 m rails, dados whose hole was 1 m high under a 1.2 to 1.4 m coat, a window + sill + flower box standing on a
+door square. 72 parts in Disaster City, 60 more in Katana, the Desert, the Volcano Island, the Woods, the Moon, the Estate, Agartha.
+The fix is A RULE IN THE DRAWER, not rows (three-renderer.js `_hqArchDoorGrid` / `_hqArchDoorClear` / `_hqArchDoorCut`, called by `_hqBuildArchRows`):
+before a row is drawn, every `box` / standing `quad` that CROSSES a hollow texbuilding's doorway (data.js `hqTexbDoor`, the square the walker and the leaf
+use; from 0.45 m inside the front to 0.7 m outside it) is cut there from the ground to the door's head. A thin strip is split in two (+ a piece over the
+head); a panel gets a `hole` (a `uv: 'fit'` panel too: `holeFit`); a mass (deeper than 0.7 m) has its face on the doorway replaced by a panel with the hole.
+KEPT WHOLE: tops under 0.2 m (thresholds, skirtings), a deck / step / doorstep (under 0.55 m and deeper than 0.7 m or about the doorway's width), the
+lintel and over, a post under 1 m wide, lettering (`txt:` / `mark:`), a part that FILLS the doorway (a door picture, the Internet's lit portals), a
+box none of whose DRAWN faces is on the doorway (a body's `faces: 'blr'`), `ring` / `along` / `shear` / `flat` parts, and any part with `inDoor: true`.
+The room's rows are never written back (the editor saves them as they were). `window.EW_NO_DOOR_CLEAR = true` = the rows as written.
+SO, WHEN YOU WRITE A BUILDING: a band across the front needs no door split any more (I.js `ring` still splits its own; both are fine). Something you
+WANT across a doorway (a curtain, a gate bar) takes `inDoor: true`. Not covered: a cylinder, dome or pack model standing in a doorway.
 ## THE SEWERS, POLISH PASS 1 — grates, cobwebs, the sludge waded, the falls' own sheet (2026-11-22)
 
 mondo 11-22: "There are grates standing up right, spiderweb decals standing upright that still have a black background, i cant walk in the
