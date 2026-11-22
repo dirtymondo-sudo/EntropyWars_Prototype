@@ -98,7 +98,7 @@ deck(18 - E, 0, 19 + E, 4, UP);                                                 
 /* ── THE OUTER WALLS (ground to eaves; glass at the halls' ends; the doorways) ── */
 wall('v', 0, 0, 3, CREAM); wall('v', 0, 3, 7, Object.assign({ doors: [[5, 'none', 2.5]] }, GLS)); wall('v', 0, 7, 11, SAND);                    // west: THE MAIN DOORS
 wall('v', 20, 0, 3, CREAM); wall('v', 20, 3, 7, Object.assign({ doors: [[5, 'none', 2.5]] }, GLS));                                           // east: THE SEA DOORS
-wall('v', 20, 7, 11, Object.assign({ h: UP }, SAND)); wall('v', 20, 7, 11, Object.assign({ h: EAVE - UP, y0: UP, doors: [[7.5, 'none', 2.5], [9.5, 'none', 2.5]] }, GLS));   // the food court's glass wall: THE TERRACE DOORS
+wall('v', 20, 7, 11, Object.assign({ h: UP }, SAND)); wall('v', 20, 7, 11, Object.assign({ h: EAVE - UP, y0: UP }, GLS));   // the food court's glass wall, whole (THE CLEAR SEA FRONT, 2026-11-22: the sea terrace and its two doors are gone)
 wall('u', 0, 0, 3, CREAM); wall('u', 0, 3, 7, GLS); wall('u', 0, 7, 13, SAND);                                                           // north
 wall('u', 0, 13, 17, Object.assign({ h: UP, doors: [[15, 'none']] }, SAND)); wall('u', 0, 13, 17, Object.assign({ h: EAVE - UP, y0: UP }, GLS));   // the closet door under the east hall's north window
 wall('u', 0, 17, 20, Object.assign({ doors: [[18.5, 'none']] }, CREAM));                                                                 // THE STAFF DOOR
@@ -162,7 +162,6 @@ S(18, 3, 20, 3, 0, 1, UP, ['MALL OFFICE', 'SECURITY']);
 sign('THE PIER  →', 19.82, 3.3, 5, 4.2, 0.6, 270, '#ffffff', '#ff7a66', 0.6); sign('← THE PLAZA', 0.18, 3.3, 5, 4.2, 0.6, 90, '#ffffff', '#ff7a66', 0.6);
 sign('THE CANAL', 15, 3.3, 10.82, 3.6, 0.6, 180, '#ffffff', '#ff7a66', 0.6); sign('THE CANAL', 5, 3.3, 10.82, 3.6, 0.6, 180, '#ffffff', '#ff7a66', 0.6);
 sign('STAFF ONLY', 18.5, 2.75, 3.9, 2.4, 0.42, 0, '#1c2330', '#ffe27a'); sign('THE FOOD COURT', 17.02, UP + 3.2, 6.5, 3.2, 0.55, 270, '#ffffff', '#ff7a66', 0.6);
-sign('THE SEA TERRACE  →', 19.82, UP + 3.3, 8.5, 5.6, 0.55, 270, '#ffffff', '#44669c', 0.6);
 prop('notice_board', 0.2, 6.4, 90, { y: 1.6 }); prop('exit_sign', 0.2, 5, 90, { y: 3.9 }); prop('security_camera', 0.2, 3.6, 90, { y: 3.6 });
 
 /* ── THE PROPS, moved from the old hall ── */
@@ -222,9 +221,7 @@ const DESC = {
     sea: 'The sea doors. Past them: the front, the road, the boardwalk, and the pier straight out over the water.',
     canal: 'Glass doors onto the quay. The canal runs along the mall’s south side with its boats tied up and nobody in them.',
     canalw: 'The second pair of doors onto the quay, at the foot of the west hall.',
-    staff: 'STAFF ONLY on the inside, DELIVERIES on the outside. It lets out in the yard behind the Security office.',
-    terrace1: 'Glass doors from the food court out onto the terrace: tables, umbrellas, the pier, the beach, the bay.',
-    terrace2: 'Glass doors from the food court out onto the terrace: tables, umbrellas, the pier, the beach, the bay.' };
+    staff: 'STAFF ONLY on the inside, DELIVERIES on the outside. It lets out in the yard behind the Security office.' };
 BOX.DOORS.forEach(d => { const o = IN[d.side];
     doors.push({ id: d.id, wall: 'free', x: r2(X(d.u + o[0])), z: r2(Z(d.v + o[1])), face: o[2], leaf: d.id === 'staff' ? 'leaf_exit' : null, proc: d.id === 'staff' ? undefined : 'glass_slide', noEntrance: true, bare: d.id === 'staff' ? undefined : true, gate: BOX.GATES[d.id], frame: d.id === 'staff' ? undefined : BOX.FRAME, wide: d.id === 'staff' ? undefined : true,
         label: 'DISASTER CITY', sub: d.name + ' · OUT TO ' + d.to, action: { room: CITY, at: AT[d.id] || 'mall_' + d.id }, desc: DESC[d.id] }); });

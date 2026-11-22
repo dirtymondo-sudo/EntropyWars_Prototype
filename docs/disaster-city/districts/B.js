@@ -1492,8 +1492,7 @@ const MALL_WORDS = {
     sea: 'The sea doors of the mall, under the coral portal. The pier is straight behind you; the fountain is straight ahead.',
     canal: 'Glass doors on the quay, under the end of the glass vault. The canal slides past with its boats.',
     canalw: 'The second pair of glass doors on the quay, at the foot of the west hall.',
-    staff: 'DELIVERIES. A steel door beside the loading bay, round the back where the signs stop.',
-    terrace1: 'Glass doors off the terrace into the food court.', terrace2: 'Glass doors off the terrace into the food court.' };
+    staff: 'DELIVERIES. A steel door beside the loading bay, round the back where the signs stop.', };
 function mallDoors(ctx) {
     MALL.DOORS.forEach(d => { if (d.id === 'main') return; const a = mallDoorAt(d);
         ctx.doors.push({ id: 'mall_' + d.id, wall: 'free', x: a.x, z: a.z, face: a.face, noEntrance: true, bare: d.id === 'staff' ? undefined : true, gate: MALL.GATES[d.id], frame: d.id === 'staff' ? undefined : MALL.FRAME, leaf: d.id === 'staff' ? 'leaf_exit' : null, proc: d.id === 'staff' ? undefined : 'glass_slide', wide: d.id === 'staff' ? undefined : true,
@@ -1518,19 +1517,20 @@ function mallParts() {
         p.push(pane(side, q[0], q[1], 0.6, EAVE - 0.6, wallM(q[2]), 0.0), pane(side, q[0], q[1], 0, 0.6, { key: MK.marble, tint: MT.TERRA, gain: 1.7 }, 0.02));
         p.push(lump(side, (q[0] + q[1]) / 2, UP - 0.15, (q[1] - q[0]) * C + 0.1, 0.3, 0.14, trim()), lump(side, (q[0] + q[1]) / 2, EAVE - 0.3, (q[1] - q[0]) * C + 0.3, 0.3, 0.2, trim())); }));
     /* the windows: every one is a shop inside. Ground = a shop window with a coral awning; upper = a tall window a bay */
-    const bays = (side, a, b, awn) => { const n = Math.max(1, Math.round((b - a) / 1.5)), st = (b - a) / n;
+    const bays = (side, a, b, awn, groundOnly) => { const n = Math.max(1, Math.round((b - a) / 1.5)), st = (b - a) / n;
         for (let i = 0; i < n; i++) { const m0 = a + st * (i + 0.5);
-            p.push(pane(side, m0 - st * 0.36, m0 + st * 0.36, 0.75, 3.0, shopG, 0.03), pane(side, m0 - st * 0.27, m0 + st * 0.27, UP + 1.0, 3.0, dark, 0.03));
-            p.push(lump(side, m0, UP + 0.86, st * 0.54 * C + 0.24, 0.14, 0.16, trim()), lump(side, m0, UP + 4.0, st * 0.54 * C + 0.24, 0.12, 0.12, trim()));
+            p.push(pane(side, m0 - st * 0.36, m0 + st * 0.36, 0.75, 3.0, shopG, 0.03)); if (!groundOnly) p.push(pane(side, m0 - st * 0.27, m0 + st * 0.27, UP + 1.0, 3.0, dark, 0.03));
+            if (!groundOnly) p.push(lump(side, m0, UP + 0.86, st * 0.54 * C + 0.24, 0.14, 0.16, trim()), lump(side, m0, UP + 4.0, st * 0.54 * C + 0.24, 0.12, 0.12, trim()));
             if (awn) { const f = face[side], x = side === 'n' || side === 's' ? lx(m0) : f[0] * (W / 2 + 0.75), z = side === 'n' || side === 's' ? f[1] * (D / 2 + 0.75) : lz(m0);
                 p.push(roof('shed', r3m(x), 3.85, r3m(z), r3m(st * 0.8 * C), 0.6, 1.4, { tint: MT.CORAL, ds: true, ry: f[2] })); } } };
     bays('s', 0, 3, true); bays('s', 7, 13, true); bays('s', 17, 20, true); bays('w', 0, 3, true); bays('w', 7, 11, true);
     bays('n', 0, 3, false); bays('n', 7, 13, false); bays('e', 0, 3, true);
+    bays('e', 7, 11, true, true);   // THE CLEAR SEA FRONT (mondo 11-22): the terrace that hid this wall is gone, so its ground floor wears the mall's shop windows and awnings like the rest; the food court's glass is above
     /* the service end (north-east): a blank wall, the loading bay's shutter, air units */
     p.push(pane('n', 19.1, 19.9, 0, 3.4, { key: K.corr, tint: MT.NAVY, gain: 1.6 }, 0.03), lump('n', 19.5, 3.4, 3.2, 0.2, 0.3, trim(T.GREY)));
     p.push(BOX_SIGN('DELIVERIES', 'n', 18.5, 3.0, 2.6, 0.4, '#1c2330', '#ffe27a'));
     [17.5, 18.5, 19.5].forEach(u => p.push(lump('n', u, UP + 1.4, 1.1, 0.8, 0.7, { key: K.corr, tint: T.GREY, gain: 1.6 })));
-    /* the east wing south of the sea doors: the food court's glass wall upstairs (the terrace stands against it) */
+    /* the east wing south of the sea doors: the food court's glass wall upstairs */
     p.push(pane('e', 7, 11, UP + 0.3, EAVE - UP - 0.9, glass(MT.AQUA, MK.gTall, 0.45), 0.03));
     for (let v = 7; v <= 11; v += 1) p.push(lump('e', v, UP, 0.14, EAVE - UP - 0.4, 0.12, trim(), 0.03));
     /* the hall ends: glass from the ground to the eaves, white mullions, a fanlight under the vault's end */
@@ -1557,11 +1557,10 @@ function BOX_SIGN(words, side, m, y, w, h, fg, bg, glow, out) { const { W, D, lx
 function mallShell(ctx) {
     /* THE DISTRICT MOVE: this file's rows and props stand in Bayside's HOME frame (one block south of where the district stands: z + DZ); the tool moves them
        after `last`. box.js is in the room's true metres, so every z written or read here takes DZ. The doors (ctx.doors, joins) are true metres already. */
-    const DZ = ctx.gx(10 * ctx.N + 6) - 21, TB = MALL.TERRACE, TR = { x0: TB.x0, x1: TB.x1, z0: TB.z0 + DZ, z1: TB.z1 + DZ, y: TB.y, stair: { x: TB.stair.x, z0: TB.stair.z0 + DZ, w: TB.stair.w }, land: { x0: TB.land.x0, x1: TB.land.x1, z0: TB.land.z0 + DZ, z1: TB.land.z1 + DZ } };
+    const DZ = ctx.gx(10 * ctx.N + 6) - 21;
     const { features, props } = ctx, X0 = MALL.X0, X1 = MALL.X0 + MALL.W, Z0 = MALL.Z0 + DZ, Z1 = MALL.Z0 + MALL.D + DZ, CZ = MALL.CZ + DZ, out = { gone: 0, moved: 0, dz: DZ };
     const pt = f => typeof f.x === 'number' ? [f.x, f.z] : typeof f.x0 === 'number' ? [(f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2] : null;
     const inBox = (q, m) => q && q[0] > X0 - m && q[0] < X1 + m && q[1] > Z0 - m && q[1] < Z1 + m;
-    const inTerr = q => q && q[0] >= TR.x0 - 0.2 && q[0] <= TR.land.x1 + 0.2 && q[1] >= TR.z0 - 0.2 && q[1] <= TR.z1 + 0.2;
     /* the bandstand moves west onto the forecourt (its row and anything of its own) */
     features.forEach(f => { if (/^dc:bay-bandstand/.test(f.id || '')) { f.x = r3m(f.x - 15.75); out.band = f.x; } });
     /* the plan's building: the same row and id, grown to the box, solid (nobody walks into the shell: the doors lead to the room) */
@@ -1570,30 +1569,18 @@ function mallShell(ctx) {
     A(row, { x: MALL.CX, z: CZ, w: MALL.W, d: MALL.D, rot: 0, storeys: 3, skin: false });
     for (let i = features.length - 1; i >= 0; i--) { const f = features[i], id = f.id || '', q = pt(f); if (f === row) continue;
         const mine = /^dc:P10-10-B1:/.test(id) || id === 'dc:in104' || id === 'dc:in105' || /^dc:in10[45]:/.test(id);
-        const loose = (inBox(q, 0.3) || inTerr(q)) && (f.k === 'tree' || f.k === 'rail' || (f.k === 'wall' && !/^dc:(canal|bay-)/.test(id)) || (f.k === 'arch' && !/^dc:(bay-|P11|canal)/.test(id)));
+        const loose = inBox(q, 0.3) && (f.k === 'tree' || f.k === 'rail' || (f.k === 'wall' && !/^dc:(canal|bay-)/.test(id)) || (f.k === 'arch' && !/^dc:(bay-|P11|canal)/.test(id)));
         if (mine || loose) { features.splice(i, 1); out.gone++; } }
     /* what stood loose on the new ground: the plaza's things go to the forecourt (the same rows, squeezed west of the main doors), the rest to the nearest walk */
     props.forEach(q => { if (/^roads_/.test(q.key)) return; const at = [q.x, q.z];
-        if (inBox(at, 1.2)) { if (q.x < 168) q.x = r3m(127 + (q.x - X0) * 8 / 31.5); else { const dn = q.z - Z0, ds = Z1 - q.z, de = X1 - q.x; if (de <= dn && de <= ds) q.x = r3m(X1 + 1.9); else if (dn <= ds) q.z = r3m(Z0 - 1.6); else q.z = r3m(Z1 + 1.6); } delete q.floor; if (q.y) delete q.y; out.moved++; }
-        else if (inTerr(at)) { q.x = r3m(TR.land.x1 + 1.5); out.moved++; } });
+        if (inBox(at, 1.2)) { if (q.x < 168) q.x = r3m(127 + (q.x - X0) * 8 / 31.5); else { const dn = q.z - Z0, ds = Z1 - q.z, de = X1 - q.x; if (de <= dn && de <= ds) q.x = r3m(X1 + 1.9); else if (dn <= ds) q.z = r3m(Z0 - 1.6); else q.z = r3m(Z1 + 1.6); } delete q.floor; if (q.y) delete q.y; out.moved++; } });
     /* THE OUTSIDE: one drawn row */
     const rows = [{ k: 'arch', id: 'dc:P10-10-B1:arch', x: MALL.CX, z: CZ, rot: 0, y: 0, parts: lettered(mallParts()) }];
-    /* THE SEA TERRACE: a solid deck at the upper floor's height against the food court's glass (the terrace doors' pads stand on it), a landing at its
-       north end, the stair down its sea side; a white arcade of shop windows drawn on its face; rails; umbrellas and tables */
-    rows.push({ k: 'plateau', id: 'dc:mall:terrace', x: (TR.x0 + TR.x1) / 2, z: (TR.z0 + TR.z1) / 2, w: TR.x1 - TR.x0, d: TR.z1 - TR.z0, h: TR.y, edge: 0.05 },
-        { k: 'plateau', id: 'dc:mall:terrace:land', x: (TR.land.x0 + TR.land.x1) / 2, z: (TR.land.z0 + TR.land.z1) / 2, w: TR.land.x1 - TR.land.x0, d: TR.land.z1 - TR.land.z0, h: TR.y, edge: 0.05 },
-        { k: 'ramp', id: 'dc:mall:terrace:stair', x0: TR.stair.x, z0: TR.stair.z0, x1: TR.stair.x, z1: TR.land.z1 - 0.4, w: TR.stair.w, h0: 0, h1: TR.y, stairs: true, model: 'precast', edge: 0.1 });
-    const rail = (x0, z0, x1, z1, y0, y1) => rows.push(A({ k: 'rail', x0, z0, x1, z1 }, y1 != null ? { y0, y1 } : { y: y0 }));
-    rail(TR.x1, TR.land.z1, TR.x1, TR.z1, TR.y); rail(TR.x0 + 0.2, TR.z1, TR.x1, TR.z1, TR.y); rail(TR.land.x1, TR.land.z0, TR.land.x1, TR.land.z1, TR.y); rail(TR.x0 + 0.2, TR.z0, TR.land.x1, TR.z0, TR.y);
-    rail(TR.land.x1, TR.z1 - 0.3, TR.land.x1, TR.land.z1 + 0.3, 0.2, TR.y);
-    { const tp = [], cx = (TR.x0 + TR.x1) / 2, cz = (TR.z0 + TR.z1) / 2, L = TR.z1 - TR.z0, fx = TR.x1 - cx + 0.06;
-      tp.push(box(0, 0, 0, TR.x1 - TR.x0 + 0.1, TR.y - 0.02, L + 0.1, A(wallM(MALL.T.CREAM), { top: false })), box(0, TR.y - 0.3, 0, TR.x1 - TR.x0 + 0.4, 0.3, L + 0.4, A(trim(), { top: false })));
-      for (let k = 0; k < 4; k++) { const z = -L / 2 + L * (k + 0.5) / 4;
-          tp.push({ s: 'quad', p: [fx, 0.5, z], ry: 270, size: [2.5, 3.2], key: K.gSq2, tint: MALL.T.DARKGLASS, glow: 0.3, gain: 2.2 }, box(fx + 0.1, 3.7, z, 0.24, 0.5, 2.9, trim()), roof('shed', fx + 0.7, 3.5, z, 2.8, 0.55, 1.3, { tint: MALL.T.CORAL, ds: true, ry: 270 }));
-          tp.push(box(fx + 0.12, 0, z - L / 8, 0.42, TR.y - 0.3, 0.42, trim())); }
-      tp.push(box(fx + 0.12, 0, L / 2 - 0.2, 0.42, TR.y - 0.3, 0.42, trim()));
-      rows.push({ k: 'arch', id: 'dc:mall:terrace:arch', x: cx, z: cz, rot: 0, y: 0, parts: lettered(tp) });
-      [[cx - 0.6, TR.z0 + 3.4], [cx + 0.8, TR.z0 + 7], [cx - 0.6, TR.z0 + 10.6]].forEach((q, i) => { props.push({ key: 'patio_umbrella', x: r3m(q[0]), z: r3m(q[1]), y: TR.y, face: i * 40 }, { key: 'tulip_table', x: r3m(q[0]), z: r3m(q[1]), y: TR.y }, { key: 'cafeteria_chair', x: r3m(q[0] + 0.9), z: r3m(q[1]), y: TR.y, face: 270 }, { key: 'cafeteria_chair', x: r3m(q[0] - 0.9), z: r3m(q[1]), y: TR.y, face: 90 }); }); }
+    /* THE CLEAR SEA FRONT (2026-11-22, mondo, looking at the mall from the boardwalk: "what are these 2 buildings right in front of the mall that are blocking
+       the view of the building? ... The other one that is just a building with random stairs in front of it can go entirely"). That one was THE SEA
+       TERRACE (a deck at the upper floor's height against the food court's glass, an outside stair on its sea side): it is not built any more, and its two
+       doors are out of box.js, so the food court's glass is a whole wall on both sides. The ground it stood on is the plan's own, level. The other one,
+       the Juice Bar, is moved north of the mall at the file's very end (`juiceMove`). */
     /* the sea front and the quay: short palms in planters either side of the sea doors, benches on the quay, the directory by the main doors */
     [[X1 + 4.4, 17.2 + DZ], [X1 + 4.4, 24.8 + DZ]].forEach(q => props.push({ key: 'planter', x: q[0], z: q[1] }, { key: 'palm_tree', x: q[0], z: q[1], face: 40 }));
     [150.5, 164.5, 178.5].forEach(x => props.push({ key: 'iron_garden_bench', x, z: r3m(Z1 + 1.5), face: 180 }));
@@ -1607,6 +1594,23 @@ function mallShell(ctx) {
     console.warn('[bayside mall] the one building stands', JSON.stringify(out));
 }
 const joins = { mall: A(mallDoorAt(MALL.DOORS[0]), { noEntrance: true, bare: true, gate: MALL.GATES.main, frame: MALL.FRAME, sub: 'THE MAIN DOORS · INTO THE MALL' }) };
-const build1 = ctx => { build(ctx); mallDoors(ctx); }, last1 = ctx => { last(ctx); mallShell(ctx); };
+/* THE JUICE BAR MOVES (2026-11-22, mondo: "with the one on the right, there is an empty space to the right of the mall where it could go maybe"): the
+   orange dome (P11-10-B2) stood on the mall's sea front, across half of its east face and beside the sea doors. It goes six squares (21 m) north onto
+   the empty lot past the mall's north-east corner, between the service yard and the coast road's pavement: the same building, the same row and id, its
+   front still to the road, on whole squares. Everything of its own goes with it (its drawn row, the board on its wall); what stood loose on the lot
+   it takes is stood on the nearest square beside it, never dropped. Done at the very end, so not one of the city's dice moves. */
+const JUICE_DZ = -21;
+function juiceMove(ctx) {
+    const { features, props } = ctx, row = features.find(f => f.id === 'dc:P11-10-B2'); if (!row) throw new Error('THE JUICE BAR: the plan\'s building dc:P11-10-B2 was not found');
+    const ew = row.rot === 90 || row.rot === 270, hw = (ew ? row.d : row.w) / 2, hd = (ew ? row.w : row.d) / 2, out = { rows: 0, props: 0, aside: 0 };
+    const on = (x, z, cz, m) => Math.abs(x - row.x) < hw + m && Math.abs(z - cz) < hd + m, oldZ = row.z, newZ = r3m(row.z + JUICE_DZ);
+    props.forEach(q => { if (/^roads_/.test(q.key)) return;
+        if (on(q.x, q.z, newZ, 0.4)) { q.z = r3m(newZ + hd + 1.2); out.aside++; } });       // loose on the new lot: to its south side, by the mall's corner (nothing of the bar's own stands loose: the palm in a planter on its old squares is the mall's, by the sea doors, and stays)
+    features.forEach(f => { if (f !== row && /P11-10-B2/.test(f.id || '') && typeof f.z === 'number') { f.z = r3m(f.z + JUICE_DZ); out.rows++; } });
+    for (let i = features.length - 1; i >= 0; i--) { const f = features[i]; if (f.k === 'tree' && on(f.x, f.z, newZ, 0.6)) { f.z = r3m(newZ + hd + 1.75); out.aside++; } }
+    row.z = newZ;
+    console.warn('[bayside juice bar] moved', JSON.stringify(out), 'to z', newZ, '(this file\'s frame)');
+}
+const build1 = ctx => { build(ctx); mallDoors(ctx); }, last1 = ctx => { last(ctx); mallShell(ctx); juiceMove(ctx); };
 module.exports = { room, tailor, apply, build: build1, last: last1, joins, B, K, T, COAST, MOLE, waterAt };
 
