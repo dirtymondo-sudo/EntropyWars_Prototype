@@ -83468,7 +83468,9 @@ const ThreeRenderer = (function () {
                 box(W + 0.2, 0.5, L + 0.4, floorM, 0, -0.25 + 0.015, -(L / 2 + 0.2));
             } else {
                 /* a trail / a cloud road: a strip on the ground the outer ground was carved to (_hqBuildOuterGround) */
-                var SL = L + 5, sg = new THREE.PlaneGeometry(W * U, SL * U); scaleUV(sg, W / 1.75, SL / 1.75);
+                /* THE SEAM IS THE ROAD (2026-11-22): `strip` = how wide the sheet past the line is when it is not the way's own width (a highway's seam is its
+                   asphalt and both shoulders wide; only the asphalt runs on) */
+                var SW = (+P.strip > 0) ? +P.strip : W, SL = L + 5, sg = new THREE.PlaneGeometry(SW * U, SL * U); scaleUV(sg, SW / 1.75, SL / 1.75);
                 var strip = new THREE.Mesh(sg, floorM); strip.rotation.x = -Math.PI / 2; strip.position.set(0, 0.05 * U, -(SL / 2 - 0.4) * U); strip.receiveShadow = true; strip.renderOrder = 1; g.add(strip);
             }
         }

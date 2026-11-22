@@ -403,6 +403,15 @@ ENDS.forEach(e => {
     if (e.onWall) { d.wall = e.side; if (e.side === 'n' || e.side === 's') d.x = e.along; else d.z = e.along; }
     else { d.wall = 'free'; d.x = gcx(e.sq[0]); d.z = gcz(e.sq[1]); d.face = e.side === 'n' ? 180 : e.side === 'e' ? 270 : e.side === 's' ? 0 : 90; d.passage = Object.assign({}, FREE_PASS); }   // (ow-move.js A FREE SEAM IS CROSSED ON THE PLOT'S OWN SQUARES)
     if (isOpen) d.passage = Object.assign(d.passage || {}, { w: pw });
+    /* THE SEAM IS THE ROAD (2026-11-22, mondo: "it only works when i enter through the median in the highway ... an invisible wall where the actual road
+       is"): an open seam on the room's wall was `pw` wide on the path's middle line: 16 m across a highway that is 24.5 m of asphalt and two shoulders, and
+       its middle line is the median. The outer lanes ran into the room's line. The seam is now the path's own squares on the room's last row (asphalt,
+       median and shoulders: every square that is walked there), its middle the middle of that run, so no walked square at an end stops at a wall. A highway's
+       strip past the line is its asphalt, as wide as the asphalt (`floor`, `strip`: three-renderer.js _hqPassageWay), not the room's dirt path sheet. */
+    if (isOpen && e.onWall) { const ns = e.side === 'n' || e.side === 's', onPath = c => c === 'p' || c === 'm' || c === 's', at = k => ns ? (cell[e.sq[1]] || [])[k] : (cell[k] || [])[e.sq[0]];
+        let a = ns ? e.sq[0] : e.sq[1], b = a; if (onPath(at(a))) { while (onPath(at(a - 1))) a--; while (onPath(at(b + 1))) b++;
+            const g0 = ns ? gx(a) : gz(a), g1 = ns ? gx(b + 1) : gz(b + 1), mid = r2((g0 + g1) / 2); if (ns) d.x = mid; else d.z = mid; e.along = mid; d.passage.w = r2(g1 - g0);
+            if (e.look === 'highway') { let p0 = a, p1 = b; while (p0 < p1 && at(p0) === 's') p0++; while (p1 > p0 && at(p1) === 's') p1--; d.passage.floor = ASPH; d.passage.strip = r2((p1 + 1 - p0) * C); } } }
     doors.push(d);
 });
 
