@@ -231,7 +231,8 @@ for (let y = 0; y <= Dq; y++) for (let x = 0; x <= W; x++) {
     Hc[y * (W + 1) + x] = fd <= 0 ? fh : fh * (1 - k) + own * k;
 }
 const slope = Buffer.alloc(W * Dq * 8);
-for (let cy = 0; cy < Dq; cy++) for (let cx = 0; cx < W; cx++) { const o = (cy * W + cx) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope.writeInt16LE(Math.round(Hc[(cy + q[1]) * (W + 1) + cx + q[0]] * 100), o + k * 2)); }
+const writeSlope = () => { for (let cy = 0; cy < Dq; cy++) for (let cx = 0; cx < W; cx++) { const o = (cy * W + cx) * 8; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach((q, k) => slope.writeInt16LE(Math.round(Hc[(cy + q[1]) * (W + 1) + cx + q[0]] * 100), o + k * 2)); } };
+writeSlope();
 /* A JOINED DISTRICT'S OWN CORNERS (2026-11-20, world polish thread 17, the Estate's room design; opt-in): an export with `cells` (its slope cells, four
    corners a square) keeps them on its own squares, so a ledge it lays is a drop here too (the shared corner grid above would smooth it into a slope).
    No other export has `cells`: every other room bakes as before. */
@@ -370,15 +371,28 @@ const clear = (sx0, sy0, sx1, sy1) => { const inR = (x, z) => { const qx = Math.
     for (let i = props.length - 1; i >= 0; i--) if (inR(props[i].x, props[i].z)) props.splice(i, 1);
     for (let i = F.length - 1; i >= 0; i--) { const f = F[i]; if (f.x != null && f.z != null && f.x0 == null && inR(f.x, f.z)) F.splice(i, 1); }
     for (let y = sy0; y <= sy1; y++) for (let x = sx0; x <= sx1; x++) taken.delete(x + ':' + y); };
-const CTX = { ID, ROOM, LOOK, C, N, W, D: Dq, BX0, BY0, COLS, ROWS, PLOTS, cell, gx, gz, gcx, gcz, r2, walked, free, nearPath, plotOf, kindAt, groundAt, hAt, feat, props, npc, doors, marks, P, dec, tree, rnd, pick, taken, ENDS, CAT, F, TRAFFIC, clear, LINE: PARTS[0].LINE, SPEC };
-if (HOOK && typeof HOOK.dress === 'function') HOOK.dress(CTX);
-if (SPEC.cars && LOOK === 'highway') { const c = SPEC.cars, pts = PARTS[0].LINE.map(q => [Math.max(1, Math.min(W - 1, q[0])), Math.max(1, Math.min(Dq - 1, q[1]))]).filter((q, i, a) => !i || Math.hypot(q[0] - a[i - 1][0], q[1] - a[i - 1][1]) > 0.01);
-    /* the polyline offset by `o` squares to the right of its way (a mitred corner), in metres */
-    const off = (L, o) => L.map((q, i) => { const a = L[Math.max(0, i - 1)], b = L[Math.min(L.length - 1, i + 1)], la = i ? Math.hypot(q[0] - a[0], q[1] - a[1]) : 0, lb = i < L.length - 1 ? Math.hypot(b[0] - q[0], b[1] - q[1]) : 0;
+function offLine(L, o) { return L.map((q, i) => { const a = L[Math.max(0, i - 1)], b = L[Math.min(L.length - 1, i + 1)], la = i ? Math.hypot(q[0] - a[0], q[1] - a[1]) : 0, lb = i < L.length - 1 ? Math.hypot(b[0] - q[0], b[1] - q[1]) : 0;
         const d1 = la ? [(q[0] - a[0]) / la, (q[1] - a[1]) / la] : null, d2 = lb ? [(b[0] - q[0]) / lb, (b[1] - q[1]) / lb] : null, n1 = d1 ? [-d1[1], d1[0]] : [-d2[1], d2[0]], n2 = d2 ? [-d2[1], d2[0]] : n1;
-        let nx = n1[0] + n2[0], ny = n1[1] + n2[1]; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl; const k = o / Math.max(0.5, nx * n1[0] + ny * n1[1]); return [r2(-HX + (q[0] + nx * k) * C), r2(-HZ + (q[1] + ny * k) * C)]; });
+        let nx = n1[0] + n2[0], ny = n1[1] + n2[1]; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl; const k = o / Math.max(0.5, nx * n1[0] + ny * n1[1]); return [r2(-HX + (q[0] + nx * k) * C), r2(-HZ + (q[1] + ny * k) * C)]; }); }
+/* the highway's middle line in squares (kept a square inside the room) and a line `o` squares to the right of its way (a mitred corner), in metres */
+const carPts = PARTS[0].LINE.map(q => [Math.max(1, Math.min(W - 1, q[0])), Math.max(1, Math.min(Dq - 1, q[1]))]).filter((q, i, a) => !i || Math.hypot(q[0] - a[i - 1][0], q[1] - a[i - 1][1]) > 0.01);
+/* THE RAISED HIGHWAY (2026-11-22, mondo: "actual highway architecture, raised off the ground with exits and stuff"): the spec's `raised` lifts a highway
+   onto ramps and a deck on pillars (ow-raised.js: the walk, the look, the paint, the road under the deck, the exit's cars). `ctx.RAISED` tells the
+   hook where it stands. A route without it bakes as before. */
+const EDGE_ROADS = [];
+let RAISED = null;
+if (SPEC.raised && LOOK === 'highway') { if (JOINS.length) { console.error('bake-route: `raised` and `join` in one room are not built'); process.exit(1); }
+    RAISED = require('./ow-raised.js')({ SPEC, ID, C, N, W, Dq, r2, gx, gz, Hc, plotOf, CAT, errs, marks, F, props, clear, feat, TRAFFIC, LINE: PARTS[0].LINE, ASPH, SHOULDER, edgeRoads: EDGE_ROADS,
+        reslope: writeSlope, floorAt: (x, y) => kitOf(kindAt(x, y)).floor, setPaint: (x, y, key) => { if (x >= 0 && y >= 0 && x < W && y < Dq && plotOf(x, y) >= 0) paint[y * W + x] = pal(key); },
+        laneLine: (o, back) => offLine(back ? carPts.slice().reverse() : carPts, o) }); }
+const CTX = { ID, ROOM, LOOK, C, N, W, D: Dq, BX0, BY0, COLS, ROWS, PLOTS, cell, gx, gz, gcx, gcz, r2, walked, free, nearPath, plotOf, kindAt, groundAt, hAt, feat, props, npc, doors, marks, P, dec, tree, rnd, pick, taken, ENDS, CAT, F, TRAFFIC, clear, LINE: PARTS[0].LINE, SPEC, RAISED, ASPH, setPaint: (x, y, key) => { if (x >= 0 && y >= 0 && x < W && y < Dq && plotOf(x, y) >= 0) paint[y * W + x] = pal(key); } };
+if (HOOK && typeof HOOK.dress === 'function') HOOK.dress(CTX);
+if (SPEC.cars && LOOK === 'highway') { const c = SPEC.cars, pts = carPts;
+    /* the polyline offset by `o` squares to the right of its way (a mitred corner), in metres */
+    const off = offLine;
     TRAFFIC.push({ pts: off(pts, 2), loop: false, n: c.n || 4, speed: c.speed || 10, lane: 0.01, kinds: c.kinds || ['suv', 'cadillac', 'taxi', 'suv'] });
     TRAFFIC.push({ pts: off(pts.slice().reverse(), 2), loop: false, n: c.n || 4, speed: c.speed || 10, lane: 0.01, kinds: (c.kinds || ['cadillac', 'suv', 'copcar', 'taxi']).slice().reverse() }); }
+if (RAISED) TRAFFIC.forEach(t => { t.deck = true; });   // THE RAISED HIGHWAY: every car line rides the deck where it lies under it
 /* nothing stands in a driving lane: a piece within 3.2 m of a car line is a bug (the Desert's own rule) */
 props.forEach(p => { if (CAT[p.key] && CAT[p.key].walk) return; TRAFFIC.forEach(t => { for (let i = 0; i + 1 < t.pts.length; i++) { const a = t.pts[i], b = t.pts[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, u = Math.max(0, Math.min(1, ((p.x - a[0]) * dx + (p.z - a[1]) * dz) / L2));
     if (Math.hypot(p.x - a[0] - u * dx, p.z - a[1] - u * dz) < 3.2) errs.push(p.key + ' stands in a driving lane at ' + p.x + ', ' + p.z); } }); });
@@ -547,7 +561,7 @@ L.push("                res: 1.75, floor: " + J(FLOOR) + ", cliff: 'rocks_5', pa
 L.push("                noise: { amp: 0.08, scale: 9 },");
 if (JOINS.some(J => J.grassField) || grounds.some(k => KIT[PJ.ground.key[Object.keys(PJ.ground.key).find(c => PJ.ground.key[c].kind === k)].kit].grass)) L.push("                grassField: true,");
 L.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */");
-L.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(ENDS.filter(e => e.onWall).map(e => ({ side: e.side, at: e.along }))) + " },");
+L.push("                backdrop: false, edges: { world: true, reach: 440, ways: " + J(ENDS.filter(e => e.onWall).map(e => ({ side: e.side, at: e.along }))) + (EDGE_ROADS.length ? ", roads: " + J(EDGE_ROADS) : "") + " },");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + Dq + ", d: '" + slope.toString('base64') + "' } },");
 L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + (C / PR) + ", x0: " + r2(-HX + C / (2 * PR)) + ", z0: " + r2(-HZ + C / (2 * PR)) + ", nx: " + (W * PR) + ", nz: " + (Dq * PR) + ", d: '" + Buffer.from(paintOut).toString('base64') + "' },");
 L.push("                /* every square that is not a `space` is ground nobody walks: a forest plot grows its trees there, open ground grows nothing */");

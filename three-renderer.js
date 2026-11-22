@@ -76549,6 +76549,7 @@ const ThreeRenderer = (function () {
                ('wall' | 'glass' | 'over' = a cut-out decal), tintTop / tintEnd (the tint of keyTop / keyEnd: none = untinted), ds (two-sided), roof (true = hidden with HIDE ROOFS, as a building's roof),
                uv (metres a sheet repeat spans: a number or [u, v]; 'fit' = the sheet once across each face),
                n + step: [dx, dy, dz] (the part n times, stepped) · ring: { n, r, a0 } (the part n times round a circle, each turned outward) }
+               shear: [rise, depth] (the part's +z end `rise` m higher than its -z end, `depth` = its length along z: a ramp's wall, the paint on a ramp)
        SHAPES  box    size: [w, h, d] · keyTop · top: false · sides: false · faces: 'fblr' (which sides: front +z, back, left -x, right) · under: true (the underside, an overhang)
                cyl    r, h · r2 (the top's radius: a taper, 0 = a cone) · seg · arc + a0 (degrees: a curved wall) · ri (hollow: a ring / a drum's rim) · cap: false
                dome   r, h (none = r) · rz (an oval plan) · arc + a0 (degrees: a half dome, a band shell; give it ds: true) · seg · rings
@@ -76619,6 +76620,7 @@ const ThreeRenderer = (function () {
             };
             var put = function (g, v, uv) {   // a vertex in the part's frame → the room's metres
                 var lx = pp[0] + v[0] * pc + v[2] * ps, ly = pp[1] + v[1], lz = pp[2] - v[0] * ps + v[2] * pc;
+                if (P.shear) ly += (+P.shear[0] || 0) * (v[2] / (+P.shear[1] || 1) + 0.5);   // THE RAISED HIGHWAY (2026-11-22): `shear: [rise, depth]` = the part's +z end stands `rise` m over its -z end (a ramp's parapet, the paint on a ramp): `depth` = the part's own length along z
                 var wx = row.x + lx * rc + lz * rs, wz = row.z - lx * rs + lz * rc, gy = base;
                 if (typeof row.ground === 'function') { var gh = row.ground(wx, wz); if (isFinite(gh)) gy = gh; }   // THE HUGGING ROWS (data.js): each corner on the ground under it
                 g.pos.push(wx, gy + ly, wz); g.uv.push(uv[0], uv[1]);
@@ -77509,6 +77511,8 @@ const ThreeRenderer = (function () {
        ═══════════════════════════════════════════════════════════════════════ */
     var HQ_EDGE_ROWS = [0, 1.2, 2.5, 4, 6, 8.5, 11.5, 15, 19, 24, 30, 37, 45, 55, 70, 86, 104, 125, 150, 178, 210, 246, 286, 330, 380, 440];
     var HQ_EDGE_NEAR_M = 70;
+    var HQ_EDGE_SHEETS = { scrub: 'grass_rocky', bad: 'wasteland' };   // THE BLENDED LAND: the One World map's kind -> the ground sheet its land wears past a room's line (the route kit's own floors, bake-route.js KIT / TONE); a kind not named wears the grass or the sand sheet as before
+    var HQ_EDGE_OWN_TINT = [1, 1, 1];   // …and the tint of a sheet that is the room's or the map's own (the room draws it untinted)
     var HQ_EDGE_MESA_AT = 0.66;          // a mesa stands where the land's slow noise passes this (higher = fewer, smaller tables)
     function _hqEdgeNoise(x, z) {
         var h = function (a, b) { var s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
@@ -77552,6 +77556,49 @@ const ThreeRenderer = (function () {
                like every other line. A room with no place on the map (or `EW_HQ_NO_WORLD_EDGES`) reads its sides as before. */
         var KINDS = ['mountain', 'forest', 'desert', 'coast', 'scrub', 'mesa', 'grass', 'snow'];
         var WANDER = !(E.straight || (typeof window !== 'undefined' && window.EW_HQ_STRAIGHT_EDGES));
+        /* THE BLENDED LAND (2026-11-22, mondo on the Badlands Highway: "on the edges the map goes from grass to desert too abruptly in a straight line,
+           that is not realistic at all"). Two ruler lines stood on the land past a room:
+             · THE ROOM'S OWN LINE: a room on dry scrub wears the rocky grass, the land past it wore the sand sheet (every dry kind did), so the whole
+               road ran as a green strip through a desert, cut on the room's edge. Now (a) on the One World the land wears THE MAP'S OWN GROUND, the
+               same sheet the route kit lays inside (HQ_EDGE_SHEETS, by the map's kind), and (b) in any room THE ROOM'S GROUND RUNS ON: the sheet
+               under the edge (its paint, or its floor; open ground only, never asphalt or paving) goes on past the line and gives way to the land's
+               own in tongues 2 to 42 m out;
+             · THE SHEET LINE: every piece of land wore ONE sheet, the heavier kind's, so grass met sand along a staircase of squares. Now a piece
+               wears every sheet it has a share of: the first laid whole, the others over it by each corner's share (a see-through layer on the same
+               squares, no shader: both renderers), and the shares are pushed apart by a slow noise of their own, so two grounds meet in patches
+               and tongues, not on a line. The tundra's snow is one of the sheets (the same day, his second order: "the same for all edges of every map"):
+               a snow room's own sheet runs on into the white, and snow meets grass in patches. Rock, cliffs, a peak's snow and another room's real
+               land are drawn as before.
+           No sheet is repainted: the game's own ground sheets, mixed. `edges.hard: true` = the old lines for a room; `EW_HQ_HARD_EDGE_SHEETS` = for all. */
+        var BLEND = !(E.hard || (typeof window !== 'undefined' && window.EW_HQ_HARD_EDGE_SHEETS));
+        var NAT = /^(grass|dirt|desert|sand|wasteland|rocks?_|mud|moss|gravel|leaves|ice|snow|calm_snow)/;   // open ground: the sheets a room may run on past its line
+        var roomSheetAt = function (cx, cz) {
+            var k = info.floor;
+            cx = Math.max(R.x0 + 1.75, Math.min(R.x1 - 1.75, cx)); cz = Math.max(R.z0 + 1.75, Math.min(R.z1 - 1.75, cz));   // one square in: the paint's last column lies inside the line (on the line itself the east and south sides read no paint, the room's floor)
+            try { var PT = info.paint; if (PT && PT.P) { var pi = Math.max(0, Math.min(info.nx - 1, Math.round((cx - info.x0) / info.res))), pj = Math.max(0, Math.min(info.nz - 1, Math.round((cz - info.z0) / info.res))), pv = PT.P[pj * info.nx + pi]; if (pv > 0 && PT.pal[pv - 1]) k = PT.pal[pv - 1]; } } catch (e) {}
+            return (typeof k === 'string' && NAT.test(k)) ? k : null;
+        };
+        var shOff = {}, shOffOf = function (k) { var o = shOff[k]; if (!o) { var h = 7; for (var q = 0; q < k.length; q++) h = (h * 31 + k.charCodeAt(q)) % 9973; o = shOff[k] = [(h % 97) * 1.37, (h % 89) * 2.11]; } return o; };
+        /* the sheets of a point of the land and their shares: [[sheet, share] …] by name (the layers' order), or null (no open ground there) */
+        var sheets = function (P, x, z) {
+            if (!BLEND) return null;
+            var W = P.W, S = {}, tot = 0, k;
+            if (W.sh) for (k in W.sh) { S[k] = W.sh[k]; tot += W.sh[k]; }
+            else { var HS = E.sheets || {};   // a room with written sides: `edges.sheets: { <kind>: sheet }` = that kind's land wears that sheet (the city's south: scrub in the rocky grass, as the road that leaves it)
+                [['forest', 'grass'], ['grass', 'grass'], ['desert', 'desert'], ['scrub', 'desert'], ['mesa', 'desert'], ['snow', 'snow']].forEach(function (q) { var w0 = W[q[0]] || 0; if (w0 > 0) { var sk = HS[q[0]] || q[1]; S[sk] = (S[sk] || 0) + w0; tot += w0; } }); }
+            if (tot > 1e-4) for (k in S) S[k] /= tot;
+            if (W.coast > 0) { var cw = tot > 1e-4 ? Math.min(1, W.coast) : 1; for (k in S) S[k] *= 1 - cw; S.desert = (S.desert || 0) + cw; tot = 1; }   // the sea's bed and its beach are sand
+            if (!(tot > 1e-4)) return null;
+            if (P.d < 80) { var rk = roomSheetAt(Math.max(R.x0, Math.min(R.x1, x)), Math.max(R.z0, Math.min(R.z1, z)));   // THE ROOM'S GROUND RUNS ON
+                if (rk) { var rn = _hqEdgeFbm(x / 34 + 13.7, z / 34 + 41.9), rd = 2 + 40 * sm((rn - 0.25) / 0.5), ra = 1 - sm((P.d - rd) / (12 + 0.4 * rd));
+                    if (ra > 0) { for (k in S) S[k] *= 1 - ra; S[rk] = (S[rk] || 0) + ra; } } }
+            var out = [], sum = 0;
+            for (k in S) { if (!(S[k] > 0)) continue; var o = shOffOf(k), w = S[k] * Math.exp(4.6 * (_hqEdgeFbm(x / 17 + o[0], z / 17 + o[1]) - 0.5)); w *= w; out.push([k, w]); sum += w; }
+            if (!(sum > 0)) return null;
+            out = out.filter(function (e) { e[1] /= sum; return e[1] > 0.004; }); sum = 0; out.forEach(function (e) { sum += e[1]; }); out.forEach(function (e) { e[1] /= sum; });
+            out.sort(function (a, b) { return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0; });
+            return out;
+        };
         var OW = (function () {
             try {
                 if (!E.world || (typeof window !== 'undefined' && window.EW_HQ_NO_WORLD_EDGES) || typeof hqOwRoom !== 'function') return null;
@@ -77560,7 +77607,12 @@ const ThreeRenderer = (function () {
                 var kindAt = function (ix, iy) { var k = ix * 4099 + iy, v = memo.get(k); if (v === undefined) { v = hqOwGround(ix, iy).edge || 'grass'; if (KINDS.indexOf(v) < 0) v = 'grass'; memo.set(k, v); } return v; };
                 var rp = Math.ceil((+E.reach || 440) / 42) + 1;
                 for (var yy = q.wy - rp; yy < q.wy + q.rows + rp && !sea; yy++) for (var xx = q.wx - rp; xx < q.wx + q.cols + rp; xx++) if (kindAt(xx, yy) === 'coast') { sea = true; break; }
-                return { wx: q.wx, wy: q.wy, hw: room.shell.w / 2, hd: room.shell.d / 2, kindAt: kindAt, sea: sea };
+                /* THE LAND WEARS THE MAP'S OWN GROUND (2026-11-22, see THE BLENDED LAND below): the sheet of the world plot's ground, where the map's
+                   kind has one of its own (the route kit's floors: dry scrub = the rocky grass, the badlands = the cracked waste); null = not open ground */
+                var smemo = new Map();
+                var sheetAt = function (ix, iy) { var k = ix * 4099 + iy, v = smemo.get(k); if (v === undefined) { var e = kindAt(ix, iy), g = hqOwGround(ix, iy);
+                    v = (e === 'forest' || e === 'grass') ? 'grass' : (e === 'desert' || e === 'scrub' || e === 'mesa') ? (HQ_EDGE_SHEETS[g.kind] || 'desert') : e === 'snow' ? 'snow' : null; smemo.set(k, v); } return v; };
+                return { wx: q.wx, wy: q.wy, hw: room.shell.w / 2, hd: room.shell.d / 2, kindAt: kindAt, sheetAt: sheetAt, sea: sea };
             } catch (e) { return null; }
         })();
         var WAYS = (OW && Array.isArray(E.ways) && E.ways.length) ? E.ways : null;
@@ -77570,6 +77622,17 @@ const ThreeRenderer = (function () {
             var fx = OW.wx + (x + OW.hw) / 42 - 0.5, fy = OW.wy + (z + OW.hd) / 42 - 0.5, ix = Math.floor(fx), iy = Math.floor(fy);
             var u = sm((fx - ix - 0.3) / 0.4), v = sm((fy - iy - 0.3) / 0.4);
             W[OW.kindAt(ix, iy)] += (1 - u) * (1 - v); W[OW.kindAt(ix + 1, iy)] += u * (1 - v); W[OW.kindAt(ix, iy + 1)] += (1 - u) * v; W[OW.kindAt(ix + 1, iy + 1)] += u * v;
+            /* THE BLENDED LAND: the sheets' own weights. Read a little off the point (the line between two grounds wanders at every distance, the
+               room's line too: only the sheet moves, never a height) and over a wider band than the kinds' */
+            if (BLEND) {
+                var qx = x + (WANDER ? 15 * Math.max(-1, Math.min(1, (_hqEdgeSoft(x / 64 + 51.3, z / 64 + 7.1) - 0.5) * 3.2)) + 9 * (_hqEdgeFbm(x / 13 + 9.1, z / 13 + 2.2) - 0.5) : 0);
+                var qz = z + (WANDER ? 15 * Math.max(-1, Math.min(1, (_hqEdgeSoft(x / 64 + 3.9, z / 64 + 77.7) - 0.5) * 3.2)) + 9 * (_hqEdgeFbm(x / 13 + 31.4, z / 13 + 18.6) - 0.5) : 0);
+                var gx = OW.wx + (qx + OW.hw) / 42 - 0.5, gy = OW.wy + (qz + OW.hd) / 42 - 0.5, jx = Math.floor(gx), jy = Math.floor(gy);
+                var u2 = sm((gx - jx - 0.22) / 0.56), v2 = sm((gy - jy - 0.22) / 0.56), SH = {}, any = false;
+                var put = function (k, w) { if (k && w > 0) { SH[k] = (SH[k] || 0) + w; any = true; } };
+                put(OW.sheetAt(jx, jy), (1 - u2) * (1 - v2)); put(OW.sheetAt(jx + 1, jy), u2 * (1 - v2)); put(OW.sheetAt(jx, jy + 1), (1 - u2) * v2); put(OW.sheetAt(jx + 1, jy + 1), u2 * v2);
+                if (any) W.sh = SH;
+            }
             /* THE WAY ON (`edges.ways: [{ side, at }]`, the route kit's ends): where a path leaves the room for the next one, the land stays
                low and open for a stretch: no rock face, no tree line across the way you are about to walk (the rock stays rock but lies
                down as a pass floor, `W.way`; forest and table land give way to grass), fading out sideways over ~30 m and outward over ~150 m */
@@ -77670,7 +77733,7 @@ const ThreeRenderer = (function () {
                 y += W.snow * ((e2 + lift) * (1 - kn) + (e2 * (1 - 0.6 * sm((d - 30) / 160)) + 0.45 + rollS) * kn); }
             return { y: y, W: W, d: d, eH: eH, land: (landK && W.mountain > 0.6) ? landK : null, mesa: mesaT, side: (ez <= 1e-6 || ex > ez) ? kx : kz };
         };
-        return { R: R, at: at, seaY: seaY, reach: +E.reach || 440, world: OW ? { sea: OW.sea } : null };
+        return { R: R, at: at, sheets: sheets, blend: BLEND, seaY: seaY, reach: +E.reach || 440, world: OW ? { sea: OW.sea } : null };
     }
     /* a room whose land past the edge is THE NATURAL EDGES' (no outer ground of the field's sheet, no sea sheet past the field: the land brings its own) */
     function _hqEdgeLandOn(room) { return !!(room && room.terrain && room.terrain.edges && room.shell && room.shell.open && !(typeof window !== 'undefined' && window.EW_HQ_NO_EDGE_LAND)); }
@@ -77683,11 +77746,11 @@ const ThreeRenderer = (function () {
         try { var sf = H && H.scene && H.scene.fog; if (sf && sf.color && sf.color.isColor) fogC.copy(sf.color); } catch (e) {}   // the fog as the room draws it (the near land fades to THIS colour; the far land's haze must be the same one)
         /* the sheets: the game's own ground sheets (the rock, the mossy grass, the sand); the snow is plain white */
         var mats = {};
-        var matFor = function (key, far) {
-            var mk = key + (far ? '|far' : '');
+        var matFor = function (key, far, over) {   // `over` = a see-through layer of THE BLENDED LAND (its share is the corners' alpha)
+            var mk = key + (far ? '|far' : '') + (over ? '|over' : '');
             if (mats[mk]) return mats[mk];
-            var tex = key === 'snow' ? null : _hzTex((key === 'rock' || key === 'cliff') ? 'mountain' : key === 'grass' ? 'grass' : 'desert');   // (a sea cliff wears the rock sheet: `cliff.png`, a tan sheet, is banned by the owner's rules and stood as sand-coloured slabs where a range falls into the sea)
-            var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far || !_ewAirOff() });   // THE ONE AIR: the far land wears the scene's fog like everything else (its haze was painted in at the build, in the build's colour, deaf to the settings and the hour)
+            var tex = key === 'snow' ? null : ((key === 'rock' || key === 'cliff') ? _hzTex('mountain') : (key === 'grass' || key === 'desert') ? _hzTex(key) : (_hzTex(key) || _hzTex('desert')));   // (a sea cliff wears the rock sheet: `cliff.png`, a tan sheet, is banned by the owner's rules and stood as sand-coloured slabs where a range falls into the sea)
+            var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far || !_ewAirOff(), transparent: !!over, depthWrite: !over });   // THE ONE AIR: the far land wears the scene's fog like everything else (its haze was painted in at the build, in the build's colour, deaf to the settings and the hour)
             /* THE NATURAL ROCK on the land past the edge (2026-11-15, see _hqTerrainMat): the far mountains and sea cliffs were one small sheet repeated
                up a whole range. The sheet is mixed with itself read 3.7 x larger and its tone drifts over the land (WebGL; the node renderer keeps the plain sheet). */
             if (tex && !(typeof window !== 'undefined' && window.EW_NO_NATURAL_ROCK)) {
@@ -77698,7 +77761,7 @@ const ThreeRenderer = (function () {
                         (rocky ? ' sampledDiffuseColor = mix( sampledDiffuseColor, texture2D( map, vMapUv * 0.27 + 0.37 ), 0.45 );\n' : '') +
                         ' sampledDiffuseColor.rgb *= 0.82 + 0.28 * ntN( vMapUv * 0.07 + 3.7 ) + 0.10 * ( ntN( vMapUv * 0.33 + 19.1 ) - 0.5 );\n diffuseColor *= sampledDiffuseColor;\n#endif');
                 };
-                m.customProgramCacheKey = function () { return 'hqEdgeLandNat' + (rocky ? 'R' : ''); };
+                m.customProgramCacheKey = function () { return 'hqEdgeLandNat' + (rocky ? 'R' : '') + (over ? 'O' : ''); };
             }
             m._ew_hqEdgeLand = true; mats[mk] = m; return m;
         };
@@ -77709,6 +77772,15 @@ const ThreeRenderer = (function () {
             add(W.scrub || 0, 0.84, 0.8, 0.64); add(W.mesa || 0, 1, 0.96, 0.86); add(W.grass || 0, 0.8, 0.88, 0.62); add(W.snow || 0, 0.97, 0.98, 1);
             if (P.mesa > 0.02) { var mt = Math.min(1, P.mesa * 1.6), band = 0.86 + 0.14 * Math.sin(P.y * 0.55); c = [c[0] * (1 - mt) + 1.0 * band * mt, c[1] * (1 - mt) + 0.6 * band * mt, c[2] * (1 - mt) + 0.42 * band * mt]; }   // the tables: red rock in bands
             if (Array.isArray(E.tint)) c = [c[0] * E.tint[0], c[1] * E.tint[1], c[2] * E.tint[2]];   // `edges.tint: [r, g, b]` (2026-11-20, The Woods): a room whose floor is darker than the map's green, the land past its line wears the room's tone
+            return c;
+        };
+        var tintOf = function (key, P) {   // THE BLENDED LAND: the tint of ONE sheet at a point (colOf mixes the kinds' tints for the one sheet a piece wore)
+            var W = P.W, c, t;
+            if (key === 'grass') { var f = W.forest, g = W.grass || 0; t = f + g; c = t > 1e-3 ? [(f * 0.62 + g * 0.8) / t, (f * 0.74 + g * 0.88) / t, (f * 0.56 + g * 0.62) / t] : [0.8, 0.88, 0.62]; }
+            else if (key === 'desert') { var d = W.desert + (W.mesa || 0), s = (W.sh || (E.sheets && E.sheets.scrub)) ? 0 : (W.scrub || 0), cc = W.coast; t = d + s + cc; c = t > 1e-3 ? [(d + s * 0.84 + cc * 0.8) / t, (d * 0.96 + s * 0.8 + cc * 0.74) / t, (d * 0.86 + s * 0.64 + cc * 0.66) / t] : [1, 0.96, 0.86]; }
+            else c = [HQ_EDGE_OWN_TINT[0], HQ_EDGE_OWN_TINT[1], HQ_EDGE_OWN_TINT[2]];
+            if (P.mesa > 0.02) { var mt = Math.min(1, P.mesa * 1.6), band = 0.86 + 0.14 * Math.sin(P.y * 0.55); c = [c[0] * (1 - mt) + 1.0 * band * mt, c[1] * (1 - mt) + 0.6 * band * mt, c[2] * (1 - mt) + 0.42 * band * mt]; }
+            if (Array.isArray(E.tint)) c = [c[0] * E.tint[0], c[1] * E.tint[1], c[2] * E.tint[2]];
             return c;
         };
         var keyOf = function (P, x, z, yTop) {   // yTop = the piece's highest corner (a far piece is up to 60 m long: one that climbs out of the sea is rock, not a slab of beach sand up a cliff)
@@ -77724,31 +77796,48 @@ const ThreeRenderer = (function () {
         var patch = function (xs, zs, name) {
             var nx = xs.length, nz = zs.length, P = new Array(nx * nz), i, j;
             for (j = 0; j < nz; j++) for (i = 0; i < nx; i++) P[j * nx + i] = F.at(xs[i], zs[j]);
-            var B = {};
-            for (j = 0; j + 1 < nz; j++) for (i = 0; i + 1 < nx; i++) {
-                var mx = (xs[i] + xs[i + 1]) / 2, mz = (zs[j] + zs[j + 1]) / 2, PM = F.at(mx, mz), far = PM.d >= HQ_EDGE_NEAR_M, key = keyOf(PM, mx, mz, Math.max(P[j * nx + i].y, P[j * nx + i + 1].y, P[(j + 1) * nx + i].y, P[(j + 1) * nx + i + 1].y)), bk = key + (far ? '|far' : '');
-                var b = B[bk] || (B[bk] = { key: key, far: far, map: {}, pos: [], col: [], uv: [], nrm: [], idx: [] });
-                var vi = [j * nx + i, j * nx + i + 1, (j + 1) * nx + i, (j + 1) * nx + i + 1].map(function (v) {
+            var B = {}, SHW = F.blend ? new Array(nx * nz) : null, NRM = {};
+            /* one square of the land into a bucket (a sheet, near / far, whole or a layer): `alpha` = the four corners' share (a layer), `tint` = the sheet's own (a blended square) */
+            var quad = function (key, far, i, j, layer, alpha, tint) {
+                var bk = key + (far ? '|far' : '') + (layer ? '|over' : tint ? '|b' : '');
+                var b = B[bk] || (B[bk] = { key: key, far: far, over: !!layer, map: {}, pos: [], col: [], uv: [], nrm: [], idx: [] });
+                var vi = [j * nx + i, j * nx + i + 1, (j + 1) * nx + i, (j + 1) * nx + i + 1].map(function (v, q) {
                     if (b.map[v] != null) return b.map[v];
-                    var vx = xs[v % nx], vz = zs[(v / nx) | 0], p = P[v], c = colOf(p), e = 1.5;
+                    var vx = xs[v % nx], vz = zs[(v / nx) | 0], p = P[v], c = tint ? tintOf(key, p) : colOf(p), e = 1.5;
                     if (key === 'snow') c = [0.97, 0.98, 1];
                     if (far && _ewAirOff()) { var hz0 = 0.5 + 0.3 * Math.min(1, (p.d - HQ_EDGE_NEAR_M) / 300), hzA = hz0 * (1 - 0.55 * Math.min(1, Math.max(0, (p.y - p.eH - 40) / 140))); c = [c[0] * (1 - hzA) + fogC.r * hzA, c[1] * (1 - hzA) + fogC.g * hzA, c[2] * (1 - hzA) + fogC.b * hzA]; }
-                    var nxv = 2 * (p.y - F.at(vx + e, vz).y), nzv = 2 * (p.y - F.at(vx, vz + e).y), nl = Math.hypot(nxv, 2 * e, nzv);   // (one step each way: a third fewer samples)
+                    var nv = NRM[v];
+                    if (!nv) { var nxv = 2 * (p.y - F.at(vx + e, vz).y), nzv = 2 * (p.y - F.at(vx, vz + e).y), nl = Math.hypot(nxv, 2 * e, nzv); nv = NRM[v] = [nxv / nl, 2 * e / nl, nzv / nl]; }   // (one step each way: a third fewer samples)
                     var n = b.pos.length / 3; b.map[v] = n;
-                    b.pos.push(vx * U, p.y * U, vz * U); b.col.push(c[0], c[1], c[2]); b.nrm.push(nxv / nl, 2 * e / nl, nzv / nl);
+                    b.pos.push(vx * U, p.y * U, vz * U); if (layer) b.col.push(c[0], c[1], c[2], alpha[q]); else b.col.push(c[0], c[1], c[2]); b.nrm.push(nv[0], nv[1], nv[2]);
                     var ts = far ? TM * 6 : TM; b.uv.push(vx * U / ts, vz * U / ts);
                     return n;
                 });
                 var flip = ((xs[i + 1] - xs[i]) * (zs[j + 1] - zs[j])) < 0;   // (never: both lists ascend) kept for a patch built the other way
                 if (flip) b.idx.push(vi[0], vi[1], vi[2], vi[1], vi[3], vi[2]); else b.idx.push(vi[0], vi[2], vi[1], vi[1], vi[2], vi[3]);
+            };
+            for (j = 0; j + 1 < nz; j++) for (i = 0; i + 1 < nx; i++) {
+                var mx = (xs[i] + xs[i + 1]) / 2, mz = (zs[j] + zs[j + 1]) / 2, PM = F.at(mx, mz), far = PM.d >= HQ_EDGE_NEAR_M, key = keyOf(PM, mx, mz, Math.max(P[j * nx + i].y, P[j * nx + i + 1].y, P[(j + 1) * nx + i].y, P[(j + 1) * nx + i + 1].y));
+                if (!SHW || PM.land || (key !== 'grass' && key !== 'desert' && !(key === 'snow' && (PM.W.snow || 0) > PM.W.mountain))) { quad(key, far, i, j, false, null, false); continue; }   // (snow on a peak is rock's: drawn as before; the tundra's snow is open ground)
+                /* THE BLENDED LAND: open ground wears every sheet its corners have a share of, in the sheets' name order: the first whole, each next
+                   one over it by its share of the sheets laid so far (so the sum is each corner's own mix whatever sheet a square starts with) */
+                var cs = [j * nx + i, j * nx + i + 1, (j + 1) * nx + i, (j + 1) * nx + i + 1].map(function (v) { var s = SHW[v]; if (s === undefined) s = SHW[v] = F.sheets(P[v], xs[v % nx], zs[(v / nx) | 0]) || [[key, 1]]; return s; });
+                var keys = []; cs.forEach(function (s) { s.forEach(function (e2) { if (keys.indexOf(e2[0]) < 0) keys.push(e2[0]); }); }); keys.sort();
+                var acc = [0, 0, 0, 0];
+                keys.forEach(function (sk, li) {
+                    var al = cs.map(function (s, q) { var w = 0; for (var n2 = 0; n2 < s.length; n2++) if (s[n2][0] === sk) { w = s[n2][1]; break; } acc[q] += w; return li === 0 ? 1 : (acc[q] > 1e-6 ? w / acc[q] : 0); });
+                    if (li > 0 && Math.max(al[0], al[1], al[2], al[3]) < 0.004) return;
+                    quad(sk, far, i, j, li > 0, al, true);
+                });
             }
             var g = new THREE.Group(); g.name = 'hq_edge_land'; g._ew_hqEdgeLand = name;
+            var ORD = []; Object.keys(B).forEach(function (bk) { if (ORD.indexOf(B[bk].key) < 0) ORD.push(B[bk].key); }); ORD.sort();
             Object.keys(B).forEach(function (bk) {
                 var b = B[bk], geo = new THREE.BufferGeometry();
                 geo.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(b.nrm, 3));
-                geo.setAttribute('color', new THREE.Float32BufferAttribute(b.col, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
+                geo.setAttribute('color', new THREE.Float32BufferAttribute(b.col, b.over ? 4 : 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
                 geo.setIndex(b.pos.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(b.idx, 1) : new THREE.Uint16BufferAttribute(b.idx, 1)); geo.computeBoundingSphere();
-                var m = new THREE.Mesh(geo, matFor(b.key, b.far)); m.position.y = 0.2; m.receiveShadow = !b.far; m.castShadow = false; m.renderOrder = 0; m._ew_hqPart = 'floor'; m._ew_hqOuter = true; m._ew_hqEdgeLand = name;
+                var m = new THREE.Mesh(geo, matFor(b.key, b.far, b.over)); m.position.y = 0.2; m.receiveShadow = !b.far; m.castShadow = false; m.renderOrder = b.over ? 0.001 * (1 + ORD.indexOf(b.key)) : 0; m._ew_hqPart = 'floor'; m._ew_hqOuter = true; m._ew_hqEdgeLand = name;   // (the layers lie in their sheets' name order)
                 g.add(m);
             });
             if (g.children.length) pieces.push(g);
@@ -77796,6 +77885,39 @@ const ThreeRenderer = (function () {
             pieces.forEach(function (g) { var ck = 'edge:' + g._ew_hqEdgeLand; g._ew_chunk = ck; C.cells[ck] = g; C.root.add(g); _hqChunkReg(H, g, 1e12); });
         } else pieces.forEach(function (g) { G.add(g); });
         if (seaG && seaG.children.length) G.add(seaG);
+        /* THE ROAD RUNS ON PAST THE LINE (2026-11-22, mondo on the highway's cross road: "make sure the road doesnt abruptly stop at teh edge of the map,
+           need to see the road continue beyond it"): `edges.roads: [{ side, at, w, key, len, line }]` = a road that leaves the room across `side` at `at`
+           (metres along it) is drawn on over the land past the line, `w` wide, `len` m out (the land's reach by default), in the sheet `key`. It rides the
+           land's own height under its middle line, level across, on a low bank of earth where the land falls away to one side; `line` = a paint line
+           down its middle (0xRRGGBB). Nobody walks it: it is the land's, like the land. No tree of the land stands on it (below). */
+        var ROADS = Array.isArray(E.roads) ? E.roads.filter(function (q) { return q && /^[nsew]$/.test(q.side) && isFinite(+q.at); }) : [];
+        var roadPt = function (q, dd, off) { var a = +q.at + off; return q.side === 'w' ? [R.x0 - dd, a] : q.side === 'e' ? [R.x1 + dd, a] : q.side === 'n' ? [a, R.z0 - dd] : [a, R.z1 + dd]; };
+        ROADS.forEach(function (q, qi) {
+            try {
+                var w = +q.w || 7, len = Math.min(+q.len || F.reach, F.reach), stepR = 5, n = Math.max(2, Math.round(len / stepR)), hw = w / 2;
+                var pos = [], uv = [], idx = [], pos2 = [], idx2 = [], pos3 = [], idx3 = [], ys = [];
+                for (var k = 0; k <= n; k++) { var dd = len * k / n - (k ? 0 : 0.6), c0 = roadPt(q, dd, 0), l0 = roadPt(q, dd, -hw), r0 = roadPt(q, dd, hw); ys.push(Math.max(F.at(c0[0], c0[1]).y, F.at(l0[0], l0[1]).y, F.at(r0[0], r0[1]).y)); }
+                for (var sm2 = 0; sm2 < 3; sm2++) for (var k2 = 1; k2 < n; k2++) ys[k2] = Math.max(ys[k2], (ys[k2 - 1] + ys[k2 + 1]) / 2);   // no dip between two crests: the road bridges it on its bank
+                ys[0] = Math.max(ys[0], F.at(roadPt(q, 0, 0)[0], roadPt(q, 0, 0)[1]).eH || 0);   // at the line itself: the room's own ground
+                for (var k3 = 0; k3 <= n; k3++) {
+                    var d3 = len * k3 / n - (k3 ? 0 : 0.6), L3 = roadPt(q, d3, -hw), R3 = roadPt(q, d3, hw), y3 = ys[k3] + 0.2 + Math.min(0.5, d3 / 30);
+                    pos.push(L3[0] * U, y3 * U, L3[1] * U, R3[0] * U, y3 * U, R3[1] * U); uv.push(0, d3 * U / TM, w * U / TM, d3 * U / TM);
+                    var L4 = roadPt(q, d3, -hw - 2.2), R4 = roadPt(q, d3, hw + 2.2), yb = y3 - 3.2;
+                    pos2.push(L3[0] * U, y3 * U, L3[1] * U, L4[0] * U, yb * U, L4[1] * U, R3[0] * U, y3 * U, R3[1] * U, R4[0] * U, yb * U, R4[1] * U);
+                    if (q.line != null) { var La = roadPt(q, d3, -0.09), Lb = roadPt(q, d3, 0.09); pos3.push(La[0] * U, (y3 + 0.02) * U, La[1] * U, Lb[0] * U, (y3 + 0.02) * U, Lb[1] * U); }
+                    if (k3 > 0) { var a3 = (k3 - 1) * 2; idx.push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2); idx3.push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2);
+                        var b3 = (k3 - 1) * 4; idx2.push(b3, b3 + 1, b3 + 4, b3 + 1, b3 + 5, b3 + 4, b3 + 2, b3 + 6, b3 + 3, b3 + 3, b3 + 6, b3 + 7); }
+                }
+                var mkR = function (P3, I3, UV3, mat) { var g3 = new THREE.BufferGeometry(); g3.setAttribute('position', new THREE.Float32BufferAttribute(P3, 3)); if (UV3) g3.setAttribute('uv', new THREE.Float32BufferAttribute(UV3, 2)); g3.setIndex(I3); g3.computeVertexNormals(); g3.computeBoundingSphere();
+                    var m3 = new THREE.Mesh(g3, mat); m3.position.y = 0.2; m3.receiveShadow = false; m3.castShadow = false; m3.renderOrder = 1; m3._ew_hqPart = 'floor'; m3._ew_hqOuter = true; m3._ew_hqEdgeLand = 'road' + qi; return m3; };
+                var gR = new THREE.Group(); gR.name = 'hq_edge_road'; gR._ew_hqEdgeLand = 'road' + qi;
+                gR.add(mkR(pos2, idx2, null, new THREE.MeshLambertMaterial({ color: 0x6e5a44, side: THREE.DoubleSide })));
+                gR.add(mkR(pos, idx, uv, new THREE.MeshLambertMaterial({ map: _hzTex(q.key || 'urban:RoadGeneric1a') || null, color: 0xffffff, side: THREE.DoubleSide })));
+                if (pos3.length) gR.add(mkR(pos3, idx3, null, new THREE.MeshLambertMaterial({ color: q.line, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })));
+                G.add(gR);
+            } catch (e) { console.warn('[HQ] an edge road failed', e); }
+        });
+        var onEdgeRoad = function (px, pz) { for (var qi2 = 0; qi2 < ROADS.length; qi2++) { var q2 = ROADS[qi2], ns2 = (q2.side === 'n' || q2.side === 's'); if (Math.abs((ns2 ? px : pz) - (+q2.at)) < (+q2.w || 7) / 2 + 3.5 && (q2.side === 'w' ? px < R.x0 + 2 : q2.side === 'e' ? px > R.x1 - 2 : q2.side === 'n' ? pz < R.z0 + 2 : pz > R.z1 - 2)) return true; } return false; };
         /* THE TREES: the forest's tall trees to 60 m (the fog has them by then), thinning; a skirt of pines on the mountains' feet */
         var planted = 0;
         if (typeof plantTree === 'function') {
@@ -77810,6 +77932,7 @@ const ThreeRenderer = (function () {
                 if (tx > R.x0 - 2 && tx < R.x1 + 2 && tz > R.z0 - 2 && tz < R.z1 + 2) continue;
                 var px = tx + (a - 0.5) * 3.2, pz = tz + (b2 - 0.5) * 3.2, P = F.at(px, pz);
                 if (P.d < 1.8 || P.d > 60) continue;
+                if (ROADS.length && onEdgeRoad(px, pz)) continue;   // THE ROAD RUNS ON: no tree on it
                 if (roadLanes.length && roadLanes.some(function (L) { var qx = px - L.x, qz = pz - L.z; return (qx * L.dx + qz * L.dz) > -2 && Math.abs(qx * L.dz - qz * L.dx) < L.hw; })) continue;   // THE ROAD RUNS ON (2026-11-22): no tree on a road out's asphalt
                 var thin = E.deep ? (P.d < 44 ? 1 : 0.6) : P.d < 22 ? 1 : P.d < 40 ? 0.5 : 0.28; if (low) thin *= 0.6;   /* `edges.deep: true` (2026-11-20, The Woods): a room deep in a wood, the trees past its line stay thick to the end of the planting, so no flat land shows between the trunks */
                 if (P.W.forest > 0.5) { if (c2 > thin * P.W.forest) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
@@ -78724,12 +78847,12 @@ const ThreeRenderer = (function () {
                     if (Lp) [-1, 1].forEach(function (sx) { var hl = _hzGlowSprite(0.42 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(sx * Lp.hx, Lp.hy, Lp.hz); g.add(hl); var tl = _hzGlowSprite(0.28 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(sx * Lp.tx, Lp.ty, Lp.tz); g.add(tl); });
                     if (kind === 'citybus') { try { _hqCityBusMarks(g, U); } catch (e) {} }   // THE CITY MARKS: Bus Line 1 wears the city's shield
                     g._ew_hqCar = kind; g._ew_bunOut = true; G.add(g);   // THE MOVERS OUT: a car drives; the shell's recording stays still
-                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, narrow: rt.narrow || null, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
+                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, narrow: rt.narrow || null, deck: !!rt.deck, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
                 }
             });
         } finally { _hzKitTs = prevTs; }
         if (!cars.length) return;
-        cars.forEach(function (car) { var p = _hqRoutePose(car, car.s); car.g.position.set(p.x * U, hqTerrainHeight(info, p.x, p.z) * U + 0.3, p.z * U); car.g.rotation.y = Math.atan2(p.dx, p.dz); car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; });
+        cars.forEach(function (car) { var p = _hqRoutePose(car, car.s); car.g.position.set(p.x * U, _hqCarGround(info, car, p.x, p.z) * U + 0.3, p.z * U); car.g.rotation.y = Math.atan2(p.dx, p.dz); car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; });
         H.traffic = cars;
         H.tickers.push(function (dt) { _hqTickTraffic(dt); });
     }
@@ -78801,6 +78924,14 @@ const ThreeRenderer = (function () {
             HH.dirty = true;
         });
     }
+    /* THE RAISED HIGHWAY (2026-11-22, mondo: "actual highway architecture, raised off the ground"): a traffic route wearing `deck: true` drives on
+       the bridge layer where a slab lies under its line (the highway's deck on its pillars) and on the field everywhere else (the ramps up to it).
+       A route without it reads the field as before, so a car on the road UNDER the deck stays under it. */
+    function _hqCarGround(info, car, x, z) {
+        var gy = hqTerrainHeight(info, x, z);
+        if (car && car.deck && info.bridges && info.bridges.length && typeof hqTerrainBridgeBelow === 'function') { var b = hqTerrainBridgeBelow(info, x, z, 1e6); if (b && b.y > gy) gy = b.y; }
+        return gy;
+    }
     function _hqTickTraffic(dt) {
         var H = _hq, cars = H && H.traffic; if (!cars || !cars.length || H.paused) return;
         var U = _hqUnits(), info = H.terrain, pl = H.player, R = H.ride;
@@ -78861,18 +78992,18 @@ const ThreeRenderer = (function () {
                 var look = Math.max(adv, car.v * 1.2 + car.len / 2 + 2);
                 for (var ahead = 0; ahead <= look + 0.5; ahead += 0.5) {
                     var sampleS = (car.s + Math.min(ahead, look)) % car.L, q = _hqRoutePose(car, sampleS);
-                    if (Math.abs(pl.y - (car.yAt ? car.yAt(sampleS) : hqTerrainHeight(info, q.x, q.z))) < 1.8 && Math.hypot(pl.x - q.x, pl.z - q.z) < 1.65) { adv = 0; break; }
+                    if (Math.abs(pl.y - (car.yAt ? car.yAt(sampleS) : _hqCarGround(info, car, q.x, q.z))) < 1.8 && Math.hypot(pl.x - q.x, pl.z - q.z) < 1.65) { adv = 0; break; }
                 }
             }
             car.s += adv;
             if (car.loop) { if (car.s >= car.L) car.s -= car.L; }
             else if (car.s >= car.L) car.s = 0;   // off the end of the avenue, back on at the start (the city continues past the wall)
             /* G5: a car on the land rides its road's own graded line (car.yAt), pitched with it; a terrain room's reads its field */
-            var p = _hqRoutePose(car, car.s), gy = car.yAt ? car.yAt(car.s) : hqTerrainHeight(info, p.x, p.z);
+            var p = _hqRoutePose(car, car.s), gy = car.yAt ? car.yAt(car.s) : _hqCarGround(info, car, p.x, p.z);
             car.g.position.set(p.x * U, gy * U + (car.yAt ? 0 : 0.3), p.z * U);
             car.g.rotation.y = Math.atan2(p.dx, p.dz);
             if (car.yAt) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((car.yAt(car.s + 2) - car.yAt(car.s - 2)) / 4); }
-            else if (info.slope) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((hqTerrainHeight(info, p.x + p.dx * 2, p.z + p.dz * 2) - hqTerrainHeight(info, p.x - p.dx * 2, p.z - p.dz * 2)) / 4); }   // G7: pitched with the city's slope
+            else if (info.slope) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((_hqCarGround(info, car, p.x + p.dx * 2, p.z + p.dz * 2) - _hqCarGround(info, car, p.x - p.dx * 2, p.z - p.dz * 2)) / 4); }   // G7: pitched with the city's slope
             car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; car.y = gy;
             /* THE CITY TRAFFIC: a car far from the eye is not drawn (it still drives) */
             if (H.camera) { var ce2 = H.camera.matrixWorld.elements, fx2 = car.g.position.x - ce2[12], fz2 = car.g.position.z - ce2[14], far2 = _HQ_SIGNAL.carFarM * U; var see2 = (typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL) || fx2 * fx2 + fz2 * fz2 < far2 * far2; if (car.g.visible !== see2) car.g.visible = see2; }
@@ -84722,7 +84853,7 @@ const ThreeRenderer = (function () {
             }
             G.add(grp);
             if (p.pd) { grp._ew_pd = true; grp._ew_noInstance = true; } _hq.props.push({ key: p.key, grp: grp, row: p });
-            if (cat.vehicle) { grp._ew_noInstance = true; grp._ew_noBatch = true; grp._ew_pd = true; grp._ew_pcNo = true; try { _hqVehicleRegister(p, cat, grp, y); } catch (e) { console.warn('[HQ] vehicle', e); } }   // THE SPACESHIP (2026-11-17): a model vehicle (the flown ship) boards like the proc ones; it moves, so never batched
+            if (cat.vehicle) { grp._ew_noInstance = true; grp._ew_noBatch = true; grp._ew_pd = true; grp._ew_pcNo = true; try { _hqVehicleRegister(p, cat, grp, y, blk); } catch (e) { console.warn('[HQ] vehicle', e); } }   // THE SPACESHIP (2026-11-17): a model vehicle (the flown ship) boards like the proc ones; it moves, so never batched
             try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
         };
         var rows = (room.props || []).concat(_hq.terrainScatter || []);
@@ -88004,9 +88135,16 @@ const ThreeRenderer = (function () {
         var lvl = _hqLevelOf(S, pl.y);   // THE THIRD RING (2026-09-16): 0 / 1 / 2
         var best = null, bestD = 1e9;
         /* THE DEEP (2026-09-18): aboard a vehicle the target IS the vehicle (E disembarks); ashore, a moored one within its boardReach */
-        if (_hq.vehicle && _hq.vehicle.on) { var Vr = _hq.vehicle.rec; return { kind: 'vehicle', id: Vr.id, label: Vr.label, sub: 'ABOARD · E DISEMBARKS', verb: 'DISEMBARK', aboard: true, vehicle: _hq.vehicle.kind }; }
+        if (_hq.vehicle && _hq.vehicle.on) { var Vr = _hq.vehicle.rec; return (_hq.vehicle.kind === 'car') ? { kind: 'vehicle', id: Vr.id + ':in', label: Vr.label, sub: 'AT THE WHEEL · E GETS OUT', verb: 'GET OUT', aboard: true, vehicle: 'car' }   /* (its own id: the prompt redraws when you get in) */ : { kind: 'vehicle', id: Vr.id, label: Vr.label, sub: 'ABOARD · E DISEMBARKS', verb: 'DISEMBARK', aboard: true, vehicle: _hq.vehicle.kind }; }
         (_hq.boats || []).forEach(function (b) {
             var Rb = (_hqSeaRules()[b.kind] || {}), distV = Math.hypot(b.x - pl.x, b.z - pl.z);
+            if (b.kind === 'car') {   // THE CAR: how near its SIDE you stand (a bus is 11 m long), not its middle
+                if (distV > b.hd + 3 || Math.abs(b.y - pl.y) > 1.6) return;
+                var cdx = pl.x - b.x, cdz = pl.z - b.z, ccy = Math.cos(b.yaw), csy = Math.sin(b.yaw), clx = Math.max(0, Math.abs(cdx * ccy - cdz * csy) - b.hw), clz = Math.max(0, Math.abs(cdx * csy + cdz * ccy) - b.hd), cds = Math.hypot(clx, clz);
+                if (cds > (Rb.reach || 1.7)) return;
+                if (cds < bestD) { bestD = cds; best = { kind: 'vehicle', id: b.id, label: b.label, sub: b.sub, verb: 'DRIVE', vehicle: 'car' }; }
+                return;
+            }
             if (distV > (Rb.boardReach || 3.6) || Math.abs(b.y - pl.y) > 3.5) return;
             if (distV < bestD) { bestD = distV; best = { kind: 'vehicle', id: b.id, label: b.label, sub: b.sub, verb: 'BOARD', vehicle: b.kind }; }
         });
@@ -90766,8 +90904,15 @@ const ThreeRenderer = (function () {
            down by how near the nearest world is (`nearK` x the metres to its ground), so the ship slows by itself as it comes in. `follow` =
            how fast the hull swings onto the camera's heading. `camDist` back, `camUp` over: the ship sits a little under the middle. */
         ship: { v: 60, rev: 12, accel: 0.8, drag: 0.6, turn: 1.25, follow: 4.5, vertV: 26, cruise: 650, warp: 1300, nearK: 0.9, r: 2.2, boardReach: 7.0, seat: { x: 0, y: 0.9, z: 0.6 }, camDist: 20, camUp: 3.4, nose: Math.PI / 2, len: 8.0, beam: 4.0, land: 9, landH: 26, edge: 500, setDown: 45 },
+        /* THE CAR (2026-11-22, mondo: "all of the cars have the option for me to press e to use them, but they act like a boat instead of a
+           car ... Simple arcade mechanics, like the skateboarding"): metres and seconds. `v` top speed, `rev` top speed backwards, `accel` /
+           `brake` / `coast` / `hand` = m/s2 on the gas, on the brake, off the pedals, on the handbrake; `steer` = the front wheels' angle
+           standing still, `steerHi` at top speed (rad), `steerIn` = how fast the wheels turn; `wb` = the wheelbase as a share of the
+           car's length; `step` = the highest kerb it climbs, `clear` = what it drives over, `drop` = the biggest drop it rolls off,
+           `wet` = the deepest water; `reach` = how near its side you stand to get in. */
+        car: { v: 21, rev: 7, accel: 8.5, brake: 20, coast: 2.4, hand: 15, steer: 0.62, steerHi: 0.13, steerIn: 5.5, handSteer: 1.7, wb: 0.6, step: 0.34, clear: 0.34, drop: 0.7, wet: 0.45, hill: 0.55, bump: 0.25, lean: 0.035, squat: 0.02, reach: 1.7, exit: 0.75, camDist: 8.0, camUp: 0.9, len: 4.6, beam: 1.9 },
         keys: { dive: 'c', rise: 'space', board: 'e' },
-        labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP' },
+        labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP', car: 'THE CAR' },
     };
     function _hqSeaRules() {
         var DEF = (typeof HQ_SEA_DEFAULT !== 'undefined') ? HQ_SEA_DEFAULT : { boat: {}, sub: {} };   // a sandbox may eval this alone
@@ -90777,7 +90922,7 @@ const ThreeRenderer = (function () {
            boat per frame: 11 MB in 90 s of the city walk). The rules are fixed tables; a new HQ_SEA_RULES object re-merges. */
         var C = _hqSeaRules._c; if (C && C.R === R && C.D === DEF) return C.o;
         var o = Object.assign({}, DEF, R);
-        o.boat = Object.assign({}, DEF.boat, R.boat || {}); o.sub = Object.assign({}, DEF.sub, R.sub || {}); o.ship = Object.assign({}, DEF.ship || {}, R.ship || {});
+        o.boat = Object.assign({}, DEF.boat, R.boat || {}); o.sub = Object.assign({}, DEF.sub, R.sub || {}); o.ship = Object.assign({}, DEF.ship || {}, R.ship || {}); o.car = Object.assign({}, DEF.car || {}, R.car || {});
         o.labels = Object.assign({}, DEF.labels || {}, R.labels || {});
         _hqSeaRules._c = { R: R, D: DEF, o: o };
         return o;
@@ -90927,10 +91072,20 @@ const ThreeRenderer = (function () {
         _hqSeaWayCheck(pl.x, pl.z, pl.y + 0.6);
     }
     /* ── THE VEHICLES ── */
-    function _hqVehicleRegister(p, cat, grp, y) {
+    function _hqVehicleRegister(p, cat, grp, y, blk) {
         if (!_hq) return;
         _hq.boats = _hq.boats || [];
         var U = _hqUnits(), R = _hqSeaRules(), kind = cat.vehicle;
+        /* THE CAR (2026-11-22): `vehicle: true` is a road vehicle (the car pack, the Meshy cars, the buses and trucks). Before, `true` was
+           no kind the helm knew and every parked car took the skiff's rules. A shell with no wheels (`noDrive`) stays a prop. */
+        if (kind === true) {
+            if (cat.noDrive || p.noDrive) return;
+            var rc = (blk && blk.rect) || cat.rect || { hw: 0.95, hd: 2.3 };
+            _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: 'car', key: p.key, grp: grp, blk: blk || null, hw: rc.hw, hd: rc.hd, hgt: blk ? Math.max(1.2, _hqBlkTop(blk) - y) : 1.5,
+                             x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
+                             label: cat.label ? String(cat.label).toUpperCase() : ((R.labels || {}).car || 'THE CAR'), sub: 'W GAS · S BRAKE / REVERSE · A / D STEER · SPACE HANDBRAKE' });
+            return;
+        }
         _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: kind, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, x0: grp.position.x / U, z0: grp.position.z / U, y: y, yaw: grp.rotation.y,
                          label: (R.labels || {})[kind] || p.key.toUpperCase(), sub: kind === 'ship' ? '' : kind === 'sub' ? 'RECORDS’ BATHYSCAPHE · W / S DRIVE · A / D STEER · SPACE UP · C DOWN' : 'THE SEA LENDS IT · W / S SAIL · A / D THE TILLER' });
     }
@@ -90952,6 +91107,10 @@ const ThreeRenderer = (function () {
                 if (Math.hypot(ux, uz) > 0.25 * ul) H.vehicle.yaw = Math.atan2(ux, uz);   // (2026-11-20) the nose out toward open space, the ball behind it
                 if (H.cam) H.cam.init = false; } }
         H.cam.distSaved = H.cam.dist; H.cam.dist = (_hqSeaRules()[b.kind] || {}).camDist || 7;
+        /* THE CAR: its own block is not in its way while it drives (it follows the car and stands again where it is left); the eye starts
+           behind the boot; a long vehicle gets a longer boom */
+        if (b.kind === 'car') { var Vc = H.vehicle; Vc.y = b.y; Vc.steer = 0; Vc.gy = 0; Vc.sub = 0; if (b.grp) b.grp._ew_pdOff = true;
+            H.cam.dist = Math.max(H.cam.dist, b.hd * 2.2 + 2.5); H.cam.yaw = Math.PI - Vc.yaw; if (H.cam.pitch != null && H.cam.pitch > -0.12) { H.cam.pitchSaved = H.cam.pitch; H.cam.pitch = -0.2; } H.cam.init = false; }
         /* THE FLIGHT FIX (2026-11-20, mondo: "Im pressing w to move forward and its like going sideways"): the eye starts dead behind the hull,
            level. Before, it kept whatever heading the walk had left it with, and W flew the hull's own heading. */
         if (b.kind === 'ship') { H.cam.pitchSaved = H.cam.pitch; H.cam.pitch = 0; H.cam.yaw = Math.PI - H.vehicle.yaw; H.vehicle.climb = 0; H.cam.init = false; H.cam.kick = 0;
@@ -90968,17 +91127,28 @@ const ThreeRenderer = (function () {
         if (V.kind === 'ship') { if (H.cam.pitchSaved != null) { H.cam.pitch = H.cam.pitchSaved; H.cam.pitchSaved = null; } var cmS = H.camera; if (cmS && H._shipNear0 != null) { cmS.near = H._shipNear0; H._shipNear0 = null; cmS.fov = 52; cmS.updateProjectionMatrix(); } }
         /* step off to the side: a wade / the shore when the ground is there, else the water */
         var rxv = Math.cos(V.yaw), rzv = -Math.sin(V.yaw), best = null;
-        [[1.9, 0], [-1.9, 0], [0, 3.2], [0, -3.2]].forEach(function (o) {
+        /* THE CAR: out by the driver's door (the left), else the other side, the boot, the bonnet: the first spot that is ground at the
+           car's own level and clear of everything that blocks. The car's block stands again where it is left. */
+        var spots = [[1.9, 0], [-1.9, 0], [0, 3.2], [0, -3.2]], car = V.kind === 'car';
+        if (car) { var RC = R.car || {}, ex = (RC.exit || 0.75), sw = V.rec.hw + ex, sl = V.rec.hd + ex, md = V.rec.hd * 0.5;
+            spots = [[sw, 0.3], [-sw, 0.3], [sw, -md], [-sw, -md], [sw, md], [-sw, md], [0, -sl], [0, sl]];
+            if (H.cam.pitchSaved != null) { H.cam.pitch = H.cam.pitchSaved; H.cam.pitchSaved = null; }
+            var bk = V.rec.blk; if (bk) { var bh = _hqBlkTop(bk) - (bk.y || 0); bk.y = V.y; if (bk.top != null) bk.top = V.y + bh; bk.yaw = V.yaw; }
+            if (V.rec.grp) { V.rec.grp._ew_pdOff = false; V.rec.grp.rotation.set(V.pitch || 0, V.yaw, V.roll || 0); } }
+        spots.forEach(function (o, oi) {
             var px = V.x + rxv * o[0] + Math.sin(V.yaw) * o[1], pz = V.z + rzv * o[0] + Math.cos(V.yaw) * o[1];
-            var fy = _hqSurface(px, pz, null, true);
+            var fy = _hqSurface(px, pz, car ? V.y : null, true);
             if (fy === null || !isFinite(fy)) return;
+            if (car) { if (best || Math.abs(fy - V.y) > 1.0 || !_hqAirClearOfBlockers(px, pz, fy) || (sea && _hqSeaDepthAt(px, pz) > R.exitDepth)) return; best = { x: px, z: pz, y: fy, score: 100 - oi }; return; }
             var dry = sea ? (_hqSeaDepthAt(px, pz) <= R.exitDepth) : true;
             var score = (dry ? 10 : 0) - Math.abs(o[0]) * 0.1;
             if (!best || score > best.score) best = { x: px, z: pz, y: fy, score: score };
         });
         if (best) { pl.x = best.x; pl.z = best.z; pl.y = best.y; }
+        else if (car) { pl.x = V.x; pl.z = V.z; pl.y = V.y + (V.rec.hgt || 1.5); }   // boxed in on every side: out onto the roof
         else { pl.x = V.x + rxv * 1.9; pl.z = V.z + rzv * 1.9; pl.y = (V.kind === 'sub') ? V.y : (sea ? _hqWaterYAt(pl.x, pl.z) - R.surfaceDraft : V.y); }
         pl.visY = pl.y; pl.air = false; pl.vy = 0;
+        if (car) { pl.velX = pl.velZ = pl.velY = 0; pl.yaw = pl.targetYaw = V.yaw; if (pl.entry && pl.entry.group) { pl.entry.group.visible = true; pl.entry.group.position.set(pl.x * _hqUnits(), pl.y * _hqUnits(), pl.z * _hqUnits()); } }
         H.vehicle = null;
         _hqSeaEmit({ kind: 'disembark', vehicle: V.kind });
         _hqSwimCheck(pl);
@@ -91029,6 +91199,7 @@ const ThreeRenderer = (function () {
             vert = (k.space ? 1 : 0) - (k.c ? 1 : 0);
         }
         if (V.kind === 'ship') { _hqTickShip(dt, V, R, thr, turn, vert, !H.paused && !!k.shift); return; }   // (2026-11-20: before the boats' own speed rule, which pulled the ship's speed to `v` every frame)
+        if (V.kind === 'car') { _hqTickCar(dt, V, RS.car || {}, thr, turn, !H.paused && !!k.space); return; }   // THE CAR (2026-11-22)
         var target = thr > 0 ? R.v : (thr < 0 ? -R.rev : 0);
         V.v += (target - V.v) * (1 - Math.exp(-dt * (thr ? R.accel : R.drag)));
         if (Math.abs(V.v) < 0.03 && !thr) V.v = 0;
@@ -91074,6 +91245,108 @@ const ThreeRenderer = (function () {
         pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
         if ((thr !== 0) !== !!V.thr) { V.thr = thr !== 0; _hqSeaEmit({ kind: 'throttle', on: V.thr, vehicle: V.kind }); }
         _hqSeaWayCheck(V.x, V.z, V.y);
+    }
+    /* ══ THE CAR (2026-11-22, mondo: "all of the cars have the option for me to press e to use them, but they act like a boat instead of a
+       car ... Simple arcade mechanics, like the skateboarding ... the player character is hidden when they are driving") ══════════════════
+       Every catalogue prop with `vehicle: true` (the car pack, the Meshy cars, the vans, the buses, the fire truck) is driven by hand.
+       · THE WHEELS: W gas, S brake and then reverse, A / D turn the FRONT wheels (they ease over, and turn less the faster the car goes),
+         SPACE the handbrake (a hard stop that also tightens the turn). The car turns about its BACK axle (the bicycle rule: the turn is
+         speed / wheelbase x tan(wheel angle)), so it cannot turn standing still, swings its nose wide, and steers the other way backing up.
+       · THE GROUND: the four wheels read the ground (_hqSurface, the walker's own floor) and the body sits on them: it pitches up a hill,
+         rolls across a camber, slows uphill and runs on downhill, climbs a kerb up to `step`, rolls off a drop up to `drop` (a retaining wall is a wall: the
+         streets' own slopes are the way between the city's levels).
+       · THE WALLS: a ring of points round the body asks the same floor and the same blockers as the walker and the board (the rider's
+         grid: its cell's blockers, never the room's whole list - RULE #1e). A wall, a building, a lamp, a parked car, a person, a drop
+         too deep or water too deep stops it with a small bounce; a thing lower than `clear` is driven over. A car that starts touching
+         something may only move where it touches no more than it did (out of its parking spot, never deeper in).
+       · THE DRIVER is not drawn (no interior); E gets out by the driver's door, else the first clear side; the car stays where it is
+         left and blocks again there. Viewer-local like every vehicle: nothing on `state`, nothing relayed (RULE #2). */
+    function _hqCarProbes(rec) {
+        if (rec._pr) return rec._pr;
+        var hw = Math.max(0.3, rec.hw - 0.3), hd = Math.max(0.6, rec.hd - 0.3), n = Math.max(2, Math.ceil(hd * 2 / 0.75)), P = [];
+        for (var i = 0; i <= n; i++) { var lz = -hd + (2 * hd) * i / n; P.push([hw, lz], [-hw, lz]); if (i === 0 || i === n) P.push([0, lz]); }
+        rec._pr = P; return P;
+    }
+    /* how many of the body's points are refused at this place and heading (0 = the car may be there) */
+    function _hqCarHits(V, R, x, z, yaw, y, why) {
+        var H = _hq, rec = V.rec, P = _hqCarProbes(rec), cy = Math.cos(yaw), sy = Math.sin(yaw), n = 0, sea = _hqSea();
+        var step = R.step != null ? R.step : 0.34, clear = R.clear != null ? R.clear : 0.34, drop = R.drop != null ? R.drop : 0.7, top = y + (rec.hgt || 1.5);
+        for (var i = 0; i < P.length; i++) {
+            var px = x + P[i][0] * cy + P[i][1] * sy, pz = z - P[i][0] * sy + P[i][1] * cy;
+            var g = _hqSurface(px, pz, y);   // the walker's whole floor: the ground, a deck, a ramp; a wall or a tall thing = none
+            if (g === null || !isFinite(g) || g - y > step || y - g > drop) { n++; if (why) why.push([i, g === null ? 'no floor' : g - y > step ? 'step ' + (g - y).toFixed(2) : 'drop ' + (y - g).toFixed(2)]); continue; }
+            if (sea && _hqSeaDepthAt(px, pz) > (R.wet != null ? R.wet : 0.45)) { n++; if (why) why.push([i, 'water']); continue; }
+            var hits = _hqBlockersUnder(px, pz), bad = false;
+            for (var j = 0; j < hits.length && !bad; j++) {
+                var b = hits[j]; if (b === rec.blk) continue;
+                if (b.mc) continue;   // (a model's own floors and walls answered above)
+                else if (b.y != null && b.y > top) continue;
+                else if (_hqBlkTop(b) > y + clear) bad = true;
+                if (bad && why) why.push([i, 'blocker ' + ((b.obj && (b.obj.name || b.obj._ew_key)) || (b.mc ? 'mesh' : b.rect ? 'rect' : 'disc')) + ' top ' + (_hqBlkTop(b) - y).toFixed(2)]);
+            }
+            if (bad) n++;
+        }
+        return n;
+    }
+    function _hqTickCar(dt, V, R, thr, turn, hand) {
+        var H = _hq, pl = H.player, U = _hqUnits(), rec = V.rec;
+        var vmax = R.v || 21, wb = Math.max(1.2, rec.hd * 2 * (R.wb || 0.6)), steps = Math.max(1, Math.ceil(dt / (1 / 60))), h = dt / steps, bumped = 0, yaw0 = V.yaw;
+        _hqWalkGridOn = true;   // the rider's grid: every ask reads its own cell's blockers (RULE #1e)
+        try {
+            for (var s = 0; s < steps; s++) {
+                /* the pedals */
+                var v = V.v;
+                if (hand) v -= Math.sign(v) * Math.min(Math.abs(v), (R.hand || 15) * h);
+                else if (thr > 0) v = (v < -0.05) ? Math.min(0, v + (R.brake || 20) * h) : v + (R.accel || 8.5) * h * Math.max(0, 1 - v / vmax);
+                else if (thr < 0) v = (v > 0.05) ? Math.max(0, v - (R.brake || 20) * h) : Math.max(-(R.rev || 7), v - (R.accel || 8.5) * 0.7 * h);
+                else v -= Math.sign(v) * Math.min(Math.abs(v), ((R.coast || 2.4) + Math.abs(v) * 0.12) * h);
+                v -= Math.sin(V.gy || 0) * 9.8 * (R.hill != null ? R.hill : 0.55) * h * ((thr || Math.abs(v) > 0.4) ? 1 : 0);   // the hill: slower up, faster down (a parked car holds)
+                v = Math.max(-(R.rev || 7) * 1.3, Math.min(vmax * 1.15, v));
+                /* the front wheels */
+                var sp = Math.min(1, Math.abs(v) / vmax), lim = (R.steer || 0.62) + ((R.steerHi || 0.13) - (R.steer || 0.62)) * Math.pow(sp, 0.6);
+                if (hand) lim *= (R.handSteer || 1.7);
+                V.steer += (turn * lim - V.steer) * Math.min(1, h * (R.steerIn || 5.5));
+                /* the turn about the back axle */
+                var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), rx = V.x - fx * wb / 2, rz = V.z - fz * wb / 2;
+                var nyaw = V.yaw - (v / wb) * Math.tan(V.steer) * h;
+                rx += fx * v * h; rz += fz * v * h;
+                var nx = rx + Math.sin(nyaw) * wb / 2, nz = rz + Math.cos(nyaw) * wb / 2;
+                if (Math.abs(v) < 0.002 && Math.abs(nyaw - V.yaw) < 1e-6) { V.v = v; continue; }
+                var hit = _hqCarHits(V, R, nx, nz, nyaw, V.y), ok = hit === 0;
+                if (!ok) { var cur = _hqCarHits(V, R, V.x, V.z, V.yaw, V.y); ok = cur > 0 && hit <= cur; }   // already touching: out, never deeper in
+                if (!ok) {   // the turn refused: straight on along the old heading (a wall rubbed along)
+                    var sx2 = V.x + fx * v * h, sz2 = V.z + fz * v * h;
+                    if (_hqCarHits(V, R, sx2, sz2, V.yaw, V.y) === 0) { ok = true; nx = sx2; nz = sz2; nyaw = V.yaw; v *= 0.985; }
+                }
+                if (ok) { V.x = nx; V.z = nz; V.yaw = nyaw; V.v = v; }
+                else { bumped = Math.max(bumped, Math.abs(v)); V.v = -v * (R.bump != null ? R.bump : 0.25); if (Math.abs(V.v) < 0.35) V.v = 0; }
+                /* the four wheels on the ground */
+                fx = Math.sin(V.yaw); fz = Math.cos(V.yaw);
+                var lx = Math.cos(V.yaw), lz = -Math.sin(V.yaw), ax = wb / 2, aw = Math.max(0.3, rec.hw - 0.25);
+                var gq = function (a, b) { var q = _hqSurface(V.x + fx * a + lx * b, V.z + fz * a + lz * b, V.y); return (q === null || !isFinite(q) || Math.abs(q - V.y) > 2.5) ? V.y : q; };
+                var gFL = gq(ax, aw), gFR = gq(ax, -aw), gRL = gq(-ax, aw), gRR = gq(-ax, -aw), gy = (gFL + gFR + gRL + gRR) / 4;
+                if (gy < V.y - 0.02) { V.vy = (V.vy || 0) - 9.8 * 1.6 * h; V.y = Math.max(gy, V.y + V.vy * h); if (V.y === gy) V.vy = 0; }
+                else { V.y += (gy - V.y) * Math.min(1, h * 18); V.vy = 0; }
+                V.gy = Math.atan2((gFL + gFR) / 2 - (gRL + gRR) / 2, wb);
+                var acc = (V.v - (V.vPrev != null ? V.vPrev : V.v)) / h; V.vPrev = V.v;
+                var wantP = -V.gy - Math.max(-1, Math.min(1, acc / 20)) * (R.squat != null ? R.squat : 0.02) * 2.2;
+                var wantR = Math.atan2((gFL + gRL) / 2 - (gFR + gRR) / 2, aw * 2) - Math.tan(V.steer) * V.v * Math.abs(V.v) / (vmax * vmax) * (R.lean != null ? R.lean : 0.035) * 6;
+                V.pitch += (wantP - V.pitch) * Math.min(1, h * 9); V.roll += (wantR - V.roll) * Math.min(1, h * 9);
+            }
+        } finally { _hqWalkGridOn = false; }
+        if (V.yaw !== yaw0) H.cam.yaw -= (V.yaw - yaw0);   // the eye follows the turn and keeps the mouse's offset (the rider's rule)
+        var grp = rec.grp;
+        grp.position.set(V.x * U, V.y * U, V.z * U);
+        if (grp.rotation.order !== 'YXZ') grp.rotation.order = 'YXZ';
+        grp.rotation.set(V.pitch, V.yaw, V.roll);
+        rec.x = V.x; rec.z = V.z; rec.y = V.y; rec.yaw = V.yaw;
+        /* the driver: at the car's middle, not drawn (_hqTickCast keeps the body hidden); the eye looks over the roof */
+        pl.x = V.x; pl.z = V.z; pl.y = V.y + (R.camUp || 0);
+        pl.visY = pl.y; pl.yaw = pl.targetYaw = V.yaw; pl.moving = false; pl.running = false; pl.air = false; pl.vy = 0;
+        pl.velX = Math.sin(V.yaw) * V.v; pl.velZ = Math.cos(V.yaw) * V.v; pl.velY = 0; pl.pushX = 0; pl.pushZ = 0;
+        if (pl.entry && pl.entry.group) { pl.entry.group.position.set(pl.x * U, V.y * U, pl.z * U); if (pl.entry.group.visible) pl.entry.group.visible = false; }
+        if (bumped > 2.5) _hqSeaEmit({ kind: 'bump', vehicle: 'car', v: bumped });
+        if ((thr !== 0) !== !!V.thr) { V.thr = thr !== 0; _hqSeaEmit({ kind: 'throttle', on: V.thr, vehicle: 'car' }); }
     }
     /* a whirlpool / an upwelling is entered by being in its mouth (way.w wide, mouthY ± its height) — the swimmer's and the helm's press-in */
     function _hqSeaWayCheck(x, z, y) {
@@ -94072,8 +94345,20 @@ const ThreeRenderer = (function () {
         var box = _hqCharBox || (_hqCharBox = new THREE.Box3()), c = new THREE.Vector3(), gp = new THREE.Vector3();
         e.group.updateMatrixWorld(true);
         e.group.traverse(function (n) {
-            if (!n.isSkinnedMesh || n._ew_silhouette || !n.geometry) return;
+            if (!n.isSkinnedMesh || !n.geometry) return;
             var g = n.geometry;
+            /* THE OUTLINE'S BOUNDS TOO (2026-11-22, mondo's dip log walking Disaster City: one-frame dips of ~60 ms, "tick: characters 22";
+               a profiled walk: every new townsperson spent ~22 ms right here, in `box.setFromObject` below -> SkinnedMesh.computeBoundingBox,
+               every vertex posed through its bones). The body's meshes got their rest-pose box on 11-19, but the body's OUTLINE copy
+               (`_ew_silhouette`) was skipped above and had none, so three computed it the slow way. It takes its geometry's rest-pose box
+               and (padded) sphere like the body; its culling flag is left as it was. Off: window.EW_HQ_SKIN_BOUNDS_EXACT. */
+            if (n._ew_silhouette) {
+                if (!(typeof window !== 'undefined' && window.EW_HQ_SKIN_BOUNDS_EXACT)) {
+                    if (!n.boundingBox) { if (!g.boundingBox) g.computeBoundingBox(); if (g.boundingBox) n.boundingBox = g.boundingBox.clone(); }
+                    if (!n.boundingSphere) { if (!g.boundingSphere) g.computeBoundingSphere(); if (g.boundingSphere) { n.boundingSphere = g.boundingSphere.clone(); if (!g._ew_skinPad) n.boundingSphere.radius *= HQ_CHAR_CULL_PAD; } }
+                }
+                return;
+            }
             if (!g._ew_skinPad) { if (!g.boundingSphere) g.computeBoundingSphere(); if (g.boundingSphere) { g.boundingSphere.radius *= HQ_CHAR_CULL_PAD; g._ew_skinPad = true; } }
             /* THE BODY'S OWN BOUNDS (2026-11-19, mondo's dip log: a new body's frame = "mask: projection walk 22 ms" + "tick: characters 11 ms"):
                three culls a skinned mesh by ITS OWN sphere, computed once by posing every vertex through its bones (and the box below the
@@ -94126,7 +94411,7 @@ const ThreeRenderer = (function () {
                 ch.held.quaternion.copy(hq).invert();
                 ch.held.scale.setScalar(1 / (hs.x || 1));
             }
-            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3) && !H._scenePlayerOut && !(H.vehicle && H.vehicle.on && H.vehicle.kind === 'ship');   // (aboard the flown ship the pilot is inside the hull: never drawn)   // (a scene took the officer out of the picture: hq.scenePlace show)
+            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3) && !H._scenePlayerOut && !(H.vehicle && H.vehicle.on && (H.vehicle.kind === 'ship' || H.vehicle.kind === 'car'));   // (aboard the flown ship the pilot is inside the hull: never drawn)   // (a scene took the officer out of the picture: hq.scenePlace show)
             var want = 'idle';
             /* a placed cast member holds its building pose (sits, mops,
                kneels…) once the library bake has landed the clip */
@@ -96127,7 +96412,7 @@ const ThreeRenderer = (function () {
         }
         if (_keyFxList.length) { try { _updateKeyFx(); } catch (e) {} }   // scene E's key (keyPickupFx opts.at) lives in the room
         if (H._sceneCastIds) _hqSceneCastApply();
-        if (H.vehicle && H.vehicle.on && H.vehicle.kind === 'ship' && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // (mondo 11-17: "if i am flying the spaceship then we dont need the ... character model standing up and clipping through it": the walker's own tick drew him again every frame after the helm hid him)
+        if (H.vehicle && H.vehicle.on && (H.vehicle.kind === 'ship' || H.vehicle.kind === 'car') && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // (mondo 11-17: "if i am flying the spaceship then we dont need the ... character model standing up and clipping through it": the walker's own tick drew him again every frame after the helm hid him)
         if (H._scenePlayerOut && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // a scene took the officer out of the picture   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         _lt = _lensMark('tick: scene door + key + cast', _lt);
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
@@ -104483,6 +104768,16 @@ const ThreeRenderer = (function () {
                 return true;
             },
             playerGroup: function () { return (_hq && _hq.player && _hq.player.entry) ? _hq.player.entry.group : null; },
+            /* THE CAR (2026-11-22), for a probe: carRun(id) = how many metres the parked car could roll straight ahead / back and what stops it */
+            carRun: function (id) {
+                var b = _hqVehicleFind(id); if (!b || b.kind !== 'car') return null;
+                var R = _hqSeaRules().car || {}, V = { rec: b, x: b.x, z: b.z, y: b.y, yaw: b.yaw }, out = { key: b.key, x: +b.x.toFixed(1), z: +b.z.toFixed(1), y: +b.y.toFixed(2), yaw: +b.yaw.toFixed(2) };
+                [1, -1].forEach(function (dir) { var d = 0, why = [];
+                    for (; d < 60; d += 0.5) { why.length = 0; if (_hqCarHits(V, R, b.x + Math.sin(b.yaw) * dir * (d + 0.5), b.z + Math.cos(b.yaw) * dir * (d + 0.5), b.yaw, b.y, why) > 0) break; }
+                    out[dir > 0 ? 'ahead' : 'back'] = d; out[dir > 0 ? 'aheadWhy' : 'backWhy'] = why.slice(0, 3); });
+                var w0 = []; out.here = _hqCarHits(V, R, b.x, b.z, b.yaw, b.y, w0); out.hereWhy = w0.slice(0, 4);
+                return out;
+            },
             press: function (key, on) { if (!_hq) return false; _hq.keys[key] = !!on; return true; },   /* a probe's write: hold a walker key (a headless window blurs on every evaluate and drops real key events) */
             walk: function () { var H = _hq, pl = H && H.player; return pl ? { paused: !!H.paused, keys: Object.assign({}, H.keys), fp: !!H.fp, x: pl.x, y: pl.y, z: pl.z, air: !!pl.air, vy: pl.vy || 0, fitFail: H.portal && H.portal.fitFail, mvx: pl.mvx || 0, mvz: pl.mvz || 0, velX: pl.velX || 0, velZ: pl.velZ || 0, drawn: !!(H.portal && H.portal.drawn), slot: H.portal && H.portal.slot, camYaw: H.cam.yaw } : null; },   /* a probe's read: the walker's frame (THE CARRY, the keys, the pause) */   /* a probe's read: the walker's group (turn it to photograph the held gun from the front) */
             chars: function () {

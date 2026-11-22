@@ -2,36 +2,40 @@
    billboards (Exit 1)". The city chain's gas station, the LAST GAS billboard, the REST AREA gantry and the city-limit sign stood on the old
    Highway room (bake-desert.js, retired now) and are moved here, piece for piece. The motel is an idea of Claude's for the page's "a motel":
    a one-storey row of rooms with an office you can walk into (its rooms are a shell; an inside is for the Desert's interior pass).
-   Squares: the room is 24 x 108; the highway's middle line is square x 12 south of the bend, the cars drive at x 10 (south) and x 14 (north). */
+   THE RAISED HIGHWAY (2026-11-22, mondo: "actual highway architecture, raised off the ground with exits and stuff"): the road is on ramps and a deck
+   7 m up now (R9.json `raised`, ow-raised.js), with one exit. The room is four plots wide at the exit (R9.json `add`): the gas station stands on
+   the two plots west of the exit's ramps, north of the road under the deck; the motel on the two plots east of them, south of it. Nothing was taken away.
+   Squares: the room is 48 x 108; the highway's middle line is square x 24 south of the bend, the cars drive at x 22 (south) and x 26 (north); the
+   deck is rows 33 to 87, the exit's lanes are columns 18-19 and 28-29, the road under the deck is rows 59 and 60. */
 'use strict';
 const K = require('./south-kit.js');
 module.exports = { dress(ctx) {
-    const { gantry, billboard, building, put, at, U } = K;
-    /* THE REST STOP (was the Highway's, by Exit 2): the store, the canopy, the sign, a truck at the pumps, on the west side, plots 6,15 and 6,16 */
-    ctx.clear(0, 34, 8, 59);
-    at(ctx, 'city_gas_canopy', 4.2, 41, { face: 270 }); at(ctx, 'city_gas_store', 3.4, 53.5, { face: 270 }); at(ctx, 'city_gas_sign', 7.6, 35.2, { face: 270 });
-    at(ctx, 'car_truck', 5.4, 41.5, { face: 0 }); at(ctx, 'traffic_cone', 7.2, 37.4, { face: 30 }); at(ctx, 'psx_metal_barrel_mp_1', 1.3, 59.2, { face: 80 });
-    at(ctx, 'park_bench', 7.0, 47.6, { face: 270 }); at(ctx, 'trash_bin', 7.0, 46.2, { face: 0 });
+    const { gantry, billboard, building, at, U } = K, R = ctx.RAISED, H = R.H;
+    const pave = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) ctx.setPaint(x, y, ctx.ASPH); };
+    /* THE REST STOP (was the Highway's, by Exit 2): the store, the canopy, the sign, a truck at the pumps; west of the exit, on a forecourt that opens
+       onto the lane from the ramp's foot and onto the road under the deck */
+    ctx.clear(1, 37, 17, 58); pave(2, 45, 17, 58);
+    at(ctx, 'city_gas_store', 9.5, 41.5, { face: 0 }); at(ctx, 'city_gas_canopy', 9.5, 51.5, { face: 270 }); at(ctx, 'city_gas_sign', 16.2, 56.6, { face: 270 });
+    at(ctx, 'car_truck', 10.7, 52, { face: 0 }); at(ctx, 'traffic_cone', 13.6, 48.2, { face: 30 }); at(ctx, 'psx_metal_barrel_mp_1', 14.6, 43.2, { face: 80 });
+    at(ctx, 'park_bench', 5.2, 45.2, { face: 0 }); at(ctx, 'trash_bin', 6.6, 45.2, { face: 0 });
     /* THE BILLBOARD before it (was the Highway's LAST GAS), read by the traffic heading south from the city */
-    billboard(ctx, 4.2, 25, 'S', 'LAST GAS');
-    /* THE GANTRIES: the rest area and the Circus for the traffic going south; Exit 1, the city, for the traffic going north */
-    gantry(ctx, 10, 30, 'S', 'REST AREA · GAS');
-    gantry(ctx, 10, 92, 'S', 'THE CIRCUS · THE DESERT HIGHWAY');
-    gantry(ctx, 14, 74, 'N', 'EXIT 1 · DISASTER CITY');
-    gantry(ctx, 14, 26, 'N', 'DISASTER CITY · CITY LIMIT');
-    /* THE MOTEL (an idea: the page's "a motel"), on the east side on the badlands, plots 7,17 and 7,18: eight rooms in a row, the office at the north end */
-    ctx.clear(16, 61, 23, 78);
-    const M = building(ctx, 'r9:motel', 19.2, 63, 22.4, 77, 'W', 3.5, { key: U('PlasterWallStucco2a'), tint: 0xe0c8a0, leaf: 'leaf_motel', roofTint: 0x7a3a2a,
+    billboard(ctx, 15.2, 25, 'S', 'LAST GAS');
+    /* THE GANTRIES: the exit for both ways (on the deck), the Circus for the traffic going south; Exit 1, the city, for the traffic going north */
+    gantry(ctx, 22, 34.5, 'S', 'EXIT · GAS · MOTEL', { y: H });
+    gantry(ctx, 26, 85.5, 'N', 'EXIT · GAS · MOTEL', { y: H });
+    gantry(ctx, 22, 102, 'S', 'THE CIRCUS · THE DESERT HIGHWAY');
+    gantry(ctx, 26, 64, 'N', 'EXIT 1 · DISASTER CITY', { y: H });
+    gantry(ctx, 26, 18.6, 'N', 'DISASTER CITY · CITY LIMIT');
+    /* THE MOTEL (an idea: the page's "a motel"), east of the exit, south of the road under the deck: eight rooms in a row, the office at the north end,
+       a car park between it and the ramp */
+    ctx.clear(30, 61, 46, 82); pave(30, 61, 38, 68); pave(31, 69, 38, 79);
+    building(ctx, 'r9:motel', 39.2, 63, 42.4, 77, 'W', 3.5, { key: U('PlasterWallStucco2a'), tint: 0xe0c8a0, leaf: 'leaf_motel', roofTint: 0x7a3a2a,
         look(A, fw, fd) { for (let i = 0; i < 8; i++) { const lx = -fw / 2 + (i + 0.5) * fw / 8; if (Math.abs(lx) < 1.6) continue; A.box(lx, 0, fd / 2 + 0.03, 0.9, 2.1, 0.06, U('WoodGeneric1a'), 0x6a3e2a); A.box(lx + 1.1, 1.2, fd / 2 + 0.03, 0.8, 0.8, 0.05, U('GlassWindowTall1a'), 0x9fc0d0); }
             A.box(0, 0, fd / 2 + 1.4, fw, 0.15, 2.6, U('ConcreteSlab2a'), 0xbcb4a8);
             A.sign('MOTEL', 0, 3.7, fd / 2 + 0.3, 3.6, 0.9, '#ff6a5a', '#20140c', 'rye'); } });
-    billboard(ctx, 18.2, 60.5, 'S', 'MOTEL · VACANCY', { span: 5, bh: 2.0 });
-    at(ctx, 'car_suv', 17.6, 70.5, { face: 0 }); at(ctx, 'park_bench', 18.1, 66.4, { face: 90 }); at(ctx, 'trash_bin', 18.1, 75.2, { face: 0 });
-    /* THE WAYS IN (seen in the browser 11-17: the guard rail ran unbroken past the pumps and the motel, so no car could pull in): the shoulder's
-       rail is taken away where it faces the gas station (west) and the motel (east) */
-    const cut = (x, z0, z1) => { for (let i = ctx.F.length - 1; i >= 0; i--) { const f = ctx.F[i]; if (f.k === 'rail' && f.x0 === f.x1 && Math.abs(f.x0 - x) < 0.5 && Math.max(f.z0, f.z1) > z0 && Math.min(f.z0, f.z1) < z1) ctx.F.splice(i, 1); } };
-    cut(-16.1, ctx.gz(34), ctx.gz(59)); cut(16.1, ctx.gz(61), ctx.gz(78));
+    billboard(ctx, 35.5, 62.4, 'E', 'MOTEL · VACANCY', { span: 5, bh: 2.0 });
+    at(ctx, 'car_suv', 33.6, 71.5, { face: 0 }); at(ctx, 'park_bench', 38.1, 66.4, { face: 90 }); at(ctx, 'trash_bin', 38.1, 75.2, { face: 0 });
     /* THE CITY LIMIT (was the Highway's Exit 1): the green sign, the signpost, a barrel, a skull in the sand */
-    ctx.clear(16, 3, 22, 11);
-    at(ctx, 'roads_g_sign_003', 17.5, 5.5, { face: 0 }); at(ctx, 'signpost', 19.5, 9.5, { face: 200 }); at(ctx, 'traffic_barrel', 17.2, 10.6, { face: 10 }); at(ctx, 'skull', 21.2, 7.3, { face: 140 });
+    ctx.clear(28, 3, 34, 11);
+    at(ctx, 'roads_g_sign_003', 29.5, 5.5, { face: 0 }); at(ctx, 'signpost', 31.5, 9.5, { face: 200 }); at(ctx, 'traffic_barrel', 29.2, 10.6, { face: 10 }); at(ctx, 'skull', 33.2, 7.3, { face: 140 });
 } };
