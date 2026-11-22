@@ -14395,6 +14395,50 @@ is a door without a pad reads as a trap. Each row is a place to LOOK AT, then fi
 Before: every wall of every raised floor, 14 traps, the 35 m strip. Proof: `/mnt/project-files/softlocks/sewers_wall_before_after.jpg`.
 THE REST OF THE WORLD: the list by zone of 11-22 is `/mnt/project-files/softlocks/softlocks_by_zone.md`.
 
+## THE COAST + THE UNDERGROUND, WHERE THE ZONES MEET (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural")
+
+The share of one thread: every way between the Harbour, Katana Island, the Volcano Island, the Triangle, the Cove, the Frozen Sea, the Sea Floor,
+Atlantis, the Sewers, the D.U.M.B., the six Cavern rooms, the Coast Road (R10) and the Delta Causeway (R11), and the city's port side.
+
+- **WHAT WAS WRONG, AND IS FIXED.** The Coast Road's north end was a dirt road that ran off the room's line into open sea; on the city's side the
+  port's concrete causeway (districts/Q.js `dc:coastroad:arch`, 110 m on piles) ended in open water too. Now both rooms show the same thing:
+  from the Coast Road you see the causeway over the bay's mouth and the port's quay at its far end (sheds, container stacks, three cranes:
+  `docs/areas/routes/R10.js`, a route hook, arch row `ow:r10:port` + `ind_container` / `babel_crane` props, nothing new made); from the port the
+  causeway lands on a sand shore and the dirt road runs on. Walked both ways (R10 -> city crossed at z -362.9; city -> R10 from 257.3, 240).
+- **A WAY OVER THE WATER** (three-renderer.js `_hqEdgeLandFn` `wayOn`): an `edges.ways` row may say `spit: <m>` (+ `w`, the road's width,
+  `from: <m>` = the sand begins that far out): where the way leaves across the sea, a wandering bar of sand carries it that far. A room with
+  WRITTEN sides may name ways now (before: only a room that reads the map). The city's row: `ways: [{ side: 's', at: 257.25, spit: 440, w: 110, from: 98 }]`
+  (Q.js exports `edges`; bake-disaster-city.js merges it).
+- **A WRITTEN ROAD ROW TAKES** `lift` (how high it rides over the land; a dirt road 0.12), `tint`, `from` (it begins that far past the line),
+  beside main's bands / lines (`_hqBuildEdgeLand` ROADS). A written row at a seam wins over the seam's own road (PR #2418).
+- **THE ROUTE KIT** (bake-route.js): a spec's `runOn: { '<end id>': { len, spit } }` writes that end's road past the line (`edges.roads`) in the
+  end's own strip sheet, and an end's `passage` in the spec is laid over the door's. R10: `runOn` its south end (to Giza); R11: both west ends.
+  After `node bake-route.js R11` its spawn and plate rows are restored by hand (the bake moves them).
+- **SEEN AND LEFT AS THEY ARE** (the browser, one picture out and one in at every way): the Harbour's pier, quay and jetties; Katana's torii jetty;
+  the Volcano Island's two landings; the Triangle's maelstrom and the Sea Floor's upwelling; the Cove's and the Frozen Sea's moorings; the sub's
+  two stations, the wreck's hatch, the outfall; Atlantis' temple door; every Sewers door; the D.U.M.B.'s tunnel west, gantry tunnel, vault and
+  blast doors, screens; every Cavern tunnel mouth (a dark mouth in the rock, the path's dirt running in, a wooden signpost beside it).
+  A terrain flood from each room's spawn reaches every way's landing in all 18 rooms.
+- **THE LESSON:** never edit a served game script (data.js, three-renderer.js…) while a probe is loading: every picture of that run is the red
+  CODE MISMATCH page. The city crashes the cloud browser as the second room of a run: stop a walk probe at its WALK line.
+- **A MOUTH THAT READ AS PLAIN WALL:** the D.U.M.B.'s Gantry Tunnel to the Sewers (east wall, z 78.75) was a blank concrete wall you walked
+  through. A look-only arch row stands on it now (`dumb:gantry:mouth`: a steel frame, a dark panel, an amber lamp; bake-dumb.js `GANTRY_MOUTH`,
+  laid into data.js by hand, no rebake). WHY the wall's own cut does not show there was NOT found (the shell wall does cut a passage's opening:
+  `_hqPassageSpec` in the walls' cuts; the Cavern rooms' trail mouths show). **STILL OPEN: Agartha's tunnel down to the Long Tunnel** (south wall,
+  x 49, under the inner gate) is the same plain rock wall that you walk through; an arch row tried there did not draw (`base` and `y` both), so it
+  was taken out again. It is walked both ways.
+- **TWO INVISIBLE WALLS, FIXED AND WALKED BOTH WAYS.** (1) The Sewers' Gantry Tunnel (to the D.U.M.B.) and Outfall (to the Sea Floor): bake-labyrinth.js
+  stands a `free` way ON the dead end's rock face with `passage: { len: 3, deep: 1.2 }`, so the crossing lay 1.2 m inside the rock: the walker
+  stopped at the face. Now `deep: -0.9` (a passage's `deep` may be negative: the crossing is that far in FRONT of the door's line). (2) The Sea
+  Floor's outfall pipe (wall w, an open drowned room): the walker is stopped 0.45 m short of the room's line (what stops it was not found) and
+  never reached the trail's 10 m; its row says `passage: { deep: -0.6 }` (bake-deep.js). Any other `free` trail on a rock face from that tool
+  would have the same fault.
+- **KATANA'S EAST LANDING:** a jungle tree stood on the line from the boat's mooring inland; gone (districts/J.js keeps row 29 east of square 78 clear).
+- **NOT DONE / SEEN:** the D.U.M.B.'s freight-line vault door and blast door to the Cavern were not seen straight on (the probe's camera was
+  pushed into a wall; their prompts work); the Frozen Sea's trail to the North Pole shows the far land as white cliffs with flat green flanks
+  (the edge land's far look, not changed); the Harbour's west side shows a sea wall and pastel houses where the city's coast is sand; the port
+  seen from the Coast Road is dim in the air haze. Giza's own ends and the Line's west end are the Desert / Leylines holders' (PR #2418 covers Giza's).
+
 ### THE ZONE PASS: OUTER SPACE, THE SKI MOUNTAIN, BUG COLONY, KATANA, THE TEMPLE (2026-11-22, thread "Remove trap spots in space, mountain and bug rooms")
 All twelve rooms these tools write read 0 traps, 0 crevices after it. What each one was, and the rule it leaves behind:
 - **BUG COLONY, THE GIANT TREE** (`districts/B.js`): four pits between the trunk, a root shelf and a stair (you dropped in off a shelf). The trunk's

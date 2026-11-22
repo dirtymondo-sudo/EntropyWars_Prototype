@@ -43,13 +43,21 @@
       "room": "site_prebuilt_downtown_streets",
       "label": "DISASTER CITY",
       "sub": "THE COAST ROAD · NORTH TO THE PORT",
-      "desc": "The road runs up the coast to the city's port: cranes, containers, and the beach beyond them."
+      "desc": "The road runs out along the sand to a concrete causeway over the bay's mouth, and the port's quay stands at its far end: cranes, containers, the sheds.",
+      "passage": {
+        "strip": 10.5,
+        "floor": "urban:ConcreteStriped2a"
+      }
     },
     "ow_h_15_12": {
       "room": "site_prebuilt_downtown_streets",
       "label": "DISASTER CITY",
       "sub": "THE COAST ROAD · NORTH TO THE PORT",
-      "desc": "The road runs up the coast to the city's port: cranes, containers, and the beach beyond them."
+      "desc": "The road runs out along the sand to a concrete causeway over the bay's mouth, and the port's quay stands at its far end: cranes, containers, the sheds.",
+      "passage": {
+        "strip": 10.5,
+        "floor": "urban:ConcreteStriped2a"
+      }
     },
     "ow_h_15_29": {
       "room": "site_prebuilt_area51_ow_giza",
@@ -62,5 +70,8 @@
     "17,14": "surf",
     "17,17": "lookout",
     "17,19": "nets"
+  },
+  "runOn": {
+    "ow_h_15_29": {}
   }
 }

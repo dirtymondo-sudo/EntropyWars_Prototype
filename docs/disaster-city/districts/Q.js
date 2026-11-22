@@ -60,4 +60,10 @@ function build(ctx) {
     console.warn('[quay]', JSON.stringify(n));
 }
 
-module.exports = { room, apply, build };
+/* THE CAUSEWAY LANDS ON THE COAST ROAD'S SAND (2026-11-22, the coast entrances thread; mondo: "every single entrance/exit in the game needs to look good
+   and natural"): the causeway above ended in open water 110 m out. The land past the city's south line there is the bay (EDGES.s cap `coast`), and the
+   Coast Road's room starts on sand on the bay's far side. So the far shore is drawn: `edges.ways` row with `spit` + `from` = sand from the causeway's
+   end on south (three-renderer.js A WAY OVER THE WATER), and `edges.roads` = the Coast Road's own dirt road on over it (THE ROAD RUNS ON PAST THE LINE).
+   The Coast Road's room draws the same causeway and the port from its side (docs/areas/routes/R10.js). The numbers are the door's (gc(145) = 257.25). */
+const edges = { ways: [{ side: 's', at: 257.25, spit: 440, w: 110, from: 98 }], roads: [{ side: 's', at: 257.25, w: 10.5, key: 'dirt_2', lift: 0.12, from: 108 }] };
+module.exports = { room, apply, build, edges };

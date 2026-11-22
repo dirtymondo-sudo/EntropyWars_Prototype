@@ -78101,7 +78101,32 @@ const ThreeRenderer = (function () {
                 return { wx: q.wx, wy: q.wy, hw: room.shell.w / 2, hd: room.shell.d / 2, kindAt: kindAt, sheetAt: sheetAt, sea: sea };
             } catch (e) { return null; }
         })();
-        var WAYS = (OW && Array.isArray(E.ways) && E.ways.length) ? E.ways : null;
+        var WAYS = (Array.isArray(E.ways) && E.ways.length) ? E.ways : null;   // (2026-11-22: a room with WRITTEN sides may name its ways too; before, only a room that reads the map)
+        /* THE WAY ON (`edges.ways: [{ side, at }]`, the route kit's ends): where a path leaves the room for the next one, the land stays
+           low and open for a stretch: no rock face, no tree line across the way you are about to walk (the rock stays rock but lies
+           down as a pass floor, `W.way`; forest and table land give way to grass), fading out sideways over ~30 m and outward over ~150 m.
+           A WAY OVER THE WATER (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural"; the Coast Road's north end
+           ran off the room's line into open sea, and so did the port's quay on the city's side): a way row may say `spit: <metres>` (+ `w`, the road's
+           width) = where the way leaves across the SEA, a bar of sand carries it on that far (a causeway: sea on both sides, its shore wandering),
+           so a road never ends in the water and both rooms show the same thing past their line. `from: <metres>` = the sand begins that far out: the
+           far shore of a bay the road crosses on a causeway of its own (the city's port: 110 m of concrete on piles, then the Coast Road's sand). */
+        var wayOn = function (W, x, z) {
+            if (!WAYS) return W;
+            for (var wi = 0; wi < WAYS.length; wi++) {
+                var wy0 = WAYS[wi], hzs = (wy0.side === 'n' || wy0.side === 's'), lat = Math.abs((hzs ? x : z) - (+wy0.at || 0)), out = wy0.side === 'n' ? R.z0 - z : wy0.side === 's' ? z - R.z1 : wy0.side === 'w' ? R.x0 - x : x - R.x1;
+                var spit = +wy0.spit || 0;
+                if (out < -1) continue;
+                if (spit > 0 && W.coast > 0 && out <= spit && lat < 80) {
+                    var shw = (+wy0.w || 12) / 2 + 7 + 9 * (_hqEdgeFbm(x / 37 + 2.7, z / 37 + 8.3) - 0.5) * sm(out / 25) + 10 * sm((out - 30) / 200);
+                    var ts = (1 - sm((lat - shw) / 13)) * (1 - sm((out - (spit - 70)) / 70)) * ((+wy0.from > 0) ? sm((out - (+wy0.from) + 14) / 28) : 1);   // `from` = the sand begins that far out (the far shore of a bay the road crosses on a causeway)
+                    if (ts > 0) { var cs = W.coast * ts; W.desert += cs; W.coast -= cs; W.way = Math.max(W.way || 0, ts); if (W.sh) W.sh.desert = (W.sh.desert || 0) + cs; }
+                }
+                if (lat > 34 || out > 150) continue;
+                var tw = (1 - sm((lat - 10) / 22)) * (1 - sm((out - 70) / 80));
+                if (tw > 0) { W.way = Math.max(W.way || 0, tw); W.grass += (W.forest + W.mesa) * tw; W.forest *= 1 - tw; W.mesa *= 1 - tw; }
+            }
+            return W;
+        };
         var LANES = (E.seamRoads !== false && !(typeof window !== 'undefined' && window.EW_HQ_NO_SEAM_ROADS)) ? (room.doors || []).filter(function (d) { return d && d.way === 'open' && /^[nsew]$/.test(d.wall || '') && isFinite((d.wall === 'n' || d.wall === 's') ? +d.x : +d.z); }).map(function (d) { return { side: d.wall, at: (d.wall === 'n' || d.wall === 's') ? +d.x : +d.z, hw: ((d.passage && +d.passage.w) || 6) / 2 }; }) : null;
         if (LANES && !LANES.length) LANES = null;
         var worldW = function (x, z, dist, wob) {
@@ -78122,15 +78147,7 @@ const ThreeRenderer = (function () {
                 put(OW.sheetAt(jx, jy), (1 - u2) * (1 - v2)); put(OW.sheetAt(jx + 1, jy), u2 * (1 - v2)); put(OW.sheetAt(jx, jy + 1), (1 - u2) * v2); put(OW.sheetAt(jx + 1, jy + 1), u2 * v2);
                 if (any) W.sh = SH;
             }
-            /* THE WAY ON (`edges.ways: [{ side, at }]`, the route kit's ends): where a path leaves the room for the next one, the land stays
-               low and open for a stretch: no rock face, no tree line across the way you are about to walk (the rock stays rock but lies
-               down as a pass floor, `W.way`; forest and table land give way to grass), fading out sideways over ~30 m and outward over ~150 m */
-            if (WAYS) for (var wi = 0; wi < WAYS.length; wi++) {
-                var wy0 = WAYS[wi], hzs = (wy0.side === 'n' || wy0.side === 's'), lat = Math.abs((hzs ? x : z) - (+wy0.at || 0)), out = wy0.side === 'n' ? R.z0 - z : wy0.side === 's' ? z - R.z1 : wy0.side === 'w' ? R.x0 - x : x - R.x1;
-                if (out < -1 || lat > 34 || out > 150) continue;
-                var tw = (1 - sm((lat - 10) / 22)) * (1 - sm((out - 70) / 80));
-                if (tw > 0) { W.way = Math.max(W.way || 0, tw); W.grass += (W.forest + W.mesa) * tw; W.forest *= 1 - tw; W.mesa *= 1 - tw; }
-            }
+            wayOn(W, x, z);   // THE WAY ON (above)
             /* THE ROAD OF THE NEXT ROOM RUNS ON: no rock table and no range stands on a seam's road, the land's whole reach (the road rode the land up a
                mesa's face 200 m out): in the road's lane a table lies down as open sand and a range as a pass floor, easing back over 22 m to each side */
             if (LANES) for (var lj = 0; lj < LANES.length; lj++) {
@@ -78193,6 +78210,7 @@ const ThreeRenderer = (function () {
             if (OW) W = worldW(x, z, d, wob);
             else if (ez <= 1e-6) W = sideW(kx, cz, d, wob); else if (ex <= 1e-6) W = sideW(kz, cx, d, wob);
             else { var tq = ex / (ex + ez), s = sm(tq + 1.2 * wob * tq * (1 - tq) * sm(d / 40)), A = sideW(kz, cx, d, wob), B = sideW(kx, cz, d, wob); W = {}; KINDS.forEach(function (q) { W[q] = A[q] * (1 - s) + B[q] * s; }); }
+            if (!OW && WAYS) wayOn(W, x, z);   // (a room with written sides: its ways lie on its land too)
             /* a step between two plots' levels at the edge is taken up in the land's first metres: past them the land stands on the HIGHER ground either side */
             var eHi = eH;
             if (d > 0.01) { var st = 3.6; if (ez <= 1e-6 || ex > ez) eHi = Math.max(eH, groundAt(cx, Math.max(R.z0, Math.min(R.z1, cz - st))), groundAt(cx, Math.max(R.z0, Math.min(R.z1, cz + st)))); else eHi = Math.max(eH, groundAt(Math.max(R.x0, Math.min(R.x1, cx - st)), cz), groundAt(Math.max(R.x0, Math.min(R.x1, cx + st)), cz)); }
@@ -78216,7 +78234,7 @@ const ThreeRenderer = (function () {
                 y += W.mountain * yM;
             }
             if (W.forest > 0) { var kf = sm(d / 16); y += W.forest * Math.max(e2 + lift + 6 * _hqEdgeFbm(x / 55, z / 55) * kf - e2 * 0.12 * sm((d - 90) / 200), 0.7 * kf); }
-            if (W.desert > 0) { var kd = sm(d / 10), ditch = sm((d - 2.5) / 1.5) * (1 - sm((d - 6) / 1.5)); y += W.desert * ((e2 + lift) * (1 - kd) + 0.9 * kd - 1.1 * ditch); }
+            if (W.desert > 0) { var kd = sm(d / 10), ditch = sm((d - 2.5) / 1.5) * (1 - sm((d - 6) / 1.5)) * (1 - (W.way || 0)); /* (no roadside ditch across a way out) */ y += W.desert * ((e2 + lift) * (1 - kd) + 0.9 * kd - 1.1 * ditch); }
             if (W.scrub > 0) { var ks = sm(d / 14), roll = 5.5 * _hqEdgeFbm(x / 48 + 2.2, z / 48 + 8.1) * sm(d / 40) + 20 * _hqEdgeFbm(x / 150 + 6.4, z / 150 + 1.9) * sm((d - 90) / 240);
                 y += W.scrub * ((e2 + lift) * (1 - ks) + (e2 * (1 - 0.85 * sm((d - 20) / 140)) + 0.5 + roll) * ks); }
             if (W.mesa > 0) { var km = sm(d / 10), bn = _hqEdgeSoft(x / 105 + 40.5, z / 105 + 17.2), tall = 34 + 46 * _hqEdgeNoise(x / 270 + 5.5, z / 270 + 9.5);
@@ -78478,17 +78496,18 @@ const ThreeRenderer = (function () {
         ROADS.forEach(function (q, qi) {
             try {
                 var w = +q.w || 7, len = Math.min(+q.len || F.reach, F.reach), stepR = 5, n = Math.max(2, Math.round(len / stepR)), hw = w / 2;
-                var bands = (q.bands && q.bands.length) ? q.bands : [{ a: -hw, b: hw, key: q.key || 'urban:RoadGeneric1a' }];
+                var fromR = Math.max(0, +q.from || 0);   /* `from` (2026-11-22) = the road begins that far past the line (it comes off a causeway the room draws itself); `lift` = how high it rides over the land (a dirt road lies low: 0.12); `tint` = the colour its sheet draws at */
+                var bands = (q.bands && q.bands.length) ? q.bands : [{ a: -hw, b: hw, key: q.key || 'urban:RoadGeneric1a', tint: q.tint }];
                 var lines = q.lines || ((q.line != null) ? [{ off: 0, color: q.line, w: 0.18 }] : []);
-                var A0 = bands[0].a, B0 = bands[bands.length - 1].b, ys = [], dOf = function (k) { return len * k / n - (k ? 0 : 0.6); };
+                var A0 = bands[0].a, B0 = bands[bands.length - 1].b, ys = [], dOf = function (k) { return fromR + (len - fromR) * k / n - ((k || fromR) ? 0 : 0.6); };
                 for (var k = 0; k <= n; k++) { var dd = dOf(k), yk = -1e9; for (var sI = 0; sI <= 4; sI++) { var c0 = roadPt(q, dd, A0 + (B0 - A0) * sI / 4); yk = Math.max(yk, F.at(c0[0], c0[1]).y); } ys.push(yk); }
                 /* NO ROAD INTO THE SEA: a seam's road ends where the land past the line turns to coast (the rule: never water across a road) */
                 if (q.seam) { for (var kc2 = 1; kc2 <= n; kc2++) { var pc2 = roadPt(q, dOf(kc2), (A0 + B0) / 2), Pc2 = F.at(pc2[0], pc2[1]); if ((Pc2.W.coast || 0) > 0.35) { n = kc2 - 1; break; } } if (n < 2) return; len = len * n / (ys.length - 1); ys.length = n + 1; }
                 for (var sm2 = 0; sm2 < 3; sm2++) for (var k2 = 1; k2 < n; k2++) ys[k2] = Math.max(ys[k2], (ys[k2 - 1] + ys[k2 + 1]) / 2);   // no dip between two crests: the road bridges it on its bank
                 var eH0 = F.at(roadPt(q, 0, (A0 + B0) / 2)[0], roadPt(q, 0, (A0 + B0) / 2)[1]).eH || 0;
-                ys[0] = Math.max(ys[0], eH0);   // at the line itself: the room's own ground
+                if (!fromR) ys[0] = Math.max(ys[0], eH0);   // at the line itself: the room's own ground
                 /* a seam's road: level with the gate's floor for 9 m (the walker crosses 6 m out, _hqTickPassages), then onto the land over 26 m */
-                var yAt = function (k) { var d = dOf(k), nat = ys[k] + 0.2 + Math.min(0.5, d / 30); if (!q.seam) return nat; var t = (d - 9) / 26; t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return (eH0 + 0.1) * (1 - t) + nat * t; };
+                var yAt = function (k) { var d = dOf(k), nat = ys[k] + ((q.lift != null) ? +q.lift : 0.2 + Math.min(0.5, d / 30)); if (!q.seam) return nat; var t = (d - 9) / 26; t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return (eH0 + 0.1) * (1 - t) + nat * t; };
                 var mkR = function (P3, I3, UV3, mat) { var g3 = new THREE.BufferGeometry(); g3.setAttribute('position', new THREE.Float32BufferAttribute(P3, 3)); if (UV3) g3.setAttribute('uv', new THREE.Float32BufferAttribute(UV3, 2)); g3.setIndex(I3); g3.computeVertexNormals(); g3.computeBoundingSphere();
                     var m3 = new THREE.Mesh(g3, mat); m3.position.y = 0.2; m3.receiveShadow = false; m3.castShadow = false; m3.renderOrder = 1; m3._ew_hqPart = 'floor'; m3._ew_hqOuter = true; m3._ew_hqEdgeLand = 'road' + qi; return m3; };
                 var gR = new THREE.Group(); gR.name = 'hq_edge_road'; gR._ew_hqEdgeLand = 'road' + qi;
