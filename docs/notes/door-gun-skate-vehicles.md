@@ -123,6 +123,26 @@ on the centre line (46 px), "× n · OFF THE GROUND 4.2 S" on a line under it, s
 (the lap timer) keeps the plain `.hq-trick-head` row. RULE: never put this line back in a panel; never put words beside the number.
 Proof picture taken (training room, HEAD 484f6b9 + this change).
 
+## SKATEBOARDING — THE RAIL ON ITS LINE (grinding in the air beside a rail) — 2026-11-22
+mondo (the Badlands Highway): "these rails that when i grind on them im like a whole foot or two off to the side grinding in the air".
+**Cause**: a pack railing (data.js `HQ_STAIR_PACK.railings`, drawn by three-renderer.js `_spBuildRailings`) was stood with the MIDDLE OF
+ITS BOX on the row's line (`_spSoup` frame `c`), and the box takes in whatever the pack drew beside the rail. The grind (`info.rails`)
+and the walker's wall run on the row's line. Measured in the pack file, the top rail's middle off the line: `guard` 0.553 m (it stands
+at the edge of a 1.19 m kerb; the highway's guard rails), `pipe` 0.181 m (the skate parks' pipe rail), `glass_panels` 0.050, `double`
+0.045, `bars_curb` 0.029, `wall_handrail` 0.025, `handrail` 0.017, `glass` 0.015, the other 20 under 2 mm.
+**Fix**: `_spRailCentre(soup, spec, unit)`, once per railing kind when its piece is cut: the middle of the TOP RAIL (the top 6 % of its
+height) is moved onto the line, so the drawn rail, the grind and the wall are one line for every railing and any railing added later.
+The drawn model moves, never the grind or the wall (rows, walls and the nav stay where they were). Kill-switch for a before picture:
+`window.EW_NO_RAIL_CENTRE`.
+**Audited, already on their line** (drawn and registered from the same numbers): the bridge rails, the ring bridges' arcs, the decks'
+rope rails, the cave bridge rails, the mezzanine / gallery arcs, the escalator handrails, flights' cheeks, the prop rail `railing_1m`.
+**THE SECOND PASS, every rail in height too** (mondo: "can you check this for like every rail in the game?"). Measured from the model
+files: all 28 pack railings' `top` = the model's top within 1 cm; the escalator's handrails ±2.74 ft / 3.40 ft over the pitch = the table
+(±2.75 / 3.3 + the 0.1 m it stands sunk); the grating flight's handrails 1.7 cm outside the grind (left) but 0.77-0.91 m over the fitted
+flight's line, the grind was 0.95: `flights.grate.handrail` 0.86; the prop `railing_1m` centred on its line but 0.846 m tall at its 1 m
+span, the grind was 0.98: `rail.h` 0.85 (121 placed). Not seen in a browser (model measurements only).
+Proof: `/mnt/project-files/grind-rails/badlands_guard_rail_before_after.jpg` (the grind line drawn red; HEAD f5a9153 + this change).
+
 ## SKATEBOARDING — THE GRINDS, THE BALANCE METER, THE WALLS — 2026-11-20
 mondo, from the list of ideas after the off-ground clock: "Let's do 3, 4, and 6." All three in three-renderer.js "SKATEBOARDING",
 tables in data.js `HQ_SKATE_RULES` (renderer fallbacks in `HQ_SKATE_DEFAULT`, keep the keys in step).
@@ -822,3 +842,29 @@ is a terrain `rail` row with no model and `h` < 0.7 (the pipe rail: a grind, nev
 squares long: the Skater unit's grind reads these rows + `city_bench` props (new units thread). A rail row is straight between its two ends'
 ground, so a rail over a hump must be cut at the hump's corners. Moved for it: three umbrella sets, the lifeguard chair, the rowboat, the
 first beach ramp (row 8N+6), two Miami lifeguard towers (to rows 114 and 135), the volleyball net (one square south). Seen on screen (llvmpipe).
+
+## THE CAR — every parked car is driven like a car (2026-11-22)
+mondo: "In the city, all of the cars have the option for me to press e to use them, but they act like a boat instead of a car ...
+Simple arcade mechanics, like the skateboarding. Since we dont have a car interior, just make it to where the player character is
+hidden when they are driving".
+CAUSE: since the flown spaceship (11-17) the file-prop placer registers every catalogue `vehicle` with the helm. The cars carry
+`vehicle: true` (the garage booth's count), which was no kind the helm knew, so each took the skiff's rules: a hull that needs water.
+THE FIX (three-renderer.js "THE CAR", after `_hqTickVehicle`): `vehicle: true` registers as kind `car` (`_hqVehicleRegister`, with its
+own block and its rect's half sizes). `_hqTickCar`: W gas, S brake then reverse, A / D turn the front wheels (they ease over and turn
+less with speed), SPACE handbrake; the car turns about its back axle (speed / wheelbase x tan(wheel angle)), 60 Hz sub-steps.
+`_hqCarHits`: a ring of points round the body asks the walker's own floor (`_hqSurface` with the blockers, on the rider's grid: no
+whole-room read, RULE #1e); a wall, a building, a prop taller than `clear`, a person, another car, a kerb over `step`, a drop over
+`drop` (a retaining wall), water over `wet` stop it with a small bounce; a car that starts touching something may only move where it
+touches no more. The four wheels read the ground: the body pitches and rolls with it, slows uphill, runs on downhill. The driver is
+not drawn (`_hqTickCast` + the frame's end, as aboard the ship). E gets out by the driver's door (the left), else the first clear
+side, else the roof; the car's block stands again where it is left. The prompt reads DRIVE / GET OUT; first time a toast with the keys
+(map.js `_hqSeaEvent`). Numbers: data.js `HQ_SEA_RULES.car` over `HQ_SEA_DEFAULT.car` (keep in step). `noDrive: true` on a catalogue
+row = a prop only (car_pack_6, the shell with no wheels). The skiff, the bathyscaphe and the ship are untouched (their kinds are
+strings). Viewer-local, nothing relayed (RULE #2).
+SEEN in the cloud browser (HEAD on ba7c051 + this change): a Disaster City taxi: E in (real key), the officer hidden, 0 to 13 m/s,
+a right turn, stopped by the Hero Plaza pillar with a bounce, reverse with the wheels turned, E out beside the car. `hq.dev.carRun(id)`
+= how far a parked car can roll ahead / back and what stops it (of the city's 95 cars, 77 can move at once; the rest stand inside a
+building's mass, on a deck edge, or against a wall and need to back out).
+NOT SEEN (the cloud browser crashed on three runs): the school bus, the fire truck and the ambulance moving (Meshy files with
+`turn: 90`: if one drives tail first, give its catalogue row the other turn). NOT BUILT: engine sound, turning wheel models (the pack's
+wheels are painted on the body), traffic cars cannot be taken, no damage, cars do not stay moved after leaving the room.

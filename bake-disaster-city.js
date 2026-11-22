@@ -465,7 +465,9 @@ const BENCH = { R: 'park_bench', U: 'iron_garden_bench', S: 'park_bench', C: 'ci
    over the city's (its Canyon Road door over the city's mountain road at x 105, its Cove over the boardwalk's north end). */
 /* THE HOLLYWOOD HILLS ARE PART OF THE CITY (2026-11-16): the Hills stand IN this room now (districts/N.js, `room.north`), so the north side has no
    `land` (the far copy of the Hills room's ground) any more. Past the ridge the old range stands at `back` 0.35, the low dry ridge it was behind the far copy. */
-const EDGES = { reach: 440, n: { kind: 'mountain', back: 0.35 }, w: { kind: 'forest', cap: { kind: 'mountain', at: 'n', len: 170 } }, s: { kind: 'desert' }, e: { kind: 'coast' } };
+/* THE SOUTH IS SCRUB (2026-11-22, mondo: "the same for all edges of every map ... make them make more sense with whatever zones are around them"): the map has dry
+   scrub south of the city (the Badlands Highway leaves over it in the rocky grass), the side stood as dead flat sand. `sheets` = the scrub wears the road's own sheet. */
+const EDGES = { reach: 440, sheets: { scrub: 'grass_rocky' }, n: { kind: 'mountain', back: 0.35 }, w: { kind: 'forest', cap: { kind: 'mountain', at: 'n', len: 170 } }, s: { kind: 'scrub' }, e: { kind: 'coast' } };
 const EDGE_STOP = { n: ['trees', 'wall:1.2'], w: ['trees', 'trees'], s: ['rail:guard', 'rail:cable_fence'], e: ['rail:parapet', 'rail:pipe'] };
 const edgeN = {};
 function boundaryPass(V) {

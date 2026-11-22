@@ -4438,11 +4438,14 @@ html.ew-hq-cover #startOverlay > .title-page:not(.active):not(#hqPage) * { anima
 .hq-pause-vitals b { font-family: 'Cormorant SC', serif; font-size: 17px; letter-spacing: 0.08em; color: #ece7d8; font-weight: 600; }
 .hq-pause-vitals i { font-style: normal; font-size: 8px; letter-spacing: 0.24em; color: #b8a060; }
 /* the body: the command column + the sheet */
-.hq-pause-main { display: grid; grid-template-columns: 236px 1fr; min-height: 0; }
+/* THE COMMAND COLUMN NEVER CUTS A WORD (mondo: text cut-off is high priority; 11-22 the pixel theme font clipped SETTINGS in a fixed 236px column):
+   the column grows to its widest command; the small line under it wraps inside that width and never widens it. Both pause menus. */
+.hq-pause-main { display: grid; grid-template-columns: minmax(236px, max-content) minmax(0, 1fr); min-height: 0; }
 .hq-pause-nav { display: flex; flex-direction: column; gap: 6px; padding: 18px 14px 18px 18px; border-right: 1px solid rgba(184,160,96,0.22); background: rgba(0,0,0,0.25); }
 .hq-pause-cmd { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 11px 14px 10px 22px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-left: 3px solid rgba(184,160,96,0.28); color: #cfc9b8; text-align: left; cursor: pointer; transition: background 0.14s, border-color 0.14s, transform 0.14s; font-family: inherit; }
 .hq-pause-cmd b { font-family: 'Cormorant SC', serif; font-size: 20px; letter-spacing: 0.2em; line-height: 1; font-weight: 600; }
-.hq-pause-cmd span { font-size: 8px; letter-spacing: 0.24em; color: #8f8878; }
+.hq-pause-cmd b { white-space: nowrap; }
+.hq-pause-cmd span { font-size: 8px; letter-spacing: 0.24em; color: #8f8878; width: 0; min-width: 100%; }
 .hq-pause-cmd::before { content: '▸'; position: absolute; left: 8px; top: 12px; font-size: 11px; color: #d9b45a; opacity: 0; transition: opacity 0.14s, transform 0.14s; transform: translateX(-4px); }
 .hq-pause-cmd:hover, .hq-pause-cmd.cur { background: rgba(184,160,96,0.12); border-color: rgba(184,160,96,0.5); border-left-color: #d9b45a; color: #ece7d8; transform: translateX(3px); }
 .hq-pause-cmd:hover::before, .hq-pause-cmd.cur::before { opacity: 1; transform: none; }
@@ -4557,7 +4560,7 @@ html.ew-hq-cover #startOverlay > .title-page:not(.active):not(#hqPage) * { anima
     .hq-pause-frame { width: 100%; height: 100%; border: none; }
     .hq-pause-main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
     .hq-pause-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; padding: 10px 12px; border-right: none; border-bottom: 1px solid rgba(184,160,96,0.22); }
-    .hq-pause-cmd { flex: 1 1 30%; padding: 8px 10px 7px 18px; }
+    .hq-pause-cmd { flex: 1 1 auto; min-width: 30%; padding: 8px 10px 7px 18px; }
     .hq-pause-cmd b { font-size: 15px; }
     .hq-pause-cmd span { display: none; }
     .hq-pause-cmd.danger { margin-top: 0; }
@@ -7839,7 +7842,7 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 #hqPage .hq-qmark.edge.flip .hq-qmark-plate { left: auto; right: 34px; }
 @keyframes hqQmarkBob { 0%, 100% { margin-top: 0; } 50% { margin-top: -5px; } }
 /* the pause menu's command column scrolls on a short screen (an eleventh command since THE QUESTS) */
-#hqPage .hq-pause-nav { overflow-y: auto; min-height: 0; scrollbar-width: thin; scrollbar-color: rgba(184,160,96,0.4) transparent; }
+#hqPage .hq-pause-nav { overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; min-height: 0; scrollbar-width: thin; scrollbar-color: rgba(184,160,96,0.4) transparent; }
 #hqPage .hq-pause-nav .hq-pause-cmd { flex-shrink: 0; }
 .hq-qj { padding: 12px 14px; margin: 0 0 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); }
 .hq-qj.done { opacity: 0.82; }
