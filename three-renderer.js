@@ -9015,6 +9015,7 @@ const ThreeRenderer = (function () {
         return m;
     }
     function _ggBuild(group) {
+        var _ggHad = !(_ggJob || (performance.now() - _ggFreshAt) < 4000); _ggJob = null;   // the fight was just laid (or its first field is still growing): grow in slices
         _gg = null; _ggMaskU.mesh = null;
         if (!_ggOn() || typeof getTerrainAt !== 'function') return;
         /* A ROOM THAT PAINTS ITS OWN SQUARES (2026-11-12, the Training Room: its pad is tile, but the board's squares keep the grass tile
@@ -9026,7 +9027,15 @@ const ThreeRenderer = (function () {
         if (!W || !H) return;
         var C = GGRASS, LOW = (_ggLevel === 'low') ? C.low : null, N = LOW ? LOW.perTile : C.perTile, WID = LOW ? LOW.width : C.width;
         var mon = (typeof _monumentMap === 'function') ? _monumentMap() : null;
-        var pos = [], col = [], gg = [], gs = [], roots = [], GY = new Float64Array(25);
+        /* THE GRASS GROWS IN (2026-11-22, mondo: every fight in the Woods opened on a frozen second; "is it because it's the first fight of
+           the session ... how do we make it never do that"). It was every fight: the field (the board and the meadow round it, ~27,000
+           tufts of 49 corners) was grown in one go as the fight was laid, 0.6-0.8 s in the cloud profile and the largest single piece
+           of the freeze. Now the tufts are written straight into typed buffers (no million-entry lists, no small list per corner), and
+           the FIRST field of a fight in a room is grown a few milliseconds a frame (run / finish, _ggJobTick) and rises from the ground
+           over a third of a second when it is whole. A later build in the same fight (a dig, a build, a flood) and a board that is
+           no room are grown in one go as before. Off: window.EW_NO_GRASS_SLICE. */
+        var _ggW = function (n) { return { a: new Float32Array(n), n: 0 }; }, _ggNeed = function (o, k) { if (o.n + k > o.a.length) { var b = new Float32Array(Math.max(o.a.length * 2, o.n + k)); b.set(o.a.subarray(0, o.n)); o.a = b; } };
+        var pos = _ggW(1 << 18), col = _ggW(1 << 18), gg = _ggW(1 << 18), gs = _ggW(1 << 16), roots = _ggW(1 << 14), GY = new Float64Array(25), BS = new Float64Array(16), BD = new Uint8Array(16);
         var seed = 1234567;
         var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
         var sampler = (typeof _fieldGroundSampleAt === 'function') ? _fieldGroundSampleAt : null;
@@ -9078,13 +9087,18 @@ const ThreeRenderer = (function () {
            of the tufts), then the board's own squares (rebuilt whenever the ground changes: a dig, a build, a flood) */
         var fkey = M ? ((typeof _hqBattleRoomKey === 'function' ? _hqBattleRoomKey() : '') + '|' + _ggLevel + '|' + ts + '|' + W + 'x' + H + '|' + C.shape + '|' + (typeof _calmOn === 'function' && _calmOn() ? 'c' : 'p')) : '';
         var keep = (M && _ggFringe && _ggFringe.key === fkey) ? _ggFringe : null;
-        for (var pass = 0; pass < 2; pass++) {
+        var st = { pass: 0, i: 0 }, NX = W + 2 * M, NC = NX * (H + 2 * M);
+        var run = function (deadline) {
+        for (; st.pass < 2; st.pass++, st.i = 0) {
+        var pass = st.pass;
         if (pass === 0 && (!M || keep)) continue;
-        if (pass === 1 && M && !keep) {
-            keep = _ggFringe = { key: fkey, pos: new Float32Array(pos), col: new Float32Array(col), gg: new Float32Array(gg), gs: new Float32Array(gs), roots: new Float32Array(roots) };
-            pos = []; col = []; gg = []; gs = []; roots = [];
+        if (pass === 1 && M && !keep && st.i === 0) {
+            keep = _ggFringe = { key: fkey, pos: pos.a.slice(0, pos.n), col: col.a.slice(0, col.n), gg: gg.a.slice(0, gg.n), gs: gs.a.slice(0, gs.n), roots: roots.a.slice(0, roots.n) };
+            pos.n = col.n = gg.n = gs.n = roots.n = 0;
         }
-        for (var ty = -M; ty < H + M; ty++) for (var tx = -M; tx < W + M; tx++) {
+        for (; st.i < NC; st.i++) {
+            if (deadline && (st.i & 3) === 0 && performance.now() > deadline) return false;
+            var tx = (st.i % NX) - M, ty = ((st.i / NX) | 0) - M;
             var fr = (tx < 0 || ty < 0 || tx >= W || ty >= H);
             if (fr !== (pass === 0)) continue;
             var topY = 0;
@@ -9143,25 +9157,32 @@ const ThreeRenderer = (function () {
                 var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
                 /* 7 corners, a soft rounded tongue: foot L / R, belly L / R, shoulder L / R, tip. The side offset (aGgS) is laid along
                    the camera's right in the shader, so the tongue always shows its full face */
-                var P = _GG_SHAPES[C.shape] ? _GG_SHAPES[C.shape].P : _GG_SHAPES.crown.P;
-                for (var k = 0; k < P.length; k++) {
+                var P = _GG_SHAPES[C.shape] ? _GG_SHAPES[C.shape].P : _GG_SHAPES.crown.P, PL = P.length, bladed = P[0].length > 2;
+                if (bladed) for (var bq = 0; bq < 8; bq++) { var bh0 = (Math.sin((r1 * 91.7 + bq * 12.93) * 43.1) * 43758.5453) % 1; bh0 = bh0 < 0 ? bh0 + 1 : bh0; BS[bq] = 0.80 + 0.32 * bh0; BD[bq] = (bh0 > 1 - GGRASS.dryShare) ? 1 : 0; }   // _ggBlade, once a blade (not once a corner)
+                _ggNeed(pos, PL * 3); _ggNeed(col, PL * 3); _ggNeed(gg, PL * 4); _ggNeed(gs, PL); _ggNeed(roots, 2);
+                var pA = pos.a, cA = col.a, gA = gg.a, sA = gs.a;
+                for (var k = 0; k < PL; k++) {
                     var f = P[k][1], bf = f * f;
-                    pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
+                    pA[pos.n++] = wx + lx * bf; pA[pos.n++] = gy + h * f * (1 - 0.10 * bf); pA[pos.n++] = wz + lz * bf;
                     var cr, cg, cb;
                     if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
                     else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
-                    if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; }
-                    col.push(cr, cg, cb);
-                    gg.push(wx, wz, h * f, f);
-                    gs.push(P[k][0] * hw);
+                    if (bladed) { var bI = P[k][2] & 7, bDry = BD[bI] ? (0.25 + 0.6 * f) : 0, bM = BS[bI] * (1 - bDry); cr = cr * bM + bDry * GGRASS.dry[0]; cg = cg * bM + bDry * GGRASS.dry[1]; cb = cb * bM + bDry * GGRASS.dry[2]; }
+                    cA[col.n++] = cr; cA[col.n++] = cg; cA[col.n++] = cb;
+                    gA[gg.n++] = wx; gA[gg.n++] = wz; gA[gg.n++] = h * f; gA[gg.n++] = f;
+                    sA[gs.n++] = P[k][0] * hw;
                 }
-                roots.push(wx, wz);
+                roots.a[roots.n++] = wx; roots.a[roots.n++] = wz;
             }
         }
         }
+        return true;
+        };
+        var finish = function () {
         if (!M) _ggFringe = null;
-        var join = function (a, b) { if (!a) return new Float32Array(b); var o = new Float32Array(a.length + b.length); o.set(a, 0); o.set(b, a.length); return o; };
+        var join = function (a, b) { if (!a) return b; var o = new Float32Array(a.length + b.length); o.set(a, 0); o.set(b, a.length); return o; };
         var K = (M && keep) ? keep : null;
+        pos = pos.a.slice(0, pos.n); col = col.a.slice(0, col.n); gg = gg.a.slice(0, gg.n); gs = gs.a.slice(0, gs.n); roots = roots.a.slice(0, roots.n);
         pos = join(K && K.pos, pos); col = join(K && K.col, col); gg = join(K && K.gg, gg); gs = join(K && K.gs, gs); roots = join(K && K.roots, roots);
         if (!pos.length) return;
         var geo = new THREE.BufferGeometry();
@@ -9175,11 +9196,30 @@ const ThreeRenderer = (function () {
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
         var pr = _ggPressTex(W, H);
         var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', blades: nB, roots: roots, ia: ia, sortDir: null };
+        if (job) { G.fade = { f: { value: new THREE.Vector4(0, 0, 0, 1) }, d: { value: new THREE.Vector4(-2, -1, 1e20, 2e20) } }; G.growT0 = performance.now(); }   // it rises from the ground over a third of a second (never a pop)
         var mesh = new THREE.Mesh(geo, _ggMat(G));
         mesh.frustumCulled = false; mesh.name = 'ew_grass_field'; mesh._ew_ggrass = true; mesh.renderOrder = C.order;
-        G.mesh = mesh; G.ms = performance.now() - _t0; _gg = G; _ggMaskU.mesh = mesh;
-        try { window._ewGrassField = { tufts: nB, buildMs: Math.round(G.ms), level: _ggLevel }; } catch (e) {}   // read-only: what the last build made
+        G.mesh = mesh; G.ms = job ? job.ms : (performance.now() - _t0); _gg = G; _ggMaskU.mesh = mesh;
+        try { window._ewGrassField = { tufts: nB, buildMs: Math.round(G.ms), level: _ggLevel, frames: job ? job.frames : 0 }; } catch (e) {}   // read-only: what the last build made
         group.add(mesh);
+        };
+        /* the first field of a fight in a room: grown a few milliseconds a frame (_ggJobTick); any other build (a dig, a build, a
+           flood, a board that is no room) in one go, as before, so the old field is never missing */
+        var job = null;
+        if (!_ggHad && !(typeof window !== 'undefined' && window.EW_NO_GRASS_SLICE) && typeof _hqBattleRoom === 'function' && _hqBattleRoom()) {
+            job = _ggJob = { run: run, finish: finish, group: group, ms: performance.now() - _t0, frames: 0 };
+            return;
+        }
+        run(0); finish();
+    }
+    var _ggJob = null, _ggFreshAt = -1e9;
+    function _ggJobTick() {
+        var J = _ggJob; if (!J) return;
+        if (!J.group.parent || J.group !== _terrainDecoGroup) { _ggJob = null; return; }   // the board was rebuilt or left: that build is its own
+        var t0 = performance.now(), done = false;
+        try { done = J.run(t0 + 8); } catch (e) { _ggJob = null; console.warn('[grass] the sliced build', e); return; }
+        J.ms += performance.now() - t0; J.frames++;
+        if (done) { _ggJob = null; try { J.finish(); } catch (e2) { console.warn('[grass] the sliced build', e2); } }
     }
     /* THE FACE + THE ORDER: the tufts turn to the camera (its right, flat, in the field's frame), and — as they write no depth —
        are drawn far to near, so a near tuft's light top always lies over the dark foot of the one behind it (that overlap IS the
@@ -9216,7 +9256,9 @@ const ThreeRenderer = (function () {
     }
     /* the press map, once a frame: every standing unit's feet (rebuilt only when a body moved) */
     function _ggTick() {
+        _ggJobTick();   // THE GRASS GROWS IN: the first field of a room fight, a few milliseconds a frame
         var G = _gg; if (!G || !G.mesh || !G.mesh.parent) return;
+        if (G.growT0) { var gk = (performance.now() - G.growT0) / 350; gk = gk > 1 ? 1 : gk; G.fade.f.value.z = gk * gk * (3 - 2 * gk); if (gk >= 1) G.growT0 = 0; }
         _ggFace(G);
         var ts = CONFIG.tileSize || BASE_TILE, n = G.n, w = G.W * n, h = G.H * n, R = GGRASS.pressR * n, sig = '';
         var pts = [];
@@ -16740,6 +16782,13 @@ const ThreeRenderer = (function () {
         if (V(gr.barrel).applyQuaternion(q).dot(f) < 0) {   // (the mirror hand: the same seat with the barrel forward)
             var flip = new THREE.Quaternion().setFromAxisAngle(Dw, Math.PI); q.premultiply(flip);
         }
+        /* THE CANT (2026-11-22, THE WEAPONS IN THE HANDS): a blade does not stand square across the fist, its handle lies slanted over the
+           palm. `grip.cant` degrees turn the prop about the palm's normal, the end that leaves the fist at the thumb leaning to the knuckles'
+           side (a hanging arm: the point drops toward the ground in front of the feet). Either hand. */
+        if (gr.cant) {
+            var cs = new THREE.Vector3().crossVectors(t, f).dot(Zw) < 0 ? -1 : 1;
+            q.premultiply(new THREE.Quaternion().setFromAxisAngle(Zw, cs * gr.cant * Math.PI / 180));
+        }
         return q;
     }
     /* THE GRIP ON A MESHY HAND (2026-11-02, mondo: the door gun "in the hand's finger grip" like the cowboy's revolver): a Meshy
@@ -20589,6 +20638,7 @@ const ThreeRenderer = (function () {
                `RACE_MODELS_3D['door agent']`) parents the catalogue GLB to a hand bone of THIS model, so
                it rides the rig cache with the body — the same holder rule as the building's held props */
             if (def.hold) { try { _unitAttachHeld(m, def.hold, ts); } catch (_he) { console.warn('[3D] held prop failed', _he); } }
+            if (def.hold2) { try { _unitAttachHeld(m, def.hold2, ts); } catch (_he2) { console.warn('[3D] second held prop failed', _he2); } }   // THE WEAPONS IN THE HANDS 11-22: the other hand (the Shogun's war fan)
             try { _unitGearSync(unit, inner, ts); } catch (_ge) { console.warn('[3D] gear failed', _ge); }   // THE GEAR ON THE BODY (row 24)
 
             var hasSkin = false;
@@ -52751,6 +52801,7 @@ const ThreeRenderer = (function () {
     function activate() {
         if (!initialized) init();
         if (!canvas || !renderer) return;
+        _ggFreshAt = performance.now();   // THE GRASS GROWS IN: this fight's first field
         if (_menuLive) _menuLeave();             // the main menu scene hands the canvas back first
         if (_trLive) _trLeave();                 // so does the Squad Desk's team room
         active = true;
@@ -54332,6 +54383,201 @@ const ThreeRenderer = (function () {
         out.sig = sig;
         return out;
     }
+    /* ────────────────────────────────────────────────────────────────────
+     * THE EXPLORATION MINIMAP (2026-11-22, mondo: "Let's add a minimap to the exploration mode. It should look similar/identical
+     * to the one from battle. It should have quest markers too"; his picks on the mock-up: "definitely bottom right, north
+     * always up, grey walls and blue water are fine, yes npcs should show"). #ewHqMinimap (.ew-mmap.ew-hqmm, styles-hud.css)
+     * sits in #hqPage, bottom right: the battle minimap's box, grid, frame and colours (_mmLook: the UI Maker's Minimap look),
+     * HQMM_SPAN squares of 3.5 m around the walker, north (-z) up. You = the arrow; a story character = the ally colour; a unit
+     * you can fight (hqEncounterCharOk) = the foe colour; anyone else white; a door = green; the quest = the gold diamond of
+     * map.js THE QUEST MARKER (hq.questMark leaves its metres here), pinned to the edge with an arrow when out of range.
+     * NO ROOM SCAN (RULE #1e): a square is asked once (_hqNavQuery, four points; the terrain's water) when it first comes
+     * into the window, at most HQMM_ASK_MS a tick, and kept for the room; the people come from the room's own list (_hq.chars),
+     * the doors from its door list, read once. Redrawn at most every 50 ms and only when something on it changed.
+     * Away in a scene, a panel, the pause menu, the editor, a fight. Viewer-local. Off: window.EW_NO_HQ_MINIMAP = true.
+     * ──────────────────────────────────────────────────────────────────── */
+    var HQMM_SQ = 3.5, HQMM_SPAN = 15, HQMM_ASK_MS = 1.2, HQMM_REASK_MS = 20000;
+    var _hmm = { el: null, cv: null, ctx: null, H: null, room: null, cells: new Map(), queue: [], queued: new Set(), ver: 0, sig: '', next: 0, boxKey: '', cw: 0, ch: 0,
+                 doors: [], doorsKey: '', quest: null, questAt: 0, drawnAt: 0, reaskAt: 0 };
+    function _hqMmHide() {
+        if (_hmm.el && !_hmm.el.classList.contains('off')) _hmm.el.classList.add('off');
+        _hmm.sig = '';
+    }
+    function _hqMmEnsure() {
+        if (_hmm.el && _hmm.el.isConnected) return _hmm.el;
+        var page = document.getElementById('hqPage'); if (!page) return null;
+        var el = document.createElement('div');
+        el.id = 'ewHqMinimap';
+        el.className = 'ew-mmap ew-hqmm off';
+        var cv = document.createElement('canvas');
+        el.appendChild(cv);
+        page.appendChild(el);
+        _hmm.el = el; _hmm.cv = cv; _hmm.ctx = cv.getContext('2d'); _hmm.sig = ''; _hmm.boxKey = '';
+        return el;
+    }
+    function _hqMmKey(i, j) { return (i + 32768) * 65536 + (j + 32768); }
+    /* one square, asked once: 2 = water, 1 = wall / building / cliff / outside the room, 0 = open ground */
+    function _hqMmAsk(i, j) {
+        var cx = (i + 0.5) * HQMM_SQ, cz = (j + 0.5) * HQMM_SQ, q = HQMM_SQ / 4, solid = 0;
+        try { if (_hq.terrain && typeof hqTerrainFluidAt === 'function' && hqTerrainFluidAt(_hq.terrain, cx, cz)) return 2; } catch (e) {}
+        for (var s = 0; s < 4; s++) {
+            var x = cx + ((s & 1) ? q : -q), z = cz + ((s & 2) ? q : -q);
+            var y = _hqNavQuery(x, z, null);
+            if (y === null || y === undefined || !isFinite(y)) { solid++; continue; }
+            var yb = null; try { yb = _hqSurface(x, z, null, true); } catch (e2) { yb = null; }
+            if (yb !== null && yb !== undefined && isFinite(yb) && y - yb > 1.2) solid++;   // something over a metre tall stands on the ground here
+        }
+        return solid >= 2 ? 1 : 0;
+    }
+    function _hqMmDoors(H) {
+        var n = H.doors.length, st = H.stage, id;
+        if (st && st.parts) for (id in st.parts) { var P0 = st.parts[id].P; n += 1000 + ((P0 && P0.doors) ? P0.doors.length : 0); }
+        var key = n + '|' + (H.ready ? 1 : 0);
+        if (key === _hmm.doorsKey) return _hmm.doors;
+        var ds = H.doors.slice(), U = _hqUnits(), out = [], v = new THREE.Vector3();
+        if (st && st.parts) for (id in st.parts) { var P = st.parts[id].P; if (P && P.doors) ds = ds.concat(P.doors); }
+        for (var k = 0; k < ds.length; k++) { var d = ds[k]; if (!d || !d.group) continue; d.group.getWorldPosition(v); out.push({ x: v.x / U, z: v.z / U }); }
+        _hmm.doorsKey = key; _hmm.doors = out; _hmm.sig = '';
+        return out;
+    }
+    function _hqMmUpdate(H, now) {
+        if (now < _hmm.next) return;
+        _hmm.next = now + 50;
+        var pl = H.player, body = document.body;
+        if (window.EW_NO_HQ_MINIMAP || !H.ready || !pl || H.paused || (H.opts && H.opts.edit) || !isFinite(pl.x) || !isFinite(pl.z)
+            || body.classList.contains('ew-scene') || (window.EWCine && window.EWCine.on)
+            || (typeof GS !== 'undefined' && typeof state !== 'undefined' && state && state.gameState !== GS.HQ)) { _hqMmHide(); return; }
+        var el = _hqMmEnsure(); if (!el) return;
+        var room = (H.opts && H.opts.room) || null;
+        if (H !== _hmm.H || room !== _hmm.room) { _hmm.H = H; _hmm.room = room; _hmm.cells = new Map(); _hmm.queue = []; _hmm.queued = new Set(); _hmm.doorsKey = ''; _hmm.sig = ''; _hmm.reaskAt = now; }
+        var L = _mmLook(), round = L.shape === 'round';
+        var cls = 'ew-mmap ew-hqmm' + (round ? ' round' : '');
+        if (el.className !== cls) { el.className = cls; _hmm.sig = ''; }
+        var hudK = parseFloat(document.documentElement.style.getPropertyValue('--ew-hud-scale')) || 1;
+        var size = Math.round(Math.max(40, Math.min(640, (+L.size || 180) * Math.max(0.3, Math.min(2, hudK)))));
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        var boxKey = size + '|' + dpr;
+        if (boxKey !== _hmm.boxKey) {
+            el.style.width = size + 'px'; el.style.height = size + 'px';
+            _hmm.cv.width = Math.round(size * dpr); _hmm.cv.height = Math.round(size * dpr);
+            _hmm.cw = size; _hmm.ch = size; _hmm.boxKey = boxKey; _hmm.sig = '';
+        }
+        var cw = _hmm.cw, ch = _hmm.ch, cell = cw / HQMM_SPAN, half = HQMM_SPAN / 2;
+        var px = pl.x / HQMM_SQ, pz = pl.z / HQMM_SQ;
+        var i0 = Math.floor(px - half), i1 = Math.floor(px + half), j0 = Math.floor(pz - half), j1 = Math.floor(pz + half), i, j, key;
+
+        /* the squares in the window nobody asked yet join the queue; every HQMM_REASK_MS the window is asked again (a prop that
+           landed late), the old answers staying on the picture meanwhile */
+        var reask = now - _hmm.reaskAt > HQMM_REASK_MS; if (reask) _hmm.reaskAt = now;
+        for (j = j0; j <= j1; j++) for (i = i0; i <= i1; i++) {
+            key = _hqMmKey(i, j);
+            if ((reask || !_hmm.cells.has(key)) && !_hmm.queued.has(key)) { _hmm.queued.add(key); _hmm.queue.push(i, j); }
+        }
+        if (_hmm.queue.length) {
+            var t0 = performance.now(), Q = _hmm.queue, qi = 0;
+            while (qi < Q.length) {
+                var ai = Q[qi], aj = Q[qi + 1]; qi += 2; key = _hqMmKey(ai, aj); _hmm.queued.delete(key);
+                if (ai < i0 - 2 || ai > i1 + 2 || aj < j0 - 2 || aj > j1 + 2) continue;   // walked away from it before its turn
+                var kind = 0; try { kind = _hqMmAsk(ai, aj); } catch (e) { kind = 0; }
+                if (_hmm.cells.get(key) !== kind) { _hmm.cells.set(key, kind); _hmm.ver++; }
+                if (performance.now() - t0 > HQMM_ASK_MS) break;
+            }
+            Q.splice(0, qi);
+        }
+
+        /* the people in the window, from the room's own list */
+        var icons = [], chars = H.chars, ok = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : null;
+        var sig = boxKey + '|' + (window._ewMapLookV || 0) + '|' + _hmm.ver + '|' + pl.x.toFixed(1) + ',' + pl.z.toFixed(1) + ',' + (+pl.yaw || 0).toFixed(1);
+        for (var c = 0; c < chars.length; c++) {
+            var chr = chars[c]; if (!chr || chr === pl || chr.kind === 'player' || chr.away || !isFinite(chr.x) || !isFinite(chr.z)) continue;
+            var dx = chr.x / HQMM_SQ - px, dz = chr.z / HQMM_SQ - pz;
+            if (Math.abs(dx) > half || Math.abs(dz) > half) continue;
+            var col = (chr.cast || chr.kind === 'cast') ? 1 : (ok && ok(chr)) ? 2 : 0;
+            icons.push(dx, dz, col); sig += '|' + dx.toFixed(1) + ',' + dz.toFixed(1) + col;
+        }
+        var doors = _hqMmDoors(H);
+        var quest = (_hmm.quest && now - _hmm.questAt < 700) ? _hmm.quest : null;
+        if (quest) sig += '|q' + quest.x.toFixed(1) + ',' + quest.z.toFixed(1);
+        if (sig === _hmm.sig) { if (el.classList.contains('off')) el.classList.remove('off'); return; }
+        _hmm.sig = sig; _hmm.drawnAt = now;
+
+        var ctx = _hmm.ctx;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, _hmm.cv.width, _hmm.cv.height);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.save();
+        ctx.beginPath();
+        if (round) ctx.arc(cw / 2, ch / 2, Math.min(cw, ch) / 2, 0, Math.PI * 2); else ctx.rect(0, 0, cw, ch);
+        ctx.clip();
+        if (+L.bgOp > 0) { ctx.fillStyle = _mmRgba(L.bg, L.bgOp); ctx.fillRect(0, 0, cw, ch); }
+        var SX = function (sx) { return cw / 2 + (sx - px) * cell; }, SY = function (sz) { return ch / 2 + (sz - pz) * cell; };
+        /* the ground: walls grey, water blue */
+        for (j = j0; j <= j1; j++) for (i = i0; i <= i1; i++) {
+            var kd = _hmm.cells.get(_hqMmKey(i, j)); if (!kd) continue;
+            ctx.fillStyle = kd === 2 ? 'rgba(90,150,255,0.62)' : 'rgba(255,255,255,0.34)';
+            ctx.fillRect(Math.round(SX(i)), Math.round(SY(j)), Math.ceil(cell), Math.ceil(cell));
+        }
+        /* the grid, the battle minimap's own line */
+        var gw = +L.gridW;
+        if (gw > 0 && +L.gridOp > 0) {
+            ctx.lineWidth = Math.max(1, Math.round(gw * dpr)) / dpr; ctx.strokeStyle = _mmRgba(L.grid, L.gridOp);
+            var sh = (Math.round(gw * dpr) % 2) ? 0.5 / dpr : 0;
+            ctx.beginPath();
+            for (i = i0; i <= i1 + 1; i++) { var gx = Math.round(SX(i) * dpr) / dpr + sh; ctx.moveTo(gx, 0); ctx.lineTo(gx, ch); }
+            for (j = j0; j <= j1 + 1; j++) { var gy = Math.round(SY(j) * dpr) / dpr + sh; ctx.moveTo(0, gy); ctx.lineTo(cw, gy); }
+            ctx.stroke();
+        }
+        /* the doors and the ways out */
+        ctx.fillStyle = '#39ff6a'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+        var dr = cell * 0.36;
+        for (var d = 0; d < doors.length; d++) {
+            var ddx = doors[d].x / HQMM_SQ - px, ddz = doors[d].z / HQMM_SQ - pz;
+            if (Math.abs(ddx) > half + 0.5 || Math.abs(ddz) > half + 0.5) continue;
+            var qx = cw / 2 + ddx * cell, qy = ch / 2 + ddz * cell;
+            ctx.fillRect(qx - dr, qy - dr, dr * 2, dr * 2); ctx.strokeRect(qx - dr, qy - dr, dr * 2, dr * 2);
+        }
+        /* the people */
+        var ir = Math.max(2, cell * 0.5 * (+L.iconSize || 0.62));
+        for (var k = 0; k < icons.length; k += 3) {
+            var kc = icons[k + 2], rr = kc === 2 ? ir : ir * 0.8;
+            ctx.beginPath(); ctx.arc(cw / 2 + icons[k] * cell, ch / 2 + icons[k + 1] * cell, rr, 0, Math.PI * 2);
+            ctx.fillStyle = kc === 1 ? L.ally : kc === 2 ? L.foe : '#e6e6e6'; ctx.fill();
+            ctx.lineWidth = 1; ctx.strokeStyle = '#000'; ctx.stroke();
+        }
+        /* the quest: the gold diamond on its square, or at the edge with an arrow toward it */
+        if (quest) {
+            var gxq = (quest.x / HQMM_SQ - px) * cell, gyq = (quest.z / HQMM_SQ - pz) * cell, lim = cw / 2 - 11, far = false;
+            if (round) { var gd = Math.hypot(gxq, gyq); if (gd > lim) { far = true; gxq *= lim / gd; gyq *= lim / gd; } }
+            else { var gk = Math.max(Math.abs(gxq), Math.abs(gyq)); if (gk > lim) { far = true; gxq *= lim / gk; gyq *= lim / gk; } }
+            var gr = Math.max(5, cell * (far ? 0.42 : 0.5)), gX = cw / 2 + gxq, gY = ch / 2 + gyq;
+            ctx.beginPath(); ctx.arc(gX, gY, gr * 1.8, 0, Math.PI * 2); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,210,74,0.6)'; ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(gX, gY - gr); ctx.lineTo(gX + gr * 0.78, gY); ctx.lineTo(gX, gY + gr); ctx.lineTo(gX - gr * 0.78, gY); ctx.closePath();
+            ctx.fillStyle = '#ffd24a'; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#000'; ctx.stroke();
+            if (far) {
+                var ga = Math.atan2(gyq, gxq);
+                ctx.save(); ctx.translate(gX, gY); ctx.rotate(ga);
+                ctx.beginPath(); ctx.moveTo(gr + 6, 0); ctx.lineTo(gr + 1, -4); ctx.lineTo(gr + 1, 4); ctx.closePath();
+                ctx.fillStyle = '#ffd24a'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#000'; ctx.stroke();
+                ctx.restore();
+            }
+        }
+        /* you: the arrow, the way the body faces (yaw π = north) */
+        var yw = +pl.yaw || 0, ar = Math.max(7, cell * 0.7);
+        ctx.save(); ctx.translate(cw / 2, ch / 2); ctx.rotate(Math.atan2(Math.cos(yw), Math.sin(yw)) + Math.PI / 2);
+        ctx.beginPath(); ctx.moveTo(0, -ar); ctx.lineTo(ar * 0.62, ar * 0.72); ctx.lineTo(0, ar * 0.3); ctx.lineTo(-ar * 0.62, ar * 0.72); ctx.closePath();
+        ctx.fillStyle = L.ally; ctx.fill(); ctx.lineWidth = 1.25; ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.restore();
+        ctx.restore();
+        /* the frame */
+        var fw = +L.frameW;
+        if (fw > 0 && +L.frameOp > 0) {
+            ctx.lineWidth = fw; ctx.strokeStyle = _mmRgba(L.frame, L.frameOp);
+            ctx.beginPath();
+            if (round) ctx.arc(cw / 2, ch / 2, Math.min(cw, ch) / 2 - fw / 2, 0, Math.PI * 2); else ctx.rect(fw / 2, fw / 2, cw - fw, ch - fw);
+            ctx.stroke();
+        }
+        if (el.classList.contains('off')) el.classList.remove('off');
+    }
     function _mmUpdate() {
         var W = (typeof bw === 'function') ? bw() : (state.boardTerrain[0] ? state.boardTerrain[0].length : 0);
         var H = (typeof bh === 'function') ? bh() : state.boardTerrain.length;
@@ -54984,6 +55230,7 @@ const ThreeRenderer = (function () {
                 return;
             }
             /* Mystery Dungeon floors get the vector SCANNER instead. */
+            _hqMmHide();   // THE EXPLORATION MINIMAP leaves for a fight
             if (_mdScannerActive()) { _mmHide(); _drawMdScanner(); return; }
             if (_miniWrap && _miniWrap.classList.contains('md-scanner')) {
                 _miniWrap.classList.remove('md-scanner');
@@ -68197,7 +68444,8 @@ const ThreeRenderer = (function () {
         var def = res.def;
         // the accent stains the summoning circle
         if (opts.accent) { try { v.circleMat.color.set(opts.accent); } catch (_e) {} }
-        if (v.url === def.model && v.model) {              // same character
+        var holdId = ((def.hold && def.hold.key) || '') + '|' + ((def.hold2 && def.hold2.key) || '');   // THE WEAPONS IN THE HANDS 11-22: two looks on one body differ by what they hold (pirate -> sheriff kept the cutlass)
+        if (v.url === def.model && v.model && v.holdId === holdId) {              // same character
             if (v.appearanceRig) {
                 // A slider drag fires many changes per frame; the rig rebuild
                 // (30k-tri body, garment cuts, a 1024² face bake) is heavy, so
@@ -68253,6 +68501,7 @@ const ThreeRenderer = (function () {
         // GLB resolves synchronously below, so the ring never flashes then.
         _cvHostState(host, 'loading');
         v.url = def.model;
+        v.holdId = holdId;
         // fresh mount = fresh framing (straight on — polar 0)
         // THE FACE CAMERA: a body swapped while the creator is on the face stays on the face
         v.yaw = 0; v.polar = v.ccZone === 'face' ? CV_FACE_POLAR : 0; v.polarTo = null; v.zoom = 1; v.lastTouch = 0; v.focusHead = v.ccZone === 'face';
@@ -68311,6 +68560,7 @@ const ThreeRenderer = (function () {
             /* THE RACE LOOKS (2026-11-01): a def's held prop (the cowboy's revolver, the Door Agent's gun) in the viewer too, at the
                board's gun-to-body ratio (the board's body = ts × UNIT_SPRITE_SIZE_RATIO × heightRatio; here = heightRatio) */
             if (def.hold) { try { _unitAttachHeld(m, def.hold, 1 / UNIT_SPRITE_SIZE_RATIO); } catch (_he) { console.warn('[3D] viewer held prop failed', _he); } }
+            if (def.hold2) { try { _unitAttachHeld(m, def.hold2, 1 / UNIT_SPRITE_SIZE_RATIO); } catch (_he2) { console.warn('[3D] viewer second held prop failed', _he2); } }
             // wrap (frame-loop yaw) → inner (authored yawOffset) → model —
             // same nesting as the board, so the turntable never clobbers a
             // model's authored facing correction.
@@ -96433,6 +96683,7 @@ const ThreeRenderer = (function () {
         if (!H.paused && H.ready && _hqClockMsLast && typeof window !== 'undefined' && typeof window._hqClockAdvance === 'function') { try { window._hqClockAdvance(Math.min(1, (now - _hqClockMsLast) / 1000)); } catch (e) {} }
         _hqClockMsLast = now;
         H.lastMs = now;
+        try { _hqMmUpdate(H, now); } catch (eMm) {}   // THE EXPLORATION MINIMAP (its own 50 ms pace)
         /* resize to the host */
         var host = H.host;
         /* THE SIZE BY OBSERVER (2026-11-19, mondo's Firefox profile: "get Element.clientWidth 0.67 ms a frame", each read forcing the
@@ -104791,6 +105042,7 @@ const ThreeRenderer = (function () {
             if (!obj) return null;
             var v = new THREE.Vector3(); obj.getWorldPosition(v);
             var pl = _hq.player, dist = Math.hypot(v.x / U - pl.x, v.z / U - pl.z);
+            _hmm.quest = { x: v.x / U, z: v.z / U }; _hmm.questAt = performance.now();   // THE EXPLORATION MINIMAP: the diamond's metres
             v.y += up * U;
             var cam = _hq.camera, e = cam.matrixWorldInverse.elements;
             var front = (e[2] * v.x + e[6] * v.y + e[10] * v.z + e[14]) < 0;   // view-space z: negative = in front

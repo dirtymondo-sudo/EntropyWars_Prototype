@@ -4499,6 +4499,13 @@ EW_MH_WEAR.push(['ewm_t2politician_outfit', 'Politician suit (Meshy remake)', 'e
   ['ewm_t2superhero_outfit', 'Superhero suit + cape (Meshy remake)', 'equipment', 40],
   ['ewm_t2superherof_outfit', 'Superheroine suit + cape (Meshy remake)', 'equipment', 40],
   ['ewm_t2swordfighter_outfit', 'Swordfighter jacket (Meshy remake)', 'equipment', 40],
+  /* THE WEAPONS IN THE HANDS (2026-11-22): the six units whose weapon is their identity and had no MPFB version */
+  ['ewm_t2swordfighterm_hat', 'Swordfighter (him) topknot (Meshy remake)', 'hats', 56], ['ewm_t2swordfighterm_outfit', 'Swordfighter (him) kimono + hakama (Meshy remake)', 'equipment', 40],
+  ['ewm_t2shogun_hat', 'Shogun helmet (Meshy remake)', 'hats', 56], ['ewm_t2shogun_outfit', 'Shogun armour (Meshy remake)', 'equipment', 40],
+  ['ewm_t2gladiator_hat', 'Gladiator helmet (Meshy remake)', 'hats', 56], ['ewm_t2gladiator_outfit', 'Gladiator outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2gladiatorf_hat', 'Gladiator (her) helmet (Meshy remake)', 'hats', 56], ['ewm_t2gladiatorf_outfit', 'Gladiator (her) outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2ninja_hat', 'Ninja hood (Meshy remake)', 'hats', 56], ['ewm_t2ninja_outfit', 'Ninja suit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2ninjaf_hat', 'Ninja (her) hair tie (Meshy remake)', 'hats', 56], ['ewm_t2ninjaf_outfit', 'Ninja (her) outfit (Meshy remake)', 'equipment', 40],
   ['ewm_t2telepath_outfit', 'Telepath coat (Meshy remake)', 'equipment', 40],
   ['ewm_t2timecop_hat', 'Time headgear (Meshy remake)', 'hats', 56],
   ['ewm_t2timecop_outfit', 'Time Cop armour (Meshy remake)', 'equipment', 40],
@@ -5068,6 +5075,7 @@ const EW_WEAR_SHELF_MOVE = {
   ewf_fur: 'fur', ewf_fur_werewolf: 'fur',   // THE FUR (category 'underwear' for the layering, its own tab)
 };
 /* REMAKE BATCH 3 OF 3 (2026-11-13, docs/notes/meshy-remake-batches.md: politician .. wizard F) */
+Object.assign(EW_WEAR_SHELF_MOVE, { ewm_t2swordfighterm_outfit: 'armour', ewm_t2shogun_outfit: 'armour', ewm_t2gladiator_outfit: 'armour', ewm_t2gladiatorf_outfit: 'armour', ewm_t2ninja_outfit: 'armour', ewm_t2ninjaf_outfit: 'armour' });   // THE WEAPONS IN THE HANDS 11-22
 Object.assign(EW_WEAR_SHELF_MOVE, { ewm_t2politician_outfit: 'armour', ewm_t2priest_outfit: 'armour', ewm_t2nun_outfit: 'armour', ewm_t2professor_outfit: 'armour', ewm_t2ringmaster_outfit: 'armour', ewm_t2santa_outfit: 'armour', ewm_t2scarecrow_outfit: 'armour', ewm_t2shaman_outfit: 'armour', ewm_t2sheriff_outfit: 'armour', ewm_t2sidekick_outfit: 'armour', ewm_t2spy_outfit: 'armour', ewm_t2succubus_outfit: 'armour', ewm_t2superhero_outfit: 'armour', ewm_t2superherof_outfit: 'armour', ewm_t2swordfighter_outfit: 'armour', ewm_t2telepath_outfit: 'armour', ewm_t2timecop_outfit: 'armour', ewm_t2valkraye_outfit: 'armour', ewm_t2vampire_outfit: 'armour', ewm_t2witch_outfit: 'armour' });
 /* (end of remake batch 3) */
 /* T2 SHELF B1 >>> (meshy-remake-batches.md batch 1 of 3, 2026-11-13; written by the thread, edit by hand freely) */
@@ -6402,6 +6410,47 @@ RACE_CREATOR_LOOKS['vtuber'] = {
 const RACE_CREATOR_LOOK_DEFS = {
   'streamer': { basicAttackKind: 'punch' },   // 2026-11-18 THE STREAMER + E-GIRL: the keyboard slam (nothing held; the VFX throws the keycaps)
   'vtuber': { basicAttackKind: 'magic' },   // 2026-11-18 THE V-TUBER: the pixel heart bolt (a cast, nothing held)
+  /* THE WEAPONS IN THE HANDS (2026-11-22, mondo: "hold their weapons correctly with their fingers and have their weapon models separate"):
+     a creator-body look of the race holds its weapon in the closed fist (THE GRIP, THE SEAT). `grip` is read off the weapon GLB:
+     c = the handle's centre, down = toward the pommel, barrel = the way the edge leads. The Meshy model of the race is untouched. */
+  'swordfighter': { hold: { key: 'kt_katana', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
+    grip: { c: [0.31, -0.013, 0], down: [1, 0, 0], barrel: [0, -1, 0], cant: 35, depth: 0.25, back: 0.22 } } },   // the katana (edge = the outside of the curve)
+  'shogun': { hold: { key: 'kt_katana', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
+    grip: { c: [0.31, -0.013, 0], down: [1, 0, 0], barrel: [0, -1, 0], cant: 35, depth: 0.25, back: 0.22 } },
+    hold2: { key: 'wp_war_fan', bone: 'LeftHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.5,   // the iron war fan, open, in the other hand
+    grip: { c: [0, -0.04, 0], down: [0, -1, 0], barrel: [1, 0, 0], depth: 0.25, back: 0.22 } } },
+  'gladiator': { hold: { key: 'wp_gladius', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.7,
+    grip: { c: [0.33, 0, 0], down: [1, 0, 0], barrel: [0, -1, 0], cant: 35, depth: 0.25, back: 0.22 } } },
+  'ninja': { hold: { key: 'wp_shuriken', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.13,   // a star in the fist, its points between the fingers
+    grip: { c: [0, 0, 0], down: [0, -1, 0], barrel: [1, 0, 0], depth: 0.25, back: 0.22 } } },
+  'knight': { hold: { key: 'sword', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
+    grip: { c: [0, 0.59, 0], down: [0, 1, 0], barrel: [1, 0, 0], cant: 35, depth: 0.25, back: 0.22 } } },   // the master sword (the GLB is tip-down)
+  'king arthur': { hold: { key: 'wp_excalibur', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.15,
+    grip: { c: [0.335, 0, 0], down: [1, 0, 0], barrel: [0, -1, 0], cant: 35, depth: 0.25, back: 0.22 } } },
+  'pirate': { hold: { key: 'wp_cutlass', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.8,
+    grip: { c: [0.28, 0, 0], down: [1, 0, 0], barrel: [0, -1, 0], cant: 35, depth: 0.25, back: 0.22 } } },   // the hand inside the basket guard
+  'sheriff': { hold: { key: 'shotgun', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
+    grip: { c: [0.45, 0.02, 0], down: [0.45, -0.9, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },   // by the wrist of the stock
+  'marksman': { hold: { key: 'sniper', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.2,
+    grip: { c: [0.36, -0.15, 0], down: [0.2, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },   // the pistol grip
+  'gangster': { hold: { key: 'pistol', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.22,
+    grip: { c: [0.6, -0.25, 0], down: [0.15, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },
+  'spy': { hold: { key: 'pistol', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.2,
+    grip: { c: [0.6, -0.25, 0], down: [0.15, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },
+  'barbarella': { hold: { key: 'plasma', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.42,
+    grip: { c: [0.7, -0.2, 0], down: [0.1, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },
+  'police officer': { hold: { key: 'psx_police_baton_mp_1', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.64,
+    grip: { c: [0, 0.015, 0.1], down: [0, 0, 1], barrel: [1, 0, 0], cant: 35, depth: 0.25, back: 0.22 } } },   // the nightstick, by its short end
+  'wizard': { hold: { key: 'item_wizard_staff', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.7,   // mondo 11-22: "staff"; the raised-arm idle comes with the animations
+    grip: { c: [0, -0.03, 0], down: [0, -0.94, 0.34], barrel: [1, 0, 0], cant: -80, depth: 0.25, back: 0.22 } } },
+  'time cop': { hold: { key: 'revolver', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.21,   // mondo 11-22: his weapon switches with the spell (the spell threads); at rest, the revolver
+    grip: { c: [0.657, -0.215, 0], down: [0.404, -0.915, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },
+  'popstar': { hold: { key: 'meshy_microphone', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.25,
+    grip: { c: [0, -0.2, 0], down: [0, -1, 0], barrel: [0, 0, 1], depth: 0.25, back: 0.22 } } },
+  'scarecrow': { hold: { key: 'wp_sickle', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.45,
+    grip: { c: [0, -0.24, 0], down: [0, -1, 0], barrel: [1, 0, 0], cant: 35, depth: 0.25, back: 0.22 } } },
+  'men in black': { hold: { key: 'wp_deneuralizer', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.2,
+    grip: { c: [-0.2, 0, 0], down: [-1, 0, 0], barrel: [0, 1, 0], depth: 0.25, back: 0.22 } } },
   'cowboy': { basicAttackKind: 'ranged', hold: { key: 'revolver', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.21,
     grip: { c: [0.657, -0.215, 0], down: [0.404, -0.915, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },   // THE GRIP, THE SEAT: the revolver GLB's handle (three-renderer.js _gripFrame)
 };
@@ -6438,7 +6487,7 @@ const RACE_REMADE_LOOKS = {
     /* her own Meshy face (mondo 11-12: "i want it anyway and for you to clean it up"): the saved look's face sliders are zeroed, they were
        shaping a stock face (his cat ears, neck, eyes, lashes, lips and hair stay); her fringe hides the brows in the old model, so the look picks a pair */
     _ewFaceSlidersZeroed(), { "catgirlFace": 1, "mhSkin": "ew_face_catgirl", "skinTint": "own", "mhBrows": "eyebrow006", "browTint": "pick", "browColor": "#17140f" }) },
-  'robinhood': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"robinhoodFace":1,"mhSkin":"ew_face_robinhood","mhEyes":"brown","mhBrows":"own","hair":"bald","hairColor":"#5a3a22","browColor":"#4a3020","browTint":"pick","idle":"Idle_11","wear":["ewm_t2robinhood_outfit"] } },
+  'robinhood': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"robinhoodFace":1,"mhSkin":"ew_face_robinhood","mhEyes":"brown","mhBrows":"own","hair":"bald","hairColor":"#5a3a22","browColor":"#4a3020","browTint":"pick","idle":"Idle_11","wear":["ewm_t2robinhood_outfit","mhw_culturalibre_wooden_bow","ewm_quiver"] } },   // THE WEAPONS IN THE HANDS 11-22: the pack bow (left hand) + the quiver
   'quarterback': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"mhSkin":"young_caucasian_male","mhEyes":"brown","mhBrows":"eyebrow001","hair":"bald","hairColor":"#2a1d14","browColor":"#2a1d14","browTint":"pick","idle":"Idle_11","wear":["ewm_t2quarterback_hat","ewm_t2quarterback_outfit"] } },
   /* remake batch 2 of 3 (2026-11-13, meshy-remake-batches.md; mondo: creator pieces first, Meshy for what the creator lacks): the five with a
      saved creator look (halfdemon M + F, mad scientist M + F, men in black) keep its clothes on the MPFB body and take the unit's own face */
@@ -6494,6 +6543,16 @@ for (const [race, gender, look] of [
   ['wizard', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.94,"mhSkin":"ew_face_witch","mhEyes":"brown","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"mh_long01","hairColor":"#5a2a1c","browColor":"#4a2418","wear":["mhw_elvs_witchy_hallows_hat1","ewm_t2witch_outfit"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"witchFace":1,"browTint":"pick","idle":"Idle_11"}],
   ['sidekick', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"mhSkin":"young_caucasian_male","mhEyes":"brown","mhBrows":"eyebrow001","hair":"mh_short02","hairColor":"#8a1a14","browColor":"#3a2a1c","wear":["ewm_t2sidekick_outfit","mhw_culturalibre_hero_mask_1"],"browTint":"pick","idle":"Idle_11"}],
 ]) (RACE_REMADE_LOOKS[race] = RACE_REMADE_LOOKS[race] || {})[gender] = look;
+/* THE WEAPONS IN THE HANDS (2026-11-22, mondo: MPFB versions for the units whose weapon is their identity): first pass, stock faces */
+for (const [race, gender, look] of [
+  ['swordfighter', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","height":1,"mhEyes":"brown","mhBrows":"own","hair":"mh_short01","hairColor":"#17181a","browColor":"#17181a","browTint":"pick","wear":["ewm_t2swordfighterm_hat","ewm_t2swordfighterm_outfit"]}],
+  ['shogun', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","height":1,"mhEyes":"brown","mhBrows":"own","hair":"bald","hairColor":"#8a8a88","browColor":"#8a8a88","browTint":"pick","wear":["ewm_t2shogun_hat","ewm_t2shogun_outfit"]}],
+  ['gladiator', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","height":1,"mhEyes":"brown","mhBrows":"own","hair":"bald","hairColor":"#3a2a1c","browColor":"#3a2a1c","browTint":"pick","wear":["ewm_t2gladiator_hat","ewm_t2gladiator_outfit"]}],
+  ['gladiator', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","height":0.96,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhEyes":"brown","hair":"mh_long01","hairColor":"#5a2418","browColor":"#3a1a12","browTint":"pick","wear":["ewm_t2gladiatorf_hat","ewm_t2gladiatorf_outfit"]}],
+  ['ninja', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","height":1,"mhEyes":"brown","mhBrows":"own","hair":"bald","hairColor":"#17181a","browColor":"#17181a","browTint":"pick","wear":["ewm_t2ninja_hat","ewm_t2ninja_outfit"]}],
+  ['ninja', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","height":0.96,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhEyes":"brown","hair":"mh_ponytail01","hairColor":"#17181a","browColor":"#17181a","browTint":"pick","wear":["ewm_t2ninjaf_hat","ewm_t2ninjaf_outfit"]}],
+]) (RACE_REMADE_LOOKS[race] = RACE_REMADE_LOOKS[race] || {})[gender] = look;
+
 /* (end of remake batch 3) */
 /* T2 LOOKS B1 >>> (meshy-remake-batches.md batch 1 of 3, 2026-11-13; written by the thread, edit by hand freely) */
 Object.assign(RACE_REMADE_LOOKS['annunaki'] || (RACE_REMADE_LOOKS['annunaki'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"feathered","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_annunaki","mhEyes":"blue","hair":"mh_long01","hairColor":"#17140f","browColor":"#17140f","browTint":"pick","wingsColor":"#6b5a48","wear":["ewm_anunnakihat","ewm_t2annunaki_outfit"],"annunakiFace":1,"mhBrows":"own"} });
