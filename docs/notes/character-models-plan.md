@@ -508,6 +508,11 @@ the Claude Doc "Weapon-holding units: who gets an MPFB version".
   elbows; cause not found). A second T2 run of the same picture (`weapon-hands/units/ninjaf_t2b.glb`, 15 credits) came out with clean
   shells: baked plain with `EDGECLEAN=6 HOLEFILL=24 SHOWRING=2`. Her look no longer wears `ewm_t2ninjaf_hat` (the hair tie came out
   as floating bits; the ponytail is pack hair). LESSON: when the skin is fused into a garment's shell, regenerate first.
+  THE OTHER TWO REGENERATED (same day, the coordinator on mondo's "fix those issues"): swordfighter M (`swordfighterm_t2b.glb`, baked
+  `EDGECLEAN=6 HOLEFILL=24 SLEEVESEED=0.15 SLEEVER=0.24`, no SHOWRING: the collar's V is whole with its white undershirt; still a
+  slit at the armpit of the wide sleeve and pointed shoulder tops) and gladiator F (`gladiatorf_t2b.glb`, `--headgear EDGECLEAN=6
+  HOLEFILL=24 SHOWRING=2`: clean greaves and thighs, an open-faced helmet). Ninja F's loose hair strands by the collarbones and neck:
+  `DROP='-0.08,0.23,-0.09,0.13;0.034,0.023,-0.162,0.03'` on the t2b bake.
 
 ---
 
