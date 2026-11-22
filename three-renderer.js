@@ -76535,6 +76535,7 @@ const ThreeRenderer = (function () {
                ('wall' | 'glass' | 'over' = a cut-out decal), tintTop / tintEnd (the tint of keyTop / keyEnd: none = untinted), ds (two-sided), roof (true = hidden with HIDE ROOFS, as a building's roof),
                uv (metres a sheet repeat spans: a number or [u, v]; 'fit' = the sheet once across each face),
                n + step: [dx, dy, dz] (the part n times, stepped) · ring: { n, r, a0 } (the part n times round a circle, each turned outward) }
+               shear: [rise, depth] (the part's +z end `rise` m higher than its -z end, `depth` = its length along z: a ramp's wall, the paint on a ramp)
        SHAPES  box    size: [w, h, d] · keyTop · top: false · sides: false · faces: 'fblr' (which sides: front +z, back, left -x, right) · under: true (the underside, an overhang)
                cyl    r, h · r2 (the top's radius: a taper, 0 = a cone) · seg · arc + a0 (degrees: a curved wall) · ri (hollow: a ring / a drum's rim) · cap: false
                dome   r, h (none = r) · rz (an oval plan) · arc + a0 (degrees: a half dome, a band shell; give it ds: true) · seg · rings
@@ -76605,6 +76606,7 @@ const ThreeRenderer = (function () {
             };
             var put = function (g, v, uv) {   // a vertex in the part's frame → the room's metres
                 var lx = pp[0] + v[0] * pc + v[2] * ps, ly = pp[1] + v[1], lz = pp[2] - v[0] * ps + v[2] * pc;
+                if (P.shear) ly += (+P.shear[0] || 0) * (v[2] / (+P.shear[1] || 1) + 0.5);   // THE RAISED HIGHWAY (2026-11-22): `shear: [rise, depth]` = the part's +z end stands `rise` m over its -z end (a ramp's parapet, the paint on a ramp): `depth` = the part's own length along z
                 var wx = row.x + lx * rc + lz * rs, wz = row.z - lx * rs + lz * rc, gy = base;
                 if (typeof row.ground === 'function') { var gh = row.ground(wx, wz); if (isFinite(gh)) gy = gh; }   // THE HUGGING ROWS (data.js): each corner on the ground under it
                 g.pos.push(wx, gy + ly, wz); g.uv.push(uv[0], uv[1]);
@@ -77775,6 +77777,39 @@ const ThreeRenderer = (function () {
             pieces.forEach(function (g) { var ck = 'edge:' + g._ew_hqEdgeLand; g._ew_chunk = ck; C.cells[ck] = g; C.root.add(g); _hqChunkReg(H, g, 1e12); });
         } else pieces.forEach(function (g) { G.add(g); });
         if (seaG && seaG.children.length) G.add(seaG);
+        /* THE ROAD RUNS ON PAST THE LINE (2026-11-22, mondo on the highway's cross road: "make sure the road doesnt abruptly stop at teh edge of the map,
+           need to see the road continue beyond it"): `edges.roads: [{ side, at, w, key, len, line }]` = a road that leaves the room across `side` at `at`
+           (metres along it) is drawn on over the land past the line, `w` wide, `len` m out (the land's reach by default), in the sheet `key`. It rides the
+           land's own height under its middle line, level across, on a low bank of earth where the land falls away to one side; `line` = a paint line
+           down its middle (0xRRGGBB). Nobody walks it: it is the land's, like the land. No tree of the land stands on it (below). */
+        var ROADS = Array.isArray(E.roads) ? E.roads.filter(function (q) { return q && /^[nsew]$/.test(q.side) && isFinite(+q.at); }) : [];
+        var roadPt = function (q, dd, off) { var a = +q.at + off; return q.side === 'w' ? [R.x0 - dd, a] : q.side === 'e' ? [R.x1 + dd, a] : q.side === 'n' ? [a, R.z0 - dd] : [a, R.z1 + dd]; };
+        ROADS.forEach(function (q, qi) {
+            try {
+                var w = +q.w || 7, len = Math.min(+q.len || F.reach, F.reach), stepR = 5, n = Math.max(2, Math.round(len / stepR)), hw = w / 2;
+                var pos = [], uv = [], idx = [], pos2 = [], idx2 = [], pos3 = [], idx3 = [], ys = [];
+                for (var k = 0; k <= n; k++) { var dd = len * k / n - (k ? 0 : 0.6), c0 = roadPt(q, dd, 0), l0 = roadPt(q, dd, -hw), r0 = roadPt(q, dd, hw); ys.push(Math.max(F.at(c0[0], c0[1]).y, F.at(l0[0], l0[1]).y, F.at(r0[0], r0[1]).y)); }
+                for (var sm2 = 0; sm2 < 3; sm2++) for (var k2 = 1; k2 < n; k2++) ys[k2] = Math.max(ys[k2], (ys[k2 - 1] + ys[k2 + 1]) / 2);   // no dip between two crests: the road bridges it on its bank
+                ys[0] = Math.max(ys[0], F.at(roadPt(q, 0, 0)[0], roadPt(q, 0, 0)[1]).eH || 0);   // at the line itself: the room's own ground
+                for (var k3 = 0; k3 <= n; k3++) {
+                    var d3 = len * k3 / n - (k3 ? 0 : 0.6), L3 = roadPt(q, d3, -hw), R3 = roadPt(q, d3, hw), y3 = ys[k3] + 0.2 + Math.min(0.5, d3 / 30);
+                    pos.push(L3[0] * U, y3 * U, L3[1] * U, R3[0] * U, y3 * U, R3[1] * U); uv.push(0, d3 * U / TM, w * U / TM, d3 * U / TM);
+                    var L4 = roadPt(q, d3, -hw - 2.2), R4 = roadPt(q, d3, hw + 2.2), yb = y3 - 3.2;
+                    pos2.push(L3[0] * U, y3 * U, L3[1] * U, L4[0] * U, yb * U, L4[1] * U, R3[0] * U, y3 * U, R3[1] * U, R4[0] * U, yb * U, R4[1] * U);
+                    if (q.line != null) { var La = roadPt(q, d3, -0.09), Lb = roadPt(q, d3, 0.09); pos3.push(La[0] * U, (y3 + 0.02) * U, La[1] * U, Lb[0] * U, (y3 + 0.02) * U, Lb[1] * U); }
+                    if (k3 > 0) { var a3 = (k3 - 1) * 2; idx.push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2); idx3.push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2);
+                        var b3 = (k3 - 1) * 4; idx2.push(b3, b3 + 1, b3 + 4, b3 + 1, b3 + 5, b3 + 4, b3 + 2, b3 + 6, b3 + 3, b3 + 3, b3 + 6, b3 + 7); }
+                }
+                var mkR = function (P3, I3, UV3, mat) { var g3 = new THREE.BufferGeometry(); g3.setAttribute('position', new THREE.Float32BufferAttribute(P3, 3)); if (UV3) g3.setAttribute('uv', new THREE.Float32BufferAttribute(UV3, 2)); g3.setIndex(I3); g3.computeVertexNormals(); g3.computeBoundingSphere();
+                    var m3 = new THREE.Mesh(g3, mat); m3.position.y = 0.2; m3.receiveShadow = false; m3.castShadow = false; m3.renderOrder = 1; m3._ew_hqPart = 'floor'; m3._ew_hqOuter = true; m3._ew_hqEdgeLand = 'road' + qi; return m3; };
+                var gR = new THREE.Group(); gR.name = 'hq_edge_road'; gR._ew_hqEdgeLand = 'road' + qi;
+                gR.add(mkR(pos2, idx2, null, new THREE.MeshLambertMaterial({ color: 0x6e5a44, side: THREE.DoubleSide })));
+                gR.add(mkR(pos, idx, uv, new THREE.MeshLambertMaterial({ map: _hzTex(q.key || 'urban:RoadGeneric1a') || null, color: 0xffffff, side: THREE.DoubleSide })));
+                if (pos3.length) gR.add(mkR(pos3, idx3, null, new THREE.MeshLambertMaterial({ color: q.line, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })));
+                G.add(gR);
+            } catch (e) { console.warn('[HQ] an edge road failed', e); }
+        });
+        var onEdgeRoad = function (px, pz) { for (var qi2 = 0; qi2 < ROADS.length; qi2++) { var q2 = ROADS[qi2], ns2 = (q2.side === 'n' || q2.side === 's'); if (Math.abs((ns2 ? px : pz) - (+q2.at)) < (+q2.w || 7) / 2 + 3.5 && (q2.side === 'w' ? px < R.x0 + 2 : q2.side === 'e' ? px > R.x1 - 2 : q2.side === 'n' ? pz < R.z0 + 2 : pz > R.z1 - 2)) return true; } return false; };
         /* THE TREES: the forest's tall trees to 60 m (the fog has them by then), thinning; a skirt of pines on the mountains' feet */
         var planted = 0;
         if (typeof plantTree === 'function') {
@@ -77787,6 +77822,7 @@ const ThreeRenderer = (function () {
                 if (tx > R.x0 - 2 && tx < R.x1 + 2 && tz > R.z0 - 2 && tz < R.z1 + 2) continue;
                 var px = tx + (a - 0.5) * 3.2, pz = tz + (b2 - 0.5) * 3.2, P = F.at(px, pz);
                 if (P.d < 1.8 || P.d > 60) continue;
+                if (ROADS.length && onEdgeRoad(px, pz)) continue;   // THE ROAD RUNS ON: no tree on it
                 var thin = E.deep ? (P.d < 44 ? 1 : 0.6) : P.d < 22 ? 1 : P.d < 40 ? 0.5 : 0.28; if (low) thin *= 0.6;   /* `edges.deep: true` (2026-11-20, The Woods): a room deep in a wood, the trees past its line stay thick to the end of the planting, so no flat land shows between the trunks */
                 if (P.W.forest > 0.5) { if (c2 > thin * P.W.forest) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if ((E[P.side] || {}).bare) continue; if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
@@ -78700,12 +78736,12 @@ const ThreeRenderer = (function () {
                     if (Lp) [-1, 1].forEach(function (sx) { var hl = _hzGlowSprite(0.42 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(sx * Lp.hx, Lp.hy, Lp.hz); g.add(hl); var tl = _hzGlowSprite(0.28 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(sx * Lp.tx, Lp.ty, Lp.tz); g.add(tl); });
                     if (kind === 'citybus') { try { _hqCityBusMarks(g, U); } catch (e) {} }   // THE CITY MARKS: Bus Line 1 wears the city's shield
                     g._ew_hqCar = kind; g._ew_bunOut = true; G.add(g);   // THE MOVERS OUT: a car drives; the shell's recording stays still
-                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, narrow: rt.narrow || null, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
+                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, narrow: rt.narrow || null, deck: !!rt.deck, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
                 }
             });
         } finally { _hzKitTs = prevTs; }
         if (!cars.length) return;
-        cars.forEach(function (car) { var p = _hqRoutePose(car, car.s); car.g.position.set(p.x * U, hqTerrainHeight(info, p.x, p.z) * U + 0.3, p.z * U); car.g.rotation.y = Math.atan2(p.dx, p.dz); car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; });
+        cars.forEach(function (car) { var p = _hqRoutePose(car, car.s); car.g.position.set(p.x * U, _hqCarGround(info, car, p.x, p.z) * U + 0.3, p.z * U); car.g.rotation.y = Math.atan2(p.dx, p.dz); car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; });
         H.traffic = cars;
         H.tickers.push(function (dt) { _hqTickTraffic(dt); });
     }
@@ -78777,6 +78813,14 @@ const ThreeRenderer = (function () {
             HH.dirty = true;
         });
     }
+    /* THE RAISED HIGHWAY (2026-11-22, mondo: "actual highway architecture, raised off the ground"): a traffic route wearing `deck: true` drives on
+       the bridge layer where a slab lies under its line (the highway's deck on its pillars) and on the field everywhere else (the ramps up to it).
+       A route without it reads the field as before, so a car on the road UNDER the deck stays under it. */
+    function _hqCarGround(info, car, x, z) {
+        var gy = hqTerrainHeight(info, x, z);
+        if (car && car.deck && info.bridges && info.bridges.length && typeof hqTerrainBridgeBelow === 'function') { var b = hqTerrainBridgeBelow(info, x, z, 1e6); if (b && b.y > gy) gy = b.y; }
+        return gy;
+    }
     function _hqTickTraffic(dt) {
         var H = _hq, cars = H && H.traffic; if (!cars || !cars.length || H.paused) return;
         var U = _hqUnits(), info = H.terrain, pl = H.player, R = H.ride;
@@ -78837,18 +78881,18 @@ const ThreeRenderer = (function () {
                 var look = Math.max(adv, car.v * 1.2 + car.len / 2 + 2);
                 for (var ahead = 0; ahead <= look + 0.5; ahead += 0.5) {
                     var sampleS = (car.s + Math.min(ahead, look)) % car.L, q = _hqRoutePose(car, sampleS);
-                    if (Math.abs(pl.y - (car.yAt ? car.yAt(sampleS) : hqTerrainHeight(info, q.x, q.z))) < 1.8 && Math.hypot(pl.x - q.x, pl.z - q.z) < 1.65) { adv = 0; break; }
+                    if (Math.abs(pl.y - (car.yAt ? car.yAt(sampleS) : _hqCarGround(info, car, q.x, q.z))) < 1.8 && Math.hypot(pl.x - q.x, pl.z - q.z) < 1.65) { adv = 0; break; }
                 }
             }
             car.s += adv;
             if (car.loop) { if (car.s >= car.L) car.s -= car.L; }
             else if (car.s >= car.L) car.s = 0;   // off the end of the avenue, back on at the start (the city continues past the wall)
             /* G5: a car on the land rides its road's own graded line (car.yAt), pitched with it; a terrain room's reads its field */
-            var p = _hqRoutePose(car, car.s), gy = car.yAt ? car.yAt(car.s) : hqTerrainHeight(info, p.x, p.z);
+            var p = _hqRoutePose(car, car.s), gy = car.yAt ? car.yAt(car.s) : _hqCarGround(info, car, p.x, p.z);
             car.g.position.set(p.x * U, gy * U + (car.yAt ? 0 : 0.3), p.z * U);
             car.g.rotation.y = Math.atan2(p.dx, p.dz);
             if (car.yAt) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((car.yAt(car.s + 2) - car.yAt(car.s - 2)) / 4); }
-            else if (info.slope) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((hqTerrainHeight(info, p.x + p.dx * 2, p.z + p.dz * 2) - hqTerrainHeight(info, p.x - p.dx * 2, p.z - p.dz * 2)) / 4); }   // G7: pitched with the city's slope
+            else if (info.slope) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((_hqCarGround(info, car, p.x + p.dx * 2, p.z + p.dz * 2) - _hqCarGround(info, car, p.x - p.dx * 2, p.z - p.dz * 2)) / 4); }   // G7: pitched with the city's slope
             car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; car.y = gy;
             /* THE CITY TRAFFIC: a car far from the eye is not drawn (it still drives) */
             if (H.camera) { var ce2 = H.camera.matrixWorld.elements, fx2 = car.g.position.x - ce2[12], fz2 = car.g.position.z - ce2[14], far2 = _HQ_SIGNAL.carFarM * U; var see2 = (typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL) || fx2 * fx2 + fz2 * fz2 < far2 * far2; if (car.g.visible !== see2) car.g.visible = see2; }

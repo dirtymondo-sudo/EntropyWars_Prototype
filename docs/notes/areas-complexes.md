@@ -14075,3 +14075,39 @@ sense since i wouldnt be driving in the middle of the road. Its an invisble wall
   and the outhouses) is the district's own gate; leaving a district you still walk out through its gate and land on the highway's middle. Widening one
   means moving what stands beside it: the district file's call.
 - Proof: a walker on the outer lane (x -11.5) crosses and lands in the Circus (`/mnt/project-files/highway-circus-seam/`).
+
+## THE RAISED HIGHWAY — the Badlands Highway on pillars, with an exit (2026-11-22, owner; mondo: "I want actual highway architecture, raised off the ground with exits and stuff. Right now it looks like the road is just painted on the ground")
+
+mondo's OK on the plan + four mock-ups (`/mnt/project-files/badlands-highway/mock_*.png`): "Yeah that looks good, just make sure the exit ramp actually branches off from
+the highway ... make sure the road doesnt abruptly stop at teh edge of the map, need to see the road continue beyond it". The Badlands Highway (`site_ow_r9`) is the
+first; he wants the other highways after he has seen it.
+
+**The tool: `ow-raised.js`** (repo tooling, called by `bake-route.js` for a spec that has `raised`). A route spec says
+`raised: { h, up: [row0, row1], down: [row0, row1], exit: { aux, slip, cross: [row0, row1] }, flat: [[x0, y0, x1, y1], …] }` (rows = squares along the room):
+- `up` / `down` = the two main ramps (real terrain `ramp` features, the full road wide, on earth between retaining walls); between them the DECK, `h` metres up.
+- The deck is a `bridge` row (`hide: true`: walked, not drawn) + `arch` rows that draw it (`hw:<id>:deck`: slab with the road sheet on top, girders, jersey barriers,
+  lane paint; `…:piers` = round piers under cap beams every six squares, a pair each side of the cross road; `…:lights`).
+- `exit` = one exit each way: an extra lane `aux` squares long opens on the deck's outer edge (the deck is that much wider there, no barrier between it and the main
+  lanes: the ramp BRANCHES OFF), then a slip ramp `slip` squares long drops to the `cross` road, which runs under the deck wall to wall. The same again back up on the
+  far side. So four slip ramps a deck.
+- Barriers, retaining walls and piers are ghost `wall` rows on whole squares (the grind rails are those walls' own tops: exact).
+- `flat` = boxes of ground it levels for what stands at the exit (R9: the gas station west, the motel east).
+- It clears the route kit's props, lane marks and guard rails off the raised stretch, and paints the ground under the deck (a dirt track).
+- THE ROAD RUNS ON: for the cross road it pushes two rows into `terrain.edges.roads` (below) and stands traffic barrels at both walls. The cross road leads to no zone:
+  it is a county road that runs out of sight both ways.
+- It returns its numbers (`RAISED` in the hook's ctx: `XC, U0, U1, D0, D1, H, gN, gS, CR, hMain(row), xc, xl(side), E`) so a hook can hang a gantry at deck height.
+
+**The room.** `docs/areas/routes/R9.json` `add` = six more world plots (three west, three east of the exit) so a gas station and a motel fit beside the ramps: 24 plots,
+box 4 x 9. `R9.js` stands the gas station (store, canopy, sign, truck) west and the motel east, both on paved lots that open on the cross road, and the gantries.
+
+**The engine (three-renderer.js).**
+- CARS ON A DECK: a `terrain.traffic` route with `deck: true` rides the top of a `bridge` row where one is over it (`_hqCarGround`); the bake sets it on every route of
+  a raised room. A DRIVEN car (the car driving thread) must do the same: the deck is the bridge layer, not the height field.
+- `terrain.edges.roads: [{ side, at, w, key, len, line }]` (`_hqBuildEdgeLand`): a road that leaves the room across a wall is drawn on over the edge land, on a low
+  bank, with a middle line; the land's trees keep off it. Any room may use it.
+- `arch` parts take `shear: [rise, depth]` (a box whose top follows a slope: the ramp walls and barriers).
+
+**To raise another highway:** add `raised` to its spec (and `add` plots if something should stand at the exit), `node bake-route.js <id>`, `node bake-map.js site_ow_<id>`,
+`--put` the map picture, a browser look.
+
+**Seen, not touched:** in data.js `hqTerrainBridges` the end of one line (`drawW`, `glaze`, `seat`, `front`, `gaps` of a straight bridge) sits behind a `//` comment.
