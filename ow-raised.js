@@ -203,11 +203,18 @@ module.exports = function raise(K) {
         for (const sd of [-1, 1]) { edgeRoads.push({ side: sd < 0 ? 'w' : 'e', at: zc, w: wd, key: ASPH, line: YEL });
             if (CAT.traffic_barrel) [-2.6, -0.9, 0.9, 2.6].forEach((o, i) => props.push({ key: 'traffic_barrel', x: r2(sd < 0 ? gx(1) + 0.5 : gx(W - 1) - 0.5), z: r2(zc + o), face: i * 70 })); } }
 
+    /* ── 6b. THE TRAFFIC LIGHTS (2026-11-22, mondo: "gonna need a some stop lights at the end of the ext where it meets the road, thats an intersection"): the
+       ramps' feet and the road under the deck are a crossing each side of the deck. The city's own signal (`terrain.signals`, three-renderer.js _hqBuildSignals): a mast
+       for the ramp that comes off and one for the cross road's traffic coming in from outside; each head's side faces serve the other street, so the drivers
+       coming from under the deck read them too. The exit's cars stop at the ramp's stop line (`back`). */
+    const signals = [];
+    if (CR) { const zc = r2((Z(CR[0]) + Z(CR[1])) / 2); for (const sd of [-1, 1]) signals.push({ x: r2(ux(sd, UM)), z: zc, arms: sd < 0 ? 'NW' : 'SE', off: sd < 0 ? 0 : 9, back: r2((CR[1] - CR[0]) * C / 2 + 4) }); }
+
     /* ── 7. the cars: two lines take the exit, cross the road under the deck and come back on ── */
     if (EX && SPEC.cars) for (const sd of [-1, 1]) { const main = laneLine(2, sd > 0), dir = sd < 0 ? 1 : -1, n0 = dir > 0 ? 0 : 1, n1 = 1 - n0;   // west: south-bound (north to south); east: north-bound
         const zA = tz(n0, 0), zB = tz(n1, 0), before = main.filter(q => dir * (q[1] - zA) < 0), after = main.filter(q => dir * (q[1] - zB) > 0), um = (UL0 + UL1) / 2;
         const leg = n => [[7, 0.3], [um, T + 0.5], [um, T + LN], [UM, A], [UM, A + S]].map(q => [r2(ux(sd, q[0])), r2(tz(n, q[1]))]);
         TRAFFIC.push({ pts: before.concat(leg(n0), leg(n1).reverse(), after), loop: false, n: 1, speed: Math.max(6, (SPEC.cars.speed || 10) - 2), lane: 0.01, deck: true, kinds: sd < 0 ? ['suv', 'taxi'] : ['cadillac', 'suv'] }); }
 
-    return { XC, HW, U0, U1, D0, D1, H, A, S, gN, gS, CR, hMain, xc, xl, E, RW, lamps };
+    return { XC, HW, U0, U1, D0, D1, H, A, S, gN, gS, CR, hMain, xc, xl, E, RW, lamps, signals };
 };
