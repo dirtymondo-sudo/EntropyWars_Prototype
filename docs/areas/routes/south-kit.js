@@ -10,11 +10,37 @@ const sq = (ctx, wx, wy) => [(wx - ctx.BX0) * ctx.N, (wy - ctx.BY0) * ctx.N];
 const mx = (ctx, s) => ctx.r2(-ctx.W * ctx.C / 2 + s * ctx.C), mz = (ctx, s) => ctx.r2(-ctx.D * ctx.C / 2 + s * ctx.C);   // a square line (fractions allowed) in metres
 /* a green sign gantry over one carriageway (bake-desert.js `gantry`): `dir` = the way the traffic that reads it drives (N E S W); (sx, sy) = squares */
 let nGantry = 0;
+/* THE HIGHWAY SIGNS (2026-11-22, mondo: "use highway gothic, clearview, or another similar font. Give the signs a white border that is inset so that
+   green still appears as the outside edge of the sign. Round the corners of the sign. Add exit numbers, with disaster city being exit 1. Basically try
+   to make them look more realistic"): a green guide sign is one panel drawn by three-renderer.js `_hqArchSignTex` style 'h' (font `hwy` = Overpass,
+   the open face drawn after Highway Gothic; round corners; the white line set in from the edge), each ' · ' part on its own line in Title Case, and
+   an EXIT tab on its top right corner. THE EXIT NUMBERS, counted out from Disaster City (the old Desert Highway's own boards said 1, 2, 3):
+   1 Disaster City · 1A the Badlands gas + motel · 2 The Circus · 2A the Desert Highway's gas + caravan stop · 3 Western Town · 4 Area 51 · 5 Giza.
+   A sign that names one of them wears its tab; a sign that names two (a pull-through) wears none; `o.exit` names it by hand. */
+const EXITS = { 'DISASTER CITY': '1', 'THE CIRCUS': '2', 'WESTERN TOWN': '3', 'AREA 51': '4', 'GIZA': '5' };
+const tcase = s => String(s).toLowerCase().replace(/(^|[^a-z0-9'])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+const hwyKey = (lines, w, h) => 'txt:' + lines.join(' · ') + '|#ffffff|#0b5c3a|' + Math.round(w / h * 100) / 100 + '||hwy||h';
 function gantry(ctx, sx, sy, dir, words, o) {
-    o = o || {}; const FACE = { S: 180, N: 0, E: 90, W: 270 }, w = o.span || 11.4, bw = Math.min(w - 1.2, Math.max(5.5, words.length * 0.42 + 1.2)), bh = o.bh || 2.0, P = [];
-    for (const s of [-1, 1]) P.push({ s: 'box', p: [ctx.r2(s * w / 2), 0, 0], size: [0.32, 6.4 + bh, 0.32], key: STEEL, tint: 0x70767c });
-    P.push({ s: 'box', p: [0, 6.0, 0], size: [ctx.r2(w + 0.3), 0.3, 0.3], key: STEEL, tint: 0x70767c }, { s: 'box', p: [0, 6.3, 0.12], size: [ctx.r2(bw), bh, 0.12], tint: o.bg ? parseInt(o.bg.slice(1), 16) : 0x0b5c3a },
-        { s: 'quad', p: [0, 6.4, 0.2], size: [ctx.r2(bw - 0.5), ctx.r2(bh - 0.2)], key: 'txt:' + words + '|' + (o.fg || '#ffffff') + '|' + (o.bg || '#0b5c3a') + '|' + ctx.r2((bw - 0.5) / (bh - 0.2)) + '||' + (o.font || 'way'), uv: 'fit', kind: 'wall', glow: 0.25 });
+    o = o || {}; const FACE = { S: 180, N: 0, E: 90, W: 270 }, w = o.span || 11.4, P = [], GREY = 0x70767c;
+    if (o.bg || o.font) {   // a painted board of its own (the billboards): the old flat board
+        const bw = Math.min(w - 1.2, Math.max(5.5, words.length * 0.42 + 1.2)), bh = o.bh || 2.0;
+        for (const s of [-1, 1]) P.push({ s: 'box', p: [ctx.r2(s * w / 2), 0, 0], size: [0.32, 6.4 + bh, 0.32], key: STEEL, tint: GREY });
+        P.push({ s: 'box', p: [0, 6.0, 0], size: [ctx.r2(w + 0.3), 0.3, 0.3], key: STEEL, tint: GREY }, { s: 'box', p: [0, 6.3, 0.12], size: [ctx.r2(bw), bh, 0.12], tint: o.bg ? parseInt(o.bg.slice(1), 16) : 0x0b5c3a },
+            { s: 'quad', p: [0, 6.4, 0.2], size: [ctx.r2(bw - 0.5), ctx.r2(bh - 0.2)], key: 'txt:' + words + '|' + (o.fg || '#ffffff') + '|' + (o.bg || '#0b5c3a') + '|' + ctx.r2((bw - 0.5) / (bh - 0.2)) + '||' + (o.font || 'way'), uv: 'fit', kind: 'wall', glow: 0.25 });
+    } else {
+        let parts = words.split(' · '), ex = o.exit || null; const m = /^EXIT(?: (\w+))?$/.exec(parts[0]);
+        if (m) { ex = ex || m[1] || null; parts = parts.slice(1); }
+        if (!ex) { const named = parts.filter(p => EXITS[p]); if (named.length === 1) ex = EXITS[named[0]]; }
+        const lines = parts.map(tcase), bh = ctx.r2(0.7 + 0.9 * lines.length), bw = ctx.r2(Math.min(w - 1.2, Math.max(4.2, Math.max(...lines.map(l => l.length)) * 0.5 + 1.5)));
+        const Y0 = 5.35, top = ctx.r2(Y0 + bh);   // (the panel's foot clears a truck; an `arch` box or quad stands on its `p` y)
+        for (const s of [-1, 1]) P.push({ s: 'box', p: [ctx.r2(s * w / 2), 0, 0], size: [0.32, ctx.r2(top + 0.1), 0.32], key: STEEL, tint: GREY });
+        P.push({ s: 'box', p: [0, 6.0, 0], size: [ctx.r2(w + 0.3), 0.3, 0.3], key: STEEL, tint: GREY }, { s: 'box', p: [0, ctx.r2(top - 0.6), 0], size: [ctx.r2(w + 0.3), 0.2, 0.2], key: STEEL, tint: GREY },
+            { s: 'box', p: [0, Y0 + 0.07, 0.13], size: [ctx.r2(bw - 0.14), ctx.r2(bh - 0.14), 0.08], key: STEEL, tint: 0x8a8e94 },   // the panel's steel back, inside its round corners
+            { s: 'quad', p: [0, Y0, 0.19], size: [bw, bh], key: hwyKey(lines, bw, bh), uv: 'fit', kind: 'wall', glow: 0.25 });
+        if (ex) { const tw = ctx.r2(1.5 + String(ex).length * 0.32 + 1.0), th = 0.95, tx = ctx.r2(bw / 2 - tw / 2);
+            P.push({ s: 'box', p: [tx, ctx.r2(top - 0.02 + 0.06), 0.13], size: [ctx.r2(tw - 0.12), ctx.r2(th - 0.12), 0.08], key: STEEL, tint: 0x8a8e94 },
+                   { s: 'quad', p: [tx, ctx.r2(top - 0.02), 0.19], size: [tw, th], key: hwyKey(['EXIT ' + ex], tw, th), uv: 'fit', kind: 'wall', glow: 0.25 }); }
+    }
     ctx.feat(Object.assign({ k: 'arch', id: 'ow:' + ctx.ID.toLowerCase() + ':sign:' + (nGantry++), x: mx(ctx, sx), z: mz(ctx, sy), rot: FACE[dir], parts: P }, o.y != null ? { y: o.y } : null));   // `o.y` (2026-11-22, THE RAISED HIGHWAY): the gantry's foot stands at this height (on a deck), not on the ground
 }
 /* a billboard on two posts beside the road (not over it), facing `face` degrees (0 = its words read from the north... the gantry's FACE table) */
@@ -79,8 +105,8 @@ let nMile = 0;
 function mileMarker(ctx, sx, sy, n, o) {
     o = o || {}; const P = [{ s: 'box', p: [0, 0, 0], size: [0.08, 1.9, 0.08], key: STEEL, tint: 0x8a8e94 }, { s: 'box', p: [0, 1.0, 0], size: [0.5, 1.0, 0.05], tint: 0x0b5c3a }];
     for (const f of [0, 180]) { const z = f ? -0.035 : 0.035;
-        P.push({ s: 'quad', p: [0, 1.62, z], ry: f, size: [0.44, 0.26], key: 'txt:MILE|#ffffff|#0b5c3a|1.7||way', uv: 'fit', kind: 'wall', glow: 0.2 },
-               { s: 'quad', p: [0, 1.06, z], ry: f, size: [0.44, 0.52], key: 'txt:' + n + '|#ffffff|#0b5c3a|0.85||way', uv: 'fit', kind: 'wall', glow: 0.2 }); }
+        P.push({ s: 'quad', p: [0, 1.62, z], ry: f, size: [0.44, 0.26], key: 'txt:MILE|#ffffff|#0b5c3a|1.7||hwy', uv: 'fit', kind: 'wall', glow: 0.2 },
+               { s: 'quad', p: [0, 1.06, z], ry: f, size: [0.44, 0.52], key: 'txt:' + n + '|#ffffff|#0b5c3a|0.85||hwy', uv: 'fit', kind: 'wall', glow: 0.2 }); }
     ctx.feat(Object.assign({ k: 'arch', id: 'ow:' + ctx.ID.toLowerCase() + ':mile:' + (nMile++), x: mx(ctx, sx), z: mz(ctx, sy), rot: o.rot || 0, parts: P }, o.y != null ? { y: o.y } : null));   // `o.rot: 90` = beside an east to west road
 }
 module.exports = { U, STEEL, WD, WD2, FLR, PLAS, CONC, ROT, sq, mx, mz, gantry, billboard, cityBoard, poleLine, mileMarker, building, put, at };

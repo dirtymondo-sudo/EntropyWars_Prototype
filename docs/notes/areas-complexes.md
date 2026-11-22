@@ -14694,3 +14694,17 @@ Every walked gate of those rooms was walked in the browser from both sides. What
   frames were not walked by the probe.
 - THE VATICAN FROM THE ROAD: `_hqLandmarkBuilders.dome` as a world sight (`id: 'ow:…'`) wears a portico of columns, an entablature, an attic, two wings and
   the city's brick wall in front; it was one grey block with the dome on it. The cortile's own landmark is unchanged.
+
+## THE HIGHWAY SIGNS (2026-11-22)
+mondo 11-22: "For the highway signs, use highway gothic, clearview, or another similar font. Give the signs a white border that is inset so that
+green still appears as the outside edge of the sign. Round the corners of the sign. Add exit numbers, with disaster city being exit 1. Basically
+try to make them look more realistic." (Same message: River Road and the Old Road stay on the ground, "don't worry about those other roads".)
+- THE PANEL: three-renderer.js `_hqArchSignTex`, an eighth key field `h` (`txt:Line · Line|fg|bg|aspect||hwy||h`): a green panel with round corners
+  (the quad's material cuts them: alphaTest), a white line set in from the edge, one line of words for each ' · ' part, a line `->NE` / `->NW` =
+  the slanted exit arrow. Font id `hwy` = Overpass 700 (Google Fonts, Open Font License, drawn after Highway Gothic; linked in index.html).
+- THE GANTRY: docs/areas/routes/south-kit.js `gantry` writes it (Title Case, the panel's foot 5.35 m over the road, a steel back inside the round
+  corners) and an EXIT tab on the top right. A board with its own `bg` / `font` (the billboards) keeps the old flat board.
+- THE EXIT NUMBERS (south-kit.js `EXITS`, counted out from Disaster City): 1 Disaster City, 1A the Badlands gas + motel, 2 The Circus, 2A the
+  Desert Highway's gas + caravan stop, 3 Western Town, 4 Area 51, 5 Giza. A sign naming one of them wears the tab, a sign naming two wears none,
+  `o.exit` names it by hand. The gore plate at a ramp (ow-raised.js) reads EXIT, the number (`raised.exit.no` in the route spec), the arrow.
+- The mile markers keep their plain plate, in the same typeface. Seen in the game on site_ow_r9 (HEAD c0e8eb9 + this change).

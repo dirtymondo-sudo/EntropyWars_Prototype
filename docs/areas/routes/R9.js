@@ -21,8 +21,8 @@ module.exports = { dress(ctx) {
     /* THE BILLBOARD before it (was the Highway's LAST GAS), read by the traffic heading south from the city */
     billboard(ctx, 15.2, 25, 'S', 'LAST GAS');
     /* THE GANTRIES: the exit for both ways (on the deck), the Circus for the traffic going south; Exit 1, the city, for the traffic going north */
-    gantry(ctx, 22, 30.5, 'S', 'EXIT · GAS · MOTEL', { y: R.hMain(30.5) });   // before the exit lane opens (a post in the lane otherwise)
-    gantry(ctx, 26, 89.5, 'N', 'EXIT · GAS · MOTEL', { y: R.hMain(89.5) });
+    gantry(ctx, 22, 30.5, 'S', 'EXIT · GAS · MOTEL', { exit: '1A', y: R.hMain(30.5) });   // before the exit lane opens (a post in the lane otherwise)
+    gantry(ctx, 26, 89.5, 'N', 'EXIT · GAS · MOTEL', { exit: '1A', y: R.hMain(89.5) });
     gantry(ctx, 22, 102, 'S', 'THE CIRCUS · THE DESERT HIGHWAY');
     gantry(ctx, 26, 64, 'N', 'EXIT 1 · DISASTER CITY', { y: H });
     gantry(ctx, 26, 18.6, 'N', 'DISASTER CITY · CITY LIMIT');
