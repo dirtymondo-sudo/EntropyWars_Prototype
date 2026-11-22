@@ -3463,17 +3463,36 @@
         }
 
         /* ONE OF EACH (mondo, 2026-10-20: "disallow more than one of the same unit on a single team"). A unit is its race
-           (units are named after their race; a gender or a creator look is the same unit), so a team never fields one race
-           twice. teamDuplicateRaces(races) → the races that appear more than once (in first-seen order); the forge, the
-           squad desk and the random rolls all read it. */
-        function teamDuplicateRaces(races) {
+           (units are named after their race; a creator look is the same unit), so a team never fields one unit twice.
+           THE MALE + THE FEMALE ARE TWO UNITS (mondo 11-22: "let's allow for a player to have a male and female of the same
+           unit on the same team"): a race with both genders counts once per gender (a Priest and a Nun, a Knight ♂ and a
+           Knight ♀ may stand together; two Nuns may not). teamUnitKey(race, gender) → 'priest|female' / 'priest|male' for
+           such a race, the bare race key for every other; an unknown / missing gender reads as the race's first.
+           teamDuplicateRaces(list) takes race keys, unit keys or { race, gender } rows → the RACES fielded more than once
+           (first-seen order); the forge, the squad desk, the host's guest check and the random rolls all read it. */
+        function teamUnitKey(race, gender) {
+            let k = String(race && typeof race === 'object' ? (gender = race.gender, race.race) : (race || ''));
+            if (k.indexOf('|') >= 0) { const p = k.split('|'); k = p[0]; if (gender == null) gender = p[1]; }
+            k = normalizeRaceKey(k);
+            if (!k) return '';
+            let gs = ['male'];
+            try { if (typeof getAvailableGendersForRace === 'function') gs = getAvailableGendersForRace(k) || gs; } catch (e) {}
+            if (gs.length < 2) return k;
+            return k + '|' + (gs.includes(gender) ? gender : gs[0]);
+        }
+        function teamDuplicateUnits(list) {   // → the unit keys fielded more than once
             const seen = new Set(), dup = [];
-            (races || []).forEach(r => {
-                const k = normalizeRaceKey(r && typeof r === 'object' ? r.race : r);
+            (list || []).forEach(r => {
+                const k = teamUnitKey(r);
                 if (!k) return;
                 if (seen.has(k)) { if (!dup.includes(k)) dup.push(k); }
                 else seen.add(k);
             });
+            return dup;
+        }
+        function teamDuplicateRaces(races) {
+            const dup = [];
+            teamDuplicateUnits(races).forEach(u => { const r = u.split('|')[0]; if (!dup.includes(r)) dup.push(r); });
             return dup;
         }
 

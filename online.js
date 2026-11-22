@@ -2723,7 +2723,7 @@
                 /* ONE OF EACH (2026-10-21 PvP audit #13): the builder blocks a team that fields a unit twice; the host
                    re-checks the guest's sheet so a modified client can't get round it */
                 if (typeof teamDuplicateRaces === 'function') {
-                    var _dupR = teamDuplicateRaces(data.meta.map(function (m) { return m && m.race; }).filter(Boolean));
+                    var _dupR = teamDuplicateRaces(data.meta.filter(function (m) { return m && m.race; }).map(function (m) { return { race: m.race, gender: m.gender }; }));   // (a male and a female of one race are two units, mondo 11-22)
                     if (_dupR.length) {
                         addLog('⚠️ Rejected opponent party config: the same unit twice (' + _dupR.join(', ') + ').');
                         console.warn('[NET GUARD] party-config rejected — duplicate race:', _dupR);

@@ -3019,3 +3019,19 @@ GAME page the speed + auto battle, its AUDIO page the track list. The strip take
 pixel theme font clipped SETTINGS / DIRECTORY and the building's column grew a sideways scrollbar. Now `minmax(236px, max-content)`: the column
 grows to its widest command (`b` never wraps), the small line under it wraps inside (`width: 0; min-width: 100%`, so it never widens the column),
 the building's nav keeps a scrollbar gutter and no sideways scroll; under 900 / 760px the row buttons size to their word. Measured at 1280, 1000, 860 wide.
+
+## THE PAIRS ON THE WALL (2026-11-22, mondo: "pair male and female units together ... a combined panel, but you can choose either")
+- party-builder.js `rosterEntries`: one PANEL per race. A race with a male and a female (`getAvailableGendersForRace` = 2) is ONE
+  double-wide panel (`.pb-rpair`, two `.pb-rhalf` portraits, a dividing line between them: his words, "double wide is right, but
+  still put a dividing line between them"). Each half is picked, starred, hovered and greyed (ON TEAM) by itself.
+- A two-name pair whose names start with DIFFERENT letters gets a second panel under the other name, halves the other way round
+  (`alt`): Priest / Nun + Nun / Priest, Incubus / Succubus, Streamer / E-Girl. Same first letter = once (Cowboy / Cowgirl, Wizard /
+  Witch, Merman / Mermaid). The `alt` panel shows only in the A-Z sort and is not counted in the header's number.
+- Kept apart on purpose (his OK 11-22): Demon Prince + Demon Princess (two races), Man in Slacks + Spy (split 10-25).
+- The wall's grid is `grid-auto-flow: row dense`: a pair that does not fit a row's last square leaves no hole.
+- THE MALE + THE FEMALE ARE TWO UNITS (mondo 11-22: "let's allow for a player to have a male and female of the same unit on the
+  same team"): ONE OF EACH counts race + gender for a race with both (state.js `teamUnitKey`, `teamDuplicateUnits`,
+  `teamDuplicateRaces` takes `{ race, gender }` rows). Read by the forge, the squad desk (map.js `_sqUnitKey`) and the host's check
+  of the guest's sheet (online.js). Two of the same gender is still refused.
+- THE SERAPHIM IS GENDERLESS (mondo 11-22): sprites.js RACE_SPRITE_GENDERS `seraphim` = one; an old save's female Seraphim reads
+  as the one Seraphim (state.js resolveIdentityForBuild), the model def keeps a `female` key only so old rows still draw.
