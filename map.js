@@ -3877,14 +3877,14 @@
                 else if (P.cmd === 'officer') body.innerHTML = safe(_hqPauseOfficerHtml, 'officer');
                 else if (P.cmd === 'quests') body.innerHTML = safe(_hqPauseQuestsHtml, 'quests');
                 else if (P.cmd === 'settings') {
-                    body.innerHTML = `<div class="hq-panel-hd"><b>SETTINGS</b><span>AUDIO · DISPLAY · CONTROLS · THE BUILDING</span></div><div class="mm-settings-body hq-pause-settings" id="hqPauseSettingsBody"></div>`;
+                    body.innerHTML = `<div class="hq-panel-hd"><b>SETTINGS</b><span>← → PAGE · SAVED ON THIS DEVICE</span></div><div class="mm-settings-body hq-pause-settings" id="hqPauseSettingsBody"></div>`;
                     window._hqPauseSettingsBody = _hqEl('hqPauseSettingsBody');
                     try { _renderMainMenuSettings(); } catch (e) { console.warn('[HQ] pause: settings', e); }
                 }
                 else body.innerHTML = '';
                 if (keep) body.scrollTop = keep;
             }
-            if (foot) foot.innerHTML = `<span>↑ ↓ COMMAND</span><span>ENTER SELECT</span><span>← → MEMBER</span><span>BACKSPACE BACK</span><span>ESC / P RESUME</span>`;
+            if (foot) foot.innerHTML = `<span>↑ ↓ COMMAND</span><span>ENTER SELECT</span>${P.cmd === 'settings' ? '<span>← → PAGE</span>' : '<span>← → MEMBER</span>'}<span>BACKSPACE BACK</span><span>ESC / P RESUME</span>`;
         }
         function _hqPauseSelect(id) {
             const P = _hqPause; if (!P) return;
@@ -3955,6 +3955,7 @@
                 _hqPauseRender();
                 return;
             }
+            if ((k === 'ArrowLeft' || k === 'ArrowRight') && P.cmd === 'settings') { e.preventDefault(); window._ewSettingsGo(null, k === 'ArrowRight' ? 1 : -1); return; }   // THE SETTINGS PAGES
             if (k === 'Backspace' && P.member != null) { e.preventDefault(); P.member = null; _hqPauseRender(); }
             if ((k === 'Enter' || k === ' ') && document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('hq-pp-card')) { e.preventDefault(); document.activeElement.click(); }
         }
@@ -10213,6 +10214,8 @@
             if (e.key === 'Escape') {
                 e.preventDefault();
                 window._settingsBack();
+            } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !(e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))) {
+                e.preventDefault(); window._ewSettingsGo(null, e.key === 'ArrowRight' ? 1 : -1);   // THE SETTINGS PAGES
             } else if (e.key === 'Tab') {
                 const controls = _mmSettingsFocusable(), index = controls.indexOf(document.activeElement);
                 if (index < 0 || (!e.shiftKey && index === controls.length - 1) || (e.shiftKey && index === 0)) {
@@ -11462,6 +11465,20 @@
             </div>`;
         };
 
+        /* a settings page picked by its tab or by ← → (the main menu's Settings and the building's pause menu) */
+        window._ewSettingsGo = function (id, step) {
+            const tabs = window._ewSettingsTabs || [];
+            if (step) {
+                const body = window._hqPauseSettingsBody || document.getElementById('mmSettingsBody');
+                const shown = body ? Array.from(body.querySelectorAll('[data-set-tab]')).map(b => b.getAttribute('data-set-tab')) : tabs.map(t => t.id);
+                if (!shown.length) return;
+                const at = Math.max(0, shown.indexOf(body && body._ewSetTab || window._ewSettingsTab));
+                id = shown[(at + (step > 0 ? 1 : shown.length - 1)) % shown.length];
+            }
+            window._ewSettingsTab = id;
+            try { playSfx('uiCursorMove'); } catch (e) {}
+            _renderMainMenuSettings();
+        };
         function _renderMainMenuSettings() {
             /* THE PAUSE MENU (2026-09-15): the HQ's SETTINGS command renders the same body inside its overlay */
             const body = window._hqPauseSettingsBody || document.getElementById('mmSettingsBody');
@@ -11473,8 +11490,12 @@
             const ambVol = document.getElementById('ambienceVolumeSlider')?.value || 80;
             const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
 
-            body.innerHTML = `
-                <div class="pm-settings-section">
+            /* THE SETTINGS PAGES (mondo 11-22: "there are no tabs for video and audio ... They need to be the same"): the
+               sheet was one long list; it is the battle pause menu's pages now (ui.js _ewSettingsTabs: one tab list, one
+               strip, one remembered page for the main menu, the building's pause menu and the battle pause menu).
+               Every group that stood in the list stands on a page; a new group goes on a page here, never under the strip. */
+            const pg = {};
+            pg.audio = `
                     <div class="pm-set-group">
                         <div class="pm-set-group-title">Audio</div>
                         <div class="pm-vol-section" style="border:none;padding:0;background:none">
@@ -11503,6 +11524,8 @@
                             <button class="pm-set-btn" onclick="window.AudioMixer&&window.AudioMixer.open('tags')" title="Dev tool: tag every song (lobby / battle / horror / upbeat…) so each place draws the right pool">🏷 Song Tags (dev)</button>
                         </div>
                     </div>
+`;
+            pg.video = `
                     <div class="pm-set-group">
                         <div class="pm-set-group-title">Display</div>
                         <div class="pm-set-row">
@@ -11520,6 +11543,8 @@
                         ${typeof window._buildHudThemeHTML === 'function' ? window._buildHudThemeHTML('window._openMainMenuSettings();') : ''}
                         ${typeof window._buildWorldModeHTML === 'function' ? window._buildWorldModeHTML('window._openMainMenuSettings();') : ''}
                     </div>`}
+`;
+            pg.world = `
                     ${(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && typeof DOOR_HQ !== 'undefined') ? (() => {
                         const on = (typeof window._hqEnabled === 'function') && window._hqEnabled();
                         return `<div class="pm-set-group">
@@ -11544,8 +11569,10 @@
                         </div>
                     </div>`;
                     })() : ''}
-                    ${typeof window._buildAiDifficultyHTML === 'function' ? window._buildAiDifficultyHTML('window._openMainMenuSettings();') : ''}
-                    ${typeof window._buildControlsSettingsHTML === 'function' ? window._buildControlsSettingsHTML() : ''}
+`;
+            pg.game = `${typeof window._buildAiDifficultyHTML === 'function' ? window._buildAiDifficultyHTML('window._openMainMenuSettings();') : ''}`;
+            pg.controls = `${typeof window._buildControlsSettingsHTML === 'function' ? window._buildControlsSettingsHTML() : ''}`;
+            pg.dev = `
                     <div class="pm-set-group">
                         <div class="pm-set-group-title">Developer</div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Spell Library — browse, edit, add, delete and reassign every spell/ability, preview animations in the Spell Lab, then export your changes as JSON for Claude to make live.${(typeof window.EWSpellMods !== 'undefined' && (() => { const c = window.EWSpellMods.counts(); const n = c.modified + c.added + c.deleted + c.learnsets + c.raceAbilities; return n ? ` <span style="color:#ffd86a">●</span> ${n} pending change group${n === 1 ? '' : 's'}${window.EWSpellMods.doc.enabled ? '' : ' (DISABLED)'}` : ''; })()) || ''}</div>
@@ -11622,9 +11649,16 @@
                         <div class="pm-set-row">
                             <button class="pm-set-btn" onclick="window._launchAIStrengthTest()">Launch AI Strength Test</button>
                         </div>
-                    </div>
-                </div>`;
-            if (place) window._ewMenuPlaceRestore(body, place);
+                    </div>`;
+            const tabs = (window._ewSettingsTabs || []).filter(t => pg[t.id] && pg[t.id].trim());
+            let cur = window._ewSettingsTab;
+            if (!tabs.some(t => t.id === cur)) cur = tabs.length ? tabs[0].id : 'audio';
+            const samePage = body._ewSetTab === cur;
+            body._ewSetTab = cur;
+            body.innerHTML = (typeof window._ewSettingsTabsHtml === 'function' ? window._ewSettingsTabsHtml(tabs, cur, id => `onclick="window._ewSettingsGo('${id}')"`) : '')
+                + `<div class="pm-settings-section" data-set-page="${cur}">${tabs.length ? pg[cur] : Object.keys(pg).map(k => pg[k]).join('')}</div>`;
+            if (!samePage) { body.scrollTop = 0; const sc = body.closest('.hq-pause-body'); if (sc) sc.scrollTop = 0; }   // a new page opens at its top
+            if (place && samePage) window._ewMenuPlaceRestore(body, place);
             _mmSettingsFocus(focusSnapshot);
         }
 

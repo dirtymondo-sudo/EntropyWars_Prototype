@@ -3002,3 +3002,16 @@ ones that make sense ... the pixel density might have to be lower. If this 128x1
   `palette_extras: 8`), 14 tokens. Six stills were redone for a weak first try (corroded, drowning, jammed, marked,
   quickened, radioactive); corroded's acid ran over the face in the animation and its middle was cleared by hand.
   64 px reads better than 128 px at portrait size (chunkier, matches the face art). Whole set: about 610 tokens.
+
+## THE SETTINGS PAGES, ONE LIST (2026-11-22, mondo: "there are no tabs for video and audio ... in exploration ... They need to be the same")
+The building's pause menu SETTINGS and the main menu's Settings were one long list (map.js `_renderMainMenuSettings`); the battle
+pause menu had pages. Now all three read ONE tab list, ui.js `window._ewSettingsTabs` (AUDIO · VIDEO · GAME · CONTROLS · WORLD ·
+DEVELOPER; `battle: false` = not shown in a running fight: WORLD, DEVELOPER), draw the strip with `window._ewSettingsTabsHtml` and
+share the remembered page `window._ewSettingsTab` (pick VIDEO in a fight, the building opens on VIDEO). `_renderMainMenuSettings`
+builds every group into `pg.<tab id>` and shows one page; a NEW settings group goes on a page there (never under the strip), a new
+page = a row in `_ewSettingsTabs` + its `pg` entry. `window._ewSettingsGo(id | null, step)` picks a page; ← → walk the pages
+(`_hqPauseKey` when the command is SETTINGS, `_mmSettingsKeydown` on the main menu; not while a slider / field has the key). No
+setting was removed: Display (fullscreen) + the video groups = VIDEO, CPU Difficulty = GAME, D.O.O.R. Headquarters + The World on
+Disk + Main Menu Scene = WORLD. Still different on purpose: a fight's VIDEO page adds the battle-only toggles (`opts.battle`), its
+GAME page the speed + auto battle, its AUDIO page the track list. The strip takes the UI Maker's chip role in the building too
+(hud.js hq surface `#hqPage .bp-subtab`). Proof: `/mnt/project-files/pause-menu/settings_tabs_exploration_and_battle.jpg`.
