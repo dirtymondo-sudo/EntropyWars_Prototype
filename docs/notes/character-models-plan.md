@@ -503,6 +503,11 @@ the Claude Doc "Weapon-holding units: who gets an MPFB version".
   TRIED AND DROPPED: `EDGERELAX=20` (opened holes), `DROPCOL` / `CUTCOL` of the ninja F's painted skin (her bracers lost their arm
   and stretched into spikes). STILL OPEN: ninja F a light strip under the top at the back + a spot on the skirt's hip + a bit under
   the skirt; gladiator F ragged cloth round the knee guards + a hole at the hip; swordfighter M the collar's V.
+  NINJA F REGENERATED (same day): her first T2 run had her skin fused into the top's shell (midriff, arms), which no cut got clean
+  (`CUTCOL` + new `SEEDTO=0.9`, so bracers cut loose from the sleeve still count as sleeve, left see-through bands at the waist and
+  elbows; cause not found). A second T2 run of the same picture (`weapon-hands/units/ninjaf_t2b.glb`, 15 credits) came out with clean
+  shells: baked plain with `EDGECLEAN=6 HOLEFILL=24 SHOWRING=2`. Her look no longer wears `ewm_t2ninjaf_hat` (the hair tie came out
+  as floating bits; the ponytail is pack hair). LESSON: when the skin is fused into a garment's shell, regenerate first.
 
 ---
 

@@ -48,6 +48,7 @@ Usage: pip install bpy==5.2.3 scipy pillow
        weapons batch of 11-22: SHOWRING=2 (the skin under every cloth edge is shown: no jagged dark band where a cape's collar, a
               waist or a crop top ends on bare skin; NOT for a loose kimono: the shoulders came through), EDGECLEAN=6 (saw teeth
               on a cut edge go), HOLEFILL=24 (pin holes in thin cloth closed), EDGERELAX=4 (a cut edge eased; 20 opened holes)
+              SEEDTO=0.9 (a sleeve may start anywhere down to the wrist: bracers cut loose from their sleeve by CUTCOL, the ninja F)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
 import argparse, importlib.util, io, math, os, re, sys
@@ -993,7 +994,7 @@ def fit(name, gender, src, bodies_dir):
             for sd in ('L', 'R'):
                 dl = [on_line(sd, v.co) for v in o.data.vertices]
                 gi = [g.index for g in o.vertex_groups if g.name in ARMN[sd]]
-                seeds = [v.index for v in o.data.vertices if dl[v.index][0] < E('SLEEVESEED', 0.07) and 0.15 < dl[v.index][1] < 0.5 and sum(g.weight for g in v.groups if g.group in gi) > 0.6]
+                seeds = [v.index for v in o.data.vertices if dl[v.index][0] < E('SLEEVESEED', 0.07) and 0.15 < dl[v.index][1] < E('SEEDTO', 0.5) and sum(g.weight for g in v.groups if g.group in gi) > 0.6]
                 seen_ = set(seeds); st_ = list(seeds)
                 while st_:
                     for k_ in adj[st_.pop()]:
