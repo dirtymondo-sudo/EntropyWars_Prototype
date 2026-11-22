@@ -8915,7 +8915,7 @@ const ThreeRenderer = (function () {
         low: { perTile: 7, width: 0.240, fringe: 2 },   // the Low setting: half the tufts, each wider, a narrow meadow
         order: 50, shadow: true, dry: [0.42, 0.38, 0.20], dryShare: 0.10
     };
-    try { window.EW_GGRASS = GGRASS; GGRASS.flush = function () { _ggPalCache = {}; _ggFringe = null; _ggBoard = null; _lastTerrainDecoSerial = ''; }; } catch (e) {}   // flush = retune live: the next frame rebuilds
+    try { window.EW_GGRASS = GGRASS; GGRASS.flush = function () { _ggPalCache = {}; _ggFringe = null; _lastTerrainDecoSerial = ''; }; } catch (e) {}   // flush = retune live: the next frame rebuilds
     /* a tuft's outline (x in half-widths, y in heights) + its 5 triangles, wound to face the camera.
        crown = one thick clump of three points (a tall middle, two splayed sides); tongue = one round pad */
     var _GG_SHAPES = {
@@ -8961,7 +8961,6 @@ const ThreeRenderer = (function () {
         return pal;
     }
     var _ggFringe = null;   // the meadow past the board, kept between builds: { key, pos, col, gg, gs, roots }
-    var _ggBoard = null, _ggBoardHits = 0;   // THE GRASS IS BUILT ONCE A ROOM: the board's own tufts, kept while the ground's signature holds
     var _gg = null;   // the live field: { mesh, press, data, W, H, n, sig, tops }
     /* THE GRASS TAKES NO INK (2026-11-12, mondo: "adding the ink shader makes the grass look kinda weird to me, like it ends up being
        a shadowy blob. Can we exclude grass from the shader"): the Entropy Style's five light bands cut every clump into a lit tip and a
@@ -9016,6 +9015,7 @@ const ThreeRenderer = (function () {
         return m;
     }
     function _ggBuild(group) {
+        var _ggHad = !(_ggJob || (performance.now() - _ggFreshAt) < 4000); _ggJob = null;   // the fight was just laid (or its first field is still growing): grow in slices
         _gg = null; _ggMaskU.mesh = null;
         if (!_ggOn() || typeof getTerrainAt !== 'function') return;
         /* A ROOM THAT PAINTS ITS OWN SQUARES (2026-11-12, the Training Room: its pad is tile, but the board's squares keep the grass tile
@@ -9027,12 +9027,13 @@ const ThreeRenderer = (function () {
         if (!W || !H) return;
         var C = GGRASS, LOW = (_ggLevel === 'low') ? C.low : null, N = LOW ? LOW.perTile : C.perTile, WID = LOW ? LOW.width : C.width;
         var mon = (typeof _monumentMap === 'function') ? _monumentMap() : null;
-        /* THE GRASS IS BUILT ONCE A ROOM (2026-11-22, mondo: every fight in the Woods opened on a frozen second; "is it because it's the first
-           fight of the session ... how do we make it never do that"). It was not the first fight: the field is the whole room, and this build
-           grew every tuft of it again at every fight (0.6-0.7 s in one go in the cloud profile, the largest single piece of the freeze). Two
-           changes. The tufts are written straight into typed buffers (no million-entry lists, no small list per corner). And the BOARD's
-           tufts are kept like the meadow's (_ggBoard): the next fight in the same room on the same ground takes them as they are; a dig, a
-           build or a flood changes the ground's signature and grows them again, as before. Off: window.EW_NO_GRASS_KEEP. */
+        /* THE GRASS GROWS IN (2026-11-22, mondo: every fight in the Woods opened on a frozen second; "is it because it's the first fight of
+           the session ... how do we make it never do that"). It was every fight: the field (the board and the meadow round it, ~27,000
+           tufts of 49 corners) was grown in one go as the fight was laid, 0.6-0.8 s in the cloud profile and the largest single piece
+           of the freeze. Now the tufts are written straight into typed buffers (no million-entry lists, no small list per corner), and
+           the FIRST field of a fight in a room is grown a few milliseconds a frame (run / finish, _ggJobTick) and rises from the ground
+           over a third of a second when it is whole. A later build in the same fight (a dig, a build, a flood) and a board that is
+           no room are grown in one go as before. Off: window.EW_NO_GRASS_SLICE. */
         var _ggW = function (n) { return { a: new Float32Array(n), n: 0 }; }, _ggNeed = function (o, k) { if (o.n + k > o.a.length) { var b = new Float32Array(Math.max(o.a.length * 2, o.n + k)); b.set(o.a.subarray(0, o.n)); o.a = b; } };
         var pos = _ggW(1 << 18), col = _ggW(1 << 18), gg = _ggW(1 << 18), gs = _ggW(1 << 16), roots = _ggW(1 << 14), GY = new Float64Array(25), BS = new Float64Array(16), BD = new Uint8Array(16);
         var seed = 1234567;
@@ -9086,28 +9087,18 @@ const ThreeRenderer = (function () {
            of the tufts), then the board's own squares (rebuilt whenever the ground changes: a dig, a build, a flood) */
         var fkey = M ? ((typeof _hqBattleRoomKey === 'function' ? _hqBattleRoomKey() : '') + '|' + _ggLevel + '|' + ts + '|' + W + 'x' + H + '|' + C.shape + '|' + (typeof _calmOn === 'function' && _calmOn() ? 'c' : 'p')) : '';
         var keep = (M && _ggFringe && _ggFringe.key === fkey) ? _ggFringe : null;
-        /* the board's own tufts, kept: the room, the setting and the ground's signature (each square's sheet, thing and height) */
-        var bkey = '', bkeep = null;
-        try {
-            var _rk = (typeof _hqBattleRoomKey === 'function') ? _hqBattleRoomKey() : '';
-            if (_rk && !(typeof window !== 'undefined' && window.EW_NO_GRASS_KEEP)) {
-                var hsig = 2166136261 >>> 0, _hs = function (v) { v = String(v); for (var hi = 0; hi < v.length; hi++) { hsig ^= v.charCodeAt(hi); hsig = Math.imul(hsig, 16777619) >>> 0; } };
-                for (var sy2 = 0; sy2 < H; sy2++) for (var sx2 = 0; sx2 < W; sx2++) {
-                    var so = (typeof getObjectAt === 'function') ? getObjectAt(sx2, sy2) : null;
-                    _hs(getTerrainAt(sx2, sy2)); _hs(so ? (typeof so === 'string' ? so : 'o') : ''); _hs(Math.round(tileTopY(sx2, sy2) * 100)); if (mon && mon.has(sx2 + ',' + sy2)) _hs('m');
-                }
-                bkey = _rk + '|' + _ggLevel + '|' + ts + '|' + W + 'x' + H + '|' + C.shape + '|' + (typeof _calmOn === 'function' && _calmOn() ? 'c' : 'p') + '|' + M + '|' + hsig;
-                if (_ggBoard && _ggBoard.key === bkey) bkeep = _ggBoard;
-            }
-        } catch (e) { bkey = ''; bkeep = null; }
-        for (var pass = 0; pass < 2; pass++) {
+        var st = { pass: 0, i: 0 }, NX = W + 2 * M, NC = NX * (H + 2 * M);
+        var run = function (deadline) {
+        for (; st.pass < 2; st.pass++, st.i = 0) {
+        var pass = st.pass;
         if (pass === 0 && (!M || keep)) continue;
-        if (pass === 1 && bkeep) continue;
-        if (pass === 1 && M && !keep) {
+        if (pass === 1 && M && !keep && st.i === 0) {
             keep = _ggFringe = { key: fkey, pos: pos.a.slice(0, pos.n), col: col.a.slice(0, col.n), gg: gg.a.slice(0, gg.n), gs: gs.a.slice(0, gs.n), roots: roots.a.slice(0, roots.n) };
             pos.n = col.n = gg.n = gs.n = roots.n = 0;
         }
-        for (var ty = -M; ty < H + M; ty++) for (var tx = -M; tx < W + M; tx++) {
+        for (; st.i < NC; st.i++) {
+            if (deadline && (st.i & 3) === 0 && performance.now() > deadline) return false;
+            var tx = (st.i % NX) - M, ty = ((st.i / NX) | 0) - M;
             var fr = (tx < 0 || ty < 0 || tx >= W || ty >= H);
             if (fr !== (pass === 0)) continue;
             var topY = 0;
@@ -9185,11 +9176,13 @@ const ThreeRenderer = (function () {
             }
         }
         }
+        return true;
+        };
+        var finish = function () {
         if (!M) _ggFringe = null;
         var join = function (a, b) { if (!a) return b; var o = new Float32Array(a.length + b.length); o.set(a, 0); o.set(b, a.length); return o; };
         var K = (M && keep) ? keep : null;
-        if (bkeep) { pos = bkeep.pos; col = bkeep.col; gg = bkeep.gg; gs = bkeep.gs; roots = bkeep.roots; _ggBoardHits++; }
-        else { pos = pos.a.slice(0, pos.n); col = col.a.slice(0, col.n); gg = gg.a.slice(0, gg.n); gs = gs.a.slice(0, gs.n); roots = roots.a.slice(0, roots.n); if (bkey) _ggBoard = { key: bkey, pos: pos, col: col, gg: gg, gs: gs, roots: roots }; }
+        pos = pos.a.slice(0, pos.n); col = col.a.slice(0, col.n); gg = gg.a.slice(0, gg.n); gs = gs.a.slice(0, gs.n); roots = roots.a.slice(0, roots.n);
         pos = join(K && K.pos, pos); col = join(K && K.col, col); gg = join(K && K.gg, gg); gs = join(K && K.gs, gs); roots = join(K && K.roots, roots);
         if (!pos.length) return;
         var geo = new THREE.BufferGeometry();
@@ -9203,11 +9196,30 @@ const ThreeRenderer = (function () {
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
         var pr = _ggPressTex(W, H);
         var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', blades: nB, roots: roots, ia: ia, sortDir: null };
+        if (job) { G.fade = { f: { value: new THREE.Vector4(0, 0, 0, 1) }, d: { value: new THREE.Vector4(-2, -1, 1e20, 2e20) } }; G.growT0 = performance.now(); }   // it rises from the ground over a third of a second (never a pop)
         var mesh = new THREE.Mesh(geo, _ggMat(G));
         mesh.frustumCulled = false; mesh.name = 'ew_grass_field'; mesh._ew_ggrass = true; mesh.renderOrder = C.order;
-        G.mesh = mesh; G.ms = performance.now() - _t0; _gg = G; _ggMaskU.mesh = mesh;
-        try { window._ewGrassField = { tufts: nB, buildMs: Math.round(G.ms), level: _ggLevel, kept: !!bkeep, keptHits: _ggBoardHits }; } catch (e) {}   // read-only: what the last build made
+        G.mesh = mesh; G.ms = job ? job.ms : (performance.now() - _t0); _gg = G; _ggMaskU.mesh = mesh;
+        try { window._ewGrassField = { tufts: nB, buildMs: Math.round(G.ms), level: _ggLevel, frames: job ? job.frames : 0 }; } catch (e) {}   // read-only: what the last build made
         group.add(mesh);
+        };
+        /* the first field of a fight in a room: grown a few milliseconds a frame (_ggJobTick); any other build (a dig, a build, a
+           flood, a board that is no room) in one go, as before, so the old field is never missing */
+        var job = null;
+        if (!_ggHad && !(typeof window !== 'undefined' && window.EW_NO_GRASS_SLICE) && typeof _hqBattleRoom === 'function' && _hqBattleRoom()) {
+            job = _ggJob = { run: run, finish: finish, group: group, ms: performance.now() - _t0, frames: 0 };
+            return;
+        }
+        run(0); finish();
+    }
+    var _ggJob = null, _ggFreshAt = -1e9;
+    function _ggJobTick() {
+        var J = _ggJob; if (!J) return;
+        if (!J.group.parent || J.group !== _terrainDecoGroup) { _ggJob = null; return; }   // the board was rebuilt or left: that build is its own
+        var t0 = performance.now(), done = false;
+        try { done = J.run(t0 + 8); } catch (e) { _ggJob = null; console.warn('[grass] the sliced build', e); return; }
+        J.ms += performance.now() - t0; J.frames++;
+        if (done) { _ggJob = null; try { J.finish(); } catch (e2) { console.warn('[grass] the sliced build', e2); } }
     }
     /* THE FACE + THE ORDER: the tufts turn to the camera (its right, flat, in the field's frame), and — as they write no depth —
        are drawn far to near, so a near tuft's light top always lies over the dark foot of the one behind it (that overlap IS the
@@ -9244,7 +9256,9 @@ const ThreeRenderer = (function () {
     }
     /* the press map, once a frame: every standing unit's feet (rebuilt only when a body moved) */
     function _ggTick() {
+        _ggJobTick();   // THE GRASS GROWS IN: the first field of a room fight, a few milliseconds a frame
         var G = _gg; if (!G || !G.mesh || !G.mesh.parent) return;
+        if (G.growT0) { var gk = (performance.now() - G.growT0) / 350; gk = gk > 1 ? 1 : gk; G.fade.f.value.z = gk * gk * (3 - 2 * gk); if (gk >= 1) G.growT0 = 0; }
         _ggFace(G);
         var ts = CONFIG.tileSize || BASE_TILE, n = G.n, w = G.W * n, h = G.H * n, R = GGRASS.pressR * n, sig = '';
         var pts = [];
@@ -52779,6 +52793,7 @@ const ThreeRenderer = (function () {
     function activate() {
         if (!initialized) init();
         if (!canvas || !renderer) return;
+        _ggFreshAt = performance.now();   // THE GRASS GROWS IN: this fight's first field
         if (_menuLive) _menuLeave();             // the main menu scene hands the canvas back first
         if (_trLive) _trLeave();                 // so does the Squad Desk's team room
         active = true;
