@@ -73086,10 +73086,24 @@ const ThreeRenderer = (function () {
             if (_spSoupCache[ck] === undefined) {
                 var s = null;
                 try { s = _spExtract(root, spec, frame, SP.unit[fk] || 1); } catch (e) { console.warn('[stairs] the piece failed to cut', ck, e); s = null; }
+                if (s && kind === 'rail' && !(typeof window !== 'undefined' && window.EW_NO_RAIL_CENTRE)) { try { _spRailCentre(s, spec, SP.unit[fk] || 1); } catch (e) {} }
                 _spSoupCache[ck] = s;
             }
             cb(_spSoupCache[ck]);
         });
+    }
+    /* THE RAIL ON ITS LINE (2026-11-22, mondo: "these rails that when i grind on them im like a whole foot or two off to the side grinding
+       in the air"). A railing was stood with the MIDDLE OF ITS BOX on the row's line, and the box takes in whatever the pack drew beside the
+       rail: `guard` stands at the edge of a 1.19 m kerb (its rail 0.55 m off the line the grind and the wall run on), `pipe` hangs 0.18 m
+       off its posts, `glass_panels` / `double` 5 cm. The piece is moved across so the middle of its TOP RAIL (the top 6 % of its height)
+       is the line: the grind, the walker's wall and the drawn rail are one line for every railing, whatever its box holds. */
+    function _spRailCentre(S, spec, unit) {
+        var P = S.P, top = (spec.top - (spec.foot || 0)) * unit, band = Math.max(0.12 * unit, top * 0.06), lo = Infinity, hi = -Infinity, i;
+        for (i = 0; i < P.length; i += 3) if (P[i + 1] >= top - band) { if (P[i] < lo) lo = P[i]; if (P[i] > hi) hi = P[i]; }
+        if (!(hi >= lo)) return;
+        var off = (lo + hi) / 2; if (Math.abs(off) < 0.002) return;
+        for (i = 0; i < P.length; i += 3) P[i] -= off;
+        S.railOff = off;
     }
     /* one slab of a soup: every triangle clipped to lo ≤ Z < hi, moved by (dz, dy), appended to `out` */
     function _spSlab(S, lo, hi, dz, dy, out) {
