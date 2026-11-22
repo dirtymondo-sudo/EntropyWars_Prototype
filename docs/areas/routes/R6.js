@@ -29,6 +29,11 @@ module.exports = {
             A.cyl(-fw / 2 - 1.3, 0.3, 0, 2.6, 0.9, WD, 0x6a4a30, { ry: 90, seg: 16, ri: 2.1 });
             for (let i = 0; i < 8; i++) A.box(-fw / 2 - 1.3, 2.9, 0, 0.9, 0.18, 5.0, U('WoodGeneric1a'), 0x5a3a22, { ry: 0 }); } });
         at(ctx, 'wooden_barrel', 83.2, 25.8, { face: 20 }); at(ctx, 'hay_bale', 84, 30.5, { face: 80 }); at(ctx, 'wheelbarrow', 83.4, 27.6, { face: 200 });
+        /* THE WOOD AT THE CITY END (2026-11-22, mondo: "there should be woods/trees all along that dirt path leading back into the city"): the road's last
+           four columns of plots (squares x 96..143) are a tall wood on both sides of the road, as thick as the city's own west side: about one square
+           in three off the road grows a forest tree (the kit's ten a plot read as a lawn with trees) */
+        { const KINDS = ['tree_55', 'tree_53', 'tree_52', 'tree_56', 'tree_55', 'tree_53'];
+          for (let x = 96; x < 144; x++) for (let y = 0; y < 36; y++) { if (!ctx.free(x, y) || ctx.nearPath(x, y, 2) || ctx.rnd() > 0.34) continue; ctx.tree(x, y, ctx.pick(KINDS), 8 + ctx.rnd() * 5); } }
         /* THE TURNING PLACE at the spur's west end, in the open woodland: a log pile and a cart */
         at(ctx, 'firewood_stack', 3.2, 8.6, { face: 0 }); at(ctx, 'hay_cart', 9.6, 17.4, { face: 90 });
     },
