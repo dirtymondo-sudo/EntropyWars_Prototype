@@ -14384,3 +14384,24 @@ is a door without a pad reads as a trap. Each row is a place to LOOK AT, then fi
 **THE SEWERS AFTER (11-22):** 0 traps, 0 crevices, 0 slots; 10 dips of 0.85 m, each one node, at the sumps' wall corners (jumped out of).
 Before: every wall of every raised floor, 14 traps, the 35 m strip. Proof: `/mnt/project-files/softlocks/sewers_wall_before_after.jpg`.
 THE REST OF THE WORLD: the list by zone of 11-22 is `/mnt/project-files/softlocks/softlocks_by_zone.md`.
+
+**CAME A LOT AFTER (11-22, the Came A Lot soft-lock thread):** the kingdom room 6 traps + 8 crevices -> 0 + 0; the castle room 7 traps -> 0 (52 / 52 stops
+still walked, every door reached). What made them, and what binds every room:
+- **A CROWN THE JUMP CLEARS IS NO CROWN.** `hqCastleTower`'s battlement stands `crown` (default 1.2 m) over its deck; the walker's jump is 1.3 m in the
+  solver and 1.46 m at the real apex. On the town wall's four corner towers the walker hopped onto the merlons and dropped outside into the corner of the
+  berm, shut in between the drum and the moat. `bake-camelot.js` `TCROWN = 1.6`. A parapet at a drop with no way back stands 1.6 m or more.
+- **A DRUM HALF ON A HILL WEIGHS AS A ROUND BLOCK.** The two drums beside the Grand Stair were `solid` texbuildings (four ghost walls + a roof slab at the
+  lowest ground under them): over the hill's edge the roof slab did not hold and the walker fell through the top into the drum. `districts/K.js` `drum(…, round)`
+  writes `hqRoundBlock(...)` rows with `ghost: true` (walked, unseen: the sheet draws the drum). A `solid` texbuilding stands on LEVEL ground only.
+- **THREE RULES OF THE ENGINE (data.js, every room):**
+  (1) `hqTerrainWallAt`: A WALL UNDER THE BODY NEVER HIDES ONE IN IT. The first wall in reach was the answer; a parapet hung on a roof's edge on the line of
+  the wall under it was never seen (the walker stepped onto the line and off the roof, 21 m off a wing, 35 m off the Keep). A wall wholly under the body's
+  band is the answer only when no other wall in reach meets the band.
+  (2) `hqTerrainFeet`: ON A WALL'S TOP, NEVER IN THE WALL THAT STANDS ON IT. From a stair head just under a lower wall's top the walker was set on that top,
+  inside the storey's wall above it, and walked through (out of the castle by the cellar stairs' heads).
+  (3) `_hqTNodeFeet` (the SOLVER's jump, what `find-softlocks.js` and the rescue read): the jump lands UP ONLY and only where a body fits (`hqTerrainAir`).
+  It took the free query's lowest surface: floors down a sealed shaft through every slab, or the top of the wall under a parapet. Those traps were never reachable.
+- **The castle tool** (`bake-camelot-castle.js`): a parapet is WALKED 2.05 m (the merlons' tops) and drawn 1.15 m (`par()`); the wings' south doorways are walked
+  shut (the way out is the leaf half a metre inside; past the doorway is the room's unbuilt strip); the natives' lines are read from the room's own rows in
+  data.js now that the old keep and dungeon rooms are deleted (the tool had stopped running).
+- Left: 3 SLOTs in the kingdom room, the back lane one square wide between the town wall's foot and the houses, open at both ends.
