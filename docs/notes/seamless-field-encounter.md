@@ -1132,6 +1132,31 @@ mondo, Disaster City's metro platform: "i was started a battle in the subway/met
 - Also: the fight's fluorescents and desk lamps now take the room's `shell.lampK` as the walk's do (_hqBoxRoomLamps).
 - No lights added (the 60 FPS lamp cull is untouched). Drawn locally, so host and guest alike. Worked out from the light numbers; not run in a browser.
 
+## THE FIGHT WEARS THE WALK'S LIGHT, EVERYWHERE (2026-11-22)
+mondo, after a fight in the Circus (`site_prebuilt_area51_ow_circus`): "the battle got super bright compared to what exploration was. i thought
+we already fixed this????? Or is the fix only in disaster city? it needs to be game wide" · "seamless transition between exploration and battle".
+- THE ANSWER: the 11-15 fix above was never tied to Disaster City by name, but it reached ONLY closed rooms with a ceiling under 7.35 m
+  (the metro, offices, corridors). An outdoor room, a cave, a terrain room and a tall hall were left as they were, on purpose.
+- What was measured (playtest_handover.js, WebGL2 headless, the Circus): BY DAY the walk and the fight already match (the same sun,
+  hemisphere, fill, lamps, exposure, fog colour and the same ground material; sunlit sand 200,170,110 on the walk, 189,161,104 in the
+  fight). BY NIGHT they did not: with the Key Light switched off (`EW_NO_KEY_LIGHT`) both read 64-72, so the one thing that differed
+  was THE KEY LIGHT. The walk carries it as THE NIGHT FILL: 0.6 at the walker's head (3 m up, 16 m reach), a pool round the walker.
+  The fight hung it 7 m up at 1.5 x 0.6 with a 30 m reach, over the whole board: sand 120-135 on the walk, 170-192 in the fight.
+- The fix (three-renderer.js `_fieldKeyLampTick`, HQ_LIGHT_RULES.keyLamp.battleMatch 1):
+  - UNDER THE OPEN SKY the fight hangs the walk's very lamp: `walkUp` high, `reach` far, `intensity` strong (x the night x
+    nightFill.keyLight as before), over the square the camera looks at. By day it is 0, as before.
+  - IN A CLOSED ROOM, A CAVE, A TERRAIN ROOM, A TALL HALL the lamp keeps its height and its 30 m reach (the whole board stays
+    readable) but its strength is set so the floor under it gets what the walk's floor gets (0.83, was 1.15). The low-ceiling rule
+    of 11-15 no longer eases back up to the old strength as the ceiling rises.
+  - Off: `window.EW_FIELD_KEY_HIGH = true`, or battleMatch 0. Drawn from the room and the camera, never relayed: host and guest alike.
+- NOT changed, and worth knowing: an outdoor fight's ROUNDS still flip day and night (THE BATTLE'S DAY AND NIGHT, 10-17). A fight struck
+  at night is night on round 1 and DAY on round 2. That is the combat rule, not a light bug; asked mondo whether story fights should hold the hour.
+- A fight struck inside the Big Top is seated there (cells 11,12 of the 24 x 24 board); the tent's cloth casts no shadow on the walk
+  or in the fight (`hq_arch` castShadow false), so there is no shade to lose.
+- Probe: playtest_handover.js grew `--hour=<h>` (hqClockSet), `--top` (the walk from above), DIAG-FIGHT (the fight's lights), FOCUS (the
+  camera onto P1), `EW_PROBE_EVAL=<file.js>` (run on the walk and in the fight); ThreePost.getGradeNow() (the frame pass's gain + night grade).
+- Proof (WebGL2 headless, not his WebGPU Mac): /mnt/project-files/battle-light-everywhere/.
+
 ## THE RING STAYS ON ITS OWN FLOOR (2026-11-15, mondo: "why is this white square outline being drawn higher than it is supposed to be")
 A unit in a pit / a crater / at a wall's foot on a true-ground field wore its white acting tile + team ring half a square up in the
 air: `_fieldDrapeRing` laid the flat plane at the HIGHEST ground under the footprint (rev 2), so a corner on top of the wall lifted
