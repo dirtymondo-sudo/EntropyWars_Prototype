@@ -38818,7 +38818,7 @@ const ThreeRenderer = (function () {
                      THE DULL LIQUIDS (11-12) add [.., highlight colour, highlight width (shininess), ripple depth, sky sheen]: each
                      liquid's highlight is a dim shade of itself (water's is 0xb4c4c8 / 140 / 0.05 / 1) */
                   liquids: { poison: [0x58a02c, 0.9, 0x1a3a0a, 0x1c2a12, 30, 0.016, 0.3], poison_bog: [0x6a7a26, 0.92, 0x141c08, 0x20240f, 30, 0.016, 0.3],
-                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], sludge: [0x4fb80e, 0.94, 0x2c7a06, 0x5aa01c, 26, 0.02, 0.2], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
+                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], sludge: [0x4fb80e, 0.94, 0x2c7a06, 0x5aa01c, 26, 0.05, 0.2], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
                              oil: [0x14120e, 0.96, 0, 0x22252c, 40, 0.012, 0.3], blood: [0x6a1014, 0.95, 0x1a0204, 0x2a1012, 30, 0.014, 0.25] } };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmTable() { return (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN && CALM_TERRAIN.sheets) ? CALM_TERRAIN : null; }
@@ -70740,6 +70740,33 @@ const ThreeRenderer = (function () {
         _hqPetalCache[key] = out;
         return out;
     }
+    /* A COBWEB HANGS, EVERYWHERE (2026-11-22, mondo in the Sewers: "spiderweb decals standing upright"; his rule: fix it in every zone).
+       The PSX pack's cobweb is one flat card hung from its top corner. Many rooms' builds drop it on the floor like rubbish, where it
+       stands up like a sign (39 rows in six rooms on 11-22, and any later build). At the room's build (once a row, never per frame) a
+       `psx_cobweb_*` row with no height of its own, not on a ceiling or a named wall, in a terrain room, is moved to the nearest wall or
+       rock face within 5 m (the ground 2.2 m higher, a wall row, or the room's edge), flat on it, its foot 1.9 m over the ground it was
+       dropped on. The row itself is never changed (a copy is placed); a web with no face near it stays where it was put.
+       Off: window.EW_NO_COBWEB_HANG. */
+    function _hqCobwebHang(p) {
+        try {
+            if (!p || !/^psx_cobweb/.test(p.key || '') || p.ceil || p.wall || p.flip || p.hang === false || (typeof p.y === 'number' && p.y >= 1)) return p;
+            if (typeof window !== 'undefined' && window.EW_NO_COBWEB_HANG) return p;
+            var T = _hq && _hq.terrain; if (!T || typeof hqTerrainHeight !== 'function' || typeof hqTerrainWallAt !== 'function') return p;
+            var x0 = p.x || 0, z0 = p.z || 0, g0 = hqTerrainHeight(T, x0, z0); if (!isFinite(g0)) return p;
+            var S = (_hq.room && _hq.room.shell) || {}, hw = (S.w || 0) / 2, hd = (S.d || 0) / 2, best = null;
+            var solid = function (x, z) { if ((hw && Math.abs(x) > hw) || (hd && Math.abs(z) > hd)) return true; var wl = hqTerrainWallAt(T, x, z, 0); return !!(wl && wl.top >= g0 + 2.2) || hqTerrainHeight(T, x, z) >= g0 + 2.2; };
+            for (var d = 0.25; d <= 5 && !best; d += 0.25) for (var k = 0; k < 8; k++) {
+                var a = k * Math.PI / 4, dx = Math.sin(a), dz = -Math.cos(a), x = x0 + dx * d, z = z0 + dz * d;
+                if (!solid(x, z)) continue;
+                var dd = d; while (dd > d - 0.25 && solid(x0 + dx * (dd - 0.05), z0 + dz * (dd - 0.05))) dd -= 0.05;   // the face, to 5 cm
+                best = { dx: dx, dz: dz, d: dd - 0.08, deg: k * 45 }; break;
+            }
+            if (!best) return p;
+            var q = {}; for (var key in p) q[key] = p[key];
+            q.x = x0 + best.dx * Math.max(0, best.d); q.z = z0 + best.dz * Math.max(0, best.d); q.face = best.deg; var Y = g0 + 1.9; q.y = (Y >= 1 || Y <= -0.5) ? Y : 1;   /* (a `y` of 1 or more, or -0.5 or less, is a height from the room's floor) */ q.noSeat = true; q.noBlock = true;
+            return q;
+        } catch (e) { return p; }
+    }
     function _hqPropMatPick(node, sm) {
         if (!sm) return null;
         var cached = _hqPropMatCache.get(sm.uuid);
@@ -75816,7 +75843,7 @@ const ThreeRenderer = (function () {
                                    the surface (≤ HQ_FLUID_GRID_RULES.layH), so the fade is the only edge; a wall / a bank higher than that
                                    still stops it */
                                 var th = hqTerrainHeight(info, px, pz);
-                                if (th > yW - GRID_WATER_LAY_LIFT) { y1 = th + GRID_WATER_LAY_LIFT; al *= 1 - _liqEase(layH - 0.1, layH + 0.1, th - yW); }
+                                if (th > yW - GRID_WATER_LAY_LIFT) { y1 = Math.min(th, yW + layH + 0.1) + GRID_WATER_LAY_LIFT; al *= 1 - _liqEase(layH - 0.1, layH + 0.1, th - yW); }   /* (2026-11-22, the Sewers' channels: a point on a bank higher than the sheet may lie on is clear already; it no longer CLIMBS that bank, which pulled the sheet's last strip up a sheer side as a ragged, streaked fringe. It stops just over the lay line, inside the bank) */
                             }
                             if (deepPass && al > 0) al *= _liqEase(0.12, 0.88, cover(B.deep, px, pz, winD));
                         }
@@ -85014,6 +85041,7 @@ const ThreeRenderer = (function () {
         _hq.tabletops = [];
         var litRows = null;   // THE CEILING LAMPS FIRST: the rows that get a prop light when the room asks for more than it has
         var placeOne = function (p) {   // THE TERRAIN ROOM (2026-09-17): the compiler's scatter stands like any floor prop
+            p = _hqCobwebHang(p);   // A COBWEB HANGS (2026-11-22): a web authored on the floor goes up the nearest wall
             var cat = D.catalogue[p.key], Hrec = _hq;   // (the room record this prop stands in — a stage neighbour's own, whatever _hq is when its file lands)
             if (!cat || (!cat.file && !cat.proc && !(cat.pack && _carPackOn()))) return;   // THE CAR PACK: a pack-only row needs the pack
             var level = p.level || 0, y0 = _hqLevelY(S, level);
