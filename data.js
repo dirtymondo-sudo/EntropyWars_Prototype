@@ -98203,6 +98203,13 @@ const HQ_NPC_PLACES = {
         'mummy m @G:Tomb Door >G night', 'mummy f @G:Robbers >G night', 'necromancer m @G:Dig >G', 'necromancer f @G:Causeway >G'],
     site_prebuilt_giza_pyramid: ['mummy m', 'mummy f', 'anubis stay'],
     site_ow_r9: ['trucker @R >R', 'honda civic @R >R'],   // THE BADLANDS HIGHWAY (2026-11-22): the same Highway, the leg to Disaster City; the board's Trucker + Honda Civic (CLOCK with the city)
+    /* THE ROADS BETWEEN ZONES (mondo 11-22: "well obviously put the trucker and honda civic on those roads too"): every road a car can drive (bake-route.js look road / highway: the River Road, the Old Road, the Valley Road, the Ranch Road, the Coast Road, the Delta Causeway); the footpaths (look trail) hold nobody */
+    site_ow_r1: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_r4: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_r6: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_r8: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_r10: ['trucker @R >R', 'honda civic @R >R'],
+    site_ow_r11: ['trucker @R >R', 'honda civic @R >R'],
     site_ow_dh1: ['trucker @R >R', 'honda civic @R >R', 'sheriff @R >R', 'mechanic @R:water tower stay'],
     site_ow_dh2: ['trucker @R >R', 'honda civic @R >R'],
     site_ow_dh3: ['trucker @R >R', 'honda civic @R >R'],
