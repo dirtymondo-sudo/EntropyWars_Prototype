@@ -3863,3 +3863,25 @@ written. THE SHEET STACK refused them twice: a see-through look, and a canvas pi
   on WebGPU, and the count on his Mac. WAITING: his Shift+F3 line "squares, what each mesh is".
 - Next in the same line: signs of ONE height and different widths could share a layer size (pad to the widest, scale the UVs), which
   would take most of the 189; then "many looks" (163) and the instance cells (808).
+
+## THE GRASS GROWS IN (2026-11-22, mondo: every fight in the Woods opened frozen; "is it because it's the first fight of the session ... how do we make it never do that")
+His battle F3: a 1,436 ms frame whose drawing JS was 33 ms, right as the fight began. The lens "JS" number is the render's own;
+the fight is LAID outside it (map.js `_hqEncounterStart` -> three-renderer.js `activate`).
+- NOT a first-fight cost. Cloud, The Clearing (`site_prebuilt_fairy_forest_ow_clearing`), two fights back to back on WebGPU: worst
+  frame 1,392 ms then 916 ms; no shader builds in either. (The session's first fight adds shader / pipeline builds on top.)
+- The profile (classic renderer, CDP, scratchpad fightp.js): `activate` 815 ms, of it `rebuildTerrainDecorations` > `_ggBuild`
+  729 ms: THE GRASS FIELD (the board + the meadow round it, ~27,700 tufts of 49 corners) grown in one go. The board is a WINDOW
+  round the strike, so it differs from fight to fight: keeping the result between fights does not hit (tried, dropped).
+  `_hqEncounterStart` is another 250-370 ms (the party build 148, `_hqLeave` + its one render 112, `hqFieldRegister` 60); the
+  parked room's copies (`_hqParkClone`) are only ~30 ms.
+- The fix (`_ggBuild`): tufts go straight into typed buffers (`_ggW` / `_ggNeed`; `_ggBlade` once a blade, not a list per
+  corner), and the loop is resumable (`run(deadline)` / `finish()`). The FIRST field of a room fight (within 4 s of `activate`,
+  or while one is still growing) is a job: `_ggJobTick` (from `_ggTick`, the battle frame) gives it 8 ms a frame; when whole,
+  the mesh joins and rises from the ground over 350 ms (its own `G.fade`, `uGgF.z`). A later build in the fight (a dig, a build,
+  a flood) and a board that is no room are grown in one go as before, so the old field is never missing.
+  Off: `window.EW_NO_GRASS_SLICE`. `window._ewGrassField` = { tufts, buildMs, frames }.
+- Measured (cloud): the grass is out of `activate` (it no longer shows in the profile's top list); 27,761 tufts in 37 frames,
+  406 ms in all (849 ms in one go with the same build before the typed buffers... 729 in the first profile).
+- NOT done, next: `_hqEncounterStart`'s 250-370 ms; on WebGPU his fight ran "bundles 2453 groups" at 31 FPS (the walk: ~200
+  groups): the fight's room is ~2,700 unmerged copies, each its own recording. Merging the fight's copies (or taking the
+  walk's merged squares) is the next step for both the entry and the fight's frame rate.
