@@ -572,4 +572,13 @@ His Relationship Web board decides who stands where. The list he approved, his c
   A made spot carries `place: true`, `route: [[x, z], ...]`, `hours`, `snap` (no authored square: three-renderer.js `_hqPlaceSnap` moves it to the nearest floor).
 - **To change who stands where:** edit a row; nothing else. A room not on the table keeps its authored people (DOOR HQ, the Mall, the Spaceship, the Frozen Sea).
   A zone tool that rewrites a room's `npcSpots` changes nothing the table decides: only the squares and lines of the races the table names there.
+- **A ROOM OFF THE TABLE (2026-11-22, mondo: "i went across and into the desert and there was a dragon and deep sea fish?? why?"):** the Badlands
+  Highway (`site_ow_r9`, Disaster City to the Circus) was not on the table and still drew four random walkers a day from the old Giza table (every
+  far site's race at weight 1; that day's draw was Dragon, Deep Sea Fish, Conspiracy Theorist, Grey). Fixed two ways. (1) `site_ow_r9` has rows: the
+  Highway's Trucker + Honda Civic. (2) THE BOARD'S RULE, data.js `hqBoardRaces(roomId)`: a room with a site that the table does not fill draws its
+  random extras ONLY from races the board stands in the table rooms its doors lead to (through other off-table rooms, three doors deep; never a
+  race whose every row there is `stay`; the city's side = residents' races with two or more people), and of those only the room's own natives.
+  A road between zones (`site_ow_*`) with no rows draws NOBODY. The shipped AREA UNITS tables of off-table rooms are cut to the same races
+  (`shipped`, set at load); a table mondo makes in the AREA UNITS window is not cut; a table a builder wrote for one room says `own: true` (the
+  Frozen Sea). `hqRoomTakesRace` lets a traveller through a door by the same rule. To put people on a road: give it rows on the table.
 - **A plot's place in a room:** `x = ox + (px + 0.5) * 42`, `z = oz + (pz + 0.5) * 42` with `ox, oz` from HQ_ZONE_MAP's row of the room (`hqZoneMapRoom`).
