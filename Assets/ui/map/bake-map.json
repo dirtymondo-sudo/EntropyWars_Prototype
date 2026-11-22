@@ -467,7 +467,7 @@
   "hs": 0.25,
   "v": "4a1d27e375",
   "bytes": 1160,
-  "s": "0.8"
+  "s": "0.6"
  },
  "site_ow_r8": {
   "id": "site_ow_r8",
@@ -507,7 +507,7 @@
   "hs": 0.25,
   "v": "f2a6d878da",
   "bytes": 728,
-  "s": "0.5"
+  "s": "0.4"
  },
  "site_ow_dh3": {
   "id": "site_ow_dh3",
@@ -517,7 +517,7 @@
   "hs": 0.25,
   "v": "54a9770c3a",
   "bytes": 1055,
-  "s": "0.7"
+  "s": "0.5"
  },
  "site_ow_dh4": {
   "id": "site_ow_dh4",
@@ -527,7 +527,7 @@
   "hs": 0.25,
   "v": "665ef4fdf2",
   "bytes": 1670,
-  "s": "0.9"
+  "s": "0.7"
  },
  "site_ow_r3": {
   "id": "site_ow_r3",
@@ -655,9 +655,9 @@
   "nz": 60,
   "h0": 0,
   "hs": 0.25,
-  "v": "a00d458464",
-  "bytes": 672,
-  "s": "1.3"
+  "v": "00894c4112",
+  "bytes": 601,
+  "s": "1.9"
  },
  "site_prebuilt_hollow_earth_ug_west": {
   "id": "site_prebuilt_hollow_earth_ug_west",
@@ -665,29 +665,29 @@
   "nz": 36,
   "h0": 0,
   "hs": 0.25,
-  "v": "cad8aa5034",
-  "bytes": 567,
-  "s": "0.9"
+  "v": "28ded7c491",
+  "bytes": 563,
+  "s": "1.5"
  },
  "site_prebuilt_hollow_earth_ug_cavern": {
   "id": "site_prebuilt_hollow_earth_ug_cavern",
   "nx": 72,
   "nz": 36,
-  "h0": 0.25,
+  "h0": 2.3,
   "hs": 0.25,
-  "v": "23651655db",
-  "bytes": 717,
-  "s": "1.4"
+  "v": "9f2d97d143",
+  "bytes": 705,
+  "s": "1.6"
  },
  "site_prebuilt_hollow_earth_ug_hollow": {
   "id": "site_prebuilt_hollow_earth_ug_hollow",
   "nx": 72,
   "nz": 48,
-  "h0": 0.25,
+  "h0": 2.3,
   "hs": 1.01,
-  "v": "44ef1b7821",
-  "bytes": 1033,
-  "s": "2.0"
+  "v": "199d69d260",
+  "bytes": 1036,
+  "s": "2.4"
  },
  "site_prebuilt_hollow_earth_ug_agartha": {
   "id": "site_prebuilt_hollow_earth_ug_agartha",
@@ -695,8 +695,8 @@
   "nz": 48,
   "h0": 0,
   "hs": 0.33,
-  "v": "e72e6c7203",
-  "bytes": 607,
-  "s": "3.0"
+  "v": "bb7561c35b",
+  "bytes": 606,
+  "s": "2.8"
  }
 }

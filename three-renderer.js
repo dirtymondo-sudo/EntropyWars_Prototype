@@ -75836,7 +75836,7 @@ const ThreeRenderer = (function () {
         F.forEach(function (f) {
             var fam = (f.key === 'water' || f.key === 'deep_water') ? 'water' : f.key, bk = fam + '@' + Math.round(f.y * 100);
             var B = bodies[bk] || (bodies[bk] = { key: fam, y: f.y, fl: [], deep: [] });
-            B.fl.push(f); if (f.key === 'deep_water') B.deep.push(f);
+            B.fl.push(f); if (f.key === 'deep_water' || f.look === 'deep_water') B.deep.push(f);   /* (`look`: drawn dark, walked by its key: data.js A LIQUID'S LOOK IS NOT ITS RULE) */
         });
         Object.keys(bodies).forEach(function (bk) {
             var B = bodies[bk], g0 = B.fl[0].gq, Q = g0.Q, winS = LIQ_SHORE_H * Q, winD = LIQ_DEEP_H * Q;   // the spell water's windows on a board of these squares
@@ -76299,7 +76299,7 @@ const ThreeRenderer = (function () {
                 wg.setIndex(B.p.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.i, 1) : new THREE.Uint16BufferAttribute(B.i, 1));
                 var wm = new THREE.Mesh(wg, fluidMatFor(key)); wm.renderOrder = 2; wm.name = 'hq:water:' + key; wm._ew_hqWater = true; G.add(wm);
             });
-            if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); ['water', 'deep_water'].forEach(function (k) { var lk = _hqWaterLook(info, k); if (lk !== k) fluidMatFor(lk); }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick; a room's own look ticks too)
+            if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); if (f.look === 'deep_water') fluidMatFor('deep_water'); } }); ['water', 'deep_water'].forEach(function (k) { var lk = _hqWaterLook(info, k); if (lk !== k) fluidMatFor(lk); }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick; a room's own look ticks too)
         } catch (e) { console.warn('[HQ] the water failed', e); }
         try { if (_hqFallsBuild(info, G, U, TM)) { (info.falls || []).forEach(function (f) { var k = f.key || 'water'; fluidMatFor(k === 'deep_water' ? 'water' : k); }); } } catch (e) { console.warn('[HQ] the waterfalls failed', e); }   // THE WATERFALLS
         /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
