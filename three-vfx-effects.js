@@ -30709,21 +30709,31 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            parked cars, nose +Z, fresh materials); the misc cars stand in
            while it streams */
         var sedan = null;
-        try { if (!_crOff() && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.sedan) sedan = ThreeRenderer.sedan({ metres: carLen / ts * 1.75 }); } catch (e) { sedan = null; }
+        /* HE IS THE CAR (mondo 2026-11-22 playtest: "sedan's spells that use a car are supposed to use him as the car, not
+           randomly spawn another sedan"): the car is the executioner's OWN model (_finCasterBody: the real unit hides while
+           it shows) and it starts from his own square, not from off the map. Only with no caster (a preview) or while his
+           file streams is it the sedan clone, and then the real unit is hidden for the run so one car shows. */
+        var body = null, hideId = null;
+        try { if (_FC && _FC.casterId != null) body = _finCasterBody(ts, { yaw: 0, slot: 'walk' }); } catch (e) { body = null; }
+        if (!body) {
+            try { if (!_crOff() && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.sedan) sedan = ThreeRenderer.sedan({ metres: carLen / ts * 1.75 }); } catch (e) { sedan = null; }
+            if (sedan && _FC && _FC.casterId != null) hideId = _FC.casterId;
+        }
         try {
-            if (!sedan && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) {
+            if (!body && !sedan && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) {
                 for (var k = 0; k < keys.length && !car; k++) car = ThreeRenderer.getMiscModelClone(keys[k], ts * 0.72, 'center');
             }
         } catch (e) { car = null; }
         var carG = new THREE.Group();
-        if (sedan) { car = sedan; car.traverse(function (n) { if (n.isMesh && n.material) n.material.transparent = true; }); carG.add(car); }
+        if (body) { car = body; carG.add(car); }
+        else if (sedan) { car = sedan; car.traverse(function (n) { if (n.isMesh && n.material) n.material.transparent = true; }); carG.add(car); }
         else if (car) { car.rotation.y = Math.PI / 2; car.traverse(function (n) { if (n.isMesh && n.material) n.material.transparent = true; }); carG.add(car); }   /* Meshy: long on X, nose −X → nose to local +Z */
         /* NO STAND-INS (2026-10-05): no procedural box car — no model loaded = no car */
         /* THE ONE MODEL: the car lands as the building's crashed car (the
            misc `crashed_car`, the chicane's wreck) — swapped in on impact,
            only when the car itself was the Meshy one (one look, not two) */
         var wreck = null;
-        if (car && !_crOff()) {
+        if (car && !body && !_crOff()) {   // his own body is never swapped for a wreck
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) wreck = ThreeRenderer.getMiscModelClone('crashed_car', ts * 0.62, 'center'); } catch (e) { wreck = null; }
             if (wreck) {
                 wreck.rotation.y = Math.PI / 2;
@@ -30739,11 +30749,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var airbag = _finShade(new THREE.Mesh(_finTexUv(new THREE.SphereGeometry(ts * 0.55, 14, 10), 2, 1), _finTexMat('parchment.png', 0xffffff, { opacity: 0.95 }))); airbag.visible = false; airbag.position.set(0, ts * 0.6, carLen * 0.25); carG.add(airbag);
         var wheelMat = _finTexMat('gunmetal.png', 0x3a3a3e); var loose = _finShade(new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.16, ts * 0.12, 12), wheelMat)); loose.rotation.z = Math.PI / 2; loose.visible = false; g.add(loose);
         var driveMs = 900, rampAt = hitAt - 700, startD = -ts * 9.5, rampD = -ts * 2.5;
+        if (body || hideId != null) { startD = -L; rampD = -Math.min(ts * 2.5, L * 0.5); }   // from his own square
+        var TRh = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, unhide = function () { if (hideId != null) { try { if (TRh && TRh.cineSetUnitFade) TRh.cineSetUnitFade(hideId, 1); } catch (e) {} hideId = null; } };
+        if (hideId != null) { try { if (TRh && TRh.cineSetUnitFade) TRh.cineSetUnitFade(hideId, 0); } catch (e) {} _fxDelay(unhide, ms + 60); }
         var landed = false, lastDust = 0, c = tilePx(tx, ty), bz = tileZ(tx, ty);
         var vLoose = new THREE.Vector3(), pLoose = new THREE.Vector3();
         return !!_sigRunOwned(g, ms, function (el) {
             var t0 = rampAt - driveMs;
-            if (el < t0) { carG.visible = false; return; }
+            if (el < t0) { carG.visible = !!body || hideId != null; carG.position.set(0, 0, startD); return; }   // he waits on his own square
             carG.visible = true;
             hl1.material.opacity = hl2.material.opacity = landed ? 0.2 : 0.75;
             if (el < rampAt) {
@@ -30779,8 +30792,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             loose.position.copy(pLoose); loose.rotation.x += 0.2;
             if (since > 200 && since % 90 < 17 && _canSpawn()) _spawn({ x: c.x, y: c.y, z: bz + ts * 0.7, mode: 'billboard', sprite: 'smoke', ml: rn(600, 1100), size0: rn(12, 20), size1: rn(40, 70), vz: rn(30, 60), opacity0: 0.5, opacity1: 0 });
             var life = _sigClamp01((ms - el) / 700);
-            carG.traverse(function (n) { if (n.material && n.material.opacity != null && n !== hl1 && n !== hl2 && n !== airbag) n.material.opacity = life; });
+            if (body) { body.material.opacity = life; hl1.material.opacity = hl2.material.opacity = Math.min(0.2, life); }
+            else carG.traverse(function (n) { if (n.material && n.material.opacity != null && n !== hl1 && n !== hl2 && n !== airbag) n.material.opacity = life; });
             wheelMat.opacity = life;
+            if (el >= ms - 20) unhide();
         });
     }
 
@@ -49279,29 +49294,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _sigShake('hard');
             }
         },
-        /* Vehicular Manslaughter — CARS FROM THE SKY: the honda civic's own
-           sedan (and the kit's cars while it streams) rains nose-first onto
-           the zone; each lands in its own blast */
+        /* Vehicular Manslaughter — HE IS THE CAR (mondo 2026-11-22 playtest: "sedan's spells that use a car are supposed
+           to use him as the car, not randomly spawn another sedan"): the honda civic drives the dash himself (the engine
+           moves his own model), so no sedan falls from the sky any more; the hit is his crash on the victim's square:
+           the blast, the windscreen glass, the ring, the shake */
         raceMissileBarrage: {
             charge: function (P) {
                 _capCharge(P, 0xffb040, { sprite: 'ember', sigil: false });
-                try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.sedan) ThreeRenderer.sedan({ metres: 4.4 }); } catch (e) {}   // warm the file
             },
             hit: function (P) {
-                var r = Math.max(1, P.r || 1);
-                var spots = [{ x: P.tx, y: P.ty }];
-                for (var i = 0; i < 2; i++) spots.push({ x: P.tx + Math.round(rn(-r, r)), y: P.ty + Math.round(rn(-r, r)) });
-                spots.forEach(function (s, k) {
-                    _capAt(k * 180, function () {
-                        var ok = _capCar(s.x, s.y, { ms: 420, onLand: function () {
-                            _capBoom(s.x, s.y, { scale: k === 0 ? 1.5 : 1.0, lite: k > 0 });
-                            _capShards(s.x, s.y, 'glass', { n: 8, lite: k > 0 });
-                            _capRing(s.x, s.y, 0xffc080, 1.4, 420, 2);
-                            if (k === 0) _sigShake('hard');
-                        } });
-                        if (!ok) _capAt(420, function () { _capBoom(s.x, s.y, { scale: k === 0 ? 1.5 : 1.0, lite: k > 0 }); });
-                    });
-                });
+                _capBoom(P.tx, P.ty, { scale: 1.5 });
+                _capShards(P.tx, P.ty, 'glass', { n: 10 });
+                _capRing(P.tx, P.ty, 0xffc080, 1.4, 420, 2);
+                _sigShake('hard');
             }
         },
         /* Unstoppable Charge — THE RAM: chevrons of force race ahead of the
