@@ -90397,6 +90397,20 @@ const HQ_CATALOGUE_ALL = {
     kt_samurai_armour_stand: { file: 'world/props/meshy/katana/samurai_armour_stand.glb', base: 'asset', h: 1.6, foot: 0.2, block: true, group: 'Meshy props · Katana' },   // the empty stand (box seat + post + shoulder bar); 0.77 x 1.60 x 0.51 m (w x h x d)
     kt_katana: { file: 'world/props/meshy/katana/katana.glb', base: 'asset', span: 1.0, foot: 0, group: 'Meshy props · Katana' },   // bare blade, lying flat along X; 1.00 x 0.11 x 0.08 m (w x h x d)
     kt_katana_scabbard: { file: 'world/props/meshy/katana/katana_scabbard.glb', base: 'asset', span: 0.75, foot: 0, group: 'Meshy props · Katana' },   // empty black saya, lying flat along X; 0.75 x 0.07 x 0.03 m (w x h x d)
+    /* THE WEAPONS IN THE HANDS (2026-11-22, mondo: units "hold their weapons correctly with their fingers and have their weapon models
+       separate"): eleven hand weapons, Meshy from Claude's concepts (project files weapon-hands/). All lie along X (tip at -X, handle at +X)
+       but the sickle and the spray can (upright, Y). The grip each unit closes on them is sprites.js RACE_CREATOR_LOOK_DEFS. */
+    wp_war_fan: { file: 'world/props/meshy/weapons/war_fan.glb', base: 'asset', span: 0.5, foot: 0, group: 'Meshy props · Weapons' },   // the Shogun's iron war fan, open, upright (the pivot low in the middle, a tassel under it)
+    wp_cutlass: { file: 'world/props/meshy/weapons/cutlass.glb', base: 'asset', span: 0.8, foot: 0, group: 'Meshy props · Weapons' },   // the Pirate's
+    wp_shuriken: { file: 'world/props/meshy/weapons/shuriken.glb', base: 'asset', span: 0.12, foot: 0, group: 'Meshy props · Weapons' },   // the Ninja's star, flat in X/Y
+    wp_gladiator_net: { file: 'world/props/meshy/weapons/gladiator_net.glb', base: 'asset', span: 1.6, foot: 0, group: 'Meshy props · Weapons' },   // the Gladiator's net, spread flat
+    wp_taser: { file: 'world/props/meshy/weapons/taser.glb', base: 'asset', span: 0.2, foot: 0, group: 'Meshy props · Weapons' },   // Police Officer, Time Cop
+    wp_pepper_spray: { file: 'world/props/meshy/weapons/pepper_spray.glb', base: 'asset', h: 0.16, foot: 0, group: 'Meshy props · Weapons' },   // Police Officer
+    wp_harpoon_gun: { file: 'world/props/meshy/weapons/harpoon_gun.glb', base: 'asset', span: 0.9, foot: 0, group: 'Meshy props · Weapons' },   // Deep Sea Diver
+    wp_sickle: { file: 'world/props/meshy/weapons/sickle.glb', base: 'asset', h: 0.45, foot: 0, group: 'Meshy props · Weapons' },   // the Scarecrow's harvest hook
+    wp_deneuralizer: { file: 'world/props/meshy/weapons/deneuralizer.glb', base: 'asset', span: 0.2, foot: 0, group: 'Meshy props · Weapons' },   // Men in Black
+    wp_gladius: { file: 'world/props/meshy/weapons/gladius.glb', base: 'asset', span: 0.7, foot: 0, group: 'Meshy props · Weapons' },   // the Gladiator's short sword
+    wp_excalibur: { file: 'world/props/meshy/weapons/excalibur.glb', base: 'asset', span: 1.15, foot: 0, group: 'Meshy props · Weapons' },   // King Arthur's
     fl_lotus: { file: 'world/nature/flora/meshy/lotus.glb', base: 'asset', h: 0.5, foot: 0, group: 'Meshy flora · plants' },   // flower on two pads; Meshy gave it a stem under the pads: sink it ~0.2 m into the water; 0.69 x 0.50 x 0.47 m (w x h x d)
     fl_barrel_cactus: { file: 'world/nature/flora/meshy/barrel_cactus.glb', base: 'asset', h: 0.6, foot: 0.28, block: true, group: 'Meshy flora · plants' },   // on its own sand mound; 0.70 x 0.60 x 0.73 m (w x h x d)
     fl_rice_clump: { file: 'world/nature/flora/meshy/rice_clump.glb', base: 'asset', h: 1.0, foot: 0, group: 'Meshy flora · plants' },   // one clump, roots showing: plant in rows in paddy water; 0.63 x 1.00 x 0.67 m (w x h x d)
