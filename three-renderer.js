@@ -47834,7 +47834,7 @@ const ThreeRenderer = (function () {
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost + (_ewGpuInfo.rebuilds ? ' (rebuilt ' + Math.min(3, _ewGpuInfo.rebuilds) + '×)' : '');
         if (_ewBun.marked.length) {
             s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
-            if (_ewBun.rpShow) { var rpS = _ewBun.rpShow; s += ' · refreshed ' + rpS.asked + ' of ' + rpS.all + ' a frame (awake ' + rpS.awake + ', turns ' + rpS.turn + ', woken ' + rpS.wokeN + ', firsts ' + rpS.reps + ', whole groups ' + (rpS.asked - rpS.awake - rpS.turn - rpS.wokeN - rpS.reps) + '; quiet groups ' + rpS.quiet + ')'; }
+            if (_ewBun.rpShow) { var rpS = _ewBun.rpShow; s += ' · refreshed ' + rpS.asked + ' of ' + rpS.all + ' a frame (awake ' + rpS.awake + ', turns ' + rpS.turn + ', woken ' + rpS.wokeN + ', firsts ' + rpS.reps + (rpS.repsSk ? ' (' + rpS.repsSk + ' more left out, their buffers already written)' : '') + ', whole groups ' + (rpS.asked - rpS.awake - rpS.turn - rpS.wokeN - rpS.reps) + '; quiet groups ' + rpS.quiet + ')'; }
             var wr = _ewBun.whyRate, ws = []; if (wr) for (var wk in wr) ws.push(wk + ' ' + wr[wk]);
             if (ws.length) s += ' (' + ws.join(', ') + ')';
             s += ' · check ' + _ewBun.msAvg.toFixed(2) + ' ms/frame (' + (_ewBun.quietN | 0) + ' quiet skipped, ' + (_ewBun.noMShow | 0) + ' still-checked)';
@@ -50245,7 +50245,7 @@ const ThreeRenderer = (function () {
            Off: window.EW_BUN_FULL_REFRESH. Counts: _ewBun.rpAsked / rpAll per frame (the lens's bundles line). */
         ['updateBinding', 'updateBindings', 'createBindings'].forEach(function (k) {
             var f = B[k]; if (typeof f !== 'function') return;
-            B[k] = function (b) { var gn = b && b.groupNode; if (!(gn && gn.shared === true)) _ewBun.upN = (_ewBun.upN | 0) + 1; return f.apply(this, arguments); };   // the frame's shared buffers (camera, lights) are written every frame by whoever comes first: not a sign the object changed
+            B[k] = function (b) { var gn = b && b.groupNode; if (!(gn && gn.shared === true)) _ewBun.upN = (_ewBun.upN | 0) + 1; else _ewBun.upS = (_ewBun.upS | 0) + 1; return f.apply(this, arguments); };   // the frame's shared buffers (camera, lights) are written every frame by whoever comes first: not a sign the object changed
         });
         /* THE LONGER TURN (2026-11-19, mondo's 18:28 F3: 72 turns a frame, ~20 µs each on Firefox): an object still rests after REST quiet
            frames, but a rested one is asked on its turn every TURN = 60 frames (was every 20th); what it would catch is a change that
@@ -50366,12 +50366,42 @@ const ThreeRenderer = (function () {
                Old rule: window.EW_BUN_FIRSTS_EACH */
             var Nn = R._nodes, rid = Nn && Nn.nodeFrame ? Nn.nodeFrame.renderId : NaN, RP = L.reps, nR = 0;
             var skipOk = rid === rid && !(typeof window !== 'undefined' && window.EW_BUN_FIRSTS_EACH) && (RP.length === 0 || !RP[0].getMonitor().needsVelocity(R));
+            /* THE FIRSTS BY BUFFER (2026-11-22, mondo's 18:10 F3 in Disaster City: 36 FPS, "firsts 196" a frame, "replay: the
+               refreshes 8.00" ms): a first of a recorded group gets three's SHARED refresh only (the group is static and current),
+               and all that refresh sends to the GPU is the shared buffers its shader reads (the render's camera, lamps, fog). Those
+               buffers are the same objects for every shader that reads the same set of values (three keeps one per set, per render),
+               so ~200 shaders in view wrote the same few buffers 200 times: every one after the first is told "already written" by
+               three, after ~20 µs of asking. A first whose shared buffers were ALL written in this render by an earlier first (or by
+               THE HELD KEEP THE CAMERA, the same stamp) is now left out; a first always gets its own first look, and one whose
+               shader reads a buffer nobody wrote yet in this render is refreshed as before.
+               Old rule: window.EW_BUN_FIRSTS_BY_SHADER. Check (dev): window.EW_BUN_FIRSTS_AUDIT refreshes the left-out ones anyway
+               and counts the ones that sent anything in _ewBun.fAudBad (must stay 0). Count: _ewBun.rpRepsSk (the lens's bundles line). */
+            var byBuf = skipOk && !(typeof window !== 'undefined' && window.EW_BUN_FIRSTS_BY_SHADER), aud = byBuf && typeof window !== 'undefined' && !!window.EW_BUN_FIRSTS_AUDIT, nSk = 0, sbF, kF, bgF, needF, monF, freshF;
             for (i = 0; i < RP.length; i++) {
-                ro = RP[i];
-                if (skipOk && ro._ew_rpI === true && ro.getMonitor().renderId === rid) continue;
+                ro = RP[i]; monF = ro.getMonitor(); freshF = monF.renderId !== rid;
+                if (skipOk && ro._ew_rpI === true && !freshF) continue;
+                sbF = null;
+                if (byBuf) {
+                    sbF = ro._ew_rqS;
+                    if (sbF === undefined) {   // this object's shared bind groups, found once (as rpShared)
+                        sbF = null; bgF = ro.getBindings();
+                        for (kF = 0; kF < bgF.length; kF++) { var b0F = bgF[kF].bindings && bgF[kF].bindings[0], gnF = b0F && b0F.groupNode; if (gnF && gnF.shared === true) (sbF || (sbF = [])).push(bgF[kF]); }
+                        ro._ew_rqS = sbF;
+                    }
+                    if (sbF && ro._ew_rpI === true) {
+                        needF = false;
+                        for (kF = 0; kF < sbF.length; kF++) if (sbF[kF]._ew_rid !== rid) { needF = true; break; }
+                        if (!needF) {
+                            nSk++;
+                            if (aud) { var uA = (_ewBun.upN | 0) + (_ewBun.upS | 0); rpStep(R, ro); if ((_ewBun.upN | 0) + (_ewBun.upS | 0) !== uA) _ewBun.fAudBad = (_ewBun.fAudBad | 0) + 1; _ewBun.fAudN = (_ewBun.fAudN | 0) + 1; }
+                            continue;
+                        }
+                    }
+                }
                 rpStep(R, ro); ro._ew_rpI = true; nR++;
+                if (sbF && freshF) for (kF = 0; kF < sbF.length; kF++) sbF[kF]._ew_rid = rid;   // (asked while the shader was new to this render: three wrote its shared buffers)
             }
-            asked += nR; _ewBun.rpReps = (_ewBun.rpReps | 0) + nR;
+            asked += nR; _ewBun.rpReps = (_ewBun.rpReps | 0) + nR; _ewBun.rpRepsSk = (_ewBun.rpRepsSk | 0) + nSk;
             /* THE HELD LIST KEPT (2026-11-19): one array per replay depth, refilled (was a new array per group per pass: ~750 a frame) */
             /* THE QUIET GROUP (2026-11-19, mondo's 16:33 F3: "refreshed 188 of 3137 a frame" yet "scene: bundle replays 4.1 ms"): the
                cost left was the bookkeeping, every own-node object of every group read every frame to learn that it rests. A group whose
@@ -50803,6 +50833,14 @@ const ThreeRenderer = (function () {
        of a group keeps each direct child's own value hash; a child whose values changed 3 times within 20 s is drawn outside the
        recording from then on (`_ew_bunOut`, as a mover is). Only once the room is ready (a room still landing moves everything). */
     var _hqBatchHoldN = 0;   // THE HELD PIECES ONCE: bumped each time THE STATIC BATCH takes or hands back a piece
+    /* the lens's name for the top piece whose own tree last moved in a group (THE TREE'S OTHER, NAMED) */
+    function _ewBunTxName(g) {
+        var c = g && g._ew_bunTx; if (!c) return '';
+        var nm = c.name || '', q = c, nMesh = 0, first = '';
+        try { c.traverse(function (o) { if (o.isMesh) { nMesh++; if (!first) first = o.name || (o.geometry && o.geometry.name) || ''; } if (!nm && o.name) nm = o.name; }); } catch (e) {}
+        var ud = c.userData || {}, src = ud.model || ud.src || ud.id || ud.key || '';
+        return '"' + String(nm || c.type).slice(0, 40) + '"' + (src ? ' ' + String(src).slice(0, 40) : '') + (first && first !== nm ? ' / ' + String(first).slice(0, 30) : '') + ' (' + nMesh + ' meshes, ' + (g._ew_bunTxN | 0) + ' times in this group)';
+    }
     function _ewBunWalkTop(g, S) {
         var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
         /* THE HELD PIECES ONCE (2026-11-19, mondo's 13:44 F3: "downtown_streets shell 1.59 ms" a frame for 10 drawn meshes): the shell's
@@ -50829,11 +50867,16 @@ const ThreeRenderer = (function () {
             if (c._ew_bunOut === true && !_ewBunNoOut() && (c.visible !== false || !_ewBunOutHideHash())) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); if (c._ew_bRec) S.cB = (S.cB | 0) + 1; else S.cH = (S.cH | 0) + 1; continue; }   // (a piece the merge holds reads hidden while a frame draws)
             if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); S.cB = (S.cB | 0) + 1; continue; }
-            var v0 = S.hv; S.hv = 0;
+            /* THE TREE'S OTHER, NAMED (2026-11-22, mondo's 18:10 F3: "rooms b|dc:P02-08-B1 (tree 73 [... other 71], rests 15, classic now)"):
+               each top piece's own tree hash is kept, and the last piece whose hash moved is named in the lens line "Re-recorded most" */
+            var v0 = S.hv; S.hv = 0; var h0 = S.hs; S.hs = 17;
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
             else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
             if (c.children.length) _ewBunWalk(c, S);
             var sub = S.hv; S.hv = _ewBunMix(v0, sub);
+            var subH = S.hs; S.hs = _ewBunMix(h0, subH);
+            if (c._ew_bunCs !== undefined && c._ew_bunCs !== subH) { g._ew_bunTx = c; g._ew_bunTxN = (g._ew_bunTxN | 0) + 1; }
+            c._ew_bunCs = subH;
             if (watch) {
                 if (c._ew_bunCv !== undefined && c._ew_bunCv !== sub) {
                     if (now - (c._ew_bunCt || 0) > 20000) { c._ew_bunCt = now; c._ew_bunCn = 1; }
@@ -50881,7 +50924,7 @@ const ThreeRenderer = (function () {
         /* (his profile: the per-refresh timing ran every frame with the lens shut, ~1,600 clock reads a frame): lens frames, or one dip-log frame in 8 */
         _ewBun.rfOn = !!((_lens && _lens.cur) || (_dip.cur && ((_ewBun.frame | 0) & 7) === 0));
         if (_ewBun.rf && _ewBun.rfOn) { if (++_ewBun.rf.f > 300) { _ewBun.rfLast = _ewBun.rf; _ewBun.rf = null; } }   // THE REFRESH BY OBJECT: a rolling window of ~300 frames (the dip log keeps it filled with the lens shut)
-        _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0, quiet: _ewBun.rpQuiet | 0 }; _ewBun.rpQuiet = 0; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
+        _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, repsSk: _ewBun.rpRepsSk | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0, quiet: _ewBun.rpQuiet | 0 }; _ewBun.rpQuiet = 0; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpRepsSk = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
         var tpa = spL ? performance.now() : 0;
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
         var tpb = spL ? performance.now() : 0, relN = 0;
@@ -50994,7 +51037,17 @@ const ThreeRenderer = (function () {
                        while it is released, ~10 ms a frame for 5 s, because 5 pieces started or stopped moving within 2 s. A
                        re-record costs that walk ONCE. So such a group rests only when its list changes on about every third
                        frame (24 times in 2 s); below that it is recorded again each time. The old 5: window.EW_BUN_REST_AT_5. */
-                    else if (st.times.length >= ((walk && g._ew_st && g.children.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_REST_AT_5)) ? 24 : 5)) { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
+                    /* THE SHORT REST (2026-11-22, mondo's 18:10 F3 in Disaster City: two closed rooms "rests 15 / 7, classic now", and
+                       "170 props (outside its bundle)" drawn one by one, ~4 ms of classic draws a frame): a group whose list of
+                       pieces changed 5 times in 2 s was drawn piece by piece for a fixed 5 s, though what changes it is mostly a
+                       short burst (a room coming into range, its pieces settling). The first rest is now 0.7 s; a group that
+                       needs another within 20 s rests twice as long each time, up to the old 5 s (a piece that never stops
+                       changing ends there). The big shell keeps 5 s. Old rule: window.EW_BUN_REST_5S */
+                    else if (st.times.length >= ((walk && g._ew_st && g.children.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_REST_AT_5)) ? 24 : 5)) {
+                        var rsN = (now - (st.restAt || 0) < 20000) ? (st.restN | 0) + 1 : 1; st.restN = rsN; st.restAt = now;
+                        var rsMs = (g.children.length > 1000 || (typeof window !== 'undefined' && window.EW_BUN_REST_5S)) ? 5000 : Math.min(5000, 700 * Math.pow(2, rsN - 1));
+                        st.until = now + rsMs; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue;   // the tree itself churns: classic for a while
+                    }
                 }
                 g.version++; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             } else if (st.G !== G || g._ew_bunFree) {   // the lamps / a freed resource it holds: re-records, and none of it counts as the group churning
@@ -56208,8 +56261,8 @@ const ThreeRenderer = (function () {
             var mwS = _hqStillSplitText(); if (mwS) L.push('Matrix walk by group (ms a frame): ' + mwS);
         } catch (eSp) {}
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
-            var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
-            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + ' · movers kept out ' + (_ewBun.outS | 0));
+            var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup, tx: _ewBunTxName(g) }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
+            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + (x.tx ? ', last piece whose own tree moved: ' + x.tx : '') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + ' · movers kept out ' + (_ewBun.outS | 0));
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept' + (S.still.hid ? ' · ' + S.still.hid + ' hidden people left as they stand' : ''));
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
@@ -97737,6 +97790,7 @@ const ThreeRenderer = (function () {
        yet three composed each one's matrix every frame. Inside the frame's one walk, a cell off the camera is not walked (as THE
        STILL WALK leaves an off-camera chunk), and in a drawn cell a batch is walked once when it joins and then only when the
        group or its cell moved, or the batch's own pose changed (ten numbers compared). Off: window.EW_HQ_INST_MW_ALL. */
+    var _hqInstMwEach = false;
     function _hqInstGroupMW(force) {
         var proto = THREE.Object3D.prototype.updateMatrixWorld;
         if (!_hqStWalk || (typeof window !== 'undefined' && window.EW_HQ_INST_MW_ALL)) return proto.call(this, force);
@@ -97756,8 +97810,13 @@ const ThreeRenderer = (function () {
             var p = c.position, q = c.quaternion, sc = c.scale, cs = p.x + p.y * 1.618 + p.z * 2.414 + q._x * 3.3 + q._y * 5.7 + q._z * 7.1 + q._w * 11.3 + sc.x * 13.7 + sc.y * 17.9 + sc.z * 19.3;
             var cAll = all || c._ew_mwStale || cs !== c._ew_mwSum;
             if (cAll) { c._ew_mwSum = cs; c._ew_mwStale = false; c.updateMatrix(); c.matrixWorld.multiplyMatrices(this.matrixWorld, c.matrix); c.matrixWorldNeedsUpdate = false; }
-            var cc = c.children;
-            for (var j = 0, m = cc.length; j < m; j++) {
+            /* THE BATCHES BY TURN (2026-11-22, mondo's 18:10 F3: "Matrix walk by group: hq_instances 1.00" with nothing moving): every
+               batch of every drawn cell had its ten pose numbers read each frame. A cell whose batch count is unchanged now has one
+               batch in eight compared a frame (its turn by its place); a cell that gained or lost a batch, or moved, is read whole
+               that frame as before. Off: window.EW_HQ_INST_MW_EACH */
+            var cc = c.children, m = cc.length, tn = cAll || c._ew_mwN !== m || _hqInstMwEach ? -1 : ((c._ew_mwT = ((c._ew_mwT | 0) + 1) & 7));
+            c._ew_mwN = m;
+            for (var j = tn < 0 ? 0 : tn; j < m; j += tn < 0 ? 1 : 8) {
                 var b = cc[j], bp = b.position, bq = b.quaternion, bs = b.scale, s2 = bp.x + bp.y * 1.618 + bp.z * 2.414 + bq._x * 3.3 + bq._y * 5.7 + bq._z * 7.1 + bq._w * 11.3 + bs.x * 13.7 + bs.y * 17.9 + bs.z * 19.3;
                 if (cAll || b._ew_mwSum !== s2 || b.matrixWorldNeedsUpdate || b.children.length) { b._ew_mwSum = s2; b.updateMatrixWorld(true); }
             }
@@ -97767,7 +97826,7 @@ const ThreeRenderer = (function () {
         try { var CG = _hq && _hq.charGroup; if (CG && !CG._ew_st && CG.updateMatrixWorld !== _hqCharGroupMW && !Object.prototype.hasOwnProperty.call(CG, 'updateMatrixWorld')) CG.updateMatrixWorld = _hqCharGroupMW; } catch (eCG) {}
         var S = _hqStS; S.hid = 0; S.groups = S.out = S.full = S.tops = S.fresh = S.movers = S.swept = 0;
         var t0 = performance.now();
-        _hqStOffC = _hqStillOff(); _hqStMqEvery = typeof window !== 'undefined' && !!window.EW_HQ_STILL_MERGED_EVERY; _hqStNoBook = typeof window !== 'undefined' && !!window.EW_HQ_STILL_NO_HELD_BOOK;   // the walk's flags, read once (not per group: a window lookup is slow on Firefox)
+        _hqStOffC = _hqStillOff(); _hqStMqEvery = typeof window !== 'undefined' && !!window.EW_HQ_STILL_MERGED_EVERY; _hqStNoBook = typeof window !== 'undefined' && !!window.EW_HQ_STILL_NO_HELD_BOOK; _hqInstMwEach = typeof window !== 'undefined' && !!window.EW_HQ_INST_MW_EACH;   // the walk's flags, read once (not per group: a window lookup is slow on Firefox)
         _hqStNow = t0; _hqStWalk = true;
         try {
             /* THE WALK'S SPLIT (lens open only, 2026-11-18): the scene's own step of three's walk, then each top child timed by its
@@ -106874,6 +106933,7 @@ const ThreeRenderer = (function () {
             try { renderer.render(sc, cam); } catch (e) { out.error = String(e && e.message || e); }
             return out;
         },
+        bundleFirsts: function () { return { left: _ewBun.rpShow ? _ewBun.rpShow.repsSk : 0, asked: _ewBun.rpShow ? _ewBun.rpShow.reps : 0, audit: _ewBun.fAudN | 0, auditWrote: _ewBun.fAudBad | 0 }; },   // THE FIRSTS BY BUFFER's counts (dev)
         bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, recorded: st.recN, why: st.why }; }); },
         /* THE SHADER CACHE: the counts; 'clear' forgets every recipe (this session's warm builds stay). .gl = the classic renderer's
            cache (THE TITLE WARM), .late = THE LATE LOOK of the renderer drawing now */
