@@ -23,6 +23,7 @@ const REPO = __dirname, DRY = process.argv.includes('--dry-run');
 const PLAN = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/areas/dumb/layout.json'), 'utf8'));
 const C = 3.5, N = 12, GX = PLAN.cols, GY = PLAN.rows, W = N * GX, Hh = N * GY, HX = W * C / 2, HZ = Hh * C / 2, LEVEL = 1.75, T = 0.3, DW = 1.75, DH = 2.2;
 const ROOM = 'site_prebuilt_dumb_base', PART = 'base';
+let GANTRY_MOUTH = null;
 const OW = { wx: 0, wy: 11 };   // THE ONE WORLD: the room's north-west plot on the world grid (the East Gantry P06-05 -> 6,16)
 const OLD = { motorpool: 'site_prebuilt_dumb_motorpool', sublevel7: 'site_prebuilt_dumb_sublevel7', dreamlab: 'site_prebuilt_dumb_dreamlab', clonevats: 'site_prebuilt_dumb_clonevats',
     warroom: 'site_prebuilt_dumb_warroom', bunker: 'site_prebuilt_dumb_bunker', ring: 'site_prebuilt_cern_ring', ward: 'site_prebuilt_area51_ward' };
@@ -113,9 +114,11 @@ function mkRoom(tag, u0, v0, NU, NV, B) {
         seg(cur, b); };
     R.pane = (axis, at, a, b, o) => R.wall(axis, at, a, b, Object.assign({ tint: 0xd8ecf2 }, o, { draw: false, glassWalk: true }));
     R.ceil = (ua, va, ub, vb, y, key, tint, x) => { const p = Object.assign({ s: 'box', p: [X((ua + ub) / 2), y, Z((va + vb) / 2)], size: [r2((ub - ua) * C), 0.14, r2((vb - va) * C)], under: true, uv: 3.5 }, x || {}); if (key) p.key = key; if (tint != null) p.tint = tint; return part(p); };
+    /* (`mouths: false`, 2026-11-22: a kit deck is a floor inside drawn walls, its ends meet a wall or a floor that is open already. The engine's bridge
+       mouths opened a round hole in the rock past each end of the Great Room's loft, a pit beside the floor nobody could leave: find-softlocks.js) */
     R.deck = (ua, va, ub, vb, y, key) => { const ew = (ub - ua) >= (vb - va);
-        F.push(ew ? { k: 'bridge', x0: X(ua), z0: Z((va + vb) / 2), x1: X(ub), z1: Z((va + vb) / 2), w: r2((vb - va) * C), y: r2(B + y), key, rails: false, plain: true }
-                  : { k: 'bridge', x0: X((ua + ub) / 2), z0: Z(va), x1: X((ua + ub) / 2), z1: Z(vb), w: r2((ub - ua) * C), y: r2(B + y), key, rails: false, plain: true }); };
+        F.push(ew ? { k: 'bridge', x0: X(ua), z0: Z((va + vb) / 2), x1: X(ub), z1: Z((va + vb) / 2), w: r2((vb - va) * C), y: r2(B + y), key, rails: false, plain: true, mouths: false }
+                  : { k: 'bridge', x0: X((ua + ub) / 2), z0: Z(va), x1: X((ua + ub) / 2), z1: Z(vb), w: r2((ub - ua) * C), y: r2(B + y), key, rails: false, plain: true, mouths: false }); };
     R.guard = (axis, at, a, b, y, tint) => { const m = (a + b) / 2, L = (b - a) * C, px = axis === 'u' ? X(m) : X(at), pz = axis === 'u' ? Z(at) : Z(m), tn = tint != null ? tint : 0x4a4f56;
         for (const yy of [0.55, 1.05]) part({ s: 'box', p: [px, r2(y + yy), pz], size: axis === 'u' ? [r2(L), 0.06, 0.06] : [0.06, 0.06, r2(L)], tint: tn });
         part({ s: 'box', p: axis === 'u' ? [X(a), y, pz] : [px, y, Z(a)], size: [0.07, 1.08, 0.07], tint: tn, n: Math.round((b - a) * 2) + 1, step: axis === 'u' ? [C / 2, 0, 0] : [0, 0, C / 2] });
@@ -191,7 +194,9 @@ OPEN.forEach(o => { for (let m = -1; m <= 1; m++) for (const t of [o.line - 1, o
    East Gantry's last four squares (rows 62..65, the track on 63) to the room's east wall, where the door pair `ow_v_7_16` joins the Sewers'
    Gantry Tunnel (bake-sewers.js WSEAM). ── */
 { const p = plot['P06-05']; for (let y = 62; y <= 65; y++) for (let x = p.sx + 8; x < p.sx + N; x++) if (cell[y][x] === 'x') cell[y][x] = y === 63 ? 'j' : 'o';
-  doors.push({ id: 'ow_v_7_16', way: 'trail', wall: 'e', z: gcz(64), leaf: 'leaf_bulkhead', wide: true, label: 'DISASTER CITY · THE SEWERS', sub: 'THE GANTRY TUNNEL · WEST UNDER THE CITY TO THE RUNNING TUNNELS', action: { room: 'site_prebuilt_downtown_underworld', at: 'ow_v_7_16' }, desc: '' }); }
+  doors.push({ id: 'ow_v_7_16', way: 'trail', wall: 'e', z: gcz(64), leaf: 'leaf_bulkhead', wide: true, label: 'DISASTER CITY · THE SEWERS', sub: 'THE GANTRY TUNNEL · WEST UNDER THE CITY TO THE RUNNING TUNNELS', action: { room: 'site_prebuilt_downtown_underworld', at: 'ow_v_7_16' }, desc: '' });
+  /* THE MOUTH IS SEEN (2026-11-22): the tunnel's mouth read as plain concrete wall that you walked through; a dark mouth in a steel frame with an amber lamp stands on it (look only) */
+  GANTRY_MOUTH = { k: 'arch', id: 'dumb:gantry:mouth', x: 146.6, z: gcz(64), rot: 0, y: 14, parts: [{ s: 'box', p: [0.25, 0, 0], size: [0.2, 3.6, 3.4], tint: 328966 }, { s: 'box', p: [0.1, 0, -1.95], size: [0.5, 3.8, 0.5], key: 'urban:MetalCorrugatedPainted3a', tint: 9212568 }, { s: 'box', p: [0.1, 0, 1.95], size: [0.5, 3.8, 0.5], key: 'urban:MetalCorrugatedPainted3a', tint: 9212568 }, { s: 'box', p: [0.1, 3.6, 0], size: [0.5, 0.5, 4.4], key: 'urban:MetalCorrugatedPainted3a', tint: 9212568 }, { s: 'box', p: [-0.05, 4.2, 0], size: [0.12, 0.12, 0.9], tint: 16756800, glow: 1 }] }; }
 
 /* ── THE WAYS OUT (ten, all in the game before the rebuild; plan: layout `ways`). Two bay doors (data.js DOOR_HQ.siteRooms.entry wears them),
    four links (DOOR_HQ.links holds the place; WANT below checks every row), four doors of the White Rooms (their far ends are the Desert's).
@@ -286,6 +291,7 @@ PLAN.plots.forEach(p => { const L = lookOf(p), top = TOPS[p.id], H = r2(top - p.
 
 /* ── THE DRAWN PARTS: one `arch` row a plot (a row is drawn with the plot chunk it stands in), its parts measured from the plot's middle and floor ── */
 const ARCH = [];
+if (GANTRY_MOUTH) ARCH.push(GANTRY_MOUTH);   // (data.js: its row stands first)
 { const by = {}; PARTS.forEach(q => { const sx = Math.floor((q.p[0] + HX) / C), sy = Math.floor((q.p[2] + HZ) / C), p = plotAt(sx, sy); (by[p.id] = by[p.id] || []).push(q); });
   PLAN.plots.forEach(p => { const l = by[p.id]; if (!l) return; const ox = r2(gx(p.sx) + N * C / 2), oz = r2(gz(p.sy) + N * C / 2);
       ARCH.push({ k: 'arch', id: 'dumb:' + p.id + ':in', x: ox, z: oz, rot: 0, y: p.base /* `y`, never `base`: without it the row stands on the ground under its ORIGIN (the Hub's is the Tower's top) */, parts: l.map(q => Object.assign({}, q, { p: [r2(q.p[0] - ox), r2(q.p[1] - p.base), r2(q.p[2] - oz)] })) }); });

@@ -32,7 +32,7 @@
    the board first: docs/notes/claims.md). After any edit: `node bake-camelot.js`, `node --check data.js`, commit the file AND data.js. */
 'use strict';
 function first(ctx) {
-const { Q, T1, T2, MX, C, WALL, r2, g, mid, feat, note, arch, marks, props, doors, npc, sheet, solid, flushArch, say } = ctx, kq = ctx.building, put = ctx.inside;
+const { Q, T1, T2, MX, C, WALL, r2, g, mid, feat, note, arch, marks, props, doors, npc, sheet, solid, flushArch, say, raw, J } = ctx, kq = ctx.building, put = ctx.inside;
 const U = n => 'urban:' + n, G_TALL = U('GlassWindowTall1a'), SLATE = U('MetalRoofTiles1a'), WOODK = 'wood_planks', WOODD = 'wood';
 const STONE = 0xc4c0b8, STONE2 = 0xaeaaa6, STONE3 = 0xd8d2c6, PALE = 0xdcd6ca, BLUE = 0x4a5c8c, GLASS = 0xa8c4ec, WARM = 0xf0d890, BANNER = 0xb02c36, GOLD = 0xd8b050, TIMBER = 0x4a3626;
 note('THE PALACE: the Keep (the Throne Hall), the two wings, the eight towers, the Great Spire');
@@ -112,11 +112,15 @@ const ARMOURY = lodge('armoury', Q.armoury, 'W', { leafDouble: false }, (a, w, d
 /* ── THE HILL'S OWN LOOK (a row with its foot on the village's ground): the drums on its four corners and beside the Grand Stair, the
    stair's cheek walls, the tilt's rails, the gate piers of the three stairs ── */
 { const a = sheet(), cx = MX, cz = g(45.5), L = (x, z) => [r2(x - cx), r2(z - cz)];
-  const drum = (id, x, z, r, h, side) => { const p = L(x, z); a.cyl(p[0], 0, p[1], r, h, WALL, STONE2, { seg: 18 }); a.cyl(p[0], h - 0.5, p[1], r + 0.3, 0.5, WALL, STONE3, { seg: 18 });
-      a.box(p[0], h, p[1], 0.9, 0.9, 0.45, WALL, STONE2, { ring: { n: Math.round(r * 2.6), r: r - 0.1 } }); solid(id, [r2(x), r2(z)], side, 1); };
+  /* `round` (2026-11-22, THE STRAIGHT RAISE; mondo: "no tiny crevices ... where there is no room to get out"): a drum that stands half on the hill and half off it
+     weighs as a SOLID ROUND (hqRoundBlock, unseen: this sheet draws it), its top the walked top. As a `solid` box its roof slab did not hold over the hill's
+     edge and the walker fell through the top into the drum, shut in by its four walls (find-softlocks.js: a TRAP at each stair drum). */
+  const drum = (id, x, z, r, h, side, round) => { const p = L(x, z); a.cyl(p[0], 0, p[1], r, h, WALL, STONE2, { seg: 18 }); a.cyl(p[0], h - 0.5, p[1], r + 0.3, 0.5, WALL, STONE3, { seg: 18 });
+      a.box(p[0], h, p[1], 0.9, 0.9, 0.45, WALL, STONE2, { ring: { n: Math.round(r * 2.6), r: r - 0.1 } });
+      if (round) raw('...hqRoundBlock(' + J({ id: 'cam_' + id, x: r2(x), z: r2(z), r, y: h }) + ').map(w => Object.assign(w, { ghost: true }))'); else solid(id, [r2(x), r2(z)], side, 1); };
   [[Q.hill[0], Q.hill[1]], [Q.hill[2], Q.hill[1]], [Q.hill[0], Q.hill[3]], [Q.hill[2], Q.hill[3]]].forEach((c, i) => drum('hill_drum_' + i, g(c[0]), g(c[1]), 4.2, T1 + 0.1, 5.6));
   const sx0 = g(Q.grandStair[0]), sx1 = g(Q.grandStair[2]), sz = g(Q.hill[3]);
-  [sx0 - 3.4, sx1 + 3.4].forEach((x, i) => { drum('stair_drum_' + i, x, sz, 3.2, T1 + 0.1, 4.2); const p = L(x, sz);
+  [sx0 - 3.4, sx1 + 3.4].forEach((x, i) => { drum('stair_drum_' + i, x, sz, 3.2, T1 + 0.1, 4.2, true); const p = L(x, sz);
       a.cyl(p[0], T1 + 0.1, p[1], 0.1, 6.4, null, 0x403830, { seg: 6 }); a.banner(p[0], T1 + 1.6, p[1] + 0.22, 1.5, 4.6); });
   const NG = Q.grandStair[3] - Q.grandStair[1], NU = Q.upperStair[3] - Q.upperStair[1];
   for (const x of [sx0 - 0.1, sx1 + 0.1]) { const p = L(x, sz); for (let i = 0; i < NG; i++) a.box(p[0], 0, p[1] + 1.75 + i * 3.5, 0.9, r2(T1 * (NG - i - 0.5) / NG + 1.0), 3.5, WALL, STONE2); }   // the Grand Stair's cheek walls, stepping down with it

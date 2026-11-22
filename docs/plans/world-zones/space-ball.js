@@ -81,4 +81,44 @@ function sampleNet(o, K, A, asChar) {
 }
 /* a door on the map (square sx, sy, face) → the net: its square, its face turned with the ground and snapped to a quarter turn */
 function wayOnNet(K, sx, sy, face) { const q = K.sq(sx, sy); return { sx: Math.max(0, Math.min(K.W - 1, q.x)), sy: Math.max(0, Math.min(K.H - 1, q.y)), face: ((Math.round((face + q.turn) / 90) * 90) % 360 + 360) % 360 }; }
-module.exports = { C, N, PL_FACES, ROUNDS, rmKit, sampleNet, wayOnNet, vnoise, v3 };
+/* NO PITS (2026-11-22, mondo: "no tiny crevices or huge drops where there is no room to get out or move ... raise it straight up"). Read on the
+   squares the game gets (after the ball's sampling, which can cut a one-square trench in two where it turns a corner, or leave one square of
+   a hole standing alone): every square the walker reaches from the spawn and the ways, and cannot walk back from, is a pit (w = { id, W, H, cell[y][x], H4[y][x] = four corners, spawn, ways }). A pit that
+   touches walked ground of its own level corner to corner (the cut trench) is JOINED: the square between them takes its level. Any other pit
+   is RAISED STRAIGHT UP to the ground round it. A designed hollow keeps its way out (the Face's mouth and eye sockets: their ramps). */
+function noPits(w) {
+    const W = w.W, H = w.H, UP = 1.2, H4 = w.H4, cell = w.cell, ok = (x, y) => x >= 0 && y >= 0 && x < W && y < H && cell[y][x] !== 'x';
+    const mean = (x, y) => (H4[y][x][0] + H4[y][x][1] + H4[y][x][2] + H4[y][x][3]) / 4;
+    const edge = (x, y, dx, dy) => { const c = H4[y][x]; return dx > 0 ? (c[1] + c[3]) / 2 : dx < 0 ? (c[0] + c[2]) / 2 : dy > 0 ? (c[2] + c[3]) / 2 : (c[0] + c[1]) / 2; };
+    const can = (x, y, dx, dy) => ok(x + dx, y + dy) && edge(x + dx, y + dy, -dx, -dy) - edge(x, y, dx, dy) <= UP;   // a step up within a jump; any step down
+    const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], seeds = [w.spawn].concat(Object.keys(w.ways).map(k => [w.ways[k].sx, w.ways[k].sy])).filter(q => ok(q[0], q[1]));
+    const flood = (back) => { const seen = new Uint8Array(W * H), st = []; seeds.forEach(q => { if (!seen[q[1] * W + q[0]]) { seen[q[1] * W + q[0]] = 1; st.push(q); } });
+        while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of D4) { const X = x + dx, Y = y + dy; if (!ok(X, Y) || seen[Y * W + X]) continue;
+            if (back ? !can(X, Y, -dx, -dy) : !can(x, y, dx, dy)) continue; seen[Y * W + X] = 1; st.push([X, Y]); } } return seen; };
+    const log = [];
+    /* a lone corner sunk more than a jump under every other corner of the four squares round it (one sample of a hollow, carried alone): a cone
+       too steep to walk out of. It takes the lowest of those corners. */
+    for (let cy = 1; cy < H; cy++) for (let cx = 1; cx < W; cx++) { const Q = [[cx - 1, cy - 1, 3], [cx, cy - 1, 2], [cx - 1, cy, 1], [cx, cy, 0]]; if (!Q.every(([x, y]) => ok(x, y))) continue;
+        let own = -Infinity, low = Infinity; Q.forEach(([x, y, ci]) => H4[y][x].forEach((v, k) => { if (k === ci) own = Math.max(own, v); else low = Math.min(low, v); }));
+        if (low - own > UP) { Q.forEach(([x, y, ci]) => { H4[y][x][ci] = low; }); log.push('lone corner ' + cx + ',' + cy + ' raised ' + own + ' > ' + low); } }
+    for (let pass = 0; pass < 40; pass++) {
+        const F = flood(false), B = flood(true); let first = null;
+        for (let y = 0; y < H && !first; y++) for (let x = 0; x < W; x++) if (F[y * W + x] && !B[y * W + x]) { first = [x, y]; break; }
+        if (!first) break;
+        const T = [], inT = new Set([first[1] * W + first[0]]), st = [first];
+        while (st.length) { const q = st.pop(); T.push(q); for (const [dx, dy] of D4) { const X = q[0] + dx, Y = q[1] + dy, k = Y * W + X; if (ok(X, Y) && F[k] && !B[k] && !inT.has(k)) { inT.add(k); st.push([X, Y]); } } }
+        let joined = false;
+        for (const [x, y] of T) { if (joined) break; for (const [dx, dy] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { const X = x + dx, Y = y + dy; if (!ok(X, Y) || !B[Y * W + X] || Math.abs(mean(X, Y) - mean(x, y)) > 0.62) continue;
+            const c = [[X, y], [x, Y]].find(q => q[0] >= 0 && q[1] >= 0 && q[0] < W && q[1] < H); if (!c) continue;
+            const h = Math.round(mean(x, y) * 100) / 100; H4[c[1]][c[0]] = [h, h, h, h]; cell[c[1]][c[0]] = cell[y][x]; joined = true; log.push('joined ' + c + ' at ' + h + ' (' + T.length + ' squares)'); break; } }
+        if (joined) continue;
+        /* raised straight up: every corner of the pit takes the ground that meets it from outside the pit; a corner wholly inside takes the rim's lowest */
+        let rim = Infinity; const outs = (cx, cy) => { let sum = 0, n = 0; [[cx - 1, cy - 1, 3], [cx, cy - 1, 2], [cx - 1, cy, 1], [cx, cy, 0]].forEach(([x, y, ci]) => { if (ok(x, y) && !inT.has(y * W + x) && B[y * W + x]) { sum += H4[y][x][ci]; n++; } }); return n ? sum / n : null; };
+        T.forEach(([x, y]) => [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([i, j]) => { const v = outs(x + i, y + j); if (v != null && v < rim) rim = v; }));
+        if (rim === Infinity) { log.push('PIT WITH NO RIM at ' + first); break; }
+        T.forEach(([x, y]) => { H4[y][x] = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([i, j]) => { const v = outs(x + i, y + j); return Math.round((v != null ? v : rim) * 100) / 100; }); if (cell[y][x] === 'c' || cell[y][x] === 'h') cell[y][x] = '.'; });
+        log.push('raised ' + T.length + ' square(s) at ' + first + ' to ' + Math.round(rim * 100) / 100);
+    }
+    console.log('no pits, ' + w.id + ': ' + (log.length ? log.join(' · ') : 'none'));
+}
+module.exports = { C, N, PL_FACES, ROUNDS, rmKit, sampleNet, wayOnNet, vnoise, v3, noPits };
