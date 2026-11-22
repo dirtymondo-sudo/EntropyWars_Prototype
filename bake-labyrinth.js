@@ -213,6 +213,18 @@ const A = {
         const px = r2(gcx(x) + (o.dx || 0)), pz = r2(gcz(y) + (o.dz || 0)); delete o.dx; delete o.dz; props.push(Object.assign({ key, x: px, z: pz }, o)); },
     /* decor off a square's middle (never blocks) */
     dec(key, x, y, o) { if (!CAT[key]) { errs.push('not in the catalogue: ' + key); return; } if (!place(key, x, y, 'dec')) return;
+        /* A COBWEB HANGS IN A CORNER (2026-11-22, mondo: "spiderweb decals standing upright"): the pack's web is one flat card, hung from its
+           top corner. On the floor it stood up like a sign. It spans the corner of two walls now, over head height (one wall only: flat on it) */
+        if (/cobweb/.test(key)) { const wallsOf = (X, Y2) => [['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]].filter(q => !open(X + q[1], Y2 + q[2]));
+            let wl = wallsOf(x, y);
+            if (!wl.length) { /* out on open floor: the nearest square of its level that has a wall */
+                search: for (let r = 1; r <= 4; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const X = x + dx, Y2 = y + dy;
+                    if (open(X, Y2) && LV[Y2][X] === LV[y][x] && T[Y2][X] !== 'w' && wallsOf(X, Y2).length) { x = X; y = Y2; wl = wallsOf(X, Y2); break search; } } }
+            if (wl.length) { const a = wl[0], b = wl.find(q => q !== a && (q[1] !== -a[1] || q[2] !== -a[2])) || null, hw = 1.75;
+                const row = b ? { x: r2(gcx(x) + (a[1] + b[1]) * (hw - 0.5)), z: r2(gcz(y) + (a[2] + b[2]) * (hw - 0.5)), face: ((a[1] + b[1]) * (a[2] + b[2]) > 0) ? 45 : 135 }
+                              : { x: r2(gcx(x) + a[1] * (hw - 0.06)), z: r2(gcz(y) + a[2] * (hw - 0.06)), face: a[1] ? 90 : 0 };
+                rnd(); rnd(); rnd();   /* (the three draws a floor piece takes: every other piece keeps its place) */
+                props.push(Object.assign({ key }, row, { y: r2(hAt(x, y) + 1.9), noSeat: true, noBlock: true }, o || {})); return; } }   /* (a `y` of 1 or more is a height from the room's floor) */
         props.push(Object.assign({ key, x: r2(gcx(x) + (rnd() - 0.5) * 1.6), z: r2(gcz(y) + (rnd() - 0.5) * 1.6), face: Math.round(rnd() * 360), noBlock: true }, o || {})); },
     /* hung from the vault: `y` = its top */
     ceil(key, x, y, drop, o) { if (!CAT[key]) { errs.push('not in the catalogue: ' + key); return; } if (!open(x, y)) { errs.push('ceil ' + key + ' over a closed square ' + x + ',' + y); return; }
@@ -243,12 +255,16 @@ A.kit = (letter, st) => { st = Object.assign({ lamp: 0xffc070, lampKey: 'cage_la
     const isW = (x, y) => open(x, y) && plotOf(x, y).d === letter;
     const DIR = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] }, FACEOF = { n: 180, s: 0, w: 90, e: 270 };
     /* the channels' two ends */
+    /* A GRATE LIES IN THE FLOOR (2026-11-22, mondo: "there are grates standing up right"): the grate's file stands on edge (a wall grate) and it
+       stood so in the middle of the channel's last square. `drain_grate_floor` is the same file lying down: as wide as the channel, over the
+       channel's last two metres, its top a hand over the walk (the channel's bed is 0.8 m under the walk, the grate 0.45 m thick at this width, so it stands in the water) */
+    const grate = (ex, ey, dx, dy) => props.push({ key: 'drain_grate_floor', x: r2(gcx(ex) + dx * 0.6), z: r2(gcz(ey) + dy * 0.6), face: dx ? 90 : 0, span: 2.2, y: 0.24, noSeat: true, noBlock: true });
     CHRUNS.forEach(c => { if (!isW(c.x, c.y)) return; c.ends.forEach(([X, Y2, dx, dy], i) => { const ex = X - dx, ey = Y2 - dy;
         if (!open(X, Y2)) { /* the channel meets a wall: a culvert mouth in it (the start) or a grate (the end) */
             const face = dx > 0 ? 270 : dx < 0 ? 90 : dy > 0 ? 0 : 180;
             if (i === 0) { props.push({ key: 'culvert_mouth', x: r2(gcx(ex) + dx * 1.45), z: r2(gcz(ey) + dy * 1.45), face, noBlock: true, scale: 0.75 }); k.mouths++; }
-            else { props.push({ key: 'drain_grate', x: gcx(ex), z: gcz(ey), face, noBlock: true }); k.grates++; } }
-        else if (LV[Y2][X] > c.l + 0.6 || (LV[Y2][X] === c.l && !CHAN.has(X + ',' + Y2))) { props.push({ key: 'drain_grate', x: gcx(ex), z: gcz(ey), face: 0, noBlock: true }); k.grates++; } }); });
+            else { grate(ex, ey, dx, dy); k.grates++; } }
+        else if (LV[Y2][X] > c.l + 0.6 || (LV[Y2][X] === c.l && !CHAN.has(X + ',' + Y2))) { grate(ex, ey, dx, dy); k.grates++; } }); });
     /* the weirs: a concrete board across the lip, a sluice frame over it */
     WEIRS.forEach(w => { if (!isW(w.x, w.y)) return; const cx = gcx(w.x) + w.dx * (C / 2 - 0.15), cz = gcz(w.y) + w.dy * (C / 2 - 0.15), yf = hAt(w.x, w.y), ns = w.dx === 0, span = w.big ? 2.8 : 2.4;
         A.box(cx, yf - 0.45, cz, ns ? span : 0.3, 0.55, ns ? 0.3 : span, 'urban:ConcreteStriped1e', 0x7a7a72);

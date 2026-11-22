@@ -494,6 +494,15 @@ the Claude Doc "Weapon-holding units: who gets an MPFB version".
   with `cant: -80` and `down` tilted 20 degrees off the fist's axis (`[0, -0.94, 0.34]`) so its head clears his face.
   KNOWN FLAWS of the first pass: gladiator M + F jagged cape / skin edges and a hole in her cape, swordfighter M torn collar + sleeve
   slits, ninja F jagged neckline + shoulder cut-outs, no unit faces yet (bake-face.py), nothing seen in a battle.
+- THE FLAW ROUND (11-22, mondo: "go ahead and fix those issues ... Would blender be easier"): it IS Blender, by script (bake-outfit.py).
+  THE CAUSE of the jagged dark bands was not the cloth's edge: the body's skin is hidden a little past it (the hide rays), and the
+  cloth's dark inside shows through. NEW env `SHOWRING=2` (shown skin grows two rings under every cloth edge, only where cloth is in
+  front and none behind), `EDGECLEAN=6`, `HOLEFILL=24`, `EDGERELAX`. Rebaked: gladiator M (`EYE=0,-0.075,0.352 --headgear`) + F
+  (`--headgear`) with all three: collar, chest, waist clean, the hole in her cape closed. Ninja F with all three: little change.
+  Swordfighter M with `EDGECLEAN HOLEFILL SLEEVESEED=0.15 SLEEVER=0.24`, NO SHOWRING (his shoulders came through the kimono).
+  TRIED AND DROPPED: `EDGERELAX=20` (opened holes), `DROPCOL` / `CUTCOL` of the ninja F's painted skin (her bracers lost their arm
+  and stretched into spikes). STILL OPEN: ninja F a light strip under the top at the back + a spot on the skirt's hip + a bit under
+  the skirt; gladiator F ragged cloth round the knee guards + a hole at the hip; swordfighter M the collar's V.
 
 ---
 
