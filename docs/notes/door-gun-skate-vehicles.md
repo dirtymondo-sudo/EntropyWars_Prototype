@@ -857,8 +857,9 @@ whole-room read, RULE #1e); a wall, a building, a prop taller than `clear`, a pe
 `drop` (a retaining wall), water over `wet` stop it with a small bounce; a car that starts touching something may only move where it
 touches no more. The four wheels read the ground: the body pitches and rolls with it, slows uphill, runs on downhill. The driver is
 not drawn (`_hqTickCast` + the frame's end, as aboard the ship). E gets out by the driver's door (the left), else the first clear
-side, else the roof; the car's block stands again where it is left. The prompt reads DRIVE / GET OUT; first time a toast with the keys
-(map.js `_hqSeaEvent`). Numbers: data.js `HQ_SEA_RULES.car` over `HQ_SEA_DEFAULT.car` (keep in step). `noDrive: true` on a catalogue
+side, else the roof; the car's block stands again where it is left. The prompt reads `▸ <car> [E] DRIVE` and nothing else; NO CONTROLS anywhere (mondo 11-22: "its a fucking car, its the same
+controls every racing game ever, get rid of them"): no key list on the walk-up box, no toast on getting in, no box while driving
+(map.js `_hqSetPrompt` hides it as aboard the ship; E still gets out). Never put the key list back. Numbers: data.js `HQ_SEA_RULES.car` over `HQ_SEA_DEFAULT.car` (keep in step). `noDrive: true` on a catalogue
 row = a prop only (car_pack_6, the shell with no wheels). The skiff, the bathyscaphe and the ship are untouched (their kinds are
 strings). Viewer-local, nothing relayed (RULE #2).
 SEEN in the cloud browser (HEAD on ba7c051 + this change): a Disaster City taxi: E in (real key), the officer hidden, 0 to 13 m/s,
