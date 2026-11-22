@@ -60,7 +60,7 @@ const SET = {
         /* THE HORIZON READS THE MAP (2026-11-17, One World foundation): the Vatican stands at world plot -12,-6 (it does not move in v13), so the land past its wall is
            the map's own: the western forest north, south and west, the Tiber's meadow east, the range far to the north (three-renderer.js _hqEdgeLandFn `world`).
            It had no `terrain.edges` before (the field's own sheet ran on past the wall). */
-        terrain: "res: 0.875, floor: 'cobblestone', cliff: 'bricks_3', path: 'marble_light', base: 0, noise: { amp: 0.02, scale: 9 }, crag: false, backdrop: false, edges: { world: true, reach: 440 },",   // (0.875: a wall's or a hedge's face leans a quarter of a square, not a half)
+        terrain: "res: 0.875, floor: 'cobblestone', cliff: 'bricks_3', path: 'marble_light', base: 0, noise: { amp: 0.02, scale: 9 }, crag: false, backdrop: false, edges: { world: true, reach: 440, level: 0, ways: [{ side: 'e', at: 63 }, { side: 'w', at: 66.5 }, { side: 'n', at: -21 }], roads: [{ side: 'e', at: 63, w: 10.5, key: 'urban:RoadGeneric1a', len: 220, line: 15251504 }] },",   // (0.875: a wall's or a hedge's face leans a quarter of a square, not a half)
         shell: R => "hqVaticanShell({ w: " + R.WM + ", d: " + R.DM + ", fogD: 0.006, plate: " + J(R.plate) + R.atmos() + " })",
         parti: 'The holy city as the real one stands: the Basilica in the west under its dome, the oval Square east of it inside two arcs of columns, the gate in the east wall, the palace north, the cloister south, the gardens behind the apse.' },
     catacombs: { site: 'prebuilt_vatican', part: 'under', mark: 'CATACOMBS', air: { kind: 'dust', color: 0xffe8c0 }, sub: 'THE CRYPT · THE DESCENT · THE LOCULI · THE CISTERN · THE FONT · THE WARM WALL', solid: 'X', wet: 'w', hole: '', plan: true,
@@ -397,7 +397,7 @@ const OW_HEAVEN = { cols: 7, rows: 8, at: { Y: [3, 0], F: [2, 1], A: [0, 2], T: 
     if (R.HD - V0.HD !== DZ) throw new Error('the Vatican move: the shift is not ' + DZ + ' m');
     ways.forEach(w => { WAYS['vatican:' + w.id] = w.wall === 'free' ? freeAt(R, w) : wallAt(R, w); if (w.wall === 'free') R.take(w.sx, w.sy); });
     /* THE ONE WORLD SEAMS (the north routes R1, R3, R4): a door pair with one id at both ends; the route's own end is bake-route.js's */
-    ways.filter(w => w.kind === 'seam').forEach(w => R.doors.push(Object.assign({ id: w.id }, WAYS['vatican:' + w.id], { way: 'trail', leaf: null, label: w.label, sub: w.sub, action: { room: w.room, at: w.id }, desc: w.desc || '' })));
+    ways.filter(w => w.kind === 'seam').forEach(w => R.doors.push(Object.assign({ id: w.id }, WAYS['vatican:' + w.id], w.open ? { passage: { w: w.open } } : {}, { way: w.open ? 'open' : 'trail', leaf: null, label: w.label, sub: w.sub, action: { room: w.room, at: w.id }, desc: w.desc || '' })));
     R.olympusLink = ways.some(w => w.id === 'link_vatican_olympus');
     /* every piece of the home build, 63 m south */
     const sh = o => { const g = Object.assign({}, o); ['z', 'z0', 'z1'].forEach(k => { if (typeof g[k] === 'number') g[k] = r2(g[k] + DZ); });

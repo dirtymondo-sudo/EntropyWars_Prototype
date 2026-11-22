@@ -689,7 +689,7 @@ const LINKS = {
     /* northpole_camelot: gone 2026-11-17 (One World phase 5): the sleigh road jumped from the Pole to Camelot's Snowy Pines; the Polar Trail (R5) and the trail L6 walk it */
     northpole_haunted: ['a', "{ site: 'prebuilt_northpole', part: 'plots', wall: 'free', x: " + NP.anchors.hearth.x + ", z: " + NP.anchors.hearth.z + ", face: " + NP.anchors.hearth.face + " }"],
     shasta_lemuria: ['a', "{ site: 'prebuilt_shasta', part: '" + aL.S.part + "', wall: 'free', x: " + aL.x + ", z: " + aL.z + ", face: " + M.anchors.lemuria.face + ", sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN' }"],
-    heaven_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aH.S.part + "', wall: 'free', x: " + aH.x + ", z: " + r2(aH.z + 1.25) + ", face: 180, sub: 'THE GRAND STAIR · UP INTO HEAVEN' }"],   // (THE ONE MOUNTAIN: the Grand Stair stands inside the room now, crags north of it)
+    heaven_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aH.S.part + "', wall: 'free', x: " + aH.x + ", z: " + r2(aH.z + 1.25) + ", face: 180, sub: 'THE GRAND STAIR · UP INTO HEAVEN', passage: { len: 3, deep: 1.2 } }"],   // (THE ONE MOUNTAIN: the Grand Stair stands inside the room now, crags north of it)
     lodge_olympus: ['b', "{ site: 'prebuilt_shasta', part: '" + aP.S.part + "', wall: 'free', x: " + aP.x + ", z: " + aP.z + ", face: " + M.anchors.painting.face + " }"],
     /* vatican_olympus: gone 2026-11-17 (One World phase 5): the Pilgrim Way (R3) is the walk down to the Vatican; the Pilgrim Stair's foot on the south wall has no door */
 };
