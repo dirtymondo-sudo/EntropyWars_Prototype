@@ -149,3 +149,28 @@ Arrange > Show or hide the world map: the map behind a Places board drew at 1 bo
 boolean), so it was a 93 px dot under a 5,000 px board and the toggle seemed dead. It now draws at `B.mapK`, Fit takes the map in,
 and showing it switches to Places / leaves the group web / sorts by places first when the board was never laid on the map. The Map
 dialog's map is drawn at 7 px a square, up to 651 px wide (was 465).
+
+## The Story planner (2026-11-22)
+mondo: "a Chapter/Quest planner, where I can add chapters with multiple quests, and the game map on the screen so I can plan the route
+the player is meant to take and how the story will play out", then "make the planner easy for me to plan the quests" from the
+chapter-by-chapter guide (https://claude.ai/artifact/ScTxXgtDrPMEyjTMnTrhPv). Toolbar **Story planner** opens it over the web (app.js
+"THE STORY PLANNER"); **◂ Relationship Web** goes back. ONE plan for every board, saved as doc `story/plan` beside the boards (server.js
+`STORY_WEB_PATH`, same password, same 10 s pull; newest `t` wins) and in the browser (`S.story`).
+- **Map:** chapters (left, drag to reorder, drag a quest onto another chapter) and their quests; the world painted from the game's own
+  ground pictures (`Assets/ui/map/<room>.png` from cdn.entropywars.net, map.js `_zmPaint`'s look; build.js `storyData()` places the rooms);
+  a numbered pin a quest in its chapter's colour, arrows in story order, dashed = side quest, dotted = underground leg; Surface /
+  Underground; **World at Ch N** shades the zones no chapter up to N names; places off the map (DOOR HQ, Space, Astral, Internet) in a box.
+  Drag = pan, wheel = zoom, drag a pin = move it; **On map** then a click places a quest, a step (⌖) or a chapter's zone.
+- **Chapter card** = the guide's beat-chart fields: band L1-L6, the nine story steps, goal (Escape / Explore / Learn / Choice), zone,
+  enemies (type to pick, or click who lives in that zone today: the "in the game now" spawns, or a whole faction of the current board),
+  mechanics used (a chapter's NEW ones are found by themselves), boss, reward, clues (plant here, pays off in a later chapter), what DOOR
+  trusts you with, the lie you believe, notes. **Quest card:** main / side, where, summary, steps (own pins), characters, cutscenes
+  (Cutscene or Played), reward, notes.
+- **Beat chart:** the table built from the chapters (empty = red), THINGS THE CHART NOTICED (two chapters with no new mechanic, three
+  with the same goal, a band going down, clues never paid off, no boss, story steps with no chapter, a chapter with no main quest), the
+  mechanics grid (intro / repeat / combined), and the guide's seven "answer these first" questions with answer boxes.
+- **Spine:** the six bands (trust, zone, lie, clue about your parents) and every chapter's questions from the guide (answers shared
+  with the beat chart's boxes).
+- Chapter 1 starts as the game's ORIENTATION quest (data.js STORY_QUESTS: steps, cutscene titles, Kit as reward); nothing else is filled
+  for him. Units are roster ids, places map refs ('hq', 'z:<zone>', 'd:<zone>:<district>'). **Export the plan** = JSON; nothing in the game
+  reads it yet.
