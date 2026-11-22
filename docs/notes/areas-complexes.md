@@ -11426,6 +11426,20 @@ Two ruler lines stood on the land past a room (three-renderer.js `_hqEdgeLandFn`
 - Seen (cloud browser, the node renderer's WebGL2): `site_ow_r9` from the air at four places and on foot; pictures `/mnt/project-files/badlands-edges/`.
   Not seen: real WebGPU on his Mac, the other rooms (same code: a room whose edge ground is open ground now runs it on; the city's asphalt edge does not).
 
+**THE BLENDED LAND, EVERY MAP (2026-11-22, the same day; mondo: "do the same for all edges of every map in the entire game ... make them make more sense
+with whatever zones are around them").** An audit of the 48 open rooms with `terrain.edges` (each side's edge ground against the map's land past it; the
+script is in the PR text) found three things left, all fixed in the engine or one row:
+- **Snow was not in the blend**: tundra met grass along a staircase, and a snow room's sheet (`ice`, `calm_snow`) stopped on its line against plain white.
+  The tundra's snow is now one of the sheets (`snow`), and `NAT` holds `ice | snow | calm_snow | leaves`. A peak's snow (rock by height) is drawn as before.
+- **The east and south sides read the room's FLOOR, not its paint** (the paint's last column lies inside the line): `roomSheetAt` reads one square in.
+- **Disaster City's south side was dead flat sand; the map has dry scrub there** (the Badlands Highway leaves over it in the rocky grass):
+  `bake-disaster-city.js` EDGES `s: { kind: 'scrub' }` + `sheets: { scrub: 'grass_rocky' }`. `edges.sheets: { <kind>: sheet }` is new: a room with WRITTEN
+  sides says which sheet a kind's land wears (a One World room reads the map: `HQ_EDGE_SHEETS`). data.js was edited to the same row by hand (no rebake).
+- Left as they are, on purpose: a BUILT edge (the Vatican's cobbles, the city's asphalt) against open land (a town's edge is a line); rock against open
+  ground at a range's foot; Antarctica and the Harbour (written sides that fit: range / open sea). Every other open room reads the map (`world: true`), so
+  its land is its neighbours' by construction.
+- Seen: `site_ow_r12` (snow / grass), Giza's east, the Snowy Pines' west and north, R9 again, the city's south. Pictures `/mnt/project-files/badlands-edges/after_*.jpg`.
+
 ### ONE WORLD, THE HORIZON READS THE MAP (`terrain.edges.world`, three-renderer.js `_hqEdgeLandFn` / `_hqBuildEdgeLand`)
 - **`edges: { world: true, reach: 440 }`** = the sides are not written, they are read. The room stands on the world grid
   (`hqOwRoom`), and the land at every point past its line is the kind of the WORLD PLOT under that point
