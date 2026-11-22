@@ -14558,6 +14558,16 @@ Atlantis, the Sewers, the D.U.M.B., the six Cavern rooms, the Coast Road (R10) a
 - south-kit.js: `poleLine(ctx, row, x0, x1, { ew: true })` = a telephone line along a row; `mileMarker(…, { rot: 90 })` beside an east to west road.
 - **WHAT THE OTHER LEGS CAN HOLD**: an exit needs a straight of about 64 squares (2 ramps of 10, 2 x (12 exit + 9 slip), the road under). DH2's longest straight clear of its gates is 30 squares, DH3's 29, DH4's 30: room for ramps and a short deck over a road (a flyover), not for an exit.
 
+
+### THE DESERT HIGHWAY, LEGS 2, 3 AND 4: THE FLYOVERS (2026-11-22, same order of mondo's)
+- Their straights are about 30 squares, an exit needs 64, so each has A FLYOVER: ramps of 9 squares, a deck 5.5 m up, a two-lane road under it that runs on past the room both ways; barriers, joints, the city's lamps, the telephone line, two city adverts beside the deck, mile markers counted on round the loop (DH2 19-24, DH3 25-30, DH4 31-37), the Police Officer on each. No traffic lights (no ramps meet the road under). The `taper` gates are kept.
+  - `site_ow_dh2`: the north to south run, rows 14-42, the road under on rows 27-28. The kit's wagon of plot -2,32 stood on that road: its place is off in DH2.json and its pieces stand by hand beside it.
+  - `site_ow_dh3`: the first east to west run (row 36), columns 16-42, the road under on columns 28-29. The caravan stop's east half moved six squares east to let it through.
+  - `site_ow_dh4`: the last east to west run (row 12.48), columns 14-40, the road under on columns 26-27.
+- **A FLYOVER in the spec**: `raised` with no `exit` and `"cross": [r0, r1]` in `raised` itself.
+- **The deck stands on the room line's own straight**: `XC` is read from the line's stretch at the deck (it was the line's second-last point: right on the Badlands Highway only by luck; the first DH2 bake stood five squares beside its road).
+- **A BENT ROOM'S ROAD UNDER THE DECK**: a route room is not as wide as its box everywhere. The road under the deck, its middle line and its barrels stop at the room's own wall (the first and last square of the road's line that is a plot), and the edge road gets `from` < 0: it begins that far INSIDE the box (three-renderer.js THE ROAD RUNS ON PAST THE LINE: `from` below 0, the road rides the higher of the land and the room's own floor there, no land tree on it). One square more than the gap, since a room's last square by an inside wall does not draw its paint to the line.
+
 ### THE ZONE PASS: OUTER SPACE, THE SKI MOUNTAIN, BUG COLONY, KATANA, THE TEMPLE (2026-11-22, thread "Remove trap spots in space, mountain and bug rooms")
 All twelve rooms these tools write read 0 traps, 0 crevices after it. What each one was, and the rule it leaves behind:
 - **BUG COLONY, THE GIANT TREE** (`districts/B.js`): four pits between the trunk, a root shelf and a stair (you dropped in off a shelf). The trunk's

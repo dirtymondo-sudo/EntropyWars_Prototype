@@ -7,6 +7,7 @@
                  "exit": { "taper": 3, "lane": 4, "diverge": 7, "slip": 12,       an exit, in squares from the deck's end: the lane opens (taper), runs beside
                            "cross": [59, 61] },                                  the road (lane), peels away (diverge), then the ramp (slip) down to the road under (rows)
                  "flat": [[x0, y0, x1, y1], ...] }                               more squares laid dead flat (a forecourt, a car park)
+     A FLYOVER (no room for an exit): no `exit`, and `"cross": [r0, r1]` in `raised` itself = a road under the deck, running on past both walls.
 
    Never loaded by the game. The road must be straight between `up[0]` and `down[1]`: north to south (a middle line down the rows, `x` = its square
    line if not the room line's own), or east to west with `"axis": "x"` (THE ROAD THAT RUNS EAST TO WEST, at the foot of this file).
@@ -26,13 +27,13 @@
 function raise(K) {
     const { SPEC, C, W, Dq, r2, gx, gz, Hc, plotOf, floorAt, setPaint, ASPH, SHOULDER, marks, F, props, clear, feat, TRAFFIC, LINE, laneLine, edgeRoads, CAT, errs, ID } = K;
     const RZ = SPEC.raised, H = RZ.h || 7, U0 = RZ.up[0], U1 = RZ.up[1], D0 = RZ.down[0], D1 = RZ.down[1], EX = RZ.exit || null;
-    const XC = RZ.x != null ? RZ.x : Math.round(LINE[LINE.length - 2][0]), HW = 4, FL = Math.floor, CL = Math.ceil;   // (the middle line may lie on a half square: every square loop below takes the squares it touches)
+    const XC = RZ.x != null ? RZ.x : (() => { const ym = (RZ.up[0] + RZ.down[1]) / 2; for (let i = 0; i + 1 < LINE.length; i++) { const a = LINE[i], b = LINE[i + 1]; if (Math.abs(a[0] - b[0]) < 0.01 && ym >= Math.min(a[1], b[1]) && ym <= Math.max(a[1], b[1])) return r2(a[0]); } return Math.round(LINE[LINE.length - 2][0]); })(), HW = 4, FL = Math.floor, CL = Math.ceil;   // (the room line's own straight at the deck)   // (the middle line may lie on a half square: every square loop below takes the squares it touches)
     /* the way the room's line runs along the raised stretch: against the rows (south to north) = the car lines are asked for the other way round */
     const BACK = (() => { const ym = (RZ.up[0] + RZ.down[1]) / 2; for (let i = 0; i + 1 < LINE.length; i++) { const a = LINE[i], b = LINE[i + 1]; if (Math.abs(a[0] - XC) < 0.6 && Math.abs(b[0] - XC) < 0.6 && ym >= Math.min(a[1], b[1]) && ym <= Math.max(a[1], b[1])) return b[1] < a[1]; } return false; })();   // the middle line (a square line) and half the road in squares
     const xc = gx(XC), RW = HW * C, OV = 0.6, TH = 1.5, BH = 0.9;   // metres: the middle, half the road, the parapet's strip past the road, the deck's depth, a barrier's height
     const Z = gz, LEN = (D0 - U1) * C, zDeck = (Z(U1) + Z(D0)) / 2;
     const CONC = 'urban:ConcretePanels1a', CT = 0xcfcbc2, CD = 0x9c988f, WHITE = 0xf0f0f0, YEL = 0xe8b830, STEEL = 'urban:MetalWallRibbed1a';
-    const T = EX ? (EX.taper || 3) : 0, LN = EX ? (EX.lane || 4) : 0, DV = EX ? (EX.diverge || 7) : 0, A = T + LN + DV, S = EX ? EX.slip : 0, gN = U1 + A + S, gS = D0 - A - S, CR = EX ? EX.cross : null;
+    const T = EX ? (EX.taper || 3) : 0, LN = EX ? (EX.lane || 4) : 0, DV = EX ? (EX.diverge || 7) : 0, A = T + LN + DV, S = EX ? EX.slip : 0, gN = U1 + A + S, gS = D0 - A - S, CR = EX ? EX.cross : (RZ.cross || null);   // (`cross` beside `exit`'s own: a road under the deck with no exit, A FLYOVER)
     /* THE EXIT'S PLAN (2026-11-22, mondo: "The exit ramp looks stupid, that is not how highways look, the lane lines need to actualy make sense"), the same at
        its four corners, `t` = squares from the deck's end toward the road under it, `u` = metres out from the middle line:
          t 0..T        the lane OPENS: the deck widens from the road's edge (u 14) to u 17.5, the right edge line runs out with it
@@ -73,7 +74,8 @@ function raise(K) {
       for (let y = 0; y < Dq; y++) { if (y >= U0 && y < D1) continue; for (let x = 0; x < W; x++) { let d = 1e9; for (let i = 0; i + 1 < LINE.length; i++) d = Math.min(d, dSeg(x + 0.5, y + 0.5, LINE[i], LINE[i + 1])); if (d <= (K.roadHalf && K.roadHalf(x + 0.5, y + 0.5) < 3.5 ? K.roadHalf(x + 0.5, y + 0.5) + 0.05 : 4.3)) setPaint(x, y, ASPH); else if (d <= 4.3 && K.roadHalf && K.roadHalf(x + 0.5, y + 0.5) < 3.5) setPaint(x, y, d <= K.roadHalf(x + 0.5, y + 0.5) + 1.05 ? SHOULDER : floorAt(x, y)); } } }   // (…but where the highway narrows before a gate, bake-route.js THE HIGHWAY NARROWS BEFORE THE GATE, only as wide as it is there)
     if (EX) { for (const sd of [-1, 1]) { const c1 = sd < 0 ? FL(XC - HW - 1) : CL(XC + HW); for (let y = U1; y < D0; y++) if (!(y >= CR[0] && y < CR[1])) setPaint(c1, y, floorAt(c1, y));   // (first: on a half-square middle line this column is also a ramp's)
             const c0 = sd < 0 ? XC - HW - 3 : XC + HW + 1; for (let x = FL(c0); x < CL(c0 + 2); x++) for (let y = U1; y < D0; y++) if (y >= U1 + A - 1 && y < D0 - A + 1) setPaint(x, y, ASPH); else if (x !== c1) setPaint(x, y, floorAt(x, y)); }
-        for (let y = CR[0]; y < CR[1]; y++) for (let x = 0; x < W; x++) setPaint(x, y, ASPH); }
+    }
+    if (CR) for (let y = CR[0]; y < CR[1]; y++) for (let x = 0; x < W; x++) setPaint(x, y, ASPH);
 
     /* ── 4. the walk ── */
     const wall = (x0, z0, x1, z1, o) => feat(Object.assign({ k: 'wall', ghost: true, x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), t: 0.6, h: BH, absY: true }, o));
@@ -211,16 +213,19 @@ function raise(K) {
 
     /* ── 6. the road under the deck: its middle line, the barrels at the room's line, the road running on past both walls ── */
     if (CR) { const zc = r2((Z(CR[0]) + Z(CR[1])) / 2), wd = (CR[1] - CR[0]) * C;
-        marks.push({ k: 'line', x0: gx(1), z0: zc, x1: gx(W - 1), z1: zc, w: 0.16, color: YEL });
-        for (const sd of [-1, 1]) { edgeRoads.push({ side: sd < 0 ? 'w' : 'e', at: zc, w: wd, key: ASPH, line: YEL });
-            if (CAT.traffic_barrel) [-2.6, -0.9, 0.9, 2.6].forEach((o, i) => props.push({ key: 'traffic_barrel', x: r2(sd < 0 ? gx(1) + 0.5 : gx(W - 1) - 0.5), z: r2(zc + o), face: i * 70 })); } }
+        /* the room's own walls on the road's line (a bent room is not as wide as its box everywhere): the line, the barrels and the road past the wall start there
+           (`from` < 0 on the edge road: it begins that far inside the box, three-renderer.js THE ROAD RUNS ON PAST THE LINE) */
+        let xa = 0, xb = W - 1; while (xa < XC && plotOf(xa, CR[0]) < 0) xa++; while (xb > XC && plotOf(xb, CR[0]) < 0) xb--;
+        marks.push({ k: 'line', x0: gx(xa + 1), z0: zc, x1: gx(xb), z1: zc, w: 0.16, color: YEL });
+        for (const sd of [-1, 1]) { const inBox = sd < 0 ? xa : W - 1 - xb; edgeRoads.push(Object.assign({ side: sd < 0 ? 'w' : 'e', at: zc, w: wd, key: ASPH, line: YEL }, inBox ? { from: r2(-(inBox + 1) * C) } : null));   // (a square more: the room's last square by a wall inside the box does not draw its paint to the line)
+            if (CAT.traffic_barrel) [-2.6, -0.9, 0.9, 2.6].forEach((o, i) => props.push({ key: 'traffic_barrel', x: r2(sd < 0 ? gx(xa + 1) + 0.5 : gx(xb) - 0.5), z: r2(zc + o), face: i * 70 })); } }
 
     /* ── 6b. THE TRAFFIC LIGHTS (2026-11-22, mondo: "gonna need a some stop lights at the end of the ext where it meets the road, thats an intersection"): the
        ramps' feet and the road under the deck are a crossing each side of the deck. The city's own signal (`terrain.signals`, three-renderer.js _hqBuildSignals): a mast
        for the ramp that comes off and one for the cross road's traffic coming in from outside; each head's side faces serve the other street, so the drivers
        coming from under the deck read them too. The exit's cars stop at the ramp's stop line (`back`). */
     const signals = [];
-    if (CR) { const zc = r2((Z(CR[0]) + Z(CR[1])) / 2); for (const sd of [-1, 1]) signals.push({ x: r2(ux(sd, UM)), z: zc, arms: sd < 0 ? 'NW' : 'SE', off: sd < 0 ? 0 : 9, back: r2((CR[1] - CR[0]) * C / 2 + 4) }); }
+    if (CR && EX) { const zc = r2((Z(CR[0]) + Z(CR[1])) / 2); for (const sd of [-1, 1]) signals.push({ x: r2(ux(sd, UM)), z: zc, arms: sd < 0 ? 'NW' : 'SE', off: sd < 0 ? 0 : 9, back: r2((CR[1] - CR[0]) * C / 2 + 4) }); }
 
     /* ── 7. the cars: two lines take the exit, cross the road under the deck and come back on ── */
     if (EX && SPEC.cars) for (const sd of [-1, 1]) { const main = laneLine(2, BACK ? sd < 0 : sd > 0), dir = sd < 0 ? 1 : -1, n0 = dir > 0 ? 0 : 1, n1 = 1 - n0;   // west: south-bound (north to south); east: north-bound
