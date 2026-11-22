@@ -9356,7 +9356,10 @@ const ThreeRenderer = (function () {
             if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) continue;
             var nk = nj * info.nx + ni;
             if (info.mask && !info.mask[nk]) continue;
-            var sheet = (PT && PT.P[nk]) ? PT.pal[PT.P[nk] - 1] : info.floor, pal = S.pals[sheet];
+            /* THE LAST ROW WEARS ITS NEIGHBOUR (2026-11-22): the lattice's outer ring is never painted, so a road that reaches the room's line wore the room's
+               bare floor on its last 0.9 m and a band of grass grew across it at every route end: an unpainted ring node reads the node one row in */
+            var pk0 = (PT && !PT.P[nk] && (ni < 2 || nj < 2 || ni >= info.nx - 2 || nj >= info.nz - 2) && info.nx > 5 && info.nz > 5) ? Math.min(info.nz - 3, Math.max(2, nj)) * info.nx + Math.min(info.nx - 3, Math.max(2, ni)) : nk;
+            var sheet = (PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor, pal = S.pals[sheet];
             if (pal === undefined) pal = S.pals[sheet] = _ggPalette(sheet) || null;
             if (!pal) continue;
             var inB = false; for (var b = 0; b < S.boxes.length; b++) { var B = S.boxes[b], dx = xm - B[0], dz = zm - B[1], lx0 = dx * B[4] + dz * B[5], lz0 = -dx * B[5] + dz * B[4]; if (Math.abs(lx0) < B[2] && Math.abs(lz0) < B[3]) { inB = true; break; } }
@@ -9501,7 +9504,8 @@ const ThreeRenderer = (function () {
             if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) continue;
             var nk = nj * info.nx + ni;
             if (info.mask && !info.mask[nk]) continue;
-            var cls = zoneFloraSheet((PT && PT.P[nk]) ? PT.pal[PT.P[nk] - 1] : info.floor); if (!cls) continue;
+            var pk0 = (PT && !PT.P[nk] && (ni < 2 || nj < 2 || ni >= info.nx - 2 || nj >= info.nz - 2) && info.nx > 5 && info.nz > 5) ? Math.min(info.nz - 3, Math.max(2, nj)) * info.nx + Math.min(info.nx - 3, Math.max(2, ni)) : nk;   // THE LAST ROW WEARS ITS NEIGHBOUR (_hqGrassCell)
+            var cls = zoneFloraSheet((PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor); if (!cls) continue;
             var pk = Math.floor(xm / 7) + ',' + Math.floor(zm / 7), C = S.clim[pk];   // 7 m blocks from the room's middle: every plot line (the map's, a district's) falls on one
             if (C === undefined) C = S.clim[pk] = zoneFloraAt(S.rid, xm, zm) || null;
             if (!C) continue;
@@ -77954,6 +77958,7 @@ const ThreeRenderer = (function () {
         if (LANES && !LANES.length) LANES = null;
         var worldW = function (x, z, dist, wob) {
             var W = { mountain: 0, forest: 0, desert: 0, coast: 0, scrub: 0, mesa: 0, grass: 0, snow: 0 };
+            var x00 = x, z00 = z;   // the point itself (the kinds below are read at a wandered spot; a seam's lane is not)
             if (WANDER && wob) { var k = Math.min(26, (dist || 0) * 0.45); x += wob * k; z += Math.max(-1, Math.min(1, (_hqEdgeSoft(x / 95 + 31.7, z / 95 + 12.2) - 0.5) * 3.2)) * k; }
             var fx = OW.wx + (x + OW.hw) / 42 - 0.5, fy = OW.wy + (z + OW.hd) / 42 - 0.5, ix = Math.floor(fx), iy = Math.floor(fy);
             var u = sm((fx - ix - 0.3) / 0.4), v = sm((fy - iy - 0.3) / 0.4);
@@ -77977,6 +77982,14 @@ const ThreeRenderer = (function () {
                 if (out < -1 || lat > 34 || out > 150) continue;
                 var tw = (1 - sm((lat - 10) / 22)) * (1 - sm((out - 70) / 80));
                 if (tw > 0) { W.way = Math.max(W.way || 0, tw); W.grass += (W.forest + W.mesa) * tw; W.forest *= 1 - tw; W.mesa *= 1 - tw; }
+            }
+            /* THE ROAD OF THE NEXT ROOM RUNS ON: no rock table and no range stands on a seam's road, the land's whole reach (the road rode the land up a
+               mesa's face 200 m out): in the road's lane a table lies down as open sand and a range as a pass floor, easing back over 22 m to each side */
+            if (LANES) for (var lj = 0; lj < LANES.length; lj++) {
+                var lq = LANES[lj], lqh = (lq.side === 'n' || lq.side === 's'), lqLat = Math.abs((lqh ? x00 : z00) - lq.at), lqOut = lq.side === 'n' ? R.z0 - z00 : lq.side === 's' ? z00 - R.z1 : lq.side === 'w' ? R.x0 - x00 : x00 - R.x1;
+                if (lqOut < -1 || lqLat > lq.hw + 34) continue;
+                var t2 = 1 - sm((lqLat - lq.hw - 10) / 22);
+                if (t2 > 0) { W.way = Math.max(W.way || 0, t2 * (W.mountain > 0 ? 1 : 0)); W.desert += W.mesa * t2; W.mesa *= 1 - t2; }
             }
             return W;
         };
@@ -78085,7 +78098,7 @@ const ThreeRenderer = (function () {
        on its last row of squares: the run of painted squares the seam stands on (a road: 1 to 14 squares, painted three rows deep), as bands of one sheet
        each (`a`, `b` = metres off the seam's middle, along the wall), and the room's paint lines that reach the wall there (solid) or beat towards it
        (dashed). null = no road painted at this gate. Read once a door (cached on the row). */
-    var HQ_SEAM_TINT = { dirt_2: 0xa08c78, dirt_4: 0xb09a84 };   // the colour the room's own lit ground draws these sheets at (a bare sheet past the line read lighter)
+    var HQ_SEAM_TINT = {};   // a sheet's tint past the line, where the bare sheet does not match the room's own lit ground (none needed so far: 0xa08c78 on the dirt read far darker than the town's street)
     var _hqSeamSecMemo = new WeakMap();
     function _hqSeamSection(room, door) {
         if (_hqSeamSecMemo.has(door)) return _hqSeamSecMemo.get(door);
@@ -78114,6 +78127,10 @@ const ThreeRenderer = (function () {
                             if (gap < 2.5 && L > 14) lines.push({ off: off, color: m.color, w: m.w || 0.16 });
                             else if (gap < 24 && L >= 2 && L <= 14 && !lines.some(function (q) { return Math.abs(q.off - off) < 0.4; })) lines.push({ off: off, color: m.color, w: m.w || 0.14, on: L, period: 2 * L, start: Math.max(0, L - gap) });
                         });
+                        /* a paved road that reaches the wall with no paint lines of its own (a raised highway's lines are its deck's): the plain set, a
+                           white line inside each edge, yellow down the middle, a dashed white line between lanes */
+                        if (!lines.length) { var pv = bands.filter(function (o) { return /^urban:Road/.test(o.key || ''); }); if (pv.length) { var pa0 = pv[0].a, pb0 = pv[pv.length - 1].b, pw = pb0 - pa0, mid = (pa0 + pb0) / 2;
+                            if (pw >= 6.5) { lines.push({ off: mid - 0.16, color: 0xe8b830, w: 0.14 }, { off: mid + 0.16, color: 0xe8b830, w: 0.14 }); if (pw >= 10) { lines.push({ off: pa0 + 0.5, color: 0xf0f0f0, w: 0.14 }, { off: pb0 - 0.5, color: 0xf0f0f0, w: 0.14 }); for (var lo2 = 3.5; lo2 < pw / 2 - 2; lo2 += 3.5) lines.push({ off: mid - lo2, color: 0xf0f0f0, w: 0.14, on: 7, period: 14 }, { off: mid + lo2, color: 0xf0f0f0, w: 0.14, on: 7, period: 14 }); } } } }
                         out = { a: A, b: B, bands: bands, lines: lines };
                     }
                 }
@@ -78291,7 +78308,13 @@ const ThreeRenderer = (function () {
                 var far = d.action && d.action.room && DOOR_HQ.rooms[d.action.room], fd = far && (far.doors || []).filter(function (o) { return o && o.id === d.action.at; })[0];
                 var sec = (fd && /^[nsew]$/.test(fd.wall || '')) ? _hqSeamSection(far, fd) : null; if (!sec) sec = _hqSeamSection(room, d);
                 if (!sec) return;
-                ROADS.push({ side: d.wall, at: at0, w: sec.b - sec.a, bands: sec.bands, lines: sec.lines, seam: true });
+                /* THE ROAD NARROWS, IT DOES NOT STOP: where this room's road at the gate is wider than the next room's (a six-lane highway that comes to a
+                   two-lane gate road), its own surface runs on past the line as an apron that closes in to the narrower road over 45 m */
+                var own = _hqSeamSection(room, d), apron = null;
+                if (own && sec !== own && (own.b - own.a) > (sec.b - sec.a) + 3) { var bk = null, bwid = 0; own.bands.forEach(function (o) { if (o.b - o.a > bwid && /Road|asphalt/i.test(o.key || '')) { bwid = o.b - o.a; bk = o; } }); if (!bk) own.bands.forEach(function (o) { if (o.b - o.a > bwid) { bwid = o.b - o.a; bk = o; } });
+                    var ia = 0, ib = own.bands.length - 1; while (ia < ib && own.bands[ia].key !== bk.key) ia++; while (ib > ia && own.bands[ib].key !== bk.key) ib--;   // the road's own surface, without its dirt shoulders
+                    apron = { a: own.bands[ia].a, b: own.bands[ib].b, key: bk.key, tint: bk.tint, len: 45 }; }
+                ROADS.push({ side: d.wall, at: at0, w: Math.max(sec.b - sec.a, apron ? apron.b - apron.a : 0), bands: sec.bands, lines: sec.lines, seam: true, apron: apron });
             } catch (e) { console.warn('[HQ] a seam road failed', e); }
         });
         var roadPt = function (q, dd, off) { var a = +q.at + off; return q.side === 'w' ? [R.x0 - dd, a] : q.side === 'e' ? [R.x1 + dd, a] : q.side === 'n' ? [a, R.z0 - dd] : [a, R.z1 + dd]; };
@@ -78302,6 +78325,8 @@ const ThreeRenderer = (function () {
                 var lines = q.lines || ((q.line != null) ? [{ off: 0, color: q.line, w: 0.18 }] : []);
                 var A0 = bands[0].a, B0 = bands[bands.length - 1].b, ys = [], dOf = function (k) { return len * k / n - (k ? 0 : 0.6); };
                 for (var k = 0; k <= n; k++) { var dd = dOf(k), yk = -1e9; for (var sI = 0; sI <= 4; sI++) { var c0 = roadPt(q, dd, A0 + (B0 - A0) * sI / 4); yk = Math.max(yk, F.at(c0[0], c0[1]).y); } ys.push(yk); }
+                /* NO ROAD INTO THE SEA: a seam's road ends where the land past the line turns to coast (the rule: never water across a road) */
+                if (q.seam) { for (var kc2 = 1; kc2 <= n; kc2++) { var pc2 = roadPt(q, dOf(kc2), (A0 + B0) / 2), Pc2 = F.at(pc2[0], pc2[1]); if ((Pc2.W.coast || 0) > 0.35) { n = kc2 - 1; break; } } if (n < 2) return; len = len * n / (ys.length - 1); ys.length = n + 1; }
                 for (var sm2 = 0; sm2 < 3; sm2++) for (var k2 = 1; k2 < n; k2++) ys[k2] = Math.max(ys[k2], (ys[k2 - 1] + ys[k2 + 1]) / 2);   // no dip between two crests: the road bridges it on its bank
                 var eH0 = F.at(roadPt(q, 0, (A0 + B0) / 2)[0], roadPt(q, 0, (A0 + B0) / 2)[1]).eH || 0;
                 ys[0] = Math.max(ys[0], eH0);   // at the line itself: the room's own ground
@@ -78318,6 +78343,11 @@ const ThreeRenderer = (function () {
                     if (k3 > 0) { var b3 = (k3 - 1) * 4; idx2.push(b3, b3 + 1, b3 + 4, b3 + 1, b3 + 5, b3 + 4, b3 + 2, b3 + 6, b3 + 3, b3 + 3, b3 + 6, b3 + 7); }
                 }
                 gR.add(mkR(pos2, idx2, null, new THREE.MeshLambertMaterial({ color: 0x6e5a44, side: THREE.DoubleSide })));
+                if (q.apron) { var ap = q.apron, pa = [], ua = [], ix = [], an = Math.max(2, Math.round(ap.len / stepR));
+                    for (var ka = 0; ka <= an; ka++) { var da = ap.len * ka / an - (ka ? 0 : 0.6), ta = ka / an, a1 = ap.a + (A0 - ap.a) * ta, b1 = ap.b + (B0 - ap.b) * ta, kf0 = Math.max(0, Math.min(n - 1, Math.floor(da / len * n))), fr0 = Math.max(0, da / len * n - kf0), ya = yAt(kf0) * (1 - fr0) + yAt(kf0 + 1) * fr0 - 0.04, La2 = roadPt(q, da, a1), Ra2 = roadPt(q, da, b1);
+                        pa.push(La2[0] * U, ya * U, La2[1] * U, Ra2[0] * U, ya * U, Ra2[1] * U); ua.push(a1 * U / TM, da * U / TM, b1 * U / TM, da * U / TM);
+                        if (ka > 0) { var aa = (ka - 1) * 2; ix.push(aa, aa + 1, aa + 2, aa + 1, aa + 3, aa + 2); } }
+                    gR.add(mkR(pa, ix, ua, new THREE.MeshLambertMaterial({ map: _hzTex(ap.key) || null, color: (ap.tint != null) ? ap.tint : 0xffffff, side: THREE.DoubleSide }))); }
                 /* the road: one ribbon a band, each in its own sheet (a road of one sheet is one band) */
                 bands.forEach(function (bd) {
                     var pos = [], uv = [], idx = [], bw = bd.b - bd.a;

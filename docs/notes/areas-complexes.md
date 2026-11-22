@@ -14150,6 +14150,31 @@ and press e ... i can't see the road going out, the road just stops and its all 
   into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
   the SECOND room of a run; the WALK line prints before that.
 
+## THE ROAD OF THE NEXT ROOM RUNS ON — every open seam shows its road past the line; the Desert's eleven gates have a road (2026-11-22, mondo: "Every single entrance/exit in the game needs to look good and natural")
+The Desert thread of that order (the Circus, Western Town, Area 51, Giza, DH1-DH4, R9's south end, R8's and R10's Desert ends, R11's west end). What was wrong at all 24 gate ends:
+a highway stopped dead at the room's line (19 m of strip, buried under the land), and no district had a road to any of its gates (One World stood the seams on the route's
+own line; the districts' own roads leave their rooms somewhere else).
+- **THE ENGINE, EVERY ROOM (three-renderer.js `_hqBuildEdgeLand`, `_hqSeamSection`):** an open seam on a wall (`way: 'open'`, wall n / s / e / w) draws a road past its line by
+  itself, the land's whole reach. WHAT IT DRAWS IS THE NEXT ROOM'S ROAD AS THAT ROOM PAINTS IT AT ITS OWN GATE: `_hqSeamSection(room, door)` reads the room's paint sheet on its
+  last row of squares across the seam (a run of 1 to 14 painted squares, three rows deep) as bands of one sheet each, and the room's `marks` lines that reach the wall (solid) or
+  beat towards it (dashed, in their own beat). So asphalt stays asphalt, a median stays a median, dirt stays dirt, and both sides of a gate agree. Where the next room painted no
+  road at its gate, this room's own road runs on. A paved road with no lines of its own (R9: its lines are its deck's) gets the plain set. Where this room's road is wider than
+  the next one's (six lanes into a two-lane gate road) its own surface runs on as an apron that closes in over 45 m. A written `edges.roads` row at the same place wins.
+  `edges.seamRoads: false` = none for a room; `EW_HQ_NO_SEAM_ROADS` = none anywhere. `HQ_SEAM_TINT` = a sheet's tint past the line (empty: the bare sheets match).
+- **THE GATE'S LANE IS LEVEL (`_hqEdgeLandFn` LANES):** past an open seam the land is the gate's floor (no lift, no ditch) for 10 m, back to its own shape by 26 m; the road
+  lies level with the gate for 9 m (the walker crosses 6 m out), then climbs onto the land.
+- `edges.roads` rows take `bands: [{ a, b, key, tint }]` and `lines: [{ off, color, w, on, period, start }]` now (the old `w / key / line` row is one band and one line).
+- **THE DESERT'S GATES (bake-desert.js THE ROAD FROM THE GATE):** a seam row may say `road: { sheet, lanes, len, over, rects, lines, move }`: the road's squares across the gate
+  are painted from the wall in until they meet the district's own painted ground; `lanes: [c0, c1]` threads it between what stands there (the seam then stands on the road's
+  middle); `move: [[key, x, z, toX, toZ]]` stands a prop that was on the road beside it (nothing is dropped). `EW_STUBMAP=1 node bake-desert.js --dry-run` prints each district's
+  squares with what stands on them (p prop, W wall, r rail, B building, h plateau, # the new road) and a STUB line for anything left on a road. The eleven: the Circus W / E / N
+  (asphalt, two lanes, a yellow line; the backstage things by the north gate stood one square east), Western Town N (Main Street's dirt up to the highway), the Ranch Road's gate
+  (dirt beside Boot Hill's fence), Area 51 W (asphalt to the base road) and E (an asphalt road along the north fence to the guard post), Giza W (stone through the caravan
+  camp to the Tomb Door side), the Coast Road's gate (packed dirt over the dig's footbridge), the Causeway's gate (stone).
+- **A DISTRICT ROAD THAT LEAVES ITS ROOM WHERE NO GATE STANDS** gets an `edges.roads` row from the bake (a run of 1 to 3 road squares on the last row, four rows deep): the
+  circus lot's south road, the town's west and south roads, Area 51's north road, Giza's oasis track. They lead to no room.
+- Checked in the browser: see the thread's pictures in `/mnt/project-files/desert-gates/`.
+
 ## THE SEAM IS THE ROAD — an open seam on a route room's wall is as wide as the road (2026-11-22, mondo: "it only works when i enter through the median")
 mondo 11-22, the Badlands Highway (`site_ow_r9`) into the Circus: "it only works when i enter through the median in the highway, which doesnt make
 sense since i wouldnt be driving in the middle of the road. Its an invisble wall where the actual road is."
