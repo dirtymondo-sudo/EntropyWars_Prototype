@@ -101855,6 +101855,7 @@ const ThreeRenderer = (function () {
                 try { if (_hq) { _hqBatchDrop(_hq); _hq.batch = null; _hq.batchP = null; } } catch (eB) {}
             }, function () {}); } catch (eP) {} }
             arr._ew_gpu = gt; _hqStk.fills++;
+            var V = arr._ew_vers || (arr._ew_vers = []); arr._ew_cv = false; for (var v = 0; v < L.length; v++) { V[v] = L[v].version; if (L[v].image && L[v].image.tagName === 'CANVAS') arr._ew_cv = true; }   // THE SIGNS STACK: the paint each layer was filled from
             return true;
         } catch (e) {
             if (scoped && !popped) { try { dev.popErrorScope().then(function () {}, function () {}); } catch (eP2) {} }   // never leave the scope open
@@ -101865,7 +101866,10 @@ const ThreeRenderer = (function () {
     function _hqStackWatch() {
         var A = _hqStk.arrays; if (!A.length) return;
         var be = _hqStackBackend(); if (!be) return;
-        for (var i = 0; i < A.length; i++) { var arr = A[i]; if (arr._ew_dead) continue; var td = be.get(arr); if (td && td.texture && td.texture !== arr._ew_gpu) _hqStackFill(arr); }
+        for (var i = 0; i < A.length; i++) { var arr = A[i]; if (arr._ew_dead) continue; var td = be.get(arr); if (td && td.texture && td.texture !== arr._ew_gpu) _hqStackFill(arr); }        /* THE SIGNS STACK: a sign painted again after it joined (a canvas whose version moved) is filled into its layer again. One
+           stack a frame, its own short list of sheets: never a walk of the room. */
+        var n = _hqStk.wi = ((_hqStk.wi | 0) + 1) % A.length, a2 = A[n];
+        if (a2 && !a2._ew_dead && a2._ew_cv && a2._ew_vers && a2._ew_srcs) { for (var j = 0; j < a2._ew_srcs.length; j++) if (a2._ew_srcs[j].version !== a2._ew_vers[j]) { _hqStackFill(a2); _hqStk.repaints = (_hqStk.repaints | 0) + 1; break; } }
     }
     /* before a shell build: every sheet its parts could stack stands in a stack. Always true (the fill is at once). */
     function _hqStackPrep(R, B, now) {
