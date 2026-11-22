@@ -3845,3 +3845,66 @@ padded sphere. Profile after: `_hqTickChars` 358 ms → 13 ms over the same walk
   refuses cut-outs and canvases today) for ~200 fewer meshes = ~1 ms. Not done: the stack's shader path cannot be seen in the
   cloud (WebGPU picture is black, the full city crashed the WebGPU page at "ready").
 - The cloud WebGPU city: crashed ("Target crashed") right after the room was ready, 15 GB machine, no texture shrink.
+
+## THE SIGNS STACK (2026-11-22, mondo picked "Keep merging, same look" for the Disaster City walk, 43.6 FPS)
+His F3: "alone: see-through / cut-out 410" of 1,303 square meshes in view. The census (THE OUTLINE'S BOUNDS above) says they are the
+city's CUT-OUT SIGNS: a plate with its own canvas picture (128 px high, 64 to 2048 px wide), alpha test 0.35, full opacity, depth
+written. THE SHEET STACK refused them twice: a see-through look, and a canvas picture.
+- `_hqStackTex` now takes a cut-out (alphaTest > 0, opacity 1, depthWrite, normal blending) and a CanvasTexture. The layer's texel
+  carries the alpha (`_ewNodeStack`: `colorNode = tx`, a vec4) and the stacked look is a clone that keeps `alphaTest`, so the cut is
+  the look's own. Truly see-through pieces (depthWrite off, no alpha test) still stay alone: they sort by their own centre.
+- `_hqStackFill` puts a canvas in by three's own `_copyImageToTexture` (so on Firefox it goes as bytes, THE SOFT CANVASES).
+- A sign painted again after it joined: `_hqStackWatch` looks at ONE stack a frame (its own short list of sheets, never the room)
+  and fills a stack whose canvas version moved (`_hqStk.repaints`).
+- Off: `window.EW_HQ_NO_SIGN_STACK` before the room.
+- Cloud (WebGPU on SwiftShader, counts only, the picture is black, model textures shrunk to 64 px so the page lives): the city
+  lands, 76 stacks / 551 sheets, stacks like "355x128 x12", "840x128 x12", "1405x128 x7", no frame errors. What is left alone at that
+  spot: cut-out 189 (a size with no partner in its square, or truly see-through) and "sign canvas 72". NOT seen: the picture itself
+  on WebGPU, and the count on his Mac. WAITING: his Shift+F3 line "squares, what each mesh is".
+- Next in the same line: signs of ONE height and different widths could share a layer size (pad to the widest, scale the UVs), which
+  would take most of the 189; then "many looks" (163) and the instance cells (808).
+
+## THE GRASS GROWS IN (2026-11-22, mondo: every fight in the Woods opened frozen; "is it because it's the first fight of the session ... how do we make it never do that")
+His battle F3: a 1,436 ms frame whose drawing JS was 33 ms, right as the fight began. The lens "JS" number is the render's own;
+the fight is LAID outside it (map.js `_hqEncounterStart` -> three-renderer.js `activate`).
+- NOT a first-fight cost. Cloud, The Clearing (`site_prebuilt_fairy_forest_ow_clearing`), two fights back to back on WebGPU: worst
+  frame 1,392 ms then 916 ms; no shader builds in either. (The session's first fight adds shader / pipeline builds on top.)
+- The profile (classic renderer, CDP, scratchpad fightp.js): `activate` 815 ms, of it `rebuildTerrainDecorations` > `_ggBuild`
+  729 ms: THE GRASS FIELD (the board + the meadow round it, ~27,700 tufts of 49 corners) grown in one go. The board is a WINDOW
+  round the strike, so it differs from fight to fight: keeping the result between fights does not hit (tried, dropped).
+  `_hqEncounterStart` is another 250-370 ms (the party build 148, `_hqLeave` + its one render 112, `hqFieldRegister` 60); the
+  parked room's copies (`_hqParkClone`) are only ~30 ms.
+- The fix (`_ggBuild`): tufts go straight into typed buffers (`_ggW` / `_ggNeed`; `_ggBlade` once a blade, not a list per
+  corner), and the loop is resumable (`run(deadline)` / `finish()`). The FIRST field of a room fight (within 4 s of `activate`,
+  or while one is still growing) is a job: `_ggJobTick` (from `_ggTick`, the battle frame) gives it 8 ms a frame; when whole,
+  the mesh joins and rises from the ground over 350 ms (its own `G.fade`, `uGgF.z`). A later build in the fight (a dig, a build,
+  a flood) and a board that is no room are grown in one go as before, so the old field is never missing.
+  Off: `window.EW_NO_GRASS_SLICE`. `window._ewGrassField` = { tufts, buildMs, frames }.
+- Measured (cloud): the grass is out of `activate` (it no longer shows in the profile's top list); 27,761 tufts in 37 frames,
+  406 ms in all (849 ms in one go with the same build before the typed buffers... 729 in the first profile).
+- NOT done, next: `_hqEncounterStart`'s 250-370 ms; on WebGPU his fight ran "bundles 2453 groups" at 31 FPS (the walk: ~200
+  groups): the fight's room is ~2,700 unmerged copies, each its own recording. Merging the fight's copies (or taking the
+  walk's merged squares) is the next step for both the entry and the fight's frame rate.
+
+## THE GRASS IS NEVER RAY-TESTED (2026-11-22, mondo's Fairy Forest fight at 6.3 FPS: "Pick (raycasts) 177/s · 881 ms/s", "rest of the frame 144.5")
+- The fight's wall-fade rays (`_occComputeBlockers`: `objectGroup` is one of its groups, and the grass field hangs in it) and the
+  picks ray-tested `ew_grass_field` triangle by triangle: three's plain `Mesh.raycast`, ~5 ms a ray on his Mac for 73K triangles
+  (the cloud's Clearing field: ~970K). THE BVH's tree for it is dropped for good the second time the tufts are re-sorted (the
+  index version moves when the camera turns ~10°: `_bvhSig`, `_ew_bvhNo`), so a fight ran well until the camera had turned twice.
+- Cloud profile of a fight's first 8 s on WebGPU (scratchpad fightp.js, `EW_PROBE_GL=webgpu SHRINK=1`): `_updateActionCamOcclusion`
+  3,420 of 6,100 ms of frame work; in it plain raycasts 2,349 ms and a 483 ms tree build for the grass.
+- Fix: `mesh.raycast = function () {}` on both fields (`ew_grass_field`, the walk's `ew_hq_grass`). No pick wants a tuft.
+- Lesson: a big mesh whose index or positions keep changing must opt out of raycasts (or keep its own cheap test); F3 "Pick ...
+  ms/s" over ~100 with a large "plain" count names this.
+
+## THE FIGHT'S START IS LOGGED (2026-11-22, mondo: "Still freezes and drops to 0 when a fight starts"; his "Dips this session" showed nothing after the walk's last dip)
+- The dip log ran in the WALK's frame only (`_hqFrameGuarded`), and leaving the walked room counted as "a new room", whose first 3 s
+  are never logged. So no fight frame, and above all not the switch, was ever in the log; and the lens's "JS" is the render's own, so
+  the fight's lay (`activate`, map.js `_hqEncounterStart`) is in no number.
+- Now `renderFrame` (a fight, no walked room live) runs `_dipBegin` / `_dipEnd` too; into a fight the log runs on (no 3 s skip), the
+  dip is tagged FIGHT START with what `activate` cost ("its scene was laid in N ms, outside the frames"); where = "in a fight".
+  A fight frame is never counted as "under the load card" (it was: `!(_hq && _hq.ready)`). Off: `window.EW_DIP_FIGHT_SKIP`.
+- What his 16:54 F3 says of the switch on his Mac (Fairy Forest clearing): "2486 walked · 2486 re-recorded (3169 meshes)", shader
+  builds 8.9/s, pipelines 6.1/s, worst 1,465 ms, then "awake 574" groups refreshing for seconds. The fight is a SECOND scene of
+  ~3,100 copies with its own camera and lights; every recording, render object and many pipelines are made again. Proposed to him
+  (decision card): the fight keeps drawing the walked room. See project memory perf-fight-start-20261122.

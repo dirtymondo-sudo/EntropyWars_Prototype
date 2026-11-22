@@ -632,7 +632,7 @@ ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ;
     L.push("            terrain: {");
     L.push("                res: 0.875, floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt_2',");
     L.push("                noise: { amp: 0.12, scale: 8 },");
-    if (S.world) L.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */\n                backdrop: false, edges: { world: true, reach: 440, " + (S.design ? "deep: true, tint: [0.5, 0.5, 0.52], " : "") + "ways: " + J(o.ways) + " },");
+    if (S.world) L.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */\n                backdrop: false, edges: { world: true, reach: 440, " + (S.design ? "deep: true, " : "") + "ways: " + J(o.ways) + " },");
     L.push("                slope: { cells: { res: " + C + ", x0: " + R.gx(0) + ", z0: " + R.gz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + o.slope.toString('base64') + "' } },");
     if (o.keep) L.push("                /* THE TRAILS STAY CLEAR: no scattered piece on a trail square (data.js the scatter rows) */\n                keepClear: { res: " + C + ", x0: " + R.gx(0) + ", z0: " + R.gz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + Buffer.from(o.keep).toString('base64') + "' },");
     L.push("                paint: { pal: " + J(o.PAL) + ", t: 'u8', res: " + C + ", x0: " + R.gcx(0) + ", z0: " + R.gcz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + Buffer.from(o.paint).toString('base64') + "' },");

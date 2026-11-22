@@ -43,4 +43,42 @@ function building(ctx, id, sx0, sy0, sx1, sy1, side, h, o) {
 const put = (ctx, B, key, lx, lz, o) => { const p = B.at(lx, lz), r = Object.assign({ key, x: p[0], z: p[1] }, o || {}); if (r.face != null) r.face = B.face(r.face); ctx.props.push(r); };
 /* a prop at a square's middle / at metres */
 const at = (ctx, key, sx, sy, o) => ctx.props.push(Object.assign({ key, x: ctx.r2(mx(ctx, sx)), z: ctx.r2(mz(ctx, sy)) }, o || {}));
-module.exports = { U, STEEL, WD, WD2, FLR, PLAS, CONC, ROT, sq, mx, mz, gantry, billboard, building, put, at };
+/* ── THE ROADSIDE (2026-11-22, mondo on the raised Badlands Highway: "anything else you can think to add or polish? Telephone poles? Billboards from the city?
+   Mile markers? Afterward This should be the standard for how the rest of the highways get built") ── */
+/* THE CITY'S BILLBOARDS: one of Disaster City's own adverts (docs/disaster-city/billboards.js ADS: the brand, its line, its colours, its typeface, its mark;
+   docs/notes/branding.md) on a lit board on two posts beside the road. `dir` = the way the traffic that reads it drives; `o.lift` = the board's foot over the
+   ground (9 beside a deck, so it reads from up there); `o.w` its width. Never a new brand: `name` must be on the city's list. */
+let nBoard = 0;
+function cityBoard(ctx, sx, sy, dir, name, o) {
+    o = o || {}; const ADS = require('../../disaster-city/billboards.js').ADS, ad = ADS.find(a => a[0] === name); if (!ad) throw new Error('cityBoard: not one of the city\'s adverts: ' + name);
+    const FACE = { S: 180, N: 0, E: 90, W: 270 }, W = o.w || 10, Hh = ctx.r2(W / 2.5), leg = o.lift != null ? o.lift : 5, t = 0.3, hx = c => parseInt(String(c).slice(1), 16), P = [];
+    for (const q of [-1, 1]) P.push({ s: 'box', p: [ctx.r2(q * (W / 2 - 1.2)), 0, -0.25], size: [0.36, ctx.r2(leg + Hh), 0.36], key: STEEL, tint: 0x4a4e55 });
+    P.push({ s: 'box', p: [0, ctx.r2(leg - 0.5), -0.25], size: [ctx.r2(W - 1.6), 0.3, 0.3], key: STEEL, tint: 0x4a4e55 },                       // the catwalk under the board
+           { s: 'box', p: [0, ctx.r2(leg - 0.12), -0.12], size: [ctx.r2(W + 0.3), ctx.r2(Hh + 0.24), 0.3], tint: 0x1a1b20 },                     // the frame, and the board's dark back
+           { s: 'box', p: [0, leg, 0], size: [W, Hh, t], tint: hx(ad[3]), glow: 0.5 });                                                             // the lit panel
+    const q = (y, ww, hh, words, font, mark) => P.push({ s: 'quad', p: [0, ctx.r2(y), ctx.r2(t / 2 + 0.02)], size: [ctx.r2(ww), ctx.r2(hh)], uv: 'fit', kind: 'over', glow: 0.9, tint: 16777215,
+        key: 'txt:' + words + '|' + ad[2] + '||' + ctx.r2(ww / hh) + '||' + font + (mark ? '|' + mark : '') });
+    q(leg + Hh * 0.36, W * 0.9, Hh * 0.52, ad[0], ad[4], ad[5]); q(leg + Hh * 0.1, W * 0.8, Hh * 0.19, ad[1], 'way', '');
+    ctx.feat({ k: 'arch', id: 'ow:' + ctx.ID.toLowerCase() + ':ad:' + (nBoard++), x: mx(ctx, sx), z: mz(ctx, sy), rot: FACE[dir], parts: P });
+}
+/* THE TELEPHONE POLES: the Tacos pack's wooden power pole (catalogue `power_pole`, its crossarm across the line) every `step` squares down the square
+   column `sx` from row `y0` to `y1`, and the wires between them (three thin lines from crossarm to crossarm, sloped with the ground). `skip(sy)` = no pole there. */
+function poleLine(ctx, sx, y0, y1, o) {
+    o = o || {}; const step = o.step || 8, top = o.top != null ? o.top : 9.9, P = [], pts = [];
+    for (let y = y0; y <= y1 + 1e-6; y += step) { if (o.skip && o.skip(y)) continue; pts.push([mx(ctx, sx), mz(ctx, y), ctx.hAt(sx, y)]); }
+    pts.forEach(q => ctx.props.push({ key: 'power_pole', x: q[0], z: q[1], face: 0 }));
+    const rx = pts[0][0], rz = (pts[0][1] + pts[pts.length - 1][1]) / 2, R3 = v => Math.round(v * 1000) / 1000;
+    for (let i = 0; i + 1 < pts.length; i++) { const a = pts[i], b = pts[i + 1], L = b[1] - a[1], up = b[2] >= a[2], rise = Math.abs(b[2] - a[2]);
+        for (const dx of [-1.0, 0, 1.0]) P.push(Object.assign({ s: 'box', p: [dx, R3(Math.min(a[2], b[2]) + top), R3((a[1] + b[1]) / 2 - rz)], ry: up ? 0 : 180, size: [0.05, 0.05, R3(L)], tint: 0x16161a }, rise > 0.01 ? { shear: [R3(rise), R3(L)] } : null)); }
+    ctx.feat({ k: 'arch', id: 'ow:' + ctx.ID.toLowerCase() + ':wires:' + Math.round(sx * 10), x: rx, z: ctx.r2(rz), rot: 0, y: 0, parts: P });
+}
+/* A MILE MARKER: the small green plate on a post at the road's edge, read from both ways. (sx, sy) squares; `o.y` = its foot (on a deck's parapet). */
+let nMile = 0;
+function mileMarker(ctx, sx, sy, n, o) {
+    o = o || {}; const P = [{ s: 'box', p: [0, 0, 0], size: [0.08, 1.9, 0.08], key: STEEL, tint: 0x8a8e94 }, { s: 'box', p: [0, 1.0, 0], size: [0.5, 1.0, 0.05], tint: 0x0b5c3a }];
+    for (const f of [0, 180]) { const z = f ? -0.035 : 0.035;
+        P.push({ s: 'quad', p: [0, 1.62, z], ry: f, size: [0.44, 0.26], key: 'txt:MILE|#ffffff|#0b5c3a|1.7||way', uv: 'fit', kind: 'wall', glow: 0.2 },
+               { s: 'quad', p: [0, 1.06, z], ry: f, size: [0.44, 0.52], key: 'txt:' + n + '|#ffffff|#0b5c3a|0.85||way', uv: 'fit', kind: 'wall', glow: 0.2 }); }
+    ctx.feat(Object.assign({ k: 'arch', id: 'ow:' + ctx.ID.toLowerCase() + ':mile:' + (nMile++), x: mx(ctx, sx), z: mz(ctx, sy), rot: 0, parts: P }, o.y != null ? { y: o.y } : null));
+}
+module.exports = { U, STEEL, WD, WD2, FLR, PLAS, CONC, ROT, sq, mx, mz, gantry, billboard, cityBoard, poleLine, mileMarker, building, put, at };

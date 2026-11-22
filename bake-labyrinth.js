@@ -26,7 +26,10 @@
                                                                   step between two roofs
      a district's `channel`                                       every passage two squares wide carries a waded channel down one of its squares;
                                                                   where it reaches a ledge it pours over a weir as a small fall
-   Notes: docs/notes/areas-complexes.md "THE SEWERS' LABYRINTH". */
+   NO SOFT LOCKS (2026-11-22, mondo: "fell into this tiny crevice in the sewers"): the plan row says `noRescue: true` (the generator cut corridors
+   through the brick at ground 0 to doors its plain walk could not reach), a floor runs out over a sump's brim and the sump's bed eases down inside
+   its liquid. After a bake: `node find-softlocks.js <room>` must print 0 traps and 0 crevices.
+   Notes: docs/notes/areas-complexes.md "THE SEWERS' LABYRINTH" + "THE SOFT-LOCK FINDER + THE STRAIGHT RAISE". */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const REPO = __dirname, ARGS = process.argv.slice(2), DRY = ARGS.includes('--dry-run');
@@ -99,7 +102,10 @@ rects(open, () => true, false).forEach(([x, y, w, h]) => F.push({ k: 'space', x:
 count.spaces = F.length;
 /* ── THE LEVELS ── */
 rects((x, y) => open(x, y) && LV[y][x] > BASE, (x, y, X, Y2) => LV[y][x] === LV[Y2][X], true).forEach(([x, y, w, h]) => { const l = LV[y][x];
-    const side = (xs, ys) => { for (const [a, b] of xs) if (open(a, b) && LV[b][a] < l - 0.01) return 0; return 0.3; };
+    /* A SUMP'S BRIM (2026-11-22, the soft-lock pass): the field runs down from a floor to a lower one over the node either side of their line, and
+       beside a sump that run lay half on the floor: a dry lip a metre deep along the brim and a pocket in its corners (deeper than a jump: a
+       trap). A floor runs 0.6 m out over a sump now, so the whole run down lies under the liquid. Beside lower GROUND the line stays a ledge. */
+    const side = (xs, ys) => { let sump = false; for (const [a, b] of xs) if (open(a, b) && LV[b][a] < l - 0.01) { if (T[b][a] !== 'w') return 0; sump = true; } return sump ? 0.6 : 0.3; };
     const run = (n, f) => { const o = []; for (let i = 0; i < n; i++) o.push(f(i)); return o; };
     const e0 = side(run(h, j => [x - 1, y + j])), e1 = side(run(h, j => [x + w, y + j])), n0 = side(run(w, i => [x + i, y - 1])), n1 = side(run(w, i => [x + i, y + h]));
     const x0 = gx(x) - e0, x1 = gx(x + w) + e1, z0 = gz(y) - n0, z1 = gz(y + h) + n1;
@@ -109,7 +115,7 @@ count.plateaus = F.length - count.spaces;
 /* ── THE WATER: the sumps (deep, to near their brim), the channels, the falls ── */
 const WATER = [], FALLS = [], CHAN = new Set();
 rects((x, y) => inb(x, y) && T[y][x] === 'w', (x, y, X, Y2) => LV[y][x] === LV[Y2][X], true).forEach(([x, y, w, h]) => { const l = LV[y][x], horiz = w >= h;
-    WATER.push({ k: 'stream', pts: horiz ? [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]] : [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: r2((horiz ? h : w) * C - 0.3), y: r2(Y(l) + 1.2), depth: 1.2, key: (distOf(x, y) || {}).sump || 'deep_water', bank: 0 }); });
+    WATER.push({ k: 'stream', pts: horiz ? [[gx(x), r2(gz(y) + h * C / 2)], [gx(x + w), r2(gz(y) + h * C / 2)]] : [[r2(gx(x) + w * C / 2), gz(y)], [r2(gx(x) + w * C / 2), gz(y + h)]], w: r2((horiz ? h : w) * C - 0.3), y: r2(Y(l) + 1.2), depth: 1.2, key: (distOf(x, y) || {}).sump || 'deep_water', bank: 1.3 }); });   // (`bank`: the bed eases down INSIDE the liquid's squares, so no dry step stands at the brim)
 count.sumps = WATER.length;
 /* THE CHANNELS: in a district with `channel`, every passage run two squares wide (one level, one plot) carries the channel down the square on
    its north / west side; it starts at a culvert mouth or a grate and ends at a grate, or pours over a weir where the next square is lower */
@@ -213,6 +219,18 @@ const A = {
         const px = r2(gcx(x) + (o.dx || 0)), pz = r2(gcz(y) + (o.dz || 0)); delete o.dx; delete o.dz; props.push(Object.assign({ key, x: px, z: pz }, o)); },
     /* decor off a square's middle (never blocks) */
     dec(key, x, y, o) { if (!CAT[key]) { errs.push('not in the catalogue: ' + key); return; } if (!place(key, x, y, 'dec')) return;
+        /* A COBWEB HANGS IN A CORNER (2026-11-22, mondo: "spiderweb decals standing upright"): the pack's web is one flat card, hung from its
+           top corner. On the floor it stood up like a sign. It spans the corner of two walls now, over head height (one wall only: flat on it) */
+        if (/cobweb/.test(key)) { const wallsOf = (X, Y2) => [['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]].filter(q => !open(X + q[1], Y2 + q[2]));
+            let wl = wallsOf(x, y);
+            if (!wl.length) { /* out on open floor: the nearest square of its level that has a wall */
+                search: for (let r = 1; r <= 4; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const X = x + dx, Y2 = y + dy;
+                    if (open(X, Y2) && LV[Y2][X] === LV[y][x] && T[Y2][X] !== 'w' && wallsOf(X, Y2).length) { x = X; y = Y2; wl = wallsOf(X, Y2); break search; } } }
+            if (wl.length) { const a = wl[0], b = wl.find(q => q !== a && (q[1] !== -a[1] || q[2] !== -a[2])) || null, hw = 1.75;
+                const row = b ? { x: r2(gcx(x) + (a[1] + b[1]) * (hw - 0.5)), z: r2(gcz(y) + (a[2] + b[2]) * (hw - 0.5)), face: ((a[1] + b[1]) * (a[2] + b[2]) > 0) ? 45 : 135 }
+                              : { x: r2(gcx(x) + a[1] * (hw - 0.06)), z: r2(gcz(y) + a[2] * (hw - 0.06)), face: a[1] ? 90 : 0 };
+                rnd(); rnd(); rnd();   /* (the three draws a floor piece takes: every other piece keeps its place) */
+                props.push(Object.assign({ key }, row, { y: r2(hAt(x, y) + 1.9), noSeat: true, noBlock: true }, o || {})); return; } }   /* (a `y` of 1 or more is a height from the room's floor) */
         props.push(Object.assign({ key, x: r2(gcx(x) + (rnd() - 0.5) * 1.6), z: r2(gcz(y) + (rnd() - 0.5) * 1.6), face: Math.round(rnd() * 360), noBlock: true }, o || {})); },
     /* hung from the vault: `y` = its top */
     ceil(key, x, y, drop, o) { if (!CAT[key]) { errs.push('not in the catalogue: ' + key); return; } if (!open(x, y)) { errs.push('ceil ' + key + ' over a closed square ' + x + ',' + y); return; }
@@ -243,12 +261,16 @@ A.kit = (letter, st) => { st = Object.assign({ lamp: 0xffc070, lampKey: 'cage_la
     const isW = (x, y) => open(x, y) && plotOf(x, y).d === letter;
     const DIR = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] }, FACEOF = { n: 180, s: 0, w: 90, e: 270 };
     /* the channels' two ends */
+    /* A GRATE LIES IN THE FLOOR (2026-11-22, mondo: "there are grates standing up right"): the grate's file stands on edge (a wall grate) and it
+       stood so in the middle of the channel's last square. `drain_grate_floor` is the same file lying down: as wide as the channel, over the
+       channel's last two metres, its top a hand over the walk (the channel's bed is 0.8 m under the walk, the grate 0.45 m thick at this width, so it stands in the water) */
+    const grate = (ex, ey, dx, dy) => props.push({ key: 'drain_grate_floor', x: r2(gcx(ex) + dx * 0.6), z: r2(gcz(ey) + dy * 0.6), face: dx ? 90 : 0, span: 2.2, y: 0.24, noSeat: true, noBlock: true });
     CHRUNS.forEach(c => { if (!isW(c.x, c.y)) return; c.ends.forEach(([X, Y2, dx, dy], i) => { const ex = X - dx, ey = Y2 - dy;
         if (!open(X, Y2)) { /* the channel meets a wall: a culvert mouth in it (the start) or a grate (the end) */
             const face = dx > 0 ? 270 : dx < 0 ? 90 : dy > 0 ? 0 : 180;
             if (i === 0) { props.push({ key: 'culvert_mouth', x: r2(gcx(ex) + dx * 1.45), z: r2(gcz(ey) + dy * 1.45), face, noBlock: true, scale: 0.75 }); k.mouths++; }
-            else { props.push({ key: 'drain_grate', x: gcx(ex), z: gcz(ey), face, noBlock: true }); k.grates++; } }
-        else if (LV[Y2][X] > c.l + 0.6 || (LV[Y2][X] === c.l && !CHAN.has(X + ',' + Y2))) { props.push({ key: 'drain_grate', x: gcx(ex), z: gcz(ey), face: 0, noBlock: true }); k.grates++; } }); });
+            else { grate(ex, ey, dx, dy); k.grates++; } }
+        else if (LV[Y2][X] > c.l + 0.6 || (LV[Y2][X] === c.l && !CHAN.has(X + ',' + Y2))) { grate(ex, ey, dx, dy); k.grates++; } }); });
     /* the weirs: a concrete board across the lip, a sluice frame over it */
     WEIRS.forEach(w => { if (!isW(w.x, w.y)) return; const cx = gcx(w.x) + w.dx * (C / 2 - 0.15), cz = gcz(w.y) + w.dy * (C / 2 - 0.15), yf = hAt(w.x, w.y), ns = w.dx === 0, span = w.big ? 2.8 : 2.4;
         A.box(cx, yf - 0.45, cz, ns ? span : 0.3, 0.55, ns ? 0.3 : span, 'urban:ConcreteStriped1e', 0x7a7a72);
@@ -343,7 +365,7 @@ L.push('                noise: { amp: 0, scale: 5 }, crag: false,');
 L.push("                waterLook: { water: 'sewer_water', deep_water: 'sewer_deep' },");
 L.push("                paint: { pal: " + J(DES.pal) + ", t: 'u8', res: " + C + ', x0: ' + gcx(0) + ', z0: ' + gcz(0) + ', nx: ' + W + ', nz: ' + H + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 L.push('                /* every square that is not a `space` is the wall, brick to the roof */');
-L.push("                gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_2', rim: 0, forceGrow: -0.3 },");
+L.push("                gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_2', rim: 0, forceGrow: -0.3, noRescue: true },");
 L.push('                features: [');
 ROWS.forEach(f => L.push('                    ' + J(f) + ','));
 L.push('                ],');

@@ -70,6 +70,11 @@ const MTN = (() => { const ids = { K: 'mtnK', P: 'mtnP', O: 'mtn', D: 'shasta' }
 const LEY_UPTO = 7, LEYP = require('../world-polish/plans/leylines-line.js');
 const LEY_NEW = LEYP.plots.filter(q => q[4] == null && q[0] <= LEY_UPTO).map(q => [q[2], 19 + q[0], 29 + q[1]]);
 const dL = grow('leyY', LEY_NEW); LEY_NEW.forEach(([, x, y]) => set(x, y, 's'));
+/* 10. THE VALLEY ROAD'S CITY END IS WOODS (2026-11-22, mondo: "there should be woods/trees all along that dirt path leading back into the city, since going
+       out of the city its a dirt path leading into the woods"): the city's west side is forest (its own `terrain.edges.w`), but the Valley Road's last plots
+       were open woodland and grassland, and the plots under the city's west line farmland: from the road the city stood in a lawn. All forest now: the
+       road's four last columns (bake-route.js dresses them; docs/areas/routes/R6.js plants the wood) and the land past its east line. */
+for (let x = -4; x <= 1; x++) for (let y = 3; y <= 6; y++) set(x, y, 'f');
 /* written the way gen.js writes it: one line a district / a ground row */
 let t = fs.readFileSync(FILE, 'utf8');
 [d, dW, dF, dC, dE, dR, dL].concat(MTN).forEach(d => { const i = t.indexOf('    {"id":"' + d.id + '"'), j = t.indexOf('\n      ]}', i); if (i < 0 || j < 0) throw new Error('no block of ' + d.id);

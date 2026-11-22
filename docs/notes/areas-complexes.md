@@ -11426,6 +11426,20 @@ Two ruler lines stood on the land past a room (three-renderer.js `_hqEdgeLandFn`
 - Seen (cloud browser, the node renderer's WebGL2): `site_ow_r9` from the air at four places and on foot; pictures `/mnt/project-files/badlands-edges/`.
   Not seen: real WebGPU on his Mac, the other rooms (same code: a room whose edge ground is open ground now runs it on; the city's asphalt edge does not).
 
+**THE BLENDED LAND, EVERY MAP (2026-11-22, the same day; mondo: "do the same for all edges of every map in the entire game ... make them make more sense
+with whatever zones are around them").** An audit of the 48 open rooms with `terrain.edges` (each side's edge ground against the map's land past it; the
+script is in the PR text) found three things left, all fixed in the engine or one row:
+- **Snow was not in the blend**: tundra met grass along a staircase, and a snow room's sheet (`ice`, `calm_snow`) stopped on its line against plain white.
+  The tundra's snow is now one of the sheets (`snow`), and `NAT` holds `ice | snow | calm_snow | leaves`. A peak's snow (rock by height) is drawn as before.
+- **The east and south sides read the room's FLOOR, not its paint** (the paint's last column lies inside the line): `roomSheetAt` reads one square in.
+- **Disaster City's south side was dead flat sand; the map has dry scrub there** (the Badlands Highway leaves over it in the rocky grass):
+  `bake-disaster-city.js` EDGES `s: { kind: 'scrub' }` + `sheets: { scrub: 'grass_rocky' }`. `edges.sheets: { <kind>: sheet }` is new: a room with WRITTEN
+  sides says which sheet a kind's land wears (a One World room reads the map: `HQ_EDGE_SHEETS`). data.js was edited to the same row by hand (no rebake).
+- Left as they are, on purpose: a BUILT edge (the Vatican's cobbles, the city's asphalt) against open land (a town's edge is a line); rock against open
+  ground at a range's foot; Antarctica and the Harbour (written sides that fit: range / open sea). Every other open room reads the map (`world: true`), so
+  its land is its neighbours' by construction.
+- Seen: `site_ow_r12` (snow / grass), Giza's east, the Snowy Pines' west and north, R9 again, the city's south. Pictures `/mnt/project-files/badlands-edges/after_*.jpg`.
+
 ### ONE WORLD, THE HORIZON READS THE MAP (`terrain.edges.world`, three-renderer.js `_hqEdgeLandFn` / `_hqBuildEdgeLand`)
 - **`edges: { world: true, reach: 440 }`** = the sides are not written, they are read. The room stands on the world grid
   (`hqOwRoom`), and the land at every point past its line is the kind of the WORLD PLOT under that point
@@ -14092,9 +14106,82 @@ and press e ... i can't see the road going out, the road just stops and its all 
   ground keep the 40 m strip.
 - **A link end may say `w`** (the street's width past the gantry; data.js link door builder copies it to the door row): both downtown_desert
   ends are 14 (four squares), was the catalogue's 9.
+- **ROUND 2 (mondo the same day: "why is there a little river stream that the road dips under? an why are there trees blocking the woods exit ...
+  Make them actually look good and not like buggy messes. Need to make logical sense"):**
+  - THE MOAT: `_hqEdgeLandFn` measured an INSET side's line from the lattice's half (the city: 379.75 for a 378 shell), so the land past the
+    city's south line began 1.35 m past the plots, on the dead strip's sunk floor (-9), and the room's sea showed as a strip of water along the
+    whole south side. An inset side's line is now the shell's half less the inset, 0.15 m inside it: the sand meets the street at its height.
+    Only the city has inset sides.
+  - The ramp down to the land is 40 m (was 14: a 4 m drop read as a slide), its bank 5.5 m deep.
+  - THE WOODS EXIT IS A FOOTPATH: the city has no street on its west line there, `valley_city.a` stood half over the planters of a one-square
+    path. It is on the path's middle (z -47.25) with `w: 5`; a road end under 7 m wide is `foot` in the builder (the room's path sheet, no lane
+    paint, no speed plate, a 3.8 m gantry). Open question for mondo: cut a real street to it.
+  - NO TREE IN A ROAD'S MOUTH: data.js hqTerrainCompile drops `tree` rows within 7 m along / half the width + 2.4 m across a road way's place
+    (the city's west tree line crossed the gate); the edge land plants none on a road's lane.
+  - A CAUSEWAY: after the city's south land became rolling scrub the land (a coarse mesh) came up through the asphalt. Past the line the
+    road's cross-section is level, 0.5 m over the HIGHEST land under it and its shoulders (`crest(d)`, 7 samples across), a bank under both
+    sides all the way out.
+  - ROUND 3, A TRAIL SIGNPOST (mondo: "its not a road ... It just needs a sign or crosspost or something, not a freaking highway exit sign
+    to the woods"): a `foot` road end builds no gantry, no green plate and no LEAVING plate: one wooden post beside the path, a plank naming
+    where it goes (the last part of the end's `sub`: THE WOODS), a smaller plank on its back naming this room for the one arriving.
+  - ROUND 4, THE PATH OUT IS DIRT (mondo: "if its a dirt road then this path that leads out of it past the edge needs to be dirt, not this
+    tile pavement"): a `foot` end's strip wears the FAR room's path sheet (`DOOR_HQ.rooms[door.action.room].terrain.path`; the Valley Road:
+    dirt_2), this room's only when the far room has none. He keeps the Valley Road a dirt road with cars "for now".
+  - ROUND 5 (mondo: "I cant even walk out of this path ... its just an invisible wall. and why is the dirt shiny"):
+    - THE CROSSING IS REACHED: a walker stops 1 m inside the room's line; a free end's crossing stood 3.2 m past the end and the Woods end is
+      2.6 m from its line. `deep` = min(3.2, max(1, the end's distance to the line - 1.5)) (the builder returns `lineOut`). Walked: city -> site_ow_r6.
+    - A PATH'S OWN GROUND: a link end may name `sheet` + `tint` (copied to the door); a `foot` strip wears them, with no highlight
+      (shininess 0), 0.15 m over the land (no hump). Round 4's "far room's path sheet" is gone. `valley_city` a AND b: `w: 5, sheet: 'dirt_2',
+      tint: 0xa08c78` (the colour the Valley Road's dirt draws at in its own room), so the Valley Road's east end is the same footpath with
+      a signpost (it ended in a green gantry and lane-painted asphalt).
+  - ROUND 6, THE VALLEY ROAD'S CITY END IS WOODS (mondo: "there should be woods/trees all along that dirt path leading back into the city,
+    since going out of the city its a dirt path leading into the woods"): `after-v13.js` row 10 makes the world plots -4..1 x 3..6 forest
+    (`f`); `docs/areas/routes/R6.js` plants a tall wood on the road's last four columns of plots (one free square in three off the road:
+    the kit's ten trees a plot read as a lawn). Then `node bake-route.js R6`, `node bake-map.js site_ow_r6`. RULE: the two sides of a gate
+    show the same country. Walked both ways: city -> site_ow_r6 and site_ow_r6 -> city (the software walker needs `max` 70000 for 6 m).
+  - ROUND 7, NO BLACK AT THE WOODS' EDGE (mondo at the Clearing's Old Road trail: "I dont know why its all black on the edge. Every single
+    entrance/exit in the game needs to look good and natural"): two causes. (1) the Clearing's `edges.tint: [0.5, 0.5, 0.52]` (11-20) drew
+    the land past its line near black since the land wears sheets; gone from the room row and bake-woods.js (deep stays). (2) every `trail`
+    way stood 7 black soft cards across its mouth and a flat pale strip on the path: `_hqPassageWay` `openLand` (unroofed, not inside, no
+    modelled mouth, a room with THE NATURAL EDGES) builds neither; the land's own WAY ON path shows. Walked: the Clearing north -> site_ow_r4.
+    The other zones' gates are four other threads' (11-22); the forest / kingdom thread takes the trail strip, the WAY ON clearing and the dim.
+  - THE LANE LINES NEVER DREW: the paint quads wind face down (z runs negative); the paint material is double-sided now.
 - Probe: `node playtest_city.js site_ow_r9 '[{"name":"walk_n","x":-35,"z":-180,"face":0,"ground":true,"walk":{"key":"w","max":40000}}]'` walks
   into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
   the SECOND room of a run; the WALK line prints before that.
+
+## THE ROAD OF THE NEXT ROOM RUNS ON — every open seam shows its road past the line; the Desert's eleven gates have a road (2026-11-22, mondo: "Every single entrance/exit in the game needs to look good and natural")
+The Desert thread of that order (the Circus, Western Town, Area 51, Giza, DH1-DH4, R9's south end, R8's and R10's Desert ends, R11's west end). What was wrong at all 24 gate ends:
+a highway stopped dead at the room's line (19 m of strip, buried under the land), and no district had a road to any of its gates (One World stood the seams on the route's
+own line; the districts' own roads leave their rooms somewhere else).
+- **THE ENGINE, EVERY ROOM (three-renderer.js `_hqBuildEdgeLand`, `_hqSeamSection`):** an open seam on a wall (`way: 'open'`, wall n / s / e / w) draws a road past its line by
+  itself, the land's whole reach. WHAT IT DRAWS IS THE NEXT ROOM'S ROAD AS THAT ROOM PAINTS IT AT ITS OWN GATE: `_hqSeamSection(room, door)` reads the room's paint sheet on its
+  last row of squares across the seam (a run of 1 to 14 painted squares, three rows deep) as bands of one sheet each, and the room's `marks` lines that reach the wall (solid) or
+  beat towards it (dashed, in their own beat). So asphalt stays asphalt, a median stays a median, dirt stays dirt, and both sides of a gate agree. Where the next room painted no
+  road at its gate, this room's own road runs on. A paved road with no lines of its own (R9: its lines are its deck's) gets the plain set. Where this room's road is wider than
+  the next one's (six lanes into a two-lane gate road) its own surface runs on as an apron that closes in over 45 m. A written `edges.roads` row at the same place wins.
+  `edges.seamRoads: false` = none for a room; `EW_HQ_NO_SEAM_ROADS` = none anywhere. `HQ_SEAM_TINT` = a sheet's tint past the line (empty: the bare sheets match).
+- **THE GATE'S LANE IS LEVEL (`_hqEdgeLandFn` LANES):** past an open seam the land is the gate's floor (no lift, no ditch) for 10 m, back to its own shape by 26 m; the road
+  lies level with the gate for 9 m (the walker crosses 6 m out), then climbs onto the land.
+- `edges.roads` rows take `bands: [{ a, b, key, tint }]` and `lines: [{ off, color, w, on, period, start }]` now (the old `w / key / line` row is one band and one line).
+- **THE DESERT'S GATES (bake-desert.js THE ROAD FROM THE GATE):** a seam row may say `road: { sheet, lanes, len, over, rects, lines, move }`: the road's squares across the gate
+  are painted from the wall in until they meet the district's own painted ground; `lanes: [c0, c1]` threads it between what stands there (the seam then stands on the road's
+  middle); `move: [[key, x, z, toX, toZ]]` stands a prop that was on the road beside it (nothing is dropped). `EW_STUBMAP=1 node bake-desert.js --dry-run` prints each district's
+  squares with what stands on them (p prop, W wall, r rail, B building, h plateau, # the new road) and a STUB line for anything left on a road. The eleven: the Circus W / E / N
+  (asphalt, two lanes, a yellow line; the backstage things by the north gate stood one square east), Western Town N (Main Street's dirt up to the highway), the Ranch Road's gate
+  (dirt beside Boot Hill's fence), Area 51 W (asphalt to the base road) and E (an asphalt road along the north fence to the guard post), Giza W (stone through the caravan
+  camp to the Tomb Door side), the Coast Road's gate (packed dirt over the dig's footbridge), the Causeway's gate (stone).
+- **A DISTRICT ROAD THAT LEAVES ITS ROOM WHERE NO GATE STANDS** gets an `edges.roads` row from the bake (a run of 1 to 3 road squares on the last row, four rows deep): the
+  circus lot's south road, the town's west and south roads, Area 51's north road, Giza's oasis track. They lead to no room.
+- **NO TABLE AND NO RANGE ON THE ROAD (`_hqEdgeLandFn` worldW, LANES):** in a seam's lane a mesa lies down as open sand and a range as a pass floor, the land's whole reach,
+  easing back over 22 m aside (the highway rode up a rock table 200 m out of Western Town). The lane is tested at the point itself, not at the wandered spot the kinds are
+  read at. The road stops where the land turns to sea (`W.coast > 0.35`): no road over water.
+- **THE SIGN AT THE GATE (bake-desert.js):** a seam row's `sign: 'WORDS'` = a small green board on two tall posts beside the road two squares inside the line, facing the one who
+  leaves, the place in a few words (GIZA, AREA 51, THE CIRCUS, WESTERN TOWN, DISASTER CITY); `post: true` = the pack's wooden `signpost` (the dirt roads: Ranch Road, Coast
+  Road, Causeway). `signSide: -1` = the traveller's left, `signIn` = squares inside the line.
+- **THE LAST ROW WEARS ITS NEIGHBOUR (`_hqGrassCell`, `_hqFloraCell`):** the ground lattice's outer ring is never painted, so a route whose floor is grass grew a band of grass
+  across its own road at the room's line (R9, R8, R10, R11 ends). An unpainted ring node now reads the node one row in, in every room.
+- Checked in the browser, every gate walked both ways (24 walks): the thread's pictures are in `/mnt/project-files/desert-gates/`.
 
 ## THE SEAM IS THE ROAD — an open seam on a route room's wall is as wide as the road (2026-11-22, mondo: "it only works when i enter through the median")
 mondo 11-22, the Badlands Highway (`site_ow_r9`) into the Circus: "it only works when i enter through the median in the highway, which doesnt make
@@ -14150,3 +14237,150 @@ box 4 x 9. `R9.js` stands the gas station (store, canopy, sign, truck) west and 
 `--put` the map picture, a browser look.
 
 **Seen, not touched:** in data.js `hqTerrainBridges` the end of one line (`drawW`, `glaze`, `seat`, `front`, `gaps` of a straight bridge) sits behind a `//` comment.
+
+### THE RAISED HIGHWAY, THE POLISH (2026-11-22, same day; mondo: "this is not up to my standards yet, and we need to get it right so we can make the rest of the highway like it too")
+
+His five points and what answers each:
+- "the white and yellow road lines cross and overlap each and look ugle at the diagonal parts of the road": `bake-route.js` THE LINES MEET AT A BEND. A highway run's
+  lines start and end on the bend's mitre (`bendAt`), for every highway room on its next bake. On a raised room the asphalt also reaches 4.3 squares from the middle line
+  at grade (ow-raised.js), so no edge line lies on a dirt square down a diagonal.
+- "there is the gap between the road and the side barrier that i immediately got stuck in": the terrain `ramp` rows were exactly the road wide, so the field's bank began
+  one grid point INSIDE the barrier (a trench 1.75 m wide). A ramp row is 0.2 m wider than its road now: the bank starts under the retaining wall.
+- "The exit ramp looks stupid, that is not how highways look, the lane lines need to actualy make sense": THE EXIT'S PLAN in ow-raised.js. Spec
+  `exit: { taper, lane, diverge, slip, cross }` (squares): the lane opens on a taper, runs beside the road behind a dotted line, peels away over `diverge` (its two edge
+  lines run out to the ramp, a painted gore with chevrons opens, a wall stands in the gore from its nose behind a yellow crash barrel), then a ONE-lane ramp (7 m between
+  walls) goes down to the cross road, with a stop line at the foot of the two that come off. The widened deck is `poly` slabs; level barriers on any line = `jerseySeg`;
+  level paint on any line = `polyLine`. Arch `poly` parts take `under: true` (the underside).
+- "why would you make new light poles/street lamps": the lights are the city's own lamp now. `terrain.gen.lamps: [{ x, z, nx, nz, y }]` works in ANY room (data.js
+  hqTerrainSurvey, three-renderer.js `_hqBuildStreetLamps`); `y` = the lamp's foot (here: the parapet's top). Never build a lamp from boxes.
+- "riding my skateboard and jumping on the highway completely loses all my momentum": data.js `hqTerrainAir` read a bridge slab's top + 5 cm as its mass, so a jump off
+  ANY bridge row met "a wall in the air" on its first frame and the board stopped. Feet on the top are in the air over it now (as on the ground). Not highway-only.
+
+Gantries stand before the exit lane opens (a post stood in the lane). Known and left: the terrain ramp's asphalt is a shade lighter than the deck's where they meet.
+- THE EXIT'S CROSSINGS HAVE TRAFFIC LIGHTS (mondo, same day: "gonna need a some stop lights at the end of the ext where it meets the road, thats an intersection"):
+  ow-raised.js writes two `terrain.signals` rows (the city's own signal, any terrain room may carry them), one each side of the deck where the ramps' feet meet the
+  cross road: a mast for the ramp that comes off and one for the cross road's traffic from outside. A signal row's `back` = metres from its middle to the stop line.
+  The Police Officer (x2) joined the Trucker and the Honda Civic on `HQ_NPC_PLACES.site_ow_r9` on his word ("let's add police officers to the highway too").
+
+### THE HIGHWAY STANDARD (2026-11-22, mondo on the finished Badlands Highway: "yep looks good ... This should be the standard for how the rest of the highways get built")
+
+`site_ow_r9` is the model. A highway is built to this list (all of it is in `ow-raised.js`, `bake-route.js` and `docs/areas/routes/south-kit.js`; a new highway = a spec + a hook):
+1. RAISED: `raised` in the spec. Ramps on earth between retaining walls, a deck on round piers with cap beams, concrete barriers on both edges and the middle, expansion
+   joints where the deck sits on the ramps. No gap between asphalt and barrier anywhere (a `ramp` row is 0.2 m wider than its road).
+2. AN EXIT IS A REAL EXIT: `exit: { taper, lane, diverge, slip, cross }`. Taper, exit lane behind a dotted line, painted gore with chevrons, a crash barrel and an EXIT
+   plate at the nose, a one-lane ramp, a stop line and THE CITY'S TRAFFIC LIGHTS (`terrain.signals`) where it meets the cross road. Something stands at an exit (gas, a motel).
+3. THE CROSS ROAD RUNS ON past the room's line (`terrain.edges.roads`), behind barrels when it leads nowhere.
+4. LINES: yellow left edge, white right edge, white dashes between lanes; mitred at every bend (never crossing); asphalt under every line.
+5. LIGHTS = the city's street lamp (`terrain.gen.lamps`, on the parapets). SIGNS = south-kit `gantry` (before an exit lane opens, never a post in a lane).
+6. THE ROADSIDE (south-kit): `poleLine` (the Tacos pack `power_pole` + wires) down one side clear of the walls; `cityBoard` = Disaster City's own adverts only
+   (billboards.js ADS; lift 9 beside a deck); `mileMarker` a plot, counted on from the last highway's number.
+7. WHO IS ON IT: `HQ_NPC_PLACES` rows: Trucker, Honda Civic, Police Officer (his words). Cars: every route `deck: true`, two lines take the exit.
+8. Nothing in a driving lane but cars and paint. Use the game's own models (lamps, signals, poles): never build one from boxes when a model exists.
+After a bake: `node bake-map.js site_ow_<id>` + `--put` the picture, a browser look (aerial, driver's view at the exit, the gore from above, a bend from above).
+
+## THE CLEAR DOORWAYS (2026-11-22, mondo: "almost every single building door has this horizontal bar in front of it at the bottom, please get rid of that for the door entrances")
+What it was: a walk-in building is a hollow `texbuilding` (walls, doorway, swing leaf) + an `arch` row (its look). Many arch rows ran a wall band, a
+plinth, a sill, a chair rail or a dado straight across the doorway: the Industrial homes' brick band (I.js ROOFS, `bricks_3` 0.45 to 1.0 m), Southside's
+and Financial's plinth strips, the insides' 1.05 m rails, dados whose hole was 1 m high under a 1.2 to 1.4 m coat, a window + sill + flower box standing on a
+door square. 72 parts in Disaster City, 60 more in Katana, the Desert, the Volcano Island, the Woods, the Moon, the Estate, Agartha.
+The fix is A RULE IN THE DRAWER, not rows (three-renderer.js `_hqArchDoorGrid` / `_hqArchDoorClear` / `_hqArchDoorCut`, called by `_hqBuildArchRows`):
+before a row is drawn, every `box` / standing `quad` that CROSSES a hollow texbuilding's doorway (data.js `hqTexbDoor`, the square the walker and the leaf
+use; from 0.45 m inside the front to 0.7 m outside it) is cut there from the ground to the door's head. A thin strip is split in two (+ a piece over the
+head); a panel gets a `hole` (a `uv: 'fit'` panel too: `holeFit`); a mass (deeper than 0.7 m) has its face on the doorway replaced by a panel with the hole.
+KEPT WHOLE: tops under 0.2 m (thresholds, skirtings), a deck / step / doorstep (under 0.55 m and deeper than 0.7 m or about the doorway's width), the
+lintel and over, a post under 1 m wide, lettering (`txt:` / `mark:`), a part that FILLS the doorway (a door picture, the Internet's lit portals), a
+box none of whose DRAWN faces is on the doorway (a body's `faces: 'blr'`), `ring` / `along` / `shear` / `flat` parts, and any part with `inDoor: true`.
+The room's rows are never written back (the editor saves them as they were). `window.EW_NO_DOOR_CLEAR = true` = the rows as written.
+SO, WHEN YOU WRITE A BUILDING: a band across the front needs no door split any more (I.js `ring` still splits its own; both are fine). Something you
+WANT across a doorway (a curtain, a gate bar) takes `inDoor: true`. Not covered: a cylinder, dome or pack model standing in a doorway.
+## THE SEWERS, POLISH PASS 1 — grates, cobwebs, the sludge waded, the falls' own sheet (2026-11-22)
+
+mondo 11-22: "There are grates standing up right, spiderweb decals standing upright that still have a black background, i cant walk in the
+green liquid, its glitches and puts me back on the ground, the waterfalls look messed up like super pixelated or stretched and flickering."
+
+- **THE GRATES LIE IN THE FLOOR.** `drain_grate`'s file stands on edge (a wall grate, `mount: 0.4`); bake-labyrinth.js stood it in the middle
+  of a channel's last square. New catalogue row `drain_grate_floor` = the SAME file with `lay: true`. The kit (`A.kit`, `grate()`) lays one
+  over each channel's last two metres: `span: 2.2` (the channel's width), `y: 0.24` (a lift over the bed, under 1 = a lift), `noSeat`. 40 rows.
+- **A COBWEB HANGS IN A CORNER.** The pack's web (`psx_cobweb_*`) is one flat card hung from its top corner; `A.dec` dropped it on the floor,
+  where it stood like a sign. In bake-labyrinth.js a cobweb key now spans the corner of two walls at 45 degrees (one wall: flat on it; open
+  floor: moved to the nearest walled square of its level), `y: hAt + 1.9` (a prop `y` of 1 or more is a height from the ROOM'S FLOOR, not a
+  lift: `y: 2` put it on the ground of a 43 m level). three-renderer.js `_hqPropMatPick`: a cobweb's material writes no depth and has
+  `alphaTest 0.02` (it wrote depth, so water / stains behind it were cut out in its whole rectangle; a see-through part that writes depth is
+  also taken into the static batch). NOT SEEN IN THE CLOUD: the black card itself (the cloud probe runs the node renderer on WebGL2, where the
+  web is nearly invisible: its sheet's alpha is under 0.2); the fix is by reading. Other rooms' floor cobwebs (the Cavern, the Woods…) are
+  as they were: their bakes still drop them on the floor.
+- **THE SLUDGE IS WADED.** data.js `hqTerrainWades(key)` = water or sludge; used by hqTerrainFeet, hqTerrainAir, the door-sill rule and
+  three-renderer.js's landing rule (the "put me back on the ground" = `_hqVoidReturn` for any liquid but water). Sludge is waded at ANY depth
+  (the feet ride the wade line, 0.55 m under the sheet). `hqTerrainHaulOut`: a body at the sludge's wade line takes a sump's sheer brim as a
+  step (else a walker in a 1.2 m sump could never leave; water sumps here are `deep_water`, never entered). The Radioactive status is the
+  battle's (TERRAIN_RULES.sludge), unchanged: wading on the walk gives nothing.
+- **THE FALL'S OWN SHEET.** `_hqFallsBuild` drew a fall in the water's own material, whose picture, caustics and glints are laid by WORLD x, z:
+  down a sheer face that is one row of the pattern pulled the whole height, in blocks a segment tall (8 segments on a 42 m shaft), glints
+  blinking as bars. Now `_hqFallMat(look)`: one drawn streak sheet (256 x 512, mip-mapped), laid by the fall's own width and length, tinted
+  per look (`_HQ_FALL_COL`), Lambert, the liquid's glow where it has one; segments = height / 0.7 (8 to 48). Lava keeps the old sheet. Every
+  room's falls change (the row is shared). The old look: `window.EW_HQ_OLD_FALLS = true` before the room.
+- **NOT DONE / SEEN ON THE WALK:** the sludge sheet is one flat bright green with no picture on it and a ragged fringe at a channel's round
+  end (the square-water shore on a 2.2 m channel); a fall still has no mist or sound; the walk was 14 open spots + the named places, not
+  every square.
+
+## THE SEWERS, POLISH PASS 1b — the cobwebs everywhere, the sludge's edge and surface (2026-11-22)
+
+- **A COBWEB HANGS, IN EVERY ROOM.** three-renderer.js `_hqCobwebHang(p)`, called first in `placeOne` (the room's build, once a row): a
+  `psx_cobweb_*` row with no height of its own (no `y` of 1 or more, not `ceil` / `wall` / `flip`), in a terrain room, is placed flat on the
+  nearest wall or rock face within 5 m (eight headings; a face = the ground 2.2 m higher, a wall row that tall, or the room's edge), its foot
+  1.9 m over the ground it was dropped on, no blocker. The row in data.js is never changed. On 11-22 six rooms held 39 webs on the floor (Agartha 15, the
+  Tunnel-Way 17, the Long Dark 3, the West 1, the Clearing 1, the Estate's trail 2), counting `hw_web*` too: those are the Halloween pack's 3D
+  webs, not cards, and are left as they are. `hang: false` on a row keeps it where it is; off for all: `window.EW_NO_COBWEB_HANG`. Checked in the Tunnel-Way (6 webs moved to
+  their walls). A bake need not place cobwebs by hand any more (bake-labyrinth.js still does, into corners).
+- **THE SHEET NO LONGER CLIMBS A SHEER BANK** (`_hqGridWaterBuild`, every room's square water): a point over a bank higher than the lay line
+  was clear but stood ON that bank, so the last strip of the sheet was pulled up the channel's side as a ragged streaked fringe (loud on the
+  opaque sludge). It stops at the lay line + 0.1 now, inside the bank.
+- **THE SLUDGE'S SURFACE:** `_CALM.liquids.sludge` ripple 0.02 -> 0.05 (the calm liquid's own ripple, same colour, same sheet: nothing
+  repainted). Was one flat green.
+
+## THE SOFT-LOCK FINDER + THE STRAIGHT RAISE (2026-11-22, mondo: "fell into this tiny crevice in the sewers")
+
+mondo 11-22 (the Sewers, The Culverts, a raised floor running down into a gap at a wall's foot): "immediately fell into this tiny crevice in the
+sewers. What are these??? get rid of them. they are so easy to fall into and get stuck and soft locked ... whatever building method this is,
+stop ... no tiny crevices or huge drops where there is no room to get out or move. know when to raise the terrain with a gradient on the side
+and when to just raise it straight up. this is a scenario where it needs to be raised straight up because its by a wall and so it makes this
+gap/crevice that the player can fall into. Please fix this everywhere in the game".
+
+**HIS RULE (binds every room and every bake tool):** beside a wall, a mass or an edge the ground is raised STRAIGHT UP (no run of slope, no
+gap). A gradient is only for open ground that leads somewhere walked. Any place the walker can get into has a walked way out.
+
+**WHAT MADE THEM (three shared causes, all in the engine or a tool, none in one room's rows):**
+- **THE STRAIGHT RAISE** (data.js `_hqTGenerate` applyRise): a MASS plan (drawn `space` rows in walls, the city, halls, ley) kept the authored
+  field under its solid. A `plateau` floor that ends at a wall met ground 0 half a node inside the wall, and the field (bilinear) ran down to
+  it: every wall of a raised floor had a sliver of slope at its foot the walker slid into (in the Sewers' top chamber: from 45.5 down to 30.5
+  in the last 30 cm before the wall, measured). Now the solid's first two rings of nodes take the height of the open ground they touch when
+  they lie more than 0.3 m under it. One rule, every mass plan.
+- **THE SHEER EDGE** (data.js `hqTerrainVoidAt`): in a room over the void (the Internet, the Astral Realm, Heaven) the void began where the
+  height fell under the lip, so the upper part of a floating tile's side was "ground": the walker stepped off, slid down to the void's line
+  and stood there. A cell with a corner in the void and a rise over a jump is the tile's side: all void (a fall). A built flight or deck
+  over it stays ground. Flights over the void keep 2.6 m or more of walk (checked on all four void rooms).
+- **NO CORRIDOR THROUGH A DRAWN WALL** (bake-labyrinth.js writes `noRescue: true`): the plan generator's guarantee cuts a corridor to any
+  door its plain walk cannot reach. In the labyrinth (ladders, one-way drops) it cut 24 of them through the brick at ground 0: strips two
+  nodes wide up to 35 m under the floor beside them (one at the Stadium Drain's door). A room whose plan is laid square for square by a tool
+  says `noRescue: true`. THE OTHER TOOLS that write `kind: 'plan', look: 'walls'` (bake-ug.js, bake-underground.js, bake-cavern.js,
+  bake-dumb.js, bake-afterlife.js) still carve: the finder prints `CARVED n` for a room where it happened; read those rooms first.
+- **A SUMP'S BRIM** (bake-labyrinth.js): a floor runs 0.6 m out over a sump's squares and the sump's bed eases down inside the liquid
+  (`bank: 1.3`), so the run down lies in the liquid: no dry lip a metre deep along the brim, no pocket in its corners.
+
+**THE FINDER:** `node find-softlocks.js --all [--jobs 4]` (every terrain room, a table by zone, each room's JSON + `_summary.md` in
+`shots/softlocks/`), `node find-softlocks.js <room id…>` (one room, every row with its x, z, y: the F3 line's numbers),
+`--zone "<ZONE>"`. It walks the room by the walker's own rule (hqTerrainFeet: step 0.62 m, jump 1.3 m, ladders) from the doors' pads:
+- TRAP = ground reached and never left again (an enclosed pit, a drop with no way back). hqTerrainTraps, the room's own grid.
+- CREVICE = a sliver BETWEEN two grid nodes at the foot of a wall / mass / edge, more than a jump under the floor beside it (the grid check
+  cannot see it). DIP = the same, 0.62 to 1.3 m (jumped out of).
+- SLOT = a strip under 1.8 m wide under a face the walker can drop off, a wall or a face on its other side (walked out of at an end, still
+  a tiny crevice).
+Only ground the walker REACHES counts (a roof nobody gets onto is nobody's crevice). Known limits: a room whose ways are floating stairs
+or lifts is under-read (Heaven: 6 nodes reached); a trap in sludge may be hauled out of (hqTerrainHaulOut); a one-way area whose only exit
+is a door without a pad reads as a trap. Each row is a place to LOOK AT, then fix by the rule above.
+
+**WHEN YOU BUILD OR CHANGE A ROOM:** run the finder on it before the PR. A new TRAP or CREVICE is a bug in the change.
+
+**THE SEWERS AFTER (11-22):** 0 traps, 0 crevices, 0 slots; 10 dips of 0.85 m, each one node, at the sumps' wall corners (jumped out of).
+Before: every wall of every raised floor, 14 traps, the 35 m strip. Proof: `/mnt/project-files/softlocks/sewers_wall_before_after.jpg`.
+THE REST OF THE WORLD: the list by zone of 11-22 is `/mnt/project-files/softlocks/softlocks_by_zone.md`.

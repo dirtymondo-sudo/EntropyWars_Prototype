@@ -107,6 +107,8 @@ const SOURCES = [
     { re: /Assets\/world\/packs\/handpainted_flowers\//, how: 'PACK_ANON', src: "Handpainted flower assets (mondo's 2026-11-20 upload: one .blend + one sheet; no author or licence file in the zip), turned to GLB by bake-foliage.py" },
     // THE ALIEN SHIPS (2026-11-20, data.js ship_* rows; docs/notes/models-assets.md "THE ALIEN SHIPS")
     { re: /Assets\/world\/props\/meshy\/ships\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE ALIEN SHIPS, one per alien race, mondo OK on every piece 2026-11-20; originals in project files alien-ships/)' },
+    // THE WEAPONS IN THE HANDS (2026-11-22; data.js wp_* rows)
+    { re: /Assets\/world\/props\/meshy\/weapons\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE WEAPONS IN THE HANDS, mondo 2026-11-22; originals in project files weapon-hands/)' },
     // THE KATANA + FLORA MESHY BATCH 1 (2026-11-20, docs/plans/meshy-flora-katana/BATCH1.md; data.js kt_* / fl_* rows)
     { re: /Assets\/world\/(props\/meshy\/katana|nature\/flora\/meshy)\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE KATANA + FLORA MESHY BATCH 1, mondo OK on every piece 2026-11-20; originals in project files meshy-flora-katana-b1/)' },
     { re: /Assets\/world\/nature\/flora\//, how: 'PACK', src: 'THE FLORA FIELD: every small plant of the Retro Foliage kit (AFGameAssets) and the hand-painted flowers in one file on one sheet (bake-foliage.py); three-renderer.js grows it round the walker by climate (data.js ZONE_FLORA)' },

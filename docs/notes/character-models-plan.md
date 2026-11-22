@@ -455,6 +455,65 @@ Total with section 4a: **72 Meshy pieces.**
 - Online: both screens already play the cast and its effects, so a held prop is part of that same moment. When it is
   built it rides the existing cast relay (RULE #2), with no new state.
 
+### 6e. THE WEAPONS IN THE HANDS (2026-11-22, thread "Make units hold their weapons")
+mondo 11-22: MPFB versions matter "for characters where holding a weapon is a big part of their identity ... hold their weapons
+correctly with their fingers and have their weapon models separate"; then "get the models made and fingers holding the weapons
+first", the new attack / spell animations come after, in separate threads; "after i approve them they can become the default for
+these units"; the Samurai Slug keeps his own model ("it just needs to look good"). The roster report (who, why, which weapon) is
+the Claude Doc "Weapon-holding units: who gets an MPFB version".
+
+- HOW: `sprites.js RACE_CREATOR_LOOK_DEFS[race].hold` = `{ key (data.js catalogue), bone, h, grip: { c, down, barrel, cant, depth, back } }`.
+  Any creator-body look of the race (saved or remade) closes its fist on the weapon (three-renderer.js THE GRIP, THE SEAT); the race's
+  Meshy model is untouched and still the default. `grip` is read off the weapon GLB: `c` the handle's centre, `down` toward the pommel /
+  butt, `barrel` the way the edge or muzzle leads. NEW `grip.cant` (degrees, `_gripTurnTo`): the weapon turned about the palm's normal so
+  a blade lies slanted over the palm and its point drops in front of the feet on a hanging arm (35 on blades + the baton, 0 on guns).
+- Read a weapon's handle with `node /mnt/project-files/weapon-hands/scripts/glbprofile.js <file.glb> 10` (bounds + the cross-section
+  along the long axis). Look check: `scripts/hold.js` there (the look probe on probe-fast.js; `TURN=1 TAGS=front,side,side2`).
+  JUDGE FROM THE SIDE: a blade in a hanging fist points at the camera in a front view and reads as a stub.
+- DONE (14 units, first pass, forge viewer only, not seen in a battle): swordfighter F (kt_katana), knight F (sword), king arthur
+  (wp_excalibur), pirate M + F (wp_cutlass), sheriff (shotgun), marksman M + F (sniper), gangster + spy (pistol), barbarella (plasma),
+  police officer (psx_police_baton_mp_1), popstar (meshy_microphone), scarecrow (wp_sickle), men in black (wp_deneuralizer), robinhood
+  (creator wear: the pack bow in the left hand + ewm_quiver). The cowboy's revolver was the model for all of it (11-01).
+- NEW WEAPON MODELS (Meshy, 11 files, `Assets/world/props/meshy/weapons/`, data.js `wp_*`): war fan, cutlass, shuriken, gladiator net,
+  taser, pepper spray, harpoon gun, sickle, deneuralizer, gladius, excalibur. Jobs + originals: project files `weapon-hands/`.
+- OPEN: (1) wizard: the staff (1.8 m, a big head) cannot look right in a hanging fist (it lies level, or its head covers his face);
+  it needs a raised-forearm idle = the animation threads, or the wand. (2) ONE hold a unit today (`def.hold`): the knight's shield, the
+  gladiator's shield + net, the police officer's taser / spray need a second hold (left hand) or a swap per spell. (3) valkraye: the spear
+  is an FBX, `_unitAttachHeld` loads GLBs. (4) Robin Hood's T2 outfit still has a bow on its back (two bows now) and the pirate's has a
+  loose disc at the hip: a rebake with `DROPAT` (no weapons in an outfit). (5) time cop: which weapon is his (revolver, rifle, taser,
+  plasma)? (6) MPFB versions to build: shogun, gladiator M + F, ninja M + F, swordfighter M; then their holds (katana + wp_war_fan,
+  wp_gladius, wp_shuriken). (7) two-hand holds (rifle, bow draw, katana stance) + the weapon attack animations = the animation threads.
+  (8) making the MPFB look the default for these units waits for his approval.
+- BATCH 2 (11-22, same thread): SIX NEW MPFB LOOKS, first pass, stock faces, non-default (`RACE_REMADE_LOOKS`): swordfighter M, shogun,
+  gladiator M + F, ninja M + F (`ewm_t2<unit>_outfit/_hat`; T2 jobs + originals in project files `weapon-hands/units/`). Bakes: shogun
+  `EYE=0,-0.07,0.336 --headgear` (no eye shells under the helmet), gladiator M `EYE=0,-0.075,0.352 --headgear`, ninja M
+  `RAY_IN=0.12 RAY_OUT=0.12 --headgear` (chest + shoulders came through the suit), the others plain (`--headgear` on gladiator F).
+  Holds: shogun katana + NEW `def.hold2` (the other hand: `wp_war_fan` in LeftHand; three-renderer.js, board + viewer), gladiator
+  `wp_gladius`, ninja `wp_shuriken`, time cop `revolver` (mondo: "his weapon should switch depending which one he is/which spell he
+  uses" = the spell threads), wizard `item_wizard_staff` (mondo: "staff ... we will do the animations later"): upright beside the arm
+  with `cant: -80` and `down` tilted 20 degrees off the fist's axis (`[0, -0.94, 0.34]`) so its head clears his face.
+  KNOWN FLAWS of the first pass: gladiator M + F jagged cape / skin edges and a hole in her cape, swordfighter M torn collar + sleeve
+  slits, ninja F jagged neckline + shoulder cut-outs, no unit faces yet (bake-face.py), nothing seen in a battle.
+- THE FLAW ROUND (11-22, mondo: "go ahead and fix those issues ... Would blender be easier"): it IS Blender, by script (bake-outfit.py).
+  THE CAUSE of the jagged dark bands was not the cloth's edge: the body's skin is hidden a little past it (the hide rays), and the
+  cloth's dark inside shows through. NEW env `SHOWRING=2` (shown skin grows two rings under every cloth edge, only where cloth is in
+  front and none behind), `EDGECLEAN=6`, `HOLEFILL=24`, `EDGERELAX`. Rebaked: gladiator M (`EYE=0,-0.075,0.352 --headgear`) + F
+  (`--headgear`) with all three: collar, chest, waist clean, the hole in her cape closed. Ninja F with all three: little change.
+  Swordfighter M with `EDGECLEAN HOLEFILL SLEEVESEED=0.15 SLEEVER=0.24`, NO SHOWRING (his shoulders came through the kimono).
+  TRIED AND DROPPED: `EDGERELAX=20` (opened holes), `DROPCOL` / `CUTCOL` of the ninja F's painted skin (her bracers lost their arm
+  and stretched into spikes). STILL OPEN: ninja F a light strip under the top at the back + a spot on the skirt's hip + a bit under
+  the skirt; gladiator F ragged cloth round the knee guards + a hole at the hip; swordfighter M the collar's V.
+  NINJA F REGENERATED (same day): her first T2 run had her skin fused into the top's shell (midriff, arms), which no cut got clean
+  (`CUTCOL` + new `SEEDTO=0.9`, so bracers cut loose from the sleeve still count as sleeve, left see-through bands at the waist and
+  elbows; cause not found). A second T2 run of the same picture (`weapon-hands/units/ninjaf_t2b.glb`, 15 credits) came out with clean
+  shells: baked plain with `EDGECLEAN=6 HOLEFILL=24 SHOWRING=2`. Her look no longer wears `ewm_t2ninjaf_hat` (the hair tie came out
+  as floating bits; the ponytail is pack hair). LESSON: when the skin is fused into a garment's shell, regenerate first.
+  THE OTHER TWO REGENERATED (same day, the coordinator on mondo's "fix those issues"): swordfighter M (`swordfighterm_t2b.glb`, baked
+  `EDGECLEAN=6 HOLEFILL=24 SLEEVESEED=0.15 SLEEVER=0.24`, no SHOWRING: the collar's V is whole with its white undershirt; still a
+  slit at the armpit of the wide sleeve and pointed shoulder tops) and gladiator F (`gladiatorf_t2b.glb`, `--headgear EDGECLEAN=6
+  HOLEFILL=24 SHOWRING=2`: clean greaves and thighs, an open-faced helmet). Ninja F's loose hair strands by the collarbones and neck:
+  `DROP='-0.08,0.23,-0.09,0.13;0.034,0.023,-0.162,0.03'` on the t2b bake.
+
 ---
 
 ## 7. The AAA creator: what MakeHuman offers and how it reaches the game (2026-11-02, rows 25-29)
