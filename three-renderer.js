@@ -48392,10 +48392,10 @@ const ThreeRenderer = (function () {
                 tmp.length = 0;
             }
         }
-        var L = C.list;
+        var L = C.list, fwNest = (_fw !== null && _fw.on && sc === _fw.HS && typeof scene !== 'undefined') ? scene : null;
         for (var i = 0; i < L.length; i++) {
             var c = L[i], up = c;
-            while (up && up !== sc && up.visible !== false) up = up.parent;
+            while (up && up !== sc && up.visible !== false) { if (up === fwNest) { up = sc; break; } up = up.parent; }   // THE FIGHT IN THE WALKED ROOM: the fight's scene is drawn inside the walk's
             if (up !== sc) continue;   // hidden, under a hidden parent, or no longer in this scene: the walk never reached it
             var k = _ewRigKind(c);
             if (!k) { if (c._ew_rigMask != null) { c.layers.mask = c._ew_rigMask; c._ew_rigMask = null; } }
@@ -48659,6 +48659,7 @@ const ThreeRenderer = (function () {
                     bl.push((bm ? (bm.type + (bm.name ? ' "' + String(bm.name).slice(0, 16) + '"' : '') + (bm._ewNode ? ' node:' + bm._ewNode.k : '') + (bm._ew_occClone ? ' fade-clone' : '') + (bm.isShadowPassMaterial ? ' shadow' : '') + (bm.transparent ? ' see-through' : '')) : '?') +
                         ' on ' + (bo ? (bo.isSkinnedMesh ? 'skinned ' : bo.isInstancedMesh ? 'batch ' : bo.isSprite ? 'sprite ' : bo.isPoints ? 'points ' : '') + (bn ? String(bn).slice(0, 22) : bo.type) : '?') + (r._ew_paneRender ? ' (pane)' : r._ew_sideRender ? ' (side)' : ''));
                     if (bl.length > 12) bl.shift();
+                    if (typeof window !== 'undefined' && window.EW_BUILD_COUNT) { var bc = (window.EW_BUILD_COUNT === true) ? (window.EW_BUILD_COUNT = {}) : window.EW_BUILD_COUNT, bk = bl[bl.length - 1]; bc[bk] = (bc[bk] | 0) + 1; if (bc[bk] === 6 && window.EW_BUILD_STACKS) window.EW_BUILD_STACKS.push(bk + ' :: ' + String(new Error().stack).split('\n').slice(2, 16).map(function (x) { return x.trim().replace(/\(http[^)]*\/([^\/)]+)\)/, '($1)'); }).join(' < ')); }   // a probe's tally of what was built, by name
                 } catch (e) {}
                 if (!off && ro && ro.object && ro.object.isInstancedMesh) b.getUniformBufferLimit = zero;
                 if (nb) nb.apply(this, arguments);
@@ -50483,6 +50484,11 @@ const ThreeRenderer = (function () {
             try {
                 bd0 = this.backend.get(this._bundles.get(g0, bundle.camera, this._currentRenderContext));
                 cur = bd0.bundleGPU !== undefined && g0.version === bd0.version && !!bd0.renderObjects;
+                if (cur && (bd0._ewFwE | 0) !== (g0._ew_fwFull | 0)) {   // THE FIGHT IN THE WALKED ROOM: the room moved as a whole; each piece's place, once, into this recording's own buffers
+                    bd0._ewFwE = g0._ew_fwFull | 0;
+                    var fN = this._nodes, fRO = bd0.renderObjects;
+                    for (var fq = 0; fq < fRO.length; fq++) { var fo = fRO[fq]; fN.updateBefore(fo); this._geometries.updateForRender(fo); fN.updateForRender(fo); this._bindings.updateForRender(fo); fN.updateAfter(fo); }
+                }
                 if (cur && g0.static === true && bd0._ewLoopV === bd0.version && !(typeof window !== 'undefined' && window.EW_BUN_FULL_REFRESH)) {
                     var rpT = (_lens && _lens.cur) ? performance.now() : 0;   // THE REPLAY'S SPLIT (lens): the refresh work vs the rest of a group's replay
                     rpReplay(this, bd0);
@@ -50494,7 +50500,7 @@ const ThreeRenderer = (function () {
                 if (!_ewBun.rpWarned) { _ewBun.rpWarned = true; console.warn('[ThreeRenderer] the quiet replay failed — three replays every object', e); }
                 fast = false; if (bd0) bd0._ewLoopV = -1;
             }
-            if (!fast) { out = rb.apply(this, arguments); if (bd0) { if (cur) bd0._ewLoopV = bd0.version; _ewBun.rpAll = (_ewBun.rpAll | 0) + (bd0.renderObjects ? bd0.renderObjects.length : 0); _ewBun.rpAsked = (_ewBun.rpAsked | 0) + (bd0.renderObjects ? bd0.renderObjects.length : 0); } }
+            if (!fast) { out = rb.apply(this, arguments); if (bd0) { if (!cur) bd0._ewFwE = g0._ew_fwFull | 0; if (cur) bd0._ewLoopV = bd0.version; _ewBun.rpAll = (_ewBun.rpAll | 0) + (bd0.renderObjects ? bd0.renderObjects.length : 0); _ewBun.rpAsked = (_ewBun.rpAsked | 0) + (bd0.renderObjects ? bd0.renderObjects.length : 0); } }
             try {
                 var g = bundle.bundleGroup, bd = this.backend.get(this._bundles.get(g, bundle.camera, this._currentRenderContext)), ros = bd.renderObjects;
                 if (g._ew_bun && ros) {
@@ -50879,7 +50885,7 @@ const ThreeRenderer = (function () {
     function _ewBunTick(r, sc, cam) {
         var dry = false; try { dry = !!window.EW_BUN_DRY; } catch (e) {}   // console only: the signatures without the bundles (any backend)
         if (_ewGpu !== 'webgpu' && !dry) return;
-        var H = _hq, now = performance.now(), i;
+        var H = _hq || ((_fw !== null && _fw.on) ? _fw.H : null), now = performance.now(), i;
         var walk = !!(H && sc === H.scene), field = !walk && !!(sc && sc === scene && _facilityNearGroup && _facilityNearGroup.parent);
         if (_ewBunOff() || !(walk || field) || (!dry && !_ewBunSetup(r))) {
             if (_ewBunOff()) while (_ewBun.marked.length) _ewBunRelease(_ewBun.marked[0]);
@@ -50894,10 +50900,6 @@ const ThreeRenderer = (function () {
         _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0, reps: _ewBun.rpReps | 0, awake: _ewBun.rpAwake | 0, turn: _ewBun.rpTurn | 0, wokeN: _ewBun.rpWokeN | 0, quiet: _ewBun.rpQuiet | 0 }; _ewBun.rpQuiet = 0; _ewBun.rpAsked = 0; _ewBun.rpAll = 0; _ewBun.rpReps = 0; _ewBun.rpAwake = 0; _ewBun.rpTurn = 0; _ewBun.rpWokeN = 0;   // THE QUIET REPLAY: the last frame's count
         var tpa = spL ? performance.now() : 0;
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
-        /* THE FIGHT IN THE WALKED ROOM: the walk's own groups (its shell, chunks, doors, instance cells) are the fight's recordings too,
-           checked by the walk's rules (the held pieces once, the still groups by their own matrix) */
-        var fwT = (field && _fw !== null && _fw.on) ? _ewBunTargets(_fw.H) : null, fwN0 = T.length;
-        if (fwT) { var fwA = _ewBun.fwOut || (_ewBun.fwOut = []); fwA.length = 0; for (i = 0; i < T.length; i++) fwA.push(T[i]); for (i = 0; i < fwT.length; i++) fwA.push(fwT[i]); T = fwA; }
         var tpb = spL ? performance.now() : 0, relN = 0;
         _ewBun.cullCam = field ? (cam || null) : null;
         for (i = 0; i < T.length; i++) T[i]._ew_bunT = FR;
@@ -50966,7 +50968,7 @@ const ThreeRenderer = (function () {
             if ((walk || (field && !fieldEvery)) && g.isBundleGroup && st.quiet >= BUN_QUIET && (!addMovedB || !addAll) && !g._ew_bunMiss && !g._ew_bunFree && !g._ew_bunDirty && st.G === G && ((FR + i) % (st.quiet >= BUN_QUIET_LONG ? 4 : 3)) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
             /* a demoted group is tried as a still recording again (30 s, then twice as long each time, 8 min at most): what made
                it churn may be out of it by now (THE CHANGERS OUT finds the pieces only while the values are hashed) */
-            var gW = walk || (fwT !== null && i >= fwN0);   // this group is one of the walk's
+            var gW = walk;   // this group is one of the walk's
             if (st.dyn && st.dynAt && gW && now - st.dynAt > Math.min(480000, 30000 * Math.pow(2, Math.max(0, (st.dynN | 0) - 1)))) { st.dyn = false; st.dynAt = 0; st.times = []; st.vt = []; }
             /* THE STILL CHECK (2026-11-14, Disaster City: "check 8.85 ms/frame" on mondo's Mac — twelve matrix numbers rounded and
                mixed for each of 6,500 pieces every frame): in a group THE STILL WALK owns, a piece's matrix changes only through that
@@ -50991,6 +50993,10 @@ const ThreeRenderer = (function () {
                 g.isBundleGroup = true; g.version = (g.version | 0) + 1; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; st.times = [];
                 if (_ewBun.marked.indexOf(g) < 0) _ewBun.marked.push(g);
                 _ewBun.recs++;
+            } else if (gW && _fwEp !== 0 && st.fwE !== _fwEp && st.hs === S.hs && st.hv !== S.hv && st.G === G && !g._ew_bunFree) {
+                /* THE FIGHT IN THE WALKED ROOM: the room was laid on the board (or back) as a whole. The group holds the pieces it held:
+                   its recording stays, and every piece's place is written once into each recording's buffers (the replay, below) */
+                st.fwE = _fwEp; st.hv = S.hv; g._ew_fwFull = (g._ew_fwFull | 0) + 1; _ewBun.fwKept = (_ewBun.fwKept | 0) + 1;
             } else if (st.hs !== S.hs || (stat && st.hv !== S.hv)) {
                 st.why[st.hs !== S.hs ? 'tree' : 'values']++; W[st.hs !== S.hs ? 'tree' : 'values']++;
                 if (st.hs !== S.hs) {   // THE TREE'S WHY (lens): what changed the list of pieces — the merge taking or handing back pieces, a mover going out or coming back, a piece shown or hidden, a piece added or removed
@@ -56717,13 +56723,13 @@ const ThreeRenderer = (function () {
                 try {
                     if (_fw !== null) { try { _fwCull(cam); } catch (eFc) {} }   // THE FIGHT IN THE WALKED ROOM: the walk's chunks, culled by the fight's camera
                     if (mwB) { var _mwSp = _lensIn('matrix walk'); try { _hqStillSceneWalk(scene); } finally { _lensOut(_mwSp); } scene.matrixWorldAutoUpdate = false; }
-                    if (_fw !== null) { try { if (!mwB) scene.updateMatrixWorld(); _fwAfterWalk(cam); } catch (eFa) {} }
+                    if (_fw !== null && _fw.on) { try { _fwWalk(_fw, cam); } catch (eFa) {} }   // the walk's scene's own matrices (the room hangs in it)
                     if (ThreePost && ThreePost.isReady() && !(_lens && !_lens.post)) {   // THE PERF LENS: post off = the scene straight to the screen
                         ThreePost.render(cam);
                     } else {
                         renderer.render(scene, cam);
                     }
-                } finally { if (mwB) scene.matrixWorldAutoUpdate = true; _hqFogBack(_airF); }
+                } finally { if (mwB) scene.matrixWorldAutoUpdate = true; _hqFogBack(_airF); if (_fw !== null) _fw.walked = false; }
                 _quietAfter();
 
                 if (css2dRenderer) _css2dRender(scene, cam);
@@ -98958,7 +98964,7 @@ const ThreeRenderer = (function () {
                 var pp = e.pp;
                 var wl = new THREE.PointLight(0xffd9a0, 0.5 * (open ? 1 : _hqLampK(room)), 5 * s, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); lg.add(wl);
             });
-            _facilityNearGroup.add(lg);
+            if (!(_fw !== null && _fw.on)) _facilityNearGroup.add(lg);   // THE FIGHT IN THE WALKED ROOM: the walk's own lamps and fill light it
             if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(field);
         } catch (e) { console.warn('[HQ→battle] the room\'s lights did not stand', e); }
         /* THE KEY LIGHT (2026-10-24): a fight in an enclosed room hangs the walk's key light over what the camera looks at */
@@ -100982,7 +100988,7 @@ const ThreeRenderer = (function () {
          · the dig / sink / tall scenery / board fog readers read the walked room's lists (_fw.floors / .props / .roots / .box).
        Not for: a room with joined neighbours (the stage), a round world, a vessel under way. Those keep the copies.
        Off: window.EW_FIGHT_COPIES = true (the copies, as before). */
-    var _fw = null;
+    var _fw = null, _fwEp = 0;   // _fwEp: moves each time the walked room is laid on a board or taken back (the recordings keep, the places are written again)
     function _fwOff() { return typeof window !== 'undefined' && !!window.EW_FIGHT_COPIES; }
     /* will this fight draw the parked walk's own room? (asked by the board's builders before the room is hung) */
     function _fwCan() {
@@ -101015,14 +101021,24 @@ const ThreeRenderer = (function () {
     function _fwEnter(P, R, M, ts, HR) {
         var H = P.H, U = _hqUnits(), C = R.T.C, s = (ts / C) / U, now = performance.now();
         var holder = new THREE.Group(); holder.name = 'hq_walked'; holder._ew_fwRoot = true; holder._ew_hzNearRoot = true; holder.applyMatrix4(M); holder.updateMatrix();
-        _horizonGroup.add(holder);
-        var F = _fw = { on: true, H: H, P: P, R: R, holder: holder, sky: null, M: M.clone(), inv: M.clone().invert(), s: s, ts: ts, moved: [], hid: [], cuts: [], ceil: [], geos: [], lights: null,
+        var HS = H.scene; holder.parent = HS; HS.children.push(holder);   // in the walk's own scene (no add: nothing 'arrived')
+        var F = _fw = { on: true, H: H, P: P, R: R, HS: HS, off: [], lit: [], seeded: false, inDraw: false, walked: false, camSave: null, shSave: null, holder: holder, sky: null, M: M.clone(), inv: M.clone().invert(), s: s, ts: ts, moved: [], hid: [], cuts: [], ceil: [], geos: [], lights: null,
                         roots: [], floors: [], props: [], walls: {}, box: new THREE.Box3(), job: null, at: now, cutN: 0, rootN: 0, cam: null, frM: new THREE.Matrix4(), fr: new THREE.Frustum(), sph: new THREE.Sphere(), W: new THREE.Matrix4() };
+        try { _fwEp++; var bT = _ewBunTargets(H); for (var bi = 0; bi < bT.length; bi++) bT[bi]._ew_bunDirty = true; } catch (eB) {}
+        F.jobBox = new THREE.Vector3(R.T.W * ts / 2, _hqBattleRoomFloorY(R, ts), R.T.H * ts / 2);   // the board's middle (the sun shadow's aim)
+        try { _fwWrapRender(renderer); } catch (eW) {}
         _fwMove(H.partRoot, holder, F.moved);
         if (H.inst && H.inst.group) _fwMove(H.inst.group, holder, F.moved);
         /* the walk's lights that light the fight: the ones under the room (lit or not as the walk left them) */
-        try { var RL = H.scene && H.scene._ew_rigList; if (RL && RL.list) F.lights = RL.list.slice(); } catch (e) {}
-        try { if (scene) scene._ew_rigList = null; } catch (e) {}   // the fight's light list is read again (the walked room's lights are listed by hand: _ewRigListAll)
+        try {
+            var RL = HS._ew_rigList; F.lights = [];
+            if (RL && RL.list) for (var li = 0; li < RL.list.length; li++) {
+                var lt = RL.list[li], lq = lt; while (lq && lq !== holder) lq = lq.parent;
+                if (lq !== holder) continue;
+                F.lights.push(lt);
+                if (lt.isPointLight && lt.distance > 0) { F.lit.push([lt, lt.distance]); lt.distance *= s; }   // a lamp's reach is world units the holder's scale never touches
+            }
+        } catch (e) {}
         /* what the fight never showed: the people, the markers, the atmosphere pieces */
         var hide = function (o) { if (!o || o._ew_bRec || o._ew_bAnc || o.visible === false) return; o.visible = false; F.hid.push(o); };
         hide(H.charGroup);
@@ -101177,9 +101193,158 @@ const ThreeRenderer = (function () {
     function _fwSunk(o) {
         o.traverse(function (c) { if (c.isMesh && c._ew_bRec) _fwCut(c); });
     }
+    /* ══ THE FIGHT IS DRAWN BY THE WALK'S OWN SCENE (2026-11-22) ══
+       The first cut of the walked room hung the walk's groups in the battle scene. Nothing was copied, yet the renderer keeps what it
+       prepared (a group's recording, a piece's draw record) per scene's lights and per camera, so ~100 recordings and every piece in
+       view were prepared again for the battle's scene and camera in the fight's first frames. Now the fight's frame draws THE WALK'S
+       SCENE: the room stays in it (under the holder that lays it on the board), the battle scene is drawn INSIDE it as one more child
+       for the length of the draw (its own list, its parent pointer untouched: every world matrix of the fight is what it was), and the
+       camera object is the walk's, carrying the fight camera's place and lens. Same scene, same lights, same camera: the renderer
+       finds everything it prepared for the walk. The fight's own sun / sky light / ambient rest (the walk's light the room and the
+       units, and follow the round's day and night); its point lights (spells, the key lamp) join the walk's list.
+       Every render of the battle scene goes this way (the picture, a shot's panes, the model mask): renderer.render is wrapped once. */
+    function _fwWrapRender(r) {
+        if (!r || r._ew_fwWrap) return;
+        r._ew_fwWrap = true;
+        var rr = r.render;
+        r.render = function (sc, cam) {
+            var F = _fw;
+            if (F === null || !F.on || F.inDraw || sc !== scene || !cam || (typeof window !== 'undefined' && window.EW_FW_OWN_SCENE)) return rr.apply(this, arguments);
+            return _fwDraw(this, rr, sc, cam);
+        };
+    }
+    function _fwDraw(r, rr, sc, cam) {
+        var F = _fw, HS = F.HS, kids = HS.children, i;
+        if (!F.seeded) { try { _fwSeed(F); } catch (e) { console.warn('[HQ→battle] the walked room\'s scene could not be made ready', e); } }
+        if (!F.walked) { try { _fwWalk(F, cam); } catch (e2) {} }
+        if (sc.matrixWorldAutoUpdate === true) sc.updateMatrixWorld();
+        var cam2 = _fwCamOf(F, cam), off = F.off, bk = sc.children;
+        off.length = 0;
+        for (i = 0; i < bk.length; i++) { var c = bk[i]; if (c.visible && (c.isDirectionalLight || c.isHemisphereLight || c.isAmbientLight)) { c.visible = false; off.push(c); } }
+        var om = HS.overrideMaterial, mw = HS.matrixWorldAutoUpdate, hf = HS.fog, bf = sc.fog, fd = 0, fn = 0, ff = 0, fc = null;
+        if (hf && bf && hf.isFogExp2 === bf.isFogExp2) {   // the fight's air (the walk's, in the fight's units) for this draw
+            fc = F.fogC || (F.fogC = new THREE.Color()); fc.copy(hf.color); hf.color.copy(bf.color);
+            if (hf.isFogExp2) { fd = hf.density; hf.density = bf.density; } else { fn = hf.near; ff = hf.far; hf.near = bf.near; hf.far = bf.far; }
+        }
+        HS.overrideMaterial = sc.overrideMaterial; HS.matrixWorldAutoUpdate = false;
+        kids.push(sc); F.inDraw = true;
+        try { return rr.call(r, HS, cam2); }
+        finally {
+            F.inDraw = false;
+            if (typeof window !== 'undefined' && window.EW_FW_LIGHTLOG && window.EW_FW_LIGHTLOG.length < 40) { try { var lgL = r.lighting.getNode(HS).getLights(); window.EW_FW_LIGHTLOG.push((r._ew_sideRender ? 'side ' : r._ew_paneRender ? 'pane ' : 'main ') + 'cam' + cam2.id + ' m' + cam2.layers.mask + ' sh' + (r.shadowMap.enabled ? 1 : 0) + ' fog' + (HS.fog ? HS.fog.id || 1 : 0) + ' om' + (HS.overrideMaterial ? 1 : 0) + ' calls' + r.info.calls + ' [' + lgL.map(function (l) { return l.id + (l.castShadow ? 's' : ''); }).join(',') + ']'); } catch (eLg) {} }
+            var ix = kids.lastIndexOf(sc); if (ix >= 0) kids.splice(ix, 1);
+            HS.overrideMaterial = om; HS.matrixWorldAutoUpdate = mw;
+            if (fc) { hf.color.copy(fc); if (hf.isFogExp2) hf.density = fd; else { hf.near = fn; hf.far = ff; } }
+            for (i = 0; i < off.length; i++) off[i].visible = true;
+            off.length = 0;
+        }
+    }
+    /* the walk's camera object, carrying the fight camera's place and lens (the renderer keeps a recording per camera object) */
+    function _fwCamOf(F, cam) {
+        var hc = F.H.camera;
+        if (!hc || cam !== F.cam || hc === cam || !!hc.isPerspectiveCamera !== !!cam.isPerspectiveCamera || !!hc.isOrthographicCamera !== !!cam.isOrthographicCamera) return cam;
+        if (!F.camSave) F.camSave = { fov: hc.fov, aspect: hc.aspect, near: hc.near, far: hc.far, zoom: hc.zoom, view: hc.view, l: hc.left, r: hc.right, t: hc.top, b: hc.bottom, mask: hc.layers.mask,
+                                      mau: hc.matrixAutoUpdate, mwau: hc.matrixWorldAutoUpdate, p: hc.position.clone(), q: hc.quaternion.clone(), s: hc.scale.clone() };
+        if (cam.parent === null && cam.matrixWorldAutoUpdate === true) cam.updateMatrixWorld();
+        if (hc.isPerspectiveCamera) { hc.fov = cam.fov; hc.aspect = cam.aspect; if (cam.filmGauge != null) hc.filmGauge = cam.filmGauge; if (cam.filmOffset != null) hc.filmOffset = cam.filmOffset; }
+        else { hc.left = cam.left; hc.right = cam.right; hc.top = cam.top; hc.bottom = cam.bottom; }
+        hc.near = cam.near; hc.far = cam.far; hc.zoom = cam.zoom; hc.view = cam.view;
+        hc.updateProjectionMatrix();
+        hc.matrixAutoUpdate = false; hc.matrixWorldAutoUpdate = false;
+        hc.matrix.copy(cam.matrixWorld); hc.matrixWorld.copy(cam.matrixWorld); hc.matrixWorldInverse.copy(cam.matrixWorld).invert();
+        hc.matrixWorld.decompose(hc.position, hc.quaternion, hc.scale);
+        hc.layers.mask = cam.layers.mask;
+        return hc;
+    }
+    function _fwCamBack(F) {
+        var S = F.camSave, hc = F.H.camera; F.camSave = null;
+        if (!S || !hc) return;
+        if (hc.isPerspectiveCamera) { hc.fov = S.fov; hc.aspect = S.aspect; } else { hc.left = S.l; hc.right = S.r; hc.top = S.t; hc.bottom = S.b; }
+        hc.near = S.near; hc.far = S.far; hc.zoom = S.zoom; hc.view = S.view; hc.layers.mask = S.mask;
+        hc.matrixAutoUpdate = S.mau; hc.matrixWorldAutoUpdate = S.mwau;
+        hc.position.copy(S.p); hc.quaternion.copy(S.q); hc.scale.copy(S.s);
+        hc.updateProjectionMatrix(); hc.updateMatrix(); hc.updateMatrixWorld(true);
+    }
+    /* once, at the fight's first draw: what else stands in the walk's scene rests, the fight's lights join the walk's list, the walk's sun shadow lies over the board */
+    function _fwSeed(F) {
+        F.seeded = true;
+        var HS = F.HS, H = F.H, kids = HS.children, i;
+        for (i = 0; i < kids.length; i++) {
+            var c = kids[i];
+            if (c === F.holder || c._ew_rig || c === scene || c.visible === false) continue;
+            if (c.isLight) { if (c.isPointLight || c.isSpotLight) { c.visible = false; F.hid.push(c); } continue; }   // a lamp that stood in the walk's frame outside the room (the walker's torch, the key lamp)
+            if (!(c.children.length || c.isMesh || c.isPoints || c.isLine || c.isSprite)) continue;
+            var lit = false; if (c.children.length) c.traverse(function (o) { if (o.isLight && !o.isPointLight && !o.isSpotLight) lit = true; });
+            if (lit) continue;
+            c.visible = false; F.hid.push(c);
+        }
+        try {
+            var C = HS._ew_rigList;
+            if (C && C.list && C.seen) { var tmp = []; _ewRigListAll(scene, _ewRigG || { group: null }, tmp); for (i = 0; i < tmp.length; i++) if (!C.seen.has(tmp[i])) { C.seen.add(tmp[i]); C.list.push(tmp[i]); } }
+            else HS._ew_rigList = null;
+        } catch (e) { HS._ew_rigList = null; }
+        try { _fwShadowIn(F); } catch (e2) { console.warn('[HQ→battle] the walk\'s sun shadow could not be laid over the board', e2); }
+        if (HS._ew_afterWalk) { F.afterWalk = HS._ew_afterWalk; HS._ew_afterWalk = null; }
+    }
+    /* the walk's sun shadow, over the board in the fight's frame (its box and its reach in the fight's units) */
+    function _fwShadowIn(F) {
+        var SH = F.H.shadows, L = SH && SH.light; if (!L || !L.shadow || !L.shadow.camera) return;
+        var c = L.shadow.camera, s = F.s;
+        F.shSave = { p: L.position.clone(), t: L.target.position.clone(), l: c.left, r: c.right, tp: c.top, b: c.bottom, n: c.near, f: c.far, nb: L.shadow.normalBias };
+        c.left *= s; c.right *= s; c.top *= s; c.bottom *= s; c.near = Math.max(0.5, c.near * s); c.far *= s; c.updateProjectionMatrix();
+        L.shadow.normalBias *= s;
+        F.shD = (SH.D || 100) * s;
+        _fwSunAim(F, null);
+    }
+    function _fwSunAim(F, dir) {
+        var SH = F.H.shadows, L = SH && SH.light, KL = F.H.keyLight, J = F.jobBox;
+        var d = F.sunD || (F.sunD = new THREE.Vector3());
+        if (dir) d.set(dir[0], dir[1], dir[2]).normalize(); else if (F.H.keyDir) d.copy(F.H.keyDir); else if (KL) d.copy(KL.position).normalize(); else d.set(0.45, 1, 0.3).normalize();
+        if (L && F.shSave) {
+            L.target.position.set(J.x, J.y, J.z); L.target.updateMatrixWorld(true);
+            L.position.copy(L.target.position).addScaledVector(d, F.shD); L.updateMatrixWorld(true);
+            L.shadow.needsUpdate = true; _shadowsDirty = true;
+        } else if (KL && KL.isDirectionalLight) { if (!F.klSave) F.klSave = KL.position.clone(); KL.position.copy(d).multiplyScalar(1000); }
+    }
+    /* per fight frame: the walk's sun and sky light follow the fight's (the round's day and night) */
+    function _fwLights(F) {
+        var FL = null; try { FL = (typeof ThreePost !== 'undefined' && ThreePost.getFieldLight) ? ThreePost.getFieldLight() : null; } catch (e) {}
+        if (!FL) return;
+        var H = F.H, KL = H.keyLight, HL = H.hemiLight || H.hemi, sv = F.ltSave;
+        if (!sv) sv = F.ltSave = { kc: KL && KL.color ? KL.color.clone() : null, ki: KL ? KL.intensity : 0, hc: HL && HL.color ? HL.color.clone() : null, hg: HL && HL.groundColor ? HL.groundColor.clone() : null, hi: HL ? HL.intensity : 0, key: '' };
+        var su = FL.sun, he = FL.hemi, key = (su ? su.color + '/' + su.intensity + '/' + (su.dir ? su.dir.join(',') : '') : '') + '|' + (he ? he.sky + '/' + he.ground + '/' + he.intensity : '');
+        if (key === sv.key) return;
+        var first = sv.key === ''; sv.key = key;
+        if (first) return;   // the fight starts on the walk's own light: nothing is written until the round turns it
+        if (KL && su) { if (su.color != null) KL.color.setHex(su.color); KL.intensity = +su.intensity || 0; if (su.dir) _fwSunAim(F, su.dir); }
+        if (HL && HL.isHemisphereLight && he) { if (he.sky != null) HL.color.setHex(he.sky); if (he.ground != null) HL.groundColor.setHex(he.ground); HL.intensity = +he.intensity || 0; }
+    }
+    function _fwLightsBack(F) {
+        var H = F.H, KL = H.keyLight, HL = H.hemiLight || H.hemi, sv = F.ltSave, i;
+        if (sv) { if (KL && sv.kc) { KL.color.copy(sv.kc); KL.intensity = sv.ki; } if (HL && sv.hc) { HL.color.copy(sv.hc); if (sv.hg && HL.groundColor) HL.groundColor.copy(sv.hg); HL.intensity = sv.hi; } }
+        if (F.klSave && KL) KL.position.copy(F.klSave);
+        var S = F.shSave, SH = H.shadows, L = SH && SH.light;
+        if (S && L) {
+            var c = L.shadow.camera; c.left = S.l; c.right = S.r; c.top = S.tp; c.bottom = S.b; c.near = S.n; c.far = S.f; c.updateProjectionMatrix();
+            L.shadow.normalBias = S.nb; L.position.copy(S.p); L.target.position.copy(S.t); L.target.updateMatrixWorld(true);
+            SH.dirty = true; SH.snap = true;
+        }
+        for (i = 0; i < F.lit.length; i++) F.lit[i][0].distance = F.lit[i][1];
+        if (F.afterWalk && !F.HS._ew_afterWalk) F.HS._ew_afterWalk = F.afterWalk;
+    }
+    /* the walk's scene's matrices for this fight frame (the walk's own still walk: only what moved) */
+    function _fwWalk(F, cam) {
+        var HS = F.HS, mw = HS.matrixWorldAutoUpdate;
+        F.walked = true;
+        HS.matrixWorldAutoUpdate = true;
+        try { _hqStillSceneWalk(HS); } finally { HS.matrixWorldAutoUpdate = mw; }
+        _fwAfterWalk(cam);
+        _fwLights(F);
+    }
     /* per fight frame, before the frame's matrix walk: which chunks the fight's camera draws (the walk's spheres, the walk's far limits) */
     function _fwCull(cam) {
         var F = _fw; if (!F || !F.on || !cam) return;
+        F.cam = cam;
         if (F.job) { try { _fwJob(2); } catch (e) { F.job = null; console.warn('[HQ→battle] the walked room\'s pieces could not be read', e); } }
         var H = F.H, L = H.ckList; if (!L || !L.length) return;
         if (typeof window !== 'undefined' && window.EW_HQ_NO_CHUNK_CULL) { for (var z = 0; z < L.length; z++) { var gz = L[z]; if (gz._ew_ckOut) { gz._ew_ckOut = false; gz.visible = true; gz.matrixWorldAutoUpdate = true; gz.matrixWorldNeedsUpdate = true; } } return; }
@@ -101249,10 +101414,12 @@ const ThreeRenderer = (function () {
             var mv = F.moved[i], o = mv.o, cp = o.parent;
             try { if (cp) { var ix = cp.children.indexOf(o); if (ix >= 0) cp.children.splice(ix, 1); } mv.p.children.splice(Math.min(mv.i, mv.p.children.length), 0, o); o.parent = mv.p; } catch (e) { console.warn('[HQ] a piece of the walked room could not go home', e); }
         }
+        try { _fwEp++; var bT = _ewBunTargets(H); for (var bi = 0; bi < bT.length; bi++) bT[bi]._ew_bunDirty = true; } catch (eB) {}
+        try { _fwCamBack(F); } catch (e) { console.warn('[HQ] the walk\'s camera could not be given back', e); }
+        try { _fwLightsBack(F); } catch (e) { console.warn('[HQ] the walk\'s lights could not be given back', e); }
         _fw = null;
-        if (F.holder.parent) F.holder.parent.remove(F.holder);
+        var hix = F.HS.children.indexOf(F.holder); if (hix >= 0) F.HS.children.splice(hix, 1); F.holder.parent = null;
         if (F.sky && F.sky.parent) F.sky.parent.remove(F.sky);
-        try { if (scene) scene._ew_rigList = null; } catch (e) {}
         /* every world matrix back in the walk's frame, once (the batch's watchdog and the instance pass compare against them) */
         try {
             var L = H.ckList || [], offs = [];
@@ -105727,6 +105894,8 @@ const ThreeRenderer = (function () {
             renderer: function () { return renderer; },
             /* THE STILL MATRICES: the last scene walk (objects seen, kept, remade, run by their own method) */
             /* THE STILL TORCH: how many walk frames held the hero light's map, and why the last one did or did not */
+            dips: function () { try { return _dipLines(); } catch (e) { return ['ERR ' + e.message]; } },
+            fw: function () { var F = _fw, K = { builds: _ewKeep.builds | 0, pipes: _ewKeep.pipes | 0, reused: _ewKeep.reused | 0, recs: (_ewBun && _ewBun.recs) | 0, kept: (_ewBun && _ewBun.fwKept) | 0, why: Object.assign({}, _ewBun.why), lampWhy: _ewBun.lampWhy || null, stale: _ewBun.staleLights | 0, frees: _ewBun.frees | 0, drawErr: _ewGpuInfo.drawErr || null,  spikes: (_ewBun.spikes || []).slice(-3), epoch: _ewBun.epoch, last: (_ewKeep.last || []).slice(-6), rig: _ewRigG ? { grows: _ewRigG.grows, n: _ewRigG.n, p: _ewRigG.k.p.length, d: _ewRigG.k.d.length, ds: _ewRigG.k.ds.length, srcP: _ewRigG.src.p.length } : null }; if (!F) return { on: false, parked: !!_hqParked, stats: _fieldRoomStats, keep: K }; var L = F.H.ckList || [], out = 0; for (var i = 0; i < L.length; i++) if (L[i]._ew_ckOut) out++; return { on: F.on, kids: F.HS.children.map(function (c) { return (c.name || c.type) + (c.visible ? '' : ' (off)') + (c.children.length ? ' [' + c.children.length + ']' : ''); }).slice(0, 40), camAs: !!F.camSave, seeded: F.seeded, sh: !!F.shSave, roots: F.roots.length, big: F.bigN | 0, floors: F.floors.length, props: F.props.length, cuts: F.cuts.length, cutN: F.cutN, hid: F.hid.length, ceil: F.ceil.length, walls: Object.keys(F.walls).join(''), job: F.job ? 'running' : ('done in ' + Math.round(F.jobMs || 0) + ' ms'), chunks: L.length, chunksOut: out, lights: F.lights ? F.lights.length : null, s: F.s, faded: _occFaded.size, keep: K }; },   // THE FIGHT IN THE WALKED ROOM
             still: function () { return _hqStillStats(); }, stillWalk: function (dtMs) { if (!_hq) return null; var t0 = performance.now(); _hqStillSceneWalk(_hq.scene); return { ms: +(performance.now() - t0).toFixed(2), last: _hqStLast }; }, stillWake: function (o) { _hqStillWake(o); },
             heroShadow: function () { var L = _hq && _hq.heroLit; return Object.assign({ light: !!(L && L.isLight), hold: !!(L && L._ew_heroHold) }, _heroStat); },
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
