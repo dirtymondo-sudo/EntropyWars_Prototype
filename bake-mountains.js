@@ -114,7 +114,7 @@ function heightsOf({ o, W, H, cell, byXY, flats, inR }) {
         Hc[cy * (W + 1) + cx] = h;
     }
     /* a building stands on level ground: its squares take the height at the middle of its front */
-    flats.forEach(([x0, y0, x1, y1, side]) => { const fx = side === 'E' ? x1 : side === 'W' ? x0 : (x0 + x1) / 2, fy = side === 'S' ? y1 : side === 'N' ? y0 : (y0 + y1) / 2, ref = base(fx, fy);
+    flats.forEach(([x0, y0, x1, y1, side, like]) => { const fx = side === 'E' ? x1 : side === 'W' ? x0 : (x0 + x1) / 2, fy = side === 'S' ? y1 : side === 'N' ? y0 : (y0 + y1) / 2, ref = like ? base(x0 + like[0], y0 + like[1]) : base(fx, fy);   // (`like` = [dx, dy] from its own corner: the level is read THERE, e.g. at the front of the building it lies beside)
         for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) Hc[cy * (W + 1) + cx] = ref; });
     return Hc;
 }
@@ -511,7 +511,7 @@ STAND.forEach(S => {
             const q = Object.assign({}, z, { x0: x0 - p.lx * N + e.col * N, y0: y0 - p.ly * N + e.row * N, x1: x1 - p.lx * N + e.col * N, y1: y1 - p.ly * N + e.row * N });
             if (z.n != null) q.n = Math.max(1, Math.round(z.n * (x1 - x0) * (y1 - y0) / area)); air.push(q); }); });
     const marks = M.marks.map(mk => { const a = mk.x0 != null ? R.toRoom((mk.x0 + mk.x1) / 2, (mk.z0 + mk.z1) / 2) : R.toRoom(mk.x, mk.z); if (!a) return null; const dx = a[0] - (mk.x0 != null ? (mk.x0 + mk.x1) / 2 : mk.x), dz = a[1] - (mk.x0 != null ? (mk.z0 + mk.z1) / 2 : mk.z); return MOVER.shifted(mk, dx, dz); }).filter(Boolean);
-    const flats = M.flats.map(f => { const a = toSq(f[0], f[1]); return a ? [a[0], a[1], a[0] + f[2] - f[0], a[1] + f[3] - f[1], f[4]] : null; }).filter(Boolean);
+    const flats = M.flats.map(f => { const a = toSq(f[0], f[1]); return a ? [a[0], a[1], a[0] + f[2] - f[0], a[1] + f[3] - f[1], f[4]].concat(f[5] ? [f[5]] : []) : null; }).filter(Boolean);
     /* 5b. THE RUNS AND THE WALKING WAYS OF THE PLAN, cut into the ground: a run is a groomed lane ('i') through whatever rock, drift or wood stands on its line
        (green 7 squares wide, blue 6, black 5, double black 4); a walking way is packed snow ('o') on its own square legs (3, 2 or 1 wide). A building's squares,
        paving, water and the crevasse are never cut. */

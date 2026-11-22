@@ -115,9 +115,9 @@
   "nz": 228,
   "h0": -6.36,
   "hs": 0.25,
-  "v": "e717be5646",
-  "bytes": 20487,
-  "s": "34.0"
+  "v": "1c0a4bfce0",
+  "bytes": 20545,
+  "s": "21.9"
  },
  "site_prebuilt_dumb_base": {
   "id": "site_prebuilt_dumb_base",
@@ -615,9 +615,9 @@
   "nz": 120,
   "h0": -0.09,
   "hs": 0.52,
-  "v": "804ac6f180",
-  "bytes": 12968,
-  "s": "8.1"
+  "v": "91e2a5aebc",
+  "bytes": 13050,
+  "s": "10.4"
  },
  "site_ow_r10": {
   "id": "site_ow_r10",
@@ -635,9 +635,9 @@
   "nz": 108,
   "h0": -0.04,
   "hs": 0.25,
-  "v": "b0e2fac155",
-  "bytes": 2959,
-  "s": "9.3"
+  "v": "20ef1696de",
+  "bytes": 2957,
+  "s": "6.9"
  },
  "site_prebuilt_skinwalker_ow_trail": {
   "id": "site_prebuilt_skinwalker_ow_trail",

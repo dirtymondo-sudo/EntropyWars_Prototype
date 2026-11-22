@@ -14384,3 +14384,34 @@ is a door without a pad reads as a trap. Each row is a place to LOOK AT, then fi
 **THE SEWERS AFTER (11-22):** 0 traps, 0 crevices, 0 slots; 10 dips of 0.85 m, each one node, at the sumps' wall corners (jumped out of).
 Before: every wall of every raised floor, 14 traps, the 35 m strip. Proof: `/mnt/project-files/softlocks/sewers_wall_before_after.jpg`.
 THE REST OF THE WORLD: the list by zone of 11-22 is `/mnt/project-files/softlocks/softlocks_by_zone.md`.
+
+### THE ZONE PASS: OUTER SPACE, THE SKI MOUNTAIN, BUG COLONY, KATANA, THE TEMPLE (2026-11-22, thread "Remove trap spots in space, mountain and bug rooms")
+All twelve rooms these tools write read 0 traps, 0 crevices after it. What each one was, and the rule it leaves behind:
+- **BUG COLONY, THE GIANT TREE** (`districts/B.js`): four pits between the trunk, a root shelf and a stair (you dropped in off a shelf). The trunk's
+  GROUND is 0.9 m wider than its bark (`TRUNK + 0.9`): no sliver is left. `bake-route.js L14` does not reproduce main today (the places table moved on
+  without a bake: 100 rows of props and the spawn would change), so the trunk's one row was ALSO written by hand in data.js; the next real L14 bake
+  writes the same row.
+- **BUG COLONY, THE HIVE** (`districts/B.js` insides): the door's own wall square was a wax block to the roof, and the door's pad stood ON it: you
+  came in 10 m up, fell into the Door chamber and could not reach the door again (the whole room read as one trap). The mouth is cut through the
+  east wall (`x < W`). A `blocks: true` inside: the door's square AND the wall square behind it are floor.
+- **OUTER SPACE = MARS + the Singularity** (the Moon's room holds all four worlds):
+  - THE FACE'S EYE SOCKETS (draw-space.js mars()): 2.65 m pits. Each has a ramp two squares wide out of its outer corner now (the tear tracks).
+  - THE ARCH (bake-space.js): a `bridge` row's `y` gets the ground under its MIDDLE added (data.js `_hqTSlopeFeatures`); the Arch's middle is over the
+    canyon, so the deck stood 5.25 m low, a wall across the strip under it and a crevice at each end. Its rows wear `absY: true`. ANY tool that
+    writes a `bridge` / `deck` / `wall y` over a `slope.cells` sheet: absolute heights need `absY`.
+  - THE CANALS: one square wide and 5.25 m deep; the ball's sampling cut one in two (a diagonal step). Two squares wide now.
+  - NO PITS (`docs/plans/world-zones/space-ball.js` noPits, run by draw-space.js on the layout and by bake-space.js on the ball it samples itself): a
+    pit that touches walked ground of its level corner to corner is joined, any other pit is raised straight up to its rim, a lone sunk corner (one
+    sample of a hollow carried alone: the Singularity had one 6.3 m deep) takes the lowest corner round it. It prints what it did.
+  - THE ROUND SEAMS (data.js `_hqTRoundStitch`): the feather pushed a sample PAST the seam's new height (a mesa's edge on a cut seam dug a 1.4 m pit
+    beside it). A feathered sample now stays between its own height and the seam's.
+  - bake-space.js's decals anchor was the Sewers' old row tag (gone since the labyrinth): the tool stopped. It writes its rows in place now.
+- **THE SKI MOUNTAIN**: (1) OLYMPUS' STADIUM SEATS (`districts/O.js`): a ghost block a square stood 0.15 m off the trees behind it, with a sliver of
+  the slope up to 2.7 m under the top tier. A ghost wall 3.4 m high stands in the sliver (`back`). (2) THE FIRE LOOKOUT (`districts/S.js`): the one
+  square between its west wall and the trees was a bank 3.4 m high down to the trees' foot. It is level with the building: `flats` rows take a
+  sixth entry `like = [dx, dy]` (bake-mountains.js heightsOf: read the level THERE, from the row's own corner).
+- **KATANA ISLAND** (`districts/V.js`): a `pool` is level, so on the cone's foot it cut a bank 2.9 m into the slope at the lava's edge. The four lava
+  pools lie on the Lava Field's level ground, clear of the ways (one lay half over the Mountain Road); the file throws if a pool lies on a way.
+- **THE TEMPLE** (`clash_temple`, handmade): the wedge of ground between three cliffs (6.5 to 10 m) is a `plateau` at the ledge's height.
+- **LEFT (second priority, each walked or jumped out of):** the Ski Mountain 5 dips (two rows of 1.2 m at z -59.6) + 10 slots, Katana 1 dip + 15
+  slots (the terraces' foot strips, one node wide under 5 to 10 m faces, up to 31 m long), the Temple 9 slots, Outer Space 3 dips + 2 slots.

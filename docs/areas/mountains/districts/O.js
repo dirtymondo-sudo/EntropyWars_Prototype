@@ -148,6 +148,10 @@ exports.build = ctx => {
       seats(2, 6, 0, -1); seats(6, 10, 9, 1); for (const [lx, ly] of [[1, 0], [11, 0], [1, 9], [11, 9]]) flame(a, X(lx), 4.6, Z(ly), 1.6); for (const lx of [2, 6]) flame(a, X(lx) + (lx === 2 ? -1.75 : 1.75), 1.9, Z(0), 1.0); for (const lx of [6, 10]) flame(a, X(lx) + (lx === 6 ? -1.75 : 1.75), 1.9, Z(9), 1.0);
       for (const lx of [2, 11]) { for (let ly = 0; ly < 10; ly++) a.box(X(lx) - 1.6, 0, Z(ly), 0.25, 0.05, 3.5, GOLD, GT, GG); } });   // the start and the finish, gold in the track
   for (let lx = 2; lx <= 6; lx++) block('P10-01', lx, 0); for (let lx = 6; lx <= 10; lx++) block('P10-01', lx, 9);
+  /* THE SEATS' BACK (11-22, the soft-lock finder): behind each row of seats, between the stone and the trees, lay a sliver of the slope up to
+     2.7 m under the top tier: you stepped off the back of the seats into it. A wall you cannot see stands in it, over the top tier's height. */
+  { const back = (lx, ly, out) => { const q = S('P10-01', lx, ly), z = r2(mz(q[1]) + out * 2.3); feat({ k: 'wall', x0: r2(mx(q[0]) - 1.75), z0: z, x1: r2(mx(q[0]) + 1.75), z1: z, t: 1.3, h: 3.4, ghost: true, rail: false }); };
+    for (let lx = 2; lx <= 6; lx++) back(lx, 0, -1); for (let lx = 6; lx <= 10; lx++) back(lx, 9, 1); }
   plinthAt('P10-01', 1, 5, 1.5, 1.0); for (const ly of [3, 7]) plinthAt('P10-01', 1, ly, 1.1, 0.7);
   put('P10-01', 'decor_trophy_cup', 1, 5, { y: 1.0 }); bowl('P10-01', 1, 3, 0.7); bowl('P10-01', 1, 7, 0.7); props.push({ key: 'laurel_wreath', x: r2(mx(S('P10-01', 1, 5)[0]) + 0.45), z: r2(mz(S('P10-01', 1, 5)[1]) + 0.4), y: 0.99 });
   for (const [lx, ly] of [[1, 0], [11, 0], [1, 9], [11, 9]]) put('P10-01', 'greek_column', lx, ly, { h: 4.6 });
