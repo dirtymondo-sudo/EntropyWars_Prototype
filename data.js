@@ -33723,8 +33723,8 @@ const DOOR_HQ = {
         /* downtown_strip — GONE 2026-11-16 (THE OLD SITES RETIRED): the Strip is Entertainment's casino + wedding chapel, inside the city room */
         /* THE DESERT ON PLOTS (2026-11-15): the highway south out of Disaster City (Southside's Street court, the city's own way out) is the Desert's north end, at the City Limit plot */
         { id: 'downtown_desert', route: 'highway', way: 'road',
-          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -105, z: 247.6, face: 180, sub: 'THE HIGHWAY · SOUTH · THE DESERT' },   // the city's own way out (move.js ways P03-03 S, `open`): the road's last squares in Southside's Street court; bake-disaster-city.js prints the place
-          b: { room: 'site_ow_r9', wall: 'n', x: -35, sub: 'EXIT 1 · NORTH · DISASTER CITY' },   // THE HIGHWAY (2026-11-16): Exit 1's road, straight under the city's own South Street (the same x both sides)
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -105, z: 247.6, face: 0, w: 14, sub: 'THE HIGHWAY · SOUTH · THE DESERT' },   // face 0 (2026-11-22, was 180): a free end's `face` is the heading INTO the room; 180 stood the gantry back to front (signs mirrored, the road strip run north under the city's own street)   // the city's own way out (move.js ways P03-03 S, `open`): the road's last squares in Southside's Street court; bake-disaster-city.js prints the place
+          b: { room: 'site_ow_r9', wall: 'n', x: -35, w: 14, sub: 'EXIT 1 · NORTH · DISASTER CITY' },   // w 14 (2026-11-22): the road past the gantry is the street's four squares wide at both ends, not a 9 m lane   // THE HIGHWAY (2026-11-16): Exit 1's road, straight under the city's own South Street (the same x both sides)
           why: 'the same road, south; the city stops and the road does not', note: 'south', draft: true },
         { id: 'valley_city', route: 'woods', way: 'road',
           a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -249.4, z: -45.5, face: 90, sub: 'THE VALLEY ROAD · WEST · THE WOODS' },
@@ -83047,6 +83047,7 @@ function hqLinkDoors(roomId) {
             sub: end.sub || (wear.way ? (wear.cat.sub || 'STEP THROUGH') : 'WALK THROUGH'), action: { room: to, at: other.door ? other.door : 'link_' + link.id } };   // the far end lands AT a docked end's own door
         if (wear.way) d.way = wear.way;
         if (end.passage) d.passage = end.passage;   // THE PASSAGES (2026-10-01): an end's own tunnel / stair / trail shape
+        if (+end.w > 0) d.w = +end.w;   // THE ROAD (2026-11-22): an end's own street width (three-renderer.js _hqWayBuilders.road reads door.w)
         if (link.secret || end.secret) { d.secret = true; d.leaf = null; d.label = 'A DRAUGHT'; d.sub = 'A DOOR THAT IS NOT ON A PLATE · ' + String(toRoom.label || to).toUpperCase(); }   // THE AREAS (2026-09-18): a DRAUGHT — a link that is a hidden passage at both ends (the renderer hangs a wall slab; the map shows it once both rooms are seen)
         if (end.verb) d.verb = String(end.verb);
         if (link.why) d.why = link.why;
