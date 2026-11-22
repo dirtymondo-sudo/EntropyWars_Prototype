@@ -6413,43 +6413,49 @@ const RACE_CREATOR_LOOK_DEFS = {
   /* THE WEAPONS IN THE HANDS (2026-11-22, mondo: "hold their weapons correctly with their fingers and have their weapon models separate"):
      a creator-body look of the race holds its weapon in the closed fist (THE GRIP, THE SEAT). `grip` is read off the weapon GLB:
      c = the handle's centre, down = toward the pommel, barrel = the way the edge leads. The Meshy model of the race is untouched. */
-  'swordfighter': { hold: { key: 'kt_katana', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
+  /* THE WEAPON IN THE BASIC ATTACK (2026-11-22, mondo: "They should also use them for their basic attacks"): a row with a `hold` names
+     the basic attack its weapon makes (`basicAttackKind`: slash = the right-hand cut, ranged = the shot, throw = the star itself flies
+     (`weaponProj`), magic = the orb off the staff's head / the microphone). It wins over battle.js's race tables (def.weaponKind), on the
+     creator-body look only. The shot, the flash and the thrown star leave from the weapon's own end (three-renderer.js unitShotOrigin,
+     on THE WEAPON IN THE SPELL's unitHeldInfo tip). `ownBow` = the look wears its bow (no spectral bow). */
+  'robinhood': { basicAttackKind: 'arrow', ownBow: true },
+  'swordfighter': { basicAttackKind: 'slash', hold: { key: 'kt_katana', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
     grip: { c: [0.31, -0.013, 0], down: [1, 0, 0], barrel: [0, -1, 0], cant: 35, depth: 0.25, back: 0.22 } } },   // the katana (edge = the outside of the curve)
-  'shogun': { hold: { key: 'kt_katana', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
+  'shogun': { basicAttackKind: 'slash', hold: { key: 'kt_katana', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
     grip: { c: [0.31, -0.013, 0], down: [1, 0, 0], barrel: [0, -1, 0], cant: 35, depth: 0.25, back: 0.22 } },
     hold2: { key: 'wp_war_fan', bone: 'LeftHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.5,   // the iron war fan, open, in the other hand
     grip: { c: [0, -0.04, 0], down: [0, -1, 0], barrel: [1, 0, 0], depth: 0.25, back: 0.22 } } },
-  'gladiator': { hold: { key: 'wp_gladius', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.7,
+  'gladiator': { basicAttackKind: 'slash', hold: { key: 'wp_gladius', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.7,
     grip: { c: [0.33, 0, 0], down: [1, 0, 0], barrel: [0, -1, 0], cant: 35, depth: 0.25, back: 0.22 } } },
-  'ninja': { hold: { key: 'wp_shuriken', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.13,   // a star in the fist, its points between the fingers
+  'ninja': { basicAttackKind: 'throw', weaponProj: 'proj-shuriken', hold: { key: 'wp_shuriken', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.13,   // a star in the fist, its points between the fingers
     grip: { c: [0, 0, 0], down: [0, -1, 0], barrel: [1, 0, 0], depth: 0.25, back: 0.22 } } },
-  'knight': { hold: { key: 'sword', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
+  'knight': { basicAttackKind: 'slash', hold: { key: 'sword', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
     grip: { c: [0, 0.59, 0], down: [0, 1, 0], barrel: [1, 0, 0], cant: 35, depth: 0.25, back: 0.22 } } },   // the master sword (the GLB is tip-down)
-  'king arthur': { hold: { key: 'wp_excalibur', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.15,
+  'king arthur': { basicAttackKind: 'slash', hold: { key: 'wp_excalibur', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.15,
     grip: { c: [0.335, 0, 0], down: [1, 0, 0], barrel: [0, -1, 0], cant: 35, depth: 0.25, back: 0.22 } } },
-  'pirate': { hold: { key: 'wp_cutlass', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.8,
+  'pirate': { basicAttackKind: 'slash', hold: { key: 'wp_cutlass', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.8,
     grip: { c: [0.28, 0, 0], down: [1, 0, 0], barrel: [0, -1, 0], cant: 35, depth: 0.25, back: 0.22 } } },   // the hand inside the basket guard
-  'sheriff': { hold: { key: 'shotgun', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
+  'sheriff': { basicAttackKind: 'ranged', hold: { key: 'shotgun', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.0,
     grip: { c: [0.45, 0.02, 0], down: [0.45, -0.9, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },   // by the wrist of the stock
-  'marksman': { hold: { key: 'sniper', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.2,
+  'marksman': { basicAttackKind: 'ranged', hold: { key: 'sniper', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.2,
     grip: { c: [0.36, -0.15, 0], down: [0.2, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },   // the pistol grip
-  'gangster': { hold: { key: 'pistol', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.22,
+  'gangster': { basicAttackKind: 'ranged', hold: { key: 'pistol', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.22,
     grip: { c: [0.6, -0.25, 0], down: [0.15, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },
-  'spy': { hold: { key: 'pistol', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.2,
+  'spy': { basicAttackKind: 'ranged', hold: { key: 'pistol', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.2,
     grip: { c: [0.6, -0.25, 0], down: [0.15, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },
-  'barbarella': { hold: { key: 'plasma', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.42,
+  'barbarella': { basicAttackKind: 'ranged', hold: { key: 'plasma', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.42,
     grip: { c: [0.7, -0.2, 0], down: [0.1, -1, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },
-  'police officer': { hold: { key: 'psx_police_baton_mp_1', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.64,
+  'police officer': { basicAttackKind: 'slash', hold: { key: 'psx_police_baton_mp_1', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.64,
     grip: { c: [0, 0.015, 0.1], down: [0, 0, 1], barrel: [1, 0, 0], cant: 35, depth: 0.25, back: 0.22 } } },   // the nightstick, by its short end
-  'wizard': { hold: { key: 'item_wizard_staff', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.7,   // mondo 11-22: "staff"; the raised-arm idle comes with the animations
+  'wizard': { basicAttackKind: 'magic', hold: { key: 'item_wizard_staff', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 1.7,   // mondo 11-22: "staff"; the raised-arm idle comes with the animations
     grip: { c: [0, -0.03, 0], down: [0, -0.94, 0.34], barrel: [1, 0, 0], cant: -80, depth: 0.25, back: 0.22 } } },
-  'time cop': { hold: { key: 'revolver', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.21,   // mondo 11-22: his weapon switches with the spell (the spell threads); at rest, the revolver
+  'time cop': { basicAttackKind: 'ranged', hold: { key: 'revolver', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.21,   // mondo 11-22: his weapon switches with the spell (the spell threads); at rest, the revolver
     grip: { c: [0.657, -0.215, 0], down: [0.404, -0.915, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },
-  'popstar': { hold: { key: 'meshy_microphone', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.25,
+  'popstar': { basicAttackKind: 'magic', hold: { key: 'meshy_microphone', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.25,
     grip: { c: [0, -0.2, 0], down: [0, -1, 0], barrel: [0, 0, 1], depth: 0.25, back: 0.22 } } },
-  'scarecrow': { hold: { key: 'wp_sickle', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.45,
+  'scarecrow': { basicAttackKind: 'slash', hold: { key: 'wp_sickle', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.45,
     grip: { c: [0, -0.24, 0], down: [0, -1, 0], barrel: [1, 0, 0], cant: 35, depth: 0.25, back: 0.22 } } },
-  'men in black': { hold: { key: 'wp_deneuralizer', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.2,
+  'men in black': { basicAttackKind: 'ranged', hold: { key: 'wp_deneuralizer', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.2,
     grip: { c: [-0.2, 0, 0], down: [-1, 0, 0], barrel: [0, 1, 0], depth: 0.25, back: 0.22 } } },
   'cowboy': { basicAttackKind: 'ranged', hold: { key: 'revolver', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.21,
     grip: { c: [0.657, -0.215, 0], down: [0.404, -0.915, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },   // THE GRIP, THE SEAT: the revolver GLB's handle (three-renderer.js _gripFrame)
@@ -6748,7 +6754,7 @@ function getCharacterAppearanceModel(race, gender, appearance) {
       def._libOverridden = own._libOverridden.slice();
     }
     const extra = RACE_CREATOR_LOOK_DEFS[race];
-    if (extra) Object.assign(def, extra);
+    if (extra) { Object.assign(def, extra); if (extra.basicAttackKind && (extra.hold || extra.ownBow)) def.weaponKind = extra.basicAttackKind; }   // THE WEAPON IN THE BASIC ATTACK
   }
   /* THE IDLE POSE: the look's picked idle (EW_IDLE_POSES); the def's own idle stays in libClips (the shared per-model bake),
      the renderer swaps the pick in per rig. A pick equal to the def's own idle is no pick. */

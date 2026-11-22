@@ -5521,6 +5521,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var boost = unitZBoost();
         fz += boost; tz += boost;
+        /* THE WEAPON'S END (2026-11-22): a basic shot leaves the weapon in the shooter's hand (battle.js playBasicAttackShot
+           reads the world point off the rig) — the muzzle, the staff's head — not the body's middle */
+        if (params.origin && !params.hideGunRig && isFinite(params.origin.x + params.origin.y + params.origin.z)) {
+            var _wo = _sigWorldToSpawn(params.origin);
+            from.x = _wo.x; from.y = _wo.y; fz = _wo.z;
+        }
 
         var dx = to.x - from.x, dy = to.y - from.y, dz = tz - fz;
         var dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
