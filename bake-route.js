@@ -415,18 +415,20 @@ const carPts = PARTS[0].LINE.map(q => [Math.max(1, Math.min(W - 1, q[0])), Math.
 /* THE RAISED HIGHWAY (2026-11-22, mondo: "actual highway architecture, raised off the ground with exits and stuff"): the spec's `raised` lifts a highway
    onto ramps and a deck on pillars (ow-raised.js: the walk, the look, the paint, the road under the deck, the exit's cars). `ctx.RAISED` tells the
    hook where it stands. A route without it bakes as before. */
+/* a car line: the polyline offset by `o` squares to the right of its way (a mitred corner), in metres; it moves in where the highway narrows */
+const offT = TAPER_AT.length ? (L, o) => { const D = []; L.forEach((q, i) => { if (i) { const a = L[i - 1], n = Math.max(1, Math.round(Math.hypot(q[0] - a[0], q[1] - a[1]))); for (let k = 1; k < n; k++) D.push([a[0] + (q[0] - a[0]) * k / n, a[1] + (q[1] - a[1]) * k / n]); } D.push(q); });   // (a point a square, so the line can move in where the highway narrows)
+    const full = offLine(D, o), slim = offLine(D, 0.5); return D.map((q, i) => { const f = taperAt(q[0], q[1]); return [r2(slim[i][0] + (full[i][0] - slim[i][0]) * f), r2(slim[i][1] + (full[i][1] - slim[i][1]) * f)]; }); } : offLine;
 const EDGE_ROADS = [];
 let RAISED = null;
 if (SPEC.raised && LOOK === 'highway') { if (JOINS.length) { console.error('bake-route: `raised` and `join` in one room are not built'); process.exit(1); }
     RAISED = require('./ow-raised.js')({ SPEC, ID, C, N, W, Dq, r2, gx, gz, Hc, plotOf, CAT, errs, marks, F, props, clear, feat, TRAFFIC, LINE: PARTS[0].LINE, ASPH, SHOULDER, edgeRoads: EDGE_ROADS,
         roadHalf: (x, y) => 1.5 + 2 * taperAt(x, y), reslope: writeSlope, floorAt: (x, y) => kitOf(kindAt(x, y)).floor, setPaint: (x, y, key) => { if (x >= 0 && y >= 0 && x < W && y < Dq && plotOf(x, y) >= 0) paint[y * W + x] = pal(key); },
-        laneLine: (o, back) => offLine(back ? carPts.slice().reverse() : carPts, o) }); }
+        laneLine: (o, back) => offT(back ? carPts.slice().reverse() : carPts, o) }); }
 const CTX = { ID, ROOM, LOOK, C, N, W, D: Dq, BX0, BY0, COLS, ROWS, PLOTS, cell, gx, gz, gcx, gcz, r2, walked, free, nearPath, plotOf, kindAt, groundAt, hAt, feat, props, npc, doors, marks, P, dec, tree, rnd, pick, taken, ENDS, CAT, F, TRAFFIC, clear, LINE: PARTS[0].LINE, SPEC, RAISED, ASPH, setPaint: (x, y, key) => { if (x >= 0 && y >= 0 && x < W && y < Dq && plotOf(x, y) >= 0) paint[y * W + x] = pal(key); } };
 if (HOOK && typeof HOOK.dress === 'function') HOOK.dress(CTX);
 if (SPEC.cars && LOOK === 'highway') { const c = SPEC.cars, pts = carPts;
     /* the polyline offset by `o` squares to the right of its way (a mitred corner), in metres */
-    const off = TAPER_AT.length ? (L, o) => { const D = []; L.forEach((q, i) => { if (i) { const a = L[i - 1], n = Math.max(1, Math.round(Math.hypot(q[0] - a[0], q[1] - a[1]))); for (let k = 1; k < n; k++) D.push([a[0] + (q[0] - a[0]) * k / n, a[1] + (q[1] - a[1]) * k / n]); } D.push(q); });   // (a point a square, so the line can move in where the highway narrows)
-        const full = offLine(D, o), slim = offLine(D, 0.5); return D.map((q, i) => { const f = taperAt(q[0], q[1]); return [r2(slim[i][0] + (full[i][0] - slim[i][0]) * f), r2(slim[i][1] + (full[i][1] - slim[i][1]) * f)]; }); } : offLine;
+    const off = offT;
     TRAFFIC.push({ pts: off(pts, 2), loop: false, n: c.n || 4, speed: c.speed || 10, lane: 0.01, kinds: c.kinds || ['suv', 'cadillac', 'taxi', 'suv'] });
     TRAFFIC.push({ pts: off(pts.slice().reverse(), 2), loop: false, n: c.n || 4, speed: c.speed || 10, lane: 0.01, kinds: (c.kinds || ['cadillac', 'suv', 'copcar', 'taxi']).slice().reverse() }); }
 if (RAISED) TRAFFIC.forEach(t => { t.deck = true; });   // THE RAISED HIGHWAY: every car line rides the deck where it lies under it

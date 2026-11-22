@@ -65,12 +65,14 @@ function cityBoard(ctx, sx, sy, dir, name, o) {
    column `sx` from row `y0` to `y1`, and the wires between them (three thin lines from crossarm to crossarm, sloped with the ground). `skip(sy)` = no pole there. */
 function poleLine(ctx, sx, y0, y1, o) {
     o = o || {}; const step = o.step || 8, top = o.top != null ? o.top : 9.9, P = [], pts = [];
-    for (let y = y0; y <= y1 + 1e-6; y += step) { if (o.skip && o.skip(y)) continue; pts.push([mx(ctx, sx), mz(ctx, y), ctx.hAt(sx, y)]); }
-    pts.forEach(q => ctx.props.push({ key: 'power_pole', x: q[0], z: q[1], face: 0 }));
-    const rx = pts[0][0], rz = (pts[0][1] + pts[pts.length - 1][1]) / 2, R3 = v => Math.round(v * 1000) / 1000;
-    for (let i = 0; i + 1 < pts.length; i++) { const a = pts[i], b = pts[i + 1], L = b[1] - a[1], up = b[2] >= a[2], rise = Math.abs(b[2] - a[2]);
-        for (const dx of [-1.0, 0, 1.0]) P.push(Object.assign({ s: 'box', p: [dx, R3(Math.min(a[2], b[2]) + top), R3((a[1] + b[1]) / 2 - rz)], ry: up ? 0 : 180, size: [0.05, 0.05, R3(L)], tint: 0x16161a }, rise > 0.01 ? { shear: [R3(rise), R3(L)] } : null)); }
-    ctx.feat({ k: 'arch', id: 'ow:' + ctx.ID.toLowerCase() + ':wires:' + Math.round(sx * 10), x: rx, z: ctx.r2(rz), rot: 0, y: 0, parts: P });
+    /* `o.ew` (2026-11-22, the Desert Highway): the line runs east to west: `sx` is its ROW, `y0`..`y1` its columns, the crossarms turned across it */
+    for (let y = y0; y <= y1 + 1e-6; y += step) { if (o.skip && o.skip(y)) continue; pts.push(o.ew ? [mx(ctx, y), mz(ctx, sx), ctx.hAt(y, sx)] : [mx(ctx, sx), mz(ctx, y), ctx.hAt(sx, y)]); }
+    pts.forEach(q => ctx.props.push({ key: 'power_pole', x: q[0], z: q[1], face: o.ew ? 90 : 0 }));
+    const rx = o.ew ? (pts[0][0] + pts[pts.length - 1][0]) / 2 : pts[0][0], rz = o.ew ? pts[0][1] : (pts[0][1] + pts[pts.length - 1][1]) / 2, R3 = v => Math.round(v * 1000) / 1000;
+    for (let i = 0; i + 1 < pts.length; i++) { const a = pts[i], b = pts[i + 1], L = o.ew ? b[0] - a[0] : b[1] - a[1], up = b[2] >= a[2], rise = Math.abs(b[2] - a[2]), mid = (o.ew ? (a[0] + b[0]) / 2 - rx : (a[1] + b[1]) / 2 - rz);
+        for (const dx of [-1.0, 0, 1.0]) P.push(Object.assign({ s: 'box', p: [dx, R3(Math.min(a[2], b[2]) + top), R3(mid)], ry: up ? 0 : 180, size: [0.05, 0.05, R3(L)], tint: 0x16161a }, rise > 0.01 ? { shear: [R3(rise), R3(L)] } : null)); }
+    /* (an east to west line is the same row turned a quarter: its own +z lies along the room's +x) */
+    ctx.feat({ k: 'arch', id: 'ow:' + ctx.ID.toLowerCase() + ':wires:' + (o.ew ? 'ew' : '') + Math.round(sx * 10), x: ctx.r2(rx), z: ctx.r2(rz), rot: o.ew ? 90 : 0, y: 0, parts: P });
 }
 /* A MILE MARKER: the small green plate on a post at the road's edge, read from both ways. (sx, sy) squares; `o.y` = its foot (on a deck's parapet). */
 let nMile = 0;
@@ -79,6 +81,6 @@ function mileMarker(ctx, sx, sy, n, o) {
     for (const f of [0, 180]) { const z = f ? -0.035 : 0.035;
         P.push({ s: 'quad', p: [0, 1.62, z], ry: f, size: [0.44, 0.26], key: 'txt:MILE|#ffffff|#0b5c3a|1.7||way', uv: 'fit', kind: 'wall', glow: 0.2 },
                { s: 'quad', p: [0, 1.06, z], ry: f, size: [0.44, 0.52], key: 'txt:' + n + '|#ffffff|#0b5c3a|0.85||way', uv: 'fit', kind: 'wall', glow: 0.2 }); }
-    ctx.feat(Object.assign({ k: 'arch', id: 'ow:' + ctx.ID.toLowerCase() + ':mile:' + (nMile++), x: mx(ctx, sx), z: mz(ctx, sy), rot: 0, parts: P }, o.y != null ? { y: o.y } : null));
+    ctx.feat(Object.assign({ k: 'arch', id: 'ow:' + ctx.ID.toLowerCase() + ':mile:' + (nMile++), x: mx(ctx, sx), z: mz(ctx, sy), rot: o.rot || 0, parts: P }, o.y != null ? { y: o.y } : null));   // `o.rot: 90` = beside an east to west road
 }
 module.exports = { U, STEEL, WD, WD2, FLR, PLAS, CONC, ROT, sq, mx, mz, gantry, billboard, cityBoard, poleLine, mileMarker, building, put, at };

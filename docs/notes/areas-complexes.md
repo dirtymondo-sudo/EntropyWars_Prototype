@@ -14545,6 +14545,17 @@ Atlantis, the Sewers, the D.U.M.B., the six Cavern rooms, the Coast Road (R10) a
   (the edge land's far look, not changed); the Harbour's west side shows a sea wall and pastel houses where the city's coast is sand; the port
   seen from the Coast Road is dim in the air haze. Giza's own ends and the Line's west end are the Desert / Leylines holders' (PR #2418 covers Giza's).
 
+
+### THE DESERT HIGHWAY IS RAISED, LEG 1 (2026-11-22, mondo: "did the thread working on the highways ever finish the rest?" + "yes" to raising the others, Desert legs first)
+- `site_ow_dh1` (the Circus to Western Town) is built to THE HIGHWAY STANDARD: ramps on columns 19-29 and 73-83, a deck 6 m up between them, one exit (taper 3, lane 2, diverge 7, slip 9: the leg's straight is 64 squares, the Badlands' 78), the road under the deck on columns 50-51 running on past both walls, the city's lamps and traffic lights, three more plots south of the exit (`add`): the chain's gas station and the design page's caravan stop. Roadside: telephone line along the north side, four city adverts, mile markers 10-18 (counted on from the Badlands' nine), the Police Officer beside the Sheriff. The `taper` gates at both ends are kept: the ramps' feet stand clear of them.
+- **AN EAST TO WEST ROAD: `"axis": "x"` in the spec's `raised`** (ow-raised.js THE ROAD THAT RUNS EAST TO WEST). `up`, `down`, `cross` are then room COLUMNS, `at` the middle line's row (default: the line's own). The whole kit runs in a frame turned a quarter and turns what it made back (arch rows `rot: -90`, lamps, signals' arms, the edge roads' sides, the car lines), so the two axes cannot drift apart. A hook asks `ctx.RAISED.sq(off, along)` for a room square; `RAISED.axis`, `RAISED.at`.
+- **The middle line may lie on a half square** (the Desert legs' east to west runs are on row 12.48): every square loop in ow-raised.js takes the squares it touches. `RZ.x` / `at` are not rounded.
+- **Which way the line runs does not matter** (`BACK`): a line listed south to north (or east to west) gets its exit car lines asked for the other way round.
+- **The exit's cars narrow with the road at a gate**: bake-route.js `offT` (the tapered car line) is now also what `laneLine` gives the kit; before, an exit car drove 2 squares off the middle through a two-lane gate (the Badlands Highway too).
+- **NO STAINS ON A RAMP**: the dark patches at the top of the exit ramps (on the Badlands Highway since it was built) were the zone look's stain decals (data.js `zoneLookDecals`: grime at the foot of every arch box over 2.2 m), landing on the lane beside a ramp's retaining wall. An arch part with `clean: true` gets none; the kit's retaining walls wear it.
+- south-kit.js: `poleLine(ctx, row, x0, x1, { ew: true })` = a telephone line along a row; `mileMarker(…, { rot: 90 })` beside an east to west road.
+- **WHAT THE OTHER LEGS CAN HOLD**: an exit needs a straight of about 64 squares (2 ramps of 10, 2 x (12 exit + 9 slip), the road under). DH2's longest straight clear of its gates is 30 squares, DH3's 29, DH4's 30: room for ramps and a short deck over a road (a flyover), not for an exit.
+
 ### THE ZONE PASS: OUTER SPACE, THE SKI MOUNTAIN, BUG COLONY, KATANA, THE TEMPLE (2026-11-22, thread "Remove trap spots in space, mountain and bug rooms")
 All twelve rooms these tools write read 0 traps, 0 crevices after it. What each one was, and the rule it leaves behind:
 - **BUG COLONY, THE GIANT TREE** (`districts/B.js`): four pits between the trunk, a root shelf and a stair (you dropped in off a shelf). The trunk's
