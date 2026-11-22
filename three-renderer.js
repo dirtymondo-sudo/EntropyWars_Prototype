@@ -77495,6 +77495,8 @@ const ThreeRenderer = (function () {
        ═══════════════════════════════════════════════════════════════════════ */
     var HQ_EDGE_ROWS = [0, 1.2, 2.5, 4, 6, 8.5, 11.5, 15, 19, 24, 30, 37, 45, 55, 70, 86, 104, 125, 150, 178, 210, 246, 286, 330, 380, 440];
     var HQ_EDGE_NEAR_M = 70;
+    var HQ_EDGE_SHEETS = { scrub: 'grass_rocky', bad: 'wasteland' };   // THE BLENDED LAND: the One World map's kind -> the ground sheet its land wears past a room's line (the route kit's own floors, bake-route.js KIT / TONE); a kind not named wears the grass or the sand sheet as before
+    var HQ_EDGE_OWN_TINT = [1, 1, 1];   // …and the tint of a sheet that is the room's or the map's own (the room draws it untinted)
     var HQ_EDGE_MESA_AT = 0.66;          // a mesa stands where the land's slow noise passes this (higher = fewer, smaller tables)
     function _hqEdgeNoise(x, z) {
         var h = function (a, b) { var s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
@@ -77531,6 +77533,45 @@ const ThreeRenderer = (function () {
                like every other line. A room with no place on the map (or `EW_HQ_NO_WORLD_EDGES`) reads its sides as before. */
         var KINDS = ['mountain', 'forest', 'desert', 'coast', 'scrub', 'mesa', 'grass', 'snow'];
         var WANDER = !(E.straight || (typeof window !== 'undefined' && window.EW_HQ_STRAIGHT_EDGES));
+        /* THE BLENDED LAND (2026-11-22, mondo on the Badlands Highway: "on the edges the map goes from grass to desert too abruptly in a straight line,
+           that is not realistic at all"). Two ruler lines stood on the land past a room:
+             · THE ROOM'S OWN LINE: a room on dry scrub wears the rocky grass, the land past it wore the sand sheet (every dry kind did), so the whole
+               road ran as a green strip through a desert, cut on the room's edge. Now (a) on the One World the land wears THE MAP'S OWN GROUND, the
+               same sheet the route kit lays inside (HQ_EDGE_SHEETS, by the map's kind), and (b) in any room THE ROOM'S GROUND RUNS ON: the sheet
+               under the edge (its paint, or its floor; open ground only, never asphalt or paving) goes on past the line and gives way to the land's
+               own in tongues 2 to 42 m out;
+             · THE SHEET LINE: every piece of land wore ONE sheet, the heavier kind's, so grass met sand along a staircase of squares. Now a piece
+               wears every sheet it has a share of: the first laid whole, the others over it by each corner's share (a see-through layer on the same
+               squares, no shader: both renderers), and the shares are pushed apart by a slow noise of their own, so two grounds meet in patches
+               and tongues, not on a line. Rock, cliffs, snow and another room's real land are drawn as before.
+           No sheet is repainted: the game's own ground sheets, mixed. `edges.hard: true` = the old lines for a room; `EW_HQ_HARD_EDGE_SHEETS` = for all. */
+        var BLEND = !(E.hard || (typeof window !== 'undefined' && window.EW_HQ_HARD_EDGE_SHEETS));
+        var NAT = /^(grass|dirt|desert|sand|wasteland|rocks?_|mud|moss|gravel)/;
+        var roomSheetAt = function (cx, cz) {
+            var k = info.floor;
+            try { var PT = info.paint; if (PT && PT.P) { var pi = Math.max(0, Math.min(info.nx - 1, Math.round((cx - info.x0) / info.res))), pj = Math.max(0, Math.min(info.nz - 1, Math.round((cz - info.z0) / info.res))), pv = PT.P[pj * info.nx + pi]; if (pv > 0 && PT.pal[pv - 1]) k = PT.pal[pv - 1]; } } catch (e) {}
+            return (typeof k === 'string' && NAT.test(k)) ? k : null;
+        };
+        var shOff = {}, shOffOf = function (k) { var o = shOff[k]; if (!o) { var h = 7; for (var q = 0; q < k.length; q++) h = (h * 31 + k.charCodeAt(q)) % 9973; o = shOff[k] = [(h % 97) * 1.37, (h % 89) * 2.11]; } return o; };
+        /* the sheets of a point of the land and their shares: [[sheet, share] …] by name (the layers' order), or null (no open ground there) */
+        var sheets = function (P, x, z) {
+            if (!BLEND) return null;
+            var W = P.W, S = {}, tot = 0, k;
+            if (W.sh) for (k in W.sh) { S[k] = W.sh[k]; tot += W.sh[k]; }
+            else { var g0 = W.forest + (W.grass || 0), d0 = W.desert + (W.scrub || 0) + (W.mesa || 0); if (g0 > 0) { S.grass = g0; tot += g0; } if (d0 > 0) { S.desert = d0; tot += d0; } }
+            if (tot > 1e-4) for (k in S) S[k] /= tot;
+            if (W.coast > 0) { var cw = tot > 1e-4 ? Math.min(1, W.coast) : 1; for (k in S) S[k] *= 1 - cw; S.desert = (S.desert || 0) + cw; tot = 1; }   // the sea's bed and its beach are sand
+            if (!(tot > 1e-4)) return null;
+            if (P.d < 80) { var rk = roomSheetAt(Math.max(R.x0, Math.min(R.x1, x)), Math.max(R.z0, Math.min(R.z1, z)));   // THE ROOM'S GROUND RUNS ON
+                if (rk) { var rn = _hqEdgeFbm(x / 34 + 13.7, z / 34 + 41.9), rd = 2 + 40 * sm((rn - 0.25) / 0.5), ra = 1 - sm((P.d - rd) / (12 + 0.4 * rd));
+                    if (ra > 0) { for (k in S) S[k] *= 1 - ra; S[rk] = (S[rk] || 0) + ra; } } }
+            var out = [], sum = 0;
+            for (k in S) { if (!(S[k] > 0)) continue; var o = shOffOf(k), w = S[k] * Math.exp(4.6 * (_hqEdgeFbm(x / 17 + o[0], z / 17 + o[1]) - 0.5)); w *= w; out.push([k, w]); sum += w; }
+            if (!(sum > 0)) return null;
+            out = out.filter(function (e) { e[1] /= sum; return e[1] > 0.004; }); sum = 0; out.forEach(function (e) { sum += e[1]; }); out.forEach(function (e) { e[1] /= sum; });
+            out.sort(function (a, b) { return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0; });
+            return out;
+        };
         var OW = (function () {
             try {
                 if (!E.world || (typeof window !== 'undefined' && window.EW_HQ_NO_WORLD_EDGES) || typeof hqOwRoom !== 'function') return null;
@@ -77539,7 +77580,12 @@ const ThreeRenderer = (function () {
                 var kindAt = function (ix, iy) { var k = ix * 4099 + iy, v = memo.get(k); if (v === undefined) { v = hqOwGround(ix, iy).edge || 'grass'; if (KINDS.indexOf(v) < 0) v = 'grass'; memo.set(k, v); } return v; };
                 var rp = Math.ceil((+E.reach || 440) / 42) + 1;
                 for (var yy = q.wy - rp; yy < q.wy + q.rows + rp && !sea; yy++) for (var xx = q.wx - rp; xx < q.wx + q.cols + rp; xx++) if (kindAt(xx, yy) === 'coast') { sea = true; break; }
-                return { wx: q.wx, wy: q.wy, hw: room.shell.w / 2, hd: room.shell.d / 2, kindAt: kindAt, sea: sea };
+                /* THE LAND WEARS THE MAP'S OWN GROUND (2026-11-22, see THE BLENDED LAND below): the sheet of the world plot's ground, where the map's
+                   kind has one of its own (the route kit's floors: dry scrub = the rocky grass, the badlands = the cracked waste); null = not open ground */
+                var smemo = new Map();
+                var sheetAt = function (ix, iy) { var k = ix * 4099 + iy, v = smemo.get(k); if (v === undefined) { var e = kindAt(ix, iy), g = hqOwGround(ix, iy);
+                    v = (e === 'forest' || e === 'grass') ? 'grass' : (e === 'desert' || e === 'scrub' || e === 'mesa') ? (HQ_EDGE_SHEETS[g.kind] || 'desert') : null; smemo.set(k, v); } return v; };
+                return { wx: q.wx, wy: q.wy, hw: room.shell.w / 2, hd: room.shell.d / 2, kindAt: kindAt, sheetAt: sheetAt, sea: sea };
             } catch (e) { return null; }
         })();
         var WAYS = (OW && Array.isArray(E.ways) && E.ways.length) ? E.ways : null;
@@ -77549,6 +77595,17 @@ const ThreeRenderer = (function () {
             var fx = OW.wx + (x + OW.hw) / 42 - 0.5, fy = OW.wy + (z + OW.hd) / 42 - 0.5, ix = Math.floor(fx), iy = Math.floor(fy);
             var u = sm((fx - ix - 0.3) / 0.4), v = sm((fy - iy - 0.3) / 0.4);
             W[OW.kindAt(ix, iy)] += (1 - u) * (1 - v); W[OW.kindAt(ix + 1, iy)] += u * (1 - v); W[OW.kindAt(ix, iy + 1)] += (1 - u) * v; W[OW.kindAt(ix + 1, iy + 1)] += u * v;
+            /* THE BLENDED LAND: the sheets' own weights. Read a little off the point (the line between two grounds wanders at every distance, the
+               room's line too: only the sheet moves, never a height) and over a wider band than the kinds' */
+            if (BLEND) {
+                var qx = x + (WANDER ? 15 * Math.max(-1, Math.min(1, (_hqEdgeSoft(x / 64 + 51.3, z / 64 + 7.1) - 0.5) * 3.2)) + 9 * (_hqEdgeFbm(x / 13 + 9.1, z / 13 + 2.2) - 0.5) : 0);
+                var qz = z + (WANDER ? 15 * Math.max(-1, Math.min(1, (_hqEdgeSoft(x / 64 + 3.9, z / 64 + 77.7) - 0.5) * 3.2)) + 9 * (_hqEdgeFbm(x / 13 + 31.4, z / 13 + 18.6) - 0.5) : 0);
+                var gx = OW.wx + (qx + OW.hw) / 42 - 0.5, gy = OW.wy + (qz + OW.hd) / 42 - 0.5, jx = Math.floor(gx), jy = Math.floor(gy);
+                var u2 = sm((gx - jx - 0.22) / 0.56), v2 = sm((gy - jy - 0.22) / 0.56), SH = {}, any = false;
+                var put = function (k, w) { if (k && w > 0) { SH[k] = (SH[k] || 0) + w; any = true; } };
+                put(OW.sheetAt(jx, jy), (1 - u2) * (1 - v2)); put(OW.sheetAt(jx + 1, jy), u2 * (1 - v2)); put(OW.sheetAt(jx, jy + 1), (1 - u2) * v2); put(OW.sheetAt(jx + 1, jy + 1), u2 * v2);
+                if (any) W.sh = SH;
+            }
             /* THE WAY ON (`edges.ways: [{ side, at }]`, the route kit's ends): where a path leaves the room for the next one, the land stays
                low and open for a stretch: no rock face, no tree line across the way you are about to walk (the rock stays rock but lies
                down as a pass floor, `W.way`; forest and table land give way to grass), fading out sideways over ~30 m and outward over ~150 m */
@@ -77649,7 +77706,7 @@ const ThreeRenderer = (function () {
                 y += W.snow * ((e2 + lift) * (1 - kn) + (e2 * (1 - 0.6 * sm((d - 30) / 160)) + 0.45 + rollS) * kn); }
             return { y: y, W: W, d: d, eH: eH, land: (landK && W.mountain > 0.6) ? landK : null, mesa: mesaT, side: (ez <= 1e-6 || ex > ez) ? kx : kz };
         };
-        return { R: R, at: at, seaY: seaY, reach: +E.reach || 440, world: OW ? { sea: OW.sea } : null };
+        return { R: R, at: at, sheets: sheets, blend: BLEND, seaY: seaY, reach: +E.reach || 440, world: OW ? { sea: OW.sea } : null };
     }
     /* a room whose land past the edge is THE NATURAL EDGES' (no outer ground of the field's sheet, no sea sheet past the field: the land brings its own) */
     function _hqEdgeLandOn(room) { return !!(room && room.terrain && room.terrain.edges && room.shell && room.shell.open && !(typeof window !== 'undefined' && window.EW_HQ_NO_EDGE_LAND)); }
@@ -77662,11 +77719,11 @@ const ThreeRenderer = (function () {
         try { var sf = H && H.scene && H.scene.fog; if (sf && sf.color && sf.color.isColor) fogC.copy(sf.color); } catch (e) {}   // the fog as the room draws it (the near land fades to THIS colour; the far land's haze must be the same one)
         /* the sheets: the game's own ground sheets (the rock, the mossy grass, the sand); the snow is plain white */
         var mats = {};
-        var matFor = function (key, far) {
-            var mk = key + (far ? '|far' : '');
+        var matFor = function (key, far, over) {   // `over` = a see-through layer of THE BLENDED LAND (its share is the corners' alpha)
+            var mk = key + (far ? '|far' : '') + (over ? '|over' : '');
             if (mats[mk]) return mats[mk];
-            var tex = key === 'snow' ? null : _hzTex((key === 'rock' || key === 'cliff') ? 'mountain' : key === 'grass' ? 'grass' : 'desert');   // (a sea cliff wears the rock sheet: `cliff.png`, a tan sheet, is banned by the owner's rules and stood as sand-coloured slabs where a range falls into the sea)
-            var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far || !_ewAirOff() });   // THE ONE AIR: the far land wears the scene's fog like everything else (its haze was painted in at the build, in the build's colour, deaf to the settings and the hour)
+            var tex = key === 'snow' ? null : ((key === 'rock' || key === 'cliff') ? _hzTex('mountain') : (key === 'grass' || key === 'desert') ? _hzTex(key) : (_hzTex(key) || _hzTex('desert')));   // (a sea cliff wears the rock sheet: `cliff.png`, a tan sheet, is banned by the owner's rules and stood as sand-coloured slabs where a range falls into the sea)
+            var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far || !_ewAirOff(), transparent: !!over, depthWrite: !over });   // THE ONE AIR: the far land wears the scene's fog like everything else (its haze was painted in at the build, in the build's colour, deaf to the settings and the hour)
             /* THE NATURAL ROCK on the land past the edge (2026-11-15, see _hqTerrainMat): the far mountains and sea cliffs were one small sheet repeated
                up a whole range. The sheet is mixed with itself read 3.7 x larger and its tone drifts over the land (WebGL; the node renderer keeps the plain sheet). */
             if (tex && !(typeof window !== 'undefined' && window.EW_NO_NATURAL_ROCK)) {
@@ -77677,7 +77734,7 @@ const ThreeRenderer = (function () {
                         (rocky ? ' sampledDiffuseColor = mix( sampledDiffuseColor, texture2D( map, vMapUv * 0.27 + 0.37 ), 0.45 );\n' : '') +
                         ' sampledDiffuseColor.rgb *= 0.82 + 0.28 * ntN( vMapUv * 0.07 + 3.7 ) + 0.10 * ( ntN( vMapUv * 0.33 + 19.1 ) - 0.5 );\n diffuseColor *= sampledDiffuseColor;\n#endif');
                 };
-                m.customProgramCacheKey = function () { return 'hqEdgeLandNat' + (rocky ? 'R' : ''); };
+                m.customProgramCacheKey = function () { return 'hqEdgeLandNat' + (rocky ? 'R' : '') + (over ? 'O' : ''); };
             }
             m._ew_hqEdgeLand = true; mats[mk] = m; return m;
         };
@@ -77688,6 +77745,15 @@ const ThreeRenderer = (function () {
             add(W.scrub || 0, 0.84, 0.8, 0.64); add(W.mesa || 0, 1, 0.96, 0.86); add(W.grass || 0, 0.8, 0.88, 0.62); add(W.snow || 0, 0.97, 0.98, 1);
             if (P.mesa > 0.02) { var mt = Math.min(1, P.mesa * 1.6), band = 0.86 + 0.14 * Math.sin(P.y * 0.55); c = [c[0] * (1 - mt) + 1.0 * band * mt, c[1] * (1 - mt) + 0.6 * band * mt, c[2] * (1 - mt) + 0.42 * band * mt]; }   // the tables: red rock in bands
             if (Array.isArray(E.tint)) c = [c[0] * E.tint[0], c[1] * E.tint[1], c[2] * E.tint[2]];   // `edges.tint: [r, g, b]` (2026-11-20, The Woods): a room whose floor is darker than the map's green, the land past its line wears the room's tone
+            return c;
+        };
+        var tintOf = function (key, P) {   // THE BLENDED LAND: the tint of ONE sheet at a point (colOf mixes the kinds' tints for the one sheet a piece wore)
+            var W = P.W, c, t;
+            if (key === 'grass') { var f = W.forest, g = W.grass || 0; t = f + g; c = t > 1e-3 ? [(f * 0.62 + g * 0.8) / t, (f * 0.74 + g * 0.88) / t, (f * 0.56 + g * 0.62) / t] : [0.8, 0.88, 0.62]; }
+            else if (key === 'desert') { var d = W.desert + (W.mesa || 0), s = W.sh ? 0 : (W.scrub || 0), cc = W.coast; t = d + s + cc; c = t > 1e-3 ? [(d + s * 0.84 + cc * 0.8) / t, (d * 0.96 + s * 0.8 + cc * 0.74) / t, (d * 0.86 + s * 0.64 + cc * 0.66) / t] : [1, 0.96, 0.86]; }
+            else c = [HQ_EDGE_OWN_TINT[0], HQ_EDGE_OWN_TINT[1], HQ_EDGE_OWN_TINT[2]];
+            if (P.mesa > 0.02) { var mt = Math.min(1, P.mesa * 1.6), band = 0.86 + 0.14 * Math.sin(P.y * 0.55); c = [c[0] * (1 - mt) + 1.0 * band * mt, c[1] * (1 - mt) + 0.6 * band * mt, c[2] * (1 - mt) + 0.42 * band * mt]; }
+            if (Array.isArray(E.tint)) c = [c[0] * E.tint[0], c[1] * E.tint[1], c[2] * E.tint[2]];
             return c;
         };
         var keyOf = function (P, x, z, yTop) {   // yTop = the piece's highest corner (a far piece is up to 60 m long: one that climbs out of the sea is rock, not a slab of beach sand up a cliff)
@@ -77703,31 +77769,48 @@ const ThreeRenderer = (function () {
         var patch = function (xs, zs, name) {
             var nx = xs.length, nz = zs.length, P = new Array(nx * nz), i, j;
             for (j = 0; j < nz; j++) for (i = 0; i < nx; i++) P[j * nx + i] = F.at(xs[i], zs[j]);
-            var B = {};
-            for (j = 0; j + 1 < nz; j++) for (i = 0; i + 1 < nx; i++) {
-                var mx = (xs[i] + xs[i + 1]) / 2, mz = (zs[j] + zs[j + 1]) / 2, PM = F.at(mx, mz), far = PM.d >= HQ_EDGE_NEAR_M, key = keyOf(PM, mx, mz, Math.max(P[j * nx + i].y, P[j * nx + i + 1].y, P[(j + 1) * nx + i].y, P[(j + 1) * nx + i + 1].y)), bk = key + (far ? '|far' : '');
-                var b = B[bk] || (B[bk] = { key: key, far: far, map: {}, pos: [], col: [], uv: [], nrm: [], idx: [] });
-                var vi = [j * nx + i, j * nx + i + 1, (j + 1) * nx + i, (j + 1) * nx + i + 1].map(function (v) {
+            var B = {}, SHW = F.blend ? new Array(nx * nz) : null, NRM = {};
+            /* one square of the land into a bucket (a sheet, near / far, whole or a layer): `alpha` = the four corners' share (a layer), `tint` = the sheet's own (a blended square) */
+            var quad = function (key, far, i, j, layer, alpha, tint) {
+                var bk = key + (far ? '|far' : '') + (layer ? '|over' : tint ? '|b' : '');
+                var b = B[bk] || (B[bk] = { key: key, far: far, over: !!layer, map: {}, pos: [], col: [], uv: [], nrm: [], idx: [] });
+                var vi = [j * nx + i, j * nx + i + 1, (j + 1) * nx + i, (j + 1) * nx + i + 1].map(function (v, q) {
                     if (b.map[v] != null) return b.map[v];
-                    var vx = xs[v % nx], vz = zs[(v / nx) | 0], p = P[v], c = colOf(p), e = 1.5;
+                    var vx = xs[v % nx], vz = zs[(v / nx) | 0], p = P[v], c = tint ? tintOf(key, p) : colOf(p), e = 1.5;
                     if (key === 'snow') c = [0.97, 0.98, 1];
                     if (far && _ewAirOff()) { var hz0 = 0.5 + 0.3 * Math.min(1, (p.d - HQ_EDGE_NEAR_M) / 300), hzA = hz0 * (1 - 0.55 * Math.min(1, Math.max(0, (p.y - p.eH - 40) / 140))); c = [c[0] * (1 - hzA) + fogC.r * hzA, c[1] * (1 - hzA) + fogC.g * hzA, c[2] * (1 - hzA) + fogC.b * hzA]; }
-                    var nxv = 2 * (p.y - F.at(vx + e, vz).y), nzv = 2 * (p.y - F.at(vx, vz + e).y), nl = Math.hypot(nxv, 2 * e, nzv);   // (one step each way: a third fewer samples)
+                    var nv = NRM[v];
+                    if (!nv) { var nxv = 2 * (p.y - F.at(vx + e, vz).y), nzv = 2 * (p.y - F.at(vx, vz + e).y), nl = Math.hypot(nxv, 2 * e, nzv); nv = NRM[v] = [nxv / nl, 2 * e / nl, nzv / nl]; }   // (one step each way: a third fewer samples)
                     var n = b.pos.length / 3; b.map[v] = n;
-                    b.pos.push(vx * U, p.y * U, vz * U); b.col.push(c[0], c[1], c[2]); b.nrm.push(nxv / nl, 2 * e / nl, nzv / nl);
+                    b.pos.push(vx * U, p.y * U, vz * U); if (layer) b.col.push(c[0], c[1], c[2], alpha[q]); else b.col.push(c[0], c[1], c[2]); b.nrm.push(nv[0], nv[1], nv[2]);
                     var ts = far ? TM * 6 : TM; b.uv.push(vx * U / ts, vz * U / ts);
                     return n;
                 });
                 var flip = ((xs[i + 1] - xs[i]) * (zs[j + 1] - zs[j])) < 0;   // (never: both lists ascend) kept for a patch built the other way
                 if (flip) b.idx.push(vi[0], vi[1], vi[2], vi[1], vi[3], vi[2]); else b.idx.push(vi[0], vi[2], vi[1], vi[1], vi[2], vi[3]);
+            };
+            for (j = 0; j + 1 < nz; j++) for (i = 0; i + 1 < nx; i++) {
+                var mx = (xs[i] + xs[i + 1]) / 2, mz = (zs[j] + zs[j + 1]) / 2, PM = F.at(mx, mz), far = PM.d >= HQ_EDGE_NEAR_M, key = keyOf(PM, mx, mz, Math.max(P[j * nx + i].y, P[j * nx + i + 1].y, P[(j + 1) * nx + i].y, P[(j + 1) * nx + i + 1].y));
+                if (!SHW || PM.land || (key !== 'grass' && key !== 'desert')) { quad(key, far, i, j, false, null, false); continue; }
+                /* THE BLENDED LAND: open ground wears every sheet its corners have a share of, in the sheets' name order: the first whole, each next
+                   one over it by its share of the sheets laid so far (so the sum is each corner's own mix whatever sheet a square starts with) */
+                var cs = [j * nx + i, j * nx + i + 1, (j + 1) * nx + i, (j + 1) * nx + i + 1].map(function (v) { var s = SHW[v]; if (s === undefined) s = SHW[v] = F.sheets(P[v], xs[v % nx], zs[(v / nx) | 0]) || [[key, 1]]; return s; });
+                var keys = []; cs.forEach(function (s) { s.forEach(function (e2) { if (keys.indexOf(e2[0]) < 0) keys.push(e2[0]); }); }); keys.sort();
+                var acc = [0, 0, 0, 0];
+                keys.forEach(function (sk, li) {
+                    var al = cs.map(function (s, q) { var w = 0; for (var n2 = 0; n2 < s.length; n2++) if (s[n2][0] === sk) { w = s[n2][1]; break; } acc[q] += w; return li === 0 ? 1 : (acc[q] > 1e-6 ? w / acc[q] : 0); });
+                    if (li > 0 && Math.max(al[0], al[1], al[2], al[3]) < 0.004) return;
+                    quad(sk, far, i, j, li > 0, al, true);
+                });
             }
             var g = new THREE.Group(); g.name = 'hq_edge_land'; g._ew_hqEdgeLand = name;
+            var ORD = []; Object.keys(B).forEach(function (bk) { if (ORD.indexOf(B[bk].key) < 0) ORD.push(B[bk].key); }); ORD.sort();
             Object.keys(B).forEach(function (bk) {
                 var b = B[bk], geo = new THREE.BufferGeometry();
                 geo.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(b.nrm, 3));
-                geo.setAttribute('color', new THREE.Float32BufferAttribute(b.col, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
+                geo.setAttribute('color', new THREE.Float32BufferAttribute(b.col, b.over ? 4 : 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
                 geo.setIndex(b.pos.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(b.idx, 1) : new THREE.Uint16BufferAttribute(b.idx, 1)); geo.computeBoundingSphere();
-                var m = new THREE.Mesh(geo, matFor(b.key, b.far)); m.position.y = 0.2; m.receiveShadow = !b.far; m.castShadow = false; m.renderOrder = 0; m._ew_hqPart = 'floor'; m._ew_hqOuter = true; m._ew_hqEdgeLand = name;
+                var m = new THREE.Mesh(geo, matFor(b.key, b.far, b.over)); m.position.y = 0.2; m.receiveShadow = !b.far; m.castShadow = false; m.renderOrder = b.over ? 0.001 * (1 + ORD.indexOf(b.key)) : 0; m._ew_hqPart = 'floor'; m._ew_hqOuter = true; m._ew_hqEdgeLand = name;   // (the layers lie in their sheets' name order)
                 g.add(m);
             });
             if (g.children.length) pieces.push(g);

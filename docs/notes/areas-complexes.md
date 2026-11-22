@@ -11408,6 +11408,24 @@ between two places that touch is wrong. The rule below is the one every zone thr
 - NOT DONE YET, by design: heights that climb (the map has no height per plot: a climb is hand work in the hook), residents
   on a route (a fight on a trail plot works: "ONE WORLD, THE TEST SLICE"), cars on a highway (`terrain.traffic`, the Desert's way).
 
+### THE BLENDED LAND — no ruler line where two grounds meet past a room (2026-11-22, mondo on the Badlands Highway)
+mondo 11-22: "in the badlands, on the edges the map goes from grass to desert too abruptly in a straight line, that is not realistic at all, please fix".
+Two ruler lines stood on the land past a room (three-renderer.js `_hqEdgeLandFn` / `_hqBuildEdgeLand`), both gone in every room with `terrain.edges`:
+- **The room's own line.** A road room on dry scrub wears `grass_rocky`; the land past it wore the sand sheet (every dry kind did), so the Highway ran as a
+  green strip through sand, cut dead straight on the room's edge (the badlands plots the same: `wasteland` against sand). Now (a) on the One World the land
+  wears THE MAP'S OWN GROUND: `HQ_EDGE_SHEETS` (by the map's kind: `scrub` -> `grass_rocky`, `bad` -> `wasteland`, the route kit's own floors; a kind not
+  named wears the grass or the sand sheet as before), and (b) in any room THE ROOM'S GROUND RUNS ON: the sheet under the edge (its paint, else its floor;
+  open ground only, the `NAT` test: never asphalt or paving) goes on past the line and gives way to the land's own in tongues 2 to 42 m out.
+- **The sheet line.** Every square of land wore ONE sheet, the heavier kind's, so grass met sand along a staircase. Now a square of open ground wears every
+  sheet its corners have a share of (`sheets(P, x, z)`): the first by name laid whole, each next one over it as a see-through layer on the same squares
+  (corner alpha = its share of the sheets laid so far, so the sum is the corner's own mix whichever sheet is first; no shader, so both renderers). The
+  shares are read a little off the point (the line wanders at every distance, only the sheet, never a height), over a 23 m band, and pushed apart by a
+  slow noise per sheet: two grounds meet in patches and tongues. Rock, cliffs, snow and another room's real land (`land`) are drawn as before.
+- No sheet is repainted or rebaked: the game's own ground sheets, mixed. Kill switches: `edges.hard: true` (a room), `window.EW_HQ_HARD_EDGE_SHEETS` (all).
+  `HQ_EDGE_OWN_TINT` = the tint of a room's / the map's own sheet on the land. Cost: one more draw per sheet per piece, only on squares where two sheets meet.
+- Seen (cloud browser, the node renderer's WebGL2): `site_ow_r9` from the air at four places and on foot; pictures `/mnt/project-files/badlands-edges/`.
+  Not seen: real WebGPU on his Mac, the other rooms (same code: a room whose edge ground is open ground now runs it on; the city's asphalt edge does not).
+
 ### ONE WORLD, THE HORIZON READS THE MAP (`terrain.edges.world`, three-renderer.js `_hqEdgeLandFn` / `_hqBuildEdgeLand`)
 - **`edges: { world: true, reach: 440 }`** = the sides are not written, they are read. The room stands on the world grid
   (`hqOwRoom`), and the land at every point past its line is the kind of the WORLD PLOT under that point
