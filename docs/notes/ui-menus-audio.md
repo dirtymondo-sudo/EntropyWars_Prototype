@@ -3073,3 +3073,12 @@ markers too". His picks on the mock-up: "definitely bottom right, north always u
   ladder's "SPACE LETS GO", "SHIFT FASTER" in the swim toasts, the skateboard's flavour line and "B OFF".
 - RULE: a toast or box names only what the player cannot guess (a game-only key, a level). Standard controls and flavour lines stay out.
 - Left as is (game-only mechanics): the door gun / threshold toasts (left / right click, hold F, Q).
+
+### THE SHORT PROMPT, pass 3: THE FLAVOUR LINES (2026-11-22, mondo: "'hit by a car nobody is driving it cross at the light' what the fuck is that????? you missed that")
+- Every exploration toast in map.js was read again; the second line now says only what the player needs (a count, a place, what to do)
+  or nothing. Gone: "NOBODY IS DRIVING IT · CROSS AT THE LIGHT" (now just HIT BY A CAR), "THE ROOM IS YOURS" / "YOU CAME TO IN THE WARD"
+  (now VICTORY / DEFEATED / RETREATED + the party line), "BACK ON DUTY", "A WALL MEETS A WALL AT NINETY", "IT WAS ALWAYS A DOOR",
+  "THE ISSUE IS TO A NAME", "AN UNMARKED ENVELOPE · NOBODY SAW", "THE DIRECTORY REDRAWS", "THE WORLD · DIRECTORY", "THE PAIR IS CLEAR",
+  "THE QUARTERMASTER HAS NOT SIGNED…", the cache / tape / one-way-door / nav console explanations. `.hq-toast span:empty` hides an empty line.
+- RULE (again): no jokes, lore or explanation in a toast. NPC dialogue (`say`) is not a toast and is untouched.
+- Left as is: the door gun's key toasts (game-only keys), counter subs (they name what the counter does).

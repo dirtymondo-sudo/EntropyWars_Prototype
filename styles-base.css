@@ -4274,6 +4274,7 @@ html.ew-hq-cover #startOverlay > .title-page:not(.active):not(#hqPage) * { anima
 .hq-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .hq-toast b { font-family: 'Cormorant SC', serif; font-size: 18px; letter-spacing: 0.14em; color: #ffd6f3; }
 .hq-toast span { font-size: 9px; letter-spacing: 0.22em; color: #b8a060; }
+.hq-toast span:empty { display: none; }
 /* the CODE RED pill on the strip (HQ plan 3.3): strobes with the door lamps; click = the brief */
 .hq-strip-alert { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.22em; color: #ffd2d2; background: rgba(120,10,10,0.75); border: 1px solid #ff4a4a; padding: 4px 9px; cursor: pointer; animation: hqStrobe 0.52s steps(2) infinite; }
 .hq-strip-alert b { color: #fff; font-weight: 600; }
