@@ -129,6 +129,9 @@ function mars() {
     const FX = 12, FY = 12.5, inFace = (x, y) => { const u = (x + 0.5 - FX) / 8.6, v = (y + 0.5 - FY) / 10.2; return u * u + v * v < 1; };
     A.each((x, y) => { if (inFace(x, y)) A.flat(x, y, x, y, TOP, 'm'); });
     A.flat(7, 9, 9, 10, 2.6, 'c'); A.flat(14, 9, 16, 10, 2.6, 'c');               // the eye sockets
+    /* THE TEAR TRACKS (11-22, the soft-lock finder: a socket was a pit 2.65 m deep with no way out): a ramp two squares wide runs up out of
+       each socket's outer corner, down the cheek */
+    A.ramp(7, 11, 8, 13, 's', 2.6, TOP); A.ramp(15, 11, 16, 13, 's', 2.6, TOP);
     A.flat(12, 9, 12, 14, 7, 'm'); A.flat(11, 13, 13, 14, 6.4, 'm');               // the nose
     A.flat(8, 17, 15, 18, 3.5, 'c'); A.ramp(16, 17, 17, 18, 'w', TOP, 3.5); A.flat(18, 17, 18, 18, TOP, 'm');   // the mouth: you walk down into it from its east corner
     A.ramp(21, 11, 25, 12, 'w', 0, TOP);                                             // the way up: the east cheek
@@ -144,7 +147,8 @@ function mars() {
     for (let x = 4; x < 56; x++) { const y0 = cy0(x); A.flat(x, y0, x, y0 + 3, CAN, 'c'); }
     A.ramp(4, cy0(4) - 5, 5, cy0(4) - 1, 'n', CAN, 0); A.ramp(54, cy0(54) + 4, 55, cy0(54) + 8, 's', CAN, 0);
     A.ramp(22, cy0(22) + 4, 23, cy0(22) + 8, 's', CAN, 0);
-    A.flat(46, 21, 46, cy0(46) - 1, CAN, 'c'); A.flat(50, 21, 50, cy0(50) - 1, CAN, 'c'); A.flat(48, cy0(48) + 4, 48, 36, CAN, 'c');
+    /* (11-22: each canal two squares wide, 7 m. One square was a slot 3.5 m wide and 5.25 m deep: no room to move in, and the ball's sampling cut it in two) */
+    A.flat(45, 21, 46, Math.max(cy0(45), cy0(46)) - 1, CAN, 'c'); A.flat(50, 21, 51, Math.max(cy0(50), cy0(51)) - 1, CAN, 'c'); A.flat(48, Math.min(cy0(48), cy0(49)) + 4, 49, 36, CAN, 'c');
     for (let y = 13; y <= 18; y++) A.set(47, y, 48, y, 'r');                          // the Pyramid's stair (a `ramp` row with treads: `stairs` below)
     /* THE ROVER BAY's apron, the dunes, the tracks */
     A.flat(38, 39, 46, 43, 0.35, 'l');
@@ -251,7 +255,7 @@ WORLDS.forEach(w => Object.keys(w.ways).forEach(k => { const q = w.ways[k], f = 
    way round; Saturn: the cloud deck outside the storm walls; the Singularity: the bright rim). Because each square is read from the ball,
    the ground meets itself over every seam with no stitching. The district files keep their own squares (the map's): bake-space.js carries
    every piece, unit, building and door onto the ball with `remap` (where it lands, turned with the ground). The Moon keeps its flat net. */
-const { ROUNDS, rmKit, sampleNet, wayOnNet } = require('./space-ball.js');   // THE ROUND WORLDS' MAP KIT (shared with bake-space.js)
+const { ROUNDS, rmKit, sampleNet, wayOnNet, noPits } = require('./space-ball.js');   // THE ROUND WORLDS' MAP KIT (shared with bake-space.js)
 function roundRemap(w) {
     const o = ROUNDS[w.id]; if (!o) return; const A0 = w.A, K = rmKit(o.fq, o.center, A0.W, A0.H), fq = o.fq;
     const A = world({ cols: 3 * fq / N, rows: 2 * fq / N });
@@ -294,6 +298,8 @@ function roundRemap(w) {
     w.plots = out; w.A = A; w.cols = GX; w.cols0 = A0.W; w.rows0 = A0.H; w.rows = GY; w.round = true; w.remap = { fq, center: o.center, W0: A0.W, H0: A0.H };
 }
 WORLDS.forEach(roundRemap);
+/* NO PITS (2026-11-22): space-ball.js noPits, on the squares the game gets (bake-space.js runs the same pass on the ball it samples itself) */
+WORLDS.forEach(w => noPits({ id: w.id, W: w.A.W, H: w.A.H, cell: w.A.cell, H4: w.A.H4, spawn: w.spawn, ways: w.ways }));
 const i16 = A => { const b = Buffer.alloc(A.W * A.H * 8); for (let y = 0; y < A.H; y++) for (let x = 0; x < A.W; x++) A.H4[y][x].forEach((h, k) => b.writeInt16LE(Math.round(h * 100), (y * A.W + x) * 8 + k * 2)); return b.toString('base64'); };
 const strip = (w, full) => Object.assign({ id: w.id, name: w.name, round: !!w.round, remap: w.remap || null, room: w.room, site: w.site, old: w.old, cols: w.cols, rows: w.rows, districts: w.districts, who: w.who, spawn: w.spawn, marker: w.marker, ways: w.ways, stairs: w.stairs || [], bridges: w.bridges || [], plots: w.plots,
     cells: w.A.cell.map(r => r.join('')) }, full ? { slope: i16(w.A) } : {},

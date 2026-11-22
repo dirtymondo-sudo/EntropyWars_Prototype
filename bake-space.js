@@ -154,7 +154,7 @@ function bakeWorld(R) {
     const STAIR = (R.stairs || []).map(s => { const ns = s.up === 'n' || s.up === 's', xm = r2(-HX + (s.sx0 + s.sx1 + 1) / 2 * C), zm = r2(-HZ + (s.sy0 + s.sy1 + 1) / 2 * C);
         const foot = s.up === 'n' ? gz(s.sy1 + 1) : s.up === 's' ? gz(s.sy0) : s.up === 'w' ? gx(s.sx1 + 1) : gx(s.sx0), head = s.up === 'n' ? gz(s.sy0) : s.up === 's' ? gz(s.sy1 + 1) : s.up === 'w' ? gx(s.sx0) : gx(s.sx1 + 1);
         return ns ? { k: 'ramp', x0: xm, z0: foot, x1: xm, z1: head, w: (s.sx1 - s.sx0 + 1) * C, h0: s.h0, h1: s.h1, stairs: true } : { k: 'ramp', x0: foot, z0: zm, x1: head, z1: zm, w: (s.sy1 - s.sy0 + 1) * C, h0: s.h0, h1: s.h1, stairs: true }; });
-    const BRIDGE = (R.bridges || []).map(b => ({ k: 'bridge', x0: gcx(b.sx0), z0: b.sy0 === b.sy1 ? gcz(b.sy0) : gz(b.sy0), x1: gcx(b.sx1), z1: b.sy0 === b.sy1 ? gcz(b.sy1) : gz(b.sy1 + 1), w: C, y: b.y }));
+    const BRIDGE = (R.bridges || []).map(b => ({ k: 'bridge', x0: gcx(b.sx0), z0: b.sy0 === b.sy1 ? gcz(b.sy0) : gz(b.sy0), x1: gcx(b.sx1), z1: b.sy0 === b.sy1 ? gcz(b.sy1) : gz(b.sy1 + 1), w: C, y: b.y, absY: true }));   // (absY, 11-22: the deck's height is the map's own; without it the Arch stood 5.25 m low, by the canyon's depth under its middle)
     const onStair = (x, y) => (R.stairs || []).some(s => x >= s.sx0 && x <= s.sx1 && y >= s.sy0 && y <= s.sy1);
 
     /* ── THE OPEN GROUND: every square that is not rock, as `space` rows (greedy rectangles) ── */
@@ -214,6 +214,7 @@ function toBall(P0, R) {
     const g = BALL.sampleNet(o, K, { W: P0.W, H: P0.Hh, cell: (x, y) => P0.cell[y][x], h4: (x, y) => P0.H4[y * P0.W + x] }, ch => ch === 'B' ? '.' : ch);
     /* the layout's ground (draw-space.js read the map before the districts built) gives the rock + the ways' cleared fronts; ours gives the rest */
     const cell = g.cell.map((r, y) => r.map((ch, x) => R.cells[y][x] === 'x' ? 'x' : ch === 'x' ? R.cells[y][x] : ch));
+    BALL.noPits({ id: R.id + ' (the ball)', W, H: Hh, cell, H4: g.H4, spawn: R.spawn, ways: R.ways });   // NO PITS (11-22): a trench the sampling cut in two is joined, a lone sunk sample raised straight up
     const H4 = []; g.H4.forEach(r => r.forEach(q => H4.push(q)));
     const h4 = (x, y) => H4[y * W + x], hC = (x, y) => { const q = h4(x, y); return (q[0] + q[1] + q[2] + q[3]) / 4; };
     const open = (x, y) => x >= 0 && y >= 0 && x < W && y < Hh && cell[y][x] !== 'x';
@@ -261,7 +262,7 @@ function toBall(P0, R) {
     const STAIR = (R.stairs || []).map(s => { const ns = s.up === 'n' || s.up === 's', xm = r2(-HX + (s.sx0 + s.sx1 + 1) / 2 * C), zm = r2(-HZ + (s.sy0 + s.sy1 + 1) / 2 * C);
         const foot = s.up === 'n' ? gz(s.sy1 + 1) : s.up === 's' ? gz(s.sy0) : s.up === 'w' ? gx(s.sx1 + 1) : gx(s.sx0), head = s.up === 'n' ? gz(s.sy0) : s.up === 's' ? gz(s.sy1 + 1) : s.up === 'w' ? gx(s.sx0) : gx(s.sx1 + 1);
         return ns ? { k: 'ramp', x0: xm, z0: foot, x1: xm, z1: head, w: (s.sx1 - s.sx0 + 1) * C, h0: s.h0, h1: s.h1, stairs: true } : { k: 'ramp', x0: foot, z0: zm, x1: head, z1: zm, w: (s.sy1 - s.sy0 + 1) * C, h0: s.h0, h1: s.h1, stairs: true }; });
-    const BRIDGE = (R.bridges || []).map(b => ({ k: 'bridge', x0: gcx(b.sx0), z0: b.sy0 === b.sy1 ? gcz(b.sy0) : gz(b.sy0), x1: gcx(b.sx1), z1: b.sy0 === b.sy1 ? gcz(b.sy1) : gz(b.sy1 + 1), w: C, y: b.y }));
+    const BRIDGE = (R.bridges || []).map(b => ({ k: 'bridge', x0: gcx(b.sx0), z0: b.sy0 === b.sy1 ? gcz(b.sy0) : gz(b.sy0), x1: gcx(b.sx1), z1: b.sy0 === b.sy1 ? gcz(b.sy1) : gz(b.sy1 + 1), w: C, y: b.y, absY: true }));   // (absY, 11-22: the deck's height is the map's own; without it the Arch stood 5.25 m low, by the canyon's depth under its middle)
     const onStair = (x, y) => (R.stairs || []).some(s => x >= s.sx0 && x <= s.sx1 && y >= s.sy0 && y <= s.sy1);
     /* the walk from the spawn: every plot, way and unit reached; a plot of the ball no foot reaches is left out (said here) */
     const walk = (x, y) => open(x, y) && cell[y][x] !== 'B', seen = new Uint8Array(W * Hh), SP = R.spawn;
@@ -486,9 +487,11 @@ if (DRY) process.exit(0);
 const END = '        /* SPACE72-END */\n', b0 = src.indexOf('        /* SPACE72-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const a = src.indexOf('        /* ESTATE36-BEGIN'); if (a < 0) throw new Error('anchor (ESTATE36-BEGIN) not found in data.js'); src = src.slice(0, a) + block + src.slice(a); }
-/* the rooms' floor decals: one row a room in DOOR_HQ.decals (written before the Sewers' own row) */
-{ src = src.split('\n').filter(l => l.indexOf('SPACE72-DECALS') < 0).join('\n');
-  const a = src.indexOf('    site_prebuilt_downtown_underworld: ['); if (a < 0 || src.slice(a, src.indexOf('\n', a)).indexOf('SEWERS24-DECALS') < 0) throw new Error('DOOR_HQ.decals anchor (the Sewers\' row) not found');
-  src = src.slice(0, a) + DECALROWS.join('') + src.slice(a); }
+/* the rooms' floor decals: one row a room in DOOR_HQ.decals, in the place of the rows this tool wrote before (11-22: the Sewers' row it stood
+   before is the labyrinth tool's now, with another tag; the anchor is the table's own opening line when there is no row of ours yet) */
+{ const ls = src.split('\n'), at = ls.findIndex(l => l.indexOf('SPACE72-DECALS') >= 0), kept = ls.filter(l => l.indexOf('SPACE72-DECALS') < 0);
+  const head = kept.indexOf('DOOR_HQ.decals = {'); if (head < 0) throw new Error('DOOR_HQ.decals not found');
+  kept.splice(at >= 0 ? at : head + 1, 0, DECALROWS.join('').replace(/\n$/, ''));
+  src = kept.join('\n'); }
 fs.writeFileSync(file, src);
 console.log('data.js: the solar system written (' + block.length + ' bytes)');

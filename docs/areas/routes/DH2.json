@@ -13,11 +13,11 @@
    30.05
   ],
   [
-   -1.0,
+   -1,
    30.6
   ],
   [
-   -1.0,
+   -1,
    33.6
   ],
   [
@@ -64,5 +64,9 @@
    "“I got in.” “How?” “The fence has a gate. It says KEEP OUT. It does not say how.”",
    "“That is the saucer.” “That is a tarp.” “That is what a saucer would say.”"
   ]
+ },
+ "taper": {
+  "ow_h_m1_30": {},
+  "ow_v_2_34": {}
  }
 }

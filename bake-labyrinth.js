@@ -202,7 +202,7 @@ const doors = [], LINKENDS = {};
 const way = (o, x, y, sd) => { const e = wayAt(x, y, sd, o.link || o.id);
     if (o.link) { LINKENDS[o.link] = e; return; }
     const d = { id: o.id, leaf: o.leaf, wide: o.wide !== false, label: o.label, sub: o.sub, action: o.action, desc: o.desc || '', wall: e.wall };
-    ['x', 'z', 'face'].forEach(k => { if (e[k] != null) d[k] = e[k]; }); if (e.wall === 'free') d.passage = { len: 3, deep: 1.2 }; d.y = e.y; if (o.way) d.way = o.way; if (o.minClearance) d.minClearance = o.minClearance; doors.push(d); };
+    ['x', 'z', 'face'].forEach(k => { if (e[k] != null) d[k] = e[k]; }); if (e.wall === 'free') d.passage = { len: 3, deep: -0.9 };   /* deep -0.9 (2026-11-22; was 1.2): a free way stands ON the dead end's rock face, so its passage lies in the rock where nobody can walk: the walker stopped at the wall and never crossed (an invisible wall, the Gantry Tunnel and the Outfall). The crossing is 0.9 m in front of the face now. */ d.y = e.y; if (o.way) d.way = o.way; if (o.minClearance) d.minClearance = o.minClearance; doors.push(d); };
 (PLAN.doors || []).forEach((r, i) => { const o = DES.doors[i]; if (!o) throw new Error('room design: no row for the plan\'s door ' + i + ' (' + r[3] + ')'); way(o, r[0], r[1], r[2]); });
 (DES.ways || []).forEach(o => way(o, o.sq[0], o.sq[1], o.side));
 

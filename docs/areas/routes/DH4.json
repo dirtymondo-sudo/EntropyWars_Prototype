@@ -13,23 +13,23 @@
    28.7
   ],
   [
-   14.0,
+   14,
    28.1
   ],
   [
-   14.0,
+   14,
    25.6
   ],
   [
    13.4,
-   25.0
+   25
   ],
   [
-   13.0,
+   13,
    24.6
   ],
   [
-   13.0,
+   13,
    23.6
   ],
   [
@@ -58,5 +58,9 @@
    "sub": "THE DESERT HIGHWAY · WEST TO THE BIG TOP",
    "desc": "The highway runs west to a circus on the sand."
   }
+ },
+ "taper": {
+  "ow_v_9_23": {},
+  "ow_h_13_29": {}
  }
 }

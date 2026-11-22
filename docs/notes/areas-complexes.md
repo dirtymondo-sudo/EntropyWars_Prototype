@@ -14182,6 +14182,16 @@ own line; the districts' own roads leave their rooms somewhere else).
 - **THE LAST ROW WEARS ITS NEIGHBOUR (`_hqGrassCell`, `_hqFloraCell`):** the ground lattice's outer ring is never painted, so a route whose floor is grass grew a band of grass
   across its own road at the room's line (R9, R8, R10, R11 ends). An unpainted ring node now reads the node one row in, in every room.
 - Checked in the browser, every gate walked both ways (24 walks): the thread's pictures are in `/mnt/project-files/desert-gates/`.
+- **THE HIGHWAY NARROWS BEFORE THE GATE (the same day, mondo on the first pictures: "1 road going straight into the middle of 2 roads??? seriously?"; his pick on the card:
+  "Highway narrows before the gate"):** a highway is two carriageways and a median, a district's gate road is two lanes, so the gate road ran into the median. A route spec
+  (`docs/areas/routes/<id>.json`) may say `taper: { "<end id>": { len, hold } }` (default 10 + 3 squares): from `hold + len` squares before that end the median is asphalt,
+  its yellow lines close to a double line, the white edge lines close in from 3.4 to 1 square off the middle, the lane dashes and guard rails stop and the cars' lines move in;
+  the last `hold` squares are a two-lane road (three squares of asphalt, edge lines 7 m apart), and the seam is as wide as that. bake-route.js `TAPER_AT` / `taperAt` /
+  `taperLine`; ow-raised.js paints a raised highway's ground end only as wide as the road is there (`K.roadHalf`). On: DH1-DH4 both ends, R9's Circus end (`hold 2, len 5`:
+  it has 9 squares of ground after its ramp). `_hqSeamSection` counts a line at the wall as solid from 8 m (was 14: the two-lane stretch is 10.5 m). RULE (my reading of
+  his words): a road that meets another road at a gate has the SAME lanes on both sides; when a highway is raised later its ends keep the taper.
+- **THE ROAD IS GRADED (`_hqEdgeLandFn` LANES):** past the level 10 m the lane's level runs from the gate's floor to the land's own level 90 m out (10 to 70 m), and keeps
+  only a seventh of the land's rise and fall till 70 m, easing out by 200 m and 18 m aside (the Ranch Road and the Coast Road ran over a mound / along a bank). Never over sea.
 
 ## THE SEAM IS THE ROAD — an open seam on a route room's wall is as wide as the road (2026-11-22, mondo: "it only works when i enter through the median")
 mondo 11-22, the Badlands Highway (`site_ow_r9`) into the Circus: "it only works when i enter through the median in the highway, which doesnt make
@@ -14384,6 +14394,105 @@ is a door without a pad reads as a trap. Each row is a place to LOOK AT, then fi
 **THE SEWERS AFTER (11-22):** 0 traps, 0 crevices, 0 slots; 10 dips of 0.85 m, each one node, at the sumps' wall corners (jumped out of).
 Before: every wall of every raised floor, 14 traps, the 35 m strip. Proof: `/mnt/project-files/softlocks/sewers_wall_before_after.jpg`.
 THE REST OF THE WORLD: the list by zone of 11-22 is `/mnt/project-files/softlocks/softlocks_by_zone.md`.
+
+## THE COAST + THE UNDERGROUND, WHERE THE ZONES MEET (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural")
+
+The share of one thread: every way between the Harbour, Katana Island, the Volcano Island, the Triangle, the Cove, the Frozen Sea, the Sea Floor,
+Atlantis, the Sewers, the D.U.M.B., the six Cavern rooms, the Coast Road (R10) and the Delta Causeway (R11), and the city's port side.
+
+- **WHAT WAS WRONG, AND IS FIXED.** The Coast Road's north end was a dirt road that ran off the room's line into open sea; on the city's side the
+  port's concrete causeway (districts/Q.js `dc:coastroad:arch`, 110 m on piles) ended in open water too. Now both rooms show the same thing:
+  from the Coast Road you see the causeway over the bay's mouth and the port's quay at its far end (sheds, container stacks, three cranes:
+  `docs/areas/routes/R10.js`, a route hook, arch row `ow:r10:port` + `ind_container` / `babel_crane` props, nothing new made); from the port the
+  causeway lands on a sand shore and the dirt road runs on. Walked both ways (R10 -> city crossed at z -362.9; city -> R10 from 257.3, 240).
+- **A WAY OVER THE WATER** (three-renderer.js `_hqEdgeLandFn` `wayOn`): an `edges.ways` row may say `spit: <m>` (+ `w`, the road's width,
+  `from: <m>` = the sand begins that far out): where the way leaves across the sea, a wandering bar of sand carries it that far. A room with
+  WRITTEN sides may name ways now (before: only a room that reads the map). The city's row: `ways: [{ side: 's', at: 257.25, spit: 440, w: 110, from: 98 }]`
+  (Q.js exports `edges`; bake-disaster-city.js merges it).
+- **A WRITTEN ROAD ROW TAKES** `lift` (how high it rides over the land; a dirt road 0.12), `tint`, `from` (it begins that far past the line),
+  beside main's bands / lines (`_hqBuildEdgeLand` ROADS). A written row at a seam wins over the seam's own road (PR #2418).
+- **THE ROUTE KIT** (bake-route.js): a spec's `runOn: { '<end id>': { len, spit } }` writes that end's road past the line (`edges.roads`) in the
+  end's own strip sheet, and an end's `passage` in the spec is laid over the door's. R10: `runOn` its south end (to Giza); R11: both west ends.
+  After `node bake-route.js R11` its spawn and plate rows are restored by hand (the bake moves them).
+- **SEEN AND LEFT AS THEY ARE** (the browser, one picture out and one in at every way): the Harbour's pier, quay and jetties; Katana's torii jetty;
+  the Volcano Island's two landings; the Triangle's maelstrom and the Sea Floor's upwelling; the Cove's and the Frozen Sea's moorings; the sub's
+  two stations, the wreck's hatch, the outfall; Atlantis' temple door; every Sewers door; the D.U.M.B.'s tunnel west, gantry tunnel, vault and
+  blast doors, screens; every Cavern tunnel mouth (a dark mouth in the rock, the path's dirt running in, a wooden signpost beside it).
+  A terrain flood from each room's spawn reaches every way's landing in all 18 rooms.
+- **THE LESSON:** never edit a served game script (data.js, three-renderer.js…) while a probe is loading: every picture of that run is the red
+  CODE MISMATCH page. The city crashes the cloud browser as the second room of a run: stop a walk probe at its WALK line.
+- **A MOUTH THAT READ AS PLAIN WALL:** the D.U.M.B.'s Gantry Tunnel to the Sewers (east wall, z 78.75) was a blank concrete wall you walked
+  through. A look-only arch row stands on it now (`dumb:gantry:mouth`: a steel frame, a dark panel, an amber lamp; bake-dumb.js `GANTRY_MOUTH`,
+  laid into data.js by hand, no rebake). WHY the wall's own cut does not show there was NOT found (the shell wall does cut a passage's opening:
+  `_hqPassageSpec` in the walls' cuts; the Cavern rooms' trail mouths show). **STILL OPEN: Agartha's tunnel down to the Long Tunnel** (south wall,
+  x 49, under the inner gate) is the same plain rock wall that you walk through; an arch row tried there did not draw (`base` and `y` both), so it
+  was taken out again. It is walked both ways.
+- **TWO INVISIBLE WALLS, FIXED AND WALKED BOTH WAYS.** (1) The Sewers' Gantry Tunnel (to the D.U.M.B.) and Outfall (to the Sea Floor): bake-labyrinth.js
+  stands a `free` way ON the dead end's rock face with `passage: { len: 3, deep: 1.2 }`, so the crossing lay 1.2 m inside the rock: the walker
+  stopped at the face. Now `deep: -0.9` (a passage's `deep` may be negative: the crossing is that far in FRONT of the door's line). (2) The Sea
+  Floor's outfall pipe (wall w, an open drowned room): the walker is stopped 0.45 m short of the room's line (what stops it was not found) and
+  never reached the trail's 10 m; its row says `passage: { deep: -0.6 }` (bake-deep.js). Any other `free` trail on a rock face from that tool
+  would have the same fault.
+- **KATANA'S EAST LANDING:** a jungle tree stood on the line from the boat's mooring inland; gone (districts/J.js keeps row 29 east of square 78 clear).
+- **NOT DONE / SEEN:** the D.U.M.B.'s freight-line vault door and blast door to the Cavern were not seen straight on (the probe's camera was
+  pushed into a wall; their prompts work); the Frozen Sea's trail to the North Pole shows the far land as white cliffs with flat green flanks
+  (the edge land's far look, not changed); the Harbour's west side shows a sea wall and pastel houses where the city's coast is sand; the port
+  seen from the Coast Road is dim in the air haze. Giza's own ends and the Line's west end are the Desert / Leylines holders' (PR #2418 covers Giza's).
+
+### THE ZONE PASS: OUTER SPACE, THE SKI MOUNTAIN, BUG COLONY, KATANA, THE TEMPLE (2026-11-22, thread "Remove trap spots in space, mountain and bug rooms")
+All twelve rooms these tools write read 0 traps, 0 crevices after it. What each one was, and the rule it leaves behind:
+- **BUG COLONY, THE GIANT TREE** (`districts/B.js`): four pits between the trunk, a root shelf and a stair (you dropped in off a shelf). The trunk's
+  GROUND is 0.9 m wider than its bark (`TRUNK + 0.9`): no sliver is left. `bake-route.js L14` does not reproduce main today (the places table moved on
+  without a bake: 100 rows of props and the spawn would change), so the trunk's one row was ALSO written by hand in data.js; the next real L14 bake
+  writes the same row.
+- **BUG COLONY, THE HIVE** (`districts/B.js` insides): the door's own wall square was a wax block to the roof, and the door's pad stood ON it: you
+  came in 10 m up, fell into the Door chamber and could not reach the door again (the whole room read as one trap). The mouth is cut through the
+  east wall (`x < W`). A `blocks: true` inside: the door's square AND the wall square behind it are floor.
+- **OUTER SPACE = MARS + the Singularity** (the Moon's room holds all four worlds):
+  - THE FACE'S EYE SOCKETS (draw-space.js mars()): 2.65 m pits. Each has a ramp two squares wide out of its outer corner now (the tear tracks).
+  - THE ARCH (bake-space.js): a `bridge` row's `y` gets the ground under its MIDDLE added (data.js `_hqTSlopeFeatures`); the Arch's middle is over the
+    canyon, so the deck stood 5.25 m low, a wall across the strip under it and a crevice at each end. Its rows wear `absY: true`. ANY tool that
+    writes a `bridge` / `deck` / `wall y` over a `slope.cells` sheet: absolute heights need `absY`.
+  - THE CANALS: one square wide and 5.25 m deep; the ball's sampling cut one in two (a diagonal step). Two squares wide now.
+  - NO PITS (`docs/plans/world-zones/space-ball.js` noPits, run by draw-space.js on the layout and by bake-space.js on the ball it samples itself): a
+    pit that touches walked ground of its level corner to corner is joined, any other pit is raised straight up to its rim, a lone sunk corner (one
+    sample of a hollow carried alone: the Singularity had one 6.3 m deep) takes the lowest corner round it. It prints what it did.
+  - THE ROUND SEAMS (data.js `_hqTRoundStitch`): the feather pushed a sample PAST the seam's new height (a mesa's edge on a cut seam dug a 1.4 m pit
+    beside it). A feathered sample now stays between its own height and the seam's.
+  - bake-space.js's decals anchor was the Sewers' old row tag (gone since the labyrinth): the tool stopped. It writes its rows in place now.
+- **THE SKI MOUNTAIN**: (1) OLYMPUS' STADIUM SEATS (`districts/O.js`): a ghost block a square stood 0.15 m off the trees behind it, with a sliver of
+  the slope up to 2.7 m under the top tier. A ghost wall 3.4 m high stands in the sliver (`back`). (2) THE FIRE LOOKOUT (`districts/S.js`): the one
+  square between its west wall and the trees was a bank 3.4 m high down to the trees' foot. It is level with the building: `flats` rows take a
+  sixth entry `like = [dx, dy]` (bake-mountains.js heightsOf: read the level THERE, from the row's own corner).
+- **KATANA ISLAND** (`districts/V.js`): a `pool` is level, so on the cone's foot it cut a bank 2.9 m into the slope at the lava's edge. The four lava
+  pools lie on the Lava Field's level ground, clear of the ways (one lay half over the Mountain Road); the file throws if a pool lies on a way.
+- **THE TEMPLE** (`clash_temple`, handmade): the wedge of ground between three cliffs (6.5 to 10 m) is a `plateau` at the ledge's height.
+- **LEFT (second priority, each walked or jumped out of):** the Ski Mountain 5 dips (two rows of 1.2 m at z -59.6) + 10 slots, Katana 1 dip + 15
+  slots (the terraces' foot strips, one node wide under 5 to 10 m faces, up to 31 m long), the Temple 9 slots, Outer Space 3 dips + 2 slots.
+
+**CAME A LOT AFTER (11-22, the Came A Lot soft-lock thread):** the kingdom room 6 traps + 8 crevices -> 0 + 0; the castle room 7 traps -> 0 (52 / 52 stops
+still walked, every door reached). What made them, and what binds every room:
+- **A CROWN THE JUMP CLEARS IS NO CROWN.** `hqCastleTower`'s battlement stands `crown` (default 1.2 m) over its deck; the walker's jump is 1.3 m in the
+  solver and 1.46 m at the real apex. On the town wall's four corner towers the walker hopped onto the merlons and dropped outside into the corner of the
+  berm, shut in between the drum and the moat. `bake-camelot.js` `TCROWN = 1.6`. A parapet at a drop with no way back stands 1.6 m or more.
+- **A DRUM HALF ON A HILL WEIGHS AS A ROUND BLOCK.** The two drums beside the Grand Stair were `solid` texbuildings (four ghost walls + a roof slab at the
+  lowest ground under them): over the hill's edge the roof slab did not hold and the walker fell through the top into the drum. `districts/K.js` `drum(…, round)`
+  writes `hqRoundBlock(...)` rows with `ghost: true` (walked, unseen: the sheet draws the drum). A `solid` texbuilding stands on LEVEL ground only.
+- **THREE RULES OF THE ENGINE (data.js, every room):**
+  (1) `hqTerrainWallAt`: A WALL UNDER THE BODY NEVER HIDES ONE IN IT. The first wall in reach was the answer; a parapet hung on a roof's edge on the line of
+  the wall under it was never seen (the walker stepped onto the line and off the roof, 21 m off a wing, 35 m off the Keep). A wall wholly under the body's
+  band is the answer only when no other wall in reach meets the band.
+  (2) `hqTerrainFeet`: ON A WALL'S TOP, NEVER IN THE WALL THAT STANDS ON IT. From a stair head just under a lower wall's top the walker was set on that top,
+  inside the storey's wall above it, and walked through (out of the castle by the cellar stairs' heads).
+  (3) `_hqTNodeFeet` (the SOLVER's jump, what `find-softlocks.js` and the rescue read): the jump lands UP ONLY and only where a body fits (`hqTerrainAir`).
+  It took the free query's lowest surface: floors down a sealed shaft through every slab, or the top of the wall under a parapet. Those traps were never reachable.
+- **The castle tool** (`bake-camelot-castle.js`): a parapet is WALKED 2.05 m (the merlons' tops) and drawn 1.15 m (`par()`); the wings' south doorways are walked
+  shut (the way out is the leaf half a metre inside; past the doorway is the room's unbuilt strip); the natives' lines are read from the room's own rows in
+  data.js now that the old keep and dungeon rooms are deleted (the tool had stopped running).
+- A FINDER LIMIT that rule (2) uncovered: on a coarse grid (1.75 m) a walk-in house's doorway falls between two nodes, so the finder does not read the
+  house's inside (before, it got in by stepping on furniture through the wall, which the walker could do too: that clip is gone). Checked on all 151
+  rooms before and after: no room gained a trap, a crevice or a dip; what the solver no longer reaches is wall lines, parapet tops and such insides.
+- Left: 3 SLOTs in the kingdom room, the back lane one square wide between the town wall's foot and the houses, open at both ends.
 
 **THE UNDERGROUND AFTER (11-22, the five labyrinth rooms: West Tunnel, Long Tunnel, Hollow Earth, the Cavern, Agartha):** all five read
 0 traps, 0 crevices, 0 dips, 0 slots (before: 29 traps, 6 crevices, 21 dips). Three tools, the same three causes, all at a SUMP:
