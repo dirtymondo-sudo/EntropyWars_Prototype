@@ -1341,7 +1341,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | psx_wooden_crate_6 | `Assets/world/packs/pizzadoggy_psx_mega_pack/large_props/wooden_crate_6.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | vent_grille | `Assets/world/packs/pizzadoggy_psx_mega_pack/electronics_and_misc/vent_1.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 
-### Meshy AI (mondo) — Meshy AI (300)
+### Meshy AI (mondo) — Meshy AI (301)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
@@ -1398,6 +1398,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | dockring | `Assets/world/props/meshy/Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | door_gun | `Assets/world/props/meshy/Meshy_AI__0916054803_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | drain_grate | `Assets/world/props/meshy/Meshy_AI_a_storm_drain_grate_0916235918_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| drain_grate_floor | `Assets/world/props/meshy/Meshy_AI_a_storm_drain_grate_0916235918_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | earth | `Assets/world/props/meshy/Meshy_AI_planet_earth_realist_0727195349_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | escalator | `Assets/world/props/meshy/Meshy_AI_an_escalator_0917064623_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | escapepod | `Assets/world/props/meshy/Meshy_AI_an_escape_pod_0912231249_texture.glb` | Meshy AI | Meshy AI (mondo) |

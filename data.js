@@ -1722,7 +1722,7 @@ const TERRAIN_RULES = {
     /* ☢ RADIOACTIVE SLUDGE (2026-11-16, mondo on the Sewers' radioactive district: "make it a new liquid that does corrosion
        (I think that's poison and burned combined? that's close to radiation)"): a liquid of its own in the poison family.
        It first gave Corroded; since the radioactive status below it gives RADIOACTIVE. Flyers are spared (map.js
-       applyTerrainTurnEffects skips anyone airborne). In a walked room it is a liquid nobody enters (any liquid but water: hqTerrainWalkable).
+       applyTerrainTurnEffects skips anyone airborne). In a walked room it is WADED like water, at any depth (hqTerrainWades, 2026-11-22; before: a liquid nobody entered).
        Look: sprites.js TERRAIN_SPRITES.sludge + three-renderer.js _LIQUID_STYLES.sludge. */
     /* ☢ THE RADIOACTIVE STATUS (2026-11-16, mondo picked "Radiation: its own status", named it "radioactive", and ruled it is NOT
        Poison: "it needs its own bonus spells"): the sludge gives RADIOACTIVE, not Corroded. Each turn ended in it adds one stack
@@ -32116,6 +32116,7 @@ const DOOR_HQ = {
         t_pillar:          { proc: 't_pillar',      h: 4.6,  foot: 0.6, block: true },
         cave_stone:        { file: 'Meshy_AI_a_standing_stone_0916235906_texture.glb',             base: 'misc', span: 0.9, foot: 0.35, block: true },   // the same stone, knee-high: the cave's rubble
         drain_grate:       { file: 'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',          base: 'misc', span: 1.2, foot: 0, mount: 0.4 },
+        drain_grate_floor: { file: 'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',          base: 'misc', span: 1.2, foot: 0, lay: true },   // the same grate LYING in a floor (the file stands on edge: a wall grate). 2026-11-22, mondo in the Sewers: "there are grates standing up right"
         stump:             { file: 'ebd_vegetation_stump.glb',                      base: 'misc', h: 0.6, foot: 0.4, block: true },
         hollow_tree:       { file: 'tree_rt_2_1.glb', base: 'rt', h: 6.0, foot: 0.7, block: true, rot: 0 },
         /* 2026-09-17 THE VATICAN BATCH (twenty-four Meshy props the user uploaded to Assets/misc/ — MODEL_INDEX §3g): the
@@ -70243,15 +70244,15 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                {key:'culvert_mouth',x:-5.25,z:-115.2,face:180,noBlock:true,scale:0.75}, {key:'drain_grate',x:-5.25,z:-106.75,face:0,noBlock:true}, {key:'drain_grate',x:131.25,z:-110.25,face:0,noBlock:true}, {key:'drain_grate',x:141.75,z:-110.25,face:0,noBlock:true},
-                {key:'drain_grate',x:148.75,z:-99.75,face:0,noBlock:true}, {key:'drain_grate',x:5.25,z:-103.25,face:0,noBlock:true}, {key:'drain_grate',x:12.25,z:-103.25,face:0,noBlock:true}, {key:'culvert_mouth',x:98.3,z:-103.25,face:90,noBlock:true,scale:0.75},
-                {key:'drain_grate',x:117.25,z:-103.25,face:0,noBlock:true}, {key:'drain_grate',x:99.75,z:-96.25,face:0,noBlock:true}, {key:'drain_grate',x:99.75,z:-85.75,face:0,noBlock:true}, {key:'drain_grate',x:141.75,z:-82.25,face:0,noBlock:true},
-                {key:'drain_grate',x:141.75,z:-68.25,face:0,noBlock:true}, {key:'culvert_mouth',x:-19.25,z:-69.7,face:180,noBlock:true,scale:0.75}, {key:'drain_grate',x:-19.25,z:-57.75,face:0,noBlock:true}, {key:'drain_grate',x:5.25,z:-68.25,face:0,noBlock:true},
-                {key:'drain_grate',x:15.75,z:-68.25,face:0,noBlock:true}, {key:'drain_grate',x:22.75,z:-68.25,face:0,noBlock:true}, {key:'drain_grate',x:40.25,z:-68.25,face:270,noBlock:true}, {key:'culvert_mouth',x:57.75,z:-69.7,face:180,noBlock:true,scale:0.75},
-                {key:'drain_grate',x:57.75,z:-57.75,face:0,noBlock:true}, {key:'drain_grate',x:71.75,z:-68.25,face:0,noBlock:true}, {key:'drain_grate',x:82.25,z:-68.25,face:270,noBlock:true}, {key:'culvert_mouth',x:99.75,z:-69.7,face:180,noBlock:true,scale:0.75},
-                {key:'drain_grate',x:99.75,z:-57.75,face:0,noBlock:true}, {key:'culvert_mouth',x:148.75,z:-69.7,face:180,noBlock:true,scale:0.75}, {key:'drain_grate',x:148.75,z:-47.25,face:0,noBlock:true}, {key:'culvert_mouth',x:-12.25,z:-62.7,face:180,noBlock:true,scale:0.75},
-                {key:'drain_grate',x:-12.25,z:-57.75,face:0,noBlock:true}, {key:'drain_grate',x:22.75,z:-61.25,face:0,noBlock:true}, {key:'drain_grate',x:22.75,z:-43.75,face:0,noBlock:true}, {key:'drain_grate',x:47.25,z:-61.25,face:0,noBlock:true},
-                {key:'drain_grate',x:89.25,z:-61.25,face:0,noBlock:true}, {key:'cage_lamp',x:-8.75,z:-118.8,ceil:true,y:48.2,face:180,noBlock:true}, {key:'cage_lamp',x:68.25,z:-118.8,ceil:true,y:42.95,face:180,noBlock:true}, {key:'cage_lamp',x:145.25,z:-118.8,ceil:true,y:32.45,face:180,noBlock:true},
+                {key:'culvert_mouth',x:-5.25,z:-115.2,face:180,noBlock:true,scale:0.75}, {key:'drain_grate_floor',x:-5.25,z:-106.15,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:130.65,z:-110.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:142.35,z:-110.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true},
+                {key:'drain_grate_floor',x:148.75,z:-99.15,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:4.65,z:-103.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:12.85,z:-103.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'culvert_mouth',x:98.3,z:-103.25,face:90,noBlock:true,scale:0.75},
+                {key:'drain_grate_floor',x:117.85,z:-103.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:99.75,z:-96.85,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:99.75,z:-85.15,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:141.75,z:-82.85,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true},
+                {key:'drain_grate_floor',x:141.75,z:-67.65,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'culvert_mouth',x:-19.25,z:-69.7,face:180,noBlock:true,scale:0.75}, {key:'drain_grate_floor',x:-19.25,z:-57.15,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:4.65,z:-68.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true},
+                {key:'drain_grate_floor',x:16.35,z:-68.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:22.15,z:-68.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:40.85,z:-68.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'culvert_mouth',x:57.75,z:-69.7,face:180,noBlock:true,scale:0.75},
+                {key:'drain_grate_floor',x:57.75,z:-57.15,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:71.15,z:-68.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:82.85,z:-68.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'culvert_mouth',x:99.75,z:-69.7,face:180,noBlock:true,scale:0.75},
+                {key:'drain_grate_floor',x:99.75,z:-57.15,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'culvert_mouth',x:148.75,z:-69.7,face:180,noBlock:true,scale:0.75}, {key:'drain_grate_floor',x:148.75,z:-46.65,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'culvert_mouth',x:-12.25,z:-62.7,face:180,noBlock:true,scale:0.75},
+                {key:'drain_grate_floor',x:-12.25,z:-57.15,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:22.75,z:-61.85,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:22.75,z:-43.15,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:46.65,z:-61.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true},
+                {key:'drain_grate_floor',x:88.65,z:-61.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'cage_lamp',x:-8.75,z:-118.8,ceil:true,y:48.2,face:180,noBlock:true}, {key:'cage_lamp',x:68.25,z:-118.8,ceil:true,y:42.95,face:180,noBlock:true}, {key:'cage_lamp',x:145.25,z:-118.8,ceil:true,y:32.45,face:180,noBlock:true},
                 {key:'cage_lamp',x:49.2,z:-113.75,ceil:true,y:42.95,face:90,noBlock:true}, {key:'rat',x:49.65,z:-113.05,face:227,noBlock:true}, {key:'cage_lamp',x:110.25,z:-111.8,ceil:true,y:37.7,face:180,noBlock:true}, {key:'cage_lamp',x:14.2,z:-106.75,ceil:true,y:46.45,face:90,noBlock:true},
                 {key:'cage_lamp',x:92.75,z:-105.2,ceil:true,y:37.7,face:0,noBlock:true}, {key:'cage_lamp',x:131.25,z:-105.2,ceil:true,y:35.95,face:0,noBlock:true}, {key:'rat',x:131.95,z:-105.65,face:230,noBlock:true}, {key:'cage_lamp',x:36.75,z:-104.8,ceil:true,y:46.45,face:180,noBlock:true},
                 {key:'cage_lamp',x:113.75,z:-104.8,ceil:true,y:37.7,face:180,noBlock:true}, {key:'cage_lamp',x:153.8,z:-103.25,ceil:true,y:35.95,face:270,noBlock:true}, {key:'cage_lamp',x:40.25,z:-94.7,ceil:true,y:46.45,face:0,noBlock:true}, {key:'rat',x:40.95,z:-95.15,face:321,noBlock:true},
@@ -70263,24 +70264,24 @@ const DOOR_HQ = {
                 {key:'cage_lamp',x:40.25,z:-56.2,ceil:true,y:37.7,face:0,noBlock:true}, {key:'cage_lamp',x:77.2,z:-57.75,ceil:true,y:41.2,face:90,noBlock:true}, {key:'cage_lamp',x:21.2,z:-54.25,ceil:true,y:37.7,face:90,noBlock:true}, {key:'cage_lamp',x:27.8,z:-47.25,ceil:true,y:37.7,face:270,noBlock:true},
                 {key:'rat',x:27.35,z:-46.55,face:87,noBlock:true}, {key:'cage_lamp',x:103.25,z:-48.8,ceil:true,y:39.45,face:180,noBlock:true}, {key:'cage_lamp',x:-14.2,z:-15.75,ceil:true,y:44.7,face:270,noBlock:true}, {key:'psx_metal_barrel_mp_2',x:26.13,z:-109.82,face:203,noBlock:true},
                 {key:'psx_metal_barrel_mp_2',x:120.38,z:-109.77,face:55,noBlock:true}, {key:'rat',x:124.72,z:-99.21,face:265,noBlock:true}, {key:'psx_metal_barrel_mp_2',x:22.55,z:-92.88,face:337,noBlock:true}, {key:'rat',x:-29.03,z:-85.35,face:26,noBlock:true},
-                {key:'psx_metal_barrel_mp_2',x:18.45,z:-75.83,face:53,noBlock:true}, {key:'floor_stain',x:23,z:-75.14,face:283,noBlock:true}, {key:'psx_metal_barrel_mp_2',x:-32.49,z:-64.32,face:167,noBlock:true}, {key:'psx_cobweb_1',x:134.2,z:-60.46,face:332,noBlock:true},
-                {key:'psx_metal_barrel_mp_2',x:15.74,z:-57.2,face:196,noBlock:true}, {key:'psx_metal_barrel_mp_2',x:78.39,z:-57.97,face:7,noBlock:true}, {key:'psx_metal_barrel_mp_2',x:141.58,z:-57.95,face:88,noBlock:true}, {key:'psx_cobweb_1',x:-26.21,z:-44.29,face:30,noBlock:true},
-                {key:'psx_cobweb_1',x:68.09,z:-44.51,face:201,noBlock:true}, {key:'manhole_ladder',x:-33.25,z:-118.5,face:180,noBlock:true}, {key:'light_shaft',x:-33.25,z:-117.85,noBlock:true,y:45.5,scale:1}, {key:'centrifugal_pump',x:-12.25,z:-113.75,face:270},
+                {key:'psx_metal_barrel_mp_2',x:18.45,z:-75.83,face:53,noBlock:true}, {key:'floor_stain',x:23,z:-75.14,face:283,noBlock:true}, {key:'psx_metal_barrel_mp_2',x:-32.49,z:-64.32,face:167,noBlock:true}, {key:'psx_cobweb_1',x:133.5,z:-60,face:135,y:31.65,noSeat:true,noBlock:true},
+                {key:'psx_metal_barrel_mp_2',x:15.74,z:-57.2,face:196,noBlock:true}, {key:'psx_metal_barrel_mp_2',x:78.39,z:-57.97,face:7,noBlock:true}, {key:'psx_metal_barrel_mp_2',x:141.58,z:-57.95,face:88,noBlock:true}, {key:'psx_cobweb_1',x:-27.5,z:-42.5,face:135,y:45.65,noSeat:true,noBlock:true},
+                {key:'psx_cobweb_1',x:69.5,z:-42.5,face:45,y:40.4,noSeat:true,noBlock:true}, {key:'manhole_ladder',x:-33.25,z:-118.5,face:180,noBlock:true}, {key:'light_shaft',x:-33.25,z:-117.85,noBlock:true,y:45.5,scale:1}, {key:'centrifugal_pump',x:-12.25,z:-113.75,face:270},
                 {key:'centrifugal_pump',x:-12.25,z:-103.25,face:270}, {key:'gauge_board',x:-8.75,z:-96.25,face:270}, {key:'valve_wheel',x:-29.75,z:-92.75,face:0}, {key:'gate_valve',x:-19.25,z:-92.75,face:0},
                 {key:'boiler',x:-8.75,z:-106.75,face:270}, {key:'wet_floor_sign',x:-26,z:-103.51,face:87,noBlock:true}, {key:'psx_metal_barrel_mp_1',x:-33,z:-96.34,face:29,noBlock:true}, {key:'traffic_barrel',x:-32.74,z:-99.08,face:311,noBlock:true},
                 {key:'rat',x:-16.52,z:-106.85,face:291,noBlock:true}, {key:'bare_bulb',x:-22.75,z:-106.75,ceil:true,y:49.35,noBlock:true}, {key:'psx_pipe_valve_holder_large_1',x:54.25,z:-113.75,face:90}, {key:'valve_wheel',x:71.75,z:-113.75,face:270},
                 {key:'pd_lever',x:50.75,z:-96.25,face:90}, {key:'psx_wooden_crate_2',x:76.03,z:-96.88,face:186,noBlock:true}, {key:'psx_old_mattress_mp_1',x:54.55,z:-93.08,face:58,noBlock:true}, {key:'skull',x:57.61,z:-92.96,face:267,noBlock:true},
                 {key:'rat',x:67.99,z:-99.23,face:246,noBlock:true}, {key:'bare_bulb',x:61.25,z:-103.25,ceil:true,y:44.1,noBlock:true}, {key:'centrifugal_pump',x:22.75,z:-110.25,face:180}, {key:'wooden_bucket',x:26.15,z:-99.98,face:262,noBlock:true},
                 {key:'mop',x:15.1,z:-100.39,face:158,noBlock:true}, {key:'bare_bulb',x:19.25,z:-106.75,ceil:true,y:47.6,noBlock:true}, {key:'air_compressor',x:15.75,z:-57.75,face:0}, {key:'psx_metal_barrel_mp_2',x:26.12,z:-57.94,face:259,noBlock:true},
-                {key:'rat',x:23.54,z:-64.23,face:213,noBlock:true}, {key:'psx_cobweb_1',x:-21.95,z:-64.97,face:108,noBlock:true}, {key:'tire_stack',x:-15.44,z:-57.72,face:91,noBlock:true}, {key:'psx_brick_1',x:-26.48,z:-26.06,face:262,noBlock:true},
+                {key:'rat',x:23.54,z:-64.23,face:213,noBlock:true}, {key:'psx_cobweb_1',x:-27.94,z:-68.25,face:90,y:45.65,noSeat:true,noBlock:true}, {key:'tire_stack',x:-15.44,z:-57.72,face:91,noBlock:true}, {key:'psx_brick_1',x:-26.48,z:-26.06,face:262,noBlock:true},
                 {key:'psx_brick_1_2',x:-22.62,z:-23.2,face:253,noBlock:true}, {key:'skull',x:-19.72,z:-18.5,face:32,noBlock:true}, {key:'utility_box',x:-15.75,z:-68.25,face:270}, {key:'psx_metal_barrel_mp_1',x:110.53,z:-106.35,face:17,noBlock:true},
-                {key:'traffic_barrel',x:148.81,z:-106.5,face:104,noBlock:true}, {key:'psx_cobweb_2',x:151.89,z:-64.99,face:332,noBlock:true}, {key:'mushroom2',x:141.96,z:-62.01,face:276,noBlock:true}, {key:'woods_glowcap',x:144.91,z:-57.6,face:20,noBlock:true},
-                {key:'psx_old_mattress_mp_1',x:102.52,z:-64.88,face:358,noBlock:true}, {key:'railway_lantern',x:107.05,z:-61.12,face:163,noBlock:true}, {key:'culvert_mouth',x:106.75,z:-27.7,face:180,noBlock:true,scale:0.75}, {key:'drain_grate',x:106.75,z:-5.25,face:0,noBlock:true},
-                {key:'culvert_mouth',x:141.75,z:-27.7,face:180,noBlock:true,scale:0.75}, {key:'drain_grate',x:141.75,z:-19.25,face:0,noBlock:true}, {key:'drain_grate',x:113.75,z:-19.25,face:0,noBlock:true}, {key:'drain_grate',x:120.75,z:-19.25,face:0,noBlock:true},
-                {key:'drain_grate',x:131.25,z:-19.25,face:0,noBlock:true}, {key:'drain_grate',x:113.75,z:15.75,face:0,noBlock:true}, {key:'drain_grate',x:124.25,z:15.75,face:270,noBlock:true}, {key:'culvert_mouth',x:106.75,z:56.3,face:180,noBlock:true,scale:0.75},
-                {key:'drain_grate',x:106.75,z:68.25,face:0,noBlock:true}, {key:'culvert_mouth',x:147.3,z:78.75,face:90,noBlock:true,scale:0.75}, {key:'drain_grate',x:155.75,z:78.75,face:270,noBlock:true}, {key:'drain_grate',x:148.75,z:85.75,face:0,noBlock:true},
-                {key:'culvert_mouth',x:141.75,z:98.3,face:180,noBlock:true,scale:0.75}, {key:'drain_grate',x:141.75,z:106.75,face:0,noBlock:true}, {key:'drain_grate',x:113.75,z:106.75,face:0,noBlock:true}, {key:'drain_grate',x:120.75,z:106.75,face:0,noBlock:true},
-                {key:'drain_grate',x:131.25,z:106.75,face:0,noBlock:true}, {key:'cage_lamp',x:104.8,z:-36.75,ceil:true,y:30.7,face:270,noBlock:true}, {key:'cage_lamp',x:147.2,z:-29.75,ceil:true,y:34.2,face:90,noBlock:true}, {key:'cage_lamp',x:138.25,z:-20.8,ceil:true,y:34.2,face:180,noBlock:true},
+                {key:'traffic_barrel',x:148.81,z:-106.5,face:104,noBlock:true}, {key:'psx_cobweb_2',x:153.94,z:-64.75,face:90,y:35.15,noSeat:true,noBlock:true}, {key:'mushroom2',x:141.96,z:-62.01,face:276,noBlock:true}, {key:'woods_glowcap',x:144.91,z:-57.6,face:20,noBlock:true},
+                {key:'psx_old_mattress_mp_1',x:102.52,z:-64.88,face:358,noBlock:true}, {key:'railway_lantern',x:107.05,z:-61.12,face:163,noBlock:true}, {key:'culvert_mouth',x:106.75,z:-27.7,face:180,noBlock:true,scale:0.75}, {key:'drain_grate_floor',x:106.75,z:-4.65,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true},
+                {key:'culvert_mouth',x:141.75,z:-27.7,face:180,noBlock:true,scale:0.75}, {key:'drain_grate_floor',x:141.75,z:-18.65,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:113.15,z:-19.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:121.35,z:-19.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true},
+                {key:'drain_grate_floor',x:130.65,z:-19.25,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:113.15,z:15.75,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:124.85,z:15.75,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'culvert_mouth',x:106.75,z:56.3,face:180,noBlock:true,scale:0.75},
+                {key:'drain_grate_floor',x:106.75,z:68.85,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'culvert_mouth',x:147.3,z:78.75,face:90,noBlock:true,scale:0.75}, {key:'drain_grate_floor',x:156.35,z:78.75,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:148.75,z:85.15,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true},
+                {key:'culvert_mouth',x:141.75,z:98.3,face:180,noBlock:true,scale:0.75}, {key:'drain_grate_floor',x:141.75,z:107.35,face:0,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:113.15,z:106.75,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'drain_grate_floor',x:121.35,z:106.75,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true},
+                {key:'drain_grate_floor',x:130.65,z:106.75,face:90,span:2.2,y:0.24,noSeat:true,noBlock:true}, {key:'cage_lamp',x:104.8,z:-36.75,ceil:true,y:30.7,face:270,noBlock:true}, {key:'cage_lamp',x:147.2,z:-29.75,ceil:true,y:34.2,face:90,noBlock:true}, {key:'cage_lamp',x:138.25,z:-20.8,ceil:true,y:34.2,face:180,noBlock:true},
                 {key:'cage_lamp',x:113.75,z:-14.2,ceil:true,y:30.7,face:0,noBlock:true}, {key:'rat',x:114.45,z:-14.65,face:61,noBlock:true}, {key:'cage_lamp',x:111.8,z:-1.75,ceil:true,y:30.7,face:270,noBlock:true}, {key:'cage_lamp',x:105.2,z:12.25,ceil:true,y:28.95,face:90,noBlock:true},
                 {key:'cage_lamp',x:113.75,z:14.2,ceil:true,y:28.95,face:180,noBlock:true}, {key:'cage_lamp',x:96.25,z:24.3,ceil:true,y:25.45,face:0,noBlock:true}, {key:'rat',x:96.95,z:23.85,face:87,noBlock:true}, {key:'cage_lamp',x:160.8,z:22.75,ceil:true,y:27.2,face:270,noBlock:true},
                 {key:'cage_lamp',x:157.3,z:36.75,ceil:true,y:27.2,face:270,noBlock:true}, {key:'cage_lamp',x:160.8,z:54.25,ceil:true,y:25.45,face:270,noBlock:true}, {key:'cage_lamp',x:133.2,z:57.75,ceil:true,y:25.45,face:90,noBlock:true}, {key:'rat',x:133.65,z:58.45,face:334,noBlock:true},
@@ -95147,6 +95148,20 @@ function _hqTOutside(info, x, z) {
     const c = info.cut, lw = c ? c.hw - 0.3 : info.halfW - 0.5, ld = c ? c.hd - 0.3 : info.halfD - 0.5;
     return Math.abs(x) > lw || Math.abs(z) > ld;
 }
+/* THE WADED LIQUIDS (2026-11-22, mondo in the Sewers: "i cant walk in the green liquid, its glitches and puts me back on the ground"): the
+   walker wades water (to `wadeMax`) and THE RADIOACTIVE SLUDGE (any depth: the feet ride the wade line under its sheet). Every other liquid
+   (lava, the bogs, deep water) stays a liquid nobody enters. One rule for the feet, the air and the fall's landing (three-renderer.js). */
+function hqTerrainWades(key) { return key === 'water' || key === 'sludge'; }
+/* OUT OF A DEEP SUMP: a sump's sides are sheer (the slope rule refuses them), and the sludge is waded at any depth, so a walker in a sump
+   of it could never walk out again. A body riding the sludge's wade line beside the brim hauls itself out: the brim is taken as a step,
+   up to `haul` over the feet. Only from the sludge's wade line, only where the sludge is within half a metre. */
+function hqTerrainHaulOut(info, x, z, y, curY) {
+    const R = info.rules;
+    for (const q of [[0, 0], [0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]]) { const f = hqTerrainFluidAt(info, x + q[0], z + q[1]);
+        if (f && !f.sea && f.key !== 'water' && hqTerrainWades(f.key) && curY > f.y - R.wade - 0.15 && y - (f.y - R.wade) <= 1.9) return true; }
+    return false;
+}
+
 function hqTerrainFeet(info, x, z, curY) {
     const R = info.rules;
     if (_hqTOutside(info, x, z)) return null;
@@ -95179,13 +95194,13 @@ function hqTerrainFeet(info, x, z, curY) {
         if (f && g < f.y - 0.05) {
             if (f.sea) { y = (f.y - g > R.wadeMax) ? f.y - R.swimDraft : Math.max(g, f.y - R.wade); }   // THE DEEP: the open sea — a wade, else AFLOAT at the surface less the draft
             else {
-                if (f.key !== 'water') return null;
-                if (f.y - g > R.wadeMax) return null;
+                if (!hqTerrainWades(f.key)) return null;
+                if (f.key === 'water' && f.y - g > R.wadeMax) return null;   // (the sludge is waded at any depth: thick, it carries the body at the wade line)
                 y = Math.max(g, f.y - R.wade);
             }
         }
     }
-    if (curY != null && y > curY + 0.02 && !w) { if (hqTerrainSlope(info, x, z) > R.maxSlope) return null; }
+    if (curY != null && y > curY + 0.02 && !w) { if (hqTerrainSlope(info, x, z) > R.maxSlope && !hqTerrainHaulOut(info, x, z, y, curY)) return null; }
     /* THE BRIDGE LAYER: the ground under a slab is walked only while the slab leaves the body its headroom */
     if (info.bridges && info.bridges.length) for (const b of hqTerrainBridgesAt(info, x, z, R.bodyR)) if (b.y - y > R.climb + 0.05 && b.y - b.thick - y < R.headroom) return null;   // (a slab within a climb of the ground is its mouth on a tier — stepped onto, never a wall)
     return y;
@@ -95199,7 +95214,7 @@ function hqTerrainAir(info, x, z, y) {
     const w = hqTerrainWallAt(info, x, z, info.rules.bodyR, y, y + info.rules.headroom); if (w && y < w.top - 0.05) return false;
     if (info.bridges && info.bridges.length) { const sb = hqTerrainInBridgeSlab(info, x, z, y, 0.05); if (sb && y < sb.y - 0.05) return false; }   // THE BRIDGE LAYER: the slab is solid (the feet never inside it; the head clears it by the headroom rule at the feet). Feet ON its top are in the air over it, as on the ground (2026-11-22, mondo: "jumping on the highway completely loses all my momentum": the slab's top + 5 cm read as its mass, so a board's jump off a deck met a wall on its first frame and stopped)
     const f = hqTerrainFluidAt(info, x, z);
-    if (f && !f.sea && g < f.y - 0.05 && (f.key !== 'water' || f.y - g > info.rules.wadeMax) && y < f.y + 0.4) return false;   // THE DEEP: the sea is entered (the swimmer's own rule, three-renderer.js _hqSwimFree)
+    if (f && !f.sea && g < f.y - 0.05 && (!hqTerrainWades(f.key) || (f.key === 'water' && f.y - g > info.rules.wadeMax)) && y < f.y + 0.4) return false;   // THE DEEP: the sea is entered (the swimmer's own rule, three-renderer.js _hqSwimFree)
     return true;
 }
 /* the camera boom: inside the ground, a wall, or under a sheet */
@@ -95239,7 +95254,7 @@ function hqTerrainDoorY(room, door) {
         /* THE STREAM INTO THE CULVERT (2026-10-05, mondo: the drain mouths sit at the end of a stream): a pad in a wadeable stream has
            its sill where the wader's feet are (the surface less the wade, hqTerrainFeet's rule), not on the bed under the water */
         const q = p.lane || p, fl = hqTerrainFluidAt(info, q.x, q.z);
-        if (fl && !fl.sea && fl.key === 'water' && fl.y - p.h <= R.wadeMax) return Math.round(Math.max(p.h, fl.y - R.wade) * 1000) / 1000;
+        if (fl && !fl.sea && hqTerrainWades(fl.key) && (fl.key !== 'water' || fl.y - p.h <= R.wadeMax)) return Math.round(Math.max(p.h, fl.y - R.wade) * 1000) / 1000;
         return Math.round(p.h * 1000) / 1000;
     }
     /* A FREE PASSAGE STANDS ON THE GROUND IT STANDS ON (2026-11-17, the One World seams, walked in the probe): a free passage has no pad ("it lies over the
