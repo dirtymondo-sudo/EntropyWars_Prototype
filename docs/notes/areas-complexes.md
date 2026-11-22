@@ -14480,6 +14480,14 @@ the Desert thread, merged the same hour); this is the same thing for a `trail`, 
   west gate: two lanes at each gate, as the Desert's highways. The rebake also took in what the map changed since 11-17 (the box's north-west corner
   is the Snowy Pines' snow now, no trees on it; lane lines joined at the bends; the spawn off the road); no prop moved but the taper's own (rails, dashes).
   Walked both gates both ways. Map picture rebaked (`bake-map.js site_ow_r4`).
+- **THE EAST ROW GATE, CAME A LOT'S FIFTH** (same day; mondo: "build a fifth gate and a bridge at some point this old road needs to transition to a dirt
+  road, makes no sense to have a modern road leading to camelot"). The Old Road met the moat and a blank wall 63 m north of the East Gate. bake-camelot.js:
+  `townSide`'s `gi` may be a LIST (the east side: drums `[60, 50, 46, 32, 28]`, gates `[1, 3]`; the second gate's rows are `town_gate_e_row*`), bridge
+  `east_row_bridge` at square 30; layout.json: cobbles from the east street through the gate (the gate's own squares are `c`, not `G`: on `G` = grass the
+  flora grew a bush in the gate), `b` over the moat; the two cottages beside it stand one square clear of the new drums (25-27 -> 24-26, 33-35 -> 34-36).
+  THE PAVEMENT ENDS (bake-route.js): a `taper` row may say `dirt: <squares>` = the last that many squares before that end are the ground kind's own
+  dirt road, no painted lines, the door's `passage.floor` too (`hold` longer than `dirt`). R4: `{ hold: 26, len: 10, dirt: 22 }` at Came A Lot.
+  Walked town -> Old Road -> town through the gate; find-softlocks.js: 0 traps, 0 crevices in both rooms.
 - Probe: `playtest_city.js` takes `EW_PROBE_TRIES=1` (no retry of a whole chain after a crash; the cloud browser dies after 3 to 6 room changes: walk
   a gate out and back per run, no more).
 ## THE COAST + THE UNDERGROUND, WHERE THE ZONES MEET (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural")
@@ -14631,3 +14639,23 @@ THE TOOLS:
   landing filled, the rails off the flight's top), R (the wing's south tier in three lifts, the gurney ramp's cap kept open), P (the tunnel floor reaches under
   the tram bridges' ends).
 - find-softlocks.js `--every-ground`: crevices, dips and slots on all ground, not only what the doors reach (Heaven: the flights float and the solver under-reads).
+
+## THE OTHERWORLD + THE MOUNTAINS, WHERE THE ZONES MEET (2026-11-22, mondo: "every single entrance/exit in the game needs to look good and natural")
+The otherworld gates thread: DOOR HQ, Heaven, Hell, the Vatican, Leylines, Outer Space, the Astral Realm, the Mountains + the north routes, the Internet, Antarctica.
+Every walked gate of those rooms was walked in the browser from both sides. What was wrong and what changed:
+- THE PILGRIM WAY (`site_ow_r3`) led to a retired room (`…_shasta_ow_olympus`): its door and `docs/areas/routes/R3.json` now name `…_shasta_ow_lodge`.
+- NO BLACK BOX ON A FREE TRAIL END: three-renderer.js `_hqPassageWay` `openFree` (a free, unroofed, black-fade end in a room with land past its line gets
+  no dark cards), `_hqBuildWay` sets `PS.clear` on such passages and `_hqTickPassages` does not dim the screen in them.
+- A WALLED PLACE STANDS ON THE PLAIN, NOT IN A PIT: `terrain.edges.level: <y>` = the land past the line never stands higher than y (`_hqEdgeLandFn`).
+  The Vatican (`level: 0`): its country stood as high as its wall tops, so each gate looked out into a green trench.
+- THE VATICAN'S EAST + WEST GATES ARE OPEN SEAMS (`way: 'open'`, `passage: { w: 7 }`; `open: 7` on the seam rows in draw-afterlife.js): they were trails
+  with a 10 m dark walk and no road past them. The Old Road and the River Road now run on past the wall by the engine's own seam road.
+  The two `HQ_DEAD_ENDS` rows for the Vatican's north gate and for the retired Olympus room are gone (the first threw rubble across a live gate).
+- THE RIVER ROAD (R1) tapers to two lanes before the Vatican (`taper` in R1.json) and its road runs on 220 m past the west line (`runOn`).
+- THE LEY LINE'S EAST GATE: the trilithon over it is `noBlock` (`docs/areas/leylines/districts/Y.js`): its uprights stood in the lane.
+- THE GRAND STAIR (link `heaven_olympus`, Heaven <-> the ski mountain): both free cloud ends take `passage: { len: 3, deep: 1.2 }` (a free end with the
+  cloud way's default 9 m depth is never crossed: the walker meets the room's line first). bake-mountains.js writes end b with it.
+- LEFT: R4 (the Old Road) is six lanes at both ends against a 7 m Vatican gate and a 16 m Came A Lot gate; a rebake today also changes its ground paint,
+  trees and spawn (plots.json moved under it), so it was not tapered. From R4's east end the Vatican is the far-sight box with the dome on top.
+- PROBE LESSONS: the software walker covers about 20 m in 70 s, so start a walk probe 5-6 m from the door; `ThreeRenderer.hq.dev.blockersNear(x, z, r)`
+  lists what blocks near a point (key, place, size) when a walk stops short.

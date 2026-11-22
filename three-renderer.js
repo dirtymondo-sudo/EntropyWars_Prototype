@@ -3838,6 +3838,11 @@ const ThreeRenderer = (function () {
         /* THE NEW PROPS (2026-10-28): mondo's throwing knife, dynamite stick and hand grenade fly as themselves, turning end
            over end (`tumble`, turns/s about the cross axis). The knife is every 'proj-knife' throw; the stick is Dynamite's
            lob; the grenade is EMP Grenade's. The spell library warms the same files (three-vfx-effects.js _WPN_MODELS). */
+        /* THE WEAPON IN THE BASIC ATTACK (2026-11-22): the ninja's own star, the one in the fist, spinning flat */
+        'proj-shuriken': {
+            url: 'https://cdn.entropywars.net/Assets/world/props/meshy/weapons/shuriken.glb',
+            lenTiles: 0.085, tumble: 20.0,
+        },
         'proj-knife': {
             url: 'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_throwing_knife_1027232048_texture.glb',
             lenTiles: 0.34, tumble: 16.0,
@@ -17020,6 +17025,32 @@ const ThreeRenderer = (function () {
         }
         sw.until = Math.max(sw.until, performance.now() + (ms > 0 ? ms : 1600));
         return _heldInfoOf(sw.temp, sw);
+
+    }
+    /* ══ THE WEAPON IN THE BASIC ATTACK (2026-11-22, mondo: "They should also use them for their basic attacks") ══
+       unitShotOrigin(uid, kind): where a unit's basic shot leaves from, in world units: the end of the weapon in its fist (THE
+       WEAPON IN THE SPELL's unitHeldInfo tip: the muzzle, the star's hand, the staff, the microphone); a body that wears its bow =
+       the bow hand; a gun / a thrown thing with no separate weapon (the Meshy models: the weapon is in the mesh) = the right hand.
+       null = no rig on screen (the caller keeps the body's middle). unitHideHeldFor(uid, ms): the def's own weapon out of the
+       fist for `ms` (the ninja's star while it flies). */
+    var _SHOT_HAND_BONES = ['RightHand', 'hand_r', 'mixamorig:RightHand', 'Hand_R', 'R_Hand', 'mixamorigRightHand'];
+    function unitShotOrigin(unitId, kind) {
+        var entry = _getUnitEntry(unitId);
+        if (!entry || !entry.model || !entry.group || entry.group.visible === false) return null;
+        var def = entry.modelDef || entry._ew_def || null, v = null, inf = null;
+        try { inf = unitHeldInfo(unitId); } catch (_e) { inf = null; }
+        if (inf && inf.holder && inf.holder.visible !== false) v = inf.tip(new THREE.Vector3());
+        if (!v && def && def.ownBow) v = unitBoneWorld(unitId, ['LeftHand', 'hand_l']);
+        if (!v && (kind === 'ranged' || kind === 'throw')) v = unitBoneWorld(unitId, _SHOT_HAND_BONES);
+        if (!v || !isFinite(v.x + v.y + v.z)) return null;
+        return { x: v.x, y: v.y, z: v.z };
+    }
+    function unitHideHeldFor(unitId, ms) {
+        var P = _heldPrimary(unitId); if (!P || !P.base) return;
+        var h = P.base;
+        h.visible = false;
+        clearTimeout(h.userData._showT);
+        h.userData._showT = setTimeout(function () { if (!(_heldSwaps.get(unitId) && _heldSwaps.get(unitId).base === h)) h.visible = true; }, Math.max(60, ms || 400));
     }
     /* ══ THE PROPS IN THE HAND + THE GEAR ON THE BODY (2026-11-03, docs/notes/character-models-plan.md row 24; mondo: "how do we
        put these models ... in the game for spells (like whip crack)") ══
@@ -21195,6 +21226,7 @@ const ThreeRenderer = (function () {
             : (kind === 'punch') ? ['castPunch', 'castMelee', 'cast']
             : (kind === 'claw')  ? ['castClaw', 'castMelee', 'cast']
             : (kind === 'throw') ? ['castThrow', 'castRanged', 'cast']
+            : (kind === 'slash') ? ['castSlash', 'castMelee', 'cast']   // THE WEAPON IN THE BASIC ATTACK (11-22): the blade in the right fist, one clean cut
             : ['castMelee', 'cast'];
     }
 
@@ -21204,7 +21236,7 @@ const ThreeRenderer = (function () {
        (time-scaled) duration, capped so long clips can't stall the action
        feel; the state machine then falls back to idle/walk. Returns false for
        sprite units so callers can chain to the sprite-sheet path. */
-    function _maybeStartModelAnim(uid, name, maxMs) {
+    function _maybeStartModelAnim(uid, name, maxMs, skipMs) {
         if (_ewAnimsOff()) return true;   // claim it: no clip AND no sprite/tween fallback
         var ue = _getUnitEntry(uid);
         if (!ue || !ue.mixer || !ue.actions) return false;
@@ -21233,6 +21265,9 @@ const ThreeRenderer = (function () {
         var _shRig = _unitModelRigs.get(uid);
         if (_shRig) _shRig.shotEntry = ue;   // a rebuild that keeps this rig carries the one-shot (see _attachUnitModel)
         _playUnitModelAnim(ue, name, true);
+        /* THE WEAPON'S END (2026-11-22): a shot that leaves before the clip could reach its strike frame (no action shot: the
+           beat is shorter than the draw) starts the clip that much in, so the gun is up when the round leaves it */
+        if (skipMs > 0) { try { act.time = Math.min(clip.duration * 0.9, (skipMs / 1000) * scale); ue._ew_oneShot.until -= Math.min(skipMs, ms * 0.9); } catch (_se) {} }
         return true;
     }
 
@@ -34173,7 +34208,7 @@ const ThreeRenderer = (function () {
         return _PROJ_SPRITES['attack'];
     }
 
-    function startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ) {
+    function startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ, origin) {
         if (!projectileGroup || !scene) return;
         var ts = CONFIG.tileSize || BASE_TILE;
         var info = _getProjSpriteInfo(projClass);
@@ -34286,6 +34321,8 @@ const ThreeRenderer = (function () {
             if (_wt) { startX = _wt.x; startY = _wt.y; startZ = _wt.z; }
         } catch (_wte) {}
 
+        if (origin && isFinite(origin.x + origin.y + origin.z)) { startX = origin.x; startY = origin.y; startZ = origin.z; }   // THE WEAPON'S END: out of the gun / the hand
+        var _sizeK = (origin && isModel && projClass === 'proj-bullet') ? 0.45 : 1;   // ...and a round sized to the gun it leaves (0.3 tiles was a metre on the 3.5 m squares)
         mesh.position.set(startX, startY, startZ);
         projectileGroup.add(mesh);
 
@@ -34312,6 +34349,7 @@ const ThreeRenderer = (function () {
                      : (projClass === 'proj-grenade') ? ts * 0.6
                      : (projClass === 'proj-football') ? ts * 0.55 : 0,
             needsDirRot: needsDirRot,
+            sizeK: _sizeK,
             travelDX: endX - startX,
             travelDY: endY - startY,
             travelDZ: endZ - startZ
@@ -34352,7 +34390,7 @@ const ThreeRenderer = (function () {
                     var mop = Math.max(0, 1 - (t - 0.85) / 0.15);
                     for (var fmi = 0; fmi < tw.fadeMats.length; fmi++) tw.fadeMats[fmi].opacity = mop;
                 }
-                var msc = 1 - 0.15 * t;
+                var msc = (1 - 0.15 * t) * (tw.sizeK || 1);
                 tw.mesh.scale.set(msc, msc, msc);
                 if (t >= 1) {
                     projectileGroup.remove(tw.mesh);
@@ -35767,7 +35805,8 @@ const ThreeRenderer = (function () {
                     // sprite units keep the lunge + attack sheet fallback.
                     var _ak = state._attackAnimKind ? state._attackAnimKind[uid] : null;
                     var _atkChain = _attackChainFor(_ak);   // shared table — see _castChainFor
-                    var _atkModel = _maybeStartModelAnim(uid, _atkChain);
+                    if (_ak === 'slash') { try { _castClipWarm(uid, _atkChain[0]); } catch (_we) {} }   // THE WEAPON IN THE BASIC ATTACK: the cut is a late-baked verb, bake it for this swing
+                    var _atkModel = _maybeStartModelAnim(uid, _atkChain, 0, (state._attackAnimSkip && state._attackAnimSkip[uid]) || 0);
                     if (_atkModel && _ak === 'dig') _digStart(uid);   // THE SHOVEL DIG
                     if (!_atkModel) {
                         var dir = state._attackAnimDir ? state._attackAnimDir[uid] : null;
@@ -69747,6 +69786,8 @@ const ThreeRenderer = (function () {
         slotInfo: function (slot) { return _cvSlotInfo(slot); },
         libClips: function (cb) { return devLibClips(cb); },
         stopPreview: function () { _cvPreviewEnd(false); },
+        /* (dev, the look probes) hold the running preview on one moment of its clip: seconds into the clip as it plays */
+        seekPreview: function (sec) { var a = _cv && _cv.preview && _cv.preview.act; if (!a) return false; if (_cvPreviewTimer) { clearTimeout(_cvPreviewTimer); _cvPreviewTimer = 0; } a.paused = true; a.time = Math.max(0, Math.min(a.getClip().duration, sec)); return true; },
         /* THE WALK STYLE (2026-11-05): walk() loops the stage's walk at its recorded speed until stopPreview(); isWalking() */
         walk: function () { return _cvWalkLoop(); },
         isWalking: function () { return !!(_cv && _cv.preview && _cv.preview.name === 'walk'); },
@@ -78441,6 +78482,10 @@ const ThreeRenderer = (function () {
         var groundAt0 = function (cx, cz) {
             var h = hqTerrainHeight(info, cx, cz);
             if (typeof _hqTBaseAt === 'function') { var b = _hqTBaseAt(info, cx, cz); if (h > b) h = b; }   // never a roof or a wall top at the edge: the ground (a sunk bay stays sunk)
+            /* A WALLED PLACE STANDS ON THE PLAIN, NOT IN A PIT (2026-11-22, the Vatican's gates): where a room's own wall is its height sheet (the Vatican: 9 m of
+               wall on its last squares) the land past the line began at the wall's TOP, so the country outside stood level with the battlements and every gate
+               was a V-shaped trench cut down through it. `edges.level: <m>` = the land never starts higher than this (the ground the wall stands on). */
+            if (E.level != null && isFinite(+E.level) && h > +E.level) h = +E.level;
             return h;
         };
         var at = function (x, z, raw) {
@@ -84797,7 +84842,11 @@ const ThreeRenderer = (function () {
         }
         /* THE DARK: cards across the way, deepening to solid at the end (soft-edged in the open, square in a tube) */
         /* THE OPEN SEAM (2026-11-17, One World: data.js DOOR_HQ.ways.open): nothing stands in open country. No dark. */
-        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open' || openLand || (look === 'trail' && P.inside && !P.mouth && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room))) ? 0 : 7,   /* (a trail's free end in open land: no dusk either, 2026-11-22) */ d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
+        /* NO BLACK ON A FREE END EITHER (2026-11-22, the otherworld gates: the Pilgrim Stair's foot, the ski mountain's trail down to the tree line): a trail's end
+           that stands INSIDE the room (`wall: 'free'`) kept its black cards, a black box between the trees in open country. In a room with land past its
+           line an unroofed black fade stands none; a cloud road's white stays (it is the cloud). */
+        var openFree = false; try { openFree = !P.roof && P.inside && !P.mouth && P.fade !== 'white' && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room); } catch (eOF) { openFree = false; }
+        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = (look === 'open' || openLand || openFree || (look === 'trail' && P.inside && !P.mouth && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room))) ? 0 : 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
         for (var i = 0; i < n; i++) {
             var t = (i + 1) / n, dd = d0 + (L - 0.15 - d0) * t, op = (i === n - 1) ? 1 : Math.min(1, 0.7 * Math.pow(t, 2.2));   // (2026-10-05) a dusk that deepens, the way still seen: only the far end is solid
             var cw = P.roof ? W + 0.04 : W + ((P.spread != null) ? +P.spread : 3.2), ch = P.roof ? H + 0.1 : H + 2.5;
@@ -84910,7 +84959,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(pl.y - _hqPassFloor(p, a.depth)) > 2.5) continue;
             var d0 = P.deep * 0.25, k = (a.depth - d0) / Math.max(0.5, P.deep - d0);
             k = k < 0 ? 0 : k > 1 ? 1 : k; k = k * k * (3 - 2 * k);
-            k *= (P.look === 'open' || P.noDim) ? 0 : 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black. THE OPEN SEAM (2026-11-17): open country does not dim at all
+            k *= (P.look === 'open' || P.clear || P.noDim) ? 0 : 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black. THE OPEN SEAM (2026-11-17): open country does not dim at all
             if (k > dark) { dark = k; col = P.fade; }
             if (a.depth >= P.deep) {
                 if (H.passLatch !== p.door.id && !H.paused && H.opts.onEnterDoor && !HQ_DOOR_LOCKED[p.state]) {
@@ -84960,6 +85009,8 @@ const ThreeRenderer = (function () {
            pressed — a record the walker's surface, the boom, the dark and the crossing read (_hq.passages) */
         var PS = _hqPassageSpec(door);
         if (PS) {
+            /* (2026-11-22) a trail through open country stands no black (_hqPassageWay), so the walk along it does not dim the view either */
+            try { if (!PS.roof && !PS.mouth && PS.fade !== 'white' && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room)) PS.clear = true; } catch (eCl) {}
             G.add(grp);
             if (PS.look === 'trail' && box && (!box.free || (typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(room))) && !door.secret && PS.post !== false) { try { _hqBuildTrailPost(room, door, y0); } catch (e) {} }   /* (a free end in open land has its signpost too, 2026-11-22; `passage.post: false` = none) */
             /* NO DUSK IN OPEN COUNTRY (2026-11-22): a trail out of a room whose land runs on past its line (THE NATURAL EDGES) is walked in daylight: the view does not dim on the way to the crossing */
@@ -91882,8 +91933,9 @@ const ThreeRenderer = (function () {
            `brake` / `coast` / `hand` = m/s2 on the gas, on the brake, off the pedals, on the handbrake; `steer` = the front wheels' angle
            standing still, `steerHi` at top speed (rad), `steerIn` = how fast the wheels turn; `wb` = the wheelbase as a share of the
            car's length; `step` = the highest kerb it climbs, `clear` = what it drives over, `drop` = the biggest drop it rolls off,
-           `wet` = the deepest water; `reach` = how near its side you stand to get in. */
-        car: { v: 21, rev: 7, accel: 8.5, brake: 20, coast: 2.4, hand: 15, steer: 0.62, steerHi: 0.13, steerIn: 5.5, handSteer: 1.7, wb: 0.6, step: 0.34, clear: 0.34, drop: 0.7, wet: 0.45, hill: 0.55, bump: 0.25, lean: 0.035, squat: 0.02, reach: 1.7, exit: 0.75, camDist: 8.0, camUp: 0.9, len: 4.6, beam: 1.9 },
+           `wet` = the deepest water; `reach` = how near its side you stand to get in. THE HILL (11-22): `grade` = the steepest ground it
+           stands on (rise over run), `hill` = how much of a slope's pull it feels, `steerMax` = the wheels' hardest lock (handbrake). */
+        car: { v: 21, rev: 7, accel: 8.5, brake: 20, coast: 2.4, hand: 15, steer: 0.88, steerHi: 0.22, steerIn: 10, steerMax: 1.1, handSteer: 1.7, wb: 0.6, step: 0.34, clear: 0.34, drop: 0.7, grade: 0.9, wet: 0.45, hill: 0.3, bump: 0.25, lean: 0.035, squat: 0.02, reach: 1.7, exit: 0.75, camDist: 8.0, camUp: 0.9, len: 4.6, beam: 1.9 },
         keys: { dive: 'c', rise: 'space', board: 'e' },
         labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP', car: 'THE CAR' },
     };
@@ -92241,21 +92293,45 @@ const ThreeRenderer = (function () {
         rec._pr = P; return P;
     }
     /* how many of the body's points are refused at this place and heading (0 = the car may be there) */
+    /* THE HILL (2026-11-22, mondo: "i cant drive up these roads to the disaster hills ... The skateboard has no problem going up a hill, so
+       why does the car?"): the body's points were held against ONE height, the car's middle, as if the car stood on a level floor. On a road
+       that climbs 0.3 to 0.5 m a metre (the Canyon Road) the nose's points lie 0.6 to 1 m over the middle, more than a kerb (`step`), so the
+       road itself was read as a wall. Now the four WHEELS are asked first and the body is held against the plane they stand on: a slope is
+       ground, whatever its height. What still stops the car: a wheel that would rise more than `step` or fall more than `drop` from where
+       that wheel stands now (a kerb too high, a retaining wall, a ledge), ground steeper than `grade`, and a body point more than `step`
+       over the wheels' plane or with no floor under it (a wall, a building, a bank beside the road). */
+    function _hqCarWheels(V, R, x, z, yaw, y, out) {   // (each wheel is asked from ITS OWN last height, `V.wg`: the floor refuses a spot more than a climb over the asker, and up a hill the front wheels stand that far over the car's middle)
+        var rec = V.rec, wb = Math.max(1.2, rec.hd * 2 * (R.wb || 0.6)), ax = wb / 2, aw = Math.max(0.3, rec.hw - 0.25), fx = Math.sin(yaw), fz = Math.cos(yaw), lx = Math.cos(yaw), lz = -Math.sin(yaw), wg = V.wg;
+        for (var i = 0; i < 4; i++) { var a = i < 2 ? ax : -ax, b = (i & 1) ? -aw : aw, q = _hqSurface(x + fx * a + lx * b, z + fz * a + lz * b, wg ? wg[i] : y); out[i] = (q === null || !isFinite(q)) ? null : q; }
+        out.wb = wb; out.aw = aw; return out;
+    }
+    var _hqCarW = [0, 0, 0, 0];
+    /* how many of the body's points are refused at this place and heading (0 = the car may be there) */
     function _hqCarHits(V, R, x, z, yaw, y, why) {
         var H = _hq, rec = V.rec, P = _hqCarProbes(rec), cy = Math.cos(yaw), sy = Math.sin(yaw), n = 0, sea = _hqSea();
-        var step = R.step != null ? R.step : 0.34, clear = R.clear != null ? R.clear : 0.34, drop = R.drop != null ? R.drop : 0.7, top = y + (rec.hgt || 1.5);
+        var step = R.step != null ? R.step : 0.34, clear = R.clear != null ? R.clear : 0.34, drop = R.drop != null ? R.drop : 0.7, grade = R.grade != null ? R.grade : 0.9;
+        /* the wheels: each on a floor, none up a wall or off a ledge from where it stands now */
+        var W = _hqCarWheels(V, R, x, z, yaw, y, _hqCarW), wg = V.wg;
+        for (var k = 0; k < 4; k++) {
+            if (W[k] === null) { n++; if (why) why.push(['wheel ' + k, 'no floor']); continue; }
+            var from = wg ? wg[k] : y;
+            if (wg && (W[k] - from > step || from - W[k] > drop)) { n++; if (why) why.push(['wheel ' + k, (W[k] > from ? 'step ' : 'drop ') + Math.abs(W[k] - from).toFixed(2)]); }
+        }
+        if (n) return n;
+        var yc = (W[0] + W[1] + W[2] + W[3]) / 4, sp = ((W[0] + W[1]) - (W[2] + W[3])) / 2 / W.wb, sr = ((W[0] + W[2]) - (W[1] + W[3])) / 2 / (W.aw * 2);   // the plane: its middle, its rise a metre ahead, a metre to the left
+        if (Math.abs(sp) > grade || Math.abs(sr) > grade) { if (why) why.push(['plane', 'grade ' + Math.max(Math.abs(sp), Math.abs(sr)).toFixed(2)]); return 4; }
         for (var i = 0; i < P.length; i++) {
-            var px = x + P[i][0] * cy + P[i][1] * sy, pz = z - P[i][0] * sy + P[i][1] * cy;
-            var g = _hqSurface(px, pz, y);   // the walker's whole floor: the ground, a deck, a ramp; a wall or a tall thing = none
-            if (g === null || !isFinite(g) || g - y > step || y - g > drop) { n++; if (why) why.push([i, g === null ? 'no floor' : g - y > step ? 'step ' + (g - y).toFixed(2) : 'drop ' + (y - g).toFixed(2)]); continue; }
+            var px = x + P[i][0] * cy + P[i][1] * sy, pz = z - P[i][0] * sy + P[i][1] * cy, ref = yc + sp * P[i][1] + sr * P[i][0];   // (the body's left is +x here: the wheels' own sides)
+            var g = _hqSurface(px, pz, ref);   // the walker's whole floor: the ground, a deck, a ramp; a wall or a tall thing = none
+            if (g === null || !isFinite(g) || g - ref > step || ref - g > drop) { n++; if (why) why.push([i, g === null ? 'no floor' : g - ref > step ? 'step ' + (g - ref).toFixed(2) : 'drop ' + (ref - g).toFixed(2)]); continue; }
             if (sea && _hqSeaDepthAt(px, pz) > (R.wet != null ? R.wet : 0.45)) { n++; if (why) why.push([i, 'water']); continue; }
-            var hits = _hqBlockersUnder(px, pz), bad = false;
+            var hits = _hqBlockersUnder(px, pz), bad = false, top = ref + (rec.hgt || 1.5);
             for (var j = 0; j < hits.length && !bad; j++) {
                 var b = hits[j]; if (b === rec.blk) continue;
                 if (b.mc) continue;   // (a model's own floors and walls answered above)
                 else if (b.y != null && b.y > top) continue;
-                else if (_hqBlkTop(b) > y + clear) bad = true;
-                if (bad && why) why.push([i, 'blocker ' + ((b.obj && (b.obj.name || b.obj._ew_key)) || (b.mc ? 'mesh' : b.rect ? 'rect' : 'disc')) + ' top ' + (_hqBlkTop(b) - y).toFixed(2)]);
+                else if (_hqBlkTop(b) > ref + clear) bad = true;
+                if (bad && why) why.push([i, 'blocker ' + ((b.obj && (b.obj.name || b.obj._ew_key)) || (b.mc ? 'mesh' : b.rect ? 'rect' : 'disc')) + ' top ' + (_hqBlkTop(b) - ref).toFixed(2)]);
             }
             if (bad) n++;
         }
@@ -92273,12 +92349,12 @@ const ThreeRenderer = (function () {
                 else if (thr > 0) v = (v < -0.05) ? Math.min(0, v + (R.brake || 20) * h) : v + (R.accel || 8.5) * h * Math.max(0, 1 - v / vmax);
                 else if (thr < 0) v = (v > 0.05) ? Math.max(0, v - (R.brake || 20) * h) : Math.max(-(R.rev || 7), v - (R.accel || 8.5) * 0.7 * h);
                 else v -= Math.sign(v) * Math.min(Math.abs(v), ((R.coast || 2.4) + Math.abs(v) * 0.12) * h);
-                v -= Math.sin(V.gy || 0) * 9.8 * (R.hill != null ? R.hill : 0.55) * h * ((thr || Math.abs(v) > 0.4) ? 1 : 0);   // the hill: slower up, faster down (a parked car holds)
+                v -= Math.sin(V.gy || 0) * 9.8 * (R.hill != null ? R.hill : 0.3) * h * ((thr || Math.abs(v) > 0.4) ? 1 : 0);   // the hill: slower up, faster down (a parked car holds)
                 v = Math.max(-(R.rev || 7) * 1.3, Math.min(vmax * 1.15, v));
                 /* the front wheels */
-                var sp = Math.min(1, Math.abs(v) / vmax), lim = (R.steer || 0.62) + ((R.steerHi || 0.13) - (R.steer || 0.62)) * Math.pow(sp, 0.6);
-                if (hand) lim *= (R.handSteer || 1.7);
-                V.steer += (turn * lim - V.steer) * Math.min(1, h * (R.steerIn || 5.5));
+                var sp = Math.min(1, Math.abs(v) / vmax), lim = (R.steer || 0.88) + ((R.steerHi || 0.22) - (R.steer || 0.88)) * Math.pow(sp, 0.6);
+                if (hand) lim = Math.min(R.steerMax || 1.1, lim * (R.handSteer || 1.7));
+                V.steer += (turn * lim - V.steer) * Math.min(1, h * (R.steerIn || 10));
                 /* the turn about the back axle */
                 var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), rx = V.x - fx * wb / 2, rz = V.z - fz * wb / 2;
                 var nyaw = V.yaw - (v / wb) * Math.tan(V.steer) * h;
@@ -92292,14 +92368,15 @@ const ThreeRenderer = (function () {
                     if (_hqCarHits(V, R, sx2, sz2, V.yaw, V.y) === 0) { ok = true; nx = sx2; nz = sz2; nyaw = V.yaw; v *= 0.985; }
                 }
                 if (ok) { V.x = nx; V.z = nz; V.yaw = nyaw; V.v = v; }
-                else { bumped = Math.max(bumped, Math.abs(v)); V.v = -v * (R.bump != null ? R.bump : 0.25); if (Math.abs(V.v) < 0.35) V.v = 0; }
-                /* the four wheels on the ground */
-                fx = Math.sin(V.yaw); fz = Math.cos(V.yaw);
-                var lx = Math.cos(V.yaw), lz = -Math.sin(V.yaw), ax = wb / 2, aw = Math.max(0.3, rec.hw - 0.25);
-                var gq = function (a, b) { var q = _hqSurface(V.x + fx * a + lx * b, V.z + fz * a + lz * b, V.y); return (q === null || !isFinite(q) || Math.abs(q - V.y) > 2.5) ? V.y : q; };
-                var gFL = gq(ax, aw), gFR = gq(ax, -aw), gRL = gq(-ax, aw), gRR = gq(-ax, -aw), gy = (gFL + gFR + gRL + gRR) / 4;
+                else { if (window.EW_HQ_DEBUG) { var wy = []; _hqCarHits(V, R, nx, nz, nyaw, V.y, wy); V.bumpWhy = { x: +nx.toFixed(2), z: +nz.toFixed(2), y: +V.y.toFixed(2), v: +v.toFixed(1), h: +h.toFixed(4), hd: rec.hd, wg: V.wg && V.wg.map(function (q) { return +q.toFixed(2); }), why: wy.slice(0, 6) }; }   // (a probe's read: what stopped the car)
+                  bumped = Math.max(bumped, Math.abs(v)); V.v = -v * (R.bump != null ? R.bump : 0.25); if (Math.abs(V.v) < 0.35) V.v = 0; }
+                /* the four wheels on the ground (THE HILL: the body rides the ground as the board does, no lag behind a climb; a wheel with no
+                   floor keeps its last height) */
+                var Wn = _hqCarWheels(V, R, V.x, V.z, V.yaw, V.y, _hqCarW), aw = Wn.aw; if (!V.wg) V.wg = [V.y, V.y, V.y, V.y];
+                for (var wi = 0; wi < 4; wi++) { var wq = Wn[wi]; V.wg[wi] = (wq === null || Math.abs(wq - V.y) > 2.5) ? (ok ? V.wg[wi] : V.y) : wq; }
+                var gFL = V.wg[0], gFR = V.wg[1], gRL = V.wg[2], gRR = V.wg[3], gy = (gFL + gFR + gRL + gRR) / 4;
                 if (gy < V.y - 0.02) { V.vy = (V.vy || 0) - 9.8 * 1.6 * h; V.y = Math.max(gy, V.y + V.vy * h); if (V.y === gy) V.vy = 0; }
-                else { V.y += (gy - V.y) * Math.min(1, h * 18); V.vy = 0; }
+                else { V.y += (gy - V.y) * Math.min(1, h * 45); V.vy = 0; }
                 V.gy = Math.atan2((gFL + gFR) / 2 - (gRL + gRR) / 2, wb);
                 var acc = (V.v - (V.vPrev != null ? V.vPrev : V.v)) / h; V.vPrev = V.v;
                 var wantP = -V.gy - Math.max(-1, Math.min(1, acc / 20)) * (R.squat != null ? R.squat : 0.02) * 2.2;
@@ -105950,7 +106027,7 @@ const ThreeRenderer = (function () {
         /* THE DEEP (2026-09-18): the swimmer and the helm */
         board: function (id) { return _hqBoard(id); },
         disembark: function () { var Vd = _hq && _hq.vehicle; return (Vd && Vd.on && Vd.kind === 'ship' && _ewPlRound()) ? _hqShipSetDown() : _hqDisembark(); },   // (2026-11-20: the flown ship among round worlds sets down or stays aboard, as E does)
-        vehicle: function () { var V = _hq && _hq.vehicle; if (!V || !V.on) return null; return { kind: V.kind, id: V.rec.id, x: V.x, y: V.y, z: V.z, yaw: V.yaw, v: V.v, vy: V.vy }; },
+        vehicle: function () { var V = _hq && _hq.vehicle; if (!V || !V.on) return null; return { kind: V.kind, id: V.rec.id, x: V.x, y: V.y, z: V.z, yaw: V.yaw, v: V.v, vy: V.vy, bumpWhy: V.bumpWhy }; },
         vehicles: function () { return _hq ? (_hq.boats || []).map(function (b) { return { id: b.id, kind: b.kind, key: b.key, x: b.x, y: b.y, z: b.z }; }) : []; },
         swimming: function () { var pl = _hq && _hq.player; return !!(pl && pl.swim); },
         diving: function () { var pl = _hq && _hq.player; return !!(pl && pl.swim && pl.dive); },
@@ -106197,6 +106274,8 @@ const ThreeRenderer = (function () {
             /* the live scene graph (repo probes: playtest_maps.js PROBE) */
             scene: function () { return scene; },
             hqScene: function () { return _hq ? _hq.scene : null; },   // the walk's own scene (THE SPACESHIP probe, 2026-11-17)
+            /* what stands in the walker's way near (x, z), metres (2026-11-22, the gate probes: "why does the walk stop here"): the blockers within `r` m */
+            blockersNear: function (x, z, r) { if (!_hq) return []; var U = _hqUnits(), out = []; (_hq.blockers || []).forEach(function (b) { if (!b || !b.obj) return; var bx = b.obj.position.x / U, bz = b.obj.position.z / U, d = Math.hypot(bx - x, bz - z); if (d - (b.rad || 0) > (r || 6)) return; var key = ''; for (var i = 0; i < (_hq.props || []).length; i++) if (_hq.props[i].grp === b.obj) { key = _hq.props[i].key; break; } out.push({ key: key || b.way || b.kind || '', x: +bx.toFixed(2), z: +bz.toFixed(2), rad: b.rad, rect: b.rect || null, y: b.y, top: b.top }); }); return out; },
             /* the WebGL renderer (shader diagnostics from a probe — THE WORLD, 2026-09-13) */
             renderer: function () { return renderer; },
             /* THE STILL MATRICES: the last scene walk (objects seen, kept, remade, run by their own method) */
@@ -106225,6 +106304,7 @@ const ThreeRenderer = (function () {
                 var V = _hq && _hq.vehicle; if (!V || !V.on) return null; o = o || {};
                 if (o.x != null) V.launch = null;   // (a probe's placing ends a launch)
                 ['x', 'y', 'z', 'yaw', 'v', 'vy'].forEach(function (k) { if (o[k] != null) V[k] = o[k]; });
+                if (V.kind === 'car' && o.x != null) { V.wg = null; V.vy = 0; if (o.y == null) { var gc = _hqSurface(V.x, V.z, null); if (gc !== null && isFinite(gc)) V.y = gc; } if (o.camYaw == null) { _hq.cam.yaw = Math.PI - V.yaw; _hq.cam.init = false; } }   // THE CAR: a probe stands the driven car on the ground at x, z
                 if (o.camYaw != null) _hq.cam.yaw = o.camYaw;
                 if (o.keys) Object.keys(o.keys).forEach(function (k) { _hq.keys[k] = !!o.keys[k]; });
                 if (o.dist != null) _hq.cam.dist = o.dist; if (o.pitch != null) _hq.cam.pitch = o.pitch;
@@ -107423,7 +107503,7 @@ const ThreeRenderer = (function () {
            cast / attack chain would play at which the hit lands; -1 = no
            rigged library clip (sprite, Meshy fallback, unknown kind). */
         castStrikeMs: function (uid, kind) { return _unitAnimStrikeMs(uid, _castChainFor(kind)); },
-        attackStrikeMs: function (uid, kind) { return _unitAnimStrikeMs(uid, _attackChainFor(kind)); },
+        attackStrikeMs: function (uid, kind) { var ch = _attackChainFor(kind); if (kind === 'slash') { try { _castClipWarm(uid, ch[0]); } catch (_we) {} } return _unitAnimStrikeMs(uid, ch); },
         /* THE LOOK (2026-09-26): the spell editor reads the chain a kind resolves
            to ("drain → castDrain") and every library's clip list. */
         castChainFor: function (kind) { return _castChainFor(kind); },
@@ -107831,6 +107911,7 @@ const ThreeRenderer = (function () {
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },
         unitBoneWorld: unitBoneWorld,
         unitHoldProp: unitHoldProp,        // THE PROPS IN THE HAND (row 24)
+        unitShotOrigin: unitShotOrigin, unitHideHeldFor: unitHideHeldFor,   // THE WEAPON IN THE BASIC ATTACK (11-22)
         unitHeldInfo: unitHeldInfo, unitHeldUse: unitHeldUse,   // THE WEAPON IN THE SPELL (11-22)
         unitPropMetre: unitPropMetre,
         /* where a unit's body stands this frame (world; null while it has no visible entry) — the escape looks
@@ -107980,8 +108061,17 @@ window.ThreeAnim = {
         try { return ThreeRenderer.attackStrikeMs(unit.id, kind); } catch (_e) { return -1; }
     },
 
-    projectile: function(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ) {
-        if (ThreeRenderer.isActive()) ThreeRenderer.startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ);
+    projectile: function(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ, origin) {
+        if (ThreeRenderer.isActive()) ThreeRenderer.startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ, origin);
+    },
+    /* THE WEAPON'S END (2026-11-22): the world point a unit's basic shot leaves from (the weapon in its fist), or null */
+    unitShotOrigin: function(unit, kind) {
+        if (!unit || !ThreeRenderer.isActive()) return null;
+        try { return ThreeRenderer.unitShotOrigin(unit.id, kind); } catch (_e) { return null; }
+    },
+    hideHeldFor: function(unit, ms) {
+        if (!unit || !ThreeRenderer.isActive()) return;
+        try { ThreeRenderer.unitHideHeldFor(unit.id, ms); } catch (_e) {}
     },
 
     tether: function(fromX, fromY, toX, toY, kind, shootMs, fromZLevel, toZLevel, opts) {

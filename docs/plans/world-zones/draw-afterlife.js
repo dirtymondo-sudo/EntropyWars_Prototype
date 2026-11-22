@@ -78,8 +78,8 @@ V.ways = [
     { id: 'link_observatory_stair', kind: 'link', wall: 'free', sx: 17, sy: 4, face: 180, name: 'up: Heaven (the telescope, the Stair in the Sky)' },
     /* THE ONE WORLD SEAMS (2026-11-17, phase 4.1 the north routes, written here by the 4.4 thread): a door pair with one id at both ends, each
        written only when its route's room stands. The east gate is OPEN now (was the closed Civic Center gate): the River Road crosses the Tiber */
-    { id: 'ow_v_m6_m4', kind: 'seam', wall: 'e', sy: 24, room: 'site_ow_r1', name: 'The River Road (route R1): the east gate, over the Tiber to the city', label: 'THE RIVER ROAD', sub: 'THE EAST GATE · OVER THE TIBER TO THE CITY' },
-    { id: 'ow_v_m12_m4', kind: 'seam', wall: 'w', sy: 25, room: 'site_ow_r4', name: 'The Old Road (route R4): the west gate, to Came A Lot and the Woods', label: 'THE OLD ROAD', sub: 'THE WEST GATE · TO CAME A LOT AND THE WOODS' },
+    { id: 'ow_v_m6_m4', kind: 'seam', wall: 'e', sy: 24, open: 7, room: 'site_ow_r1', name: 'The River Road (route R1): the east gate, over the Tiber to the city', label: 'THE RIVER ROAD', sub: 'THE EAST GATE · OVER THE TIBER TO THE CITY' },
+    { id: 'ow_v_m12_m4', kind: 'seam', wall: 'w', sy: 25, open: 7, room: 'site_ow_r4', name: 'The Old Road (route R4): the west gate, to Came A Lot and the Woods', label: 'THE OLD ROAD', sub: 'THE WEST GATE · TO CAME A LOT AND THE WOODS' },
 ];
 V.plots = [
     [0, 0, 'G', 'The Hedge Maze', 'the hedges "planted as a maze"; where the gardener gets lost', 'Cortile: the hedges (the gardener\'s lines)'],

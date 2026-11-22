@@ -1492,7 +1492,7 @@
                         try {
                             const sr = window.hqLinkSee(p, doorId.slice(5));
                             if (sr && sr.ok) {
-                                if (sr.first) { const R = (DOOR_HQ.routes || {})[sr.route] || {}; _hqToast(`<b>ROUTE CHARTED</b> · ${_hqEsc(R.label || sr.route || sr.link)}<span>THE WORLD · DIRECTORY</span>`); }
+                                if (sr.first) { const R = (DOOR_HQ.routes || {})[sr.route] || {}; _hqToast(`<b>ROUTE CHARTED</b> · ${_hqEsc(R.label || sr.route || sr.link)}`); }
                                 if (PS.hasServerAccount && PS.hasServerAccount() && typeof PS.scheduleProgressSync === 'function') setTimeout(() => { try { PS.scheduleProgressSync(); } catch (e) {} }, 0);
                             }
                         } catch (e) {}
@@ -2447,7 +2447,7 @@
                     if (state.gameState !== GS.HQ) return;
                     const sector = (typeof window.hqSectorOfMap === 'function') ? window.hqSectorOfMap(id) : null;
                     const bayNo = (sector && typeof window.hqBayNo === 'function') ? window.hqBayNo(sector) : null;
-                    _hqToast(`<b>OTTO HAS BUILT A DOOR</b> · ${_hqEsc(_hqMapLabel(id).toUpperCase())}${bayNo ? ' · BAY ' + bayNo : ''}<span>THE SITE IS STABILIZED · ITS THRESHOLD STANDS IN THE RING</span>`, 5200);
+                    _hqToast(`<b>OTTO HAS BUILT A DOOR</b> · ${_hqEsc(_hqMapLabel(id).toUpperCase())}${bayNo ? ' · BAY ' + bayNo : ''}<span>IN THE RING</span>`, 5200);
                     try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.7 }); } catch (e) {}
                 }, 900 + i * 2800));
             }, Math.max(0, 2200 - (performance.now() - _hqEnteredAt)));
@@ -2949,19 +2949,19 @@
                         /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
                         const pr = encRes.party || null;
                         const lostLine = (pr && pr.lostGold > 0) ? ` · LOST ${pr.lostGold | 0} GOLD` : '';   // EVERY LOST FIGHT COSTS GOLD (NPC encounters step 4)
-                        const partyLine = (pr ? (pr.restored ? ' · THE PARTY WAS TREATED' : pr.down ? ` · ${pr.down} DOWN — HEAL THEM OR REST IN MEDICAL` : ' · THE PARTY STANDS') : '')
+                        const partyLine = (pr ? (pr.restored ? '' : pr.down ? ` · ${pr.down} DOWN` : '') : '')
                             + ((pr && pr.leadChanged && !encRes.escLoss && pr.lead) ? ` · ${_hqEsc(String(pr.lead).toUpperCase())} LEADS THE PARTY` : '')   // THE FAINTED LEAD (2026-10-06): slot 1 went down, the first fit member walks
-                            + ((pr && pr.leveled) ? ` · ${pr.leveled} LEVELLED UP · THE PARTY IS LV ${pr.partyLevel}` : '')   // THE LEVELS (2026-09-21)
-                            + ((pr && pr.drops && pr.drops.total) ? ` · ${pr.drops.total} ITEM${pr.drops.total === 1 ? '' : 'S'} DROPPED · IN THE BAG` : '')   // THE SPOILS (2026-09-23)
+                            + ((pr && pr.leveled) ? ` · ${pr.leveled} LEVELLED UP · PARTY LV ${pr.partyLevel}` : '')   // THE LEVELS (2026-09-21)
+                            + ((pr && pr.drops && pr.drops.total) ? ` · ${pr.drops.total} ITEM${pr.drops.total === 1 ? '' : 'S'}` : '')   // THE SPOILS (2026-09-23)
                             + (() => {   // 🚪 THE CAPTURES (CAPTURE_PLAN.md Phase 4): who joined, who went on the roster, the bounty
                                 const cr = encRes.won && pr && pr.captures; const rows = (cr && Array.isArray(cr.rows)) ? cr.rows : [];
                                 const up = r => _hqEsc(String(r.race || '').toUpperCase());
                                 const j = rows.filter(r => r.to === 'party'), ro = rows.filter(r => r.to === 'roster');
                                 return (j.length ? ` · ${j.map(up).join(', ')} JOINED THE PARTY` : '') + (ro.length ? ` · ${ro.map(up).join(', ')} ON YOUR ROSTER` : '') + ((cr && cr.gold > 0) ? ` · CAPTURE BOUNTY 💰 +${cr.gold | 0}` : '');
                             })();
-                        if (encRes.retreat) { _hqToast(`<b>THE RETREAT</b><span>THE PARTY SLIPPED OUT · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} STILL HAS THE ROOM${partyLine}</span>`, 4200); return; }
-                        if (encRes.escLoss) { _hqToast(`<b>THE PARTY IS DOWN</b><span>${_hqEsc((encRes.escaped || []).join(', ').toUpperCase())} GOT OUT${pr && pr.lead ? ' · ' + _hqEsc(String(pr.lead).toUpperCase()) + ' LEADS THE PARTY' : ''} · HEAL THE DOWN OR REST IN MEDICAL${lostLine}</span>`, 4600); return; }
-                        _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS${partyLine}</span>` : `<b>EXITED</b><span>${encRes.wake === 'office' ? 'YOU CAME TO AT YOUR DESK' : 'YOU CAME TO IN THE WARD'} · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM${partyLine}${lostLine}</span>`, 4200);
+                        if (encRes.retreat) { _hqToast(`<b>RETREATED</b><span>${partyLine.replace(/^ · /, '')}</span>`, 4200); return; }
+                        if (encRes.escLoss) { _hqToast(`<b>THE PARTY IS DOWN</b><span>${_hqEsc((encRes.escaped || []).join(', ').toUpperCase())} GOT OUT${lostLine}</span>`, 4600); return; }
+                        _hqToast(encRes.won ? `<b>VICTORY</b><span>${partyLine.replace(/^ · /, '')}</span>` : `<b>DEFEATED</b><span>${(partyLine + lostLine).replace(/^ · /, '')}</span>`, 4200);
                     } catch (e) {} }, 1400);
                     return true;
                 }
@@ -3818,7 +3818,7 @@
         /* THE COT (Medical): rest the party — the panel's button and the strip */
         window._hqPartyRest = function () {
             const r = _hqPartyTx(p => { if (typeof window.hqPartyEnsure === 'function') window.hqPartyEnsure(p, { last: _hqLastParty() }); return window.hqPartyRestore(p); });
-            if (r && r.ok) { try { playSfx('healRegen'); } catch (e) {} _hqToast(`<b>RESTED</b><span>THE PARTY IS AT FULL · ${r.n ? r.n + ' TREATED' : 'NOBODY NEEDED IT'} · BACK ON DUTY</span>`, 3200); }
+            if (r && r.ok) { try { playSfx('healRegen'); } catch (e) {} _hqToast(`<b>RESTED</b><span>PARTY AT FULL HP</span>`, 3200); }
             return !!(r && r.ok);
         };
         function _hqPauseOfficerHtml() {
@@ -4316,7 +4316,7 @@
             const reading = (typeof window.hqAngleReading === 'function') ? window.hqAngleReading(key) : 91.3;
             _hqMeasuring = { key, at: performance.now() };
             try { playSfx('uiButtonConfirm'); } catch (e) {}
-            _hqToast(`<b>📐 THE PROTRACTOR</b><span>YOU HOLD IT TO THE CORNER · ${reading.toFixed(1)}° · A WALL MEETS A WALL AT NINETY</span>`, HQ_PROTRACTOR_MS + 400);
+            _hqToast(`<b>📐 THE PROTRACTOR</b><span>${reading.toFixed(1)}°</span>`, HQ_PROTRACTOR_MS + 400);
             setTimeout(() => {
                 _hqMeasuring = null;
                 if (_hqSuspended || state.gameState !== GS.HQ || _hqCurRoom !== roomId) return;
@@ -4336,7 +4336,7 @@
                 try { if (typeof playDoorSfx === 'function') playDoorSfx('doorStamp', { volume: 0.6 }); } catch (e) {}
                 try { playSfx('levelUp'); } catch (e) {}
                 const P = _hqPlateFor(door);
-                _hqToast(`<b>A DOOR</b><span>${reading.toFixed(1)}° · IT WAS ALWAYS A DOOR · ${P.known ? 'THROUGH IT: ' + _hqEsc(P.label) : 'WHERE IT GOES IS NOT ON THE PLATE'}${first ? ' · FILED' : ''}</span>`, 4200);
+                _hqToast(`<b>A DOOR</b><span>${P.known ? 'TO ' + _hqEsc(P.label) : ''}</span>`, 4200);
                 try { _hqSetPrompt(ThreeRenderer.hq.target()); } catch (e) {}
             }, HQ_PROTRACTOR_MS);
             return true;
@@ -5132,7 +5132,7 @@
             if (!F || (fightId && F.id !== fightId)) return false;
             try {
                 const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
-                if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b><span>NOBODY FIT TO FIGHT · A HEALING ZONE, THE COT OR THE PAUSE MENU</span>', 3600); try { playSfx('uiError'); } catch (e) {} return false; }
+                if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b><span>HEAL FIRST</span>', 3600); try { playSfx('uiError'); } catch (e) {} return false; }
             } catch (e) {}
             const L = (typeof window.questFightLaunch === 'function') ? window.questFightLaunch(F.id, { partyLevel: _hqPartyLevelNow() }) : null;
             if (!L) return false;
@@ -5518,7 +5518,7 @@
             try {
                 const PS = window.ProfileSystem;
                 const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
-                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION — THE ISSUE IS TO A NAME</span>'); return null; }
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION</span>'); return null; }
                 const p = PS.loadProfile(idx);
                 if (!p || typeof window.hqPortalPlace !== 'function') return null;
                 const r = window.hqPortalPlace(p, spec, { force: _hqPortalForce() });
@@ -5585,7 +5585,7 @@
             try {
                 const PS = window.ProfileSystem;
                 const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
-                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION — THE ISSUE IS TO A NAME</span>'); return null; }
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION</span>'); return null; }
                 const p = PS.loadProfile(idx);
                 if (!p || typeof window.hqGunDoorPlace !== 'function') return null;
                 const r = window.hqGunDoorPlace(p, spec);
@@ -5606,7 +5606,7 @@
             try {
                 const PS = window.ProfileSystem;
                 const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
-                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION — THE ISSUE IS TO A NAME</span>'); return null; }
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION</span>'); return null; }
                 const p = PS.loadProfile(idx);
                 if (!p || typeof window.hqGunCapturePlace !== 'function') return null;
                 const r = window.hqGunCapturePlace(p, spec);
@@ -5615,7 +5615,7 @@
                 _hqStripFlash('portal');
                 const rule = (window.ITEM_RULES || (typeof ITEM_RULES !== 'undefined' ? ITEM_RULES : {}))[spec.item] || {};
                 const nm = String(rule.name || 'One-Way Door').toUpperCase() + (r.row && r.row.type ? ' · ' + String(r.row.type).toUpperCase() : '');
-                _hqToast(`<b>⛓ ${_hqEsc(nm)} · STANDING</b><span>${r.refunded ? 'THE OTHER ONE IS BACK IN THE BAG · ' : ''}THE NEXT FIGHT HERE CARRIES IT ONTO THE BOARD · LEAVE THE ROOM AND IT GOES BACK IN THE BAG</span>`, 3400);
+                _hqToast(`<b>⛓ ${_hqEsc(nm)} · STANDING</b><span>JOINS THE NEXT FIGHT HERE</span>`, 3400);
                 _hqFillStrip(p);
                 return Object.assign({}, r, { choices: (typeof window.hqGunCaptureChoices === 'function') ? window.hqGunCaptureChoices(p) : [] });
             } catch (e) { console.warn('[HQ] capture door place', e); return null; }
@@ -5685,7 +5685,7 @@
                     const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
                     if (idx !== null && idx !== undefined && typeof window.hqPortalClear === 'function') { const p = PS.loadProfile(idx); if (p && window.hqPortalClear(p)) PS.saveProfile(idx, p); _hqFillStrip(p); }
                 } catch (e) { console.warn('[HQ] portal recall', e); }
-                if (ev.n) _hqToast(`<b>RECALLED</b><span>${ev.n === 2 ? 'BOTH THRESHOLDS' : 'THE THRESHOLD'} BACK IN THE GUN · THE PAIR IS CLEAR</span>`, 2200);
+                if (ev.n) _hqToast(`<b>RECALLED</b>`, 2200);
             }
         }
         /* ═══════════════════════════════════════════════════════════════
@@ -5819,7 +5819,7 @@
                     try { playSfx('uiCursorMove'); } catch (e) {}
                     break;
                 case 'refused':
-                    _hqToast(ev.reason === 'off' ? '<b>NO SKATING</b><span>EW_HQ_NO_SKATE IS SET</span>' : '<b>NO BOARD</b><span>THERE IS ONE LEANING ON A LOCKER IN ROOM 26 · THE ANNEX</span>', 2600);
+                    _hqToast(ev.reason === 'off' ? '<b>NO SKATING</b><span>EW_HQ_NO_SKATE IS SET</span>' : '<b>NO BOARD</b><span>ONE IS IN ROOM 26</span>', 2600);
                     break;
                 case 'push': _hqSkateSfx('skatePush', ev.fakie ? 0.35 : 0.45); break;
                 case 'ollie':
@@ -5866,7 +5866,7 @@
                 /* DISASTER CITY (2026-09-17): the traffic and the circuit — three-renderer.js _hqTickTraffic / _hqTickRace */
                 case 'carhit':
                     _hqSkateSfx('skateBail', 0.5);
-                    _hqToast(`<b>HIT BY A CAR</b><span>${_hqEsc(String(ev.kindOf || 'A CAR').toUpperCase())} · NOBODY IS DRIVING IT · CROSS AT THE LIGHT</span>`, 2400);
+                    _hqToast('<b>HIT BY A CAR</b>', 1600);   // (mondo 11-22: no "NOBODY IS DRIVING IT · CROSS AT THE LIGHT")
                     break;
                 case 'lapstart':
                     _hqSkateSfx('skateBank', 0.4);
@@ -6140,7 +6140,7 @@
             /* THE PARTY (2026-09-19): a party with nobody fit to fight never crosses — rest at the ward or heal from the pause menu */
             try {
                 const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
-                if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b><span>NOBODY FIT TO FIGHT · REST ON THE COT IN MEDICAL (ROOM 1111) OR HEAL FROM THE PAUSE MENU</span>', 3600); try { playSfx('uiError'); } catch (e) {} return false; }
+                if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b><span>HEAL FIRST</span>', 3600); try { playSfx('uiError'); } catch (e) {} return false; }
             } catch (e) {}
             /* THE FIELD stage A (Phase 9 Delivery 6, 2026-09-16 — the user's rules): the mode is TDM, or ARENA
                when the site is today's Code Red (a Cube fight — the encounter IS the response then); the sticky
@@ -6325,7 +6325,7 @@
             /* no roster on file (Delivery 6): the fight still starts on the spot — the mode's default squad stands in
                (randomised like the CPU's); the terminal is never the answer to a swing */
             if (!party) {
-                _hqToast('<b>NO ROSTER ON FILE</b><span>A DEFAULT SQUAD STANDS IN · FILE A CROSSING AT THE CONSOLE TO FIELD YOUR OWN</span>', 3200);
+                _hqToast('<b>NO ROSTER</b><span>A DEFAULT SQUAD FIGHTS</span>', 3200);
                 party = { members: [], fallback: true };
             }
             if (typeof MS_MAP_LIST === 'undefined' || !MS_MAP_LIST.length) return false;
@@ -6464,7 +6464,7 @@
             if (!st) return false;
             const twinSlot = slot === 'a' ? 'b' : 'a';
             const twin = st[twinSlot];
-            if (!twin) { _hqToast('<b>NO TWIN</b><span>THE OTHER THRESHOLD IS NOT PLACED · THIS ONE OPENS ONTO NOTHING</span>', 2200); try { playSfx('uiError'); } catch (e) {} return false; }
+            if (!twin) { _hqToast('<b>NO TWIN</b><span>PLACE THE OTHER ONE</span>', 2200); try { playSfx('uiError'); } catch (e) {} return false; }
             /* THE FALL (rev 2): a floor hatch under a ceiling hatch crosses ~30
                times a second — the beat is throttled so the loop sings once,
                not thirty times. The crossing itself is never throttled. */
@@ -6479,7 +6479,7 @@
                 _hqSetPrompt(null);
                 return true;
             }
-            if (!_hqRoomExists(twin.room)) { _hqToast('<b>THE TWIN\'S ROOM IS GONE</b><span>THE RECORD NAMES A ROOM THE BUILDING NO LONGER HAS</span>', 2400); return false; }
+            if (!_hqRoomExists(twin.room)) { _hqToast('<b>THE TWIN\'S ROOM IS GONE</b>', 2400); return false; }
             /* THE CARRY (rev 4): the entry's speed crosses the room change with you — the renderer maps it through the twin's frame now and spends it on the landing */
             try { ThreeRenderer.hq.portalCarryFor(twin); } catch (e) {}
             return window._hqGoRoom(twin.room, 'portal:' + twinSlot);
@@ -6489,7 +6489,7 @@
             try {
                 const PS = window.ProfileSystem;
                 const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
-                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION FIRST</span>'); return false; }
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION</span>'); return false; }
                 const p = PS.loadProfile(idx);
                 if (!p || typeof window.hqPortalIssue !== 'function') return false;
                 const r = window.hqPortalIssue(p);
@@ -6516,7 +6516,7 @@
             try {
                 const PS = window.ProfileSystem;
                 const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
-                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION — THE BUILDING FILES FINDS TO A NAME</span>'); return false; }
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION</span>'); return false; }
                 const p = PS.loadProfile(idx);
                 if (!p || typeof window.hqCollectFind !== 'function') return false;
                 /* THE LEDGER (B2): a server account's wallet is the server's — the claim rides the synced progress
@@ -6524,7 +6524,7 @@
                 const serverPays = (typeof PS.hasServerAccount === 'function') && PS.hasServerAccount();
                 beat = window.hqCollectFind(p, t.id, null, { serverPays });
                 if (!beat || !beat.ok) {
-                    if (beat && beat.reason === 'unsupported') _hqToast('<b>NOT YET</b><span>THE QUARTERMASTER HAS NOT SIGNED FOR THIS KIND OF THING</span>');
+                    if (beat && beat.reason === 'unsupported') _hqToast('<b>CAN\'T TAKE THIS YET</b>');
                     return false;
                 }
                 PS.saveProfile(idx, p);
@@ -6540,14 +6540,14 @@
             } else if (beat.kind === 'tape') {
                 try { playSfx('levelUp'); } catch (e) {}
                 try { if (typeof playDoorSfx === 'function') playDoorSfx('doorStamp', { volume: 0.6 }); } catch (e) {}
-                _hqToast(`<b>TAPE ${beat.count} / ${beat.total}</b><span>${_hqEsc(beat.title)} · FILED · IT PLAYS ON THE SHELF IN ROOM 360</span>`, 4200);
+                _hqToast(`<b>TAPE ${beat.count} / ${beat.total}</b><span>${_hqEsc(beat.title)} · PLAY IT IN ROOM 360</span>`, 4200);
                 _hqStripFlash('tapes');   // THE HQ HUD PASS: the count shows for a moment, then the strip is quiet again
             } else if (beat.kind === 'item' || beat.kind === 'potion') {   // D5 THE STASH (2026-09-21): a facility room's cache goes into THE BAG
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
-                _hqToast(`<b>${_hqEsc(beat.label || 'INTO THE BAG')}</b><span>A CACHE OF THE BUILDING’S OWN · ${beat.count} IN THE BAG · THE PAUSE MENU’S ITEMS, OR THE POCKETS AT THE NEXT LAUNCH</span>`, 3200);
+                _hqToast(`<b>${_hqEsc(beat.label || 'INTO THE BAG')}</b><span>${beat.count} IN THE BAG</span>`, 3200);
             } else {
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
-                _hqToast(`<b>+${beat.amount} HAZARD PAY</b><span>AN UNMARKED ENVELOPE · ${beat.serverPays ? 'ON THE BOOKS AT THE NEXT SYNC' : (beat.gold || 0).toLocaleString() + ' ON THE BOOKS'} · NOBODY SAW</span>`, 2800);
+                _hqToast(`<b>+${beat.amount} HAZARD PAY</b>`, 2800);
             }
             _hqFillStrip(_hqProfile());
             try { _hqSetPrompt(ThreeRenderer.hq.target()); } catch (e) {}
@@ -6788,16 +6788,16 @@
             try {
                 const PS = window.ProfileSystem;
                 const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
-                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION — THE COURSE IS FILED TO A NAME</span>'); return false; }
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION</span>'); return false; }
                 const p = PS.loadProfile(idx);
                 if (!p || typeof window.hqShipSetCourse !== 'function') return false;
                 const r = window.hqShipSetCourse(p, linkId);
-                if (!r || !r.ok) { _hqToast('<b>NO SUCH PORT</b><span>THE NAV CONSOLE HAS NO ENTRY FOR IT</span>'); return false; }
+                if (!r || !r.ok) { _hqToast('<b>NO SUCH PORT</b>'); return false; }
                 PS.saveProfile(idx, p);
                 try { if (typeof window.hqShipApplyCourse === 'function') window.hqShipApplyCourse(p); } catch (e) {}
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
-                if (r.course) _hqToast(`<b>COURSE LAID IN</b> · ${_hqEsc(r.course.label)}<span>THE DOCKING COLLAR OPENS THERE · AFT, THROUGH THE HOLD</span>`);
-                else _hqToast('<b>COURSE CLEARED</b><span>THE COLLAR OPENS ON THE HULL</span>');
+                if (r.course) _hqToast(`<b>COURSE LAID IN</b> · ${_hqEsc(r.course.label)}<span>EXIT THROUGH THE HOLD</span>`);
+                else _hqToast('<b>COURSE CLEARED</b>');
                 return true;
             } catch (e) { console.warn('[HQ] set course', e); return false; }
         };
@@ -6838,7 +6838,7 @@
                 const PS = window.ProfileSystem, idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
                 const p = (idx !== null && idx !== undefined && PS && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
                 const r = hqSubwayArrive(p, door.station); if (p) PS.saveProfile(idx, p);
-                if (r && r.ok && r.fresh) _hqToast(`<b>${_hqEsc(r.station.label)} STATION</b><span>ON THE LINE · THE TRAIN STOPS HERE NOW</span>`);
+                if (r && r.ok && r.fresh) _hqToast(`<b>${_hqEsc(r.station.label)} STATION</b><span>THE TRAIN STOPS HERE NOW</span>`);
             } catch (e) { console.warn('[HQ] subway stair', e); }
         }
         function _hqFloorPanelHtml(c, html) {
@@ -7037,7 +7037,7 @@
                     const room = DOOR_HQ.rooms[roomId] || {};
                     /* THE ARRIVAL CARD (2026-09-21): a place gets the letterbox + its name instead of the toast; a lobby keeps the toast */
                     const carded = (typeof _hqArrivalQueue === 'function') && _hqArrivalQueue(roomId, room, no);
-                    if (!carded && roomId !== _HQ_FOYER) _hqToast(`<b>ON THE MAP</b> · ${no ? 'ROOM ' + _hqEsc(no) + ' · ' : ''}${_hqEsc(String(room.label || roomId).toUpperCase())}<span>THE DIRECTORY REDRAWS</span>`, 2400);
+                    if (!carded && roomId !== _HQ_FOYER) _hqToast(`<b>ON THE MAP</b> · ${no ? 'ROOM ' + _hqEsc(no) + ' · ' : ''}${_hqEsc(String(room.label || roomId).toUpperCase())}`, 2400);
                     if (PS.hasServerAccount && PS.hasServerAccount() && typeof PS.scheduleProgressSync === 'function') setTimeout(() => { try { PS.scheduleProgressSync(); } catch (e) {} }, 0);
                 }
             } catch (e) {}
@@ -8494,14 +8494,14 @@
             if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
             try {
                 const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
-                if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b><span>NOBODY FIT TO FIGHT · A HEALING ZONE, THE COT OR THE PAUSE MENU</span>', 3600); try { playSfx('uiError'); } catch (e) {} return false; }
+                if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b><span>HEAL FIRST</span>', 3600); try { playSfx('uiError'); } catch (e) {} return false; }
             } catch (e) {}
             let cr = null;
             try { cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(_hqProfile()) : null; } catch (e) { cr = null; }
             const site = (typeof window.hqRoomSite === 'function') ? window.hqRoomSite(_hqCurRoom) : null;
             if (!cr || cr.cleared || !site || cr.site !== site) cr = null;
             const L = (typeof window.hqMarkerLaunch === 'function') ? window.hqMarkerLaunch(_hqCurRoom, _hqEncounterCfgRaw(), { gm: gm, codeRed: !!cr && gm === 'arena', partyLevel: _hqPartyLevelNow() }) : null;
-            if (!L) { _hqToast('<b>NO BOARD</b><span>THIS ROOM HAS NO SITE ON FILE</span>', 2400); return false; }
+            if (!L) { _hqToast('<b>NO FIGHT HERE</b>', 2400); return false; }
             L.codeRedRun = (cr && gm === 'arena') ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
             return _hqEncounterStart(L, null, null);
         };

@@ -10794,6 +10794,7 @@ puts the camera UNDER the land: you photograph the sea sheet or the shell floor 
 first, headless: `hqTerrainCompile(DOOR_HQ.rooms[id], id).hFn(x, z)` (load-data.js sandbox), and pass `"y": <that + 0.05>`. `face` 0 looks north, 90 east.
 
 ## THE CITY PROBE — playtest_city.js: the HQ with THE REAL SHEETS (2026-09-17, THE URBAN PACK)
+WALK PROBES (2026-11-22, the otherworld gates): the software walker covers about 20 m in 70 s, so start a `walk` view 5-6 m from the door (a "NO CHANGE" from 16 m is usually just time). When a walk stops short, `ThreeRenderer.hq.dev.blockersNear(x, z, r)` (in a `drive.sample`) lists what blocks near the spot.
 **THE HAND-OVER PROBE, A FIGHT ON A NAMED SQUARE (2026-11-17, the One World test slice):** `--at=x,z[,y]` stands the walker there before the strike and
 `--race=<unit>` names who is struck (default dinosaur); `EW_SHOTS=<dir>` = where the pictures go. The slice's fight on a trail plot:
 `node playtest_handover.js site_ow_l8 --at=6,-25,0.2 --race=mothman` (12 s to round 1, back after 6.4 s). A room's draw and memory numbers: a view's
