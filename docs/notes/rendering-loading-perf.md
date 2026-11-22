@@ -3781,3 +3781,26 @@ His two F3s: "1384 ms upload · 158×168 canvas" (and 557, 272, 77, 53 ms the sa
   handed a stand-in root with only the ones in the scene and shown. Off: `window.EW_CSS2D_WALK`. F3 after: "Scene walks: none".
 - NOT changed: `ew_grass_field` 359K triangles (one draw, GPU side, a steady cost at 63 FPS, not a dip); the plates still paint
   on every HP change; `_wmMenuRects` (~4 ms a second of DOM reads). `_EW_TR_STAMP` = "11-22 soft-canvas".
+
+## THE SKIN READS THE NORMAL AND THE TANGENT (2026-11-22, mondo: "im trying to rotate the map but it gets to a certain point and then the screen freezes but i can still see the shadows rotating")
+- **His crash trail** (WebGPU, Firefox): `RenderPipeline 'renderPipeline_MeshLambertMaterial_1266' requires vertex buffer 5 to be set`
+  in squad setup, then `renderPipeline_ShadowMaterial_1654 ... vertex buffer 4` in a Tower of Babel fight. WebGPU refuses the WHOLE
+  frame's commands for one such draw: the picture stands still on every frame the unit is in view (turn it out of view and it moves
+  again), while anything not in that pass keeps going.
+- **Cause**: THE KEY BY WHAT IS READ (11-20) keyed a plain material's build by the attributes the MATERIAL reads. three's skinning
+  also reads the geometry's normal whenever it has one and its tangent whenever it has both (it turns them with the bones), its
+  instancing reads the normal, morph targets may. Unit files differ (the rabbit carries TANGENT, the gangster does not), so two
+  skinned units with the same kind of material shared one build; the one without tangents was drawn with a shader and pipeline
+  that want a tangent buffer it never sets. Which unit built first decided who broke, so it came and went with the team.
+- **Fix** (three-renderer.js `getGeometryCacheKey` in `_ewInstShareSetup`): a skinned mesh's key always holds normal + tangent,
+  an instanced or morphed mesh's its normal, a batched mesh keeps three's full key; the pipeline's half of the key also holds each
+  attribute's number type and width. Old key: `window.EW_GEO_KEY_FULL = true`.
+- **Proof** (cloud browser, WebGPU): before, 7 Random teams in squad setup = 36 validation errors, draws with 5 buffers on a
+  6-buffer pipeline (`char1`, shader attributes position, skinIndex, skinWeight, normal, tangent, uv). After, 31 Random teams and a
+  Tower of Babel fight turned 360 degrees: 0 errors, 0 short draws. `/mnt/project-files/rotate-freeze-20261122/` (the probe that
+  counts a draw's buffers against its pipeline's: `vertex-buffer-probe.js`).
+- **WebGPU in the cloud browser**: headless Chromium 153 loses its WebGPU device as soon as the game draws ("A valid external
+  Instance reference no longer exists"). Headful on Xvfb holds: the harness's `--gpu webgpu` is headful since today.
+- **RULE**: a build key may only drop an attribute when NOTHING in three's build reads it for that object: check
+  `hasGeometryAttribute` / `geometry.hasAttribute` in three.webgpu.js (skinning, instancing, batching, morphs) before cutting a key.
+

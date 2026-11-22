@@ -49119,13 +49119,28 @@ const ThreeRenderer = (function () {
                 for (var t = 0; t < _EW_TEX_SLOTS.length; t++) if (m[_EW_TEX_SLOTS[t]]) { uvs = true; break; }
                 col = m.vertexColors === true; tan = !!(m.normalMap || m.clearcoatNormalMap || m.anisotropyMap || m.anisotropy > 0);
             }
+            /* THE SKIN READS THE NORMAL AND THE TANGENT (2026-11-22, mondo: "im trying to rotate the map but it gets to a certain point
+               and then the screen freezes"; his crash trail: "RenderPipeline 'renderPipeline_MeshLambertMaterial_1266' requires vertex
+               buffer 5 to be set", then 'renderPipeline_ShadowMaterial_1654' ... buffer 4). three's skinning turns the normal with the
+               bones whenever the geometry HAS a normal, and the tangent whenever it has both, whatever the material reads; its
+               instancing turns the normal the same way, and morph targets may move it. The key above left those out (no normal in
+               the shadow pass, a tangent only with a normal map), so a unit whose file carries tangents and one whose file does not
+               shared one build: the second was drawn with a shader that reads a tangent it has no buffer for, WebGPU refused the
+               whole frame's commands, and the picture stood still on every frame that unit was in view (the sun's shadow pass the
+               same). A skinned mesh's key now always holds its normal and tangent, an instanced or morphed mesh's its normal; a
+               batched mesh keeps three's full key. */
+            if (o.isBatchedMesh === true) return ggk.call(this);
+            var skn = o.isSkinnedMesh === true, mrf = false;
+            for (var mk in g.morphAttributes) { mrf = true; break; }
+            if (skn) { nor = true; tan = true; }
+            else if (o.isInstancedMesh === true || mrf) nor = true;
             var at = g.attributes, names = Object.keys(at).sort(), key = '';
             for (var i = 0; i < names.length; i++) {
                 var nm = names[i];
-                if (!(nm === 'position' || (nor && nm === 'normal') || (uvs && nm.charCodeAt(0) === 117 && nm.charCodeAt(1) === 118) || (col && nm === 'color') || (tan && nm === 'tangent') || (o.isSkinnedMesh === true && (nm === 'skinIndex' || nm === 'skinWeight')))) continue;
+                if (!(nm === 'position' || (nor && nm === 'normal') || (uvs && nm.charCodeAt(0) === 117 && nm.charCodeAt(1) === 118) || (col && nm === 'color') || (tan && nm === 'tangent') || (skn && (nm === 'skinIndex' || nm === 'skinWeight')))) continue;
                 var a = at[nm];
                 key += nm + ',';
-                if (!geoForBuild) { if (a.data) key += a.data.stride + ','; if (a.offset) key += a.offset + ','; }   // (where it sits in its buffer matters to the pipeline's key, not to the shader's code)
+                if (!geoForBuild) { if (a.data) key += a.data.stride + ','; if (a.offset) key += a.offset + ','; var arr = a.data ? a.data.array : a.array; if (arr) key += arr.BYTES_PER_ELEMENT + (arr instanceof Float32Array ? 'f,' : (arr instanceof Int8Array || arr instanceof Int16Array || arr instanceof Int32Array) ? 'i,' : 'u,'); }   // (where it sits in its buffer and its number type matter to the pipeline's key, not to the shader's code)
                 if (a.itemSize) key += a.itemSize + ',';
                 if (a.normalized) key += 'n,';
             }
