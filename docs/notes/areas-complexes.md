@@ -14118,6 +14118,10 @@ and press e ... i can't see the road going out, the road just stops and its all 
     paint, no speed plate, a 3.8 m gantry). Open question for mondo: cut a real street to it.
   - NO TREE IN A ROAD'S MOUTH: data.js hqTerrainCompile drops `tree` rows within 7 m along / half the width + 2.4 m across a road way's place
     (the city's west tree line crossed the gate); the edge land plants none on a road's lane.
+  - A CAUSEWAY: after the city's south land became rolling scrub the land (a coarse mesh) came up through the asphalt. Past the line the
+    road's cross-section is level, 0.5 m over the HIGHEST land under it and its shoulders (`crest(d)`, 7 samples across), a bank under both
+    sides all the way out.
+  - THE LANE LINES NEVER DREW: the paint quads wind face down (z runs negative); the paint material is double-sided now.
 - Probe: `node playtest_city.js site_ow_r9 '[{"name":"walk_n","x":-35,"z":-180,"face":0,"ground":true,"walk":{"key":"w","max":40000}}]'` walks
   into the city; the same with x -105, z 240, face 180 in the city room walks to the Desert. The cloud browser often dies loading the city as
   the SECOND room of a run; the WALK line prints before that.

@@ -83468,7 +83468,7 @@ const ThreeRenderer = (function () {
                past the edge is THE NATURAL EDGES' (_hqEdgeLandOn: the city, every One World room) the strip used to be laid on the FIELD's height: it
                floated flat over the land, which falls away from the line (the city's south: 4 m down to the sand), and no fog stands at 40 m any more.
                Now it lies ON that land, read at the land mesh's own rows (HQ_EDGE_ROWS, straight between them, as the mesh is), for 300 m; over the
-               first 40 m it comes down as one even ramp (the land's ditch at the line is bridged), a dark bank under its sides. */
+               first 40 m it comes down as one even ramp (the land's ditch at the line is bridged); past that it is a level causeway half a metre over the land, a dark bank under its sides. */
             var EF = null, tOut = 0;
             try { if (!joinedR && _hq && _hq.terrain && ctx.room && typeof _hqEdgeLandOn === 'function' && _hqEdgeLandOn(ctx.room)) EF = (_hq.edgeLand && _hq.edgeLand.fn) || _hqEdgeLandFn(ctx.room, _hq.terrain); } catch (eEF) { EF = null; }
             if (EF) {
@@ -83492,17 +83492,21 @@ const ThreeRenderer = (function () {
                 var f = (d - EROWS[i]) / (EROWS[i + 1] - EROWS[i]); f = f < 0 ? 0 : f > 1 ? 1 : f;
                 return row[i] * (1 - f) + row[i + 1] * f;
             };
+            var crestX = [-W / 2 - 2.5, -W / 2, -W / 4, 0, W / 4, W / 2, W / 2 + 2.5];
+            var crest = function (d) { var m = -Infinity; for (var ci = 0; ci < crestX.length; ci++) { var v = landAt(crestX[ci], d); if (v > m) m = v; } return m + 0.5; };
             var gAt = function (lx, lz) {   // the road's own surface
                 if (!EF) return fieldAt(lx, lz);
                 var d = -lz - tOut; if (d <= 0) return fieldAt(lx, lz);
-                var h = landAt(lx, d); if (d >= RAMP) return h + 0.05;
-                var a = fieldAt(lx, -tOut), b = landAt(lx, RAMP) + 0.05; return Math.max(h + 0.05, a + (b - a) * d / RAMP);
+                /* A CAUSEWAY (2026-11-22): the road's cross-section is level, half a metre over the HIGHEST land under it and its shoulders (the land
+                   mesh is coarse across the road: laid on the land's own height at its two edges, rolling ground came up through the asphalt) */
+                var h = crest(d); if (d >= RAMP) return h;
+                var a = fieldAt(0, -tOut), b = crest(RAMP); return Math.max(h, a + (b - a) * d / RAMP);
             };
             var asphalt = _hqMat(null, 1, 1, { color: neon ? 0x8a8aa4 : (EF ? 0xb4b4b8 : 0xffffff), shininess: neon ? 24 : 6, specular: 0x151515, emissive: 0x0e0e0e, emissiveIntensity: 1 });
             var footKey = foot && ctx.room && ctx.room.terrain && ctx.room.terrain.path; if (footKey) asphalt.color.setHex(0xffffff);
             var asT = (footKey && texOf(footKey)) || (EF && texOf('urban:RoadGeneric1a')) || texOf('urban:PlasterWallPainted1b'); if (asT) { asphalt.map = asT; asphalt.needsUpdate = true; }   // the pack's asphalt, the city streets' own sheet and tint
             if (EF) { asphalt.polygonOffset = true; asphalt.polygonOffsetFactor = -1; asphalt.polygonOffsetUnits = -1; }
-            var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false }); paint.polygonOffset = true; paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
+            var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }); paint.polygonOffset = true;   /* (both sides: the paint quads wind face down, so the lane lines never drew, 2026-11-22) */ paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
             /* the strip: rows from the wall outward (−Z), each vertex on the ground + 3 cm (every 2 m; past the line: the land's rows, never over 4 m apart) */
             var tsL = [], pos = [], uv = [], idx = [], bpos = [], bidx = [];
             if (!EF) { for (var r0 = 0; r0 <= Math.round(LEN / 2); r0++) tsL.push(r0 * 2); }
@@ -83517,10 +83521,10 @@ const ThreeRenderer = (function () {
                 var lz = -tsL[r];
                 [-W / 2, W / 2].forEach(function (lx, i) {
                     var gy = (r === 0 ? 0 : gAt(lx, lz)) + 0.03; pos.push(lx * U, gy * U, lz * U); uv.push(i * W / 1.75, tsL[r] / 1.75);
-                    if (EF) bpos.push(lx * U, gy * U, lz * U, lx * 1.12 * U, (gy - 5.5) * U, lz * U);
+                    if (EF) bpos.push(lx * U, gy * U, lz * U, lx * 1.3 * U, (gy - 5.5) * U, lz * U);
                 });
                 if (r > 0) { var b = (r - 1) * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
-                    if (EF && tsL[r - 1] >= tOut - 2.1 && tsL[r - 1] < tOut + RAMP + 4) { var q = (r - 1) * 4; bidx.push(q, q + 4, q + 1, q + 1, q + 4, q + 5, q + 2, q + 3, q + 6, q + 3, q + 7, q + 6); } }   // THE BANK under the ramp's two sides
+                    if (EF && tsL[r - 1] >= tOut - 2.1) { var q = (r - 1) * 4; bidx.push(q, q + 4, q + 1, q + 1, q + 4, q + 5, q + 2, q + 3, q + 6, q + 3, q + 7, q + 6); } }   // THE BANK under the road's two sides, all the way
             }
             var hasBuf = !!(THREE.BufferGeometry && THREE.Float32BufferAttribute);
             var strip;
@@ -83535,7 +83539,7 @@ const ThreeRenderer = (function () {
                 pts.forEach(function (p) { dpos.push(p[0] * U, (gAt(p[0], p[1]) + 0.05) * U, p[1] * U); duv.push(0, 0); });
                 didx.push(dn, dn + 2, dn + 1, dn, dn + 3, dn + 2); dn += 4;
             };
-            if (!foot) for (var z = -1.2; z > -LEN + 1; z -= 3.2) flat(-0.07, 0.07, z, z - 1.6);
+            if (!foot) for (var z = -1.2; z > -LEN + 1; z -= 3.2) flat(W >= 10 ? -0.11 : -0.07, W >= 10 ? 0.11 : 0.07, z, z - 1.6);
             if (!foot) for (var z2 = -0.4; z2 > -LEN + 1; z2 -= 2) { flat(W / 2 - 0.41, W / 2 - 0.29, z2, z2 - 2); flat(-W / 2 + 0.29, -W / 2 + 0.41, z2, z2 - 2); }
             if (hasBuf && dn) { var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.Float32BufferAttribute(dpos, 3)); dg.setAttribute('uv', new THREE.Float32BufferAttribute(duv, 2)); dg.setIndex(didx); dg.computeVertexNormals(); var dashes = new THREE.Mesh(dg, paint); dashes.renderOrder = 3; g.add(dashes); }
             /* a shoulder post stands on the land beside the road, not on the door's floor in the air */
