@@ -5416,9 +5416,11 @@ gladiator, pirate (blades); sheriff, marksman, gangster, spy, barbarella, men in
 - PROBE: `/mnt/project-files/weapon-spells/scripts/cast.js` (`RACE='time cop' SPELLS=raceQuickDraw,racePoliceTaser node cast.js`:
   a real VS-CPU board, the remade look on, a paused clock stepped through each cast, a close picture every third step).
 - PASS 2 (2026-11-22, mondo: "do the next pass"):
-  - THE LONG GUN IN BOTH HANDS: UAL slot `castRifle` (MAL5 `Side_Shot`, lib 8, trim 0.3-3.2, the shot at 1.6 s): brought up in
-    both hands, aimed, fired, lowered. EW_WEAPONS `sniper` + `shotgun` carry `anim: 'castRifle'`; an `anim` that starts with
-    `cast` is a SLOT (weaponSpellAnimKind answers `slot:castRifle/ranged`, so a rig without the slot plays the quick-draw).
+  - THE LONG GUN IN BOTH HANDS, TRIED AND DROPPED: MAL5 `Side_Shot` (the library's only rifle clip) is a lunge that fires
+    to the body's SIDE (filmed on the Time Cop: the barrel ends ~90 degrees off the target). Slots have no facing offset, so
+    it is not wired; the long guns keep the quick-draw (the rifle comes up to the shoulder in it). A real two-hand rifle clip
+    = a Meshy pull, or a `turn` on the slot bake. EW_WEAPONS `anim` that starts with `cast` is read as a SLOT
+    (weaponSpellAnimKind answers `slot:<slot>/ranged`) for when one exists.
   - THE ARCHER'S OWN BOW (three-vfx-effects.js `_wpnOwnBowAt`): a `bow` race on a look with `ownBow` gets no spectral longbow;
     `_sigBowShot3D` hides its limb / string / glow, nocks the arrow at the bow hand (ThreeRenderer.unitShotOrigin(uid, 'arrow')),
     follows the hand through the draw and looses from there. His aimed shots (Headshot, Precision Shot, Kneecap Shot: gun
@@ -5426,12 +5428,14 @@ gladiator, pirate (blades); sheriff, marksman, gangster, spy, barbarella, men in
   - THE THROWN STAR: `_njShuriken3D` starts each star at the hand that holds `wp_shuriken` and hides the held star for 700 ms
     (ThreeRenderer.unitHideHeldFor). A `star` holder who throws something else (a knife, a bomb, a smoke pot: kind throw /
     hurl / pour) has the star out of the hand for the throw (three-renderer.js cast start).
-  - THE STAFF: EW_WEAPON_KIND.staff: skyward / call / ultimate / aoe / earth / nova -> `rally` (the staff raised to the sky);
-    bolts keep the thrust, and leave the staff's head (pass 1 `_heldShooterTip`).
-  - THE PROBE under a paused clock: `page.clock.install` restarts performance.now, the battle camera's smoothing gets a
-    negative step and goes NaN (a sky-only picture). cast.js `camFix` starts the smoothing again. A zoom over ~3 also looks at
-    the sky: film at the default zoom with DSF=3 + CLIP.
+  - THE STAFF, TRIED AND DROPPED: `rally` (Sword_Shout) for the sky spells: the staff is gripped upright, not like a blade,
+    so the raise leaves its head pointing 40 degrees DOWN (cast.js `aim` readout). The wizard keeps his casts until the staff
+    animations (mondo: "we will do the animations later").
+  - THE PROBE (cast.js): `page.clock.install` goes BEFORE page.goto (installed mid-battle it restarts performance.now, the
+    battle camera's smoothing gets a negative step and goes NaN: a sky-only picture). No screenshot while the fake clock runs
+    free (it times out); a zoom over ~3 looks at the sky: film at the default zoom with DSF=3 + CLIP. Each frame prints `aim` =
+    the held weapon's angle off the target (across / up, degrees).
 - NOT DONE (next passes): the bespoke gun looks outside `_sigGunRig3D` (Fan the Hammer, Slap Leather, Crossfire, Six-Shooter,
   the Taser's arc, the spray's cloud) still start where they did; no second holds (the Gladiator's net and shield, the Knight's
   shield), so Net Toss still makes its net from nothing; the popstar has no singing-into-the-mic clip; the Shogun's War Fan
-  Strike swings the sword arm, not the fan's; the left hand is not IK'd onto the long gun's fore-end (the clip's pose only).
+  Strike swings the sword arm, not the fan's; no two-hand long-gun clip; the staff casts.

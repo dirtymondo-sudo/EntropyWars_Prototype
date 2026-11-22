@@ -15624,6 +15624,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
             if (el < looseAt) {
                 _ownBowSeat();   /* the nocked arrow rides the bow hand through the draw */
+                if (_ownBow) arrowG.scale.setScalar(0.7);   /* on a man's bow, not the giant ghost one */
                 /* nock + draw */
                 var dT = _sigClamp01((el - matMs) / drawMs);
                 var pull = _sigEaseOutCubic(dT) * ts * 0.30;
@@ -15633,7 +15634,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 limbGlow.scale.z = 1.10 * (1 - 0.10 * dT);
             } else if (!landed) {
                 if (!loosed) {
-                    loosed = true;
+                    loosed = true; arrowG.scale.setScalar(1);
                     limb.scale.z = 1; limbGlow.scale.z = 1.10;
                     _sigSparks(fromTx, fromTy, 'steel-spark', 4, { vxy: 60, vz0: 20, vz1: 80, gravity: 200 });
                     if (typeof playSfx === 'function') { try { playSfx('arrowShot'); } catch (e) {} }
