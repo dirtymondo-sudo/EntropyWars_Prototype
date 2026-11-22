@@ -170,6 +170,12 @@ module.exports = function raise(K) {
           [5.25, 8.75].forEach(o => paintLine(P, rx, rz, xc + sd * o, Z(U1), Z(D0), H, H, 0.14, WHITE, [7, 7]));
           if (!EX) paintLine(P, rx, rz, xc + sd * 11.9, Z(U1), Z(D0), H, H, 0.14, WHITE);
           else paintLine(P, rx, rz, xc + sd * 11.9, Z(U1 + GS), Z(D0 - GS), H, H, 0.16, WHITE); }
+      /* the expansion joints: a dark steel strip across the road where the deck sits on each ramp's top (the two asphalts meet under it) */
+      for (const zj of [Z(U1), Z(D0)]) P.push({ s: 'quad', flat: true, p: [0, H + 0.045, R3(zj - rz)], size: [R3(2 * RW), 0.45], tint: 0x26272b });
+      /* the exit's own sign in each gore that leaves the road: a green plate on a post behind the crash barrel, facing the traffic */
+      if (EX) for (const sd of [-1, 1]) { const n = sd < 0 ? 0 : 1, d = tdir(n), x = R3(ux(sd, E + 0.75) - rx), z = R3(tz(n, NOSE + 0.45) - rz), ry = d > 0 ? 180 : 0;
+          P.push({ s: 'box', p: [x, H, z], size: [0.12, 3.4, 0.12], key: STEEL, tint: 0x8a8e94 }, { s: 'box', p: [x, H + 2.0, z], size: [1.9, 1.4, 0.08], tint: 0x0b5c3a },
+                 { s: 'quad', p: [x, H + 2.1, R3(z - d * 0.05)], ry, size: [1.7, 1.2], key: 'txt:' + (EX.name || 'EXIT') + '|#ffffff|#0b5c3a|1.42||way', uv: 'fit', kind: 'wall', glow: 0.3 }); }
       row('deck', rx, rz, P); }
     /* the pillars: a cap beam on round columns, a footing under each */
     { const P = [], rx = xc, rz = zDeck;
