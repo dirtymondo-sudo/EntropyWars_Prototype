@@ -518,6 +518,24 @@ the Claude Doc "Weapon-holding units: who gets an MPFB version".
   panel), made wider by the bake cutting the stretched faces at the seam. Bake now `HIDETORSO=1 TORN=9` + the flags above: new env
   HIDETORSO hides all skin on hips, spine, shoulders, upper arms and thighs, so the opening shows the robe's dark inside; TORN=9 keeps
   the seam faces. Proof `/mnt/project-files/weapon-hands/swordfighter_robe_closed.jpg`. Still: pointed shoulder tops.
+- THE WEAPON IN THE BASIC ATTACK (11-22, thread "Use held weapons in basic attacks"; mondo: "They should also use them for their
+  basic attacks"). A `RACE_CREATOR_LOOK_DEFS` row with a `hold` now names the basic attack its weapon makes (`basicAttackKind`), and
+  on the creator-body look that wins over battle.js's race tables (`def.weaponKind`, read first in `basicAttackKindOf`): `slash` (NEW
+  kind, three-renderer.js `_attackChainFor`: castSlash = Right_Hand_Sword_Slas, baked for the swing by `_castClipWarm`) for the
+  swordfighter, shogun, gladiator, knight, king arthur, pirate (was the quick-draw bullet), police officer (the baton; was a bullet),
+  scarecrow; `ranged` for sheriff, marksman, gangster, spy, barbarella, time cop, men in black, cowboy (the quick-draw clip: the gun
+  comes level at the hip on the strike frame); `throw` + `weaponProj: 'proj-shuriken'` for the ninja (the star in the fist flies,
+  `_PROJ_MODELS`, and is out of the hand while it does, `unitHideHeldFor`); `magic` for the wizard and the popstar; robinhood
+  `arrow` + `ownBow` (no spectral bow over the bow he wears; `BASIC_ATTACK_RACE_FIRST` robinhood is `arrow` on every look now).
+  THE WEAPON'S END: `_unitAttachHeld` hangs a node on the weapon's far end (`_heldTipPoint`: `hold.tip: 'barrel'` = a gun's muzzle,
+  else the end away from the pommel); `ThreeAnim.unitShotOrigin(unit, kind)` gives that point (or the bow hand, or, for a gun /
+  thrown thing on a Meshy model, the right hand) and battle.js `playBasicAttackShot` starts the bolt, the flash and the flying round
+  there (`origin` on `fireBoltDirect`, a 9th argument on `ThreeAnim.projectile`). ONLINE: nothing new is relayed; the guest's replay
+  of `basic-shot` / `strike-leap` runs the same functions and reads its own rig. The Meshy default looks keep their kinds; only their
+  gun shots moved to the right hand. Look probe: project files `weapon-attacks/scripts/attack.js` (the forge viewer held on the
+  strike frame, `EWCharViewer.seekPreview`), battle probe `battle.js` beside it (a real VS-CPU board, the clock frozen on the shot).
+  OPEN: two-hand rifle / bow-draw / staff clips (the long guns fire from the hip one-handed), the second-hand weapons (shield, fan),
+  the time cop's weapon per spell (the spells thread).
 
 ---
 

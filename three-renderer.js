@@ -3838,6 +3838,11 @@ const ThreeRenderer = (function () {
         /* THE NEW PROPS (2026-10-28): mondo's throwing knife, dynamite stick and hand grenade fly as themselves, turning end
            over end (`tumble`, turns/s about the cross axis). The knife is every 'proj-knife' throw; the stick is Dynamite's
            lob; the grenade is EMP Grenade's. The spell library warms the same files (three-vfx-effects.js _WPN_MODELS). */
+        /* THE WEAPON IN THE BASIC ATTACK (2026-11-22): the ninja's own star, the one in the fist, spinning flat */
+        'proj-shuriken': {
+            url: 'https://cdn.entropywars.net/Assets/world/props/meshy/weapons/shuriken.glb',
+            lenTiles: 0.085, tumble: 20.0,
+        },
         'proj-knife': {
             url: 'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_throwing_knife_1027232048_texture.glb',
             lenTiles: 0.34, tumble: 16.0,
@@ -16897,18 +16902,73 @@ const ThreeRenderer = (function () {
         if (seat) { inner.quaternion.copy(seat.q); inner.position.copy(seat.p); }
         var target = ((hold.h != null ? hold.h : hold.span != null ? hold.span : (cat.h || cat.span)) || 1) * pxm;   // (the door gun: HQ_PORTAL_RULES.gun.span — the board read the catalogue's 0.62 before 2026-11-02)
         var url = (cat.base === 'psxmp' || cat.base === 'asset') ? _hqModelUrl(cat) : (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : (cat.base === 'rt') ? _FOLIAGE_RT_BASE + encodeURIComponent(cat.file) : (cat.base === 'weapons') ? _R2_WEAPONS + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);   // (THE RACE LOOKS: the cowboy's revolver is a spell prop, Assets/fx/spell_props/)
+        var tipNode = new THREE.Object3D(); tipNode.name = 'ew_held_tip';   // THE WEAPON'S END (placed when the model lands, which can be at once: a cached file)
         var inst = _miscModelInstance(url, true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick,
             onDone: function (g, sc, bb) {
                 g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } });
                 if (seat && bb && sc) {   // THE GRIP, THE SEAT: the handle's centre (the GLB's coordinates -> the instance's: x/z centred, base on y = 0) onto the seat
                     inner.position.copy(seat.p).sub(_gripCentre(hold, sc, bb).applyQuaternion(seat.q));
                 }
+                try { var tp = _heldTipPoint(hold, bb); if (tp && sc) { tipNode.position.copy(_gripCentre({ grip: { c: tp }, turn: hold.turn }, sc, bb)); holder.userData.tip = tipNode; } } catch (_te) {}   // THE WEAPON'S END
             } });
         if (hold.turn) inst.rotation.y = hold.turn * Math.PI / 180;   // rev 5: the gun's pre-turn (HQ_PORTAL_RULES.gun.turn) — the barrel to +X (seated too: _gripFrame / _gripCentre turn the handle with it)
         var pit = _heldPitchGroup(seat ? Object.assign({}, hold, { pitch: 0 }) : hold, inst);   // (seated: the hand sets the angle, no pitch)   // rev 6: `pitch` drops the muzzle about the gun's lateral axis (the barrel is +X after the turn)
+        pit.add(tipNode);
         inner.add(pit); holder.add(inner); bone.add(holder);
         holder.userData.inst = inst;
         return holder;
+    }
+    /* THE WEAPON'S END (2026-11-22, mondo: "They should also use them for their basic attacks"): the point of a held weapon a
+       shot / a flash / a thrown star leaves from, in the GLB's own coordinates, read off its bounds and its grip: from the
+       handle's centre out along the way that leaves the fist (`tip: 'barrel'` = a gun, along `grip.barrel` and lifted to the
+       barrel's line; `tip: 'down'` = the pommel end; else away from the pommel, `-grip.down`) to where that line leaves the model's box. */
+    function _heldTipPoint(hold, bb) {
+        var g = hold && hold.grip; if (!g || !g.c || !bb) return null;
+        var c = new THREE.Vector3(g.c[0], g.c[1], g.c[2]);
+        var down = new THREE.Vector3().fromArray(g.down || [0, -1, 0]).normalize();
+        var exit = function (o, d) {   // how far the ray o + d t runs inside the box
+            var t = Infinity;
+            ['x', 'y', 'z'].forEach(function (k) { if (Math.abs(d[k]) > 1e-4) { var e = ((d[k] > 0 ? bb.max[k] : bb.min[k]) - o[k]) / d[k]; if (e >= 0 && e < t) t = e; } });
+            return isFinite(t) ? t : 0;
+        };
+        if (hold.tip === 'barrel' && g.barrel) {
+            var b = new THREE.Vector3().fromArray(g.barrel).normalize();
+            var up = down.clone().multiplyScalar(-1); up.addScaledVector(b, -up.dot(b));
+            var p = c.clone();
+            if (up.lengthSq() > 1e-6) { up.normalize(); p.addScaledVector(up, exit(c, up) * 0.7); }
+            return p.addScaledVector(b, exit(p, b)).toArray();
+        }
+        var out = down.multiplyScalar(hold.tip === 'down' ? 1 : -1);   // ('down': the butt end leads, the wizard's staff levelled like a lance)
+        return c.addScaledVector(out, exit(c, out)).toArray();
+    }
+    var _SHOT_HAND_BONES = ['RightHand', 'hand_r', 'mixamorig:RightHand', 'Hand_R', 'R_Hand', 'mixamorigRightHand'];
+    /* where a unit's basic shot leaves from, in world units: the end of the weapon in its fist; a body that wears its bow =
+       the bow hand; a gun / a thrown thing with no separate weapon (the Meshy models, the weapon is in the mesh) = the right
+       hand. null = no rig on screen (the caller keeps the body's middle). */
+    function unitShotOrigin(unitId, kind) {
+        var entry = _getUnitEntry(unitId);
+        if (!entry || !entry.model || !entry.group || entry.group.visible === false) return null;
+        var def = entry._ew_def || null, v = null;
+        var held = entry._ew_heldTip;
+        if (!held || held._model !== entry.model) {
+            held = entry._ew_heldTip = { _model: entry.model, holder: null };
+            if (def && def.hold) held.holder = entry.model.getObjectByName('ew_held_' + def.hold.key) || null;
+        }
+        if (held.holder && held.holder.userData.tip && held.holder.visible !== false) { v = new THREE.Vector3(); held.holder.userData.tip.getWorldPosition(v); }
+        else if (def && def.ownBow) v = unitBoneWorld(unitId, ['LeftHand', 'hand_l']);
+        else if (kind === 'ranged' || kind === 'throw') v = unitBoneWorld(unitId, _SHOT_HAND_BONES);
+        if (!v || !isFinite(v.x + v.y + v.z)) return null;
+        return { x: v.x, y: v.y, z: v.z };
+    }
+    /* the def's held weapon out of the fist for `ms` (the ninja's star while it flies) */
+    function unitHideHeldFor(unitId, ms) {
+        var entry = _getUnitEntry(unitId), def = entry && entry._ew_def;
+        if (!entry || !entry.model || !def || !def.hold) return;
+        var h = entry.model.getObjectByName('ew_held_' + def.hold.key);
+        if (!h) return;
+        h.visible = false;
+        clearTimeout(h.userData._showT);
+        h.userData._showT = setTimeout(function () { h.visible = true; }, Math.max(60, ms || 400));
     }
     /* ══ THE PROPS IN THE HAND + THE GEAR ON THE BODY (2026-11-03, docs/notes/character-models-plan.md row 24; mondo: "how do we
        put these models ... in the game for spells (like whip crack)") ══
@@ -21084,6 +21144,7 @@ const ThreeRenderer = (function () {
             : (kind === 'punch') ? ['castPunch', 'castMelee', 'cast']
             : (kind === 'claw')  ? ['castClaw', 'castMelee', 'cast']
             : (kind === 'throw') ? ['castThrow', 'castRanged', 'cast']
+            : (kind === 'slash') ? ['castSlash', 'castMelee', 'cast']   // THE WEAPON IN THE BASIC ATTACK (11-22): the blade in the right fist, one clean cut
             : ['castMelee', 'cast'];
     }
 
@@ -21093,7 +21154,7 @@ const ThreeRenderer = (function () {
        (time-scaled) duration, capped so long clips can't stall the action
        feel; the state machine then falls back to idle/walk. Returns false for
        sprite units so callers can chain to the sprite-sheet path. */
-    function _maybeStartModelAnim(uid, name, maxMs) {
+    function _maybeStartModelAnim(uid, name, maxMs, skipMs) {
         if (_ewAnimsOff()) return true;   // claim it: no clip AND no sprite/tween fallback
         var ue = _getUnitEntry(uid);
         if (!ue || !ue.mixer || !ue.actions) return false;
@@ -21122,6 +21183,9 @@ const ThreeRenderer = (function () {
         var _shRig = _unitModelRigs.get(uid);
         if (_shRig) _shRig.shotEntry = ue;   // a rebuild that keeps this rig carries the one-shot (see _attachUnitModel)
         _playUnitModelAnim(ue, name, true);
+        /* THE WEAPON'S END (2026-11-22): a shot that leaves before the clip could reach its strike frame (no action shot: the
+           beat is shorter than the draw) starts the clip that much in, so the gun is up when the round leaves it */
+        if (skipMs > 0) { try { act.time = Math.min(clip.duration * 0.9, (skipMs / 1000) * scale); ue._ew_oneShot.until -= Math.min(skipMs, ms * 0.9); } catch (_se) {} }
         return true;
     }
 
@@ -34056,7 +34120,7 @@ const ThreeRenderer = (function () {
         return _PROJ_SPRITES['attack'];
     }
 
-    function startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ) {
+    function startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ, origin) {
         if (!projectileGroup || !scene) return;
         var ts = CONFIG.tileSize || BASE_TILE;
         var info = _getProjSpriteInfo(projClass);
@@ -34163,6 +34227,8 @@ const ThreeRenderer = (function () {
         var endX = toX * ts + ts / 2;
         var endZ = toY * ts + ts / 2;
 
+        if (origin && isFinite(origin.x + origin.y + origin.z)) { startX = origin.x; startY = origin.y; startZ = origin.z; }   // THE WEAPON'S END: out of the gun / the hand
+        var _sizeK = (origin && isModel && projClass === 'proj-bullet') ? 0.45 : 1;   // ...and a round sized to the gun it leaves (0.3 tiles was a metre on the 3.5 m squares)
         mesh.position.set(startX, startY, startZ);
         projectileGroup.add(mesh);
 
@@ -34189,6 +34255,7 @@ const ThreeRenderer = (function () {
                      : (projClass === 'proj-grenade') ? ts * 0.6
                      : (projClass === 'proj-football') ? ts * 0.55 : 0,
             needsDirRot: needsDirRot,
+            sizeK: _sizeK,
             travelDX: endX - startX,
             travelDY: endY - startY,
             travelDZ: endZ - startZ
@@ -34229,7 +34296,7 @@ const ThreeRenderer = (function () {
                     var mop = Math.max(0, 1 - (t - 0.85) / 0.15);
                     for (var fmi = 0; fmi < tw.fadeMats.length; fmi++) tw.fadeMats[fmi].opacity = mop;
                 }
-                var msc = 1 - 0.15 * t;
+                var msc = (1 - 0.15 * t) * (tw.sizeK || 1);
                 tw.mesh.scale.set(msc, msc, msc);
                 if (t >= 1) {
                     projectileGroup.remove(tw.mesh);
@@ -35644,7 +35711,8 @@ const ThreeRenderer = (function () {
                     // sprite units keep the lunge + attack sheet fallback.
                     var _ak = state._attackAnimKind ? state._attackAnimKind[uid] : null;
                     var _atkChain = _attackChainFor(_ak);   // shared table — see _castChainFor
-                    var _atkModel = _maybeStartModelAnim(uid, _atkChain);
+                    if (_ak === 'slash') { try { _castClipWarm(uid, _atkChain[0]); } catch (_we) {} }   // THE WEAPON IN THE BASIC ATTACK: the cut is a late-baked verb, bake it for this swing
+                    var _atkModel = _maybeStartModelAnim(uid, _atkChain, 0, (state._attackAnimSkip && state._attackAnimSkip[uid]) || 0);
                     if (_atkModel && _ak === 'dig') _digStart(uid);   // THE SHOVEL DIG
                     if (!_atkModel) {
                         var dir = state._attackAnimDir ? state._attackAnimDir[uid] : null;
@@ -69517,6 +69585,8 @@ const ThreeRenderer = (function () {
         slotInfo: function (slot) { return _cvSlotInfo(slot); },
         libClips: function (cb) { return devLibClips(cb); },
         stopPreview: function () { _cvPreviewEnd(false); },
+        /* (dev, the look probes) hold the running preview on one moment of its clip: seconds into the clip as it plays */
+        seekPreview: function (sec) { var a = _cv && _cv.preview && _cv.preview.act; if (!a) return false; if (_cvPreviewTimer) { clearTimeout(_cvPreviewTimer); _cvPreviewTimer = 0; } a.paused = true; a.time = Math.max(0, Math.min(a.getClip().duration, sec)); return true; },
         /* THE WALK STYLE (2026-11-05): walk() loops the stage's walk at its recorded speed until stopPreview(); isWalking() */
         walk: function () { return _cvWalkLoop(); },
         isWalking: function () { return !!(_cv && _cv.preview && _cv.preview.name === 'walk'); },
@@ -106602,7 +106672,7 @@ const ThreeRenderer = (function () {
            cast / attack chain would play at which the hit lands; -1 = no
            rigged library clip (sprite, Meshy fallback, unknown kind). */
         castStrikeMs: function (uid, kind) { return _unitAnimStrikeMs(uid, _castChainFor(kind)); },
-        attackStrikeMs: function (uid, kind) { return _unitAnimStrikeMs(uid, _attackChainFor(kind)); },
+        attackStrikeMs: function (uid, kind) { var ch = _attackChainFor(kind); if (kind === 'slash') { try { _castClipWarm(uid, ch[0]); } catch (_we) {} } return _unitAnimStrikeMs(uid, ch); },
         /* THE LOOK (2026-09-26): the spell editor reads the chain a kind resolves
            to ("drain → castDrain") and every library's clip list. */
         castChainFor: function (kind) { return _castChainFor(kind); },
@@ -107009,6 +107079,7 @@ const ThreeRenderer = (function () {
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },
         unitBoneWorld: unitBoneWorld,
         unitHoldProp: unitHoldProp,        // THE PROPS IN THE HAND (row 24)
+        unitShotOrigin: unitShotOrigin, unitHideHeldFor: unitHideHeldFor,   // THE WEAPON'S END (11-22)
         unitPropMetre: unitPropMetre,
         /* where a unit's body stands this frame (world; null while it has no visible entry) — the escape looks
            (three-vfx-effects.js _ESC_LOOKS) hang the web line / the ejection's exhaust on the moving body */
@@ -107157,8 +107228,17 @@ window.ThreeAnim = {
         try { return ThreeRenderer.attackStrikeMs(unit.id, kind); } catch (_e) { return -1; }
     },
 
-    projectile: function(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ) {
-        if (ThreeRenderer.isActive()) ThreeRenderer.startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ);
+    projectile: function(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ, origin) {
+        if (ThreeRenderer.isActive()) ThreeRenderer.startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ, origin);
+    },
+    /* THE WEAPON'S END (2026-11-22): the world point a unit's basic shot leaves from (the weapon in its fist), or null */
+    unitShotOrigin: function(unit, kind) {
+        if (!unit || !ThreeRenderer.isActive()) return null;
+        try { return ThreeRenderer.unitShotOrigin(unit.id, kind); } catch (_e) { return null; }
+    },
+    hideHeldFor: function(unit, ms) {
+        if (!unit || !ThreeRenderer.isActive()) return;
+        try { ThreeRenderer.unitHideHeldFor(unit.id, ms); } catch (_e) {}
     },
 
     tether: function(fromX, fromY, toX, toY, kind, shootMs, fromZLevel, toZLevel, opts) {

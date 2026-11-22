@@ -17086,6 +17086,7 @@
                 state.attackAnimIds.delete(unit.id);
                 delete state._attackAnimDir[unit.id];
                 if (state._attackAnimKind) delete state._attackAnimKind[unit.id];
+                if (state._attackAnimSkip) delete state._attackAnimSkip[unit.id];
                 if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
                 if (!_v2) scheduleBoardRender();
             }, 350);
@@ -17132,7 +17133,7 @@
             'marksman': 'ranged', 'gangster': 'ranged', 'door agent': 'ranged', 'police officer': 'ranged', 'time cop': 'ranged',
             'dreameater': 'magic', 'halfdemon': 'ranged', 'vampire': 'ranged', 'cosmic wraith': 'ranged',
             'chosen one': 'ranged', 'ghoul': 'ranged', 'barbarella': 'ranged', 'quarterback': 'ranged',
-            'robinhood': 'ranged', 'symbiote': 'ranged'
+            'robinhood': 'arrow', 'symbiote': 'ranged'   // (robinhood 11-22: his bow, not a bullet)
         };
         const BASIC_ATTACK_RACE_CASTERS = {
             'angel': 'magic', 'fairy': 'magic', 'seraphim': 'magic', 'djinn': 'magic', 'demon': 'magic', 'anubis': 'magic',
@@ -17163,12 +17164,21 @@
             divine: '_bolt_divine', unholy: '_bolt_unholy', tech: '_bolt_tech',
             alien: '_bolt_alien', anomaly: '_bolt_psi', human: '_bolt_ki'
         };
+        function _basicWeaponDef(unit) {
+            if (!unit || typeof getRace3DModel !== 'function') return null;
+            try { return getRace3DModel(unit.race, unit.gender, unit.appearance) || null; } catch (e) { return null; }
+        }
         function basicAttackKindOf(unit) {
             if (!unit) return 'melee';
+            /* THE WEAPON IN THE BASIC ATTACK (2026-11-22, mondo: "They should also use them for their basic attacks"): a look that
+               holds its weapon in the fist attacks with THAT weapon (sprites.js RACE_CREATOR_LOOK_DEFS, def.weaponKind) — the
+               police officer's baton swings, the pirate's cutlass cuts — before any race table. */
+            const _wdef = _basicWeaponDef(unit);
+            if (_wdef && _wdef.weaponKind) return _wdef.weaponKind;
             const _first = BASIC_ATTACK_RACE_FIRST[unit.race];
             if (_first) return _first;
             if (typeof getRace3DModel === 'function') {
-                const _def = getRace3DModel(unit.race, unit.gender, unit.appearance);   // (THE MESHY DEFAULT: the slot's creator look)
+                const _def = _wdef;   // (THE MESHY DEFAULT: the slot's creator look)
                 if (_def && _def.basicAttackKind) return _def.basicAttackKind;
             }
             const _mage = BASIC_ATTACK_RACE_CASTERS[unit.race];
@@ -17193,16 +17203,26 @@
                 bolt = BASIC_ATTACK_ORB_BOLTS[_t] || '_bolt_ki';
             }
             if (_raceProj && kind !== 'throw') { proj = _raceProj; bolt = null; }   // the quarterback's football, the spider — the prop IS the shot
+            const _wd = _basicWeaponDef(unit);
+            if (_wd && _wd.weaponKind && _wd.weaponProj && kind === 'throw') { proj = _wd.weaponProj; bolt = null; }   // THE WEAPON IN THE BASIC ATTACK: the ninja's own star flies
             return { mode: 'shot', kind, bolt, proj };
         }
         /* The shot itself: the bolt (muzzle flash / orb / arrow spark +
            trail + burst) and, for a gun, the spinning round on top of it.
            Wrapped by online.js (relay 'basic-shot') — the guest replays it
            fog-gated, so pass PRIMITIVES only. */
+        let _basicShotOrigin = null;   // THE WEAPON'S END: the world point this basic shot leaves from (set round playProjectileToUnit, read in playProjectile)
         function playBasicAttackShot(unit, target, delivery, flyMs) {
             if (!unit || !target || state.phase !== 'battle' || _skipVisuals()) return;
             const dv = delivery || basicAttackDelivery(unit);
             const ms = Math.max(120, Number(flyMs) || 320);
+            /* THE WEAPON'S END (2026-11-22): the shot leaves the weapon in the hand (the muzzle, the staff's head, the star's
+               hand), read off this client's own rig at the strike frame — the guest's replay reads its own. null = the
+               body's middle as before (a sprite, a hidden body). */
+            let _origin = null;
+            const _wd = unit.id != null ? _basicWeaponDef(unit) : null;
+            try { if (unit.id != null && window.ThreeAnim && typeof ThreeAnim.unitShotOrigin === 'function') _origin = ThreeAnim.unitShotOrigin(unit, dv.kind); } catch (e) { _origin = null; }
+            if (_origin && dv.proj && _wd && _wd.weaponProj === dv.proj && typeof ThreeAnim.hideHeldFor === 'function') { try { ThreeAnim.hideHeldFor(unit, ms + 450); } catch (e) {} }   // the thrown star is out of the fist while it flies
             if (dv.bolt && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.fireBoltDirect === 'function'
                 && window.ThreeAnim && window.ThreeAnim.isActive()) {
                 try {
@@ -17210,12 +17230,16 @@
                         fromX: unit.x, fromY: unit.y, toX: target.x, toY: target.y,
                         fromZ: unit.z, toZ: target.z, flyMs: ms,
                         headGlow: dv.proj ? false : null,
-                        bow: dv.kind === 'arrow' || undefined   // 2026-09-14: the archer draws the bow on a quick shot
+                        origin: _origin || undefined,
+                        bow: (dv.kind === 'arrow' && !(_wd && _wd.ownBow && _origin)) || undefined   // 2026-09-14: the archer draws the bow on a quick shot (not over a bow he already wears)
                     });
                 } catch (e) { console.warn('[basic-shot] bolt failed:', e); }
             }
-            if (dv.proj) playProjectileToUnit(unit, target, 'attack', ms, null, dv.proj);
-            else if (!dv.bolt) playProjectileToUnit(unit, target, 'attack', ms, null, _getProjectileOverride(unit, null));
+            _basicShotOrigin = _origin;
+            try {
+                if (dv.proj) playProjectileToUnit(unit, target, 'attack', ms, null, dv.proj);
+                else if (!dv.bolt) playProjectileToUnit(unit, target, 'attack', ms, null, _getProjectileOverride(unit, null));
+            } finally { _basicShotOrigin = null; }
         }
         window.playBasicAttackShot = playBasicAttackShot;
         window.basicAttackDelivery = basicAttackDelivery;
@@ -27409,7 +27433,7 @@
                                                : (typeof getHeightAt === 'function' ? getHeightAt(Math.round(fromX), Math.round(fromY)) : 0);
                 const toZLevel = _toUnit3 ? (_toUnit3.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_toUnit3.x, _toUnit3.y) : 0))
                                            : (typeof getHeightAt === 'function' ? getHeightAt(Math.round(toX), Math.round(toY)) : 0);
-                window.ThreeAnim.projectile(fromX, fromY, toX, toY, projClass, flyMs, fromZLevel, toZLevel);
+                window.ThreeAnim.projectile(fromX, fromY, toX, toY, projClass, flyMs, fromZLevel, toZLevel, _srcClamped ? null : _basicShotOrigin);
             } else {
 
                 const from = tilePixelCenter(fromX, fromY);
@@ -80067,7 +80091,12 @@
                 // starts its clip its strike-frame lead EARLIER (the cowboy
                 // draw's shot, the loosed arrow) so the shot frame IS the launch.
                 const _rangedLead = _attackStrikeLeadMs(unit, target.x, target.y);
+                /* THE WEAPON'S END (2026-11-22): when the beat before the shot is shorter than the draw (no action shot), the
+                   clip starts that much in (state._attackAnimSkip, read by the renderer; it rides state-sync like
+                   _attackAnimKind) so the gun is level when the round leaves its muzzle */
+                const _rangedSkip = Math.max(0, _rangedLead - (projectileDelay + lungeLeadMs));
                 window.setTimeout(() => {
+                    if (_rangedSkip > 0) { if (!state._attackAnimSkip) state._attackAnimSkip = {}; state._attackAnimSkip[unit.id] = _rangedSkip; }
                     triggerAttackAnim(unit, target.x, target.y);
                 }, Math.max(0, projectileDelay + lungeLeadMs - _rangedLead));
 
