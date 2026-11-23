@@ -130,12 +130,19 @@ const run = async () => {
   await shot('3_fight');
   /* --flip: the round turns (day <-> night) in the fight, a picture once the light has eased (THE FIGHT IN THE WALKED ROOM, 2026-11-22) */
   if (flag('flip', false)) { console.log('FLIP', JSON.stringify(await ev(`(function(){ var a = getCurrentCyclePhase(); GAME.state.round = (GAME.state.round | 0) + 1; return a + ' -> ' + getCurrentCyclePhase(); })()`))); await sleep(Number(flag('flip', 1)) > 1 ? Number(flag('flip', 1)) : 9000); await fast.settle(page, 0, 6); await shot('3_fight_flipped'); try { console.log('FW-FLIP', JSON.stringify(await ev(`ThreeRenderer.hq.dev.fw()`)).slice(0, 900)); } catch (e) {} }
+  /* --movelead=dx,dy (2026-11-23, THE END SPOT): P1's lead steps dx, dy squares on the board before the win, so the way back can be
+     checked against where the fight ENDED, not where it started (CAM-AFTER's player vs END's lead row) */
+  if (flag('movelead', false)) { const q = String(flag('movelead', '0,0')).split(',').map(Number); console.log('MOVELEAD', JSON.stringify(await ev(`(function(){ var st = GAME.state; var u = st.units.filter(function (x) { return String(x.id).indexOf('1-') === 0 && !x.dead; })[0]; if (!u) return 'no unit'; var from = [u.x, u.y]; u.x += ${q[0] | 0}; u.y += ${q[1] | 0}; try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.syncUnits) ThreeRenderer.syncUnits(); } catch (e) {} return { id: u.id, from: from, to: [u.x, u.y] }; })()`))); await sleep(1500); await shot('3b_fight_moved'); }
+  /* --leadonto=wall|hazard: P1's lead is put on the nearest wall / rock ('#') or hazard ('!') square of the fight's raster before the win
+     (THE END SPOT's safety: the way back must stand on the nearest square the walk can stand on, never in the wall) */
+  if (flag('leadonto', false)) { const want = String(flag('leadonto', 'wall')) === 'hazard' ? '!' : '#'; console.log('LEADONTO', JSON.stringify(await ev(`(function(){ var st = GAME.state, er = window._hqEncounterRun, fe = er && er.fieldId && PREBUILT_MAPS[er.fieldId], F = fe && fe.field; if (!F) return 'no field'; var u = st.units.filter(function (x) { return String(x.id).indexOf('1-') === 0 && !x.dead; })[0]; var best = null; F.cells.forEach(function (row, y) { for (var x = 0; x < row.length; x++) if (row.charAt(x) === '${want}') { var d = (x - u.x) * (x - u.x) + (y - u.y) * (y - u.y); if (!best || d < best.d) best = { x: x, y: y, d: d }; } }); if (!best) return 'none'; var from = [u.x, u.y]; u.x = best.x; u.y = best.y; return { from: from, to: [u.x, u.y], ch: '${want}' }; })()`))); }
   // win
   console.log('WIN', JSON.stringify(await ev(`(function(){ var st = GAME.state; var u = st.units.filter(function (x) { return String(x.id).indexOf('2-') === 0; }); u.forEach(function (x) { x.hp = 0; x.alive = false; x.dead = true; }); try { checkWin(); } catch (e) { return 'ERR ' + e.message; } return u.length; })()`)));
   t1 = Date.now(); let btn = false;
   while (Date.now() - t1 < 120000) { btn = await ev(`!!(document.getElementById('encReturnBtn') && document.getElementById('encReturnBtn').offsetParent)`); if (btn === true) break; await sleep(1500); }
   lap('return button ' + btn);
   await shot('4_debrief');
+  console.log('END', JSON.stringify(await ev(`(function(){ var r = window._hqEncounterResult; var er = window._hqEncounterRun; return r ? { won: r.won, room: r.room, walker: r.walker, end: r.end } : null; })()`)));
   const tBack = Date.now();
   /* --profile: a CPU profile of the first seconds back in the room (what the resumed walk's ticks cost) */
   let cdp = null; if (flag('profile', false)) { try { cdp = await context.newCDPSession(page); await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 400 }); await cdp.send('Profiler.start'); } catch (e) { cdp = null; } }

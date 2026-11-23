@@ -1219,6 +1219,26 @@ His F3 (Disaster City, Firefox M1 WebGPU): FIGHT START dip 7.4 s, worst gap 1,77
 - NOT CUT YET: the lay itself (`activate` ~220 ms, unit load / animation bake the first time a race fights, the React HUD).
   On Firefox a new pipeline holds the frame even when asked async, so a look nothing drew before still costs once.
 
+## THE END SPOT — a won fight hands the room back where the party's lead ENDED it (2026-11-23)
+mondo: "at the end of a fight, after a victory screen, i think it goes back to the spot where i was standing when i started the
+fight, i want it to go back to the spot i ended the fight on" (story, not PvP). THE HAND-BACK (EXPLORATION_BATTLES §5.2) already
+filed the lead's end cell (battle.js commit `_endRows` → data.js `hqEncounterEndRows` → map.js `_hqReturnOrMenu` →
+`hqEncounterEndSpot` → `ThreeRenderer.hq.goTo(free spot)`), but it fell back to THE SWING SPOT (where the fight started) whenever
+the lead's row was missing, and it stood the walker on the surface nearest the STRIKE's height, so a lead who ended on a deck, a
+step up or the ground under a bridge came back on the wrong floor. Now:
+- **The floor**: the commit passes the fight's raster record (`PREBUILT_MAPS[erun.fieldId].field`) and each unit's engine level
+  `z`; `hqEncounterEndCell(field, x, y, z)` gives the row its `y` = the cell's floor in room metres (`tops`; the ground under a
+  deck, `lows`, when the unit stood at `lowLevels` or a step over it). `hqEncounterEndSpot` uses that `y` as the feet's hint
+  (`_hqGoTo` takes the walkable surface nearest it); the strike's height only when a row has none.
+- **Never in a wall or a trap**: a cell that is not IN on the raster (`cells`: '#' rock / wall, '!' hazard (lava, a pit, deep
+  water), '?' outside) hands the row to the nearest IN cell within 4 squares (`moved: true` on the row).
+- **The lead off the board**: no lead row (benched by THE TWO SHIFTS, swapped out) = the first party unit still standing; the
+  swing spot only when nobody of the party stood at the end, or the fight had no field over the room (a quest fight on a site's
+  board, a site Δ: their board is not the room, so no square maps back).
+- Proof (`node playtest_handover.js <room> --movelead=dx,dy` moves P1's lead before the win; `--leadonto=wall|hazard` stands it on
+  the nearest wall / hazard square; `END` prints the rows, `CAM-AFTER` the walker): the Clearing, lead moved 3,2 squares: back at
+  x -89.25 z -64.75 y 3.91 (the cell's own height; the swing spot was x -99.75 z -71.75 y 3.54). RULE #2: story only, nothing relayed.
+
 ### THE WARM-UP WAS NEVER USED (mondo's F3s of 11-23, the Clearing, Firefox WebGPU)
 His fight start still froze (4.9 s and 6.3 s at 1 FPS) on ~95 first-time looks. A probe in the cloud that named WHY each build
 happened (the same piece's older draw record compared key by key) showed the room's pieces in the list (trees, edges, props,
